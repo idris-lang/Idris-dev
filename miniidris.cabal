@@ -1,0 +1,26 @@
+Name:           miniidris
+Version:        0.1
+License:        BSD3
+License-file:   LICENSE
+Author:         Edwin Brady
+Maintainer:     Edwin Brady <eb@cs.st-andrews.ac.uk>
+Homepage:       http://www.idris-lang.org/
+
+Stability:      Alpha
+Category:       Compilers/Interpreters, Dependent Types
+Synopsis:       Dependently Typed Functional Programming Language
+Description:    An experimental new version of Idris
+
+Cabal-Version:  >= 1.6
+Build-type:     Simple
+
+Executable     miniidris
+               Main-is: Main.hs
+               hs-source-dirs: src
+               Other-modules: Core, Evaluate, Typecheck, ProofState 
+
+               Build-depends:   base>=4 && <5, parsec, mtl, Cabal
+                                
+               Extensions:      MultiParamTypeClasses, FunctionalDependencies,
+                                FlexibleInstances
+               ghc-prof-options: -auto-all

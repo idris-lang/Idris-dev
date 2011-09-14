@@ -1,0 +1,95 @@
+%\documentclass{llncs}
+\documentclass[acmtoplas]{acmtrans2m}
+
+\usepackage[draft]{comments}
+%\usepackage[final]{comments}
+% \newcommand{\comment}[2]{[#1: #2]}
+\newcommand{\khcomment}[1]{\comment{KH}{#1}}
+\newcommand{\ebcomment}[1]{\comment{EB}{#1}}
+
+\usepackage{epsfig}
+\usepackage{path}
+\usepackage{url}
+\usepackage{amsmath,amssymb} 
+\usepackage{fancyvrb}
+
+\newenvironment{template}{\sffamily}
+
+\usepackage{graphics,epsfig}
+\usepackage{stmaryrd}
+
+\input{./macros.ltx}
+\input{./library.ltx}
+
+\NatPackage
+\FinPackage
+
+\newcounter{per}
+\setcounter{per}{1}
+
+\newcommand{\Ivor}{\textsc{Ivor}}
+\newcommand{\Idris}{\textsc{Idris}}
+\newcommand{\Funl}{\textsc{Funl}}
+\newcommand{\Agda}{\textsc{Agda}}
+\newcommand{\LamPi}{$\lambda_\Pi$}
+
+\newcommand{\perule}[1]{\vspace*{0.1cm}\noindent
+\begin{center}
+\fbox{
+\begin{minipage}{7.5cm}\textbf{Rule \theper:} #1\addtocounter{per}{1}
+\end{minipage}}
+\end{center}
+\vspace*{0.1cm}
+}
+
+\newcommand{\mysubsubsection}[1]{
+\noindent
+\textbf{#1}
+}
+\newcommand{\hdecl}[1]{\texttt{#1}}
+
+\markboth{Edwin C. Brady}{Implementation of a Practical Dependently
+  Typed Functional Programming Language}
+\title{Implementation of a Practical Dependently Typed Functional
+  Programming Language}
+\author{EDWIN C. BRADY\\ University of St Andrews}
+
+\begin{abstract}
+I describe the implementation of a dependently typed functional
+programming language, \Idris{}. Much has been written about various
+aspects of dependently typed language implementation (e.g. checking
+dependent types, unification, optimisation) but nothing yet about how
+to bring it all together into a complete, practical, usable tool. This paper
+attempts to do so. In particular, I explain what is needed to turn 
+concrete syntax with implicit arguments into fully elaborated type
+theory, using unification and a tactic engine.
+\end{abstract}
+
+\category{D.3.2}{Programming Languages}{Language
+  Classifications}[Applicative (functional) Languages]
+\category{D.3.4}{Programming Languages}{Processors}[Compilers]
+\terms{Languages, Verification, Performance}
+\keywords{Dependent Types, Typechecking}
+
+\begin{document}
+
+\begin{bottomstuff}
+Author's address: Edwin Brady, School of Computer Science, North Haugh, St Andrews,
+KY16 9SX
+\end{bottomstuff}
+\maketitle
+
+\input{intro.tex}
+
+\input{overview.tex}
+
+\input{conclusions.tex}
+
+\bibliographystyle{acmtrans}
+\bibliography{literature.bib}
+
+\appendix
+
+%\input{code}
+
+\end{document}

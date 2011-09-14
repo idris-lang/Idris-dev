@@ -1,0 +1,11 @@
+N : Set 0;
+O : N;
+S : N -> N;
+
+one   : N = S O;
+two   : N = S one;
+three : N = S two;
+
+Vect : (A:Set 0) -> (n:N) -> Set 0;
+Nil  : (A:Set 0) -> (Vect A O);
+Cons : (A:Set 0) -> (k:N) -> (Vect A k) -> (Vect A (S k));

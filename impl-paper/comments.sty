@@ -1,0 +1,29 @@
+% $id$
+% KH: created comments style file to allow alternative versions of a document.
+
+% \newcommand{\red}[1]{#1}
+
+\usepackage{color}
+\definecolor{BrickRed}{cmyk}{0, .89, .5, 0} 
+\newcommand{\red}{\color{BrickRed}}
+
+\newcommand{\eucommentary}[1]{\(\spadesuit\){\red{\textbf{EC Commentary}: \emph{#1}}\(\spadesuit\)}}
+\newcommand{\euevaluation}[2]{\(\spadesuit\){\red{\textbf{Evaluation Criteria ({#1})}: \emph{#2}}\(\spadesuit\)}}
+
+\newcommand{\comment}[2]{\(\spadesuit\){\bf #1: }{\rm \sf #2}\(\spadesuit\)}
+\newcommand{\draftpage}{\newpage}
+
+\newcommand{\FIXME}[1]{[\textbf{FIXME}: #1]}
+
+%\newcommand{\FIXME}[1]{\wibble}
+\newcommand{\nocomments}{
+\renewcommand{\eucommentary}[1]{}
+\renewcommand{\euevaluation}[2]{}
+\renewcommand{\comment}[2]{}
+\renewcommand{\draftpage}{}
+\renewcommand{\FIXME}[1]{}
+}
+
+\DeclareOption{final}{\nocomments}
+\DeclareOption{draft}{}
+\ProcessOptions*
