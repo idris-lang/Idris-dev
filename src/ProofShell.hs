@@ -26,19 +26,22 @@ processCommand (Theorem n ty) state
               err ->            (state, show err)
 processCommand Quit state = (state { exitNow = True }, "Bye bye")
 processCommand (Tac t) state 
-    | Just ps <- prf state = let (ps', resp) = processTactic t ps in
-                                 (state { prf = Just ps' }, resp)
+    | Just ps <- prf state = case processTactic t ps of
+                                OK (ps', resp) -> (state { prf = Just ps' }, resp)
+                                err -> (state, show err)
     | otherwise = (state, "No proof in progress")
 
 runShell :: ShellState -> IO ShellState
-runShell st = do prompt <- maybe (return "> ") 
-                                 (\st -> do print st; return (show (thname st) ++ "> ")) 
+runShell st = do (prompt, parser) <- 
+                           maybe (return ("> ", parseCommand)) 
+                                 (\st -> do print st
+                                            return (show (thname st) ++ "> ", parseTactic)) 
                                  (prf st)
                  x <- readline prompt
                  cmd <- case x of
                     Nothing -> return $ Right Quit
                     Just input -> do addHistory input
-                                     return (parseCommand input)
+                                     return (parser input)
                  case cmd of
                     Left err -> do putStrLn (show err)
                                    runShell st

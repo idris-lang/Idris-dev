@@ -32,7 +32,7 @@ reservedOp= PTok.reservedOp lexer
 lchar = lexeme.char
 
 parseCommand = parse pCommand "(input)"
-parseTactic  = parse pTactic "(input)"
+parseTactic  = parse (pTactic >>= return . Tac) "(input)"
 
 pCommand :: Parser Command
 pCommand = do reserved "theorem"; n <- identifier; lchar ':'; ty <- pTerm
@@ -44,8 +44,9 @@ pCommand = do reserved "theorem"; n <- identifier; lchar ':'; ty <- pTerm
 
 pTactic :: Parser Tactic
 pTactic = do reserved "attack";  return Attack
-      <|> do reserved "claim";   ty <- pTerm; return (Claim ty)
+      <|> do reserved "claim";   n <- identifier; lchar ':'; ty <- pTerm
+             return (Claim (UN [n]) ty)
       <|> do reserved "try";     tm <- pTerm; return (Try tm)
       <|> do reserved "regret";  return Regret
       <|> do reserved "solve";   return Solve
-      <|> do reserved "fill";    tm <- pTerm; return (Fill tm)
+      <|> do reserved "qed";     return QED

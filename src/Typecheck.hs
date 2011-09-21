@@ -10,7 +10,10 @@ import Evaluate
 
 data TC a = OK a
           | Error String -- TMP! Make this an informative data structure
-  deriving Show
+
+instance Show a => Show (TC a) where
+    show (OK x) = show x
+    show (Error str) = "Error: " ++ str
 
 -- at some point, this instance should also carry type checking options
 -- (e.g. Set:Set)

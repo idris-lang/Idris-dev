@@ -35,7 +35,7 @@ data Name = UN [String]
 instance Show Name where
     show (UN [n]) = n
     show (UN (n:ns)) = show (UN [n]) ++ "." ++ show (UN ns)
-    show (MN i s) = "{" ++ s ++ ":" ++ show i ++ "}"
+    show (MN i s) = "{" ++ s ++ show i ++ "}"
 
 data Raw = Var Name
          | RBind Name (Binder Raw) Raw
@@ -74,7 +74,7 @@ data TT n = P NameType n (TT n) -- embed type
           | Bind n (Binder (TT n)) (TT n)
           | App (TT n) (TT n) (TT n) -- function, function type, arg
           | Set Int
-  deriving Eq
+  deriving (Functor, Eq)
 
 type EnvTT n = [(n, Binder (TT n))]
 
@@ -146,6 +146,8 @@ data Def = Function Fun
   deriving Show
 
 type Context = [(Name, Def)]
+
+emptyContext = []
 
 lookupTy :: Name -> Context -> Maybe Type
 lookupTy n ctxt = do def <-  lookup n ctxt
