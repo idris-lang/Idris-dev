@@ -22,9 +22,15 @@ instance Monad TC where
                 Error e -> Error e
     fail = Error
 
+instance MonadPlus TC where
+    mzero = Error "Unknown error"
+    (OK x) `mplus` _ = OK x
+    _ `mplus` (OK y) = OK y
+    err `mplus` _    = err
+
 converts :: Context -> Env -> Term -> Term -> TC ()
-converts ctxt env x y = if (normalise ctxt (bindEnv env x) ==
-                            normalise ctxt (bindEnv env y))
+converts ctxt env x y = if (normalise ctxt env (bindEnv env x) ==
+                            normalise ctxt env (bindEnv env y))
                           then return ()
                           else fail ("Can't convert between " ++ 
                                      show x ++ " and " ++ show y)
@@ -41,12 +47,12 @@ check ctxt env (Var n)
 check ctxt env (RApp f a)
     = do (fv, fty) <- check ctxt env f
          (av, aty) <- check ctxt env a
-         let fty' = normalise ctxt fty
+         let fty' = normalise ctxt env fty
          case fty' of
            Bind x (Pi s) t ->
                do converts ctxt env s aty
                   return (App fv fty av, 
-                          normalise ctxt (Bind x (Let av aty) t))
+                          normalise ctxt env (Bind x (Let av aty) t))
            t -> fail "Can't apply a non-function type"
 check ctxt env (RSet i) = return (Set i, Set (i+1))
 check ctxt env (RBind n b sc)
@@ -55,42 +61,42 @@ check ctxt env (RBind n b sc)
          discharge n b' scv sct
   where checkBinder (Lam t)
           = do (tv, tt) <- check ctxt env t
-               let tv' = normalise ctxt tv
-               let tt' = normalise ctxt tt
+               let tv' = normalise ctxt env tv
+               let tt' = normalise ctxt env tt
                isSet tt'
                return (Lam tv')
         checkBinder (Pi t)
           = do (tv, tt) <- check ctxt env t
-               let tv' = normalise ctxt tv
-               let tt' = normalise ctxt tt
+               let tv' = normalise ctxt env tv
+               let tt' = normalise ctxt env tt
                isSet tt'
                return (Pi tv')
         checkBinder (Let t v)
           = do (tv, tt) <- check ctxt env t
                (vv, vt) <- check ctxt env v
-               let tv' = normalise ctxt tv
-               let tt' = normalise ctxt tt
+               let tv' = normalise ctxt env tv
+               let tt' = normalise ctxt env tt
                converts ctxt env tv vt
                isSet tt'
                return (Let tv' vv)
         checkBinder (Hole t)
           = do (tv, tt) <- check ctxt env t
-               let tv' = normalise ctxt tv
-               let tt' = normalise ctxt tt
+               let tv' = normalise ctxt env tv
+               let tt' = normalise ctxt env tt
                isSet tt'
                return (Hole tv')
         checkBinder (Guess t v)
           = do (tv, tt) <- check ctxt env t
                (vv, vt) <- check ctxt env v
-               let tv' = normalise ctxt tv
-               let tt' = normalise ctxt tt
+               let tv' = normalise ctxt env tv
+               let tt' = normalise ctxt env tt
                converts ctxt env tv vt
                isSet tt'
                return (Guess tv' vv)
         checkBinder (PVar t)
           = do (tv, tt) <- check ctxt env t
-               let tv' = normalise ctxt tv
-               let tt' = normalise ctxt tt
+               let tv' = normalise ctxt env tv
+               let tt' = normalise ctxt env tt
                isSet tt'
                return (PVar tv')
 

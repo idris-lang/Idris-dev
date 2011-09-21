@@ -7,5 +7,10 @@ High level view of steps we've taken to implement this new version:
 \item An evaluator for well-typed terms
 \item The important bit: a simple type checker. No unification or
   inference.
-\item The proof state and a tactic engine.
+\item The proof state and a tactic engine (Oleg style~\cite{mcbride-thesis}).
 \end{itemize}
+
+For the high level language: we need nothing more than the core type theory,
+and a way of putting stuff together. So we typecheck each pattern match clause
+individually, in an appropriate context. There is no need for the core type
+theory to have pattern matching.

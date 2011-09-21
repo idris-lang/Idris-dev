@@ -1,8 +1,9 @@
-{-# LANGUAGE MultiParamTypeClasses, FunctionalDependencies #-}
+{-# LANGUAGE MultiParamTypeClasses, FunctionalDependencies, DeriveFunctor #-}
 
 module Core where
 
 import Control.Monad.State
+import Debug.Trace
 
 {- The language has:
    * Full dependent types
@@ -29,7 +30,12 @@ data Option = SetInSet
 
 data Name = UN [String]
           | MN Int String
-  deriving (Show, Eq)
+  deriving Eq
+
+instance Show Name where
+    show (UN [n]) = n
+    show (UN (n:ns)) = show (UN [n]) ++ "." ++ show (UN ns)
+    show (MN i s) = "{" ++ s ++ ":" ++ show i ++ "}"
 
 data Raw = Var Name
          | RBind Name (Binder Raw) Raw
@@ -45,7 +51,7 @@ data Binder b = Lam   { binderTy  :: b }
               | Guess { binderTy  :: b,
                         binderVal :: b }
               | PVar  { binderTy  :: b }
-  deriving (Show, Eq)
+  deriving (Show, Eq, Functor)
 
 data RawFun = RawFun { rtype :: Raw,
                        rval  :: Raw
@@ -68,7 +74,7 @@ data TT n = P NameType n (TT n) -- embed type
           | Bind n (Binder (TT n)) (TT n)
           | App (TT n) (TT n) (TT n) -- function, function type, arg
           | Set Int
-  deriving (Show, Eq)
+  deriving Eq
 
 type EnvTT n = [(n, Binder (TT n))]
 
@@ -80,6 +86,29 @@ type Term = TT Name
 type Type = Term
 
 type Env  = EnvTT Name
+
+instance Show n => Show (TT n) where
+    show t = se 10 [] t where
+        se p env (P _ n _) = show n
+        se p env (V i) | i < length env = show $ fst $ env!!i
+                       | otherwise = "!!V " ++ show i ++ "!!"
+        se p env (Bind n b sc) = bracket p 2 $ sb env n b ++ se 10 ((n,b):env) sc
+        se p env (App f t a) = bracket p 1 $ se 1 env f ++ " " ++ se 0 env a
+        se p env (Set i) = "Set" ++ show i
+
+        sb env n (Lam t)  = showb env "\\ " " => " n t
+        sb env n (Hole t) = showb env "? " ". " n t
+        sb env n (Pi t)   = showb env "forall " " -> " n t
+        sb env n (PVar t) = showb env "! " ". " n t
+        sb env n (Let t v)   = showbv env "let " " in " n t v
+        sb env n (Guess t v) = showbv env "?? " " in " n t v
+
+        showb env op sc n t    = op ++ show n ++ " : " ++ se 10 env t ++ sc
+        showbv env op sc n t v = op ++ show n ++ " : " ++ se 10 env t ++ " = " ++ 
+                                 se 10 env v ++ sc 
+
+        bracket outer inner str | inner > outer = "(" ++ str ++ ")"
+                                | otherwise = str
 
 -- WELL TYPED TERMS AS HOAS -------------------------------------------------
 

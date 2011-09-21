@@ -64,6 +64,10 @@ pExp = do lchar '\\'; x <- identifier; lchar ':'; ty <- pTerm
           symbol "=>";
           sc <- pTerm
           return (RBind (UN [x]) (Lam ty) sc)
+       <|> try (do lchar '?'; x <- identifier; lchar ':'; ty <- pTerm
+                   lchar '.';
+                   sc <- pTerm
+                   return (RBind (UN [x]) (Lam ty) sc))
        <|> try (do lchar '('; 
                    x <- identifier; lchar ':'; ty <- pTerm
                    lchar ')';

@@ -5,18 +5,30 @@ module Evaluate(normalise) where
 import Debug.Trace
 import Core
 
-normalise :: Context -> TT Name -> TT Name
-normalise ctxt t = quote 0 (eval ctxt (hoas [] t))
+normalise :: Context -> Env -> TT Name -> TT Name
+normalise ctxt env t = quote 0 (eval ctxt (evalEnv env) (hoas [] t))
+ 
+type HEnv = [(Name, Binder HTT)]
+
+evalEnv :: Env -> HEnv
+evalEnv = map (\ (n, b) -> (n, fmap (hoas []) b)) 
 
 -- We just evaluate HOAS terms. Any de Bruijn indices will refer to higher
 -- level things, so, if we remove a binder, we need to strengthen the
 -- indices appropriately.
 
-eval :: Context -> HTT -> HTT
-eval ctxt t = ev t where
+eval :: Context -> HEnv -> HTT -> HTT
+eval ctxt env t = ev t where
   ev (HP Ref n ty) 
       | Just v <- lookupVal n ctxt = v -- FIXME! Needs evalling
   ev (HP nt n ty) = HP nt n (ev ty)
+{-
+  ev (HV i)
+      | i < length env = case env!! i of
+                             (n, Let t v) -> ev v
+                             _ -> HV i
+      | otherwise = HV i
+-}
   ev (HApp f t a) 
       = evSpine f [(a, t)]
     where evSpine (HApp f t a) sp = evSpine f ((a, t):sp)
