@@ -1,6 +1,6 @@
 {-# LANGUAGE MultiParamTypeClasses, FlexibleInstances #-}
 
-module Parser(parseTerm, parseFile, parseDef) where
+module CoreParser(parseTerm, parseFile, parseDef, pTerm) where
 
 import Core
 
