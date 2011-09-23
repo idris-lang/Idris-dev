@@ -87,28 +87,74 @@ type Type = Term
 
 type Env  = EnvTT Name
 
+-- an environment with de Bruijn indices 'normalised' so that they all refer to
+-- this environment
+
+newtype WkEnvTT n = Wk (EnvTT n)
+type WkEnv = WkEnvTT Name
+
 instance Show n => Show (TT n) where
-    show t = se 10 [] t where
-        se p env (P _ n _) = show n
-        se p env (V i) | i < length env = show $ fst $ env!!i
-                       | otherwise = "!!V " ++ show i ++ "!!"
-        se p env (Bind n b sc) = bracket p 2 $ sb env n b ++ se 10 ((n,b):env) sc
-        se p env (App f t a) = bracket p 1 $ se 1 env f ++ " " ++ se 0 env a
-        se p env (Set i) = "Set" ++ show i
+    show t = showEnv [] t
+    
+showEnv env t = showEnv' env t False
+showEnvDbg env t = showEnv' env t True
 
-        sb env n (Lam t)  = showb env "\\ " " => " n t
-        sb env n (Hole t) = showb env "? " ". " n t
-        sb env n (Pi t)   = showb env "forall " " -> " n t
-        sb env n (PVar t) = showb env "! " ". " n t
-        sb env n (Let t v)   = showbv env "let " " in " n t v
-        sb env n (Guess t v) = showbv env "?? " " in " n t v
+showEnv' env t dbg = se 10 env t where
+    se p env (P _ n _) = show n
+    se p env (V i) | i < length env = (show $ fst $ env!!i) ++
+                                      if dbg then "{" ++ show i ++ "}" else ""
+                   | otherwise = "!!V " ++ show i ++ "!!"
+    se p env (Bind n b sc) = bracket p 2 $ sb env n b ++ se 10 ((n,b):env) sc
+    se p env (App f t a) = bracket p 1 $ se 1 env f ++ " " ++ se 0 env a
+    se p env (Set i) = "Set" ++ show i
 
-        showb env op sc n t    = op ++ show n ++ " : " ++ se 10 env t ++ sc
-        showbv env op sc n t v = op ++ show n ++ " : " ++ se 10 env t ++ " = " ++ 
-                                 se 10 env v ++ sc 
+    sb env n (Lam t)  = showb env "\\ " " => " n t
+    sb env n (Hole t) = showb env "? " ". " n t
+    sb env n (Pi t)   = showb env "forall " " -> " n t
+    sb env n (PVar t) = showb env "! " ". " n t
+    sb env n (Let t v)   = showbv env "let " " in " n t v
+    sb env n (Guess t v) = showbv env "?? " " in " n t v
 
-        bracket outer inner str | inner > outer = "(" ++ str ++ ")"
-                                | otherwise = str
+    showb env op sc n t    = op ++ show n ++ " : " ++ se 10 env t ++ sc
+    showbv env op sc n t v = op ++ show n ++ " : " ++ se 10 env t ++ " = " ++ 
+                             se 10 env v ++ sc 
+
+    bracket outer inner str | inner > outer = "(" ++ str ++ ")"
+                            | otherwise = str
+
+-- Check whether a term has any holes in it - impure if so
+
+pureTerm :: TT n -> Bool
+pureTerm (App f t a) = pureTerm f && pureTerm t && pureTerm a
+pureTerm (Bind n b sc) = pureBinder b && pureTerm sc where
+    pureBinder (Hole _) = False
+    pureBinder (Guess _ _) = False
+    pureBinder (Let t v) = pureTerm t && pureTerm v
+    pureBinder t = pureTerm (binderTy t)
+pureTerm _ = True
+
+-- weaken a term by adding i to each de Bruijn index (i.e. lift it over i bindings)
+
+weakenTm :: Int -> TT n -> TT n
+weakenTm i t = wk i 0 t
+  where wk i min (V x) | x >= min = V (i + x)
+        wk i m (App f t a)   = App (wk i m f) (wk i m t) (wk i m a)
+        wk i m (Bind x b sc) = Bind x (wkb i m b) (wk i (m + 1) sc)
+        wk i m t = t
+        wkb i m (Let   t v) = Let (wk i m t) (wk i m v)
+        wkb i m (Guess t v) = Guess (wk i m t) (wk i m v)
+        wkb i m t           = t { binderTy = wk i m (binderTy t) }
+
+-- weaken an environment so that all the de Bruijn indices are correct according
+-- to the latest bound variable
+
+weakenEnv :: Show n => EnvTT n -> EnvTT n
+weakenEnv env = wk (length env - 1) env
+  where wk i [] = []
+        wk i ((n, b) : bs) = (n, weakenTmB i b) : wk (i - 1) bs
+        weakenTmB i (Let   t v) = Let (weakenTm i t) (weakenTm i v)
+        weakenTmB i (Guess t v) = Guess (weakenTm i t) (weakenTm i v)
+        weakenTmB i t           = t { binderTy = weakenTm i (binderTy t) }
 
 -- WELL TYPED TERMS AS HOAS -------------------------------------------------
 
@@ -148,6 +194,10 @@ data Def = Function Fun
 type Context = [(Name, Def)]
 
 emptyContext = []
+
+addToCtxt :: Name -> Term -> Type -> Context -> Context
+addToCtxt n tm ty ctxt = (n, Function (Fun ty (hoas [] ty)
+                                           tm (hoas [] tm))) : ctxt
 
 lookupTy :: Name -> Context -> Maybe Type
 lookupTy n ctxt = do def <-  lookup n ctxt

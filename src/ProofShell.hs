@@ -24,10 +24,23 @@ processCommand (Theorem n ty) state
               OK (gl, Set _) -> (state { prf = Just (newProof n (ctxt state) gl) }, "")
               OK _ ->           (state, "Goal is not a type")
               err ->            (state, show err)
-processCommand Quit state = (state { exitNow = True }, "Bye bye")
-processCommand (Tac t) state 
+processCommand Quit     state = (state { exitNow = True }, "Bye bye")
+processCommand (Eval t) state = 
+    case check (ctxt state) [] t of
+         OK (val, _) ->
+            let nf = normalise (ctxt state) [] val in
+                (state, show nf)
+         err -> (state, show err)
+processCommand (Tac t)  state 
     | Just ps <- prf state = case processTactic t ps of
-                                OK (ps', resp) -> (state { prf = Just ps' }, resp)
+                                OK (ps', resp) -> 
+                                   if (not (done ps')) 
+                                      then (state { prf = Just ps' }, resp)
+                                      else (state { prf = Nothing,
+                                                    ctxt = addToCtxt (thname ps')
+                                                                     (pterm ps')
+                                                                     (ptype ps')
+                                                                     (context ps') }, resp)
                                 err -> (state, show err)
     | otherwise = (state, "No proof in progress")
 

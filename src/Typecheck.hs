@@ -1,4 +1,4 @@
-{-# LANGUAGE MultiParamTypeClasses, FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses, FlexibleInstances, DeriveFunctor #-}
 
 module Typecheck where
 
@@ -10,6 +10,7 @@ import Evaluate
 
 data TC a = OK a
           | Error String -- TMP! Make this an informative data structure
+  deriving (Eq, Functor)
 
 instance Show a => Show (TC a) where
     show (OK x) = show x
