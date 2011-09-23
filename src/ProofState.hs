@@ -175,7 +175,7 @@ process :: Tactic -> Name -> ProofState -> StateT TState TC ProofState
 process t h ps = tactic (Just h) ps (context ps) (mktac t)
    where mktac Attack      = attack
          mktac (Claim n r) = claim n r
-         mktac (Fill r)     = fill r
+         mktac (Fill r)    = fill r
          mktac Regret      = regret
          mktac Solve       = solve
          mktac (Intro n)   = intro n

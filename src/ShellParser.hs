@@ -35,7 +35,7 @@ parseCommand = parse pCommand "(input)"
 parseTactic  = parse (pTactic >>= return . Tac) "(input)"
 
 pCommand :: Parser Command
-pCommand = do reserved "theorem"; n <- iname; lchar ':'; ty <- pTerm
+pCommand = do reserved "theorem"; n <- iName; lchar ':'; ty <- pTerm
               return (Theorem n ty)
        <|> do reserved "eval"; tm <- pTerm
               return (Eval tm)
@@ -44,14 +44,13 @@ pCommand = do reserved "theorem"; n <- iname; lchar ':'; ty <- pTerm
 
 pTactic :: Parser Tactic
 pTactic = do reserved "attack";  return Attack
-      <|> do reserved "claim";   n <- iname; lchar ':'; ty <- pTerm
+      <|> do reserved "claim";   n <- iName; lchar ':'; ty <- pTerm
              return (Claim n ty)
       <|> do reserved "fill";    tm <- pTerm; return (Fill tm)
       <|> do reserved "regret";  return Regret
       <|> do reserved "solve";   return Solve
-      <|> do reserved "intro";   n <- iname; return (Intro n)
+      <|> do reserved "intro";   n <- iName; return (Intro n)
       <|> do reserved "state";   return ProofState
       <|> do reserved "qed";     return QED
 
-iname :: Parser Name
-iname = identifier >>= (\n -> return (UN [n]))
+

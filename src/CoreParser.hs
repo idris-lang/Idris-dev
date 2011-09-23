@@ -1,6 +1,6 @@
 {-# LANGUAGE MultiParamTypeClasses, FlexibleInstances #-}
 
-module CoreParser(parseTerm, parseFile, parseDef, pTerm) where
+module CoreParser(parseTerm, parseFile, parseDef, pTerm, iName) where
 
 import Core
 
@@ -36,14 +36,17 @@ parseTerm = parse pTerm "(input)"
 pTestFile :: Parser RProgram
 pTestFile = many1 pDef
 
+iName :: Parser Name
+iName = identifier >>= (\n -> return (UN [n]))
+
 pDef :: Parser (Name, RDef)
-pDef = try (do x <- identifier; lchar ':'; ty <- pTerm
+pDef = try (do x <- iName; lchar ':'; ty <- pTerm
                lchar '='
                tm <- pTerm
                lchar ';'
-               return (UN [x], RFunction (RawFun ty tm)))
-       <|> do x <- identifier; lchar ':'; ty <- pTerm; lchar ';'
-              return (UN [x], RConst ty)
+               return (x, RFunction (RawFun ty tm)))
+       <|> do x <- iName; lchar ':'; ty <- pTerm; lchar ';'
+              return (x, RConst ty)
 
 app :: Parser (Raw -> Raw -> Raw)
 app = do whiteSpace ; return RApp
@@ -60,48 +63,48 @@ pNoApp = try (chainr1 pExp arrow)
            <|> pExp
 
 pExp :: Parser Raw
-pExp = do lchar '\\'; x <- identifier; lchar ':'; ty <- pTerm
+pExp = do lchar '\\'; x <- iName; lchar ':'; ty <- pTerm
           symbol "=>";
           sc <- pTerm
-          return (RBind (UN [x]) (Lam ty) sc)
-       <|> try (do lchar '?'; x <- identifier; lchar ':'; ty <- pTerm
+          return (RBind x (Lam ty) sc)
+       <|> try (do lchar '?'; x <- iName; lchar ':'; ty <- pTerm
                    lchar '.';
                    sc <- pTerm
-                   return (RBind (UN [x]) (Lam ty) sc))
+                   return (RBind x (Lam ty) sc))
        <|> try (do lchar '('; 
-                   x <- identifier; lchar ':'; ty <- pTerm
+                   x <- iName; lchar ':'; ty <- pTerm
                    lchar ')';
                    symbol "->";
                    sc <- pTerm
-                   return (RBind (UN [x]) (Pi ty) sc))
+                   return (RBind x (Pi ty) sc))
        <|> try (do lchar '('; 
                    t <- pTerm
                    lchar ')'
                    return t)
        <|> try (do lchar '?';
-                   x <- identifier; lchar ':'; ty <- pTerm
+                   x <- iName; lchar ':'; ty <- pTerm
                    lchar '.';
                    sc <- pTerm
-                   return (RBind (UN [x]) (Hole ty) sc))
+                   return (RBind x (Hole ty) sc))
        <|> try (do symbol "??";
-                   x <- identifier; lchar ':'; ty <- pTerm
+                   x <- iName; lchar ':'; ty <- pTerm
                    lchar '=';
                    val <- pTerm
                    sc <- pTerm
-                   return (RBind (UN [x]) (Guess ty val) sc))
+                   return (RBind x (Guess ty val) sc))
        <|> try (do reserved "let"; 
-                   x <- identifier; lchar ':'; ty <- pTerm
+                   x <- iName; lchar ':'; ty <- pTerm
                    lchar '=';
                    val <- pTerm
                    sc <- pTerm
-                   return (RBind (UN [x]) (Let ty val) sc))
+                   return (RBind x (Let ty val) sc))
        <|> try (do lchar '_'; 
-                   x <- identifier; lchar ':'; ty <- pTerm
+                   x <- iName; lchar ':'; ty <- pTerm
                    lchar '.';
                    sc <- pTerm
-                   return (RBind (UN [x]) (PVar ty) sc))
+                   return (RBind x (PVar ty) sc))
        <|> try (do reserved "Set"; i <- natural
                    return (RSet (fromInteger i)))
-       <|> try (do x <- identifier
-                   return (Var (UN [x])))
+       <|> try (do x <- iName
+                   return (Var x))
 
