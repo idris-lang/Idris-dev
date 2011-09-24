@@ -9,6 +9,7 @@ import Core
 import Control.Monad.State
 import Control.Applicative
 import Data.List
+import Debug.Trace
 
 data ProofState = PS { thname   :: Name,
                        holes    :: [Name], -- holes still to be solved
@@ -36,11 +37,14 @@ data Tactic = Attack
             | EvalIn Raw
             | CheckIn Raw
             | Intro Name
+            | Focus Name
             | ProofState
             | QED
 -- Next: add 'EvalHere' and 'CheckHere' tactics
 
-data TacticAction = AddGoal Name
+data TacticAction = AddGoal Name   -- add a new goal, solve immediately
+                  | NextGoal Name  -- add a new goal, solve it after current one
+                  | FocusGoal Name -- focus on this goal next
                   | Solved Name
                   | Log String
 
@@ -50,21 +54,23 @@ instance Show ProofState where
     show (PS nm [] _ tm _ _ _) = show nm ++ ": no more goals"
     show (PS nm (h:hs) _ tm _ ctxt _) 
           = let OK g = goal (Just h) tm ctxt 
-                wkenv = weakenEnv (premises g) in
+                wkenv = premises g in
                 showPs wkenv (reverse wkenv) ++ "\n" ++
                 "-------------------------------- (" ++ show nm ++ 
                 ") -------\n" ++
                 show h ++ " : " ++ showG wkenv (goalType g) ++ "\n"
          where showPs env [] = ""
                showPs env ((n, b):bs) 
-                   = "  " ++ show n ++ " : " ++ showEnv env (binderTy b) ++ 
+                   = "  " ++ show n ++ " : " ++ 
+                     showEnv env (normalise ctxt env (binderTy b)) ++ 
                      "\n" ++ showPs env bs
-               showG ps (Guess t v) = showEnv ps t ++ " =?= " ++ showEnv ps v
+               showG ps (Guess t v) = showEnv ps (normalise ctxt ps t) ++ 
+                                         " =?= " ++ showEnv ps v
                showG ps b = showEnv ps (binderTy b)
 
 same Nothing n  = True
 same (Just x) n = x == n
- 
+
 hole (Hole _)    = True
 hole (Guess _ _) = True
 hole _           = False
@@ -91,7 +97,8 @@ type Hole = Maybe Name -- Nothing = default hole, first in list in proof state
 goal :: Hole -> Term -> Context -> TC Goal
 goal h tm ctxt = g [] tm where
     g env (Bind n b sc) | hole b && same h n = return $ GD env b 
-                        | otherwise          = gb env b `mplus` g ((n,b):env) sc
+                        | otherwise          
+                           = gb env b `mplus` g ((n,fmap (weakenTm 1) b):weakenTmEnv 1 env) sc
     g env (App f a)   = g env f `mplus` g env a
     g env t           = Error "Can't find hole"
 
@@ -105,8 +112,10 @@ tactic h ps ctxt f = do let tm = pterm ps
                         return (ps { pterm = tm' })
   where
     atH env binder@(Bind n b sc) 
-        | hole b && same h n = f ctxt (weakenEnv env) binder
-        | otherwise          = pure Bind <*> pure n <*> atHb env b <*> atH ((n,b):env) sc
+        | hole b && same h n = f ctxt env binder
+        | otherwise          
+            = pure Bind <*> pure n <*> atHb env b <*> 
+                        atH ((n,fmap (weakenTm 1) b):weakenTmEnv 1 env) sc
     atH env (App f a)    = pure App <*> atH env f <*> atH env a
     atH env t            = return t
     
@@ -125,7 +134,15 @@ attack ctxt env (Bind x (Hole t) sc)
 attack ctxt env _ = fail "Not an attackable hole"
 
 claim :: Name -> Raw -> RunTactic
-claim = undefined
+claim n ty ctxt env t =
+    do (tyv, tyt) <- lift $ check ctxt env ty
+       lift $ isSet ctxt env tyt
+       action (NextGoal n)
+       return $ Bind n (Hole tyv) t
+
+focus :: Name -> RunTactic
+focus n ctxt env t = do action (FocusGoal n)
+                        return t 
 
 regret :: RunTactic
 regret = undefined
@@ -182,9 +199,11 @@ processTactic t ps   = case holes ps of
           logs (_     : xs) = logs xs
 
           goals g [] = g
-          goals g (AddGoal n : xs) = goals (n : g) xs
-          goals g (Solved n  : xs) = goals (g \\ [n]) xs
-          goals g (_         : xs) = goals g xs
+          goals g      (AddGoal n  : xs) = goals (n : g) xs
+          goals (g:gs) (NextGoal n : xs) = goals (g : n : gs) xs
+          goals g     (FocusGoal n : xs) = goals (n : (g \\ [n])) xs
+          goals g      (Solved n   : xs) = goals (g \\ [n]) xs
+          goals g      (_          : xs) = goals g xs
 
 
 process :: Tactic -> Name -> ProofState -> StateT TState TC ProofState
@@ -197,3 +216,4 @@ process t h ps = tactic (Just h) ps (context ps) (mktac t)
          mktac (Intro n)   = intro n
          mktac (CheckIn r) = check_in r
          mktac (EvalIn r)  = eval_in r
+         mktac (Focus n)   = focus n

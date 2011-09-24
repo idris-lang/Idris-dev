@@ -102,7 +102,8 @@ showEnv env t = showEnv' env t False
 showEnvDbg env t = showEnv' env t True
 
 showEnv' env t dbg = se 10 env t where
-    se p env (P _ n _) = show n
+    se p env (P nt n t) = show n ++ 
+                            if dbg then "{" ++ show nt ++ " : " ++ se 10 env t ++ "}" else ""
     se p env (V i) | i < length env = (show $ fst $ env!!i) ++
                                       if dbg then "{" ++ show i ++ "}" else ""
                    | otherwise = "!!V " ++ show i ++ "!!"
@@ -112,7 +113,7 @@ showEnv' env t dbg = se 10 env t where
 
     sb env n (Lam t)  = showb env "\\ " " => " n t
     sb env n (Hole t) = showb env "? " ". " n t
-    sb env n (Pi t)   = showb env "forall " " -> " n t
+    sb env n (Pi t)   = showb env "(" ") -> " n t
     sb env n (PVar t) = showb env "! " ". " n t
     sb env n (Let t v)   = showbv env "let " " in " n t v
     sb env n (Guess t v) = showbv env "?? " " in " n t v
@@ -143,9 +144,7 @@ weakenTm i t = wk i 0 t
         wk i m (App f a)     = App (wk i m f) (wk i m a)
         wk i m (Bind x b sc) = Bind x (wkb i m b) (wk i (m + 1) sc)
         wk i m t = t
-        wkb i m (Let   t v) = Let (wk i m t) (wk i m v)
-        wkb i m (Guess t v) = Guess (wk i m t) (wk i m v)
-        wkb i m t           = t { binderTy = wk i m (binderTy t) }
+        wkb i m t           = fmap (wk i m) t
 
 -- weaken an environment so that all the de Bruijn indices are correct according
 -- to the latest bound variable

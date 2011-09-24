@@ -28,7 +28,7 @@ normalise ctxt env t = quote 0 (eval ctxt (weakenEnv env) t)
 eval :: Context -> Env -> TT Name -> Value
 eval ctxt genv tm = ev [] tm where
     ev env (P Ref n ty)
-        | Just v <- lookupVal n ctxt = v -- FIXME! Needs evalling
+        | Just v <- lookupVal n ctxt = v
     ev env (P nt n ty)   = VP nt n (ev env ty)
     ev env (V i) | i < length env = env !! i
                  | i < length env + length genv 
@@ -37,7 +37,7 @@ eval ctxt genv tm = ev [] tm where
                              _            -> VV i
                  | otherwise      = error $ "Internal error: V" ++ show i
     ev env (Bind n (Let t v) sc)
-           = ev (ev env v : env) sc
+           = wknV (-1) $ ev (ev env v : env) sc
     ev env (Bind n b sc) = VBind n (vbind env b) (\x -> ev (x:env) sc)
        where vbind env t = fmap (ev env) t    
     ev env (App f a) = evApply env [a] f
@@ -46,7 +46,7 @@ eval ctxt genv tm = ev [] tm where
     evApply env args (App f a) = evApply env (a:args) f
     evApply env args f = apply env (ev env f) args
 
-    apply env (VBind n (Lam t) sc) (a:as) = apply env (sc (ev env a)) as
+    apply env (VBind n (Lam t) sc) (a:as) = wknV (-1) $ apply env (sc (ev env a)) as
     apply env f                    (a:as) = unload env f (a:as)
     apply env f                    []     = f
 
@@ -56,12 +56,18 @@ eval ctxt genv tm = ev [] tm where
 quote :: Int -> Value -> TT Name
 quote i (VP nt n v)    = P nt n (quote i v)
 quote i (VV x)         = V x
-quote i (VBind n b sc) = Bind n (quoteB b) (quote (i+1) (sc (VTmp (i+1))))
+quote i (VBind n b sc) = Bind n (quoteB b) (quote (i+1) (sc (VTmp i)))
    where quoteB t = fmap (quote i) t
 quote i (VApp f a)     = App (quote i f) (quote i a)
 quote i (VSet u)       = Set u
-quote i (VTmp x)       = V (i - x)
+quote i (VTmp x)       = V (i - x - 1)
 
+
+wknV :: Int -> Value -> Value
+wknV i (VV x)         = VV (x + i)
+wknV i (VBind n b sc) = VBind n (fmap (wknV i) b) (\x -> (wknV i (sc x)))
+wknV i (VApp f a)     = VApp (wknV i f) (wknV i a)
+wknV i t              = t
 
 -- CONTEXTS -----------------------------------------------------------------
 

@@ -33,15 +33,17 @@ instance MonadPlus TC where
     err `mplus` _    = err
 
 converts :: Context -> Env -> Term -> Term -> TC ()
-converts ctxt env x y = if (normalise ctxt env (bindEnv env x) ==
-                            normalise ctxt env (bindEnv env y))
+converts ctxt env x y = if (normalise ctxt env x == normalise ctxt env y)
                           then return ()
                           else fail ("Can't convert between " ++ 
-                                     show x ++ " and " ++ show y)
+                                     showEnv env (normalise ctxt env x) ++ " and " ++ 
+                                     showEnv env (normalise ctxt env y))
 
-isSet :: Term -> TC ()
-isSet (Set _) = return ()
-isSet tm = fail (show tm ++ " is not a Set")
+isSet :: Context -> Env -> Term -> TC ()
+isSet ctxt env tm = isSet' (normalise ctxt env tm)
+    where isSet' :: Term -> TC ()
+          isSet' (Set _) = return ()
+          isSet' tm = fail (showEnv env tm ++ " is not a Set")
 
 check :: Context -> Env -> Raw -> TC (Term, Type)
 check ctxt env (Var n)
@@ -67,13 +69,13 @@ check ctxt env (RBind n b sc)
           = do (tv, tt) <- check ctxt env t
                let tv' = normalise ctxt env tv
                let tt' = normalise ctxt env tt
-               isSet tt'
+               isSet ctxt env tt'
                return (Lam tv')
         checkBinder (Pi t)
           = do (tv, tt) <- check ctxt env t
                let tv' = normalise ctxt env tv
                let tt' = normalise ctxt env tt
-               isSet tt'
+               isSet ctxt env tt'
                return (Pi tv')
         checkBinder (Let t v)
           = do (tv, tt) <- check ctxt env t
@@ -81,13 +83,13 @@ check ctxt env (RBind n b sc)
                let tv' = normalise ctxt env tv
                let tt' = normalise ctxt env tt
                converts ctxt env tv vt
-               isSet tt'
+               isSet ctxt env tt'
                return (Let tv' vv)
         checkBinder (Hole t)
           = do (tv, tt) <- check ctxt env t
                let tv' = normalise ctxt env tv
                let tt' = normalise ctxt env tt
-               isSet tt'
+               isSet ctxt env tt'
                return (Hole tv')
         checkBinder (Guess t v)
           = do (tv, tt) <- check ctxt env t
@@ -95,13 +97,13 @@ check ctxt env (RBind n b sc)
                let tv' = normalise ctxt env tv
                let tt' = normalise ctxt env tt
                converts ctxt env tv vt
-               isSet tt'
+               isSet ctxt env tt'
                return (Guess tv' vv)
         checkBinder (PVar t)
           = do (tv, tt) <- check ctxt env t
                let tv' = normalise ctxt env tv
                let tt' = normalise ctxt env tt
-               isSet tt'
+               isSet ctxt env tt'
                return (PVar tv')
 
         discharge n (Lam t) scv sct
@@ -132,12 +134,12 @@ checkProgram :: Context -> RProgram -> TC Context
 checkProgram ctxt [] = return ctxt
 checkProgram ctxt ((n, RConst t):xs) 
    = do (t', tt') <- trace (show n) $ check ctxt [] t
-        isSet tt'
+        isSet ctxt [] tt'
         checkProgram (addConstant n t' ctxt) xs
 checkProgram ctxt ((n, RFunction (RawFun ty val)):xs)
    = do (ty', tyt') <- trace (show n) $ check ctxt [] ty
         (val', valt') <- check ctxt [] val
-        isSet tyt'
+        isSet ctxt [] tyt'
         converts ctxt [] ty' valt'
         checkProgram (addToCtxt n val' ty' ctxt) xs
 
