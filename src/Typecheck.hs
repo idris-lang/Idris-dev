@@ -133,11 +133,11 @@ checkProgram ctxt [] = return ctxt
 checkProgram ctxt ((n, RConst t):xs) 
    = do (t', tt') <- trace (show n) $ check ctxt [] t
         isSet tt'
-        checkProgram ((n, Constant Ref t' (hoas [] t')):ctxt) xs
+        checkProgram (addConstant n t' ctxt) xs
 checkProgram ctxt ((n, RFunction (RawFun ty val)):xs)
    = do (ty', tyt') <- trace (show n) $ check ctxt [] ty
         (val', valt') <- check ctxt [] val
         isSet tyt'
         converts ctxt [] ty' valt'
-        checkProgram ((n, Function (Fun ty' (hoas [] ty')
-                                        val' (hoas [] val'))):ctxt) xs
+        checkProgram (addToCtxt n val' ty' ctxt) xs
+
