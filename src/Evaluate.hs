@@ -3,7 +3,7 @@
 module Evaluate(normalise,
                 Fun(..), Def(..), Context,
                 emptyContext, addToCtxt, addConstant,
-                lookupTy, lookupP, lookupVal, lookupTyEnv) where
+                lookupTy, lookupP, lookupDef, lookupVal, lookupTyEnv) where
 
 import Debug.Trace
 import Core
@@ -100,6 +100,13 @@ lookupP n ctxt
    = do def <-  lookup n ctxt
         case def of
           (Function (Fun ty _ tm _)) -> return (P Ref n ty)
+          (Constant nt ty hty) -> return (P nt n ty)
+
+lookupDef :: Name -> Context -> Maybe Term
+lookupDef n ctxt
+   = do def <-  lookup n ctxt
+        case def of
+          (Function (Fun ty _ tm _)) -> return tm
           (Constant nt ty hty) -> return (P nt n ty)
 
 lookupVal :: Name -> Context -> Maybe Value

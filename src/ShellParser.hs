@@ -39,6 +39,7 @@ pCommand = do reserved "theorem"; n <- iName; lchar ':'; ty <- pTerm
               return (Theorem n ty)
        <|> do reserved "eval"; tm <- pTerm
               return (Eval tm)
+       <|> do reserved "print"; n <- iName; return (Print n)
        <|> do reserved "quit";
               return Quit
 
@@ -49,6 +50,7 @@ pTactic = do reserved "attack";  return Attack
       <|> do reserved "fill";    tm <- pTerm; return (Fill tm)
       <|> do reserved "regret";  return Regret
       <|> do reserved "solve";   return Solve
+      <|> do reserved "compute"; return Compute
       <|> do reserved "intro";   n <- iName; return (Intro n)
       <|> do reserved "eval";    t <- pTerm; return (EvalIn t)
       <|> do reserved "check";   t <- pTerm; return (CheckIn t)

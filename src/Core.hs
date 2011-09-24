@@ -80,6 +80,19 @@ data TT n = P NameType n (TT n) -- embed type
 
 type EnvTT n = [(n, Binder (TT n))]
 
+-- Returns true if V 0 does not occur in the term
+
+noOccurrence :: TT n -> Bool
+noOccurrence t = no' 0 t
+  where
+    no' i (V x) = not (i == x)
+    no' i (Bind n b sc) = noB' i b && no' (i+1) sc
+       where noB' i (Let t v) = no' i t && no' i v
+             noB' i (Guess t v) = no' i t && no' i v
+             noB' i b = no' i (binderTy b)
+    no' i (App f a) = no' i f && no' i a
+    no' i _ = True
+
 bindEnv :: EnvTT n -> TT n -> TT n
 bindEnv [] tm = tm
 bindEnv ((n, b):bs) tm = Bind n b (bindEnv bs tm)
@@ -107,6 +120,8 @@ showEnv' env t dbg = se 10 env t where
     se p env (V i) | i < length env = (show $ fst $ env!!i) ++
                                       if dbg then "{" ++ show i ++ "}" else ""
                    | otherwise = "!!V " ++ show i ++ "!!"
+    se p env (Bind n b@(Pi t) sc) 
+        | noOccurrence sc = bracket p 2 $ se 10 env t ++ " -> " ++ se 10 ((n,b):env) sc
     se p env (Bind n b sc) = bracket p 2 $ sb env n b ++ se 10 ((n,b):env) sc
     se p env (App f a) = bracket p 1 $ se 1 env f ++ " " ++ se 0 env a
     se p env (Set i) = "Set" ++ show i

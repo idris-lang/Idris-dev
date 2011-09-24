@@ -27,6 +27,7 @@ data Goal = GD { premises :: Env,
 data Command = Theorem Name Raw
              | Eval Raw
              | Quit
+             | Print Name
              | Tac Tactic
 
 data Tactic = Attack
@@ -34,6 +35,7 @@ data Tactic = Attack
             | Fill Raw
             | Regret
             | Solve
+            | Compute
             | EvalIn Raw
             | CheckIn Raw
             | Intro Name
@@ -169,6 +171,10 @@ intro n ctxt env (Bind x (Hole t) (V 0)) =
            _ -> fail "Nothing to introduce"
 intro ctxt env _ _ = fail "Can't introduce here."
 
+compute :: RunTactic
+compute ctxt env (Bind x (Hole ty) sc) =
+    do return $ Bind x (Hole (normalise ctxt env ty)) sc
+        
 check_in :: Raw -> RunTactic
 check_in t ctxt env tm = 
     do (val, valty) <- lift $ check ctxt env t
@@ -213,6 +219,7 @@ process t h ps = tactic (Just h) ps (context ps) (mktac t)
          mktac (Fill r)    = fill r
          mktac Regret      = regret
          mktac Solve       = solve
+         mktac Compute     = compute
          mktac (Intro n)   = intro n
          mktac (CheckIn r) = check_in r
          mktac (EvalIn r)  = eval_in r

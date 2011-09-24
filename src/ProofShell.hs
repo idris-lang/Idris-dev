@@ -32,6 +32,10 @@ processCommand (Eval t) state =
                 tnf = normalise (ctxt state) [] ty in
                 (state, show nf ++ " : " ++ show ty)
          err -> (state, show err)
+processCommand (Print n) state =
+    case lookupDef n (ctxt state) of
+         Just tm -> (state, show tm)
+         Nothing -> (state, "No such name")
 processCommand (Tac t)  state 
     | Just ps <- prf state = case processTactic t ps of
                                 OK (ps', resp) -> 
