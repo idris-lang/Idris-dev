@@ -33,9 +33,12 @@ data Tactic = Attack
             | Fill Raw
             | Regret
             | Solve
+            | EvalIn Raw
+            | CheckIn Raw
             | Intro Name
             | ProofState
             | QED
+-- Next: add 'EvalHere' and 'CheckHere' tactics
 
 data TacticAction = AddGoal Name
                   | Solved Name
@@ -149,6 +152,19 @@ intro n ctxt env (Bind x (Hole t) (V 0)) =
            _ -> fail "Nothing to introduce"
 intro ctxt env _ _ = fail "Can't introduce here."
 
+check_in :: Raw -> RunTactic
+check_in t ctxt env tm = 
+    do (val, valty) <- lift $ check ctxt env t
+       action (Log (showEnv env val ++ " : " ++ showEnv env valty))
+       return tm
+
+eval_in :: Raw -> RunTactic
+eval_in t ctxt env tm = 
+    do (val, valty) <- lift $ check ctxt env t
+       action (Log (showEnv env (normalise ctxt env val) ++ " : " ++ showEnv env valty))
+       return tm
+
+
 processTactic :: Tactic -> ProofState -> TC (ProofState, String)
 processTactic QED ps = case holes ps of
                            [] -> return (ps { done = True }, "Proof complete.")
@@ -179,4 +195,5 @@ process t h ps = tactic (Just h) ps (context ps) (mktac t)
          mktac Regret      = regret
          mktac Solve       = solve
          mktac (Intro n)   = intro n
-
+         mktac (CheckIn r) = check_in r
+         mktac (EvalIn r)  = eval_in r

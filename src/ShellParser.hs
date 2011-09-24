@@ -50,6 +50,8 @@ pTactic = do reserved "attack";  return Attack
       <|> do reserved "regret";  return Regret
       <|> do reserved "solve";   return Solve
       <|> do reserved "intro";   n <- iName; return (Intro n)
+      <|> do reserved "eval";    t <- pTerm; return (EvalIn t)
+      <|> do reserved "check";   t <- pTerm; return (CheckIn t)
       <|> do reserved "state";   return ProofState
       <|> do reserved "qed";     return QED
 
