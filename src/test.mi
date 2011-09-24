@@ -3,7 +3,7 @@ O : N;
 S : N -> N;
 
 one   : N = S O;
-two   : N = S one;
+two   : N = S (S O);
 three : N = S two;
 
 Vect : (A:Set 0) -> (n:N) -> Set 0;

@@ -10,6 +10,8 @@ import ProofShell
 main = do f <- readFile "test.mi"
           let Right defs = parseFile f
           print defs
-          let OK ctxt = checkProgram [] defs
-          print ctxt
-          runShell (initState ctxt)
+          case checkProgram [] defs of
+             OK ctxt -> do print ctxt 
+                           runShell (initState ctxt)
+                           return ()
+             err -> print err

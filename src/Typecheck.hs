@@ -55,8 +55,8 @@ check ctxt env (RApp f a)
          case fty' of
            Bind x (Pi s) t ->
                do converts ctxt env s aty
-                  return (App fv fty av, 
-                          normalise ctxt env (Bind x (Let av aty) t))
+                  return (App fv av, 
+                          normalise ctxt env (Bind x (Let aty av) t))
            t -> fail "Can't apply a non-function type"
 check ctxt env (RSet i) = return (Set i, Set (i+1))
 check ctxt env (RBind n b sc)
@@ -123,9 +123,8 @@ check ctxt env (RBind n b sc)
 
         checkNotHoley i (V v) 
             | v == i = fail "You can't put a hole where a hole don't belong"
-        checkNotHoley i (App f t a) = do checkNotHoley i f
-                                         checkNotHoley i t
-                                         checkNotHoley i a
+        checkNotHoley i (App f a) = do checkNotHoley i f
+                                       checkNotHoley i a
         checkNotHoley i (Bind n b sc) = checkNotHoley (i+1) sc
         checkNotHoley _ _ = return ()
 

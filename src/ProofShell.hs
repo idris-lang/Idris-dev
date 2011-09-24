@@ -27,9 +27,10 @@ processCommand (Theorem n ty) state
 processCommand Quit     state = (state { exitNow = True }, "Bye bye")
 processCommand (Eval t) state = 
     case check (ctxt state) [] t of
-         OK (val, _) ->
-            let nf = normalise (ctxt state) [] val in
-                (state, show nf)
+         OK (val, ty) ->
+            let nf = normalise (ctxt state) [] val 
+                tnf = normalise (ctxt state) [] ty in
+                (state, show nf ++ " : " ++ show ty)
          err -> (state, show err)
 processCommand (Tac t)  state 
     | Just ps <- prf state = case processTactic t ps of

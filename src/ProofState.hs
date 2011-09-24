@@ -89,7 +89,7 @@ goal :: Hole -> Term -> Context -> TC Goal
 goal h tm ctxt = g [] tm where
     g env (Bind n b sc) | hole b && same h n = return $ GD env b 
                         | otherwise          = gb env b `mplus` g ((n,b):env) sc
-    g env (App f t a) = g env f `mplus` g env t `mplus` g env a
+    g env (App f a)   = g env f `mplus` g env a
     g env t           = Error "Can't find hole"
 
     gb env (Let t v) = g env t `mplus` g env v
@@ -104,7 +104,7 @@ tactic h ps ctxt f = do let tm = pterm ps
     atH env binder@(Bind n b sc) 
         | hole b && same h n = f ctxt (weakenEnv env) binder
         | otherwise          = pure Bind <*> pure n <*> atHb env b <*> atH ((n,b):env) sc
-    atH env (App f t a)  = pure App <*> atH env f <*> atH env t <*> atH env a
+    atH env (App f a)    = pure App <*> atH env f <*> atH env a
     atH env t            = return t
     
     atHb env (Let t v)   = pure Let <*> atH env t <*> atH env v    

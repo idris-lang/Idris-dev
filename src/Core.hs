@@ -69,10 +69,12 @@ type RProgram = [(Name, RDef)]
 data NameType = Ref | DCon Int Int | TCon Int
   deriving (Show, Eq)
 
+-- FIXME: Consider changing this to birectional, with type annotations.
+
 data TT n = P NameType n (TT n) -- embed type
           | V Int 
           | Bind n (Binder (TT n)) (TT n)
-          | App (TT n) (TT n) (TT n) -- function, function type, arg
+          | App (TT n) (TT n) -- function, function type, arg
           | Set Int
   deriving (Functor, Eq)
 
@@ -105,7 +107,7 @@ showEnv' env t dbg = se 10 env t where
                                       if dbg then "{" ++ show i ++ "}" else ""
                    | otherwise = "!!V " ++ show i ++ "!!"
     se p env (Bind n b sc) = bracket p 2 $ sb env n b ++ se 10 ((n,b):env) sc
-    se p env (App f t a) = bracket p 1 $ se 1 env f ++ " " ++ se 0 env a
+    se p env (App f a) = bracket p 1 $ se 1 env f ++ " " ++ se 0 env a
     se p env (Set i) = "Set" ++ show i
 
     sb env n (Lam t)  = showb env "\\ " " => " n t
@@ -125,7 +127,7 @@ showEnv' env t dbg = se 10 env t where
 -- Check whether a term has any holes in it - impure if so
 
 pureTerm :: TT n -> Bool
-pureTerm (App f t a) = pureTerm f && pureTerm t && pureTerm a
+pureTerm (App f a) = pureTerm f && pureTerm a
 pureTerm (Bind n b sc) = pureBinder b && pureTerm sc where
     pureBinder (Hole _) = False
     pureBinder (Guess _ _) = False
@@ -138,7 +140,7 @@ pureTerm _ = True
 weakenTm :: Int -> TT n -> TT n
 weakenTm i t = wk i 0 t
   where wk i min (V x) | x >= min = V (i + x)
-        wk i m (App f t a)   = App (wk i m f) (wk i m t) (wk i m a)
+        wk i m (App f a)     = App (wk i m f) (wk i m a)
         wk i m (Bind x b sc) = Bind x (wkb i m b) (wk i (m + 1) sc)
         wk i m t = t
         wkb i m (Let   t v) = Let (wk i m t) (wk i m v)
@@ -148,7 +150,7 @@ weakenTm i t = wk i 0 t
 -- weaken an environment so that all the de Bruijn indices are correct according
 -- to the latest bound variable
 
-weakenEnv :: Show n => EnvTT n -> EnvTT n
+weakenEnv :: EnvTT n -> EnvTT n
 weakenEnv env = wk (length env - 1) env
   where wk i [] = []
         wk i ((n, b) : bs) = (n, weakenTmB i b) : wk (i - 1) bs
@@ -156,12 +158,15 @@ weakenEnv env = wk (length env - 1) env
         weakenTmB i (Guess t v) = Guess (weakenTm i t) (weakenTm i v)
         weakenTmB i t           = t { binderTy = weakenTm i (binderTy t) }
 
+weakenTmEnv :: Int -> EnvTT n -> EnvTT n
+weakenTmEnv i = map (\ (n, b) -> (n, fmap (weakenTm i) b))
+
 -- WELL TYPED TERMS AS HOAS -------------------------------------------------
 
 data HTT = HP NameType Name HTT
          | HV Int
          | HBind Name (Binder HTT) (HTT -> HTT)
-         | HApp HTT HTT HTT
+         | HApp HTT HTT
          | HSet Int
          | HTmp Int
 
@@ -179,7 +184,7 @@ hoas env (Bind n b sc) = HBind n (hbind b) (\x -> hoas (x:env) sc)
         hbind (PVar t) = PVar (hoas env t)
         hbind (Let v t)   = Let (hoas env v) (hoas env t)
         hbind (Guess v t) = Guess (hoas env v) (hoas env t)
-hoas env (App f t a) = HApp (hoas env f) (hoas env t) (hoas env a)
+hoas env (App f a) = HApp (hoas env f) (hoas env a)
 hoas env (Set i) = HSet i
 
 -- CONTEXTS -----------------------------------------------------------------
