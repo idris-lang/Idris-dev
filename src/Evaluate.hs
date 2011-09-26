@@ -2,7 +2,7 @@
 
 module Evaluate(normalise,
                 Fun(..), Def(..), Context,
-                emptyContext, addToCtxt, addConstant,
+                emptyContext, addToCtxt, addConstant, addDatatype,
                 lookupTy, lookupP, lookupDef, lookupVal, lookupTyEnv) where
 
 import Debug.Trace
@@ -110,12 +110,27 @@ type Context = [(Name, Def)]
 
 emptyContext = []
 
+addDef :: Name -> Def -> Context -> Context
+addDef n d ctxt = (n, d) : ctxt
+
 addToCtxt :: Name -> Term -> Type -> Context -> Context
-addToCtxt n tm ty ctxt = (n, Function (Fun ty (eval ctxt [] ty)
-                                           tm (eval ctxt [] tm))) : ctxt
+addToCtxt n tm ty ctxt = addDef n (Function (Fun ty (eval ctxt [] ty)
+                                             tm (eval ctxt [] tm))) ctxt
 
 addConstant :: Name -> Type -> Context -> Context
-addConstant n ty ctxt = (n, Constant Ref ty (eval ctxt [] ty)) : ctxt
+addConstant n ty ctxt = addDef n (Constant Ref ty (eval ctxt [] ty)) ctxt
+
+addDatatype :: Datatype Name -> Context -> Context
+addDatatype (Data n ty cons) ctxt
+    = let ty' = normalise ctxt [] ty in
+          addCons 0 cons (addDef n 
+             (Constant (TCon (arity ty')) ty (eval ctxt [] ty)) ctxt)
+  where
+    addCons tag [] ctxt = ctxt
+    addCons tag ((n, ty) : cons) ctxt 
+        = let ty' = normalise ctxt [] ty in
+              addCons (tag+1) cons (addDef n
+                  (Constant (DCon tag (arity ty')) ty (eval ctxt [] ty)) ctxt)
 
 lookupTy :: Name -> Context -> Maybe Type
 lookupTy n ctxt = do def <-  lookup n ctxt

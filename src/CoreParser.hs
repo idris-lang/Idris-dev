@@ -47,6 +47,8 @@ pDef = try (do x <- iName; lchar ':'; ty <- pTerm
                return (x, RFunction (RawFun ty tm)))
        <|> do x <- iName; lchar ':'; ty <- pTerm; lchar ';'
               return (x, RConst ty)
+       <|> do (x, d) <- pData
+              return (x, RData d)
 
 app :: Parser (Raw -> Raw -> Raw)
 app = do whiteSpace ; return RApp
@@ -115,4 +117,14 @@ pExp = do lchar '\\'; x <- iName; lchar ':'; ty <- pTerm
                    return (RSet (fromInteger i)))
        <|> try (do x <- iName
                    return (Var x))
+
+pData :: Parser (Name, RawDatatype)
+pData = do reserved "data"; x <- iName; lchar ':'; ty <- pTerm; reserved "where"
+           cs <- many pConstructor
+           return (x, RDatatype x ty cs)
+
+pConstructor :: Parser (Name, Raw)
+pConstructor = do lchar '|'
+                  c <- iName; lchar ':'; ty <- pTerm
+                  return (c, ty)
 

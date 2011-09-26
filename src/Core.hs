@@ -22,6 +22,30 @@ data Option = SetInSet
             | CheckConv
   deriving Eq
 
+data TC a = OK a
+          | Error String -- TMP! Make this an informative data structure
+  deriving (Eq, Functor)
+
+instance Show a => Show (TC a) where
+    show (OK x) = show x
+    show (Error str) = "Error: " ++ str
+
+-- at some point, this instance should also carry type checking options
+-- (e.g. Set:Set)
+
+instance Monad TC where
+    return = OK 
+    x >>= k = case x of 
+                OK v -> k v
+                Error e -> Error e
+    fail = Error
+
+instance MonadPlus TC where
+    mzero = Error "Unknown error"
+    (OK x) `mplus` _ = OK x
+    _ `mplus` (OK y) = OK y
+    err `mplus` _    = err
+
 -- RAW TERMS ----------------------------------------------------------------
 
 -- Names are hierarchies of strings, describing scope (so no danger of
@@ -60,8 +84,12 @@ data RawFun = RawFun { rtype :: Raw,
                      }
   deriving Show
 
+data RawDatatype = RDatatype Name Raw [(Name, Raw)]
+  deriving Show
+
 data RDef = RFunction RawFun
           | RConst Raw
+          | RData RawDatatype
   deriving Show
 
 type RProgram = [(Name, RDef)]
@@ -82,6 +110,11 @@ data TT n = P NameType n (TT n) -- embed type
 
 type EnvTT n = [(n, Binder (TT n))]
 
+data Datatype n = Data { d_typename :: n,
+                         d_type     :: (TT n),
+                         d_cons     :: [(n, TT n)] }
+  deriving (Show, Functor, Eq)
+
 -- Returns true if V 0 and bound name n do not occur in the term
 
 noOccurrence :: Eq n => n -> TT n -> Bool
@@ -95,6 +128,12 @@ noOccurrence n t = no' 0 t
              noB' i b = no' i (binderTy b)
     no' i (App f a) = no' i f && no' i a
     no' i _ = True
+
+-- Return the arity of a (normalised) type
+
+arity :: TT n -> Int
+arity (Bind n (Pi t) sc) = 1 + arity sc
+arity _ = 0
 
 type Term = TT Name
 type Type = Term

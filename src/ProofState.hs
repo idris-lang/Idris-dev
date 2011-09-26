@@ -5,6 +5,7 @@ module ProofState where
 import Typecheck
 import Evaluate
 import Core
+import Unify
 
 import Control.Monad.State
 import Control.Applicative

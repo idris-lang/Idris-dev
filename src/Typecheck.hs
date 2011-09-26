@@ -8,32 +8,14 @@ import Debug.Trace
 import Core
 import Evaluate
 
-data TC a = OK a
-          | Error String -- TMP! Make this an informative data structure
-  deriving (Eq, Functor)
-
-instance Show a => Show (TC a) where
-    show (OK x) = show x
-    show (Error str) = "Error: " ++ str
-
--- at some point, this instance should also carry type checking options
--- (e.g. Set:Set)
-
-instance Monad TC where
-    return = OK 
-    x >>= k = case x of 
-                OK v -> k v
-                Error e -> Error e
-    fail = Error
-
-instance MonadPlus TC where
-    mzero = Error "Unknown error"
-    (OK x) `mplus` _ = OK x
-    _ `mplus` (OK y) = OK y
-    err `mplus` _    = err
+-- To check conversion, normalise each term wrt the current environment.
+-- Since we haven't converted everything to de Bruijn indices yet, we'll have to
+-- deal with alpha conversion - we do this by making each inner term de Bruijn
+-- indexed with 'finalise'
 
 converts :: Context -> Env -> Term -> Term -> TC ()
-converts ctxt env x y = if (normalise ctxt env x == normalise ctxt env y)
+converts ctxt env x y = if (finalise (normalise ctxt env x) == 
+                            finalise (normalise ctxt env y))
                           then return ()
                           else fail ("Can't convert between " ++ 
                                      showEnv env (normalise ctxt env x) ++ " and " ++ 
@@ -173,14 +155,24 @@ finalise t = t
 
 checkProgram :: Context -> RProgram -> TC Context
 checkProgram ctxt [] = return ctxt
-checkProgram ctxt ((n, RConst t):xs) 
+checkProgram ctxt ((n, RConst t) : xs) 
    = do (t', tt') <- trace (show n) $ check ctxt [] t
         isSet ctxt [] tt'
         checkProgram (addConstant n t' ctxt) xs
-checkProgram ctxt ((n, RFunction (RawFun ty val)):xs)
+checkProgram ctxt ((n, RFunction (RawFun ty val)) : xs)
    = do (ty', tyt') <- trace (show n) $ check ctxt [] ty
         (val', valt') <- check ctxt [] val
         isSet ctxt [] tyt'
         converts ctxt [] ty' valt'
         checkProgram (addToCtxt n val' ty' ctxt) xs
+checkProgram ctxt ((n, RData (RDatatype _ ty cons)) : xs)
+   = do (ty', tyt') <- trace (show n) $ check ctxt [] ty
+        isSet ctxt [] tyt'
+        -- add the tycon temporarily so we can check constructors
+        let ctxt' = addDatatype (Data n ty' []) ctxt
+        cons' <- mapM (checkCon ctxt') cons
+        checkProgram (addDatatype (Data n ty' cons') ctxt) xs
+  where checkCon ctxt (n, cty) = do (cty', ctyt') <- check ctxt [] cty
+                                    return (n, cty')
+
 
