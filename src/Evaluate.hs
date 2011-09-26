@@ -22,22 +22,50 @@ instance Show Value where
 
 -- THE EVALUATOR ------------------------------------------------------------
 
+-- The environment is assumed to be "locally named" - i.e., not de Bruijn 
+-- indexed.
+-- i.e. it's an intermediate environment that we have while type checking or
+-- while building a proof.
+
 normalise :: Context -> Env -> TT Name -> TT Name
-normalise ctxt env t = quote 0 (eval ctxt (weakenEnv env) t)
+normalise ctxt env t = quote 0 (eval ctxt env t)
+
+-- let evtm = bindEnv (reverse env) t 
+--                            evtm' = quote 0 (evalCtxt ctxt evtm) in
+--                            trace (show (evtm, evtm')) $
+--                              unbindEnv env evtm'
+
+-- unbindEnv env (quote 0 (eval ctxt (bindEnv env t)))
+
+bindEnv :: EnvTT n -> TT n -> TT n
+bindEnv [] tm = tm
+bindEnv ((n, Let t v):bs) tm = Bind n (NLet t v) (bindEnv bs tm)
+bindEnv ((n, b):bs)       tm = Bind n b (bindEnv bs tm)
+
+unbindEnv :: EnvTT n -> TT n -> TT n
+unbindEnv [] tm = tm
+unbindEnv (_:bs) (Bind n b sc) = unbindEnv bs sc
+
+-- Evaluate in a context of locally named things (i.e. not de Bruijn indexed,
+-- such as we might have during construction of a proof)
 
 eval :: Context -> Env -> TT Name -> Value
 eval ctxt genv tm = ev [] tm where
+    ev env (P Bound n ty)
+        | Just (Let t v) <- lookup n genv = ev env v 
     ev env (P Ref n ty)
         | Just v <- lookupVal n ctxt = v
     ev env (P nt n ty)   = VP nt n (ev env ty)
     ev env (V i) | i < length env = env !! i
-                 | i < length env + length genv 
-                       = case genv !! (i - length env) of
-                             (_, Let t v) -> ev env v
-                             _            -> VV i
+--                  | i < length env + length genv 
+--                        = case genv !! (i - length env) of
+--                              (_, Let t v) -> ev env v
+--                              _            -> VV i
                  | otherwise      = error $ "Internal error: V" ++ show i
     ev env (Bind n (Let t v) sc)
            = wknV (-1) $ ev (ev env v : env) sc
+    ev env (Bind n (NLet t v) sc)
+           = VBind n (Let (ev env t) (ev env v)) $ (\x -> ev (ev env v : env) sc)
     ev env (Bind n b sc) = VBind n (vbind env b) (\x -> ev (x:env) sc)
        where vbind env t = fmap (ev env) t    
     ev env (App f a) = evApply env [a] f

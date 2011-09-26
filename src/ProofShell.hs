@@ -21,8 +21,10 @@ initState c = State c Nothing False
 processCommand :: Command -> ShellState -> (ShellState, String)
 processCommand (Theorem n ty) state 
     = case check (ctxt state) [] ty of
-              OK (gl, Set _) -> (state { prf = Just (newProof n (ctxt state) gl) }, "")
-              OK _ ->           (state, "Goal is not a type")
+              OK (gl, t) -> 
+                 case isSet (ctxt state) [] t of
+                    OK _ -> (state { prf = Just (newProof n (ctxt state) gl) }, "")
+                    _ ->    (state, "Goal is not a type")
               err ->            (state, show err)
 processCommand Quit     state = (state { exitNow = True }, "Bye bye")
 processCommand (Eval t) state = 

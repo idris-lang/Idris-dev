@@ -99,6 +99,13 @@ pExp = do lchar '\\'; x <- iName; lchar ':'; ty <- pTerm
                    reserved "in";
                    sc <- pTerm
                    return (RBind x (Let ty val) sc))
+--        <|> try (do reserved "nlet"; 
+--                    x <- iName; lchar ':'; ty <- pTerm
+--                    lchar '=';
+--                    val <- pTerm
+--                    reserved "in";
+--                    sc <- pTerm
+--                    return (RBind x (NLet ty val) sc))
        <|> try (do lchar '_'; 
                    x <- iName; lchar ':'; ty <- pTerm
                    lchar '.';

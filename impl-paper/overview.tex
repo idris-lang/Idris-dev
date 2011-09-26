@@ -8,6 +8,10 @@ High level view of steps we've taken to implement this new version:
 \item The important bit: a simple type checker. No unification or
   inference.
 \item The proof state and a tactic engine (Oleg style~\cite{mcbride-thesis}).
+\begin{itemize}
+  \item Dealing with names: typechecking and evaluation in a context, managing de Bruijn
+        indices becomes tricky.
+\end{itemize}
 \end{itemize}
 
 For the high level language: we need nothing more than the core type theory,

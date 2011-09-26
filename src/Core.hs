@@ -47,6 +47,8 @@ data Binder b = Lam   { binderTy  :: b }
               | Pi    { binderTy  :: b }
               | Let   { binderTy  :: b,
                         binderVal :: b }
+              | NLet  { binderTy  :: b,
+                        binderVal :: b }
               | Hole  { binderTy  :: b}
               | Guess { binderTy  :: b,
                         binderVal :: b }
@@ -66,7 +68,7 @@ type RProgram = [(Name, RDef)]
 
 -- WELL TYPED TERMS ---------------------------------------------------------
 
-data NameType = Ref | DCon Int Int | TCon Int
+data NameType = Bound | Ref | DCon Int Int | TCon Int
   deriving (Show, Eq)
 
 -- FIXME: Consider changing this to birectional, with type annotations.
@@ -80,22 +82,19 @@ data TT n = P NameType n (TT n) -- embed type
 
 type EnvTT n = [(n, Binder (TT n))]
 
--- Returns true if V 0 does not occur in the term
+-- Returns true if V 0 and bound name n do not occur in the term
 
-noOccurrence :: TT n -> Bool
-noOccurrence t = no' 0 t
+noOccurrence :: Eq n => n -> TT n -> Bool
+noOccurrence n t = no' 0 t
   where
     no' i (V x) = not (i == x)
+    no' i (P Bound x _) = not (n == x)
     no' i (Bind n b sc) = noB' i b && no' (i+1) sc
        where noB' i (Let t v) = no' i t && no' i v
              noB' i (Guess t v) = no' i t && no' i v
              noB' i b = no' i (binderTy b)
     no' i (App f a) = no' i f && no' i a
     no' i _ = True
-
-bindEnv :: EnvTT n -> TT n -> TT n
-bindEnv [] tm = tm
-bindEnv ((n, b):bs) tm = Bind n b (bindEnv bs tm)
 
 type Term = TT Name
 type Type = Term
@@ -108,20 +107,20 @@ type Env  = EnvTT Name
 newtype WkEnvTT n = Wk (EnvTT n)
 type WkEnv = WkEnvTT Name
 
-instance Show n => Show (TT n) where
+instance (Eq n, Show n) => Show (TT n) where
     show t = showEnv [] t
     
 showEnv env t = showEnv' env t False
 showEnvDbg env t = showEnv' env t True
 
 showEnv' env t dbg = se 10 env t where
-    se p env (P nt n t) = show n ++ 
-                            if dbg then "{" ++ show nt ++ " : " ++ se 10 env t ++ "}" else ""
+    se p env (P nt n t) = show n 
+--                             ++ if dbg then "{" ++ show nt ++ " : " ++ se 10 env t ++ "}" else ""
     se p env (V i) | i < length env = (show $ fst $ env!!i) ++
                                       if dbg then "{" ++ show i ++ "}" else ""
                    | otherwise = "!!V " ++ show i ++ "!!"
     se p env (Bind n b@(Pi t) sc) 
-        | noOccurrence sc = bracket p 2 $ se 10 env t ++ " -> " ++ se 10 ((n,b):env) sc
+        | noOccurrence n sc = bracket p 2 $ se 10 env t ++ " -> " ++ se 10 ((n,b):env) sc
     se p env (Bind n b sc) = bracket p 2 $ sb env n b ++ se 10 ((n,b):env) sc
     se p env (App f a) = bracket p 1 $ se 1 env f ++ " " ++ se 0 env a
     se p env (Set i) = "Set" ++ show i

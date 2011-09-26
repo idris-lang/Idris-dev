@@ -62,6 +62,11 @@ instance Show ProofState where
                 ") -------\n" ++
                 show h ++ " : " ++ showG wkenv (goalType g) ++ "\n"
          where showPs env [] = ""
+               showPs env ((n, Let t v):bs) 
+                   = "  " ++ show n ++ " : " ++ 
+                     showEnv env (normalise ctxt env t) ++ "   =   " ++
+                     showEnv env (normalise ctxt env v) ++
+                     "\n" ++ showPs env bs
                showPs env ((n, b):bs) 
                    = "  " ++ show n ++ " : " ++ 
                      showEnv env (normalise ctxt env (binderTy b)) ++ 
@@ -89,8 +94,9 @@ action a = do (n, ts) <- get
               put (n, a:ts)
 
 newProof :: Name -> Context -> Type -> ProofState
-newProof n ctxt ty = let h = holeName 0 in
-                         PS n [h] 1 (Bind h (Hole ty) (V 0)) ty ctxt False
+newProof n ctxt ty = let h = holeName 0 
+                         ty' = vToP ty in
+                         PS n [h] 1 (Bind h (Hole ty') (P Bound h ty')) ty ctxt False
 
 type TState = (Int, [TacticAction])
 type RunTactic = Context -> Env -> Term -> StateT TState TC Term
@@ -100,7 +106,7 @@ goal :: Hole -> Term -> Context -> TC Goal
 goal h tm ctxt = g [] tm where
     g env (Bind n b sc) | hole b && same h n = return $ GD env b 
                         | otherwise          
-                           = gb env b `mplus` g ((n,fmap (weakenTm 1) b):weakenTmEnv 1 env) sc
+                           = gb env b `mplus` g ((n, b):env) sc
     g env (App f a)   = g env f `mplus` g env a
     g env t           = Error "Can't find hole"
 
@@ -116,8 +122,7 @@ tactic h ps ctxt f = do let tm = pterm ps
     atH env binder@(Bind n b sc) 
         | hole b && same h n = f ctxt env binder
         | otherwise          
-            = pure Bind <*> pure n <*> atHb env b <*> 
-                        atH ((n,fmap (weakenTm 1) b):weakenTmEnv 1 env) sc
+            = pure Bind <*> pure n <*> atHb env b <*> atH ((n,b) : env) sc
     atH env (App f a)    = pure App <*> atH env f <*> atH env a
     atH env t            = return t
     
@@ -132,7 +137,7 @@ attack ctxt env (Bind x (Hole t) sc)
          action (AddGoal h)
          return $ Bind x (Guess t (newtm h)) sc
   where
-    newtm h = Bind h (Hole t) (V 0) 
+    newtm h = Bind h (Hole t) (P Bound h t) 
 attack ctxt env _ = fail "Not an attackable hole"
 
 claim :: Name -> Raw -> RunTactic
@@ -140,7 +145,7 @@ claim n ty ctxt env t =
     do (tyv, tyt) <- lift $ check ctxt env ty
        lift $ isSet ctxt env tyt
        action (NextGoal n)
-       return $ Bind n (Hole tyv) t
+       return $ Bind n (Hole tyv) t -- (weakenTm 1 t)
 
 focus :: Name -> RunTactic
 focus n ctxt env t = do action (FocusGoal n)
@@ -149,7 +154,7 @@ focus n ctxt env t = do action (FocusGoal n)
 regret :: RunTactic
 regret = undefined
 
-fill :: Raw -> RunTactic -- Try
+fill :: Raw -> RunTactic
 fill guess ctxt env (Bind x (Hole ty) sc) = 
     do (val, valty) <- lift $ check ctxt env guess 
        lift $ converts ctxt env valty ty
@@ -159,15 +164,16 @@ fill _ _ _ _ = fail "Can't fill here."
 solve :: RunTactic
 solve ctxt env (Bind x (Guess ty val) sc)
    | pureTerm val = do action (Solved x)
-                       return $ Bind x (Let ty val) sc
+                       return $ Bind x (Let ty val) sc -- instantiate val (pToV x sc)
    | otherwise    = fail "I see a hole in your solution."
 solve _ _ _ = fail "Not a guess."
 
 intro :: Name -> RunTactic
-intro n ctxt env (Bind x (Hole t) (V 0)) = 
+intro n ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' =
     do let t' = normalise ctxt env t
        case t' of
-           Bind y (Pi s) t -> return $ Bind n (Lam s) (Bind x (Hole t) (V 0))
+           Bind y (Pi s) t -> let t' = instantiate (P Bound n s) (pToV y t) in 
+                                  return $ Bind n (Lam s) (Bind x (Hole t') (P Bound x t'))
            _ -> fail "Nothing to introduce"
 intro ctxt env _ _ = fail "Can't introduce here."
 
@@ -184,15 +190,24 @@ check_in t ctxt env tm =
 eval_in :: Raw -> RunTactic
 eval_in t ctxt env tm = 
     do (val, valty) <- lift $ check ctxt env t
-       action (Log (showEnv env (normalise ctxt env val) ++ " : " ++ showEnv env valty))
+       let val' = normalise ctxt env val
+       let valty' = normalise ctxt env valty
+       action (Log (showEnv env val ++ " : " ++ 
+                    showEnv env valty ++ 
+--                     " in " ++ show env ++ 
+                    " ==>\n " ++
+                    showEnv env val' ++ " : " ++ 
+                    showEnv env valty'))
        return tm
 
 
 processTactic :: Tactic -> ProofState -> TC (ProofState, String)
 processTactic QED ps = case holes ps of
-                           [] -> return (ps { done = True }, "Proof complete.")
+                           [] -> let tm = finalise (pterm ps) in
+                                     return (ps { done = True, pterm = tm }, 
+                                             "Proof complete: " ++ showEnv [] tm)
                            _  -> Error "Still holes to fill."
-processTactic ProofState ps = return (ps, show (pterm ps))
+processTactic ProofState ps = return (ps, showEnv [] (pterm ps))
 processTactic t ps   = case holes ps of
                            [] -> Error "Nothing to fill in."
                            (h:_)  -> do let n = nextname ps
