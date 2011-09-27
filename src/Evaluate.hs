@@ -30,11 +30,6 @@ instance Show Value where
 normalise :: Context -> Env -> TT Name -> TT Name
 normalise ctxt env t = quote 0 (eval ctxt env t)
 
--- let evtm = bindEnv (reverse env) t 
---                            evtm' = quote 0 (evalCtxt ctxt evtm) in
---                            trace (show (evtm, evtm')) $
---                              unbindEnv env evtm'
-
 -- unbindEnv env (quote 0 (eval ctxt (bindEnv env t)))
 
 bindEnv :: EnvTT n -> TT n -> TT n
@@ -57,10 +52,6 @@ eval ctxt genv tm = ev [] tm where
         | Just v <- lookupVal n ctxt = v
     ev env (P nt n ty)   = VP nt n (ev env ty)
     ev env (V i) | i < length env = env !! i
---                  | i < length env + length genv 
---                        = case genv !! (i - length env) of
---                              (_, Let t v) -> ev env v
---                              _            -> VV i
                  | otherwise      = error $ "Internal error: V" ++ show i
     ev env (Bind n (Let t v) sc)
            = wknV (-1) $ ev (ev env v : env) sc

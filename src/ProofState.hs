@@ -34,6 +34,7 @@ data Command = Theorem Name Raw
 data Tactic = Attack
             | Claim Name Raw
             | Fill Raw
+            | UnifyFill Raw
             | Regret
             | Solve
             | Compute
@@ -49,6 +50,7 @@ data TacticAction = AddGoal Name   -- add a new goal, solve immediately
                   | NextGoal Name  -- add a new goal, solve it after current one
                   | FocusGoal Name -- focus on this goal next
                   | Solved Name
+                  | AlsoSolved Name Term -- goals solved by unification
                   | Log String
 
 -- Some utilites on proof and tactic states
@@ -162,6 +164,20 @@ fill guess ctxt env (Bind x (Hole ty) sc) =
        return $ Bind x (Guess ty val) sc
 fill _ _ _ _ = fail "Can't fill here."
 
+-- As fill, but attempts to solve other goals by unification
+
+unify_fill :: Raw -> RunTactic
+unify_fill guess ctxt env (Bind x (Hole ty) sc) =
+    do (val, valty) <- lift $ check ctxt env guess
+       ns <- lift $ unify ctxt env valty ty
+       solve_all ns
+       return $ Bind x (Guess ty val) sc
+  where
+    solve_all [] = return ()
+    solve_all ((n, tm): ns) = do action (AlsoSolved n tm)
+                                 solve_all ns
+unify_fill _ _ _ _ = fail "Can't fill here."
+
 solve :: RunTactic
 solve ctxt env (Bind x (Guess ty val) sc)
    | pureTerm val = do action (Solved x)
@@ -209,13 +225,15 @@ processTactic QED ps = case holes ps of
                                              "Proof complete: " ++ showEnv [] tm)
                            _  -> Error "Still holes to fill."
 processTactic ProofState ps = return (ps, showEnv [] (pterm ps))
-processTactic t ps   = case holes ps of
-                           [] -> Error "Nothing to fill in."
-                           (h:_)  -> do let n = nextname ps
-                                        (ps',(n', actions)) <- runStateT (process t h ps) (n, [])
-                                        return (ps' { nextname = n',
-                                                      holes = goals (holes ps') actions }, 
-                                                logs actions)
+processTactic t ps   
+    = case holes ps of
+        [] -> Error "Nothing to fill in."
+        (h:_)  -> do let n = nextname ps
+                     (ps', (n', actions)) <- runStateT (process t h ps) (n, [])
+                     return (ps' { nextname = n',
+                                   pterm = updateSolved (getSolved actions) (pterm ps'),
+                                   holes = goals (holes ps') actions }, 
+                                   logs actions)
     where logs [] = ""
           logs (Log x : xs) = x ++ "\n" ++ logs xs
           logs (_     : xs) = logs xs
@@ -225,18 +243,31 @@ processTactic t ps   = case holes ps of
           goals (g:gs) (NextGoal n : xs) = goals (g : n : gs) xs
           goals g     (FocusGoal n : xs) = goals (n : (g \\ [n])) xs
           goals g      (Solved n   : xs) = goals (g \\ [n]) xs
+          goals g (AlsoSolved n tm : xs) = goals (g \\ [n]) xs
           goals g      (_          : xs) = goals g xs
+
+          getSolved [] = []
+          getSolved (AlsoSolved n tm : xs) = (n, tm) : getSolved xs
+          getSolved (_               : xs) = getSolved xs
+
+          updateSolved xs (Bind n b t) 
+              | Just v <- lookup n xs = Bind n (Let (binderTy b) v) (updateSolved xs t)
+              | otherwise = Bind n (fmap (updateSolved xs) b) (updateSolved xs t)
+          updateSolved xs (App f a) = App (updateSolved xs f) (updateSolved xs a)
+          updateSolved xs t = t
+
 
 
 process :: Tactic -> Name -> ProofState -> StateT TState TC ProofState
 process t h ps = tactic (Just h) ps (context ps) (mktac t)
-   where mktac Attack      = attack
-         mktac (Claim n r) = claim n r
-         mktac (Fill r)    = fill r
-         mktac Regret      = regret
-         mktac Solve       = solve
-         mktac Compute     = compute
-         mktac (Intro n)   = intro n
-         mktac (CheckIn r) = check_in r
-         mktac (EvalIn r)  = eval_in r
-         mktac (Focus n)   = focus n
+   where mktac Attack        = attack
+         mktac (Claim n r)   = claim n r
+         mktac (Fill r)      = fill r
+         mktac (UnifyFill r) = unify_fill r
+         mktac Regret        = regret
+         mktac Solve         = solve
+         mktac Compute       = compute
+         mktac (Intro n)     = intro n
+         mktac (CheckIn r)   = check_in r
+         mktac (EvalIn r)    = eval_in r
+         mktac (Focus n)     = focus n

@@ -47,8 +47,9 @@ pTactic :: Parser Tactic
 pTactic = do reserved "attack";  return Attack
       <|> do reserved "claim";   n <- iName; lchar ':'; ty <- pTerm
              return (Claim n ty)
-      <|> do reserved "fill";    tm <- pTerm; return (Fill tm)
       <|> do reserved "regret";  return Regret
+      <|> do reserved "fill";    tm <- pTerm; return (Fill tm)
+      <|> do reserved "unify";   tm <- pTerm; return (UnifyFill tm)
       <|> do reserved "solve";   return Solve
       <|> do reserved "compute"; return Compute
       <|> do reserved "intro";   n <- iName; return (Intro n)

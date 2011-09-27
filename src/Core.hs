@@ -115,6 +115,8 @@ data Datatype n = Data { d_typename :: n,
                          d_cons     :: [(n, TT n)] }
   deriving (Show, Functor, Eq)
 
+-- A few handy operations on well typed terms:
+
 -- Returns true if V 0 and bound name n do not occur in the term
 
 noOccurrence :: Eq n => n -> TT n -> Bool
@@ -134,6 +136,13 @@ noOccurrence n t = no' 0 t
 arity :: TT n -> Int
 arity (Bind n (Pi t) sc) = 1 + arity sc
 arity _ = 0
+
+-- deconstruct an application; returns the function and a list of arguments
+
+unApply :: TT n -> (TT n, [TT n])
+unApply t = ua [] t where
+    ua args (App f a) = ua (a:args) f
+    ua args t         = (t, reverse args)
 
 type Term = TT Name
 type Type = Term
