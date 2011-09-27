@@ -5,8 +5,8 @@ module ProofShell where
 import Typecheck
 import Evaluate
 import Core
-import ProofState
 import ShellParser
+import Elaborate
 
 import Control.Monad.State
 import System.Console.Readline
@@ -38,8 +38,8 @@ processCommand (Print n) state =
     case lookupDef n (ctxt state) of
          Just tm -> (state, show tm)
          Nothing -> (state, "No such name")
-processCommand (Tac t)  state 
-    | Just ps <- prf state = case processTactic t ps of
+processCommand (Tac e)  state 
+    | Just ps <- prf state = case e ps of
                                 OK (ps', resp) -> 
                                    if (not (done ps')) 
                                       then (state { prf = Just ps' }, resp)

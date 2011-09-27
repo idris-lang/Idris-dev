@@ -10,7 +10,8 @@ High level view of steps we've taken to implement this new version:
 \item The proof state and a tactic engine (Oleg style~\cite{mcbride-thesis}).
 \begin{itemize}
   \item Dealing with names: typechecking and evaluation in a context, managing de Bruijn
-        indices becomes tricky.
+        indices becomes tricky. Instead: global names, local names during construction,
+        and de Bruijn indices when done.
 \end{itemize}
 \item Unification, and incorporation into the tactic engine.
 \item An Elaborator, as an EDSL

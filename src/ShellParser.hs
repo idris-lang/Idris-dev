@@ -3,7 +3,7 @@
 module ShellParser(parseCommand, parseTactic) where
 
 import Core
-import ProofState
+import Elaborate
 import CoreParser
 
 import Text.ParserCombinators.Parsec
@@ -43,20 +43,22 @@ pCommand = do reserved "theorem"; n <- iName; lchar ':'; ty <- pTerm
        <|> do reserved "quit";
               return Quit
 
-pTactic :: Parser Tactic
-pTactic = do reserved "attack";  return Attack
+pTactic :: Parser Elab
+pTactic = do reserved "attack";  return attack
       <|> do reserved "claim";   n <- iName; lchar ':'; ty <- pTerm
-             return (Claim n ty)
-      <|> do reserved "regret";  return Regret
-      <|> do reserved "fill";    tm <- pTerm; return (Fill tm)
-      <|> do reserved "unify";   tm <- pTerm; return (UnifyFill tm)
-      <|> do reserved "solve";   return Solve
-      <|> do reserved "compute"; return Compute
-      <|> do reserved "intro";   n <- iName; return (Intro n)
-      <|> do reserved "eval";    t <- pTerm; return (EvalIn t)
-      <|> do reserved "check";   t <- pTerm; return (CheckIn t)
-      <|> do reserved "focus";   n <- iName; return (Focus n)
-      <|> do reserved "state";   return ProofState
-      <|> do reserved "qed";     return QED
+             return (claim n ty)
+      <|> do reserved "regret";  return regret
+      <|> do reserved "fill";    tm <- pTerm; return (fill tm)
+      <|> do reserved "unify";   tm <- pTerm; return (unify_fill tm)
+      <|> do reserved "solve";   return solve
+      <|> do reserved "compute"; return compute
+      <|> do reserved "intro";   n <- iName; return (intro n)
+      <|> do reserved "forall";  n <- iName; lchar ':'; ty <- pTerm
+             return (forall n ty)
+      <|> do reserved "eval";    t <- pTerm; return (eval_in t)
+      <|> do reserved "check";   t <- pTerm; return (check_in t)
+      <|> do reserved "focus";   n <- iName; return (focus n)
+      <|> do reserved "state";   return proofstate
+      <|> do reserved "qed";     return qed
 
 

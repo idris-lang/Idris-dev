@@ -19,7 +19,7 @@ Executable     miniidris
                hs-source-dirs: src
                Other-modules: Core, Evaluate, Typecheck, ProofState,
                               ProofState, CoreParser, ShellParser,
-                              Unify
+                              Unify, Elaborate
 
                Build-depends:   base>=4 && <5, parsec, mtl, Cabal, readline
                                 

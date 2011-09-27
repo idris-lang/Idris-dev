@@ -1,6 +1,11 @@
 {-# LANGUAGE MultiParamTypeClasses, FlexibleInstances #-}
 
-module ProofState where
+{- Implements a proof state, some primitive tactics for manipulating
+   proofs, and some high level commands for introducing new theorems,
+   evaluation/checking inside the proof system, etc. --}
+
+module ProofState(ProofState(..), newProof,
+                  Tactic(..), processTactic) where
 
 import Typecheck
 import Evaluate
@@ -25,12 +30,6 @@ data Goal = GD { premises :: Env,
                  goalType :: Binder Term
                }
 
-data Command = Theorem Name Raw
-             | Eval Raw
-             | Quit
-             | Print Name
-             | Tac Tactic
-
 data Tactic = Attack
             | Claim Name Raw
             | Fill Raw
@@ -41,6 +40,7 @@ data Tactic = Attack
             | EvalIn Raw
             | CheckIn Raw
             | Intro Name
+            | Forall Name Raw
             | Focus Name
             | ProofState
             | QED
@@ -154,6 +154,7 @@ focus :: Name -> RunTactic
 focus n ctxt env t = do action (FocusGoal n)
                         return t 
 
+-- Hmmm. YAGNI?
 regret :: RunTactic
 regret = undefined
 
@@ -193,6 +194,14 @@ intro n ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' =
                                   return $ Bind n (Lam s) (Bind x (Hole t') (P Bound x t'))
            _ -> fail "Nothing to introduce"
 intro ctxt env _ _ = fail "Can't introduce here."
+
+forall :: Name -> Raw -> RunTactic
+forall n ty ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' =
+    do (tyv, tyt) <- lift $ check ctxt env ty
+       lift $ isSet ctxt env tyt
+       lift $ isSet ctxt env t
+       return $ Bind n (Pi tyv) (Bind x (Hole t) (P Bound x t))
+
 
 compute :: RunTactic
 compute ctxt env (Bind x (Hole ty) sc) =
@@ -256,8 +265,6 @@ processTactic t ps
           updateSolved xs (App f a) = App (updateSolved xs f) (updateSolved xs a)
           updateSolved xs t = t
 
-
-
 process :: Tactic -> Name -> ProofState -> StateT TState TC ProofState
 process t h ps = tactic (Just h) ps (context ps) (mktac t)
    where mktac Attack        = attack
@@ -268,6 +275,7 @@ process t h ps = tactic (Just h) ps (context ps) (mktac t)
          mktac Solve         = solve
          mktac Compute       = compute
          mktac (Intro n)     = intro n
+         mktac (Forall n t)  = forall n t
          mktac (CheckIn r)   = check_in r
          mktac (EvalIn r)    = eval_in r
          mktac (Focus n)     = focus n
