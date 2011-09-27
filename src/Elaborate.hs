@@ -36,6 +36,18 @@ processTactic' t = do (p, logs) <- get
                       put (p', logs ++ log)
                       return ()
 
+-- Some handy gadgets for pulling out bits of state
+
+-- get the global context
+get_context :: Elab Context
+get_context = do (p, _) <- get
+                 return (context p)
+
+-- get the local context at the currently in focus hole
+get_env :: Elab Env
+get_env = do (p, _) <- get
+             lift $ envAtFocus p
+
 -- The primitives, from ProofState
 
 attack :: Elab ()

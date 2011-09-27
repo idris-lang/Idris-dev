@@ -4,7 +4,7 @@
    proofs, and some high level commands for introducing new theorems,
    evaluation/checking inside the proof system, etc. --}
 
-module ProofState(ProofState(..), newProof,
+module ProofState(ProofState(..), newProof, envAtFocus,
                   Tactic(..), processTactic) where
 
 import Typecheck
@@ -58,7 +58,7 @@ data TacticAction = AddGoal Name   -- add a new goal, solve immediately
 instance Show ProofState where
     show (PS nm [] _ tm _ _ _) = show nm ++ ": no more goals"
     show (PS nm (h:hs) _ tm _ ctxt _) 
-          = let OK g = goal (Just h) tm ctxt 
+          = let OK g = goal (Just h) tm
                 wkenv = premises g in
                 showPs wkenv (reverse wkenv) ++ "\n" ++
                 "-------------------------------- (" ++ show nm ++ 
@@ -105,8 +105,14 @@ type TState = (Int, [TacticAction])
 type RunTactic = Context -> Env -> Term -> StateT TState TC Term
 type Hole = Maybe Name -- Nothing = default hole, first in list in proof state
 
-goal :: Hole -> Term -> Context -> TC Goal
-goal h tm ctxt = g [] tm where
+envAtFocus :: ProofState -> TC Env
+envAtFocus ps 
+    | not $ null (holes ps) = do g <- goal (Just (head (holes ps))) (pterm ps)
+                                 return (premises g)
+    | otherwise = fail "No holes"
+
+goal :: Hole -> Term -> TC Goal
+goal h tm = g [] tm where
     g env (Bind n b sc) | hole b && same h n = return $ GD env b 
                         | otherwise          
                            = gb env b `mplus` g ((n, b):env) sc
