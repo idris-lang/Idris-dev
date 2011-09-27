@@ -43,7 +43,7 @@ pCommand = do reserved "theorem"; n <- iName; lchar ':'; ty <- pTerm
        <|> do reserved "quit";
               return Quit
 
-pTactic :: Parser Elab
+pTactic :: Parser (Elab ())
 pTactic = do reserved "attack";  return attack
       <|> do reserved "claim";   n <- iName; lchar ':'; ty <- pTerm
              return (claim n ty)

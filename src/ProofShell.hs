@@ -39,7 +39,7 @@ processCommand (Print n) state =
          Just tm -> (state, show tm)
          Nothing -> (state, "No such name")
 processCommand (Tac e)  state 
-    | Just ps <- prf state = case e ps of
+    | Just ps <- prf state = case runElab e ps of
                                 OK (ps', resp) -> 
                                    if (not (done ps')) 
                                       then (state { prf = Just ps' }, resp)
