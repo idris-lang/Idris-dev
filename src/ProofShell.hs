@@ -11,12 +11,13 @@ import Elaborate
 import Control.Monad.State
 import System.Console.Readline
 
-data ShellState = State { ctxt    :: Context,
-                          prf     :: Maybe ProofState,
-                          exitNow :: Bool
+data ShellState = State { ctxt     :: Context,
+                          prf      :: Maybe ProofState,
+                          deferred :: [(Name, ProofState)],
+                          exitNow  :: Bool
                         }
 
-initState c = State c Nothing False
+initState c = State c Nothing [] False
 
 processCommand :: Command -> ShellState -> (ShellState, String)
 processCommand (Theorem n ty) state 

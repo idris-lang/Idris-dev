@@ -64,6 +64,7 @@ pTactic = do reserved "attack";  return attack
       <|> do reserved "check";   t <- pTerm; return (check_in t)
       <|> do reserved "focus";   n <- iName; return (focus n)
       <|> do reserved "state";   return proofstate
+      <|> do reserved "undo";    return undo
       <|> do reserved "qed";     return qed
 
 pArgType :: Parser Bool

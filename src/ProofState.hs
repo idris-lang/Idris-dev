@@ -22,6 +22,7 @@ data ProofState = PS { thname   :: Name,
                        nextname :: Int,    -- name supply
                        pterm    :: Term,   -- current proof term
                        ptype    :: Type,   -- original goal
+                       previous :: Maybe ProofState, -- for undo
                        context  :: Context,
                        done     :: Bool
                      }
@@ -45,6 +46,7 @@ data Tactic = Attack
             | Focus Name
             | MoveLast Name
             | ProofState
+            | Undo
             | QED
 
 data TacticAction = AddGoal Name   -- add a new goal, solve immediately
@@ -58,8 +60,8 @@ data TacticAction = AddGoal Name   -- add a new goal, solve immediately
 -- Some utilites on proof and tactic states
 
 instance Show ProofState where
-    show (PS nm [] _ tm _ _ _) = show nm ++ ": no more goals"
-    show (PS nm (h:hs) _ tm _ ctxt _) 
+    show (PS nm [] _ tm _ _ _ _) = show nm ++ ": no more goals"
+    show (PS nm (h:hs) _ tm _ i_ ctxt _) 
           = let OK g = goal (Just h) tm
                 wkenv = premises g in
                 showPs wkenv (reverse wkenv) ++ "\n" ++
@@ -101,7 +103,7 @@ action a = do (n, ts) <- get
 newProof :: Name -> Context -> Type -> ProofState
 newProof n ctxt ty = let h = holeName 0 
                          ty' = vToP ty in
-                         PS n [h] 1 (Bind h (Hole ty') (P Bound h ty')) ty ctxt False
+                         PS n [h] 1 (Bind h (Hole ty') (P Bound h ty')) ty Nothing ctxt False
 
 type TState = (Int, [TacticAction])
 type RunTactic = Context -> Env -> Term -> StateT TState TC Term
@@ -256,6 +258,9 @@ processTactic QED ps = case holes ps of
                                              "Proof complete: " ++ showEnv [] tm)
                            _  -> Error "Still holes to fill."
 processTactic ProofState ps = return (ps, showEnv [] (pterm ps))
+processTactic Undo ps = case previous ps of
+                            Nothing -> Error "Nothing to undo."
+                            Just pold -> return (pold, "")
 processTactic t ps   
     = case holes ps of
         [] -> Error "Nothing to fill in."
@@ -263,7 +268,8 @@ processTactic t ps
                      (ps', (n', actions)) <- runStateT (process t h ps) (n, [])
                      return (ps' { nextname = n',
                                    pterm = updateSolved (getSolved actions) (pterm ps'),
-                                   holes = goals (holes ps') actions }, 
+                                   holes = goals (holes ps') actions, 
+                                   previous = Just ps }, 
                                    logs actions)
     where logs [] = ""
           logs (Log x : xs) = x ++ "\n" ++ logs xs

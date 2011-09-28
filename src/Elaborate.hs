@@ -134,6 +134,10 @@ proofstate = processTactic' ProofState
 qed :: Elab ()
 qed = processTactic' QED
 
+undo :: Elab ()
+undo = processTactic' Undo
+
+
 prepare_apply :: Raw -> [Bool] -> Elab [Name]
 prepare_apply fn imps =
     do ty <- get_type fn
