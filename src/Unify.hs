@@ -28,6 +28,10 @@ unify ctxt env x y
 
     un' bnames x@(App _ _)    y@(App _ _)    
         = uApp bnames (unApply x) (unApply y)
+    un' bnames x (Bind n (Lam t) (App y (P Bound n' _)))
+        | n == n' = un' bnames x y
+    un' bnames (Bind n (Lam t) (App x (P Bound n' _))) y
+        | n == n' = un' bnames x y
     un' bnames (Bind x bx sx) (Bind y by sy) 
         = do h1 <- uB bnames bx by
              h2 <- un' ((x,y):bnames) sx sy

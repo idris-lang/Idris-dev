@@ -7,6 +7,11 @@ High level view of steps we've taken to implement this new version:
 \item An evaluator for well-typed terms
 \item The important bit: a simple type checker. No unification or
   inference.
+\begin{itemize}
+  \item It is extremely tempting to add implicit arguments and unification to the
+        type checker. This is what I did in the first Idris prototype: I learned
+        that it was a bad idea! Scope is a big problem.
+\end{itemize}
 \item The proof state and a tactic engine (Oleg style~\cite{mcbride-thesis}).
 \begin{itemize}
   \item Dealing with names: typechecking and evaluation in a context, managing de Bruijn
@@ -14,7 +19,8 @@ High level view of steps we've taken to implement this new version:
         and de Bruijn indices when done.
 \end{itemize}
 \item Unification, and incorporation into the tactic engine.
-\item An Elaborator, as an EDSL
+\item An Elaborator, as an EDSL, which is a language for applying primitive tactics and
+      constructing derived tactics.
 \end{itemize}
 
 For the high level language: we need nothing more than the core type theory,

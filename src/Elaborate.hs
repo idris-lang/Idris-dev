@@ -154,6 +154,13 @@ apply fn imps =
     do args <- prepare_apply fn imps
        unify_fill (raw_apply fn (map Var args))
 
+-- Abstract over an argument of unknown type, giving a name for the hole
+-- which we'll fill with the argument type too.
+arg :: Name -> Name -> Elab ()
+arg n tyhole = do ty <- unique_hole tyhole
+                  claim ty (RSet 0)
+                  forall n (Var ty)
+
 -- Some combinators on elaborations
 
 -- Sequencing

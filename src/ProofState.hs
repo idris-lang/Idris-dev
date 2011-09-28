@@ -272,8 +272,10 @@ processTactic t ps
           goals g [] = g
           goals g      (AddGoal n  : xs) = goals (n : g) xs
           goals (g:gs) (NextGoal n : xs) = goals (g : n : gs) xs
-          goals g     (FocusGoal n : xs) = goals (n : (g \\ [n])) xs
-          goals g      (MoveGoal n : xs) = goals ((g \\ [n]) ++ [n]) xs
+          goals g     (FocusGoal n : xs) 
+                            | n `elem` g = goals (n : (g \\ [n])) xs
+          goals g      (MoveGoal n : xs) 
+                            | n `elem` g = goals ((g \\ [n]) ++ [n]) xs
           goals g      (Solved n   : xs) = goals (g \\ [n]) xs
           goals g (AlsoSolved n tm : xs) = goals (g \\ [n]) xs
           goals g      (_          : xs) = goals g xs

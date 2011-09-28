@@ -43,7 +43,7 @@ check ctxt env (RApp f a)
                   return (App fv av, 
                           normalise ctxt env (Bind x (Let aty av) t))
            t -> fail "Can't apply a non-function type"
-check ctxt env (RSet i) = return (Set i, Set (i+1))
+check ctxt env (RSet i) = return (Set i, Set i) -- LATER: (i+1))
 check ctxt env (RBind n b sc)
     = do b' <- checkBinder b
          (scv, sct) <- check ctxt ((n, b'):env) sc
