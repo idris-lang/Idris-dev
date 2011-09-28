@@ -13,8 +13,11 @@ module Elaborate(module Elaborate, module ProofState) where
 import ProofState
 import Core
 import Evaluate
+import Typecheck
 
 import Control.Monad.State
+import Data.Char
+import Debug.Trace
 
 -- I don't really want this here, but it's useful for the test shell
 data Command = Theorem Name Raw
@@ -47,6 +50,39 @@ get_context = do (p, _) <- get
 get_env :: Elab Env
 get_env = do (p, _) <- get
              lift $ envAtFocus p
+
+-- get the current goal type
+goal :: Elab Type
+goal = do (p, _) <- get
+          lift $ goalAtFocus p
+
+-- typecheck locally
+get_type :: Raw -> Elab Type
+get_type tm = do ctxt <- get_context
+                 env <- get_env
+                 (val, ty) <- lift $ check ctxt env tm
+                 return (vToP ty)
+
+-- given a desired hole name, return a unique hole name
+unique_hole :: Name -> Elab Name
+unique_hole n = do env <- get_env
+                   return (uniq n (map fst env))
+  where
+    uniq n hs | n `elem` hs = uniq (next n) hs
+              | otherwise   = n
+
+next (MN i n)    = MN (i+1) n
+next (UN (x:xs)) = let (num', nm') = span isDigit (reverse x)
+                       nm = reverse nm'
+                       num = readN (reverse num') in
+                           UN ((nm ++ show (num+1)) : xs)
+  where
+    readN "" = 0
+    readN x  = read x
+
+log :: String -> Elab ()
+log str = do (p, logs) <- get
+             put (p, logs ++ str ++ "\n")
 
 -- The primitives, from ProofState
 
@@ -86,11 +122,34 @@ forall n t = processTactic' (Forall n t)
 focus :: Name -> Elab ()
 focus n = processTactic' (Focus n)
 
+movelast :: Name -> Elab ()
+movelast n = processTactic' (MoveLast n)
+
 proofstate :: Elab ()
 proofstate = processTactic' ProofState
 
 qed :: Elab ()
 qed = processTactic' QED
+
+prepare_apply :: Raw -> [Bool] -> Elab [Name]
+prepare_apply fn imps =
+    do ty <- get_type fn
+       let claims = getArgs ty imps
+       mapM doClaim claims
+  where
+    getArgs (Bind n (Pi t) sc) (i : is) = (n, t, i):getArgs sc is
+    getArgs t i = []
+
+    doClaim (n', t, i) =
+        do n <- unique_hole n'
+           claim n (forget t)
+           when i (movelast n)
+           return n
+
+apply :: Raw -> [Bool] -> Elab ()
+apply fn imps = 
+    do args <- prepare_apply fn imps
+       unify_fill (raw_apply fn (map Var args))
 
 -- Some combinators on elaborations
 

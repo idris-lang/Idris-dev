@@ -4,7 +4,7 @@
    proofs, and some high level commands for introducing new theorems,
    evaluation/checking inside the proof system, etc. --}
 
-module ProofState(ProofState(..), newProof, envAtFocus,
+module ProofState(ProofState(..), newProof, envAtFocus, goalAtFocus,
                   Tactic(..), processTactic) where
 
 import Typecheck
@@ -42,13 +42,14 @@ data Tactic = Attack
             | Intro Name
             | Forall Name Raw
             | Focus Name
+            | MoveLast Name
             | ProofState
             | QED
--- Next: add 'EvalHere' and 'CheckHere' tactics
 
 data TacticAction = AddGoal Name   -- add a new goal, solve immediately
                   | NextGoal Name  -- add a new goal, solve it after current one
                   | FocusGoal Name -- focus on this goal next
+                  | MoveGoal Name  -- move this goal to the end of the hole queue
                   | Solved Name
                   | AlsoSolved Name Term -- goals solved by unification
                   | Log String
@@ -111,6 +112,11 @@ envAtFocus ps
                                  return (premises g)
     | otherwise = fail "No holes"
 
+goalAtFocus :: ProofState -> TC Type
+goalAtFocus ps
+    | not $ null (holes ps) = do g <- goal (Just (head (holes ps))) (pterm ps)
+                                 return (binderTy (goalType g))
+
 goal :: Hole -> Term -> TC Goal
 goal h tm = g [] tm where
     g env (Bind n b sc) | hole b && same h n = return $ GD env b 
@@ -159,6 +165,10 @@ claim n ty ctxt env t =
 focus :: Name -> RunTactic
 focus n ctxt env t = do action (FocusGoal n)
                         return t 
+
+movelast :: Name -> RunTactic
+movelast n ctxt env t = do action (MoveGoal n)
+                           return t 
 
 -- Hmmm. YAGNI?
 regret :: RunTactic
@@ -257,6 +267,7 @@ processTactic t ps
           goals g      (AddGoal n  : xs) = goals (n : g) xs
           goals (g:gs) (NextGoal n : xs) = goals (g : n : gs) xs
           goals g     (FocusGoal n : xs) = goals (n : (g \\ [n])) xs
+          goals g      (MoveGoal n : xs) = goals ((g \\ [n]) ++ [n]) xs
           goals g      (Solved n   : xs) = goals (g \\ [n]) xs
           goals g (AlsoSolved n tm : xs) = goals (g \\ [n]) xs
           goals g      (_          : xs) = goals g xs
@@ -265,8 +276,9 @@ processTactic t ps
           getSolved (AlsoSolved n tm : xs) = (n, tm) : getSolved xs
           getSolved (_               : xs) = getSolved xs
 
-          updateSolved xs (Bind n b t) 
+          updateSolved xs (Bind n b@(Hole _) t)
               | Just v <- lookup n xs = Bind n (Let (binderTy b) v) (updateSolved xs t)
+          updateSolved xs (Bind n b t) 
               | otherwise = Bind n (fmap (updateSolved xs) b) (updateSolved xs t)
           updateSolved xs (App f a) = App (updateSolved xs f) (updateSolved xs a)
           updateSolved xs t = t
@@ -285,3 +297,4 @@ process t h ps = tactic (Just h) ps (context ps) (mktac t)
          mktac (CheckIn r)   = check_in r
          mktac (EvalIn r)    = eval_in r
          mktac (Focus n)     = focus n
+         mktac (MoveLast n)  = movelast n

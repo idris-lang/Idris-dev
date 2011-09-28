@@ -79,6 +79,10 @@ data Binder b = Lam   { binderTy  :: b }
               | PVar  { binderTy  :: b }
   deriving (Show, Eq, Functor)
 
+raw_apply :: Raw -> [Raw] -> Raw
+raw_apply f [] = f
+raw_apply f (a : as) = raw_apply (RApp f a) as
+
 data RawFun = RawFun { rtype :: Raw,
                        rval  :: Raw
                      }
@@ -143,6 +147,16 @@ unApply :: TT n -> (TT n, [TT n])
 unApply t = ua [] t where
     ua args (App f a) = ua (a:args) f
     ua args t         = (t, reverse args)
+
+forget :: TT Name -> Raw
+forget tm = fe [] tm
+  where
+    fe env (P _ n _) = Var n
+    fe env (V i)     = Var (env !! i)
+    fe env (Bind n b sc) = RBind n (fmap (fe env) b) 
+                                   (fe (n:env) sc)
+    fe env (App f a) = RApp (fe env f) (fe env a)
+    fe env (Set i)   = RSet i
 
 type Term = TT Name
 type Type = Term

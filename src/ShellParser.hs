@@ -50,6 +50,8 @@ pTactic = do reserved "attack";  return attack
       <|> do reserved "regret";  return regret
       <|> do reserved "fill";    tm <- pTerm; return (fill tm)
       <|> do reserved "unify";   tm <- pTerm; return (unify_fill tm)
+      <|> do reserved "apply";   tm <- pTerm; args <- many pArgType; 
+             return (apply tm args)
       <|> do reserved "solve";   return solve
       <|> do reserved "compute"; return compute
       <|> do reserved "intro";   n <- iName; return (intro n)
@@ -61,4 +63,7 @@ pTactic = do reserved "attack";  return attack
       <|> do reserved "state";   return proofstate
       <|> do reserved "qed";     return qed
 
+pArgType :: Parser Bool
+pArgType = do lchar '_'; return True   -- implicit (machine fills in)
+       <|> do lchar '?'; return False  -- user fills in
 
