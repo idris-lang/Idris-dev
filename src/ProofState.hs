@@ -254,9 +254,10 @@ eval_in t ctxt env tm =
 
 processTactic :: Tactic -> ProofState -> TC (ProofState, String)
 processTactic QED ps = case holes ps of
-                           [] -> let tm = finalise (pterm ps) in
-                                     return (ps { done = True, pterm = tm }, 
-                                             "Proof complete: " ++ showEnv [] tm)
+                           [] -> do let tm = pterm ps
+                                    (tm', ty') <- recheck (context ps) [] tm
+                                    return (ps { done = True, pterm = tm' }, 
+                                            "Proof complete: " ++ showEnv [] tm')
                            _  -> Error "Still holes to fill."
 processTactic ProofState ps = return (ps, showEnv [] (pterm ps))
 processTactic Undo ps = case previous ps of

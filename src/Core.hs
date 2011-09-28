@@ -110,7 +110,7 @@ data TT n = P NameType n (TT n) -- embed type
           | Bind n (Binder (TT n)) (TT n)
           | App (TT n) (TT n) -- function, function type, arg
           | Set Int
-  deriving (Functor, Eq)
+  deriving Functor
 
 type EnvTT n = [(n, Binder (TT n))]
 
@@ -118,6 +118,14 @@ data Datatype n = Data { d_typename :: n,
                          d_type     :: (TT n),
                          d_cons     :: [(n, TT n)] }
   deriving (Show, Functor, Eq)
+
+instance Eq n => Eq (TT n) where
+    (==) (P xt x _)     (P yt y _)     = xt == yt && x == y
+    (==) (V x)          (V y)          = x == y
+    (==) (Bind _ xb xs) (Bind _ yb ys) = xb == yb && xs == ys
+    (==) (App fx ax)    (App fy ay)    = fx == fy && ax == ay
+    (==) (Set x)        (Set y)        = x == y
+    (==) _              _              = False
 
 -- A few handy operations on well typed terms:
 
@@ -177,12 +185,12 @@ showEnvDbg env t = showEnv' env t True
 
 showEnv' env t dbg = se 10 env t where
     se p env (P nt n t) = show n 
---                             ++ if dbg then "{" ++ show nt ++ " : " ++ se 10 env t ++ "}" else ""
+                            ++ if dbg then "{" ++ show nt ++ " : " ++ se 10 env t ++ "}" else ""
     se p env (V i) | i < length env = (show $ fst $ env!!i) ++
                                       if dbg then "{" ++ show i ++ "}" else ""
                    | otherwise = "!!V " ++ show i ++ "!!"
-    se p env (Bind n b@(Pi t) sc) 
-        | noOccurrence n sc = bracket p 2 $ se 10 env t ++ " -> " ++ se 10 ((n,b):env) sc
+    se p env (Bind n b@(Pi t) sc)  
+        | noOccurrence n sc && not dbg = bracket p 2 $ se 10 env t ++ " -> " ++ se 10 ((n,b):env) sc
     se p env (Bind n b sc) = bracket p 2 $ sb env n b ++ se 10 ((n,b):env) sc
     se p env (App f a) = bracket p 1 $ se 1 env f ++ " " ++ se 0 env a
     se p env (Set i) = "Set" ++ show i

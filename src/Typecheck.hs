@@ -18,14 +18,17 @@ converts ctxt env x y = if (finalise (normalise ctxt env x) ==
                             finalise (normalise ctxt env y))
                           then return ()
                           else fail ("Can't convert between " ++ 
-                                     showEnv env (normalise ctxt env x) ++ " and " ++ 
-                                     showEnv env (normalise ctxt env y))
+                                     showEnv env (finalise (normalise ctxt env x)) ++ " and " ++ 
+                                     showEnv env (finalise (normalise ctxt env y)))
 
 isSet :: Context -> Env -> Term -> TC ()
 isSet ctxt env tm = isSet' (normalise ctxt env tm)
     where isSet' :: Term -> TC ()
           isSet' (Set _) = return ()
           isSet' tm = fail (showEnv env tm ++ " is not a Set")
+
+recheck :: Context -> Env -> Term -> TC (Term, Type)
+recheck ctxt env tm = check ctxt env (forget tm)
 
 check :: Context -> Env -> Raw -> TC (Term, Type)
 check ctxt env (Var n)
