@@ -19,6 +19,10 @@ High level view of steps we've taken to implement this new version:
         and de Bruijn indices when done.
 \end{itemize}
 \item Unification, and incorporation into the tactic engine.
+\begin{itemize}
+  \item Note that this can introduce constraints on hole ordering. If we can't satisfy them,
+        report an error.
+\end{itemize}
 \item An Elaborator, as an EDSL, which is a language for applying primitive tactics and
       constructing derived tactics.
 \end{itemize}

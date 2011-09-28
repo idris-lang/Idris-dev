@@ -22,6 +22,7 @@ data ProofState = PS { thname   :: Name,
                        nextname :: Int,    -- name supply
                        pterm    :: Term,   -- current proof term
                        ptype    :: Type,   -- original goal
+                       defer    :: [(Name, Type)], -- names we'll need to define
                        previous :: Maybe ProofState, -- for undo
                        context  :: Context,
                        done     :: Bool
@@ -60,8 +61,8 @@ data TacticAction = AddGoal Name   -- add a new goal, solve immediately
 -- Some utilites on proof and tactic states
 
 instance Show ProofState where
-    show (PS nm [] _ tm _ _ _ _) = show nm ++ ": no more goals"
-    show (PS nm (h:hs) _ tm _ i_ ctxt _) 
+    show (PS nm [] _ tm _ _ _ _ _) = show nm ++ ": no more goals"
+    show (PS nm (h:hs) _ tm _ i _ ctxt _) 
           = let OK g = goal (Just h) tm
                 wkenv = premises g in
                 showPs wkenv (reverse wkenv) ++ "\n" ++
@@ -103,7 +104,8 @@ action a = do (n, ts) <- get
 newProof :: Name -> Context -> Type -> ProofState
 newProof n ctxt ty = let h = holeName 0 
                          ty' = vToP ty in
-                         PS n [h] 1 (Bind h (Hole ty') (P Bound h ty')) ty Nothing ctxt False
+                         PS n [h] 1 (Bind h (Hole ty') (P Bound h ty')) ty []
+                            Nothing ctxt False
 
 type TState = (Int, [TacticAction])
 type RunTactic = Context -> Env -> Term -> StateT TState TC Term
@@ -250,7 +252,6 @@ eval_in t ctxt env tm =
                     showEnv env valty'))
        return tm
 
-
 processTactic :: Tactic -> ProofState -> TC (ProofState, String)
 processTactic QED ps = case holes ps of
                            [] -> let tm = finalise (pterm ps) in
@@ -291,7 +292,7 @@ processTactic t ps
           getSolved (_               : xs) = getSolved xs
 
           updateSolved xs (Bind n b@(Hole _) t)
-              | Just v <- lookup n xs = Bind n (Let (binderTy b) v) (updateSolved xs t)
+              | Just v <- lookup n xs = instantiate v (pToV n (updateSolved xs t))
           updateSolved xs (Bind n b t) 
               | otherwise = Bind n (fmap (updateSolved xs) b) (updateSolved xs t)
           updateSolved xs (App f a) = App (updateSolved xs f) (updateSolved xs a)

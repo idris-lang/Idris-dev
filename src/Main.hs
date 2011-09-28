@@ -7,10 +7,12 @@ import Typecheck
 import ProofShell
 
 main = do f <- readFile "test.mi"
-          let Right defs = parseFile f
-          print defs
-          case checkProgram [] defs of
-             OK ctxt -> do print ctxt 
-                           runShell (initState ctxt)
-                           return ()
-             err -> print err
+          case parseFile f of
+              Left err -> print err
+              Right defs -> do
+                print defs
+                case checkProgram [] defs of
+                    OK ctxt -> do print ctxt 
+                                  runShell (initState ctxt)
+                                  return ()
+                    err -> print err

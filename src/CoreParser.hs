@@ -34,7 +34,8 @@ parseDef = parse pDef "(input)"
 parseTerm = parse pTerm "(input)"
 
 pTestFile :: Parser RProgram
-pTestFile = many1 pDef
+pTestFile = do p <- many1 pDef ; eof
+               return p
 
 iName :: Parser Name
 iName = identifier >>= (\n -> return (UN [n]))
@@ -47,7 +48,7 @@ pDef = try (do x <- iName; lchar ':'; ty <- pTerm
                return (x, RFunction (RawFun ty tm)))
        <|> do x <- iName; lchar ':'; ty <- pTerm; lchar ';'
               return (x, RConst ty)
-       <|> do (x, d) <- pData
+       <|> do (x, d) <- pData; lchar ';'
               return (x, RData d)
 
 app :: Parser (Raw -> Raw -> Raw)
