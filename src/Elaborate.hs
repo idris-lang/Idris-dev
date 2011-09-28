@@ -61,7 +61,7 @@ get_type :: Raw -> Elab Type
 get_type tm = do ctxt <- get_context
                  env <- get_env
                  (val, ty) <- lift $ check ctxt env tm
-                 return (vToP ty)
+                 return (finalise ty)
 
 -- given a desired hole name, return a unique hole name
 unique_hole :: Name -> Elab Name
@@ -119,6 +119,9 @@ intro n = processTactic' (Intro n)
 forall :: Name -> Raw -> Elab ()
 forall n t = processTactic' (Forall n t)
 
+patvar :: Name -> Raw -> Elab ()
+patvar n t = processTactic' (PatVar n t)
+
 focus :: Name -> Elab ()
 focus n = processTactic' (Focus n)
 
@@ -134,17 +137,17 @@ qed = processTactic' QED
 prepare_apply :: Raw -> [Bool] -> Elab [Name]
 prepare_apply fn imps =
     do ty <- get_type fn
-       let claims = getArgs ty imps
-       mapM doClaim claims
+       -- let claims = getArgs ty imps
+       doClaims ty imps []
   where
-    getArgs (Bind n (Pi t) sc) (i : is) = (n, t, i):getArgs sc is
-    getArgs t i = []
-
-    doClaim (n', t, i) =
+    doClaims (Bind n' (Pi t) sc) (i : is) claims =
         do n <- unique_hole n'
+           let sc' = instantiate (P Bound n t) sc
            claim n (forget t)
            when i (movelast n)
-           return n
+           doClaims sc' is (n : claims)
+    doClaims t [] claims = return (reverse claims)
+    doClaims _ _ _ = fail "Wrong number of arguments"
 
 apply :: Raw -> [Bool] -> Elab ()
 apply fn imps = 

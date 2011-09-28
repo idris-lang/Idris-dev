@@ -41,6 +41,7 @@ data Tactic = Attack
             | CheckIn Raw
             | Intro Name
             | Forall Name Raw
+            | PatVar Name Raw
             | Focus Name
             | MoveLast Name
             | ProofState
@@ -218,6 +219,11 @@ forall n ty ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' =
        lift $ isSet ctxt env t
        return $ Bind n (Pi tyv) (Bind x (Hole t) (P Bound x t))
 
+patvar :: Name -> Raw -> RunTactic
+patvar n ty ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' =
+    do (tyv, tyt) <- lift $ check ctxt env ty
+       lift $ isSet ctxt env tyt
+       return $ Bind n (PVar tyv) (Bind x (Hole t) (P Bound x t))
 
 compute :: RunTactic
 compute ctxt env (Bind x (Hole ty) sc) =
@@ -294,6 +300,7 @@ process t h ps = tactic (Just h) ps (context ps) (mktac t)
          mktac Compute       = compute
          mktac (Intro n)     = intro n
          mktac (Forall n t)  = forall n t
+         mktac (PatVar n t)  = patvar n t
          mktac (CheckIn r)   = check_in r
          mktac (EvalIn r)    = eval_in r
          mktac (Focus n)     = focus n
