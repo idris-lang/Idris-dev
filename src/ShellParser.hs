@@ -48,8 +48,8 @@ pTactic = do reserved "attack";  return attack
       <|> do reserved "claim";   n <- iName; lchar ':'; ty <- pTerm
              return (claim n ty)
       <|> do reserved "regret";  return regret
+      <|> do reserved "exact";   tm <- pTerm; return (exact tm)
       <|> do reserved "fill";    tm <- pTerm; return (fill tm)
-      <|> do reserved "unify";   tm <- pTerm; return (unify_fill tm)
       <|> do reserved "apply";   tm <- pTerm; args <- many pArgType; 
              return (apply tm args)
       <|> do reserved "solve";   return solve

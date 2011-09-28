@@ -34,8 +34,8 @@ data Goal = GD { premises :: Env,
 
 data Tactic = Attack
             | Claim Name Raw
+            | Exact Raw
             | Fill Raw
-            | UnifyFill Raw
             | Regret
             | Solve
             | Compute
@@ -179,17 +179,17 @@ movelast n ctxt env t = do action (MoveGoal n)
 regret :: RunTactic
 regret = undefined
 
-fill :: Raw -> RunTactic
-fill guess ctxt env (Bind x (Hole ty) sc) = 
+exact :: Raw -> RunTactic
+exact guess ctxt env (Bind x (Hole ty) sc) = 
     do (val, valty) <- lift $ check ctxt env guess 
        lift $ converts ctxt env valty ty
        return $ Bind x (Guess ty val) sc
-fill _ _ _ _ = fail "Can't fill here."
+exact _ _ _ _ = fail "Can't fill here."
 
 -- As fill, but attempts to solve other goals by unification
 
-unify_fill :: Raw -> RunTactic
-unify_fill guess ctxt env (Bind x (Hole ty) sc) =
+fill :: Raw -> RunTactic
+fill guess ctxt env (Bind x (Hole ty) sc) =
     do (val, valty) <- lift $ check ctxt env guess
        ns <- lift $ unify ctxt env valty ty
        solve_all ns
@@ -198,7 +198,7 @@ unify_fill guess ctxt env (Bind x (Hole ty) sc) =
     solve_all [] = return ()
     solve_all ((n, tm): ns) = do action (AlsoSolved n tm)
                                  solve_all ns
-unify_fill _ _ _ _ = fail "Can't fill here."
+fill _ _ _ _ = fail "Can't fill here."
 
 solve :: RunTactic
 solve ctxt env (Bind x (Guess ty val) sc)
@@ -303,8 +303,8 @@ process :: Tactic -> Name -> ProofState -> StateT TState TC ProofState
 process t h ps = tactic (Just h) ps (context ps) (mktac t)
    where mktac Attack        = attack
          mktac (Claim n r)   = claim n r
+         mktac (Exact r)     = exact r
          mktac (Fill r)      = fill r
-         mktac (UnifyFill r) = unify_fill r
          mktac Regret        = regret
          mktac Solve         = solve
          mktac Compute       = compute

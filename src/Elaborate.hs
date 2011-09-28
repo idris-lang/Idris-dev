@@ -92,11 +92,11 @@ attack = processTactic' Attack
 claim :: Name -> Raw -> Elab ()
 claim n t = processTactic' (Claim n t)
 
+exact :: Raw -> Elab ()
+exact t = processTactic' (Exact t)
+
 fill :: Raw -> Elab ()
 fill t = processTactic' (Fill t)
-
-unify_fill :: Raw -> Elab ()
-unify_fill t = processTactic' (UnifyFill t)
 
 solve :: Elab ()
 solve = processTactic' Solve
@@ -156,7 +156,7 @@ prepare_apply fn imps =
 apply :: Raw -> [Bool] -> Elab ()
 apply fn imps = 
     do args <- prepare_apply fn imps
-       unify_fill (raw_apply fn (map Var args))
+       fill (raw_apply fn (map Var args))
 
 -- Abstract over an argument of unknown type, giving a name for the hole
 -- which we'll fill with the argument type too.
