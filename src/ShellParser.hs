@@ -60,6 +60,7 @@ pTactic = do reserved "attack";  return attack
       <|> do reserved "arg";     n <- iName; t <- iName; return (arg n t)
       <|> do reserved "patvar";  n <- iName; lchar ':'; ty <- pTerm
              return (patvar n ty)
+      <|> do reserved "patarg";  n <- iName; t <- iName; return (patarg n t)
       <|> do reserved "eval";    t <- pTerm; return (eval_in t)
       <|> do reserved "check";   t <- pTerm; return (check_in t)
       <|> do reserved "focus";   n <- iName; return (focus n)

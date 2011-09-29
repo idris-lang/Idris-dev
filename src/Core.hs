@@ -198,7 +198,7 @@ showEnv' env t dbg = se 10 env t where
     sb env n (Lam t)  = showb env "\\ " " => " n t
     sb env n (Hole t) = showb env "? " ". " n t
     sb env n (Pi t)   = showb env "(" ") -> " n t
-    sb env n (PVar t) = showb env "! " ". " n t
+    sb env n (PVar t) = showb env "pat " ". " n t
     sb env n (Let t v)   = showbv env "let " " in " n t v
     sb env n (Guess t v) = showbv env "?? " " in " n t v
 

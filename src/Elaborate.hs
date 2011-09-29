@@ -165,6 +165,11 @@ arg n tyhole = do ty <- unique_hole tyhole
                   claim ty (RSet 0)
                   forall n (Var ty)
 
+patarg :: Name -> Name -> Elab ()
+patarg n tyhole = do ty <- unique_hole tyhole
+                     claim ty (RSet 0)
+                     patvar n (Var ty)
+
 -- Some combinators on elaborations
 
 -- Sequencing

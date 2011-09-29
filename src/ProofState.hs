@@ -186,7 +186,7 @@ exact guess ctxt env (Bind x (Hole ty) sc) =
        return $ Bind x (Guess ty val) sc
 exact _ _ _ _ = fail "Can't fill here."
 
--- As fill, but attempts to solve other goals by unification
+-- As exact, but attempts to solve other goals by unification
 
 fill :: Raw -> RunTactic
 fill guess ctxt env (Bind x (Hole ty) sc) =
@@ -252,6 +252,12 @@ eval_in t ctxt env tm =
                     showEnv env valty'))
        return tm
 
+-- shuffleHoles :: Term -> Term
+-- shuffleHoles tm = shuffle [] tm
+--   where
+--     shuffle ns (Bind n b sc)
+--         | 
+
 processTactic :: Tactic -> ProofState -> TC (ProofState, String)
 processTactic QED ps = case holes ps of
                            [] -> do let tm = pterm ps
@@ -297,6 +303,8 @@ processTactic t ps
           updateSolved xs (Bind n b t) 
               | otherwise = Bind n (fmap (updateSolved xs) b) (updateSolved xs t)
           updateSolved xs (App f a) = App (updateSolved xs f) (updateSolved xs a)
+          updateSolved xs (P _ n _)
+              | Just v <- lookup n xs = v
           updateSolved xs t = t
 
 process :: Tactic -> Name -> ProofState -> StateT TState TC ProofState
