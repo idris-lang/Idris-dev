@@ -101,6 +101,12 @@ fill t = processTactic' (Fill t)
 solve :: Elab ()
 solve = processTactic' Solve
 
+start_unify :: Name -> Elab ()
+start_unify n = processTactic' (StartUnify n)
+
+end_unify :: Elab ()
+end_unify = processTactic' EndUnify
+
 regret :: Elab ()
 regret = processTactic' Regret
 
@@ -146,6 +152,7 @@ prepare_apply fn imps =
   where
     doClaims (Bind n' (Pi t) sc) (i : is) claims =
         do n <- unique_hole n'
+           when (null claims) (start_unify n)
            let sc' = instantiate (P Bound n t) sc
            claim n (forget t)
            when i (movelast n)
@@ -157,6 +164,7 @@ apply :: Raw -> [Bool] -> Elab ()
 apply fn imps = 
     do args <- prepare_apply fn imps
        fill (raw_apply fn (map Var args))
+       when (not (null args)) end_unify
 
 -- Abstract over an argument of unknown type, giving a name for the hole
 -- which we'll fill with the argument type too.

@@ -64,7 +64,6 @@ pTerm = try (do chainl1 pNoApp app)
 pNoApp :: Parser Raw
 pNoApp = try (chainr1 pExp arrow)
            <|> pExp
-
 pExp :: Parser Raw
 pExp = do lchar '\\'; x <- iName; lchar ':'; ty <- pTerm
           symbol "=>";
@@ -73,7 +72,7 @@ pExp = do lchar '\\'; x <- iName; lchar ':'; ty <- pTerm
        <|> try (do lchar '?'; x <- iName; lchar ':'; ty <- pTerm
                    lchar '.';
                    sc <- pTerm
-                   return (RBind x (Lam ty) sc))
+                   return (RBind x (Hole ty) sc))
        <|> try (do lchar '('; 
                    x <- iName; lchar ':'; ty <- pTerm
                    lchar ')';
@@ -84,11 +83,6 @@ pExp = do lchar '\\'; x <- iName; lchar ':'; ty <- pTerm
                    t <- pTerm
                    lchar ')'
                    return t)
-       <|> try (do lchar '?';
-                   x <- iName; lchar ':'; ty <- pTerm
-                   lchar '.';
-                   sc <- pTerm
-                   return (RBind x (Hole ty) sc))
        <|> try (do symbol "??";
                    x <- iName; lchar ':'; ty <- pTerm
                    lchar '=';

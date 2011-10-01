@@ -22,9 +22,11 @@ data ProofState = PS { thname   :: Name,
                        nextname :: Int,    -- name supply
                        pterm    :: Term,   -- current proof term
                        ptype    :: Type,   -- original goal
+                       unified  :: (Name, [(Name, Term)]),
                        defer    :: [(Name, Type)], -- names we'll need to define
                        previous :: Maybe ProofState, -- for undo
                        context  :: Context,
+                       plog     :: String,
                        done     :: Bool
                      }
                    
@@ -38,6 +40,8 @@ data Tactic = Attack
             | Fill Raw
             | Regret
             | Solve
+            | StartUnify Name
+            | EndUnify
             | Compute
             | EvalIn Raw
             | CheckIn Raw
@@ -55,14 +59,14 @@ data TacticAction = AddGoal Name   -- add a new goal, solve immediately
                   | FocusGoal Name -- focus on this goal next
                   | MoveGoal Name  -- move this goal to the end of the hole queue
                   | Solved Name
-                  | AlsoSolved Name Term -- goals solved by unification
+                  | AlsoSolved [(Name, Term)] -- variables solved by unification
                   | Log String
 
 -- Some utilites on proof and tactic states
 
 instance Show ProofState where
-    show (PS nm [] _ tm _ _ _ _ _) = show nm ++ ": no more goals"
-    show (PS nm (h:hs) _ tm _ i _ ctxt _) 
+    show (PS nm [] _ tm _ _ _ _ _ _ _) = show nm ++ ": no more goals"
+    show (PS nm (h:hs) _ tm _ _ i _ ctxt _ _) 
           = let OK g = goal (Just h) tm
                 wkenv = premises g in
                 showPs wkenv (reverse wkenv) ++ "\n" ++
@@ -93,21 +97,25 @@ hole _           = False
 holeName i = MN i "hole" 
 
 getName :: Monad m => String -> StateT TState m Name
-getName tag = do (n, ts) <- get
-                 put (n+1, ts)
+getName tag = do ps <- get
+                 let n = nextname ps
+                 put (ps { nextname = n+1 })
                  return $ MN n tag
 
-action :: Monad m => TacticAction -> StateT TState m ()
-action a = do (n, ts) <- get
-              put (n, a:ts)
+action :: Monad m => (ProofState -> ProofState) -> StateT TState m ()
+action a = do ps <- get
+              put (a ps)
+
+addLog :: Monad m => String -> StateT TState m ()
+addLog str = action (\ps -> ps { plog = plog ps ++ str ++ "\n" })
 
 newProof :: Name -> Context -> Type -> ProofState
 newProof n ctxt ty = let h = holeName 0 
                          ty' = vToP ty in
-                         PS n [h] 1 (Bind h (Hole ty') (P Bound h ty')) ty []
-                            Nothing ctxt False
+                         PS n [h] 1 (Bind h (Hole ty') (P Bound h ty')) ty (h, []) []
+                            Nothing ctxt "" False
 
-type TState = (Int, [TacticAction])
+type TState = ProofState -- [TacticAction])
 type RunTactic = Context -> Env -> Term -> StateT TState TC Term
 type Hole = Maybe Name -- Nothing = default hole, first in list in proof state
 
@@ -134,27 +142,28 @@ goal h tm = g [] tm where
     gb env (Guess t v) = g env t `mplus` g env v
     gb env t = g env (binderTy t)
 
-tactic :: Hole -> ProofState -> Context -> RunTactic -> StateT TState TC ProofState
-tactic h ps ctxt f = do let tm = pterm ps
-                        tm' <- atH [] tm
-                        return (ps { pterm = tm' })
+tactic :: Hole -> RunTactic -> StateT TState TC ()
+tactic h f = do ps <- get
+                tm' <- atH (context ps) [] (pterm ps)
+                ps <- get -- might have changed while processing
+                put (ps { pterm = tm' })
   where
-    atH env binder@(Bind n b sc) 
-        | hole b && same h n = f ctxt env binder
+    atH c env binder@(Bind n b sc) 
+        | hole b && same h n = f c env binder
         | otherwise          
-            = pure Bind <*> pure n <*> atHb env b <*> atH ((n,b) : env) sc
-    atH env (App f a)    = pure App <*> atH env f <*> atH env a
-    atH env t            = return t
+            = pure Bind <*> pure n <*> atHb c env b <*> atH c ((n,b) : env) sc
+    atH c env (App f a)    = pure App <*> atH c env f <*> atH c env a
+    atH c env t            = return t
     
-    atHb env (Let t v)   = pure Let <*> atH env t <*> atH env v    
-    atHb env (Guess t v) = pure Guess <*> atH env t <*> atH env v
-    atHb env t           = do ty' <- atH env (binderTy t)
-                              return $ t { binderTy = ty' }
+    atHb c env (Let t v)   = pure Let <*> atH c env t <*> atH c env v    
+    atHb c env (Guess t v) = pure Guess <*> atH c env t <*> atH c env v
+    atHb c env t           = do ty' <- atH c env (binderTy t)
+                                return $ t { binderTy = ty' }
 
 attack :: RunTactic
 attack ctxt env (Bind x (Hole t) sc) 
     = do h <- getName "hole"
-         action (AddGoal h)
+         action (\ps -> ps { holes = h : holes ps })
          return $ Bind x (Guess t (newtm h)) sc
   where
     newtm h = Bind h (Hole t) (P Bound h t) 
@@ -164,15 +173,22 @@ claim :: Name -> Raw -> RunTactic
 claim n ty ctxt env t =
     do (tyv, tyt) <- lift $ check ctxt env ty
        lift $ isSet ctxt env tyt
-       action (NextGoal n)
+       action (\ps -> let (g:gs) = holes ps in
+                          ps { holes = g : n : gs } )
        return $ Bind n (Hole tyv) t -- (weakenTm 1 t)
 
 focus :: Name -> RunTactic
-focus n ctxt env t = do action (FocusGoal n)
+focus n ctxt env t = do action (\ps -> let hs = holes ps in
+                                            if n `elem` hs
+                                               then ps { holes = n : (hs \\ [n]) }
+                                               else ps)
                         return t 
 
 movelast :: Name -> RunTactic
-movelast n ctxt env t = do action (MoveGoal n)
+movelast n ctxt env t = do action (\ps -> let hs = holes ps in
+                                              if n `elem` hs
+                                                  then ps { holes = (hs \\ [n]) ++ [n] }
+                                                  else ps)
                            return t 
 
 -- Hmmm. YAGNI?
@@ -192,17 +208,16 @@ fill :: Raw -> RunTactic
 fill guess ctxt env (Bind x (Hole ty) sc) =
     do (val, valty) <- lift $ check ctxt env guess
        ns <- lift $ unify ctxt env valty ty
-       solve_all ns
+       ps <- get
+       let (uh, uns) = unified ps
+       put (ps { unified = (uh, uns ++ ns) })
+       addLog (show (uh, uns ++ ns))
        return $ Bind x (Guess ty val) sc
-  where
-    solve_all [] = return ()
-    solve_all ((n, tm): ns) = do action (AlsoSolved n tm)
-                                 solve_all ns
 fill _ _ _ _ = fail "Can't fill here."
 
 solve :: RunTactic
 solve ctxt env (Bind x (Guess ty val) sc)
-   | pureTerm val = do action (Solved x)
+   | pureTerm val = do action (\ps -> ps { holes = holes ps \\ [x] })
                        return $ Bind x (Let ty val) sc -- instantiate val (pToV x sc)
    | otherwise    = fail "I see a hole in your solution."
 solve _ _ _ = fail "Not a guess."
@@ -236,7 +251,7 @@ compute ctxt env (Bind x (Hole ty) sc) =
 check_in :: Raw -> RunTactic
 check_in t ctxt env tm = 
     do (val, valty) <- lift $ check ctxt env t
-       action (Log (showEnv env val ++ " : " ++ showEnv env valty))
+       addLog (showEnv env val ++ " : " ++ showEnv env valty)
        return tm
 
 eval_in :: Raw -> RunTactic
@@ -244,13 +259,33 @@ eval_in t ctxt env tm =
     do (val, valty) <- lift $ check ctxt env t
        let val' = normalise ctxt env val
        let valty' = normalise ctxt env valty
-       action (Log (showEnv env val ++ " : " ++ 
-                    showEnv env valty ++ 
+       addLog (showEnv env val ++ " : " ++ 
+               showEnv env valty ++ 
 --                     " in " ++ show env ++ 
-                    " ==>\n " ++
-                    showEnv env val' ++ " : " ++ 
-                    showEnv env valty'))
+               " ==>\n " ++
+               showEnv env val' ++ " : " ++ 
+               showEnv env valty')
        return tm
+
+start_unify :: Name -> RunTactic
+start_unify n ctxt env tm = do action (\ps -> ps { unified = (n, []) })
+                               return tm
+
+solve_unified :: RunTactic
+solve_unified ctxt env tm = 
+    do ps <- get
+       let (_, ns) = unified ps
+       action (\ps -> ps { holes = holes ps \\ map fst ns })
+       return (updateSolved ns tm)
+    where
+       updateSolved xs (Bind n b@(Hole _) t)
+           | Just v <- lookup n xs = instantiate v (pToV n (updateSolved xs t))
+       updateSolved xs (Bind n b t) 
+           | otherwise = Bind n (fmap (updateSolved xs) b) (updateSolved xs t)
+       updateSolved xs (App f a) = App (updateSolved xs f) (updateSolved xs a)
+       updateSolved xs (P _ n _)
+           | Just v <- lookup n xs = v
+       updateSolved xs t = t
 
 -- shuffleHoles :: Term -> Term
 -- shuffleHoles tm = shuffle [] tm
@@ -273,48 +308,22 @@ processTactic t ps
     = case holes ps of
         [] -> Error "Nothing to fill in."
         (h:_)  -> do let n = nextname ps
-                     (ps', (n', actions)) <- runStateT (process t h ps) (n, [])
-                     return (ps' { nextname = n',
-                                   pterm = updateSolved (getSolved actions) (pterm ps'),
-                                   holes = goals (holes ps') actions, 
-                                   previous = Just ps }, 
-                                   logs actions)
-    where logs [] = ""
-          logs (Log x : xs) = x ++ "\n" ++ logs xs
-          logs (_     : xs) = logs xs
+                     ps' <- execStateT (process t h) ps
+                     return (ps' { previous = Just ps, plog = "" }, plog ps')
 
-          goals g [] = g
-          goals g      (AddGoal n  : xs) = goals (n : g) xs
-          goals (g:gs) (NextGoal n : xs) = goals (g : n : gs) xs
-          goals g     (FocusGoal n : xs) 
-                            | n `elem` g = goals (n : (g \\ [n])) xs
-          goals g      (MoveGoal n : xs) 
-                            | n `elem` g = goals ((g \\ [n]) ++ [n]) xs
-          goals g      (Solved n   : xs) = goals (g \\ [n]) xs
-          goals g (AlsoSolved n tm : xs) = goals (g \\ [n]) xs
-          goals g      (_          : xs) = goals g xs
-
-          getSolved [] = []
-          getSolved (AlsoSolved n tm : xs) = (n, tm) : getSolved xs
-          getSolved (_               : xs) = getSolved xs
-
-          updateSolved xs (Bind n b@(Hole _) t)
-              | Just v <- lookup n xs = instantiate v (pToV n (updateSolved xs t))
-          updateSolved xs (Bind n b t) 
-              | otherwise = Bind n (fmap (updateSolved xs) b) (updateSolved xs t)
-          updateSolved xs (App f a) = App (updateSolved xs f) (updateSolved xs a)
-          updateSolved xs (P _ n _)
-              | Just v <- lookup n xs = v
-          updateSolved xs t = t
-
-process :: Tactic -> Name -> ProofState -> StateT TState TC ProofState
-process t h ps = tactic (Just h) ps (context ps) (mktac t)
+process :: Tactic -> Name -> StateT TState TC ()
+process EndUnify _ 
+   = do ps <- get
+        let (h, _) = unified ps
+        tactic (Just h) solve_unified
+process t h = tactic (Just h) (mktac t)
    where mktac Attack        = attack
          mktac (Claim n r)   = claim n r
          mktac (Exact r)     = exact r
          mktac (Fill r)      = fill r
          mktac Regret        = regret
          mktac Solve         = solve
+         mktac (StartUnify n) = start_unify n
          mktac Compute       = compute
          mktac (Intro n)     = intro n
          mktac (Forall n t)  = forall n t
