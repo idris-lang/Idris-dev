@@ -47,20 +47,12 @@ data Tactic = Attack
             | CheckIn Raw
             | Intro Name
             | Forall Name Raw
-            | PatVar Name Raw
+            | PatVar Name
             | Focus Name
             | MoveLast Name
             | ProofState
             | Undo
             | QED
-
-data TacticAction = AddGoal Name   -- add a new goal, solve immediately
-                  | NextGoal Name  -- add a new goal, solve it after current one
-                  | FocusGoal Name -- focus on this goal next
-                  | MoveGoal Name  -- move this goal to the end of the hole queue
-                  | Solved Name
-                  | AlsoSolved [(Name, Term)] -- variables solved by unification
-                  | Log String
 
 -- Some utilites on proof and tactic states
 
@@ -69,21 +61,22 @@ instance Show ProofState where
     show (PS nm (h:hs) _ tm _ _ i _ ctxt _ _) 
           = let OK g = goal (Just h) tm
                 wkenv = premises g in
+                "Other goals: " ++ show hs ++ "\n" ++
                 showPs wkenv (reverse wkenv) ++ "\n" ++
                 "-------------------------------- (" ++ show nm ++ 
-                ") -------\n" ++
+                ") -------\n  " ++
                 show h ++ " : " ++ showG wkenv (goalType g) ++ "\n"
          where showPs env [] = ""
                showPs env ((n, Let t v):bs) 
                    = "  " ++ show n ++ " : " ++ 
-                     showEnv env (normalise ctxt env t) ++ "   =   " ++
-                     showEnv env (normalise ctxt env v) ++
+                     showEnv env ({- normalise ctxt env -} t) ++ "   =   " ++
+                     showEnv env ({- normalise ctxt env -} v) ++
                      "\n" ++ showPs env bs
                showPs env ((n, b):bs) 
                    = "  " ++ show n ++ " : " ++ 
-                     showEnv env (normalise ctxt env (binderTy b)) ++ 
+                     showEnv env ({- normalise ctxt env -} (binderTy b)) ++ 
                      "\n" ++ showPs env bs
-               showG ps (Guess t v) = showEnv ps (normalise ctxt ps t) ++ 
+               showG ps (Guess t v) = showEnv ps ({- normalise ctxt ps -} t) ++ 
                                          " =?= " ++ showEnv ps v
                showG ps b = showEnv ps (binderTy b)
 
@@ -211,14 +204,14 @@ fill guess ctxt env (Bind x (Hole ty) sc) =
        ps <- get
        let (uh, uns) = unified ps
        put (ps { unified = (uh, uns ++ ns) })
-       addLog (show (uh, uns ++ ns))
+--        addLog (show (uh, uns ++ ns))
        return $ Bind x (Guess ty val) sc
 fill _ _ _ _ = fail "Can't fill here."
 
 solve :: RunTactic
 solve ctxt env (Bind x (Guess ty val) sc)
    | pureTerm val = do action (\ps -> ps { holes = holes ps \\ [x] })
-                       return $ Bind x (Let ty val) sc -- instantiate val (pToV x sc)
+                       return $ {- Bind x (Let ty val) sc -} instantiate val (pToV x sc)
    | otherwise    = fail "I see a hole in your solution."
 solve _ _ _ = fail "Not a guess."
 
@@ -238,11 +231,10 @@ forall n ty ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' =
        lift $ isSet ctxt env t
        return $ Bind n (Pi tyv) (Bind x (Hole t) (P Bound x t))
 
-patvar :: Name -> Raw -> RunTactic
-patvar n ty ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' =
-    do (tyv, tyt) <- lift $ check ctxt env ty
-       lift $ isSet ctxt env tyt
-       return $ Bind n (PVar tyv) (Bind x (Hole t) (P Bound x t))
+patvar :: Name -> RunTactic
+patvar n ctxt env (Bind x (Hole t) sc) =
+    do action (\ps -> ps { holes = holes ps \\ [x] })
+       return $ Bind n (PVar t) (instantiate (P Bound n t) (pToV x sc))
 
 compute :: RunTactic
 compute ctxt env (Bind x (Hole ty) sc) =
@@ -276,9 +268,10 @@ solve_unified ctxt env tm =
     do ps <- get
        let (_, ns) = unified ps
        action (\ps -> ps { holes = holes ps \\ map fst ns })
+--        action (\ps -> ps { pterm = updateSolved ns (pterm ps) })
        return (updateSolved ns tm)
     where
-       updateSolved xs (Bind n b@(Hole _) t)
+       updateSolved xs (Bind n (Hole ty) t)
            | Just v <- lookup n xs = instantiate v (pToV n (updateSolved xs t))
        updateSolved xs (Bind n b t) 
            | otherwise = Bind n (fmap (updateSolved xs) b) (updateSolved xs t)
@@ -295,7 +288,7 @@ solve_unified ctxt env tm =
 
 processTactic :: Tactic -> ProofState -> TC (ProofState, String)
 processTactic QED ps = case holes ps of
-                           [] -> do let tm = pterm ps
+                           [] -> do let tm = {- normalise (context ps) [] -} (pterm ps)
                                     (tm', ty') <- recheck (context ps) [] tm
                                     return (ps { done = True, pterm = tm' }, 
                                             "Proof complete: " ++ showEnv [] tm')
@@ -304,6 +297,20 @@ processTactic ProofState ps = return (ps, showEnv [] (pterm ps))
 processTactic Undo ps = case previous ps of
                             Nothing -> Error "Nothing to undo."
                             Just pold -> return (pold, "")
+processTactic EndUnify ps = let (h, ns) = unified ps
+                                tm' = updateSolved ns (pterm ps) in
+                                return (ps { pterm = tm', 
+                                             unified = (h, []),
+                                             holes = holes ps \\ map fst ns }, "")
+    where
+       updateSolved xs (Bind n (Hole ty) t)
+           | Just v <- lookup n xs = instantiate v (pToV n (updateSolved xs t))
+       updateSolved xs (Bind n b t) 
+           | otherwise = Bind n (fmap (updateSolved xs) b) (updateSolved xs t)
+       updateSolved xs (App f a) = App (updateSolved xs f) (updateSolved xs a)
+       updateSolved xs (P _ n _)
+           | Just v <- lookup n xs = v
+       updateSolved xs t = t
 processTactic t ps   
     = case holes ps of
         [] -> Error "Nothing to fill in."
@@ -327,7 +334,7 @@ process t h = tactic (Just h) (mktac t)
          mktac Compute       = compute
          mktac (Intro n)     = intro n
          mktac (Forall n t)  = forall n t
-         mktac (PatVar n t)  = patvar n t
+         mktac (PatVar n)    = patvar n
          mktac (CheckIn r)   = check_in r
          mktac (EvalIn r)    = eval_in r
          mktac (Focus n)     = focus n

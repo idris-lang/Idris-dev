@@ -34,7 +34,7 @@ check :: Context -> Env -> Raw -> TC (Term, Type)
 check ctxt env (Var n)
     | Just (i, ty) <- lookupTyEnv n env = return (P Bound n ty, ty)
     | Just (P nt n' ty) <- lookupP n ctxt = return (P nt n' ty, ty)
-    | otherwise = do fail $ "No such variable " ++ show n
+    | otherwise = do fail $ "No such variable " ++ show n ++ " in " ++ show (map fst env)
 check ctxt env (RApp f a)
     = do (fv, fty) <- check ctxt env f
          (av, aty) <- check ctxt env a

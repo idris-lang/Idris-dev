@@ -26,3 +26,4 @@ Executable     miniidris
                Extensions:      MultiParamTypeClasses, FunctionalDependencies,
                                 FlexibleInstances
                ghc-prof-options: -auto-all
+               ghc-options: -rtsopts

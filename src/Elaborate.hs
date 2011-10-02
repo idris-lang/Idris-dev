@@ -51,6 +51,10 @@ get_env :: Elab Env
 get_env = do (p, _) <- get
              lift $ envAtFocus p
 
+get_holes :: Elab [Name]
+get_holes = do (p, _) <- get
+               return (holes p)
+
 -- get the current goal type
 goal :: Elab Type
 goal = do (p, _) <- get
@@ -65,8 +69,9 @@ get_type tm = do ctxt <- get_context
 
 -- given a desired hole name, return a unique hole name
 unique_hole :: Name -> Elab Name
-unique_hole n = do env <- get_env
-                   return (uniq n (map fst env))
+unique_hole n = do (p, _) <- get
+                   env <- get_env
+                   return (uniq n (holes p ++ map fst env))
   where
     uniq n hs | n `elem` hs = uniq (next n) hs
               | otherwise   = n
@@ -125,8 +130,8 @@ intro n = processTactic' (Intro n)
 forall :: Name -> Raw -> Elab ()
 forall n t = processTactic' (Forall n t)
 
-patvar :: Name -> Raw -> Elab ()
-patvar n t = processTactic' (PatVar n t)
+patvar :: Name -> Elab ()
+patvar n = processTactic' (PatVar n)
 
 focus :: Name -> Elab ()
 focus n = processTactic' (Focus n)
@@ -148,7 +153,13 @@ prepare_apply :: Raw -> [Bool] -> Elab [Name]
 prepare_apply fn imps =
     do ty <- get_type fn
        -- let claims = getArgs ty imps
-       doClaims ty imps []
+       claims <- doClaims ty imps []
+       (p, s) <- get
+       -- reverse the claims we made so that args go left to right
+       let n = length (filter not imps)
+       let (h : hs) = holes p
+       put (p { holes = h : (reverse (take n hs) ++ drop n hs) }, s)
+       return claims
   where
     doClaims (Bind n' (Pi t) sc) (i : is) claims =
         do n <- unique_hole n'
@@ -164,7 +175,7 @@ apply :: Raw -> [Bool] -> Elab ()
 apply fn imps = 
     do args <- prepare_apply fn imps
        fill (raw_apply fn (map Var args))
-       when (not (null args)) end_unify
+       end_unify
 
 -- Abstract over an argument of unknown type, giving a name for the hole
 -- which we'll fill with the argument type too.
@@ -173,10 +184,10 @@ arg n tyhole = do ty <- unique_hole tyhole
                   claim ty (RSet 0)
                   forall n (Var ty)
 
-patarg :: Name -> Name -> Elab ()
-patarg n tyhole = do ty <- unique_hole tyhole
-                     claim ty (RSet 0)
-                     patvar n (Var ty)
+-- patarg :: Name -> Name -> Elab ()
+-- patarg n tyhole = do ty <- unique_hole tyhole
+--                      claim ty (RSet 0)
+--                      patvar n (Var ty)
 
 -- Some combinators on elaborations
 
