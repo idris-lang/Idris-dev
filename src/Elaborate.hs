@@ -85,9 +85,9 @@ next (UN (x:xs)) = let (num', nm') = span isDigit (reverse x)
     readN "" = 0
     readN x  = read x
 
-log :: String -> Elab ()
-log str = do (p, logs) <- get
-             put (p, logs ++ str ++ "\n")
+elog :: String -> Elab ()
+elog str = do (p, logs) <- get
+              put (p, logs ++ str ++ "\n")
 
 -- The primitives, from ProofState
 
@@ -175,6 +175,13 @@ apply :: Raw -> [Bool] -> Elab ()
 apply fn imps = 
     do args <- prepare_apply fn imps
        fill (raw_apply fn (map Var args))
+       -- *Don't* solve the arguments we're specifying by hand.
+       -- (remove from unified list before calling end_unify)
+       let dontunify = map fst (filter (not.snd) (zip args imps))
+       (p, s) <- get
+       let (n, hs) = unified p
+       let unify = (n, filter (\ (n, t) -> not (n `elem` dontunify)) hs)
+       put (p { unified = unify }, s)
        end_unify
 
 -- Abstract over an argument of unknown type, giving a name for the hole
