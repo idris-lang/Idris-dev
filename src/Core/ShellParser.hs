@@ -1,10 +1,10 @@
 {-# LANGUAGE MultiParamTypeClasses, FlexibleInstances #-}
 
-module ShellParser(parseCommand, parseTactic) where
+module Core.ShellParser(parseCommand, parseTactic) where
 
-import Core
-import Elaborate
-import CoreParser
+import Core.Core
+import Core.Elaborate
+import Core.CoreParser
 
 import Text.ParserCombinators.Parsec
 import Text.ParserCombinators.Parsec.Expr

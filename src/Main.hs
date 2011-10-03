@@ -1,11 +1,11 @@
 module Main where
 
-import CoreParser
-import ShellParser
-import Core
-import Typecheck
-import ProofShell
-import Evaluate
+import Core.CoreParser
+import Core.ShellParser
+import Core.Core
+import Core.Typecheck
+import Core.ProofShell
+import Core.Evaluate
 
 main = do f <- readFile "test.mi"
           case parseFile f of

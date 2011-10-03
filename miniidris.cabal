@@ -17,9 +17,9 @@ Build-type:     Simple
 Executable     miniidris
                Main-is: Main.hs
                hs-source-dirs: src
-               Other-modules: Core, Evaluate, Typecheck, ProofState,
-                              ProofState, CoreParser, ShellParser,
-                              Unify, Elaborate
+               Other-modules: Core.Core, Core.Evaluate, Core.Typecheck, 
+                              Core.ProofShell, Core.ProofState, Core.CoreParser, 
+                              Core.ShellParser, Core.Unify, Core.Elaborate
 
                Build-depends:   base>=4 && <5, parsec, mtl, Cabal, readline,
                                 containers

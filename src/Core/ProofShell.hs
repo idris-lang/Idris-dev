@@ -1,12 +1,12 @@
 {-# LANGUAGE MultiParamTypeClasses, FlexibleInstances #-}
 
-module ProofShell where
+module Core.ProofShell where
 
-import Typecheck
-import Evaluate
-import Core
-import ShellParser
-import Elaborate
+import Core.Typecheck
+import Core.Evaluate
+import Core.Core
+import Core.ShellParser
+import Core.Elaborate
 
 import Control.Monad.State
 import System.Console.Readline

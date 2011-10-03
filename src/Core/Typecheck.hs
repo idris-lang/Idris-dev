@@ -1,12 +1,12 @@
 {-# LANGUAGE MultiParamTypeClasses, FlexibleInstances, DeriveFunctor #-}
 
-module Typecheck where
+module Core.Typecheck where
 
 import Control.Monad.State
 import Debug.Trace
 
-import Core
-import Evaluate
+import Core.Core
+import Core.Evaluate
 
 -- To check conversion, normalise each term wrt the current environment.
 -- Since we haven't converted everything to de Bruijn indices yet, we'll have to

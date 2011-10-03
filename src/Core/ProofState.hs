@@ -4,13 +4,13 @@
    proofs, and some high level commands for introducing new theorems,
    evaluation/checking inside the proof system, etc. --}
 
-module ProofState(ProofState(..), newProof, envAtFocus, goalAtFocus,
+module Core.ProofState(ProofState(..), newProof, envAtFocus, goalAtFocus,
                   Tactic(..), processTactic) where
 
-import Typecheck
-import Evaluate
-import Core
-import Unify
+import Core.Typecheck
+import Core.Evaluate
+import Core.Core
+import Core.Unify
 
 import Control.Monad.State
 import Control.Applicative

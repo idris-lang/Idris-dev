@@ -8,12 +8,13 @@
    tactics out of the primitives.
 -}
 
-module Elaborate(module Elaborate, module ProofState) where
+module Core.Elaborate(module Core.Elaborate, 
+                      module Core.ProofState) where
 
-import ProofState
-import Core
-import Evaluate
-import Typecheck
+import Core.ProofState
+import Core.Core
+import Core.Evaluate
+import Core.Typecheck
 
 import Control.Monad.State
 import Data.Char

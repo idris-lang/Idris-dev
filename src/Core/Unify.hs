@@ -1,9 +1,9 @@
 {-# LANGUAGE MultiParamTypeClasses, FunctionalDependencies, DeriveFunctor #-}
 
-module Unify(unify) where
+module Core.Unify(unify) where
 
-import Core
-import Evaluate
+import Core.Core
+import Core.Evaluate
 
 import Control.Monad
 

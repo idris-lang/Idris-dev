@@ -1,6 +1,6 @@
 {-# LANGUAGE MultiParamTypeClasses, FunctionalDependencies, DeriveFunctor #-}
 
-module Core where
+module Core.Core where
 
 import Control.Monad.State
 import Debug.Trace

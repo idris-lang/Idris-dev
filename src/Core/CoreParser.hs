@@ -1,8 +1,8 @@
 {-# LANGUAGE MultiParamTypeClasses, FlexibleInstances #-}
 
-module CoreParser(parseTerm, parseFile, parseDef, pTerm, iName) where
+module Core.CoreParser(parseTerm, parseFile, parseDef, pTerm, iName) where
 
-import Core
+import Core.Core
 
 import Text.ParserCombinators.Parsec
 import Text.ParserCombinators.Parsec.Expr

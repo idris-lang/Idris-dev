@@ -1,13 +1,13 @@
 {-# LANGUAGE MultiParamTypeClasses, FlexibleInstances #-}
 
-module Evaluate(normalise,
+module Core.Evaluate(normalise,
                 Fun(..), Def(..), Context, toAlist,
                 emptyContext, addToCtxt, addConstant, addDatatype,
                 lookupTy, lookupP, lookupDef, lookupVal, lookupTyEnv) where
 
 import qualified Data.Map as Map
 import Debug.Trace
-import Core
+import Core.Core
 
 -- VALUES (as HOAS) ---------------------------------------------------------
 
