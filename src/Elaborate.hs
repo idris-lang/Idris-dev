@@ -191,24 +191,11 @@ arg n tyhole = do ty <- unique_hole tyhole
                   claim ty (RSet 0)
                   forall n (Var ty)
 
--- patarg :: Name -> Name -> Elab ()
--- patarg n tyhole = do ty <- unique_hole tyhole
---                      claim ty (RSet 0)
---                      patvar n (Var ty)
+-- Try a tactic, if it fails, try another
+try :: Elab a -> Elab a -> Elab a
+try t1 t2 = do s <- get
+               case runStateT t1 s of
+                    OK (v, s') -> do put s'
+                                     return v
+                    _ -> t2
 
--- Some combinators on elaborations
-
--- Sequencing
--- infixr 5 ==>
-
--- (==>) :: Elab -> Elab -> Elab
--- (==>) t1 t2 ps = do (ps',  log')  <- t1 ps
---                     (ps'', log'') <- t2 ps'
---                     return (ps'', log' ++ log')
---              
--- -- Try a tactic, if it fails, try another
--- try :: Elab -> Elab -> Elab
--- try t1 t2 ps = case t1 ps of
---                     OK v -> return v
---                     _ -> t2 ps
--- 

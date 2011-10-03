@@ -1,10 +1,11 @@
 {-# LANGUAGE MultiParamTypeClasses, FlexibleInstances #-}
 
 module Evaluate(normalise,
-                Fun(..), Def(..), Context,
+                Fun(..), Def(..), Context, toAlist,
                 emptyContext, addToCtxt, addConstant, addDatatype,
                 lookupTy, lookupP, lookupDef, lookupVal, lookupTyEnv) where
 
+import qualified Data.Map as Map
 import Debug.Trace
 import Core
 
@@ -97,12 +98,31 @@ data Def = Function Fun
          | Constant NameType Type Value
   deriving Show
 
+{-
 type Context = [(Name, Def)]
 
 emptyContext = []
 
 addDef :: Name -> Def -> Context -> Context
 addDef n d ctxt = (n, d) : ctxt
+
+lookupCtxt :: Name -> Context -> Maybe Def
+lookupCtxt n c = lookup n c
+-}
+
+type Context = Map.Map Name Def
+emptyContext = Map.empty
+
+addDef :: Name -> Def -> Context -> Context
+addDef = Map.insert
+
+lookupCtxt :: Name -> Context -> Maybe Def
+lookupCtxt = Map.lookup
+
+toAlist :: Context -> [(Name, Def)]
+toAlist = Map.toList
+
+------- 
 
 addToCtxt :: Name -> Term -> Type -> Context -> Context
 addToCtxt n tm ty ctxt = addDef n (Function (Fun ty (eval ctxt [] ty)
@@ -124,28 +144,28 @@ addDatatype (Data n ty cons) ctxt
                   (Constant (DCon tag (arity ty')) ty (eval ctxt [] ty)) ctxt)
 
 lookupTy :: Name -> Context -> Maybe Type
-lookupTy n ctxt = do def <-  lookup n ctxt
+lookupTy n ctxt = do def <- lookupCtxt n ctxt
                      case def of
                        (Function (Fun ty _ _ _)) -> return ty
                        (Constant _ ty _) -> return ty
 
 lookupP :: Name -> Context -> Maybe Term
 lookupP n ctxt 
-   = do def <-  lookup n ctxt
+   = do def <-  lookupCtxt n ctxt
         case def of
           (Function (Fun ty _ tm _)) -> return (P Ref n ty)
           (Constant nt ty hty) -> return (P nt n ty)
 
 lookupDef :: Name -> Context -> Maybe Term
 lookupDef n ctxt
-   = do def <-  lookup n ctxt
+   = do def <-  lookupCtxt n ctxt
         case def of
           (Function (Fun ty _ tm _)) -> return tm
           (Constant nt ty hty) -> return (P nt n ty)
 
 lookupVal :: Name -> Context -> Maybe Value
 lookupVal n ctxt 
-   = do def <- lookup n ctxt
+   = do def <- lookupCtxt n ctxt
         case def of
           (Function (Fun _ _ _ htm)) -> return htm
           (Constant nt ty hty) -> return (VP nt n hty)

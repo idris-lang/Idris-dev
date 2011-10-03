@@ -54,7 +54,7 @@ instance MonadPlus TC where
 
 data Name = UN [String]
           | MN Int String
-  deriving Eq
+  deriving (Eq, Ord)
 
 instance Show Name where
     show (UN [n]) = n
