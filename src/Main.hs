@@ -2,7 +2,7 @@ module Main where
 
 import Core.CoreParser
 import Core.ShellParser
-import Core.Core
+import Core.TT
 import Core.Typecheck
 import Core.ProofShell
 import Core.Evaluate

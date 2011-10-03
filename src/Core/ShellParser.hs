@@ -2,7 +2,7 @@
 
 module Core.ShellParser(parseCommand, parseTactic) where
 
-import Core.Core
+import Core.TT
 import Core.Elaborate
 import Core.CoreParser
 

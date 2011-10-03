@@ -2,7 +2,7 @@
 
 module Core.CoreParser(parseTerm, parseFile, parseDef, pTerm, iName) where
 
-import Core.Core
+import Core.TT
 
 import Text.ParserCombinators.Parsec
 import Text.ParserCombinators.Parsec.Expr

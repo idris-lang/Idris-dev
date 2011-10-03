@@ -7,7 +7,7 @@ module Core.Evaluate(normalise,
 
 import qualified Data.Map as Map
 import Debug.Trace
-import Core.Core
+import Core.TT
 
 -- VALUES (as HOAS) ---------------------------------------------------------
 

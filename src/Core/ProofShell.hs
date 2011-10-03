@@ -4,7 +4,7 @@ module Core.ProofShell where
 
 import Core.Typecheck
 import Core.Evaluate
-import Core.Core
+import Core.TT
 import Core.ShellParser
 import Core.Elaborate
 

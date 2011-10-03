@@ -9,7 +9,7 @@ module Core.ProofState(ProofState(..), newProof, envAtFocus, goalAtFocus,
 
 import Core.Typecheck
 import Core.Evaluate
-import Core.Core
+import Core.TT
 import Core.Unify
 
 import Control.Monad.State

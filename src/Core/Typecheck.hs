@@ -5,7 +5,7 @@ module Core.Typecheck where
 import Control.Monad.State
 import Debug.Trace
 
-import Core.Core
+import Core.TT
 import Core.Evaluate
 
 -- To check conversion, normalise each term wrt the current environment.

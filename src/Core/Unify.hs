@@ -2,7 +2,7 @@
 
 module Core.Unify(unify) where
 
-import Core.Core
+import Core.TT
 import Core.Evaluate
 
 import Control.Monad

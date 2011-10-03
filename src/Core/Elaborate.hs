@@ -12,7 +12,7 @@ module Core.Elaborate(module Core.Elaborate,
                       module Core.ProofState) where
 
 import Core.ProofState
-import Core.Core
+import Core.TT
 import Core.Evaluate
 import Core.Typecheck
 
