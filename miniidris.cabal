@@ -19,7 +19,9 @@ Executable     miniidris
                hs-source-dirs: src
                Other-modules: Core.TT, Core.Evaluate, Core.Typecheck, 
                               Core.ProofShell, Core.ProofState, Core.CoreParser, 
-                              Core.ShellParser, Core.Unify, Core.Elaborate
+                              Core.ShellParser, Core.Unify, Core.Elaborate,
+
+                              Idris.AbsSyntax Idris.Parser
 
                Build-depends:   base>=4 && <5, parsec, mtl, Cabal, readline,
                                 containers

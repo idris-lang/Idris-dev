@@ -4,6 +4,7 @@ module Core.TT where
 
 import Control.Monad.State
 import Debug.Trace
+import qualified Data.Map as Map
 
 {- The language has:
    * Full dependent types
@@ -60,6 +61,22 @@ instance Show Name where
     show (UN [n]) = n
     show (UN (n:ns)) = show (UN [n]) ++ "." ++ show (UN ns)
     show (MN i s) = "{" ++ s ++ show i ++ "}"
+
+
+-- Contexts allow us to map names to things
+
+type Ctxt a = Map.Map Name a
+emptyContext = Map.empty
+
+addDef :: Name -> a -> Ctxt a -> Ctxt a
+addDef = Map.insert
+
+lookupCtxt :: Name -> Ctxt a -> Maybe a
+lookupCtxt = Map.lookup
+
+toAlist :: Ctxt a -> [(Name, a)]
+toAlist = Map.toList
+
 
 data Raw = Var Name
          | RBind Name (Binder Raw) Raw

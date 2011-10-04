@@ -1,11 +1,10 @@
 {-# LANGUAGE MultiParamTypeClasses, FlexibleInstances #-}
 
 module Core.Evaluate(normalise,
-                Fun(..), Def(..), Context, toAlist,
-                emptyContext, addToCtxt, addConstant, addDatatype,
+                Fun(..), Def(..), Context, 
+                addToCtxt, addConstant, addDatatype,
                 lookupTy, lookupP, lookupDef, lookupVal, lookupTyEnv) where
 
-import qualified Data.Map as Map
 import Debug.Trace
 import Core.TT
 
@@ -94,35 +93,24 @@ wknV i t              = t
 data Fun = Fun Type Value Term Value
   deriving Show
 
+{- A definition is either a simple function (just an expression with a type),
+   a constant, which could be a data or type constructor, an axiom or as an
+   yet undefined function, or an Operator.
+   An Operator is a collection of pattern matching definitions, and a function
+   which explains how to reduce. -}
+   
 data Def = Function Fun
          | Constant NameType Type Value
-  deriving Show
+         | Operator Type [(Term, Term)] ([Value] -> Maybe Value)
 
-{-
-type Context = [(Name, Def)]
-
-emptyContext = []
-
-addDef :: Name -> Def -> Context -> Context
-addDef n d ctxt = (n, d) : ctxt
-
-lookupCtxt :: Name -> Context -> Maybe Def
-lookupCtxt n c = lookup n c
--}
-
-type Context = Map.Map Name Def
-emptyContext = Map.empty
-
-addDef :: Name -> Def -> Context -> Context
-addDef = Map.insert
-
-lookupCtxt :: Name -> Context -> Maybe Def
-lookupCtxt = Map.lookup
-
-toAlist :: Context -> [(Name, Def)]
-toAlist = Map.toList
+instance Show Def where
+    show (Function f) = "Function: " ++ show f
+    show (Constant nt ty val) = "Constant: " ++ show nt ++ " " ++ show ty
+    show (Operator ty ps _) = "Operator: " ++ show ty ++ " " ++ show ps
 
 ------- 
+
+type Context = Ctxt Def
 
 addToCtxt :: Name -> Term -> Type -> Context -> Context
 addToCtxt n tm ty ctxt = addDef n (Function (Fun ty (eval ctxt [] ty)
