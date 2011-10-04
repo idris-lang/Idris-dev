@@ -14,8 +14,15 @@ import Debug.Trace
 
 type TokenParser a = PTok.TokenParser a
 
+idrisDef = haskellDef { 
+              reservedOpNames = [":", "..", "=", "\\", "|", "<-", "->", "=>"],
+              reservedNames = ["let", "in", "data", "Set", "if", "then", "else",
+                               "do", "dsl", "import", "infix", "infixl", "infixr",
+                               "where", "forall"]
+           } 
+
 lexer :: TokenParser ()
-lexer  = PTok.makeTokenParser haskellDef
+lexer  = PTok.makeTokenParser idrisDef
 
 whiteSpace= PTok.whiteSpace lexer
 lexeme    = PTok.lexeme lexer
@@ -47,6 +54,7 @@ pSimpleExpr =
                 return $ PQuote t)
         <|> try (do x <- iName; return (PRef x))
         <|> try (do lchar '_'; return Placeholder)
+        <|> try (do lchar '('; o <- operator; lchar ')'; return (PRef (UN [o]))) 
         <|> try (do lchar '('; e <- pExpr; lchar ')'; return e)
 
 pApp = do f <- pSimpleExpr
@@ -69,7 +77,6 @@ pPi = do lchar '('; x <- iName; t <- pTSig; lchar ')'
          symbol "->"
          sc <- pExpr
          return (PPi Imp x t sc)
-
 
 table = [[binary "="  (\x y -> PApp (PRef (UN ["="])) [] [x,y]) AssocLeft],
          [binary "->" (PPi Exp (MN 0 "X")) AssocRight]]

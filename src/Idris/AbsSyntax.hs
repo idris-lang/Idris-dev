@@ -6,10 +6,8 @@ import Core.TT
 import Core.Evaluate
 
 data IState = IState { tt_ctxt :: Context,
-                       tt_infixes :: [(String, 
-                                      (Fixity, PTerm -> PTerm -> PTerm))] 
+                       tt_infixes :: [FixDecl] 
                      }
-                       
                     
 {- Plan:
    Treat it as a theorem prover - one definition at a time, parse, elaborate,
@@ -20,12 +18,18 @@ data IState = IState { tt_ctxt :: Context,
 
 data Fixity = Infixl { prec :: Int } 
             | Infixr { prec :: Int }
-            | InfixN  { prec :: Int } 
+            | InfixN { prec :: Int } 
     deriving (Show, Eq)
-   
+
+data FixDecl = Fix Fixity String 
+    deriving (Show, Eq)
+
+instance Ord FixDecl where
+    compare (Fix x _) (Fix y _) = compare (prec x) (prec y)
+
 data Plicity = Imp | Exp deriving Show
 
-data PDecl = PFix    Fixity String  -- fixity declaration
+data PDecl = PFix    Fixity String   -- fixity declaration
            | PTy     Name   PTerm    -- type declaration
            | PClause PTerm  PTerm    -- pattern clause
            | PData   PData           -- data declaration
