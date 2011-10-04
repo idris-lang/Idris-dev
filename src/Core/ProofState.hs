@@ -1,4 +1,4 @@
-{-# LANGUAGE MultiParamTypeClasses, FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses, FlexibleInstances, PatternGuards #-}
 
 {- Implements a proof state, some primitive tactics for manipulating
    proofs, and some high level commands for introducing new theorems,
@@ -144,12 +144,12 @@ tactic h f = do ps <- get
     atH c env binder@(Bind n b sc) 
         | hole b && same h n = f c env binder
         | otherwise          
-            = pure Bind <*> pure n <*> atHb c env b <*> atH c ((n,b) : env) sc
-    atH c env (App f a)    = pure App <*> atH c env f <*> atH c env a
+            = liftM2 (Bind n) (atHb c env b) (atH c ((n, b) : env) sc) 
+    atH c env (App f a)    = liftM2 App (atH c env f) (atH c env a)
     atH c env t            = return t
     
-    atHb c env (Let t v)   = pure Let <*> atH c env t <*> atH c env v    
-    atHb c env (Guess t v) = pure Guess <*> atH c env t <*> atH c env v
+    atHb c env (Let t v)   = liftM2 Let (atH c env t) (atH c env v)    
+    atHb c env (Guess t v) = liftM2 Guess (atH c env t) (atH c env v)
     atHb c env t           = do ty' <- atH c env (binderTy t)
                                 return $ t { binderTy = ty' }
 

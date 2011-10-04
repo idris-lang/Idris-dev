@@ -1,4 +1,4 @@
-{-# LANGUAGE MultiParamTypeClasses, FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses, FlexibleInstances, PatternGuards #-}
 
 module Core.ProofShell where
 
@@ -11,13 +11,14 @@ import Core.Elaborate
 import Control.Monad.State
 import System.Console.Readline
 
-data ShellState = State { ctxt     :: Context,
+data ShellState = ShellState 
+                        { ctxt     :: Context,
                           prf      :: Maybe ProofState,
                           deferred :: [(Name, ProofState)],
                           exitNow  :: Bool
                         }
 
-initState c = State c Nothing [] False
+initState c = ShellState c Nothing [] False
 
 processCommand :: Command -> ShellState -> (ShellState, String)
 processCommand (Theorem n ty) state 
