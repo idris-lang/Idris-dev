@@ -18,7 +18,8 @@ idrisDef = haskellDef {
               reservedOpNames = [":", "..", "=", "\\", "|", "<-", "->", "=>"],
               reservedNames = ["let", "in", "data", "Set", "if", "then", "else",
                                "do", "dsl", "import", "infix", "infixl", "infixr",
-                               "where", "forall"]
+                               "where", "forall", "syntax",
+                               "using", "params", "namespace"]
            } 
 
 lexer :: TokenParser ()
