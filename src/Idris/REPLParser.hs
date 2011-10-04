@@ -11,14 +11,15 @@ import qualified Text.ParserCombinators.Parsec.Token as PTok
 
 import Debug.Trace
 
-parseCmd = parse pCmd "(input)"
+parseCmd i = runParser pCmd i "(input)"
 
-cmd :: [String] -> Parser ()
+cmd :: [String] -> IParser ()
 cmd xs = do lchar ':'; docmd xs
     where docmd [] = fail "No such command"
           docmd (x:xs) = try (void (symbol x)) <|> docmd xs
 
-pCmd :: Parser Command
+pCmd :: IParser Command
 pCmd = try (do cmd ["q", "quit"]; return Quit)
    <|> try (do cmd ["h", "?", "help"]; return Help)
-   
+   <|> do t <- pFullExpr; return (Eval t)
+   <|> do eof; return NOP

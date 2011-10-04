@@ -41,6 +41,10 @@ runIdris opts =
 
 loadModule :: FilePath -> Idris ()
 loadModule f = do iLOG ("Reading " ++ show f)
+                  ds <- parseProg f
+                  iLOG (show ds)
+                  i <- get
+                  iLOG (show (idris_infixes i))
                   return ()
 
 getFile :: Opt -> Maybe String

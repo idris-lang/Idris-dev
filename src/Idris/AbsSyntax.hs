@@ -41,8 +41,8 @@ iLOG str = do i <- get
 
 -- Commands in the REPL
 
-data Command = Quit
-             | Help
+data Command = Quit | Help | Eval PTerm 
+             | NOP
 
 -- Parsed declarations
 
@@ -59,7 +59,7 @@ instance Ord FixDecl where
 
 data Plicity = Imp | Exp deriving Show
 
-data PDecl = PFix    Fixity String   -- fixity declaration
+data PDecl = PFix    Fixity [String] -- fixity declaration
            | PTy     Name   PTerm    -- type declaration
            | PClause PTerm  PTerm    -- pattern clause
            | PData   PData           -- data declaration

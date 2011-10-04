@@ -5,6 +5,7 @@ module Core.CoreParser(parseTerm, parseFile, parseDef, pTerm, iName) where
 import Core.TT
 
 import Text.ParserCombinators.Parsec
+import Text.Parsec.Prim(Parsec)
 import Text.ParserCombinators.Parsec.Expr
 import Text.ParserCombinators.Parsec.Language
 import qualified Text.ParserCombinators.Parsec.Token as PTok
@@ -13,7 +14,7 @@ import Debug.Trace
 
 type TokenParser a = PTok.TokenParser a
 
-lexer :: TokenParser ()
+lexer :: TokenParser a
 lexer  = PTok.makeTokenParser haskellDef
 
 whiteSpace= PTok.whiteSpace lexer
@@ -29,18 +30,21 @@ operator  = PTok.operator lexer
 reservedOp= PTok.reservedOp lexer
 lchar = lexeme.char
 
-parseFile = parse pTestFile "(input)"
-parseDef = parse pDef "(input)"
-parseTerm = parse pTerm "(input)"
+type CParser a = Parsec String a
 
-pTestFile :: Parser RProgram
+parseFile = runParser pTestFile () "(input)"
+parseDef = runParser pDef () "(input)"
+parseTerm = runParser pTerm () "(input)"
+
+pTestFile :: CParser a RProgram
 pTestFile = do p <- many1 pDef ; eof
                return p
 
-iName :: Parser Name
-iName = identifier >>= (\n -> return (UN [n]))
+iName :: CParser a Name
+iName = do x <- identifier
+           return (UN [x])
 
-pDef :: Parser (Name, RDef)
+pDef :: CParser a (Name, RDef)
 pDef = try (do x <- iName; lchar ':'; ty <- pTerm
                lchar '='
                tm <- pTerm
@@ -51,20 +55,20 @@ pDef = try (do x <- iName; lchar ':'; ty <- pTerm
        <|> do (x, d) <- pData; lchar ';'
               return (x, RData d)
 
-app :: Parser (Raw -> Raw -> Raw)
+app :: CParser a (Raw -> Raw -> Raw)
 app = do whiteSpace ; return RApp
 
-arrow :: Parser (Raw -> Raw -> Raw)
+arrow :: CParser a (Raw -> Raw -> Raw)
 arrow = do symbol "->" ; return $ \s t -> RBind (MN 0 "X") (Pi s) t
 
-pTerm :: Parser Raw
+pTerm :: CParser a Raw
 pTerm = try (do chainl1 pNoApp app)
            <|> pNoApp
 
-pNoApp :: Parser Raw
+pNoApp :: CParser a Raw
 pNoApp = try (chainr1 pExp arrow)
            <|> pExp
-pExp :: Parser Raw
+pExp :: CParser a Raw
 pExp = do lchar '\\'; x <- iName; lchar ':'; ty <- pTerm
           symbol "=>";
           sc <- pTerm
@@ -106,12 +110,12 @@ pExp = do lchar '\\'; x <- iName; lchar ':'; ty <- pTerm
        <|> try (do x <- iName
                    return (Var x))
 
-pData :: Parser (Name, RawDatatype)
+pData :: CParser a (Name, RawDatatype)
 pData = do reserved "data"; x <- iName; lchar ':'; ty <- pTerm; reserved "where"
            cs <- many pConstructor
            return (x, RDatatype x ty cs)
 
-pConstructor :: Parser (Name, Raw)
+pConstructor :: CParser a (Name, Raw)
 pConstructor = do lchar '|'
                   c <- iName; lchar ':'; ty <- pTerm
                   return (c, ty)
