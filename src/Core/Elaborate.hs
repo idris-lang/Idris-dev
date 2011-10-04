@@ -143,8 +143,10 @@ movelast n = processTactic' (MoveLast n)
 proofstate :: Elab ()
 proofstate = processTactic' ProofState
 
-qed :: Elab ()
-qed = processTactic' QED
+qed :: Elab Term
+qed = do processTactic' QED
+         (p, _) <- get
+         return (pterm p)
 
 undo :: Elab ()
 undo = processTactic' Undo

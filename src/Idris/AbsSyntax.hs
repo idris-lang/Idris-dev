@@ -5,14 +5,44 @@ module Idris.AbsSyntax where
 import Core.TT
 import Core.Evaluate
 
+import Control.Monad.State
+import Data.List
+
+data IOption = Logging
+    deriving (Show, Eq)
+
 data IState = IState { tt_ctxt :: Context,
-                       tt_infixes :: [FixDecl] 
+                       idris_infixes :: [FixDecl],
+                       idris_implicits :: Ctxt [Name],
+                       idris_log :: String,
+                       idris_options :: [IOption]
                      }
-                    
-{- Plan:
-   Treat it as a theorem prover - one definition at a time, parse, elaborate,
-   and add to context. Since elaboration can be affected by definitions we've
-   added (e.g.  plicity) -}
+                   
+idrisInit = IState emptyContext [] emptyContext "" []
+
+-- The monad for the main REPL - reading and processing files and updating 
+-- global state (hence the IO inner monad).
+type Idris a = StateT IState IO a
+
+iputStrLn :: String -> Idris ()
+iputStrLn = lift.putStrLn
+
+setOpt :: IOption -> Bool -> Idris ()
+setOpt o True  = do i <- get
+                    put (i { idris_options = nub (o : idris_options i) })
+setOpt o False = do i <- get
+                    put (i { idris_options = idris_options i \\ [o] })    
+
+iLOG :: String -> Idris ()
+iLOG str = do i <- get
+              when (Logging `elem` idris_options i)
+                   $ do lift (putStrLn str)
+                        put (i { idris_log = idris_log i ++ str ++ "\n" } )
+
+-- Commands in the REPL
+
+data Command = Quit
+             | Help
 
 -- Parsed declarations
 

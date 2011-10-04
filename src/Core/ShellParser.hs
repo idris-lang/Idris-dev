@@ -10,6 +10,7 @@ import Text.ParserCombinators.Parsec
 import Text.ParserCombinators.Parsec.Expr
 import Text.ParserCombinators.Parsec.Language
 import qualified Text.ParserCombinators.Parsec.Token as PTok
+import Control.Monad
 
 import Debug.Trace
 
@@ -65,7 +66,7 @@ pTactic = do reserved "attack";  return attack
       <|> do reserved "focus";   n <- iName; return (focus n)
       <|> do reserved "state";   return proofstate
       <|> do reserved "undo";    return undo
-      <|> do reserved "qed";     return qed
+      <|> do reserved "qed";     return (void qed)
 
 pArgType :: Parser Bool
 pArgType = do lchar '_'; return True   -- implicit (machine fills in)

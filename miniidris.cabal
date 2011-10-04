@@ -21,10 +21,10 @@ Executable     miniidris
                               Core.ProofShell, Core.ProofState, Core.CoreParser, 
                               Core.ShellParser, Core.Unify, Core.Elaborate,
 
-                              Idris.AbsSyntax Idris.Parser
+                              Idris.AbsSyntax, Idris.Parser, Idris.REPL
 
                Build-depends:   base>=4 && <5, parsec, mtl, Cabal, readline,
-                                containers
+                                containers, process
                                 
                Extensions:      MultiParamTypeClasses, FunctionalDependencies,
                                 FlexibleInstances
