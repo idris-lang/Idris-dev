@@ -82,6 +82,7 @@ data PTerm = PQuote Raw
            | PLam Name PTerm PTerm
            | PPi  Plicity Name PTerm PTerm
            | PApp PTerm [(Name, PTerm)] [PTerm]
+           | PHidden PTerm -- irrelevant or hidden pattern
            | PSet
            | Placeholder
     deriving Show

@@ -40,6 +40,7 @@ parseProg :: String -> Idris [PDecl]
 parseProg fname = do file <- lift $ readFile fname
                      i <- get
                      case (runParser (do ps <- many1 pDecl
+                                         eof
                                          i' <- getState
                                          return (ps, i')) i fname file) of
                         Left err -> fail (show err)
@@ -59,6 +60,7 @@ pDecl' = try pFixity
      <|> try (do n <- pfName; ty <- pTSig
                  return (PTy n ty))
      <|> try pData
+     <|> try pPattern
 
 -------- Fixity --------
 
@@ -97,6 +99,11 @@ pSimpleExpr =
         <|> try (do lchar '_'; return Placeholder)
         <|> try (do lchar '('; e <- pExpr; lchar ')'; return e)
         <|> try (do reserved "Set"; return PSet)
+
+pHSimpleExpr = try pSimpleExpr
+           <|> do lchar '.'
+                  e <- pSimpleExpr
+                  return $ PHidden e
 
 pApp = do f <- pSimpleExpr
           args <- many1 pSimpleExpr
@@ -167,4 +174,17 @@ pSimpleCon = do cn <- pfName
                 return (cn, args)
 
 --------- Pattern match clauses ---------
+
+pPattern :: IParser PDecl
+pPattern = try (do n <- pfName
+                   args <- many pHSimpleExpr
+                   lchar '='
+                   rhs <- pExpr
+                   return $ PClause (PApp (PRef n) [] args) rhs)
+       <|> do l <- pSimpleExpr
+              op <- operator
+              r <- pSimpleExpr
+              lchar '='
+              rhs <- pExpr
+              return $ PClause (PApp (PRef (UN [op])) [] [l,r]) rhs
 

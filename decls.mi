@@ -11,15 +11,16 @@ data Vect : Set -> Nat -> Set where
   | (::) : a -> Vect a k -> Vect a (S k); 
 
 plus : Nat -> Nat -> Nat;
-{-
 plus O y = y;
 plus (S k) y = S (plus k y);
--}
 
 app : Vect a n -> Vect a m -> Vect a (plus n m);
-{-
 app VNil      ys = ys;
 app (x :: xs) ys = x :: (app xs ys);
--}
 
-(::) : a -> Vect a k -> Vect a (S k);
+infixl 5 .+. ;
+
+(.+.) : Nat -> Nat -> Nat;
+O     .+. y = y;
+(S k) .+. y = S (k .+. y);
+
