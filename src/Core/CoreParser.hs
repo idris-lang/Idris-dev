@@ -1,6 +1,6 @@
 {-# LANGUAGE MultiParamTypeClasses, FlexibleInstances #-}
 
-module Core.CoreParser(parseTerm, parseFile, parseDef, pTerm, iName) where
+module Core.CoreParser(parseTerm, parseFile, parseDef, pTerm, iName, idrisDef) where
 
 import Core.TT
 
@@ -14,8 +14,16 @@ import Debug.Trace
 
 type TokenParser a = PTok.TokenParser a
 
+idrisDef = haskellDef { 
+              reservedOpNames = [":", "..", "=", "\\", "|", "<-", "->", "=>"],
+              reservedNames = ["let", "in", "data", "Set", "if", "then", "else",
+                               "do", "dsl", "import", "infix", "infixl", "infixr",
+                               "where", "forall", "syntax",
+                               "using", "params", "namespace"]
+           } 
+
 lexer :: TokenParser a
-lexer  = PTok.makeTokenParser haskellDef
+lexer  = PTok.makeTokenParser idrisDef
 
 whiteSpace= PTok.whiteSpace lexer
 lexeme    = PTok.lexeme lexer

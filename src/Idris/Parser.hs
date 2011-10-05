@@ -17,14 +17,6 @@ import Debug.Trace
 
 type TokenParser a = PTok.TokenParser a
 
-idrisDef = haskellDef { 
-              reservedOpNames = [":", "..", "=", "\\", "|", "<-", "->", "=>"],
-              reservedNames = ["let", "in", "data", "Set", "if", "then", "else",
-                               "do", "dsl", "import", "infix", "infixl", "infixr",
-                               "where", "forall", "syntax",
-                               "using", "params", "namespace"]
-           } 
-
 type IParser = Parsec String IState
 
 lexer :: TokenParser IState
@@ -61,21 +53,31 @@ pFullExpr = do x <- pExpr; eof; return x
 pDecl :: IParser PDecl
 pDecl = do d <- pDecl'; lchar ';'; return d
 
+--------- Top Level Declarations ---------
+
 pDecl' :: IParser PDecl
-pDecl' = try (do f <- fixity; i <- natural; ops <- sepBy1 operator (lchar ',')
-                 let prec = fromInteger i
-                 istate <- getState
-                 let fs = map (Fix (f prec)) ops
-                 setState (istate { 
-                    idris_infixes = sort (fs ++ idris_infixes istate) })
-                 return (PFix (f prec) ops))
-     <|> try (do n <- iName; ty <- pTSig
+pDecl' = try pFixity
+     <|> try (do n <- pfName; ty <- pTSig
                  return (PTy n ty))
+     <|> try pData
+
+-------- Fixity --------
+
+pFixity :: IParser PDecl
+pFixity = do f <- fixity; i <- natural; ops <- sepBy1 operator (lchar ',')
+             let prec = fromInteger i
+             istate <- getState
+             let fs = map (Fix (f prec)) ops
+             setState (istate { 
+                idris_infixes = sort (fs ++ idris_infixes istate) })
+             return (PFix (f prec) ops)
 
 fixity :: IParser (Int -> Fixity) 
 fixity = try (do reserved "infixl"; return Infixl)
      <|> try (do reserved "infixr"; return Infixr)
      <|> try (do reserved "infix";  return InfixN)
+
+--------- Expressions ---------
 
 pExpr = do i <- getState
            buildExpressionParser (table (idris_infixes i)) pExpr'
@@ -86,13 +88,16 @@ pExpr' = try pApp
      <|> try pLambda
      <|> try pPi 
 
+pfName = try iName
+     <|> do lchar '('; o <- operator; lchar ')'; return (UN [o])
+
 pSimpleExpr = 
         try (do symbol "!["; t <- pTerm; lchar ']' 
                 return $ PQuote t)
-        <|> try (do x <- iName; return (PRef x))
+        <|> try (do x <- pfName; return (PRef x))
         <|> try (do lchar '_'; return Placeholder)
-        <|> try (do lchar '('; o <- operator; lchar ')'; return (PRef (UN [o]))) 
         <|> try (do lchar '('; e <- pExpr; lchar ')'; return e)
+        <|> try (do reserved "Set"; return PSet)
 
 pApp = do f <- pSimpleExpr
           args <- many1 pSimpleExpr
@@ -129,4 +134,38 @@ toTable fs = map (map toBin)
          assoc (InfixN _) = AssocNone
 
 binary name f assoc = Infix (do { reservedOp name; return f }) assoc
+
+--------- Data declarations ---------
+
+pData :: IParser PDecl
+pData = try (do reserved "data"; tyn <- pfName; ty <- pTSig
+                reserved "where"
+                cons <- sepBy1 pConstructor (lchar '|')
+                return $ PData (PDatadecl tyn ty cons))
+    <|> do reserved "data"; tyn <- pfName; args <- many iName
+           lchar '='
+           cons <- sepBy1 pSimpleCon (lchar '|')
+           let conty = mkPApp (PRef tyn) (map PRef args)
+           return $ PData (PDatadecl tyn (bindArgs (map (\a -> PSet) args) PSet)
+                                         (map (\ (x, cargs) -> 
+                                            (x, bindArgs cargs conty)) cons))
+
+mkPApp t [] = t
+mkPApp t xs = PApp t [] xs
+
+bindArgs :: [PTerm] -> PTerm -> PTerm
+bindArgs [] t = t
+bindArgs (x:xs) t = PPi Exp (MN 0 "t") x (bindArgs xs t)
+
+pConstructor :: IParser (Name, PTerm)
+pConstructor 
+    = do cn <- pfName; ty <- pTSig
+         return (cn, ty)
+
+pSimpleCon :: IParser (Name, [PTerm])
+pSimpleCon = do cn <- pfName
+                args <- many pSimpleExpr
+                return (cn, args)
+
+--------- Pattern match clauses ---------
 

@@ -11,6 +11,11 @@ import Data.List
 data IOption = Logging
     deriving (Show, Eq)
 
+-- TODO: Add 'module data' to IState, which can be saved out and reloaded quickly (i.e
+-- without typechecking).
+-- This will include all the functions and data declarations, plus fixity declarations
+-- and syntax macros.
+
 data IState = IState { tt_ctxt :: Context,
                        idris_infixes :: [FixDecl],
                        idris_implicits :: Ctxt [Name],
@@ -77,6 +82,7 @@ data PTerm = PQuote Raw
            | PLam Name PTerm PTerm
            | PPi  Plicity Name PTerm PTerm
            | PApp PTerm [(Name, PTerm)] [PTerm]
+           | PSet
            | Placeholder
     deriving Show
 
