@@ -47,6 +47,9 @@ instance MonadPlus TC where
     _ `mplus` (OK y) = OK y
     err `mplus` _    = err
 
+discard :: Monad m => m a -> m ()
+discard f = f >> return ()
+
 -- RAW TERMS ----------------------------------------------------------------
 
 -- Names are hierarchies of strings, describing scope (so no danger of

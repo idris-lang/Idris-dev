@@ -5,7 +5,6 @@ module Core.CoreParser(parseTerm, parseFile, parseDef, pTerm, iName, idrisDef) w
 import Core.TT
 
 import Text.ParserCombinators.Parsec
-import Text.Parsec.Prim(Parsec)
 import Text.ParserCombinators.Parsec.Expr
 import Text.ParserCombinators.Parsec.Language
 import qualified Text.ParserCombinators.Parsec.Token as PTok
@@ -38,7 +37,7 @@ operator  = PTok.operator lexer
 reservedOp= PTok.reservedOp lexer
 lchar = lexeme.char
 
-type CParser a = Parsec String a
+type CParser a = GenParser Char a
 
 parseFile = runParser pTestFile () "(input)"
 parseDef = runParser pDef () "(input)"

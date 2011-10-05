@@ -1,4 +1,5 @@
-{-# LANGUAGE MultiParamTypeClasses, FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses, FlexibleInstances,
+             PatternGuards #-}
 
 module Core.Evaluate(normalise,
                 Fun(..), Def(..), Context, 

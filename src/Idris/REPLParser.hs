@@ -2,7 +2,7 @@ module Idris.REPLParser(parseCmd) where
 
 import Idris.Parser
 import Idris.AbsSyntax
-import Control.Monad
+import Core.TT
 
 import Text.ParserCombinators.Parsec
 import Text.ParserCombinators.Parsec.Expr
@@ -16,7 +16,7 @@ parseCmd i = runParser pCmd i "(input)"
 cmd :: [String] -> IParser ()
 cmd xs = do lchar ':'; docmd xs
     where docmd [] = fail "No such command"
-          docmd (x:xs) = try (void (symbol x)) <|> docmd xs
+          docmd (x:xs) = try (discard (symbol x)) <|> docmd xs
 
 pCmd :: IParser Command
 pCmd = try (do cmd ["q", "quit"]; return Quit)

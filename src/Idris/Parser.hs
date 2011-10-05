@@ -6,7 +6,6 @@ import Core.CoreParser
 import Core.TT
 
 import Text.ParserCombinators.Parsec
-import Text.Parsec.Prim(Parsec)
 import Text.ParserCombinators.Parsec.Expr
 import Text.ParserCombinators.Parsec.Language
 import qualified Text.ParserCombinators.Parsec.Token as PTok
@@ -17,7 +16,7 @@ import Debug.Trace
 
 type TokenParser a = PTok.TokenParser a
 
-type IParser = Parsec String IState
+type IParser = GenParser Char IState
 
 lexer :: TokenParser IState
 lexer  = PTok.makeTokenParser idrisDef
