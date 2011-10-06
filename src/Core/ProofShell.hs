@@ -55,9 +55,9 @@ processCommand (Tac e)  state
 
 runShell :: ShellState -> IO ShellState
 runShell st = do (prompt, parser) <- 
-                           maybe (return ("> ", parseCommand)) 
+                           maybe (return ("TT# ", parseCommand)) 
                                  (\st -> do print st
-                                            return (show (thname st) ++ "> ", parseTactic)) 
+                                            return (show (thname st) ++ "# ", parseTactic)) 
                                  (prf st)
                  x <- readline prompt
                  cmd <- case x of

@@ -47,6 +47,7 @@ iLOG str = do i <- get
 -- Commands in the REPL
 
 data Command = Quit | Help | Eval PTerm 
+             | TTShell 
              | NOP
 
 -- Parsed declarations

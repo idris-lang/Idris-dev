@@ -21,5 +21,6 @@ cmd xs = do lchar ':'; docmd xs
 pCmd :: IParser Command
 pCmd = try (do cmd ["q", "quit"]; return Quit)
    <|> try (do cmd ["h", "?", "help"]; return Help)
+   <|> try (do cmd ["ttshell"]; return TTShell)
    <|> do t <- pFullExpr; return (Eval t)
    <|> do eof; return NOP

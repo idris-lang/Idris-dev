@@ -4,6 +4,7 @@ module Idris.REPL where
 
 import Idris.AbsSyntax
 import Idris.REPLParser
+import Core.ProofShell
 
 import System.Console.Readline
 import Control.Monad
@@ -33,5 +34,9 @@ process :: Command -> Idris ()
 process Help 
     = iputStrLn "At some point I'll write some help text. Thanks for asking though."
 process (Eval t) = iputStrLn $ "Not implemented: " ++ show t
+process TTShell  = do ist <- get
+                      let shst = initState (tt_ctxt ist)
+                      shst' <- lift $ runShell shst
+                      return ()
 process NOP      = return ()
 
