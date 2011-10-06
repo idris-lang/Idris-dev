@@ -16,7 +16,7 @@ plus (S k) y = S (plus k y);
 
 app : Vect a n -> Vect a m -> Vect a (plus n m);
 app VNil      ys = ys;
-app (x :: xs) ys = x :: (app xs ys);
+app (x :: xs) ys = x :: app xs ys;
 
 infixl 5 .+. ;
 

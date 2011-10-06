@@ -64,16 +64,22 @@ instance Ord FixDecl where
 
 data Plicity = Imp | Exp deriving Show
 
-data PDecl = PFix    Fixity [String] -- fixity declaration
-           | PTy     Name   PTerm    -- type declaration
-           | PClause PTerm  PTerm    -- pattern clause
-           | PData   PData           -- data declaration
-    deriving Show
+data PDecl' t = PFix    Fixity [String] -- fixity declaration
+              | PTy     Name   t        -- type declaration
+              | PClause t      t        -- pattern clause
+              | PData   (PData' t)      -- data declaration
+    deriving (Show, Functor)
 
-data PData = PDatadecl { d_name :: Name,
-                         d_tcon :: PTerm,
-                         d_cons :: [(Name, PTerm)] }
-    deriving Show
+data PData' t  = PDatadecl { d_name :: Name,
+                             d_tcon :: t,
+                             d_cons :: [(Name, t)] }
+    deriving (Show, Functor)
+
+-- Handy to get a free function for applying PTerm -> PTerm functions
+-- across a program, by deriving Functor
+
+type PDecl = PDecl' PTerm
+type PData = PData' PTerm
 
 -- High level language terms
 
@@ -87,4 +93,10 @@ data PTerm = PQuote Raw
            | Placeholder
     deriving Show
 
+-- Dealing with implicit arguments
 
+implicitise :: IState -> PTerm -> (PTerm, [Name])
+implicitise ist tm = (tm, [])
+
+addImpl :: IState -> PTerm -> PTerm
+addImpl ist ptm = ptm

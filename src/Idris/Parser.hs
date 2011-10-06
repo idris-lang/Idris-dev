@@ -51,18 +51,21 @@ parseProg fname = do file <- lift $ readFile fname
 pFullExpr = do x <- pExpr; eof; return x
 
 pDecl :: IParser PDecl
-pDecl = do d <- pDecl'; lchar ';'; return d
+pDecl = do d <- pDecl'; lchar ';'; 
+           i <- getState
+           return (fmap (addImpl i) d)
 
 --------- Top Level Declarations ---------
 
 pDecl' :: IParser PDecl
 pDecl' = try pFixity
      <|> try (do n <- pfName; ty <- pTSig
-                 return (PTy n ty))
+                 ty' <- implicit n ty
+                 return (PTy n ty'))
      <|> try pData
      <|> try pPattern
 
--------- Fixity --------
+--------- Fixity ---------
 
 pFixity :: IParser PDecl
 pFixity = do f <- fixity; i <- natural; ops <- sepBy1 operator (lchar ',')
@@ -146,15 +149,19 @@ binary name f assoc = Infix (do { reservedOp name; return f }) assoc
 pData :: IParser PDecl
 pData = try (do reserved "data"; tyn <- pfName; ty <- pTSig
                 reserved "where"
+                ty' <- implicit tyn ty
                 cons <- sepBy1 pConstructor (lchar '|')
-                return $ PData (PDatadecl tyn ty cons))
+                return $ PData (PDatadecl tyn ty' cons))
     <|> do reserved "data"; tyn <- pfName; args <- many iName
            lchar '='
            cons <- sepBy1 pSimpleCon (lchar '|')
            let conty = mkPApp (PRef tyn) (map PRef args)
-           return $ PData (PDatadecl tyn (bindArgs (map (\a -> PSet) args) PSet)
-                                         (map (\ (x, cargs) -> 
-                                            (x, bindArgs cargs conty)) cons))
+           let ty = bindArgs (map (\a -> PSet) args) PSet
+           ty' <- implicit tyn ty
+           cons' <- mapM (\ (x, cargs) -> do let cty = bindArgs cargs conty
+                                             cty' <- implicit x cty
+                                             return (x, cty')) cons
+           return $ PData (PDatadecl tyn ty' cons')
 
 mkPApp t [] = t
 mkPApp t xs = PApp t [] xs
@@ -187,4 +194,18 @@ pPattern = try (do n <- pfName
               lchar '='
               rhs <- pExpr
               return $ PClause (PApp (PRef (UN [op])) [] [l,r]) rhs
+
+-- Dealing with implicit arguments
+
+implicit :: Name -> PTerm -> IParser PTerm
+implicit n ptm 
+    = do i <- getState
+         let (tm', names) = implicitise i ptm
+         setState (i { idris_implicits = addDef n names (idris_implicits i) })
+         return tm'
+
+addImplicits :: PTerm -> IParser PTerm
+addImplicits tm 
+    = do i <- getState
+         return (addImpl i tm)
 
