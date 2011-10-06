@@ -42,10 +42,19 @@ runIdris opts =
 loadModule :: FilePath -> Idris ()
 loadModule f = do iLOG ("Reading " ++ show f)
                   ds <- parseProg f
-                  iLOG (show ds)
+                  iLOG (dumpDecls ds)
                   i <- get
                   iLOG (show (idris_infixes i))
                   return ()
+
+dumpDecls :: [PDecl] -> String
+dumpDecls [] = ""
+dumpDecls (d:ds) = dumpDecl d ++ "\n" ++ dumpDecls ds
+
+dumpDecl (PFix f ops) = show f ++ " ==> " ++ show ops 
+dumpDecl (PTy n t) = "tydecl " ++ show n ++ " : " ++ show t
+dumpDecl (PClause l r) = "pat " ++ show l ++ " = " ++ show r
+dumpDecl (PData d) = "data " ++ show d
 
 getFile :: Opt -> Maybe String
 getFile (Filename str) = Just str

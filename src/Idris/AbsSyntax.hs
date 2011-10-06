@@ -93,10 +93,79 @@ data PTerm = PQuote Raw
            | Placeholder
     deriving Show
 
+namesIn :: IState -> PTerm -> [Name]
+namesIn ist tm = nub $ ni [] tm 
+  where
+    ni env (PRef n)        
+        | not (n `elem` env) 
+            = case lookupCtxt n (idris_implicits ist) of
+                Nothing -> [n]
+                _ -> []
+    ni env (PApp f is es)  = ni env f ++ concatMap (ni env) (map snd is) ++
+                             concatMap (ni env) es
+    ni env (PLam n ty sc)  = ni env ty ++ ni (n:env) sc
+    ni env (PPi _ n ty sc) = ni env ty ++ ni (n:env) sc
+    ni env (PHidden tm)    = ni env tm
+    ni env _               = []
+
 -- Dealing with implicit arguments
 
+-- Add implicit Pi bindings for any names in the term which appear in an
+-- argument position.
+
 implicitise :: IState -> PTerm -> (PTerm, [Name])
-implicitise ist tm = (tm, [])
+implicitise ist tm
+    = let (declimps, ns) = execState (imps [] tm) ([], []) in
+          (pibind ns tm, ns ++ reverse declimps)
+  where
+    imps env (PApp f is es)  
+       = do (decls, ns) <- get
+            let isn = concatMap (namesIn ist) (map snd is)
+            let esn = concatMap (namesIn ist) es
+            put (decls, nub (ns ++ ((isn ++ esn) \\ env)))
+    imps env (PPi Imp n ty sc) 
+        = do imps env ty
+             (decls, ns) <- get
+             put (n:decls, ns)
+             imps (n:env) sc
+    imps env (PPi Exp n ty sc) 
+        = do imps env ty
+             imps (n:env) sc
+    imps env (PLam n ty sc)  
+        = do imps env ty
+             imps (n:env) sc
+    imps env (PHidden tm)    = imps env tm
+    imps env _               = return ()
+
+    pibind []     sc = sc
+    pibind (n:ns) sc = PPi Imp n Placeholder (pibind ns sc)
 
 addImpl :: IState -> PTerm -> PTerm
-addImpl ist ptm = ptm
+addImpl ist ptm = ai [] ptm
+  where
+    ai env (PApp f is es) = let f' = ai env f
+                                is' = map (\ (n, tm) -> (n, ai env tm)) is
+                                es' = map (ai env) es in
+                                      aiFn env f is' es'
+    ai env (PLam n ty sc) = let ty' = ai env ty
+                                sc' = ai (n:env) sc in
+                                PLam n ty' sc'
+    ai env (PPi p n ty sc) = let ty' = ai env ty
+                                 sc' = ai (n:env) sc in
+                                 PPi p n ty' sc'
+    ai env (PHidden tm) = PHidden (ai env tm)
+    ai env tm = tm
+
+    aiFn env (PRef f) is es | not (f `elem` env)
+        = case lookupCtxt f (idris_implicits ist) of
+            Just ns -> PApp (PRef f) (insertImpl ns is) es
+            Nothing -> PApp (PRef f) is es
+    aiFn env f is es = PApp f is es
+
+    insertImpl [] given = []
+    insertImpl (n:ns) given 
+        = case lookup n given of
+            Just val -> (n, val) : insertImpl ns given
+            Nothing  -> (n, Placeholder) : insertImpl ns given
+
+

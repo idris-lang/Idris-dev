@@ -67,6 +67,7 @@ instance Show Name where
 
 
 -- Contexts allow us to map names to things
+-- TODO: Namespaces and ambiguous names
 
 type Ctxt a = Map.Map Name a
 emptyContext = Map.empty

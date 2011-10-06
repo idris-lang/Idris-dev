@@ -109,8 +109,14 @@ pHSimpleExpr = try pSimpleExpr
                   return $ PHidden e
 
 pApp = do f <- pSimpleExpr
+          iargs <- many pImplicitArg
           args <- many1 pSimpleExpr
-          return (PApp f [] args)
+          return (PApp f iargs args)
+
+pImplicitArg = do lchar '{'; n <- iName
+                  v <- option (PRef n) (do lchar '='; pExpr)
+                  lchar '}'
+                  return (n, v)
 
 pTSig = do lchar ':'
            pExpr
@@ -173,7 +179,8 @@ bindArgs (x:xs) t = PPi Exp (MN 0 "t") x (bindArgs xs t)
 pConstructor :: IParser (Name, PTerm)
 pConstructor 
     = do cn <- pfName; ty <- pTSig
-         return (cn, ty)
+         ty' <- implicit cn ty
+         return (cn, ty')
 
 pSimpleCon :: IParser (Name, [PTerm])
 pSimpleCon = do cn <- pfName
@@ -184,10 +191,11 @@ pSimpleCon = do cn <- pfName
 
 pPattern :: IParser PDecl
 pPattern = try (do n <- pfName
+                   iargs <- many pImplicitArg
                    args <- many pHSimpleExpr
                    lchar '='
                    rhs <- pExpr
-                   return $ PClause (PApp (PRef n) [] args) rhs)
+                   return $ PClause (PApp (PRef n) iargs args) rhs)
        <|> do l <- pSimpleExpr
               op <- operator
               r <- pSimpleExpr
