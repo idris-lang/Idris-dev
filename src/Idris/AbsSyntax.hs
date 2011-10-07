@@ -7,6 +7,7 @@ import Core.TT
 import Core.Evaluate
 
 import Control.Monad.State
+import Control.Monad.Trans.State.Lazy(liftCatch)
 import Data.List
 import Data.Char
 
@@ -59,6 +60,9 @@ iLOG str = do i <- get
               when (Logging `elem` idris_options i)
                    $ do lift (putStrLn str)
                         put (i { idris_log = idris_log i ++ str ++ "\n" } )
+
+idrisCatch :: Idris a -> (IOError -> Idris a) -> Idris a
+idrisCatch op handler = liftCatch catch op handler
 
 -- Commands in the REPL
 

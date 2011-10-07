@@ -25,7 +25,7 @@ Executable     miniidris
                               Idris.REPLParser, Idris.ElabDecls
 
                Build-depends:   base>=4 && <5, parsec, mtl, Cabal, readline,
-                                containers, process
+                                containers, process, transformers
                                 
                Extensions:      MultiParamTypeClasses, FunctionalDependencies,
                                 FlexibleInstances
