@@ -72,10 +72,13 @@ instance Ord FixDecl where
 
 data Plicity = Imp | Exp deriving Show
 
-data PDecl' t = PFix    Fixity [String] -- fixity declaration
-              | PTy     Name   t        -- type declaration
-              | PClause t      t        -- pattern clause
-              | PData   (PData' t)      -- data declaration
+data PDecl' t = PFix     Fixity [String] -- fixity declaration
+              | PTy      Name t          -- type declaration
+              | PClauses [PClause' t]    -- pattern clause
+              | PData    (PData' t)      -- data declaration
+    deriving Functor
+
+data PClause' t = PClause Name t t
     deriving Functor
 
 data PData' t  = PDatadecl { d_name :: Name,
@@ -86,9 +89,9 @@ data PData' t  = PDatadecl { d_name :: Name,
 -- Handy to get a free function for applying PTerm -> PTerm functions
 -- across a program, by deriving Functor
 
-type PDecl = PDecl' PTerm
-type PData = PData' PTerm
-
+type PDecl   = PDecl' PTerm
+type PData   = PData' PTerm
+type PClause = PClause' PTerm
 -- High level language terms
 
 data PTerm = PQuote Raw
@@ -100,17 +103,25 @@ data PTerm = PQuote Raw
            | PSet
            | Placeholder
 
+--- Pretty printing declarations and terms
+
 instance Show PTerm where
     show tm = showImp False tm
 
 instance Show PDecl where
     show (PFix f ops) = show f ++ " " ++ showSep ", " ops
     show (PTy n ty) = show n ++ " : " ++ show ty
-    show (PClause l r) = show l ++ " = " ++ show r
+    show (PClauses c) = showSep "\n" (map show c)
     show (PData d) = show d
+
+instance Show PClause where
+    show c = showCImp False c
 
 instance Show PData where
     show d = showDImp False d
+
+showCImp :: Bool -> PClause -> String
+showCImp impl (PClause n l r) = showImp impl l ++ " = " ++ showImp impl r
 
 showDImp :: Bool -> PData -> String
 showDImp impl (PDatadecl n ty cons) 

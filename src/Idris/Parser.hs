@@ -45,13 +45,21 @@ parseProg fname = do file <- lift $ readFile fname
                                          return (ps, i')) i fname file) of
                         Left err -> fail (show err)
                         Right (x, i) -> do put i
-                                           return x
+                                           return (collect x)
 
+-- Collect PClauses with the same function name
+collect :: [PDecl] -> [PDecl]
+collect (PClauses [c@(PClause n l r)] : ds) = clauses n [c] ds
+  where clauses n acc (PClauses [c@(PClause n' l r)] : ds)
+           | n == n' = clauses n (c : acc) ds
+        clauses n acc xs = PClauses (reverse acc) : collect xs
+collect (d : ds) = d : collect ds
 
 pFullExpr = do x <- pExpr; eof; return x
 
 pDecl :: IParser PDecl
-pDecl = do d <- pDecl'; lchar ';'; 
+pDecl = do d <- pDecl'
+           lchar ';'
            i <- getState
            return (fmap (addImpl i) d)
 
@@ -190,18 +198,23 @@ pSimpleCon = do cn <- pfName
 --------- Pattern match clauses ---------
 
 pPattern :: IParser PDecl
-pPattern = try (do n <- pfName
-                   iargs <- many pImplicitArg
-                   args <- many pHSimpleExpr
-                   lchar '='
-                   rhs <- pExpr
-                   return $ PClause (PApp (PRef n) iargs args) rhs)
+pPattern = do clause <- pClause 
+              return (PClauses [clause]) -- collect together later
+
+pClause :: IParser PClause
+pClause = try (do n <- pfName
+                  iargs <- many pImplicitArg
+                  args <- many pHSimpleExpr
+                  lchar '='
+                  rhs <- pExpr
+                  return $ PClause n (PApp (PRef n) iargs args) rhs)
        <|> do l <- pSimpleExpr
               op <- operator
+              let n = UN [op]
               r <- pSimpleExpr
               lchar '='
               rhs <- pExpr
-              return $ PClause (PApp (PRef (UN [op])) [] [l,r]) rhs
+              return $ PClause n (PApp (PRef n) [] [l,r]) rhs
 
 -- Dealing with implicit arguments
 
