@@ -60,6 +60,7 @@ iLOG str = do i <- get
                    $ do lift (putStrLn str)
                         put (i { idris_log = idris_log i ++ str ++ "\n" } )
 
+-- Taken from the library source code - for ghc 6.12/7 compatibility
 liftCatch :: (m (a,s) -> (e -> m (a,s)) -> m (a,s)) ->
     StateT s m a -> (e -> StateT s m a) -> StateT s m a
 liftCatch catchError m h =
@@ -209,6 +210,27 @@ namesIn ist tm = nub $ ni [] tm
     ni env (PPi _ n ty sc) = ni env ty ++ ni (n:env) sc
     ni env (PHidden tm)    = ni env tm
     ni env _               = []
+
+-- For inferring types of things
+
+inferTy   = MN 0 "__Infer"
+inferCon  = MN 0 "__infer"
+inferDecl = PDatadecl inferTy 
+                      PSet
+                      [(inferCon, PPi Imp (MN 0 "A") PSet (
+                                  PPi Exp (MN 0 "a") (PRef (MN 0 "A"))
+                                  (PRef inferTy)))]
+
+infTerm t = PApp (PRef inferCon) [(MN 0 "A", Placeholder)] [t]
+infP = P (TCon 0) inferTy (Set 0)
+
+getInferTerm, getInferType :: Term -> Term
+getInferTerm (Bind n b sc) = Bind n b $ getInferTerm sc
+getInferTerm (App (App _ _) tm) = tm
+
+getInferType (Bind n b sc) = Bind n b $ getInferType sc
+getInferType (App (App _ ty) _) = ty
+
 
 -- Dealing with implicit arguments
 

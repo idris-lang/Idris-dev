@@ -9,6 +9,8 @@ import Core.Elaborate
 import Core.Evaluate
 import Core.Typecheck
 
+import Control.Monad
+
 elabType :: Name -> PTerm -> Idris ()
 elabType n ty 
     = do ctxt <- getContext
@@ -38,10 +40,38 @@ elabCon (n, t)
          return (n, cty)
 
 elabClauses :: [PClause] -> Idris ()
-elabClauses _ = return ()
+elabClauses cs = do pats <- mapM elabClause cs
+                    iLOG (showSep "\n" (map (\ (l,r) -> 
+                                            show l ++ " = " ++ 
+                                            show r) pats))
 
-elabClause :: PClause -> Idris ()
-elabClause _ = return ()
+elabClause :: PClause -> Idris (Term, Term)
+elabClause (PClause _ lhs rhs) 
+   = do ctxt <- getContext
+        (lhs', _) <- tclift $ elaborate ctxt (MN 0 "patLHS") infP
+                                (build True (infTerm lhs))
+        let lhs_tm = getInferTerm lhs'
+        let lhs_ty = getInferType lhs'
+        (clhs, clhsty) <- tclift $ recheck ctxt [] lhs_tm
+        (rhs', _) <- tclift $ elaborate ctxt (MN 0 "patRHS") infP
+                                (do pbinds lhs_tm
+                                    build False (infTerm rhs)
+                                    psolve lhs_tm
+                                    get_term)
+        let rhs_tm = getInferTerm rhs'
+        let rhs_ty = getInferType rhs'
+        (crhs, crhsty) <- tclift $ recheck ctxt [] rhs_tm
+        iLOG $ show clhsty
+        iLOG $ show crhsty
+        tclift $ converts ctxt [] clhsty crhsty
+        return (clhs, crhs)
+  where
+    pbinds (Bind n (PVar t) sc) = do attack; patbind n (forget t)
+                                     pbinds sc
+    pbinds tm = return ()
+
+    psolve (Bind n (PVar t) sc) = do solve; psolve sc
+    psolve tm = return ()
 
 elabDecl :: PDecl -> Idris ()
 elabDecl d = idrisCatch (elabDecl' d) (\e -> iputStrLn (show e))
@@ -65,10 +95,17 @@ build pattern tm = do elab pattern tm
                       get_term 
 
 elab :: Bool -> PTerm -> Elab ()
-elab pattern tm = elab' tm
+elab pattern tm = do elab' tm
+                     when pattern -- convert remaining holes to pattern vars
+                          mkPat
   where
     isph (_, Placeholder) = True
     isph _ = False
+
+    mkPat = do hs <- get_holes
+               case hs of
+                  (h: hs) -> do patvar h; mkPat
+                  [] -> return ()
 
     elab' PSet           = do exact (RSet 0); solve
     elab' (PQuote r)     = do exact r; solve

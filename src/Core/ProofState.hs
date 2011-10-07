@@ -48,6 +48,7 @@ data Tactic = Attack
             | Intro Name
             | Forall Name Raw
             | PatVar Name
+            | PatBind Name Raw
             | Focus Name
             | MoveLast Name
             | ProofState
@@ -223,7 +224,7 @@ intro n ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' =
            Bind y (Pi s) t -> let t' = instantiate (P Bound n s) (pToV y t) in 
                                   return $ Bind n (Lam s) (Bind x (Hole t') (P Bound x t'))
            _ -> fail "Nothing to introduce"
-intro ctxt env _ _ = fail "Can't introduce here."
+intro n ctxt env _ = fail "Can't introduce here."
 
 forall :: Name -> Raw -> RunTactic
 forall n ty ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' =
@@ -231,11 +232,19 @@ forall n ty ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' =
        lift $ isSet ctxt env tyt
        lift $ isSet ctxt env t
        return $ Bind n (Pi tyv) (Bind x (Hole t) (P Bound x t))
+forall n ty ctxt env _ = fail "Can't pi bind here"
 
 patvar :: Name -> RunTactic
 patvar n ctxt env (Bind x (Hole t) sc) =
     do action (\ps -> ps { holes = holes ps \\ [x] })
        return $ Bind n (PVar t) (instantiate (P Bound n t) (pToV x sc))
+
+patbind :: Name -> Raw -> RunTactic
+patbind n ty ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' =
+    do (tyv, tyt) <- lift $ check ctxt env ty
+       lift $ isSet ctxt env tyt
+       return $ Bind n (PVar tyv) (Bind x (Hole t) (P Bound x t))
+patbind n ty ctxt env _ = fail "Can't pattern bind here"
 
 compute :: RunTactic
 compute ctxt env (Bind x (Hole ty) sc) =
@@ -336,6 +345,7 @@ process t h = tactic (Just h) (mktac t)
          mktac (Intro n)     = intro n
          mktac (Forall n t)  = forall n t
          mktac (PatVar n)    = patvar n
+         mktac (PatBind n t) = patbind n t
          mktac (CheckIn r)   = check_in r
          mktac (EvalIn r)    = eval_in r
          mktac (Focus n)     = focus n

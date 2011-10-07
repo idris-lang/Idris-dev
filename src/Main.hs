@@ -46,6 +46,7 @@ loadModule f = do iLOG ("Reading " ++ show f)
                   i <- get
                   iLOG (show (idris_infixes i))
                   -- Now add all the declarations to the context
+                  elabDecl (PData inferDecl) -- a handy primitive
                   mapM_ elabDecl ds
                   return ()
 
