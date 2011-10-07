@@ -7,7 +7,6 @@ import Core.TT
 import Core.Evaluate
 
 import Control.Monad.State
-import Control.Monad.Trans.State.Lazy(liftCatch)
 import Data.List
 import Data.Char
 
@@ -60,6 +59,11 @@ iLOG str = do i <- get
               when (Logging `elem` idris_options i)
                    $ do lift (putStrLn str)
                         put (i { idris_log = idris_log i ++ str ++ "\n" } )
+
+liftCatch :: (m (a,s) -> (e -> m (a,s)) -> m (a,s)) ->
+    StateT s m a -> (e -> StateT s m a) -> StateT s m a
+liftCatch catchError m h =
+    StateT $ \s -> runStateT m s `catchError` \e -> runStateT (h e) s
 
 idrisCatch :: Idris a -> (IOError -> Idris a) -> Idris a
 idrisCatch op handler = liftCatch catch op handler
