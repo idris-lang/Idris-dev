@@ -48,7 +48,7 @@ data Tactic = Attack
             | Intro Name
             | Forall Name Raw
             | PatVar Name
-            | PatBind Name Raw
+            | PatBind Name
             | Focus Name
             | MoveLast Name
             | ProofState
@@ -239,12 +239,14 @@ patvar n ctxt env (Bind x (Hole t) sc) =
     do action (\ps -> ps { holes = holes ps \\ [x] })
        return $ Bind n (PVar t) (instantiate (P Bound n t) (pToV x sc))
 
-patbind :: Name -> Raw -> RunTactic
-patbind n ty ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' =
-    do (tyv, tyt) <- lift $ check ctxt env ty
-       lift $ isSet ctxt env tyt
-       return $ Bind n (PVar tyv) (Bind x (Hole t) (P Bound x t))
-patbind n ty ctxt env _ = fail "Can't pattern bind here"
+patbind :: Name -> RunTactic
+patbind n ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' =
+    do let t' = normalise ctxt env t
+       case t' of
+           Bind y (PVTy s) t -> let t' = instantiate (P Bound n s) (pToV y t) in
+                                    return $ Bind n (PVar s) (Bind x (Hole t') (P Bound x t'))
+           _ -> fail "Nothing to pattern bind"
+patbind n ctxt env _ = fail "Can't pattern bind here"
 
 compute :: RunTactic
 compute ctxt env (Bind x (Hole ty) sc) =
@@ -345,7 +347,7 @@ process t h = tactic (Just h) (mktac t)
          mktac (Intro n)     = intro n
          mktac (Forall n t)  = forall n t
          mktac (PatVar n)    = patvar n
-         mktac (PatBind n t) = patbind n t
+         mktac (PatBind n)   = patbind n
          mktac (CheckIn r)   = check_in r
          mktac (EvalIn r)    = eval_in r
          mktac (Focus n)     = focus n

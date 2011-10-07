@@ -53,20 +53,15 @@ elabClause (PClause _ lhs rhs)
         let lhs_tm = getInferTerm lhs'
         let lhs_ty = getInferType lhs'
         (clhs, clhsty) <- tclift $ recheck ctxt [] lhs_tm
-        (rhs', _) <- tclift $ elaborate ctxt (MN 0 "patRHS") infP
+        (rhs', _) <- tclift $ elaborate ctxt (MN 0 "patRHS") clhsty
                                 (do pbinds lhs_tm
-                                    build False (infTerm rhs)
+                                    build False rhs
                                     psolve lhs_tm
                                     get_term)
-        let rhs_tm = getInferTerm rhs'
-        let rhs_ty = getInferType rhs'
-        (crhs, crhsty) <- tclift $ recheck ctxt [] rhs_tm
-        iLOG $ show clhsty
-        iLOG $ show crhsty
-        tclift $ converts ctxt [] clhsty crhsty
+        (crhs, crhsty) <- tclift $ recheck ctxt [] rhs'
         return (clhs, crhs)
   where
-    pbinds (Bind n (PVar t) sc) = do attack; patbind n (forget t)
+    pbinds (Bind n (PVar t) sc) = do attack; patbind n 
                                      pbinds sc
     pbinds tm = return ()
 

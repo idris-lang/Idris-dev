@@ -147,8 +147,8 @@ forall n t = processTactic' (Forall n t)
 patvar :: Name -> Elab ()
 patvar n = processTactic' (PatVar n)
 
-patbind :: Name -> Raw -> Elab ()
-patbind n ty = processTactic' (PatBind n ty)
+patbind :: Name -> Elab ()
+patbind n = processTactic' (PatBind n)
 
 focus :: Name -> Elab ()
 focus n = processTactic' (Focus n)

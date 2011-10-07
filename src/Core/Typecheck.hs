@@ -118,7 +118,7 @@ check ctxt env (RBind n b sc)
                checkNotHoley 0 sct
                return (Bind n (Guess t v) scv, sct)
         discharge n (PVar t) scv sct
-          = return (Bind n (PVar t) scv, Bind n (PVar t) sct)
+          = return (Bind n (PVar t) scv, Bind n (PVTy t) sct)
 
         checkNotHoley i (V v) 
             | v == i = fail "You can't put a hole where a hole don't belong"
