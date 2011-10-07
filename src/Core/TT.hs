@@ -50,6 +50,11 @@ instance MonadPlus TC where
 discard :: Monad m => m a -> m ()
 discard f = f >> return ()
 
+showSep :: String -> [String] -> String
+showSep sep [] = ""
+showSep sep [x] = x
+showSep sep (x:xs) = x ++ sep ++ showSep sep xs
+
 -- RAW TERMS ----------------------------------------------------------------
 
 -- Names are hierarchies of strings, describing scope (so no danger of

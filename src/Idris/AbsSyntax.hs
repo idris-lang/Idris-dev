@@ -1,4 +1,5 @@
-{-# LANGUAGE MultiParamTypeClasses, FlexibleInstances, DeriveFunctor #-}
+{-# LANGUAGE MultiParamTypeClasses, FlexibleInstances, DeriveFunctor,
+             TypeSynonymInstances #-}
 
 module Idris.AbsSyntax where
 
@@ -56,7 +57,12 @@ data Command = Quit | Help | Eval PTerm
 data Fixity = Infixl { prec :: Int } 
             | Infixr { prec :: Int }
             | InfixN { prec :: Int } 
-    deriving (Show, Eq)
+    deriving Eq
+
+instance Show Fixity where
+    show (Infixl i) = "infixl " ++ show i
+    show (Infixr i) = "infixr " ++ show i
+    show (InfixN i) = "infix " ++ show i
 
 data FixDecl = Fix Fixity String 
     deriving (Show, Eq)
@@ -70,12 +76,12 @@ data PDecl' t = PFix    Fixity [String] -- fixity declaration
               | PTy     Name   t        -- type declaration
               | PClause t      t        -- pattern clause
               | PData   (PData' t)      -- data declaration
-    deriving (Show, Functor)
+    deriving Functor
 
 data PData' t  = PDatadecl { d_name :: Name,
                              d_tcon :: t,
                              d_cons :: [(Name, t)] }
-    deriving (Show, Functor)
+    deriving Functor
 
 -- Handy to get a free function for applying PTerm -> PTerm functions
 -- across a program, by deriving Functor
@@ -96,6 +102,21 @@ data PTerm = PQuote Raw
 
 instance Show PTerm where
     show tm = showImp False tm
+
+instance Show PDecl where
+    show (PFix f ops) = show f ++ " " ++ showSep ", " ops
+    show (PTy n ty) = show n ++ " : " ++ show ty
+    show (PClause l r) = show l ++ " = " ++ show r
+    show (PData d) = show d
+
+instance Show PData where
+    show d = showDImp False d
+
+showDImp :: Bool -> PData -> String
+showDImp impl (PDatadecl n ty cons) 
+   = "data " ++ show n ++ " : " ++ showImp impl ty ++ " where\n\t"
+     ++ showSep "\n\t| " 
+            (map (\ (n, t) -> show n ++ " : " ++ showImp impl t) cons)
 
 showImp :: Bool -> PTerm -> String
 showImp impl tm = se 10 tm where

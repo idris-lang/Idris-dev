@@ -51,10 +51,10 @@ dumpDecls :: [PDecl] -> String
 dumpDecls [] = ""
 dumpDecls (d:ds) = dumpDecl d ++ "\n" ++ dumpDecls ds
 
-dumpDecl (PFix f ops) = show f ++ " ==> " ++ show ops 
+dumpDecl (PFix f ops) = show f ++ " " ++ showSep ", " ops 
 dumpDecl (PTy n t) = "tydecl " ++ show n ++ " : " ++ showImp True t
 dumpDecl (PClause l r) = "pat " ++ showImp True l ++ " = " ++ showImp True r
-dumpDecl (PData d) = "data " ++ show d
+dumpDecl (PData d) = "data " ++ showDImp True d
 
 getFile :: Opt -> Maybe String
 getFile (Filename str) = Just str
