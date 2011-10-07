@@ -52,8 +52,8 @@ dumpDecls [] = ""
 dumpDecls (d:ds) = dumpDecl d ++ "\n" ++ dumpDecls ds
 
 dumpDecl (PFix f ops) = show f ++ " ==> " ++ show ops 
-dumpDecl (PTy n t) = "tydecl " ++ show n ++ " : " ++ show t
-dumpDecl (PClause l r) = "pat " ++ show l ++ " = " ++ show r
+dumpDecl (PTy n t) = "tydecl " ++ show n ++ " : " ++ showImp True t
+dumpDecl (PClause l r) = "pat " ++ showImp True l ++ " = " ++ showImp True r
 dumpDecl (PData d) = "data " ++ show d
 
 getFile :: Opt -> Maybe String

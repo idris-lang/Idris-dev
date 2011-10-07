@@ -7,6 +7,7 @@ import Core.Evaluate
 
 import Control.Monad.State
 import Data.List
+import Data.Char
 
 data IOption = Logging
     deriving (Show, Eq)
@@ -92,7 +93,51 @@ data PTerm = PQuote Raw
            | PHidden PTerm -- irrelevant or hidden pattern
            | PSet
            | Placeholder
-    deriving Show
+
+instance Show PTerm where
+    show tm = showImp False tm
+
+showImp :: Bool -> PTerm -> String
+showImp impl tm = se 10 tm where
+    se p (PQuote r) = "![" ++ show r ++ "]"
+    se p (PRef n) = show n
+    se p (PLam n ty sc) = bracket p 2 $ "\\ " ++ show n ++ " => " ++ show sc
+    se p (PPi Exp n ty sc)
+        | n `elem` allNamesIn sc = bracket p 2 $
+                                    "(" ++ show n ++ " : " ++ se 10 ty ++ 
+                                    ") -> " ++ se 10 sc
+        | otherwise = bracket p 2 $ se 10 ty ++ " -> " ++ se 10 sc
+    se p (PPi Imp n ty sc)
+        | impl = bracket p 2 $ "{" ++ show n ++ " : " ++ se 10 ty ++ 
+                               "} -> " ++ se 10 sc
+        | otherwise = se 10 sc
+    se p (PApp (PRef op@(UN [f:_])) _ [l, r])
+        | not impl && not (isAlpha f) 
+            = bracket p 1 $ se 1 l ++ " " ++ show op ++ " " ++ se 1 r
+    se p (PApp f imps args) 
+        = bracket p 1 $ se 1 f ++ (if impl then concatMap siArg imps else "")
+                               ++ concatMap seArg args
+    se p (PHidden tm) = "." ++ se 0 tm
+    se p PSet = "Set"
+    se p Placeholder = "_"
+
+    seArg arg      = " " ++ se 0 arg
+    siArg (n, val) = " {" ++ show n ++ " = " ++ se 10 val ++ "}"
+
+    bracket outer inner str | inner > outer = "(" ++ str ++ ")"
+                            | otherwise = str
+
+allNamesIn :: PTerm -> [Name]
+allNamesIn tm = nub $ ni [] tm 
+  where
+    ni env (PRef n)        
+        | not (n `elem` env) = [n]
+    ni env (PApp f is es)  = ni env f ++ concatMap (ni env) (map snd is) ++
+                             concatMap (ni env) es
+    ni env (PLam n ty sc)  = ni env ty ++ ni (n:env) sc
+    ni env (PPi _ n ty sc) = ni env ty ++ ni (n:env) sc
+    ni env (PHidden tm)    = ni env tm
+    ni env _               = []
 
 namesIn :: IState -> PTerm -> [Name]
 namesIn ist tm = nub $ ni [] tm 
