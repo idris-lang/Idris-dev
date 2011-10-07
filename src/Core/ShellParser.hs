@@ -51,13 +51,13 @@ pTactic = do reserved "attack";  return attack
       <|> do reserved "exact";   tm <- pTerm; return (exact tm)
       <|> do reserved "fill";    tm <- pTerm; return (fill tm)
       <|> do reserved "apply";   tm <- pTerm; args <- many pArgType; 
-             return (apply tm args)
+             return (discard (apply tm args))
       <|> do reserved "solve";   return solve
       <|> do reserved "compute"; return compute
       <|> do reserved "intro";   n <- iName; return (intro n)
       <|> do reserved "forall";  n <- iName; lchar ':'; ty <- pTerm
              return (forall n ty)
---       <|> do reserved "arg";     n <- iName; t <- iName; return (arg n t)
+      <|> do reserved "arg";     n <- iName; t <- iName; return (arg n t)
       <|> do reserved "patvar";  n <- iName; return (patvar n)
 --       <|> do reserved "patarg";  n <- iName; t <- iName; return (patarg n t)
       <|> do reserved "eval";    t <- pTerm; return (eval_in t)

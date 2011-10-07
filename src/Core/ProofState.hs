@@ -53,6 +53,7 @@ data Tactic = Attack
             | ProofState
             | Undo
             | QED
+    deriving Show
 
 -- Some utilites on proof and tactic states
 
@@ -213,7 +214,7 @@ solve ctxt env (Bind x (Guess ty val) sc)
    | pureTerm val = do action (\ps -> ps { holes = holes ps \\ [x] })
                        return $ {- Bind x (Let ty val) sc -} instantiate val (pToV x sc)
    | otherwise    = fail "I see a hole in your solution."
-solve _ _ _ = fail "Not a guess."
+solve _ _ h = fail $ "Not a guess " ++ show h
 
 intro :: Name -> RunTactic
 intro n ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' =

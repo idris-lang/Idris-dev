@@ -18,7 +18,7 @@ import Core.Evaluate
 import Idris.AbsSyntax
 import Idris.Parser
 import Idris.REPL
-
+import Idris.ElabDecls
 
 -- Main program reads command line options, parses the main program, and gets
 -- on with the REPL.
@@ -45,6 +45,8 @@ loadModule f = do iLOG ("Reading " ++ show f)
                   iLOG (dumpDecls ds)
                   i <- get
                   iLOG (show (idris_infixes i))
+                  -- Now add all the declarations to the context
+                  mapM_ elabDecl ds
                   return ()
 
 dumpDecls :: [PDecl] -> String

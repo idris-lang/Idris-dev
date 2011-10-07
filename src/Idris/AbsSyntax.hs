@@ -31,8 +31,22 @@ idrisInit = IState emptyContext [] emptyContext "" []
 -- global state (hence the IO inner monad).
 type Idris a = StateT IState IO a
 
+getContext :: Idris Context
+getContext = do i <- get; return (tt_ctxt i)
+
+setContext :: Context -> Idris ()
+setContext ctxt = do i <- get; put (i { tt_ctxt = ctxt } )
+
+updateContext :: (Context -> Context) -> Idris ()
+updateContext f = do i <- get; put (i { tt_ctxt = f (tt_ctxt i) } )
+
 iputStrLn :: String -> Idris ()
 iputStrLn = lift.putStrLn
+
+tclift :: Show a => TC a -> Idris a
+tclift tc = case tc of
+               OK v -> return v
+               err -> fail (show err)
 
 setOpt :: IOption -> Bool -> Idris ()
 setOpt o True  = do i <- get
@@ -143,6 +157,8 @@ showImp impl tm = se 10 tm where
         | impl = bracket p 2 $ "{" ++ show n ++ " : " ++ se 10 ty ++ 
                                "} -> " ++ se 10 sc
         | otherwise = se 10 sc
+    se p (PApp (PRef f) _ [])
+        | not impl = show f
     se p (PApp (PRef op@(UN [f:_])) _ [l, r])
         | not impl && not (isAlpha f) 
             = bracket p 1 $ se 1 l ++ " " ++ show op ++ " " ++ se 1 r
@@ -221,10 +237,15 @@ implicitise ist tm
 addImpl :: IState -> PTerm -> PTerm
 addImpl ist ptm = ai [] ptm
   where
-    ai env (PApp f is es) = let f' = ai env f
-                                is' = map (\ (n, tm) -> (n, ai env tm)) is
+    ai env (PRef f)       = aiFn env (PRef f) [] []
+    ai env (PApp (PRef f) is es) 
+                          = let is' = map (\ (n, tm) -> (n, ai env tm)) is 
                                 es' = map (ai env) es in
-                                      aiFn env f is' es'
+                                      aiFn env (PRef f) is' es'
+    ai env (PApp f is es) = let f' = ai env f
+                                is' = map (\ (n, tm) -> (n, ai env tm)) is 
+                                es' = map (ai env) es in
+                                      aiFn env f' is' es'
     ai env (PLam n ty sc) = let ty' = ai env ty
                                 sc' = ai (n:env) sc in
                                 PLam n ty' sc'
@@ -236,9 +257,12 @@ addImpl ist ptm = ai [] ptm
 
     aiFn env (PRef f) is es | not (f `elem` env)
         = case lookupCtxt f (idris_implicits ist) of
-            Just ns -> PApp (PRef f) (insertImpl ns is) es
-            Nothing -> PApp (PRef f) is es
-    aiFn env f is es = PApp f is es
+            Just ns -> pApp (PRef f) (insertImpl ns is) es
+            Nothing -> pApp (PRef f) is es
+    aiFn env f is es = pApp f is es
+
+    pApp f [] [] = f
+    pApp f is es = PApp f is es
 
     insertImpl [] given = []
     insertImpl (n:ns) given 

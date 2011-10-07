@@ -10,6 +10,10 @@ data Vect : Set -> Nat -> Set where
     VNil  : Vect a O
   | (::) : a -> Vect a k -> Vect a (S k); 
 
+data Env : Vect Set n -> Set where
+    Empty : Env VNil
+  | Extend : {xs : Vect Set n} -> a -> Env xs -> Env (a :: xs);
+
 plus : Nat -> Nat -> Nat;
 plus O y = y;
 plus (S k) y = S (plus k y);

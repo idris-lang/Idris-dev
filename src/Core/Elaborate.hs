@@ -29,11 +29,19 @@ data Command = Theorem Name Raw
 
 type Elab a = StateT (ProofState, String) TC a
 
-runElab :: Elab a -> ProofState -> TC (ProofState, String)
-runElab e ps = execStateT e (ps, "")
+runElab :: Elab a -> ProofState -> TC (a, (ProofState, String))
+runElab e ps = runStateT e (ps, "")
+
+execElab :: Elab a -> ProofState -> TC (ProofState, String)
+execElab e ps = execStateT e (ps, "")
 
 initElaborator :: Name -> Context -> Type -> ProofState
 initElaborator = newProof
+
+elaborate :: Context -> Name -> Type -> Elab a -> TC (a, String)
+elaborate ctxt n ty elab = do let ps = initElaborator n ctxt ty
+                              (a, (ps', str)) <- runElab elab ps
+                              return (a, str)
 
 processTactic' t = do (p, logs) <- get
                       (p', log) <- lift $ processTactic t p
@@ -46,6 +54,11 @@ processTactic' t = do (p, logs) <- get
 get_context :: Elab Context
 get_context = do (p, _) <- get
                  return (context p)
+
+-- get the proof term
+get_term :: Elab Term
+get_term = do (p, _) <- get
+              return (pterm p)
 
 -- get the local context at the currently in focus hole
 get_env :: Elab Env
@@ -174,7 +187,7 @@ prepare_apply fn imps =
     doClaims t [] claims = return (reverse claims)
     doClaims _ _ _ = fail "Wrong number of arguments"
 
-apply :: Raw -> [Bool] -> Elab ()
+apply :: Raw -> [Bool] -> Elab [Name]
 apply fn imps = 
     do args <- prepare_apply fn imps
        fill (raw_apply fn (map Var args))
@@ -186,6 +199,7 @@ apply fn imps =
        let unify = (n, filter (\ (n, t) -> not (n `elem` dontunify)) hs)
        put (p { unified = unify }, s)
        end_unify
+       return args
 
 -- Abstract over an argument of unknown type, giving a name for the hole
 -- which we'll fill with the argument type too.
