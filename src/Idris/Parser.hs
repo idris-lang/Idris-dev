@@ -54,6 +54,7 @@ collect (PClauses [c@(PClause n l r)] : ds) = clauses n [c] ds
            | n == n' = clauses n (c : acc) ds
         clauses n acc xs = PClauses (reverse acc) : collect xs
 collect (d : ds) = d : collect ds
+collect [] = []
 
 pFullExpr = do x <- pExpr; eof; return x
 
