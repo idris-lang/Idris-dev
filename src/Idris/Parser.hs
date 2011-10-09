@@ -56,7 +56,10 @@ collect (PClauses _ [c@(PClause n l r)] : ds) = clauses n [c] ds
 collect (d : ds) = d : collect ds
 collect [] = []
 
-pFullExpr = do x <- pExpr; eof; return x
+pFullExpr :: IParser PTerm
+pFullExpr = do x <- pExpr; eof; 
+               i <- getState
+               return (addImpl i x)
 
 pDecl :: IParser PDecl
 pDecl = do d <- pDecl'
@@ -222,8 +225,8 @@ pClause = try (do n <- pfName
 implicit :: Name -> PTerm -> IParser PTerm
 implicit n ptm 
     = do i <- getState
-         let (tm', names) = implicitise i ptm
-         setState (i { idris_implicits = addDef n names (idris_implicits i) })
+         let (tm', name_arity) = implicitise i ptm
+         setState (i { idris_implicits = addDef n name_arity (idris_implicits i) })
          return tm'
 
 addImplicits :: PTerm -> IParser PTerm

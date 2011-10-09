@@ -117,6 +117,12 @@ exact t = processTactic' (Exact t)
 fill :: Raw -> Elab ()
 fill t = processTactic' (Fill t)
 
+prep_fill :: Name -> [Name] -> Elab ()
+prep_fill n ns = processTactic' (PrepFill n ns)
+
+complete_fill :: Elab ()
+complete_fill = processTactic' CompleteFill
+
 solve :: Elab ()
 solve = processTactic' Solve
 
@@ -171,8 +177,10 @@ undo = processTactic' Undo
 prepare_apply :: Raw -> [Bool] -> Elab [Name]
 prepare_apply fn imps =
     do ty <- get_type fn
+       ctxt <- get_context
+       env <- get_env
        -- let claims = getArgs ty imps
-       claims <- doClaims ty imps []
+       claims <- doClaims (normalise ctxt env ty) imps []
        (p, s) <- get
        -- reverse the claims we made so that args go left to right
        let n = length (filter not imps)
@@ -203,6 +211,49 @@ apply fn imps =
        put (p { unified = unify }, s)
        end_unify
        return args
+
+apply_elab :: Name -> [Maybe (Elab ())] -> Elab ()
+apply_elab n args = 
+    do ty <- get_type (Var n)
+       ctxt <- get_context
+       env <- get_env
+       claims <- doClaims (normalise ctxt env ty) args []
+       prep_fill n (map fst claims)
+       elabClaims claims
+       complete_fill
+       end_unify
+  where
+    doClaims (Bind n' (Pi t) sc) (i : is) claims =
+        do n <- unique_hole n'
+           when (null claims) (start_unify n)
+           let sc' = instantiate (P Bound n t) sc
+           claim n (forget t)
+           doClaims sc' is ((n, i) : claims)
+    doClaims t [] claims = return (reverse claims)
+    doClaims _ _ _ = fail "Wrong number of arguments"
+
+    elabClaims [] = return ()
+    elabClaims ((n, Nothing) : xs) = elabClaims xs
+    elabClaims ((n, Just elaboration) : xs)  =
+        do (p, _) <- get
+           focus n; elaboration; elabClaims xs
+
+simple_app :: Elab () -> Elab () -> Elab ()
+simple_app fun arg =
+    do a <- unique_hole (MN 0 "a")
+       b <- unique_hole (MN 0 "b")
+       f <- unique_hole (MN 0 "f")
+       s <- unique_hole (MN 0 "s")
+       claim a (RSet 0)
+       claim b (RSet 0)
+       claim f (RBind (MN 0 "aX") (Pi (Var a)) (Var b))
+       start_unify s
+       claim s (Var a)
+       prep_fill f [s]
+       focus f; fun
+       focus s; arg
+       complete_fill
+       end_unify
 
 -- Abstract over an argument of unknown type, giving a name for the hole
 -- which we'll fill with the argument type too.

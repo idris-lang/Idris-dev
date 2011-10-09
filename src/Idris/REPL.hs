@@ -8,6 +8,7 @@ import Idris.ElabDecls
 
 import Core.Evaluate
 import Core.ProofShell
+import Core.TT
 
 import System.Console.Readline
 import Control.Monad

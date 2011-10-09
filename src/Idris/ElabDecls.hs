@@ -18,7 +18,7 @@ elabType n ty
          (ty', log) <- tclift $ elaborate ctxt n (Set 0) (build False ty)
          (cty, _)   <- tclift $ recheck ctxt [] ty'
          logLvl 2 $ "---> " ++ show cty
-         updateContext (addConstant n cty)
+         updateContext (addConstant n (normalise ctxt [] cty))
 
 elabData :: PData -> Idris ()
 elabData (PDatadecl n t dcons)
@@ -82,6 +82,7 @@ elabClause (PClause _ lhs rhs)
                                     build False rhs
                                     psolve lhs_tm
                                     get_term)
+        logLvl 2 $ "---> " ++ show rhs'
         (crhs, crhsty) <- tclift $ recheck ctxt [] rhs'
         return (clhs, crhs)
   where
@@ -111,7 +112,7 @@ elabDecl' d@(PClauses n ps) = do iLOG $ "Elaborating " ++ show n
 
 build :: Bool -> PTerm -> Elab Term
 build pattern tm = do elab pattern tm
-                      get_term 
+                      get_term
 
 elab :: Bool -> PTerm -> Elab ()
 elab pattern tm = do elab' tm
@@ -120,6 +121,9 @@ elab pattern tm = do elab' tm
   where
     isph (_, Placeholder) = True
     isph _ = False
+
+    toElab (_, Placeholder) = Nothing
+    toElab (_, v) = Just (elab' v)
 
     mkPat = do hs <- get_holes
                case hs of
@@ -148,7 +152,11 @@ elab pattern tm = do elab' tm
           = try (do ns <- apply (Var f) (map isph imps ++ map (\x -> False) args)
                     solve
                     elabArgs ns (map snd imps ++ args))
-                (do fail "Not tried this way yet")
+                (do apply_elab f (map toElab imps ++ map (Just . elab') args)
+                    solve)
+    elab' (PApp f [] [arg])
+          = do simple_app (elab' f) (elab' arg)
+               solve
     elab' x = fail $ "Not implemented " ++ show x
 
     elabArgs [] _ = return ()

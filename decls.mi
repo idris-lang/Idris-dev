@@ -8,13 +8,16 @@ data List a = Nil | Cons a (List a);
 
 data Vect : Set -> Nat -> Set where
     VNil  : Vect a O
-  | (::) : a -> Vect a k -> Vect a (S k); 
+  | (::)  : a -> Vect a k -> Vect a (S k); 
 
 data Env : Vect Set n -> Set where
     Empty : Env VNil
   | Extend : {xs : Vect Set n} -> a -> Env xs -> Env (a :: xs);
 
-plus : Nat -> Nat -> Nat;
+PLUSTY : Set;
+PLUSTY = Nat -> Nat -> Nat;
+
+plus : PLUSTY;
 plus O y = y;
 plus (S k) y = S (plus k y);
 
@@ -22,15 +25,16 @@ app : Vect a n -> Vect a m -> Vect a (plus n m);
 app VNil      ys = ys;
 app (x :: xs) ys = x :: app xs ys;
 
+map : (a -> b) -> Vect a n -> Vect b n;
+map f VNil = VNil;
+map f (x :: xs) = f x :: map f xs;
+
 test : Nat -> Vect Nat (S (S O));
 test n = n :: n :: VNil;
 
 tvect : Vect Nat (S (S (S (S O))));
 tvect = app (test O) (test (S O));
 
-infixl 5 .+. ;
-
-(.+.) : Nat -> Nat -> Nat;
-O     .+. y = y;
-(S k) .+. y = S (k .+. y);
+mapPlus : Vect Nat n -> Vect Nat n;
+mapPlus = map (plus (S (S O)));
 

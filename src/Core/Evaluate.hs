@@ -55,6 +55,10 @@ eval ctxt genv tm = ev [] tm where
     ev env (P Ref n ty) = case lookupDef n ctxt of
         Just (Function (Fun _ _ _ v)) -> v
         Just (Constant nt ty hty)     -> VP nt n hty
+        Just (CaseOp _ [] tree)       ->  
+              case evCase env [] [] tree of
+                   (Nothing, _) -> VP Ref n (ev env ty)
+                   (Just v, _)  -> v
         _ -> VP Ref n (ev env ty)
     ev env (P nt n ty)   = VP nt n (ev env ty)
     ev env (V i) | i < length env = env !! i
@@ -65,28 +69,30 @@ eval ctxt genv tm = ev [] tm where
            = VBind n (Let (ev env t) (ev env v)) $ (\x -> ev (ev env v : env) sc)
     ev env (Bind n b sc) = VBind n (vbind env b) (\x -> ev (x:env) sc)
        where vbind env t = fmap (ev env) t    
-    ev env (App f a) = evApply env [a] f
+    ev env (App f a) = evApply env [ev env a] (ev env f)
     ev env (Set i)   = VSet i
     
-    evApply env args (App f a) = evApply env (a:args) f
-    evApply env args f = apply env (ev env f) args
+    evApply env args (VApp f a) = evApply env (a:args) f
+    evApply env args f = apply env f args
 
-    apply env (VBind n (Lam t) sc) (a:as) = wknV (-1) $ apply env (sc (ev env a)) as
+    apply env (VBind n (Lam t) sc) (a:as) = wknV (-1) $ apply env (sc a) as
     apply env (VP Ref n ty)        args
         | Just (CaseOp _ ns tree) <- lookupDef n ctxt
             = case evCase env ns args tree of
-                   Nothing -> unload env (VP Ref n ty) args
-                   Just v  -> v
+                   (Nothing, _) -> unload env (VP Ref n ty) args
+                   (Just v, rest) -> evApply env rest v
     apply env f                    (a:as) = unload env f (a:as)
     apply env f                    []     = f
 
     unload env f [] = f
-    unload env f (a:as) = unload env (VApp f (ev env a)) as
+    unload env f (a:as) = unload env (VApp f a) as
 
     evCase env ns args tree
-        | length ns == length args 
-             = evTree env (zipWith (\n t -> (n, ev env t)) ns args) tree
-        | otherwise = Nothing
+        | length ns <= length args 
+             = let args' = take (length ns) args
+                   rest  = drop (length ns) args in
+                (evTree env (zipWith (\n t -> (n, t)) ns args') tree, rest)
+        | otherwise = (Nothing, args)
 
     evTree :: [Value] -> [(Name, Value)] -> SC -> Maybe Value
     evTree env amap (UnmatchedCase str) = Nothing

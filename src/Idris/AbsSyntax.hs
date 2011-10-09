@@ -22,7 +22,7 @@ defaultOpts = IOption 0
 
 data IState = IState { tt_ctxt :: Context,
                        idris_infixes :: [FixDecl],
-                       idris_implicits :: Ctxt [Name],
+                       idris_implicits :: Ctxt ([Name], Int), -- implicits, arity
                        idris_log :: String,
                        idris_options :: IOption
                      }
@@ -237,6 +237,7 @@ infP = P (TCon 0) inferTy (Set 0)
 getInferTerm, getInferType :: Term -> Term
 getInferTerm (Bind n b sc) = Bind n b $ getInferTerm sc
 getInferTerm (App (App _ _) tm) = tm
+getInferTerm tm = error ("getInferTerm " ++ show tm)
 
 getInferType (Bind n b sc) = Bind n b $ getInferType sc
 getInferType (App (App _ ty) _) = ty
@@ -247,23 +248,25 @@ getInferType (App (App _ ty) _) = ty
 -- Add implicit Pi bindings for any names in the term which appear in an
 -- argument position.
 
-implicitise :: IState -> PTerm -> (PTerm, [Name])
+implicitise :: IState -> PTerm -> (PTerm, ([Name], Int))
 implicitise ist tm
-    = let (declimps, ns) = execState (imps [] tm) ([], []) in
-          (pibind ns tm, ns ++ reverse declimps)
+    = let (declimps, a, ns) = execState (imps [] tm) ([], 0, []) in
+          (pibind ns tm, (ns ++ reverse declimps, a))
   where
     imps env (PApp f is es)  
-       = do (decls, ns) <- get
+       = do (decls, a, ns) <- get
             let isn = concatMap (namesIn ist) (map snd is)
             let esn = concatMap (namesIn ist) es
-            put (decls, nub (ns ++ ((isn ++ esn) \\ env)))
+            put (decls, a, nub (ns ++ ((isn ++ esn) \\ env)))
     imps env (PPi Imp n ty sc) 
         = do imps env ty
-             (decls, ns) <- get
-             put (n:decls, ns)
+             (impdecls, a, ns) <- get
+             put (n:impdecls, a+1, ns)
              imps (n:env) sc
     imps env (PPi Exp n ty sc) 
         = do imps env ty
+             (impdecls, a, ns) <- get
+             put (impdecls, a+1, ns)
              imps (n:env) sc
     imps env (PLam n ty sc)  
         = do imps env ty
@@ -297,12 +300,16 @@ addImpl ist ptm = ai [] ptm
 
     aiFn env (PRef f) is es | not (f `elem` env)
         = case lookupCtxt f (idris_implicits ist) of
-            Just ns -> pApp (PRef f) (insertImpl ns is) es
-            Nothing -> pApp (PRef f) is es
-    aiFn env f is es = pApp f is es
+            Just (ns, a) -> pApp a (PRef f) (insertImpl ns is) es
+            Nothing      -> pApp 1 (PRef f) is es
+    aiFn env f is es = pApp 1 f is es
 
-    pApp f [] [] = f
-    pApp f is es = PApp f is es
+    pApp a f [] [] = f
+    pApp a f is es = let rest = drop a es in
+                         appRest (PApp f is (take a es)) rest
+
+    appRest f [] = f
+    appRest f (a : as) = appRest (PApp f [] [a]) as
 
     insertImpl [] given = []
     insertImpl (n:ns) given 

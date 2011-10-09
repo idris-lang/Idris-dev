@@ -220,6 +220,10 @@ unApply t = ua [] t where
     ua args (App f a) = ua (a:args) f
     ua args t         = (t, reverse args)
 
+mkApp :: TT n -> [TT n] -> TT n
+mkApp f [] = f
+mkApp f (a:as) = mkApp (App f a) as
+
 forget :: TT Name -> Raw
 forget tm = fe [] tm
   where

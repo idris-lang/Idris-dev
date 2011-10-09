@@ -38,6 +38,8 @@ data Tactic = Attack
             | Claim Name Raw
             | Exact Raw
             | Fill Raw
+            | PrepFill Name [Name]
+            | CompleteFill
             | Regret
             | Solve
             | StartUnify Name
@@ -210,6 +212,22 @@ fill guess ctxt env (Bind x (Hole ty) sc) =
        return $ Bind x (Guess ty val) sc
 fill _ _ _ _ = fail "Can't fill here."
 
+prep_fill :: Name -> [Name] -> RunTactic
+prep_fill f as ctxt env (Bind x (Hole ty) sc) =
+    do let val = mkApp (P Ref f undefined) (map (\n -> P Ref n undefined) as)
+       return $ Bind x (Guess ty val) sc
+prep_fill f as ctxt env t = fail $ "Can't prepare fill at " ++ show t
+
+complete_fill :: RunTactic
+complete_fill ctxt env (Bind x (Guess ty val) sc) =
+    do let guess = forget val
+       (val', valty) <- lift $ check ctxt env guess    
+       ns <- lift $ unify ctxt env valty ty
+       ps <- get
+       let (uh, uns) = unified ps
+       put (ps { unified = (uh, uns ++ ns) })
+       return $ Bind x (Guess ty val) sc
+
 solve :: RunTactic
 solve ctxt env (Bind x (Guess ty val) sc)
    | pureTerm val = do action (\ps -> ps { holes = holes ps \\ [x] })
@@ -340,6 +358,8 @@ process t h = tactic (Just h) (mktac t)
          mktac (Claim n r)   = claim n r
          mktac (Exact r)     = exact r
          mktac (Fill r)      = fill r
+         mktac (PrepFill n ns) = prep_fill n ns
+         mktac CompleteFill  = complete_fill
          mktac Regret        = regret
          mktac Solve         = solve
          mktac (StartUnify n) = start_unify n
