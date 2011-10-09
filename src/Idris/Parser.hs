@@ -49,10 +49,10 @@ parseProg fname = do file <- lift $ readFile fname
 
 -- Collect PClauses with the same function name
 collect :: [PDecl] -> [PDecl]
-collect (PClauses [c@(PClause n l r)] : ds) = clauses n [c] ds
-  where clauses n acc (PClauses [c@(PClause n' l r)] : ds)
+collect (PClauses _ [c@(PClause n l r)] : ds) = clauses n [c] ds
+  where clauses n acc (PClauses _ [c@(PClause n' l r)] : ds)
            | n == n' = clauses n (c : acc) ds
-        clauses n acc xs = PClauses (reverse acc) : collect xs
+        clauses n acc xs = PClauses n (reverse acc) : collect xs
 collect (d : ds) = d : collect ds
 collect [] = []
 
@@ -200,7 +200,7 @@ pSimpleCon = do cn <- pfName
 
 pPattern :: IParser PDecl
 pPattern = do clause <- pClause 
-              return (PClauses [clause]) -- collect together later
+              return (PClauses (MN 0 "_") [clause]) -- collect together later
 
 pClause :: IParser PClause
 pClause = try (do n <- pfName

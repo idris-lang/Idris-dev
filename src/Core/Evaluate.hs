@@ -3,11 +3,14 @@
 
 module Core.Evaluate(normalise,
                 Fun(..), Def(..), Context, 
-                addToCtxt, addConstant, addDatatype,
-                lookupTy, lookupP, lookupDef, lookupVal, lookupTyEnv) where
+                addToCtxt, addConstant, addDatatype, addCasedef,
+                lookupTy, lookupP, lookupDef, lookupVal, lookupTyEnv,
+                Value) where
 
 import Debug.Trace
+
 import Core.TT
+import Core.CaseTree
 
 -- VALUES (as HOAS) ---------------------------------------------------------
 
@@ -49,8 +52,10 @@ eval :: Context -> Env -> TT Name -> Value
 eval ctxt genv tm = ev [] tm where
     ev env (P Bound n ty)
         | Just (Let t v) <- lookup n genv = ev env v 
-    ev env (P Ref n ty)
-        | Just v <- lookupVal n ctxt = v
+    ev env (P Ref n ty) = case lookupDef n ctxt of
+        Just (Function (Fun _ _ _ v)) -> v
+        Just (Constant nt ty hty)     -> VP nt n hty
+        _ -> VP Ref n (ev env ty)
     ev env (P nt n ty)   = VP nt n (ev env ty)
     ev env (V i) | i < length env = env !! i
                  | otherwise      = error $ "Internal error: V" ++ show i
@@ -67,11 +72,56 @@ eval ctxt genv tm = ev [] tm where
     evApply env args f = apply env (ev env f) args
 
     apply env (VBind n (Lam t) sc) (a:as) = wknV (-1) $ apply env (sc (ev env a)) as
+    apply env (VP Ref n ty)        args
+        | Just (CaseOp _ ns tree) <- lookupDef n ctxt
+            = case evCase env ns args tree of
+                   Nothing -> unload env (VP Ref n ty) args
+                   Just v  -> v
     apply env f                    (a:as) = unload env f (a:as)
     apply env f                    []     = f
 
     unload env f [] = f
     unload env f (a:as) = unload env (VApp f (ev env a)) as
+
+    evCase env ns args tree
+        | length ns == length args 
+             = evTree env (zipWith (\n t -> (n, ev env t)) ns args) tree
+        | otherwise = Nothing
+
+    evTree :: [Value] -> [(Name, Value)] -> SC -> Maybe Value
+    evTree env amap (UnmatchedCase str) = Nothing
+    evTree env amap (STerm tm) 
+        = Just $ ev (map snd amap ++ env) (pToVs (map fst amap) tm)
+    evTree env amap (Case n alts)
+        = do v <- lookup n amap
+             (altmap, sc) <- chooseAlt v (getValArgs v) alts amap
+             evTree env altmap sc
+
+    chooseAlt :: Value -> (Value, [Value]) -> [CaseAlt] -> [(Name, Value)] ->
+                 Maybe ([(Name, Value)], SC)
+    chooseAlt _ (VP (DCon i a) _ _, args) alts amap
+        | Just (ns, sc) <- findTag i alts = Just (updateAmap (zip ns args) amap, sc)
+        | Just sc <- findDefault alts     = Just (amap, sc)
+--     chooseAlt v _ alts amap
+--         | Just sc <- safeDefault alts     = Just (amap, sc)
+    chooseAlt _ _ _ _                     = Nothing
+
+    -- Replace old variable names in the map with new matches
+    -- (This is possibly unnecessary since we make unique names and don't
+    -- allow repeated variables...?)
+    updateAmap newm amap 
+       = newm ++ amap --filter (\ (x, _) -> not (elem x (map fst newm))) amap
+    findTag i [] = Nothing
+    findTag i (ConCase n j ns sc : xs) | i == j = Just (ns, sc)
+    findTag i (_ : xs) = findTag i xs
+
+    findDefault [] = Nothing
+    findDefault (DefaultCase sc : xs) = Just sc
+    findDefault (_ : xs) = findDefault xs 
+
+    getValArgs tm = getValArgs' tm []
+    getValArgs' (VApp f a) as = getValArgs' f (a:as)
+    getValArgs' f as = (f, as)
 
 quote :: Int -> Value -> TT Name
 quote i (VP nt n v)    = P nt n (quote i v)
@@ -97,17 +147,19 @@ data Fun = Fun Type Value Term Value
 {- A definition is either a simple function (just an expression with a type),
    a constant, which could be a data or type constructor, an axiom or as an
    yet undefined function, or an Operator.
-   An Operator is a collection of pattern matching definitions, and a function
-   which explains how to reduce. -}
+   An Operator is a function which explains how to reduce. 
+   A CaseOp is a function defined by a simple case tree -}
    
 data Def = Function Fun
          | Constant NameType Type Value
-         | Operator Type [(Term, Term)] ([Value] -> Maybe Value)
+         | Operator Type ([Value] -> Maybe Value)
+         | CaseOp Type [Name] SC
 
 instance Show Def where
     show (Function f) = "Function: " ++ show f
     show (Constant nt ty val) = "Constant: " ++ show nt ++ " " ++ show ty
-    show (Operator ty ps _) = "Operator: " ++ show ty ++ " " ++ show ps
+    show (Operator ty _) = "Operator: " ++ show ty
+    show (CaseOp ty ns sc) = "Case: " ++ show ns ++ " " ++ show sc
 
 ------- 
 
@@ -132,11 +184,17 @@ addDatatype (Data n ty cons) ctxt
               addCons (tag+1) cons (addDef n
                   (Constant (DCon tag (arity ty')) ty (eval ctxt [] ty)) ctxt)
 
+addCasedef :: Name -> CaseDef -> Type -> Context -> Context
+addCasedef n (CaseDef args sc) ty ctxt 
+    = addDef n (CaseOp ty args sc) ctxt
+
 lookupTy :: Name -> Context -> Maybe Type
 lookupTy n ctxt = do def <- lookupCtxt n ctxt
                      case def of
                        (Function (Fun ty _ _ _)) -> return ty
                        (Constant _ ty _) -> return ty
+                       (Operator ty _) -> return ty
+                       (CaseOp ty _ _) -> return ty
 
 lookupP :: Name -> Context -> Maybe Term
 lookupP n ctxt 
@@ -144,13 +202,11 @@ lookupP n ctxt
         case def of
           (Function (Fun ty _ tm _)) -> return (P Ref n ty)
           (Constant nt ty hty) -> return (P nt n ty)
+          (CaseOp ty _ _) -> return (P Ref n ty)
+          (Operator ty _) -> return (P Ref n ty)
 
-lookupDef :: Name -> Context -> Maybe Term
-lookupDef n ctxt
-   = do def <-  lookupCtxt n ctxt
-        case def of
-          (Function (Fun ty _ tm _)) -> return tm
-          (Constant nt ty hty) -> return (P nt n ty)
+lookupDef :: Name -> Context -> Maybe Def
+lookupDef n ctxt = lookupCtxt n ctxt
 
 lookupVal :: Name -> Context -> Maybe Value
 lookupVal n ctxt 

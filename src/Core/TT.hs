@@ -130,8 +130,6 @@ type RProgram = [(Name, RDef)]
 data NameType = Bound | Ref | DCon Int Int | TCon Int
   deriving (Show, Eq)
 
--- FIXME: Consider changing this to birectional, with type annotations.
-
 data TT n = P NameType n (TT n) -- embed type
           | V Int 
           | Bind n (Binder (TT n)) (TT n)
@@ -155,6 +153,45 @@ instance Eq n => Eq (TT n) where
     (==) _              _              = False
 
 -- A few handy operations on well typed terms:
+
+instantiate :: TT n -> TT n -> TT n
+instantiate e = subst 0 where
+    subst i (V x) | i == x = e
+    subst i (Bind x b sc) = Bind x (fmap (subst i) b) (subst (i+1) sc)
+    subst i (App f a) = App (subst i f) (subst i a)
+    subst i t = t
+
+pToV :: Eq n => n -> TT n -> TT n
+pToV n = pToV' n 0
+pToV' n i (P _ x _) | n == x = V i
+pToV' n i (Bind x b sc)
+                | n == x    = Bind x (fmap (pToV' n i) b) sc
+                | otherwise = Bind x (fmap (pToV' n i) b) (pToV' n (i+1) sc)
+pToV' n i (App f a) = App (pToV' n i f) (pToV' n i a)
+pToV' n i t = t
+
+-- Convert several names. First in the list comes out as V 0
+pToVs :: Eq n => [n] -> TT n -> TT n
+pToVs ns tm = pToVs' ns tm 0 where
+    pToVs' []     tm i = tm
+    pToVs' (n:ns) tm i = pToV' n i (pToVs' ns tm (i+1))
+
+vToP :: TT n -> TT n
+vToP = vToP' [] where
+    vToP' env (V i) = let (n, b) = (env !! i) in
+                          P Bound n (binderTy b)
+    vToP' env (Bind n b sc) = let b' = fmap (vToP' env) b in
+                                  Bind n b' (vToP' ((n, b'):env) sc)
+    vToP' env (App f a) = App (vToP' env f) (vToP' env a)
+    vToP' env t = t
+
+finalise :: Eq n => TT n -> TT n
+finalise (Bind x b sc) = Bind x (fmap finalise b) (pToV x (finalise sc))
+finalise (App f a) = App (finalise f) (finalise a)
+finalise t = t
+
+subst :: Eq n => n -> TT n -> TT n -> TT n
+subst n v tm = instantiate v (pToV n tm)
 
 -- Returns true if V 0 and bound name n do not occur in the term
 

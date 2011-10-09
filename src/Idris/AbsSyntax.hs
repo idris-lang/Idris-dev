@@ -10,8 +10,10 @@ import Control.Monad.State
 import Data.List
 import Data.Char
 
-data IOption = Logging
+data IOption = IOption { opt_logLevel :: Int }
     deriving (Show, Eq)
+
+defaultOpts = IOption 0
 
 -- TODO: Add 'module data' to IState, which can be saved out and reloaded quickly (i.e
 -- without typechecking).
@@ -22,10 +24,10 @@ data IState = IState { tt_ctxt :: Context,
                        idris_infixes :: [FixDecl],
                        idris_implicits :: Ctxt [Name],
                        idris_log :: String,
-                       idris_options :: [IOption]
+                       idris_options :: IOption
                      }
                    
-idrisInit = IState emptyContext [] emptyContext "" []
+idrisInit = IState emptyContext [] emptyContext "" defaultOpts
 
 -- The monad for the main REPL - reading and processing files and updating 
 -- global state (hence the IO inner monad).
@@ -48,17 +50,25 @@ tclift tc = case tc of
                OK v -> return v
                err -> fail (show err)
 
-setOpt :: IOption -> Bool -> Idris ()
-setOpt o True  = do i <- get
-                    put (i { idris_options = nub (o : idris_options i) })
-setOpt o False = do i <- get
-                    put (i { idris_options = idris_options i \\ [o] })    
+setLogLevel :: Int -> Idris ()
+setLogLevel l = do i <- get
+                   let opts = idris_options i
+                   let opt' = opts { opt_logLevel = l }
+                   put (i { idris_options = opt' } )
+
+logLevel :: Idris Int
+logLevel = do i <- get
+              return (opt_logLevel (idris_options i))
+
+logLvl :: Int -> String -> Idris ()
+logLvl l str = do i <- get
+                  let lvl = opt_logLevel (idris_options i)
+                  when (lvl >= l)
+                      $ do lift (putStrLn str)
+                           put (i { idris_log = idris_log i ++ str ++ "\n" } )
 
 iLOG :: String -> Idris ()
-iLOG str = do i <- get
-              when (Logging `elem` idris_options i)
-                   $ do lift (putStrLn str)
-                        put (i { idris_log = idris_log i ++ str ++ "\n" } )
+iLOG = logLvl 1
 
 -- Taken from the library source code - for ghc 6.12/7 compatibility
 liftCatch :: (m (a,s) -> (e -> m (a,s)) -> m (a,s)) ->
@@ -97,7 +107,7 @@ data Plicity = Imp | Exp deriving Show
 
 data PDecl' t = PFix     Fixity [String] -- fixity declaration
               | PTy      Name t          -- type declaration
-              | PClauses [PClause' t]    -- pattern clause
+              | PClauses Name [PClause' t]    -- pattern clause
               | PData    (PData' t)      -- data declaration
     deriving Functor
 
@@ -134,7 +144,7 @@ instance Show PTerm where
 instance Show PDecl where
     show (PFix f ops) = show f ++ " " ++ showSep ", " ops
     show (PTy n ty) = show n ++ " : " ++ show ty
-    show (PClauses c) = showSep "\n" (map show c)
+    show (PClauses n c) = showSep "\n" (map show c)
     show (PData d) = show d
 
 instance Show PClause where

@@ -127,35 +127,6 @@ check ctxt env (RBind n b sc)
         checkNotHoley i (Bind n b sc) = checkNotHoley (i+1) sc
         checkNotHoley _ _ = return ()
 
-pToV :: Eq n => n -> TT n -> TT n
-pToV n = pToV' 0 where
-    pToV' i (P _ x _) | n == x = V i
-    pToV' i (Bind x b sc)
-                  | n == x    = Bind x (fmap (pToV' i) b) sc
-                  | otherwise = Bind x (fmap (pToV' i) b) (pToV' (i+1) sc)
-    pToV' i (App f a) = App (pToV' i f) (pToV' i a)
-    pToV' i t = t
-
-vToP :: TT n -> TT n
-vToP = vToP' [] where
-    vToP' env (V i) = let (n, b) = (env !! i) in
-                          P Bound n (binderTy b)
-    vToP' env (Bind n b sc) = let b' = fmap (vToP' env) b in
-                                  Bind n b' (vToP' ((n, b'):env) sc)
-    vToP' env (App f a) = App (vToP' env f) (vToP' env a)
-    vToP' env t = t
-
-instantiate :: TT n -> TT n -> TT n
-instantiate e = subst 0 where
-    subst i (V x) | i == x = e
-    subst i (Bind x b sc) = Bind x (fmap (subst i) b) (subst (i+1) sc)
-    subst i (App f a) = App (subst i f) (subst i a)
-    subst i t = t
-
-finalise :: Eq n => TT n -> TT n
-finalise (Bind x b sc) = Bind x (fmap finalise b) (pToV x (finalise sc))
-finalise (App f a) = App (finalise f) (finalise a)
-finalise t = t
 
 checkProgram :: Context -> RProgram -> TC Context
 checkProgram ctxt [] = return ctxt

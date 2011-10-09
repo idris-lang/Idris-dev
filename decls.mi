@@ -1,7 +1,7 @@
 infixl 5 +, - ;
 infixl 6 *, / ;
 
-infixl 7 :: ;
+infixr 7 :: ;
 
 data Nat    = O   | S Nat;
 data List a = Nil | Cons a (List a);
@@ -21,6 +21,12 @@ plus (S k) y = S (plus k y);
 app : Vect a n -> Vect a m -> Vect a (plus n m);
 app VNil      ys = ys;
 app (x :: xs) ys = x :: app xs ys;
+
+test : Nat -> Vect Nat (S (S O));
+test n = n :: n :: VNil;
+
+tvect : Vect Nat (S (S (S (S O))));
+tvect = app (test O) (test (S O));
 
 infixl 5 .+. ;
 

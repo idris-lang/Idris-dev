@@ -8,6 +8,7 @@ import Core.TT
 import Core.Elaborate
 import Core.Evaluate
 import Core.Typecheck
+import Core.CaseTree
 
 import Control.Monad
 
@@ -16,7 +17,7 @@ elabType n ty
     = do ctxt <- getContext
          (ty', log) <- tclift $ elaborate ctxt n (Set 0) (build False ty)
          (cty, _)   <- tclift $ recheck ctxt [] ty'
-         iLOG $ "---> " ++ show cty
+         logLvl 2 $ "---> " ++ show cty
          updateContext (addConstant n cty)
 
 elabData :: PData -> Idris ()
@@ -24,7 +25,7 @@ elabData (PDatadecl n t dcons)
     = do ctxt <- getContext
          (t', log) <- tclift $ elaborate ctxt n (Set 0) (build False t)
          (cty, _)  <- tclift $ recheck ctxt [] t'
-         iLOG $ "---> " ++ show cty
+         logLvl 2 $ "---> " ++ show cty
          updateContext (addConstant n cty) -- temporary, to check cons
          cons <- mapM elabCon dcons
          setContext (addDatatype (Data n cty cons) ctxt)
@@ -36,23 +37,46 @@ elabCon (n, t)
          (t', log) <- tclift $ elaborate ctxt n (Set 0) (build False t)
 --          iLOG $ "Rechecking " ++ show t'
          (cty, _)  <- tclift $ recheck ctxt [] t'
-         iLOG $ "---> " ++ show n ++ " : " ++ show cty
+         logLvl 2 $ "---> " ++ show n ++ " : " ++ show cty
          return (n, cty)
 
-elabClauses :: [PClause] -> Idris ()
-elabClauses cs = do pats <- mapM elabClause cs
-                    iLOG (showSep "\n" (map (\ (l,r) -> 
-                                            show l ++ " = " ++ 
-                                            show r) pats))
+elabClauses :: Name -> [PClause] -> Idris ()
+elabClauses n cs 
+    = do pats <- mapM elabClause cs
+         logLvl 3 (showSep "\n" (map (\ (l,r) -> 
+                                        show l ++ " = " ++ 
+                                        show r) pats))
+         let tree = simpleCase (map debind pats)
+         logLvl 3 (show tree)
+         ctxt <- getContext
+         case lookupTy n ctxt of
+             Just ty -> updateContext (addCasedef n tree ty)
+             Nothing -> return ()
+  where
+    debind (x, y) = (depat x, depat y)
+    depat (Bind n (PVar t) sc) = depat (instantiate (P Bound n t) sc)
+    depat x = x
+
+elabVal :: PTerm -> Idris (Term, Type)
+elabVal tm
+   = do ctxt <- getContext
+        (tm', _) <- tclift $ elaborate ctxt (MN 0 "val") infP
+                               (build False (infTerm tm))
+        let vtm = getInferTerm tm'
+        tclift $ recheck ctxt [] vtm
 
 elabClause :: PClause -> Idris (Term, Term)
 elabClause (PClause _ lhs rhs) 
    = do ctxt <- getContext
+        -- Build the LHS as an "Infer", and pull out its type and
+        -- pattern bindings
         (lhs', _) <- tclift $ elaborate ctxt (MN 0 "patLHS") infP
                                 (build True (infTerm lhs))
         let lhs_tm = getInferTerm lhs'
         let lhs_ty = getInferType lhs'
         (clhs, clhsty) <- tclift $ recheck ctxt [] lhs_tm
+        -- Now build the RHS, using the type of the LHS as the goal.
+        iLOG (showImp True rhs)
         (rhs', _) <- tclift $ elaborate ctxt (MN 0 "patRHS") clhsty
                                 (do pbinds lhs_tm
                                     build False rhs
@@ -76,8 +100,8 @@ elabDecl' (PTy n ty)      = do iLOG $ "Elaborating type decl " ++ show n
                                elabType n ty
 elabDecl' (PData d)       = do iLOG $ "Elaborating " ++ show d
                                elabData d
-elabDecl' d@(PClauses ps) = do iLOG $ "Elaborating " ++ show d
-                               elabClauses ps
+elabDecl' d@(PClauses n ps) = do iLOG $ "Elaborating " ++ show n
+                                 elabClauses n ps
 
 -- Using the elaborator, convert a term in raw syntax to a fully
 -- elaborated, typechecked term.
@@ -121,9 +145,10 @@ elab pattern tm = do elab' tm
                elab' sc
                solve
     elab' (PApp (PRef f) imps args)
-          = do ns <- apply (Var f) (map isph imps ++ map (\x -> False) args)
-               solve
-               elabArgs ns (map snd imps ++ args) 
+          = try (do ns <- apply (Var f) (map isph imps ++ map (\x -> False) args)
+                    solve
+                    elabArgs ns (map snd imps ++ args))
+                (do fail "Not tried this way yet")
     elab' x = fail $ "Not implemented " ++ show x
 
     elabArgs [] _ = return ()

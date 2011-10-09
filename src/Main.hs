@@ -25,7 +25,7 @@ import Idris.ElabDecls
 
 data Opt = Filename String
          | Version
-         | OLogging
+         | OLogging Int
     deriving Eq
 
 main = do xs <- getArgs
@@ -35,9 +35,12 @@ main = do xs <- getArgs
 runIdris :: [Opt] -> Idris ()
 runIdris opts = 
     do let inputs = opt getFile opts
-       when (OLogging `elem` opts) (setOpt Logging True)
+       mapM_ makeOption opts
        mapM_ loadModule inputs       
        repl
+  where
+    makeOption (OLogging i) = setLogLevel i
+    makeOption _ = return ()
 
 loadModule :: FilePath -> Idris ()
 loadModule f = do iLOG ("Reading " ++ show f)
@@ -56,7 +59,7 @@ dumpDecls (d:ds) = dumpDecl d ++ "\n" ++ dumpDecls ds
 
 dumpDecl (PFix f ops) = show f ++ " " ++ showSep ", " ops 
 dumpDecl (PTy n t) = "tydecl " ++ show n ++ " : " ++ showImp True t
-dumpDecl (PClauses cs) = "pat\t" ++ showSep "\n\t" (map (showCImp True) cs)
+dumpDecl (PClauses n cs) = "pat\t" ++ showSep "\n\t" (map (showCImp True) cs)
 dumpDecl (PData d) = showDImp True d
 
 getFile :: Opt -> Maybe String
@@ -71,8 +74,8 @@ usage = do putStrLn "You're doing it wrong"
 
 parseArgs :: [String] -> IO [Opt]
 parseArgs [] = return []
-parseArgs ("--log":ns) = liftM (OLogging : ) (parseArgs ns)
-parseArgs (n:ns)       = liftM (Filename n : ) (parseArgs ns)
+parseArgs ("--log":lvl:ns) = liftM (OLogging (read lvl) : ) (parseArgs ns)
+parseArgs (n:ns)           = liftM (Filename n : ) (parseArgs ns)
 
 {-
 main'

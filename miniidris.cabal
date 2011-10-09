@@ -20,6 +20,7 @@ Executable     miniidris
                Other-modules: Core.TT, Core.Evaluate, Core.Typecheck, 
                               Core.ProofShell, Core.ProofState, Core.CoreParser, 
                               Core.ShellParser, Core.Unify, Core.Elaborate,
+                              Core.CaseTree, 
 
                               Idris.AbsSyntax, Idris.Parser, Idris.REPL,
                               Idris.REPLParser, Idris.ElabDecls
