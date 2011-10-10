@@ -1,11 +1,10 @@
-{-# LANGUAGE MultiParamTypeClasses, FunctionalDependencies, DeriveFunctor #-}
-
 module Core.Unify(unify) where
 
 import Core.TT
 import Core.Evaluate
 
 import Control.Monad
+import Debug.Trace
 
 -- Unification is applied inside the theorem prover. We're looking for holes
 -- which can be filled in, by matching one term's normal form against another.
@@ -16,9 +15,10 @@ import Control.Monad
 
 unify :: Context -> Env -> TT Name -> TT Name -> TC [(Name, TT Name)]
 unify ctxt env x y 
-    = case un' [] x y of -- try without normalising first, for speed
-        OK v -> return v
-        _    -> case un' [] (normalise ctxt env x) (normalise ctxt env y) of
+    = --case un' [] x y of -- try without normalising first, for speed
+      --  OK v -> return v
+      --  _    -> 
+      case un' [] (normalise ctxt env x) (normalise ctxt env y) of
                 OK v -> return v
                 _    -> fail $ "Can't unify " ++ showEnv env x ++ " and " ++ showEnv env y
   where
@@ -61,17 +61,25 @@ unify ctxt env x y
           (holeIn env x && okToUnify ynt) ||
           (okToUnify xnt && holeIn env y)
             = do h <- un' bnames xp yp
-                 hargs <- zipWithM (un' bnames) xargs yargs
-                 h' <- foldM (combine bnames) [] hargs
-                 combine bnames h h'
+                 uArgs bnames h xargs yargs
     uApp bnames (xf, xargs) (yf, yargs) 
             = do un' bnames xf yf -- ignore result
-                 hargs <- zipWithM (un' bnames) xargs yargs
-                 foldM (combine bnames) [] hargs 
+                 uArgs bnames [] xargs yargs
 
     okToUnify (DCon _ _) = True
     okToUnify (TCon _) = True
     okToUnify _ = False
+
+    uArgs bnames h [] [] = return h
+    uArgs bnames h (x:xs) (y:ys) = 
+        case un' bnames x y of
+           OK h' -> do next <- combine bnames h h' 
+                       uArgs bnames next xs ys
+           _ -> do let x' = normalise ctxt env (substNames h x)
+                   let y' = normalise ctxt env (substNames h y)
+                   h' <- un' bnames x' y'
+                   next <- combine bnames h h'
+                   uArgs bnames next xs ys
 
     combine bnames as [] = return as
     combine bnames as ((n, t) : bs)

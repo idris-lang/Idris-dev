@@ -268,5 +268,5 @@ try t1 t2 = do s <- get
                case runStateT t1 s of
                     OK (v, s') -> do put s'
                                      return v
-                    _ -> t2
+                    _ -> do put s; t2
 

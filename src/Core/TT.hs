@@ -193,6 +193,10 @@ finalise t = t
 subst :: Eq n => n -> TT n -> TT n -> TT n
 subst n v tm = instantiate v (pToV n tm)
 
+substNames :: Eq n => [(n, TT n)] -> TT n -> TT n
+substNames []             t = t
+substNames ((n, tm) : xs) t = subst n tm (substNames xs t)
+
 -- Returns true if V 0 and bound name n do not occur in the term
 
 noOccurrence :: Eq n => n -> TT n -> Bool
@@ -218,7 +222,7 @@ arity _ = 0
 unApply :: TT n -> (TT n, [TT n])
 unApply t = ua [] t where
     ua args (App f a) = ua (a:args) f
-    ua args t         = (t, reverse args)
+    ua args t         = (t, args)
 
 mkApp :: TT n -> [TT n] -> TT n
 mkApp f [] = f

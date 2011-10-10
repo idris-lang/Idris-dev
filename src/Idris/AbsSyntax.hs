@@ -261,7 +261,7 @@ implicitise ist tm
     imps env (PPi Imp n ty sc) 
         = do imps env ty
              (impdecls, a, ns) <- get
-             put (n:impdecls, a+1, ns)
+             put (n:impdecls, a, ns)
              imps (n:env) sc
     imps env (PPi Exp n ty sc) 
         = do imps env ty

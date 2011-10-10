@@ -1,0 +1,61 @@
+data Nat = O | S Nat;
+
+plus : Nat -> Nat -> Nat;
+plus O y     = y;
+plus (S k) y = S (plus k y);
+
+data Ty = TyNat | TyFun Ty Ty;
+
+interpTy : Ty -> Set;
+interpTy TyNat = Nat;
+interpTy (TyFun s t) = interpTy s -> interpTy t;
+
+data Fin : Nat -> Set where
+    fO : Fin (S k)
+  | fS : Fin k -> Fin (S k);
+
+infixr 7 :: ;
+
+data Vect : Set -> Nat -> Set where
+    VNil  : Vect a O
+  | (::)  : a -> Vect a k -> Vect a (S k); 
+
+data Env : Vect Ty n -> Set where
+    Empty : Env VNil
+  | Extend : {xs : Vect Ty n} -> interpTy a -> Env xs -> Env (a :: xs);
+
+lookup : (i : Fin n) -> Vect a n -> a;
+lookup fO     (x :: xs) = x;
+lookup (fS i) (x :: xs) = lookup i xs;
+
+envLookup : {xs : Vect Ty n} ->
+            (i : Fin n) -> Env xs -> interpTy (lookup i xs);
+envLookup fO     (Extend x xs) = x;
+envLookup (fS i) (Extend x xs) = envLookup i xs;
+
+data Expr : Vect Ty n -> Ty -> Set where
+    Var : {G : Vect Ty n} ->
+          (i : Fin n) -> Expr G (lookup i G)
+  | Val : {G : Vect Ty n} ->
+          Nat -> Expr G TyNat
+  | Lam : {G : Vect Ty n} ->
+          Expr (a :: G) t -> Expr G (TyFun a t)
+  | App : {G : Vect Ty n} ->
+          Expr G (TyFun a t) -> Expr G a -> Expr G t
+  | Add : {G : Vect Ty n} ->
+          Expr G TyNat -> Expr G TyNat -> Expr G TyNat;
+
+interp : {G : Vect Ty n} ->
+         Env G -> Expr G t -> interpTy t;
+interp env (Var i)   = envLookup i env;
+interp env (Val x)   = x;
+interp env (Lam sc)  = \x => interp (Extend x env) sc;
+interp env (App f s) = (interp env f) (interp env s);
+interp env (Add x y) = plus (interp env x) (interp env y);
+
+eAdd : {G : Vect Ty n} ->
+       Expr G (TyFun TyNat (TyFun TyNat TyNat));
+eAdd = Lam (Lam (Add (Var fO) (Var (fS fO))));
+
+test : Nat;
+test = interp Empty eAdd (S (S O)) (S (S O));

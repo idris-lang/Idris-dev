@@ -151,11 +151,11 @@ elab pattern tm = do elab' tm
                elab' sc
                solve
     elab' (PApp (PRef f) imps args)
-          = try (do apply_elab f (map toElab imps ++ map (Just . elab') args)
-                    solve)
-                (do ns <- apply (Var f) (map isph imps ++ map (\x -> False) args)
+          = try (do ns <- apply (Var f) (map isph imps ++ map (\x -> False) args)
                     solve
                     elabArgs ns (map snd imps ++ args))
+                (do apply_elab f (map toElab imps ++ map (Just . elab') args)
+                    solve)
     elab' (PApp f [] [arg])
           = do simple_app (elab' f) (elab' arg)
                solve
