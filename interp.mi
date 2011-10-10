@@ -27,7 +27,7 @@ data Env : Vect Ty n -> Set where
 
 lookup : (i : Fin n) -> Vect a n -> a;
 lookup fO     (x :: xs) = x;
-lookup (fS i) (x :: xs) = lookup i xs;
+lookup (fS k) (x :: xs) = lookup k xs;
 
 envLookup : {xs : Vect Ty n} ->
             (i : Fin n) -> Env xs -> interpTy (lookup i xs);

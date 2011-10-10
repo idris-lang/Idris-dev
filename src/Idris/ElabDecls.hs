@@ -76,6 +76,7 @@ elabClause (PClause _ lhs rhs)
                                 (build True (infTerm lhs))
         let lhs_tm = getInferTerm lhs'
         let lhs_ty = getInferType lhs'
+        logLvl 3 (show lhs_tm)
         (clhs, clhsty) <- tclift $ recheck ctxt [] lhs_tm
         -- Now build the RHS, using the type of the LHS as the goal.
         iLOG (showImp True rhs)

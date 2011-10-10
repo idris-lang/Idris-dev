@@ -189,7 +189,7 @@ prepare_apply fn imps =
        return claims
   where
     doClaims (Bind n' (Pi t) sc) (i : is) claims =
-        do n <- unique_hole n'
+        do n <- unique_hole (mkMN n')
            when (null claims) (start_unify n)
            let sc' = instantiate (P Bound n t) sc
            claim n (forget t)
@@ -197,6 +197,9 @@ prepare_apply fn imps =
            doClaims sc' is (n : claims)
     doClaims t [] claims = return (reverse claims)
     doClaims _ _ _ = fail "Wrong number of arguments"
+
+    mkMN n@(MN _ _) = n
+    mkMN n@(UN [x]) = MN 0 x
 
 apply :: Raw -> [Bool] -> Elab [Name]
 apply fn imps = 
@@ -224,7 +227,7 @@ apply_elab n args =
        end_unify
   where
     doClaims (Bind n' (Pi t) sc) (i : is) claims =
-        do n <- unique_hole n'
+        do n <- unique_hole (mkMN n')
            when (null claims) (start_unify n)
            let sc' = instantiate (P Bound n t) sc
            claim n (forget t)
@@ -237,6 +240,9 @@ apply_elab n args =
     elabClaims ((n, Just elaboration) : xs)  =
         do (p, _) <- get
            focus n; elaboration; elabClaims xs
+
+    mkMN n@(MN _ _) = n
+    mkMN n@(UN [x]) = MN 0 x
 
 simple_app :: Elab () -> Elab () -> Elab ()
 simple_app fun arg =
