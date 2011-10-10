@@ -23,13 +23,20 @@ data Option = SetInSet
             | CheckConv
   deriving Eq
 
+data Err = Msg String
+         | CantUnify Term Term
+  deriving Eq
+
+instance Show Err where
+    show (Msg s) = s
+
 data TC a = OK a
-          | Error String -- TMP! Make this an informative data structure
+          | Error Err
   deriving (Eq, Functor)
 
 instance Show a => Show (TC a) where
     show (OK x) = show x
-    show (Error str) = "Error: " ++ str
+    show (Error str) = "Error: " ++ (show str)
 
 -- at some point, this instance should also carry type checking options
 -- (e.g. Set:Set)
@@ -39,10 +46,13 @@ instance Monad TC where
     x >>= k = case x of 
                 OK v -> k v
                 Error e -> Error e
-    fail = Error
+    fail e = Error (Msg e)
+
+tfail :: Err -> TC a
+tfail e = Error e
 
 instance MonadPlus TC where
-    mzero = Error "Unknown error"
+    mzero = fail "Unknown error"
     (OK x) `mplus` _ = OK x
     _ `mplus` (OK y) = OK y
     err `mplus` _    = err

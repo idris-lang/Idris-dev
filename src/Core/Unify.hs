@@ -14,13 +14,10 @@ import Debug.Trace
 -- to help the rest of the unification
 
 unify :: Context -> Env -> TT Name -> TT Name -> TC [(Name, TT Name)]
-unify ctxt env x y 
-    = --case un' [] x y of -- try without normalising first, for speed
-      --  OK v -> return v
-      --  _    -> 
-      case un' [] (normalise ctxt env x) (normalise ctxt env y) of
-                OK v -> return v
-                _    -> fail $ "Can't unify " ++ showEnv env x ++ " and " ++ showEnv env y
+unify ctxt env topx topy 
+    = case un' [] (normalise ctxt env topx) (normalise ctxt env topy) of
+              OK v -> return v
+              _    -> tfail $ CantUnify topx topy  
   where
     un' bnames (P Bound x _)  (P Bound y _)  
         | (x,y) `elem` bnames = return []

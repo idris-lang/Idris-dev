@@ -133,7 +133,7 @@ goal h tm = g [] tm where
                         | otherwise          
                            = gb env b `mplus` g ((n, b):env) sc
     g env (App f a)   = g env f `mplus` g env a
-    g env t           = Error "Can't find hole"
+    g env t           = fail "Can't find hole"
 
     gb env (Let t v) = g env t `mplus` g env v
     gb env (Guess t v) = g env t `mplus` g env v
@@ -323,10 +323,10 @@ processTactic QED ps = case holes ps of
                                     (tm', ty') <- recheck (context ps) [] tm
                                     return (ps { done = True, pterm = tm' }, 
                                             "Proof complete: " ++ showEnv [] tm')
-                           _  -> Error "Still holes to fill."
+                           _  -> fail "Still holes to fill."
 processTactic ProofState ps = return (ps, showEnv [] (pterm ps))
 processTactic Undo ps = case previous ps of
-                            Nothing -> Error "Nothing to undo."
+                            Nothing -> fail "Nothing to undo."
                             Just pold -> return (pold, "")
 processTactic EndUnify ps = let (h, ns) = unified ps
                                 tm' = updateSolved ns (pterm ps) in
@@ -344,7 +344,7 @@ processTactic EndUnify ps = let (h, ns) = unified ps
        updateSolved xs t = t
 processTactic t ps   
     = case holes ps of
-        [] -> Error "Nothing to fill in."
+        [] -> fail "Nothing to fill in."
         (h:_)  -> do let n = nextname ps
                      ps' <- execStateT (process t h) ps
                      return (ps' { previous = Just ps, plog = "" }, plog ps')

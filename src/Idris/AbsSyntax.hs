@@ -45,11 +45,6 @@ updateContext f = do i <- get; put (i { tt_ctxt = f (tt_ctxt i) } )
 iputStrLn :: String -> Idris ()
 iputStrLn = lift.putStrLn
 
-tclift :: Show a => TC a -> Idris a
-tclift tc = case tc of
-               OK v -> return v
-               err -> fail (show err)
-
 setLogLevel :: Int -> Idris ()
 setLogLevel l = do i <- get
                    let opts = idris_options i
@@ -69,15 +64,6 @@ logLvl l str = do i <- get
 
 iLOG :: String -> Idris ()
 iLOG = logLvl 1
-
--- Taken from the library source code - for ghc 6.12/7 compatibility
-liftCatch :: (m (a,s) -> (e -> m (a,s)) -> m (a,s)) ->
-    StateT s m a -> (e -> StateT s m a) -> StateT s m a
-liftCatch catchError m h =
-    StateT $ \s -> runStateT m s `catchError` \e -> runStateT (h e) s
-
-idrisCatch :: Idris a -> (IOError -> Idris a) -> Idris a
-idrisCatch op handler = liftCatch catch op handler
 
 -- Commands in the REPL
 
