@@ -86,8 +86,7 @@ pUsing :: SyntaxInfo -> IParser [PDecl]
 pUsing syn = 
     do reserved "using"; 
        lchar '('
-       ns <- sepBy1 (do x <- pfName; t <- pTSig syn; return (x,t))
-                    (lchar ',')
+       ns <- tyDeclList syn
        lchar ')'
        lchar '{'
        let uvars = using syn
@@ -153,19 +152,30 @@ pImplicitArg syn = do lchar '{'; n <- iName
 pTSig syn = do lchar ':'
                pExpr syn
 
-pLambda syn = do lchar '\\'; x <- iName; t <- option Placeholder (pTSig syn)
+pLambda syn = do lchar '\\'; 
+                 xt <- tyOptDeclList syn
                  symbol "=>"
                  sc <- pExpr syn
-                 return (PLam x t sc)
+                 return (bindList PLam xt sc)
 
-pPi syn = do lchar '('; x <- iName; t <- pTSig syn; lchar ')'
+pPi syn = do lchar '('; xt <- tyDeclList syn; lchar ')'
              symbol "->"
              sc <- pExpr syn
-             return (PPi Exp x t sc)
-      <|> do lchar '{'; x <- iName; t <- pTSig syn; lchar '}'
+             return (bindList (PPi Exp) xt sc)
+      <|> do lchar '{'; xt <- tyDeclList syn; lchar '}'
              symbol "->"
              sc <- pExpr syn
-             return (PPi Imp x t sc)
+             return (bindList (PPi Imp) xt sc)
+
+tyDeclList syn = sepBy1 (do x <- pfName; t <- pTSig syn; return (x,t))
+                    (lchar ',')
+
+tyOptDeclList syn = sepBy1 (do x <- pfName; t <- option Placeholder (pTSig syn) 
+                               return (x,t))
+                           (lchar ',')
+
+bindList b []          sc = sc
+bindList b ((n, t):bs) sc = b n t (bindList b bs sc)
 
 table fixes 
    = toTable (reverse fixes) ++
