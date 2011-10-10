@@ -62,7 +62,7 @@ elabVal :: PTerm -> Idris (Term, Type)
 elabVal tm
    = do ctxt <- getContext
         (tm', _) <- tclift $ elaborate ctxt (MN 0 "val") infP
-                               (build False (infTerm tm))
+                               (build True (infTerm tm))
         let vtm = getInferTerm tm'
         iLOG (show vtm)
         tclift $ recheck ctxt [] vtm

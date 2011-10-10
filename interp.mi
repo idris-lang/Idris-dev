@@ -69,11 +69,14 @@ eDouble' : {G : Vect Ty n} ->
            Expr G (TyFun TyNat TyNat);
 eDouble' = Lam (App (App eAdd (Var fO)) (Var fO));
 
-eProg : {G : Vect Ty n} -> Expr G (TyFun TyNat TyNat);
-eProg = Lam (Bind (App eDouble (Var fO))
+-- Exercise elaborator: Complicated way of doing \x y => x*4 + y*2
+
+eProg : {G : Vect Ty n} -> Expr G (TyFun TyNat (TyFun TyNat TyNat));
+eProg = Lam (Lam 
+                  (Bind (App eDouble (Var (fS fO)))
             (\x => Bind (App eDouble (Var fO))
             (\y => Bind (App eDouble (Val x))
-            (\z => App (App eAdd (Val y)) (Val z)))));
+            (\z => App (App eAdd (Val y)) (Val z))))));
 
 test : Nat;
 test = interp Empty eAdd (S (S O)) (S (S O));
