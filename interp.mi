@@ -57,5 +57,13 @@ eAdd : {G : Vect Ty n} ->
        Expr G (TyFun TyNat (TyFun TyNat TyNat));
 eAdd = Lam (Lam (Add (Var fO) (Var (fS fO))));
 
+eDouble : {G : Vect Ty n} ->
+          Expr G (TyFun TyNat TyNat);
+eDouble = Lam (App (App (Lam (Lam (Add (Var fO) (Var (fS fO))))) (Var fO)) (Var fO));
+
+eDouble' : {G : Vect Ty n} ->
+           Expr G (TyFun TyNat TyNat);
+eDouble' = Lam (App (App eAdd (Var fO)) (Var fO));
+
 test : Nat;
 test = interp Empty eAdd (S (S O)) (S (S O));
