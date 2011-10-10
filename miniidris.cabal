@@ -23,7 +23,7 @@ Executable     miniidris
                               Core.CaseTree, 
 
                               Idris.AbsSyntax, Idris.Parser, Idris.REPL,
-                              Idris.REPLParser, Idris.ElabDecls
+                              Idris.REPLParser, Idris.ElabDecls, Idris.Error
 
                Build-depends:   base>=4 && <5, parsec, mtl, Cabal, readline,
                                 containers, process, transformers

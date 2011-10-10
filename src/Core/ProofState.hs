@@ -227,6 +227,7 @@ complete_fill ctxt env (Bind x (Guess ty val) sc) =
        let (uh, uns) = unified ps
        put (ps { unified = (uh, uns ++ ns) })
        return $ Bind x (Guess ty val) sc
+complete_fill ctxt env t = fail $ "Can't complete fill at " ++ show t
 
 solve :: RunTactic
 solve ctxt env (Bind x (Guess ty val) sc)

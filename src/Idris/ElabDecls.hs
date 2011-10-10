@@ -3,6 +3,7 @@
 module Idris.ElabDecls where
 
 import Idris.AbsSyntax
+import Idris.Error
 
 import Core.TT
 import Core.Elaborate
@@ -63,6 +64,7 @@ elabVal tm
         (tm', _) <- tclift $ elaborate ctxt (MN 0 "val") infP
                                (build False (infTerm tm))
         let vtm = getInferTerm tm'
+        iLOG (show vtm)
         tclift $ recheck ctxt [] vtm
 
 elabClause :: PClause -> Idris (Term, Term)
@@ -94,7 +96,7 @@ elabClause (PClause _ lhs rhs)
     psolve tm = return ()
 
 elabDecl :: PDecl -> Idris ()
-elabDecl d = idrisCatch (elabDecl' d) (\e -> iputStrLn (show e))
+elabDecl d = idrisCatch (elabDecl' d) (\e -> iputStrLn (report e))
 
 elabDecl' (PFix _ _)      = return () -- nothing to elaborate
 elabDecl' (PTy n ty)      = do iLOG $ "Elaborating type decl " ++ show n
@@ -149,11 +151,11 @@ elab pattern tm = do elab' tm
                elab' sc
                solve
     elab' (PApp (PRef f) imps args)
-          = try (do ns <- apply (Var f) (map isph imps ++ map (\x -> False) args)
+          = try (do apply_elab f (map toElab imps ++ map (Just . elab') args)
+                    solve)
+                (do ns <- apply (Var f) (map isph imps ++ map (\x -> False) args)
                     solve
                     elabArgs ns (map snd imps ++ args))
-                (do apply_elab f (map toElab imps ++ map (Just . elab') args)
-                    solve)
     elab' (PApp f [] [arg])
           = do simple_app (elab' f) (elab' arg)
                solve

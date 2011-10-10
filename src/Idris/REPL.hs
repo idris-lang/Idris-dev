@@ -5,6 +5,7 @@ module Idris.REPL where
 import Idris.AbsSyntax
 import Idris.REPLParser
 import Idris.ElabDecls
+import Idris.Error
 
 import Core.Evaluate
 import Core.ProofShell
@@ -31,7 +32,8 @@ processInput cmd
                                  return True
                 Right Quit -> do iputStrLn "Bye bye"
                                  return False
-                Right cmd  -> do process cmd
+                Right cmd  -> do idrisCatch (process cmd)
+                                            (\e -> iputStrLn (report e))
                                  return True
 
 process :: Command -> Idris ()

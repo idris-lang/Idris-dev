@@ -11,6 +11,9 @@ import Control.Monad
 -- which can be filled in, by matching one term's normal form against another.
 -- Returns a list of hole names paired with the term which solves them.
 
+-- FIXME! Needs to be cleverer: when we solve a variable, fill it in and normalise
+-- to help the rest of the unification
+
 unify :: Context -> Env -> TT Name -> TT Name -> TC [(Name, TT Name)]
 unify ctxt env x y 
     = case un' [] x y of -- try without normalising first, for speed

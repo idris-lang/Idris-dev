@@ -257,7 +257,7 @@ implicitise ist tm
        = do (decls, a, ns) <- get
             let isn = concatMap (namesIn ist) (map snd is)
             let esn = concatMap (namesIn ist) es
-            put (decls, a, nub (ns ++ ((isn ++ esn) \\ env)))
+            put (decls, a, nub (ns ++ ((isn ++ esn) \\ (env ++ decls))))
     imps env (PPi Imp n ty sc) 
         = do imps env ty
              (impdecls, a, ns) <- get
