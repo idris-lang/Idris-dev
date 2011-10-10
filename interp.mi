@@ -1,13 +1,13 @@
 data Nat = O | S Nat;
 
 plus : Nat -> Nat -> Nat;
-plus O y     = y;
+plus O     y = y;
 plus (S k) y = S (plus k y);
 
 data Ty = TyNat | TyFun Ty Ty;
 
 interpTy : Ty -> Set;
-interpTy TyNat = Nat;
+interpTy TyNat       = Nat;
 interpTy (TyFun s t) = interpTy s -> interpTy t;
 
 data Fin : Nat -> Set where
@@ -21,8 +21,9 @@ data Vect : Set -> Nat -> Set where
   | (::)  : a -> Vect a k -> Vect a (S k); 
 
 data Env : Vect Ty n -> Set where
-    Empty : Env VNil
-  | Extend : {xs : Vect Ty n} -> interpTy a -> Env xs -> Env (a :: xs);
+    Empty  : Env VNil
+  | Extend : {xs : Vect Ty n} -> 
+             interpTy a -> Env xs -> Env (a :: xs);
 
 lookup : (i : Fin n) -> Vect a n -> a;
 lookup fO     (x :: xs) = x;
@@ -43,15 +44,18 @@ data Expr : Vect Ty n -> Ty -> Set where
   | App : {G : Vect Ty n} ->
           Expr G (TyFun a t) -> Expr G a -> Expr G t
   | Add : {G : Vect Ty n} ->
-          Expr G TyNat -> Expr G TyNat -> Expr G TyNat;
+          Expr G TyNat -> Expr G TyNat -> Expr G TyNat
+  | Bind : {G : Vect Ty n} ->
+          Expr G a -> (interpTy a -> Expr G b) -> Expr G b;
 
 interp : {G : Vect Ty n} ->
          Env G -> Expr G t -> interpTy t;
-interp env (Var i)   = envLookup i env;
-interp env (Val x)   = x;
-interp env (Lam sc)  = \x => interp (Extend x env) sc;
-interp env (App f s) = (interp env f) (interp env s);
-interp env (Add x y) = plus (interp env x) (interp env y);
+interp env (Var i)    = envLookup i env;
+interp env (Val x)    = x;
+interp env (Lam sc)   = \x => interp (Extend x env) sc;
+interp env (App f s)  = (interp env f) (interp env s);
+interp env (Add x y)  = plus (interp env x) (interp env y);
+interp env (Bind v f) = interp env (f (interp env v));
 
 eAdd : {G : Vect Ty n} ->
        Expr G (TyFun TyNat (TyFun TyNat TyNat));
@@ -65,5 +69,12 @@ eDouble' : {G : Vect Ty n} ->
            Expr G (TyFun TyNat TyNat);
 eDouble' = Lam (App (App eAdd (Var fO)) (Var fO));
 
+eProg : {G : Vect Ty n} -> Expr G (TyFun TyNat TyNat);
+eProg = Lam (Bind (App eDouble (Var fO))
+            (\x => Bind (App eDouble (Var fO))
+            (\y => Bind (App eDouble (Val x))
+            (\z => App (App eAdd (Val y)) (Val z)))));
+
 test : Nat;
 test = interp Empty eAdd (S (S O)) (S (S O));
+
