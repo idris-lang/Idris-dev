@@ -44,7 +44,7 @@ runIdris opts =
 
 loadModule :: FilePath -> Idris ()
 loadModule f = do iLOG ("Reading " ++ show f)
-                  ds <- parseProg f
+                  ds <- parseProg defaultSyntax f
                   iLOG (dumpDecls ds)
                   i <- get
                   iLOG (show (idris_infixes i))

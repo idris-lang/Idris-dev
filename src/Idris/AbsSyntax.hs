@@ -136,6 +136,13 @@ data PTerm = PQuote Raw
            | PSet
            | Placeholder
 
+-- Syntactic sugar info (TODO: namespaces, parameters, modules)
+
+data SyntaxInfo = Syn { using :: [(Name, PTerm)] }
+    deriving Show
+
+defaultSyntax = Syn []
+
 --- Pretty printing declarations and terms
 
 instance Show PTerm where
@@ -248,10 +255,13 @@ getInferType (App (App _ ty) _) = ty
 -- Add implicit Pi bindings for any names in the term which appear in an
 -- argument position.
 
-implicitise :: IState -> PTerm -> (PTerm, ([Name], Int))
-implicitise ist tm
-    = let (declimps, a, ns) = execState (imps [] tm) ([], 0, []) in
-          (pibind ns tm, (ns ++ reverse declimps, a))
+implicitise :: SyntaxInfo -> IState -> PTerm -> (PTerm, ([Name], Int))
+implicitise syn ist tm
+    = let uvars = using syn
+          (declimps, a, ns) = execState (imps [] tm) ([], 0, []) in
+          if null ns 
+            then (tm, (reverse declimps, a)) 
+            else implicitise syn ist (pibind uvars ns tm)
   where
     imps env (PApp f is es)  
        = do (decls, a, ns) <- get
@@ -274,8 +284,10 @@ implicitise ist tm
     imps env (PHidden tm)    = imps env tm
     imps env _               = return ()
 
-    pibind []     sc = sc
-    pibind (n:ns) sc = PPi Imp n Placeholder (pibind ns sc)
+    pibind using []     sc = sc
+    pibind using (n:ns) sc = case lookup n using of
+                               Just ty -> PPi Imp n ty (pibind using ns sc)
+                               Nothing -> PPi Imp n Placeholder (pibind using ns sc)
 
 addImpl :: IState -> PTerm -> PTerm
 addImpl ist ptm = ai [] ptm

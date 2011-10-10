@@ -34,15 +34,16 @@ operator  = PTok.operator lexer
 reservedOp= PTok.reservedOp lexer
 lchar = lexeme.char
 
-parseExpr i = runParser pFullExpr i "(input)"
+parseExpr i = runParser (pFullExpr defaultSyntax) i "(input)"
 
-parseProg :: String -> Idris [PDecl]
-parseProg fname = do file <- lift $ readFile fname
+parseProg :: SyntaxInfo -> String -> Idris [PDecl]
+parseProg syn fname 
+                = do file <- lift $ readFile fname
                      i <- get
-                     case (runParser (do ps <- many1 pDecl
+                     case (runParser (do ps <- many1 (pDecl syn)
                                          eof
                                          i' <- getState
-                                         return (ps, i')) i fname file) of
+                                         return (concat ps, i')) i fname file) of
                         Left err -> fail (show err)
                         Right (x, i) -> do put i
                                            return (collect x)
@@ -56,26 +57,43 @@ collect (PClauses _ [c@(PClause n l r)] : ds) = clauses n [c] ds
 collect (d : ds) = d : collect ds
 collect [] = []
 
-pFullExpr :: IParser PTerm
-pFullExpr = do x <- pExpr; eof; 
+pFullExpr :: SyntaxInfo -> IParser PTerm
+pFullExpr syn 
+          = do x <- pExpr syn; eof; 
                i <- getState
                return (addImpl i x)
 
-pDecl :: IParser PDecl
-pDecl = do d <- pDecl'
+pDecl :: SyntaxInfo -> IParser [PDecl]
+pDecl syn
+      = do d <- pDecl' syn
            lchar ';'
            i <- getState
-           return (fmap (addImpl i) d)
+           return [fmap (addImpl i) d]
+    <|> try (pUsing syn)
 
 --------- Top Level Declarations ---------
 
-pDecl' :: IParser PDecl
-pDecl' = try pFixity
-     <|> try (do n <- pfName; ty <- pTSig
-                 ty' <- implicit n ty
+pDecl' :: SyntaxInfo -> IParser PDecl
+pDecl' syn
+       = try pFixity
+     <|> try (do n <- pfName; ty <- pTSig syn
+                 ty' <- implicit syn n ty
                  return (PTy n ty'))
-     <|> try pData
-     <|> try pPattern
+     <|> try (pData syn)
+     <|> try (pPattern syn)
+
+pUsing :: SyntaxInfo -> IParser [PDecl]
+pUsing syn = 
+    do reserved "using"; 
+       lchar '('
+       ns <- sepBy1 (do x <- pfName; t <- pTSig syn; return (x,t))
+                    (lchar ',')
+       lchar ')'
+       lchar '{'
+       let uvars = using syn
+       ds <- many1 (pDecl (syn { using = uvars ++ ns }))
+       lchar '}'
+       return (concat ds)
 
 --------- Fixity ---------
 
@@ -95,57 +113,59 @@ fixity = try (do reserved "infixl"; return Infixl)
 
 --------- Expressions ---------
 
-pExpr = do i <- getState
-           buildExpressionParser (table (idris_infixes i)) pExpr'
+pExpr syn = do i <- getState
+               buildExpressionParser (table (idris_infixes i)) (pExpr' syn)
 
-pExpr' :: IParser PTerm
-pExpr' = try pApp 
-     <|> pSimpleExpr
-     <|> try pLambda
-     <|> try pPi 
+pExpr' :: SyntaxInfo -> IParser PTerm
+pExpr' syn 
+       = try (pApp syn) 
+     <|> pSimpleExpr syn
+     <|> try (pLambda syn)
+     <|> try (pPi syn) 
 
 pfName = try iName
      <|> do lchar '('; o <- operator; lchar ')'; return (UN [o])
 
-pSimpleExpr = 
+pSimpleExpr syn = 
         try (do symbol "!["; t <- pTerm; lchar ']' 
                 return $ PQuote t)
         <|> try (do x <- pfName; return (PRef x))
         <|> try (do lchar '_'; return Placeholder)
-        <|> try (do lchar '('; e <- pExpr; lchar ')'; return e)
+        <|> try (do lchar '('; e <- pExpr syn; lchar ')'; return e)
         <|> try (do reserved "Set"; return PSet)
 
-pHSimpleExpr = try pSimpleExpr
+pHSimpleExpr syn
+             = try (pSimpleExpr syn)
            <|> do lchar '.'
-                  e <- pSimpleExpr
+                  e <- pSimpleExpr syn
                   return $ PHidden e
 
-pApp = do f <- pSimpleExpr
-          iargs <- many pImplicitArg
-          args <- many1 pSimpleExpr
-          return (PApp f iargs args)
+pApp syn = do f <- pSimpleExpr syn
+              iargs <- many (pImplicitArg syn)
+              args <- many1 (pSimpleExpr syn)
+              return (PApp f iargs args)
 
-pImplicitArg = do lchar '{'; n <- iName
-                  v <- option (PRef n) (do lchar '='; pExpr)
-                  lchar '}'
-                  return (n, v)
+pImplicitArg syn = do lchar '{'; n <- iName
+                      v <- option (PRef n) (do lchar '='; pExpr syn)
+                      lchar '}'
+                      return (n, v)
 
-pTSig = do lchar ':'
-           pExpr
+pTSig syn = do lchar ':'
+               pExpr syn
 
-pLambda = do lchar '\\'; x <- iName; t <- option Placeholder pTSig
-             symbol "=>"
-             sc <- pExpr
-             return (PLam x t sc)
+pLambda syn = do lchar '\\'; x <- iName; t <- option Placeholder (pTSig syn)
+                 symbol "=>"
+                 sc <- pExpr syn
+                 return (PLam x t sc)
 
-pPi = do lchar '('; x <- iName; t <- pTSig; lchar ')'
-         symbol "->"
-         sc <- pExpr
-         return (PPi Exp x t sc)
-  <|> do lchar '{'; x <- iName; t <- pTSig; lchar '}'
-         symbol "->"
-         sc <- pExpr
-         return (PPi Imp x t sc)
+pPi syn = do lchar '('; x <- iName; t <- pTSig syn; lchar ')'
+             symbol "->"
+             sc <- pExpr syn
+             return (PPi Exp x t sc)
+      <|> do lchar '{'; x <- iName; t <- pTSig syn; lchar '}'
+             symbol "->"
+             sc <- pExpr syn
+             return (PPi Imp x t sc)
 
 table fixes 
    = toTable (reverse fixes) ++
@@ -164,22 +184,22 @@ binary name f assoc = Infix (do { reservedOp name; return f }) assoc
 
 --------- Data declarations ---------
 
-pData :: IParser PDecl
-pData = try (do reserved "data"; tyn <- pfName; ty <- pTSig
-                reserved "where"
-                ty' <- implicit tyn ty
-                cons <- sepBy1 pConstructor (lchar '|')
-                return $ PData (PDatadecl tyn ty' cons))
-    <|> do reserved "data"; tyn <- pfName; args <- many iName
-           lchar '='
-           cons <- sepBy1 pSimpleCon (lchar '|')
-           let conty = mkPApp (PRef tyn) (map PRef args)
-           let ty = bindArgs (map (\a -> PSet) args) PSet
-           ty' <- implicit tyn ty
-           cons' <- mapM (\ (x, cargs) -> do let cty = bindArgs cargs conty
-                                             cty' <- implicit x cty
-                                             return (x, cty')) cons
-           return $ PData (PDatadecl tyn ty' cons')
+pData :: SyntaxInfo -> IParser PDecl
+pData syn = try (do reserved "data"; tyn <- pfName; ty <- pTSig syn
+                    reserved "where"
+                    ty' <- implicit syn tyn ty
+                    cons <- sepBy1 (pConstructor syn) (lchar '|')
+                    return $ PData (PDatadecl tyn ty' cons))
+        <|> do reserved "data"; tyn <- pfName; args <- many iName
+               lchar '='
+               cons <- sepBy1 (pSimpleCon syn) (lchar '|')
+               let conty = mkPApp (PRef tyn) (map PRef args)
+               let ty = bindArgs (map (\a -> PSet) args) PSet
+               ty' <- implicit syn tyn ty
+               cons' <- mapM (\ (x, cargs) -> do let cty = bindArgs cargs conty
+                                                 cty' <- implicit syn x cty
+                                                 return (x, cty')) cons
+               return $ PData (PDatadecl tyn ty' cons')
 
 mkPApp t [] = t
 mkPApp t xs = PApp t [] xs
@@ -188,49 +208,47 @@ bindArgs :: [PTerm] -> PTerm -> PTerm
 bindArgs [] t = t
 bindArgs (x:xs) t = PPi Exp (MN 0 "t") x (bindArgs xs t)
 
-pConstructor :: IParser (Name, PTerm)
-pConstructor 
-    = do cn <- pfName; ty <- pTSig
-         ty' <- implicit cn ty
+pConstructor :: SyntaxInfo -> IParser (Name, PTerm)
+pConstructor syn
+    = do cn <- pfName; ty <- pTSig syn
+         ty' <- implicit syn cn ty
          return (cn, ty')
 
-pSimpleCon :: IParser (Name, [PTerm])
-pSimpleCon = do cn <- pfName
-                args <- many pSimpleExpr
-                return (cn, args)
+pSimpleCon :: SyntaxInfo -> IParser (Name, [PTerm])
+pSimpleCon syn 
+     = do cn <- pfName
+          args <- many (pSimpleExpr syn)
+          return (cn, args)
 
 --------- Pattern match clauses ---------
 
-pPattern :: IParser PDecl
-pPattern = do clause <- pClause 
-              return (PClauses (MN 0 "_") [clause]) -- collect together later
+pPattern :: SyntaxInfo -> IParser PDecl
+pPattern syn = do clause <- pClause syn
+                  return (PClauses (MN 0 "_") [clause]) -- collect together later
 
-pClause :: IParser PClause
-pClause = try (do n <- pfName
-                  iargs <- many pImplicitArg
-                  args <- many pHSimpleExpr
+pClause :: SyntaxInfo -> IParser PClause
+pClause syn
+        = try (do n <- pfName
+                  iargs <- many (pImplicitArg syn)
+                  args <- many (pHSimpleExpr syn)
                   lchar '='
-                  rhs <- pExpr
+                  rhs <- pExpr syn
                   return $ PClause n (PApp (PRef n) iargs args) rhs)
-       <|> do l <- pSimpleExpr
+       <|> do l <- pSimpleExpr syn
               op <- operator
               let n = UN [op]
-              r <- pSimpleExpr
+              r <- pSimpleExpr syn
               lchar '='
-              rhs <- pExpr
+              rhs <- pExpr syn
               return $ PClause n (PApp (PRef n) [] [l,r]) rhs
 
 -- Dealing with implicit arguments
 
-implicit :: Name -> PTerm -> IParser PTerm
-implicit n ptm 
+implicit :: SyntaxInfo -> Name -> PTerm -> IParser PTerm
+implicit syn n ptm 
     = do i <- getState
-         let (tm', name_arity) = implicitise i ptm
+         let (tm', name_arity) = implicitise syn i ptm
          setState (i { idris_implicits = addDef n name_arity (idris_implicits i) })
          return tm'
 
-addImplicits :: PTerm -> IParser PTerm
-addImplicits tm 
-    = do i <- getState
-         return (addImpl i tm)
 
