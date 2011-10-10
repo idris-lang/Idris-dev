@@ -131,6 +131,7 @@ data PTerm = PQuote Raw
            | PRef Name
            | PLam Name PTerm PTerm
            | PPi  Plicity Name PTerm PTerm
+           | PLet Name PTerm PTerm PTerm -- not implemented yet
            | PApp PTerm [(Name, PTerm)] [PTerm]
            | PHidden PTerm -- irrelevant or hidden pattern
            | PSet
@@ -187,7 +188,7 @@ showImp impl tm = se 10 tm where
         | not impl = show f
     se p (PApp (PRef op@(UN [f:_])) _ [l, r])
         | not impl && not (isAlpha f) 
-            = bracket p 1 $ se 1 l ++ " " ++ show op ++ " " ++ se 1 r
+            = bracket p 1 $ se 1 l ++ " " ++ show op ++ " " ++ se 0 r
     se p (PApp f imps args) 
         = bracket p 1 $ se 1 f ++ (if impl then concatMap siArg imps else "")
                                ++ concatMap seArg args

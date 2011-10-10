@@ -6,6 +6,7 @@ import Idris.AbsSyntax
 import Idris.REPLParser
 import Idris.ElabDecls
 import Idris.Error
+import Idris.Delaborate
 
 import Core.Evaluate
 import Core.ProofShell
@@ -41,8 +42,10 @@ process Help
     = iputStrLn "At some point I'll write some help text. Thanks for asking though."
 process (Eval t) = do (tm, ty) <- elabVal t
                       ctxt <- getContext
+                      ist <- get 
                       let tm' = normalise ctxt [] tm
-                      iputStrLn (show tm' ++ " : " ++ show ty)
+                      iputStrLn (show (delab ist tm') ++ " : " ++ 
+                                 show (delab ist ty))
 process TTShell  = do ist <- get
                       let shst = initState (tt_ctxt ist)
                       shst' <- lift $ runShell shst
