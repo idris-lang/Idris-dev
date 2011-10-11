@@ -19,6 +19,7 @@ delab ist tm = de [] tm
     de env (Bind n (Let ty val) sc) 
         = PLet n (de env ty) (de env val) (de (n:env) sc)
     de env (Bind n _ sc) = de (n:env) sc
+    de env (Constant i) = PConstant i
     de env (Set i) = PSet 
 
     deFn env (App f a) args = deFn env f (a:args)

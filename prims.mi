@@ -1,0 +1,46 @@
+data Bool = False | True;
+
+infixl 5 ==, /=, ==.;
+infixl 6 <, <=, >, >=, <., <=., >., >=.;
+infixl 7 <<, >>;
+infixl 8 +,-,++,+.,-.;
+infixl 9 *,/,*.,/.;
+
+(+) : Int -> Int -> Int;
+(+) = prim__addInt;
+
+(-) : Int -> Int -> Int;
+(-) = prim__subInt;
+
+(*) : Int -> Int -> Int;
+(*) = prim__mulInt;
+
+div : Int -> Int -> Int;
+div = prim__divInt;
+
+intToBool : Int -> Bool;
+intToBool 0 = False;
+intToBool x = True;
+
+boolOp : (Int -> Int -> Int) -> Int -> Int -> Bool;
+boolOp op x y = intToBool (op x y); 
+
+(==) : Int -> Int -> Bool;
+(==) = boolOp prim__eqInt;
+
+(<) : Int -> Int -> Bool;
+(<) = boolOp prim__ltInt;
+
+(<=) : Int -> Int -> Bool;
+(<=) = boolOp prim__lteInt;
+
+(>) : Int -> Int -> Bool;
+(>) = boolOp prim__gtInt;
+
+(>=) : Int -> Int -> Bool;
+(>=) = boolOp prim__gteInt;
+
+fact : Int -> Int;
+fact 0 = 1;
+fact n = n * fact (n - 1);
+

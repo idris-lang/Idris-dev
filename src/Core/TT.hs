@@ -96,11 +96,15 @@ lookupCtxt = Map.lookup
 toAlist :: Ctxt a -> [(Name, a)]
 toAlist = Map.toList
 
+data Const = I Int | Fl Double | Ch Char | Str String
+           | IType | FlType    | ChType  | StrType    | PtrType
+  deriving Eq
 
 data Raw = Var Name
          | RBind Name (Binder Raw) Raw
          | RApp Raw Raw
          | RSet Int
+         | RConstant Const
   deriving Show
 
 data Binder b = Lam   { binderTy  :: b }
@@ -144,6 +148,7 @@ data TT n = P NameType n (TT n) -- embed type
           | V Int 
           | Bind n (Binder (TT n)) (TT n)
           | App (TT n) (TT n) -- function, function type, arg
+          | Constant Const
           | Set Int
   deriving Functor
 
@@ -160,6 +165,7 @@ instance Eq n => Eq (TT n) where
     (==) (Bind _ xb xs) (Bind _ yb ys) = xb == yb && xs == ys
     (==) (App fx ax)    (App fy ay)    = fx == fy && ax == ay
     (==) (Set x)        (Set y)        = x == y
+    (==) (Constant x)   (Constant y)   = x == y
     (==) _              _              = False
 
 -- A few handy operations on well typed terms:
@@ -246,6 +252,8 @@ forget tm = fe [] tm
     fe env (Bind n b sc) = RBind n (fmap (fe env) b) 
                                    (fe (n:env) sc)
     fe env (App f a) = RApp (fe env f) (fe env a)
+    fe env (Constant c) 
+                     = RConstant c
     fe env (Set i)   = RSet i
 
 type Term = TT Name
@@ -261,7 +269,17 @@ type WkEnv = WkEnvTT Name
 
 instance (Eq n, Show n) => Show (TT n) where
     show t = showEnv [] t
-    
+
+instance Show Const where
+    show (I i) = show i
+    show (Fl f) = show f
+    show (Ch c) = show c
+    show (Str s) = show s
+    show IType = "Int"
+    show FlType = "Float"
+    show ChType = "Char"
+    show StrType = "String"
+
 showEnv env t = showEnv' env t False
 showEnvDbg env t = showEnv' env t True
 
@@ -275,6 +293,7 @@ showEnv' env t dbg = se 10 env t where
         | noOccurrence n sc && not dbg = bracket p 2 $ se 10 env t ++ " -> " ++ se 10 ((n,b):env) sc
     se p env (Bind n b sc) = bracket p 2 $ sb env n b ++ se 10 ((n,b):env) sc
     se p env (App f a) = bracket p 1 $ se 1 env f ++ " " ++ se 0 env a
+    se p env (Constant c) = show c
     se p env (Set i) = "Set" ++ show i
 
     sb env n (Lam t)  = showb env "\\ " " => " n t

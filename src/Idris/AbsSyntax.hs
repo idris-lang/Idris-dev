@@ -76,12 +76,14 @@ data Command = Quit | Help | Eval PTerm
 data Fixity = Infixl { prec :: Int } 
             | Infixr { prec :: Int }
             | InfixN { prec :: Int } 
+            | PrefixN { prec :: Int }
     deriving Eq
 
 instance Show Fixity where
     show (Infixl i) = "infixl " ++ show i
     show (Infixr i) = "infixr " ++ show i
     show (InfixN i) = "infix " ++ show i
+    show (PrefixN i) = "prefix " ++ show i
 
 data FixDecl = Fix Fixity String 
     deriving (Show, Eq)
@@ -121,6 +123,7 @@ data PTerm = PQuote Raw
            | PApp PTerm [(Name, PTerm)] [PTerm]
            | PHidden PTerm -- irrelevant or hidden pattern
            | PSet
+           | PConstant Const
            | Placeholder
 
 -- Syntactic sugar info (TODO: namespaces, parameters, modules)
@@ -180,6 +183,7 @@ showImp impl tm = se 10 tm where
                                ++ concatMap seArg args
     se p (PHidden tm) = "." ++ se 0 tm
     se p PSet = "Set"
+    se p (PConstant c) = show c
     se p Placeholder = "_"
 
     seArg arg      = " " ++ se 0 arg

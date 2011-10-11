@@ -48,6 +48,12 @@ check ctxt env (RApp f a)
                           normalise ctxt env (Bind x (Let aty av) t))
            t -> fail "Can't apply a non-function type"
 check ctxt env (RSet i) = return (Set i, Set i) -- LATER: (i+1))
+check ctxt env (RConstant c) = return (Constant c, constType c)
+  where constType (I _)   = Constant IType
+        constType (Fl _)  = Constant FlType
+        constType (Ch _)  = Constant ChType
+        constType (Str _) = Constant StrType
+        constType _       = Set 0
 check ctxt env (RBind n b sc)
     = do b' <- checkBinder b
          (scv, sct) <- check ctxt ((n, b'):env) sc
@@ -133,7 +139,7 @@ checkProgram ctxt [] = return ctxt
 checkProgram ctxt ((n, RConst t) : xs) 
    = do (t', tt') <- trace (show n) $ check ctxt [] t
         isSet ctxt [] tt'
-        checkProgram (addConstant n t' ctxt) xs
+        checkProgram (addTyDecl n t' ctxt) xs
 checkProgram ctxt ((n, RFunction (RawFun ty val)) : xs)
    = do (ty', tyt') <- trace (show n) $ check ctxt [] ty
         (val', valt') <- check ctxt [] val

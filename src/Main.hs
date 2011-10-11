@@ -19,6 +19,7 @@ import Idris.AbsSyntax
 import Idris.Parser
 import Idris.REPL
 import Idris.ElabDecls
+import Idris.Primitives
 
 -- Main program reads command line options, parses the main program, and gets
 -- on with the REPL.
@@ -36,6 +37,7 @@ runIdris :: [Opt] -> Idris ()
 runIdris opts = 
     do let inputs = opt getFile opts
        mapM_ makeOption opts
+       elabPrims
        mapM_ loadModule inputs       
        repl
   where
@@ -49,7 +51,6 @@ loadModule f = do iLOG ("Reading " ++ show f)
                   i <- get
                   iLOG (show (idris_infixes i))
                   -- Now add all the declarations to the context
-                  elabDecl (PData inferDecl) -- a handy primitive
                   mapM_ elabDecl ds
                   return ()
 

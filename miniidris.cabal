@@ -24,7 +24,7 @@ Executable     miniidris
 
                               Idris.AbsSyntax, Idris.Parser, Idris.REPL,
                               Idris.REPLParser, Idris.ElabDecls, Idris.Error,
-                              Idris.Delaborate
+                              Idris.Delaborate, Idris.Primitives
 
                Build-depends:   base>=4 && <5, parsec, mtl, Cabal, readline,
                                 containers, process, transformers

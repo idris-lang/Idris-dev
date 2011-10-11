@@ -14,8 +14,6 @@ data SC = Case Name [CaseAlt]
         | UnmatchedCase String -- error message
     deriving Show
 
-type Const = Int -- TMP until constants implemented
-
 data CaseAlt = ConCase Name Int [Name] SC
              | ConstCase Const         SC
              | DefaultCase             SC
@@ -54,6 +52,7 @@ toPat tm = evalState (toPat' tm []) []
                                           else return (PV n)
     toPat' (App f a)          args = do a' <- toPat' a []
                                         toPat' f (a' : args)
+    toPat' (Constant c)       args = return $ PConst c
     toPat' _                  _    = return PAny
 
 data Partition = Cons [Clause]
@@ -64,7 +63,7 @@ isVarPat (PAny : ps , _) = True
 isVarPat _               = False
 
 isConPat (PCon _ _ _ : ps, _) = True
--- constants too
+isConPat (PConst _   : ps, _) = True
 isConPat _                    = False
 
 partition :: [Clause] -> [Partition]

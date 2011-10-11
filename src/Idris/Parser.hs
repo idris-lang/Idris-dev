@@ -32,6 +32,10 @@ identifier= PTok.identifier lexer
 reserved  = PTok.reserved lexer
 operator  = PTok.operator lexer
 reservedOp= PTok.reservedOp lexer
+integer   = PTok.integer lexer
+float     = PTok.float lexer
+strlit    = PTok.stringLiteral lexer
+chlit     = PTok.charLiteral lexer
 lchar = lexeme.char
 
 parseExpr i = runParser (pFullExpr defaultSyntax) i "(input)"
@@ -109,6 +113,7 @@ fixity :: IParser (Int -> Fixity)
 fixity = try (do reserved "infixl"; return Infixl)
      <|> try (do reserved "infixr"; return Infixr)
      <|> try (do reserved "infix";  return InfixN)
+     <|> try (do reserved "prefix"; return PrefixN)
 
 --------- Expressions ---------
 
@@ -131,6 +136,7 @@ pSimpleExpr syn =
         <|> try (do x <- pfName; return (PRef x))
         <|> try (do lchar '_'; return Placeholder)
         <|> try (do lchar '('; e <- pExpr syn; lchar ')'; return e)
+        <|> try (do c <- pConstant; return (PConstant c))
         <|> try (do reserved "Set"; return PSet)
 
 pHSimpleExpr syn
@@ -177,20 +183,32 @@ tyOptDeclList syn = sepBy1 (do x <- pfName; t <- option Placeholder (pTSig syn)
 bindList b []          sc = sc
 bindList b ((n, t):bs) sc = b n t (bindList b bs sc)
 
+pConstant :: IParser Const
+pConstant = do reserved "Int";    return IType
+        <|> do reserved "Char";   return ChType
+        <|> do reserved "Float";  return FlType
+        <|> do reserved "String"; return StrType
+        <|> do reserved "Ptr";    return PtrType
+        <|> do i <- natural;      return $ I (fromInteger i)
+
 table fixes 
-   = toTable (reverse fixes) ++
+   = [[prefix "-" (\x -> PApp (PRef (UN ["-"])) [] [PConstant (I 0), x])]] 
+       ++ toTable (reverse fixes) ++
       [[binary "="  (\x y -> PApp (PRef (UN ["="])) [] [x,y]) AssocLeft],
        [binary "->" (PPi Exp (MN 0 "X")) AssocRight]]
 
 toTable fs = map (map toBin) 
                  (groupBy (\ (Fix x _) (Fix y _) -> prec x == prec y) fs)
-   where toBin (Fix f op) = binary op 
+   where toBin (Fix (PrefixN _) op) = prefix op 
+                                       (\x -> PApp (PRef (UN [op])) [] [x])
+         toBin (Fix f op) = binary op 
                                (\x y -> PApp (PRef (UN [op])) [] [x,y]) (assoc f)
          assoc (Infixl _) = AssocLeft
          assoc (Infixr _) = AssocRight
          assoc (InfixN _) = AssocNone
 
 binary name f assoc = Infix (do { reservedOp name; return f }) assoc
+prefix name f = Prefix (do { reservedOp name; return f })
 
 --------- Data declarations ---------
 

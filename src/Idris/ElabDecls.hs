@@ -19,7 +19,7 @@ elabType n ty
          (ty', log) <- tclift $ elaborate ctxt n (Set 0) (build False ty)
          (cty, _)   <- tclift $ recheck ctxt [] ty'
          logLvl 2 $ "---> " ++ show cty
-         updateContext (addConstant n (normalise ctxt [] cty))
+         updateContext (addTyDecl n (normalise ctxt [] cty))
 
 elabData :: PData -> Idris ()
 elabData (PDatadecl n t dcons)
@@ -27,7 +27,7 @@ elabData (PDatadecl n t dcons)
          (t', log) <- tclift $ elaborate ctxt n (Set 0) (build False t)
          (cty, _)  <- tclift $ recheck ctxt [] t'
          logLvl 2 $ "---> " ++ show cty
-         updateContext (addConstant n cty) -- temporary, to check cons
+         updateContext (addTyDecl n cty) -- temporary, to check cons
          cons <- mapM elabCon dcons
          setContext (addDatatype (Data n cty cons) ctxt)
 
@@ -61,8 +61,10 @@ elabClauses n cs
 elabVal :: PTerm -> Idris (Term, Type)
 elabVal tm
    = do ctxt <- getContext
+        logLvl 10 (show tm)
         (tm', _) <- tclift $ elaborate ctxt (MN 0 "val") infP
                                (build True (infTerm tm))
+        logLvl 3 ("Value: " ++ show tm')
         let vtm = getInferTerm tm'
         iLOG (show vtm)
         tclift $ recheck ctxt [] vtm
@@ -133,8 +135,9 @@ elab pattern tm = do elab' tm
                   (h: hs) -> do patvar h; mkPat
                   [] -> return ()
 
-    elab' PSet           = do exact (RSet 0); solve
-    elab' (PQuote r)     = do exact r; solve
+    elab' PSet           = do fill (RSet 0); solve
+    elab' (PConstant c)  = do fill (RConstant c); solve
+    elab' (PQuote r)     = do fill r; solve
     elab' (PRef n) | pattern
                          = try (do apply (Var n) []; solve)
                                (patvar n)
@@ -160,6 +163,7 @@ elab pattern tm = do elab' tm
     elab' (PApp f [] [arg])
           = do simple_app (elab' f) (elab' arg)
                solve
+    elab' Placeholder = fail $ "Can't deal with a placeholder here"
     elab' x = fail $ "Not implemented " ++ show x
 
     elabArgs [] _ = return ()

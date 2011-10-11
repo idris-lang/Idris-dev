@@ -14,12 +14,20 @@ import Debug.Trace
 type TokenParser a = PTok.TokenParser a
 
 idrisDef = haskellDef { 
+              opStart = iOpStart,
+              opLetter = iOpLetter,
               reservedOpNames = [":", "..", "=", "\\", "|", "<-", "->", "=>"],
               reservedNames = ["let", "in", "data", "Set", "if", "then", "else",
-                               "do", "dsl", "import", "infix", "infixl", "infixr",
+                               "do", "dsl", "import", 
+                               "infix", "infixl", "infixr", "prefix",
                                "where", "forall", "syntax",
-                               "using", "params", "namespace"]
+                               "using", "params", "namespace",
+                               "Int", "Float", "Char", "String", "Ptr"]
            } 
+
+iOpStart = oneOf ":!#$%&*+./<=>?@\\^|-~"
+iOpLetter = oneOf ":!#$%&*+./<=>?@\\^|-~"
+          <|> letter
 
 lexer :: TokenParser a
 lexer  = PTok.makeTokenParser idrisDef
