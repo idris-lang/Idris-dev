@@ -189,7 +189,8 @@ pConstant = do reserved "Int";    return IType
         <|> do reserved "Float";  return FlType
         <|> do reserved "String"; return StrType
         <|> do reserved "Ptr";    return PtrType
-        <|> do i <- natural;      return $ I (fromInteger i)
+        <|> try (do f <- float;        return $ Fl f)
+        <|> try (do i <- natural;      return $ I (fromInteger i))
 
 table fixes 
    = [[prefix "-" (\x -> PApp (PRef (UN ["-"])) [] [PConstant (I 0), x])]] 

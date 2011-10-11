@@ -6,6 +6,13 @@ infixl 7 <<, >>;
 infixl 8 +,-,++,+.,-.;
 infixl 9 *,/,*.,/.;
 
+intToBool : Int -> Bool;
+intToBool 0 = False;
+intToBool x = True;
+
+boolOp : {a:Set} -> (a -> a -> Int) -> a -> a -> Bool;
+boolOp op x y = intToBool (op x y); 
+
 (+) : Int -> Int -> Int;
 (+) = prim__addInt;
 
@@ -17,13 +24,6 @@ infixl 9 *,/,*.,/.;
 
 div : Int -> Int -> Int;
 div = prim__divInt;
-
-intToBool : Int -> Bool;
-intToBool 0 = False;
-intToBool x = True;
-
-boolOp : (Int -> Int -> Int) -> Int -> Int -> Bool;
-boolOp op x y = intToBool (op x y); 
 
 (==) : Int -> Int -> Bool;
 (==) = boolOp prim__eqInt;
@@ -40,7 +40,30 @@ boolOp op x y = intToBool (op x y);
 (>=) : Int -> Int -> Bool;
 (>=) = boolOp prim__gteInt;
 
-fact : Int -> Int;
-fact 0 = 1;
-fact n = n * fact (n - 1);
+(+.) : Float -> Float -> Float;
+(+.) = prim__addFloat;
+
+(-.) : Float -> Float -> Float;
+(-.) = prim__subFloat;
+
+(*.) : Float -> Float -> Float;
+(*.) = prim__mulFloat;
+
+(/.) : Float -> Float -> Float;
+(/.) = prim__divFloat;
+
+(==.) : Float -> Float -> Bool;
+(==.) = boolOp prim__eqFloat;
+
+(<.) : Float -> Float -> Bool;
+(<.) = boolOp prim__ltFloat;
+
+(<=.) : Float -> Float -> Bool;
+(<=.) = boolOp prim__lteFloat;
+
+(>.) : Float -> Float -> Bool;
+(>.) = boolOp prim__gtFloat;
+
+(>=.) : Float -> Float -> Bool;
+(>=.) = boolOp prim__gteFloat;
 
