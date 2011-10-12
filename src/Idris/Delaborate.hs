@@ -24,10 +24,13 @@ delab ist tm = de [] tm
 
     deFn env (App f a) args = deFn env f (a:args)
     deFn env (P _ n _) args = mkPApp n (map (de env) args)
-    deFn env f args = PApp (de env f) [] (map (de env) args)
+    deFn env f args = PApp (de env f) (map PExp (map (de env) args))
 
     mkPApp n args 
-        | Just (ns, i) <- lookupCtxt n (idris_implicits ist)
-            = PApp (PRef n) (zip ns args) (drop (length ns) args)
-        | otherwise = PApp (PRef n) [] args
+        | Just imps <- lookupCtxt n (idris_implicits ist)
+            = PApp (PRef n) (zipWith imp imps args)
+        | otherwise = PApp (PRef n) (map PExp args)
+
+    imp (PImp n _) arg = PImp n arg
+    imp (PExp _)   arg = PExp arg
 

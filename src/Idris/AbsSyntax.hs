@@ -9,6 +9,7 @@ import Core.Evaluate
 import Control.Monad.State
 import Data.List
 import Data.Char
+import Debug.Trace
 
 data IOption = IOption { opt_logLevel :: Int }
     deriving (Show, Eq)
@@ -22,7 +23,7 @@ defaultOpts = IOption 0
 
 data IState = IState { tt_ctxt :: Context,
                        idris_infixes :: [FixDecl],
-                       idris_implicits :: Ctxt ([Name], Int), -- implicits, arity
+                       idris_implicits :: Ctxt [PArg],
                        idris_log :: String,
                        idris_options :: IOption
                      }
@@ -99,7 +100,7 @@ data PDecl' t = PFix     Fixity [String] -- fixity declaration
               | PData    (PData' t)      -- data declaration
     deriving Functor
 
-data PClause' t = PClause Name t t
+data PClause' t = PClause Name t t [PDecl]
     deriving Functor
 
 data PData' t  = PDatadecl { d_name :: Name,
@@ -112,19 +113,26 @@ data PData' t  = PDatadecl { d_name :: Name,
 
 type PDecl   = PDecl' PTerm
 type PData   = PData' PTerm
-type PClause = PClause' PTerm
--- High level language terms
+type PClause = PClause' PTerm 
 
+-- High level language terms
+--
 data PTerm = PQuote Raw
            | PRef Name
            | PLam Name PTerm PTerm
            | PPi  Plicity Name PTerm PTerm
            | PLet Name PTerm PTerm PTerm -- not implemented yet
-           | PApp PTerm [(Name, PTerm)] [PTerm]
+           | PApp PTerm [PArg]
            | PHidden PTerm -- irrelevant or hidden pattern
            | PSet
            | PConstant Const
            | Placeholder
+
+data PArg' t = PImp { pname :: Name, getTm :: t }
+             | PExp { getTm :: t }
+    deriving (Show, Functor)
+
+type PArg = PArg' PTerm
 
 -- Syntactic sugar info (TODO: namespaces, parameters, modules)
 
@@ -151,13 +159,26 @@ instance Show PData where
     show d = showDImp False d
 
 showCImp :: Bool -> PClause -> String
-showCImp impl (PClause n l r) = showImp impl l ++ " = " ++ showImp impl r
-
+showCImp impl (PClause n l r w) = showImp impl l ++ " = " ++ showImp impl r
+                                    ++ " where " ++ show w 
 showDImp :: Bool -> PData -> String
 showDImp impl (PDatadecl n ty cons) 
    = "data " ++ show n ++ " : " ++ showImp impl ty ++ " where\n\t"
      ++ showSep "\n\t| " 
             (map (\ (n, t) -> show n ++ " : " ++ showImp impl t) cons)
+
+getImps :: [PArg] -> [(Name, PTerm)]
+getImps [] = []
+getImps (PImp n tm : xs) = (n, tm) : getImps xs
+getImps (_ : xs) = getImps xs
+
+getExps :: [PArg] -> [PTerm]
+getExps [] = []
+getExps (PExp tm : xs) = tm : getExps xs
+getExps (_ : xs) = getExps xs
+
+getAll :: [PArg] -> [PTerm]
+getAll = map getTm 
 
 showImp :: Bool -> PTerm -> String
 showImp impl tm = se 10 tm where
@@ -168,19 +189,21 @@ showImp impl tm = se 10 tm where
         | n `elem` allNamesIn sc = bracket p 2 $
                                     "(" ++ show n ++ " : " ++ se 10 ty ++ 
                                     ") -> " ++ se 10 sc
-        | otherwise = bracket p 2 $ se 10 ty ++ " -> " ++ se 10 sc
+        | otherwise = bracket p 2 $ se 0 ty ++ " -> " ++ se 10 sc
     se p (PPi Imp n ty sc)
         | impl = bracket p 2 $ "{" ++ show n ++ " : " ++ se 10 ty ++ 
                                "} -> " ++ se 10 sc
         | otherwise = se 10 sc
-    se p (PApp (PRef f) _ [])
+    se p (PApp (PRef f) [])
         | not impl = show f
-    se p (PApp (PRef op@(UN [f:_])) _ [l, r])
-        | not impl && not (isAlpha f) 
-            = bracket p 1 $ se 1 l ++ " " ++ show op ++ " " ++ se 0 r
-    se p (PApp f imps args) 
-        = bracket p 1 $ se 1 f ++ (if impl then concatMap siArg imps else "")
-                               ++ concatMap seArg args
+    se p (PApp (PRef op@(UN [f:_])) args)
+        | length (getExps args) == 2 && not impl && not (isAlpha f) 
+            = let [l, r] = getExps args in
+              bracket p 1 $ se 1 l ++ " " ++ show op ++ " " ++ se 0 r
+    se p (PApp f as) 
+        = let (imps, args) = (getImps as, getExps as) in
+              bracket p 1 $ se 1 f ++ (if impl then concatMap siArg imps else "")
+                                   ++ concatMap seArg args
     se p (PHidden tm) = "." ++ se 0 tm
     se p PSet = "Set"
     se p (PConstant c) = show c
@@ -197,8 +220,7 @@ allNamesIn tm = nub $ ni [] tm
   where
     ni env (PRef n)        
         | not (n `elem` env) = [n]
-    ni env (PApp f is es)  = ni env f ++ concatMap (ni env) (map snd is) ++
-                             concatMap (ni env) es
+    ni env (PApp f as)  = ni env f ++ concatMap (ni env) (map getTm as)
     ni env (PLam n ty sc)  = ni env ty ++ ni (n:env) sc
     ni env (PPi _ n ty sc) = ni env ty ++ ni (n:env) sc
     ni env (PHidden tm)    = ni env tm
@@ -212,8 +234,7 @@ namesIn ist tm = nub $ ni [] tm
             = case lookupCtxt n (idris_implicits ist) of
                 Nothing -> [n]
                 _ -> []
-    ni env (PApp f is es)  = ni env f ++ concatMap (ni env) (map snd is) ++
-                             concatMap (ni env) es
+    ni env (PApp f as)  = ni env f ++ concatMap (ni env) (map getTm as)
     ni env (PLam n ty sc)  = ni env ty ++ ni (n:env) sc
     ni env (PPi _ n ty sc) = ni env ty ++ ni (n:env) sc
     ni env (PHidden tm)    = ni env tm
@@ -229,7 +250,7 @@ inferDecl = PDatadecl inferTy
                                   PPi Exp (MN 0 "a") (PRef (MN 0 "A"))
                                   (PRef inferTy)))]
 
-infTerm t = PApp (PRef inferCon) [(MN 0 "A", Placeholder)] [t]
+infTerm t = PApp (PRef inferCon) [PImp (MN 0 "A") Placeholder, PExp t]
 infP = P (TCon 0) inferTy (Set 0)
 
 getInferTerm, getInferType :: Term -> Term
@@ -246,52 +267,53 @@ getInferType (App (App _ ty) _) = ty
 -- Add implicit Pi bindings for any names in the term which appear in an
 -- argument position.
 
-implicitise :: SyntaxInfo -> IState -> PTerm -> (PTerm, ([Name], Int))
+implicitise :: SyntaxInfo -> IState -> PTerm -> (PTerm, [PArg])
 implicitise syn ist tm
     = let uvars = using syn
-          (declimps, a, ns) = execState (imps [] tm) ([], 0, []) in
+          (declimps, ns) = execState (imps True [] tm) ([], []) in
           if null ns 
-            then (tm, (reverse declimps, a)) 
+            then (tm, reverse declimps) 
             else implicitise syn ist (pibind uvars ns tm)
   where
-    imps env (PApp f is es)  
-       = do (decls, a, ns) <- get
-            let isn = concatMap (namesIn ist) (map snd is)
-            let esn = concatMap (namesIn ist) es
-            put (decls, a, nub (ns ++ ((isn ++ esn) \\ (env ++ decls))))
-    imps env (PPi Imp n ty sc) 
-        = do imps env ty
-             (impdecls, a, ns) <- get
-             put (n:impdecls, a, ns)
-             imps (n:env) sc
-    imps env (PPi Exp n ty sc) 
-        = do imps env ty
-             (impdecls, a, ns) <- get
-             put (impdecls, a+1, ns)
-             imps (n:env) sc
-    imps env (PLam n ty sc)  
-        = do imps env ty
-             imps (n:env) sc
-    imps env (PHidden tm)    = imps env tm
-    imps env _               = return ()
+    imps top env (PApp f as)
+       = do (decls, ns) <- get
+            let isn = concatMap (namesIn ist) (map getTm as)
+            put (decls, nub (ns ++ (isn \\ (env ++ map fst (getImps decls)))))
+    imps top env (PPi Imp n ty sc) 
+        = do let isn = namesIn ist ty \\ [n]
+             (decls , ns) <- get
+             put (PImp n ty : decls, nub (ns ++ (isn \\ (env ++ map fst (getImps decls)))))
+             imps True (n:env) sc
+    imps top env (PPi Exp n ty sc) 
+        = do let isn = (namesIn ist ty ++ case sc of
+                            (PRef x) -> namesIn ist sc
+                            _ -> []) \\ [n]
+             (decls, ns) <- get -- ignore decls in HO types
+             put (PExp ty : decls, nub (ns ++ (isn \\ (env ++ map fst (getImps decls)))))
+             imps True (n:env) sc
+    imps top env (PLam n ty sc)  
+        = do imps False env ty
+             imps False (n:env) sc
+    imps top env (PHidden tm)    = imps False env tm
+    imps top env _               = return ()
 
     pibind using []     sc = sc
     pibind using (n:ns) sc = case lookup n using of
                                Just ty -> PPi Imp n ty (pibind using ns sc)
                                Nothing -> PPi Imp n Placeholder (pibind using ns sc)
 
+-- Add implicit arguments in function calls
+
 addImpl :: IState -> PTerm -> PTerm
 addImpl ist ptm = ai [] ptm
   where
-    ai env (PRef f)       = aiFn env (PRef f) [] []
-    ai env (PApp (PRef f) is es) 
-                          = let is' = map (\ (n, tm) -> (n, ai env tm)) is 
-                                es' = map (ai env) es in
-                                      aiFn env (PRef f) is' es'
-    ai env (PApp f is es) = let f' = ai env f
-                                is' = map (\ (n, tm) -> (n, ai env tm)) is 
-                                es' = map (ai env) es in
-                                      aiFn env f' is' es'
+    ai env (PRef f)       = aiFn env (PRef f) []
+    ai env (PApp (PRef f) as) 
+                          = let as' = map (fmap (ai env)) as in
+                                aiFn env (PRef f) as'
+    ai env (PApp f as)    = let f' = ai env f
+                                as' = map (fmap (ai env)) as in
+                                      aiFn env f' as'
     ai env (PLam n ty sc) = let ty' = ai env ty
                                 sc' = ai (n:env) sc in
                                 PLam n ty' sc'
@@ -301,23 +323,31 @@ addImpl ist ptm = ai [] ptm
     ai env (PHidden tm) = PHidden (ai env tm)
     ai env tm = tm
 
-    aiFn env (PRef f) is es | not (f `elem` env)
+    aiFn env (PRef f) as | not (f `elem` env)
         = case lookupCtxt f (idris_implicits ist) of
-            Just (ns, a) -> pApp a (PRef f) (insertImpl ns is) es
-            Nothing      -> pApp 1 (PRef f) is es
-    aiFn env f is es = pApp 1 f is es
+            Just ns -> pApp (length ns) (PRef f) (insertImpl ns as)
+            Nothing -> pApp 1 (PRef f) as
+    aiFn env f as = pApp 1 f as
 
-    pApp a f [] [] = f
-    pApp a f is es = let rest = drop a es in
-                         appRest (PApp f is (take a es)) rest
+    pApp a f [] = f
+    pApp a f as = let rest = drop a as in
+                      appRest (PApp f (take a as)) rest
 
     appRest f [] = f
-    appRest f (a : as) = appRest (PApp f [] [a]) as
+    appRest f (a : as) = appRest (PApp f [a]) as
 
-    insertImpl [] given = []
-    insertImpl (n:ns) given 
-        = case lookup n given of
-            Just val -> (n, val) : insertImpl ns given
-            Nothing  -> (n, Placeholder) : insertImpl ns given
+    insertImpl :: [PArg] -> [PArg] -> [PArg]
+    insertImpl (PExp ty : ps) (PExp tm : given) =
+                                 PExp tm : insertImpl ps given
+    insertImpl (PImp n ty : ps) given =
+        case find n given [] of
+            Just (tm, given') -> PImp n ty : insertImpl ps given'
+            Nothing ->           PImp n Placeholder : insertImpl ps given
+    insertImpl expected [] = []
+    insertImpl []       given  = given
 
+    find n []               acc = Nothing
+    find n (PImp n' t : gs) acc 
+         | n == n' = Just (t, reverse acc ++ gs)
+    find n (g : gs) acc = find n gs (g : acc)
 

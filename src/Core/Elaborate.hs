@@ -196,7 +196,7 @@ prepare_apply fn imps =
            when i (movelast n)
            doClaims sc' is (n : claims)
     doClaims t [] claims = return (reverse claims)
-    doClaims _ _ _ = fail "Wrong number of arguments"
+    doClaims _ _ _ = fail $ "Wrong number of arguments for " ++ show fn
 
     mkMN n@(MN _ _) = n
     mkMN n@(UN [x]) = MN 0 x
@@ -233,7 +233,7 @@ apply_elab n args =
            claim n (forget t)
            doClaims sc' is ((n, i) : claims)
     doClaims t [] claims = return (reverse claims)
-    doClaims _ _ _ = fail "Wrong number of arguments"
+    doClaims _ _ _ = fail $ "Wrong number of arguments for " ++ show n
 
     elabClaims [] = return ()
     elabClaims ((n, Nothing) : xs) = elabClaims xs

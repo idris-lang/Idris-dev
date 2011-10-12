@@ -12,10 +12,12 @@ import Core.Typecheck
 import Core.CaseTree
 
 import Control.Monad
+import Debug.Trace
 
 elabType :: Name -> PTerm -> Idris ()
 elabType n ty 
     = do ctxt <- getContext
+         logLvl 2 $ "Type " ++ showImp True ty
          (ty', log) <- tclift $ elaborate ctxt n (Set 0) (build False ty)
          (cty, _)   <- tclift $ recheck ctxt [] ty'
          logLvl 2 $ "---> " ++ show cty
@@ -70,7 +72,7 @@ elabVal tm
         tclift $ recheck ctxt [] vtm
 
 elabClause :: PClause -> Idris (Term, Term)
-elabClause (PClause _ lhs rhs) 
+elabClause (PClause _ lhs rhs whereblock) 
    = do ctxt <- getContext
         -- Build the LHS as an "Infer", and pull out its type and
         -- pattern bindings
@@ -80,6 +82,11 @@ elabClause (PClause _ lhs rhs)
         let lhs_ty = getInferType lhs'
         logLvl 3 (show lhs_tm)
         (clhs, clhsty) <- tclift $ recheck ctxt [] lhs_tm
+        -- TODO: elaborate where block here.
+        -- probably the way to check the where clauses is to 
+        -- treat them as in a params block.
+        -- Will need to know what the params are and add them while
+        -- elaborating.
         -- Now build the RHS, using the type of the LHS as the goal.
         iLOG (showImp True rhs)
         (rhs', _) <- tclift $ elaborate ctxt (MN 0 "patRHS") clhsty
@@ -124,11 +131,13 @@ elab pattern tm = do elab' tm
                      when pattern -- convert remaining holes to pattern vars
                           mkPat
   where
-    isph (_, Placeholder) = True
-    isph _ = False
+    isph arg = case getTm arg of
+        Placeholder -> True
+        _ -> False
 
-    toElab (_, Placeholder) = Nothing
-    toElab (_, v) = Just (elab' v)
+    toElab arg = case getTm arg of
+        Placeholder -> Nothing
+        v -> Just (elab' v)
 
     mkPat = do hs <- get_holes
                case hs of
@@ -154,14 +163,14 @@ elab pattern tm = do elab' tm
                elab' ty
                elab' sc
                solve
-    elab' (PApp (PRef f) imps args)
-          = try (do ns <- apply (Var f) (map isph imps ++ map (\x -> False) args)
+    elab' (PApp (PRef f) args)
+          = try (do ns <- apply (Var f) (map isph args)
                     solve
-                    elabArgs ns (map snd imps ++ args))
-                (do apply_elab f (map toElab imps ++ map (Just . elab') args)
+                    elabArgs ns (map getTm args))
+                (do apply_elab f (map toElab args)
                     solve)
-    elab' (PApp f [] [arg])
-          = do simple_app (elab' f) (elab' arg)
+    elab' (PApp f [arg])
+          = do simple_app (elab' f) (elab' (getTm arg))
                solve
     elab' Placeholder = fail $ "Can't deal with a placeholder here"
     elab' x = fail $ "Not implemented " ++ show x

@@ -290,7 +290,7 @@ showEnv' env t dbg = se 10 env t where
                                       if dbg then "{" ++ show i ++ "}" else ""
                    | otherwise = "!!V " ++ show i ++ "!!"
     se p env (Bind n b@(Pi t) sc)  
-        | noOccurrence n sc && not dbg = bracket p 2 $ se 10 env t ++ " -> " ++ se 10 ((n,b):env) sc
+        | noOccurrence n sc && not dbg = bracket p 2 $ se 1 env t ++ " -> " ++ se 10 ((n,b):env) sc
     se p env (Bind n b sc) = bracket p 2 $ sb env n b ++ se 10 ((n,b):env) sc
     se p env (App f a) = bracket p 1 $ se 1 env f ++ " " ++ se 0 env a
     se p env (Constant c) = show c
