@@ -4,6 +4,7 @@ module Idris.ElabDecls where
 
 import Idris.AbsSyntax
 import Idris.Error
+import Idris.Delaborate
 
 import Core.TT
 import Core.Elaborate
@@ -14,8 +15,16 @@ import Core.CaseTree
 import Control.Monad
 import Debug.Trace
 
-elabType :: Name -> PTerm -> Idris ()
-elabType n ty 
+-- Data to pass to recursively called elaborators; e.g. for where blocks,
+-- paramaterised declarations, etc.
+
+data ElabInfo = EInfo { params :: [(Name, PTerm)],
+                        liftname :: Name -> Name }
+
+toplevel = EInfo [] id
+
+elabType :: ElabInfo -> Name -> PTerm -> Idris ()
+elabType info n ty 
     = do ctxt <- getContext
          logLvl 2 $ "Type " ++ showImp True ty
          (ty', log) <- tclift $ elaborate ctxt n (Set 0) (build False ty)
@@ -23,18 +32,18 @@ elabType n ty
          logLvl 2 $ "---> " ++ show cty
          updateContext (addTyDecl n (normalise ctxt [] cty))
 
-elabData :: PData -> Idris ()
-elabData (PDatadecl n t dcons)
+elabData :: ElabInfo -> PData -> Idris ()
+elabData info (PDatadecl n t dcons)
     = do ctxt <- getContext
          (t', log) <- tclift $ elaborate ctxt n (Set 0) (build False t)
          (cty, _)  <- tclift $ recheck ctxt [] t'
          logLvl 2 $ "---> " ++ show cty
          updateContext (addTyDecl n cty) -- temporary, to check cons
-         cons <- mapM elabCon dcons
+         cons <- mapM (elabCon info) dcons
          setContext (addDatatype (Data n cty cons) ctxt)
 
-elabCon :: (Name, PTerm) -> Idris (Name, Type)
-elabCon (n, t)
+elabCon :: ElabInfo -> (Name, PTerm) -> Idris (Name, Type)
+elabCon info (n, t)
     = do ctxt <- getContext
          iLOG $ "Constructor " ++ show n ++ " : " ++ showImp True t
          (t', log) <- tclift $ elaborate ctxt n (Set 0) (build False t)
@@ -43,9 +52,9 @@ elabCon (n, t)
          logLvl 2 $ "---> " ++ show n ++ " : " ++ show cty
          return (n, cty)
 
-elabClauses :: Name -> [PClause] -> Idris ()
-elabClauses n cs 
-    = do pats <- mapM elabClause cs
+elabClauses :: ElabInfo -> Name -> [PClause] -> Idris ()
+elabClauses info n cs 
+    = do pats <- mapM (elabClause info) cs
          logLvl 3 (showSep "\n" (map (\ (l,r) -> 
                                         show l ++ " = " ++ 
                                         show r) pats))
@@ -60,8 +69,8 @@ elabClauses n cs
     depat (Bind n (PVar t) sc) = depat (instantiate (P Bound n t) sc)
     depat x = x
 
-elabVal :: PTerm -> Idris (Term, Type)
-elabVal tm
+elabVal :: ElabInfo -> PTerm -> Idris (Term, Type)
+elabVal info tm
    = do ctxt <- getContext
         logLvl 10 (show tm)
         (tm', _) <- tclift $ elaborate ctxt (MN 0 "val") infP
@@ -71,8 +80,8 @@ elabVal tm
         iLOG (show vtm)
         tclift $ recheck ctxt [] vtm
 
-elabClause :: PClause -> Idris (Term, Term)
-elabClause (PClause _ lhs rhs whereblock) 
+elabClause :: ElabInfo -> PClause -> Idris (Term, Term)
+elabClause info (PClause _ lhs rhs whereblock) 
    = do ctxt <- getContext
         -- Build the LHS as an "Infer", and pull out its type and
         -- pattern bindings
@@ -83,10 +92,11 @@ elabClause (PClause _ lhs rhs whereblock)
         logLvl 3 (show lhs_tm)
         (clhs, clhsty) <- tclift $ recheck ctxt [] lhs_tm
         -- TODO: elaborate where block here.
-        -- probably the way to check the where clauses is to 
-        -- treat them as in a params block.
-        -- Will need to know what the params are and add them while
-        -- elaborating.
+        -- probably the way to check the where clauses is to recursively
+        -- call the elaborator with a list of variables assumed by the
+        -- where block (i.e. add those variables to all types and clauses
+        -- which are elaborated).
+
         -- Now build the RHS, using the type of the LHS as the goal.
         iLOG (showImp True rhs)
         (rhs', _) <- tclift $ elaborate ctxt (MN 0 "patRHS") clhsty
@@ -105,16 +115,53 @@ elabClause (PClause _ lhs rhs whereblock)
     psolve (Bind n (PVar t) sc) = do solve; psolve sc
     psolve tm = return ()
 
-elabDecl :: PDecl -> Idris ()
-elabDecl d = idrisCatch (elabDecl' d) (\e -> iputStrLn (report e))
+    pvars (Bind n (PVar t) sc) = (n, t) : pvars sc
+    pvars _ = []
 
-elabDecl' (PFix _ _)      = return () -- nothing to elaborate
-elabDecl' (PTy n ty)      = do iLOG $ "Elaborating type decl " ++ show n
-                               elabType n ty
-elabDecl' (PData d)       = do iLOG $ "Elaborating " ++ show d
-                               elabData d
-elabDecl' d@(PClauses n ps) = do iLOG $ "Elaborating " ++ show n
-                                 elabClauses n ps
+elabDecl :: ElabInfo -> PDecl -> Idris ()
+elabDecl info d = idrisCatch (elabDecl' info d) (\e -> iputStrLn (report e))
+
+elabDecl' info (PFix _ _)      = return () -- nothing to elaborate
+elabDecl' info (PTy n ty)      = do iLOG $ "Elaborating type decl " ++ show n
+                                    elabType info n ty
+elabDecl' info (PData d)       = do iLOG $ "Elaborating " ++ show d
+                                    elabData info d
+elabDecl' info d@(PClauses n ps) = do iLOG $ "Elaborating " ++ show n
+                                      elabClauses info n ps
+
+{- not finished...
+parameterise :: [(Name, Type)] -> (Name -> Name) -> [PDecl] -> Idris [PDecl]
+parameterise ns hide ds = do
+    i <- getIState
+    let pns = map (\ (n, t) -> (n, delab i t)) ns
+    mapM (paramDecl (concatMap declared ds) hide pns) ds
+
+paramDecl :: [Name] -> -- Names defined in this block
+             (Name -> Name) -> -- what to call the lifted functions
+             [(Name, PTerm)] -> -- parameters to add
+             PDecl -> Idris PDecl
+paramDecl ns newname ps (PTy n ty)
+    = do let ty' = piBind ps ty
+         return (PTy (newname n) (addNs ns newname (map fst ps) ty'))
+paramDecl ns newname ps (PClauses n cs)
+    = do cs' <- mapM pclause cs
+         return (PClauses n cs')
+  where
+    pclause (PClause n lhs rhs []) 
+       = return $ PClause n [] (addNs ns newname (map fst ps) lhs)
+                               (addNs ns newname (map fst ps) rhs)
+paramDecl ns newname ps (PData (PDatadecl n ty cons)) 
+   = do let ty' = piBind ps ty
+        cons' <- mapM con cons
+        return (PData (PDatadecl n ty' cons'))
+  where
+    con (n, ty) = do let ty' = piBind ps ty
+                     return (n, addNs ns newname (map fst ps) ty')
+paramDecl ns newname ps d = return d
+-}
+
+addNs :: [Name] -> (Name -> Name) -> [Name] -> PTerm -> PTerm
+addNs = undefined
 
 -- Using the elaborator, convert a term in raw syntax to a fully
 -- elaborated, typechecked term.

@@ -37,6 +37,9 @@ type Idris a = StateT IState IO a
 getContext :: Idris Context
 getContext = do i <- get; return (tt_ctxt i)
 
+getIState :: Idris IState
+getIState = get
+
 setContext :: Context -> Idris ()
 setContext ctxt = do i <- get; put (i { tt_ctxt = ctxt } )
 
@@ -114,6 +117,14 @@ data PData' t  = PDatadecl { d_name :: Name,
 type PDecl   = PDecl' PTerm
 type PData   = PData' PTerm
 type PClause = PClause' PTerm 
+
+-- get all the names declared in a decl
+
+declared :: PDecl -> [Name]
+declared (PFix _ _) = []
+declared (PTy n t) = [n]
+declared (PClauses n _) = [] -- not a declaration
+declared (PData (PDatadecl n _ ts)) = n : map fst ts
 
 -- High level language terms
 --
@@ -261,6 +272,9 @@ getInferTerm tm = error ("getInferTerm " ++ show tm)
 getInferType (Bind n b sc) = Bind n b $ getInferType sc
 getInferType (App (App _ ty) _) = ty
 
+piBind :: [(Name, PTerm)] -> PTerm -> PTerm
+piBind [] t = t
+piBind ((n, ty):ns) t = PPi Exp n ty (piBind ns t)
 
 -- Dealing with implicit arguments
 

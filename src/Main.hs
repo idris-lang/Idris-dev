@@ -51,7 +51,7 @@ loadModule f = do iLOG ("Reading " ++ show f)
                   i <- get
                   iLOG (show (idris_infixes i))
                   -- Now add all the declarations to the context
-                  mapM_ elabDecl ds
+                  mapM_ (elabDecl toplevel) ds
                   return ()
 
 dumpDecls :: [PDecl] -> String

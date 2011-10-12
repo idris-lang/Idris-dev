@@ -70,7 +70,6 @@ pFullExpr syn
 pDecl :: SyntaxInfo -> IParser [PDecl]
 pDecl syn
       = do d <- pDecl' syn
-           lchar ';'
            i <- getState
            return [fmap (addImpl i) d]
     <|> try (pUsing syn)
@@ -78,7 +77,6 @@ pDecl syn
 pFunDecl :: SyntaxInfo -> IParser [PDecl]
 pFunDecl syn
       = try (do d <- pFunDecl' syn
-                lchar ';'
                 i <- getState
                 return [fmap (addImpl i) d])
 
@@ -92,6 +90,7 @@ pDecl' syn
 
 pFunDecl' :: SyntaxInfo -> IParser PDecl
 pFunDecl' syn = try (do n <- pfName; ty <- pTSig syn
+                        lchar ';'
                         ty' <- implicit syn n ty
                         return (PTy n ty'))
             <|> try (pPattern syn)
@@ -112,6 +111,7 @@ pUsing syn =
 
 pFixity :: IParser PDecl
 pFixity = do f <- fixity; i <- natural; ops <- sepBy1 operator (lchar ',')
+             lchar ';'
              let prec = fromInteger i
              istate <- getState
              let fs = map (Fix (f prec)) ops
@@ -228,10 +228,12 @@ pData syn = try (do reserved "data"; tyn <- pfName; ty <- pTSig syn
                     reserved "where"
                     ty' <- implicit syn tyn ty
                     cons <- sepBy1 (pConstructor syn) (lchar '|')
+                    lchar ';'
                     return $ PData (PDatadecl tyn ty' cons))
         <|> do reserved "data"; tyn <- pfName; args <- many iName
                lchar '='
                cons <- sepBy1 (pSimpleCon syn) (lchar '|')
+               lchar ';'
                let conty = mkPApp (PRef tyn) (map PRef args)
                let ty = bindArgs (map (\a -> PSet) args) PSet
                ty' <- implicit syn tyn ty
@@ -272,7 +274,7 @@ pClause syn
                   args <- many (pHSimpleExpr syn)
                   lchar '='
                   rhs <- pExpr syn
-                  wheres <- option [] (pWhereblock syn)
+                  wheres <- choice [pWhereblock syn, do lchar ';'; return []]
                   return $ PClause n (PApp (PRef n) (iargs ++ map PExp args)) rhs wheres)
        <|> do l <- pSimpleExpr syn
               op <- operator
@@ -280,7 +282,7 @@ pClause syn
               r <- pSimpleExpr syn
               lchar '='
               rhs <- pExpr syn
-              wheres <- option [] (pWhereblock syn)
+              wheres <- choice [pWhereblock syn, do lchar ';'; return []]
               return $ PClause n (PApp (PRef n) [PExp l,PExp r]) rhs wheres
 
 pWhereblock :: SyntaxInfo -> IParser [PDecl]

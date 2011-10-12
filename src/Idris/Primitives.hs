@@ -52,6 +52,6 @@ elabPrim :: Prim -> Idris ()
 elabPrim (Prim n ty i def) = updateContext (addOperator n ty i def)
 
 elabPrims :: Idris ()
-elabPrims = do elabDecl (PData inferDecl) 
+elabPrims = do elabDecl toplevel (PData inferDecl) 
                mapM_ elabPrim primitives
 

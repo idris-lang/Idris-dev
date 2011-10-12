@@ -40,7 +40,7 @@ processInput cmd
 process :: Command -> Idris ()
 process Help 
     = iputStrLn "At some point I'll write some help text. Thanks for asking though."
-process (Eval t) = do (tm, ty) <- elabVal t
+process (Eval t) = do (tm, ty) <- elabVal toplevel t
                       ctxt <- getContext
                       ist <- get 
                       let tm' = normalise ctxt [] tm
