@@ -1,0 +1,38 @@
+data Bool = False | True;
+
+infixl 5 ==, /=, ==.;
+infixl 6 <, <=, >, >=, <., <=., >., >=.;
+infixl 7 <<, >>;
+infixl 8 +,-,++,+.,-.;
+infixl 9 *,/,*.,/.;
+
+intToBool : Int -> Bool;
+intToBool 0 = False;
+intToBool x = True;
+
+boolOp : {a:Set} -> (a -> a -> Int) -> a -> a -> Bool;
+boolOp op x y = intToBool (op x y); 
+
+(+) : Int -> Int -> Int;
+(+) = prim__addInt;
+
+(-) : Int -> Int -> Int;
+(-) = prim__subInt;
+
+(*) : Int -> Int -> Int;
+(*) = prim__mulInt;
+
+data Pair x y = MkPair x y;
+
+fact : Int -> Pair Int Int;
+fact x = factAux 1 x
+  where {
+    factAux : Int -> Int -> Pair Int Int;
+    factAux acc 0 = acc'
+      where {
+        acc' : Pair Int Int;
+        acc' = MkPair acc x;
+      }
+    factAux acc n = factAux (acc * n) (n - 1);
+  }
+

@@ -10,7 +10,7 @@ intToBool : Int -> Bool;
 intToBool 0 = False;
 intToBool x = True;
 
-boolOp : {a:Set} -> (a -> a -> Int) -> a -> a -> Bool;
+boolOp : (a -> a -> Int) -> a -> a -> Bool;
 boolOp op x y = intToBool (op x y); 
 
 (+) : Int -> Int -> Int;

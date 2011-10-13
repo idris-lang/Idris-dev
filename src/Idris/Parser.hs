@@ -54,10 +54,11 @@ parseProg syn fname
 
 -- Collect PClauses with the same function name
 collect :: [PDecl] -> [PDecl]
-collect (PClauses _ [c@(PClause n l r w)] : ds) = clauses n [c] ds
+collect (c@(PClauses _ [PClause n l r w]) : ds) = clauses n [] (c:ds)
   where clauses n acc (PClauses _ [PClause n' l r w] : ds)
            | n == n' = clauses n (PClause n' l r (collect w) : acc) ds
         clauses n acc xs = PClauses n (reverse acc) : collect xs
+collect (PParams ns ps : ds) = PParams ns (collect ps) : (collect ds)
 collect (d : ds) = d : collect ds
 collect [] = []
 
@@ -73,6 +74,7 @@ pDecl syn
            i <- getState
            return [fmap (addImpl i) d]
     <|> try (pUsing syn)
+    <|> try (pParams syn)
 
 pFunDecl :: SyntaxInfo -> IParser [PDecl]
 pFunDecl syn
@@ -106,6 +108,18 @@ pUsing syn =
        ds <- many1 (pDecl (syn { using = uvars ++ ns }))
        lchar '}'
        return (concat ds)
+
+pParams :: SyntaxInfo -> IParser [PDecl]
+pParams syn = 
+    do reserved "params"; 
+       lchar '('
+       ns <- tyDeclList syn
+       lchar ')'
+       lchar '{'
+       let pvars = syn_params syn
+       ds <- many1 (pDecl syn { syn_params = pvars ++ ns })
+       lchar '}'
+       return [PParams ns (concat ds)]
 
 --------- Fixity ---------
 

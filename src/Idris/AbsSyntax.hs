@@ -25,10 +25,11 @@ data IState = IState { tt_ctxt :: Context,
                        idris_infixes :: [FixDecl],
                        idris_implicits :: Ctxt [PArg],
                        idris_log :: String,
-                       idris_options :: IOption
+                       idris_options :: IOption,
+                       idris_name :: Int
                      }
                    
-idrisInit = IState emptyContext [] emptyContext "" defaultOpts
+idrisInit = IState emptyContext [] emptyContext "" defaultOpts 0
 
 -- The monad for the main REPL - reading and processing files and updating 
 -- global state (hence the IO inner monad).
@@ -39,6 +40,12 @@ getContext = do i <- get; return (tt_ctxt i)
 
 getIState :: Idris IState
 getIState = get
+
+getName :: Idris Int
+getName = do i <- get;
+             let idx = idris_name i;
+             put (i { idris_name = idx + 1 })
+             return idx
 
 setContext :: Context -> Idris ()
 setContext ctxt = do i <- get; put (i { tt_ctxt = ctxt } )
@@ -101,6 +108,7 @@ data PDecl' t = PFix     Fixity [String] -- fixity declaration
               | PTy      Name t          -- type declaration
               | PClauses Name [PClause' t]    -- pattern clause
               | PData    (PData' t)      -- data declaration
+              | PParams  [(Name, PTerm)] [PDecl' t] -- params block
     deriving Functor
 
 data PClause' t = PClause Name t t [PDecl]
@@ -125,6 +133,7 @@ declared (PFix _ _) = []
 declared (PTy n t) = [n]
 declared (PClauses n _) = [] -- not a declaration
 declared (PData (PDatadecl n _ ts)) = n : map fst ts
+declared (PParams _ ds) = concatMap declared ds
 
 -- High level language terms
 --
@@ -147,10 +156,11 @@ type PArg = PArg' PTerm
 
 -- Syntactic sugar info (TODO: namespaces, parameters, modules)
 
-data SyntaxInfo = Syn { using :: [(Name, PTerm)] }
+data SyntaxInfo = Syn { using :: [(Name, PTerm)],
+                        syn_params :: [(Name, PTerm)] }
     deriving Show
 
-defaultSyntax = Syn []
+defaultSyntax = Syn [] []
 
 --- Pretty printing declarations and terms
 
@@ -284,7 +294,9 @@ piBind ((n, ty):ns) t = PPi Exp n ty (piBind ns t)
 implicitise :: SyntaxInfo -> IState -> PTerm -> (PTerm, [PArg])
 implicitise syn ist tm
     = let uvars = using syn
-          (declimps, ns) = execState (imps True [] tm) ([], []) in
+          pvars = syn_params syn
+          (declimps, ns') = execState (imps True [] tm) ([], []) 
+          ns = ns' \\ map fst pvars in
           if null ns 
             then (tm, reverse declimps) 
             else implicitise syn ist (pibind uvars ns tm)

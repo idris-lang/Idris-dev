@@ -96,6 +96,10 @@ lookupCtxt = Map.lookup
 toAlist :: Ctxt a -> [(Name, a)]
 toAlist = Map.toList
 
+addAlist :: [(Name, a)] -> Ctxt a -> Ctxt a
+addAlist [] ctxt = ctxt
+addAlist ((n, tm) : ds) ctxt = addDef n tm (addAlist ds ctxt)
+
 data Const = I Int | Fl Double | Ch Char | Str String
            | IType | FlType    | ChType  | StrType    | PtrType
   deriving Eq

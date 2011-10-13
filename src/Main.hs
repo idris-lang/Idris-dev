@@ -47,9 +47,9 @@ runIdris opts =
 loadModule :: FilePath -> Idris ()
 loadModule f = do iLOG ("Reading " ++ show f)
                   ds <- parseProg defaultSyntax f
-                  iLOG (dumpDecls ds)
+                  logLvl 3 (dumpDecls ds)
                   i <- get
-                  iLOG (show (idris_infixes i))
+                  logLvl 3 (show (idris_infixes i))
                   -- Now add all the declarations to the context
                   mapM_ (elabDecl toplevel) ds
                   return ()
@@ -62,6 +62,7 @@ dumpDecl (PFix f ops) = show f ++ " " ++ showSep ", " ops
 dumpDecl (PTy n t) = "tydecl " ++ show n ++ " : " ++ showImp True t
 dumpDecl (PClauses n cs) = "pat\t" ++ showSep "\n\t" (map (showCImp True) cs)
 dumpDecl (PData d) = showDImp True d
+dumpDecl (PParams ns ps) = "params {" ++ show ns ++ "\n" ++ dumpDecls ps ++ "}\n"
 
 getFile :: Opt -> Maybe String
 getFile (Filename str) = Just str
