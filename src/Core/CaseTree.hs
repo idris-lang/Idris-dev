@@ -37,19 +37,23 @@ data Pat = PCon Name Int [Pat]
          | PAny
     deriving Show
 
+-- If there are repeated variables, take the *last* one (could be name shadowing
+-- in a where clause, so take the most recent).
+
 toPats :: Term -> [Pat]
-toPats f = map toPat (reverse (getArgs f)) where
+toPats f = reverse (toPat (getArgs f)) where
    getArgs (App f a) = a : getArgs f
    getArgs _ = []
 
-toPat :: Term -> Pat
-toPat tm = evalState (toPat' tm []) []
+toPat :: [Term] -> [Pat]
+toPat tms = evalState (mapM (\x -> toPat' x []) tms) []
   where
     toPat' (P (DCon t a) n _) args = return $ PCon n t args
     toPat' (P Bound n _)      []   = do ns <- get
                                         if n `elem` ns 
                                           then return PAny 
-                                          else return (PV n)
+                                          else do put (n : ns)
+                                                  return (PV n)
     toPat' (App f a)          args = do a' <- toPat' a []
                                         toPat' f (a' : args)
     toPat' (Constant c)       args = return $ PConst c

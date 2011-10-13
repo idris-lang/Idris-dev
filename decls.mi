@@ -17,7 +17,7 @@ data Env : Vect Set n -> Set where
 PLUSTY : Set;
 PLUSTY = Nat -> Nat -> Nat;
 
-plus : PLUSTY;
+plus : PLUSTY; 
 plus O y = y;
 plus (S k) y = S (plus k y);
 
@@ -37,4 +37,12 @@ tvect = app (test O) (test (S O));
 
 mapPlus : Vect Nat n -> Vect Nat n;
 mapPlus = map (plus (S (S O)));
+
+rev : List a -> List a;
+rev xs = revAcc Nil xs
+  where {
+    revAcc : List a -> List a -> List a;
+    revAcc acc Nil = acc;
+    revAcc acc (Cons x xs) = revAcc (Cons x acc) xs;
+  }
 

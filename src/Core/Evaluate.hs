@@ -105,7 +105,8 @@ eval ctxt genv tm = ev [] tm where
     evTree :: [Value] -> [(Name, Value)] -> SC -> Maybe Value
     evTree env amap (UnmatchedCase str) = Nothing
     evTree env amap (STerm tm) 
-        = Just $ ev (map snd amap ++ env) (pToVs (map fst amap) tm)
+        = let etm = pToVs (map fst amap) tm in
+              Just $ ev (map snd amap ++ env) etm
     evTree env amap (Case n alts)
         = do v <- lookup n amap
              (altmap, sc) <- chooseAlt v (getValArgs v) alts amap
@@ -125,7 +126,7 @@ eval ctxt genv tm = ev [] tm where
     -- (This is possibly unnecessary since we make unique names and don't
     -- allow repeated variables...?)
     updateAmap newm amap 
-       = newm ++ amap --filter (\ (x, _) -> not (elem x (map fst newm))) amap
+       = newm ++ filter (\ (x, _) -> not (elem x (map fst newm))) amap
     findTag i [] = Nothing
     findTag i (ConCase n j ns sc : xs) | i == j = Just (ns, sc)
     findTag i (_ : xs) = findTag i xs

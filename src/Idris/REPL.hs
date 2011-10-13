@@ -44,6 +44,7 @@ process (Eval t) = do (tm, ty) <- elabVal toplevel t
                       ctxt <- getContext
                       ist <- get 
                       let tm' = normalise ctxt [] tm
+                      logLvl 3 $ "Raw: " ++ show tm'
                       iputStrLn (show (delab ist tm') ++ " : " ++ 
                                  show (delab ist ty))
 process TTShell  = do ist <- get

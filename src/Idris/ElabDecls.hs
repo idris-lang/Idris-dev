@@ -129,8 +129,8 @@ elabClause info (PClause fname lhs rhs whereblock)
                 info { params = newps,
                        inblock = newb,
                        liftname = (\n -> case lookupCtxt n newb of
-                                            Nothing -> n
-                                            _ -> MN i (show n)) . l
+                                           Nothing -> n
+                                           _ -> MN i (show n)) . l
                     }
 
 elabDecl :: ElabInfo -> PDecl -> Idris ()

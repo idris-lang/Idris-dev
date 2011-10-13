@@ -28,7 +28,7 @@ delab ist tm = de [] tm
 
     mkPApp n args 
         | Just imps <- lookupCtxt n (idris_implicits ist)
-            = PApp (PRef n) (zipWith imp imps args)
+            = PApp (PRef n) (zipWith imp (imps ++ repeat (PExp undefined)) args)
         | otherwise = PApp (PRef n) (map PExp args)
 
     imp (PImp n _) arg = PImp n arg
