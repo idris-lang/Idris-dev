@@ -1,3 +1,4 @@
+
 data Nat = O | S Nat;
 
 plus : Nat -> Nat -> Nat;

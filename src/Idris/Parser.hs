@@ -91,6 +91,7 @@ parseProg :: SyntaxInfo -> FilePath -> String -> SourcePos -> Idris [PDecl]
 parseProg syn fname input pos
     = do i <- get
          case (runParser (do setPosition pos
+                             whiteSpace
                              ps <- many1 (pDecl syn)
                              eof
                              i' <- getState
