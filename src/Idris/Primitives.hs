@@ -33,7 +33,8 @@ primitives =
    Prim (UN ["prim__ltFloat"])  (ty [FlType, FlType] IType) 2 (bfBin (<)),
    Prim (UN ["prim__lteFloat"]) (ty [FlType, FlType] IType) 2 (bfBin (<=)),
    Prim (UN ["prim__gtFloat"])  (ty [FlType, FlType] IType) 2 (bfBin (>)),
-   Prim (UN ["prim__gteFloat"]) (ty [FlType, FlType] IType) 2 (bfBin (>=))
+   Prim (UN ["prim__gteFloat"]) (ty [FlType, FlType] IType) 2 (bfBin (>=)),
+   Prim (UN ["prim__concat"]) (ty [StrType, StrType] StrType) 2 (sBin (++))
   ]
 
 iBin op [VConstant (I x), VConstant (I y)] = Just $ VConstant (I (op x y))
@@ -47,6 +48,9 @@ fBin _ _ = Nothing
 bfBin op [VConstant (Fl x), VConstant (Fl y)] = let i = (if op x y then 1 else 0) in
                                                 Just $ VConstant (I i)
 bfBin _ _ = Nothing
+
+sBin op [VConstant (Str x), VConstant (Str y)] = Just $ VConstant (Str (op x y))
+sBin _ _ = Nothing
 
 elabPrim :: Prim -> Idris ()
 elabPrim (Prim n ty i def) = updateContext (addOperator n ty i def)

@@ -10,6 +10,8 @@ infixl 7 <<, >>;
 infixl 8 +,-,++,+.,-.;
 infixl 9 *,/,*.,/.;
 
+--- Numeric operators
+
 intToBool : Int -> Bool;
 intToBool 0 = False;
 intToBool x = True;
@@ -70,4 +72,17 @@ div = prim__divInt;
 
 (>=.) : Float -> Float -> Bool;
 (>=.) = boolOp prim__gteFloat;
+
+--- string operators
+
+(++) : String -> String -> String;
+(++) = prim__concat;
+
+---- some basic io
+
+putStr : String -> IO ();
+putStr = mkForeign (FFun "putStr" (Cons FString Nil) FUnit);
+
+putStrLn : String -> IO ();
+putStrLn x = putStr (x ++ "\n");
 
