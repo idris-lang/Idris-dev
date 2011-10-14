@@ -45,7 +45,7 @@ lchar = lexeme.char
 
 loadModule :: FilePath -> Idris ()
 loadModule f = do datadir <- lift $ getDataDir
-                  fp <- lift $ findImport [datadir, "."] f
+                  fp <- lift $ findImport [".", datadir] f
                   i <- getIState
                   if (f `elem` imported i)
                      then iLOG $ "Already read " ++ f
