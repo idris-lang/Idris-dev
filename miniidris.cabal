@@ -14,6 +14,9 @@ Description:    An experimental new version of Idris
 Cabal-Version:  >= 1.6
 Build-type:     Simple
 
+Data-files:    *.idr
+Data-dir:      lib
+
 Executable     miniidris
                Main-is: Main.hs
                hs-source-dirs: src

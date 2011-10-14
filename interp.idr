@@ -1,4 +1,3 @@
-import nat;
 
 data Ty = TyNat | TyFun Ty Ty;
 

@@ -27,6 +27,8 @@ import Idris.Imports
 
 data Opt = Filename String
          | Version
+         | NoPrelude
+         | NoREPL
          | OLogging Int
     deriving Eq
 
@@ -39,8 +41,9 @@ runIdris opts =
     do let inputs = opt getFile opts
        mapM_ makeOption opts
        elabPrims
+       when (not (NoPrelude `elem` opts)) $ loadModule "prelude"
        mapM_ loadModule inputs       
-       repl
+       when (not (NoREPL `elem` opts)) $ repl
   where
     makeOption (OLogging i) = setLogLevel i
     makeOption _ = return ()
@@ -57,8 +60,10 @@ usage = do putStrLn "You're doing it wrong"
 
 parseArgs :: [String] -> IO [Opt]
 parseArgs [] = return []
-parseArgs ("--log":lvl:ns) = liftM (OLogging (read lvl) : ) (parseArgs ns)
-parseArgs (n:ns)           = liftM (Filename n : ) (parseArgs ns)
+parseArgs ("--log":lvl:ns)   = liftM (OLogging (read lvl) : ) (parseArgs ns)
+parseArgs ("--noprelude":ns) = liftM (NoPrelude : ) (parseArgs ns)
+parseArgs ("--check":ns)     = liftM (NoREPL : ) (parseArgs ns)
+parseArgs (n:ns)             = liftM (Filename n : ) (parseArgs ns)
 
 {-
 main'
