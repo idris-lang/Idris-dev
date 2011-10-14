@@ -26,10 +26,11 @@ data IState = IState { tt_ctxt :: Context,
                        idris_implicits :: Ctxt [PArg],
                        idris_log :: String,
                        idris_options :: IOption,
-                       idris_name :: Int
+                       idris_name :: Int,
+                       imported :: [FilePath]
                      }
                    
-idrisInit = IState emptyContext [] emptyContext "" defaultOpts 0
+idrisInit = IState emptyContext [] emptyContext "" defaultOpts 0 []
 
 -- The monad for the main REPL - reading and processing files and updating 
 -- global state (hence the IO inner monad).
@@ -40,6 +41,9 @@ getContext = do i <- get; return (tt_ctxt i)
 
 getIState :: Idris IState
 getIState = get
+
+putIState :: IState -> Idris ()
+putIState = put
 
 getName :: Idris Int
 getName = do i <- get;
@@ -109,6 +113,7 @@ data PDecl' t = PFix     Fixity [String] -- fixity declaration
               | PClauses Name [PClause' t]    -- pattern clause
               | PData    (PData' t)      -- data declaration
               | PParams  [(Name, PTerm)] [PDecl' t] -- params block
+              | PImport  String
     deriving Functor
 
 data PClause' t = PClause Name t t [PDecl]
@@ -134,6 +139,7 @@ declared (PTy n t) = [n]
 declared (PClauses n _) = [] -- not a declaration
 declared (PData (PDatadecl n _ ts)) = n : map fst ts
 declared (PParams _ ds) = concatMap declared ds
+declared (PImport _) = []
 
 -- High level language terms
 --
@@ -376,4 +382,17 @@ addImpl ist ptm = ai [] ptm
     find n (PImp n' t : gs) acc 
          | n == n' = Just (t, reverse acc ++ gs)
     find n (g : gs) acc = find n gs (g : acc)
+
+-- Debugging/logging stuff
+
+dumpDecls :: [PDecl] -> String
+dumpDecls [] = ""
+dumpDecls (d:ds) = dumpDecl d ++ "\n" ++ dumpDecls ds
+
+dumpDecl (PFix f ops) = show f ++ " " ++ showSep ", " ops 
+dumpDecl (PTy n t) = "tydecl " ++ show n ++ " : " ++ showImp True t
+dumpDecl (PClauses n cs) = "pat\t" ++ showSep "\n\t" (map (showCImp True) cs)
+dumpDecl (PData d) = showDImp True d
+dumpDecl (PParams ns ps) = "params {" ++ show ns ++ "\n" ++ dumpDecls ps ++ "}\n"
+dumpDecl (PImport i) = "import " ++ i
 

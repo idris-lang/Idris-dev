@@ -20,6 +20,7 @@ import Idris.Parser
 import Idris.REPL
 import Idris.ElabDecls
 import Idris.Primitives
+import Idris.Imports
 
 -- Main program reads command line options, parses the main program, and gets
 -- on with the REPL.
@@ -43,26 +44,6 @@ runIdris opts =
   where
     makeOption (OLogging i) = setLogLevel i
     makeOption _ = return ()
-
-loadModule :: FilePath -> Idris ()
-loadModule f = do iLOG ("Reading " ++ show f)
-                  ds <- parseProg defaultSyntax f
-                  logLvl 3 (dumpDecls ds)
-                  i <- get
-                  logLvl 3 (show (idris_infixes i))
-                  -- Now add all the declarations to the context
-                  mapM_ (elabDecl toplevel) ds
-                  return ()
-
-dumpDecls :: [PDecl] -> String
-dumpDecls [] = ""
-dumpDecls (d:ds) = dumpDecl d ++ "\n" ++ dumpDecls ds
-
-dumpDecl (PFix f ops) = show f ++ " " ++ showSep ", " ops 
-dumpDecl (PTy n t) = "tydecl " ++ show n ++ " : " ++ showImp True t
-dumpDecl (PClauses n cs) = "pat\t" ++ showSep "\n\t" (map (showCImp True) cs)
-dumpDecl (PData d) = showDImp True d
-dumpDecl (PParams ns ps) = "params {" ++ show ns ++ "\n" ++ dumpDecls ps ++ "}\n"
 
 getFile :: Opt -> Maybe String
 getFile (Filename str) = Just str

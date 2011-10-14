@@ -1,6 +1,9 @@
 module Idris.Parser where
 
 import Idris.AbsSyntax
+import Idris.Imports
+import Paths_miniidris
+import Idris.ElabDecls
 
 import Core.CoreParser
 import Core.TT
@@ -38,19 +41,63 @@ strlit    = PTok.stringLiteral lexer
 chlit     = PTok.charLiteral lexer
 lchar = lexeme.char
 
+-- Loading modules
+
+loadModule :: FilePath -> Idris ()
+loadModule f = do datadir <- lift $ getDataDir
+                  fp <- lift $ findImport [datadir, "."] f
+                  i <- getIState
+                  if (f `elem` imported i)
+                     then iLOG $ "Already read " ++ f
+                     else do putIState (i { imported = f : imported i })
+                             case fp of
+                                 IDR fn -> loadSource fn
+                                 IBC fn -> error "Not implemented"
+
+loadSource :: FilePath -> Idris () 
+loadSource f = do iLOG ("Reading " ++ f)
+                  file <- lift $ readFile f
+                  (modules, rest, pos) <- parseImports f file
+                  mapM_ loadModule modules
+                  ds <- parseProg defaultSyntax f rest pos
+                  logLvl 3 (dumpDecls ds)
+                  i <- getIState
+                  logLvl 3 (show (idris_infixes i))
+                  -- Now add all the declarations to the context
+                  mapM_ (elabDecl toplevel) ds
+                  iLOG ("Finished " ++ f)
+                  return ()
+
 parseExpr i = runParser (pFullExpr defaultSyntax) i "(input)"
 
-parseProg :: SyntaxInfo -> String -> Idris [PDecl]
-parseProg syn fname 
-                = do file <- lift $ readFile fname
-                     i <- get
-                     case (runParser (do ps <- many1 (pDecl syn)
-                                         eof
-                                         i' <- getState
-                                         return (concat ps, i')) i fname file) of
-                        Left err -> fail (show err)
-                        Right (x, i) -> do put i
-                                           return (collect x)
+parseImports :: FilePath -> String -> Idris ([String], String, SourcePos)
+parseImports fname input 
+    = do i <- get
+         case (runParser (do ps <- many pImport
+                             rest <- getInput
+                             pos <- getPosition
+                             return ((ps, rest, pos), i)) i fname input) of
+            Left err -> fail (show err)
+            Right (x, i) -> do put i
+                               return x
+
+pImport :: IParser String
+pImport = do reserved "import"
+             f <- identifier
+             lchar ';'
+             return f
+
+parseProg :: SyntaxInfo -> FilePath -> String -> SourcePos -> Idris [PDecl]
+parseProg syn fname input pos
+    = do i <- get
+         case (runParser (do setPosition pos
+                             ps <- many1 (pDecl syn)
+                             eof
+                             i' <- getState
+                             return (concat ps, i')) i fname input) of
+            Left err -> fail (show err)
+            Right (x, i) -> do put i
+                               return (collect x)
 
 -- Collect PClauses with the same function name
 collect :: [PDecl] -> [PDecl]
@@ -75,6 +122,10 @@ pDecl syn
            return [fmap (addImpl i) d]
     <|> try (pUsing syn)
     <|> try (pParams syn)
+    <|> try (do reserved "import"
+                fp <- identifier
+                lchar ';'
+                fail "imports must be at the top of file") 
 
 pFunDecl :: SyntaxInfo -> IParser [PDecl]
 pFunDecl syn

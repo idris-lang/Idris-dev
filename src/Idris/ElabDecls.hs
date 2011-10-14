@@ -5,6 +5,8 @@ module Idris.ElabDecls where
 import Idris.AbsSyntax
 import Idris.Error
 import Idris.Delaborate
+import Idris.Imports
+import Paths_miniidris
 
 import Core.TT
 import Core.Elaborate
@@ -13,6 +15,7 @@ import Core.Typecheck
 import Core.CaseTree
 
 import Control.Monad
+import Control.Monad.State
 import Debug.Trace
 
 -- Data to pass to recursively called elaborators; e.g. for where blocks,
@@ -47,9 +50,9 @@ elabData info (PDatadecl n t dcons)
 elabCon :: ElabInfo -> (Name, PTerm) -> Idris (Name, Type)
 elabCon info (n, t)
     = do ctxt <- getContext
-         iLOG $ "Constructor " ++ show n ++ " : " ++ showImp True t
+         logLvl 2 $ "Constructor " ++ show n ++ " : " ++ showImp True t
          (t', log) <- tclift $ elaborate ctxt n (Set 0) (build info False t)
---          iLOG $ "Rechecking " ++ show t'
+--          logLvl 2 $ "Rechecking " ++ show t'
          (cty, _)  <- tclift $ recheck ctxt [] t'
          logLvl 2 $ "---> " ++ show n ++ " : " ++ show cty
          return (n, cty)
@@ -79,7 +82,7 @@ elabVal info tm
                                (build info True (infTerm tm))
         logLvl 3 ("Value: " ++ show tm')
         let vtm = getInferTerm tm'
-        iLOG (show vtm)
+        logLvl 2 (show vtm)
         tclift $ recheck ctxt [] vtm
 
 elabClause :: ElabInfo -> PClause -> Idris (Term, Term)
@@ -99,7 +102,7 @@ elabClause info (PClause fname lhs rhs whereblock)
         let winfo = pinfo (pvars ist lhs_tm) whereblock windex
         mapM_ (elabDecl' winfo) whereblock
         -- Now build the RHS, using the type of the LHS as the goal.
-        iLOG (showImp True rhs)
+        logLvl 2 (showImp True rhs)
         ctxt <- getContext -- new context with where block added
         (rhs', _) <- tclift $ elaborate ctxt (MN 0 "patRHS") clhsty
                                 (do pbinds lhs_tm
@@ -133,18 +136,19 @@ elabClause info (PClause fname lhs rhs whereblock)
                                            _ -> MN i (show n)) . l
                     }
 
+-- TODO: Also build a 'binary' version of each declaration for fast reloading
+
 elabDecl :: ElabInfo -> PDecl -> Idris ()
 elabDecl info d = idrisCatch (elabDecl' info d) (\e -> iputStrLn (report e))
 
 elabDecl' info (PFix _ _)      = return () -- nothing to elaborate
 elabDecl' info (PTy n ty)      = do iLOG $ "Elaborating type decl " ++ show n
                                     elabType info n ty
-elabDecl' info (PData d)       = do iLOG $ "Elaborating " ++ show d
+elabDecl' info (PData d)       = do iLOG $ "Elaborating " ++ show (d_name d)
                                     elabData info d
 elabDecl' info d@(PClauses n ps) = do iLOG $ "Elaborating clause " ++ show n
                                       elabClauses info n ps
-elabDecl' info (PParams ns ps) = do iLOG $ "Params block " ++ show ns
-                                    mapM_ (elabDecl' pinfo) ps
+elabDecl' info (PParams ns ps) = mapM_ (elabDecl' pinfo) ps
   where
     pinfo = let ds = concatMap declared ps
                 newps = params info ++ ns
@@ -152,6 +156,8 @@ elabDecl' info (PParams ns ps) = do iLOG $ "Params block " ++ show ns
                 newb = addAlist dsParams (inblock info) in 
                 info { params = newps,
                        inblock = newb }
+-- elabDecl' info (PImport i) = loadModule i
+
 
 -- Using the elaborator, convert a term in raw syntax to a fully
 -- elaborated, typechecked term.

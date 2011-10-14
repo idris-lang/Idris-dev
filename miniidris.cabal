@@ -24,10 +24,12 @@ Executable     miniidris
 
                               Idris.AbsSyntax, Idris.Parser, Idris.REPL,
                               Idris.REPLParser, Idris.ElabDecls, Idris.Error,
-                              Idris.Delaborate, Idris.Primitives
+                              Idris.Delaborate, Idris.Primitives, Idris.Imports,
+
+                              Paths_miniidris
 
                Build-depends:   base>=4 && <5, parsec, mtl, Cabal, readline,
-                                containers, process, transformers
+                                containers, process, transformers, filepath, directory
                                 
                Extensions:      MultiParamTypeClasses, FunctionalDependencies,
                                 FlexibleInstances
