@@ -283,6 +283,7 @@ instance Show Const where
     show FlType = "Float"
     show ChType = "Char"
     show StrType = "String"
+    show PtrType = "Ptr"
 
 showEnv env t = showEnv' env t False
 showEnvDbg env t = showEnv' env t True

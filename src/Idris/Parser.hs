@@ -265,8 +265,10 @@ pConstant = do reserved "Int";    return IType
         <|> do reserved "Float";  return FlType
         <|> do reserved "String"; return StrType
         <|> do reserved "Ptr";    return PtrType
-        <|> try (do f <- float;        return $ Fl f)
-        <|> try (do i <- natural;      return $ I (fromInteger i))
+        <|> try (do f <- float;   return $ Fl f)
+        <|> try (do i <- natural; return $ I (fromInteger i))
+        <|> try (do s <- strlit;  return $ Str s)
+        <|> try (do c <- chlit;   return $ Ch c)
 
 table fixes 
    = [[prefix "-" (\x -> PApp (PRef (UN ["-"])) [PExp (PConstant (I 0)), PExp x])]] 
@@ -293,7 +295,7 @@ pData :: SyntaxInfo -> IParser PDecl
 pData syn = try (do reserved "data"; tyn <- pfName; ty <- pTSig syn
                     reserved "where"
                     ty' <- implicit syn tyn ty
-                    cons <- sepBy1 (pConstructor syn) (lchar '|')
+                    cons <- sepBy (pConstructor syn) (lchar '|')
                     lchar ';'
                     return $ PData (PDatadecl tyn ty' cons))
         <|> do reserved "data"; tyn <- pfName; args <- many iName

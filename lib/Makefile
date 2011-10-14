@@ -1,4 +1,4 @@
 check: .PHONY
-	miniidris --check *.idr
+	miniidris --noprelude --check *.idr
 
 .PHONY:

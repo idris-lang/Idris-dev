@@ -69,7 +69,7 @@ eval ctxt genv tm = ev [] tm where
     ev env (Bind n (NLet t v) sc)
            = VBind n (Let (ev env t) (ev env v)) $ (\x -> ev (ev env v : env) sc)
     ev env (Bind n b sc) = VBind n (vbind env b) (\x -> ev (x:env) sc)
-       where vbind env t = fmap (ev env) t    
+       where vbind env t = fmap (ev env) t
     ev env (App f a) = evApply env [ev env a] (ev env f)
     ev env (Constant c) = VConstant c
     ev env (Set i)   = VSet i

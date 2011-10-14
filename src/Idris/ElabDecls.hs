@@ -79,7 +79,7 @@ elabVal info tm
    = do ctxt <- getContext
         logLvl 10 (show tm)
         (tm', _) <- tclift $ elaborate ctxt (MN 0 "val") infP
-                               (build info True (infTerm tm))
+                               (build info False (infTerm tm))
         logLvl 3 ("Value: " ++ show tm')
         let vtm = getInferTerm tm'
         logLvl 2 (show vtm)
@@ -188,7 +188,7 @@ elab info pattern tm = do elab' tm
                   [] -> return ()
 
     elab' PSet           = do fill (RSet 0); solve
-    elab' (PConstant c)  = do fill (RConstant c); solve
+    elab' (PConstant c)  = do apply (RConstant c) []; solve
     elab' (PQuote r)     = do fill r; solve
     elab' (PRef n) | pattern && not (inparamBlock n)
                          = try (do apply (Var n) []; solve)

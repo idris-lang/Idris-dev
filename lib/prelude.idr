@@ -1,4 +1,6 @@
 import nat;
+import list;
+import io;
 
 data Bool = False | True;
 
