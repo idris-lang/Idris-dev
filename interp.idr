@@ -5,32 +5,18 @@ interpTy : Ty -> Set;
 interpTy TyNat       = Nat;
 interpTy (TyFun s t) = interpTy s -> interpTy t;
 
-data Fin : Nat -> Set where
-    fO : Fin (S k)
-  | fS : Fin k -> Fin (S k);
-
-infixr 7 :: ;
-
-data Vect : Set -> Nat -> Set where
-    VNil  : Vect a O
-  | (::)  : a -> Vect a k -> Vect a (S k); 
-
 using (G : Vect Ty n) {
 
   data Env : Vect Ty n -> Set where
       Empty  : Env VNil
     | Extend : interpTy a -> Env G -> Env (a :: G);
 
-  lookup : (i : Fin n) -> Vect a n -> a;
-  lookup fO     (x :: xs) = x;
-  lookup (fS k) (x :: xs) = lookup k xs;
-  
-  envLookup : (i : Fin n) -> Env G -> interpTy (lookup i G);
+  envLookup : (i : Fin n) -> Env G -> interpTy (vlookup i G);
   envLookup fO     (Extend x xs) = x;
   envLookup (fS i) (Extend x xs) = envLookup i xs;
   
   data Expr : Vect Ty n -> Ty -> Set where
-      Var : (i : Fin n) -> Expr G (lookup i G)
+      Var : (i : Fin n) -> Expr G (vlookup i G)
     | Val : Nat -> Expr G TyNat
     | Lam : Expr (a :: G) t -> Expr G (TyFun a t)
     | App : Expr G (TyFun a t) -> Expr G a -> Expr G t

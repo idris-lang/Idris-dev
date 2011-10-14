@@ -7,6 +7,7 @@ import Idris.REPLParser
 import Idris.ElabDecls
 import Idris.Error
 import Idris.Delaborate
+import Idris.Compiler
 
 import Core.Evaluate
 import Core.ProofShell
@@ -52,5 +53,6 @@ process TTShell  = do ist <- get
                       let shst = initState (tt_ctxt ist)
                       shst' <- lift $ runShell shst
                       return ()
+process (Compile f) = do compile f 
 process NOP      = return ()
 

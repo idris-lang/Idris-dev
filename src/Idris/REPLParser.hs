@@ -22,5 +22,6 @@ pCmd :: IParser Command
 pCmd = try (do cmd ["q", "quit"]; return Quit)
    <|> try (do cmd ["h", "?", "help"]; return Help)
    <|> try (do cmd ["ttshell"]; return TTShell)
+   <|> try (do cmd ["c", "compile"]; f <- identifier; return (Compile f))
    <|> do t <- pFullExpr defaultSyntax; return (Eval t)
    <|> do eof; return NOP

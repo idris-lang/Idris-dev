@@ -226,9 +226,13 @@ pHSimpleExpr syn
                   return $ PHidden e
 
 pApp syn = do f <- pSimpleExpr syn
-              iargs <- many (pImplicitArg syn)
-              args <- many1 (pSimpleExpr syn)
-              return (PApp f (iargs ++ map PExp args))
+              args <- many1 (pArg syn)
+              return (PApp f args)
+
+pArg :: SyntaxInfo -> IParser PArg
+pArg syn = pImplicitArg syn
+       <|> do e <- pSimpleExpr syn
+              return (PExp e)
 
 pImplicitArg syn = do lchar '{'; n <- iName
                       v <- option (PRef n) (do lchar '='; pExpr syn)

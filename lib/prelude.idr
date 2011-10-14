@@ -1,5 +1,6 @@
 import nat;
 import list;
+import vect;
 import io;
 
 data Bool = False | True;
@@ -81,7 +82,7 @@ div = prim__divInt;
 ---- some basic io
 
 putStr : String -> IO ();
-putStr = mkForeign (FFun "putStr" (Cons FString Nil) FUnit);
+putStr x = mkForeign (FFun "putStr" (Cons FString Nil) FUnit) x;
 
 putStrLn : String -> IO ();
 putStrLn x = putStr (x ++ "\n");

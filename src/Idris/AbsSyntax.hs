@@ -11,6 +11,8 @@ import Data.List
 import Data.Char
 import Debug.Trace
 
+import qualified Epic.Epic as E
+
 data IOption = IOption { opt_logLevel :: Int }
     deriving (Show, Eq)
 
@@ -27,10 +29,11 @@ data IState = IState { tt_ctxt :: Context,
                        idris_log :: String,
                        idris_options :: IOption,
                        idris_name :: Int,
-                       imported :: [FilePath]
+                       imported :: [FilePath],
+                       idris_prims :: [(Name, ([E.Name], E.Term))]
                      }
                    
-idrisInit = IState emptyContext [] emptyContext "" defaultOpts 0 []
+idrisInit = IState emptyContext [] emptyContext "" defaultOpts 0 [] []
 
 -- The monad for the main REPL - reading and processing files and updating 
 -- global state (hence the IO inner monad).
@@ -83,6 +86,7 @@ iLOG = logLvl 1
 -- Commands in the REPL
 
 data Command = Quit | Help | Eval PTerm 
+             | Compile String
              | TTShell 
              | NOP
 

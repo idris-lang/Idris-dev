@@ -32,7 +32,8 @@ Executable     miniidris
                               Paths_miniidris
 
                Build-depends:   base>=4 && <5, parsec, mtl, Cabal, readline,
-                                containers, process, transformers, filepath, directory
+                                containers, process, transformers, filepath, directory,
+                                epic
                                 
                Extensions:      MultiParamTypeClasses, FunctionalDependencies,
                                 FlexibleInstances

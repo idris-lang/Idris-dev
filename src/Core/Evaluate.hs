@@ -56,7 +56,7 @@ eval ctxt genv tm = ev [] tm where
     ev env (P Ref n ty) = case lookupDef n ctxt of
         Just (Function (Fun _ _ _ v)) -> v
         Just (TyDecl nt ty hty)     -> VP nt n hty
-        Just (CaseOp _ [] tree)       ->  
+        Just (CaseOp _ _ [] tree)   ->  
               case evCase env [] [] tree of
                    (Nothing, _) -> VP Ref n (ev env ty)
                    (Just v, _)  -> v
@@ -79,7 +79,7 @@ eval ctxt genv tm = ev [] tm where
 
     apply env (VBind n (Lam t) sc) (a:as) = wknV (-1) $ apply env (sc a) as
     apply env (VP Ref n ty)        args
-        | Just (CaseOp _ ns tree) <- lookupDef n ctxt
+        | Just (CaseOp _ _ ns tree) <- lookupDef n ctxt
             = case evCase env ns args tree of
                    (Nothing, _) -> unload env (VP Ref n ty) args
                    (Just v, rest) -> evApply env rest v
@@ -174,13 +174,13 @@ data Fun = Fun Type Value Term Value
 data Def = Function Fun
          | TyDecl NameType Type Value
          | Operator Type Int ([Value] -> Maybe Value)
-         | CaseOp Type [Name] SC
+         | CaseOp Type [(Term, Term)] [Name] SC
 
 instance Show Def where
     show (Function f) = "Function: " ++ show f
     show (TyDecl nt ty val) = "TyDecl: " ++ show nt ++ " " ++ show ty
     show (Operator ty _ _) = "Operator: " ++ show ty
-    show (CaseOp ty ns sc) = "Case: " ++ show ns ++ " " ++ show sc
+    show (CaseOp ty _ ns sc) = "Case: " ++ show ns ++ " " ++ show sc
 
 ------- 
 
@@ -205,9 +205,10 @@ addDatatype (Data n ty cons) ctxt
               addCons (tag+1) cons (addDef n
                   (TyDecl (DCon tag (arity ty')) ty (eval ctxt [] ty)) ctxt)
 
-addCasedef :: Name -> CaseDef -> Type -> Context -> Context
-addCasedef n (CaseDef args sc) ty ctxt 
-    = addDef n (CaseOp ty args sc) ctxt
+addCasedef :: Name -> [(Term, Term)] -> Type -> Context -> Context
+addCasedef n ps ty ctxt 
+    = case simpleCase ps of
+        CaseDef args sc -> addDef n (CaseOp ty ps args sc) ctxt
 
 addOperator :: Name -> Type -> Int -> ([Value] -> Maybe Value) -> Context -> Context
 addOperator n ty a op ctxt
@@ -219,7 +220,7 @@ lookupTy n ctxt = do def <- lookupCtxt n ctxt
                        (Function (Fun ty _ _ _)) -> return ty
                        (TyDecl _ ty _) -> return ty
                        (Operator ty _ _) -> return ty
-                       (CaseOp ty _ _) -> return ty
+                       (CaseOp ty _ _ _) -> return ty
 
 lookupP :: Name -> Context -> Maybe Term
 lookupP n ctxt 
@@ -227,7 +228,7 @@ lookupP n ctxt
         case def of
           (Function (Fun ty _ tm _)) -> return (P Ref n ty)
           (TyDecl nt ty hty) -> return (P nt n ty)
-          (CaseOp ty _ _) -> return (P Ref n ty)
+          (CaseOp ty _ _ _) -> return (P Ref n ty)
           (Operator ty _ _) -> return (P Ref n ty)
 
 lookupDef :: Name -> Context -> Maybe Def

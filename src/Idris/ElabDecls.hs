@@ -67,7 +67,7 @@ elabClauses info n_in cs = let n = liftname info n_in in
          logLvl 3 (show tree)
          ctxt <- getContext
          case lookupTy n ctxt of
-             Just ty -> updateContext (addCasedef n tree ty)
+             Just ty -> updateContext (addCasedef n (map debind pats) ty)
              Nothing -> return ()
   where
     debind (x, y) = (depat x, depat y)
