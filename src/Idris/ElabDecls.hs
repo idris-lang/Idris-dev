@@ -190,6 +190,15 @@ elab info pattern tm = do elab' tm
     elab' PSet           = do fill (RSet 0); solve
     elab' (PConstant c)  = do apply (RConstant c) []; solve
     elab' (PQuote r)     = do fill r; solve
+    elab' PTrue          = try (elab' (PRef unitCon))
+                               (elab' (PRef unitTy))
+    elab' PFalse         = elab' (PRef falseTy)
+    elab' (PPair l r)    = try (elab' (PApp (PRef pairTy)
+                                            [PExp l,PExp r]))
+                               (elab' (PApp (PRef pairCon)
+                                            [PImp (MN 0 "a") Placeholder,
+                                             PImp (MN 0 "a") Placeholder,
+                                             PExp l, PExp r]))
     elab' (PRef n) | pattern && not (inparamBlock n)
                          = try (do apply (Var n) []; solve)
                                (patvar n)

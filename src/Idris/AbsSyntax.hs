@@ -149,6 +149,9 @@ data PTerm = PQuote Raw
            | PPi  Plicity Name PTerm PTerm
            | PLet Name PTerm PTerm PTerm -- not implemented yet
            | PApp PTerm [PArg]
+           | PTrue
+           | PFalse
+           | PPair PTerm PTerm
            | PHidden PTerm -- irrelevant or hidden pattern
            | PSet
            | PConstant Const
@@ -232,6 +235,9 @@ showImp impl tm = se 10 tm where
               bracket p 1 $ se 1 f ++ (if impl then concatMap siArg imps else "")
                                    ++ concatMap seArg args
     se p (PHidden tm) = "." ++ se 0 tm
+    se p PTrue = "()"
+    se p PFalse = "_|_"
+    se p (PPair l r) = "(" ++ se 10 l ++ ", " ++ se 10 r ++ ")"
     se p PSet = "Set"
     se p (PConstant c) = show c
     se p Placeholder = "_"
@@ -287,6 +293,27 @@ getInferTerm tm = error ("getInferTerm " ++ show tm)
 
 getInferType (Bind n b sc) = Bind n b $ getInferType sc
 getInferType (App (App _ ty) _) = ty
+
+-- Handy primitives: Unit, False, Pair, MkPair
+
+unitTy   = MN 0 "__Unit"
+unitCon  = MN 0 "__II"
+unitDecl = PDatadecl unitTy PSet
+                     [(unitCon, PRef unitTy)]
+
+falseTy   = MN 0 "__False"
+falseDecl = PDatadecl falseTy PSet []
+
+pairTy    = MN 0 "__Pair"
+pairCon   = MN 0 "__MkPair"
+pairDecl  = PDatadecl pairTy (piBind [(n "A", PSet), (n "B", PSet)] PSet)
+            [(pairCon, PPi Imp (n "A") PSet (
+                       PPi Imp (n "B") PSet (
+                       PPi Exp (n "a") (PRef (n "A")) (
+                       PPi Exp (n "b") (PRef (n "B"))  
+                           (PApp (PRef pairTy) [PExp (PRef (n "A")),
+                                                PExp (PRef (n "B"))])))))]
+    where n a = MN 0 a
 
 piBind :: [(Name, PTerm)] -> PTerm -> PTerm
 piBind [] t = t

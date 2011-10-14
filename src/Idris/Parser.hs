@@ -210,10 +210,14 @@ pSimpleExpr syn =
         try (do symbol "!["; t <- pTerm; lchar ']' 
                 return $ PQuote t)
         <|> try (do x <- pfName; return (PRef x))
-        <|> try (do lchar '_'; return Placeholder)
+        <|> try (do lchar '('; l <- pExpr syn; lchar ','; r <- pExpr syn; lchar ')';
+                    return (PPair l r))
         <|> try (do lchar '('; e <- pExpr syn; lchar ')'; return e)
         <|> try (do c <- pConstant; return (PConstant c))
         <|> try (do reserved "Set"; return PSet)
+        <|> try (do symbol "()"; return PTrue)
+        <|> try (do symbol "_|_"; return PFalse)
+        <|> try (do lchar '_'; return Placeholder)
 
 pHSimpleExpr syn
              = try (pSimpleExpr syn)
