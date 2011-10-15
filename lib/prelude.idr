@@ -87,3 +87,6 @@ putStr x = mkForeign (FFun "putStr" (Cons FString Nil) FUnit) x;
 putStrLn : String -> IO ();
 putStrLn x = putStr (x ++ "\n");
 
+readLine : IO String;
+readLine = mkForeign (FFun "readStr" Nil FString);
+

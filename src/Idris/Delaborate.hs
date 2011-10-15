@@ -1,3 +1,5 @@
+{-# LANGUAGE PatternGuards #-}
+
 module Idris.Delaborate where
 
 -- Convert core TT back into high level syntax, primarily for display

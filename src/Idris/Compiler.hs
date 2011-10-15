@@ -1,3 +1,5 @@
+{-# LANGUAGE PatternGuards #-}
+
 module Idris.Compiler where
 
 import Idris.AbsSyntax
@@ -13,7 +15,7 @@ import qualified Epic.Epic as E
 
 compile :: FilePath -> Idris ()
 compile f = do ds <- mkDecls
-               lift $ E.compile (mkProgram ds) f 
+               lift $ compileWith [Debug] (mkProgram ds) f 
 
 mkDecls :: Idris [EpicDecl]
 mkDecls = do i <- getIState
@@ -47,12 +49,18 @@ instance ToEpic (TT Name) where
       epic' env tm@(App f a)
           | (P _ (UN ["mkForeign"]) _, args) <- unApply tm
               = doForeign args
+      epic' env (P (DCon t a) n _) = return $ con_ t
+      epic' env (P (TCon _) _ _) = return impossible
       epic' env (P _ n _) = return $ ref (ename n) 
+      epic' env (V i) = return $ ref (env!!i)
       epic' env (Bind n (Lam _) sc)
             = do sc' <- epic' (aname n : env) sc
                  return $ term ([aname n], sc')
       epic' env (Bind _ _ _) = return impossible
-      epic' env (App f a) = do liftM2 (@@) (epic' env f) (epic' env a)
+      epic' env (App f a) = do f' <- epic' env f
+                               a' <- epic' env a
+                               logLvl 3 $ "Compiled " ++ show f ++ " @@ " ++ show a
+                               return (f' @@ a')
       epic' env (Constant c) = epic c
       epic' env (Set _) = return impossible
 
@@ -62,8 +70,7 @@ doForeign (_ : fgn : args)
         = let tys = getFTypes fgnArgTys
               rty = mkEty ret in
               do args' <- mapM epic args
-                 return $ foreign_ rty fgnName (zip args' tys)
---               fail $ "Got to " ++ fgnName ++ show (length args) ++ show tys ++ show rty
+                 return $ con_ 0 @@ impossible @@ foreign_ rty fgnName (zip args' tys)
    | otherwise = fail "Badly formed foreign function call"
 
 getFTypes :: TT Name -> [E.Type]
@@ -82,16 +89,28 @@ mkEty "FUnit"   = tyUnit
 
 instance ToEpic Const where
     epic (I i)   = return (int i)
---    epic (Fl f)  = return (float f)
+    epic (Fl f)  = return (float f)
     epic (Str s) = return (str s)
     epic (Ch c)  = return (char c)
     epic _ = return impossible
 
 instance ToEpic ([Name], SC) where
-    epic (args, tree) = do tree' <- epic tree
+    epic (args, tree) = do logLvl 3 $ "Compiling " ++ show args ++ "\n" ++ show tree
+                           tree' <- epic tree
                            return $ term (map ename args, tree')
 
 instance ToEpic SC where
     epic (STerm t) = epic t
-    epic (Case n alts) = return $ case_ (ref (ename n)) undefined
+    epic (UnmatchedCase str) = return $ error_ str
+    epic (Case n alts) = do alts' <- mapM mkEpicAlt alts
+                            return $ case_ (ref (ename n)) alts'
+      where
+        mkEpicAlt (ConCase n t args rhs) = do rhs' <- epic rhs
+                                              return $ con t (map ename args, rhs')
+        mkEpicAlt (ConstCase (I i) rhs)  = do rhs' <- epic rhs
+                                              return $ constcase i rhs'
+        mkEpicAlt (ConstCase _ rhs)      = fail "Can only pattern match on integer constants"
+        mkEpicAlt (DefaultCase rhs)      = do rhs' <- epic rhs
+                                              return $ defaultcase rhs'
+
 
