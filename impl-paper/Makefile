@@ -3,7 +3,7 @@ PAPER = impldtp
 all: ${PAPER}.pdf
 
 TEXFILES = ${PAPER}.tex intro.tex conclusions.tex overview.tex hll.tex\
-           typechecking.tex proofstate.tex elaboration.tex
+           typechecking.tex proofstate.tex elaboration.tex compiling.tex
 
 DIAGS = 
 

@@ -53,3 +53,10 @@ using (G : Vect Ty n) {
 test : Nat;
 test = interp Empty eAdd (S (S O)) (S (S O));
 
+natToStr : Nat -> String;
+natToStr O = "O";
+natToStr (S k) = "s" ++ natToStr k;
+
+main : IO ();
+main = putStrLn (natToStr test);
+
