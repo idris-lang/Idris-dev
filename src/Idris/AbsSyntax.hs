@@ -160,6 +160,13 @@ data PTerm = PQuote Raw
            | PSet
            | PConstant Const
            | Placeholder
+           | PDoBlock [PDo]
+           | PReturn
+           | PElabError String -- error to report on elaboration
+
+data PDo = DoExp PTerm
+         | DoBind Name PTerm
+         | DoLet Name PTerm
 
 data PArg' t = PImp { pname :: Name, getTm :: t }
              | PExp { getTm :: t }
@@ -167,13 +174,20 @@ data PArg' t = PImp { pname :: Name, getTm :: t }
 
 type PArg = PArg' PTerm
 
--- Syntactic sugar info (TODO: namespaces, parameters, modules)
+-- Syntactic sugar info (TODO: namespaces, modules)
 
-data SyntaxInfo = Syn { using :: [(Name, PTerm)],
-                        syn_params :: [(Name, PTerm)] }
+data DSL = DSL { dsl_bind :: Name,
+                 dsl_return :: Name }
     deriving Show
 
-defaultSyntax = Syn [] []
+initDSL = DSL (UN ["io_bind"]) (UN ["io_return"])
+
+data SyntaxInfo = Syn { using :: [(Name, PTerm)],
+                        syn_params :: [(Name, PTerm)],
+                        dsl_info :: DSL }
+    deriving Show
+
+defaultSyntax = Syn [] [] initDSL
 
 --- Pretty printing declarations and terms
 

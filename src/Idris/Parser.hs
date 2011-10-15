@@ -112,15 +112,16 @@ collect [] = []
 
 pFullExpr :: SyntaxInfo -> IParser PTerm
 pFullExpr syn 
-          = do x <- pExpr syn; eof; 
+          = do x <- pExpr syn; eof;
                i <- getState
-               return (addImpl i x)
+               return $ desugar syn i x
 
 pDecl :: SyntaxInfo -> IParser [PDecl]
 pDecl syn
       = do d <- pDecl' syn
            i <- getState
-           return [fmap (addImpl i) d]
+           let d' = fmap (desugar syn i) d
+           return [d']
     <|> try (pUsing syn)
     <|> try (pParams syn)
     <|> try (do reserved "import"
@@ -132,7 +133,8 @@ pFunDecl :: SyntaxInfo -> IParser [PDecl]
 pFunDecl syn
       = try (do d <- pFunDecl' syn
                 i <- getState
-                return [fmap (addImpl i) d])
+                let d' = fmap (desugar syn i) d
+                return [d'])
 
 --------- Top Level Declarations ---------
 
@@ -202,13 +204,15 @@ pExpr' syn
      <|> pSimpleExpr syn
      <|> try (pLambda syn)
      <|> try (pPi syn) 
-
+     <|> try (pDoBlock syn)
+    
 pfName = try iName
      <|> do lchar '('; o <- operator; lchar ')'; return (UN [o])
 
 pSimpleExpr syn = 
         try (do symbol "!["; t <- pTerm; lchar ']' 
                 return $ PQuote t)
+        <|> try (do reserved "return"; return PReturn)
         <|> try (do x <- pfName; return (PRef x))
         <|> try (do lchar '('; l <- pExpr syn; lchar ','; r <- pExpr syn; lchar ')';
                     return (PPair l r))
@@ -266,6 +270,19 @@ tyOptDeclList syn = sepBy1 (do x <- pfName; t <- option Placeholder (pTSig syn)
 
 bindList b []          sc = sc
 bindList b ((n, t):bs) sc = b n t (bindList b bs sc)
+
+pDoBlock syn 
+    = do reserved "do"; lchar '{'
+         ds <- endBy1 (pDo syn) (lchar ';')
+         lchar '}'
+         return (PDoBlock ds)
+
+pDo syn
+     = try (do i <- iName; symbol "<-"; e <- pExpr syn;
+               return (DoBind i e))
+   <|> try (do reserved "let"; i <- iName; reservedOp "="; e <- pExpr syn
+               return (DoLet i e))
+   <|> try (do e <- pExpr syn; return (DoExp e))
 
 pConstant :: IParser Const
 pConstant = do reserved "Int";    return IType
@@ -375,5 +392,28 @@ implicit syn n ptm
          let (tm', impdata) = implicitise syn i ptm
          setState (i { idris_implicits = addDef n impdata (idris_implicits i) })
          return tm'
+
+desugar :: SyntaxInfo -> IState -> PTerm -> PTerm
+desugar syn i t = let t' = expandDo (dsl_info syn) t in
+                      addImpl i t'
+
+expandDo :: DSL -> PTerm -> PTerm
+expandDo dsl (PLam n ty tm) = PLam n (expandDo dsl ty) (expandDo dsl tm)
+expandDo dsl (PPi p n ty tm) = PPi p n (expandDo dsl ty) (expandDo dsl tm)
+expandDo dsl (PApp t args) = PApp (expandDo dsl t)
+                                  (map (fmap (expandDo dsl)) args)
+expandDo dsl (PPair l r) = PPair (expandDo dsl l) (expandDo dsl r)
+expandDo dsl (PHidden t) = PHidden (expandDo dsl t)
+expandDo dsl PReturn = PRef (dsl_return dsl)
+expandDo dsl (PDoBlock ds) = expandDo dsl $ block (dsl_bind dsl) ds 
+  where
+    block b [DoExp tm] = tm 
+    block b [a] = PElabError "Last statement in do block must be an expression"
+    block b (DoBind n tm : rest)
+        = PApp (PRef b) [PExp tm, PExp (PLam n Placeholder (block b rest))]
+    block b (DoExp tm : rest)
+        = PApp (PRef b) [PExp tm, PExp (PLam (MN 0 "bindx") Placeholder (block b rest))]
+expandDo dsl t = t
+
 
 

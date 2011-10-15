@@ -235,6 +235,7 @@ elab info pattern tm = do elab' tm
           = do simple_app (elab' f) (elab' (getTm arg))
                solve
     elab' Placeholder = fail $ "Can't deal with a placeholder here"
+    elab' (PElabError e) = fail e
     elab' x = fail $ "Not implemented " ++ show x
 
     elabArgs [] _ = return ()

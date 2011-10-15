@@ -51,7 +51,7 @@ using (G : Vect Ty n) {
 }
 
 test : Nat;
-test = interp Empty eAdd (S (S O)) (S (S O));
+test = interp Empty eProg (S (S O)) (S (S O));
 
 natToStr : Nat -> String;
 natToStr O = "O";
