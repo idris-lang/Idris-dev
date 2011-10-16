@@ -303,6 +303,7 @@ allNamesIn tm = nub $ ni [] tm
     ni env (PLam n ty sc)  = ni env ty ++ ni (n:env) sc
     ni env (PPi _ n ty sc) = ni env ty ++ ni (n:env) sc
     ni env (PHidden tm)    = ni env tm
+    ni env (PPair l r)     = ni env l ++ ni env r
     ni env _               = []
 
 namesIn :: IState -> PTerm -> [Name]
@@ -316,6 +317,7 @@ namesIn ist tm = nub $ ni [] tm
     ni env (PApp f as)  = ni env f ++ concatMap (ni env) (map getTm as)
     ni env (PLam n ty sc)  = ni env ty ++ ni (n:env) sc
     ni env (PPi _ n ty sc) = ni env ty ++ ni (n:env) sc
+    ni env (PPair l r)     = ni env l ++ ni env r
     ni env (PHidden tm)    = ni env tm
     ni env _               = []
 
@@ -396,6 +398,9 @@ implicitise syn ist tm
              (decls, ns) <- get -- ignore decls in HO types
              put (PExp ty : decls, nub (ns ++ (isn \\ (env ++ map fst (getImps decls)))))
              imps True (n:env) sc
+    imps top env (PPair l r)
+        = do (decls, ns) <- get
+             put (decls, nub (ns ++ namesIn ist l ++ namesIn ist r))
     imps top env (PLam n ty sc)  
         = do imps False env ty
              imps False (n:env) sc

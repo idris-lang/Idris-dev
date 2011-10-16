@@ -174,7 +174,7 @@ pSyntaxRule syn
 pSynSym :: IParser SSymbol
 pSynSym = try (do lchar '['; n <- pName; lchar ']'
                   return (Expr n))
-      <|> do n <- pName
+      <|> do n <- iName []
              return (Keyword n)
       <|> do sym <- strlit
              return (Symbol sym)
@@ -279,6 +279,7 @@ pExt syn (Rule (s:ssym) ptm)
       where upd ns (DoExp t : ds) = DoExp (update ns t) : upd ns ds
             upd ns (DoBind n t : ds) = DoBind n (update ns t) : upd (dropn n ns) ds
             upd ns (DoLet n t : ds) = DoLet n (update ns t) : upd (dropn n ns) ds
+    update ns t = t
 
 pName = do i <- getState
            iName (map show (names (syntax_rules i)))
