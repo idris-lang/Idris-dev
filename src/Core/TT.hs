@@ -118,6 +118,7 @@ data Binder b = Lam   { binderTy  :: b }
               | NLet  { binderTy  :: b,
                         binderVal :: b }
               | Hole  { binderTy  :: b}
+              | GHole { binderTy  :: b}
               | Guess { binderTy  :: b,
                         binderVal :: b }
               | PVar  { binderTy  :: b }
@@ -303,6 +304,7 @@ showEnv' env t dbg = se 10 env t where
 
     sb env n (Lam t)  = showb env "\\ " " => " n t
     sb env n (Hole t) = showb env "? " ". " n t
+    sb env n (GHole t) = showb env "?defer " ". " n t
     sb env n (Pi t)   = showb env "(" ") -> " n t
     sb env n (PVar t) = showb env "pat " ". " n t
     sb env n (PVTy t) = showb env "pty " ". " n t

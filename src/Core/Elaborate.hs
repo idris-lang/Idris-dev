@@ -81,6 +81,11 @@ get_type tm = do ctxt <- get_context
                  (val, ty) <- lift $ check ctxt env tm
                  return (finalise ty)
 
+-- get holes we've deferred for later definition
+get_deferred :: Elab [Name]
+get_deferred = do (p, _) <- get
+                  return (deferred p)
+
 -- given a desired hole name, return a unique hole name
 unique_hole :: Name -> Elab Name
 unique_hole n = do (p, _) <- get
@@ -161,6 +166,9 @@ focus n = processTactic' (Focus n)
 
 movelast :: Name -> Elab ()
 movelast n = processTactic' (MoveLast n)
+
+defer :: Name -> Elab ()
+defer n = processTactic' (Defer n)
 
 proofstate :: Elab ()
 proofstate = processTactic' ProofState

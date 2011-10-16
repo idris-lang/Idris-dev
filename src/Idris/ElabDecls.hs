@@ -30,17 +30,21 @@ toplevel = EInfo [] emptyContext id
 elabType :: ElabInfo -> Name -> PTerm -> Idris ()
 elabType info n_in ty_in = let ty = piBind (params info) ty_in 
                                n  = liftname info n_in in    
-      do ctxt <- getContext
+      do checkUndefined n
+         ctxt <- getContext
          logLvl 2 $ "Type " ++ showImp True ty
-         (ty', log) <- tclift $ elaborate ctxt n (Set 0) (build info False ty)
+         ((ty', defer), log) <- tclift $ elaborate ctxt n (Set 0) (build info False ty)
          (cty, _)   <- tclift $ recheck ctxt [] ty'
          logLvl 2 $ "---> " ++ show cty
-         updateContext (addTyDecl n (normalise ctxt [] cty))
+         let nty = normalise ctxt [] cty
+         addDeferred ((n, nty):defer)
 
 elabData :: ElabInfo -> PData -> Idris ()
 elabData info (PDatadecl n t dcons)
-    = do ctxt <- getContext
-         (t', log) <- tclift $ elaborate ctxt n (Set 0) (build info False t)
+    = do checkUndefined n
+         ctxt <- getContext
+         ((t', defer), log) <- tclift $ elaborate ctxt n (Set 0) (build info False t)
+         addDeferred defer
          (cty, _)  <- tclift $ recheck ctxt [] t'
          logLvl 2 $ "---> " ++ show cty
          updateContext (addTyDecl n cty) -- temporary, to check cons
@@ -49,17 +53,20 @@ elabData info (PDatadecl n t dcons)
 
 elabCon :: ElabInfo -> (Name, PTerm) -> Idris (Name, Type)
 elabCon info (n, t)
-    = do ctxt <- getContext
+    = do checkUndefined n
+         ctxt <- getContext
          logLvl 2 $ "Constructor " ++ show n ++ " : " ++ showImp True t
-         (t', log) <- tclift $ elaborate ctxt n (Set 0) (build info False t)
+         ((t', defer), log) <- tclift $ elaborate ctxt n (Set 0) (build info False t)
 --          logLvl 2 $ "Rechecking " ++ show t'
+         addDeferred defer
          (cty, _)  <- tclift $ recheck ctxt [] t'
          logLvl 2 $ "---> " ++ show n ++ " : " ++ show cty
          return (n, cty)
 
 elabClauses :: ElabInfo -> Name -> [PClause] -> Idris ()
 elabClauses info n_in cs = let n = liftname info n_in in  
-      do pats <- mapM (elabClause info) cs
+      do solveDeferred n
+         pats <- mapM (elabClause info) cs
          logLvl 3 (showSep "\n" (map (\ (l,r) -> 
                                         show l ++ " = " ++ 
                                         show r) pats))
@@ -78,8 +85,8 @@ elabVal :: ElabInfo -> PTerm -> Idris (Term, Type)
 elabVal info tm
    = do ctxt <- getContext
         logLvl 10 (show tm)
-        (tm', _) <- tclift $ elaborate ctxt (MN 0 "val") infP
-                               (build info False (infTerm tm))
+        ((tm', defer), _) <- tclift $ elaborate ctxt (MN 0 "val") infP
+                                      (build info False (infTerm tm))
         logLvl 3 ("Value: " ++ show tm')
         let vtm = getInferTerm tm'
         logLvl 2 (show vtm)
@@ -90,8 +97,8 @@ elabClause info (PClause fname lhs rhs whereblock)
    = do ctxt <- getContext
         -- Build the LHS as an "Infer", and pull out its type and
         -- pattern bindings
-        (lhs', _) <- tclift $ elaborate ctxt (MN 0 "patLHS") infP
-                                (build info True (infTerm lhs))
+        ((lhs', dlhs), _) <- tclift $ elaborate ctxt (MN 0 "patLHS") infP
+                                      (build info True (infTerm lhs))
         let lhs_tm = getInferTerm lhs'
         let lhs_ty = getInferType lhs'
         logLvl 3 (show lhs_tm)
@@ -104,12 +111,15 @@ elabClause info (PClause fname lhs rhs whereblock)
         -- Now build the RHS, using the type of the LHS as the goal.
         logLvl 2 (showImp True rhs)
         ctxt <- getContext -- new context with where block added
-        (rhs', _) <- tclift $ elaborate ctxt (MN 0 "patRHS") clhsty
-                                (do pbinds lhs_tm
-                                    build winfo False rhs
-                                    psolve lhs_tm
-                                    get_term)
+        ((rhs', defer), _) <- tclift $ elaborate ctxt (MN 0 "patRHS") clhsty
+                                       (do pbinds lhs_tm
+                                           (_, d) <- build winfo False rhs
+                                           psolve lhs_tm
+                                           tt <- get_term
+                                           return (tt, d))
         logLvl 2 $ "---> " ++ show rhs'
+        when (not (null defer)) $ iLOG $ "DEFERRED " ++ show defer
+        addDeferred defer
         (crhs, crhsty) <- tclift $ recheck ctxt [] rhs'
         return (clhs, crhs)
   where
@@ -165,9 +175,12 @@ elabDecl' info (PParams ns ps) = mapM_ (elabDecl' pinfo) ps
 -- If building a pattern match, we convert undeclared variables from
 -- holes to pattern bindings.
 
-build :: ElabInfo -> Bool -> PTerm -> Elab Term
+-- Also find deferred names in the term and their types
+
+build :: ElabInfo -> Bool -> PTerm -> Elab (Term, [(Name, Type)])
 build info pattern tm = do elab info pattern tm
-                           get_term
+                           tt <- get_term
+                           return $ runState (collectDeferred tt) []
 
 elab :: ElabInfo -> Bool -> PTerm -> Elab ()
 elab info pattern tm = do elab' tm
@@ -235,12 +248,28 @@ elab info pattern tm = do elab' tm
           = do simple_app (elab' f) (elab' (getTm arg))
                solve
     elab' Placeholder = fail $ "Can't deal with a placeholder here"
+    elab' (PMetavar n) = do attack; defer n; solve
     elab' (PElabError e) = fail e
     elab' x = fail $ "Not implemented " ++ show x
 
     elabArgs [] _ = return ()
     elabArgs (n:ns) (Placeholder : args) = elabArgs ns args
     elabArgs (n:ns) (t : args) = do focus n; elab' t; elabArgs ns args
-     
+
+collectDeferred :: Term -> State [(Name, Type)] Term
+collectDeferred (Bind n (GHole t) app) =
+    do ds <- get
+       put ((n, t) : ds)
+       return app
+collectDeferred (Bind n b t) = do b' <- cdb b
+                                  t' <- collectDeferred t
+                                  return (Bind n b' t')
+  where
+    cdb (Let t v)   = liftM2 Let (collectDeferred t) (collectDeferred v)
+    cdb (Guess t v) = liftM2 Guess (collectDeferred t) (collectDeferred v)
+    cdb b           = do ty' <- collectDeferred (binderTy b)
+                         return (b { binderTy = ty' })
+collectDeferred (App f a) = liftM2 App (collectDeferred f) (collectDeferred a)
+collectDeferred t = return t
 
 

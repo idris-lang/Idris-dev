@@ -212,6 +212,7 @@ pfName = try iName
 pSimpleExpr syn = 
         try (do symbol "!["; t <- pTerm; lchar ']' 
                 return $ PQuote t)
+        <|> try (do lchar '?'; x <- iName; return (PMetavar x))
         <|> try (do reserved "return"; return PReturn)
         <|> try (do x <- pfName; return (PRef x))
         <|> try (do lchar '('; l <- pExpr syn; lchar ','; r <- pExpr syn; lchar ')';

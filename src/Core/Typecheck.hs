@@ -92,6 +92,12 @@ check ctxt env (RBind n b sc)
                let tt' = normalise ctxt env tt
                isSet ctxt env tt'
                return (Hole tv')
+        checkBinder (GHole t)
+          = do (tv, tt) <- check ctxt env t
+               let tv' = normalise ctxt env tv
+               let tt' = normalise ctxt env tt
+               isSet ctxt env tt'
+               return (GHole tv')
         checkBinder (Guess t v)
           = do (tv, tt) <- check ctxt env t
                (vv, vt) <- check ctxt env v
@@ -106,6 +112,13 @@ check ctxt env (RBind n b sc)
                let tt' = normalise ctxt env tt
                isSet ctxt env tt'
                return (PVar tv')
+        checkBinder (PVTy t)
+          = do (tv, tt) <- check ctxt env t
+               let tv' = normalise ctxt env tv
+               let tt' = normalise ctxt env tt
+               isSet ctxt env tt'
+               return (PVTy tv')
+        checkBinder x = fail (show x)
 
         discharge n (Lam t) scv sct
           = return (Bind n (Lam t) scv, Bind n (Pi t) sct)
@@ -119,12 +132,18 @@ check ctxt env (RBind n b sc)
           = do -- A hole can't appear in the type of its scope
                checkNotHoley 0 sct
                return (Bind n (Hole t) scv, sct)
+        discharge n (GHole t) scv sct
+          = do -- A hole can't appear in the type of its scope
+               checkNotHoley 0 sct
+               return (Bind n (GHole t) scv, sct)
         discharge n (Guess t v) scv sct
           = do -- A hole can't appear in the type of its scope
                checkNotHoley 0 sct
                return (Bind n (Guess t v) scv, sct)
         discharge n (PVar t) scv sct
           = return (Bind n (PVar t) scv, Bind n (PVTy t) sct)
+        discharge n (PVTy t) scv sct
+          = return (Bind n (PVTy t) scv, sct)
 
         checkNotHoley i (V v) 
             | v == i = fail "You can't put a hole where a hole don't belong"

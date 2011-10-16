@@ -16,7 +16,7 @@ import Core.TT
 import System.Console.Readline
 import Control.Monad
 import Control.Monad.State
-
+import Data.List
 
 repl :: Idris ()
 repl = do x <- lift $ readline "Idris> "
@@ -54,5 +54,10 @@ process TTShell  = do ist <- get
                       shst' <- lift $ runShell shst
                       return ()
 process (Compile f) = do compile f 
+process Metavars = do ist <- get
+                      let mvs = idris_metavars ist \\ primDefs
+                      case mvs of
+                        [] -> iputStrLn "No global metavariables to solve"
+                        _ -> iputStrLn $ "Global metavariables:\n\t" ++ show mvs
 process NOP      = return ()
 

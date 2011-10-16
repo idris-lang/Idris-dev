@@ -29,11 +29,12 @@ data IState = IState { tt_ctxt :: Context,
                        idris_log :: String,
                        idris_options :: IOption,
                        idris_name :: Int,
+                       idris_metavars :: [Name],
                        imported :: [FilePath],
                        idris_prims :: [(Name, ([E.Name], E.Term))]
                      }
                    
-idrisInit = IState emptyContext [] emptyContext "" defaultOpts 0 [] []
+idrisInit = IState emptyContext [] emptyContext "" defaultOpts 0 [] [] []
 
 -- The monad for the main REPL - reading and processing files and updating 
 -- global state (hence the IO inner monad).
@@ -54,11 +55,26 @@ getName = do i <- get;
              put (i { idris_name = idx + 1 })
              return idx
 
+checkUndefined :: Name -> Idris ()
+checkUndefined n = do i <- getContext
+                      case lookupCtxt n i of
+                        Just _ -> fail $ show n ++ " already defined"
+                        _ -> return ()
+
 setContext :: Context -> Idris ()
 setContext ctxt = do i <- get; put (i { tt_ctxt = ctxt } )
 
 updateContext :: (Context -> Context) -> Idris ()
 updateContext f = do i <- get; put (i { tt_ctxt = f (tt_ctxt i) } )
+
+addDeferred :: [(Name, Type)] -> Idris ()
+addDeferred ns = do mapM_ (\(n, t) -> updateContext (addTyDecl n t)) ns
+                    i <- get
+                    put (i { idris_metavars = map fst ns ++ idris_metavars i })
+
+solveDeferred :: Name -> Idris ()
+solveDeferred n = do i <- get
+                     put (i { idris_metavars = idris_metavars i \\ [n] })
 
 iputStrLn :: String -> Idris ()
 iputStrLn = lift.putStrLn
@@ -87,6 +103,7 @@ iLOG = logLvl 1
 
 data Command = Quit | Help | Eval PTerm 
              | Compile String
+             | Metavars
              | TTShell 
              | NOP
 
@@ -162,6 +179,7 @@ data PTerm = PQuote Raw
            | Placeholder
            | PDoBlock [PDo]
            | PReturn
+           | PMetavar Name
            | PElabError String -- error to report on elaboration
 
 data PDo = DoExp PTerm
@@ -258,6 +276,7 @@ showImp impl tm = se 10 tm where
     se p (PPair l r) = "(" ++ se 10 l ++ ", " ++ se 10 r ++ ")"
     se p PSet = "Set"
     se p (PConstant c) = show c
+    se p (PMetavar n) = "?" ++ show n
     se p Placeholder = "_"
 
     seArg arg      = " " ++ se 0 arg
@@ -312,7 +331,7 @@ getInferTerm tm = error ("getInferTerm " ++ show tm)
 getInferType (Bind n b sc) = Bind n b $ getInferType sc
 getInferType (App (App _ ty) _) = ty
 
--- Handy primitives: Unit, False, Pair, MkPair
+-- Handy primitives: Unit, False, Pair, MkPair, mkForeign
 
 unitTy   = MN 0 "__Unit"
 unitCon  = MN 0 "__II"

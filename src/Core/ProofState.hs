@@ -23,7 +23,7 @@ data ProofState = PS { thname   :: Name,
                        pterm    :: Term,   -- current proof term
                        ptype    :: Type,   -- original goal
                        unified  :: (Name, [(Name, Term)]),
-                       defer    :: [(Name, Type)], -- names we'll need to define
+                       deferred :: [Name], -- names we'll need to define
                        previous :: Maybe ProofState, -- for undo
                        context  :: Context,
                        plog     :: String,
@@ -52,6 +52,7 @@ data Tactic = Attack
             | PatVar Name
             | PatBind Name
             | Focus Name
+            | Defer Name
             | MoveLast Name
             | ProofState
             | Undo
@@ -138,7 +139,6 @@ goal h tm = g [] tm where
     gb env (Let t v) = g env t `mplus` g env v
     gb env (Guess t v) = g env t `mplus` g env v
     gb env t = g env (binderTy t)
-
 tactic :: Hole -> RunTactic -> StateT TState TC ()
 tactic h f = do ps <- get
                 tm' <- atH (context ps) [] (pterm ps)
@@ -187,6 +187,18 @@ movelast n ctxt env t = do action (\ps -> let hs = holes ps in
                                                   then ps { holes = (hs \\ [n]) ++ [n] }
                                                   else ps)
                            return t 
+
+defer :: Name -> RunTactic
+defer n ctxt env (Bind x (Hole t) (P nt x' ty)) | x == x' = 
+    do action (\ps -> let hs = holes ps in
+                          ps { holes = hs \\ [x] })
+       return (Bind n (GHole (mkTy (reverse env) t)) 
+                      (mkApp (P nt n ty) (map getP (reverse env))))
+  where
+    mkTy []           t = t
+    mkTy ((n,b) : bs) t = Bind n (Pi (binderTy b)) (mkTy bs t)
+
+    getP (n, b) = P Bound n (binderTy b)
 
 -- Hmmm. YAGNI?
 regret :: RunTactic
@@ -373,3 +385,4 @@ process t h = tactic (Just h) (mktac t)
          mktac (EvalIn r)    = eval_in r
          mktac (Focus n)     = focus n
          mktac (MoveLast n)  = movelast n
+         mktac (Defer n)     = defer n
