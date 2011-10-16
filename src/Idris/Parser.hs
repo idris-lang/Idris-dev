@@ -157,16 +157,27 @@ pSyntaxRule :: SyntaxInfo -> IParser Syntax
 pSyntaxRule syn 
     = do reserved "syntax"
          syms <- many1 pSynSym
+         when (all expr syms) $ fail "No keywords in syntax rule"
+         let ns = mapMaybe name syms
+         when (length ns /= length (nub ns)) 
+            $ fail "Repeated variable in syntax rule"
          lchar '='
          tm <- pExpr syn
          lchar ';'
          return (Rule syms tm)
+  where
+    expr (Expr _) = True
+    expr _ = False
+    name (Expr n) = Just n
+    name _ = Nothing
 
 pSynSym :: IParser SSymbol
 pSynSym = try (do lchar '['; n <- iName; lchar ']'
                   return (Expr n))
       <|> do n <- iName
              return (Keyword n)
+      <|> do sym <- strlit
+             return (Symbol sym)
 
 pFunDecl' :: SyntaxInfo -> IParser PDecl
 pFunDecl' syn = try (do n <- pfName; ty <- pTSig syn
@@ -238,11 +249,14 @@ pExtensions syn rules = choice (map (pExt syn) rules)
 pExt :: SyntaxInfo -> Syntax -> IParser PTerm
 pExt syn (Rule ssym ptm)
     = do smap <- mapM pSymbol ssym
-         return (update (mapMaybe id smap) ptm) -- updated with smap
+         let ns = mapMaybe id smap
+         return (update ns ptm) -- updated with smap
   where
     pSymbol (Keyword n) = do reserved (show n); return Nothing
     pSymbol (Expr n)    = do tm <- pSimpleExpr syn
                              return $ Just (n, tm)
+    pSymbol (Symbol s)  = do symbol s
+                             return Nothing
     dropn n [] = []
     dropn n ((x,t) : xs) | n == x = xs
                          | otherwise = (x,t):dropn n xs

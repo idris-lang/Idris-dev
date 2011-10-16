@@ -203,6 +203,7 @@ data Syntax = Rule [SSymbol] PTerm
     deriving Show
 
 data SSymbol = Keyword Name
+             | Symbol String
              | Expr Name
     deriving Show
 
