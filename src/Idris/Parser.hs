@@ -16,6 +16,7 @@ import qualified Text.ParserCombinators.Parsec.Token as PTok
 import Data.List
 import Control.Monad.State
 import Debug.Trace
+import Data.Maybe
 
 type TokenParser a = PTok.TokenParser a
 
@@ -143,6 +144,29 @@ pDecl' syn
        = try pFixity
      <|> pFunDecl' syn
      <|> try (pData syn)
+     <|> try (pSyntaxDecl syn)
+
+pSyntaxDecl :: SyntaxInfo -> IParser PDecl
+pSyntaxDecl syn
+    = do s <- pSyntaxRule syn
+         i <- getState
+         setState (i { syntax_rules = s : syntax_rules i })
+         return (PSyntax s)
+
+pSyntaxRule :: SyntaxInfo -> IParser Syntax
+pSyntaxRule syn 
+    = do reserved "syntax"
+         syms <- many1 pSynSym
+         lchar '='
+         tm <- pExpr syn
+         lchar ';'
+         return (Rule syms tm)
+
+pSynSym :: IParser SSymbol
+pSynSym = try (do lchar '['; n <- iName; lchar ']'
+                  return (Expr n))
+      <|> do n <- iName
+             return (Keyword n)
 
 pFunDecl' :: SyntaxInfo -> IParser PDecl
 pFunDecl' syn = try (do n <- pfName; ty <- pTSig syn
@@ -200,12 +224,44 @@ pExpr syn = do i <- getState
 
 pExpr' :: SyntaxInfo -> IParser PTerm
 pExpr' syn 
-       = try (pApp syn) 
+       = try (do i <- getState
+                 pExtensions syn (syntax_rules i)) 
+     <|> try (pApp syn) 
      <|> pSimpleExpr syn
      <|> try (pLambda syn)
      <|> try (pPi syn) 
      <|> try (pDoBlock syn)
     
+pExtensions :: SyntaxInfo -> [Syntax] -> IParser PTerm
+pExtensions syn rules = choice (map (pExt syn) rules)
+
+pExt :: SyntaxInfo -> Syntax -> IParser PTerm
+pExt syn (Rule ssym ptm)
+    = do smap <- mapM pSymbol ssym
+         return (update (mapMaybe id smap) ptm) -- updated with smap
+  where
+    pSymbol (Keyword n) = do reserved (show n); return Nothing
+    pSymbol (Expr n)    = do tm <- pSimpleExpr syn
+                             return $ Just (n, tm)
+    dropn n [] = []
+    dropn n ((x,t) : xs) | n == x = xs
+                         | otherwise = (x,t):dropn n xs
+
+    update ns (PRef n) = case lookup n ns of
+                            Just t -> t
+                            _ -> PRef n
+    update ns (PLam n ty sc) = PLam n (update ns ty) (update (dropn n ns) sc)
+    update ns (PPi p n ty sc) = PPi p n (update ns ty) (update (dropn n ns) sc) 
+    update ns (PLet n ty val sc) = PLet n (update ns ty) (update ns val)
+                                          (update (dropn n ns) sc)
+    update ns (PApp t args) = PApp (update ns t) (map (fmap (update ns)) args)
+    update ns (PPair l r) = PPair (update ns l) (update ns r)
+    update ns (PHidden t) = PHidden (update ns t)
+    update ns (PDoBlock ds) = PDoBlock $ upd ns ds
+      where upd ns (DoExp t : ds) = DoExp (update ns t) : upd ns ds
+            upd ns (DoBind n t : ds) = DoBind n (update ns t) : upd (dropn n ns) ds
+            upd ns (DoLet n t : ds) = DoLet n (update ns t) : upd (dropn n ns) ds
+
 pfName = try iName
      <|> do lchar '('; o <- operator; lchar ')'; return (UN [o])
 

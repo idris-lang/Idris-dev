@@ -152,6 +152,7 @@ elabDecl :: ElabInfo -> PDecl -> Idris ()
 elabDecl info d = idrisCatch (elabDecl' info d) (\e -> iputStrLn (report e))
 
 elabDecl' info (PFix _ _)      = return () -- nothing to elaborate
+elabDecl' info (PSyntax p) = return () -- nothing to elaborate
 elabDecl' info (PTy n ty)      = do iLOG $ "Elaborating type decl " ++ show n
                                     elabType info n ty
 elabDecl' info (PData d)       = do iLOG $ "Elaborating " ++ show (d_name d)
@@ -247,7 +248,8 @@ elab info pattern tm = do elab' tm
     elab' (PApp f [arg])
           = do simple_app (elab' f) (elab' (getTm arg))
                solve
-    elab' Placeholder = fail $ "Can't deal with a placeholder here"
+    elab' Placeholder = do (h : hs) <- get_holes
+                           movelast h
     elab' (PMetavar n) = do attack; defer n; solve
     elab' (PElabError e) = fail e
     elab' x = fail $ "Not implemented " ++ show x

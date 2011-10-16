@@ -5,6 +5,12 @@ import io;
 
 data Bool = False | True;
 
+boolElim : (x:Bool) -> a -> a -> a; 
+boolElim True  t e = t;
+boolElim False t e = e;
+
+syntax if [test] then [t] else [e] = boolElim test t e;
+
 infixl 5 ==, /=, ==.;
 infixl 6 <, <=, >, >=, <., <=., >., >=.;
 infixl 7 <<, >>;

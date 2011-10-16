@@ -30,11 +30,12 @@ data IState = IState { tt_ctxt :: Context,
                        idris_options :: IOption,
                        idris_name :: Int,
                        idris_metavars :: [Name],
+                       syntax_rules :: [Syntax],
                        imported :: [FilePath],
                        idris_prims :: [(Name, ([E.Name], E.Term))]
                      }
                    
-idrisInit = IState emptyContext [] emptyContext "" defaultOpts 0 [] [] []
+idrisInit = IState emptyContext [] emptyContext "" defaultOpts 0 [] [] [] []
 
 -- The monad for the main REPL - reading and processing files and updating 
 -- global state (hence the IO inner monad).
@@ -134,7 +135,7 @@ data PDecl' t = PFix     Fixity [String] -- fixity declaration
               | PClauses Name [PClause' t]    -- pattern clause
               | PData    (PData' t)      -- data declaration
               | PParams  [(Name, PTerm)] [PDecl' t] -- params block
-              | PImport  String
+              | PSyntax  Syntax
     deriving Functor
 
 data PClause' t = PClause Name t t [PDecl]
@@ -160,7 +161,7 @@ declared (PTy n t) = [n]
 declared (PClauses n _) = [] -- not a declaration
 declared (PData (PDatadecl n _ ts)) = n : map fst ts
 declared (PParams _ ds) = concatMap declared ds
-declared (PImport _) = []
+-- declared (PImport _) = []
 
 -- High level language terms
 --
@@ -196,6 +197,13 @@ type PArg = PArg' PTerm
 
 data DSL = DSL { dsl_bind :: Name,
                  dsl_return :: Name }
+    deriving Show
+
+data Syntax = Rule [SSymbol] PTerm
+    deriving Show
+
+data SSymbol = Keyword Name
+             | Expr Name
     deriving Show
 
 initDSL = DSL (UN ["io_bind"]) (UN ["io_return"])
@@ -458,5 +466,6 @@ dumpDecl (PTy n t) = "tydecl " ++ show n ++ " : " ++ showImp True t
 dumpDecl (PClauses n cs) = "pat\t" ++ showSep "\n\t" (map (showCImp True) cs)
 dumpDecl (PData d) = showDImp True d
 dumpDecl (PParams ns ps) = "params {" ++ show ns ++ "\n" ++ dumpDecls ps ++ "}\n"
-dumpDecl (PImport i) = "import " ++ i
+dumpDecl (PSyntax syn) = "syntax " ++ show syn
+-- dumpDecl (PImport i) = "import " ++ i
 
