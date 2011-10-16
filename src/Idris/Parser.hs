@@ -172,9 +172,9 @@ pSyntaxRule syn
     name _ = Nothing
 
 pSynSym :: IParser SSymbol
-pSynSym = try (do lchar '['; n <- iName; lchar ']'
+pSynSym = try (do lchar '['; n <- pName; lchar ']'
                   return (Expr n))
-      <|> do n <- iName
+      <|> do n <- pName
              return (Keyword n)
       <|> do sym <- strlit
              return (Symbol sym)
@@ -237,26 +237,30 @@ pExpr' :: SyntaxInfo -> IParser PTerm
 pExpr' syn 
        = try (do i <- getState
                  pExtensions syn (syntax_rules i)) 
-     <|> try (pApp syn) 
+     <|> pNoExtExpr syn
+
+pNoExtExpr syn =
+         try (pApp syn) 
      <|> pSimpleExpr syn
      <|> try (pLambda syn)
      <|> try (pPi syn) 
      <|> try (pDoBlock syn)
     
 pExtensions :: SyntaxInfo -> [Syntax] -> IParser PTerm
-pExtensions syn rules = choice (map (pExt syn) rules)
+pExtensions syn rules = choice (map (\x -> try (pExt syn x)) rules)
 
 pExt :: SyntaxInfo -> Syntax -> IParser PTerm
-pExt syn (Rule ssym ptm)
-    = do smap <- mapM pSymbol ssym
-         let ns = mapMaybe id smap
+pExt syn (Rule (s:ssym) ptm)
+    = do s1 <- pSymbol pSimpleExpr s 
+         smap <- mapM (pSymbol pExpr') ssym
+         let ns = mapMaybe id (s1:smap)
          return (update ns ptm) -- updated with smap
   where
-    pSymbol (Keyword n) = do reserved (show n); return Nothing
-    pSymbol (Expr n)    = do tm <- pSimpleExpr syn
-                             return $ Just (n, tm)
-    pSymbol (Symbol s)  = do symbol s
-                             return Nothing
+    pSymbol p (Keyword n) = do reserved (show n); return Nothing
+    pSymbol p (Expr n)    = do tm <- p syn
+                               return $ Just (n, tm)
+    pSymbol p (Symbol s)  = do symbol s
+                               return Nothing
     dropn n [] = []
     dropn n ((x,t) : xs) | n == x = xs
                          | otherwise = (x,t):dropn n xs
@@ -276,13 +280,21 @@ pExt syn (Rule ssym ptm)
             upd ns (DoBind n t : ds) = DoBind n (update ns t) : upd (dropn n ns) ds
             upd ns (DoLet n t : ds) = DoLet n (update ns t) : upd (dropn n ns) ds
 
-pfName = try iName
+pName = do i <- getState
+           iName (map show (names (syntax_rules i)))
+  where
+    names rs = concatMap namesR rs
+    namesR (Rule syms _) = mapMaybe ename syms
+    ename (Keyword n) = Just n
+    ename _ = Nothing
+
+pfName = try pName
      <|> do lchar '('; o <- operator; lchar ')'; return (UN [o])
 
 pSimpleExpr syn = 
         try (do symbol "!["; t <- pTerm; lchar ']' 
                 return $ PQuote t)
-        <|> try (do lchar '?'; x <- iName; return (PMetavar x))
+        <|> try (do lchar '?'; x <- pName; return (PMetavar x))
         <|> try (do reserved "return"; return PReturn)
         <|> try (do x <- pfName; return (PRef x))
         <|> try (do lchar '('; l <- pExpr syn; lchar ','; r <- pExpr syn; lchar ')';
@@ -309,7 +321,7 @@ pArg syn = pImplicitArg syn
        <|> do e <- pSimpleExpr syn
               return (PExp e)
 
-pImplicitArg syn = do lchar '{'; n <- iName
+pImplicitArg syn = do lchar '{'; n <- pName
                       v <- option (PRef n) (do lchar '='; pExpr syn)
                       lchar '}'
                       return (PImp n v)
@@ -349,9 +361,9 @@ pDoBlock syn
          return (PDoBlock ds)
 
 pDo syn
-     = try (do i <- iName; symbol "<-"; e <- pExpr syn;
+     = try (do i <- pName; symbol "<-"; e <- pExpr syn;
                return (DoBind i e))
-   <|> try (do reserved "let"; i <- iName; reservedOp "="; e <- pExpr syn
+   <|> try (do reserved "let"; i <- pName; reservedOp "="; e <- pExpr syn
                return (DoLet i e))
    <|> try (do e <- pExpr syn; return (DoExp e))
 
@@ -394,7 +406,7 @@ pData syn = try (do reserved "data"; tyn <- pfName; ty <- pTSig syn
                     cons <- sepBy (pConstructor syn) (lchar '|')
                     lchar ';'
                     return $ PData (PDatadecl tyn ty' cons))
-        <|> do reserved "data"; tyn <- pfName; args <- many iName
+        <|> do reserved "data"; tyn <- pfName; args <- many pName
                lchar '='
                cons <- sepBy1 (pSimpleCon syn) (lchar '|')
                lchar ';'

@@ -35,17 +35,17 @@ parseCommand = parse pCommand "(input)"
 parseTactic  = parse (pTactic >>= return . Tac) "(input)"
 
 pCommand :: Parser Command
-pCommand = do reserved "theorem"; n <- iName; lchar ':'; ty <- pTerm
+pCommand = do reserved "theorem"; n <- iName []; lchar ':'; ty <- pTerm
               return (Theorem n ty)
        <|> do reserved "eval"; tm <- pTerm
               return (Eval tm)
-       <|> do reserved "print"; n <- iName; return (Print n)
+       <|> do reserved "print"; n <- iName []; return (Print n)
        <|> do reserved "quit";
               return Quit
 
 pTactic :: Parser (Elab ())
 pTactic = do reserved "attack";  return attack
-      <|> do reserved "claim";   n <- iName; lchar ':'; ty <- pTerm
+      <|> do reserved "claim";   n <- iName []; lchar ':'; ty <- pTerm
              return (claim n ty)
       <|> do reserved "regret";  return regret
       <|> do reserved "exact";   tm <- pTerm; return (exact tm)
@@ -54,15 +54,15 @@ pTactic = do reserved "attack";  return attack
              return (discard (apply tm args))
       <|> do reserved "solve";   return solve
       <|> do reserved "compute"; return compute
-      <|> do reserved "intro";   n <- iName; return (intro n)
-      <|> do reserved "forall";  n <- iName; lchar ':'; ty <- pTerm
+      <|> do reserved "intro";   n <- iName []; return (intro n)
+      <|> do reserved "forall";  n <- iName []; lchar ':'; ty <- pTerm
              return (forall n ty)
-      <|> do reserved "arg";     n <- iName; t <- iName; return (arg n t)
-      <|> do reserved "patvar";  n <- iName; return (patvar n)
---       <|> do reserved "patarg";  n <- iName; t <- iName; return (patarg n t)
+      <|> do reserved "arg";     n <- iName []; t <- iName []; return (arg n t)
+      <|> do reserved "patvar";  n <- iName []; return (patvar n)
+--       <|> do reserved "patarg";  n <- iName []; t <- iName []; return (patarg n t)
       <|> do reserved "eval";    t <- pTerm; return (eval_in t)
       <|> do reserved "check";   t <- pTerm; return (check_in t)
-      <|> do reserved "focus";   n <- iName; return (focus n)
+      <|> do reserved "focus";   n <- iName []; return (focus n)
       <|> do reserved "state";   return proofstate
       <|> do reserved "undo";    return undo
       <|> do reserved "qed";     return (discard qed)

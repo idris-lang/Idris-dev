@@ -9,6 +9,7 @@ import Text.ParserCombinators.Parsec.Expr
 import Text.ParserCombinators.Parsec.Language
 import qualified Text.ParserCombinators.Parsec.Token as PTok
 
+import Control.Monad.State
 import Debug.Trace
 
 type TokenParser a = PTok.TokenParser a
@@ -55,17 +56,18 @@ pTestFile :: CParser a RProgram
 pTestFile = do p <- many1 pDef ; eof
                return p
 
-iName :: CParser a Name
-iName = do x <- identifier
-           return (UN [x])
+iName :: [String] -> CParser a Name
+iName bad = do x <- identifier
+               when (x `elem` bad) $ fail "Reserved identifier"
+               return (UN [x])
 
 pDef :: CParser a (Name, RDef)
-pDef = try (do x <- iName; lchar ':'; ty <- pTerm
+pDef = try (do x <- iName []; lchar ':'; ty <- pTerm
                lchar '='
                tm <- pTerm
                lchar ';'
                return (x, RFunction (RawFun ty tm)))
-       <|> do x <- iName; lchar ':'; ty <- pTerm; lchar ';'
+       <|> do x <- iName []; lchar ':'; ty <- pTerm; lchar ';'
               return (x, RConst ty)
        <|> do (x, d) <- pData; lchar ';'
               return (x, RData d)
@@ -84,16 +86,16 @@ pNoApp :: CParser a Raw
 pNoApp = try (chainr1 pExp arrow)
            <|> pExp
 pExp :: CParser a Raw
-pExp = do lchar '\\'; x <- iName; lchar ':'; ty <- pTerm
+pExp = do lchar '\\'; x <- iName []; lchar ':'; ty <- pTerm
           symbol "=>";
           sc <- pTerm
           return (RBind x (Lam ty) sc)
-       <|> try (do lchar '?'; x <- iName; lchar ':'; ty <- pTerm
+       <|> try (do lchar '?'; x <- iName []; lchar ':'; ty <- pTerm
                    lchar '.';
                    sc <- pTerm
                    return (RBind x (Hole ty) sc))
        <|> try (do lchar '('; 
-                   x <- iName; lchar ':'; ty <- pTerm
+                   x <- iName []; lchar ':'; ty <- pTerm
                    lchar ')';
                    symbol "->";
                    sc <- pTerm
@@ -103,35 +105,35 @@ pExp = do lchar '\\'; x <- iName; lchar ':'; ty <- pTerm
                    lchar ')'
                    return t)
        <|> try (do symbol "??";
-                   x <- iName; lchar ':'; ty <- pTerm
+                   x <- iName []; lchar ':'; ty <- pTerm
                    lchar '=';
                    val <- pTerm
                    sc <- pTerm
                    return (RBind x (Guess ty val) sc))
        <|> try (do reserved "let"; 
-                   x <- iName; lchar ':'; ty <- pTerm
+                   x <- iName []; lchar ':'; ty <- pTerm
                    lchar '=';
                    val <- pTerm
                    reserved "in";
                    sc <- pTerm
                    return (RBind x (Let ty val) sc))
        <|> try (do lchar '_'; 
-                   x <- iName; lchar ':'; ty <- pTerm
+                   x <- iName []; lchar ':'; ty <- pTerm
                    lchar '.';
                    sc <- pTerm
                    return (RBind x (PVar ty) sc))
        <|> try (do reserved "Set"; i <- option 0 natural
                    return (RSet (fromInteger i)))
-       <|> try (do x <- iName
+       <|> try (do x <- iName []
                    return (Var x))
 
 pData :: CParser a (Name, RawDatatype)
-pData = do reserved "data"; x <- iName; lchar ':'; ty <- pTerm; reserved "where"
+pData = do reserved "data"; x <- iName []; lchar ':'; ty <- pTerm; reserved "where"
            cs <- many pConstructor
            return (x, RDatatype x ty cs)
 
 pConstructor :: CParser a (Name, Raw)
 pConstructor = do lchar '|'
-                  c <- iName; lchar ':'; ty <- pTerm
+                  c <- iName []; lchar ':'; ty <- pTerm
                   return (c, ty)
 

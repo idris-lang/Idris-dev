@@ -1,4 +1,3 @@
-
 data Ty = TyNat | TyFun Ty Ty;
 
 interpTy : Ty -> Set;
