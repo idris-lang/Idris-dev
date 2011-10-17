@@ -10,7 +10,7 @@ getSigVal (Exists a v) = v;
 id : a -> a;
 id x = x;
 
-fst : (a, b) -> a;
+fst : (s, t) -> s;
 fst (x, y) = x;
 
 snd : (a, b) -> b;

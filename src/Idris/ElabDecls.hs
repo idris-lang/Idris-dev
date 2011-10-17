@@ -57,7 +57,7 @@ elabCon info (n, t)
          ctxt <- getContext
          logLvl 2 $ "Constructor " ++ show n ++ " : " ++ showImp True t
          ((t', defer), log) <- tclift $ elaborate ctxt n (Set 0) (build info False t)
---          logLvl 2 $ "Rechecking " ++ show t'
+         logLvl 2 $ "Rechecking " ++ show t'
          addDeferred defer
          (cty, _)  <- tclift $ recheck ctxt [] t'
          logLvl 2 $ "---> " ++ show n ++ " : " ++ show cty
@@ -84,7 +84,7 @@ elabClauses info n_in cs = let n = liftname info n_in in
 elabVal :: ElabInfo -> PTerm -> Idris (Term, Type)
 elabVal info tm
    = do ctxt <- getContext
-        logLvl 10 (show tm)
+        logLvl 10 (showImp True tm)
         ((tm', defer), _) <- tclift $ elaborate ctxt (MN 0 "val") infP
                                       (build info False (infTerm tm))
         logLvl 3 ("Value: " ++ show tm')
@@ -103,6 +103,7 @@ elabClause info (PClause fname lhs rhs whereblock)
         let lhs_ty = getInferType lhs'
         logLvl 3 (show lhs_tm)
         (clhs, clhsty) <- tclift $ recheck ctxt [] lhs_tm
+        logLvl 5 ("Checked " ++ show clhs)
         -- Elaborate where block
         ist <- getIState
         windex <- getName

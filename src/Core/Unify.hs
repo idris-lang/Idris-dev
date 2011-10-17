@@ -17,7 +17,7 @@ unify :: Context -> Env -> TT Name -> TT Name -> TC [(Name, TT Name)]
 unify ctxt env topx topy 
     = case un' [] (normalise ctxt env topx) (normalise ctxt env topy) of
               OK v -> return v
-              _    -> tfail $ CantUnify topx topy  
+              Error e -> tfail $ CantUnify topx topy e  
   where
     un' bnames (P Bound x _)  (P Bound y _)  
         | (x,y) `elem` bnames = return []
@@ -25,6 +25,10 @@ unify ctxt env topx topy
         | holeIn env x = return [(x, tm)]
     un' bnames tm (P Bound y _)
         | holeIn env y = return [(y, tm)]
+    un' bnames (V i) (P Bound x _)
+        | fst (bnames!!i) == x || snd (bnames!!i) == x = return []
+    un' bnames (P Bound x _) (V i)
+        | fst (bnames!!i) == x || snd (bnames!!i) == x = return []
 
     un' bnames x@(App _ _)    y@(App _ _)    
         = uApp bnames (unApply x) (unApply y)
@@ -37,7 +41,8 @@ unify ctxt env topx topy
              h2 <- un' ((x,y):bnames) sx sy
              combine bnames h1 h2
     un' bnames x y | x == y = return []
-                   | otherwise = fail "Can't unify" 
+                   | otherwise = fail $ "Can't unify " ++ show x ++ " and " ++ show y
+                                        ++ " " ++ show bnames ++ " " ++ show env
 
     uB bnames (Let tx vx) (Let ty vy)
         = do h1 <- un' bnames tx ty
@@ -54,11 +59,14 @@ unify ctxt env topx topy
     uB bnames _ _ = fail "Can't unify"
 
     uApp bnames (xp@(P xnt x xty), xargs) (yp@(P ynt y yty), yargs)
-        | (x == y && all okToUnify [xnt, ynt]) ||
+        | (x == y && all okToUnify [xnt, ynt]) || -- functions x,y are injectice
           (holeIn env x && okToUnify ynt) ||
           (okToUnify xnt && holeIn env y)
             = do h <- un' bnames xp yp
                  uArgs bnames h xargs yargs
+        | x == y && xargs == yargs -- only ok if arguments are equal, if functions
+                                   -- are not known to be injetive
+            = return []
     uApp bnames (xf, xargs) (yf, yargs) 
             = do un' bnames xf yf -- ignore result
                  uArgs bnames [] xargs yargs
@@ -77,6 +85,7 @@ unify ctxt env topx topy
                    h' <- un' bnames x' y'
                    next <- combine bnames h h'
                    uArgs bnames next xs ys
+    uArgs bnames h _ _ = fail "Can't unify; argument lists different length"
 
     combine bnames as [] = return as
     combine bnames as ((n, t) : bs)

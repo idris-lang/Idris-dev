@@ -44,7 +44,8 @@ check ctxt env (RApp f a)
          case fty' of
            Bind x (Pi s) t ->
                do converts ctxt env s aty
-                  return (App fv av, 
+                  return (App fv av,
+--                           normalise ctxt env (subst x av t))
                           normalise ctxt env (Bind x (Let aty av) t))
            t -> fail "Can't apply a non-function type"
 check ctxt env (RSet i) = return (Set i, Set i) -- LATER: (i+1))

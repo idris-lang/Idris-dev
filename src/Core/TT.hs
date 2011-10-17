@@ -24,7 +24,7 @@ data Option = SetInSet
   deriving Eq
 
 data Err = Msg String
-         | CantUnify Term Term
+         | CantUnify Term Term Err
   deriving Eq
 
 instance Show Err where

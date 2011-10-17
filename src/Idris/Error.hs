@@ -25,8 +25,9 @@ idrisCatch op handler = liftCatch catch op handler
 
 pshow :: IState -> Err -> String
 pshow i (Msg s) = s
-pshow i (CantUnify x y) = "Can't unify " ++ show (delab i x) ++ 
-                          " with " ++ show (delab i y)
+pshow i (CantUnify x y e) = "Can't unify " ++ show (delab i x)
+                            ++ " with " ++ show (delab i y) 
+                            -- ++ "\n\t(" ++ pshow i e ++ ")"
 
 tclift :: Show a => TC a -> Idris a
 tclift tc = case tc of

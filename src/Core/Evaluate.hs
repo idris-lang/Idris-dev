@@ -33,9 +33,12 @@ instance Show Value where
 -- while building a proof.
 
 normalise :: Context -> Env -> TT Name -> TT Name
-normalise ctxt env t = quote 0 (eval ctxt env t)
+normalise ctxt env t = quote 0 (eval ctxt (map finalEntry env) (finalise t))
 
 -- unbindEnv env (quote 0 (eval ctxt (bindEnv env t)))
+
+finalEntry :: (Name, Binder (TT Name)) -> (Name, Binder (TT Name))
+finalEntry (n, b) = (n, fmap finalise b)
 
 bindEnv :: EnvTT n -> TT n -> TT n
 bindEnv [] tm = tm
@@ -51,7 +54,7 @@ unbindEnv (_:bs) (Bind n b sc) = unbindEnv bs sc
 
 eval :: Context -> Env -> TT Name -> Value
 eval ctxt genv tm = ev [] tm where
-    ev env (P Bound n ty)
+    ev env (P _ n ty)
         | Just (Let t v) <- lookup n genv = ev env v 
     ev env (P Ref n ty) = case lookupDef n ctxt of
         Just (Function (Fun _ _ _ v)) -> v
@@ -63,13 +66,15 @@ eval ctxt genv tm = ev [] tm where
         _ -> VP Ref n (ev env ty)
     ev env (P nt n ty)   = VP nt n (ev env ty)
     ev env (V i) | i < length env = env !! i
-                 | otherwise      = error $ "Internal error: V" ++ show i
+                 | otherwise      = VV i --error $ "Internal error: V" ++ show i ++ " " 
+                                         --   ++ showEnv genv tm ++ "\n" ++ show genv
     ev env (Bind n (Let t v) sc)
-           = wknV (-1) $ ev (ev env v : env) sc
+           = wknV (-1) $ ev (ev env (finalise v) : env) sc
     ev env (Bind n (NLet t v) sc)
-           = VBind n (Let (ev env t) (ev env v)) $ (\x -> ev (ev env v : env) sc)
+           = VBind n (Let (ev env (finalise t)) (ev env (finalise v))) 
+                $ (\x -> ev (ev env v : env) sc)
     ev env (Bind n b sc) = VBind n (vbind env b) (\x -> ev (x:env) sc)
-       where vbind env t = fmap (ev env) t
+       where vbind env t = fmap (\tm -> ev env (finalise tm)) t
     ev env (App f a) = evApply env [ev env a] (ev env f)
     ev env (Constant c) = VConstant c
     ev env (Set i)   = VSet i

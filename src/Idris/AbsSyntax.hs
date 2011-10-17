@@ -352,13 +352,13 @@ unitDecl = PDatadecl unitTy PSet
 falseTy   = MN 0 "__False"
 falseDecl = PDatadecl falseTy PSet []
 
-pairTy    = MN 0 "__Pair"
-pairCon   = MN 0 "__MkPair"
+pairTy    = UN ["Pair"] -- MN 0 "__Pair"
+pairCon   = UN ["MkPair"] -- MN 0 "__MkPair"
 pairDecl  = PDatadecl pairTy (piBind [(n "A", PSet), (n "B", PSet)] PSet)
             [(pairCon, PPi Imp (n "A") PSet (
                        PPi Imp (n "B") PSet (
                        PPi Exp (n "a") (PRef (n "A")) (
-                       PPi Exp (n "b") (PRef (n "B"))  
+                       PPi Exp (n "c") (PRef (n "B"))  
                            (PApp (PRef pairTy) [PExp (PRef (n "A")),
                                                 PExp (PRef (n "B"))])))))]
     where n a = MN 0 a
@@ -451,7 +451,7 @@ addImpl ist ptm = ai [] ptm
                                  PExp tm : insertImpl ps given
     insertImpl (PImp n ty : ps) given =
         case find n given [] of
-            Just (tm, given') -> PImp n ty : insertImpl ps given'
+            Just (tm, given') -> PImp n tm : insertImpl ps given'
             Nothing ->           PImp n Placeholder : insertImpl ps given
     insertImpl expected [] = []
     insertImpl []       given  = given
