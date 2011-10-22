@@ -23,8 +23,16 @@ data Option = SetInSet
             | CheckConv
   deriving Eq
 
+data FC = FC { fc_fname :: String,
+               fc_line :: Int }
+    deriving Eq
+
+instance Show FC where
+    show (FC f l) = f ++ ":" ++ show l
+
 data Err = Msg String
          | CantUnify Term Term Err
+         | At FC Err
   deriving Eq
 
 instance Show Err where
@@ -36,7 +44,7 @@ data TC a = OK a
 
 instance Show a => Show (TC a) where
     show (OK x) = show x
-    show (Error str) = "Error: " ++ (show str)
+    show (Error str) = "Error: " ++ show str
 
 -- at some point, this instance should also carry type checking options
 -- (e.g. Set:Set)
@@ -50,6 +58,10 @@ instance Monad TC where
 
 tfail :: Err -> TC a
 tfail e = Error e
+
+trun :: FC -> TC a -> TC a
+trun fc (OK a)    = OK a
+trun fc (Error e) = Error (At fc e) 
 
 instance MonadPlus TC where
     mzero = fail "Unknown error"

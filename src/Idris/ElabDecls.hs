@@ -27,23 +27,26 @@ data ElabInfo = EInfo { params :: [(Name, PTerm)],
 
 toplevel = EInfo [] emptyContext id
 
-elabType :: ElabInfo -> Name -> PTerm -> Idris ()
-elabType info n_in ty_in = let ty = piBind (params info) ty_in 
-                               n  = liftname info n_in in    
-      do checkUndefined n
+elabType :: ElabInfo -> FC -> Name -> PTerm -> Idris ()
+elabType info fc n_in ty_in = let ty = piBind (params info) ty_in 
+                                  n  = liftname info n_in in    
+      do checkUndefined fc n
          ctxt <- getContext
          logLvl 2 $ "Type " ++ showImp True ty
-         ((ty', defer), log) <- tclift $ elaborate ctxt n (Set 0) (build info False ty)
+         ((ty', defer), log) <- tclift $ elaborate ctxt n (Set 0) 
+                                         (erun fc (build info False ty))
          (cty, _)   <- tclift $ recheck ctxt [] ty'
          logLvl 2 $ "---> " ++ show cty
          let nty = normalise ctxt [] cty
          addDeferred ((n, nty):defer)
 
-elabData :: ElabInfo -> PData -> Idris ()
-elabData info (PDatadecl n t dcons)
-    = do checkUndefined n
+elabData :: ElabInfo -> FC -> PData -> Idris ()
+elabData info fc (PDatadecl n t dcons)
+    = do iLOG (show fc)
+         checkUndefined fc n
          ctxt <- getContext
-         ((t', defer), log) <- tclift $ elaborate ctxt n (Set 0) (build info False t)
+         ((t', defer), log) <- tclift $ elaborate ctxt n (Set 0) 
+                                        (erun fc (build info False t))
          addDeferred defer
          (cty, _)  <- tclift $ recheck ctxt [] t'
          logLvl 2 $ "---> " ++ show cty
@@ -51,22 +54,23 @@ elabData info (PDatadecl n t dcons)
          cons <- mapM (elabCon info) dcons
          setContext (addDatatype (Data n cty cons) ctxt)
 
-elabCon :: ElabInfo -> (Name, PTerm) -> Idris (Name, Type)
-elabCon info (n, t)
-    = do checkUndefined n
+elabCon :: ElabInfo -> (Name, PTerm, FC) -> Idris (Name, Type)
+elabCon info (n, t, fc)
+    = do checkUndefined fc n
          ctxt <- getContext
-         logLvl 2 $ "Constructor " ++ show n ++ " : " ++ showImp True t
-         ((t', defer), log) <- tclift $ elaborate ctxt n (Set 0) (build info False t)
+         logLvl 2 $ show fc ++ ":Constructor " ++ show n ++ " : " ++ showImp True t
+         ((t', defer), log) <- tclift $ elaborate ctxt n (Set 0) 
+                                        (erun fc (build info False t))
          logLvl 2 $ "Rechecking " ++ show t'
          addDeferred defer
          (cty, _)  <- tclift $ recheck ctxt [] t'
          logLvl 2 $ "---> " ++ show n ++ " : " ++ show cty
          return (n, cty)
 
-elabClauses :: ElabInfo -> Name -> [PClause] -> Idris ()
-elabClauses info n_in cs = let n = liftname info n_in in  
+elabClauses :: ElabInfo -> FC -> Name -> [PClause] -> Idris ()
+elabClauses info fc n_in cs = let n = liftname info n_in in  
       do solveDeferred n
-         pats <- mapM (elabClause info) cs
+         pats <- mapM (elabClause info fc) cs
          logLvl 3 (showSep "\n" (map (\ (l,r) -> 
                                         show l ++ " = " ++ 
                                         show r) pats))
@@ -92,13 +96,13 @@ elabVal info tm
         logLvl 2 (show vtm)
         tclift $ recheck ctxt [] vtm
 
-elabClause :: ElabInfo -> PClause -> Idris (Term, Term)
-elabClause info (PClause fname lhs rhs whereblock) 
+elabClause :: ElabInfo -> FC -> PClause -> Idris (Term, Term)
+elabClause info fc (PClause fname lhs rhs whereblock) 
    = do ctxt <- getContext
         -- Build the LHS as an "Infer", and pull out its type and
         -- pattern bindings
         ((lhs', dlhs), _) <- tclift $ elaborate ctxt (MN 0 "patLHS") infP
-                                      (build info True (infTerm lhs))
+                                      (erun fc (build info True (infTerm lhs)))
         let lhs_tm = getInferTerm lhs'
         let lhs_ty = getInferType lhs'
         logLvl 3 (show lhs_tm)
@@ -114,7 +118,7 @@ elabClause info (PClause fname lhs rhs whereblock)
         ctxt <- getContext -- new context with where block added
         ((rhs', defer), _) <- tclift $ elaborate ctxt (MN 0 "patRHS") clhsty
                                        (do pbinds lhs_tm
-                                           (_, d) <- build winfo False rhs
+                                           (_, d) <- erun fc (build winfo False rhs)
                                            psolve lhs_tm
                                            tt <- get_term
                                            return (tt, d))
@@ -152,15 +156,15 @@ elabClause info (PClause fname lhs rhs whereblock)
 elabDecl :: ElabInfo -> PDecl -> Idris ()
 elabDecl info d = idrisCatch (elabDecl' info d) (\e -> iputStrLn (report e))
 
-elabDecl' info (PFix _ _)      = return () -- nothing to elaborate
-elabDecl' info (PSyntax p) = return () -- nothing to elaborate
-elabDecl' info (PTy n ty)      = do iLOG $ "Elaborating type decl " ++ show n
-                                    elabType info n ty
-elabDecl' info (PData d)       = do iLOG $ "Elaborating " ++ show (d_name d)
-                                    elabData info d
-elabDecl' info d@(PClauses n ps) = do iLOG $ "Elaborating clause " ++ show n
-                                      elabClauses info n ps
-elabDecl' info (PParams ns ps) = mapM_ (elabDecl' pinfo) ps
+elabDecl' info (PFix _ _ _)      = return () -- nothing to elaborate
+elabDecl' info (PSyntax _ p) = return () -- nothing to elaborate
+elabDecl' info (PTy f n ty)      = do iLOG $ "Elaborating type decl " ++ show n
+                                      elabType info f n ty
+elabDecl' info (PData f d)       = do iLOG $ "Elaborating " ++ show (d_name d)
+                                      elabData info f d
+elabDecl' info d@(PClauses f n ps) = do iLOG $ "Elaborating clause " ++ show n
+                                        elabClauses info f n ps
+elabDecl' info (PParams f ns ps) = mapM_ (elabDecl' pinfo) ps
   where
     pinfo = let ds = concatMap declared ps
                 newps = params info ++ ns
@@ -241,11 +245,12 @@ elab info pattern tm = do elab' tm
                     = elabApp (liftname info f) (map (PExp . PRef) ps ++ args)
         | otherwise = elabApp f args
       where elabApp f args
-                  = try (do ns <- apply (Var f) (map isph args)
-                            solve
-                            elabArgs ns (map getTm args))
-                        (do apply_elab f (map toElab args)
-                            solve)
+                  = -- erun (FC "FOO" 42) $
+                      try (do ns <- apply (Var f) (map isph args)
+                              solve
+                              elabArgs ns (map getTm args))
+                          (do apply_elab f (map toElab args)
+                              solve)
     elab' (PApp f [arg])
           = do simple_app (elab' f) (elab' (getTm arg))
                solve

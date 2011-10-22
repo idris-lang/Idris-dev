@@ -17,6 +17,7 @@ import Data.List
 import Control.Monad.State
 import Debug.Trace
 import Data.Maybe
+import System.FilePath
 
 type TokenParser a = PTok.TokenParser a
 
@@ -82,6 +83,14 @@ parseImports fname input
             Right (x, i) -> do put i
                                return x
 
+pfc :: IParser FC
+pfc = do s <- getPosition
+         let (dir, file) = splitFileName (sourceName s)
+         let f = case dir of
+                    "./" -> file
+                    _ -> sourceName s
+         return $ FC f (sourceLine s)
+
 pImport :: IParser String
 pImport = do reserved "import"
              f <- identifier
@@ -103,11 +112,11 @@ parseProg syn fname input pos
 
 -- Collect PClauses with the same function name
 collect :: [PDecl] -> [PDecl]
-collect (c@(PClauses _ [PClause n l r w]) : ds) = clauses n [] (c:ds)
-  where clauses n acc (PClauses _ [PClause n' l r w] : ds)
+collect (c@(PClauses fc _ [PClause n l r w]) : ds) = clauses n [] (c:ds)
+  where clauses n acc (PClauses fc _ [PClause n' l r w] : ds)
            | n == n' = clauses n (PClause n' l r (collect w) : acc) ds
-        clauses n acc xs = PClauses n (reverse acc) : collect xs
-collect (PParams ns ps : ds) = PParams ns (collect ps) : (collect ds)
+        clauses n acc xs = PClauses fc n (reverse acc) : collect xs
+collect (PParams f ns ps : ds) = PParams f ns (collect ps) : (collect ds)
 collect (d : ds) = d : collect ds
 collect [] = []
 
@@ -151,7 +160,8 @@ pSyntaxDecl syn
     = do s <- pSyntaxRule syn
          i <- getState
          setState (i { syntax_rules = s : syntax_rules i })
-         return (PSyntax s)
+         fc <- pfc
+         return (PSyntax fc s)
 
 pSyntaxRule :: SyntaxInfo -> IParser Syntax
 pSyntaxRule syn 
@@ -180,10 +190,11 @@ pSynSym = try (do lchar '['; n <- pName; lchar ']'
              return (Symbol sym)
 
 pFunDecl' :: SyntaxInfo -> IParser PDecl
-pFunDecl' syn = try (do n <- pfName; ty <- pTSig syn
+pFunDecl' syn = try (do fc <- pfc
+                        n <- pfName; ty <- pTSig syn
                         lchar ';'
                         ty' <- implicit syn n ty
-                        return (PTy n ty'))
+                        return (PTy fc n ty'))
             <|> try (pPattern syn)
 
 pUsing :: SyntaxInfo -> IParser [PDecl]
@@ -208,7 +219,8 @@ pParams syn =
        let pvars = syn_params syn
        ds <- many1 (pDecl syn { syn_params = pvars ++ ns })
        lchar '}'
-       return [PParams ns (concat ds)]
+       fc <- pfc
+       return [PParams fc ns (concat ds)]
 
 --------- Fixity ---------
 
@@ -220,7 +232,8 @@ pFixity = do f <- fixity; i <- natural; ops <- sepBy1 operator (lchar ',')
              let fs = map (Fix (f prec)) ops
              setState (istate { 
                 idris_infixes = sort (fs ++ idris_infixes istate) })
-             return (PFix (f prec) ops)
+             fc <- pfc
+             return (PFix fc (f prec) ops)
 
 fixity :: IParser (Int -> Fixity) 
 fixity = try (do reserved "infixl"; return Infixl)
@@ -401,23 +414,26 @@ prefix name f = Prefix (do { reservedOp name; return f })
 --------- Data declarations ---------
 
 pData :: SyntaxInfo -> IParser PDecl
-pData syn = try (do reserved "data"; tyn <- pfName; ty <- pTSig syn
+pData syn = try (do fc <- pfc
+                    reserved "data"; tyn <- pfName; ty <- pTSig syn
                     reserved "where"
                     ty' <- implicit syn tyn ty
                     cons <- sepBy (pConstructor syn) (lchar '|')
                     lchar ';'
-                    return $ PData (PDatadecl tyn ty' cons))
-        <|> do reserved "data"; tyn <- pfName; args <- many pName
+                    return $ PData fc (PDatadecl tyn ty' cons))
+        <|> do fc <- pfc
+               reserved "data"; tyn <- pfName; args <- many pName
                lchar '='
                cons <- sepBy1 (pSimpleCon syn) (lchar '|')
                lchar ';'
                let conty = mkPApp (PRef tyn) (map PRef args)
                let ty = bindArgs (map (\a -> PSet) args) PSet
                ty' <- implicit syn tyn ty
-               cons' <- mapM (\ (x, cargs) -> do let cty = bindArgs cargs conty
-                                                 cty' <- implicit syn x cty
-                                                 return (x, cty')) cons
-               return $ PData (PDatadecl tyn ty' cons')
+               cons' <- mapM (\ (x, cargs, cfc) -> 
+                                 do let cty = bindArgs cargs conty
+                                    cty' <- implicit syn x cty
+                                    return (x, cty', cfc)) cons
+               return $ PData fc (PDatadecl tyn ty' cons')
 
 mkPApp t [] = t
 mkPApp t xs = PApp t (map PExp xs)
@@ -426,23 +442,26 @@ bindArgs :: [PTerm] -> PTerm -> PTerm
 bindArgs [] t = t
 bindArgs (x:xs) t = PPi Exp (MN 0 "t") x (bindArgs xs t)
 
-pConstructor :: SyntaxInfo -> IParser (Name, PTerm)
+pConstructor :: SyntaxInfo -> IParser (Name, PTerm, FC)
 pConstructor syn
-    = do cn <- pfName; ty <- pTSig syn
+    = do fc <- pfc
+         cn <- pfName; ty <- pTSig syn
          ty' <- implicit syn cn ty
-         return (cn, ty')
+         return (cn, ty', fc)
 
-pSimpleCon :: SyntaxInfo -> IParser (Name, [PTerm])
+pSimpleCon :: SyntaxInfo -> IParser (Name, [PTerm], FC)
 pSimpleCon syn 
-     = do cn <- pfName
+     = do fc <- pfc
+          cn <- pfName
           args <- many (pSimpleExpr syn)
-          return (cn, args)
+          return (cn, args, fc)
 
 --------- Pattern match clauses ---------
 
 pPattern :: SyntaxInfo -> IParser PDecl
-pPattern syn = do clause <- pClause syn
-                  return (PClauses (MN 2 "_") [clause]) -- collect together later
+pPattern syn = do fc <- pfc
+                  clause <- pClause syn
+                  return (PClauses fc (MN 2 "_") [clause]) -- collect together later
 
 pClause :: SyntaxInfo -> IParser PClause
 pClause syn

@@ -56,11 +56,13 @@ getName = do i <- get;
              put (i { idris_name = idx + 1 })
              return idx
 
-checkUndefined :: Name -> Idris ()
-checkUndefined n = do i <- getContext
-                      case lookupCtxt n i of
-                        Just _ -> fail $ show n ++ " already defined"
-                        _ -> return ()
+checkUndefined :: FC -> Name -> Idris ()
+checkUndefined fc n 
+    = do i <- getContext
+         case lookupCtxt n i of
+             Just _ -> fail $ show fc ++ ":" ++ 
+                       show n ++ " already defined"
+             _ -> return ()
 
 setContext :: Context -> Idris ()
 setContext ctxt = do i <- get; put (i { tt_ctxt = ctxt } )
@@ -130,12 +132,12 @@ instance Ord FixDecl where
 
 data Plicity = Imp | Exp deriving Show
 
-data PDecl' t = PFix     Fixity [String] -- fixity declaration
-              | PTy      Name t          -- type declaration
-              | PClauses Name [PClause' t]    -- pattern clause
-              | PData    (PData' t)      -- data declaration
-              | PParams  [(Name, PTerm)] [PDecl' t] -- params block
-              | PSyntax  Syntax
+data PDecl' t = PFix     FC Fixity [String] -- fixity declaration
+              | PTy      FC Name t          -- type declaration
+              | PClauses FC Name [PClause' t]    -- pattern clause
+              | PData    FC (PData' t)      -- data declaration
+              | PParams  FC [(Name, PTerm)] [PDecl' t] -- params block
+              | PSyntax  FC Syntax
     deriving Functor
 
 data PClause' t = PClause Name t t [PDecl]
@@ -143,7 +145,7 @@ data PClause' t = PClause Name t t [PDecl]
 
 data PData' t  = PDatadecl { d_name :: Name,
                              d_tcon :: t,
-                             d_cons :: [(Name, t)] }
+                             d_cons :: [(Name, t, FC)] }
     deriving Functor
 
 -- Handy to get a free function for applying PTerm -> PTerm functions
@@ -156,11 +158,12 @@ type PClause = PClause' PTerm
 -- get all the names declared in a decl
 
 declared :: PDecl -> [Name]
-declared (PFix _ _) = []
-declared (PTy n t) = [n]
-declared (PClauses n _) = [] -- not a declaration
-declared (PData (PDatadecl n _ ts)) = n : map fst ts
-declared (PParams _ ds) = concatMap declared ds
+declared (PFix _ _ _) = []
+declared (PTy _ n t) = [n]
+declared (PClauses _ n _) = [] -- not a declaration
+declared (PData _ (PDatadecl n _ ts)) = n : map fstt ts
+   where fstt (a, _, _) = a
+declared (PParams _ _ ds) = concatMap declared ds
 -- declared (PImport _) = []
 
 -- High level language terms
@@ -222,10 +225,10 @@ instance Show PTerm where
     show tm = showImp False tm
 
 instance Show PDecl where
-    show (PFix f ops) = show f ++ " " ++ showSep ", " ops
-    show (PTy n ty) = show n ++ " : " ++ show ty
-    show (PClauses n c) = showSep "\n" (map show c)
-    show (PData d) = show d
+    show (PFix _ f ops) = show f ++ " " ++ showSep ", " ops
+    show (PTy _ n ty) = show n ++ " : " ++ show ty
+    show (PClauses _ n c) = showSep "\n" (map show c)
+    show (PData _ d) = show d
 
 instance Show PClause where
     show c = showCImp False c
@@ -240,7 +243,7 @@ showDImp :: Bool -> PData -> String
 showDImp impl (PDatadecl n ty cons) 
    = "data " ++ show n ++ " : " ++ showImp impl ty ++ " where\n\t"
      ++ showSep "\n\t| " 
-            (map (\ (n, t) -> show n ++ " : " ++ showImp impl t) cons)
+            (map (\ (n, t, _) -> show n ++ " : " ++ showImp impl t) cons)
 
 getImps :: [PArg] -> [(Name, PTerm)]
 getImps [] = []
@@ -323,13 +326,15 @@ namesIn ist tm = nub $ ni [] tm
 
 -- For inferring types of things
 
+bi = FC "builtin" 0
+
 inferTy   = MN 0 "__Infer"
 inferCon  = MN 0 "__infer"
 inferDecl = PDatadecl inferTy 
                       PSet
                       [(inferCon, PPi Imp (MN 0 "A") PSet (
                                   PPi Exp (MN 0 "a") (PRef (MN 0 "A"))
-                                  (PRef inferTy)))]
+                                  (PRef inferTy)), bi)]
 
 infTerm t = PApp (PRef inferCon) [PImp (MN 0 "A") Placeholder, PExp t]
 infP = P (TCon 0) inferTy (Set 0)
@@ -344,10 +349,11 @@ getInferType (App (App _ ty) _) = ty
 
 -- Handy primitives: Unit, False, Pair, MkPair, mkForeign
 
+
 unitTy   = MN 0 "__Unit"
 unitCon  = MN 0 "__II"
 unitDecl = PDatadecl unitTy PSet
-                     [(unitCon, PRef unitTy)]
+                     [(unitCon, PRef unitTy, bi)]
 
 falseTy   = MN 0 "__False"
 falseDecl = PDatadecl falseTy PSet []
@@ -360,7 +366,7 @@ pairDecl  = PDatadecl pairTy (piBind [(n "A", PSet), (n "B", PSet)] PSet)
                        PPi Exp (n "a") (PRef (n "A")) (
                        PPi Exp (n "c") (PRef (n "B"))  
                            (PApp (PRef pairTy) [PExp (PRef (n "A")),
-                                                PExp (PRef (n "B"))])))))]
+                                                PExp (PRef (n "B"))])))), bi)]
     where n a = MN 0 a
 
 piBind :: [(Name, PTerm)] -> PTerm -> PTerm
@@ -467,11 +473,11 @@ dumpDecls :: [PDecl] -> String
 dumpDecls [] = ""
 dumpDecls (d:ds) = dumpDecl d ++ "\n" ++ dumpDecls ds
 
-dumpDecl (PFix f ops) = show f ++ " " ++ showSep ", " ops 
-dumpDecl (PTy n t) = "tydecl " ++ show n ++ " : " ++ showImp True t
-dumpDecl (PClauses n cs) = "pat\t" ++ showSep "\n\t" (map (showCImp True) cs)
-dumpDecl (PData d) = showDImp True d
-dumpDecl (PParams ns ps) = "params {" ++ show ns ++ "\n" ++ dumpDecls ps ++ "}\n"
-dumpDecl (PSyntax syn) = "syntax " ++ show syn
+dumpDecl (PFix _ f ops) = show f ++ " " ++ showSep ", " ops 
+dumpDecl (PTy _ n t) = "tydecl " ++ show n ++ " : " ++ showImp True t
+dumpDecl (PClauses _ n cs) = "pat\t" ++ showSep "\n\t" (map (showCImp True) cs)
+dumpDecl (PData _ d) = showDImp True d
+dumpDecl (PParams _ ns ps) = "params {" ++ show ns ++ "\n" ++ dumpDecls ps ++ "}\n"
+dumpDecl (PSyntax _ syn) = "syntax " ++ show syn
 -- dumpDecl (PImport i) = "import " ++ i
 

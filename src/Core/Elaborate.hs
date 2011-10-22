@@ -29,6 +29,14 @@ data Command = Theorem Name Raw
 
 type Elab a = StateT (ProofState, String) TC a
 
+erun :: FC -> Elab a -> Elab a
+erun f elab = do s <- get
+                 case runStateT elab s of
+                    OK (a, s')     -> do put s'
+                                         return a
+                    Error (At f e) -> lift $ Error (At f e)
+                    Error e        -> lift $ Error (At f e)
+
 runElab :: Elab a -> ProofState -> TC (a, (ProofState, String))
 runElab e ps = runStateT e (ps, "")
 
