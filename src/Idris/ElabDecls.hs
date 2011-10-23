@@ -209,25 +209,26 @@ elab info pattern tm = do elab' tm
     elab' PSet           = do fill (RSet 0); solve
     elab' (PConstant c)  = do apply (RConstant c) []; solve
     elab' (PQuote r)     = do fill r; solve
-    elab' PTrue          = try (elab' (PRef unitCon))
-                               (elab' (PRef unitTy))
-    elab' PFalse         = elab' (PRef falseTy)
-    elab' (PPair l r)    = try (elab' (PApp (PRef pairTy)
+    elab' (PTrue fc)     = try (elab' (PRef fc unitCon))
+                               (elab' (PRef fc unitTy))
+    elab' (PFalse fc)    = elab' (PRef fc falseTy)
+    elab' (PPair fc l r) = try (elab' (PApp fc (PRef fc pairTy)
                                             [PExp l,PExp r]))
-                               (elab' (PApp (PRef pairCon)
+                               (elab' (PApp fc (PRef fc pairCon)
                                             [PImp (MN 0 "a") Placeholder,
                                              PImp (MN 0 "a") Placeholder,
                                              PExp l, PExp r]))
-    elab' (PRef n) | pattern && not (inparamBlock n)
-                         = try (do apply (Var n) []; solve)
-                               (patvar n)
+    elab' (PRef fc n) | pattern && not (inparamBlock n)
+                         = erun fc $ 
+                            try (do apply (Var n) []; solve)
+                                (patvar n)
       where inparamBlock n = case lookupCtxt n (inblock info) of
                                 Nothing -> False
                                 _ -> True
-    elab' (PRef n)       
+    elab' (PRef fc n)       
          | Just ps <- lookupCtxt n (inblock info) 
-             = elab' (PApp (PRef n) [])
-         | otherwise = do apply (Var n) []; solve
+             = elab' (PApp fc (PRef fc n) [])
+         | otherwise = erun fc $ do apply (Var n) []; solve
     elab' (PLam n Placeholder sc)
                          = do attack; intro n; elab' sc; solve
     elab' (PPi _ n Placeholder sc)
@@ -240,10 +241,11 @@ elab info pattern tm = do elab' tm
                elab' ty
                elab' sc
                solve
-    elab' (PApp (PRef f) args)
+    elab' (PApp fc (PRef _ f) args)
         | Just ps <- lookupCtxt f (inblock info) 
-                    = elabApp (liftname info f) (map (PExp . PRef) ps ++ args)
-        | otherwise = elabApp f args
+                    = erun fc $ 
+                        elabApp (liftname info f) (map (PExp . (PRef fc)) ps ++ args)
+        | otherwise = erun fc $ elabApp f args
       where elabApp f args
                   = -- erun (FC "FOO" 42) $
                       try (do ns <- apply (Var f) (map isph args)
@@ -251,9 +253,10 @@ elab info pattern tm = do elab' tm
                               elabArgs ns (map getTm args))
                           (do apply_elab f (map toElab args)
                               solve)
-    elab' (PApp f [arg])
-          = do simple_app (elab' f) (elab' (getTm arg))
-               solve
+    elab' (PApp fc f [arg])
+          = erun fc $ 
+             do simple_app (elab' f) (elab' (getTm arg))
+                solve
     elab' Placeholder = do (h : hs) <- get_holes
                            movelast h
     elab' (PMetavar n) = do attack; defer n; solve

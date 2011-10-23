@@ -13,12 +13,14 @@ import Debug.Trace
 delab :: IState -> Term -> PTerm
 delab ist tm = de [] tm
   where
+    un = FC "(val)" 0
+
     de env (App f a) = deFn env f [a]
-    de env (V i)     = PRef (env!!i)
-    de env (P _ n _) | n == unitTy = PTrue
-                     | n == unitCon = PTrue
-                     | n == falseTy = PFalse
-                     | otherwise = PRef n
+    de env (V i)     = PRef un (env!!i)
+    de env (P _ n _) | n == unitTy = PTrue un
+                     | n == unitCon = PTrue un
+                     | n == falseTy = PFalse un
+                     | otherwise = PRef un n
     de env (Bind n (Lam ty) sc) = PLam n (de env ty) (de (n:env) sc)
     de env (Bind n (Pi ty) sc)  = PPi Exp n (de env ty) (de (n:env) sc)
     de env (Bind n (Let ty val) sc) 
@@ -28,15 +30,15 @@ delab ist tm = de [] tm
     de env (Set i) = PSet 
 
     deFn env (App f a) args = deFn env f (a:args)
-    deFn env (P _ n _) [l,r]     | n == pairTy  = PPair (de env l) (de env r)
-    deFn env (P _ n _) [_,_,l,r] | n == pairCon = PPair (de env l) (de env r)
+    deFn env (P _ n _) [l,r]     | n == pairTy  = PPair un (de env l) (de env r)
+    deFn env (P _ n _) [_,_,l,r] | n == pairCon = PPair un (de env l) (de env r)
     deFn env (P _ n _) args = mkPApp n (map (de env) args)
-    deFn env f args = PApp (de env f) (map PExp (map (de env) args))
+    deFn env f args = PApp un (de env f) (map PExp (map (de env) args))
 
     mkPApp n args 
         | Just imps <- lookupCtxt n (idris_implicits ist)
-            = PApp (PRef n) (zipWith imp (imps ++ repeat (PExp undefined)) args)
-        | otherwise = PApp (PRef n) (map PExp args)
+            = PApp un (PRef un n) (zipWith imp (imps ++ repeat (PExp undefined)) args)
+        | otherwise = PApp un (PRef un n) (map PExp args)
 
     imp (PImp n _) arg = PImp n arg
     imp (PExp _)   arg = PExp arg
