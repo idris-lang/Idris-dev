@@ -258,6 +258,7 @@ pNoExtExpr syn =
          try (pApp syn) 
      <|> pSimpleExpr syn
      <|> try (pLambda syn)
+     <|> try (pLet syn)
      <|> try (pPi syn) 
      <|> try (pDoBlock syn)
     
@@ -353,6 +354,10 @@ pLambda syn = do lchar '\\';
                  symbol "=>"
                  sc <- pExpr syn
                  return (bindList PLam xt sc)
+
+pLet syn = do reserved "let"; n <- pName; lchar '='; v <- pExpr syn
+              reserved "in";  sc <- pExpr syn
+              return (PLet n Placeholder v sc)
 
 pPi syn = do lchar '('; xt <- tyDeclList syn; lchar ')'
              symbol "->"

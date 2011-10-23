@@ -90,7 +90,7 @@ elabVal info tm
    = do ctxt <- getContext
         logLvl 10 (showImp True tm)
         ((tm', defer), _) <- tclift $ elaborate ctxt (MN 0 "val") infP
-                                      (build info False (infTerm tm))
+                                      (build info True (infTerm tm))
         logLvl 3 ("Value: " ++ show tm')
         let vtm = getInferTerm tm'
         logLvl 2 (show vtm)
@@ -241,18 +241,30 @@ elab info pattern tm = do elab' tm
                elab' ty
                elab' sc
                solve
+    elab' (PLet n Placeholder val sc)
+          = do attack; -- (h:_) <- get_holes
+               tyn <- unique_hole (MN 0 "letty")
+               -- start_unify h
+               claim tyn (RSet 0)
+               valn <- unique_hole (MN 0 "letval")
+               claim valn (Var tyn)
+               letbind n (Var tyn) (Var valn)  
+               focus valn
+               elab' val
+               elab' sc
+               -- end_unify
+               solve
     elab' (PApp fc (PRef _ f) args)
         | Just ps <- lookupCtxt f (inblock info) 
                     = erun fc $ 
                         elabApp (liftname info f) (map (PExp . (PRef fc)) ps ++ args)
         | otherwise = erun fc $ elabApp f args
       where elabApp f args
-                  = -- erun (FC "FOO" 42) $
-                      try (do ns <- apply (Var f) (map isph args)
-                              solve
-                              elabArgs ns (map getTm args))
-                          (do apply_elab f (map toElab args)
-                              solve)
+                  = try (do ns <- apply (Var f) (map isph args)
+                            solve
+                            elabArgs ns (map getTm args))
+                        (do apply_elab f (map toElab args)
+                            solve)
     elab' (PApp fc f [arg])
           = erun fc $ 
              do simple_app (elab' f) (elab' (getTm arg))

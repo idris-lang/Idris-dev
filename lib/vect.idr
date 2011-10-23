@@ -13,4 +13,8 @@ data Vect : Set -> Nat -> Set where
 vlookup : (i : Fin n) -> Vect a n -> a;
 vlookup fO     (x :: xs) = x;
 vlookup (fS k) (x :: xs) = vlookup k xs;
-  
+ 
+vapp : Vect a n -> Vect a m -> Vect a (plus n m);
+vapp VNil      ys = ys;
+vapp (x :: xs) ys = x :: vapp xs ys;
+

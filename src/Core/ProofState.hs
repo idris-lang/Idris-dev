@@ -49,6 +49,7 @@ data Tactic = Attack
             | CheckIn Raw
             | Intro Name
             | Forall Name Raw
+            | LetBind Name Raw Raw
             | PatVar Name
             | PatBind Name
             | Focus Name
@@ -270,6 +271,14 @@ patvar n ctxt env (Bind x (Hole t) sc) =
     do action (\ps -> ps { holes = holes ps \\ [x] })
        return $ Bind n (PVar t) (instantiate (P Bound n t) (pToV x sc))
 
+letbind :: Name -> Raw -> Raw -> RunTactic
+letbind n ty val ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' =
+    do (tyv,  tyt)  <- lift $ check ctxt env ty
+       (valv, valt) <- lift $ check ctxt env val
+       lift $ isSet ctxt env tyt
+       return $ Bind n (Let tyv valv) (Bind x (Hole t) (P Bound x t))
+letbind n ty val ctxt env _ = fail "Can't let bind here"
+
 patbind :: Name -> RunTactic
 patbind n ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' =
     do let t' = normalise ctxt env t
@@ -379,6 +388,7 @@ process t h = tactic (Just h) (mktac t)
          mktac Compute       = compute
          mktac (Intro n)     = intro n
          mktac (Forall n t)  = forall n t
+         mktac (LetBind n t v) = letbind n t v
          mktac (PatVar n)    = patvar n
          mktac (PatBind n)   = patbind n
          mktac (CheckIn r)   = check_in r

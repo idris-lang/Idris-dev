@@ -163,6 +163,9 @@ intro n = processTactic' (Intro n)
 forall :: Name -> Raw -> Elab ()
 forall n t = processTactic' (Forall n t)
 
+letbind :: Name -> Raw -> Raw -> Elab ()
+letbind n t v = processTactic' (LetBind n t v)
+
 patvar :: Name -> Elab ()
 patvar n = processTactic' (PatVar n)
 
@@ -272,8 +275,8 @@ simple_app fun arg =
        start_unify s
        claim s (Var a)
        prep_fill f [s]
+       focus s; arg -- need to work out the type of the arg, so do it first
        focus f; fun
-       focus s; arg
        complete_fill
        end_unify
 

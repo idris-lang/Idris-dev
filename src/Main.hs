@@ -41,13 +41,14 @@ main = do xs <- getArgs
 runIdris :: [Opt] -> Idris ()
 runIdris opts = 
     do let inputs = opt getFile opts
+       let runrepl = not (NoREPL `elem` opts)
        mapM_ makeOption opts
        elabPrims
        when (not (NoPrelude `elem` opts)) $ do x <- loadModule "prelude"
                                                return ()
+       when runrepl $ iputStrLn banner 
        mods <- mapM loadModule inputs       
-       when (not (NoREPL `elem` opts)) $ do iputStrLn banner
-                                            repl (mkPrompt mods)
+       when runrepl $ repl (mkPrompt mods)
   where
     makeOption (OLogging i) = setLogLevel i
     makeOption _ = return ()

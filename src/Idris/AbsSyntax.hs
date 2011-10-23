@@ -263,6 +263,8 @@ showImp impl tm = se 10 tm where
     se p (PQuote r) = "![" ++ show r ++ "]"
     se p (PRef _ n) = show n
     se p (PLam n ty sc) = bracket p 2 $ "\\ " ++ show n ++ " => " ++ show sc
+    se p (PLet n ty v sc) = bracket p 2 $ "let " ++ show n ++ " = " ++ se 10 v ++
+                            " in " ++ se 10 sc 
     se p (PPi Exp n ty sc)
         | n `elem` allNamesIn sc = bracket p 2 $
                                     "(" ++ show n ++ " : " ++ se 10 ty ++ 
@@ -433,6 +435,11 @@ addImpl ist ptm = ai [] ptm
     ai env (PLam n ty sc) = let ty' = ai env ty
                                 sc' = ai (n:env) sc in
                                 PLam n ty' sc'
+    ai env (PLet n ty val sc)
+                          = let ty' = ai env ty
+                                val' = ai env val
+                                sc' = ai (n:env) sc in
+                                PLet n ty' val' sc'
     ai env (PPi p n ty sc) = let ty' = ai env ty
                                  sc' = ai (n:env) sc in
                                  PPi p n ty' sc'
