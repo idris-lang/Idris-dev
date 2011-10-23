@@ -18,13 +18,14 @@ import Control.Monad
 import Control.Monad.State
 import Data.List
 
-repl :: Idris ()
-repl = do x <- lift $ readline "Idris> "
+repl :: String -> Idris ()
+repl prompt
+     = do x <- lift $ readline (prompt ++ "> ")
           case x of
-              Nothing -> repl
+              Nothing -> repl prompt
               Just input -> do lift $ addHistory input
                                continue <- processInput input
-                               when continue repl
+                               when continue (repl prompt)
 
 processInput :: String -> Idris Bool
 processInput cmd

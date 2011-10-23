@@ -6,6 +6,7 @@ import System.Environment
 import System.Exit
 
 import Data.Maybe
+import Data.Version
 import Control.Monad.State
 
 import Core.CoreParser
@@ -21,6 +22,7 @@ import Idris.REPL
 import Idris.ElabDecls
 import Idris.Primitives
 import Idris.Imports
+import Paths_miniidris
 
 -- Main program reads command line options, parses the main program, and gets
 -- on with the REPL.
@@ -41,12 +43,18 @@ runIdris opts =
     do let inputs = opt getFile opts
        mapM_ makeOption opts
        elabPrims
-       when (not (NoPrelude `elem` opts)) $ loadModule "prelude"
-       mapM_ loadModule inputs       
-       when (not (NoREPL `elem` opts)) $ repl
+       when (not (NoPrelude `elem` opts)) $ do x <- loadModule "prelude"
+                                               return ()
+       mods <- mapM loadModule inputs       
+       when (not (NoREPL `elem` opts)) $ do iputStrLn banner
+                                            repl (mkPrompt mods)
   where
     makeOption (OLogging i) = setLogLevel i
     makeOption _ = return ()
+
+mkPrompt [] = "Idris"
+mkPrompt [x] = "*" ++ x
+mkPrompt (x:xs) = "*" ++ x ++ " " ++ mkPrompt xs
 
 getFile :: Opt -> Maybe String
 getFile (Filename str) = Just str
@@ -78,4 +86,12 @@ main'
                                   return ()
                     err -> print err
                     -}
+
+ver = showVersion version
+
+banner = "     ____    __     _                                          \n" ++     
+         "    /  _/___/ /____(_)____                                     \n" ++
+         "    / // __  / ___/ / ___/     Version " ++ ver ++ "\n" ++
+         "  _/ // /_/ / /  / (__  )      http://www.idris-lang.org/      \n" ++
+         " /___/\\__,_/_/  /_/____/       Type :? for help                \n" 
 

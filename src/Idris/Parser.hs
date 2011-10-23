@@ -45,7 +45,7 @@ lchar = lexeme.char
 
 -- Loading modules
 
-loadModule :: FilePath -> Idris ()
+loadModule :: FilePath -> Idris String
 loadModule f = do datadir <- lift $ getDataDir
                   fp <- lift $ findImport [".", datadir] f
                   i <- getIState
@@ -55,6 +55,8 @@ loadModule f = do datadir <- lift $ getDataDir
                              case fp of
                                  IDR fn -> loadSource fn
                                  IBC fn -> error "Not implemented"
+                  let (dir, fh) = splitFileName f
+                  return (dropExtension fh)
 
 loadSource :: FilePath -> Idris () 
 loadSource f = do iLOG ("Reading " ++ f)
