@@ -2,9 +2,9 @@ module Core.CaseTree(CaseDef(..), SC(..), CaseAlt(..), CaseTree,
                      simpleCase) where
 
 import Core.TT
--- import Core.Evaluate
 
 import Control.Monad.State
+import Debug.Trace
 
 data CaseDef = CaseDef [Name] SC
     deriving Show
@@ -48,16 +48,24 @@ toPats f = reverse (toPat (getArgs f)) where
 toPat :: [Term] -> [Pat]
 toPat tms = evalState (mapM (\x -> toPat' x []) tms) []
   where
-    toPat' (P (DCon t a) n _) args = return $ PCon n t args
+    toPat' (P (DCon t a) n _) args = do args' <- mapM (\x -> toPat' x []) args
+                                        return $ PCon n t args'
     toPat' (P Bound n _)      []   = do ns <- get
                                         if n `elem` ns 
                                           then return PAny 
                                           else do put (n : ns)
                                                   return (PV n)
-    toPat' (App f a)          args = do a' <- toPat' a []
-                                        toPat' f (a' : args)
-    toPat' (Constant c)       args = return $ PConst c
+    toPat' (App f a)          args = toPat' f (a : args)
+    toPat' (Constant c)       args 
+        | isType c  = return PAny
+        | otherwise = return $ PConst c
     toPat' _                  _    = return PAny
+
+    isType (I _) = False
+    isType (Fl _) = False
+    isType (Str _) = False
+    isType (Ch _) = False
+    isType _ = True
 
 data Partition = Cons [Clause]
                | Vars [Clause]

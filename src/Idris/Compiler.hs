@@ -58,6 +58,10 @@ instance ToEpic (TT Name) where
       epic' env (Bind n (Lam _) sc)
             = do sc' <- epic' (aname n : env) sc
                  return $ term ([aname n], sc')
+      epic' env (Bind n (Let _ v) sc)
+            = do sc' <- epic' (aname n : env) sc
+                 v' <- epic' env v
+                 return $ let_ v' (aname n, sc') 
       epic' env (Bind _ _ _) = return impossible
       epic' env (App f a) = do f' <- epic' env f
                                a' <- epic' env a
@@ -112,7 +116,10 @@ instance ToEpic SC where
                                               return $ con t (map ename args, rhs')
         mkEpicAlt (ConstCase (I i) rhs)  = do rhs' <- epic rhs
                                               return $ constcase i rhs'
-        mkEpicAlt (ConstCase _ rhs)      = fail "Can only pattern match on integer constants"
+        mkEpicAlt (ConstCase IType rhs) = do rhs' <- epic rhs 
+                                             return $ defaultcase rhs'
+        mkEpicAlt (ConstCase c rhs)      
+           = fail $ "Can only pattern match on integer constants (" ++ show c ++ ")"
         mkEpicAlt (DefaultCase rhs)      = do rhs' <- epic rhs
                                               return $ defaultcase rhs'
 

@@ -273,6 +273,13 @@ forget tm = fe [] tm
                      = RConstant c
     fe env (Set i)   = RSet i
 
+bindAll :: [(n, Binder (TT n))] -> TT n -> TT n 
+bindAll [] t =t
+bindAll ((n, b) : bs) t = Bind n b (bindAll bs t)
+
+bindTyArgs :: (TT n -> Binder (TT n)) -> [(n, TT n)] -> TT n -> TT n
+bindTyArgs b xs = bindAll (map (\ (n, ty) -> (n, b ty)) xs)
+
 type Term = TT Name
 type Type = Term
 

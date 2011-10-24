@@ -21,7 +21,7 @@ idrisDef = haskellDef {
               reservedNames = ["let", "in", "data", "Set", -- "if", "then", "else",
                                "do", "dsl", "import", 
                                "infix", "infixl", "infixr", "prefix",
-                               "where", "forall", "syntax",
+                               "where", "with", "forall", "syntax",
                                "using", "params", "namespace",
                                "Int", "Float", "Char", "String", "Ptr"]
            } 

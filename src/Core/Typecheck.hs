@@ -119,7 +119,6 @@ check ctxt env (RBind n b sc)
                let tt' = normalise ctxt env tt
                isSet ctxt env tt'
                return (PVTy tv')
-        checkBinder x = fail (show x)
 
         discharge n (Lam t) scv sct
           = return (Bind n (Lam t) scv, Bind n (Pi t) sct)

@@ -97,7 +97,7 @@ elabVal info tm
         tclift $ recheck ctxt [] vtm
 
 elabClause :: ElabInfo -> FC -> PClause -> Idris (Term, Term)
-elabClause info fc (PClause fname lhs rhs whereblock) 
+elabClause info fc (PClause fname lhs withs rhs whereblock) 
    = do ctxt <- getContext
         -- Build the LHS as an "Infer", and pull out its type and
         -- pattern bindings
@@ -116,28 +116,19 @@ elabClause info fc (PClause fname lhs rhs whereblock)
         -- Now build the RHS, using the type of the LHS as the goal.
         logLvl 2 (showImp True rhs)
         ctxt <- getContext -- new context with where block added
-        ((rhs', defer), _) <- tclift $ elaborate ctxt (MN 0 "patRHS") clhsty
-                                       (do pbinds lhs_tm
-                                           (_, d) <- erun fc (build winfo False rhs)
-                                           psolve lhs_tm
-                                           tt <- get_term
-                                           return (tt, d))
+        ((rhs', defer), _) <- 
+           tclift $ elaborate ctxt (MN 0 "patRHS") clhsty
+                    (do pbinds lhs_tm
+                        (_, d) <- erun fc (build winfo False rhs)
+                        psolve lhs_tm
+                        tt <- get_term
+                        return (tt, d))
         logLvl 2 $ "---> " ++ show rhs'
         when (not (null defer)) $ iLOG $ "DEFERRED " ++ show defer
         addDeferred defer
         (crhs, crhsty) <- tclift $ recheck ctxt [] rhs'
         return (clhs, crhs)
   where
-    pbinds (Bind n (PVar t) sc) = do attack; patbind n 
-                                     pbinds sc
-    pbinds tm = return ()
-
-    psolve (Bind n (PVar t) sc) = do solve; psolve sc
-    psolve tm = return ()
-
-    pvars ist (Bind n (PVar t) sc) = (n, delab ist t) : pvars ist sc
-    pvars ist _ = []
-
     pinfo ns ps i 
           = let ds = concatMap declared ps
                 newps = params info ++ ns
@@ -150,6 +141,103 @@ elabClause info fc (PClause fname lhs rhs whereblock)
                                            Nothing -> n
                                            _ -> MN i (show n)) . l
                     }
+
+elabClause info fc (PWith fname lhs withs wval withblock) 
+   = do ctxt <- getContext
+        -- Build the LHS as an "Infer", and pull out its type and
+        -- pattern bindings
+        ((lhs', dlhs), _) <- tclift $ elaborate ctxt (MN 0 "patLHS") infP
+                                      (erun fc (build info True (infTerm lhs)))
+        let lhs_tm = getInferTerm lhs'
+        let lhs_ty = getInferType lhs'
+        let ret_ty = getRetTy lhs_ty
+        logLvl 3 (show lhs_tm)
+        (clhs, clhsty) <- tclift $ recheck ctxt [] lhs_tm
+        logLvl 5 ("Checked " ++ show clhs)
+        logLvl 5 ("Checking " ++ show wval)
+        let bargs = getPBtys lhs_tm
+        -- Elaborate wval in this context
+        ((wval', defer), _) <- 
+            tclift $ elaborate ctxt (MN 0 "withRHS") 
+                        (bindTyArgs PVTy bargs infP)
+                        (do pbinds lhs_tm
+                            -- TODO: may want where here - see winfo abpve
+                            (_', d) <- erun fc (build info False (infTerm wval))
+                            psolve lhs_tm
+                            tt <- get_term
+                            return (tt, d))
+        addDeferred defer
+        (cwval, cwvalty) <- tclift $ recheck ctxt [] (getInferTerm wval')
+        logLvl 3 ("With type " ++ show cwvalty ++ "\nRet type " ++ show ret_ty)
+        windex <- getName
+        -- build a type declaration for the new function:
+        -- (ps : Xs) -> (withval : cwvalty) -> ret_ty 
+        let wtype = bindTyArgs Pi (bargs ++ [(MN 0 "warg", getRetTy cwvalty)]) ret_ty
+        logLvl 3 ("New function type " ++ show wtype)
+        let wname = MN windex (show fname)
+        addDeferred [(wname, wtype)]
+
+        -- in the subdecls, lhs becomes:
+        --         fname  pats | wpat [rest]
+        --    ==>  fname' ps   wpat [rest]
+        wb <- mapM (mkAuxC wname (map fst bargs)) withblock
+        logLvl 5 ("with block " ++ show wb)
+        mapM_ (elabDecl info) wb
+
+        -- rhs becomes: fname' ps wval
+        let rhs = PApp fc (PRef fc wname) (map (PExp . (PRef fc) . fst) bargs ++ 
+                                                [PExp wval])
+        logLvl 3 ("New RHS " ++ show rhs)
+        ctxt <- getContext -- New context with block added
+        ((rhs', defer), _) <-
+           tclift $ elaborate ctxt (MN 0 "wpatRHS") clhsty
+                    (do pbinds lhs_tm
+                        (_, d) <- erun fc (build info False rhs)
+                        psolve lhs_tm
+                        tt <- get_term
+                        return (tt, d))
+        addDeferred defer
+        (crhs, crhsty) <- tclift $ recheck ctxt [] rhs'
+        return (clhs, crhs)
+  where
+    mkAuxC wname ns (PClauses fc n cs)
+        | n == fname = do cs' <- mapM (mkAux wname ns) cs
+                          return $ PClauses fc wname cs'
+        | otherwise = fail $ "with clause uses wrong function name " ++ show n
+    mkAuxC wname ns d = return $ d
+
+    mkAux wname ns (PClause n tm (w:ws) rhs wheres)
+        = do lhs <- updateLHS n wname ns tm w
+             return $ PClause wname lhs ws rhs wheres
+    mkAux wname ns (PWith n tm (w:ws) wval wheres)
+        = do lhs <- updateLHS n wname ns tm w
+             return $ PWith wname lhs ws wval wheres
+        
+    updateLHS n wname ns (PApp fc (PRef fc' n') args) w
+        = return $ PApp fc (PRef fc' wname) 
+                           (map (PExp . (PRef fc')) ns ++ [PExp w])
+    updateLHS n wname ns tm w = fail $ "Not implemented " ++ show tm 
+
+pbinds (Bind n (PVar t) sc) = do attack; patbind n 
+                                 pbinds sc
+pbinds tm = return ()
+
+pbty (Bind n (PVar t) sc) tm = Bind n (PVTy t) (pbty sc tm)
+pbty _ tm = tm
+
+getPBtys (Bind n (PVar t) sc) = (n, t) : getPBtys sc
+getPBtys _ = []
+
+getRetTy (Bind n (PVar _) sc) = getRetTy sc
+getRetTy (Bind n (PVTy _) sc) = getRetTy sc
+getRetTy (Bind n (Pi _) sc)   = getRetTy sc
+getRetTy sc = sc
+
+psolve (Bind n (PVar t) sc) = do solve; psolve sc
+psolve tm = return ()
+
+pvars ist (Bind n (PVar t) sc) = (n, delab ist t) : pvars ist sc
+pvars ist _ = []
 
 -- TODO: Also build a 'binary' version of each declaration for fast reloading
 
@@ -215,8 +303,8 @@ elab info pattern tm = do elab' tm
     elab' (PPair fc l r) = try (elab' (PApp fc (PRef fc pairTy)
                                             [PExp l,PExp r]))
                                (elab' (PApp fc (PRef fc pairCon)
-                                            [PImp (MN 0 "a") Placeholder,
-                                             PImp (MN 0 "a") Placeholder,
+                                            [PImp (MN 0 "A") Placeholder,
+                                             PImp (MN 0 "B") Placeholder,
                                              PExp l, PExp r]))
     elab' (PRef fc n) | pattern && not (inparamBlock n)
                          = erun fc $ 

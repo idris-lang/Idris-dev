@@ -114,10 +114,18 @@ parseProg syn fname input pos
 
 -- Collect PClauses with the same function name
 collect :: [PDecl] -> [PDecl]
-collect (c@(PClauses fc _ [PClause n l r w]) : ds) = clauses n [] (c:ds)
-  where clauses n acc (PClauses fc _ [PClause n' l r w] : ds)
-           | n == n' = clauses n (PClause n' l r (collect w) : acc) ds
-        clauses n acc xs = PClauses fc n (reverse acc) : collect xs
+collect (c@(PClauses _ _ _) : ds) 
+    = clauses (cname c) [] (c : ds)
+  where clauses n acc (PClauses fc _ [PClause n' l ws r w] : ds)
+           | n == n' = clauses n (PClause n' l ws r (collect w) : acc) ds
+        clauses n acc (PClauses fc _ [PWith   n' l ws r w] : ds)
+           | n == n' = clauses n (PWith n' l ws r (collect w) : acc) ds
+        clauses n acc xs = PClauses (getfc c) n (reverse acc) : collect xs
+
+        cname (PClauses fc _ [PClause n _ _ _ _]) = n
+        cname (PClauses fc _ [PWith   n _ _ _ _]) = n
+        getfc (PClauses fc _ _) = fc
+
 collect (PParams f ns ps : ds) = PParams f ns (collect ps) : (collect ds)
 collect (d : ds) = d : collect ds
 collect [] = []
@@ -480,24 +488,56 @@ pPattern syn = do fc <- pfc
 
 pClause :: SyntaxInfo -> IParser PClause
 pClause syn
-        = try (do n <- pfName
-                  iargs <- many (pImplicitArg syn)
-                  fc <- pfc
-                  args <- many (pHSimpleExpr syn)
-                  lchar '='
-                  rhs <- pExpr syn
-                  wheres <- choice [pWhereblock syn, do lchar ';'; return []]
-                  return $ PClause n (PApp fc (PRef fc n) 
-                                          (iargs ++ map PExp args)) rhs wheres)
+         = try (do n <- pfName
+                   iargs <- many (pImplicitArg syn)
+                   fc <- pfc
+                   args <- many (pHSimpleExpr syn)
+                   wargs <- many (pWExpr syn)
+                   lchar '='
+                   rhs <- pExpr syn
+                   wheres <- choice [pWhereblock syn, do lchar ';'; return []]
+                   return $ PClause n (PApp fc (PRef fc n) 
+                                           (iargs ++ map PExp args)) wargs rhs wheres)
+       <|> try (do n <- pfName
+                   iargs <- many (pImplicitArg syn)
+                   fc <- pfc
+                   args <- many (pHSimpleExpr syn)
+                   wargs <- many (pWExpr syn)
+                   reserved "with"
+                   wval <- pSimpleExpr syn
+                   lchar '{'
+                   ds <- many1 $ pFunDecl syn
+                   let withs = concat ds
+                   lchar '}'
+                   return $ PWith n (PApp fc (PRef fc n) 
+                                       (iargs ++ map PExp args)) wargs wval withs)
+
        <|> do l <- pSimpleExpr syn
               op <- operator
               let n = UN [op]
               r <- pSimpleExpr syn
               fc <- pfc
+              wargs <- many (pWExpr syn)
               lchar '='
               rhs <- pExpr syn
               wheres <- choice [pWhereblock syn, do lchar ';'; return []]
-              return $ PClause n (PApp fc (PRef fc n) [PExp l,PExp r]) rhs wheres
+              return $ PClause n (PApp fc (PRef fc n) [PExp l,PExp r]) wargs rhs wheres
+
+       <|> do l <- pSimpleExpr syn
+              op <- operator
+              let n = UN [op]
+              r <- pSimpleExpr syn
+              fc <- pfc
+              wargs <- many (pWExpr syn)
+              wval <- pExpr syn
+              lchar '{'
+              ds <- many1 $ pFunDecl syn
+              let withs = concat ds
+              lchar '}'
+              return $ PWith n (PApp fc (PRef fc n) [PExp l, PExp r]) wargs wval withs
+
+pWExpr :: SyntaxInfo -> IParser PTerm
+pWExpr syn = do lchar '|'; pExpr' syn
 
 pWhereblock :: SyntaxInfo -> IParser [PDecl]
 pWhereblock syn = do reserved "where"; lchar '{'

@@ -140,7 +140,8 @@ data PDecl' t = PFix     FC Fixity [String] -- fixity declaration
               | PSyntax  FC Syntax
     deriving Functor
 
-data PClause' t = PClause Name t t [PDecl]
+data PClause' t = PClause Name t [t] t [PDecl]
+                | PWith   Name t [t] t [PDecl]
     deriving Functor
 
 data PData' t  = PDatadecl { d_name :: Name,
@@ -231,14 +232,26 @@ instance Show PDecl where
     show (PData _ d) = show d
 
 instance Show PClause where
-    show c = showCImp False c
+    show c = showCImp True c
 
 instance Show PData where
     show d = showDImp False d
 
 showCImp :: Bool -> PClause -> String
-showCImp impl (PClause n l r w) = showImp impl l ++ " = " ++ showImp impl r
-                                    ++ " where " ++ show w 
+showCImp impl (PClause n l ws r w) 
+   = showImp impl l ++ showWs ws ++ " = " ++ showImp impl r
+             ++ " where " ++ show w 
+  where
+    showWs [] = ""
+    showWs (x : xs) = " | " ++ showImp impl x ++ showWs xs
+showCImp impl (PWith n l ws r w) 
+   = showImp impl l ++ showWs ws ++ " with " ++ showImp impl r
+             ++ " { " ++ show w ++ " } " 
+  where
+    showWs [] = ""
+    showWs (x : xs) = " | " ++ showImp impl x ++ showWs xs
+
+
 showDImp :: Bool -> PData -> String
 showDImp impl (PDatadecl n ty cons) 
    = "data " ++ show n ++ " : " ++ showImp impl ty ++ " where\n\t"
@@ -366,7 +379,7 @@ pairDecl  = PDatadecl pairTy (piBind [(n "A", PSet), (n "B", PSet)] PSet)
             [(pairCon, PPi Imp (n "A") PSet (
                        PPi Imp (n "B") PSet (
                        PPi Exp (n "a") (PRef bi (n "A")) (
-                       PPi Exp (n "c") (PRef bi (n "B"))  
+                       PPi Exp (n "b") (PRef bi (n "B"))  
                            (PApp bi (PRef bi pairTy) [PExp (PRef bi (n "A")),
                                                 PExp (PRef bi (n "B"))])))), bi)]
     where n a = MN 0 a
@@ -426,6 +439,9 @@ addImpl :: IState -> PTerm -> PTerm
 addImpl ist ptm = ai [] ptm
   where
     ai env (PRef fc f)       = aiFn fc env (PRef fc f) []
+    ai env (PPair fc l r) = let l' = ai env l
+                                r' = ai env r in
+                                PPair fc l' r'
     ai env (PApp fc (PRef _ f) as) 
                           = let as' = map (fmap (ai env)) as in
                                 aiFn fc env (PRef fc f) as'
