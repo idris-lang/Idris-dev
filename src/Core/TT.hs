@@ -280,6 +280,10 @@ bindAll ((n, b) : bs) t = Bind n b (bindAll bs t)
 bindTyArgs :: (TT n -> Binder (TT n)) -> [(n, TT n)] -> TT n -> TT n
 bindTyArgs b xs = bindAll (map (\ (n, ty) -> (n, b ty)) xs)
 
+getArgTys :: TT n -> [(n, TT n)]
+getArgTys (Bind n (Pi t) sc) = (n, t) : getArgTys sc
+getArgTys _ = []
+
 type Term = TT Name
 type Type = Term
 

@@ -215,10 +215,11 @@ initDSL = DSL (UN ["io_bind"]) (UN ["io_return"])
 
 data SyntaxInfo = Syn { using :: [(Name, PTerm)],
                         syn_params :: [(Name, PTerm)],
+                        no_imp :: [Name],
                         dsl_info :: DSL }
     deriving Show
 
-defaultSyntax = Syn [] [] initDSL
+defaultSyntax = Syn [] [] [] initDSL
 
 --- Pretty printing declarations and terms
 
@@ -398,7 +399,7 @@ implicitise syn ist tm
     = let uvars = using syn
           pvars = syn_params syn
           (declimps, ns') = execState (imps True [] tm) ([], []) 
-          ns = ns' \\ map fst pvars in
+          ns = ns' \\ (map fst pvars ++ no_imp syn) in
           if null ns 
             then (tm, reverse declimps) 
             else implicitise syn ist (pibind uvars ns tm)

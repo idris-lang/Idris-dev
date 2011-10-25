@@ -7,6 +7,7 @@ import Idris.ElabDecls
 
 import Core.CoreParser
 import Core.TT
+import Core.Evaluate
 
 import Text.ParserCombinators.Parsec
 import Text.ParserCombinators.Parsec.Expr
@@ -486,6 +487,11 @@ pPattern syn = do fc <- pfc
                   clause <- pClause syn
                   return (PClauses fc (MN 2 "_") [clause]) -- collect together later
 
+whereSyn :: Name -> SyntaxInfo -> [PTerm] -> SyntaxInfo
+whereSyn n syn args = let ns = concatMap allNamesIn args
+                          ni = no_imp syn in
+                          syn { no_imp = nub (ni ++ ns) }
+
 pClause :: SyntaxInfo -> IParser PClause
 pClause syn
          = try (do n <- pfName
@@ -495,7 +501,10 @@ pClause syn
                    wargs <- many (pWExpr syn)
                    lchar '='
                    rhs <- pExpr syn
-                   wheres <- choice [pWhereblock syn, do lchar ';'; return []]
+                   ist <- getState
+                   let ctxt = tt_ctxt ist
+                   let wsyn = whereSyn n syn (map getTm iargs ++ args ++ wargs)
+                   wheres <- choice [pWhereblock wsyn, do lchar ';'; return []]
                    return $ PClause n (PApp fc (PRef fc n) 
                                            (iargs ++ map PExp args)) wargs rhs wheres)
        <|> try (do n <- pfName
