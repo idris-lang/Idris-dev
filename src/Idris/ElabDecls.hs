@@ -52,7 +52,8 @@ elabData info fc (PDatadecl n t dcons)
          logLvl 2 $ "---> " ++ show cty
          updateContext (addTyDecl n cty) -- temporary, to check cons
          cons <- mapM (elabCon info) dcons
-         setContext (addDatatype (Data n cty cons) ctxt)
+         ttag <- getName
+         setContext (addDatatype (Data n ttag cty cons) ctxt)
 
 elabCon :: ElabInfo -> (Name, PTerm, FC) -> Idris (Name, Type)
 elabCon info (n, t, fc)
@@ -74,11 +75,13 @@ elabClauses info fc n_in cs = let n = liftname info n_in in
          logLvl 3 (showSep "\n" (map (\ (l,r) -> 
                                         show l ++ " = " ++ 
                                         show r) pats))
-         let tree = simpleCase (map debind pats)
+         ist <- get
+         let tcase = opt_typecase (idris_options ist)
+         let tree = simpleCase tcase (map debind pats)
          logLvl 3 (show tree)
          ctxt <- getContext
          case lookupTy n ctxt of
-             Just ty -> updateContext (addCasedef n (map debind pats) ty)
+             Just ty -> updateContext (addCasedef n tcase (map debind pats) ty)
              Nothing -> return ()
   where
     debind (x, y) = (depat x, depat y)

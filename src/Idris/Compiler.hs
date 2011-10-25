@@ -52,7 +52,7 @@ instance ToEpic (TT Name) where
           | (P _ (UN ["mkForeign"]) _, args) <- unApply tm
               = doForeign args
       epic' env (P (DCon t a) n _) = return $ con_ t
-      epic' env (P (TCon _) _ _) = return impossible
+      epic' env (P (TCon t a) n _) = return $ con_ t
       epic' env (P _ n _) = return $ ref (ename n) 
       epic' env (V i) = return $ ref (env!!i)
       epic' env (Bind n (Lam _) sc)
@@ -99,7 +99,11 @@ instance ToEpic Const where
     epic (Fl f)  = return (float f)
     epic (Str s) = return (str s)
     epic (Ch c)  = return (char c)
-    epic _ = return impossible
+    epic IType   = return $ con_ 1
+    epic FlType  = return $ con_ 2
+    epic ChType  = return $ con_ 3
+    epic StrType = return $ con_ 4
+    epic PtrType = return $ con_ 5
 
 instance ToEpic ([Name], SC) where
     epic (args, tree) = do logLvl 3 $ "Compiling " ++ show args ++ "\n" ++ show tree

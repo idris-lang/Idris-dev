@@ -169,9 +169,9 @@ checkProgram ctxt ((n, RData (RDatatype _ ty cons)) : xs)
    = do (ty', tyt') <- trace (show n) $ check ctxt [] ty
         isSet ctxt [] tyt'
         -- add the tycon temporarily so we can check constructors
-        let ctxt' = addDatatype (Data n ty' []) ctxt
+        let ctxt' = addDatatype (Data n 0 ty' []) ctxt
         cons' <- mapM (checkCon ctxt') cons
-        checkProgram (addDatatype (Data n ty' cons') ctxt) xs
+        checkProgram (addDatatype (Data n 0 ty' cons') ctxt) xs
   where checkCon ctxt (n, cty) = do (cty', ctyt') <- check ctxt [] cty
                                     return (n, cty')
 

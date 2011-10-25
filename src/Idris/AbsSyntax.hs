@@ -13,10 +13,12 @@ import Debug.Trace
 
 import qualified Epic.Epic as E
 
-data IOption = IOption { opt_logLevel :: Int }
+data IOption = IOption { opt_logLevel :: Int,
+                         opt_typecase :: Bool 
+                       }
     deriving (Show, Eq)
 
-defaultOpts = IOption 0
+defaultOpts = IOption 0 False
 
 -- TODO: Add 'module data' to IState, which can be saved out and reloaded quickly (i.e
 -- without typechecking).
@@ -35,7 +37,7 @@ data IState = IState { tt_ctxt :: Context,
                        idris_prims :: [(Name, ([E.Name], E.Term))]
                      }
                    
-idrisInit = IState emptyContext [] emptyContext "" defaultOpts 0 [] [] [] []
+idrisInit = IState emptyContext [] emptyContext "" defaultOpts 6 [] [] [] []
 
 -- The monad for the main REPL - reading and processing files and updating 
 -- global state (hence the IO inner monad).
@@ -101,6 +103,12 @@ logLvl l str = do i <- get
 
 iLOG :: String -> Idris ()
 iLOG = logLvl 1
+
+setTypeCase :: Bool -> Idris ()
+setTypeCase t = do i <- get
+                   let opts = idris_options i
+                   let opt' = opts { opt_typecase = t }
+                   put (i { idris_options = opt' })
 
 -- Commands in the REPL
 
@@ -173,7 +181,7 @@ data PTerm = PQuote Raw
            | PRef FC Name
            | PLam Name PTerm PTerm
            | PPi  Plicity Name PTerm PTerm
-           | PLet Name PTerm PTerm PTerm -- not implemented yet
+           | PLet Name PTerm PTerm PTerm 
            | PApp FC PTerm [PArg]
            | PTrue FC
            | PFalse FC
@@ -365,7 +373,7 @@ inferDecl = PDatadecl inferTy
                                   (PRef bi inferTy)), bi)]
 
 infTerm t = PApp bi (PRef bi inferCon) [PImp (MN 0 "A") Placeholder, PExp t]
-infP = P (TCon 0) inferTy (Set 0)
+infP = P (TCon 6 0) inferTy (Set 0)
 
 getInferTerm, getInferType :: Term -> Term
 getInferTerm (Bind n b sc) = Bind n b $ getInferTerm sc

@@ -32,6 +32,7 @@ data Opt = Filename String
          | NoPrelude
          | NoREPL
          | OLogging Int
+         | TypeCase
     deriving Eq
 
 main = do xs <- getArgs
@@ -51,6 +52,7 @@ runIdris opts =
        when runrepl $ repl (mkPrompt mods)
   where
     makeOption (OLogging i) = setLogLevel i
+    makeOption TypeCase = setTypeCase True
     makeOption _ = return ()
 
 mkPrompt [] = "Idris"
@@ -72,6 +74,7 @@ parseArgs [] = return []
 parseArgs ("--log":lvl:ns)   = liftM (OLogging (read lvl) : ) (parseArgs ns)
 parseArgs ("--noprelude":ns) = liftM (NoPrelude : ) (parseArgs ns)
 parseArgs ("--check":ns)     = liftM (NoREPL : ) (parseArgs ns)
+parseArgs ("--typecase":ns)  = liftM (TypeCase : ) (parseArgs ns)
 parseArgs (n:ns)             = liftM (Filename n : ) (parseArgs ns)
 
 {-

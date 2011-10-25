@@ -17,7 +17,7 @@ unify ctxt env topx topy
               Error e -> tfail $ CantUnify topx topy e  
   where
     injective (P (DCon _ _) _ _) = True
-    injective (P (TCon _) _ _)   = True
+    injective (P (TCon _ _) _ _) = True
     injective (App f a)          = injective f
     injective _                  = False
 

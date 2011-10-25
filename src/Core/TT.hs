@@ -158,7 +158,7 @@ type RProgram = [(Name, RDef)]
 
 -- WELL TYPED TERMS ---------------------------------------------------------
 
-data NameType = Bound | Ref | DCon Int Int | TCon Int
+data NameType = Bound | Ref | DCon Int Int | TCon Int Int
   deriving (Show, Eq)
 
 data TT n = P NameType n (TT n) -- embed type
@@ -172,6 +172,7 @@ data TT n = P NameType n (TT n) -- embed type
 type EnvTT n = [(n, Binder (TT n))]
 
 data Datatype n = Data { d_typename :: n,
+                         d_typetag  :: Int,
                          d_type     :: (TT n),
                          d_cons     :: [(n, TT n)] }
   deriving (Show, Functor, Eq)

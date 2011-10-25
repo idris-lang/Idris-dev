@@ -23,12 +23,12 @@ type CaseTree = SC
 type Clause   = ([Pat], Term)
 type CS = Int
 
-simpleCase :: [(Term, Term)] -> CaseDef
-simpleCase [] = CaseDef [] (UnmatchedCase "No pattern clauses")
-simpleCase cs = let pats    = map (\ (l, r) -> (toPats l, r)) cs
-                    numargs = length (fst (head pats)) 
-                    ns      = take numargs args in
-                    CaseDef ns (evalState (match ns pats (UnmatchedCase "Error")) numargs)
+simpleCase :: Bool -> [(Term, Term)] -> CaseDef
+simpleCase tc [] = CaseDef [] (UnmatchedCase "No pattern clauses")
+simpleCase tc cs = let pats    = map (\ (l, r) -> (toPats tc l, r)) cs
+                       numargs = length (fst (head pats)) 
+                       ns      = take numargs args in
+                       CaseDef ns (evalState (match ns pats (UnmatchedCase "Error")) numargs)
     where args = map (\i -> MN i "e") [0..]
 
 data Pat = PCon Name Int [Pat]
@@ -40,16 +40,26 @@ data Pat = PCon Name Int [Pat]
 -- If there are repeated variables, take the *last* one (could be name shadowing
 -- in a where clause, so take the most recent).
 
-toPats :: Term -> [Pat]
-toPats f = reverse (toPat (getArgs f)) where
+toPats :: Bool -> Term -> [Pat]
+toPats tc f = reverse (toPat tc (getArgs f)) where
    getArgs (App f a) = a : getArgs f
    getArgs _ = []
 
-toPat :: [Term] -> [Pat]
-toPat tms = evalState (mapM (\x -> toPat' x []) tms) []
+toPat :: Bool -> [Term] -> [Pat]
+toPat tc tms = evalState (mapM (\x -> toPat' x []) tms) []
   where
     toPat' (P (DCon t a) n _) args = do args' <- mapM (\x -> toPat' x []) args
                                         return $ PCon n t args'
+    -- Typecase
+    toPat' (P (TCon t a) n _) args | tc 
+                                   = do args' <- mapM (\x -> toPat' x []) args
+                                        return $ PCon n t args'
+    toPat' (Constant IType)   [] | tc = return $ PCon (UN ["Int"])    1 [] 
+    toPat' (Constant FlType)  [] | tc = return $ PCon (UN ["Float"])  2 [] 
+    toPat' (Constant ChType)  [] | tc = return $ PCon (UN ["Char"])   3 [] 
+    toPat' (Constant StrType) [] | tc = return $ PCon (UN ["String"]) 4 [] 
+    toPat' (Constant PtrType) [] | tc = return $ PCon (UN ["Ptr"])    5 [] 
+
     toPat' (P Bound n _)      []   = do ns <- get
                                         if n `elem` ns 
                                           then return PAny 

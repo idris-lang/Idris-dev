@@ -122,6 +122,9 @@ eval ctxt genv tm = ev [] tm where
     chooseAlt _ (VP (DCon i a) _ _, args) alts amap
         | Just (ns, sc) <- findTag i alts = Just (updateAmap (zip ns args) amap, sc)
         | Just v <- findDefault alts      = Just (amap, v)
+    chooseAlt _ (VP (TCon i a) _ _, args) alts amap
+        | Just (ns, sc) <- findTag i alts = Just (updateAmap (zip ns args) amap, sc)
+        | Just v <- findDefault alts      = Just (amap, v)
     chooseAlt _ (VConstant c, []) alts amap
         | Just v <- findConst c alts      = Just (amap, v)
         | Just v <- findDefault alts      = Just (amap, v)
@@ -142,6 +145,11 @@ eval ctxt genv tm = ev [] tm where
 
     findConst c [] = Nothing
     findConst c (ConstCase c' v : xs) | c == c' = Just v
+    findConst IType   (ConCase n 1 [] v : xs) = Just v 
+    findConst FlType  (ConCase n 2 [] v : xs) = Just v 
+    findConst ChType  (ConCase n 3 [] v : xs) = Just v 
+    findConst StrType (ConCase n 4 [] v : xs) = Just v 
+    findConst PtrType (ConCase n 5 [] v : xs) = Just v 
     findConst c (_ : xs) = findConst c xs
 
     getValArgs tm = getValArgs' tm []
@@ -199,10 +207,10 @@ addTyDecl :: Name -> Type -> Context -> Context
 addTyDecl n ty ctxt = addDef n (TyDecl Ref ty (eval ctxt [] ty)) ctxt
 
 addDatatype :: Datatype Name -> Context -> Context
-addDatatype (Data n ty cons) ctxt
+addDatatype (Data n tag ty cons) ctxt
     = let ty' = normalise ctxt [] ty in
           addCons 0 cons (addDef n 
-             (TyDecl (TCon (arity ty')) ty (eval ctxt [] ty)) ctxt)
+             (TyDecl (TCon tag (arity ty')) ty (eval ctxt [] ty)) ctxt)
   where
     addCons tag [] ctxt = ctxt
     addCons tag ((n, ty) : cons) ctxt 
@@ -210,9 +218,9 @@ addDatatype (Data n ty cons) ctxt
               addCons (tag+1) cons (addDef n
                   (TyDecl (DCon tag (arity ty')) ty (eval ctxt [] ty)) ctxt)
 
-addCasedef :: Name -> [(Term, Term)] -> Type -> Context -> Context
-addCasedef n ps ty ctxt 
-    = case simpleCase ps of
+addCasedef :: Name -> Bool -> [(Term, Term)] -> Type -> Context -> Context
+addCasedef n tcase ps ty ctxt 
+    = case simpleCase tcase ps of
         CaseDef args sc -> addDef n (CaseOp ty ps args sc) ctxt
 
 addOperator :: Name -> Type -> Int -> ([Value] -> Maybe Value) -> Context -> Context
