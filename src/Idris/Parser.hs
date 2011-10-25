@@ -322,6 +322,7 @@ pSimpleExpr syn =
         try (do symbol "!["; t <- pTerm; lchar ']' 
                 return $ PQuote t)
         <|> try (do lchar '?'; x <- pName; return (PMetavar x))
+        <|> try (do fc <- pfc; reserved "refl"; return (PRefl fc))
         <|> try (do fc <- pfc; reserved "return"; return (PReturn fc))
         <|> try (do fc <- pfc; x <- pfName; return (PRef fc x))
         <|> try (do lchar '('; l <- pExpr syn; lchar ','; fc <- pfc
@@ -421,7 +422,7 @@ pConstant = do reserved "Int";    return IType
 table fixes 
    = [[prefix "-" (\fc x -> PApp fc (PRef fc (UN ["-"])) [PExp (PConstant (I 0)), PExp x])]] 
        ++ toTable (reverse fixes) ++
-      [[binary "="  (\fc x y -> PApp fc (PRef fc (UN ["="])) [PExp x,PExp y]) AssocLeft],
+      [[binary "="  (\fc x y -> PEq fc x y) AssocLeft],
        [binary "->" (\fc x y -> PPi Exp (MN 0 "X") x y) AssocRight]]
 
 toTable fs = map (map toBin) 

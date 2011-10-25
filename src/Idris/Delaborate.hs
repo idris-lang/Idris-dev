@@ -32,7 +32,9 @@ delab ist tm = de [] tm
 
     deFn env (App f a) args = deFn env f (a:args)
     deFn env (P _ n _) [l,r]     | n == pairTy  = PPair un (de env l) (de env r)
+                                 | n == eqCon   = PRefl un
     deFn env (P _ n _) [_,_,l,r] | n == pairCon = PPair un (de env l) (de env r)
+                                 | n == eqTy    = PEq un (de env l) (de env r)
     deFn env (P _ n _) args = mkPApp n (map (de env) args)
     deFn env f args = PApp un (de env f) (map PExp (map (de env) args))
 

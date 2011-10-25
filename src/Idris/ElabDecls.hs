@@ -307,6 +307,11 @@ elab info pattern tm = do elab' tm
     elab' (PTrue fc)     = try (elab' (PRef fc unitCon))
                                (elab' (PRef fc unitTy))
     elab' (PFalse fc)    = elab' (PRef fc falseTy)
+    elab' (PRefl fc)     = elab' (PApp fc (PRef fc eqCon) [PImp (MN 0 "a") Placeholder,
+                                                           PImp (MN 0 "x") Placeholder])
+    elab' (PEq fc l r)   = elab' (PApp fc (PRef fc eqTy) [PImp (MN 0 "a") Placeholder,
+                                                          PImp (MN 0 "b") Placeholder,
+                                                          PExp l, PExp r])
     elab' (PPair fc l r) = try (elab' (PApp fc (PRef fc pairTy)
                                             [PExp l,PExp r]))
                                (elab' (PApp fc (PRef fc pairCon)

@@ -177,6 +177,8 @@ data PTerm = PQuote Raw
            | PApp FC PTerm [PArg]
            | PTrue FC
            | PFalse FC
+           | PRefl FC
+           | PEq FC PTerm PTerm
            | PPair FC PTerm PTerm
            | PDPair FC PTerm PTerm
            | PHidden PTerm -- irrelevant or hidden pattern
@@ -302,8 +304,10 @@ showImp impl tm = se 10 tm where
               bracket p 1 $ se 1 f ++ (if impl then concatMap siArg imps else "")
                                    ++ concatMap seArg args
     se p (PHidden tm) = "." ++ se 0 tm
+    se p (PRefl _) = "refl"
     se p (PTrue _) = "()"
     se p (PFalse _) = "_|_"
+    se p (PEq _ l r) = bracket p 2 $ se 10 l ++ " = " ++ se 10 r
     se p (PPair _ l r) = "(" ++ se 10 l ++ ", " ++ se 10 r ++ ")"
     se p (PDPair _ l r) = "(" ++ se 10 l ++ " ** " ++ se 10 r ++ ")"
     se p PSet = "Set"
@@ -326,6 +330,7 @@ allNamesIn tm = nub $ ni [] tm
     ni env (PLam n ty sc)  = ni env ty ++ ni (n:env) sc
     ni env (PPi _ n ty sc) = ni env ty ++ ni (n:env) sc
     ni env (PHidden tm)    = ni env tm
+    ni env (PEq _ l r)     = ni env l ++ ni env r
     ni env (PPair _ l r)   = ni env l ++ ni env r
     ni env (PDPair _ l r)  = ni env l ++ ni env r
     ni env _               = []
@@ -341,6 +346,7 @@ namesIn ist tm = nub $ ni [] tm
     ni env (PApp _ f as)  = ni env f ++ concatMap (ni env) (map getTm as)
     ni env (PLam n ty sc)  = ni env ty ++ ni (n:env) sc
     ni env (PPi _ n ty sc) = ni env ty ++ ni (n:env) sc
+    ni env (PEq _ l r)     = ni env l ++ ni env r
     ni env (PPair _ l r)   = ni env l ++ ni env r
     ni env (PDPair _ l r)  = ni env l ++ ni env r
     ni env (PHidden tm)    = ni env tm
@@ -369,8 +375,7 @@ getInferTerm tm = error ("getInferTerm " ++ show tm)
 getInferType (Bind n b sc) = Bind n b $ getInferType sc
 getInferType (App (App _ ty) _) = ty
 
--- Handy primitives: Unit, False, Pair, MkPair, mkForeign
-
+-- Handy primitives: Unit, False, Pair, MkPair, =, mkForeign
 
 unitTy   = MN 0 "__Unit"
 unitCon  = MN 0 "__II"
@@ -391,6 +396,19 @@ pairDecl  = PDatadecl pairTy (piBind [(n "A", PSet), (n "B", PSet)] PSet)
                                                 PExp (PRef bi (n "B"))])))), bi)]
     where n a = MN 0 a
 
+eqTy = UN ["="]
+eqCon = UN ["refl"]
+eqDecl = PDatadecl eqTy (piBind [(n "a", PSet), (n "b", PSet),
+                                 (n "x", PRef bi (n "a")), (n "y", PRef bi (n "b"))]
+                                 PSet)
+                [(eqCon, PPi Imp (n "a") PSet (
+                         PPi Imp (n "x") (PRef bi (n "a"))
+                           (PApp bi (PRef bi eqTy) [PImp (n "a") Placeholder,
+                                                    PImp (n "b") Placeholder,
+                                                    PExp (PRef bi (n "x")),
+                                                    PExp (PRef bi (n "x"))])), bi)]
+    where n a = MN 0 a
+
 -- Defined in builtins.idr
 sigmaTy   = UN ["Sigma"]
 existsCon = UN ["Exists"]
@@ -404,6 +422,8 @@ piBind ((n, ty):ns) t = PPi Exp n ty (piBind ns t)
 -- Add implicit Pi bindings for any names in the term which appear in an
 -- argument position.
 
+-- This has become a right mess already. Better redo it some time...
+
 implicitise :: SyntaxInfo -> IState -> PTerm -> (PTerm, [PArg])
 implicitise syn ist tm
     = let uvars = using syn
@@ -414,29 +434,39 @@ implicitise syn ist tm
             then (tm, reverse declimps) 
             else implicitise syn ist (pibind uvars ns tm)
   where
+    dropAll (x:xs) ys | x `elem` ys = dropAll xs ys
+                      | otherwise   = x : dropAll xs ys
+    dropAll [] ys = []
+
     imps top env (PApp _ f as)
        = do (decls, ns) <- get
             let isn = concatMap (namesIn ist) (map getTm as)
-            put (decls, nub (ns ++ (isn \\ (env ++ map fst (getImps decls)))))
+            put (decls, nub (ns ++ (isn `dropAll` (env ++ map fst (getImps decls)))))
     imps top env (PPi Imp n ty sc) 
-        = do let isn = namesIn ist ty \\ [n]
+        = do let isn = nub (namesIn ist ty) `dropAll` [n]
              (decls , ns) <- get
-             put (PImp n ty : decls, nub (ns ++ (isn \\ (env ++ map fst (getImps decls)))))
+             put (PImp n ty : decls, 
+                  nub (ns ++ (isn `dropAll` (env ++ map fst (getImps decls)))))
              imps True (n:env) sc
     imps top env (PPi Exp n ty sc) 
-        = do let isn = (namesIn ist ty ++ case sc of
-                            (PRef _ x) -> namesIn ist sc
-                            _ -> []) \\ [n]
+        = do let isn = nub (namesIn ist ty ++ case sc of
+                            (PRef _ x) -> namesIn ist sc `dropAll` [n]
+                            _ -> [])
              (decls, ns) <- get -- ignore decls in HO types
-             put (PExp ty : decls, nub (ns ++ (isn \\ (env ++ map fst (getImps decls)))))
+             put (PExp ty : decls, 
+                  nub (ns ++ (isn `dropAll` (env ++ map fst (getImps decls)))))
              imps True (n:env) sc
+    imps top env (PEq _ l r)
+        = do (decls, ns) <- get
+             let isn = namesIn ist l ++ namesIn ist r
+             put (decls, nub (ns ++ (isn `dropAll` (env ++ map fst (getImps decls)))))
     imps top env (PPair _ l r)
         = do (decls, ns) <- get
              let isn = namesIn ist l ++ namesIn ist r
-             put (decls, nub (ns ++ (isn \\ (env ++ map fst (getImps decls)))))
+             put (decls, nub (ns ++ (isn `dropAll` (env ++ map fst (getImps decls)))))
     imps top env (PDPair _ (PRef _ n) r)
         = do (decls, ns) <- get
-             let isn = namesIn ist r \\ [n]
+             let isn = nub (namesIn ist r) \\ [n]
              put (decls, nub (ns ++ (isn \\ (env ++ map fst (getImps decls)))))
     imps top env (PDPair _ l r)
         = do (decls, ns) <- get
@@ -459,6 +489,9 @@ addImpl :: IState -> PTerm -> PTerm
 addImpl ist ptm = ai [] ptm
   where
     ai env (PRef fc f)       = aiFn fc env (PRef fc f) []
+    ai env (PEq fc l r)   = let l' = ai env l
+                                r' = ai env r in
+                                PEq fc l' r'
     ai env (PPair fc l r) = let l' = ai env l
                                 r' = ai env r in
                                 PPair fc l' r'
@@ -542,12 +575,16 @@ matchClause x y = match x y where
     match (PRef _ n) (PRef _ n') | n == n' = return []
                                  | otherwise = Nothing
     match (PRef _ n) tm = return [(n, tm)]
+    match (PEq _ l r) (PEq _ l' r') = do ml <- match l l'
+                                         mr <- match r r'
+                                         return (ml ++ mr)
     match (PPair _ l r) (PPair _ l' r') = do ml <- match l l'
                                              mr <- match r r'
                                              return (ml ++ mr)
     match (PDPair _ l r) (PDPair _ l' r') = do ml <- match l l'
                                                mr <- match r r'
                                                return (ml ++ mr)
+    match (PRefl _) (PRefl _) = return []
     match (PTrue _) (PTrue _) = return []
     match (PFalse _) (PFalse _) = return []
     match (PReturn _) (PReturn _) = return []
@@ -571,6 +608,7 @@ substMatch n tm t = sm t where
     sm (PLam x t sc) = PLam x (sm t) (sm sc)
     sm (PPi p x t sc) = PPi p x (sm t) (sm sc)
     sm (PApp f x as) = PApp f (sm x) (map (fmap sm) as)
+    sm (PEq f x y) = PEq f (sm x) (sm y)
     sm (PPair f x y) = PPair f (sm x) (sm y)
     sm (PDPair f x y) = PDPair f (sm x) (sm y)
     sm (PHidden x) = PHidden (sm x)
