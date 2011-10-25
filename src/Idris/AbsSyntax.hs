@@ -116,6 +116,7 @@ data Command = Quit | Help | Eval PTerm
              | Compile String
              | Metavars
              | TTShell 
+             | LogLvl Int
              | NOP
 
 -- Parsed declarations

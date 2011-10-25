@@ -55,6 +55,7 @@ process TTShell  = do ist <- get
                       shst' <- lift $ runShell shst
                       return ()
 process (Compile f) = do compile f 
+process (LogLvl i) = setLogLevel i 
 process Metavars = do ist <- get
                       let mvs = idris_metavars ist \\ primDefs
                       case mvs of
