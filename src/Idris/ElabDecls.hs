@@ -306,6 +306,18 @@ elab info pattern tm = do elab' tm
                                             [PImp (MN 0 "A") Placeholder,
                                              PImp (MN 0 "B") Placeholder,
                                              PExp l, PExp r]))
+    elab' (PDPair fc l@(PRef _ n) r)
+                          = try (elab' (PApp fc (PRef fc sigmaTy)
+                                        [PExp Placeholder,
+                                         PExp (PLam n Placeholder r)]))
+                                (elab' (PApp fc (PRef fc existsCon)
+                                             [PImp (MN 0 "a") Placeholder,
+                                              PImp (MN 0 "P") Placeholder,
+                                              PExp l, PExp r]))
+    elab' (PDPair fc l r) = elab' (PApp fc (PRef fc existsCon)
+                                            [PImp (MN 0 "a") Placeholder,
+                                             PImp (MN 0 "P") Placeholder,
+                                             PExp l, PExp r])
     elab' (PRef fc n) | pattern && not (inparamBlock n)
                          = erun fc $ 
                             try (do apply (Var n) []; solve)

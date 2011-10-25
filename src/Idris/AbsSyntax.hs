@@ -178,6 +178,7 @@ data PTerm = PQuote Raw
            | PTrue FC
            | PFalse FC
            | PPair FC PTerm PTerm
+           | PDPair FC PTerm PTerm
            | PHidden PTerm -- irrelevant or hidden pattern
            | PSet
            | PConstant Const
@@ -302,6 +303,7 @@ showImp impl tm = se 10 tm where
     se p (PTrue _) = "()"
     se p (PFalse _) = "_|_"
     se p (PPair _ l r) = "(" ++ se 10 l ++ ", " ++ se 10 r ++ ")"
+    se p (PDPair _ l r) = "(" ++ se 10 l ++ " ** " ++ se 10 r ++ ")"
     se p PSet = "Set"
     se p (PConstant c) = show c
     se p (PMetavar n) = "?" ++ show n
@@ -323,6 +325,7 @@ allNamesIn tm = nub $ ni [] tm
     ni env (PPi _ n ty sc) = ni env ty ++ ni (n:env) sc
     ni env (PHidden tm)    = ni env tm
     ni env (PPair _ l r)   = ni env l ++ ni env r
+    ni env (PDPair _ l r)  = ni env l ++ ni env r
     ni env _               = []
 
 namesIn :: IState -> PTerm -> [Name]
@@ -337,6 +340,7 @@ namesIn ist tm = nub $ ni [] tm
     ni env (PLam n ty sc)  = ni env ty ++ ni (n:env) sc
     ni env (PPi _ n ty sc) = ni env ty ++ ni (n:env) sc
     ni env (PPair _ l r)   = ni env l ++ ni env r
+    ni env (PDPair _ l r)  = ni env l ++ ni env r
     ni env (PHidden tm)    = ni env tm
     ni env _               = []
 
@@ -374,8 +378,8 @@ unitDecl = PDatadecl unitTy PSet
 falseTy   = MN 0 "__False"
 falseDecl = PDatadecl falseTy PSet []
 
-pairTy    = UN ["Pair"] -- MN 0 "__Pair"
-pairCon   = UN ["MkPair"] -- MN 0 "__MkPair"
+pairTy    = MN 0 "__Pair"
+pairCon   = MN 0 "__MkPair"
 pairDecl  = PDatadecl pairTy (piBind [(n "A", PSet), (n "B", PSet)] PSet)
             [(pairCon, PPi Imp (n "A") PSet (
                        PPi Imp (n "B") PSet (
@@ -384,6 +388,10 @@ pairDecl  = PDatadecl pairTy (piBind [(n "A", PSet), (n "B", PSet)] PSet)
                            (PApp bi (PRef bi pairTy) [PExp (PRef bi (n "A")),
                                                 PExp (PRef bi (n "B"))])))), bi)]
     where n a = MN 0 a
+
+-- Defined in builtins.idr
+sigmaTy   = UN ["Sigma"]
+existsCon = UN ["Exists"]
 
 piBind :: [(Name, PTerm)] -> PTerm -> PTerm
 piBind [] t = t
@@ -422,7 +430,16 @@ implicitise syn ist tm
              imps True (n:env) sc
     imps top env (PPair _ l r)
         = do (decls, ns) <- get
-             put (decls, nub (ns ++ namesIn ist l ++ namesIn ist r))
+             let isn = namesIn ist l ++ namesIn ist r
+             put (decls, nub (ns ++ (isn \\ (env ++ map fst (getImps decls)))))
+    imps top env (PDPair _ (PRef _ n) r)
+        = do (decls, ns) <- get
+             let isn = namesIn ist r \\ [n]
+             put (decls, nub (ns ++ (isn \\ (env ++ map fst (getImps decls)))))
+    imps top env (PDPair _ l r)
+        = do (decls, ns) <- get
+             let isn = namesIn ist l ++ namesIn ist r
+             put (decls, nub (ns ++ (isn \\ (env ++ map fst (getImps decls)))))
     imps top env (PLam n ty sc)  
         = do imps False env ty
              imps False (n:env) sc
@@ -443,6 +460,9 @@ addImpl ist ptm = ai [] ptm
     ai env (PPair fc l r) = let l' = ai env l
                                 r' = ai env r in
                                 PPair fc l' r'
+    ai env (PDPair fc l r) = let l' = ai env l
+                                 r' = ai env r in
+                                 PDPair fc l' r'
     ai env (PApp fc (PRef _ f) as) 
                           = let as' = map (fmap (ai env)) as in
                                 aiFn fc env (PRef fc f) as'

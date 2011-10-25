@@ -299,6 +299,7 @@ pExt syn (Rule (s:ssym) ptm)
                                           (update (dropn n ns) sc)
     update ns (PApp fc t args) = PApp fc (update ns t) (map (fmap (update ns)) args)
     update ns (PPair fc l r) = PPair fc (update ns l) (update ns r)
+    update ns (PDPair fc l r) = PDPair fc (update ns l) (update ns r)
     update ns (PHidden t) = PHidden (update ns t)
     update ns (PDoBlock ds) = PDoBlock $ upd ns ds
       where upd ns (DoExp fc t : ds) = DoExp fc (update ns t) : upd ns ds
@@ -326,6 +327,9 @@ pSimpleExpr syn =
         <|> try (do lchar '('; l <- pExpr syn; lchar ','; fc <- pfc
                     r <- pExpr syn; lchar ')';
                     return (PPair fc l r))
+        <|> try (do lchar '('; l <- pExpr syn; reservedOp "**"; fc <- pfc
+                    r <- pExpr syn; lchar ')';
+                    return (PDPair fc l r))
         <|> try (do lchar '('; e <- pExpr syn; lchar ')'; return e)
         <|> try (do c <- pConstant; return (PConstant c))
         <|> try (do reserved "Set"; return PSet)
@@ -513,7 +517,7 @@ pClause syn
                    args <- many (pHSimpleExpr syn)
                    wargs <- many (pWExpr syn)
                    reserved "with"
-                   wval <- pSimpleExpr syn
+                   wval <- pExpr' syn
                    lchar '{'
                    ds <- many1 $ pFunDecl syn
                    let withs = concat ds
@@ -573,6 +577,7 @@ expandDo dsl (PPi p n ty tm) = PPi p n (expandDo dsl ty) (expandDo dsl tm)
 expandDo dsl (PApp fc t args) = PApp fc (expandDo dsl t)
                                         (map (fmap (expandDo dsl)) args)
 expandDo dsl (PPair fc l r) = PPair fc (expandDo dsl l) (expandDo dsl r)
+expandDo dsl (PDPair fc l r) = PDPair fc (expandDo dsl l) (expandDo dsl r)
 expandDo dsl (PHidden t) = PHidden (expandDo dsl t)
 expandDo dsl (PReturn fc) = PRef fc (dsl_return dsl)
 expandDo dsl (PDoBlock ds) = expandDo dsl $ block (dsl_bind dsl) ds 

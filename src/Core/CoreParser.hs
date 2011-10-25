@@ -17,7 +17,7 @@ type TokenParser a = PTok.TokenParser a
 idrisDef = haskellDef { 
               opStart = iOpStart,
               opLetter = iOpLetter,
-              reservedOpNames = [":", "..", "=", "\\", "|", "<-", "->", "=>"],
+              reservedOpNames = [":", "..", "=", "\\", "|", "<-", "->", "=>", "**"],
               reservedNames = ["let", "in", "data", "Set", -- "if", "then", "else",
                                "do", "dsl", "import", 
                                "infix", "infixl", "infixr", "prefix",
