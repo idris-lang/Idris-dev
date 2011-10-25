@@ -121,7 +121,7 @@ data Raw = Var Name
          | RApp Raw Raw
          | RSet Int
          | RConstant Const
-  deriving Show
+  deriving (Show, Eq)
 
 data Binder b = Lam   { binderTy  :: b }
               | Pi    { binderTy  :: b }

@@ -517,7 +517,7 @@ pClause syn
                    args <- many (pHSimpleExpr syn)
                    wargs <- many (pWExpr syn)
                    reserved "with"
-                   wval <- pExpr' syn
+                   wval <- pExpr syn
                    lchar '{'
                    ds <- many1 $ pFunDecl syn
                    let withs = concat ds
@@ -542,6 +542,7 @@ pClause syn
               r <- pSimpleExpr syn
               fc <- pfc
               wargs <- many (pWExpr syn)
+              reserved "with"
               wval <- pExpr syn
               lchar '{'
               ds <- many1 $ pFunDecl syn

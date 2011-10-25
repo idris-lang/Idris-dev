@@ -179,8 +179,8 @@ elabClause info fc (PWith fname lhs withs wval withblock)
 
         -- in the subdecls, lhs becomes:
         --         fname  pats | wpat [rest]
-        --    ==>  fname' ps   wpat [rest]
-        wb <- mapM (mkAuxC wname (map fst bargs)) withblock
+        --    ==>  fname' ps   wpat [rest], match pats against toplevel for ps
+        wb <- mapM (mkAuxC wname lhs (map fst bargs)) withblock
         logLvl 5 ("with block " ++ show wb)
         mapM_ (elabDecl info) wb
 
@@ -200,23 +200,30 @@ elabClause info fc (PWith fname lhs withs wval withblock)
         (crhs, crhsty) <- tclift $ recheck ctxt [] rhs'
         return (clhs, crhs)
   where
-    mkAuxC wname ns (PClauses fc n cs)
-        | n == fname = do cs' <- mapM (mkAux wname ns) cs
+    mkAuxC wname lhs ns (PClauses fc n cs)
+        | n == fname = do cs' <- mapM (mkAux wname lhs ns) cs
                           return $ PClauses fc wname cs'
         | otherwise = fail $ "with clause uses wrong function name " ++ show n
-    mkAuxC wname ns d = return $ d
+    mkAuxC wname lhs ns d = return $ d
 
-    mkAux wname ns (PClause n tm (w:ws) rhs wheres)
-        = do lhs <- updateLHS n wname ns tm w
-             return $ PClause wname lhs ws rhs wheres
-    mkAux wname ns (PWith n tm (w:ws) wval wheres)
-        = do lhs <- updateLHS n wname ns tm w
-             return $ PWith wname lhs ws wval wheres
+    mkAux wname toplhs ns (PClause n tm (w:ws) rhs wheres)
+        = do logLvl 2 ("Matching " ++ show tm ++ " against " ++ show toplhs)
+             case matchClause toplhs tm of
+                Nothing -> fail "with clause does not match top level"
+                Just mvars -> do logLvl 3 ("Match vars : " ++ show mvars)
+                                 lhs <- updateLHS n wname mvars ns tm w
+                                 return $ PClause wname lhs ws rhs wheres
+    mkAux wname toplhs ns (PWith n tm (w:ws) wval wheres)
+        = do logLvl 2 ("Matching " ++ show tm ++ " against " ++ show toplhs)
+             case matchClause toplhs tm of
+                Nothing -> fail "with clause does not match top level"
+                Just mvars -> do lhs <- updateLHS n wname mvars ns tm w
+                                 return $ PWith wname lhs ws wval wheres
         
-    updateLHS n wname ns (PApp fc (PRef fc' n') args) w
-        = return $ PApp fc (PRef fc' wname) 
-                           (map (PExp . (PRef fc')) ns ++ [PExp w])
-    updateLHS n wname ns tm w = fail $ "Not implemented " ++ show tm 
+    updateLHS n wname mvars ns (PApp fc (PRef fc' n') args) w
+        = return $ substMatches mvars $ 
+                PApp fc (PRef fc' wname) (map (PExp . (PRef fc')) ns ++ [PExp w])
+    updateLHS n wname mvars ns tm w = fail $ "Not implemented " ++ show tm 
 
 pbinds (Bind n (PVar t) sc) = do attack; patbind n 
                                  pbinds sc

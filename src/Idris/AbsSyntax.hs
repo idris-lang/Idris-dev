@@ -130,7 +130,7 @@ data FixDecl = Fix Fixity String
 instance Ord FixDecl where
     compare (Fix x _) (Fix y _) = compare (prec x) (prec y)
 
-data Plicity = Imp | Exp deriving Show
+data Plicity = Imp | Exp deriving (Show, Eq)
 
 data PDecl' t = PFix     FC Fixity [String] -- fixity declaration
               | PTy      FC Name t          -- type declaration
@@ -187,14 +187,16 @@ data PTerm = PQuote Raw
            | PReturn FC
            | PMetavar Name
            | PElabError String -- error to report on elaboration
+    deriving Eq
 
 data PDo = DoExp  FC PTerm
          | DoBind FC Name PTerm
          | DoLet  FC Name PTerm
+    deriving Eq
 
 data PArg' t = PImp { pname :: Name, getTm :: t }
              | PExp { getTm :: t }
-    deriving (Show, Functor)
+    deriving (Show, Eq, Functor)
 
 type PArg = PArg' PTerm
 
@@ -524,4 +526,53 @@ dumpDecl (PData _ d) = showDImp True d
 dumpDecl (PParams _ ns ps) = "params {" ++ show ns ++ "\n" ++ dumpDecls ps ++ "}\n"
 dumpDecl (PSyntax _ syn) = "syntax " ++ show syn
 -- dumpDecl (PImport i) = "import " ++ i
+
+-- syntactic match of a against b, returning pair of variables in a 
+-- and what they match. Returns 'Nothing' if not a match.
+
+matchClause :: PTerm -> PTerm -> Maybe [(Name, PTerm)]
+matchClause x y = match x y where
+    matchArg x y = match (getTm x) (getTm y)
+
+    match (PApp _ f args) (PApp _ f' args')
+        | length args == length args'
+            = do mf <- match f f'
+                 ms <- zipWithM matchArg args args'
+                 return (mf ++ concat ms)
+    match (PRef _ n) (PRef _ n') | n == n' = return []
+                                 | otherwise = Nothing
+    match (PRef _ n) tm = return [(n, tm)]
+    match (PPair _ l r) (PPair _ l' r') = do ml <- match l l'
+                                             mr <- match r r'
+                                             return (ml ++ mr)
+    match (PDPair _ l r) (PDPair _ l' r') = do ml <- match l l'
+                                               mr <- match r r'
+                                               return (ml ++ mr)
+    match (PTrue _) (PTrue _) = return []
+    match (PFalse _) (PFalse _) = return []
+    match (PReturn _) (PReturn _) = return []
+    match (PPi _ _ t s) (PPi _ _ t' s') = do mt <- match t t'
+                                             ms <- match s s'
+                                             return (mt ++ ms)
+    match (PLam _ t s) (PLam _ t' s') = do mt <- match t t'
+                                           ms <- match s s'
+                                           return (mt ++ ms)
+    match (PHidden x) (PHidden y) = match x y
+    match a b | a == b = return []
+              | otherwise = Nothing
+
+substMatches :: [(Name, PTerm)] -> PTerm -> PTerm
+substMatches [] t = t
+substMatches ((n,tm):ns) t = substMatch n tm (substMatches ns t)
+
+substMatch :: Name -> PTerm -> PTerm -> PTerm
+substMatch n tm t = sm t where
+    sm (PRef _ n') | n == n' = tm
+    sm (PLam x t sc) = PLam x (sm t) (sm sc)
+    sm (PPi p x t sc) = PPi p x (sm t) (sm sc)
+    sm (PApp f x as) = PApp f (sm x) (map (fmap sm) as)
+    sm (PPair f x y) = PPair f (sm x) (sm y)
+    sm (PDPair f x y) = PDPair f (sm x) (sm y)
+    sm (PHidden x) = PHidden (sm x)
+    sm x = x
 
