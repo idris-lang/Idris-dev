@@ -170,9 +170,17 @@ pSyntaxDecl :: SyntaxInfo -> IParser PDecl
 pSyntaxDecl syn
     = do s <- pSyntaxRule syn
          i <- getState
-         setState (i { syntax_rules = s : syntax_rules i })
+         let rs = syntax_rules i
+         let ns = syntax_keywords i
+         let ks = map show (names s)
+         setState (i { syntax_rules = s : rs,
+                       syntax_keywords = ks ++ ns })
          fc <- pfc
          return (PSyntax fc s)
+  where
+    names (Rule syms _) = mapMaybe ename syms
+    ename (Keyword n) = Just n
+    ename _ = Nothing
 
 pSyntaxRule :: SyntaxInfo -> IParser Syntax
 pSyntaxRule syn 
@@ -201,8 +209,8 @@ pSynSym = try (do lchar '['; n <- pName; lchar ']'
              return (Symbol sym)
 
 pFunDecl' :: SyntaxInfo -> IParser PDecl
-pFunDecl' syn = try (do fc <- pfc
-                        n <- pfName; ty <- pTSig syn
+pFunDecl' syn = try (do n <- pfName; ty <- pTSig syn
+                        fc <- pfc
                         lchar ';'
                         ty' <- implicit syn n ty
                         return (PTy fc n ty'))
@@ -268,8 +276,8 @@ pNoExtExpr syn =
      <|> pSimpleExpr syn
      <|> try (pLambda syn)
      <|> try (pLet syn)
-     <|> try (pPi syn) 
-     <|> try (pDoBlock syn)
+     <|> pPi syn 
+     <|> pDoBlock syn
     
 pExtensions :: SyntaxInfo -> [Syntax] -> IParser PTerm
 pExtensions syn rules = choice (map (\x -> try (pExt syn x)) rules)
@@ -308,12 +316,8 @@ pExt syn (Rule (s:ssym) ptm)
     update ns t = t
 
 pName = do i <- getState
-           iName (map show (names (syntax_rules i)))
+           iName (syntax_keywords i)
   where
-    names rs = concatMap namesR rs
-    namesR (Rule syms _) = mapMaybe ename syms
-    ename (Keyword n) = Just n
-    ename _ = Nothing
 
 pfName = try pName
      <|> do lchar '('; o <- operator; lchar ')'; return (UN [o])
@@ -322,21 +326,24 @@ pSimpleExpr syn =
         try (do symbol "!["; t <- pTerm; lchar ']' 
                 return $ PQuote t)
         <|> try (do lchar '?'; x <- pName; return (PMetavar x))
-        <|> try (do fc <- pfc; reserved "refl"; return (PRefl fc))
-        <|> try (do fc <- pfc; reserved "return"; return (PReturn fc))
-        <|> try (do fc <- pfc; x <- pfName; return (PRef fc x))
-        <|> try (do lchar '('; l <- pExpr syn; lchar ','; fc <- pfc
-                    r <- pExpr syn; lchar ')';
-                    return (PPair fc l r))
-        <|> try (do lchar '('; l <- pExpr syn; reservedOp "**"; fc <- pfc
-                    r <- pExpr syn; lchar ')';
-                    return (PDPair fc l r))
+        <|> try (do reserved "refl"; fc <- pfc; return (PRefl fc))
+        <|> try (do reserved "return"; fc <- pfc; return (PReturn fc))
+        <|> try (do x <- pfName; fc <- pfc; return (PRef fc x))
+        <|> try (pPair syn)
         <|> try (do lchar '('; e <- pExpr syn; lchar ')'; return e)
         <|> try (do c <- pConstant; return (PConstant c))
-        <|> try (do reserved "Set"; return PSet)
-        <|> try (do fc <- pfc; symbol "()"; return (PTrue fc))
-        <|> try (do fc <- pfc; symbol "_|_"; return (PFalse fc))
-        <|> try (do lchar '_'; return Placeholder)
+        <|> do reserved "Set"; return PSet
+        <|> try (do symbol "()"; fc <- pfc; return (PTrue fc))
+        <|> try (do symbol "_|_"; fc <- pfc; return (PFalse fc))
+        <|> do lchar '_'; return Placeholder
+
+pPair syn = do lchar '('; l <- pExpr syn; op <- pairOp
+               fc <- pfc
+               r <- pExpr syn; lchar ')';
+               return (op fc l r)
+  where
+    pairOp = do lchar ','; return PPair
+         <|> do reservedOp "**"; return PDPair
 
 pHSimpleExpr syn
              = try (pSimpleExpr syn)
@@ -352,13 +359,13 @@ pApp syn = do f <- pSimpleExpr syn
 pArg :: SyntaxInfo -> IParser PArg
 pArg syn = pImplicitArg syn
        <|> do e <- pSimpleExpr syn
-              return (PExp e)
+              return (pexp e)
 
 pImplicitArg syn = do lchar '{'; n <- pName
                       fc <- pfc
                       v <- option (PRef fc n) (do lchar '='; pExpr syn)
                       lchar '}'
-                      return (PImp n v)
+                      return (pimp n v)
 
 pTSig syn = do lchar ':'
                pExpr syn
@@ -373,14 +380,16 @@ pLet syn = do reserved "let"; n <- pName; lchar '='; v <- pExpr syn
               reserved "in";  sc <- pExpr syn
               return (PLet n Placeholder v sc)
 
-pPi syn = do lchar '('; xt <- tyDeclList syn; lchar ')'
+pPi syn = do lazy <- option False (do lchar '|'; return True)
+             lchar '('; xt <- tyDeclList syn; lchar ')'
              symbol "->"
              sc <- pExpr syn
-             return (bindList (PPi Exp) xt sc)
-      <|> do lchar '{'; xt <- tyDeclList syn; lchar '}'
+             return (bindList (PPi (Exp lazy)) xt sc)
+      <|> do lazy <- option False (do lchar '|'; return True)
+             lchar '{'; xt <- tyDeclList syn; lchar '}'
              symbol "->"
              sc <- pExpr syn
-             return (bindList (PPi Imp) xt sc)
+             return (bindList (PPi (Imp lazy)) xt sc)
 
 tyDeclList syn = sepBy1 (do x <- pfName; t <- pTSig syn; return (x,t))
                     (lchar ',')
@@ -399,14 +408,14 @@ pDoBlock syn
          return (PDoBlock ds)
 
 pDo syn
-     = try (do fc <- pfc
-               i <- pName; symbol "<-"; e <- pExpr syn;
+     = try (do i <- pName; symbol "<-"; fc <- pfc
+               e <- pExpr syn;
                return (DoBind fc i e))
-   <|> try (do fc <- pfc
-               reserved "let"; i <- pName; reservedOp "="; e <- pExpr syn
+   <|> try (do reserved "let"; i <- pName; reservedOp "="; fc <- pfc
+               e <- pExpr syn
                return (DoLet fc i e))
-   <|> try (do fc <- pfc
-               e <- pExpr syn; return (DoExp fc e))
+   <|> try (do e <- pExpr syn; fc <- pfc
+               return (DoExp fc e))
 
 pConstant :: IParser Const
 pConstant = do reserved "Int";    return IType
@@ -420,38 +429,38 @@ pConstant = do reserved "Int";    return IType
         <|> try (do c <- chlit;   return $ Ch c)
 
 table fixes 
-   = [[prefix "-" (\fc x -> PApp fc (PRef fc (UN ["-"])) [PExp (PConstant (I 0)), PExp x])]] 
+   = [[prefix "-" (\fc x -> PApp fc (PRef fc (UN ["-"])) [pexp (PConstant (I 0)), pexp x])]] 
        ++ toTable (reverse fixes) ++
       [[binary "="  (\fc x y -> PEq fc x y) AssocLeft],
-       [binary "->" (\fc x y -> PPi Exp (MN 0 "X") x y) AssocRight]]
+       [binary "->" (\fc x y -> PPi expl (MN 0 "X") x y) AssocRight]]
 
 toTable fs = map (map toBin) 
                  (groupBy (\ (Fix x _) (Fix y _) -> prec x == prec y) fs)
    where toBin (Fix (PrefixN _) op) = prefix op 
-                                       (\fc x -> PApp fc (PRef fc (UN [op])) [PExp x])
+                                       (\fc x -> PApp fc (PRef fc (UN [op])) [pexp x])
          toBin (Fix f op) 
-            = binary op (\fc x y -> PApp fc (PRef fc (UN [op])) [PExp x,PExp y]) (assoc f)
+            = binary op (\fc x y -> PApp fc (PRef fc (UN [op])) [pexp x,pexp y]) (assoc f)
          assoc (Infixl _) = AssocLeft
          assoc (Infixr _) = AssocRight
          assoc (InfixN _) = AssocNone
 
-binary name f assoc = Infix (do { fc <- pfc;
-                                  reservedOp name; return (f fc) }) assoc
-prefix name f = Prefix (do { fc <- pfc;
-                             reservedOp name; return (f fc) })
+binary name f assoc = Infix (do { reservedOp name; fc <- pfc; 
+                                  return (f fc) }) assoc
+prefix name f = Prefix (do { reservedOp name; fc <- pfc;
+                             return (f fc) })
 
 --------- Data declarations ---------
 
 pData :: SyntaxInfo -> IParser PDecl
-pData syn = try (do fc <- pfc
-                    reserved "data"; tyn <- pfName; ty <- pTSig syn
+pData syn = try (do reserved "data"; fc <- pfc
+                    tyn <- pfName; ty <- pTSig syn
                     reserved "where"
                     ty' <- implicit syn tyn ty
                     cons <- sepBy (pConstructor syn) (lchar '|')
                     lchar ';'
                     return $ PData fc (PDatadecl tyn ty' cons))
-        <|> do fc <- pfc
-               reserved "data"; tyn <- pfName; args <- many pName
+        <|> do reserved "data"; fc <- pfc
+               tyn <- pfName; args <- many pName
                lchar '='
                cons <- sepBy1 (pSimpleCon syn) (lchar '|')
                lchar ';'
@@ -465,31 +474,31 @@ pData syn = try (do fc <- pfc
                return $ PData fc (PDatadecl tyn ty' cons')
 
 mkPApp fc t [] = t
-mkPApp fc t xs = PApp fc t (map PExp xs)
+mkPApp fc t xs = PApp fc t (map pexp xs)
 
 bindArgs :: [PTerm] -> PTerm -> PTerm
 bindArgs [] t = t
-bindArgs (x:xs) t = PPi Exp (MN 0 "t") x (bindArgs xs t)
+bindArgs (x:xs) t = PPi expl (MN 0 "t") x (bindArgs xs t)
 
 pConstructor :: SyntaxInfo -> IParser (Name, PTerm, FC)
 pConstructor syn
-    = do fc <- pfc
-         cn <- pfName; ty <- pTSig syn
+    = do cn <- pfName; fc <- pfc
+         ty <- pTSig syn
          ty' <- implicit syn cn ty
          return (cn, ty', fc)
 
 pSimpleCon :: SyntaxInfo -> IParser (Name, [PTerm], FC)
 pSimpleCon syn 
-     = do fc <- pfc
-          cn <- pfName
+     = do cn <- pfName
+          fc <- pfc
           args <- many (pSimpleExpr syn)
           return (cn, args, fc)
 
 --------- Pattern match clauses ---------
 
 pPattern :: SyntaxInfo -> IParser PDecl
-pPattern syn = do fc <- pfc
-                  clause <- pClause syn
+pPattern syn = do clause <- pClause syn
+                  fc <- pfc
                   return (PClauses fc (MN 2 "_") [clause]) -- collect together later
 
 whereSyn :: Name -> SyntaxInfo -> [PTerm] -> SyntaxInfo
@@ -511,7 +520,7 @@ pClause syn
                    let wsyn = whereSyn n syn (map getTm iargs ++ args ++ wargs)
                    wheres <- choice [pWhereblock wsyn, do lchar ';'; return []]
                    return $ PClause n (PApp fc (PRef fc n) 
-                                           (iargs ++ map PExp args)) wargs rhs wheres)
+                                           (iargs ++ map pexp args)) wargs rhs wheres)
        <|> try (do n <- pfName
                    iargs <- many (pImplicitArg syn)
                    fc <- pfc
@@ -524,7 +533,7 @@ pClause syn
                    let withs = concat ds
                    lchar '}'
                    return $ PWith n (PApp fc (PRef fc n) 
-                                       (iargs ++ map PExp args)) wargs wval withs)
+                                       (iargs ++ map pexp args)) wargs wval withs)
 
        <|> do l <- pSimpleExpr syn
               op <- operator
@@ -535,7 +544,7 @@ pClause syn
               lchar '='
               rhs <- pExpr syn
               wheres <- choice [pWhereblock syn, do lchar ';'; return []]
-              return $ PClause n (PApp fc (PRef fc n) [PExp l,PExp r]) wargs rhs wheres
+              return $ PClause n (PApp fc (PRef fc n) [pexp l,pexp r]) wargs rhs wheres
 
        <|> do l <- pSimpleExpr syn
               op <- operator
@@ -549,7 +558,7 @@ pClause syn
               ds <- many1 $ pFunDecl syn
               let withs = concat ds
               lchar '}'
-              return $ PWith n (PApp fc (PRef fc n) [PExp l, PExp r]) wargs wval withs
+              return $ PWith n (PApp fc (PRef fc n) [pexp l, pexp r]) wargs wval withs
 
 pWExpr :: SyntaxInfo -> IParser PTerm
 pWExpr syn = do lchar '|'; pExpr' syn
@@ -587,11 +596,11 @@ expandDo dsl (PDoBlock ds) = expandDo dsl $ block (dsl_bind dsl) ds
     block b [DoExp fc tm] = tm 
     block b [a] = PElabError "Last statement in do block must be an expression"
     block b (DoBind fc n tm : rest)
-        = PApp fc (PRef fc b) [PExp tm, PExp (PLam n Placeholder (block b rest))]
+        = PApp fc (PRef fc b) [pexp tm, pexp (PLam n Placeholder (block b rest))]
     block b (DoExp fc tm : rest)
         = PApp fc (PRef fc b) 
-            [PExp tm, 
-             PExp (PLam (MN 0 "bindx") Placeholder (block b rest))]
+            [pexp tm, 
+             pexp (PLam (MN 0 "bindx") Placeholder (block b rest))]
 expandDo dsl t = t
 
 

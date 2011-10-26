@@ -23,7 +23,7 @@ delab ist tm = de [] tm
                      | n == falseTy = PFalse un
                      | otherwise = PRef un n
     de env (Bind n (Lam ty) sc) = PLam n (de env ty) (de (n:env) sc)
-    de env (Bind n (Pi ty) sc)  = PPi Exp n (de env ty) (de (n:env) sc)
+    de env (Bind n (Pi ty) sc)  = PPi expl n (de env ty) (de (n:env) sc)
     de env (Bind n (Let ty val) sc) 
         = PLet n (de env ty) (de env val) (de (n:env) sc)
     de env (Bind n _ sc) = de (n:env) sc
@@ -36,13 +36,13 @@ delab ist tm = de [] tm
     deFn env (P _ n _) [_,_,l,r] | n == pairCon = PPair un (de env l) (de env r)
                                  | n == eqTy    = PEq un (de env l) (de env r)
     deFn env (P _ n _) args = mkPApp n (map (de env) args)
-    deFn env f args = PApp un (de env f) (map PExp (map (de env) args))
+    deFn env f args = PApp un (de env f) (map pexp (map (de env) args))
 
     mkPApp n args 
         | Just imps <- lookupCtxt n (idris_implicits ist)
-            = PApp un (PRef un n) (zipWith imp (imps ++ repeat (PExp undefined)) args)
-        | otherwise = PApp un (PRef un n) (map PExp args)
+            = PApp un (PRef un n) (zipWith imp (imps ++ repeat (pexp undefined)) args)
+        | otherwise = PApp un (PRef un n) (map pexp args)
 
-    imp (PImp n _) arg = PImp n arg
-    imp (PExp _)   arg = PExp arg
+    imp (PImp l n _) arg = PImp l n arg
+    imp (PExp l _)   arg = PExp l arg
 

@@ -51,6 +51,9 @@ instance ToEpic (TT Name) where
       epic' env tm@(App f a)
           | (P _ (UN ["mkForeign"]) _, args) <- unApply tm
               = doForeign args
+          | (P _ (UN ["lazy"]) _, [_, arg]) <- unApply tm
+              = do arg' <- epic' env arg
+                   return $ lazy_ arg'
       epic' env (P (DCon t a) n _) = return $ con_ t
       epic' env (P (TCon t a) n _) = return $ con_ t
       epic' env (P _ n _) = return $ ref (ename n) 

@@ -7,6 +7,9 @@ getSigIdx (Exists a v) = a;
 getSigVal : {P : a -> Set} -> (s : Sigma a P) -> P (getSigIdx s);
 getSigVal (Exists a v) = v;
 
+lazy : a -> a;
+lazy x = x; -- compiled specially
+
 id : a -> a;
 id x = x;
 
@@ -28,7 +31,7 @@ f $ a = f a;
 
 data Bool = False | True;
 
-boolElim : (x:Bool) -> a -> a -> a; 
+boolElim : (x:Bool) -> |(t : a) -> |(f : a) -> a; 
 boolElim True  t e = t;
 boolElim False t e = e;
 

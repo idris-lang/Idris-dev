@@ -188,8 +188,8 @@ elabClause info fc (PWith fname lhs withs wval withblock)
         mapM_ (elabDecl info) wb
 
         -- rhs becomes: fname' ps wval
-        let rhs = PApp fc (PRef fc wname) (map (PExp . (PRef fc) . fst) bargs ++ 
-                                                [PExp wval])
+        let rhs = PApp fc (PRef fc wname) (map (pexp . (PRef fc) . fst) bargs ++ 
+                                                [pexp wval])
         logLvl 3 ("New RHS " ++ show rhs)
         ctxt <- getContext -- New context with block added
         ((rhs', defer), _) <-
@@ -225,7 +225,7 @@ elabClause info fc (PWith fname lhs withs wval withblock)
         
     updateLHS n wname mvars ns (PApp fc (PRef fc' n') args) w
         = return $ substMatches mvars $ 
-                PApp fc (PRef fc' wname) (map (PExp . (PRef fc')) ns ++ [PExp w])
+                PApp fc (PRef fc' wname) (map (pexp . (PRef fc')) ns ++ [pexp w])
     updateLHS n wname mvars ns tm w = fail $ "Not implemented " ++ show tm 
 
 pbinds (Bind n (PVar t) sc) = do attack; patbind n 
@@ -310,29 +310,29 @@ elab info pattern tm = do elab' tm
     elab' (PTrue fc)     = try (elab' (PRef fc unitCon))
                                (elab' (PRef fc unitTy))
     elab' (PFalse fc)    = elab' (PRef fc falseTy)
-    elab' (PRefl fc)     = elab' (PApp fc (PRef fc eqCon) [PImp (MN 0 "a") Placeholder,
-                                                           PImp (MN 0 "x") Placeholder])
-    elab' (PEq fc l r)   = elab' (PApp fc (PRef fc eqTy) [PImp (MN 0 "a") Placeholder,
-                                                          PImp (MN 0 "b") Placeholder,
-                                                          PExp l, PExp r])
+    elab' (PRefl fc)     = elab' (PApp fc (PRef fc eqCon) [pimp (MN 0 "a") Placeholder,
+                                                           pimp (MN 0 "x") Placeholder])
+    elab' (PEq fc l r)   = elab' (PApp fc (PRef fc eqTy) [pimp (MN 0 "a") Placeholder,
+                                                          pimp (MN 0 "b") Placeholder,
+                                                          pexp l, pexp r])
     elab' (PPair fc l r) = try (elab' (PApp fc (PRef fc pairTy)
-                                            [PExp l,PExp r]))
+                                            [pexp l,pexp r]))
                                (elab' (PApp fc (PRef fc pairCon)
-                                            [PImp (MN 0 "A") Placeholder,
-                                             PImp (MN 0 "B") Placeholder,
-                                             PExp l, PExp r]))
+                                            [pimp (MN 0 "A") Placeholder,
+                                             pimp (MN 0 "B") Placeholder,
+                                             pexp l, pexp r]))
     elab' (PDPair fc l@(PRef _ n) r)
                           = try (elab' (PApp fc (PRef fc sigmaTy)
-                                        [PExp Placeholder,
-                                         PExp (PLam n Placeholder r)]))
+                                        [pexp Placeholder,
+                                         pexp (PLam n Placeholder r)]))
                                 (elab' (PApp fc (PRef fc existsCon)
-                                             [PImp (MN 0 "a") Placeholder,
-                                              PImp (MN 0 "P") Placeholder,
-                                              PExp l, PExp r]))
+                                             [pimp (MN 0 "a") Placeholder,
+                                              pimp (MN 0 "P") Placeholder,
+                                              pexp l, pexp r]))
     elab' (PDPair fc l r) = elab' (PApp fc (PRef fc existsCon)
-                                            [PImp (MN 0 "a") Placeholder,
-                                             PImp (MN 0 "P") Placeholder,
-                                             PExp l, PExp r])
+                                            [pimp (MN 0 "a") Placeholder,
+                                             pimp (MN 0 "P") Placeholder,
+                                             pexp l, pexp r])
     elab' (PRef fc n) | pattern && not (inparamBlock n)
                          = erun fc $ 
                             try (do apply (Var n) []; solve)
@@ -372,12 +372,12 @@ elab info pattern tm = do elab' tm
     elab' (PApp fc (PRef _ f) args)
         | Just ps <- lookupCtxt f (inblock info) 
                     = erun fc $ 
-                        elabApp (liftname info f) (map (PExp . (PRef fc)) ps ++ args)
+                        elabApp (liftname info f) (map (pexp . (PRef fc)) ps ++ args)
         | otherwise = erun fc $ elabApp f args
       where elabApp f args
                   = try (do ns <- apply (Var f) (map isph args)
                             solve
-                            elabArgs ns (map getTm args))
+                            elabArgs ns (map (\x -> (lazyarg x, getTm x)) args))
                         (do apply_elab f (map toElab args)
                             solve)
     elab' (PApp fc f [arg])
@@ -391,8 +391,16 @@ elab info pattern tm = do elab' tm
     elab' x = fail $ "Not implemented " ++ show x
 
     elabArgs [] _ = return ()
-    elabArgs (n:ns) (Placeholder : args) = elabArgs ns args
-    elabArgs (n:ns) (t : args) = do focus n; elab' t; elabArgs ns args
+    elabArgs (n:ns) ((_, Placeholder) : args) = elabArgs ns args
+    elabArgs (n:ns) ((lazy, t) : args)
+      | lazy && not pattern 
+        = do focus n; elab' (PApp bi (PRef bi (UN ["lazy"]))
+                                     [pimp (UN ["a"]) Placeholder,
+                                      pexp t]); 
+             elabArgs ns args
+      | otherwise
+        = do focus n; elab' t; elabArgs ns args
+    
 
 collectDeferred :: Term -> State [(Name, Type)] Term
 collectDeferred (Bind n (GHole t) app) =

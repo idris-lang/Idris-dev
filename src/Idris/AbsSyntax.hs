@@ -33,11 +33,12 @@ data IState = IState { tt_ctxt :: Context,
                        idris_name :: Int,
                        idris_metavars :: [Name],
                        syntax_rules :: [Syntax],
+                       syntax_keywords :: [String],
                        imported :: [FilePath],
                        idris_prims :: [(Name, ([E.Name], E.Term))]
                      }
                    
-idrisInit = IState emptyContext [] emptyContext "" defaultOpts 6 [] [] [] []
+idrisInit = IState emptyContext [] emptyContext "" defaultOpts 6 [] [] [] [] []
 
 -- The monad for the main REPL - reading and processing files and updating 
 -- global state (hence the IO inner monad).
@@ -139,7 +140,11 @@ data FixDecl = Fix Fixity String
 instance Ord FixDecl where
     compare (Fix x _) (Fix y _) = compare (prec x) (prec y)
 
-data Plicity = Imp | Exp deriving (Show, Eq)
+-- Mark bindings with their explicitness, and laziness
+data Plicity = Imp Bool | Exp Bool deriving (Show, Eq)
+
+impl = Imp False
+expl = Exp False
 
 data PDecl' t = PFix     FC Fixity [String] -- fixity declaration
               | PTy      FC Name t          -- type declaration
@@ -205,9 +210,12 @@ data PDo = DoExp  FC PTerm
          | DoLet  FC Name PTerm
     deriving Eq
 
-data PArg' t = PImp { pname :: Name, getTm :: t }
-             | PExp { getTm :: t }
+data PArg' t = PImp { lazyarg :: Bool, pname :: Name, getTm :: t }
+             | PExp { lazyarg :: Bool, getTm :: t }
     deriving (Show, Eq, Functor)
+
+pimp = PImp False
+pexp = PExp False
 
 type PArg = PArg' PTerm
 
@@ -275,12 +283,12 @@ showDImp impl (PDatadecl n ty cons)
 
 getImps :: [PArg] -> [(Name, PTerm)]
 getImps [] = []
-getImps (PImp n tm : xs) = (n, tm) : getImps xs
+getImps (PImp _ n tm : xs) = (n, tm) : getImps xs
 getImps (_ : xs) = getImps xs
 
 getExps :: [PArg] -> [PTerm]
 getExps [] = []
-getExps (PExp tm : xs) = tm : getExps xs
+getExps (PExp _ tm : xs) = tm : getExps xs
 getExps (_ : xs) = getExps xs
 
 getAll :: [PArg] -> [PTerm]
@@ -293,13 +301,15 @@ showImp impl tm = se 10 tm where
     se p (PLam n ty sc) = bracket p 2 $ "\\ " ++ show n ++ " => " ++ show sc
     se p (PLet n ty v sc) = bracket p 2 $ "let " ++ show n ++ " = " ++ se 10 v ++
                             " in " ++ se 10 sc 
-    se p (PPi Exp n ty sc)
+    se p (PPi (Exp l) n ty sc)
         | n `elem` allNamesIn sc = bracket p 2 $
-                                    "(" ++ show n ++ " : " ++ se 10 ty ++ 
+                                    if l then "|(" else "(" ++ 
+                                    show n ++ " : " ++ se 10 ty ++ 
                                     ") -> " ++ se 10 sc
         | otherwise = bracket p 2 $ se 0 ty ++ " -> " ++ se 10 sc
-    se p (PPi Imp n ty sc)
-        | impl = bracket p 2 $ "{" ++ show n ++ " : " ++ se 10 ty ++ 
+    se p (PPi (Imp l) n ty sc)
+        | impl = bracket p 2 $ if l then "|{" else "{" ++ 
+                               show n ++ " : " ++ se 10 ty ++ 
                                "} -> " ++ se 10 sc
         | otherwise = se 10 sc
     se p (PApp _ (PRef _ f) [])
@@ -369,11 +379,11 @@ inferTy   = MN 0 "__Infer"
 inferCon  = MN 0 "__infer"
 inferDecl = PDatadecl inferTy 
                       PSet
-                      [(inferCon, PPi Imp (MN 0 "A") PSet (
-                                  PPi Exp (MN 0 "a") (PRef bi (MN 0 "A"))
+                      [(inferCon, PPi impl (MN 0 "A") PSet (
+                                  PPi expl (MN 0 "a") (PRef bi (MN 0 "A"))
                                   (PRef bi inferTy)), bi)]
 
-infTerm t = PApp bi (PRef bi inferCon) [PImp (MN 0 "A") Placeholder, PExp t]
+infTerm t = PApp bi (PRef bi inferCon) [pimp (MN 0 "A") Placeholder, pexp t]
 infP = P (TCon 6 0) inferTy (Set 0)
 
 getInferTerm, getInferType :: Term -> Term
@@ -397,12 +407,12 @@ falseDecl = PDatadecl falseTy PSet []
 pairTy    = MN 0 "__Pair"
 pairCon   = MN 0 "__MkPair"
 pairDecl  = PDatadecl pairTy (piBind [(n "A", PSet), (n "B", PSet)] PSet)
-            [(pairCon, PPi Imp (n "A") PSet (
-                       PPi Imp (n "B") PSet (
-                       PPi Exp (n "a") (PRef bi (n "A")) (
-                       PPi Exp (n "b") (PRef bi (n "B"))  
-                           (PApp bi (PRef bi pairTy) [PExp (PRef bi (n "A")),
-                                                PExp (PRef bi (n "B"))])))), bi)]
+            [(pairCon, PPi impl (n "A") PSet (
+                       PPi impl (n "B") PSet (
+                       PPi expl (n "a") (PRef bi (n "A")) (
+                       PPi expl (n "b") (PRef bi (n "B"))  
+                           (PApp bi (PRef bi pairTy) [pexp (PRef bi (n "A")),
+                                                pexp (PRef bi (n "B"))])))), bi)]
     where n a = MN 0 a
 
 eqTy = UN ["="]
@@ -410,12 +420,12 @@ eqCon = UN ["refl"]
 eqDecl = PDatadecl eqTy (piBind [(n "a", PSet), (n "b", PSet),
                                  (n "x", PRef bi (n "a")), (n "y", PRef bi (n "b"))]
                                  PSet)
-                [(eqCon, PPi Imp (n "a") PSet (
-                         PPi Imp (n "x") (PRef bi (n "a"))
-                           (PApp bi (PRef bi eqTy) [PImp (n "a") Placeholder,
-                                                    PImp (n "b") Placeholder,
-                                                    PExp (PRef bi (n "x")),
-                                                    PExp (PRef bi (n "x"))])), bi)]
+                [(eqCon, PPi impl (n "a") PSet (
+                         PPi impl (n "x") (PRef bi (n "a"))
+                           (PApp bi (PRef bi eqTy) [pimp (n "a") Placeholder,
+                                                    pimp (n "b") Placeholder,
+                                                    pexp (PRef bi (n "x")),
+                                                    pexp (PRef bi (n "x"))])), bi)]
     where n a = MN 0 a
 
 -- Defined in builtins.idr
@@ -424,7 +434,7 @@ existsCon = UN ["Exists"]
 
 piBind :: [(Name, PTerm)] -> PTerm -> PTerm
 piBind [] t = t
-piBind ((n, ty):ns) t = PPi Exp n ty (piBind ns t)
+piBind ((n, ty):ns) t = PPi expl n ty (piBind ns t)
 
 -- Dealing with implicit arguments
 
@@ -451,18 +461,18 @@ implicitise syn ist tm
        = do (decls, ns) <- get
             let isn = concatMap (namesIn ist) (map getTm as)
             put (decls, nub (ns ++ (isn `dropAll` (env ++ map fst (getImps decls)))))
-    imps top env (PPi Imp n ty sc) 
+    imps top env (PPi (Imp l) n ty sc) 
         = do let isn = nub (namesIn ist ty) `dropAll` [n]
              (decls , ns) <- get
-             put (PImp n ty : decls, 
+             put (PImp l n ty : decls, 
                   nub (ns ++ (isn `dropAll` (env ++ map fst (getImps decls)))))
              imps True (n:env) sc
-    imps top env (PPi Exp n ty sc) 
+    imps top env (PPi (Exp l) n ty sc) 
         = do let isn = nub (namesIn ist ty ++ case sc of
                             (PRef _ x) -> namesIn ist sc `dropAll` [n]
                             _ -> [])
              (decls, ns) <- get -- ignore decls in HO types
-             put (PExp ty : decls, 
+             put (PExp l ty : decls, 
                   nub (ns ++ (isn `dropAll` (env ++ map fst (getImps decls)))))
              imps True (n:env) sc
     imps top env (PEq _ l r)
@@ -488,9 +498,10 @@ implicitise syn ist tm
     imps top env _               = return ()
 
     pibind using []     sc = sc
-    pibind using (n:ns) sc = case lookup n using of
-                               Just ty -> PPi Imp n ty (pibind using ns sc)
-                               Nothing -> PPi Imp n Placeholder (pibind using ns sc)
+    pibind using (n:ns) sc 
+      = case lookup n using of
+            Just ty -> PPi (Imp False) n ty (pibind using ns sc)
+            Nothing -> PPi (Imp False) n Placeholder (pibind using ns sc)
 
 -- Add implicit arguments in function calls
 
@@ -541,17 +552,17 @@ addImpl ist ptm = ai [] ptm
     appRest fc f (a : as) = appRest fc (PApp fc f [a]) as
 
     insertImpl :: [PArg] -> [PArg] -> [PArg]
-    insertImpl (PExp ty : ps) (PExp tm : given) =
-                                 PExp tm : insertImpl ps given
-    insertImpl (PImp n ty : ps) given =
+    insertImpl (PExp l ty : ps) (PExp _ tm : given) =
+                                 PExp l tm : insertImpl ps given
+    insertImpl (PImp l n ty : ps) given =
         case find n given [] of
-            Just (tm, given') -> PImp n tm : insertImpl ps given'
-            Nothing ->           PImp n Placeholder : insertImpl ps given
+            Just (tm, given') -> PImp l n tm : insertImpl ps given'
+            Nothing ->           PImp l n Placeholder : insertImpl ps given
     insertImpl expected [] = []
     insertImpl []       given  = given
 
     find n []               acc = Nothing
-    find n (PImp n' t : gs) acc 
+    find n (PImp _ n' t : gs) acc 
          | n == n' = Just (t, reverse acc ++ gs)
     find n (g : gs) acc = find n gs (g : acc)
 
