@@ -274,8 +274,8 @@ pExpr' syn
 pNoExtExpr syn =
          try (pApp syn) 
      <|> pSimpleExpr syn
-     <|> try (pLambda syn)
-     <|> try (pLet syn)
+     <|> pLambda syn
+     <|> pLet syn
      <|> pPi syn 
      <|> pDoBlock syn
     
@@ -325,9 +325,9 @@ pfName = try pName
 pSimpleExpr syn = 
         try (do symbol "!["; t <- pTerm; lchar ']' 
                 return $ PQuote t)
-        <|> try (do lchar '?'; x <- pName; return (PMetavar x))
-        <|> try (do reserved "refl"; fc <- pfc; return (PRefl fc))
-        <|> try (do reserved "return"; fc <- pfc; return (PReturn fc))
+        <|> do lchar '?'; x <- pName; return (PMetavar x)
+        <|> do reserved "refl"; fc <- pfc; return (PRefl fc)
+        <|> do reserved "return"; fc <- pfc; return (PReturn fc)
         <|> try (do x <- pfName; fc <- pfc; return (PRef fc x))
         <|> try (pPair syn)
         <|> try (do lchar '('; e <- pExpr syn; lchar ')'; return e)
@@ -346,10 +346,10 @@ pPair syn = do lchar '('; l <- pExpr syn; op <- pairOp
          <|> do reservedOp "**"; return PDPair
 
 pHSimpleExpr syn
-             = try (pSimpleExpr syn)
-           <|> do lchar '.'
+             = do lchar '.'
                   e <- pSimpleExpr syn
                   return $ PHidden e
+           <|> pSimpleExpr syn
 
 pApp syn = do f <- pSimpleExpr syn
               fc <- pfc
@@ -408,12 +408,12 @@ pDoBlock syn
          return (PDoBlock ds)
 
 pDo syn
-     = try (do i <- pName; symbol "<-"; fc <- pfc
+     = do reserved "let"; i <- pName; reservedOp "="; fc <- pfc
+          e <- pExpr syn
+          return (DoLet fc i e)
+   <|> try (do i <- pName; symbol "<-"; fc <- pfc
                e <- pExpr syn;
                return (DoBind fc i e))
-   <|> try (do reserved "let"; i <- pName; reservedOp "="; fc <- pfc
-               e <- pExpr syn
-               return (DoLet fc i e))
    <|> try (do e <- pExpr syn; fc <- pfc
                return (DoExp fc e))
 

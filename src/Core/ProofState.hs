@@ -140,6 +140,7 @@ goal h tm = g [] tm where
     gb env (Let t v) = g env t `mplus` g env v
     gb env (Guess t v) = g env t `mplus` g env v
     gb env t = g env (binderTy t)
+
 tactic :: Hole -> RunTactic -> StateT TState TC ()
 tactic h f = do ps <- get
                 tm' <- atH (context ps) [] (pterm ps)
