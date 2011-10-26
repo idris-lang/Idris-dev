@@ -21,13 +21,30 @@ infixl 9 .;
 (.) : (b -> c) -> (a -> b) -> a -> c;
 (.) f g x = f (g x);
 
+infixr 1 $;
+
+($) : (a -> b) -> a -> b;
+f $ a = f a;
+
 data Bool = False | True;
 
 boolElim : (x:Bool) -> a -> a -> a; 
 boolElim True  t e = t;
 boolElim False t e = e;
 
+data so : Bool -> Set where oh : so True;
+
 syntax if [test] then [t] else [e] = boolElim test t e;
+
+infix 4 &&, ||;
+
+(||) : Bool -> Bool -> Bool;
+(||) False x = x;
+(||) True _  = True;
+
+(&&) : Bool -> Bool -> Bool;
+(&&) True x  = x;
+(&&) False _ = False;
 
 infixl 5 ==, /=, ==.;
 infixl 6 <, <=, >, >=, <., <=., >., >=.;
