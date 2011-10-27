@@ -8,22 +8,27 @@ module Core.Evaluate(normalise,
                 Value(..)) where
 
 import Debug.Trace
+import Control.Monad.State
 
 import Core.TT
 import Core.CaseTree
 
 -- VALUES (as HOAS) ---------------------------------------------------------
 
+type EvalState = ()
+type Eval a = State EvalState a
+
 data Value = VP NameType Name Value
            | VV Int
-           | VBind Name (Binder Value) (Value -> Value)
+           | VBind Name (Binder Value) (Value -> Eval Value)
            | VApp Value Value
            | VSet Int
            | VConstant Const
            | VTmp Int
 
 instance Show Value where
-    show = show . quote 0
+    show v = "<<Value>>"
+
 
 -- THE EVALUATOR ------------------------------------------------------------
 
@@ -33,7 +38,8 @@ instance Show Value where
 -- while building a proof.
 
 normalise :: Context -> Env -> TT Name -> TT Name
-normalise ctxt env t = quote 0 (eval ctxt (map finalEntry env) (finalise t))
+normalise ctxt env t = evalState (do val <- eval ctxt (map finalEntry env) (finalise t)
+                                     quote 0 val) ()
 
 -- unbindEnv env (quote 0 (eval ctxt (bindEnv env t)))
 
@@ -52,70 +58,85 @@ unbindEnv (_:bs) (Bind n b sc) = unbindEnv bs sc
 -- Evaluate in a context of locally named things (i.e. not de Bruijn indexed,
 -- such as we might have during construction of a proof)
 
-eval :: Context -> Env -> TT Name -> Value
+eval :: Context -> Env -> TT Name -> Eval Value
 eval ctxt genv tm = ev [] tm where
     ev env (P _ n ty)
         | Just (Let t v) <- lookup n genv = ev env v 
     ev env (P Ref n ty) = case lookupDef n ctxt of
-        Just (Function (Fun _ _ _ v)) -> v
-        Just (TyDecl nt ty hty)     -> VP nt n hty
+        Just (Function (Fun _ _ _ v)) -> return v
+        Just (TyDecl nt ty hty)     -> return $ VP nt n hty
         Just (CaseOp _ _ [] tree)   ->  
-              case evCase env [] [] tree of
-                   (Nothing, _) -> VP Ref n (ev env ty)
-                   (Just v, _)  -> v
-        _ -> VP Ref n (ev env ty)
-    ev env (P nt n ty)   = VP nt n (ev env ty)
-    ev env (V i) | i < length env = env !! i
-                 | otherwise      = VV i --error $ "Internal error: V" ++ show i ++ " " 
-                                         --   ++ showEnv genv tm ++ "\n" ++ show genv
+              do c <- evCase env [] [] tree 
+                 case c of
+                   (Nothing, _) -> liftM (VP Ref n) (ev env ty)
+                   (Just v, _)  -> return v
+        _ -> liftM (VP Ref n) (ev env ty)
+    ev env (P nt n ty)   = liftM (VP nt n) (ev env ty)
+    ev env (V i) | i < length env = return $ env !! i
+                 | otherwise      = return $ VV i 
     ev env (Bind n (Let t v) sc)
-           = wknV (-1) $ ev (ev env (finalise v) : env) sc
+           = do v' <- ev env (finalise v)
+                sc' <- ev (v' : env) sc
+                wknV (-1) sc'
     ev env (Bind n (NLet t v) sc)
-           = VBind n (Let (ev env (finalise t)) (ev env (finalise v))) 
-                $ (\x -> ev (ev env v : env) sc)
-    ev env (Bind n b sc) = VBind n (vbind env b) (\x -> ev (x:env) sc)
-       where vbind env t = fmap (\tm -> ev env (finalise tm)) t
-    ev env (App f a) = evApply env [ev env a] (ev env f)
-    ev env (Constant c) = VConstant c
-    ev env (Set i)   = VSet i
+           = do t' <- ev env (finalise t)
+                v' <- ev env (finalise v)
+                sc' <- ev (v' : env) sc
+                return $ VBind n (Let t' v') (\x -> return sc')
+    ev env (Bind n b sc) 
+           = do b' <- vbind env b
+                return $ VBind n b' (\x -> ev (x:env) sc)
+       where vbind env t = fmapMB (\tm -> ev env (finalise tm)) t
+    ev env (App f a) = do f' <- ev env f
+                          a' <- ev env a
+                          evApply env [a'] f'
+    ev env (Constant c) = return $ VConstant c
+    ev env (Set i)   = return $ VSet i
     
-    evApply env args (VApp f a) = evApply env (a:args) f
+    evApply env args (VApp f a) = 
+            evApply env (a:args) f
     evApply env args f = apply env f args
 
-    apply env (VBind n (Lam t) sc) (a:as) = wknV (-1) $ apply env (sc a) as
+    apply env (VBind n (Lam t) sc) (a:as) = do a' <- sc a
+                                               app <- apply env a' as 
+                                               wknV (-1) app
     apply env (VP Ref n ty)        args
         | Just (CaseOp _ _ ns tree) <- lookupDef n ctxt
-            = case evCase env ns args tree of
-                   (Nothing, _) -> unload env (VP Ref n ty) args
+            = do c <- evCase env ns args tree
+                 case c of
+                   (Nothing, _) -> return $ unload env (VP Ref n ty) args
                    (Just v, rest) -> evApply env rest v
         | Just (Operator _ i op)  <- lookupDef n ctxt
             = if (i <= length args)
-                then case op (take i args) of
-                   Nothing -> unload env (VP Ref n ty) args
-                   Just v  -> evApply env (drop i args) v
-                else unload env (VP Ref n ty) args
-    apply env f                    (a:as) = unload env f (a:as)
-    apply env f                    []     = f
+                 then case op (take i args) of
+                    Nothing -> return $ unload env (VP Ref n ty) args
+                    Just v  -> evApply env (drop i args) v
+                 else return $ unload env (VP Ref n ty) args
+    apply env f (a:as) = return $ unload env f (a:as)
+    apply env f []     = return f
 
     unload env f [] = f
     unload env f (a:as) = unload env (VApp f a) as
 
     evCase env ns args tree
         | length ns <= length args 
-             = let args' = take (length ns) args
-                   rest  = drop (length ns) args in
-                (evTree env (zipWith (\n t -> (n, t)) ns args') tree, rest)
-        | otherwise = (Nothing, args)
+             = do let args' = take (length ns) args
+                  let rest  = drop (length ns) args
+                  t <- evTree env (zipWith (\n t -> (n, t)) ns args') tree
+                  return (t, rest)
+        | otherwise = return (Nothing, args)
 
-    evTree :: [Value] -> [(Name, Value)] -> SC -> Maybe Value
-    evTree env amap (UnmatchedCase str) = Nothing
+    evTree :: [Value] -> [(Name, Value)] -> SC -> Eval (Maybe Value)
+    evTree env amap (UnmatchedCase str) = return Nothing
     evTree env amap (STerm tm) 
-        = let etm = pToVs (map fst amap) tm in
-              Just $ ev (map snd amap ++ env) etm
+        = do let etm = pToVs (map fst amap) tm
+             etm' <- ev (map snd amap ++ env) etm
+             return $ Just etm'
     evTree env amap (Case n alts)
-        = do v <- lookup n amap
-             (altmap, sc) <- chooseAlt v (getValArgs v) alts amap
-             evTree env altmap sc
+        = case (do v <- lookup n amap
+                   chooseAlt v (getValArgs v) alts amap) of
+              Just (altmap, sc) -> evTree env altmap sc
+              _ -> return Nothing
 
     chooseAlt :: Value -> (Value, [Value]) -> [CaseAlt] -> [(Name, Value)] ->
                  Maybe ([(Name, Value)], SC)
@@ -156,22 +177,26 @@ eval ctxt genv tm = ev [] tm where
     getValArgs' (VApp f a) as = getValArgs' f (a:as)
     getValArgs' f as = (f, as)
 
-quote :: Int -> Value -> TT Name
-quote i (VP nt n v)    = P nt n (quote i v)
-quote i (VV x)         = V x
-quote i (VBind n b sc) = Bind n (quoteB b) (quote (i+1) (sc (VTmp i)))
-   where quoteB t = fmap (quote i) t
-quote i (VApp f a)     = App (quote i f) (quote i a)
-quote i (VSet u)       = Set u
-quote i (VConstant c)  = Constant c
-quote i (VTmp x)       = V (i - x - 1)
+quote :: Int -> Value -> Eval (TT Name)
+quote i (VP nt n v)    = liftM (P nt n) (quote i v)
+quote i (VV x)         = return $ V x
+quote i (VBind n b sc) = do sc' <- sc (VTmp i)
+                            b' <- quoteB b
+                            liftM (Bind n b') (quote (i+1) sc')
+   where quoteB t = fmapMB (quote i) t
+quote i (VApp f a)     = liftM2 App (quote i f) (quote i a)
+quote i (VSet u)       = return $ Set u
+quote i (VConstant c)  = return $ Constant c
+quote i (VTmp x)       = return $ V (i - x - 1)
 
 
-wknV :: Int -> Value -> Value
-wknV i (VV x)         = VV (x + i)
-wknV i (VBind n b sc) = VBind n (fmap (wknV i) b) (\x -> (wknV i (sc x)))
-wknV i (VApp f a)     = VApp (wknV i f) (wknV i a)
-wknV i t              = t
+wknV :: Int -> Value -> Eval Value
+wknV i (VV x)         = return $ VV (x + i)
+wknV i (VBind n b sc) = do b' <- fmapMB (wknV i) b
+                           return $ VBind n b' (\x -> do x' <- sc x
+                                                         wknV i x')
+wknV i (VApp f a)     = liftM2 VApp (wknV i f) (wknV i a)
+wknV i t              = return t
 
 -- CONTEXTS -----------------------------------------------------------------
 
@@ -199,24 +224,26 @@ instance Show Def where
 
 type Context = Ctxt Def
 
+veval ctxt env t = evalState (eval ctxt env t) ()
+
 addToCtxt :: Name -> Term -> Type -> Context -> Context
-addToCtxt n tm ty ctxt = addDef n (Function (Fun ty (eval ctxt [] ty)
-                                             tm (eval ctxt [] tm))) ctxt
+addToCtxt n tm ty ctxt = addDef n (Function (Fun ty (veval ctxt [] ty)
+                                             tm (veval ctxt [] tm))) ctxt
 
 addTyDecl :: Name -> Type -> Context -> Context
-addTyDecl n ty ctxt = addDef n (TyDecl Ref ty (eval ctxt [] ty)) ctxt
+addTyDecl n ty ctxt = addDef n (TyDecl Ref ty (veval ctxt [] ty)) ctxt
 
 addDatatype :: Datatype Name -> Context -> Context
 addDatatype (Data n tag ty cons) ctxt
     = let ty' = normalise ctxt [] ty in
           addCons 0 cons (addDef n 
-             (TyDecl (TCon tag (arity ty')) ty (eval ctxt [] ty)) ctxt)
+             (TyDecl (TCon tag (arity ty')) ty (veval ctxt [] ty)) ctxt)
   where
     addCons tag [] ctxt = ctxt
     addCons tag ((n, ty) : cons) ctxt 
         = let ty' = normalise ctxt [] ty in
               addCons (tag+1) cons (addDef n
-                  (TyDecl (DCon tag (arity ty')) ty (eval ctxt [] ty)) ctxt)
+                  (TyDecl (DCon tag (arity ty')) ty (veval ctxt [] ty)) ctxt)
 
 addCasedef :: Name -> Bool -> [(Term, Term)] -> Type -> Context -> Context
 addCasedef n tcase ps ty ctxt 

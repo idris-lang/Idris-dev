@@ -22,7 +22,7 @@ using (G : Vect Ty n) {
     | Add : Expr G TyNat -> Expr G TyNat -> Expr G TyNat
     | Bind : Expr G a -> (interpTy a -> Expr G b) -> Expr G b;
   
-  interp : Env G -> Expr G t -> interpTy t;
+  interp : Env G -> [static] Expr G t -> interpTy t;
   interp env (Var i)    = envLookup i env;
   interp env (Val x)    = x;
   interp env (Lam sc)   = \x => interp (Extend x env) sc;

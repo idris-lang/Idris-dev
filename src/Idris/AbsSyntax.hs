@@ -28,6 +28,7 @@ defaultOpts = IOption 0 False
 data IState = IState { tt_ctxt :: Context,
                        idris_infixes :: [FixDecl],
                        idris_implicits :: Ctxt [PArg],
+                       idris_statics :: Ctxt [Int],
                        idris_log :: String,
                        idris_options :: IOption,
                        idris_name :: Int,
@@ -38,7 +39,8 @@ data IState = IState { tt_ctxt :: Context,
                        idris_prims :: [(Name, ([E.Name], E.Term))]
                      }
                    
-idrisInit = IState emptyContext [] emptyContext "" defaultOpts 6 [] [] [] [] []
+idrisInit = IState emptyContext [] emptyContext emptyContext
+                   "" defaultOpts 6 [] [] [] [] []
 
 -- The monad for the main REPL - reading and processing files and updating 
 -- global state (hence the IO inner monad).
@@ -140,11 +142,19 @@ data FixDecl = Fix Fixity String
 instance Ord FixDecl where
     compare (Fix x _) (Fix y _) = compare (prec x) (prec y)
 
--- Mark bindings with their explicitness, and laziness
-data Plicity = Imp Bool | Exp Bool deriving (Show, Eq)
 
-impl = Imp False
-expl = Exp False
+data Static = Static | Dynamic
+  deriving (Show, Eq)
+
+-- Mark bindings with their explicitness, and laziness
+data Plicity = Imp { plazy :: Bool,
+                     pstatic :: Static }
+             | Exp { plazy :: Bool,
+                     pstatic :: Static }
+  deriving (Show, Eq)
+
+impl = Imp False Dynamic
+expl = Exp False Dynamic
 
 data PDecl' t = PFix     FC Fixity [String] -- fixity declaration
               | PTy      FC Name t          -- type declaration
@@ -301,17 +311,24 @@ showImp impl tm = se 10 tm where
     se p (PLam n ty sc) = bracket p 2 $ "\\ " ++ show n ++ " => " ++ show sc
     se p (PLet n ty v sc) = bracket p 2 $ "let " ++ show n ++ " = " ++ se 10 v ++
                             " in " ++ se 10 sc 
-    se p (PPi (Exp l) n ty sc)
+    se p (PPi (Exp l s) n ty sc)
         | n `elem` allNamesIn sc = bracket p 2 $
                                     if l then "|(" else "(" ++ 
                                     show n ++ " : " ++ se 10 ty ++ 
-                                    ") -> " ++ se 10 sc
-        | otherwise = bracket p 2 $ se 0 ty ++ " -> " ++ se 10 sc
-    se p (PPi (Imp l) n ty sc)
+                                    ") " ++ st ++
+                                    "-> " ++ se 10 sc
+        | otherwise = bracket p 2 $ se 0 ty ++ " " ++ st ++ "-> " ++ se 10 sc
+      where st = case s of
+                    Static -> "[static] "
+                    _ -> ""
+    se p (PPi (Imp l s) n ty sc)
         | impl = bracket p 2 $ if l then "|{" else "{" ++ 
                                show n ++ " : " ++ se 10 ty ++ 
-                               "} -> " ++ se 10 sc
+                               "} " ++ st ++ "-> " ++ se 10 sc
         | otherwise = se 10 sc
+      where st = case s of
+                    Static -> "[static] "
+                    _ -> ""
     se p (PApp _ (PRef _ f) [])
         | not impl = show f
     se p (PApp _ (PRef _ op@(UN [f:_])) args)
@@ -461,13 +478,13 @@ implicitise syn ist tm
        = do (decls, ns) <- get
             let isn = concatMap (namesIn ist) (map getTm as)
             put (decls, nub (ns ++ (isn `dropAll` (env ++ map fst (getImps decls)))))
-    imps top env (PPi (Imp l) n ty sc) 
+    imps top env (PPi (Imp l _) n ty sc) 
         = do let isn = nub (namesIn ist ty) `dropAll` [n]
              (decls , ns) <- get
              put (PImp l n ty : decls, 
                   nub (ns ++ (isn `dropAll` (env ++ map fst (getImps decls)))))
              imps True (n:env) sc
-    imps top env (PPi (Exp l) n ty sc) 
+    imps top env (PPi (Exp l _) n ty sc) 
         = do let isn = nub (namesIn ist ty ++ case sc of
                             (PRef _ x) -> namesIn ist sc `dropAll` [n]
                             _ -> [])
@@ -500,8 +517,8 @@ implicitise syn ist tm
     pibind using []     sc = sc
     pibind using (n:ns) sc 
       = case lookup n using of
-            Just ty -> PPi (Imp False) n ty (pibind using ns sc)
-            Nothing -> PPi (Imp False) n Placeholder (pibind using ns sc)
+            Just ty -> PPi (Imp False Dynamic) n ty (pibind using ns sc)
+            Nothing -> PPi (Imp False Dynamic) n Placeholder (pibind using ns sc)
 
 -- Add implicit arguments in function calls
 
@@ -565,6 +582,34 @@ addImpl ist ptm = ai [] ptm
     find n (PImp _ n' t : gs) acc 
          | n == n' = Just (t, reverse acc ++ gs)
     find n (g : gs) acc = find n gs (g : acc)
+
+-- Find 'static' argument positions
+-- (the declared ones, plus any names in argument position in the declared 
+-- statics)
+-- FIXME: It's possible that this really has to happen after elaboration
+
+findStatics :: IState -> PTerm -> (PTerm, [Int])
+findStatics ist tm = let (ns, ss) = fs tm in
+                         runState (pos 0 ns ss tm) []
+  where fs (PPi p n t sc)
+            | Static <- pstatic p
+                        = let (ns, ss) = fs sc in
+                              (namesIn ist t : ns, namesIn ist t ++ n : ss)
+            | otherwise = let (ns, ss) = fs sc in
+                              (namesIn ist t : ns, ss)
+        fs _ = ([], [])
+
+        inOne n ns = length (filter id (map (elem n) ns)) == 1
+
+        pos i ns ss (PPi p n t sc) 
+            | n `inOne` ns && elem n ss
+                        = do sc' <- pos i ns ss sc
+                             spos <- get
+                             put (i : spos)
+                             return (PPi (p { pstatic = Static }) n t sc')
+            | otherwise = do sc' <- pos (i+1) ns ss sc
+                             return (PPi p n t sc')
+        pos i ns ss t = return t
 
 -- Debugging/logging stuff
 

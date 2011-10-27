@@ -77,6 +77,9 @@ showSep sep [] = ""
 showSep sep [x] = x
 showSep sep (x:xs) = x ++ sep ++ showSep sep xs
 
+traceWhen True msg a = trace msg a
+traceWhen False _  a = a
+
 -- RAW TERMS ----------------------------------------------------------------
 
 -- Names are hierarchies of strings, describing scope (so no danger of
@@ -136,6 +139,17 @@ data Binder b = Lam   { binderTy  :: b }
               | PVar  { binderTy  :: b }
               | PVTy  { binderTy  :: b }
   deriving (Show, Eq, Functor)
+
+fmapMB :: Monad m => (a -> m b) -> Binder a -> m (Binder b)
+fmapMB f (Let t v)   = liftM2 Let (f t) (f v)
+fmapMB f (NLet t v)  = liftM2 NLet (f t) (f v)
+fmapMB f (Guess t v) = liftM2 Guess (f t) (f v)
+fmapMB f (Lam t)     = liftM Lam (f t)
+fmapMB f (Pi t)      = liftM Pi (f t)
+fmapMB f (Hole t)    = liftM Hole (f t)
+fmapMB f (GHole t)   = liftM GHole (f t)
+fmapMB f (PVar t)    = liftM PVar (f t)
+fmapMB f (PVTy t)    = liftM PVTy (f t)
 
 raw_apply :: Raw -> [Raw] -> Raw
 raw_apply f [] = f

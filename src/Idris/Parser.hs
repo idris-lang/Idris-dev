@@ -380,16 +380,26 @@ pLet syn = do reserved "let"; n <- pName; lchar '='; v <- pExpr syn
               reserved "in";  sc <- pExpr syn
               return (PLet n Placeholder v sc)
 
-pPi syn = do lazy <- option False (do lchar '|'; return True)
+pPi syn = 
+     try (do lazy <- option False (do lchar '|'; return True)
+             st <- pStatic
              lchar '('; xt <- tyDeclList syn; lchar ')'
              symbol "->"
              sc <- pExpr syn
-             return (bindList (PPi (Exp lazy)) xt sc)
-      <|> do lazy <- option False (do lchar '|'; return True)
+             return (bindList (PPi (Exp lazy st)) xt sc))
+ <|> try (do lazy <- option False (do lchar '|'; return True)
+             st <- pStatic
              lchar '{'; xt <- tyDeclList syn; lchar '}'
              symbol "->"
              sc <- pExpr syn
-             return (bindList (PPi (Imp lazy)) xt sc)
+             return (bindList (PPi (Imp lazy st)) xt sc))
+      <|> do --lazy <- option False (do lchar '|'; return True)
+             lchar '['; reserved "static"; lchar ']'
+             t <- pExpr' syn
+             symbol "->"
+             sc <- pExpr syn
+             return (PPi (Exp False Static) (MN 0 "X") t sc)
+
 
 tyDeclList syn = sepBy1 (do x <- pfName; t <- pTSig syn; return (x,t))
                     (lchar ',')
@@ -427,6 +437,11 @@ pConstant = do reserved "Int";    return IType
         <|> try (do i <- natural; return $ I (fromInteger i))
         <|> try (do s <- strlit;  return $ Str s)
         <|> try (do c <- chlit;   return $ Ch c)
+
+pStatic :: IParser Static
+pStatic = do lchar '['; reserved "static"; lchar ']';
+             return Static
+         <|> return Dynamic
 
 table fixes 
    = [[prefix "-" (\fc x -> PApp fc (PRef fc (UN ["-"])) [pexp (PConstant (I 0)), pexp x])]] 
@@ -575,8 +590,11 @@ implicit :: SyntaxInfo -> Name -> PTerm -> IParser PTerm
 implicit syn n ptm 
     = do i <- getState
          let (tm', impdata) = implicitise syn i ptm
+         let (tm'', spos) = findStatics i tm'
          setState (i { idris_implicits = addDef n impdata (idris_implicits i) })
-         return tm'
+         i <- getState
+         setState (i { idris_statics = addDef n spos (idris_statics i) })
+         return tm''
 
 desugar :: SyntaxInfo -> IState -> PTerm -> PTerm
 desugar syn i t = let t' = expandDo (dsl_info syn) t in
