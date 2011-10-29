@@ -23,13 +23,6 @@ liftCatch catchError m h =
 idrisCatch :: Idris a -> (IOError -> Idris a) -> Idris a
 idrisCatch op handler = liftCatch catch op handler
 
-pshow :: IState -> Err -> String
-pshow i (Msg s) = s
-pshow i (CantUnify x y e) = "Can't unify " ++ show (delab i x)
-                            ++ " with " ++ show (delab i y) 
-                            -- ++ "\n\t(" ++ pshow i e ++ ")"
-pshow i (At f e) = show f ++ ":" ++ pshow i e
-
 tclift :: Show a => TC a -> Idris a
 tclift tc = case tc of
                OK v -> return v

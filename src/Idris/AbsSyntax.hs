@@ -47,6 +47,7 @@ idrisInit = IState emptyContext [] emptyContext emptyContext
 -- global state (hence the IO inner monad).
 type Idris a = StateT IState IO a
 
+
 getContext :: Idris Context
 getContext = do i <- get; return (tt_ctxt i)
 
@@ -118,7 +119,7 @@ setTypeCase t = do i <- get
 
 data Command = Quit | Help | Eval PTerm 
              | Compile String
-             | Metavars
+             | Metavars | Prove Name
              | TTShell 
              | LogLvl Int | Spec PTerm | HNF PTerm
              | NOP
@@ -215,6 +216,14 @@ data PTerm = PQuote Raw
            | PMetavar Name
            | PElabError String -- error to report on elaboration
     deriving Eq
+
+data PTactic = Intro [Name]
+             | Refine Name
+             | Exact PTerm
+             | Solve
+             | Attack
+             | Qed
+    deriving (Show, Eq)
 
 data PDo = DoExp  FC PTerm
          | DoBind FC Name PTerm

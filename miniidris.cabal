@@ -28,7 +28,7 @@ Executable     miniidris
                               Idris.AbsSyntax, Idris.Parser, Idris.REPL,
                               Idris.REPLParser, Idris.ElabDecls, Idris.Error,
                               Idris.Delaborate, Idris.Primitives, Idris.Imports,
-                              Idris.Compiler
+                              Idris.Compiler, Idris.Prover
 
                               Paths_miniidris
 

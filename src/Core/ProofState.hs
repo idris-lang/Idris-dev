@@ -5,7 +5,7 @@
    evaluation/checking inside the proof system, etc. --}
 
 module Core.ProofState(ProofState(..), newProof, envAtFocus, goalAtFocus,
-                  Tactic(..), processTactic) where
+                  Tactic(..), Goal(..), processTactic) where
 
 import Core.Typecheck
 import Core.Evaluate
@@ -124,10 +124,10 @@ envAtFocus ps
                                  return (premises g)
     | otherwise = fail "No holes"
 
-goalAtFocus :: ProofState -> TC Type
+goalAtFocus :: ProofState -> TC (Binder Type)
 goalAtFocus ps
     | not $ null (holes ps) = do g <- goal (Just (head (holes ps))) (pterm ps)
-                                 return (binderTy (goalType g))
+                                 return (goalType g)
 
 goal :: Hole -> Term -> TC Goal
 goal h tm = g [] tm where
@@ -195,7 +195,7 @@ defer n ctxt env (Bind x (Hole t) (P nt x' ty)) | x == x' =
     do action (\ps -> let hs = holes ps in
                           ps { holes = hs \\ [x] })
        return (Bind n (GHole (mkTy (reverse env) t)) 
-                      (mkApp (P nt n ty) (map getP (reverse env))))
+                      (mkApp (P Ref n ty) (map getP (reverse env))))
   where
     mkTy []           t = t
     mkTy ((n,b) : bs) t = Bind n (Pi (binderTy b)) (mkTy bs t)

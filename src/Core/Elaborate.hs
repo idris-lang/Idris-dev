@@ -30,6 +30,9 @@ data Command = Theorem Name Raw
 type ElabState = (ProofState, String)
 type Elab a = StateT ElabState TC a
 
+proof :: ElabState -> ProofState
+proof = fst
+
 erun :: FC -> Elab a -> Elab a
 erun f elab = do s <- get
                  case runStateT elab s of
@@ -81,7 +84,8 @@ get_holes = do (p, _) <- get
 -- get the current goal type
 goal :: Elab Type
 goal = do (p, _) <- get
-          lift $ goalAtFocus p
+          b <- lift $ goalAtFocus p
+          return (binderTy b)
 
 -- typecheck locally
 get_type :: Raw -> Elab Type

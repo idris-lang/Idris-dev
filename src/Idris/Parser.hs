@@ -74,6 +74,7 @@ loadSource f = do iLOG ("Reading " ++ f)
                   return ()
 
 parseExpr i = runParser (pFullExpr defaultSyntax) i "(input)"
+parseTac i = runParser (pTactic defaultSyntax) i "(proof)"
 
 parseImports :: FilePath -> String -> Idris ([String], String, SourcePos)
 parseImports fname input 
@@ -583,6 +584,21 @@ pWhereblock syn = do reserved "where"; lchar '{'
                      ds <- many1 $ pFunDecl syn;
                      lchar '}';
                      return $ concat ds
+
+pTactic :: SyntaxInfo -> IParser PTactic
+pTactic syn = do reserved "intro"; ns <- sepBy pName (lchar ',')
+                 return $ Intro ns
+          <|> do reserved "refine"; n <- pName
+                 return $ Refine n
+          <|> do reserved "exact"; t <- pExpr syn;
+                 i <- getState
+                 return $ Exact (desugar syn i t)
+          <|> do reserved "solve"
+                 return Solve
+          <|> do reserved "attack"
+                 return Attack
+          <|> do reserved "qed"
+                 return Qed
 
 -- Dealing with implicit arguments
 

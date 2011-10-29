@@ -9,7 +9,7 @@ import Idris.Imports
 import Paths_miniidris
 
 import Core.TT
-import Core.Elaborate
+import Core.Elaborate hiding (Tactic(..))
 import Core.Evaluate
 import Core.Typecheck
 import Core.CaseTree
@@ -122,13 +122,14 @@ elabClause info fc (PClause fname lhs withs rhs whereblock)
         ((rhs', defer), _) <- 
            tclift $ elaborate ctxt (MN 0 "patRHS") clhsty
                     (do pbinds lhs_tm
-                        (_, d) <- erun fc (build winfo False rhs)
+                        (_, _) <- erun fc (build winfo False rhs)
                         psolve lhs_tm
                         tt <- get_term
-                        return (tt, d))
+                        return $ runState (collectDeferred tt) [])
         logLvl 2 $ "---> " ++ show rhs'
         when (not (null defer)) $ iLOG $ "DEFERRED " ++ show defer
         addDeferred defer
+        ctxt <- getContext
         (crhs, crhsty) <- tclift $ recheck ctxt [] rhs'
         return (clhs, crhs)
   where
@@ -418,4 +419,11 @@ collectDeferred (Bind n b t) = do b' <- cdb b
 collectDeferred (App f a) = liftM2 App (collectDeferred f) (collectDeferred a)
 collectDeferred t = return t
 
+-- Running tactics directly
+
+runTac :: PTactic -> Elab ()
+runTac (Intro xs) = mapM_ (\x -> do attack; intro x) xs
+runTac (Exact tm) = elab toplevel False tm
+runTac Solve = solve
+runTac x = fail $ "Not implemented " ++ show x
 

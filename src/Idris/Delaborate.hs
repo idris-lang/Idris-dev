@@ -46,3 +46,10 @@ delab ist tm = de [] tm
     imp (PImp l n _) arg = PImp l n arg
     imp (PExp l _)   arg = PExp l arg
 
+pshow :: IState -> Err -> String
+pshow i (Msg s) = s
+pshow i (CantUnify x y e) = "Can't unify " ++ show (delab i x)
+                            ++ " with " ++ show (delab i y) 
+                            -- ++ "\n\t(" ++ pshow i e ++ ")"
+pshow i (At f e) = show f ++ ":" ++ pshow i e
+

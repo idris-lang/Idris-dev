@@ -8,6 +8,7 @@ import Idris.ElabDecls
 import Idris.Error
 import Idris.Delaborate
 import Idris.Compiler
+import Idris.Prover
 
 import Core.Evaluate
 import Core.ProofShell
@@ -55,6 +56,7 @@ process (Spec t) = do (tm, ty) <- elabVal toplevel t
                       ist <- get
                       let tm' = specialise ctxt (idris_statics ist) tm
                       iputStrLn (show (delab ist tm'))
+process (Prove n) = prover n
 process (HNF t)  = do (tm, ty) <- elabVal toplevel t
                       ctxt <- getContext
                       ist <- get
