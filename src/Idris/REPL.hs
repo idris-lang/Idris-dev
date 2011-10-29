@@ -50,6 +50,16 @@ process (Eval t) = do (tm, ty) <- elabVal toplevel t
                       logLvl 3 $ "Raw: " ++ show tm'
                       iputStrLn (show (delab ist tm') ++ " : " ++ 
                                  show (delab ist ty'))
+process (Spec t) = do (tm, ty) <- elabVal toplevel t
+                      ctxt <- getContext
+                      ist <- get
+                      let tm' = specialise ctxt (idris_statics ist) tm
+                      iputStrLn (show (delab ist tm'))
+process (HNF t)  = do (tm, ty) <- elabVal toplevel t
+                      ctxt <- getContext
+                      ist <- get
+                      let tm' = hnf ctxt [] tm
+                      iputStrLn (show (delab ist tm'))
 process TTShell  = do ist <- get
                       let shst = initState (tt_ctxt ist)
                       shst' <- lift $ runShell shst

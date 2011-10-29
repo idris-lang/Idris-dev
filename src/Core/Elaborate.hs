@@ -27,7 +27,8 @@ data Command = Theorem Name Raw
              | Print Name
              | Tac (Elab ())
 
-type Elab a = StateT (ProofState, String) TC a
+type ElabState = (ProofState, String)
+type Elab a = StateT ElabState TC a
 
 erun :: FC -> Elab a -> Elab a
 erun f elab = do s <- get

@@ -5,6 +5,7 @@ module Idris.AbsSyntax where
 
 import Core.TT
 import Core.Evaluate
+import Core.Elaborate
 
 import Control.Monad.State
 import Data.List
@@ -28,7 +29,7 @@ defaultOpts = IOption 0 False
 data IState = IState { tt_ctxt :: Context,
                        idris_infixes :: [FixDecl],
                        idris_implicits :: Ctxt [PArg],
-                       idris_statics :: Ctxt [Int],
+                       idris_statics :: Ctxt [Bool],
                        idris_log :: String,
                        idris_options :: IOption,
                        idris_name :: Int,
@@ -119,7 +120,7 @@ data Command = Quit | Help | Eval PTerm
              | Compile String
              | Metavars
              | TTShell 
-             | LogLvl Int
+             | LogLvl Int | Spec PTerm | HNF PTerm
              | NOP
 
 -- Parsed declarations
@@ -588,9 +589,9 @@ addImpl ist ptm = ai [] ptm
 -- statics)
 -- FIXME: It's possible that this really has to happen after elaboration
 
-findStatics :: IState -> PTerm -> (PTerm, [Int])
+findStatics :: IState -> PTerm -> (PTerm, [Bool])
 findStatics ist tm = let (ns, ss) = fs tm in
-                         runState (pos 0 ns ss tm) []
+                         runState (pos ns ss tm) []
   where fs (PPi p n t sc)
             | Static <- pstatic p
                         = let (ns, ss) = fs sc in
@@ -601,15 +602,17 @@ findStatics ist tm = let (ns, ss) = fs tm in
 
         inOne n ns = length (filter id (map (elem n) ns)) == 1
 
-        pos i ns ss (PPi p n t sc) 
+        pos ns ss (PPi p n t sc) 
             | n `inOne` ns && elem n ss
-                        = do sc' <- pos i ns ss sc
+                        = do sc' <- pos ns ss sc
                              spos <- get
-                             put (i : spos)
+                             put (True : spos)
                              return (PPi (p { pstatic = Static }) n t sc')
-            | otherwise = do sc' <- pos (i+1) ns ss sc
+            | otherwise = do sc' <- pos ns ss sc
+                             spos <- get
+                             put (False : spos)
                              return (PPi p n t sc')
-        pos i ns ss t = return t
+        pos ns ss t = return t
 
 -- Debugging/logging stuff
 
