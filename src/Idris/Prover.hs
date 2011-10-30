@@ -24,11 +24,17 @@ prover x = do ctxt <- getContext
                                else fail $ show x ++ " is not a metavariable"
                   _ -> fail "No such metavariable"
 
+dumpProof :: Name -> [String] -> IO ()
+dumpProof n ps = do putStrLn $ show n ++ " = proof {"
+                    mapM_ (\x -> putStrLn $ "    " ++ x ++ ";") ps
+                    putStrLn "};\n"
+
 prove :: Context -> Name -> Type -> Idris ()
 prove ctxt n ty 
     = do let ps = initElaborator n ctxt ty 
-         tm <- ploop True ("-" ++ show n) (ps, "")
+         (tm, prf) <- ploop True ("-" ++ show n) [] (ps, "")
          iLOG $ "Adding " ++ show tm
+         lift $ dumpProof n prf
          let tree = simpleCase False [(P Ref n ty, tm)]
          logLvl 3 (show tree)
          (ptm, pty) <- tclift $ recheck ctxt [] tm
@@ -65,27 +71,37 @@ dumpState ist ps@(PS nm (h:hs) _ tm _ _ i _ cyxy _ _)
     showG (Guess t v) = tshow t ++ " =?= " ++ tshow v
     showG b = tshow (binderTy b)
 
-ploop :: Bool -> String -> ElabState -> Idris Term
-ploop d prompt e 
+lifte :: ElabState -> Elab a -> Idris a
+lifte st e = do (v, _) <- elabStep st e
+                return v
+
+ploop :: Bool -> String -> [String] -> ElabState -> Idris (Term, [String])
+ploop d prompt prf e 
     = do i <- get
          when d $ lift $ dumpState i (proof e)
          x <- lift $ readline (prompt ++ "> ")
-         cmd <- case x of
+         (cmd, step) <- case x of
             Nothing -> fail "Abandoned"
             Just input -> do lift $ addHistory input
-                             return (parseTac i input)
-         (d, st, done) <- idrisCatch 
+                             return (parseTac i input, input)
+         (d, st, done, prf') <- idrisCatch 
            (case cmd of
               Left err -> do iputStrLn (show err)
-                             return (False, e, False)
-              Right Qed -> do (hs, _) <- elabStep e get_holes
+                             return (False, e, False, prf)
+              Right ProofState ->
+                              return (True, e, False, prf)
+              Right ProofTerm -> 
+                           do tm <- lifte e get_term
+                              iputStrLn $ "TT: " ++ show tm ++ "\n"
+                              return (False, e, False, prf)
+              Right Qed -> do hs <- lifte e get_holes
                               when (not (null hs)) $ fail "Incomplete proof"
-                              return (False, e, True)
+                              return (False, e, True, prf)
               Right tac -> do (_, st) <- elabStep e (runTac tac)
-                              return (True, st, False))
+                              return (True, st, False, prf ++ [step]))
            (\err -> do iputStrLn (report err)
-                       return (False, e, False))
+                       return (False, e, False, prf))
          if done then do (tm, _) <- elabStep st get_term 
-                         return tm
-                 else ploop d prompt st
+                         return (tm, prf')
+                 else ploop d prompt prf' st
 

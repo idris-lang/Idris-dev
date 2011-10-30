@@ -214,6 +214,7 @@ data PTerm = PQuote Raw
            | PDoBlock [PDo]
            | PReturn FC
            | PMetavar Name
+           | PProof [PTactic]
            | PElabError String -- error to report on elaboration
     deriving Eq
 
@@ -222,6 +223,7 @@ data PTactic = Intro [Name]
              | Exact PTerm
              | Solve
              | Attack
+             | ProofState | ProofTerm
              | Qed
     deriving (Show, Eq)
 
@@ -358,6 +360,7 @@ showImp impl tm = se 10 tm where
     se p (PDPair _ l r) = "(" ++ se 10 l ++ " ** " ++ se 10 r ++ ")"
     se p PSet = "Set"
     se p (PConstant c) = show c
+    se p (PProof ts) = "proof { " ++ show ts ++ "}"
     se p (PMetavar n) = "?" ++ show n
     se p Placeholder = "_"
 

@@ -329,6 +329,10 @@ pSimpleExpr syn =
         <|> do lchar '?'; x <- pName; return (PMetavar x)
         <|> do reserved "refl"; fc <- pfc; return (PRefl fc)
         <|> do reserved "return"; fc <- pfc; return (PReturn fc)
+        <|> do reserved "proof"; lchar '{';
+               ts <- endBy (pTactic syn) (lchar ';')
+               lchar '}'
+               return (PProof ts)
         <|> try (do x <- pfName; fc <- pfc; return (PRef fc x))
         <|> try (pPair syn)
         <|> try (do lchar '('; e <- pExpr syn; lchar ')'; return e)
@@ -597,6 +601,10 @@ pTactic syn = do reserved "intro"; ns <- sepBy pName (lchar ',')
                  return Solve
           <|> do reserved "attack"
                  return Attack
+          <|> do reserved "state"
+                 return ProofState
+          <|> do reserved "term"
+                 return ProofTerm
           <|> do reserved "qed"
                  return Qed
 

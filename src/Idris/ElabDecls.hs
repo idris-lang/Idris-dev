@@ -388,6 +388,7 @@ elab info pattern tm = do elab' tm
     elab' Placeholder = do (h : hs) <- get_holes
                            movelast h
     elab' (PMetavar n) = do attack; defer n; solve
+    elab' (PProof ts) = do mapM_ runTac ts
     elab' (PElabError e) = fail e
     elab' x = fail $ "Not implemented " ++ show x
 
@@ -423,7 +424,8 @@ collectDeferred t = return t
 
 runTac :: PTactic -> Elab ()
 runTac (Intro xs) = mapM_ (\x -> do attack; intro x) xs
-runTac (Exact tm) = elab toplevel False tm
+runTac (Exact tm) = do elab toplevel False tm
+                       try solve (return ())
 runTac Solve = solve
 runTac x = fail $ "Not implemented " ++ show x
 
