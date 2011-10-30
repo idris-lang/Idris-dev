@@ -425,7 +425,11 @@ collectDeferred t = return t
 runTac :: PTactic -> Elab ()
 runTac (Intro xs) = mapM_ (\x -> do attack; intro x) xs
 runTac (Exact tm) = do elab toplevel False tm
-                       try solve (return ())
+                       solveAll
+runTac (Refine fn imps) = do ns <- apply (Var fn) imps
+                             solveAll
+runTac (Focus n) = focus n
 runTac Solve = solve
 runTac x = fail $ "Not implemented " ++ show x
 
+solveAll = try (do solve; solveAll) (return ())

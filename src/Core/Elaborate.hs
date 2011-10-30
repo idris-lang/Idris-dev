@@ -27,11 +27,22 @@ data Command = Theorem Name Raw
              | Print Name
              | Tac (Elab ())
 
-type ElabState = (ProofState, String)
+data ElabState = ES ProofState String (Maybe ElabState)
+  deriving Show
 type Elab a = StateT ElabState TC a
 
 proof :: ElabState -> ProofState
-proof = fst
+proof (ES p _ _) = p
+
+saveState :: Elab ()
+saveState = do e@(ES p s _) <- get
+               put (ES p s (Just e))
+
+loadState :: Elab ()
+loadState = do (ES p s e) <- get
+               case e of
+                  Just st -> put st
+                  _ -> fail "Nothing to undo"
 
 erun :: FC -> Elab a -> Elab a
 erun f elab = do s <- get
@@ -41,49 +52,49 @@ erun f elab = do s <- get
                     Error (At f e) -> lift $ Error (At f e)
                     Error e        -> lift $ Error (At f e)
 
-runElab :: Elab a -> ProofState -> TC (a, (ProofState, String))
-runElab e ps = runStateT e (ps, "")
+runElab :: Elab a -> ProofState -> TC (a, ElabState)
+runElab e ps = runStateT e (ES ps "" Nothing)
 
-execElab :: Elab a -> ProofState -> TC (ProofState, String)
-execElab e ps = execStateT e (ps, "")
+execElab :: Elab a -> ProofState -> TC ElabState
+execElab e ps = execStateT e (ES ps "" Nothing)
 
 initElaborator :: Name -> Context -> Type -> ProofState
 initElaborator = newProof
 
 elaborate :: Context -> Name -> Type -> Elab a -> TC (a, String)
 elaborate ctxt n ty elab = do let ps = initElaborator n ctxt ty
-                              (a, (ps', str)) <- runElab elab ps
+                              (a, ES ps' str _) <- runElab elab ps
                               return (a, str)
 
-processTactic' t = do (p, logs) <- get
+processTactic' t = do ES p logs prev <- get
                       (p', log) <- lift $ processTactic t p
-                      put (p', logs ++ log)
+                      put (ES p' (logs ++ log) prev)
                       return ()
 
 -- Some handy gadgets for pulling out bits of state
 
 -- get the global context
 get_context :: Elab Context
-get_context = do (p, _) <- get
+get_context = do ES p _ _ <- get
                  return (context p)
 
 -- get the proof term
 get_term :: Elab Term
-get_term = do (p, _) <- get
+get_term = do ES p _ _ <- get
               return (pterm p)
 
 -- get the local context at the currently in focus hole
 get_env :: Elab Env
-get_env = do (p, _) <- get
+get_env = do ES p _ _ <- get
              lift $ envAtFocus p
 
 get_holes :: Elab [Name]
-get_holes = do (p, _) <- get
+get_holes = do ES p _ _ <- get
                return (holes p)
 
 -- get the current goal type
 goal :: Elab Type
-goal = do (p, _) <- get
+goal = do ES p _ _ <- get
           b <- lift $ goalAtFocus p
           return (binderTy b)
 
@@ -96,12 +107,12 @@ get_type tm = do ctxt <- get_context
 
 -- get holes we've deferred for later definition
 get_deferred :: Elab [Name]
-get_deferred = do (p, _) <- get
+get_deferred = do ES p _ _ <- get
                   return (deferred p)
 
 -- given a desired hole name, return a unique hole name
 unique_hole :: Name -> Elab Name
-unique_hole n = do (p, _) <- get
+unique_hole n = do ES p _ _ <- get
                    env <- get_env
                    return (uniq n (holes p ++ map fst env))
   where
@@ -118,8 +129,8 @@ next (UN (x:xs)) = let (num', nm') = span isDigit (reverse x)
     readN x  = read x
 
 elog :: String -> Elab ()
-elog str = do (p, logs) <- get
-              put (p, logs ++ str ++ "\n")
+elog str = do ES p logs prev <- get
+              put (ES p (logs ++ str ++ "\n") prev)
 
 -- The primitives, from ProofState
 
@@ -191,7 +202,7 @@ proofstate = processTactic' ProofState
 
 qed :: Elab Term
 qed = do processTactic' QED
-         (p, _) <- get
+         ES p _ _ <- get
          return (pterm p)
 
 undo :: Elab ()
@@ -205,11 +216,11 @@ prepare_apply fn imps =
        env <- get_env
        -- let claims = getArgs ty imps
        claims <- doClaims (normalise ctxt env ty) imps []
-       (p, s) <- get
+       ES p s prev <- get
        -- reverse the claims we made so that args go left to right
        let n = length (filter not imps)
        let (h : hs) = holes p
-       put (p { holes = h : (reverse (take n hs) ++ drop n hs) }, s)
+       put (ES (p { holes = h : (reverse (take n hs) ++ drop n hs) }) s prev)
        return claims
   where
     doClaims (Bind n' (Pi t) sc) (i : is) claims =
@@ -232,10 +243,10 @@ apply fn imps =
        -- *Don't* solve the arguments we're specifying by hand.
        -- (remove from unified list before calling end_unify)
        let dontunify = map fst (filter (not.snd) (zip args imps))
-       (p, s) <- get
+       ES p s prev <- get
        let (n, hs) = unified p
        let unify = (n, filter (\ (n, t) -> not (n `elem` dontunify)) hs)
-       put (p { unified = unify }, s)
+       put (ES (p { unified = unify }) s prev)
        end_unify
        return args
 
@@ -262,7 +273,7 @@ apply_elab n args =
     elabClaims [] = return ()
     elabClaims ((n, Nothing) : xs) = elabClaims xs
     elabClaims ((n, Just elaboration) : xs)  =
-        do (p, _) <- get
+        do ES p _ _ <- get
            focus n; elaboration; elabClaims xs
 
     mkMN n@(MN _ _) = n

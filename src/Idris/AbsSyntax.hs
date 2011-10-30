@@ -218,12 +218,12 @@ data PTerm = PQuote Raw
            | PElabError String -- error to report on elaboration
     deriving Eq
 
-data PTactic = Intro [Name]
-             | Refine Name
+data PTactic = Intro [Name] | Focus Name
+             | Refine Name [Bool]
              | Exact PTerm
              | Solve
              | Attack
-             | ProofState | ProofTerm
+             | ProofState | ProofTerm | Undo
              | Qed
     deriving (Show, Eq)
 

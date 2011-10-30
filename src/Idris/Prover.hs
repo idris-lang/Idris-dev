@@ -32,7 +32,7 @@ dumpProof n ps = do putStrLn $ show n ++ " = proof {"
 prove :: Context -> Name -> Type -> Idris ()
 prove ctxt n ty 
     = do let ps = initElaborator n ctxt ty 
-         (tm, prf) <- ploop True ("-" ++ show n) [] (ps, "")
+         (tm, prf) <- ploop True ("-" ++ show n) [] (ES ps "" Nothing)
          iLOG $ "Adding " ++ show tm
          lift $ dumpProof n prf
          let tree = simpleCase False [(P Ref n ty, tm)]
@@ -88,6 +88,9 @@ ploop d prompt prf e
            (case cmd of
               Left err -> do iputStrLn (show err)
                              return (False, e, False, prf)
+              Right Undo -> 
+                           do (_, st) <- elabStep e loadState
+                              return (True, st, False, init prf)
               Right ProofState ->
                               return (True, e, False, prf)
               Right ProofTerm -> 
@@ -97,7 +100,8 @@ ploop d prompt prf e
               Right Qed -> do hs <- lifte e get_holes
                               when (not (null hs)) $ fail "Incomplete proof"
                               return (False, e, True, prf)
-              Right tac -> do (_, st) <- elabStep e (runTac tac)
+              Right tac -> do (_, e) <- elabStep e saveState
+                              (_, st) <- elabStep e (runTac tac)
                               return (True, st, False, prf ++ [step]))
            (\err -> do iputStrLn (report err)
                        return (False, e, False, prf))

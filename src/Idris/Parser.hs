@@ -592,8 +592,17 @@ pWhereblock syn = do reserved "where"; lchar '{'
 pTactic :: SyntaxInfo -> IParser PTactic
 pTactic syn = do reserved "intro"; ns <- sepBy pName (lchar ',')
                  return $ Intro ns
+          <|> try (do reserved "refine"; n <- pName
+                      imps <- many1 imp
+                      return $ Refine n imps)
           <|> do reserved "refine"; n <- pName
-                 return $ Refine n
+                 i <- getState
+                 let imps = case lookupCtxt n (idris_implicits i) of
+                              Nothing -> []
+                              Just args -> map isImp args
+                 return $ Refine n imps
+          <|> do reserved "focus"; n <- pName
+                 return $ Focus n
           <|> do reserved "exact"; t <- pExpr syn;
                  i <- getState
                  return $ Exact (desugar syn i t)
@@ -605,8 +614,15 @@ pTactic syn = do reserved "intro"; ns <- sepBy pName (lchar ',')
                  return ProofState
           <|> do reserved "term"
                  return ProofTerm
+          <|> do reserved "undo"
+                 return Undo
           <|> do reserved "qed"
                  return Qed
+   where isImp (PImp _ _ _) = True
+         isImp _ = False
+         imp = do lchar '?'; return False
+           <|> do lchar '_'; return True
+
 
 -- Dealing with implicit arguments
 
