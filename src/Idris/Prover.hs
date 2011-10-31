@@ -102,7 +102,7 @@ ploop d prompt prf e
                               when (not (null hs)) $ fail "Incomplete proof"
                               return (False, e, True, prf)
               Right tac -> do (_, e) <- elabStep e saveState
-                              (_, st) <- elabStep e (runTac tac)
+                              (_, st) <- elabStep e (runTac True tac)
                               return (True, st, False, prf ++ [step]))
            (\err -> do iputStrLn (report err)
                        return (False, e, False, prf))

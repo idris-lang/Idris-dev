@@ -388,7 +388,7 @@ elab info pattern tm = do elab' tm
     elab' Placeholder = do (h : hs) <- get_holes
                            movelast h
     elab' (PMetavar n) = do attack; defer n; solve
-    elab' (PProof ts) = do mapM_ runTac ts
+    elab' (PProof ts) = do mapM_ (runTac True) ts
     elab' (PElabError e) = fail e
     elab' x = fail $ "Not implemented " ++ show x
 
@@ -422,26 +422,28 @@ collectDeferred t = return t
 
 -- Running tactics directly
 
-runTac :: PTactic -> Elab ()
-runTac (Intro xs) = mapM_ (\x -> do attack; intro x) xs
-runTac (Exact tm) = do elab toplevel False tm
-                       solveAll
-runTac (Refine fn imps) = do ns <- apply (Var fn) imps
-                             solveAll
-runTac (Rewrite tm) -- to elaborate tm, let bind it, then rewrite by that
-          = do attack; -- (h:_) <- get_holes
-               tyn <- unique_hole (MN 0 "rty")
-               -- start_unify h
-               claim tyn (RSet 0)
-               valn <- unique_hole (MN 0 "rval")
-               claim valn (Var tyn)
-               letn <- unique_hole (MN 0 "rewrite_rule")
-               letbind letn (Var tyn) (Var valn)  
-               focus valn
-               elab toplevel False tm
-               rewrite (Var letn)
-runTac (Focus n) = focus n
-runTac Solve = solve
-runTac x = fail $ "Not implemented " ++ show x
+runTac :: Bool -> PTactic -> Elab ()
+runTac autoSolve = runT where
+    runT (Intro xs) = mapM_ (\x -> do attack; intro x) xs
+    runT (Exact tm) = do elab toplevel False tm
+                         when autoSolve solveAll
+    runT (Refine fn imps) = do ns <- apply (Var fn) imps
+                               when autoSolve solveAll
+    runT (Rewrite tm) -- to elaborate tm, let bind it, then rewrite by that
+              = do attack; -- (h:_) <- get_holes
+                   tyn <- unique_hole (MN 0 "rty")
+                   -- start_unify h
+                   claim tyn (RSet 0)
+                   valn <- unique_hole (MN 0 "rval")
+                   claim valn (Var tyn)
+                   letn <- unique_hole (MN 0 "rewrite_rule")
+                   letbind letn (Var tyn) (Var valn)  
+                   focus valn
+                   elab toplevel False tm
+                   rewrite (Var letn)
+                   when autoSolve solveAll
+    runT (Focus n) = focus n
+    runT Solve = solve
+    runT x = fail $ "Not implemented " ++ show x
 
 solveAll = try (do solve; solveAll) (return ())
