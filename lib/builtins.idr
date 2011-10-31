@@ -11,6 +11,9 @@ getSigVal (Exists a v) = v;
 replace : {a:_} -> {x:_} -> {y:_} -> {P : a -> Set} -> x = y -> P x -> P y;
 replace refl prf = prf;
 
+sym : {x:a} -> {y:a} -> x = y -> y = x;
+sym refl = refl;
+
 lazy : a -> a;
 lazy x = x; -- compiled specially
 

@@ -1,7 +1,7 @@
 {-# LANGUAGE MultiParamTypeClasses, FlexibleInstances,
              PatternGuards #-}
 
-module Core.Evaluate(normalise, specialise, hnf,
+module Core.Evaluate(normalise, normaliseC, specialise, hnf,
                 Fun(..), Def(..), Context, 
                 addToCtxt, addTyDecl, addDatatype, addCasedef, addOperator,
                 lookupTy, lookupP, lookupDef, lookupVal, lookupTyEnv,
@@ -50,6 +50,11 @@ instance Show (a -> b) where
 -- indexed.
 -- i.e. it's an intermediate environment that we have while type checking or
 -- while building a proof.
+
+normaliseC :: Context -> Env -> TT Name -> TT Name
+normaliseC ctxt env t 
+   = evalState (do val <- eval ctxt emptyContext env t []
+                   quote 0 val) ()
 
 normalise :: Context -> Env -> TT Name -> TT Name
 normalise ctxt env t 
@@ -103,7 +108,7 @@ eval ctxt statics genv tm opts = ev True [] tm where
     ev top env (V i) | i < length env = return $ env !! i
                      | otherwise      = return $ VV i 
     ev top env (Bind n (Let t v) sc)
-           = do v' <- ev top env (finalise v)
+           = do v' <- ev top env v --(finalise v)
                 sc' <- ev top (v' : env) sc
                 wknV (-1) sc'
     ev top env (Bind n (NLet t v) sc)

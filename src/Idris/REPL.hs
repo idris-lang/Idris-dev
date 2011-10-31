@@ -46,9 +46,9 @@ process Help
 process (Eval t) = do (tm, ty) <- elabVal toplevel t
                       ctxt <- getContext
                       ist <- get 
-                      let tm' = normalise ctxt [] tm
-                      let ty' = normalise ctxt [] ty
-                      logLvl 3 $ "Raw: " ++ show tm'
+                      let tm' = normaliseC ctxt [] tm
+                      let ty' = normaliseC ctxt [] ty
+                      logLvl 3 $ "Raw: " ++ show (tm', ty')
                       iputStrLn (show (delab ist tm') ++ " : " ++ 
                                  show (delab ist ty'))
 process (Spec t) = do (tm, ty) <- elabVal toplevel t

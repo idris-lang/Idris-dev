@@ -329,7 +329,7 @@ showEnvDbg env t = showEnv' env t True
 
 showEnv' env t dbg = se 10 env t where
     se p env (P nt n t) = show n 
-                            ++ if dbg then "{" ++ show nt ++ " : " ++ se 10 env t ++ "}" else ""
+                            -- ++ if dbg then "{" ++ show nt ++ " : " ++ se 10 env t ++ "}" else ""
     se p env (V i) | i < length env = (show $ fst $ env!!i) ++
                                       if dbg then "{" ++ show i ++ "}" else ""
                    | otherwise = "!!V " ++ show i ++ "!!"

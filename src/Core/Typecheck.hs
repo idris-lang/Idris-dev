@@ -39,15 +39,20 @@ check ctxt env (Var n)
 check ctxt env (RApp f a)
     = do (fv, fty) <- check ctxt env f
          (av, aty) <- check ctxt env a
-         let fty' = normalise ctxt env fty
---          trace (showEnv env fty ++ " ===> " ++ showEnv env fty') $ 
+         let fty' = renameBinders 0 $ normalise ctxt env fty
          case fty' of
            Bind x (Pi s) t ->
                do converts ctxt env s aty
-                  return (App fv av,
---                           normalise ctxt env (subst x av t))
-                          normalise ctxt env (Bind x (Let aty av) t))
+                  let apty = {- normalise ctxt env -} (Bind x (Let aty av) t)
+                  return (App fv av, apty)
            t -> fail "Can't apply a non-function type"
+  -- This rather unpleasant hack is needed because during incomplete 
+  -- proofs, variables are locally bound with an explicit name. If we just 
+  -- make sure bound names in function types are locally unique, machine
+  -- generated names, we'll be fine.
+  where renameBinders i (Bind x (Pi s) t) = Bind (MN i "binder") (Pi s) 
+                                                 (renameBinders (i+1) t)
+        renameBinders i sc = sc
 check ctxt env (RSet i) = return (Set i, Set i) -- LATER: (i+1))
 check ctxt env (RConstant c) = return (Constant c, constType c)
   where constType (I _)   = Constant IType
