@@ -13,9 +13,12 @@ import Debug.Trace
 unify :: Context -> Env -> TT Name -> TT Name -> TC [(Name, TT Name)]
 unify ctxt env topx topy 
     = case un' False [] (normalise ctxt env topx) (normalise ctxt env topy) of
-              OK v -> return v
+              OK v -> return (filter notTrivial v)
               Error e -> tfail $ CantUnify topx topy e  
   where
+    notTrivial (x, P _ x' _) = x /= x'
+    notTrivial _ = True
+
     injective (P (DCon _ _) _ _) = True
     injective (P (TCon _ _) _ _) = True
     injective (App f a)          = injective f

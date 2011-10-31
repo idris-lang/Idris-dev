@@ -19,7 +19,7 @@ idrisDef = haskellDef {
               opLetter = iOpLetter,
               reservedOpNames = [":", "..", "=", "\\", "|", "<-", "->", "=>", "**"],
               reservedNames = ["let", "in", "data", "Set", -- "if", "then", "else",
-                               "do", "dsl", "import", "return", "refl",
+                               "do", "dsl", "import", "return", -- "refl",
                                "infix", "infixl", "infixr", "prefix",
                                "where", "with", "forall", "syntax", "proof",
                                "using", "params", "namespace",
