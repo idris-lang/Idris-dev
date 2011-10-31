@@ -219,7 +219,7 @@ data PTerm = PQuote Raw
     deriving Eq
 
 data PTactic = Intro [Name] | Focus Name
-             | Refine Name [Bool]
+             | Refine Name [Bool] | Rewrite PTerm
              | Exact PTerm
              | Solve
              | Attack

@@ -601,6 +601,9 @@ pTactic syn = do reserved "intro"; ns <- sepBy pName (lchar ',')
                               Nothing -> []
                               Just args -> map isImp args
                  return $ Refine n imps
+          <|> do reserved "rewrite"; t <- pExpr syn;
+                 i <- getState
+                 return $ Rewrite (desugar syn i t)
           <|> do reserved "focus"; n <- pName
                  return $ Focus n
           <|> do reserved "exact"; t <- pExpr syn;

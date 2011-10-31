@@ -61,9 +61,10 @@ dumpState ist ps@(PS nm (h:hs) _ tm _ _ i _ cyxy _ _)
     tshow t = show (delab ist t)
 
     showPs [] = ""
+    showPs ((MN _ "rewrite_rule", _) : bs) = showPs bs
     showPs ((n, Let t v) : bs)
-        = "  " ++ show n ++ " : " ++
-            tshow t ++ " = " ++ tshow v ++ "\n" ++ showPs bs
+        = "  " ++ show n ++ " = " ++ tshow v ++ " : " ++
+            tshow t ++ "\n" ++ showPs bs
     showPs ((n, b) : bs)
         = "  " ++ show n ++ " : " ++
             tshow (binderTy b) ++ "\n" ++ showPs bs

@@ -50,6 +50,7 @@ data Tactic = Attack
             | Intro Name
             | Forall Name Raw
             | LetBind Name Raw Raw
+            | Rewrite Raw
             | PatVar Name
             | PatBind Name
             | Focus Name
@@ -280,6 +281,31 @@ letbind n ty val ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' =
        return $ Bind n (Let tyv valv) (Bind x (Hole t) (P Bound x t))
 letbind n ty val ctxt env _ = fail "Can't let bind here"
 
+rewrite :: Raw -> RunTactic
+rewrite tm ctxt env (Bind x (Hole t) xp@(P _ x' _)) | x == x' =
+    do (tmv, tmt) <- lift $ check ctxt env tm
+       case unApply tmt of
+         (P _ (UN ["="]) _, [lt,rt,l,r]) ->
+            do let p = Bind rname (Lam lt) (mkP (P Bound rname lt) r l t)
+               let newt = mkP l r l t 
+               return (Bind x (Hole newt)
+                              (mkApp (P Ref (UN ["replace"]) (Set 0))
+                                     [lt, l, r, p, tmv, xp])) 
+             --  fail $ "Rewrite " ++ show l ++ " to " ++ show r ++ " in " ++ 
+             --          show t ++ " with " ++ show (p, newt) ++ " not done yet"
+         _ -> fail "Not an equality type"
+  where
+    -- to make the P for rewrite, replace syntactic occurrences of l in ty with
+    -- and x, and put \x : lt in front
+    mkP lt l r ty | l == ty = lt
+    mkP lt l r (App f a) = let f' = if (r /= f) then mkP lt l r f else f
+                               a' = if (r /= a) then mkP lt l r a else a in
+                               App f' a'
+    mkP lt l r x = x
+
+    rname = MN 0 "replaced"
+rewrite _ _ _ _ = fail "Can't rewrite here"
+
 patbind :: Name -> RunTactic
 patbind n ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' =
     do let t' = normalise ctxt env t
@@ -390,6 +416,7 @@ process t h = tactic (Just h) (mktac t)
          mktac (Intro n)     = intro n
          mktac (Forall n t)  = forall n t
          mktac (LetBind n t v) = letbind n t v
+         mktac (Rewrite t)   = rewrite t
          mktac (PatVar n)    = patvar n
          mktac (PatBind n)   = patbind n
          mktac (CheckIn r)   = check_in r

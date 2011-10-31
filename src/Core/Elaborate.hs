@@ -182,6 +182,9 @@ forall n t = processTactic' (Forall n t)
 letbind :: Name -> Raw -> Raw -> Elab ()
 letbind n t v = processTactic' (LetBind n t v)
 
+rewrite :: Raw -> Elab ()
+rewrite tm = processTactic' (Rewrite tm)
+
 patvar :: Name -> Elab ()
 patvar n = processTactic' (PatVar n)
 
@@ -242,7 +245,9 @@ apply fn imps =
        fill (raw_apply fn (map Var args))
        -- *Don't* solve the arguments we're specifying by hand.
        -- (remove from unified list before calling end_unify)
-       let dontunify = map fst (filter (not.snd) (zip args imps))
+       -- HMMM: Actually, if we get it wrong, the typechecker will complain!
+       -- so do nothing
+       let dontunify = [] -- map fst (filter (not.snd) (zip args imps))
        ES p s prev <- get
        let (n, hs) = unified p
        let unify = (n, filter (\ (n, t) -> not (n `elem` dontunify)) hs)

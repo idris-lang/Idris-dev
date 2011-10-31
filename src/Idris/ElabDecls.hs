@@ -428,6 +428,18 @@ runTac (Exact tm) = do elab toplevel False tm
                        solveAll
 runTac (Refine fn imps) = do ns <- apply (Var fn) imps
                              solveAll
+runTac (Rewrite tm) -- to elaborate tm, let bind it, then rewrite by that
+          = do attack; -- (h:_) <- get_holes
+               tyn <- unique_hole (MN 0 "rty")
+               -- start_unify h
+               claim tyn (RSet 0)
+               valn <- unique_hole (MN 0 "rval")
+               claim valn (Var tyn)
+               letn <- unique_hole (MN 0 "rewrite_rule")
+               letbind letn (Var tyn) (Var valn)  
+               focus valn
+               elab toplevel False tm
+               rewrite (Var letn)
 runTac (Focus n) = focus n
 runTac Solve = solve
 runTac x = fail $ "Not implemented " ++ show x
