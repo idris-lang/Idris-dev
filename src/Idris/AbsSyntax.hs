@@ -6,6 +6,7 @@ module Idris.AbsSyntax where
 import Core.TT
 import Core.Evaluate
 import Core.Elaborate
+import Core.Typecheck
 
 import Control.Monad.State
 import Data.List
@@ -47,7 +48,6 @@ idrisInit = IState emptyContext [] emptyContext emptyContext
 -- global state (hence the IO inner monad).
 type Idris a = StateT IState IO a
 
-
 getContext :: Idris Context
 getContext = do i <- get; return (tt_ctxt i)
 
@@ -78,9 +78,16 @@ updateContext :: (Context -> Context) -> Idris ()
 updateContext f = do i <- get; put (i { tt_ctxt = f (tt_ctxt i) } )
 
 addDeferred :: [(Name, Type)] -> Idris ()
-addDeferred ns = do mapM_ (\(n, t) -> updateContext (addTyDecl n t)) ns
+addDeferred ns = do mapM_ (\(n, t) -> updateContext (addTyDecl n (tidyNames [] t))) ns
                     i <- get
                     put (i { idris_metavars = map fst ns ++ idris_metavars i })
+  where tidyNames used (Bind (MN i x) b sc)
+            = let n' = uniqueName (UN [x]) used in
+                  Bind n' b $ tidyNames (n':used) sc
+        tidyNames used (Bind n b sc)
+            = let n' = uniqueName n used in
+                  Bind n' b $ tidyNames (n':used) sc
+        tidyNames used b = b
 
 solveDeferred :: Name -> Idris ()
 solveDeferred n = do i <- get
@@ -220,7 +227,7 @@ data PTerm = PQuote Raw
 
 data PTactic = Intro [Name] | Focus Name
              | Refine Name [Bool] | Rewrite PTerm
-             | Exact PTerm
+             | Exact PTerm | Compute | Trivial
              | Solve
              | Attack
              | ProofState | ProofTerm | Undo
@@ -392,7 +399,7 @@ namesIn ist tm = nub $ ni [] tm
             = case lookupCtxt n (idris_implicits ist) of
                 Nothing -> [n]
                 _ -> []
-    ni env (PApp _ f as)  = ni env f ++ concatMap (ni env) (map getTm as)
+    ni env (PApp _ f as)   = ni env f ++ concatMap (ni env) (map getTm as)
     ni env (PLam n ty sc)  = ni env ty ++ ni (n:env) sc
     ni env (PPi _ n ty sc) = ni env ty ++ ni (n:env) sc
     ni env (PEq _ l r)     = ni env l ++ ni env r

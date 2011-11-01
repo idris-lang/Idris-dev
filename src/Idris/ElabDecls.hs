@@ -27,6 +27,10 @@ data ElabInfo = EInfo { params :: [(Name, PTerm)],
 
 toplevel = EInfo [] emptyContext id
 
+checkDef ns = do ctxt <- getContext
+                 mapM (\(n, t) -> do (t', _) <- tclift $ recheck ctxt [] t
+                                     return (n, t')) ns
+
 elabType :: ElabInfo -> FC -> Name -> PTerm -> Idris ()
 elabType info fc n_in ty_in = let ty = piBind (params info) ty_in 
                                   n  = liftname info n_in in    
@@ -38,7 +42,8 @@ elabType info fc n_in ty_in = let ty = piBind (params info) ty_in
          (cty, _)   <- tclift $ recheck ctxt [] ty'
          logLvl 2 $ "---> " ++ show cty
          let nty = normalise ctxt [] cty
-         addDeferred ((n, nty):defer)
+         ds <- checkDef ((n, nty):defer)
+         addDeferred ds
 
 elabData :: ElabInfo -> FC -> PData -> Idris ()
 elabData info fc (PDatadecl n t dcons)
@@ -47,7 +52,8 @@ elabData info fc (PDatadecl n t dcons)
          ctxt <- getContext
          ((t', defer), log) <- tclift $ elaborate ctxt n (Set 0) 
                                         (erun fc (build info False t))
-         addDeferred defer
+         def' <- checkDef defer
+         addDeferred def'
          (cty, _)  <- tclift $ recheck ctxt [] t'
          logLvl 2 $ "---> " ++ show cty
          updateContext (addTyDecl n cty) -- temporary, to check cons
@@ -63,7 +69,8 @@ elabCon info (n, t, fc)
          ((t', defer), log) <- tclift $ elaborate ctxt n (Set 0) 
                                         (erun fc (build info False t))
          logLvl 2 $ "Rechecking " ++ show t'
-         addDeferred defer
+         def' <- checkDef defer
+         addDeferred def'
          (cty, _)  <- tclift $ recheck ctxt [] t'
          logLvl 2 $ "---> " ++ show n ++ " : " ++ show cty
          return (n, cty)
@@ -128,7 +135,8 @@ elabClause info fc (PClause fname lhs withs rhs whereblock)
                         return $ runState (collectDeferred tt) [])
         logLvl 2 $ "---> " ++ show rhs'
         when (not (null defer)) $ iLOG $ "DEFERRED " ++ show defer
-        addDeferred defer
+        def' <- checkDef defer
+        addDeferred def'
         ctxt <- getContext
         (crhs, crhsty) <- tclift $ recheck ctxt [] rhs'
         return (clhs, crhs)
@@ -170,7 +178,8 @@ elabClause info fc (PWith fname lhs withs wval withblock)
                             psolve lhs_tm
                             tt <- get_term
                             return (tt, d))
-        addDeferred defer
+        def' <- checkDef defer
+        addDeferred def'
         (cwval, cwvalty) <- tclift $ recheck ctxt [] (getInferTerm wval')
         logLvl 3 ("With type " ++ show cwvalty ++ "\nRet type " ++ show ret_ty)
         windex <- getName
@@ -179,7 +188,8 @@ elabClause info fc (PWith fname lhs withs wval withblock)
         let wtype = bindTyArgs Pi (bargs ++ [(MN 0 "warg", getRetTy cwvalty)]) ret_ty
         logLvl 3 ("New function type " ++ show wtype)
         let wname = MN windex (show fname)
-        addDeferred [(wname, wtype)]
+        def' <- checkDef [(wname, wtype)]
+        addDeferred def'
 
         -- in the subdecls, lhs becomes:
         --         fname  pats | wpat [rest]
@@ -200,7 +210,8 @@ elabClause info fc (PWith fname lhs withs wval withblock)
                         psolve lhs_tm
                         tt <- get_term
                         return (tt, d))
-        addDeferred defer
+        def' <- checkDef defer
+        addDeferred def'
         (crhs, crhsty) <- tclift $ recheck ctxt [] rhs'
         return (clhs, crhs)
   where
@@ -346,7 +357,7 @@ elab info pattern tm = do elab' tm
              = elab' (PApp fc (PRef fc n) [])
          | otherwise = erun fc $ do apply (Var n) []; solve
     elab' (PLam n Placeholder sc)
-                         = do attack; intro n; elab' sc; solve
+                         = do attack; intro (Just n); elab' sc; solve
     elab' (PPi _ n Placeholder sc)
                          = do attack; arg n (MN 0 "ty"); elab' sc; solve
     elab' (PPi _ n ty sc) 
@@ -424,7 +435,12 @@ collectDeferred t = return t
 
 runTac :: Bool -> PTactic -> Elab ()
 runTac autoSolve = runT where
-    runT (Intro xs) = mapM_ (\x -> do attack; intro x) xs
+    runT (Intro []) = do g <- goal
+                         attack; intro (bname g)
+      where
+        bname (Bind n _ _) = Just n
+        bname _ = Nothing
+    runT (Intro xs) = mapM_ (\x -> do attack; intro (Just x)) xs
     runT (Exact tm) = do elab toplevel False tm
                          when autoSolve solveAll
     runT (Refine fn imps) = do ns <- apply (Var fn) imps
@@ -442,6 +458,16 @@ runTac autoSolve = runT where
                    elab toplevel False tm
                    rewrite (Var letn)
                    when autoSolve solveAll
+    runT Compute = compute
+    runT Trivial = try (do elab toplevel False (PRefl (FC "prf" 0))
+                           when autoSolve solveAll)
+                       (do env <- get_env
+                           tryAll (map fst env))
+      where
+        tryAll []     = fail "No trivial solution"
+        tryAll (x:xs) = try (do elab toplevel False (PRef (FC "prf" 0) x)
+                                when autoSolve solveAll)
+                            (tryAll xs)
     runT (Focus n) = focus n
     runT Solve = solve
     runT x = fail $ "Not implemented " ++ show x

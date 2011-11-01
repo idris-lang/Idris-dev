@@ -5,6 +5,7 @@ module Core.TT where
 import Control.Monad.State
 import Debug.Trace
 import qualified Data.Map as Map
+import Data.Char
 
 {- The language has:
    * Full dependent types
@@ -298,6 +299,19 @@ bindTyArgs b xs = bindAll (map (\ (n, ty) -> (n, b ty)) xs)
 getArgTys :: TT n -> [(n, TT n)]
 getArgTys (Bind n (Pi t) sc) = (n, t) : getArgTys sc
 getArgTys _ = []
+
+uniqueName :: Name -> [Name] -> Name
+uniqueName n hs | n `elem` hs = uniqueName (nextName n) hs
+                | otherwise   = n
+
+nextName (MN i n)    = MN (i+1) n
+nextName (UN (x:xs)) = let (num', nm') = span isDigit (reverse x)
+                           nm = reverse nm'
+                           num = readN (reverse num') in
+                               UN ((nm ++ show (num+1)) : xs)
+  where
+    readN "" = 0
+    readN x  = read x
 
 type Term = TT Name
 type Type = Term

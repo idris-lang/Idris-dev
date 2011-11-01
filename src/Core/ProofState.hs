@@ -47,7 +47,7 @@ data Tactic = Attack
             | Compute
             | EvalIn Raw
             | CheckIn Raw
-            | Intro Name
+            | Intro (Maybe Name)
             | Forall Name Raw
             | LetBind Name Raw Raw
             | Rewrite Raw
@@ -251,9 +251,12 @@ solve ctxt env (Bind x (Guess ty val) sc)
    | otherwise    = fail "I see a hole in your solution."
 solve _ _ h = fail $ "Not a guess " ++ show h
 
-intro :: Name -> RunTactic
-intro n ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' =
-    do let t' = normalise ctxt env t
+intro :: Maybe Name -> RunTactic
+intro mn ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' =
+    do let n = case mn of 
+                  Just name -> name
+                  Nothing -> x
+       let t' = normalise ctxt env t
        case t' of
            Bind y (Pi s) t -> let t' = instantiate (P Bound n s) (pToV y t) in 
                                   return $ Bind n (Lam s) (Bind x (Hole t') (P Bound x t'))
@@ -289,8 +292,8 @@ rewrite tm ctxt env (Bind x (Hole t) xp@(P _ x' _)) | x == x' =
             do let p = Bind rname (Lam lt) (mkP (P Bound rname lt) r l t)
                let newt = mkP l r l t 
                let sc = forget $ (Bind x (Hole newt) 
-                                    (mkApp (P Ref (UN ["replace"]) (Set 0))
-                                           [lt, l, r, p, tmv, xp]))
+                                       (mkApp (P Ref (UN ["replace"]) (Set 0))
+                                              [lt, l, r, p, tmv, xp]))
                (scv, sct) <- lift $ check ctxt env sc
                return scv
          _ -> fail "Not an equality type"

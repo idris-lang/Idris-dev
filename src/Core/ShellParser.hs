@@ -54,7 +54,7 @@ pTactic = do reserved "attack";  return attack
              return (discard (apply tm args))
       <|> do reserved "solve";   return solve
       <|> do reserved "compute"; return compute
-      <|> do reserved "intro";   n <- iName []; return (intro n)
+      <|> do reserved "intro";   n <- iName []; return (intro (Just n))
       <|> do reserved "forall";  n <- iName []; lchar ':'; ty <- pTerm
              return (forall n ty)
       <|> do reserved "arg";     n <- iName []; t <- iName []; return (arg n t)

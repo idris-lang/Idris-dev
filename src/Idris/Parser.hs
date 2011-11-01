@@ -609,18 +609,14 @@ pTactic syn = do reserved "intro"; ns <- sepBy pName (lchar ',')
           <|> do reserved "exact"; t <- pExpr syn;
                  i <- getState
                  return $ Exact (desugar syn i t)
-          <|> do reserved "solve"
-                 return Solve
-          <|> do reserved "attack"
-                 return Attack
-          <|> do reserved "state"
-                 return ProofState
-          <|> do reserved "term"
-                 return ProofTerm
-          <|> do reserved "undo"
-                 return Undo
-          <|> do reserved "qed"
-                 return Qed
+          <|> do reserved "compute"; return Compute
+          <|> do reserved "trivial"; return Trivial
+          <|> do reserved "solve"; return Solve
+          <|> do reserved "attack"; return Attack
+          <|> do reserved "state"; return ProofState
+          <|> do reserved "term"; return ProofTerm
+          <|> do reserved "undo"; return Undo
+          <|> do reserved "qed"; return Qed
    where isImp (PImp _ _ _) = True
          isImp _ = False
          imp = do lchar '?'; return False

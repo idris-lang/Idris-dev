@@ -114,19 +114,8 @@ get_deferred = do ES p _ _ <- get
 unique_hole :: Name -> Elab Name
 unique_hole n = do ES p _ _ <- get
                    env <- get_env
-                   return (uniq n (holes p ++ map fst env))
+                   return (uniqueName n (holes p ++ map fst env))
   where
-    uniq n hs | n `elem` hs = uniq (next n) hs
-              | otherwise   = n
-
-next (MN i n)    = MN (i+1) n
-next (UN (x:xs)) = let (num', nm') = span isDigit (reverse x)
-                       nm = reverse nm'
-                       num = readN (reverse num') in
-                           UN ((nm ++ show (num+1)) : xs)
-  where
-    readN "" = 0
-    readN x  = read x
 
 elog :: String -> Elab ()
 elog str = do ES p logs prev <- get
@@ -173,7 +162,7 @@ eval_in t = processTactic' (EvalIn t)
 check_in :: Raw -> Elab ()
 check_in t = processTactic' (CheckIn t)
 
-intro :: Name -> Elab ()
+intro :: Maybe Name -> Elab ()
 intro n = processTactic' (Intro n)
 
 forall :: Name -> Raw -> Elab ()
