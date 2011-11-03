@@ -67,6 +67,7 @@ loadSource f = do iLOG ("Reading " ++ f)
                   ds <- parseProg defaultSyntax f rest pos
                   logLvl 3 (dumpDecls ds)
                   i <- getIState
+                  logLvl 10 (show (toAlist (idris_implicits i)))
                   logLvl 3 (show (idris_infixes i))
                   -- Now add all the declarations to the context
                   mapM_ (elabDecl toplevel) ds
@@ -115,6 +116,7 @@ parseProg syn fname input pos
                                return (collect x)
 
 -- Collect PClauses with the same function name
+
 collect :: [PDecl] -> [PDecl]
 collect (c@(PClauses _ _ _) : ds) 
     = clauses (cname c) [] (c : ds)
@@ -210,11 +212,12 @@ pSynSym = try (do lchar '['; n <- pName; lchar ']'
              return (Symbol sym)
 
 pFunDecl' :: SyntaxInfo -> IParser PDecl
-pFunDecl' syn = try (do n <- pfName; ty <- pTSig syn
+pFunDecl' syn = try (do n <- pfName;
+                        ty <- pTSig syn
                         fc <- pfc
                         lchar ';'
-                        ty' <- implicit syn n ty
-                        return (PTy fc n ty'))
+--                         ty' <- implicit syn n ty
+                        return (PTy syn fc n ty))
             <|> try (pPattern syn)
 
 pUsing :: SyntaxInfo -> IParser [PDecl]
@@ -475,10 +478,10 @@ pData :: SyntaxInfo -> IParser PDecl
 pData syn = try (do reserved "data"; fc <- pfc
                     tyn <- pfName; ty <- pTSig syn
                     reserved "where"
-                    ty' <- implicit syn tyn ty
+--                     ty' <- implicit syn tyn ty
                     cons <- sepBy (pConstructor syn) (lchar '|')
                     lchar ';'
-                    return $ PData fc (PDatadecl tyn ty' cons))
+                    return $ PData syn fc (PDatadecl tyn ty cons))
         <|> do reserved "data"; fc <- pfc
                tyn <- pfName; args <- many pName
                lchar '='
@@ -486,15 +489,15 @@ pData syn = try (do reserved "data"; fc <- pfc
                lchar ';'
                let conty = mkPApp fc (PRef fc tyn) (map (PRef fc) args)
                let ty = bindArgs (map (\a -> PSet) args) PSet
-               ty' <- implicit syn tyn ty
+--                ty' <- implicit syn tyn ty
                cons' <- mapM (\ (x, cargs, cfc) -> 
                                  do let cty = bindArgs cargs conty
-                                    cty' <- implicit syn x cty
-                                    return (x, cty', cfc)) cons
-               return $ PData fc (PDatadecl tyn ty' cons')
-
-mkPApp fc t [] = t
-mkPApp fc t xs = PApp fc t (map pexp xs)
+--                                     cty' <- implicit syn x cty
+                                    return (x, cty, cfc)) cons
+               return $ PData syn fc (PDatadecl tyn ty cons')
+  where
+    mkPApp fc t [] = t
+    mkPApp fc t xs = PApp fc t (map pexp xs)
 
 bindArgs :: [PTerm] -> PTerm -> PTerm
 bindArgs [] t = t
@@ -504,8 +507,8 @@ pConstructor :: SyntaxInfo -> IParser (Name, PTerm, FC)
 pConstructor syn
     = do cn <- pfName; fc <- pfc
          ty <- pTSig syn
-         ty' <- implicit syn cn ty
-         return (cn, ty', fc)
+--          ty' <- implicit syn cn ty
+         return (cn, ty, fc)
 
 pSimpleCon :: SyntaxInfo -> IParser (Name, [PTerm], FC)
 pSimpleCon syn 
@@ -524,7 +527,9 @@ pPattern syn = do clause <- pClause syn
 whereSyn :: Name -> SyntaxInfo -> [PTerm] -> SyntaxInfo
 whereSyn n syn args = let ns = concatMap allNamesIn args
                           ni = no_imp syn in
-                          syn { no_imp = nub (ni ++ ns) }
+                          syn { decoration = \x -> decorate n (decoration syn x),
+                                no_imp = nub (ni ++ ns) }
+  where decorate n x = UN [(show n ++ "_" ++ show x)]
 
 pClause :: SyntaxInfo -> IParser PClause
 pClause syn
@@ -538,9 +543,10 @@ pClause syn
                    ist <- getState
                    let ctxt = tt_ctxt ist
                    let wsyn = whereSyn n syn (map getTm iargs ++ args ++ wargs)
-                   wheres <- choice [pWhereblock wsyn, do lchar ';'; return []]
+                   (wheres, nmap) <- choice [pWhereblock n syn, do lchar ';'
+                                                                   return ([], [])]
                    return $ PClause n (PApp fc (PRef fc n) 
-                                           (iargs ++ map pexp args)) wargs rhs wheres)
+                                      (iargs ++ map pexp args)) wargs rhs wheres)
        <|> try (do n <- pfName
                    iargs <- many (pImplicitArg syn)
                    fc <- pfc
@@ -563,8 +569,11 @@ pClause syn
               wargs <- many (pWExpr syn)
               lchar '='
               rhs <- pExpr syn
-              wheres <- choice [pWhereblock syn, do lchar ';'; return []]
-              return $ PClause n (PApp fc (PRef fc n) [pexp l,pexp r]) wargs rhs wheres
+              let wsyn = whereSyn n syn []
+              (wheres, nmap) <- choice [pWhereblock n syn, do lchar ';'
+                                                              return ([], [])]
+              return $ PClause n (PApp fc (PRef fc n) [pexp l,pexp r]) 
+                                 wargs rhs wheres
 
        <|> do l <- pSimpleExpr syn
               op <- operator
@@ -583,11 +592,13 @@ pClause syn
 pWExpr :: SyntaxInfo -> IParser PTerm
 pWExpr syn = do lchar '|'; pExpr' syn
 
-pWhereblock :: SyntaxInfo -> IParser [PDecl]
-pWhereblock syn = do reserved "where"; lchar '{'
-                     ds <- many1 $ pFunDecl syn;
-                     lchar '}';
-                     return $ concat ds
+pWhereblock :: Name -> SyntaxInfo -> IParser ([PDecl], [(Name, Name)])
+pWhereblock n syn 
+    = do reserved "where"; lchar '{'
+         ds <- many1 $ pFunDecl syn;
+         let dns = concatMap (concatMap declared) ds
+         lchar '}';
+         return (concat ds, map (\x -> (x, decoration syn x)) dns)
 
 pTactic :: SyntaxInfo -> IParser PTactic
 pTactic syn = do reserved "intro"; ns <- sepBy pName (lchar ',')
@@ -597,10 +608,7 @@ pTactic syn = do reserved "intro"; ns <- sepBy pName (lchar ',')
                       return $ Refine n imps)
           <|> do reserved "refine"; n <- pName
                  i <- getState
-                 let imps = case lookupCtxt n (idris_implicits i) of
-                              Nothing -> []
-                              Just args -> map isImp args
-                 return $ Refine n imps
+                 return $ Refine n []
           <|> do reserved "rewrite"; t <- pExpr syn;
                  i <- getState
                  return $ Rewrite (desugar syn i t)
@@ -617,27 +625,13 @@ pTactic syn = do reserved "intro"; ns <- sepBy pName (lchar ',')
           <|> do reserved "term"; return ProofTerm
           <|> do reserved "undo"; return Undo
           <|> do reserved "qed"; return Qed
-   where isImp (PImp _ _ _) = True
-         isImp _ = False
-         imp = do lchar '?'; return False
-           <|> do lchar '_'; return True
-
-
--- Dealing with implicit arguments
-
-implicit :: SyntaxInfo -> Name -> PTerm -> IParser PTerm
-implicit syn n ptm 
-    = do i <- getState
-         let (tm', impdata) = implicitise syn i ptm
-         let (tm'', spos) = findStatics i tm'
-         setState (i { idris_implicits = addDef n impdata (idris_implicits i) })
-         i <- getState
-         setState (i { idris_statics = addDef n spos (idris_statics i) })
-         return tm''
+  where
+    imp = do lchar '?'; return False
+      <|> do lchar '_'; return True
 
 desugar :: SyntaxInfo -> IState -> PTerm -> PTerm
 desugar syn i t = let t' = expandDo (dsl_info syn) t in
-                      addImpl i t'
+                      t' -- addImpl i t'
 
 expandDo :: DSL -> PTerm -> PTerm
 expandDo dsl (PLam n ty tm) = PLam n (expandDo dsl ty) (expandDo dsl tm)

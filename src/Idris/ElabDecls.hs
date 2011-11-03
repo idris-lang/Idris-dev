@@ -31,43 +31,52 @@ checkDef ns = do ctxt <- getContext
                  mapM (\(n, t) -> do (t', _) <- tclift $ recheck ctxt [] t
                                      return (n, t')) ns
 
-elabType :: ElabInfo -> FC -> Name -> PTerm -> Idris ()
-elabType info fc n_in ty_in = let ty = piBind (params info) ty_in 
-                                  n  = liftname info n_in in    
+elabType :: ElabInfo -> SyntaxInfo -> FC -> Name -> PTerm -> Idris ()
+elabType info syn fc n ty' = {- let ty' = piBind (params info) ty_in 
+                                      n  = liftname info n_in in    -}
       do checkUndefined fc n
          ctxt <- getContext
-         logLvl 2 $ "Type " ++ showImp True ty
+         i <- get
+         ty' <- implicit syn n ty'
+         let ty = addImpl i ty'
+         logLvl 2 $ show n ++ " type " ++ showImp True ty
          ((ty', defer), log) <- tclift $ elaborate ctxt n (Set 0) 
-                                         (erun fc (build info False ty))
+                                         (erun fc (build i info False ty))
          (cty, _)   <- tclift $ recheck ctxt [] ty'
          logLvl 2 $ "---> " ++ show cty
          let nty = normalise ctxt [] cty
          ds <- checkDef ((n, nty):defer)
          addDeferred ds
 
-elabData :: ElabInfo -> FC -> PData -> Idris ()
-elabData info fc (PDatadecl n t dcons)
+elabData :: ElabInfo -> SyntaxInfo -> FC -> PData -> Idris ()
+elabData info syn fc (PDatadecl n t_in dcons)
     = do iLOG (show fc)
          checkUndefined fc n
          ctxt <- getContext
+         i <- get
+         t_in <- implicit syn n t_in
+         let t = addImpl i t_in
          ((t', defer), log) <- tclift $ elaborate ctxt n (Set 0) 
-                                        (erun fc (build info False t))
+                                        (erun fc (build i info False t))
          def' <- checkDef defer
          addDeferred def'
          (cty, _)  <- tclift $ recheck ctxt [] t'
          logLvl 2 $ "---> " ++ show cty
          updateContext (addTyDecl n cty) -- temporary, to check cons
-         cons <- mapM (elabCon info) dcons
+         cons <- mapM (elabCon info syn) dcons
          ttag <- getName
          setContext (addDatatype (Data n ttag cty cons) ctxt)
 
-elabCon :: ElabInfo -> (Name, PTerm, FC) -> Idris (Name, Type)
-elabCon info (n, t, fc)
+elabCon :: ElabInfo -> SyntaxInfo -> (Name, PTerm, FC) -> Idris (Name, Type)
+elabCon info syn (n, t_in, fc)
     = do checkUndefined fc n
          ctxt <- getContext
+         i <- get
+         t_in <- implicit syn n t_in
+         let t = addImpl i t_in
          logLvl 2 $ show fc ++ ":Constructor " ++ show n ++ " : " ++ showImp True t
          ((t', defer), log) <- tclift $ elaborate ctxt n (Set 0) 
-                                        (erun fc (build info False t))
+                                        (erun fc (build i info False t))
          logLvl 2 $ "Rechecking " ++ show t'
          def' <- checkDef defer
          addDeferred def'
@@ -96,23 +105,28 @@ elabClauses info fc n_in cs = let n = liftname info n_in in
     depat x = x
 
 elabVal :: ElabInfo -> PTerm -> Idris (Term, Type)
-elabVal info tm
+elabVal info tm_in
    = do ctxt <- getContext
+        i <- get
+        let tm = addImpl i tm_in
         logLvl 10 (showImp True tm)
         ((tm', defer), _) <- tclift $ elaborate ctxt (MN 0 "val") infP
-                                      (build info True (infTerm tm))
+                                      (build i info True (infTerm tm))
         logLvl 3 ("Value: " ++ show tm')
         let vtm = getInferTerm tm'
         logLvl 2 (show vtm)
         tclift $ recheck ctxt [] vtm
 
 elabClause :: ElabInfo -> FC -> PClause -> Idris (Term, Term)
-elabClause info fc (PClause fname lhs withs rhs whereblock) 
+elabClause info fc (PClause fname lhs_in withs rhs_in whereblock) 
    = do ctxt <- getContext
         -- Build the LHS as an "Infer", and pull out its type and
         -- pattern bindings
+        i <- get
+        let lhs = addImpl i lhs_in
+        logLvl 5 ("LHS: " ++ showImp True lhs)
         ((lhs', dlhs), _) <- tclift $ elaborate ctxt (MN 0 "patLHS") infP
-                                      (erun fc (build info True (infTerm lhs)))
+                                      (erun fc (build i info True (infTerm lhs)))
         let lhs_tm = getInferTerm lhs'
         let lhs_ty = getInferType lhs'
         logLvl 3 (show lhs_tm)
@@ -122,14 +136,22 @@ elabClause info fc (PClause fname lhs withs rhs whereblock)
         ist <- getIState
         windex <- getName
         let winfo = pinfo (pvars ist lhs_tm) whereblock windex
-        mapM_ (elabDecl' winfo) whereblock
+        let decls = concatMap declared whereblock
+        let newargs = pvars ist lhs_tm
+        let wb = map (expandParamsD decorate newargs decls) whereblock
+        logLvl 5 $ show wb
+        mapM_ (elabDecl' info) wb
         -- Now build the RHS, using the type of the LHS as the goal.
+        i <- get -- new implicits from where block
+        logLvl 5 (showImp True (expandParams decorate newargs decls rhs_in))
+        let rhs = addImpl i (expandParams decorate newargs decls rhs_in)
+                        -- TODO: but don't do names in scope
         logLvl 2 (showImp True rhs)
         ctxt <- getContext -- new context with where block added
         ((rhs', defer), _) <- 
            tclift $ elaborate ctxt (MN 0 "patRHS") clhsty
                     (do pbinds lhs_tm
-                        (_, _) <- erun fc (build winfo False rhs)
+                        (_, _) <- erun fc (build i info False rhs)
                         psolve lhs_tm
                         tt <- get_term
                         return $ runState (collectDeferred tt) [])
@@ -141,6 +163,7 @@ elabClause info fc (PClause fname lhs withs rhs whereblock)
         (crhs, crhsty) <- tclift $ recheck ctxt [] rhs'
         return (clhs, crhs)
   where
+    decorate x = UN [show fname ++ "#" ++ show x]
     pinfo ns ps i 
           = let ds = concatMap declared ps
                 newps = params info ++ ns
@@ -149,32 +172,36 @@ elabClause info fc (PClause fname lhs withs rhs whereblock)
                 l = liftname info in
                 info { params = newps,
                        inblock = newb,
-                       liftname = (\n -> case lookupCtxt n newb of
-                                           Nothing -> n
-                                           _ -> MN i (show n)) . l
+                       liftname = id -- (\n -> case lookupCtxt n newb of
+                                     --      Nothing -> n
+                                     --      _ -> MN i (show n)) . l
                     }
 
-elabClause info fc (PWith fname lhs withs wval withblock) 
+elabClause info fc (PWith fname lhs_in withs wval_in withblock) 
    = do ctxt <- getContext
         -- Build the LHS as an "Infer", and pull out its type and
         -- pattern bindings
+        i <- get
+        let lhs = addImpl i lhs_in
+        logLvl 5 ("LHS: " ++ showImp True lhs)
         ((lhs', dlhs), _) <- tclift $ elaborate ctxt (MN 0 "patLHS") infP
-                                      (erun fc (build info True (infTerm lhs)))
+                                      (erun fc (build i info True (infTerm lhs)))
         let lhs_tm = getInferTerm lhs'
         let lhs_ty = getInferType lhs'
         let ret_ty = getRetTy lhs_ty
         logLvl 3 (show lhs_tm)
         (clhs, clhsty) <- tclift $ recheck ctxt [] lhs_tm
         logLvl 5 ("Checked " ++ show clhs)
-        logLvl 5 ("Checking " ++ show wval)
         let bargs = getPBtys lhs_tm
+        let wval = addImpl i wval_in
+        logLvl 5 ("Checking " ++ showImp True wval)
         -- Elaborate wval in this context
         ((wval', defer), _) <- 
             tclift $ elaborate ctxt (MN 0 "withRHS") 
                         (bindTyArgs PVTy bargs infP)
                         (do pbinds lhs_tm
                             -- TODO: may want where here - see winfo abpve
-                            (_', d) <- erun fc (build info False (infTerm wval))
+                            (_', d) <- erun fc (build i info False (infTerm wval))
                             psolve lhs_tm
                             tt <- get_term
                             return (tt, d))
@@ -188,6 +215,8 @@ elabClause info fc (PWith fname lhs withs wval withblock)
         let wtype = bindTyArgs Pi (bargs ++ [(MN 0 "warg", getRetTy cwvalty)]) ret_ty
         logLvl 3 ("New function type " ++ show wtype)
         let wname = MN windex (show fname)
+        let imps = getImps wtype -- add to implicits context
+        put (i { idris_implicits = addDef wname imps (idris_implicits i) })
         def' <- checkDef [(wname, wtype)]
         addDeferred def'
 
@@ -203,10 +232,11 @@ elabClause info fc (PWith fname lhs withs wval withblock)
                                                 [pexp wval])
         logLvl 3 ("New RHS " ++ show rhs)
         ctxt <- getContext -- New context with block added
+        i <- get
         ((rhs', defer), _) <-
            tclift $ elaborate ctxt (MN 0 "wpatRHS") clhsty
                     (do pbinds lhs_tm
-                        (_, d) <- erun fc (build info False rhs)
+                        (_, d) <- erun fc (build i info False rhs)
                         psolve lhs_tm
                         tt <- get_term
                         return (tt, d))
@@ -215,21 +245,30 @@ elabClause info fc (PWith fname lhs withs wval withblock)
         (crhs, crhsty) <- tclift $ recheck ctxt [] rhs'
         return (clhs, crhs)
   where
+    getImps (Bind n (Pi _) t) = pexp Placeholder : getImps t
+    getImps _ = []
+
     mkAuxC wname lhs ns (PClauses fc n cs)
         | n == fname = do cs' <- mapM (mkAux wname lhs ns) cs
                           return $ PClauses fc wname cs'
         | otherwise = fail $ "with clause uses wrong function name " ++ show n
     mkAuxC wname lhs ns d = return $ d
 
-    mkAux wname toplhs ns (PClause n tm (w:ws) rhs wheres)
-        = do logLvl 2 ("Matching " ++ show tm ++ " against " ++ show toplhs)
+    mkAux wname toplhs ns (PClause n tm_in (w:ws) rhs wheres)
+        = do i <- get
+             let tm = addImpl i tm_in
+             logLvl 2 ("Matching " ++ showImp True tm ++ " against " ++ 
+                                      showImp True toplhs)
              case matchClause toplhs tm of
                 Nothing -> fail "with clause does not match top level"
                 Just mvars -> do logLvl 3 ("Match vars : " ++ show mvars)
                                  lhs <- updateLHS n wname mvars ns tm w
                                  return $ PClause wname lhs ws rhs wheres
-    mkAux wname toplhs ns (PWith n tm (w:ws) wval wheres)
-        = do logLvl 2 ("Matching " ++ show tm ++ " against " ++ show toplhs)
+    mkAux wname toplhs ns (PWith n tm_in (w:ws) wval wheres)
+        = do i <- get
+             let tm = addImpl i tm_in
+             logLvl 2 ("Matching " ++ showImp True tm ++ " against " ++ 
+                                      showImp True toplhs)
              case matchClause toplhs tm of
                 Nothing -> fail "with clause does not match top level"
                 Just mvars -> do lhs <- updateLHS n wname mvars ns tm w
@@ -268,10 +307,10 @@ elabDecl info d = idrisCatch (elabDecl' info d) (\e -> iputStrLn (report e))
 
 elabDecl' info (PFix _ _ _)      = return () -- nothing to elaborate
 elabDecl' info (PSyntax _ p) = return () -- nothing to elaborate
-elabDecl' info (PTy f n ty)      = do iLOG $ "Elaborating type decl " ++ show n
-                                      elabType info f n ty
-elabDecl' info (PData f d)       = do iLOG $ "Elaborating " ++ show (d_name d)
-                                      elabData info f d
+elabDecl' info (PTy s f n ty)    = do iLOG $ "Elaborating type decl " ++ show n
+                                      elabType info s f n ty
+elabDecl' info (PData s f d)     = do iLOG $ "Elaborating " ++ show (d_name d)
+                                      elabData info s f d
 elabDecl' info d@(PClauses f n ps) = do iLOG $ "Elaborating clause " ++ show n
                                         elabClauses info f n ps
 elabDecl' info (PParams f ns ps) = mapM_ (elabDecl' pinfo) ps
@@ -293,15 +332,17 @@ elabDecl' info (PParams f ns ps) = mapM_ (elabDecl' pinfo) ps
 
 -- Also find deferred names in the term and their types
 
-build :: ElabInfo -> Bool -> PTerm -> Elab (Term, [(Name, Type)])
-build info pattern tm = do elab info pattern tm
-                           tt <- get_term
-                           return $ runState (collectDeferred tt) []
+build :: IState -> ElabInfo -> Bool -> PTerm -> Elab (Term, [(Name, Type)])
+build ist info pattern tm 
+    = do elab ist info pattern tm
+         tt <- get_term
+         return $ runState (collectDeferred tt) []
 
-elab :: ElabInfo -> Bool -> PTerm -> Elab ()
-elab info pattern tm = do elab' tm
-                          when pattern -- convert remaining holes to pattern vars
-                               mkPat
+elab :: IState -> ElabInfo -> Bool -> PTerm -> Elab ()
+elab ist info pattern tm 
+    = do elabE tm
+         when pattern -- convert remaining holes to pattern vars
+              mkPat
   where
     isph arg = case getTm arg of
         Placeholder -> True
@@ -309,12 +350,38 @@ elab info pattern tm = do elab' tm
 
     toElab arg = case getTm arg of
         Placeholder -> Nothing
-        v -> Just (elab' v)
+        v -> Just (elabE v)
 
     mkPat = do hs <- get_holes
                case hs of
                   (h: hs) -> do patvar h; mkPat
                   [] -> return ()
+
+    -- Expand implict arguments here, then move on to main elaborator
+--     elabE (PRef fc n)       
+--            | Just ps <- lookupCtxt n (inblock info) 
+--               = -- let exp = (PApp fc (PRef fc n) (map (pexp . (PRef fc)) ps))
+--                     elabE (PApp fc (PRef fc n) [])
+--     elabE f@(PApp fc fn args) = trace ("Elaborating " ++ show f) $ elab' f
+--     elabE (PRef fc f)
+--        = do l <- local f
+--             elabN f l
+--       where elabN f False = let afn = aiFn ist fc f [] in
+--                                  -- trace ("Ref expanded to " ++ showImp True afn) $
+--                                    elab' afn
+--             elabN f True  = elab' (PRef fc f)
+--     elabE (PApp fc fn@(PRef _ f) args)
+--        = do l <- local f
+--             elabApp f args l -- no implicits
+--       where elabApp f args False = let afn = aiFn ist fc f args in
+--                                         -- trace ("Expanded to " ++ showImp True afn) $
+--                                          elab' afn 
+--             elabApp f args True  = elab' (PApp fc fn args)
+--     elabE (PApp fc f as) = elab' (mkPApp fc 1 f as)
+    elabE t = elab' t
+
+    local f = do e <- get_env
+                 return (f `elem` map fst e)
 
     elab' PSet           = do fill (RSet 0); solve
     elab' (PConstant c)  = do apply (RConstant c) []; solve
@@ -327,9 +394,9 @@ elab info pattern tm = do elab' tm
     elab' (PEq fc l r)   = elab' (PApp fc (PRef fc eqTy) [pimp (MN 0 "a") Placeholder,
                                                           pimp (MN 0 "b") Placeholder,
                                                           pexp l, pexp r])
-    elab' (PPair fc l r) = try (elab' (PApp fc (PRef fc pairTy)
+    elab' (PPair fc l r) = try (elabE (PApp fc (PRef fc pairTy)
                                             [pexp l,pexp r]))
-                               (elab' (PApp fc (PRef fc pairCon)
+                               (elabE (PApp fc (PRef fc pairCon)
                                             [pimp (MN 0 "A") Placeholder,
                                              pimp (MN 0 "B") Placeholder,
                                              pexp l, pexp r]))
@@ -352,21 +419,18 @@ elab info pattern tm = do elab' tm
       where inparamBlock n = case lookupCtxt n (inblock info) of
                                 Nothing -> False
                                 _ -> True
-    elab' (PRef fc n)       
-         | Just ps <- lookupCtxt n (inblock info) 
-             = elab' (PApp fc (PRef fc n) [])
-         | otherwise = erun fc $ do apply (Var n) []; solve
+    elab' (PRef fc n) = erun fc $ do apply (Var n) []; solve
     elab' (PLam n Placeholder sc)
-                         = do attack; intro (Just n); elab' sc; solve
+                         = do attack; intro (Just n); elabE sc; solve
     elab' (PPi _ n Placeholder sc)
-                         = do attack; arg n (MN 0 "ty"); elab' sc; solve
+                         = do attack; arg n (MN 0 "ty"); elabE sc; solve
     elab' (PPi _ n ty sc) 
           = do attack; tyn <- unique_hole (MN 0 "ty")
                claim tyn (RSet 0)
                forall n (Var tyn)
                focus tyn
-               elab' ty
-               elab' sc
+               elabE ty
+               elabE sc
                solve
     elab' (PLet n Placeholder val sc)
           = do attack; -- (h:_) <- get_holes
@@ -377,29 +441,27 @@ elab info pattern tm = do elab' tm
                claim valn (Var tyn)
                letbind n (Var tyn) (Var valn)  
                focus valn
-               elab' val
-               elab' sc
+               elabE val
+               elabE sc
                -- end_unify
                solve
-    elab' (PApp fc (PRef _ f) args)
-        | Just ps <- lookupCtxt f (inblock info) 
-                    = erun fc $ 
-                        elabApp (liftname info f) (map (pexp . (PRef fc)) ps ++ args)
-        | otherwise = erun fc $ elabApp f args
-      where elabApp f args
-                  = try (do ns <- apply (Var f) (map isph args)
-                            solve
-                            elabArgs ns (map (\x -> (lazyarg x, getTm x)) args))
-                        (do apply_elab f (map toElab args)
-                            solve)
+    elab' (PApp fc (PRef _ f) args')
+       = do let args = {- case lookupCtxt f (inblock info) of
+                          Just ps -> (map (pexp . (PRef fc)) ps ++ args')
+                          _ ->-} args'
+            try (do ns <- apply (Var f) (map isph args)
+                    solve
+                    elabArgs ns (map (\x -> (lazyarg x, getTm x)) args))
+                (do apply_elab f (map toElab args)
+                    solve)
     elab' (PApp fc f [arg])
           = erun fc $ 
-             do simple_app (elab' f) (elab' (getTm arg))
+             do simple_app (elabE f) (elabE (getTm arg))
                 solve
     elab' Placeholder = do (h : hs) <- get_holes
                            movelast h
     elab' (PMetavar n) = do attack; defer n; solve
-    elab' (PProof ts) = do mapM_ (runTac True) ts
+    elab' (PProof ts) = do mapM_ (runTac True ist) ts
     elab' (PElabError e) = fail e
     elab' x = fail $ "Not implemented " ++ show x
 
@@ -412,7 +474,7 @@ elab info pattern tm = do elab' tm
                                       pexp t]); 
              elabArgs ns args
       | otherwise
-        = do focus n; elab' t; elabArgs ns args
+        = do focus n; elabE t; elabArgs ns args
     
 
 collectDeferred :: Term -> State [(Name, Type)] Term
@@ -433,16 +495,23 @@ collectDeferred t = return t
 
 -- Running tactics directly
 
-runTac :: Bool -> PTactic -> Elab ()
-runTac autoSolve = runT where
+runTac :: Bool -> IState -> PTactic -> Elab ()
+runTac autoSolve ist tac = runT (fmap (addImpl ist) tac) where
     runT (Intro []) = do g <- goal
                          attack; intro (bname g)
       where
         bname (Bind n _ _) = Just n
         bname _ = Nothing
     runT (Intro xs) = mapM_ (\x -> do attack; intro (Just x)) xs
-    runT (Exact tm) = do elab toplevel False tm
+    runT (Exact tm) = do elab ist toplevel False tm
                          when autoSolve solveAll
+    runT (Refine fn [])   = do let imps = case lookupCtxt fn (idris_implicits ist) of
+                                            Nothing -> []
+                                            Just args -> map isImp args
+                               ns <- apply (Var fn) imps
+                               when autoSolve solveAll
+       where isImp (PImp _ _ _) = True
+             isImp _ = False
     runT (Refine fn imps) = do ns <- apply (Var fn) imps
                                when autoSolve solveAll
     runT (Rewrite tm) -- to elaborate tm, let bind it, then rewrite by that
@@ -455,17 +524,17 @@ runTac autoSolve = runT where
                    letn <- unique_hole (MN 0 "rewrite_rule")
                    letbind letn (Var tyn) (Var valn)  
                    focus valn
-                   elab toplevel False tm
+                   elab ist toplevel False tm
                    rewrite (Var letn)
                    when autoSolve solveAll
     runT Compute = compute
-    runT Trivial = try (do elab toplevel False (PRefl (FC "prf" 0))
+    runT Trivial = try (do elab ist toplevel False (PRefl (FC "prf" 0))
                            when autoSolve solveAll)
                        (do env <- get_env
                            tryAll (map fst env))
       where
         tryAll []     = fail "No trivial solution"
-        tryAll (x:xs) = try (do elab toplevel False (PRef (FC "prf" 0) x)
+        tryAll (x:xs) = try (do elab ist toplevel False (PRef (FC "prf" 0) x)
                                 when autoSolve solveAll)
                             (tryAll xs)
     runT (Focus n) = focus n

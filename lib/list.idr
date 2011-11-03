@@ -3,12 +3,11 @@ import builtins;
 data List a = Nil | Cons a (List a);
 
 rev : List a -> List a;
-rev xs = revAcc Nil xs
-  where {
-    revAcc : List a -> List a -> List a;
-    revAcc acc Nil = acc;
-    revAcc acc (Cons x xs) = revAcc (Cons x acc) xs;
-  }
+rev xs = revAcc Nil xs where {
+  revAcc : List a -> List a -> List a;
+  revAcc acc Nil = acc;
+  revAcc acc (Cons x xs) = revAcc (Cons x acc) xs;
+}
 
 length : List a -> Int;
 length Nil         = 0;
@@ -24,3 +23,9 @@ drop 0 xs = xs;
 drop n Nil = Nil;
 drop n (Cons x xs) = drop (n-1) xs;
 
+filter : (y -> Bool) -> List y -> List y;
+filter pred Nil = Nil;
+filter pred (Cons x xs) with (pred x, filter pred xs) {
+  filter pred (Cons x xs) | (True, fxs) = Cons x fxs; 
+  filter pred (Cons x xs) | (False, fxs) = fxs;
+}

@@ -94,7 +94,7 @@ elabPrim (Prim n ty i def epic)
 
 elabPrims :: Idris ()
 elabPrims = do mapM_ (elabDecl toplevel) 
-                     (map (PData (FC "builtin" 0))
+                     (map (PData defaultSyntax (FC "builtin" 0))
                          [inferDecl, unitDecl, falseDecl, pairDecl, eqDecl])
                mapM_ elabPrim primitives
 

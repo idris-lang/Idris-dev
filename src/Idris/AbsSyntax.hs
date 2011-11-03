@@ -166,15 +166,15 @@ impl = Imp False Dynamic
 expl = Exp False Dynamic
 
 data PDecl' t = PFix     FC Fixity [String] -- fixity declaration
-              | PTy      FC Name t          -- type declaration
+              | PTy      SyntaxInfo FC Name t          -- type declaration
               | PClauses FC Name [PClause' t]    -- pattern clause
-              | PData    FC (PData' t)      -- data declaration
-              | PParams  FC [(Name, PTerm)] [PDecl' t] -- params block
+              | PData    SyntaxInfo FC (PData' t)      -- data declaration
+              | PParams  FC [(Name, t)] [PDecl' t] -- params block
               | PSyntax  FC Syntax
     deriving Functor
 
-data PClause' t = PClause Name t [t] t [PDecl]
-                | PWith   Name t [t] t [PDecl]
+data PClause' t = PClause Name t [t] t [PDecl' t]
+                | PWith   Name t [t] t [PDecl' t]
     deriving Functor
 
 data PData' t  = PDatadecl { d_name :: Name,
@@ -193,15 +193,36 @@ type PClause = PClause' PTerm
 
 declared :: PDecl -> [Name]
 declared (PFix _ _ _) = []
-declared (PTy _ n t) = [n]
+declared (PTy _ _ n t) = [n]
 declared (PClauses _ n _) = [] -- not a declaration
-declared (PData _ (PDatadecl n _ ts)) = n : map fstt ts
+declared (PData _ _ (PDatadecl n _ ts)) = n : map fstt ts
    where fstt (a, _, _) = a
 declared (PParams _ _ ds) = concatMap declared ds
 -- declared (PImport _) = []
 
+updateN :: [(Name, Name)] -> Name -> Name
+updateN ns n | Just n' <- lookup n ns = n'
+updateN _  n = n
+
+updateNs :: [(Name, Name)] -> PTerm -> PTerm
+updateNs [] t = t
+updateNs ns t = mapPT updateRef t
+  where updateRef (PRef fc f) = PRef fc (updateN ns f) 
+        updateRef t = t
+
+-- updateDNs :: [(Name, Name)] -> PDecl -> PDecl
+-- updateDNs [] t = t
+-- updateDNs ns (PTy s f n t)    | Just n' <- lookup n ns = PTy s f n' t
+-- updateDNs ns (PClauses f n c) | Just n' <- lookup n ns = PClauses f n' (map updateCNs c)
+--   where updateCNs ns (PClause n l ts r ds) 
+--             = PClause (updateN ns n) (fmap (updateNs ns) l)
+--                                      (map (fmap (updateNs ns)) ts)
+--                                      (fmap (updateNs ns) r)
+--                                      (map (updateDNs ns) ds)
+-- updateDNs ns c = c
+
 -- High level language terms
---
+
 data PTerm = PQuote Raw
            | PRef FC Name
            | PLam Name PTerm PTerm
@@ -225,19 +246,38 @@ data PTerm = PQuote Raw
            | PElabError String -- error to report on elaboration
     deriving Eq
 
-data PTactic = Intro [Name] | Focus Name
-             | Refine Name [Bool] | Rewrite PTerm
-             | Exact PTerm | Compute | Trivial
-             | Solve
-             | Attack
-             | ProofState | ProofTerm | Undo
-             | Qed
-    deriving (Show, Eq)
+mapPT :: (PTerm -> PTerm) -> PTerm -> PTerm
+mapPT f t = f (mpt t) where
+  mpt (PLam n t s) = PLam n (mapPT f t) (mapPT f s)
+  mpt (PPi p n t s) = PPi p n (mapPT f t) (mapPT f s)
+  mpt (PLet n ty v s) = PLet n (mapPT f ty) (mapPT f v) (mapPT f s)
+  mpt (PApp fc t as) = PApp fc (mapPT f t) (map (fmap (mapPT f)) as)
+  mpt (PEq fc l r) = PEq fc (mapPT f l) (mapPT f r)
+  mpt (PPair fc l r) = PPair fc (mapPT f l) (mapPT f r)
+  mpt (PDPair fc l r) = PDPair fc (mapPT f l) (mapPT f r)
+  mpt (PHidden t) = PHidden (mapPT f t)
+  mpt (PDoBlock ds) = PDoBlock (map (fmap (mapPT f)) ds)
+  mpt (PProof ts) = PProof (map (fmap (mapPT f)) ts)
+  mpt x = x
 
-data PDo = DoExp  FC PTerm
-         | DoBind FC Name PTerm
-         | DoLet  FC Name PTerm
-    deriving Eq
+
+data PTactic' t = Intro [Name] | Focus Name
+                | Refine Name [Bool] | Rewrite t
+                | Exact t | Compute | Trivial
+                | Solve
+                | Attack
+                | ProofState | ProofTerm | Undo
+                | Qed
+    deriving (Show, Eq, Functor)
+
+type PTactic = PTactic' PTerm
+
+data PDo' t = DoExp  FC t
+            | DoBind FC Name t
+            | DoLet  FC Name t
+    deriving (Eq, Functor)
+
+type PDo = PDo' PTerm
 
 data PArg' t = PImp { lazyarg :: Bool, pname :: Name, getTm :: t }
              | PExp { lazyarg :: Bool, getTm :: t }
@@ -267,10 +307,11 @@ initDSL = DSL (UN ["io_bind"]) (UN ["io_return"])
 data SyntaxInfo = Syn { using :: [(Name, PTerm)],
                         syn_params :: [(Name, PTerm)],
                         no_imp :: [Name],
+                        decoration :: Name -> Name,
                         dsl_info :: DSL }
     deriving Show
 
-defaultSyntax = Syn [] [] [] initDSL
+defaultSyntax = Syn [] [] [] id initDSL
 
 --- Pretty printing declarations and terms
 
@@ -279,9 +320,9 @@ instance Show PTerm where
 
 instance Show PDecl where
     show (PFix _ f ops) = show f ++ " " ++ showSep ", " ops
-    show (PTy _ n ty) = show n ++ " : " ++ show ty
+    show (PTy _ _ n ty) = show n ++ " : " ++ show ty
     show (PClauses _ n c) = showSep "\n" (map show c)
-    show (PData _ d) = show d
+    show (PData _ _ d) = show d
 
 instance Show PClause where
     show c = showCImp True c
@@ -433,6 +474,10 @@ getInferType (App (App _ ty) _) = ty
 
 -- Handy primitives: Unit, False, Pair, MkPair, =, mkForeign
 
+primNames = [unitTy, unitCon,
+             falseTy, pairTy, pairCon,
+             eqTy, eqCon, inferTy, inferCon]
+
 unitTy   = MN 0 "__Unit"
 unitCon  = MN 0 "__II"
 unitDecl = PDatadecl unitTy PSet
@@ -473,12 +518,70 @@ piBind :: [(Name, PTerm)] -> PTerm -> PTerm
 piBind [] t = t
 piBind ((n, ty):ns) t = PPi expl n ty (piBind ns t)
 
+-- Dealing with parameters
+
+expandParams :: (Name -> Name) -> [(Name, PTerm)] -> [Name] -> PTerm -> PTerm
+expandParams dec ps ns tm = en tm
+  where
+    en (PLam n t s) = PLam n (en t) (en s)
+    en (PPi p n t s) = PPi p n (en t) (en s)
+    en (PLet n ty v s) = PLet n (en ty) (en v) (en s)
+    en (PEq f l r) = PEq f (en l) (en r)
+    en (PPair f l r) = PPair f (en l) (en r)
+    en (PDPair f l r) = PDPair f (en l) (en r)
+    en (PHidden t) = PHidden (en t)
+    en (PDoBlock ds) = PDoBlock (map (fmap en) ds)
+    en (PProof ts)   = PProof (map (fmap en) ts)
+
+    en (PApp fc (PRef fc' n) as)
+        | n `elem` ns = PApp fc (PRef fc' (dec n)) 
+                           (map (pexp . (PRef fc)) (map fst ps) ++ (map (fmap en) as))
+    en (PRef fc n)
+        | n `elem` ns = PApp fc (PRef fc (dec n)) 
+                           (map (pexp . (PRef fc)) (map fst ps))
+    en (PApp fc f as) = PApp fc (en f) (map (fmap en) as)
+    en t = t
+
+expandParamsD :: (Name -> Name) -> [(Name, PTerm)] -> [Name] -> PDecl -> PDecl
+expandParamsD dec ps ns (PTy syn fc n ty) 
+    = if n `elem` ns
+         then PTy syn fc (dec n) (piBind ps (expandParams dec ps ns ty))
+         else PTy syn fc n (expandParams dec ps ns ty)
+expandParamsD dec ps ns (PClauses fc n cs)
+    = let n' = if n `elem` ns then dec n else n in
+          PClauses fc n' (map expandParamsC cs)
+  where
+    expandParamsC (PClause n lhs ws rhs ds)
+        = let n' = if n `elem` ns then dec n else n in
+              PClause n' (expandParams dec ps ns lhs)
+                         (map (expandParams dec ps ns) ws)
+                         (expandParams dec ps ns rhs)
+                         (map (expandParamsD dec ps ns) ds)
+    expandParamsC (PWith n lhs ws wval ds)
+        = let n' = if n `elem` ns then dec n else n in
+              PWith n' (expandParams dec ps ns lhs)
+                       (map (expandParams dec ps ns) ws)
+                       (expandParams dec ps ns wval)
+                       (map (expandParamsD dec ps ns) ds)
+expandParamsD dec ps ns d = d
+
 -- Dealing with implicit arguments
 
 -- Add implicit Pi bindings for any names in the term which appear in an
 -- argument position.
 
 -- This has become a right mess already. Better redo it some time...
+
+implicit :: SyntaxInfo -> Name -> PTerm -> Idris PTerm
+implicit syn n ptm 
+    = do i <- get
+         let (tm', impdata) = implicitise syn i ptm
+         let (tm'', spos) = findStatics i tm'
+         put (i { idris_implicits = addDef n impdata (idris_implicits i) })
+         logLvl 5 ("Implicit " ++ show n ++ " " ++ show impdata)
+         i <- get
+         put (i { idris_statics = addDef n spos (idris_statics i) })
+         return tm''
 
 implicitise :: SyntaxInfo -> IState -> PTerm -> (PTerm, [PArg])
 implicitise syn ist tm
@@ -545,7 +648,7 @@ implicitise syn ist tm
 addImpl :: IState -> PTerm -> PTerm
 addImpl ist ptm = ai [] ptm
   where
-    ai env (PRef fc f)       = aiFn fc env (PRef fc f) []
+    ai env (PRef fc f)       = aiFn ist fc f []
     ai env (PEq fc l r)   = let l' = ai env l
                                 r' = ai env r in
                                 PEq fc l' r'
@@ -557,10 +660,10 @@ addImpl ist ptm = ai [] ptm
                                  PDPair fc l' r'
     ai env (PApp fc (PRef _ f) as) 
                           = let as' = map (fmap (ai env)) as in
-                                aiFn fc env (PRef fc f) as'
+                                aiFn ist fc f as'
     ai env (PApp fc f as) = let f' = ai env f
                                 as' = map (fmap (ai env)) as in
-                                      aiFn fc env f' as'
+                                mkPApp fc 1 f' as'
     ai env (PLam n ty sc) = let ty' = ai env ty
                                 sc' = ai (n:env) sc in
                                 PLam n ty' sc'
@@ -573,21 +676,17 @@ addImpl ist ptm = ai [] ptm
                                  sc' = ai (n:env) sc in
                                  PPi p n ty' sc'
     ai env (PHidden tm) = PHidden (ai env tm)
+    ai env (PProof ts) = PProof (map (fmap (ai env)) ts)
     ai env tm = tm
 
-    aiFn _ env (PRef fc f) as | not (f `elem` env)
+aiFn :: IState -> FC -> Name -> [PArg] -> PTerm
+aiFn ist fc f as
+    | f `elem` primNames = PApp fc (PRef fc f) as
+aiFn ist fc f as
         = case lookupCtxt f (idris_implicits ist) of
-            Just ns -> pApp fc (length ns) (PRef fc f) (insertImpl ns as)
-            Nothing -> pApp fc 1 (PRef fc f) as
-    aiFn fc env f as = pApp fc 1 f as
-
-    pApp fc a f [] = f
-    pApp fc a f as = let rest = drop a as in
-                        appRest fc (PApp fc f (take a as)) rest
-
-    appRest fc f [] = f
-    appRest fc f (a : as) = appRest fc (PApp fc f [a]) as
-
+            Just ns -> mkPApp fc (length ns) (PRef fc f) (insertImpl ns as)
+            Nothing -> mkPApp fc 1 (PRef fc f) as
+  where
     insertImpl :: [PArg] -> [PArg] -> [PArg]
     insertImpl (PExp l ty : ps) (PExp _ tm : given) =
                                  PExp l tm : insertImpl ps given
@@ -602,6 +701,13 @@ addImpl ist ptm = ai [] ptm
     find n (PImp _ n' t : gs) acc 
          | n == n' = Just (t, reverse acc ++ gs)
     find n (g : gs) acc = find n gs (g : acc)
+
+mkPApp fc a f [] = f
+mkPApp fc a f as = let rest = drop a as in
+                       appRest fc (PApp fc f (take a as)) rest
+  where
+    appRest fc f [] = f
+    appRest fc f (a : as) = appRest fc (PApp fc f [a]) as
 
 -- Find 'static' argument positions
 -- (the declared ones, plus any names in argument position in the declared 
@@ -640,9 +746,9 @@ dumpDecls [] = ""
 dumpDecls (d:ds) = dumpDecl d ++ "\n" ++ dumpDecls ds
 
 dumpDecl (PFix _ f ops) = show f ++ " " ++ showSep ", " ops 
-dumpDecl (PTy _ n t) = "tydecl " ++ show n ++ " : " ++ showImp True t
-dumpDecl (PClauses _ n cs) = "pat\t" ++ showSep "\n\t" (map (showCImp True) cs)
-dumpDecl (PData _ d) = showDImp True d
+dumpDecl (PTy _ _ n t) = "tydecl " ++ show n ++ " : " ++ showImp True t
+dumpDecl (PClauses _ n cs) = "pat " ++ show n ++ "\t" ++ showSep "\n\t" (map (showCImp True) cs)
+dumpDecl (PData _ _ d) = showDImp True d
 dumpDecl (PParams _ ns ps) = "params {" ++ show ns ++ "\n" ++ dumpDecls ps ++ "}\n"
 dumpDecl (PSyntax _ syn) = "syntax " ++ show syn
 -- dumpDecl (PImport i) = "import " ++ i

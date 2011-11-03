@@ -43,7 +43,7 @@ check ctxt env (RApp f a)
          case fty' of
            Bind x (Pi s) t ->
                do converts ctxt env s aty
-                  let apty = {- normalise ctxt env -} (Bind x (Let aty av) t)
+                  let apty = normalise ctxt env (Bind x (Let aty av) t)
                   return (App fv av, apty)
            t -> fail "Can't apply a non-function type"
   -- This rather unpleasant hack is needed because during incomplete 

@@ -275,6 +275,7 @@ patvar :: Name -> RunTactic
 patvar n ctxt env (Bind x (Hole t) sc) =
     do action (\ps -> ps { holes = holes ps \\ [x] })
        return $ Bind n (PVar t) (instantiate (P Bound n t) (pToV x sc))
+patvar n ctxt env tm = fail $ "Can't add pattern var at " ++ show tm
 
 letbind :: Name -> Raw -> Raw -> RunTactic
 letbind n ty val ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' =
