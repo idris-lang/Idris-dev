@@ -10,6 +10,7 @@ import Idris.Delaborate
 import Idris.Compiler
 import Idris.Prover
 import Idris.Parser
+import Paths_miniidris
 
 import Core.Evaluate
 import Core.ProofShell
@@ -23,6 +24,7 @@ import Control.Monad
 import Control.Monad.State
 import Data.List
 import Data.Char
+import Data.Version
 
 repl :: IState -> [FilePath] -> Idris ()
 repl orig mods
@@ -60,8 +62,7 @@ processInput cmd orig inputs
                                  return (Just inputs)
  
 process :: FilePath -> Command -> Idris ()
-process _ Help 
-    = iputStrLn "At some point I'll write some help text. Thanks for asking though."
+process _ Help = iputStrLn displayHelp
 process "" Edit = iputStrLn "Nothing to edit"
 process f Edit
     = do i <- get
@@ -107,4 +108,26 @@ process _ Metavars = do ist <- get
                           [] -> iputStrLn "No global metavariables to solve"
                           _ -> iputStrLn $ "Global metavariables:\n\t" ++ show mvs
 process _ NOP      = return ()
+
+displayHelp = let vstr = showVersion version in
+              "\nIdris version " ++ vstr ++ "\n" ++
+              "--------------" ++ map (\x -> '-') vstr ++ "\n\n" ++
+              concatMap cmdInfo help
+  where cmdInfo (cmds, args, text) = "   " ++ col 14 14 (showSep " " cmds) args text 
+        col c1 c2 l m r = 
+            l ++ take (c1 - length l) (repeat ' ') ++ 
+            m ++ take (c2 - length m) (repeat ' ') ++ r ++ "\n"
+
+help =
+  [ (["Command"], "Arguments", "Purpose"),
+    ([""], "", ""),
+    (["<expression>"], "", "Evaluate an expression"),
+    ([":r",":reload"], "", "Reload current file"),
+    ([":e",":edit"], "", "Edit current file using $EDITOR or $VISUAL"),
+    ([":m",":metavars"], "", "Show remaining proof obligations (metavariables)"),
+    ([":p",":prove"], "<name>", "Prove a metavariable"),
+    ([":c",":compile"], "<filename>", "Compile to an executable <filename>"),
+    ([":?",":h",":help"], "", "Display this help text"),
+    ([":q",":quit"], "", "Exit the Idris system")
+  ]
 
