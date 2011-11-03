@@ -67,7 +67,7 @@ test : Int;
 test = interp Empty eProg 2 2;
 
 testFac : Int;
-testFac = interp Empty eFac 3;
+testFac = interp Empty eFac 4;
 
 intToStr : Int -> String;
 intToStr 0 = "O";

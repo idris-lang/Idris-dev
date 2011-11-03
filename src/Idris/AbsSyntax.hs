@@ -38,11 +38,12 @@ data IState = IState { tt_ctxt :: Context,
                        syntax_rules :: [Syntax],
                        syntax_keywords :: [String],
                        imported :: [FilePath],
-                       idris_prims :: [(Name, ([E.Name], E.Term))]
+                       idris_prims :: [(Name, ([E.Name], E.Term))],
+                       errLine :: Maybe Int
                      }
                    
 idrisInit = IState emptyContext [] emptyContext emptyContext
-                   "" defaultOpts 6 [] [] [] [] []
+                   "" defaultOpts 6 [] [] [] [] [] Nothing
 
 -- The monad for the main REPL - reading and processing files and updating 
 -- global state (hence the IO inner monad).
@@ -50,6 +51,16 @@ type Idris a = StateT IState IO a
 
 getContext :: Idris Context
 getContext = do i <- get; return (tt_ctxt i)
+
+setErrLine :: Int -> Idris ()
+setErrLine x = do i <- get;
+                  case (errLine i) of
+                      Nothing -> put (i { errLine = Just x })
+                      Just _ -> return ()
+
+clearErr :: Idris ()
+clearErr = do i <- get
+              put (i { errLine = Nothing })
 
 getIState :: Idris IState
 getIState = get
@@ -124,7 +135,7 @@ setTypeCase t = do i <- get
 
 -- Commands in the REPL
 
-data Command = Quit | Help | Eval PTerm 
+data Command = Quit | Help | Eval PTerm | Reload | Edit
              | Compile String
              | Metavars | Prove Name
              | TTShell 

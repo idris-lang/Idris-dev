@@ -303,7 +303,10 @@ pvars ist _ = []
 -- TODO: Also build a 'binary' version of each declaration for fast reloading
 
 elabDecl :: ElabInfo -> PDecl -> Idris ()
-elabDecl info d = idrisCatch (elabDecl' info d) (\e -> iputStrLn (report e))
+elabDecl info d = idrisCatch (elabDecl' info d) 
+                             (\e -> do let msg = report e
+                                       setErrLine (getErrLine msg)
+                                       iputStrLn msg)
 
 elabDecl' info (PFix _ _ _)      = return () -- nothing to elaborate
 elabDecl' info (PSyntax _ p) = return () -- nothing to elaborate

@@ -8,6 +8,7 @@ import Core.Typecheck
 
 import Control.Monad.State
 import System.IO.Error
+import Data.Char
 
 report :: IOError -> String
 report e
@@ -27,5 +28,14 @@ tclift :: Show a => TC a -> Idris a
 tclift tc = case tc of
                OK v -> return v
                Error err -> do i <- get
+                               case err of
+                                  At (FC f l) e -> setErrLine l
+                                  _ -> return ()
                                fail (pshow i err)
+
+getErrLine str 
+  = case span (/=':') str of
+      (_, ':':rest) -> case span isDigit rest of
+        (num, _) -> read num
+      _ -> 0
 

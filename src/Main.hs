@@ -48,16 +48,13 @@ runIdris opts =
        when (not (NoPrelude `elem` opts)) $ do x <- loadModule "prelude"
                                                return ()
        when runrepl $ iputStrLn banner 
+       ist <- get
        mods <- mapM loadModule inputs       
-       when runrepl $ repl (mkPrompt mods)
+       when runrepl $ repl ist inputs
   where
     makeOption (OLogging i) = setLogLevel i
     makeOption TypeCase = setTypeCase True
     makeOption _ = return ()
-
-mkPrompt [] = "Idris"
-mkPrompt [x] = "*" ++ x
-mkPrompt (x:xs) = "*" ++ x ++ " " ++ mkPrompt xs
 
 getFile :: Opt -> Maybe String
 getFile (Filename str) = Just str

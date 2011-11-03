@@ -2,14 +2,16 @@ module Idris.Parser where
 
 import Idris.AbsSyntax
 import Idris.Imports
-import Paths_miniidris
+import Idris.Error
 import Idris.ElabDecls
+import Paths_miniidris
 
 import Core.CoreParser
 import Core.TT
 import Core.Evaluate
 
 import Text.ParserCombinators.Parsec
+import Text.ParserCombinators.Parsec.Error
 import Text.ParserCombinators.Parsec.Expr
 import Text.ParserCombinators.Parsec.Language
 import qualified Text.ParserCombinators.Parsec.Token as PTok
@@ -47,17 +49,22 @@ lchar = lexeme.char
 -- Loading modules
 
 loadModule :: FilePath -> Idris String
-loadModule f = do datadir <- lift $ getDataDir
-                  fp <- lift $ findImport [".", datadir] f
-                  i <- getIState
-                  if (f `elem` imported i)
-                     then iLOG $ "Already read " ++ f
-                     else do putIState (i { imported = f : imported i })
-                             case fp of
-                                 IDR fn -> loadSource fn
-                                 IBC fn -> error "Not implemented"
-                  let (dir, fh) = splitFileName f
-                  return (dropExtension fh)
+loadModule f 
+   = idrisCatch (do datadir <- lift $ getDataDir
+                    fp <- lift $ findImport [".", datadir] f
+                    i <- getIState
+                    if (f `elem` imported i)
+                       then iLOG $ "Already read " ++ f
+                       else do putIState (i { imported = f : imported i })
+                               case fp of
+                                   IDR fn -> loadSource fn
+                                   IBC fn -> error "Not implemented"
+                    let (dir, fh) = splitFileName f
+                    return (dropExtension fh))
+                (\e -> do let msg = report e
+                          setErrLine (getErrLine msg)
+                          iputStrLn msg
+                          return "")
 
 loadSource :: FilePath -> Idris () 
 loadSource f = do iLOG ("Reading " ++ f)
@@ -84,9 +91,13 @@ parseImports fname input
                              rest <- getInput
                              pos <- getPosition
                              return ((ps, rest, pos), i)) i fname input) of
-            Left err -> fail (show err)
+            Left err -> fail (ishow err)
             Right (x, i) -> do put i
                                return x
+  where ishow err = let ln = sourceLine (errorPos err) in
+                        fname ++ ":" ++ show ln ++ ":parse error" 
+--                           show (map messageString (errorMessages err))
+
 
 pfc :: IParser FC
 pfc = do s <- getPosition
@@ -111,9 +122,12 @@ parseProg syn fname input pos
                              eof
                              i' <- getState
                              return (concat ps, i')) i fname input) of
-            Left err -> fail (show err)
+            Left err -> fail (ishow err)
             Right (x, i) -> do put i
                                return (collect x)
+  where ishow err = let ln = sourceLine (errorPos err) in
+                        fname ++ ":" ++ show ln ++ ":parse error"
+--                           show (map messageString (errorMessages err))
 
 -- Collect PClauses with the same function name
 

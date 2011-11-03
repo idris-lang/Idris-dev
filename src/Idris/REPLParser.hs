@@ -22,6 +22,8 @@ cmd xs = do lchar ':'; docmd (sortBy (\x y -> compare (length y) (length x)) xs)
 pCmd :: IParser Command
 pCmd = try (do cmd ["q", "quit"]; eof; return Quit)
    <|> try (do cmd ["h", "?", "help"]; eof; return Help)
+   <|> try (do cmd ["r", "reload"]; eof; return Reload)
+   <|> try (do cmd ["e", "edit"]; eof; return Edit)
    <|> try (do cmd ["ttshell"]; eof; return TTShell)
    <|> try (do cmd ["c", "compile"]; f <- identifier; eof; return (Compile f))
    <|> try (do cmd ["m", "metavars"]; eof; return Metavars)
