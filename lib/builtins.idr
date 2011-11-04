@@ -111,7 +111,33 @@ instance EqInt : Eq Int;
 instance EqInt = EqInstance (boolOp prim__eqInt) (\x, y => not (x == y));
 
 instance EqFloat : Eq Float;
-instance EqFloat = EqInstance (boolOp prim__eqFloat)(\x, y => not (x == y));  
+instance EqFloat = EqInstance (boolOp prim__eqFloat) (\x, y => not (x == y));  
+
+data Ordering = LT | EQ | GT;
+
+data Ord : Set -> Set where
+    OrdInstance : Eq a => 
+                  (compare : a -> a -> Ordering) ->
+                  Ord a;
+
+    compare : Ord a => a -> a -> Ordering;
+    compare {{OrdInstance c}} = c;
+
+instance OrdInt : Ord Int;
+instance OrdInt = OrdInstance cmpInt where {
+    cmpInt : Int -> Int -> Ordering;
+    cmpInt x y = if (x == y) then EQ else
+                 if (boolOp prim__ltInt x y) then LT else
+                 GT;
+}
+
+instance OrdFloat : Ord Float;
+instance OrdFloat = OrdInstance cmpFloat where {
+    cmpFloat : Float -> Float -> Ordering;
+    cmpFloat x y = if (x == y) then EQ else
+                   if (boolOp prim__ltFloat x y) then LT else
+                   GT;
+}
 
 div : Int -> Int -> Int;
 div = prim__divInt;
