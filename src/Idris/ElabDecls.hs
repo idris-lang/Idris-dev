@@ -16,6 +16,7 @@ import Core.CaseTree
 
 import Control.Monad
 import Control.Monad.State
+import Data.List
 import Debug.Trace
 
 -- Data to pass to recursively called elaborators; e.g. for where blocks,
@@ -104,14 +105,14 @@ elabClauses info fc n_in cs = let n = liftname info n_in in
     depat (Bind n (PVar t) sc) = depat (instantiate (P Bound n t) sc)
     depat x = x
 
-elabVal :: ElabInfo -> PTerm -> Idris (Term, Type)
-elabVal info tm_in
+elabVal :: ElabInfo -> Bool -> PTerm -> Idris (Term, Type)
+elabVal info aspat tm_in
    = do ctxt <- getContext
         i <- get
         let tm = addImpl i tm_in
         logLvl 10 (showImp True tm)
         ((tm', defer), _) <- tclift $ elaborate ctxt (MN 0 "val") infP
-                                      (build i info True (infTerm tm))
+                                      (build i info aspat (infTerm tm))
         logLvl 3 ("Value: " ++ show tm')
         let vtm = getInferTerm tm'
         logLvl 2 (show vtm)
@@ -360,27 +361,6 @@ elab ist info pattern tm
                   (h: hs) -> do patvar h; mkPat
                   [] -> return ()
 
-    -- Expand implict arguments here, then move on to main elaborator
---     elabE (PRef fc n)       
---            | Just ps <- lookupCtxt n (inblock info) 
---               = -- let exp = (PApp fc (PRef fc n) (map (pexp . (PRef fc)) ps))
---                     elabE (PApp fc (PRef fc n) [])
---     elabE f@(PApp fc fn args) = trace ("Elaborating " ++ show f) $ elab' f
---     elabE (PRef fc f)
---        = do l <- local f
---             elabN f l
---       where elabN f False = let afn = aiFn ist fc f [] in
---                                  -- trace ("Ref expanded to " ++ showImp True afn) $
---                                    elab' afn
---             elabN f True  = elab' (PRef fc f)
---     elabE (PApp fc fn@(PRef _ f) args)
---        = do l <- local f
---             elabApp f args l -- no implicits
---       where elabApp f args False = let afn = aiFn ist fc f args in
---                                         -- trace ("Expanded to " ++ showImp True afn) $
---                                          elab' afn 
---             elabApp f args True  = elab' (PApp fc fn args)
---     elabE (PApp fc f as) = elab' (mkPApp fc 1 f as)
     elabE t = elab' t
 
     local f = do e <- get_env
@@ -392,6 +372,8 @@ elab ist info pattern tm
     elab' (PTrue fc)     = try (elab' (PRef fc unitCon))
                                (elab' (PRef fc unitTy))
     elab' (PFalse fc)    = elab' (PRef fc falseTy)
+    elab' (PResolveTC fc) = do c <- unique_hole (MN 0 "c")
+                               instanceArg c
     elab' (PRefl fc)     = elab' (PApp fc (PRef fc eqCon) [pimp (MN 0 "a") Placeholder,
                                                            pimp (MN 0 "x") Placeholder])
     elab' (PEq fc l r)   = elab' (PApp fc (PRef fc eqTy) [pimp (MN 0 "a") Placeholder,
@@ -452,11 +434,25 @@ elab ist info pattern tm
        = do let args = {- case lookupCtxt f (inblock info) of
                           Just ps -> (map (pexp . (PRef fc)) ps ++ args')
                           _ ->-} args'
+            ivs <- get_instances
             try (do ns <- apply (Var f) (map isph args)
                     solve
                     elabArgs ns (map (\x -> (lazyarg x, getTm x)) args))
                 (do apply_elab f (map toElab args)
                     solve)
+            ivs' <- get_instances
+            when (not pattern) $
+                mapM_ (\n -> do focus n
+                                resolveTC ist) (ivs' \\ ivs) 
+--             ivs <- get_instances
+--             when (not (null ivs)) $
+--               do t <- get_term
+--                  trace (show ivs ++ "\n" ++ show t) $ 
+--                    mapM_ (\n -> do focus n
+--                                    resolveTC ist) ivs
+      where tcArg (n, PConstraint _ Placeholder) = True
+            tcArg _ = False
+
     elab' (PApp fc f [arg])
           = erun fc $ 
              do simple_app (elabE f) (elabE (getTm arg))
@@ -478,7 +474,40 @@ elab ist info pattern tm
              elabArgs ns args
       | otherwise
         = do focus n; elabE t; elabArgs ns args
-    
+   
+trivial :: IState -> Elab ()
+trivial ist = try (elab ist toplevel False (PRefl (FC "prf" 0)))
+                  (do env <- get_env
+                      tryAll (map fst env))
+      where
+        tryAll []     = fail "No trivial solution"
+        tryAll (x:xs) = try (elab ist toplevel False (PRef (FC "prf" 0) x))
+                            (tryAll xs)
+
+resolveTC :: IState -> Elab ()
+resolveTC ist = do t <- goal
+                   tm <- get_term
+                   try (trivial ist)
+                       (blunderbuss t (map fst (toAlist (tt_ctxt ist))))
+  where
+    blunderbuss t [] = fail $ "Can't resolve type class " ++ show t
+    blunderbuss t (n:ns) | tcname n = try (resolve n)
+                                          (blunderbuss t ns)
+                         | otherwise = blunderbuss t ns
+    tcname (UN (('@':_) : _)) = True
+    tcname _ = False
+
+    resolve n = do t <- goal
+                   let imps = case lookupCtxt n (idris_implicits ist) of
+                                Nothing -> []
+                                Just args -> map isImp args
+                   args <- apply (Var n) imps
+                   mapM_ (\ (_,n) -> do focus n
+                                        resolveTC ist) 
+                         (filter (\ (x, y) -> not x) (zip imps args))
+                   solve
+       where isImp (PImp _ _ _) = True
+             isImp _ = False
 
 collectDeferred :: Term -> State [(Name, Type)] Term
 collectDeferred (Bind n (GHole t) app) =
@@ -531,15 +560,7 @@ runTac autoSolve ist tac = runT (fmap (addImpl ist) tac) where
                    rewrite (Var letn)
                    when autoSolve solveAll
     runT Compute = compute
-    runT Trivial = try (do elab ist toplevel False (PRefl (FC "prf" 0))
-                           when autoSolve solveAll)
-                       (do env <- get_env
-                           tryAll (map fst env))
-      where
-        tryAll []     = fail "No trivial solution"
-        tryAll (x:xs) = try (do elab ist toplevel False (PRef (FC "prf" 0) x)
-                                when autoSolve solveAll)
-                            (tryAll xs)
+    runT Trivial = do trivial ist; when autoSolve solveAll
     runT (Focus n) = focus n
     runT Solve = solve
     runT x = fail $ "Not implemented " ++ show x

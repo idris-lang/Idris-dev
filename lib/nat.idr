@@ -27,3 +27,15 @@ plus_commutes_Sk = proof {
     rewrite (sym ih);
     refine plusn_Sm;
 };
+
+sub : Nat -> Nat -> Nat;
+sub O      y    = O;
+sub (S k) (S y) = sub k y;
+sub x      O    = x;
+
+mult : Nat -> Nat -> Nat;
+mult O     y = O;
+mult (S k) y = plus y (mult k y);
+
+instance numNat : Num Nat;
+instance numNat = NumInstance plus sub mult;

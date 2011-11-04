@@ -335,7 +335,10 @@ pExt syn (Rule (s:ssym) ptm)
 
 pName = do i <- getState
            iName (syntax_keywords i)
-  where
+    <|> do reserved "instance"
+           i <- getState
+           UN (n:ns) <- iName (syntax_keywords i)
+           return (UN (('@':n) : ns))
 
 pfName = try pName
      <|> do lchar '('; o <- operator; lchar ')'; return (UN [o])
@@ -379,7 +382,8 @@ pApp syn = do f <- pSimpleExpr syn
               return (PApp fc f args)
 
 pArg :: SyntaxInfo -> IParser PArg
-pArg syn = pImplicitArg syn
+pArg syn = try (pImplicitArg syn)
+       <|> try (pConstraintArg syn)
        <|> do e <- pSimpleExpr syn
               return (pexp e)
 
@@ -389,8 +393,13 @@ pImplicitArg syn = do lchar '{'; n <- pName
                       lchar '}'
                       return (pimp n v)
 
+pConstraintArg syn = do symbol "{{"; e <- pExpr syn; symbol "}}"
+                        return (pconst e)
+
 pTSig syn = do lchar ':'
-               pExpr syn
+               cs <- pConstList syn
+               sc <- pExpr syn
+               return (bindList (PPi constraint) (map (\x -> (MN 0 "c", x)) cs) sc)
 
 pLambda syn = do lchar '\\'; 
                  xt <- tyOptDeclList syn
@@ -422,6 +431,16 @@ pPi syn =
              sc <- pExpr syn
              return (PPi (Exp False Static) (MN 0 "X") t sc)
 
+pConstList :: SyntaxInfo -> IParser [PTerm]
+pConstList syn = try (do lchar '(' 
+                         tys <- sepBy1 (pExpr' syn) (lchar ',')
+                         lchar ')'
+                         reservedOp "=>"
+                         return tys)
+             <|> try (do t <- pExpr syn
+                         reservedOp "=>"
+                         return [t])
+             <|> return []
 
 tyDeclList syn = sepBy1 (do x <- pfName; t <- pTSig syn; return (x,t))
                     (lchar ',')
@@ -548,6 +567,7 @@ whereSyn n syn args = let ns = concatMap allNamesIn args
 pClause :: SyntaxInfo -> IParser PClause
 pClause syn
          = try (do n <- pfName
+                   cargs <- many (pConstraintArg syn)
                    iargs <- many (pImplicitArg syn)
                    fc <- pfc
                    args <- many (pHSimpleExpr syn)
@@ -556,12 +576,15 @@ pClause syn
                    rhs <- pExpr syn
                    ist <- getState
                    let ctxt = tt_ctxt ist
-                   let wsyn = whereSyn n syn (map getTm iargs ++ args ++ wargs)
+                   let wsyn = whereSyn n syn (map getTm cargs ++ 
+                                              map getTm iargs ++
+                                              args ++ wargs)
                    (wheres, nmap) <- choice [pWhereblock n syn, do lchar ';'
                                                                    return ([], [])]
                    return $ PClause n (PApp fc (PRef fc n) 
-                                      (iargs ++ map pexp args)) wargs rhs wheres)
+                                      (cargs ++ iargs ++ map pexp args)) wargs rhs wheres)
        <|> try (do n <- pfName
+                   cargs <- many (pConstraintArg syn)
                    iargs <- many (pImplicitArg syn)
                    fc <- pfc
                    args <- many (pHSimpleExpr syn)
@@ -573,7 +596,7 @@ pClause syn
                    let withs = concat ds
                    lchar '}'
                    return $ PWith n (PApp fc (PRef fc n) 
-                                       (iargs ++ map pexp args)) wargs wval withs)
+                                       (cargs ++ iargs ++ map pexp args)) wargs wval withs)
 
        <|> do l <- pSimpleExpr syn
               op <- operator

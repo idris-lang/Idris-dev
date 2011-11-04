@@ -71,14 +71,26 @@ intToBool x = True;
 boolOp : (a -> a -> Int) -> a -> a -> Bool;
 boolOp op x y = intToBool (op x y); 
 
-(+) : Int -> Int -> Int;
-(+) = prim__addInt;
+data Num : Set -> Set where
+    NumInstance : (plus : a -> a -> a) -> 
+                  (sub  : a -> a -> a) ->
+                  (mult : a -> a -> a) ->
+                  Num a;
 
-(-) : Int -> Int -> Int;
-(-) = prim__subInt;
+    (+) : Num a => a -> a -> a;
+    (+) {{NumInstance p s m}} x y = p x y;
 
-(*) : Int -> Int -> Int;
-(*) = prim__mulInt;
+    (-) : Num a => a -> a -> a;
+    (-) {{NumInstance p s m}} x y = s x y;
+
+    (*) : Num a => a -> a -> a;
+    (*) {{NumInstance p s m}} x y = m x y;
+
+instance numInt : Num Int;
+instance numInt = NumInstance prim__addInt prim__subInt prim__mulInt;
+
+instance numFloat : Num Float;
+instance numFloat = NumInstance prim__addFloat prim__subFloat prim__mulFloat;
 
 div : Int -> Int -> Int;
 div = prim__divInt;
@@ -98,17 +110,8 @@ div = prim__divInt;
 (>=) : Int -> Int -> Bool;
 (>=) = boolOp prim__gteInt;
 
-(+.) : Float -> Float -> Float;
-(+.) = prim__addFloat;
-
-(-.) : Float -> Float -> Float;
-(-.) = prim__subFloat;
-
-(*.) : Float -> Float -> Float;
-(*.) = prim__mulFloat;
-
-(/.) : Float -> Float -> Float;
-(/.) = prim__divFloat;
+(/) : Float -> Float -> Float;
+(/) = prim__divFloat;
 
 (==.) : Float -> Float -> Bool;
 (==.) = boolOp prim__eqFloat;

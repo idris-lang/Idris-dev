@@ -24,6 +24,7 @@ data ProofState = PS { thname   :: Name,
                        ptype    :: Type,   -- original goal
                        unified  :: (Name, [(Name, Term)]),
                        deferred :: [Name], -- names we'll need to define
+                       instances :: [Name], -- instance arguments (for type classes)
                        previous :: Maybe ProofState, -- for undo
                        context  :: Context,
                        plog     :: String,
@@ -55,6 +56,7 @@ data Tactic = Attack
             | PatBind Name
             | Focus Name
             | Defer Name
+            | Instance Name
             | MoveLast Name
             | ProofState
             | Undo
@@ -64,8 +66,8 @@ data Tactic = Attack
 -- Some utilites on proof and tactic states
 
 instance Show ProofState where
-    show (PS nm [] _ tm _ _ _ _ _ _ _) = show nm ++ ": no more goals"
-    show (PS nm (h:hs) _ tm _ _ i _ ctxt _ _) 
+    show (PS nm [] _ tm _ _ _ _ _ _ _ _) = show nm ++ ": no more goals"
+    show (PS nm (h:hs) _ tm _ _ i _ _ ctxt _ _) 
           = let OK g = goal (Just h) tm
                 wkenv = premises g in
                 "Other goals: " ++ show hs ++ "\n" ++
@@ -112,7 +114,8 @@ addLog str = action (\ps -> ps { plog = plog ps ++ str ++ "\n" })
 newProof :: Name -> Context -> Type -> ProofState
 newProof n ctxt ty = let h = holeName 0 
                          ty' = vToP ty in
-                         PS n [h] 1 (Bind h (Hole ty') (P Bound h ty')) ty (h, []) []
+                         PS n [h] 1 (Bind h (Hole ty') (P Bound h ty')) ty (h, []) 
+                            [] []
                             Nothing ctxt "" False
 
 type TState = ProofState -- [TacticAction])
@@ -191,6 +194,14 @@ movelast n ctxt env t = do action (\ps -> let hs = holes ps in
                                                   else ps)
                            return t 
 
+instanceArg :: Name -> RunTactic
+instanceArg n ctxt env (Bind x (Hole t) sc)
+    = do action (\ps -> let hs = holes ps
+                            is = instances ps in
+                            ps { holes = (hs \\ [x]) ++ [x],
+                                 instances = x:is })
+         return (Bind x (Hole t) sc)
+
 defer :: Name -> RunTactic
 defer n ctxt env (Bind x (Hole t) (P nt x' ty)) | x == x' = 
     do action (\ps -> let hs = holes ps in
@@ -246,7 +257,8 @@ complete_fill ctxt env t = fail $ "Can't complete fill at " ++ show t
 
 solve :: RunTactic
 solve ctxt env (Bind x (Guess ty val) sc)
-   | pureTerm val = do action (\ps -> ps { holes = holes ps \\ [x] })
+   | pureTerm val = do action (\ps -> ps { holes = holes ps \\ [x],
+                                           instances = instances ps \\ [x] })
                        return $ {- Bind x (Let ty val) sc -} instantiate val (pToV x sc)
    | otherwise    = fail "I see a hole in your solution."
 solve _ _ h = fail $ "Not a guess " ++ show h
@@ -426,5 +438,6 @@ process t h = tactic (Just h) (mktac t)
          mktac (CheckIn r)   = check_in r
          mktac (EvalIn r)    = eval_in r
          mktac (Focus n)     = focus n
-         mktac (MoveLast n)  = movelast n
          mktac (Defer n)     = defer n
+         mktac (Instance n)  = instanceArg n
+         mktac (MoveLast n)  = movelast n

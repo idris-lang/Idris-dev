@@ -171,10 +171,13 @@ data Plicity = Imp { plazy :: Bool,
                      pstatic :: Static }
              | Exp { plazy :: Bool,
                      pstatic :: Static }
+             | Constraint { plazy :: Bool,
+                            pstatic :: Static }
   deriving (Show, Eq)
 
 impl = Imp False Dynamic
 expl = Exp False Dynamic
+constraint = Constraint False Static
 
 data PDecl' t = PFix     FC Fixity [String] -- fixity declaration
               | PTy      SyntaxInfo FC Name t          -- type declaration
@@ -243,6 +246,7 @@ data PTerm = PQuote Raw
            | PTrue FC
            | PFalse FC
            | PRefl FC
+           | PResolveTC FC
            | PEq FC PTerm PTerm
            | PPair FC PTerm PTerm
            | PDPair FC PTerm PTerm
@@ -292,10 +296,12 @@ type PDo = PDo' PTerm
 
 data PArg' t = PImp { lazyarg :: Bool, pname :: Name, getTm :: t }
              | PExp { lazyarg :: Bool, getTm :: t }
+             | PConstraint { lazyarg :: Bool, getTm :: t }
     deriving (Show, Eq, Functor)
 
 pimp = PImp False
 pexp = PExp False
+pconst = PConstraint False
 
 type PArg = PArg' PTerm
 
@@ -372,6 +378,11 @@ getExps [] = []
 getExps (PExp _ tm : xs) = tm : getExps xs
 getExps (_ : xs) = getExps xs
 
+getConsts :: [PArg] -> [PTerm]
+getConsts [] = []
+getConsts (PConstraint _ tm : xs) = tm : getConsts xs
+getConsts (_ : xs) = getConsts xs
+
 getAll :: [PArg] -> [PTerm]
 getAll = map getTm 
 
@@ -400,6 +411,8 @@ showImp impl tm = se 10 tm where
       where st = case s of
                     Static -> "[static] "
                     _ -> ""
+    se p (PPi (Constraint _ _) n ty sc)
+        = bracket p 2 $ se 10 ty ++ " => " ++ se 10 sc
     se p (PApp _ (PRef _ f) [])
         | not impl = show f
     se p (PApp _ (PRef _ op@(UN [f:_])) args)
@@ -407,11 +420,13 @@ showImp impl tm = se 10 tm where
             = let [l, r] = getExps args in
               bracket p 1 $ se 1 l ++ " " ++ show op ++ " " ++ se 0 r
     se p (PApp _ f as) 
-        = let (imps, args) = (getImps as, getExps as) in
-              bracket p 1 $ se 1 f ++ (if impl then concatMap siArg imps else "")
+        = let (imps, cs, args) = (getImps as, getConsts as, getExps as) in
+              bracket p 1 $ se 1 f ++ concatMap scArg cs
+                                   ++ (if impl then concatMap siArg imps else "")
                                    ++ concatMap seArg args
     se p (PHidden tm) = "." ++ se 0 tm
     se p (PRefl _) = "refl"
+    se p (PResolveTC _) = "resolvetc"
     se p (PTrue _) = "()"
     se p (PFalse _) = "_|_"
     se p (PEq _ l r) = bracket p 2 $ se 10 l ++ " = " ++ se 10 r
@@ -425,6 +440,7 @@ showImp impl tm = se 10 tm where
 
     seArg arg      = " " ++ se 0 arg
     siArg (n, val) = " {" ++ show n ++ " = " ++ se 10 val ++ "}"
+    scArg val = " {{" ++ se 10 val ++ "}}"
 
     bracket outer inner str | inner > outer = "(" ++ str ++ ")"
                             | otherwise = str
@@ -626,6 +642,14 @@ implicitise syn ist tm
              put (PExp l ty : decls, 
                   nub (ns ++ (isn `dropAll` (env ++ map fst (getImps decls)))))
              imps True (n:env) sc
+    imps top env (PPi (Constraint l _) n ty sc)
+        = do let isn = nub (namesIn ist ty ++ case sc of
+                            (PRef _ x) -> namesIn ist sc `dropAll` [n]
+                            _ -> [])
+             (decls, ns) <- get -- ignore decls in HO types
+             put (PConstraint l ty : decls, 
+                  nub (ns ++ (isn `dropAll` (env ++ map fst (getImps decls)))))
+             imps True (n:env) sc
     imps top env (PEq _ l r)
         = do (decls, ns) <- get
              let isn = namesIn ist l ++ namesIn ist r
@@ -701,6 +725,10 @@ aiFn ist fc f as
     insertImpl :: [PArg] -> [PArg] -> [PArg]
     insertImpl (PExp l ty : ps) (PExp _ tm : given) =
                                  PExp l tm : insertImpl ps given
+    insertImpl (PConstraint l ty : ps) (PConstraint _ tm : given) =
+                                 PConstraint l tm : insertImpl ps given
+    insertImpl (PConstraint l ty : ps) given =
+                                 PConstraint l (PResolveTC fc) : insertImpl ps given
     insertImpl (PImp l n ty : ps) given =
         case find n given [] of
             Just (tm, given') -> PImp l n tm : insertImpl ps given'
@@ -789,6 +817,7 @@ matchClause x y = match x y where
                                                mr <- match r r'
                                                return (ml ++ mr)
     match (PRefl _) (PRefl _) = return []
+    match (PResolveTC _) (PResolveTC _) = return []
     match (PTrue _) (PTrue _) = return []
     match (PFalse _) (PFalse _) = return []
     match (PReturn _) (PReturn _) = return []

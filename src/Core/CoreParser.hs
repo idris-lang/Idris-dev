@@ -22,7 +22,7 @@ idrisDef = haskellDef {
                                "do", "dsl", "import", "return", -- "refl",
                                "infix", "infixl", "infixr", "prefix",
                                "where", "with", "forall", "syntax", "proof",
-                               "using", "params", "namespace",
+                               "using", "params", "namespace", "class", "instance",
                                "Int", "Float", "Char", "String", "Ptr"]
            } 
 

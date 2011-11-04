@@ -110,6 +110,11 @@ get_deferred :: Elab [Name]
 get_deferred = do ES p _ _ <- get
                   return (deferred p)
 
+-- get instance argument names
+get_instances :: Elab [Name]
+get_instances = do ES p _ _ <- get
+                   return (instances p)
+
 -- given a desired hole name, return a unique hole name
 unique_hole :: Name -> Elab Name
 unique_hole n = do ES p _ _ <- get
@@ -189,6 +194,9 @@ movelast n = processTactic' (MoveLast n)
 defer :: Name -> Elab ()
 defer n = processTactic' (Defer n)
 
+instanceArg :: Name -> Elab ()
+instanceArg n = processTactic' (Instance n)
+
 proofstate :: Elab ()
 proofstate = processTactic' ProofState
 
@@ -199,7 +207,6 @@ qed = do processTactic' QED
 
 undo :: Elab ()
 undo = processTactic' Undo
-
 
 prepare_apply :: Raw -> [Bool] -> Elab [Name]
 prepare_apply fn imps =

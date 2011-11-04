@@ -77,7 +77,7 @@ process f Edit
    where getEditor env | Just ed <- lookup "EDITOR" env = ed
                        | Just ed <- lookup "VISUAL" env = ed
                        | otherwise = "vi"
-process _ (Eval t) = do (tm, ty) <- elabVal toplevel t
+process _ (Eval t) = do (tm, ty) <- elabVal toplevel False t
                         ctxt <- getContext
                         ist <- get 
                         let tm' = normaliseC ctxt [] tm
@@ -85,13 +85,13 @@ process _ (Eval t) = do (tm, ty) <- elabVal toplevel t
                         logLvl 3 $ "Raw: " ++ show (tm', ty')
                         iputStrLn (show (delab ist tm') ++ " : " ++ 
                                    show (delab ist ty'))
-process _ (Spec t) = do (tm, ty) <- elabVal toplevel t
+process _ (Spec t) = do (tm, ty) <- elabVal toplevel False t
                         ctxt <- getContext
                         ist <- get
                         let tm' = specialise ctxt (idris_statics ist) tm
                         iputStrLn (show (delab ist tm'))
 process _ (Prove n) = prover n
-process _ (HNF t)  = do (tm, ty) <- elabVal toplevel t
+process _ (HNF t)  = do (tm, ty) <- elabVal toplevel False t
                         ctxt <- getContext
                         ist <- get
                         let tm' = hnf ctxt [] tm

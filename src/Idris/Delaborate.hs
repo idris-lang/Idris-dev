@@ -45,6 +45,7 @@ delab ist tm = de [] tm
 
     imp (PImp l n _) arg = PImp l n arg
     imp (PExp l _)   arg = PExp l arg
+    imp (PConstraint l _) arg = PConstraint l arg
 
 pshow :: IState -> Err -> String
 pshow i (Msg s) = s
