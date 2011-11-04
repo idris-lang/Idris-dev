@@ -56,6 +56,10 @@ infix 4 &&, ||;
 (&&) True x  = x;
 (&&) False _ = False;
 
+not : Bool -> Bool;
+not True = False;
+not False = True;
+
 infixl 5 ==, /=, ==.;
 infixl 6 <, <=, >, >=, <., <=., >., >=.;
 infixl 7 <<, >>;
@@ -92,11 +96,25 @@ instance numInt = NumInstance prim__addInt prim__subInt prim__mulInt;
 instance numFloat : Num Float;
 instance numFloat = NumInstance prim__addFloat prim__subFloat prim__mulFloat;
 
+data Eq : Set -> Set where
+    EqInstance : (eq : a -> a -> Bool) ->
+                 (neq : a -> a -> Bool) ->
+                 Eq a;
+
+    (==) : Eq a => a -> a -> Bool;
+    (==) {{EqInstance eq neq}} x y = eq x y;
+
+    (/=) : Eq a => a -> a -> Bool;
+    (/=) {{EqInstance eq neq}} x y = neq x y;
+
+instance EqInt : Eq Int;
+instance EqInt = EqInstance (boolOp prim__eqInt) (\x, y => not (x == y));
+
+instance EqFloat : Eq Float;
+instance EqFloat = EqInstance (boolOp prim__eqFloat)(\x, y => not (x == y));  
+
 div : Int -> Int -> Int;
 div = prim__divInt;
-
-(==) : Int -> Int -> Bool;
-(==) = boolOp prim__eqInt;
 
 (<) : Int -> Int -> Bool;
 (<) = boolOp prim__ltInt;
@@ -112,9 +130,6 @@ div = prim__divInt;
 
 (/) : Float -> Float -> Float;
 (/) = prim__divFloat;
-
-(==.) : Float -> Float -> Bool;
-(==.) = boolOp prim__eqFloat;
 
 (<.) : Float -> Float -> Bool;
 (<.) = boolOp prim__ltFloat;
