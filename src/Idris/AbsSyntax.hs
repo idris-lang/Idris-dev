@@ -1,5 +1,5 @@
 {-# LANGUAGE MultiParamTypeClasses, FlexibleInstances, DeriveFunctor,
-             TypeSynonymInstances #-}
+             TypeSynonymInstances, PatternGuards #-}
 
 module Idris.AbsSyntax where
 

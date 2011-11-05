@@ -1,4 +1,5 @@
-{-# LANGUAGE MultiParamTypeClasses, FlexibleInstances, DeriveFunctor #-}
+{-# LANGUAGE MultiParamTypeClasses, FlexibleInstances, DeriveFunctor,
+             PatternGuards #-}
 
 module Idris.REPL where
 
