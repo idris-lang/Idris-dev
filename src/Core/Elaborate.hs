@@ -258,7 +258,7 @@ apply_elab n args =
        env <- get_env
        claims <- doClaims (normalise ctxt env ty) args []
        prep_fill n (map fst claims)
-       elabClaims claims
+       elabClaims [] True claims
        complete_fill
        end_unify
   where
@@ -271,11 +271,17 @@ apply_elab n args =
     doClaims t [] claims = return (reverse claims)
     doClaims _ _ _ = fail $ "Wrong number of arguments for " ++ show n
 
-    elabClaims [] = return ()
-    elabClaims ((n, Nothing) : xs) = elabClaims xs
-    elabClaims ((n, Just elaboration) : xs)  =
-        do ES p _ _ <- get
-           focus n; elaboration; elabClaims xs
+    elabClaims failed r [] 
+        | null failed = return ()
+        | otherwise = if r then elabClaims [] False failed
+                           else return ()
+    elabClaims failed r ((n, Nothing) : xs) = elabClaims failed r xs
+    elabClaims failed r (e@(n, Just elaboration) : xs)
+        | r = try (do ES p _ _ <- get
+                      focus n; elaboration; elabClaims failed r xs)
+                  (elabClaims (e : failed) r xs)
+        | otherwise = do ES p _ _ <- get
+                         focus n; elaboration; elabClaims failed r xs
 
     mkMN n@(MN _ _) = n
     mkMN n@(UN [x]) = MN 0 x

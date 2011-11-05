@@ -437,13 +437,13 @@ elab ist info pattern tm
             ivs <- get_instances
             try (do ns <- apply (Var f) (map isph args)
                     solve
-                    elabArgs ns (map (\x -> (lazyarg x, getTm x)) args))
+                    elabArgs [] True ns (map (\x -> (lazyarg x, getTm x)) args))
                 (do apply_elab f (map toElab args)
                     solve)
             ivs' <- get_instances
             when (not pattern) $
                 mapM_ (\n -> do focus n
-                                resolveTC ist) (ivs' \\ ivs) 
+                                resolveTC 10 ist) (ivs' \\ ivs) 
 --             ivs <- get_instances
 --             when (not (null ivs)) $
 --               do t <- get_term
@@ -464,16 +464,22 @@ elab ist info pattern tm
     elab' (PElabError e) = fail e
     elab' x = fail $ "Not implemented " ++ show x
 
-    elabArgs [] _ = return ()
-    elabArgs (n:ns) ((_, Placeholder) : args) = elabArgs ns args
-    elabArgs (n:ns) ((lazy, t) : args)
-      | lazy && not pattern 
-        = do focus n; elab' (PApp bi (PRef bi (UN ["lazy"]))
-                                     [pimp (UN ["a"]) Placeholder,
-                                      pexp t]); 
-             elabArgs ns args
-      | otherwise
-        = do focus n; elabE t; elabArgs ns args
+    elabArgs failed retry [] _
+        | retry = let (ns, ts) = unzip (reverse failed) in
+                      elabArgs [] False ns ts
+        | otherwise = return ()
+    elabArgs failed r (n:ns) ((_, Placeholder) : args) 
+        = elabArgs failed r ns args
+    elabArgs failed r (n:ns) ((lazy, t) : args)
+        | lazy && not pattern 
+          = do elabArg n (PApp bi (PRef bi (UN ["lazy"]))
+                               [pimp (UN ["a"]) Placeholder,
+                                pexp t]); 
+        | otherwise = elabArg n t
+      where elabArg n t = if r
+                            then try (do focus n; elabE t; elabArgs failed r ns args) 
+                                     (elabArgs ((n,(lazy, t)):failed) r ns args)
+                            else do focus n; elabE t; elabArgs failed r ns args
    
 trivial :: IState -> Elab ()
 trivial ist = try (elab ist toplevel False (PRefl (FC "prf" 0)))
@@ -484,26 +490,30 @@ trivial ist = try (elab ist toplevel False (PRefl (FC "prf" 0)))
         tryAll (x:xs) = try (elab ist toplevel False (PRef (FC "prf" 0) x))
                             (tryAll xs)
 
-resolveTC :: IState -> Elab ()
-resolveTC ist = do t <- goal
+resolveTC :: Int -> IState -> Elab ()
+resolveTC depth ist 
+              = do t <- goal
                    tm <- get_term
                    try (trivial ist)
                        (blunderbuss t (map fst (toAlist (tt_ctxt ist))))
   where
     blunderbuss t [] = fail $ "Can't resolve type class " ++ show t
-    blunderbuss t (n:ns) | tcname n = try (resolve n)
+    blunderbuss t (n:ns) | tcname n = try (resolve n depth)
                                           (blunderbuss t ns)
                          | otherwise = blunderbuss t ns
     tcname (UN (('@':_) : _)) = True
     tcname _ = False
 
-    resolve n = do t <- goal
+    resolve n depth
+       | depth == 0 = fail $ "Can't resolve type class"
+       | otherwise 
+              = do t <- goal
                    let imps = case lookupCtxt n (idris_implicits ist) of
                                 Nothing -> []
                                 Just args -> map isImp args
                    args <- apply (Var n) imps
                    mapM_ (\ (_,n) -> do focus n
-                                        resolveTC ist) 
+                                        resolveTC (depth - 1) ist) 
                          (filter (\ (x, y) -> not x) (zip imps args))
                    solve
        where isImp (PImp _ _ _) = True

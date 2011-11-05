@@ -51,6 +51,6 @@ pshow :: IState -> Err -> String
 pshow i (Msg s) = s
 pshow i (CantUnify x y e) = "Can't unify " ++ show (delab i x)
                             ++ " with " ++ show (delab i y) 
-                            -- ++ "\n\t(" ++ pshow i e ++ ")"
+--                             ++ "\n\t(" ++ pshow i e ++ ")"
 pshow i (At f e) = show f ++ ":" ++ pshow i e
 

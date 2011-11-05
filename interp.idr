@@ -17,14 +17,17 @@ using (G : Vect Ty n) {
   
   data Expr : Vect Ty n -> Ty -> Set where
       Var : (i : Fin n) -> Expr G (vlookup i G)
-    | Val : (x : interpTy a) -> Expr G a
+    | Val : (x : Int) -> Expr G TyInt
     | Lam : Expr (a :: G) t -> Expr G (TyFun a t)
     | App : Expr G (TyFun a t) -> Expr G a -> Expr G t
     | Op  : (Int -> Int -> interpTy c) ->
             Expr G TyInt -> Expr G TyInt -> Expr G c
+    -- | Op' : (interpTy a -> interpTy b -> interpTy c) ->
+    --         Expr G a -> Expr G b -> Expr G c
     | If  : Expr G TyBool -> Expr G a -> Expr G a -> Expr G a
     | Bind : Expr G a -> (interpTy a -> Expr G b) -> Expr G b;
   
+
   interp : Env G -> [static] Expr G t -> interpTy t;
   interp env (Var i)     = envLookup i env;
   interp env (Val x)     = x;

@@ -16,3 +16,11 @@ putStrLn x = putStr (x ++ "\n");
 readLine : IO String;
 readLine = mkForeign (FFun "readStr" Nil FString);
 
+-- Show and instances
+
+data Show : Set -> Set where
+    ShowInstance : (show : a -> String) -> Show a;
+
+show : Show a => a -> String;
+show {{ShowInstance s}} v = s v;
+

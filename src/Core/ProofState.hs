@@ -260,7 +260,7 @@ solve ctxt env (Bind x (Guess ty val) sc)
    | pureTerm val = do action (\ps -> ps { holes = holes ps \\ [x],
                                            instances = instances ps \\ [x] })
                        return $ {- Bind x (Let ty val) sc -} instantiate val (pToV x sc)
-   | otherwise    = fail "I see a hole in your solution."
+   | otherwise    = fail $ "I see a hole in your solution. " ++ showEnv env val
 solve _ _ h = fail $ "Not a guess " ++ show h
 
 intro :: Maybe Name -> RunTactic
