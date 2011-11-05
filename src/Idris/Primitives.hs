@@ -30,7 +30,13 @@ ref = E.ref
 eOp :: EOp -> ([E.Name], ETm)
 eOp op = ([E.name "x", E.name "y"], E.op_ op (E.fn "x") (E.fn "y")) 
 
+strToInt x = foreign_ tyInt "strToInt" [(x, tyString)]
+intToStr x = foreign_ tyString "intToStr" [(x, tyInt)]
+strToFloat x = foreign_ tyFloat "strToFloat" [(x, tyString)]
+floatToStr x = foreign_ tyString "floatToStr" [(x, tyFloat)]
+
 primitives =
+   -- operators
   [Prim (UN ["prim__addInt"]) (ty [IType, IType] IType) 2 (iBin (+))
     (eOp E.plus_),
    Prim (UN ["prim__subInt"]) (ty [IType, IType] IType) 2 (iBin (-))
@@ -68,7 +74,16 @@ primitives =
    Prim (UN ["prim__gteFloat"]) (ty [FlType, FlType] IType) 2 (bfBin (>=))
     (eOp E.gteF_),
    Prim (UN ["prim__concat"]) (ty [StrType, StrType] StrType) 2 (sBin (++))
-    ([E.name "x", E.name "y"], (fun "append") @@ fun "x" @@ fun "y")
+    ([E.name "x", E.name "y"], (fun "append") @@ fun "x" @@ fun "y"),
+    -- Conversions
+   Prim (UN ["prim__strToInt"]) (ty [StrType] IType) 1 (c_strToInt)
+    ([E.name "x"], strToInt (fun "x")),
+   Prim (UN ["prim__intToStr"]) (ty [IType] StrType) 1 (c_intToStr)
+    ([E.name "x"], intToStr (fun "x")),
+   Prim (UN ["prim__strToFloat"]) (ty [StrType] FlType) 1 (c_strToFloat)
+    ([E.name "x"], strToFloat (fun "x")),
+   Prim (UN ["prim__floatToStr"]) (ty [FlType] StrType) 1 (c_floatToStr)
+    ([E.name "x"], floatToStr (fun "x"))
   ]
 
 iBin op [VConstant (I x), VConstant (I y)] = Just $ VConstant (I (op x y))
@@ -85,6 +100,16 @@ bfBin _ _ = Nothing
 
 sBin op [VConstant (Str x), VConstant (Str y)] = Just $ VConstant (Str (op x y))
 sBin _ _ = Nothing
+
+c_intToStr [VConstant (I x)] = Just $ VConstant (Str (show x))
+c_intToStr _ = Nothing
+c_strToInt [VConstant (Str x)] = Just $ VConstant (I (read x))
+c_strToInt _ = Nothing
+
+c_floatToStr [VConstant (Fl x)] = Just $ VConstant (Str (show x))
+c_floatToStr _ = Nothing
+c_strToFloat [VConstant (Str x)] = Just $ VConstant (Fl (read x))
+c_strToFloat _ = Nothing
 
 elabPrim :: Prim -> Idris ()
 elabPrim (Prim n ty i def epic) 
