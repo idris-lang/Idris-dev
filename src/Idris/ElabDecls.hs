@@ -6,7 +6,7 @@ import Idris.AbsSyntax
 import Idris.Error
 import Idris.Delaborate
 import Idris.Imports
-import Paths_miniidris
+import Paths_idris
 
 import Core.TT
 import Core.Elaborate hiding (Tactic(..))

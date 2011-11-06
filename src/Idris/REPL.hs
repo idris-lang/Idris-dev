@@ -11,7 +11,7 @@ import Idris.Delaborate
 import Idris.Compiler
 import Idris.Prover
 import Idris.Parser
-import Paths_miniidris
+import Paths_idris
 
 import Core.Evaluate
 import Core.ProofShell

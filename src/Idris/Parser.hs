@@ -4,7 +4,7 @@ import Idris.AbsSyntax
 import Idris.Imports
 import Idris.Error
 import Idris.ElabDecls
-import Paths_miniidris
+import Paths_idris
 
 import Core.CoreParser
 import Core.TT

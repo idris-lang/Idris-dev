@@ -22,7 +22,7 @@ import Idris.REPL
 import Idris.ElabDecls
 import Idris.Primitives
 import Idris.Imports
-import Paths_miniidris
+import Paths_idris
 
 -- Main program reads command line options, parses the main program, and gets
 -- on with the REPL.

@@ -3,7 +3,7 @@ module Idris.Imports where
 import Idris.AbsSyntax
 
 import Core.TT
-import Paths_miniidris
+import Paths_idris
 
 import System.FilePath
 import System.Directory
