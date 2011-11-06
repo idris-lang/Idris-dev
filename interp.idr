@@ -22,8 +22,8 @@ using (G : Vect Ty n) {
     | App : Expr G (TyFun a t) -> Expr G a -> Expr G t
     | Op  : (Int -> Int -> interpTy c) ->
             Expr G TyInt -> Expr G TyInt -> Expr G c
-    -- | Op' : (interpTy a -> interpTy b -> interpTy c) ->
-    --         Expr G a -> Expr G b -> Expr G c
+    | Op' : (interpTy a -> interpTy b -> interpTy c) ->
+            Expr G a -> Expr G b -> Expr G c
     | If  : Expr G TyBool -> Expr G a -> Expr G a -> Expr G a
     | Bind : Expr G a -> (interpTy a -> Expr G b) -> Expr G b;
   
@@ -34,6 +34,7 @@ using (G : Vect Ty n) {
   interp env (Lam sc)    = \x => interp (Extend x env) sc;
   interp env (App f s)   = (interp env f) (interp env s);
   interp env (Op op x y) = op (interp env x) (interp env y);
+  interp env (Op' op x y) = op (interp env x) (interp env y);
   interp env (If x t e)  = if (interp env x) then (interp env t) else (interp env e);
   interp env (Bind v f)  = interp env (f (interp env v));
  
@@ -41,13 +42,13 @@ using (G : Vect Ty n) {
   eId = Lam (Var fO);
    
   eAdd : Expr G (TyFun TyInt (TyFun TyInt TyInt));
-  eAdd = Lam (Lam (Op (+) (Var fO) (Var (fS fO))));
+  eAdd = Lam (Lam (Op' (Var fO) (Var (fS fO)) prim__addInt));
+  
+--   eDouble : Expr G (TyFun TyInt TyInt);
+--   eDouble = Lam (App (App (Lam (Lam (Op' (+) (Var fO) (Var (fS fO))))) (Var fO)) (Var fO));
   
   eDouble : Expr G (TyFun TyInt TyInt);
-  eDouble = Lam (App (App (Lam (Lam (Op (+) (Var fO) (Var (fS fO))))) (Var fO)) (Var fO));
-  
-  eDouble' : Expr G (TyFun TyInt TyInt);
-  eDouble' = Lam (App (App eAdd (Var fO)) (Var fO));
+  eDouble = Lam (App (App eAdd (Var fO)) (Var fO));
  
   app : |(f : Expr G (TyFun a t)) -> Expr G a -> Expr G t;
   app = \f, a => App f a;
@@ -72,10 +73,6 @@ test = interp Empty eProg 2 2;
 testFac : Int;
 testFac = interp Empty eFac 4;
 
-intToStr : Int -> String;
-intToStr 0 = "O";
-intToStr n = "s" ++ intToStr (n - 1);
-
 main : IO ();
-main = putStrLn (intToStr testFac);
+main = print testFac;
 

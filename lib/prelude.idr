@@ -5,24 +5,13 @@ import maybe;
 import vect;
 import io;
 
----- some basic io
-
-putStr : String -> IO ();
-putStr x = mkForeign (FFun "putStr" (Cons FString Nil) FUnit) x;
-
-putStrLn : String -> IO ();
-putStrLn x = putStr (x ++ "\n");
-
-readLine : IO String;
-readLine = mkForeign (FFun "readStr" Nil FString);
-
 -- Show and instances
 
 data Show : Set -> Set where
     ShowInstance : (show : a -> String) -> Show a;
 
 show : Show a => a -> String;
-show {{ShowInstance s}} v = s v;
+show @{ShowInstance s} v = s v;
 
 instance showNat : Show Nat;
 instance showNat = ShowInstance show where {
@@ -50,6 +39,22 @@ instance showList = ShowInstance lshow where {
         show' : Show a => List a -> String;
         show' Nil = "";
         show' (Cons x Nil) = show x;
-        show' (Cons x xs) = show x ++ ", " ++ show' xs;
+        show' (Cons x xs') = show x ++ ", " ++ show' xs';
     }
 }
+
+
+---- some basic io
+
+putStr : String -> IO ();
+putStr x = mkForeign (FFun "putStr" (Cons FString Nil) FUnit) x;
+
+putStrLn : String -> IO ();
+putStrLn x = putStr (x ++ "\n");
+
+print : Show a => a -> IO ();
+print = putStrLn . show;
+
+readLine : IO String;
+readLine = mkForeign (FFun "readStr" Nil FString);
+

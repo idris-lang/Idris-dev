@@ -257,7 +257,8 @@ complete_fill ctxt env t = fail $ "Can't complete fill at " ++ show t
 
 solve :: RunTactic
 solve ctxt env (Bind x (Guess ty val) sc)
-   | pureTerm val = do action (\ps -> ps { holes = holes ps \\ [x],
+   | pureTerm val = do ps <- get
+                       action (\ps -> ps { holes = holes ps \\ [x],
                                            instances = instances ps \\ [x] })
                        return $ {- Bind x (Let ty val) sc -} instantiate val (pToV x sc)
    | otherwise    = fail $ "I see a hole in your solution. " ++ showEnv env val
@@ -365,21 +366,15 @@ solve_unified ctxt env tm =
        action (\ps -> ps { holes = holes ps \\ map fst ns })
 --        action (\ps -> ps { pterm = updateSolved ns (pterm ps) })
        return (updateSolved ns tm)
-    where
-       updateSolved xs (Bind n (Hole ty) t)
-           | Just v <- lookup n xs = instantiate v (pToV n (updateSolved xs t))
-       updateSolved xs (Bind n b t) 
-           | otherwise = Bind n (fmap (updateSolved xs) b) (updateSolved xs t)
-       updateSolved xs (App f a) = App (updateSolved xs f) (updateSolved xs a)
-       updateSolved xs (P _ n _)
-           | Just v <- lookup n xs = v
-       updateSolved xs t = t
 
--- shuffleHoles :: Term -> Term
--- shuffleHoles tm = shuffle [] tm
---   where
---     shuffle ns (Bind n b sc)
---         | 
+updateSolved xs (Bind n (Hole ty) t)
+    | Just v <- lookup n xs = instantiate v (pToV n (updateSolved xs t))
+updateSolved xs (Bind n b t) 
+    | otherwise = Bind n (fmap (updateSolved xs) b) (updateSolved xs t)
+updateSolved xs (App f a) = App (updateSolved xs f) (updateSolved xs a)
+updateSolved xs (P _ n _)
+    | Just v <- lookup n xs = v
+updateSolved xs t = t
 
 processTactic :: Tactic -> ProofState -> TC (ProofState, String)
 processTactic QED ps = case holes ps of
@@ -398,14 +393,6 @@ processTactic EndUnify ps = let (h, ns) = unified ps
                                              unified = (h, []),
                                              holes = holes ps \\ map fst ns }, "")
     where
-       updateSolved xs (Bind n (Hole ty) t)
-           | Just v <- lookup n xs = instantiate v (pToV n (updateSolved xs t))
-       updateSolved xs (Bind n b t) 
-           | otherwise = Bind n (fmap (updateSolved xs) b) (updateSolved xs t)
-       updateSolved xs (App f a) = App (updateSolved xs f) (updateSolved xs a)
-       updateSolved xs (P _ n _)
-           | Just v <- lookup n xs = v
-       updateSolved xs t = t
 processTactic t ps   
     = case holes ps of
         [] -> fail "Nothing to fill in."

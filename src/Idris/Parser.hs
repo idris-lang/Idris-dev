@@ -393,7 +393,7 @@ pImplicitArg syn = do lchar '{'; n <- pName
                       lchar '}'
                       return (pimp n v)
 
-pConstraintArg syn = do symbol "{{"; e <- pExpr syn; symbol "}}"
+pConstraintArg syn = do symbol "@{"; e <- pExpr syn; symbol "}"
                         return (pconst e)
 
 pTSig syn = do lchar ':'
@@ -576,13 +576,13 @@ pClause syn
                    rhs <- pExpr syn
                    ist <- getState
                    let ctxt = tt_ctxt ist
-                   let wsyn = whereSyn n syn (map getTm cargs ++ 
-                                              map getTm iargs ++
+                   let wsyn = whereSyn n syn (map getTm iargs ++ 
+                                              map getTm cargs ++
                                               args ++ wargs)
                    (wheres, nmap) <- choice [pWhereblock n syn, do lchar ';'
                                                                    return ([], [])]
                    return $ PClause n (PApp fc (PRef fc n) 
-                                      (cargs ++ iargs ++ map pexp args)) wargs rhs wheres)
+                                      (iargs ++ cargs ++ map pexp args)) wargs rhs wheres)
        <|> try (do n <- pfName
                    cargs <- many (pConstraintArg syn)
                    iargs <- many (pImplicitArg syn)
@@ -596,7 +596,7 @@ pClause syn
                    let withs = concat ds
                    lchar '}'
                    return $ PWith n (PApp fc (PRef fc n) 
-                                       (cargs ++ iargs ++ map pexp args)) wargs wval withs)
+                                       (iargs ++ cargs ++ map pexp args)) wargs wval withs)
 
        <|> do l <- pSimpleExpr syn
               op <- operator

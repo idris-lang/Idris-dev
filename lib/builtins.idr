@@ -82,13 +82,13 @@ data Num : Set -> Set where
                   Num a;
 
     (+) : Num a => a -> a -> a;
-    (+) {{NumInstance p s m}} x y = p x y;
+    (+) @{ NumInstance p s m } x y = p x y;
 
     (-) : Num a => a -> a -> a;
-    (-) {{NumInstance p s m}} x y = s x y;
+    (-) @{ NumInstance p s m } x y = s x y;
 
     (*) : Num a => a -> a -> a;
-    (*) {{NumInstance p s m}} x y = m x y;
+    (*) @{ NumInstance p s m } x y = m x y;
 
 instance numInt : Num Int;
 instance numInt = NumInstance prim__addInt prim__subInt prim__mulInt;
@@ -102,10 +102,10 @@ data Eq : Set -> Set where
                  Eq a;
 
     (==) : Eq a => a -> a -> Bool;
-    (==) {{EqInstance eq neq}} x y = eq x y;
+    (==) @{ EqInstance eq neq } x y = eq x y;
 
     (/=) : Eq a => a -> a -> Bool;
-    (/=) {{EqInstance eq neq}} x y = neq x y;
+    (/=) @{ EqInstance eq neq } x y = neq x y;
 
 instance EqInt : Eq Int;
 instance EqInt = EqInstance (boolOp prim__eqInt) (\x, y => not (x == y));
@@ -121,7 +121,7 @@ data Ord : Set -> Set where
                   Ord a;
 
     compare : Ord a => a -> a -> Ordering;
-    compare {{OrdInstance c}} = c;
+    compare @{ OrdInstance c } = c;
 
 instance OrdInt : Ord Int;
 instance OrdInt = OrdInstance cmpInt where {

@@ -18,6 +18,7 @@ import Core.Typecheck
 
 import Control.Monad.State
 import Data.Char
+import Data.List
 import Debug.Trace
 
 -- I don't really want this here, but it's useful for the test shell
@@ -118,9 +119,16 @@ get_instances = do ES p _ _ <- get
 -- given a desired hole name, return a unique hole name
 unique_hole :: Name -> Elab Name
 unique_hole n = do ES p _ _ <- get
-                   env <- get_env
-                   return (uniqueName n (holes p ++ map fst env))
+                   let bs = bound_in (pterm p)
+                   return (uniqueName n (holes p ++ bs))
   where
+    bound_in (Bind n b sc) = n : bi b ++ bound_in sc
+      where
+        bi (Let t v) = bound_in t ++ bound_in v
+        bi (Guess t v) = bound_in t ++ bound_in v
+        bi b = bound_in (binderTy b)
+    bound_in (App f a) = bound_in f ++ bound_in a
+    bound_in _ = []
 
 elog :: String -> Elab ()
 elog str = do ES p logs prev <- get
@@ -251,17 +259,23 @@ apply fn imps =
        end_unify
        return args
 
-apply_elab :: Name -> [Maybe (Elab ())] -> Elab ()
+apply_elab :: Name -> [Maybe (Int, Elab ())] -> Elab ()
 apply_elab n args = 
     do ty <- get_type (Var n)
        ctxt <- get_context
        env <- get_env
        claims <- doClaims (normalise ctxt env ty) args []
        prep_fill n (map fst claims)
-       elabClaims [] True claims
+       let eclaims = sortBy (\ (_, x) (_,y) -> priOrder x y) claims
+       elabClaims [] False claims
        complete_fill
        end_unify
   where
+    priOrder Nothing Nothing = EQ
+    priOrder Nothing _ = LT
+    priOrder _ Nothing = GT
+    priOrder (Just (x, _)) (Just (y, _)) = compare x y
+
     doClaims (Bind n' (Pi t) sc) (i : is) claims =
         do n <- unique_hole (mkMN n')
            when (null claims) (start_unify n)
@@ -276,7 +290,7 @@ apply_elab n args =
         | otherwise = if r then elabClaims [] False failed
                            else return ()
     elabClaims failed r ((n, Nothing) : xs) = elabClaims failed r xs
-    elabClaims failed r (e@(n, Just elaboration) : xs)
+    elabClaims failed r (e@(n, Just (_, elaboration)) : xs)
         | r = try (do ES p _ _ <- get
                       focus n; elaboration; elabClaims failed r xs)
                   (elabClaims (e : failed) r xs)

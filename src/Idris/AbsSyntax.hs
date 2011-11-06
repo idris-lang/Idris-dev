@@ -294,14 +294,21 @@ data PDo' t = DoExp  FC t
 
 type PDo = PDo' PTerm
 
-data PArg' t = PImp { lazyarg :: Bool, pname :: Name, getTm :: t }
-             | PExp { lazyarg :: Bool, getTm :: t }
-             | PConstraint { lazyarg :: Bool, getTm :: t }
+-- The priority gives a hint as to elaboration order. Best to elaborate
+-- things early which will help give a more concrete type to other
+-- variables, e.g. a before (interpTy a).
+
+data PArg' t = PImp { priority :: Int, 
+                      lazyarg :: Bool, pname :: Name, getTm :: t }
+             | PExp { priority :: Int,
+                      lazyarg :: Bool, getTm :: t }
+             | PConstraint { priority :: Int,
+                             lazyarg :: Bool, getTm :: t }
     deriving (Show, Eq, Functor)
 
-pimp = PImp False
-pexp = PExp False
-pconst = PConstraint False
+pimp = PImp 0 False
+pexp = PExp 0 False
+pconst = PConstraint 0 False
 
 type PArg = PArg' PTerm
 
@@ -370,17 +377,17 @@ showDImp impl (PDatadecl n ty cons)
 
 getImps :: [PArg] -> [(Name, PTerm)]
 getImps [] = []
-getImps (PImp _ n tm : xs) = (n, tm) : getImps xs
+getImps (PImp _ _ n tm : xs) = (n, tm) : getImps xs
 getImps (_ : xs) = getImps xs
 
 getExps :: [PArg] -> [PTerm]
 getExps [] = []
-getExps (PExp _ tm : xs) = tm : getExps xs
+getExps (PExp _ _ tm : xs) = tm : getExps xs
 getExps (_ : xs) = getExps xs
 
 getConsts :: [PArg] -> [PTerm]
 getConsts [] = []
-getConsts (PConstraint _ tm : xs) = tm : getConsts xs
+getConsts (PConstraint _ _ tm : xs) = tm : getConsts xs
 getConsts (_ : xs) = getConsts xs
 
 getAll :: [PArg] -> [PTerm]
@@ -420,10 +427,9 @@ showImp impl tm = se 10 tm where
             = let [l, r] = getExps args in
               bracket p 1 $ se 1 l ++ " " ++ show op ++ " " ++ se 0 r
     se p (PApp _ f as) 
-        = let (imps, cs, args) = (getImps as, getConsts as, getExps as) in
-              bracket p 1 $ se 1 f ++ concatMap scArg cs
-                                   ++ (if impl then concatMap siArg imps else "")
-                                   ++ concatMap seArg args
+        = let args = getExps as in
+              bracket p 1 $ se 1 f ++ if impl then concatMap sArg as
+                                              else concatMap seArg args
     se p (PHidden tm) = "." ++ se 0 tm
     se p (PRefl _) = "refl"
     se p (PResolveTC _) = "resolvetc"
@@ -437,6 +443,10 @@ showImp impl tm = se 10 tm where
     se p (PProof ts) = "proof { " ++ show ts ++ "}"
     se p (PMetavar n) = "?" ++ show n
     se p Placeholder = "_"
+
+    sArg (PImp _ _ n tm) = siArg (n, tm)
+    sArg (PExp _ _ tm) = seArg tm
+    sArg (PConstraint _ _ tm) = scArg tm
 
     seArg arg      = " " ++ se 0 arg
     siArg (n, val) = " {" ++ show n ++ " = " ++ se 10 val ++ "}"
@@ -592,6 +602,33 @@ expandParamsD dec ps ns (PClauses fc n cs)
                        (map (expandParamsD dec ps ns) ds)
 expandParamsD dec ps ns d = d
 
+-- Calculate a priority for a type, for deciding elaboration order
+-- * if it's just a type variable or concrete type, do it early (0)
+-- * if there's only type variables and injective constructors, do it next (1)
+-- * if there's a function type, next (2)
+-- * finally, everything else (3)
+
+getPriority :: IState -> PTerm -> Int
+getPriority i tm = pri tm 
+  where
+    pri (PRef _ n) =
+        case lookupP n (tt_ctxt i) of
+            Just (P (DCon _ _) _ _) -> 1
+            Just (P (TCon _ _) _ _) -> 1
+            Just (P Ref _ _) -> 3
+            Nothing -> 0 -- must be locally bound, if it's not an error...
+    pri (PPi _ _ x y) = max 4 (max (pri x) (pri y))
+    pri (PTrue _) = 0
+    pri (PFalse _) = 0
+    pri (PRefl _) = 1
+    pri (PEq _ l r) = max 1 (max (pri l) (pri r))
+    pri (PApp _ f as) = max 1 (max (pri f) (foldr max 0 (map (pri.getTm) as))) 
+    pri (PPair _ l r) = max 1 (max (pri l) (pri r))
+    pri (PDPair _ l r) = max 1 (max (pri l) (pri r))
+    pri (PConstant _) = 0
+    pri Placeholder = 1
+    pri _ = 3
+
 -- Dealing with implicit arguments
 
 -- Add implicit Pi bindings for any names in the term which appear in an
@@ -631,7 +668,7 @@ implicitise syn ist tm
     imps top env (PPi (Imp l _) n ty sc) 
         = do let isn = nub (namesIn ist ty) `dropAll` [n]
              (decls , ns) <- get
-             put (PImp l n ty : decls, 
+             put (PImp (getPriority ist ty) l n ty : decls, 
                   nub (ns ++ (isn `dropAll` (env ++ map fst (getImps decls)))))
              imps True (n:env) sc
     imps top env (PPi (Exp l _) n ty sc) 
@@ -639,7 +676,7 @@ implicitise syn ist tm
                             (PRef _ x) -> namesIn ist sc `dropAll` [n]
                             _ -> [])
              (decls, ns) <- get -- ignore decls in HO types
-             put (PExp l ty : decls, 
+             put (PExp (getPriority ist ty) l ty : decls, 
                   nub (ns ++ (isn `dropAll` (env ++ map fst (getImps decls)))))
              imps True (n:env) sc
     imps top env (PPi (Constraint l _) n ty sc)
@@ -647,7 +684,7 @@ implicitise syn ist tm
                             (PRef _ x) -> namesIn ist sc `dropAll` [n]
                             _ -> [])
              (decls, ns) <- get -- ignore decls in HO types
-             put (PConstraint l ty : decls, 
+             put (PConstraint 10 l ty : decls, 
                   nub (ns ++ (isn `dropAll` (env ++ map fst (getImps decls)))))
              imps True (n:env) sc
     imps top env (PEq _ l r)
@@ -723,21 +760,21 @@ aiFn ist fc f as
             Nothing -> mkPApp fc 1 (PRef fc f) as
   where
     insertImpl :: [PArg] -> [PArg] -> [PArg]
-    insertImpl (PExp l ty : ps) (PExp _ tm : given) =
-                                 PExp l tm : insertImpl ps given
-    insertImpl (PConstraint l ty : ps) (PConstraint _ tm : given) =
-                                 PConstraint l tm : insertImpl ps given
-    insertImpl (PConstraint l ty : ps) given =
-                                 PConstraint l (PResolveTC fc) : insertImpl ps given
-    insertImpl (PImp l n ty : ps) given =
+    insertImpl (PExp p l ty : ps) (PExp _ _ tm : given) =
+                                 PExp p l tm : insertImpl ps given
+    insertImpl (PConstraint p l ty : ps) (PConstraint _ _ tm : given) =
+                                 PConstraint p l tm : insertImpl ps given
+    insertImpl (PConstraint p l ty : ps) given =
+                                 PConstraint p l (PResolveTC fc) : insertImpl ps given
+    insertImpl (PImp p l n ty : ps) given =
         case find n given [] of
-            Just (tm, given') -> PImp l n tm : insertImpl ps given'
-            Nothing ->           PImp l n Placeholder : insertImpl ps given
+            Just (tm, given') -> PImp p l n tm : insertImpl ps given'
+            Nothing ->           PImp p l n Placeholder : insertImpl ps given
     insertImpl expected [] = []
     insertImpl []       given  = given
 
     find n []               acc = Nothing
-    find n (PImp _ n' t : gs) acc 
+    find n (PImp _ _ n' t : gs) acc 
          | n == n' = Just (t, reverse acc ++ gs)
     find n (g : gs) acc = find n gs (g : acc)
 

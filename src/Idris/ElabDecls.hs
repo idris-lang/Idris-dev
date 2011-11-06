@@ -354,14 +354,17 @@ elab ist info pattern tm
 
     toElab arg = case getTm arg of
         Placeholder -> Nothing
-        v -> Just (elabE v)
+        v -> Just (priority arg, elabE v)
 
     mkPat = do hs <- get_holes
                case hs of
                   (h: hs) -> do patvar h; mkPat
                   [] -> return ()
 
-    elabE t = elab' t
+    elabE t = {- do g <- goal
+                 tm <- get_term
+                 trace ("Elaborating " ++ show t ++ " : " ++ show g ++ "\n\tin " ++ show tm) 
+                    $ -} elab' t
 
     local f = do e <- get_env
                  return (f `elem` map fst e)
@@ -437,7 +440,11 @@ elab ist info pattern tm
             ivs <- get_instances
             try (do ns <- apply (Var f) (map isph args)
                     solve
-                    elabArgs [] True ns (map (\x -> (lazyarg x, getTm x)) args))
+                    let (ns', eargs) 
+                         = unzip $
+                              sortBy (\(_,x) (_,y) -> compare (priority x) (priority y))
+                                     (zip ns args)
+                    elabArgs [] False ns' (map (\x -> (lazyarg x, getTm x)) eargs))
                 (do apply_elab f (map toElab args)
                     solve)
             ivs' <- get_instances
@@ -450,7 +457,7 @@ elab ist info pattern tm
 --                  trace (show ivs ++ "\n" ++ show t) $ 
 --                    mapM_ (\n -> do focus n
 --                                    resolveTC ist) ivs
-      where tcArg (n, PConstraint _ Placeholder) = True
+      where tcArg (n, PConstraint _ _ Placeholder) = True
             tcArg _ = False
 
     elab' (PApp fc f [arg])
@@ -516,7 +523,7 @@ resolveTC depth ist
                                         resolveTC (depth - 1) ist) 
                          (filter (\ (x, y) -> not x) (zip imps args))
                    solve
-       where isImp (PImp _ _ _) = True
+       where isImp (PImp _ _ _ _) = True
              isImp _ = False
 
 collectDeferred :: Term -> State [(Name, Type)] Term
@@ -552,7 +559,7 @@ runTac autoSolve ist tac = runT (fmap (addImpl ist) tac) where
                                             Just args -> map isImp args
                                ns <- apply (Var fn) imps
                                when autoSolve solveAll
-       where isImp (PImp _ _ _) = True
+       where isImp (PImp _ _ _ _) = True
              isImp _ = False
     runT (Refine fn imps) = do ns <- apply (Var fn) imps
                                when autoSolve solveAll
