@@ -1,1 +1,5 @@
-Don't get your hopes up, this could take a while...
+Idris (http://idris-lang.org/) is an experimental functional programming 
+language with dependent types.
+
+To install, type 'make'. This will install everything using cabal and
+typecheck the libraries. 

@@ -9,7 +9,11 @@ Homepage:       http://www.idris-lang.org/
 Stability:      Alpha
 Category:       Compilers/Interpreters, Dependent Types
 Synopsis:       Dependently Typed Functional Programming Language
-Description:    An experimental new version of Idris
+Description:    Idris is an experimental language with full dependent types.
+                Dependent types allow types to be predicated on values,
+                meaning that some aspects of a program's behaviour can be
+                specified precisely in the type. The language is closely 
+		related to Epigram and Agda. There is a tutorial at <http://www.idris-lang.org/tutorial.html>.
 
 Cabal-Version:  >= 1.6
 Build-type:     Simple
