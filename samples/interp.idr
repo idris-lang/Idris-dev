@@ -42,7 +42,7 @@ using (G : Vect Ty n) {
   eId = Lam (Var fO);
    
   eAdd : Expr G (TyFun TyInt (TyFun TyInt TyInt));
-  eAdd = Lam (Lam (Op' (Var fO) (Var (fS fO)) prim__addInt));
+  eAdd = Lam (Lam (Op (+) (Var fO) (Var (fS fO))));
   
 --   eDouble : Expr G (TyFun TyInt TyInt);
 --   eDouble = Lam (App (App (Lam (Lam (Op' (+) (Var fO) (Var (fS fO))))) (Var fO)) (Var fO));

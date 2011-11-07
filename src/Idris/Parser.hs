@@ -144,7 +144,9 @@ collect (c@(PClauses _ _ _) : ds)
         cname (PClauses fc _ [PWith   n _ _ _ _]) = n
         getfc (PClauses fc _ _) = fc
 
-collect (PParams f ns ps : ds) = PParams f ns (collect ps) : (collect ds)
+collect (PParams f ns ps : ds) = PParams f ns (collect ps) : collect ds
+collect (PClass f n ps ds : ds') = PClass f n ps (collect ds) : collect ds'
+collect (PInstance f n t ds : ds') = PInstance f n t (collect ds) : collect ds'
 collect (d : ds) = d : collect ds
 collect [] = []
 
@@ -160,8 +162,10 @@ pDecl syn
            i <- getState
            let d' = fmap (desugar syn i) d
            return [d']
-    <|> try (pUsing syn)
-    <|> try (pParams syn)
+    <|> pUsing syn
+    <|> pParams syn
+    <|> pClass syn
+    <|> pInstance syn
     <|> try (do reserved "import"
                 fp <- identifier
                 lchar ';'
@@ -277,6 +281,36 @@ fixity = try (do reserved "infixl"; return Infixl)
      <|> try (do reserved "infixr"; return Infixr)
      <|> try (do reserved "infix";  return InfixN)
      <|> try (do reserved "prefix"; return PrefixN)
+
+--------- Tyoe classes ---------
+
+pClass :: SyntaxInfo -> IParser [PDecl]
+pClass syn = do reserved "class"
+                fc <- pfc
+                n <- pName
+                cs <- many1 carg
+                reserved "where"; lchar '{'
+                ds <- many1 $ pFunDecl syn;
+                lchar '}'
+                return [PClass fc n cs (concat ds)]
+  where
+    carg = do lchar '('; i <- pName; lchar ':'; ty <- pExpr syn; lchar ')'
+              return (i, ty)
+       <|> do i <- pName;
+              return (i, PSet)
+
+pInstance :: SyntaxInfo -> IParser [PDecl]
+pInstance syn = do reserved "instance"
+                   fc <- pfc
+                   cs <- pConstList syn
+                   cn <- pName
+                   args <- many1 (pSimpleExpr syn)
+                   let sc = PApp fc (PRef fc cn) (map pexp args)
+                   let t = bindList (PPi constraint) (map (\x -> (MN 0 "c", x)) cs) sc
+                   reserved "where"; lchar '{'
+                   ds <- many1 $ pFunDecl syn;
+                   lchar '}'
+                   return [PInstance fc cn t (concat ds)]
 
 --------- Expressions ---------
 

@@ -184,6 +184,10 @@ data PDecl' t = PFix     FC Fixity [String] -- fixity declaration
               | PClauses FC Name [PClause' t]    -- pattern clause
               | PData    SyntaxInfo FC (PData' t)      -- data declaration
               | PParams  FC [(Name, t)] [PDecl' t] -- params block
+              | PClass   FC Name
+                         [(Name, t)] -- parameters
+                         [PDecl' t] -- declarations
+              | PInstance FC Name t [PDecl' t]
               | PSyntax  FC Syntax
     deriving Functor
 
@@ -827,6 +831,8 @@ dumpDecl (PClauses _ n cs) = "pat " ++ show n ++ "\t" ++ showSep "\n\t" (map (sh
 dumpDecl (PData _ _ d) = showDImp True d
 dumpDecl (PParams _ ns ps) = "params {" ++ show ns ++ "\n" ++ dumpDecls ps ++ "}\n"
 dumpDecl (PSyntax _ syn) = "syntax " ++ show syn
+dumpDecl (PClass _ n ps ds) = "class " ++ show n ++ " " ++ show ps ++ "\n" ++ dumpDecls ds
+dumpDecl (PInstance _ n t ds) = "instance " ++ show n ++ " " ++ show t ++ "\n" ++ dumpDecls ds
 -- dumpDecl (PImport i) = "import " ++ i
 
 -- syntactic match of a against b, returning pair of variables in a 
