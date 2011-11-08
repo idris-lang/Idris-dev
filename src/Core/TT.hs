@@ -6,6 +6,7 @@ import Control.Monad.State
 import Debug.Trace
 import qualified Data.Map as Map
 import Data.Char
+import Data.List
 
 {- The language has:
    * Full dependent types
@@ -405,4 +406,28 @@ weakenEnv env = wk (length env - 1) env
 weakenTmEnv :: Int -> EnvTT n -> EnvTT n
 weakenTmEnv i = map (\ (n, b) -> (n, fmap (weakenTm i) b))
 
+orderPats :: Term -> Term
+orderPats tm = op [] tm
+  where
+    op ps (Bind n (PVar t) sc) = op ((n, t) : ps) sc
+    op ps sc = bindAll (map (\ (n, t) -> (n, PVar t)) (sortP ps)) sc 
+
+    sortP ps = pick [] (reverse ps)
+
+    namesIn (P _ n _) = [n]
+    namesIn (Bind n b t) = nub $ nb b ++ (namesIn t \\ [n])
+      where nb (Let   t v) = nub (namesIn t) ++ nub (namesIn v)
+            nb (Guess t v) = nub (namesIn t) ++ nub (namesIn v)
+            nb t = namesIn (binderTy t)
+    namesIn (App f a) = nub (namesIn f ++ namesIn a)
+    namesIn _ = []
+
+    pick acc [] = reverse acc
+    pick acc ((n, t) : ps) = pick (insert n t acc) ps
+
+    insert n t [] = [(n, t)]
+    insert n t ((n',t') : ps)
+        | n `elem` (namesIn t' ++ concatMap namesIn (map snd ps))
+            = (n', t') : insert n t ps
+        | otherwise = (n,t):(n',t'):ps
 

@@ -128,7 +128,7 @@ elabClause info fc (PClause fname lhs_in withs rhs_in whereblock)
         logLvl 5 ("LHS: " ++ showImp True lhs)
         ((lhs', dlhs), _) <- tclift $ elaborate ctxt (MN 0 "patLHS") infP
                                       (erun fc (build i info True (infTerm lhs)))
-        let lhs_tm = getInferTerm lhs'
+        let lhs_tm = orderPats (getInferTerm lhs')
         let lhs_ty = getInferType lhs'
         logLvl 3 (show lhs_tm)
         (clhs, clhsty) <- tclift $ recheck ctxt [] lhs_tm
@@ -187,7 +187,7 @@ elabClause info fc (PWith fname lhs_in withs wval_in withblock)
         logLvl 5 ("LHS: " ++ showImp True lhs)
         ((lhs', dlhs), _) <- tclift $ elaborate ctxt (MN 0 "patLHS") infP
                                       (erun fc (build i info True (infTerm lhs)))
-        let lhs_tm = getInferTerm lhs'
+        let lhs_tm = orderPats (getInferTerm lhs')
         let lhs_ty = getInferType lhs'
         let ret_ty = getRetTy lhs_ty
         logLvl 3 (show lhs_tm)
