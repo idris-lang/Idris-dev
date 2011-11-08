@@ -21,6 +21,24 @@ mult (S k) y = plus y (mult k y);
 instance numNat : Num Nat;
 instance numNat = instanceNum plus sub mult;
 
+instance EqNat : Eq Nat;
+instance EqNat = instanceEq eqNat (\x, y => not (x == y)) where {
+    eqNat : Nat -> Nat -> Bool;
+    eqNat O O = True;
+    eqNat (S x) (S y) = eqNat x y;
+    eqNat O (S y) = False;
+    eqNat (S x) O = False;
+}
+
+instance OrdNat : Ord Nat;
+instance OrdNat = instanceOrd cmpNat where {
+    cmpNat : Nat -> Nat -> Ordering;
+    cmpNat O O     = EQ;
+    cmpNat O (S k) = LT;
+    cmpNat (S k) O = GT;
+    cmpNat (S x) (S y) = cmpNat x y;
+}
+
 plusnO : (m : Nat) -> m + O = m;
 plusnO O     = refl;
 plusnO (S k) = eqRespS (plusnO k);

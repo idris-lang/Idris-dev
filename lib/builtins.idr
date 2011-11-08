@@ -100,7 +100,7 @@ instance EqFloat = instanceEq (boolOp prim__eqFloat) (\x, y => not (x == y));
 
 data Ordering = LT | EQ | GT;
 
-class Ord a where {
+class Eq a => Ord a where {
     compare : a -> a -> Ordering;
 }
 

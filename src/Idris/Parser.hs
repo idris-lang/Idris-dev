@@ -145,7 +145,7 @@ collect (c@(PClauses _ _ _) : ds)
         getfc (PClauses fc _ _) = fc
 
 collect (PParams f ns ps : ds) = PParams f ns (collect ps) : collect ds
-collect (PClass f s n ps ds : ds') = PClass f s n ps (collect ds) : collect ds'
+collect (PClass f s cs n ps ds : ds') = PClass f s cs n ps (collect ds) : collect ds'
 collect (PInstance f s n t ds : ds') = PInstance f s n t (collect ds) : collect ds'
 collect (d : ds) = d : collect ds
 collect [] = []
@@ -287,12 +287,13 @@ fixity = try (do reserved "infixl"; return Infixl)
 pClass :: SyntaxInfo -> IParser [PDecl]
 pClass syn = do reserved "class"
                 fc <- pfc
+                cons <- pConstList syn
                 n <- pName
                 cs <- many1 carg
                 reserved "where"; lchar '{'
                 ds <- many1 $ pFunDecl syn;
                 lchar '}'
-                return [PClass syn fc n cs (concat ds)]
+                return [PClass syn fc cons n cs (concat ds)]
   where
     carg = do lchar '('; i <- pName; lchar ':'; ty <- pExpr syn; lchar ')'
               return (i, ty)

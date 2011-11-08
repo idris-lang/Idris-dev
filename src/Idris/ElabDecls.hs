@@ -281,8 +281,9 @@ elabClause info fc (PWith fname lhs_in withs wval_in withblock)
     updateLHS n wname mvars ns tm w = fail $ "Not implemented " ++ show tm 
 
 elabClass :: ElabInfo -> SyntaxInfo -> 
-             FC -> Name -> [(Name, PTerm)] -> [PDecl] -> Idris ()
-elabClass info syn fc tn ps ds 
+             FC -> [PTerm] -> 
+             Name -> [(Name, PTerm)] -> [PDecl] -> Idris ()
+elabClass info syn fc constraints tn ps ds 
     = do let cn = UN ["instance" ++ show tn] -- MN 0 ("instance" ++ show tn)
          let tty = pibind ps PSet
          let constraint = PApp fc (PRef fc tn)
@@ -290,7 +291,7 @@ elabClass info syn fc tn ps ds
          -- build data declaration
          ims <- mapM tdecl ds
          let (methods, imethods) = unzip ims
-         let cty = impbind ps $ pibind methods constraint
+         let cty = impbind ps $ conbind constraints $ pibind methods constraint
          let cons = [(cn, cty, fc)]
          let ddecl = PData syn fc (PDatadecl tn tty cons)
          elabDecl info ddecl
@@ -304,6 +305,8 @@ elabClass info syn fc tn ps ds
     pibind ((n, ty): ns) x = PPi expl n ty (pibind ns x) 
     impbind [] x = x
     impbind ((n, ty): ns) x = PPi impl n ty (impbind ns x) 
+    conbind (ty : ns) x = PPi constraint (MN 0 "c") ty (conbind ns x)
+    conbind [] x = x
 
     tdecl (PTy syn _ n t) = do t' <- implicit syn n t
                                return ( (n, (toExp (map fst ps) Exp t')),
@@ -400,8 +403,8 @@ elabDecl' info (PParams f ns ps) = mapM_ (elabDecl' pinfo) ps
                 newb = addAlist dsParams (inblock info) in 
                 info { params = newps,
                        inblock = newb }
-elabDecl' info (PClass s f n ps ds) = do iLOG $ "Elaborating class " ++ show n
-                                         elabClass info s f n ps ds
+elabDecl' info (PClass s f cs n ps ds) = do iLOG $ "Elaborating class " ++ show n
+                                            elabClass info s f cs n ps ds
 elabDecl' info (PInstance s f n t ds) = do iLOG $ "Elaborating instance " ++ show n
                                            elabInstance info s f n t ds
 
