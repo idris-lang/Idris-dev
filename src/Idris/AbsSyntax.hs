@@ -599,28 +599,35 @@ expandParams dec ps ns tm = en tm
     en (PApp fc f as) = PApp fc (en f) (map (fmap en) as)
     en t = t
 
-expandParamsD :: (Name -> Name) -> [(Name, PTerm)] -> [Name] -> PDecl -> PDecl
-expandParamsD dec ps ns (PTy syn fc n ty) 
+expandParamsD :: IState -> 
+                 (Name -> Name) -> [(Name, PTerm)] -> [Name] -> PDecl -> PDecl
+expandParamsD ist dec ps ns (PTy syn fc n ty) 
     = if n `elem` ns
          then PTy syn fc (dec n) (piBind ps (expandParams dec ps ns ty))
          else PTy syn fc n (expandParams dec ps ns ty)
-expandParamsD dec ps ns (PClauses fc n cs)
+expandParamsD ist dec ps ns (PClauses fc n cs)
     = let n' = if n `elem` ns then dec n else n in
           PClauses fc n' (map expandParamsC cs)
   where
     expandParamsC (PClause n lhs ws rhs ds)
-        = let n' = if n `elem` ns then dec n else n in
-              PClause n' (expandParams dec ps ns lhs)
-                         (map (expandParams dec ps ns) ws)
-                         (expandParams dec ps ns rhs)
-                         (map (expandParamsD dec ps ns) ds)
+        = let ps' = updateps (namesIn ist rhs) (zip ps [0..])
+              n' = if n `elem` ns then dec n else n in
+              PClause n' (expandParams dec ps' ns lhs)
+                         (map (expandParams dec ps' ns) ws)
+                         (expandParams dec ps' ns rhs)
+                         (map (expandParamsD ist dec ps' ns) ds)
     expandParamsC (PWith n lhs ws wval ds)
         = let n' = if n `elem` ns then dec n else n in
               PWith n' (expandParams dec ps ns lhs)
                        (map (expandParams dec ps ns) ws)
                        (expandParams dec ps ns wval)
-                       (map (expandParamsD dec ps ns) ds)
-expandParamsD dec ps ns d = d
+                       (map (expandParamsD ist dec ps ns) ds)
+    updateps nm [] = []
+    updateps nm (((a, t), i):as)
+        | a `elem` nm = (a, t) : updateps nm as
+        | otherwise = (MN i (show n ++ "_u"), t) : updateps nm as
+
+expandParamsD ist dec ps ns d = d
 
 -- Calculate a priority for a type, for deciding elaboration order
 -- * if it's just a type variable or concrete type, do it early (0)

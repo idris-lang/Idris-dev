@@ -47,7 +47,7 @@ instance Show a => Show (Vect a n) where {
         show' : Show a => Vect a n -> String;
         show' VNil = "";
         show' (x :: VNil) = show x;
-        show' (x :: xs) = show x ++ ", " ++ show' xs;
+        show' (x :: xs') = show x ++ ", " ++ show' xs';
     }
 }
 
