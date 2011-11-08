@@ -296,10 +296,12 @@ elabClass info syn fc constraints tn ps ds
          let ddecl = PData syn fc (PDatadecl tn tty cons)
          elabDecl info ddecl
          -- for each method, build a top level function
-         fns <- mapM (tfun cn constraint (map fst imethods)) imethods
+         let usyn = syn { using = ps ++ using syn }
+         fns <- mapM (tfun cn constraint usyn (map fst imethods)) imethods
          mapM_ (elabDecl info) (concat fns)
          i <- get
-         put (i { idris_classes = addDef tn (map fst methods) (idris_classes i) })
+         put (i { idris_classes = addDef tn (CI cn imethods (map fst ps)) 
+                                            (idris_classes i) })
   where
     pibind [] x = x
     pibind ((n, ty): ns) x = PPi expl n ty (pibind ns x) 
@@ -314,7 +316,7 @@ elabClass info syn fc constraints tn ps ds
     tdecl (PClauses _ _ _) = fail "No default definitions allowed yet"
     tdecl _ = fail "Not allowed in a class declaration"
 
-    tfun cn c all (m, ty) 
+    tfun cn c syn all (m, ty) 
         = do let ty' = insertConstraint c ty
              let mnames = take (length all) $ map (\x -> MN x "meth") [0..]
              let capp = PApp fc (PRef fc cn) (map (pexp . PRef fc) mnames)
@@ -355,8 +357,55 @@ elabClass info syn fc constraints tn ps ds
     toExp ns e sc = sc
 
 elabInstance :: ElabInfo -> SyntaxInfo -> 
-                FC -> Name -> PTerm -> [PDecl] -> Idris ()
-elabInstance info syn fc n t ds = fail "Not implemented"
+                FC -> [PTerm] -> Name -> 
+                [PTerm] -> PTerm -> [PDecl] -> Idris ()
+elabInstance info syn fc cs n ps t ds
+    = do i <- get 
+         ci <- case lookupCtxt n (idris_classes i) of
+                    Just c -> return c
+                    Nothing -> fail $ show n ++ " is not a type class"
+         let iname = UN ['@':show n ++ "$" ++ show ps]
+         elabType info syn fc iname t
+         let ips = zip (class_params ci) ps
+         let mtys = map (\ (n, t) -> (decorate n, coninsert cs $ substMatches ips t)) 
+                        (class_methods ci)
+         logLvl 3 (show (mtys, ips))
+         let wb = map mkTyDecl mtys ++ map decorateid ds
+         let lhs = PRef fc iname
+         let rhs = PApp fc (PRef fc (instanceName ci))
+                           (map (pexp . mkMethApp) mtys)
+         let idecl = PClauses fc iname [PClause iname lhs [] rhs wb]
+         iLOG (show idecl)
+         elabDecl info idecl
+  where
+    mkMethApp (n, ty) = lamBind 0 ty (papp fc (PRef fc n) (methArgs 0 ty))
+    lamBind i (PPi (Constraint _ _) _ _ sc) sc' = lamBind i sc sc'
+    lamBind i (PPi _ n ty sc) sc' = PLam (MN i "meth") Placeholder (lamBind (i+1) sc sc')
+    lamBind i _ sc = sc
+    methArgs i (PPi (Imp _ _) n ty sc) 
+        = PImp 0 False n (PRef fc (MN i "meth")) : methArgs (i+1) sc
+    methArgs i (PPi (Exp _ _) n ty sc) 
+        = PExp 0 False (PRef fc (MN i "meth")) : methArgs (i+1) sc
+    methArgs i (PPi (Constraint _ _) n ty sc) 
+        = methArgs i sc
+    methArgs i _ = []
+
+    papp fc f [] = f
+    papp fc f as = PApp fc f as
+    decorate (UN (n:ns)) = UN (('!':n) : ns)
+    decorateid (PTy s f n t) = PTy s f (decorate n) t
+    decorateid (PClauses f n cs) = PClauses f (decorate n) (map dc cs)
+      where dc (PClause n t as w ds) = PClause (decorate n) (dappname t) as w ds
+            dc (PWith   n t as w ds) = PWith   (decorate n) (dappname t) as w ds
+            dappname (PApp fc (PRef fc' n) as) = PApp fc (PRef fc' (decorate n)) as
+            dappname t = t
+    mkTyDecl (n, t) = PTy syn fc n t
+
+    conbind (ty : ns) x = PPi constraint (MN 0 "c") ty (conbind ns x)
+    conbind [] x = x
+
+    coninsert cs (PPi p@(Imp _ _) n t sc) = PPi p n t (coninsert cs sc)
+    coninsert cs sc = conbind cs sc
 
 pbinds (Bind n (PVar t) sc) = do attack; patbind n 
                                  pbinds sc
@@ -405,8 +454,9 @@ elabDecl' info (PParams f ns ps) = mapM_ (elabDecl' pinfo) ps
                        inblock = newb }
 elabDecl' info (PClass s f cs n ps ds) = do iLOG $ "Elaborating class " ++ show n
                                             elabClass info s f cs n ps ds
-elabDecl' info (PInstance s f n t ds) = do iLOG $ "Elaborating instance " ++ show n
-                                           elabInstance info s f n t ds
+elabDecl' info (PInstance s f cs n ps t ds) 
+    = do iLOG $ "Elaborating instance " ++ show n
+         elabInstance info s f cs n ps t ds
 
 
 -- elabDecl' info (PImport i) = loadModule i

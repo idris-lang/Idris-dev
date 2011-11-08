@@ -31,7 +31,7 @@ data IState = IState { tt_ctxt :: Context,
                        idris_infixes :: [FixDecl],
                        idris_implicits :: Ctxt [PArg],
                        idris_statics :: Ctxt [Bool],
-                       idris_classes :: Ctxt [Name],
+                       idris_classes :: Ctxt ClassInfo,
                        idris_log :: String,
                        idris_options :: IOption,
                        idris_name :: Int,
@@ -190,7 +190,11 @@ data PDecl' t = PFix     FC Fixity [String] -- fixity declaration
                          Name
                          [(Name, t)] -- parameters
                          [PDecl' t] -- declarations
-              | PInstance SyntaxInfo FC Name t [PDecl' t]
+              | PInstance SyntaxInfo FC [t] -- constraints
+                                        Name -- class
+                                        [t] -- parameters
+                                        t -- full instance type
+                                        [PDecl' t]
               | PSyntax  FC Syntax
     deriving Functor
 
@@ -318,6 +322,13 @@ pexp = PExp 0 False
 pconst = PConstraint 0 False
 
 type PArg = PArg' PTerm
+
+-- Type class data
+
+data ClassInfo = CI { instanceName :: Name,
+                      class_methods :: [(Name, PTerm)],
+                      class_params :: [Name] }
+
 
 -- Syntactic sugar info (TODO: namespaces, modules)
 
@@ -577,6 +588,8 @@ expandParams dec ps ns tm = en tm
     en (PDoBlock ds) = PDoBlock (map (fmap en) ds)
     en (PProof ts)   = PProof (map (fmap en) ts)
 
+    en (PQuote (Var n)) 
+        | n `elem` ns = PQuote (Var (dec n))
     en (PApp fc (PRef fc' n) as)
         | n `elem` ns = PApp fc (PRef fc' (dec n)) 
                            (map (pexp . (PRef fc)) (map fst ps) ++ (map (fmap en) as))
@@ -836,8 +849,8 @@ dumpDecl (PParams _ ns ps) = "params {" ++ show ns ++ "\n" ++ dumpDecls ps ++ "}
 dumpDecl (PSyntax _ syn) = "syntax " ++ show syn
 dumpDecl (PClass _ _ cs n ps ds) 
     = "class " ++ show cs ++ " " ++ show n ++ " " ++ show ps ++ "\n" ++ dumpDecls ds
-dumpDecl (PInstance _ _ n t ds) 
-    = "instance " ++ show n ++ " " ++ show t ++ "\n" ++ dumpDecls ds
+dumpDecl (PInstance _ _ cs n _ t ds) 
+    = "instance " ++ show cs ++ " " ++ show n ++ " " ++ show t ++ "\n" ++ dumpDecls ds
 -- dumpDecl (PImport i) = "import " ++ i
 
 -- syntactic match of a against b, returning pair of variables in a 

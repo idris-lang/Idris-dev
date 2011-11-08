@@ -146,7 +146,8 @@ collect (c@(PClauses _ _ _) : ds)
 
 collect (PParams f ns ps : ds) = PParams f ns (collect ps) : collect ds
 collect (PClass f s cs n ps ds : ds') = PClass f s cs n ps (collect ds) : collect ds'
-collect (PInstance f s n t ds : ds') = PInstance f s n t (collect ds) : collect ds'
+collect (PInstance f s cs n ps t ds : ds') 
+    = PInstance f s cs n ps t (collect ds) : collect ds'
 collect (d : ds) = d : collect ds
 collect [] = []
 
@@ -311,7 +312,7 @@ pInstance syn = do reserved "instance"
                    reserved "where"; lchar '{'
                    ds <- many1 $ pFunDecl syn;
                    lchar '}'
-                   return [PInstance syn fc cn t (concat ds)]
+                   return [PInstance syn fc cs cn args t (concat ds)]
 
 --------- Expressions ---------
 
@@ -383,7 +384,7 @@ pSimpleExpr syn =
                 return $ PQuote t)
         <|> do lchar '?'; x <- pName; return (PMetavar x)
         <|> do reserved "refl"; fc <- pfc; return (PRefl fc)
-        <|> do reserved "return"; fc <- pfc; return (PReturn fc)
+--         <|> do reserved "return"; fc <- pfc; return (PReturn fc)
         <|> do reserved "proof"; lchar '{';
                ts <- endBy (pTactic syn) (lchar ';')
                lchar '}'
