@@ -19,7 +19,7 @@ mult O     y = O;
 mult (S k) y = plus y (mult k y);
 
 instance numNat : Num Nat;
-instance numNat = NumInstance plus sub mult;
+instance numNat = instanceNum plus sub mult;
 
 plusnO : (m : Nat) -> m + O = m;
 plusnO O     = refl;

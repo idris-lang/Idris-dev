@@ -75,56 +75,37 @@ intToBool x = True;
 boolOp : (a -> a -> Int) -> a -> a -> Bool;
 boolOp op x y = intToBool (op x y); 
 
-data Num : Set -> Set where
-    NumInstance : (plus : a -> a -> a) -> 
-                  (sub  : a -> a -> a) ->
-                  (mult : a -> a -> a) ->
-                  Num a;
-
-    (+) : Num a => a -> a -> a;
-    (+) @{ NumInstance p s m } x y = p x y;
-
-    (-) : Num a => a -> a -> a;
-    (-) @{ NumInstance p s m } x y = s x y;
-
-    (*) : Num a => a -> a -> a;
-    (*) @{ NumInstance p s m } x y = m x y;
+class Num a where {
+    (+) : a -> a -> a;
+    (-) : a -> a -> a;
+    (*) : a -> a -> a;
+}
 
 instance numInt : Num Int;
-instance numInt = NumInstance prim__addInt prim__subInt prim__mulInt;
+instance numInt = instanceNum prim__addInt prim__subInt prim__mulInt;
 
 instance numFloat : Num Float;
-instance numFloat = NumInstance prim__addFloat prim__subFloat prim__mulFloat;
+instance numFloat = instanceNum prim__addFloat prim__subFloat prim__mulFloat;
 
-data Eq : Set -> Set where
-    EqInstance : (eq : a -> a -> Bool) ->
-                 (neq : a -> a -> Bool) ->
-                 Eq a;
-
-    (==) : Eq a => a -> a -> Bool;
-    (==) @{ EqInstance eq neq } x y = eq x y;
-
-    (/=) : Eq a => a -> a -> Bool;
-    (/=) @{ EqInstance eq neq } x y = neq x y;
+class Eq a where {
+    (==) : a -> a -> Bool;
+    (/=) : a -> a -> Bool;
+}
 
 instance EqInt : Eq Int;
-instance EqInt = EqInstance (boolOp prim__eqInt) (\x, y => not (x == y));
+instance EqInt = instanceEq (boolOp prim__eqInt) (\x, y => not (x == y));
 
 instance EqFloat : Eq Float;
-instance EqFloat = EqInstance (boolOp prim__eqFloat) (\x, y => not (x == y));  
+instance EqFloat = instanceEq (boolOp prim__eqFloat) (\x, y => not (x == y));  
 
 data Ordering = LT | EQ | GT;
 
-data Ord : Set -> Set where
-    OrdInstance : Eq a => 
-                  (compare : a -> a -> Ordering) ->
-                  Ord a;
-
-    compare : Ord a => a -> a -> Ordering;
-    compare @{ OrdInstance c } = c;
+class Ord a where {
+    compare : a -> a -> Ordering;
+}
 
 instance OrdInt : Ord Int;
-instance OrdInt = OrdInstance cmpInt where {
+instance OrdInt = instanceOrd cmpInt where {
     cmpInt : Int -> Int -> Ordering;
     cmpInt x y = if (x == y) then EQ else
                  if (boolOp prim__ltInt x y) then LT else
@@ -132,7 +113,7 @@ instance OrdInt = OrdInstance cmpInt where {
 }
 
 instance OrdFloat : Ord Float;
-instance OrdFloat = OrdInstance cmpFloat where {
+instance OrdFloat = instanceOrd cmpFloat where {
     cmpFloat : Float -> Float -> Ordering;
     cmpFloat x y = if (x == y) then EQ else
                    if (boolOp prim__ltFloat x y) then LT else

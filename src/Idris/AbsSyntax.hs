@@ -31,6 +31,7 @@ data IState = IState { tt_ctxt :: Context,
                        idris_infixes :: [FixDecl],
                        idris_implicits :: Ctxt [PArg],
                        idris_statics :: Ctxt [Bool],
+                       idris_classes :: Ctxt [Name],
                        idris_log :: String,
                        idris_options :: IOption,
                        idris_name :: Int,
@@ -42,7 +43,7 @@ data IState = IState { tt_ctxt :: Context,
                        errLine :: Maybe Int
                      }
                    
-idrisInit = IState emptyContext [] emptyContext emptyContext
+idrisInit = IState emptyContext [] emptyContext emptyContext emptyContext
                    "" defaultOpts 6 [] [] [] [] [] Nothing
 
 -- The monad for the main REPL - reading and processing files and updating 
@@ -184,10 +185,10 @@ data PDecl' t = PFix     FC Fixity [String] -- fixity declaration
               | PClauses FC Name [PClause' t]    -- pattern clause
               | PData    SyntaxInfo FC (PData' t)      -- data declaration
               | PParams  FC [(Name, t)] [PDecl' t] -- params block
-              | PClass   FC Name
+              | PClass   SyntaxInfo FC Name
                          [(Name, t)] -- parameters
                          [PDecl' t] -- declarations
-              | PInstance FC Name t [PDecl' t]
+              | PInstance SyntaxInfo FC Name t [PDecl' t]
               | PSyntax  FC Syntax
     deriving Functor
 
@@ -831,8 +832,10 @@ dumpDecl (PClauses _ n cs) = "pat " ++ show n ++ "\t" ++ showSep "\n\t" (map (sh
 dumpDecl (PData _ _ d) = showDImp True d
 dumpDecl (PParams _ ns ps) = "params {" ++ show ns ++ "\n" ++ dumpDecls ps ++ "}\n"
 dumpDecl (PSyntax _ syn) = "syntax " ++ show syn
-dumpDecl (PClass _ n ps ds) = "class " ++ show n ++ " " ++ show ps ++ "\n" ++ dumpDecls ds
-dumpDecl (PInstance _ n t ds) = "instance " ++ show n ++ " " ++ show t ++ "\n" ++ dumpDecls ds
+dumpDecl (PClass _ _ n ps ds) 
+    = "class " ++ show n ++ " " ++ show ps ++ "\n" ++ dumpDecls ds
+dumpDecl (PInstance _ _ n t ds) 
+    = "instance " ++ show n ++ " " ++ show t ++ "\n" ++ dumpDecls ds
 -- dumpDecl (PImport i) = "import " ++ i
 
 -- syntactic match of a against b, returning pair of variables in a 

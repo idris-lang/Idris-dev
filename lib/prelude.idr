@@ -7,33 +7,40 @@ import io;
 
 -- Show and instances
 
-data Show : Set -> Set where
-    ShowInstance : (show : a -> String) -> Show a;
-
-show : Show a => a -> String;
-show @{ShowInstance s} v = s v;
+class Show a where {
+    show : a -> String;
+}
 
 instance showNat : Show Nat;
-instance showNat = ShowInstance show where {
+instance showNat = instanceShow show where {
     show : Nat -> String;
     show O = "O";
     show (S k) = "s" ++ show k;
 }
 
+{-
+ 
+instance Show Nat where {
+    show O = "O";
+    show (S k) = "s" ++ show k;
+}
+
+-}
+
 instance showInt : Show Int;
-instance showInt = ShowInstance show where {
+instance showInt = instanceShow show where {
     show : Int -> String;
     show = prim__intToStr;
 }
 
 instance showFloat : Show Float;
-instance showFloat = ShowInstance show where {
+instance showFloat = instanceShow show where {
     show : Float -> String;
     show = prim__floatToStr;
 }
 
 instance showList : Show a => Show (List a);
-instance showList = ShowInstance lshow where {
+instance showList = instanceShow lshow where {
     lshow : Show a => List a -> String;
     lshow xs = "[" ++ show' xs ++ "]" where {
         show' : Show a => List a -> String;

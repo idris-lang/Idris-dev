@@ -145,8 +145,8 @@ collect (c@(PClauses _ _ _) : ds)
         getfc (PClauses fc _ _) = fc
 
 collect (PParams f ns ps : ds) = PParams f ns (collect ps) : collect ds
-collect (PClass f n ps ds : ds') = PClass f n ps (collect ds) : collect ds'
-collect (PInstance f n t ds : ds') = PInstance f n t (collect ds) : collect ds'
+collect (PClass f s n ps ds : ds') = PClass f s n ps (collect ds) : collect ds'
+collect (PInstance f s n t ds : ds') = PInstance f s n t (collect ds) : collect ds'
 collect (d : ds) = d : collect ds
 collect [] = []
 
@@ -292,7 +292,7 @@ pClass syn = do reserved "class"
                 reserved "where"; lchar '{'
                 ds <- many1 $ pFunDecl syn;
                 lchar '}'
-                return [PClass fc n cs (concat ds)]
+                return [PClass syn fc n cs (concat ds)]
   where
     carg = do lchar '('; i <- pName; lchar ':'; ty <- pExpr syn; lchar ')'
               return (i, ty)
@@ -310,7 +310,7 @@ pInstance syn = do reserved "instance"
                    reserved "where"; lchar '{'
                    ds <- many1 $ pFunDecl syn;
                    lchar '}'
-                   return [PInstance fc cn t (concat ds)]
+                   return [PInstance syn fc cn t (concat ds)]
 
 --------- Expressions ---------
 
