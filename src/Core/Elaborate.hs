@@ -119,7 +119,7 @@ get_instances = do ES p _ _ <- get
 -- given a desired hole name, return a unique hole name
 unique_hole :: Name -> Elab Name
 unique_hole n = do ES p _ _ <- get
-                   let bs = bound_in (pterm p)
+                   let bs = bound_in (pterm p) ++ bound_in (ptype p)
                    return (uniqueName n (holes p ++ bs))
   where
     bound_in (Bind n b sc) = n : bi b ++ bound_in sc

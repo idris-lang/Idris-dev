@@ -139,7 +139,8 @@ elabClause info fc (PClause fname lhs_in withs rhs_in whereblock)
         let winfo = pinfo (pvars ist lhs_tm) whereblock windex
         let decls = concatMap declared whereblock
         let newargs = pvars ist lhs_tm
-        let wb = map (expandParamsD decorate newargs decls) whereblock
+        let newargs' = updateNewargs (namesIn ist rhs_in) (zip newargs [0..])
+        let wb = map (expandParamsD decorate newargs' decls) whereblock
         logLvl 5 $ show wb
         mapM_ (elabDecl' info) wb
         -- Now build the RHS, using the type of the LHS as the goal.
@@ -164,6 +165,11 @@ elabClause info fc (PClause fname lhs_in withs rhs_in whereblock)
         (crhs, crhsty) <- tclift $ recheck ctxt [] rhs'
         return (clhs, crhs)
   where
+    updateNewargs nm [] = []
+    updateNewargs nm (((a, t), i):as)
+        | a `elem` nm = (a, t) : updateNewargs nm as
+        | otherwise = (MN i (show fname ++ "_u"), t) : updateNewargs nm as
+
     decorate x = UN [show fname ++ "#" ++ show x]
     pinfo ns ps i 
           = let ds = concatMap declared ps

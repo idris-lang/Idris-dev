@@ -42,6 +42,15 @@ instance Show a => Show (List a) where {
     }
 }
 
+instance Show a => Show (Vect a n) where {
+    show xs = "[" ++ show' xs ++ "]" where {
+        show' : Show a => Vect a n -> String;
+        show' VNil = "";
+        show' (x :: VNil) = show x;
+        show' (x :: xs) = show x ++ ", " ++ show' xs;
+    }
+}
+
 ---- Monad and instances
 
 infixl 5 >>= ;
