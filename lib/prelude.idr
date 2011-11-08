@@ -38,7 +38,7 @@ instance Show a => Show (List a) where {
         show' : Show a => List a -> String;
         show' Nil = "";
         show' (Cons x Nil) = show x;
-        show' (Cons x xs') = show x ++ ", " ++ show' xs';
+        show' (Cons x xs) = show x ++ ", " ++ show' xs;
     }
 }
 
@@ -47,7 +47,7 @@ instance Show a => Show (Vect a n) where {
         show' : Show a => Vect a n -> String;
         show' VNil = "";
         show' (x :: VNil) = show x;
-        show' (x :: xs') = show x ++ ", " ++ show' xs';
+        show' (x :: xs) = show x ++ ", " ++ show' xs;
     }
 }
 

@@ -610,22 +610,25 @@ expandParamsD ist dec ps ns (PClauses fc n cs)
           PClauses fc n' (map expandParamsC cs)
   where
     expandParamsC (PClause n lhs ws rhs ds)
-        = let ps' = updateps (namesIn ist rhs) (zip ps [0..])
+        = let ps' = updateps True (namesIn ist rhs) (zip ps [0..])
+              ps'' = updateps False (namesIn ist lhs) (zip ps' [0..])
               n' = if n `elem` ns then dec n else n in
-              PClause n' (expandParams dec ps' ns lhs)
-                         (map (expandParams dec ps' ns) ws)
-                         (expandParams dec ps' ns rhs)
-                         (map (expandParamsD ist dec ps' ns) ds)
+              PClause n' (expandParams dec ps'' ns lhs)
+                         (map (expandParams dec ps'' ns) ws)
+                         (expandParams dec ps'' ns rhs)
+                         (map (expandParamsD ist dec ps'' ns) ds)
     expandParamsC (PWith n lhs ws wval ds)
-        = let n' = if n `elem` ns then dec n else n in
-              PWith n' (expandParams dec ps ns lhs)
-                       (map (expandParams dec ps ns) ws)
-                       (expandParams dec ps ns wval)
-                       (map (expandParamsD ist dec ps ns) ds)
-    updateps nm [] = []
-    updateps nm (((a, t), i):as)
-        | a `elem` nm = (a, t) : updateps nm as
-        | otherwise = (MN i (show n ++ "_u"), t) : updateps nm as
+        = let ps' = updateps True (namesIn ist wval) (zip ps [0..])
+              ps'' = updateps False (namesIn ist lhs) (zip ps' [0..])
+              n' = if n `elem` ns then dec n else n in
+              PWith n' (expandParams dec ps'' ns lhs)
+                       (map (expandParams dec ps'' ns) ws)
+                       (expandParams dec ps'' ns wval)
+                       (map (expandParamsD ist dec ps'' ns) ds)
+    updateps yn nm [] = []
+    updateps yn nm (((a, t), i):as)
+        | (a `elem` nm) == yn = (a, t) : updateps yn nm as
+        | otherwise = (MN i (show n ++ "_u"), t) : updateps yn nm as
 
 expandParamsD ist dec ps ns d = d
 
