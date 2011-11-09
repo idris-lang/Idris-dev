@@ -86,6 +86,12 @@ process _ (Eval t) = do (tm, ty) <- elabVal toplevel False t
                         logLvl 3 $ "Raw: " ++ show (tm', ty')
                         iputStrLn (show (delab ist tm') ++ " : " ++ 
                                    show (delab ist ty'))
+process _ (Check t) = do (tm, ty) <- elabVal toplevel False t
+                         ctxt <- getContext
+                         ist <- get 
+                         let ty' = normaliseC ctxt [] ty
+                         iputStrLn (show (delab ist tm) ++ " : " ++ 
+                                   show (delab ist ty'))
 process _ (Spec t) = do (tm, ty) <- elabVal toplevel False t
                         ctxt <- getContext
                         ist <- get
@@ -101,6 +107,9 @@ process _ TTShell  = do ist <- get
                         let shst = initState (tt_ctxt ist)
                         shst' <- lift $ runShell shst
                         return ()
+process _ (Execute f) = do compile f 
+                           lift $ system ("./" ++ f)
+                           return ()
 process _ (Compile f) = do compile f 
 process _ (LogLvl i) = setLogLevel i 
 process _ Metavars = do ist <- get
@@ -114,7 +123,7 @@ displayHelp = let vstr = showVersion version in
               "\nIdris version " ++ vstr ++ "\n" ++
               "--------------" ++ map (\x -> '-') vstr ++ "\n\n" ++
               concatMap cmdInfo help
-  where cmdInfo (cmds, args, text) = "   " ++ col 14 14 (showSep " " cmds) args text 
+  where cmdInfo (cmds, args, text) = "   " ++ col 16 12 (showSep " " cmds) args text 
         col c1 c2 l m r = 
             l ++ take (c1 - length l) (repeat ' ') ++ 
             m ++ take (c2 - length m) (repeat ' ') ++ r ++ "\n"
@@ -123,11 +132,13 @@ help =
   [ (["Command"], "Arguments", "Purpose"),
     ([""], "", ""),
     (["<expression>"], "", "Evaluate an expression"),
+    ([":t"], "<expression>", "Check the type of an expression"),
     ([":r",":reload"], "", "Reload current file"),
     ([":e",":edit"], "", "Edit current file using $EDITOR or $VISUAL"),
     ([":m",":metavars"], "", "Show remaining proof obligations (metavariables)"),
     ([":p",":prove"], "<name>", "Prove a metavariable"),
     ([":c",":compile"], "<filename>", "Compile to an executable <filename>"),
+    ([":exec",":execute"], "<filename>", "Compile to an executable <filename> and run"),
     ([":?",":h",":help"], "", "Display this help text"),
     ([":q",":quit"], "", "Exit the Idris system")
   ]

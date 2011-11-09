@@ -32,6 +32,7 @@ data Opt = Filename String
          | NoPrelude
          | NoREPL
          | OLogging Int
+         | Output String
          | TypeCase
     deriving Eq
 
@@ -43,13 +44,18 @@ runIdris :: [Opt] -> Idris ()
 runIdris opts = 
     do let inputs = opt getFile opts
        let runrepl = not (NoREPL `elem` opts)
+       let output = opt getOutput opts
        mapM_ makeOption opts
        elabPrims
        when (not (NoPrelude `elem` opts)) $ do x <- loadModule "prelude"
                                                return ()
        when runrepl $ iputStrLn banner 
        ist <- get
-       mods <- mapM loadModule inputs       
+       mods <- mapM loadModule inputs
+       ok <- noErrors
+       when ok $ case output of
+                    [] -> return ()
+                    (o:_) -> process "" (Compile o)  
        when runrepl $ repl ist inputs
   where
     makeOption (OLogging i) = setLogLevel i
@@ -59,6 +65,10 @@ runIdris opts =
 getFile :: Opt -> Maybe String
 getFile (Filename str) = Just str
 getFile _ = Nothing
+
+getOutput :: Opt -> Maybe String
+getOutput (Output str) = Just str
+getOutput _ = Nothing
 
 opt :: (Opt -> Maybe a) -> [Opt] -> [a]
 opt = mapMaybe 
@@ -71,6 +81,7 @@ parseArgs [] = return []
 parseArgs ("--log":lvl:ns)   = liftM (OLogging (read lvl) : ) (parseArgs ns)
 parseArgs ("--noprelude":ns) = liftM (NoPrelude : ) (parseArgs ns)
 parseArgs ("--check":ns)     = liftM (NoREPL : ) (parseArgs ns)
+parseArgs ("-o":n:ns)        = liftM (\x -> NoREPL : Output n : x) (parseArgs ns)
 parseArgs ("--typecase":ns)  = liftM (TypeCase : ) (parseArgs ns)
 parseArgs (n:ns)             = liftM (Filename n : ) (parseArgs ns)
 

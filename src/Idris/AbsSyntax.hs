@@ -128,6 +128,12 @@ logLvl l str = do i <- get
 iLOG :: String -> Idris ()
 iLOG = logLvl 1
 
+noErrors :: Idris Bool
+noErrors = do i <- get
+              case errLine i of
+                Nothing -> return True
+                _       -> return False
+
 setTypeCase :: Bool -> Idris ()
 setTypeCase t = do i <- get
                    let opts = idris_options i
@@ -136,8 +142,8 @@ setTypeCase t = do i <- get
 
 -- Commands in the REPL
 
-data Command = Quit | Help | Eval PTerm | Reload | Edit
-             | Compile String
+data Command = Quit | Help | Eval PTerm | Check PTerm | Reload | Edit
+             | Compile String | Execute String
              | Metavars | Prove Name
              | TTShell 
              | LogLvl Int | Spec PTerm | HNF PTerm
