@@ -32,6 +32,7 @@ pCmd = try (do cmd ["q", "quit"]; eof; return Quit)
    <|> try (do cmd ["log"]; i <- natural; eof; return (LogLvl (fromIntegral i)))
    <|> try (do cmd ["spec"]; t <- pFullExpr defaultSyntax; return (Spec t))
    <|> try (do cmd ["hnf"]; t <- pFullExpr defaultSyntax; return (HNF t))
+   <|> try (do cmd ["d", "def"]; n <- pName; eof; return (Defn n))
    <|> try (do cmd ["t", "type"]; do t <- pFullExpr defaultSyntax; return (Check t))
    <|> do t <- pFullExpr defaultSyntax; return (Eval t)
    <|> do eof; return NOP

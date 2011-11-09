@@ -92,6 +92,8 @@ process _ (Check t) = do (tm, ty) <- elabVal toplevel False t
                          let ty' = normaliseC ctxt [] ty
                          iputStrLn (show (delab ist tm) ++ " : " ++ 
                                    show (delab ist ty'))
+process _ (Defn n) = do ctxt <- getContext
+                        lift $ print (lookupDef n ctxt)
 process _ (Spec t) = do (tm, ty) <- elabVal toplevel False t
                         ctxt <- getContext
                         ist <- get
@@ -101,7 +103,7 @@ process _ (Prove n) = prover n
 process _ (HNF t)  = do (tm, ty) <- elabVal toplevel False t
                         ctxt <- getContext
                         ist <- get
-                        let tm' = hnf ctxt [] tm
+                        let tm' = simplify ctxt [] tm
                         iputStrLn (show (delab ist tm'))
 process _ TTShell  = do ist <- get
                         let shst = initState (tt_ctxt ist)

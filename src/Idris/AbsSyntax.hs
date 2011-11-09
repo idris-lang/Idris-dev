@@ -146,7 +146,7 @@ data Command = Quit | Help | Eval PTerm | Check PTerm | Reload | Edit
              | Compile String | Execute String
              | Metavars | Prove Name
              | TTShell 
-             | LogLvl Int | Spec PTerm | HNF PTerm
+             | LogLvl Int | Spec PTerm | HNF PTerm | Defn Name
              | NOP
 
 -- Parsed declarations
@@ -186,9 +186,14 @@ impl = Imp False Dynamic
 expl = Exp False Dynamic
 constraint = Constraint False Static
 
+type FnOpts = Bool -- just inlinable, for now
+
+inlinable :: FnOpts -> Bool
+inlinable x = x
+
 data PDecl' t = PFix     FC Fixity [String] -- fixity declaration
               | PTy      SyntaxInfo FC Name t          -- type declaration
-              | PClauses FC Name [PClause' t]    -- pattern clause
+              | PClauses FC FnOpts Name [PClause' t]   -- pattern clause
               | PData    SyntaxInfo FC (PData' t)      -- data declaration
               | PParams  FC [(Name, t)] [PDecl' t] -- params block
               | PClass   SyntaxInfo FC 
@@ -225,7 +230,7 @@ type PClause = PClause' PTerm
 declared :: PDecl -> [Name]
 declared (PFix _ _ _) = []
 declared (PTy _ _ n t) = [n]
-declared (PClauses _ n _) = [] -- not a declaration
+declared (PClauses _ _ n _) = [] -- not a declaration
 declared (PData _ _ (PDatadecl n _ ts)) = n : map fstt ts
    where fstt (a, _, _) = a
 declared (PParams _ _ ds) = concatMap declared ds
@@ -369,7 +374,7 @@ instance Show PTerm where
 instance Show PDecl where
     show (PFix _ f ops) = show f ++ " " ++ showSep ", " ops
     show (PTy _ _ n ty) = show n ++ " : " ++ show ty
-    show (PClauses _ n c) = showSep "\n" (map show c)
+    show (PClauses _ _ n c) = showSep "\n" (map show c)
     show (PData _ _ d) = show d
 
 instance Show PClause where
@@ -611,9 +616,9 @@ expandParamsD ist dec ps ns (PTy syn fc n ty)
     = if n `elem` ns
          then PTy syn fc (dec n) (piBind ps (expandParams dec ps ns ty))
          else PTy syn fc n (expandParams dec ps ns ty)
-expandParamsD ist dec ps ns (PClauses fc n cs)
+expandParamsD ist dec ps ns (PClauses fc opts n cs)
     = let n' = if n `elem` ns then dec n else n in
-          PClauses fc n' (map expandParamsC cs)
+          PClauses fc opts n' (map expandParamsC cs)
   where
     expandParamsC (PClause n lhs ws rhs ds)
         = let ps' = updateps True (namesIn ist rhs) (zip ps [0..])
@@ -859,7 +864,7 @@ dumpDecls (d:ds) = dumpDecl d ++ "\n" ++ dumpDecls ds
 
 dumpDecl (PFix _ f ops) = show f ++ " " ++ showSep ", " ops 
 dumpDecl (PTy _ _ n t) = "tydecl " ++ show n ++ " : " ++ showImp True t
-dumpDecl (PClauses _ n cs) = "pat " ++ show n ++ "\t" ++ showSep "\n\t" (map (showCImp True) cs)
+dumpDecl (PClauses _ _ n cs) = "pat " ++ show n ++ "\t" ++ showSep "\n\t" (map (showCImp True) cs)
 dumpDecl (PData _ _ d) = showDImp True d
 dumpDecl (PParams _ ns ps) = "params {" ++ show ns ++ "\n" ++ dumpDecls ps ++ "}\n"
 dumpDecl (PSyntax _ syn) = "syntax " ++ show syn

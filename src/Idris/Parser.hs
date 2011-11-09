@@ -132,17 +132,17 @@ parseProg syn fname input pos
 -- Collect PClauses with the same function name
 
 collect :: [PDecl] -> [PDecl]
-collect (c@(PClauses _ _ _) : ds) 
+collect (c@(PClauses _ o _ _) : ds) 
     = clauses (cname c) [] (c : ds)
-  where clauses n acc (PClauses fc _ [PClause n' l ws r w] : ds)
+  where clauses n acc (PClauses fc _ _ [PClause n' l ws r w] : ds)
            | n == n' = clauses n (PClause n' l ws r (collect w) : acc) ds
-        clauses n acc (PClauses fc _ [PWith   n' l ws r w] : ds)
+        clauses n acc (PClauses fc _ _ [PWith   n' l ws r w] : ds)
            | n == n' = clauses n (PWith n' l ws r (collect w) : acc) ds
-        clauses n acc xs = PClauses (getfc c) n (reverse acc) : collect xs
+        clauses n acc xs = PClauses (getfc c) o n (reverse acc) : collect xs
 
-        cname (PClauses fc _ [PClause n _ _ _ _]) = n
-        cname (PClauses fc _ [PWith   n _ _ _ _]) = n
-        getfc (PClauses fc _ _) = fc
+        cname (PClauses fc _ _ [PClause n _ _ _ _]) = n
+        cname (PClauses fc _ _ [PWith   n _ _ _ _]) = n
+        getfc (PClauses fc _ _ _) = fc
 
 collect (PParams f ns ps : ds) = PParams f ns (collect ps) : collect ds
 collect (PClass f s cs n ps ds : ds') = PClass f s cs n ps (collect ds) : collect ds'
@@ -591,7 +591,7 @@ pSimpleCon syn
 pPattern :: SyntaxInfo -> IParser PDecl
 pPattern syn = do clause <- pClause syn
                   fc <- pfc
-                  return (PClauses fc (MN 2 "_") [clause]) -- collect together later
+                  return (PClauses fc False (MN 2 "_") [clause]) -- collect together later
 
 whereSyn :: Name -> SyntaxInfo -> [PTerm] -> SyntaxInfo
 whereSyn n syn args = let ns = concatMap allNamesIn args

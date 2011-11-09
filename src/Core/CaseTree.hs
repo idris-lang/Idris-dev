@@ -1,5 +1,5 @@
 module Core.CaseTree(CaseDef(..), SC(..), CaseAlt(..), CaseTree,
-                     simpleCase) where
+                     simpleCase, small) where
 
 import Core.TT
 
@@ -22,6 +22,11 @@ data CaseAlt = ConCase Name Int [Name] SC
 type CaseTree = SC
 type Clause   = ([Pat], Term)
 type CS = Int
+
+-- simple terms can be inlined trivially - good for primitives in particular
+small :: SC -> Bool
+small (STerm t) = True
+small _ = False
 
 simpleCase :: Bool -> [(Term, Term)] -> CaseDef
 simpleCase tc [] = CaseDef [] (UnmatchedCase "No pattern clauses")

@@ -38,7 +38,7 @@ prove ctxt n ty
          let tree = simpleCase False [(P Ref n ty, tm)]
          logLvl 3 (show tree)
          (ptm, pty) <- tclift $ recheck ctxt [] tm
-         updateContext (addCasedef n False [(P Ref n ty, ptm)] ty)
+         updateContext (addCasedef n True False [(P Ref n ty, ptm)] ty)
          solveDeferred n
 
 elabStep :: ElabState -> Elab a -> Idris (a, ElabState)

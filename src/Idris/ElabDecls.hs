@@ -85,8 +85,8 @@ elabCon info syn (n, t_in, fc)
          logLvl 2 $ "---> " ++ show n ++ " : " ++ show cty
          return (n, cty)
 
-elabClauses :: ElabInfo -> FC -> Name -> [PClause] -> Idris ()
-elabClauses info fc n_in cs = let n = liftname info n_in in  
+elabClauses :: ElabInfo -> FC -> FnOpts -> Name -> [PClause] -> Idris ()
+elabClauses info fc opts n_in cs = let n = liftname info n_in in  
       do solveDeferred n
          pats <- mapM (elabClause info fc) cs
          logLvl 3 (showSep "\n" (map (\ (l,r) -> 
@@ -98,7 +98,8 @@ elabClauses info fc n_in cs = let n = liftname info n_in in
          logLvl 3 (show tree)
          ctxt <- getContext
          case lookupTy n ctxt of
-             Just ty -> updateContext (addCasedef n tcase (map debind pats) ty)
+             Just ty -> updateContext (addCasedef n (inlinable opts)
+                                                    tcase (map debind pats) ty)
              Nothing -> return ()
   where
     debind (x, y) = (depat x, depat y)
@@ -249,9 +250,9 @@ elabClause info fc (PWith fname lhs_in withs wval_in withblock)
     getImps (Bind n (Pi _) t) = pexp Placeholder : getImps t
     getImps _ = []
 
-    mkAuxC wname lhs ns (PClauses fc n cs)
+    mkAuxC wname lhs ns (PClauses fc o n cs)
         | n == fname = do cs' <- mapM (mkAux wname lhs ns) cs
-                          return $ PClauses fc wname cs'
+                          return $ PClauses fc o wname cs'
         | otherwise = fail $ "with clause uses wrong function name " ++ show n
     mkAuxC wname lhs ns d = return $ d
 
@@ -313,7 +314,7 @@ elabClass info syn fc constraints tn ps ds
     tdecl (PTy syn _ n t) = do t' <- implicit syn n t
                                return ( (n, (toExp (map fst ps) Exp t')),
                                         (n, (toExp (map fst ps) Imp t')) )
-    tdecl (PClauses _ _ _) = fail "No default definitions allowed yet"
+    tdecl (PClauses _ _ _ _) = fail "No default definitions allowed yet"
     tdecl _ = fail "Not allowed in a class declaration"
 
     tfun cn c syn all (m, ty) 
@@ -328,7 +329,7 @@ elabClass info syn fc constraints tn ps ds
              iLOG (show (m, ty', capp, margs))
              iLOG (showImp True lhs ++ " = " ++ showImp True rhs)
              return [PTy syn fc m ty',
-                     PClauses fc m [PClause m lhs [] rhs []]]
+                     PClauses fc True m [PClause m lhs [] rhs []]]
 
     getMArgs (PPi (Imp _ _) n ty sc) = False : getMArgs sc
     getMArgs (PPi (Exp _ _) n ty sc) = True  : getMArgs sc
@@ -374,7 +375,7 @@ elabInstance info syn fc cs n ps t ds
          let lhs = PRef fc iname
          let rhs = PApp fc (PRef fc (instanceName ci))
                            (map (pexp . mkMethApp) mtys)
-         let idecl = PClauses fc iname [PClause iname lhs [] rhs wb]
+         let idecl = PClauses fc True iname [PClause iname lhs [] rhs wb]
          iLOG (show idecl)
          elabDecl info idecl
   where
@@ -394,7 +395,7 @@ elabInstance info syn fc cs n ps t ds
     papp fc f as = PApp fc f as
     decorate (UN (n:ns)) = UN (('!':n) : ns)
     decorateid (PTy s f n t) = PTy s f (decorate n) t
-    decorateid (PClauses f n cs) = PClauses f (decorate n) (map dc cs)
+    decorateid (PClauses f o n cs) = PClauses f o (decorate n) (map dc cs)
       where dc (PClause n t as w ds) = PClause (decorate n) (dappname t) as w ds
             dc (PWith   n t as w ds) = PWith   (decorate n) (dappname t) as w ds
             dappname (PApp fc (PRef fc' n) as) = PApp fc (PRef fc' (decorate n)) as
@@ -442,8 +443,8 @@ elabDecl' info (PTy s f n ty)    = do iLOG $ "Elaborating type decl " ++ show n
                                       elabType info s f n ty
 elabDecl' info (PData s f d)     = do iLOG $ "Elaborating " ++ show (d_name d)
                                       elabData info s f d
-elabDecl' info d@(PClauses f n ps) = do iLOG $ "Elaborating clause " ++ show n
-                                        elabClauses info f n ps
+elabDecl' info d@(PClauses f o n ps) = do iLOG $ "Elaborating clause " ++ show n
+                                          elabClauses info f o n ps
 elabDecl' info (PParams f ns ps) = mapM_ (elabDecl' pinfo) ps
   where
     pinfo = let ds = concatMap declared ps

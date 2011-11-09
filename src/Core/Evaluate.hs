@@ -1,7 +1,7 @@
 {-# LANGUAGE MultiParamTypeClasses, FlexibleInstances,
              PatternGuards #-}
 
-module Core.Evaluate(normalise, normaliseC, specialise, hnf,
+module Core.Evaluate(normalise, normaliseC, simplify, specialise, hnf,
                 Fun(..), Def(..), Context, 
                 addToCtxt, addTyDecl, addDatatype, addCasedef, addOperator,
                 lookupTy, lookupP, lookupDef, lookupVal, lookupTyEnv,
@@ -16,7 +16,7 @@ import Core.CaseTree
 type EvalState = ()
 type Eval a = State EvalState a
 
-data EvalOpt = Spec | HNF
+data EvalOpt = Spec | HNF | Simplify
   deriving (Show, Eq)
 
 -- VALUES (as HOAS) ---------------------------------------------------------
@@ -66,6 +66,14 @@ specialise ctxt statics t
    = evalState (do val <- eval ctxt statics [] (finalise t) [Spec]
                    quote 0 val) ()
 
+-- Like normalise, but we only reduce functions that are marked as okay to 
+-- inline (and probably shouldn't reduce lets?)
+
+simplify :: Context -> Env -> TT Name -> TT Name
+simplify ctxt env t 
+   = evalState (do val <- eval ctxt emptyContext (map finalEntry env) (finalise t) [Simplify]
+                   quote 0 val) ()
+
 hnf :: Context -> Env -> TT Name -> TT Name
 hnf ctxt env t 
    = evalState (do val <- eval ctxt emptyContext (map finalEntry env) (finalise t) [HNF]
@@ -92,17 +100,20 @@ unbindEnv (_:bs) (Bind n b sc) = unbindEnv bs sc
 eval :: Context -> Ctxt [Bool] -> Env -> TT Name -> [EvalOpt] -> Eval Value
 eval ctxt statics genv tm opts = ev True [] tm where
     spec = Spec `elem` opts
+    simpl = Simplify `elem` opts
 
     ev top env (P _ n ty)
         | Just (Let t v) <- lookup n genv = ev top env v 
     ev top env (P Ref n ty) = case lookupDef n ctxt of
         Just (Function (Fun _ _ _ v)) -> return v
         Just (TyDecl nt ty hty)     -> return $ VP nt n hty
-        Just (CaseOp _ _ [] tree)   ->  
-              do c <- evCase top env [] [] tree 
-                 case c of
-                   (Nothing, _) -> liftM (VP Ref n) (ev top env ty)
-                   (Just v, _)  -> return v
+        Just (CaseOp inl _ _ [] tree)   ->  
+           if simpl && (not inl) 
+              then liftM (VP Ref n) (ev top env ty)
+              else do c <- evCase top env [] [] tree 
+                      case c of
+                        (Nothing, _) -> liftM (VP Ref n) (ev top env ty)
+                        (Just v, _)  -> return v
         _ -> liftM (VP Ref n) (ev top env ty)
     ev top env (P nt n ty)   = liftM (VP nt n) (ev top env ty)
     ev top env (V i) | i < length env = return $ env !! i
@@ -137,12 +148,13 @@ eval ctxt statics genv tm opts = ev True [] tm where
     apply False env f args
         | spec = return $ unload env f args
     apply top env (VP Ref n ty)        args
-        | Just (CaseOp _ _ ns tree) <- lookupDef n ctxt
+        | Just (CaseOp inl _ _ ns tree) <- lookupDef n ctxt
             = -- traceWhen (n == UN ["interp"]) (show (n, args)) $
-              do c <- evCase top env ns args tree
-                 case c of
-                   (Nothing, _) -> return $ unload env (VP Ref n ty) args
-                   (Just v, rest) -> evApply top env rest v
+              if simpl && (not inl) then return $ unload env (VP Ref n ty) args
+                 else do c <- evCase top env ns args tree
+                         case c of
+                           (Nothing, _) -> return $ unload env (VP Ref n ty) args
+                           (Just v, rest) -> evApply top env rest v
         | Just (Operator _ i op)  <- lookupDef n ctxt
             = if (i <= length args)
                  then case op (take i args) of
@@ -282,7 +294,7 @@ eval_hnf ctxt statics genv tm = ev [] tm where
     ev env (P Ref n ty) = case lookupDef n ctxt of
         Just (Function (Fun _ _ t _)) -> ev env t
         Just (TyDecl nt ty hty)       -> return $ HP nt n ty
-        Just (CaseOp _ _ [] tree)     ->
+        Just (CaseOp inl _ _ [] tree)     ->
             do c <- evCase env [] [] tree
                case c of
                    (Nothing, _, _) -> return $ HP Ref n ty
@@ -312,7 +324,7 @@ eval_hnf ctxt statics genv tm = ev [] tm where
                                                app <- apply env sc' as
                                                wknH (-1) app
     apply env (HP Ref n ty) args
-        | Just (CaseOp _ _ ns tree) <- lookupDef n ctxt
+        | Just (CaseOp _ _ _ ns tree) <- lookupDef n ctxt
             = do c <- evCase env ns args tree
                  case c of
                     (Nothing, _, env') -> return $ unload env' (HP Ref n ty) args
@@ -415,13 +427,14 @@ data Fun = Fun Type Value Term Value
 data Def = Function Fun
          | TyDecl NameType Type Value
          | Operator Type Int ([Value] -> Maybe Value)
-         | CaseOp Type [(Term, Term)] [Name] SC
+         | CaseOp Bool Type [(Term, Term)] [Name] SC -- Bool for inlineable
 
 instance Show Def where
     show (Function f) = "Function: " ++ show f
     show (TyDecl nt ty val) = "TyDecl: " ++ show nt ++ " " ++ show ty
     show (Operator ty _ _) = "Operator: " ++ show ty
-    show (CaseOp ty _ ns sc) = "Case: " ++ show ns ++ " " ++ show sc
+    show (CaseOp _ ty ps ns sc) = "Case: " ++ show ps ++ "\n" ++ 
+                                              show ns ++ " " ++ show sc
 
 ------- 
 
@@ -448,10 +461,14 @@ addDatatype (Data n tag ty cons) ctxt
               addCons (tag+1) cons (addDef n
                   (TyDecl (DCon tag (arity ty')) ty (veval ctxt [] ty)) ctxt)
 
-addCasedef :: Name -> Bool -> [(Term, Term)] -> Type -> Context -> Context
-addCasedef n tcase ps ty ctxt 
-    = case simpleCase tcase ps of
-        CaseDef args sc -> addDef n (CaseOp ty ps args sc) ctxt
+addCasedef :: Name -> Bool -> Bool -> [(Term, Term)] -> Type -> Context -> Context
+addCasedef n alwaysInline tcase ps ty ctxt 
+    = let ps' = simpl ps in
+        case simpleCase tcase ps' of
+            CaseDef args sc -> let inl = alwaysInline in
+                                   addDef n (CaseOp inl ty ps args sc) ctxt
+  where simpl [] = []
+        simpl ((l,r) : xs) = (l, simplify ctxt [] r) : simpl xs
 
 addOperator :: Name -> Type -> Int -> ([Value] -> Maybe Value) -> Context -> Context
 addOperator n ty a op ctxt
@@ -463,7 +480,7 @@ lookupTy n ctxt = do def <- lookupCtxt n ctxt
                        (Function (Fun ty _ _ _)) -> return ty
                        (TyDecl _ ty _) -> return ty
                        (Operator ty _ _) -> return ty
-                       (CaseOp ty _ _ _) -> return ty
+                       (CaseOp _ ty _ _ _) -> return ty
 
 lookupP :: Name -> Context -> Maybe Term
 lookupP n ctxt 
@@ -471,7 +488,7 @@ lookupP n ctxt
         case def of
           (Function (Fun ty _ tm _)) -> return (P Ref n ty)
           (TyDecl nt ty hty) -> return (P nt n ty)
-          (CaseOp ty _ _ _) -> return (P Ref n ty)
+          (CaseOp _ ty _ _ _) -> return (P Ref n ty)
           (Operator ty _ _) -> return (P Ref n ty)
 
 lookupDef :: Name -> Context -> Maybe Def
