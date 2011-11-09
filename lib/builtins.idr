@@ -81,22 +81,32 @@ class Num a where {
     (*) : a -> a -> a;
 }
 
-instance numInt : Num Int;
-instance numInt = instanceNum prim__addInt prim__subInt prim__mulInt;
+instance Num Int where {
+    (+) = prim__addInt;
+    (-) = prim__subInt;
+    (*) = prim__mulInt;
+}
 
-instance numFloat : Num Float;
-instance numFloat = instanceNum prim__addFloat prim__subFloat prim__mulFloat;
+instance Num Float where {
+    (+) = prim__addFloat;
+    (-) = prim__subFloat;
+    (*) = prim__mulFloat;
+}
 
 class Eq a where {
     (==) : a -> a -> Bool;
     (/=) : a -> a -> Bool;
 }
 
-instance EqInt : Eq Int;
-instance EqInt = instanceEq (boolOp prim__eqInt) (\x, y => not (x == y));
+instance Eq Int where {
+    (==) = boolOp prim__eqInt;
+    (/=) x y = not (x == y);
+}
 
-instance EqFloat : Eq Float;
-instance EqFloat = instanceEq (boolOp prim__eqFloat) (\x, y => not (x == y));  
+instance Eq Float where {
+    (==) = boolOp prim__eqFloat;
+    (/=) x y = not (x == y);
+}
 
 data Ordering = LT | EQ | GT;
 
@@ -104,20 +114,16 @@ class Eq a => Ord a where {
     compare : a -> a -> Ordering;
 }
 
-instance OrdInt : Ord Int;
-instance OrdInt = instanceOrd cmpInt where {
-    cmpInt : Int -> Int -> Ordering;
-    cmpInt x y = if (x == y) then EQ else
-                 if (boolOp prim__ltInt x y) then LT else
-                 GT;
+instance Ord Int where {
+    compare x y = if (x == y) then EQ else
+                  if (boolOp prim__ltInt x y) then LT else
+                  GT;
 }
 
-instance OrdFloat : Ord Float;
-instance OrdFloat = instanceOrd cmpFloat where {
-    cmpFloat : Float -> Float -> Ordering;
-    cmpFloat x y = if (x == y) then EQ else
-                   if (boolOp prim__ltFloat x y) then LT else
-                   GT;
+instance Ord Float where {
+    compare x y = if (x == y) then EQ else
+                  if (boolOp prim__ltFloat x y) then LT else
+                  GT;
 }
 
 div : Int -> Int -> Int;
