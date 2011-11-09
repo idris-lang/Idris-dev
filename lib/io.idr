@@ -8,6 +8,12 @@ io_bind (prim__IO v) k = k v;
 io_return : a -> IO a;
 io_return = prim__IO;
 
+-- This may seem pointless, but we can use it to force an
+-- evaluation of main that Epic wouldn't otherwise do...
+
+run__IO : IO () -> IO ();
+run__IO (prim__IO v) = prim__IO v;
+
 data FTy = FInt | FFloat | FChar | FString | FPtr | FUnit;
 
 interpFTy : FTy -> Set;
@@ -36,4 +42,5 @@ data Foreign : Set -> Set where
 
 mkForeign : Foreign x -> x;
 -- mkForeign compiled as primitive
+
 

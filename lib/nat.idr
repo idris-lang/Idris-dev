@@ -18,8 +18,11 @@ mult : Nat -> Nat -> Nat;
 mult O     y = O;
 mult (S k) y = plus y (mult k y);
 
-instance numNat : Num Nat;
-instance numNat = instanceNum plus sub mult;
+instance Num Nat where {
+    (+) = plus;
+    (-) = sub;
+    (*) = mult;
+}
 
 instance Eq Nat where {
     O     == O     = True;

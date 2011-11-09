@@ -344,7 +344,7 @@ data SSymbol = Keyword Name
              | Expr Name
     deriving Show
 
-initDSL = DSL (UN ["io_bind"]) (UN ["io_return"])
+initDSL = DSL (UN [">>="]) (UN ["return"])
 
 data SyntaxInfo = Syn { using :: [(Name, PTerm)],
                         syn_params :: [(Name, PTerm)],

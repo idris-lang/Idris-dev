@@ -27,7 +27,9 @@ mkDecls = do i <- getIState
 ename x = name ("idris_" ++ show x)
 aname x = name ("a_" ++ show x)
 
-epicMain = ref (ename (UN ["main"]))
+-- The 'unsafePerformIO' makes sure it gets evaluated fully
+epicMain = effect_ $ ref (ename (UN ["run__IO"])) @@
+                     ref (ename (UN ["main"]))
 
 class ToEpic a where
     epic :: a -> Idris E.Term
@@ -37,6 +39,7 @@ build (n, d) = do i <- getIState
                   case lookup n (idris_prims i) of
                     Just opDef -> return $ EpicFn (ename n) opDef
                     _ ->       do def <- epic d
+                                  logLvl 3 $ "Compiled " ++ show n ++ " =\n\t" ++ show def
                                   return $ EpicFn (ename n) def
 
 impossible = int 42424242
@@ -68,7 +71,6 @@ instance ToEpic (TT Name) where
       epic' env (Bind _ _ _) = return impossible
       epic' env (App f a) = do f' <- epic' env f
                                a' <- epic' env a
-                               logLvl 3 $ "Compiled " ++ show f ++ " @@ " ++ show a
                                return (f' @@ a')
       epic' env (Constant c) = epic c
       epic' env (Set _) = return impossible
