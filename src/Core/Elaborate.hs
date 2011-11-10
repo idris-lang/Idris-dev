@@ -188,7 +188,10 @@ rewrite :: Raw -> Elab ()
 rewrite tm = processTactic' (Rewrite tm)
 
 patvar :: Name -> Elab ()
-patvar n = processTactic' (PatVar n)
+patvar n = do n' <- case n of
+                      UN _ -> return n
+                      MN _ _ -> unique_hole n
+              processTactic' (PatVar n')
 
 patbind :: Name -> Elab ()
 patbind n = processTactic' (PatBind n)

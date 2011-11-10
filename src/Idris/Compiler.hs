@@ -17,7 +17,10 @@ primDefs = [UN ["mkForeign"]]
 
 compile :: FilePath -> Idris ()
 compile f = do ds <- mkDecls
-               lift $ compileWith [Debug] (mkProgram ds) f 
+               objs <- getObjectFiles
+               libs <- getLibs
+               lift $ compileObjWith [Debug] (mkProgram ds) (f ++ ".o")
+               lift $ link ((f ++ ".o") : objs) f
 
 mkDecls :: Idris [EpicDecl]
 mkDecls = do i <- getIState
@@ -27,7 +30,6 @@ mkDecls = do i <- getIState
 ename x = name ("idris_" ++ show x)
 aname x = name ("a_" ++ show x)
 
--- The 'unsafePerformIO' makes sure it gets evaluated fully
 epicMain = effect_ $ ref (ename (UN ["run__IO"])) @@
                      ref (ename (UN ["main"]))
 
@@ -59,8 +61,8 @@ instance ToEpic (TT Name) where
                    return $ lazy_ arg'
       epic' env (P (DCon t a) n _) = return $ con_ t
       epic' env (P (TCon t a) n _) = return $ con_ t
-      epic' env (P _ n _) = return $ ref (ename n) 
-      epic' env (V i) = return $ ref (env!!i)
+      epic' env (P _ n _)          = return $ ref (ename n) 
+      epic' env (V i)              = return $ ref (env!!i)
       epic' env (Bind n (Lam _) sc)
             = do sc' <- epic' (aname n : env) sc
                  return $ term ([aname n], sc')
@@ -73,7 +75,7 @@ instance ToEpic (TT Name) where
                                a' <- epic' env a
                                return (f' @@ a')
       epic' env (Constant c) = epic c
-      epic' env (Set _) = return impossible
+      epic' env (Set _)      = return impossible
 
 doForeign :: [TT Name] -> Idris E.Term
 doForeign (_ : fgn : args)

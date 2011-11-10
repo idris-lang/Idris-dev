@@ -40,11 +40,13 @@ data IState = IState { tt_ctxt :: Context,
                        syntax_keywords :: [String],
                        imported :: [FilePath],
                        idris_prims :: [(Name, ([E.Name], E.Term))],
+                       idris_objs :: [FilePath],
+                       idris_libs :: [String],
                        errLine :: Maybe Int
                      }
                    
 idrisInit = IState emptyContext [] emptyContext emptyContext emptyContext
-                   "" defaultOpts 6 [] [] [] [] [] Nothing
+                   "" defaultOpts 6 [] [] [] [] [] [] [] Nothing
 
 -- The monad for the main REPL - reading and processing files and updating 
 -- global state (hence the IO inner monad).
@@ -52,6 +54,18 @@ type Idris a = StateT IState IO a
 
 getContext :: Idris Context
 getContext = do i <- get; return (tt_ctxt i)
+
+getObjectFiles :: Idris [FilePath]
+getObjectFiles = do i <- get; return (idris_objs i)
+
+addObjectFile :: FilePath -> Idris ()
+addObjectFile f = do i <- get; put (i { idris_objs = f : idris_objs i })
+
+getLibs :: Idris [String]
+getLibs = do i <- get; return (idris_libs i)
+
+addLib :: String -> Idris ()
+addLib f = do i <- get; put (i { idris_libs = f : idris_libs i })
 
 setErrLine :: Int -> Idris ()
 setErrLine x = do i <- get;
@@ -621,16 +635,16 @@ expandParamsD ist dec ps ns (PClauses fc opts n cs)
           PClauses fc opts n' (map expandParamsC cs)
   where
     expandParamsC (PClause n lhs ws rhs ds)
-        = let ps' = updateps True (namesIn ist rhs) (zip ps [0..])
-              ps'' = updateps False (namesIn ist lhs) (zip ps' [0..])
+        = let -- ps' = updateps True (namesIn ist rhs) (zip ps [0..])
+              ps'' = updateps False (namesIn ist lhs) (zip ps [0..])
               n' = if n `elem` ns then dec n else n in
               PClause n' (expandParams dec ps'' ns lhs)
                          (map (expandParams dec ps'' ns) ws)
                          (expandParams dec ps'' ns rhs)
                          (map (expandParamsD ist dec ps'' ns) ds)
     expandParamsC (PWith n lhs ws wval ds)
-        = let ps' = updateps True (namesIn ist wval) (zip ps [0..])
-              ps'' = updateps False (namesIn ist lhs) (zip ps' [0..])
+        = let -- ps' = updateps True (namesIn ist wval) (zip ps [0..])
+              ps'' = updateps False (namesIn ist lhs) (zip ps [0..])
               n' = if n `elem` ns then dec n else n in
               PWith n' (expandParams dec ps'' ns lhs)
                        (map (expandParams dec ps'' ns) ws)
