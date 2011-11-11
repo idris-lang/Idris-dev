@@ -20,7 +20,7 @@ compile f = do ds <- mkDecls
                objs <- getObjectFiles
                libs <- getLibs
                lift $ compileObjWith [Debug] (mkProgram ds) (f ++ ".o")
-               lift $ link ((f ++ ".o") : objs) f
+               lift $ link ((f ++ ".o") : objs ++ (map ("-l"++) libs)) f
 
 mkDecls :: Idris [EpicDecl]
 mkDecls = do i <- getIState

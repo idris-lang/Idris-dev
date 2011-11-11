@@ -35,6 +35,9 @@ intToStr x = foreign_ tyString "intToStr" [(x, tyInt)]
 strToFloat x = foreign_ tyFloat "strToFloat" [(x, tyString)]
 floatToStr x = foreign_ tyString "floatToStr" [(x, tyFloat)]
 
+floatExp x = foreign_ tyFloat "exp" [(x, tyFloat)]
+floatLog x = foreign_ tyFloat "log" [(x, tyFloat)]
+
 primitives =
    -- operators
   [Prim (UN ["prim__addInt"]) (ty [IType, IType] IType) 2 (iBin (+))
@@ -83,7 +86,11 @@ primitives =
    Prim (UN ["prim__strToFloat"]) (ty [StrType] FlType) 1 (c_strToFloat)
     ([E.name "x"], strToFloat (fun "x")),
    Prim (UN ["prim__floatToStr"]) (ty [FlType] StrType) 1 (c_floatToStr)
-    ([E.name "x"], floatToStr (fun "x"))
+    ([E.name "x"], floatToStr (fun "x")),
+   Prim (UN ["prim__floatExp"]) (ty [FlType] FlType) 1 (p_floatExp)
+    ([E.name "x"], floatExp (fun "x")), 
+   Prim (UN ["prim__floatLog"]) (ty [FlType] FlType) 1 (p_floatLog)
+    ([E.name "x"], floatLog (fun "x")) 
   ]
 
 iBin op [VConstant (I x), VConstant (I y)] = Just $ VConstant (I (op x y))
@@ -110,6 +117,11 @@ c_floatToStr [VConstant (Fl x)] = Just $ VConstant (Str (show x))
 c_floatToStr _ = Nothing
 c_strToFloat [VConstant (Str x)] = Just $ VConstant (Fl (read x))
 c_strToFloat _ = Nothing
+
+p_floatExp [VConstant (Fl x)] = Just $ VConstant (Fl (exp x))
+p_floatExp _ = Nothing
+p_floatLog [VConstant (Fl x)] = Just $ VConstant (Fl (log x))
+p_floatLog _ = Nothing
 
 elabPrim :: Prim -> Idris ()
 elabPrim (Prim n ty i def epic) 

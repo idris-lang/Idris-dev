@@ -221,6 +221,7 @@ data PDecl' t = PFix     FC Fixity [String] -- fixity declaration
                                         t -- full instance type
                                         [PDecl' t]
               | PSyntax  FC Syntax
+              | PDirective (Idris ())
     deriving Functor
 
 data PClause' t = PClause Name t [t] t [PDecl' t]

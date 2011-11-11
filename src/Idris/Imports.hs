@@ -35,4 +35,12 @@ findImport (d:ds) fp = do let ibcp = ibcPath (d ++ "/" ++ fp)
                                      then return (IDR idrp)
                                      else findImport ds fp
 
+-- find a specific filename somewhere in a path
+
+findInPath :: [FilePath] -> FilePath -> IO FilePath
+findInPath [] fp = fail $ "Can't find file " ++ fp
+findInPath (d:ds) fp = do let p = d ++ "/" ++ fp
+                          e <- doesFileExist p
+                          if e then return p else findInPath ds p
+
 

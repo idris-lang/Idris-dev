@@ -458,7 +458,7 @@ elabDecl' info (PClass s f cs n ps ds) = do iLOG $ "Elaborating class " ++ show 
 elabDecl' info (PInstance s f cs n ps t ds) 
     = do iLOG $ "Elaborating instance " ++ show n
          elabInstance info s f cs n ps t ds
-
+elabDecl' info (PDirective i) = i
 
 -- elabDecl' info (PImport i) = loadModule i
 

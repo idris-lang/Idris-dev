@@ -167,6 +167,7 @@ pDecl syn
     <|> pParams syn
     <|> pClass syn
     <|> pInstance syn
+    <|> pDirective
     <|> try (do reserved "import"
                 fp <- identifier
                 lchar ';'
@@ -672,6 +673,14 @@ pWhereblock n syn
          let dns = concatMap (concatMap declared) ds
          lchar '}';
          return (concat ds, map (\x -> (x, decoration syn x)) dns)
+
+pDirective :: IParser [PDecl]
+pDirective = do lchar '%'; reserved "lib"; lib <- strlit;
+                return [PDirective (addLib lib)]
+         <|> do lchar '%'; reserved "link"; obj <- strlit;
+                return [PDirective (do datadir <- lift $ getDataDir
+                                       o <- lift $ findInPath [".", datadir] obj
+                                       addObjectFile o)]
 
 pTactic :: SyntaxInfo -> IParser PTactic
 pTactic syn = do reserved "intro"; ns <- sepBy pName (lchar ',')

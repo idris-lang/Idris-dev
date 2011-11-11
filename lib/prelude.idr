@@ -85,6 +85,15 @@ instance MonadPlus Maybe where {
     mplus Nothing Nothing  = Nothing;
 }
 
+---- some mathematical operations
+
+%lib "m"
+
+exp : Float -> Float;
+exp x = prim__floatExp x;
+
+log : Float -> Float;
+log x = prim__floatLog x;
 
 ---- some basic io
 
