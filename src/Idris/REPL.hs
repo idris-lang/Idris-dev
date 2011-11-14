@@ -86,6 +86,8 @@ process _ (Eval t) = do (tm, ty) <- elabVal toplevel False t
                         logLvl 3 $ "Raw: " ++ show (tm', ty')
                         iputStrLn (show (delab ist tm') ++ " : " ++ 
                                    show (delab ist ty'))
+process x (Check (PRef _ n))
+                    = process x (Check (PQuote (Var n))) 
 process _ (Check t) = do (tm, ty) <- elabVal toplevel False t
                          ctxt <- getContext
                          ist <- get 
