@@ -79,18 +79,24 @@ class Num a where {
     (+) : a -> a -> a;
     (-) : a -> a -> a;
     (*) : a -> a -> a;
+
+    fromInteger : Int -> a;
 }
 
 instance Num Int where {
     (+) = prim__addInt;
     (-) = prim__subInt;
     (*) = prim__mulInt;
+
+    fromInteger = id;
 }
 
 instance Num Float where {
     (+) = prim__addFloat;
     (-) = prim__subFloat;
     (*) = prim__mulFloat;
+
+    fromInteger = prim__intToFloat; 
 }
 
 class Eq a where {

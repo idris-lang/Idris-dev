@@ -418,12 +418,19 @@ pSimpleExpr syn =
         <|> try (do x <- pfName; fc <- pfc; return (PRef fc x))
         <|> try (pPair syn)
         <|> try (do lchar '('; e <- pExpr syn; lchar ')'; return e)
-        <|> try (do c <- pConstant; return (PConstant c))
+        <|> try (do c <- pConstant; fc <- pfc
+                    return (modifyConst syn fc (PConstant c)))
         <|> do reserved "Set"; return PSet
         <|> try (do symbol "()"; fc <- pfc; return (PTrue fc))
         <|> try (do symbol "_|_"; fc <- pfc; return (PFalse fc))
         <|> do lchar '_'; return Placeholder
         <|> pSimpleExtExpr syn
+
+modifyConst :: SyntaxInfo -> FC -> PTerm -> PTerm
+modifyConst syn fc (PConstant (I x)) 
+    | not (inPattern syn)
+        = PApp fc (PRef fc (UN ["fromInteger"])) [pexp (PConstant (I x))]
+modifyConst syn fc x = x
 
 pPair syn = do lchar '('; l <- pExpr syn; op <- pairOp
                fc <- pfc
@@ -470,9 +477,11 @@ pLambda syn = do lchar '\\';
                  sc <- pExpr syn
                  return (bindList PLam xt sc)
 
-pLet syn = do reserved "let"; n <- pName; lchar '='; v <- pExpr syn
+pLet syn = do reserved "let"; n <- pName; 
+              ty <- option Placeholder (do lchar ':'; pExpr' syn)
+              lchar '='; v <- pExpr syn
               reserved "in";  sc <- pExpr syn
-              return (PLet n Placeholder v sc)
+              return (PLet n ty v sc)
 
 pPi syn = 
      try (do lazy <- option False (do lchar '|'; return True)

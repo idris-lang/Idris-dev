@@ -22,6 +22,8 @@ instance Num Nat where {
     (+) = plus;
     (-) = sub;
     (*) = mult;
+
+    fromInteger n = if (n > 0) then (S (fromInteger (n-1))) else O;
 }
 
 instance Eq Nat where {

@@ -561,18 +561,20 @@ elab ist info pattern tm
                elabE ty
                elabE sc
                solve
-    elab' (PLet n Placeholder val sc)
-          = do attack; -- (h:_) <- get_holes
+    elab' (PLet n ty val sc)
+          = do attack;
                tyn <- unique_hole (MN 0 "letty")
-               -- start_unify h
                claim tyn (RSet 0)
                valn <- unique_hole (MN 0 "letval")
                claim valn (Var tyn)
-               letbind n (Var tyn) (Var valn)  
+               letbind n (Var tyn) (Var valn)
+               case ty of
+                   Placeholder -> return ()
+                   _ -> do focus tyn
+                           elabE ty
                focus valn
                elabE val
                elabE sc
-               -- end_unify
                solve
     elab' (PApp fc (PRef _ f) args')
        = do let args = {- case lookupCtxt f (inblock info) of
