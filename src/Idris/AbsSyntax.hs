@@ -887,6 +887,7 @@ dumpDecl (PClass _ _ cs n ps ds)
     = "class " ++ show cs ++ " " ++ show n ++ " " ++ show ps ++ "\n" ++ dumpDecls ds
 dumpDecl (PInstance _ _ cs n _ t ds) 
     = "instance " ++ show cs ++ " " ++ show n ++ " " ++ show t ++ "\n" ++ dumpDecls ds
+dumpDecl _ = "..."
 -- dumpDecl (PImport i) = "import " ++ i
 
 -- syntactic match of a against b, returning pair of variables in a 

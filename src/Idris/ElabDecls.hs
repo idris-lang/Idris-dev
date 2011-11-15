@@ -536,9 +536,15 @@ elab ist info pattern tm
                                              pimp (MN 0 "P") Placeholder,
                                              pexp l, pexp r])
     elab' (PRef fc n) | pattern && not (inparamBlock n)
-                         = erun fc $ 
-                            try (do apply (Var n) []; solve)
-                                (patvar n)
+                         = do ctxt <- get_context
+                              let sc = case lookupCtxt n ctxt of
+                                          Nothing -> True
+                                          _ -> False
+                              if sc
+                                then erun fc $ 
+                                       try (do apply (Var n) []; solve)
+                                           (patvar n)
+                                else do apply (Var n) []; solve 
       where inparamBlock n = case lookupCtxt n (inblock info) of
                                 Nothing -> False
                                 _ -> True
