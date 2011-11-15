@@ -295,6 +295,7 @@ data PTerm = PQuote Raw
            | PReturn FC
            | PMetavar Name
            | PProof [PTactic]
+           | PTactics [PTactic] -- as PProof, but no auto solving
            | PElabError String -- error to report on elaboration
     deriving Eq
 
@@ -310,6 +311,7 @@ mapPT f t = f (mpt t) where
   mpt (PHidden t) = PHidden (mapPT f t)
   mpt (PDoBlock ds) = PDoBlock (map (fmap (mapPT f)) ds)
   mpt (PProof ts) = PProof (map (fmap (mapPT f)) ts)
+  mpt (PTactics ts) = PTactics (map (fmap (mapPT f)) ts)
   mpt x = x
 
 
@@ -319,6 +321,8 @@ data PTactic' t = Intro [Name] | Focus Name
                 | Solve
                 | Attack
                 | ProofState | ProofTerm | Undo
+                | Try (PTactic' t) (PTactic' t)
+                | TSeq (PTactic' t) (PTactic' t)
                 | Qed
     deriving (Show, Eq, Functor)
 
@@ -489,6 +493,7 @@ showImp impl tm = se 10 tm where
     se p PSet = "Set"
     se p (PConstant c) = show c
     se p (PProof ts) = "proof { " ++ show ts ++ "}"
+    se p (PTactics ts) = "tactics { " ++ show ts ++ "}"
     se p (PMetavar n) = "?" ++ show n
     se p Placeholder = "_"
 
@@ -617,6 +622,7 @@ expandParams dec ps ns tm = en tm
     en (PHidden t) = PHidden (en t)
     en (PDoBlock ds) = PDoBlock (map (fmap en) ds)
     en (PProof ts)   = PProof (map (fmap en) ts)
+    en (PTactics ts) = PTactics (map (fmap en) ts)
 
     en (PQuote (Var n)) 
         | n `elem` ns = PQuote (Var (dec n))
@@ -809,6 +815,7 @@ addImpl ist ptm = ai [] ptm
                                  PPi p n ty' sc'
     ai env (PHidden tm) = PHidden (ai env tm)
     ai env (PProof ts) = PProof (map (fmap (ai env)) ts)
+    ai env (PTactics ts) = PTactics (map (fmap (ai env)) ts)
     ai env tm = tm
 
 aiFn :: IState -> FC -> Name -> [PArg] -> PTerm

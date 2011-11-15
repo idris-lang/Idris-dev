@@ -609,6 +609,7 @@ elab ist info pattern tm
                            movelast h
     elab' (PMetavar n) = do attack; defer n; solve
     elab' (PProof ts) = do mapM_ (runTac True ist) ts
+    elab' (PTactics ts) = do mapM_ (runTac False ist) ts
     elab' (PElabError e) = fail e
     elab' x = fail $ "Not implemented " ++ show x
 
@@ -721,6 +722,8 @@ runTac autoSolve ist tac = runT (fmap (addImpl ist) tac) where
     runT Trivial = do trivial ist; when autoSolve solveAll
     runT (Focus n) = focus n
     runT Solve = solve
+    runT (Try l r) = do try (runT l) (runT r)
+    runT (TSeq l r) = do runT l; runT r
     runT x = fail $ "Not implemented " ++ show x
 
 solveAll = try (do solve; solveAll) (return ())

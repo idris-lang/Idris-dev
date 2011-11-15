@@ -411,6 +411,10 @@ pSimpleExpr syn =
                ts <- endBy (pTactic syn) (lchar ';')
                lchar '}'
                return (PProof ts)
+        <|> do reserved "tactics"; lchar '{';
+               ts <- endBy (pTactic syn) (lchar ';')
+               lchar '}'
+               return (PTactics ts)
         <|> try (do x <- pfName; fc <- pfc; return (PRef fc x))
         <|> try (pPair syn)
         <|> try (do lchar '('; e <- pExpr syn; lchar ')'; return e)
@@ -726,6 +730,16 @@ pTactic syn = do reserved "intro"; ns <- sepBy pName (lchar ',')
           <|> do reserved "exact"; t <- pExpr syn;
                  i <- getState
                  return $ Exact (desugar syn i t)
+          <|> do reserved "try"; t <- pTactic syn;
+                 lchar '|';
+                 t1 <- pTactic syn
+                 return $ Try t t1
+          <|> do lchar '{'
+                 t <- pTactic syn;
+                 lchar ';';
+                 t1 <- pTactic syn;
+                 lchar '}'
+                 return $ TSeq t t1
           <|> do reserved "compute"; return Compute
           <|> do reserved "trivial"; return Trivial
           <|> do reserved "solve"; return Solve
