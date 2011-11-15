@@ -675,12 +675,14 @@ pWhereblock n syn
          return (concat ds, map (\x -> (x, decoration syn x)) dns)
 
 pDirective :: IParser [PDecl]
-pDirective = do lchar '%'; reserved "lib"; lib <- strlit;
-                return [PDirective (addLib lib)]
-         <|> do lchar '%'; reserved "link"; obj <- strlit;
-                return [PDirective (do datadir <- lift $ getDataDir
-                                       o <- lift $ findInPath [".", datadir] obj
-                                       addObjectFile o)]
+pDirective = try (do lchar '%'; reserved "lib"; lib <- strlit;
+                     return [PDirective (addLib lib)])
+         <|> try (do lchar '%'; reserved "link"; obj <- strlit;
+                     return [PDirective (do datadir <- lift $ getDataDir
+                                            o <- lift $ findInPath [".", datadir] obj
+                                            addObjectFile o)])
+         <|> do lchar '%'; reserved "logging"; i <- natural;
+                return [PDirective (setLogLevel (fromInteger i))] 
 
 pTactic :: SyntaxInfo -> IParser PTactic
 pTactic syn = do reserved "intro"; ns <- sepBy pName (lchar ',')

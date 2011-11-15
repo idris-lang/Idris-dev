@@ -52,7 +52,7 @@ processInput cmd orig inputs
          case parseCmd i cmd of
                 Left err ->   do lift $ print err
                                  return (Just inputs)
-                Right Reload -> do put orig
+                Right Reload -> do put (orig { idris_options = idris_options i })
                                    clearErr
                                    mods <- mapM loadModule inputs  
                                    return (Just inputs)

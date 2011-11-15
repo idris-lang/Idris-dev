@@ -27,7 +27,6 @@ using (G : Vect Ty n) {
     | If  : Expr G TyBool -> Expr G a -> Expr G a -> Expr G a
     | Bind : Expr G a -> (interpTy a -> Expr G b) -> Expr G b;
   
-
   interp : Env G -> [static] Expr G t -> interpTy t;
   interp env (Var i)     = envLookup i env;
   interp env (Val x)     = x;
@@ -40,7 +39,7 @@ using (G : Vect Ty n) {
  
   eId : Expr G (TyFun TyInt TyInt);
   eId = Lam (Var fO);
-   
+
   eAdd : Expr G (TyFun TyInt (TyFun TyInt TyInt));
   eAdd = Lam (Lam (Op (+) (Var fO) (Var (fS fO))));
   
