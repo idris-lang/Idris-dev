@@ -34,6 +34,8 @@ strToInt x = foreign_ tyInt "strToInt" [(x, tyString)]
 intToStr x = foreign_ tyString "intToStr" [(x, tyInt)]
 strToFloat x = foreign_ tyFloat "strToFloat" [(x, tyString)]
 floatToStr x = foreign_ tyString "floatToStr" [(x, tyFloat)]
+intToFloat x = foreign_ tyFloat "intToFloat" [(x, tyInt)]
+floatToInt x = foreign_ tyInt "floatToInt" [(x, tyFloat)]
 
 floatExp x = foreign_ tyFloat "exp" [(x, tyFloat)]
 floatLog x = foreign_ tyFloat "log" [(x, tyFloat)]
@@ -87,6 +89,10 @@ primitives =
     ([E.name "x"], strToFloat (fun "x")),
    Prim (UN ["prim__floatToStr"]) (ty [FlType] StrType) 1 (c_floatToStr)
     ([E.name "x"], floatToStr (fun "x")),
+   Prim (UN ["prim__intToFloat"]) (ty [IType] FlType) 1 (c_intToFloat)
+    ([E.name "x"], intToFloat (fun "x")),
+   Prim (UN ["prim__floatToInt"]) (ty [FlType] IType) 1 (c_floatToInt)
+    ([E.name "x"], floatToInt (fun "x")),
    Prim (UN ["prim__floatExp"]) (ty [FlType] FlType) 1 (p_floatExp)
     ([E.name "x"], floatExp (fun "x")), 
    Prim (UN ["prim__floatLog"]) (ty [FlType] FlType) 1 (p_floatLog)
@@ -117,6 +123,12 @@ c_floatToStr [VConstant (Fl x)] = Just $ VConstant (Str (show x))
 c_floatToStr _ = Nothing
 c_strToFloat [VConstant (Str x)] = Just $ VConstant (Fl (read x))
 c_strToFloat _ = Nothing
+
+c_floatToInt [VConstant (Fl x)] = Just $ VConstant (I (truncate x))
+c_floatToInt _ = Nothing
+
+c_intToFloat [VConstant (I x)] = Just $ VConstant (Fl (fromIntegral x))
+c_intToFloat _ = Nothing
 
 p_floatExp [VConstant (Fl x)] = Just $ VConstant (Fl (exp x))
 p_floatExp _ = Nothing
