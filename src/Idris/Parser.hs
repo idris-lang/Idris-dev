@@ -322,9 +322,23 @@ pExpr syn = do i <- getState
 
 pExpr' :: SyntaxInfo -> IParser PTerm
 pExpr' syn 
-       = try (do i <- getState
-                 pExtensions syn (syntax_rules i)) 
+       = try (pExtExpr syn)
      <|> pNoExtExpr syn
+
+pExtExpr :: SyntaxInfo -> IParser PTerm
+pExtExpr syn = do i <- getState
+                  pExtensions syn (syntax_rules i)
+
+pSimpleExtExpr :: SyntaxInfo -> IParser PTerm
+pSimpleExtExpr syn = do i <- getState
+                        pExtensions syn (filter simple (syntax_rules i))
+  where
+    simple (Rule (Expr x:xs) _) = False
+    simple (Rule (_:xs) _) = case (last xs) of
+        Keyword _ -> True
+        Symbol _  -> True
+        _ -> False
+    simple _ = False
 
 pNoExtExpr syn =
          try (pApp syn) 
@@ -398,6 +412,7 @@ pSimpleExpr syn =
         <|> try (do symbol "()"; fc <- pfc; return (PTrue fc))
         <|> try (do symbol "_|_"; fc <- pfc; return (PFalse fc))
         <|> do lchar '_'; return Placeholder
+        <|> pSimpleExtExpr syn
 
 pPair syn = do lchar '('; l <- pExpr syn; op <- pairOp
                fc <- pfc
@@ -601,13 +616,15 @@ whereSyn n syn args = let ns = concatMap allNamesIn args
                                 no_imp = nub (ni ++ ns) }
   where decorate n x = UN [(show n ++ "_" ++ show x)]
 
+pArgExpr syn = try (pHSimpleExpr syn) <|> pSimpleExtExpr syn
+
 pClause :: SyntaxInfo -> IParser PClause
 pClause syn
          = try (do n <- pfName
                    cargs <- many (pConstraintArg syn)
                    iargs <- many (pImplicitArg syn)
                    fc <- pfc
-                   args <- many (pHSimpleExpr syn)
+                   args <- many (pArgExpr syn)
                    wargs <- many (pWExpr syn)
                    lchar '='
                    rhs <- pExpr syn
@@ -624,7 +641,7 @@ pClause syn
                    cargs <- many (pConstraintArg syn)
                    iargs <- many (pImplicitArg syn)
                    fc <- pfc
-                   args <- many (pHSimpleExpr syn)
+                   args <- many (pArgExpr syn)
                    wargs <- many (pWExpr syn)
                    reserved "with"
                    wval <- pExpr syn
@@ -635,10 +652,10 @@ pClause syn
                    return $ PWith n (PApp fc (PRef fc n) 
                                        (iargs ++ cargs ++ map pexp args)) wargs wval withs)
 
-       <|> do l <- pSimpleExpr syn
+       <|> do l <- pArgExpr syn
               op <- operator
               let n = UN [op]
-              r <- pSimpleExpr syn
+              r <- pArgExpr syn
               fc <- pfc
               wargs <- many (pWExpr syn)
               lchar '='
@@ -649,10 +666,10 @@ pClause syn
               return $ PClause n (PApp fc (PRef fc n) [pexp l,pexp r]) 
                                  wargs rhs wheres
 
-       <|> do l <- pSimpleExpr syn
+       <|> do l <- pArgExpr syn
               op <- operator
               let n = UN [op]
-              r <- pSimpleExpr syn
+              r <- pArgExpr syn
               fc <- pfc
               wargs <- many (pWExpr syn)
               reserved "with"
