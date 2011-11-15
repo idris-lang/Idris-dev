@@ -362,7 +362,10 @@ data DSL = DSL { dsl_bind :: Name,
                  dsl_return :: Name }
     deriving Show
 
-data Syntax = Rule [SSymbol] PTerm
+data SynContext = PatternSyntax | TermSyntax | AnySyntax
+    deriving Show
+
+data Syntax = Rule [SSymbol] PTerm SynContext
     deriving Show
 
 data SSymbol = Keyword Name
@@ -376,10 +379,11 @@ data SyntaxInfo = Syn { using :: [(Name, PTerm)],
                         syn_params :: [(Name, PTerm)],
                         no_imp :: [Name],
                         decoration :: Name -> Name,
+                        inPattern :: Bool,
                         dsl_info :: DSL }
     deriving Show
 
-defaultSyntax = Syn [] [] [] id initDSL
+defaultSyntax = Syn [] [] [] id False initDSL
 
 --- Pretty printing declarations and terms
 

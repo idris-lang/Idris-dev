@@ -201,13 +201,15 @@ pSyntaxDecl syn
          fc <- pfc
          return (PSyntax fc s)
   where
-    names (Rule syms _) = mapMaybe ename syms
+    names (Rule syms _ _) = mapMaybe ename syms
     ename (Keyword n) = Just n
     ename _ = Nothing
 
 pSyntaxRule :: SyntaxInfo -> IParser Syntax
 pSyntaxRule syn 
-    = do reserved "syntax"
+    = do sty <- option AnySyntax (do reserved "term"; return TermSyntax
+                                  <|> do reserved "pattern"; return PatternSyntax)
+         reserved "syntax"
          syms <- many1 pSynSym
          when (all expr syms) $ fail "No keywords in syntax rule"
          let ns = mapMaybe name syms
@@ -216,7 +218,7 @@ pSyntaxRule syn
          lchar '='
          tm <- pExpr syn
          lchar ';'
-         return (Rule syms tm)
+         return (Rule syms tm sty)
   where
     expr (Expr _) = True
     expr _ = False
@@ -331,14 +333,18 @@ pExtExpr syn = do i <- getState
 
 pSimpleExtExpr :: SyntaxInfo -> IParser PTerm
 pSimpleExtExpr syn = do i <- getState
-                        pExtensions syn (filter simple (syntax_rules i))
+                        pExtensions syn (filter valid (filter simple (syntax_rules i)))
   where
-    simple (Rule (Expr x:xs) _) = False
-    simple (Rule (_:xs) _) = case (last xs) of
+    simple (Rule (Expr x:xs) _ _) = False
+    simple (Rule (_:xs) _ _) = case (last xs) of
         Keyword _ -> True
         Symbol _  -> True
         _ -> False
     simple _ = False
+
+    valid (Rule _ _ AnySyntax) = True
+    valid (Rule _ _ PatternSyntax) = inPattern syn
+    valid (Rule _ _ TermSyntax) = not (inPattern syn)
 
 pNoExtExpr syn =
          try (pApp syn) 
@@ -352,7 +358,7 @@ pExtensions :: SyntaxInfo -> [Syntax] -> IParser PTerm
 pExtensions syn rules = choice (map (\x -> try (pExt syn x)) rules)
 
 pExt :: SyntaxInfo -> Syntax -> IParser PTerm
-pExt syn (Rule (s:ssym) ptm)
+pExt syn (Rule (s:ssym) ptm _)
     = do s1 <- pSymbol pSimpleExpr s 
          smap <- mapM (pSymbol pExpr') ssym
          let ns = mapMaybe id (s1:smap)
@@ -616,7 +622,8 @@ whereSyn n syn args = let ns = concatMap allNamesIn args
                                 no_imp = nub (ni ++ ns) }
   where decorate n x = UN [(show n ++ "_" ++ show x)]
 
-pArgExpr syn = try (pHSimpleExpr syn) <|> pSimpleExtExpr syn
+pArgExpr syn = let syn' = syn { inPattern = True } in
+                   try (pHSimpleExpr syn') <|> pSimpleExtExpr syn'
 
 pClause :: SyntaxInfo -> IParser PClause
 pClause syn
