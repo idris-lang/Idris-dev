@@ -120,7 +120,8 @@ get_instances = do ES p _ _ <- get
 unique_hole :: Name -> Elab Name
 unique_hole n = do ES p _ _ <- get
                    let bs = bound_in (pterm p) ++ bound_in (ptype p)
-                   return (uniqueName n (holes p ++ bs))
+                   n' <- uniqueNameCtxt (context p) n (holes p ++ bs)
+                   return n'
   where
     bound_in (Bind n b sc) = n : bi b ++ bound_in sc
       where
@@ -129,6 +130,12 @@ unique_hole n = do ES p _ _ <- get
         bi b = bound_in (binderTy b)
     bound_in (App f a) = bound_in f ++ bound_in a
     bound_in _ = []
+
+uniqueNameCtxt :: Context -> Name -> [Name] -> Elab Name
+uniqueNameCtxt ctxt n hs 
+    | n `elem` hs = return $ uniqueName (nextName n) hs
+    | Just _ <- lookupCtxt n ctxt = return $ uniqueName (nextName n) hs
+    | otherwise = return n
 
 elog :: String -> Elab ()
 elog str = do ES p logs prev <- get
