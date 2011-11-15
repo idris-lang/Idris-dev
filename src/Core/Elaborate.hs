@@ -203,7 +203,8 @@ movelast :: Name -> Elab ()
 movelast n = processTactic' (MoveLast n)
 
 defer :: Name -> Elab ()
-defer n = processTactic' (Defer n)
+defer n = do n' <- unique_hole n
+             processTactic' (Defer n')
 
 instanceArg :: Name -> Elab ()
 instanceArg n = processTactic' (Instance n)

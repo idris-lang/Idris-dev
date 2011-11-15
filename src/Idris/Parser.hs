@@ -333,7 +333,7 @@ pExtExpr syn = do i <- getState
 
 pSimpleExtExpr :: SyntaxInfo -> IParser PTerm
 pSimpleExtExpr syn = do i <- getState
-                        pExtensions syn (filter valid (filter simple (syntax_rules i)))
+                        pExtensions syn (filter simple (syntax_rules i))
   where
     simple (Rule (Expr x:xs) _ _) = False
     simple (Rule (_:xs) _ _) = case (last xs) of
@@ -341,10 +341,6 @@ pSimpleExtExpr syn = do i <- getState
         Symbol _  -> True
         _ -> False
     simple _ = False
-
-    valid (Rule _ _ AnySyntax) = True
-    valid (Rule _ _ PatternSyntax) = inPattern syn
-    valid (Rule _ _ TermSyntax) = not (inPattern syn)
 
 pNoExtExpr syn =
          try (pApp syn) 
@@ -355,7 +351,12 @@ pNoExtExpr syn =
      <|> pDoBlock syn
     
 pExtensions :: SyntaxInfo -> [Syntax] -> IParser PTerm
-pExtensions syn rules = choice (map (\x -> try (pExt syn x)) rules)
+pExtensions syn rules = choice (map (\x -> try (pExt syn x)) (filter valid rules))
+  where
+    valid (Rule _ _ AnySyntax) = True
+    valid (Rule _ _ PatternSyntax) = inPattern syn
+    valid (Rule _ _ TermSyntax) = not (inPattern syn)
+
 
 pExt :: SyntaxInfo -> Syntax -> IParser PTerm
 pExt syn (Rule (s:ssym) ptm _)
