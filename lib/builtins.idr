@@ -75,30 +75,6 @@ intToBool x = True;
 boolOp : (a -> a -> Int) -> a -> a -> Bool;
 boolOp op x y = intToBool (op x y); 
 
-class Num a where {
-    (+) : a -> a -> a;
-    (-) : a -> a -> a;
-    (*) : a -> a -> a;
-
-    fromInteger : Int -> a;
-}
-
-instance Num Int where {
-    (+) = prim__addInt;
-    (-) = prim__subInt;
-    (*) = prim__mulInt;
-
-    fromInteger = id;
-}
-
-instance Num Float where {
-    (+) = prim__addFloat;
-    (-) = prim__subFloat;
-    (*) = prim__mulFloat;
-
-    fromInteger = prim__intToFloat; 
-}
-
 class Eq a where {
     (==) : a -> a -> Bool;
     (/=) : a -> a -> Bool;
@@ -106,6 +82,11 @@ class Eq a where {
 
 instance Eq Int where {
     (==) = boolOp prim__eqInt;
+    (/=) x y = not (x == y);
+}
+
+instance Eq Integer where {
+    (==) = boolOp prim__eqBigInt;
     (/=) x y = not (x == y);
 }
 
@@ -130,6 +111,38 @@ instance Ord Float where {
     compare x y = if (x == y) then EQ else
                   if (boolOp prim__ltFloat x y) then LT else
                   GT;
+}
+
+class Eq a => Num a where {
+    (+) : a -> a -> a;
+    (-) : a -> a -> a;
+    (*) : a -> a -> a;
+
+    fromInteger : Int -> a;
+}
+
+instance Num Int where {
+    (+) = prim__addInt;
+    (-) = prim__subInt;
+    (*) = prim__mulInt;
+
+    fromInteger = id;
+}
+
+instance Num Integer where {
+    (+) = prim__addBigInt;
+    (-) = prim__subBigInt;
+    (*) = prim__mulBigInt;
+
+    fromInteger = prim__intToBigInt;
+}
+
+instance Num Float where {
+    (+) = prim__addFloat;
+    (-) = prim__subFloat;
+    (*) = prim__mulFloat;
+
+    fromInteger = prim__intToFloat; 
 }
 
 div : Int -> Int -> Int;

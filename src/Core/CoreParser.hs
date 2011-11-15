@@ -23,7 +23,7 @@ idrisDef = haskellDef {
                                "infix", "infixl", "infixr", "prefix",
                                "where", "with", "forall", "syntax", "proof",
                                "using", "params", "namespace", "class", "instance",
-                               "Int", "Float", "Char", "String", "Ptr"]
+                               "Int", "Integer", "Float", "Char", "String", "Ptr"]
            } 
 
 iOpStart = oneOf ":!#$%&*+./<=>?@\\^|-~"

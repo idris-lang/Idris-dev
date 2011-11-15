@@ -18,14 +18,6 @@ mult : Nat -> Nat -> Nat;
 mult O     y = O;
 mult (S k) y = plus y (mult k y);
 
-instance Num Nat where {
-    (+) = plus;
-    (-) = sub;
-    (*) = mult;
-
-    fromInteger n = if (n > 0) then (S (fromInteger (n-1))) else O;
-}
-
 instance Eq Nat where {
     O     == O     = True;
     (S x) == (S y) = x == y;
@@ -33,6 +25,14 @@ instance Eq Nat where {
     (S x) == O     = False;
     
     x /= y = not (x == y);
+}
+
+instance Num Nat where {
+    (+) = plus;
+    (-) = sub;
+    (*) = mult;
+
+    fromInteger n = if (n > 0) then (S (fromInteger (n-1))) else O;
 }
 
 instance Ord Nat where {

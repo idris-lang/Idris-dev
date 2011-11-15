@@ -117,8 +117,9 @@ addAlist :: [(Name, a)] -> Ctxt a -> Ctxt a
 addAlist [] ctxt = ctxt
 addAlist ((n, tm) : ds) ctxt = addDef n tm (addAlist ds ctxt)
 
-data Const = I Int | Fl Double | Ch Char | Str String
-           | IType | FlType    | ChType  | StrType    | PtrType
+data Const = I Int | BI Integer | Fl Double | Ch Char | Str String 
+           | IType | BIType     | FlType    | ChType  | StrType    
+           | PtrType
   deriving Eq
 
 data Raw = Var Name
@@ -330,10 +331,12 @@ instance (Eq n, Show n) => Show (TT n) where
 
 instance Show Const where
     show (I i) = show i
+    show (BI i) = show i ++ "L"
     show (Fl f) = show f
     show (Ch c) = show c
     show (Str s) = show s
     show IType = "Int"
+    show BIType = "Integer"
     show FlType = "Float"
     show ChType = "Char"
     show StrType = "String"

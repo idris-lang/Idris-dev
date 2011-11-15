@@ -550,9 +550,9 @@ elab ist info pattern tm
                                 _ -> True
     elab' (PRef fc n) = erun fc $ do apply (Var n) []; solve
     elab' (PLam n Placeholder sc)
-                         = do attack; intro (Just n); elabE sc; solve
+          = do attack; intro (Just n); elabE sc; solve
     elab' (PPi _ n Placeholder sc)
-                         = do attack; arg n (MN 0 "ty"); elabE sc; solve
+          = do attack; arg n (MN 0 "ty"); elabE sc; solve
     elab' (PPi _ n ty sc) 
           = do attack; tyn <- unique_hole (MN 0 "ty")
                claim tyn (RSet 0)

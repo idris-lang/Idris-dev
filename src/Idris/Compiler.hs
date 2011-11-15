@@ -103,6 +103,7 @@ mkEty "FUnit"   = tyUnit
 
 instance ToEpic Const where
     epic (I i)   = return (int i)
+    epic (BI i)  = return (bigint i)
     epic (Fl f)  = return (float f)
     epic (Str s) = return (str s)
     epic (Ch c)  = return (char c)
@@ -111,6 +112,7 @@ instance ToEpic Const where
     epic ChType  = return $ con_ 3
     epic StrType = return $ con_ 4
     epic PtrType = return $ con_ 5
+    epic BIType  = return $ con_ 6
 
 instance ToEpic ([Name], SC) where
     epic (args, tree) = do logLvl 3 $ "Compiling " ++ show args ++ "\n" ++ show tree

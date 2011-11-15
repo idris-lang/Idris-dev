@@ -541,12 +541,14 @@ pDo syn
                return (DoExp fc e))
 
 pConstant :: IParser Const
-pConstant = do reserved "Int";    return IType
+pConstant = do reserved "Integer";return BIType
+        <|> do reserved "Int";    return IType
         <|> do reserved "Char";   return ChType
         <|> do reserved "Float";  return FlType
         <|> do reserved "String"; return StrType
         <|> do reserved "Ptr";    return PtrType
         <|> try (do f <- float;   return $ Fl f)
+        <|> try (do i <- natural; lchar 'L'; return $ BI i)
         <|> try (do i <- natural; return $ I (fromInteger i))
         <|> try (do s <- strlit;  return $ Str s)
         <|> try (do c <- chlit;   return $ Ch c)

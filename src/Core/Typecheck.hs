@@ -56,6 +56,7 @@ check ctxt env (RApp f a)
 check ctxt env (RSet i) = return (Set i, Set i) -- LATER: (i+1))
 check ctxt env (RConstant c) = return (Constant c, constType c)
   where constType (I _)   = Constant IType
+        constType (BI _)  = Constant BIType
         constType (Fl _)  = Constant FlType
         constType (Ch _)  = Constant ChType
         constType (Str _) = Constant StrType

@@ -463,7 +463,7 @@ addDatatype (Data n tag ty cons) ctxt
 
 addCasedef :: Name -> Bool -> Bool -> [(Term, Term)] -> Type -> Context -> Context
 addCasedef n alwaysInline tcase ps ty ctxt 
-    = let ps' = simpl ps in
+    = let ps' = ps in -- simpl ps in
         case simpleCase tcase ps' of
             CaseDef args sc -> let inl = alwaysInline in
                                    addDef n (CaseOp inl ty ps args sc) ctxt

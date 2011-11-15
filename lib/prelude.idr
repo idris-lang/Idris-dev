@@ -20,6 +20,10 @@ instance Show Int where {
     show = prim__intToStr;
 }
 
+instance Show Integer where {
+    show = prim__bigIntToStr;
+}
+
 instance Show Float where {
     show = prim__floatToStr;
 }

@@ -30,8 +30,15 @@ ref = E.ref
 eOp :: EOp -> ([E.Name], ETm)
 eOp op = ([E.name "x", E.name "y"], E.op_ op (E.fn "x") (E.fn "y")) 
 
+eOpFn :: E.Type -> E.Type -> String -> ([E.Name], ETm)
+eOpFn ty rty op = ([E.name "x", E.name "y"], 
+                    foreign_ rty op [(E.fn "x", ty), (E.fn "y", ty)])
+
 strToInt x = foreign_ tyInt "strToInt" [(x, tyString)]
 intToStr x = foreign_ tyString "intToStr" [(x, tyInt)]
+intToBigInt x = foreign_ tyBigInt "intToBigInt" [(x, tyInt)]
+strToBigInt x = foreign_ tyBigInt "strToBig" [(x, tyString)]
+bigIntToStr x = foreign_ tyString "bigToStr" [(x, tyBigInt)]
 strToFloat x = foreign_ tyFloat "strToFloat" [(x, tyString)]
 floatToStr x = foreign_ tyString "floatToStr" [(x, tyFloat)]
 intToFloat x = foreign_ tyFloat "intToFloat" [(x, tyInt)]
@@ -60,6 +67,24 @@ primitives =
     (eOp E.gt_),
    Prim (UN ["prim__gteInt"]) (ty [IType, IType] IType) 2 (biBin (>=))
     (eOp E.gte_),
+   Prim (UN ["prim__addBigInt"]) (ty [BIType, BIType] BIType) 2 (bBin (+))
+    (eOpFn tyBigInt tyBigInt "addBig"),
+   Prim (UN ["prim__subBigInt"]) (ty [BIType, BIType] BIType) 2 (bBin (-))
+    (eOpFn tyBigInt tyBigInt "subBig"),
+   Prim (UN ["prim__mulBigInt"]) (ty [BIType, BIType] BIType) 2 (bBin (*))
+    (eOpFn tyBigInt tyBigInt "mulBig"),
+   Prim (UN ["prim__divBigInt"]) (ty [BIType, BIType] BIType) 2 (bBin (div))
+    (eOpFn tyBigInt tyBigInt "divBig"),
+   Prim (UN ["prim__eqBigInt"])  (ty [BIType, BIType] IType) 2 (bbBin (==))
+    (eOpFn tyBigInt tyInt "eqBig"),
+   Prim (UN ["prim__ltBigInt"])  (ty [BIType, BIType] IType) 2 (bbBin (<))
+    (eOpFn tyBigInt tyInt "ltBig"),
+   Prim (UN ["prim__lteBigInt"])  (ty [BIType, BIType] IType) 2 (bbBin (<=))
+    (eOpFn tyBigInt tyInt "leBig"),
+   Prim (UN ["prim__gtBigInt"])  (ty [BIType, BIType] IType) 2 (bbBin (>))
+    (eOpFn tyBigInt tyInt "gtBig"),
+   Prim (UN ["prim__gtBigInt"])  (ty [BIType, BIType] IType) 2 (bbBin (>=))
+    (eOpFn tyBigInt tyInt "geBig"),
    Prim (UN ["prim__addFloat"]) (ty [FlType, FlType] FlType) 2 (fBin (+))
     (eOp E.plusF_),
    Prim (UN ["prim__subFloat"]) (ty [FlType, FlType] FlType) 2 (fBin (-))
@@ -85,6 +110,12 @@ primitives =
     ([E.name "x"], strToInt (fun "x")),
    Prim (UN ["prim__intToStr"]) (ty [IType] StrType) 1 (c_intToStr)
     ([E.name "x"], intToStr (fun "x")),
+   Prim (UN ["prim__intToBigInt"]) (ty [IType] BIType) 1 (c_intToBigInt)
+    ([E.name "x"], intToBigInt (fun "x")),
+   Prim (UN ["prim__strToBigInt"]) (ty [StrType] BIType) 1 (c_strToBigInt)
+    ([E.name "x"], strToBigInt (fun "x")),
+   Prim (UN ["prim__bigIntToStr"]) (ty [BIType] StrType) 1 (c_bigIntToStr)
+    ([E.name "x"], bigIntToStr (fun "x")),
    Prim (UN ["prim__strToFloat"]) (ty [StrType] FlType) 1 (c_strToFloat)
     ([E.name "x"], strToFloat (fun "x")),
    Prim (UN ["prim__floatToStr"]) (ty [FlType] StrType) 1 (c_floatToStr)
@@ -102,7 +133,14 @@ primitives =
 iBin op [VConstant (I x), VConstant (I y)] = Just $ VConstant (I (op x y))
 iBin _ _ = Nothing
 
+bBin op [VConstant (BI x), VConstant (BI y)] = Just $ VConstant (BI (op x y))
+bBin _ _ = Nothing
+
+bBini op [VConstant (BI x), VConstant (BI y)] = Just $ VConstant (I (op x y))
+bBini _ _ = Nothing
+
 biBin op = iBin (\x y -> if (op x y) then 1 else 0)
+bbBin op = bBini (\x y -> if (op x y) then 1 else 0)
 
 fBin op [VConstant (Fl x), VConstant (Fl y)] = Just $ VConstant (Fl (op x y))
 fBin _ _ = Nothing
@@ -118,6 +156,14 @@ c_intToStr [VConstant (I x)] = Just $ VConstant (Str (show x))
 c_intToStr _ = Nothing
 c_strToInt [VConstant (Str x)] = Just $ VConstant (I (read x))
 c_strToInt _ = Nothing
+
+c_intToBigInt [VConstant (I x)] = Just $ VConstant (BI (fromIntegral x))
+c_intToBigInt _ = Nothing
+
+c_bigIntToStr [VConstant (BI x)] = Just $ VConstant (Str (show x))
+c_bigIntToStr _ = Nothing
+c_strToBigInt [VConstant (Str x)] = Just $ VConstant (BI (read x))
+c_strToBigInt _ = Nothing
 
 c_floatToStr [VConstant (Fl x)] = Just $ VConstant (Str (show x))
 c_floatToStr _ = Nothing
