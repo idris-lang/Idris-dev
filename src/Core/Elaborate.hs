@@ -323,8 +323,12 @@ simple_app fun arg =
        start_unify s
        claim s (Var a)
        prep_fill f [s]
-       focus s; arg -- need to work out the type of the arg, so do it first
-       focus f; fun
+       -- try elaborating in both orders, since we might learn something useful
+       -- either way
+       try (do focus s; arg
+               focus f; fun)
+           (do focus f; fun
+               focus s; arg)
        complete_fill
        end_unify
 
