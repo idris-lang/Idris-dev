@@ -55,7 +55,7 @@ runIdris opts =
        ok <- noErrors
        when ok $ case output of
                     [] -> return ()
-                    (o:_) -> process "" (Compile o)  
+                    (o:_) -> process (Compile o)  
        when runrepl $ repl ist inputs
   where
     makeOption (OLogging i) = setLogLevel i

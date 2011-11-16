@@ -56,16 +56,17 @@ processInput cmd orig inputs
                                    clearErr
                                    mods <- mapM loadModule inputs  
                                    return (Just inputs)
+                Right Edit -> do edit fn orig
+                                 return (Just inputs)
                 Right Quit -> do iputStrLn "Bye bye"
                                  return Nothing
-                Right cmd  -> do idrisCatch (process fn cmd)
+                Right cmd  -> do idrisCatch (process cmd)
                                             (\e -> iputStrLn (report e))
                                  return (Just inputs)
- 
-process :: FilePath -> Command -> Idris ()
-process _ Help = iputStrLn displayHelp
-process "" Edit = iputStrLn "Nothing to edit"
-process f Edit
+
+edit :: FilePath -> IState -> Idris ()
+edit "" orig = iputStrLn "Nothing to edit"
+edit f orig
     = do i <- get
          env <- lift $ getEnvironment
          let editor = getEditor env
@@ -74,54 +75,60 @@ process f Edit
                         Nothing -> " "
          let cmd = editor ++ line ++ f
          lift $ system cmd
+         clearErr
+         put (orig { idris_options = idris_options i })
+         loadModule f
          return ()
    where getEditor env | Just ed <- lookup "EDITOR" env = ed
                        | Just ed <- lookup "VISUAL" env = ed
                        | otherwise = "vi"
-process _ (Eval t) = do (tm, ty) <- elabVal toplevel False t
-                        ctxt <- getContext
-                        ist <- get 
-                        let tm' = normaliseC ctxt [] tm
-                        let ty' = normaliseC ctxt [] ty
-                        logLvl 3 $ "Raw: " ++ show (tm', ty')
-                        iputStrLn (show (delab ist tm') ++ " : " ++ 
-                                   show (delab ist ty'))
-process x (Check (PRef _ n))
-                    = process x (Check (PQuote (Var n))) 
-process _ (Check t) = do (tm, ty) <- elabVal toplevel False t
-                         ctxt <- getContext
-                         ist <- get 
-                         let ty' = normaliseC ctxt [] ty
-                         iputStrLn (show (delab ist tm) ++ " : " ++ 
-                                   show (delab ist ty'))
-process _ (Defn n) = do ctxt <- getContext
-                        lift $ print (lookupDef n ctxt)
-process _ (Spec t) = do (tm, ty) <- elabVal toplevel False t
-                        ctxt <- getContext
-                        ist <- get
-                        let tm' = specialise ctxt (idris_statics ist) tm
-                        iputStrLn (show (delab ist tm'))
-process _ (Prove n) = prover n
-process _ (HNF t)  = do (tm, ty) <- elabVal toplevel False t
-                        ctxt <- getContext
-                        ist <- get
-                        let tm' = simplify ctxt [] tm
-                        iputStrLn (show (delab ist tm'))
-process _ TTShell  = do ist <- get
-                        let shst = initState (tt_ctxt ist)
-                        shst' <- lift $ runShell shst
-                        return ()
-process _ (Execute f) = do compile f 
-                           lift $ system ("./" ++ f)
-                           return ()
-process _ (Compile f) = do compile f 
-process _ (LogLvl i) = setLogLevel i 
-process _ Metavars = do ist <- get
-                        let mvs = idris_metavars ist \\ primDefs
-                        case mvs of
-                          [] -> iputStrLn "No global metavariables to solve"
-                          _ -> iputStrLn $ "Global metavariables:\n\t" ++ show mvs
-process _ NOP      = return ()
+
+process :: Command -> Idris ()
+process Help = iputStrLn displayHelp
+process (Eval t) = do (tm, ty) <- elabVal toplevel False t
+                      ctxt <- getContext
+                      ist <- get 
+                      let tm' = normaliseC ctxt [] tm
+                      let ty' = normaliseC ctxt [] ty
+                      logLvl 3 $ "Raw: " ++ show (tm', ty')
+                      iputStrLn (show (delab ist tm') ++ " : " ++ 
+                                 show (delab ist ty'))
+process (Check (PRef _ n))
+                    = process (Check (PQuote (Var n))) 
+process (Check t) = do (tm, ty) <- elabVal toplevel False t
+                       ctxt <- getContext
+                       ist <- get 
+                       let ty' = normaliseC ctxt [] ty
+                       iputStrLn (show (delab ist tm) ++ " : " ++ 
+                                 show (delab ist ty'))
+process (Defn n) = do ctxt <- getContext
+                      lift $ print (lookupDef n ctxt)
+process (Spec t) = do (tm, ty) <- elabVal toplevel False t
+                      ctxt <- getContext
+                      ist <- get
+                      let tm' = specialise ctxt (idris_statics ist) tm
+                      iputStrLn (show (delab ist tm'))
+process (Prove n) = prover n
+process (HNF t)  = do (tm, ty) <- elabVal toplevel False t
+                      ctxt <- getContext
+                      ist <- get
+                      let tm' = simplify ctxt [] tm
+                      iputStrLn (show (delab ist tm'))
+process TTShell  = do ist <- get
+                      let shst = initState (tt_ctxt ist)
+                      shst' <- lift $ runShell shst
+                      return ()
+process (Execute f) = do compile f 
+                         lift $ system ("./" ++ f)
+                         return ()
+process (Compile f) = do compile f 
+process (LogLvl i) = setLogLevel i 
+process Metavars = do ist <- get
+                      let mvs = idris_metavars ist \\ primDefs
+                      case mvs of
+                        [] -> iputStrLn "No global metavariables to solve"
+                        _ -> iputStrLn $ "Global metavariables:\n\t" ++ show mvs
+process NOP      = return ()
 
 displayHelp = let vstr = showVersion version in
               "\nIdris version " ++ vstr ++ "\n" ++
