@@ -520,8 +520,11 @@ pConstList syn = try (do lchar '('
                          return [t])
              <|> return []
 
-tyDeclList syn = sepBy1 (do x <- pfName; t <- pTSig syn; return (x,t))
-                    (lchar ',')
+tyDeclList syn = try (sepBy1 (do x <- pfName; t <- pTSig syn; return (x,t))
+                         (lchar ','))
+             <|> do ns <- sepBy1 pName (lchar ',')
+                    t <- pTSig syn
+                    return (map (\x -> (x, t)) ns)
 
 tyOptDeclList syn = sepBy1 (do x <- pfName; t <- option Placeholder (pTSig syn) 
                                return (x,t))
