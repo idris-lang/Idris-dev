@@ -32,7 +32,7 @@ repl orig mods
      = do let prompt = mkPrompt mods
           x <- lift $ readline (prompt ++ "> ")
           case x of
-              Nothing -> repl orig mods
+              Nothing -> return ()
               Just input -> do lift $ addHistory input
                                ms <- processInput input orig mods
                                case ms of
