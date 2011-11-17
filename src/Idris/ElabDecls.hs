@@ -556,7 +556,8 @@ elab ist info pattern tm
     elab' (PPi _ n ty sc) 
           = do attack; tyn <- unique_hole (MN 0 "ty")
                claim tyn (RSet 0)
-               forall n (Var tyn)
+               n' <- unique_hole n
+               forall n' (Var tyn)
                focus tyn
                elabE ty
                elabE sc
