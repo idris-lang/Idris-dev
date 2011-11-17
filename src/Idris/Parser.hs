@@ -383,7 +383,7 @@ pExt syn (Rule (s:ssym) ptm _)
                                           (update (dropn n ns) sc)
     update ns (PApp fc t args) = PApp fc (update ns t) (map (fmap (update ns)) args)
     update ns (PPair fc l r) = PPair fc (update ns l) (update ns r)
-    update ns (PDPair fc l r) = PDPair fc (update ns l) (update ns r)
+    update ns (PDPair fc l t r) = PDPair fc (update ns l) (update ns t) (update ns r)
     update ns (PHidden t) = PHidden (update ns t)
     update ns (PDoBlock ds) = PDoBlock $ upd ns ds
       where upd ns (DoExp fc t : ds) = DoExp fc (update ns t) : upd ns ds
@@ -432,13 +432,19 @@ modifyConst syn fc (PConstant (I x))
         = PApp fc (PRef fc (UN ["fromInteger"])) [pexp (PConstant (I x))]
 modifyConst syn fc x = x
 
-pPair syn = do lchar '('; l <- pExpr syn; op <- pairOp
+pPair syn = try (do lchar '('; l <- pExpr syn; op <- pairOp
+                    fc <- pfc
+                    r <- pExpr syn; lchar ')';
+                    return (op fc l r))
+        <|> do lchar '('; ln <- pName; lchar ':'; lty <- pExpr syn;
+               reservedOp "**";
                fc <- pfc
                r <- pExpr syn; lchar ')';
-               return (op fc l r)
+               return (PDPair fc (PRef fc ln) lty r) 
   where
     pairOp = do lchar ','; return PPair
-         <|> do reservedOp "**"; return PDPair
+         <|> do reservedOp "**"; return (\f x y -> PDPair f x Placeholder y)
+        
 
 pHSimpleExpr syn
              = do lchar '.'
@@ -779,7 +785,8 @@ expandDo dsl (PPi p n ty tm) = PPi p n (expandDo dsl ty) (expandDo dsl tm)
 expandDo dsl (PApp fc t args) = PApp fc (expandDo dsl t)
                                         (map (fmap (expandDo dsl)) args)
 expandDo dsl (PPair fc l r) = PPair fc (expandDo dsl l) (expandDo dsl r)
-expandDo dsl (PDPair fc l r) = PDPair fc (expandDo dsl l) (expandDo dsl r)
+expandDo dsl (PDPair fc l t r) = PDPair fc (expandDo dsl l) (expandDo dsl t) 
+                                           (expandDo dsl r)
 expandDo dsl (PHidden t) = PHidden (expandDo dsl t)
 expandDo dsl (PReturn fc) = PRef fc (dsl_return dsl)
 expandDo dsl (PDoBlock ds) = expandDo dsl $ block (dsl_bind dsl) ds 

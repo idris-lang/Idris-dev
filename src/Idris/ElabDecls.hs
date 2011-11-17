@@ -523,16 +523,16 @@ elab ist info pattern tm
                                             [pimp (MN 0 "A") Placeholder,
                                              pimp (MN 0 "B") Placeholder,
                                              pexp l, pexp r]))
-    elab' (PDPair fc l@(PRef _ n) r)
+    elab' (PDPair fc l@(PRef _ n) t r)
                           = try (elab' (PApp fc (PRef fc sigmaTy)
-                                        [pexp Placeholder,
+                                        [pexp t,
                                          pexp (PLam n Placeholder r)]))
                                 (elab' (PApp fc (PRef fc existsCon)
-                                             [pimp (MN 0 "a") Placeholder,
+                                             [pimp (MN 0 "a") t,
                                               pimp (MN 0 "P") Placeholder,
                                               pexp l, pexp r]))
-    elab' (PDPair fc l r) = elab' (PApp fc (PRef fc existsCon)
-                                            [pimp (MN 0 "a") Placeholder,
+    elab' (PDPair fc l t r) = elab' (PApp fc (PRef fc existsCon)
+                                            [pimp (MN 0 "a") t,
                                              pimp (MN 0 "P") Placeholder,
                                              pexp l, pexp r])
     elab' (PRef fc n) | pattern && not (inparamBlock n)
