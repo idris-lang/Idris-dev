@@ -698,13 +698,18 @@ runTac autoSolve ist tac = runT (fmap (addImpl ist) tac) where
     runT (Intro xs) = mapM_ (\x -> do attack; intro (Just x)) xs
     runT (Exact tm) = do elab ist toplevel False tm
                          when autoSolve solveAll
-    runT (Refine fn [])   = do let imps = case lookupCtxt fn (idris_implicits ist) of
-                                            Nothing -> []
-                                            Just args -> map isImp args
+    runT (Refine fn [])   = do imps <- case lookupCtxt fn (idris_implicits ist) of
+                                            Nothing -> envArgs fn
+                                            Just args -> return $ map isImp args
                                ns <- apply (Var fn) imps
                                when autoSolve solveAll
        where isImp (PImp _ _ _ _) = True
              isImp _ = False
+             envArgs n = do e <- get_env
+                            case lookup n e of
+                               Just t -> return $ map (const False)
+                                                      (getArgTys (binderTy t))
+                               _ -> return []
     runT (Refine fn imps) = do ns <- apply (Var fn) imps
                                when autoSolve solveAll
     runT (Rewrite tm) -- to elaborate tm, let bind it, then rewrite by that
