@@ -914,8 +914,8 @@ matchClause x y = match x y where
             = do mf <- match f f'
                  ms <- zipWithM matchArg args args'
                  return (mf ++ concat ms)
-    match (PRef _ n) (PRef _ n') | n == n' = return []
-                                 | otherwise = Nothing
+--     match (PRef _ n) (PRef _ n') | n == n' = return []
+--                                  | otherwise = Nothing
     match (PRef _ n) tm = return [(n, tm)]
     match (PEq _ l r) (PEq _ l' r') = do ml <- match l l'
                                          mr <- match r r'

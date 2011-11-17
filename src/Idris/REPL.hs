@@ -32,7 +32,8 @@ repl orig mods
      = do let prompt = mkPrompt mods
           x <- lift $ readline (prompt ++ "> ")
           case x of
-              Nothing -> return ()
+              Nothing -> do iputStrLn "Bye bye"
+                            return ()
               Just input -> do lift $ addHistory input
                                ms <- processInput input orig mods
                                case ms of
@@ -100,7 +101,7 @@ process (Check t) = do (tm, ty) <- elabVal toplevel False t
                        ist <- get 
                        let ty' = normaliseC ctxt [] ty
                        iputStrLn (show (delab ist tm) ++ " : " ++ 
-                                 show (delab ist ty'))
+                                 show (delab ist ty))
 process (Defn n) = do ctxt <- getContext
                       lift $ print (lookupDef n ctxt)
 process (Spec t) = do (tm, ty) <- elabVal toplevel False t

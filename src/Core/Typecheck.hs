@@ -43,7 +43,7 @@ check ctxt env (RApp f a)
          case fty' of
            Bind x (Pi s) t ->
                do converts ctxt env s aty
-                  let apty = normalise ctxt env (Bind x (Let aty av) t)
+                  let apty = normalise emptyContext env (Bind x (Let aty av) t)
                   return (App fv av, apty)
            t -> fail "Can't apply a non-function type"
   -- This rather unpleasant hack is needed because during incomplete 
@@ -70,13 +70,13 @@ check ctxt env (RBind n b sc)
                let tv' = normalise ctxt env tv
                let tt' = normalise ctxt env tt
                isSet ctxt env tt'
-               return (Lam tv')
+               return (Lam tv)
         checkBinder (Pi t)
           = do (tv, tt) <- check ctxt env t
                let tv' = normalise ctxt env tv
                let tt' = normalise ctxt env tt
                isSet ctxt env tt'
-               return (Pi tv')
+               return (Pi tv)
         checkBinder (Let t v)
           = do (tv, tt) <- check ctxt env t
                (vv, vt) <- check ctxt env v
@@ -84,7 +84,7 @@ check ctxt env (RBind n b sc)
                let tt' = normalise ctxt env tt
                converts ctxt env tv vt
                isSet ctxt env tt'
-               return (Let tv' vv)
+               return (Let tv vv)
         checkBinder (NLet t v)
           = do (tv, tt) <- check ctxt env t
                (vv, vt) <- check ctxt env v
@@ -92,19 +92,19 @@ check ctxt env (RBind n b sc)
                let tt' = normalise ctxt env tt
                converts ctxt env tv vt
                isSet ctxt env tt'
-               return (NLet tv' vv)
+               return (NLet tv vv)
         checkBinder (Hole t)
           = do (tv, tt) <- check ctxt env t
                let tv' = normalise ctxt env tv
                let tt' = normalise ctxt env tt
                isSet ctxt env tt'
-               return (Hole tv')
+               return (Hole tv)
         checkBinder (GHole t)
           = do (tv, tt) <- check ctxt env t
                let tv' = normalise ctxt env tv
                let tt' = normalise ctxt env tt
                isSet ctxt env tt'
-               return (GHole tv')
+               return (GHole tv)
         checkBinder (Guess t v)
           = do (tv, tt) <- check ctxt env t
                (vv, vt) <- check ctxt env v
@@ -112,19 +112,19 @@ check ctxt env (RBind n b sc)
                let tt' = normalise ctxt env tt
                converts ctxt env tv vt
                isSet ctxt env tt'
-               return (Guess tv' vv)
+               return (Guess tv vv)
         checkBinder (PVar t)
           = do (tv, tt) <- check ctxt env t
                let tv' = normalise ctxt env tv
                let tt' = normalise ctxt env tt
                isSet ctxt env tt'
-               return (PVar tv')
+               return (PVar tv)
         checkBinder (PVTy t)
           = do (tv, tt) <- check ctxt env t
                let tv' = normalise ctxt env tv
                let tt' = normalise ctxt env tt
                isSet ctxt env tt'
-               return (PVTy tv')
+               return (PVTy tv)
 
         discharge n (Lam t) scv sct
           = return (Bind n (Lam t) scv, Bind n (Pi t) sct)

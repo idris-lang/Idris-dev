@@ -9,6 +9,9 @@ plus (S k) y = S (plus k y);
 eqRespS : m = n -> S m = S n;
 eqRespS refl = refl;
 
+eqRespS' : S m = S n -> m = n;
+eqRespS' refl = refl;
+
 sub : Nat -> Nat -> Nat;
 sub O      y    = O;
 sub (S k) (S y) = sub k y;

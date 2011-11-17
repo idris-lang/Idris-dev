@@ -397,7 +397,8 @@ elabInstance info syn fc cs n ps t ds
     decorateid (PTy s f n t) = PTy s f (decorate n) t
     decorateid (PClauses f o n cs) = PClauses f o (decorate n) (map dc cs)
       where dc (PClause n t as w ds) = PClause (decorate n) (dappname t) as w ds
-            dc (PWith   n t as w ds) = PWith   (decorate n) (dappname t) as w ds
+            dc (PWith   n t as w ds) = PWith   (decorate n) (dappname t) as w 
+                                               (map decorateid ds)
             dappname (PApp fc (PRef fc' n) as) = PApp fc (PRef fc' (decorate n)) as
             dappname t = t
     mkTyDecl (n, t) = PTy syn fc n t
