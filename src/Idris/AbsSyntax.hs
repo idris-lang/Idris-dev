@@ -316,7 +316,7 @@ mapPT f t = f (mpt t) where
 
 
 data PTactic' t = Intro [Name] | Focus Name
-                | Refine Name [Bool] | Rewrite t
+                | Refine Name [Bool] | Rewrite t | LetTac Name t
                 | Exact t | Compute | Trivial
                 | Solve
                 | Attack

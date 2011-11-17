@@ -82,7 +82,9 @@ loadSource f = do iLOG ("Reading " ++ f)
                   return ()
 
 parseExpr i = runParser (pFullExpr defaultSyntax) i "(input)"
-parseTac i = runParser (pTactic defaultSyntax) i "(proof)"
+parseTac i = runParser (do t <- pTactic defaultSyntax
+                           eof
+                           return t) i "(proof)"
 
 parseImports :: FilePath -> String -> Idris ([String], String, SourcePos)
 parseImports fname input 
@@ -751,6 +753,10 @@ pTactic syn = do reserved "intro"; ns <- sepBy pName (lchar ',')
           <|> do reserved "rewrite"; t <- pExpr syn;
                  i <- getState
                  return $ Rewrite (desugar syn i t)
+          <|> do reserved "let"; n <- pName; lchar '=';
+                 t <- pExpr syn;
+                 i <- getState
+                 return $ LetTac n (desugar syn i t)
           <|> do reserved "focus"; n <- pName
                  return $ Focus n
           <|> do reserved "exact"; t <- pExpr syn;
