@@ -19,7 +19,9 @@ compile :: FilePath -> Idris ()
 compile f = do ds <- mkDecls
                objs <- getObjectFiles
                libs <- getLibs
-               lift $ compileObjWith [Debug] (mkProgram ds) (f ++ ".o")
+               hdrs <- getHdrs
+               let incs = map Include hdrs
+               lift $ compileObjWith [Debug] (mkProgram (incs ++ ds)) (f ++ ".o")
                lift $ link ((f ++ ".o") : objs ++ (map ("-l"++) libs)) f
 
 mkDecls :: Idris [EpicDecl]

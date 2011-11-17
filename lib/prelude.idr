@@ -92,6 +92,7 @@ instance MonadPlus Maybe where {
 
 ---- some mathematical operations
 
+%include "math.h"
 %lib "m"
 
 exp : Float -> Float;

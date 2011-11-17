@@ -42,11 +42,12 @@ data IState = IState { tt_ctxt :: Context,
                        idris_prims :: [(Name, ([E.Name], E.Term))],
                        idris_objs :: [FilePath],
                        idris_libs :: [String],
+                       idris_hdrs :: [String],
                        errLine :: Maybe Int
                      }
                    
 idrisInit = IState emptyContext [] emptyContext emptyContext emptyContext
-                   "" defaultOpts 6 [] [] [] [] [] [] [] Nothing
+                   "" defaultOpts 6 [] [] [] [] [] [] [] [] Nothing
 
 -- The monad for the main REPL - reading and processing files and updating 
 -- global state (hence the IO inner monad).
@@ -66,6 +67,12 @@ getLibs = do i <- get; return (idris_libs i)
 
 addLib :: String -> Idris ()
 addLib f = do i <- get; put (i { idris_libs = f : idris_libs i })
+
+addHdr :: String -> Idris ()
+addHdr f = do i <- get; put (i { idris_hdrs = f : idris_hdrs i })
+
+getHdrs :: Idris [String]
+getHdrs = do i <- get; return (idris_hdrs i)
 
 setErrLine :: Int -> Idris ()
 setErrLine x = do i <- get;

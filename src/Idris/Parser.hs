@@ -738,6 +738,8 @@ pDirective = try (do lchar '%'; reserved "lib"; lib <- strlit;
                      return [PDirective (do datadir <- lift $ getDataDir
                                             o <- lift $ findInPath [".", datadir] obj
                                             addObjectFile o)])
+         <|> try (do lchar '%'; reserved "include"; hdr <- strlit;
+                     return [PDirective (addHdr hdr)])
          <|> do lchar '%'; reserved "logging"; i <- natural;
                 return [PDirective (setLogLevel (fromInteger i))] 
 
