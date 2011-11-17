@@ -641,6 +641,14 @@ whereSyn n syn args = let ns = concatMap allNamesIn args
 pArgExpr syn = let syn' = syn { inPattern = True } in
                    try (pHSimpleExpr syn') <|> pSimpleExtExpr syn'
 
+pRHS :: SyntaxInfo -> Name -> IParser PTerm
+pRHS syn n = do lchar '='; pExpr syn
+         <|> do symbol "?="; rhs <- pExpr syn;
+                return (PLet (UN ["value"]) Placeholder rhs (PMetavar n')) 
+  where n' = case n of
+                UN [x] -> UN [x++"_lemma_1"]
+                x -> x
+
 pClause :: SyntaxInfo -> IParser PClause
 pClause syn
          = try (do n <- pfName
@@ -649,8 +657,7 @@ pClause syn
                    fc <- pfc
                    args <- many (pArgExpr syn)
                    wargs <- many (pWExpr syn)
-                   lchar '='
-                   rhs <- pExpr syn
+                   rhs <- pRHS syn n
                    ist <- getState
                    let ctxt = tt_ctxt ist
                    let wsyn = whereSyn n syn (map getTm iargs ++ 
@@ -681,8 +688,7 @@ pClause syn
               r <- pArgExpr syn
               fc <- pfc
               wargs <- many (pWExpr syn)
-              lchar '='
-              rhs <- pExpr syn
+              rhs <- pRHS syn n
               let wsyn = whereSyn n syn []
               (wheres, nmap) <- choice [pWhereblock n syn, do lchar ';'
                                                               return ([], [])]
