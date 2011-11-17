@@ -14,7 +14,7 @@ configure: .PHONY
 	cabal configure
 
 test : .PHONY
-	echo "Yes, probably should write tests."
+	make -C test
 
 linecount : .PHONY
 	wc -l src/Idris/*.hs src/Core/*.hs
