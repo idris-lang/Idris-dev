@@ -527,7 +527,7 @@ namesIn ist tm = nub $ ni [] tm
   where
     ni env (PRef _ n)        
         | not (n `elem` env) 
-            = case lookupCtxt n (idris_implicits ist) of
+            = case lookupCtxt n (tt_ctxt ist) of
                 Nothing -> [n]
                 _ -> []
     ni env (PApp _ f as)   = ni env f ++ concatMap (ni env) (map getTm as)
