@@ -2,6 +2,7 @@ import builtins;
 import nat;
 import list;
 import maybe;
+import either;
 import vect;
 import io;
 
