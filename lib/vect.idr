@@ -8,6 +8,8 @@ instance Eq (Fin n) where {
    fO == fO = True;
    (fS k) == (fS k') = k == k';
    _ == _ = False;
+
+   x /= y = not (x == y);
 }
 
 infixr 7 :: ;
