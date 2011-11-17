@@ -7,6 +7,8 @@ getSigIdx (Exists a v) = a;
 getSigVal : {P : a -> Set} -> (s : Sigma a P) -> P (getSigIdx s);
 getSigVal (Exists a v) = v;
 
+FalseElim : _|_ -> a;
+
 -- For rewrite tactic
 replace : {a:_} -> {x:_} -> {y:_} -> {P : a -> Set} -> x = y -> P x -> P y;
 replace refl prf = prf;

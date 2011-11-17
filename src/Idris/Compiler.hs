@@ -13,7 +13,7 @@ import Control.Monad.State
 import Epic.Epic hiding (Term, Type, Name, fn, compile)
 import qualified Epic.Epic as E
 
-primDefs = [UN ["mkForeign"]]
+primDefs = [UN ["mkForeign"], UN ["FalseElim"]]
 
 compile :: FilePath -> Idris ()
 compile f = do ds <- mkDecls
