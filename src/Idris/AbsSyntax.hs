@@ -16,11 +16,12 @@ import Debug.Trace
 import qualified Epic.Epic as E
 
 data IOption = IOption { opt_logLevel :: Int,
-                         opt_typecase :: Bool 
+                         opt_typecase :: Bool,
+                         opt_showimp  :: Bool
                        }
     deriving (Show, Eq)
 
-defaultOpts = IOption 0 False
+defaultOpts = IOption 0 False False
 
 -- TODO: Add 'module data' to IState, which can be saved out and reloaded quickly (i.e
 -- without typechecking).
@@ -138,6 +139,16 @@ setLogLevel l = do i <- get
 logLevel :: Idris Int
 logLevel = do i <- get
               return (opt_logLevel (idris_options i))
+
+impShow :: Idris Bool
+impShow = do i <- get
+             return (opt_showimp (idris_options i))
+
+setImpShow :: Bool -> Idris ()
+setImpShow t = do i <- get
+                  let opts = idris_options i
+                  let opt' = opts { opt_showimp = t }
+                  put (i { idris_options = opt' })
 
 logLvl :: Int -> String -> Idris ()
 logLvl l str = do i <- get

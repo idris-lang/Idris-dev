@@ -92,21 +92,24 @@ process (Eval t) = do (tm, ty) <- elabVal toplevel False t
                       let tm' = normaliseC ctxt [] tm
                       let ty' = normaliseC ctxt [] ty
                       logLvl 3 $ "Raw: " ++ show (tm', ty')
-                      iputStrLn (show (delab ist tm') ++ " : " ++ 
-                                 show (delab ist ty'))
+                      imp <- impShow
+                      iputStrLn (showImp imp (delab ist tm') ++ " : " ++ 
+                                 showImp imp (delab ist ty'))
 process (Check (PRef _ n))
                   = do ctxt <- getContext
                        ist <- get
+                       imp <- impShow
                        case lookupTy n ctxt of
                         Just t -> iputStrLn $ show n ++ " : " ++
-                                  show (delab ist t)
+                                  showImp imp (delab ist t)
                         _ -> iputStrLn $ "No such variable " ++ show n
 process (Check t) = do (tm, ty) <- elabVal toplevel False t
                        ctxt <- getContext
                        ist <- get 
+                       imp <- impShow
                        let ty' = normaliseC ctxt [] ty
-                       iputStrLn (show (delab ist tm) ++ " : " ++ 
-                                 show (delab ist ty))
+                       iputStrLn (showImp imp (delab ist tm) ++ " : " ++ 
+                                 showImp imp (delab ist ty))
 process (Defn n) = do ctxt <- getContext
                       lift $ print (lookupDef n ctxt)
 process (Spec t) = do (tm, ty) <- elabVal toplevel False t

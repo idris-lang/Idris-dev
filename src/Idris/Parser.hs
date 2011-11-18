@@ -510,7 +510,7 @@ pPi syn =
              t <- pExpr' syn
              symbol "->"
              sc <- pExpr syn
-             return (PPi (Exp False Static) (MN 0 "X") t sc)
+             return (PPi (Exp False Static) (MN 42 "__pi_arg") t sc)
 
 pConstList :: SyntaxInfo -> IParser [PTerm]
 pConstList syn = try (do lchar '(' 
@@ -577,7 +577,7 @@ table fixes
         [pexp (PApp fc (PRef fc (UN "fromInteger")) [pexp (PConstant (I 0))]), pexp x])]] 
        ++ toTable (reverse fixes) ++
       [[binary "="  (\fc x y -> PEq fc x y) AssocLeft],
-       [binary "->" (\fc x y -> PPi expl (MN 0 "X") x y) AssocRight]]
+       [binary "->" (\fc x y -> PPi expl (MN 42 "__pi_arg") x y) AssocRight]]
 
 toTable fs = map (map toBin) 
                  (groupBy (\ (Fix x _) (Fix y _) -> prec x == prec y) fs)
