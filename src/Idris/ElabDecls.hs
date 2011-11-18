@@ -557,6 +557,16 @@ elab ist info pattern tm
     elab' (PRef fc n) = erun fc $ do apply (Var n) []; solve
     elab' (PLam n Placeholder sc)
           = do attack; intro (Just n); elabE sc; solve
+    elab' (PLam n ty sc)
+          = do tyn <- unique_hole (MN 0 "lamty")
+               claim tyn (RSet 0)
+               attack
+               introTy (Var tyn) (Just n)
+               -- end_unify
+               focus tyn
+               elabE ty
+               elabE sc
+               solve
     elab' (PPi _ n Placeholder sc)
           = do attack; arg n (MN 0 "ty"); elabE sc; solve
     elab' (PPi _ n ty sc) 

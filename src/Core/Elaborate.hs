@@ -185,6 +185,9 @@ check_in t = processTactic' (CheckIn t)
 intro :: Maybe Name -> Elab ()
 intro n = processTactic' (Intro n)
 
+introTy :: Raw -> Maybe Name -> Elab ()
+introTy ty n = processTactic' (IntroTy ty n)
+
 forall :: Name -> Raw -> Elab ()
 forall n t = processTactic' (Forall n t)
 

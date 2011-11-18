@@ -529,7 +529,9 @@ tyDeclList syn = try (sepBy1 (do x <- pfName; t <- pTSig syn; return (x,t))
                     t <- pTSig syn
                     return (map (\x -> (x, t)) ns)
 
-tyOptDeclList syn = sepBy1 (do x <- pfName; t <- option Placeholder (pTSig syn) 
+tyOptDeclList syn = sepBy1 (do x <- pfName; 
+                               t <- option Placeholder (do lchar ':'
+                                                           pExpr syn) 
                                return (x,t))
                            (lchar ',')
 

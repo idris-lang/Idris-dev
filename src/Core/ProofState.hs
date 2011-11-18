@@ -49,6 +49,7 @@ data Tactic = Attack
             | EvalIn Raw
             | CheckIn Raw
             | Intro (Maybe Name)
+            | IntroTy Raw (Maybe Name)
             | Forall Name Raw
             | LetBind Name Raw Raw
             | Rewrite Raw
@@ -264,6 +265,24 @@ solve ctxt env (Bind x (Guess ty val) sc)
    | otherwise    = fail $ "I see a hole in your solution. " ++ showEnv env val
 solve _ _ h = fail $ "Not a guess " ++ show h
 
+introTy :: Raw -> Maybe Name -> RunTactic
+introTy ty mn ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' =
+    do let n = case mn of 
+                  Just name -> name
+                  Nothing -> x
+       let t' = normalise ctxt env t
+       (tyv, tyt) <- lift $ check ctxt env ty
+--        ns <- lift $ unify ctxt env tyv t'
+       case t' of
+           Bind y (Pi s) t -> let t' = instantiate (P Bound n s) (pToV y t) in
+                                  do ns <- lift $ unify ctxt env s tyv
+                                     ps <- get
+                                     let (uh, uns) = unified ps
+                                     put (ps { unified = (uh, uns ++ ns) })
+                                     return $ Bind n (Lam tyv) (Bind x (Hole t') (P Bound x t'))
+           _ -> fail "Nothing to introduce"
+introTy ty n ctxt env _ = fail "Can't introduce here."
+
 intro :: Maybe Name -> RunTactic
 intro mn ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' =
     do let n = case mn of 
@@ -406,25 +425,27 @@ process EndUnify _
         let (h, _) = unified ps
         tactic (Just h) solve_unified
 process t h = tactic (Just h) (mktac t)
-   where mktac Attack        = attack
-         mktac (Claim n r)   = claim n r
-         mktac (Exact r)     = exact r
-         mktac (Fill r)      = fill r
+   where mktac Attack          = attack
+         mktac (Claim n r)     = claim n r
+         mktac (Exact r)       = exact r
+         mktac (Fill r)        = fill r
          mktac (PrepFill n ns) = prep_fill n ns
-         mktac CompleteFill  = complete_fill
-         mktac Regret        = regret
-         mktac Solve         = solve
-         mktac (StartUnify n) = start_unify n
-         mktac Compute       = compute
-         mktac (Intro n)     = intro n
-         mktac (Forall n t)  = forall n t
+         mktac CompleteFill    = complete_fill
+         mktac Regret          = regret
+         mktac Solve           = solve
+         mktac (StartUnify n)  = start_unify n
+         mktac Compute         = compute
+         mktac (Intro n)       = intro n
+         mktac (IntroTy ty n)  = introTy ty n
+         mktac (Forall n t)    = forall n t
          mktac (LetBind n t v) = letbind n t v
-         mktac (Rewrite t)   = rewrite t
-         mktac (PatVar n)    = patvar n
-         mktac (PatBind n)   = patbind n
-         mktac (CheckIn r)   = check_in r
-         mktac (EvalIn r)    = eval_in r
-         mktac (Focus n)     = focus n
-         mktac (Defer n)     = defer n
-         mktac (Instance n)  = instanceArg n
-         mktac (MoveLast n)  = movelast n
+         mktac (Rewrite t)     = rewrite t
+         mktac (PatVar n)      = patvar n
+         mktac (PatBind n)     = patbind n
+         mktac (CheckIn r)     = check_in r
+         mktac (EvalIn r)      = eval_in r
+         mktac (Focus n)       = focus n
+         mktac (Defer n)       = defer n
+         mktac (Instance n)    = instanceArg n
+         mktac (MoveLast n)    = movelast n
+         
