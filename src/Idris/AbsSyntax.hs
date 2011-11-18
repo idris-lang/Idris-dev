@@ -846,7 +846,7 @@ aiFn ist fc f as
             Just (tm, given') -> PImp p l n tm : insertImpl ps given'
             Nothing ->           PImp p l n Placeholder : insertImpl ps given
     insertImpl expected [] = []
-    insertImpl []       given  = given
+    insertImpl _        given  = given
 
     find n []               acc = Nothing
     find n (PImp _ _ n' t : gs) acc 
