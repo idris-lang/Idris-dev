@@ -66,7 +66,7 @@ elabData info syn fc (PDatadecl n t_in dcons)
          updateContext (addTyDecl n cty) -- temporary, to check cons
          cons <- mapM (elabCon info syn) dcons
          ttag <- getName
-         setContext (addDatatype (Data n ttag cty cons) ctxt)
+         updateContext (addDatatype (Data n ttag cty cons))
 
 elabCon :: ElabInfo -> SyntaxInfo -> (Name, PTerm, FC) -> Idris (Name, Type)
 elabCon info syn (n, t_in, fc)
@@ -81,6 +81,7 @@ elabCon info syn (n, t_in, fc)
          logLvl 2 $ "Rechecking " ++ show t'
          def' <- checkDef defer
          addDeferred def'
+         ctxt <- getContext
          (cty, _)  <- tclift $ recheck ctxt [] t'
          logLvl 2 $ "---> " ++ show n ++ " : " ++ show cty
          return (n, cty)
