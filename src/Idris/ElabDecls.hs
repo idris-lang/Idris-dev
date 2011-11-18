@@ -527,13 +527,16 @@ elab ist info pattern tm
                                              pimp (MN 0 "B") Placeholder,
                                              pexp l, pexp r]))
     elab' (PDPair fc l@(PRef _ n) t r)
-                          = try (elab' (PApp fc (PRef fc sigmaTy)
+            = case t of 
+                Placeholder -> try asType asValue
+                _ -> asType
+         where asType = elab' (PApp fc (PRef fc sigmaTy)
                                         [pexp t,
-                                         pexp (PLam n Placeholder r)]))
-                                (elab' (PApp fc (PRef fc existsCon)
-                                             [pimp (MN 0 "a") t,
-                                              pimp (MN 0 "P") Placeholder,
-                                              pexp l, pexp r]))
+                                         pexp (PLam n Placeholder r)])
+               asValue = elab' (PApp fc (PRef fc existsCon)
+                                         [pimp (MN 0 "a") t,
+                                          pimp (MN 0 "P") Placeholder,
+                                          pexp l, pexp r])
     elab' (PDPair fc l t r) = elab' (PApp fc (PRef fc existsCon)
                                             [pimp (MN 0 "a") t,
                                              pimp (MN 0 "P") Placeholder,
@@ -559,7 +562,9 @@ elab ist info pattern tm
     elab' (PPi _ n ty sc) 
           = do attack; tyn <- unique_hole (MN 0 "ty")
                claim tyn (RSet 0)
-               n' <- unique_hole n
+               n' <- case n of 
+                        MN _ _ -> unique_hole n
+                        _ -> return n
                forall n' (Var tyn)
                focus tyn
                elabE ty

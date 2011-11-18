@@ -526,6 +526,7 @@ allNamesIn tm = nub $ ni [] tm
     ni env (PHidden tm)    = ni env tm
     ni env (PEq _ l r)     = ni env l ++ ni env r
     ni env (PPair _ l r)   = ni env l ++ ni env r
+    ni env (PDPair _ (PRef _ n) t r)  = ni env t ++ ni (n:env) r
     ni env (PDPair _ l t r)  = ni env l ++ ni env t ++ ni env r
     ni env _               = []
 
@@ -542,6 +543,7 @@ namesIn ist tm = nub $ ni [] tm
     ni env (PPi _ n ty sc) = ni env ty ++ ni (n:env) sc
     ni env (PEq _ l r)     = ni env l ++ ni env r
     ni env (PPair _ l r)   = ni env l ++ ni env r
+    ni env (PDPair _ (PRef _ n) t r) = ni env t ++ ni (n:env) r
     ni env (PDPair _ l t r) = ni env l ++ ni env t ++ ni env r
     ni env (PHidden tm)    = ni env tm
     ni env _               = []
