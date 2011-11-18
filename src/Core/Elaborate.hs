@@ -1,4 +1,4 @@
-{-# LANGUAGE MultiParamTypeClasses, FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses, FlexibleInstances, PatternGuards #-}
 
 {- A high level language of tactic composition, for building
    elaborators from a high level language into the core theory.

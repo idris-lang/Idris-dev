@@ -1,11 +1,11 @@
-data Sigma : (a : Set) -> (P : a -> Set) -> Set where
-    Exists : {P : a -> Set} -> (x : a) -> P x -> Sigma a P;
+data Exists : (a : Set) -> (P : a -> Set) -> Set where
+    Ex_intro : {P : a -> Set} -> (x : a) -> P x -> Exists a P;
 
-getWitness : {P : a -> Set} -> Sigma a P -> a;
-getWitness (Exists a v) = a;
+getWitness : {P : a -> Set} -> Exists a P -> a;
+getWitness (a ** v) = a;
 
-getProof : {P : a -> Set} -> (s : Sigma a P) -> P (getWitness s);
-getProof (Exists a v) = v;
+getProof : {P : a -> Set} -> (s : Exists a P) -> P (getWitness s);
+getProof (a ** v) = v;
 
 FalseElim : _|_ -> a;
 

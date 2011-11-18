@@ -610,8 +610,8 @@ eqDecl = PDatadecl eqTy (piBind [(n "a", PSet), (n "b", PSet),
     where n a = MN 0 a
 
 -- Defined in builtins.idr
-sigmaTy   = UN "Sigma"
-existsCon = UN "Exists"
+sigmaTy   = UN "Exists"
+existsCon = UN "Ex_intro"
 
 piBind :: [(Name, PTerm)] -> PTerm -> PTerm
 piBind [] t = t
