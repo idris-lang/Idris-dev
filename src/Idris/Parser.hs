@@ -399,6 +399,7 @@ pName = do i <- getState
            i <- getState
            UN n <- iName (syntax_keywords i)
            return (UN ('@':n))
+    
 
 pfName = try pName
      <|> do lchar '('; o <- operator; lchar ')'; return (UN o)
@@ -643,13 +644,6 @@ pPattern syn = do clause <- pClause syn
                   fc <- pfc
                   return (PClauses fc False (MN 2 "_") [clause]) -- collect together later
 
-whereSyn :: Name -> SyntaxInfo -> [PTerm] -> SyntaxInfo
-whereSyn n syn args = let ns = concatMap allNamesIn args
-                          ni = no_imp syn in
-                          syn { decoration = \x -> decorate n (decoration syn x),
-                                no_imp = nub (ni ++ ns) }
-  where decorate n x = UN (show n ++ "_" ++ show x)
-
 pArgExpr syn = let syn' = syn { inPattern = True } in
                    try (pHSimpleExpr syn') <|> pSimpleExtExpr syn'
 
@@ -672,9 +666,6 @@ pClause syn
                    rhs <- pRHS syn n
                    ist <- getState
                    let ctxt = tt_ctxt ist
-                   let wsyn = whereSyn n syn (map getTm iargs ++ 
-                                              map getTm cargs ++
-                                              args ++ wargs)
                    (wheres, nmap) <- choice [pWhereblock n syn, do lchar ';'
                                                                    return ([], [])]
                    return $ PClause n (PApp fc (PRef fc n) 
@@ -701,7 +692,6 @@ pClause syn
               fc <- pfc
               wargs <- many (pWExpr syn)
               rhs <- pRHS syn n
-              let wsyn = whereSyn n syn []
               (wheres, nmap) <- choice [pWhereblock n syn, do lchar ';'
                                                               return ([], [])]
               return $ PClause n (PApp fc (PRef fc n) [pexp l,pexp r]) 

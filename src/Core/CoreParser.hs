@@ -17,6 +17,7 @@ type TokenParser a = PTok.TokenParser a
 idrisDef = haskellDef { 
               opStart = iOpStart,
               opLetter = iOpLetter,
+              identLetter = identLetter haskellDef <|> lchar '.',
               reservedOpNames = [":", "..", "=", "\\", "|", "<-", "->", "=>", "**"],
               reservedNames = ["let", "in", "data", "Set", -- "if", "then", "else",
                                "do", "dsl", "import", -- "refl",
@@ -59,7 +60,11 @@ pTestFile = do p <- many1 pDef ; eof
 iName :: [String] -> CParser a Name
 iName bad = do x <- identifier
                when (x `elem` bad) $ fail "Reserved identifier"
-               return (UN x)
+               return (parseName x)
+  where
+    parseName x = case span (/= '.') x of
+                    (x, "") -> UN x
+                    (x, '.':y) -> NS x (parseName y)
 
 pDef :: CParser a (Name, RDef)
 pDef = try (do x <- iName []; lchar ':'; ty <- pTerm
