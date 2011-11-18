@@ -1,11 +1,11 @@
 data Sigma : (a : Set) -> (P : a -> Set) -> Set where
     Exists : {P : a -> Set} -> (x : a) -> P x -> Sigma a P;
 
-getSigIdx : {P : a -> Set} -> Sigma a P -> a;
-getSigIdx (Exists a v) = a;
+getWitness : {P : a -> Set} -> Sigma a P -> a;
+getWitness (Exists a v) = a;
 
-getSigVal : {P : a -> Set} -> (s : Sigma a P) -> P (getSigIdx s);
-getSigVal (Exists a v) = v;
+getProof : {P : a -> Set} -> (s : Sigma a P) -> P (getWitness s);
+getProof (Exists a v) = v;
 
 FalseElim : _|_ -> a;
 
