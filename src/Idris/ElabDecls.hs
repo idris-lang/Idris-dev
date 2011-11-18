@@ -297,12 +297,12 @@ elabClass info syn fc constraints tn ps ds
          let cons = [(cn, cty, fc)]
          let ddecl = PData syn fc (PDatadecl tn tty cons)
          elabDecl info ddecl
-         -- for each method, build a top level function
-         let usyn = syn { using = ps ++ using syn }
-         fns <- mapM (tfun cn constraint usyn (map fst imethods)) imethods
-         mapM_ (elabDecl info) (concat fns)
          -- for each constraint, bui;d a top level function to chase it
+         let usyn = syn { using = ps ++ using syn }
          fns <- mapM (cfun cn constraint usyn (map fst imethods)) constraints
+         mapM_ (elabDecl info) (concat fns)
+         -- for each method, build a top level function
+         fns <- mapM (tfun cn constraint usyn (map fst imethods)) imethods
          mapM_ (elabDecl info) (concat fns)
          i <- get
          put (i { idris_classes = addDef tn (CI cn imethods (map fst ps)) 
