@@ -95,7 +95,12 @@ process (Eval t) = do (tm, ty) <- elabVal toplevel False t
                       iputStrLn (show (delab ist tm') ++ " : " ++ 
                                  show (delab ist ty'))
 process (Check (PRef _ n))
-                    = process (Check (PQuote (Var n))) 
+                  = do ctxt <- getContext
+                       ist <- get
+                       case lookupTy n ctxt of
+                        Just t -> iputStrLn $ show n ++ " : " ++
+                                  show (delab ist t)
+                        _ -> iputStrLn $ "No such variable " ++ show n
 process (Check t) = do (tm, ty) <- elabVal toplevel False t
                        ctxt <- getContext
                        ist <- get 
