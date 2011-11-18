@@ -570,7 +570,8 @@ pStatic = do lchar '['; reserved "static"; lchar ']';
          <|> return Dynamic
 
 table fixes 
-   = [[prefix "-" (\fc x -> PApp fc (PRef fc (UN ["-"])) [pexp (PConstant (I 0)), pexp x])]] 
+   = [[prefix "-" (\fc x -> PApp fc (PRef fc (UN ["-"])) 
+        [pexp (PApp fc (PRef fc (UN ["fromInteger"])) [pexp (PConstant (I 0))]), pexp x])]] 
        ++ toTable (reverse fixes) ++
       [[binary "="  (\fc x y -> PEq fc x y) AssocLeft],
        [binary "->" (\fc x y -> PPi expl (MN 0 "X") x y) AssocRight]]
