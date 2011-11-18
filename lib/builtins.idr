@@ -19,6 +19,8 @@ sym refl = refl;
 lazy : a -> a;
 lazy x = x; -- compiled specially
 
+believe_me : a -> b; -- compiled specially as id, use with care!
+
 id : a -> a;
 id x = x;
 
