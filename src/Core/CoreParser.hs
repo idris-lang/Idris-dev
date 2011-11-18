@@ -28,7 +28,7 @@ idrisDef = haskellDef {
 
 iOpStart = oneOf ":!#$%&*+./<=>?@\\^|-~"
 iOpLetter = oneOf ":!#$%&*+./<=>?@\\^|-~"
-          <|> letter
+--          <|> letter
 
 lexer :: TokenParser a
 lexer  = PTok.makeTokenParser idrisDef
