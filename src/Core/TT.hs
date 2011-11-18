@@ -34,6 +34,7 @@ instance Show FC where
 
 data Err = Msg String
          | CantUnify Term Term Err
+         | IncompleteTerm Term
          | At FC Err
   deriving Eq
 
