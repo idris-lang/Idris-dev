@@ -252,7 +252,7 @@ prepare_apply fn imps =
     doClaims _ _ _ = fail $ "Wrong number of arguments for " ++ show fn
 
     mkMN n@(MN _ _) = n
-    mkMN n@(UN [x]) = MN 0 x
+    mkMN n@(UN x) = MN 0 x
 
 apply :: Raw -> [Bool] -> Elab [Name]
 apply fn imps = 
@@ -309,7 +309,7 @@ apply_elab n args =
                          focus n; elaboration; elabClaims failed r xs
 
     mkMN n@(MN _ _) = n
-    mkMN n@(UN [x]) = MN 0 x
+    mkMN n@(UN x) = MN 0 x
 
 simple_app :: Elab () -> Elab () -> Elab ()
 simple_app fun arg =

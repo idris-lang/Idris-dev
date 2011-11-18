@@ -89,13 +89,14 @@ traceWhen False _  a = a
 -- duplicate names, but need to be careful on lookup).
 -- Also MN for machine chosen names
 
-data Name = UN [String]
+data Name = UN String
+          | NS String Name
           | MN Int String
   deriving (Eq, Ord)
 
 instance Show Name where
-    show (UN [n]) = n
-    show (UN (n:ns)) = show (UN [n]) ++ "." ++ show (UN ns)
+    show (UN n) = n
+    show (NS s n) = s ++ "." ++ show n
     show (MN i s) = "{" ++ s ++ show i ++ "}"
 
 
@@ -308,10 +309,10 @@ uniqueName n hs | n `elem` hs = uniqueName (nextName n) hs
                 | otherwise   = n
 
 nextName (MN i n)    = MN (i+1) n
-nextName (UN (x:xs)) = let (num', nm') = span isDigit (reverse x)
-                           nm = reverse nm'
-                           num = readN (reverse num') in
-                               UN ((nm ++ show (num+1)) : xs)
+nextName (UN x) = let (num', nm') = span isDigit (reverse x)
+                      nm = reverse nm'
+                      num = readN (reverse num') in
+                          UN (nm ++ show (num+1))
   where
     readN "" = 0
     readN x  = read x

@@ -13,7 +13,7 @@ import Control.Monad.State
 import Epic.Epic hiding (Term, Type, Name, fn, compile)
 import qualified Epic.Epic as E
 
-primDefs = [UN ["mkForeign"], UN ["FalseElim"], UN ["believe_me"]]
+primDefs = [UN "mkForeign", UN "FalseElim", UN "believe_me"]
 
 compile :: FilePath -> Idris ()
 compile f = do ds <- mkDecls
@@ -32,8 +32,8 @@ mkDecls = do i <- getIState
 ename x = name ("idris_" ++ show x)
 aname x = name ("a_" ++ show x)
 
-epicMain = effect_ $ ref (ename (UN ["run__IO"])) @@
-                     ref (ename (UN ["main"]))
+epicMain = effect_ $ ref (ename (UN "run__IO")) @@
+                     ref (ename (UN "main"))
 
 class ToEpic a where
     epic :: a -> Idris E.Term
@@ -56,12 +56,12 @@ instance ToEpic Def where
 instance ToEpic (TT Name) where
     epic tm = epic' [] tm where
       epic' env tm@(App f a)
-          | (P _ (UN ["mkForeign"]) _, args) <- unApply tm
+          | (P _ (UN "mkForeign") _, args) <- unApply tm
               = doForeign args
-          | (P _ (UN ["lazy"]) _, [_, arg]) <- unApply tm
+          | (P _ (UN "lazy") _, [_, arg]) <- unApply tm
               = do arg' <- epic' env arg
                    return $ lazy_ arg'
-          | (P _ (UN ["believe_me"]) _, [_, _, arg]) <- unApply tm
+          | (P _ (UN "believe_me") _, [_, _, arg]) <- unApply tm
               = epic' env arg
       epic' env (P (DCon t a) n _) = return $ con_ t
       epic' env (P (TCon t a) n _) = return $ con_ t
@@ -83,7 +83,7 @@ instance ToEpic (TT Name) where
 
 doForeign :: [TT Name] -> Idris E.Term
 doForeign (_ : fgn : args)
-   | (_, (Constant (Str fgnName) : fgnArgTys : P _ (UN [ret]) _ : [])) <- unApply fgn
+   | (_, (Constant (Str fgnName) : fgnArgTys : P _ (UN ret) _ : [])) <- unApply fgn
         = let tys = getFTypes fgnArgTys
               rty = mkEty ret in
               do args' <- mapM epic args
@@ -94,7 +94,7 @@ doForeign (_ : fgn : args)
 getFTypes :: TT Name -> [E.Type]
 getFTypes tm = case unApply tm of
                  (nil, [arg]) -> []
-                 (cons, [a, (P _ (UN [ty]) _), xs]) -> 
+                 (cons, [a, (P _ (UN ty) _), xs]) -> 
                     let rest = getFTypes xs in
                         mkEty ty : rest                        
 

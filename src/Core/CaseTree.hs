@@ -59,12 +59,12 @@ toPat tc tms = evalState (mapM (\x -> toPat' x []) tms) []
     toPat' (P (TCon t a) n _) args | tc 
                                    = do args' <- mapM (\x -> toPat' x []) args
                                         return $ PCon n t args'
-    toPat' (Constant IType)   [] | tc = return $ PCon (UN ["Int"])    1 [] 
-    toPat' (Constant FlType)  [] | tc = return $ PCon (UN ["Float"])  2 [] 
-    toPat' (Constant ChType)  [] | tc = return $ PCon (UN ["Char"])   3 [] 
-    toPat' (Constant StrType) [] | tc = return $ PCon (UN ["String"]) 4 [] 
-    toPat' (Constant PtrType) [] | tc = return $ PCon (UN ["Ptr"])    5 [] 
-    toPat' (Constant BIType)  [] | tc = return $ PCon (UN ["Integer"]) 6 [] 
+    toPat' (Constant IType)   [] | tc = return $ PCon (UN "Int")    1 [] 
+    toPat' (Constant FlType)  [] | tc = return $ PCon (UN "Float")  2 [] 
+    toPat' (Constant ChType)  [] | tc = return $ PCon (UN "Char")   3 [] 
+    toPat' (Constant StrType) [] | tc = return $ PCon (UN "String") 4 [] 
+    toPat' (Constant PtrType) [] | tc = return $ PCon (UN "Ptr")    5 [] 
+    toPat' (Constant BIType)  [] | tc = return $ PCon (UN "Integer") 6 [] 
 
     toPat' (P Bound n _)      []   = do ns <- get
                                         if n `elem` ns 

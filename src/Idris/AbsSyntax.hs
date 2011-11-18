@@ -115,7 +115,7 @@ addDeferred ns = do mapM_ (\(n, t) -> updateContext (addTyDecl n (tidyNames [] t
                     i <- get
                     put (i { idris_metavars = map fst ns ++ idris_metavars i })
   where tidyNames used (Bind (MN i x) b sc)
-            = let n' = uniqueName (UN [x]) used in
+            = let n' = uniqueName (UN x) used in
                   Bind n' b $ tidyNames (n':used) sc
         tidyNames used (Bind n b sc)
             = let n' = uniqueName n used in
@@ -384,7 +384,7 @@ data SSymbol = Keyword Name
              | Expr Name
     deriving Show
 
-initDSL = DSL (UN [">>="]) (UN ["return"])
+initDSL = DSL (UN ">>=") (UN "return")
 
 data SyntaxInfo = Syn { using :: [(Name, PTerm)],
                         syn_params :: [(Name, PTerm)],
@@ -481,7 +481,7 @@ showImp impl tm = se 10 tm where
         = bracket p 2 $ se 10 ty ++ " => " ++ se 10 sc
     se p (PApp _ (PRef _ f) [])
         | not impl = show f
-    se p (PApp _ (PRef _ op@(UN [f:_])) args)
+    se p (PApp _ (PRef _ op@(UN (f:_))) args)
         | length (getExps args) == 2 && not impl && not (isAlpha f) 
             = let [l, r] = getExps args in
               bracket p 1 $ se 1 l ++ " " ++ show op ++ " " ++ se 0 r
@@ -594,8 +594,8 @@ pairDecl  = PDatadecl pairTy (piBind [(n "A", PSet), (n "B", PSet)] PSet)
                                                 pexp (PRef bi (n "B"))])))), bi)]
     where n a = MN 0 a
 
-eqTy = UN ["="]
-eqCon = UN ["refl"]
+eqTy = UN "="
+eqCon = UN "refl"
 eqDecl = PDatadecl eqTy (piBind [(n "a", PSet), (n "b", PSet),
                                  (n "x", PRef bi (n "a")), (n "y", PRef bi (n "b"))]
                                  PSet)
@@ -608,8 +608,8 @@ eqDecl = PDatadecl eqTy (piBind [(n "a", PSet), (n "b", PSet),
     where n a = MN 0 a
 
 -- Defined in builtins.idr
-sigmaTy   = UN ["Sigma"]
-existsCon = UN ["Exists"]
+sigmaTy   = UN "Sigma"
+existsCon = UN "Exists"
 
 piBind :: [(Name, PTerm)] -> PTerm -> PTerm
 piBind [] t = t

@@ -49,84 +49,84 @@ floatLog x = foreign_ tyFloat "log" [(x, tyFloat)]
 
 primitives =
    -- operators
-  [Prim (UN ["prim__addInt"]) (ty [IType, IType] IType) 2 (iBin (+))
+  [Prim (UN "prim__addInt") (ty [IType, IType] IType) 2 (iBin (+))
     (eOp E.plus_),
-   Prim (UN ["prim__subInt"]) (ty [IType, IType] IType) 2 (iBin (-))
+   Prim (UN "prim__subInt") (ty [IType, IType] IType) 2 (iBin (-))
     (eOp E.minus_),
-   Prim (UN ["prim__mulInt"]) (ty [IType, IType] IType) 2 (iBin (*))
+   Prim (UN "prim__mulInt") (ty [IType, IType] IType) 2 (iBin (*))
     (eOp E.times_),
-   Prim (UN ["prim__divInt"]) (ty [IType, IType] IType) 2 (iBin (div))
+   Prim (UN "prim__divInt") (ty [IType, IType] IType) 2 (iBin (div))
     (eOp E.divide_),
-   Prim (UN ["prim__eqInt"])  (ty [IType, IType] IType) 2 (biBin (==))
+   Prim (UN "prim__eqInt")  (ty [IType, IType] IType) 2 (biBin (==))
     (eOp E.eq_),
-   Prim (UN ["prim__ltInt"])  (ty [IType, IType] IType) 2 (biBin (<))
+   Prim (UN "prim__ltInt")  (ty [IType, IType] IType) 2 (biBin (<))
     (eOp E.lt_),
-   Prim (UN ["prim__lteInt"]) (ty [IType, IType] IType) 2 (biBin (<=))
+   Prim (UN "prim__lteInt") (ty [IType, IType] IType) 2 (biBin (<=))
     (eOp E.lte_),
-   Prim (UN ["prim__gtInt"])  (ty [IType, IType] IType) 2 (biBin (>))
+   Prim (UN "prim__gtInt")  (ty [IType, IType] IType) 2 (biBin (>))
     (eOp E.gt_),
-   Prim (UN ["prim__gteInt"]) (ty [IType, IType] IType) 2 (biBin (>=))
+   Prim (UN "prim__gteInt") (ty [IType, IType] IType) 2 (biBin (>=))
     (eOp E.gte_),
-   Prim (UN ["prim__addBigInt"]) (ty [BIType, BIType] BIType) 2 (bBin (+))
+   Prim (UN "prim__addBigInt") (ty [BIType, BIType] BIType) 2 (bBin (+))
     (eOpFn tyBigInt tyBigInt "addBig"),
-   Prim (UN ["prim__subBigInt"]) (ty [BIType, BIType] BIType) 2 (bBin (-))
+   Prim (UN "prim__subBigInt") (ty [BIType, BIType] BIType) 2 (bBin (-))
     (eOpFn tyBigInt tyBigInt "subBig"),
-   Prim (UN ["prim__mulBigInt"]) (ty [BIType, BIType] BIType) 2 (bBin (*))
+   Prim (UN "prim__mulBigInt") (ty [BIType, BIType] BIType) 2 (bBin (*))
     (eOpFn tyBigInt tyBigInt "mulBig"),
-   Prim (UN ["prim__divBigInt"]) (ty [BIType, BIType] BIType) 2 (bBin (div))
+   Prim (UN "prim__divBigInt") (ty [BIType, BIType] BIType) 2 (bBin (div))
     (eOpFn tyBigInt tyBigInt "divBig"),
-   Prim (UN ["prim__eqBigInt"])  (ty [BIType, BIType] IType) 2 (bbBin (==))
+   Prim (UN "prim__eqBigInt")  (ty [BIType, BIType] IType) 2 (bbBin (==))
     (eOpFn tyBigInt tyInt "eqBig"),
-   Prim (UN ["prim__ltBigInt"])  (ty [BIType, BIType] IType) 2 (bbBin (<))
+   Prim (UN "prim__ltBigInt")  (ty [BIType, BIType] IType) 2 (bbBin (<))
     (eOpFn tyBigInt tyInt "ltBig"),
-   Prim (UN ["prim__lteBigInt"])  (ty [BIType, BIType] IType) 2 (bbBin (<=))
+   Prim (UN "prim__lteBigInt")  (ty [BIType, BIType] IType) 2 (bbBin (<=))
     (eOpFn tyBigInt tyInt "leBig"),
-   Prim (UN ["prim__gtBigInt"])  (ty [BIType, BIType] IType) 2 (bbBin (>))
+   Prim (UN "prim__gtBigInt")  (ty [BIType, BIType] IType) 2 (bbBin (>))
     (eOpFn tyBigInt tyInt "gtBig"),
-   Prim (UN ["prim__gtBigInt"])  (ty [BIType, BIType] IType) 2 (bbBin (>=))
+   Prim (UN "prim__gtBigInt")  (ty [BIType, BIType] IType) 2 (bbBin (>=))
     (eOpFn tyBigInt tyInt "geBig"),
-   Prim (UN ["prim__addFloat"]) (ty [FlType, FlType] FlType) 2 (fBin (+))
+   Prim (UN "prim__addFloat") (ty [FlType, FlType] FlType) 2 (fBin (+))
     (eOp E.plusF_),
-   Prim (UN ["prim__subFloat"]) (ty [FlType, FlType] FlType) 2 (fBin (-))
+   Prim (UN "prim__subFloat") (ty [FlType, FlType] FlType) 2 (fBin (-))
     (eOp E.minusF_),
-   Prim (UN ["prim__mulFloat"]) (ty [FlType, FlType] FlType) 2 (fBin (*))
+   Prim (UN "prim__mulFloat") (ty [FlType, FlType] FlType) 2 (fBin (*))
     (eOp E.timesF_),
-   Prim (UN ["prim__divFloat"]) (ty [FlType, FlType] FlType) 2 (fBin (/))
+   Prim (UN "prim__divFloat") (ty [FlType, FlType] FlType) 2 (fBin (/))
     (eOp E.divideF_),
-   Prim (UN ["prim__eqFloat"])  (ty [FlType, FlType] IType) 2 (bfBin (==))
+   Prim (UN "prim__eqFloat")  (ty [FlType, FlType] IType) 2 (bfBin (==))
     (eOp E.eqF_),
-   Prim (UN ["prim__ltFloat"])  (ty [FlType, FlType] IType) 2 (bfBin (<))
+   Prim (UN "prim__ltFloat")  (ty [FlType, FlType] IType) 2 (bfBin (<))
     (eOp E.ltF_),
-   Prim (UN ["prim__lteFloat"]) (ty [FlType, FlType] IType) 2 (bfBin (<=))
+   Prim (UN "prim__lteFloat") (ty [FlType, FlType] IType) 2 (bfBin (<=))
     (eOp E.lteF_),
-   Prim (UN ["prim__gtFloat"])  (ty [FlType, FlType] IType) 2 (bfBin (>))
+   Prim (UN "prim__gtFloat")  (ty [FlType, FlType] IType) 2 (bfBin (>))
     (eOp E.gtF_),
-   Prim (UN ["prim__gteFloat"]) (ty [FlType, FlType] IType) 2 (bfBin (>=))
+   Prim (UN "prim__gteFloat") (ty [FlType, FlType] IType) 2 (bfBin (>=))
     (eOp E.gteF_),
-   Prim (UN ["prim__concat"]) (ty [StrType, StrType] StrType) 2 (sBin (++))
+   Prim (UN "prim__concat") (ty [StrType, StrType] StrType) 2 (sBin (++))
     ([E.name "x", E.name "y"], (fun "append") @@ fun "x" @@ fun "y"),
     -- Conversions
-   Prim (UN ["prim__strToInt"]) (ty [StrType] IType) 1 (c_strToInt)
+   Prim (UN "prim__strToInt") (ty [StrType] IType) 1 (c_strToInt)
     ([E.name "x"], strToInt (fun "x")),
-   Prim (UN ["prim__intToStr"]) (ty [IType] StrType) 1 (c_intToStr)
+   Prim (UN "prim__intToStr") (ty [IType] StrType) 1 (c_intToStr)
     ([E.name "x"], intToStr (fun "x")),
-   Prim (UN ["prim__intToBigInt"]) (ty [IType] BIType) 1 (c_intToBigInt)
+   Prim (UN "prim__intToBigInt") (ty [IType] BIType) 1 (c_intToBigInt)
     ([E.name "x"], intToBigInt (fun "x")),
-   Prim (UN ["prim__strToBigInt"]) (ty [StrType] BIType) 1 (c_strToBigInt)
+   Prim (UN "prim__strToBigInt") (ty [StrType] BIType) 1 (c_strToBigInt)
     ([E.name "x"], strToBigInt (fun "x")),
-   Prim (UN ["prim__bigIntToStr"]) (ty [BIType] StrType) 1 (c_bigIntToStr)
+   Prim (UN "prim__bigIntToStr") (ty [BIType] StrType) 1 (c_bigIntToStr)
     ([E.name "x"], bigIntToStr (fun "x")),
-   Prim (UN ["prim__strToFloat"]) (ty [StrType] FlType) 1 (c_strToFloat)
+   Prim (UN "prim__strToFloat") (ty [StrType] FlType) 1 (c_strToFloat)
     ([E.name "x"], strToFloat (fun "x")),
-   Prim (UN ["prim__floatToStr"]) (ty [FlType] StrType) 1 (c_floatToStr)
+   Prim (UN "prim__floatToStr") (ty [FlType] StrType) 1 (c_floatToStr)
     ([E.name "x"], floatToStr (fun "x")),
-   Prim (UN ["prim__intToFloat"]) (ty [IType] FlType) 1 (c_intToFloat)
+   Prim (UN "prim__intToFloat") (ty [IType] FlType) 1 (c_intToFloat)
     ([E.name "x"], intToFloat (fun "x")),
-   Prim (UN ["prim__floatToInt"]) (ty [FlType] IType) 1 (c_floatToInt)
+   Prim (UN "prim__floatToInt") (ty [FlType] IType) 1 (c_floatToInt)
     ([E.name "x"], floatToInt (fun "x")),
-   Prim (UN ["prim__floatExp"]) (ty [FlType] FlType) 1 (p_floatExp)
+   Prim (UN "prim__floatExp") (ty [FlType] FlType) 1 (p_floatExp)
     ([E.name "x"], floatExp (fun "x")), 
-   Prim (UN ["prim__floatLog"]) (ty [FlType] FlType) 1 (p_floatLog)
+   Prim (UN "prim__floatLog") (ty [FlType] FlType) 1 (p_floatLog)
     ([E.name "x"], floatLog (fun "x")) 
   ]
 

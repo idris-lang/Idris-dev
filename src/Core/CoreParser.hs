@@ -59,7 +59,7 @@ pTestFile = do p <- many1 pDef ; eof
 iName :: [String] -> CParser a Name
 iName bad = do x <- identifier
                when (x `elem` bad) $ fail "Reserved identifier"
-               return (UN [x])
+               return (UN x)
 
 pDef :: CParser a (Name, RDef)
 pDef = try (do x <- iName []; lchar ':'; ty <- pTerm

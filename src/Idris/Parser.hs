@@ -397,11 +397,11 @@ pName = do i <- getState
            iName (syntax_keywords i)
     <|> do reserved "instance"
            i <- getState
-           UN (n:ns) <- iName (syntax_keywords i)
-           return (UN (('@':n) : ns))
+           UN n <- iName (syntax_keywords i)
+           return (UN ('@':n))
 
 pfName = try pName
-     <|> do lchar '('; o <- operator; lchar ')'; return (UN [o])
+     <|> do lchar '('; o <- operator; lchar ')'; return (UN o)
 
 pSimpleExpr syn = 
         try (do symbol "!["; t <- pTerm; lchar ']' 
@@ -431,7 +431,7 @@ pSimpleExpr syn =
 modifyConst :: SyntaxInfo -> FC -> PTerm -> PTerm
 modifyConst syn fc (PConstant (I x)) 
     | not (inPattern syn)
-        = PApp fc (PRef fc (UN ["fromInteger"])) [pexp (PConstant (I x))]
+        = PApp fc (PRef fc (UN "fromInteger")) [pexp (PConstant (I x))]
 modifyConst syn fc x = x
 
 pPair syn = try (do lchar '('; l <- pExpr syn; op <- pairOp
@@ -570,8 +570,8 @@ pStatic = do lchar '['; reserved "static"; lchar ']';
          <|> return Dynamic
 
 table fixes 
-   = [[prefix "-" (\fc x -> PApp fc (PRef fc (UN ["-"])) 
-        [pexp (PApp fc (PRef fc (UN ["fromInteger"])) [pexp (PConstant (I 0))]), pexp x])]] 
+   = [[prefix "-" (\fc x -> PApp fc (PRef fc (UN "-")) 
+        [pexp (PApp fc (PRef fc (UN "fromInteger")) [pexp (PConstant (I 0))]), pexp x])]] 
        ++ toTable (reverse fixes) ++
       [[binary "="  (\fc x y -> PEq fc x y) AssocLeft],
        [binary "->" (\fc x y -> PPi expl (MN 0 "X") x y) AssocRight]]
@@ -579,9 +579,9 @@ table fixes
 toTable fs = map (map toBin) 
                  (groupBy (\ (Fix x _) (Fix y _) -> prec x == prec y) fs)
    where toBin (Fix (PrefixN _) op) = prefix op 
-                                       (\fc x -> PApp fc (PRef fc (UN [op])) [pexp x])
+                                       (\fc x -> PApp fc (PRef fc (UN op)) [pexp x])
          toBin (Fix f op) 
-            = binary op (\fc x y -> PApp fc (PRef fc (UN [op])) [pexp x,pexp y]) (assoc f)
+            = binary op (\fc x y -> PApp fc (PRef fc (UN op)) [pexp x,pexp y]) (assoc f)
          assoc (Infixl _) = AssocLeft
          assoc (Infixr _) = AssocRight
          assoc (InfixN _) = AssocNone
@@ -648,7 +648,7 @@ whereSyn n syn args = let ns = concatMap allNamesIn args
                           ni = no_imp syn in
                           syn { decoration = \x -> decorate n (decoration syn x),
                                 no_imp = nub (ni ++ ns) }
-  where decorate n x = UN [(show n ++ "_" ++ show x)]
+  where decorate n x = UN (show n ++ "_" ++ show x)
 
 pArgExpr syn = let syn' = syn { inPattern = True } in
                    try (pHSimpleExpr syn') <|> pSimpleExtExpr syn'
@@ -656,9 +656,9 @@ pArgExpr syn = let syn' = syn { inPattern = True } in
 pRHS :: SyntaxInfo -> Name -> IParser PTerm
 pRHS syn n = do lchar '='; pExpr syn
          <|> do symbol "?="; rhs <- pExpr syn;
-                return (PLet (UN ["value"]) Placeholder rhs (PMetavar n')) 
+                return (PLet (UN "value") Placeholder rhs (PMetavar n')) 
   where n' = case n of
-                UN [x] -> UN [x++"_lemma_1"]
+                UN x -> UN (x++"_lemma_1")
                 x -> x
 
 pClause :: SyntaxInfo -> IParser PClause
@@ -696,7 +696,7 @@ pClause syn
 
        <|> do l <- pArgExpr syn
               op <- operator
-              let n = UN [op]
+              let n = UN op
               r <- pArgExpr syn
               fc <- pfc
               wargs <- many (pWExpr syn)
@@ -709,7 +709,7 @@ pClause syn
 
        <|> do l <- pArgExpr syn
               op <- operator
-              let n = UN [op]
+              let n = UN op
               r <- pArgExpr syn
               fc <- pfc
               wargs <- many (pWExpr syn)

@@ -302,11 +302,11 @@ rewrite :: Raw -> RunTactic
 rewrite tm ctxt env (Bind x (Hole t) xp@(P _ x' _)) | x == x' =
     do (tmv, tmt) <- lift $ check ctxt env tm
        case unApply tmt of
-         (P _ (UN ["="]) _, [lt,rt,l,r]) ->
+         (P _ (UN "=") _, [lt,rt,l,r]) ->
             do let p = Bind rname (Lam lt) (mkP (P Bound rname lt) r l t)
                let newt = mkP l r l t 
                let sc = forget $ (Bind x (Hole newt) 
-                                       (mkApp (P Ref (UN ["replace"]) (Set 0))
+                                       (mkApp (P Ref (UN "replace") (Set 0))
                                               [lt, l, r, p, tmv, xp]))
                (scv, sct) <- lift $ check ctxt env sc
                return scv

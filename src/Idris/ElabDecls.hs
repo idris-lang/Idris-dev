@@ -166,7 +166,7 @@ elabClause info fc (PClause fname lhs_in withs rhs_in whereblock)
         (crhs, crhsty) <- tclift $ recheck ctxt [] rhs'
         return (clhs, crhs)
   where
-    decorate x = UN [show fname ++ "#" ++ show x]
+    decorate x = UN (show fname ++ "#" ++ show x)
     pinfo ns ps i 
           = let ds = concatMap declared ps
                 newps = params info ++ ns
@@ -286,7 +286,7 @@ elabClass :: ElabInfo -> SyntaxInfo ->
              FC -> [PTerm] -> 
              Name -> [(Name, PTerm)] -> [PDecl] -> Idris ()
 elabClass info syn fc constraints tn ps ds 
-    = do let cn = UN ["instance" ++ show tn] -- MN 0 ("instance" ++ show tn)
+    = do let cn = UN ("instance" ++ show tn) -- MN 0 ("instance" ++ show tn)
          let tty = pibind ps PSet
          let constraint = PApp fc (PRef fc tn)
                                   (map (pexp . PRef fc) (map fst ps))
@@ -366,7 +366,7 @@ elabInstance info syn fc cs n ps t ds
          ci <- case lookupCtxt n (idris_classes i) of
                     Just c -> return c
                     Nothing -> fail $ show n ++ " is not a type class"
-         let iname = UN ['@':show n ++ "$" ++ show ps]
+         let iname = UN ('@':show n ++ "$" ++ show ps)
          elabType info syn fc iname t
          let ips = zip (class_params ci) ps
          let mtys = map (\ (n, t) -> (decorate n, coninsert cs $ substMatches ips t)) 
@@ -394,7 +394,8 @@ elabInstance info syn fc cs n ps t ds
 
     papp fc f [] = f
     papp fc f as = PApp fc f as
-    decorate (UN (n:ns)) = UN (('!':n) : ns)
+    decorate (UN n) = UN ('!':n)
+    decorate (NS s n) = NS s (decorate n)
     decorateid (PTy s f n t) = PTy s f (decorate n) t
     decorateid (PClauses f o n cs) = PClauses f o (decorate n) (map dc cs)
       where dc (PClause n t as w ds) = PClause (decorate n) (dappname t) as w ds
@@ -626,8 +627,8 @@ elab ist info pattern tm
         = elabArgs failed r ns args
     elabArgs failed r (n:ns) ((lazy, t) : args)
         | lazy && not pattern 
-          = do elabArg n (PApp bi (PRef bi (UN ["lazy"]))
-                               [pimp (UN ["a"]) Placeholder,
+          = do elabArg n (PApp bi (PRef bi (UN "lazy"))
+                               [pimp (UN "a") Placeholder,
                                 pexp t]); 
         | otherwise = elabArg n t
       where elabArg n t = if r
@@ -655,7 +656,8 @@ resolveTC depth ist
     blunderbuss t (n:ns) | tcname n = try (resolve n depth)
                                           (blunderbuss t ns)
                          | otherwise = blunderbuss t ns
-    tcname (UN (('@':_) : _)) = True
+    tcname (UN ('@':_)) = True
+    tcname (NS _ n) = tcname n
     tcname _ = False
 
     resolve n depth

@@ -17,7 +17,7 @@ delab ist tm = de [] tm
 
     de env (App f a) = deFn env f [a]
     de env (V i)     | i < length env = PRef un (env!!i)
-                     | otherwise = PRef un (UN ["v" ++ show i ++ ""])
+                     | otherwise = PRef un (UN ("v" ++ show i ++ ""))
     de env (P _ n _) | n == unitTy = PTrue un
                      | n == unitCon = PTrue un
                      | n == falseTy = PFalse un
