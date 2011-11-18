@@ -301,6 +301,9 @@ elabClass info syn fc constraints tn ps ds
          let usyn = syn { using = ps ++ using syn }
          fns <- mapM (tfun cn constraint usyn (map fst imethods)) imethods
          mapM_ (elabDecl info) (concat fns)
+         -- for each constraint, bui;d a top level function to chase it
+         fns <- mapM (cfun cn constraint usyn (map fst imethods)) constraints
+         mapM_ (elabDecl info) (concat fns)
          i <- get
          put (i { idris_classes = addDef tn (CI cn imethods (map fst ps)) 
                                             (idris_classes i) })
@@ -317,6 +320,18 @@ elabClass info syn fc constraints tn ps ds
                                         (n, (toExp (map fst ps) Imp t')) )
     tdecl (PClauses _ _ _ _) = fail "No default definitions allowed yet"
     tdecl _ = fail "Not allowed in a class declaration"
+
+    cfun cn c syn all con
+        = do let cfn = UN ('@':show cn ++ "#" ++ show con)
+             let mnames = take (length all) $ map (\x -> MN x "meth") [0..]
+             let capp = PApp fc (PRef fc cn) (map (pexp . PRef fc) mnames)
+             let lhs = PApp fc (PRef fc cfn) [pconst capp]
+             let rhs = PResolveTC (FC "HACK" 0)
+             let ty = PPi constraint (MN 0 "pc") c con
+             iLOG (showImp True ty)
+             iLOG (showImp True lhs ++ " = " ++ showImp True rhs)
+             return [PTy syn fc cfn ty,
+                     PClauses fc True cfn [PClause cfn lhs [] rhs []]]
 
     tfun cn c syn all (m, ty) 
         = do let ty' = insertConstraint c ty
@@ -513,6 +528,8 @@ elab ist info pattern tm
     elab' (PTrue fc)     = try (elab' (PRef fc unitCon))
                                (elab' (PRef fc unitTy))
     elab' (PFalse fc)    = elab' (PRef fc falseTy)
+    elab' (PResolveTC (FC "HACK" _))
+       = resolveTC 10 ist
     elab' (PResolveTC fc) = do c <- unique_hole (MN 0 "c")
                                instanceArg c
     elab' (PRefl fc)     = elab' (PApp fc (PRef fc eqCon) [pimp (MN 0 "a") Placeholder,
