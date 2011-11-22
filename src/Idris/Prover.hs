@@ -37,7 +37,7 @@ prove ctxt n ty
          lift $ dumpProof n prf
          let tree = simpleCase False [(P Ref n ty, tm)]
          logLvl 3 (show tree)
-         (ptm, pty) <- tclift $ recheck ctxt [] tm
+         (ptm, pty) <- recheckC ctxt [] tm
          updateContext (addCasedef n True False [(P Ref n ty, ptm)] ty)
          solveDeferred n
 

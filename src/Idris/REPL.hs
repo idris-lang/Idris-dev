@@ -110,6 +110,10 @@ process (Check t) = do (tm, ty) <- elabVal toplevel False t
                        let ty' = normaliseC ctxt [] ty
                        iputStrLn (showImp imp (delab ist tm) ++ " : " ++ 
                                  showImp imp (delab ist ty))
+process Universes = do ctxt <- getContext
+                       let cs = nub $ uconstraints ctxt
+                       lift $ print cs
+                       iputStrLn $ "(" ++ show (length cs) ++ " constraints)"
 process (Defn n) = do ctxt <- getContext
                       lift $ print (lookupDef n ctxt)
 process (Spec t) = do (tm, ty) <- elabVal toplevel False t

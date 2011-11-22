@@ -47,7 +47,7 @@ data IState = IState { tt_ctxt :: Context,
                        errLine :: Maybe Int
                      }
                    
-idrisInit = IState emptyContext [] emptyContext emptyContext emptyContext
+idrisInit = IState initContext [] emptyContext emptyContext emptyContext
                    "" defaultOpts 6 [] [] [] [] [] [] [] [] Nothing
 
 -- The monad for the main REPL - reading and processing files and updating 
@@ -100,7 +100,7 @@ getName = do i <- get;
 checkUndefined :: FC -> Name -> Idris ()
 checkUndefined fc n 
     = do i <- getContext
-         case lookupCtxt n i of
+         case lookupTy n i of
              Just _ -> fail $ show fc ++ ":" ++ 
                        show n ++ " already defined"
              _ -> return ()
@@ -110,6 +110,14 @@ setContext ctxt = do i <- get; put (i { tt_ctxt = ctxt } )
 
 updateContext :: (Context -> Context) -> Idris ()
 updateContext f = do i <- get; put (i { tt_ctxt = f (tt_ctxt i) } )
+
+addConstraints :: (Int, [UConstraint]) -> Idris ()
+addConstraints (v, cs)
+    = do i <- get
+         let ctxt = tt_ctxt i
+         let ctxt' = ctxt { uconstraints = cs ++ uconstraints ctxt,
+                            next_tvar = v }
+         put (i { tt_ctxt = ctxt' })
 
 addDeferred :: [(Name, Type)] -> Idris ()
 addDeferred ns = do mapM_ (\(n, t) -> updateContext (addTyDecl n (tidyNames [] t))) ns
@@ -176,7 +184,7 @@ setTypeCase t = do i <- get
 
 data Command = Quit | Help | Eval PTerm | Check PTerm | Reload | Edit
              | Compile String | Execute String
-             | Metavars | Prove Name
+             | Metavars | Prove Name | Universes
              | TTShell 
              | LogLvl Int | Spec PTerm | HNF PTerm | Defn Name
              | NOP
@@ -546,7 +554,7 @@ namesIn ist tm = nub $ ni [] tm
   where
     ni env (PRef _ n)        
         | not (n `elem` env) 
-            = case lookupCtxt n (tt_ctxt ist) of
+            = case lookupTy n (tt_ctxt ist) of
                 Nothing -> [n]
                 _ -> []
     ni env (PApp _ f as)   = ni env f ++ concatMap (ni env) (map getTm as)
@@ -572,7 +580,7 @@ inferDecl = PDatadecl inferTy
                                   (PRef bi inferTy)), bi)]
 
 infTerm t = PApp bi (PRef bi inferCon) [pimp (MN 0 "A") Placeholder, pexp t]
-infP = P (TCon 6 0) inferTy (Set 0)
+infP = P (TCon 6 0) inferTy (Set (UVal 0))
 
 getInferTerm, getInferType :: Term -> Term
 getInferTerm (Bind n b sc) = Bind n b $ getInferTerm sc

@@ -34,6 +34,7 @@ pCmd = try (do cmd ["q", "quit"]; eof; return Quit)
    <|> try (do cmd ["hnf"]; t <- pFullExpr defaultSyntax; return (HNF t))
    <|> try (do cmd ["d", "def"]; n <- pName; eof; return (Defn n))
    <|> try (do cmd ["t", "type"]; do t <- pFullExpr defaultSyntax; return (Check t))
+   <|> try (do cmd ["u", "universes"]; eof; return Universes)
    <|> do t <- pFullExpr defaultSyntax; return (Eval t)
    <|> do eof; return NOP
 

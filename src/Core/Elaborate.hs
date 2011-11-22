@@ -134,7 +134,7 @@ unique_hole n = do ES p _ _ <- get
 uniqueNameCtxt :: Context -> Name -> [Name] -> Elab Name
 uniqueNameCtxt ctxt n hs 
     | n `elem` hs = uniqueNameCtxt ctxt (nextName n) hs
-    | Just _ <- lookupCtxt n ctxt = uniqueNameCtxt ctxt (nextName n) hs
+    | Just _ <- lookupTy n ctxt = uniqueNameCtxt ctxt (nextName n) hs
     | otherwise = return n
 
 elog :: String -> Elab ()
@@ -320,8 +320,8 @@ simple_app fun arg =
        b <- unique_hole (MN 0 "b")
        f <- unique_hole (MN 0 "f")
        s <- unique_hole (MN 0 "s")
-       claim a (RSet 0)
-       claim b (RSet 0)
+       claim a RSet
+       claim b RSet
        claim f (RBind (MN 0 "aX") (Pi (Var a)) (Var b))
        start_unify s
        claim s (Var a)
@@ -339,7 +339,7 @@ simple_app fun arg =
 -- which we'll fill with the argument type too.
 arg :: Name -> Name -> Elab ()
 arg n tyhole = do ty <- unique_hole tyhole
-                  claim ty (RSet 0)
+                  claim ty RSet
                   forall n (Var ty)
 
 -- Try a tactic, if it fails, try another

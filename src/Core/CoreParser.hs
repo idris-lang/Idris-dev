@@ -127,8 +127,8 @@ pExp = do lchar '\\'; x <- iName []; lchar ':'; ty <- pTerm
                    lchar '.';
                    sc <- pTerm
                    return (RBind x (PVar ty) sc))
-       <|> try (do reserved "Set"; i <- option 0 natural
-                   return (RSet (fromInteger i)))
+       <|> try (do reserved "Set"
+                   return RSet)
        <|> try (do x <- iName []
                    return (Var x))
 

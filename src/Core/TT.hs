@@ -127,7 +127,7 @@ data Const = I Int | BI Integer | Fl Double | Ch Char | Str String
 data Raw = Var Name
          | RBind Name (Binder Raw) Raw
          | RApp Raw Raw
-         | RSet Int
+         | RSet
          | RConstant Const
   deriving (Show, Eq)
 
@@ -177,6 +177,25 @@ type RProgram = [(Name, RDef)]
 
 -- WELL TYPED TERMS ---------------------------------------------------------
 
+data UExp = UVar Int -- universe variable
+          | UVal Int -- explicit universe level
+  deriving Eq
+
+instance Show UExp where
+    show (UVar x) | x < 26 = [toEnum (x + fromEnum 'a')]
+                  | otherwise = toEnum ((x `mod` 26) + fromEnum 'a') : show (x `div` 26)
+    show (UVal x) = show x
+
+data UConstraint = ULT UExp UExp
+                 | ULE UExp UExp
+  deriving Eq
+
+instance Show UConstraint where
+    show (ULT x y) = show x ++ " < " ++ show y
+    show (ULE x y) = show x ++ " <= " ++ show y
+
+type UCs = (Int, [UConstraint])
+
 data NameType = Bound | Ref | DCon Int Int | TCon Int Int
   deriving (Show, Eq)
 
@@ -185,7 +204,7 @@ data TT n = P NameType n (TT n) -- embed type
           | Bind n (Binder (TT n)) (TT n)
           | App (TT n) (TT n) -- function, function type, arg
           | Constant Const
-          | Set Int
+          | Set UExp
   deriving Functor
 
 type EnvTT n = [(n, Binder (TT n))]
@@ -201,9 +220,24 @@ instance Eq n => Eq (TT n) where
     (==) (V x)          (V y)          = x == y
     (==) (Bind _ xb xs) (Bind _ yb ys) = xb == yb && xs == ys
     (==) (App fx ax)    (App fy ay)    = fx == fy && ax == ay
-    (==) (Set x)        (Set y)        = x == y
+    (==) (Set _)        (Set _)        = True -- deal with constraints later
     (==) (Constant x)   (Constant y)   = x == y
     (==) _              _              = False
+
+convEq :: Eq n => TT n -> TT n -> StateT UCs TC Bool
+convEq (P xt x _) (P yt y _) = return (xt == yt && x == y)
+convEq (V x)      (V y)      = return (x == y)
+convEq (Bind _ xb xs) (Bind _ yb ys) 
+                             = liftM2 (&&) (convEqB xb yb) (convEq xs ys)
+  where convEqB (Let v t) (Let v' t') = liftM2 (&&) (convEq v v') (convEq t t')
+        convEqB (Guess v t) (Guess v' t') = liftM2 (&&) (convEq v v') (convEq t t')
+        convEqB b b' = convEq (binderTy b) (binderTy b')
+convEq (App fx ax) (App fy ay)   = liftM2 (&&) (convEq fx fy) (convEq ax ay)
+convEq (Constant x) (Constant y) = return (x == y)
+convEq (Set x) (Set y)           = do (v, cs) <- get
+                                      put (v, ULE x y : cs)
+                                      return True
+convEq _ _ = return False
 
 -- A few handy operations on well typed terms:
 
@@ -291,7 +325,7 @@ forget tm = fe [] tm
     fe env (App f a) = RApp (fe env f) (fe env a)
     fe env (Constant c) 
                      = RConstant c
-    fe env (Set i)   = RSet i
+    fe env (Set i)   = RSet
 
 bindAll :: [(n, Binder (TT n))] -> TT n -> TT n 
 bindAll [] t =t
@@ -358,7 +392,7 @@ showEnv' env t dbg = se 10 env t where
     se p env (Bind n b sc) = bracket p 2 $ sb env n b ++ se 10 ((n,b):env) sc
     se p env (App f a) = bracket p 1 $ se 1 env f ++ " " ++ se 0 env a
     se p env (Constant c) = show c
-    se p env (Set i) = "Set" ++ show i
+    se p env (Set i) = "Set " ++ show i
 
     sb env n (Lam t)  = showb env "\\ " " => " n t
     sb env n (Hole t) = showb env "? " ". " n t

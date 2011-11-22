@@ -28,8 +28,12 @@ data ElabInfo = EInfo { params :: [(Name, PTerm)],
 
 toplevel = EInfo [] emptyContext id
 
+recheckC ctxt env t = do (tm, ty, cs) <- tclift $ recheck ctxt env t
+                         addConstraints cs
+                         return (tm, ty)
+
 checkDef ns = do ctxt <- getContext
-                 mapM (\(n, t) -> do (t', _) <- tclift $ recheck ctxt [] t
+                 mapM (\(n, t) -> do (t', _) <- recheckC ctxt [] t
                                      return (n, t')) ns
 
 elabType :: ElabInfo -> SyntaxInfo -> FC -> Name -> PTerm -> Idris ()
@@ -41,9 +45,9 @@ elabType info syn fc n ty' = {- let ty' = piBind (params info) ty_in
          ty' <- implicit syn n ty'
          let ty = addImpl i ty'
          logLvl 2 $ show n ++ " type " ++ showImp True ty
-         ((ty', defer), log) <- tclift $ elaborate ctxt n (Set 0) 
+         ((ty', defer), log) <- tclift $ elaborate ctxt n (Set (UVal 0)) 
                                          (erun fc (build i info False ty))
-         (cty, _)   <- tclift $ recheck ctxt [] ty'
+         (cty, _)   <- recheckC ctxt [] ty'
          logLvl 2 $ "---> " ++ show cty
          let nty = normalise ctxt [] cty
          ds <- checkDef ((n, nty):defer)
@@ -57,11 +61,11 @@ elabData info syn fc (PDatadecl n t_in dcons)
          i <- get
          t_in <- implicit syn n t_in
          let t = addImpl i t_in
-         ((t', defer), log) <- tclift $ elaborate ctxt n (Set 0) 
+         ((t', defer), log) <- tclift $ elaborate ctxt n (Set (UVal 0)) 
                                         (erun fc (build i info False t))
          def' <- checkDef defer
          addDeferred def'
-         (cty, _)  <- tclift $ recheck ctxt [] t'
+         (cty, _)  <- recheckC ctxt [] t'
          logLvl 2 $ "---> " ++ show cty
          updateContext (addTyDecl n cty) -- temporary, to check cons
          cons <- mapM (elabCon info syn) dcons
@@ -76,13 +80,13 @@ elabCon info syn (n, t_in, fc)
          t_in <- implicit syn n t_in
          let t = addImpl i t_in
          logLvl 2 $ show fc ++ ":Constructor " ++ show n ++ " : " ++ showImp True t
-         ((t', defer), log) <- tclift $ elaborate ctxt n (Set 0) 
+         ((t', defer), log) <- tclift $ elaborate ctxt n (Set (UVal 0)) 
                                         (erun fc (build i info False t))
          logLvl 2 $ "Rechecking " ++ show t'
          def' <- checkDef defer
          addDeferred def'
          ctxt <- getContext
-         (cty, _)  <- tclift $ recheck ctxt [] t'
+         (cty, _)  <- recheckC ctxt [] t'
          logLvl 2 $ "---> " ++ show n ++ " : " ++ show cty
          return (n, cty)
 
@@ -118,7 +122,7 @@ elabVal info aspat tm_in
         logLvl 3 ("Value: " ++ show tm')
         let vtm = getInferTerm tm'
         logLvl 2 (show vtm)
-        tclift $ recheck ctxt [] vtm
+        recheckC ctxt [] vtm
 
 elabClause :: ElabInfo -> FC -> PClause -> Idris (Term, Term)
 elabClause info fc (PClause fname lhs_in withs rhs_in whereblock) 
@@ -133,7 +137,7 @@ elabClause info fc (PClause fname lhs_in withs rhs_in whereblock)
         let lhs_tm = orderPats (getInferTerm lhs')
         let lhs_ty = getInferType lhs'
         logLvl 3 (show lhs_tm)
-        (clhs, clhsty) <- tclift $ recheck ctxt [] lhs_tm
+        (clhs, clhsty) <- recheckC ctxt [] lhs_tm
         logLvl 5 ("Checked " ++ show clhs)
         -- Elaborate where block
         ist <- getIState
@@ -163,7 +167,7 @@ elabClause info fc (PClause fname lhs_in withs rhs_in whereblock)
         def' <- checkDef defer
         addDeferred def'
         ctxt <- getContext
-        (crhs, crhsty) <- tclift $ recheck ctxt [] rhs'
+        (crhs, crhsty) <- recheckC ctxt [] rhs'
         return (clhs, crhs)
   where
     decorate x = UN (show fname ++ "#" ++ show x)
@@ -193,7 +197,7 @@ elabClause info fc (PWith fname lhs_in withs wval_in withblock)
         let lhs_ty = getInferType lhs'
         let ret_ty = getRetTy lhs_ty
         logLvl 3 (show lhs_tm)
-        (clhs, clhsty) <- tclift $ recheck ctxt [] lhs_tm
+        (clhs, clhsty) <- recheckC ctxt [] lhs_tm
         logLvl 5 ("Checked " ++ show clhs)
         let bargs = getPBtys lhs_tm
         let wval = addImpl i wval_in
@@ -210,7 +214,7 @@ elabClause info fc (PWith fname lhs_in withs wval_in withblock)
                             return (tt, d))
         def' <- checkDef defer
         addDeferred def'
-        (cwval, cwvalty) <- tclift $ recheck ctxt [] (getInferTerm wval')
+        (cwval, cwvalty) <- recheckC ctxt [] (getInferTerm wval')
         logLvl 3 ("With type " ++ show cwvalty ++ "\nRet type " ++ show ret_ty)
         windex <- getName
         -- build a type declaration for the new function:
@@ -245,7 +249,7 @@ elabClause info fc (PWith fname lhs_in withs wval_in withblock)
                         return (tt, d))
         def' <- checkDef defer
         addDeferred def'
-        (crhs, crhsty) <- tclift $ recheck ctxt [] rhs'
+        (crhs, crhsty) <- recheckC ctxt [] rhs'
         return (clhs, crhs)
   where
     getImps (Bind n (Pi _) t) = pexp Placeholder : getImps t
@@ -522,7 +526,7 @@ elab ist info pattern tm
     local f = do e <- get_env
                  return (f `elem` map fst e)
 
-    elab' PSet           = do fill (RSet 0); solve
+    elab' PSet           = do fill RSet; solve
     elab' (PConstant c)  = do apply (RConstant c) []; solve
     elab' (PQuote r)     = do fill r; solve
     elab' (PTrue fc)     = try (elab' (PRef fc unitCon))
@@ -560,7 +564,7 @@ elab ist info pattern tm
                                              pexp l, pexp r])
     elab' (PRef fc n) | pattern && not (inparamBlock n)
                          = do ctxt <- get_context
-                              let sc = case lookupCtxt n ctxt of
+                              let sc = case lookupTy n ctxt of
                                           Nothing -> True
                                           _ -> False
                               if sc
@@ -576,7 +580,7 @@ elab ist info pattern tm
           = do attack; intro (Just n); elabE sc; solve
     elab' (PLam n ty sc)
           = do tyn <- unique_hole (MN 0 "lamty")
-               claim tyn (RSet 0)
+               claim tyn RSet
                attack
                introTy (Var tyn) (Just n)
                -- end_unify
@@ -588,7 +592,7 @@ elab ist info pattern tm
           = do attack; arg n (MN 0 "ty"); elabE sc; solve
     elab' (PPi _ n ty sc) 
           = do attack; tyn <- unique_hole (MN 0 "ty")
-               claim tyn (RSet 0)
+               claim tyn RSet
                n' <- case n of 
                         MN _ _ -> unique_hole n
                         _ -> return n
@@ -600,7 +604,7 @@ elab ist info pattern tm
     elab' (PLet n ty val sc)
           = do attack;
                tyn <- unique_hole (MN 0 "letty")
-               claim tyn (RSet 0)
+               claim tyn RSet
                valn <- unique_hole (MN 0 "letval")
                claim valn (Var tyn)
                letbind n (Var tyn) (Var valn)
@@ -682,7 +686,7 @@ resolveTC depth ist
               = do t <- goal
                    tm <- get_term
                    try (trivial ist)
-                       (blunderbuss t (map fst (toAlist (tt_ctxt ist))))
+                       (blunderbuss t (map fst (ctxtAlist (tt_ctxt ist))))
   where
     blunderbuss t [] = fail $ "Can't resolve type class " ++ show t
     blunderbuss t (n:ns) | tcname n = try (resolve n depth)
@@ -753,7 +757,7 @@ runTac autoSolve ist tac = runT (fmap (addImpl ist) tac) where
               = do attack; -- (h:_) <- get_holes
                    tyn <- unique_hole (MN 0 "rty")
                    -- start_unify h
-                   claim tyn (RSet 0)
+                   claim tyn RSet
                    valn <- unique_hole (MN 0 "rval")
                    claim valn (Var tyn)
                    letn <- unique_hole (MN 0 "rewrite_rule")
@@ -765,7 +769,7 @@ runTac autoSolve ist tac = runT (fmap (addImpl ist) tac) where
     runT (LetTac n tm)
               = do attack
                    tyn <- unique_hole (MN 0 "letty")
-                   claim tyn (RSet 0)
+                   claim tyn RSet
                    valn <- unique_hole (MN 0 "letval")
                    claim valn (Var tyn)
                    letn <- unique_hole n

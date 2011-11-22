@@ -325,7 +325,7 @@ rewrite tm ctxt env (Bind x (Hole t) xp@(P _ x' _)) | x == x' =
             do let p = Bind rname (Lam lt) (mkP (P Bound rname lt) r l t)
                let newt = mkP l r l t 
                let sc = forget $ (Bind x (Hole newt) 
-                                       (mkApp (P Ref (UN "replace") (Set 0))
+                                       (mkApp (P Ref (UN "replace") (Set (UVal 0)))
                                               [lt, l, r, p, tmv, xp]))
                (scv, sct) <- lift $ check ctxt env sc
                return scv
@@ -398,7 +398,7 @@ updateSolved xs t = t
 processTactic :: Tactic -> ProofState -> TC (ProofState, String)
 processTactic QED ps = case holes ps of
                            [] -> do let tm = {- normalise (context ps) [] -} (pterm ps)
-                                    (tm', ty') <- recheck (context ps) [] tm
+                                    (tm', ty', _) <- recheck (context ps) [] tm
                                     return (ps { done = True, pterm = tm' }, 
                                             "Proof complete: " ++ showEnv [] tm')
                            _  -> fail "Still holes to fill."

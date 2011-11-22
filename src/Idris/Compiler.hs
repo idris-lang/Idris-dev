@@ -26,7 +26,7 @@ compile f = do ds <- mkDecls
 
 mkDecls :: Idris [EpicDecl]
 mkDecls = do i <- getIState
-             decls <- mapM build (toAlist (tt_ctxt i))
+             decls <- mapM build (ctxtAlist (tt_ctxt i))
              return $ basic_defs ++ EpicFn (name "main") epicMain : decls
 
 ename x = name ("idris_" ++ show x)

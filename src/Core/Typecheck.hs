@@ -14,6 +14,15 @@ import Core.Evaluate
 -- deal with alpha conversion - we do this by making each inner term de Bruijn
 -- indexed with 'finalise'
 
+convertsC :: Context -> Env -> Term -> Term -> StateT UCs TC ()
+convertsC ctxt env x y 
+   = do c <- convEq (finalise (normalise ctxt env x))
+                    (finalise (normalise ctxt env y))
+        if c then return ()
+             else fail ("Can't convert between " ++ 
+                        showEnv env (finalise (normalise ctxt env x)) ++ " and " ++ 
+                        showEnv env (finalise (normalise ctxt env y)))
+
 converts :: Context -> Env -> Term -> Term -> TC ()
 converts ctxt env x y = if (finalise (normalise ctxt env x) == 
                             finalise (normalise ctxt env y))
@@ -24,20 +33,21 @@ converts ctxt env x y = if (finalise (normalise ctxt env x) ==
 
 isSet :: Context -> Env -> Term -> TC ()
 isSet ctxt env tm = isSet' (normalise ctxt env tm)
-    where isSet' :: Term -> TC ()
-          isSet' (Set _) = return ()
+    where isSet' (Set _) = return ()
           isSet' tm = fail (showEnv env tm ++ " is not a Set")
 
-recheck :: Context -> Env -> Term -> TC (Term, Type)
+recheck :: Context -> Env -> Term -> TC (Term, Type, UCs)
 recheck ctxt env tm 
-   = case check' False ctxt env (forget tm) of -- holes banned
-        Error (IncompleteTerm _) -> Error $ IncompleteTerm tm
-        x -> x
+   = let v = next_tvar ctxt in
+       case runStateT (check' False ctxt env (forget tm)) (v, []) of -- holes banned
+          Error (IncompleteTerm _) -> Error $ IncompleteTerm tm
+          OK ((tm, ty), constraints) -> 
+              return (tm, ty, constraints)
 
 check :: Context -> Env -> Raw -> TC (Term, Type)
-check = check' True -- Holes allowed
+check ctxt env tm = evalStateT (check' True ctxt env tm) (0, []) -- Holes allowed
 
-check' :: Bool -> Context -> Env -> Raw -> TC (Term, Type)
+check' :: Bool -> Context -> Env -> Raw -> StateT UCs TC (Term, Type)
 check' holes ctxt env top = chk env top where
   chk env (Var n)
       | Just (i, ty) <- lookupTyEnv n env = return (P Bound n ty, ty)
@@ -49,8 +59,8 @@ check' holes ctxt env top = chk env top where
            let fty' = renameBinders 0 $ normalise ctxt env fty
            case fty' of
              Bind x (Pi s) t ->
-                 do converts ctxt env s aty
-                    let apty = normalise emptyContext env (Bind x (Let aty av) t)
+                 do convertsC ctxt env aty s
+                    let apty = normalise initContext env (Bind x (Let aty av) t)
                     return (App fv av, apty)
              t -> fail "Can't apply a non-function type"
     -- This rather unpleasant hack is needed because during incomplete 
@@ -60,14 +70,27 @@ check' holes ctxt env top = chk env top where
     where renameBinders i (Bind x (Pi s) t) = Bind (MN i "binder") (Pi s) 
                                                    (renameBinders (i+1) t)
           renameBinders i sc = sc
-  chk env (RSet i) = return (Set i, Set i) -- LATER: (i+1))
+  chk env RSet 
+    | holes = return (Set (UVal 0), Set (UVal 0))
+    | otherwise = do (v, cs) <- get
+                     let c = ULT (UVar v) (UVar (v+1))
+                     put (v+2, (c:cs))
+                     return (Set (UVar v), Set (UVar (v+1)))
   chk env (RConstant c) = return (Constant c, constType c)
     where constType (I _)   = Constant IType
           constType (BI _)  = Constant BIType
           constType (Fl _)  = Constant FlType
           constType (Ch _)  = Constant ChType
           constType (Str _) = Constant StrType
-          constType _       = Set 0
+          constType _       = Set (UVal 0)
+  chk env (RBind n (Pi s) t)
+      = do (sv, st) <- chk env s
+           (tv, tt) <- chk ((n, Pi sv) : env) t
+           (v, cs) <- get
+           let Set su = normalise ctxt env st
+           let Set tu = normalise ctxt env tt
+           when (not holes) $ put (v+1, ULT su (UVar v):ULT tu (UVar v):cs)
+           return (Bind n (Pi sv) (pToV n tv), Set (UVar v))  
   chk env (RBind n b sc)
       = do b' <- checkBinder b
            (scv, sct) <- chk ((n, b'):env) sc
@@ -76,65 +99,65 @@ check' holes ctxt env top = chk env top where
             = do (tv, tt) <- chk env t
                  let tv' = normalise ctxt env tv
                  let tt' = normalise ctxt env tt
-                 isSet ctxt env tt'
+                 lift $ isSet ctxt env tt'
                  return (Lam tv)
           checkBinder (Pi t)
             = do (tv, tt) <- chk env t
                  let tv' = normalise ctxt env tv
                  let tt' = normalise ctxt env tt
-                 isSet ctxt env tt'
+                 lift $ isSet ctxt env tt'
                  return (Pi tv)
           checkBinder (Let t v)
             = do (tv, tt) <- chk env t
                  (vv, vt) <- chk env v
                  let tv' = normalise ctxt env tv
                  let tt' = normalise ctxt env tt
-                 converts ctxt env tv vt
-                 isSet ctxt env tt'
+                 convertsC ctxt env tv vt
+                 lift $ isSet ctxt env tt'
                  return (Let tv vv)
           checkBinder (NLet t v)
             = do (tv, tt) <- chk env t
                  (vv, vt) <- chk env v
                  let tv' = normalise ctxt env tv
                  let tt' = normalise ctxt env tt
-                 converts ctxt env tv vt
-                 isSet ctxt env tt'
+                 convertsC ctxt env tv vt
+                 lift $ isSet ctxt env tt'
                  return (NLet tv vv)
           checkBinder (Hole t)
-            | not holes = tfail (IncompleteTerm undefined)
+            | not holes = lift $ tfail (IncompleteTerm undefined)
             | otherwise
                    = do (tv, tt) <- chk env t
                         let tv' = normalise ctxt env tv
                         let tt' = normalise ctxt env tt
-                        isSet ctxt env tt'
+                        lift $ isSet ctxt env tt'
                         return (Hole tv)
           checkBinder (GHole t)
             = do (tv, tt) <- chk env t
                  let tv' = normalise ctxt env tv
                  let tt' = normalise ctxt env tt
-                 isSet ctxt env tt'
+                 lift $ isSet ctxt env tt'
                  return (GHole tv)
           checkBinder (Guess t v)
-            | not holes = tfail (IncompleteTerm undefined)
+            | not holes = lift $ tfail (IncompleteTerm undefined)
             | otherwise
                    = do (tv, tt) <- chk env t
                         (vv, vt) <- chk env v
                         let tv' = normalise ctxt env tv
                         let tt' = normalise ctxt env tt
-                        converts ctxt env tv vt
-                        isSet ctxt env tt'
+                        convertsC ctxt env tv vt
+                        lift $ isSet ctxt env tt'
                         return (Guess tv vv)
           checkBinder (PVar t)
             = do (tv, tt) <- chk env t
                  let tv' = normalise ctxt env tv
                  let tt' = normalise ctxt env tt
-                 isSet ctxt env tt'
+                 lift $ isSet ctxt env tt'
                  return (PVar tv)
           checkBinder (PVTy t)
             = do (tv, tt) <- chk env t
                  let tv' = normalise ctxt env tv
                  let tt' = normalise ctxt env tt
-                 isSet ctxt env tt'
+                 lift $ isSet ctxt env tt'
                  return (PVTy tv)
   
           discharge n (Lam t) scv sct

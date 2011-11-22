@@ -2,7 +2,8 @@
              PatternGuards #-}
 
 module Core.Evaluate(normalise, normaliseC, simplify, specialise, hnf,
-                Fun(..), Def(..), Context, 
+                Fun(..), Def(..), 
+                Context, initContext, ctxtAlist, uconstraints, next_tvar,
                 addToCtxt, addTyDecl, addDatatype, addCasedef, addOperator,
                 lookupTy, lookupP, lookupDef, lookupVal, lookupTyEnv,
                 Value(..)) where
@@ -25,7 +26,7 @@ data Value = VP NameType Name Value
            | VV Int
            | VBind Name (Binder Value) (Value -> Eval Value)
            | VApp Value Value
-           | VSet Int
+           | VSet UExp
            | VConstant Const
            | VTmp Int
 
@@ -33,7 +34,7 @@ data HNF = HP NameType Name (TT Name)
          | HV Int
          | HBind Name (Binder HNF) (HNF -> Eval HNF)
          | HApp HNF [HNF] [TT Name]
-         | HSet Int
+         | HSet UExp
          | HConstant Const
          | HTmp Int
     deriving Show
@@ -438,44 +439,63 @@ instance Show Def where
 
 ------- 
 
-type Context = Ctxt Def
+data Context = MkContext { uconstraints :: [UConstraint],
+                           next_tvar    :: Int,
+                           definitions  :: Ctxt Def }
+
+initContext = MkContext [] 0 emptyContext
+
+ctxtAlist :: Context -> [(Name, Def)]
+ctxtAlist ctxt = toAlist (definitions ctxt)
 
 veval ctxt env t = evalState (eval ctxt emptyContext env t []) ()
 
 addToCtxt :: Name -> Term -> Type -> Context -> Context
-addToCtxt n tm ty ctxt = addDef n (Function (Fun ty (veval ctxt [] ty)
-                                             tm (veval ctxt [] tm))) ctxt
+addToCtxt n tm ty uctxt 
+    = let ctxt = definitions uctxt 
+          ctxt' = addDef n (Function (Fun ty (veval uctxt [] ty)
+                                    tm (veval uctxt [] tm))) ctxt in
+          uctxt { definitions = ctxt' } 
 
 addTyDecl :: Name -> Type -> Context -> Context
-addTyDecl n ty ctxt = addDef n (TyDecl Ref ty (veval ctxt [] ty)) ctxt
+addTyDecl n ty uctxt 
+    = let ctxt = definitions uctxt
+          ctxt' = addDef n (TyDecl Ref ty (veval uctxt [] ty)) ctxt in
+          uctxt { definitions = ctxt' }
 
 addDatatype :: Datatype Name -> Context -> Context
-addDatatype (Data n tag ty cons) ctxt
-    = let ty' = normalise ctxt [] ty in
-          addCons 0 cons (addDef n 
-             (TyDecl (TCon tag (arity ty')) ty (veval ctxt [] ty)) ctxt)
+addDatatype (Data n tag ty cons) uctxt
+    = let ctxt = definitions uctxt 
+          ty' = normalise uctxt [] ty
+          ctxt' = addCons 0 cons (addDef n 
+                    (TyDecl (TCon tag (arity ty')) ty (veval uctxt [] ty)) ctxt) in
+          uctxt { definitions = ctxt' }
   where
     addCons tag [] ctxt = ctxt
     addCons tag ((n, ty) : cons) ctxt 
-        = let ty' = normalise ctxt [] ty in
+        = let ty' = normalise uctxt [] ty in
               addCons (tag+1) cons (addDef n
-                  (TyDecl (DCon tag (arity ty')) ty (veval ctxt [] ty)) ctxt)
+                  (TyDecl (DCon tag (arity ty')) ty (veval uctxt [] ty)) ctxt)
 
 addCasedef :: Name -> Bool -> Bool -> [(Term, Term)] -> Type -> Context -> Context
-addCasedef n alwaysInline tcase ps ty ctxt 
-    = let ps' = ps in -- simpl ps in
-        case simpleCase tcase ps' of
-            CaseDef args sc -> let inl = alwaysInline in
-                                   addDef n (CaseOp inl ty ps args sc) ctxt
+addCasedef n alwaysInline tcase ps ty uctxt 
+    = let ctxt = definitions uctxt
+          ps' = ps -- simpl ps in
+          ctxt' = case simpleCase tcase ps' of
+                    CaseDef args sc -> let inl = alwaysInline in
+                                           addDef n (CaseOp inl ty ps args sc) ctxt in
+          uctxt { definitions = ctxt' }
   where simpl [] = []
-        simpl ((l,r) : xs) = (l, simplify ctxt [] r) : simpl xs
+        simpl ((l,r) : xs) = (l, simplify uctxt [] r) : simpl xs
 
 addOperator :: Name -> Type -> Int -> ([Value] -> Maybe Value) -> Context -> Context
-addOperator n ty a op ctxt
-    = addDef n (Operator ty a op) ctxt
+addOperator n ty a op uctxt
+    = let ctxt = definitions uctxt 
+          ctxt' = addDef n (Operator ty a op) ctxt in
+          uctxt { definitions = ctxt' }
 
 lookupTy :: Name -> Context -> Maybe Type
-lookupTy n ctxt = do def <- lookupCtxt n ctxt
+lookupTy n ctxt = do def <- lookupCtxt n (definitions ctxt)
                      case def of
                        (Function (Fun ty _ _ _)) -> return ty
                        (TyDecl _ ty _) -> return ty
@@ -484,7 +504,7 @@ lookupTy n ctxt = do def <- lookupCtxt n ctxt
 
 lookupP :: Name -> Context -> Maybe Term
 lookupP n ctxt 
-   = do def <-  lookupCtxt n ctxt
+   = do def <-  lookupCtxt n (definitions ctxt)
         case def of
           (Function (Fun ty _ tm _)) -> return (P Ref n ty)
           (TyDecl nt ty hty) -> return (P nt n ty)
@@ -492,11 +512,11 @@ lookupP n ctxt
           (Operator ty _ _) -> return (P Ref n ty)
 
 lookupDef :: Name -> Context -> Maybe Def
-lookupDef n ctxt = lookupCtxt n ctxt
+lookupDef n ctxt = lookupCtxt n (definitions ctxt)
 
 lookupVal :: Name -> Context -> Maybe Value
 lookupVal n ctxt 
-   = do def <- lookupCtxt n ctxt
+   = do def <- lookupCtxt n (definitions ctxt)
         case def of
           (Function (Fun _ _ _ htm)) -> return htm
           (TyDecl nt ty hty) -> return (VP nt n hty)
