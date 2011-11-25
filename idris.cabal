@@ -32,7 +32,7 @@ Executable     idris
                               Idris.AbsSyntax, Idris.Parser, Idris.REPL,
                               Idris.REPLParser, Idris.ElabDecls, Idris.Error,
                               Idris.Delaborate, Idris.Primitives, Idris.Imports,
-                              Idris.Compiler, Idris.Prover
+                              Idris.Compiler, Idris.Prover, Idris.ElabTerm
 
                               Paths_idris
 

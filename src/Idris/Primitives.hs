@@ -3,6 +3,7 @@
 module Idris.Primitives(elabPrims) where
 
 import Idris.ElabDecls
+import Idris.ElabTerm
 import Idris.AbsSyntax
 
 import Core.TT

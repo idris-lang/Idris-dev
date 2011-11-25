@@ -6,6 +6,7 @@ module Idris.REPL where
 import Idris.AbsSyntax
 import Idris.REPLParser
 import Idris.ElabDecls
+import Idris.ElabTerm
 import Idris.Error
 import Idris.Delaborate
 import Idris.Compiler
@@ -110,9 +111,10 @@ process (Check t) = do (tm, ty) <- elabVal toplevel False t
                        let ty' = normaliseC ctxt [] ty
                        iputStrLn (showImp imp (delab ist tm) ++ " : " ++ 
                                  showImp imp (delab ist ty))
-process Universes = do ctxt <- getContext
-                       let cs = nub $ uconstraints ctxt
-                       lift $ print cs
+process Universes = do i <- get
+                       let cs = nub $ idris_constraints i
+--                        iputStrLn $ showSep "\n" (map show cs)
+                       lift $ print (map fst cs)
                        iputStrLn $ "(" ++ show (length cs) ++ " constraints)"
 process (Defn n) = do ctxt <- getContext
                       lift $ print (lookupDef n ctxt)

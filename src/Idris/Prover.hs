@@ -9,6 +9,7 @@ import Core.Typecheck
 import Idris.AbsSyntax
 import Idris.Delaborate
 import Idris.ElabDecls
+import Idris.ElabTerm
 import Idris.Parser
 import Idris.Error
 
@@ -37,7 +38,7 @@ prove ctxt n ty
          lift $ dumpProof n prf
          let tree = simpleCase False [(P Ref n ty, tm)]
          logLvl 3 (show tree)
-         (ptm, pty) <- recheckC ctxt [] tm
+         (ptm, pty) <- recheckC ctxt (FC "proof" 0) [] tm
          updateContext (addCasedef n True False [(P Ref n ty, ptm)] ty)
          solveDeferred n
 
