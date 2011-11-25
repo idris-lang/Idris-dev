@@ -89,7 +89,7 @@ check' holes ctxt env top = chk env top where
            (v, cs) <- get
            let Set su = normalise ctxt env st
            let Set tu = normalise ctxt env tt
-           when (not holes) $ put (v+1, ULT su (UVar v):ULT tu (UVar v):cs)
+           when (not holes) $ put (v+1, ULE su (UVar v):ULE tu (UVar v):cs)
            return (Bind n (Pi sv) (pToV n tv), Set (UVar v))  
   chk env (RBind n b sc)
       = do b' <- checkBinder b
@@ -112,7 +112,7 @@ check' holes ctxt env top = chk env top where
                  (vv, vt) <- chk env v
                  let tv' = normalise ctxt env tv
                  let tt' = normalise ctxt env tt
-                 convertsC ctxt env tv vt
+                 convertsC ctxt env vt tv
                  lift $ isSet ctxt env tt'
                  return (Let tv vv)
           checkBinder (NLet t v)
@@ -120,7 +120,7 @@ check' holes ctxt env top = chk env top where
                  (vv, vt) <- chk env v
                  let tv' = normalise ctxt env tv
                  let tt' = normalise ctxt env tt
-                 convertsC ctxt env tv vt
+                 convertsC ctxt env vt tv
                  lift $ isSet ctxt env tt'
                  return (NLet tv vv)
           checkBinder (Hole t)
@@ -144,7 +144,7 @@ check' holes ctxt env top = chk env top where
                         (vv, vt) <- chk env v
                         let tv' = normalise ctxt env tv
                         let tt' = normalise ctxt env tt
-                        convertsC ctxt env tv vt
+                        convertsC ctxt env vt tv
                         lift $ isSet ctxt env tt'
                         return (Guess tv vv)
           checkBinder (PVar t)

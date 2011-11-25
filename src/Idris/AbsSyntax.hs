@@ -29,6 +29,7 @@ defaultOpts = IOption 0 False False
 -- and syntax macros.
 
 data IState = IState { tt_ctxt :: Context,
+                       idris_constraints :: [(UConstraint, FC)],
                        idris_infixes :: [FixDecl],
                        idris_implicits :: Ctxt [PArg],
                        idris_statics :: Ctxt [Bool],
@@ -47,7 +48,7 @@ data IState = IState { tt_ctxt :: Context,
                        errLine :: Maybe Int
                      }
                    
-idrisInit = IState initContext [] emptyContext emptyContext emptyContext
+idrisInit = IState initContext [] [] emptyContext emptyContext emptyContext
                    "" defaultOpts 6 [] [] [] [] [] [] [] [] Nothing
 
 -- The monad for the main REPL - reading and processing files and updating 
@@ -111,13 +112,14 @@ setContext ctxt = do i <- get; put (i { tt_ctxt = ctxt } )
 updateContext :: (Context -> Context) -> Idris ()
 updateContext f = do i <- get; put (i { tt_ctxt = f (tt_ctxt i) } )
 
-addConstraints :: (Int, [UConstraint]) -> Idris ()
-addConstraints (v, cs)
+addConstraints :: FC -> (Int, [UConstraint]) -> Idris ()
+addConstraints fc (v, cs)
     = do i <- get
          let ctxt = tt_ctxt i
          let ctxt' = ctxt { uconstraints = cs ++ uconstraints ctxt,
                             next_tvar = v }
-         put (i { tt_ctxt = ctxt' })
+         let ics = zip cs (repeat fc) ++ idris_constraints i
+         put (i { tt_ctxt = ctxt', idris_constraints = ics })
 
 addDeferred :: [(Name, Type)] -> Idris ()
 addDeferred ns = do mapM_ (\(n, t) -> updateContext (addTyDecl n (tidyNames [] t))) ns

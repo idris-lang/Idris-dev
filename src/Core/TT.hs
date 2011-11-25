@@ -35,6 +35,7 @@ instance Show FC where
 data Err = Msg String
          | CantUnify Term Term Err
          | IncompleteTerm Term
+         | UniverseError
          | At FC Err
   deriving Eq
 
@@ -179,12 +180,13 @@ type RProgram = [(Name, RDef)]
 
 data UExp = UVar Int -- universe variable
           | UVal Int -- explicit universe level
-  deriving Eq
+  deriving (Eq, Ord)
 
 instance Show UExp where
     show (UVar x) | x < 26 = [toEnum (x + fromEnum 'a')]
                   | otherwise = toEnum ((x `mod` 26) + fromEnum 'a') : show (x `div` 26)
     show (UVal x) = show x
+--     show (UMax l r) = "max(" ++ show l ++ ", " ++ show r ++")"
 
 data UConstraint = ULT UExp UExp
                  | ULE UExp UExp
