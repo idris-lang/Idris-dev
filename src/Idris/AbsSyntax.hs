@@ -313,6 +313,7 @@ data PTerm = PQuote Raw
            | PEq FC PTerm PTerm
            | PPair FC PTerm PTerm
            | PDPair FC PTerm PTerm PTerm
+           | PAlternative [PTerm]
            | PHidden PTerm -- irrelevant or hidden pattern
            | PSet
            | PConstant Const
@@ -334,6 +335,7 @@ mapPT f t = f (mpt t) where
   mpt (PEq fc l r) = PEq fc (mapPT f l) (mapPT f r)
   mpt (PPair fc l r) = PPair fc (mapPT f l) (mapPT f r)
   mpt (PDPair fc l t r) = PDPair fc (mapPT f l) (mapPT f t) (mapPT f r)
+  mpt (PAlternative as) = PAlternative (map (mapPT f) as)
   mpt (PHidden t) = PHidden (mapPT f t)
   mpt (PDoBlock ds) = PDoBlock (map (fmap (mapPT f)) ds)
   mpt (PProof ts) = PProof (map (fmap (mapPT f)) ts)
@@ -516,6 +518,7 @@ showImp impl tm = se 10 tm where
     se p (PEq _ l r) = bracket p 2 $ se 10 l ++ " = " ++ se 10 r
     se p (PPair _ l r) = "(" ++ se 10 l ++ ", " ++ se 10 r ++ ")"
     se p (PDPair _ l t r) = "(" ++ se 10 l ++ " ** " ++ se 10 r ++ ")"
+    se p (PAlternative as) = "(" ++ showSep " ||| " (map (se 10) as) ++ ")"
     se p PSet = "Set"
     se p (PConstant c) = show c
     se p (PProof ts) = "proof { " ++ show ts ++ "}"
@@ -547,6 +550,7 @@ allNamesIn tm = nub $ ni [] tm
     ni env (PPair _ l r)   = ni env l ++ ni env r
     ni env (PDPair _ (PRef _ n) t r)  = ni env t ++ ni (n:env) r
     ni env (PDPair _ l t r)  = ni env l ++ ni env t ++ ni env r
+    ni env (PAlternative ls) = concatMap (ni env) ls
     ni env _               = []
 
 namesIn :: IState -> PTerm -> [Name]
@@ -564,6 +568,7 @@ namesIn ist tm = nub $ ni [] tm
     ni env (PPair _ l r)   = ni env l ++ ni env r
     ni env (PDPair _ (PRef _ n) t r) = ni env t ++ ni (n:env) r
     ni env (PDPair _ l t r) = ni env l ++ ni env t ++ ni env r
+    ni env (PAlternative as) = concatMap (ni env) as
     ni env (PHidden tm)    = ni env tm
     ni env _               = []
 
@@ -647,6 +652,7 @@ expandParams dec ps ns tm = en tm
     en (PEq f l r) = PEq f (en l) (en r)
     en (PPair f l r) = PPair f (en l) (en r)
     en (PDPair f l t r) = PDPair f (en l) (en t) (en r)
+    en (PAlternative as) = PAlternative (map en as)
     en (PHidden t) = PHidden (en t)
     en (PDoBlock ds) = PDoBlock (map (fmap en) ds)
     en (PProof ts)   = PProof (map (fmap en) ts)
@@ -719,6 +725,7 @@ getPriority i tm = pri tm
     pri (PApp _ f as) = max 1 (max (pri f) (foldr max 0 (map (pri.getTm) as))) 
     pri (PPair _ l r) = max 1 (max (pri l) (pri r))
     pri (PDPair _ l t r) = max 1 (max (pri l) (max (pri t) (pri r)))
+    pri (PAlternative as) = maximum (map pri as)
     pri (PConstant _) = 0
     pri Placeholder = 1
     pri _ = 3
@@ -797,6 +804,10 @@ implicitise syn ist tm
         = do (decls, ns) <- get
              let isn = namesIn ist l ++ namesIn ist t ++ namesIn ist r
              put (decls, nub (ns ++ (isn \\ (env ++ map fst (getImps decls)))))
+    imps top env (PAlternative as)
+        = do (decls, ns) <- get
+             let isn = concatMap (namesIn ist) as
+             put (decls, nub (ns ++ (isn `dropAll` (env ++ map fst (getImps decls)))))
     imps top env (PLam n ty sc)  
         = do imps False env ty
              imps False (n:env) sc
@@ -825,6 +836,8 @@ addImpl ist ptm = ai [] ptm
                                    t' = ai env t
                                    r' = ai env r in
                                    PDPair fc l' t' r'
+    ai env (PAlternative as) = let as' = map (ai env) as in
+                                   PAlternative as'
     ai env (PApp fc (PRef _ f) as) 
                           = let as' = map (fmap (ai env)) as in
                                 aiFn ist fc f as'
@@ -955,6 +968,9 @@ matchClause x y = match x y where
                                                     mt <- match t t'
                                                     mr <- match r r'
                                                     return (ml ++ mt ++ mr)
+    match (PAlternative as) (PAlternative as') 
+        = do ms <- zipWithM match as as' 
+             return (concat ms)
     match (PRefl _) (PRefl _) = return []
     match (PResolveTC _) (PResolveTC _) = return []
     match (PTrue _) (PTrue _) = return []
@@ -983,6 +999,7 @@ substMatch n tm t = sm t where
     sm (PEq f x y) = PEq f (sm x) (sm y)
     sm (PPair f x y) = PPair f (sm x) (sm y)
     sm (PDPair f x t y) = PDPair f (sm x) (sm t) (sm y)
+    sm (PAlternative as) = PAlternative (map sm as)
     sm (PHidden x) = PHidden (sm x)
     sm x = x
 
