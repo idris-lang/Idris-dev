@@ -351,18 +351,23 @@ try t1 t2 = do s <- get
                     _ -> do put s; t2
 
 -- Try a selection of tactics. Exactly one must work, all others must fail
-tryAll :: [Elab a] -> Elab a
-tryAll xs = tryAll' 0 (fail "Nothing to try") xs
+tryAll :: [(Elab a, String)] -> Elab a
+tryAll xs = tryAll' [] (fail "Nothing to try") (map fst xs)
   where
-    tryAll' :: Int -> Elab a -> [Elab a] -> Elab a
-    tryAll' 1 res [] = res 
-    tryAll' _ res [] = fail "Couldn't resolve alternative"
-    tryAll' c res (x:xs) = do s <- get
-                              case runStateT x s of
-                                   OK (v, s') -> tryAll' (c+1) (do put s'
-                                                                   return v) xs
-                                   _ -> do put s
-                                           tryAll' c res xs
+    tryAll' :: [Elab a] -> -- successes
+               Elab a -> -- last failure
+               [Elab a] -> -- still to try
+               Elab a
+    tryAll' [res] _   [] = res 
+    tryAll' (_:_) _   [] = fail $ "Couldn't resolve alternative: " 
+                                  ++ showSep ", " (map snd xs)
+    tryAll' [] f [] = f
+    tryAll' cs f (x:xs) = do s <- get
+                             case runStateT x s of
+                                    OK (v, s') -> tryAll' ((do put s'
+                                                               return v):cs)  f xs
+                                    Error err -> do put s
+                                                    tryAll' cs (lift (tfail err)) xs
 
 
 

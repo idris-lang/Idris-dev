@@ -96,6 +96,8 @@ elab ist info pattern tm
                                             [pimp (MN 0 "a") t,
                                              pimp (MN 0 "P") Placeholder,
                                              pexp l, pexp r])
+    elab' (PAlternative as) = tryAll (zip (map elab' as) (map show as))
+                                  
     elab' (PRef fc n) | pattern && not (inparamBlock n)
                          = do ctxt <- get_context
                               let sc = case lookupTy n ctxt of

@@ -339,6 +339,8 @@ pSimpleExtExpr syn = do i <- getState
                         pExtensions syn (filter simple (syntax_rules i))
   where
     simple (Rule (Expr x:xs) _ _) = False
+    simple (Rule [Keyword _] _ _) = True
+    simple (Rule [Symbol _]  _ _) = True
     simple (Rule (_:xs) _ _) = case (last xs) of
         Keyword _ -> True
         Symbol _  -> True
@@ -387,6 +389,7 @@ pExt syn (Rule (s:ssym) ptm _)
     update ns (PApp fc t args) = PApp fc (update ns t) (map (fmap (update ns)) args)
     update ns (PPair fc l r) = PPair fc (update ns l) (update ns r)
     update ns (PDPair fc l t r) = PDPair fc (update ns l) (update ns t) (update ns r)
+    update ns (PAlternative as) = PAlternative (map (update ns) as)
     update ns (PHidden t) = PHidden (update ns t)
     update ns (PDoBlock ds) = PDoBlock $ upd ns ds
       where upd ns (DoExp fc t : ds) = DoExp fc (update ns t) : upd ns ds
@@ -421,6 +424,7 @@ pSimpleExpr syn =
                return (PTactics ts)
         <|> try (do x <- pfName; fc <- pfc; return (PRef fc x))
         <|> try (pPair syn)
+        <|> try (pAlt syn)
         <|> try (do lchar '('; e <- pExpr syn; lchar ')'; return e)
         <|> try (do c <- pConstant; fc <- pfc
                     return (modifyConst syn fc (PConstant c)))
@@ -448,7 +452,11 @@ pPair syn = try (do lchar '('; l <- pExpr syn; op <- pairOp
   where
     pairOp = do lchar ','; return PPair
          <|> do reservedOp "**"; return (\f x y -> PDPair f x Placeholder y)
-        
+       
+pAlt syn = do symbol "(|"; 
+              alts <- sepBy1 (pExpr' syn) (lchar ',')
+              symbol "|)"
+              return (PAlternative alts)
 
 pHSimpleExpr syn
              = do lchar '.'
@@ -792,6 +800,7 @@ expandDo dsl (PApp fc t args) = PApp fc (expandDo dsl t)
 expandDo dsl (PPair fc l r) = PPair fc (expandDo dsl l) (expandDo dsl r)
 expandDo dsl (PDPair fc l t r) = PDPair fc (expandDo dsl l) (expandDo dsl t) 
                                            (expandDo dsl r)
+expandDo dsl (PAlternative as) = PAlternative (map (expandDo dsl) as)
 expandDo dsl (PHidden t) = PHidden (expandDo dsl t)
 expandDo dsl (PReturn fc) = PRef fc (dsl_return dsl)
 expandDo dsl (PDoBlock ds) = expandDo dsl $ block (dsl_bind dsl) ds 

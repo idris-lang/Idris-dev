@@ -520,7 +520,7 @@ showImp impl tm = se 10 tm where
     se p (PEq _ l r) = bracket p 2 $ se 10 l ++ " = " ++ se 10 r
     se p (PPair _ l r) = "(" ++ se 10 l ++ ", " ++ se 10 r ++ ")"
     se p (PDPair _ l t r) = "(" ++ se 10 l ++ " ** " ++ se 10 r ++ ")"
-    se p (PAlternative as) = "(" ++ showSep " ||| " (map (se 10) as) ++ ")"
+    se p (PAlternative as) = "(|" ++ showSep " , " (map (se 10) as) ++ "|)"
     se p PSet = "Set"
     se p (PConstant c) = show c
     se p (PProof ts) = "proof { " ++ show ts ++ "}"
