@@ -100,8 +100,8 @@ process (Check (PRef _ n))
                   = do ctxt <- getContext
                        ist <- get
                        imp <- impShow
-                       case lookupTy n ctxt of
-                        Just t -> iputStrLn $ show n ++ " : " ++
+                       case lookupTy Nothing n ctxt of
+                        [t] -> iputStrLn $ show n ++ " : " ++
                                   showImp imp (delab ist t)
                         _ -> iputStrLn $ "No such variable " ++ show n
 process (Check t) = do (tm, ty) <- elabVal toplevel False t
@@ -117,7 +117,7 @@ process Universes = do i <- get
                        lift $ print (map fst cs)
                        iputStrLn $ "(" ++ show (length cs) ++ " constraints)"
 process (Defn n) = do ctxt <- getContext
-                      lift $ print (lookupDef n ctxt)
+                      lift $ print (lookupDef Nothing n ctxt)
 process (Spec t) = do (tm, ty) <- elabVal toplevel False t
                       ctxt <- getContext
                       ist <- get

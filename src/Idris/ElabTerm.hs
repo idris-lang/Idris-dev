@@ -100,16 +100,16 @@ elab ist info pattern tm
                                   
     elab' (PRef fc n) | pattern && not (inparamBlock n)
                          = do ctxt <- get_context
-                              let sc = case lookupTy n ctxt of
-                                          Nothing -> True
+                              let sc = case lookupTy Nothing n ctxt of
+                                          [] -> True
                                           _ -> False
                               if sc
                                 then erun fc $ 
                                        try (do apply (Var n) []; solve)
                                            (patvar n)
                                 else do apply (Var n) []; solve 
-      where inparamBlock n = case lookupCtxt n (inblock info) of
-                                Nothing -> False
+      where inparamBlock n = case lookupCtxt Nothing n (inblock info) of
+                                [] -> False
                                 _ -> True
     elab' (PRef fc n) = erun fc $ do apply (Var n) []; solve
     elab' (PLam n Placeholder sc)
@@ -236,9 +236,9 @@ resolveTC depth ist
        | depth == 0 = fail $ "Can't resolve type class"
        | otherwise 
               = do t <- goal
-                   let imps = case lookupCtxt n (idris_implicits ist) of
-                                Nothing -> []
-                                Just args -> map isImp args
+                   let imps = case lookupCtxt Nothing n (idris_implicits ist) of
+                                [] -> []
+                                [args] -> map isImp args -- won't be overloaded!
                    args <- apply (Var n) imps
                    mapM_ (\ (_,n) -> do focus n
                                         resolveTC (depth - 1) ist) 
@@ -275,9 +275,10 @@ runTac autoSolve ist tac = runT (fmap (addImpl ist) tac) where
     runT (Intro xs) = mapM_ (\x -> do attack; intro (Just x)) xs
     runT (Exact tm) = do elab ist toplevel False tm
                          when autoSolve solveAll
-    runT (Refine fn [])   = do imps <- case lookupCtxt fn (idris_implicits ist) of
-                                            Nothing -> envArgs fn
-                                            Just args -> return $ map isImp args
+    runT (Refine fn [])   = do imps <- case lookupCtxt Nothing fn (idris_implicits ist) of
+                                            [] -> envArgs fn
+                                            -- FIXME: resolve ambiguities
+                                            [args] -> return $ map isImp args
                                ns <- apply (Var fn) imps
                                when autoSolve solveAll
        where isImp (PImp _ _ _ _) = True

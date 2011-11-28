@@ -134,7 +134,7 @@ unique_hole n = do ES p _ _ <- get
 uniqueNameCtxt :: Context -> Name -> [Name] -> Elab Name
 uniqueNameCtxt ctxt n hs 
     | n `elem` hs = uniqueNameCtxt ctxt (nextName n) hs
-    | Just _ <- lookupTy n ctxt = uniqueNameCtxt ctxt (nextName n) hs
+    | [_] <- lookupTy Nothing n ctxt = uniqueNameCtxt ctxt (nextName n) hs
     | otherwise = return n
 
 elog :: String -> Elab ()

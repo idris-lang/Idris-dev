@@ -39,7 +39,7 @@ delab ist tm = de [] tm
     deFn env f args = PApp un (de env f) (map pexp (map (de env) args))
 
     mkPApp n args 
-        | Just imps <- lookupCtxt n (idris_implicits ist)
+        | [imps] <- lookupCtxt Nothing n (idris_implicits ist)
             = PApp un (PRef un n) (zipWith imp (imps ++ repeat (pexp undefined)) args)
         | otherwise = PApp un (PRef un n) (map pexp args)
 

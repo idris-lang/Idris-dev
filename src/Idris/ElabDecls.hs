@@ -96,10 +96,10 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
          let tree = simpleCase tcase (map debind pats)
          logLvl 3 (show tree)
          ctxt <- getContext
-         case lookupTy n ctxt of
-             Just ty -> updateContext (addCasedef n (inlinable opts)
+         case lookupTy Nothing n ctxt of
+             [ty] -> updateContext (addCasedef n (inlinable opts)
                                                     tcase (map debind pats) ty)
-             Nothing -> return ()
+             [] -> return ()
   where
     debind (x, y) = (depat x, depat y)
     depat (Bind n (PVar t) sc) = depat (instantiate (P Bound n t) sc)
@@ -376,9 +376,9 @@ elabInstance :: ElabInfo -> SyntaxInfo ->
                 [PTerm] -> PTerm -> [PDecl] -> Idris ()
 elabInstance info syn fc cs n ps t ds
     = do i <- get 
-         ci <- case lookupCtxt n (idris_classes i) of
-                    Just c -> return c
-                    Nothing -> fail $ show n ++ " is not a type class"
+         ci <- case lookupCtxt Nothing n (idris_classes i) of
+                    [c] -> return c
+                    _ -> fail $ show n ++ " is not a type class"
          let iname = UN ('@':show n ++ "$" ++ show ps)
          elabType info syn fc iname t
          let ips = zip (class_params ci) ps

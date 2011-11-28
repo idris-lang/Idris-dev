@@ -51,7 +51,7 @@ check' :: Bool -> Context -> Env -> Raw -> StateT UCs TC (Term, Type)
 check' holes ctxt env top = chk env top where
   chk env (Var n)
       | Just (i, ty) <- lookupTyEnv n env = return (P Bound n ty, ty)
-      | Just (P nt n' ty) <- lookupP n ctxt = return (P nt n' ty, ty)
+      | [P nt n' ty] <- lookupP Nothing n ctxt = return (P nt n' ty, ty)
       | otherwise = do fail $ "No such variable " ++ show n ++ " in " ++ show (map fst env)
   chk env (RApp f a)
       = do (fv, fty) <- chk env f

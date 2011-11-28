@@ -37,9 +37,9 @@ processCommand (Eval t) state =
                 (state, show nf ++ " : " ++ show ty)
          err -> (state, show err)
 processCommand (Print n) state =
-    case lookupDef n (ctxt state) of
-         Just tm -> (state, show tm)
-         Nothing -> (state, "No such name")
+    case lookupDef Nothing n (ctxt state) of
+         [tm] -> (state, show tm)
+         _ -> (state, "No such name")
 processCommand (Tac e)  state 
     | Just ps <- prf state = case execElab e ps of
                                 OK (ES ps' resp _) -> 

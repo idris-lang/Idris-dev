@@ -110,8 +110,22 @@ emptyContext = Map.empty
 addDef :: Name -> a -> Ctxt a -> Ctxt a
 addDef = Map.insert
 
-lookupCtxt :: Name -> Ctxt a -> Maybe a
-lookupCtxt = Map.lookup
+{- lookup a name in the context, given an optional namespace.
+   The name (n) may itself have a (partial) namespace given.
+
+   Rules for resolution:
+    - if an explicit namespace is given, return the names which match it. If none
+      match, return all names.
+    - if the name has has explicit namespace given, return the names which match it
+      and ignore the given namespace.
+    - otherwise, return all names.
+
+-}
+
+lookupCtxt :: Maybe Name -> Name -> Ctxt a -> [a]
+lookupCtxt nspace n ctxt = case Map.lookup n ctxt of
+                             Just x -> [x]
+                             Nothing -> []
 
 toAlist :: Ctxt a -> [(Name, a)]
 toAlist = Map.toList

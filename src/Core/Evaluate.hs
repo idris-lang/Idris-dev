@@ -105,10 +105,10 @@ eval ctxt statics genv tm opts = ev True [] tm where
 
     ev top env (P _ n ty)
         | Just (Let t v) <- lookup n genv = ev top env v 
-    ev top env (P Ref n ty) = case lookupDef n ctxt of
-        Just (Function (Fun _ _ _ v)) -> return v
-        Just (TyDecl nt ty hty)     -> return $ VP nt n hty
-        Just (CaseOp inl _ _ [] tree)   ->  
+    ev top env (P Ref n ty) = case lookupDef Nothing n ctxt of
+        [Function (Fun _ _ _ v)] -> return v
+        [TyDecl nt ty hty]       -> return $ VP nt n hty
+        [CaseOp inl _ _ [] tree] ->  
            if simpl && (not inl) 
               then liftM (VP Ref n) (ev top env ty)
               else do c <- evCase top env [] [] tree 
@@ -149,14 +149,14 @@ eval ctxt statics genv tm opts = ev True [] tm where
     apply False env f args
         | spec = return $ unload env f args
     apply top env (VP Ref n ty)        args
-        | Just (CaseOp inl _ _ ns tree) <- lookupDef n ctxt
+        | [CaseOp inl _ _ ns tree] <- lookupDef Nothing n ctxt
             = -- traceWhen (n == UN ["interp"]) (show (n, args)) $
               if simpl && (not inl) then return $ unload env (VP Ref n ty) args
                  else do c <- evCase top env ns args tree
                          case c of
                            (Nothing, _) -> return $ unload env (VP Ref n ty) args
                            (Just v, rest) -> evApply top env rest v
-        | Just (Operator _ i op)  <- lookupDef n ctxt
+        | [Operator _ i op]  <- lookupDef Nothing n ctxt
             = if (i <= length args)
                  then case op (take i args) of
                     Nothing -> return $ unload env (VP Ref n ty) args
@@ -292,10 +292,10 @@ eval_hnf ctxt statics genv tm = ev [] tm where
     ev :: [HNF] -> TT Name -> Eval HNF
     ev env (P _ n ty) 
         | Just (Let t v) <- lookup n genv = ev env v
-    ev env (P Ref n ty) = case lookupDef n ctxt of
-        Just (Function (Fun _ _ t _)) -> ev env t
-        Just (TyDecl nt ty hty)       -> return $ HP nt n ty
-        Just (CaseOp inl _ _ [] tree)     ->
+    ev env (P Ref n ty) = case lookupDef Nothing n ctxt of
+        [Function (Fun _ _ t _)] -> ev env t
+        [TyDecl nt ty hty]       -> return $ HP nt n ty
+        [CaseOp inl _ _ [] tree] ->
             do c <- evCase env [] [] tree
                case c of
                    (Nothing, _, _) -> return $ HP Ref n ty
@@ -325,7 +325,7 @@ eval_hnf ctxt statics genv tm = ev [] tm where
                                                app <- apply env sc' as
                                                wknH (-1) app
     apply env (HP Ref n ty) args
-        | Just (CaseOp _ _ _ ns tree) <- lookupDef n ctxt
+        | [CaseOp _ _ _ ns tree] <- lookupDef Nothing n ctxt
             = do c <- evCase env ns args tree
                  case c of
                     (Nothing, _, env') -> return $ unload env' (HP Ref n ty) args
@@ -494,29 +494,30 @@ addOperator n ty a op uctxt
           ctxt' = addDef n (Operator ty a op) ctxt in
           uctxt { definitions = ctxt' }
 
-lookupTy :: Name -> Context -> Maybe Type
-lookupTy n ctxt = do def <- lookupCtxt n (definitions ctxt)
+lookupTy :: Maybe Name -> Name -> Context -> [Type]
+lookupTy root n ctxt 
+                = do def <- lookupCtxt root n (definitions ctxt)
                      case def of
                        (Function (Fun ty _ _ _)) -> return ty
                        (TyDecl _ ty _) -> return ty
                        (Operator ty _ _) -> return ty
                        (CaseOp _ ty _ _ _) -> return ty
 
-lookupP :: Name -> Context -> Maybe Term
-lookupP n ctxt 
-   = do def <-  lookupCtxt n (definitions ctxt)
+lookupP :: Maybe Name -> Name -> Context -> [Term]
+lookupP root n ctxt 
+   = do def <-  lookupCtxt root n (definitions ctxt)
         case def of
           (Function (Fun ty _ tm _)) -> return (P Ref n ty)
           (TyDecl nt ty hty) -> return (P nt n ty)
           (CaseOp _ ty _ _ _) -> return (P Ref n ty)
           (Operator ty _ _) -> return (P Ref n ty)
 
-lookupDef :: Name -> Context -> Maybe Def
-lookupDef n ctxt = lookupCtxt n (definitions ctxt)
+lookupDef :: Maybe Name -> Name -> Context -> [Def]
+lookupDef root n ctxt = lookupCtxt root n (definitions ctxt)
 
-lookupVal :: Name -> Context -> Maybe Value
-lookupVal n ctxt 
-   = do def <- lookupCtxt n (definitions ctxt)
+lookupVal :: Maybe Name -> Name -> Context -> [Value]
+lookupVal root n ctxt 
+   = do def <- lookupCtxt root n (definitions ctxt)
         case def of
           (Function (Fun _ _ _ htm)) -> return htm
           (TyDecl nt ty hty) -> return (VP nt n hty)

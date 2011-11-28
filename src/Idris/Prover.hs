@@ -19,8 +19,8 @@ import Control.Monad.State
 prover :: Name -> Idris ()
 prover x = do ctxt <- getContext
               i <- get
-              case lookupTy x ctxt of
-                  Just t -> if elem x (idris_metavars i)
+              case lookupTy Nothing x ctxt of
+                  [t] -> if elem x (idris_metavars i)
                                then prove ctxt x t
                                else fail $ show x ++ " is not a metavariable"
                   _ -> fail "No such metavariable"

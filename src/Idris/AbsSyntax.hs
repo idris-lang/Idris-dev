@@ -101,8 +101,8 @@ getName = do i <- get;
 checkUndefined :: FC -> Name -> Idris ()
 checkUndefined fc n 
     = do i <- getContext
-         case lookupTy n i of
-             Just _ -> fail $ show fc ++ ":" ++ 
+         case lookupTy Nothing n i of
+             (_:_)  -> fail $ show fc ++ ":" ++ 
                        show n ++ " already defined"
              _ -> return ()
 
@@ -560,8 +560,8 @@ namesIn ist tm = nub $ ni [] tm
   where
     ni env (PRef _ n)        
         | not (n `elem` env) 
-            = case lookupTy n (tt_ctxt ist) of
-                Nothing -> [n]
+            = case lookupTy Nothing n (tt_ctxt ist) of
+                [] -> [n]
                 _ -> []
     ni env (PApp _ f as)   = ni env f ++ concatMap (ni env) (map getTm as)
     ni env (PLam n ty sc)  = ni env ty ++ ni (n:env) sc
@@ -714,11 +714,11 @@ getPriority :: IState -> PTerm -> Int
 getPriority i tm = pri tm 
   where
     pri (PRef _ n) =
-        case lookupP n (tt_ctxt i) of
-            Just (P (DCon _ _) _ _) -> 1
-            Just (P (TCon _ _) _ _) -> 1
-            Just (P Ref _ _) -> 3
-            Nothing -> 0 -- must be locally bound, if it's not an error...
+        case lookupP Nothing n (tt_ctxt i) of
+            ((P (DCon _ _) _ _):_) -> 1
+            ((P (TCon _ _) _ _):_) -> 1
+            ((P Ref _ _):_) -> 3
+            [] -> 0 -- must be locally bound, if it's not an error...
     pri (PPi _ _ x y) = max 4 (max (pri x) (pri y))
     pri (PTrue _) = 0
     pri (PFalse _) = 0
@@ -866,9 +866,11 @@ aiFn :: IState -> FC -> Name -> [PArg] -> PTerm
 aiFn ist fc f as
     | f `elem` primNames = PApp fc (PRef fc f) as
 aiFn ist fc f as
-        = case lookupCtxt f (idris_implicits ist) of
-            Just ns -> mkPApp fc (length ns) (PRef fc f) (insertImpl ns as)
-            Nothing -> mkPApp fc 1 (PRef fc f) as
+          -- TODO: This is where namespaces get resolved by adding
+          -- PAlternative
+        = case lookupCtxt Nothing f (idris_implicits ist) of
+            [ns] -> mkPApp fc (length ns) (PRef fc f) (insertImpl ns as)
+            [] -> mkPApp fc 1 (PRef fc f) as
   where
     insertImpl :: [PArg] -> [PArg] -> [PArg]
     insertImpl (PExp p l ty : ps) (PExp _ _ tm : given) =
