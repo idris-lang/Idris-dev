@@ -101,6 +101,7 @@ addProof f orig
             Just (n, p) -> do let prog' = insertScript (showProof n p) (lines prog)
                               lift $ writeFile f (unlines prog')
                               iputStrLn $ "Added proof " ++ show n
+                              put (i { last_proof = Nothing })
                               -- lift $ removeFile fb -- uncomment when less scared :)
 
 insertScript :: String -> [String] -> [String]
