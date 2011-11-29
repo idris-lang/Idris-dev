@@ -96,7 +96,7 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
          let tree = simpleCase tcase (map debind pats)
          logLvl 3 (show tree)
          ctxt <- getContext
-         case lookupTy Nothing n ctxt of
+         case lookupTy (namespace info) n ctxt of
              [ty] -> updateContext (addCasedef n (inlinable opts)
                                                     tcase (map debind pats) ty)
              [] -> return ()
@@ -376,16 +376,19 @@ elabInstance :: ElabInfo -> SyntaxInfo ->
                 [PTerm] -> PTerm -> [PDecl] -> Idris ()
 elabInstance info syn fc cs n ps t ds
     = do i <- get 
-         ci <- case lookupCtxt Nothing n (idris_classes i) of
-                    [c] -> return c
-                    _ -> fail $ show n ++ " is not a type class"
+         (n, ci) <- case lookupCtxtName (namespace info) n (idris_classes i) of
+                       [c] -> return c
+                       _ -> fail $ show n ++ " is not a type class"
          let iname = UN ('@':show n ++ "$" ++ show ps)
          elabType info syn fc iname t
          let ips = zip (class_params ci) ps
-         let mtys = map (\ (n, t) -> (decorate n, coninsert cs $ substMatches ips t)) 
+         let ns = case n of
+                    NS n ns' -> ns'
+                    _ -> []
+         let mtys = map (\ (n, t) -> (decorate ns n, coninsert cs $ substMatches ips t)) 
                         (class_methods ci)
          logLvl 3 (show (mtys, ips))
-         let wb = map mkTyDecl mtys ++ map decorateid ds
+         let wb = map mkTyDecl mtys ++ map (decorateid ns) ds
          let lhs = PRef fc iname
          let rhs = PApp fc (PRef fc (instanceName ci))
                            (map (pexp . mkMethApp) mtys)
@@ -407,14 +410,16 @@ elabInstance info syn fc cs n ps t ds
 
     papp fc f [] = f
     papp fc f as = PApp fc f as
-    decorate (UN n) = UN ('!':n)
-    decorate (NS s n) = NS s (decorate n)
-    decorateid (PTy s f n t) = PTy s f (decorate n) t
-    decorateid (PClauses f o n cs) = PClauses f o (decorate n) (map dc cs)
-      where dc (PClause n t as w ds) = PClause (decorate n) (dappname t) as w ds
-            dc (PWith   n t as w ds) = PWith   (decorate n) (dappname t) as w 
-                                               (map decorateid ds)
-            dappname (PApp fc (PRef fc' n) as) = PApp fc (PRef fc' (decorate n)) as
+
+    decorate ns (UN n) = NS (UN ('!':n)) ns
+    decorate ns (NS (UN n) s) = NS (UN ('!':n)) ns
+
+    decorateid ns (PTy s f n t) = PTy s f (decorate ns n) t
+    decorateid ns (PClauses f o n cs) = PClauses f o (decorate ns n) (map dc cs)
+      where dc (PClause n t as w ds) = PClause (decorate ns n) (dappname t) as w ds
+            dc (PWith   n t as w ds) = PWith   (decorate ns n) (dappname t) as w 
+                                               (map (decorateid ns) ds)
+            dappname (PApp fc (PRef fc' n) as) = PApp fc (PRef fc' (decorate ns n)) as
             dappname t = t
     mkTyDecl (n, t) = PTy syn fc n t
 
@@ -469,6 +474,11 @@ elabDecl' info (PParams f ns ps) = mapM_ (elabDecl' pinfo) ps
                 newb = addAlist dsParams (inblock info) in 
                 info { params = newps,
                        inblock = newb }
+elabDecl' info (PNamespace n ps) = mapM_ (elabDecl' ninfo) ps
+  where
+    ninfo = case namespace info of
+                Nothing -> info { namespace = Just [n] }
+                Just ns -> info { namespace = Just (n:ns) } 
 elabDecl' info (PClass s f cs n ps ds) = do iLOG $ "Elaborating class " ++ show n
                                             elabClass info s f cs n ps ds
 elabDecl' info (PInstance s f cs n ps t ds) 

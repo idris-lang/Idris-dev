@@ -494,7 +494,7 @@ addOperator n ty a op uctxt
           ctxt' = addDef n (Operator ty a op) ctxt in
           uctxt { definitions = ctxt' }
 
-lookupTy :: Maybe Name -> Name -> Context -> [Type]
+lookupTy :: Maybe [String] -> Name -> Context -> [Type]
 lookupTy root n ctxt 
                 = do def <- lookupCtxt root n (definitions ctxt)
                      case def of
@@ -503,7 +503,7 @@ lookupTy root n ctxt
                        (Operator ty _ _) -> return ty
                        (CaseOp _ ty _ _ _) -> return ty
 
-lookupP :: Maybe Name -> Name -> Context -> [Term]
+lookupP :: Maybe [String] -> Name -> Context -> [Term]
 lookupP root n ctxt 
    = do def <-  lookupCtxt root n (definitions ctxt)
         case def of
@@ -512,10 +512,10 @@ lookupP root n ctxt
           (CaseOp _ ty _ _ _) -> return (P Ref n ty)
           (Operator ty _ _) -> return (P Ref n ty)
 
-lookupDef :: Maybe Name -> Name -> Context -> [Def]
+lookupDef :: Maybe [String] -> Name -> Context -> [Def]
 lookupDef root n ctxt = lookupCtxt root n (definitions ctxt)
 
-lookupVal :: Maybe Name -> Name -> Context -> [Value]
+lookupVal :: Maybe [String] -> Name -> Context -> [Value]
 lookupVal root n ctxt 
    = do def <- lookupCtxt root n (definitions ctxt)
         case def of

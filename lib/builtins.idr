@@ -21,6 +21,8 @@ lazy x = x; -- compiled specially
 
 believe_me : a -> b; -- compiled specially as id, use with care!
 
+namespace builtins {
+
 id : a -> a;
 id x = x;
 
@@ -184,4 +186,4 @@ div = prim__divInt;
 (++) : String -> String -> String;
 (++) = prim__concat;
 
-
+}

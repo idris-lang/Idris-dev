@@ -148,6 +148,7 @@ collect (c@(PClauses _ o _ _) : ds)
         getfc (PClauses fc _ _ _) = fc
 
 collect (PParams f ns ps : ds) = PParams f ns (collect ps) : collect ds
+collect (PNamespace ns ps : ds) = PNamespace ns (collect ps) : collect ds
 collect (PClass f s cs n ps ds : ds') = PClass f s cs n ps (collect ds) : collect ds'
 collect (PInstance f s cs n ps t ds : ds') 
     = PInstance f s cs n ps t (collect ds) : collect ds'
@@ -168,6 +169,7 @@ pDecl syn
            return [d']
     <|> pUsing syn
     <|> pParams syn
+    <|> pNamespace syn
     <|> pClass syn
     <|> pInstance syn
     <|> pDirective
@@ -237,7 +239,8 @@ pSynSym = try (do lchar '['; n <- pName; lchar ']'
              return (Symbol sym)
 
 pFunDecl' :: SyntaxInfo -> IParser PDecl
-pFunDecl' syn = try (do n <- pfName;
+pFunDecl' syn = try (do n_in <- pfName
+                        let n = expandNS syn n_in
                         ty <- pTSig syn
                         fc <- pfc
                         lchar ';'
@@ -270,6 +273,20 @@ pParams syn =
        fc <- pfc
        return [PParams fc ns (concat ds)]
 
+pNamespace :: SyntaxInfo -> IParser [PDecl]
+pNamespace syn =
+    do reserved "namespace";
+       n <- identifier
+       lchar '{'
+       ds <- many1 (pDecl syn { syn_namespace = n : syn_namespace syn })
+       lchar '}'
+       return [PNamespace n (concat ds)] 
+
+expandNS :: SyntaxInfo -> Name -> Name
+expandNS syn n = case syn_namespace syn of
+                        [] -> n
+                        xs -> NS n xs
+
 --------- Fixity ---------
 
 pFixity :: IParser PDecl
@@ -295,7 +312,7 @@ pClass :: SyntaxInfo -> IParser [PDecl]
 pClass syn = do reserved "class"
                 fc <- pfc
                 cons <- pConstList syn
-                n <- pName
+                n_in <- pName; let n = expandNS syn n_in
                 cs <- many1 carg
                 reserved "where"; lchar '{'
                 ds <- many1 $ pFunDecl syn;
@@ -607,14 +624,16 @@ prefix name f = Prefix (do { reservedOp name; fc <- pfc;
 
 pData :: SyntaxInfo -> IParser PDecl
 pData syn = try (do reserved "data"; fc <- pfc
-                    tyn <- pfName; ty <- pTSig syn
+                    tyn_in <- pfName; ty <- pTSig syn
+                    let tyn = expandNS syn tyn_in
                     reserved "where"
 --                     ty' <- implicit syn tyn ty
                     cons <- sepBy (pConstructor syn) (lchar '|')
                     lchar ';'
                     return $ PData syn fc (PDatadecl tyn ty cons))
         <|> do reserved "data"; fc <- pfc
-               tyn <- pfName; args <- many pName
+               tyn_in <- pfName; args <- many pName
+               let tyn = expandNS syn tyn_in
                lchar '='
                cons <- sepBy1 (pSimpleCon syn) (lchar '|')
                lchar ';'
@@ -636,14 +655,16 @@ bindArgs (x:xs) t = PPi expl (MN 0 "t") x (bindArgs xs t)
 
 pConstructor :: SyntaxInfo -> IParser (Name, PTerm, FC)
 pConstructor syn
-    = do cn <- pfName; fc <- pfc
+    = do cn_in <- pfName; fc <- pfc
+         let cn = expandNS syn cn_in
          ty <- pTSig syn
 --          ty' <- implicit syn cn ty
          return (cn, ty, fc)
 
 pSimpleCon :: SyntaxInfo -> IParser (Name, [PTerm], FC)
 pSimpleCon syn 
-     = do cn <- pfName
+     = do cn_in <- pfName
+          let cn = expandNS syn cn_in
           fc <- pfc
           args <- many (pSimpleExpr syn)
           return (cn, args, fc)
@@ -668,7 +689,7 @@ pRHS syn n = do lchar '='; pExpr syn
 
 pClause :: SyntaxInfo -> IParser PClause
 pClause syn
-         = try (do n <- pfName
+         = try (do n_in <- pfName; let n = expandNS syn n_in
                    cargs <- many (pConstraintArg syn)
                    iargs <- many (pImplicitArg syn)
                    fc <- pfc
@@ -677,11 +698,13 @@ pClause syn
                    rhs <- pRHS syn n
                    ist <- getState
                    let ctxt = tt_ctxt ist
-                   (wheres, nmap) <- choice [pWhereblock n syn, do lchar ';'
-                                                                   return ([], [])]
+                   let wsyn = syn { syn_namespace = [] }
+                   (wheres, nmap) <- choice [pWhereblock n wsyn, 
+                                             do lchar ';'
+                                                return ([], [])]
                    return $ PClause n (PApp fc (PRef fc n) 
                                       (iargs ++ cargs ++ map pexp args)) wargs rhs wheres)
-       <|> try (do n <- pfName
+       <|> try (do n_in <- pfName; let n = expandNS syn n_in
                    cargs <- many (pConstraintArg syn)
                    iargs <- many (pImplicitArg syn)
                    fc <- pfc
@@ -698,19 +721,21 @@ pClause syn
 
        <|> do l <- pArgExpr syn
               op <- operator
-              let n = UN op
+              let n = expandNS syn (UN op)
               r <- pArgExpr syn
               fc <- pfc
               wargs <- many (pWExpr syn)
               rhs <- pRHS syn n
-              (wheres, nmap) <- choice [pWhereblock n syn, do lchar ';'
-                                                              return ([], [])]
+              let wsyn = syn { syn_namespace = [] }
+              (wheres, nmap) <- choice [pWhereblock n wsyn, 
+                                        do lchar ';'
+                                           return ([], [])]
               return $ PClause n (PApp fc (PRef fc n) [pexp l,pexp r]) 
                                  wargs rhs wheres
 
        <|> do l <- pArgExpr syn
               op <- operator
-              let n = UN op
+              let n = expandNS syn (UN op)
               r <- pArgExpr syn
               fc <- pfc
               wargs <- many (pWExpr syn)

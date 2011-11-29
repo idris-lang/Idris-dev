@@ -8,7 +8,7 @@ interpTy (TyFun s t) = interpTy s -> interpTy t;
 using (G : Vect Ty n) {
 
   data Env : Vect Ty n -> Set where
-      Empty  : Env VNil
+      Empty  : Env Nil
     | Extend : interpTy a -> Env G -> Env (a :: G);
 
   envLookup : (i : Fin n) -> Env G -> interpTy (vlookup i G);

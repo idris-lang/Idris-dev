@@ -238,6 +238,7 @@ data PDecl' t = PFix     FC Fixity [String] -- fixity declaration
               | PClauses FC FnOpts Name [PClause' t]   -- pattern clause
               | PData    SyntaxInfo FC (PData' t)      -- data declaration
               | PParams  FC [(Name, t)] [PDecl' t] -- params block
+              | PNamespace String [PDecl' t] -- new namespace
               | PClass   SyntaxInfo FC 
                          [t] -- constraints
                          Name
@@ -277,6 +278,7 @@ declared (PClauses _ _ n _) = [] -- not a declaration
 declared (PData _ _ (PDatadecl n _ ts)) = n : map fstt ts
    where fstt (a, _, _) = a
 declared (PParams _ _ ds) = concatMap declared ds
+declared (PNamespace _ ds) = concatMap declared ds
 -- declared (PImport _) = []
 
 updateN :: [(Name, Name)] -> Name -> Name
@@ -388,9 +390,9 @@ type PArg = PArg' PTerm
 data ClassInfo = CI { instanceName :: Name,
                       class_methods :: [(Name, PTerm)],
                       class_params :: [Name] }
+    deriving Show
 
-
--- Syntactic sugar info (TODO: namespaces, modules)
+-- Syntactic sugar info 
 
 data DSL = DSL { dsl_bind :: Name,
                  dsl_return :: Name }
@@ -411,13 +413,14 @@ initDSL = DSL (UN ">>=") (UN "return")
 
 data SyntaxInfo = Syn { using :: [(Name, PTerm)],
                         syn_params :: [(Name, PTerm)],
+                        syn_namespace :: [String],
                         no_imp :: [Name],
                         decoration :: Name -> Name,
                         inPattern :: Bool,
                         dsl_info :: DSL }
     deriving Show
 
-defaultSyntax = Syn [] [] [] id False initDSL
+defaultSyntax = Syn [] [] [] [] id False initDSL
 
 --- Pretty printing declarations and terms
 
@@ -866,11 +869,13 @@ aiFn :: IState -> FC -> Name -> [PArg] -> PTerm
 aiFn ist fc f as
     | f `elem` primNames = PApp fc (PRef fc f) as
 aiFn ist fc f as
-          -- TODO: This is where namespaces get resolved by adding
-          -- PAlternative
-        = case lookupCtxt Nothing f (idris_implicits ist) of
-            [ns] -> mkPApp fc (length ns) (PRef fc f) (insertImpl ns as)
+          -- This is where namespaces get resolved by adding PAlternative
+        = case lookupCtxtName Nothing f (idris_implicits ist) of
+            [(f',ns)] -> mkPApp fc (length ns) (PRef fc f') (insertImpl ns as)
             [] -> mkPApp fc 1 (PRef fc f) as
+            alts -> PAlternative $
+                     map (\(f', ns) -> mkPApp fc (length ns) (PRef fc f') 
+                                                 (insertImpl ns as)) alts
   where
     insertImpl :: [PArg] -> [PArg] -> [PArg]
     insertImpl (PExp p l ty : ps) (PExp _ _ tm : given) =
@@ -939,6 +944,7 @@ dumpDecl (PTy _ _ n t) = "tydecl " ++ show n ++ " : " ++ showImp True t
 dumpDecl (PClauses _ _ n cs) = "pat " ++ show n ++ "\t" ++ showSep "\n\t" (map (showCImp True) cs)
 dumpDecl (PData _ _ d) = showDImp True d
 dumpDecl (PParams _ ns ps) = "params {" ++ show ns ++ "\n" ++ dumpDecls ps ++ "}\n"
+dumpDecl (PNamespace n ps) = "namespace {" ++ n ++ "\n" ++ dumpDecls ps ++ "}\n"
 dumpDecl (PSyntax _ syn) = "syntax " ++ show syn
 dumpDecl (PClass _ _ cs n ps ds) 
     = "class " ++ show cs ++ " " ++ show n ++ " " ++ show ps ++ "\n" ++ dumpDecls ds

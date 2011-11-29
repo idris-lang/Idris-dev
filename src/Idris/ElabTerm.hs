@@ -15,9 +15,10 @@ import Data.List
 
 data ElabInfo = EInfo { params :: [(Name, PTerm)],
                         inblock :: Ctxt [Name], -- names in the block, and their params
-                        liftname :: Name -> Name }
+                        liftname :: Name -> Name,
+                        namespace :: Maybe [String] }
 
-toplevel = EInfo [] emptyContext id
+toplevel = EInfo [] emptyContext id Nothing
 
 -- Using the elaborator, convert a term in raw syntax to a fully
 -- elaborated, typechecked term.
@@ -108,7 +109,7 @@ elab ist info pattern tm
                                        try (do apply (Var n) []; solve)
                                            (patvar n)
                                 else do apply (Var n) []; solve 
-      where inparamBlock n = case lookupCtxt Nothing n (inblock info) of
+      where inparamBlock n = case lookupCtxtName Nothing n (inblock info) of
                                 [] -> False
                                 _ -> True
     elab' (PRef fc n) = erun fc $ do apply (Var n) []; solve
@@ -185,7 +186,10 @@ elab ist info pattern tm
                 solve
     elab' Placeholder = do (h : hs) <- get_holes
                            movelast h
-    elab' (PMetavar n) = do attack; defer n; solve
+    elab' (PMetavar n) = let n' = case namespace info of
+                                    Just xs@(_:_) -> NS n xs
+                                    _ -> n in
+                             do attack; defer n'; solve
     elab' (PProof ts) = do mapM_ (runTac True ist) ts
     elab' (PTactics ts) = do mapM_ (runTac False ist) ts
     elab' (PElabError e) = fail e
@@ -229,16 +233,16 @@ resolveTC depth ist
                                           (blunderbuss t ns)
                          | otherwise = blunderbuss t ns
     tcname (UN ('@':_)) = True
-    tcname (NS _ n) = tcname n
+    tcname (NS n _) = tcname n
     tcname _ = False
 
     resolve n depth
        | depth == 0 = fail $ "Can't resolve type class"
        | otherwise 
               = do t <- goal
-                   let imps = case lookupCtxt Nothing n (idris_implicits ist) of
+                   let imps = case lookupCtxtName Nothing n (idris_implicits ist) of
                                 [] -> []
-                                [args] -> map isImp args -- won't be overloaded!
+                                [args] -> map isImp (snd args) -- won't be overloaded!
                    args <- apply (Var n) imps
                    mapM_ (\ (_,n) -> do focus n
                                         resolveTC (depth - 1) ist) 
@@ -275,12 +279,14 @@ runTac autoSolve ist tac = runT (fmap (addImpl ist) tac) where
     runT (Intro xs) = mapM_ (\x -> do attack; intro (Just x)) xs
     runT (Exact tm) = do elab ist toplevel False tm
                          when autoSolve solveAll
-    runT (Refine fn [])   = do imps <- case lookupCtxt Nothing fn (idris_implicits ist) of
-                                            [] -> envArgs fn
-                                            -- FIXME: resolve ambiguities
-                                            [args] -> return $ map isImp args
-                               ns <- apply (Var fn) imps
-                               when autoSolve solveAll
+    runT (Refine fn [])   
+        = do (fn', imps) <- case lookupCtxtName Nothing fn (idris_implicits ist) of
+                                    [] -> do a <- envArgs fn
+                                             return (fn, a)
+                                    -- FIXME: resolve ambiguities
+                                    [(n, args)] -> return $ (n, map isImp args)
+             ns <- apply (Var fn') imps
+             when autoSolve solveAll
        where isImp (PImp _ _ _ _) = True
              isImp _ = False
              envArgs n = do e <- get_env

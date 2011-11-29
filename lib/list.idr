@@ -1,5 +1,7 @@
 import builtins;
 
+namespace list {
+
 data List a = Nil | Cons a (List a);
 
 rev : List a -> List a;
@@ -34,3 +36,4 @@ filter pred (Cons x xs) with (pred x, filter pred xs) {
   filter pred (Cons x xs) | (False, fxs) = fxs;
 }
 
+}

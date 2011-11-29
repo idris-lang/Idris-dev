@@ -201,6 +201,7 @@ patvar :: Name -> Elab ()
 patvar n = do n' <- case n of
                       UN _ -> return n
                       MN _ _ -> unique_hole n
+                      NS _ _ -> return n
               processTactic' (PatVar n')
 
 patbind :: Name -> Elab ()
@@ -256,6 +257,7 @@ prepare_apply fn imps =
 
     mkMN n@(MN _ _) = n
     mkMN n@(UN x) = MN 0 x
+    mkMN (NS n xs) = NS (mkMN n) xs
 
 apply :: Raw -> [Bool] -> Elab [Name]
 apply fn imps = 
@@ -368,7 +370,4 @@ tryAll xs = tryAll' [] (fail "Nothing to try") (map fst xs)
                                                                return v):cs)  f xs
                                     Error err -> do put s
                                                     tryAll' cs (lift (tfail err)) xs
-
-
-
 

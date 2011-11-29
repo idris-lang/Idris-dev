@@ -1,4 +1,6 @@
 
+namespace maybe {
+
 data Maybe a = Nothing | Just a;
 
 maybe : b -> (a -> b) -> Maybe a -> b;
@@ -9,3 +11,4 @@ maybe_bind : Maybe a -> (a -> Maybe b) -> Maybe b;
 maybe_bind Nothing k = Nothing;
 maybe_bind (Just x) k = k x;
 
+}

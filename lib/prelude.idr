@@ -8,6 +8,8 @@ import io;
 
 -- Show and instances
 
+namespace prelude {
+
 class Show a where {
     show : a -> String;
 }
@@ -115,3 +117,4 @@ print = putStrLn . show;
 readLine : IO String;
 readLine = mkForeign (FFun "readStr" Nil FString);
 
+}

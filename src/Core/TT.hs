@@ -91,24 +91,31 @@ traceWhen False _  a = a
 -- Also MN for machine chosen names
 
 data Name = UN String
-          | NS String Name
+          | NS Name [String] -- root, namespaces 
           | MN Int String
   deriving (Eq, Ord)
 
 instance Show Name where
     show (UN n) = n
-    show (NS s n) = s ++ "." ++ show n
+    show (NS n s) = showSep "." s ++ "." ++ show n
     show (MN i s) = "{" ++ s ++ show i ++ "}"
 
 
 -- Contexts allow us to map names to things
 -- TODO: Namespaces and ambiguous names
 
-type Ctxt a = Map.Map Name a
+type Ctxt a = Map.Map Name (Map.Map Name a)
 emptyContext = Map.empty
 
-addDef :: Name -> a -> Ctxt a -> Ctxt a
-addDef = Map.insert
+nsroot (NS n _) = n
+nsroot n = n
+
+addDef :: Show a => Name -> a -> Ctxt a -> Ctxt a
+addDef n v ctxt = case Map.lookup (nsroot n) ctxt of
+                        Nothing -> Map.insert (nsroot n) 
+                                        (Map.insert n v Map.empty) ctxt
+                        Just xs -> Map.insert (nsroot n) 
+                                        (Map.insert n v xs) ctxt
 
 {- lookup a name in the context, given an optional namespace.
    The name (n) may itself have a (partial) namespace given.
@@ -122,15 +129,28 @@ addDef = Map.insert
 
 -}
 
-lookupCtxt :: Maybe Name -> Name -> Ctxt a -> [a]
-lookupCtxt nspace n ctxt = case Map.lookup n ctxt of
-                             Just x -> [x]
-                             Nothing -> []
+lookupCtxtName :: Maybe [String] -> Name -> Ctxt a -> [(Name, a)]
+lookupCtxtName nspace n ctxt = case Map.lookup (nsroot n) ctxt of
+                                  Just xs -> filterNS (Map.toList xs)
+                                  Nothing -> []
+  where
+    filterNS [] = []
+    filterNS ((found, v) : xs) 
+        | nsmatch n found = (found, v) : filterNS xs
+        | otherwise       = filterNS xs
+
+    nsmatch (NS n ns) (NS p ps) = ns `isPrefixOf` ps
+    nsmatch (NS _ _)  _         = False
+    nsmatch looking   found     = True
+
+lookupCtxt :: Maybe [String] -> Name -> Ctxt a -> [a]
+lookupCtxt ns n ctxt = map snd (lookupCtxtName ns n ctxt)
 
 toAlist :: Ctxt a -> [(Name, a)]
-toAlist = Map.toList
+toAlist ctxt = let allns = map snd (Map.toList ctxt) in
+                concat (map (Map.toList) allns)
 
-addAlist :: [(Name, a)] -> Ctxt a -> Ctxt a
+addAlist :: Show a => [(Name, a)] -> Ctxt a -> Ctxt a
 addAlist [] ctxt = ctxt
 addAlist ((n, tm) : ds) ctxt = addDef n tm (addAlist ds ctxt)
 
