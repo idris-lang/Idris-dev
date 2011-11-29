@@ -22,6 +22,7 @@ import System.Console.Readline
 import System.FilePath
 import System.Environment
 import System.Process
+import System.Directory
 import Control.Monad
 import Control.Monad.State
 import Data.List
@@ -60,6 +61,9 @@ processInput cmd orig inputs
                                    return (Just inputs)
                 Right Edit -> do edit fn orig
                                  return (Just inputs)
+                Right AddProof -> do idrisCatch (addProof fn orig)
+                                                (\e -> iputStrLn (report e))
+                                     return (Just inputs)
                 Right Quit -> do iputStrLn "Bye bye"
                                  return Nothing
                 Right cmd  -> do idrisCatch (process cmd)
@@ -84,6 +88,26 @@ edit f orig
    where getEditor env | Just ed <- lookup "EDITOR" env = ed
                        | Just ed <- lookup "VISUAL" env = ed
                        | otherwise = "vi"
+
+addProof :: FilePath -> IState -> Idris ()
+addProof "" orig = iputStrLn "Nothing to add to"
+addProof f orig
+    = do let fb = f ++ "~"
+         lift $ copyFile f fb -- make a backup in case something goes wrong!
+         prog <- lift $ readFile fb
+         i <- get
+         case last_proof i of
+            Nothing -> iputStrLn "No proof to add"
+            Just (n, p) -> do let prog' = insertScript (showProof n p) (lines prog)
+                              lift $ writeFile f (unlines prog')
+                              iputStrLn $ "Added proof " ++ show n
+                              -- lift $ removeFile fb -- uncomment when less scared :)
+
+insertScript :: String -> [String] -> [String]
+insertScript prf [] = "\n---------- Proofs ----------" : "" : [prf]
+insertScript prf (p@"---------- Proofs ----------" : "" : xs) 
+    = p : "" : prf : xs
+insertScript prf (x : xs) = x : insertScript prf xs
 
 process :: Command -> Idris ()
 process Help = iputStrLn displayHelp
@@ -149,7 +173,7 @@ displayHelp = let vstr = showVersion version in
               "\nIdris version " ++ vstr ++ "\n" ++
               "--------------" ++ map (\x -> '-') vstr ++ "\n\n" ++
               concatMap cmdInfo help
-  where cmdInfo (cmds, args, text) = "   " ++ col 16 12 (showSep " " cmds) args text 
+  where cmdInfo (cmds, args, text) = "   " ++ col 16 10 (showSep " " cmds) args text 
         col c1 c2 l m r = 
             l ++ take (c1 - length l) (repeat ' ') ++ 
             m ++ take (c2 - length m) (repeat ' ') ++ r ++ "\n"
@@ -157,12 +181,13 @@ displayHelp = let vstr = showVersion version in
 help =
   [ (["Command"], "Arguments", "Purpose"),
     ([""], "", ""),
-    (["<expression>"], "", "Evaluate an expression"),
-    ([":t"], "<expression>", "Check the type of an expression"),
+    (["<expr>"], "", "Evaluate an expression"),
+    ([":t"], "<expr>", "Check the type of an expression"),
     ([":r",":reload"], "", "Reload current file"),
     ([":e",":edit"], "", "Edit current file using $EDITOR or $VISUAL"),
     ([":m",":metavars"], "", "Show remaining proof obligations (metavariables)"),
     ([":p",":prove"], "<name>", "Prove a metavariable"),
+    ([":a",":addproof"], "", "Add last proof to source file"),
     ([":c",":compile"], "<filename>", "Compile to an executable <filename>"),
     ([":exec",":execute"], "<filename>", "Compile to an executable <filename> and run"),
     ([":?",":h",":help"], "", "Display this help text"),

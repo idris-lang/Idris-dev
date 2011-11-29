@@ -1,6 +1,6 @@
-import builtins;
+module nat;
 
-namespace nat {
+import builtins;
 
 data Nat = O | S Nat;
 
@@ -66,4 +66,3 @@ plus_commutes_Sk = proof {
     refine plusn_Sm;
 };
 
-}

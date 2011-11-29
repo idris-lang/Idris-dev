@@ -25,17 +25,19 @@ prover x = do ctxt <- getContext
                                else fail $ show x ++ " is not a metavariable"
                   _ -> fail "No such metavariable"
 
-dumpProof :: Name -> [String] -> IO ()
-dumpProof n ps = do putStrLn $ show n ++ " = proof {"
-                    mapM_ (\x -> putStrLn $ "    " ++ x ++ ";") ps
-                    putStrLn "};\n"
+showProof :: Name -> [String] -> String
+showProof n ps = show n ++ " = proof {" ++ "\n" ++
+                 showSep "\n" (map (\x -> "    " ++ x ++ ";") ps) ++
+                 "\n};\n"
 
 prove :: Context -> Name -> Type -> Idris ()
 prove ctxt n ty 
     = do let ps = initElaborator n ctxt ty 
          (tm, prf) <- ploop True ("-" ++ show n) [] (ES ps "" Nothing)
          iLOG $ "Adding " ++ show tm
-         lift $ dumpProof n prf
+         iputStrLn $ showProof n prf
+         i <- get
+         put (i { last_proof = Just (n, prf) })
          let tree = simpleCase False [(P Ref n ty, tm)]
          logLvl 3 (show tree)
          (ptm, pty) <- recheckC ctxt (FC "proof" 0) [] tm
