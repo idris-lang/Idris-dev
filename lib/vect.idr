@@ -1,6 +1,6 @@
-import nat;
+module vect;
 
-namespace vect {
+import nat;
 
 data Fin : Nat -> Set where
     fO : Fin (S k)
@@ -35,4 +35,3 @@ vfilter p (x :: xs) with (vfilter p xs) {
      = if (p x) then ( _ ** x :: xs' ) else ( _ ** xs' );
 }
 
-}

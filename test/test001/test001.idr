@@ -1,4 +1,4 @@
-namespace main {
+module main;
 
 data Ty = TyInt | TyBool| TyFun Ty Ty;
 
@@ -73,8 +73,6 @@ test = interp Nil eProg 2 2;
 
 testFac : Int;
 testFac = interp Nil eFac 4;
-
-}
 
 main : IO ();
 main = print testFac;

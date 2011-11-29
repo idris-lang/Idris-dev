@@ -70,9 +70,12 @@ loadModule f
 loadSource :: FilePath -> Idris () 
 loadSource f = do iLOG ("Reading " ++ f)
                   file <- lift $ readFile f
-                  (modules, rest, pos) <- parseImports f file
+                  (mname, modules, rest, pos) <- parseImports f file
                   mapM_ loadModule modules
-                  ds <- parseProg defaultSyntax f rest pos
+                  ds' <- parseProg (defaultSyntax {syn_namespace = mname }) f rest pos
+                  let ds = case mname of
+                            [] -> ds'
+                            (x:_) -> [PNamespace x ds']
                   logLvl 3 (dumpDecls ds)
                   i <- getIState
                   logLvl 10 (show (toAlist (idris_implicits i)))
@@ -87,19 +90,25 @@ parseTac i = runParser (do t <- pTactic defaultSyntax
                            eof
                            return t) i "(proof)"
 
-parseImports :: FilePath -> String -> Idris ([String], String, SourcePos)
+parseImports :: FilePath -> String -> Idris ([String], [String], String, SourcePos)
 parseImports fname input 
     = do i <- get
-         case (runParser (do ps <- many pImport
+         case (runParser (do mname <- pHeader
+                             ps <- many pImport
                              rest <- getInput
                              pos <- getPosition
-                             return ((ps, rest, pos), i)) i fname input) of
+                             return ((mname, ps, rest, pos), i)) i fname input) of
             Left err -> fail (ishow err)
             Right (x, i) -> do put i
                                return x
   where ishow err = let ln = sourceLine (errorPos err) in
                         fname ++ ":" ++ show ln ++ ":parse error" 
 --                           show (map messageString (errorMessages err))
+
+pHeader :: IParser [String]
+pHeader = try (do reserved "module"; i <- identifier; lchar ';'
+                  return [i])
+      <|> return []
 
 
 pfc :: IParser FC

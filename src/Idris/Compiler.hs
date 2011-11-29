@@ -33,7 +33,7 @@ ename x = name ("idris_" ++ show x)
 aname x = name ("a_" ++ show x)
 
 epicMain = effect_ $ ref (ename (UN "run__IO")) @@
-                     ref (ename (UN "main"))
+                     ref (ename (NS (UN "main") ["main"]))
 
 class ToEpic a where
     epic :: a -> Idris E.Term

@@ -1,6 +1,6 @@
-import builtins;
+module list;
 
-namespace list {
+import builtins;
 
 infixr 7 :: ;
 
@@ -38,4 +38,3 @@ filter pred (x :: xs) with (pred x, filter pred xs) {
   filter pred (x :: xs) | (False, fxs) = fxs;
 }
 
-}

@@ -1,5 +1,4 @@
-
-namespace maybe {
+module maybe;
 
 data Maybe a = Nothing | Just a;
 
@@ -11,4 +10,3 @@ maybe_bind : Maybe a -> (a -> Maybe b) -> Maybe b;
 maybe_bind Nothing k = Nothing;
 maybe_bind (Just x) k = k x;
 
-}
