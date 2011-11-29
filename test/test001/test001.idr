@@ -1,3 +1,5 @@
+namespace main {
+
 data Ty = TyInt | TyBool| TyFun Ty Ty;
 
 interpTy : Ty -> Set;
@@ -8,12 +10,12 @@ interpTy (TyFun s t) = interpTy s -> interpTy t;
 using (G : Vect Ty n) {
 
   data Env : Vect Ty n -> Set where
-      Empty  : Env Nil
-    | Extend : interpTy a -> Env G -> Env (a :: G);
+      Nil  : Env Nil
+    | (::) : interpTy a -> Env G -> Env (a :: G);
 
   envLookup : (i : Fin n) -> Env G -> interpTy (vlookup i G);
-  envLookup fO     (Extend x xs) = x;
-  envLookup (fS i) (Extend x xs) = envLookup i xs;
+  envLookup fO     (x :: xs) = x;
+  envLookup (fS i) (x :: xs) = envLookup i xs;
   
   data Expr : Vect Ty n -> Ty -> Set where
       Var : (i : Fin n) -> Expr G (vlookup i G)
@@ -30,7 +32,7 @@ using (G : Vect Ty n) {
   interp : Env G -> [static] Expr G t -> interpTy t;
   interp env (Var i)     = envLookup i env;
   interp env (Val x)     = x;
-  interp env (Lam sc)    = \x => interp (Extend x env) sc;
+  interp env (Lam sc)    = \x => interp (x :: env) sc;
   interp env (App f s)   = (interp env f) (interp env s);
   interp env (Op op x y) = op (interp env x) (interp env y);
   interp env (Op' op x y) = op (interp env x) (interp env y);
@@ -67,10 +69,12 @@ using (G : Vect Ty n) {
 }
 
 test : Int;
-test = interp Empty eProg 2 2;
+test = interp Nil eProg 2 2;
 
 testFac : Int;
-testFac = interp Empty eFac 4;
+testFac = interp Nil eFac 4;
+
+}
 
 main : IO ();
 main = print testFac;
