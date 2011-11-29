@@ -441,6 +441,7 @@ pSimpleExpr syn =
                return (PTactics ts)
         <|> try (do x <- pfName; fc <- pfc; return (PRef fc x))
         <|> try (pPair syn)
+        <|> try (pList syn)
         <|> try (pAlt syn)
         <|> try (do lchar '('; e <- pExpr syn; lchar ')'; return e)
         <|> try (do c <- pConstant; fc <- pfc
@@ -456,6 +457,13 @@ modifyConst syn fc (PConstant (I x))
     | not (inPattern syn)
         = PApp fc (PRef fc (UN "fromInteger")) [pexp (PConstant (I x))]
 modifyConst syn fc x = x
+
+pList syn = do lchar '['; fc <- pfc
+               xs <- sepBy (pExpr syn) (lchar ','); lchar ']'
+               return (mkList fc xs)
+  where
+    mkList fc [] = PRef fc (UN "Nil")
+    mkList fc (x : xs) = PApp fc (PRef fc (UN "::")) [pexp x, pexp (mkList fc xs)] 
 
 pPair syn = try (do lchar '('; l <- pExpr syn; op <- pairOp
                     fc <- pfc
@@ -532,7 +540,7 @@ pPi syn =
              sc <- pExpr syn
              return (bindList (PPi (Imp lazy st)) xt sc))
       <|> do --lazy <- option False (do lchar '|'; return True)
-             lchar '['; reserved "static"; lchar ']'
+             lchar '{'; reserved "static"; lchar '}'
              t <- pExpr' syn
              symbol "->"
              sc <- pExpr syn

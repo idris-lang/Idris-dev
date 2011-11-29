@@ -2,38 +2,40 @@ import builtins;
 
 namespace list {
 
-data List a = Nil | Cons a (List a);
+infixr 7 :: ;
+
+data List a = Nil | (::) a (List a);
 
 rev : List a -> List a;
 rev xs = revAcc Nil xs where {
   revAcc : List a -> List a -> List a;
   revAcc acc Nil = acc;
-  revAcc acc (Cons x xs) = revAcc (Cons x acc) xs;
+  revAcc acc (x :: xs) = revAcc (x :: acc) xs;
 }
 
 length : List a -> Int;
 length Nil         = 0;
-length (Cons x xs) = 1 + length xs;
+length (x :: xs) = 1 + length xs;
 
 take : Int -> List a -> List a;
 take 0 xs = Nil;
 take n Nil = Nil;
-take n (Cons x xs) = Cons x (take (n-1) xs);
+take n (x :: xs) = x :: take (n-1) xs;
 
 drop : Int -> List a -> List a;
 drop 0 xs = xs;
 drop n Nil = Nil;
-drop n (Cons x xs) = drop (n-1) xs;
+drop n (x :: xs) = drop (n-1) xs;
 
 map : (a -> b) -> List a -> List b;
 map f Nil         = Nil;
-map f (Cons x xs) = Cons (f x) (map f xs);
+map f (x :: xs) = f x :: map f xs;
 
 filter : (y -> Bool) -> List y -> List y;
 filter pred Nil = Nil;
-filter pred (Cons x xs) with (pred x, filter pred xs) {
-  filter pred (Cons x xs) | (True, fxs) = Cons x fxs; 
-  filter pred (Cons x xs) | (False, fxs) = fxs;
+filter pred (x :: xs) with (pred x, filter pred xs) {
+  filter pred (x :: xs) | (True, fxs) = x :: fxs; 
+  filter pred (x :: xs) | (False, fxs) = fxs;
 }
 
 }

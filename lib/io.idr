@@ -14,6 +14,7 @@ io_return = prim__IO;
 run__IO : IO () -> IO ();
 run__IO (prim__IO v) = prim__IO v;
 
+
 data FTy = FInt | FFloat | FChar | FString | FPtr | FUnit;
 
 interpFTy : FTy -> Set;
@@ -27,18 +28,24 @@ interpFTy FUnit   = ();
 ForeignTy : (xs:List FTy) -> (t:FTy) -> Set;
 ForeignTy xs t = mkForeign' (rev xs) (IO (interpFTy t)) where {
    mkForeign' : List FTy -> Set -> Set;
-   mkForeign' Nil ty         = ty;
-   mkForeign' (Cons s ss) ty = mkForeign' ss (interpFTy s -> ty);
+   mkForeign' Nil ty       = ty;
+   mkForeign' (s :: ss) ty = mkForeign' ss (interpFTy s -> ty);
 }
 
+namespace foreign {
+
+infixr 7 :: ;
+
 data FEnv : List FTy -> Set where
-    FEmpty : FEnv Nil
-  | FCons  : {xs:List FTy} ->
-             interpFTy x -> FEnv xs -> FEnv (Cons x xs);
+    Nil   : FEnv Nil
+  | (::)  : {xs:List FTy} ->
+             interpFTy x -> FEnv xs -> FEnv (x ::xs);
 
 data Foreign : Set -> Set where
     FFun : String -> (xs:List FTy) -> (t:FTy) -> 
            Foreign (ForeignTy xs t);
+
+}
 
 mkForeign : Foreign x -> x;
 -- mkForeign compiled as primitive

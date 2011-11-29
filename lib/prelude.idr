@@ -44,8 +44,8 @@ instance Show a => Show (List a) where {
     show xs = "[" ++ show' xs ++ "]" where {
         show' : Show a => List a -> String;
         show' Nil = "";
-        show' (Cons x Nil) = show x;
-        show' (Cons x xs) = show x ++ ", " ++ show' xs;
+        show' (x :: Nil) = show x;
+        show' (x :: xs) = show x ++ ", " ++ show' xs;
     }
 }
 
@@ -106,7 +106,7 @@ log x = prim__floatLog x;
 ---- some basic io
 
 putStr : String -> IO ();
-putStr x = mkForeign (FFun "putStr" (Cons FString Nil) FUnit) x;
+putStr x = mkForeign (FFun "putStr" (FString :: Nil) FUnit) x;
 
 putStrLn : String -> IO ();
 putStrLn x = putStr (x ++ "\n");
