@@ -97,7 +97,7 @@ data Name = UN String
 
 instance Show Name where
     show (UN n) = n
-    show (NS n s) = showSep "." s ++ "." ++ show n
+    show (NS n s) = showSep "." (reverse s) ++ "." ++ show n
     show (MN i s) = "{" ++ s ++ show i ++ "}"
 
 

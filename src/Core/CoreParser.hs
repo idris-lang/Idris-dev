@@ -60,11 +60,11 @@ pTestFile = do p <- many1 pDef ; eof
 iName :: [String] -> CParser a Name
 iName bad = do x <- identifier
                when (x `elem` bad) $ fail "Reserved identifier"
-               return $ mkNS (parseName x)
+               return $ mkNS (reverse (parseName x))
   where
     mkNS [x] = UN x
     mkNS (x:xs) = NS (UN x) xs 
-    parseName x = reverse $ case span (/= '.') x of
+    parseName x = case span (/= '.') x of
                        (x, "") -> [x]
                        (x, '.':y) -> x : parseName y
 
