@@ -174,7 +174,7 @@ displayHelp = let vstr = showVersion version in
               "\nIdris version " ++ vstr ++ "\n" ++
               "--------------" ++ map (\x -> '-') vstr ++ "\n\n" ++
               concatMap cmdInfo help
-  where cmdInfo (cmds, args, text) = "   " ++ col 16 10 (showSep " " cmds) args text 
+  where cmdInfo (cmds, args, text) = "   " ++ col 16 12 (showSep " " cmds) args text 
         col c1 c2 l m r = 
             l ++ take (c1 - length l) (repeat ' ') ++ 
             m ++ take (c2 - length m) (repeat ' ') ++ r ++ "\n"

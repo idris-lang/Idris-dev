@@ -1,6 +1,6 @@
 module vect;
 
-import nat;
+import prelude.nat;
 
 data Fin : Nat -> Set where
     fO : Fin (S k)

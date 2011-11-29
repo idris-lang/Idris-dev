@@ -1,4 +1,4 @@
-module nat;
+module prelude.nat;
 
 import builtins;
 

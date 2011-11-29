@@ -1,12 +1,13 @@
 module prelude;
 
 import builtins;
-import nat;
-import list;
-import maybe;
-import either;
-import vect;
 import io;
+
+import prelude.nat;
+import prelude.list;
+import prelude.maybe;
+import prelude.either;
+import prelude.vect;
 
 -- Show and instances
 

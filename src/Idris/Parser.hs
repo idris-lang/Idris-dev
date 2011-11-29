@@ -72,10 +72,9 @@ loadSource f = do iLOG ("Reading " ++ f)
                   file <- lift $ readFile f
                   (mname, modules, rest, pos) <- parseImports f file
                   mapM_ loadModule modules
-                  ds' <- parseProg (defaultSyntax {syn_namespace = mname }) f rest pos
-                  let ds = case mname of
-                            [] -> ds'
-                            (x:_) -> [PNamespace x ds']
+                  ds' <- parseProg (defaultSyntax {syn_namespace = reverse mname }) 
+                                   f rest pos
+                  let ds = namespaces mname ds'
                   logLvl 3 (dumpDecls ds)
                   i <- getIState
                   logLvl 10 (show (toAlist (idris_implicits i)))
@@ -84,6 +83,9 @@ loadSource f = do iLOG ("Reading " ++ f)
                   mapM_ (elabDecl toplevel) ds
                   iLOG ("Finished " ++ f)
                   return ()
+  where
+    namespaces []     ds = ds
+    namespaces (x:xs) ds = [PNamespace x (namespaces xs ds)]
 
 parseExpr i = runParser (pFullExpr defaultSyntax) i "(input)"
 parseTac i = runParser (do t <- pTactic defaultSyntax
@@ -107,8 +109,11 @@ parseImports fname input
 
 pHeader :: IParser [String]
 pHeader = try (do reserved "module"; i <- identifier; lchar ';'
-                  return [i])
+                  return (parseName i))
       <|> return []
+  where parseName x = case span (/='.') x of
+                            (x, "") -> [x]
+                            (x, '.':y) -> x : parseName y
 
 
 pfc :: IParser FC
@@ -123,7 +128,9 @@ pImport :: IParser String
 pImport = do reserved "import"
              f <- identifier
              lchar ';'
-             return f
+             return (map dot f)
+  where dot '.' = '/'
+        dot c = c
 
 parseProg :: SyntaxInfo -> FilePath -> String -> SourcePos -> Idris [PDecl]
 parseProg syn fname input pos

@@ -1,4 +1,4 @@
-import list;
+import prelude.list;
 
 data IO a = prim__IO a;
 
