@@ -20,18 +20,18 @@ data Vect : Set -> Nat -> Set where
     Nil   : Vect a O
   | (::)  : a -> Vect a k -> Vect a (S k); 
 
-vlookup : Fin n -> Vect a n -> a;
-vlookup fO     (x :: xs) = x;
-vlookup (fS k) (x :: xs) = vlookup k xs;
+lookup : Fin n -> Vect a n -> a;
+lookup fO     (x :: xs) = x;
+lookup (fS k) (x :: xs) = lookup k xs;
  
-vapp : Vect a n -> Vect a m -> Vect a (n + m);
-vapp []        ys = ys;
-vapp (x :: xs) ys = x :: vapp xs ys;
+app : Vect a n -> Vect a m -> Vect a (n + m);
+app []        ys = ys;
+app (x :: xs) ys = x :: app xs ys;
 
-vfilter : (a -> Bool) -> Vect a n -> (p ** Vect a p);
-vfilter p [] = ( _ ** [] );
-vfilter p (x :: xs) with (vfilter p xs) {
-  vfilter p (x :: xs) | ( _ ** xs' ) 
+filter : (a -> Bool) -> Vect a n -> (p ** Vect a p);
+filter p [] = ( _ ** [] );
+filter p (x :: xs) with (filter p xs) {
+  filter p (x :: xs) | ( _ ** xs' ) 
      = if (p x) then ( _ ** x :: xs' ) else ( _ ** xs' );
 }
 

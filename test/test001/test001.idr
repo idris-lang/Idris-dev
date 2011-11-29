@@ -13,12 +13,12 @@ using (G : Vect Ty n) {
       Nil  : Env Nil
     | (::) : interpTy a -> Env G -> Env (a :: G);
 
-  envLookup : (i : Fin n) -> Env G -> interpTy (vlookup i G);
-  envLookup fO     (x :: xs) = x;
-  envLookup (fS i) (x :: xs) = envLookup i xs;
+  lookup : (i : Fin n) -> Env G -> interpTy (lookup i G);
+  lookup fO     (x :: xs) = x;
+  lookup (fS i) (x :: xs) = lookup i xs;
   
   data Expr : Vect Ty n -> Ty -> Set where
-      Var : (i : Fin n) -> Expr G (vlookup i G)
+      Var : (i : Fin n) -> Expr G (lookup i G)
     | Val : (x : Int) -> Expr G TyInt
     | Lam : Expr (a :: G) t -> Expr G (TyFun a t)
     | App : Expr G (TyFun a t) -> Expr G a -> Expr G t
@@ -30,7 +30,7 @@ using (G : Vect Ty n) {
     | Bind : Expr G a -> (interpTy a -> Expr G b) -> Expr G b;
   
   interp : Env G -> {static} Expr G t -> interpTy t;
-  interp env (Var i)     = envLookup i env;
+  interp env (Var i)     = lookup i env;
   interp env (Val x)     = x;
   interp env (Lam sc)    = \x => interp (x :: env) sc;
   interp env (App f s)   = (interp env f) (interp env s);
