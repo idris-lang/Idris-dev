@@ -1,4 +1,4 @@
-module list;
+module prelude.list;
 
 import builtins;
 

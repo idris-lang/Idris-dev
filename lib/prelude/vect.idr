@@ -1,4 +1,4 @@
-module vect;
+module prelude.vect;
 
 import prelude.nat;
 

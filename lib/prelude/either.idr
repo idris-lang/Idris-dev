@@ -1,4 +1,4 @@
-module either;
+module prelude.either;
 
 import builtins;
 

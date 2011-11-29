@@ -1,4 +1,4 @@
-module maybe;
+module prelude.maybe;
 
 data Maybe a = Nothing | Just a;
 
