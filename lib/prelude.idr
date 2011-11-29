@@ -44,8 +44,8 @@ instance (Show a, Show b) => Show (a, b) where {
 instance Show a => Show (List a) where {
     show xs = "[" ++ show' xs ++ "]" where {
         show' : Show a => List a -> String;
-        show' Nil = "";
-        show' (x :: Nil) = show x;
+        show' []        = "";
+        show' [x]       = show x;
         show' (x :: xs) = show x ++ ", " ++ show' xs;
     }
 }
@@ -53,8 +53,8 @@ instance Show a => Show (List a) where {
 instance Show a => Show (Vect a n) where {
     show xs = "[" ++ show' xs ++ "]" where {
         show' : Show a => Vect a n -> String;
-        show' VNil = "";
-        show' (x :: VNil) = show x;
+        show' []        = "";
+        show' [x]       = show x;
         show' (x :: xs) = show x ++ ", " ++ show' xs;
     }
 }

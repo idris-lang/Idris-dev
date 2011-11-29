@@ -17,7 +17,7 @@ instance Eq (Fin n) where {
 infixr 7 :: ;
 
 data Vect : Set -> Nat -> Set where
-    Nil  : Vect a O
+    Nil   : Vect a O
   | (::)  : a -> Vect a k -> Vect a (S k); 
 
 vlookup : Fin n -> Vect a n -> a;
@@ -25,11 +25,11 @@ vlookup fO     (x :: xs) = x;
 vlookup (fS k) (x :: xs) = vlookup k xs;
  
 vapp : Vect a n -> Vect a m -> Vect a (n + m);
-vapp Nil       ys = ys;
+vapp []        ys = ys;
 vapp (x :: xs) ys = x :: vapp xs ys;
 
 vfilter : (a -> Bool) -> Vect a n -> (p ** Vect a p);
-vfilter p Nil = ( _ ** Nil );
+vfilter p [] = ( _ ** [] );
 vfilter p (x :: xs) with (vfilter p xs) {
   vfilter p (x :: xs) | ( _ ** xs' ) 
      = if (p x) then ( _ ** x :: xs' ) else ( _ ** xs' );
