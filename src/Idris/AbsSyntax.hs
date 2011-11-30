@@ -141,6 +141,9 @@ solveDeferred n = do i <- get
 iputStrLn :: String -> Idris ()
 iputStrLn = lift.putStrLn
 
+iWarn :: FC -> String -> Idris ()
+iWarn fc err = do lift $ putStrLn (show fc ++ ":" ++ err)
+
 setLogLevel :: Int -> Idris ()
 setLogLevel l = do i <- get
                    let opts = idris_options i
@@ -390,6 +393,7 @@ type PArg = PArg' PTerm
 
 data ClassInfo = CI { instanceName :: Name,
                       class_methods :: [(Name, PTerm)],
+                      class_defaults :: [(Name, Name)], -- method name -> default impl
                       class_params :: [Name] }
     deriving Show
 

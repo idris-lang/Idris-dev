@@ -315,6 +315,7 @@ apply_elab n args =
 
     mkMN n@(MN _ _) = n
     mkMN n@(UN x) = MN 0 x
+    mkMN (NS n ns) = NS (mkMN n) ns
 
 simple_app :: Elab () -> Elab () -> Elab ()
 simple_app fun arg =

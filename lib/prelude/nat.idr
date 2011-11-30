@@ -28,8 +28,6 @@ instance Eq Nat where {
     (S x) == (S y) = x == y;
     O     == (S y) = False;
     (S x) == O     = False;
-    
-    x /= y = not (x == y);
 }
 
 instance Num Nat where {

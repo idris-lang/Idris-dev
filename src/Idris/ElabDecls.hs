@@ -280,6 +280,8 @@ elabClause info fc (PWith fname lhs_in withs wval_in withblock)
                 PApp fc (PRef fc' wname) (map (pexp . (PRef fc')) ns ++ [pexp w])
     updateLHS n wname mvars ns tm w = fail $ "Not implemented " ++ show tm 
 
+data MArgTy = IA | EA | CA deriving Show
+
 elabClass :: ElabInfo -> SyntaxInfo -> 
              FC -> [PTerm] -> 
              Name -> [(Name, PTerm)] -> [PDecl] -> Idris ()
@@ -289,21 +291,26 @@ elabClass info syn fc constraints tn ps ds
          let constraint = PApp fc (PRef fc tn)
                                   (map (pexp . PRef fc) (map fst ps))
          -- build data declaration
-         ims <- mapM tdecl ds
-         let (methods, imethods) = unzip ims
+         ims <- mapM tdecl (filter tydecl ds)
+         defs <- mapM (defdecl (map (\ (x,y,z) -> z) ims) constraint) 
+                      (filter clause ds)
+         let (methods, imethods) = unzip (map (\ (x,y,z) -> (x, y)) ims)
          let cty = impbind ps $ conbind constraints $ pibind methods constraint
          let cons = [(cn, cty, fc)]
          let ddecl = PData syn fc (PDatadecl tn tty cons)
          elabDecl info ddecl
-         -- for each constraint, bui;d a top level function to chase it
+         -- for each constraint, build a top level function to chase it
          let usyn = syn { using = ps ++ using syn }
          fns <- mapM (cfun cn constraint usyn (map fst imethods)) constraints
          mapM_ (elabDecl info) (concat fns)
          -- for each method, build a top level function
          fns <- mapM (tfun cn constraint usyn (map fst imethods)) imethods
          mapM_ (elabDecl info) (concat fns)
+         -- add the default definitions
+         mapM_ (elabDecl info) (concat (map (snd.snd) defs))
          i <- get
-         put (i { idris_classes = addDef tn (CI cn imethods (map fst ps)) 
+         let defaults = map (\ (x, (y, z)) -> (x,y)) defs
+         put (i { idris_classes = addDef tn (CI cn imethods defaults (map fst ps)) 
                                             (idris_classes i) })
   where
     pibind [] x = x
@@ -315,9 +322,28 @@ elabClass info syn fc constraints tn ps ds
 
     tdecl (PTy syn _ n t) = do t' <- implicit syn n t
                                return ( (n, (toExp (map fst ps) Exp t')),
-                                        (n, (toExp (map fst ps) Imp t')) )
-    tdecl (PClauses _ _ _ _) = fail "No default definitions allowed yet"
+                                        (n, (toExp (map fst ps) Imp t')),
+                                        (n, (syn, t) ) )
     tdecl _ = fail "Not allowed in a class declaration"
+
+    -- Create default definitions 
+    defdecl mtys c d@(PClauses fc opts n cs) =
+        case lookup n mtys of
+            Just (syn, ty) -> do let ty' = insertConstraint c ty
+                                 let ds = map (decorateid defaultdec)
+                                              [PTy syn fc n ty', d]
+                                 iLOG (show ds)
+                                 return (n, (defaultdec n, ds))
+            _ -> fail $ show n ++ " is not a method"
+    defdecl _ _ _ = fail "Can't happen (defdecl)"
+
+    defaultdec (UN n) = UN ("default#" ++ n)
+    defaultdec (NS n ns) = NS (defaultdec n) ns
+
+    tydecl (PTy _ _ _ _) = True
+    tydecl _ = False
+    clause (PClauses _ _ _ _) = True
+    clause _ = False
 
     cfun cn c syn all con
         = do let cfn = UN ('@':show cn ++ "#" ++ show con)
@@ -345,19 +371,22 @@ elabClass info syn fc constraints tn ps ds
              return [PTy syn fc m ty',
                      PClauses fc True m [PClause m lhs [] rhs []]]
 
-    getMArgs (PPi (Imp _ _) n ty sc) = False : getMArgs sc
-    getMArgs (PPi (Exp _ _) n ty sc) = True  : getMArgs sc
+    getMArgs (PPi (Imp _ _) n ty sc) = IA : getMArgs sc
+    getMArgs (PPi (Exp _ _) n ty sc) = EA  : getMArgs sc
+    getMArgs (PPi (Constraint _ _) n ty sc) = CA : getMArgs sc
     getMArgs _ = []
 
     getMeth (m:ms) (a:as) x | x == a = PRef fc m
                             | otherwise = getMeth ms as x
 
-    lhsArgs (True : xs) (n : ns) = pexp (PRef fc n) : lhsArgs xs ns 
-    lhsArgs (False : xs) ns = lhsArgs xs ns 
+    lhsArgs (EA : xs) (n : ns) = pexp (PRef fc n) : lhsArgs xs ns 
+    lhsArgs (IA : xs) ns = lhsArgs xs ns 
+    lhsArgs (CA : xs) ns = lhsArgs xs ns
     lhsArgs [] _ = []
 
-    rhsArgs (True : xs) (n : ns) = pexp (PRef fc n) : rhsArgs xs ns 
-    rhsArgs (False : xs) ns = pexp Placeholder : rhsArgs xs ns 
+    rhsArgs (EA : xs) (n : ns) = pexp (PRef fc n) : rhsArgs xs ns 
+    rhsArgs (IA : xs) ns = pexp Placeholder : rhsArgs xs ns 
+    rhsArgs (CA : xs) ns = pconst (PResolveTC fc) : rhsArgs xs ns
     rhsArgs [] _ = []
 
     insertConstraint c (PPi p@(Imp _ _) n ty sc)
@@ -385,10 +414,14 @@ elabInstance info syn fc cs n ps t ds
          let ns = case n of
                     NS n ns' -> ns'
                     _ -> []
-         let mtys = map (\ (n, t) -> (decorate ns n, coninsert cs $ substMatches ips t)) 
+         let mtys = map (\ (n, t) -> let t' = substMatches ips t in
+                                         (decorate ns n, coninsert cs t', t'))
                         (class_methods ci)
          logLvl 3 (show (mtys, ips))
-         let wb = map mkTyDecl mtys ++ map (decorateid ns) ds
+         let ds' = insertDefaults (class_defaults ci) ns ds
+         iLOG ("Defaults inserted: " ++ show ds' ++ "\n" ++ show ci)
+         mapM_ (warnMissing ds' ns) (map fst (class_methods ci))
+         let wb = map mkTyDecl mtys ++ map (decorateid (decorate ns)) ds'
          let lhs = PRef fc iname
          let rhs = PApp fc (PRef fc (instanceName ci))
                            (map (pexp . mkMethApp) mtys)
@@ -396,8 +429,9 @@ elabInstance info syn fc cs n ps t ds
          iLOG (show idecl)
          elabDecl info idecl
   where
-    mkMethApp (n, ty) = lamBind 0 ty (papp fc (PRef fc n) (methArgs 0 ty))
-    lamBind i (PPi (Constraint _ _) _ _ sc) sc' = lamBind i sc sc'
+    mkMethApp (n, _, ty) = lamBind 0 ty (papp fc (PRef fc n) (methArgs 0 ty))
+    lamBind i (PPi (Constraint _ _) _ _ sc) sc' 
+                                  = PLam (MN i "meth") Placeholder (lamBind (i+1) sc sc')
     lamBind i (PPi _ n ty sc) sc' = PLam (MN i "meth") Placeholder (lamBind (i+1) sc sc')
     lamBind i _ sc = sc
     methArgs i (PPi (Imp _ _) n ty sc) 
@@ -405,7 +439,7 @@ elabInstance info syn fc cs n ps t ds
     methArgs i (PPi (Exp _ _) n ty sc) 
         = PExp 0 False (PRef fc (MN i "meth")) : methArgs (i+1) sc
     methArgs i (PPi (Constraint _ _) n ty sc) 
-        = methArgs i sc
+        = PConstraint 0 False (PResolveTC fc) : methArgs (i+1) sc
     methArgs i _ = []
 
     papp fc f [] = f
@@ -414,20 +448,42 @@ elabInstance info syn fc cs n ps t ds
     decorate ns (UN n) = NS (UN ('!':n)) ns
     decorate ns (NS (UN n) s) = NS (UN ('!':n)) ns
 
-    decorateid ns (PTy s f n t) = PTy s f (decorate ns n) t
-    decorateid ns (PClauses f o n cs) = PClauses f o (decorate ns n) (map dc cs)
-      where dc (PClause n t as w ds) = PClause (decorate ns n) (dappname t) as w ds
-            dc (PWith   n t as w ds) = PWith   (decorate ns n) (dappname t) as w 
-                                               (map (decorateid ns) ds)
-            dappname (PApp fc (PRef fc' n) as) = PApp fc (PRef fc' (decorate ns n)) as
-            dappname t = t
-    mkTyDecl (n, t) = PTy syn fc n t
+    mkTyDecl (n, t, _) = PTy syn fc n t
 
     conbind (ty : ns) x = PPi constraint (MN 0 "c") ty (conbind ns x)
     conbind [] x = x
 
     coninsert cs (PPi p@(Imp _ _) n t sc) = PPi p n t (coninsert cs sc)
     coninsert cs sc = conbind cs sc
+
+    insertDefaults :: [(Name, Name)] -> [String] -> [PDecl] -> [PDecl]
+    insertDefaults [] ns ds = ds
+    insertDefaults ((n,dn) : defs) ns ds 
+       = insertDefaults defs ns (insertDef n dn ns ds)
+
+    insertDef meth def ns decls
+        | null $ filter (clauseFor meth ns) decls
+            = decls ++ [PClauses fc True meth 
+                        [PClause meth (PApp fc (PRef fc meth) []) [] 
+                                      (PApp fc (PRef fc def) []) []]]
+        | otherwise = decls
+
+    warnMissing decls ns meth
+        | null $ filter (clauseFor meth ns) decls
+            = iWarn fc $ "method " ++ show meth ++ " not defined"
+        | otherwise = return ()
+
+    clauseFor m ns (PClauses _ _ m' _) = decorate ns m == decorate ns m'
+    clauseFor m ns _ = False
+
+decorateid decorate (PTy s f n t) = PTy s f (decorate n) t
+decorateid decorate (PClauses f o n cs) 
+   = PClauses f o (decorate n) (map dc cs)
+    where dc (PClause n t as w ds) = PClause (decorate n) (dappname t) as w ds
+          dc (PWith   n t as w ds) = PWith   (decorate n) (dappname t) as w 
+                                              (map (decorateid decorate) ds)
+          dappname (PApp fc (PRef fc' n) as) = PApp fc (PRef fc' (decorate n)) as
+          dappname t = t
 
 pbinds (Bind n (PVar t) sc) = do attack; patbind n 
                                  pbinds sc

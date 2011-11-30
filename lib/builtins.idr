@@ -84,28 +84,50 @@ boolOp op x y = intToBool (op x y);
 class Eq a where {
     (==) : a -> a -> Bool;
     (/=) : a -> a -> Bool;
+
+    (/=) x y = not (x == y);
+    (==) x y = not (x /= y);
 }
 
 instance Eq Int where {
     (==) = boolOp prim__eqInt;
-    (/=) x y = not (x == y);
 }
 
 instance Eq Integer where {
     (==) = boolOp prim__eqBigInt;
-    (/=) x y = not (x == y);
 }
 
 instance Eq Float where {
     (==) = boolOp prim__eqFloat;
-    (/=) x y = not (x == y);
 }
 
 data Ordering = LT | EQ | GT;
 
 class Eq a => Ord a where {
     compare : a -> a -> Ordering;
+
+    (<) : a -> a -> Bool;
+    (<) x y with compare x y {
+        (<) x y | LT = True;
+        (<) x y | _  = False;
+    }
+
+    (>) : a -> a -> Bool;
+    (>) x y with compare x y {
+        (>) x y | GT = True;
+        (>) x y | _  = False;
+    }
+
+    (<=) : a -> a -> Bool;
+    (<=) x y = x < y || x == y;
+
+    (>=) : a -> a -> Bool;
+    (>=) x y = x > y || x == y;
+
+    max : a -> a -> a;
+    max x y = if (x > y) then x else y;
 }
+
 
 instance Ord Int where {
     compare x y = if (x == y) then EQ else
@@ -154,32 +176,9 @@ instance Num Float where {
 div : Int -> Int -> Int;
 div = prim__divInt;
 
-(<) : Int -> Int -> Bool;
-(<) = boolOp prim__ltInt;
-
-(<=) : Int -> Int -> Bool;
-(<=) = boolOp prim__lteInt;
-
-(>) : Int -> Int -> Bool;
-(>) = boolOp prim__gtInt;
-
-(>=) : Int -> Int -> Bool;
-(>=) = boolOp prim__gteInt;
 
 (/) : Float -> Float -> Float;
 (/) = prim__divFloat;
-
-(<.) : Float -> Float -> Bool;
-(<.) = boolOp prim__ltFloat;
-
-(<=.) : Float -> Float -> Bool;
-(<=.) = boolOp prim__lteFloat;
-
-(>.) : Float -> Float -> Bool;
-(>.) = boolOp prim__gtFloat;
-
-(>=.) : Float -> Float -> Bool;
-(>=.) = boolOp prim__gteFloat;
 
 --- string operators
 

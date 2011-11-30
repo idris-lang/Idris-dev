@@ -242,8 +242,8 @@ resolveTC depth ist
         = do focus a
              fill (RConstant IType) -- default Int
              solve
-    needsDefault t f as
-        | all boundVar as = fail $ "Can't resolve " ++ show t
+--     needsDefault t f as
+--         | all boundVar as = fail $ "Can't resolve " ++ show t
     needsDefault t f a = return ()
 
     boundVar (P Bound _ _) = True
