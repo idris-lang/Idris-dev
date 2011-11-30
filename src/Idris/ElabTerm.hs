@@ -9,6 +9,7 @@ import Core.Evaluate
 import Control.Monad
 import Control.Monad.State
 import Data.List
+import Debug.Trace
 
 -- Data to pass to recursively called elaborators; e.g. for where blocks,
 -- paramaterised declarations, etc.
@@ -67,8 +68,8 @@ elab ist info pattern tm
     elab' (PTrue fc)     = try (elab' (PRef fc unitCon))
                                (elab' (PRef fc unitTy))
     elab' (PFalse fc)    = elab' (PRef fc falseTy)
-    elab' (PResolveTC (FC "HACK" _))
-       = resolveTC 10 ist
+    elab' (PResolveTC (FC "HACK" _)) -- for chasing parent classes
+       = resolveTC 2 ist
     elab' (PResolveTC fc) = do c <- unique_hole (MN 0 "c")
                                instanceArg c
     elab' (PRefl fc)     = elab' (PApp fc (PRef fc eqCon) [pimp (MN 0 "a") Placeholder,
@@ -97,8 +98,9 @@ elab ist info pattern tm
                                             [pimp (MN 0 "a") t,
                                              pimp (MN 0 "P") Placeholder,
                                              pexp l, pexp r])
-    elab' (PAlternative as) = tryAll (zip (map elab' as) (map show as))
-                                  
+    elab' (PAlternative as) = tryAll (zip (map elab' as) (map showHd as))
+        where showHd (PApp _ h _) = show h
+              showHd x = show x
     elab' (PRef fc n) | pattern && not (inparamBlock n)
                          = do ctxt <- get_context
                               let sc = case lookupTy Nothing n ctxt of
@@ -170,7 +172,7 @@ elab ist info pattern tm
             ivs' <- get_instances
             when (not pattern) $
                 mapM_ (\n -> do focus n
-                                resolveTC 10 ist) (ivs' \\ ivs) 
+                                resolveTC 7 ist) (ivs' \\ ivs) 
 --             ivs <- get_instances
 --             when (not (null ivs)) $
 --               do t <- get_term
@@ -222,12 +224,31 @@ trivial ist = try (elab ist toplevel False (PRefl (FC "prf" 0)))
                             (tryAll xs)
 
 resolveTC :: Int -> IState -> Elab ()
+resolveTC 0 ist = fail $ "Can't resolve type class"
 resolveTC depth ist 
-              = do t <- goal
+         = try (trivial ist)
+               (do t <- goal
+                   let (tc, ttypes) = unApply t
+                   needsDefault t tc ttypes
                    tm <- get_term
-                   try (trivial ist)
-                       (blunderbuss t (map fst (ctxtAlist (tt_ctxt ist))))
+--                    traceWhen (depth > 6) ("GOAL: " ++ show t ++ "\nTERM: " ++ show tm) $
+--                        (tryAll (map elabTC (map fst (ctxtAlist (tt_ctxt ist)))))
+                   blunderbuss t (map fst (ctxtAlist (tt_ctxt ist))))
   where
+    elabTC n | tcname n = (resolve n depth, show n)
+             | otherwise = (fail "Can't resolve", show n)
+
+    needsDefault t num@(P _ (NS (UN "Num") ["builtins"]) _) [P Bound a _]
+        = do focus a
+             fill (RConstant IType) -- default Int
+             solve
+    needsDefault t f as
+        | all boundVar as = fail $ "Can't resolve " ++ show t
+    needsDefault t f a = return ()
+
+    boundVar (P Bound _ _) = True
+    boundVar _ = False
+
     blunderbuss t [] = fail $ "Can't resolve type class " ++ show t
     blunderbuss t (n:ns) | tcname n = try (resolve n depth)
                                           (blunderbuss t ns)

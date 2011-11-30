@@ -41,6 +41,7 @@ recheck ctxt env tm
    = let v = next_tvar ctxt in
        case runStateT (check' False ctxt env (forget tm)) (v, []) of -- holes banned
           Error (IncompleteTerm _) -> Error $ IncompleteTerm tm
+          Error e -> Error e
           OK ((tm, ty), constraints) -> 
               return (tm, ty, constraints)
 
