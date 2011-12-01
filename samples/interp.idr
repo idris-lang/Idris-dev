@@ -24,8 +24,8 @@ using (G : Vect Ty n) {
     | App : Expr G (TyFun a t) -> Expr G a -> Expr G t
     | Op  : (Int -> Int -> interpTy c) ->
             Expr G TyInt -> Expr G TyInt -> Expr G c
-    | Op' : (interpTy a -> interpTy b -> interpTy c) ->
-            Expr G a -> Expr G b -> Expr G c
+    | Op' : (interpTy a -> interpTy b -> interpTy c) -> Expr G a -> Expr G b -> 
+            Expr G c
     | If  : Expr G TyBool -> Expr G a -> Expr G a -> Expr G a
     | Bind : Expr G a -> (interpTy a -> Expr G b) -> Expr G b;
   

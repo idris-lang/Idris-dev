@@ -17,11 +17,12 @@ import qualified Epic.Epic as E
 
 data IOption = IOption { opt_logLevel :: Int,
                          opt_typecase :: Bool,
+                         opt_typeintype :: Bool,
                          opt_showimp  :: Bool
                        }
     deriving (Show, Eq)
 
-defaultOpts = IOption 0 False False
+defaultOpts = IOption 0 False False False
 
 -- TODO: Add 'module data' to IState, which can be saved out and reloaded quickly (i.e
 -- without typechecking).
@@ -153,6 +154,16 @@ setLogLevel l = do i <- get
 logLevel :: Idris Int
 logLevel = do i <- get
               return (opt_logLevel (idris_options i))
+
+typeInType :: Idris Bool
+typeInType = do i <- get
+                return (opt_typeintype (idris_options i))
+
+setTypeInType :: Bool -> Idris ()
+setTypeInType t = do i <- get
+                     let opts = idris_options i
+                     let opt' = opts { opt_typeintype = t }
+                     put (i { idris_options = opt' })
 
 impShow :: Idris Bool
 impShow = do i <- get
@@ -835,7 +846,7 @@ implicitise syn ist tm
 addImpl :: IState -> PTerm -> PTerm
 addImpl ist ptm = ai [] ptm
   where
-    ai env (PRef fc f)       = aiFn ist fc f []
+    ai env (PRef fc f)    = aiFn ist fc f []
     ai env (PEq fc l r)   = let l' = ai env l
                                 r' = ai env r in
                                 PEq fc l' r'

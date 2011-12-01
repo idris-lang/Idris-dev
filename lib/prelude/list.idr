@@ -38,11 +38,6 @@ filter pred (x :: xs) with (pred x, filter pred xs) {
   filter pred (x :: xs) | (False, fxs) = fxs;
 }
 
-merge : Ord a => List a -> List a -> List a;
-merge xs        []        = xs;
-merge []        ys        = ys;
-merge (x :: xs) (y :: ys) = if (x < y) then (x :: merge xs (y :: ys))
-                                       else (y :: merge (x :: xs) ys);
 
 sort : Ord a => List a -> List a;
 sort []  = [];
@@ -55,5 +50,11 @@ sort xs = let s = split xs in
 
     split : List a -> (List a, List a);
     split xs = splitrec xs xs id;
+
+    merge : Ord a => List a -> List a -> List a;
+    merge xs        []        = xs;
+    merge []        ys        = ys;
+    merge (x :: xs) (y :: ys) = if (x < y) then (x :: merge xs (y :: ys))
+                                           else (y :: merge (x :: xs) ys);
 }
 

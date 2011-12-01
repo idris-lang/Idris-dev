@@ -15,6 +15,7 @@ import Core.TT
 import Core.Typecheck
 import Core.ProofShell
 import Core.Evaluate
+import Core.Constraints
 
 import Idris.AbsSyntax
 import Idris.Parser
@@ -22,6 +23,7 @@ import Idris.REPL
 import Idris.ElabDecls
 import Idris.Primitives
 import Idris.Imports
+import Idris.Error
 import Paths_idris
 
 -- Main program reads command line options, parses the main program, and gets
@@ -34,6 +36,7 @@ data Opt = Filename String
          | OLogging Int
          | Output String
          | TypeCase
+         | TypeInType
     deriving Eq
 
 main = do xs <- getArgs
@@ -52,6 +55,7 @@ runIdris opts =
        when runrepl $ iputStrLn banner 
        ist <- get
        mods <- mapM loadModule inputs
+       iucheck
        ok <- noErrors
        when ok $ case output of
                     [] -> return ()
@@ -60,6 +64,7 @@ runIdris opts =
   where
     makeOption (OLogging i) = setLogLevel i
     makeOption TypeCase = setTypeCase True
+    makeOption TypeInType = setTypeInType True
     makeOption _ = return ()
 
 getFile :: Opt -> Maybe String
@@ -83,6 +88,7 @@ parseArgs ("--noprelude":ns) = liftM (NoPrelude : ) (parseArgs ns)
 parseArgs ("--check":ns)     = liftM (NoREPL : ) (parseArgs ns)
 parseArgs ("-o":n:ns)        = liftM (\x -> NoREPL : Output n : x) (parseArgs ns)
 parseArgs ("--typecase":ns)  = liftM (TypeCase : ) (parseArgs ns)
+parseArgs ("--typeintype":ns) = liftM (TypeInType : ) (parseArgs ns)
 parseArgs (n:ns)             = liftM (Filename n : ) (parseArgs ns)
 
 {-

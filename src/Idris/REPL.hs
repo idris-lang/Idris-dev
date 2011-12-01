@@ -17,6 +17,7 @@ import Paths_idris
 import Core.Evaluate
 import Core.ProofShell
 import Core.TT
+import Core.Constraints
 
 import System.Console.Readline
 import System.FilePath
@@ -41,6 +42,15 @@ repl orig mods
                                case ms of
                                     Just mods -> repl orig mods
                                     Nothing -> return ()
+
+iucheck :: Idris ()
+iucheck = do tit <- typeInType
+             when (not tit) $
+                do ist <- get
+                   idrisCatch (tclift $ ucheck (idris_constraints ist))
+                              (\e -> do let msg = report e
+                                        setErrLine (getErrLine msg)
+                                        iputStrLn msg)
 
 mkPrompt [] = "Idris"
 mkPrompt [x] = "*" ++ dropExtension x
@@ -84,6 +94,7 @@ edit f orig
          clearErr
          put (orig { idris_options = idris_options i })
          loadModule f
+         iucheck
          return ()
    where getEditor env | Just ed <- lookup "EDITOR" env = ed
                        | Just ed <- lookup "VISUAL" env = ed
@@ -137,10 +148,14 @@ process (Check t) = do (tm, ty) <- elabVal toplevel False t
                        iputStrLn (showImp imp (delab ist tm) ++ " : " ++ 
                                  showImp imp (delab ist ty))
 process Universes = do i <- get
-                       let cs = nub $ idris_constraints i
+                       let cs = idris_constraints i
 --                        iputStrLn $ showSep "\n" (map show cs)
                        lift $ print (map fst cs)
-                       iputStrLn $ "(" ++ show (length cs) ++ " constraints)"
+                       let n = length cs
+                       iputStrLn $ "(" ++ show n ++ " constraints)"
+                       case ucheck cs of
+                            Error e -> iputStrLn $ pshow i e
+                            OK _ -> iputStrLn "Universes OK"
 process (Defn n) = do ctxt <- getContext
                       lift $ print (lookupDef Nothing n ctxt)
 process (Spec t) = do (tm, ty) <- elabVal toplevel False t

@@ -27,7 +27,7 @@ Executable     idris
                Other-modules: Core.TT, Core.Evaluate, Core.Typecheck, 
                               Core.ProofShell, Core.ProofState, Core.CoreParser, 
                               Core.ShellParser, Core.Unify, Core.Elaborate,
-                              Core.CaseTree, 
+                              Core.CaseTree, Core.Constraints,
 
                               Idris.AbsSyntax, Idris.Parser, Idris.REPL,
                               Idris.REPLParser, Idris.ElabDecls, Idris.Error,
