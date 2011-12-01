@@ -93,17 +93,26 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
                                         show r) pats))
          ist <- get
          let tcase = opt_typecase (idris_options ist)
-         let tree = simpleCase tcase (map debind pats)
+         let pdef = map debind pats
+         let tree = simpleCase tcase pdef
+         tclift $ sameLength pdef
          logLvl 3 (show tree)
          ctxt <- getContext
          case lookupTy (namespace info) n ctxt of
              [ty] -> updateContext (addCasedef n (inlinable opts)
-                                                    tcase (map debind pats) ty)
+                                                    tcase pdef ty)
              [] -> return ()
   where
     debind (x, y) = (depat x, depat y)
     depat (Bind n (PVar t) sc) = depat (instantiate (P Bound n t) sc)
     depat x = x
+
+    sameLength ((x, _) : xs) 
+        = do l <- sameLength xs
+             let (f, as) = unApply x
+             if (null xs || l == length as) then return (length as)
+                else tfail (At fc (Msg "Clauses have differing numbers of arguments "))
+    sameLength [] = return 0
 
 elabVal :: ElabInfo -> Bool -> PTerm -> Idris (Term, Type)
 elabVal info aspat tm_in
