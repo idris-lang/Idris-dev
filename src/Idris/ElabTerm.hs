@@ -98,7 +98,10 @@ elab ist info pattern tm
                                             [pimp (MN 0 "a") t,
                                              pimp (MN 0 "P") Placeholder,
                                              pexp l, pexp r])
-    elab' (PAlternative as) = tryAll (zip (map elab' as) (map showHd as))
+    elab' (PAlternative as) 
+        = let as' = pruneAlt as in
+              try (tryAll (zip (map elab' as') (map showHd as')))
+                  (tryAll (zip (map elab' as) (map showHd as)))
         where showHd (PApp _ h _) = show h
               showHd x = show x
     elab' (PRef fc n) | pattern && not (inparamBlock n)
@@ -214,6 +217,19 @@ elab ist info pattern tm
                                      (elabArgs ((n,(lazy, t)):failed) r ns args)
                             else do focus n; elabE t; elabArgs failed r ns args
    
+pruneAlt :: [PTerm] -> [PTerm]
+pruneAlt xs = map prune xs
+  where
+    prune (PApp fc1 (PRef fc2 f) as) 
+        = PApp fc1 (PRef fc2 f) (fmap (fmap (choose f)) as)
+    prune t = t
+
+    choose f (PAlternative as) = PAlternative (filter (headIs f) as)
+    choose f t = t
+
+    headIs f (PApp _ (PRef _ f') _) = f == f'
+    headIs f _ = True -- keep if it's not an application
+
 trivial :: IState -> Elab ()
 trivial ist = try (elab ist toplevel False (PRefl (FC "prf" 0)))
                   (do env <- get_env
