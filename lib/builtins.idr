@@ -26,6 +26,9 @@ namespace builtins {
 id : a -> a;
 id x = x;
 
+const : a -> b -> a;
+const x _ = x;
+
 fst : (s, t) -> s;
 fst (x, y) = x;
 
@@ -36,6 +39,9 @@ infixl 9 .;
 
 (.) : (b -> c) -> (a -> b) -> a -> c;
 (.) f g x = f (g x);
+
+flip : (a -> b -> c) -> b -> a -> c;
+flip f x y = f y x;
 
 infixr 1 $;
 
@@ -126,6 +132,9 @@ class Eq a => Ord a where {
 
     max : a -> a -> a;
     max x y = if (x > y) then x else y;
+
+    min : a -> a -> a;
+    min x y = if (x < y) then x else y;
 }
 
 

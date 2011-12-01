@@ -10,8 +10,6 @@ instance Eq (Fin n) where {
    fO == fO = True;
    (fS k) == (fS k') = k == k';
    _ == _ = False;
-
-   x /= y = not (x == y);
 }
 
 infixr 7 :: ;
@@ -34,4 +32,8 @@ filter p (x :: xs) with (filter p xs) {
   filter p (x :: xs) | ( _ ** xs' ) 
      = if (p x) then ( _ ** x :: xs' ) else ( _ ** xs' );
 }
+
+map : (a -> b) -> Vect a n -> Vect b n;
+map f [] = [];
+map f (x :: xs) = f x :: map f xs;
 

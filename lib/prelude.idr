@@ -93,6 +93,21 @@ instance MonadPlus Maybe where {
     mplus Nothing Nothing  = Nothing;
 }
 
+---- Functors
+
+class Functor (f : Set -> Set) where {
+    fmap : (a -> b) -> f a -> f b;
+}
+
+instance Functor Maybe where {
+    fmap f (Just x) = Just (f x);
+    fmap f Nothing  = Nothing;
+}
+
+instance Functor List where {
+    fmap = map;
+}
+
 ---- some mathematical operations
 
 %include "math.h"
