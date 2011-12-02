@@ -37,6 +37,7 @@ data Goal = GD { premises :: Env,
 
 data Tactic = Attack
             | Claim Name Raw
+            | Reorder Name
             | Exact Raw
             | Fill Raw
             | PrepFill Name [Name]
@@ -181,6 +182,29 @@ claim n ty ctxt env t =
                           ps { holes = g : n : gs } )
        return $ Bind n (Hole tyv) t -- (weakenTm 1 t)
 
+reorder_claims :: RunTactic
+reorder_claims ctxt env t
+    = -- trace (showSep "\n" (map show (scvs t))) $ 
+      let (bs, sc) = scvs t []
+          newbs = reverse (sortB (reverse bs)) in
+          traceWhen (bs /= newbs) (show bs ++ "\n ==> \n" ++ show newbs) $
+            return (bindAll newbs sc)
+  where scvs (Bind n b@(Hole _) sc) acc = scvs sc ((n, b):acc)
+        scvs sc acc = (reverse acc, sc)
+
+        sortB :: [(Name, Binder (TT Name))] -> [(Name, Binder (TT Name))]
+        sortB [] = []
+        sortB (x:xs) | all (noOcc x) xs = x : sortB xs
+                     | otherwise = sortB (insertB x xs)
+
+        insertB x [] = [x]
+        insertB x (y:ys) | all (noOcc x) (y:ys) = x : y : ys
+                         | otherwise = y : insertB x ys
+
+        noOcc (n, _) (_, Let t v) = noOccurrence n t && noOccurrence n v
+        noOcc (n, _) (_, Guess t v) = noOccurrence n t && noOccurrence n v
+        noOcc (n, _) (_, b) = noOccurrence n (binderTy b)
+
 focus :: Name -> RunTactic
 focus n ctxt env t = do action (\ps -> let hs = holes ps in
                                             if n `elem` hs
@@ -231,6 +255,7 @@ exact _ _ _ _ = fail "Can't fill here."
 fill :: Raw -> RunTactic
 fill guess ctxt env (Bind x (Hole ty) sc) =
     do (val, valty) <- lift $ check ctxt env guess
+       s <- get
        ns <- lift $ unify ctxt env valty ty
        ps <- get
        let (uh, uns) = unified ps
@@ -259,7 +284,9 @@ complete_fill ctxt env t = fail $ "Can't complete fill at " ++ show t
 solve :: RunTactic
 solve ctxt env (Bind x (Guess ty val) sc)
    | pureTerm val = do ps <- get
+                       let (uh, uns) = unified ps
                        action (\ps -> ps { holes = holes ps \\ [x],
+                                           -- unified = (uh, uns ++ [(x, val)]),
                                            instances = instances ps \\ [x] })
                        return $ {- Bind x (Let ty val) sc -} instantiate val (pToV x sc)
    | otherwise    = fail $ "I see a hole in your solution. " ++ showEnv env val
@@ -383,7 +410,7 @@ solve_unified ctxt env tm =
     do ps <- get
        let (_, ns) = unified ps
        action (\ps -> ps { holes = holes ps \\ map fst ns })
---        action (\ps -> ps { pterm = updateSolved ns (pterm ps) })
+       action (\ps -> ps { pterm = updateSolved ns (pterm ps) })
        return (updateSolved ns tm)
 
 updateSolved xs (Bind n (Hole ty) t)
@@ -411,12 +438,13 @@ processTactic EndUnify ps = let (h, ns) = unified ps
                                 return (ps { pterm = tm', 
                                              unified = (h, []),
                                              holes = holes ps \\ map fst ns }, "")
-    where
+processTactic (Reorder n) ps 
+    = do ps' <- execStateT (tactic (Just n) reorder_claims) ps
+         return (ps' { previous = Just ps, plog = "" }, plog ps')
 processTactic t ps   
     = case holes ps of
         [] -> fail "Nothing to fill in."
-        (h:_)  -> do let n = nextname ps
-                     ps' <- execStateT (process t h) ps
+        (h:_)  -> do ps' <- execStateT (process t h) ps
                      return (ps' { previous = Just ps, plog = "" }, plog ps')
 
 process :: Tactic -> Name -> StateT TState TC ()

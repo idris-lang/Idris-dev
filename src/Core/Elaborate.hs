@@ -223,6 +223,9 @@ instanceArg n = processTactic' (Instance n)
 proofstate :: Elab ()
 proofstate = processTactic' ProofState
 
+reorder_claims :: Name -> Elab ()
+reorder_claims n = processTactic' (Reorder n)
+
 qed :: Elab Term
 qed = do processTactic' QED
          ES p _ _ <- get
@@ -231,35 +234,41 @@ qed = do processTactic' QED
 undo :: Elab ()
 undo = processTactic' Undo
 
-prepare_apply :: Raw -> [Bool] -> Elab [Name]
+prepare_apply :: Raw -> [(Bool, Int)] -> Elab [Name]
 prepare_apply fn imps =
     do ty <- get_type fn
        ctxt <- get_context
        env <- get_env
        -- let claims = getArgs ty imps
-       claims <- doClaims (normalise ctxt env ty) imps []
+       claims <- mkClaims (normalise ctxt env ty) imps []
        ES p s prev <- get
        -- reverse the claims we made so that args go left to right
-       let n = length (filter not imps)
+       let n = length (filter not (map fst imps))
        let (h : hs) = holes p
        put (ES (p { holes = h : (reverse (take n hs) ++ drop n hs) }) s prev)
+--        case claims of
+--             [] -> return ()
+--             (h : _) -> reorder_claims h
        return claims
   where
-    doClaims (Bind n' (Pi t) sc) (i : is) claims =
+    mkClaims (Bind n' (Pi t) sc) (i : is) claims =
         do n <- unique_hole (mkMN n')
-           when (null claims) (start_unify n)
+--            when (null claims) (start_unify n)
            let sc' = instantiate (P Bound n t) sc
            claim n (forget t)
-           when i (movelast n)
-           doClaims sc' is (n : claims)
-    doClaims t [] claims = return (reverse claims)
-    doClaims _ _ _ = fail $ "Wrong number of arguments for " ++ show fn
+           when (fst i) (movelast n)
+           mkClaims sc' is (n : claims)
+    mkClaims t [] claims = return (reverse claims)
+    mkClaims _ _ _ = fail $ "Wrong number of arguments for " ++ show fn
+
+    doClaim ((i, _), n, t) = do claim n t
+                                when i (movelast n)
 
     mkMN n@(MN _ _) = n
     mkMN n@(UN x) = MN 0 x
     mkMN (NS n xs) = NS (mkMN n) xs
 
-apply :: Raw -> [Bool] -> Elab [Name]
+apply :: Raw -> [(Bool, Int)] -> Elab [Name]
 apply fn imps = 
     do args <- prepare_apply fn imps
        fill (raw_apply fn (map Var args))
@@ -267,6 +276,7 @@ apply fn imps =
        -- (remove from unified list before calling end_unify)
        -- HMMM: Actually, if we get it wrong, the typechecker will complain!
        -- so do nothing
+       ptm <- get_term
        let dontunify = [] -- map fst (filter (not.snd) (zip args imps))
        ES p s prev <- get
        let (n, hs) = unified p

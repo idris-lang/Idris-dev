@@ -42,8 +42,8 @@ elab ist info pattern tm
               mkPat
   where
     isph arg = case getTm arg of
-        Placeholder -> True
-        _ -> False
+        Placeholder -> (True, priority arg)
+        _ -> (False, priority arg)
 
     toElab arg = case getTm arg of
         Placeholder -> Nothing
@@ -283,10 +283,10 @@ resolveTC depth ist
                    args <- apply (Var n) imps
                    mapM_ (\ (_,n) -> do focus n
                                         resolveTC (depth - 1) ist) 
-                         (filter (\ (x, y) -> not x) (zip imps args))
+                         (filter (\ (x, y) -> not x) (zip (map fst imps) args))
                    solve
-       where isImp (PImp _ _ _ _) = True
-             isImp _ = False
+       where isImp (PImp p _ _ _) = (True, p)
+             isImp arg = (False, priority arg)
 
 collectDeferred :: Term -> State [(Name, Type)] Term
 collectDeferred (Bind n (GHole t) app) =
@@ -322,7 +322,7 @@ runTac autoSolve ist tac = runT (fmap (addImpl ist) tac) where
                                              return (fn, a)
                                     -- FIXME: resolve ambiguities
                                     [(n, args)] -> return $ (n, map isImp args)
-             ns <- apply (Var fn') imps
+             ns <- apply (Var fn') (map (\x -> (x,0)) imps)
              when autoSolve solveAll
        where isImp (PImp _ _ _ _) = True
              isImp _ = False
@@ -331,7 +331,7 @@ runTac autoSolve ist tac = runT (fmap (addImpl ist) tac) where
                                Just t -> return $ map (const False)
                                                       (getArgTys (binderTy t))
                                _ -> return []
-    runT (Refine fn imps) = do ns <- apply (Var fn) imps
+    runT (Refine fn imps) = do ns <- apply (Var fn) (map (\x -> (x,0)) imps)
                                when autoSolve solveAll
     runT (Rewrite tm) -- to elaborate tm, let bind it, then rewrite by that
               = do attack; -- (h:_) <- get_holes
