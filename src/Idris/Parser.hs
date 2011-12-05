@@ -698,7 +698,7 @@ pSimpleCon syn
 pPattern :: SyntaxInfo -> IParser PDecl
 pPattern syn = do clause <- pClause syn
                   fc <- pfc
-                  return (PClauses fc False (MN 2 "_") [clause]) -- collect together later
+                  return (PClauses fc [] (MN 2 "_") [clause]) -- collect together later
 
 pArgExpr syn = let syn' = syn { inPattern = True } in
                    try (pHSimpleExpr syn') <|> pSimpleExtExpr syn'
@@ -707,6 +707,7 @@ pRHS :: SyntaxInfo -> Name -> IParser PTerm
 pRHS syn n = do lchar '='; pExpr syn
          <|> do symbol "?="; rhs <- pExpr syn;
                 return (PLet (UN "value") Placeholder rhs (PMetavar n')) 
+         <|> do reserved "impossible"; return PImpossible
   where n' = case n of
                 UN x -> UN (x++"_lemma_1")
                 x -> x

@@ -21,6 +21,8 @@ data Vect : Set -> Nat -> Set where
 lookup : Fin n -> Vect a n -> a;
 lookup fO     (x :: xs) = x;
 lookup (fS k) (x :: xs) = lookup k xs;
+lookup fO      [] impossible;
+lookup (fS k)  [] impossible;
  
 app : Vect a n -> Vect a m -> Vect a (n + m);
 app []        ys = ys;

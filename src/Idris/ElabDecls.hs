@@ -7,6 +7,7 @@ import Idris.Error
 import Idris.Delaborate
 import Idris.Imports
 import Idris.ElabTerm
+import Idris.Coverage
 import Paths_idris
 
 import Core.TT
@@ -18,6 +19,7 @@ import Core.CaseTree
 import Control.Monad
 import Control.Monad.State
 import Data.List
+import Data.Maybe
 import Debug.Trace
 
 
@@ -85,9 +87,11 @@ elabCon info syn (n, t_in, fc)
          return (n, cty)
 
 elabClauses :: ElabInfo -> FC -> FnOpts -> Name -> [PClause] -> Idris ()
-elabClauses info fc opts n_in cs = let n = liftname info n_in in  
-      do solveDeferred n
-         pats <- mapM (elabClause info fc) cs
+elabClauses info fc opts n_in cs_in = let n = liftname info n_in in  
+      do let cs = genClauses cs_in
+         solveDeferred n
+         pats_in <- mapM (elabClause info fc) cs
+         let pats = mapMaybe id pats_in
          logLvl 3 (showSep "\n" (map (\ (l,r) -> 
                                         show l ++ " = " ++ 
                                         show r) pats))
@@ -127,7 +131,17 @@ elabVal info aspat tm_in
         logLvl 2 (show vtm)
         recheckC ctxt (FC "prompt" 0) [] vtm
 
-elabClause :: ElabInfo -> FC -> PClause -> Idris (Term, Term)
+elabClause :: ElabInfo -> FC -> PClause -> Idris (Maybe (Term, Term))
+elabClause info fc (PClause fname lhs_in [] PImpossible [])
+   = do ctxt <- getContext
+        i <- get
+        let lhs = addImpl i lhs_in
+        -- if the LHS type checks, it is possible, so report an error
+        case elaborate ctxt (MN 0 "patLHS") infP
+                            (erun fc (build i info True (infTerm lhs))) of
+            OK _ -> fail $ show fc ++ ":" ++ show lhs ++ " is a possible case"
+            Error _ -> return ()
+        return Nothing
 elabClause info fc (PClause fname lhs_in withs rhs_in whereblock) 
    = do ctxt <- getContext
         -- Build the LHS as an "Infer", and pull out its type and
@@ -171,7 +185,7 @@ elabClause info fc (PClause fname lhs_in withs rhs_in whereblock)
         addDeferred def'
         ctxt <- getContext
         (crhs, crhsty) <- recheckC ctxt fc [] rhs'
-        return (clhs, crhs)
+        return $ Just (clhs, crhs)
   where
     decorate x = UN (show fname ++ "#" ++ show x)
     pinfo ns ps i 
@@ -253,7 +267,7 @@ elabClause info fc (PWith fname lhs_in withs wval_in withblock)
         def' <- checkDef fc defer
         addDeferred def'
         (crhs, crhsty) <- recheckC ctxt fc [] rhs'
-        return (clhs, crhs)
+        return $ Just (clhs, crhs)
   where
     getImps (Bind n (Pi _) t) = pexp Placeholder : getImps t
     getImps _ = []
@@ -364,7 +378,7 @@ elabClass info syn fc constraints tn ps ds
              iLOG (showImp True ty)
              iLOG (showImp True lhs ++ " = " ++ showImp True rhs)
              return [PTy syn fc cfn ty,
-                     PClauses fc True cfn [PClause cfn lhs [] rhs []]]
+                     PClauses fc [Inlinable] cfn [PClause cfn lhs [] rhs []]]
 
     tfun cn c syn all (m, ty) 
         = do let ty' = insertConstraint c ty
@@ -378,7 +392,7 @@ elabClass info syn fc constraints tn ps ds
              iLOG (show (m, ty', capp, margs))
              iLOG (showImp True lhs ++ " = " ++ showImp True rhs)
              return [PTy syn fc m ty',
-                     PClauses fc True m [PClause m lhs [] rhs []]]
+                     PClauses fc [Inlinable] m [PClause m lhs [] rhs []]]
 
     getMArgs (PPi (Imp _ _) n ty sc) = IA : getMArgs sc
     getMArgs (PPi (Exp _ _) n ty sc) = EA  : getMArgs sc
@@ -434,7 +448,7 @@ elabInstance info syn fc cs n ps t ds
          let lhs = PRef fc iname
          let rhs = PApp fc (PRef fc (instanceName ci))
                            (map (pexp . mkMethApp) mtys)
-         let idecl = PClauses fc True iname [PClause iname lhs [] rhs wb]
+         let idecl = PClauses fc [Inlinable] iname [PClause iname lhs [] rhs wb]
          iLOG (show idecl)
          elabDecl info idecl
   where
@@ -472,7 +486,7 @@ elabInstance info syn fc cs n ps t ds
 
     insertDef meth def ns decls
         | null $ filter (clauseFor meth ns) decls
-            = decls ++ [PClauses fc True meth 
+            = decls ++ [PClauses fc [Inlinable] meth 
                         [PClause meth (PApp fc (PRef fc meth) []) [] 
                                       (PApp fc (PRef fc def) []) []]]
         | otherwise = decls

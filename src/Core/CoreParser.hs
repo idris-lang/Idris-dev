@@ -20,7 +20,7 @@ idrisDef = haskellDef {
               identLetter = identLetter haskellDef <|> lchar '.',
               reservedOpNames = [":", "..", "=", "\\", "|", "<-", "->", "=>", "**"],
               reservedNames = ["let", "in", "data", "Set", -- "if", "then", "else",
-                               "do", "dsl", "import", -- "refl",
+                               "do", "dsl", "import", "impossible", -- "refl",
                                "infix", "infixl", "infixr", "prefix",
                                "where", "with", "forall", "syntax", "proof",
                                "using", "params", "namespace", "class", "instance",

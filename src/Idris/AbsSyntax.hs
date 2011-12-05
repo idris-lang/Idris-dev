@@ -243,10 +243,13 @@ impl = Imp False Dynamic
 expl = Exp False Dynamic
 constraint = Constraint False Static
 
-type FnOpts = Bool -- just inlinable, for now
+data FnOpt = Inlinable | Partial
+    deriving (Show, Eq)
+
+type FnOpts = [FnOpt]
 
 inlinable :: FnOpts -> Bool
-inlinable x = x
+inlinable = elem Inlinable
 
 data PDecl' t = PFix     FC Fixity [String] -- fixity declaration
               | PTy      SyntaxInfo FC Name t          -- type declaration
@@ -343,6 +346,7 @@ data PTerm = PQuote Raw
            | PProof [PTactic]
            | PTactics [PTactic] -- as PProof, but no auto solving
            | PElabError String -- error to report on elaboration
+           | PImpossible -- special case for declaring when an LHS can't typecheck
     deriving Eq
 
 mapPT :: (PTerm -> PTerm) -> PTerm -> PTerm
