@@ -47,6 +47,7 @@ elabType info syn fc n ty' = {- let ty' = piBind (params info) ty_in
          logLvl 2 $ "---> " ++ show cty
          let nty = normalise ctxt [] cty
          ds <- checkDef fc ((n, nty):defer)
+         addIBC (IBCDef n)
          addDeferred ds
 
 elabData :: ElabInfo -> SyntaxInfo -> FC -> PData -> Idris ()
@@ -66,6 +67,7 @@ elabData info syn fc (PDatadecl n t_in dcons)
          updateContext (addTyDecl n cty) -- temporary, to check cons
          cons <- mapM (elabCon info syn) dcons
          ttag <- getName
+         addIBC (IBCDef n)
          updateContext (addDatatype (Data n ttag cty cons))
 
 elabCon :: ElabInfo -> SyntaxInfo -> (Name, PTerm, FC) -> Idris (Name, Type)
@@ -84,6 +86,7 @@ elabCon info syn (n, t_in, fc)
          ctxt <- getContext
          (cty, _)  <- recheckC ctxt fc [] t'
          logLvl 2 $ "---> " ++ show n ++ " : " ++ show cty
+         addIBC (IBCDef n)
          return (n, cty)
 
 elabClauses :: ElabInfo -> FC -> FnOpts -> Name -> [PClause] -> Idris ()
@@ -103,8 +106,9 @@ elabClauses info fc opts n_in cs_in = let n = liftname info n_in in
          logLvl 3 (show tree)
          ctxt <- getContext
          case lookupTy (namespace info) n ctxt of
-             [ty] -> updateContext (addCasedef n (inlinable opts)
-                                                    tcase pdef ty)
+             [ty] -> do updateContext (addCasedef n (inlinable opts)
+                                                     tcase pdef ty)
+                        addIBC (IBCDef n)
              [] -> return ()
   where
     debind (x, y) = (depat x, depat y)
@@ -335,6 +339,7 @@ elabClass info syn fc constraints tn ps ds
          let defaults = map (\ (x, (y, z)) -> (x,y)) defs
          put (i { idris_classes = addDef tn (CI cn imethods defaults (map fst ps)) 
                                             (idris_classes i) })
+         addIBC (IBCClass cn)
   where
     pibind [] x = x
     pibind ((n, ty): ns) x = PPi expl n ty (pibind ns x) 

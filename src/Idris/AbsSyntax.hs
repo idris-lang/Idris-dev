@@ -47,11 +47,27 @@ data IState = IState { tt_ctxt :: Context,
                        idris_libs :: [String],
                        idris_hdrs :: [String],
                        last_proof :: Maybe (Name, [String]),
-                       errLine :: Maybe Int
+                       errLine :: Maybe Int,
+                       ibc_write :: [IBCWrite]
                      }
-                   
+             
+-- information that needs writing for the current module's .ibc file
+data IBCWrite = IBCFix FixDecl
+              | IBCImp Name
+              | IBCStatic Name
+              | IBCClass Name
+              | IBCMeta Name
+              | IBCSyntax Syntax
+              | IBCKeyword String
+              | IBCImport FilePath
+              | IBCObj FilePath
+              | IBCLib String
+              | IBCHeader String
+              | IBCDef Name -- i.e. main context
+  deriving Show
+
 idrisInit = IState initContext [] [] emptyContext emptyContext emptyContext
-                   "" defaultOpts 6 [] [] [] [] [] [] [] [] Nothing Nothing
+                   "" defaultOpts 6 [] [] [] [] [] [] [] [] Nothing Nothing []
 
 -- The monad for the main REPL - reading and processing files and updating 
 -- global state (hence the IO inner monad).
@@ -74,6 +90,12 @@ addLib f = do i <- get; put (i { idris_libs = f : idris_libs i })
 
 addHdr :: String -> Idris ()
 addHdr f = do i <- get; put (i { idris_hdrs = f : idris_hdrs i })
+
+addIBC :: IBCWrite -> Idris ()
+addIBC ibc = do i <- get; put (i { ibc_write = ibc : ibc_write i })
+
+clearIBC :: Idris ()
+clearIBC = do i <- get; put (i { ibc_write = [] })
 
 getHdrs :: Idris [String]
 getHdrs = do i <- get; return (idris_hdrs i)
@@ -768,9 +790,11 @@ implicit syn n ptm
          let (tm', impdata) = implicitise syn i ptm
          let (tm'', spos) = findStatics i tm'
          put (i { idris_implicits = addDef n impdata (idris_implicits i) })
+         addIBC (IBCImp n)
          logLvl 5 ("Implicit " ++ show n ++ " " ++ show impdata)
          i <- get
          put (i { idris_statics = addDef n spos (idris_statics i) })
+         addIBC (IBCStatic n)
          return tm''
 
 implicitise :: SyntaxInfo -> IState -> PTerm -> (PTerm, [PArg])

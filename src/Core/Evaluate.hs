@@ -2,7 +2,7 @@
              PatternGuards #-}
 
 module Core.Evaluate(normalise, normaliseC, simplify, specialise, hnf,
-                Fun(..), Def(..), 
+                Def(..), 
                 Context, initContext, ctxtAlist, uconstraints, next_tvar,
                 addToCtxt, addTyDecl, addDatatype, addCasedef, addOperator,
                 lookupTy, lookupP, lookupDef, lookupVal, lookupTyEnv,
@@ -10,6 +10,8 @@ module Core.Evaluate(normalise, normaliseC, simplify, specialise, hnf,
 
 import Debug.Trace
 import Control.Monad.State
+import qualified Data.Binary as B
+import Data.Binary hiding (get, put)
 
 import Core.TT
 import Core.CaseTree
@@ -106,8 +108,9 @@ eval ctxt statics genv tm opts = ev True [] tm where
     ev top env (P _ n ty)
         | Just (Let t v) <- lookup n genv = ev top env v 
     ev top env (P Ref n ty) = case lookupDef Nothing n ctxt of
-        [Function (Fun _ _ _ v)] -> return v
-        [TyDecl nt ty hty]       -> return $ VP nt n hty
+        [Function _ tm]          -> ev True env tm
+        [TyDecl nt ty]           -> do vty <- ev True env ty
+                                       return $ VP nt n vty
         [CaseOp inl _ _ [] tree] ->  
            if simpl && (not inl) 
               then liftM (VP Ref n) (ev top env ty)
@@ -293,8 +296,8 @@ eval_hnf ctxt statics genv tm = ev [] tm where
     ev env (P _ n ty) 
         | Just (Let t v) <- lookup n genv = ev env v
     ev env (P Ref n ty) = case lookupDef Nothing n ctxt of
-        [Function (Fun _ _ t _)] -> ev env t
-        [TyDecl nt ty hty]       -> return $ HP nt n ty
+        [Function _ t]           -> ev env t
+        [TyDecl nt ty]           -> return $ HP nt n ty
         [CaseOp inl _ _ [] tree] ->
             do c <- evCase env [] [] tree
                case c of
@@ -416,23 +419,20 @@ spec ctxt statics genv tm = undefined
 
 -- CONTEXTS -----------------------------------------------------------------
 
-data Fun = Fun Type Value Term Value
-  deriving Show
-
 {- A definition is either a simple function (just an expression with a type),
    a constant, which could be a data or type constructor, an axiom or as an
    yet undefined function, or an Operator.
    An Operator is a function which explains how to reduce. 
    A CaseOp is a function defined by a simple case tree -}
    
-data Def = Function Fun
-         | TyDecl NameType Type Value
+data Def = Function Type Term
+         | TyDecl NameType Type 
          | Operator Type Int ([Value] -> Maybe Value)
          | CaseOp Bool Type [(Term, Term)] [Name] SC -- Bool for inlineable
 
 instance Show Def where
-    show (Function f) = "Function: " ++ show f
-    show (TyDecl nt ty val) = "TyDecl: " ++ show nt ++ " " ++ show ty
+    show (Function ty tm) = "Function: " ++ show (ty, tm)
+    show (TyDecl nt ty) = "TyDecl: " ++ show nt ++ " " ++ show ty
     show (Operator ty _ _) = "Operator: " ++ show ty
     show (CaseOp _ ty ps ns sc) = "Case: " ++ show ps ++ "\n" ++ 
                                               show ns ++ " " ++ show sc
@@ -453,14 +453,13 @@ veval ctxt env t = evalState (eval ctxt emptyContext env t []) ()
 addToCtxt :: Name -> Term -> Type -> Context -> Context
 addToCtxt n tm ty uctxt 
     = let ctxt = definitions uctxt 
-          ctxt' = addDef n (Function (Fun ty (veval uctxt [] ty)
-                                    tm (veval uctxt [] tm))) ctxt in
+          ctxt' = addDef n (Function ty tm) ctxt in
           uctxt { definitions = ctxt' } 
 
 addTyDecl :: Name -> Type -> Context -> Context
 addTyDecl n ty uctxt 
     = let ctxt = definitions uctxt
-          ctxt' = addDef n (TyDecl Ref ty (veval uctxt [] ty)) ctxt in
+          ctxt' = addDef n (TyDecl Ref ty) ctxt in
           uctxt { definitions = ctxt' }
 
 addDatatype :: Datatype Name -> Context -> Context
@@ -468,14 +467,14 @@ addDatatype (Data n tag ty cons) uctxt
     = let ctxt = definitions uctxt 
           ty' = normalise uctxt [] ty
           ctxt' = addCons 0 cons (addDef n 
-                    (TyDecl (TCon tag (arity ty')) ty (veval uctxt [] ty)) ctxt) in
+                    (TyDecl (TCon tag (arity ty')) ty) ctxt) in
           uctxt { definitions = ctxt' }
   where
     addCons tag [] ctxt = ctxt
     addCons tag ((n, ty) : cons) ctxt 
         = let ty' = normalise uctxt [] ty in
               addCons (tag+1) cons (addDef n
-                  (TyDecl (DCon tag (arity ty')) ty (veval uctxt [] ty)) ctxt)
+                  (TyDecl (DCon tag (arity ty')) ty) ctxt)
 
 addCasedef :: Name -> Bool -> Bool -> [(Term, Term)] -> Type -> Context -> Context
 addCasedef n alwaysInline tcase ps ty uctxt 
@@ -498,8 +497,8 @@ lookupTy :: Maybe [String] -> Name -> Context -> [Type]
 lookupTy root n ctxt 
                 = do def <- lookupCtxt root n (definitions ctxt)
                      case def of
-                       (Function (Fun ty _ _ _)) -> return ty
-                       (TyDecl _ ty _) -> return ty
+                       (Function ty _) -> return ty
+                       (TyDecl _ ty) -> return ty
                        (Operator ty _ _) -> return ty
                        (CaseOp _ ty _ _ _) -> return ty
 
@@ -507,8 +506,8 @@ lookupP :: Maybe [String] -> Name -> Context -> [Term]
 lookupP root n ctxt 
    = do def <-  lookupCtxt root n (definitions ctxt)
         case def of
-          (Function (Fun ty _ tm _)) -> return (P Ref n ty)
-          (TyDecl nt ty hty) -> return (P nt n ty)
+          (Function ty tm) -> return (P Ref n ty)
+          (TyDecl nt ty) -> return (P nt n ty)
           (CaseOp _ ty _ _ _) -> return (P Ref n ty)
           (Operator ty _ _) -> return (P Ref n ty)
 
@@ -519,8 +518,8 @@ lookupVal :: Maybe [String] -> Name -> Context -> [Value]
 lookupVal root n ctxt 
    = do def <- lookupCtxt root n (definitions ctxt)
         case def of
-          (Function (Fun _ _ _ htm)) -> return htm
-          (TyDecl nt ty hty) -> return (VP nt n hty)
+          (Function _ htm)   -> return (veval ctxt [] htm)
+          (TyDecl nt ty) -> return (VP nt n (veval ctxt [] ty))
 
 lookupTyEnv :: Name -> Env -> Maybe (Int, Type)
 lookupTyEnv n env = li n 0 env where
@@ -528,4 +527,3 @@ lookupTyEnv n env = li n 0 env where
   li n i ((x, b): xs) 
              | n == x = Just (i, binderTy b)
              | otherwise = li n (i+1) xs
-

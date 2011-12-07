@@ -49,7 +49,7 @@ build (n, d) = do i <- getIState
 impossible = int 42424242
 
 instance ToEpic Def where
-    epic (Function (Fun _ _ tm _)) = epic tm
+    epic (Function tm _) = epic tm
     epic (CaseOp _ _ pats args sc) = epic (args, sc) -- TODO: redo case comp after optimising
     epic _ = return impossible
 

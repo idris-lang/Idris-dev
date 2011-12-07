@@ -7,6 +7,8 @@ import Debug.Trace
 import qualified Data.Map as Map
 import Data.Char
 import Data.List
+import qualified Data.Binary as B
+import Data.Binary hiding (get, put)
 
 {- The language has:
    * Full dependent types

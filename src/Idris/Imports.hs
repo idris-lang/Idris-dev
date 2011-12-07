@@ -9,7 +9,7 @@ import System.FilePath
 import System.Directory
 import Control.Monad.State
 
-data IFileType = IDR FilePath | IBC FilePath
+data IFileType = IDR FilePath | IBC FilePath FilePath
     deriving Eq
 
 srcPath :: FilePath -> FilePath
@@ -30,7 +30,7 @@ findImport (d:ds) fp = do let ibcp = ibcPath (d ++ "/" ++ fp)
                           ibc <- doesFileExist (ibcPath ibcp)
                           idr <- doesFileExist (srcPath idrp)
                           if ibc 
-                             then return (IBC ibcp)
+                             then return (IBC ibcp idrp)
                              else if idr 
                                      then return (IDR idrp)
                                      else findImport ds fp

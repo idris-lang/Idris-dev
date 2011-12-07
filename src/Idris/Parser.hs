@@ -5,6 +5,7 @@ import Idris.Imports
 import Idris.Error
 import Idris.ElabDecls
 import Idris.ElabTerm
+import Idris.IBC
 import Paths_idris
 
 import Core.CoreParser
@@ -59,7 +60,8 @@ loadModule f
                        else do putIState (i { imported = f : imported i })
                                case fp of
                                    IDR fn -> loadSource fn
-                                   IBC fn -> error "Not implemented"
+                                   IBC fn src -> idrisCatch (loadIBC fn)
+                                                   (\c -> loadSource src)
                     let (dir, fh) = splitFileName f
                     return (dropExtension fh))
                 (\e -> do let msg = report e
@@ -72,6 +74,8 @@ loadSource f = do iLOG ("Reading " ++ f)
                   file <- lift $ readFile f
                   (mname, modules, rest, pos) <- parseImports f file
                   mapM_ loadModule modules
+                  clearIBC -- start a new .ibc file
+                  mapM_ (\m -> addIBC (IBCImport m)) modules
                   ds' <- parseProg (defaultSyntax {syn_namespace = reverse mname }) 
                                    f rest pos
                   let ds = namespaces mname ds'
@@ -82,6 +86,9 @@ loadSource f = do iLOG ("Reading " ++ f)
                   -- Now add all the declarations to the context
                   mapM_ (elabDecl toplevel) ds
                   iLOG ("Finished " ++ f)
+                  let ibc = dropExtension f ++ ".ibc"
+                  idrisCatch (do writeIBC ibc; clearIBC)
+                             (\c -> return ()) -- failure is harmless
                   return ()
   where
     namespaces []     ds = ds
@@ -216,9 +223,12 @@ pSyntaxDecl syn
          i <- getState
          let rs = syntax_rules i
          let ns = syntax_keywords i
+         let ibc = ibc_write i
          let ks = map show (names s)
          setState (i { syntax_rules = s : rs,
-                       syntax_keywords = ks ++ ns })
+                       syntax_keywords = ks ++ ns,
+                       ibc_write = IBCSyntax s : map IBCKeyword ks ++ ibc
+                     })
          fc <- pfc
          return (PSyntax fc s)
   where
@@ -312,7 +322,8 @@ pFixity = do f <- fixity; i <- natural; ops <- sepBy1 operator (lchar ',')
              istate <- getState
              let fs = map (Fix (f prec)) ops
              setState (istate { 
-                idris_infixes = sort (fs ++ idris_infixes istate) })
+                idris_infixes = sort (fs ++ idris_infixes istate),
+                ibc_write = map IBCFix fs ++ ibc_write istate })
              fc <- pfc
              return (PFix fc (f prec) ops)
 
@@ -785,13 +796,16 @@ pWhereblock n syn
 
 pDirective :: IParser [PDecl]
 pDirective = try (do lchar '%'; reserved "lib"; lib <- strlit;
-                     return [PDirective (addLib lib)])
+                     return [PDirective (do addLib lib
+                                            addIBC (IBCLib lib))])
          <|> try (do lchar '%'; reserved "link"; obj <- strlit;
                      return [PDirective (do datadir <- lift $ getDataDir
                                             o <- lift $ findInPath [".", datadir] obj
+                                            addIBC (IBCObj o)
                                             addObjectFile o)])
          <|> try (do lchar '%'; reserved "include"; hdr <- strlit;
-                     return [PDirective (addHdr hdr)])
+                     return [PDirective (do addHdr hdr
+                                            addIBC (IBCHeader hdr))])
          <|> do lchar '%'; reserved "logging"; i <- natural;
                 return [PDirective (setLogLevel (fromInteger i))] 
 

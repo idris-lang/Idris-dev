@@ -33,15 +33,15 @@ Executable     idris
                               Idris.REPLParser, Idris.ElabDecls, Idris.Error,
                               Idris.Delaborate, Idris.Primitives, Idris.Imports,
                               Idris.Compiler, Idris.Prover, Idris.ElabTerm,
-                              Idris.Coverage,
+                              Idris.Coverage, Idris.IBC,
 
                               Paths_idris
 
                Build-depends:   base>=4 && <5, parsec, mtl, Cabal, readline,
                                 containers, process, transformers, filepath, directory,
-                                epic>=0.9.1
+                                binary, derive, epic>=0.9.1
                                 
                Extensions:      MultiParamTypeClasses, FunctionalDependencies,
-                                FlexibleInstances
+                                FlexibleInstances, TemplateHaskell
                ghc-prof-options: -auto-all
                ghc-options: -rtsopts
