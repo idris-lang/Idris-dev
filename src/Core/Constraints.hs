@@ -40,6 +40,7 @@ acyclic r cvs = checkCycle (FC "root" 0) r [] 0 cvs
              let r' = M.insert c [] r
              checkCycle fc r' path inc cs
 
+    check fc path inc (UVar x) | x < 0 = return ()
     check fc path inc cv
         | inc > 0 && cv `elem` path = Error $ At fc UniverseError
         | otherwise = case M.lookup cv r of

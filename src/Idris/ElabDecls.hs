@@ -339,7 +339,7 @@ elabClass info syn fc constraints tn ps ds
          let defaults = map (\ (x, (y, z)) -> (x,y)) defs
          put (i { idris_classes = addDef tn (CI cn imethods defaults (map fst ps)) 
                                             (idris_classes i) })
-         addIBC (IBCClass cn)
+         addIBC (IBCClass tn)
   where
     pibind [] x = x
     pibind ((n, ty): ns) x = PPi expl n ty (pibind ns x) 

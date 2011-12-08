@@ -13,11 +13,17 @@ data SC = Case Name [CaseAlt]
         | STerm Term
         | UnmatchedCase String -- error message
     deriving Show
+{-! 
+deriving instance Binary SC 
+!-}
 
 data CaseAlt = ConCase Name Int [Name] SC
              | ConstCase Const         SC
              | DefaultCase             SC
     deriving Show
+{-! 
+deriving instance Binary CaseAlt 
+!-}
 
 type CaseTree = SC
 type Clause   = ([Pat], Term)
@@ -191,7 +197,7 @@ varRule (v : vs) alts err =
     do let alts' = map (repVar v) alts
        match vs alts' err
   where
-    repVar v (PV p : ps , res) = (ps, subst p (P Bound v undefined) res)
+    repVar v (PV p : ps , res) = (ps, subst p (P Bound v (V 0)) res)
     repVar v (PAny : ps , res) = (ps, res)
 
 {-

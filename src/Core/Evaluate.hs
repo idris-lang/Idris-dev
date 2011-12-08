@@ -4,7 +4,8 @@
 module Core.Evaluate(normalise, normaliseC, simplify, specialise, hnf,
                 Def(..), 
                 Context, initContext, ctxtAlist, uconstraints, next_tvar,
-                addToCtxt, addTyDecl, addDatatype, addCasedef, addOperator,
+                addToCtxt, addCtxtDef, addTyDecl, addDatatype, 
+                addCasedef, addOperator,
                 lookupTy, lookupP, lookupDef, lookupVal, lookupTyEnv,
                 Value(..)) where
 
@@ -415,7 +416,7 @@ eval_hnf ctxt statics genv tm = ev [] tm where
 -- evaluator
 
 spec :: Context -> Ctxt [Bool] -> Env -> TT Name -> Eval (TT Name)
-spec ctxt statics genv tm = undefined 
+spec ctxt statics genv tm = error "spec undefined" 
 
 -- CONTEXTS -----------------------------------------------------------------
 
@@ -429,6 +430,9 @@ data Def = Function Type Term
          | TyDecl NameType Type 
          | Operator Type Int ([Value] -> Maybe Value)
          | CaseOp Bool Type [(Term, Term)] [Name] SC -- Bool for inlineable
+{-! 
+deriving instance Binary Def 
+!-}
 
 instance Show Def where
     show (Function ty tm) = "Function: " ++ show (ty, tm)
@@ -436,6 +440,12 @@ instance Show Def where
     show (Operator ty _ _) = "Operator: " ++ show ty
     show (CaseOp _ ty ps ns sc) = "Case: " ++ show ps ++ "\n" ++ 
                                               show ns ++ " " ++ show sc
+-- We need this for serialising Def. Fortunately, it never gets used because
+-- we'll never serialise a primitive operator
+
+instance Binary (a -> b) where
+    put x = return ()
+    get = error "Getting a function"
 
 ------- 
 
@@ -455,6 +465,11 @@ addToCtxt n tm ty uctxt
     = let ctxt = definitions uctxt 
           ctxt' = addDef n (Function ty tm) ctxt in
           uctxt { definitions = ctxt' } 
+
+addCtxtDef :: Name -> Def -> Context -> Context
+addCtxtDef n d c = let ctxt = definitions c
+                       ctxt' = addDef n d ctxt in
+                       c { definitions = ctxt' }
 
 addTyDecl :: Name -> Type -> Context -> Context
 addTyDecl n ty uctxt 

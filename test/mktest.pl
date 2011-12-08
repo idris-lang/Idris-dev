@@ -14,7 +14,7 @@ open(FOO,">run");
 
 print FOO "#!/bin/bash\n";
 print FOO "idris $test.idr -o $test\n";
-print FOO "./$test\n";print FOO "rm -f $test\n";
+print FOO "./$test\n";print FOO "rm -f $test $test.ibc\n";
 
 close(FOO);
 

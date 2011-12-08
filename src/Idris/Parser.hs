@@ -61,7 +61,8 @@ loadModule f
                                case fp of
                                    IDR fn -> loadSource fn
                                    IBC fn src -> idrisCatch (loadIBC fn)
-                                                   (\c -> loadSource src)
+                                                   (\c -> do iLOG $ fn ++ " failed"
+                                                             loadSource src)
                     let (dir, fh) = splitFileName f
                     return (dropExtension fh))
                 (\e -> do let msg = report e
@@ -87,7 +88,7 @@ loadSource f = do iLOG ("Reading " ++ f)
                   mapM_ (elabDecl toplevel) ds
                   iLOG ("Finished " ++ f)
                   let ibc = dropExtension f ++ ".ibc"
-                  idrisCatch (do writeIBC ibc; clearIBC)
+                  idrisCatch (do writeIBC f ibc; clearIBC)
                              (\c -> return ()) -- failure is harmless
                   return ()
   where

@@ -1,6 +1,6 @@
 install: .PHONY
 	cabal install
-	make -C lib check
+	make -C lib recheck
 
 pinstall: .PHONY
 	cabal configure --enable-executable-profiling

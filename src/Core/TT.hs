@@ -30,6 +30,9 @@ data Option = SetInSet
 data FC = FC { fc_fname :: String,
                fc_line :: Int }
     deriving Eq
+{-! 
+deriving instance Binary FC 
+!-}
 
 instance Show FC where
     show (FC f l) = f ++ ":" ++ show l
@@ -96,6 +99,9 @@ data Name = UN String
           | NS Name [String] -- root, namespaces 
           | MN Int String
   deriving (Eq, Ord)
+{-! 
+deriving instance Binary Name 
+!-}
 
 instance Show Name where
     show (UN n) = n
@@ -160,6 +166,9 @@ data Const = I Int | BI Integer | Fl Double | Ch Char | Str String
            | IType | BIType     | FlType    | ChType  | StrType    
            | PtrType
   deriving Eq
+{-! 
+deriving instance Binary Const 
+!-}
 
 data Raw = Var Name
          | RBind Name (Binder Raw) Raw
@@ -167,6 +176,9 @@ data Raw = Var Name
          | RSet
          | RConstant Const
   deriving (Show, Eq)
+{-! 
+deriving instance Binary Raw 
+!-}
 
 data Binder b = Lam   { binderTy  :: b }
               | Pi    { binderTy  :: b }
@@ -181,6 +193,9 @@ data Binder b = Lam   { binderTy  :: b }
               | PVar  { binderTy  :: b }
               | PVTy  { binderTy  :: b }
   deriving (Show, Eq, Functor)
+{-! 
+deriving instance Binary Binder 
+!-}
 
 fmapMB :: Monad m => (a -> m b) -> Binder a -> m (Binder b)
 fmapMB f (Let t v)   = liftM2 Let (f t) (f v)
@@ -218,6 +233,14 @@ data UExp = UVar Int -- universe variable
           | UVal Int -- explicit universe level
   deriving (Eq, Ord)
 
+-- We assume that universe levels have been checked, so anything external
+-- can just have the same universe variable and we won't get any new
+-- cycles.
+
+instance Binary UExp where
+    put x = return ()
+    get = return (UVar (-1))
+
 instance Show UExp where
     show (UVar x) | x < 26 = [toEnum (x + fromEnum 'a')]
                   | otherwise = toEnum ((x `mod` 26) + fromEnum 'a') : show (x `div` 26)
@@ -236,6 +259,9 @@ type UCs = (Int, [UConstraint])
 
 data NameType = Bound | Ref | DCon Int Int | TCon Int Int
   deriving (Show, Eq)
+{-! 
+deriving instance Binary NameType 
+!-}
 
 data TT n = P NameType n (TT n) -- embed type
           | V Int 
@@ -244,6 +270,9 @@ data TT n = P NameType n (TT n) -- embed type
           | Constant Const
           | Set UExp
   deriving Functor
+{-! 
+deriving instance Binary TT 
+!-}
 
 type EnvTT n = [(n, Binder (TT n))]
 

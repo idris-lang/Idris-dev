@@ -56,7 +56,6 @@ data IBCWrite = IBCFix FixDecl
               | IBCImp Name
               | IBCStatic Name
               | IBCClass Name
-              | IBCMeta Name
               | IBCSyntax Syntax
               | IBCKeyword String
               | IBCImport FilePath
@@ -235,6 +234,9 @@ data Fixity = Infixl { prec :: Int }
             | InfixN { prec :: Int } 
             | PrefixN { prec :: Int }
     deriving Eq
+{-! 
+deriving instance Binary Fixity 
+!-}
 
 instance Show Fixity where
     show (Infixl i) = "infixl " ++ show i
@@ -244,6 +246,9 @@ instance Show Fixity where
 
 data FixDecl = Fix Fixity String 
     deriving (Show, Eq)
+{-! 
+deriving instance Binary FixDecl 
+!-}
 
 instance Ord FixDecl where
     compare (Fix x _) (Fix y _) = compare (prec x) (prec y)
@@ -251,6 +256,9 @@ instance Ord FixDecl where
 
 data Static = Static | Dynamic
   deriving (Show, Eq)
+{-! 
+deriving instance Binary Static 
+!-}
 
 -- Mark bindings with their explicitness, and laziness
 data Plicity = Imp { plazy :: Bool,
@@ -260,6 +268,10 @@ data Plicity = Imp { plazy :: Bool,
              | Constraint { plazy :: Bool,
                             pstatic :: Static }
   deriving (Show, Eq)
+
+{-!
+deriving instance Binary Plicity 
+!-}
 
 impl = Imp False Dynamic
 expl = Exp False Dynamic
@@ -370,6 +382,9 @@ data PTerm = PQuote Raw
            | PElabError String -- error to report on elaboration
            | PImpossible -- special case for declaring when an LHS can't typecheck
     deriving Eq
+{-! 
+deriving instance Binary PTerm 
+!-}
 
 mapPT :: (PTerm -> PTerm) -> PTerm -> PTerm
 mapPT f t = f (mpt t) where
@@ -398,6 +413,9 @@ data PTactic' t = Intro [Name] | Focus Name
                 | TSeq (PTactic' t) (PTactic' t)
                 | Qed
     deriving (Show, Eq, Functor)
+{-! 
+deriving instance Binary PTactic' 
+!-}
 
 type PTactic = PTactic' PTerm
 
@@ -405,6 +423,9 @@ data PDo' t = DoExp  FC t
             | DoBind FC Name t
             | DoLet  FC Name t
     deriving (Eq, Functor)
+{-! 
+deriving instance Binary PDo' 
+!-}
 
 type PDo = PDo' PTerm
 
@@ -419,6 +440,9 @@ data PArg' t = PImp { priority :: Int,
              | PConstraint { priority :: Int,
                              lazyarg :: Bool, getTm :: t }
     deriving (Show, Eq, Functor)
+{-! 
+deriving instance Binary PArg' 
+!-}
 
 pimp = PImp 0 False
 pexp = PExp 0 False
@@ -433,6 +457,9 @@ data ClassInfo = CI { instanceName :: Name,
                       class_defaults :: [(Name, Name)], -- method name -> default impl
                       class_params :: [Name] }
     deriving Show
+{-! 
+deriving instance Binary ClassInfo 
+!-}
 
 -- Syntactic sugar info 
 
@@ -442,14 +469,23 @@ data DSL = DSL { dsl_bind :: Name,
 
 data SynContext = PatternSyntax | TermSyntax | AnySyntax
     deriving Show
+{-! 
+deriving instance Binary SynContext 
+!-}
 
 data Syntax = Rule [SSymbol] PTerm SynContext
     deriving Show
+{-! 
+deriving instance Binary Syntax 
+!-}
 
 data SSymbol = Keyword Name
              | Symbol String
              | Expr Name
     deriving Show
+{-! 
+deriving instance Binary SSymbol 
+!-}
 
 initDSL = DSL (UN ">>=") (UN "return")
 

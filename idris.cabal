@@ -18,7 +18,7 @@ Description:    Idris is an experimental language with full dependent types.
 Cabal-Version:  >= 1.6
 Build-type:     Simple
 
-Data-files:    *.idr prelude/*.idr
+Data-files:    *.idr prelude/*.idr *.ibc prelude/*.ibc
 Data-dir:      lib
 
 Executable     idris
@@ -39,7 +39,7 @@ Executable     idris
 
                Build-depends:   base>=4 && <5, parsec, mtl, Cabal, readline,
                                 containers, process, transformers, filepath, directory,
-                                binary, derive, epic>=0.9.1
+                                binary, bytestring, unix, epic>=0.9.1
                                 
                Extensions:      MultiParamTypeClasses, FunctionalDependencies,
                                 FlexibleInstances, TemplateHaskell
