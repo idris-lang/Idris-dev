@@ -1,0 +1,3 @@
+#!/bin/bash
+idris test002.idr --check --noprelude
+

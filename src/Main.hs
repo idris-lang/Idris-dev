@@ -55,7 +55,6 @@ runIdris opts =
        when runrepl $ iputStrLn banner 
        ist <- get
        mods <- mapM loadModule inputs
-       iucheck
        ok <- noErrors
        when ok $ case output of
                     [] -> return ()

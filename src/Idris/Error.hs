@@ -5,10 +5,20 @@ import Idris.Delaborate
 
 import Core.TT
 import Core.Typecheck
+import Core.Constraints
 
 import Control.Monad.State
 import System.IO.Error
 import Data.Char
+
+iucheck :: Idris ()
+iucheck = do tit <- typeInType
+             when (not tit) $
+                do ist <- get
+                   idrisCatch (tclift $ ucheck (idris_constraints ist))
+                              (\e -> do let msg = report e
+                                        setErrLine (getErrLine msg)
+                                        iputStrLn msg)
 
 report :: IOError -> String
 report e

@@ -43,15 +43,6 @@ repl orig mods
                                     Just mods -> repl orig mods
                                     Nothing -> return ()
 
-iucheck :: Idris ()
-iucheck = do tit <- typeInType
-             when (not tit) $
-                do ist <- get
-                   idrisCatch (tclift $ ucheck (idris_constraints ist))
-                              (\e -> do let msg = report e
-                                        setErrLine (getErrLine msg)
-                                        iputStrLn msg)
-
 mkPrompt [] = "Idris"
 mkPrompt [x] = "*" ++ dropExtension x
 mkPrompt (x:xs) = "*" ++ dropExtension x ++ " " ++ mkPrompt xs

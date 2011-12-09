@@ -88,8 +88,11 @@ loadSource f = do iLOG ("Reading " ++ f)
                   mapM_ (elabDecl toplevel) ds
                   iLOG ("Finished " ++ f)
                   let ibc = dropExtension f ++ ".ibc"
-                  idrisCatch (do writeIBC f ibc; clearIBC)
-                             (\c -> return ()) -- failure is harmless
+                  iucheck
+                  ok <- noErrors
+                  when ok $
+                    idrisCatch (do writeIBC f ibc; clearIBC)
+                               (\c -> return ()) -- failure is harmless
                   return ()
   where
     namespaces []     ds = ds
