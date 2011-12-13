@@ -1,0 +1,325 @@
+%%%%%%%%%%%%%%% library file for datatypes etc.
+
+%%% Identifiers
+
+\newcommand{\va}{\VV{a}}
+\newcommand{\vb}{\VV{b}}
+\newcommand{\vc}{\VV{c}}
+\newcommand{\vd}{\VV{d}}
+\newcommand{\ve}{\VV{e}}
+\newcommand{\vf}{\VV{f}}
+\newcommand{\vg}{\VV{g}}
+\newcommand{\vh}{\VV{h}}
+\newcommand{\vi}{\VV{i}}
+\newcommand{\vj}{\VV{j}}
+\newcommand{\vk}{\VV{k}}
+\newcommand{\vl}{\VV{l}}
+\newcommand{\vm}{\VV{m}}
+\newcommand{\vn}{\VV{n}}
+\newcommand{\vo}{\VV{o}}
+\newcommand{\vp}{\VV{p}}
+\newcommand{\vq}{\VV{q}}
+\newcommand{\vr}{\VV{r}}
+\newcommand{\vs}{\VV{s}}
+\newcommand{\vt}{\VV{t}}
+\newcommand{\vu}{\VV{u}}
+\newcommand{\vv}{\VV{v}}
+\newcommand{\vw}{\VV{w}}
+\newcommand{\vx}{\VV{x}}
+\newcommand{\vy}{\VV{y}}
+\newcommand{\vz}{\VV{z}}
+\newcommand{\vA}{\VV{A}}
+\newcommand{\vB}{\VV{B}}
+\newcommand{\vC}{\VV{C}}
+\newcommand{\vD}{\VV{D}}
+\newcommand{\vE}{\VV{E}}
+\newcommand{\vF}{\VV{F}}
+\newcommand{\vG}{\VV{G}}
+\newcommand{\vH}{\VV{H}}
+\newcommand{\vI}{\VV{I}}
+\newcommand{\vJ}{\VV{J}}
+\newcommand{\vK}{\VV{K}}
+\newcommand{\vL}{\VV{L}}
+\newcommand{\vM}{\VV{M}}
+\newcommand{\vN}{\VV{N}}
+\newcommand{\vO}{\VV{O}}
+\newcommand{\vP}{\VV{P}}
+\newcommand{\vQ}{\VV{Q}}
+\newcommand{\vR}{\VV{R}}
+\newcommand{\vS}{\VV{S}}
+\newcommand{\vT}{\VV{T}}
+\newcommand{\vU}{\VV{U}}
+\newcommand{\vV}{\VV{V}}
+\newcommand{\vW}{\VV{W}}
+\newcommand{\vX}{\VV{X}}
+\newcommand{\vY}{\VV{Y}}
+\newcommand{\vZ}{\VV{Z}}
+\newcommand{\vas}{\VV{as}}
+\newcommand{\vbs}{\VV{bs}}
+\newcommand{\vcs}{\VV{cs}}
+\newcommand{\vds}{\VV{ds}}
+\newcommand{\ves}{\VV{es}}
+\newcommand{\vfs}{\VV{fs}}
+\newcommand{\vgs}{\VV{gs}}
+\newcommand{\vhs}{\VV{hs}}
+\newcommand{\vis}{\VV{is}}
+\newcommand{\vjs}{\VV{js}}
+\newcommand{\vks}{\VV{ks}}
+\newcommand{\vls}{\VV{ls}}
+\newcommand{\vms}{\VV{ms}}
+\newcommand{\vns}{\VV{ns}}
+\newcommand{\vos}{\VV{os}}
+\newcommand{\vps}{\VV{ps}}
+\newcommand{\vqs}{\VV{qs}}
+\newcommand{\vrs}{\VV{rs}}
+%\newcommand{\vss}{\VV{ss}}
+\newcommand{\vts}{\VV{ts}}
+\newcommand{\vus}{\VV{us}}
+\newcommand{\vvs}{\VV{vs}}
+\newcommand{\vws}{\VV{ws}}
+\newcommand{\vxs}{\VV{xs}}
+\newcommand{\vys}{\VV{ys}}
+\newcommand{\vzs}{\VV{zs}}
+
+%%% Telescope Identifiers
+
+\newcommand{\ta}{\vec{\VV{a}}}
+\newcommand{\tb}{\vec{\VV{b}}}
+\newcommand{\tc}{\vec{\VV{c}}}
+\newcommand{\td}{\vec{\VV{d}}}
+\newcommand{\te}{\vec{\VV{e}}}
+\newcommand{\tf}{\vec{\VV{f}}}
+\newcommand{\tg}{\vec{\VV{g}}}
+%\newcommand{\th}{\vec{\VV{h}}}
+\newcommand{\ti}{\vec{\VV{i}}}
+\newcommand{\tj}{\vec{\VV{j}}}
+\newcommand{\tk}{\vec{\VV{k}}}
+\newcommand{\tl}{\vec{\VV{l}}}
+\newcommand{\tm}{\vec{\VV{m}}}
+\newcommand{\tn}{\vec{\VV{n}}}
+%\newcommand{\to}{\vec{\VV{o}}}
+\newcommand{\tp}{\vec{\VV{p}}}
+\newcommand{\tq}{\vec{\VV{q}}}
+\newcommand{\tr}{\vec{\VV{r}}}
+\newcommand{\tts}{\vec{\VV{s}}}
+\newcommand{\ttt}{\vec{\VV{t}}}
+\newcommand{\tu}{\vec{\VV{u}}}
+%\newcommand{\tv}{\vec{\VV{v}}}
+\newcommand{\tw}{\vec{\VV{w}}}
+\newcommand{\tx}{\vec{\VV{x}}}
+\newcommand{\ty}{\vec{\VV{y}}}
+\newcommand{\tz}{\vec{\VV{z}}}
+\newcommand{\tA}{\vec{\VV{A}}}
+\newcommand{\tB}{\vec{\VV{B}}}
+\newcommand{\tC}{\vec{\VV{C}}}
+\newcommand{\tD}{\vec{\VV{D}}}
+\newcommand{\tE}{\vec{\VV{E}}}
+\newcommand{\tF}{\vec{\VV{F}}}
+\newcommand{\tG}{\vec{\VV{G}}}
+\newcommand{\tH}{\vec{\VV{H}}}
+\newcommand{\tI}{\vec{\VV{I}}}
+\newcommand{\tJ}{\vec{\VV{J}}}
+\newcommand{\tK}{\vec{\VV{K}}}
+\newcommand{\tL}{\vec{\VV{L}}}
+\newcommand{\tM}{\vec{\VV{M}}}
+\newcommand{\tN}{\vec{\VV{N}}}
+\newcommand{\tO}{\vec{\VV{O}}}
+\newcommand{\tP}{\vec{\VV{P}}}
+\newcommand{\tQ}{\vec{\VV{Q}}}
+\newcommand{\tR}{\vec{\VV{R}}}
+\newcommand{\tS}{\vec{\VV{S}}}
+\newcommand{\tT}{\vec{\VV{T}}}
+\newcommand{\tU}{\vec{\VV{U}}}
+\newcommand{\tV}{\vec{\VV{V}}}
+\newcommand{\tW}{\vec{\VV{W}}}
+\newcommand{\tX}{\vec{\VV{X}}}
+\newcommand{\tY}{\vec{\VV{Y}}}
+\newcommand{\tZ}{\vec{\VV{Z}}}
+
+
+
+%%% Nat
+
+\newcommand{\NatPackage}{
+  \newcommand{\Nat}{\TC{\mathbb{N}}}
+  \newcommand{\Z}{\DC{0}}
+  \newcommand{\suc}{\DC{s}}
+  \newcommand{\NatDecl}{
+    \Data \hg
+    \Axiom{\Nat\Hab\Type} \hg
+    \Where \hg
+    \Axiom{\Z\Hab\Nat} \hg
+    \Rule{\vn\Hab\Nat}
+         {\suc\:\vn\Hab\Nat}
+}}
+
+%%% Bool
+
+\newcommand{\BoolPackage}{
+  \newcommand{\Bool}{\TC{Bool}}
+  \newcommand{\true}{\DC{true}}
+  \newcommand{\false}{\DC{false}}
+  \newcommand{\BoolDecl}{
+    \Data \hg
+    \Axiom{\Bool\Hab\Type} \hg
+    \Where \hg
+    \Axiom{\true\Hab\Bool} \hg
+    \Axiom{\false\Hab\Bool}
+}}
+
+%%% So
+
+\newcommand{\SoPackage}{
+  \newcommand{\So}{\TC{So}}
+  \newcommand{\oh}{\DC{oh}}
+  \newcommand{\SoDecl}{
+    \Data \hg
+    \Rule{\vb\Hab\Bool}
+         {\So\:\vb\Hab\Type} \hg
+    \Where \hg
+    \Axiom{\oh\Hab\So\:\true}
+}}
+
+%%% Unit
+
+\newcommand{\UnitPackage}{
+  \newcommand{\Unit}{\TC{Unit}}
+  \newcommand{\void}{\DC{void}}
+  \newcommand{\UnitDecl}{
+    \Data \hg
+    \Axiom{\Unit\Hab\Type} \hg
+    \Where \hg
+    \Axiom{\void\Hab\Unit}
+}}
+
+%%% Maybe
+
+\newcommand{\MaybePackage}{
+  \newcommand{\Maybe}{\TC{Maybe}}
+  \newcommand{\yes}{\DC{yes}}
+  \newcommand{\no}{\DC{no}}
+  \newcommand{\MaybeDecl}{
+    \Data \hg
+    \Rule{\vA\Hab\Type}
+         {\Maybe\:\vA\Hab\Type} \hg
+    \Where \hg
+    \Rule{\va \Hab \vA}
+         {\yes\:\va\Hab\Maybe\:\vA} \hg
+    \Axiom{\no\Hab\Maybe\:\vA}
+}}
+
+%%% Cross
+
+\newcommand{\pr}[2]{(#1\DC{,}#2)}  %grrrr
+\newcommand{\CrossPackage}{
+  \newcommand{\Cross}{\times}
+  \newcommand{\CrossDecl}{
+    \Data \hg
+    \Rule{\vA,\vB\Hab\Type}
+         {\vA\Cross\vB\Hab\Type} \hg
+    \Where \hg
+    \Rule{\va \Hab \vA \hg \vb\Hab\vB}
+         {\pr{\va}{\vb}\Hab\vA\Cross\vB}
+}}
+
+%%% Fin
+
+\newcommand{\FinPackage}{
+  \newcommand{\Fin}{\TC{Fin}}
+  \newcommand{\fz}{\DC{f0}}
+  \newcommand{\fs}{\DC{fs}}
+  \newcommand{\FinDecl}{
+    \AR{
+    \Data \hg
+    \Rule{\vn\Hab\Nat}
+         {\Fin\:\vn\Hab\Type} \hg \\
+    \Where \hg
+    \begin{array}[t]{c}
+    \Axiom{\fz\Hab\Fin\:(\suc\:\vn)} \hg
+    \Rule{\vi\Hab\Fin\:\vn}
+         {\fs\:\vi\Hab\Fin\:(\suc\:\vn)}
+    \end{array}
+    }
+}}
+
+%%% Vect
+
+\newcommand{\VectPackage}{
+  \newcommand{\Vect}{\TC{Vect}}
+  \newcommand{\vnil}{\varepsilon}
+  \newcommand{\vcons}{\,\dcolon\,}
+  \newcommand{\vsnoc}{\,\dcolon\,}
+  \newcommand{\VectConsDecl}{
+    \Data \hg
+    \Rule{\vA \Hab \Type \hg \vn\Hab\Nat}
+         {\Vect\:\vA\:\vn\Hab\Type} \hg
+    \Where \hg \begin{array}[t]{c}
+    \Axiom{\vnil \Hab \Vect\:\vA\:\Z} \\
+    \Rule{\vx\Hab\vA \hg \vxs\Hab \Vect\:\vA\:\vn }
+         {\vx\vcons\vxs\Hab\Vect\:\vA\:(\suc\vn)}
+    \end{array}
+}
+  \newcommand{\VectSnocDecl}{
+    \Data \hg
+    \Rule{\vA \Hab \Type \hg \vn\Hab\Nat}
+         {\Vect\:\vA\:\vn\Hab\Type} \hg
+    \Where \hg \begin{array}[t]{c}
+    \Axiom{\vnil \Hab \Vect\:\vA\:\Z} \\
+    \Rule{\vxs\Hab \Vect\:\vA\:\vn \hg \vx\Hab\vA}
+         {\vxs\vsnoc\vx\Hab\Vect\:\vA\:(\suc\vn)}
+    \end{array}
+}
+}
+
+%%% Compare
+
+%Data Compare : (x:nat)(y:nat)Type
+%  = lt : (x:nat)(y:nat)(Compare x (plus (S y) x))
+%  | eq : (x:nat)(Compare x x)
+%  | gt : (x:nat)(y:nat)(Compare (plus (S x) y) y);
+
+
+\newcommand{\ComparePackage}{
+  \newcommand{\Compare}{\TC{Compare}}
+  \newcommand{\ltComp}{\DC{lt}}
+  \newcommand{\eqComp}{\DC{eq}}
+  \newcommand{\gtComp}{\DC{gt}}
+  \newcommand{\CompareDecl}{
+    \Data \hg
+    \Rule{\vm\Hab\Nat\hg\vn\Hab\Nat}
+         {\Compare\:\vm\:\vn\Hab\Type} \\
+    \Where \hg\begin{array}[t]{c}
+    \Rule{\vx\Hab\Nat\hg\vy\Hab\Nat}
+         {\ltComp_{\vx}\:\vy\Hab\Compare\:\vx\:(\FN{plus}\:\vx\:(\suc\:\vy))} \\
+    \Rule{\vx\Hab\Nat}
+         {\eqComp_{\vx}\Hab\Compare\:\vx\:\vx}\\
+    \Rule{\vx\Hab\Nat\hg\vy\Hab\Nat}
+         {\gtComp_{\vy}\:\vx\Hab\Compare\:(\FN{plus}\:\vy\:(\suc\:\vx))\:\vy} \\
+    \end{array}	 
+  }
+
+%Data CompareM : Type
+%  = ltM : (ydiff:nat)CompareM
+%  | eqM : CompareM
+%  | gtM : (xdiff:nat)CompareM;
+
+  \newcommand{\CompareM}{\TC{Compare^-}}
+  \newcommand{\ltCompM}{\DC{lt^-}}
+  \newcommand{\eqCompM}{\DC{eq^-}}
+  \newcommand{\gtCompM}{\DC{gt^-}}
+  \newcommand{\CompareMDecl}{
+
+     \Data \hg
+     \Axiom{\CompareM\Hab\Type} \\
+     \Where \hg\begin{array}[t]{c}
+     \Rule{\vy\Hab\Nat}
+          {\ltCompM\:\vy\Hab\CompareM} \\
+     \Axiom{\eqCompM\Hab\CompareM}\\
+     \Rule{\vx\Hab\Nat}
+          {\gtCompM\:\vx\Hab\CompareM} \\
+     \end{array}	
+  }
+  \newcommand{\CompareRec}{\FN{CompareRec}}
+  \newcommand{\CompareRecM}{\FN{CompareRec^-}}
+
+}
