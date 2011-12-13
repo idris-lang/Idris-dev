@@ -33,7 +33,7 @@ Executable     idris
                               Idris.REPLParser, Idris.ElabDecls, Idris.Error,
                               Idris.Delaborate, Idris.Primitives, Idris.Imports,
                               Idris.Compiler, Idris.Prover, Idris.ElabTerm,
-                              Idris.Coverage, Idris.IBC,
+                              Idris.Coverage, Idris.IBC, Idris.Unlit,
 
                               Paths_idris
 

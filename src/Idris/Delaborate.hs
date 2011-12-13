@@ -59,5 +59,6 @@ pshow i (CantUnify x y e) = "Can't unify " ++ show (delab i x)
 --                             ++ "\n\t(" ++ pshow i e ++ ")"
 pshow i (IncompleteTerm t) = "Incomplete term " ++ show t
 pshow i UniverseError = "Universe inconsistency"
+pshow i ProgramLineComment = "Program line next to comment"
 pshow i (At f e) = show f ++ ":" ++ pshow i e
 

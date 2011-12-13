@@ -41,6 +41,7 @@ data Err = Msg String
          | CantUnify Term Term Err
          | IncompleteTerm Term
          | UniverseError
+         | ProgramLineComment
          | At FC Err
   deriving Eq
 

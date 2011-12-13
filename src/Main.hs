@@ -48,6 +48,7 @@ runIdris opts =
     do let inputs = opt getFile opts
        let runrepl = not (NoREPL `elem` opts)
        let output = opt getOutput opts
+       setREPL runrepl
        mapM_ makeOption opts
        elabPrims
        when (not (NoPrelude `elem` opts)) $ do x <- loadModule "prelude"

@@ -6,6 +6,7 @@ import Idris.Error
 import Idris.ElabDecls
 import Idris.ElabTerm
 import Idris.IBC
+import Idris.Unlit
 import Paths_idris
 
 import Core.CoreParser
@@ -59,10 +60,14 @@ loadModule f
                        then iLOG $ "Already read " ++ f
                        else do putIState (i { imported = f : imported i })
                                case fp of
-                                   IDR fn -> loadSource fn
-                                   IBC fn src -> idrisCatch (loadIBC fn)
-                                                   (\c -> do iLOG $ fn ++ " failed"
-                                                             loadSource src)
+                                   IDR fn  -> loadSource False fn
+                                   LIDR fn -> loadSource True  fn
+                                   IBC fn src -> 
+                                     idrisCatch (loadIBC fn)
+                                                (\c -> do iLOG $ fn ++ " failed"
+                                                          case src of
+                                                            IDR sfn -> loadSource False sfn
+                                                            LIDR sfn -> loadSource True sfn)
                     let (dir, fh) = splitFileName f
                     return (dropExtension fh))
                 (\e -> do let msg = report e
@@ -70,9 +75,11 @@ loadModule f
                           iputStrLn msg
                           return "")
 
-loadSource :: FilePath -> Idris () 
-loadSource f = do iLOG ("Reading " ++ f)
-                  file <- lift $ readFile f
+loadSource :: Bool -> FilePath -> Idris () 
+loadSource lidr f 
+             = do iLOG ("Reading " ++ f)
+                  file_in <- lift $ readFile f
+                  file <- if lidr then tclift $ unlit f file_in else return file_in
                   (mname, modules, rest, pos) <- parseImports f file
                   mapM_ loadModule modules
                   clearIBC -- start a new .ibc file
@@ -85,6 +92,8 @@ loadSource f = do iLOG ("Reading " ++ f)
                   logLvl 10 (show (toAlist (idris_implicits i)))
                   logLvl 3 (show (idris_infixes i))
                   -- Now add all the declarations to the context
+                  repl <- useREPL
+                  when repl $ iputStrLn $ "Type checking " ++ f
                   mapM_ (elabDecl toplevel) ds
                   iLOG ("Finished " ++ f)
                   let ibc = dropExtension f ++ ".ibc"

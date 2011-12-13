@@ -123,6 +123,8 @@ pImports fs
                         then iLOG $ "Already read " ++ f
                         else do putIState (i { imported = f : imported i })
                                 case fp of 
+                                    LIDR fn -> do iLOG $ "Failed at " ++ fn
+                                                  fail "Must be an ibc"
                                     IDR fn -> do iLOG $ "Failed at " ++ fn
                                                  fail "Must be an ibc"
                                     IBC fn src -> loadIBC fn) 
