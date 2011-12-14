@@ -48,6 +48,12 @@ floatToInt x = foreign_ tyInt "floatToInt" [(x, tyFloat)]
 floatExp x = foreign_ tyFloat "exp" [(x, tyFloat)]
 floatLog x = foreign_ tyFloat "log" [(x, tyFloat)]
 
+strIndex x i = foreign_ tyChar "strIndex" [(x, tyString), (i, tyInt)]
+strHead x = foreign_ tyChar "strHead" [(x, tyString)]
+strTail x = foreign_ tyString "strTail" [(x, tyString)]
+strCons x xs = foreign_ tyString "strCons" [(x, tyChar), (xs, tyString)]
+strRev x = foreign_ tyString "strrev" [(x, tyString)]
+
 primitives =
    -- operators
   [Prim (UN "prim__addInt") (ty [IType, IType] IType) 2 (iBin (+))
@@ -128,7 +134,17 @@ primitives =
    Prim (UN "prim__floatExp") (ty [FlType] FlType) 1 (p_floatExp)
     ([E.name "x"], floatExp (fun "x")), 
    Prim (UN "prim__floatLog") (ty [FlType] FlType) 1 (p_floatLog)
-    ([E.name "x"], floatLog (fun "x")) 
+    ([E.name "x"], floatLog (fun "x")),
+   Prim (UN "prim__strHead") (ty [StrType] ChType) 1 (p_strHead)
+    ([E.name "x"], strHead (fun "x")),
+   Prim (UN "prim__strTail") (ty [StrType] StrType) 1 (p_strTail)
+    ([E.name "x"], strTail (fun "x")),
+   Prim (UN "prim__strCons") (ty [ChType, StrType] StrType) 2 (p_strCons)
+    ([E.name "x", E.name "xs"], strCons (fun "x") (fun "xs")),
+   Prim (UN "prim__strIndex") (ty [StrType, IType] ChType) 2 (p_strIndex)
+    ([E.name "x", E.name "i"], strIndex (fun "x") (fun "i")),
+   Prim (UN "prim__strRev") (ty [StrType] StrType) 1 (p_strRev)
+    ([E.name "x"], strRev (fun "x"))
   ]
 
 iBin op [VConstant (I x), VConstant (I y)] = Just $ VConstant (I (op x y))
@@ -181,6 +197,18 @@ p_floatExp [VConstant (Fl x)] = Just $ VConstant (Fl (exp x))
 p_floatExp _ = Nothing
 p_floatLog [VConstant (Fl x)] = Just $ VConstant (Fl (log x))
 p_floatLog _ = Nothing
+
+p_strHead [VConstant (Str (x:xs))] = Just $ VConstant (Ch x)
+p_strHead _ = Nothing
+p_strTail [VConstant (Str (x:xs))] = Just $ VConstant (Str xs)
+p_strTail _ = Nothing
+p_strIndex [VConstant (Str xs), VConstant (I i)] 
+   | i < length xs = Just $ VConstant (Ch (xs!!i))
+p_strIndex _ = Nothing
+p_strCons [VConstant (Ch x), VConstant (Str xs)] = Just $ VConstant (Str (x:xs))
+p_strCons _ = Nothing
+p_strRev [VConstant (Str xs)] = Just $ VConstant (Str (reverse xs))
+p_strRev _ = Nothing
 
 elabPrim :: Prim -> Idris ()
 elabPrim (Prim n ty i def epic) 

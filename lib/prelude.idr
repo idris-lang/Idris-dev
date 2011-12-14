@@ -32,6 +32,14 @@ instance Show Float where {
     show = prim__floatToStr;
 }
 
+instance Show Char where {
+    show x = strCons x ""; 
+}
+
+instance Show String where {
+    show = id;
+}
+
 instance Show Bool where {
     show True = "True";
     show False = "False";

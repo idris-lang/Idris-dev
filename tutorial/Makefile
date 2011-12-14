@@ -33,9 +33,9 @@ progress: .PHONY
 	$(DITAA) -o -E $<
 
 todropbox: .PHONY
-	cp ${SOURCES} ~/Dropbox/TeX/ImplDTP/
+	cp ${SOURCES} ~/Dropbox/TeX/idris-tutorial
 
 fromdropbox: .PHONY
-	cp ~/Dropbox/TeX/ImplDTP/* .
+	cp ~/Dropbox/TeX/idris-tutorial/* .
 
 .PHONY:

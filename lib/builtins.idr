@@ -194,4 +194,19 @@ div = prim__divInt;
 (++) : String -> String -> String;
 (++) = prim__concat;
 
+strHead : String -> Char;
+strHead = prim__strHead;
+
+strTail : String -> String;
+strTail = prim__strTail;
+
+strCons : Char -> String -> String;
+strCons = prim__strCons;
+
+strIndex : String -> Int -> Char;
+strIndex = prim__strIndex;
+
+rev : String -> String;
+rev = prim__strRev;
+
 }
