@@ -65,7 +65,14 @@ Hello world
 \useverb{hello}
 
 \noindent
-(Note that the \texttt{\$} indicates the shell prompt!)
+Note that the \texttt{\$} indicates the shell prompt! Some useful options to the
+\texttt{idris} command are:
+
+\begin{itemize}
+\item \texttt{-o prog} to compile to an executable called \texttt{prog}.
+\item \texttt{--check} type check the file and its dependencies without starting the 
+interactive environment.
+\end{itemize}
 
 \subsection{The interactive environment}
 
@@ -139,6 +146,6 @@ Hello world
 \codefig{run1}{Sample interactive run}
 
 Type checking a file, if successful, creates a bytecode version of the file (in this
-case \texttt{hello.ibc} to speed up loading in future. The bytecode is regenerated if
+case \texttt{hello.ibc}) to speed up loading in future. The bytecode is regenerated if
 the source file changes.
 

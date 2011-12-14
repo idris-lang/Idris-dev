@@ -69,15 +69,236 @@ Boolean expressions can be tested with the \texttt{if...then...else} construct:
 
 \subsection{Data Types}
 
+Data types are declared in a similar way to Haskell data types, with a similar
+syntax. The main difference is that Idris syntax is not whitespace sensitive,
+and declarations must end with a semi-colon. Natural numbers and lists, for 
+example, can be declared as follows:
 
+\begin{SaveVerbatim}{natlist}
+
+data Nat    = O   | S Nat;           -- Natural numbers
+                                     -- (zero and successor)
+data List a = Nil | (::) a (List a); -- Polymorphic lists
+
+\end{SaveVerbatim}
+\useverb{natlist}
+
+The above declarations are taken from the standard library. Unary natural
+numbers can be either zero (\texttt{O} - that's a capital letter 'o', not the digit), or
+the successor of another natural number (\texttt{S k}). 
+Lists can either be empty (\texttt{Nil})
+or a value added to the front of another list (\texttt{x :: xs}).
+In the declaration for \tTC{List}, we used an infix operator \tDC{::}. New operators
+such as this can be added using a fixity declaration, as follows:
+
+\begin{SaveVerbatim}{infixcons}
+
+infixr 7 :: ;
+
+\end{SaveVerbatim}
+\useverb{infixcons}
+
+Functions, data constructors and type constuctors may all be given infix
+operators as names. They may be used in prefix form if enclosed in brackets,
+e.g. (::). Infix operators can use any of the symbols:
+
+\begin{SaveVerbatim}{infixsyms}
+
+:+-*/=_.?|&><!@$%^~.
+
+\end{SaveVerbatim}
+\useverb{infixsyms}
+
+\subsection{Functions}
+
+Functions are implemented by pattern matching, again using a similar syntax to
+Haskell. The main difference is that \Idris{} requires type declarations for all
+functions, using a single colon \texttt{:} (rather than
+Haskell's double colon \texttt{::}). Some natural number arithmetic functions can be
+defined as follows, again taken from the standard library:
+
+\begin{SaveVerbatim}{natfns}
+
+-- Unary addition
+plus : Nat -> Nat -> Nat;
+plus O     y = y;
+plus (S k) y = S (plus k y);
+
+-- Unary multiplication
+mult : Nat -> Nat -> Nat;
+mult O     y = O;
+mult (S k) y = plus y (mult k y);
+
+\end{SaveVerbatim}
+\useverb{natfns}
+
+The standard arithmetic operators \texttt{+} and \texttt{*} are also overloaded for
+use by \texttt{Nat}, and are implemented using the above functions.
+Unlike Haskell, there is no restriction on whether types and function names
+must begin with a capital letter or not. Function names (\tFN{plus} and \tFN{mult} above),
+data constructors (\tDC{O}, \tDC{S}, \tDC{Nil} and \tDC{::}) and type 
+constructors (\tTC{Nat} and \tTC{List}) are
+all part of the same namespace.
+
+We can test these functions at the Idris prompt:
+
+\begin{SaveVerbatim}{fntest}
+
+Idris> plus (S (S O)) (S (S O))
+S (S (S (S O))) : Nat
+Idris> mult (S (S (S O))) (plus (S (S O)) (S (S O)))
+S (S (S (S (S (S (S (S (S (S (S (S O))))))))))) : Nat
+
+\end{SaveVerbatim}
+\useverb{fntest}
+
+Like arithmetic operations, integer literals are also overloaded using type classes, 
+meaning that we can also test the functions as follows:
+
+\begin{SaveVerbatim}{fntest}
+
+Idris> plus 2 2 
+S (S (S (S O))) : Nat
+Idris> mult 3 (plus 2 2)
+S (S (S (S (S (S (S (S (S (S (S (S O))))))))))) : Nat
+
+\end{SaveVerbatim}
+\useverb{fntest}
+
+You may wonder, by the way, why we have unary natural numbers when our
+computers have perfectly good integer arithmetic built in. The reason is
+primarily that unary numbers have a very convenient structure which is easy to
+reason about, and easy to relate to other data structures as we will see later.
+Nevertheless, we do not want this convenience to be at the expense of
+efficiency. Fortunately, \Idris{} knows about the relationship between
+\tTC{Nat} (and similarly structured types) and numbers, so optimises the
+representation and functions such as \tFN{plus} and \tFN{mult}.
 
 \subsection{Dependent Types}
 
 \subsubsection{Vectors}
 
+A standard example of a dependent type is the type of ``lists with length'',
+conventionally called vectors in the dependent type literature. In \Idris{},
+we declare vectors as follows:
+
+\begin{SaveVerbatim}{vect}
+
+data Vect : Set -> Nat -> Set where
+   Nil  : Vect a O
+ | (::) : a -> Vect a k -> Vect a (S k);
+
+\end{SaveVerbatim}
+\useverb{vect}
+
+Note that we have used the same constructor names as for \tTC{List}. Ad-hoc
+name overloading such as this is accepted by \Idris{}, provided that the names
+are declared in different namespaces (in practice, normally in different modules).
+Ambiguous constructor names can normally be resolved from context.
+
+This declares a family of types, and so the form of the declaration is rather
+different from the simple type declarations above. We explicitly state the type
+of the type constructor \tTC{Vect} - it takes a type and a \tTC{Nat} as an
+argument, where \tTC{Set} stands for the type of types. We say that \tTC{Vect}
+is \emph{parameterised} by a type, and \emph{indexed} over \tTC{Nat}. Each
+constructor targets a different part of the family of types. \tDC{Nil} can only
+be used to construct vectors with zero length, and \tDC{::} to constructor
+vectors with non-zero length.
+
+We can define functions on dependent types such as \tTC{Vect} in the same way
+as on simple types such as \tTC{List} and \tTC{Nat} above, by pattern matching.
+The type of a function over \tTC{Vect} will describe what happens to the
+lengths of the vectors involved. For example, \tFN{app}, defined in the
+library, appends two \tTC{Vect}s:
+
+\begin{SaveVerbatim}{vapp}
+
+app : Vect A n -> Vect A m -> Vect A (n + m);
+app Nil       ys = ys;
+app (x :: xs) ys = x :: app xs ys;
+
+\end{SaveVerbatim}
+\useverb{vapp}
+
+The type of \tFN{app} states that the resulting vector's length will be the sum of
+the input lengths. If we get the definition wrong in such a way that this does
+not hold, \Idris{} will not accept the definition. For example:
+
+\begin{SaveVerbatim}{vapperr}
+
+app : Vect a n -> Vect a m -> Vect a (n + m);
+app Nil       ys = ys;
+app (x :: xs) ys = x :: app xs xs; -- BROKEN
+
+\end{SaveVerbatim}
+\useverb{vapperr}
+
+\begin{SaveVerbatim}{vapperrmsg}
+
+$ idris app.idr --check 
+app.idr:3:Can't unify Vect a m with Vect a (plus n m)
+
+\end{SaveVerbatim}
+\useverb{vapperrmsg}
+%$
+
+This error message suggests that there is a length mismatch between two vectors.
+Note that the terms in the error message have been \emph{normalised}, so in
+particular \texttt{n + m} has been reduced to \texttt{plus n m}.
+
 \subsubsection{The Finite Sets}
+
+Finite sets, as the name suggests, are sets with a finite number of elements.
+They are declared as follows (again, in the prelude):
+
+\begin{SaveVerbatim}{findecl}
+
+data Fin : Nat -> Set where
+   fO : Fin (S k)
+ | fS : Fin k -> Fin (S k);
+
+\end{SaveVerbatim}
+\useverb{findecl}
+
+\tDC{fO} is the zeroth element of a finite set with \texttt{S k} elements; 
+\texttt{fS n} is the
+\texttt{n+1}th element of a finite set with \texttt{S k} elements. 
+\tTC{Fin} is indexed by a \tTC{Nat}, which
+represents the number of elements in the set. Obviously we can't construct an
+element of an empty set, so neither constructor targets \texttt{Fin O}.
+
+A useful application of the \tTC{Fin} family is to represent numbers with
+guaranteed bounds. For example, the following function which looks up an element in a \tTC{Vect}
+is defined in the prelude:
+
+\begin{SaveVerbatim}{vlookup}
+
+lookup : Fin n -> Vect a n -> a;
+lookup fO     (x :: xs) = x;
+lookup (fS k) (x :: xs) = lookup k xs;
+
+\end{SaveVerbatim}
+\useverb{vlookup}
+
+This function looks up a value at a given location in a vector. The location is
+bounded by the length of the vector (\texttt{n} in each case), so there is no
+need for a run-time bounds check. The type checker guarantees that the location
+is no larger than the length of the vector.
+
+Note also that there is no case for \texttt{Nil} here. This is because it is
+impossible. Since there is no element of \texttt{Fin O}, and the location is a
+\texttt{Fin n}, then \texttt{n} can not be \tDC{O}.  As a result, attempting to
+look up an element in an empty vector would give a compile time type error,
+since it would force \texttt{n} to be \tDC{O}.
 
 \subsubsection{Implicit Arguments}
 
-\subsection{Modules and Namespaces}
+\subsection{Useful Data Types}
 
+Lists, syntactic sugar.
+Maybe, Either.
+Pairs, dependent pairs, syntactic sugar.
+
+\subsection{I/O}
+
+\subsection{Modules and Namespaces}
