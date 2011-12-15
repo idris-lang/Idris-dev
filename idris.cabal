@@ -16,10 +16,9 @@ Description:    Idris is an experimental language with full dependent types.
 		related to Epigram and Agda. There is a tutorial at <http://www.idris-lang.org/tutorial.html>.
 
 Cabal-Version:  >= 1.6
-Build-type:     Simple
+Build-type:     Custom
 
-Data-files:    *.idr prelude/*.idr
-Data-dir:      lib
+Extra-source-files:    lib/Makefile  lib/*.idr lib/prelude/*.idr
 
 Executable     idris
                Main-is: Main.hs

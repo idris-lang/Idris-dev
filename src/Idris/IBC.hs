@@ -16,6 +16,7 @@ import Data.ByteString.Lazy as B hiding (length, elem)
 import Control.Monad
 import Control.Monad.State hiding (get, put)
 import System.FilePath
+import System.Directory
 import System.Posix.Files
 
 import Paths_idris
@@ -53,7 +54,7 @@ writeIBC src f
     = do iLOG $ "Writing ibc " ++ show f
          i <- getIState
          case idris_metavars i \\ primDefs of
-                (_:_) -> fail "Can't write ibc when there are unsolve metavariables"
+                (_:_) -> fail "Can't write ibc when there are unsolved metavariables"
                 [] -> return ()
          ibcf <- mkIBC (ibc_write i) (initIBC { sourcefile = src }) 
          lift $ encodeFile f ibcf
@@ -108,11 +109,13 @@ process i fn
                pDefs (ibc_defs i)
 
 timestampOlder :: FilePath -> FilePath -> IO ()
-timestampOlder src ibc = do srcs <- getFileStatus src
-                            ibcs <- getFileStatus ibc
-                            if (modificationTime srcs > modificationTime ibcs)
-                                then fail "Needs reloading"
-                                else return ()
+timestampOlder src ibc = do srcok <- doesFileExist src
+                            when srcok $ do
+                                srcs <- getFileStatus src
+                                ibcs <- getFileStatus ibc
+                                if (modificationTime srcs > modificationTime ibcs)
+                                    then fail "Needs reloading"
+                                    else return ()
 
 pImports :: [FilePath] -> Idris ()
 pImports fs 
