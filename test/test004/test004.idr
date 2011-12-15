@@ -1,5 +1,10 @@
 module main;
 
+while : |(test : IO Bool) -> |(body : IO ()) -> IO ();
+while t b = do { v <- t;
+                 if v then (do { b; while t b; }) else return (); };
+
+
 readFile : String -> IO String;
 readFile fn = do { h <- fopen fn "r";
                    c <- readFile' h "";
@@ -16,6 +21,14 @@ readFile fn = do { h <- fopen fn "r";
                        else (return contents); };
   }
 
+dumpFile : String -> IO ();
+dumpFile fn = do { h <- fopen fn "r";
+                   while (do { x <- feof h;
+                               return (not x); })
+                         (do { l <- fread h;
+                               putStr l; });
+                   fclose h; };
+
 main : IO ();
 main = do { h <- fopen "testfile" "w";
             fwrite h "Hello!\nWorld!\n";
@@ -24,5 +37,6 @@ main = do { h <- fopen "testfile" "w";
             f <- readFile "testfile";
             putStrLn f;
             putStrLn "---";
+            dumpFile "testfile";
           };
 

@@ -63,12 +63,12 @@ instance ToEpic (TT Name) where
                    return $ lazy_ arg'
           | (P _ (UN "believe_me") _, [_, _, arg]) <- unApply tm
               = epic' env arg
---           | (P _ (UN "prim__IO") _, [_, v]) <- unApply tm
---               = epic' env v
---           | (P _ (UN "io_bind") _, [_,_,v,k]) <- unApply tm
---               = do v' <- epic' env v 
---                    k' <- epic' env k
---                    return (k' @@ v')
+          | (P _ (UN "prim__IO") _, [_, v]) <- unApply tm
+              = epic' env v
+          | (P _ (UN "io_bind") _, [_,_,v,k]) <- unApply tm
+              = do v' <- epic' env v 
+                   k' <- epic' env k
+                   return (k' @@ (effect_ v'))
       epic' env (P (DCon t a) n _) = return $ con_ t
       epic' env (P (TCon t a) n _) = return $ con_ t
       epic' env (P _ n _)          = return $ ref (ename n) 
@@ -94,7 +94,8 @@ doForeign (_ : fgn : args)
               rty = mkEty ret in
               do args' <- mapM epic args
                  -- wrap it in a prim__IO
-                 return $ con_ 0 @@ impossible @@ foreign_ rty fgnName (zip args' tys)
+                 -- return $ con_ 0 @@ impossible @@ 
+                 return $ foreign_ rty fgnName (zip args' tys)
    | otherwise = fail "Badly formed foreign function call"
 
 getFTypes :: TT Name -> [E.Type]
