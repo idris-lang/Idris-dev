@@ -141,3 +141,42 @@ print = putStrLn . show;
 readLine : IO String;
 readLine = mkForeign (FFun "readStr" Nil FString);
 
+---- some basic file handling
+
+data File = FHandle Ptr;
+
+do_fopen : String -> String -> IO Ptr;
+do_fopen f m = mkForeign (FFun "fileOpen" [FString, FString] FPtr) f m;
+
+fopen : String -> String -> IO File;
+fopen f m = do { h <- do_fopen f m;
+                 return (FHandle h); };
+
+do_fclose : Ptr -> IO ();
+do_fclose h = mkForeign (FFun "fileClose" [FPtr] FUnit) h;
+
+fclose : File -> IO ();
+fclose (FHandle h) = do_fclose h;
+
+do_fread : Ptr -> IO String;
+do_fread h = mkForeign (FFun "freadStr" [FPtr] FString) h;
+
+fread : File -> IO String;
+fread (FHandle h) = do_fread h;
+
+do_fwrite : Ptr -> String -> IO ();
+do_fwrite h s = mkForeign (FFun "fputStr" [FPtr, FString] FUnit) h s;
+
+fwrite : File -> String -> IO ();
+fwrite (FHandle h) s = do_fwrite h s;
+
+do_feof : Ptr -> IO Int;
+do_feof h = mkForeign (FFun "feof" [FPtr] FInt) h;
+
+feof : File -> IO Bool;
+feof (FHandle h) = do { eof <- do_feof h;
+                        return (not (eof == 0)); };
+
+
+
+

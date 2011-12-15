@@ -288,7 +288,7 @@ impl = Imp False Dynamic
 expl = Exp False Dynamic
 constraint = Constraint False Static
 
-data FnOpt = Inlinable | Partial
+data FnOpt = Inlinable | Partial | Abstract | Private
     deriving (Show, Eq)
 
 type FnOpts = [FnOpt]

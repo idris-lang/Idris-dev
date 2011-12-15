@@ -32,7 +32,7 @@ mkDecls = do i <- getIState
 ename x = name ("idris_" ++ show x)
 aname x = name ("a_" ++ show x)
 
-epicMain = effect_ $ ref (ename (UN "run__IO")) @@
+epicMain = effect_ $ -- ref (ename (UN "run__IO")) @@
                      ref (ename (NS (UN "main") ["main"]))
 
 class ToEpic a where
@@ -63,6 +63,12 @@ instance ToEpic (TT Name) where
                    return $ lazy_ arg'
           | (P _ (UN "believe_me") _, [_, _, arg]) <- unApply tm
               = epic' env arg
+--           | (P _ (UN "prim__IO") _, [_, v]) <- unApply tm
+--               = epic' env v
+--           | (P _ (UN "io_bind") _, [_,_,v,k]) <- unApply tm
+--               = do v' <- epic' env v 
+--                    k' <- epic' env k
+--                    return (k' @@ v')
       epic' env (P (DCon t a) n _) = return $ con_ t
       epic' env (P (TCon t a) n _) = return $ con_ t
       epic' env (P _ n _)          = return $ ref (ename n) 
