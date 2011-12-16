@@ -9,9 +9,9 @@ dumpFile fn = do { h <- openFile fn Read;
                    closeFile h; };
 
 main : IO ();
-main = do { h <- fopen "testfile" "w";
+main = do { h <- openFile "testfile" Write;
             fwrite h "Hello!\nWorld!\n";
-            fclose h;
+            closeFile h;
             putStrLn "Reading testfile";
             f <- readFile "testfile";
             putStrLn f;

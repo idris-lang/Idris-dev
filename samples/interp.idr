@@ -77,7 +77,7 @@ test : Int;
 test = interp [] eProg 2 2;
 
 testFac : Int;
-testFac = interp [] eFac 5;
+testFac = interp [] eFac 4;
 
 main : IO ();
 main = do { print testFac;
