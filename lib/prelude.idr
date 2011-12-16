@@ -152,11 +152,21 @@ fopen : String -> String -> IO File;
 fopen f m = do { h <- do_fopen f m;
                  return (FHandle h); };
 
+data Mode = Read | Write | ReadWrite;
+
+openFile : String -> Mode -> IO File;
+openFile f m = fopen f (modeStr m) where {
+  modeStr : Mode -> String;
+  modeStr Read  = "r";
+  modeStr Write = "w";
+  modeStr ReadWrite = "r+";
+}
+
 do_fclose : Ptr -> IO ();
 do_fclose h = mkForeign (FFun "fileClose" [FPtr] FUnit) h;
 
-fclose : File -> IO ();
-fclose (FHandle h) = do_fclose h;
+closeFile : File -> IO ();
+closeFile (FHandle h) = do_fclose h;
 
 do_fread : Ptr -> IO String;
 do_fread h = mkForeign (FFun "freadStr" [FPtr] FString) h;
@@ -177,6 +187,23 @@ feof : File -> IO Bool;
 feof (FHandle h) = do { eof <- do_feof h;
                         return (not (eof == 0)); };
 
+while : |(test : IO Bool) -> |(body : IO ()) -> IO ();
+while t b = do { v <- t;
+                 if v then (do { b; while t b; }) else return (); };
 
-
+readFile : String -> IO String;
+readFile fn = do { h <- openFile fn Read;
+                   c <- readFile' h "";
+                   closeFile h;
+                   return c;
+                 }
+  where {
+    readFile' : File -> String -> IO String;
+    readFile' h contents = 
+       do { x <- feof h;
+            if (not x) then (do { l <- fread h;
+                                  readFile' h (contents ++ l);
+                                })
+                       else (return contents); };
+  }
 

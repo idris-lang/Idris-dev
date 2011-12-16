@@ -61,6 +61,8 @@ runIdris opts =
                     [] -> return ()
                     (o:_) -> process (Compile o)  
        when runrepl $ repl ist inputs
+       ok <- noErrors
+       when (not ok) $ lift (exitWith (ExitFailure 1))
   where
     makeOption (OLogging i) = setLogLevel i
     makeOption TypeCase = setTypeCase True
