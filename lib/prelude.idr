@@ -136,7 +136,7 @@ putStrLn : String -> IO ();
 putStrLn x = putStr (x ++ "\n");
 
 print : Show a => a -> IO ();
-print = putStrLn . show;
+print x = putStrLn (show x);
 
 readLine : IO String;
 readLine = mkForeign (FFun "readStr" Nil FString);

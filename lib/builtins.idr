@@ -107,6 +107,14 @@ instance Eq Float where {
     (==) = boolOp prim__eqFloat;
 }
 
+instance Eq Char where {
+    (==) = boolOp prim__eqChar;
+}
+
+instance Eq String where {
+    (==) = boolOp prim__eqString;
+}
+
 data Ordering = LT | EQ | GT;
 
 class Eq a => Ord a where {
@@ -147,6 +155,18 @@ instance Ord Int where {
 instance Ord Float where {
     compare x y = if (x == y) then EQ else
                   if (boolOp prim__ltFloat x y) then LT else
+                  GT;
+}
+
+instance Ord Char where {
+    compare x y = if (x == y) then EQ else
+                  if (boolOp prim__ltChar x y) then LT else
+                  GT;
+}
+
+instance Ord String where {
+    compare x y = if (x == y) then EQ else
+                  if (boolOp prim__ltString x y) then LT else
                   GT;
 }
 

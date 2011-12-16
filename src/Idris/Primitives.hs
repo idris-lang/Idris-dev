@@ -53,6 +53,8 @@ strHead x = foreign_ tyChar "strHead" [(x, tyString)]
 strTail x = foreign_ tyString "strTail" [(x, tyString)]
 strCons x xs = foreign_ tyString "strCons" [(x, tyChar), (xs, tyString)]
 strRev x = foreign_ tyString "strrev" [(x, tyString)]
+strEq x y = foreign_ tyInt "streq" [(x, tyString), (y, tyString)]
+strLt x y = foreign_ tyInt "strlt" [(x, tyString), (y, tyString)]
 
 primitives =
    -- operators
@@ -73,6 +75,16 @@ primitives =
    Prim (UN "prim__gtInt")  (ty [IType, IType] IType) 2 (biBin (>))
     (eOp E.gt_),
    Prim (UN "prim__gteInt") (ty [IType, IType] IType) 2 (biBin (>=))
+    (eOp E.gte_),
+   Prim (UN "prim__eqChar")  (ty [ChType, ChType] IType) 2 (bcBin (==))
+    (eOp E.eq_),
+   Prim (UN "prim__ltChar")  (ty [ChType, ChType] IType) 2 (bcBin (<))
+    (eOp E.lt_),
+   Prim (UN "prim__lteChar") (ty [ChType, ChType] IType) 2 (bcBin (<=))
+    (eOp E.lte_),
+   Prim (UN "prim__gtChar")  (ty [ChType, ChType] IType) 2 (bcBin (>))
+    (eOp E.gt_),
+   Prim (UN "prim__gteChar") (ty [ChType, ChType] IType) 2 (bcBin (>=))
     (eOp E.gte_),
    Prim (UN "prim__addBigInt") (ty [BIType, BIType] BIType) 2 (bBin (+))
     (eOpFn tyBigInt tyBigInt "addBig"),
@@ -112,6 +124,10 @@ primitives =
     (eOp E.gteF_),
    Prim (UN "prim__concat") (ty [StrType, StrType] StrType) 2 (sBin (++))
     ([E.name "x", E.name "y"], (fun "append") @@ fun "x" @@ fun "y"),
+   Prim (UN "prim__eqString") (ty [StrType, StrType] IType) 2 (bsBin (==))
+    ([E.name "x", E.name "y"], strEq (fun "x") (fun "y")),
+   Prim (UN "prim__ltString") (ty [StrType, StrType] IType) 2 (bsBin (<))
+    ([E.name "x", E.name "y"], strLt (fun "x") (fun "y")),
     -- Conversions
    Prim (UN "prim__strToInt") (ty [StrType] IType) 1 (c_strToInt)
     ([E.name "x"], strToInt (fun "x")),
@@ -165,6 +181,15 @@ fBin _ _ = Nothing
 bfBin op [VConstant (Fl x), VConstant (Fl y)] = let i = (if op x y then 1 else 0) in
                                                 Just $ VConstant (I i)
 bfBin _ _ = Nothing
+
+bcBin op [VConstant (Ch x), VConstant (Ch y)] = let i = (if op x y then 1 else 0) in
+                                                Just $ VConstant (I i)
+bcBin _ _ = Nothing
+
+bsBin op [VConstant (Str x), VConstant (Str y)] 
+    = let i = (if op x y then 1 else 0) in
+          Just $ VConstant (I i)
+bsBin _ _ = Nothing
 
 sBin op [VConstant (Str x), VConstant (Str y)] = Just $ VConstant (Str (op x y))
 sBin _ _ = Nothing
