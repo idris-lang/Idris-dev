@@ -8,8 +8,8 @@ check: .PHONY
 recheck: clean check
 
 install: check
-	install *.ibc $(TARGET)
 	mkdir -p $(TARGET)/prelude
+	install *.ibc $(TARGET)
 	install prelude/*.ibc $(TARGET)/prelude
 
 clean: .PHONY
