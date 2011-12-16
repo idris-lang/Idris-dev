@@ -30,7 +30,8 @@ import Paths_idris
 -- on with the REPL.
 
 data Opt = Filename String
-         | Version
+         | Ver
+         | Usage
          | NoPrelude
          | NoREPL
          | OLogging Int
@@ -48,6 +49,8 @@ runIdris opts =
     do let inputs = opt getFile opts
        let runrepl = not (NoREPL `elem` opts)
        let output = opt getOutput opts
+       when (Ver `elem` opts) $ lift showver
+       when (Usage `elem` opts) $ lift usage
        setREPL runrepl
        mapM_ makeOption opts
        elabPrims
@@ -80,8 +83,11 @@ getOutput _ = Nothing
 opt :: (Opt -> Maybe a) -> [Opt] -> [a]
 opt = mapMaybe 
 
-usage = do putStrLn "You're doing it wrong"
-           exitWith (ExitFailure 1)
+usage = do putStrLn usagemsg
+           exitWith ExitSuccess
+
+showver = do putStrLn $ "Idris version " ++ ver
+             exitWith ExitSuccess
 
 parseArgs :: [String] -> IO [Opt]
 parseArgs [] = return []
@@ -91,21 +97,9 @@ parseArgs ("--check":ns)     = liftM (NoREPL : ) (parseArgs ns)
 parseArgs ("-o":n:ns)        = liftM (\x -> NoREPL : Output n : x) (parseArgs ns)
 parseArgs ("--typecase":ns)  = liftM (TypeCase : ) (parseArgs ns)
 parseArgs ("--typeintype":ns) = liftM (TypeInType : ) (parseArgs ns)
+parseArgs ("--help":ns)      = liftM (Usage : ) (parseArgs ns)
+parseArgs ("--version":ns)   = liftM (Ver : ) (parseArgs ns)
 parseArgs (n:ns)             = liftM (Filename n : ) (parseArgs ns)
-
-{-
-main'
-     = do f <- readFile "test.mi"
-          case parseFile f of
-              Left err -> print err
-              Right defs -> do
-                print defs
-                case checkProgram emptyContext defs of
-                    OK ctxt -> do print (toAlist ctxt) 
-                                  runShell (initState ctxt)
-                                  return ()
-                    err -> print err
-                    -}
 
 ver = showVersion version
 
@@ -114,4 +108,14 @@ banner = "     ____    __     _                                          \n" ++
          "    / // __  / ___/ / ___/     Version " ++ ver ++ "\n" ++
          "  _/ // /_/ / /  / (__  )      http://www.idris-lang.org/      \n" ++
          " /___/\\__,_/_/  /_/____/       Type :? for help                \n" 
+
+usagemsg = "Idris version " ++ ver ++ "\n" ++
+           "--------------" ++ map (\x -> '-') ver ++ "\n" ++
+           "Usage: idris [input file] [options]\n" ++
+           "Options:\n" ++
+           "\t--check       Type check only\n" ++
+           "\t-o [file]     Generate executable\n" ++
+           "\t--noprelude   Don't import the prelude\n" ++
+           "\t--typeintype  Disable universe checking\n" ++
+           "\t--log [level] Set debugging log level\n"
 
