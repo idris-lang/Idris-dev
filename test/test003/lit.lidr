@@ -11,5 +11,9 @@ Literate main program
 > main = do { putStrLn (show (strHead st));
 >             putStrLn (show (strIndex st 3));
 >             putStrLn (strCons 'z' st);
->             putStrLn (rev st); };
+>             putStrLn (rev st); 
+>             let x = unpack st;
+>             putStrLn (show (rev x));
+>             putStrLn (pack x);
+>           };
 
