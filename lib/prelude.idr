@@ -8,6 +8,7 @@ import prelude.list;
 import prelude.maybe;
 import prelude.either;
 import prelude.vect;
+import prelude.strings;
 
 -- Show and instances
 

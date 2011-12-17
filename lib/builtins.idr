@@ -20,6 +20,7 @@ lazy : a -> a;
 lazy x = x; -- compiled specially
 
 believe_me : a -> b; -- compiled specially as id, use with care!
+believe_me x = prim__believe_me _ _ x;
 
 namespace builtins {
 

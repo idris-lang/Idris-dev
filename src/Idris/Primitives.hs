@@ -22,6 +22,10 @@ data Prim = Prim { p_name  :: Name,
 ty []     x = Constant x
 ty (t:ts) x = Bind (MN 0 "T") (Pi (Constant t)) (ty ts x)
 
+believeTy = Bind (UN "a") (Pi (Set (UVar (-2))))
+            (Bind (UN "b") (Pi (Set (UVar (-2))))
+            (Bind (UN "x") (Pi (V 1)) (V 1)))
+
 type ETm = E.Term
 type EOp = E.Op
 
@@ -160,8 +164,14 @@ primitives =
    Prim (UN "prim__strIndex") (ty [StrType, IType] ChType) 2 (p_strIndex)
     ([E.name "x", E.name "i"], strIndex (fun "x") (fun "i")),
    Prim (UN "prim__strRev") (ty [StrType] StrType) 1 (p_strRev)
-    ([E.name "x"], strRev (fun "x"))
+    ([E.name "x"], strRev (fun "x")),
+
+   Prim (UN "prim__believe_me") believeTy 3 (p_believeMe)
+    ([E.name "a", E.name "b", E.name "x"], fun "x") 
   ]
+
+p_believeMe [_,_,x] = Just x
+p_believeMe _ = Nothing
 
 iBin op [VConstant (I x), VConstant (I y)] = Just $ VConstant (I (op x y))
 iBin _ _ = Nothing

@@ -13,7 +13,7 @@ import Control.Monad.State
 import Epic.Epic hiding (Term, Type, Name, fn, compile)
 import qualified Epic.Epic as E
 
-primDefs = [UN "mkForeign", UN "FalseElim", UN "believe_me"]
+primDefs = [UN "mkForeign", UN "FalseElim"]
 
 compile :: FilePath -> Idris ()
 compile f = do ds <- mkDecls
@@ -61,8 +61,6 @@ instance ToEpic (TT Name) where
           | (P _ (UN "lazy") _, [_, arg]) <- unApply tm
               = do arg' <- epic' env arg
                    return $ lazy_ arg'
-          | (P _ (UN "believe_me") _, [_, _, arg]) <- unApply tm
-              = epic' env arg
           | (P _ (UN "prim__IO") _, [_, v]) <- unApply tm
               = epic' env v
           | (P _ (UN "io_bind") _, [_,_,v,k]) <- unApply tm

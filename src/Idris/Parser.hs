@@ -886,10 +886,13 @@ expandDo dsl (PDoBlock ds) = expandDo dsl $ block (dsl_bind dsl) ds
     block b [a] = PElabError "Last statement in do block must be an expression"
     block b (DoBind fc n tm : rest)
         = PApp fc (PRef fc b) [pexp tm, pexp (PLam n Placeholder (block b rest))]
+    block b (DoLet fc n tm : rest)
+        = PLet n Placeholder tm (block b rest)
     block b (DoExp fc tm : rest)
         = PApp fc (PRef fc b) 
             [pexp tm, 
              pexp (PLam (MN 0 "bindx") Placeholder (block b rest))]
+    block b _ = PElabError "Invalid statement in do block"
 expandDo dsl t = t
 
 

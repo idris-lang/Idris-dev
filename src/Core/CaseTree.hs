@@ -78,16 +78,9 @@ toPat tc tms = evalState (mapM (\x -> toPat' x []) tms) []
                                           else do put (n : ns)
                                                   return (PV n)
     toPat' (App f a)          args = toPat' f (a : args)
-    toPat' (Constant c)       args 
-        | isType c  = return PAny
-        | otherwise = return $ PConst c
-    toPat' _                  _    = return PAny
+    toPat' (Constant (I c)) [] = return $ PConst (I c) 
+    toPat' _                _  = return PAny
 
-    isType (I _) = False
-    isType (Fl _) = False
-    isType (Str _) = False
-    isType (Ch _) = False
-    isType _ = True
 
 data Partition = Cons [Clause]
                | Vars [Clause]
