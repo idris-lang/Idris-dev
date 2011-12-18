@@ -235,14 +235,16 @@ app (x :: xs) ys = x :: app xs xs; -- BROKEN
 
 \begin{SaveVerbatim}{vapperrmsg}
 
-$ idris app.idr --check 
-app.idr:3:Can't unify Vect a m with Vect a (plus n m)
+$ idris vbroken.idr --check 
+vbroken.idr:3:Can't unify Vect a (S (plus k k)) with Vect a (S (plus k m))
 
 \end{SaveVerbatim}
 \useverb{vapperrmsg}
 %$
 
-This error message suggests that there is a length mismatch between two vectors.
+This error message suggests that there is a length mismatch between two vectors
+--- we needed a vector of length \texttt{(S (k + m))}, but provided a vector
+of length \texttt{(S (k + k))}.
 Note that the terms in the error message have been \emph{normalised}, so in
 particular \texttt{n + m} has been reduced to \texttt{plus n m}.
 
