@@ -49,6 +49,7 @@ data IState = IState { tt_ctxt :: Context,
                        idris_hdrs :: [String],
                        last_proof :: Maybe (Name, [String]),
                        errLine :: Maybe Int,
+                       lastParse :: Maybe (Name, PTerm, [PTerm]), 
                        ibc_write :: [IBCWrite]
                      }
              
@@ -67,7 +68,7 @@ data IBCWrite = IBCFix FixDecl
   deriving Show
 
 idrisInit = IState initContext [] [] emptyContext emptyContext emptyContext
-                   "" defaultOpts 6 [] [] [] [] [] [] [] [] Nothing Nothing []
+                   "" defaultOpts 6 [] [] [] [] [] [] [] [] Nothing Nothing Nothing []
 
 -- The monad for the main REPL - reading and processing files and updating 
 -- global state (hence the IO inner monad).

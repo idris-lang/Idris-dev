@@ -31,7 +31,7 @@ app (x :: xs) ys = x :: app xs ys;
 filter : (a -> Bool) -> Vect a n -> (p ** Vect a p);
 filter p [] = ( _ ** [] );
 filter p (x :: xs) with (filter p xs) {
-  filter p (x :: xs) | ( _ ** xs' ) 
+  | ( _ ** xs' ) 
      = if (p x) then ( _ ** x :: xs' ) else ( _ ** xs' );
 }
 

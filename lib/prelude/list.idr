@@ -34,8 +34,8 @@ map f (x :: xs) = f x :: map f xs;
 filter : (y -> Bool) -> List y -> List y;
 filter pred [] = [];
 filter pred (x :: xs) with (pred x, filter pred xs) {
-  filter pred (x :: xs) | (True, fxs) = x :: fxs; 
-  filter pred (x :: xs) | (False, fxs) = fxs;
+  | (True, fxs) = x :: fxs; 
+  | (False, fxs) = fxs;
 }
 
 

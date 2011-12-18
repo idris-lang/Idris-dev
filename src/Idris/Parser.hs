@@ -751,22 +751,53 @@ pClause syn
                    (wheres, nmap) <- choice [pWhereblock n wsyn, 
                                              do lchar ';'
                                                 return ([], [])]
-                   return $ PClause n (PApp fc (PRef fc n) 
-                                      (iargs ++ cargs ++ map pexp args)) wargs rhs wheres)
+                   let capp = PApp fc (PRef fc n) 
+                                (iargs ++ cargs ++ map pexp args)
+                   setState (ist { lastParse = Just (n, capp, wargs) })
+                   return $ PClause n capp wargs rhs wheres)
+       <|> try (do wargs <- many (pWExpr syn)
+                   ist <- getState
+                   (n, capp, owargs) <- case lastParse ist of
+                                         Just t -> return t
+                                         Nothing -> fail "Invalid clause"
+                   rhs <- pRHS syn n
+                   let ctxt = tt_ctxt ist
+                   let wsyn = syn { syn_namespace = [] }
+                   (wheres, nmap) <- choice [pWhereblock n wsyn, 
+                                             do lchar ';'
+                                                return ([], [])]
+                   return $ PClause n capp (owargs ++ wargs) rhs wheres)
+
        <|> try (do n_in <- pfName; let n = expandNS syn n_in
                    cargs <- many (pConstraintArg syn)
                    iargs <- many (pImplicitArg syn)
                    fc <- pfc
                    args <- many (pArgExpr syn)
                    wargs <- many (pWExpr syn)
+                   let capp = PApp fc (PRef fc n) 
+                                (iargs ++ cargs ++ map pexp args)
+                   ist <- getState
+                   setState (ist { lastParse = Just (n, capp, wargs) })
                    reserved "with"
                    wval <- pExpr syn
                    lchar '{'
                    ds <- many1 $ pFunDecl syn
                    let withs = concat ds
                    lchar '}'
-                   return $ PWith n (PApp fc (PRef fc n) 
-                                       (iargs ++ cargs ++ map pexp args)) wargs wval withs)
+                   return $ PWith n capp wargs wval withs)
+
+       <|> try (do wargs <- many (pWExpr syn)
+                   reserved "with"
+                   ist <- getState
+                   (n, capp, owargs) <- case lastParse ist of
+                                         Just t -> return t
+                                         Nothing -> fail "Invalid clause"
+                   wval <- pExpr syn
+                   lchar '{'
+                   ds <- many1 $ pFunDecl syn
+                   let withs = concat ds
+                   lchar '}'
+                   return $ PWith n capp (owargs ++ wargs) wval withs)
 
        <|> do l <- pArgExpr syn
               op <- operator
@@ -779,8 +810,10 @@ pClause syn
               (wheres, nmap) <- choice [pWhereblock n wsyn, 
                                         do lchar ';'
                                            return ([], [])]
-              return $ PClause n (PApp fc (PRef fc n) [pexp l,pexp r]) 
-                                 wargs rhs wheres
+              ist <- getState
+              let capp = PApp fc (PRef fc n) [pexp l, pexp r]
+              setState (ist { lastParse = Just (n, capp, wargs) })
+              return $ PClause n capp wargs rhs wheres
 
        <|> do l <- pArgExpr syn
               op <- operator
@@ -794,7 +827,10 @@ pClause syn
               ds <- many1 $ pFunDecl syn
               let withs = concat ds
               lchar '}'
-              return $ PWith n (PApp fc (PRef fc n) [pexp l, pexp r]) wargs wval withs
+              ist <- getState
+              let capp = PApp fc (PRef fc n) [pexp l, pexp r]
+              setState (ist { lastParse = Just (n, capp, wargs) })
+              return $ PWith n capp wargs wval withs
 
 pWExpr :: SyntaxInfo -> IParser PTerm
 pWExpr syn = do lchar '|'; pExpr' syn
