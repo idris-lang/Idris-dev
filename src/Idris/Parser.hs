@@ -753,12 +753,14 @@ pClause syn
                                                 return ([], [])]
                    let capp = PApp fc (PRef fc n) 
                                 (iargs ++ cargs ++ map pexp args)
+                   ist <- getState
+                   setState (ist { lastParse = Just n })
                    return $ PClause n capp wargs rhs wheres)
        <|> try (do wargs <- many1 (pWExpr syn)
                    ist <- getState
-                   (n, capp, owargs) <- case lastParse ist of
-                                         Just t -> return t
-                                         Nothing -> fail "Invalid clause"
+                   n <- case lastParse ist of
+                             Just t -> return t
+                             Nothing -> fail "Invalid clause"
                    rhs <- pRHS syn n
                    let ctxt = tt_ctxt ist
                    let wsyn = syn { syn_namespace = [] }
@@ -781,6 +783,8 @@ pClause syn
                    ds <- many1 $ pFunDecl syn
                    let withs = map (fillLHSD n capp wargs) $ concat ds
                    lchar '}'
+                   ist <- getState
+                   setState (ist { lastParse = Just n })
                    return $ PWith n capp wargs wval withs)
 
        <|> try (do wargs <- many1 (pWExpr syn)
@@ -805,7 +809,7 @@ pClause syn
                                            return ([], [])]
               ist <- getState
               let capp = PApp fc (PRef fc n) [pexp l, pexp r]
-              setState (ist { lastParse = Just (n, capp, wargs) })
+              setState (ist { lastParse = Just n })
               return $ PClause n capp wargs rhs wheres
 
        <|> do l <- pArgExpr syn
@@ -822,6 +826,7 @@ pClause syn
               ist <- getState
               let capp = PApp fc (PRef fc n) [pexp l, pexp r]
               let withs = map (fillLHSD n capp wargs) $ concat ds
+              setState (ist { lastParse = Just n })
               return $ PWith n capp wargs wval withs
   where
     fillLHS n capp owargs (PClauseR wargs v ws) 

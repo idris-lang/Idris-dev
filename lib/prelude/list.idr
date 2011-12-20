@@ -58,3 +58,14 @@ sort xs = let s = split xs in
                                            else (y :: merge (x :: xs) ys);
 }
 
+span : (a -> Bool) -> List a -> (List a, List a);
+span p [] = ([], []);
+span p (x :: xs) with p x {
+   | True with span p xs {
+      | (ys, zs) = (x :: ys, zs);
+   }
+   | False = ([], x :: xs);
+}
+
+break : (a -> Bool) -> List a -> (List a, List a);
+break p = span (not . p);

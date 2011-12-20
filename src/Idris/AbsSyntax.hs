@@ -49,7 +49,7 @@ data IState = IState { tt_ctxt :: Context,
                        idris_hdrs :: [String],
                        last_proof :: Maybe (Name, [String]),
                        errLine :: Maybe Int,
-                       lastParse :: Maybe (Name, PTerm, [PTerm]), 
+                       lastParse :: Maybe Name, 
                        ibc_write :: [IBCWrite]
                      }
              
