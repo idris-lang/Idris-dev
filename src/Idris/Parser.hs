@@ -753,9 +753,8 @@ pClause syn
                                                 return ([], [])]
                    let capp = PApp fc (PRef fc n) 
                                 (iargs ++ cargs ++ map pexp args)
-                   setState (ist { lastParse = Just (n, capp, wargs) })
                    return $ PClause n capp wargs rhs wheres)
-       <|> try (do wargs <- many (pWExpr syn)
+       <|> try (do wargs <- many1 (pWExpr syn)
                    ist <- getState
                    (n, capp, owargs) <- case lastParse ist of
                                          Just t -> return t
@@ -766,7 +765,7 @@ pClause syn
                    (wheres, nmap) <- choice [pWhereblock n wsyn, 
                                              do lchar ';'
                                                 return ([], [])]
-                   return $ PClause n capp (owargs ++ wargs) rhs wheres)
+                   return $ PClauseR wargs rhs wheres)
 
        <|> try (do n_in <- pfName; let n = expandNS syn n_in
                    cargs <- many (pConstraintArg syn)
@@ -776,28 +775,22 @@ pClause syn
                    wargs <- many (pWExpr syn)
                    let capp = PApp fc (PRef fc n) 
                                 (iargs ++ cargs ++ map pexp args)
-                   ist <- getState
-                   setState (ist { lastParse = Just (n, capp, wargs) })
                    reserved "with"
                    wval <- pExpr syn
                    lchar '{'
                    ds <- many1 $ pFunDecl syn
-                   let withs = concat ds
+                   let withs = map (fillLHSD n capp wargs) $ concat ds
                    lchar '}'
                    return $ PWith n capp wargs wval withs)
 
-       <|> try (do wargs <- many (pWExpr syn)
+       <|> try (do wargs <- many1 (pWExpr syn)
                    reserved "with"
-                   ist <- getState
-                   (n, capp, owargs) <- case lastParse ist of
-                                         Just t -> return t
-                                         Nothing -> fail "Invalid clause"
                    wval <- pExpr syn
                    lchar '{'
                    ds <- many1 $ pFunDecl syn
                    let withs = concat ds
                    lchar '}'
-                   return $ PWith n capp (owargs ++ wargs) wval withs)
+                   return $ PWithR wargs wval withs)
 
        <|> do l <- pArgExpr syn
               op <- operator
@@ -825,12 +818,21 @@ pClause syn
               wval <- pExpr syn
               lchar '{'
               ds <- many1 $ pFunDecl syn
-              let withs = concat ds
               lchar '}'
               ist <- getState
               let capp = PApp fc (PRef fc n) [pexp l, pexp r]
-              setState (ist { lastParse = Just (n, capp, wargs) })
+              let withs = map (fillLHSD n capp wargs) $ concat ds
               return $ PWith n capp wargs wval withs
+  where
+    fillLHS n capp owargs (PClauseR wargs v ws) 
+       = PClause n capp (owargs ++ wargs) v ws
+    fillLHS n capp owargs (PWithR wargs v ws) 
+       = PWith n capp (owargs ++ wargs) v 
+            (map (fillLHSD n capp (owargs ++ wargs)) ws)
+    fillLHS _ _ _ c = c
+
+    fillLHSD n c a (PClauses fc o fn cs) = PClauses fc o fn (map (fillLHS n c a) cs)
+    fillLHSD n c a x = x
 
 pWExpr :: SyntaxInfo -> IParser PTerm
 pWExpr syn = do lchar '|'; pExpr' syn

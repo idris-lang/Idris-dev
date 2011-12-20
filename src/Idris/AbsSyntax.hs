@@ -319,6 +319,8 @@ data PDecl' t = PFix     FC Fixity [String] -- fixity declaration
 
 data PClause' t = PClause Name t [t] t [PDecl' t]
                 | PWith   Name t [t] t [PDecl' t]
+                | PClauseR       [t] t [PDecl' t]
+                | PWithR         [t] t [PDecl' t]
     deriving Functor
 
 data PData' t  = PDatadecl { d_name :: Name,
