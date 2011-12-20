@@ -59,7 +59,7 @@ data so : Bool -> Set where oh : so True;
 
 syntax if [test] then [t] else [e] = boolElim test t e;
 
-infix 4 &&, ||;
+infixl 4 &&, ||;
 
 (||) : Bool -> Bool -> Bool;
 (||) False x = x;

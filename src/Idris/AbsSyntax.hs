@@ -1069,7 +1069,10 @@ dumpDecl _ = "..."
 
 matchClause :: PTerm -> PTerm -> Maybe [(Name, PTerm)]
 matchClause x y = match x y where
-    matchArg x y = match (getTm x) (getTm y)
+    matchArg x y = match (fullApp (getTm x)) (fullApp (getTm y))
+
+    fullApp (PApp _ (PApp fc f args) xs) = fullApp (PApp fc f (args ++ xs))
+    fullApp x = x
 
     match (PApp _ f args) (PApp _ f' args')
         | length args == length args'

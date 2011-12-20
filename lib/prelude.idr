@@ -9,6 +9,7 @@ import prelude.maybe;
 import prelude.either;
 import prelude.vect;
 import prelude.strings;
+import prelude.char;
 
 -- Show and instances
 

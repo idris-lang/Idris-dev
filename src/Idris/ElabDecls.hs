@@ -277,8 +277,8 @@ elabClause info fc (PWith fname lhs_in withs wval_in withblock)
     getImps _ = []
 
     mkAuxC wname lhs ns (PClauses fc o n cs)
-        | n == fname = do cs' <- mapM (mkAux wname lhs ns) cs
-                          return $ PClauses fc o wname cs'
+        | True  = do cs' <- mapM (mkAux wname lhs ns) cs
+                     return $ PClauses fc o wname cs'
         | otherwise = fail $ "with clause uses wrong function name " ++ show n
     mkAuxC wname lhs ns d = return $ d
 
@@ -292,15 +292,16 @@ elabClause info fc (PWith fname lhs_in withs wval_in withblock)
                 Just mvars -> do logLvl 3 ("Match vars : " ++ show mvars)
                                  lhs <- updateLHS n wname mvars ns tm w
                                  return $ PClause wname lhs ws rhs wheres
-    mkAux wname toplhs ns (PWith n tm_in (w:ws) wval wheres)
+    mkAux wname toplhs ns (PWith n tm_in (w:ws) wval withs)
         = do i <- get
              let tm = addImpl i tm_in
              logLvl 2 ("Matching " ++ showImp True tm ++ " against " ++ 
                                       showImp True toplhs)
+             withs' <- mapM (mkAuxC wname toplhs ns) withs
              case matchClause toplhs tm of
                 Nothing -> fail "with clause does not match top level"
                 Just mvars -> do lhs <- updateLHS n wname mvars ns tm w
-                                 return $ PWith wname lhs ws wval wheres
+                                 return $ PWith wname lhs ws wval withs'
         
     updateLHS n wname mvars ns (PApp fc (PRef fc' n') args) w
         = return $ substMatches mvars $ 

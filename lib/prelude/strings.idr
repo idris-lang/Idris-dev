@@ -32,3 +32,13 @@ pack : List Char -> String;
 pack [] = "";
 pack (x :: xs) = strCons x (pack xs);
 
+span : (Char -> Bool) -> String -> (String, String);
+span p s with strM s {
+  span p ""             | StrNil        = ("", "");
+  span p (strCons x xs) | (StrCons _ _) with p x {
+    span p (strCons x xs) | (StrCons _ _) | True with span p xs {
+      span p (strCons x xs) | (StrCons _ _) | True | (ys, zs) = (strCons x ys, zs);
+    }
+    span p (strCons x xs) | (StrCons _ _) | False = ("", strCons x xs);
+  }
+}
