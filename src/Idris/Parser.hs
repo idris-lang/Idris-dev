@@ -915,17 +915,17 @@ expandDo dsl (PDPair fc l t r) = PDPair fc (expandDo dsl l) (expandDo dsl t)
                                            (expandDo dsl r)
 expandDo dsl (PAlternative as) = PAlternative (map (expandDo dsl) as)
 expandDo dsl (PHidden t) = PHidden (expandDo dsl t)
-expandDo dsl (PReturn fc) = PRef fc (dsl_return dsl)
+expandDo dsl (PReturn fc) = dsl_return dsl
 expandDo dsl (PDoBlock ds) = expandDo dsl $ block (dsl_bind dsl) ds 
   where
     block b [DoExp fc tm] = tm 
     block b [a] = PElabError "Last statement in do block must be an expression"
     block b (DoBind fc n tm : rest)
-        = PApp fc (PRef fc b) [pexp tm, pexp (PLam n Placeholder (block b rest))]
+        = PApp fc b [pexp tm, pexp (PLam n Placeholder (block b rest))]
     block b (DoLet fc n tm : rest)
         = PLet n Placeholder tm (block b rest)
     block b (DoExp fc tm : rest)
-        = PApp fc (PRef fc b) 
+        = PApp fc b 
             [pexp tm, 
              pexp (PLam (MN 0 "bindx") Placeholder (block b rest))]
     block b _ = PElabError "Invalid statement in do block"

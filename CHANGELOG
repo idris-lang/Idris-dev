@@ -1,0 +1,17 @@
+0.1.x to 0.9.0:
+
+Complete rewrite. User visible changes:
+
+* New proof/tactics syntax
+* New syntax for pairs/dependent pairs
+* Added type classes
+* Added where clauses
+* Added cumulativity and universe checking
+* Ad-hoc name overloading
+  - Resolved by type or explicit namespace
+* Modules (Haskell-style)
+* Separate type-checking
+* Improved interactive environment
+* Replaced 'do using' with Monad class
+* Extended syntax macros
+

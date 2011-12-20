@@ -475,8 +475,15 @@ deriving instance Binary ClassInfo
 
 -- Syntactic sugar info 
 
-data DSL = DSL { dsl_bind :: Name,
-                 dsl_return :: Name }
+data DSL = DSL { dsl_bind    :: PTerm,
+                 dsl_return  :: PTerm,
+                 dsl_apply   :: PTerm,
+                 dsl_pure    :: PTerm,
+                 index_first :: Maybe PTerm,
+                 index_next  :: Maybe PTerm,
+                 dsl_lambda  :: Maybe PTerm,
+                 dsl_let     :: Maybe PTerm
+               }
     deriving Show
 
 data SynContext = PatternSyntax | TermSyntax | AnySyntax
@@ -499,7 +506,15 @@ data SSymbol = Keyword Name
 deriving instance Binary SSymbol 
 !-}
 
-initDSL = DSL (UN ">>=") (UN "return")
+initDSL = DSL (PRef f (UN ">>=")) 
+              (PRef f (UN "return"))
+              (PRef f (UN "<$>"))
+              (PRef f (UN "pure"))
+              Nothing
+              Nothing
+              Nothing
+              Nothing
+  where f = FC "(builtin)" 0
 
 data SyntaxInfo = Syn { using :: [(Name, PTerm)],
                         syn_params :: [(Name, PTerm)],
