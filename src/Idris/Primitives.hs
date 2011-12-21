@@ -41,6 +41,8 @@ eOpFn ty rty op = ([E.name "x", E.name "y"],
 
 strToInt x = foreign_ tyInt "strToInt" [(x, tyString)]
 intToStr x = foreign_ tyString "intToStr" [(x, tyInt)]
+charToInt x = x
+intToChar x = x
 intToBigInt x = foreign_ tyBigInt "intToBigInt" [(x, tyInt)]
 strToBigInt x = foreign_ tyBigInt "strToBig" [(x, tyString)]
 bigIntToStr x = foreign_ tyString "bigToStr" [(x, tyBigInt)]
@@ -51,6 +53,15 @@ floatToInt x = foreign_ tyInt "floatToInt" [(x, tyFloat)]
 
 floatExp x = foreign_ tyFloat "exp" [(x, tyFloat)]
 floatLog x = foreign_ tyFloat "log" [(x, tyFloat)]
+floatSin x = foreign_ tyFloat "sin" [(x, tyFloat)]
+floatCos x = foreign_ tyFloat "cos" [(x, tyFloat)]
+floatTan x = foreign_ tyFloat "tan" [(x, tyFloat)]
+floatASin x = foreign_ tyFloat "asin" [(x, tyFloat)]
+floatACos x = foreign_ tyFloat "acos" [(x, tyFloat)]
+floatATan x = foreign_ tyFloat "atan" [(x, tyFloat)]
+floatFloor x = foreign_ tyFloat "floor" [(x, tyFloat)]
+floatCeil x = foreign_ tyFloat "ceil" [(x, tyFloat)]
+floatSqrt x = foreign_ tyFloat "sqrt" [(x, tyFloat)]
 
 strIndex x i = foreign_ tyChar "strIndex" [(x, tyString), (i, tyInt)]
 strHead x = foreign_ tyChar "strHead" [(x, tyString)]
@@ -137,6 +148,10 @@ primitives =
     ([E.name "x"], strToInt (fun "x")),
    Prim (UN "prim__intToStr") (ty [IType] StrType) 1 (c_intToStr)
     ([E.name "x"], intToStr (fun "x")),
+   Prim (UN "prim__charToInt") (ty [ChType] IType) 1 (c_charToInt)
+    ([E.name "x"], charToInt (fun "x")),
+   Prim (UN "prim__intToChar") (ty [IType] ChType) 1 (c_intToChar)
+    ([E.name "x"], intToChar (fun "x")),
    Prim (UN "prim__intToBigInt") (ty [IType] BIType) 1 (c_intToBigInt)
     ([E.name "x"], intToBigInt (fun "x")),
    Prim (UN "prim__strToBigInt") (ty [StrType] BIType) 1 (c_strToBigInt)
@@ -151,10 +166,30 @@ primitives =
     ([E.name "x"], intToFloat (fun "x")),
    Prim (UN "prim__floatToInt") (ty [FlType] IType) 1 (c_floatToInt)
     ([E.name "x"], floatToInt (fun "x")),
+
    Prim (UN "prim__floatExp") (ty [FlType] FlType) 1 (p_floatExp)
     ([E.name "x"], floatExp (fun "x")), 
    Prim (UN "prim__floatLog") (ty [FlType] FlType) 1 (p_floatLog)
     ([E.name "x"], floatLog (fun "x")),
+   Prim (UN "prim__floatSin") (ty [FlType] FlType) 1 (p_floatSin)
+    ([E.name "x"], floatSin (fun "x")),
+   Prim (UN "prim__floatCos") (ty [FlType] FlType) 1 (p_floatCos)
+    ([E.name "x"], floatCos (fun "x")),
+   Prim (UN "prim__floatTan") (ty [FlType] FlType) 1 (p_floatTan)
+    ([E.name "x"], floatTan (fun "x")),
+   Prim (UN "prim__floatASin") (ty [FlType] FlType) 1 (p_floatASin)
+    ([E.name "x"], floatASin (fun "x")),
+   Prim (UN "prim__floatACos") (ty [FlType] FlType) 1 (p_floatACos)
+    ([E.name "x"], floatACos (fun "x")),
+   Prim (UN "prim__floatATan") (ty [FlType] FlType) 1 (p_floatATan)
+    ([E.name "x"], floatATan (fun "x")),
+   Prim (UN "prim__floatSqrt") (ty [FlType] FlType) 1 (p_floatSqrt)
+    ([E.name "x"], floatSqrt (fun "x")),
+   Prim (UN "prim__floatFloor") (ty [FlType] FlType) 1 (p_floatFloor)
+    ([E.name "x"], floatFloor (fun "x")),
+   Prim (UN "prim__floatCeil") (ty [FlType] FlType) 1 (p_floatCeil)
+    ([E.name "x"], floatCeil (fun "x")),
+
    Prim (UN "prim__strHead") (ty [StrType] ChType) 1 (p_strHead)
     ([E.name "x"], strHead (fun "x")),
    Prim (UN "prim__strTail") (ty [StrType] StrType) 1 (p_strTail)
@@ -209,6 +244,11 @@ c_intToStr _ = Nothing
 c_strToInt [VConstant (Str x)] = Just $ VConstant (I (read x))
 c_strToInt _ = Nothing
 
+c_intToChar [VConstant (I x)] = Just $ VConstant (Ch (toEnum x))
+c_intToChar _ = Nothing
+c_charToInt [VConstant (Ch x)] = Just $ VConstant (I (fromEnum x))
+c_charToInt _ = Nothing
+
 c_intToBigInt [VConstant (I x)] = Just $ VConstant (BI (fromIntegral x))
 c_intToBigInt _ = Nothing
 
@@ -228,10 +268,20 @@ c_floatToInt _ = Nothing
 c_intToFloat [VConstant (I x)] = Just $ VConstant (Fl (fromIntegral x))
 c_intToFloat _ = Nothing
 
-p_floatExp [VConstant (Fl x)] = Just $ VConstant (Fl (exp x))
-p_floatExp _ = Nothing
-p_floatLog [VConstant (Fl x)] = Just $ VConstant (Fl (log x))
-p_floatLog _ = Nothing
+p_fPrim f [VConstant (Fl x)] = Just $ VConstant (Fl (f x))
+p_fPrim f _ = Nothing
+
+p_floatExp = p_fPrim exp
+p_floatLog = p_fPrim log
+p_floatSin = p_fPrim sin
+p_floatCos = p_fPrim cos
+p_floatTan = p_fPrim tan
+p_floatASin = p_fPrim asin
+p_floatACos = p_fPrim acos
+p_floatATan = p_fPrim atan
+p_floatSqrt = p_fPrim sqrt
+p_floatFloor = p_fPrim (fromInteger . floor)
+p_floatCeil = p_fPrim (fromInteger . ceiling)
 
 p_strHead [VConstant (Str (x:xs))] = Just $ VConstant (Ch x)
 p_strHead _ = Nothing

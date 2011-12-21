@@ -129,6 +129,36 @@ exp x = prim__floatExp x;
 log : Float -> Float;
 log x = prim__floatLog x;
 
+pi : Float;
+pi = 3.141592653589793;
+
+sin : Float -> Float;
+sin x = prim__floatSin x;
+
+cos : Float -> Float;
+cos x = prim__floatCos x;
+
+tan : Float -> Float;
+tan x = prim__floatTan x;
+
+asin : Float -> Float;
+asin x = prim__floatASin x;
+
+acos : Float -> Float;
+acos x = prim__floatACos x;
+
+atan : Float -> Float;
+atan x = prim__floatATan x;
+
+sqrt : Float -> Float;
+sqrt x = prim__floatSqrt x;
+
+floor : Float -> Float;
+floor x = prim__floatFloor x;
+
+ceiling : Float -> Float;
+ceiling x = prim__floatCeil x;
+
 ---- some basic io
 
 putStr : String -> IO ();

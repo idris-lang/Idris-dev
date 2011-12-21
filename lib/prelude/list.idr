@@ -38,6 +38,9 @@ filter pred (x :: xs) with (pred x, filter pred xs) {
   | (False, fxs) = fxs;
 }
 
+elem : Eq a => a -> List a -> Bool;
+elem x [] = False;
+elem x (y :: ys) = if (x == y) then True else (elem x ys);
 
 sort : Ord a => List a -> List a;
 sort []  = [];

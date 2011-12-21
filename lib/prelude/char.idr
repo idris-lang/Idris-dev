@@ -22,4 +22,13 @@ isSpace x = x == ' '  || x == '\t' || x == '\r' ||
             x == '\n' || x == '\f' || x == '\v' ||
             x == '\xa0';
 
+toUpper : Char -> Char;
+toUpper x = if (isLower x) 
+               then (prim__intToChar (prim__charToInt x - 32))
+               else x;
+
+toLower : Char -> Char;
+toLower x = if (isUpper x)
+               then (prim__intToChar (prim__charToInt x + 32))
+               else x;
 
