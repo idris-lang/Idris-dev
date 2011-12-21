@@ -153,6 +153,12 @@ instance Ord Int where {
                   GT;
 }
 
+instance Ord Integer where {
+    compare x y = if (x == y) then EQ else
+                  if (boolOp prim__ltBigInt x y) then LT else
+                  GT;
+}
+
 instance Ord Float where {
     compare x y = if (x == y) then EQ else
                   if (boolOp prim__ltFloat x y) then LT else
@@ -171,13 +177,17 @@ instance Ord String where {
                   GT;
 }
 
-class Eq a => Num a where {
+class (Eq a, Ord a) => Num a where {
     (+) : a -> a -> a;
     (-) : a -> a -> a;
     (*) : a -> a -> a;
 
+    abs : a -> a;
+    abs x = if (x < 0) then (-x) else x;
+
     fromInteger : Int -> a;
 }
+
 
 instance Num Int where {
     (+) = prim__addInt;

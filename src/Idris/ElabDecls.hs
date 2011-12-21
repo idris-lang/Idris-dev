@@ -42,7 +42,7 @@ elabType info syn fc n ty' = {- let ty' = piBind (params info) ty_in
          let ty = addImpl i ty'
          logLvl 2 $ show n ++ " type " ++ showImp True ty
          ((ty', defer), log) <- tclift $ elaborate ctxt n (Set (UVal 0)) 
-                                         (erun fc (build i info False ty))
+                                         (erun fc (build i info False n ty))
          (cty, _)   <- recheckC ctxt fc [] ty'
          logLvl 2 $ "---> " ++ show cty
          let nty = normalise ctxt [] cty
@@ -59,7 +59,7 @@ elabData info syn fc (PDatadecl n t_in dcons)
          t_in <- implicit syn n t_in
          let t = addImpl i t_in
          ((t', defer), log) <- tclift $ elaborate ctxt n (Set (UVal 0)) 
-                                        (erun fc (build i info False t))
+                                        (erun fc (build i info False n t))
          def' <- checkDef fc defer
          addDeferred def'
          (cty, _)  <- recheckC ctxt fc [] t'
@@ -79,7 +79,7 @@ elabCon info syn (n, t_in, fc)
          let t = addImpl i t_in
          logLvl 2 $ show fc ++ ":Constructor " ++ show n ++ " : " ++ showImp True t
          ((t', defer), log) <- tclift $ elaborate ctxt n (Set (UVal 0)) 
-                                        (erun fc (build i info False t))
+                                        (erun fc (build i info False n t))
          logLvl 2 $ "Rechecking " ++ show t'
          def' <- checkDef fc defer
          addDeferred def'
@@ -129,7 +129,7 @@ elabVal info aspat tm_in
         let tm = addImpl i tm_in
         logLvl 10 (showImp True tm)
         ((tm', defer), _) <- tclift $ elaborate ctxt (MN 0 "val") infP
-                                      (build i info aspat (infTerm tm))
+                                      (build i info aspat (MN 0 "val") (infTerm tm))
         logLvl 3 ("Value: " ++ show tm')
         let vtm = getInferTerm tm'
         logLvl 2 (show vtm)
@@ -142,7 +142,7 @@ elabClause info fc (PClause fname lhs_in [] PImpossible [])
         let lhs = addImpl i lhs_in
         -- if the LHS type checks, it is possible, so report an error
         case elaborate ctxt (MN 0 "patLHS") infP
-                            (erun fc (build i info True (infTerm lhs))) of
+                            (erun fc (build i info True fname (infTerm lhs))) of
             OK _ -> fail $ show fc ++ ":" ++ show lhs ++ " is a possible case"
             Error _ -> return ()
         return Nothing
@@ -154,7 +154,7 @@ elabClause info fc (PClause fname lhs_in withs rhs_in whereblock)
         let lhs = addImpl i lhs_in
         logLvl 5 ("LHS: " ++ showImp True lhs)
         ((lhs', dlhs), _) <- tclift $ elaborate ctxt (MN 0 "patLHS") infP
-                                      (erun fc (build i info True (infTerm lhs)))
+                                      (erun fc (build i info True fname (infTerm lhs)))
         let lhs_tm = orderPats (getInferTerm lhs')
         let lhs_ty = getInferType lhs'
         logLvl 3 (show lhs_tm)
@@ -179,7 +179,7 @@ elabClause info fc (PClause fname lhs_in withs rhs_in whereblock)
         ((rhs', defer), _) <- 
            tclift $ elaborate ctxt (MN 0 "patRHS") clhsty
                     (do pbinds lhs_tm
-                        (_, _) <- erun fc (build i info False rhs)
+                        (_, _) <- erun fc (build i info False fname rhs)
                         psolve lhs_tm
                         tt <- get_term
                         return $ runState (collectDeferred tt) [])
@@ -213,7 +213,7 @@ elabClause info fc (PWith fname lhs_in withs wval_in withblock)
         let lhs = addImpl i lhs_in
         logLvl 5 ("LHS: " ++ showImp True lhs)
         ((lhs', dlhs), _) <- tclift $ elaborate ctxt (MN 0 "patLHS") infP
-                                      (erun fc (build i info True (infTerm lhs)))
+                                      (erun fc (build i info True fname (infTerm lhs)))
         let lhs_tm = orderPats (getInferTerm lhs')
         let lhs_ty = getInferType lhs'
         let ret_ty = getRetTy lhs_ty
@@ -229,7 +229,7 @@ elabClause info fc (PWith fname lhs_in withs wval_in withblock)
                         (bindTyArgs PVTy bargs infP)
                         (do pbinds lhs_tm
                             -- TODO: may want where here - see winfo abpve
-                            (_', d) <- erun fc (build i info False (infTerm wval))
+                            (_', d) <- erun fc (build i info False fname (infTerm wval))
                             psolve lhs_tm
                             tt <- get_term
                             return (tt, d))
@@ -264,7 +264,7 @@ elabClause info fc (PWith fname lhs_in withs wval_in withblock)
         ((rhs', defer), _) <-
            tclift $ elaborate ctxt (MN 0 "wpatRHS") clhsty
                     (do pbinds lhs_tm
-                        (_, d) <- erun fc (build i info False rhs)
+                        (_, d) <- erun fc (build i info False fname rhs)
                         psolve lhs_tm
                         tt <- get_term
                         return (tt, d))

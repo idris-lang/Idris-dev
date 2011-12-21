@@ -45,3 +45,4 @@ span p s with strM s {
 
 break : (Char -> Bool) -> String -> (String, String);
 break p = span (not . p);
+

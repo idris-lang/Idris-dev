@@ -30,19 +30,19 @@ instance Eq Nat where {
     (S x) == O     = False;
 }
 
+instance Ord Nat where {
+    compare O O     = EQ;
+    compare O (S k) = LT;
+    compare (S k) O = GT;
+    compare (S x) (S y) = compare x y;
+}
+
 instance Num Nat where {
     (+) = plus;
     (-) = sub;
     (*) = mult;
 
     fromInteger n = if (n > 0) then (S (fromInteger (n-1))) else O;
-}
-
-instance Ord Nat where {
-    compare O O     = EQ;
-    compare O (S k) = LT;
-    compare (S k) O = GT;
-    compare (S x) (S y) = compare x y;
 }
 
 plusnO : (m : Nat) -> m + O = m;

@@ -29,14 +29,16 @@ toplevel = EInfo [] emptyContext id Nothing
 
 -- Also find deferred names in the term and their types
 
-build :: IState -> ElabInfo -> Bool -> PTerm -> Elab (Term, [(Name, Type)])
-build ist info pattern tm 
-    = do elab ist info pattern tm
+build :: IState -> ElabInfo -> Bool -> Name -> PTerm -> 
+         Elab (Term, [(Name, Type)])
+build ist info pattern fn tm 
+    = do elab ist info pattern fn tm
          tt <- get_term
          return $ runState (collectDeferred tt) []
 
-elab :: IState -> ElabInfo -> Bool -> PTerm -> Elab ()
-elab ist info pattern tm 
+elab :: IState -> ElabInfo -> Bool -> Name -> PTerm -> 
+        Elab ()
+elab ist info pattern fn tm 
     = do elabE tm
          when pattern -- convert remaining holes to pattern vars
               mkPat
@@ -69,7 +71,7 @@ elab ist info pattern tm
                                (elab' (PRef fc unitTy))
     elab' (PFalse fc)    = elab' (PRef fc falseTy)
     elab' (PResolveTC (FC "HACK" _)) -- for chasing parent classes
-       = resolveTC 2 ist
+       = resolveTC 2 fn ist
     elab' (PResolveTC fc) = do c <- unique_hole (MN 0 "c")
                                instanceArg c
     elab' (PRefl fc)     = elab' (PApp fc (PRef fc eqCon) [pimp (MN 0 "a") Placeholder,
@@ -175,7 +177,7 @@ elab ist info pattern tm
             ivs' <- get_instances
             when (not pattern) $
                 mapM_ (\n -> do focus n
-                                resolveTC 7 ist) (ivs' \\ ivs) 
+                                resolveTC 7 fn ist) (ivs' \\ ivs) 
 --             ivs <- get_instances
 --             when (not (null ivs)) $
 --               do t <- get_term
@@ -231,17 +233,17 @@ pruneAlt xs = map prune xs
     headIs f _ = True -- keep if it's not an application
 
 trivial :: IState -> Elab ()
-trivial ist = try (elab ist toplevel False (PRefl (FC "prf" 0)))
+trivial ist = try (elab ist toplevel False (MN 0 "tac") (PRefl (FC "prf" 0)))
                   (do env <- get_env
                       tryAll (map fst env))
       where
         tryAll []     = fail "No trivial solution"
-        tryAll (x:xs) = try (elab ist toplevel False (PRef (FC "prf" 0) x))
+        tryAll (x:xs) = try (elab ist toplevel False (MN 0 "tac") (PRef (FC "prf" 0) x))
                             (tryAll xs)
 
-resolveTC :: Int -> IState -> Elab ()
-resolveTC 0 ist = fail $ "Can't resolve type class"
-resolveTC depth ist 
+resolveTC :: Int -> Name -> IState -> Elab ()
+resolveTC 0 fn ist = fail $ "Can't resolve type class"
+resolveTC depth fn ist 
          = try (trivial ist)
                (do t <- goal
                    let (tc, ttypes) = unApply t
@@ -251,7 +253,7 @@ resolveTC depth ist
 --                        (tryAll (map elabTC (map fst (ctxtAlist (tt_ctxt ist)))))
                    blunderbuss t (map fst (ctxtAlist (tt_ctxt ist))))
   where
-    elabTC n | tcname n = (resolve n depth, show n)
+    elabTC n | n /= fn && tcname n = (resolve n depth, show n)
              | otherwise = (fail "Can't resolve", show n)
 
     needsDefault t num@(P _ (NS (UN "Num") ["builtins"]) _) [P Bound a _]
@@ -266,8 +268,8 @@ resolveTC depth ist
     boundVar _ = False
 
     blunderbuss t [] = fail $ "Can't resolve type class " ++ show t
-    blunderbuss t (n:ns) | tcname n = try (resolve n depth)
-                                          (blunderbuss t ns)
+    blunderbuss t (n:ns) | n /= fn && tcname n = try (resolve n depth)
+                                                     (blunderbuss t ns)
                          | otherwise = blunderbuss t ns
     tcname (UN ('@':_)) = True
     tcname (NS n _) = tcname n
@@ -282,7 +284,7 @@ resolveTC depth ist
                                 [args] -> map isImp (snd args) -- won't be overloaded!
                    args <- apply (Var n) imps
                    mapM_ (\ (_,n) -> do focus n
-                                        resolveTC (depth - 1) ist) 
+                                        resolveTC (depth - 1) fn ist) 
                          (filter (\ (x, y) -> not x) (zip (map fst imps) args))
                    solve
        where isImp (PImp p _ _ _) = (True, p)
@@ -314,7 +316,7 @@ runTac autoSolve ist tac = runT (fmap (addImpl ist) tac) where
         bname (Bind n _ _) = Just n
         bname _ = Nothing
     runT (Intro xs) = mapM_ (\x -> do attack; intro (Just x)) xs
-    runT (Exact tm) = do elab ist toplevel False tm
+    runT (Exact tm) = do elab ist toplevel False (MN 0 "tac") tm
                          when autoSolve solveAll
     runT (Refine fn [])   
         = do (fn', imps) <- case lookupCtxtName Nothing fn (idris_implicits ist) of
@@ -343,7 +345,7 @@ runTac autoSolve ist tac = runT (fmap (addImpl ist) tac) where
                    letn <- unique_hole (MN 0 "rewrite_rule")
                    letbind letn (Var tyn) (Var valn)  
                    focus valn
-                   elab ist toplevel False tm
+                   elab ist toplevel False (MN 0 "tac") tm
                    rewrite (Var letn)
                    when autoSolve solveAll
     runT (LetTac n tm)
@@ -355,7 +357,7 @@ runTac autoSolve ist tac = runT (fmap (addImpl ist) tac) where
                    letn <- unique_hole n
                    letbind letn (Var tyn) (Var valn)
                    focus valn
-                   elab ist toplevel False tm
+                   elab ist toplevel False (MN 0 "tac") tm
                    when autoSolve solveAll
     runT Compute = compute
     runT Trivial = do trivial ist; when autoSolve solveAll
