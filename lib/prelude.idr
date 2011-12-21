@@ -162,7 +162,7 @@ ceiling x = prim__floatCeil x;
 ---- some basic io
 
 putStr : String -> IO ();
-putStr x = mkForeign (FFun "putStr" (FString :: Nil) FUnit) x;
+putStr x = mkForeign (FFun "putStr" [FString] FUnit) x;
 
 putStrLn : String -> IO ();
 putStrLn x = putStr (x ++ "\n");
@@ -172,6 +172,12 @@ print x = putStrLn (show x);
 
 readLine : IO String;
 readLine = mkForeign (FFun "readStr" Nil FString);
+
+putChar : Char -> IO ();
+putChar c = mkForeign (FFun "putchar" [FChar] FUnit) c;
+
+getChar : IO Char;
+getChar = mkForeign (FFun "getchar" [] FChar);
 
 ---- some basic file handling
 

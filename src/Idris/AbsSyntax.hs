@@ -762,9 +762,31 @@ piBind ((n, ty):ns) t = PPi expl n ty (piBind ns t)
 expandParams :: (Name -> Name) -> [(Name, PTerm)] -> [Name] -> PTerm -> PTerm
 expandParams dec ps ns tm = en tm
   where
-    en (PLam n t s) = PLam n (en t) (en s)
-    en (PPi p n t s) = PPi p n (en t) (en s)
-    en (PLet n ty v s) = PLet n (en ty) (en v) (en s)
+    -- if we shadow a name (say in a lambda binding) that is used in a call to
+    -- a lifted function, we need access to both names - once in the scope of the
+    -- binding and once to call the lifted functions. So we'll explicitly shadow
+    -- it. (Yes, it's a hack. The alternative would be to resolve names earlier
+    -- but we didn't...)
+    
+    mkShadow (UN n) = MN 0 n
+    mkShadow (MN i n) = MN (i+1) n
+    mkShadow (NS x s) = NS (mkShadow x) s
+
+    en (PLam n t s)
+       | n `elem` map fst ps
+               = let n' = mkShadow n in
+                     PLam n' (en t) (en (shadow n n' s))
+       | otherwise = PLam n (en t) (en s)
+    en (PPi p n t s) 
+       | n `elem` map fst ps
+               = let n' = mkShadow n in
+                     PPi p n' (en t) (en (shadow n n' s))
+       | otherwise = PPi p n (en t) (en s)
+    en (PLet n ty v s) 
+       | n `elem` map fst ps
+               = let n' = mkShadow n in
+                     PLet n' (en ty) (en v) (en (shadow n n' s))
+       | otherwise = PLet n (en ty) (en v) (en s)
     en (PEq f l r) = PEq f (en l) (en r)
     en (PPair f l r) = PPair f (en l) (en r)
     en (PDPair f l t r) = PDPair f (en l) (en t) (en r)
@@ -1119,6 +1141,19 @@ substMatches ((n,tm):ns) t = substMatch n tm (substMatches ns t)
 substMatch :: Name -> PTerm -> PTerm -> PTerm
 substMatch n tm t = sm t where
     sm (PRef _ n') | n == n' = tm
+    sm (PLam x t sc) = PLam x (sm t) (sm sc)
+    sm (PPi p x t sc) = PPi p x (sm t) (sm sc)
+    sm (PApp f x as) = PApp f (sm x) (map (fmap sm) as)
+    sm (PEq f x y) = PEq f (sm x) (sm y)
+    sm (PPair f x y) = PPair f (sm x) (sm y)
+    sm (PDPair f x t y) = PDPair f (sm x) (sm t) (sm y)
+    sm (PAlternative as) = PAlternative (map sm as)
+    sm (PHidden x) = PHidden (sm x)
+    sm x = x
+
+shadow :: Name -> Name -> PTerm -> PTerm
+shadow n n' t = sm t where
+    sm (PRef fc x) | n == x = PRef fc n'
     sm (PLam x t sc) = PLam x (sm t) (sm sc)
     sm (PPi p x t sc) = PPi p x (sm t) (sm sc)
     sm (PApp f x as) = PApp f (sm x) (map (fmap sm) as)
