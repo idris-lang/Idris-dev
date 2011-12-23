@@ -290,7 +290,7 @@ elabClause info fc (PWith fname lhs_in withs wval_in withblock)
              case matchClause toplhs tm of
                 Nothing -> fail "with clause does not match top level"
                 Just mvars -> do logLvl 3 ("Match vars : " ++ show mvars)
-                                 lhs <- updateLHS n wname mvars ns tm w
+                                 lhs <- updateLHS n wname mvars ns (fullApp tm) w
                                  return $ PClause wname lhs ws rhs wheres
     mkAux wname toplhs ns (PWith n tm_in (w:ws) wval withs)
         = do i <- get
@@ -300,13 +300,16 @@ elabClause info fc (PWith fname lhs_in withs wval_in withblock)
              withs' <- mapM (mkAuxC wname toplhs ns) withs
              case matchClause toplhs tm of
                 Nothing -> fail "with clause does not match top level"
-                Just mvars -> do lhs <- updateLHS n wname mvars ns tm w
+                Just mvars -> do lhs <- updateLHS n wname mvars ns (fullApp tm) w
                                  return $ PWith wname lhs ws wval withs'
         
     updateLHS n wname mvars ns (PApp fc (PRef fc' n') args) w
         = return $ substMatches mvars $ 
                 PApp fc (PRef fc' wname) (map (pexp . (PRef fc')) ns ++ [pexp w])
-    updateLHS n wname mvars ns tm w = fail $ "Not implemented " ++ show tm 
+    updateLHS n wname mvars ns tm w = fail $ "Not implemented match " ++ show tm 
+
+    fullApp (PApp _ (PApp fc f args) xs) = fullApp (PApp fc f (args ++ xs))
+    fullApp x = x
 
 data MArgTy = IA | EA | CA deriving Show
 

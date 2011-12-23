@@ -1,6 +1,7 @@
 module prelude.strings;
 
 import builtins;
+import prelude.list;
 
 -- Some more complex string operations
 
@@ -33,7 +34,7 @@ pack [] = "";
 pack (x :: xs) = strCons x (pack xs);
 
 span : (Char -> Bool) -> String -> (String, String);
-span p s with strM s {
+span p xs with strM xs {
   span p ""             | StrNil        = ("", "");
   span p (strCons x xs) | (StrCons _ _) with p x {
     | True with span p xs {
@@ -46,3 +47,5 @@ span p s with strM s {
 break : (Char -> Bool) -> String -> (String, String);
 break p = span (not . p);
 
+split : (Char -> Bool) -> String -> List String;
+split p xs = map pack (split p (unpack xs));

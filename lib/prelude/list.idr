@@ -1,5 +1,6 @@
 module prelude.list;
 
+import prelude.maybe;
 import builtins;
 
 infixr 7 :: ;
@@ -30,6 +31,13 @@ drop n (x :: xs) = drop (n-1) xs;
 map : (a -> b) -> List a -> List b;
 map f []        = [];
 map f (x :: xs) = f x :: map f xs;
+
+mapMaybe : (a -> Maybe b) -> List a -> List b;
+mapMaybe f [] = [];
+mapMaybe f (x :: xs) with f x {
+    | Nothing = mapMaybe f xs;
+    | Just v  = v :: mapMaybe f xs;
+}
 
 filter : (y -> Bool) -> List y -> List y;
 filter pred [] = [];
@@ -72,3 +80,10 @@ span p (x :: xs) with p x {
 
 break : (a -> Bool) -> List a -> (List a, List a);
 break p = span (not . p);
+  
+split : (a -> Bool) -> List a -> List (List a);
+split p [] = [];
+split p xs with break p xs {
+  | (chunk, []) = [chunk];
+  | (chunk, (c :: rest)) = chunk :: split p rest;
+}
