@@ -64,6 +64,7 @@ data IBCWrite = IBCFix FixDecl
               | IBCObj FilePath
               | IBCLib String
               | IBCHeader String
+              | IBCAccess Name Accessibility
               | IBCDef Name -- i.e. main context
   deriving Show
 
@@ -91,6 +92,12 @@ addLib f = do i <- get; put (i { idris_libs = f : idris_libs i })
 
 addHdr :: String -> Idris ()
 addHdr f = do i <- get; put (i { idris_hdrs = f : idris_hdrs i })
+
+setAccessibility :: Name -> Accessibility -> Idris ()
+setAccessibility n a 
+         = do i <- get
+              let ctxt = setAccess n a (tt_ctxt i)
+              put (i { tt_ctxt = ctxt })
 
 addIBC :: IBCWrite -> Idris ()
 addIBC ibc = do i <- get; put (i { ibc_write = ibc : ibc_write i })
@@ -298,7 +305,7 @@ inlinable :: FnOpts -> Bool
 inlinable = elem Inlinable
 
 data PDecl' t = PFix     FC Fixity [String] -- fixity declaration
-              | PTy      SyntaxInfo FC Name t          -- type declaration
+              | PTy      SyntaxInfo FC Name t   -- type declaration
               | PClauses FC FnOpts Name [PClause' t]   -- pattern clause
               | PData    SyntaxInfo FC (PData' t)      -- data declaration
               | PParams  FC [(Name, t)] [PDecl' t] -- params block
@@ -640,7 +647,12 @@ showImp impl tm = se 10 tm where
     se p (PProof ts) = "proof { " ++ show ts ++ "}"
     se p (PTactics ts) = "tactics { " ++ show ts ++ "}"
     se p (PMetavar n) = "?" ++ show n
+    se p (PReturn f) = "return"
+    se p PImpossible = "impossible"
     se p Placeholder = "_"
+    se p (PDoBlock _) = "do block show not implemented"
+    se p (PElabError s) = s
+--     se p x = "Not implemented"
 
     sArg (PImp _ _ n tm) = siArg (n, tm)
     sArg (PExp _ _ tm) = seArg tm

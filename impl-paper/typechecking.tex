@@ -1,1 +1,18 @@
 \section{The Core Type Theory}
+
+\DM{
+\begin{array}{rll@{\hg}|rll}
+\vt ::= & \Type_i & (\mbox{type universes}) &
+\hg\vb ::= & \lam{\vx}{\vt} & (\mbox{abstraction}) \\
+
+ \mid  & \vx & (\mbox{variable}) &
+ \mid & \LET\:\vx\defq\vt\Hab\vt & (\mbox{let binding}) \\
+
+ \mid   & \vb\SC\:\vt & (\mbox{binding}) &
+ \mid & \all{\vx}{\vt} & (\mbox{function space}) \\
+
+ \mid   & \vt\:\vt & (\mbox{application})
+
+\end{array}
+}
+

@@ -2,6 +2,7 @@ module prelude.strings;
 
 import builtins;
 import prelude.list;
+import prelude.char;
 
 -- Some more complex string operations
 
@@ -49,3 +50,13 @@ break p = span (not . p);
 
 split : (Char -> Bool) -> String -> List String;
 split p xs = map pack (split p (unpack xs));
+
+ltrim : String -> String;
+ltrim xs with strM xs {
+    ltrim "" | StrNil = "";
+    ltrim (strCons x xs) | StrCons _ _
+        = if (isSpace x) then (ltrim xs) else (strCons x xs);
+}
+
+trim : String -> String;
+trim xs = ltrim (rev (ltrim (rev xs)));

@@ -110,8 +110,8 @@ instance Show Name where
     show (MN i s) = "{" ++ s ++ show i ++ "}"
 
 
--- Contexts allow us to map names to things
--- TODO: Namespaces and ambiguous names
+-- Contexts allow us to map names to things. A root name maps to a collection
+-- of things in different namespaces with that name.
 
 type Ctxt a = Map.Map Name (Map.Map Name a)
 emptyContext = Map.empty
@@ -119,7 +119,7 @@ emptyContext = Map.empty
 nsroot (NS n _) = n
 nsroot n = n
 
-addDef :: Show a => Name -> a -> Ctxt a -> Ctxt a
+addDef :: Name -> a -> Ctxt a -> Ctxt a
 addDef n v ctxt = case Map.lookup (nsroot n) ctxt of
                         Nothing -> Map.insert (nsroot n) 
                                         (Map.insert n v Map.empty) ctxt
@@ -154,6 +154,11 @@ lookupCtxtName nspace n ctxt = case Map.lookup (nsroot n) ctxt of
 
 lookupCtxt :: Maybe [String] -> Name -> Ctxt a -> [a]
 lookupCtxt ns n ctxt = map snd (lookupCtxtName ns n ctxt)
+
+updateDef :: Name -> (a -> a) -> Ctxt a -> Ctxt a
+updateDef n f ctxt 
+  = let ds = lookupCtxtName Nothing n ctxt in
+        foldr (\ (n, t) c -> addDef n (f t) c) ctxt ds  
 
 toAlist :: Ctxt a -> [(Name, a)]
 toAlist ctxt = let allns = map snd (Map.toList ctxt) in

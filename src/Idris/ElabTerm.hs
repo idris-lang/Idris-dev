@@ -200,7 +200,7 @@ elab ist info pattern fn tm
     elab' (PProof ts) = do mapM_ (runTac True ist) ts
     elab' (PTactics ts) = do mapM_ (runTac False ist) ts
     elab' (PElabError e) = fail e
-    elab' x = fail $ "Not implemented " ++ show x
+    elab' x = fail $ "Something's gone wrong. Did you miss a semi-colon somewhere?"
 
     elabArgs failed retry [] _
         | retry = let (ns, ts) = unzip (reverse failed) in

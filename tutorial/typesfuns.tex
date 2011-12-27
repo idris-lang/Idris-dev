@@ -198,12 +198,14 @@ Ambiguous constructor names can normally be resolved from context.
 
 This declares a family of types, and so the form of the declaration is rather
 different from the simple type declarations above. We explicitly state the type
-of the type constructor \tTC{Vect} - it takes a type and a \tTC{Nat} as an
+of the type constructor \tTC{Vect} --- it takes a type and a \tTC{Nat} as an
 argument, where \tTC{Set} stands for the type of types. We say that \tTC{Vect}
 is \emph{parameterised} by a type, and \emph{indexed} over \tTC{Nat}. Each
 constructor targets a different part of the family of types. \tDC{Nil} can only
 be used to construct vectors with zero length, and \tDC{::} to constructor
-vectors with non-zero length.
+vectors with non-zero length. In the type of \tDC{::}, we state explicitly that an element
+of type \texttt{a} and a tail of type \texttt{Vect a k} (i.e., a vector of length \texttt{k})
+combine to make a vector of length \texttt{S k}.
 
 We can define functions on dependent types such as \tTC{Vect} in the same way
 as on simple types such as \tTC{List} and \tTC{Nat} above, by pattern matching.
@@ -294,6 +296,22 @@ look up an element in an empty vector would give a compile time type error,
 since it would force \texttt{n} to be \tDC{O}.
 
 \subsubsection{Dependent Function Types}
+
+The function types we have seen so far have taken the form \texttt{a -> b},
+where \texttt{a} stands for the input type and \texttt{b} stands for the output
+type. More generally, function types take the following form:
+
+\begin{SaveVerbatim}{ftype}
+
+(x : a) -> b
+
+\end{SaveVerbatim}
+\useverb{ftype}
+
+\noindent
+\ldots where the name \texttt{x} may appear in \texttt{b}. This is a \remph{dependent}
+function type --- the output type depends on the value of \texttt{x}.
+
 
 \subsubsection{Implicit Arguments}
 

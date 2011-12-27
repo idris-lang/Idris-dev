@@ -2,9 +2,9 @@
              PatternGuards #-}
 
 module Core.Evaluate(normalise, normaliseC, simplify, specialise, hnf,
-                Def(..), 
+                Def(..), Accessibility(..), 
                 Context, initContext, ctxtAlist, uconstraints, next_tvar,
-                addToCtxt, addCtxtDef, addTyDecl, addDatatype, 
+                addToCtxt, setAccess, addCtxtDef, addTyDecl, addDatatype, 
                 addCasedef, addOperator,
                 lookupTy, lookupP, lookupDef, lookupVal, lookupTyEnv,
                 Value(..)) where
@@ -108,11 +108,11 @@ eval ctxt statics genv tm opts = ev True [] tm where
 
     ev top env (P _ n ty)
         | Just (Let t v) <- lookup n genv = ev top env v 
-    ev top env (P Ref n ty) = case lookupDef Nothing n ctxt of
-        [Function _ tm]          -> ev True env tm
-        [TyDecl nt ty]           -> do vty <- ev True env ty
-                                       return $ VP nt n vty
-        [CaseOp inl _ _ [] tree] ->  
+    ev top env (P Ref n ty) = case lookupDefAcc Nothing n ctxt of
+        [(Function _ tm, Public)] -> trace ("Eval " ++ show n) $ ev True env tm
+        [(TyDecl nt ty, _)]       -> do vty <- ev True env ty
+                                        return $ VP nt n vty
+        [(CaseOp inl _ _ [] tree, Public)] -> 
            if simpl && (not inl) 
               then liftM (VP Ref n) (ev top env ty)
               else do c <- evCase top env [] [] tree 
@@ -153,7 +153,7 @@ eval ctxt statics genv tm opts = ev True [] tm where
     apply False env f args
         | spec = return $ unload env f args
     apply top env (VP Ref n ty)        args
-        | [CaseOp inl _ _ ns tree] <- lookupDef Nothing n ctxt
+        | [(CaseOp inl _ _ ns tree, Public)] <- lookupDefAcc Nothing n ctxt
             = -- traceWhen (n == UN ["interp"]) (show (n, args)) $
               if simpl && (not inl) then return $ unload env (VP Ref n ty) args
                  else do c <- evCase top env ns args tree
@@ -449,32 +449,47 @@ instance Binary (a -> b) where
 
 ------- 
 
+-- Frozen => doesn't reduce
+-- Hidden => doesn't reduce and invisible to type checker
+
+data Accessibility = Public | Frozen | Hidden
+    deriving (Show, Eq)
+{-!
+deriving instance Binary Accessibility
+!-}
+
 data Context = MkContext { uconstraints :: [UConstraint],
                            next_tvar    :: Int,
-                           definitions  :: Ctxt Def }
+                           definitions  :: Ctxt (Def, Accessibility) }
 
 initContext = MkContext [] 0 emptyContext
 
 ctxtAlist :: Context -> [(Name, Def)]
-ctxtAlist ctxt = toAlist (definitions ctxt)
+ctxtAlist ctxt = map (\(n, (d, a)) -> (n, d)) $ toAlist (definitions ctxt)
 
 veval ctxt env t = evalState (eval ctxt emptyContext env t []) ()
 
 addToCtxt :: Name -> Term -> Type -> Context -> Context
 addToCtxt n tm ty uctxt 
     = let ctxt = definitions uctxt 
-          ctxt' = addDef n (Function ty tm) ctxt in
+          ctxt' = addDef n (Function ty tm, Public) ctxt in
           uctxt { definitions = ctxt' } 
+
+setAccess :: Name -> Accessibility -> Context -> Context
+setAccess n a uctxt
+    = let ctxt = definitions uctxt
+          ctxt' = updateDef n (\ (d, _) -> (d, a)) ctxt in
+          uctxt { definitions = ctxt' }
 
 addCtxtDef :: Name -> Def -> Context -> Context
 addCtxtDef n d c = let ctxt = definitions c
-                       ctxt' = addDef n d ctxt in
+                       ctxt' = addDef n (d, Public) ctxt in
                        c { definitions = ctxt' }
 
 addTyDecl :: Name -> Type -> Context -> Context
 addTyDecl n ty uctxt 
     = let ctxt = definitions uctxt
-          ctxt' = addDef n (TyDecl Ref ty) ctxt in
+          ctxt' = addDef n (TyDecl Ref ty, Public) ctxt in
           uctxt { definitions = ctxt' }
 
 addDatatype :: Datatype Name -> Context -> Context
@@ -482,14 +497,14 @@ addDatatype (Data n tag ty cons) uctxt
     = let ctxt = definitions uctxt 
           ty' = normalise uctxt [] ty
           ctxt' = addCons 0 cons (addDef n 
-                    (TyDecl (TCon tag (arity ty')) ty) ctxt) in
+                    (TyDecl (TCon tag (arity ty')) ty, Public) ctxt) in
           uctxt { definitions = ctxt' }
   where
     addCons tag [] ctxt = ctxt
     addCons tag ((n, ty) : cons) ctxt 
         = let ty' = normalise uctxt [] ty in
               addCons (tag+1) cons (addDef n
-                  (TyDecl (DCon tag (arity ty')) ty) ctxt)
+                  (TyDecl (DCon tag (arity ty')) ty, Public) ctxt)
 
 addCasedef :: Name -> Bool -> Bool -> [(Term, Term)] -> Type -> Context -> Context
 addCasedef n alwaysInline tcase ps ty uctxt 
@@ -497,7 +512,8 @@ addCasedef n alwaysInline tcase ps ty uctxt
           ps' = ps -- simpl ps in
           ctxt' = case simpleCase tcase ps' of
                     CaseDef args sc -> let inl = alwaysInline in
-                                           addDef n (CaseOp inl ty ps args sc) ctxt in
+                                           addDef n (CaseOp inl ty ps args sc,
+                                                     Public) ctxt in
           uctxt { definitions = ctxt' }
   where simpl [] = []
         simpl ((l,r) : xs) = (l, simplify uctxt [] r) : simpl xs
@@ -505,13 +521,13 @@ addCasedef n alwaysInline tcase ps ty uctxt
 addOperator :: Name -> Type -> Int -> ([Value] -> Maybe Value) -> Context -> Context
 addOperator n ty a op uctxt
     = let ctxt = definitions uctxt 
-          ctxt' = addDef n (Operator ty a op) ctxt in
+          ctxt' = addDef n (Operator ty a op, Public) ctxt in
           uctxt { definitions = ctxt' }
 
 lookupTy :: Maybe [String] -> Name -> Context -> [Type]
 lookupTy root n ctxt 
                 = do def <- lookupCtxt root n (definitions ctxt)
-                     case def of
+                     case fst def of
                        (Function ty _) -> return ty
                        (TyDecl _ ty) -> return ty
                        (Operator ty _ _) -> return ty
@@ -520,20 +536,26 @@ lookupTy root n ctxt
 lookupP :: Maybe [String] -> Name -> Context -> [Term]
 lookupP root n ctxt 
    = do def <-  lookupCtxt root n (definitions ctxt)
-        case def of
-          (Function ty tm) -> return (P Ref n ty)
-          (TyDecl nt ty) -> return (P nt n ty)
-          (CaseOp _ ty _ _ _) -> return (P Ref n ty)
-          (Operator ty _ _) -> return (P Ref n ty)
+        p <- case def of
+          (Function ty tm, a) -> return (P Ref n ty, a)
+          (TyDecl nt ty, a) -> return (P nt n ty, a)
+          (CaseOp _ ty _ _ _, a) -> return (P Ref n ty, a)
+          (Operator ty _ _, a) -> return (P Ref n ty, a)
+        case snd p of
+            Hidden -> []
+            _ -> return (fst p)
 
 lookupDef :: Maybe [String] -> Name -> Context -> [Def]
-lookupDef root n ctxt = lookupCtxt root n (definitions ctxt)
+lookupDef root n ctxt = map fst $ lookupCtxt root n (definitions ctxt)
+
+lookupDefAcc :: Maybe [String] -> Name -> Context -> [(Def, Accessibility)]
+lookupDefAcc root n ctxt = lookupCtxt root n (definitions ctxt)
 
 lookupVal :: Maybe [String] -> Name -> Context -> [Value]
 lookupVal root n ctxt 
    = do def <- lookupCtxt root n (definitions ctxt)
-        case def of
-          (Function _ htm)   -> return (veval ctxt [] htm)
+        case fst def of
+          (Function _ htm) -> return (veval ctxt [] htm)
           (TyDecl nt ty) -> return (VP nt n (veval ctxt [] ty))
 
 lookupTyEnv :: Name -> Env -> Maybe (Int, Type)
@@ -542,3 +564,4 @@ lookupTyEnv n env = li n 0 env where
   li n i ((x, b): xs) 
              | n == x = Just (i, binderTy b)
              | otherwise = li n (i+1) xs
+

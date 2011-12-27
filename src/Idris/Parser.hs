@@ -862,6 +862,12 @@ pDirective = try (do lchar '%'; reserved "lib"; lib <- strlit;
          <|> try (do lchar '%'; reserved "include"; hdr <- strlit;
                      return [PDirective (do addHdr hdr
                                             addIBC (IBCHeader hdr))])
+         <|> try (do lchar '%'; reserved "hide"; n <- iName []
+                     return [PDirective (do setAccessibility n Hidden
+                                            addIBC (IBCAccess n Hidden))])
+         <|> try (do lchar '%'; reserved "freeze"; n <- iName []
+                     return [PDirective (do setAccessibility n Frozen
+                                            addIBC (IBCAccess n Frozen))])
          <|> do lchar '%'; reserved "logging"; i <- natural;
                 return [PDirective (setLogLevel (fromInteger i))] 
 

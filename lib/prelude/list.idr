@@ -50,6 +50,10 @@ elem : Eq a => a -> List a -> Bool;
 elem x [] = False;
 elem x (y :: ys) = if (x == y) then True else (elem x ys);
 
+lookup : Eq k => k -> List (k, v) -> Maybe v;
+lookup k [] = Nothing;
+lookup k ((x, v) :: xs) = if (x == k) then (Just v) else (lookup k xs);
+
 sort : Ord a => List a -> List a;
 sort []  = [];
 sort [x] = [x];
