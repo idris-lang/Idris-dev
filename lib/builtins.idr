@@ -1,3 +1,5 @@
+%access public
+
 data Exists : (a : Set) -> (P : a -> Set) -> Set where
     Ex_intro : {P : a -> Set} -> (x : a) -> P x -> Exists a P;
 

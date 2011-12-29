@@ -3,6 +3,8 @@ module prelude.list;
 import prelude.maybe;
 import builtins;
 
+%access public
+
 infixr 7 :: ;
 
 data List a = Nil | (::) a (List a);

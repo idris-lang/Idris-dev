@@ -51,6 +51,7 @@ data IState = IState { tt_ctxt :: Context,
                        errLine :: Maybe Int,
                        lastParse :: Maybe Name, 
                        hide_list :: [(Name, Maybe Accessibility)],
+                       default_access :: Accessibility,
                        ibc_write :: [IBCWrite]
                      }
              
@@ -71,7 +72,7 @@ data IBCWrite = IBCFix FixDecl
 
 idrisInit = IState initContext [] [] emptyContext emptyContext emptyContext
                    "" defaultOpts 6 [] [] [] [] [] [] [] [] 
-                   Nothing Nothing Nothing [] []
+                   Nothing Nothing Nothing [] Hidden []
 
 -- The monad for the main REPL - reading and processing files and updating 
 -- global state (hence the IO inner monad).

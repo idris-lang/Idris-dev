@@ -1,10 +1,14 @@
 import prelude.list;
 
-data IO a = prim__IO a;
+%access public
 
+abstract data IO a = prim__IO a;
+
+abstract
 io_bind : IO a -> (a -> IO b) -> IO b;
 io_bind (prim__IO v) k = k v;
 
+abstract
 io_return : a -> IO a;
 io_return x = prim__IO x;
 
@@ -13,7 +17,6 @@ io_return x = prim__IO x;
 
 -- run__IO : IO () -> IO ();
 -- run__IO (prim__IO v) = prim__IO v;
-
 
 data FTy = FInt | FFloat | FChar | FString | FPtr | FUnit;
 
@@ -34,16 +37,16 @@ ForeignTy xs t = mkForeign' (rev xs) (IO (interpFTy t)) where {
 
 namespace foreign {
 
-infixr 7 :: ;
+  infixr 7 :: ;
 
-data FEnv : List FTy -> Set where
-    Nil   : FEnv Nil
-  | (::)  : {xs:List FTy} ->
-             interpFTy x -> FEnv xs -> FEnv (x ::xs);
+  data FEnv : List FTy -> Set where
+      Nil   : FEnv Nil
+    | (::)  : {xs:List FTy} ->
+               interpFTy x -> FEnv xs -> FEnv (x ::xs);
 
-data Foreign : Set -> Set where
-    FFun : String -> (xs:List FTy) -> (t:FTy) -> 
-           Foreign (ForeignTy xs t);
+  data Foreign : Set -> Set where
+      FFun : String -> (xs:List FTy) -> (t:FTy) -> 
+             Foreign (ForeignTy xs t);
 
 }
 

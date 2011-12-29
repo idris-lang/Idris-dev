@@ -2,6 +2,8 @@ module prelude.nat;
 
 import builtins;
 
+%access public
+
 data Nat = O | S Nat;
 
 plus : Nat -> Nat -> Nat;

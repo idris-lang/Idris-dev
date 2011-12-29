@@ -2,6 +2,8 @@ module system;
 
 import prelude;
 
+%access public
+
 getArgs : IO (List String);
 getArgs = do { n <- numArgs;
                ga' [] 0 n; }

@@ -2,6 +2,8 @@ module prelude.vect;
 
 import prelude.nat;
 
+%access public
+
 data Fin : Nat -> Set where
     fO : Fin (S k)
   | fS : Fin k -> Fin (S k);

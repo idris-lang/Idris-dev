@@ -110,10 +110,12 @@ loadSource lidr f
     namespaces (x:xs) ds = [PNamespace x (namespaces xs ds)]
 
 addHides :: [(Name, Maybe Accessibility)] -> Idris ()
-addHides xs = let (hs, as) = partition isNothing xs in
-                  if null as then return ()
-                             else mapM_ doHide
-                                    (map (\ (n, _) -> (n, Hidden)) hs ++
+addHides xs = do i <- getIState
+                 let defh = default_access i
+                 let (hs, as) = partition isNothing xs
+                 if null as then return ()
+                            else mapM_ doHide
+                                    (map (\ (n, _) -> (n, defh)) hs ++
                                      map (\ (n, Just a) -> (n, a)) as)
   where isNothing (_, Nothing) = True
         isNothing _            = False
@@ -484,11 +486,15 @@ pName = do i <- getState
 pfName = try pName
      <|> do lchar '('; o <- operator; lchar ')'; return (UN o)
 
+pAccessibility' :: IParser Accessibility
+pAccessibility'
+        = do reserved "public";   return Public
+      <|> do reserved "abstract"; return Frozen
+      <|> do reserved "private";  return Hidden
+
 pAccessibility :: IParser (Maybe Accessibility)
 pAccessibility
-        = do reserved "public";   return (Just Public)
-      <|> do reserved "abstract"; return (Just Frozen)
-      <|> do reserved "private";  return (Just Hidden)
+        = do acc <- pAccessibility'; return (Just acc)
       <|> return Nothing
 
 addAcc :: Name -> Maybe Accessibility -> IParser ()
@@ -908,6 +914,9 @@ pDirective = try (do lchar '%'; reserved "lib"; lib <- strlit;
          <|> try (do lchar '%'; reserved "freeze"; n <- iName []
                      return [PDirective (do setAccessibility n Frozen
                                             addIBC (IBCAccess n Frozen))])
+         <|> try (do lchar '%'; reserved "access"; acc <- pAccessibility'
+                     return [PDirective (do i <- getIState
+                                            putIState (i { default_access = acc }))])
          <|> do lchar '%'; reserved "logging"; i <- natural;
                 return [PDirective (setLogLevel (fromInteger i))] 
 
