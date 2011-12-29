@@ -98,6 +98,8 @@ loadSource lidr f
                   iLOG ("Finished " ++ f)
                   let ibc = dropExtension f ++ ".ibc"
                   iucheck
+                  i <- getIState
+                  addHides (hide_list i)
                   ok <- noErrors
                   when ok $
                     idrisCatch (do writeIBC f ibc; clearIBC)
@@ -106,6 +108,18 @@ loadSource lidr f
   where
     namespaces []     ds = ds
     namespaces (x:xs) ds = [PNamespace x (namespaces xs ds)]
+
+addHides :: [(Name, Maybe Accessibility)] -> Idris ()
+addHides xs = let (hs, as) = partition isNothing xs in
+                  if null as then return ()
+                             else mapM_ doHide
+                                    (map (\ (n, _) -> (n, Hidden)) hs ++
+                                     map (\ (n, Just a) -> (n, a)) as)
+  where isNothing (_, Nothing) = True
+        isNothing _            = False
+
+        doHide (n, a) = do setAccessibility n a
+                           addIBC (IBCAccess n a)
 
 parseExpr i = runParser (pFullExpr defaultSyntax) i "(input)"
 parseTac i = runParser (do t <- pTactic defaultSyntax
@@ -278,12 +292,14 @@ pSynSym = try (do lchar '['; n <- pName; lchar ']'
              return (Symbol sym)
 
 pFunDecl' :: SyntaxInfo -> IParser PDecl
-pFunDecl' syn = try (do n_in <- pfName
+pFunDecl' syn = try (do acc <- pAccessibility
+                        n_in <- pfName
                         let n = expandNS syn n_in
                         ty <- pTSig syn
                         fc <- pfc
                         lchar ';'
 --                         ty' <- implicit syn n ty
+                        addAcc n acc
                         return (PTy syn fc n ty))
             <|> try (pPattern syn)
 
@@ -349,7 +365,8 @@ fixity = try (do reserved "infixl"; return Infixl)
 --------- Tyoe classes ---------
 
 pClass :: SyntaxInfo -> IParser [PDecl]
-pClass syn = do reserved "class"
+pClass syn = do acc <- pAccessibility
+                reserved "class"
                 fc <- pfc
                 cons <- pConstList syn
                 n_in <- pName; let n = expandNS syn n_in
@@ -357,7 +374,9 @@ pClass syn = do reserved "class"
                 reserved "where"; lchar '{'
                 ds <- many1 $ pFunDecl syn;
                 lchar '}'
-                return [PClass syn fc cons n cs (concat ds)]
+                let allDs = concat ds
+                accData acc n (concatMap declared allDs)
+                return [PClass syn fc cons n cs allDs]
   where
     carg = do lchar '('; i <- pName; lchar ':'; ty <- pExpr syn; lchar ')'
               return (i, ty)
@@ -464,6 +483,17 @@ pName = do i <- getState
 
 pfName = try pName
      <|> do lchar '('; o <- operator; lchar ')'; return (UN o)
+
+pAccessibility :: IParser (Maybe Accessibility)
+pAccessibility
+        = do reserved "public";   return (Just Public)
+      <|> do reserved "abstract"; return (Just Frozen)
+      <|> do reserved "private";  return (Just Hidden)
+      <|> return Nothing
+
+addAcc :: Name -> Maybe Accessibility -> IParser ()
+addAcc n a = do i <- getState
+                setState (i { hide_list = (n, a) : hide_list i })
 
 pSimpleExpr syn = 
         try (do symbol "!["; t <- pTerm; lchar ']' 
@@ -670,16 +700,25 @@ prefix name f = Prefix (do { reservedOp name; fc <- pfc;
 
 --------- Data declarations ---------
 
+-- (works for classes too - 'abstract' means the data/class is visible but members not)
+accData :: Maybe Accessibility -> Name -> [Name] -> IParser ()
+accData (Just Frozen) n ns = do addAcc n (Just Frozen)
+                                mapM_ (\n -> addAcc n (Just Hidden)) ns
+accData a n ns = do addAcc n a; mapM_ (\n -> addAcc n a) ns
+
 pData :: SyntaxInfo -> IParser PDecl
-pData syn = try (do reserved "data"; fc <- pfc
+pData syn = try (do acc <- pAccessibility
+                    reserved "data"; fc <- pfc
                     tyn_in <- pfName; ty <- pTSig syn
                     let tyn = expandNS syn tyn_in
                     reserved "where"
 --                     ty' <- implicit syn tyn ty
                     cons <- sepBy (pConstructor syn) (lchar '|')
                     lchar ';'
+                    accData acc tyn (map (\ (n, _, _) -> n) cons)
                     return $ PData syn fc (PDatadecl tyn ty cons))
-        <|> do reserved "data"; fc <- pfc
+        <|> do acc <- pAccessibility
+               reserved "data"; fc <- pfc
                tyn_in <- pfName; args <- many pName
                let tyn = expandNS syn tyn_in
                lchar '='
@@ -692,6 +731,7 @@ pData syn = try (do reserved "data"; fc <- pfc
                                  do let cty = bindArgs cargs conty
 --                                     cty' <- implicit syn x cty
                                     return (x, cty, cfc)) cons
+               accData acc tyn (map (\ (n, _, _) -> n) cons')
                return $ PData syn fc (PDatadecl tyn ty cons')
   where
     mkPApp fc t [] = t

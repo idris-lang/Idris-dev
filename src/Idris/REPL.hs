@@ -117,8 +117,8 @@ process Help = iputStrLn displayHelp
 process (Eval t) = do (tm, ty) <- elabVal toplevel False t
                       ctxt <- getContext
                       ist <- get 
-                      let tm' = normaliseC ctxt [] tm
-                      let ty' = normaliseC ctxt [] ty
+                      let tm' = normaliseAll ctxt [] tm
+                      let ty' = normaliseAll ctxt [] ty
                       logLvl 3 $ "Raw: " ++ show (tm', ty')
                       imp <- impShow
                       iputStrLn (showImp imp (delab ist tm') ++ " : " ++ 

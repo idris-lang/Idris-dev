@@ -19,11 +19,12 @@ idrisDef = haskellDef {
               opLetter = iOpLetter,
               identLetter = identLetter haskellDef <|> lchar '.',
               reservedOpNames = [":", "..", "=", "\\", "|", "<-", "->", "=>", "**"],
-              reservedNames = ["let", "in", "data", "Set", -- "if", "then", "else",
-                               "do", "dsl", "import", "impossible", -- "refl",
+              reservedNames = ["let", "in", "data", "Set", 
+                               "do", "dsl", "import", "impossible", 
                                "infix", "infixl", "infixr", "prefix",
                                "where", "with", "forall", "syntax", "proof",
                                "using", "params", "namespace", "class", "instance",
+                               "public", "private", "abstract",
                                "Int", "Integer", "Float", "Char", "String", "Ptr"]
            } 
 

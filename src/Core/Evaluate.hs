@@ -1,7 +1,8 @@
 {-# LANGUAGE MultiParamTypeClasses, FlexibleInstances,
              PatternGuards #-}
 
-module Core.Evaluate(normalise, normaliseC, simplify, specialise, hnf,
+module Core.Evaluate(normalise, normaliseC, normaliseAll,
+                simplify, specialise, hnf,
                 Def(..), Accessibility(..), 
                 Context, initContext, ctxtAlist, uconstraints, next_tvar,
                 addToCtxt, setAccess, addCtxtDef, addTyDecl, addDatatype, 
@@ -20,7 +21,7 @@ import Core.CaseTree
 type EvalState = ()
 type Eval a = State EvalState a
 
-data EvalOpt = Spec | HNF | Simplify
+data EvalOpt = Spec | HNF | Simplify | AtREPL
   deriving (Show, Eq)
 
 -- VALUES (as HOAS) ---------------------------------------------------------
@@ -58,6 +59,11 @@ instance Show (a -> b) where
 normaliseC :: Context -> Env -> TT Name -> TT Name
 normaliseC ctxt env t 
    = evalState (do val <- eval ctxt emptyContext env t []
+                   quote 0 val) ()
+
+normaliseAll :: Context -> Env -> TT Name -> TT Name
+normaliseAll ctxt env t 
+   = evalState (do val <- eval ctxt emptyContext env t [AtREPL]
                    quote 0 val) ()
 
 normalise :: Context -> Env -> TT Name -> TT Name
@@ -105,11 +111,12 @@ eval :: Context -> Ctxt [Bool] -> Env -> TT Name -> [EvalOpt] -> Eval Value
 eval ctxt statics genv tm opts = ev True [] tm where
     spec = Spec `elem` opts
     simpl = Simplify `elem` opts
+    atRepl = AtREPL `elem` opts
 
     ev top env (P _ n ty)
         | Just (Let t v) <- lookup n genv = ev top env v 
-    ev top env (P Ref n ty) = case lookupDefAcc Nothing n ctxt of
-        [(Function _ tm, Public)] -> trace ("Eval " ++ show n) $ ev True env tm
+    ev top env (P Ref n ty) = case lookupDefAcc Nothing n atRepl ctxt of
+        [(Function _ tm, Public)] -> ev True env tm
         [(TyDecl nt ty, _)]       -> do vty <- ev True env ty
                                         return $ VP nt n vty
         [(CaseOp inl _ _ [] tree, Public)] -> 
@@ -153,7 +160,7 @@ eval ctxt statics genv tm opts = ev True [] tm where
     apply False env f args
         | spec = return $ unload env f args
     apply top env (VP Ref n ty)        args
-        | [(CaseOp inl _ _ ns tree, Public)] <- lookupDefAcc Nothing n ctxt
+        | [(CaseOp inl _ _ ns tree, Public)] <- lookupDefAcc Nothing n atRepl ctxt
             = -- traceWhen (n == UN ["interp"]) (show (n, args)) $
               if simpl && (not inl) then return $ unload env (VP Ref n ty) args
                  else do c <- evCase top env ns args tree
@@ -548,8 +555,10 @@ lookupP root n ctxt
 lookupDef :: Maybe [String] -> Name -> Context -> [Def]
 lookupDef root n ctxt = map fst $ lookupCtxt root n (definitions ctxt)
 
-lookupDefAcc :: Maybe [String] -> Name -> Context -> [(Def, Accessibility)]
-lookupDefAcc root n ctxt = lookupCtxt root n (definitions ctxt)
+lookupDefAcc :: Maybe [String] -> Name -> Bool -> Context -> [(Def, Accessibility)]
+lookupDefAcc root n mkpublic ctxt 
+    = map mkp $ lookupCtxt root n (definitions ctxt)
+  where mkp (d, a) = if mkpublic then (d, Public) else (d, a)
 
 lookupVal :: Maybe [String] -> Name -> Context -> [Value]
 lookupVal root n ctxt 
