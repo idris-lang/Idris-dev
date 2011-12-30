@@ -170,8 +170,8 @@ putStrLn x = putStr (x ++ "\n");
 print : Show a => a -> IO ();
 print x = putStrLn (show x);
 
-readLine : IO String;
-readLine = mkForeign (FFun "readStr" Nil FString);
+getLine : IO String;
+getLine = mkForeign (FFun "readStr" Nil FString);
 
 putChar : Char -> IO ();
 putChar c = mkForeign (FFun "putchar" [FChar] FUnit) c;
@@ -181,7 +181,7 @@ getChar = mkForeign (FFun "getchar" [] FChar);
 
 ---- some basic file handling
 
-data File = FHandle Ptr;
+abstract data File = FHandle Ptr;
 
 do_fopen : String -> String -> IO Ptr;
 do_fopen f m = mkForeign (FFun "fileOpen" [FString, FString] FPtr) f m;

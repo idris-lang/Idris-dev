@@ -55,7 +55,7 @@ True : Bool
 \useverb{promptprim}
 
 All of the usual arithmetic and comparison operators are defined for the primitive
-types. They are overloaded using type classes, as we will discuss in section
+types. They are overloaded using type classes, as we will discuss in Section
 \ref{sec:classes} and can be extended to work on user defined types.
 Boolean expressions can be tested with the \texttt{if...then...else} construct:
 
@@ -132,12 +132,12 @@ mult (S k) y = plus y (mult k y);
 \end{SaveVerbatim}
 \useverb{natfns}
 
-The standard arithmetic operators \texttt{+} and \texttt{*} are also overloaded for
-use by \texttt{Nat}, and are implemented using the above functions.
-Unlike Haskell, there is no restriction on whether types and function names
-must begin with a capital letter or not. Function names (\tFN{plus} and \tFN{mult} above),
-data constructors (\tDC{O}, \tDC{S}, \tDC{Nil} and \tDC{::}) and type 
-constructors (\tTC{Nat} and \tTC{List}) are
+The standard arithmetic operators \texttt{+} and \texttt{*} are also overloaded
+for use by \texttt{Nat}, and are implemented
+using the above functions.  Unlike Haskell, there is no restriction on whether
+types and function names must begin with a capital letter or not. Function
+names (\tFN{plus} and \tFN{mult} above), data constructors (\tDC{O}, \tDC{S},
+\tDC{Nil} and \tDC{::}) and type constructors (\tTC{Nat} and \tTC{List}) are
 all part of the same namespace.
 
 We can test these functions at the Idris prompt:
@@ -295,25 +295,217 @@ impossible. Since there is no element of \texttt{Fin O}, and the location is a
 look up an element in an empty vector would give a compile time type error,
 since it would force \texttt{n} to be \tDC{O}.
 
-\subsubsection{Dependent Function Types}
+\subsubsection{Implicit Arguments}
 
-The function types we have seen so far have taken the form \texttt{a -> b},
-where \texttt{a} stands for the input type and \texttt{b} stands for the output
-type. More generally, function types take the following form:
+Let us take a closer look at the type of \texttt{lookup}:
 
-\begin{SaveVerbatim}{ftype}
+\begin{SaveVerbatim}{vlookupty}
 
-(x : a) -> b
+lookup : Fin n -> Vect a n -> a
 
 \end{SaveVerbatim}
-\useverb{ftype}
+\useverb{vlookupty}
 
 \noindent
-\ldots where the name \texttt{x} may appear in \texttt{b}. This is a \remph{dependent}
-function type --- the output type depends on the value of \texttt{x}.
+It takes two arguments, an element of the finite set of \texttt{n} elements, and a vector
+with \texttt{n} elements of type \texttt{a}. But there are also two names, 
+\texttt{n} and \texttt{a}, which are not declared explictly. These are \emph{implicit}
+arguments to \texttt{lookup}. We could also write the type of \texttt{lookup} as:
 
+\begin{SaveVerbatim}{vlookupimpty}
 
-\subsubsection{Implicit Arguments}
+lookup : {a:Set} -> {n:Nat} -> Fin n -> Vect a n -> a
+
+\end{SaveVerbatim}
+\useverb{vlookupimpty}
+
+Implicit arguments, given in braces \texttt{\{\}} in the type declaration, are not given in
+applications of \texttt{lookup}; their values can be inferred from the types of
+the \texttt{Fin n} and \texttt{Vect a n} arguments. Any name which appears as a parameter
+or index in a type declaration, but which is otherwise free, will be automatically
+bound as an implicit argument.
+Implicit arguments can still be given explicitly in applications, using
+{a=value} and {n=value}, for example:
+
+\begin{SaveVerbatim}{vlookupexp}
+
+lookup {a=Int} {n=2} fO (2 :: 3 :: VNil)
+
+\end{SaveVerbatim}
+\useverb{vlookupexp}
+
+\noindent
+In fact, any argument, implicit or explicit, may be given a name. We could have
+declared the type of \texttt{lookup} as:
+
+\begin{SaveVerbatim}{vlookupn}
+
+lookup : (i:Fin n) -> (xs:Vect a n) -> a;
+
+\end{SaveVerbatim}
+\useverb{vlookupn}
+
+\noindent
+It is a matter of taste whether you want to do this --- sometimes it can help
+document a function by making the purpose of an argument more clear.
+
+\subsubsection{``\texttt{using}'' notation}
+
+Sometimes it is necessary to provide types of implicit arguments where
+the type checker can not work them out itself. This can happen if there is a
+dependency ordering --- obviously, \texttt{a} and \texttt{n} must be given as arguments above
+before being used --- or if an implicit argument has a complex type. For example,
+we will need to state the types of the implicit arguments in the following
+definition, which defines a predicate on vectors:
+
+\begin{SaveVerbatim}{elem}
+
+data Elem : a -> (Vect a n) -> Set where
+   here :  {x:a} ->   {xs:Vect a n} -> Elem x (x :: xs)
+ | there : {x,y:a} -> {xs:Vect a n} -> Elem x xs -> Elem x (y :: xs);
+
+\end{SaveVerbatim}
+\useverb{elem}
+
+\noindent
+An instance of \texttt{Elem x xs} states that \texttt{x} is an element of 
+\texttt{xs}. We can construct
+such a predicate if the required element is \texttt{here}, at the head of the vector, 
+or \texttt{there}, in the tail of the vector. For example:
+
+\begin{SaveVerbatim}{testelem}
+
+testVec : Vect Int 4;
+testVec = 3 :: 4 :: 5 :: 6 :: VNil;
+
+inVect : Elem 5 testVec;
+inVect = there (there here);
+
+\end{SaveVerbatim}
+\useverb{testelem}
+
+\noindent
+If the same implicit arguments are being used a lot, it can make a definition
+difficult to read. To avoid this problem, a \texttt{using} block gives the types and
+ordering of any implicit arguments which can appear within the block:
+
+\begin{SaveVerbatim}{elemusing}
+
+using (x:a, y:a, xs:Vect a n) {
+  data Elem : a -> (Vect a n) -> Set where
+     here  : Elem x (x :: xs)
+   | there : Elem x xs -> Elem x (y :: xs);
+}
+
+\end{SaveVerbatim}
+\useverb{elemusing}
+
+\subsection{I/O}
+
+Computer programs are of little use if they do not interact with the user or
+the system in some way. The difficulty in a pure language such as \Idris{} ---
+that is, a language where expressions do not have side-effects --- is that I/O
+is inherently side-effecting. Therefore in \Idris{}, such interactions are
+encapsulated in the type \texttt{IO}:
+
+\begin{SaveVerbatim}{ioty}
+
+data IO a; -- IO operation returning a value of type a
+
+\end{SaveVerbatim}
+\useverb{ioty}
+
+We'll leave the definition of \texttt{IO} abstract, but effectively it describes what
+the I/O operations to be executed are, rather than how to execute them. The
+resulting operations are executed externally,
+by the run-time system. We've already seen one IO
+program:
+
+\begin{SaveVerbatim}{main}
+
+main : IO ();
+main = putStrLn "Hello world";
+
+\end{SaveVerbatim}
+\useverb{main}
+
+The type of \texttt{putStrLn} explains that it takes a string, and returns an
+element of the unit type () via an I/O action. There is a variant \texttt{putStr} which
+outputs a string without a newline:
+
+\begin{SaveVerbatim}{putstr}
+
+putStrLn : String -> IO ();
+putStr   : String -> IO ();
+
+\end{SaveVerbatim}
+
+We can also read strings from user input:
+
+\begin{SaveVerbatim}{getline}
+
+getLine : IO String;
+
+\end{SaveVerbatim}
+\useverb{getline}
+
+\noindent
+A number of other I/O operations are defined in the prelude, for example for reading and
+writing files, including:
+
+\begin{SaveVerbatim}{fileops}
+
+data File; -- abstract
+data Mode = Read | Write | ReadWrite;
+
+openFile  : String -> Mode -> IO File;
+closeFile : File -> IO ();
+
+fread  : File -> IO String;
+fwrite : File -> String -> IO ();
+feof   : File -> IO Bool;
+
+readFile : String -> IO String;
+
+\end{SaveVerbatim}
+\useverb{fileops}
+
+\subsection{``\texttt{do}'' notation}
+
+I/O programs will typically need to sequence actions, feeding the output of one
+computation into the input of the next. \texttt{IO} is an abstract type, however, so we
+can't access the result of a computation directly. Instead, we sequence
+operations with \texttt{do} notation:
+
+\begin{SaveVerbatim}{greet}
+
+greet : IO ();
+greet = do { putStr "What is your name? ";
+             name <- getLine;
+             putStrLn ("Hello " ++ name);
+           };
+
+\end{SaveVerbatim}
+\useverb{greet}
+
+The syntax \texttt{x <- iovalue} executes the I/O operation iovalue, of type 
+\texttt{IO a}, and
+puts the result, of type \texttt{a} into the variabel \texttt{x}. 
+In this case, \texttt{getLine} returns an \texttt{IO String},
+so \texttt{name} has type \texttt{String}.
+The \texttt{return} operation allows us to inject a value directly into an IO
+operation:
+
+\begin{SaveVerbatim}{return}
+
+return : a -> IO a;
+
+\end{SaveVerbatim}
+\useverb{return}
+
+\noindent
+As we will see later, \texttt{do} notation is more general than this, and can be
+overloaded.
 
 \subsection{Useful Data Types}
 
@@ -321,6 +513,4 @@ Lists, syntactic sugar.
 Maybe, Either.
 Pairs, dependent pairs, syntactic sugar.
 
-\subsection{I/O}
 
-\subsection{Modules and Namespaces}

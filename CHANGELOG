@@ -10,6 +10,7 @@ Complete rewrite. User visible changes:
 * Ad-hoc name overloading
   - Resolved by type or explicit namespace
 * Modules (Haskell-style)
+* public, abstract and private access to functions and types
 * Separate type-checking
 * Improved interactive environment
 * Replaced 'do using' with Monad class
