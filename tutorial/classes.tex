@@ -158,13 +158,28 @@ The \texttt{Ord} class allows us to compare two values and determine their order
 Only the \texttt{compare} method is required; every other method has a default definition.
 Using
 this we can write functions such as \texttt{sort}, a function which sorts a list into
-increasing order, provided that the element type of the list is in the \texttt{Ord} class:
+increasing order, provided that the element type of the list is in the \texttt{Ord} class.
+We give the constraints on the type variables left of the fat arrow \texttt{=>}, and the
+function type to the right of the fat arrow:
 
 \begin{SaveVerbatim}{sortty}
 
 sort : Ord a => List a -> List a;
 
 \end{SaveVerbatim}
+\useverb{sortty}
+
+\noindent
+Functions, classes and instances can have multiple constraints. Multiple constaints are
+written in brackets in a comma separated list, for example:
+
+\begin{SaveVerbatim}{sortshow}
+
+sortAndShow : (Ord a, Show a) => List a -> String;
+sortAndShow xs = show (sort xs);
+
+\end{SaveVerbatim}
+\useverb{sortshow}
 
 \subsection{Monads and \texttt{do}-notation}
 

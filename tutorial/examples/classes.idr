@@ -3,3 +3,6 @@ m_add x y = do { x' <- x; -- Extract value from x
                  y' <- y; -- Extract value from y
                  return (x' + y'); -- Add them 
                };
+
+sortAndShow : (Ord a, Show a) => List a -> String;
+sortAndShow xs = show (sort xs);

@@ -1,4 +1,176 @@
 \section{Modules and Namespaces}
 \label{sect:namespaces}
 
+An \Idris{} program consists of a collection of modules. Each module includes
+an optional \texttt{module} declaration giving the name of the module, a
+list of \texttt{import} statements giving the other modules which are to be imported,
+and a collection of declarations and definitions of types, classes and functions.
+For example, Figure \ref{bstmod} gives a module which defines a binary
+tree type \texttt{BTree} (in a file \texttt{btree.idr}) and Figure
+\ref{bstmain} gives a main program (in a file \texttt{bmain.idr} which uses the
+\texttt{bst} module to sort a list.
+
+\begin{SaveVerbatim}{bstmod}
+
+module btree;
+
+data BTree a = Leaf
+             | Node (BTree a) a (BTree a);
+
+insert : Ord a => a -> BTree a -> BTree a;
+insert x Leaf = Node Leaf x Leaf;
+insert x (Node l v r) = if (x < v) then (Node (insert x l) v r)
+                                   else (Node l v (insert x r));
+
+toList : BTree a -> List a;
+toList Leaf = [];
+toList (Node l v r) = app (toList l) (v :: toList r);
+
+toTree : Ord a => List a -> BTree a;
+toTree [] = Leaf;
+toTree (x :: xs) = insert x (toTree xs);
+
+\end{SaveVerbatim}
+\codefig{bstmod}{Binary Tree module}
+
+\begin{SaveVerbatim}{bstmain}
+
+module main;
+
+import btree;
+
+main : IO ();
+main = do { let t = toTree [1,8,2,7,9,3]; 
+            print (toList t);
+          };
+
+\end{SaveVerbatim}
+\codefig{bstmain}{Binary Tree main program}
+
+The same names can be defined in multiple modules. This is possible because in practice names
+are \emph{qualified} with the name of the module. 
+The names defined in the \texttt{btree} module are, in full:
+
+\begin{itemize}
+\item \texttt{btree.BTree}, \texttt{btree.Leaf}, \texttt{btree.Node}, \texttt{btree.insert},
+\texttt{btree.toList} and \texttt{btree.toTree}.
+\end{itemize}
+
+\noindent
+If names are otherwise unambiguous, there is no need to give the fully qualified name.
+Names can be disambiguated either by giving an explicit qualification, or according to
+their type.
+
+There is no formal link between the module name and its filename, although it is generally
+advisable to use the same name for each. An \texttt{import} statement refers to a filename,
+using dots to separate directories. For example, \texttt{import foo.bar} would import
+the file \texttt{foo/bar.idr}, which would conventionally have the module declaration
+\texttt{module foo.bar}. The only requirement for module names is that the main module, with
+the \texttt{main} function, must be called \texttt{main} (though its filename need not be
+\texttt{main.idr}).
+
+\subsection{Export Modifiers}
+
+By default, all names defined in a module are exported for use by other modules.
+However, it is good practice only to export a minimal interface and keep internal
+details abstract. \Idris{} allows functions, types and classes to be marked
+as \texttt{public}, \texttt{abstract} or \texttt{private}:
+
+\begin{itemize}
+\item \texttt{public} means that both the name and definition are exported.
+For functions, this means that the implementation is exported (which means, for example,
+it can be used in a dependent type). For data types, this means that the type name and
+the constructors are exported. For classes, this means that the class name and
+method names are exported.
+\item \texttt{abstract} means that only the name is exported. For functions, this means
+that the implementation is not exported. For data types, this means that the type name
+is exported but not the constructors. For classes, this means that the class name is exported
+but not the method names/
+\item \texttt{private} means that neither the name nor the definition is exported.
+\end{itemize}
+
+\noindent
+If any definition is given an export modifier, then all names with no modifier are assumed
+to be \texttt{private}. For our \texttt{btree} module, it makes sense for the
+tree data type and the functions to be exported as \texttt{abstract}, as we see in
+Figure \ref{bstmodp}.
+
+\begin{SaveVerbatim}{bstmodp}
+
+module btree;
+
+abstract data BTree a = Leaf
+                      | Node (BTree a) a (BTree a);
+
+abstract
+insert : Ord a => a -> BTree a -> BTree a;
+insert x Leaf = Node Leaf x Leaf;
+insert x (Node l v r) = if (x < v) then (Node (insert x l) v r)
+                                   else (Node l v (insert x r));
+
+abstract
+toList : BTree a -> List a;
+toList Leaf = [];
+toList (Node l v r) = app (toList l) (v :: toList r);
+
+abstract
+toTree : Ord a => List a -> BTree a;
+toTree [] = Leaf;
+toTree (x :: xs) = insert x (toTree xs);
+
+\end{SaveVerbatim}
+\codefig{bstmodp}{Binary Tree module, with export modifiers}
+
+\noindent
+Finally, the default export mode can be changed with the \texttt{\%access} directive,
+for example:
+
+\begin{SaveVerbatim}{access}
+
+%access abstract
+
+\end{SaveVerbatim}
+\useverb{access}
+
+\noindent
+In this case, any function with no access modifier will be exported as \texttt{abstract},
+rather than left \texttt{private}.
+
+\subsection{Explicit Namespaces}
+
+Defining a module also defines a namespace implicitly. However, namespaces can also
+be given \emph{explicitly}. This is most useful if you wish to overload names within
+the same module:
+
+\begin{SaveVerbatim}{nsfoo}
+
+module foo;
+
+namespace x {
+  test : Int -> Int;
+  test x = x * 2;
+}
+
+namespace y {
+  test : String -> String;
+  test x = x ++ x; 
+}
+
+\end{SaveVerbatim}
+\useverb{nsfoo}
+
+\noindent
+This (admittedly contrived) module defines two functions with fully qualified names
+\texttt{foo.x.test} and \texttt{foo.y.test}, which can be disambiguated by their
+types:
+
+\begin{SaveVerbatim}{usetest}
+
+*foo> test 3 
+6 : Int
+*foo> test "foo" 
+"foofoo" : String
+
+\end{SaveVerbatim}
+\useverb{usetest}
 

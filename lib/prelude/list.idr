@@ -16,6 +16,10 @@ rev xs = revAcc [] xs where {
   revAcc acc (x :: xs) = revAcc (x :: acc) xs;
 }
 
+app : List a -> List a -> List a;
+app [] xs = xs;
+app (x :: xs) ys = x :: app xs ys;
+
 length : List a -> Int;
 length []        = 0;
 length (x :: xs) = 1 + length xs;
