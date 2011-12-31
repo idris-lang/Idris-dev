@@ -520,6 +520,14 @@ pSimpleExpr syn =
         <|> try (pList syn)
         <|> try (pAlt syn)
         <|> try (do lchar '('; e <- pExpr syn; lchar ')'; return e)
+        <|> try (do lchar '('; fc <- pfc; o <- operator; e <- pExpr syn; lchar ')'
+                    return $ PLam (MN 0 "x") Placeholder
+                                  (PApp fc (PRef fc (UN o)) [pexp (PRef fc (MN 0 "x")), 
+                                                             pexp e]))
+        <|> try (do lchar '('; fc <- pfc; e <- pSimpleExpr syn; o <- operator; lchar ')'
+                    return $ PLam (MN 0 "x") Placeholder
+                                  (PApp fc (PRef fc (UN o)) [pexp e,
+                                                             pexp (PRef fc (MN 0 "x"))]))
         <|> try (do c <- pConstant; fc <- pfc
                     return (modifyConst syn fc (PConstant c)))
         <|> do reserved "Set"; return PSet
