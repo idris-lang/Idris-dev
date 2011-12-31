@@ -2,7 +2,8 @@ PAPER = idris-tutorial
 
 all: ${PAPER}.pdf
 
-TEXFILES = ${PAPER}.tex intro.tex starting.tex miscellany.tex typesfuns.tex
+TEXFILES = ${PAPER}.tex intro.tex starting.tex miscellany.tex typesfuns.tex \
+           classes.tex modules.tex
 
 DIAGS = 
 

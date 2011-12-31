@@ -1,4 +1,4 @@
-\section{Language Overview}
+\section{Types and Functions}
 
 \subsection{Primitive Types}
 
@@ -173,6 +173,28 @@ Nevertheless, we do not want this convenience to be at the expense of
 efficiency. Fortunately, \Idris{} knows about the relationship between
 \tTC{Nat} (and similarly structured types) and numbers, so optimises the
 representation and functions such as \tFN{plus} and \tFN{mult}.
+
+\subsubsection*{\texttt{where} clauses}
+
+Functions can also be defined \emph{locally} using \texttt{where} clauses. For example,
+to define a function which reverses a list, we can use an auxiliary function which
+accumulates the new, reversed list, and which does not need to be visible globally:
+
+\begin{SaveVerbatim}{revwhere}
+
+rev : List a -> List a;
+rev xs = revAcc [] xs where {
+  revAcc : List a -> List a -> List a;
+  revAcc acc [] = acc;
+  revAcc acc (x :: xs) = revAcc (x :: acc) xs;
+}
+
+\end{SaveVerbatim}
+\useverb{revwhere}
+
+\noindent
+Any names which are visible in the outer scope are also visible in the \texttt{where}
+clause (unless they have been redefined, such as \texttt{xs} here).
 
 \subsection{Dependent Types}
 
@@ -472,6 +494,8 @@ readFile : String -> IO String;
 
 \subsection{``\texttt{do}'' notation}
 
+\label{sect:do}
+
 I/O programs will typically need to sequence actions, feeding the output of one
 computation into the input of the next. \texttt{IO} is an abstract type, however, so we
 can't access the result of a computation directly. Instead, we sequence
@@ -509,8 +533,275 @@ overloaded.
 
 \subsection{Useful Data Types}
 
-Lists, syntactic sugar.
-Maybe, Either.
-Pairs, dependent pairs, syntactic sugar.
+\Idris{} includes a number of useful data types and library functions (see the
+\texttt{lib/} directory in the distribution). This chapter describes a few of these. The
+functions described here are imported automatically by every \Idris{} program, as
+part of \texttt{prelude.idr}.
 
+\subsubsection{\texttt{List} and \texttt{Vect}}
+
+We have already seen the \texttt{List} and \texttt{Vect} data types:
+
+\begin{SaveVerbatim}{listvec}
+
+data List a = Nil | (::) a (List a);
+
+data Vect : Set -> Nat -> Set where
+   Nil  : Vect a O
+ | (::) : a -> Vect a k -> Vect a (S k);
+
+\end{SaveVerbatim}
+\useverb{listvec}
+
+Note that the constructor names are the same for each --- constructor names (in
+fact, names in general) can be overloaded, provided that they are declared in
+different namespaces (see Section \ref{sect:namespaces}), and will typically be
+resolved according to their type. As syntactic sugar, any type with the constructor
+names \texttt{Nil} and \texttt{::} can be written in list form. For example:
+
+\begin{itemize}
+\item \texttt{[]} means \texttt{Nil}
+\item \texttt{[1,2,3]} means \texttt{Cons 1 (Cons 2 (Cons 3 Nil))}
+\end{itemize}
+
+The library also defines a number of functions for manipulating these types.
+\texttt{map} is overloaded both for \texttt{List} and \texttt{Vect}
+and applies a function to every element of the list or vector.
+
+\begin{SaveVerbatim}{map}
+
+map : (a -> b) -> List a -> List b;
+map f []        = [];
+map f (x :: xs) = f x :: map f xs;
+
+map : (a -> b) -> Vect a n -> Vect b n;
+map f []        = [];
+map f (x :: xs) = f x :: map f xs;
+
+\end{SaveVerbatim}
+\useverb{map}
+
+\noindent
+For example, to double every element in a vector of integers:
+
+\begin{SaveVerbatim}{dvect}
+
+intVec : Vect Int 5;
+intVec = [1, 2, 3, 4, 5];
+
+double : Int -> Int;
+double x = x * 2;
+
+\end{SaveVerbatim}
+\useverb{dvect}
+
+\noindent
+You'll find these examples in \texttt{usefultypes.idr} in the \texttt{examples/} directory:
+
+\begin{SaveVerbatim}{rundvect}
+
+*usefultypes> show (map double intVec) 
+"[2, 4, 6, 8, 10]" : String
+
+\end{SaveVerbatim}
+\useverb{rundvect}
+
+For more details of the functions available on \texttt{List} and \texttt{Vect},
+look in the library, in \texttt{prelude/list.idr} and \texttt{prelude/vect.idr} respectively.
+Functions include filtering, appending, reversing, and so on. Also remember
+that \Idris{} is still in development, so if you don't see the function you
+need, please feel free to add it and submit a patch!
+
+\subsubsection*{Aside: Anonymous functions and operator sections}
+
+There are actually neater ways to write the above expression. One way would be
+to use an anonymous function:
+
+\begin{SaveVerbatim}{lam1}
+
+*usefultypes> show (map (\x => x * 2) intVec)
+"[2, 4, 6, 8, 10]" : String
+
+\end{SaveVerbatim}
+\useverb{lam1}
+
+The notation \texttt{$\backslash$x => val} constructs an anonymous function
+which takes one argument, \texttt{x} and returns the expression \texttt{val}.
+Anonymous functions may take several arguments, separated by commas, e.g.
+\texttt{$\backslash$x, y, z => val}. Arguments may also be given explicit
+types, e.g. \texttt{$\backslash$x : Int => x * 2}.
+
+We could also use an operator section:
+
+\begin{SaveVerbatim}{sec1}
+
+*usefultypes> show (map (* 2) intVec)
+"[2, 4, 6, 8, 10]" : String
+
+\end{SaveVerbatim}
+\useverb{sec1}
+
+\texttt{(*2)} is shorthand for a function which multiplies a number by 2. It expands to
+\texttt{$\backslash$x => x * 2}. 
+Similarly, \texttt{(2*)} would expand to \texttt{$\backslash$x => 2 * x}.
+
+\subsubsection{Maybe}
+
+\texttt{Maybe} describes an optional value. Either there is a value of the given type,
+or there isn't:
+
+\begin{SaveVerbatim}{maybe}
+
+data Maybe a = Just a | Nothing;
+
+\end{SaveVerbatim}
+\useverb{maybe}
+
+\texttt{Maybe} is one way of giving a type to an operation that may fail. For example,
+looking something up in a \texttt{List} (rather than a vector) may result in an out of
+bounds error:
+
+\begin{SaveVerbatim}{lookuplist}
+
+list_lookup : Nat -> List a -> Maybe a;
+list_lookup _     Nil         = Nothing;
+list_lookup O     (Cons x xs) = Just x;
+list_lookup (S k) (Cons x xs) = list_lookup k xs;
+
+\end{SaveVerbatim}
+\useverb{lookuplist}
+
+The \texttt{maybe} function is used to process values of type \texttt{Maybe}, 
+either by applying a function to the value, if there is one, or by providing a default value:
+
+\begin{SaveVerbatim}{maybefn}
+
+maybe : Maybe a -> |(default:b) -> (a -> b) -> b;
+
+\end{SaveVerbatim}
+\useverb{maybefn}
+
+The vertical bar $\mid$ before the default value is a laziness annotation. Normally
+expressions are evaluated before being passed to a function. This is typically
+the most efficient behaviour. However, in this case, the default value might
+not be used and if it is a large expression, evaluating it will be wasteful.
+The $\mid$ annotation tells the compiler not to evaluate the argument until it is
+needed.
+
+\subsubsection{Tuples and Dependent Pairs}
+
+Values can be paired with the following built-in data type:
+
+\begin{SaveVerbatim}{mkpair}
+
+data Pair a b = MkPair a b;
+
+\end{SaveVerbatim}
+\useverb{mkpair}
+
+As syntactic sugar, we can write \texttt{(a, b)} which, according to context,
+means either \texttt{Pair a b} or \texttt{MkPair a b}.
+Tuples can contain an arbitrary number of values, represented as nested pairs:
+
+\begin{SaveVerbatim}{tuple}
+
+fred : (String, Int);
+fred = ("Fred", 42);
+
+jim : (String, Int, String);
+jim = ("Jim", 25, "Cambridge");
+
+\end{SaveVerbatim}
+\useverb{tuple}
+
+\subsubsection*{Dependent Pairs}
+
+Dependent pairs allow the type of the second element of a pair to depend on
+the value of the first element:
+
+\begin{SaveVerbatim}{sigma}
+
+data Exists : (A : Set) -> (P : A -> Set) -> Set where
+   Ex_intro : {P : A -> Set} -> (a : A) -> P a -> Exists A P;
+
+\end{SaveVerbatim}
+\useverb{sigma}
+
+Again, there is syntactic sugar for this. \texttt{(a : A ** P)} is the type of a pair of
+A and P, where the name \texttt{a} can occur inside P. \texttt{( a ** p (} 
+constructs a value of this type. For example, we can pair a number with a 
+\texttt{Vect} of a particular length.
+
+\begin{SaveVerbatim}{dvec}
+
+vec : (n : Nat ** Vect Int n);
+vec = (2 ** [3, 4]);
+
+\end{SaveVerbatim}
+\useverb{dvec}
+
+\noindent
+The type checker could of course infer the value of the first element from the
+length of the vector. We can write an underscore \texttt{\_} in place of values which we
+expect the type checker to fill in, so the above definition could also be
+written as:
+
+\begin{SaveVerbatim}{dvec1}
+
+vec : (n : Nat ** Vect Int n);
+vec = (_ ** [3, 4]);
+
+\end{SaveVerbatim}
+\useverb{dvec1}
+
+\noindent
+We might also prefer to omit the type of the first element of the pair, since,
+again, it can be inferred:
+
+\begin{SaveVerbatim}{dvec2}
+
+vec : (n ** Vect Int n);
+vec = (_ ** [3, 4]);
+
+\end{SaveVerbatim}
+\useverb{dvec2}
+
+One use for dependent pairs is to return values of dependent types where the
+index is not necessarily known in advance. For example, if we filter elements
+out of a \texttt{Vect} according to some predicate, we will not know in advance what the
+length of the resulting vector will be:
+
+\begin{SaveVerbatim}{vfilter}
+
+filter : (a -> Bool) -> Vect a n -> (p ** Vect a p);
+
+\end{SaveVerbatim}
+\useverb{vfilter}
+
+\noindent
+If the \texttt{Vect} is empty, the result is easy:
+
+\begin{SaveVerbatim}{vfilternil}
+
+vfilter p VNil = (_ , []);
+
+\end{SaveVerbatim}
+\useverb{vfilternil}
+
+In the \texttt{::} case, we need to inspect the result of a recursive call to 
+\texttt{filter} to
+extract the length and the vector from the result. To do this, we use \texttt{with}
+notation. with allows pattern matching on intermediate values:
+
+\begin{SaveVerbatim}{vfiltercons}
+
+filter p (x :: xs) with filter p xs {
+   | (_ , xs') = if (p x) then (_ , x :: xs') else (_ , xs');
+}
+
+\end{SaveVerbatim}
+\useverb{vfiltercons}
+
+\noindent
+We will see more on \texttt{with} notation later.
 

@@ -1,3 +1,242 @@
 \section{Type Classes}
 \label{sec:classes}
 
+We often want to define functions which work across several different data
+types. For example, we would like arithmetic operators to work on \texttt{Int},
+\texttt{Integer} and \texttt{Float} at the very least. We would like
+\texttt{==} to work on the majority of data types. We would like to be able to
+display different types in a uniform way.
+
+To achieve this, we use a feature which has proved to be effective in Haskell, namely
+\emph{type classes}. To define a type class, we provide a collection of overloaded
+operations which describe the interface for \emph{instances} of that class. A simple example
+is the \texttt{Show} type class, which is defined in the prelude and
+provides an interface for converting values to
+\texttt{String}s:
+
+\begin{SaveVerbatim}{showclass}
+
+class Show a where {
+    show : a -> String;
+}
+
+\end{SaveVerbatim}
+\useverb{showclass}
+
+\noindent
+This generates a function of the following type (which we call a \emph{method} of the 
+\texttt{Show} class):
+
+\begin{SaveVerbatim}{showty}
+
+show : Show a => a -> String;
+
+\end{SaveVerbatim}
+\useverb{showty}
+
+\noindent
+We can read this as ``under the constraint that \texttt{a} is an instance of \texttt{Show},
+take an \texttt{a} as input and return a \texttt{String}.'' An instance of a class
+is defined with an \texttt{instance} declaration, which provides implementations of
+the function for a specific type. For example, the \texttt{Show} instance for \texttt{Nat}
+could be defined as:
+
+\begin{SaveVerbatim}{shownat}
+
+instance Show Nat where {
+    show O = "O";
+    show (S k) = "s" ++ show k;
+}
+
+Idris> show (S (S (S O))) 
+"sssO" : String
+
+\end{SaveVerbatim}
+\useverb{shownat}
+
+Instance declarations can themselves have constraints. For example, to define a
+\texttt{Show} instance for vectors, we need to know that there is a \texttt{Show} 
+instance for the element type, because we are going to use it to convert each element
+to a \texttt{String}:
+
+\begin{SaveVerbatim}{showvec}
+
+instance Show a => Show (Vect a n) where {
+    show xs = "[" ++ show' xs ++ "]" where {
+        show' : Show a => Vect a n -> String;
+        show' VNil = "";
+        show' (x :: VNil) = show x;
+        show' (x :: xs) = show x ++ ", " ++ show' xs;
+    }
+}
+
+\end{SaveVerbatim}
+\useverb{showvec}
+
+\subsection{Default Definitions}
+
+The library defines an \texttt{Eq} class which provides an interface for comparing
+values for equality or inequality, with instances for all of the built-in types:
+
+\begin{SaveVerbatim}{eqbasic}
+
+class Eq a where {
+    (==) : a -> a -> Bool;
+    (/=) : a -> a -> Bool;
+}
+
+\end{SaveVerbatim}
+\useverb{eqbasic}
+
+\noindent
+To declare an instance of a type, we have to give definitions of all of the methods.
+For example, for an instance of \texttt{Eq} for \texttt{Nat}:
+
+\begin{SaveVerbatim}{eqnat}
+
+instance Eq Nat where {
+    O     == O     = True;
+    (S x) == (S y) = x == y;
+    O     == (S y) = False;
+    (S x) == O     = False;
+
+    x /= y = not (x == y);
+}
+
+\end{SaveVerbatim}
+\useverb{eqnat}
+
+\noindent
+It is hard to imagine many cases where the \texttt{/=} method will be anything other
+than the negation of the result of applying the \texttt{==} method. It is therefore
+convenient to give a default definition for each method in the class
+declaration, in terms of the other method:
+
+\begin{SaveVerbatim}{eqdefault}
+
+class Eq a where {
+    (==) : a -> a -> Bool;
+    (/=) : a -> a -> Bool;
+
+    x /= y = not (x == y);
+    y == y = not (x /= y);
+}
+
+\end{SaveVerbatim}
+\useverb{eqdefault}
+
+\noindent
+A minimal complete definition of an \texttt{Eq} instance requires either \texttt{==}
+or \texttt{/=} to be defined, but does not require both. If a method definition is
+missing, and there is a default definition for it, then the default is used instead.
+
+\subsection{Extending Classes}
+
+Classes can also be extended. A logical next step from an equality relation \texttt{Eq}
+is to define an ordering relation \texttt{Ord}. We can define an \texttt{Ord} class
+which inherits method from \texttt{Eq} as well as defining some of its own:
+
+\begin{SaveVerbatim}{ord}
+
+data Ordering = LT | EQ | GT;
+
+class Eq a => Ord a where {
+    compare : a -> a -> Ordering;
+
+    (<) : a -> a -> Bool;
+    (>) : a -> a -> Bool;
+    (<=) : a -> a -> Bool;
+    (>=) : a -> a -> Bool;
+    max : a -> a -> a;
+    min : a -> a -> a;
+}
+
+\end{SaveVerbatim}
+\useverb{ord}
+
+The \texttt{Ord} class allows us to compare two values and determine their ordering. 
+Only the \texttt{compare} method is required; every other method has a default definition.
+Using
+this we can write functions such as \texttt{sort}, a function which sorts a list into
+increasing order, provided that the element type of the list is in the \texttt{Ord} class:
+
+\begin{SaveVerbatim}{sortty}
+
+sort : Ord a => List a -> List a;
+
+\end{SaveVerbatim}
+
+\subsection{Monads and \texttt{do}-notation}
+
+So far, we have seen single parameter type classes, where the parameter is of type
+\texttt{Set}. In general, there can be any number (greater than 0) of parameters,
+and the parameters can have \remph{any} type.
+If the type of the parameter is not \texttt{Set}, we need to give an explicit type
+declaration. For example:
+
+\begin{SaveVerbatim}{monad}
+
+class Monad (m : Set -> Set) where {
+    return : a -> m a;
+    (>>=)  : m a -> (a -> m b) -> m b;
+}
+
+\end{SaveVerbatim}
+\useverb{monad}
+
+The \texttt{Monad} class allows us to encapsulate binding and computation, and is the
+basis of \texttt{do}-notation introduced in Section \ref{sect:do}. Inside a
+\texttt{do} block, the following syntactic transformations are applied:
+
+\begin{itemize}
+\item \texttt{x <- v; e} becomes \texttt{v >>= ($\backslash$x => e)}
+\item \texttt{v; e} becomes \texttt{v >>= ($\backslash$\_ => e)}
+\item \texttt{let x = v; e} becomes \texttt{let x = v in e}
+\end{itemize}
+
+\noindent
+\texttt{IO} is an instance of \texttt{Monad}, defined using primitive functions.
+We can also define an instance for \texttt{Maybe}, as follows:
+
+\begin{SaveVerbatim}{maybemonad}
+
+instance Monad Maybe where {
+    return = Just;
+
+    Nothing  >>= k = Nothing;
+    (Just x) >>= k = k x;
+}
+
+\end{SaveVerbatim}
+\useverb{maybemonad}
+
+\noindent
+Using this we can, for example, define a function which adds two 
+\texttt{Maybe Int}s, using the monad to encapsulate the error handling:
+
+\begin{SaveVerbatim}{maybeadd}
+
+m_add : Maybe Int -> Maybe Int -> Maybe Int;
+m_add x y = do { x' <- x; -- Extract value from x
+                 y' <- y; -- Extract value from y
+                 return (x' + y'); -- Add them 
+               };
+
+\end{SaveVerbatim}
+\useverb{maybeadd}
+
+\noindent
+This function will extract the values from \texttt{x} and \texttt{y}, if they
+are available, or return \texttt{Nothing} if they are not. Managing the
+\texttt{Nothing} cases is achieved by the \texttt{>>=} operator, hidden by the
+\texttt{do} notation.
+
+\begin{SaveVerbatim}{maybeaddt}
+
+*classes> m_add (Just 20) (Just 22) 
+Just 42 : Maybe Int
+*classes> m_add (Just 20) Nothing 
+Nothing : Maybe Int
+
+\end{SaveVerbatim}
+\useverb{maybeaddt}
