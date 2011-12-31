@@ -553,12 +553,22 @@ pPair syn = try (do lchar '('; l <- pExpr syn; op <- pairOp
                     fc <- pfc
                     r <- pExpr syn; lchar ')';
                     return (op fc l r))
+        <|> try (do lchar '('; x <- ntuple
+                    lchar ')'
+                    return x) 
         <|> do lchar '('; ln <- pName; lchar ':'; lty <- pExpr syn;
                reservedOp "**";
                fc <- pfc
                r <- pExpr syn; lchar ')';
                return (PDPair fc (PRef fc ln) lty r) 
   where
+    ntuple = try (do l <- pExpr syn; fc <- pfc; lchar ','
+                     rest <- ntuple
+                     return (PPair fc l rest))
+             <|> (do l <- pExpr syn; fc <- pfc; lchar ','
+                     r <- pExpr syn
+                     return (PPair fc l r))
+
     pairOp = do lchar ','; return PPair
          <|> do reservedOp "**"; return (\f x y -> PDPair f x Placeholder y)
        
