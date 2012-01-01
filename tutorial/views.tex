@@ -65,5 +65,56 @@ data Parity : Nat -> Set where
 \end{SaveVerbatim}
 \useverb{parity}
 
+\noindent
+We say \texttt{Parity} is a \emph{view} of \texttt{Nat}. 
+It has a \emph{covering function} which tests whether
+it is even or odd and constructs the predicate accordingly.
+
+\begin{SaveVerbatim}{parityty}
+
+parity : (n:Nat) -> Parity n;
+
+\end{SaveVerbatim}
+\useverb{parityty}
+
+\noindent
+We'll come back to the definition of \texttt{parity} shortly. We can use it
+to write a function which converts a natural number to a list of binary digits
+(least significant first) as follows, using the \texttt{with} rule:
+
+\begin{SaveVerbatim}{natToBin}
+
+natToBin : Nat -> List Bool;
+natToBin O = Nil;
+natToBin k with parity k {
+   natToBin (j + j)     | even = False :: natToBin j;
+   natToBin (S (j + j)) | odd  = True  :: natToBin j;
+}
+
+\end{SaveVerbatim}
+\useverb{natToBin}
+
+\noindent
+The value of the result of \texttt{parity k} affects the form of \texttt{k}, 
+because the result
+of \texttt{parity k} depends on \texttt{k}. 
+So, as well as the patterns for the result of the
+intermediate computation (\texttt{even} and \texttt{odd}) right of the 
+\texttt{$\mid$}, we also write how
+the results affect the other patterns left of the $\mid$. Note that there is a
+function in the patterns (\texttt{+}) and repeated occurrences of \texttt{j} --- 
+this is allowed
+because another argument has determined the form of these patterns.
+
+We can test this function at the prompt. 42 is 101010 in binary. The binary digits
+are reversed with natToBin:
+
+\begin{SaveVerbatim}{ntbtest}
+
+*views> show (natToBin 42)
+"[False, True, False, True, False, True]" : String
+
+\end{SaveVerbatim}
+\useverb{ntbtest}
 
 

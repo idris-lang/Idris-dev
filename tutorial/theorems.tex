@@ -1,1 +1,290 @@
 \section{Theorem Proving}
+
+\subsection{Equality}
+
+\Idris{} allows propositional equalities to be declared, allowing theorems about
+programs to be stated and proved. Equality is built in, but conceptually has
+the following definition:
+
+\begin{SaveVerbatim}{}
+
+data (=) : a -> b -> Set where
+   refl : x = x;
+
+\end{SaveVerbatim}
+\useverb{}
+
+\noindent
+Equalities can be proposed between any values of any types, but the only way to
+construct a proof of equality is if values actually are equal. For example:
+
+\begin{SaveVerbatim}{eqprf}
+
+fiveIsFive : 5 = 5;
+fiveIsFive = refl;
+
+twoPlusTwo : 2 + 2 = 4;
+twoPlusTwo = refl;
+
+\end{SaveVerbatim}
+\useverb{eqprf}
+
+\subsection{Simple Theorems}
+
+When type checking dependent types, the type itself gets \emph{normalised}. So imagine
+we want to prove the following theorem about the reduction behaviour of \texttt{plus}:
+
+\begin{SaveVerbatim}{plusred}
+
+plusReduces : (n:Nat) -> plus O n = n;
+
+\end{SaveVerbatim}
+\useverb{plusred}
+
+\noindent
+We've written down the statement of the theorem as a type, in just the same way
+as we would write the type of a program. In fact there is no real distinction
+between proofs and programs. A proof, as far as we are concerned here, is
+merely a program with a precise enough type to guarantee a particular property
+of interest.
+
+We won't go into details here, but the Curry-Howard
+correspondence~\cite{howard} explains this relationship.
+The proof itself is trivial, because \texttt{plus O n} normalises to \texttt{n} 
+by the definition of \texttt{plus}:
+
+\begin{SaveVerbatim}{plusredp}
+
+plusReduces n = refl;
+
+\end{SaveVerbatim}
+\useverb{plusredp}
+
+\noindent
+It is slightly harder if we try the arguments the other way, because plus is
+defined by recursion on its first argument. The proof also works by recursion
+on the first argument to \texttt{plus}, namely \texttt{n}.
+
+\begin{SaveVerbatim}{plusRedO}
+
+plusReducesO : (n:Nat) -> n = plus n O;
+plusReducesO O = refl;
+plusReducesO (S k) = eqRespS (plusReducesO k);
+
+\end{SaveVerbatim}
+\useverb{plusRedO}
+
+\noindent
+\texttt{eqRespS} is a function defined in the library which states that
+equality respects successor:
+
+\begin{SaveVerbatim}{resps}
+
+eqRespS : m = n -> S m = S n;
+
+\end{SaveVerbatim}
+\useverb{resps}
+
+\noindent
+We can do the same for the reduction behaviour of plus on successors:
+
+\begin{SaveVerbatim}{plusRedS}
+
+plusReducesS : (n:Nat) -> (m:Nat) -> S (plus n m) = plus n (S m);
+plusReducesS O m = refl;
+plusReducesS (S k) m = eqRespS (plusReducesS k m);
+
+\end{SaveVerbatim}
+\useverb{plusRedS}
+
+Even for trival theorems like these, the proofs are a little tricky to
+construct in one go. When things get even slightly more complicated, it becomes
+too much to think about to construct proofs in this 'batch mode'. \Idris{}
+therefore provides an interactive proof mode.
+
+\subsection{Interactive theorem proving}
+
+Instead of writing the proof in one go, we can use \Idris{}'s interactive
+proof mode. To do this, we write the general \emph{structure} of the proof,
+and use the interactive mode to complete the details. We'll be constructing
+the proof by \emph{induction}, so we write the cases for \texttt{O} and
+\texttt{S}, with a recursive call in the \texttt{S} case giving the inductive
+hypothesis, and insert \emph{metavariables} for the rest of the definition:
+
+\begin{SaveVerbatim}{prOstruct}
+
+plusReducesO' : (n:Nat) -> n = plus n O;
+plusReducesO' O     = ?plusredO_O;
+plusReducesO' (S k) = let ih = plusReducesO' k in
+                      ?plusredO_S;
+
+\end{SaveVerbatim}
+\useverb{prOstruct}
+
+\noindent
+On running \Idris{}, two global names are created, \texttt{plusredO\_O} and
+\texttt{plusredO\_S}, with no definition. We can use the \texttt{:m} command
+at the prompt to find out which metavariables are still to be solved (or, more
+precisely, which functions exist but have no definitions). Then we can use the
+\texttt{:t} command to see what their types are:
+
+\begin{SaveVerbatim}{showmetas}
+
+*theorems> :m 
+Global metavariables:
+        [plusredO_S,plusredO_O]
+
+\end{SaveVerbatim}
+
+\begin{SaveVerbatim}{metatypes}
+
+*theorems> :t plusredO_O 
+plusredO_O : O = plus O O
+
+*theorems> :t plusredO_S 
+plusredO_S : (k : Nat) -> (k = plus k O) -> S k = S (plus k O)
+
+\end{SaveVerbatim}
+\useverb{showmetas}
+
+\useverb{metatypes}
+
+\noindent
+The \texttt{:p} command enters interactive proof mode, which can be used to complete
+the missing definitions.
+
+\begin{SaveVerbatim}{proveO}
+
+*theorems> :p plusredO_O
+
+---------------------------------- (plusredO_O) --------
+{hole0} : O = plus O O
+
+\end{SaveVerbatim}
+\useverb{proveO}
+
+\noindent
+This gives us a list of premisses 
+(above the line; there are none here) and the current goal (below the line;
+named \texttt{\{hole0\}} here).
+At the prompt we can enter tactics to direct the construction of the proof. In this case,
+we can normalise the goal with the \texttt{compute} tactic:
+
+\begin{SaveVerbatim}{compute}
+
+-plusredO_O> compute 
+
+---------------------------------- (plusredO_O) --------
+{hole0} : O = O
+
+\end{SaveVerbatim}
+\useverb{compute}
+
+\noindent
+Now we have to prove that \texttt{O} equals \texttt{O}, which is easy to prove by
+\texttt{refl}. To apply a function, such as \texttt{refl}, we use the \texttt{refine} tactic
+which introduces subgoals for each of the function's explicit arguments (though \texttt{refl}
+has none):
+
+\begin{SaveVerbatim}{refrefl}
+
+-plusredO_O> refine refl 
+plusredO_O: no more goals
+
+\end{SaveVerbatim}
+\useverb{refrefl}
+
+\noindent
+Here, we could also have used the \texttt{trivial} tactic, which tries to refine by
+\texttt{refl}, and if that fails, tries to refine by each name in the local context.
+When a proof is complete, we use the \texttt{qed} tactic to add the proof to the
+global context, and remove the metavariable from the unsolved metavariables list.
+This also outputs a trace of the proof:
+
+\begin{SaveVerbatim}{prOprooftrace}
+
+-plusredO_O> qed 
+plusredO_O = proof {
+    compute;
+    refine refl;
+};
+
+*theorems> :m 
+Global metavariables:
+        [plusredO_S]
+
+\end{SaveVerbatim}
+\useverb{prOprooftrace}
+
+\noindent
+The \texttt{:addproof} command, at the interactive prompt, will add the proof to
+the source file (effectively in an appendix).
+Let us now prove the other required lemma, \texttt{plusredO\_S}:
+
+\begin{SaveVerbatim}{plusredOSprf}
+
+*theorems> :p plusredO_S 
+
+---------------------------------- (plusredO_S) --------
+{hole0} : (k : Nat) -> (k = plus k O) -> S k = S (plus k O)
+
+\end{SaveVerbatim}
+\useverb{plusredOSprf}
+
+\noindent
+In this case, the goal is a function type, using \texttt{k} (the argument accessible by
+pattern matching) and \texttt{ih} (the local variable containing the result of
+the recursive call). We can introduce these as premisses using the \texttt{intro} tactic
+twice. This gives:
+
+\begin{SaveVerbatim}{prSintros}
+
+  k : Nat
+  ih : k = plus k O
+---------------------------------- (plusredO_S) --------
+{hole2} : S k = S (plus k O)
+
+\end{SaveVerbatim}
+\useverb{prSintros}
+
+\noindent
+We know, from the type of \texttt{ih}, that \texttt{k = plus k O}, so we would like to
+use this knowledge to replace \texttt{plus k O} in the goal with \texttt{k}. We can
+achieve this with the \texttt{rewrite} tactic:
+
+\begin{SaveVerbatim}{}
+
+-plusredO_S> rewrite ih 
+
+  k : Nat
+  ih : k = plus k O
+---------------------------------- (plusredO_S) --------
+{hole3} : S k = S k
+
+-plusredO_S>  
+
+\end{SaveVerbatim}
+\useverb{}
+
+\noindent
+The \texttt{rewrite} tactic takes an equality proof as an argument, and tries to rewrite
+the goal using that proof. Here, it results in an equality which is trivially provable:
+
+\begin{SaveVerbatim}{prOStrace}
+
+-plusredO_S> trivial 
+plusredO_S: no more goals
+-plusredO_S> qed 
+plusredO_S = proof {
+    intro;
+    intro;
+    rewrite ih;
+    trivial;
+};
+
+\end{SaveVerbatim}
+\useverb{prOStrace}
+
+\noindent
+Again, we can add this proof to the end of our source file using the \texttt{:addproof}
+command at the interactive prompt.
