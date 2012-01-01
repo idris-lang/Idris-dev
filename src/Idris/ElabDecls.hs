@@ -188,6 +188,7 @@ elabClause info fc tcgen (PClause fname lhs_in withs rhs_in whereblock)
         def' <- checkDef fc defer
         addDeferred def'
         ctxt <- getContext
+        logLvl 5 $ "Rechecking"
         (crhs, crhsty) <- recheckC ctxt fc [] rhs'
         return $ Just (clhs, crhs)
   where

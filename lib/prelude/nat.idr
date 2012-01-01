@@ -44,6 +44,7 @@ instance Num Nat where {
     (-) = sub;
     (*) = mult;
 
+    fromInteger 0 = O;
     fromInteger n = if (n > 0) then (S (fromInteger (n-1))) else O;
 }
 
