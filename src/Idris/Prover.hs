@@ -55,8 +55,8 @@ dumpState ist (PS nm [] _ tm _ _ _ _ _ _ _ _) = putStrLn $ (show nm) ++ ": no mo
 dumpState ist ps@(PS nm (h:hs) _ tm _ _ i _ _ ctxy _ _)
    = do let OK ty = goalAtFocus ps
         let OK env = envAtFocus ps
-        putStrLn $ "Other goals: " ++ show hs ++ "\n"
-        putStr $ showPs (reverse env)
+--         putStrLn $ "Other goals: " ++ show hs ++ "\n"
+        putStr $ "\n" ++ showPs (reverse env)
         putStrLn $ "---------------------------------- (" ++ show nm
                      ++ ") --------"
         putStrLn $ show h ++ " : " ++ showG ty ++ "\n"

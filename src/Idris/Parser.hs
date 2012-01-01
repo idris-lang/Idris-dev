@@ -340,6 +340,7 @@ pNamespace syn =
        return [PNamespace n (concat ds)] 
 
 expandNS :: SyntaxInfo -> Name -> Name
+expandNS syn n@(NS _ _) = n
 expandNS syn n = case syn_namespace syn of
                         [] -> n
                         xs -> NS n xs
@@ -796,9 +797,9 @@ pRHS syn n = do lchar '='; pExpr syn
          <|> do symbol "?="; rhs <- pExpr syn;
                 return (PLet (UN "value") Placeholder rhs (PMetavar n')) 
          <|> do reserved "impossible"; return PImpossible
-  where n' = case n of
-                UN x -> UN (x++"_lemma_1")
-                x -> x
+  where mkN (UN x)   = UN (x++"_lemma_1")
+        mkN (NS x n) = NS (mkN x) n
+        n' = mkN n
 
 pClause :: SyntaxInfo -> IParser PClause
 pClause syn

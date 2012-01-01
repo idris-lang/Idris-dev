@@ -208,10 +208,12 @@ elab ist info pattern tcgen fn tm
                 solve
     elab' ina Placeholder = do (h : hs) <- get_holes
                                movelast h
-    elab' ina (PMetavar n) = let n' = case namespace info of
-                                    Just xs@(_:_) -> NS n xs
-                                    _ -> n in
+    elab' ina (PMetavar n) = let n' = mkN n in
                                  do attack; defer n'; solve
+        where mkN n@(NS _ _) = n
+              mkN n = case namespace info of
+                        Just xs@(_:_) -> NS n xs
+                        _ -> n
     elab' ina (PProof ts) = do mapM_ (runTac True ist) ts
     elab' ina (PTactics ts) = do mapM_ (runTac False ist) ts
     elab' ina (PElabError e) = fail e

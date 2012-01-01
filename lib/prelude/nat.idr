@@ -51,7 +51,7 @@ plusnO : (m : Nat) -> m + O = m;
 plusnO O     = refl;
 plusnO (S k) = eqRespS (plusnO k);
 
-plusn_Sm : (n : Nat) -> (m : Nat) -> n + S m = S (n + m);
+plusn_Sm : (n : Nat) -> (m : Nat) -> (plus n (S m)) = S (plus n m);
 plusn_Sm O     m = refl;
 plusn_Sm (S j) m = eqRespS (plusn_Sm _ _);
 

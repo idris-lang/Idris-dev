@@ -415,6 +415,7 @@ uniqueName :: Name -> [Name] -> Name
 uniqueName n hs | n `elem` hs = uniqueName (nextName n) hs
                 | otherwise   = n
 
+nextName (NS x s)    = NS (nextName x) s
 nextName (MN i n)    = MN (i+1) n
 nextName (UN x) = let (num', nm') = span isDigit (reverse x)
                       nm = reverse nm'
