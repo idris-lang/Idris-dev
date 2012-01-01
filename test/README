@@ -5,3 +5,4 @@ Tests:
 003: Literate source and string processing
 004: File operations
 005: Num class resolution [regression]; span & break; ad-hoc overloading
+006: Provisional definitions; class resolution in patterns
