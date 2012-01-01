@@ -93,7 +93,7 @@ elabClauses :: ElabInfo -> FC -> FnOpts -> Name -> [PClause] -> Idris ()
 elabClauses info fc opts n_in cs_in = let n = liftname info n_in in  
       do let cs = genClauses cs_in
          solveDeferred n
-         pats_in <- mapM (elabClause info fc) cs
+         pats_in <- mapM (elabClause info fc (TCGen `elem` opts)) cs
          let pats = mapMaybe id pats_in
          logLvl 3 (showSep "\n" (map (\ (l,r) -> 
                                         show l ++ " = " ++ 
@@ -135,18 +135,18 @@ elabVal info aspat tm_in
         logLvl 2 (show vtm)
         recheckC ctxt (FC "prompt" 0) [] vtm
 
-elabClause :: ElabInfo -> FC -> PClause -> Idris (Maybe (Term, Term))
-elabClause info fc (PClause fname lhs_in [] PImpossible [])
+elabClause :: ElabInfo -> FC -> Bool -> PClause -> Idris (Maybe (Term, Term))
+elabClause info fc tcgen (PClause fname lhs_in [] PImpossible [])
    = do ctxt <- getContext
         i <- get
         let lhs = addImpl i lhs_in
         -- if the LHS type checks, it is possible, so report an error
         case elaborate ctxt (MN 0 "patLHS") infP
-                            (erun fc (build i info True fname (infTerm lhs))) of
+                            (erun fc (buildTC i info True tcgen fname (infTerm lhs))) of
             OK _ -> fail $ show fc ++ ":" ++ show lhs ++ " is a possible case"
             Error _ -> return ()
         return Nothing
-elabClause info fc (PClause fname lhs_in withs rhs_in whereblock) 
+elabClause info fc tcgen (PClause fname lhs_in withs rhs_in whereblock) 
    = do ctxt <- getContext
         -- Build the LHS as an "Infer", and pull out its type and
         -- pattern bindings
@@ -154,7 +154,7 @@ elabClause info fc (PClause fname lhs_in withs rhs_in whereblock)
         let lhs = addImpl i lhs_in
         logLvl 5 ("LHS: " ++ showImp True lhs)
         ((lhs', dlhs), _) <- tclift $ elaborate ctxt (MN 0 "patLHS") infP
-                                      (erun fc (build i info True fname (infTerm lhs)))
+                                      (erun fc (buildTC i info True tcgen fname (infTerm lhs)))
         let lhs_tm = orderPats (getInferTerm lhs')
         let lhs_ty = getInferType lhs'
         logLvl 3 (show lhs_tm)
@@ -205,7 +205,7 @@ elabClause info fc (PClause fname lhs_in withs rhs_in whereblock)
                                      --      _ -> MN i (show n)) . l
                     }
 
-elabClause info fc (PWith fname lhs_in withs wval_in withblock) 
+elabClause info fc tcgen (PWith fname lhs_in withs wval_in withblock) 
    = do ctxt <- getContext
         -- Build the LHS as an "Infer", and pull out its type and
         -- pattern bindings
@@ -213,7 +213,7 @@ elabClause info fc (PWith fname lhs_in withs wval_in withblock)
         let lhs = addImpl i lhs_in
         logLvl 5 ("LHS: " ++ showImp True lhs)
         ((lhs', dlhs), _) <- tclift $ elaborate ctxt (MN 0 "patLHS") infP
-                                      (erun fc (build i info True fname (infTerm lhs)))
+                                      (erun fc (buildTC i info True tcgen fname (infTerm lhs)))
         let lhs_tm = orderPats (getInferTerm lhs')
         let lhs_ty = getInferType lhs'
         let ret_ty = getRetTy lhs_ty
@@ -363,7 +363,8 @@ elabClass info syn fc constraints tn ps ds
         case lookup n mtys of
             Just (syn, ty) -> do let ty' = insertConstraint c ty
                                  let ds = map (decorateid defaultdec)
-                                              [PTy syn fc n ty', d]
+                                              [PTy syn fc n ty', 
+                                               PClauses fc (TCGen:opts) n cs]
                                  iLOG (show ds)
                                  return (n, (defaultdec n, ds))
             _ -> fail $ show n ++ " is not a method"
@@ -387,7 +388,7 @@ elabClass info syn fc constraints tn ps ds
              iLOG (showImp True ty)
              iLOG (showImp True lhs ++ " = " ++ showImp True rhs)
              return [PTy syn fc cfn ty,
-                     PClauses fc [Inlinable] cfn [PClause cfn lhs [] rhs []]]
+                     PClauses fc [Inlinable,TCGen] cfn [PClause cfn lhs [] rhs []]]
 
     tfun cn c syn all (m, ty) 
         = do let ty' = insertConstraint c ty
@@ -401,7 +402,7 @@ elabClass info syn fc constraints tn ps ds
              iLOG (show (m, ty', capp, margs))
              iLOG (showImp True lhs ++ " = " ++ showImp True rhs)
              return [PTy syn fc m ty',
-                     PClauses fc [Inlinable] m [PClause m lhs [] rhs []]]
+                     PClauses fc [Inlinable,TCGen] m [PClause m lhs [] rhs []]]
 
     getMArgs (PPi (Imp _ _) n ty sc) = IA : getMArgs sc
     getMArgs (PPi (Exp _ _) n ty sc) = EA  : getMArgs sc
@@ -457,7 +458,8 @@ elabInstance info syn fc cs n ps t ds
          let lhs = PRef fc iname
          let rhs = PApp fc (PRef fc (instanceName ci))
                            (map (pexp . mkMethApp) mtys)
-         let idecl = PClauses fc [Inlinable] iname [PClause iname lhs [] rhs wb]
+         let idecl = PClauses fc [Inlinable, TCGen] iname 
+                                 [PClause iname lhs [] rhs wb]
          iLOG (show idecl)
          elabDecl info idecl
   where
@@ -495,7 +497,7 @@ elabInstance info syn fc cs n ps t ds
 
     insertDef meth def ns decls
         | null $ filter (clauseFor meth ns) decls
-            = decls ++ [PClauses fc [Inlinable] meth 
+            = decls ++ [PClauses fc [Inlinable,TCGen] meth 
                         [PClause meth (PApp fc (PRef fc meth) []) [] 
                                       (PApp fc (PRef fc def) []) []]]
         | otherwise = decls

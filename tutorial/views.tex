@@ -1,0 +1,69 @@
+\section{Views and the ``\texttt{with}'' rule}
+
+\subsection{Dependent pattern matching}
+
+Since types can depend on values, the form of some arguments can be determined
+by the value of others. For example, if we were to write down the implicit
+length arguments to \texttt{app}, we'd see that the form of the length argument was
+determined by whether the vector was empty or not:
+
+\begin{SaveVerbatim}{appdep}
+
+app : Vect a n -> Vect a m -> Vect a (n + m);
+app {n=O}   []        [] = [];
+app {n=S k} (x :: xs) ys = x :: app xs ys;
+
+\end{SaveVerbatim}
+\useverb{appdep}
+
+\noindent
+If \texttt{n} was a successor in the \texttt{[]} case, or zero in the 
+\texttt{::} case, the definition
+would not be well typed.
+
+\subsection{The \texttt{with} rule --- matching intermediate values}
+
+Very often, we need to match on the result of an intermediate computation.
+\Idris{} provides a construct for this, the \texttt{with} rule, 
+inspired by views in \Epigram~\cite{view-left},
+which takes account of the
+fact that matching on a value in a dependently typed language can affect what
+we know about the forms of other values. In its simplest form, the \texttt{with} rule
+adds another argument to the function being defined, e.g. we have already seen
+a vector filter function, defined as follows:
+
+\begin{SaveVerbatim}{vfilterdef}
+
+filter : (a -> Bool) -> Vect a n -> (p ** Vect a p);
+filter p [] = ( _ ** [] );
+filter p (x :: xs) with filter p xs {
+  | ( _ ** xs' ) 
+     = if (p x) then ( _ ** x :: xs' ) else ( _ ** xs' );
+}
+
+\end{SaveVerbatim}
+\useverb{vfilterdef}
+
+\noindent
+Here, the \texttt{with} clause allows us to deconstruct the result of 
+\texttt{filter p xs}.
+Effectively, it adds this value as an extra argument, which we place after the
+vertical bar.
+
+If the intermediate computation itself has a dependent type, then the result
+can affect the forms of other arguments --- we can learn the form of one value by
+testing another. For example, a \texttt{Nat} is either even or odd. If it's even it will
+be the sum of two equal \texttt{Nat}s. Otherwise, it is the sum of two equal \texttt{Nat}s 
+plus one:
+
+\begin{SaveVerbatim}{parity}
+
+data Parity : Nat -> Set where
+   even : Parity (n + n)
+ | odd  : Parity (S (n + n));
+
+\end{SaveVerbatim}
+\useverb{parity}
+
+
+

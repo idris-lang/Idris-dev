@@ -3,7 +3,7 @@ PAPER = idris-tutorial
 all: ${PAPER}.pdf
 
 TEXFILES = ${PAPER}.tex intro.tex starting.tex miscellany.tex typesfuns.tex \
-           classes.tex modules.tex interp.tex
+           classes.tex modules.tex interp.tex views.tex
 
 DIAGS = 
 

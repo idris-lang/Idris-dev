@@ -299,7 +299,7 @@ impl = Imp False Dynamic
 expl = Exp False Dynamic
 constraint = Constraint False Static
 
-data FnOpt = Inlinable | Partial | Abstract | Private
+data FnOpt = Inlinable | Partial | Abstract | Private | TCGen
     deriving (Show, Eq)
 
 type FnOpts = [FnOpt]
@@ -771,6 +771,10 @@ existsCon = UN "Ex_intro"
 piBind :: [(Name, PTerm)] -> PTerm -> PTerm
 piBind [] t = t
 piBind ((n, ty):ns) t = PPi expl n ty (piBind ns t)
+    
+tcname (UN ('@':_)) = True
+tcname (NS n _) = tcname n
+tcname _ = False
 
 -- Dealing with parameters
 
