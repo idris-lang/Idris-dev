@@ -1,1 +1,53 @@
-\section{Syntax Extensions}
+\subsection{Syntax Extensions}
+
+\Idris{} supports the implementation of Embedded Domain Specific Languages (EDSLs) in
+several ways~\cite{res-dsl-padl12}. One way, as we have already seen, is through
+extending \texttt{do} notation. Another important way is to allow extension of the core
+syntax. For example, we have seen \texttt{if...then...else} expressions, but these
+are not built in --- instead, we define a function in the prelude\ldots
+
+\begin{SaveVerbatim}{boolelim}
+
+boolElim : (x:Bool) -> |(t : a) -> |(f : a) -> a; 
+boolElim True  t e = t;
+boolElim False t e = e;
+
+\end{SaveVerbatim}
+\useverb{boolelim}
+
+\noindent
+\ldots and extend the core syntax with a \texttt{syntax} declaration:
+
+\begin{SaveVerbatim}{syntaxif}
+
+syntax if [test] then [t] else [e] = boolElim test t e;
+
+\end{SaveVerbatim}
+\useverb{syntaxif}
+
+\noindent
+The left hand side of a \texttt{syntax} declaration describes the syntax rule, and the right
+hand side describes its expansion. The syntax rule itself consists of:
+
+\begin{itemize}
+\item \textbf{Keywords} --- here, \texttt{if}, \texttt{then} and \texttt{else}, which must
+be valid identifiers
+\item \textbf{Non-terminals} --- included in square brackets, \texttt{[test]}, \texttt{[t]}
+and \texttt{[e]} here, which stand for arbitrary expressions
+\item \textbf{Symbols} --- included in quotations marks, e.g. \texttt{":="}
+\end{itemize}
+
+\noindent
+The only limitations on the form of a syntax rule are that it must include at least one
+symbol or keyword, and there must be no repeated variables standing for non-terminals.
+The following syntax extensions would therefore be valid:
+
+\begin{SaveVerbatim}{syntaxex}
+
+syntax [var] ":=" [val]              = Assign var val
+syntax select [x] from [t]           = Select x t;
+syntax select [x] from [t] where [w] = SelectWhere x t w;
+
+\end{SaveVerbatim}
+\useverb{syntaxex}
+

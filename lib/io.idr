@@ -35,20 +35,10 @@ ForeignTy xs t = mkForeign' (rev xs) (IO (interpFTy t)) where {
    mkForeign' (s :: ss) ty = mkForeign' ss (interpFTy s -> ty);
 }
 
-namespace foreign {
 
-  infixr 7 :: ;
-
-  data FEnv : List FTy -> Set where
-      Nil   : FEnv Nil
-    | (::)  : {xs:List FTy} ->
-               interpFTy x -> FEnv xs -> FEnv (x ::xs);
-
-  data Foreign : Set -> Set where
-      FFun : String -> (xs:List FTy) -> (t:FTy) -> 
-             Foreign (ForeignTy xs t);
-
-}
+data Foreign : Set -> Set where
+    FFun : String -> (xs:List FTy) -> (t:FTy) -> 
+           Foreign (ForeignTy xs t);
 
 mkForeign : Foreign x -> x;
 -- mkForeign compiled as primitive

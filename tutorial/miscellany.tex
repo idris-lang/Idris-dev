@@ -1,13 +1,139 @@
 \section{Miscellany}
 
-Small things which don't quite fit elsewhere:
+In this section we discuss a variety of additional features: extensible syntax,
+literate programming, and interfacing with external libraries through the
+foriegn function interface.
+
+\input{syntax}
+
+\subsection{Literate programming}
+
+Like Haskell, \Idris{} supports \emph{literate} programming. If a file has an
+extension of \texttt{.lidr} then it is assumed to be a literate file. In literate
+programs, everything is assumed to be a comment unless the line begins with a
+greater than sign \texttt{>}, for example:
+
+\begin{SaveVerbatim}{litidr}
+
+> module literate;
+
+This is a comment. The main program is below
+
+> main : IO ();
+> main = putStrLn "Hello literate world!\n";
+
+\end{SaveVerbatim}
+\useverb{litidr}
+
+\noindent
+An additional restriction is that there must be a blank line between a program
+line (beginning with \texttt{>}) and a comment line (beginning with any other
+character).
+
+\subsection{Foreign function calls}
+
+For practical programming, it is often necessary to be able to use external libraries,
+particularly for interfacing with the operating system, file system, networking, etc.
+\Idris{} provides a lightweight foreign function interface for achieving this,
+as part of the prelude. For this, we assume a certain amount of knowledge of
+C and the \texttt{gcc} compiler. First, we define a datatype which describes the external
+types we can handle:
+
+\begin{SaveVerbatim}{foreignty}
+
+data FTy = FInt | FFloat | FChar | FString | FPtr | FUnit;
+
+\end{SaveVerbatim}
+\useverb{foreignty}
+
+\noindent
+Each of these corresponds directly to a C type. Respectively: \texttt{int},
+\texttt{float}, \texttt{char}, \texttt{char*}, \texttt{void*} and \texttt{void}.
+There is also a translation to a concrete \Idris{} type, described by the
+following function:
+
+\begin{SaveVerbatim}{interpfty}
+
+interpFTy : FTy -> Set;
+interpFTy FInt    = Int;
+interpFTy FFloat  = Float;
+interpFTy FChar   = Char;
+interpFTy FString = String;
+interpFTy FPtr    = Ptr;
+interpFTy FUnit   = ();
+
+\end{SaveVerbatim}
+\useverb{interpfty}
+
+\noindent
+A foreign function is described by a list of input types and a return type, which
+can then be converted to an \Idris{} type:
+
+\begin{SaveVerbatim}{ffunty}
+
+ForeignTy : (xs:List FTy) -> (t:FTy) -> Set;
+
+\end{SaveVerbatim}
+\useverb{ffunty}
+
+\noindent
+A foreign function is assumed to be impure, so \texttt{ForeignTy} builds an
+\texttt{IO} type, for example:
+
+\begin{SaveVerbatim}{ftyex}
+
+Idris> ForeignTy [FInt, FString] FString
+Int -> String -> IO String : Set
+
+Idris> ForeignTy [FInt, FString] FUnit 
+Int -> String -> IO () : Set
+
+\end{SaveVerbatim}
+\useverb{ftyex}
+
+\noindent
+We build a call to a foreign function by giving the name of the function, a list of
+argument types and the return type. The built in function \texttt{mkForeign}
+converts this description to a function callable by \Idris{}
+
+\begin{SaveVerbatim}{mkForeign}
+
+data Foreign : Set -> Set where
+    FFun : String -> (xs:List FTy) -> (t:FTy) -> 
+           Foreign (ForeignTy xs t);
+
+mkForeign : Foreign x -> x;
+
+\end{SaveVerbatim}
+\useverb{mkForeign}
+
+\noindent
+For example, the \texttt{putStr} function is implemented as follows, as a call to 
+an external function \texttt{putStr} defined in the run-time system:
+
+\begin{SaveVerbatim}{putStrex}
+
+putStr : String -> IO ();
+putStr x = mkForeign (FFun "putStr" [FString] FUnit) x;
+
+\end{SaveVerbatim}
+\useverb{putStrex}
+
+\subsubsection*{Include and linker directives}
+
+Foreign function calls are translated directly to calls to C functions, with appropriate
+conversion between the \Idris{} representation of a value and the C representation.
+Often this will require extra libraries to be linked in, or extra header and object files.
+This is made possible through the following directives:
 
 \begin{itemize}
-\item Literate programming
-\item Foreign functions
+\item \texttt{\%lib "x"} --- include the \texttt{libx} library, equivalent to passing the
+\texttt{-lx} option to \texttt{gcc}.
+\item \texttt{\%include "x.h"} --- use the header file \texttt{x.h}.
+\item \texttt{\%obj "x.o"} --- link with the object file \texttt{x.o}.
 \end{itemize}
 
-\subsection{Comparison}
+%\subsection{Comparison}
 
-How does \Idris{} compare with other dependently typed languages and proof
-assistants, such as Coq, Agda and Epigram?
+%How does \Idris{} compare with other dependently typed languages and proof
+%assistants, such as Coq, Agda and Epigram?
