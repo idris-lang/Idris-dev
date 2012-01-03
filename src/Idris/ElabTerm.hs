@@ -119,14 +119,10 @@ elab ist info pattern tcgen fn tm
               showHd x = show x
     elab' ina (PRef fc n) | pattern && not (inparamBlock n)
                          = do ctxt <- get_context
-                              let sc = case lookupTy Nothing n ctxt of
-                                          [] -> True
-                                          _ -> False
-                              if sc
-                                then erun fc $ 
-                                       try (do apply (Var n) []; solve)
-                                           (patvar n)
-                                else do apply (Var n) []; solve 
+                              let iscon = isConName Nothing n ctxt
+                              if (not iscon && ina) then erun fc $ patvar n
+                                else try (do apply (Var n) []; solve)
+                                         (patvar n)
       where inparamBlock n = case lookupCtxtName Nothing n (inblock info) of
                                 [] -> False
                                 _ -> True

@@ -7,7 +7,7 @@ module Core.Evaluate(normalise, normaliseC, normaliseAll,
                 Context, initContext, ctxtAlist, uconstraints, next_tvar,
                 addToCtxt, setAccess, addCtxtDef, addTyDecl, addDatatype, 
                 addCasedef, addOperator,
-                lookupTy, lookupP, lookupDef, lookupVal, lookupTyEnv,
+                lookupTy, lookupP, lookupDef, lookupVal, lookupTyEnv, isConName,
                 Value(..)) where
 
 import Debug.Trace
@@ -539,6 +539,14 @@ lookupTy root n ctxt
                        (TyDecl _ ty) -> return ty
                        (Operator ty _ _) -> return ty
                        (CaseOp _ ty _ _ _) -> return ty
+
+isConName :: Maybe [String] -> Name -> Context -> Bool
+isConName root n ctxt 
+     = or $ do def <- lookupCtxt root n (definitions ctxt)
+               case fst def of
+                    (TyDecl (DCon _ _) _) -> return True
+                    (TyDecl (TCon _ _) _) -> return True
+                    _ -> return False
 
 lookupP :: Maybe [String] -> Name -> Context -> [Term]
 lookupP root n ctxt 

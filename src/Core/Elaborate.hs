@@ -198,11 +198,13 @@ rewrite :: Raw -> Elab ()
 rewrite tm = processTactic' (Rewrite tm)
 
 patvar :: Name -> Elab ()
-patvar n = do n' <- case n of
-                      UN _ -> return n
-                      MN _ _ -> unique_hole n
-                      NS _ _ -> return n
-              processTactic' (PatVar n')
+patvar n = do env <- get_env
+              if (n `elem` map fst env) then do apply (Var n) []; solve
+                else do n' <- case n of
+                                    UN _ -> return n
+                                    MN _ _ -> unique_hole n
+                                    NS _ _ -> return n
+                        processTactic' (PatVar n')
 
 patbind :: Name -> Elab ()
 patbind n = processTactic' (PatBind n)
