@@ -520,6 +520,7 @@ pSimpleExpr syn =
         <|> try (pPair syn)
         <|> try (pList syn)
         <|> try (pAlt syn)
+        <|> try (pIdiom syn)
         <|> try (do lchar '('; e <- pExpr syn; lchar ')'; return e)
         <|> try (do lchar '('; fc <- pfc; o <- operator; e <- pExpr syn; lchar ')'
                     return $ PLam (MN 0 "x") Placeholder
@@ -682,6 +683,10 @@ pDo syn
                return (DoBind fc i e))
    <|> try (do e <- pExpr syn; fc <- pfc
                return (DoExp fc e))
+
+pIdiom syn
+    = do symbol "[|"; fc <- pfc; e <- pExpr syn; symbol "|]"
+         return (PIdiom fc e)
 
 pConstant :: IParser Const
 pConstant = do reserved "Integer";return BIType
@@ -988,6 +993,7 @@ desugar syn i t = let t' = expandDo (dsl_info syn) t in
 
 expandDo :: DSL -> PTerm -> PTerm
 expandDo dsl (PLam n ty tm) = PLam n (expandDo dsl ty) (expandDo dsl tm)
+expandDo dsl (PLet n ty v tm) = PLet n (expandDo dsl ty) (expandDo dsl v) (expandDo dsl tm)
 expandDo dsl (PPi p n ty tm) = PPi p n (expandDo dsl ty) (expandDo dsl tm)
 expandDo dsl (PApp fc t args) = PApp fc (expandDo dsl t)
                                         (map (fmap (expandDo dsl)) args)
@@ -1010,7 +1016,18 @@ expandDo dsl (PDoBlock ds) = expandDo dsl $ block (dsl_bind dsl) ds
             [pexp tm, 
              pexp (PLam (MN 0 "bindx") Placeholder (block b rest))]
     block b _ = PElabError "Invalid statement in do block"
+expandDo dsl (PIdiom fc e) = expandDo dsl $ unIdiom (dsl_apply dsl) (dsl_pure dsl) fc e
 expandDo dsl t = t
 
+unIdiom :: PTerm -> PTerm -> FC -> PTerm -> PTerm
+unIdiom ap pure fc e@(PApp _ _ _) = let f = getFn e in
+                                        mkap (getFn e)
+  where
+    getFn (PApp fc f args) = (PApp fc pure [pexp f], args)
+    getFn f = (f, [])
 
+    mkap (f, [])   = f
+    mkap (f, a:as) = mkap (PApp fc ap [pexp f, a], as)
+
+unIdiom ap pure fc e = PApp fc pure [pexp e]
 

@@ -69,6 +69,11 @@ instance Show a => Show (Vect a n) where {
     }
 }
 
+instance Show a => Show (Maybe a) where {
+    show Nothing = "Nothing";
+    show (Just x) = "Just " ++ show x;
+}
+
 ---- Monad and instances
 
 infixl 5 >>= ;
@@ -116,6 +121,15 @@ instance Functor Maybe where {
 
 instance Functor List where {
     fmap = map;
+}
+
+---- Applicative functors/Idioms
+
+infixl 2 <$>;
+
+class Functor f => Applicative (f : Set -> Set) where {
+    pure  : a -> f a;
+    (<$>) : f (a -> b) -> f a -> f b; 
 }
 
 ---- some mathematical operations

@@ -20,8 +20,8 @@ convertsC ctxt env x y
                     (finalise (normalise ctxt env y))
         if c then return ()
              else fail ("Can't convert between " ++ 
-                        showEnvDbg env (finalise (normalise ctxt env x)) ++ " and " ++ 
-                        showEnvDbg env (finalise (normalise ctxt env y)))
+                        showEnv env (finalise (normalise ctxt env x)) ++ " and " ++ 
+                        showEnv env (finalise (normalise ctxt env y)))
 
 converts :: Context -> Env -> Term -> Term -> TC ()
 converts ctxt env x y = if (finalise (normalise ctxt env x) == 

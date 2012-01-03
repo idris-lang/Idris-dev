@@ -399,6 +399,7 @@ data PTerm = PQuote Raw
            | PConstant Const
            | Placeholder
            | PDoBlock [PDo]
+           | PIdiom FC PTerm
            | PReturn FC
            | PMetavar Name
            | PProof [PTactic]
