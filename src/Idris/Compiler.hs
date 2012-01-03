@@ -9,6 +9,7 @@ import Core.Evaluate
 import Core.CaseTree
 
 import Control.Monad.State
+import Data.List
 
 import Epic.Epic hiding (Term, Type, Name, fn, compile)
 import qualified Epic.Epic as E
@@ -16,13 +17,18 @@ import qualified Epic.Epic as E
 primDefs = [UN "mkForeign", UN "FalseElim"]
 
 compile :: FilePath -> Idris ()
-compile f = do ds <- mkDecls
+compile f = do checkMVs
+               ds <- mkDecls
                objs <- getObjectFiles
                libs <- getLibs
                hdrs <- getHdrs
                let incs = map Include hdrs
                lift $ compileObjWith [Debug] (mkProgram (incs ++ ds)) (f ++ ".o")
                lift $ link ((f ++ ".o") : objs ++ (map ("-l"++) libs)) f
+  where checkMVs = do i <- get
+                      case idris_metavars i \\ primDefs of
+                            [] -> return ()
+                            ms -> fail $ "There are undefined metavariables: " ++ show ms
 
 mkDecls :: Idris [EpicDecl]
 mkDecls = do i <- getIState
