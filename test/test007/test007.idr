@@ -22,6 +22,10 @@ fetch x = MkEval (\e => fetchVal e) where {
     fetchVal ((v, val) :: xs) = if (x == v) then (Just val) else (fetchVal xs);
 }
 
+instance Functor Eval where {
+    fmap f (MkEval g) = MkEval (\e => fmap f (g e));
+}
+
 instance Applicative Eval where {
     pure x = MkEval (\e => Just x);
 

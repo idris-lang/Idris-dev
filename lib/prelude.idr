@@ -127,7 +127,7 @@ instance Functor List where {
 
 infixl 2 <$>;
 
-class Applicative (f : Set -> Set) where {
+class Functor f => Applicative (f : Set -> Set) where {
     pure  : a -> f a;
     (<$>) : f (a -> b) -> f a -> f b; 
 }
