@@ -23,6 +23,7 @@ data ProofState = PS { thname   :: Name,
                        pterm    :: Term,   -- current proof term
                        ptype    :: Type,   -- original goal
                        unified  :: (Name, [(Name, Term)]),
+                       injective :: [(Term, Term, Term)],
                        deferred :: [Name], -- names we'll need to define
                        instances :: [Name], -- instance arguments (for type classes)
                        previous :: Maybe ProofState, -- for undo
@@ -68,8 +69,8 @@ data Tactic = Attack
 -- Some utilites on proof and tactic states
 
 instance Show ProofState where
-    show (PS nm [] _ tm _ _ _ _ _ _ _ _) = show nm ++ ": no more goals"
-    show (PS nm (h:hs) _ tm _ _ i _ _ ctxt _ _) 
+    show (PS nm [] _ tm _ _ _ _ _ _ _ _ _) = show nm ++ ": no more goals"
+    show (PS nm (h:hs) _ tm _ _ _ i _ _ ctxt _ _) 
           = let OK g = goal (Just h) tm
                 wkenv = premises g in
                 "Other goals: " ++ show hs ++ "\n" ++
@@ -116,7 +117,7 @@ addLog str = action (\ps -> ps { plog = plog ps ++ str ++ "\n" })
 newProof :: Name -> Context -> Type -> ProofState
 newProof n ctxt ty = let h = holeName 0 
                          ty' = vToP ty in
-                         PS n [h] 1 (Bind h (Hole ty') (P Bound h ty')) ty (h, []) 
+                         PS n [h] 1 (Bind h (Hole ty') (P Bound h ty')) ty (h, []) []
                             [] []
                             Nothing ctxt "" False
 
@@ -243,6 +244,10 @@ defer n ctxt env (Bind x (Hole t) (P nt x' ty)) | x == x' =
 regret :: RunTactic
 regret = undefined
 
+addInj :: [(Term, Term, Term)] -> StateT TState TC ()
+addInj inj = do ps <- get
+                put (ps { injective = inj ++ injective ps })
+
 exact :: Raw -> RunTactic
 exact guess ctxt env (Bind x (Hole ty) sc) = 
     do (val, valty) <- lift $ check ctxt env guess 
@@ -256,7 +261,8 @@ fill :: Raw -> RunTactic
 fill guess ctxt env (Bind x (Hole ty) sc) =
     do (val, valty) <- lift $ check ctxt env guess
        s <- get
-       ns <- lift $ unify ctxt env valty ty
+       (ns, inj) <- lift $ unify ctxt env valty ty
+       addInj inj
        ps <- get
        let (uh, uns) = unified ps
        put (ps { unified = (uh, uns ++ ns) })
@@ -274,7 +280,8 @@ complete_fill :: RunTactic
 complete_fill ctxt env (Bind x (Guess ty val) sc) =
     do let guess = forget val
        (val', valty) <- lift $ check ctxt env guess    
-       ns <- lift $ unify ctxt env valty ty
+       (ns, inj) <- lift $ unify ctxt env valty ty
+       addInj inj
        ps <- get
        let (uh, uns) = unified ps
        put (ps { unified = (uh, uns ++ ns) })
@@ -302,7 +309,8 @@ introTy ty mn ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' =
 --        ns <- lift $ unify ctxt env tyv t'
        case t' of
            Bind y (Pi s) t -> let t' = instantiate (P Bound n s) (pToV y t) in
-                                  do ns <- lift $ unify ctxt env s tyv
+                                  do (ns, inj) <- lift $ unify ctxt env s tyv
+                                     addInj inj
                                      ps <- get
                                      let (uh, uns) = unified ps
                                      put (ps { unified = (uh, uns ++ ns) })
@@ -405,12 +413,15 @@ start_unify :: Name -> RunTactic
 start_unify n ctxt env tm = do action (\ps -> ps { unified = (n, []) })
                                return tm
 
+tmap f (a, b, c) = (f a, b, c)
+
 solve_unified :: RunTactic
 solve_unified ctxt env tm = 
     do ps <- get
        let (_, ns) = unified ps
        action (\ps -> ps { holes = holes ps \\ map fst ns })
        action (\ps -> ps { pterm = updateSolved ns (pterm ps) })
+       action (\ps -> ps { injective = map (tmap (updateSolved ns)) (injective ps) })
        return (updateSolved ns tm)
 
 updateSolved xs (Bind n (Hole ty) t)
@@ -437,6 +448,8 @@ processTactic EndUnify ps = let (h, ns) = unified ps
                                 tm' = updateSolved ns (pterm ps) in
                                 return (ps { pterm = tm', 
                                              unified = (h, []),
+                                             injective = map (tmap (updateSolved ns)) 
+                                                             (injective ps),
                                              holes = holes ps \\ map fst ns }, "")
 processTactic (Reorder n) ps 
     = do ps' <- execStateT (tactic (Just n) reorder_claims) ps

@@ -57,6 +57,9 @@ pshow i (Msg s) = s
 pshow i (CantUnify x y e) = "Can't unify " ++ show (delab i x)
                             ++ " with " ++ show (delab i y) 
 --                             ++ "\n\t(" ++ pshow i e ++ ")"
+pshow i (NotInjective p x y) = "Can't verify injectivity of " ++ show (delab i p) ++
+                               " when unifying " ++ show (delab i x) ++ " and " ++ 
+                                                    show (delab i y)
 pshow i (IncompleteTerm t) = "Incomplete term " ++ show t
 pshow i UniverseError = "Universe inconsistency"
 pshow i ProgramLineComment = "Program line next to comment"

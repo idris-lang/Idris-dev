@@ -53,6 +53,8 @@ elab ist info pattern tcgen fn tm
     = do elabE False tm
          when pattern -- convert remaining holes to pattern vars
               mkPat
+         inj <- get_inj
+         mapM_ checkInjective inj
   where
     isph arg = case getTm arg of
         Placeholder -> (True, priority arg)

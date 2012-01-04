@@ -4,16 +4,25 @@ import Core.TT
 import Core.Evaluate
 
 import Control.Monad
+import Control.Monad.State
 import Debug.Trace
 
 -- Unification is applied inside the theorem prover. We're looking for holes
 -- which can be filled in, by matching one term's normal form against another.
--- Returns a list of hole names paired with the term which solves them.
+-- Returns a list of hole names paired with the term which solves them, and
+-- a list of things which need to be injective.
 
-unify :: Context -> Env -> TT Name -> TT Name -> TC [(Name, TT Name)]
+-- terms which need to be injective, with the things we're trying to unify
+-- at the time
+type UInfo = [(TT Name, TT Name, TT Name)] 
+
+unify :: Context -> Env -> TT Name -> TT Name -> TC ([(Name, TT Name)], 
+                                                     UInfo)
 unify ctxt env topx topy 
-    = case un' False [] (normalise ctxt env topx) (normalise ctxt env topy) of
-              OK v -> return (filter notTrivial v)
+    = case runStateT 
+             (un' False [] (normalise ctxt env topx) (normalise ctxt env topy))
+             [] of
+              OK (v, inj) -> return (filter notTrivial v, inj)
               Error e -> tfail $ CantUnify topx topy e  
   where
     notTrivial (x, P _ x' _) = x /= x'
@@ -24,14 +33,22 @@ unify ctxt env topx topy
     injective (App f a)          = injective f
     injective _                  = False
 
+    notP (P _ _ _) = False
+    notP _ = True
+
+    un' :: Bool -> [(Name, Name)] -> TT Name -> TT Name ->
+           StateT UInfo 
+           TC [(Name, TT Name)]
     un' fn bnames (P Bound x _)  (P Bound y _)  
         | (x,y) `elem` bnames = return []
     un' fn bnames (P Bound x _) tm
-        | (not fn || injective tm) 
-          && holeIn env x = return [(x, tm)]
+        | holeIn env x = do i <- get
+                            when (notP tm && fn) $ put ((tm, topx, topy) : i)
+                            return [(x, tm)]
     un' fn bnames tm (P Bound y _)
-        | (not fn || injective tm)
-          && holeIn env y = return [(y, tm)]
+        | holeIn env y = do i <- get
+                            when (notP tm && fn) $ put ((tm, topx, topy) : i)
+                            return [(y, tm)]
     un' fn bnames (V i) (P Bound x _)
         | fst (bnames!!i) == x || snd (bnames!!i) == x = return []
     un' fn bnames (P Bound x _) (V i)

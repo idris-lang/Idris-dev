@@ -39,6 +39,7 @@ instance Show FC where
 
 data Err = Msg String
          | CantUnify Term Term Err
+         | NotInjective Term Term Term
          | IncompleteTerm Term
          | UniverseError
          | ProgramLineComment
@@ -313,6 +314,15 @@ convEq (Set x) (Set y)           = do (v, cs) <- get
 convEq _ _ = return False
 
 -- A few handy operations on well typed terms:
+
+isInjective :: TT n -> Bool
+isInjective (P (DCon _ _) _ _) = True
+isInjective (P (TCon _ _) _ _) = True
+isInjective (Constant _)       = True
+isInjective (Set x)            = True
+isInjective (Bind _ (Pi _) sc) = True
+isInjective (App f a)          = isInjective f
+isInjective _                  = False
 
 instantiate :: TT n -> TT n -> TT n
 instantiate e = subst 0 where

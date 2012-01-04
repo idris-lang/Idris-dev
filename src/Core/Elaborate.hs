@@ -111,6 +111,14 @@ get_deferred :: Elab [Name]
 get_deferred = do ES p _ _ <- get
                   return (deferred p)
 
+get_inj :: Elab [(Term, Term, Term)]
+get_inj = do ES p _ _ <- get
+             return (injective p)
+
+checkInjective :: (Term, Term, Term) -> Elab ()
+checkInjective (tm, l, r) = if isInjective tm then return ()
+                                else lift $ tfail (NotInjective tm l r) 
+
 -- get instance argument names
 get_instances :: Elab [Name]
 get_instances = do ES p _ _ <- get
