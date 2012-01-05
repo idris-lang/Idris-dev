@@ -60,6 +60,7 @@ boolElim False t e = e;
 data so : Bool -> Set where oh : so True;
 
 syntax if [test] then [t] else [e] = boolElim test t e;
+syntax [test] "?" [t] ":" [e] = if test then t else e;
 
 infixl 4 &&, ||;
 

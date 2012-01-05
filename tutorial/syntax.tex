@@ -38,15 +38,17 @@ and \texttt{[e]} here, which stand for arbitrary expressions
 \end{itemize}
 
 \noindent
-The only limitations on the form of a syntax rule are that it must include at least one
+The limitations on the form of a syntax rule are that it must include at least one
 symbol or keyword, and there must be no repeated variables standing for non-terminals.
+Rules can use previously defined rules, but may not be recursive.
 The following syntax extensions would therefore be valid:
 
 \begin{SaveVerbatim}{syntaxex}
 
-syntax [var] ":=" [val]              = Assign var val
-syntax select [x] from [t]           = Select x t;
+syntax [var] ":=" [val]              = Assign var val;
+syntax [test] "?" [t] ":" [e]        = if test then t else e;
 syntax select [x] from [t] where [w] = SelectWhere x t w;
+syntax select [x] from [t]           = Select x t;
 
 \end{SaveVerbatim}
 \useverb{syntaxex}
