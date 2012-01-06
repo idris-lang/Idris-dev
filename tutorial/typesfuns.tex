@@ -13,19 +13,19 @@ environment by typing \texttt{idris prims.idr}:
 
 \begin{SaveVerbatim}{constprims}
 
-module prims;
+module prims
 
-x : Int;
-x = 42;
+x : Int
+x = 42
 
-foo : String;
-foo = "Sausage machine";
+foo : String
+foo = "Sausage machine"
 
-bar : Char;
-bar = 'Z';
+bar : Char
+bar = 'Z'
 
-quux : Bool;
-quux = False;
+quux : Bool
+quux = False
 
 \end{SaveVerbatim}
 \useverb{constprims}
@@ -35,8 +35,10 @@ An \Idris{} file consists of an optional module declaration (here
 however \Idris{} programs can consist of several modules, and the definitions
 in each module each have their own namespace, as we will discuss shortly) and a
 collection of declarations and definitions. Each definition must have a type
-declaration (here, \texttt{x : Int}, \texttt{foo : String}, etc).  Each
-component is separated by a semi-colon.
+declaration (here, \texttt{x : Int}, \texttt{foo : String}, etc).
+Indentation is significant --- a new declaration begins at the same leve
+of indentation as the preceding declaration. Alternatively, declarations
+may be terminated with a semicolon.
 
 A library module \texttt{prelude} is automatically imported by every \Idris{} program,
 including facilities for IO, arithmetic, data structures and various common
@@ -76,9 +78,9 @@ example, can be declared as follows:
 
 \begin{SaveVerbatim}{natlist}
 
-data Nat    = O   | S Nat;           -- Natural numbers
-                                     -- (zero and successor)
-data List a = Nil | (::) a (List a); -- Polymorphic lists
+data Nat    = O   | S Nat           -- Natural numbers
+                                    -- (zero and successor)
+data List a = Nil | (::) a (List a) -- Polymorphic lists
 
 \end{SaveVerbatim}
 \useverb{natlist}
@@ -93,7 +95,7 @@ such as this can be added using a fixity declaration, as follows:
 
 \begin{SaveVerbatim}{infixcons}
 
-infixr 7 :: ;
+infixr 7 :: 
 
 \end{SaveVerbatim}
 \useverb{infixcons}
@@ -124,14 +126,14 @@ defined as follows, again taken from the standard library:
 \begin{SaveVerbatim}{natfns}
 
 -- Unary addition
-plus : Nat -> Nat -> Nat;
-plus O     y = y;
-plus (S k) y = S (plus k y);
+plus : Nat -> Nat -> Nat
+plus O     y = y
+plus (S k) y = S (plus k y)
 
 -- Unary multiplication
-mult : Nat -> Nat -> Nat;
-mult O     y = O;
-mult (S k) y = plus y (mult k y);
+mult : Nat -> Nat -> Nat
+mult O     y = O
+mult (S k) y = plus y (mult k y)
 
 \end{SaveVerbatim}
 \useverb{natfns}
@@ -186,11 +188,11 @@ accumulates the new, reversed list, and which does not need to be visible global
 
 \begin{SaveVerbatim}{revwhere}
 
-rev : List a -> List a;
+rev : List a -> List a
 rev xs = revAcc [] xs where {
-  revAcc : List a -> List a -> List a;
-  revAcc acc [] = acc;
-  revAcc acc (x :: xs) = revAcc (x :: acc) xs;
+  revAcc : List a -> List a -> List a
+  revAcc acc [] = acc
+  revAcc acc (x :: xs) = revAcc (x :: acc) xs
 }
 
 \end{SaveVerbatim}
@@ -207,9 +209,9 @@ behaviour, the \texttt{a} can be brought into scope as follows:
 
 \begin{SaveVerbatim}{revwhereb}
 
-rev : List a -> List a;
+rev : List a -> List a
 rev {a} xs = revAcc [] xs where {
-  revAcc : List a -> List a -> List a;
+  revAcc : List a -> List a -> List a
   ...
 }
 
@@ -228,7 +230,7 @@ we declare vectors as follows:
 
 data Vect : Set -> Nat -> Set where
    Nil  : Vect a O
- | (::) : a -> Vect a k -> Vect a (S k);
+ | (::) : a -> Vect a k -> Vect a (S k)
 
 \end{SaveVerbatim}
 \useverb{vect}
@@ -257,9 +259,9 @@ library, appends two \tTC{Vect}s:
 
 \begin{SaveVerbatim}{vapp}
 
-app : Vect A n -> Vect A m -> Vect A (n + m);
-app Nil       ys = ys;
-app (x :: xs) ys = x :: app xs ys;
+app : Vect A n -> Vect A m -> Vect A (n + m)
+app Nil       ys = ys
+app (x :: xs) ys = x :: app xs ys
 
 \end{SaveVerbatim}
 \useverb{vapp}
@@ -270,9 +272,9 @@ not hold, \Idris{} will not accept the definition. For example:
 
 \begin{SaveVerbatim}{vapperr}
 
-app : Vect a n -> Vect a m -> Vect a (n + m);
-app Nil       ys = ys;
-app (x :: xs) ys = x :: app xs xs; -- BROKEN
+app : Vect a n -> Vect a m -> Vect a (n + m)
+app Nil       ys = ys
+app (x :: xs) ys = x :: app xs xs -- BROKEN
 
 \end{SaveVerbatim}
 \useverb{vapperr}
@@ -303,7 +305,7 @@ They are declared as follows (again, in the prelude):
 
 data Fin : Nat -> Set where
    fO : Fin (S k)
- | fS : Fin k -> Fin (S k);
+ | fS : Fin k -> Fin (S k)
 
 \end{SaveVerbatim}
 \useverb{findecl}
@@ -321,9 +323,9 @@ is defined in the prelude:
 
 \begin{SaveVerbatim}{vlookup}
 
-lookup : Fin n -> Vect a n -> a;
-lookup fO     (x :: xs) = x;
-lookup (fS k) (x :: xs) = lookup k xs;
+lookup : Fin n -> Vect a n -> a
+lookup fO     (x :: xs) = x
+lookup (fS k) (x :: xs) = lookup k xs
 
 \end{SaveVerbatim}
 \useverb{vlookup}
@@ -384,7 +386,7 @@ declared the type of \texttt{lookup} as:
 
 \begin{SaveVerbatim}{vlookupn}
 
-lookup : (i:Fin n) -> (xs:Vect a n) -> a;
+lookup : (i:Fin n) -> (xs:Vect a n) -> a
 
 \end{SaveVerbatim}
 \useverb{vlookupn}
@@ -406,7 +408,7 @@ definition, which defines a predicate on vectors:
 
 data Elem : a -> (Vect a n) -> Set where
    here :  {x:a} ->   {xs:Vect a n} -> Elem x (x :: xs)
- | there : {x,y:a} -> {xs:Vect a n} -> Elem x xs -> Elem x (y :: xs);
+ | there : {x,y:a} -> {xs:Vect a n} -> Elem x xs -> Elem x (y :: xs)
 
 \end{SaveVerbatim}
 \useverb{elem}
@@ -419,11 +421,11 @@ or \texttt{there}, in the tail of the vector. For example:
 
 \begin{SaveVerbatim}{testelem}
 
-testVec : Vect Int 4;
-testVec = 3 :: 4 :: 5 :: 6 :: VNil;
+testVec : Vect Int 4
+testVec = 3 :: 4 :: 5 :: 6 :: VNil
 
-inVect : Elem 5 testVec;
-inVect = there (there here);
+inVect : Elem 5 testVec
+inVect = there (there here)
 
 \end{SaveVerbatim}
 \useverb{testelem}
@@ -438,7 +440,7 @@ ordering of any implicit arguments which can appear within the block:
 using (x:a, y:a, xs:Vect a n) {
   data Elem : a -> (Vect a n) -> Set where
      here  : Elem x (x :: xs)
-   | there : Elem x xs -> Elem x (y :: xs);
+   | there : Elem x xs -> Elem x (y :: xs)
 }
 
 \end{SaveVerbatim}
@@ -454,7 +456,7 @@ encapsulated in the type \texttt{IO}:
 
 \begin{SaveVerbatim}{ioty}
 
-data IO a; -- IO operation returning a value of type a
+data IO a -- IO operation returning a value of type a
 
 \end{SaveVerbatim}
 \useverb{ioty}
@@ -467,8 +469,8 @@ program:
 
 \begin{SaveVerbatim}{main}
 
-main : IO ();
-main = putStrLn "Hello world";
+main : IO ()
+main = putStrLn "Hello world"
 
 \end{SaveVerbatim}
 \useverb{main}
@@ -479,8 +481,8 @@ outputs a string without a newline:
 
 \begin{SaveVerbatim}{putstr}
 
-putStrLn : String -> IO ();
-putStr   : String -> IO ();
+putStrLn : String -> IO ()
+putStr   : String -> IO ()
 
 \end{SaveVerbatim}
 
@@ -488,7 +490,7 @@ We can also read strings from user input:
 
 \begin{SaveVerbatim}{getline}
 
-getLine : IO String;
+getLine : IO String
 
 \end{SaveVerbatim}
 \useverb{getline}
@@ -499,17 +501,17 @@ writing files, including:
 
 \begin{SaveVerbatim}{fileops}
 
-data File; -- abstract
-data Mode = Read | Write | ReadWrite;
+data File -- abstract
+data Mode = Read | Write | ReadWrite
 
-openFile  : String -> Mode -> IO File;
-closeFile : File -> IO ();
+openFile  : String -> Mode -> IO File
+closeFile : File -> IO ()
 
-fread  : File -> IO String;
-fwrite : File -> String -> IO ();
-feof   : File -> IO Bool;
+fread  : File -> IO String
+fwrite : File -> String -> IO ()
+feof   : File -> IO Bool
 
-readFile : String -> IO String;
+readFile : String -> IO String
 
 \end{SaveVerbatim}
 \useverb{fileops}
@@ -525,11 +527,11 @@ operations with \texttt{do} notation:
 
 \begin{SaveVerbatim}{greet}
 
-greet : IO ();
-greet = do { putStr "What is your name? ";
-             name <- getLine;
-             putStrLn ("Hello " ++ name);
-           };
+greet : IO ()
+greet = do { putStr "What is your name? "
+             name <- getLine
+             putStrLn ("Hello " ++ name)
+           }
 
 \end{SaveVerbatim}
 \useverb{greet}
@@ -544,7 +546,7 @@ operation:
 
 \begin{SaveVerbatim}{return}
 
-return : a -> IO a;
+return : a -> IO a
 
 \end{SaveVerbatim}
 \useverb{return}
@@ -566,11 +568,11 @@ We have already seen the \texttt{List} and \texttt{Vect} data types:
 
 \begin{SaveVerbatim}{listvec}
 
-data List a = Nil | (::) a (List a);
+data List a = Nil | (::) a (List a)
 
 data Vect : Set -> Nat -> Set where
    Nil  : Vect a O
- | (::) : a -> Vect a k -> Vect a (S k);
+ | (::) : a -> Vect a k -> Vect a (S k)
 
 \end{SaveVerbatim}
 \useverb{listvec}
@@ -594,13 +596,13 @@ and applies a function to every element of the list or vector.
 
 \begin{SaveVerbatim}{map}
 
-map : (a -> b) -> List a -> List b;
-map f []        = [];
-map f (x :: xs) = f x :: map f xs;
+map : (a -> b) -> List a -> List b
+map f []        = []
+map f (x :: xs) = f x :: map f xs
 
-map : (a -> b) -> Vect a n -> Vect b n;
-map f []        = [];
-map f (x :: xs) = f x :: map f xs;
+map : (a -> b) -> Vect a n -> Vect b n
+map f []        = []
+map f (x :: xs) = f x :: map f xs
 
 \end{SaveVerbatim}
 \useverb{map}
@@ -610,11 +612,11 @@ For example, to double every element in a vector of integers:
 
 \begin{SaveVerbatim}{dvect}
 
-intVec : Vect Int 5;
-intVec = [1, 2, 3, 4, 5];
+intVec : Vect Int 5
+intVec = [1, 2, 3, 4, 5]
 
-double : Int -> Int;
-double x = x * 2;
+double : Int -> Int
+double x = x * 2
 
 \end{SaveVerbatim}
 \useverb{dvect}
@@ -679,7 +681,7 @@ or there isn't:
 
 \begin{SaveVerbatim}{maybe}
 
-data Maybe a = Just a | Nothing;
+data Maybe a = Just a | Nothing
 
 \end{SaveVerbatim}
 \useverb{maybe}
@@ -691,10 +693,10 @@ bounds error:
 
 \begin{SaveVerbatim}{lookuplist}
 
-list_lookup : Nat -> List a -> Maybe a;
-list_lookup _     Nil         = Nothing;
-list_lookup O     (x :: xs) = Just x;
-list_lookup (S k) (x :: xs) = list_lookup k xs;
+list_lookup : Nat -> List a -> Maybe a
+list_lookup _     Nil         = Nothing
+list_lookup O     (x :: xs) = Just x
+list_lookup (S k) (x :: xs) = list_lookup k xs
 
 \end{SaveVerbatim}
 \useverb{lookuplist}
@@ -705,7 +707,7 @@ either by applying a function to the value, if there is one, or by providing a d
 
 \begin{SaveVerbatim}{maybefn}
 
-maybe : Maybe a -> |(default:b) -> (a -> b) -> b;
+maybe : Maybe a -> |(default:b) -> (a -> b) -> b
 
 \end{SaveVerbatim}
 \useverb{maybefn}
@@ -724,7 +726,7 @@ Values can be paired with the following built-in data type:
 
 \begin{SaveVerbatim}{mkpair}
 
-data Pair a b = MkPair a b;
+data Pair a b = MkPair a b
 
 \end{SaveVerbatim}
 \useverb{mkpair}
@@ -736,11 +738,11 @@ Tuples can contain an arbitrary number of values, represented as nested pairs:
 
 \begin{SaveVerbatim}{tuple}
 
-fred : (String, Int);
-fred = ("Fred", 42);
+fred : (String, Int)
+fred = ("Fred", 42)
 
-jim : (String, Int, String);
-jim = ("Jim", 25, "Cambridge");
+jim : (String, Int, String)
+jim = ("Jim", 25, "Cambridge")
 
 \end{SaveVerbatim}
 \useverb{tuple}
@@ -753,7 +755,7 @@ the value of the first element:
 \begin{SaveVerbatim}{sigma}
 
 data Exists : (A : Set) -> (P : A -> Set) -> Set where
-   Ex_intro : {P : A -> Set} -> (a : A) -> P a -> Exists A P;
+   Ex_intro : {P : A -> Set} -> (a : A) -> P a -> Exists A P
 
 \end{SaveVerbatim}
 \useverb{sigma}
@@ -766,8 +768,8 @@ constructs a value of this type. For example, we can pair a number with a
 
 \begin{SaveVerbatim}{dvec}
 
-vec : (n : Nat ** Vect Int n);
-vec = (2 ** [3, 4]);
+vec : (n : Nat ** Vect Int n)
+vec = (2 ** [3, 4])
 
 \end{SaveVerbatim}
 \useverb{dvec}
@@ -780,8 +782,8 @@ written as:
 
 \begin{SaveVerbatim}{dvec1}
 
-vec : (n : Nat ** Vect Int n);
-vec = (_ ** [3, 4]);
+vec : (n : Nat ** Vect Int n)
+vec = (_ ** [3, 4])
 
 \end{SaveVerbatim}
 \useverb{dvec1}
@@ -792,8 +794,8 @@ again, it can be inferred:
 
 \begin{SaveVerbatim}{dvec2}
 
-vec : (n ** Vect Int n);
-vec = (_ ** [3, 4]);
+vec : (n ** Vect Int n)
+vec = (_ ** [3, 4])
 
 \end{SaveVerbatim}
 \useverb{dvec2}
@@ -806,7 +808,7 @@ length of the resulting vector will be:
 
 \begin{SaveVerbatim}{vfilter}
 
-filter : (a -> Bool) -> Vect a n -> (p ** Vect a p);
+filter : (a -> Bool) -> Vect a n -> (p ** Vect a p)
 
 \end{SaveVerbatim}
 \useverb{vfilter}
@@ -816,7 +818,7 @@ If the \texttt{Vect} is empty, the result is easy:
 
 \begin{SaveVerbatim}{vfilternil}
 
-vfilter p VNil = (_ , []);
+vfilter p VNil = (_ , [])
 
 \end{SaveVerbatim}
 \useverb{vfilternil}
@@ -830,7 +832,7 @@ notation. with allows pattern matching on intermediate values:
 \begin{SaveVerbatim}{vfiltercons}
 
 filter p (x :: xs) with filter p xs {
-   | (_ , xs') = if (p x) then (_ , x :: xs') else (_ , xs');
+   | (_ , xs') = if (p x) then (_ , x :: xs') else (_ , xs')
 }
 
 \end{SaveVerbatim}
@@ -847,9 +849,9 @@ Intermediate values can be calculated using \texttt{let} bindings:
 
 \begin{SaveVerbatim}{letb}
 
-mirror : List a -> List a;
+mirror : List a -> List a
 mirror xs = let xs' = rev xs in
-                app xs xs';
+                app xs xs'
 
 \end{SaveVerbatim}
 \useverb{letb} 
@@ -860,11 +862,11 @@ fields from a record as follows, as well as by pattern matching at the top level
 
 \begin{SaveVerbatim}{letp}
 
-data Person = MkPerson String Int;
+data Person = MkPerson String Int
 
-showPerson : Person -> String;
+showPerson : Person -> String
 showPerson p = let MkPerson name age = p in
-                   name ++ " is " ++ show age ++ " years old";
+                   name ++ " is " ++ show age ++ " years old"
 
 \end{SaveVerbatim}
 \useverb{letp} 
@@ -891,9 +893,9 @@ follows:
 
 \begin{SaveVerbatim}{triples}
 
-pythag : Int -> List (Int, Int, Int);
+pythag : Int -> List (Int, Int, Int)
 pythag n = [ (x, y, z) | z <- [1..n], y <- [1..z], x <- [1..y],
-                         x*x + y*y == z*z ];
+                         x*x + y*y == z*z ]
   
 \end{SaveVerbatim}
 \useverb{triples} 
@@ -913,10 +915,10 @@ The following function, for example, splits a string into two at a given charact
 
 \begin{SaveVerbatim}{split}
 
-splitAt : Char -> String -> (String, String);
+splitAt : Char -> String -> (String, String)
 splitAt c x = case break (== c) x of {
                   (x, y) => (x, strTail y)
-              };
+              }
 
 \end{SaveVerbatim}
 \useverb{split} 
@@ -934,11 +936,11 @@ looks up an index and returns a default value if the index is out of bounds:
 
 \begin{SaveVerbatim}{listlookup}
 
-lookup_default : Nat -> List a -> a -> a;
+lookup_default : Nat -> List a -> a -> a
 lookup_default i xs def = case list_lookup i xs of {
                               Nothing => def
                             | Just x => x
-                          };
+                          }
 
 \end{SaveVerbatim}
 \useverb{listlookup} 

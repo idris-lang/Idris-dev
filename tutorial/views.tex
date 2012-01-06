@@ -9,9 +9,9 @@ determined by whether the vector was empty or not:
 
 \begin{SaveVerbatim}{appdep}
 
-app : Vect a n -> Vect a m -> Vect a (n + m);
-app {n=O}   []        [] = [];
-app {n=S k} (x :: xs) ys = x :: app xs ys;
+app : Vect a n -> Vect a m -> Vect a (n + m)
+app {n=O}   []        [] = []
+app {n=S k} (x :: xs) ys = x :: app xs ys
 
 \end{SaveVerbatim}
 \useverb{appdep}
@@ -34,11 +34,11 @@ a vector filter function, defined as follows:
 
 \begin{SaveVerbatim}{vfilterdef}
 
-filter : (a -> Bool) -> Vect a n -> (p ** Vect a p);
-filter p [] = ( _ ** [] );
+filter : (a -> Bool) -> Vect a n -> (p ** Vect a p)
+filter p [] = ( _ ** [] )
 filter p (x :: xs) with filter p xs {
   | ( _ ** xs' ) 
-     = if (p x) then ( _ ** x :: xs' ) else ( _ ** xs' );
+     = if (p x) then ( _ ** x :: xs' ) else ( _ ** xs' )
 }
 
 \end{SaveVerbatim}
@@ -60,7 +60,7 @@ plus one:
 
 data Parity : Nat -> Set where
    even : Parity (n + n)
- | odd  : Parity (S (n + n));
+ | odd  : Parity (S (n + n))
 
 \end{SaveVerbatim}
 \useverb{parity}
@@ -72,7 +72,7 @@ it is even or odd and constructs the predicate accordingly.
 
 \begin{SaveVerbatim}{parityty}
 
-parity : (n:Nat) -> Parity n;
+parity : (n:Nat) -> Parity n
 
 \end{SaveVerbatim}
 \useverb{parityty}
@@ -84,11 +84,11 @@ to write a function which converts a natural number to a list of binary digits
 
 \begin{SaveVerbatim}{natToBin}
 
-natToBin : Nat -> List Bool;
-natToBin O = Nil;
+natToBin : Nat -> List Bool
+natToBin O = Nil
 natToBin k with parity k {
-   natToBin (j + j)     | even = False :: natToBin j;
-   natToBin (S (j + j)) | odd  = True  :: natToBin j;
+   natToBin (j + j)     | even = False :: natToBin j
+   natToBin (S (j + j)) | odd  = True  :: natToBin j
 }
 
 \end{SaveVerbatim}

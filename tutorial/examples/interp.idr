@@ -1,25 +1,25 @@
-module main;
+module main
 
-data Ty = TyInt | TyBool| TyFun Ty Ty;
+data Ty = TyInt | TyBool| TyFun Ty Ty
 
-interpTy : Ty -> Set;
-interpTy TyInt       = Int;
-interpTy TyBool      = Bool;
-interpTy (TyFun s t) = interpTy s -> interpTy t;
+interpTy : Ty -> Set
+interpTy TyInt       = Int
+interpTy TyBool      = Bool
+interpTy (TyFun s t) = interpTy s -> interpTy t
 
 using (G : Vect Ty n) {
 
   data Env : Vect Ty n -> Set where
       Nil  : Env Nil
-    | (::) : interpTy a -> Env G -> Env (a :: G);
+    | (::) : interpTy a -> Env G -> Env (a :: G)
 
   data HasType : (i : Fin n) -> Vect Ty n -> Ty -> Set where
       stop : HasType fO (t :: G) t
-    | pop  : HasType k G t -> HasType (fS k) (u :: G) t;
+    | pop  : HasType k G t -> HasType (fS k) (u :: G) t
 
-  lookup : HasType i G t -> Env G -> interpTy t;
-  lookup stop    (x :: xs) = x;
-  lookup (pop k) (x :: xs) = lookup k xs;
+  lookup : HasType i G t -> Env G -> interpTy t
+  lookup stop    (x :: xs) = x
+  lookup (pop k) (x :: xs) = lookup k xs
 
   data Expr : Vect Ty n -> Ty -> Set where
       Var : HasType i G t -> Expr G t
@@ -28,41 +28,41 @@ using (G : Vect Ty n) {
     | App : Expr G (TyFun a t) -> Expr G a -> Expr G t
     | Op  : (interpTy a -> interpTy b -> interpTy c) -> Expr G a -> Expr G b -> 
             Expr G c
-    | If  : Expr G TyBool -> Expr G a -> Expr G a -> Expr G a;
+    | If  : Expr G TyBool -> Expr G a -> Expr G a -> Expr G a
   
-  interp : Env G -> {static} Expr G t -> interpTy t;
-  interp env (Var i)     = lookup i env;
-  interp env (Val x)     = x;
-  interp env (Lam sc)    = \x => interp (x :: env) sc;
-  interp env (App f s)   = (interp env f) (interp env s);
-  interp env (Op op x y) = op (interp env x) (interp env y);
-  interp env (If x t e)  = if (interp env x) then (interp env t) else (interp env e);
+  interp : Env G -> {static} Expr G t -> interpTy t
+  interp env (Var i)     = lookup i env
+  interp env (Val x)     = x
+  interp env (Lam sc)    = \x => interp (x :: env) sc
+  interp env (App f s)   = (interp env f) (interp env s)
+  interp env (Op op x y) = op (interp env x) (interp env y)
+  interp env (If x t e)  = if (interp env x) then (interp env t) else (interp env e)
 
-  eId : Expr G (TyFun TyInt TyInt);
-  eId = Lam (Var stop);
+  eId : Expr G (TyFun TyInt TyInt)
+  eId = Lam (Var stop)
 
-  eAdd : Expr G (TyFun TyInt (TyFun TyInt TyInt));
-  eAdd = Lam (Lam (Op (+) (Var stop) (Var (pop stop))));
+  eAdd : Expr G (TyFun TyInt (TyFun TyInt TyInt))
+  eAdd = Lam (Lam (Op (+) (Var stop) (Var (pop stop))))
   
-  eDouble : Expr G (TyFun TyInt TyInt);
-  eDouble = Lam (App (App eAdd (Var stop)) (Var stop));
+  eDouble : Expr G (TyFun TyInt TyInt)
+  eDouble = Lam (App (App eAdd (Var stop)) (Var stop))
  
-  app : |(f : Expr G (TyFun a t)) -> Expr G a -> Expr G t;
-  app = \f, a => App f a;
+  app : |(f : Expr G (TyFun a t)) -> Expr G a -> Expr G t
+  app = \f, a => App f a
 
-  fact : Expr G (TyFun TyInt TyInt);
+  fact : Expr G (TyFun TyInt TyInt)
   fact = Lam (If (Op (==) (Var stop) (Val 0))
-                 (Val 1) (Op (*) (app fact (Op (-) (Var stop) (Val 1))) (Var stop)));
+                 (Val 1) (Op (*) (app fact (Op (-) (Var stop) (Val 1))) (Var stop)))
 
 }
 
-testFac : Int;
-testFac = interp [] fact 4;
+testFac : Int
+testFac = interp [] fact 4
 
-main : IO ();
-main = do { putStr "Enter a number: ";
-            x <- getLine;
-            print (interp [] fact (prim__strToInt x)); 
-          };
+main : IO ()
+main = do { putStr "Enter a number: "
+            x <- getLine
+            print (interp [] fact (prim__strToInt x)) 
+          }
 
 

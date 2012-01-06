@@ -28,7 +28,7 @@ prover x = do ctxt <- getContext
 showProof :: Name -> [String] -> String
 showProof n ps = show n ++ " = proof {" ++ "\n" ++
                  showSep "\n" (map (\x -> "    " ++ x ++ ";") ps) ++
-                 "\n};\n"
+                 "\n}\n"
 
 prove :: Context -> Name -> Type -> Idris ()
 prove ctxt n ty 

@@ -9,7 +9,7 @@ language. We have integers, booleans, and functions, represented by \texttt{Ty}:
 
 \begin{SaveVerbatim}{tydecl}
 
-data Ty = TyInt | TyBool | TyFun Ty Ty;
+data Ty = TyInt | TyBool | TyFun Ty Ty
 
 \end{SaveVerbatim}
 \useverb{tydecl}
@@ -20,10 +20,10 @@ type:
 
 \begin{SaveVerbatim}{interpty}
 
-interpTy : Ty -> Set;
-interpTy TyInt = Int;
-interpTy TyBool = Bool;
-interpTy (TyFun A T) = interpTy A -> interpTy T;
+interpTy : Ty -> Set
+interpTy TyInt = Int
+interpTy TyBool = Bool
+interpTy (TyFun A T) = interpTy A -> interpTy T
 
 \end{SaveVerbatim}
 \useverb{interpty}
@@ -62,7 +62,7 @@ constructor in turn.
 
 data HasType : (i : Fin n) -> Vect Ty n -> Ty -> Set where
     stop : HasType fO (t :: G) t
-  | pop  : HasType k G t -> HasType (fS k) (u :: G) t;
+  | pop  : HasType k G t -> HasType (fS k) (u :: G) t
 
 data Expr : Vect Ty n -> Ty -> Set where
     Var : HasType i G t -> Expr G t
@@ -71,7 +71,7 @@ data Expr : Vect Ty n -> Ty -> Set where
   | App : Expr G (TyFun a t) -> Expr G a -> Expr G t
   | Op  : (interpTy a -> interpTy b -> interpTy c) -> Expr G a -> Expr G b -> 
           Expr G c
-  | If  : Expr G TyBool -> Expr G a -> Expr G a -> Expr G a;
+  | If  : Expr G TyBool -> Expr G a -> Expr G a -> Expr G a
   
 \end{SaveVerbatim}
 \codefig{exprty}{Expression representation}
@@ -86,7 +86,7 @@ Variables are represented by a proof of their membership in the context,
 
 data HasType : (i : Fin n) -> Vect Ty n -> Ty -> Set where
     stop : HasType fO (t :: G) t
-  | pop  : HasType k G t -> HasType (fS k) (u :: G) t;
+  | pop  : HasType k G t -> HasType (fS k) (u :: G) t
 
 \end{SaveVerbatim}
 \useverb{hastype}
@@ -163,7 +163,7 @@ have the same type:
 
 \begin{SaveVerbatim}{ifcon}
 
-If  : Expr G TyBool -> Expr G a -> Expr G a -> Expr G a;
+If  : Expr G TyBool -> Expr G a -> Expr G a -> Expr G a
 
 \end{SaveVerbatim}
 \useverb{ifcon}
@@ -180,25 +180,25 @@ is defined in the context, we can then produce a value from the environment:
 
 data Env : Vect Ty n -> Set where
     Nil  : Env Nil
-  | (::) : interpTy a -> Env G -> Env (a :: G);
+  | (::) : interpTy a -> Env G -> Env (a :: G)
 
-lookup : HasType i G t -> Env G -> interpTy t;
-lookup stop    (x :: xs) = x;
-lookup (pop k) (x :: xs) = lookup k xs;
+lookup : HasType i G t -> Env G -> interpTy t
+lookup stop    (x :: xs) = x
+lookup (pop k) (x :: xs) = lookup k xs
 
 \end{SaveVerbatim}
 \useverb{envtype}
 
 \begin{SaveVerbatim}{interpdef}
 
-interp : Env G -> Expr G t -> interpTy t;
-interp env (Var i)     = lookup i env;
-interp env (Val x)     = x;
-interp env (Lam sc)    = \x => interp (x :: env) sc;
-interp env (App f s)   = (interp env f) (interp env s);
-interp env (Op op x y) = op (interp env x) (interp env y);
+interp : Env G -> Expr G t -> interpTy t
+interp env (Var i)     = lookup i env
+interp env (Val x)     = x
+interp env (Lam sc)    = \x => interp (x :: env) sc
+interp env (App f s)   = (interp env f) (interp env s)
+interp env (Op op x y) = op (interp env x) (interp env y)
 interp env (If x t e)  = if (interp env x) then (interp env t) 
-                                           else (interp env e);
+                                           else (interp env e)
 
 \end{SaveVerbatim}
 \codefig{interpdef}{Intepreter definition}
@@ -210,7 +210,7 @@ concrete \Idris{} value with respect to a specific environment:
 
 \begin{SaveVerbatim}{interpty}
 
-interp : Env G -> Expr G t -> interpTy t;
+interp : Env G -> Expr G t -> interpTy t
 
 \end{SaveVerbatim}
 \useverb{interpty}
@@ -220,7 +220,7 @@ To translate a variable, we simply look it up in the environment:
 
 \begin{SaveVerbatim}{varinterp}
 
-interp env (Var i) = lookup i env;
+interp env (Var i) = lookup i env
 
 \end{SaveVerbatim}
 \useverb{varinterp}
@@ -230,7 +230,7 @@ To translate a value, we just return the concrete representation of the value:
 
 \begin{SaveVerbatim}{valinterp}
 
-interp env (Val x) = x;
+interp env (Val x) = x
 
 \end{SaveVerbatim}
 \useverb{valinterp}
@@ -242,7 +242,7 @@ function in the object language is translated to an \Idris{} function:
 
 \begin{SaveVerbatim}{laminterp}
 
-interp env (Lam sc) = \x => interp (x :: env) sc;
+interp env (Lam sc) = \x => interp (x :: env) sc
 
 \end{SaveVerbatim}
 \useverb{laminterp}
@@ -254,7 +254,7 @@ type:
 
 \begin{SaveVerbatim}{appinterp}
 
-interp env (App f s) = (interp env f) (interp env s);
+interp env (App f s) = (interp env f) (interp env s)
 
 \end{SaveVerbatim}
 \useverb{appinterp}
@@ -267,9 +267,9 @@ directly.
 
 \begin{SaveVerbatim}{opinterp}
 
-interp env (Op op x y) = op (interp env x) (interp env y);
+interp env (Op op x y) = op (interp env x) (interp env y)
 interp env (If x t e)  = if (interp env x) then (interp env t) 
-                                           else (interp env e);
+                                           else (interp env e)
 
 \end{SaveVerbatim}
 \useverb{opinterp}
@@ -280,8 +280,8 @@ We can make some simple test functions. Firstly, adding two inputs
 
 \begin{SaveVerbatim}{addtest}
 
-add : Expr G (TyFun TyInt (TyFun TyInt TyInt));
-add = Lam (Lam (Op (+) (Var stop) (Var (pop stop))));
+add : Expr G (TyFun TyInt (TyFun TyInt TyInt))
+add = Lam (Lam (Op (+) (Var stop) (Var (pop stop))))
   
 \end{SaveVerbatim}
 \useverb{addtest}
@@ -293,8 +293,8 @@ be evaluated if necessary:
 
 \begin{SaveVerbatim}{lazyapp}
  
-app : |(f : Expr G (TyFun a t)) -> Expr G a -> Expr G t;
-app = \f, a => App f a;
+app : |(f : Expr G (TyFun a t)) -> Expr G a -> Expr G t
+app = \f, a => App f a
 
 \end{SaveVerbatim}
 \useverb{lazyapp}
@@ -306,10 +306,10 @@ is written as follows:
 
 \begin{SaveVerbatim}{facttest}
 
-fact : Expr G (TyFun TyInt TyInt);
+fact : Expr G (TyFun TyInt TyInt)
 fact = Lam (If (Op (==) (Var stop) (Val 0))
                (Val 1) (Op (*) (app fact (Op (-) (Var stop) (Val 1))) 
-                               (Var stop)));
+                               (Var stop)))
 
 \end{SaveVerbatim}
 \useverb{facttest}
@@ -319,11 +319,11 @@ on user input:
 
 \begin{SaveVerbatim}{factmain}
 
-main : IO ();
-main = do { putStr "Enter a number: ";
-            x <- getLine;
-            print (interp [] fact (prim__strToInt x)); 
-          };
+main : IO ()
+main = do { putStr "Enter a number: "
+            x <- getLine
+            print (interp [] fact (prim__strToInt x)) 
+          }
 
 \end{SaveVerbatim}
 \useverb{factmain}

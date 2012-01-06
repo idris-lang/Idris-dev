@@ -9,7 +9,7 @@ the following definition:
 \begin{SaveVerbatim}{}
 
 data (=) : a -> b -> Set where
-   refl : x = x;
+   refl : x = x
 
 \end{SaveVerbatim}
 \useverb{}
@@ -20,11 +20,11 @@ construct a proof of equality is if values actually are equal. For example:
 
 \begin{SaveVerbatim}{eqprf}
 
-fiveIsFive : 5 = 5;
-fiveIsFive = refl;
+fiveIsFive : 5 = 5
+fiveIsFive = refl
 
-twoPlusTwo : 2 + 2 = 4;
-twoPlusTwo = refl;
+twoPlusTwo : 2 + 2 = 4
+twoPlusTwo = refl
 
 \end{SaveVerbatim}
 \useverb{eqprf}
@@ -36,7 +36,7 @@ we want to prove the following theorem about the reduction behaviour of \texttt{
 
 \begin{SaveVerbatim}{plusred}
 
-plusReduces : (n:Nat) -> plus O n = n;
+plusReduces : (n:Nat) -> plus O n = n
 
 \end{SaveVerbatim}
 \useverb{plusred}
@@ -55,7 +55,7 @@ by the definition of \texttt{plus}:
 
 \begin{SaveVerbatim}{plusredp}
 
-plusReduces n = refl;
+plusReduces n = refl
 
 \end{SaveVerbatim}
 \useverb{plusredp}
@@ -67,9 +67,9 @@ on the first argument to \texttt{plus}, namely \texttt{n}.
 
 \begin{SaveVerbatim}{plusRedO}
 
-plusReducesO : (n:Nat) -> n = plus n O;
-plusReducesO O = refl;
-plusReducesO (S k) = eqRespS (plusReducesO k);
+plusReducesO : (n:Nat) -> n = plus n O
+plusReducesO O = refl
+plusReducesO (S k) = eqRespS (plusReducesO k)
 
 \end{SaveVerbatim}
 \useverb{plusRedO}
@@ -80,7 +80,7 @@ equality respects successor:
 
 \begin{SaveVerbatim}{resps}
 
-eqRespS : m = n -> S m = S n;
+eqRespS : m = n -> S m = S n
 
 \end{SaveVerbatim}
 \useverb{resps}
@@ -90,9 +90,9 @@ We can do the same for the reduction behaviour of plus on successors:
 
 \begin{SaveVerbatim}{plusRedS}
 
-plusReducesS : (n:Nat) -> (m:Nat) -> S (plus n m) = plus n (S m);
-plusReducesS O m = refl;
-plusReducesS (S k) m = eqRespS (plusReducesS k m);
+plusReducesS : (n:Nat) -> (m:Nat) -> S (plus n m) = plus n (S m)
+plusReducesS O m = refl
+plusReducesS (S k) m = eqRespS (plusReducesS k m)
 
 \end{SaveVerbatim}
 \useverb{plusRedS}
@@ -114,10 +114,10 @@ hypothesis, and insert \emph{metavariables} for the rest of the definition:
 
 \begin{SaveVerbatim}{prOstruct}
 
-plusReducesO' : (n:Nat) -> n = plus n O;
-plusReducesO' O     = ?plusredO_O;
+plusReducesO' : (n:Nat) -> n = plus n O
+plusReducesO' O     = ?plusredO_O
 plusReducesO' (S k) = let ih = plusReducesO' k in
-                      ?plusredO_S;
+                      ?plusredO_S
 
 \end{SaveVerbatim}
 \useverb{prOstruct}
@@ -208,7 +208,7 @@ This also outputs a trace of the proof:
 plusredO_O = proof {
     compute;
     refine refl;
-};
+}
 
 \end{SaveVerbatim}
 \useverb{prOprooftrace}
@@ -286,7 +286,7 @@ plusredO_S = proof {
     intro;
     rewrite ih;
     trivial;
-};
+}
 
 \end{SaveVerbatim}
 \useverb{prOStrace}

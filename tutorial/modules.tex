@@ -12,37 +12,37 @@ tree type \texttt{BTree} (in a file \texttt{btree.idr}) and Figure
 
 \begin{SaveVerbatim}{bstmod}
 
-module btree;
+module btree
 
 data BTree a = Leaf
-             | Node (BTree a) a (BTree a);
+             | Node (BTree a) a (BTree a)
 
-insert : Ord a => a -> BTree a -> BTree a;
-insert x Leaf = Node Leaf x Leaf;
+insert : Ord a => a -> BTree a -> BTree a
+insert x Leaf = Node Leaf x Leaf
 insert x (Node l v r) = if (x < v) then (Node (insert x l) v r)
-                                   else (Node l v (insert x r));
+                                   else (Node l v (insert x r))
 
-toList : BTree a -> List a;
-toList Leaf = [];
-toList (Node l v r) = app (toList l) (v :: toList r);
+toList : BTree a -> List a
+toList Leaf = []
+toList (Node l v r) = app (toList l) (v :: toList r)
 
-toTree : Ord a => List a -> BTree a;
-toTree [] = Leaf;
-toTree (x :: xs) = insert x (toTree xs);
+toTree : Ord a => List a -> BTree a
+toTree [] = Leaf
+toTree (x :: xs) = insert x (toTree xs)
 
 \end{SaveVerbatim}
 \codefig{bstmod}{Binary Tree module}
 
 \begin{SaveVerbatim}{bstmain}
 
-module main;
+module main
 
-import btree;
+import btree
 
-main : IO ();
-main = do { let t = toTree [1,8,2,7,9,3]; 
-            print (toList t);
-          };
+main : IO ()
+main = do { let t = toTree [1,8,2,7,9,3] 
+            print (toList t)
+          }
 
 \end{SaveVerbatim}
 \codefig{bstmain}{Binary Tree main program}
@@ -97,26 +97,26 @@ Figure \ref{bstmodp}.
 
 \begin{SaveVerbatim}{bstmodp}
 
-module btree;
+module btree
 
 abstract data BTree a = Leaf
-                      | Node (BTree a) a (BTree a);
+                      | Node (BTree a) a (BTree a)
 
 abstract
-insert : Ord a => a -> BTree a -> BTree a;
-insert x Leaf = Node Leaf x Leaf;
+insert : Ord a => a -> BTree a -> BTree a
+insert x Leaf = Node Leaf x Leaf
 insert x (Node l v r) = if (x < v) then (Node (insert x l) v r)
-                                   else (Node l v (insert x r));
+                                   else (Node l v (insert x r))
 
 abstract
-toList : BTree a -> List a;
-toList Leaf = [];
-toList (Node l v r) = app (toList l) (v :: toList r);
+toList : BTree a -> List a
+toList Leaf = []
+toList (Node l v r) = app (toList l) (v :: toList r)
 
 abstract
-toTree : Ord a => List a -> BTree a;
-toTree [] = Leaf;
-toTree (x :: xs) = insert x (toTree xs);
+toTree : Ord a => List a -> BTree a
+toTree [] = Leaf
+toTree (x :: xs) = insert x (toTree xs)
 
 \end{SaveVerbatim}
 \codefig{bstmodp}{Binary Tree module, with export modifiers}
@@ -144,16 +144,16 @@ the same module:
 
 \begin{SaveVerbatim}{nsfoo}
 
-module foo;
+module foo
 
 namespace x {
-  test : Int -> Int;
-  test x = x * 2;
+  test : Int -> Int
+  test x = x * 2
 }
 
 namespace y {
-  test : String -> String;
-  test x = x ++ x; 
+  test : String -> String
+  test x = x ++ x 
 }
 
 \end{SaveVerbatim}

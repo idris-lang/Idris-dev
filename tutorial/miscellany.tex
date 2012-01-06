@@ -15,12 +15,12 @@ greater than sign \texttt{>}, for example:
 
 \begin{SaveVerbatim}{litidr}
 
-> module literate;
+> module literate
 
 This is a comment. The main program is below
 
-> main : IO ();
-> main = putStrLn "Hello literate world!\n";
+> main : IO ()
+> main = putStrLn "Hello literate world!\n"
 
 \end{SaveVerbatim}
 \useverb{litidr}
@@ -41,7 +41,7 @@ types we can handle:
 
 \begin{SaveVerbatim}{foreignty}
 
-data FTy = FInt | FFloat | FChar | FString | FPtr | FUnit;
+data FTy = FInt | FFloat | FChar | FString | FPtr | FUnit
 
 \end{SaveVerbatim}
 \useverb{foreignty}
@@ -54,13 +54,13 @@ following function:
 
 \begin{SaveVerbatim}{interpfty}
 
-interpFTy : FTy -> Set;
-interpFTy FInt    = Int;
-interpFTy FFloat  = Float;
-interpFTy FChar   = Char;
-interpFTy FString = String;
-interpFTy FPtr    = Ptr;
-interpFTy FUnit   = ();
+interpFTy : FTy -> Set
+interpFTy FInt    = Int
+interpFTy FFloat  = Float
+interpFTy FChar   = Char
+interpFTy FString = String
+interpFTy FPtr    = Ptr
+interpFTy FUnit   = ()
 
 \end{SaveVerbatim}
 \useverb{interpfty}
@@ -71,7 +71,7 @@ can then be converted to an \Idris{} type:
 
 \begin{SaveVerbatim}{ffunty}
 
-ForeignTy : (xs:List FTy) -> (t:FTy) -> Set;
+ForeignTy : (xs:List FTy) -> (t:FTy) -> Set
 
 \end{SaveVerbatim}
 \useverb{ffunty}
@@ -100,9 +100,9 @@ converts this description to a function callable by \Idris{}
 
 data Foreign : Set -> Set where
     FFun : String -> (xs:List FTy) -> (t:FTy) -> 
-           Foreign (ForeignTy xs t);
+           Foreign (ForeignTy xs t)
 
-mkForeign : Foreign x -> x;
+mkForeign : Foreign x -> x
 
 \end{SaveVerbatim}
 \useverb{mkForeign}
@@ -113,8 +113,8 @@ an external function \texttt{putStr} defined in the run-time system:
 
 \begin{SaveVerbatim}{putStrex}
 
-putStr : String -> IO ();
-putStr x = mkForeign (FFun "putStr" [FString] FUnit) x;
+putStr : String -> IO ()
+putStr x = mkForeign (FFun "putStr" [FString] FUnit) x
 \end{SaveVerbatim}
 \useverb{putStrex}
 

@@ -17,7 +17,7 @@ provides an interface for converting values to
 \begin{SaveVerbatim}{showclass}
 
 class Show a where {
-    show : a -> String;
+    show : a -> String
 }
 
 \end{SaveVerbatim}
@@ -29,7 +29,7 @@ This generates a function of the following type (which we call a \emph{method} o
 
 \begin{SaveVerbatim}{showty}
 
-show : Show a => a -> String;
+show : Show a => a -> String
 
 \end{SaveVerbatim}
 \useverb{showty}
@@ -44,8 +44,8 @@ could be defined as:
 \begin{SaveVerbatim}{shownat}
 
 instance Show Nat where {
-    show O = "O";
-    show (S k) = "s" ++ show k;
+    show O = "O"
+    show (S k) = "s" ++ show k
 }
 
 Idris> show (S (S (S O))) 
@@ -64,10 +64,10 @@ to a \texttt{String}:
 
 instance Show a => Show (Vect a n) where {
     show xs = "[" ++ show' xs ++ "]" where {
-        show' : Show a => Vect a n -> String;
-        show' VNil = "";
-        show' (x :: VNil) = show x;
-        show' (x :: xs) = show x ++ ", " ++ show' xs;
+        show' : Show a => Vect a n -> String
+        show' VNil = ""
+        show' (x :: VNil) = show x
+        show' (x :: xs) = show x ++ ", " ++ show' xs
     }
 }
 
@@ -82,8 +82,8 @@ values for equality or inequality, with instances for all of the built-in types:
 \begin{SaveVerbatim}{eqbasic}
 
 class Eq a where {
-    (==) : a -> a -> Bool;
-    (/=) : a -> a -> Bool;
+    (==) : a -> a -> Bool
+    (/=) : a -> a -> Bool
 }
 
 \end{SaveVerbatim}
@@ -96,12 +96,12 @@ For example, for an instance of \texttt{Eq} for \texttt{Nat}:
 \begin{SaveVerbatim}{eqnat}
 
 instance Eq Nat where {
-    O     == O     = True;
-    (S x) == (S y) = x == y;
-    O     == (S y) = False;
-    (S x) == O     = False;
+    O     == O     = True
+    (S x) == (S y) = x == y
+    O     == (S y) = False
+    (S x) == O     = False
 
-    x /= y = not (x == y);
+    x /= y = not (x == y)
 }
 
 \end{SaveVerbatim}
@@ -116,11 +116,11 @@ declaration, in terms of the other method:
 \begin{SaveVerbatim}{eqdefault}
 
 class Eq a where {
-    (==) : a -> a -> Bool;
-    (/=) : a -> a -> Bool;
+    (==) : a -> a -> Bool
+    (/=) : a -> a -> Bool
 
-    x /= y = not (x == y);
-    y == y = not (x /= y);
+    x /= y = not (x == y)
+    y == y = not (x /= y)
 }
 
 \end{SaveVerbatim}
@@ -139,7 +139,7 @@ which inherits method from \texttt{Eq} as well as defining some of its own:
 
 \begin{SaveVerbatim}{ord}
 
-data Ordering = LT | EQ | GT;
+data Ordering = LT | EQ | GT
 
 \end{SaveVerbatim}
 \useverb{ord} 
@@ -147,14 +147,14 @@ data Ordering = LT | EQ | GT;
 \begin{SaveVerbatim}{eqord}
 
 class Eq a => Ord a where {
-    compare : a -> a -> Ordering;
+    compare : a -> a -> Ordering
 
-    (<) : a -> a -> Bool;
-    (>) : a -> a -> Bool;
-    (<=) : a -> a -> Bool;
-    (>=) : a -> a -> Bool;
-    max : a -> a -> a;
-    min : a -> a -> a;
+    (<) : a -> a -> Bool
+    (>) : a -> a -> Bool
+    (<=) : a -> a -> Bool
+    (>=) : a -> a -> Bool
+    max : a -> a -> a
+    min : a -> a -> a
 }
 
 \end{SaveVerbatim}
@@ -171,7 +171,7 @@ function type to the right of the fat arrow:
 
 \begin{SaveVerbatim}{sortty}
 
-sort : Ord a => List a -> List a;
+sort : Ord a => List a -> List a
 
 \end{SaveVerbatim}
 \useverb{sortty}
@@ -182,8 +182,8 @@ written in brackets in a comma separated list, for example:
 
 \begin{SaveVerbatim}{sortshow}
 
-sortAndShow : (Ord a, Show a) => List a -> String;
-sortAndShow xs = show (sort xs);
+sortAndShow : (Ord a, Show a) => List a -> String
+sortAndShow xs = show (sort xs)
 
 \end{SaveVerbatim}
 \useverb{sortshow}
@@ -201,8 +201,8 @@ declaration. For example:
 \begin{SaveVerbatim}{monad}
 
 class Monad (m : Set -> Set) where {
-    return : a -> m a;
-    (>>=)  : m a -> (a -> m b) -> m b;
+    return : a -> m a
+    (>>=)  : m a -> (a -> m b) -> m b
 }
 
 \end{SaveVerbatim}
@@ -226,10 +226,10 @@ We can also define an instance for \texttt{Maybe}, as follows:
 \begin{SaveVerbatim}{maybemonad}
 
 instance Monad Maybe where {
-    return = Just;
+    return = Just
 
-    Nothing  >>= k = Nothing;
-    (Just x) >>= k = k x;
+    Nothing  >>= k = Nothing
+    (Just x) >>= k = k x
 }
 
 \end{SaveVerbatim}
@@ -241,11 +241,11 @@ Using this we can, for example, define a function which adds two
 
 \begin{SaveVerbatim}{maybeadd}
 
-m_add : Maybe Int -> Maybe Int -> Maybe Int;
-m_add x y = do { x' <- x; -- Extract value from x
-                 y' <- y; -- Extract value from y
-                 return (x' + y'); -- Add them 
-               };
+m_add : Maybe Int -> Maybe Int -> Maybe Int
+m_add x y = do { x' <- x -- Extract value from x
+                 y' <- y -- Extract value from y
+                 return (x' + y') -- Add them 
+               }
 
 \end{SaveVerbatim}
 \useverb{maybeadd}
@@ -274,8 +274,8 @@ general, and applies to anything which is an instance of \texttt{MonadPlus}:
 \begin{SaveVerbatim}{monadplus}
 
 class Monad m => MonadPlus (m : Set -> Set) where {
-    mplus : m a -> m a -> m a;
-    mzero : m a;
+    mplus : m a -> m a -> m a
+    mzero : m a
 }
 
 \end{SaveVerbatim}
@@ -299,7 +299,7 @@ the following function:
 
 \begin{SaveVerbatim}{guardq}
 
-guard : MonadPlus m => Bool -> m ();
+guard : MonadPlus m => Bool -> m ()
 
 \end{SaveVerbatim}
 \useverb{guardq} 
@@ -319,8 +319,8 @@ Using monad comprehensions, an alternative definition for \texttt{m\_add} would 
 
 \begin{SaveVerbatim}{maddb}
 
-m_add : Maybe Int -> Maybe Int -> Maybe Int;
-m_add x y = [ x' + y' | x' <- x, y' <- y ];
+m_add : Maybe Int -> Maybe Int -> Maybe Int
+m_add x y = [ x' + y' | x' <- x, y' <- y ]
 \end{SaveVerbatim}
 \useverb{maddb} 
 

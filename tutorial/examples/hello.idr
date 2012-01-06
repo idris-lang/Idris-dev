@@ -1,5 +1,5 @@
-module main;
+module main
 
-main : IO ();
-main = putStrLn "Hello world";
+main : IO ()
+main = putStrLn "Hello world"
 

@@ -9,9 +9,9 @@ example, recall the \texttt{parity} function:
 
 data Parity : Nat -> Set where
    even : Parity (n + n)
- | odd  : Parity (S (n + n));
+ | odd  : Parity (S (n + n))
 
-parity : (n:Nat) -> Parity n;
+parity : (n:Nat) -> Parity n
 
 \end{SaveVerbatim}
 \useverb{pardecl}
@@ -21,12 +21,12 @@ We'd like to implement this as follows:
 
 \begin{SaveVerbatim}{parfail}
 
-parity : (n:Nat) -> Parity n;
-parity O     = even {n=O};
-parity (S O) = odd {n=O};
+parity : (n:Nat) -> Parity n
+parity O     = even {n=O}
+parity (S O) = odd {n=O}
 parity (S (S k)) with parity k {
-  parity (S (S (j + j)))     | even = even {n=S j};
-  parity (S (S (S (j + j)))) | odd  = odd {n=S j};
+  parity (S (S (j + j)))     | even = even {n=S j}
+  parity (S (S (S (j + j)))) | odd  = odd {n=S j}
 }
 
 \end{SaveVerbatim}
@@ -77,12 +77,12 @@ except that they introduce the right hand side with a \texttt{?=} rathar than
 
 \begin{SaveVerbatim}{paritypro}
 
-parity : (n:Nat) -> Parity n;
-parity O     = even {n=O};
-parity (S O) = odd {n=O};
+parity : (n:Nat) -> Parity n
+parity O     = even {n=O}
+parity (S O) = odd {n=O}
 parity (S (S k)) with parity k {
-  parity (S (S (j + j)))     | even ?= even {n=S j};
-  parity (S (S (S (j + j)))) | odd  ?= odd {n=S j};
+  parity (S (S (j + j)))     | even ?= even {n=S j}
+  parity (S (S (S (j + j)))) | odd  ?= odd {n=S j}
 }
 
 \end{SaveVerbatim}
@@ -128,7 +128,7 @@ the prelude:
 
 \begin{SaveVerbatim}{plusnsm}
 
-plusn_Sm : (n : Nat) -> (m : Nat) -> (plus n (S m)) = S (plus n m);
+plusn_Sm : (n : Nat) -> (m : Nat) -> (plus n (S m)) = S (plus n m)
 
 \end{SaveVerbatim}
 \useverb{plusnsm}
@@ -182,7 +182,7 @@ a value of the incorrect types:
 
 \begin{SaveVerbatim}{believe}
 
-believe_me : a -> b; 
+believe_me : a -> b 
 
 \end{SaveVerbatim}
 \useverb{believe}
@@ -198,7 +198,7 @@ views.parity_lemma_2 = proof {
     intro;
     intro;
     exact believe_me value;
-};
+}
 
 \end{SaveVerbatim}
 \useverb{pladodgy}
@@ -221,7 +221,7 @@ case \texttt{Nat}):
 data Binary : Nat -> Set where
    bEnd : Binary O
  | bO : Binary n -> Binary (n + n)
- | bI : Binary n -> Binary (S (n + n));
+ | bI : Binary n -> Binary (S (n + n))
 
 \end{SaveVerbatim}
 \useverb{bindef}
@@ -238,7 +238,7 @@ resulting binary number is a faithful representation of the original Nat:
 
 \begin{SaveVerbatim}{ntbty}
 
-natToBin : (n:Nat) -> Binary n;
+natToBin : (n:Nat) -> Binary n
 
 \end{SaveVerbatim}
 \useverb{ntbty}
@@ -250,11 +250,11 @@ provisional definition in the odd case:
 
 \begin{SaveVerbatim}{ntbdef}
 
-natToBin : (n:Nat) -> Binary n;
-natToBin O = bEnd;
+natToBin : (n:Nat) -> Binary n
+natToBin O = bEnd
 natToBin (S k) with parity k {
-   natToBin (S (j + j))     | even  = bI (natToBin j);
-   natToBin (S (S (j + j))) | odd  ?= bO (natToBin (S j));
+   natToBin (S (j + j))     | even  = bI (natToBin j)
+   natToBin (S (S (j + j))) | odd  ?= bO (natToBin (S j))
 }
 
 \end{SaveVerbatim}
@@ -271,7 +271,7 @@ natToBin_lemma_1 = proof {
     intro;
     rewrite plusn_Sm j j;
     trivial;
-};
+}
 
 \end{SaveVerbatim}
 \useverb{ntboddprf}
@@ -282,13 +282,13 @@ outputs it in binary.
 
 \begin{SaveVerbatim}{binmain}
 
-main : IO ();
-main = do { putStr "Enter a number: ";
-            x <- getLine;
-            let n = prim__strToInt x;
-            let b = natToBin (fromInteger n);
-            print b; 
-          };
+main : IO ()
+main = do { putStr "Enter a number: "
+            x <- getLine
+            let n = prim__strToInt x
+            let b = natToBin (fromInteger n)
+            print b 
+          }
 
 \end{SaveVerbatim}
 \useverb{binmain}
@@ -299,9 +299,9 @@ For this to work, of course, we need a \texttt{Show} instance for \texttt{Binary
 \begin{SaveVerbatim}{showbin}
 
 instance Show (Binary n) where {
-    show (bO x) = show x ++ "0";
-    show (bI x) = show x ++ "1";
-    show bEnd = "";
+    show (bO x) = show x ++ "0"
+    show (bI x) = show x ++ "1"
+    show bEnd = ""
 }
 
 \end{SaveVerbatim}
