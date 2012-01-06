@@ -575,6 +575,7 @@ data Vect : Set -> Nat -> Set where
 \end{SaveVerbatim}
 \useverb{listvec}
 
+\noindent
 Note that the constructor names are the same for each --- constructor names (in
 fact, names in general) can be overloaded, provided that they are declared in
 different namespaces (see Section \ref{sect:namespaces}), and will typically be
@@ -586,6 +587,7 @@ names \texttt{Nil} and \texttt{::} can be written in list form. For example:
 \item \texttt{[1,2,3]} means \texttt{Cons 1 (Cons 2 (Cons 3 Nil))}
 \end{itemize}
 
+\noindent
 The library also defines a number of functions for manipulating these types.
 \texttt{map} is overloaded both for \texttt{List} and \texttt{Vect}
 and applies a function to every element of the list or vector.
@@ -628,6 +630,7 @@ You'll find these examples in \texttt{usefultypes.idr} in the \texttt{examples/}
 \end{SaveVerbatim}
 \useverb{rundvect}
 
+\noindent
 For more details of the functions available on \texttt{List} and \texttt{Vect},
 look in the library, in \texttt{prelude/list.idr} and \texttt{prelude/vect.idr} respectively.
 Functions include filtering, appending, reversing, and so on. Also remember
@@ -681,6 +684,7 @@ data Maybe a = Just a | Nothing;
 \end{SaveVerbatim}
 \useverb{maybe}
 
+\noindent
 \texttt{Maybe} is one way of giving a type to an operation that may fail. For example,
 looking something up in a \texttt{List} (rather than a vector) may result in an out of
 bounds error:
@@ -695,6 +699,7 @@ list_lookup (S k) (x :: xs) = list_lookup k xs;
 \end{SaveVerbatim}
 \useverb{lookuplist}
 
+\noindent
 The \texttt{maybe} function is used to process values of type \texttt{Maybe}, 
 either by applying a function to the value, if there is one, or by providing a default value:
 
@@ -705,6 +710,7 @@ maybe : Maybe a -> |(default:b) -> (a -> b) -> b;
 \end{SaveVerbatim}
 \useverb{maybefn}
 
+\noindent
 The vertical bar $\mid$ before the default value is a laziness annotation. Normally
 expressions are evaluated before being passed to a function. This is typically
 the most efficient behaviour. However, in this case, the default value might
@@ -723,6 +729,7 @@ data Pair a b = MkPair a b;
 \end{SaveVerbatim}
 \useverb{mkpair}
 
+\noindent
 As syntactic sugar, we can write \texttt{(a, b)} which, according to context,
 means either \texttt{Pair a b} or \texttt{MkPair a b}.
 Tuples can contain an arbitrary number of values, represented as nested pairs:
@@ -751,6 +758,7 @@ data Exists : (A : Set) -> (P : A -> Set) -> Set where
 \end{SaveVerbatim}
 \useverb{sigma}
 
+\noindent
 Again, there is syntactic sugar for this. \texttt{(a : A ** P)} is the type of a pair of
 A and P, where the name \texttt{a} can occur inside P. \texttt{( a ** p (} 
 constructs a value of this type. For example, we can pair a number with a 
@@ -790,6 +798,7 @@ vec = (_ ** [3, 4]);
 \end{SaveVerbatim}
 \useverb{dvec2}
 
+\noindent
 One use for dependent pairs is to return values of dependent types where the
 index is not necessarily known in advance. For example, if we filter elements
 out of a \texttt{Vect} according to some predicate, we will not know in advance what the
@@ -812,6 +821,7 @@ vfilter p VNil = (_ , []);
 \end{SaveVerbatim}
 \useverb{vfilternil}
 
+\noindent
 In the \texttt{::} case, we need to inspect the result of a recursive call to 
 \texttt{filter} to
 extract the length and the vector from the result. To do this, we use \texttt{with}

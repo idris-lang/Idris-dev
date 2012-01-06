@@ -28,6 +28,7 @@ interpTy (TyFun A T) = interpTy A -> interpTy T;
 \end{SaveVerbatim}
 \useverb{interpty}
 
+\noindent
 We're going to define a representation of our language in such a way that only
 well-typed programs can be represented. We'll index the representations of
 expressions by their type and the types of local variables (the context), which
@@ -75,6 +76,7 @@ data Expr : Vect Ty n -> Ty -> Set where
 \end{SaveVerbatim}
 \codefig{exprty}{Expression representation}
 
+\noindent
 We use a nameless representation for variables --- they are \emph{de Bruijn indexed}.
 Variables are represented by a proof of their membership in the context, 
 \texttt{HasType i G T}, which is a proof that variable \texttt{i} in context 
@@ -89,6 +91,7 @@ data HasType : (i : Fin n) -> Vect Ty n -> Ty -> Set where
 \end{SaveVerbatim}
 \useverb{hastype}
 
+\noindent
 We can treat \remph{stop} as a proof that the most recently defined variable is well-typed,
 and \remph{pop n} as a proof that, if the \texttt{n}th most recently defined variable is
 well-typed, so is the \texttt{n+1}th. In practice, this means we use \texttt{pop} to
@@ -102,6 +105,7 @@ Var : HasType i G t -> Expr G t
 \end{SaveVerbatim}
 \useverb{varcon}
 
+\noindent
 So, in an expression \texttt{$\backslash$x. $\backslash$y. x y}, 
 the variable \texttt{x} would have a de Bruijn index
 of 1, represented as \texttt{pop stop}, and \texttt{y 0}, represented
@@ -231,6 +235,7 @@ interp env (Val x) = x;
 \end{SaveVerbatim}
 \useverb{valinterp}
 
+\noindent
 Lambdas are more interesting. In this case, we construct a function which
 interprets the scope of the lambda with a new value in the environment. So, a
 function in the object language is translated to an \Idris{} function:
@@ -242,6 +247,7 @@ interp env (Lam sc) = \x => interp (x :: env) sc;
 \end{SaveVerbatim}
 \useverb{laminterp}
 
+\noindent
 For an application, we interpret the function and its argument and apply it
 directly. We know that interpreting \texttt{f} must produce a function, because of its
 type:

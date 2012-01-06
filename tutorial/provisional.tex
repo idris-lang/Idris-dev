@@ -33,7 +33,7 @@ parity (S (S k)) with parity k {
 \useverb{parfail}
 
 \noindent
-this simply states that zero is even, one is odd, and recursively, the parity
+This simply states that zero is even, one is odd, and recursively, the parity
 of \texttt{k+2} is the same as the parity of \texttt{k}. 
 Explicitly marking the value of \texttt{n} in
 even and odd is necessary to help type inference. Unfortunately, the type
@@ -88,6 +88,7 @@ parity (S (S k)) with parity k {
 \end{SaveVerbatim}
 \useverb{paritypro}
 
+\noindent
 When written in this form, instead of reporting a type error, \Idris{} will insert
 a metavariable standing for a theorem which will correct the type error. \Idris{} 
 tells us we have two proof obligations, with names generated from the module and
@@ -225,6 +226,7 @@ data Binary : Nat -> Set where
 \end{SaveVerbatim}
 \useverb{bindef}
 
+\noindent
 \texttt{bO} and \texttt{bI} take a binary number as an argument and effectively shift it one bit
 left, adding either a zero or one as the new least significant bit. The index,
 \texttt{n + n} or \texttt{S (n + n)} states the result that this left shift then add will

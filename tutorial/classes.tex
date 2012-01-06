@@ -54,6 +54,7 @@ Idris> show (S (S (S O)))
 \end{SaveVerbatim}
 \useverb{shownat}
 
+\noindent
 Instance declarations can themselves have constraints. For example, to define a
 \texttt{Show} instance for vectors, we need to know that there is a \texttt{Show} 
 instance for the element type, because we are going to use it to convert each element
@@ -159,6 +160,7 @@ class Eq a => Ord a where {
 \end{SaveVerbatim}
 \useverb{eqord}
 
+\noindent
 The \texttt{Ord} class allows us to compare two values and determine their ordering. 
 Only the \texttt{compare} method is required; every other method has a default definition.
 Using
@@ -204,6 +206,7 @@ class Monad (m : Set -> Set) where {
 \end{SaveVerbatim}
 \useverb{monad}
 
+\noindent
 The \texttt{Monad} class allows us to encapsulate binding and computation, and is the
 basis of \texttt{do}-notation introduced in Section \ref{sect:do}. Inside a
 \texttt{do} block, the following syntactic transformations are applied:
