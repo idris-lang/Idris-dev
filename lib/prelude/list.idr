@@ -38,6 +38,10 @@ map : (a -> b) -> List a -> List b;
 map f []        = [];
 map f (x :: xs) = f x :: map f xs;
 
+concatMap : (a -> List b) -> List a -> List b;
+concatMap f [] = [];
+concatMap f (x :: xs) = app (f x) (concatMap f xs);
+
 mapMaybe : (a -> Maybe b) -> List a -> List b;
 mapMaybe f [] = [];
 mapMaybe f (x :: xs) = case f x of {

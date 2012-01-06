@@ -108,6 +108,11 @@ instance MonadPlus Maybe where {
     mplus Nothing Nothing  = Nothing;
 }
 
+instance Monad List where {
+    return x = [x];
+    m >>= f = concatMap f m;
+}
+
 ---- Functors
 
 class Functor (f : Set -> Set) where {
@@ -172,6 +177,18 @@ floor x = prim__floatFloor x;
 
 ceiling : Float -> Float;
 ceiling x = prim__floatCeil x;
+
+
+-- Ranges
+
+count : Num a => a -> a -> a -> List a;
+count a inc b = if (a <= b) then (a :: count (a + inc) inc b)
+                            else [];
+  
+syntax "[" [start] ".." [end] "]" 
+     = count start 1 end;
+syntax "[" [start] "," [next] ".." [end] "]" 
+     = count start (next - start) end;
 
 ---- some basic io
 
