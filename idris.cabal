@@ -18,7 +18,7 @@ Description:    Idris is a general purpose language with full dependent types.
 Cabal-Version:  >= 1.6
 Build-type:     Custom
 
-Extra-source-files:    lib/Makefile  lib/*.idr lib/prelude/*.idr
+Extra-source-files:    lib/Makefile  lib/*.idr lib/prelude/*.idr lib/network/*.idr
                        tutorial/examples/*.idr
 
 Executable     idris
