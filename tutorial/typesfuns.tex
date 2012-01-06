@@ -200,33 +200,6 @@ rev xs = revAcc [] xs where {
 Any names which are visible in the outer scope are also visible in the \texttt{where}
 clause (unless they have been redefined, such as \texttt{xs} here).
 
-\subsubsection*{\texttt{let} bindings}
-
-Intermediate values can be calculated using \texttt{let} bindings:
-
-\begin{SaveVerbatim}{letb}
-
-mirror : List a -> List a;
-mirror xs = let xs' = rev xs in
-                app xs xs';
-
-\end{SaveVerbatim}
-\useverb{letb} 
-
-\noindent
-We can do simple pattern matching in \texttt{let} bindings too. For example, we can extract
-fields from a record as follows, as well as by pattern matching at the top level:
-
-\begin{SaveVerbatim}{letp}
-
-data Person = MkPerson String Int;
-
-showPerson : Person -> String;
-showPerson p = let MkPerson name age = p in
-                   name ++ " is " ++ show age ++ " years old";
-
-\end{SaveVerbatim}
-\useverb{letp} 
 
 \subsection{Dependent Types}
 
@@ -295,8 +268,10 @@ $ idris vbroken.idr --check
 vbroken.idr:3:Can't unify Vect a (S (plus k k)) with Vect a (S (plus k m))
 
 \end{SaveVerbatim}
+\begin{SaveVerbatim}{bleh}
+$
+\end{SaveVerbatim}
 \useverb{vapperrmsg}
-%$
 
 This error message suggests that there is a length mismatch between two vectors
 --- we needed a vector of length \texttt{(S (k + m))}, but provided a vector
@@ -699,8 +674,8 @@ bounds error:
 
 list_lookup : Nat -> List a -> Maybe a;
 list_lookup _     Nil         = Nothing;
-list_lookup O     (Cons x xs) = Just x;
-list_lookup (S k) (Cons x xs) = list_lookup k xs;
+list_lookup O     (x :: xs) = Just x;
+list_lookup (S k) (x :: xs) = list_lookup k xs;
 
 \end{SaveVerbatim}
 \useverb{lookuplist}
@@ -838,4 +813,99 @@ filter p (x :: xs) with filter p xs {
 
 \noindent
 We will see more on \texttt{with} notation later.
+
+\subsection{More Expressions}
+
+\subsubsection*{\texttt{let} bindings}
+
+Intermediate values can be calculated using \texttt{let} bindings:
+
+\begin{SaveVerbatim}{letb}
+
+mirror : List a -> List a;
+mirror xs = let xs' = rev xs in
+                app xs xs';
+
+\end{SaveVerbatim}
+\useverb{letb} 
+
+\noindent
+We can do simple pattern matching in \texttt{let} bindings too. For example, we can extract
+fields from a record as follows, as well as by pattern matching at the top level:
+
+\begin{SaveVerbatim}{letp}
+
+data Person = MkPerson String Int;
+
+showPerson : Person -> String;
+showPerson p = let MkPerson name age = p in
+                   name ++ " is " ++ show age ++ " years old";
+
+\end{SaveVerbatim}
+\useverb{letp} 
+
+\subsubsection*{\texttt{case} expressions}
+
+Another way of inspecting intermediate values of \emph{simple} types
+is to use a \texttt{case} expression.
+The following function, for example, splits a string into two at a given character:
+
+\begin{SaveVerbatim}{split}
+
+splitAt : Char -> String -> (String, String);
+splitAt c x = case break (== c) x of {
+                  (x, y) => (x, strTail y)
+              };
+
+\end{SaveVerbatim}
+\useverb{split} 
+
+\noindent
+\texttt{break} is a library function which breaks a string into a pair of strings
+at the point where the given function is no longer true. We then deconstruct the
+pair it returns, and remove the first character of the second string.
+
+A \texttt{case} expression can match several cases, for example, to inspect an
+intermediate value of type \texttt{Maybe a}. Recall \texttt{list\_lookup} which
+looks up an index in a list, returning \texttt{Nothing} if the index is out
+of bounds. We can use this to write \texttt{lookup\_default}, which
+looks up an index and returns a default value if the index is out of bounds:
+
+\begin{SaveVerbatim}{listlookup}
+
+lookup_default : Nat -> List a -> a -> a;
+lookup_default i xs def = case list_lookup i xs of {
+                              Nothing => def
+                            | Just x => x
+                          };
+
+\end{SaveVerbatim}
+\useverb{listlookup} 
+
+\noindent
+If the index is in bounds, we get the value at that index, otherwise we get
+a default value:
+
+\begin{SaveVerbatim}{deftest}
+
+*usefultypes> lookup_default 2 [3,4,5,6] (-1)
+5 : Int
+*usefultypes> lookup_default 4 [3,4,5,6] (-1)
+-1 : Int
+
+\end{SaveVerbatim}
+\useverb{deftest} 
+
+\noindent
+\textbf{Restrictions:} The \texttt{case} construct is intended for simple analysis
+of intermediate expressions to avoid the need to write auxiliary functions, and is
+also used internally to implement pattern matching \texttt{let} and lambda bindings. 
+It will \emph{only} work if:
+
+\begin{itemize}
+\item Each branch \emph{matches} a value of the same type, and \emph{returns} a
+value of the same type.
+\item The type of the result is ``known''. i.e. the type of the expression can be
+determined \emph{without} type checking the \texttt{case}-expression itself. 
+\end{itemize}
 
