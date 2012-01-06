@@ -869,6 +869,42 @@ showPerson p = let MkPerson name age = p in
 \end{SaveVerbatim}
 \useverb{letp} 
 
+\subsubsection*{List comprehensions}
+
+\label{sec:listcomp}
+
+\Idris{} provides \emph{comprehension} notation as a convenient shorthand for
+building lists. The general form is:
+
+\begin{SaveVerbatim}{listcomp}
+
+[ expression | qualifiers ]
+
+\end{SaveVerbatim}
+\useverb{listcomp} 
+
+\noindent
+This generates the list of values produced by evaluating the
+\texttt{expression}, according to the conditions given by the comma separated
+\texttt{qualifiers}. For example, we can build a list of Pythagorean triples as
+follows:
+
+\begin{SaveVerbatim}{triples}
+
+pythag : Int -> List (Int, Int, Int);
+pythag n = [ (x, y, z) | z <- [1..n], y <- [1..z], x <- [1..y],
+                         x*x + y*y == z*z ];
+  
+\end{SaveVerbatim}
+\useverb{triples} 
+
+\noindent
+The \texttt{[a..b]} notation is another shorthand which builds a list of
+numbers between \texttt{a} and \texttt{b}.  Alternatively \texttt{[a,b..c]}
+builds a list of numbers between \texttt{a} and \texttt{c} with the increment
+specified by the difference between \texttt{a} and \texttt{c}.  This works for
+any numeric type, using the \texttt{count} function from the prelude. 
+
 \subsubsection*{\texttt{case} expressions}
 
 Another way of inspecting intermediate values of \emph{simple} types

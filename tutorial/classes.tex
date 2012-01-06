@@ -190,6 +190,8 @@ sortAndShow xs = show (sort xs);
 
 \subsection{Monads and \texttt{do}-notation}
 
+\label{sec:monad}
+
 So far, we have seen single parameter type classes, where the parameter is of type
 \texttt{Set}. In general, there can be any number (greater than 0) of parameters,
 and the parameters can have \remph{any} type.
@@ -263,3 +265,54 @@ Nothing : Maybe Int
 
 \end{SaveVerbatim}
 \useverb{maybeaddt}
+
+\subsubsection*{Monad comprehensions}
+
+The list comprehension notation we saw in Section \ref{sec:listcomp} is more
+general, and applies to anything which is an instance of \texttt{MonadPlus}:
+
+\begin{SaveVerbatim}{monadplus}
+
+class Monad m => MonadPlus (m : Set -> Set) where {
+    mplus : m a -> m a -> m a;
+    mzero : m a;
+}
+
+\end{SaveVerbatim}
+\useverb{monadplus}
+
+\noindent
+In general, a comprehension takes the form \texttt{[ exp | qual ]} where
+\texttt{qual} can be one of:
+
+\begin{itemize}
+\item A generator \texttt{x <- e}
+\item A \emph{guard}, which is an expression of type \texttt{Bool}
+\item A let binding \texttt{let x = e}
+\end{itemize}
+
+\noindent
+To translate a comprehension \texttt{[exp | qual1, qual2, ..., qualn]}, first
+any qualifier
+\texttt{qual} which is a \emph{guard} is translated to \texttt{guard qual}, using
+the following function:
+
+\begin{SaveVerbatim}{guardq}
+
+guard : MonadPlus m => Bool -> m ()
+
+\end{SaveVerbatim}
+\useverb{guardq} 
+
+\noindent
+Then the comprehension is converted to \texttt{do} notation:
+
+\begin{SaveVerbatim}{comptrans}
+
+do { qual1; qual2; ...; qualn; return exp; }
+
+\end{SaveVerbatim}
+\useverb{comptrans} 
+
+
+
