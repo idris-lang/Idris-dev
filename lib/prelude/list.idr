@@ -65,8 +65,8 @@ lookup k ((x, v) :: xs) = if (x == k) then (Just v) else (lookup k xs);
 sort : Ord a => List a -> List a;
 sort []  = [];
 sort [x] = [x];
-sort xs = let s = split xs in
-              merge (sort (fst s)) (sort (snd s)) where {
+sort xs = let (x, y) = split xs in
+              merge (sort x) (sort y) where {
     splitrec : List a -> List a -> (List a -> List a) -> (List a, List a);
     splitrec (_ :: _ :: xs) (y :: ys) zs = splitrec xs ys (zs . ((::) y));
     splitrec _              ys        zs = (zs [], ys);
@@ -95,7 +95,8 @@ break p = span (not . p);
   
 split : (a -> Bool) -> List a -> List (List a);
 split p [] = [];
-split p xs with break p xs {
-  | (chunk, []) = [chunk];
-  | (chunk, (c :: rest)) = chunk :: split p rest;
-}
+split p xs = case break p xs of {
+                  (chunk, []) => [chunk]
+                | (chunk, (c :: rest)) => chunk :: split p rest
+             };
+
