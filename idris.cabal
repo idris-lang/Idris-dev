@@ -9,16 +9,17 @@ Homepage:       http://www.idris-lang.org/
 Stability:      Alpha
 Category:       Compilers/Interpreters, Dependent Types
 Synopsis:       Dependently Typed Functional Programming Language
-Description:    Idris is an experimental language with full dependent types.
+Description:    Idris is a general purpose language with full dependent types.
                 Dependent types allow types to be predicated on values,
                 meaning that some aspects of a program's behaviour can be
                 specified precisely in the type. The language is closely 
-		related to Epigram and Agda. There is a tutorial at <http://www.idris-lang.org/tutorial.html>.
+		related to Epigram and Agda. There is a tutorial at <http://www.idris-lang.org/documentation>.
 
 Cabal-Version:  >= 1.6
 Build-type:     Custom
 
 Extra-source-files:    lib/Makefile  lib/*.idr lib/prelude/*.idr
+                       tutorial/examples/*.idr
 
 Executable     idris
                Main-is: Main.hs
@@ -38,7 +39,7 @@ Executable     idris
 
                Build-depends:   base>=4 && <5, parsec, mtl, Cabal, readline,
                                 containers, process, transformers, filepath, directory,
-                                binary, bytestring, unix, epic>=0.9.1
+                                binary, bytestring, unix, epic>=0.9.2
                                 
                Extensions:      MultiParamTypeClasses, FunctionalDependencies,
                                 FlexibleInstances, TemplateHaskell
