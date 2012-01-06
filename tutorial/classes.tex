@@ -282,8 +282,8 @@ class Monad m => MonadPlus (m : Set -> Set) where {
 \useverb{monadplus}
 
 \noindent
-In general, a comprehension takes the form \texttt{[ exp | qual ]} where
-\texttt{qual} can be one of:
+In general, a comprehension takes the form \texttt{[ exp | qual1, qual2, ..., qualn ]} where
+\texttt{quali} can be one of:
 
 \begin{itemize}
 \item A generator \texttt{x <- e}
@@ -314,5 +314,14 @@ do { qual1; qual2; ...; qualn; return exp; }
 \end{SaveVerbatim}
 \useverb{comptrans} 
 
+\noindent
+Using monad comprehensions, an alternative definition for \texttt{m\_add} would be:
+
+\begin{SaveVerbatim}{maddb}
+
+m_add : Maybe Int -> Maybe Int -> Maybe Int;
+m_add x y = [ x' + y' | x' <- x, y' <- y ];
+\end{SaveVerbatim}
+\useverb{maddb} 
 
 
