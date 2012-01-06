@@ -449,7 +449,7 @@ type PTactic = PTactic' PTerm
 data PDo' t = DoExp  FC t
             | DoBind FC Name t
             | DoBindP FC t t
-            | DoLet  FC Name t
+            | DoLet  FC Name t t
             | DoLetP FC t t
     deriving (Eq, Functor)
 {-! 

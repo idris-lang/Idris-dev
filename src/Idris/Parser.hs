@@ -474,7 +474,12 @@ pExt syn (Rule (s:ssym) ptm _)
     update ns (PDoBlock ds) = PDoBlock $ upd ns ds
       where upd ns (DoExp fc t : ds) = DoExp fc (update ns t) : upd ns ds
             upd ns (DoBind fc n t : ds) = DoBind fc n (update ns t) : upd (dropn n ns) ds
-            upd ns (DoLet fc n t : ds) = DoLet fc n (update ns t) : upd (dropn n ns) ds
+            upd ns (DoLet fc n ty t : ds) = DoLet fc n (update ns ty) (update ns t) 
+                                                : upd (dropn n ns) ds
+            upd ns (DoBindP fc i t : ds) = DoBindP fc (update ns i) (update ns t) 
+                                                : upd ns ds
+            upd ns (DoLetP fc i t : ds) = DoLetP fc (update ns i) (update ns t) 
+                                                : upd ns ds
     update ns t = t
 
 pName = do i <- getState
@@ -702,9 +707,11 @@ pDoBlock syn
          return (PDoBlock ds)
 
 pDo syn
-     = try (do reserved "let"; i <- pName; reservedOp "="; fc <- pfc
+     = try (do reserved "let"; i <- pName; 
+               ty <- option Placeholder (do lchar ':'; pExpr' syn)
+               reservedOp "="; fc <- pfc
                e <- pExpr syn
-               return (DoLet fc i e))
+               return (DoLet fc i ty e))
    <|> try (do reserved "let"; i <- pExpr' syn; reservedOp "="; fc <- pfc
                sc <- pExpr syn
                return (DoLetP fc i sc))
@@ -1048,8 +1055,8 @@ expandDo dsl (PDoBlock ds) = expandDo dsl $ block (dsl_bind dsl) ds
         = PApp fc b [pexp tm, pexp (PLam (MN 0 "bpat") Placeholder 
                                    (PCase fc (PRef fc (MN 0 "bpat"))
                                              [(p, block b rest)]))]
-    block b (DoLet fc n tm : rest)
-        = PLet n Placeholder tm (block b rest)
+    block b (DoLet fc n ty tm : rest)
+        = PLet n ty tm (block b rest)
     block b (DoLetP fc p tm : rest)
         = PCase fc tm [(p, block b rest)]
     block b (DoExp fc tm : rest)

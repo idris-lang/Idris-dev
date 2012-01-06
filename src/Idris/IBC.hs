@@ -840,7 +840,7 @@ instance (Binary t) => Binary (PTactic' t) where
                    15 -> return Qed
                    _ -> error "Corrupted binary data for PTactic'"
 
- 
+
 instance (Binary t) => Binary (PDo' t) where
         put x
           = case x of
@@ -851,10 +851,19 @@ instance (Binary t) => Binary (PDo' t) where
                                       put x1
                                       put x2
                                       put x3
-                DoLet x1 x2 x3 -> do putWord8 2
-                                     put x1
-                                     put x2
-                                     put x3
+                DoBindP x1 x2 x3 -> do putWord8 2
+                                       put x1
+                                       put x2
+                                       put x3
+                DoLet x1 x2 x3 x4 -> do putWord8 3
+                                        put x1
+                                        put x2
+                                        put x3
+                                        put x4
+                DoLetP x1 x2 x3 -> do putWord8 4
+                                      put x1
+                                      put x2
+                                      put x3
         get
           = do i <- getWord8
                case i of
@@ -868,10 +877,19 @@ instance (Binary t) => Binary (PDo' t) where
                    2 -> do x1 <- get
                            x2 <- get
                            x3 <- get
-                           return (DoLet x1 x2 x3)
+                           return (DoBindP x1 x2 x3)
+                   3 -> do x1 <- get
+                           x2 <- get
+                           x3 <- get
+                           x4 <- get
+                           return (DoLet x1 x2 x3 x4)
+                   4 -> do x1 <- get
+                           x2 <- get
+                           x3 <- get
+                           return (DoLetP x1 x2 x3)
                    _ -> error "Corrupted binary data for PDo'"
 
- 
+
 instance (Binary t) => Binary (PArg' t) where
         put x
           = case x of
