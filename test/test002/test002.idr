@@ -1,17 +1,17 @@
-myid : a -> a;
-myid x = x;
+myid : a -> a
+myid x = x
 
-idid :  (a : Set) -> a -> a;
-idid = myid ![myid];
+idid :  (a : Set) -> a -> a
+idid = myid ![myid]
 
-app : (a -> b) -> a -> b;
-app f x = f x;
+app : (a -> b) -> a -> b
+app f x = f x
 
-foo : a -> b -> c -> d -> e -> e;
-foo a b c d e = e;
+foo : a -> b -> c -> d -> e -> e
+foo a b c d e = e
 
-doapp : a -> a;
-doapp x = app myid x;
+doapp : a -> a
+doapp x = app myid x
 
 {-
 
