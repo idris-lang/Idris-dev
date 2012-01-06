@@ -428,6 +428,7 @@ pSimpleExtExpr syn = do i <- getState
 
 pNoExtExpr syn =
          try (pApp syn) 
+     <|> try (pComprehension syn)
      <|> pSimpleExpr syn
      <|> pLambda syn
      <|> pLet syn
@@ -699,6 +700,16 @@ tyOptDeclList syn = sepBy1 (do x <- pfName;
 
 bindList b []          sc = sc
 bindList b ((n, t):bs) sc = b n t (bindList b bs sc)
+
+pComprehension syn
+    = do lchar '['; fc <- pfc; pat <- pExpr syn; lchar '|';
+         qs <- sepBy1 (pDo syn) (lchar ','); lchar ']';
+         return (PDoBlock (map addGuard qs ++ 
+                    [DoExp fc (PApp fc (PRef fc (NS (UN "return") ["prelude"]))
+                                 [pexp pat])]))
+    where addGuard (DoExp fc e) = DoExp fc (PApp fc (PRef fc (NS (UN "guard") ["prelude"]))
+                                                    [pexp e])
+          addGuard x = x
 
 pDoBlock syn 
     = do reserved "do"; lchar '{'

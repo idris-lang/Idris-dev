@@ -88,6 +88,10 @@ class Monad m => MonadPlus (m : Set -> Set) where {
     mzero : m a;
 }
 
+class Monad m => MonadFail (m : Set -> Set) where {
+    fail : String -> m ();
+}
+
 instance Monad IO where {
     return t = io_return t;
     b >>= k = io_bind b k;
@@ -112,6 +116,15 @@ instance Monad List where {
     return x = [x];
     m >>= f = concatMap f m;
 }
+
+instance MonadPlus List where {
+    mzero = [];
+    mplus = app;
+}
+
+guard : MonadPlus m => Bool -> m ();
+guard True  = return ();
+guard False = mzero;
 
 ---- Functors
 
