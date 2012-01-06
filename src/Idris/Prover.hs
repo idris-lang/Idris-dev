@@ -33,7 +33,7 @@ showProof n ps = show n ++ " = proof {" ++ "\n" ++
 prove :: Context -> Name -> Type -> Idris ()
 prove ctxt n ty 
     = do let ps = initElaborator n ctxt ty 
-         (tm, prf) <- ploop True ("-" ++ show n) [] (ES ps "" Nothing)
+         (tm, prf) <- ploop True ("-" ++ show n) [] (ES (ps, []) "" Nothing)
          iLOG $ "Adding " ++ show tm
          iputStrLn $ showProof n prf
          i <- get
@@ -44,7 +44,7 @@ prove ctxt n ty
          updateContext (addCasedef n True False [(P Ref n ty, ptm)] ty)
          solveDeferred n
 
-elabStep :: ElabState -> Elab a -> Idris (a, ElabState)
+elabStep :: ElabState [PDecl] -> ElabD a -> Idris (a, ElabState [PDecl])
 elabStep st e = do case runStateT e st of
                      OK (a, st') -> return (a, st')
                      Error a -> do i <- get
@@ -75,11 +75,11 @@ dumpState ist ps@(PS nm (h:hs) _ tm _ _ _ i _ _ ctxy _ _)
     showG (Guess t v) = tshow t ++ " =?= " ++ tshow v
     showG b = tshow (binderTy b)
 
-lifte :: ElabState -> Elab a -> Idris a
+lifte :: ElabState [PDecl] -> ElabD a -> Idris a
 lifte st e = do (v, _) <- elabStep st e
                 return v
 
-ploop :: Bool -> String -> [String] -> ElabState -> Idris (Term, [String])
+ploop :: Bool -> String -> [String] -> ElabState [PDecl] -> Idris (Term, [String])
 ploop d prompt prf e 
     = do i <- get
          when d $ lift $ dumpState i (proof e)

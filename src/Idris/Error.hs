@@ -34,7 +34,7 @@ liftCatch catchError m h =
 idrisCatch :: Idris a -> (IOError -> Idris a) -> Idris a
 idrisCatch op handler = liftCatch catch op handler
 
-tclift :: Show a => TC a -> Idris a
+tclift :: TC a -> Idris a
 tclift tc = case tc of
                OK v -> return v
                Error err -> do i <- get

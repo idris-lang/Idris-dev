@@ -386,6 +386,7 @@ data PTerm = PQuote Raw
            | PPi  Plicity Name PTerm PTerm
            | PLet Name PTerm PTerm PTerm 
            | PApp FC PTerm [PArg]
+           | PCase FC PTerm [(PTerm, PTerm)]
            | PTrue FC
            | PFalse FC
            | PRefl FC
@@ -417,6 +418,7 @@ mapPT f t = f (mpt t) where
   mpt (PPi p n t s) = PPi p n (mapPT f t) (mapPT f s)
   mpt (PLet n ty v s) = PLet n (mapPT f ty) (mapPT f v) (mapPT f s)
   mpt (PApp fc t as) = PApp fc (mapPT f t) (map (fmap (mapPT f)) as)
+  mpt (PCase fc c os) = PCase fc (mapPT f c) (map (pmap (mapPT f)) os)
   mpt (PEq fc l r) = PEq fc (mapPT f l) (mapPT f r)
   mpt (PPair fc l r) = PPair fc (mapPT f l) (mapPT f r)
   mpt (PDPair fc l t r) = PDPair fc (mapPT f l) (mapPT f t) (mapPT f r)
@@ -446,7 +448,9 @@ type PTactic = PTactic' PTerm
 
 data PDo' t = DoExp  FC t
             | DoBind FC Name t
+            | DoBindP FC t t
             | DoLet  FC Name t
+            | DoLetP FC t t
     deriving (Eq, Functor)
 {-! 
 deriving instance Binary PDo' 
@@ -637,6 +641,8 @@ showImp impl tm = se 10 tm where
         = let args = getExps as in
               bracket p 1 $ se 1 f ++ if impl then concatMap sArg as
                                               else concatMap seArg args
+    se p (PCase _ scr opts) = "case " ++ se 10 scr ++ " of " ++ showSep " | " (map sc opts)
+       where sc (l, r) = se 10 l ++ " => " ++ se 10 r
     se p (PHidden tm) = "." ++ se 0 tm
     se p (PRefl _) = "refl"
     se p (PResolveTC _) = "resolvetc"
@@ -675,6 +681,7 @@ allNamesIn tm = nub $ ni [] tm
     ni env (PRef _ n)        
         | not (n `elem` env) = [n]
     ni env (PApp _ f as)   = ni env f ++ concatMap (ni env) (map getTm as)
+    ni env (PCase _ c os)  = ni env c ++ concatMap (ni env) (map snd os)
     ni env (PLam n ty sc)  = ni env ty ++ ni (n:env) sc
     ni env (PPi _ n ty sc) = ni env ty ++ ni (n:env) sc
     ni env (PHidden tm)    = ni env tm
@@ -694,6 +701,7 @@ namesIn ist tm = nub $ ni [] tm
                 [] -> [n]
                 _ -> []
     ni env (PApp _ f as)   = ni env f ++ concatMap (ni env) (map getTm as)
+    ni env (PCase _ c os)  = ni env c ++ concatMap (ni env) (map snd os)
     ni env (PLam n ty sc)  = ni env ty ++ ni (n:env) sc
     ni env (PPi _ n ty sc) = ni env ty ++ ni (n:env) sc
     ni env (PEq _ l r)     = ni env l ++ ni env r
@@ -825,6 +833,7 @@ expandParams dec ps ns tm = en tm
         | n `elem` ns = PApp fc (PRef fc (dec n)) 
                            (map (pexp . (PRef fc)) (map fst ps))
     en (PApp fc f as) = PApp fc (en f) (map (fmap en) as)
+    en (PCase fc c os) = PCase fc (en c) (map (pmap en) os)
     en t = t
 
 expandParamsD :: IState -> 
@@ -881,6 +890,7 @@ getPriority i tm = pri tm
     pri (PRefl _) = 1
     pri (PEq _ l r) = max 1 (max (pri l) (pri r))
     pri (PApp _ f as) = max 1 (max (pri f) (foldr max 0 (map (pri.getTm) as))) 
+    pri (PCase _ f as) = max 1 (max (pri f) (foldr max 0 (map (pri.snd) as))) 
     pri (PPair _ l r) = max 1 (max (pri l) (pri r))
     pri (PDPair _ l t r) = max 1 (max (pri l) (max (pri t) (pri r)))
     pri (PAlternative as) = maximum (map pri as)
@@ -1004,6 +1014,9 @@ addImpl ist ptm = ai [] ptm
     ai env (PApp fc f as) = let f' = ai env f
                                 as' = map (fmap (ai env)) as in
                                 mkPApp fc 1 f' as'
+    ai env (PCase fc c os) = let c' = ai env c
+                                 os' = map (pmap (ai env)) os in
+                                 PCase fc c' os'
     ai env (PLam n ty sc) = let ty' = ai env ty
                                 sc' = ai (n:env) sc in
                                 PLam n ty' sc'
@@ -1164,6 +1177,7 @@ substMatch n tm t = sm t where
     sm (PLam x t sc) = PLam x (sm t) (sm sc)
     sm (PPi p x t sc) = PPi p x (sm t) (sm sc)
     sm (PApp f x as) = PApp f (sm x) (map (fmap sm) as)
+    sm (PCase f x as) = PCase f (sm x) (map (pmap sm) as)
     sm (PEq f x y) = PEq f (sm x) (sm y)
     sm (PPair f x y) = PPair f (sm x) (sm y)
     sm (PDPair f x t y) = PDPair f (sm x) (sm t) (sm y)
@@ -1177,6 +1191,7 @@ shadow n n' t = sm t where
     sm (PLam x t sc) = PLam x (sm t) (sm sc)
     sm (PPi p x t sc) = PPi p x (sm t) (sm sc)
     sm (PApp f x as) = PApp f (sm x) (map (fmap sm) as)
+    sm (PCase f x as) = PCase f (sm x) (map (pmap sm) as)
     sm (PEq f x y) = PEq f (sm x) (sm y)
     sm (PPair f x y) = PPair f (sm x) (sm y)
     sm (PDPair f x t y) = PDPair f (sm x) (sm t) (sm y)

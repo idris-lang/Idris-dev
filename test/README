@@ -7,3 +7,4 @@ Tests:
 005: Num class resolution [regression]; span & break; ad-hoc overloading
 006: Provisional definitions; class resolution in patterns
 007: Applicative and idiom brackets
+008: case and pattern matching let

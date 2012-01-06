@@ -466,6 +466,7 @@ pExt syn (Rule (s:ssym) ptm _)
     update ns (PLet n ty val sc) = PLet n (update ns ty) (update ns val)
                                           (update (dropn n ns) sc)
     update ns (PApp fc t args) = PApp fc (update ns t) (map (fmap (update ns)) args)
+    update ns (PCase fc c opts) = PCase fc (update ns c) (map (pmap (update ns)) opts) 
     update ns (PPair fc l r) = PPair fc (update ns l) (update ns r)
     update ns (PDPair fc l t r) = PDPair fc (update ns l) (update ns t) (update ns r)
     update ns (PAlternative as) = PAlternative (map (update ns) as)
@@ -516,6 +517,11 @@ pSimpleExpr syn =
                ts <- endBy (pTactic syn) (lchar ';')
                lchar '}'
                return (PTactics ts)
+        <|> do reserved "case"; fc <- pfc; scr <- pExpr syn; reserved "of";
+               lchar '{'
+               opts <- sepBy1 (pCaseOpt syn) (lchar '|')
+               lchar '}'
+               return (PCase fc scr opts)
         <|> try (do x <- pfName; fc <- pfc; return (PRef fc x))
         <|> try (pPair syn)
         <|> try (pList syn)
@@ -537,6 +543,11 @@ pSimpleExpr syn =
         <|> try (do symbol "_|_"; fc <- pfc; return (PFalse fc))
         <|> do lchar '_'; return Placeholder
         <|> pSimpleExtExpr syn
+
+pCaseOpt :: SyntaxInfo -> IParser (PTerm, PTerm)
+pCaseOpt syn = do lhs <- pExpr syn; symbol "=>";
+                  rhs <- pExpr syn
+                  return (lhs, rhs)
 
 modifyConst :: SyntaxInfo -> FC -> PTerm -> PTerm
 modifyConst syn fc (PConstant (I x)) 
@@ -616,11 +627,15 @@ pLambda syn = do lchar '\\';
                  sc <- pExpr syn
                  return (bindList PLam xt sc)
 
-pLet syn = do reserved "let"; n <- pName; 
-              ty <- option Placeholder (do lchar ':'; pExpr' syn)
-              lchar '='; v <- pExpr syn
-              reserved "in";  sc <- pExpr syn
-              return (PLet n ty v sc)
+pLet syn = try (do reserved "let"; n <- pName; 
+                   ty <- option Placeholder (do lchar ':'; pExpr' syn)
+                   lchar '='; v <- pExpr syn
+                   reserved "in";  sc <- pExpr syn
+                   return (PLet n ty v sc))
+           <|> (do reserved "let"; fc <- pfc; pat <- pExpr' syn
+                   symbol "="; v <- pExpr syn
+                   reserved "in"; sc <- pExpr syn
+                   return (PCase fc v [(pat, sc)]))
 
 pPi syn = 
      try (do lazy <- option False (do lchar '|'; return True)
@@ -675,12 +690,18 @@ pDoBlock syn
          return (PDoBlock ds)
 
 pDo syn
-     = do reserved "let"; i <- pName; reservedOp "="; fc <- pfc
-          e <- pExpr syn
-          return (DoLet fc i e)
+     = try (do reserved "let"; i <- pName; reservedOp "="; fc <- pfc
+               e <- pExpr syn
+               return (DoLet fc i e))
+   <|> try (do reserved "let"; i <- pExpr' syn; reservedOp "="; fc <- pfc
+               sc <- pExpr syn
+               return (DoLetP fc i sc))
    <|> try (do i <- pName; symbol "<-"; fc <- pfc
                e <- pExpr syn;
                return (DoBind fc i e))
+   <|> try (do i <- pExpr' syn; symbol "<-"; fc <- pfc
+               e <- pExpr syn;
+               return (DoBindP fc i e))
    <|> try (do e <- pExpr syn; fc <- pfc
                return (DoExp fc e))
 
@@ -997,6 +1018,8 @@ expandDo dsl (PLet n ty v tm) = PLet n (expandDo dsl ty) (expandDo dsl v) (expan
 expandDo dsl (PPi p n ty tm) = PPi p n (expandDo dsl ty) (expandDo dsl tm)
 expandDo dsl (PApp fc t args) = PApp fc (expandDo dsl t)
                                         (map (fmap (expandDo dsl)) args)
+expandDo dsl (PCase fc s opts) = PCase fc (expandDo dsl s)
+                                        (map (pmap (expandDo dsl)) opts)
 expandDo dsl (PPair fc l r) = PPair fc (expandDo dsl l) (expandDo dsl r)
 expandDo dsl (PDPair fc l t r) = PDPair fc (expandDo dsl l) (expandDo dsl t) 
                                            (expandDo dsl r)
@@ -1009,8 +1032,14 @@ expandDo dsl (PDoBlock ds) = expandDo dsl $ block (dsl_bind dsl) ds
     block b [a] = PElabError "Last statement in do block must be an expression"
     block b (DoBind fc n tm : rest)
         = PApp fc b [pexp tm, pexp (PLam n Placeholder (block b rest))]
+    block b (DoBindP fc p tm : rest)
+        = PApp fc b [pexp tm, pexp (PLam (MN 0 "bpat") Placeholder 
+                                   (PCase fc (PRef fc (MN 0 "bpat"))
+                                             [(p, block b rest)]))]
     block b (DoLet fc n tm : rest)
         = PLet n Placeholder tm (block b rest)
+    block b (DoLetP fc p tm : rest)
+        = PCase fc tm [(p, block b rest)]
     block b (DoExp fc tm : rest)
         = PApp fc b 
             [pexp tm, 

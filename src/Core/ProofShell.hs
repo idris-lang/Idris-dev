@@ -41,8 +41,8 @@ processCommand (Print n) state =
          [tm] -> (state, show tm)
          _ -> (state, "No such name")
 processCommand (Tac e)  state 
-    | Just ps <- prf state = case execElab e ps of
-                                OK (ES ps' resp _) -> 
+    | Just ps <- prf state = case execElab () e ps of
+                                OK (ES (ps', _) resp _) -> 
                                    if (not (done ps')) 
                                       then (state { prf = Just ps' }, resp)
                                       else (state { prf = Nothing,

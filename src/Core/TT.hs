@@ -88,6 +88,8 @@ showSep sep [] = ""
 showSep sep [x] = x
 showSep sep (x:xs) = x ++ sep ++ showSep sep xs
 
+pmap f (x, y) = (f x, f y)
+
 traceWhen True msg a = trace msg a
 traceWhen False _  a = a
 

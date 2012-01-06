@@ -28,24 +28,25 @@ data Command = Theorem Name Raw
              | Print Name
              | Tac (Elab ())
 
-data ElabState = ES ProofState String (Maybe ElabState)
+data ElabState aux = ES (ProofState, aux) String (Maybe (ElabState aux))
   deriving Show
-type Elab a = StateT ElabState TC a
+type Elab' aux a = StateT (ElabState aux) TC a
+type Elab a = Elab' () a
 
-proof :: ElabState -> ProofState
-proof (ES p _ _) = p
+proof :: ElabState aux -> ProofState
+proof (ES (p, _) _ _) = p
 
-saveState :: Elab ()
+saveState :: Elab' aux ()
 saveState = do e@(ES p s _) <- get
                put (ES p s (Just e))
 
-loadState :: Elab ()
+loadState :: Elab' aux ()
 loadState = do (ES p s e) <- get
                case e of
                   Just st -> put st
                   _ -> fail "Nothing to undo"
 
-erun :: FC -> Elab a -> Elab a
+erun :: FC -> Elab' aux a -> Elab' aux a
 erun f elab = do s <- get
                  case runStateT elab s of
                     OK (a, s')     -> do put s'
@@ -53,82 +54,90 @@ erun f elab = do s <- get
                     Error (At f e) -> lift $ Error (At f e)
                     Error e        -> lift $ Error (At f e)
 
-runElab :: Elab a -> ProofState -> TC (a, ElabState)
-runElab e ps = runStateT e (ES ps "" Nothing)
+runElab :: aux -> Elab' aux a -> ProofState -> TC (a, ElabState aux)
+runElab a e ps = runStateT e (ES (ps, a) "" Nothing)
 
-execElab :: Elab a -> ProofState -> TC ElabState
-execElab e ps = execStateT e (ES ps "" Nothing)
+execElab :: aux -> Elab' aux a -> ProofState -> TC (ElabState aux)
+execElab a e ps = execStateT e (ES (ps, a) "" Nothing)
 
 initElaborator :: Name -> Context -> Type -> ProofState
 initElaborator = newProof
 
-elaborate :: Context -> Name -> Type -> Elab a -> TC (a, String)
-elaborate ctxt n ty elab = do let ps = initElaborator n ctxt ty
-                              (a, ES ps' str _) <- runElab elab ps
-                              return (a, str)
+elaborate :: Context -> Name -> Type -> aux -> Elab' aux a -> TC (a, String)
+elaborate ctxt n ty d elab = do let ps = initElaborator n ctxt ty
+                                (a, ES ps' str _) <- runElab d elab ps
+                                return (a, str)
 
-processTactic' t = do ES p logs prev <- get
+updateAux :: (aux -> aux) -> Elab' aux ()
+updateAux f = do ES (ps, a) l p <- get
+                 put (ES (ps, f a) l p)
+
+getAux :: Elab' aux aux
+getAux = do ES (ps, a) _ _ <- get
+            return a
+
+processTactic' t = do ES (p, a) logs prev <- get
                       (p', log) <- lift $ processTactic t p
-                      put (ES p' (logs ++ log) prev)
+                      put (ES (p', a) (logs ++ log) prev)
                       return ()
 
 -- Some handy gadgets for pulling out bits of state
 
 -- get the global context
-get_context :: Elab Context
+get_context :: Elab' aux Context
 get_context = do ES p _ _ <- get
-                 return (context p)
+                 return (context (fst p))
 
 -- get the proof term
-get_term :: Elab Term
+get_term :: Elab' aux Term
 get_term = do ES p _ _ <- get
-              return (pterm p)
+              return (pterm (fst p))
 
 -- get the local context at the currently in focus hole
-get_env :: Elab Env
+get_env :: Elab' aux Env
 get_env = do ES p _ _ <- get
-             lift $ envAtFocus p
+             lift $ envAtFocus (fst p)
 
-get_holes :: Elab [Name]
+get_holes :: Elab' aux [Name]
 get_holes = do ES p _ _ <- get
-               return (holes p)
+               return (holes (fst p))
 
 -- get the current goal type
-goal :: Elab Type
+goal :: Elab' aux Type
 goal = do ES p _ _ <- get
-          b <- lift $ goalAtFocus p
+          b <- lift $ goalAtFocus (fst p)
           return (binderTy b)
 
 -- typecheck locally
-get_type :: Raw -> Elab Type
+get_type :: Raw -> Elab' aux Type
 get_type tm = do ctxt <- get_context
                  env <- get_env
                  (val, ty) <- lift $ check ctxt env tm
                  return (finalise ty)
 
 -- get holes we've deferred for later definition
-get_deferred :: Elab [Name]
+get_deferred :: Elab' aux [Name]
 get_deferred = do ES p _ _ <- get
-                  return (deferred p)
+                  return (deferred (fst p))
 
-get_inj :: Elab [(Term, Term, Term)]
+get_inj :: Elab' aux [(Term, Term, Term)]
 get_inj = do ES p _ _ <- get
-             return (injective p)
+             return (injective (fst p))
 
-checkInjective :: (Term, Term, Term) -> Elab ()
+checkInjective :: (Term, Term, Term) -> Elab' aux ()
 checkInjective (tm, l, r) = if isInjective tm then return ()
                                 else lift $ tfail (NotInjective tm l r) 
 
 -- get instance argument names
-get_instances :: Elab [Name]
+get_instances :: Elab' aux [Name]
 get_instances = do ES p _ _ <- get
-                   return (instances p)
+                   return (instances (fst p))
 
 -- given a desired hole name, return a unique hole name
-unique_hole :: Name -> Elab Name
+unique_hole :: Name -> Elab' aux Name
 unique_hole n = do ES p _ _ <- get
-                   let bs = bound_in (pterm p) ++ bound_in (ptype p)
-                   n' <- uniqueNameCtxt (context p) n (holes p ++ bs)
+                   let bs = bound_in (pterm (fst p)) ++ bound_in (ptype (fst p))
+                   n' <- uniqueNameCtxt (context (fst p)) n (holes (fst p) ++ bs)
                    return n'
   where
     bound_in (Bind n b sc) = n : bi b ++ bound_in sc
@@ -139,73 +148,73 @@ unique_hole n = do ES p _ _ <- get
     bound_in (App f a) = bound_in f ++ bound_in a
     bound_in _ = []
 
-uniqueNameCtxt :: Context -> Name -> [Name] -> Elab Name
+uniqueNameCtxt :: Context -> Name -> [Name] -> Elab' aux Name
 uniqueNameCtxt ctxt n hs 
     | n `elem` hs = uniqueNameCtxt ctxt (nextName n) hs
     | [_] <- lookupTy Nothing n ctxt = uniqueNameCtxt ctxt (nextName n) hs
     | otherwise = return n
 
-elog :: String -> Elab ()
+elog :: String -> Elab' aux ()
 elog str = do ES p logs prev <- get
               put (ES p (logs ++ str ++ "\n") prev)
 
 -- The primitives, from ProofState
 
-attack :: Elab ()
+attack :: Elab' aux ()
 attack = processTactic' Attack
 
-claim :: Name -> Raw -> Elab ()
+claim :: Name -> Raw -> Elab' aux ()
 claim n t = processTactic' (Claim n t)
 
-exact :: Raw -> Elab ()
+exact :: Raw -> Elab' aux ()
 exact t = processTactic' (Exact t)
 
-fill :: Raw -> Elab ()
+fill :: Raw -> Elab' aux ()
 fill t = processTactic' (Fill t)
 
-prep_fill :: Name -> [Name] -> Elab ()
+prep_fill :: Name -> [Name] -> Elab' aux ()
 prep_fill n ns = processTactic' (PrepFill n ns)
 
-complete_fill :: Elab ()
+complete_fill :: Elab' aux ()
 complete_fill = processTactic' CompleteFill
 
-solve :: Elab ()
+solve :: Elab' aux ()
 solve = processTactic' Solve
 
-start_unify :: Name -> Elab ()
+start_unify :: Name -> Elab' aux ()
 start_unify n = processTactic' (StartUnify n)
 
-end_unify :: Elab ()
+end_unify :: Elab' aux ()
 end_unify = processTactic' EndUnify
 
-regret :: Elab ()
+regret :: Elab' aux ()
 regret = processTactic' Regret
 
-compute :: Elab ()
+compute :: Elab' aux ()
 compute = processTactic' Compute
 
-eval_in :: Raw -> Elab ()
+eval_in :: Raw -> Elab' aux ()
 eval_in t = processTactic' (EvalIn t)
 
-check_in :: Raw -> Elab ()
+check_in :: Raw -> Elab' aux ()
 check_in t = processTactic' (CheckIn t)
 
-intro :: Maybe Name -> Elab ()
+intro :: Maybe Name -> Elab' aux ()
 intro n = processTactic' (Intro n)
 
-introTy :: Raw -> Maybe Name -> Elab ()
+introTy :: Raw -> Maybe Name -> Elab' aux ()
 introTy ty n = processTactic' (IntroTy ty n)
 
-forall :: Name -> Raw -> Elab ()
+forall :: Name -> Raw -> Elab' aux ()
 forall n t = processTactic' (Forall n t)
 
-letbind :: Name -> Raw -> Raw -> Elab ()
+letbind :: Name -> Raw -> Raw -> Elab' aux ()
 letbind n t v = processTactic' (LetBind n t v)
 
-rewrite :: Raw -> Elab ()
+rewrite :: Raw -> Elab' aux ()
 rewrite tm = processTactic' (Rewrite tm)
 
-patvar :: Name -> Elab ()
+patvar :: Name -> Elab' aux ()
 patvar n = do env <- get_env
               if (n `elem` map fst env) then do apply (Var n) []; solve
                 else do n' <- case n of
@@ -214,48 +223,48 @@ patvar n = do env <- get_env
                                     NS _ _ -> return n
                         processTactic' (PatVar n')
 
-patbind :: Name -> Elab ()
+patbind :: Name -> Elab' aux ()
 patbind n = processTactic' (PatBind n)
 
-focus :: Name -> Elab ()
+focus :: Name -> Elab' aux ()
 focus n = processTactic' (Focus n)
 
-movelast :: Name -> Elab ()
+movelast :: Name -> Elab' aux ()
 movelast n = processTactic' (MoveLast n)
 
-defer :: Name -> Elab ()
+defer :: Name -> Elab' aux ()
 defer n = do n' <- unique_hole n
              processTactic' (Defer n')
 
-instanceArg :: Name -> Elab ()
+instanceArg :: Name -> Elab' aux ()
 instanceArg n = processTactic' (Instance n)
 
-proofstate :: Elab ()
+proofstate :: Elab' aux ()
 proofstate = processTactic' ProofState
 
-reorder_claims :: Name -> Elab ()
+reorder_claims :: Name -> Elab' aux ()
 reorder_claims n = processTactic' (Reorder n)
 
-qed :: Elab Term
+qed :: Elab' aux Term
 qed = do processTactic' QED
          ES p _ _ <- get
-         return (pterm p)
+         return (pterm (fst p))
 
-undo :: Elab ()
+undo :: Elab' aux ()
 undo = processTactic' Undo
 
-prepare_apply :: Raw -> [(Bool, Int)] -> Elab [Name]
+prepare_apply :: Raw -> [(Bool, Int)] -> Elab' aux [Name]
 prepare_apply fn imps =
     do ty <- get_type fn
        ctxt <- get_context
        env <- get_env
        -- let claims = getArgs ty imps
        claims <- mkClaims (normalise ctxt env ty) imps []
-       ES p s prev <- get
+       ES (p, a) s prev <- get
        -- reverse the claims we made so that args go left to right
        let n = length (filter not (map fst imps))
        let (h : hs) = holes p
-       put (ES (p { holes = h : (reverse (take n hs) ++ drop n hs) }) s prev)
+       put (ES (p { holes = h : (reverse (take n hs) ++ drop n hs) }, a) s prev)
 --        case claims of
 --             [] -> return ()
 --             (h : _) -> reorder_claims h
@@ -278,7 +287,7 @@ prepare_apply fn imps =
     mkMN n@(UN x) = MN 0 x
     mkMN (NS n xs) = NS (mkMN n) xs
 
-apply :: Raw -> [(Bool, Int)] -> Elab [Name]
+apply :: Raw -> [(Bool, Int)] -> Elab' aux [Name]
 apply fn imps = 
     do args <- prepare_apply fn imps
        fill (raw_apply fn (map Var args))
@@ -288,14 +297,14 @@ apply fn imps =
        -- so do nothing
        ptm <- get_term
        let dontunify = [] -- map fst (filter (not.snd) (zip args imps))
-       ES p s prev <- get
+       ES (p, a) s prev <- get
        let (n, hs) = unified p
        let unify = (n, filter (\ (n, t) -> not (n `elem` dontunify)) hs)
-       put (ES (p { unified = unify }) s prev)
+       put (ES (p { unified = unify }, a) s prev)
        end_unify
        return args
 
-apply_elab :: Name -> [Maybe (Int, Elab ())] -> Elab ()
+apply_elab :: Name -> [Maybe (Int, Elab' aux ())] -> Elab' aux ()
 apply_elab n args = 
     do ty <- get_type (Var n)
        ctxt <- get_context
@@ -337,7 +346,7 @@ apply_elab n args =
     mkMN n@(UN x) = MN 0 x
     mkMN (NS n ns) = NS (mkMN n) ns
 
-simple_app :: Elab () -> Elab () -> Elab ()
+simple_app :: Elab' aux () -> Elab' aux () -> Elab' aux ()
 simple_app fun arg =
     do a <- unique_hole (MN 0 "a")
        b <- unique_hole (MN 0 "b")
@@ -360,13 +369,13 @@ simple_app fun arg =
 
 -- Abstract over an argument of unknown type, giving a name for the hole
 -- which we'll fill with the argument type too.
-arg :: Name -> Name -> Elab ()
+arg :: Name -> Name -> Elab' aux ()
 arg n tyhole = do ty <- unique_hole tyhole
                   claim ty RSet
                   forall n (Var ty)
 
 -- Try a tactic, if it fails, try another
-try :: Elab a -> Elab a -> Elab a
+try :: Elab' aux a -> Elab' aux a -> Elab' aux a
 try t1 t2 = do s <- get
                case runStateT t1 s of
                     OK (v, s') -> do put s'
@@ -374,13 +383,13 @@ try t1 t2 = do s <- get
                     _ -> do put s; t2
 
 -- Try a selection of tactics. Exactly one must work, all others must fail
-tryAll :: [(Elab a, String)] -> Elab a
+tryAll :: [(Elab' aux a, String)] -> Elab' aux a
 tryAll xs = tryAll' [] (fail "Nothing to try") (map fst xs)
   where
-    tryAll' :: [Elab a] -> -- successes
-               Elab a -> -- last failure
-               [Elab a] -> -- still to try
-               Elab a
+    tryAll' :: [Elab' aux a] -> -- successes
+               Elab' aux a -> -- last failure
+               [Elab' aux a] -> -- still to try
+               Elab' aux a
     tryAll' [res] _   [] = res 
     tryAll' (_:_) _   [] = fail $ "Couldn't resolve alternative: " 
                                   ++ showSep ", " (map snd xs)
