@@ -115,7 +115,6 @@ an external function \texttt{putStr} defined in the run-time system:
 
 putStr : String -> IO ();
 putStr x = mkForeign (FFun "putStr" [FString] FUnit) x;
-
 \end{SaveVerbatim}
 \useverb{putStrex}
 

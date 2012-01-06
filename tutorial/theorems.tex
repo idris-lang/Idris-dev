@@ -125,8 +125,8 @@ plusReducesO' (S k) = let ih = plusReducesO' k in
 On running \Idris{}, two global names are created, \texttt{plusredO\_O} and
 \texttt{plusredO\_S}, with no definition. We can use the \texttt{:m} command
 at the prompt to find out which metavariables are still to be solved (or, more
-precisely, which functions exist but have no definitions). Then we can use the
-\texttt{:t} command to see what their types are:
+precisely, which functions exist but have no definitions), then the
+\texttt{:t} command to see their types:
 
 \begin{SaveVerbatim}{showmetas}
 
@@ -182,8 +182,8 @@ we can normalise the goal with the \texttt{compute} tactic:
 
 \noindent
 Now we have to prove that \texttt{O} equals \texttt{O}, which is easy to prove by
-\texttt{refl}. To apply a function, such as \texttt{refl}, we use the \texttt{refine} tactic
-which introduces subgoals for each of the function's explicit arguments (though \texttt{refl}
+\texttt{refl}. To apply a function, such as \texttt{refl}, we use \texttt{refine} 
+which introduces subgoals for each of the function's explicit arguments (\texttt{refl}
 has none):
 
 \begin{SaveVerbatim}{refrefl}
@@ -209,12 +209,17 @@ plusredO_O = proof {
     refine refl;
 };
 
+\end{SaveVerbatim}
+\useverb{prOprooftrace}
+
+\begin{SaveVerbatim}{showmetasO}
+
 *theorems> :m 
 Global metavariables:
         [plusredO_S]
 
 \end{SaveVerbatim}
-\useverb{prOprooftrace}
+\useverb{showmetasO} 
 
 \noindent
 The \texttt{:addproof} command, at the interactive prompt, will add the proof to
