@@ -1,10 +1,10 @@
-module prelude.either;
+module prelude.either
 
-import builtins;
+import builtins
 
-data Either a b = Left a | Right b;
+data Either a b = Left a | Right b
 
-choose : (b : Bool) -> Either (so b) (so (not b));
-choose True = Left oh;
-choose False = Right oh;
+choose : (b : Bool) -> Either (so b) (so (not b))
+choose True = Left oh
+choose False = Right oh
 

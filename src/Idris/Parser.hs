@@ -140,17 +140,54 @@ parseImports fname input
             Right (x, i) -> do put i
                                return x
   where ishow err = let ln = sourceLine (errorPos err) in
-                        fname ++ ":" ++ show ln ++ ":parse error" 
+                        fname ++ ":" ++ show ln ++ ":parse error"
 --                           show (map messageString (errorMessages err))
 
 pHeader :: IParser [String]
-pHeader = try (do reserved "module"; i <- identifier; lchar ';'
+pHeader = try (do reserved "module"; i <- identifier; option ';' (lchar ';')
                   return (parseName i))
       <|> return []
   where parseName x = case span (/='.') x of
                             (x, "") -> [x]
                             (x, '.':y) -> x : parseName y
 
+push_indent :: IParser ()
+push_indent = do pos <- getPosition
+                 ist <- getState
+                 setState (ist { indent_stack = sourceColumn pos :
+                                                indent_stack ist })
+
+last_indent :: IParser Int
+last_indent = do ist <- getState
+                 case indent_stack ist of
+                    (x : xs) -> return x
+                    _ -> return (-1)
+
+indent :: IParser Int
+indent = do pos <- getPosition
+            return (sourceColumn pos)
+
+pop_indent :: IParser ()
+pop_indent = do ist <- getState
+                let (x : xs) = indent_stack ist
+                setState (ist { indent_stack = xs })
+
+pTerminator = do lchar ';'; pop_indent
+          <|> do c <- indent; l <- last_indent
+                 if (c <= l) then pop_indent
+                             else fail "Not a terminator"
+          <|> do i <- getInput; if (take 1 i == "}") then pop_indent 
+                                                     else fail "Not a terminator"
+          <|> lookAhead eof
+
+pKeepTerminator 
+            = do lchar ';'; return ()
+          <|> do c <- indent; l <- last_indent
+                 if (c <= l) then return ()
+                             else fail "Not a terminator"
+          <|> do i <- getInput; if (take 1 i == "}") then return ()
+                                                     else fail "Not a terminator"
+          <|> lookAhead eof
 
 pfc :: IParser FC
 pfc = do s <- getPosition
@@ -163,7 +200,7 @@ pfc = do s <- getPosition
 pImport :: IParser String
 pImport = do reserved "import"
              f <- identifier
-             lchar ';'
+             option ';' (lchar ';')
              return (map dot f)
   where dot '.' = '/'
         dot c = c
@@ -182,6 +219,7 @@ parseProg syn fname input pos
                                return (collect x)
   where ishow err = let ln = sourceLine (errorPos err) in
                         fname ++ ":" ++ show ln ++ ":parse error"
+                              ++ " " ++ show (sourceColumn (errorPos err))
 --                           show (map messageString (errorMessages err))
 
 -- Collect PClauses with the same function name
@@ -244,7 +282,7 @@ pDecl' syn
        = try pFixity
      <|> pFunDecl' syn
      <|> try (pData syn)
-     <|> try (pSyntaxDecl syn)
+     <|> pSyntaxDecl syn
 
 pSyntaxDecl :: SyntaxInfo -> IParser PDecl
 pSyntaxDecl syn
@@ -267,7 +305,8 @@ pSyntaxDecl syn
 
 pSyntaxRule :: SyntaxInfo -> IParser Syntax
 pSyntaxRule syn 
-    = do sty <- option AnySyntax (do reserved "term"; return TermSyntax
+    = do push_indent
+         sty <- option AnySyntax (do reserved "term"; return TermSyntax
                                   <|> do reserved "pattern"; return PatternSyntax)
          reserved "syntax"
          syms <- many1 pSynSym
@@ -277,7 +316,7 @@ pSyntaxRule syn
             $ fail "Repeated variable in syntax rule"
          lchar '='
          tm <- pExpr syn
-         lchar ';'
+         pTerminator
          return (Rule syms tm sty)
   where
     expr (Expr _) = True
@@ -294,12 +333,13 @@ pSynSym = try (do lchar '['; n <- pName; lchar ']'
              return (Symbol sym)
 
 pFunDecl' :: SyntaxInfo -> IParser PDecl
-pFunDecl' syn = try (do acc <- pAccessibility
+pFunDecl' syn = try (do push_indent
+                        acc <- pAccessibility
                         n_in <- pfName
                         let n = expandNS syn n_in
                         ty <- pTSig syn
                         fc <- pfc
-                        lchar ';'
+                        pTerminator 
 --                         ty' <- implicit syn n ty
                         addAcc n acc
                         return (PTy syn fc n ty))
@@ -348,8 +388,9 @@ expandNS syn n = case syn_namespace syn of
 --------- Fixity ---------
 
 pFixity :: IParser PDecl
-pFixity = do f <- fixity; i <- natural; ops <- sepBy1 operator (lchar ',')
-             lchar ';'
+pFixity = do push_indent
+             f <- fixity; i <- natural; ops <- sepBy1 operator (lchar ',')
+             pTerminator 
              let prec = fromInteger i
              istate <- getState
              let fs = map (Fix (f prec)) ops
@@ -428,12 +469,12 @@ pSimpleExtExpr syn = do i <- getState
 
 pNoExtExpr syn =
          try (pApp syn) 
-     <|> try (pComprehension syn)
-     <|> pSimpleExpr syn
+     <|> try (pSimpleExpr syn)
      <|> pLambda syn
      <|> pLet syn
      <|> pPi syn 
      <|> pDoBlock syn
+     <|> pComprehension syn
     
 pExtensions :: SyntaxInfo -> [Syntax] -> IParser PTerm
 pExtensions syn rules = choice (map (\x -> try (pExt syn x)) (filter valid rules))
@@ -529,19 +570,10 @@ pSimpleExpr syn =
                lchar '}'
                return (PCase fc scr opts)
         <|> try (do x <- pfName; fc <- pfc; return (PRef fc x))
-        <|> try (pPair syn)
         <|> try (pList syn)
         <|> try (pAlt syn)
         <|> try (pIdiom syn)
-        <|> try (do lchar '('; e <- pExpr syn; lchar ')'; return e)
-        <|> try (do lchar '('; fc <- pfc; o <- operator; e <- pExpr syn; lchar ')'
-                    return $ PLam (MN 0 "x") Placeholder
-                                  (PApp fc (PRef fc (UN o)) [pexp (PRef fc (MN 0 "x")), 
-                                                             pexp e]))
-        <|> try (do lchar '('; fc <- pfc; e <- pSimpleExpr syn; o <- operator; lchar ')'
-                    return $ PLam (MN 0 "x") Placeholder
-                                  (PApp fc (PRef fc (UN o)) [pexp e,
-                                                             pexp (PRef fc (MN 0 "x"))]))
+        <|> try (do lchar '('; bracketed syn)
         <|> try (do c <- pConstant; fc <- pfc
                     return (modifyConst syn fc (PConstant c)))
         <|> do reserved "Set"; return PSet
@@ -549,6 +581,18 @@ pSimpleExpr syn =
         <|> try (do symbol "_|_"; fc <- pfc; return (PFalse fc))
         <|> do lchar '_'; return Placeholder
         <|> pSimpleExtExpr syn
+
+bracketed syn =
+            try (pPair syn)
+        <|> try (do e <- pExpr syn; lchar ')'; return e)
+        <|> try (do fc <- pfc; o <- operator; e <- pExpr syn; lchar ')'
+                    return $ PLam (MN 0 "x") Placeholder
+                                  (PApp fc (PRef fc (UN o)) [pexp (PRef fc (MN 0 "x")), 
+                                                             pexp e]))
+        <|> try (do fc <- pfc; e <- pSimpleExpr syn; o <- operator; lchar ')'
+                    return $ PLam (MN 0 "x") Placeholder
+                                  (PApp fc (PRef fc (UN o)) [pexp e,
+                                                             pexp (PRef fc (MN 0 "x"))]))
 
 pCaseOpt :: SyntaxInfo -> IParser (PTerm, PTerm)
 pCaseOpt syn = do lhs <- pExpr syn; symbol "=>";
@@ -568,28 +612,37 @@ pList syn = do lchar '['; fc <- pfc
     mkList fc [] = PRef fc (UN "Nil")
     mkList fc (x : xs) = PApp fc (PRef fc (UN "::")) [pexp x, pexp (mkList fc xs)] 
 
-pPair syn = try (do lchar '('; l <- pExpr syn; op <- pairOp
+pPair syn = try (do l <- pExpr syn 
                     fc <- pfc
-                    r <- pExpr syn; lchar ')';
-                    return (op fc l r))
-        <|> try (do lchar '('; x <- ntuple
+                    rest <- restTuple 
+                    case rest of
+                        [] -> return l
+                        [Left r] -> return (PPair fc l r)
+                        [Right r] -> return (PDPair fc l Placeholder r))
+        <|> try (do x <- ntuple
                     lchar ')'
                     return x) 
-        <|> do lchar '('; ln <- pName; lchar ':'; lty <- pExpr syn;
+        <|> do ln <- pName; lchar ':'; lty <- pExpr syn;
                reservedOp "**";
                fc <- pfc
                r <- pExpr syn; lchar ')';
                return (PDPair fc (PRef fc ln) lty r) 
   where
+    restTuple = do lchar ')'; return []
+            <|> do lchar ','
+                   r <- pExpr syn
+                   lchar ')'
+                   return [Left r]
+            <|> do reservedOp "**"
+                   r <- pExpr syn
+                   lchar ')'
+                   return [Right r]
     ntuple = try (do l <- pExpr syn; fc <- pfc; lchar ','
                      rest <- ntuple
                      return (PPair fc l rest))
              <|> (do l <- pExpr syn; fc <- pfc; lchar ','
                      r <- pExpr syn
                      return (PPair fc l r))
-
-    pairOp = do lchar ','; return PPair
-         <|> do reservedOp "**"; return (\f x y -> PDPair f x Placeholder y)
        
 pAlt syn = do symbol "(|"; 
               alts <- sepBy1 (pExpr' syn) (lchar ',')
@@ -604,8 +657,18 @@ pHSimpleExpr syn
 
 pApp syn = do f <- pSimpleExpr syn
               fc <- pfc
-              args <- many1 (pArg syn)
+              args <- many1 (do notEndApp
+                                pArg syn)
               return (PApp fc f args)
+
+notEndApp = do c <- indent; l <- last_indent
+               i <- getInput
+               if (c <= l || take 1 i == "}"
+                          || take 1 i == ")"
+                          || take 1 i == ","
+                          || take 2 i == "->"
+                          || take 2 i == "=>") then fail "Terminator"
+                           else return ()
 
 pArg :: SyntaxInfo -> IParser PArg
 pArg syn = try (pImplicitArg syn)
@@ -627,18 +690,17 @@ pTSig syn = do lchar ':'
                sc <- pExpr syn
                return (bindList (PPi constraint) (map (\x -> (MN 0 "c", x)) cs) sc)
 
-pLambda syn = try (do lchar '\\'; 
-                      xt <- tyOptDeclList syn
-                      symbol "=>"
-                      sc <- pExpr syn
-                      return (bindList PLam xt sc))
-              <|> (do lchar '\\'
-                      ps <- sepBy (do fc <- pfc
-                                      e <- pSimpleExpr syn
-                                      return (fc, e)) (lchar ',')
-                      symbol "=>"
-                      sc <- pExpr syn
-                      return (pmList (zip [0..] ps) sc))
+pLambda syn = do lchar '\\'
+                 (try (do xt <- tyOptDeclList syn
+                          symbol "=>"
+                          sc <- pExpr syn
+                          return (bindList PLam xt sc))
+                  <|> (do ps <- sepBy (do fc <- pfc
+                                          e <- pSimpleExpr syn
+                                          return (fc, e)) (lchar ',')
+                          symbol "=>"
+                          sc <- pExpr syn
+                          return (pmList (zip [0..] ps) sc)))
     where pmList [] sc = sc
           pmList ((i, (fc, x)) : xs) sc 
                 = PLam (MN i "lamp") Placeholder
@@ -713,7 +775,9 @@ pComprehension syn
 
 pDoBlock syn 
     = do reserved "do"; lchar '{'
-         ds <- endBy1 (pDo syn) (lchar ';')
+         push_indent
+         ds <- many1 (do x <- pDo syn; pKeepTerminator; return x)
+         pop_indent
          lchar '}'
          return (PDoBlock ds)
 
@@ -788,23 +852,25 @@ accData (Just Frozen) n ns = do addAcc n (Just Frozen)
 accData a n ns = do addAcc n a; mapM_ (\n -> addAcc n a) ns
 
 pData :: SyntaxInfo -> IParser PDecl
-pData syn = try (do acc <- pAccessibility
+pData syn = try (do push_indent
+                    acc <- pAccessibility
                     reserved "data"; fc <- pfc
                     tyn_in <- pfName; ty <- pTSig syn
                     let tyn = expandNS syn tyn_in
                     reserved "where"
 --                     ty' <- implicit syn tyn ty
                     cons <- sepBy (pConstructor syn) (lchar '|')
-                    lchar ';'
+                    pTerminator 
                     accData acc tyn (map (\ (n, _, _) -> n) cons)
                     return $ PData syn fc (PDatadecl tyn ty cons))
-        <|> do acc <- pAccessibility
+        <|> do push_indent
+               acc <- pAccessibility
                reserved "data"; fc <- pfc
                tyn_in <- pfName; args <- many pName
                let tyn = expandNS syn tyn_in
                lchar '='
                cons <- sepBy1 (pSimpleCon syn) (lchar '|')
-               lchar ';'
+               pTerminator
                let conty = mkPApp fc (PRef fc tyn) (map (PRef fc) args)
                let ty = bindArgs (map (\a -> PSet) args) PSet
 --                ty' <- implicit syn tyn ty
@@ -835,7 +901,8 @@ pSimpleCon syn
      = do cn_in <- pfName
           let cn = expandNS syn cn_in
           fc <- pfc
-          args <- many (pSimpleExpr syn)
+          args <- many (do notEndApp
+                           pSimpleExpr syn)
           return (cn, args, fc)
 
 --------- Pattern match clauses ---------
@@ -859,7 +926,8 @@ pRHS syn n = do lchar '='; pExpr syn
 
 pClause :: SyntaxInfo -> IParser PClause
 pClause syn
-         = try (do n_in <- pfName; let n = expandNS syn n_in
+         = try (do push_indent
+                   n_in <- pfName; let n = expandNS syn n_in
                    cargs <- many (pConstraintArg syn)
                    iargs <- many (pImplicitArg syn)
                    fc <- pfc
@@ -869,15 +937,18 @@ pClause syn
                    ist <- getState
                    let ctxt = tt_ctxt ist
                    let wsyn = syn { syn_namespace = [] }
-                   (wheres, nmap) <- choice [pWhereblock n wsyn, 
-                                             do lchar ';'
+                   (wheres, nmap) <- choice [do x <- pWhereblock n wsyn
+                                                pop_indent
+                                                return x, 
+                                             do pTerminator
                                                 return ([], [])]
                    let capp = PApp fc (PRef fc n) 
                                 (iargs ++ cargs ++ map pexp args)
                    ist <- getState
                    setState (ist { lastParse = Just n })
                    return $ PClause n capp wargs rhs wheres)
-       <|> try (do wargs <- many1 (pWExpr syn)
+       <|> try (do push_indent
+                   wargs <- many1 (pWExpr syn)
                    ist <- getState
                    n <- case lastParse ist of
                              Just t -> return t
@@ -885,12 +956,15 @@ pClause syn
                    rhs <- pRHS syn n
                    let ctxt = tt_ctxt ist
                    let wsyn = syn { syn_namespace = [] }
-                   (wheres, nmap) <- choice [pWhereblock n wsyn, 
-                                             do lchar ';'
+                   (wheres, nmap) <- choice [do x <- pWhereblock n wsyn
+                                                pop_indent
+                                                return x, 
+                                             do pTerminator
                                                 return ([], [])]
                    return $ PClauseR wargs rhs wheres)
 
-       <|> try (do n_in <- pfName; let n = expandNS syn n_in
+       <|> try (do push_indent
+                   n_in <- pfName; let n = expandNS syn n_in
                    cargs <- many (pConstraintArg syn)
                    iargs <- many (pImplicitArg syn)
                    fc <- pfc
@@ -906,6 +980,7 @@ pClause syn
                    lchar '}'
                    ist <- getState
                    setState (ist { lastParse = Just n })
+                   pop_indent
                    return $ PWith n capp wargs wval withs)
 
        <|> try (do wargs <- many1 (pWExpr syn)
@@ -917,7 +992,8 @@ pClause syn
                    lchar '}'
                    return $ PWithR wargs wval withs)
 
-       <|> do l <- pArgExpr syn
+       <|> do push_indent
+              l <- pArgExpr syn
               op <- operator
               let n = expandNS syn (UN op)
               r <- pArgExpr syn
@@ -925,8 +1001,10 @@ pClause syn
               wargs <- many (pWExpr syn)
               rhs <- pRHS syn n
               let wsyn = syn { syn_namespace = [] }
-              (wheres, nmap) <- choice [pWhereblock n wsyn, 
-                                        do lchar ';'
+              (wheres, nmap) <- choice [do x <- pWhereblock n wsyn
+                                           pop_indent
+                                           return x, 
+                                        do pTerminator
                                            return ([], [])]
               ist <- getState
               let capp = PApp fc (PRef fc n) [pexp l, pexp r]

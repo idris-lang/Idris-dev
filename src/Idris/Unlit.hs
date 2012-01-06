@@ -10,8 +10,8 @@ unlit f s = do let s' = map ulLine (lines s)
 
 data LineType = Prog | Blank | Comm
 
-ulLine ('>':xs)            = case span isSpace xs of
-                                    (_, p) -> (Prog, p)
+ulLine ('>':' ':xs)        = (Prog, xs)
+ulLine ('>':xs)            = (Prog, xs)
 ulLine xs | all isSpace xs = (Blank, "")
           | otherwise      = (Comm, '-':'-':xs)
 
