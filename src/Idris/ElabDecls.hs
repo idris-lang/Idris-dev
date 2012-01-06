@@ -49,7 +49,7 @@ elabType info syn fc n ty' = {- let ty' = piBind (params info) ty_in
          ds <- checkDef fc ((n, nty):defer)
          addIBC (IBCDef n)
          addDeferred ds
-         mapM_ (elabDecl' info) is 
+         mapM_ (elabCaseBlock info) is 
 
 elabData :: ElabInfo -> SyntaxInfo -> FC -> PData -> Idris ()
 elabData info syn fc (PDatadecl n t_in dcons)
@@ -63,7 +63,7 @@ elabData info syn fc (PDatadecl n t_in dcons)
                                             (erun fc (build i info False n t))
          def' <- checkDef fc defer
          addDeferred def'
-         mapM_ (elabDecl' info) is
+         mapM_ (elabCaseBlock info) is
          (cty, _)  <- recheckC ctxt fc [] t'
          logLvl 2 $ "---> " ++ show cty
          updateContext (addTyDecl n cty) -- temporary, to check cons
@@ -85,7 +85,7 @@ elabCon info syn (n, t_in, fc)
          logLvl 2 $ "Rechecking " ++ show t'
          def' <- checkDef fc defer
          addDeferred def'
-         mapM_ (elabDecl' info) is
+         mapM_ (elabCaseBlock info) is
          ctxt <- getContext
          (cty, _)  <- recheckC ctxt fc [] t'
          logLvl 2 $ "---> " ++ show n ++ " : " ++ show cty
@@ -95,8 +95,8 @@ elabCon info syn (n, t_in, fc)
 elabClauses :: ElabInfo -> FC -> FnOpts -> Name -> [PClause] -> Idris ()
 elabClauses info fc opts n_in cs_in = let n = liftname info n_in in  
       do let cs = genClauses cs_in
-         solveDeferred n
          pats_in <- mapM (elabClause info fc (TCGen `elem` opts)) cs
+         solveDeferred n
          let pats = mapMaybe id pats_in
          logLvl 3 (showSep "\n" (map (\ (l,r) -> 
                                         show l ++ " = " ++ 
@@ -192,7 +192,7 @@ elabClause info fc tcgen (PClause fname lhs_in withs rhs_in whereblock)
         when (not (null defer)) $ iLOG $ "DEFERRED " ++ show defer
         def' <- checkDef fc defer
         addDeferred def'
-        mapM_ (elabDecl' info) is
+        mapM_ (elabCaseBlock info) is
         ctxt <- getContext
         logLvl 5 $ "Rechecking"
         (crhs, crhsty) <- recheckC ctxt fc [] rhs'
@@ -242,7 +242,7 @@ elabClause info fc tcgen (PWith fname lhs_in withs wval_in withblock)
                             return (tt, d, is))
         def' <- checkDef fc defer
         addDeferred def'
-        mapM_ (elabDecl' info) is
+        mapM_ (elabCaseBlock info) is
         (cwval, cwvalty) <- recheckC ctxt fc [] (getInferTerm wval')
         logLvl 3 ("With type " ++ show cwvalty ++ "\nRet type " ++ show ret_ty)
         windex <- getName
@@ -278,7 +278,7 @@ elabClause info fc tcgen (PWith fname lhs_in withs wval_in withblock)
                         return (tt, d, is))
         def' <- checkDef fc defer
         addDeferred def'
-        mapM_ (elabDecl' info) is
+        mapM_ (elabCaseBlock info) is
         (crhs, crhsty) <- recheckC ctxt fc [] rhs'
         return $ Just (clhs, crhs)
   where
@@ -584,6 +584,9 @@ elabDecl' info (PInstance s f cs n ps t ds)
     = do iLOG $ "Elaborating instance " ++ show n
          elabInstance info s f cs n ps t ds
 elabDecl' info (PDirective i) = i
+
+elabCaseBlock info d@(PClauses f o n ps) 
+        = elabDecl' info d 
 
 -- elabDecl' info (PImport i) = loadModule i
 

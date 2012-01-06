@@ -1040,7 +1040,9 @@ aiFn ist fc f as
           -- This is where namespaces get resolved by adding PAlternative
         = case lookupCtxtName Nothing f (idris_implicits ist) of
             [(f',ns)] -> mkPApp fc (length ns) (PRef fc f') (insertImpl ns as)
-            [] -> mkPApp fc 1 (PRef fc f) as
+            [] -> if f `elem` idris_metavars ist
+                    then PApp fc (PRef fc f) as
+                    else mkPApp fc 1 (PRef fc f) as
             alts -> PAlternative $
                      map (\(f', ns) -> mkPApp fc (length ns) (PRef fc f') 
                                                  (insertImpl ns as)) alts

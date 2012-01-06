@@ -241,7 +241,7 @@ elab ist info pattern tcgen fn tm
              -- fail $ "Not implemented " ++ show c ++ "\n" ++ show args
              -- elaborate case
              updateAux (newdef : )
-             solve -- trace (show newdef) solve
+             solve
         where mkCaseName (NS n ns) = NS (mkCaseName n) ns
               mkCaseName (UN x) = UN (x ++ "_case")
               mkCaseName (MN i x) = MN i (x ++ "_case")
@@ -249,9 +249,11 @@ elab ist info pattern tcgen fn tm
 
     caseBlock :: FC -> Name -> [(Name, Binder Term)] -> [(PTerm, PTerm)] -> [PClause]
     caseBlock fc n env opts 
-        = let args = map (PRef fc) (map fst (init env)) in
+        = let args = map mkarg (map fst (init env)) in
               map (mkClause args) opts
-       where mkClause args (l, r) 
+       where -- mkarg (MN _ _) = Placeholder
+             mkarg n = PRef fc n
+             mkClause args (l, r) 
                 = PClause n (PApp fc (PRef fc n)
                                      (map pexp args ++ [pexp l])) [] r []
 

@@ -40,17 +40,15 @@ map f (x :: xs) = f x :: map f xs;
 
 mapMaybe : (a -> Maybe b) -> List a -> List b;
 mapMaybe f [] = [];
-mapMaybe f (x :: xs) with f x {
-    | Nothing = mapMaybe f xs;
-    | Just v  = v :: mapMaybe f xs;
-}
+mapMaybe f (x :: xs) = case f x of {
+                           Nothing => mapMaybe f xs
+                         | Just v  => v :: mapMaybe f xs
+                       };
 
 filter : (y -> Bool) -> List y -> List y;
 filter pred [] = [];
-filter pred (x :: xs) with (pred x, filter pred xs) {
-  | (True, fxs) = x :: fxs; 
-  | (False, fxs) = fxs;
-}
+filter pred (x :: xs) = if (pred x) then (x :: filter pred xs)
+                                    else (filter pred xs);
 
 elem : Eq a => a -> List a -> Bool;
 elem x [] = False;
