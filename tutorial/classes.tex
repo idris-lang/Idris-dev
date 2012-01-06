@@ -140,6 +140,11 @@ which inherits method from \texttt{Eq} as well as defining some of its own:
 
 data Ordering = LT | EQ | GT;
 
+\end{SaveVerbatim}
+\useverb{ord} 
+
+\begin{SaveVerbatim}{eqord}
+
 class Eq a => Ord a where {
     compare : a -> a -> Ordering;
 
@@ -152,7 +157,7 @@ class Eq a => Ord a where {
 }
 
 \end{SaveVerbatim}
-\useverb{ord}
+\useverb{eqord}
 
 The \texttt{Ord} class allows us to compare two values and determine their ordering. 
 Only the \texttt{compare} method is required; every other method has a default definition.

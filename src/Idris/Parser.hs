@@ -621,11 +621,23 @@ pTSig syn = do lchar ':'
                sc <- pExpr syn
                return (bindList (PPi constraint) (map (\x -> (MN 0 "c", x)) cs) sc)
 
-pLambda syn = do lchar '\\'; 
-                 xt <- tyOptDeclList syn
-                 symbol "=>"
-                 sc <- pExpr syn
-                 return (bindList PLam xt sc)
+pLambda syn = try (do lchar '\\'; 
+                      xt <- tyOptDeclList syn
+                      symbol "=>"
+                      sc <- pExpr syn
+                      return (bindList PLam xt sc))
+              <|> (do lchar '\\'
+                      ps <- sepBy (do fc <- pfc
+                                      e <- pSimpleExpr syn
+                                      return (fc, e)) (lchar ',')
+                      symbol "=>"
+                      sc <- pExpr syn
+                      return (pmList (zip [0..] ps) sc))
+    where pmList [] sc = sc
+          pmList ((i, (fc, x)) : xs) sc 
+                = PLam (MN i "lamp") Placeholder
+                        (PCase fc (PRef fc (MN i "lamp"))
+                                [(x, (pmList xs sc))])
 
 pLet syn = try (do reserved "let"; n <- pName; 
                    ty <- option Placeholder (do lchar ':'; pExpr' syn)

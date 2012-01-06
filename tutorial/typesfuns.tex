@@ -109,6 +109,10 @@ e.g. (::). Infix operators can use any of the symbols:
 \end{SaveVerbatim}
 \useverb{infixsyms}
 
+\begin{SaveVerbatim}{argh}
+$
+\end{SaveVerbatim}
+
 \subsection{Functions}
 
 Functions are implemented by pattern matching, again using a similar syntax to
@@ -195,6 +199,34 @@ rev xs = revAcc [] xs where {
 \noindent
 Any names which are visible in the outer scope are also visible in the \texttt{where}
 clause (unless they have been redefined, such as \texttt{xs} here).
+
+\subsubsection*{\texttt{let} bindings}
+
+Intermediate values can be calculated using \texttt{let} bindings:
+
+\begin{SaveVerbatim}{letb}
+
+mirror : List a -> List a;
+mirror xs = let xs' = rev xs in
+                app xs xs';
+
+\end{SaveVerbatim}
+\useverb{letb} 
+
+\noindent
+We can do simple pattern matching in \texttt{let} bindings too. For example, we can extract
+fields from a record as follows, as well as by pattern matching at the top level:
+
+\begin{SaveVerbatim}{letp}
+
+data Person = MkPerson String Int;
+
+showPerson : Person -> String;
+showPerson p = let MkPerson name age = p in
+                   name ++ " is " ++ show age ++ " years old";
+
+\end{SaveVerbatim}
+\useverb{letp} 
 
 \subsection{Dependent Types}
 
@@ -625,12 +657,13 @@ to use an anonymous function:
 \end{SaveVerbatim}
 \useverb{lam1}
 
+\noindent
 The notation \texttt{$\backslash$x => val} constructs an anonymous function
 which takes one argument, \texttt{x} and returns the expression \texttt{val}.
 Anonymous functions may take several arguments, separated by commas, e.g.
 \texttt{$\backslash$x, y, z => val}. Arguments may also be given explicit
-types, e.g. \texttt{$\backslash$x : Int => x * 2}.
-
+types, e.g. \texttt{$\backslash$x : Int => x * 2}, and can pattern match,
+e.g. \texttt{$\backslash$ (x, y) => x + y}.
 We could also use an operator section:
 
 \begin{SaveVerbatim}{sec1}
@@ -641,6 +674,7 @@ We could also use an operator section:
 \end{SaveVerbatim}
 \useverb{sec1}
 
+\noindent
 \texttt{(*2)} is shorthand for a function which multiplies a number by 2. It expands to
 \texttt{$\backslash$x => x * 2}. 
 Similarly, \texttt{(2*)} would expand to \texttt{$\backslash$x => 2 * x}.
