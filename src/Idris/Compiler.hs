@@ -10,36 +10,52 @@ import Core.CaseTree
 
 import Control.Monad.State
 import Data.List
+import System.Process
+import System.IO
+import System.Directory
+import System.Environment
 
 import Epic.Epic hiding (Term, Type, Name, fn, compile)
 import qualified Epic.Epic as E
 
 primDefs = [UN "mkForeign", UN "FalseElim"]
 
-compile :: FilePath -> Idris ()
-compile f = do checkMVs
-               ds <- mkDecls
-               objs <- getObjectFiles
-               libs <- getLibs
-               hdrs <- getHdrs
-               let incs = map Include hdrs
-               liftIO $ compileObjWith [Debug] (mkProgram (incs ++ ds)) (f ++ ".o")
-               liftIO $ link ((f ++ ".o") : objs ++ (map ("-l"++) libs)) f
+compile :: FilePath -> Term -> Idris ()
+compile f tm
+    = do checkMVs
+         ds <- mkDecls tm
+         objs <- getObjectFiles
+         libs <- getLibs
+         hdrs <- getHdrs
+         let incs = map Include hdrs
+         so <- getSO
+         case so of
+            Nothing ->
+                do m <- epicMain tm
+                   let mainval = EpicFn (name "main") m
+                   liftIO $ compileObjWith [Debug] 
+                                (mkProgram (incs ++ mainval : ds)) (f ++ ".o")
+                   liftIO $ link ((f ++ ".o") : objs ++ (map ("-l"++) libs)) f
   where checkMVs = do i <- get
                       case idris_metavars i \\ primDefs of
                             [] -> return ()
                             ms -> fail $ "There are undefined metavariables: " ++ show ms
 
-mkDecls :: Idris [EpicDecl]
-mkDecls = do i <- getIState
-             decls <- mapM build (ctxtAlist (tt_ctxt i))
-             return $ basic_defs ++ EpicFn (name "main") epicMain : decls
+mkDecls :: Term -> Idris [EpicDecl]
+mkDecls t = do i <- getIState
+               decls <- mapM build (ctxtAlist (tt_ctxt i))
+               return $ basic_defs ++ decls
+             
+-- EpicFn (name "main") epicMain : decls
 
 ename x = name ("idris_" ++ show x)
 aname x = name ("a_" ++ show x)
 
-epicMain = effect_ $ -- ref (ename (UN "run__IO")) @@
-                     ref (ename (NS (UN "main") ["main"]))
+epicMain tm = do e <- epic tm
+                 return $ effect_ e
+
+-- epicMain = effect_ $ -- ref (ename (UN "run__IO")) @@
+--                      ref (ename (NS (UN "main") ["main"]))
 
 class ToEpic a where
     epic :: a -> Idris E.Term
@@ -167,4 +183,15 @@ instance ToEpic SC where
         mkEpicAlt (DefaultCase rhs)      = do rhs' <- epic rhs
                                               return $ defaultcase rhs'
 
+tempfile :: IO (FilePath, Handle)
+tempfile = do env <- environment "TMPDIR"
+              let dir = case env of
+                              Nothing -> "/tmp"
+                              (Just d) -> d
+              openTempFile dir "esc"
+
+environment :: String -> IO (Maybe String)
+environment x = catch (do e <- getEnv x
+                          return (Just e))
+                      (\_ -> return Nothing)
 

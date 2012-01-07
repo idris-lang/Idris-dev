@@ -24,6 +24,7 @@ import System.FilePath
 import System.Environment
 import System.Process
 import System.Directory
+import System.IO
 import Control.Monad
 import Control.Monad.State
 import Data.List
@@ -129,6 +130,15 @@ process (Eval t) = do (tm, ty) <- elabVal toplevel False t
                       imp <- impShow
                       iputStrLn (showImp imp (delab ist tm') ++ " : " ++ 
                                  showImp imp (delab ist ty'))
+process (ExecVal t) = do (tm, ty) <- elabVal toplevel False t 
+--                                         (PApp fc (PRef fc (NS (UN "print") ["prelude"]))
+--                                                           [pexp t])
+                         (tmpn, tmph) <- liftIO tempfile
+                         liftIO $ hClose tmph
+                         compile tmpn tm
+                         liftIO $ system tmpn
+                         return ()
+    where fc = FC "(input)" 0 
 process (Check (PRef _ n))
                   = do ctxt <- getContext
                        ist <- get
@@ -170,10 +180,16 @@ process TTShell  = do ist <- get
                       let shst = initState (tt_ctxt ist)
                       shst' <- lift $ runShell shst
                       return ()
-process (Execute f) = do compile f 
-                         liftIO $ system ("./" ++ f)
-                         return ()
-process (Compile f) = do compile f 
+process Execute = do (m, _) <- elabVal toplevel False 
+                                     (PRef (FC "main" 0) (NS (UN "main") ["main"]))
+                     (tmpn, tmph) <- liftIO tempfile
+                     liftIO $ hClose tmph
+                     compile tmpn m
+                     liftIO $ system tmpn
+                     return ()
+process (Compile f) = do (m, _) <- elabVal toplevel False 
+                                        (PRef (FC "main" 0) (NS (UN "main") ["main"]))
+                         compile f m
 process (LogLvl i) = setLogLevel i 
 process Metavars = do ist <- get
                       let mvs = idris_metavars ist \\ primDefs
@@ -202,7 +218,7 @@ help =
     ([":p",":prove"], "<name>", "Prove a metavariable"),
     ([":a",":addproof"], "", "Add last proof to source file"),
     ([":c",":compile"], "<filename>", "Compile to an executable <filename>"),
-    ([":exec",":execute"], "<filename>", "Compile to an executable <filename> and run"),
+    ([":exec",":execute"], "", "Compile to an executable and run"),
     ([":?",":h",":help"], "", "Display this help text"),
     ([":q",":quit"], "", "Exit the Idris system")
   ]

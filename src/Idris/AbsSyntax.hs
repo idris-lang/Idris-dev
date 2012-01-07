@@ -55,7 +55,8 @@ data IState = IState { tt_ctxt :: Context,
                        brace_stack :: [Maybe Int],
                        hide_list :: [(Name, Maybe Accessibility)],
                        default_access :: Accessibility,
-                       ibc_write :: [IBCWrite]
+                       ibc_write :: [IBCWrite],
+                       compiled_so :: Maybe String
                      }
              
 -- information that needs writing for the current module's .ibc file
@@ -75,7 +76,7 @@ data IBCWrite = IBCFix FixDecl
 
 idrisInit = IState initContext [] [] emptyContext emptyContext emptyContext
                    "" defaultOpts 6 [] [] [] [] [] [] [] [] 
-                   Nothing Nothing Nothing [] [] [] Hidden []
+                   Nothing Nothing Nothing [] [] [] Hidden [] Nothing
 
 -- The monad for the main REPL - reading and processing files and updating 
 -- global state (hence the IO inner monad).
@@ -123,6 +124,14 @@ setErrLine x = do i <- get;
 clearErr :: Idris ()
 clearErr = do i <- get
               put (i { errLine = Nothing })
+
+getSO :: Idris (Maybe String)
+getSO = do i <- get
+           return (compiled_so i)
+
+setSO :: Maybe String -> Idris ()
+setSO s = do i <- get
+             put (i { compiled_so = s })
 
 getIState :: Idris IState
 getIState = get
@@ -246,7 +255,7 @@ setTypeCase t = do i <- get
 -- Commands in the REPL
 
 data Command = Quit | Help | Eval PTerm | Check PTerm | Reload | Edit
-             | Compile String | Execute String
+             | Compile String | Execute | ExecVal PTerm
              | Metavars | Prove Name | AddProof | Universes
              | TTShell 
              | LogLvl Int | Spec PTerm | HNF PTerm | Defn Name
