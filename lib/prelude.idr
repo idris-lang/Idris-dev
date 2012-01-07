@@ -16,40 +16,31 @@ import prelude.char
 class Show a where 
     show : a -> String
 
-
 instance Show Nat where 
     show O = "O"
     show (S k) = "s" ++ show k
 
-
 instance Show Int where 
     show = prim__intToStr
-
 
 instance Show Integer where 
     show = prim__bigIntToStr
 
-
 instance Show Float where 
     show = prim__floatToStr
-
 
 instance Show Char where 
     show x = strCons x "" 
 
-
 instance Show String where 
     show = id
-
 
 instance Show Bool where 
     show True = "True"
     show False = "False"
 
-
 instance (Show a, Show b) => Show (a, b) where 
     show (x, y) = "(" ++ show x ++ ", " ++ show y ++ ")"
-
 
 instance Show a => Show (List a) where 
     show xs = "[" ++ show' xs ++ "]" where 
@@ -57,8 +48,6 @@ instance Show a => Show (List a) where
         show' []        = ""
         show' [x]       = show x
         show' (x :: xs) = show x ++ ", " ++ show' xs
-    
-
 
 instance Show a => Show (Vect a n) where 
     show xs = "[" ++ show' xs ++ "]" where 
@@ -66,13 +55,10 @@ instance Show a => Show (Vect a n) where
         show' []        = ""
         show' [x]       = show x
         show' (x :: xs) = show x ++ ", " ++ show' xs
-    
-
 
 instance Show a => Show (Maybe a) where 
     show Nothing = "Nothing"
     show (Just x) = "Just " ++ show x
-
 
 ---- Monad and instances
 
@@ -82,27 +68,19 @@ class Monad (m : Set -> Set) where
     return : a -> m a
     (>>=)  : m a -> (a -> m b) -> m b
 
-
 class Monad m => MonadPlus (m : Set -> Set) where 
     mplus : m a -> m a -> m a
     mzero : m a
 
-
-class Monad m => MonadFail (m : Set -> Set) where 
-    fail : String -> m ()
-
-
 instance Monad IO where 
     return t = io_return t
     b >>= k = io_bind b k
-
 
 instance Monad Maybe where 
     return t = Just t
 
     Nothing  >>= k = Nothing
     (Just x) >>= k = k x
-
 
 instance MonadPlus Maybe where 
     mzero = Nothing
@@ -111,16 +89,13 @@ instance MonadPlus Maybe where
     mplus Nothing (Just y) = Just y
     mplus Nothing Nothing  = Nothing
 
-
 instance Monad List where 
     return x = [x]
     m >>= f = concatMap f m
 
-
 instance MonadPlus List where 
     mzero = []
     mplus = app
-
 
 guard : MonadPlus m => Bool -> m ()
 guard True  = return ()
@@ -131,15 +106,12 @@ guard False = mzero
 class Functor (f : Set -> Set) where 
     fmap : (a -> b) -> f a -> f b
 
-
 instance Functor Maybe where 
     fmap f (Just x) = Just (f x)
     fmap f Nothing  = Nothing
 
-
 instance Functor List where 
     fmap = map
-
 
 ---- Applicative functors/Idioms
 
@@ -148,7 +120,6 @@ infixl 2 <$>
 class Functor f => Applicative (f : Set -> Set) where 
     pure  : a -> f a
     (<$>) : f (a -> b) -> f a -> f b 
-
 
 ---- some mathematical operations
 
@@ -190,7 +161,6 @@ floor x = prim__floatFloor x
 
 ceiling : Float -> Float
 ceiling x = prim__floatCeil x
-
 
 -- Ranges
 
@@ -244,7 +214,6 @@ openFile f m = fopen f (modeStr m) where
   modeStr Write = "w"
   modeStr ReadWrite = "r+"
 
-
 do_fclose : Ptr -> IO ()
 do_fclose h = mkForeign (FFun "fileClose" [FPtr] FUnit) h
 
@@ -288,6 +257,4 @@ readFile fn = do h <- openFile fn Read
                               readFile' h (contents ++ l)
                           )
                        else (return contents) 
-          
-  
 
