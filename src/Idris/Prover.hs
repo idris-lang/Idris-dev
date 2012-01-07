@@ -13,7 +13,7 @@ import Idris.ElabTerm
 import Idris.Parser
 import Idris.Error
 
-import System.Console.Readline
+import System.Console.Haskeline
 import Control.Monad.State
 
 prover :: Name -> Idris ()
@@ -82,12 +82,11 @@ lifte st e = do (v, _) <- elabStep st e
 ploop :: Bool -> String -> [String] -> ElabState [PDecl] -> Idris (Term, [String])
 ploop d prompt prf e 
     = do i <- get
-         when d $ lift $ dumpState i (proof e)
-         x <- lift $ readline (prompt ++ "> ")
+         when d $ liftIO $ dumpState i (proof e)
+         x <- lift $ getInputLine (prompt ++ "> ")
          (cmd, step) <- case x of
             Nothing -> fail "Abandoned"
-            Just input -> do lift $ addHistory input
-                             return (parseTac i input, input)
+            Just input -> do return (parseTac i input, input)
          (d, st, done, prf') <- idrisCatch 
            (case cmd of
               Left err -> do iputStrLn (show err)

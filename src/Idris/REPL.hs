@@ -19,7 +19,7 @@ import Core.ProofShell
 import Core.TT
 import Core.Constraints
 
-import System.Console.Readline
+import System.Console.Haskeline
 import System.FilePath
 import System.Environment
 import System.Process
@@ -33,12 +33,11 @@ import Data.Version
 repl :: IState -> [FilePath] -> Idris ()
 repl orig mods
      = do let prompt = mkPrompt mods
-          x <- lift $ readline (prompt ++ "> ")
+          x <- lift $ getInputLine (prompt ++ "> ")
           case x of
               Nothing -> do iputStrLn "Bye bye"
                             return ()
-              Just input -> do lift $ addHistory input
-                               ms <- processInput input orig mods
+              Just input -> do ms <- processInput input orig mods
                                case ms of
                                     Just mods -> repl orig mods
                                     Nothing -> return ()
@@ -54,7 +53,7 @@ processInput cmd orig inputs
                         (f:_) -> f
                         _ -> ""
          case parseCmd i cmd of
-                Left err ->   do lift $ print err
+                Left err ->   do liftIO $ print err
                                  return (Just inputs)
                 Right Reload -> do put (orig { idris_options = idris_options i })
                                    clearErr
@@ -75,13 +74,13 @@ edit :: FilePath -> IState -> Idris ()
 edit "" orig = iputStrLn "Nothing to edit"
 edit f orig
     = do i <- get
-         env <- lift $ getEnvironment
+         env <- liftIO $ getEnvironment
          let editor = getEditor env
          let line = case errLine i of
                         Just l -> " +" ++ show l ++ " "
                         Nothing -> " "
          let cmd = editor ++ line ++ f
-         lift $ system cmd
+         liftIO $ system cmd
          clearErr
          put (orig { idris_options = idris_options i })
          loadModule f
@@ -95,13 +94,13 @@ addProof :: FilePath -> IState -> Idris ()
 addProof "" orig = iputStrLn "Nothing to add to"
 addProof f orig
     = do let fb = f ++ "~"
-         lift $ copyFile f fb -- make a backup in case something goes wrong!
-         prog <- lift $ readFile fb
+         liftIO $ copyFile f fb -- make a backup in case something goes wrong!
+         prog <- liftIO $ readFile fb
          i <- get
          case last_proof i of
             Nothing -> iputStrLn "No proof to add"
             Just (n, p) -> do let prog' = insertScript (showProof n p) (lines prog)
-                              lift $ writeFile f (unlines prog')
+                              liftIO $ writeFile f (unlines prog')
                               iputStrLn $ "Added proof " ++ show n
                               put (i { last_proof = Nothing })
                               -- lift $ removeFile fb -- uncomment when less scared :)
@@ -141,14 +140,14 @@ process (Check t) = do (tm, ty) <- elabVal toplevel False t
 process Universes = do i <- get
                        let cs = idris_constraints i
 --                        iputStrLn $ showSep "\n" (map show cs)
-                       lift $ print (map fst cs)
+                       liftIO $ print (map fst cs)
                        let n = length cs
                        iputStrLn $ "(" ++ show n ++ " constraints)"
                        case ucheck cs of
                             Error e -> iputStrLn $ pshow i e
                             OK _ -> iputStrLn "Universes OK"
 process (Defn n) = do ctxt <- getContext
-                      lift $ print (lookupDef Nothing n ctxt)
+                      liftIO $ print (lookupDef Nothing n ctxt)
 process (Spec t) = do (tm, ty) <- elabVal toplevel False t
                       ctxt <- getContext
                       ist <- get
@@ -165,7 +164,7 @@ process TTShell  = do ist <- get
                       shst' <- lift $ runShell shst
                       return ()
 process (Execute f) = do compile f 
-                         lift $ system ("./" ++ f)
+                         liftIO $ system ("./" ++ f)
                          return ()
 process (Compile f) = do compile f 
 process (LogLvl i) = setLogLevel i 

@@ -53,8 +53,8 @@ lchar = lexeme.char
 
 loadModule :: FilePath -> Idris String
 loadModule f 
-   = idrisCatch (do datadir <- lift $ getDataDir
-                    fp <- lift $ findImport [".", datadir] f
+   = idrisCatch (do datadir <- liftIO $ getDataDir
+                    fp <- liftIO $ findImport [".", datadir] f
                     i <- getIState
                     if (f `elem` imported i)
                        then iLOG $ "Already read " ++ f
@@ -78,7 +78,7 @@ loadModule f
 loadSource :: Bool -> FilePath -> Idris () 
 loadSource lidr f 
              = do iLOG ("Reading " ++ f)
-                  file_in <- lift $ readFile f
+                  file_in <- liftIO $ readFile f
                   file <- if lidr then tclift $ unlit f file_in else return file_in
                   (mname, modules, rest, pos) <- parseImports f file
                   mapM_ loadModule modules
@@ -1099,8 +1099,8 @@ pDirective = try (do lchar '%'; reserved "lib"; lib <- strlit;
                      return [PDirective (do addLib lib
                                             addIBC (IBCLib lib))])
          <|> try (do lchar '%'; reserved "link"; obj <- strlit;
-                     return [PDirective (do datadir <- lift $ getDataDir
-                                            o <- lift $ findInPath [".", datadir] obj
+                     return [PDirective (do datadir <- liftIO $ getDataDir
+                                            o <- liftIO $ findInPath [".", datadir] obj
                                             addIBC (IBCObj o)
                                             addObjectFile o)])
          <|> try (do lchar '%'; reserved "include"; hdr <- strlit;

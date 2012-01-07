@@ -23,8 +23,8 @@ compile f = do checkMVs
                libs <- getLibs
                hdrs <- getHdrs
                let incs = map Include hdrs
-               lift $ compileObjWith [Debug] (mkProgram (incs ++ ds)) (f ++ ".o")
-               lift $ link ((f ++ ".o") : objs ++ (map ("-l"++) libs)) f
+               liftIO $ compileObjWith [Debug] (mkProgram (incs ++ ds)) (f ++ ".o")
+               liftIO $ link ((f ++ ".o") : objs ++ (map ("-l"++) libs)) f
   where checkMVs = do i <- get
                       case idris_metavars i \\ primDefs of
                             [] -> return ()

@@ -1,6 +1,6 @@
 module Main where
 
-import System.Console.Readline
+import System.Console.Haskeline
 import System.IO
 import System.Environment
 import System.Exit
@@ -42,15 +42,15 @@ data Opt = Filename String
 
 main = do xs <- getArgs
           opts <- parseArgs xs
-          execStateT (runIdris opts) idrisInit
+          runInputT defaultSettings $ execStateT (runIdris opts) idrisInit
 
 runIdris :: [Opt] -> Idris ()
 runIdris opts = 
     do let inputs = opt getFile opts
        let runrepl = not (NoREPL `elem` opts)
        let output = opt getOutput opts
-       when (Ver `elem` opts) $ lift showver
-       when (Usage `elem` opts) $ lift usage
+       when (Ver `elem` opts) $ liftIO showver
+       when (Usage `elem` opts) $ liftIO usage
        setREPL runrepl
        mapM_ makeOption opts
        elabPrims
@@ -65,7 +65,7 @@ runIdris opts =
                     (o:_) -> process (Compile o)  
        when runrepl $ repl ist inputs
        ok <- noErrors
-       when (not ok) $ lift (exitWith (ExitFailure 1))
+       when (not ok) $ liftIO (exitWith (ExitFailure 1))
   where
     makeOption (OLogging i) = setLogLevel i
     makeOption TypeCase = setTypeCase True

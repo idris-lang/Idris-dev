@@ -37,7 +37,7 @@ Executable     idris
 
                               Paths_idris
 
-               Build-depends:   base>=4 && <5, parsec, mtl, Cabal, readline,
+               Build-depends:   base>=4 && <5, parsec, mtl, Cabal, haskeline,
                                 containers, process, transformers, filepath, directory,
                                 binary, bytestring, epic>=0.9.2
                                 

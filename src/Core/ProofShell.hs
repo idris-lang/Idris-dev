@@ -9,7 +9,7 @@ import Core.ShellParser
 import Core.Elaborate
 
 import Control.Monad.State
-import System.Console.Readline
+import System.Console.Haskeline
 
 data ShellState = ShellState 
                         { ctxt     :: Context,
@@ -53,22 +53,21 @@ processCommand (Tac e)  state
                                 err -> (state, show err)
     | otherwise = (state, "No proof in progress")
 
-runShell :: ShellState -> IO ShellState
+runShell :: ShellState -> InputT IO ShellState
 runShell st = do (prompt, parser) <- 
                            maybe (return ("TT# ", parseCommand)) 
-                                 (\st -> do print st
+                                 (\st -> do outputStrLn (show st)
                                             return (show (thname st) ++ "# ", parseTactic)) 
                                  (prf st)
-                 x <- readline prompt
+                 x <- getInputLine prompt
                  cmd <- case x of
                     Nothing -> return $ Right Quit
-                    Just input -> do addHistory input
-                                     return (parser input)
+                    Just input -> return (parser input)
                  case cmd of
-                    Left err -> do putStrLn (show err)
+                    Left err -> do outputStrLn (show err)
                                    runShell st
                     Right cmd -> do let (st', r) = processCommand cmd st
-                                    putStrLn r
+                                    outputStrLn r
                                     if (not (exitNow st')) then runShell st'
                                                            else return st'
 

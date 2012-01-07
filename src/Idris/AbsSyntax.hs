@@ -8,6 +8,7 @@ import Core.Evaluate
 import Core.Elaborate
 import Core.Typecheck
 
+import System.Console.Haskeline
 import Control.Monad.State
 import Data.List
 import Data.Char
@@ -78,7 +79,7 @@ idrisInit = IState initContext [] [] emptyContext emptyContext emptyContext
 
 -- The monad for the main REPL - reading and processing files and updating 
 -- global state (hence the IO inner monad).
-type Idris a = StateT IState IO a
+type Idris = StateT IState (InputT IO)
 
 getContext :: Idris Context
 getContext = do i <- get; return (tt_ctxt i)
@@ -175,10 +176,10 @@ solveDeferred n = do i <- get
                      put (i { idris_metavars = idris_metavars i \\ [n] })
 
 iputStrLn :: String -> Idris ()
-iputStrLn = lift.putStrLn
+iputStrLn = liftIO . putStrLn
 
 iWarn :: FC -> String -> Idris ()
-iWarn fc err = do lift $ putStrLn (show fc ++ ":" ++ err)
+iWarn fc err = liftIO $ putStrLn (show fc ++ ":" ++ err)
 
 setLogLevel :: Int -> Idris ()
 setLogLevel l = do i <- get
@@ -224,7 +225,7 @@ logLvl :: Int -> String -> Idris ()
 logLvl l str = do i <- get
                   let lvl = opt_logLevel (idris_options i)
                   when (lvl >= l)
-                      $ do lift (putStrLn str)
+                      $ do liftIO (putStrLn str)
                            put (i { idris_log = idris_log i ++ str ++ "\n" } )
 
 iLOG :: String -> Idris ()

@@ -46,7 +46,7 @@ initIBC = IBCFile ibcVersion "" [] [] [] [] [] [] [] [] [] [] [] []
 
 loadIBC :: FilePath -> Idris ()
 loadIBC fp = do iLOG $ "Loading ibc " ++ fp
-                ibcf <- lift $ (decodeFile fp :: IO IBCFile)
+                ibcf <- liftIO $ (decodeFile fp :: IO IBCFile)
                 process ibcf fp
 
 writeIBC :: FilePath -> FilePath -> Idris ()
@@ -57,7 +57,7 @@ writeIBC src f
                 (_:_) -> fail "Can't write ibc when there are unsolved metavariables"
                 [] -> return ()
          ibcf <- mkIBC (ibc_write i) (initIBC { sourcefile = src }) 
-         lift $ encodeFile f ibcf
+         liftIO $ encodeFile f ibcf
          iLOG $ "Written"
          return ()
 
@@ -96,7 +96,7 @@ process i fn
    | ver i /= ibcVersion = do iLOG "ibc out of date"
                               fail "Incorrect ibc version"
    | otherwise =  
-            do lift $ timestampOlder (sourcefile i) fn
+            do liftIO $ timestampOlder (sourcefile i) fn
                pImports (ibc_imports i)
                pImps (ibc_implicits i)
                pFixes (ibc_fixes i)
@@ -121,8 +121,8 @@ timestampOlder src ibc = do srcok <- doesFileExist src
 
 pImports :: [FilePath] -> Idris ()
 pImports fs 
-  = do datadir <- lift $ getDataDir
-       mapM_ (\f -> do fp <- lift $ findImport [".", datadir] f
+  = do datadir <- liftIO $ getDataDir
+       mapM_ (\f -> do fp <- liftIO $ findImport [".", datadir] f
                        i <- getIState
                        if (f `elem` imported i)
                         then iLOG $ "Already read " ++ f
