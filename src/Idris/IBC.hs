@@ -17,7 +17,6 @@ import Control.Monad
 import Control.Monad.State hiding (get, put)
 import System.FilePath
 import System.Directory
-import System.Posix.Files
 
 import Paths_idris
 
@@ -114,9 +113,9 @@ process i fn
 timestampOlder :: FilePath -> FilePath -> IO ()
 timestampOlder src ibc = do srcok <- doesFileExist src
                             when srcok $ do
-                                srcs <- getFileStatus src
-                                ibcs <- getFileStatus ibc
-                                if (modificationTime srcs > modificationTime ibcs)
+                                srct <- getModificationTime src
+                                ibct <- getModificationTime ibc
+                                if (srct > ibct)
                                     then fail "Needs reloading"
                                     else return ()
 
