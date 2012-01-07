@@ -13,114 +13,114 @@ import prelude.char
 
 -- Show and instances
 
-class Show a where {
+class Show a where 
     show : a -> String
-}
 
-instance Show Nat where {
+
+instance Show Nat where 
     show O = "O"
     show (S k) = "s" ++ show k
-}
 
-instance Show Int where {
+
+instance Show Int where 
     show = prim__intToStr
-}
 
-instance Show Integer where {
+
+instance Show Integer where 
     show = prim__bigIntToStr
-}
 
-instance Show Float where {
+
+instance Show Float where 
     show = prim__floatToStr
-}
 
-instance Show Char where {
+
+instance Show Char where 
     show x = strCons x "" 
-}
 
-instance Show String where {
+
+instance Show String where 
     show = id
-}
 
-instance Show Bool where {
+
+instance Show Bool where 
     show True = "True"
     show False = "False"
-}
 
-instance (Show a, Show b) => Show (a, b) where {
+
+instance (Show a, Show b) => Show (a, b) where 
     show (x, y) = "(" ++ show x ++ ", " ++ show y ++ ")"
-}
 
-instance Show a => Show (List a) where {
-    show xs = "[" ++ show' xs ++ "]" where {
+
+instance Show a => Show (List a) where 
+    show xs = "[" ++ show' xs ++ "]" where 
         show' : Show a => List a -> String
         show' []        = ""
         show' [x]       = show x
         show' (x :: xs) = show x ++ ", " ++ show' xs
-    }
-}
+    
 
-instance Show a => Show (Vect a n) where {
-    show xs = "[" ++ show' xs ++ "]" where {
+
+instance Show a => Show (Vect a n) where 
+    show xs = "[" ++ show' xs ++ "]" where 
         show' : Show a => Vect a n -> String
         show' []        = ""
         show' [x]       = show x
         show' (x :: xs) = show x ++ ", " ++ show' xs
-    }
-}
+    
 
-instance Show a => Show (Maybe a) where {
+
+instance Show a => Show (Maybe a) where 
     show Nothing = "Nothing"
     show (Just x) = "Just " ++ show x
-}
+
 
 ---- Monad and instances
 
 infixl 5 >>=
 
-class Monad (m : Set -> Set) where {
+class Monad (m : Set -> Set) where 
     return : a -> m a
     (>>=)  : m a -> (a -> m b) -> m b
-}
 
-class Monad m => MonadPlus (m : Set -> Set) where {
+
+class Monad m => MonadPlus (m : Set -> Set) where 
     mplus : m a -> m a -> m a
     mzero : m a
-}
 
-class Monad m => MonadFail (m : Set -> Set) where {
+
+class Monad m => MonadFail (m : Set -> Set) where 
     fail : String -> m ()
-}
 
-instance Monad IO where {
+
+instance Monad IO where 
     return t = io_return t
     b >>= k = io_bind b k
-}
 
-instance Monad Maybe where {
+
+instance Monad Maybe where 
     return t = Just t
 
     Nothing  >>= k = Nothing
     (Just x) >>= k = k x
-}
 
-instance MonadPlus Maybe where {
+
+instance MonadPlus Maybe where 
     mzero = Nothing
 
     mplus (Just x) _       = Just x
     mplus Nothing (Just y) = Just y
     mplus Nothing Nothing  = Nothing
-}
 
-instance Monad List where {
+
+instance Monad List where 
     return x = [x]
     m >>= f = concatMap f m
-}
 
-instance MonadPlus List where {
+
+instance MonadPlus List where 
     mzero = []
     mplus = app
-}
+
 
 guard : MonadPlus m => Bool -> m ()
 guard True  = return ()
@@ -128,27 +128,27 @@ guard False = mzero
 
 ---- Functors
 
-class Functor (f : Set -> Set) where {
+class Functor (f : Set -> Set) where 
     fmap : (a -> b) -> f a -> f b
-}
 
-instance Functor Maybe where {
+
+instance Functor Maybe where 
     fmap f (Just x) = Just (f x)
     fmap f Nothing  = Nothing
-}
 
-instance Functor List where {
+
+instance Functor List where 
     fmap = map
-}
+
 
 ---- Applicative functors/Idioms
 
 infixl 2 <$> 
 
-class Functor f => Applicative (f : Set -> Set) where {
+class Functor f => Applicative (f : Set -> Set) where 
     pure  : a -> f a
     (<$>) : f (a -> b) -> f a -> f b 
-}
+
 
 ---- some mathematical operations
 
@@ -232,18 +232,18 @@ do_fopen : String -> String -> IO Ptr
 do_fopen f m = mkForeign (FFun "fileOpen" [FString, FString] FPtr) f m
 
 fopen : String -> String -> IO File
-fopen f m = do { h <- do_fopen f m
-                 return (FHandle h) }
+fopen f m = do h <- do_fopen f m
+               return (FHandle h) 
 
 data Mode = Read | Write | ReadWrite
 
 openFile : String -> Mode -> IO File
-openFile f m = fopen f (modeStr m) where {
+openFile f m = fopen f (modeStr m) where 
   modeStr : Mode -> String
   modeStr Read  = "r"
   modeStr Write = "w"
   modeStr ReadWrite = "r+"
-}
+
 
 do_fclose : Ptr -> IO ()
 do_fclose h = mkForeign (FFun "fileClose" [FPtr] FUnit) h
@@ -267,28 +267,27 @@ do_feof : Ptr -> IO Int
 do_feof h = mkForeign (FFun "feof" [FPtr] FInt) h
 
 feof : File -> IO Bool
-feof (FHandle h) = do { eof <- do_feof h
-                        return (not (eof == 0)) }
+feof (FHandle h) = do eof <- do_feof h
+                      return (not (eof == 0)) 
 
 while : |(test : IO Bool) -> |(body : IO ()) -> IO ()
-while t b = do { v <- t
-                 if v then (do { b; while t b }) else return ()
-               }
+while t b = do v <- t
+               if v then (do { b; while t b }) else return ()
+               
 
 readFile : String -> IO String
-readFile fn = do { h <- openFile fn Read
-                   c <- readFile' h ""
-                   closeFile h
-                   return c
-                 }
-  where {
+readFile fn = do h <- openFile fn Read
+                 c <- readFile' h ""
+                 closeFile h
+                 return c
+  where 
     readFile' : File -> String -> IO String
     readFile' h contents = 
-       do { x <- feof h
-            if (not x) then (do { l <- fread h
-                                  readFile' h (contents ++ l)
-                                })
+       do x <- feof h
+          if (not x) then (do l <- fread h
+                              readFile' h (contents ++ l)
+                          )
                        else (return contents) 
-          }
-  }
+          
+  
 

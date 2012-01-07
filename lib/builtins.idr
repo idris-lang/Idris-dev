@@ -91,50 +91,42 @@ intToBool x = True
 boolOp : (a -> a -> Int) -> a -> a -> Bool
 boolOp op x y = intToBool (op x y) 
 
-class Eq a where {
+class Eq a where
     (==) : a -> a -> Bool
     (/=) : a -> a -> Bool
 
     x /= y = not (x == y)
     x == y = not (x /= y)
-}
 
-instance Eq Int where {
+instance Eq Int where 
     (==) = boolOp prim__eqInt
-}
 
-instance Eq Integer where {
+instance Eq Integer where
     (==) = boolOp prim__eqBigInt
-}
 
-instance Eq Float where {
+instance Eq Float where
     (==) = boolOp prim__eqFloat
-}
 
-instance Eq Char where {
+instance Eq Char where
     (==) = boolOp prim__eqChar
-}
 
-instance Eq String where {
+instance Eq String where
     (==) = boolOp prim__eqString
-}
 
 data Ordering = LT | EQ | GT
 
-class Eq a => Ord a where {
+class Eq a => Ord a where 
     compare : a -> a -> Ordering
 
     (<) : a -> a -> Bool
-    (<) x y with (compare x y) {
+    (<) x y with (compare x y) 
         (<) x y | LT = True
         (<) x y | _  = False
-    }
 
     (>) : a -> a -> Bool
-    (>) x y with (compare x y) {
+    (>) x y with (compare x y)
         (>) x y | GT = True
         (>) x y | _  = False
-    }
 
     (<=) : a -> a -> Bool
     (<=) x y = x < y || x == y
@@ -147,40 +139,40 @@ class Eq a => Ord a where {
 
     min : a -> a -> a
     min x y = if (x < y) then x else y
-}
 
 
-instance Ord Int where {
+
+instance Ord Int where 
     compare x y = if (x == y) then EQ else
                   if (boolOp prim__ltInt x y) then LT else
                   GT
-}
 
-instance Ord Integer where {
+
+instance Ord Integer where 
     compare x y = if (x == y) then EQ else
                   if (boolOp prim__ltBigInt x y) then LT else
                   GT
-}
 
-instance Ord Float where {
+
+instance Ord Float where 
     compare x y = if (x == y) then EQ else
                   if (boolOp prim__ltFloat x y) then LT else
                   GT
-}
 
-instance Ord Char where {
+
+instance Ord Char where 
     compare x y = if (x == y) then EQ else
                   if (boolOp prim__ltChar x y) then LT else
                   GT
-}
 
-instance Ord String where {
+
+instance Ord String where 
     compare x y = if (x == y) then EQ else
                   if (boolOp prim__ltString x y) then LT else
                   GT
-}
 
-class (Eq a, Ord a) => Num a where {
+
+class (Eq a, Ord a) => Num a where 
     (+) : a -> a -> a
     (-) : a -> a -> a
     (*) : a -> a -> a
@@ -189,32 +181,32 @@ class (Eq a, Ord a) => Num a where {
     abs x = if (x < 0) then (-x) else x
 
     fromInteger : Int -> a
-}
 
 
-instance Num Int where {
+
+instance Num Int where 
     (+) = prim__addInt
     (-) = prim__subInt
     (*) = prim__mulInt
 
     fromInteger = id
-}
 
-instance Num Integer where {
+
+instance Num Integer where 
     (+) = prim__addBigInt
     (-) = prim__subBigInt
     (*) = prim__mulBigInt
 
     fromInteger = prim__intToBigInt
-}
 
-instance Num Float where {
+
+instance Num Float where 
     (+) = prim__addFloat
     (-) = prim__subFloat
     (*) = prim__mulFloat
 
     fromInteger = prim__intToFloat 
-}
+
 
 div : Int -> Int -> Int
 div = prim__divInt
@@ -244,3 +236,4 @@ rev : String -> String
 rev = prim__strRev
 
 }
+

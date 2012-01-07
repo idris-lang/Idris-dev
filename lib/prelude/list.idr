@@ -10,11 +10,10 @@ infixr 7 ::
 data List a = Nil | (::) a (List a)
 
 rev : List a -> List a
-rev xs = revAcc [] xs where {
+rev xs = revAcc [] xs where
   revAcc : List a -> List a -> List a
   revAcc acc [] = acc
   revAcc acc (x :: xs) = revAcc (x :: acc) xs
-}
 
 app : List a -> List a -> List a
 app [] xs = xs
@@ -44,10 +43,9 @@ concatMap f (x :: xs) = app (f x) (concatMap f xs)
 
 mapMaybe : (a -> Maybe b) -> List a -> List b
 mapMaybe f [] = []
-mapMaybe f (x :: xs) = case f x of {
+mapMaybe f (x :: xs) = case f x of
                            Nothing => mapMaybe f xs
                          | Just v  => v :: mapMaybe f xs
-                       }
 
 filter : (y -> Bool) -> List y -> List y
 filter pred [] = []
@@ -66,7 +64,7 @@ sort : Ord a => List a -> List a
 sort []  = []
 sort [x] = [x]
 sort xs = let (x, y) = split xs in
-              merge (sort x) (sort y) where {
+              merge (sort x) (sort y) where
     splitrec : List a -> List a -> (List a -> List a) -> (List a, List a)
     splitrec (_ :: _ :: xs) (y :: ys) zs = splitrec xs ys (zs . ((::) y))
     splitrec _              ys        zs = (zs [], ys)
@@ -79,24 +77,20 @@ sort xs = let (x, y) = split xs in
     merge []        ys        = ys
     merge (x :: xs) (y :: ys) = if (x < y) then (x :: merge xs (y :: ys))
                                            else (y :: merge (x :: xs) ys)
-}
 
 span : (a -> Bool) -> List a -> (List a, List a)
 span p [] = ([], [])
-span p (x :: xs) with p x {
-   | True with span p xs {
+span p (x :: xs) with (p x) 
+   | True with (span p xs)
       | (ys, zs) = (x :: ys, zs)
-   }
    | False = ([], x :: xs)
-}
 
 break : (a -> Bool) -> List a -> (List a, List a)
 break p = span (not . p)
   
 split : (a -> Bool) -> List a -> List (List a)
 split p [] = []
-split p xs = case break p xs of {
+split p xs = case break p xs of
                   (chunk, []) => [chunk]
                 | (chunk, (c :: rest)) => chunk :: split p rest
-             }
 

@@ -45,8 +45,9 @@ getAction : CGI a -> CGIInfo -> IO (a, CGIInfo)
 getAction (MkCGI act) = act
 
 instance Monad CGI where {
-    (>>=) (MkCGI f) k = MkCGI (\s => do { v <- f s
-                                          getAction (k (fst v)) (snd v) })
+    (>>=) (MkCGI f) k = MkCGI (\s => do v <- f s
+                                        getAction (k (fst v)) (snd v)
+                              )
 
     return v = MkCGI (\s => return (v, s))
 }
@@ -64,70 +65,65 @@ lift op = MkCGI (\st => do { x <- op
 
 abstract
 output : String -> CGI ()
-output s = do { i <- getInfo
-                setInfo (add_Output s i) }
+output s = do i <- getInfo
+              setInfo (add_Output s i)
 
 abstract
 queryVars : CGI Vars
-queryVars = do { i <- getInfo
-                 return (get_GET i) }
+queryVars = do i <- getInfo
+               return (get_GET i)
 
 abstract
 postVars : CGI Vars
-postVars = do { i <- getInfo
-                return (get_POST i) }
+postVars = do i <- getInfo
+              return (get_POST i)
 
 abstract
 cookieVars : CGI Vars
-cookieVars = do { i <- getInfo
-                  return (get_Cookies i) }
+cookieVars = do i <- getInfo
+                return (get_Cookies i)
 
 abstract
 queryVar : String -> CGI (Maybe String)
-queryVar x = do { vs <- queryVars
-                  return (lookup x vs) }
+queryVar x = do vs <- queryVars
+                return (lookup x vs)
 
 getOutput : CGI String
-getOutput = do { i <- getInfo
-                 return (get_Output i) }
+getOutput = do i <- getInfo
+               return (get_Output i)
 
 getHeaders : CGI String
-getHeaders = do { i <- getInfo
-                  return (get_Headers i) }
+getHeaders = do i <- getInfo
+                return (get_Headers i)
 
 abstract
 flushHeaders : CGI ()
-flushHeaders = do { o <- getHeaders
-                    lift (putStrLn o)
-                  }
+flushHeaders = do o <- getHeaders
+                  lift (putStrLn o)
 
 abstract
 flush : CGI ()
-flush = do { o <- getOutput
-             lift (putStr o)
-           }
+flush = do o <- getOutput
+           lift (putStr o) 
 
 getVars : List Char -> String -> List (String, String)
 getVars seps query = mapMaybe readVar (split (\x => elem x seps) query) 
-  where {
+  where
     readVar : String -> Maybe (String, String)
-    readVar xs with split (\x => x == '=') xs {
+    readVar xs with (split (\x => x == '=') xs)
         | [k, v] = Just (trim k, trim v)
         | _      = Nothing
-    }
-  }
 
 getContent : Int -> IO String
-getContent x = getC x "" where {
+getContent x = getC x "" where
     getC : Int -> String -> IO String
     getC 0 acc = return $ rev acc
-    getC n acc = do { x <- getChar
-                      getC (n-1) (strCons x acc) }
-}
+    getC n acc = do x <- getChar
+                    getC (n-1) (strCons x acc)
 
 abstract
 runCGI : CGI a -> IO a
-runCGI prog = do {
+runCGI prog = do 
     clen_in <- getEnv "CONTENT_LENGTH"
     let clen = prim__strToInt clen_in
     content <- getContent clen
@@ -145,5 +141,5 @@ runCGI prog = do {
     putStrLn (get_Headers (snd p))
     putStr (get_Output (snd p))
     return (fst p)
-}
+
 

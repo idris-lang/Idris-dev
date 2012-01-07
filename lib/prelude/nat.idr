@@ -25,28 +25,25 @@ mult : Nat -> Nat -> Nat
 mult O     y = O
 mult (S k) y = plus y (mult k y)
 
-instance Eq Nat where {
+instance Eq Nat where 
     O     == O     = True
     (S x) == (S y) = x == y
     O     == (S y) = False
     (S x) == O     = False
-}
 
-instance Ord Nat where {
+instance Ord Nat where
     compare O O     = EQ
     compare O (S k) = LT
     compare (S k) O = GT
     compare (S x) (S y) = compare x y
-}
 
-instance Num Nat where {
+instance Num Nat where
     (+) = plus
     (-) = sub
     (*) = mult
 
     fromInteger 0 = O
     fromInteger n = if (n > 0) then (S (fromInteger (n-1))) else O
-}
 
 plusnO : (m : Nat) -> m + O = m
 plusnO O     = refl

@@ -1,12 +1,10 @@
 module foo
 
-namespace x {
+namespace x
   test : Int -> Int
   test x = x * 2
-}
 
-namespace y {
+namespace y
   test : String -> String
   test x = x ++ x 
-}
 

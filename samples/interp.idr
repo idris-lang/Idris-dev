@@ -7,7 +7,7 @@ interpTy TyInt       = Int
 interpTy TyBool      = Bool
 interpTy (TyFun s t) = interpTy s -> interpTy t
 
-using (G : Vect Ty n) {
+using (G : Vect Ty n)
 
   data Env : Vect Ty n -> Set where
       Nil  : Env Nil
@@ -69,8 +69,6 @@ using (G : Vect Ty n) {
               (\x => Bind (App eDouble (Var stop))
               (\y => Bind (App eDouble (Val x))
               (\z => App (App eAdd (Val y)) (Val z))))))
-
-}
 
 test : Int
 test = interp [] eProg 2 2

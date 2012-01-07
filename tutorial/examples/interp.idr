@@ -7,7 +7,7 @@ interpTy TyInt       = Int
 interpTy TyBool      = Bool
 interpTy (TyFun s t) = interpTy s -> interpTy t
 
-using (G : Vect Ty n) {
+using (G : Vect Ty n) 
 
   data Env : Vect Ty n -> Set where
       Nil  : Env Nil
@@ -54,15 +54,11 @@ using (G : Vect Ty n) {
   fact = Lam (If (Op (==) (Var stop) (Val 0))
                  (Val 1) (Op (*) (app fact (Op (-) (Var stop) (Val 1))) (Var stop)))
 
-}
-
 testFac : Int
 testFac = interp [] fact 4
 
 main : IO ()
-main = do { putStr "Enter a number: "
-            x <- getLine
-            print (interp [] fact (prim__strToInt x)) 
-          }
-
+main = do putStr "Enter a number: "
+          x <- getLine
+          print (interp [] fact (prim__strToInt x)) 
 
