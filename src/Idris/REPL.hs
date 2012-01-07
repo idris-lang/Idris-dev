@@ -19,7 +19,7 @@ import Core.ProofShell
 import Core.TT
 import Core.Constraints
 
-import System.Console.Haskeline
+import System.Console.Haskeline as H
 import System.FilePath
 import System.Environment
 import System.Process
@@ -37,10 +37,13 @@ repl orig mods
           case x of
               Nothing -> do iputStrLn "Bye bye"
                             return ()
-              Just input -> do ms <- processInput input orig mods
-                               case ms of
-                                    Just mods -> repl orig mods
-                                    Nothing -> return ()
+              Just input -> idrisCatch 
+                               (do ms <- processInput input orig mods
+                                   case ms of
+                                      Just mods -> repl orig mods
+                                      Nothing -> return ())
+                               (\e -> do iputStrLn (show e)
+                                         repl orig mods)
 
 mkPrompt [] = "Idris"
 mkPrompt [x] = "*" ++ dropExtension x
@@ -62,12 +65,12 @@ processInput cmd orig inputs
                 Right Edit -> do edit fn orig
                                  return (Just inputs)
                 Right AddProof -> do idrisCatch (addProof fn orig)
-                                                (\e -> iputStrLn (report e))
+                                                (\e -> iputStrLn (show e))
                                      return (Just inputs)
                 Right Quit -> do iputStrLn "Bye bye"
                                  return Nothing
                 Right cmd  -> do idrisCatch (process cmd)
-                                            (\e -> iputStrLn (report e))
+                                            (\e -> iputStrLn (show e))
                                  return (Just inputs)
 
 edit :: FilePath -> IState -> Idris ()

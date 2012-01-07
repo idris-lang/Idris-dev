@@ -1,3 +1,5 @@
+{-# LANGUAGE DeriveDataTypeable #-}
+
 module Idris.Error where
 
 import Prelude hiding (catch)
@@ -12,13 +14,14 @@ import System.Console.Haskeline
 import Control.Monad.State
 import System.IO.Error(isUserError, ioeGetErrorString)
 import Data.Char
+import Data.Typeable
 
 iucheck :: Idris ()
 iucheck = do tit <- typeInType
              when (not tit) $
                 do ist <- get
                    idrisCatch (tclift $ ucheck (idris_constraints ist))
-                              (\e -> do let msg = report e
+                              (\e -> do let msg = show e
                                         setErrLine (getErrLine msg)
                                         iputStrLn msg)
 
@@ -27,8 +30,16 @@ report e
     | isUserError e = ioeGetErrorString e 
     | otherwise     = show e
 
-idrisCatch :: Idris a -> (IOError -> Idris a) -> Idris a
+idrisCatch :: Idris a -> (IdrisErr -> Idris a) -> Idris a
 idrisCatch = catch
+
+data IdrisErr = IErr String
+    deriving Typeable
+
+instance Show IdrisErr where
+    show (IErr s) = s
+
+instance Exception IdrisErr
 
 tclift :: TC a -> Idris a
 tclift tc = case tc of
@@ -37,7 +48,7 @@ tclift tc = case tc of
                                case err of
                                   At (FC f l) e -> setErrLine l
                                   _ -> return ()
-                               fail (pshow i err)
+                               throwIO (IErr $ pshow i err)
 
 getErrLine str 
   = case span (/=':') str of

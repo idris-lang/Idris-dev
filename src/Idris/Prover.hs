@@ -106,7 +106,7 @@ ploop d prompt prf e
               Right tac -> do (_, e) <- elabStep e saveState
                               (_, st) <- elabStep e (runTac True i tac)
                               return (True, st, False, prf ++ [step]))
-           (\err -> do iputStrLn (report err)
+           (\err -> do iputStrLn (show err)
                        return (False, e, False, prf))
          if done then do (tm, _) <- elabStep st get_term 
                          return (tm, prf')

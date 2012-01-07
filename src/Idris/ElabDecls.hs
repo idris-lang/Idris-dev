@@ -553,7 +553,7 @@ pvars ist _ = []
 
 elabDecl :: ElabInfo -> PDecl -> Idris ()
 elabDecl info d = idrisCatch (elabDecl' info d) 
-                             (\e -> do let msg = report e
+                             (\e -> do let msg = show e
                                        setErrLine (getErrLine msg)
                                        iputStrLn msg)
 

@@ -70,7 +70,7 @@ loadModule f
                                                             LIDR sfn -> loadSource True sfn)
                     let (dir, fh) = splitFileName f
                     return (dropExtension fh))
-                (\e -> do let msg = report e
+                (\e -> do let msg = show e
                           setErrLine (getErrLine msg)
                           iputStrLn msg
                           return "")
