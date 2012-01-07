@@ -9,7 +9,7 @@ example, recall the \texttt{parity} function:
 
 data Parity : Nat -> Set where
    even : Parity (n + n)
- | odd  : Parity (S (n + n))
+   odd  : Parity (S (n + n))
 
 parity : (n:Nat) -> Parity n
 
@@ -220,8 +220,8 @@ case \texttt{Nat}):
 
 data Binary : Nat -> Set where
    bEnd : Binary O
- | bO : Binary n -> Binary (n + n)
- | bI : Binary n -> Binary (S (n + n))
+   bO : Binary n -> Binary (n + n)
+   bI : Binary n -> Binary (S (n + n))
 
 \end{SaveVerbatim}
 \useverb{bindef}

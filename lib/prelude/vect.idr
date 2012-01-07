@@ -6,7 +6,7 @@ import prelude.nat
 
 data Fin : Nat -> Set where
     fO : Fin (S k)
-  | fS : Fin k -> Fin (S k)
+    fS : Fin k -> Fin (S k)
 
 instance Eq (Fin n) where
    fO == fO = True
@@ -17,7 +17,7 @@ infixr 7 ::
 
 data Vect : Set -> Nat -> Set where
     Nil   : Vect a O
-  | (::)  : a -> Vect a k -> Vect a (S k) 
+    (::)  : a -> Vect a k -> Vect a (S k) 
 
 lookup : Fin n -> Vect a n -> a
 lookup fO     (x :: xs) = x

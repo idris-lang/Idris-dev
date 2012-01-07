@@ -219,10 +219,9 @@ behaviour, the \texttt{a} can be brought into scope as follows:
 \begin{SaveVerbatim}{revwhereb}
 
 rev : List a -> List a
-rev {a} xs = revAcc [] xs where {
+rev {a} xs = revAcc [] xs where
   revAcc : List a -> List a -> List a
   ...
-}
 
 \end{SaveVerbatim}
 \useverb{revwhereb}
@@ -239,7 +238,7 @@ we declare vectors as follows:
 
 data Vect : Set -> Nat -> Set where
    Nil  : Vect a O
- | (::) : a -> Vect a k -> Vect a (S k)
+   (::) : a -> Vect a k -> Vect a (S k)
 
 \end{SaveVerbatim}
 \useverb{vect}
@@ -317,7 +316,7 @@ They are declared as follows (again, in the prelude):
 
 data Fin : Nat -> Set where
    fO : Fin (S k)
- | fS : Fin k -> Fin (S k)
+   fS : Fin k -> Fin (S k)
 
 \end{SaveVerbatim}
 \useverb{findecl}
@@ -423,7 +422,7 @@ definition, which defines a predicate on vectors:
 
 data Elem : a -> (Vect a n) -> Set where
    here :  {x:a} ->   {xs:Vect a n} -> Elem x (x :: xs)
- | there : {x,y:a} -> {xs:Vect a n} -> Elem x xs -> Elem x (y :: xs)
+   there : {x,y:a} -> {xs:Vect a n} -> Elem x xs -> Elem x (y :: xs)
 
 \end{SaveVerbatim}
 \useverb{elem}
@@ -455,7 +454,7 @@ ordering of any implicit arguments which can appear within the block:
 using (x:a, y:a, xs:Vect a n)
   data Elem : a -> (Vect a n) -> Set where
      here  : Elem x (x :: xs)
-   | there : Elem x xs -> Elem x (y :: xs)
+     there : Elem x xs -> Elem x (y :: xs)
 
 \end{SaveVerbatim}
 \useverb{elemusing}
@@ -589,7 +588,7 @@ data List a = Nil | (::) a (List a)
 
 data Vect : Set -> Nat -> Set where
    Nil  : Vect a O
- | (::) : a -> Vect a k -> Vect a (S k)
+   (::) : a -> Vect a k -> Vect a (S k)
 
 \end{SaveVerbatim}
 \useverb{listvec}
@@ -954,7 +953,7 @@ looks up an index and returns a default value if the index is out of bounds:
 lookup_default : Nat -> List a -> a -> a
 lookup_default i xs def = case list_lookup i xs of
                               Nothing => def
-                            | Just x => x
+                              Just x => x
 
 \end{SaveVerbatim}
 \useverb{listlookup} 

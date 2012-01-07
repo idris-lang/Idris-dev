@@ -45,7 +45,7 @@ mapMaybe : (a -> Maybe b) -> List a -> List b
 mapMaybe f [] = []
 mapMaybe f (x :: xs) = case f x of
                            Nothing => mapMaybe f xs
-                         | Just v  => v :: mapMaybe f xs
+                           Just v  => v :: mapMaybe f xs
 
 filter : (y -> Bool) -> List y -> List y
 filter pred [] = []
@@ -92,5 +92,5 @@ split : (a -> Bool) -> List a -> List (List a)
 split p [] = []
 split p xs = case break p xs of
                   (chunk, []) => [chunk]
-                | (chunk, (c :: rest)) => chunk :: split p rest
+                  (chunk, (c :: rest)) => chunk :: split p rest
 

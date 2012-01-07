@@ -1,9 +1,9 @@
 module main
 
 data Binary : Nat -> Set where
-   bEnd : Binary O
- | bO : Binary n -> Binary (n + n)
- | bI : Binary n -> Binary (S (n + n))
+    bEnd : Binary O
+    bO : Binary n -> Binary (n + n)
+    bI : Binary n -> Binary (S (n + n))
 
 instance Show (Binary n) where
     show (bO x) = show x ++ "0"
@@ -12,7 +12,7 @@ instance Show (Binary n) where
 
 data Parity : Nat -> Set where
    even : Parity (n + n)
- | odd  : Parity (S (n + n))
+   odd  : Parity (S (n + n))
 
 parity : (n:Nat) -> Parity n
 parity O     = even {n=O}

@@ -62,16 +62,16 @@ constructor in turn.
 
 data HasType : (i : Fin n) -> Vect Ty n -> Ty -> Set where
     stop : HasType fO (t :: G) t
-  | pop  : HasType k G t -> HasType (fS k) (u :: G) t
+    pop  : HasType k G t -> HasType (fS k) (u :: G) t
 
 data Expr : Vect Ty n -> Ty -> Set where
     Var : HasType i G t -> Expr G t
-  | Val : (x : Int) -> Expr G TyInt
-  | Lam : Expr (a :: G) t -> Expr G (TyFun a t)
-  | App : Expr G (TyFun a t) -> Expr G a -> Expr G t
-  | Op  : (interpTy a -> interpTy b -> interpTy c) -> Expr G a -> Expr G b -> 
+    Val : (x : Int) -> Expr G TyInt
+    Lam : Expr (a :: G) t -> Expr G (TyFun a t)
+    App : Expr G (TyFun a t) -> Expr G a -> Expr G t
+    Op  : (interpTy a -> interpTy b -> interpTy c) -> Expr G a -> Expr G b -> 
           Expr G c
-  | If  : Expr G TyBool -> Expr G a -> Expr G a -> Expr G a
+    If  : Expr G TyBool -> Expr G a -> Expr G a -> Expr G a
   
 \end{SaveVerbatim}
 \codefig{exprty}{Expression representation}
@@ -86,7 +86,7 @@ Variables are represented by a proof of their membership in the context,
 
 data HasType : (i : Fin n) -> Vect Ty n -> Ty -> Set where
     stop : HasType fO (t :: G) t
-  | pop  : HasType k G t -> HasType (fS k) (u :: G) t
+    pop  : HasType k G t -> HasType (fS k) (u :: G) t
 
 \end{SaveVerbatim}
 \useverb{hastype}
@@ -180,7 +180,7 @@ is defined in the context, we can then produce a value from the environment:
 
 data Env : Vect Ty n -> Set where
     Nil  : Env Nil
-  | (::) : interpTy a -> Env G -> Env (a :: G)
+    (::) : interpTy a -> Env G -> Env (a :: G)
 
 lookup : HasType i G t -> Env G -> interpTy t
 lookup stop    (x :: xs) = x

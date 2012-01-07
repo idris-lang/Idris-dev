@@ -8,7 +8,7 @@ import prelude.char
 
 data StrM : String -> Set where
     StrNil : StrM ""
-  | StrCons : (x : Char) -> (xs : String) -> StrM (strCons x xs)
+    StrCons : (x : Char) -> (xs : String) -> StrM (strCons x xs)
 
 strHead' : (x : String) -> so (not (x == "")) -> Char
 strHead' x p = prim__strHead x

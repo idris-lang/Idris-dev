@@ -16,5 +16,5 @@ list_lookup (S k) (x :: xs) = list_lookup k xs
 lookup_default : Nat -> List a -> a -> a
 lookup_default i xs def = case list_lookup i xs of
                               Nothing => def
-                            | Just x => x
+                              Just x => x
 

@@ -2,7 +2,7 @@ module main
 
 data Parity : Nat -> Set where
    even : Parity (n + n)
- | odd  : Parity (S (n + n))
+   odd  : Parity (S (n + n))
 
 parity : (n:Nat) -> Parity n
 parity O     = even {n=O}

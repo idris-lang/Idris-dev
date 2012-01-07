@@ -201,13 +201,20 @@ pTerminator = do lchar ';'; pop_indent
                                                      else fail "Not a terminator"
           <|> lookAhead eof
 
+pBarTerminator 
+            = do lchar '|'; return ()
+          <|> do c <- indent; l <- last_indent
+                 if (c <= l) then return ()
+                             else fail "Not a terminator"
+          <|> lookAhead eof
+
 pKeepTerminator 
             = do lchar ';'; return ()
           <|> do c <- indent; l <- last_indent
                  if (c <= l) then return ()
                              else fail "Not a terminator"
           <|> do i <- getInput; let h = take 1 i
-                 if (h == "}" || h == ")") then return ()
+                 if (h == "}" || h == ")" || h == "|") then return ()
                                            else fail "Not a terminator"
           <|> lookAhead eof
 
@@ -255,7 +262,7 @@ parseProg syn fname input pos
                                return (collect x)
   where ishow err = let ln = sourceLine (errorPos err) in
                         fname ++ ":" ++ show ln ++ ":parse error"
-                              ++ " " ++ show (sourceColumn (errorPos err))
+                              ++ " at column " ++ show (sourceColumn (errorPos err))
 --                           show (map messageString (errorMessages err))
 
 -- Collect PClauses with the same function name
@@ -605,7 +612,12 @@ pSimpleExpr syn =
                return (PTactics ts)
         <|> do reserved "case"; fc <- pfc; scr <- pExpr syn; reserved "of";
                open_block 
-               opts <- sepBy1 (pCaseOpt syn) (lchar '|')
+               push_indent
+               opts <- many1 (do notEndBlock
+                                 x <- pCaseOpt syn
+                                 pKeepTerminator
+                                 return x) -- sepBy1 (pCaseOpt syn) (lchar '|')
+               pop_indent
                close_block
                return (PCase fc scr opts)
         <|> try (do x <- pfName; fc <- pfc; return (PRef fc x))
@@ -883,34 +895,36 @@ accData (Just Frozen) n ns = do addAcc n (Just Frozen)
 accData a n ns = do addAcc n a; mapM_ (\n -> addAcc n a) ns
 
 pData :: SyntaxInfo -> IParser PDecl
-pData syn = try (do push_indent
-                    acc <- pAccessibility
+pData syn = try (do acc <- pAccessibility
                     reserved "data"; fc <- pfc
                     tyn_in <- pfName; ty <- pTSig syn
                     let tyn = expandNS syn tyn_in
                     reserved "where"
---                     ty' <- implicit syn tyn ty
-                    cons <- sepBy (pConstructor syn) (lchar '|')
-                    pTerminator 
+                    open_block
+                    push_indent
+                    cons <- many (do notEndBlock
+                                     c <- pConstructor syn
+                                     pKeepTerminator
+                                     return c) -- (lchar '|')
+                    pop_indent
+                    close_block 
                     accData acc tyn (map (\ (n, _, _) -> n) cons)
                     return $ PData syn fc (PDatadecl tyn ty cons))
-        <|> do push_indent
-               acc <- pAccessibility
-               reserved "data"; fc <- pfc
-               tyn_in <- pfName; args <- many pName
-               let tyn = expandNS syn tyn_in
-               lchar '='
-               cons <- sepBy1 (pSimpleCon syn) (lchar '|')
-               pTerminator
-               let conty = mkPApp fc (PRef fc tyn) (map (PRef fc) args)
-               let ty = bindArgs (map (\a -> PSet) args) PSet
---                ty' <- implicit syn tyn ty
-               cons' <- mapM (\ (x, cargs, cfc) -> 
+        <|> try (do push_indent
+                    acc <- pAccessibility
+                    reserved "data"; fc <- pfc
+                    tyn_in <- pfName; args <- many pName
+                    let tyn = expandNS syn tyn_in
+                    lchar '='
+                    cons <- sepBy1 (pSimpleCon syn) (lchar '|')
+                    pTerminator
+                    let conty = mkPApp fc (PRef fc tyn) (map (PRef fc) args)
+                    let ty = bindArgs (map (\a -> PSet) args) PSet
+                    cons' <- mapM (\ (x, cargs, cfc) -> 
                                  do let cty = bindArgs cargs conty
---                                     cty' <- implicit syn x cty
                                     return (x, cty, cfc)) cons
-               accData acc tyn (map (\ (n, _, _) -> n) cons')
-               return $ PData syn fc (PDatadecl tyn ty cons')
+                    accData acc tyn (map (\ (n, _, _) -> n) cons')
+                    return $ PData syn fc (PDatadecl tyn ty cons'))
   where
     mkPApp fc t [] = t
     mkPApp fc t xs = PApp fc t (map pexp xs)
