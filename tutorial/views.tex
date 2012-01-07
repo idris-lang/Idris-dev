@@ -36,10 +36,9 @@ a vector filter function, defined as follows:
 
 filter : (a -> Bool) -> Vect a n -> (p ** Vect a p)
 filter p [] = ( _ ** [] )
-filter p (x :: xs) with filter p xs {
+filter p (x :: xs) with (filter p xs)
   | ( _ ** xs' ) 
      = if (p x) then ( _ ** x :: xs' ) else ( _ ** xs' )
-}
 
 \end{SaveVerbatim}
 \useverb{vfilterdef}
@@ -86,10 +85,9 @@ to write a function which converts a natural number to a list of binary digits
 
 natToBin : Nat -> List Bool
 natToBin O = Nil
-natToBin k with parity k {
+natToBin k with (parity k)
    natToBin (j + j)     | even = False :: natToBin j
    natToBin (S (j + j)) | odd  = True  :: natToBin j
-}
 
 \end{SaveVerbatim}
 \useverb{natToBin}

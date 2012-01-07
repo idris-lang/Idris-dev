@@ -320,10 +320,9 @@ on user input:
 \begin{SaveVerbatim}{factmain}
 
 main : IO ()
-main = do { putStr "Enter a number: "
-            x <- getLine
-            print (interp [] fact (prim__strToInt x)) 
-          }
+main = do putStr "Enter a number: "
+          x <- getLine
+          print (interp [] fact (prim__strToInt x)) 
 
 \end{SaveVerbatim}
 \useverb{factmain}

@@ -196,16 +196,18 @@ accumulates the new, reversed list, and which does not need to be visible global
 \begin{SaveVerbatim}{revwhere}
 
 rev : List a -> List a
-rev xs = revAcc [] xs where {
+rev xs = revAcc [] xs where
   revAcc : List a -> List a -> List a
   revAcc acc [] = acc
   revAcc acc (x :: xs) = revAcc (x :: acc) xs
-}
 
 \end{SaveVerbatim}
 \useverb{revwhere}
 
 \noindent
+Indentation is significant --- functions in the \texttt{where} block must be indented
+further than the outer function.
+
 \textbf{Scope:} 
 Any names which are visible in the outer scope are also visible in the \texttt{where}
 clause (unless they have been redefined, such as \texttt{xs} here).
@@ -450,11 +452,10 @@ ordering of any implicit arguments which can appear within the block:
 
 \begin{SaveVerbatim}{elemusing}
 
-using (x:a, y:a, xs:Vect a n) {
+using (x:a, y:a, xs:Vect a n)
   data Elem : a -> (Vect a n) -> Set where
      here  : Elem x (x :: xs)
    | there : Elem x xs -> Elem x (y :: xs)
-}
 
 \end{SaveVerbatim}
 \useverb{elemusing}
@@ -543,10 +544,9 @@ operations with \texttt{do} notation:
 \begin{SaveVerbatim}{greet}
 
 greet : IO ()
-greet = do { putStr "What is your name? "
-             name <- getLine
-             putStrLn ("Hello " ++ name)
-           }
+greet = do putStr "What is your name? "
+           name <- getLine
+           putStrLn ("Hello " ++ name)
 
 \end{SaveVerbatim}
 \useverb{greet}
@@ -554,9 +554,10 @@ greet = do { putStr "What is your name? "
 \noindent
 The syntax \texttt{x <- iovalue} executes the I/O operation iovalue, of type 
 \texttt{IO a}, and
-puts the result, of type \texttt{a} into the variabel \texttt{x}. 
+puts the result, of type \texttt{a} into the variable \texttt{x}. 
 In this case, \texttt{getLine} returns an \texttt{IO String},
-so \texttt{name} has type \texttt{String}.
+so \texttt{name} has type \texttt{String}. Indentation is significant --- each
+statement in the do block must begin in the same column.
 The \texttt{return} operation allows us to inject a value directly into an IO
 operation:
 
@@ -847,9 +848,8 @@ notation. with allows pattern matching on intermediate values:
 
 \begin{SaveVerbatim}{vfiltercons}
 
-filter p (x :: xs) with filter p xs {
+filter p (x :: xs) with (filter p xs)
    | (_ , xs') = if (p x) then (_ , x :: xs') else (_ , xs')
-}
 
 \end{SaveVerbatim}
 \useverb{vfiltercons}
@@ -932,9 +932,8 @@ The following function, for example, splits a string into two at a given charact
 \begin{SaveVerbatim}{split}
 
 splitAt : Char -> String -> (String, String)
-splitAt c x = case break (== c) x of {
+splitAt c x = case break (== c) x of
                   (x, y) => (x, strTail y)
-              }
 
 \end{SaveVerbatim}
 \useverb{split} 
@@ -953,10 +952,9 @@ looks up an index and returns a default value if the index is out of bounds:
 \begin{SaveVerbatim}{listlookup}
 
 lookup_default : Nat -> List a -> a -> a
-lookup_default i xs def = case list_lookup i xs of {
+lookup_default i xs def = case list_lookup i xs of
                               Nothing => def
                             | Just x => x
-                          }
 
 \end{SaveVerbatim}
 \useverb{listlookup} 

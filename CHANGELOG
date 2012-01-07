@@ -4,6 +4,7 @@ Complete rewrite. User visible changes:
 
 * New proof/tactics syntax
 * New syntax for pairs/dependent pairs
+* Indentation-significant syntax
 * Added type classes
 * Added where clauses
 * Added case expressions, pattern matching let and lambda

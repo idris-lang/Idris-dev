@@ -252,10 +252,9 @@ provisional definition in the odd case:
 
 natToBin : (n:Nat) -> Binary n
 natToBin O = bEnd
-natToBin (S k) with parity k {
+natToBin (S k) with (parity k)
    natToBin (S (j + j))     | even  = bI (natToBin j)
    natToBin (S (S (j + j))) | odd  ?= bO (natToBin (S j))
-}
 
 \end{SaveVerbatim}
 \useverb{ntbdef}
@@ -283,12 +282,11 @@ outputs it in binary.
 \begin{SaveVerbatim}{binmain}
 
 main : IO ()
-main = do { putStr "Enter a number: "
-            x <- getLine
-            let n = prim__strToInt x
-            let b = natToBin (fromInteger n)
-            print b 
-          }
+main = do putStr "Enter a number: "
+          x <- getLine
+          let n = prim__strToInt x
+          let b = natToBin (fromInteger n)
+          print b 
 
 \end{SaveVerbatim}
 \useverb{binmain}
@@ -298,11 +296,10 @@ For this to work, of course, we need a \texttt{Show} instance for \texttt{Binary
 
 \begin{SaveVerbatim}{showbin}
 
-instance Show (Binary n) where {
+instance Show (Binary n) where
     show (bO x) = show x ++ "0"
     show (bI x) = show x ++ "1"
     show bEnd = ""
-}
 
 \end{SaveVerbatim}
 \useverb{showbin}
