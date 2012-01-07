@@ -5,6 +5,7 @@ import io
 
 import prelude.cast
 import prelude.nat
+import prelude.fin
 import prelude.list
 import prelude.maybe
 import prelude.either
