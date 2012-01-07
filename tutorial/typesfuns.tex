@@ -30,6 +30,7 @@ quux = False
 \end{SaveVerbatim}
 \useverb{constprims}
 
+\noindent
 An \Idris{} file consists of an optional module declaration (here
 \texttt{module prims}) followed by an optional list of imports (none here,
 however \Idris{} programs can consist of several modules, and the definitions
@@ -56,6 +57,7 @@ True : Bool
 \end{SaveVerbatim}
 \useverb{promptprim}
 
+\noindent
 All of the usual arithmetic and comparison operators are defined for the primitive
 types. They are overloaded using type classes, as we will discuss in Section
 \ref{sec:classes} and can be extended to work on user defined types.
@@ -85,6 +87,7 @@ data List a = Nil | (::) a (List a) -- Polymorphic lists
 \end{SaveVerbatim}
 \useverb{natlist}
 
+\noindent
 The above declarations are taken from the standard library. Unary natural
 numbers can be either zero (\texttt{O} - that's a capital letter 'o', not the digit), or
 the successor of another natural number (\texttt{S k}). 
@@ -100,6 +103,7 @@ infixr 7 ::
 \end{SaveVerbatim}
 \useverb{infixcons}
 
+\noindent
 Functions, data constructors and type constuctors may all be given infix
 operators as names. They may be used in prefix form if enclosed in brackets,
 e.g. (::). Infix operators can use any of the symbols:
@@ -138,6 +142,7 @@ mult (S k) y = plus y (mult k y)
 \end{SaveVerbatim}
 \useverb{natfns}
 
+\noindent
 The standard arithmetic operators \texttt{+} and \texttt{*} are also overloaded
 for use by \texttt{Nat}, and are implemented
 using the above functions.  Unlike Haskell, there is no restriction on whether
@@ -158,6 +163,7 @@ S (S (S (S (S (S (S (S (S (S (S (S O))))))))))) : Nat
 \end{SaveVerbatim}
 \useverb{fntest}
 
+\noindent
 Like arithmetic operations, integer literals are also overloaded using type classes, 
 meaning that we can also test the functions as follows:
 
@@ -171,6 +177,7 @@ S (S (S (S (S (S (S (S (S (S (S (S O))))))))))) : Nat
 \end{SaveVerbatim}
 \useverb{fntest}
 
+\noindent
 You may wonder, by the way, why we have unary natural numbers when our
 computers have perfectly good integer arithmetic built in. The reason is
 primarily that unary numbers have a very convenient structure which is easy to
@@ -235,6 +242,7 @@ data Vect : Set -> Nat -> Set where
 \end{SaveVerbatim}
 \useverb{vect}
 
+\noindent
 Note that we have used the same constructor names as for \tTC{List}. Ad-hoc
 name overloading such as this is accepted by \Idris{}, provided that the names
 are declared in different namespaces (in practice, normally in different modules).
@@ -266,6 +274,7 @@ app (x :: xs) ys = x :: app xs ys
 \end{SaveVerbatim}
 \useverb{vapp}
 
+\noindent
 The type of \tFN{app} states that the resulting vector's length will be the sum of
 the input lengths. If we get the definition wrong in such a way that this does
 not hold, \Idris{} will not accept the definition. For example:
@@ -290,6 +299,7 @@ $
 \end{SaveVerbatim}
 \useverb{vapperrmsg}
 
+\noindent
 This error message suggests that there is a length mismatch between two vectors
 --- we needed a vector of length \texttt{(S (k + m))}, but provided a vector
 of length \texttt{(S (k + k))}.
@@ -310,6 +320,7 @@ data Fin : Nat -> Set where
 \end{SaveVerbatim}
 \useverb{findecl}
 
+\noindent
 \tDC{fO} is the zeroth element of a finite set with \texttt{S k} elements; 
 \texttt{fS n} is the
 \texttt{n+1}th element of a finite set with \texttt{S k} elements. 
@@ -330,6 +341,7 @@ lookup (fS k) (x :: xs) = lookup k xs
 \end{SaveVerbatim}
 \useverb{vlookup}
 
+\noindent
 This function looks up a value at a given location in a vector. The location is
 bounded by the length of the vector (\texttt{n} in each case), so there is no
 need for a run-time bounds check. The type checker guarantees that the location
@@ -365,6 +377,7 @@ lookup : {a:Set} -> {n:Nat} -> Fin n -> Vect a n -> a
 \end{SaveVerbatim}
 \useverb{vlookupimpty}
 
+\noindent
 Implicit arguments, given in braces \texttt{\{\}} in the type declaration, are not given in
 applications of \texttt{lookup}; their values can be inferred from the types of
 the \texttt{Fin n} and \texttt{Vect a n} arguments. Any name which appears as a parameter
@@ -461,6 +474,7 @@ data IO a -- IO operation returning a value of type a
 \end{SaveVerbatim}
 \useverb{ioty}
 
+\noindent
 We'll leave the definition of \texttt{IO} abstract, but effectively it describes what
 the I/O operations to be executed are, rather than how to execute them. The
 resulting operations are executed externally,
@@ -475,6 +489,7 @@ main = putStrLn "Hello world"
 \end{SaveVerbatim}
 \useverb{main}
 
+\noindent
 The type of \texttt{putStrLn} explains that it takes a string, and returns an
 element of the unit type () via an I/O action. There is a variant \texttt{putStr} which
 outputs a string without a newline:
@@ -536,6 +551,7 @@ greet = do { putStr "What is your name? "
 \end{SaveVerbatim}
 \useverb{greet}
 
+\noindent
 The syntax \texttt{x <- iovalue} executes the I/O operation iovalue, of type 
 \texttt{IO a}, and
 puts the result, of type \texttt{a} into the variabel \texttt{x}. 
@@ -694,7 +710,7 @@ bounds error:
 \begin{SaveVerbatim}{lookuplist}
 
 list_lookup : Nat -> List a -> Maybe a
-list_lookup _     Nil         = Nothing
+list_lookup _     Nil       = Nothing
 list_lookup O     (x :: xs) = Just x
 list_lookup (S k) (x :: xs) = list_lookup k xs
 
