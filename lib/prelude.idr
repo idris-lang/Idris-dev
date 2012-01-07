@@ -98,7 +98,7 @@ instance Monad IO where {
 }
 
 instance Monad Maybe where {
-    return = Just
+    return t = Just t
 
     Nothing  >>= k = Nothing
     (Just x) >>= k = k x

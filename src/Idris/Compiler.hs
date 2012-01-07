@@ -73,6 +73,8 @@ instance ToEpic (TT Name) where
               = do v' <- epic' env v 
                    k' <- epic' env k
                    return (k' @@ (effect_ v'))
+          | (P (DCon t a) n _, args) <- unApply tm
+              = epicCon env t a n args
       epic' env (P (DCon t a) n _) = return $ con_ t
       epic' env (P (TCon t a) n _) = return $ con_ t
       epic' env (P _ n _)          = return $ ref (ename n) 
@@ -90,6 +92,20 @@ instance ToEpic (TT Name) where
                                return (f' @@ a')
       epic' env (Constant c) = epic c
       epic' env (Set _)      = return impossible
+
+      epicCon env t arity n args
+        | length args == arity = buildApp env (con_ t) args
+        | otherwise = let extra = satArgs (arity - length args) in
+                          do sc' <- epicCon env t arity n 
+                                        (args ++ map (\n -> P Bound n undefined) extra)
+                             return $ term (map ename extra, sc')
+        
+      satArgs n = map (\i -> MN i "sat") [1..n]
+
+      buildApp env e [] = return e
+      buildApp env e (x:xs) = do x' <- epic' env x
+                                 buildApp env (e @@ x') xs
+                                    
 
 doForeign :: [TT Name] -> Idris E.Term
 doForeign (_ : fgn : args)
