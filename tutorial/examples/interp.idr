@@ -60,5 +60,5 @@ testFac = interp [] fact 4
 main : IO ()
 main = do putStr "Enter a number: "
           x <- getLine
-          print (interp [] fact (prim__strToInt x)) 
+          print (interp [] fact (cast x)) 
 

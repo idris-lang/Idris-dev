@@ -3,6 +3,7 @@ module prelude.strings
 import builtins
 import prelude.list
 import prelude.char
+import prelude.cast
 
 -- Some more complex string operations
 
@@ -31,6 +32,12 @@ unpack s with (strM s)
 pack : List Char -> String
 pack [] = ""
 pack (x :: xs) = strCons x (pack xs)
+
+instance Cast String (List Char) where
+    cast = unpack
+
+instance Cast (List Char) String where
+    cast = pack
 
 span : (Char -> Bool) -> String -> (String, String)
 span p xs with (strM xs)

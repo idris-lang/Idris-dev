@@ -3,6 +3,7 @@ module prelude
 import builtins
 import io
 
+import prelude.cast
 import prelude.nat
 import prelude.list
 import prelude.maybe

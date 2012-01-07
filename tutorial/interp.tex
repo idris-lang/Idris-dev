@@ -322,13 +322,14 @@ on user input:
 main : IO ()
 main = do putStr "Enter a number: "
           x <- getLine
-          print (interp [] fact (prim__strToInt x)) 
+          print (interp [] fact (cast x)) 
 
 \end{SaveVerbatim}
 \useverb{factmain}
 
 \noindent
-Here, \texttt{prim\_\_strToInt} is a primitive function which converts a string to
+Here, \texttt{cast} is an overloaded function which converts a value from one
+type to another if possible. Here, it conversts a string to
 an integer, giving 0 if the input is invalid. An example run of this program
 at the \Idris{} interactive environment is shown in Figure \ref{factrun}.
 
@@ -349,4 +350,25 @@ Enter a number: 6
 
 \end{SaveVerbatim}
 \codefig{factrun}{Running the well-typed interpreter}
+
+\subsubsection*{Aside: \texttt{cast}}
+
+The prelude defines a type class \texttt{Cast} which allows conversion between
+types:
+
+\begin{SaveVerbatim}{castclass}
+
+class Cast a b where
+    cast : a -> b
+
+\end{SaveVerbatim}
+\useverb{castclass} 
+
+\noindent
+It is a \emph{multi-parameter} type class, defining the source type and object
+type of the cast. It must be possible for the type checker \remph{both}
+parameters at the point where the cast is applied.
+There are casts defined between all of the primitive types, as far as
+they make sense.
+
 

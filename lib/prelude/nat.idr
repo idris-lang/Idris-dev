@@ -1,10 +1,15 @@
 module prelude.nat
 
 import builtins
+import prelude.cast
 
 %access public
 
 data Nat = O | S Nat
+
+instance Cast Nat Int where
+    cast O = 0
+    cast (S k) = 1 + cast k
 
 plus : Nat -> Nat -> Nat
 plus O     y = y
