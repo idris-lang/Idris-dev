@@ -46,8 +46,7 @@ getAction (MkCGI act) = act
 
 instance Monad CGI where {
     (>>=) (MkCGI f) k = MkCGI (\s => do v <- f s
-                                        getAction (k (fst v)) (snd v)
-                              )
+                                        getAction (k (fst v)) (snd v))
 
     return v = MkCGI (\s => return (v, s))
 }

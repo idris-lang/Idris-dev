@@ -206,8 +206,9 @@ pKeepTerminator
           <|> do c <- indent; l <- last_indent
                  if (c <= l) then return ()
                              else fail "Not a terminator"
-          <|> do i <- getInput; if (take 1 i == "}") then return ()
-                                                     else fail "Not a terminator"
+          <|> do i <- getInput; let h = take 1 i
+                 if (h == "}" || h == ")") then return ()
+                                           else fail "Not a terminator"
           <|> lookAhead eof
 
 notEndApp = do c <- indent; l <- last_indent
@@ -219,7 +220,7 @@ notEndBlock = do ist <- getState
                  case brace_stack ist of
                     Just lvl : xs -> do i <- indent
                                         inp <- getInput
-                                        if (i < lvl || take 1 inp == ")") 
+                                        if (i < lvl || take 1 inp == ")")
                                                      then fail "End of block"
                                                      else return ()
                     _ -> return ()
@@ -805,7 +806,8 @@ pComprehension syn
 pDoBlock syn 
     = do reserved "do"; open_block
          push_indent
-         ds <- many1 (do notEndBlock; x <- pDo syn; pKeepTerminator; return x)
+         ds <- many1 (do notEndBlock
+                         x <- pDo syn; pKeepTerminator; return x)
          pop_indent
          close_block
          return (PDoBlock ds)
