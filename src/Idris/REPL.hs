@@ -32,18 +32,22 @@ import Data.Version
 
 repl :: IState -> [FilePath] -> Idris ()
 repl orig mods
-     = do let prompt = mkPrompt mods
+   = H.catch
+      (do let prompt = mkPrompt mods
           x <- lift $ getInputLine (prompt ++ "> ")
           case x of
               Nothing -> do iputStrLn "Bye bye"
                             return ()
-              Just input -> idrisCatch 
-                               (do ms <- processInput input orig mods
-                                   case ms of
+              Just input -> H.catch 
+                              (do ms <- processInput input orig mods
+                                  case ms of
                                       Just mods -> repl orig mods
                                       Nothing -> return ())
-                               (\e -> do iputStrLn (show e)
-                                         repl orig mods)
+                              ctrlC)
+      ctrlC
+   where ctrlC :: SomeException -> Idris ()
+         ctrlC e = do iputStrLn (show e)
+                      repl orig mods
 
 mkPrompt [] = "Idris"
 mkPrompt [x] = "*" ++ dropExtension x
