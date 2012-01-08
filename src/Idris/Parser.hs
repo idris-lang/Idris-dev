@@ -1124,6 +1124,7 @@ pDirective = try (do lchar '%'; reserved "lib"; lib <- strlit;
 pTactic :: SyntaxInfo -> IParser PTactic
 pTactic syn = do reserved "intro"; ns <- sepBy pName (lchar ',')
                  return $ Intro ns
+          <|> do reserved "intros"; return Intros
           <|> try (do reserved "refine"; n <- pName
                       imps <- many1 imp
                       return $ Refine n imps)

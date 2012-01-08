@@ -241,7 +241,7 @@ Let us now prove the other required lemma, \texttt{plusredO\_S}:
 In this case, the goal is a function type, using \texttt{k} (the argument accessible by
 pattern matching) and \texttt{ih} (the local variable containing the result of
 the recursive call). We can introduce these as premisses using the \texttt{intro} tactic
-twice. This gives:
+twice (or \texttt{intros}, which introduces all arguments as premisses). This gives:
 
 \begin{SaveVerbatim}{prSintros}
 
@@ -282,8 +282,7 @@ the goal using that proof. Here, it results in an equality which is trivially pr
 plusredO_S: no more goals
 -plusredO_S> qed 
 plusredO_S = proof {
-    intro;
-    intro;
+    intros;
     rewrite ih;
     trivial;
 }

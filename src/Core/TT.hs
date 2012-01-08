@@ -267,10 +267,17 @@ instance Show UConstraint where
 type UCs = (Int, [UConstraint])
 
 data NameType = Bound | Ref | DCon Int Int | TCon Int Int
-  deriving (Show, Eq)
+  deriving (Show)
 {-! 
 deriving instance Binary NameType 
 !-}
+
+instance Eq NameType where
+    Bound    == Bound    = True
+    Ref      == Ref      = True
+    DCon _ a == DCon _ b = (a == b) -- ignore tag
+    TCon _ a == TCon _ b = (a == b) -- ignore tag
+    _        == _        = False
 
 data TT n = P NameType n (TT n) -- embed type
           | V Int 

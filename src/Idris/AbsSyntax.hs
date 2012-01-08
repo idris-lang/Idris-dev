@@ -460,7 +460,7 @@ mapPT f t = f (mpt t) where
   mpt x = x
 
 
-data PTactic' t = Intro [Name] | Focus Name
+data PTactic' t = Intro [Name] | Intros | Focus Name
                 | Refine Name [Bool] | Rewrite t | LetTac Name t
                 | Exact t | Compute | Trivial
                 | Solve

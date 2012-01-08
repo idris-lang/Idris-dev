@@ -31,4 +31,23 @@ map : (a -> b) -> Vect a n -> Vect b n
 map f [] = []
 map f (x :: xs) = f x :: map f xs
 
+rev : Vect a n -> Vect a n
+rev xs = revAcc [] xs where
+  revAcc : Vect a n -> Vect a m -> Vect a (n + m)
+  revAcc acc []        ?= acc
+  revAcc acc (x :: xs) ?= revAcc (x :: acc) xs
+
+---------- Proofs ----------
+
+revAcc_lemma_2 = proof {
+    intros;
+    rewrite sym (plusn_Sm n k);
+    exact value;
+}
+
+revAcc_lemma_1 = proof {
+    intros;
+    rewrite sym (plusnO n);
+    exact value;
+}
 

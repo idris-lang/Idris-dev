@@ -12,11 +12,11 @@ data List a = Nil | (::) a (List a)
 rev : List a -> List a
 rev xs = revAcc [] xs where
   revAcc : List a -> List a -> List a
-  revAcc acc [] = acc
+  revAcc acc []        = acc
   revAcc acc (x :: xs) = revAcc (x :: acc) xs
 
 app : List a -> List a -> List a
-app [] xs = xs
+app []        xs = xs
 app (x :: xs) ys = x :: app xs ys
 
 length : List a -> Int

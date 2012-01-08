@@ -371,6 +371,13 @@ runTac autoSolve ist tac = runT (fmap (addImpl ist) tac) where
         bname (Bind n _ _) = Just n
         bname _ = Nothing
     runT (Intro xs) = mapM_ (\x -> do attack; intro (Just x)) xs
+    runT Intros = do g <- goal
+                     attack; intro (bname g)
+                     try (runT Intros)
+                         (return ())
+      where
+        bname (Bind n _ _) = Just n
+        bname _ = Nothing
     runT (Exact tm) = do elab ist toplevel False False (MN 0 "tac") tm
                          when autoSolve solveAll
     runT (Refine fn [])   

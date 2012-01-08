@@ -100,9 +100,7 @@ mult_commutes O     m = ?mult_commO
 mult_commutes (S k) m = let ih = mult_commutes k m in ?mult_commSk
 
 mult_commSk = proof {
-    intro;
-    intro;
-    intro;
+    intros;
     rewrite sym ih;
     rewrite multn_Sm m k;
     trivial;
@@ -115,9 +113,7 @@ mult_commO = proof {
 }
 
 multnSmSk = proof {
-    intro;
-    intro;
-    intro;
+    intros;
     rewrite plus_commutes (mult k m) m;
     rewrite sym (plus_assoc k (mult k m) m);
     rewrite ih;
