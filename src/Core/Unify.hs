@@ -55,11 +55,16 @@ unify ctxt env topx topy
         | fst (bnames!!i) == x || snd (bnames!!i) == x = return []
 
     un' fn bnames (App fx ax) (App fy ay)    
-        = do hf <- un' True bnames fx fy 
-             let ax' = normalise ctxt env (substNames hf ax)
-             let ay' = normalise ctxt env (substNames hf ay)
-             ha <- un' False bnames ax' ay'
-             combine bnames hf ha
+        = mplus (do hf <- un' True bnames fx fy 
+                    let ax' = normalise ctxt env (substNames hf ax)
+                    let ay' = normalise ctxt env (substNames hf ay)
+                    ha <- un' False bnames ax' ay'
+                    combine bnames hf ha)
+                (do ha <- un' False bnames ax ay
+                    let fx' = normalise ctxt env (substNames ha fx)
+                    let fy' = normalise ctxt env (substNames ha fy)
+                    hf <- un' False bnames fx' fy'
+                    combine bnames hf ha)
 
     un' fn bnames x (Bind n (Lam t) (App y (P Bound n' _)))
         | n == n' = un' False bnames x y

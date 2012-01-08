@@ -69,3 +69,7 @@ plus_commutes_Sk = proof {
     refine plusn_Sm;
 }
 
+plus_assoc : (n, m, p : Nat) -> n + (m + p) = (n + m) + p
+plus_assoc O     m p = refl
+plus_assoc (S k) m p = let ih = plus_assoc k m p in eqRespS ih
+
