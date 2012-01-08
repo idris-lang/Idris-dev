@@ -108,7 +108,14 @@ setAccessibility n a
               put (i { tt_ctxt = ctxt })
 
 addIBC :: IBCWrite -> Idris ()
-addIBC ibc = do i <- get; put (i { ibc_write = ibc : ibc_write i })
+addIBC ibc@(IBCDef n) 
+           = do i <- get
+                when (notDef (ibc_write i)) $
+                  put (i { ibc_write = ibc : ibc_write i })
+   where notDef [] = True
+         notDef (IBCDef n': is) | n == n' = False
+         notDef (_ : is) = notDef is
+addIBC ibc = do i <- get; put (i { ibc_write = ibc : ibc_write i }) 
 
 clearIBC :: Idris ()
 clearIBC = do i <- get; put (i { ibc_write = [] })

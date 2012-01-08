@@ -253,6 +253,7 @@ elabClause info fc tcgen (PWith fname lhs_in withs wval_in withblock)
         let wname = MN windex (show fname)
         let imps = getImps wtype -- add to implicits context
         put (i { idris_implicits = addDef wname imps (idris_implicits i) })
+        addIBC (IBCDef wname)
         def' <- checkDef fc [(wname, wtype)]
         addDeferred def'
 
@@ -586,7 +587,8 @@ elabDecl' info (PInstance s f cs n ps t ds)
 elabDecl' info (PDirective i) = i
 
 elabCaseBlock info d@(PClauses f o n ps) 
-        = elabDecl' info d 
+        = do addIBC (IBCDef n)
+             elabDecl' info d 
 
 -- elabDecl' info (PImport i) = loadModule i
 
