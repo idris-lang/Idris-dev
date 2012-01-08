@@ -1,13 +1,6 @@
 
 check: .PHONY
-	for x in *.idr ; do \
-	echo "Checking $$x"; \
-	idris --noprelude --check $$x; \
-	done
-	for x in network/*.idr ; do \
-	echo "Checking $$x"; \
-	idris --noprelude --check $$x; \
-	done
+	idris --noprelude --verbose --check checkall.idr
 
 recheck: clean check
 

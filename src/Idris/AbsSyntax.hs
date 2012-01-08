@@ -20,11 +20,12 @@ data IOption = IOption { opt_logLevel :: Int,
                          opt_typecase :: Bool,
                          opt_typeintype :: Bool,
                          opt_showimp  :: Bool,
-                         opt_repl     :: Bool
+                         opt_repl     :: Bool,
+                         opt_verbose  :: Bool
                        }
     deriving (Show, Eq)
 
-defaultOpts = IOption 0 False False False True
+defaultOpts = IOption 0 False False False True True
 
 -- TODO: Add 'module data' to IState, which can be saved out and reloaded quickly (i.e
 -- without typechecking).
@@ -209,6 +210,16 @@ setREPL t = do i <- get
                let opts = idris_options i
                let opt' = opts { opt_repl = t }
                put (i { idris_options = opt' })
+
+verbose :: Idris Bool
+verbose = do i <- get
+             return (opt_verbose (idris_options i))
+
+setVerbose :: Bool -> Idris ()
+setVerbose t = do i <- get
+                  let opts = idris_options i
+                  let opt' = opts { opt_verbose = t }
+                  put (i { idris_options = opt' })
 
 typeInType :: Idris Bool
 typeInType = do i <- get

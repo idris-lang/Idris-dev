@@ -11,11 +11,11 @@ using (G : Vect Ty n)
 
   data Env : Vect Ty n -> Set where
       Nil  : Env Nil
-    | (::) : interpTy a -> Env G -> Env (a :: G)
+      (::) : interpTy a -> Env G -> Env (a :: G)
 
   data HasType : (i : Fin n) -> Vect Ty n -> Ty -> Set where
       stop : HasType fO (t :: G) t
-    | pop  : HasType k G t -> HasType (fS k) (u :: G) t
+      pop  : HasType k G t -> HasType (fS k) (u :: G) t
 
   lookup : HasType i G t -> Env G -> interpTy t
   lookup stop    (x :: xs) = x
@@ -23,13 +23,13 @@ using (G : Vect Ty n)
 
   data Expr : Vect Ty n -> Ty -> Set where
       Var : HasType i G t -> Expr G t
-    | Val : (x : Int) -> Expr G TyInt
-    | Lam : Expr (a :: G) t -> Expr G (TyFun a t)
-    | App : Expr G (TyFun a t) -> Expr G a -> Expr G t
-    | Op  : (interpTy a -> interpTy b -> interpTy c) -> Expr G a -> Expr G b -> 
+      Val : (x : Int) -> Expr G TyInt
+      Lam : Expr (a :: G) t -> Expr G (TyFun a t)
+      App : Expr G (TyFun a t) -> Expr G a -> Expr G t
+      Op  : (interpTy a -> interpTy b -> interpTy c) -> Expr G a -> Expr G b -> 
             Expr G c
-    | If  : Expr G TyBool -> Expr G a -> Expr G a -> Expr G a
-    | Bind : Expr G a -> (interpTy a -> Expr G b) -> Expr G b
+      If  : Expr G TyBool -> Expr G a -> Expr G a -> Expr G a
+      Bind : Expr G a -> (interpTy a -> Expr G b) -> Expr G b
   
   interp : Env G -> {static} Expr G t -> interpTy t
   interp env (Var i)     = lookup i env

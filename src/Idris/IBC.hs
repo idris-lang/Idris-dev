@@ -8,6 +8,7 @@ import Core.CaseTree
 import Idris.Compiler
 import Idris.AbsSyntax
 import Idris.Imports
+import Idris.Error
 
 import Data.Binary
 import Data.List
@@ -96,7 +97,10 @@ process i fn
    | ver i /= ibcVersion = do iLOG "ibc out of date"
                               fail "Incorrect ibc version"
    | otherwise =  
-            do liftIO $ timestampOlder (sourcefile i) fn
+            do srcok <- liftIO $ doesFileExist (sourcefile i)
+               when srcok $ liftIO $ timestampOlder (sourcefile i) fn
+               v <- verbose
+               when (v && srcok) $ iputStrLn $ "Skipping " ++ sourcefile i
                pImports (ibc_imports i)
                pImps (ibc_implicits i)
                pFixes (ibc_fixes i)
@@ -111,13 +115,11 @@ process i fn
                pAccess (ibc_access i)
 
 timestampOlder :: FilePath -> FilePath -> IO ()
-timestampOlder src ibc = do srcok <- doesFileExist src
-                            when srcok $ do
-                                srct <- getModificationTime src
-                                ibct <- getModificationTime ibc
-                                if (srct > ibct)
-                                    then fail "Needs reloading"
-                                    else return ()
+timestampOlder src ibc = do srct <- getModificationTime src
+                            ibct <- getModificationTime ibc
+                            if (srct > ibct)
+                               then fail "Needs reloading"
+                               else return ()
 
 pImports :: [FilePath] -> Idris ()
 pImports fs 

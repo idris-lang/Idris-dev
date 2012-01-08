@@ -38,6 +38,7 @@ data Opt = Filename String
          | Output String
          | TypeCase
          | TypeInType
+         | Verbose
     deriving Eq
 
 main = do xs <- getArgs
@@ -52,6 +53,8 @@ runIdris opts =
        when (Ver `elem` opts) $ liftIO showver
        when (Usage `elem` opts) $ liftIO usage
        setREPL runrepl
+       setVerbose runrepl
+       when (Verbose `elem` opts) $ setVerbose True
        mapM_ makeOption opts
        elabPrims
        when (not (NoPrelude `elem` opts)) $ do x <- loadModule "prelude"
@@ -99,6 +102,7 @@ parseArgs ("--typecase":ns)  = liftM (TypeCase : ) (parseArgs ns)
 parseArgs ("--typeintype":ns) = liftM (TypeInType : ) (parseArgs ns)
 parseArgs ("--help":ns)      = liftM (Usage : ) (parseArgs ns)
 parseArgs ("--version":ns)   = liftM (Ver : ) (parseArgs ns)
+parseArgs ("--verbose":ns)   = liftM (Verbose : ) (parseArgs ns)
 parseArgs (n:ns)             = liftM (Filename n : ) (parseArgs ns)
 
 ver = showVersion version

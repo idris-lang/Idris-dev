@@ -92,8 +92,8 @@ loadSource lidr f
                   logLvl 10 (show (toAlist (idris_implicits i)))
                   logLvl 3 (show (idris_infixes i))
                   -- Now add all the declarations to the context
-                  repl <- useREPL
-                  when repl $ iputStrLn $ "Type checking " ++ f
+                  v <- verbose
+                  when v $ iputStrLn $ "Type checking " ++ f
                   mapM_ (elabDecl toplevel) ds
                   iLOG ("Finished " ++ f)
                   let ibc = dropExtension f ++ ".ibc"

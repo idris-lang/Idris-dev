@@ -30,7 +30,7 @@ report e
     | isUserError e = ioeGetErrorString e 
     | otherwise     = show e
 
-idrisCatch :: Idris a -> (IdrisErr -> Idris a) -> Idris a
+idrisCatch :: Idris a -> (SomeException -> Idris a) -> Idris a
 idrisCatch = catch
 
 data IdrisErr = IErr String
@@ -40,6 +40,9 @@ instance Show IdrisErr where
     show (IErr s) = s
 
 instance Exception IdrisErr
+
+ifail :: String -> Idris ()
+ifail str = throwIO (IErr str)
 
 tclift :: TC a -> Idris a
 tclift tc = case tc of
