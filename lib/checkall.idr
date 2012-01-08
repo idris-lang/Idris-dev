@@ -13,6 +13,8 @@ import prelude.nat
 import prelude.fin
 import prelude.list
 import prelude.maybe
+import prelude.monad
+import prelude.applicative
 import prelude.either
 import prelude.vect
 import prelude.strings
@@ -20,5 +22,3 @@ import prelude.char
 
 import network.cgi 
 
-private dummy : Int
-dummy = 42

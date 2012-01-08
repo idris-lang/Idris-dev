@@ -8,6 +8,8 @@ import prelude.nat
 import prelude.fin
 import prelude.list
 import prelude.maybe
+import prelude.monad
+import prelude.applicative
 import prelude.either
 import prelude.vect
 import prelude.strings
@@ -64,17 +66,7 @@ instance Show a => Show (Maybe a) where
     show Nothing = "Nothing"
     show (Just x) = "Just " ++ show x
 
----- Monad and instances
-
-infixl 5 >>=
-
-class Monad (m : Set -> Set) where 
-    return : a -> m a
-    (>>=)  : m a -> (a -> m b) -> m b
-
-class Monad m => MonadPlus (m : Set -> Set) where 
-    mplus : m a -> m a -> m a
-    mzero : m a
+---- Monad instances
 
 instance Monad IO where 
     return t = io_return t
@@ -101,14 +93,7 @@ instance MonadPlus List where
     mzero = []
     mplus = app
 
-guard : MonadPlus m => Bool -> m ()
-guard True  = return ()
-guard False = mzero
-
----- Functors
-
-class Functor (f : Set -> Set) where 
-    fmap : (a -> b) -> f a -> f b
+---- Functor instances
 
 instance Functor Maybe where 
     fmap f (Just x) = Just (f x)
@@ -117,13 +102,14 @@ instance Functor Maybe where
 instance Functor List where 
     fmap = map
 
----- Applicative functors/Idioms
+---- Applicative instances
 
-infixl 2 <$> 
+instance Applicative Maybe where
+    pure = Just
 
-class Functor f => Applicative (f : Set -> Set) where 
-    pure  : a -> f a
-    (<$>) : f (a -> b) -> f a -> f b 
+    (Just f) <$> (Just a) = Just (f a)
+    Nothing  <$> Nothing  = Nothing
+
 
 ---- some mathematical operations
 

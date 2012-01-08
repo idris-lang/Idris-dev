@@ -1,7 +1,7 @@
 module prelude.cast
 
-class Cast a b where
-    cast : a -> b
+class Cast from to where
+    cast : from -> to
 
 -- String casts
 

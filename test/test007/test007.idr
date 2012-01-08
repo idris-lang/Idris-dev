@@ -1,11 +1,5 @@
 module main
 
-instance Applicative Maybe where
-  (Just f) <$> (Just a) = Just (f a)
-  Nothing  <$> Nothing  = Nothing
-
-  pure x = Just x
-
 data Expr = Var String
           | Val Int
           | Add Expr Expr

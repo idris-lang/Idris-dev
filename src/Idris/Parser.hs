@@ -256,7 +256,7 @@ parseProg syn fname input pos
     = do i <- get
          case (runParser (do setPosition pos
                              whiteSpace
-                             ps <- many1 (pDecl syn)
+                             ps <- many (pDecl syn)
                              eof
                              i' <- getState
                              return (concat ps, i')) i fname input) of
@@ -812,9 +812,9 @@ pComprehension syn
     = do lchar '['; fc <- pfc; pat <- pExpr syn; lchar '|';
          qs <- sepBy1 (pDo syn) (lchar ','); lchar ']';
          return (PDoBlock (map addGuard qs ++ 
-                    [DoExp fc (PApp fc (PRef fc (NS (UN "return") ["prelude"]))
+                    [DoExp fc (PApp fc (PRef fc (UN "return"))
                                  [pexp pat])]))
-    where addGuard (DoExp fc e) = DoExp fc (PApp fc (PRef fc (NS (UN "guard") ["prelude"]))
+    where addGuard (DoExp fc e) = DoExp fc (PApp fc (PRef fc (UN "guard"))
                                                     [pexp e])
           addGuard x = x
 
