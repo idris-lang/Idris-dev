@@ -131,7 +131,7 @@ doForeign (_ : fgn : args)
               do args' <- mapM epic args
                  -- wrap it in a prim__IO
                  -- return $ con_ 0 @@ impossible @@ 
-                 return $ foreign_ rty fgnName (zip args' tys)
+                 return $ lazy_ $ foreign_ rty fgnName (zip args' tys)
    | otherwise = fail "Badly formed foreign function call"
 
 getFTypes :: TT Name -> [E.Type]
