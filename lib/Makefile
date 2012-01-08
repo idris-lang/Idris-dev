@@ -4,7 +4,7 @@ check: .PHONY
 
 recheck: clean check
 
-install: recheck
+install: check
 	mkdir -p $(TARGET)/prelude
 	mkdir -p $(TARGET)/network
 	install *.ibc $(TARGET)

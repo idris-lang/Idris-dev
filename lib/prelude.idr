@@ -13,6 +13,8 @@ import prelude.vect
 import prelude.strings
 import prelude.char
 
+%access public
+
 -- Show and instances
 
 class Show a where 
@@ -164,7 +166,7 @@ floor x = prim__floatFloor x
 ceiling : Float -> Float
 ceiling x = prim__floatCeil x
 
--- Ranges
+---- Ranges
 
 count : Num a => a -> a -> a -> List a
 count a inc b = if (a <= b) then (a :: count (a + inc) inc b)
@@ -174,6 +176,17 @@ syntax "[" [start] ".." [end] "]"
      = count start 1 end 
 syntax "[" [start] "," [next] ".." [end] "]" 
      = count start (next - start) end 
+
+---- More utilities
+
+flip : (a -> b -> c) -> b -> a -> c
+flip f x y = f y x
+
+sum : Num a => List a -> a
+sum = foldl (+) 0
+
+prod : Num a => List a -> a
+prod = foldl (*) 1
 
 ---- some basic io
 

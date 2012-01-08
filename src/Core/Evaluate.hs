@@ -445,7 +445,7 @@ instance Show Def where
     show (Function ty tm) = "Function: " ++ show (ty, tm)
     show (TyDecl nt ty) = "TyDecl: " ++ show nt ++ " " ++ show ty
     show (Operator ty _ _) = "Operator: " ++ show ty
-    show (CaseOp _ ty ps ns sc) = "Case: " ++ show ps ++ "\n" ++ 
+    show (CaseOp _ ty ps ns sc) = "Case: " ++ show ty ++ " " ++ show ps ++ "\n" ++ 
                                               show ns ++ " " ++ show sc
 -- We need this for serialising Def. Fortunately, it never gets used because
 -- we'll never serialise a primitive operator

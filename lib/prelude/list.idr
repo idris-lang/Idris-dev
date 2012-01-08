@@ -47,6 +47,14 @@ mapMaybe f (x :: xs) = case f x of
                            Nothing => mapMaybe f xs
                            Just v  => v :: mapMaybe f xs
 
+foldl : (a -> b -> a) -> a -> List b -> a
+foldl f a []        = a
+foldl f a (x :: xs) = foldl f (f a x) xs
+
+foldr : (a -> b -> b) -> b -> List a -> b
+foldr f b []        = b
+foldr f b (x :: xs) = f x (foldr f b xs)
+
 filter : (y -> Bool) -> List y -> List y
 filter pred [] = []
 filter pred (x :: xs) = if (pred x) then (x :: filter pred xs)

@@ -182,6 +182,7 @@ pHdrs hs = mapM_ addHdr hs
 pDefs :: [(Name, Def)] -> Idris ()
 pDefs ds = mapM_ (\ (n, d) -> 
                      do i <- getIState
+                        logLvl 5 $ "Added " ++ show (n, d)
                         putIState (i { tt_ctxt = addCtxtDef n d (tt_ctxt i) }))
                  ds       
 

@@ -81,6 +81,8 @@ loadSource lidr f
                   file_in <- liftIO $ readFile f
                   file <- if lidr then tclift $ unlit f file_in else return file_in
                   (mname, modules, rest, pos) <- parseImports f file
+                  i <- getIState
+                  putIState (i { default_access = Hidden })
                   mapM_ loadModule modules
                   clearIBC -- start a new .ibc file
                   mapM_ (\m -> addIBC (IBCImport m)) modules
@@ -104,6 +106,7 @@ loadSource lidr f
                   when ok $
                     idrisCatch (do writeIBC f ibc; clearIBC)
                                (\c -> return ()) -- failure is harmless
+                  putIState (i { hide_list = [] })
                   return ()
   where
     namespaces []     ds = ds
