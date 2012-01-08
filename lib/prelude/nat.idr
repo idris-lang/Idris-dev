@@ -54,7 +54,7 @@ plusnO : (m : Nat) -> m + O = m
 plusnO O     = refl
 plusnO (S k) = eqRespS (plusnO k)
 
-plusn_Sm : (n : Nat) -> (m : Nat) -> (plus n (S m)) = S (plus n m)
+plusn_Sm : (n, m : Nat) -> (plus n (S m)) = S (plus n m)
 plusn_Sm O     m = refl
 plusn_Sm (S j) m = eqRespS (plusn_Sm _ _)
 
@@ -72,4 +72,56 @@ plus_commutes_Sk = proof {
 plus_assoc : (n, m, p : Nat) -> n + (m + p) = (n + m) + p
 plus_assoc O     m p = refl
 plus_assoc (S k) m p = let ih = plus_assoc k m p in eqRespS ih
+
+data Cmp : Nat -> Nat -> Set where
+    cmpLT : (y : Nat) -> Cmp x (x + S y)
+    cmpEQ : Cmp x x
+    cmpGT : (x : Nat) -> Cmp (y + S x) y
+  
+cmp : (n, m : Nat) -> Cmp n m
+cmp O     O     = cmpEQ
+cmp (S n) O     = cmpGT _
+cmp O     (S n) = cmpLT _
+cmp (S x) (S y) with (cmp x y)
+    cmp (S x) (S x)         | cmpEQ = cmpEQ
+    cmp (S (y + S x)) (S y) | cmpGT _ = cmpGT _
+    cmp (S x) (S (x + S y)) | cmpLT _ = cmpLT _
+  
+multnO : (n : Nat) -> (n * O) = O
+multnO O     = refl
+multnO (S k) = multnO k
+
+multn_Sm : (n, m : Nat) -> n * S m = n + n * m
+multn_Sm O     m = refl
+multn_Sm (S k) m = let ih = multn_Sm k m in ?multnSmSk
+
+mult_commutes : (n, m : Nat) -> n * m = m * n
+mult_commutes O     m = ?mult_commO
+mult_commutes (S k) m = let ih = mult_commutes k m in ?mult_commSk
+
+mult_commSk = proof {
+    intro;
+    intro;
+    intro;
+    rewrite sym ih;
+    rewrite multn_Sm m k;
+    trivial;
+}
+
+mult_commO = proof {
+    intro;
+    rewrite multnO m;
+    trivial;
+}
+
+multnSmSk = proof {
+    intro;
+    intro;
+    intro;
+    rewrite plus_commutes (mult k m) m;
+    rewrite sym (plus_assoc k (mult k m) m);
+    rewrite ih;
+    rewrite plus_commutes m (mult k (S m));
+    trivial;
+}
 
