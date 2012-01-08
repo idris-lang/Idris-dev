@@ -15,8 +15,8 @@ io_return x = prim__IO x
 -- This may seem pointless, but we can use it to force an
 -- evaluation of main that Epic wouldn't otherwise do...
 
--- run__IO : IO () -> IO ()
--- run__IO (prim__IO v) = prim__IO v
+run__IO : IO () -> IO ()
+run__IO v = io_bind v (\v' => io_return v')
 
 data FTy = FInt | FFloat | FChar | FString | FPtr | FUnit
 

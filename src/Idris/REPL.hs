@@ -181,15 +181,22 @@ process TTShell  = do ist <- get
                       shst' <- lift $ runShell shst
                       return ()
 process Execute = do (m, _) <- elabVal toplevel False 
-                                     (PRef (FC "main" 0) (NS (UN "main") ["main"]))
+                                        (PApp fc 
+                                           (PRef fc (UN "run__IO"))
+                                           [pexp $ PRef fc (NS (UN "main") ["main"])])
+--                                      (PRef (FC "main" 0) (NS (UN "main") ["main"]))
                      (tmpn, tmph) <- liftIO tempfile
                      liftIO $ hClose tmph
                      compile tmpn m
                      liftIO $ system tmpn
                      return ()
-process (Compile f) = do (m, _) <- elabVal toplevel False 
-                                        (PRef (FC "main" 0) (NS (UN "main") ["main"]))
+  where fc = FC "main" 0                     
+process (Compile f) = do (m, _) <- elabVal toplevel False
+                                        (PApp fc 
+                                           (PRef fc (UN "run__IO"))
+                                           [pexp $ PRef fc (NS (UN "main") ["main"])])
                          compile f m
+  where fc = FC "main" 0                     
 process (LogLvl i) = setLogLevel i 
 process Metavars = do ist <- get
                       let mvs = idris_metavars ist \\ primDefs
