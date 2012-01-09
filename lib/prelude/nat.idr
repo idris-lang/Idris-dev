@@ -63,10 +63,11 @@ plus_commutes O     m = sym (plusnO m)
 plus_commutes (S k) m = let ih = plus_commutes k m in ?plus_commutes_Sk
 
 plus_commutes_Sk = proof {
-    intro k,m,ih;
+    intros;
     refine sym;
-    rewrite (sym ih);
-    refine plusn_Sm;
+    rewrite sym ih;
+    rewrite plusn_Sm m k;
+    trivial;
 }
 
 plus_assoc : (n, m, p : Nat) -> n + (m + p) = (n + m) + p

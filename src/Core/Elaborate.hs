@@ -253,7 +253,7 @@ qed = do processTactic' QED
 undo :: Elab' aux ()
 undo = processTactic' Undo
 
-prepare_apply :: Raw -> [(Bool, Int)] -> Elab' aux [Name]
+prepare_apply :: Raw -> [Bool] -> Elab' aux [Name]
 prepare_apply fn imps =
     do ty <- get_type fn
        ctxt <- get_context
@@ -262,7 +262,7 @@ prepare_apply fn imps =
        claims <- mkClaims (normalise ctxt env ty) imps []
        ES (p, a) s prev <- get
        -- reverse the claims we made so that args go left to right
-       let n = length (filter not (map fst imps))
+       let n = length (filter not imps)
        let (h : hs) = holes p
        put (ES (p { holes = h : (reverse (take n hs) ++ drop n hs) }, a) s prev)
 --        case claims of
@@ -275,7 +275,7 @@ prepare_apply fn imps =
 --            when (null claims) (start_unify n)
            let sc' = instantiate (P Bound n t) sc
            claim n (forget t)
-           when (fst i) (movelast n)
+           when i (movelast n)
            mkClaims sc' is (n : claims)
     mkClaims t [] claims = return (reverse claims)
     mkClaims _ _ _ = fail $ "Wrong number of arguments for " ++ show fn
@@ -289,20 +289,40 @@ prepare_apply fn imps =
 
 apply :: Raw -> [(Bool, Int)] -> Elab' aux [Name]
 apply fn imps = 
-    do args <- prepare_apply fn imps
+    do args <- prepare_apply fn (map fst imps)
        fill (raw_apply fn (map Var args))
        -- *Don't* solve the arguments we're specifying by hand.
        -- (remove from unified list before calling end_unify)
        -- HMMM: Actually, if we get it wrong, the typechecker will complain!
        -- so do nothing
        ptm <- get_term
-       let dontunify = [] -- map fst (filter (not.snd) (zip args imps))
+       let dontunify = [] -- map fst (filter (not.snd) (zip args (map fst imps)))
        ES (p, a) s prev <- get
        let (n, hs) = unified p
        let unify = (n, filter (\ (n, t) -> not (n `elem` dontunify)) hs)
        put (ES (p { unified = unify }, a) s prev)
        end_unify
-       return args
+       return (map (updateUnify hs) args)
+  where updateUnify hs n = case lookup n hs of
+                                Just (P _ t _) -> t
+                                _ -> n
+
+apply2 :: Raw -> [Maybe (Elab' aux ())] -> Elab' aux () 
+apply2 fn elabs = 
+    do args <- prepare_apply fn (map isJust elabs)
+       fill (raw_apply fn (map Var args))
+       elabArgs args elabs
+       ES (p, a) s prev <- get
+       let (n, hs) = unified p
+       end_unify
+       solve
+  where elabArgs [] [] = return ()
+        elabArgs (n:ns) (Just e:es) = do focus n; e
+                                         elabArgs ns es
+        elabArgs (n:ns) (_:es) = elabArgs ns es
+
+        isJust (Just _) = False 
+        isJust _        = True
 
 apply_elab :: Name -> [Maybe (Int, Elab' aux ())] -> Elab' aux ()
 apply_elab n args = 

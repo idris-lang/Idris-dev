@@ -11,7 +11,10 @@ import Core.TT
 import Debug.Trace
 
 delab :: IState -> Term -> PTerm
-delab ist tm = de [] tm
+delab i tm = delab' i tm False
+
+delab' :: IState -> Term -> Bool -> PTerm
+delab' ist tm fullname = de [] tm
   where
     un = FC "(val)" 0
 
@@ -30,6 +33,7 @@ delab ist tm = de [] tm
     de env (Constant i) = PConstant i
     de env (Set i) = PSet 
 
+    dens x | fullname = x
     dens ns@(NS n _) = case lookupCtxt Nothing n (idris_implicits ist) of
                               [_] -> n -- just one thing
                               _ -> ns
@@ -56,7 +60,7 @@ pshow :: IState -> Err -> String
 pshow i (Msg s) = s
 pshow i (CantUnify x y e) = "Can't unify " ++ show (delab i x)
                             ++ " with " ++ show (delab i y) 
---                             ++ "\n\t(" ++ pshow i e ++ ")"
+--                              ++ "\n\t(" ++ pshow i e ++ ")"
 pshow i (NotInjective p x y) = "Can't verify injectivity of " ++ show (delab i p) ++
                                " when unifying " ++ show (delab i x) ++ " and " ++ 
                                                     show (delab i y)

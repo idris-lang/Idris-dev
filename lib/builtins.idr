@@ -15,7 +15,7 @@ FalseElim : _|_ -> a
 replace : {a:_} -> {x:_} -> {y:_} -> {P : a -> Set} -> x = y -> P x -> P y
 replace refl prf = prf
 
-sym : {x:a} -> {y:a} -> x = y -> y = x
+sym : {l:a} -> {r:a} -> l = r -> r = l
 sym refl = refl
 
 lazy : a -> a

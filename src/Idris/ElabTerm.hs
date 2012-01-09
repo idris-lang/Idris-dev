@@ -73,6 +73,10 @@ elab ist info pattern tcgen fn tm
         Placeholder -> Nothing
         v -> Just (priority arg, elabE ina v)
 
+    toElab' ina arg = case getTm arg of
+        Placeholder -> Nothing
+        v -> Just (elabE ina v)
+
     mkPat = do hs <- get_holes
                case hs of
                   (h: hs) -> do patvar h; mkPat
@@ -190,12 +194,13 @@ elab ist info pattern tcgen fn tm
                     solve
                     let (ns', eargs) 
                          = unzip $
-                              sortBy (\(_,x) (_,y) -> compare (priority x) (priority y))
-                                     (zip ns args)
+                             sortBy (\(_,x) (_,y) -> compare (priority x) (priority y))
+                                    (zip ns args)
                     elabArgs (ina || not isinf)
                              [] False ns' (map (\x -> (lazyarg x, getTm x)) eargs))
-                (do apply_elab f (map (toElab (ina || not isinf)) args)
-                    solve)
+--                 (try (do apply2 (Var f) (map (toElab' (ina || not isinf)) args)) 
+                     (do apply_elab f (map (toElab (ina || not isinf)) args)
+                         solve)
             ivs' <- get_instances
             when (not pattern || (ina && not tcgen)) $
                 mapM_ (\n -> do focus n
@@ -269,11 +274,17 @@ elab ist info pattern tcgen fn tm
                                [pimp (UN "a") Placeholder,
                                 pexp t]); 
         | otherwise = elabArg n t
-      where elabArg n t = if r
-                            then try (do focus n; elabE ina t; elabArgs ina failed r ns args) 
-                                     (elabArgs ina ((n,(lazy, t)):failed) r ns args)
-                            else do focus n; elabE ina t; elabArgs ina failed r ns args
-   
+      where elabArg n t 
+                = do hs <- get_holes
+                     failed' <- case n `elem` hs of
+                                   True ->
+                                      if r
+                                         then try (do focus n; elabE ina t; return failed)
+                                                  (return ((n,(lazy, t)):failed))
+                                         else do focus n; elabE ina t; return failed
+                                   False -> return failed
+                     elabArgs ina failed r ns args
+
 pruneAlt :: [PTerm] -> [PTerm]
 pruneAlt xs = map prune xs
   where

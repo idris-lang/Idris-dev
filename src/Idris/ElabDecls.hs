@@ -196,6 +196,9 @@ elabClause info fc tcgen (PClause fname lhs_in withs rhs_in whereblock)
         ctxt <- getContext
         logLvl 5 $ "Rechecking"
         (crhs, crhsty) <- recheckC ctxt fc [] rhs'
+        i <- get
+        logLvl 6 $ "Checked to\n" ++ showImp True (delab' i crhs True) ++ "\n" ++
+                                     showImp True rhs
         return $ Just (clhs, crhs)
   where
     decorate x = UN (show fname ++ "#" ++ show x)
