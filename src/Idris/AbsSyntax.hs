@@ -1154,6 +1154,18 @@ dumpDecl (PInstance _ _ cs n _ t ds)
 dumpDecl _ = "..."
 -- dumpDecl (PImport i) = "import " ++ i
 
+-- for 6.12/7 compatibility
+data EitherErr a b = LeftErr a | RightOK b
+
+instance Monad (EitherErr a) where
+    return = RightOK
+
+    (LeftErr e) >>= k = LeftErr e
+    RightOK v   >>= k = k v
+
+toEither (LeftErr e)  = Left e
+toEither (RightOK ho) = Right ho
+
 -- syntactic match of a against b, returning pair of variables in a 
 -- and what they match. Returns the pair that failed if not a match.
 
@@ -1188,9 +1200,9 @@ matchClause x y = checkRpts $ match (fullApp x) (fullApp y) where
              return (concat ms)
     match a@(PAlternative as) b
         = do let ms = zipWith match' as (repeat b)
-             case (rights ms) of
+             case (rights (map toEither ms)) of
                 (x: _) -> return x
-                _ -> Left (a, b)
+                _ -> LeftErr (a, b)
     match (PCase _ _ _) _ = return [] -- lifted out
     match (PMetavar _) _ = return [] -- modified
     match (PQuote _) _ = return []
@@ -1215,15 +1227,15 @@ matchClause x y = checkRpts $ match (fullApp x) (fullApp y) where
     match Placeholder _ = return []
     match (PResolveTC _) _ = return []
     match a b | a == b = return []
-              | otherwise = Left (a, b)
+              | otherwise = LeftErr (a, b)
 
-    checkRpts (Right ms) = check ms where
+    checkRpts (RightOK ms) = check ms where
         check ((n,t):xs) 
             | Just t' <- lookup n xs = if t/=t' then Left (t, t') 
                                                 else check xs
         check (_:xs) = check xs
         check [] = Right ms
-    checkRpts x = x
+    checkRpts (LeftErr x) = Left x
 
 substMatches :: [(Name, PTerm)] -> PTerm -> PTerm
 substMatches [] t = t
