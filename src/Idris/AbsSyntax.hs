@@ -12,6 +12,7 @@ import System.Console.Haskeline
 import Control.Monad.State
 import Data.List
 import Data.Char
+import Data.Either
 import Debug.Trace
 
 import qualified Epic.Epic as E
@@ -1154,50 +1155,75 @@ dumpDecl _ = "..."
 -- dumpDecl (PImport i) = "import " ++ i
 
 -- syntactic match of a against b, returning pair of variables in a 
--- and what they match. Returns 'Nothing' if not a match.
+-- and what they match. Returns the pair that failed if not a match.
 
-matchClause :: PTerm -> PTerm -> Maybe [(Name, PTerm)]
-matchClause x y = match x y where
+matchClause :: PTerm -> PTerm -> Either (PTerm, PTerm) [(Name, PTerm)]
+matchClause x y = checkRpts $ match (fullApp x) (fullApp y) where
     matchArg x y = match (fullApp (getTm x)) (fullApp (getTm y))
 
     fullApp (PApp _ (PApp fc f args) xs) = fullApp (PApp fc f (args ++ xs))
     fullApp x = x
 
+    match' x y = match (fullApp x) (fullApp y) 
     match (PApp _ f args) (PApp _ f' args')
         | length args == length args'
-            = do mf <- match f f'
+            = do mf <- match' f f'
                  ms <- zipWithM matchArg args args'
                  return (mf ++ concat ms)
 --     match (PRef _ n) (PRef _ n') | n == n' = return []
 --                                  | otherwise = Nothing
     match (PRef _ n) tm = return [(n, tm)]
-    match (PEq _ l r) (PEq _ l' r') = do ml <- match l l'
-                                         mr <- match r r'
+    match (PEq _ l r) (PEq _ l' r') = do ml <- match' l l'
+                                         mr <- match' r r'
                                          return (ml ++ mr)
-    match (PPair _ l r) (PPair _ l' r') = do ml <- match l l'
-                                             mr <- match r r'
+    match (PPair _ l r) (PPair _ l' r') = do ml <- match' l l'
+                                             mr <- match' r r'
                                              return (ml ++ mr)
-    match (PDPair _ l t r) (PDPair _ l' t' r') = do ml <- match l l'
-                                                    mt <- match t t'
-                                                    mr <- match r r'
+    match (PDPair _ l t r) (PDPair _ l' t' r') = do ml <- match' l l'
+                                                    mt <- match' t t'
+                                                    mr <- match' r r'
                                                     return (ml ++ mt ++ mr)
     match (PAlternative as) (PAlternative as') 
-        = do ms <- zipWithM match as as' 
+        = do ms <- zipWithM match' as as' 
              return (concat ms)
+    match a@(PAlternative as) b
+        = do let ms = zipWith match' as (repeat b)
+             case (rights ms) of
+                (x: _) -> return x
+                _ -> Left (a, b)
+    match (PCase _ _ _) _ = return [] -- lifted out
+    match (PMetavar _) _ = return [] -- modified
+    match (PQuote _) _ = return []
+    match (PProof _) _ = return []
+    match (PTactics _) _ = return []
     match (PRefl _) (PRefl _) = return []
     match (PResolveTC _) (PResolveTC _) = return []
     match (PTrue _) (PTrue _) = return []
     match (PFalse _) (PFalse _) = return []
     match (PReturn _) (PReturn _) = return []
-    match (PPi _ _ t s) (PPi _ _ t' s') = do mt <- match t t'
-                                             ms <- match s s'
+    match (PPi _ _ t s) (PPi _ _ t' s') = do mt <- match' t t'
+                                             ms <- match' s s'
                                              return (mt ++ ms)
-    match (PLam _ t s) (PLam _ t' s') = do mt <- match t t'
-                                           ms <- match s s'
+    match (PLam _ t s) (PLam _ t' s') = do mt <- match' t t'
+                                           ms <- match' s s'
                                            return (mt ++ ms)
-    match (PHidden x) (PHidden y) = match x y
+    match (PLet _ t ty s) (PLet _ t' ty' s') = do mt <- match' t t'
+                                                  mty <- match' ty ty'
+                                                  ms <- match' s s'
+                                                  return (mt ++ mty ++ ms)
+    match (PHidden x) (PHidden y) = match' x y
+    match Placeholder _ = return []
+    match (PResolveTC _) _ = return []
     match a b | a == b = return []
-              | otherwise = Nothing
+              | otherwise = Left (a, b)
+
+    checkRpts (Right ms) = check ms where
+        check ((n,t):xs) 
+            | Just t' <- lookup n xs = if t/=t' then Left (t, t') 
+                                                else check xs
+        check (_:xs) = check xs
+        check [] = Right ms
+    checkRpts x = x
 
 substMatches :: [(Name, PTerm)] -> PTerm -> PTerm
 substMatches [] t = t

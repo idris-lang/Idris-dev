@@ -42,8 +42,13 @@ delab' ist tm fullname = de [] tm
     deFn env (App f a) args = deFn env f (a:args)
     deFn env (P _ n _) [l,r]     | n == pairTy  = PPair un (de env l) (de env r)
                                  | n == eqCon   = PRefl un
+                                 | n == UN "lazy" = de env r
+                                 | n == UN "Exists" = PDPair un (de env l) Placeholder
+                                                                (de env r)
     deFn env (P _ n _) [_,_,l,r] | n == pairCon = PPair un (de env l) (de env r)
                                  | n == eqTy    = PEq un (de env l) (de env r)
+                                 | n == UN "Ex_intro" = PDPair un (de env l) Placeholder
+                                                                  (de env r)
     deFn env (P _ n _) args = mkPApp (dens n) (map (de env) args)
     deFn env f args = PApp un (de env f) (map pexp (map (de env) args))
 

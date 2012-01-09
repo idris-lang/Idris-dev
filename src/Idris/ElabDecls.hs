@@ -197,8 +197,7 @@ elabClause info fc tcgen (PClause fname lhs_in withs rhs_in whereblock)
         logLvl 5 $ "Rechecking"
         (crhs, crhsty) <- recheckC ctxt fc [] rhs'
         i <- get
-        logLvl 6 $ "Checked to\n" ++ showImp True (delab' i crhs True) ++ "\n" ++
-                                     showImp True rhs
+        checkInferred fc (delab' i crhs True) rhs
         return $ Just (clhs, crhs)
   where
     decorate x = UN (show fname ++ "#" ++ show x)
@@ -292,7 +291,7 @@ elabClause info fc tcgen (PWith fname lhs_in withs wval_in withblock)
     mkAuxC wname lhs ns (PClauses fc o n cs)
         | True  = do cs' <- mapM (mkAux wname lhs ns) cs
                      return $ PClauses fc o wname cs'
-        | otherwise = fail $ "with clause uses wrong function name " ++ show n
+        | otherwise = fail $ show fc ++ "with clause uses wrong function name " ++ show n
     mkAuxC wname lhs ns d = return $ d
 
     mkAux wname toplhs ns (PClause n tm_in (w:ws) rhs wheres)
@@ -301,10 +300,10 @@ elabClause info fc tcgen (PWith fname lhs_in withs wval_in withblock)
              logLvl 2 ("Matching " ++ showImp True tm ++ " against " ++ 
                                       showImp True toplhs)
              case matchClause toplhs tm of
-                Nothing -> fail "with clause does not match top level"
-                Just mvars -> do logLvl 3 ("Match vars : " ++ show mvars)
-                                 lhs <- updateLHS n wname mvars ns (fullApp tm) w
-                                 return $ PClause wname lhs ws rhs wheres
+                Left _ -> fail $ show fc ++ "with clause does not match top level"
+                Right mvars -> do logLvl 3 ("Match vars : " ++ show mvars)
+                                  lhs <- updateLHS n wname mvars ns (fullApp tm) w
+                                  return $ PClause wname lhs ws rhs wheres
     mkAux wname toplhs ns (PWith n tm_in (w:ws) wval withs)
         = do i <- get
              let tm = addImpl i tm_in
@@ -312,9 +311,9 @@ elabClause info fc tcgen (PWith fname lhs_in withs wval_in withblock)
                                       showImp True toplhs)
              withs' <- mapM (mkAuxC wname toplhs ns) withs
              case matchClause toplhs tm of
-                Nothing -> fail "with clause does not match top level"
-                Just mvars -> do lhs <- updateLHS n wname mvars ns (fullApp tm) w
-                                 return $ PWith wname lhs ws wval withs'
+                Left _ -> fail $ show fc ++ "with clause does not match top level"
+                Right mvars -> do lhs <- updateLHS n wname mvars ns (fullApp tm) w
+                                  return $ PWith wname lhs ws wval withs'
         
     updateLHS n wname mvars ns (PApp fc (PRef fc' n') args) w
         = return $ substMatches mvars $ 
@@ -595,4 +594,18 @@ elabCaseBlock info d@(PClauses f o n ps)
 
 -- elabDecl' info (PImport i) = loadModule i
 
+-- Check that the result of type checking matches what the programmer wrote
+-- (i.e. - if we inferred any arguments that the user provided, make sure
+-- they are the same!)
+
+checkInferred :: FC -> PTerm -> PTerm -> Idris ()
+checkInferred fc inf user =
+     do logLvl 6 $ "Checked to\n" ++ showImp True inf ++ "\n" ++
+                                     showImp True user
+        tclift $ case matchClause user inf of 
+            Right _ -> return ()
+            Left (x, y) -> tfail $ At fc 
+                                    (Msg $ "The type-checked term and given term do not match: "
+                                           ++ show x ++ " and " ++ show y)
+--                           ++ "\n" ++ showImp True inf ++ "\n" ++ showImp True user)
 
