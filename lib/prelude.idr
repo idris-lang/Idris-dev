@@ -240,6 +240,14 @@ feof : File -> IO Bool
 feof (FHandle h) = do eof <- do_feof h
                       return (not (eof == 0)) 
 
+nullPtr : Ptr -> IO Bool
+nullPtr p = do ok <- mkForeign (FFun "isNull" [FPtr] FInt) p 
+               return (ok /= 0);
+
+validFile : File -> IO Bool
+validFile (FHandle h) = do x <- nullPtr h
+                           return (not x)
+
 while : |(test : IO Bool) -> |(body : IO ()) -> IO ()
 while t b = do v <- t
                if v then (do { b; while t b }) else return ()
