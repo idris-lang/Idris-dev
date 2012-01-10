@@ -436,7 +436,7 @@ updateSolved xs t = t
 processTactic :: Tactic -> ProofState -> TC (ProofState, String)
 processTactic QED ps = case holes ps of
                            [] -> do let tm = {- normalise (context ps) [] -} (pterm ps)
-                                    (tm', ty', _) <- recheck (context ps) [] tm
+                                    (tm', ty', _) <- recheck (context ps) [] (forget tm) tm
                                     return (ps { done = True, pterm = tm' }, 
                                             "Proof complete: " ++ showEnv [] tm')
                            _  -> fail "Still holes to fill."

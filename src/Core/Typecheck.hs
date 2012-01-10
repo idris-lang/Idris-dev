@@ -36,11 +36,11 @@ isSet ctxt env tm = isSet' (normalise ctxt env tm)
     where isSet' (Set _) = return ()
           isSet' tm = fail (showEnv env tm ++ " is not a Set")
 
-recheck :: Context -> Env -> Term -> TC (Term, Type, UCs)
-recheck ctxt env tm 
+recheck :: Context -> Env -> Raw -> Term -> TC (Term, Type, UCs)
+recheck ctxt env tm orig
    = let v = next_tvar ctxt in
-       case runStateT (check' False ctxt env (forget tm)) (v, []) of -- holes banned
-          Error (IncompleteTerm _) -> Error $ IncompleteTerm tm
+       case runStateT (check' False ctxt env tm) (v, []) of -- holes banned
+          Error (IncompleteTerm _) -> Error $ IncompleteTerm orig
           Error e -> Error e
           OK ((tm, ty), constraints) -> 
               return (tm, ty, constraints)
@@ -77,13 +77,17 @@ check' holes ctxt env top = chk env top where
                      let c = ULT (UVar v) (UVar (v+1))
                      put (v+2, (c:cs))
                      return (Set (UVar v), Set (UVar (v+1)))
+  chk env (RConstant Forgot) = return (Erased, Erased)
   chk env (RConstant c) = return (Constant c, constType c)
     where constType (I _)   = Constant IType
           constType (BI _)  = Constant BIType
           constType (Fl _)  = Constant FlType
           constType (Ch _)  = Constant ChType
           constType (Str _) = Constant StrType
+          constType Forgot  = Erased
           constType _       = Set (UVal 0)
+  chk env (RForce t) = do (_, ty) <- chk env t
+                          return (Erased, ty)
   chk env (RBind n (Pi s) t)
       = do (sv, st) <- chk env s
            (tv, tt) <- chk ((n, Pi sv) : env) t

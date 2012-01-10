@@ -173,7 +173,7 @@ addAlist ((n, tm) : ds) ctxt = addDef n tm (addAlist ds ctxt)
 
 data Const = I Int | BI Integer | Fl Double | Ch Char | Str String 
            | IType | BIType     | FlType    | ChType  | StrType    
-           | PtrType
+           | PtrType | Forgot
   deriving Eq
 {-! 
 deriving instance Binary Const 
@@ -183,6 +183,7 @@ data Raw = Var Name
          | RBind Name (Binder Raw) Raw
          | RApp Raw Raw
          | RSet
+         | RForce Raw
          | RConstant Const
   deriving (Show, Eq)
 {-! 
@@ -220,6 +221,11 @@ fmapMB f (PVTy t)    = liftM PVTy (f t)
 raw_apply :: Raw -> [Raw] -> Raw
 raw_apply f [] = f
 raw_apply f (a : as) = raw_apply (RApp f a) as
+
+raw_unapply :: Raw -> (Raw, [Raw])
+raw_unapply t = ua [] t where
+    ua args (RApp f a) = ua (a:args) f
+    ua args t          = (t, args)
 
 data RawFun = RawFun { rtype :: Raw,
                        rval  :: Raw
@@ -284,6 +290,7 @@ data TT n = P NameType n (TT n) -- embed type
           | Bind n (Binder (TT n)) (TT n)
           | App (TT n) (TT n) -- function, function type, arg
           | Constant Const
+          | Erased
           | Set UExp
   deriving Functor
 {-! 
@@ -305,6 +312,8 @@ instance Eq n => Eq (TT n) where
     (==) (App fx ax)    (App fy ay)    = fx == fy && ax == ay
     (==) (Set _)        (Set _)        = True -- deal with constraints later
     (==) (Constant x)   (Constant y)   = x == y
+    (==) Erased         _              = True
+    (==) _              Erased         = True
     (==) _              _              = False
 
 convEq :: Eq n => TT n -> TT n -> StateT UCs TC Bool
@@ -320,6 +329,8 @@ convEq (Constant x) (Constant y) = return (x == y)
 convEq (Set x) (Set y)           = do (v, cs) <- get
                                       put (v, ULE x y : cs)
                                       return True
+convEq Erased _ = return True
+convEq _ Erased = return True
 convEq _ _ = return False
 
 -- A few handy operations on well typed terms:
@@ -418,7 +429,8 @@ forget tm = fe [] tm
     fe env (Constant c) 
                      = RConstant c
     fe env (Set i)   = RSet
-
+    fe env Erased    = RConstant Forgot 
+    
 bindAll :: [(n, Binder (TT n))] -> TT n -> TT n 
 bindAll [] t =t
 bindAll ((n, b) : bs) t = Bind n b (bindAll bs t)
@@ -485,6 +497,7 @@ showEnv' env t dbg = se 10 env t where
     se p env (Bind n b sc) = bracket p 2 $ sb env n b ++ se 10 ((n,b):env) sc
     se p env (App f a) = bracket p 1 $ se 1 env f ++ " " ++ se 0 env a
     se p env (Constant c) = show c
+    se p env Erased = "[__]"
     se p env (Set i) = "Set " ++ show i
 
     sb env n (Lam t)  = showb env "\\ " " => " n t

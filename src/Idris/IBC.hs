@@ -22,7 +22,7 @@ import System.Directory
 import Paths_idris
 
 ibcVersion :: Word8
-ibcVersion = 4
+ibcVersion = 5
 
 data IBCFile = IBCFile { ver :: Word8,
                          sourcefile :: FilePath,
@@ -31,6 +31,7 @@ data IBCFile = IBCFile { ver :: Word8,
                          ibc_fixes :: [FixDecl],
                          ibc_statics :: [(Name, [Bool])],
                          ibc_classes :: [(Name, ClassInfo)],
+                         ibc_optimise :: [(Name, OptInfo)],
                          ibc_syntax :: [Syntax],
                          ibc_keywords :: [String],
                          ibc_objs :: [FilePath],
@@ -43,7 +44,7 @@ deriving instance Binary IBCFile
 !-}
 
 initIBC :: IBCFile
-initIBC = IBCFile ibcVersion "" [] [] [] [] [] [] [] [] [] [] [] []
+initIBC = IBCFile ibcVersion "" [] [] [] [] [] [] [] [] [] [] [] [] []
 
 loadIBC :: FilePath -> Idris ()
 loadIBC fp = do iLOG $ "Loading ibc " ++ fp
@@ -58,8 +59,9 @@ writeIBC src f
                 (_:_) -> fail "Can't write ibc when there are unsolved metavariables"
                 [] -> return ()
          ibcf <- mkIBC (ibc_write i) (initIBC { sourcefile = src }) 
-         liftIO $ encodeFile f ibcf
-         iLOG $ "Written"
+         idrisCatch (do liftIO $ encodeFile f ibcf
+                        iLOG "Written")
+            (\c -> do iLOG $ "Failed " ++ show c)
          return ()
 
 mkIBC :: [IBCWrite] -> IBCFile -> Idris IBCFile
@@ -80,6 +82,9 @@ ibc i (IBCStatic n) f
 ibc i (IBCClass n) f 
                    = case lookupCtxt Nothing n (idris_classes i) of
                         [v] -> return f { ibc_classes = (n,v): ibc_classes f     }
+                        _ -> fail "IBC write failed"
+ibc i (IBCOpt n) f = case lookupCtxt Nothing n (idris_optimisation i) of
+                        [v] -> return f { ibc_optimise = (n,v): ibc_optimise f     }
                         _ -> fail "IBC write failed"
 ibc i (IBCSyntax n) f = return f { ibc_syntax = n : ibc_syntax f }
 ibc i (IBCKeyword n) f = return f { ibc_keywords = n : ibc_keywords f }
@@ -106,6 +111,7 @@ process i fn
                pFixes (ibc_fixes i)
                pStatics (ibc_statics i)
                pClasses (ibc_classes i)
+               pOptimise (ibc_optimise i)
                pSyntax (ibc_syntax i)
                pKeywords (ibc_keywords i)
                pObjs (ibc_objs i)
@@ -160,6 +166,13 @@ pClasses cs = mapM_ (\ (n, c) ->
                         do i <- getIState
                            putIState (i { idris_classes
                                            = addDef n c (idris_classes i) }))
+                    cs
+
+pOptimise :: [(Name, OptInfo)] -> Idris ()
+pOptimise cs = mapM_ (\ (n, c) ->
+                        do i <- getIState
+                           putIState (i { idris_optimisation
+                                           = addDef n c (idris_optimisation i) }))
                     cs
 
 pSyntax :: [Syntax] -> Idris ()
@@ -249,6 +262,7 @@ instance Binary Const where
                 ChType -> putWord8 8
                 StrType -> putWord8 9
                 PtrType -> putWord8 10
+                Forgot -> putWord8 11
         get
           = do i <- getWord8
                case i of
@@ -268,6 +282,7 @@ instance Binary Const where
                    8 -> return ChType
                    9 -> return StrType
                    10 -> return PtrType
+                   11 -> return Forgot
                    _ -> error "Corrupted binary data for Const"
 
  
@@ -286,6 +301,8 @@ instance Binary Raw where
                 RSet -> putWord8 3
                 RConstant x1 -> do putWord8 4
                                    put x1
+                RForce x1 -> do putWord8 5
+                                put x1
         get
           = do i <- getWord8
                case i of
@@ -301,6 +318,8 @@ instance Binary Raw where
                    3 -> return RSet
                    4 -> do x1 <- get
                            return (RConstant x1)
+                   5 -> do x1 <- get
+                           return (RForce x1)
                    _ -> error "Corrupted binary data for Raw"
 
  
@@ -400,6 +419,7 @@ instance (Binary n) => Binary (TT n) where
                                   put x1
                 Set x1 -> do putWord8 5
                              put x1
+                Erased -> do putWord8 6
         get
           = do i <- getWord8
                case i of
@@ -420,6 +440,7 @@ instance (Binary n) => Binary (TT n) where
                            return (Constant x1)
                    5 -> do x1 <- get
                            return (Set x1)
+                   6 -> return Erased
                    _ -> error "Corrupted binary data for TT"
 
  
@@ -530,7 +551,7 @@ instance Binary Accessibility where
                    _ -> error "Corrupted binary data for Accessibility"
 
 instance Binary IBCFile where
-        put (IBCFile x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14)
+        put (IBCFile x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15)
           = do put x1
                put x2
                put x3
@@ -545,6 +566,7 @@ instance Binary IBCFile where
                put x12
                put x13
                put x14
+               put x15
         get
           = do x1 <- get
                if x1 == ibcVersion then 
@@ -561,7 +583,8 @@ instance Binary IBCFile where
                     x12 <- get
                     x13 <- get
                     x14 <- get
-                    return (IBCFile x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14)
+                    x15 <- get
+                    return (IBCFile x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15)
                   else return (initIBC { ver = x1 })
  
 instance Binary Fixity where
@@ -940,7 +963,17 @@ instance Binary ClassInfo where
                x4 <- get
                return (CI x1 x2 x3 x4)
 
- 
+instance Binary OptInfo where
+        put (Optimise x1 x2 x3)
+          = do put x1
+               put x2
+               put x3
+        get
+          = do x1 <- get
+               x2 <- get
+               x3 <- get
+               return (Optimise x1 x2 x3)
+
 instance Binary SynContext where
         put x
           = case x of

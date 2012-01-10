@@ -31,6 +31,7 @@ data Value = VP NameType Name Value
            | VBind Name (Binder Value) (Value -> Eval Value)
            | VApp Value Value
            | VSet UExp
+           | VErased
            | VConstant Const
            | VTmp Int
 
@@ -147,6 +148,7 @@ eval ctxt statics genv tm opts = ev True [] tm where
                               a' <- ev False env a
                               evApply top env [a'] f'
     ev top env (Constant c) = return $ VConstant c
+    ev top env Erased    = return VErased
     ev top env (Set i)   = return $ VSet i
     
     evApply top env args (VApp f a) = 
@@ -259,6 +261,7 @@ instance Quote Value where
        where quoteB t = fmapMB (quote i) t
     quote i (VApp f a)     = liftM2 App (quote i f) (quote i a)
     quote i (VSet u)       = return $ Set u
+    quote i VErased        = return $ Erased
     quote i (VConstant c)  = return $ Constant c
     quote i (VTmp x)       = return $ V (i - x - 1)
 

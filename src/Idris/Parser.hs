@@ -64,7 +64,7 @@ loadModule f
                                    LIDR fn -> loadSource True  fn
                                    IBC fn src -> 
                                      idrisCatch (loadIBC fn)
-                                                (\c -> do iLOG $ fn ++ " failed"
+                                                (\c -> do iLOG $ fn ++ " failed " ++ show c
                                                           case src of
                                                             IDR sfn -> loadSource False sfn
                                                             LIDR sfn -> loadSource True sfn)

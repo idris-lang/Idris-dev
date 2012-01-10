@@ -39,6 +39,7 @@ data IState = IState { tt_ctxt :: Context,
                        idris_implicits :: Ctxt [PArg],
                        idris_statics :: Ctxt [Bool],
                        idris_classes :: Ctxt ClassInfo,
+                       idris_optimisation :: Ctxt OptInfo, 
                        idris_log :: String,
                        idris_options :: IOption,
                        idris_name :: Int,
@@ -66,6 +67,7 @@ data IBCWrite = IBCFix FixDecl
               | IBCImp Name
               | IBCStatic Name
               | IBCClass Name
+              | IBCOpt Name
               | IBCSyntax Syntax
               | IBCKeyword String
               | IBCImport FilePath
@@ -77,6 +79,7 @@ data IBCWrite = IBCFix FixDecl
   deriving Show
 
 idrisInit = IState initContext [] [] emptyContext emptyContext emptyContext
+                   emptyContext
                    "" defaultOpts 6 [] [] [] [] [] [] [] [] 
                    Nothing Nothing Nothing [] [] [] Hidden [] Nothing
 
@@ -520,6 +523,15 @@ data ClassInfo = CI { instanceName :: Name,
 {-! 
 deriving instance Binary ClassInfo 
 !-}
+
+data OptInfo = Optimise { collapsible :: Bool,
+                          forceable :: [Int], -- argument positions
+                          recursive :: [Int] }
+    deriving Show
+{-! 
+deriving instance Binary OptInfo 
+!-}
+
 
 -- Syntactic sugar info 
 

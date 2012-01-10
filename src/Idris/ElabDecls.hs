@@ -8,6 +8,7 @@ import Idris.Delaborate
 import Idris.Imports
 import Idris.ElabTerm
 import Idris.Coverage
+import Idris.DataOpts
 import Paths_idris
 
 import Core.TT
@@ -24,7 +25,8 @@ import Debug.Trace
 
 
 recheckC ctxt fc env t 
-    = do (tm, ty, cs) <- tclift $ recheck ctxt env t
+    = do t' <- applyOpts (forget t)
+         (tm, ty, cs) <- tclift $ recheck ctxt env t' t
          addConstraints fc cs
          return (tm, ty)
 
@@ -90,6 +92,7 @@ elabCon info syn (n, t_in, fc)
          (cty, _)  <- recheckC ctxt fc [] t'
          logLvl 2 $ "---> " ++ show n ++ " : " ++ show cty
          addIBC (IBCDef n)
+         forceArgs n cty
          return (n, cty)
 
 elabClauses :: ElabInfo -> FC -> FnOpts -> Name -> [PClause] -> Idris ()
