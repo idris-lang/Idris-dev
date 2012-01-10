@@ -106,7 +106,7 @@ elabClauses info fc opts n_in cs_in = let n = liftname info n_in in
                                         show r) pats))
          ist <- get
          let tcase = opt_typecase (idris_options ist)
-         let pdef = map debind pats
+         let pdef = map debind (map (simpl (tt_ctxt ist)) pats)
          pdef' <- applyOpts pdef 
          let tree = simpleCase tcase pdef 
          let tree' = simpleCase tcase pdef'
@@ -125,6 +125,8 @@ elabClauses info fc opts n_in cs_in = let n = liftname info n_in in
     debind (x, y) = (depat x, depat y)
     depat (Bind n (PVar t) sc) = depat (instantiate (P Bound n t) sc)
     depat x = x
+
+    simpl ctxt (x, y) = (x, simplify ctxt [] y)
 
     sameLength ((x, _) : xs) 
         = do l <- sameLength xs

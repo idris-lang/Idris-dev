@@ -31,7 +31,7 @@ type CS = Int
 
 -- simple terms can be inlined trivially - good for primitives in particular
 small :: SC -> Bool
-small (STerm t) = True
+-- small (STerm t) = True
 small _ = False
 
 simpleCase :: Bool -> [(Term, Term)] -> CaseDef
