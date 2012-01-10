@@ -31,6 +31,7 @@ delab' ist tm fullname = de [] tm
         = PLet n (de env ty) (de env val) (de (n:env) sc)
     de env (Bind n _ sc) = de (n:env) sc
     de env (Constant i) = PConstant i
+    de env Erased = Placeholder
     de env (Set i) = PSet 
 
     dens x | fullname = x

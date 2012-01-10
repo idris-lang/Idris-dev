@@ -406,13 +406,16 @@ try t1 t2 = do s <- get
 tryAll :: [(Elab' aux a, String)] -> Elab' aux a
 tryAll xs = tryAll' [] (fail "Nothing to try") (map fst xs)
   where
+    cantResolve :: Elab' aux a
+    cantResolve = fail $ "Couldn't resolve alternative: " 
+                                  ++ showSep ", " (map snd xs)
+
     tryAll' :: [Elab' aux a] -> -- successes
                Elab' aux a -> -- last failure
                [Elab' aux a] -> -- still to try
                Elab' aux a
-    tryAll' [res] _   [] = res 
-    tryAll' (_:_) _   [] = fail $ "Couldn't resolve alternative: " 
-                                  ++ showSep ", " (map snd xs)
+    tryAll' [res] _   [] = res
+    tryAll' (_:_) _   [] = cantResolve
     tryAll' [] f [] = f
     tryAll' cs f (x:xs) = do s <- get
                              case runStateT x s of

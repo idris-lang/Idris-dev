@@ -25,8 +25,8 @@ import Debug.Trace
 
 
 recheckC ctxt fc env t 
-    = do t' <- applyOpts (forget t)
-         (tm, ty, cs) <- tclift $ recheck ctxt env t' t
+    = do -- t' <- applyOpts (forget t) (doesn't work, or speed things up...)
+         (tm, ty, cs) <- tclift $ recheck ctxt env (forget t) t
          addConstraints fc cs
          return (tm, ty)
 
@@ -107,13 +107,16 @@ elabClauses info fc opts n_in cs_in = let n = liftname info n_in in
          ist <- get
          let tcase = opt_typecase (idris_options ist)
          let pdef = map debind pats
-         let tree = simpleCase tcase pdef
+         pdef' <- applyOpts pdef 
+         let tree = simpleCase tcase pdef 
+         let tree' = simpleCase tcase pdef'
          tclift $ sameLength pdef
          logLvl 3 (show tree)
+         logLvl 3 $ "Optimised: " ++ show tree'
          ctxt <- getContext
          case lookupTy (namespace info) n ctxt of
              [ty] -> do updateContext (addCasedef n (inlinable opts)
-                                                     tcase pdef ty)
+                                                     tcase pdef pdef' ty)
                         addIBC (IBCDef n)
              [] -> return ()
   where

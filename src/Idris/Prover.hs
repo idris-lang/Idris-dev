@@ -12,6 +12,7 @@ import Idris.ElabDecls
 import Idris.ElabTerm
 import Idris.Parser
 import Idris.Error
+import Idris.DataOpts
 
 import System.Console.Haskeline
 import Control.Monad.State
@@ -41,7 +42,9 @@ prove ctxt n ty
          let tree = simpleCase False [(P Ref n ty, tm)]
          logLvl 3 (show tree)
          (ptm, pty) <- recheckC ctxt (FC "proof" 0) [] tm
-         updateContext (addCasedef n True False [(P Ref n ty, ptm)] ty)
+         ptm' <- applyOpts ptm
+         updateContext (addCasedef n True False [(P Ref n ty, ptm)] 
+                                                [(P Ref n ty, ptm')] ty)
          solveDeferred n
 
 elabStep :: ElabState [PDecl] -> ElabD a -> Idris (a, ElabState [PDecl])

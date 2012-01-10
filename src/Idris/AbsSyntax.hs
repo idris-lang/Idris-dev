@@ -280,7 +280,7 @@ data Command = Quit | Help | Eval PTerm | Check PTerm | Reload | Edit
              | Compile String | Execute | ExecVal PTerm
              | Metavars | Prove Name | AddProof | Universes
              | TTShell 
-             | LogLvl Int | Spec PTerm | HNF PTerm | Defn Name
+             | LogLvl Int | Spec PTerm | HNF PTerm | Defn Name | Info Name
              | NOP
 
 -- Parsed declarations

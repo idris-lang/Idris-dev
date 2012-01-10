@@ -22,7 +22,7 @@ import System.Directory
 import Paths_idris
 
 ibcVersion :: Word8
-ibcVersion = 5
+ibcVersion = 6
 
 data IBCFile = IBCFile { ver :: Word8,
                          sourcefile :: FilePath,
@@ -509,12 +509,14 @@ instance Binary Def where
                                         put x1
                                         put x2
                                         put x3
-                CaseOp x1 x2 x3 x4 x5 -> do putWord8 3
-                                            put x1
-                                            put x2
-                                            put x3
-                                            put x4
-                                            put x5
+                CaseOp x1 x2 x3 x4 x5 x6 x7 -> do putWord8 3
+                                                  put x1
+                                                  put x2
+                                                  put x3
+                                                  put x4
+                                                  put x5
+                                                  put x6
+                                                  put x7
         get
           = do i <- getWord8
                case i of
@@ -533,7 +535,9 @@ instance Binary Def where
                            x3 <- get
                            x4 <- get
                            x5 <- get
-                           return (CaseOp x1 x2 x3 x4 x5)
+                           x6 <- get
+                           x7 <- get
+                           return (CaseOp x1 x2 x3 x4 x5 x6 x7)
                    _ -> error "Corrupted binary data for Def"
 
 instance Binary Accessibility where

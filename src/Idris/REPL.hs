@@ -165,6 +165,9 @@ process Universes = do i <- get
                             OK _ -> iputStrLn "Universes OK"
 process (Defn n) = do ctxt <- getContext
                       liftIO $ print (lookupDef Nothing n ctxt)
+process (Info n) = do i <- get
+                      let oi = lookupCtxt Nothing n (idris_optimisation i)
+                      liftIO $ print oi
 process (Spec t) = do (tm, ty) <- elabVal toplevel False t
                       ctxt <- getContext
                       ist <- get

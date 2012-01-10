@@ -72,7 +72,7 @@ impossible = int 42424242
 
 instance ToEpic Def where
     epic (Function tm _) = epic tm
-    epic (CaseOp _ _ pats args sc) = epic (args, sc) -- TODO: redo case comp after optimising
+    epic (CaseOp _ _ pats _ _ args sc) = epic (args, sc) -- optimised version
     epic _ = return impossible
 
 instance ToEpic (TT Name) where
@@ -80,10 +80,10 @@ instance ToEpic (TT Name) where
       epic' env tm@(App f a)
           | (P _ (UN "mkForeign") _, args) <- unApply tm
               = doForeign args
-          | (P _ (UN "lazy") _, [_, arg]) <- unApply tm
+          | (P _ (UN "lazy") _, [_,arg]) <- unApply tm
               = do arg' <- epic' env arg
                    return $ lazy_ arg'
-          | (P _ (UN "prim__IO") _, [_, v]) <- unApply tm
+          | (P _ (UN "prim__IO") _, [v]) <- unApply tm
               = epic' env v
           | (P _ (UN "io_bind") _, [_,_,v,k]) <- unApply tm
               = do v' <- epic' env v 
@@ -137,8 +137,8 @@ doForeign (_ : fgn : args)
 
 getFTypes :: TT Name -> [E.Type]
 getFTypes tm = case unApply tm of
-                 (nil, [arg]) -> []
-                 (cons, [a, (P _ (UN ty) _), xs]) -> 
+                 (nil, []) -> []
+                 (cons, [(P _ (UN ty) _), xs]) -> 
                     let rest = getFTypes xs in
                         mkEty ty : rest                        
 
