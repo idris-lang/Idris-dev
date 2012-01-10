@@ -40,6 +40,7 @@ data IState = IState { tt_ctxt :: Context,
                        idris_statics :: Ctxt [Bool],
                        idris_classes :: Ctxt ClassInfo,
                        idris_optimisation :: Ctxt OptInfo, 
+                       idris_patdefs :: Ctxt [(Term, Term)], -- not exported
                        idris_log :: String,
                        idris_options :: IOption,
                        idris_name :: Int,
@@ -79,7 +80,7 @@ data IBCWrite = IBCFix FixDecl
   deriving Show
 
 idrisInit = IState initContext [] [] emptyContext emptyContext emptyContext
-                   emptyContext
+                   emptyContext emptyContext
                    "" defaultOpts 6 [] [] [] [] [] [] [] [] 
                    Nothing Nothing Nothing [] [] [] Hidden [] Nothing
 

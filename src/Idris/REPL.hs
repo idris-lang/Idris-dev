@@ -163,8 +163,16 @@ process Universes = do i <- get
                        case ucheck cs of
                             Error e -> iputStrLn $ pshow i e
                             OK _ -> iputStrLn "Universes OK"
-process (Defn n) = do ctxt <- getContext
-                      liftIO $ print (lookupDef Nothing n ctxt)
+process (Defn n) = do i <- get
+                      iputStrLn "Compiled patterns:\n"
+                      liftIO $ print (lookupDef Nothing n (tt_ctxt i))
+                      case lookupCtxt Nothing n (idris_patdefs i) of
+                        [] -> return ()
+                        [d] -> do iputStrLn "Original definiton:\n"
+                                  mapM_ (printCase i) d
+    where printCase i (lhs, rhs) = do liftIO $ putStr $ showImp True (delab i lhs)
+                                      liftIO $ putStr " = "
+                                      liftIO $ putStrLn $ showImp True (delab i rhs)
 process (Info n) = do i <- get
                       let oi = lookupCtxt Nothing n (idris_optimisation i)
                       liftIO $ print oi

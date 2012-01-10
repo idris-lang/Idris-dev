@@ -114,6 +114,8 @@ elabClauses info fc opts n_in cs_in = let n = liftname info n_in in
          logLvl 3 (show tree)
          logLvl 3 $ "Optimised: " ++ show tree'
          ctxt <- getContext
+         ist <- get
+         put (ist { idris_patdefs = addDef n pdef' (idris_patdefs ist) })
          case lookupTy (namespace info) n ctxt of
              [ty] -> do updateContext (addCasedef n (inlinable opts)
                                                      tcase pdef pdef' ty)
