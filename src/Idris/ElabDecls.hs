@@ -71,7 +71,11 @@ elabData info syn fc (PDatadecl n t_in dcons)
          updateContext (addTyDecl n cty) -- temporary, to check cons
          cons <- mapM (elabCon info syn) dcons
          ttag <- getName
+         i <- get
+         put (i { idris_datatypes = addDef n (TI (map fst cons)) 
+                                            (idris_datatypes i) })
          addIBC (IBCDef n)
+         addIBC (IBCData n)
          updateContext (addDatatype (Data n ttag cty cons))
 
 elabCon :: ElabInfo -> SyntaxInfo -> (Name, PTerm, FC) -> Idris (Name, Type)

@@ -22,7 +22,7 @@ import System.Directory
 import Paths_idris
 
 ibcVersion :: Word8
-ibcVersion = 6
+ibcVersion = 7
 
 data IBCFile = IBCFile { ver :: Word8,
                          sourcefile :: FilePath,
@@ -31,6 +31,7 @@ data IBCFile = IBCFile { ver :: Word8,
                          ibc_fixes :: [FixDecl],
                          ibc_statics :: [(Name, [Bool])],
                          ibc_classes :: [(Name, ClassInfo)],
+                         ibc_datatypes :: [(Name, TypeInfo)],
                          ibc_optimise :: [(Name, OptInfo)],
                          ibc_syntax :: [Syntax],
                          ibc_keywords :: [String],
@@ -44,7 +45,7 @@ deriving instance Binary IBCFile
 !-}
 
 initIBC :: IBCFile
-initIBC = IBCFile ibcVersion "" [] [] [] [] [] [] [] [] [] [] [] [] []
+initIBC = IBCFile ibcVersion "" [] [] [] [] [] [] [] [] [] [] [] [] [] []
 
 loadIBC :: FilePath -> Idris ()
 loadIBC fp = do iLOG $ "Loading ibc " ++ fp
@@ -83,6 +84,10 @@ ibc i (IBCClass n) f
                    = case lookupCtxt Nothing n (idris_classes i) of
                         [v] -> return f { ibc_classes = (n,v): ibc_classes f     }
                         _ -> fail "IBC write failed"
+ibc i (IBCData n) f 
+                   = case lookupCtxt Nothing n (idris_datatypes i) of
+                        [v] -> return f { ibc_datatypes = (n,v): ibc_datatypes f     }
+                        _ -> fail "IBC write failed"
 ibc i (IBCOpt n) f = case lookupCtxt Nothing n (idris_optimisation i) of
                         [v] -> return f { ibc_optimise = (n,v): ibc_optimise f     }
                         _ -> fail "IBC write failed"
@@ -111,6 +116,7 @@ process i fn
                pFixes (ibc_fixes i)
                pStatics (ibc_statics i)
                pClasses (ibc_classes i)
+               pDatatypes (ibc_datatypes i)
                pOptimise (ibc_optimise i)
                pSyntax (ibc_syntax i)
                pKeywords (ibc_keywords i)
@@ -166,6 +172,13 @@ pClasses cs = mapM_ (\ (n, c) ->
                         do i <- getIState
                            putIState (i { idris_classes
                                            = addDef n c (idris_classes i) }))
+                    cs
+
+pDatatypes :: [(Name, TypeInfo)] -> Idris ()
+pDatatypes cs = mapM_ (\ (n, c) ->
+                        do i <- getIState
+                           putIState (i { idris_datatypes
+                                           = addDef n c (idris_datatypes i) }))
                     cs
 
 pOptimise :: [(Name, OptInfo)] -> Idris ()
@@ -555,7 +568,7 @@ instance Binary Accessibility where
                    _ -> error "Corrupted binary data for Accessibility"
 
 instance Binary IBCFile where
-        put (IBCFile x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15)
+        put (IBCFile x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16)
           = do put x1
                put x2
                put x3
@@ -571,6 +584,7 @@ instance Binary IBCFile where
                put x13
                put x14
                put x15
+               put x16
         get
           = do x1 <- get
                if x1 == ibcVersion then 
@@ -588,7 +602,8 @@ instance Binary IBCFile where
                     x13 <- get
                     x14 <- get
                     x15 <- get
-                    return (IBCFile x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15)
+                    x16 <- get
+                    return (IBCFile x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16)
                   else return (initIBC { ver = x1 })
  
 instance Binary Fixity where
@@ -977,6 +992,11 @@ instance Binary OptInfo where
                x2 <- get
                x3 <- get
                return (Optimise x1 x2 x3)
+
+instance Binary TypeInfo where
+        put (TI x1) = put x1
+        get = do x1 <- get
+                 return (TI x1)
 
 instance Binary SynContext where
         put x
