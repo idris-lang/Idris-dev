@@ -38,7 +38,7 @@ instance Show FC where
     show (FC f l) = f ++ ":" ++ show l
 
 data Err = Msg String
-         | CantUnify Term Term Err
+         | CantUnify Term Term Err Int -- Int is 'score' - how much we did unify
          | NotInjective Term Term Term
          | IncompleteTerm Term
          | UniverseError
@@ -46,8 +46,15 @@ data Err = Msg String
          | At FC Err
   deriving Eq
 
+score :: Err -> Int
+score (CantUnify _ _ m s) = s + score m
+score _ = 0
+
 instance Show Err where
     show (Msg s) = s
+    show (CantUnify l r e i) = "CantUnify " ++ show l ++ " " ++ show r ++ " "
+                               ++ show e ++ " " ++ show i
+    show _ = "Error"
 
 data TC a = OK a
           | Error Err

@@ -64,7 +64,7 @@ delab' ist tm fullname = de [] tm
 
 pshow :: IState -> Err -> String
 pshow i (Msg s) = s
-pshow i (CantUnify x y e) = "Can't unify " ++ show (delab i x)
+pshow i (CantUnify x y e s) = "Can't unify " ++ show (delab i x)
                             ++ " with " ++ show (delab i y) 
 --                              ++ "\n\t(" ++ pshow i e ++ ")"
 pshow i (NotInjective p x y) = "Can't verify injectivity of " ++ show (delab i p) ++

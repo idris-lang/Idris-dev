@@ -404,23 +404,27 @@ try t1 t2 = do s <- get
 
 -- Try a selection of tactics. Exactly one must work, all others must fail
 tryAll :: [(Elab' aux a, String)] -> Elab' aux a
-tryAll xs = tryAll' [] (fail "Nothing to try") (map fst xs)
+tryAll xs = tryAll' [] (cantResolve, 0) (map fst xs)
   where
     cantResolve :: Elab' aux a
     cantResolve = fail $ "Couldn't resolve alternative: " 
                                   ++ showSep ", " (map snd xs)
 
     tryAll' :: [Elab' aux a] -> -- successes
-               Elab' aux a -> -- last failure
+               (Elab' aux a, Int) -> -- smallest failure
                [Elab' aux a] -> -- still to try
                Elab' aux a
     tryAll' [res] _   [] = res
     tryAll' (_:_) _   [] = cantResolve
-    tryAll' [] f [] = f
+    tryAll' [] (f, _) [] = f
     tryAll' cs f (x:xs) = do s <- get
                              case runStateT x s of
                                     OK (v, s') -> tryAll' ((do put s'
                                                                return v):cs)  f xs
                                     Error err -> do put s
-                                                    tryAll' cs (lift (tfail err)) xs
+                                                    tryAll' cs (better err f) xs
+
+    better err (f, i) = let s = score err in
+                            if (s > i) then (lift (tfail err), s)
+                                       else (f, i)
 
