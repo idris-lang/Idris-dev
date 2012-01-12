@@ -3,6 +3,7 @@
 module Idris.Compiler where
 
 import Idris.AbsSyntax
+import Idris.Transforms
 
 import Core.TT
 import Core.Evaluate

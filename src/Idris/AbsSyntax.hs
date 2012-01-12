@@ -521,7 +521,7 @@ data PArg' t = PImp { priority :: Int,
 deriving instance Binary PArg' 
 !-}
 
-pimp = PImp 0 False
+pimp = PImp 0 True
 pexp = PExp 0 False
 pconst = PConstraint 0 False
 
