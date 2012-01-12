@@ -38,6 +38,7 @@ data Opt = Filename String
          | Output String
          | TypeCase
          | TypeInType
+         | NoCoverage 
          | Verbose
     deriving Eq
 
@@ -73,6 +74,7 @@ runIdris opts =
     makeOption (OLogging i) = setLogLevel i
     makeOption TypeCase = setTypeCase True
     makeOption TypeInType = setTypeInType True
+    makeOption NoCoverage = setCoverage False
     makeOption _ = return ()
 
 getFile :: Opt -> Maybe String
@@ -100,6 +102,7 @@ parseArgs ("--check":ns)     = liftM (NoREPL : ) (parseArgs ns)
 parseArgs ("-o":n:ns)        = liftM (\x -> NoREPL : Output n : x) (parseArgs ns)
 parseArgs ("--typecase":ns)  = liftM (TypeCase : ) (parseArgs ns)
 parseArgs ("--typeintype":ns) = liftM (TypeInType : ) (parseArgs ns)
+parseArgs ("--nocoverage":ns) = liftM (NoCoverage : ) (parseArgs ns)
 parseArgs ("--help":ns)      = liftM (Usage : ) (parseArgs ns)
 parseArgs ("--version":ns)   = liftM (Ver : ) (parseArgs ns)
 parseArgs ("--verbose":ns)   = liftM (Verbose : ) (parseArgs ns)

@@ -34,13 +34,18 @@ small :: SC -> Bool
 -- small (STerm t) = True
 small _ = False
 
-simpleCase :: Bool -> [(Term, Term)] -> CaseDef
-simpleCase tc [] = CaseDef [] (UnmatchedCase "No pattern clauses")
-simpleCase tc cs = let pats    = map (\ (l, r) -> (toPats tc l, r)) cs
+simpleCase :: Bool -> Bool -> [(Term, Term)] -> CaseDef
+simpleCase tc cover [] 
+                 = CaseDef [] (UnmatchedCase "No pattern clauses")
+simpleCase tc cover cs 
+                 = let pats    = map (\ (l, r) -> (toPats tc l, r)) cs
                        numargs = length (fst (head pats)) 
-                       ns      = take numargs args in
-                       CaseDef ns (evalState (match ns pats (UnmatchedCase "Error")) numargs)
+                       ns      = take numargs args
+                       tree    = evalState (match ns pats (defaultCase cover)) numargs in
+                       CaseDef ns (prune tree)
     where args = map (\i -> MN i "e") [0..]
+          defaultCase True = STerm Erased
+          defaultCase False = UnmatchedCase "Error"
 
 data Pat = PCon Name Int [Pat]
          | PConst Const
@@ -193,21 +198,19 @@ varRule (v : vs) alts err =
     repVar v (PV p : ps , res) = (ps, subst p (P Bound v (V 0)) res)
     repVar v (PAny : ps , res) = (ps, res)
 
-{-
-mkOperator :: CaseDef -> [Value] -> Maybe Value
-mkOperator (CaseDef ns casetree) args 
-    | length args /= length ns = Nothing
-    | otherwise = evalArgs (zip ns args) casetree
-  where
-    evalArgs map (Case n alts) = 
-        do v <- lookup n map
-           (altmap, tm) <- findAlt (getValArgs v) alts map
-           evalArgs altmap tm
-    evalArgs map (STerm tm) = 
-    evalArgs map (UnmatchedCase _) = Nothing
+prune :: SC -> SC
+prune (Case n alts) 
+    = let alts' = map pruneAlt $ 
+                      filter notErased alts in
+          case alts' of
+            [] -> STerm Erased
+            as  -> Case n as
+    where pruneAlt (ConCase n i ns sc) = ConCase n i ns (prune sc)
+          pruneAlt (ConstCase c sc) = ConstCase c (prune sc)
+          pruneAlt (DefaultCase sc) = DefaultCase (prune sc)
 
-    getValArgs tm = getValArgs' tm []
-    getValArgs' (VApp f a) as = getValArgs' f (a:as)
-    getValArgs' f as = (f, as)
+          notErased (DefaultCase (STerm Erased)) = False
+          notErased _ = True
+prune t = t
 
--}
+

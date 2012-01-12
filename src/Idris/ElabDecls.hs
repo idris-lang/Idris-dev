@@ -76,6 +76,7 @@ elabData info syn fc (PDatadecl n t_in dcons)
                                             (idris_datatypes i) })
          addIBC (IBCDef n)
          addIBC (IBCData n)
+         collapseCons n cons
          updateContext (addDatatype (Data n ttag cty cons))
 
 elabCon :: ElabInfo -> SyntaxInfo -> (Name, PTerm, FC) -> Idris (Name, Type)
@@ -100,9 +101,8 @@ elabCon info syn (n, t_in, fc)
          return (n, cty)
 
 elabClauses :: ElabInfo -> FC -> FnOpts -> Name -> [PClause] -> Idris ()
-elabClauses info fc opts n_in cs_in = let n = liftname info n_in in  
-      do let cs = genClauses cs_in
-         pats_in <- mapM (elabClause info fc (TCGen `elem` opts)) cs
+elabClauses info fc opts n_in cs = let n = liftname info n_in in  
+      do pats_in <- mapM (elabClause info fc (TCGen `elem` opts)) cs
          solveDeferred n
          let pats = mapMaybe id pats_in
          logLvl 3 (showSep "\n" (map (\ (l,r) -> 
@@ -111,9 +111,19 @@ elabClauses info fc opts n_in cs_in = let n = liftname info n_in in
          ist <- get
          let tcase = opt_typecase (idris_options ist)
          let pdef = map debind (map (simpl (tt_ctxt ist)) pats)
+         cov <- coverage
+         pcover <-
+                 if cov  
+                    then idrisCatch 
+                            (do missing <- genClauses fc n (map fst pdef) cs
+                                mapM_ (elabClause info fc True) missing
+                                return True)
+                            (\c -> do -- iputStrLn $ "Warning: " ++ show c
+                                      return False)
+                    else return False
          pdef' <- applyOpts pdef 
-         let tree = simpleCase tcase pdef 
-         let tree' = simpleCase tcase pdef'
+         let tree = simpleCase tcase pcover pdef
+         let tree' = simpleCase tcase pcover pdef'
          tclift $ sameLength pdef
          logLvl 3 (show tree)
          logLvl 3 $ "Optimised: " ++ show tree'
@@ -122,7 +132,7 @@ elabClauses info fc opts n_in cs_in = let n = liftname info n_in in
          put (ist { idris_patdefs = addDef n pdef' (idris_patdefs ist) })
          case lookupTy (namespace info) n ctxt of
              [ty] -> do updateContext (addCasedef n (inlinable opts)
-                                                     tcase pdef pdef' ty)
+                                                     tcase pcover pdef pdef' ty)
                         addIBC (IBCDef n)
              [] -> return ()
   where
@@ -160,7 +170,11 @@ elabClause info fc tcgen (PClause fname lhs_in [] PImpossible [])
         -- if the LHS type checks, it is possible, so report an error
         case elaborate ctxt (MN 0 "patLHS") infP []
                             (erun fc (buildTC i info True tcgen fname (infTerm lhs))) of
-            OK _ -> fail $ show fc ++ ":" ++ show lhs ++ " is a possible case"
+            OK ((lhs', _, _), _) ->
+               do let lhs_tm = orderPats (getInferTerm lhs')
+                  checkInferred fc (delab' i lhs_tm True) lhs
+                  fail $ show fc ++ ":" ++ showImp True (delab' i lhs_tm True) ++ " is a possible case"
+                                ++ "\n" ++ showImp True lhs
             Error _ -> return ()
         return Nothing
 elabClause info fc tcgen (PClause fname lhs_in withs rhs_in whereblock) 
@@ -555,11 +569,6 @@ pbty _ tm = tm
 getPBtys (Bind n (PVar t) sc) = (n, t) : getPBtys sc
 getPBtys _ = []
 
-getRetTy (Bind n (PVar _) sc) = getRetTy sc
-getRetTy (Bind n (PVTy _) sc) = getRetTy sc
-getRetTy (Bind n (Pi _) sc)   = getRetTy sc
-getRetTy sc = sc
-
 psolve (Bind n (PVar t) sc) = do solve; psolve sc
 psolve tm = return ()
 
@@ -617,7 +626,7 @@ checkInferred fc inf user =
      do logLvl 6 $ "Checked to\n" ++ showImp True inf ++ "\n" ++
                                      showImp True user
         tclift $ case matchClause user inf of 
-            Right _ -> return ()
+            Right vs -> return ()
             Left (x, y) -> tfail $ At fc 
                                     (Msg $ "The type-checked term and given term do not match: "
                                            ++ show x ++ " and " ++ show y)

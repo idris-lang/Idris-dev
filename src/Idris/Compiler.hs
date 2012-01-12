@@ -168,6 +168,14 @@ instance ToEpic ([Name], SC) where
                            return $ term (map ename args, tree')
 
 instance ToEpic SC where
+    epic (Case n [ConCase _ i ns sc])
+        = epicLet n ns 0 sc
+      where
+        epicLet x [] _ sc = epic sc
+        epicLet x (n:ns) i sc 
+            = do sc' <- epicLet x ns (i+1) sc
+                 return $ let_ (ref (ename x) !. i) (ename n, sc')
+
     epic (STerm t) = epic t
     epic (UnmatchedCase str) = return $ error_ str
     epic (Case n alts) = do alts' <- mapM mkEpicAlt alts

@@ -45,6 +45,13 @@ forceArgs n t = do let fargs = force 0 t
             = mapMaybe isF args ++ concatMap guarded args
     guarded t = mapMaybe isF [t]
 
+-- Calculate whether a collection of constructors is collapsible
+
+collapseCons :: Name -> [(Name, Type)] -> Idris ()
+collapseCons ty cons = 
+                do i <- getIState
+                   return ()
+
 class Optimisable term where
     applyOpts :: term -> Idris term
 

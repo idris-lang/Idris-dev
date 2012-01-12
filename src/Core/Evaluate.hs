@@ -522,12 +522,13 @@ addDatatype (Data n tag ty cons) uctxt
               addCons (tag+1) cons (addDef n
                   (TyDecl (DCon tag (arity ty')) ty, Public) ctxt)
 
-addCasedef :: Name -> Bool -> Bool -> [(Term, Term)] -> [(Term, Term)] ->
+addCasedef :: Name -> Bool -> Bool -> Bool -> [(Term, Term)] -> [(Term, Term)] ->
               Type -> Context -> Context
-addCasedef n alwaysInline tcase ps psrt ty uctxt 
+addCasedef n alwaysInline tcase covering ps psrt ty uctxt 
     = let ctxt = definitions uctxt
           ps' = ps -- simpl ps in
-          ctxt' = case (simpleCase tcase ps', simpleCase tcase psrt) of
+          ctxt' = case (simpleCase tcase covering ps', 
+                        simpleCase tcase covering psrt) of
                     (CaseDef args sc, CaseDef args' sc') -> 
                                        let inl = alwaysInline in
                                            addDef n (CaseOp inl ty ps args sc args' sc',

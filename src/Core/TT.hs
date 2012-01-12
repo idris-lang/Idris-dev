@@ -449,6 +449,12 @@ getArgTys :: TT n -> [(n, TT n)]
 getArgTys (Bind n (Pi t) sc) = (n, t) : getArgTys sc
 getArgTys _ = []
 
+getRetTy :: TT n -> TT n
+getRetTy (Bind n (PVar _) sc) = getRetTy sc
+getRetTy (Bind n (PVTy _) sc) = getRetTy sc
+getRetTy (Bind n (Pi _) sc)   = getRetTy sc
+getRetTy sc = sc
+
 uniqueName :: Name -> [Name] -> Name
 uniqueName n hs | n `elem` hs = uniqueName (nextName n) hs
                 | otherwise   = n

@@ -20,13 +20,14 @@ import qualified Epic.Epic as E
 data IOption = IOption { opt_logLevel :: Int,
                          opt_typecase :: Bool,
                          opt_typeintype :: Bool,
+                         opt_coverage :: Bool,
                          opt_showimp  :: Bool,
                          opt_repl     :: Bool,
                          opt_verbose  :: Bool
                        }
     deriving (Show, Eq)
 
-defaultOpts = IOption 0 False False False True True
+defaultOpts = IOption 0 False False True False True True
 
 -- TODO: Add 'module data' to IState, which can be saved out and reloaded quickly (i.e
 -- without typechecking).
@@ -244,6 +245,16 @@ setTypeInType t = do i <- get
                      let opts = idris_options i
                      let opt' = opts { opt_typeintype = t }
                      put (i { idris_options = opt' })
+
+coverage :: Idris Bool
+coverage = do i <- get
+              return (opt_coverage (idris_options i))
+
+setCoverage :: Bool -> Idris ()
+setCoverage t = do i <- get
+                   let opts = idris_options i
+                   let opt' = opts { opt_coverage = t }
+                   put (i { idris_options = opt' })
 
 impShow :: Idris Bool
 impShow = do i <- get
@@ -1205,6 +1216,9 @@ matchClause x y = checkRpts $ match (fullApp x) (fullApp y) where
                  return (mf ++ concat ms)
 --     match (PRef _ n) (PRef _ n') | n == n' = return []
 --                                  | otherwise = Nothing
+    match (PRef f n) (PApp _ x []) = match (PRef f n) x
+    match (PApp _ x []) (PRef f n) = match x (PRef f n)
+    match (PRef _ n) (PRef _ n') | n == n' = return []
     match (PRef _ n) tm = return [(n, tm)]
     match (PEq _ l r) (PEq _ l' r') = do ml <- match' l l'
                                          mr <- match' r r'
@@ -1246,13 +1260,15 @@ matchClause x y = checkRpts $ match (fullApp x) (fullApp y) where
                                                   return (mt ++ mty ++ ms)
     match (PHidden x) (PHidden y) = match' x y
     match Placeholder _ = return []
+    match _ Placeholder = return []
     match (PResolveTC _) _ = return []
     match a b | a == b = return []
               | otherwise = LeftErr (a, b)
 
     checkRpts (RightOK ms) = check ms where
         check ((n,t):xs) 
-            | Just t' <- lookup n xs = if t/=t' then Left (t, t') 
+            | Just t' <- lookup n xs = if t/=t' && t/=Placeholder && t'/=Placeholder
+                                                then Left (t, t') 
                                                 else check xs
         check (_:xs) = check xs
         check [] = Right ms

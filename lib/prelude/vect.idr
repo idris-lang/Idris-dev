@@ -11,6 +11,9 @@ data Vect : Set -> Nat -> Set where
     Nil   : Vect a O
     (::)  : a -> Vect a k -> Vect a (S k) 
 
+tail : Vect a (S n) -> Vect a n
+tail (x :: xs) = xs
+
 lookup : Fin n -> Vect a n -> a
 lookup fO     (x :: xs) = x
 lookup (fS k) (x :: xs) = lookup k xs

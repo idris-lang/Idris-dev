@@ -22,7 +22,7 @@ import System.Directory
 import Paths_idris
 
 ibcVersion :: Word8
-ibcVersion = 7
+ibcVersion = 8
 
 data IBCFile = IBCFile { ver :: Word8,
                          sourcefile :: FilePath,
