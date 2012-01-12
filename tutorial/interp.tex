@@ -1,6 +1,6 @@
 \section{Example: The Well-Typed Interpreter}
 
-In this chapter, we'll use the features we've seen so far to write a larger
+In this section, we'll use the features we've seen so far to write a larger
 example, an interpreter for a simple functional programming language, with
 variables, function application, binary operators and an \texttt{if...then...else}
 construct. We will use the dependent type system to ensure that any programs
@@ -16,13 +16,14 @@ data Ty = TyInt | TyBool | TyFun Ty Ty
 
 \noindent
 We can write a function to translate these representations to a concrete \Idris{}
-type:
+type --- remember that types are first class, so can be calculated just like
+any other value:
 
 \begin{SaveVerbatim}{interpty}
 
 interpTy : Ty -> Set
-interpTy TyInt = Int
-interpTy TyBool = Bool
+interpTy TyInt       = Int
+interpTy TyBool      = Bool
 interpTy (TyFun A T) = interpTy A -> interpTy T
 
 \end{SaveVerbatim}
@@ -338,7 +339,7 @@ at the \Idris{} interactive environment is shown in Figure \ref{factrun}.
 $ idris interp.idr  
      ____    __     _                                          
     /  _/___/ /____(_)____                                     
-    / // __  / ___/ / ___/     Version 0.9
+    / // __  / ___/ / ___/     Version 0.9.0
   _/ // /_/ / /  / (__  )      http://www.idris-lang.org/      
  /___/\__,_/_/  /_/____/       Type :? for help                
 
