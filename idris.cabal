@@ -1,12 +1,12 @@
 Name:           idris
-Version:        0.9
+Version:        0.9.0
 License:        BSD3
 License-file:   LICENSE
 Author:         Edwin Brady
 Maintainer:     Edwin Brady <eb@cs.st-andrews.ac.uk>
 Homepage:       http://www.idris-lang.org/
 
-Stability:      Alpha
+Stability:      Beta
 Category:       Compilers/Interpreters, Dependent Types
 Synopsis:       Dependently Typed Functional Programming Language
 Description:    Idris is a general purpose language with full dependent types.
@@ -20,6 +20,11 @@ Build-type:     Custom
 
 Extra-source-files:    lib/Makefile  lib/*.idr lib/prelude/*.idr lib/network/*.idr
                        tutorial/examples/*.idr
+
+source-repository head
+  type:     git
+  location: git://github.com/edwinb/Idris-dev.git 
+
 
 Executable     idris
                Main-is: Main.hs
