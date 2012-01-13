@@ -777,7 +777,7 @@ data Exists : (A : Set) -> (P : A -> Set) -> Set where
 
 \noindent
 Again, there is syntactic sugar for this. \texttt{(a : A ** P)} is the type of a pair of
-A and P, where the name \texttt{a} can occur inside P. \texttt{( a ** p (} 
+A and P, where the name \texttt{a} can occur inside P. \texttt{( a ** p )} 
 constructs a value of this type. For example, we can pair a number with a 
 \texttt{Vect} of a particular length.
 
@@ -847,7 +847,7 @@ notation. with allows pattern matching on intermediate values:
 \begin{SaveVerbatim}{vfiltercons}
 
 filter p (x :: xs) with (filter p xs)
-   | (_ , xs') = if (p x) then (_ , x :: xs') else (_ , xs')
+  | ( _ ** xs' ) = if (p x) then ( _ ** x :: xs' ) else ( _ ** xs' )
 
 \end{SaveVerbatim}
 \useverb{vfiltercons}
