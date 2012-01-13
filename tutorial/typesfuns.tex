@@ -938,7 +938,7 @@ splitAt c x = case break (== c) x of
 
 \noindent
 \texttt{break} is a library function which breaks a string into a pair of strings
-at the point where the given function is no longer true. We then deconstruct the
+at the point where the given function returns true. We then deconstruct the
 pair it returns, and remove the first character of the second string.
 
 A \texttt{case} expression can match several cases, for example, to inspect an

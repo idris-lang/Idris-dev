@@ -330,7 +330,7 @@ main = do putStr "Enter a number: "
 
 \noindent
 Here, \texttt{cast} is an overloaded function which converts a value from one
-type to another if possible. Here, it conversts a string to
+type to another if possible. Here, it converts a string to
 an integer, giving 0 if the input is invalid. An example run of this program
 at the \Idris{} interactive environment is shown in Figure \ref{factrun}.
 
@@ -367,7 +367,7 @@ class Cast from to where
 
 \noindent
 It is a \emph{multi-parameter} type class, defining the source type and object
-type of the cast. It must be possible for the type checker \remph{both}
+type of the cast. It must be possible for the type checker to infer \remph{both}
 parameters at the point where the cast is applied.
 There are casts defined between all of the primitive types, as far as
 they make sense.
