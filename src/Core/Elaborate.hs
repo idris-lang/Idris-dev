@@ -425,6 +425,6 @@ tryAll xs = tryAll' [] (cantResolve, 0) (map fst xs)
                                                     tryAll' cs (better err f) xs
 
     better err (f, i) = let s = score err in
-                            if (s > i) then (lift (tfail err), s)
-                                       else (f, i)
+                            if (s >= i) then (lift (tfail err), s)
+                                        else (f, i)
 

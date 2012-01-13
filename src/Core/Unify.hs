@@ -16,17 +16,19 @@ import Debug.Trace
 -- at the time
 
 type Injs = [(TT Name, TT Name, TT Name)]
+type Fails = [(TT Name, TT Name, Err)]
 
-data UInfo = UI Int Injs
+data UInfo = UI Int Injs Fails
 
 unify :: Context -> Env -> TT Name -> TT Name -> TC ([(Name, TT Name)], 
-                                                     Injs)
+                                                     Injs, Fails)
 unify ctxt env topx topy 
     = case runStateT 
              (un' False [] (normalise ctxt env topx) (normalise ctxt env topy))
-             (UI 0 []) of
-              OK (v, (UI _ inj)) -> return (filter notTrivial v, inj)
-              Error e -> tfail $ CantUnify topx topy e 0
+             (UI 0 [] []) of
+              OK (v, UI _ inj fails) -> return (filter notTrivial v, inj, reverse fails)
+--               OK (_, UI s _ ((_,_,f):fs)) -> tfail $ CantUnify topx topy f s
+              Error e -> tfail e
   where
     notTrivial (x, P _ x' _) = x /= x'
     notTrivial _ = True
@@ -39,8 +41,15 @@ unify ctxt env topx topy
     notP (P _ _ _) = False
     notP _ = True
 
-    sc i = do UI s x <- get
-              put (UI (s+i) x)
+    sc i = do UI s x f <- get
+              put (UI (s+i) x f)
+
+    uplus u1 u2 = do UI s i f <- get
+                     r <- u1
+                     UI s _ f' <- get
+                     if (length f == length f') 
+                        then return r
+                        else do put (UI s i f); u2
 
     un' :: Bool -> [(Name, Name)] -> TT Name -> TT Name ->
            StateT UInfo 
@@ -48,13 +57,13 @@ unify ctxt env topx topy
     un' fn bnames (P Bound x _)  (P Bound y _)  
         | (x,y) `elem` bnames = do sc 1; return []
     un' fn bnames (P Bound x _) tm
-        | holeIn env x = do UI s i <- get
-                            when (notP tm && fn) $ put (UI s ((tm, topx, topy) : i))
+        | holeIn env x = do UI s i f <- get
+                            when (notP tm && fn) $ put (UI s ((tm, topx, topy) : i) f)
                             sc 1
                             return [(x, tm)]
     un' fn bnames tm (P Bound y _)
-        | holeIn env y = do UI s i <- get
-                            when (notP tm && fn) $ put (UI s ((tm, topx, topy) : i))
+        | holeIn env y = do UI s i f <- get
+                            when (notP tm && fn) $ put (UI s ((tm, topx, topy) : i) f)
                             sc 1
                             return [(y, tm)]
     un' fn bnames (V i) (P Bound x _)
@@ -63,7 +72,8 @@ unify ctxt env topx topy
         | fst (bnames!!i) == x || snd (bnames!!i) == x = do sc 1; return []
 
     un' fn bnames (App fx ax) (App fy ay)    
-        = mplus (do hf <- un' True bnames fx fy 
+        = do uplus -- do the second one if the first adds any errors 
+                (do hf <- un' True bnames fx fy 
                     let ax' = normalise ctxt env (substNames hf ax)
                     let ay' = normalise ctxt env (substNames hf ay)
                     ha <- un' False bnames ax' ay'
@@ -86,8 +96,10 @@ unify ctxt env topx topy
              combine bnames h1 h2
     un' fn bnames x y 
         | x == y = do sc 1; return []
-        | otherwise = do UI s _ <- get
-                         lift $ tfail (CantUnify x y (Msg "") s)
+        | otherwise = do UI s i f <- get
+                         let err = CantUnify topx topy (CantUnify x y (Msg "") s) s
+                         put (UI s i ((x, y, err) : f))
+                         return [] -- lift $ tfail err
 
     uB bnames (Let tx vx) (Let ty vy)
         = do h1 <- un' False bnames tx ty
@@ -103,8 +115,12 @@ unify ctxt env topx topy
     uB bnames (Pi tx) (Pi ty) = do sc 1; un' False bnames tx ty
     uB bnames (Hole tx) (Hole ty) = un' False bnames tx ty
     uB bnames (PVar tx) (PVar ty) = un' False bnames tx ty
-    uB bnames x y = do UI s _ <- get
-                       lift $ tfail (CantUnify (binderTy x) (binderTy y) (Msg "") s)
+    uB bnames x y = do UI s i f <- get
+                       let err = CantUnify topx topy
+                                  (CantUnify (binderTy x) (binderTy y) (Msg "") s)
+                                  s
+                       put (UI s i ((binderTy x, binderTy y, err) : f))
+                       return [] -- lift $ tfail err
 
     combine bnames as [] = return as
     combine bnames as ((n, t) : bs)

@@ -101,6 +101,13 @@ hole _           = False
 
 holeName i = MN i "hole" 
 
+unify' :: Context -> Env -> TT Name -> TT Name -> StateT TState TC [(Name, TT Name)]
+unify' ctxt env topx topy = do (u, inj, fails) <- lift $ unify ctxt env topx topy
+                               addInj inj
+                               case fails of
+                                    [] -> return u
+                                    ((_,_,err):_) -> lift $ tfail err
+
 getName :: Monad m => String -> StateT TState m Name
 getName tag = do ps <- get
                  let n = nextname ps
@@ -261,8 +268,7 @@ fill :: Raw -> RunTactic
 fill guess ctxt env (Bind x (Hole ty) sc) =
     do (val, valty) <- lift $ check ctxt env guess
        s <- get
-       (ns, inj) <- lift $ unify ctxt env valty ty
-       addInj inj
+       ns <- unify' ctxt env valty ty
        ps <- get
        let (uh, uns) = unified ps
        put (ps { unified = (uh, uns ++ ns) })
@@ -280,8 +286,7 @@ complete_fill :: RunTactic
 complete_fill ctxt env (Bind x (Guess ty val) sc) =
     do let guess = forget val
        (val', valty) <- lift $ check ctxt env guess    
-       (ns, inj) <- lift $ unify ctxt env valty ty
-       addInj inj
+       ns <- unify' ctxt env valty ty
        ps <- get
        let (uh, uns) = unified ps
        put (ps { unified = (uh, uns ++ ns) })
@@ -309,8 +314,7 @@ introTy ty mn ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' =
 --        ns <- lift $ unify ctxt env tyv t'
        case t' of
            Bind y (Pi s) t -> let t' = instantiate (P Bound n s) (pToV y t) in
-                                  do (ns, inj) <- lift $ unify ctxt env s tyv
-                                     addInj inj
+                                  do ns <- unify' ctxt env s tyv
                                      ps <- get
                                      let (uh, uns) = unified ps
                                      put (ps { unified = (uh, uns ++ ns) })
