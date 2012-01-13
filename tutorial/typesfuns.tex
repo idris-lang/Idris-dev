@@ -388,7 +388,7 @@ Implicit arguments can still be given explicitly in applications, using
 
 \begin{SaveVerbatim}{vlookupexp}
 
-lookup {a=Int} {n=2} fO (2 :: 3 :: VNil)
+lookup {a=Int} {n=2} fO (2 :: 3 :: Nil)
 
 \end{SaveVerbatim}
 \useverb{vlookupexp}
@@ -435,7 +435,7 @@ or \texttt{there}, in the tail of the vector. For example:
 \begin{SaveVerbatim}{testelem}
 
 testVec : Vect Int 4
-testVec = 3 :: 4 :: 5 :: 6 :: VNil
+testVec = 3 :: 4 :: 5 :: 6 :: Nil
 
 inVect : Elem 5 testVec
 inVect = there (there here)
@@ -833,7 +833,7 @@ If the \texttt{Vect} is empty, the result is easy:
 
 \begin{SaveVerbatim}{vfilternil}
 
-vfilter p VNil = (_ , [])
+vfilter p Nil = (_ , [])
 
 \end{SaveVerbatim}
 \useverb{vfilternil}

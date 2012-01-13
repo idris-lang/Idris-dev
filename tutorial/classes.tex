@@ -63,9 +63,9 @@ to a \texttt{String}:
 instance Show a => Show (Vect a n) where
     show xs = "[" ++ show' xs ++ "]" where
         show' : Show a => Vect a n -> String
-        show' VNil = ""
-        show' (x :: VNil) = show x
-        show' (x :: xs) = show x ++ ", " ++ show' xs
+        show' Nil        = ""
+        show' (x :: Nil) = show x
+        show' (x :: xs)  = show x ++ ", " ++ show' xs
 
 \end{SaveVerbatim}
 \useverb{showvec}
