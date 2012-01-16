@@ -34,7 +34,7 @@ intToNat x = if (x>0) then (S (intToNat (x-1))) else O
 main : IO ()
 main = do putStr "Enter a number: "
           x <- getLine
-          print $ natToBin (fromInteger (cast x))
+          print (natToBin (fromInteger (cast x)))
 
 ---------- Proofs ----------
 

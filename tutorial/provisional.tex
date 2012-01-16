@@ -284,8 +284,7 @@ outputs it in binary.
 main : IO ()
 main = do putStr "Enter a number: "
           x <- getLine
-          let b = natToBin (fromInteger (cast x))
-          print b 
+          print (natToBin (fromInteger (cast x)))
 
 \end{SaveVerbatim}
 \useverb{binmain}
