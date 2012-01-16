@@ -1202,7 +1202,10 @@ toEither (RightOK ho) = Right ho
 -- and what they match. Returns the pair that failed if not a match.
 
 matchClause :: PTerm -> PTerm -> Either (PTerm, PTerm) [(Name, PTerm)]
-matchClause x y = checkRpts $ match (fullApp x) (fullApp y) where
+matchClause = matchClause' False
+
+matchClause' :: Bool -> PTerm -> PTerm -> Either (PTerm, PTerm) [(Name, PTerm)]
+matchClause' names x y = checkRpts $ match (fullApp x) (fullApp y) where
     matchArg x y = match (fullApp (getTm x)) (fullApp (getTm y))
 
     fullApp (PApp _ (PApp fc f args) xs) = fullApp (PApp fc f (args ++ xs))
@@ -1219,7 +1222,7 @@ matchClause x y = checkRpts $ match (fullApp x) (fullApp y) where
     match (PRef f n) (PApp _ x []) = match (PRef f n) x
     match (PApp _ x []) (PRef f n) = match x (PRef f n)
     match (PRef _ n) (PRef _ n') | n == n' = return []
-    match (PRef _ n) tm = return [(n, tm)]
+    match (PRef _ n) tm | not names = return [(n, tm)]
     match (PEq _ l r) (PEq _ l' r') = do ml <- match' l l'
                                          mr <- match' r r'
                                          return (ml ++ mr)

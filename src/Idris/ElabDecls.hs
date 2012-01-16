@@ -625,7 +625,7 @@ checkInferred :: FC -> PTerm -> PTerm -> Idris ()
 checkInferred fc inf user =
      do logLvl 6 $ "Checked to\n" ++ showImp True inf ++ "\n" ++
                                      showImp True user
-        tclift $ case matchClause user inf of 
+        tclift $ case matchClause' True user inf of 
             Right vs -> return ()
             Left (x, y) -> tfail $ At fc 
                                     (Msg $ "The type-checked term and given term do not match: "
