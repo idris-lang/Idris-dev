@@ -400,8 +400,13 @@ try t1 t2 = do s <- get
                case runStateT t1 s of
                     OK (v, s') -> do put s'
                                      return v
-                    _ -> do put s; t2
-
+                    Error e1 -> do put s
+                                   case runStateT t2 s of
+                                     OK (v, s') -> do put s'; return v
+                                     Error e2 -> if score e1 > score e2 
+                                                    then lift (tfail e1) 
+                                                    else lift (tfail e2)
+                        
 -- Try a selection of tactics. Exactly one must work, all others must fail
 tryAll :: [(Elab' aux a, String)] -> Elab' aux a
 tryAll xs = tryAll' [] (cantResolve, 0) (map fst xs)

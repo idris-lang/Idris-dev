@@ -1,4 +1,4 @@
-module Core.Unify(unify) where
+module Core.Unify(unify, Fails) where
 
 import Core.TT
 import Core.Evaluate
@@ -16,7 +16,7 @@ import Debug.Trace
 -- at the time
 
 type Injs = [(TT Name, TT Name, TT Name)]
-type Fails = [(TT Name, TT Name, Err)]
+type Fails = [(TT Name, TT Name, Env, Err)]
 
 data UInfo = UI Int Injs Fails
 
@@ -98,7 +98,7 @@ unify ctxt env topx topy
         | x == y = do sc 1; return []
         | otherwise = do UI s i f <- get
                          let err = CantUnify topx topy (CantUnify x y (Msg "") s) s
-                         put (UI s i ((x, y, err) : f))
+                         put (UI s i ((x, y, env, err) : f))
                          return [] -- lift $ tfail err
 
     uB bnames (Let tx vx) (Let ty vy)
@@ -119,7 +119,7 @@ unify ctxt env topx topy
                        let err = CantUnify topx topy
                                   (CantUnify (binderTy x) (binderTy y) (Msg "") s)
                                   s
-                       put (UI s i ((binderTy x, binderTy y, err) : f))
+                       put (UI s i ((binderTy x, binderTy y, env, err) : f))
                        return [] -- lift $ tfail err
 
     combine bnames as [] = return as

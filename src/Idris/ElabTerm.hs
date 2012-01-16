@@ -196,8 +196,11 @@ elab ist info pattern tcgen fn tm
                          = unzip $
                              sortBy (\(_,x) (_,y) -> compare (priority x) (priority y))
                                     (zip ns args)
-                    elabArgs (ina || not isinf)
+                    try (elabArgs (ina || not isinf)
                              [] False ns' (map (\x -> (lazyarg x, getTm x)) eargs))
+                        (elabArgs (ina || not isinf)
+                             [] False (reverse ns') 
+                                      (map (\x -> (lazyarg x, getTm x)) (reverse eargs))))
 --                 (try (do apply2 (Var f) (map (toElab' (ina || not isinf)) args)) 
                      (do apply_elab f (map (toElab (ina || not isinf)) args)
                          solve)

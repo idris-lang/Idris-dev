@@ -945,9 +945,9 @@ getPriority i tm = pri tm
         case lookupP Nothing n (tt_ctxt i) of
             ((P (DCon _ _) _ _):_) -> 1
             ((P (TCon _ _) _ _):_) -> 1
-            ((P Ref _ _):_) -> 3
+            ((P Ref _ _):_) -> 4
             [] -> 0 -- must be locally bound, if it's not an error...
-    pri (PPi _ _ x y) = max 4 (max (pri x) (pri y))
+    pri (PPi _ _ x y) = max 5 (max (pri x) (pri y))
     pri (PTrue _) = 0
     pri (PFalse _) = 0
     pri (PRefl _) = 1

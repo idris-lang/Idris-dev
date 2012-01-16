@@ -54,8 +54,8 @@ elabStep st e = do case runStateT e st of
                                    fail (pshow i a)
                   
 dumpState :: IState -> ProofState -> IO ()
-dumpState ist (PS nm [] _ tm _ _ _ _ _ _ _ _ _) = putStrLn $ (show nm) ++ ": no more goals"
-dumpState ist ps@(PS nm (h:hs) _ tm _ _ _ i _ _ ctxy _ _)
+dumpState ist (PS nm [] _ tm _ _ _ _ _ _ _ _ _ _) = putStrLn $ (show nm) ++ ": no more goals"
+dumpState ist ps@(PS nm (h:hs) _ tm _ _ _ problems i _ _ ctxy _ _)
    = do let OK ty = goalAtFocus ps
         let OK env = envAtFocus ps
 --         putStrLn $ "Other goals: " ++ show hs ++ "\n"

@@ -23,6 +23,7 @@ data ProofState = PS { thname   :: Name,
                        pterm    :: Term,   -- current proof term
                        ptype    :: Type,   -- original goal
                        unified  :: (Name, [(Name, Term)]),
+                       problems :: Fails,
                        injective :: [(Term, Term, Term)],
                        deferred :: [Name], -- names we'll need to define
                        instances :: [Name], -- instance arguments (for type classes)
@@ -69,8 +70,8 @@ data Tactic = Attack
 -- Some utilites on proof and tactic states
 
 instance Show ProofState where
-    show (PS nm [] _ tm _ _ _ _ _ _ _ _ _) = show nm ++ ": no more goals"
-    show (PS nm (h:hs) _ tm _ _ _ i _ _ ctxt _ _) 
+    show (PS nm [] _ tm _ _ _ _ _ _ _ _ _ _) = show nm ++ ": no more goals"
+    show (PS nm (h:hs) _ tm _ _ _ _ i _ _ ctxt _ _) 
           = let OK g = goal (Just h) tm
                 wkenv = premises g in
                 "Other goals: " ++ show hs ++ "\n" ++
@@ -106,7 +107,10 @@ unify' ctxt env topx topy = do (u, inj, fails) <- lift $ unify ctxt env topx top
                                addInj inj
                                case fails of
                                     [] -> return u
-                                    ((_,_,err):_) -> lift $ tfail err
+                                    err -> 
+                                        do ps <- get
+                                           put (ps { problems = err ++ problems ps })
+                                           return []
 
 getName :: Monad m => String -> StateT TState m Name
 getName tag = do ps <- get
@@ -124,7 +128,7 @@ addLog str = action (\ps -> ps { plog = plog ps ++ str ++ "\n" })
 newProof :: Name -> Context -> Type -> ProofState
 newProof n ctxt ty = let h = holeName 0 
                          ty' = vToP ty in
-                         PS n [h] 1 (Bind h (Hole ty') (P Bound h ty')) ty (h, []) []
+                         PS n [h] 1 (Bind h (Hole ty') (P Bound h ty')) ty (h, []) [] []
                             [] []
                             Nothing ctxt "" False
 
@@ -437,6 +441,12 @@ updateSolved xs (P _ n _)
     | Just v <- lookup n xs = v
 updateSolved xs t = t
 
+updateProblems ns [] = []
+updateProblems ns ((x, y, env, err) : ps) =
+    let x' = updateSolved ns x
+        y' = updateSolved ns y in
+        (x',y',env,err) : updateProblems ns ps
+
 processTactic :: Tactic -> ProofState -> TC (ProofState, String)
 processTactic QED ps = case holes ps of
                            [] -> do let tm = {- normalise (context ps) [] -} (pterm ps)
@@ -448,13 +458,17 @@ processTactic ProofState ps = return (ps, showEnv [] (pterm ps))
 processTactic Undo ps = case previous ps of
                             Nothing -> fail "Nothing to undo."
                             Just pold -> return (pold, "")
-processTactic EndUnify ps = let (h, ns) = unified ps
-                                tm' = updateSolved ns (pterm ps) in
-                                return (ps { pterm = tm', 
-                                             unified = (h, []),
-                                             injective = map (tmap (updateSolved ns)) 
-                                                             (injective ps),
-                                             holes = holes ps \\ map fst ns }, "")
+processTactic EndUnify ps 
+    = let (h, ns) = unified ps
+          tm' = updateSolved ns (pterm ps) 
+          probs' = updateProblems ns (problems ps) in
+          case probs' of
+            [] -> return (ps { pterm = tm', 
+                               unified = (h, []),
+                               injective = map (tmap (updateSolved ns)) 
+                                                (injective ps),
+                               holes = holes ps \\ map fst ns }, "")
+            errs@((_,_,_,err):_) -> tfail err
 processTactic (Reorder n) ps 
     = do ps' <- execStateT (tactic (Just n) reorder_claims) ps
          return (ps' { previous = Just ps, plog = "" }, plog ps')
