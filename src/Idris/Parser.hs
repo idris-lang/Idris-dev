@@ -536,7 +536,7 @@ pExtensions syn rules = choice (map (\x -> try (pExt syn x)) (filter valid rules
 pExt :: SyntaxInfo -> Syntax -> IParser PTerm
 pExt syn (Rule (s:ssym) ptm _)
     = do s1 <- pSymbol pSimpleExpr s 
-         smap <- mapM (pSymbol pExpr') ssym
+         smap <- mapM (pSymbol pExpr) ssym
          let ns = mapMaybe id (s1:smap)
          return (update ns ptm) -- updated with smap
   where

@@ -34,9 +34,10 @@ using (G : Vect Ty n)
   interp env (Var i)     = lookup i env
   interp env (Val x)     = x
   interp env (Lam sc)    = \x => interp (x :: env) sc
-  interp env (App f s)   = (interp env f) (interp env s)
+  interp env (App f s)   = interp env f (interp env s)
   interp env (Op op x y) = op (interp env x) (interp env y)
-  interp env (If x t e)  = if (interp env x) then (interp env t) else (interp env e)
+  interp env (If x t e)  = if interp env x then interp env t 
+                                           else interp env e
 
   eId : Expr G (TyFun TyInt TyInt)
   eId = Lam (Var stop)

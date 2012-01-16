@@ -33,7 +33,9 @@ hand side describes its expansion. The syntax rule itself consists of:
 \item \textbf{Keywords} --- here, \texttt{if}, \texttt{then} and \texttt{else}, which must
 be valid identifiers
 \item \textbf{Non-terminals} --- included in square brackets, \texttt{[test]}, \texttt{[t]}
-and \texttt{[e]} here, which stand for arbitrary expressions
+and \texttt{[e]} here, which stand for arbitrary expressions. To avoid parsing ambiguities, 
+these expressions cannot use syntax extensions at the top level (though they can be used
+in parentheses).
 \item \textbf{Symbols} --- included in quotations marks, e.g. \texttt{":="}
 \end{itemize}
 

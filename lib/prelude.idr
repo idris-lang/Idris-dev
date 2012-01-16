@@ -155,8 +155,8 @@ ceiling x = prim__floatCeil x
 ---- Ranges
 
 count : Num a => a -> a -> a -> List a
-count a inc b = if (a <= b) then (a :: count (a + inc) inc b)
-                            else []
+count a inc b = if a <= b then a :: count (a + inc) inc b
+                          else []
   
 syntax "[" [start] ".." [end] "]" 
      = count start 1 end 
@@ -250,7 +250,9 @@ validFile (FHandle h) = do x <- nullPtr h
 
 while : |(test : IO Bool) -> |(body : IO ()) -> IO ()
 while t b = do v <- t
-               if v then (do { b; while t b }) else return ()
+               if v then do b
+                            while t b
+                    else return ()
                
 
 readFile : String -> IO String
@@ -262,8 +264,7 @@ readFile fn = do h <- openFile fn Read
     readFile' : File -> String -> IO String
     readFile' h contents = 
        do x <- feof h
-          if (not x) then (do l <- fread h
-                              readFile' h (contents ++ l)
-                          )
-                       else (return contents) 
+          if not x then do l <- fread h
+                           readFile' h (contents ++ l)
+                   else return contents
 
