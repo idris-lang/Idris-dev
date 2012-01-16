@@ -19,3 +19,14 @@ Complete rewrite. User visible changes:
 * Replaced 'do using' with Monad class
 * Extended syntax macros
 
+Internal changes:
+
+* Everything :-)
+* All definitions (functions, classes and instances) are elaborated to top 
+  level, fully explicit, data declarations and pattern matching definitions, 
+  which are verified by a minimal type checker. 
+
+This is the first release of a complete reimplementation. There will be bugs.
+If you find any, please do not hesitate to contact Edwin Brady 
+(ecb10@st-andrews.ac.uk).
+
