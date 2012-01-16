@@ -1105,7 +1105,7 @@ aiFn ist fc f as
             [(f',ns)] -> mkPApp fc (length ns) (PRef fc f') (insertImpl ns as)
             [] -> if f `elem` idris_metavars ist
                     then PApp fc (PRef fc f) as
-                    else mkPApp fc 1 (PRef fc f) as
+                    else mkPApp fc (length as) (PRef fc f) as
             alts -> PAlternative $
                      map (\(f', ns) -> mkPApp fc (length ns) (PRef fc f') 
                                                  (insertImpl ns as)) alts

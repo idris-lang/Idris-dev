@@ -279,7 +279,9 @@ elab ist info pattern tcgen fn tm
         | otherwise = elabArg n t
       where elabArg n t 
                 = do hs <- get_holes
-                     failed' <- case n `elem` hs of
+                     tm <- get_term
+                     failed' <- -- trace (show (n, t, hs, tm)) $ 
+                                case n `elem` hs of
                                    True ->
                                       if r
                                          then try (do focus n; elabE ina t; return failed)

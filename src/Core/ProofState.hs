@@ -460,14 +460,15 @@ processTactic Undo ps = case previous ps of
                             Just pold -> return (pold, "")
 processTactic EndUnify ps 
     = let (h, ns) = unified ps
-          tm' = updateSolved ns (pterm ps) 
-          probs' = updateProblems ns (problems ps) in
+          ns' = map (\ (n, t) -> (n, updateSolved ns t)) ns 
+          tm' = updateSolved ns' (pterm ps) 
+          probs' = updateProblems ns' (problems ps) in
           case probs' of
             [] -> return (ps { pterm = tm', 
                                unified = (h, []),
-                               injective = map (tmap (updateSolved ns)) 
+                               injective = map (tmap (updateSolved ns')) 
                                                 (injective ps),
-                               holes = holes ps \\ map fst ns }, "")
+                               holes = holes ps \\ map fst ns' }, "")
             errs@((_,_,_,err):_) -> tfail err
 processTactic (Reorder n) ps 
     = do ps' <- execStateT (tactic (Just n) reorder_claims) ps
