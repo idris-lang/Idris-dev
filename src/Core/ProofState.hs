@@ -23,6 +23,7 @@ data ProofState = PS { thname   :: Name,
                        pterm    :: Term,   -- current proof term
                        ptype    :: Type,   -- original goal
                        unified  :: (Name, [(Name, Term)]),
+                       solved   :: Maybe (Name, Term),
                        problems :: Fails,
                        injective :: [(Term, Term, Term)],
                        deferred :: [Name], -- names we'll need to define
@@ -70,8 +71,8 @@ data Tactic = Attack
 -- Some utilites on proof and tactic states
 
 instance Show ProofState where
-    show (PS nm [] _ tm _ _ _ _ _ _ _ _ _ _) = show nm ++ ": no more goals"
-    show (PS nm (h:hs) _ tm _ _ _ _ i _ _ ctxt _ _) 
+    show (PS nm [] _ tm _ _ _ _ _ _ _ _ _ _ _) = show nm ++ ": no more goals"
+    show (PS nm (h:hs) _ tm _ _ _ _ _ i _ _ ctxt _ _) 
           = let OK g = goal (Just h) tm
                 wkenv = premises g in
                 "Other goals: " ++ show hs ++ "\n" ++
@@ -128,7 +129,8 @@ addLog str = action (\ps -> ps { plog = plog ps ++ str ++ "\n" })
 newProof :: Name -> Context -> Type -> ProofState
 newProof n ctxt ty = let h = holeName 0 
                          ty' = vToP ty in
-                         PS n [h] 1 (Bind h (Hole ty') (P Bound h ty')) ty (h, []) [] []
+                         PS n [h] 1 (Bind h (Hole ty') (P Bound h ty')) ty (h, []) 
+                            Nothing [] []
                             [] []
                             Nothing ctxt "" False
 
@@ -302,6 +304,7 @@ solve ctxt env (Bind x (Guess ty val) sc)
    | pureTerm val = do ps <- get
                        let (uh, uns) = unified ps
                        action (\ps -> ps { holes = holes ps \\ [x],
+                                           solved = Just (x, val),
                                            -- unified = (uh, uns ++ [(x, val)]),
                                            instances = instances ps \\ [x] })
                        return $ {- Bind x (Let ty val) sc -} instantiate val (pToV x sc)
@@ -461,7 +464,8 @@ processTactic Undo ps = case previous ps of
 processTactic EndUnify ps 
     = let (h, ns) = unified ps
           ns' = map (\ (n, t) -> (n, updateSolved ns t)) ns 
-          tm' = updateSolved ns' (pterm ps) 
+          tm' = -- trace ("Updating " ++ show ns' ++ " in " ++ show (pterm ps)) $
+                updateSolved ns' (pterm ps) 
           probs' = updateProblems ns' (problems ps) in
           case probs' of
             [] -> return (ps { pterm = tm', 
@@ -477,7 +481,12 @@ processTactic t ps
     = case holes ps of
         [] -> fail "Nothing to fill in."
         (h:_)  -> do ps' <- execStateT (process t h) ps
-                     return (ps' { previous = Just ps, plog = "" }, plog ps')
+                     let pterm' = case solved ps' of
+                                    Just s -> updateSolved [s] (pterm ps')
+                                    _ -> pterm ps'
+                     return (ps' { pterm = pterm',
+                                   solved = Nothing,
+                                   previous = Just ps, plog = "" }, plog ps')
 
 process :: Tactic -> Name -> StateT TState TC ()
 process EndUnify _ 

@@ -350,13 +350,16 @@ resolveTC depth fn ist
        | depth == 0 = fail $ "Can't resolve type class"
        | otherwise 
               = do t <- goal
+                   -- if there's a hole in the goal, don't even try
                    let imps = case lookupCtxtName Nothing n (idris_implicits ist) of
                                 [] -> []
                                 [args] -> map isImp (snd args) -- won't be overloaded!
                    args <- apply (Var n) imps
+                   tm <- get_term
                    mapM_ (\ (_,n) -> do focus n
                                         resolveTC (depth - 1) fn ist) 
                          (filter (\ (x, y) -> not x) (zip (map fst imps) args))
+                   -- if there's any arguments left, we've failed to resolve
                    solve
        where isImp (PImp p _ _ _) = (True, p)
              isImp arg = (False, priority arg)
