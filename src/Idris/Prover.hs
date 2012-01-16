@@ -17,26 +17,30 @@ import Idris.DataOpts
 import System.Console.Haskeline
 import Control.Monad.State
 
-prover :: Name -> Idris ()
-prover x = do ctxt <- getContext
+prover :: Bool -> Name -> Idris ()
+prover lit x =
+           do ctxt <- getContext
               i <- get
               case lookupTy Nothing x ctxt of
                   [t] -> if elem x (idris_metavars i)
-                               then prove ctxt x t
+                               then prove ctxt lit x t
                                else fail $ show x ++ " is not a metavariable"
                   _ -> fail "No such metavariable"
 
-showProof :: Name -> [String] -> String
-showProof n ps = show n ++ " = proof {" ++ "\n" ++
-                 showSep "\n" (map (\x -> "    " ++ x ++ ";") ps) ++
-                 "\n}\n"
+showProof :: Bool -> Name -> [String] -> String
+showProof lit n ps 
+    = bird ++ show n ++ " = proof {" ++ break ++
+             showSep break (map (\x -> "    " ++ x ++ ";") ps) ++
+                     break ++ "}\n"
+  where bird = if lit then "> " else ""
+        break = "\n" ++ bird
 
-prove :: Context -> Name -> Type -> Idris ()
-prove ctxt n ty 
+prove :: Context -> Bool -> Name -> Type -> Idris ()
+prove ctxt lit n ty 
     = do let ps = initElaborator n ctxt ty 
          (tm, prf) <- ploop True ("-" ++ show n) [] (ES (ps, []) "" Nothing)
          iLOG $ "Adding " ++ show tm
-         iputStrLn $ showProof n prf
+         iputStrLn $ showProof lit n prf
          i <- get
          put (i { last_proof = Just (n, prf) })
          let tree = simpleCase False True [(P Ref n ty, tm)]
@@ -46,7 +50,6 @@ prove ctxt n ty
          updateContext (addCasedef n True False True [(P Ref n ty, ptm)] 
                                                 [(P Ref n ty, ptm')] ty)
          solveDeferred n
-
 elabStep :: ElabState [PDecl] -> ElabD a -> Idris (a, ElabState [PDecl])
 elabStep st e = do case runStateT e st of
                      OK (a, st') -> return (a, st')

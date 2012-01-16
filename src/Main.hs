@@ -66,7 +66,7 @@ runIdris opts =
        ok <- noErrors
        when ok $ case output of
                     [] -> return ()
-                    (o:_) -> process (Compile o)  
+                    (o:_) -> process "" (Compile o)  
        when runrepl $ repl ist inputs
        ok <- noErrors
        when (not ok) $ liftIO (exitWith (ExitFailure 1))
