@@ -1215,7 +1215,11 @@ matchClause' names x y = checkRpts $ match (fullApp x) (fullApp y) where
     fullApp (PApp _ (PApp fc f args) xs) = fullApp (PApp fc f (args ++ xs))
     fullApp x = x
 
-    match' x y = match (fullApp x) (fullApp y) 
+    match' x y = match (fullApp x) (fullApp y)
+    match (PApp _ (PRef _ (NS (UN "fromInteger") ["builtins"])) [_,_,x]) x' 
+        | PConstant (I _) <- getTm x = match (getTm x) x'
+    match x' (PApp _ (PRef _ (NS (UN "fromInteger") ["builtins"])) [_,_,x])
+        | PConstant (I _) <- getTm x = match (getTm x) x'
     match (PApp _ f args) (PApp _ f' args')
         | length args == length args'
             = do mf <- match' f f'

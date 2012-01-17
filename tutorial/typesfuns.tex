@@ -419,7 +419,7 @@ definition, which defines a predicate on vectors:
 
 \begin{SaveVerbatim}{elem}
 
-data Elem : a -> (Vect a n) -> Set where
+data Elem : a -> Vect a n -> Set where
    here :  {x:a} ->   {xs:Vect a n} -> Elem x (x :: xs)
    there : {x,y:a} -> {xs:Vect a n} -> Elem x xs -> Elem x (y :: xs)
 
@@ -451,7 +451,7 @@ ordering of any implicit arguments which can appear within the block:
 \begin{SaveVerbatim}{elemusing}
 
 using (x:a, y:a, xs:Vect a n)
-  data Elem : a -> (Vect a n) -> Set where
+  data Elem : a -> Vect a n -> Set where
      here  : Elem x (x :: xs)
      there : Elem x xs -> Elem x (y :: xs)
 
