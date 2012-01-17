@@ -1,6 +1,6 @@
 
 check: .PHONY
-	idris --noprelude --verbose --check checkall.idr
+	$(BINDIR)/idris --noprelude --verbose --check checkall.idr
 
 recheck: clean check
 

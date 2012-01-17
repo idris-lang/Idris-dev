@@ -27,10 +27,11 @@ postInstLib args flags desc local
          let dirs = substituteInstallDirTemplates cenv dirs_pkg
          let datad = datadir dirs
          let datasubd = datasubdir dirs
+         let bind = fromPathTemplate (bindir dirs)
          let idir = fromPathTemplate (datadir dirs) ++ "/" ++ 
                     fromPathTemplate (datasubdir dirs)
          putStrLn $ "Installing libraries in " ++ idir
-         system' $ "make -C lib install TARGET=" ++ idir
+         system' $ "make -C lib install TARGET=" ++ idir ++ " BINDIR=" ++ bind
 
 main = defaultMainWithHooks (simpleUserHooks { postInst = postInstLib,
                                                postClean = postCleanLib })
