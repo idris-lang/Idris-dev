@@ -22,9 +22,14 @@ addPrefix pfx var c = "export " ++ var ++ "=" ++ show pfx ++ "/" ++ c ++ ":$" ++
 postInstLib args flags desc local
     = do let pkg = localPkgDescr local
          let penv = packageTemplateEnv (package pkg)
-         let dirs = substituteInstallDirTemplates penv (installDirTemplates local)
+         let cenv = compilerTemplateEnv (compilerId (compiler local))
+         let dirs_pkg = substituteInstallDirTemplates penv (installDirTemplates local)
+         let dirs = substituteInstallDirTemplates cenv dirs_pkg
+         let datad = datadir dirs
+         let datasubd = datasubdir dirs
          let idir = fromPathTemplate (datadir dirs) ++ "/" ++ 
                     fromPathTemplate (datasubdir dirs)
+         putStrLn $ "Installing libraries in " ++ idir
          system' $ "make -C lib install TARGET=" ++ idir
 
 main = defaultMainWithHooks (simpleUserHooks { postInst = postInstLib,
