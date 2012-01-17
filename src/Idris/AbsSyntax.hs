@@ -1058,7 +1058,8 @@ implicitise syn ist tm
 addImpl :: IState -> PTerm -> PTerm
 addImpl ist ptm = ai [] ptm
   where
-    ai env (PRef fc f)    = aiFn ist fc f []
+    ai env (PRef fc f)    
+        | not (f `elem` env) = aiFn ist fc f []
     ai env (PEq fc l r)   = let l' = ai env l
                                 r' = ai env r in
                                 PEq fc l' r'
@@ -1072,6 +1073,7 @@ addImpl ist ptm = ai [] ptm
     ai env (PAlternative as) = let as' = map (ai env) as in
                                    PAlternative as'
     ai env (PApp fc (PRef _ f) as) 
+        | not (f `elem` env)
                           = let as' = map (fmap (ai env)) as in
                                 aiFn ist fc f as'
     ai env (PApp fc f as) = let f' = ai env f
