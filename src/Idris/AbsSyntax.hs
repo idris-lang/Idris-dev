@@ -755,14 +755,14 @@ allNamesIn tm = nub $ ni [] tm
     ni env (PAlternative ls) = concatMap (ni env) ls
     ni env _               = []
 
-namesIn :: IState -> PTerm -> [Name]
-namesIn ist tm = nub $ ni [] tm 
+namesIn :: [(Name, PTerm)] -> IState -> PTerm -> [Name]
+namesIn uvars ist tm = nub $ ni [] tm 
   where
     ni env (PRef _ n)        
         | not (n `elem` env) 
             = case lookupTy Nothing n (tt_ctxt ist) of
                 [] -> [n]
-                _ -> []
+                _ -> if n `elem` (map fst uvars) then [n] else []
     ni env (PApp _ f as)   = ni env f ++ concatMap (ni env) (map getTm as)
     ni env (PCase _ c os)  = ni env c ++ concatMap (ni env) (map snd os)
     ni env (PLam n ty sc)  = ni env ty ++ ni (n:env) sc
@@ -911,7 +911,7 @@ expandParamsD ist dec ps ns (PClauses fc opts n cs)
   where
     expandParamsC (PClause n lhs ws rhs ds)
         = let -- ps' = updateps True (namesIn ist rhs) (zip ps [0..])
-              ps'' = updateps False (namesIn ist lhs) (zip ps [0..])
+              ps'' = updateps False (namesIn [] ist lhs) (zip ps [0..])
               n' = if n `elem` ns then dec n else n in
               PClause n' (expandParams dec ps'' ns lhs)
                          (map (expandParams dec ps'' ns) ws)
@@ -919,7 +919,7 @@ expandParamsD ist dec ps ns (PClauses fc opts n cs)
                          (map (expandParamsD ist dec ps'' ns) ds)
     expandParamsC (PWith n lhs ws wval ds)
         = let -- ps' = updateps True (namesIn ist wval) (zip ps [0..])
-              ps'' = updateps False (namesIn ist lhs) (zip ps [0..])
+              ps'' = updateps False (namesIn [] ist lhs) (zip ps [0..])
               n' = if n `elem` ns then dec n else n in
               PWith n' (expandParams dec ps'' ns lhs)
                        (map (expandParams dec ps'' ns) ws)
@@ -983,39 +983,40 @@ implicit syn n ptm
 
 implicitise :: SyntaxInfo -> IState -> PTerm -> (PTerm, [PArg])
 implicitise syn ist tm
-    = let uvars = using syn
-          pvars = syn_params syn
-          (declimps, ns') = execState (imps True [] tm) ([], []) 
+    = let (declimps, ns') = execState (imps True [] tm) ([], []) 
           ns = ns' \\ (map fst pvars ++ no_imp syn) in
           if null ns 
             then (tm, reverse declimps) 
             else implicitise syn ist (pibind uvars ns tm)
   where
+    uvars = using syn
+    pvars = syn_params syn
+
     dropAll (x:xs) ys | x `elem` ys = dropAll xs ys
                       | otherwise   = x : dropAll xs ys
     dropAll [] ys = []
 
     imps top env (PApp _ f as)
        = do (decls, ns) <- get
-            let isn = concatMap (namesIn ist) (map getTm as)
+            let isn = concatMap (namesIn uvars ist) (map getTm as)
             put (decls, nub (ns ++ (isn `dropAll` (env ++ map fst (getImps decls)))))
     imps top env (PPi (Imp l _) n ty sc) 
-        = do let isn = nub (namesIn ist ty) `dropAll` [n]
+        = do let isn = nub (namesIn uvars ist ty) `dropAll` [n]
              (decls , ns) <- get
              put (PImp (getPriority ist ty) l n ty : decls, 
                   nub (ns ++ (isn `dropAll` (env ++ map fst (getImps decls)))))
              imps True (n:env) sc
     imps top env (PPi (Exp l _) n ty sc) 
-        = do let isn = nub (namesIn ist ty ++ case sc of
-                            (PRef _ x) -> namesIn ist sc `dropAll` [n]
+        = do let isn = nub (namesIn uvars ist ty ++ case sc of
+                            (PRef _ x) -> namesIn uvars ist sc `dropAll` [n]
                             _ -> [])
              (decls, ns) <- get -- ignore decls in HO types
              put (PExp (getPriority ist ty) l ty : decls, 
                   nub (ns ++ (isn `dropAll` (env ++ map fst (getImps decls)))))
              imps True (n:env) sc
     imps top env (PPi (Constraint l _) n ty sc)
-        = do let isn = nub (namesIn ist ty ++ case sc of
-                            (PRef _ x) -> namesIn ist sc `dropAll` [n]
+        = do let isn = nub (namesIn uvars ist ty ++ case sc of
+                            (PRef _ x) -> namesIn uvars ist sc `dropAll` [n]
                             _ -> [])
              (decls, ns) <- get -- ignore decls in HO types
              put (PConstraint 10 l ty : decls, 
@@ -1023,23 +1024,24 @@ implicitise syn ist tm
              imps True (n:env) sc
     imps top env (PEq _ l r)
         = do (decls, ns) <- get
-             let isn = namesIn ist l ++ namesIn ist r
+             let isn = namesIn uvars ist l ++ namesIn uvars ist r
              put (decls, nub (ns ++ (isn `dropAll` (env ++ map fst (getImps decls)))))
     imps top env (PPair _ l r)
         = do (decls, ns) <- get
-             let isn = namesIn ist l ++ namesIn ist r
+             let isn = namesIn uvars ist l ++ namesIn uvars ist r
              put (decls, nub (ns ++ (isn `dropAll` (env ++ map fst (getImps decls)))))
     imps top env (PDPair _ (PRef _ n) t r)
         = do (decls, ns) <- get
-             let isn = nub (namesIn ist t ++ namesIn ist r) \\ [n]
+             let isn = nub (namesIn uvars ist t ++ namesIn uvars ist r) \\ [n]
              put (decls, nub (ns ++ (isn \\ (env ++ map fst (getImps decls)))))
     imps top env (PDPair _ l t r)
         = do (decls, ns) <- get
-             let isn = namesIn ist l ++ namesIn ist t ++ namesIn ist r
+             let isn = namesIn uvars ist l ++ namesIn uvars ist t ++ 
+                       namesIn uvars ist r
              put (decls, nub (ns ++ (isn \\ (env ++ map fst (getImps decls)))))
     imps top env (PAlternative as)
         = do (decls, ns) <- get
-             let isn = concatMap (namesIn ist) as
+             let isn = concatMap (namesIn uvars ist) as
              put (decls, nub (ns ++ (isn `dropAll` (env ++ map fst (getImps decls)))))
     imps top env (PLam n ty sc)  
         = do imps False env ty
@@ -1149,9 +1151,9 @@ findStatics ist tm = let (ns, ss) = fs tm in
   where fs (PPi p n t sc)
             | Static <- pstatic p
                         = let (ns, ss) = fs sc in
-                              (namesIn ist t : ns, namesIn ist t ++ n : ss)
+                              (namesIn [] ist t : ns, namesIn [] ist t ++ n : ss)
             | otherwise = let (ns, ss) = fs sc in
-                              (namesIn ist t : ns, ss)
+                              (namesIn [] ist t : ns, ss)
         fs _ = ([], [])
 
         inOne n ns = length (filter id (map (elem n) ns)) == 1
