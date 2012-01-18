@@ -361,6 +361,7 @@ data PDecl' t = PFix     FC Fixity [String] -- fixity declaration
               | PData    SyntaxInfo FC (PData' t)      -- data declaration
               | PParams  FC [(Name, t)] [PDecl' t] -- params block
               | PNamespace String [PDecl' t] -- new namespace
+              | PRecord  SyntaxInfo FC Name t Name t     -- record declaration
               | PClass   SyntaxInfo FC 
                          [t] -- constraints
                          Name

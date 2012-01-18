@@ -330,6 +330,7 @@ pDecl' syn
        = try pFixity
      <|> pFunDecl' syn
      <|> try (pData syn)
+     <|> try (pRecord syn)
      <|> pSyntaxDecl syn
 
 pSyntaxDecl :: SyntaxInfo -> IParser PDecl
@@ -895,6 +896,17 @@ accData :: Maybe Accessibility -> Name -> [Name] -> IParser ()
 accData (Just Frozen) n ns = do addAcc n (Just Frozen)
                                 mapM_ (\n -> addAcc n (Just Hidden)) ns
 accData a n ns = do addAcc n a; mapM_ (\n -> addAcc n a) ns
+
+pRecord :: SyntaxInfo -> IParser PDecl
+pRecord syn = try (do acc <- pAccessibility
+                      reserved "record"; fc <- pfc
+                      tyn_in <- pfName; ty <- pTSig syn
+                      let tyn = expandNS syn tyn_in
+                      reserved "where"
+                      (cn, cty, _) <- pConstructor syn
+                      pTerminator
+                      accData acc tyn [cn]
+                      return $ PRecord syn fc tyn ty cn cty)
 
 pData :: SyntaxInfo -> IParser PDecl
 pData syn = try (do acc <- pAccessibility

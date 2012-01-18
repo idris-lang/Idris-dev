@@ -79,6 +79,11 @@ elabData info syn fc (PDatadecl n t_in dcons)
          collapseCons n cons
          updateContext (addDatatype (Data n ttag cty cons))
 
+elabRecord :: ElabInfo -> SyntaxInfo -> FC -> Name -> 
+              PTerm -> Name -> PTerm -> Idris ()
+elabRecord info syn fc tyn ty cn cty
+    = do elabData info syn fc (PDatadecl tyn ty [(cn, cty, fc)]) 
+
 elabCon :: ElabInfo -> SyntaxInfo -> (Name, PTerm, FC) -> Idris (Name, Type)
 elabCon info syn (n, t_in, fc)
     = do checkUndefined fc n
@@ -609,6 +614,9 @@ elabDecl' info (PClass s f cs n ps ds) = do iLOG $ "Elaborating class " ++ show 
 elabDecl' info (PInstance s f cs n ps t ds) 
     = do iLOG $ "Elaborating instance " ++ show n
          elabInstance info s f cs n ps t ds
+elabDecl' info (PRecord s f tyn ty cn cty)
+    = do iLOG $ "Elaborating record " ++ show tyn
+         elabRecord info s f tyn ty cn cty
 elabDecl' info (PDirective i) = i
 
 elabCaseBlock info d@(PClauses f o n ps) 
