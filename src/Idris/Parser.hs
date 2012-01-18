@@ -366,12 +366,22 @@ pSyntaxRule syn
          lchar '='
          tm <- pExpr syn
          pTerminator
-         return (Rule syms tm sty)
+         return (Rule (mkSimple syms) tm sty)
   where
     expr (Expr _) = True
     expr _ = False
     name (Expr n) = Just n
     name _ = Nothing
+
+    -- Can't parse two full expressions (i.e. expressions with application) in a row
+    -- so change the first to a simple expression
+
+    mkSimple (Expr e : es) = SimpleExpr e : mkSimple' es
+    mkSimple xs = mkSimple' xs
+
+    mkSimple' (Expr e : Expr e1 : es) = SimpleExpr e : mkSimple' (Expr e1 : es)
+    mkSimple' (e : es) = e : mkSimple' es
+    mkSimple' [] = []
 
 pSynSym :: IParser SSymbol
 pSynSym = try (do lchar '['; n <- pName; lchar ']'
@@ -508,6 +518,7 @@ pSimpleExtExpr syn = do i <- getState
                         pExtensions syn (filter simple (syntax_rules i))
   where
     simple (Rule (Expr x:xs) _ _) = False
+    simple (Rule (SimpleExpr x:xs) _ _) = False
     simple (Rule [Keyword _] _ _) = True
     simple (Rule [Symbol _]  _ _) = True
     simple (Rule (_:xs) _ _) = case (last xs) of
@@ -534,17 +545,18 @@ pExtensions syn rules = choice (map (\x -> try (pExt syn x)) (filter valid rules
 
 
 pExt :: SyntaxInfo -> Syntax -> IParser PTerm
-pExt syn (Rule (s:ssym) ptm _)
-    = do s1 <- pSymbol pSimpleExpr s 
-         smap <- mapM (pSymbol pExpr) ssym
-         let ns = mapMaybe id (s1:smap)
+pExt syn (Rule ssym ptm _)
+    = do smap <- mapM pSymbol ssym
+         let ns = mapMaybe id smap
          return (update ns ptm) -- updated with smap
   where
-    pSymbol p (Keyword n) = do reserved (show n); return Nothing
-    pSymbol p (Expr n)    = do tm <- p syn
-                               return $ Just (n, tm)
-    pSymbol p (Symbol s)  = do symbol s
-                               return Nothing
+    pSymbol (Keyword n)    = do reserved (show n); return Nothing
+    pSymbol (Expr n)       = do tm <- pExpr syn
+                                return $ Just (n, tm)
+    pSymbol (SimpleExpr n) = do tm <- pSimpleExpr syn
+                                return $ Just (n, tm)
+    pSymbol (Symbol s)     = do symbol s
+                                return Nothing
     dropn n [] = []
     dropn n ((x,t) : xs) | n == x = xs
                          | otherwise = (x,t):dropn n xs

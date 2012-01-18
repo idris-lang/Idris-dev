@@ -582,6 +582,7 @@ deriving instance Binary Syntax
 data SSymbol = Keyword Name
              | Symbol String
              | Expr Name
+             | SimpleExpr Name
     deriving Show
 {-! 
 deriving instance Binary SSymbol 

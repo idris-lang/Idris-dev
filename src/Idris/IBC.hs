@@ -22,7 +22,7 @@ import System.Directory
 import Paths_idris
 
 ibcVersion :: Word8
-ibcVersion = 8
+ibcVersion = 9
 
 data IBCFile = IBCFile { ver :: Word8,
                          sourcefile :: FilePath,
@@ -1034,6 +1034,8 @@ instance Binary SSymbol where
                                 put x1
                 Expr x1 -> do putWord8 2
                               put x1
+                SimpleExpr x1 -> do putWord8 3
+                                    put x1
         get
           = do i <- getWord8
                case i of
@@ -1043,4 +1045,6 @@ instance Binary SSymbol where
                            return (Symbol x1)
                    2 -> do x1 <- get
                            return (Expr x1)
+                   3 -> do x1 <- get
+                           return (SimpleExpr x1)
                    _ -> error "Corrupted binary data for SSymbol"
