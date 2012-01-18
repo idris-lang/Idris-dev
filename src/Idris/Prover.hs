@@ -93,6 +93,9 @@ ploop d prompt prf e
          (cmd, step) <- case x of
             Nothing -> fail "Abandoned"
             Just input -> do return (parseTac i input, input)
+         case cmd of
+            Right Abandon -> fail "Abandoned"
+            _ -> return ()
          (d, st, done, prf') <- idrisCatch 
            (case cmd of
               Left err -> do iputStrLn (show err)

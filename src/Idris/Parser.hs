@@ -1184,6 +1184,8 @@ pTactic syn = do reserved "intro"; ns <- sepBy pName (lchar ',')
           <|> do reserved "term"; return ProofTerm
           <|> do reserved "undo"; return Undo
           <|> do reserved "qed"; return Qed
+          <|> do reserved "abandon"; return Abandon
+          <|> do lchar ':'; reserved "q"; return Abandon
   where
     imp = do lchar '?'; return False
       <|> do lchar '_'; return True
