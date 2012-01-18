@@ -21,7 +21,7 @@ strTail' x p = prim__strTail x
 
 strM : (x : String) -> StrM x
 strM x with (choose (not (x == "")))
-  strM x | (Left p)  = believe_me (StrCons (strHead' x p) (strTail' x p))
+  strM x | (Left p)  = believe_me $ StrCons (strHead' x p) (strTail' x p)
   strM x | (Right p) = believe_me StrNil
 
 unpack : String -> List Char

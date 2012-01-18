@@ -341,7 +341,7 @@ resolveTC depth fn ist
     boundVar (P Bound _ _) = True
     boundVar _ = False
 
-    blunderbuss t [] = fail $ "Can't resolve type class " ++ show t
+    blunderbuss t [] = lift $ tfail $ CantResolve t
     blunderbuss t (n:ns) | n /= fn && tcname n = try (resolve n depth)
                                                      (blunderbuss t ns)
                          | otherwise = blunderbuss t ns

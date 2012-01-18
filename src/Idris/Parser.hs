@@ -313,7 +313,6 @@ pDecl syn = do notEndBlock
     <|> pDirective
     <|> try (do reserved "import"
                 fp <- identifier
-                lchar ';'
                 fail "imports must be at the top of file") 
 
 pFunDecl :: SyntaxInfo -> IParser [PDecl]

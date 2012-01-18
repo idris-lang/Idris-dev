@@ -14,6 +14,10 @@ configure: .PHONY
 test : .PHONY
 	make -C test
 
+relib: .PHONY
+	make -C lib clean
+	make -C lib BINDIR=../dist/build/idris
+
 linecount : .PHONY
 	wc -l src/Idris/*.hs src/Core/*.hs
 
