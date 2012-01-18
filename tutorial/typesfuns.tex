@@ -855,6 +855,36 @@ filter p (x :: xs) with (filter p xs)
 \noindent
 We will see more on \texttt{with} notation later.
 
+\subsection{\texttt{so}}
+
+The \texttt{so} data type is a predicate on \texttt{Bool} which guarantees that the
+value is true:
+
+\begin{SaveVerbatim}{sotype}
+
+data so : Bool where
+    oh : so True
+
+\end{SaveVerbatim}
+\useverb{sotype} 
+
+\noindent
+This is most useful for providing a static guarantee that a dynamic check has been made.
+For example, we might provide a safe interface to a function which draws a pixel
+on a graphical display as follows, where \texttt{so (inBounds x y)} guarantees that 
+the point \texttt{(x,y)} is within the bounds of a 640x480 window:
+
+\begin{SaveVerbatim}{soexample}
+
+inBounds : Int -> Int -> Bool
+inBounds x y = x >= 0 && x < 640 && y >= 0 && y < 480
+
+drawPoint : (x : Int) -> (y : Int) -> so (inBounds x y) -> IO ()
+drawPoint x y oh = unsafeDrawPoint x y
+
+\end{SaveVerbatim}
+\useverb{soexample} 
+
 \subsection{More Expressions}
 
 \subsubsection*{\texttt{let} bindings}

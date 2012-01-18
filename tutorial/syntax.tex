@@ -55,3 +55,35 @@ syntax select [x] from [t]           = Select x t;
 \end{SaveVerbatim}
 \useverb{syntaxex}
 
+\noindent
+Syntax macros can be further restricted to apply only in patterns (i.e., only on the left
+hand side of a pattern match clause) or only in terms (i.e. everywhere but the left hand side
+of a pattern match clause) by being marked as \texttt{pattern} or \texttt{term} syntax
+rules. For example, we might define an interval as follows, with a static check
+that the lower bound is below the upper bound using \texttt{so}:
+
+\begin{SaveVerbatim}{interval}
+
+data Interval : Set where
+   MkInterval : (lower : Float) -> (upper : Float) -> 
+                so (lower < upper) -> Interval
+
+\end{SaveVerbatim}
+\useverb{interval}
+
+\noindent
+We can define a syntax which, in patterns, always matches \texttt{oh} for the proof 
+argument, and in terms requires a proof term to be provided:
+
+\begin{SaveVerbatim}{intervalsyn}
+
+pattern syntax "[" [x] "..." [y] "]" = MkInterval x y oh
+term    syntax "[" [x] "..." [y] "]" = MkInterval x y ?bounds_lemma
+
+\end{SaveVerbatim}
+\useverb{intervalsyn} 
+
+\noindent
+In terms, the syntax \texttt{[x...y]} will generate a proof obligation
+\texttt{bounds\_lemma} (possibly renamed).
+
