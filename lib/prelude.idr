@@ -49,11 +49,11 @@ instance (Show a, Show b) => Show (a, b) where
     show (x, y) = "(" ++ show x ++ ", " ++ show y ++ ")"
 
 instance Show a => Show (List a) where 
-    show xs = "[" ++ show' xs ++ "]" where 
-        show' : Show a => List a -> String
-        show' []        = ""
-        show' [x]       = show x
-        show' (x :: xs) = show x ++ ", " ++ show' xs
+    show xs = "[" ++ show' "" xs ++ "]" where 
+        show' : Show a => String -> List a -> String
+        show' acc []        = acc
+        show' acc [x]       = acc ++ show x
+        show' acc (x :: xs) = show' (acc ++ show x ++ ", ") xs
 
 instance Show a => Show (Vect a n) where 
     show xs = "[" ++ show' xs ++ "]" where 
