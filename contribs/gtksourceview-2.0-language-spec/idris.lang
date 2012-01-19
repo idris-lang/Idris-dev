@@ -1,0 +1,246 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+ Author: Dominic Mulligan
+ Copyright (C) 2012 Dominic Mulligan <dominic.p.mulligan@gmail.com>
+ 
+ Lexemes taken from src/Idris/Parser.hs.
+
+ Based on the gtksourceview-2.0 Haskell style by:
+
+ Authors: Duncan Coutts, Anders Carlsson
+ Copyright (C) 2004, 2007 Duncan Coutts <duncan@haskell.org>
+ Copyright (C) 2004 Anders Carlsson <andersca@gnome.org>
+
+ This library is free software; you can redistribute it and/or
+ modify it under the terms of the GNU Library General Public
+ License as published by the Free Software Foundation; either
+ version 2 of the License, or (at your option) any later version.
+
+ This library is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ Library General Public License for more details.
+
+ You should have received a copy of the GNU Library General Public
+ License along with this library; if not, write to the
+ Free Software Foundation, Inc., 59 Temple Place - Suite 330,
+ Boston, MA 02111-1307, USA.
+
+-->
+<language id="idris" _name="Idris" version="2.0" _section="Sources">
+  <metadata>
+    <property name="mimetypes">text/x-idris</property>
+    <property name="globs">*.idr</property>
+  </metadata>
+
+  <styles>
+    <style id="preprocessor" _name="Preprocessor" map-to="def:preprocessor"/>
+    <style id="comment"      _name="Comment"      map-to="def:comment"/>
+    <style id="variable"     _name="Variable"                         />
+    <style id="symbol"       _name="Symbol"                           />
+    <style id="keyword"      _name="Keyword"      map-to="def:keyword"/>
+    <style id="type"         _name="Data Type"    map-to="def:type"/>
+    <style id="string"       _name="String"       map-to="def:string"/>
+    <style id="character"    _name="Character"    map-to="def:character"/>
+    <style id="char-escape"  _name="Escaped Character" map-to="def:special-char"/>
+    <style id="decimal"      _name="Decimal"      map-to="def:decimal"/>
+    <style id="float"        _name="Float"      map-to="def:floating-point"/>
+  </styles>
+
+  <definitions>
+    <define-regex id="symbolchar">[!#$%&amp;*+./&gt;=&lt;?@:\\^|~-]</define-regex>
+
+    <context id="line-comment" style-ref="comment" end-at-line-end="true" class="comment" class-disabled="no-spell-check">
+      <start>(?&lt;!\%{symbolchar})--+(?!\%{symbolchar})</start>
+      <include>
+        <context ref="def:in-comment"/>
+        <context ref="haddock:line-paragraph"/>
+        <context ref="haddock:directive"/>
+      </include>
+    </context>
+
+    <context id="block-comment" style-ref="comment" class="comment" class-disabled="no-spell-check">
+      <start>\{-</start>
+      <end>-\}</end>
+      <include>
+        <context ref="def:in-comment"/>
+        <context ref="haddock:block-paragraph"/>
+        <context ref="haddock:directive"/>
+        <context ref="block-comment"/>
+      </include>
+    </context>
+
+    <context id="variable" style-ref="variable">
+      <match>\b[a-z_][0-9a-zA-Z_'#]*</match>
+    </context>
+
+    <context id="type-or-constructor" style-ref="type">
+      <match>\b[A-Z][0-9a-zA-Z._'#]*</match>
+    </context>
+
+    <context id="symbol" style-ref="symbol" extend-parent="false">
+      <match>\%{symbolchar}+</match>
+    </context>
+
+    <context id="keysymbol" style-ref="keyword">
+      <prefix>(?&lt;!\%{symbolchar})</prefix>
+      <suffix>(?!\%{symbolchar})</suffix>
+      <keyword>\.</keyword>
+      <keyword>:</keyword>
+      <keyword>%</keyword>
+      <keyword>=</keyword>
+      <keyword>\|</keyword>
+      <keyword>\</keyword>
+      <keyword>-&gt;</keyword>
+      <keyword>@</keyword>
+      <keyword>~</keyword>
+      <keyword>=&gt;</keyword>
+      <keyword>\(\)</keyword>
+      <keyword>\_\|\_</keyword>
+      <keyword>\*\*</keyword>
+    </context>
+
+    <define-regex id="escaped-character" extended="true">
+        \\(                   # leading backslash
+        [abfnrtv\\"\'&amp;] | # escaped character
+         [0-9]+ |             # decimal digits
+        o[0-7]+ |             # 'o' followed by octal digits
+        x[0-9A-Fa-f]+ |       # 'x' followed by hex digits
+        \^[A-Z@\[\\\]^_] |    # control character codes
+        NUL | SOH | STX | ETX | EOT | ENQ | ACK |
+        BEL | BS | HT | LF | VT | FF | CR | SO |
+        SI | DLE | DC1 | DC2 | DC3 | DC4 | NAK |
+        SYN | ETB | CAN | EM | SUB | ESC | FS | GS |
+        RS | US | SP | DEL    # control char names
+        )
+    </define-regex>
+
+    <context id="string" style-ref="string" end-at-line-end="true" class="string" class-disabled="no-spell-check">
+      <start>"</start>
+      <end>"</end>
+      <include>
+        <context ref="def:line-continue"/>
+        <context style-ref="char-escape">
+          <match>\%{escaped-character}</match>
+        </context>
+      </include>
+    </context>
+
+    <context id="char" style-ref="character" end-at-line-end="true">
+      <start>'</start>
+      <end>'</end>
+      <include>
+        <context style-ref="char-escape" once-only="true">
+          <match>\%{escaped-character}</match>
+        </context>
+        <context once-only="true" extend-parent="false">
+          <match>.</match>
+        </context>
+        <context style-ref="def:error" extend-parent="false">
+          <match>.</match>
+        </context>
+      </include>
+    </context>
+
+    <context id="float" style-ref="float">
+      <match extended="true">
+          [0-9]+ \. [0-9]+ ([eE][+-]?[0-9]+)?
+        | [0-9]+            [eE][+-]?[0-9]+
+      </match>
+    </context>
+
+    <context id="decimal" style-ref="decimal">
+      <match>[0-9]+</match>
+    </context>
+
+    <context id="keyword" style-ref="keyword">
+      <keyword>Set</keyword>
+      <keyword>case</keyword>
+      <keyword>class</keyword>
+      <keyword>data</keyword>
+      <keyword>default</keyword>
+      <keyword>do</keyword>
+      <keyword>record</keyword>
+      <keyword>foreign</keyword>
+      <keyword>lib</keyword>
+      <keyword>link</keyword>
+      <keyword>include</keyword>
+      <keyword>hide</keyword>
+      <keyword>freeze</keyword>
+      <keyword>access</keyword>
+      <keyword>logging</keyword>
+      <keyword>abstract</keyword>
+      <keyword>public</keyword>
+      <keyword>private</keyword>
+      <keyword>namespace</keyword>
+      <keyword>syntax</keyword>
+      <keyword>term</keyword>
+      <keyword>pattern</keyword>
+      <keyword>params</keyword>
+      <keyword>import</keyword>
+      <keyword>using</keyword>
+      <keyword>in</keyword>
+      <keyword>infix</keyword>
+      <keyword>infixl</keyword>
+      <keyword>infixr</keyword>
+      <keyword>prefix</keyword>
+      <keyword>instance</keyword>
+      <keyword>let</keyword>
+      <keyword>module</keyword>
+      <keyword>of</keyword>
+      <keyword>qualified</keyword>
+      <keyword>then</keyword>
+      <keyword>where</keyword>
+      <keyword>with</keyword>
+      <keyword>type</keyword>
+      <keyword>proof</keyword>
+      <keyword>rewrite</keyword>
+      <keyword>exact</keyword>
+      <keyword>intros</keyword>
+      <keyword>intro</keyword>
+      <keyword>refine</keyword>
+      <keyword>trivial</keyword>
+      <keyword>focus</keyword>
+      <keyword>try</keyword>
+      <keyword>compute</keyword>
+      <keyword>solve</keyword>
+      <keyword>attack</keyword>
+      <keyword>refl</keyword>
+      <keyword>state</keyword>
+      <keyword>term</keyword>
+      <keyword>undo</keyword>
+      <keyword>qed</keyword>
+      <keyword>abandon</keyword>
+      <keyword>tactics</keyword>
+      <keyword>static</keyword>
+      <keyword>impossible</keyword>
+    </context>
+
+    <context id="body">
+      <include>
+        <context ref="line-comment"/>
+        <context ref="block-comment"/>
+        <context ref="keyword"/>
+        <context ref="variable"/>
+        <context ref="type-or-constructor"/>
+        <context ref="keysymbol"/>
+        <context ref="symbol"/>
+        <context ref="string"/>
+        <context ref="char"/>
+        <context ref="float"/>
+        <context ref="decimal"/>
+      </include>
+    </context>
+
+    <context id="idris" class="no-spell-check">
+      <include>
+        <context ref="c:if0-comment"/>
+        <context ref="c:include"/>
+        <context ref="c:preprocessor"/>
+        <context ref="body"/>
+      </include>
+    </context>
+
+  </definitions>
+</language>
