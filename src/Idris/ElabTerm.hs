@@ -182,6 +182,15 @@ elab ist info pattern tcgen fn tm
                elabE True val
                elabE True sc
                solve
+--     elab' ina (PTyped val ty)
+--           = do tyn <- unique_hole (MN 0 "castty")
+--                claim tyn RSet
+--                valn <- unique_hole (MN 0 "castval")
+--                claim valn (Var tyn)
+--                focus tyn
+--                elabE True ty
+--                focus valn
+--                elabE True val
     elab' ina (PApp fc (PRef _ f) args')
        = do let args = {- case lookupCtxt f (inblock info) of
                           Just ps -> (map (pexp . (PRef fc)) ps ++ args')

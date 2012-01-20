@@ -74,20 +74,6 @@ plus_assoc : (n, m, p : Nat) -> n + (m + p) = (n + m) + p
 plus_assoc O     m p = refl
 plus_assoc (S k) m p = let ih = plus_assoc k m p in eqRespS ih
 
-data Cmp : Nat -> Nat -> Set where
-    cmpLT : (y : Nat) -> Cmp x (x + S y)
-    cmpEQ : Cmp x x
-    cmpGT : (x : Nat) -> Cmp (y + S x) y
-  
-cmp : (n, m : Nat) -> Cmp n m
-cmp O     O     = cmpEQ
-cmp (S n) O     = cmpGT _
-cmp O     (S n) = cmpLT _
-cmp (S x) (S y) with (cmp x y)
-    cmp (S x) (S x)         | cmpEQ = cmpEQ
-    cmp (S (y + S x)) (S y) | cmpGT _ = cmpGT _
-    cmp (S x) (S (x + S y)) | cmpLT _ = cmpLT _
-  
 multnO : (n : Nat) -> (n * O) = O
 multnO O     = refl
 multnO (S k) = multnO k
@@ -122,3 +108,20 @@ multnSmSk = proof {
     trivial;
 }
 
+data Cmp : Nat -> Nat -> Set where
+    cmpLT : (y : Nat) -> Cmp x (x + S y)
+    cmpEQ : Cmp x x
+    cmpGT : (x : Nat) -> Cmp (y + S x) y
+  
+cmp : (n, m : Nat) -> Cmp n m
+cmp O     O     = cmpEQ
+cmp (S n) O     = cmpGT _
+cmp O     (S n) = cmpLT _
+cmp (S x) (S y) with (cmp x y)
+    cmp (S x) (S x)         | cmpEQ = cmpEQ
+    cmp (S (y + S x)) (S y) | cmpGT _ = cmpGT _
+    cmp (S x) (S (x + S y)) | cmpLT _ = cmpLT _
+ 
+ data LE : Nat -> Nat -> Set where
+    leO : LE O n
+    leS : LE x y -> LE (S x) (S y)

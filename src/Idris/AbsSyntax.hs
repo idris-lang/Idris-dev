@@ -434,6 +434,7 @@ data PTerm = PQuote Raw
            | PLam Name PTerm PTerm
            | PPi  Plicity Name PTerm PTerm
            | PLet Name PTerm PTerm PTerm 
+           | PTyped PTerm PTerm -- term with explicit type
            | PApp FC PTerm [PArg]
            | PCase FC PTerm [(PTerm, PTerm)]
            | PTrue FC
@@ -469,6 +470,7 @@ mapPT f t = f (mpt t) where
   mpt (PApp fc t as) = PApp fc (mapPT f t) (map (fmap (mapPT f)) as)
   mpt (PCase fc c os) = PCase fc (mapPT f c) (map (pmap (mapPT f)) os)
   mpt (PEq fc l r) = PEq fc (mapPT f l) (mapPT f r)
+  mpt (PTyped l r) = PTyped (mapPT f l) (mapPT f r)
   mpt (PPair fc l r) = PPair fc (mapPT f l) (mapPT f r)
   mpt (PDPair fc l t r) = PDPair fc (mapPT f l) (mapPT f t) (mapPT f r)
   mpt (PAlternative as) = PAlternative (map (mapPT f) as)
@@ -714,6 +716,7 @@ showImp impl tm = se 10 tm where
     se p (PTrue _) = "()"
     se p (PFalse _) = "_|_"
     se p (PEq _ l r) = bracket p 2 $ se 10 l ++ " = " ++ se 10 r
+    se p (PTyped l r) = "(" ++ se 10 l ++ " : " ++ se 10 r ++ ")"
     se p (PPair _ l r) = "(" ++ se 10 l ++ ", " ++ se 10 r ++ ")"
     se p (PDPair _ l t r) = "(" ++ se 10 l ++ " ** " ++ se 10 r ++ ")"
     se p (PAlternative as) = "(|" ++ showSep " , " (map (se 10) as) ++ "|)"
@@ -751,6 +754,7 @@ allNamesIn tm = nub $ ni [] tm
     ni env (PPi _ n ty sc) = ni env ty ++ ni (n:env) sc
     ni env (PHidden tm)    = ni env tm
     ni env (PEq _ l r)     = ni env l ++ ni env r
+    ni env (PTyped l r)    = ni env l ++ ni env r
     ni env (PPair _ l r)   = ni env l ++ ni env r
     ni env (PDPair _ (PRef _ n) t r)  = ni env t ++ ni (n:env) r
     ni env (PDPair _ l t r)  = ni env l ++ ni env t ++ ni env r
@@ -770,6 +774,7 @@ namesIn uvars ist tm = nub $ ni [] tm
     ni env (PLam n ty sc)  = ni env ty ++ ni (n:env) sc
     ni env (PPi _ n ty sc) = ni env ty ++ ni (n:env) sc
     ni env (PEq _ l r)     = ni env l ++ ni env r
+    ni env (PTyped l r)    = ni env l ++ ni env r
     ni env (PPair _ l r)   = ni env l ++ ni env r
     ni env (PDPair _ (PRef _ n) t r) = ni env t ++ ni (n:env) r
     ni env (PDPair _ l t r) = ni env l ++ ni env t ++ ni env r
@@ -881,6 +886,7 @@ expandParams dec ps ns tm = en tm
                      PLet n' (en ty) (en v) (en (shadow n n' s))
        | otherwise = PLet n (en ty) (en v) (en s)
     en (PEq f l r) = PEq f (en l) (en r)
+    en (PTyped l r) = PTyped (en l) (en r)
     en (PPair f l r) = PPair f (en l) (en r)
     en (PDPair f l t r) = PDPair f (en l) (en t) (en r)
     en (PAlternative as) = PAlternative (map en as)
@@ -956,6 +962,7 @@ getPriority i tm = pri tm
     pri (PEq _ l r) = max 1 (max (pri l) (pri r))
     pri (PApp _ f as) = max 1 (max (pri f) (foldr max 0 (map (pri.getTm) as))) 
     pri (PCase _ f as) = max 1 (max (pri f) (foldr max 0 (map (pri.snd) as))) 
+    pri (PTyped l r) = pri l
     pri (PPair _ l r) = max 1 (max (pri l) (pri r))
     pri (PDPair _ l t r) = max 1 (max (pri l) (max (pri t) (pri r)))
     pri (PAlternative as) = maximum (map pri as)
@@ -1028,6 +1035,8 @@ implicitise syn ist tm
         = do (decls, ns) <- get
              let isn = namesIn uvars ist l ++ namesIn uvars ist r
              put (decls, nub (ns ++ (isn `dropAll` (env ++ map fst (getImps decls)))))
+    imps top env (PTyped l r)
+        = imps top env l
     imps top env (PPair _ l r)
         = do (decls, ns) <- get
              let isn = namesIn uvars ist l ++ namesIn uvars ist r
@@ -1067,6 +1076,9 @@ addImpl ist ptm = ai [] ptm
     ai env (PEq fc l r)   = let l' = ai env l
                                 r' = ai env r in
                                 PEq fc l' r'
+    ai env (PTyped l r) = let l' = ai env l
+                              r' = ai env r in
+                              PTyped l' r'
     ai env (PPair fc l r) = let l' = ai env l
                                 r' = ai env r in
                                 PPair fc l' r'
@@ -1236,6 +1248,11 @@ matchClause' names x y = checkRpts $ match (fullApp x) (fullApp y) where
     match (PEq _ l r) (PEq _ l' r') = do ml <- match' l l'
                                          mr <- match' r r'
                                          return (ml ++ mr)
+    match (PTyped l r) x = match l x
+    match x (PTyped l r) = match x l
+    match (PTyped l r) (PTyped l' r') = do ml <- match l l'
+                                           mr <- match r r'
+                                           return (ml ++ mr)
     match (PPair _ l r) (PPair _ l' r') = do ml <- match' l l'
                                              mr <- match' r r'
                                              return (ml ++ mr)
@@ -1299,6 +1316,7 @@ substMatch n tm t = sm t where
     sm (PApp f x as) = PApp f (sm x) (map (fmap sm) as)
     sm (PCase f x as) = PCase f (sm x) (map (pmap sm) as)
     sm (PEq f x y) = PEq f (sm x) (sm y)
+    sm (PTyped x y) = PTyped (sm x) (sm y)
     sm (PPair f x y) = PPair f (sm x) (sm y)
     sm (PDPair f x t y) = PDPair f (sm x) (sm t) (sm y)
     sm (PAlternative as) = PAlternative (map sm as)
@@ -1313,6 +1331,7 @@ shadow n n' t = sm t where
     sm (PApp f x as) = PApp f (sm x) (map (fmap sm) as)
     sm (PCase f x as) = PCase f (sm x) (map (pmap sm) as)
     sm (PEq f x y) = PEq f (sm x) (sm y)
+    sm (PTyped x y) = PTyped (sm x) (sm y)
     sm (PPair f x y) = PPair f (sm x) (sm y)
     sm (PDPair f x t y) = PDPair f (sm x) (sm t) (sm y)
     sm (PAlternative as) = PAlternative (map sm as)

@@ -328,9 +328,13 @@ data Fin : Nat -> Set where
 represents the number of elements in the set. Obviously we can't construct an
 element of an empty set, so neither constructor targets \texttt{Fin O}.
 
-A useful application of the \tTC{Fin} family is to represent numbers with
-guaranteed bounds. For example, the following function which looks up an element in a \tTC{Vect}
-is defined in the prelude:
+A useful application of the \tTC{Fin} family is to represent bounded
+natural numbers. Since the first \tTC{n} natural numbers form a finite
+set of \tTC{n} elements, we can treat \tTC{Fin n} as the set of natural
+numbers bounded by \tTC{n}. 
+
+For example, the following function which looks up an element in a \tTC{Vect},
+by a bounded index given as a \tTC{Fin n}, is defined in the prelude:
 
 \begin{SaveVerbatim}{vlookup}
 

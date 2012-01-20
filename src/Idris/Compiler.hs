@@ -34,7 +34,7 @@ compile f tm
             Nothing ->
                 do m <- epicMain tm
                    let mainval = EpicFn (name "main") m
-                   liftIO $ compileObjWith [Debug] 
+                   liftIO $ compileObjWith [] 
                                 (mkProgram (incs ++ mainval : ds)) (f ++ ".o")
                    liftIO $ link ((f ++ ".o") : objs ++ (map ("-l"++) libs)) f
   where checkMVs = do i <- get

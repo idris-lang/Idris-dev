@@ -651,6 +651,9 @@ pSimpleExpr syn =
 bracketed syn =
             try (pPair syn)
         <|> try (do e <- pExpr syn; lchar ')'; return e)
+--         <|> try (do reserved "typed"
+--                     e <- pExpr syn; symbol ":"; t <- pExpr syn; lchar ')'
+--                     return (PTyped e t))
         <|> try (do fc <- pfc; o <- operator; e <- pExpr syn; lchar ')'
                     return $ PLam (MN 0 "x") Placeholder
                                   (PApp fc (PRef fc (UN o)) [pexp (PRef fc (MN 0 "x")), 
