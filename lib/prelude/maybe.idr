@@ -52,8 +52,8 @@ catMaybes : List (Maybe a) -> List a
 catMaybes []      = []
 catMaybes (x::xs) =
   case x of
-    Left l  => catMaybes xs
-    Right r => r :: catMaybes xs
+    Nothing => catMaybes xs
+    Just j  => j :: catMaybes xs
 
 mapMaybe : (a -> Maybe b) -> List a -> List b
 mapMaybe f []      = []
