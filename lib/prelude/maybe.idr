@@ -61,3 +61,11 @@ mapMaybe f (x::xs) =
   case f x of
     Nothing => mapMaybe f xs
     Just j  => j :: mapMaybe f xs
+
+--------------------------------------------------------------------------------
+-- Class instances
+--------------------------------------------------------------------------------
+
+maybe_bind : Maybe a -> (a -> Maybe b) -> Maybe b
+maybe_bind Nothing  k = Nothing
+maybe_bind (Just x) k = k x
