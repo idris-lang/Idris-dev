@@ -61,17 +61,3 @@ mapMaybe f (x::xs) =
   case f x of
     Nothing => mapMaybe f xs
     Just j  => j :: mapMaybe f xs
-
---------------------------------------------------------------------------------
--- Class instances
---------------------------------------------------------------------------------
-
-instance Functor Maybe where
-  fmap f Nothing  = Nothing
-  fmap f (Just j) = Just (f j)
-
-instance Monad Maybe where
-  return = Just
-
-  (>>=) Nothing  m = Nothing
-  (>>=) (Just j) m = m j
