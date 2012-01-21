@@ -1248,11 +1248,11 @@ matchClause' names x y = checkRpts $ match (fullApp x) (fullApp y) where
     match (PEq _ l r) (PEq _ l' r') = do ml <- match' l l'
                                          mr <- match' r r'
                                          return (ml ++ mr)
-    match (PTyped l r) x = match l x
-    match x (PTyped l r) = match x l
     match (PTyped l r) (PTyped l' r') = do ml <- match l l'
                                            mr <- match r r'
                                            return (ml ++ mr)
+    match (PTyped l r) x = match l x
+    match x (PTyped l r) = match x l
     match (PPair _ l r) (PPair _ l' r') = do ml <- match' l l'
                                              mr <- match' r r'
                                              return (ml ++ mr)

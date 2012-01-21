@@ -16,7 +16,7 @@ test : .PHONY
 
 relib: .PHONY
 	make -C lib clean
-	make -C lib BINDIR=../dist/build/idris
+	make -C lib IDRIS=../dist/build/idris/idris
 
 linecount : .PHONY
 	wc -l src/Idris/*.hs src/Core/*.hs

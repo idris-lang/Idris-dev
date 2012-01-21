@@ -529,7 +529,7 @@ addCasedef n alwaysInline tcase covering ps psrt ty uctxt
           ps' = ps -- simpl ps in
           ctxt' = case (simpleCase tcase covering ps', 
                         simpleCase tcase covering psrt) of
-                    (CaseDef args sc, CaseDef args' sc') -> 
+                    (CaseDef args sc _, CaseDef args' sc' _) -> 
                                        let inl = alwaysInline in
                                            addDef n (CaseOp inl ty ps args sc args' sc',
                                                      Public) ctxt in

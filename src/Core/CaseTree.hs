@@ -26,8 +26,8 @@ deriving instance Binary CaseAlt
 !-}
 
 type CaseTree = SC
-type Clause   = ([Pat], Term)
-type CS = Int
+type Clause   = ([Pat], (Term, Term))
+type CS = ([Term], Int)
 
 -- simple terms can be inlined trivially - good for primitives in particular
 small :: SC -> Bool
@@ -36,13 +36,13 @@ small _ = False
 
 simpleCase :: Bool -> Bool -> [(Term, Term)] -> CaseDef
 simpleCase tc cover [] 
-                 = CaseDef [] (UnmatchedCase "No pattern clauses")
+                 = CaseDef [] (UnmatchedCase "No pattern clauses") []
 simpleCase tc cover cs 
-                 = let pats    = map (\ (l, r) -> (toPats tc l, r)) cs
-                       numargs = length (fst (head pats)) 
-                       ns      = take numargs args
-                       tree    = evalState (match ns pats (defaultCase cover)) numargs in
-                       CaseDef ns (prune tree)
+      = let pats       = map (\ (l, r) -> (toPats tc l, (l, r))) cs
+            numargs    = length (fst (head pats)) 
+            ns         = take numargs args
+            (tree, st) = runState (match ns pats (defaultCase cover)) ([], numargs) in
+            CaseDef ns (prune tree) (fst st)
     where args = map (\i -> MN i "e") [0..]
           defaultCase True = STerm Erased
           defaultCase False = UnmatchedCase "Error"
@@ -109,8 +109,12 @@ partition xs = error $ "Partition " ++ show xs
 
 match :: [Name] -> [Clause] -> SC -- error case
                             -> State CS SC
-match [] (([], ret) : _) err = return $ STerm ret -- run out of arguments
-match vs cs err = mixture vs (partition cs) err
+match [] (([], ret) : xs) err 
+    = do (ts, v) <- get
+         put (ts ++ (map (fst.snd) xs), v)
+         return $ STerm (snd ret) -- run out of arguments
+match vs cs err = do cs <- mixture vs (partition cs) err
+                     return cs
 
 mixture :: [Name] -> [Partition] -> SC -> State CS SC
 mixture vs [] err = return err
@@ -166,7 +170,7 @@ argsToAlt rs@((r, m) : _)
     addRs ((r, (ps, res)) : rs) = ((r++ps, res) : addRs rs)
 
 getVar :: State CS Name
-getVar = do v <- get; put (v+1); return (MN v "e")
+getVar = do (t, v) <- get; put (t, v+1); return (MN v "e")
 
 groupCons :: [Clause] -> State CS [Group]
 groupCons cs = gc [] cs
@@ -195,7 +199,7 @@ varRule (v : vs) alts err =
     do let alts' = map (repVar v) alts
        match vs alts' err
   where
-    repVar v (PV p : ps , res) = (ps, subst p (P Bound v (V 0)) res)
+    repVar v (PV p : ps , (lhs, res)) = (ps, (lhs, subst p (P Bound v (V 0)) res))
     repVar v (PAny : ps , res) = (ps, res)
 
 prune :: SC -> SC

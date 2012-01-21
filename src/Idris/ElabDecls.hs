@@ -128,6 +128,12 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
                     else return False
          pdef' <- applyOpts pdef 
          let tree = simpleCase tcase pcover pdef
+         case tree of
+             CaseDef _ _ [] -> return ()
+             CaseDef _ _ xs -> mapM_ (\x ->
+                                        iputStrLn $ show fc ++
+                                                    ":warning - Unreachable case: " ++ 
+                                                    show (delab ist x)) xs
          let tree' = simpleCase tcase pcover pdef'
          tclift $ sameLength pdef
          logLvl 3 (show tree)
