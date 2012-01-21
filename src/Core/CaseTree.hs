@@ -6,7 +6,7 @@ import Core.TT
 import Control.Monad.State
 import Debug.Trace
 
-data CaseDef = CaseDef [Name] SC
+data CaseDef = CaseDef [Name] SC [Term]
     deriving Show
 
 data SC = Case Name [CaseAlt]

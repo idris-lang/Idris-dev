@@ -3,6 +3,7 @@ module prelude.monad
 -- Monads and Functors
 
 import builtins
+import prelude.list
 
 %access public
 

@@ -110,3 +110,26 @@ split p xs = case break p xs of
                   (chunk, []) => [chunk]
                   (chunk, (c :: rest)) => chunk :: split p rest
 
+--------------------------------------------------------------------------------
+-- Conversions
+--------------------------------------------------------------------------------
+
+maybeToList : Maybe a -> List a
+maybeToList Nothing  = []
+maybeToList (Just j) = [j]
+
+listToMaybe : List a -> Maybe a
+listToMaybe []      = Nothing
+listToMaybe (x::xs) = Just x
+
+--------------------------------------------------------------------------------
+-- Misc
+--------------------------------------------------------------------------------
+
+catMaybes : List (Maybe a) -> List a
+catMaybes []      = []
+catMaybes (x::xs) =
+  case x of
+    Nothing => catMaybes xs
+    Just j  => j :: catMaybes xs
+
