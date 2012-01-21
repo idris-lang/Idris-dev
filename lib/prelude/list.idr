@@ -19,6 +19,14 @@ app : List a -> List a -> List a
 app []        xs = xs
 app (x :: xs) ys = x :: app xs ys
 
+head : List a -> Maybe a
+head []        = Nothing
+head (x :: xs) = Just x
+
+tail : List a -> List a
+tail []        = []
+tail (x :: xs) = xs
+
 length : List a -> Int
 length []        = 0
 length (x :: xs) = 1 + length xs
