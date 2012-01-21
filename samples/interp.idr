@@ -36,6 +36,14 @@ using (G : Vect Ty n)
       variable    = Var
       index_first = stop
       index_next  = pop
+ 
+  (<$>) : |(f : Expr G (TyFun a t)) -> Expr G a -> Expr G t
+  (<$>) = \f, a => App f a
+
+  pure : Expr G a -> Expr G a
+  pure = id
+
+  syntax IF [x] THEN [t] ELSE [e] = If x t e
   
   interp : Env G -> {static} Expr G t -> interpTy t
   interp env (Var i)     = lookup i env
@@ -55,36 +63,17 @@ using (G : Vect Ty n)
   eAdd : Expr G (TyFun TyInt (TyFun TyInt TyInt))
   eAdd = expr (\x, y => Op (+) x y)
   
---   eDouble : Expr G (TyFun TyInt TyInt)
---   eDouble = Lam (App (App (Lam (Lam (Op' (+) (Var fO) (Var (fS fO))))) (Var fO)) (Var fO))
-  
   eDouble : Expr G (TyFun TyInt TyInt)
   eDouble = expr (\x => App (App eAdd x) (Var stop))
- 
-  app : |(f : Expr G (TyFun a t)) -> Expr G a -> Expr G t
-  app = \f, a => App f a
 
   eFac : Expr G (TyFun TyInt TyInt)
-  eFac = expr (\x => If (Op (==) x (Val 0))
-                 (Val 1) 
-                 (Op (*) (app eFac (Op (-) x (Val 1))) x))
-
-  -- Exercise elaborator: Complicated way of doing \x y => x*4 + y*2
-  
-  eProg : Expr G (TyFun TyInt (TyFun TyInt TyInt))
-  eProg = Lam (Lam (Bind (App eDouble (Var (pop stop)))
-              (\x => Bind (App eDouble (Var stop))
-              (\y => Bind (App eDouble (Val x))
-              (\z => App (App eAdd (Val y)) (Val z))))))
-
-
-test : Int
-test = interp [] eProg 2 2
+  eFac = expr (\x => IF Op (==) x (Val 0)
+                        THEN Val 1
+                        ELSE Op (*) [| eFac (Op (-) x (Val 1)) |] x)
 
 testFac : Int
 testFac = interp [] eFac 4
 
 main : IO ()
-main = do print test
-          print testFac
+main = print testFac
 
