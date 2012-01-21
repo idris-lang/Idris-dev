@@ -3,6 +3,7 @@
 module Idris.ElabDecls where
 
 import Idris.AbsSyntax
+import Idris.DSL
 import Idris.Error
 import Idris.Delaborate
 import Idris.Imports
@@ -623,6 +624,11 @@ elabDecl' info (PInstance s f cs n ps t ds)
 elabDecl' info (PRecord s f tyn ty cn cty)
     = do iLOG $ "Elaborating record " ++ show tyn
          elabRecord info s f tyn ty cn cty
+elabDecl' info (PDSL n dsl)
+    = do i <- get
+         put (i { idris_dsls = addDef n dsl (idris_dsls i) }) 
+         addIBC (IBCDSL n)
+
 elabDecl' info (PDirective i) = i
 
 elabCaseBlock info d@(PClauses f o n ps) 

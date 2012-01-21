@@ -40,6 +40,7 @@ data IState = IState { tt_ctxt :: Context,
                        idris_implicits :: Ctxt [PArg],
                        idris_statics :: Ctxt [Bool],
                        idris_classes :: Ctxt ClassInfo,
+                       idris_dsls :: Ctxt DSL,
                        idris_optimisation :: Ctxt OptInfo, 
                        idris_datatypes :: Ctxt TypeInfo,
                        idris_patdefs :: Ctxt [(Term, Term)], -- not exported
@@ -70,6 +71,7 @@ data IBCWrite = IBCFix FixDecl
               | IBCImp Name
               | IBCStatic Name
               | IBCClass Name
+              | IBCDSL Name
               | IBCData Name
               | IBCOpt Name
               | IBCSyntax Syntax
@@ -83,7 +85,7 @@ data IBCWrite = IBCFix FixDecl
   deriving Show
 
 idrisInit = IState initContext [] [] emptyContext emptyContext emptyContext
-                   emptyContext emptyContext emptyContext
+                   emptyContext emptyContext emptyContext emptyContext
                    "" defaultOpts 6 [] [] [] [] [] [] [] [] 
                    Nothing Nothing Nothing [] [] [] Hidden [] Nothing
 
@@ -372,6 +374,7 @@ data PDecl' t = PFix     FC Fixity [String] -- fixity declaration
                                         [t] -- parameters
                                         t -- full instance type
                                         [PDecl' t]
+              | PDSL     Name (DSL' t)
               | PSyntax  FC Syntax
               | PDirective (Idris ())
     deriving Functor
@@ -558,16 +561,22 @@ deriving instance Binary TypeInfo
 
 -- Syntactic sugar info 
 
-data DSL = DSL { dsl_bind    :: PTerm,
-                 dsl_return  :: PTerm,
-                 dsl_apply   :: PTerm,
-                 dsl_pure    :: PTerm,
-                 index_first :: Maybe PTerm,
-                 index_next  :: Maybe PTerm,
-                 dsl_lambda  :: Maybe PTerm,
-                 dsl_let     :: Maybe PTerm
-               }
-    deriving Show
+data DSL' t = DSL { dsl_bind    :: t,
+                    dsl_return  :: t,
+                    dsl_apply   :: t,
+                    dsl_pure    :: t,
+                    dsl_var     :: Maybe t,
+                    index_first :: Maybe t,
+                    index_next  :: Maybe t,
+                    dsl_lambda  :: Maybe t,
+                    dsl_let     :: Maybe t
+                  }
+    deriving (Show, Functor)
+{-!
+deriving instance Binary DSL'
+!-}
+
+type DSL = DSL' PTerm
 
 data SynContext = PatternSyntax | TermSyntax | AnySyntax
     deriving Show
@@ -594,6 +603,7 @@ initDSL = DSL (PRef f (UN ">>="))
               (PRef f (UN "return"))
               (PRef f (UN "<$>"))
               (PRef f (UN "pure"))
+              Nothing
               Nothing
               Nothing
               Nothing

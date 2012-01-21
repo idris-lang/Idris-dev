@@ -1,6 +1,9 @@
+{-# LANGUAGE PatternGuards #-}
+
 module Idris.ElabTerm where
 
 import Idris.AbsSyntax
+import Idris.DSL
 
 import Core.Elaborate hiding (Tactic(..))
 import Core.TT
@@ -191,6 +194,10 @@ elab ist info pattern tcgen fn tm
 --                elabE True ty
 --                focus valn
 --                elabE True val
+--     elab' ina (PApp fc (PRef _ dsl) [arg])
+--        | [d] <- lookupCtxt Nothing dsl (idris_dsls ist)
+--                 = let dsl' = expandDo d (getTm arg) in
+--                       trace (show dsl') $ elab' ina dsl'
     elab' ina (PApp fc (PRef _ f) args')
        = do let args = {- case lookupCtxt f (inblock info) of
                           Just ps -> (map (pexp . (PRef fc)) ps ++ args')

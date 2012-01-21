@@ -22,7 +22,7 @@ import System.Directory
 import Paths_idris
 
 ibcVersion :: Word8
-ibcVersion = 9
+ibcVersion = 10 
 
 data IBCFile = IBCFile { ver :: Word8,
                          sourcefile :: FilePath,
@@ -31,6 +31,7 @@ data IBCFile = IBCFile { ver :: Word8,
                          ibc_fixes :: [FixDecl],
                          ibc_statics :: [(Name, [Bool])],
                          ibc_classes :: [(Name, ClassInfo)],
+                         ibc_dsls :: [(Name, DSL)],
                          ibc_datatypes :: [(Name, TypeInfo)],
                          ibc_optimise :: [(Name, OptInfo)],
                          ibc_syntax :: [Syntax],
@@ -45,7 +46,7 @@ deriving instance Binary IBCFile
 !-}
 
 initIBC :: IBCFile
-initIBC = IBCFile ibcVersion "" [] [] [] [] [] [] [] [] [] [] [] [] [] []
+initIBC = IBCFile ibcVersion "" [] [] [] [] [] [] [] [] [] [] [] [] [] [] []
 
 loadIBC :: FilePath -> Idris ()
 loadIBC fp = do iLOG $ "Loading ibc " ++ fp
@@ -84,6 +85,10 @@ ibc i (IBCClass n) f
                    = case lookupCtxt Nothing n (idris_classes i) of
                         [v] -> return f { ibc_classes = (n,v): ibc_classes f     }
                         _ -> fail "IBC write failed"
+ibc i (IBCDSL n) f 
+                   = case lookupCtxt Nothing n (idris_dsls i) of
+                        [v] -> return f { ibc_dsls = (n,v): ibc_dsls f     }
+                        _ -> fail "IBC write failed"
 ibc i (IBCData n) f 
                    = case lookupCtxt Nothing n (idris_datatypes i) of
                         [v] -> return f { ibc_datatypes = (n,v): ibc_datatypes f     }
@@ -116,6 +121,7 @@ process i fn
                pFixes (ibc_fixes i)
                pStatics (ibc_statics i)
                pClasses (ibc_classes i)
+               pDSLs (ibc_dsls i)
                pDatatypes (ibc_datatypes i)
                pOptimise (ibc_optimise i)
                pSyntax (ibc_syntax i)
@@ -172,6 +178,13 @@ pClasses cs = mapM_ (\ (n, c) ->
                         do i <- getIState
                            putIState (i { idris_classes
                                            = addDef n c (idris_classes i) }))
+                    cs
+
+pDSLs :: [(Name, DSL)] -> Idris ()
+pDSLs cs = mapM_ (\ (n, c) ->
+                        do i <- getIState
+                           putIState (i { idris_dsls
+                                           = addDef n c (idris_dsls i) }))
                     cs
 
 pDatatypes :: [(Name, TypeInfo)] -> Idris ()
@@ -568,7 +581,7 @@ instance Binary Accessibility where
                    _ -> error "Corrupted binary data for Accessibility"
 
 instance Binary IBCFile where
-        put (IBCFile x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16)
+        put (IBCFile x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17)
           = do put x1
                put x2
                put x3
@@ -585,6 +598,7 @@ instance Binary IBCFile where
                put x14
                put x15
                put x16
+               put x17
         get
           = do x1 <- get
                if x1 == ibcVersion then 
@@ -603,7 +617,8 @@ instance Binary IBCFile where
                     x14 <- get
                     x15 <- get
                     x16 <- get
-                    return (IBCFile x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16)
+                    x17 <- get
+                    return (IBCFile x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17)
                   else return (initIBC { ver = x1 })
  
 instance Binary Fixity where
@@ -1024,6 +1039,28 @@ instance Binary Syntax where
                x3 <- get
                return (Rule x1 x2 x3)
 
+instance (Binary t) => Binary (DSL' t) where
+        put (DSL x1 x2 x3 x4 x5 x6 x7 x8 x9)
+          = do put x1
+               put x2
+               put x3
+               put x4
+               put x5
+               put x6
+               put x7
+               put x8
+               put x9
+        get
+          = do x1 <- get
+               x2 <- get
+               x3 <- get
+               x4 <- get
+               x5 <- get
+               x6 <- get
+               x7 <- get
+               x8 <- get
+               x9 <- get
+               return (DSL x1 x2 x3 x4 x5 x6 x7 x8 x9)
  
 instance Binary SSymbol where
         put x

@@ -1,6 +1,9 @@
+{-# LANGUAGE PatternGuards #-}
+
 module Idris.Parser where
 
 import Idris.AbsSyntax
+import Idris.DSL
 import Idris.Imports
 import Idris.Error
 import Idris.ElabDecls
@@ -310,6 +313,7 @@ pDecl syn = do notEndBlock
     <|> pNamespace syn
     <|> pClass syn
     <|> pInstance syn
+    <|> do d <- pDSL syn; return [d]
     <|> pDirective
     <|> try (do reserved "import"
                 fp <- identifier
@@ -728,7 +732,13 @@ pApp syn = do f <- pSimpleExpr syn
               fc <- pfc
               args <- many1 (do notEndApp
                                 pArg syn)
-              return (PApp fc f args)
+              i <- getState
+              return (dslify i $ PApp fc f args)
+  where
+    dslify i (PApp fc (PRef _ f) [a])
+        | [d] <- lookupCtxt Nothing f (idris_dsls i)
+            = desugar (syn { dsl_info = d }) i (getTm a)
+    dslify i t = t
 
 pArg :: SyntaxInfo -> IParser PArg
 pArg syn = try (pImplicitArg syn)
@@ -979,6 +989,45 @@ pSimpleCon syn
                            pSimpleExpr syn)
           return (cn, args, fc)
 
+--------- DSL syntax overloading ---------
+
+pDSL :: SyntaxInfo -> IParser PDecl
+pDSL syn = do reserved "dsl"; n <- pfName
+              open_block; push_indent
+              bs <- many1 (do notEndBlock
+                              b <- pOverload syn
+                              pKeepTerminator
+                              return b)
+              pop_indent; close_block
+              let dsl = mkDSL bs (dsl_info syn)
+              checkDSL dsl
+              i <- getState
+              setState (i { idris_dsls = addDef n dsl (idris_dsls i) })
+              return (PDSL n dsl)
+    where mkDSL bs dsl = let var    = lookup "variable" bs
+                             first  = lookup "index_first" bs
+                             next   = lookup "index_next" bs
+                             leto   = lookup "let" bs
+                             lambda = lookup "lambda" bs in
+                             initDSL { dsl_var = var,
+                                       index_first = first,
+                                       index_next = next,
+                                       dsl_lambda = lambda,
+                                       dsl_let = leto }
+
+checkDSL :: DSL -> IParser ()
+checkDSL dsl = return ()
+
+pOverload :: SyntaxInfo -> IParser (String, PTerm)
+pOverload syn = do o <- identifier <|> do reserved "let"; return "let"
+                   if (not (o `elem` overloadable))
+                      then fail $ show o ++ " is not an overloading"
+                      else do
+                        lchar '='
+                        t <- pExpr syn
+                        return (o, t)
+    where overloadable = ["let","lambda","index_first","index_next","variable"]
+
 --------- Pattern match clauses ---------
 
 pPattern :: SyntaxInfo -> IParser PDecl
@@ -1192,56 +1241,4 @@ pTactic syn = do reserved "intro"; ns <- sepBy pName (lchar ',')
   where
     imp = do lchar '?'; return False
       <|> do lchar '_'; return True
-
-desugar :: SyntaxInfo -> IState -> PTerm -> PTerm
-desugar syn i t = let t' = expandDo (dsl_info syn) t in
-                      t' -- addImpl i t'
-
-expandDo :: DSL -> PTerm -> PTerm
-expandDo dsl (PLam n ty tm) = PLam n (expandDo dsl ty) (expandDo dsl tm)
-expandDo dsl (PLet n ty v tm) = PLet n (expandDo dsl ty) (expandDo dsl v) (expandDo dsl tm)
-expandDo dsl (PPi p n ty tm) = PPi p n (expandDo dsl ty) (expandDo dsl tm)
-expandDo dsl (PApp fc t args) = PApp fc (expandDo dsl t)
-                                        (map (fmap (expandDo dsl)) args)
-expandDo dsl (PCase fc s opts) = PCase fc (expandDo dsl s)
-                                        (map (pmap (expandDo dsl)) opts)
-expandDo dsl (PPair fc l r) = PPair fc (expandDo dsl l) (expandDo dsl r)
-expandDo dsl (PDPair fc l t r) = PDPair fc (expandDo dsl l) (expandDo dsl t) 
-                                           (expandDo dsl r)
-expandDo dsl (PAlternative as) = PAlternative (map (expandDo dsl) as)
-expandDo dsl (PHidden t) = PHidden (expandDo dsl t)
-expandDo dsl (PReturn fc) = dsl_return dsl
-expandDo dsl (PDoBlock ds) = expandDo dsl $ block (dsl_bind dsl) ds 
-  where
-    block b [DoExp fc tm] = tm 
-    block b [a] = PElabError "Last statement in do block must be an expression"
-    block b (DoBind fc n tm : rest)
-        = PApp fc b [pexp tm, pexp (PLam n Placeholder (block b rest))]
-    block b (DoBindP fc p tm : rest)
-        = PApp fc b [pexp tm, pexp (PLam (MN 0 "bpat") Placeholder 
-                                   (PCase fc (PRef fc (MN 0 "bpat"))
-                                             [(p, block b rest)]))]
-    block b (DoLet fc n ty tm : rest)
-        = PLet n ty tm (block b rest)
-    block b (DoLetP fc p tm : rest)
-        = PCase fc tm [(p, block b rest)]
-    block b (DoExp fc tm : rest)
-        = PApp fc b 
-            [pexp tm, 
-             pexp (PLam (MN 0 "bindx") Placeholder (block b rest))]
-    block b _ = PElabError "Invalid statement in do block"
-expandDo dsl (PIdiom fc e) = expandDo dsl $ unIdiom (dsl_apply dsl) (dsl_pure dsl) fc e
-expandDo dsl t = t
-
-unIdiom :: PTerm -> PTerm -> FC -> PTerm -> PTerm
-unIdiom ap pure fc e@(PApp _ _ _) = let f = getFn e in
-                                        mkap (getFn e)
-  where
-    getFn (PApp fc f args) = (PApp fc pure [pexp f], args)
-    getFn f = (f, [])
-
-    mkap (f, [])   = f
-    mkap (f, a:as) = mkap (PApp fc ap [pexp f, a], as)
-
-unIdiom ap pure fc e = PApp fc pure [pexp e]
 
