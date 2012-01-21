@@ -25,13 +25,16 @@ postInstLib args flags desc local
          let cenv = compilerTemplateEnv (compilerId (compiler local))
          let dirs_pkg = substituteInstallDirTemplates penv (installDirTemplates local)
          let dirs = substituteInstallDirTemplates cenv dirs_pkg
-         let datad = datadir dirs
-         let datasubd = datasubdir dirs
          let bind = fromPathTemplate (bindir dirs)
+         let progPart t = L.substPathTemplate (packageId desc) local (t local)
+         let progpfx = progPart progPrefix
+         let progsfx = progPart progSuffix
+         let PackageName pkgname = (packageName desc)
+         let icmd = bind ++ "/" ++ progpfx ++ pkgname ++ progsfx
          let idir = fromPathTemplate (datadir dirs) ++ "/" ++ 
                     fromPathTemplate (datasubdir dirs)
          putStrLn $ "Installing libraries in " ++ idir
-         system' $ "make -C lib install TARGET=" ++ idir ++ " BINDIR=" ++ bind
+         system' $ "make -C lib install TARGET=" ++ idir ++ " IDRIS=" ++ icmd 
 
 main = defaultMainWithHooks (simpleUserHooks { postInst = postInstLib,
                                                postClean = postCleanLib })
