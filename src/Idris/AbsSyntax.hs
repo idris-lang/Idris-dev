@@ -81,6 +81,7 @@ data IBCWrite = IBCFix FixDecl
               | IBCLib String
               | IBCHeader String
               | IBCAccess Name Accessibility
+              | IBCTotal Name Totality
               | IBCDef Name -- i.e. main context
   deriving Show
 
@@ -115,6 +116,12 @@ setAccessibility :: Name -> Accessibility -> Idris ()
 setAccessibility n a 
          = do i <- get
               let ctxt = setAccess n a (tt_ctxt i)
+              put (i { tt_ctxt = ctxt })
+
+setTotality :: Name -> Totality -> Idris ()
+setTotality n a 
+         = do i <- get
+              let ctxt = setTotal n a (tt_ctxt i)
               put (i { tt_ctxt = ctxt })
 
 addIBC :: IBCWrite -> Idris ()
@@ -349,7 +356,7 @@ impl = Imp False Dynamic
 expl = Exp False Dynamic
 constraint = Constraint False Static
 
-data FnOpt = Inlinable | Partial | Abstract | Private | TCGen
+data FnOpt = Inlinable | Abstract | Private | TCGen
     deriving (Show, Eq)
 
 type FnOpts = [FnOpt]

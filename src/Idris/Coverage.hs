@@ -4,6 +4,8 @@ module Idris.Coverage where
 
 import Core.TT
 import Core.Evaluate
+import Core.CaseTree
+
 import Idris.AbsSyntax
 import Idris.Delaborate
 
@@ -94,4 +96,56 @@ genAll i args = concatMap otherPats (nub args)
                       _ -> error "Can't happen - genAll"
 
 upd p' p = p { getTm = p' }
+
+-- recursive calls are well-founded if one of their argument positions is
+-- always decreasing.
+
+-- If we encounter a non-total name, we'll fail
+
+wellFounded :: IState -> Name -> SC -> Either [Name] Bool
+wellFounded i n sc = case wff [] sc of
+                     RightOK smaller_args -> 
+                       -- is there a number in every list?
+                       -- trace (show (n, smaller_args)) $
+                       case smaller_args of
+                            [] -> Right True
+                            (x : xs) -> let args = foldl intersect x xs in
+                                            Right $ not (null args)
+                     LeftErr x -> Left x 
+  where
+    wff :: [Name] -> SC -> EitherErr [Name] [[Int]]
+    wff ns (Case n as) = do is <- mapM (wffC ns) as
+                            return $ concat is
+      where wffC ns (ConCase _ i ns' sc) = wff (ns ++ ns') sc
+            wffC ns (ConstCase _ sc) = wff ns sc
+            wffC ns (DefaultCase sc) = wff ns sc
+    wff ns (STerm t) = argPos ns t
+    wff ns _ = return []
+
+    checkOK n' = case lookupTotal n' (tt_ctxt i) of
+                    [Partial _] -> LeftErr [n']
+                    [Total] -> RightOK ()
+                    x -> RightOK ()
+--     checkOK n = RightOK ()
+
+    argPos ns ap@(App f' a')
+        | (P _ f _, args) <- unApply ap 
+                = if f == n then
+                    do aa <- argPos ns a' 
+                       return $ chkArgs 0 ns args : aa
+                    else do checkOK f
+                            argPos ns a'
+    argPos ns (App f a) = do f' <- argPos ns f
+                             a' <- argPos ns a
+                             return (f' ++ a')
+    argPos ns (Bind n (Let t v) sc) = do v' <- argPos ns v
+                                         sc' <- argPos ns sc
+                                         return (v' ++ sc')
+    argPos ns (Bind n _ sc) = argPos ns sc
+    argPos ns _ = return []
+
+    chkArgs i ns [] = []
+    chkArgs i ns (P _ n _ : xs) | n `elem` ns = i : chkArgs (i + 1) ns xs
+    chkArgs i ns (_ : xs) = chkArgs (i+1) ns xs
+
 

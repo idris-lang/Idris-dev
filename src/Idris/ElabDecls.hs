@@ -128,7 +128,20 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
                                       return False)
                     else return False
          pdef' <- applyOpts pdef 
-         let tree = simpleCase tcase pcover pdef
+         let tree@(CaseDef _ sc _) = simpleCase tcase pcover pdef
+         ist <- get
+         let wf = wellFounded ist n sc
+         tot <- if pcover 
+                    then case wf of
+                            Left ns -> do logLvl 2 $ show n ++ " not well founded due to " 
+                                                     ++ show ns
+                                          return $ Partial (Other ns)
+                            Right False -> do logLvl 2 $ show n ++ " not well founded"
+                                              return $ Partial Itself
+                            Right True -> do logLvl 2 $ show n ++ " well founded"
+                                             return Total
+                    else do logLvl 2 $ show n ++ " does not cover all cases"
+                            return $ Partial NotCovering
          case tree of
              CaseDef _ _ [] -> return ()
              CaseDef _ _ xs -> mapM_ (\x ->
@@ -146,6 +159,8 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
              [ty] -> do updateContext (addCasedef n (inlinable opts)
                                                      tcase pcover pdef pdef' ty)
                         addIBC (IBCDef n)
+                        setTotality n tot
+                        addIBC (IBCTotal n tot)
              [] -> return ()
   where
     debind (x, y) = (depat x, depat y)
