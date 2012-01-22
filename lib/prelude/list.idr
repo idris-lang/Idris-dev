@@ -1,8 +1,5 @@
 module prelude.list
 
-import prelude.maybe
-import builtins
-
 %access public
 
 import builtins
@@ -467,59 +464,59 @@ hasAnyNilFalse l = ?hasAnyNilFalseBody
 -- Proofs
 --------------------------------------------------------------------------------
 
-MoreList.lengthAppendStepCase = proof {
+lengthAppendStepCase = proof {
     intros;
     rewrite inductiveHypothesis;
     trivial;
 }
 
-MoreList.hasAnyNilFalseBody = proof {
+hasAnyNilFalseBody = proof {
     intros;
     rewrite (hasAnyByNilFalse (==) l);
     trivial;
 }
 
-MoreList.hasAnyByNilFalseStepCase = proof {
+hasAnyByNilFalseStepCase = proof {
     intros;
     rewrite inductiveHypothesis;
     trivial;
 }
 
-MoreList.initProof = proof {
+initProof = proof {
     intros;
     trivial;
 }
 
-MoreList.lastProof = proof {
+lastProof = proof {
     intros;
     trivial;
 }
 
-MoreList.appendNilRightNeutralStepCase = proof {
-    intros;
-    rewrite inductiveHypothesis;
-    trivial;
-}
-
-MoreList.appendAssociativeStepCase = proof {
+appendNilRightNeutralStepCase = proof {
     intros;
     rewrite inductiveHypothesis;
     trivial;
 }
 
-MoreList.mapFusionStepCase = proof {
+appendAssociativeStepCase = proof {
     intros;
     rewrite inductiveHypothesis;
     trivial;
 }
 
-MoreList.mapDistributesOverAppendStepCase = proof {
+mapFusionStepCase = proof {
     intros;
     rewrite inductiveHypothesis;
     trivial;
 }
 
-MoreList.mapPreservesLengthStepCase = proof {
+mapDistributesOverAppendStepCase = proof {
+    intros;
+    rewrite inductiveHypothesis;
+    trivial;
+}
+
+mapPreservesLengthStepCase = proof {
     intros;
     rewrite inductiveHypothesis;
     trivial;
