@@ -110,6 +110,13 @@ split p xs = case break p xs of
                   (chunk, []) => [chunk]
                   (chunk, (c :: rest)) => chunk :: split p rest
 
+any : (a -> Bool) -> List a -> Bool
+any predicate [] = False
+any predicate (a::rest) =
+  if predicate a
+    then True
+    else any predicate rest
+
 --------------------------------------------------------------------------------
 -- Conversions
 --------------------------------------------------------------------------------
