@@ -1,5 +1,5 @@
 Name:           idris
-Version:        0.9.0
+Version:        0.9.1
 License:        BSD3
 License-file:   LICENSE
 Author:         Edwin Brady
@@ -8,7 +8,7 @@ Homepage:       http://www.idris-lang.org/
 
 Stability:      Beta
 Category:       Compilers/Interpreters, Dependent Types
-Synopsis:       Dependently Typed Functional Programming Language
+Synopsis:       Functional Programming Language with Dependent Types
 Description:    Idris is a general purpose language with full dependent types.
                 It is compiled, with eager evaluation. 
                 Dependent types allow types to be predicated on values,
