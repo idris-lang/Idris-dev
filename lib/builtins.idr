@@ -113,6 +113,10 @@ instance Eq Char where
 instance Eq String where
     (==) = boolOp prim__eqString
 
+instance (Eq a, Eq b) => Eq (a, b) where
+  (==) (a, c) (b, d) = (a == b) && (c == d)
+
+
 data Ordering = LT | EQ | GT
 
 class Eq a => Ord a where 
@@ -170,6 +174,13 @@ instance Ord String where
     compare x y = if (x == y) then EQ else
                   if (boolOp prim__ltString x y) then LT else
                   GT
+
+
+instance (Ord a, Ord b) => Ord (a, b) where
+  compare (xl, xr) (yl, yr) =
+    if xl /= yl
+      then compare xl yl
+      else compare xr yr
 
 
 class (Eq a, Ord a) => Num a where 
