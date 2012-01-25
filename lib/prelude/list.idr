@@ -1,121 +1,383 @@
 module prelude.list
 
-import prelude.maybe
 import builtins
+
+import prelude.maybe
+import prelude.nat
 
 %access public
 
 infixr 7 :: 
 
-data List a = Nil | (::) a (List a)
+data List a
+  = Nil
+  | (::) a (List a)
 
-rev : List a -> List a
-rev xs = revAcc [] xs where
-  revAcc : List a -> List a -> List a
-  revAcc acc []        = acc
-  revAcc acc (x :: xs) = revAcc (x :: acc) xs
+--------------------------------------------------------------------------------
+-- Syntactic tests
+--------------------------------------------------------------------------------
 
-app : List a -> List a -> List a
-app []        xs = xs
-app (x :: xs) ys = x :: app xs ys
+isNil : List a -> Bool
+isNil []      = True
+isNil (x::xs) = False
 
-head : List a -> Maybe a
-head []        = Nothing
-head (x :: xs) = Just x
+isCons : List a -> Bool
+isCons []      = False
+isCons (x::xs) = True
 
-tail : List a -> List a
-tail []        = []
-tail (x :: xs) = xs
+--------------------------------------------------------------------------------
+-- Indexing into lists
+--------------------------------------------------------------------------------
 
-length : List a -> Int
-length []        = 0
-length (x :: xs) = 1 + length xs
+head : (l : List a) -> (isCons l = True) -> a
+head (x::xs) p = x
 
-take : Int -> List a -> List a
-take 0 xs = []
-take n [] = []
-take n (x :: xs) = x :: take (n-1) xs
+head' : (l : List a) -> Maybe a
+head' []      = Nothing
+head' (x::xs) = Just x
 
-drop : Int -> List a -> List a
-drop 0 xs = xs
-drop n [] = []
-drop n (x :: xs) = drop (n-1) xs
+tail : (l : List a) -> (isCons l = True) -> List a
+tail (x::xs) p = xs
+
+tail' : (l : List a) -> Maybe (List a)
+tail' []      = Nothing
+tail' (x::xs) = Just xs
+
+last : (l : List a) -> (isCons l = True) -> a
+last (x::xs) p =
+  case xs of
+    []    => x
+    y::ys => last (y::ys) ?lastProof
+
+last' : (l : List a) -> Maybe a
+last' []      = Nothing
+last' (x::xs) =
+  case xs of
+    []    => Just x
+    y::ys => last' xs
+
+init : (l : List a) -> (isCons l = True) -> List a
+init (x::xs) p =
+  case xs of
+    []    => []
+    y::ys => x :: init (y::ys) ?initProof
+
+init' : (l : List a) -> Maybe (List a)
+init' []      = Nothing
+init' (x::xs) =
+  case xs of
+    []    => Just []
+    y::ys =>
+      -- XXX: Problem with typechecking a "do" block here
+      case init' $ y::ys of
+        Nothing => Nothing
+        Just j  => Just $ x :: j
+
+--------------------------------------------------------------------------------
+-- Sublists
+--------------------------------------------------------------------------------
+
+take : Nat -> List a -> List a
+take Z     xs      = []
+take (S n) []      = []
+take (S n) (x::xs) = x :: take n xs
+
+drop : Nat -> List a -> List a
+drop Z     xs      = xs
+drop (S n) []      = []
+drop (S n) (x::xs) = drop n xs
+
+--------------------------------------------------------------------------------
+-- Misc.
+--------------------------------------------------------------------------------
+
+list : a -> (a -> List a -> a) -> List a -> a
+list nil cons []      = nil
+list nil cons (x::xs) = cons x xs
+
+length : List a -> Nat
+length []      = 0
+length (x::xs) = 1 + length xs
+
+--------------------------------------------------------------------------------
+-- Building bigger lists
+--------------------------------------------------------------------------------
+
+(++) : List a -> List a -> List a
+(++) [] right      = right
+(++) (x::xs) right = x :: (xs ++ right)
+
+--------------------------------------------------------------------------------
+-- Maps
+--------------------------------------------------------------------------------
 
 map : (a -> b) -> List a -> List b
-map f []        = []
-map f (x :: xs) = f x :: map f xs
-
-concatMap : (a -> List b) -> List a -> List b
-concatMap f [] = []
-concatMap f (x :: xs) = app (f x) (concatMap f xs)
+map f []      = []
+map f (x::xs) = f x :: map f xs
 
 mapMaybe : (a -> Maybe b) -> List a -> List b
-mapMaybe f [] = []
-mapMaybe f (x :: xs) = case f x of
-                           Nothing => mapMaybe f xs
-                           Just v  => v :: mapMaybe f xs
+mapMaybe f []      = []
+mapMaybe f (x::xs) =
+  case f x of
+    Nothing => mapMaybe f xs
+    Just j  => j :: mapMaybe f xs
+
+--------------------------------------------------------------------------------
+-- Folds
+--------------------------------------------------------------------------------
 
 foldl : (a -> b -> a) -> a -> List b -> a
-foldl f a []        = a
-foldl f a (x :: xs) = foldl f (f a x) xs
+foldl f e []      = e
+foldl f e (x::xs) = foldl f (f e x) xs
 
 foldr : (a -> b -> b) -> b -> List a -> b
-foldr f b []        = b
-foldr f b (x :: xs) = f x (foldr f b xs)
+foldr f e []      = e
+foldr f e (x::xs) = f x (foldr f e xs)
 
-filter : (y -> Bool) -> List y -> List y
-filter pred [] = []
-filter pred (x :: xs) = if (pred x) then (x :: filter pred xs)
-                                    else (filter pred xs)
+--------------------------------------------------------------------------------
+-- Special folds
+--------------------------------------------------------------------------------
+
+concat : List (List a) -> List a
+concat = foldr (++) []
+
+concatMap : (a -> List b) -> List a -> List b
+concatMap f []      = []
+concatMap f (x::xs) = f x ++ concatMap f xs
+
+and : List Bool -> Bool
+and = foldr (&&) True
+
+or : List Bool -> Bool
+or = foldr (||) False
+
+any : (a -> Bool) -> List a -> Bool
+any p = or . map p
+
+all : (a -> Bool) -> List a -> Bool
+all p = and . map p
+
+--------------------------------------------------------------------------------
+-- Transformations
+--------------------------------------------------------------------------------
+
+reverse : List a -> List a
+reverse = reverse' []
+  where
+    reverse' : List a -> List a -> List a
+    reverse' acc []      = acc
+    reverse' acc (x::xs) = reverse' (x::acc) xs
+
+intersperse : a -> List a -> List a
+intersperse sep []      = []
+intersperse sep (x::xs) = x :: intersperse' sep xs
+  where
+    intersperse' : a -> List a -> List a
+    intersperse' sep []      = []
+    intersperse' sep (y::ys) = sep :: y :: intersperse' sep ys
+
+intercalate : List a -> List (List a) -> List a
+intercalate sep l = concat $ intersperse sep l
+
+--------------------------------------------------------------------------------
+-- Membership tests
+--------------------------------------------------------------------------------
+
+elemBy : (a -> a -> Bool) -> a -> List a -> Bool
+elemBy p e []      = False
+elemBy p e (x::xs) =
+  if p e x then
+    True
+  else
+    elemBy p e xs
 
 elem : Eq a => a -> List a -> Bool
-elem x [] = False
-elem x (y :: ys) = if (x == y) then True else (elem x ys)
+elem = elemBy (==)
 
-lookup : Eq k => k -> List (k, v) -> Maybe v
-lookup k [] = Nothing
-lookup k ((x, v) :: xs) = if (x == k) then (Just v) else (lookup k xs)
+lookupBy : (a -> a -> Bool) -> a -> List (a, b) -> Maybe b
+lookupBy p e []      = Nothing
+lookupBy p e (x::xs) =
+  let (l, r) = x in
+    if p e l then
+      Just r
+    else
+      lookupBy p e xs
+
+lookup : Eq a => a -> List (a, b) -> Maybe b
+lookup = lookupBy (==)
+
+hasAnyBy : (a -> a -> Bool) -> List a -> List a -> Bool
+hasAnyBy p elems []      = False
+hasAnyBy p elems (x::xs) =
+  if elemBy p x elems then
+    True
+  else
+    hasAnyBy p elems xs
+
+hasAny : Eq a => List a -> List a -> Bool
+hasAny = hasAnyBy (==)
+
+--------------------------------------------------------------------------------
+-- Searching with a predicate
+--------------------------------------------------------------------------------
+
+find : (a -> Bool) -> List a -> Maybe a
+find p []      = Nothing
+find p (x::xs) =
+  if p x then
+    Just x
+  else
+    find p xs
+
+findIndex : (a -> Bool) -> List a -> Maybe Nat
+findIndex = findIndex' 0
+  where
+    findIndex' : Nat -> (a -> Bool) -> List a -> Maybe Nat
+    findIndex' cnt p []      = Nothing
+    findIndex' cnt p (x::xs) =
+      if p x then
+        Just cnt
+      else
+        findIndex' (S cnt) p xs
+
+findIndices : (a -> Bool) -> List a -> List Nat
+findIndices = findIndices' 0
+  where
+    findIndices' : Nat -> (a -> Bool) -> List a -> List Nat
+    findIndices' cnt p []      = []
+    findIndices' cnt p (x::xs) =
+      if p x then
+        cnt :: findIndices' (S cnt) p xs
+      else
+        findIndices' (S cnt) p xs
+
+elemIndexBy : (a -> a -> Bool) -> a -> List a -> Maybe Nat
+elemIndexBy p e = findIndex $ p e
+
+elemIndex : Eq a => a -> List a -> Maybe Nat
+elemIndex = elemIndexBy (==)
+
+elemIndicesBy : (a -> a -> Bool) -> a -> List a -> List Nat
+elemIndicesBy p e = findIndices $ p e
+
+elemIndices : Eq a => a -> List a -> List Nat
+elemIndices = elemIndicesBy (==)
+
+--------------------------------------------------------------------------------
+-- Filters
+--------------------------------------------------------------------------------
+
+filter : (a -> Bool) -> List a -> List a
+filter p []      = []
+filter p (x::xs) =
+  if p x then
+    x :: filter p xs
+  else
+    filter p xs
+
+nubBy : (a -> a -> Bool) -> List a -> List a
+nubBy = nubBy' []
+  where
+    nubBy' : List a -> (a -> a -> Bool) -> List a -> List a
+    nubBy' acc p []      = []
+    nubBy' acc p (x::xs) =
+      if elemBy p x acc then
+        nubBy' acc p xs
+      else
+        x :: nubBy' (x::acc) p xs
+
+nub : Eq a => List a -> List a
+nub = nubBy (==)
+
+--------------------------------------------------------------------------------
+-- Splitting and breaking lists
+--------------------------------------------------------------------------------
+
+span : (a -> Bool) -> List a -> (List a, List a)
+span p []      = ([], [])
+span p (x::xs) =
+  if p x then
+    let (ys, zs) = span p xs in
+      (x::ys, zs)
+  else
+    ([], x::xs)
+
+break : (a -> Bool) -> List a -> (List a, List a)
+break p = span (not . p)
+
+split : (a -> Bool) -> List a -> List (List a)
+split p [] = []
+split p xs =
+  case break p xs of
+    (chunk, [])          => [chunk]
+    (chunk, (c :: rest)) => chunk :: split p rest
+
+partition : (a -> Bool) -> List a -> (List a, List a)
+partition p []      = ([], [])
+partition p (x::xs) =
+  let (lefts, rights) = partition p xs in
+    if p x then
+      (x::lefts, rights)
+    else
+      (lefts, x::rights)
+
+--------------------------------------------------------------------------------
+-- Predicates
+--------------------------------------------------------------------------------
+
+isPrefixOfBy : (a -> a -> Bool) -> List a -> List a -> Bool
+isPrefixOfBy p [] right        = True
+isPrefixOfBy p left []         = False
+isPrefixOfBy p (x::xs) (y::ys) =
+  if p x y then
+    isPrefixOfBy p xs ys
+  else
+    False
+
+isPrefixOf : Eq a => List a -> List a -> Bool
+isPrefixOf = isPrefixOfBy (==)
+
+isSuffixOfBy : (a -> a -> Bool) -> List a -> List a -> Bool
+isSuffixOfBy p left right = isPrefixOfBy p (reverse left) (reverse right)
+
+isSuffixOf : Eq a => List a -> List a -> Bool
+isSuffixOf = isSuffixOfBy (==)
+
+--------------------------------------------------------------------------------
+-- Sorting
+--------------------------------------------------------------------------------
+
+sorted : Ord a => List a -> Bool
+sorted []      = True
+sorted (x::xs) =
+  case xs of
+    Nil     => True
+    (y::ys) => x <= y && sorted (y::ys)
+
+mergeBy : (a -> a -> Ordering) -> List a -> List a -> List a
+mergeBy order []      right   = right
+mergeBy order left    []      = left
+mergeBy order (x::xs) (y::ys) =
+  case order x y of
+    LT => x :: mergeBy order xs (y::ys)
+    _  => y :: mergeBy order (x::xs) ys
+
+merge : Ord a => List a -> List a -> List a
+merge = mergeBy compare
 
 sort : Ord a => List a -> List a
 sort []  = []
 sort [x] = [x]
-sort xs = let (x, y) = split xs in
-              merge (sort x) (sort y) where
-    splitrec : List a -> List a -> (List a -> List a) -> (List a, List a)
-    splitrec (_ :: _ :: xs) (y :: ys) zs = splitrec xs ys (zs . ((::) y))
-    splitrec _              ys        zs = (zs [], ys)
+sort xs  =
+  let (x, y) = split xs in
+    merge (sort x) (sort y)
+  where
+    splitRec : List a -> List a -> (List a -> List a) -> (List a, List a)
+    splitRec (_::_::xs) (y::ys) zs = splitRec xs ys (zs . ((::) y))
+    splitRec _          ys      zs = (zs [], ys)
 
     split : List a -> (List a, List a)
-    split xs = splitrec xs xs id
-
-    merge : Ord a => List a -> List a -> List a
-    merge xs        []        = xs
-    merge []        ys        = ys
-    merge (x :: xs) (y :: ys) = if (x < y) then (x :: merge xs (y :: ys))
-                                           else (y :: merge (x :: xs) ys)
-
-span : (a -> Bool) -> List a -> (List a, List a)
-span p [] = ([], [])
-span p (x :: xs) with (p x) 
-   | True with (span p xs)
-      | (ys, zs) = (x :: ys, zs)
-   | False = ([], x :: xs)
-
-break : (a -> Bool) -> List a -> (List a, List a)
-break p = span (not . p)
-  
-split : (a -> Bool) -> List a -> List (List a)
-split p [] = []
-split p xs = case break p xs of
-                  (chunk, []) => [chunk]
-                  (chunk, (c :: rest)) => chunk :: split p rest
-
-any : (a -> Bool) -> List a -> Bool
-any predicate [] = False
-any predicate (a::rest) =
-  if predicate a
-    then True
-    else any predicate rest
+    split xs = splitRec xs xs id
 
 --------------------------------------------------------------------------------
 -- Conversions
@@ -161,3 +423,122 @@ instance Ord a => Ord (List a) where
     if a /= b
       then compare a b
       else compare restA restB
+
+--------------------------------------------------------------------------------
+-- Properties
+--------------------------------------------------------------------------------
+
+mapPreservesLength : (f : a -> b) -> (l : List a) ->
+  length (map f l) = length l
+mapPreservesLength f []      = refl
+mapPreservesLength f (x::xs) =
+  let inductiveHypothesis = mapPreservesLength f xs in
+    ?mapPreservesLengthStepCase
+
+mapDistributesOverAppend : (f : a -> b) -> (l : List a) -> (r : List a) ->
+  map f (l ++ r) = map f l ++ map f r
+mapDistributesOverAppend f []      r = refl
+mapDistributesOverAppend f (x::xs) r =
+  let inductiveHypothesis = mapDistributesOverAppend f xs r in
+    ?mapDistributesOverAppendStepCase
+
+mapFusion : (f : b -> c) -> (g : a -> b) -> (l : List a) ->
+  map f (map g l) = map (f . g) l
+mapFusion f g []      = refl
+mapFusion f g (x::xs) =
+  let inductiveHypothesis = mapFusion f g xs in
+    ?mapFusionStepCase
+
+appendNilRightNeutral : (l : List a) ->
+  l ++ [] = l
+appendNilRightNeutral []      = refl
+appendNilRightNeutral (x::xs) =
+  let inductiveHypothesis = appendNilRightNeutral xs in
+    ?appendNilRightNeutralStepCase
+
+appendAssociative : (l : List a) -> (c : List a) -> (r : List a) ->
+  (l ++ c) ++ r = l ++ (c ++ r)
+appendAssociative []      c r = refl
+appendAssociative (x::xs) c r =
+  let inductiveHypothesis = appendAssociative xs c r in
+    ?appendAssociativeStepCase
+
+hasAnyByNilFalse : (p : a -> a -> Bool) -> (l : List a) ->
+  hasAnyBy p [] l = False
+hasAnyByNilFalse p []      = refl
+hasAnyByNilFalse p (x::xs) =
+  let inductiveHypothesis = hasAnyByNilFalse p xs in
+    ?hasAnyByNilFalseStepCase
+
+lengthAppend : (left : List a) -> (right : List a) ->
+  length (left ++ right) = length left + length right
+lengthAppend []      right = refl
+lengthAppend (x::xs) right =
+  let inductiveHypothesis = lengthAppend xs right in
+    ?lengthAppendStepCase
+
+hasAnyNilFalse : Eq a => (l : List a) -> hasAny [] l = False
+hasAnyNilFalse l = ?hasAnyNilFalseBody
+
+--------------------------------------------------------------------------------
+-- Proofs
+--------------------------------------------------------------------------------
+
+lengthAppendStepCase = proof {
+    intros;
+    rewrite inductiveHypothesis;
+    trivial;
+}
+
+hasAnyNilFalseBody = proof {
+    intros;
+    rewrite (hasAnyByNilFalse (==) l);
+    trivial;
+}
+
+hasAnyByNilFalseStepCase = proof {
+    intros;
+    rewrite inductiveHypothesis;
+    trivial;
+}
+
+initProof = proof {
+    intros;
+    trivial;
+}
+
+lastProof = proof {
+    intros;
+    trivial;
+}
+
+appendNilRightNeutralStepCase = proof {
+    intros;
+    rewrite inductiveHypothesis;
+    trivial;
+}
+
+appendAssociativeStepCase = proof {
+    intros;
+    rewrite inductiveHypothesis;
+    trivial;
+}
+
+mapFusionStepCase = proof {
+    intros;
+    rewrite inductiveHypothesis;
+    trivial;
+}
+
+mapDistributesOverAppendStepCase = proof {
+    intros;
+    rewrite inductiveHypothesis;
+    trivial;
+}
+
+mapPreservesLengthStepCase = proof {
+    intros;
+    rewrite inductiveHypothesis;
+    trivial;
+}
+

@@ -40,6 +40,7 @@
     <style id="variable"     _name="Variable"                         />
     <style id="symbol"       _name="Symbol"                           />
     <style id="keyword"      _name="Keyword"      map-to="def:keyword"/>
+    <style id="tactic"       _name="Tactic"       map-to="def:keyword"/>
     <style id="type"         _name="Data Type"    map-to="def:type"/>
     <style id="string"       _name="String"       map-to="def:string"/>
     <style id="character"    _name="Character"    map-to="def:character"/>
@@ -189,12 +190,19 @@
       <keyword>let</keyword>
       <keyword>module</keyword>
       <keyword>of</keyword>
-      <keyword>qualified</keyword>
+      <keyword>if</keyword>
+      <keyword>else</keyword>
       <keyword>then</keyword>
       <keyword>where</keyword>
       <keyword>with</keyword>
       <keyword>type</keyword>
       <keyword>proof</keyword>
+      <keyword>tactics</keyword>
+      <keyword>static</keyword>
+      <keyword>impossible</keyword>
+    </context>
+
+    <context id="tactic" style-ref="tactic">
       <keyword>rewrite</keyword>
       <keyword>exact</keyword>
       <keyword>intros</keyword>
@@ -212,9 +220,6 @@
       <keyword>undo</keyword>
       <keyword>qed</keyword>
       <keyword>abandon</keyword>
-      <keyword>tactics</keyword>
-      <keyword>static</keyword>
-      <keyword>impossible</keyword>
     </context>
 
     <context id="body">
@@ -222,6 +227,7 @@
         <context ref="line-comment"/>
         <context ref="block-comment"/>
         <context ref="keyword"/>
+        <context ref="tactic" />
         <context ref="variable"/>
         <context ref="type-or-constructor"/>
         <context ref="keysymbol"/>

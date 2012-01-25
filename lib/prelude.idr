@@ -91,7 +91,7 @@ instance Monad List where
 
 instance MonadPlus List where 
     mzero = []
-    mplus = app
+    mplus = (++)
 
 ---- Functor instances
 

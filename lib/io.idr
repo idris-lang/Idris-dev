@@ -29,7 +29,7 @@ interpFTy FPtr    = Ptr
 interpFTy FUnit   = ()
 
 ForeignTy : (xs:List FTy) -> (t:FTy) -> Set
-ForeignTy xs t = mkForeign' (rev xs) (IO (interpFTy t)) where 
+ForeignTy xs t = mkForeign' (reverse xs) (IO (interpFTy t)) where 
    mkForeign' : List FTy -> Set -> Set
    mkForeign' Nil ty       = ty
    mkForeign' (s :: ss) ty = mkForeign' ss (interpFTy s -> ty)

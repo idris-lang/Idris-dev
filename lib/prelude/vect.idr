@@ -34,8 +34,8 @@ map : (a -> b) -> Vect a n -> Vect b n
 map f [] = []
 map f (x :: xs) = f x :: map f xs
 
-rev : Vect a n -> Vect a n
-rev xs = revAcc [] xs where
+reverse : Vect a n -> Vect a n
+reverse xs = revAcc [] xs where
   revAcc : Vect a n -> Vect a m -> Vect a (n + m)
   revAcc acc []        ?= acc
   revAcc acc (x :: xs) ?= revAcc (x :: acc) xs

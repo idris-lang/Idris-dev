@@ -15,7 +15,7 @@ getArgs = do n <- numArgs
     getArg x = mkForeign (FFun "epic_getArg" [FInt] FString) x
 
     ga' : List String -> Int -> Int -> IO (List String)
-    ga' acc i n = if (i == n) then (return $ rev acc) else
+    ga' acc i n = if (i == n) then (return $ reverse acc) else
                     do arg <- getArg i
                        ga' (arg :: acc) (i+1) n
 
