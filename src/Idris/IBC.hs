@@ -13,7 +13,6 @@ import Idris.Error
 import Data.Binary
 import Data.List
 import Data.ByteString.Lazy as B hiding (length, elem)
--- import Data.DeriveTH
 import Control.Monad
 import Control.Monad.State hiding (get, put)
 import System.FilePath
@@ -22,7 +21,7 @@ import System.Directory
 import Paths_idris
 
 ibcVersion :: Word8
-ibcVersion = 14 
+ibcVersion = 15 
 
 data IBCFile = IBCFile { ver :: Word8,
                          sourcefile :: FilePath,
@@ -41,13 +40,14 @@ data IBCFile = IBCFile { ver :: Word8,
                          ibc_hdrs :: [String],
                          ibc_access :: [(Name, Accessibility)],
                          ibc_total :: [(Name, Totality)],
+                         ibc_flags :: [(Name, [FnOpt])],
                          ibc_defs :: [(Name, Def)] }
 {-! 
 deriving instance Binary IBCFile 
 !-}
 
 initIBC :: IBCFile
-initIBC = IBCFile ibcVersion "" [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] []
+initIBC = IBCFile ibcVersion "" [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] []
 
 loadIBC :: FilePath -> Idris ()
 loadIBC fp = do iLOG $ "Loading ibc " ++ fp
@@ -107,6 +107,7 @@ ibc i (IBCDef n) f = case lookupDef Nothing n (tt_ctxt i) of
                         [v] -> return f { ibc_defs = (n,v) : ibc_defs f     }
                         _ -> fail "IBC write failed"
 ibc i (IBCAccess n a) f = return f { ibc_access = (n,a) : ibc_access f }
+ibc i (IBCFlags n a) f = return f { ibc_flags = (n,a) : ibc_flags f }
 ibc i (IBCTotal n a) f = return f { ibc_total = (n,a) : ibc_total f }
 
 process :: IBCFile -> FilePath -> Idris ()
@@ -233,6 +234,9 @@ pAccess ds = mapM_ (\ (n, a) ->
                       do i <- getIState
                          putIState (i { tt_ctxt = setAccess n a (tt_ctxt i) }))
                    ds
+
+pFlags :: [(Name, [FnOpt])] -> Idris ()
+pFlags ds = mapM_ (\ (n, a) -> setFlags n a) ds
 
 pTotal :: [(Name, Totality)] -> Idris ()
 pTotal ds = mapM_ (\ (n, a) ->
@@ -622,7 +626,7 @@ instance Binary Totality where
                    _ -> error "Corrupted binary data for Totality"
 
 instance Binary IBCFile where
-        put (IBCFile x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18)
+        put (IBCFile x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19)
           = do put x1
                put x2
                put x3
@@ -641,6 +645,7 @@ instance Binary IBCFile where
                put x16
                put x17
                put x18
+               put x19
         get
           = do x1 <- get
                if x1 == ibcVersion then 
@@ -661,9 +666,24 @@ instance Binary IBCFile where
                     x16 <- get
                     x17 <- get
                     x18 <- get
-                    return (IBCFile x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18)
+                    x19 <- get
+                    return (IBCFile x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19)
                   else return (initIBC { ver = x1 })
  
+instance Binary FnOpt where
+        put x
+          = case x of
+                Inlinable -> putWord8 0
+                TotalFn -> putWord8 1
+                TCGen -> putWord8 2
+        get
+          = do i <- getWord8
+               case i of
+                   0 -> return Inlinable
+                   1 -> return TotalFn
+                   2 -> return TCGen
+                   _ -> error "Corrupted binary data for FnOpt"
+
 instance Binary Fixity where
         put x
           = case x of

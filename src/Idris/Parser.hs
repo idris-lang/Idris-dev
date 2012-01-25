@@ -397,7 +397,9 @@ pSynSym = try (do lchar '['; n <- pName; lchar ']'
 
 pFunDecl' :: SyntaxInfo -> IParser PDecl
 pFunDecl' syn = try (do push_indent
+                        opts <- pFnOpts
                         acc <- pAccessibility
+                        opts' <- pFnOpts
                         n_in <- pfName
                         let n = expandNS syn n_in
                         ty <- pTSig syn
@@ -405,7 +407,7 @@ pFunDecl' syn = try (do push_indent
                         pTerminator 
 --                         ty' <- implicit syn n ty
                         addAcc n acc
-                        return (PTy syn fc n ty))
+                        return (PTy syn fc (opts ++ opts') n ty))
             <|> try (pPattern syn)
 
 pUsing :: SyntaxInfo -> IParser [PDecl]
@@ -610,6 +612,10 @@ pAccessibility :: IParser (Maybe Accessibility)
 pAccessibility
         = do acc <- pAccessibility'; return (Just acc)
       <|> return Nothing
+
+pFnOpts :: IParser [FnOpt]
+pFnOpts = do reserved "total"; xs <- pFnOpts; return (TotalFn : xs)
+      <|> return []
 
 addAcc :: Name -> Maybe Accessibility -> IParser ()
 addAcc n a = do i <- getState

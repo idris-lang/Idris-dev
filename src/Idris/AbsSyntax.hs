@@ -44,6 +44,7 @@ data IState = IState { tt_ctxt :: Context,
                        idris_optimisation :: Ctxt OptInfo, 
                        idris_datatypes :: Ctxt TypeInfo,
                        idris_patdefs :: Ctxt [(Term, Term)], -- not exported
+                       idris_flags :: Ctxt [FnOpt],
                        idris_log :: String,
                        idris_options :: IOption,
                        idris_name :: Int,
@@ -82,11 +83,12 @@ data IBCWrite = IBCFix FixDecl
               | IBCHeader String
               | IBCAccess Name Accessibility
               | IBCTotal Name Totality
+              | IBCFlags Name [FnOpt]
               | IBCDef Name -- i.e. main context
   deriving Show
 
 idrisInit = IState initContext [] [] emptyContext emptyContext emptyContext
-                   emptyContext emptyContext emptyContext emptyContext
+                   emptyContext emptyContext emptyContext emptyContext emptyContext
                    "" defaultOpts 6 [] [] [] [] [] [] [] [] 
                    Nothing Nothing Nothing [] [] [] Hidden [] Nothing
 
@@ -111,6 +113,9 @@ addLib f = do i <- get; put (i { idris_libs = f : idris_libs i })
 
 addHdr :: String -> Idris ()
 addHdr f = do i <- get; put (i { idris_hdrs = f : idris_hdrs i })
+
+setFlags :: Name -> [FnOpt] -> Idris ()
+setFlags n fs = do i <- get; put (i { idris_flags = addDef n fs (idris_flags i) }) 
 
 setAccessibility :: Name -> Accessibility -> Idris ()
 setAccessibility n a 
@@ -356,8 +361,11 @@ impl = Imp False Dynamic
 expl = Exp False Dynamic
 constraint = Constraint False Static
 
-data FnOpt = Inlinable | Abstract | Private | TCGen
+data FnOpt = Inlinable | TotalFn | TCGen
     deriving (Show, Eq)
+{-!
+deriving instance Binary FnOpt
+!-}
 
 type FnOpts = [FnOpt]
 
@@ -365,7 +373,7 @@ inlinable :: FnOpts -> Bool
 inlinable = elem Inlinable
 
 data PDecl' t = PFix     FC Fixity [String] -- fixity declaration
-              | PTy      SyntaxInfo FC Name t   -- type declaration
+              | PTy      SyntaxInfo FC FnOpts Name t   -- type declaration
               | PClauses FC FnOpts Name [PClause' t]   -- pattern clause
               | PData    SyntaxInfo FC (PData' t)      -- data declaration
               | PParams  FC [(Name, t)] [PDecl' t] -- params block
@@ -408,7 +416,7 @@ type PClause = PClause' PTerm
 
 declared :: PDecl -> [Name]
 declared (PFix _ _ _) = []
-declared (PTy _ _ n t) = [n]
+declared (PTy _ _ _ n t) = [n]
 declared (PClauses _ _ n _) = [] -- not a declaration
 declared (PData _ _ (PDatadecl n _ ts)) = n : map fstt ts
    where fstt (a, _, _) = a
@@ -635,7 +643,7 @@ instance Show PTerm where
 
 instance Show PDecl where
     show (PFix _ f ops) = show f ++ " " ++ showSep ", " ops
-    show (PTy _ _ n ty) = show n ++ " : " ++ show ty
+    show (PTy _ _ _ n ty) = show n ++ " : " ++ show ty
     show (PClauses _ _ n c) = showSep "\n" (map show c)
     show (PData _ _ d) = show d
 
@@ -926,10 +934,10 @@ expandParams dec ps ns tm = en tm
 
 expandParamsD :: IState -> 
                  (Name -> Name) -> [(Name, PTerm)] -> [Name] -> PDecl -> PDecl
-expandParamsD ist dec ps ns (PTy syn fc n ty) 
+expandParamsD ist dec ps ns (PTy syn fc o n ty) 
     = if n `elem` ns
-         then PTy syn fc (dec n) (piBind ps (expandParams dec ps ns ty))
-         else PTy syn fc n (expandParams dec ps ns ty)
+         then PTy syn fc o (dec n) (piBind ps (expandParams dec ps ns ty))
+         else PTy syn fc o n (expandParams dec ps ns ty)
 expandParamsD ist dec ps ns (PClauses fc opts n cs)
     = let n' = if n `elem` ns then dec n else n in
           PClauses fc opts n' (map expandParamsC cs)
@@ -1208,7 +1216,7 @@ dumpDecls [] = ""
 dumpDecls (d:ds) = dumpDecl d ++ "\n" ++ dumpDecls ds
 
 dumpDecl (PFix _ f ops) = show f ++ " " ++ showSep ", " ops 
-dumpDecl (PTy _ _ n t) = "tydecl " ++ show n ++ " : " ++ showImp True t
+dumpDecl (PTy _ _ _ n t) = "tydecl " ++ show n ++ " : " ++ showImp True t
 dumpDecl (PClauses _ _ n cs) = "pat " ++ show n ++ "\t" ++ showSep "\n\t" (map (showCImp True) cs)
 dumpDecl (PData _ _ d) = showDImp True d
 dumpDecl (PParams _ ns ps) = "params {" ++ show ns ++ "\n" ++ dumpDecls ps ++ "}\n"

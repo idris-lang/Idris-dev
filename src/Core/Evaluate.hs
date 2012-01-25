@@ -473,10 +473,17 @@ data Accessibility = Public | Frozen | Hidden
     deriving (Show, Eq)
 
 data Totality = Total | Partial PReason
-    deriving (Show, Eq)
+    deriving Eq
 
 data PReason = Other [Name] | Itself | NotCovering | NotPositive
     deriving (Show, Eq)
+
+instance Show Totality where
+    show Total = "Total"
+    show (Partial Itself) = "not total as it is not well founded"
+    show (Partial NotCovering) = "not total as there are missing cases"
+    show (Partial NotPositive) = "not strictly positive"
+    show (Partial (Other ns)) = "not total due to: " ++ showSep ", " (map show ns)
 
 {-!
 deriving instance Binary Accessibility

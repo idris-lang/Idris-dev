@@ -116,7 +116,8 @@ wellFounded i n sc = case wff [] sc of
     wff :: [Name] -> SC -> EitherErr [Name] [[Int]]
     wff ns (Case n as) = do is <- mapM (wffC ns) as
                             return $ concat is
-      where wffC ns (ConCase _ i ns' sc) = wff (ns ++ ns') sc
+      where wffC ns (ConCase n i ns' sc) = do checkOK n
+                                              wff (ns ++ ns') sc
             wffC ns (ConstCase _ sc) = wff ns sc
             wffC ns (DefaultCase sc) = wff ns sc
     wff ns (STerm t) = argPos ns t
@@ -148,4 +149,19 @@ wellFounded i n sc = case wff [] sc of
     chkArgs i ns (P _ n _ : xs) | n `elem` ns = i : chkArgs (i + 1) ns xs
     chkArgs i ns (_ : xs) = chkArgs (i+1) ns xs
 
+checkPositive :: Name -> (Name, Type) -> Idris ()
+checkPositive n (cn, ty) 
+    = do let p = cp ty
+         i <- getIState
+         let ctxt' = setTotal cn (if p then Total else Partial NotPositive) 
+                                 (tt_ctxt i)
+         putIState (i { tt_ctxt = ctxt' })
+  where
+    cp (Bind n (Pi aty) sc) = posArg aty && cp sc
+    cp t = True
+
+    posArg (Bind _ (Pi nty) sc)
+        | (P _ n' _, args) <- unApply nty
+            = n /= n' && posArg sc
+    posArg t = True
 

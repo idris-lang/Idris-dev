@@ -1,0 +1,2 @@
+#!/bin/bash
+idris test010.idr -o test010

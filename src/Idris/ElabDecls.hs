@@ -35,8 +35,8 @@ checkDef fc ns = do ctxt <- getContext
                     mapM (\(n, t) -> do (t', _) <- recheckC ctxt fc [] t
                                         return (n, t')) ns
 
-elabType :: ElabInfo -> SyntaxInfo -> FC -> Name -> PTerm -> Idris ()
-elabType info syn fc n ty' = {- let ty' = piBind (params info) ty_in 
+elabType :: ElabInfo -> SyntaxInfo -> FC -> FnOpts -> Name -> PTerm -> Idris ()
+elabType info syn fc opts n ty' = {- let ty' = piBind (params info) ty_in 
                                       n  = liftname info n_in in    -}
       do checkUndefined fc n
          ctxt <- getContext
@@ -52,6 +52,8 @@ elabType info syn fc n ty' = {- let ty' = piBind (params info) ty_in
          ds <- checkDef fc ((n, nty):defer)
          addIBC (IBCDef n)
          addDeferred ds
+         setFlags n opts
+         addIBC (IBCFlags n opts)
          mapM_ (elabCaseBlock info) is 
 
 elabData :: ElabInfo -> SyntaxInfo -> FC -> PData -> Idris ()
@@ -79,6 +81,7 @@ elabData info syn fc (PDatadecl n t_in dcons)
          addIBC (IBCData n)
          collapseCons n cons
          updateContext (addDatatype (Data n ttag cty cons))
+         mapM_ (checkPositive n) cons
 
 elabRecord :: ElabInfo -> SyntaxInfo -> FC -> Name -> 
               PTerm -> Name -> PTerm -> Idris ()
@@ -142,6 +145,13 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
                                              return Total
                     else do logLvl 2 $ show n ++ " does not cover all cases"
                             return $ Partial NotCovering
+         case lookupCtxt (namespace info) n (idris_flags ist) of 
+            [fs] -> if TotalFn `elem` fs 
+                      then case tot of
+                              Total -> return ()
+                              t -> tclift $ tfail (At fc (Msg (show n ++ " is " ++ show t)))
+                      else return ()
+            _ -> return ()
          case tree of
              CaseDef _ _ [] -> return ()
              CaseDef _ _ xs -> mapM_ (\x ->
@@ -199,8 +209,12 @@ elabClause info fc tcgen (PClause fname lhs_in [] PImpossible [])
                             (erun fc (buildTC i info True tcgen fname (infTerm lhs))) of
             OK ((lhs', _, _), _) ->
                do let lhs_tm = orderPats (getInferTerm lhs')
-                  checkInferred fc (delab' i lhs_tm True) lhs
-                  fail $ show fc ++ ":" ++ showImp True (delab' i lhs_tm True) ++ " is a possible case"
+--                   checkInferred fc (delab' i lhs_tm True) lhs
+                  b <- inferredDiff fc (delab' i lhs_tm True) lhs
+                  if b
+                    then return ()
+                    else fail $ show fc ++ ":" ++ showImp True (delab' i lhs_tm True) ++ 
+                                " is a possible case"
                                 ++ "\n" ++ showImp True lhs
             Error _ -> return ()
         return Nothing
@@ -419,10 +433,10 @@ elabClass info syn fc constraints tn ps ds
     conbind (ty : ns) x = PPi constraint (MN 0 "c") ty (conbind ns x)
     conbind [] x = x
 
-    tdecl (PTy syn _ n t) = do t' <- implicit syn n t
-                               return ( (n, (toExp (map fst ps) Exp t')),
-                                        (n, (toExp (map fst ps) Imp t')),
-                                        (n, (syn, t) ) )
+    tdecl (PTy syn _ _ n t) = do t' <- implicit syn n t
+                                 return ( (n, (toExp (map fst ps) Exp t')),
+                                          (n, (toExp (map fst ps) Imp t')),
+                                          (n, (syn, t) ) )
     tdecl _ = fail "Not allowed in a class declaration"
 
     -- Create default definitions 
@@ -430,7 +444,7 @@ elabClass info syn fc constraints tn ps ds
         case lookup n mtys of
             Just (syn, ty) -> do let ty' = insertConstraint c ty
                                  let ds = map (decorateid defaultdec)
-                                              [PTy syn fc n ty', 
+                                              [PTy syn fc [] n ty', 
                                                PClauses fc (TCGen:opts) n cs]
                                  iLOG (show ds)
                                  return (n, (defaultdec n, ds))
@@ -440,7 +454,7 @@ elabClass info syn fc constraints tn ps ds
     defaultdec (UN n) = UN ("default#" ++ n)
     defaultdec (NS n ns) = NS (defaultdec n) ns
 
-    tydecl (PTy _ _ _ _) = True
+    tydecl (PTy _ _ _ _ _) = True
     tydecl _ = False
     clause (PClauses _ _ _ _) = True
     clause _ = False
@@ -454,7 +468,7 @@ elabClass info syn fc constraints tn ps ds
              let ty = PPi constraint (MN 0 "pc") c con
              iLOG (showImp True ty)
              iLOG (showImp True lhs ++ " = " ++ showImp True rhs)
-             return [PTy syn fc cfn ty,
+             return [PTy syn fc [] cfn ty,
                      PClauses fc [Inlinable,TCGen] cfn [PClause cfn lhs [] rhs []]]
 
     tfun cn c syn all (m, ty) 
@@ -468,7 +482,7 @@ elabClass info syn fc constraints tn ps ds
              iLOG (showImp True ty)
              iLOG (show (m, ty', capp, margs))
              iLOG (showImp True lhs ++ " = " ++ showImp True rhs)
-             return [PTy syn fc m ty',
+             return [PTy syn fc [] m ty',
                      PClauses fc [Inlinable,TCGen] m [PClause m lhs [] rhs []]]
 
     getMArgs (PPi (Imp _ _) n ty sc) = IA : getMArgs sc
@@ -509,7 +523,7 @@ elabInstance info syn fc cs n ps t ds
                        [c] -> return c
                        _ -> fail $ show n ++ " is not a type class"
          let iname = UN ('@':show n ++ "$" ++ show ps)
-         elabType info syn fc iname t
+         elabType info syn fc [] iname t
          let ips = zip (class_params ci) ps
          let ns = case n of
                     NS n ns' -> ns'
@@ -549,7 +563,7 @@ elabInstance info syn fc cs n ps t ds
     decorate ns (UN n) = NS (UN ('!':n)) ns
     decorate ns (NS (UN n) s) = NS (UN ('!':n)) ns
 
-    mkTyDecl (n, t, _) = PTy syn fc n t
+    mkTyDecl (n, t, _) = PTy syn fc [] n t
 
     conbind (ty : ns) x = PPi constraint (MN 0 "c") ty (conbind ns x)
     conbind [] x = x
@@ -577,7 +591,7 @@ elabInstance info syn fc cs n ps t ds
     clauseFor m ns (PClauses _ _ m' _) = decorate ns m == decorate ns m'
     clauseFor m ns _ = False
 
-decorateid decorate (PTy s f n t) = PTy s f (decorate n) t
+decorateid decorate (PTy s f o n t) = PTy s f o (decorate n) t
 decorateid decorate (PClauses f o n cs) 
    = PClauses f o (decorate n) (map dc cs)
     where dc (PClause n t as w ds) = PClause (decorate n) (dappname t) as w ds
@@ -612,8 +626,8 @@ elabDecl info d = idrisCatch (elabDecl' info d)
 
 elabDecl' info (PFix _ _ _)      = return () -- nothing to elaborate
 elabDecl' info (PSyntax _ p) = return () -- nothing to elaborate
-elabDecl' info (PTy s f n ty)    = do iLOG $ "Elaborating type decl " ++ show n
-                                      elabType info s f n ty
+elabDecl' info (PTy s f o n ty)    = do iLOG $ "Elaborating type decl " ++ show n
+                                        elabType info s f o n ty
 elabDecl' info (PData s f d)     = do iLOG $ "Elaborating " ++ show (d_name d)
                                       elabData info s f d
 elabDecl' info d@(PClauses f o n ps) = do iLOG $ "Elaborating clause " ++ show n
@@ -666,4 +680,15 @@ checkInferred fc inf user =
                                     (Msg $ "The type-checked term and given term do not match: "
                                            ++ show x ++ " and " ++ show y)
 --                           ++ "\n" ++ showImp True inf ++ "\n" ++ showImp True user)
+
+-- Return whether inferred term is different from given term
+-- (as above, but return a Bool)
+
+inferredDiff :: FC -> PTerm -> PTerm -> Idris Bool
+inferredDiff fc inf user =
+     do logLvl 6 $ "Checked to\n" ++ showImp True inf ++ "\n" ++
+                                     showImp True user
+        tclift $ case matchClause' True user inf of 
+            Right vs -> return False
+            Left (x, y) -> return True
 
