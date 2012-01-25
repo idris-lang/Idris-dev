@@ -1,4 +1,5 @@
-{-# LANGUAGE MultiParamTypeClasses, FlexibleInstances, DeriveFunctor #-}
+{-# LANGUAGE MultiParamTypeClasses, FlexibleInstances, DeriveFunctor,
+             PatternGuards #-}
 
 module Idris.ElabDecls where
 
@@ -72,7 +73,7 @@ elabData info syn fc (PDatadecl n t_in dcons)
          (cty, _)  <- recheckC ctxt fc [] t'
          logLvl 2 $ "---> " ++ show cty
          updateContext (addTyDecl n cty) -- temporary, to check cons
-         cons <- mapM (elabCon info syn) dcons
+         cons <- mapM (elabCon info syn n) dcons
          ttag <- getName
          i <- get
          put (i { idris_datatypes = addDef n (TI (map fst cons)) 
@@ -88,8 +89,8 @@ elabRecord :: ElabInfo -> SyntaxInfo -> FC -> Name ->
 elabRecord info syn fc tyn ty cn cty
     = do elabData info syn fc (PDatadecl tyn ty [(cn, cty, fc)]) 
 
-elabCon :: ElabInfo -> SyntaxInfo -> (Name, PTerm, FC) -> Idris (Name, Type)
-elabCon info syn (n, t_in, fc)
+elabCon :: ElabInfo -> SyntaxInfo -> Name -> (Name, PTerm, FC) -> Idris (Name, Type)
+elabCon info syn tn (n, t_in, fc)
     = do checkUndefined fc n
          ctxt <- getContext
          i <- get
@@ -104,10 +105,17 @@ elabCon info syn (n, t_in, fc)
          mapM_ (elabCaseBlock info) is
          ctxt <- getContext
          (cty, _)  <- recheckC ctxt fc [] t'
+         tyIs cty
          logLvl 2 $ "---> " ++ show n ++ " : " ++ show cty
          addIBC (IBCDef n)
          forceArgs n cty
          return (n, cty)
+  where
+    tyIs (Bind n b sc) = tyIs sc
+    tyIs t | (P _ n' _, _) <- unApply t 
+        = if n' /= tn then tclift $ tfail (At fc (Msg (show n' ++ " is not " ++ show tn))) 
+             else return ()
+    tyIs t = tclift $ tfail (At fc (Msg (show t ++ " is not " ++ show tn)))
 
 elabClauses :: ElabInfo -> FC -> FnOpts -> Name -> [PClause] -> Idris ()
 elabClauses info fc opts n_in cs = let n = liftname info n_in in  
@@ -134,21 +142,13 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
          let tree@(CaseDef _ sc _) = simpleCase tcase pcover pdef
          ist <- get
          let wf = wellFounded ist n sc
-         tot <- if pcover 
-                    then case wf of
-                            Left ns -> do logLvl 2 $ show n ++ " not well founded due to " 
-                                                     ++ show ns
-                                          return $ Partial (Other ns)
-                            Right False -> do logLvl 2 $ show n ++ " not well founded"
-                                              return $ Partial Itself
-                            Right True -> do logLvl 2 $ show n ++ " well founded"
-                                             return Total
-                    else do logLvl 2 $ show n ++ " does not cover all cases"
-                            return $ Partial NotCovering
+         let tot = if pcover 
+                    then wf 
+                    else Partial NotCovering
          case lookupCtxt (namespace info) n (idris_flags ist) of 
             [fs] -> if TotalFn `elem` fs 
                       then case tot of
-                              Total -> return ()
+                              Total _ -> return ()
                               t -> tclift $ tfail (At fc (Msg (show n ++ " is " ++ show t)))
                       else return ()
             _ -> return ()

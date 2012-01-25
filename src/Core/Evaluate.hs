@@ -472,14 +472,15 @@ instance Binary (a -> b) where
 data Accessibility = Public | Frozen | Hidden
     deriving (Show, Eq)
 
-data Totality = Total | Partial PReason
+data Totality = Total [Int] -- well-founded arguments
+              | Partial PReason
     deriving Eq
 
-data PReason = Other [Name] | Itself | NotCovering | NotPositive
+data PReason = Other [Name] | Itself | NotCovering | NotPositive | UseUndef Name
     deriving (Show, Eq)
 
 instance Show Totality where
-    show Total = "Total"
+    show (Total args)= "Total, " ++ show args ++ " decreasing arguments"
     show (Partial Itself) = "not total as it is not well founded"
     show (Partial NotCovering) = "not total as there are missing cases"
     show (Partial NotPositive) = "not strictly positive"
@@ -511,7 +512,7 @@ veval ctxt env t = evalState (eval ctxt emptyContext env t []) ()
 addToCtxt :: Name -> Term -> Type -> Context -> Context
 addToCtxt n tm ty uctxt 
     = let ctxt = definitions uctxt 
-          ctxt' = addDef n (Function ty tm, Public, Total) ctxt in
+          ctxt' = addDef n (Function ty tm, Public, Total []) ctxt in
           uctxt { definitions = ctxt' } 
 
 setAccess :: Name -> Accessibility -> Context -> Context
@@ -528,13 +529,13 @@ setTotal n t uctxt
 
 addCtxtDef :: Name -> Def -> Context -> Context
 addCtxtDef n d c = let ctxt = definitions c
-                       ctxt' = addDef n (d, Public, Total) ctxt in
+                       ctxt' = addDef n (d, Public, Total []) ctxt in
                        c { definitions = ctxt' }
 
 addTyDecl :: Name -> Type -> Context -> Context
 addTyDecl n ty uctxt 
     = let ctxt = definitions uctxt
-          ctxt' = addDef n (TyDecl Ref ty, Public, Total) ctxt in
+          ctxt' = addDef n (TyDecl Ref ty, Public, Total []) ctxt in
           uctxt { definitions = ctxt' }
 
 addDatatype :: Datatype Name -> Context -> Context
@@ -542,14 +543,14 @@ addDatatype (Data n tag ty cons) uctxt
     = let ctxt = definitions uctxt 
           ty' = normalise uctxt [] ty
           ctxt' = addCons 0 cons (addDef n 
-                    (TyDecl (TCon tag (arity ty')) ty, Public, Total) ctxt) in
+                    (TyDecl (TCon tag (arity ty')) ty, Public, Total []) ctxt) in
           uctxt { definitions = ctxt' }
   where
     addCons tag [] ctxt = ctxt
     addCons tag ((n, ty) : cons) ctxt 
         = let ty' = normalise uctxt [] ty in
               addCons (tag+1) cons (addDef n
-                  (TyDecl (DCon tag (arity ty')) ty, Public, Total) ctxt)
+                  (TyDecl (DCon tag (arity ty')) ty, Public, Total []) ctxt)
 
 addCasedef :: Name -> Bool -> Bool -> Bool -> [(Term, Term)] -> [(Term, Term)] ->
               Type -> Context -> Context
@@ -561,7 +562,7 @@ addCasedef n alwaysInline tcase covering ps psrt ty uctxt
                     (CaseDef args sc _, CaseDef args' sc' _) -> 
                                        let inl = alwaysInline in
                                            addDef n (CaseOp inl ty ps args sc args' sc',
-                                                     Public, Total) ctxt in
+                                                     Public, Total []) ctxt in
           uctxt { definitions = ctxt' }
   where simpl [] = []
         simpl ((l,r) : xs) = (l, simplify uctxt [] r) : simpl xs
@@ -569,7 +570,7 @@ addCasedef n alwaysInline tcase covering ps psrt ty uctxt
 addOperator :: Name -> Type -> Int -> ([Value] -> Maybe Value) -> Context -> Context
 addOperator n ty a op uctxt
     = let ctxt = definitions uctxt 
-          ctxt' = addDef n (Operator ty a op, Public, Total) ctxt in
+          ctxt' = addDef n (Operator ty a op, Public, Total []) ctxt in
           uctxt { definitions = ctxt' }
 
 tfst (a, _, _) = a

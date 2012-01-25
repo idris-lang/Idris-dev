@@ -98,20 +98,22 @@ genAll i args = concatMap otherPats (nub args)
 upd p' p = p { getTm = p' }
 
 -- recursive calls are well-founded if one of their argument positions is
--- always decreasing.
+-- always decreasing. Return a list of arguments which are either not used
+-- recursively, or always decreasing recursively
 
 -- If we encounter a non-total name, we'll fail
 
-wellFounded :: IState -> Name -> SC -> Either [Name] Bool
+wellFounded :: IState -> Name -> SC -> Totality
 wellFounded i n sc = case wff [] sc of
                      RightOK smaller_args -> 
                        -- is there a number in every list?
                        -- trace (show (n, smaller_args)) $
                        case smaller_args of
-                            [] -> Right True
+                            [] -> Total []
                             (x : xs) -> let args = foldl intersect x xs in
-                                            Right $ not (null args)
-                     LeftErr x -> Left x 
+                                            if (null args) then Partial Itself
+                                                           else Total args
+                     LeftErr x -> Partial (Other x)
   where
     wff :: [Name] -> SC -> EitherErr [Name] [[Int]]
     wff ns (Case n as) = do is <- mapM (wffC ns) as
@@ -125,9 +127,8 @@ wellFounded i n sc = case wff [] sc of
 
     checkOK n' = case lookupTotal n' (tt_ctxt i) of
                     [Partial _] -> LeftErr [n']
-                    [Total] -> RightOK ()
+                    [Total _] -> RightOK ()
                     x -> RightOK ()
---     checkOK n = RightOK ()
 
     argPos ns ap@(App f' a')
         | (P _ f _, args) <- unApply ap 
@@ -153,10 +154,13 @@ checkPositive :: Name -> (Name, Type) -> Idris ()
 checkPositive n (cn, ty) 
     = do let p = cp ty
          i <- getIState
-         let ctxt' = setTotal cn (if p then Total else Partial NotPositive) 
-                                 (tt_ctxt i)
+         let tot = if p then Total (args ty) else Partial NotPositive
+         let ctxt' = setTotal cn tot (tt_ctxt i)
          putIState (i { tt_ctxt = ctxt' })
+         addIBC (IBCTotal cn tot)
   where
+    args t = [0..length (getArgTys t)-1]
+
     cp (Bind n (Pi aty) sc) = posArg aty && cp sc
     cp t = True
 
