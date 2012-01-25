@@ -110,6 +110,13 @@ split p xs = case break p xs of
                   (chunk, []) => [chunk]
                   (chunk, (c :: rest)) => chunk :: split p rest
 
+any : (a -> Bool) -> List a -> Bool
+any predicate [] = False
+any predicate (a::rest) =
+  if predicate a
+    then True
+    else any predicate rest
+
 --------------------------------------------------------------------------------
 -- Conversions
 --------------------------------------------------------------------------------
@@ -133,3 +140,24 @@ catMaybes (x::xs) =
     Nothing => catMaybes xs
     Just j  => j :: catMaybes xs
 
+--------------------------------------------------------------------------------
+-- Instances
+--------------------------------------------------------------------------------
+
+instance (Eq a) => Eq (List a) where
+  (==) [] [] = True
+  (==) (a::restA) (b::restB) =
+    if a == b
+      then restA == restB
+      else False
+  (==) _ _ = False
+
+
+instance Ord a => Ord (List a) where
+  compare [] [] = EQ
+  compare [] _ = LT
+  compare _ [] = GT
+  compare (a::restA) (b::restB) =
+    if a /= b
+      then compare a b
+      else compare restA restB

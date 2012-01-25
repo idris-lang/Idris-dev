@@ -165,9 +165,6 @@ syntax "[" [start] "," [next] ".." [end] "]"
 
 ---- More utilities
 
-flip : (a -> b -> c) -> b -> a -> c
-flip f x y = f y x
-
 sum : Num a => List a -> a
 sum = foldl (+) 0
 
