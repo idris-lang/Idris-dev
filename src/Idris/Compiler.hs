@@ -24,8 +24,9 @@ primDefs = [UN "mkForeign", UN "FalseElim"]
 compile :: FilePath -> Term -> Idris ()
 compile f tm
     = do checkMVs
-         used <- allNames [] (NS (UN "main") ["main"])
-         ds <- mkDecls tm ((UN "run__IO") : (UN "io_return") : used)
+         let tmnames = namesUsed (STerm tm)
+         used <- mapM (allNames []) tmnames
+         ds <- mkDecls tm (concat used)
          objs <- getObjectFiles
          libs <- getLibs
          hdrs <- getHdrs
