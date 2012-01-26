@@ -8,6 +8,7 @@ import prelude
 import io
 import system
 
+import prelude.algebra
 import prelude.cast
 import prelude.nat
 import prelude.fin

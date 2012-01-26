@@ -25,14 +25,14 @@ main = do print (natToBin 42)
 main.parity_lemma_2 = proof {
     intro;
     intro;
-    rewrite plusn_Sm j j;
+    rewrite sym (plusSuccRightSucc j j);
     trivial;
 };
 
 main.parity_lemma_1 = proof {
     intro j;
     intro;
-    rewrite plusn_Sm j j;
+    rewrite sym (plusSuccRightSucc j j);
     trivial;
 };
 

@@ -62,7 +62,7 @@ buildTC ist info pattern tcgen fn tm
 elab :: IState -> ElabInfo -> Bool -> Bool -> Name -> PTerm -> 
         ElabD ()
 elab ist info pattern tcgen fn tm 
-    = do elabE False tm
+    = do elabE (False, False) tm -- (in argument, guarded)
          when pattern -- convert remaining holes to pattern vars
               mkPat
          inj <- get_inj
@@ -108,9 +108,10 @@ elab ist info pattern tcgen fn tm
     elab' ina (PEq fc l r)   = elab' ina (PApp fc (PRef fc eqTy) [pimp (MN 0 "a") Placeholder,
                                                           pimp (MN 0 "b") Placeholder,
                                                           pexp l, pexp r])
-    elab' ina (PPair fc l r) = try (elabE True (PApp fc (PRef fc pairTy)
+    elab' ina@(_, a) (PPair fc l r) 
+                             = try (elabE (True, a) (PApp fc (PRef fc pairTy)
                                             [pexp l,pexp r]))
-                                   (elabE True (PApp fc (PRef fc pairCon)
+                                   (elabE (True, a) (PApp fc (PRef fc pairCon)
                                             [pimp (MN 0 "A") Placeholder,
                                              pimp (MN 0 "B") Placeholder,
                                              pexp l, pexp r]))
@@ -135,31 +136,37 @@ elab ist info pattern tcgen fn tm
                   (tryAll (zip (map (elab' ina) as) (map showHd as)))
         where showHd (PApp _ h _) = show h
               showHd x = show x
-    elab' ina (PRef fc n) | pattern && not (inparamBlock n)
+    elab' (ina, guarded) (PRef fc n) | pattern && not (inparamBlock n)
                          = do ctxt <- get_context
                               let iscon = isConName Nothing n ctxt
-                              if (not iscon && ina) then erun fc $ patvar n
-                                else try (do apply (Var n) []; solve)
-                                         (patvar n)
+                              let defined = case lookupTy Nothing n ctxt of
+                                                [] -> False
+                                                _ -> True
+                            -- this is to stop us resolve type classes recursively
+                              if (tcname n && ina) then erun fc $ patvar n
+                                else if (defined && not guarded)
+                                        then do apply (Var n) []; solve
+                                        else try (do apply (Var n) []; solve)
+                                                 (patvar n)
       where inparamBlock n = case lookupCtxtName Nothing n (inblock info) of
                                 [] -> False
                                 _ -> True
     elab' ina (PRef fc n) = erun fc $ do apply (Var n) []; solve
-    elab' ina (PLam n Placeholder sc)
-          = do attack; intro (Just n); elabE True sc; solve
-    elab' ina (PLam n ty sc)
+    elab' ina@(_, a) (PLam n Placeholder sc)
+          = do attack; intro (Just n); elabE (True, a) sc; solve
+    elab' ina@(_, a) (PLam n ty sc)
           = do tyn <- unique_hole (MN 0 "lamty")
                claim tyn RSet
                attack
                introTy (Var tyn) (Just n)
                -- end_unify
                focus tyn
-               elabE True ty
-               elabE True sc
+               elabE (True, a) ty
+               elabE (True, a) sc
                solve
-    elab' ina (PPi _ n Placeholder sc)
-          = do attack; arg n (MN 0 "ty"); elabE True sc; solve
-    elab' ina (PPi _ n ty sc) 
+    elab' ina@(_,a) (PPi _ n Placeholder sc)
+          = do attack; arg n (MN 0 "ty"); elabE (True, a) sc; solve
+    elab' ina@(_,a) (PPi _ n ty sc) 
           = do attack; tyn <- unique_hole (MN 0 "ty")
                claim tyn RSet
                n' <- case n of 
@@ -167,10 +174,10 @@ elab ist info pattern tcgen fn tm
                         _ -> return n
                forall n' (Var tyn)
                focus tyn
-               elabE True ty
-               elabE True sc
+               elabE (True, a) ty
+               elabE (True, a) sc
                solve
-    elab' ina (PLet n ty val sc)
+    elab' ina@(_,a) (PLet n ty val sc)
           = do attack;
                tyn <- unique_hole (MN 0 "letty")
                claim tyn RSet
@@ -180,10 +187,10 @@ elab ist info pattern tcgen fn tm
                case ty of
                    Placeholder -> return ()
                    _ -> do focus tyn
-                           elabE True ty
+                           elabE (True, a) ty
                focus valn
-               elabE True val
-               elabE True sc
+               elabE (True, a) val
+               elabE (True, a) sc
                solve
 --     elab' ina (PTyped val ty)
 --           = do tyn <- unique_hole (MN 0 "castty")
@@ -198,27 +205,29 @@ elab ist info pattern tcgen fn tm
 --        | [d] <- lookupCtxt Nothing dsl (idris_dsls ist)
 --                 = let dsl' = expandDo d (getTm arg) in
 --                       trace (show dsl') $ elab' ina dsl'
-    elab' ina (PApp fc (PRef _ f) args')
+    elab' (ina, g) (PApp fc (PRef _ f) args')
        = do let args = {- case lookupCtxt f (inblock info) of
                           Just ps -> (map (pexp . (PRef fc)) ps ++ args')
                           _ ->-} args'
             ivs <- get_instances
             -- HACK: we shouldn't resolve type classes if we're defining an instance
-            -- function or default defition.
+            -- function or default definition.
             let isinf = f == inferCon || tcname f
+            ctxt <- get_context
+            let guarded = isConName Nothing f ctxt
             try (do ns <- apply (Var f) (map isph args)
                     solve
                     let (ns', eargs) 
                          = unzip $
                              sortBy (\(_,x) (_,y) -> compare (priority x) (priority y))
                                     (zip ns args)
-                    try (elabArgs (ina || not isinf)
+                    try (elabArgs (ina || not isinf, guarded)
                              [] False ns' (map (\x -> (lazyarg x, getTm x)) eargs))
-                        (elabArgs (ina || not isinf)
+                        (elabArgs (ina || not isinf, guarded)
                              [] False (reverse ns') 
                                       (map (\x -> (lazyarg x, getTm x)) (reverse eargs))))
 --                 (try (do apply2 (Var f) (map (toElab' (ina || not isinf)) args)) 
-                     (do apply_elab f (map (toElab (ina || not isinf)) args)
+                     (do apply_elab f (map (toElab (ina || not isinf, guarded)) args)
                          solve)
             ivs' <- get_instances
             when (not pattern || (ina && not tcgen)) $
@@ -233,9 +242,9 @@ elab ist info pattern tcgen fn tm
       where tcArg (n, PConstraint _ _ Placeholder) = True
             tcArg _ = False
 
-    elab' a (PApp fc f [arg])
+    elab' ina@(_, a) (PApp fc f [arg])
           = erun fc $ 
-             do simple_app (elabE a f) (elabE True (getTm arg))
+             do simple_app (elabE ina f) (elabE (True, a) (getTm arg))
                 solve
     elab' ina Placeholder = do (h : hs) <- get_holes
                                movelast h
@@ -250,7 +259,7 @@ elab ist info pattern tcgen fn tm
         | not pattern = do mapM_ (runTac False ist) ts
         | otherwise = elab' ina Placeholder
     elab' ina (PElabError e) = fail e
-    elab' ina c@(PCase fc scr opts)
+    elab' ina@(_, a) c@(PCase fc scr opts)
         = do attack
              tyn <- unique_hole (MN 0 "scty")
              claim tyn RSet
@@ -259,7 +268,7 @@ elab ist info pattern tcgen fn tm
              claim valn (Var tyn)
              letbind scvn (Var tyn) (Var valn)
              focus valn
-             elabE True scr
+             elabE (True, a) scr
              args <- get_env
              cname <- unique_hole (mkCaseName fn)
              elab' ina (PMetavar cname)

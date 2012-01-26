@@ -44,13 +44,13 @@ reverse xs = revAcc [] xs where
 
 revAcc_lemma_2 = proof {
     intros;
-    rewrite sym (plusn_Sm n k);
+    rewrite plusSuccRightSucc n k;
     exact value;
 }
 
 revAcc_lemma_1 = proof {
     intros;
-    rewrite sym (plusnO n);
+    rewrite sym (plusZeroRightNeutral n);
     exact value;
 }
 
