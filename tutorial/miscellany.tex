@@ -1,10 +1,78 @@
 \section{Miscellany}
 
 In this section we discuss a variety of additional features: extensible syntax,
-literate programming, interfacing with external libraries through the
+auto implicit and default 
+arguments, literate programming, interfacing with external libraries through the
 foriegn function interface, and the universe hierarchy.
 
 \input{syntax}
+
+\subsection{Auto implicit arguments}
+
+We have already seen implicit arguments, which allows arguments to be omitted when
+they can be inferred by the type checker, e.g.
+
+\useverb{vlookupimpty}
+
+\noindent
+In other situations, it may be possible to infer arguments not by type checking but
+by searching the context for an appropriate value, or constructing a proof. For example,
+the following definition of \texttt{head} which requires a proof that the list is
+non-empty
+
+\begin{SaveVerbatim}{safehead}
+
+isCons : List a -> Bool
+isCons [] = False
+isCons (x :: xs) = True
+
+head : (xs : List a) -> (isCons xs = True) -> a
+head (x :: xs) _ = x
+
+\end{SaveVerbatim}
+\useverb{safehead} 
+
+\noindent
+If the list is statically known to be non-empty, either because its value is known or
+because a proof already exists in the context, the proof can be constructed
+automatically. Auto implicit arguments allow this to happen silently. We define
+\texttt{head} as follows:
+
+\begin{SaveVerbatim}{headauto}
+
+head : (xs : List a) -> {auto p : isCons xs = True} -> a
+head (x :: xs) = x
+
+\end{SaveVerbatim}
+\useverb{headauto} 
+
+\noindent
+The \texttt{auto} annotation on the implicit argument means that \Idris{} will
+attempt to fill in the implicit argument using the \texttt{trivial} tactic, which
+searches through the context for a proof, and tries to solve with \texttt{refl}
+if a proof is not found.
+Now when \texttt{head} is applied, the proof can be omitted. In the case that a proof
+is not found, it can be provided explicitly as normal:
+
+\begin{SaveVerbatim}{headapp}
+
+head xs {p = ?headProof} 
+
+\end{SaveVerbatim}
+\useverb{headapp} 
+
+\noindent
+More generally, we can fill in implicit arguments with a default value by annotating
+them with \texttt{default}. The definition above is equivalent to:
+
+\begin{SaveVerbatim}{defimp}
+
+head : (xs : List a) -> 
+       {default proof { trivial; } p : isCons xs = True} -> a
+head (x :: xs) = x
+
+\end{SaveVerbatim}
+\useverb{defimp} 
 
 \subsection{Literate programming}
 
