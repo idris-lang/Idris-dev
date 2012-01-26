@@ -1,4 +1,4 @@
-module MoreNat
+module prelude.nat
 
 import builtins
 
