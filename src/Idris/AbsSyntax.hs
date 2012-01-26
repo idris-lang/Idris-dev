@@ -358,6 +358,9 @@ data Plicity = Imp { plazy :: Bool,
                      pstatic :: Static }
              | Constraint { plazy :: Bool,
                             pstatic :: Static }
+             | TacImp { plazy :: Bool,
+                        pstatic :: Static,
+                        pscript :: PTerm }
   deriving (Show, Eq)
 
 {-!
@@ -367,6 +370,7 @@ deriving instance Binary Plicity
 impl = Imp False Dynamic
 expl = Exp False Dynamic
 constraint = Constraint False Static
+tacimpl = TacImp False Dynamic
 
 data FnOpt = Inlinable | TotalFn | TCGen
     deriving (Show, Eq)
@@ -544,6 +548,10 @@ data PArg' t = PImp { priority :: Int,
                       lazyarg :: Bool, getTm :: t }
              | PConstraint { priority :: Int,
                              lazyarg :: Bool, getTm :: t }
+             | PTacImplicit { priority :: Int,
+                              lazyarg :: Bool, pname :: Name, 
+                              getScript :: t,
+                              getTm :: t }
     deriving (Show, Eq, Functor)
 {-! 
 deriving instance Binary PArg' 
@@ -552,6 +560,7 @@ deriving instance Binary PArg'
 pimp = PImp 0 True
 pexp = PExp 0 False
 pconst = PConstraint 0 False
+ptacimp = PTacImplicit 0 True
 
 type PArg = PArg' PTerm
 
@@ -767,10 +776,12 @@ showImp impl tm = se 10 tm where
     sArg (PImp _ _ n tm) = siArg (n, tm)
     sArg (PExp _ _ tm) = seArg tm
     sArg (PConstraint _ _ tm) = scArg tm
+    sArg (PTacImplicit _ _ n _ tm) = stiArg (n, tm)
 
     seArg arg      = " " ++ se 0 arg
     siArg (n, val) = " {" ++ show n ++ " = " ++ se 10 val ++ "}"
     scArg val = " {{" ++ se 10 val ++ "}}"
+    stiArg (n, val) = " {auto " ++ show n ++ " = " ++ se 10 val ++ "}"
 
     bracket outer inner str | inner > outer = "(" ++ str ++ ")"
                             | otherwise = str
@@ -1063,6 +1074,14 @@ implicitise syn ist tm
              put (PConstraint 10 l ty : decls, 
                   nub (ns ++ (isn `dropAll` (env ++ map fst (getImps decls)))))
              imps True (n:env) sc
+    imps top env (PPi (TacImp l _ scr) n ty sc)
+        = do let isn = nub (namesIn uvars ist ty ++ case sc of
+                            (PRef _ x) -> namesIn uvars ist sc `dropAll` [n]
+                            _ -> [])
+             (decls, ns) <- get -- ignore decls in HO types
+             put (PTacImplicit 10 l n scr ty : decls, 
+                  nub (ns ++ (isn `dropAll` (env ++ map fst (getImps decls)))))
+             imps True (n:env) sc
     imps top env (PEq _ l r)
         = do (decls, ns) <- get
              let isn = namesIn uvars ist l ++ namesIn uvars ist r
@@ -1171,6 +1190,11 @@ aiFn ist fc f as
         case find n given [] of
             Just (tm, given') -> PImp p l n tm : insertImpl ps given'
             Nothing ->           PImp p l n Placeholder : insertImpl ps given
+    insertImpl (PTacImplicit p l n sc ty : ps) given =
+        case find n given [] of
+            Just (tm, given') -> PTacImplicit p l n sc tm : insertImpl ps given'
+            Nothing ->           PTacImplicit p l n sc sc
+                                    : insertImpl ps given
     insertImpl expected [] = []
     insertImpl _        given  = given
 

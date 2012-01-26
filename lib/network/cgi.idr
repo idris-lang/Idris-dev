@@ -116,7 +116,7 @@ getVars seps query = mapMaybe readVar (split (\x => elem x seps) query)
 getContent : Int -> IO String
 getContent x = getC x "" where
     getC : Int -> String -> IO String
-    getC 0 acc = return $ rev acc
+    getC 0 acc = return $ reverse acc
     getC n acc = do x <- getChar
                     getC (n-1) (strCons x acc)
 

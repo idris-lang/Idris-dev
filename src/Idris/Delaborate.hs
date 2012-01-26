@@ -61,6 +61,7 @@ delab' ist tm fullname = de [] tm
     imp (PImp p l n _) arg = PImp p l n arg
     imp (PExp p l _)   arg = PExp p l arg
     imp (PConstraint p l _) arg = PConstraint p l arg
+    imp (PTacImplicit p l n sc _) arg = PTacImplicit p l n sc arg
 
 pshow :: IState -> Err -> String
 pshow i (Msg s) = s

@@ -246,7 +246,9 @@ elab ist info pattern tcgen fn tm
                         Just xs@(_:_) -> NS n xs
                         _ -> n
     elab' ina (PProof ts) = do mapM_ (runTac True ist) ts
-    elab' ina (PTactics ts) = do mapM_ (runTac False ist) ts
+    elab' ina (PTactics ts) 
+        | not pattern = do mapM_ (runTac False ist) ts
+        | otherwise = elab' ina Placeholder
     elab' ina (PElabError e) = fail e
     elab' ina c@(PCase fc scr opts)
         = do attack

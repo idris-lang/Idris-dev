@@ -19,7 +19,7 @@ import Debug.Trace
 -- This will only work after the given clauses have been typechecked and the
 -- names are fully explicit!
 
-genClauses :: FC -> Name -> [Term] -> [PClause] -> Idris [PClause]
+genClauses :: FC -> Name -> [Term] -> [PClause] -> Idris [PTerm]
 genClauses fc n xs given
    = do i <- getIState
         let lhss = map (getLHS i) xs
@@ -34,7 +34,8 @@ genClauses fc n xs given
                         _ -> repeat (pexp Placeholder)
         let new = mnub i $ filter (noMatch i) $ mkClauses parg all_args
         logLvl 7 $ "New clauses: \n" ++ showSep "\n" (map (showImp True) new)
-        return (map (\t -> PClause n t [] PImpossible []) new)
+        return new
+--         return (map (\t -> PClause n t [] PImpossible []) new)
   where getLHS i term 
             | (f, args) <- unApply term = map (\t -> delab' i t True) args
             | otherwise = []

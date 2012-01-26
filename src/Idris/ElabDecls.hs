@@ -131,12 +131,10 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
          cov <- coverage
          pcover <-
                  if cov  
-                    then idrisCatch 
-                            (do missing <- genClauses fc n (map fst pdef) cs
-                                mapM_ (elabClause info fc True) missing
-                                return True)
-                            (\c -> do -- iputStrLn $ "Warning: " ++ show c
-                                      return False)
+                    then do missing <- genClauses fc n (map fst pdef) cs
+                            missing' <- filterM (checkPossible info fc True n) missing
+                            logLvl 5 $ "Must be unreachable: " ++ show missing' ++ " from " ++ show missing
+                            return (null missing')
                     else return False
          pdef' <- applyOpts pdef 
          let tree@(CaseDef _ sc _) = simpleCase tcase pcover pdef
@@ -207,25 +205,26 @@ elabVal info aspat tm_in
         logLvl 2 (show vtm)
         recheckC ctxt (FC "prompt" 0) [] vtm
 
-elabClause :: ElabInfo -> FC -> Bool -> PClause -> Idris (Maybe (Term, Term))
-elabClause info fc tcgen (PClause fname lhs_in [] PImpossible [])
+checkPossible :: ElabInfo -> FC -> Bool -> Name -> PTerm -> Idris Bool
+checkPossible info fc tcgen fname lhs_in
    = do ctxt <- getContext
         i <- get
         let lhs = addImpl i lhs_in
-        -- if the LHS type checks, it is possible, so report an error
+        -- if the LHS type checks, it is possible
         case elaborate ctxt (MN 0 "patLHS") infP []
                             (erun fc (buildTC i info True tcgen fname (infTerm lhs))) of
             OK ((lhs', _, _), _) ->
                do let lhs_tm = orderPats (getInferTerm lhs')
---                   checkInferred fc (delab' i lhs_tm True) lhs
                   b <- inferredDiff fc (delab' i lhs_tm True) lhs
-                  if b
-                    then return ()
-                    else fail $ show fc ++ ":" ++ showImp True (delab' i lhs_tm True) ++ 
-                                " is a possible case"
-                                ++ "\n" ++ showImp True lhs
-            Error _ -> return ()
-        return Nothing
+                  return (not b)
+--                   trace (show (delab' i lhs_tm True) ++ "\n" ++ show lhs) $ return (not b)
+            Error _ -> return False
+
+elabClause :: ElabInfo -> FC -> Bool -> PClause -> Idris (Maybe (Term, Term))
+elabClause info fc tcgen (PClause fname lhs_in [] PImpossible [])
+   = do b <- checkPossible info fc tcgen fname lhs_in
+        if b then fail $ show fc ++ ":" ++ show lhs_in ++ " is a possible case"
+             else return Nothing
 elabClause info fc tcgen (PClause fname lhs_in withs rhs_in whereblock) 
    = do ctxt <- getContext
         -- Build the LHS as an "Infer", and pull out its type and

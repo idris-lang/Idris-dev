@@ -806,6 +806,17 @@ pPi syn =
              symbol "->"
              sc <- pExpr syn
              return (bindList (PPi (Imp lazy st)) xt sc))
+ <|> try (do lchar '{'; reserved "auto"
+             xt <- tyDeclList syn; lchar '}'
+             symbol "->"
+             sc <- pExpr syn
+             return (bindList (PPi (TacImp False Dynamic (PTactics [Trivial]))) xt sc))
+ <|> try (do lchar '{'; reserved "default"
+             script <- pSimpleExpr syn 
+             xt <- tyDeclList syn; lchar '}'
+             symbol "->"
+             sc <- pExpr syn
+             return (bindList (PPi (TacImp False Dynamic script)) xt sc))
       <|> do --lazy <- option False (do lchar '|'; return True)
              lchar '{'; reserved "static"; lchar '}'
              t <- pExpr' syn
