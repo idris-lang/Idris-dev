@@ -69,18 +69,18 @@ on the first argument to \texttt{plus}, namely \texttt{n}.
 
 plusReducesO : (n:Nat) -> n = plus n O
 plusReducesO O = refl
-plusReducesO (S k) = eqRespS (plusReducesO k)
+plusReducesO (S k) = cong (plusReducesO k)
 
 \end{SaveVerbatim}
 \useverb{plusRedO}
 
 \noindent
-\texttt{eqRespS} is a function defined in the library which states that
-equality respects successor:
+\texttt{cong} is a function defined in the library which states that
+equality respects function application:
 
 \begin{SaveVerbatim}{resps}
 
-eqRespS : m = n -> S m = S n
+cong : {f : t -> u} -> a = b -> f a = f b
 
 \end{SaveVerbatim}
 \useverb{resps}
@@ -92,7 +92,7 @@ We can do the same for the reduction behaviour of plus on successors:
 
 plusReducesS : (n:Nat) -> (m:Nat) -> S (plus n m) = plus n (S m)
 plusReducesS O m = refl
-plusReducesS (S k) m = eqRespS (plusReducesS k m)
+plusReducesS (S k) m = cong (plusReducesS k m)
 
 \end{SaveVerbatim}
 \useverb{plusRedS}

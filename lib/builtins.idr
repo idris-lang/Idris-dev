@@ -51,6 +51,9 @@ infixr 1 $
 ($) : (a -> b) -> a -> b
 f $ a = f a
 
+cong : {f : t -> u} -> (a = b) -> f a = f b
+cong refl = refl
+
 data Bool = False | True
 
 boolElim : (x:Bool) -> |(t : a) -> |(f : a) -> a 

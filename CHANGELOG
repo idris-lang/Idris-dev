@@ -1,6 +1,8 @@
 New in 0.9.1:
 
 * dsl notation
+* faster compilation (only compiling names which are used)
+* auto implicits and default argument values {auto n : T}, {default val n : T}
 
 0.1.x to 0.9.0:
 

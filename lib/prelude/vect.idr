@@ -5,7 +5,7 @@ import prelude.fin
 
 %access public
 
-infixr 7 :: 
+infixr 10 :: 
 
 data Vect : Set -> Nat -> Set where
     Nil   : Vect a O
@@ -20,9 +20,9 @@ lookup (fS k) (x :: xs) = lookup k xs
 lookup fO      [] impossible
 lookup (fS _)  [] impossible
  
-app : Vect a n -> Vect a m -> Vect a (n + m)
-app []        ys = ys
-app (x :: xs) ys = x :: app xs ys
+(++) : Vect a n -> Vect a m -> Vect a (n + m)
+(++) []        ys = ys
+(++) (x :: xs) ys = x :: xs ++ ys
 
 filter : (a -> Bool) -> Vect a n -> (p ** Vect a p)
 filter p [] = ( _ ** [] )

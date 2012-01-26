@@ -10,7 +10,7 @@ insert x (Node l v r) = if (x < v) then (Node (insert x l) v r)
 
 toList : BTree a -> List a
 toList Leaf = []
-toList (Node l v r) = app (toList l) (v :: toList r)
+toList (Node l v r) = toList l ++ (v :: toList r)
 
 toTree : Ord a => List a -> BTree a
 toTree [] = Leaf

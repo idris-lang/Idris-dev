@@ -194,8 +194,8 @@ accumulates the new, reversed list, and which does not need to be visible global
 
 \begin{SaveVerbatim}{revwhere}
 
-rev : List a -> List a
-rev xs = revAcc [] xs where
+reverse : List a -> List a
+reverse xs = revAcc [] xs where
   revAcc : List a -> List a -> List a
   revAcc acc [] = acc
   revAcc acc (x :: xs) = revAcc (x :: acc) xs
@@ -217,8 +217,8 @@ behaviour, the \texttt{a} can be brought into scope as follows:
 
 \begin{SaveVerbatim}{revwhereb}
 
-rev : List a -> List a
-rev {a} xs = revAcc [] xs where
+reverse : List a -> List a
+reverse {a} xs = revAcc [] xs where
   revAcc : List a -> List a -> List a
   ...
 
@@ -262,14 +262,14 @@ combine to make a vector of length \texttt{S k}.
 We can define functions on dependent types such as \tTC{Vect} in the same way
 as on simple types such as \tTC{List} and \tTC{Nat} above, by pattern matching.
 The type of a function over \tTC{Vect} will describe what happens to the
-lengths of the vectors involved. For example, \tFN{app}, defined in the
+lengths of the vectors involved. For example, \tFN{++}, defined in the
 library, appends two \tTC{Vect}s:
 
 \begin{SaveVerbatim}{vapp}
 
-app : Vect A n -> Vect A m -> Vect A (n + m)
-app Nil       ys = ys
-app (x :: xs) ys = x :: app xs ys
+(++) : Vect A n -> Vect A m -> Vect A (n + m)
+(++) Nil       ys = ys
+(++) (x :: xs) ys = x :: xs ++ ys
 
 \end{SaveVerbatim}
 \useverb{vapp}
@@ -281,17 +281,20 @@ not hold, \Idris{} will not accept the definition. For example:
 
 \begin{SaveVerbatim}{vapperr}
 
-app : Vect a n -> Vect a m -> Vect a (n + m)
-app Nil       ys = ys
-app (x :: xs) ys = x :: app xs xs -- BROKEN
+(++) : Vect a n -> Vect a m -> Vect a (n + m)
+(++) Nil       ys = ys
+(++) (x :: xs) ys = x :: xs ++ xs -- BROKEN
 
 \end{SaveVerbatim}
 \useverb{vapperr}
 
 \begin{SaveVerbatim}{vapperrmsg}
 
-$ idris vbroken.idr --check 
+$ idris vbroken.idr --check
 vbroken.idr:3:Can't unify Vect a (S (plus k k)) with Vect a (S (plus k m))
+
+Specifically:
+	 Can't unify k with m
 
 \end{SaveVerbatim}
 \begin{SaveVerbatim}{bleh}

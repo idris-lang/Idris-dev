@@ -1,8 +1,8 @@
 module letbind
 
 mirror : List a -> List a
-mirror xs = let xs' = rev xs in
-                app xs xs'
+mirror xs = let xs' = reverse xs in
+                xs ++ xs'
 
 data Person = MkPerson String Int
 

@@ -128,7 +128,9 @@ the prelude:
 
 \begin{SaveVerbatim}{plusnsm}
 
-plusn_Sm : (n : Nat) -> (m : Nat) -> (plus n (S m)) = S (plus n m)
+plusSuccRightSucc : (left : Nat) -> (right : Nat) ->
+  S (plus left right) = plus left (S right)
+
 
 \end{SaveVerbatim}
 \useverb{plusnsm}
@@ -149,11 +151,12 @@ After applying \texttt{intro} twice, we have:
 \useverb{prolemii}
 
 \noindent
-Then we apply the \texttt{plusn\_Sm} function to \texttt{j} and \texttt{j}, giving:
+Then we apply the \texttt{plusSuccRightSucc} rewrite rule, symmetrically,
+to \texttt{j} and \texttt{j}, giving:
 
 \begin{SaveVerbatim}{prolemr}
 
--views.parity_lemma_1> rewrite plusn_Sm j j 
+-views.parity_lemma_1> rewrite sym (plusSuccRightSucc j j) 
  
   j : Nat
   value : Parity (S (plus j (S j)))
@@ -162,6 +165,17 @@ Then we apply the \texttt{plusn\_Sm} function to \texttt{j} and \texttt{j}, givi
 
 \end{SaveVerbatim}
 \useverb{prolemr}
+
+\noindent
+\texttt{sym} is a function, defined in the library, which reverses the order of the rewrite:
+
+\begin{SaveVerbatim}{sym}
+
+sym : l = r -> r = l
+sym refl = refl
+
+\end{SaveVerbatim}
+\useverb{sym} 
 
 \noindent
 We can complete this proof using the \texttt{trivial} tactic, which finds 
@@ -268,7 +282,7 @@ the proof proceeds in the same way:
 natToBin_lemma_1 = proof {
     intro;
     intro;
-    rewrite plusn_Sm j j;
+    rewrite sym (plusSuccRightSucc j j);
     trivial;
 }
 

@@ -41,21 +41,21 @@ main = do putStr "Enter a number: "
 natToBin_lemma_1 = proof {
     intro;
     intro;
-    rewrite plusn_Sm j j;
+    rewrite sym (plusSuccRightSucc j j);
     trivial;
 }
 
 parity_lemma_2 = proof {
     intro;
     intro;
-    rewrite plusn_Sm j j;
+    rewrite sym (plusSuccRightSucc j j);
     trivial;
 }
 
 parity_lemma_1 = proof {
     intro j;
     intro;
-    rewrite plusn_Sm j j;
+    rewrite sym (plusSuccRightSucc j j);
     trivial;
 }
 

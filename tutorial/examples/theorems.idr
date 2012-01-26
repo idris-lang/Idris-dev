@@ -10,11 +10,11 @@ plusReduces n = refl
 
 plusReducesO : (n:Nat) -> n = plus n O
 plusReducesO O = refl
-plusReducesO (S k) = eqRespS (plusReducesO k)
+plusReducesO (S k) = cong (plusReducesO k)
 
 plusReducesS : (n:Nat) -> (m:Nat) -> S (plus n m) = plus n (S m)
 plusReducesS O m = refl
-plusReducesS (S k) m = eqRespS (plusReducesS k m)
+plusReducesS (S k) m = cong (plusReducesS k m)
 
 plusReducesO' : (n:Nat) -> n = plus n O
 plusReducesO' O     = ?plusredO_O

@@ -23,14 +23,14 @@ natToBin k with (parity k)
 views.parity_lemma_2 = proof {
     intro;
     intro;
-    rewrite plusn_Sm j j;
+    rewrite sym (plusSuccRightSucc j j);
     trivial;
 }
 
 views.parity_lemma_1 = proof {
     intro;
     intro;
-    rewrite plusn_Sm j j;
+    rewrite sym (plusSuccRightSucc j j);
     trivial;
 }
 
