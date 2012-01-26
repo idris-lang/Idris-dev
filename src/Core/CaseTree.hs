@@ -1,9 +1,10 @@
 module Core.CaseTree(CaseDef(..), SC(..), CaseAlt(..), CaseTree,
-                     simpleCase, small) where
+                     simpleCase, small, namesUsed) where
 
 import Core.TT
 
 import Control.Monad.State
+import Data.List hiding (partition)
 import Debug.Trace
 
 data CaseDef = CaseDef [Name] SC [Term]
@@ -33,6 +34,23 @@ type CS = ([Term], Int)
 small :: SC -> Bool
 -- small (STerm t) = True
 small _ = False
+
+namesUsed :: SC -> [Name]
+namesUsed sc = nub $ nu' [] sc where
+    nu' ps (Case n alts) = concatMap (nua ps) alts
+    nu' ps (STerm t)     = nut ps t
+    nu' ps _ = []
+
+    nua ps (ConCase n i args sc) = nu' (ps ++ args) sc
+    nua ps (ConstCase _ sc) = nu' ps sc
+    nua ps (DefaultCase sc) = nu' ps sc
+
+    nut ps (P _ n _) | n `elem` ps = []
+                     | otherwise = [n]
+    nut ps (App f a) = nut ps f ++ nut ps a
+    nut ps (Bind n (Let t v) sc) = nut ps v ++ nut (n:ps) sc
+    nut ps (Bind n b sc) = nut (n:ps) sc
+    nut ps _ = []
 
 simpleCase :: Bool -> Bool -> [(Term, Term)] -> CaseDef
 simpleCase tc cover [] 

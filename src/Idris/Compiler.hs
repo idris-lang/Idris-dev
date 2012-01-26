@@ -24,7 +24,8 @@ primDefs = [UN "mkForeign", UN "FalseElim"]
 compile :: FilePath -> Term -> Idris ()
 compile f tm
     = do checkMVs
-         ds <- mkDecls tm
+         used <- allNames [] (NS (UN "main") ["main"])
+         ds <- mkDecls tm ((UN "run__IO") : (UN "io_return") : used)
          objs <- getObjectFiles
          libs <- getLibs
          hdrs <- getHdrs
@@ -42,10 +43,20 @@ compile f tm
                             [] -> return ()
                             ms -> fail $ "There are undefined metavariables: " ++ show ms
 
-mkDecls :: Term -> Idris [EpicDecl]
-mkDecls t = do i <- getIState
-               decls <- mapM build (ctxtAlist (tt_ctxt i))
-               return $ basic_defs ++ decls
+allNames :: [Name] -> Name -> Idris [Name]
+allNames ns n | n `elem` ns = return []
+allNames ns n = do i <- get
+                   case lookupCtxt Nothing n (idris_callgraph i) of
+                      [ns'] -> do more <- mapM (allNames (n:ns)) ns' 
+                                  return (nub (n : concat more))
+                      _ -> return [n]
+
+mkDecls :: Term -> [Name] -> Idris [EpicDecl]
+mkDecls t used
+    = do i <- getIState
+         let ds = filter (\ (n, d) -> n `elem` used) $ ctxtAlist (tt_ctxt i)
+         decls <- mapM build ds
+         return $ basic_defs ++ decls
              
 -- EpicFn (name "main") epicMain : decls
 

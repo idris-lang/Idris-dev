@@ -11,9 +11,9 @@ Literate main program
 > main = do { putStrLn (show (strHead st))
 >             putStrLn (show (strIndex st 3))
 >             putStrLn (strCons 'z' st)
->             putStrLn (rev st) 
+>             putStrLn (reverse st) 
 >             let x = unpack st
->             putStrLn (show (rev x))
+>             putStrLn (show (reverse x))
 >             putStrLn (pack x)
 >           }
 

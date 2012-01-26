@@ -45,6 +45,7 @@ data IState = IState { tt_ctxt :: Context,
                        idris_datatypes :: Ctxt TypeInfo,
                        idris_patdefs :: Ctxt [(Term, Term)], -- not exported
                        idris_flags :: Ctxt [FnOpt],
+                       idris_callgraph :: Ctxt [Name],
                        idris_log :: String,
                        idris_options :: IOption,
                        idris_name :: Int,
@@ -84,11 +85,13 @@ data IBCWrite = IBCFix FixDecl
               | IBCAccess Name Accessibility
               | IBCTotal Name Totality
               | IBCFlags Name [FnOpt]
+              | IBCCG Name
               | IBCDef Name -- i.e. main context
   deriving Show
 
 idrisInit = IState initContext [] [] emptyContext emptyContext emptyContext
-                   emptyContext emptyContext emptyContext emptyContext emptyContext
+                   emptyContext emptyContext emptyContext emptyContext 
+                   emptyContext emptyContext
                    "" defaultOpts 6 [] [] [] [] [] [] [] [] 
                    Nothing Nothing Nothing [] [] [] Hidden [] Nothing
 
@@ -128,6 +131,10 @@ setTotality n a
          = do i <- get
               let ctxt = setTotal n a (tt_ctxt i)
               put (i { tt_ctxt = ctxt })
+
+addToCG :: Name -> [Name] -> Idris ()
+addToCG n ns = do i <- get
+                  put (i { idris_callgraph = addDef n ns (idris_callgraph i) })
 
 addIBC :: IBCWrite -> Idris ()
 addIBC ibc@(IBCDef n) 

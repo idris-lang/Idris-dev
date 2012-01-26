@@ -243,8 +243,8 @@ strCons = prim__strCons
 strIndex : String -> Int -> Char
 strIndex = prim__strIndex
 
-rev : String -> String
-rev = prim__strRev
+reverse : String -> String
+reverse = prim__strRev
 
 }
 

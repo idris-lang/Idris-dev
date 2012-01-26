@@ -60,5 +60,5 @@ ltrim xs with (strM xs)
         = if (isSpace x) then (ltrim xs) else (strCons x xs)
 
 trim : String -> String
-trim xs = ltrim (rev (ltrim (rev xs)))
+trim xs = ltrim (reverse (ltrim (reverse xs)))
 
