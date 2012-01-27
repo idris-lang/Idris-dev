@@ -535,6 +535,7 @@ pSimpleExtExpr syn = do i <- getState
 
 pNoExtExpr syn =
          try (pApp syn) 
+     <|> pRecordSet syn
      <|> try (pSimpleExpr syn)
      <|> pLambda syn
      <|> pLet syn
@@ -760,6 +761,28 @@ pImplicitArg syn = do lchar '{'; n <- pName
 
 pConstraintArg syn = do symbol "@{"; e <- pExpr syn; symbol "}"
                         return (pconst e)
+
+pRecordSet syn 
+    = do lchar '{'
+         fields <- sepBy1 pFieldSet (lchar ',')
+         lchar '}'
+         fc <- pfc
+         rec <- option Nothing (do e <- pSimpleExpr syn; return (Just e))
+         case rec of
+            Nothing ->
+                return (PLam (MN 0 "fldx") Placeholder
+                            (applyAll fc fields (PRef fc (MN 0 "fldx"))))
+            Just v -> return (applyAll fc fields v)
+   where pFieldSet = do n <- pfName; lchar '='
+                        e <- pExpr syn
+                        return (n, e)
+         applyAll fc [] x = x
+         applyAll fc ((n, e) : es) x
+            = applyAll fc es (PApp fc (PRef fc (mkSet n)) [pexp e, pexp x])
+                        
+         mkSet (UN n) = UN ("set_" ++ n)
+         mkSet (MN 0 n) = MN 0 ("set_" ++ n)
+         mkSet (NS n s) = NS (mkSet n) s
 
 pTSig syn = do lchar ':'
                cs <- pConstList syn

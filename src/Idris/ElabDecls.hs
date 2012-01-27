@@ -133,7 +133,7 @@ elabRecord info syn fc tyn ty cn cty
 
     mkSet (UN n) = UN ("set_" ++ n)
     mkSet (MN 0 n) = MN 0 ("set_" ++ n)
-    mkSet (NS n s) = NS (mkImp n) s
+    mkSet (NS n s) = NS (mkSet n) s
 
     mkProj recty substs cimp ((pn, pty), pos)
         = do let pfnTy = PTy defaultSyntax fc [] pn
