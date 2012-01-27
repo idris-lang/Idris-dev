@@ -284,7 +284,7 @@ elabClause info fc tcgen (PClause fname lhs_in withs rhs_in whereblock)
         -- Build the LHS as an "Infer", and pull out its type and
         -- pattern bindings
         i <- get
-        let lhs = addImpl i lhs_in
+        let lhs = addImplPat i lhs_in
         logLvl 5 ("LHS: " ++ showImp True lhs)
         ((lhs', dlhs, []), _) <- 
             tclift $ elaborate ctxt (MN 0 "patLHS") infP []
@@ -306,8 +306,8 @@ elabClause info fc tcgen (PClause fname lhs_in withs rhs_in whereblock)
         -- Now build the RHS, using the type of the LHS as the goal.
         i <- get -- new implicits from where block
         logLvl 5 (showImp True (expandParams decorate newargs decls rhs_in))
-        let rhs = addImpl i (expandParams decorate newargs decls rhs_in)
-                        -- TODO: but don't do names in scope
+        let rhs = addImplBound i (map fst newargs) 
+                                 (expandParams decorate newargs decls rhs_in)
         logLvl 2 (showImp True rhs)
         ctxt <- getContext -- new context with where block added
         ((rhs', defer, is), _) <- 

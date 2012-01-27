@@ -1118,12 +1118,25 @@ implicitise syn ist tm
             Nothing -> PPi (Imp False Dynamic) n Placeholder (pibind using ns sc)
 
 -- Add implicit arguments in function calls
+addImplPat :: IState -> PTerm -> PTerm
+addImplPat = addImpl' True []
+
+addImplBound :: IState -> [Name] -> PTerm -> PTerm
+addImplBound ist ns = addImpl' False ns ist
 
 addImpl :: IState -> PTerm -> PTerm
-addImpl ist ptm = ai [] ptm
+addImpl = addImpl' False []
+
+-- TODO: in patterns, don't add implicits to function names guarded by constructors
+-- and *not* inside a PHidden
+
+addImpl' :: Bool -> [Name] -> IState -> PTerm -> PTerm
+addImpl' inpat env ist ptm = ai env ptm
   where
     ai env (PRef fc f)    
-        | not (f `elem` env) = aiFn ist fc f []
+        | not (f `elem` env) = aiFn inpat ist fc f []
+    ai env (PHidden (PRef fc f))
+        | not (f `elem` env) = aiFn False ist fc f []
     ai env (PEq fc l r)   = let l' = ai env l
                                 r' = ai env r in
                                 PEq fc l' r'
@@ -1142,7 +1155,7 @@ addImpl ist ptm = ai [] ptm
     ai env (PApp fc (PRef _ f) as) 
         | not (f `elem` env)
                           = let as' = map (fmap (ai env)) as in
-                                aiFn ist fc f as'
+                                aiFn False ist fc f as'
     ai env (PApp fc f as) = let f' = ai env f
                                 as' = map (fmap (ai env)) as in
                                 mkPApp fc 1 f' as'
@@ -1165,10 +1178,21 @@ addImpl ist ptm = ai [] ptm
     ai env (PTactics ts) = PTactics (map (fmap (ai env)) ts)
     ai env tm = tm
 
-aiFn :: IState -> FC -> Name -> [PArg] -> PTerm
-aiFn ist fc f as
+-- if in a pattern, and there are no arguments, and there's no possible
+-- names with zero explicit arguments, don't add implicits.
+
+aiFn :: Bool -> IState -> FC -> Name -> [PArg] -> PTerm
+aiFn True ist fc f []
+  = case lookupCtxt Nothing f (idris_implicits ist) of
+        [] -> PRef fc f
+        alts -> if (any (all imp) alts)
+                        then aiFn False ist fc f [] -- use it as a constructor
+                        else PRef fc f
+    where imp (PExp _ _ _) = False
+          imp _ = True
+aiFn inpat ist fc f as
     | f `elem` primNames = PApp fc (PRef fc f) as
-aiFn ist fc f as
+aiFn inpat ist fc f as
           -- This is where namespaces get resolved by adding PAlternative
         = case lookupCtxtName Nothing f (idris_implicits ist) of
             [(f',ns)] -> mkPApp fc (length ns) (PRef fc f') (insertImpl ns as)
