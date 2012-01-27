@@ -143,6 +143,7 @@ elab ist info pattern tcgen fn tm
                                                 [] -> False
                                                 _ -> True
                             -- this is to stop us resolve type classes recursively
+                              -- trace (show (n, guarded)) $
                               if (tcname n && ina) then erun fc $ patvar n
                                 else if (defined && not guarded)
                                         then do apply (Var n) []; solve
@@ -226,9 +227,8 @@ elab ist info pattern tcgen fn tm
                         (elabArgs (ina || not isinf, guarded)
                              [] False (reverse ns') 
                                       (map (\x -> (lazyarg x, getTm x)) (reverse eargs))))
---                 (try (do apply2 (Var f) (map (toElab' (ina || not isinf)) args)) 
-                     (do apply_elab f (map (toElab (ina || not isinf, guarded)) args)
-                         solve)
+                (do apply_elab f (map (toElab (ina || not isinf, guarded)) args)
+                    solve)
             ivs' <- get_instances
             when (not pattern || (ina && not tcgen)) $
                 mapM_ (\n -> do focus n

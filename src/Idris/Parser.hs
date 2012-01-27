@@ -945,8 +945,12 @@ pRecord syn = try (do acc <- pAccessibility
                       tyn_in <- pfName; ty <- pTSig syn
                       let tyn = expandNS syn tyn_in
                       reserved "where"
+                      open_block
+                      push_indent
                       (cn, cty, _) <- pConstructor syn
-                      pTerminator
+                      pKeepTerminator
+                      pop_indent
+                      close_block
                       accData acc tyn [cn]
                       return $ PRecord syn fc tyn ty cn cty)
 

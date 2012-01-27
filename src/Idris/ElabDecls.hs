@@ -88,6 +88,60 @@ elabRecord :: ElabInfo -> SyntaxInfo -> FC -> Name ->
               PTerm -> Name -> PTerm -> Idris ()
 elabRecord info syn fc tyn ty cn cty
     = do elabData info syn fc (PDatadecl tyn ty [(cn, cty, fc)]) 
+         cty <- implicit syn cn cty
+         i <- get
+         cty <- case lookupTy Nothing cn (tt_ctxt i) of
+                    [t] -> return (delab i t)
+                    _ -> fail "Something went inexplicably wrong"
+         cimp <- case lookupCtxt Nothing cn (idris_implicits i) of
+                    [imps] -> return imps
+         let ptys = getProjs [] (renameBs cimp cty)
+         let recty = getRecTy cty
+         logLvl 6 $ show (recty, ptys)
+         let substs = map (\ (n, _) -> (n, PApp fc (PRef fc n)
+                                                [pexp (PRef fc rec)])) ptys
+         let ptpos = zip ptys [0..]
+         decls <- mapM (mkProj recty substs cimp) ptpos
+         mapM_ (elabDecl info) (concat decls)
+  where
+
+    renameBs (PImp _ _ _ _ : ps) (PPi p n ty s)
+        = PPi p (mkImp n) ty (renameBs ps (substMatch n (PRef fc (mkImp n)) s))
+    renameBs (_:ps) (PPi p n ty s) = PPi p n ty (renameBs ps s)
+    renameBs _ t = t
+
+    getProjs acc (PPi _ n ty s) = getProjs ((n, ty) : acc) s
+    getProjs acc r = reverse acc
+
+    getRecTy (PPi _ n ty s) = getRecTy s
+    getRecTy t = t
+
+    rec = MN 0 "rec"
+
+    mkp (UN n) = MN 0 ("p_" ++ n)
+    mkp (MN 0 n) = MN 0 ("p_" ++ n)
+    mkp (NS n s) = NS (mkp n) s
+
+    mkImp (UN n) = UN ("implicit_" ++ n)
+    mkImp (MN 0 n) = MN 0 ("implicit_" ++ n)
+    mkImp (NS n s) = NS (mkImp n) s
+
+    mkProj recty substs cimp ((pn, pty), pos)
+        = do let pfnTy = PTy defaultSyntax fc [] pn
+                            (PPi expl rec recty
+                              (substMatches substs pty))
+             let pls = repeat Placeholder
+             let before = pos
+             let after = length substs - (pos + 1)
+             let args = take before pls ++ PRef fc (mkp pn) : take after pls
+             let iargs = map implicitise (zip cimp args)
+             let lhs = PApp fc (PRef fc pn)
+                        [pexp (PApp fc (PRef fc cn) iargs)]
+             let rhs = PRef fc (mkp pn)
+             let pclause = PClause pn lhs [] rhs [] 
+             return [pfnTy, PClauses fc [] pn [pclause]]
+          
+    implicitise (pa, t) = pa { getTm = t }
 
 elabCon :: ElabInfo -> SyntaxInfo -> Name -> (Name, PTerm, FC) -> Idris (Name, Type)
 elabCon info syn tn (n, t_in, fc)
