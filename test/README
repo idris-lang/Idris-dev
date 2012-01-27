@@ -9,3 +9,5 @@ Tests:
 007: Applicative and idiom brackets
 008: case and pattern matching let
 009: ranges and list monad
+010: total
+011: record projection and update

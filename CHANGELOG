@@ -4,7 +4,7 @@ New in 0.9.1:
 User visible changes:
 
 * dsl notation
-* record projection
+* record projection and update
 * auto implicits and default argument values {auto n : T}, {default val n : T}
 * Additions to prelude
 
