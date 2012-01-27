@@ -1021,3 +1021,89 @@ value of the same type.
 determined \emph{without} type checking the \texttt{case}-expression itself. 
 \end{itemize}
 
+\subsection{Dependent Records}
+
+\remph{Records} are data types which collect several values (the record's
+\remph{fields}) together. \Idris{} provides syntax for defining records and
+automatically generating field access and update functions. For example, we
+can represent a person's name and age in a record:
+
+\begin{SaveVerbatim}{recsimpl}
+
+record Person : Set where
+    MkPerson : (name : String) ->
+               (age : Int) -> Person
+
+fred : Person
+fred = MkPerson "Fred" 30
+
+\end{SaveVerbatim}
+\useverb{recsimpl} 
+
+\noindent
+Record declarations are like \texttt{data} declarations, except that they are 
+introduced by the \texttt{record} keyword, and can only have one constructor.
+The names of the binders in the constructor type (\texttt{name} and \texttt{age})
+here are the field names, which we can use to access the field values:
+
+\begin{SaveVerbatim}{recaccess}
+
+*record> name fred
+"Fred" : String
+*record> age fred
+30 : Int
+*record> :t name
+name : Person -> String
+
+\end{SaveVerbatim}
+\useverb{recaccess} 
+
+\noindent
+We can also use the field names to update a record (or, more precisely, produce a
+new record with the given fields updates).
+
+\begin{SaveVerbatim}{recupdate}
+
+*record> record { name = "Jim" } fred
+MkPerson "Jim" 30 : Person
+*record> record { name = "Jim", age = 20 } fred
+MkPerson "Jim" 20 : Person
+
+\end{SaveVerbatim}
+\useverb{recupdate} 
+
+\noindent
+The syntax \texttt{record \{ field = val, ... \}} generates a function which updates
+the given fields in a record. 
+
+Records, and fields within records, can have dependent types.
+Updates are allowed to change the type of a field,
+provided that the result is well-typed, and the result does not affect the type of
+the record as a whole. For example:
+
+\begin{SaveVerbatim}{deprec}
+
+record Class : Set where
+    ClassInfo : (students : Vect Person n) ->
+                (className : String) ->
+                Class
+
+\end{SaveVerbatim}
+\useverb{deprec} 
+
+\noindent
+It is safe to update the \texttt{students} field to a vector of a different length
+because it will not affect the type of the record:
+
+\begin{SaveVerbatim}{addstu}
+
+addStudent : Person -> Class -> Class
+addStudent p c = record { students = p :: students c } c
+
+*record> addStudent fred (ClassInfo [] "CS")
+ClassInfo (prelude.vect.:: (MkPerson "Fred" 30) (prelude.vect.Nil)) "CS" 
+  : Class
+
+\end{SaveVerbatim}
+\useverb{addstu} 
+
