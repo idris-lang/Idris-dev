@@ -86,7 +86,7 @@ elabData info syn fc (PDatadecl n t_in dcons)
 
 elabRecord :: ElabInfo -> SyntaxInfo -> FC -> Name -> 
               PTerm -> Name -> PTerm -> Idris ()
-elabRecord info syn fc tyn ty cn cty
+elabRecord info syn_in fc tyn ty cn cty
     = do elabData info syn fc (PDatadecl tyn ty [(cn, cty, fc)]) 
          cty <- implicit syn cn cty
          i <- get
@@ -106,6 +106,7 @@ elabRecord info syn fc tyn ty cn cty
          update_decls <- mapM (mkUpdate recty (length nonImp)) (zip nonImp [0..])
          mapM_ (elabDecl info) (concat (proj_decls ++ update_decls))
   where
+    syn = syn_in { syn_namespace = show (nsroot tyn) : syn_namespace syn_in }
 
     isNonImp (PExp _ _ _, a) = Just a
     isNonImp _ = Nothing
@@ -135,8 +136,9 @@ elabRecord info syn fc tyn ty cn cty
     mkSet (MN 0 n) = MN 0 ("set_" ++ n)
     mkSet (NS n s) = NS (mkSet n) s
 
-    mkProj recty substs cimp ((pn, pty), pos)
-        = do let pfnTy = PTy defaultSyntax fc [] pn
+    mkProj recty substs cimp ((pn_in, pty), pos)
+        = do let pn = expandNS syn pn_in
+             let pfnTy = PTy defaultSyntax fc [] pn
                             (PPi expl rec recty
                               (substMatches substs pty))
              let pls = repeat Placeholder
@@ -153,7 +155,7 @@ elabRecord info syn fc tyn ty cn cty
     implicitise (pa, t) = pa { getTm = t }
 
     mkUpdate recty num ((pn, pty), pos)
-       = do let setname = mkSet pn
+       = do let setname = expandNS syn $ mkSet pn
             let valname = MN 0 "updateval"
             let pfnTy = PTy defaultSyntax fc [] setname
                            (PPi expl pn pty

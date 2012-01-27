@@ -15,10 +15,10 @@ record CGIInfo : Set where
                (Output : String) -> CGIInfo
 
 add_Headers : String -> CGIInfo -> CGIInfo
-add_Headers str st = { Headers = Headers st ++ str } st
+add_Headers str st = record { Headers = Headers st ++ str } st
 
 add_Output : String -> CGIInfo -> CGIInfo
-add_Output str st = { Output = Output st ++ str } st
+add_Output str st = record { Output = Output st ++ str } st
 
 abstract
 data CGI : Set -> Set where

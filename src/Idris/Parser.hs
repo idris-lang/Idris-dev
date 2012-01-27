@@ -444,12 +444,6 @@ pNamespace syn =
        close_block
        return [PNamespace n (concat ds)] 
 
-expandNS :: SyntaxInfo -> Name -> Name
-expandNS syn n@(NS _ _) = n
-expandNS syn n = case syn_namespace syn of
-                        [] -> n
-                        xs -> NS n xs
-
 --------- Fixity ---------
 
 pFixity :: IParser PDecl
@@ -763,7 +757,8 @@ pConstraintArg syn = do symbol "@{"; e <- pExpr syn; symbol "}"
                         return (pconst e)
 
 pRecordSet syn 
-    = do lchar '{'
+    = do reserved "record"
+         lchar '{'
          fields <- sepBy1 pFieldSet (lchar ',')
          lchar '}'
          fc <- pfc
@@ -1017,12 +1012,13 @@ bindArgs [] t = t
 bindArgs (x:xs) t = PPi expl (MN 0 "t") x (bindArgs xs t)
 
 pConstructor :: SyntaxInfo -> IParser (Name, PTerm, FC)
-pConstructor syn
+pConstructor syn 
     = do cn_in <- pfName; fc <- pfc
          let cn = expandNS syn cn_in
          ty <- pTSig syn
 --          ty' <- implicit syn cn ty
          return (cn, ty, fc)
+ 
 
 pSimpleCon :: SyntaxInfo -> IParser (Name, [PTerm], FC)
 pSimpleCon syn 

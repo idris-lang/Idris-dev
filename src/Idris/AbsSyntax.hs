@@ -652,6 +652,13 @@ data SyntaxInfo = Syn { using :: [(Name, PTerm)],
 
 defaultSyntax = Syn [] [] [] [] id False initDSL
 
+expandNS :: SyntaxInfo -> Name -> Name
+expandNS syn n@(NS _ _) = n
+expandNS syn n = case syn_namespace syn of
+                        [] -> n
+                        xs -> NS n xs
+
+
 --- Pretty printing declarations and terms
 
 instance Show PTerm where
