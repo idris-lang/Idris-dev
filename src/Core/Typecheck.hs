@@ -53,7 +53,7 @@ check' holes ctxt env top = chk env top where
   chk env (Var n)
       | Just (i, ty) <- lookupTyEnv n env = return (P Bound n ty, ty)
       | (P nt n' ty : _) <- lookupP Nothing n ctxt = return (P nt n' ty, ty)
-      | otherwise = do fail $ "No such variable " ++ show n ++ " in " ++ show (map fst env)
+      | otherwise = do lift $ tfail $ NoSuchVariable n
   chk env (RApp f a)
       = do (fv, fty) <- chk env f
            (av, aty) <- chk env a

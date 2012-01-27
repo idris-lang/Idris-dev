@@ -391,7 +391,7 @@ elabClause info fc tcgen (PWith fname lhs_in withs wval_in withblock)
         (clhs, clhsty) <- recheckC ctxt fc [] lhs_tm
         logLvl 5 ("Checked " ++ show clhs)
         let bargs = getPBtys lhs_tm
-        let wval = addImpl i wval_in
+        let wval = addImplBound i (map fst bargs) wval_in
         logLvl 5 ("Checking " ++ showImp True wval)
         -- Elaborate wval in this context
         ((wval', defer, is), _) <- 

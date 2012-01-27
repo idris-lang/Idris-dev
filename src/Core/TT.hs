@@ -39,6 +39,7 @@ instance Show FC where
 
 data Err = Msg String
          | CantUnify Term Term Err Int -- Int is 'score' - how much we did unify
+         | NoSuchVariable Name
          | NotInjective Term Term Term
          | CantResolve Term
          | IncompleteTerm Term
@@ -50,6 +51,7 @@ data Err = Msg String
 score :: Err -> Int
 score (CantUnify _ _ m s) = s + score m
 score (CantResolve _) = 20
+score (NoSuchVariable _) = 1000
 score _ = 0
 
 instance Show Err where

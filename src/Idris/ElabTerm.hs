@@ -4,6 +4,7 @@ module Idris.ElabTerm where
 
 import Idris.AbsSyntax
 import Idris.DSL
+import Idris.Delaborate
 
 import Core.Elaborate hiding (Tactic(..))
 import Core.TT
@@ -233,12 +234,6 @@ elab ist info pattern tcgen fn tm
             when (not pattern || (ina && not tcgen)) $
                 mapM_ (\n -> do focus n
                                 resolveTC 7 fn ist) (ivs' \\ ivs) 
---             ivs <- get_instances
---             when (not (null ivs)) $
---               do t <- get_term
---                  trace (show ivs ++ "\n" ++ show t) $ 
---                    mapM_ (\n -> do focus n
---                                    resolveTC ist) ivs
       where tcArg (n, PConstraint _ _ Placeholder) = True
             tcArg _ = False
 
@@ -258,7 +253,7 @@ elab ist info pattern tcgen fn tm
     elab' ina (PTactics ts) 
         | not pattern = do mapM_ (runTac False ist) ts
         | otherwise = elab' ina Placeholder
-    elab' ina (PElabError e) = fail e
+    elab' ina (PElabError e) = fail (pshow ist e)
     elab' ina@(_, a) c@(PCase fc scr opts)
         = do attack
              tyn <- unique_hole (MN 0 "scty")
@@ -344,15 +339,17 @@ trivial ist = try (do elab ist toplevel False False (MN 0 "tac") (PRefl (FC "prf
 
 resolveTC :: Int -> Name -> IState -> ElabD ()
 resolveTC 0 fn ist = fail $ "Can't resolve type class"
+resolveTC 1 fn ist = try (trivial ist) (resolveTC 0 fn ist)
 resolveTC depth fn ist 
          = try (trivial ist)
                (do t <- goal
                    let (tc, ttypes) = unApply t
-                   needsDefault t tc ttypes
+                   scopeOnly <- needsDefault t tc ttypes
                    tm <- get_term
 --                    traceWhen (depth > 6) ("GOAL: " ++ show t ++ "\nTERM: " ++ show tm) $
 --                        (tryAll (map elabTC (map fst (ctxtAlist (tt_ctxt ist)))))
-                   blunderbuss t (map fst (ctxtAlist (tt_ctxt ist))))
+                   let depth' = if scopeOnly then 2 else depth
+                   blunderbuss t depth' (map fst (ctxtAlist (tt_ctxt ist))))
   where
     elabTC n | n /= fn && tcname n = (resolve n depth, show n)
              | otherwise = (fail "Can't resolve", show n)
@@ -361,17 +358,18 @@ resolveTC depth fn ist
         = do focus a
              fill (RConstant IType) -- default Int
              solve
---     needsDefault t f as
---         | all boundVar as = fail $ "Can't resolve " ++ show t
-    needsDefault t f a = return ()
+             return False
+    needsDefault t f as
+          | all boundVar as = return True -- fail $ "Can't resolve " ++ show t
+    needsDefault t f a = return False -- trace (show t) $ return ()
 
     boundVar (P Bound _ _) = True
     boundVar _ = False
 
-    blunderbuss t [] = lift $ tfail $ CantResolve t
-    blunderbuss t (n:ns) | n /= fn && tcname n = try (resolve n depth)
-                                                     (blunderbuss t ns)
-                         | otherwise = blunderbuss t ns
+    blunderbuss t d [] = lift $ tfail $ CantResolve t
+    blunderbuss t d (n:ns) | n /= fn && tcname n = try (resolve n d)
+                                                       (blunderbuss t d ns)
+                           | otherwise = blunderbuss t d ns
 
     resolve n depth
        | depth == 0 = fail $ "Can't resolve type class"

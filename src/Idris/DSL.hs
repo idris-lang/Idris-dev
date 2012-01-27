@@ -38,7 +38,7 @@ expandDo dsl (PReturn fc) = dsl_return dsl
 expandDo dsl (PDoBlock ds) = expandDo dsl $ block (dsl_bind dsl) ds 
   where
     block b [DoExp fc tm] = tm 
-    block b [a] = PElabError "Last statement in do block must be an expression"
+    block b [a] = PElabError (Msg "Last statement in do block must be an expression")
     block b (DoBind fc n tm : rest)
         = PApp fc b [pexp tm, pexp (PLam n Placeholder (block b rest))]
     block b (DoBindP fc p tm : rest)
@@ -53,7 +53,7 @@ expandDo dsl (PDoBlock ds) = expandDo dsl $ block (dsl_bind dsl) ds
         = PApp fc b 
             [pexp tm, 
              pexp (PLam (MN 0 "bindx") Placeholder (block b rest))]
-    block b _ = PElabError "Invalid statement in do block"
+    block b _ = PElabError (Msg "Invalid statement in do block")
 
 expandDo dsl (PIdiom fc e) = expandDo dsl $ unIdiom (dsl_apply dsl) (dsl_pure dsl) fc e
 expandDo dsl t = t
@@ -62,7 +62,7 @@ var :: DSL -> Name -> PTerm -> Int -> PTerm
 var dsl n t i = v' i t where
     v' i (PRef fc x) | x == n = 
         case dsl_var dsl of
-            Nothing -> PElabError "No 'variable' defined in dsl"
+            Nothing -> PElabError (Msg "No 'variable' defined in dsl")
             Just v -> PApp fc v [pexp (mkVar fc i)]
     v' i (PLam n ty sc)
         | Nothing <- dsl_lambda dsl
@@ -85,10 +85,10 @@ var dsl n t i = v' i t where
     v' i t = t
 
     mkVar fc 0 = case index_first dsl of
-                   Nothing -> PElabError "No index_first defined"
+                   Nothing -> PElabError (Msg "No index_first defined")
                    Just f  -> f
     mkVar fc n = case index_next dsl of
-                   Nothing -> PElabError "No index_next defined"
+                   Nothing -> PElabError (Msg "No index_next defined")
                    Just f -> PApp fc f [pexp (mkVar fc (n-1))] 
 
 unIdiom :: PTerm -> PTerm -> FC -> PTerm -> PTerm

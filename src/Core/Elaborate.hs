@@ -427,7 +427,11 @@ tryAll xs = tryAll' [] (cantResolve, 0) (map fst xs)
                                     OK (v, s') -> tryAll' ((do put s'
                                                                return v):cs)  f xs
                                     Error err -> do put s
-                                                    tryAll' cs (better err f) xs
+                                                    if (score err) < 100
+                                                      then
+                                                        tryAll' cs (better err f) xs
+                                                      else
+                                                        tryAll' [] (better err f) xs -- give up
 
     better err (f, i) = let s = score err in
                             if (s >= i) then (lift (tfail err), s)

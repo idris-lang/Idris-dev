@@ -75,6 +75,7 @@ pshow i (NotInjective p x y) = "Can't verify injectivity of " ++ show (delab i p
                                " when unifying " ++ show (delab i x) ++ " and " ++ 
                                                     show (delab i y)
 pshow i (CantResolve c) = "Can't resolve type class " ++ show (delab i c)
+pshow i (NoSuchVariable n) = "No such variable " ++ show n
 pshow i (IncompleteTerm t) = "Incomplete term " ++ show t
 pshow i UniverseError = "Universe inconsistency"
 pshow i ProgramLineComment = "Program line next to comment"

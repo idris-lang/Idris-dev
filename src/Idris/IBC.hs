@@ -836,8 +836,8 @@ instance Binary PTerm where
                                 put x1
                 PTactics x1 -> do putWord8 22
                                   put x1
-                PElabError x1 -> do putWord8 23
-                                    put x1
+--                 PElabError x1 -> do putWord8 23
+--                                     put x1
                 PImpossible -> putWord8 24
         get
           = do i <- getWord8
@@ -904,8 +904,8 @@ instance Binary PTerm where
                             return (PProof x1)
                    22 -> do x1 <- get
                             return (PTactics x1)
-                   23 -> do x1 <- get
-                            return (PElabError x1)
+--                    23 -> do x1 <- get
+--                             return (PElabError x1)
                    24 -> return PImpossible
                    _ -> error "Corrupted binary data for PTerm"
 

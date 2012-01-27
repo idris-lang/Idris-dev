@@ -484,7 +484,7 @@ data PTerm = PQuote Raw
            | PMetavar Name
            | PProof [PTactic]
            | PTactics [PTactic] -- as PProof, but no auto solving
-           | PElabError String -- error to report on elaboration
+           | PElabError Err -- error to report on elaboration
            | PImpossible -- special case for declaring when an LHS can't typecheck
     deriving Eq
 {-! 
@@ -777,7 +777,7 @@ showImp impl tm = se 10 tm where
     se p PImpossible = "impossible"
     se p Placeholder = "_"
     se p (PDoBlock _) = "do block show not implemented"
-    se p (PElabError s) = s
+    se p (PElabError s) = show s
 --     se p x = "Not implemented"
 
     sArg (PImp _ _ n tm) = siArg (n, tm)
@@ -1141,9 +1141,9 @@ addImpl' :: Bool -> [Name] -> IState -> PTerm -> PTerm
 addImpl' inpat env ist ptm = ai env ptm
   where
     ai env (PRef fc f)    
-        | not (f `elem` env) = aiFn inpat ist fc f []
+        | not (f `elem` env) = handleErr $ aiFn inpat ist fc f []
     ai env (PHidden (PRef fc f))
-        | not (f `elem` env) = aiFn False ist fc f []
+        | not (f `elem` env) = handleErr $ aiFn False ist fc f []
     ai env (PEq fc l r)   = let l' = ai env l
                                 r' = ai env r in
                                 PEq fc l' r'
@@ -1162,7 +1162,7 @@ addImpl' inpat env ist ptm = ai env ptm
     ai env (PApp fc (PRef _ f) as) 
         | not (f `elem` env)
                           = let as' = map (fmap (ai env)) as in
-                                aiFn False ist fc f as'
+                                handleErr $ aiFn False ist fc f as'
     ai env (PApp fc f as) = let f' = ai env f
                                 as' = map (fmap (ai env)) as in
                                 mkPApp fc 1 f' as'
@@ -1185,30 +1185,34 @@ addImpl' inpat env ist ptm = ai env ptm
     ai env (PTactics ts) = PTactics (map (fmap (ai env)) ts)
     ai env tm = tm
 
+    handleErr (Left err) = PElabError err
+    handleErr (Right x) = x
+
 -- if in a pattern, and there are no arguments, and there's no possible
 -- names with zero explicit arguments, don't add implicits.
 
-aiFn :: Bool -> IState -> FC -> Name -> [PArg] -> PTerm
+aiFn :: Bool -> IState -> FC -> Name -> [PArg] -> Either Err PTerm
 aiFn True ist fc f []
   = case lookupCtxt Nothing f (idris_implicits ist) of
-        [] -> PRef fc f
+        [] -> Right $ PRef fc f
         alts -> if (any (all imp) alts)
                         then aiFn False ist fc f [] -- use it as a constructor
-                        else PRef fc f
+                        else Right $ PRef fc f
     where imp (PExp _ _ _) = False
           imp _ = True
 aiFn inpat ist fc f as
-    | f `elem` primNames = PApp fc (PRef fc f) as
+    | f `elem` primNames = Right $ PApp fc (PRef fc f) as
 aiFn inpat ist fc f as
           -- This is where namespaces get resolved by adding PAlternative
         = case lookupCtxtName Nothing f (idris_implicits ist) of
-            [(f',ns)] -> mkPApp fc (length ns) (PRef fc f') (insertImpl ns as)
+            [(f',ns)] -> Right $ mkPApp fc (length ns) (PRef fc f') (insertImpl ns as)
             [] -> if f `elem` idris_metavars ist
-                    then PApp fc (PRef fc f) as
-                    else mkPApp fc (length as) (PRef fc f) as
-            alts -> PAlternative $
-                     map (\(f', ns) -> mkPApp fc (length ns) (PRef fc f') 
-                                                 (insertImpl ns as)) alts
+                    then Right $ PApp fc (PRef fc f) as
+                    else Right $ mkPApp fc (length as) (PRef fc f) as
+            alts -> Right $
+                     PAlternative $
+                       map (\(f', ns) -> mkPApp fc (length ns) (PRef fc f') 
+                                                   (insertImpl ns as)) alts
   where
     insertImpl :: [PArg] -> [PArg] -> [PArg]
     insertImpl (PExp p l ty : ps) (PExp _ _ tm : given) =
