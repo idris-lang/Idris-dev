@@ -96,14 +96,19 @@ elabRecord info syn fc tyn ty cn cty
          cimp <- case lookupCtxt Nothing cn (idris_implicits i) of
                     [imps] -> return imps
          let ptys = getProjs [] (renameBs cimp cty)
+         let ptys_u = getProjs [] cty
          let recty = getRecTy cty
          logLvl 6 $ show (recty, ptys)
          let substs = map (\ (n, _) -> (n, PApp fc (PRef fc n)
                                                 [pexp (PRef fc rec)])) ptys
-         let ptpos = zip ptys [0..]
-         decls <- mapM (mkProj recty substs cimp) ptpos
-         mapM_ (elabDecl info) (concat decls)
+         proj_decls <- mapM (mkProj recty substs cimp) (zip ptys [0..])
+         let nonImp = mapMaybe isNonImp (zip cimp ptys_u)
+         update_decls <- mapM (mkUpdate recty (length nonImp)) (zip nonImp [0..])
+         mapM_ (elabDecl info) (concat (proj_decls ++ update_decls))
   where
+
+    isNonImp (PExp _ _ _, a) = Just a
+    isNonImp _ = Nothing
 
     renameBs (PImp _ _ _ _ : ps) (PPi p n ty s)
         = PPi p (mkImp n) ty (renameBs ps (substMatch n (PRef fc (mkImp n)) s))
@@ -126,6 +131,10 @@ elabRecord info syn fc tyn ty cn cty
     mkImp (MN 0 n) = MN 0 ("implicit_" ++ n)
     mkImp (NS n s) = NS (mkImp n) s
 
+    mkSet (UN n) = UN ("set_" ++ n)
+    mkSet (MN 0 n) = MN 0 ("set_" ++ n)
+    mkSet (NS n s) = NS (mkImp n) s
+
     mkProj recty substs cimp ((pn, pty), pos)
         = do let pfnTy = PTy defaultSyntax fc [] pn
                             (PPi expl rec recty
@@ -142,6 +151,26 @@ elabRecord info syn fc tyn ty cn cty
              return [pfnTy, PClauses fc [] pn [pclause]]
           
     implicitise (pa, t) = pa { getTm = t }
+
+    mkUpdate recty num ((pn, pty), pos)
+       = do let setname = mkSet pn
+            let valname = MN 0 "updateval"
+            let pfnTy = PTy defaultSyntax fc [] setname
+                           (PPi expl pn pty
+                            (PPi expl rec recty recty))
+            let pls = map (\x -> PRef fc (MN x "field")) [0..num-1]
+            let lhsArgs = pls
+            let rhsArgs = take pos pls ++ (PRef fc valname) :
+                               drop (pos + 1) pls
+            let before = pos
+            let pclause = PClause setname (PApp fc (PRef fc setname)
+                                              [pexp (PRef fc valname),
+                                               pexp (PApp fc (PRef fc cn)
+                                                        (map pexp lhsArgs))])
+                                             []
+                                             (PApp fc (PRef fc cn)
+                                                      (map pexp rhsArgs)) []
+            return [pfnTy, PClauses fc [] setname [pclause]]
 
 elabCon :: ElabInfo -> SyntaxInfo -> Name -> (Name, PTerm, FC) -> Idris (Name, Type)
 elabCon info syn tn (n, t_in, fc)

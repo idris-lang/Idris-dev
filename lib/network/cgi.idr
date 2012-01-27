@@ -6,36 +6,19 @@ public
 Vars : Set
 Vars = List (String, String)
 
-data CGIInfo = CGISt Vars -- GET
-                     Vars -- POST
-                     Vars -- Cookies
-                     String -- User agent
-                     String -- headers
-                     String -- output
-
-get_GET : CGIInfo -> Vars
-get_GET (CGISt g _ _ _ _ _) = g
-
-get_POST : CGIInfo -> Vars
-get_POST (CGISt _ p _ _ _ _) = p
-
-get_Cookies : CGIInfo -> Vars
-get_Cookies (CGISt _ _ c _ _ _) = c
-
-get_UAgent : CGIInfo -> String
-get_UAgent (CGISt _ _ _ a _ _) = a
-
-get_Headers : CGIInfo -> String
-get_Headers (CGISt _ _ _ _ h _) = h
-
-get_Output : CGIInfo -> String
-get_Output (CGISt _ _ _ _ _ o) = o
+record CGIInfo : Set where
+       CGISt : (GET : Vars) ->
+               (POST : Vars) ->
+               (Cookies : Vars) ->
+               (UserAgent : String) ->
+               (Headers : String) ->
+               (Output : String) -> CGIInfo
 
 add_Headers : String -> CGIInfo -> CGIInfo
-add_Headers str (CGISt g p c a h o) = CGISt g p c a (h ++ str) o
+add_Headers str st = set_Headers (Headers st ++ str) st
 
 add_Output : String -> CGIInfo -> CGIInfo
-add_Output str (CGISt g p c a h o) = CGISt g p c a h (o ++ str)
+add_Output str st = set_Output (Output st ++ str) st
 
 abstract
 data CGI : Set -> Set where
@@ -70,17 +53,17 @@ output s = do i <- getInfo
 abstract
 queryVars : CGI Vars
 queryVars = do i <- getInfo
-               return (get_GET i)
+               return (GET i)
 
 abstract
 postVars : CGI Vars
 postVars = do i <- getInfo
-              return (get_POST i)
+              return (POST i)
 
 abstract
 cookieVars : CGI Vars
 cookieVars = do i <- getInfo
-                return (get_Cookies i)
+                return (Cookies i)
 
 abstract
 queryVar : String -> CGI (Maybe String)
@@ -89,11 +72,11 @@ queryVar x = do vs <- queryVars
 
 getOutput : CGI String
 getOutput = do i <- getInfo
-               return (get_Output i)
+               return (Output i)
 
 getHeaders : CGI String
 getHeaders = do i <- getInfo
-                return (get_Headers i)
+                return (Headers i)
 
 abstract
 flushHeaders : CGI ()
@@ -134,11 +117,11 @@ runCGI prog = do
     let post_vars = getVars ['&'] content
     let cookies   = getVars [';'] cookie
 
-    p <- getAction prog (CGISt get_vars post_vars cookies agent 
-            "Content-type: text/html\n" 
-            "")
-    putStrLn (get_Headers (snd p))
-    putStr (get_Output (snd p))
-    return (fst p)
+    (v, st) <- getAction prog (CGISt get_vars post_vars cookies agent 
+                 "Content-type: text/html\n" 
+                 "")
+    putStrLn (Headers st)
+    putStr (Output st)
+    return v
 
 
