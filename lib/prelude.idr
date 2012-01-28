@@ -108,7 +108,7 @@ instance Applicative Maybe where
     pure = Just
 
     (Just f) <$> (Just a) = Just (f a)
-    Nothing  <$> Nothing  = Nothing
+    _        <$> _        = Nothing
 
 
 ---- some mathematical operations

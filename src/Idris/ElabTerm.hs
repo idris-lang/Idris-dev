@@ -101,7 +101,8 @@ elab ist info pattern tcgen fn tm
                                    (elab' ina (PRef fc unitTy))
     elab' ina (PFalse fc)    = elab' ina (PRef fc falseTy)
     elab' ina (PResolveTC (FC "HACK" _)) -- for chasing parent classes
-       = resolveTC 2 fn ist
+       = do let insts = filter tcname $ map fst (ctxtAlist (tt_ctxt ist))
+            resolveTC 2 fn insts ist
     elab' ina (PResolveTC fc) = do c <- unique_hole (MN 0 "c")
                                    instanceArg c
     elab' ina (PRefl fc)     = elab' ina (PApp fc (PRef fc eqCon) [pimp (MN 0 "a") Placeholder,
@@ -233,7 +234,8 @@ elab ist info pattern tcgen fn tm
             ivs' <- get_instances
             when (not pattern || (ina && not tcgen)) $
                 mapM_ (\n -> do focus n
-                                resolveTC 7 fn ist) (ivs' \\ ivs) 
+                                let insts = filter tcname $ map fst (ctxtAlist (tt_ctxt ist))
+                                resolveTC 7 fn insts ist) (ivs' \\ ivs) 
       where tcArg (n, PConstraint _ _ Placeholder) = True
             tcArg _ = False
 
@@ -337,10 +339,10 @@ trivial ist = try (do elab ist toplevel False False (MN 0 "tac") (PRefl (FC "prf
                                     (MN 0 "tac") (PRef (FC "prf" 0) x))
                             (tryAll xs)
 
-resolveTC :: Int -> Name -> IState -> ElabD ()
-resolveTC 0 fn ist = fail $ "Can't resolve type class"
-resolveTC 1 fn ist = try (trivial ist) (resolveTC 0 fn ist)
-resolveTC depth fn ist 
+resolveTC :: Int -> Name -> [Name] -> IState -> ElabD ()
+resolveTC 0 fn insts ist = fail $ "Can't resolve type class"
+resolveTC 1 fn insts ist = try (trivial ist) (resolveTC 0 fn insts ist)
+resolveTC depth fn insts ist 
          = try (trivial ist)
                (do t <- goal
                    let (tc, ttypes) = unApply t
@@ -349,7 +351,7 @@ resolveTC depth fn ist
 --                    traceWhen (depth > 6) ("GOAL: " ++ show t ++ "\nTERM: " ++ show tm) $
 --                        (tryAll (map elabTC (map fst (ctxtAlist (tt_ctxt ist)))))
                    let depth' = if scopeOnly then 2 else depth
-                   blunderbuss t depth' (map fst (ctxtAlist (tt_ctxt ist))))
+                   blunderbuss t depth' insts)
   where
     elabTC n | n /= fn && tcname n = (resolve n depth, show n)
              | otherwise = (fail "Can't resolve", show n)
@@ -367,25 +369,29 @@ resolveTC depth fn ist
     boundVar _ = False
 
     blunderbuss t d [] = lift $ tfail $ CantResolve t
-    blunderbuss t d (n:ns) | n /= fn && tcname n = try (resolve n d)
-                                                       (blunderbuss t d ns)
-                           | otherwise = blunderbuss t d ns
+    blunderbuss t d (n:ns) 
+        | n /= fn && tcname n = try (resolve n d)
+                                    (blunderbuss t d ns)
+        | otherwise = blunderbuss t d ns
 
     resolve n depth
        | depth == 0 = fail $ "Can't resolve type class"
        | otherwise 
-              = do t <- goal
+           = do t <- goal
+                let (tc, ttypes) = unApply t
+--                 if (all boundVar ttypes) then resolveTC (depth - 1) fn insts ist 
+--                   else do
                    -- if there's a hole in the goal, don't even try
-                   let imps = case lookupCtxtName Nothing n (idris_implicits ist) of
+                let imps = case lookupCtxtName Nothing n (idris_implicits ist) of
                                 [] -> []
                                 [args] -> map isImp (snd args) -- won't be overloaded!
-                   args <- apply (Var n) imps
-                   tm <- get_term
-                   mapM_ (\ (_,n) -> do focus n
-                                        resolveTC (depth - 1) fn ist) 
-                         (filter (\ (x, y) -> not x) (zip (map fst imps) args))
-                   -- if there's any arguments left, we've failed to resolve
-                   solve
+                args <- apply (Var n) imps
+--                 traceWhen (all boundVar ttypes) ("Progress: " ++ show t ++ " with " ++ show n) $
+                mapM_ (\ (_,n) -> do focus n
+                                     resolveTC (depth - 1) fn insts ist) 
+                      (filter (\ (x, y) -> not x) (zip (map fst imps) args))
+                -- if there's any arguments left, we've failed to resolve
+                solve
        where isImp (PImp p _ _ _) = (True, p)
              isImp arg = (False, priority arg)
 

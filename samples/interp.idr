@@ -44,6 +44,25 @@ using (G : Vect Ty n)
   pure = id
 
   syntax IF [x] THEN [t] ELSE [e] = If x t e
+
+  (==) : Expr G TyInt -> Expr G TyInt -> Expr G TyBool
+  (==) = Op (==)
+
+  -- Some dummy instances for Num overloading
+  instance Eq (Expr G TyInt) where
+    (==) x y = False
+
+  instance Ord (Expr G TyInt) where
+    compare x y = EQ
+
+  instance Num (Expr G TyInt) where
+    (+) x y = Op (+) x y
+    (-) x y = Op (-) x y
+    (*) x y = Op (*) x y
+
+    abs x = If (Op (<) x (Val 0)) (Op (-) 0 x) x
+
+    fromInteger = Val
   
   interp : Env G -> {static} Expr G t -> interpTy t
   interp env (Var i)     = lookup i env
@@ -67,9 +86,7 @@ using (G : Vect Ty n)
   eDouble = expr (\x => App (App eAdd x) (Var stop))
 
   eFac : Expr G (TyFun TyInt TyInt)
-  eFac = expr (\x => IF Op (==) x (Val 0)
-                        THEN Val 1
-                        ELSE Op (*) [| eFac (Op (-) x (Val 1)) |] x)
+  eFac = expr (\x => IF x == 0 THEN 1 ELSE [| eFac (x - 1) |] * x)
 
 testFac : Int
 testFac = interp [] eFac 4

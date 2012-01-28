@@ -312,4 +312,79 @@ m_add x y = [ x' + y' | x' <- x, y' <- y ]
 \end{SaveVerbatim}
 \useverb{maddb} 
 
+\subsection{Idiom brackets}
+
+While \texttt{do} notation gives an alternative meaning to sequencing, idioms give an
+alternative meaning to \emph{application}. The notation and larger example in this
+section is inspired by Conor McBride and Ross Paterson's paper "Applicative
+Programming with Effects"~\cite{idioms}.
+
+First, let us revisit \texttt{m\_add} above. All it is really doing is applying
+an operator to two values extracted from Maybe Ints. We could abstract out the
+application:
+
+\begin{SaveVerbatim}{mapp}
+
+m_app : Maybe (a -> b) -> Maybe a -> Maybe b
+m_app (Just f) (Just a) = Just (f a)
+m_app _        _        = Nothing
+
+\end{SaveVerbatim}
+\useverb{mapp} 
+
+\noindent
+Using this, we can write an alternative \texttt{m\_add} which uses this alternative
+notion of function application, with explicit calls to \texttt{m\_app}:
+
+\begin{SaveVerbatim}{maddb}
+
+m_add' : Maybe Int -> Maybe Int -> Maybe Int
+m_add' x y = m_app (m_app (Just (+)) x) y
+
+\end{SaveVerbatim}
+\useverb{maddb} 
+
+\noindent
+Rather than having to insert \texttt{m\_app} everywhere there is an application, we can
+use \remph{idiom brackets} to do the job for us. To do this, we use the \texttt{Applicative} 
+class, which captures the notion of application for a data type:
+
+\begin{SaveVerbatim}{applicative}
+
+infixl 2 <$> 
+
+class Applicative (f : Set -> Set) where 
+    pure  : a -> f a
+    (<$>) : f (a -> b) -> f a -> f b 
+
+\end{SaveVerbatim}
+\useverb{applicative} 
+
+\noindent
+\texttt{Maybe} is made an instance of \texttt{Applicative} as follows, where \texttt{<\$>}
+is defined in the same way as \texttt{m\_app} above:
+
+\begin{SaveVerbatim}{maybeapp}
+
+instance Applicative Maybe where
+    pure = Just
+
+    (Just f) <$> (Just a) = Just (f a)
+    _        <$> _        = Nothing
+
+\end{SaveVerbatim}
+\useverb{maybeapp} 
+
+\noindent
+Using \remph{idiom brackets} we can use this instance as follows, where a function
+application \texttt{[| f a1 ... an |]}
+is translated into \texttt{pure f <\$> a1 <\$> ... <\$> an}:
+
+\begin{SaveVerbatim}{maddc}
+
+m_add' : Maybe Int -> Maybe Int -> Maybe Int
+m_add' x y = [| x + y |]
+
+\end{SaveVerbatim}
+\useverb{maddc} 
 

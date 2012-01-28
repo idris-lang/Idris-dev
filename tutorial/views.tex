@@ -4,14 +4,14 @@
 
 Since types can depend on values, the form of some arguments can be determined
 by the value of others. For example, if we were to write down the implicit
-length arguments to \texttt{app}, we'd see that the form of the length argument was
+length arguments to \texttt{(++)}, we'd see that the form of the length argument was
 determined by whether the vector was empty or not:
 
 \begin{SaveVerbatim}{appdep}
 
-app : Vect a n -> Vect a m -> Vect a (n + m)
-app {n=O}   []        [] = []
-app {n=S k} (x :: xs) ys = x :: app xs ys
+(++) : Vect a n -> Vect a m -> Vect a (n + m)
+(++) {n=O}   []        [] = []
+(++) {n=S k} (x :: xs) ys = x :: xs ++ ys
 
 \end{SaveVerbatim}
 \useverb{appdep}
