@@ -2,7 +2,7 @@
              PatternGuards #-}
 
 module Core.Evaluate(normalise, normaliseC, normaliseAll,
-                simplify, specialise, hnf,
+                simplify, specialise, hnf, convEq, convEq',
                 Def(..), Accessibility(..), Totality(..), PReason(..),
                 Context, initContext, ctxtAlist, uconstraints, next_tvar,
                 addToCtxt, setAccess, setTotal, addCtxtDef, addTyDecl, addDatatype, 
@@ -423,6 +423,56 @@ eval_hnf ctxt statics genv tm = ev [] tm where
 
     getValArgs (HApp t env args) = (t, env, args)
     getValArgs t = (t, [], [])
+
+convEq' ctxt x y = evalStateT (convEq ctxt x y) (0, [])
+
+convEq :: Context -> TT Name -> TT Name -> StateT UCs TC Bool
+convEq ctxt = ceq [] where
+    ceq :: [(Name, Name)] -> TT Name -> TT Name -> StateT UCs TC Bool
+    ceq ps (P xt x _) (P yt y _) 
+        | (xt == yt && x ==y ) || (x, y) `elem` ps || (y,x) `elem` ps = return True
+        | otherwise = sameDefs ps x y
+    ceq ps (V x)      (V y)      = return (x == y)
+    ceq ps (Bind _ xb xs) (Bind _ yb ys) 
+                             = liftM2 (&&) (ceqB ps xb yb) (ceq ps xs ys)
+        where 
+            ceqB ps (Let v t) (Let v' t') = liftM2 (&&) (ceq ps v v') (ceq ps t t')
+            ceqB ps (Guess v t) (Guess v' t') = liftM2 (&&) (ceq ps v v') (ceq ps t t')
+            ceqB ps b b' = ceq ps (binderTy b) (binderTy b')
+    ceq ps (App fx ax) (App fy ay)   = liftM2 (&&) (ceq ps fx fy) (ceq ps ax ay)
+    ceq ps (Constant x) (Constant y) = return (x == y)
+    ceq ps (Set x) (Set y)           = do (v, cs) <- get
+                                          put (v, ULE x y : cs)
+                                          return True
+    ceq ps Erased _ = return True
+    ceq ps _ Erased = return True
+    ceq ps _ _ = return False
+
+    caseeq ps (Case n cs) (Case n' cs') = caseeqA ((n,n'):ps) cs cs'
+      where
+        caseeqA ps (ConCase x i as sc : rest) (ConCase x' i' as' sc' : rest')
+            = do q1 <- caseeq (zip as as' ++ ps) sc sc'
+                 q2 <- caseeqA ps rest rest'
+                 return $ x == x' && i == i' && q1 && q2
+        caseeqA ps (ConstCase x sc : rest) (ConstCase x' sc' : rest')
+            = do q1 <- caseeq ps sc sc'
+                 q2 <- caseeqA ps rest rest'
+                 return $ x == x' && q1 && q2
+        caseeqA ps (DefaultCase sc : rest) (DefaultCase sc' : rest')
+            = liftM2 (&&) (caseeq ps sc sc') (caseeqA ps rest rest')
+        caseeqA ps [] [] = return True
+        caseeqA ps _ _ = return False
+    caseeq ps (STerm x) (STerm y) = ceq ps x y
+    caseeq ps (UnmatchedCase _) (UnmatchedCase _) = return True
+    caseeq ps _ _ = return False
+
+    sameDefs ps x y = case (lookupDef Nothing x ctxt, lookupDef Nothing y ctxt) of
+                        ([Function _ xdef], [Function _ ydef])
+                              -> ceq ((x,y):ps) xdef ydef
+                        ([CaseOp _ _ _ _ xdef _ _],   
+                         [CaseOp _ _ _ _ ydef _ _])
+                              -> caseeq ((x,y):ps) xdef ydef
+                        _ -> return False
 
 -- SPECIALISATION -----------------------------------------------------------
 -- We need too much control to be able to do this by tweaking the main 

@@ -1,3 +1,5 @@
+{-# LANGUAGE PatternGuards #-}
+
 module Core.Unify(unify, Fails) where
 
 import Core.TT
@@ -95,7 +97,7 @@ unify ctxt env topx topy
              h2 <- un' False ((x,y):bnames) sx sy
              combine bnames h1 h2
     un' fn bnames x y 
-        | x == y = do sc 1; return []
+        | OK True <- convEq' ctxt x y = do sc 1; return []
         | otherwise = do UI s i f <- get
                          let err = CantUnify topx topy (CantUnify x y (Msg "") s) s
                          put (UI s i ((x, y, env, err) : f))

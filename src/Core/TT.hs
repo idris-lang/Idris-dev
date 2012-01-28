@@ -327,23 +327,6 @@ instance Eq n => Eq (TT n) where
     (==) _              Erased         = True
     (==) _              _              = False
 
-convEq :: Eq n => TT n -> TT n -> StateT UCs TC Bool
-convEq (P xt x _) (P yt y _) = return (xt == yt && x == y)
-convEq (V x)      (V y)      = return (x == y)
-convEq (Bind _ xb xs) (Bind _ yb ys) 
-                             = liftM2 (&&) (convEqB xb yb) (convEq xs ys)
-  where convEqB (Let v t) (Let v' t') = liftM2 (&&) (convEq v v') (convEq t t')
-        convEqB (Guess v t) (Guess v' t') = liftM2 (&&) (convEq v v') (convEq t t')
-        convEqB b b' = convEq (binderTy b) (binderTy b')
-convEq (App fx ax) (App fy ay)   = liftM2 (&&) (convEq fx fy) (convEq ax ay)
-convEq (Constant x) (Constant y) = return (x == y)
-convEq (Set x) (Set y)           = do (v, cs) <- get
-                                      put (v, ULE x y : cs)
-                                      return True
-convEq Erased _ = return True
-convEq _ Erased = return True
-convEq _ _ = return False
-
 -- A few handy operations on well typed terms:
 
 isInjective :: TT n -> Bool

@@ -16,8 +16,8 @@ import Core.Evaluate
 
 convertsC :: Context -> Env -> Term -> Term -> StateT UCs TC ()
 convertsC ctxt env x y 
-   = do c <- convEq (finalise (normalise ctxt env x))
-                    (finalise (normalise ctxt env y))
+   = do c <- convEq ctxt (finalise (normalise ctxt env x))
+                         (finalise (normalise ctxt env y))
         if c then return ()
              else fail ("Can't convert between " ++ 
                         showEnv env (finalise (normalise ctxt env x)) ++ " and " ++ 

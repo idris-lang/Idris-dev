@@ -56,6 +56,7 @@ tclift tc = case tc of
 getErrLine str 
   = case span (/=':') str of
       (_, ':':rest) -> case span isDigit rest of
+        ([], _) -> 0
         (num, _) -> read num
       _ -> 0
 
