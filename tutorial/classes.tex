@@ -388,3 +388,87 @@ m_add' x y = [| x + y |]
 \end{SaveVerbatim}
 \useverb{maddc} 
 
+\subsubsection{An error-handling interpreter}
+
+Idiom notation is commonly useful when defining evaluators. McBride and
+Paterson describe such an evaluator~\cite{idioms}, for a language similar to
+the following:
+
+\begin{SaveVerbatim}{idiomexpr}
+
+data Expr = Var String      -- variables
+          | Val Int         -- values
+          | Add Expr Expr   -- addition
+
+\end{SaveVerbatim}
+\useverb{idiomexpr} 
+
+\noindent
+Evaluation will take place relative to a context mapping variables (represented as
+\texttt{String}s) to integer values, and can possibly fail. We define a data type
+\texttt{Eval} to wrap an evaluator:
+
+\begin{SaveVerbatim}{evalctxt}
+
+data Eval : Set -> Set where
+     MkEval : (List (String, Int) -> Maybe a) -> Eval a
+
+\end{SaveVerbatim}
+\useverb{evalctxt} 
+
+\noindent
+Wrapping the evaluator in a data type means we will be able to make it an instance
+of a type class later. We begin by defining a function to retrieve values from
+the context during evaluation:
+
+\begin{SaveVerbatim}{fetch}
+
+fetch : String -> Eval Int
+fetch x = MkEval (\e => fetchVal e) where
+    fetchVal : List (String, Int) -> Maybe Int
+    fetchVal [] = Nothing
+    fetchVal ((v, val) :: xs) = if (x == v) then (Just val) else (fetchVal xs)
+  
+\end{SaveVerbatim}
+\useverb{fetch} 
+  
+\noindent
+When defining an evaluator for the language, we will be applying functions in the
+context of an \texttt{Eval}, so it is natural to make \texttt{Eval} an instance
+of \texttt{Applicative}:
+
+\begin{SaveVerbatim}{}
+
+instance Applicative Eval where
+    pure x = MkEval (\e => Just x)
+  
+    (<$>) (MkEval f) (MkEval g) = MkEval (\x => app (f x) (g x)) where
+        app : Maybe (a -> b) -> Maybe a -> Maybe b
+        app (Just fx) (Just gx) = Just (fx gx)
+        app _         _         = Nothing
+
+\end{SaveVerbatim}
+\useverb{}
+
+\begin{SaveVerbatim}{grr}
+<$>
+\end{SaveVerbatim}
+
+\noindent
+Evaluating an expression can now make use of the idiomatic application to handle
+errors:
+
+\begin{SaveVerbatim}{evalexpr}
+
+eval : Expr -> Eval Int
+eval (Var x)   = fetch x
+eval (Val x)   = [| x |]
+eval (Add x y) = [| eval x + eval y |]
+  
+runEval : List (String, Int) -> Expr -> Maybe Int
+runEval env e = case eval e of
+    MkEval envFn => envFn env
+
+\end{SaveVerbatim}
+\useverb{evalexpr} 
+
