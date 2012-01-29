@@ -7,9 +7,11 @@ recheck: clean check
 install: check
 	mkdir -p $(TARGET)/prelude
 	mkdir -p $(TARGET)/network
+	mkdir -p $(TARGET)/control/monad
 	install *.ibc $(TARGET)
 	install prelude/*.ibc $(TARGET)/prelude
 	install network/*.ibc $(TARGET)/network
+	install control/monad/*.ibc $(TARGET)/control/monad
 
 clean: .PHONY
 	rm -f *.ibc
