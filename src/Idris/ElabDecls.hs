@@ -88,7 +88,7 @@ elabRecord :: ElabInfo -> SyntaxInfo -> FC -> Name ->
               PTerm -> Name -> PTerm -> Idris ()
 elabRecord info syn fc tyn ty cn cty
     = do elabData info syn fc (PDatadecl tyn ty [(cn, cty, fc)]) 
-         cty <- implicit syn cn cty
+         cty' <- implicit syn cn cty
          i <- get
          cty <- case lookupTy Nothing cn (tt_ctxt i) of
                     [t] -> return (delab i t)
@@ -103,13 +103,20 @@ elabRecord info syn fc tyn ty cn cty
                                                 [pexp (PRef fc rec)])) ptys
          proj_decls <- mapM (mkProj recty substs cimp) (zip ptys [0..])
          let nonImp = mapMaybe isNonImp (zip cimp ptys_u)
-         update_decls <- mapM (mkUpdate recty (length nonImp)) (zip nonImp [0..])
+         let implBinds = getImplB id cty'
+         update_decls <- mapM (mkUpdate recty implBinds (length nonImp)) (zip nonImp [0..])
          mapM_ (elabDecl info) (concat (proj_decls ++ update_decls))
   where
 --     syn = syn_in { syn_namespace = show (nsroot tyn) : syn_namespace syn_in }
 
     isNonImp (PExp _ _ _, a) = Just a
     isNonImp _ = Nothing
+
+    getImplB k (PPi (Imp l s) n ty sc)
+        = getImplB (\x -> k (PPi (Imp l s) n ty x)) sc
+    getImplB k (PPi _ n ty sc)
+        = getImplB k sc
+    getImplB k _ = k
 
     renameBs (PImp _ _ _ _ : ps) (PPi p n ty s)
         = PPi p (mkImp n) ty (renameBs ps (substMatch n (PRef fc (mkImp n)) s))
@@ -140,7 +147,7 @@ elabRecord info syn fc tyn ty cn cty
         = do let pn = expandNS syn pn_in
              let pfnTy = PTy defaultSyntax fc [] pn
                             (PPi expl rec recty
-                              (substMatches substs pty))
+                               (substMatches substs pty))
              let pls = repeat Placeholder
              let before = pos
              let after = length substs - (pos + 1)
@@ -154,12 +161,12 @@ elabRecord info syn fc tyn ty cn cty
           
     implicitise (pa, t) = pa { getTm = t }
 
-    mkUpdate recty num ((pn, pty), pos)
+    mkUpdate recty k num ((pn, pty), pos)
        = do let setname = expandNS syn $ mkSet pn
             let valname = MN 0 "updateval"
-            let pfnTy = PTy defaultSyntax fc [] setname
-                           (PPi expl pn pty
-                            (PPi expl rec recty recty))
+            let pt = k (PPi expl pn pty
+                           (PPi expl rec recty recty))
+            let pfnTy = PTy defaultSyntax fc [] setname pt
             let pls = map (\x -> PRef fc (MN x "field")) [0..num-1]
             let lhsArgs = pls
             let rhsArgs = take pos pls ++ (PRef fc valname) :
