@@ -86,7 +86,7 @@ elabData info syn fc (PDatadecl n t_in dcons)
 
 elabRecord :: ElabInfo -> SyntaxInfo -> FC -> Name -> 
               PTerm -> Name -> PTerm -> Idris ()
-elabRecord info syn_in fc tyn ty cn cty
+elabRecord info syn fc tyn ty cn cty
     = do elabData info syn fc (PDatadecl tyn ty [(cn, cty, fc)]) 
          cty <- implicit syn cn cty
          i <- get
@@ -106,7 +106,7 @@ elabRecord info syn_in fc tyn ty cn cty
          update_decls <- mapM (mkUpdate recty (length nonImp)) (zip nonImp [0..])
          mapM_ (elabDecl info) (concat (proj_decls ++ update_decls))
   where
-    syn = syn_in { syn_namespace = show (nsroot tyn) : syn_namespace syn_in }
+--     syn = syn_in { syn_namespace = show (nsroot tyn) : syn_namespace syn_in }
 
     isNonImp (PExp _ _ _, a) = Just a
     isNonImp _ = Nothing

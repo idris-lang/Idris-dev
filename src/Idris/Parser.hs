@@ -109,6 +109,7 @@ loadSource lidr f
                   when ok $
                     idrisCatch (do writeIBC f ibc; clearIBC)
                                (\c -> return ()) -- failure is harmless
+                  i <- getIState
                   putIState (i { hide_list = [] })
                   return ()
   where
@@ -775,9 +776,9 @@ pRecordSet syn
          applyAll fc ((n, e) : es) x
             = applyAll fc es (PApp fc (PRef fc (mkSet n)) [pexp e, pexp x])
                         
-         mkSet (UN n) = UN ("set_" ++ n)
-         mkSet (MN 0 n) = MN 0 ("set_" ++ n)
-         mkSet (NS n s) = NS (mkSet n) s
+mkSet (UN n) = UN ("set_" ++ n)
+mkSet (MN 0 n) = MN 0 ("set_" ++ n)
+mkSet (NS n s) = NS (mkSet n) s
 
 pTSig syn = do lchar ':'
                cs <- pConstList syn
@@ -958,19 +959,30 @@ accData (Just Frozen) n ns = do addAcc n (Just Frozen)
 accData a n ns = do addAcc n a; mapM_ (\n -> addAcc n a) ns
 
 pRecord :: SyntaxInfo -> IParser PDecl
-pRecord syn = try (do acc <- pAccessibility
-                      reserved "record"; fc <- pfc
-                      tyn_in <- pfName; ty <- pTSig syn
-                      let tyn = expandNS syn tyn_in
-                      reserved "where"
-                      open_block
-                      push_indent
-                      (cn, cty, _) <- pConstructor syn
-                      pKeepTerminator
-                      pop_indent
-                      close_block
-                      accData acc tyn [cn]
-                      return $ PRecord syn fc tyn ty cn cty)
+pRecord syn = do acc <- pAccessibility
+                 reserved "record"; fc <- pfc
+                 tyn_in <- pfName; ty <- pTSig syn
+                 let tyn = expandNS syn tyn_in
+                 reserved "where"
+                 open_block
+                 push_indent
+                 (cn, cty, _) <- pConstructor syn
+                 pKeepTerminator
+                 pop_indent
+                 close_block
+                 accData acc tyn [cn]
+                 let rsyn = syn { syn_namespace = show (nsroot tyn) : 
+                                                     syn_namespace syn }
+                 let fns = getRecNames rsyn cty
+                 mapM_ (\n -> addAcc n (toFreeze acc)) fns
+                 return $ PRecord rsyn fc tyn ty cn cty
+  where
+    getRecNames syn (PPi _ n _ sc) = [expandNS syn n, expandNS syn (mkSet n)]
+                                       ++ getRecNames syn sc
+    getRecNames _ _ = []
+
+    toFreeze (Just Frozen) = Just Hidden
+    toFreeze x = x
 
 pData :: SyntaxInfo -> IParser PDecl
 pData syn = try (do acc <- pAccessibility

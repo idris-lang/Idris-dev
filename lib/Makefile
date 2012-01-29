@@ -15,6 +15,7 @@ clean: .PHONY
 	rm -f *.ibc
 	rm -f prelude/*.ibc
 	rm -f network/*.ibc
+	rm -f control/monad/*.ibc
 
 linecount: .PHONY
 	wc -l *.idr network/*.idr prelude/*.idr
