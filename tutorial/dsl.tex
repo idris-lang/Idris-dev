@@ -85,7 +85,7 @@ syntax rule, we can even go as far as:
 syntax IF [x] THEN [t] ELSE [e] = If x t e
 
 fact : Expr G (TyFun TyInt TyInt)
-fact = expr (\x => IF x == 0 THEN 1 ELSE [| efact (x - 1) |] * x)
+fact = expr (\x => IF x == 0 THEN 1 ELSE [| efac (x - 1) |] * x)
 
 \end{SaveVerbatim}
 \useverb{factd} 
