@@ -1,9 +1,14 @@
-\subsection{Syntax Extensions}
+\section{Syntax Extensions}
 
 \Idris{} supports the implementation of Embedded Domain Specific Languages (EDSLs) in
 several ways~\cite{res-dsl-padl12}. One way, as we have already seen, is through
 extending \texttt{do} notation. Another important way is to allow extension of the core
-syntax. For example, we have seen \texttt{if...then...else} expressions, but these
+syntax. In this section we describe two ways of extending the syntax: \texttt{syntax}
+rules and \texttt{dsl} notation.
+
+\subsection{\texttt{syntax} rules}
+
+We have seen \texttt{if...then...else} expressions, but these
 are not built in --- instead, we define a function in the prelude\ldots
 
 \begin{SaveVerbatim}{boolelim}
@@ -86,4 +91,6 @@ term    syntax "[" [x] "..." [y] "]" = MkInterval x y ?bounds_lemma
 \noindent
 In terms, the syntax \texttt{[x...y]} will generate a proof obligation
 \texttt{bounds\_lemma} (possibly renamed).
+
+\input{dsl}
 

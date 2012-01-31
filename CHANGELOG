@@ -6,7 +6,8 @@ User visible changes:
 * dsl notation
 * record projection and update
 * auto implicits and default argument values {auto n : T}, {default val n : T}
-* Additions to prelude
+* Additions to prelude, including Nat and List theorems
+* New libs: control.monad.identity, control.monad.state
 
 Internal changes:
 
