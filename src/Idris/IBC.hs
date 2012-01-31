@@ -609,6 +609,8 @@ instance Binary PReason where
                 Itself -> putWord8 1
                 NotCovering -> putWord8 2
                 NotPositive -> putWord8 3
+                Mutual x1 -> do putWord8 4
+                                put x1
         get
           = do i <- getWord8
                case i of
@@ -617,6 +619,8 @@ instance Binary PReason where
                    1 -> return Itself
                    2 -> return NotCovering
                    3 -> return NotPositive
+                   4 -> do x1 <- get
+                           return (Mutual x1)
                    _ -> error "Corrupted binary data for PReason"
 
 instance Binary Totality where
@@ -626,6 +630,7 @@ instance Binary Totality where
                                put x1
                 Partial x1 -> do putWord8 1
                                  put x1
+                Unchecked -> do putWord8 2
         get
           = do i <- getWord8
                case i of
@@ -633,6 +638,7 @@ instance Binary Totality where
                            return (Total x1)
                    1 -> do x1 <- get
                            return (Partial x1)
+                   2 -> return Unchecked
                    _ -> error "Corrupted binary data for Totality"
 
 instance Binary IBCFile where

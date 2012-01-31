@@ -46,6 +46,7 @@ data IState = IState { tt_ctxt :: Context,
                        idris_patdefs :: Ctxt [(Term, Term)], -- not exported
                        idris_flags :: Ctxt [FnOpt],
                        idris_callgraph :: Ctxt [Name],
+                       idris_totcheck :: [(FC, Name)],
                        idris_log :: String,
                        idris_options :: IOption,
                        idris_name :: Int,
@@ -92,7 +93,7 @@ data IBCWrite = IBCFix FixDecl
 idrisInit = IState initContext [] [] emptyContext emptyContext emptyContext
                    emptyContext emptyContext emptyContext emptyContext 
                    emptyContext emptyContext
-                   "" defaultOpts 6 [] [] [] [] [] [] [] [] 
+                   [] "" defaultOpts 6 [] [] [] [] [] [] [] [] 
                    Nothing Nothing Nothing [] [] [] Hidden [] Nothing
 
 -- The monad for the main REPL - reading and processing files and updating 
@@ -117,6 +118,9 @@ addLib f = do i <- get; put (i { idris_libs = f : idris_libs i })
 addHdr :: String -> Idris ()
 addHdr f = do i <- get; put (i { idris_hdrs = f : idris_hdrs i })
 
+totcheck :: (FC, Name) -> Idris ()
+totcheck n = do i <- get; put (i { idris_totcheck = n : idris_totcheck i })
+
 setFlags :: Name -> [FnOpt] -> Idris ()
 setFlags n fs = do i <- get; put (i { idris_flags = addDef n fs (idris_flags i) }) 
 
@@ -131,6 +135,13 @@ setTotality n a
          = do i <- get
               let ctxt = setTotal n a (tt_ctxt i)
               put (i { tt_ctxt = ctxt })
+
+getTotality :: Name -> Idris Totality
+getTotality n  
+         = do i <- get
+              case lookupTotal n (tt_ctxt i) of
+                [t] -> return t
+                _ -> return (Total [])
 
 addToCG :: Name -> [Name] -> Idris ()
 addToCG n ns = do i <- get

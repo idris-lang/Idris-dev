@@ -8,6 +8,7 @@ import Idris.Imports
 import Idris.Error
 import Idris.ElabDecls
 import Idris.ElabTerm
+import Idris.Coverage
 import Idris.IBC
 import Idris.Unlit
 import Paths_idris
@@ -100,6 +101,8 @@ loadSource lidr f
                   v <- verbose
                   when v $ iputStrLn $ "Type checking " ++ f
                   mapM_ (elabDecl toplevel) ds
+                  i <- get
+                  mapM_ checkDeclTotality (idris_totcheck i)
                   iLOG ("Finished " ++ f)
                   let ibc = dropExtension f ++ ".ibc"
                   iucheck

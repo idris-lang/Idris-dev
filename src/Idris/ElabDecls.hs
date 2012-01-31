@@ -234,17 +234,17 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
          pdef' <- applyOpts pdef 
          let tree@(CaseDef _ sc _) = simpleCase tcase pcover pdef
          ist <- get
-         let wf = wellFounded ist n sc
+--          let wf = wellFounded ist n sc
          let tot = if pcover 
-                    then wf 
-                    else Partial NotCovering
-         case lookupCtxt (namespace info) n (idris_flags ist) of 
-            [fs] -> if TotalFn `elem` fs 
-                      then case tot of
-                              Total _ -> return ()
-                              t -> tclift $ tfail (At fc (Msg (show n ++ " is " ++ show t)))
-                      else return ()
-            _ -> return ()
+                    then Unchecked -- finish checking later
+                    else Partial NotCovering -- already know it's not total
+--          case lookupCtxt (namespace info) n (idris_flags ist) of 
+--             [fs] -> if TotalFn `elem` fs 
+--                       then case tot of
+--                               Total _ -> return ()
+--                               t -> tclift $ tfail (At fc (Msg (show n ++ " is " ++ show t)))
+--                       else return ()
+--             _ -> return ()
          case tree of
              CaseDef _ _ [] -> return ()
              CaseDef _ _ xs -> mapM_ (\x ->
@@ -263,6 +263,7 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
                                                      tcase pcover pdef pdef' ty)
                         addIBC (IBCDef n)
                         setTotality n tot
+                        when (tot == Unchecked) $ totcheck (fc, n)
                         i <- get
                         case lookupDef Nothing n (tt_ctxt i) of
                             (CaseOp _ _ _ _ sc _ _ : _) ->
@@ -271,7 +272,7 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
                                    addToCG n ns
                                    addIBC (IBCCG n)
                             _ -> return ()
-                        addIBC (IBCTotal n tot)
+--                         addIBC (IBCTotal n tot)
              [] -> return ()
   where
     debind (x, y) = (depat x, depat y)

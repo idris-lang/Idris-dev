@@ -1,1 +1,1 @@
-test010.idr:14:foo is not total due to: MkBad
+test010.idr:14:foo is possibly not total due to: MkBad
