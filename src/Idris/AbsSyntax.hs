@@ -665,16 +665,18 @@ instance Show PTerm where
     show tm = showImp False tm
 
 instance Show PDecl where
-    show (PFix _ f ops) = show f ++ " " ++ showSep ", " ops
-    show (PTy _ _ _ n ty) = show n ++ " : " ++ show ty
-    show (PClauses _ _ n c) = showSep "\n" (map show c)
-    show (PData _ _ d) = show d
+    show d = showDeclImp False d
 
 instance Show PClause where
     show c = showCImp True c
 
 instance Show PData where
     show d = showDImp False d
+
+showDeclImp _ (PFix _ f ops) = show f ++ " " ++ showSep ", " ops
+showDeclImp t (PTy _ _ _ n ty) = show n ++ " : " ++ showImp t ty
+showDeclImp _ (PClauses _ _ n c) = showSep "\n" (map show c)
+showDeclImp _ (PData _ _ d) = show d
 
 showCImp :: Bool -> PClause -> String
 showCImp impl (PClause n l ws r w) 
@@ -727,7 +729,8 @@ showImp impl tm = se 10 tm where
     se p (PLet n ty v sc) = bracket p 2 $ "let " ++ show n ++ " = " ++ se 10 v ++
                             " in " ++ se 10 sc 
     se p (PPi (Exp l s) n ty sc)
-        | n `elem` allNamesIn sc = bracket p 2 $
+        | n `elem` allNamesIn sc || impl
+                                  = bracket p 2 $
                                     if l then "|(" else "(" ++ 
                                     show n ++ " : " ++ se 10 ty ++ 
                                     ") " ++ st ++

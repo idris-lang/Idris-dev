@@ -44,6 +44,7 @@ elabType info syn fc opts n ty' = {- let ty' = piBind (params info) ty_in
          i <- get
          ty' <- implicit syn n ty'
          let ty = addImpl i ty'
+         logLvl 3 $ show n ++ " pre-type " ++ showImp True ty'
          logLvl 2 $ show n ++ " type " ++ showImp True ty
          ((ty', defer, is), log) <- tclift $ elaborate ctxt n (Set (UVal 0)) []
                                              (erun fc (build i info False n ty))
@@ -112,6 +113,8 @@ elabRecord info syn fc tyn ty cn cty
     isNonImp (PExp _ _ _, a) = Just a
     isNonImp _ = Nothing
 
+    getImplB k (PPi (Imp l s) n Placeholder sc)
+        = getImplB k sc
     getImplB k (PPi (Imp l s) n ty sc)
         = getImplB (\x -> k (PPi (Imp l s) n ty x)) sc
     getImplB k (PPi _ n ty sc)
@@ -635,7 +638,16 @@ elabInstance info syn fc cs n ps t ds
          iLOG ("Defaults inserted: " ++ show ds' ++ "\n" ++ show ci)
          mapM_ (warnMissing ds' ns) (map fst (class_methods ci))
          let wb = map mkTyDecl mtys ++ map (decorateid (decorate ns)) ds'
-         let lhs = PRef fc iname
+         logLvl 3 $ "Method types " ++ showSep "\n" (map (showDeclImp True . mkTyDecl) mtys)
+         -- get the implicit parameters that need passing through to the where block
+         wparams <- mapM (\p -> case p of
+                                  PApp _ _ args -> getWParams args
+                                  _ -> return []) ps
+         logLvl 3 $ "Instance is " ++ show ps ++ " implicits " ++ 
+                                      show (concat (nub wparams))
+         let lhs = case concat (nub wparams) of
+                        [] -> PRef fc iname
+                        as -> PApp fc (PRef fc iname) as
          let rhs = PApp fc (PRef fc (instanceName ci))
                            (map (pexp . mkMethApp) mtys)
          let idecl = PClauses fc [Inlinable, TCGen] iname 
@@ -658,6 +670,16 @@ elabInstance info syn fc cs n ps t ds
 
     papp fc f [] = f
     papp fc f as = PApp fc f as
+
+    getWParams [] = return []
+    getWParams (p : ps) 
+      | PRef _ n <- getTm p 
+        = do ps' <- getWParams ps
+             ctxt <- getContext
+             case lookupP Nothing n ctxt of
+                [] -> return (pimp n (PRef fc n) : ps')
+                _ -> return ps'
+    getWParams (_ : ps) = getWParams ps
 
     decorate ns (UN n) = NS (UN ('!':n)) ns
     decorate ns (NS (UN n) s) = NS (UN ('!':n)) ns
@@ -761,6 +783,7 @@ elabDecl' info (PDirective i) = i
 
 elabCaseBlock info d@(PClauses f o n ps) 
         = do addIBC (IBCDef n)
+--              iputStrLn $ "CASE BLOCK: " ++ show (n, d)
              elabDecl' info d 
 
 -- elabDecl' info (PImport i) = loadModule i

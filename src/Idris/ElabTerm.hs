@@ -269,7 +269,8 @@ elab ist info pattern tcgen fn tm
              args <- get_env
              cname <- unique_hole (mkCaseName fn)
              elab' ina (PMetavar cname)
-             let newdef = PClauses fc [] cname (caseBlock fc cname (reverse args) opts)
+             let cname' = mkN cname
+             let newdef = PClauses fc [] cname' (caseBlock fc cname' (reverse args) opts)
              -- fail $ "Not implemented " ++ show c ++ "\n" ++ show args
              -- elaborate case
              updateAux (newdef : )
@@ -277,6 +278,10 @@ elab ist info pattern tcgen fn tm
         where mkCaseName (NS n ns) = NS (mkCaseName n) ns
               mkCaseName (UN x) = UN (x ++ "_case")
               mkCaseName (MN i x) = MN i (x ++ "_case")
+              mkN n@(NS _ _) = n
+              mkN n = case namespace info of
+                        Just xs@(_:_) -> NS n xs
+                        _ -> n
     elab' ina x = fail $ "Something's gone wrong. Did you miss a semi-colon somewhere?"
 
     caseBlock :: FC -> Name -> [(Name, Binder Term)] -> [(PTerm, PTerm)] -> [PClause]
