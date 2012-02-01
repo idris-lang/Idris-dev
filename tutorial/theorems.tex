@@ -29,6 +29,34 @@ twoPlusTwo = refl
 \end{SaveVerbatim}
 \useverb{eqprf}
 
+\subsection{The Empty Type}
+
+There is an empty type, \texttt{\_|\_}, which has no constructors. It is
+therefore impossible to construct an element of the empty type, at least
+without using a partially defined or general recursive function (see Section
+\ref{sect:totality} for more details). We can therefore use the empty type
+to prove that something is impossible, for example zero is never equal
+to a successor:
+
+\begin{SaveVerbatim}{natdisjoint}
+
+imp : (n : Nat) -> O = S n -> _|_
+imp n p = replace {P = impTy} p ()
+  where
+    impTy : Nat -> Set
+    impTy O = ()
+    impTy (S k) = _|_
+
+\end{SaveVerbatim}
+\useverb{natdisjoint} 
+
+\noindent
+There is no need to worry too much about how this function works --- essentially,
+it applies the library function \texttt{replace}, which uses an equality proof to 
+transform a predicate. Here we use it to transform a value of a type which can exist,
+the empty tuple, to a value of a type which can't, by using a proof of something
+which can't exist.
+
 \subsection{Simple Theorems}
 
 When type checking dependent types, the type itself gets \emph{normalised}. So imagine

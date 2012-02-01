@@ -3,15 +3,16 @@ New in 0.9.1:
 
 User visible changes:
 
-* dsl notation
-* record projection and update
-* auto implicits and default argument values {auto n : T}, {default val n : T}
+* DSL notation
+* Record projection and update
+* Totality checking and 'total' keyword
+* Auto implicits and default argument values {auto n : T}, {default val n : T}
 * Additions to prelude, including Nat and List theorems
 * New libs: control.monad.identity, control.monad.state
 
 Internal changes:
 
-* faster compilation (only compiling names which are used)
+* Faster compilation (only compiling names which are used)
 
 0.1.x to 0.9.0:
 

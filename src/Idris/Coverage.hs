@@ -253,6 +253,7 @@ calcTotality path fc n pats
                     Total _ -> return ords
                     p@(Partial (Mutual x)) -> return ((Left p) : ords)
                     _ -> return (Left (Partial (Other [fn])) : ords)
+        | null args = return (Left (Partial Itself) : ords)
     chkOrd ords args _ = return ords
 
     lexOrd x y | x == y = LexEQ

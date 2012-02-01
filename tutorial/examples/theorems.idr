@@ -5,6 +5,23 @@ fiveIsFive = refl
 twoPlusTwo : 2 + 2 = 4
 twoPlusTwo = refl
 
+total imp : (n : Nat) -> O = S n -> _|_
+imp n p = replace {P = impTy} p ()
+  where
+    impTy : Nat -> Set
+    impTy O = ()
+    impTy (S k) = _|_
+
+empty1 : _|_
+empty1 = let xs : List _|_ = [] in hd xs
+  where
+    hd : List a -> a
+    hd (x :: xs) = x
+
+
+empty2 : _|_
+empty2 = empty2
+
 plusReduces : (n:Nat) -> plus O n = n
 plusReduces n = refl
 
