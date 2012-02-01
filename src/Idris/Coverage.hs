@@ -8,8 +8,10 @@ import Core.CaseTree
 
 import Idris.AbsSyntax
 import Idris.Delaborate
+import Idris.Error
 
 import Data.List
+import Data.Either
 import Debug.Trace
 
 -- Given a list of LHSs, generate a extra clauses which cover the remaining
@@ -151,6 +153,9 @@ wellFounded i n sc = case wff [] sc of
     chkArgs i ns (P _ n _ : xs) | n `elem` ns = i : chkArgs (i + 1) ns xs
     chkArgs i ns (_ : xs) = chkArgs (i+1) ns xs
 
+-- Check if, in a given type n, the constructor cn : ty is strictly positive,
+-- and update the context accordingly
+
 checkPositive :: Name -> (Name, Type) -> Idris ()
 checkPositive n (cn, ty) 
     = do let p = cp ty
@@ -169,4 +174,107 @@ checkPositive n (cn, ty)
         | (P _ n' _, args) <- unApply nty
             = n /= n' && posArg sc
     posArg t = True
+
+-- Totality checking - check for structural recursion (no mutual definitions yet)
+
+data LexOrder = LexXX | LexEQ | LexLT
+    deriving (Show, Eq, Ord)
+
+calcTotality :: [Name] -> FC -> Name -> [(Term, Term)] -> Idris Totality
+calcTotality path fc n pats 
+    = do orders <- mapM ctot pats 
+         let order = sortBy cmpOrd $ concat orders
+         let (errs, valid) = partitionEithers order
+         let lex = stripXX valid
+         case errs of
+            [] -> do logLvl 3 $ show n ++ ":\n" ++ showSep "\n" (map show lex)
+                     checkDecreasing lex
+            (e : _) -> return e -- FIXME: should probably combine them
+  where
+    cmpOrd (Left _) (Left _) = EQ
+    cmpOrd (Left _) (Right _) = LT
+    cmpOrd (Right _) (Left _) = GT
+    cmpOrd (Right x) (Right y) = compare x y
+
+    checkDecreasing [] = return (Total [])
+    checkDecreasing (c : cs) | dec c = checkDecreasing cs
+                             | otherwise = return (Partial Itself)
+    
+    dec [] = False
+    dec (LexLT : _) = True
+    dec (LexEQ : xs) = dec xs
+    dec (LexXX : _) = False
+
+    stripXX [] = []
+    stripXX v@(c : cs) 
+        = case span (==LexXX) c of
+               (ns, rest) -> map (drop (length ns)) v
+
+    ctot (lhs, rhs) 
+        | (_, args) <- unApply lhs
+            = do -- check lhs doesn't use any dodgy names
+                    lhsOK <- mapM (chkOrd [] []) args
+                    chkOrd (concat lhsOK) args rhs
+
+    chkOrd ords args (Bind n (Let t v) sc) 
+        = do ov <- chkOrd ords args v
+             chkOrd ov args sc
+    chkOrd ords args (Bind n b sc) = chkOrd ords args sc
+    chkOrd ords args ap@(App f a)
+        | (P _ fn _, args') <- unApply ap
+            = if fn == n && length args == length args'
+                 then do orf <- chkOrd (Right (zipWith lexOrd args args') : ords) args f
+                         chkOrd orf args a
+                 else do orf <- chkOrd ords args f
+                         chkOrd orf args a
+        | otherwise = do orf <- chkOrd ords args f
+                         chkOrd orf args a
+    chkOrd ords args (P _ fn _)
+        | n /= fn
+            = do tf <- checkTotality (n : path) fc fn
+                 case tf of
+                    Total _ -> return ords
+                    p@(Partial (Mutual x)) -> return ((Left p) : ords)
+                    _ -> return (Left (Partial (Other [fn])) : ords)
+    chkOrd ords args _ = return ords
+
+    lexOrd x y | x == y = LexEQ
+    lexOrd f@(App _ _) x 
+        | (f', args) <- unApply f
+            = let ords = map (\x' -> lexOrd x' x) args in
+                if any (\o -> o == LexEQ || o == LexLT) ords
+                    then LexLT
+                    else LexXX
+    lexOrd _ _ = LexXX
+
+checkTotality :: [Name] -> FC -> Name -> Idris Totality
+checkTotality path fc n 
+    | n `elem` path = return (Partial (Mutual (n : path)))
+    | otherwise 
+        = do t <- getTotality n
+             ctxt <- getContext
+             case t of 
+                Unchecked -> case lookupDef Nothing n ctxt of
+                                [CaseOp _ _ pats _ _ _ _] -> 
+                                    do t' <- calcTotality path fc n pats
+                                       i <- getIState
+                                       case lookupCtxt Nothing n (idris_flags i) of
+                                          [fs] -> if TotalFn `elem` fs then
+                                                    case t' of
+                                                        Total _ -> return ()
+                                                        e -> totalityError t'
+                                                    else return ()
+                                          _ -> return ()
+                                       setTotality n t'
+                                       addIBC (IBCTotal n t')
+                                       return t'
+                                _ -> return $ Total []
+                x -> return x
+  where
+    totalityError t = tclift $ tfail (At fc (Msg (show n ++ " is " ++ show t)))
+
+checkDeclTotality :: (FC, Name) -> Idris Totality
+checkDeclTotality (fc, n) 
+    = do logLvl 2 $ "Checking " ++ show n ++ " for totality"
+         checkTotality [] fc n
 

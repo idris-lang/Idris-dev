@@ -524,17 +524,22 @@ data Accessibility = Public | Frozen | Hidden
 
 data Totality = Total [Int] -- well-founded arguments
               | Partial PReason
+              | Unchecked
     deriving Eq
 
 data PReason = Other [Name] | Itself | NotCovering | NotPositive | UseUndef Name
+             | Mutual [Name]
     deriving (Show, Eq)
 
 instance Show Totality where
     show (Total args)= "Total, " ++ show args ++ " decreasing arguments"
-    show (Partial Itself) = "not total as it is not well founded"
+    show Unchecked = "not yet checked for totality"
+    show (Partial Itself) = "possibly not total as it is not well founded"
     show (Partial NotCovering) = "not total as there are missing cases"
     show (Partial NotPositive) = "not strictly positive"
-    show (Partial (Other ns)) = "not total due to: " ++ showSep ", " (map show ns)
+    show (Partial (Other ns)) = "possibly not total due to: " ++ showSep ", " (map show ns)
+    show (Partial (Mutual ns)) = "possibly not total due to mutual recursive path " ++ 
+                                 showSep " --> " (map show ns)
 
 {-!
 deriving instance Binary Accessibility
@@ -562,7 +567,7 @@ veval ctxt env t = evalState (eval ctxt emptyContext env t []) ()
 addToCtxt :: Name -> Term -> Type -> Context -> Context
 addToCtxt n tm ty uctxt 
     = let ctxt = definitions uctxt 
-          ctxt' = addDef n (Function ty tm, Public, Total []) ctxt in
+          ctxt' = addDef n (Function ty tm, Public, Unchecked) ctxt in
           uctxt { definitions = ctxt' } 
 
 setAccess :: Name -> Accessibility -> Context -> Context
@@ -579,13 +584,13 @@ setTotal n t uctxt
 
 addCtxtDef :: Name -> Def -> Context -> Context
 addCtxtDef n d c = let ctxt = definitions c
-                       ctxt' = addDef n (d, Public, Total []) ctxt in
+                       ctxt' = addDef n (d, Public, Unchecked) ctxt in
                        c { definitions = ctxt' }
 
 addTyDecl :: Name -> Type -> Context -> Context
 addTyDecl n ty uctxt 
     = let ctxt = definitions uctxt
-          ctxt' = addDef n (TyDecl Ref ty, Public, Total []) ctxt in
+          ctxt' = addDef n (TyDecl Ref ty, Public, Unchecked) ctxt in
           uctxt { definitions = ctxt' }
 
 addDatatype :: Datatype Name -> Context -> Context
@@ -593,14 +598,14 @@ addDatatype (Data n tag ty cons) uctxt
     = let ctxt = definitions uctxt 
           ty' = normalise uctxt [] ty
           ctxt' = addCons 0 cons (addDef n 
-                    (TyDecl (TCon tag (arity ty')) ty, Public, Total []) ctxt) in
+                    (TyDecl (TCon tag (arity ty')) ty, Public, Unchecked) ctxt) in
           uctxt { definitions = ctxt' }
   where
     addCons tag [] ctxt = ctxt
     addCons tag ((n, ty) : cons) ctxt 
         = let ty' = normalise uctxt [] ty in
               addCons (tag+1) cons (addDef n
-                  (TyDecl (DCon tag (arity ty')) ty, Public, Total []) ctxt)
+                  (TyDecl (DCon tag (arity ty')) ty, Public, Unchecked) ctxt)
 
 addCasedef :: Name -> Bool -> Bool -> Bool -> [(Term, Term)] -> [(Term, Term)] ->
               Type -> Context -> Context
@@ -612,7 +617,7 @@ addCasedef n alwaysInline tcase covering ps psrt ty uctxt
                     (CaseDef args sc _, CaseDef args' sc' _) -> 
                                        let inl = alwaysInline in
                                            addDef n (CaseOp inl ty ps args sc args' sc',
-                                                     Public, Total []) ctxt in
+                                                     Public, Unchecked) ctxt in
           uctxt { definitions = ctxt' }
   where simpl [] = []
         simpl ((l,r) : xs) = (l, simplify uctxt [] r) : simpl xs
@@ -620,7 +625,7 @@ addCasedef n alwaysInline tcase covering ps psrt ty uctxt
 addOperator :: Name -> Type -> Int -> ([Value] -> Maybe Value) -> Context -> Context
 addOperator n ty a op uctxt
     = let ctxt = definitions uctxt 
-          ctxt' = addDef n (Operator ty a op, Public, Total []) ctxt in
+          ctxt' = addDef n (Operator ty a op, Public, Unchecked) ctxt in
           uctxt { definitions = ctxt' }
 
 tfst (a, _, _) = a
