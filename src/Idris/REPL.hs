@@ -182,12 +182,10 @@ process fn (Defn n) = do i <- get
     where printCase i (lhs, rhs) = do liftIO $ putStr $ showImp True (delab i lhs)
                                       liftIO $ putStr " = "
                                       liftIO $ putStrLn $ showImp True (delab i rhs)
-          showTotal t@(Partial (Other ns)) i
-            = show t ++ "\n\t" ++ showSep "\n\t" (map (showTotalN i) ns)
-          showTotal t i = show t
-          showTotalN i n = case lookupTotal n (tt_ctxt i) of
-                              [t] -> showTotal t i
-                              _ -> ""
+process fn (TotCheck n) = do i <- get
+                             case lookupTotal n (tt_ctxt i) of
+                                [t] -> iputStrLn (showTotal t i)
+                                _ -> return ()
 process fn (Info n) = do i <- get
                          let oi = lookupCtxt Nothing n (idris_optimisation i)
                          liftIO $ print oi
@@ -232,6 +230,13 @@ process fn Metavars
                         _ -> iputStrLn $ "Global metavariables:\n\t" ++ show mvs
 process fn NOP      = return ()
 
+showTotal t@(Partial (Other ns)) i
+   = show t ++ "\n\t" ++ showSep "\n\t" (map (showTotalN i) ns)
+showTotal t i = show t
+showTotalN i n = case lookupTotal n (tt_ctxt i) of
+                        [t] -> showTotal t i
+                        _ -> ""
+
 displayHelp = let vstr = showVersion version in
               "\nIdris version " ++ vstr ++ "\n" ++
               "--------------" ++ map (\x -> '-') vstr ++ "\n\n" ++
@@ -246,6 +251,7 @@ help =
     ([""], "", ""),
     (["<expr>"], "", "Evaluate an expression"),
     ([":t"], "<expr>", "Check the type of an expression"),
+    ([":total"], "<name>", "Check the totality of a name"),
     ([":r",":reload"], "", "Reload current file"),
     ([":e",":edit"], "", "Edit current file using $EDITOR or $VISUAL"),
     ([":m",":metavars"], "", "Show remaining proof obligations (metavariables)"),
