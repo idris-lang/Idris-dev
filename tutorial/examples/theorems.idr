@@ -5,19 +5,17 @@ fiveIsFive = refl
 twoPlusTwo : 2 + 2 = 4
 twoPlusTwo = refl
 
-total imp : (n : Nat) -> O = S n -> _|_
-imp n p = replace {P = impTy} p ()
+total disjoint : (n : Nat) -> O = S n -> _|_
+disjoint n p = replace {P = disjointTy} p ()
   where
-    impTy : Nat -> Set
-    impTy O = ()
-    impTy (S k) = _|_
+    disjointTy : Nat -> Set
+    disjointTy O = ()
+    disjointTy (S k) = _|_
 
 empty1 : _|_
-empty1 = let xs : List _|_ = [] in hd xs
-  where
+empty1 = hd [] where
     hd : List a -> a
     hd (x :: xs) = x
-
 
 empty2 : _|_
 empty2 = empty2

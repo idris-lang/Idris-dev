@@ -31,6 +31,8 @@ twoPlusTwo = refl
 
 \subsection{The Empty Type}
 
+\label{sect:empty}
+
 There is an empty type, \texttt{\_|\_}, which has no constructors. It is
 therefore impossible to construct an element of the empty type, at least
 without using a partially defined or general recursive function (see Section
@@ -40,12 +42,12 @@ to a successor:
 
 \begin{SaveVerbatim}{natdisjoint}
 
-imp : (n : Nat) -> O = S n -> _|_
-imp n p = replace {P = impTy} p ()
+disjoint : (n : Nat) -> O = S n -> _|_
+disjoint n p = replace {P = disjointTy} p ()
   where
-    impTy : Nat -> Set
-    impTy O = ()
-    impTy (S k) = _|_
+    disjointTy : Nat -> Set
+    disjointTy O = ()
+    disjointTy (S k) = _|_
 
 \end{SaveVerbatim}
 \useverb{natdisjoint} 
@@ -56,6 +58,16 @@ it applies the library function \texttt{replace}, which uses an equality proof t
 transform a predicate. Here we use it to transform a value of a type which can exist,
 the empty tuple, to a value of a type which can't, by using a proof of something
 which can't exist.
+
+Once we have an element of the empty type, we can prove anything. \texttt{FalseElim}
+is defined in the library, to assist with proofs by contradiction.
+
+\begin{SaveVerbatim}{falseelim}
+
+FalseElim : _|_ -> a
+
+\end{SaveVerbatim}
+\useverb{falseelim} 
 
 \subsection{Simple Theorems}
 
@@ -321,3 +333,85 @@ plusredO_S = proof {
 \noindent
 Again, we can add this proof to the end of our source file using the \texttt{:addproof}
 command at the interactive prompt.
+
+\subsection{Totality Checking}
+
+\label{sect:totality}
+
+If we really want to trust our proofs, it is important that they are defined by
+\emph{total} functions --- that is, a function which is defined for all possible inputs
+and is guaranteed to terminate. Otherwise we could construct an element of the empty type,
+from which we could prove anything:
+
+\begin{SaveVerbatim}{empties}
+
+-- making use of 'head' being partially defined
+empty1 : _|_
+empty1 = hd [] where
+    hd : List a -> a
+    hd (x :: xs) = x
+
+-- not terminating
+empty2 : _|_
+empty2 = empty2
+
+\end{SaveVerbatim}
+\useverb{empties} 
+
+\noindent
+Internally, \Idris{} checks every definition for totality, and we can check at the prompt
+with the \texttt{:total} command. We see that neither of the above definitions is total:
+
+\begin{SaveVerbatim}{totalcheck}
+
+*theorems> :total empty1
+possibly not total due to: empty1#hd
+	not total as there are missing cases
+*theorems> :total empty2
+possibly not total as it is not well founded
+
+\end{SaveVerbatim}
+\useverb{totalcheck} 
+
+\noindent
+Note the use of the word ``possibly'' --- a totality check can, of course, never be certain
+due to the undecidability of the halting problem. The check is, therefore, conservative.
+It is also possible (and indeed advisable, in the case of proofs) to mark functions as
+total so that it will be a compile time error for the totality check to fail:
+
+\begin{SaveVerbatim}{emptyfail}
+
+total empty2 : _|_
+empty2 = empty2
+
+Type checking ./theorems.idr
+theorems.idr:25:empty2 is possibly not total as it is not well founded
+
+\end{SaveVerbatim}
+\useverb{emptyfail} 
+
+\noindent
+Reassuringly, our proof in Section \ref{sect:empty} that the zero and successor constructors
+are disjoint is total:
+
+\begin{SaveVerbatim}{totdisjoint}
+
+*theorems> :total disjoint
+Total
+
+\end{SaveVerbatim}
+\useverb{totdisjoint} 
+
+\noindent
+The totality check is currently very conservative. To be recorded as total, a function must:
+
+\begin{itemize}
+\item Cover all possible inputs
+\item Be \emph{well-founded} --- i.e. each recursive call must have a decreasing argument
+\item Not call any non-total functions
+\item Not use any data types which are not \emph{strictly positive}
+\item (In version 0.9.1) Not be mutually recursive
+\end{itemize}
+
+\noindent
+The last of these conditions may be relaxed in the future.
