@@ -1324,11 +1324,11 @@ toEither (RightOK ho) = Right ho
 -- syntactic match of a against b, returning pair of variables in a 
 -- and what they match. Returns the pair that failed if not a match.
 
-matchClause :: PTerm -> PTerm -> Either (PTerm, PTerm) [(Name, PTerm)]
+matchClause :: IState -> PTerm -> PTerm -> Either (PTerm, PTerm) [(Name, PTerm)]
 matchClause = matchClause' False
 
-matchClause' :: Bool -> PTerm -> PTerm -> Either (PTerm, PTerm) [(Name, PTerm)]
-matchClause' names x y = checkRpts $ match (fullApp x) (fullApp y) where
+matchClause' :: Bool -> IState -> PTerm -> PTerm -> Either (PTerm, PTerm) [(Name, PTerm)]
+matchClause' names i x y = checkRpts $ match (fullApp x) (fullApp y) where
     matchArg x y = match (fullApp (getTm x)) (fullApp (getTm y))
 
     fullApp (PApp _ (PApp fc f args) xs) = fullApp (PApp fc f (args ++ xs))
@@ -1349,7 +1349,9 @@ matchClause' names x y = checkRpts $ match (fullApp x) (fullApp y) where
     match (PRef f n) (PApp _ x []) = match (PRef f n) x
     match (PApp _ x []) (PRef f n) = match x (PRef f n)
     match (PRef _ n) (PRef _ n') | n == n' = return []
-    match (PRef _ n) tm | not names = return [(n, tm)]
+    match (PRef _ n) tm 
+        | not names && not (isConName Nothing n (tt_ctxt i))
+            = return [(n, tm)]
     match (PEq _ l r) (PEq _ l' r') = do ml <- match' l l'
                                          mr <- match' r r'
                                          return (ml ++ mr)
@@ -1395,7 +1397,7 @@ matchClause' names x y = checkRpts $ match (fullApp x) (fullApp y) where
                                                   return (mt ++ mty ++ ms)
     match (PHidden x) (PHidden y) = match' x y
     match Placeholder _ = return []
-    match _ Placeholder = return []
+--     match _ Placeholder = return []
     match (PResolveTC _) _ = return []
     match a b | a == b = return []
               | otherwise = LeftErr (a, b)

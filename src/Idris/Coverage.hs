@@ -34,8 +34,10 @@ genClauses fc n xs given
         let parg = case lookupCtxt Nothing n (idris_implicits i) of
                         (p : _) -> p
                         _ -> repeat (pexp Placeholder)
-        let new = mnub i $ filter (noMatch i) $ mkClauses parg all_args
+        let tryclauses = mkClauses parg all_args
+        let new = mnub i $ filter (noMatch i) tryclauses 
         logLvl 7 $ "New clauses: \n" ++ showSep "\n" (map (showImp True) new)
+                    ++ " from:\n" ++ showSep "\n" (map (showImp True) tryclauses) 
         return new
 --         return (map (\t -> PClause n t [] PImpossible []) new)
   where getLHS i term 
@@ -47,17 +49,19 @@ genClauses fc n xs given
 
         mnub i [] = []
         mnub i (x : xs) = 
-            if (any (\t -> case matchClause x t of
+            if (any (\t -> case matchClause i x t of
                                 Right _ -> True
                                 Left _ -> False) xs) then mnub i xs 
                                                      else x : mnub i xs
 
-        noMatch i tm = all (\x -> case matchClause (delab' i x True) tm of
+        noMatch i tm = all (\x -> case matchClause i (delab' i x True) tm of
                                           Right _ -> False
                                           Left miss -> True) xs 
 
 
         mkClauses :: [PArg] -> [[PTerm]] -> [PTerm]
+        mkClauses parg args
+            | all (== [Placeholder]) args = []
         mkClauses parg args
             = do args' <- mkArg args
                  let tm = PApp fc (PRef fc n) (zipWith upd args' parg)
@@ -69,13 +73,22 @@ genClauses fc n xs given
                                 as' <- mkArg as
                                 return (a':as')
 
+-- FIXME: Just look for which one is the deepest, then generate all possibilities
+-- up to that depth.
+
 genAll :: IState -> [PTerm] -> [PTerm]
-genAll i args = concatMap otherPats (nub args)
+genAll i args = case filter (/=Placeholder) $ concatMap otherPats (nub args) of
+                    [] -> [Placeholder]
+                    xs -> xs
   where 
+    conForm (PApp _ (PRef fc n) _) = isConName Nothing n (tt_ctxt i)
+    conForm (PRef fc n) = isConName Nothing n (tt_ctxt i)
+    conForm _ = False
+
     otherPats :: PTerm -> [PTerm]
     otherPats o@(PRef fc n) = ops fc n [] o
     otherPats o@(PApp _ (PRef fc n) xs) = ops fc n xs o
-    otherPats arg = return arg
+    otherPats arg = return Placeholder 
 
     ops fc n xs o
         | (TyDecl c@(DCon _ arity) ty : _) <- lookupDef Nothing n (tt_ctxt i)
@@ -85,7 +98,7 @@ genAll i args = concatMap otherPats (nub args)
                  case lookupCtxt Nothing tyn (idris_datatypes i) of
                          (TI ns : _) -> p : map (mkPat fc) (ns \\ [n])
                          _ -> [p]
-    ops fc n arg o = return o
+    ops fc n arg o = return Placeholder
 
     getTy n ctxt = case lookupTy Nothing n ctxt of
                           (t : _) -> case unApply (getRetTy t) of

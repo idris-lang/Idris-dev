@@ -177,11 +177,17 @@ process fn (Defn n) = do i <- get
                             [d] -> do iputStrLn "Original definiton:\n"
                                       mapM_ (printCase i) d
                          case lookupTotal n (tt_ctxt i) of
-                            [t] -> iputStrLn (show t)
+                            [t] -> iputStrLn (showTotal t i)
                             _ -> return ()
     where printCase i (lhs, rhs) = do liftIO $ putStr $ showImp True (delab i lhs)
                                       liftIO $ putStr " = "
                                       liftIO $ putStrLn $ showImp True (delab i rhs)
+          showTotal t@(Partial (Other ns)) i
+            = show t ++ "\n\t" ++ showSep "\n\t" (map (showTotalN i) ns)
+          showTotal t i = show t
+          showTotalN i n = case lookupTotal n (tt_ctxt i) of
+                              [t] -> showTotal t i
+                              _ -> ""
 process fn (Info n) = do i <- get
                          let oi = lookupCtxt Nothing n (idris_optimisation i)
                          liftIO $ print oi

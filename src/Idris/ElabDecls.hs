@@ -227,9 +227,23 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
          pcover <-
                  if cov  
                     then do missing <- genClauses fc n (map fst pdef) cs
-                            missing' <- filterM (checkPossible info fc True n) missing
-                            logLvl 5 $ "Must be unreachable: " ++ show missing' ++ " from " ++ show missing
-                            return (null missing')
+                            poss <- mapM (checkPossible info fc True n) missing
+                            let missing' = mapMaybe id poss
+                            logLvl 3 $ "Must be unreachable: " ++ show missing' ++ " from " ++ show missing
+                            if null missing'
+                              then return True
+                              else return False 
+--                                -- if there's missing cases, add a catch all case. If it's
+--                                -- unreachable, we're still covering
+--                                do let mrhs = P Ref (MN 0 "reach?") undefined
+--                                   let (f,as) = unApply $ depat (head missing')
+--                                   let arity = length as
+--                                   let mlhs = mkApp f (map (\a -> P Bound (MN a "v") undefined)
+--                                                         [0..arity-1]) 
+--                                   let untree@(CaseDef _ sc _) = simpleCase tcase True 
+--                                                                  (pdef ++ [(mlhs, mrhs)])
+--                                   logLvl 5 $ "Tree is " ++ show sc
+--                                   return False
                     else return False
          pdef' <- applyOpts pdef 
          let tree@(CaseDef _ sc _) = simpleCase tcase pcover pdef
@@ -263,7 +277,8 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
                                                      tcase pcover pdef pdef' ty)
                         addIBC (IBCDef n)
                         setTotality n tot
-                        when (tot == Unchecked) $ totcheck (fc, n)
+                        if (tot == Unchecked) then totcheck (fc, n)
+                                              else addIBC (IBCTotal n tot)
                         i <- get
                         case lookupDef Nothing n (tt_ctxt i) of
                             (CaseOp _ _ _ _ sc _ _ : _) ->
@@ -301,7 +316,10 @@ elabVal info aspat tm_in
         logLvl 2 (show vtm)
         recheckC ctxt (FC "prompt" 0) [] vtm
 
-checkPossible :: ElabInfo -> FC -> Bool -> Name -> PTerm -> Idris Bool
+-- checks if the clause is a possible left hand side. Returns the term if
+-- possible, otherwise Nothing.
+
+checkPossible :: ElabInfo -> FC -> Bool -> Name -> PTerm -> Idris (Maybe Term)
 checkPossible info fc tcgen fname lhs_in
    = do ctxt <- getContext
         i <- get
@@ -312,15 +330,16 @@ checkPossible info fc tcgen fname lhs_in
             OK ((lhs', _, _), _) ->
                do let lhs_tm = orderPats (getInferTerm lhs')
                   b <- inferredDiff fc (delab' i lhs_tm True) lhs
-                  return (not b)
+                  if not b then return (Just lhs_tm) else return Nothing
 --                   trace (show (delab' i lhs_tm True) ++ "\n" ++ show lhs) $ return (not b)
-            Error _ -> return False
+            Error _ -> return Nothing
 
 elabClause :: ElabInfo -> FC -> Bool -> PClause -> Idris (Maybe (Term, Term))
 elabClause info fc tcgen (PClause fname lhs_in [] PImpossible [])
    = do b <- checkPossible info fc tcgen fname lhs_in
-        if b then fail $ show fc ++ ":" ++ show lhs_in ++ " is a possible case"
-             else return Nothing
+        case b of
+            Just _ -> fail $ show fc ++ ":" ++ show lhs_in ++ " is a possible case"
+            Nothing -> return Nothing
 elabClause info fc tcgen (PClause fname lhs_in withs rhs_in whereblock) 
    = do ctxt <- getContext
         -- Build the LHS as an "Infer", and pull out its type and
@@ -471,7 +490,7 @@ elabClause info fc tcgen (PWith fname lhs_in withs wval_in withblock)
              let tm = addImpl i tm_in
              logLvl 2 ("Matching " ++ showImp True tm ++ " against " ++ 
                                       showImp True toplhs)
-             case matchClause toplhs tm of
+             case matchClause i toplhs tm of
                 Left _ -> fail $ show fc ++ "with clause does not match top level"
                 Right mvars -> do logLvl 3 ("Match vars : " ++ show mvars)
                                   lhs <- updateLHS n wname mvars ns (fullApp tm) w
@@ -482,7 +501,7 @@ elabClause info fc tcgen (PWith fname lhs_in withs wval_in withblock)
              logLvl 2 ("Matching " ++ showImp True tm ++ " against " ++ 
                                       showImp True toplhs)
              withs' <- mapM (mkAuxC wname toplhs ns) withs
-             case matchClause toplhs tm of
+             case matchClause i toplhs tm of
                 Left _ -> fail $ show fc ++ "with clause does not match top level"
                 Right mvars -> do lhs <- updateLHS n wname mvars ns (fullApp tm) w
                                   return $ PWith wname lhs ws wval withs'
@@ -797,7 +816,8 @@ checkInferred :: FC -> PTerm -> PTerm -> Idris ()
 checkInferred fc inf user =
      do logLvl 6 $ "Checked to\n" ++ showImp True inf ++ "\n" ++
                                      showImp True user
-        tclift $ case matchClause' True user inf of 
+        i <- get
+        tclift $ case matchClause' True i user inf of 
             Right vs -> return ()
             Left (x, y) -> tfail $ At fc 
                                     (Msg $ "The type-checked term and given term do not match: "
@@ -809,9 +829,10 @@ checkInferred fc inf user =
 
 inferredDiff :: FC -> PTerm -> PTerm -> Idris Bool
 inferredDiff fc inf user =
-     do logLvl 6 $ "Checked to\n" ++ showImp True inf ++ "\n" ++
+     do i <- get
+        logLvl 6 $ "Checked to\n" ++ showImp True inf ++ "\n" ++
                                      showImp True user
-        tclift $ case matchClause' True user inf of 
+        tclift $ case matchClause' True i user inf of 
             Right vs -> return False
             Left (x, y) -> return True
 

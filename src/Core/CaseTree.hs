@@ -4,6 +4,7 @@ module Core.CaseTree(CaseDef(..), SC(..), CaseAlt(..), CaseTree,
 import Core.TT
 
 import Control.Monad.State
+import Data.Maybe
 import Data.List hiding (partition)
 import Debug.Trace
 
@@ -227,7 +228,7 @@ prune (Case n alts)
           case alts' of
             [] -> STerm Erased
             as  -> Case n as
-    where pruneAlt (ConCase n i ns sc) = ConCase n i ns (prune sc)
+    where pruneAlt (ConCase cn i ns sc) = ConCase cn i ns (prune sc)
           pruneAlt (ConstCase c sc) = ConstCase c (prune sc)
           pruneAlt (DefaultCase sc) = DefaultCase (prune sc)
 
