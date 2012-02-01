@@ -579,7 +579,7 @@ type PArg = PArg' PTerm
 -- Type class data
 
 data ClassInfo = CI { instanceName :: Name,
-                      class_methods :: [(Name, PTerm)],
+                      class_methods :: [(Name, (FnOpts, PTerm))],
                       class_defaults :: [(Name, Name)], -- method name -> default impl
                       class_params :: [Name] }
     deriving Show

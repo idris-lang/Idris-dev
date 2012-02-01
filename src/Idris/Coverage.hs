@@ -225,13 +225,19 @@ calcTotality path fc n pats
                (ns, rest) -> map (drop (length ns)) v
 
     -- argument positions which are never LT are no use to us
-    stripNoLT xs = transpose (filter (any (==LexLT)) (transpose xs))
+    stripNoLT [] = [] -- no recursive calls
+    stripNoLT xs = case transpose (filter (any (==LexLT)) (transpose xs)) of
+                        [] -> [[]] -- recursive calls are all useless...
+                        xs -> xs
 
     ctot (lhs, rhs) 
         | (_, args) <- unApply lhs
             = do -- check lhs doesn't use any dodgy names
                     lhsOK <- mapM (chkOrd [] []) args
-                    chkOrd (concat lhsOK) args rhs
+                    chkOrd (filter isLeft (concat lhsOK)) args rhs
+
+    isLeft (Left _) = True
+    isLeft _ = False
 
     chkOrd ords args (Bind n (Let t v) sc) 
         = do ov <- chkOrd ords args v

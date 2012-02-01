@@ -555,21 +555,21 @@ elabClass info syn fc constraints tn ps ds
     conbind (ty : ns) x = PPi constraint (MN 0 "c") ty (conbind ns x)
     conbind [] x = x
 
-    tdecl (PTy syn _ _ n t) = do t' <- implicit syn n t
+    tdecl (PTy syn _ o n t) = do t' <- implicit syn n t
                                  return ( (n, (toExp (map fst ps) Exp t')),
-                                          (n, (toExp (map fst ps) Imp t')),
-                                          (n, (syn, t) ) )
+                                          (n, (o, (toExp (map fst ps) Imp t'))),
+                                          (n, (syn, o, t) ) )
     tdecl _ = fail "Not allowed in a class declaration"
 
     -- Create default definitions 
     defdecl mtys c d@(PClauses fc opts n cs) =
         case lookup n mtys of
-            Just (syn, ty) -> do let ty' = insertConstraint c ty
-                                 let ds = map (decorateid defaultdec)
-                                              [PTy syn fc [] n ty', 
-                                               PClauses fc (TCGen:opts) n cs]
-                                 iLOG (show ds)
-                                 return (n, (defaultdec n, ds))
+            Just (syn, o, ty) -> do let ty' = insertConstraint c ty
+                                    let ds = map (decorateid defaultdec)
+                                                 [PTy syn fc [] n ty', 
+                                                  PClauses fc (TCGen:o ++ opts) n cs]
+                                    iLOG (show ds)
+                                    return (n, (defaultdec n, ds))
             _ -> fail $ show n ++ " is not a method"
     defdecl _ _ _ = fail "Can't happen (defdecl)"
 
@@ -593,7 +593,7 @@ elabClass info syn fc constraints tn ps ds
              return [PTy syn fc [] cfn ty,
                      PClauses fc [Inlinable,TCGen] cfn [PClause cfn lhs [] rhs []]]
 
-    tfun cn c syn all (m, ty) 
+    tfun cn c syn all (m, (o, ty)) 
         = do let ty' = insertConstraint c ty
              let mnames = take (length all) $ map (\x -> MN x "meth") [0..]
              let capp = PApp fc (PRef fc cn) (map (pexp . PRef fc) mnames)
@@ -604,7 +604,7 @@ elabClass info syn fc constraints tn ps ds
              iLOG (showImp True ty)
              iLOG (show (m, ty', capp, margs))
              iLOG (showImp True lhs ++ " = " ++ showImp True rhs)
-             return [PTy syn fc [] m ty',
+             return [PTy syn fc o m ty',
                      PClauses fc [Inlinable,TCGen] m [PClause m lhs [] rhs []]]
 
     getMArgs (PPi (Imp _ _) n ty sc) = IA : getMArgs sc
@@ -650,8 +650,9 @@ elabInstance info syn fc cs n ps t ds
          let ns = case n of
                     NS n ns' -> ns'
                     _ -> []
-         let mtys = map (\ (n, t) -> let t' = substMatches ips t in
-                                         (decorate ns n, coninsert cs t', t'))
+         let mtys = map (\ (n, (op, t)) -> 
+                                let t' = substMatches ips t in
+                                    (decorate ns n, op, coninsert cs t', t'))
                         (class_methods ci)
          logLvl 3 (show (mtys, ips))
          let ds' = insertDefaults (class_defaults ci) ns ds
@@ -675,7 +676,7 @@ elabInstance info syn fc cs n ps t ds
          iLOG (show idecl)
          elabDecl info idecl
   where
-    mkMethApp (n, _, ty) = lamBind 0 ty (papp fc (PRef fc n) (methArgs 0 ty))
+    mkMethApp (n, _, _, ty) = lamBind 0 ty (papp fc (PRef fc n) (methArgs 0 ty))
     lamBind i (PPi (Constraint _ _) _ _ sc) sc' 
                                   = PLam (MN i "meth") Placeholder (lamBind (i+1) sc sc')
     lamBind i (PPi _ n ty sc) sc' = PLam (MN i "meth") Placeholder (lamBind (i+1) sc sc')
@@ -704,7 +705,7 @@ elabInstance info syn fc cs n ps t ds
     decorate ns (UN n) = NS (UN ('!':n)) ns
     decorate ns (NS (UN n) s) = NS (UN ('!':n)) ns
 
-    mkTyDecl (n, t, _) = PTy syn fc [] n t
+    mkTyDecl (n, op, t, _) = PTy syn fc op n t
 
     conbind (ty : ns) x = PPi constraint (MN 0 "c") ty (conbind ns x)
     conbind [] x = x
