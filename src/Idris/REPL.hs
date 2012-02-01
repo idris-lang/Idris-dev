@@ -12,6 +12,7 @@ import Idris.Delaborate
 import Idris.Compiler
 import Idris.Prover
 import Idris.Parser
+import Idris.Coverage
 import Paths_idris
 
 import Core.Evaluate
@@ -194,7 +195,12 @@ process fn (Spec t) = do (tm, ty) <- elabVal toplevel False t
                          ist <- get
                          let tm' = specialise ctxt (idris_statics ist) tm
                          iputStrLn (show (delab ist tm'))
-process fn (Prove n) = prover (lit fn) n
+process fn (Prove n) = do prover (lit fn) n
+                          -- recheck totality
+                          i <- get
+                          totcheck (FC "(input)" 0, n)
+                          mapM_ (\ (f,n) -> setTotality n Unchecked) (idris_totcheck i)
+                          mapM_ checkDeclTotality (idris_totcheck i)
 process fn (HNF t)  = do (tm, ty) <- elabVal toplevel False t
                          ctxt <- getContext
                          ist <- get
