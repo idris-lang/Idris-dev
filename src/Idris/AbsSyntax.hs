@@ -383,7 +383,7 @@ expl = Exp False Dynamic
 constraint = Constraint False Static
 tacimpl = TacImp False Dynamic
 
-data FnOpt = Inlinable | TotalFn | TCGen
+data FnOpt = Inlinable | TotalFn | AssertTotal | TCGen
     deriving (Show, Eq)
 {-!
 deriving instance Binary FnOpt

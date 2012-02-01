@@ -249,7 +249,7 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
          let tree@(CaseDef _ sc _) = simpleCase tcase pcover pdef
          ist <- get
 --          let wf = wellFounded ist n sc
-         let tot = if pcover 
+         let tot = if pcover || AssertTotal `elem` opts
                     then Unchecked -- finish checking later
                     else Partial NotCovering -- already know it's not total
 --          case lookupCtxt (namespace info) n (idris_flags ist) of 
@@ -772,7 +772,11 @@ elabDecl' info (PTy s f o n ty)    = do iLOG $ "Elaborating type decl " ++ show 
 elabDecl' info (PData s f d)     = do iLOG $ "Elaborating " ++ show (d_name d)
                                       elabData info s f d
 elabDecl' info d@(PClauses f o n ps) = do iLOG $ "Elaborating clause " ++ show n
-                                          elabClauses info f o n ps
+                                          i <- get -- get the type options too
+                                          let o' = case lookupCtxt Nothing n (idris_flags i) of
+                                                    [fs] -> fs
+                                                    [] -> []
+                                          elabClauses info f (o ++ o') n ps
 elabDecl' info (PParams f ns ps) = mapM_ (elabDecl' pinfo) ps
   where
     pinfo = let ds = concatMap declared ps

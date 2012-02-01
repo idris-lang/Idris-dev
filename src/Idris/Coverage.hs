@@ -198,9 +198,10 @@ calcTotality path fc n pats
     = do orders <- mapM ctot pats 
          let order = sortBy cmpOrd $ concat orders
          let (errs, valid) = partitionEithers order
-         let lex = stripXX valid
+         let lex = stripNoLT (stripXX valid)
          case errs of
-            [] -> do logLvl 3 $ show n ++ ":\n" ++ showSep "\n" (map show lex)
+            [] -> do logLvl 3 $ show n ++ ":\n" ++ showSep "\n" (map show lex) 
+                     logLvl 10 $ show pats
                      checkDecreasing lex
             (e : _) -> return e -- FIXME: should probably combine them
   where
@@ -216,12 +217,15 @@ calcTotality path fc n pats
     dec [] = False
     dec (LexLT : _) = True
     dec (LexEQ : xs) = dec xs
-    dec (LexXX : _) = False
+    dec (LexXX : xs) = False
 
     stripXX [] = []
     stripXX v@(c : cs) 
         = case span (==LexXX) c of
                (ns, rest) -> map (drop (length ns)) v
+
+    -- argument positions which are never LT are no use to us
+    stripNoLT xs = transpose (filter (any (==LexLT)) (transpose xs))
 
     ctot (lhs, rhs) 
         | (_, args) <- unApply lhs
@@ -232,7 +236,7 @@ calcTotality path fc n pats
     chkOrd ords args (Bind n (Let t v) sc) 
         = do ov <- chkOrd ords args v
              chkOrd ov args sc
-    chkOrd ords args (Bind n b sc) = chkOrd ords args sc
+    chkOrd ords args (Bind n b sc) = chkOrd ords (args ++ [P Ref n Erased]) sc
     chkOrd ords args ap@(App f a)
         | (P _ fn _, args') <- unApply ap
             = if fn == n && length args == length args'
@@ -269,17 +273,29 @@ checkTotality path fc n
              case t of 
                 Unchecked -> case lookupDef Nothing n ctxt of
                                 [CaseOp _ _ pats _ _ _ _] -> 
-                                    do t' <- calcTotality path fc n pats
-                                       i <- getIState
-                                       case lookupCtxt Nothing n (idris_flags i) of
-                                          [fs] -> if TotalFn `elem` fs then
-                                                    case t' of
-                                                        Total _ -> return ()
-                                                        e -> totalityError t'
-                                                    else return ()
-                                          _ -> return ()
+                                    do i <- getIState
+                                       let opts = case lookupCtxt Nothing n (idris_flags i) of
+                                                    [fs] -> fs
+                                                    [] -> []
+                                       t' <- if AssertTotal `elem` opts
+                                                then return $ Total []
+                                                else calcTotality path fc n pats
+                                       if TotalFn `elem` opts
+                                          then case t' of
+                                                  Total _ -> return ()
+                                                  e -> totalityError t'
+                                          else return ()
                                        setTotality n t'
                                        addIBC (IBCTotal n t')
+                                       -- if it's not total, it can't reduce, to keep
+                                       -- typechecking decidable
+                                       case t' of
+-- FIXME: Put this back when we can handle mutually recursive things
+--                                            p@(Partial _) -> 
+--                                                 do setAccessibility n Frozen 
+--                                                    addIBC (IBCAccess n Frozen)
+--                                                    iputStrLn $ "HIDDEN: " ++ show n ++ show p
+                                           _ -> return ()
                                        return t'
                                 _ -> return $ Total []
                 x -> return x

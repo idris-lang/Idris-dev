@@ -68,12 +68,11 @@ instance Num Nat where
   (-) = minus
   (*) = mult
 
-  fromInteger 0 = O
-  fromInteger n =
-    if (n > 0) then
-      (S (fromInteger (n-1)))
-    else
-      O
+  fromInteger = intToNat where
+      %assert_total
+      intToNat : Int -> Nat
+      intToNat 0 = O
+      intToNat n = if (n > 0) then S (fromInteger (n-1)) else O
 
 --------------------------------------------------------------------------------
 -- Division and modulus

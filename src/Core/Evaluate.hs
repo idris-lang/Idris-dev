@@ -532,7 +532,7 @@ data PReason = Other [Name] | Itself | NotCovering | NotPositive | UseUndef Name
     deriving (Show, Eq)
 
 instance Show Totality where
-    show (Total args)= "Total, " ++ show args ++ " decreasing arguments"
+    show (Total args)= "Total" -- ++ show args ++ " decreasing arguments"
     show Unchecked = "not yet checked for totality"
     show (Partial Itself) = "possibly not total as it is not well founded"
     show (Partial NotCovering) = "not total as there are missing cases"

@@ -614,6 +614,7 @@ pAccessibility
 
 pFnOpts :: IParser [FnOpt]
 pFnOpts = do reserved "total"; xs <- pFnOpts; return (TotalFn : xs)
+      <|> do lchar '%'; reserved "assert_total"; xs <- pFnOpts; return (AssertTotal : xs)
       <|> return []
 
 addAcc :: Name -> Maybe Accessibility -> IParser ()

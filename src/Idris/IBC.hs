@@ -694,12 +694,14 @@ instance Binary FnOpt where
                 Inlinable -> putWord8 0
                 TotalFn -> putWord8 1
                 TCGen -> putWord8 2
+                AssertTotal -> putWord8 3
         get
           = do i <- getWord8
                case i of
                    0 -> return Inlinable
                    1 -> return TotalFn
                    2 -> return TCGen
+                   3 -> return AssertTotal
                    _ -> error "Corrupted binary data for FnOpt"
 
 instance Binary Fixity where
