@@ -227,9 +227,15 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
          pcover <-
                  if cov  
                     then do missing <- genClauses fc n (map fst pdef) cs
-                            poss <- mapM (checkPossible info fc True n) missing
-                            let missing' = mapMaybe id poss
-                            logLvl 3 $ "Must be unreachable: " ++ show missing' ++ " from " ++ show missing
+                            missing' <- filterM (checkPossible info fc True n) missing
+--                             let missing' = mapMaybe (\x -> case x of
+--                                                                 Nothing -> Nothing
+--                                                                 Just t -> Just $ delab ist t) 
+--                                                     poss
+                            logLvl 3 $ "Must be unreachable:\n" ++ 
+                                        showSep "\n" (map (showImp True) missing') ++
+                                       "\nAgainst: " ++
+                                        showSep "\n" (map (\t -> showImp True (delab ist t)) (map fst pdef))
                             if null missing'
                               then return True
                               else return False 
@@ -319,7 +325,7 @@ elabVal info aspat tm_in
 -- checks if the clause is a possible left hand side. Returns the term if
 -- possible, otherwise Nothing.
 
-checkPossible :: ElabInfo -> FC -> Bool -> Name -> PTerm -> Idris (Maybe Term)
+checkPossible :: ElabInfo -> FC -> Bool -> Name -> PTerm -> Idris Bool
 checkPossible info fc tcgen fname lhs_in
    = do ctxt <- getContext
         i <- get
@@ -330,16 +336,16 @@ checkPossible info fc tcgen fname lhs_in
             OK ((lhs', _, _), _) ->
                do let lhs_tm = orderPats (getInferTerm lhs')
                   b <- inferredDiff fc (delab' i lhs_tm True) lhs
-                  if not b then return (Just lhs_tm) else return Nothing
+                  return (not b) -- then return (Just lhs_tm) else return Nothing
 --                   trace (show (delab' i lhs_tm True) ++ "\n" ++ show lhs) $ return (not b)
-            Error _ -> return Nothing
+            Error _ -> return False
 
 elabClause :: ElabInfo -> FC -> Bool -> PClause -> Idris (Maybe (Term, Term))
 elabClause info fc tcgen (PClause fname lhs_in [] PImpossible [])
    = do b <- checkPossible info fc tcgen fname lhs_in
         case b of
-            Just _ -> fail $ show fc ++ ":" ++ show lhs_in ++ " is a possible case"
-            Nothing -> return Nothing
+            True -> fail $ show fc ++ ":" ++ show lhs_in ++ " is a possible case"
+            False -> return Nothing
 elabClause info fc tcgen (PClause fname lhs_in withs rhs_in whereblock) 
    = do ctxt <- getContext
         -- Build the LHS as an "Infer", and pull out its type and

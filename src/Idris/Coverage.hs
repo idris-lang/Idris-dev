@@ -37,7 +37,7 @@ genClauses fc n xs given
         let tryclauses = mkClauses parg all_args
         let new = mnub i $ filter (noMatch i) tryclauses 
         logLvl 7 $ "New clauses: \n" ++ showSep "\n" (map (showImp True) new)
-                    ++ " from:\n" ++ showSep "\n" (map (showImp True) tryclauses) 
+--                     ++ " from:\n" ++ showSep "\n" (map (showImp True) tryclauses) 
         return new
 --         return (map (\t -> PClause n t [] PImpossible []) new)
   where getLHS i term 

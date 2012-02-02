@@ -1351,7 +1351,7 @@ matchClause' names i x y = checkRpts $ match (fullApp x) (fullApp y) where
     match (PApp _ x []) (PRef f n) = match x (PRef f n)
     match (PRef _ n) (PRef _ n') | n == n' = return []
     match (PRef _ n) tm 
-        | not names && not (isConName Nothing n (tt_ctxt i))
+        | not names && (not (isConName Nothing n (tt_ctxt i)) || tm == Placeholder)
             = return [(n, tm)]
     match (PEq _ l r) (PEq _ l' r') = do ml <- match' l l'
                                          mr <- match' r r'
