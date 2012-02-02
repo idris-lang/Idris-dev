@@ -19,17 +19,20 @@ delab' ist tm fullname = de [] tm
     un = FC "(val)" 0
 
     de env (App f a) = deFn env f [a]
-    de env (V i)     | i < length env = PRef un (env!!i)
+    de env (V i)     | i < length env = PRef un (snd (env!!i))
                      | otherwise = PRef un (UN ("v" ++ show i ++ ""))
     de env (P _ n _) | n == unitTy = PTrue un
                      | n == unitCon = PTrue un
                      | n == falseTy = PFalse un
+                     | Just n' <- lookup n env = PRef un n'
                      | otherwise = PRef un (dens n)
-    de env (Bind n (Lam ty) sc) = PLam n (de env ty) (de (n:env) sc)
-    de env (Bind n (Pi ty) sc)  = PPi expl n (de env ty) (de (n:env) sc)
+    de env (Bind n (Lam ty) sc) = PLam n (de env ty) (de ((n,n):env) sc)
+    de env (Bind n (Pi ty) sc)  = PPi expl n (de env ty) (de ((n,n):env) sc)
     de env (Bind n (Let ty val) sc) 
-        = PLet n (de env ty) (de env val) (de (n:env) sc)
-    de env (Bind n _ sc) = de (n:env) sc
+        = PLet n (de env ty) (de env val) (de ((n,n):env) sc)
+    de env (Bind n (Hole ty) sc) = de ((n, UN "[__]"):env) sc
+    de env (Bind n (Guess ty val) sc) = de ((n, UN "[__]"):env) sc
+    de env (Bind n _ sc) = de ((n,n):env) sc
     de env (Constant i) = PConstant i
     de env Erased = Placeholder
     de env (Set i) = PSet 
@@ -76,7 +79,7 @@ pshow i (NotInjective p x y) = "Can't verify injectivity of " ++ show (delab i p
                                                     show (delab i y)
 pshow i (CantResolve c) = "Can't resolve type class " ++ show (delab i c)
 pshow i (NoSuchVariable n) = "No such variable " ++ show n
-pshow i (IncompleteTerm t) = "Incomplete term " ++ show t
+pshow i (IncompleteTerm t) = "Incomplete term " ++ show (delab i t)
 pshow i UniverseError = "Universe inconsistency"
 pshow i ProgramLineComment = "Program line next to comment"
 pshow i (At f e) = show f ++ ":" ++ pshow i e

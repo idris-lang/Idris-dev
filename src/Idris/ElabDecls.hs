@@ -28,7 +28,9 @@ import Debug.Trace
 
 recheckC ctxt fc env t 
     = do -- t' <- applyOpts (forget t) (doesn't work, or speed things up...)
-         (tm, ty, cs) <- tclift $ recheck ctxt env (forget t) t
+         (tm, ty, cs) <- tclift $ case recheck ctxt env (forget t) t of
+                                   Error e -> tfail (At fc e)
+                                   OK x -> return x
          addConstraints fc cs
          return (tm, ty)
 
@@ -283,8 +285,8 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
                                                      tcase pcover pdef pdef' ty)
                         addIBC (IBCDef n)
                         setTotality n tot
-                        if (tot == Unchecked) then totcheck (fc, n)
-                                              else addIBC (IBCTotal n tot)
+                        totcheck (fc, n)
+                        when (tot /= Unchecked) $ addIBC (IBCTotal n tot)
                         i <- get
                         case lookupDef Nothing n (tt_ctxt i) of
                             (CaseOp _ _ _ _ sc _ _ : _) ->
@@ -320,7 +322,7 @@ elabVal info aspat tm_in
         logLvl 3 ("Value: " ++ show tm')
         let vtm = getInferTerm tm'
         logLvl 2 (show vtm)
-        recheckC ctxt (FC "prompt" 0) [] vtm
+        recheckC ctxt (FC "(input)" 0) [] vtm
 
 -- checks if the clause is a possible left hand side. Returns the term if
 -- possible, otherwise Nothing.
@@ -381,7 +383,7 @@ elabClause info tcgen (PClause fc fname lhs_in withs rhs_in whereblock)
            tclift $ elaborate ctxt (MN 0 "patRHS") clhsty []
                     (do pbinds lhs_tm
                         (_, _, is) <- erun fc (build i info False fname rhs)
-                        psolve lhs_tm
+                        erun fc $ psolve lhs_tm
                         tt <- get_term
                         let (tm, ds) = runState (collectDeferred tt) []
                         return (tm, ds, is))
@@ -436,7 +438,7 @@ elabClause info tcgen (PWith fc fname lhs_in withs wval_in withblock)
                         (do pbinds lhs_tm
                             -- TODO: may want where here - see winfo abpve
                             (_', d, is) <- erun fc (build i info False fname (infTerm wval))
-                            psolve lhs_tm
+                            erun fc $ psolve lhs_tm
                             tt <- get_term
                             return (tt, d, is))
         def' <- checkDef fc defer

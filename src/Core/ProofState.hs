@@ -308,7 +308,7 @@ solve ctxt env (Bind x (Guess ty val) sc)
                                            -- unified = (uh, uns ++ [(x, val)]),
                                            instances = instances ps \\ [x] })
                        return $ {- Bind x (Let ty val) sc -} instantiate val (pToV x sc)
-   | otherwise    = fail $ "I see a hole in your solution. " ++ showEnv env val
+   | otherwise    = lift $ tfail $ IncompleteTerm val
 solve _ _ h = fail $ "Not a guess " ++ show h
 
 introTy :: Raw -> Maybe Name -> RunTactic

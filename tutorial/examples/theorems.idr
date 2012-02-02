@@ -12,6 +12,10 @@ disjoint n p = replace {P = disjointTy} p ()
     disjointTy O = ()
     disjointTy (S k) = _|_
 
+total acyclic : (n : Nat) -> n = S n -> _|_
+acyclic O p = disjoint _ p
+acyclic (S k) p = acyclic k _ -- (succInjective _ _ p)
+
 empty1 : _|_
 empty1 = hd [] where
     hd : List a -> a

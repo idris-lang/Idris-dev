@@ -274,38 +274,39 @@ calcTotality path fc n pats
 checkTotality :: [Name] -> FC -> Name -> Idris Totality
 checkTotality path fc n 
     | n `elem` path = return (Partial (Mutual (n : path)))
-    | otherwise 
-        = do t <- getTotality n
-             ctxt <- getContext
-             case t of 
-                Unchecked -> case lookupDef Nothing n ctxt of
-                                [CaseOp _ _ pats _ _ _ _] -> 
-                                    do i <- getIState
-                                       let opts = case lookupCtxt Nothing n (idris_flags i) of
-                                                    [fs] -> fs
-                                                    [] -> []
-                                       t' <- if AssertTotal `elem` opts
-                                                then return $ Total []
-                                                else calcTotality path fc n pats
-                                       if TotalFn `elem` opts
-                                          then case t' of
-                                                  Total _ -> return ()
-                                                  e -> totalityError t'
-                                          else return ()
-                                       setTotality n t'
-                                       addIBC (IBCTotal n t')
-                                       -- if it's not total, it can't reduce, to keep
-                                       -- typechecking decidable
-                                       case t' of
+    | otherwise = do
+        t <- getTotality n
+        ctxt <- getContext
+        i <- getIState
+        let opts = case lookupCtxt Nothing n (idris_flags i) of
+                            [fs] -> fs
+                            [] -> []
+        t' <- case t of 
+                Unchecked -> 
+                    case lookupDef Nothing n ctxt of
+                        [CaseOp _ _ pats _ _ _ _] -> 
+                            do t' <- if AssertTotal `elem` opts
+                                        then return $ Total []
+                                        else calcTotality path fc n pats
+                               setTotality n t'
+                               addIBC (IBCTotal n t')
+                            -- if it's not total, it can't reduce, to keep
+                            -- typechecking decidable
+                               case t' of
 -- FIXME: Put this back when we can handle mutually recursive things
 --                                            p@(Partial _) -> 
 --                                                 do setAccessibility n Frozen 
 --                                                    addIBC (IBCAccess n Frozen)
 --                                                    iputStrLn $ "HIDDEN: " ++ show n ++ show p
                                            _ -> return ()
-                                       return t'
-                                _ -> return $ Total []
+                               return t'
+                        _ -> return $ Total []
                 x -> return x
+        if TotalFn `elem` opts
+            then case t' of
+                    Total _ -> return t'
+                    e -> totalityError t'
+            else return t'
   where
     totalityError t = tclift $ tfail (At fc (Msg (show n ++ " is " ++ show t)))
 
