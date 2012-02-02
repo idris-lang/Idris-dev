@@ -589,7 +589,7 @@ elabClass info syn fc constraints tn ps ds
     clause _ = False
 
     cfun cn c syn all con
-        = do let cfn = UN ('@':show cn ++ "#" ++ show con)
+        = do let cfn = UN ('@':'@':show cn ++ "#" ++ show con)
              let mnames = take (length all) $ map (\x -> MN x "meth") [0..]
              let capp = PApp fc (PRef fc cn) (map (pexp . PRef fc) mnames)
              let lhs = PApp fc (PRef fc cfn) [pconst capp]
@@ -662,6 +662,9 @@ elabInstance info syn fc cs n ps t ds
                        [c] -> return c
                        _ -> fail $ show fc ++ ":" ++ show n ++ " is not a type class"
          let iname = UN ('@':show n ++ "$" ++ show ps)
+         -- if the instance type matches any of the instances we have already,
+         -- then it's overlapping, so report an error
+         mapM_ (checkNotOverlapping i t) (class_instances ci) 
          addInstance n iname
          elabType info syn fc [] iname t
          let ips = zip (class_params ci) ps
@@ -695,6 +698,23 @@ elabInstance info syn fc cs n ps t ds
          elabDecl info idecl
          addIBC (IBCInstance n iname)
   where
+    checkNotOverlapping i t n
+     | take 2 (show n) == "@@" = return ()
+     | otherwise
+        = case lookupTy Nothing n (tt_ctxt i) of
+            [t'] -> let tret = getRetType t
+                        tret' = getRetType (delab i t') in
+                        case matchClause i tret' tret of
+                            Right _ -> overlapping tret tret'
+                            Left _ -> case matchClause i tret tret' of
+                                Right _ -> overlapping tret tret'
+                                Left _ -> return ()
+            _ -> return ()
+    overlapping t t' = tclift $ tfail (At fc (Msg $ 
+                            "Overlapping instance: " ++ show t' ++ " already defined"))
+    getRetType (PPi _ _ _ sc) = getRetType sc
+    getRetType t = t
+
     mkMethApp (n, _, _, ty) = lamBind 0 ty (papp fc (PRef fc n) (methArgs 0 ty))
     lamBind i (PPi (Constraint _ _) _ _ sc) sc' 
                                   = PLam (MN i "meth") Placeholder (lamBind (i+1) sc sc')
