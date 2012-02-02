@@ -74,6 +74,7 @@ data IBCWrite = IBCFix FixDecl
               | IBCImp Name
               | IBCStatic Name
               | IBCClass Name
+              | IBCInstance Name Name
               | IBCDSL Name
               | IBCData Name
               | IBCOpt Name
@@ -146,6 +147,24 @@ getTotality n
 addToCG :: Name -> [Name] -> Idris ()
 addToCG n ns = do i <- get
                   put (i { idris_callgraph = addDef n ns (idris_callgraph i) })
+
+addInstance :: Name -> Name -> Idris ()
+addInstance n i 
+    = do ist <- get
+         case lookupCtxt Nothing n (idris_classes ist) of
+                [CI a b c d ins] ->
+                     do let cs = addDef n (CI a b c d (i : ins)) (idris_classes ist)
+                        put (ist { idris_classes = cs })
+                _ -> do let cs = addDef n (CI (MN 0 "none") [] [] [] [i]) (idris_classes ist)
+                        put (ist { idris_classes = cs })
+
+addClass :: Name -> ClassInfo -> Idris ()
+addClass n i 
+   = do ist <- get
+        let i' = case lookupCtxt Nothing n (idris_classes ist) of
+                      [c] -> c { class_instances = class_instances i }
+                      _ -> i
+        put (ist { idris_classes = addDef n i' (idris_classes ist) }) 
 
 addIBC :: IBCWrite -> Idris ()
 addIBC ibc@(IBCDef n) 
@@ -581,7 +600,8 @@ type PArg = PArg' PTerm
 data ClassInfo = CI { instanceName :: Name,
                       class_methods :: [(Name, (FnOpts, PTerm))],
                       class_defaults :: [(Name, Name)], -- method name -> default impl
-                      class_params :: [Name] }
+                      class_params :: [Name],
+                      class_instances :: [Name] }
     deriving Show
 {-! 
 deriving instance Binary ClassInfo 

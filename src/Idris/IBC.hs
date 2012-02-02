@@ -21,7 +21,7 @@ import System.Directory
 import Paths_idris
 
 ibcVersion :: Word8
-ibcVersion = 15 
+ibcVersion = 16
 
 data IBCFile = IBCFile { ver :: Word8,
                          sourcefile :: FilePath,
@@ -30,6 +30,7 @@ data IBCFile = IBCFile { ver :: Word8,
                          ibc_fixes :: [FixDecl],
                          ibc_statics :: [(Name, [Bool])],
                          ibc_classes :: [(Name, ClassInfo)],
+                         ibc_instances :: [(Name, Name)],
                          ibc_dsls :: [(Name, DSL)],
                          ibc_datatypes :: [(Name, TypeInfo)],
                          ibc_optimise :: [(Name, OptInfo)],
@@ -48,7 +49,7 @@ deriving instance Binary IBCFile
 !-}
 
 initIBC :: IBCFile
-initIBC = IBCFile ibcVersion "" [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] []
+initIBC = IBCFile ibcVersion "" [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] []
 
 loadIBC :: FilePath -> Idris ()
 loadIBC fp = do iLOG $ "Loading ibc " ++ fp
@@ -87,6 +88,8 @@ ibc i (IBCClass n) f
                    = case lookupCtxt Nothing n (idris_classes i) of
                         [v] -> return f { ibc_classes = (n,v): ibc_classes f     }
                         _ -> fail "IBC write failed"
+ibc i (IBCInstance n ins) f 
+                   = return f { ibc_instances = (n,ins): ibc_instances f     }
 ibc i (IBCDSL n) f 
                    = case lookupCtxt Nothing n (idris_dsls i) of
                         [v] -> return f { ibc_dsls = (n,v): ibc_dsls f     }
@@ -128,6 +131,7 @@ process i fn
                pFixes (ibc_fixes i)
                pStatics (ibc_statics i)
                pClasses (ibc_classes i)
+               pInstances (ibc_instances i)
                pDSLs (ibc_dsls i)
                pDatatypes (ibc_datatypes i)
                pOptimise (ibc_optimise i)
@@ -188,6 +192,9 @@ pClasses cs = mapM_ (\ (n, c) ->
                            putIState (i { idris_classes
                                            = addDef n c (idris_classes i) }))
                     cs
+
+pInstances :: [(Name, Name)] -> Idris ()
+pInstances cs = mapM_ (\ (n, ins) -> addInstance n ins) cs
 
 pDSLs :: [(Name, DSL)] -> Idris ()
 pDSLs cs = mapM_ (\ (n, c) ->
@@ -642,7 +649,7 @@ instance Binary Totality where
                    _ -> error "Corrupted binary data for Totality"
 
 instance Binary IBCFile where
-        put (IBCFile x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20)
+        put (IBCFile x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21)
           = do put x1
                put x2
                put x3
@@ -663,6 +670,7 @@ instance Binary IBCFile where
                put x18
                put x19
                put x20
+               put x21
         get
           = do x1 <- get
                if x1 == ibcVersion then 
@@ -685,7 +693,8 @@ instance Binary IBCFile where
                     x18 <- get
                     x19 <- get
                     x20 <- get
-                    return (IBCFile x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20)
+                    x21 <- get
+                    return (IBCFile x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21)
                   else return (initIBC { ver = x1 })
  
 instance Binary FnOpt where
@@ -1068,7 +1077,7 @@ instance (Binary t) => Binary (PArg' t) where
 
  
 instance Binary ClassInfo where
-        put (CI x1 x2 x3 x4)
+        put (CI x1 x2 x3 x4 _)
           = do put x1
                put x2
                put x3
@@ -1078,7 +1087,7 @@ instance Binary ClassInfo where
                x2 <- get
                x3 <- get
                x4 <- get
-               return (CI x1 x2 x3 x4)
+               return (CI x1 x2 x3 x4 [])
 
 instance Binary OptInfo where
         put (Optimise x1 x2 x3)

@@ -101,7 +101,9 @@ elab ist info pattern tcgen fn tm
                                    (elab' ina (PRef fc unitTy))
     elab' ina (PFalse fc)    = elab' ina (PRef fc falseTy)
     elab' ina (PResolveTC (FC "HACK" _)) -- for chasing parent classes
-       = do let insts = filter tcname $ map fst (ctxtAlist (tt_ctxt ist))
+       = do t <- goal
+            -- let insts = filter tcname $ map fst (ctxtAlist (tt_ctxt ist))
+            let insts = findInstances ist t
             resolveTC 2 fn insts ist
     elab' ina (PResolveTC fc) = do c <- unique_hole (MN 0 "c")
                                    instanceArg c
@@ -234,7 +236,9 @@ elab ist info pattern tcgen fn tm
             ivs' <- get_instances
             when (not pattern || (ina && not tcgen)) $
                 mapM_ (\n -> do focus n
-                                let insts = filter tcname $ map fst (ctxtAlist (tt_ctxt ist))
+                                -- let insts = filter tcname $ map fst (ctxtAlist (tt_ctxt ist))
+                                t <- goal
+                                let insts = findInstances ist t
                                 resolveTC 7 fn insts ist) (ivs' \\ ivs) 
       where tcArg (n, PConstraint _ _ Placeholder) = True
             tcArg _ = False
@@ -343,6 +347,14 @@ trivial ist = try (do elab ist toplevel False False (MN 0 "tac") (PRefl (FC "prf
         tryAll (x:xs) = try (elab ist toplevel False False
                                     (MN 0 "tac") (PRef (FC "prf" 0) x))
                             (tryAll xs)
+
+findInstances :: IState -> Term -> [Name]
+findInstances ist t 
+    | (P _ n _, _) <- unApply t 
+        = case lookupCtxt Nothing n (idris_classes ist) of
+            [CI _ _ _ _ ins] -> ins
+            _ -> []
+    | otherwise = []
 
 resolveTC :: Int -> Name -> [Name] -> IState -> ElabD ()
 resolveTC 0 fn insts ist = fail $ "Can't resolve type class"

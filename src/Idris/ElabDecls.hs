@@ -552,8 +552,7 @@ elabClass info syn fc constraints tn ps ds
          mapM_ (elabDecl info) (concat (map (snd.snd) defs))
          i <- get
          let defaults = map (\ (x, (y, z)) -> (x,y)) defs
-         put (i { idris_classes = addDef tn (CI cn imethods defaults (map fst ps)) 
-                                            (idris_classes i) })
+         addClass tn (CI cn imethods defaults (map fst ps) []) 
          addIBC (IBCClass tn)
   where
     pibind [] x = x
@@ -598,6 +597,16 @@ elabClass info syn fc constraints tn ps ds
              let ty = PPi constraint (MN 0 "pc") c con
              iLOG (showImp True ty)
              iLOG (showImp True lhs ++ " = " ++ showImp True rhs)
+             i <- get
+             let conn = case con of
+                            PRef _ n -> n
+                            PApp _ (PRef _ n) _ -> n
+             let conn' = case lookupCtxtName Nothing conn (idris_classes i) of
+                                [(n, _)] -> n
+                                _ -> conn
+             addInstance conn' cfn
+             addIBC (IBCInstance conn' cfn)
+--              iputStrLn ("Added " ++ show (conn, cfn))
              return [PTy syn fc [] cfn ty,
                      PClauses fc [Inlinable,TCGen] cfn [PClause fc cfn lhs [] rhs []]]
 
@@ -653,6 +662,7 @@ elabInstance info syn fc cs n ps t ds
                        [c] -> return c
                        _ -> fail $ show fc ++ ":" ++ show n ++ " is not a type class"
          let iname = UN ('@':show n ++ "$" ++ show ps)
+         addInstance n iname
          elabType info syn fc [] iname t
          let ips = zip (class_params ci) ps
          let ns = case n of
@@ -683,6 +693,7 @@ elabInstance info syn fc cs n ps t ds
                                  [PClause fc iname lhs [] rhs wb]
          iLOG (show idecl)
          elabDecl info idecl
+         addIBC (IBCInstance n iname)
   where
     mkMethApp (n, _, _, ty) = lamBind 0 ty (papp fc (PRef fc n) (methArgs 0 ty))
     lamBind i (PPi (Constraint _ _) _ _ sc) sc' 

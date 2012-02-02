@@ -14,7 +14,7 @@ disjoint n p = replace {P = disjointTy} p ()
 
 total acyclic : (n : Nat) -> n = S n -> _|_
 acyclic O p = disjoint _ p
-acyclic (S k) p = acyclic k _ -- (succInjective _ _ p)
+acyclic (S k) p = acyclic k (succInjective _ _ p)
 
 empty1 : _|_
 empty1 = hd [] where
