@@ -8,11 +8,17 @@ User visible changes:
 * Totality checking and 'total' keyword
 * Auto implicits and default argument values {auto n : T}, {default val n : T}
 * Additions to prelude, including Nat and List theorems
-* New libs: control.monad.identity, control.monad.state
+* Overlapping type class instances disallowed
+* Many extensions to nat and list libraries (mostly thanks to Dominic 
+  Mulligan)
+* New libraries: control.monad.identity, control.monad.state
+* Small improvements in error reporting
 
 Internal changes:
 
 * Faster compilation (only compiling names which are used)
+* Better type class resolution
+* Lots of minor bug fixes
 
 0.1.x to 0.9.0:
 

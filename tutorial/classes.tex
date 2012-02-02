@@ -53,6 +53,7 @@ Idris> show (S (S (S O)))
 \useverb{shownat}
 
 \noindent
+Only one instance of a class can be given for a type --- instances may not overlap.
 Instance declarations can themselves have constraints. For example, to define a
 \texttt{Show} instance for vectors, we need to know that there is a \texttt{Show} 
 instance for the element type, because we are going to use it to convert each element
@@ -71,11 +72,12 @@ instance Show a => Show (Vect a n) where
 \useverb{showvec}
 
 \noindent
-\textbf{Remark: } The type of the auxiliary function \texttt{show'} is important. The type
-variables \texttt{a} and \texttt{n} which are part of the instance declaration for 
-\texttt{Show (Vect a n)} are fixed across the entire instance declaration. As a result,
-we do not have to constrain \texttt{a} again. Furthermore, it means that if we use
-\texttt{n} in the type, it refers to the length of the outermost list \texttt{xs}. Therefore,
+\textbf{Remark: } The type of the auxiliary function \texttt{show'} is
+important. The type variables \texttt{a} and \texttt{n} which are part of the
+instance declaration for \texttt{Show (Vect a n)} are fixed across the entire
+instance declaration. As a result, we do not have to constrain \texttt{a}
+again. Furthermore, it means that if we use \texttt{n} in the type, it refers
+to the (fixed) length of the outermost list \texttt{xs}. Therefore,
 we use a different name for the length \texttt{n'} in \texttt{show'}.
 
 \subsection{Default Definitions}
