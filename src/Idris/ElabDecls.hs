@@ -159,7 +159,7 @@ elabRecord info syn fc tyn ty cn cty
              let lhs = PApp fc (PRef fc pn)
                         [pexp (PApp fc (PRef fc cn) iargs)]
              let rhs = PRef fc (mkp pn)
-             let pclause = PClause pn lhs [] rhs [] 
+             let pclause = PClause fc pn lhs [] rhs [] 
              return [pfnTy, PClauses fc [] pn [pclause]]
           
     implicitise (pa, t) = pa { getTm = t }
@@ -175,7 +175,7 @@ elabRecord info syn fc tyn ty cn cty
             let rhsArgs = take pos pls ++ (PRef fc valname) :
                                drop (pos + 1) pls
             let before = pos
-            let pclause = PClause setname (PApp fc (PRef fc setname)
+            let pclause = PClause fc setname (PApp fc (PRef fc setname)
                                               [pexp (PRef fc valname),
                                                pexp (PApp fc (PRef fc cn)
                                                         (map pexp lhsArgs))])
@@ -214,7 +214,7 @@ elabCon info syn tn (n, t_in, fc)
 
 elabClauses :: ElabInfo -> FC -> FnOpts -> Name -> [PClause] -> Idris ()
 elabClauses info fc opts n_in cs = let n = liftname info n_in in  
-      do pats_in <- mapM (elabClause info fc (TCGen `elem` opts)) cs
+      do pats_in <- mapM (elabClause info (TCGen `elem` opts)) cs
          solveDeferred n
          let pats = mapMaybe id pats_in
          logLvl 3 (showSep "\n" (map (\ (l,r) -> 
@@ -340,19 +340,19 @@ checkPossible info fc tcgen fname lhs_in
 --                   trace (show (delab' i lhs_tm True) ++ "\n" ++ show lhs) $ return (not b)
             Error _ -> return False
 
-elabClause :: ElabInfo -> FC -> Bool -> PClause -> Idris (Maybe (Term, Term))
-elabClause info fc tcgen (PClause fname lhs_in [] PImpossible [])
+elabClause :: ElabInfo -> Bool -> PClause -> Idris (Maybe (Term, Term))
+elabClause info tcgen (PClause fc fname lhs_in [] PImpossible [])
    = do b <- checkPossible info fc tcgen fname lhs_in
         case b of
             True -> fail $ show fc ++ ":" ++ show lhs_in ++ " is a possible case"
             False -> return Nothing
-elabClause info fc tcgen (PClause fname lhs_in withs rhs_in whereblock) 
+elabClause info tcgen (PClause fc fname lhs_in withs rhs_in whereblock) 
    = do ctxt <- getContext
         -- Build the LHS as an "Infer", and pull out its type and
         -- pattern bindings
         i <- get
         let lhs = addImplPat i lhs_in
-        logLvl 5 ("LHS: " ++ showImp True lhs)
+        logLvl 5 ("LHS: " ++ show fc ++ " " ++ showImp True lhs)
         ((lhs', dlhs, []), _) <- 
             tclift $ elaborate ctxt (MN 0 "patLHS") infP []
                      (erun fc (buildTC i info True tcgen fname (infTerm lhs)))
@@ -411,7 +411,7 @@ elabClause info fc tcgen (PClause fname lhs_in withs rhs_in whereblock)
                                      --      _ -> MN i (show n)) . l
                     }
 
-elabClause info fc tcgen (PWith fname lhs_in withs wval_in withblock) 
+elabClause info tcgen (PWith fc fname lhs_in withs wval_in withblock) 
    = do ctxt <- getContext
         -- Build the LHS as an "Infer", and pull out its type and
         -- pattern bindings
@@ -491,7 +491,7 @@ elabClause info fc tcgen (PWith fname lhs_in withs wval_in withblock)
         | otherwise = fail $ show fc ++ "with clause uses wrong function name " ++ show n
     mkAuxC wname lhs ns d = return $ d
 
-    mkAux wname toplhs ns (PClause n tm_in (w:ws) rhs wheres)
+    mkAux wname toplhs ns (PClause fc n tm_in (w:ws) rhs wheres)
         = do i <- get
              let tm = addImpl i tm_in
              logLvl 2 ("Matching " ++ showImp True tm ++ " against " ++ 
@@ -500,8 +500,8 @@ elabClause info fc tcgen (PWith fname lhs_in withs wval_in withblock)
                 Left _ -> fail $ show fc ++ "with clause does not match top level"
                 Right mvars -> do logLvl 3 ("Match vars : " ++ show mvars)
                                   lhs <- updateLHS n wname mvars ns (fullApp tm) w
-                                  return $ PClause wname lhs ws rhs wheres
-    mkAux wname toplhs ns (PWith n tm_in (w:ws) wval withs)
+                                  return $ PClause fc wname lhs ws rhs wheres
+    mkAux wname toplhs ns (PWith fc n tm_in (w:ws) wval withs)
         = do i <- get
              let tm = addImpl i tm_in
              logLvl 2 ("Matching " ++ showImp True tm ++ " against " ++ 
@@ -510,7 +510,7 @@ elabClause info fc tcgen (PWith fname lhs_in withs wval_in withblock)
              case matchClause i toplhs tm of
                 Left _ -> fail $ show fc ++ "with clause does not match top level"
                 Right mvars -> do lhs <- updateLHS n wname mvars ns (fullApp tm) w
-                                  return $ PWith wname lhs ws wval withs'
+                                  return $ PWith fc wname lhs ws wval withs'
         
     updateLHS n wname mvars ns (PApp fc (PRef fc' n') args) w
         = return $ substMatches mvars $ 
@@ -597,7 +597,7 @@ elabClass info syn fc constraints tn ps ds
              iLOG (showImp True ty)
              iLOG (showImp True lhs ++ " = " ++ showImp True rhs)
              return [PTy syn fc [] cfn ty,
-                     PClauses fc [Inlinable,TCGen] cfn [PClause cfn lhs [] rhs []]]
+                     PClauses fc [Inlinable,TCGen] cfn [PClause fc cfn lhs [] rhs []]]
 
     tfun cn c syn all (m, (o, ty)) 
         = do let ty' = insertConstraint c ty
@@ -611,7 +611,7 @@ elabClass info syn fc constraints tn ps ds
              iLOG (show (m, ty', capp, margs))
              iLOG (showImp True lhs ++ " = " ++ showImp True rhs)
              return [PTy syn fc o m ty',
-                     PClauses fc [Inlinable,TCGen] m [PClause m lhs [] rhs []]]
+                     PClauses fc [Inlinable,TCGen] m [PClause fc m lhs [] rhs []]]
 
     getMArgs (PPi (Imp _ _) n ty sc) = IA : getMArgs sc
     getMArgs (PPi (Exp _ _) n ty sc) = EA  : getMArgs sc
@@ -649,7 +649,7 @@ elabInstance info syn fc cs n ps t ds
     = do i <- get 
          (n, ci) <- case lookupCtxtName (namespace info) n (idris_classes i) of
                        [c] -> return c
-                       _ -> fail $ show n ++ " is not a type class"
+                       _ -> fail $ show fc ++ ":" ++ show n ++ " is not a type class"
          let iname = UN ('@':show n ++ "$" ++ show ps)
          elabType info syn fc [] iname t
          let ips = zip (class_params ci) ps
@@ -678,7 +678,7 @@ elabInstance info syn fc cs n ps t ds
          let rhs = PApp fc (PRef fc (instanceName ci))
                            (map (pexp . mkMethApp) mtys)
          let idecl = PClauses fc [Inlinable, TCGen] iname 
-                                 [PClause iname lhs [] rhs wb]
+                                 [PClause fc iname lhs [] rhs wb]
          iLOG (show idecl)
          elabDecl info idecl
   where
@@ -727,8 +727,8 @@ elabInstance info syn fc cs n ps t ds
     insertDef meth def ns decls
         | null $ filter (clauseFor meth ns) decls
             = decls ++ [PClauses fc [Inlinable,TCGen] meth 
-                        [PClause meth (PApp fc (PRef fc meth) []) [] 
-                                      (PApp fc (PRef fc def) []) []]]
+                        [PClause fc meth (PApp fc (PRef fc meth) []) [] 
+                                         (PApp fc (PRef fc def) []) []]]
         | otherwise = decls
 
     warnMissing decls ns meth
@@ -742,8 +742,8 @@ elabInstance info syn fc cs n ps t ds
 decorateid decorate (PTy s f o n t) = PTy s f o (decorate n) t
 decorateid decorate (PClauses f o n cs) 
    = PClauses f o (decorate n) (map dc cs)
-    where dc (PClause n t as w ds) = PClause (decorate n) (dappname t) as w ds
-          dc (PWith   n t as w ds) = PWith   (decorate n) (dappname t) as w 
+    where dc (PClause fc n t as w ds) = PClause fc (decorate n) (dappname t) as w ds
+          dc (PWith   fc n t as w ds) = PWith   fc (decorate n) (dappname t) as w 
                                               (map (decorateid decorate) ds)
           dappname (PApp fc (PRef fc' n) as) = PApp fc (PRef fc' (decorate n)) as
           dappname t = t

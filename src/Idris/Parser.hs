@@ -280,14 +280,14 @@ parseProg syn fname input pos
 collect :: [PDecl] -> [PDecl]
 collect (c@(PClauses _ o _ _) : ds) 
     = clauses (cname c) [] (c : ds)
-  where clauses n acc (PClauses fc _ _ [PClause n' l ws r w] : ds)
-           | n == n' = clauses n (PClause n' l ws r (collect w) : acc) ds
-        clauses n acc (PClauses fc _ _ [PWith   n' l ws r w] : ds)
-           | n == n' = clauses n (PWith n' l ws r (collect w) : acc) ds
+  where clauses n acc (PClauses fc _ _ [PClause fc' n' l ws r w] : ds)
+           | n == n' = clauses n (PClause fc' n' l ws r (collect w) : acc) ds
+        clauses n acc (PClauses fc _ _ [PWith fc' n' l ws r w] : ds)
+           | n == n' = clauses n (PWith fc' n' l ws r (collect w) : acc) ds
         clauses n acc xs = PClauses (getfc c) o n (reverse acc) : collect xs
 
-        cname (PClauses fc _ _ [PClause n _ _ _ _]) = n
-        cname (PClauses fc _ _ [PWith   n _ _ _ _]) = n
+        cname (PClauses fc _ _ [PClause _ n _ _ _ _]) = n
+        cname (PClauses fc _ _ [PWith   _ n _ _ _ _]) = n
         getfc (PClauses fc _ _ _) = fc
 
 collect (PParams f ns ps : ds) = PParams f ns (collect ps) : collect ds
@@ -1087,8 +1087,8 @@ pOverload syn = do o <- identifier <|> do reserved "let"; return "let"
 --------- Pattern match clauses ---------
 
 pPattern :: SyntaxInfo -> IParser PDecl
-pPattern syn = do clause <- pClause syn
-                  fc <- pfc
+pPattern syn = do fc <- pfc
+                  clause <- pClause syn
                   return (PClauses fc [] (MN 2 "_") [clause]) -- collect together later
 
 pArgExpr syn = let syn' = syn { inPattern = True } in
@@ -1125,13 +1125,14 @@ pClause syn
                                 (iargs ++ cargs ++ map pexp args)
                    ist <- getState
                    setState (ist { lastParse = Just n })
-                   return $ PClause n capp wargs rhs wheres)
+                   return $ PClause fc n capp wargs rhs wheres)
        <|> try (do push_indent
                    wargs <- many1 (pWExpr syn)
                    ist <- getState
                    n <- case lastParse ist of
                              Just t -> return t
                              Nothing -> fail "Invalid clause"
+                   fc <- pfc
                    rhs <- pRHS syn n
                    let ctxt = tt_ctxt ist
                    let wsyn = syn { syn_namespace = [] }
@@ -1140,7 +1141,7 @@ pClause syn
                                                 return x, 
                                              do pTerminator
                                                 return ([], [])]
-                   return $ PClauseR wargs rhs wheres)
+                   return $ PClauseR fc wargs rhs wheres)
 
        <|> try (do push_indent
                    n_in <- pfName; let n = expandNS syn n_in
@@ -1160,16 +1161,17 @@ pClause syn
                    ist <- getState
                    setState (ist { lastParse = Just n })
                    pop_indent
-                   return $ PWith n capp wargs wval withs)
+                   return $ PWith fc n capp wargs wval withs)
 
        <|> try (do wargs <- many1 (pWExpr syn)
+                   fc <- pfc
                    reserved "with"
                    wval <- pSimpleExpr syn
                    open_block
                    ds <- many1 $ pFunDecl syn
                    let withs = concat ds
                    close_block
-                   return $ PWithR wargs wval withs)
+                   return $ PWithR fc wargs wval withs)
 
        <|> do push_indent
               l <- pArgExpr syn
@@ -1188,7 +1190,7 @@ pClause syn
               ist <- getState
               let capp = PApp fc (PRef fc n) [pexp l, pexp r]
               setState (ist { lastParse = Just n })
-              return $ PClause n capp wargs rhs wheres
+              return $ PClause fc n capp wargs rhs wheres
 
        <|> do l <- pArgExpr syn
               op <- operator
@@ -1205,12 +1207,12 @@ pClause syn
               let capp = PApp fc (PRef fc n) [pexp l, pexp r]
               let withs = map (fillLHSD n capp wargs) $ concat ds
               setState (ist { lastParse = Just n })
-              return $ PWith n capp wargs wval withs
+              return $ PWith fc n capp wargs wval withs
   where
-    fillLHS n capp owargs (PClauseR wargs v ws) 
-       = PClause n capp (owargs ++ wargs) v ws
-    fillLHS n capp owargs (PWithR wargs v ws) 
-       = PWith n capp (owargs ++ wargs) v 
+    fillLHS n capp owargs (PClauseR fc wargs v ws) 
+       = PClause fc n capp (owargs ++ wargs) v ws
+    fillLHS n capp owargs (PWithR fc wargs v ws) 
+       = PWith fc n capp (owargs ++ wargs) v 
             (map (fillLHSD n capp (owargs ++ wargs)) ws)
     fillLHS _ _ _ c = c
 

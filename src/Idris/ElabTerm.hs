@@ -291,7 +291,7 @@ elab ist info pattern tcgen fn tm
        where -- mkarg (MN _ _) = Placeholder
              mkarg n = PRef fc n
              mkClause args (l, r) 
-                = PClause n (PApp fc (PRef fc n)
+                = PClause fc n (PApp fc (PRef fc n)
                                      (map pexp args ++ [pexp l])) [] r []
 
     elabArgs ina failed retry [] _

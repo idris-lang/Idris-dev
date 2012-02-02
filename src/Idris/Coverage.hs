@@ -44,8 +44,8 @@ genClauses fc n xs given
             | (f, args) <- unApply term = map (\t -> delab' i t True) args
             | otherwise = []
 
-        lhsApp (PClause _ l _ _ _) = l
-        lhsApp (PWith _ l _ _ _) = l
+        lhsApp (PClause _ _ l _ _ _) = l
+        lhsApp (PWith _ _ l _ _ _) = l
 
         mnub i [] = []
         mnub i (x : xs) = 

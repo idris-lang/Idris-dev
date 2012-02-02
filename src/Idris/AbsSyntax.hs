@@ -417,10 +417,10 @@ data PDecl' t = PFix     FC Fixity [String] -- fixity declaration
               | PDirective (Idris ())
     deriving Functor
 
-data PClause' t = PClause Name t [t] t [PDecl' t]
-                | PWith   Name t [t] t [PDecl' t]
-                | PClauseR       [t] t [PDecl' t]
-                | PWithR         [t] t [PDecl' t]
+data PClause' t = PClause  FC Name t [t] t [PDecl' t]
+                | PWith    FC Name t [t] t [PDecl' t]
+                | PClauseR FC        [t] t [PDecl' t]
+                | PWithR   FC        [t] t [PDecl' t]
     deriving Functor
 
 data PData' t  = PDatadecl { d_name :: Name,
@@ -691,13 +691,13 @@ showDeclImp _ (PClauses _ _ n c) = showSep "\n" (map show c)
 showDeclImp _ (PData _ _ d) = show d
 
 showCImp :: Bool -> PClause -> String
-showCImp impl (PClause n l ws r w) 
+showCImp impl (PClause _ n l ws r w) 
    = showImp impl l ++ showWs ws ++ " = " ++ showImp impl r
              ++ " where " ++ show w 
   where
     showWs [] = ""
     showWs (x : xs) = " | " ++ showImp impl x ++ showWs xs
-showCImp impl (PWith n l ws r w) 
+showCImp impl (PWith _ n l ws r w) 
    = showImp impl l ++ showWs ws ++ " with " ++ showImp impl r
              ++ " { " ++ show w ++ " } " 
   where
@@ -732,8 +732,8 @@ getAll = map getTm
 showImp :: Bool -> PTerm -> String
 showImp impl tm = se 10 tm where
     se p (PQuote r) = "![" ++ show r ++ "]"
-    se p (PRef _ n) = if impl then show n
-                              else showbasic n
+    se p (PRef fc n) = if impl then show n ++ "[" ++ show fc ++ "]"
+                               else showbasic n
       where showbasic n@(UN _) = show n
             showbasic (MN _ s) = s
             showbasic (NS n s) = showSep "." (reverse s) ++ "." ++ showbasic n
@@ -982,22 +982,22 @@ expandParamsD ist dec ps ns (PClauses fc opts n cs)
     = let n' = if n `elem` ns then dec n else n in
           PClauses fc opts n' (map expandParamsC cs)
   where
-    expandParamsC (PClause n lhs ws rhs ds)
+    expandParamsC (PClause fc n lhs ws rhs ds)
         = let -- ps' = updateps True (namesIn ist rhs) (zip ps [0..])
               ps'' = updateps False (namesIn [] ist lhs) (zip ps [0..])
               n' = if n `elem` ns then dec n else n in
-              PClause n' (expandParams dec ps'' ns lhs)
-                         (map (expandParams dec ps'' ns) ws)
-                         (expandParams dec ps'' ns rhs)
-                         (map (expandParamsD ist dec ps'' ns) ds)
-    expandParamsC (PWith n lhs ws wval ds)
+              PClause fc n' (expandParams dec ps'' ns lhs)
+                            (map (expandParams dec ps'' ns) ws)
+                            (expandParams dec ps'' ns rhs)
+                            (map (expandParamsD ist dec ps'' ns) ds)
+    expandParamsC (PWith fc n lhs ws wval ds)
         = let -- ps' = updateps True (namesIn ist wval) (zip ps [0..])
               ps'' = updateps False (namesIn [] ist lhs) (zip ps [0..])
               n' = if n `elem` ns then dec n else n in
-              PWith n' (expandParams dec ps'' ns lhs)
-                       (map (expandParams dec ps'' ns) ws)
-                       (expandParams dec ps'' ns wval)
-                       (map (expandParamsD ist dec ps'' ns) ds)
+              PWith fc n' (expandParams dec ps'' ns lhs)
+                          (map (expandParams dec ps'' ns) ws)
+                          (expandParams dec ps'' ns wval)
+                          (map (expandParamsD ist dec ps'' ns) ds)
     updateps yn nm [] = []
     updateps yn nm (((a, t), i):as)
         | (a `elem` nm) == yn = (a, t) : updateps yn nm as
