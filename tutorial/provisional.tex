@@ -24,10 +24,9 @@ We'd like to implement this as follows:
 parity : (n:Nat) -> Parity n
 parity O     = even {n=O}
 parity (S O) = odd {n=O}
-parity (S (S k)) with parity k {
+parity (S (S k)) with (parity k)
   parity (S (S (j + j)))     | even = even {n=S j}
   parity (S (S (S (j + j)))) | odd  = odd {n=S j}
-}
 
 \end{SaveVerbatim}
 \useverb{parfail}
@@ -80,10 +79,9 @@ except that they introduce the right hand side with a \texttt{?=} rathar than
 parity : (n:Nat) -> Parity n
 parity O     = even {n=O}
 parity (S O) = odd {n=O}
-parity (S (S k)) with parity k {
+parity (S (S k)) with (parity k)
   parity (S (S (j + j)))     | even ?= even {n=S j}
   parity (S (S (S (j + j)))) | odd  ?= odd {n=S j}
-}
 
 \end{SaveVerbatim}
 \useverb{paritypro}

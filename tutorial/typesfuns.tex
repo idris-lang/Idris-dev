@@ -557,7 +557,7 @@ greet = do putStr "What is your name? "
 \useverb{greet}
 
 \noindent
-The syntax \texttt{x <- iovalue} executes the I/O operation iovalue, of type 
+The syntax \texttt{x <- iovalue} executes the I/O operation \texttt{iovalue}, of type 
 \texttt{IO a}, and
 puts the result, of type \texttt{a} into the variable \texttt{x}. 
 In this case, \texttt{getLine} returns an \texttt{IO String},
@@ -608,7 +608,7 @@ names \texttt{Nil} and \texttt{::} can be written in list form. For example:
 
 \begin{itemize}
 \item \texttt{[]} means \texttt{Nil}
-\item \texttt{[1,2,3]} means \texttt{Cons 1 (Cons 2 (Cons 3 Nil))}
+\item \texttt{[1,2,3]} means \texttt{1 :: 2 :: 3 :: Nil}
 \end{itemize}
 
 \noindent
@@ -849,7 +849,7 @@ filter p Nil = (_ , [])
 In the \texttt{::} case, we need to inspect the result of a recursive call to 
 \texttt{filter} to
 extract the length and the vector from the result. To do this, we use \texttt{with}
-notation. with allows pattern matching on intermediate values:
+notation, which allows pattern matching on intermediate values:
 
 \begin{SaveVerbatim}{vfiltercons}
 
