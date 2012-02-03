@@ -48,17 +48,21 @@ elabType info syn fc opts n ty' = {- let ty' = piBind (params info) ty_in
          let ty = addImpl i ty'
          logLvl 3 $ show n ++ " pre-type " ++ showImp True ty'
          logLvl 2 $ show n ++ " type " ++ showImp True ty
-         ((ty', defer, is), log) <- tclift $ elaborate ctxt n (Set (UVal 0)) []
+         ((tyT, defer, is), log) <- tclift $ elaborate ctxt n (Set (UVal 0)) []
                                              (erun fc (build i info False n ty))
-         (cty, _)   <- recheckC ctxt fc [] ty'
+         ds <- checkDef fc defer
+         addDeferred ds
+         mapM_ (elabCaseBlock info) is 
+         ctxt <- getContext
+         (cty, _)   <- recheckC ctxt fc [] tyT
+         addStatics n cty ty'
          logLvl 2 $ "---> " ++ show cty
          let nty = normalise ctxt [] cty
-         ds <- checkDef fc ((n, nty):defer)
+         ds <- checkDef fc [(n, nty)]
          addIBC (IBCDef n)
          addDeferred ds
          setFlags n opts
          addIBC (IBCFlags n opts)
-         mapM_ (elabCaseBlock info) is 
 
 elabData :: ElabInfo -> SyntaxInfo -> FC -> PData -> Idris ()
 elabData info syn fc (PDatadecl n t_in dcons)
