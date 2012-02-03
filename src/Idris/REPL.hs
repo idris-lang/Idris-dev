@@ -189,7 +189,9 @@ process fn (TotCheck n) = do i <- get
                                 _ -> return ()
 process fn (Info n) = do i <- get
                          let oi = lookupCtxt Nothing n (idris_optimisation i)
-                         liftIO $ print oi
+                         when (not (null oi)) $ iputStrLn (show oi)
+                         let si = lookupCtxt Nothing n (idris_statics i)
+                         when (not (null si)) $ iputStrLn (show si)
 process fn (Spec t) = do (tm, ty) <- elabVal toplevel False t
                          ctxt <- getContext
                          ist <- get

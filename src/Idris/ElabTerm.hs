@@ -214,6 +214,7 @@ elab ist info pattern tcgen fn tm
        = do let args = {- case lookupCtxt f (inblock info) of
                           Just ps -> (map (pexp . (PRef fc)) ps ++ args')
                           _ ->-} args'
+            mkSpecialised ist fc f (map getTm args')
             ivs <- get_instances
             -- HACK: we shouldn't resolve type classes if we're defining an instance
             -- function or default definition.
@@ -497,3 +498,16 @@ runTac autoSolve ist tac = runT (fmap (addImpl ist) tac) where
     runT x = fail $ "Not implemented " ++ show x
 
 solveAll = try (do solve; solveAll) (return ())
+
+-- If the function application is specialisable, make a new
+-- top level function by normalising the application
+-- and elaborating the new expression.
+
+mkSpecialised :: IState -> FC -> Name -> [PTerm] -> ElabD ()
+mkSpecialised i fc n args 
+    = case lookupCtxt Nothing n (idris_statics i) of
+        [] -> return ()
+        [as] -> if (not (or as)) then return () else
+                  do return () -- trace (show (n, args)) $ return ()
+
+

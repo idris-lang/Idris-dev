@@ -400,7 +400,7 @@ deriving instance Binary Plicity
 
 impl = Imp False Dynamic
 expl = Exp False Dynamic
-constraint = Constraint False Static
+constraint = Constraint False Dynamic
 tacimpl = TacImp False Dynamic
 
 data FnOpt = Inlinable | TotalFn | AssertTotal | TCGen
@@ -1055,6 +1055,30 @@ getPriority i tm = pri tm
     pri Placeholder = 1
     pri _ = 3
 
+addStatics :: Name -> Term -> PTerm -> Idris ()
+addStatics n tm ptm =
+    do let (statics, dynamics) = initStatics tm ptm
+       let stnames = nub $ concatMap freeNames (map snd statics)
+       let dnames = nub $ concatMap freeNames (map snd dynamics)
+       when (not (null statics)) $
+          logLvl 7 $ show n ++ " " ++ show statics ++ "\n" ++ show dynamics
+                        ++ "\n" ++ show stnames ++ "\n" ++ show dnames
+       let statics' = nub $ map fst statics ++ 
+                              filter (\x -> not (elem x dnames)) stnames
+       let stpos = staticList statics' tm
+       i <- get
+       put (i { idris_statics = addDef n stpos (idris_statics i) })
+       addIBC (IBCStatic n)
+  where
+    initStatics (Bind n (Pi ty) sc) (PPi p _ _ s)
+            = let (static, dynamic) = initStatics (instantiate (P Bound n ty) sc) s in
+                  if pstatic p == Static then ((n, ty) : static, dynamic)
+                                         else (static, (n, ty) : dynamic)
+    initStatics t pt = ([], [])
+
+    staticList sts (Bind n (Pi _) sc) = (n `elem` sts) : staticList sts sc
+    staticList _ _ = []
+
 -- Dealing with implicit arguments
 
 -- Add implicit Pi bindings for any names in the term which appear in an
@@ -1066,14 +1090,13 @@ implicit :: SyntaxInfo -> Name -> PTerm -> Idris PTerm
 implicit syn n ptm 
     = do i <- get
          let (tm', impdata) = implicitise syn i ptm
-         let (tm'', spos) = findStatics i tm'
+--          let (tm'', spos) = findStatics i tm'
          put (i { idris_implicits = addDef n impdata (idris_implicits i) })
          addIBC (IBCImp n)
          logLvl 5 ("Implicit " ++ show n ++ " " ++ show impdata)
-         i <- get
-         put (i { idris_statics = addDef n spos (idris_statics i) })
-         addIBC (IBCStatic n)
-         return tm''
+--          i <- get
+--          put (i { idris_statics = addDef n spos (idris_statics i) })
+         return tm'
 
 implicitise :: SyntaxInfo -> IState -> PTerm -> (PTerm, [PArg])
 implicitise syn ist tm
@@ -1286,21 +1309,21 @@ mkPApp fc a f as = let rest = drop a as in
 -- FIXME: It's possible that this really has to happen after elaboration
 
 findStatics :: IState -> PTerm -> (PTerm, [Bool])
-findStatics ist tm = let (ns, ss) = fs tm in
+findStatics ist tm = trace (showImp True tm) $
+                      let (ns, ss) = fs tm in
                          runState (pos ns ss tm) []
   where fs (PPi p n t sc)
             | Static <- pstatic p
                         = let (ns, ss) = fs sc in
-                              (namesIn [] ist t : ns, namesIn [] ist t ++ n : ss)
+                              (namesIn [] ist t : ns, n : ss)
             | otherwise = let (ns, ss) = fs sc in
-                              (namesIn [] ist t : ns, ss)
+                              (ns, ss)
         fs _ = ([], [])
 
         inOne n ns = length (filter id (map (elem n) ns)) == 1
 
         pos ns ss (PPi p n t sc) 
-            | n `inOne` ns && elem n ss
-                        = do sc' <- pos ns ss sc
+            | elem n ss = do sc' <- pos ns ss sc
                              spos <- get
                              put (True : spos)
                              return (PPi (p { pstatic = Static }) n t sc')

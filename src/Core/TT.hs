@@ -395,6 +395,16 @@ noOccurrence n t = no' 0 t
     no' i (App f a) = no' i f && no' i a
     no' i _ = True
 
+-- Returns all names used free in the term
+
+freeNames :: Eq n => TT n -> [n]
+freeNames (P _ n _) = [n]
+freeNames (Bind n (Let t v) sc) = nub $ freeNames v ++ (freeNames sc \\ [n])
+                                        ++ freeNames t
+freeNames (Bind n b sc) = nub $ freeNames (binderTy b) ++ (freeNames sc \\ [n])
+freeNames (App f a) = nub $ freeNames f ++ freeNames a
+freeNames _ = []
+
 -- Return the arity of a (normalised) type
 
 arity :: TT n -> Int

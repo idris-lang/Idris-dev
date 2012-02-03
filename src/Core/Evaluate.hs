@@ -19,7 +19,7 @@ import Data.Binary hiding (get, put)
 import Core.TT
 import Core.CaseTree
 
-type EvalState = ()
+type EvalState = ()  
 type Eval a = State EvalState a
 
 data EvalOpt = Spec | HNF | Simplify | AtREPL
@@ -46,7 +46,7 @@ data HNF = HP NameType Name (TT Name)
     deriving Show
 
 instance Show Value where
-    show x = show $ evalState (quote 10 x) ()
+    show x = show $ evalState (quote 100 x) ()
 
 instance Show (a -> b) where
     show x = "<<fn>>"
@@ -162,7 +162,7 @@ eval ctxt statics genv tm opts = ev [] True [] tm where
              app <- apply stk top env a' as 
              wknV (-1) app
     apply stk False env f args
-        | spec = return $ unload env f args
+        | spec = specApply stk env f args 
     apply stk top env (VP Ref n ty)        args
         | [(CaseOp inl _ _ ns tree _ _, Public)] <- lookupDefAcc Nothing n atRepl ctxt
             = -- traceWhen (n == UN ["interp"]) (show (n, args)) $
@@ -180,6 +180,15 @@ eval ctxt statics genv tm opts = ev [] True [] tm where
                  else return $ unload env (VP Ref n ty) args
     apply stk top env f (a:as) = return $ unload env f (a:as)
     apply stk top env f []     = return f
+
+    specApply stk env f@(VP Ref n ty) args
+        = case lookupCtxt Nothing n statics of
+                [as] -> if or as 
+                          then trace (show (n, map fst (filter (\ (_, s) -> s) (zip args as)))) $ 
+                                return $ unload env f args
+                          else return $ unload env f args
+                _ -> return $ unload env f args
+    specApply stk env f args = return $ unload env f args
 
     unload env f [] = f
     unload env f (a:as) = unload env (VApp f a) as
