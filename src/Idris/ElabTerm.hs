@@ -210,11 +210,11 @@ elab ist info pattern tcgen fn tm
 --        | [d] <- lookupCtxt Nothing dsl (idris_dsls ist)
 --                 = let dsl' = expandDo d (getTm arg) in
 --                       trace (show dsl') $ elab' ina dsl'
-    elab' (ina, g) (PApp fc (PRef _ f) args')
+    elab' (ina, g) tm@(PApp fc (PRef _ f) args') 
        = do let args = {- case lookupCtxt f (inblock info) of
                           Just ps -> (map (pexp . (PRef fc)) ps ++ args')
                           _ ->-} args'
-            mkSpecialised ist fc f (map getTm args')
+--             newtm <- mkSpecialised ist fc f (map getTm args') tm
             ivs <- get_instances
             -- HACK: we shouldn't resolve type classes if we're defining an instance
             -- function or default definition.
@@ -222,7 +222,6 @@ elab ist info pattern tcgen fn tm
             ctxt <- get_context
             let guarded = isConName Nothing f ctxt
             try (do ns <- apply (Var f) (map isph args)
-                    solve
                     let (ns', eargs) 
                          = unzip $
                              sortBy (\(_,x) (_,y) -> compare (priority x) (priority y))
@@ -231,8 +230,11 @@ elab ist info pattern tcgen fn tm
                              [] False ns' (map (\x -> (lazyarg x, getTm x)) eargs))
                         (elabArgs (ina || not isinf, guarded)
                              [] False (reverse ns') 
-                                      (map (\x -> (lazyarg x, getTm x)) (reverse eargs))))
+                                      (map (\x -> (lazyarg x, getTm x)) (reverse eargs)))
+                    mkSpecialised ist fc f (map getTm args') tm
+                    solve)
                 (do apply_elab f (map (toElab (ina || not isinf, guarded)) args)
+                    mkSpecialised ist fc f (map getTm args') tm
                     solve)
             ivs' <- get_instances
             when (not pattern || (ina && not tcgen)) $
@@ -503,11 +505,40 @@ solveAll = try (do solve; solveAll) (return ())
 -- top level function by normalising the application
 -- and elaborating the new expression.
 
-mkSpecialised :: IState -> FC -> Name -> [PTerm] -> ElabD ()
-mkSpecialised i fc n args 
-    = case lookupCtxt Nothing n (idris_statics i) of
-        [] -> return ()
-        [as] -> if (not (or as)) then return () else
-                  do return () -- trace (show (n, args)) $ return ()
+mkSpecialised :: IState -> FC -> Name -> [PTerm] -> PTerm -> ElabD PTerm
+mkSpecialised i fc n args def
+    = do let tm' = def
+         case lookupCtxt Nothing n (idris_statics i) of
+           [] -> return tm'
+           [as] -> if (not (or as)) then return tm' else
+                       mkSpecDecl i n (zip args as) tm'
 
+mkSpecDecl :: IState -> Name -> [(PTerm, Bool)] -> PTerm -> ElabD PTerm
+mkSpecDecl i n pargs tm'
+    = do t <- goal
+         g <- get_guess
+         let (f, args) = unApply g
+         let sargs = zip args (map snd pargs)
+         let staticArgs = map fst (filter (\ (_,x) -> x) sargs)
+         let ns = group (sort (concatMap staticFnNames staticArgs))
+         let ntimes = map (\xs -> (head xs, length xs - 1)) ns
+         if (not (null ns)) then
+           do env <- get_env
+              let g' = g -- specialise ctxt env ntimes g
+              return tm'
+--               trace (show t ++ "\n" ++
+--                      show ntimes ++ "\n" ++ 
+--                      show (delab i g) ++ "\n" ++ show (delab i g')) $ return tm' -- TODO
+           else return tm'
+  where
+    ctxt = tt_ctxt i
+    cg = idris_callgraph i
+
+    staticFnNames tm | (P _ f _, as) <- unApply tm
+        = if not (isFnName Nothing f ctxt) then [] 
+             else case lookupCtxt Nothing f cg of
+                    [ns] -> f : f : [] --(ns \\ [f])
+                    [] -> [f,f]
+                    _ -> []
+    staticFnNames _ = []
 

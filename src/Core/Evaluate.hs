@@ -19,11 +19,14 @@ import Data.Binary hiding (get, put)
 import Core.TT
 import Core.CaseTree
 
-type EvalState = ()  
+data EvalState = ES { limited :: [(Name, Int)],
+                      steps :: Int }
 type Eval a = State EvalState a
 
 data EvalOpt = Spec | HNF | Simplify | AtREPL
   deriving (Show, Eq)
+
+initEval = ES [] 0
 
 -- VALUES (as HOAS) ---------------------------------------------------------
 
@@ -46,7 +49,7 @@ data HNF = HP NameType Name (TT Name)
     deriving Show
 
 instance Show Value where
-    show x = show $ evalState (quote 100 x) ()
+    show x = show $ evalState (quote 100 x) initEval
 
 instance Show (a -> b) where
     show x = "<<fn>>"
@@ -60,36 +63,36 @@ instance Show (a -> b) where
 
 normaliseC :: Context -> Env -> TT Name -> TT Name
 normaliseC ctxt env t 
-   = evalState (do val <- eval ctxt emptyContext env t []
-                   quote 0 val) ()
+   = evalState (do val <- eval ctxt [] env t []
+                   quote 0 val) initEval
 
 normaliseAll :: Context -> Env -> TT Name -> TT Name
 normaliseAll ctxt env t 
-   = evalState (do val <- eval ctxt emptyContext env t [AtREPL]
-                   quote 0 val) ()
+   = evalState (do val <- eval ctxt [] env t [AtREPL]
+                   quote 0 val) initEval
 
 normalise :: Context -> Env -> TT Name -> TT Name
 normalise ctxt env t 
-   = evalState (do val <- eval ctxt emptyContext (map finalEntry env) (finalise t) []
-                   quote 0 val) ()
+   = evalState (do val <- eval ctxt [] (map finalEntry env) (finalise t) []
+                   quote 0 val) initEval
 
-specialise :: Context -> Ctxt [Bool] -> TT Name -> TT Name
-specialise ctxt statics t 
-   = evalState (do val <- eval ctxt statics [] (finalise t) [Spec]
-                   quote 0 val) ()
+specialise :: Context -> Env -> [(Name, Int)] -> TT Name -> TT Name
+specialise ctxt env limits t 
+   = evalState (do val <- eval ctxt limits (map finalEntry env) (finalise t) []
+                   quote 0 val) (initEval { limited = limits })
 
 -- Like normalise, but we only reduce functions that are marked as okay to 
 -- inline (and probably shouldn't reduce lets?)
 
 simplify :: Context -> Env -> TT Name -> TT Name
 simplify ctxt env t 
-   = evalState (do val <- eval ctxt emptyContext (map finalEntry env) (finalise t) [Simplify]
-                   quote 0 val) ()
+   = evalState (do val <- eval ctxt [] (map finalEntry env) (finalise t) [Simplify]
+                   quote 0 val) initEval
 
 hnf :: Context -> Env -> TT Name -> TT Name
 hnf ctxt env t 
-   = evalState (do val <- eval ctxt emptyContext (map finalEntry env) (finalise t) [HNF]
-                   quote 0 val) ()
+   = evalState (do val <- eval ctxt [] (map finalEntry env) (finalise t) [HNF]
+                   quote 0 val) initEval
 
 
 -- unbindEnv env (quote 0 (eval ctxt (bindEnv env t)))
@@ -106,120 +109,141 @@ unbindEnv :: EnvTT n -> TT n -> TT n
 unbindEnv [] tm = tm
 unbindEnv (_:bs) (Bind n b sc) = unbindEnv bs sc
 
+usable :: Name -> [(Name, Int)] -> (Bool, [(Name, Int)])
+usable n [] = (True, [])
+usable n ns = case lookup n ns of
+                Just 0 -> (False, ns)
+                Just i -> (True, (n, abs (i-1)) : filter (\ (n', _) -> n/=n') ns)
+                _ -> (True, (n, 100) : filter (\ (n', _) -> n/=n') ns)
+
+reduction :: Eval ()
+reduction = do ES ns s <- get
+               put (ES ns (s+1))
+
 -- Evaluate in a context of locally named things (i.e. not de Bruijn indexed,
 -- such as we might have during construction of a proof)
 
-eval :: Context -> Ctxt [Bool] -> Env -> TT Name -> [EvalOpt] -> Eval Value
-eval ctxt statics genv tm opts = ev [] True [] tm where
+eval :: Context -> [(Name, Int)] -> Env -> TT Name -> [EvalOpt] -> Eval Value
+eval ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
     spec = Spec `elem` opts
     simpl = Simplify `elem` opts
     atRepl = AtREPL `elem` opts
 
-    ev stk top env (P _ n ty)
-        | Just (Let t v) <- lookup n genv = ev stk top env v 
-    ev stk top env (P Ref n ty) = case lookupDefAcc Nothing n atRepl ctxt of
-        [(Function _ tm, Public)] -> 
-            ev (n:stk) True env tm
-        [(TyDecl nt ty, _)]       -> do vty <- ev stk True env ty
-                                        return $ VP nt n vty
-        [(CaseOp inl _ _ [] tree _ _, Public)] -> -- unoptimised version
-           if simpl && (not inl || elem n stk) 
-              then liftM (VP Ref n) (ev stk top env ty)
-              else do c <- evCase (n:stk) top env [] [] tree 
-                      case c of
-                        (Nothing, _) -> liftM (VP Ref n) (ev stk top env ty)
-                        (Just v, _)  -> return v
-        _ -> liftM (VP Ref n) (ev stk top env ty)
-    ev stk top env (P nt n ty)   = liftM (VP nt n) (ev stk top env ty)
-    ev stk top env (V i) | i < length env = return $ env !! i
+    ev ntimes stk top env (P _ n ty)
+        | Just (Let t v) <- lookup n genv = ev ntimes stk top env v 
+    ev ntimes_in stk top env (P Ref n ty) 
+      | (True, ntimes) <- usable n ntimes_in
+         = do let val = lookupDefAcc Nothing n atRepl ctxt 
+              case val of
+                [(Function _ tm, Public)] -> 
+                       ev ntimes (n:stk) True env tm
+                [(TyDecl nt ty, _)] -> do vty <- ev ntimes stk True env ty
+                                          return $ VP nt n vty
+                [(CaseOp inl _ _ [] tree _ _, Public)] -> -- unoptimised version
+                   if simpl && (not inl || elem n stk) 
+                        then liftM (VP Ref n) (ev ntimes stk top env ty)
+                        else do c <- evCase ntimes (n:stk) top env [] [] tree 
+                                case c of
+                                    (Nothing, _) -> liftM (VP Ref n) (ev ntimes stk top env ty)
+                                    (Just v, _)  -> return v
+                _ -> liftM (VP Ref n) (ev ntimes stk top env ty)
+    ev ntimes stk top env (P nt n ty)   = liftM (VP nt n) (ev ntimes stk top env ty)
+    ev ntimes stk top env (V i) | i < length env = return $ env !! i
                      | otherwise      = return $ VV i 
-    ev stk top env (Bind n (Let t v) sc)
-           = do v' <- ev stk top env v --(finalise v)
-                sc' <- ev stk top (v' : env) sc
+    ev ntimes stk top env (Bind n (Let t v) sc)
+           = do v' <- ev ntimes stk top env v --(finalise v)
+                sc' <- ev ntimes stk top (v' : env) sc
                 wknV (-1) sc'
-    ev stk top env (Bind n (NLet t v) sc)
-           = do t' <- ev stk top env (finalise t)
-                v' <- ev stk top env (finalise v)
-                sc' <- ev stk top (v' : env) sc
+    ev ntimes stk top env (Bind n (NLet t v) sc)
+           = do t' <- ev ntimes stk top env (finalise t)
+                v' <- ev ntimes stk top env (finalise v)
+                sc' <- ev ntimes stk top (v' : env) sc
                 return $ VBind n (Let t' v') (\x -> return sc')
-    ev stk top env (Bind n b sc) 
+    ev ntimes stk top env (Bind n b sc) 
            = do b' <- vbind env b
-                return $ VBind n b' (\x -> ev stk top (x:env) sc)
-       where vbind env t = fmapMB (\tm -> ev stk top env (finalise tm)) t
-    ev stk top env (App f a) = do f' <- ev stk top env f
-                                  a' <- ev stk False env a
-                                  evApply stk top env [a'] f'
-    ev stk top env (Constant c) = return $ VConstant c
-    ev stk top env Erased    = return VErased
-    ev stk top env (Set i)   = return $ VSet i
+                return $ VBind n b' (\x -> ev ntimes stk top (x:env) sc)
+       where vbind env t = fmapMB (\tm -> ev ntimes stk top env (finalise tm)) t
+    ev ntimes stk top env (App f a) 
+           = do f' <- ev ntimes stk top env f
+                a' <- ev ntimes stk False env a
+                evApply ntimes stk top env [a'] f'
+    ev ntimes stk top env (Constant c) = return $ VConstant c
+    ev ntimes stk top env Erased    = return VErased
+    ev ntimes stk top env (Set i)   = return $ VSet i
     
-    evApply stk top env args (VApp f a) = 
-            evApply stk top env (a:args) f
-    evApply stk top env args f = apply stk top env f args
+    evApply ntimes stk top env args (VApp f a) = 
+            evApply ntimes stk top env (a:args) f
+    evApply ntimes stk top env args f = apply ntimes stk top env f args
 
-    apply stk top env (VBind n (Lam t) sc) (a:as) 
+    apply ntimes stk top env (VBind n (Lam t) sc) (a:as) 
         = do a' <- sc a
-             app <- apply stk top env a' as 
+             app <- apply ntimes stk top env a' as 
              wknV (-1) app
-    apply stk False env f args
-        | spec = specApply stk env f args 
-    apply stk top env (VP Ref n ty)        args
-        | [(CaseOp inl _ _ ns tree _ _, Public)] <- lookupDefAcc Nothing n atRepl ctxt
-            = -- traceWhen (n == UN ["interp"]) (show (n, args)) $
-              if simpl && (not inl || elem n stk) 
-                 then return $ unload env (VP Ref n ty) args
-                 else do c <- evCase (n:stk) top env ns args tree
-                         case c of
-                           (Nothing, _) -> return $ unload env (VP Ref n ty) args
-                           (Just v, rest) -> evApply stk top env rest v
-        | [Operator _ i op]  <- lookupDef Nothing n ctxt
-            = if (i <= length args)
-                 then case op (take i args) of
-                    Nothing -> return $ unload env (VP Ref n ty) args
-                    Just v  -> evApply stk top env (drop i args) v
-                 else return $ unload env (VP Ref n ty) args
-    apply stk top env f (a:as) = return $ unload env f (a:as)
-    apply stk top env f []     = return f
+--     apply ntimes stk False env f args
+--         | spec = specApply ntimes stk env f args 
+    apply ntimes_in stk top env f@(VP Ref n ty)        args
+      | (True, ntimes) <- usable n ntimes_in
+        = do let val = lookupDefAcc Nothing n atRepl ctxt
+             case val of
+                [(CaseOp inl _ _ ns tree _ _, Public)]  ->
+                  if simpl && (not inl || elem n stk) 
+                     then return $ unload env (VP Ref n ty) args
+                     else do c <- evCase ntimes (n:stk) top env ns args tree
+                             case c of
+                                (Nothing, _) -> return $ unload env (VP Ref n ty) args
+                                (Just v, rest) -> evApply ntimes stk top env rest v
+                [(Operator _ i op, _)]  ->
+                  if (i <= length args)
+                     then case op (take i args) of
+                        Nothing -> return $ unload env (VP Ref n ty) args
+                        Just v  -> evApply ntimes stk top env (drop i args) v
+                     else return $ unload env (VP Ref n ty) args
+                _ -> case args of
+                        [] -> return f
+                        _ -> return $ unload env f args
+    apply ntimes stk top env f (a:as) = return $ unload env f (a:as)
+    apply ntimes stk top env f []     = return f
 
-    specApply stk env f@(VP Ref n ty) args
-        = case lookupCtxt Nothing n statics of
-                [as] -> if or as 
-                          then trace (show (n, map fst (filter (\ (_, s) -> s) (zip args as)))) $ 
-                                return $ unload env f args
-                          else return $ unload env f args
-                _ -> return $ unload env f args
-    specApply stk env f args = return $ unload env f args
+--     specApply stk env f@(VP Ref n ty) args
+--         = case lookupCtxt Nothing n statics of
+--                 [as] -> if or as 
+--                           then trace (show (n, map fst (filter (\ (_, s) -> s) (zip args as)))) $ 
+--                                 return $ unload env f args
+--                           else return $ unload env f args
+--                 _ -> return $ unload env f args
+--     specApply stk env f args = return $ unload env f args
 
     unload env f [] = f
     unload env f (a:as) = unload env (VApp f a) as
 
-    evCase stk top env ns args tree
+    evCase ntimes stk top env ns args tree
         | length ns <= length args 
              = do let args' = take (length ns) args
                   let rest  = drop (length ns) args
-                  t <- evTree stk top env (zipWith (\n t -> (n, t)) ns args') tree
+                  t <- evTree ntimes stk top env (zipWith (\n t -> (n, t)) ns args') tree
                   return (t, rest)
         | otherwise = return (Nothing, args)
 
-    evTree :: [Name] -> Bool -> [Value] -> [(Name, Value)] -> SC -> Eval (Maybe Value)
-    evTree stk top env amap (UnmatchedCase str) = return Nothing
-    evTree stk top env amap (STerm tm) 
+    evTree :: [(Name, Int)] -> [Name] -> Bool -> 
+              [Value] -> [(Name, Value)] -> SC -> Eval (Maybe Value)
+    evTree ntimes stk top env amap (UnmatchedCase str) = return Nothing
+    evTree ntimes stk top env amap (STerm tm) 
         = do let etm = pToVs (map fst amap) tm
-             etm' <- ev stk top (map snd amap ++ env) etm
+             etm' <- ev ntimes stk top (map snd amap ++ env) etm
              return $ Just etm'
-    evTree stk top env amap (Case n alts)
+    evTree ntimes stk top env amap (Case n alts)
         = case lookup n amap of
             Just v -> do c <- chooseAlt env v (getValArgs v) alts amap
                          case c of
-                            Just (altmap, sc) -> evTree stk top env altmap sc
-                            _ -> do c' <- chooseAlt' stk env v (getValArgs v) alts amap
+                            Just (altmap, sc) -> evTree ntimes stk top env altmap sc
+                            _ -> do c' <- chooseAlt' ntimes stk env v (getValArgs v) alts amap
                                     case c' of
-                                        Just (altmap, sc) -> evTree stk top env altmap sc
+                                        Just (altmap, sc) -> evTree ntimes stk top env altmap sc
                                         _ -> return Nothing
             _ -> return Nothing
 
-    chooseAlt' stk env _ (f, args) alts amap
-        = do f' <- apply stk True env f args
+    chooseAlt' ntimes  stk env _ (f, args) alts amap
+        = do f' <- apply ntimes stk True env f args
              chooseAlt env f' (getValArgs f') alts amap
 
     chooseAlt :: [Value] -> Value -> (Value, [Value]) -> [CaseAlt] -> [(Name, Value)] ->
@@ -571,7 +595,7 @@ initContext = MkContext [] 0 emptyContext
 ctxtAlist :: Context -> [(Name, Def)]
 ctxtAlist ctxt = map (\(n, (d, a, t)) -> (n, d)) $ toAlist (definitions ctxt)
 
-veval ctxt env t = evalState (eval ctxt emptyContext env t []) ()
+veval ctxt env t = evalState (eval ctxt [] env t []) initEval
 
 addToCtxt :: Name -> Term -> Type -> Context -> Context
 addToCtxt n tm ty uctxt 

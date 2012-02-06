@@ -195,7 +195,7 @@ process fn (Info n) = do i <- get
 process fn (Spec t) = do (tm, ty) <- elabVal toplevel False t
                          ctxt <- getContext
                          ist <- get
-                         let tm' = specialise ctxt (idris_statics ist) tm
+                         let tm' = specialise ctxt [] [] {- (idris_statics ist) -} tm
                          iputStrLn (show (delab ist tm'))
 process fn (Prove n) = do prover (lit fn) n
                           -- recheck totality

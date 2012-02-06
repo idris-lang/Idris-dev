@@ -704,6 +704,8 @@ instance Binary FnOpt where
                 TotalFn -> putWord8 1
                 TCGen -> putWord8 2
                 AssertTotal -> putWord8 3
+                Specialise x -> do putWord8 4
+                                   put x
         get
           = do i <- getWord8
                case i of
@@ -711,6 +713,8 @@ instance Binary FnOpt where
                    1 -> return TotalFn
                    2 -> return TCGen
                    3 -> return AssertTotal
+                   4 -> do x <- get
+                           return (Specialise x)
                    _ -> error "Corrupted binary data for FnOpt"
 
 instance Binary Fixity where

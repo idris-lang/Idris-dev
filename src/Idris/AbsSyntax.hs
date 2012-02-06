@@ -404,6 +404,7 @@ constraint = Constraint False Dynamic
 tacimpl = TacImp False Dynamic
 
 data FnOpt = Inlinable | TotalFn | AssertTotal | TCGen
+           | Specialise [Name] -- specialise it, freeze these names
     deriving (Show, Eq)
 {-!
 deriving instance Binary FnOpt
@@ -752,7 +753,7 @@ getAll = map getTm
 showImp :: Bool -> PTerm -> String
 showImp impl tm = se 10 tm where
     se p (PQuote r) = "![" ++ show r ++ "]"
-    se p (PRef fc n) = if impl then show n ++ "[" ++ show fc ++ "]"
+    se p (PRef fc n) = if impl then show n -- ++ "[" ++ show fc ++ "]"
                                else showbasic n
       where showbasic n@(UN _) = show n
             showbasic (MN _ s) = s

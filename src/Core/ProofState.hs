@@ -284,7 +284,7 @@ fill _ _ _ _ = fail "Can't fill here."
 
 prep_fill :: Name -> [Name] -> RunTactic
 prep_fill f as ctxt env (Bind x (Hole ty) sc) =
-    do let val = mkApp (P Ref f undefined) (map (\n -> P Ref n undefined) as)
+    do let val = mkApp (P Ref f Erased) (map (\n -> P Ref n Erased) as)
        return $ Bind x (Guess ty val) sc
 prep_fill f as ctxt env t = fail $ "Can't prepare fill at " ++ show t
 
