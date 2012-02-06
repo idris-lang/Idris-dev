@@ -9,6 +9,8 @@ import Core.CoreParser
 import Core.TT
 import Core.Evaluate
 
+import Debug.Trace
+
 desugar :: SyntaxInfo -> IState -> PTerm -> PTerm
 desugar syn i t = let t' = expandDo (dsl_info syn) t in
                       t' -- addImpl i t'
@@ -82,6 +84,7 @@ var dsl n t i = v' i t where
     v' i (PAlternative as) = PAlternative $ map (v' i) as
     v' i (PHidden t)     = PHidden (v' i t)
     v' i (PIdiom f t)    = PIdiom f (v' i t)
+    v' i (PDoBlock ds)   = PDoBlock (map (fmap (v' i)) ds)
     v' i t = t
 
     mkVar fc 0 = case index_first dsl of

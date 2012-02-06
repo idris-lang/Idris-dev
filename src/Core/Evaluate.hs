@@ -8,7 +8,7 @@ module Core.Evaluate(normalise, normaliseC, normaliseAll,
                 addToCtxt, setAccess, setTotal, addCtxtDef, addTyDecl, addDatatype, 
                 addCasedef, addOperator,
                 lookupTy, lookupP, lookupDef, lookupVal, lookupTotal,
-                lookupTyEnv, isConName,
+                lookupTyEnv, isConName, isFnName,
                 Value(..)) where
 
 import Debug.Trace
@@ -654,6 +654,15 @@ isConName root n ctxt
                case tfst def of
                     (TyDecl (DCon _ _) _) -> return True
                     (TyDecl (TCon _ _) _) -> return True
+                    _ -> return False
+
+isFnName :: Maybe [String] -> Name -> Context -> Bool
+isFnName root n ctxt 
+     = or $ do def <- lookupCtxt root n (definitions ctxt)
+               case tfst def of
+                    (Function _ _) -> return True
+                    (Operator _ _ _) -> return True
+                    (CaseOp _ _ _ _ _ _ _) -> return True
                     _ -> return False
 
 lookupP :: Maybe [String] -> Name -> Context -> [Term]

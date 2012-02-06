@@ -108,6 +108,14 @@ goal = do ES p _ _ <- get
           b <- lift $ goalAtFocus (fst p)
           return (binderTy b)
 
+-- Get the guess at the current hole, if there is one
+get_guess :: Elab' aux Type
+get_guess = do ES p _ _ <- get
+               b <- lift $ goalAtFocus (fst p)
+               case b of
+                    Guess t v -> return v
+                    _ -> fail "Not a guess"
+
 -- typecheck locally
 get_type :: Raw -> Elab' aux Type
 get_type tm = do ctxt <- get_context

@@ -38,11 +38,11 @@ small _ = False
 
 namesUsed :: SC -> [Name]
 namesUsed sc = nub $ nu' [] sc where
-    nu' ps (Case n alts) = concatMap (nua ps) alts
-    nu' ps (STerm t)     = nut ps t
+    nu' ps (Case n alts) = nub (concatMap (nua ps) alts) \\ [n]
+    nu' ps (STerm t)     = nub $ nut ps t
     nu' ps _ = []
 
-    nua ps (ConCase n i args sc) = nu' (ps ++ args) sc
+    nua ps (ConCase n i args sc) = nub (nu' (ps ++ args) sc) \\ args
     nua ps (ConstCase _ sc) = nu' ps sc
     nua ps (DefaultCase sc) = nu' ps sc
 
