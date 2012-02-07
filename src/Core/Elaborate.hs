@@ -286,7 +286,13 @@ prepare_apply fn imps =
            when i (movelast n)
            mkClaims sc' is (n : claims)
     mkClaims t [] claims = return (reverse claims)
-    mkClaims _ _ _ = fail $ "Wrong number of arguments for " ++ show fn
+    mkClaims _ _ _ 
+            | Var n <- fn
+                   = do ctxt <- get_context
+                        case lookupTy Nothing n ctxt of
+                                [] -> lift $ tfail $ NoSuchVariable n  
+                                _ -> fail $ "Too many arguments for " ++ show fn
+            | otherwise = fail $ "Too many arguments for " ++ show fn
 
     doClaim ((i, _), n, t) = do claim n t
                                 when i (movelast n)

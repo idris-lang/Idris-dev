@@ -8,8 +8,8 @@ import prelude.fin
 infixr 10 :: 
 
 data Vect : Set -> Nat -> Set where
-    Nil   : Vect a O
-    (::)  : a -> Vect a k -> Vect a (S k) 
+    Nil   : Vect a 0
+    (::)  : a -> Vect a k -> Vect a (1 + k) 
 
 tail : Vect a (S n) -> Vect a n
 tail (x :: xs) = xs
