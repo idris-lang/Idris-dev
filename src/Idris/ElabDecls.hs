@@ -141,15 +141,15 @@ elabRecord info syn fc tyn ty cn cty
     rec = MN 0 "rec"
 
     mkp (UN n) = MN 0 ("p_" ++ n)
-    mkp (MN 0 n) = MN 0 ("p_" ++ n)
+    mkp (MN i n) = MN i ("p_" ++ n)
     mkp (NS n s) = NS (mkp n) s
 
     mkImp (UN n) = UN ("implicit_" ++ n)
-    mkImp (MN 0 n) = MN 0 ("implicit_" ++ n)
+    mkImp (MN i n) = MN i ("implicit_" ++ n)
     mkImp (NS n s) = NS (mkImp n) s
 
     mkSet (UN n) = UN ("set_" ++ n)
-    mkSet (MN 0 n) = MN 0 ("set_" ++ n)
+    mkSet (MN i n) = MN i ("set_" ++ n)
     mkSet (NS n s) = NS (mkSet n) s
 
     mkProj recty substs cimp ((pn_in, pty), pos)
