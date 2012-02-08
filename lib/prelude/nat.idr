@@ -49,7 +49,7 @@ power base (S exp) = mult base $ power base exp
 --------------------------------------------------------------------------------
 
 instance Eq Nat where
-  Z == Z         = True
+  O == O         = True
   (S l) == (S r) = l == r
   _ == _         = False
 
