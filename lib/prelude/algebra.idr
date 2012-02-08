@@ -1,4 +1,4 @@
-module algebra
+module prelude.algebra
 
 import builtins
 
@@ -6,7 +6,7 @@ import builtins
 -- Must satisfy:
 --   forall a, b, c. a <*> (b <*> c) = (a <*> b) <*> c
 class Semigroup a where
-  (<*>)        : a -> a -> a
+  (<.>)        : a -> a -> a
 
 -- Sets with an associative binary operation and a neutral element
 -- Must satisfy:
