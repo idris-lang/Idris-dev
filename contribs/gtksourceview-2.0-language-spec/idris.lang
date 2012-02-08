@@ -200,6 +200,8 @@
       <keyword>tactics</keyword>
       <keyword>static</keyword>
       <keyword>impossible</keyword>
+      <keyword>total</keyword>
+      <keyword>assert_total</keyword>
     </context>
 
     <context id="tactic" style-ref="tactic">
