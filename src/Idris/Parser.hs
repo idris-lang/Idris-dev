@@ -479,7 +479,7 @@ pClass syn = do acc <- pAccessibility
                 n_in <- pName; let n = expandNS syn n_in
                 cs <- many1 carg
                 reserved "where"; open_block 
-                ds <- many1 $ pFunDecl syn
+                ds <- many $ pFunDecl syn
                 close_block
                 let allDs = concat ds
                 accData acc n (concatMap declared allDs)
@@ -499,7 +499,7 @@ pInstance syn = do reserved "instance"
                    let sc = PApp fc (PRef fc cn) (map pexp args)
                    let t = bindList (PPi constraint) (map (\x -> (MN 0 "c", x)) cs) sc
                    reserved "where"; open_block 
-                   ds <- many1 $ pFunDecl syn
+                   ds <- many $ pFunDecl syn
                    close_block
                    return [PInstance syn fc cs cn args t (concat ds)]
 

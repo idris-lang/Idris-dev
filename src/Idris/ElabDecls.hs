@@ -608,9 +608,9 @@ elabClass info syn fc constraints tn ps ds
              let conn' = case lookupCtxtName Nothing conn (idris_classes i) of
                                 [(n, _)] -> n
                                 _ -> conn
-             addInstance conn' cfn
-             addIBC (IBCInstance conn' cfn)
---              iputStrLn ("Added " ++ show (conn, cfn))
+             addInstance False conn' cfn
+             addIBC (IBCInstance False conn' cfn)
+--              iputStrLn ("Added " ++ show (conn, cfn, ty))
              return [PTy syn fc [] cfn ty,
                      PClauses fc [Inlinable,TCGen] cfn [PClause fc cfn lhs [] rhs []]]
 
@@ -658,8 +658,11 @@ elabClass info syn fc constraints tn ps ds
     toExp ns e sc = sc
 
 elabInstance :: ElabInfo -> SyntaxInfo -> 
-                FC -> [PTerm] -> Name -> 
-                [PTerm] -> PTerm -> [PDecl] -> Idris ()
+                FC -> [PTerm] -> -- constraints
+                Name -> -- the class 
+                [PTerm] -> -- class parameters (i.e. instance) 
+                PTerm -> -- full instance type
+                [PDecl] -> Idris ()
 elabInstance info syn fc cs n ps t ds
     = do i <- get 
          (n, ci) <- case lookupCtxtName (namespace info) n (idris_classes i) of
@@ -669,7 +672,7 @@ elabInstance info syn fc cs n ps t ds
          -- if the instance type matches any of the instances we have already,
          -- then it's overlapping, so report an error
          mapM_ (checkNotOverlapping i t) (class_instances ci) 
-         addInstance n iname
+         addInstance intInst n iname
          elabType info syn fc [] iname t
          let ips = zip (class_params ci) ps
          let ns = case n of
@@ -700,8 +703,12 @@ elabInstance info syn fc cs n ps t ds
                                  [PClause fc iname lhs [] rhs wb]
          iLOG (show idecl)
          elabDecl info idecl
-         addIBC (IBCInstance n iname)
+         addIBC (IBCInstance intInst n iname)
   where
+    intInst = case ps of
+                [PConstant IType] -> True
+                _ -> False
+
     checkNotOverlapping i t n
      | take 2 (show n) == "@@" = return ()
      | otherwise

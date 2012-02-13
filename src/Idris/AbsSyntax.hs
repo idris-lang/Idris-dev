@@ -74,7 +74,7 @@ data IBCWrite = IBCFix FixDecl
               | IBCImp Name
               | IBCStatic Name
               | IBCClass Name
-              | IBCInstance Name Name
+              | IBCInstance Bool Name Name
               | IBCDSL Name
               | IBCData Name
               | IBCOpt Name
@@ -148,15 +148,20 @@ addToCG :: Name -> [Name] -> Idris ()
 addToCG n ns = do i <- get
                   put (i { idris_callgraph = addDef n ns (idris_callgraph i) })
 
-addInstance :: Name -> Name -> Idris ()
-addInstance n i 
+-- Add a class instance function. Dodgy hack: Put integer instances first in the
+-- list so they are resolved by default.
+
+addInstance :: Bool -> Name -> Name -> Idris ()
+addInstance int n i 
     = do ist <- get
          case lookupCtxt Nothing n (idris_classes ist) of
                 [CI a b c d ins] ->
-                     do let cs = addDef n (CI a b c d (i : ins)) (idris_classes ist)
+                     do let cs = addDef n (CI a b c d (addI i ins)) (idris_classes ist)
                         put (ist { idris_classes = cs })
                 _ -> do let cs = addDef n (CI (MN 0 "none") [] [] [] [i]) (idris_classes ist)
                         put (ist { idris_classes = cs })
+  where addI i ins | int = i : ins
+                   | otherwise = ins ++ [i]
 
 addClass :: Name -> ClassInfo -> Idris ()
 addClass n i 

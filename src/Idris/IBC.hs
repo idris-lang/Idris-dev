@@ -21,7 +21,7 @@ import System.Directory
 import Paths_idris
 
 ibcVersion :: Word8
-ibcVersion = 16
+ibcVersion = 17
 
 data IBCFile = IBCFile { ver :: Word8,
                          sourcefile :: FilePath,
@@ -30,7 +30,7 @@ data IBCFile = IBCFile { ver :: Word8,
                          ibc_fixes :: [FixDecl],
                          ibc_statics :: [(Name, [Bool])],
                          ibc_classes :: [(Name, ClassInfo)],
-                         ibc_instances :: [(Name, Name)],
+                         ibc_instances :: [(Bool, Name, Name)],
                          ibc_dsls :: [(Name, DSL)],
                          ibc_datatypes :: [(Name, TypeInfo)],
                          ibc_optimise :: [(Name, OptInfo)],
@@ -88,8 +88,8 @@ ibc i (IBCClass n) f
                    = case lookupCtxt Nothing n (idris_classes i) of
                         [v] -> return f { ibc_classes = (n,v): ibc_classes f     }
                         _ -> fail "IBC write failed"
-ibc i (IBCInstance n ins) f 
-                   = return f { ibc_instances = (n,ins): ibc_instances f     }
+ibc i (IBCInstance int n ins) f 
+                   = return f { ibc_instances = (int,n,ins): ibc_instances f     }
 ibc i (IBCDSL n) f 
                    = case lookupCtxt Nothing n (idris_dsls i) of
                         [v] -> return f { ibc_dsls = (n,v): ibc_dsls f     }
@@ -193,8 +193,8 @@ pClasses cs = mapM_ (\ (n, c) ->
                                            = addDef n c (idris_classes i) }))
                     cs
 
-pInstances :: [(Name, Name)] -> Idris ()
-pInstances cs = mapM_ (\ (n, ins) -> addInstance n ins) cs
+pInstances :: [(Bool, Name, Name)] -> Idris ()
+pInstances cs = mapM_ (\ (i, n, ins) -> addInstance i n ins) cs
 
 pDSLs :: [(Name, DSL)] -> Idris ()
 pDSLs cs = mapM_ (\ (n, c) ->

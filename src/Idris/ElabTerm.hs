@@ -101,10 +101,7 @@ elab ist info pattern tcgen fn tm
                                    (elab' ina (PRef fc unitTy))
     elab' ina (PFalse fc)    = elab' ina (PRef fc falseTy)
     elab' ina (PResolveTC (FC "HACK" _)) -- for chasing parent classes
-       = do t <- goal
-            -- let insts = filter tcname $ map fst (ctxtAlist (tt_ctxt ist))
-            let insts = findInstances ist t
-            resolveTC 2 fn insts ist
+       = resolveTC 2 fn ist
     elab' ina (PResolveTC fc) = do c <- unique_hole (MN 0 "c")
                                    instanceArg c
     elab' ina (PRefl fc)     = elab' ina (PApp fc (PRef fc eqCon) [pimp (MN 0 "a") Placeholder,
@@ -240,9 +237,7 @@ elab ist info pattern tcgen fn tm
             when (not pattern || (ina && not tcgen)) $
                 mapM_ (\n -> do focus n
                                 -- let insts = filter tcname $ map fst (ctxtAlist (tt_ctxt ist))
-                                t <- goal
-                                let insts = findInstances ist t
-                                resolveTC 7 fn insts ist) (ivs' \\ ivs) 
+                                resolveTC 7 fn ist) (ivs' \\ ivs) 
       where tcArg (n, PConstraint _ _ Placeholder) = True
             tcArg _ = False
 
@@ -359,12 +354,13 @@ findInstances ist t
             _ -> []
     | otherwise = []
 
-resolveTC :: Int -> Name -> [Name] -> IState -> ElabD ()
-resolveTC 0 fn insts ist = fail $ "Can't resolve type class"
-resolveTC 1 fn insts ist = try (trivial ist) (resolveTC 0 fn insts ist)
-resolveTC depth fn insts ist 
+resolveTC :: Int -> Name -> IState -> ElabD ()
+resolveTC 0 fn ist = fail $ "Can't resolve type class"
+resolveTC 1 fn ist = try (trivial ist) (resolveTC 0 fn ist)
+resolveTC depth fn ist 
          = try (trivial ist)
                (do t <- goal
+                   let insts = findInstances ist t
                    let (tc, ttypes) = unApply t
                    scopeOnly <- needsDefault t tc ttypes
                    tm <- get_term
@@ -376,11 +372,11 @@ resolveTC depth fn insts ist
     elabTC n | n /= fn && tcname n = (resolve n depth, show n)
              | otherwise = (fail "Can't resolve", show n)
 
-    needsDefault t num@(P _ (NS (UN "Num") ["builtins"]) _) [P Bound a _]
-        = do focus a
-             fill (RConstant IType) -- default Int
-             solve
-             return False
+--     needsDefault t num@(P _ (NS (UN "Num") ["builtins"]) _) [P Bound a _]
+--         = do focus a
+--              fill (RConstant IType) -- default Int
+--              solve
+--              return False
     needsDefault t f as
           | all boundVar as = return True -- fail $ "Can't resolve " ++ show t
     needsDefault t f a = return False -- trace (show t) $ return ()
@@ -408,7 +404,7 @@ resolveTC depth fn insts ist
                 args <- apply (Var n) imps
 --                 traceWhen (all boundVar ttypes) ("Progress: " ++ show t ++ " with " ++ show n) $
                 mapM_ (\ (_,n) -> do focus n
-                                     resolveTC (depth - 1) fn insts ist) 
+                                     resolveTC (depth - 1) fn ist) 
                       (filter (\ (x, y) -> not x) (zip (map fst imps) args))
                 -- if there's any arguments left, we've failed to resolve
                 solve
