@@ -35,8 +35,8 @@ class Semigroup a => Monoid a where
   neutral : a
 
 class (VerifiedSemigroup a, Monoid a) => VerifiedMonoid a where
-  monoidIsNeutralL : (l : a) -> l <+> neutral = l
-  monoidIsNeutralR : (r : a) -> neutral <+> r = r
+  monoidNeutralIsNeutralL : (l : a) -> l <+> neutral = l
+  monoidNeutralIsNeutralR : (r : a) -> neutral <+> r = r
 
 -- Sets equipped with a single binary operation that is associative, along with
 -- a neutral element for that binary operation and inverses for all elements.
@@ -100,9 +100,9 @@ class AbelianGroup a => Ring a where
   (<*>) : a -> a -> a
 
 class (VerifiedAbelianGroup a, Ring a) => VerifiedRing a where
-  ringOpIsAssociative  : (l, c, r : a) -> l <*> (c <*> r) = (l <*> c) <*> r
-  ringOpsDistributiveL : (l, c, r : a) -> l <*> (c <+> r) = (l <*> c) <+> (l <*> r)
-  ringOpsDistributiveR : (l, c, r : a) -> (l <+> c) <*> r = (l <*> r) <+> (l <*> c)
+  ringOpIsAssociative   : (l, c, r : a) -> l <*> (c <*> r) = (l <*> c) <*> r
+  ringOpIsDistributiveL : (l, c, r : a) -> l <*> (c <+> r) = (l <*> c) <+> (l <*> r)
+  ringOpIsDistributiveR : (l, c, r : a) -> (l <+> c) <*> r = (l <*> r) <+> (l <*> c)
 
 -- Sets equipped with two binary operations, one associative and commutative
 -- supplied with a neutral element, and the other associative supplied with a
@@ -163,9 +163,9 @@ class MeetSemilattice a where
   meet : a -> a -> a
 
 class MeetSemilattice a => VerifiedMeetSemilattice a where
-  meetSemilatticeJoinIsAssociative : (l, c, r : a) -> meet l (meet c r) = meet (meet l c) r
-  meetSemilatticeJoinIsCommutative : (l, r : a)    -> meet l r = meet r l
-  meetSemilatticeJoinIsIdempotent  : (e : a)       -> meet e e = e
+  meetSemilatticeMeetIsAssociative : (l, c, r : a) -> meet l (meet c r) = meet (meet l c) r
+  meetSemilatticeMeetIsCommutative : (l, r : a)    -> meet l r = meet r l
+  meetSemilatticeMeetIsIdempotent  : (e : a)       -> meet e e = e
 
 -- Sets equipped with a binary operation that is commutative, associative and
 -- idempotent and supplied with a neutral element.  Must satisfy the following
