@@ -101,7 +101,7 @@ elab ist info pattern tcgen fn tm
                                    (elab' ina (PRef fc unitTy))
     elab' ina (PFalse fc)    = elab' ina (PRef fc falseTy)
     elab' ina (PResolveTC (FC "HACK" _)) -- for chasing parent classes
-       = resolveTC 2 fn ist
+       = resolveTC 5 fn ist
     elab' ina (PResolveTC fc) = do c <- unique_hole (MN 0 "c")
                                    instanceArg c
     elab' ina (PRefl fc)     = elab' ina (PApp fc (PRef fc eqCon) [pimp (MN 0 "a") Placeholder,
@@ -366,7 +366,7 @@ resolveTC depth fn ist
                    tm <- get_term
 --                    traceWhen (depth > 6) ("GOAL: " ++ show t ++ "\nTERM: " ++ show tm) $
 --                        (tryAll (map elabTC (map fst (ctxtAlist (tt_ctxt ist)))))
-                   let depth' = if scopeOnly then 2 else depth
+                   let depth' = if scopeOnly then 5 else depth
                    blunderbuss t depth' insts)
   where
     elabTC n | n /= fn && tcname n = (resolve n depth, show n)

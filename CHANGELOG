@@ -1,7 +1,13 @@
 New in 0.9.2:
 -------------
 
+User visible changes:
+
 * case expressions allowed in type signatures
+
+Internal changes:
+
+* Some type class resolution fixes
 
 New in 0.9.1:
 -------------
