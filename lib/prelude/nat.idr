@@ -45,98 +45,6 @@ power base O       = S O
 power base (S exp) = mult base $ power base exp
 
 --------------------------------------------------------------------------------
--- Type class instances
---------------------------------------------------------------------------------
-
-instance Eq Nat where
-  O == O         = True
-  (S l) == (S r) = l == r
-  _ == _         = False
-
-instance Cast Nat Int where
-  cast O     = 0
-  cast (S k) = 1 + cast k
-
-instance Ord Nat where
-  compare O O         = EQ
-  compare O (S k)     = LT
-  compare (S k) O     = GT
-  compare (S x) (S y) = compare x y
-
-instance Num Nat where
-  (+) = plus
-  (-) = minus
-  (*) = mult
-
-  fromInteger = fromInteger'
-    where
-      %assert_total
-      fromInteger' : Int -> Nat
-      fromInteger' 0 = O
-      fromInteger' n =
-        if (n > 0) then
-          S (fromInteger' (n - 1))
-        else
-          O
-
-record Multiplicative : Set where
-  getMultiplicative : Nat -> Multiplicative
-
-record Additive : Set where
-  getAdditive : Nat -> Additive
-
--- XXX: infix operators don't seem to be being exported correctly from
--- algebra.idr?
---instance Monoid Multiplicative where
---  neutral        = getMultiplicative $ S O
---  left <+> right = getMultiplicative $ left' * right'
---    where
---      left'  : Nat
---      left'  =
---       case left of
---          getMultiplicative m => m
-
---      right' : Nat
---      right' =
---        case right of
---          getMultiplicative m => m
-
---instance Monoid Additive where
---  neutral        = getAdditive $ O
---  left <+> right = getAdditive $ left' + right'
---    where
---      left'  : Nat
---      left'  =
---        case left of
---          getAdditive m => m
-
---      right' : Nat
---      right' =
---        case right of
---          getAdditive m => m
-
---------------------------------------------------------------------------------
--- Auxilliary notions
---------------------------------------------------------------------------------
-
-total pred : Nat -> Nat
-pred O     = O
-pred (S n) = n
-
---------------------------------------------------------------------------------
--- Fibonacci and factorial
---------------------------------------------------------------------------------
-
-total fib : Nat -> Nat
-fib O         = O
-fib (S O)     = S O
-fib (S (S n)) = fib (S n) + fib n
-
---------------------------------------------------------------------------------
--- GCD and LCM
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
 -- Comparisons
 --------------------------------------------------------------------------------
 
@@ -180,6 +88,111 @@ maximum left right =
     right
   else
     left
+
+--------------------------------------------------------------------------------
+-- Type class instances
+--------------------------------------------------------------------------------
+
+instance Eq Nat where
+  O == O         = True
+  (S l) == (S r) = l == r
+  _ == _         = False
+
+instance Cast Nat Int where
+  cast O     = 0
+  cast (S k) = 1 + cast k
+
+instance Ord Nat where
+  compare O O         = EQ
+  compare O (S k)     = LT
+  compare (S k) O     = GT
+  compare (S x) (S y) = compare x y
+
+instance Num Nat where
+  (+) = plus
+  (-) = minus
+  (*) = mult
+
+  fromInteger = fromInteger'
+    where
+      %assert_total
+      fromInteger' : Int -> Nat
+      fromInteger' 0 = O
+      fromInteger' n =
+        if (n > 0) then
+          S (fromInteger' (n - 1))
+        else
+          O
+
+record Multiplicative : Set where
+  getMultiplicative : Nat -> Multiplicative
+
+record Additive : Set where
+  getAdditive : Nat -> Additive
+
+instance Semigroup Multiplicative where
+  (<+>) left right = getMultiplicative $ left' * right'
+    where
+      left'  : Nat
+      left'  =
+       case left of
+          getMultiplicative m => m
+
+      right' : Nat
+      right' =
+        case right of
+          getMultiplicative m => m
+
+instance Semigroup Additive where
+  left <+> right = getAdditive $ left' + right'
+    where
+      left'  : Nat
+      left'  =
+        case left of
+          getAdditive m => m
+
+      right' : Nat
+      right' =
+        case right of
+          getAdditive m => m
+
+instance Monoid Multiplicative where
+  neutral = getMultiplicative $ S O
+
+instance Monoid Additive where
+  neutral = getAdditive O
+
+instance MeetSemilattice Nat where
+  meet = minimum
+
+instance JoinSemilattice Nat where
+  join = maximum
+
+instance Lattice Nat where { }
+
+instance BoundedJoinSemilattice Nat where
+  bottom = O
+
+--------------------------------------------------------------------------------
+-- Auxilliary notions
+--------------------------------------------------------------------------------
+
+total pred : Nat -> Nat
+pred O     = O
+pred (S n) = n
+
+--------------------------------------------------------------------------------
+-- Fibonacci and factorial
+--------------------------------------------------------------------------------
+
+total fib : Nat -> Nat
+fib O         = O
+fib (S O)     = S O
+fib (S (S n)) = fib (S n) + fib n
+
+--------------------------------------------------------------------------------
+-- GCD and LCM
+--------------------------------------------------------------------------------
 
 --------------------------------------------------------------------------------
 -- Division and modulus
@@ -711,9 +724,6 @@ plusZeroRightNeutralStepCase = proof {
     rewrite inductiveHypothesis;
     trivial;
 }
-
-
----------- Proofs ----------
 
 maximumCommutativeStepCase = proof {
     intros;
