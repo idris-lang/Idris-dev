@@ -472,6 +472,16 @@ declared (PParams _ _ ds) = concatMap declared ds
 declared (PNamespace _ ds) = concatMap declared ds
 -- declared (PImport _) = []
 
+defined :: PDecl -> [Name]
+defined (PFix _ _ _) = []
+defined (PTy _ _ _ n t) = []
+defined (PClauses _ _ n _) = [n] -- not a declaration
+defined (PData _ _ (PDatadecl n _ ts)) = n : map fstt ts
+   where fstt (a, _, _) = a
+defined (PParams _ _ ds) = concatMap defined ds
+defined (PNamespace _ ds) = concatMap defined ds
+-- declared (PImport _) = []
+
 updateN :: [(Name, Name)] -> Name -> Name
 updateN ns n | Just n' <- lookup n ns = n'
 updateN _  n = n

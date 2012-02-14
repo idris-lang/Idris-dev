@@ -686,6 +686,7 @@ elabInstance info syn fc cs n ps t ds
          let ds' = insertDefaults (class_defaults ci) ns ds
          iLOG ("Defaults inserted: " ++ show ds' ++ "\n" ++ show ci)
          mapM_ (warnMissing ds' ns) (map fst (class_methods ci))
+         mapM_ (checkInClass (map fst (class_methods ci))) (concatMap defined ds')
          let wb = map mkTyDecl mtys ++ map (decorateid (decorate ns)) ds'
          logLvl 3 $ "Method types " ++ showSep "\n" (map (showDeclImp True . mkTyDecl) mtys)
          -- get the implicit parameters that need passing through to the where block
@@ -779,6 +780,13 @@ elabInstance info syn fc cs n ps t ds
         | null $ filter (clauseFor meth ns) decls
             = iWarn fc $ "method " ++ show meth ++ " not defined"
         | otherwise = return ()
+
+    checkInClass ns meth
+        | not (null (filter (eqRoot meth) ns)) = return ()
+        | otherwise = tclift $ tfail (At fc (Msg $ 
+                                show meth ++ " not a method of class " ++ show n))
+
+    eqRoot x y = nsroot x == nsroot y
 
     clauseFor m ns (PClauses _ _ m' _) = decorate ns m == decorate ns m'
     clauseFor m ns _ = False
