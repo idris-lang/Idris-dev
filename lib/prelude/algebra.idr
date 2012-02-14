@@ -2,12 +2,12 @@ module prelude.algebra
 
 import builtins
 
-%access public
-
 -- XXX: change?
-infix 6 <->
-infix 6 <+>
-infix 6 <*>
+infixl 6 <->
+infixl 6 <+>
+infixl 6 <*>
+
+%access public
 
 -- Sets equipped with a single binary operation that is associative.  Must
 -- satisfy the following laws:
