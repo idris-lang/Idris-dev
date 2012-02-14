@@ -85,37 +85,35 @@ record Multiplicative : Set where
 record Additive : Set where
   getAdditive : Nat -> Additive
 
-instance Semigroup Multiplicative where
-  left <.> right = getMultiplicative $ left' * right'
-    where
-      left'  : Nat
-      left'  =
-        case left of
-          getMultiplicative m => m
+-- XXX: infix operators don't seem to be being exported correctly from
+-- algebra.idr?
+--instance Monoid Multiplicative where
+--  neutral        = getMultiplicative $ S O
+--  left <+> right = getMultiplicative $ left' * right'
+--    where
+--      left'  : Nat
+--      left'  =
+--       case left of
+--          getMultiplicative m => m
 
-      right' : Nat
-      right' =
-        case right of
-          getMultiplicative m => m
+--      right' : Nat
+--      right' =
+--        case right of
+--          getMultiplicative m => m
 
-instance Semigroup Additive where
-  left <.> right = getAdditive $ left' + right'
-    where
-      left'  : Nat
-      left'  =
-        case left of
-          getAdditive m => m
+--instance Monoid Additive where
+--  neutral        = getAdditive $ O
+--  left <+> right = getAdditive $ left' + right'
+--    where
+--      left'  : Nat
+--      left'  =
+--        case left of
+--          getAdditive m => m
 
-      right' : Nat
-      right' =
-        case right of
-          getAdditive m => m
-
-instance Monoid Multiplicative where
-  neutral = getMultiplicative $ S O
-
-instance Monoid Additive where
-  neutral = getAdditive $ O
+--      right' : Nat
+--      right' =
+--        case right of
+--          getAdditive m => m
 
 --------------------------------------------------------------------------------
 -- Auxilliary notions

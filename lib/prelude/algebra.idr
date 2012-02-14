@@ -4,6 +4,11 @@ import builtins
 
 %access public
 
+-- XXX: change?
+infix 6 <->
+infix 6 <+>
+infix 6 <*>
+
 -- Sets equipped with a single binary operation that is associative.  Must
 -- satisfy the following laws:
 --   Associativity of <+>:
@@ -36,7 +41,7 @@ class Semigroup a => Monoid a where
 class Monoid a => Group a where
   inverse : a -> a
 
-(<->) : (Group a) => a -> a -> a
+(<->) : Group a => a -> a -> a
 (<->) left right = left <+> (inverse right)
 
 -- Sets equipped with a single binary operation that is associative and
