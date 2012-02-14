@@ -366,7 +366,7 @@ resolveTC depth fn ist
                    tm <- get_term
 --                    traceWhen (depth > 6) ("GOAL: " ++ show t ++ "\nTERM: " ++ show tm) $
 --                        (tryAll (map elabTC (map fst (ctxtAlist (tt_ctxt ist)))))
-                   let depth' = if scopeOnly then 5 else depth
+                   let depth' = if scopeOnly then 2 else depth
                    blunderbuss t depth' insts)
   where
     elabTC n | n /= fn && tcname n = (resolve n depth, show n)
@@ -404,7 +404,10 @@ resolveTC depth fn ist
                 args <- apply (Var n) imps
 --                 traceWhen (all boundVar ttypes) ("Progress: " ++ show t ++ " with " ++ show n) $
                 mapM_ (\ (_,n) -> do focus n
-                                     resolveTC (depth - 1) fn ist) 
+                                     t' <- goal
+                                     let (tc', ttype) = unApply t'
+                                     let depth' = if t == t' then depth - 1 else depth
+                                     resolveTC depth' fn ist) 
                       (filter (\ (x, y) -> not x) (zip (map fst imps) args))
                 -- if there's any arguments left, we've failed to resolve
                 solve
