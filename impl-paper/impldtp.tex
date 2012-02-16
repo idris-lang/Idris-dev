@@ -1,5 +1,5 @@
-%\documentclass{llncs}
-\documentclass[acmtoplas]{acmtrans2m}
+\documentclass{jfp1}
+%\documentclass[acmtoplas]{acmtrans2m}
 
 \usepackage[draft]{comments}
 %\usepackage[final]{comments}
@@ -8,9 +8,9 @@
 \newcommand{\ebcomment}[1]{\comment{EB}{#1}}
 
 \usepackage{epsfig}
-\usepackage{path}
+%\usepackage{path}
 \usepackage{url}
-\usepackage{amsmath,amssymb} 
+%\usepackage{amsmath,amssymb} 
 \usepackage{fancyvrb}
 
 \newenvironment{template}{\sffamily}
@@ -48,11 +48,19 @@
 }
 \newcommand{\hdecl}[1]{\texttt{#1}}
 
-\markboth{Edwin C. Brady}{Implementation of a Practical Dependently
-  Typed Functional Programming Language}
-\title{Implementation of a Practical Dependently Typed Functional
-  Programming Language}
-\author{EDWIN C. BRADY\\ University of St Andrews}
+
+\title[Implementation of a Practical Functional Language with Dependent Types]
+  {Implementation of a Practical Functional Programming Language with Dependent Types}
+%\subtitle{Implementing Domain Specific Languages by Overloading}
+
+\author[Edwin Brady]
+{EDWIN BRADY\\
+School of Computer Science, University of St Andrews, St Andrews,
+KY16 9SX, UK}
+
+\begin{document}
+
+\maketitle
 
 \begin{abstract}
 I describe the implementation of a dependently typed functional
@@ -65,19 +73,17 @@ concrete syntax with implicit arguments into fully elaborated type
 theory, using unification and a tactic engine.
 \end{abstract}
 
-\category{D.3.2}{Programming Languages}{Language
-  Classifications}[Applicative (functional) Languages]
-\category{D.3.4}{Programming Languages}{Processors}[Compilers]
-\terms{Languages, Verification, Performance}
-\keywords{Dependent Types, Typechecking}
+%\category{D.3.2}{Programming Languages}{Language
+%  Classifications}[Applicative (functional) Languages]
+%\category{D.3.4}{Programming Languages}{Processors}[Compilers]
+%\terms{Languages, Verification, Performance}
+%\keywords{Dependent Types, Typechecking}
 
-\begin{document}
 
-\begin{bottomstuff}
-Author's address: Edwin Brady, School of Computer Science, North Haugh, St Andrews,
-KY16 9SX
-\end{bottomstuff}
-\maketitle
+%\begin{bottomstuff}
+%Author's address: Edwin Brady, School of Computer Science, North Haugh, St Andrews,
+%KY16 9SX
+%\end{bottomstuff}
 
 \input{intro.tex}
 
@@ -97,8 +103,8 @@ KY16 9SX
 
 \input{conclusions.tex}
 
-\bibliographystyle{acmtrans}
-\bibliography{literature.bib}
+\bibliographystyle{jfp}
+\bibliography{library.bib}
 
 \appendix
 

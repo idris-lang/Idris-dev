@@ -1,6 +1,6 @@
 PAPER = impldtp
 
-all: ${PAPER}.pdf
+all: ${PAPER}.pdf .PHONY
 
 TEXFILES = ${PAPER}.tex intro.tex conclusions.tex overview.tex hll.tex\
            typechecking.tex proofstate.tex elaboration.tex compiling.tex\
@@ -8,7 +8,10 @@ TEXFILES = ${PAPER}.tex intro.tex conclusions.tex overview.tex hll.tex\
 
 DIAGS = 
 
-SOURCES = ${TEXFILES} ${DIAGS} macros.ltx literature.bib
+SOURCES = ${TEXFILES} ${DIAGS} macros.ltx library.bib
+
+library.bib: .PHONY
+	cp ~/Research/Papers/library.bib .
 
 DITAA = java -jar ~/Downloads/ditaa.jar
 

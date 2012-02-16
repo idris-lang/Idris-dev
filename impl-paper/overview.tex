@@ -1,4 +1,4 @@
-\section{overview}
+\section{Overview}
 
 High level view of steps we've taken to implement this new version:
 
@@ -12,7 +12,7 @@ High level view of steps we've taken to implement this new version:
         type checker. This is what I did in the first Idris prototype: I learned
         that it was a bad idea! Scope is a big problem.
 \end{itemize}
-\item The proof state and a tactic engine (Oleg style~\cite{mcbride-thesis}).
+\item The proof state and a tactic engine (Oleg style~\cite{McBride1999}).
 \begin{itemize}
   \item Dealing with names: typechecking and evaluation in a context, managing de Bruijn
         indices becomes tricky. Instead: global names, local names during construction,
@@ -25,7 +25,7 @@ High level view of steps we've taken to implement this new version:
 \end{itemize}
 \item An Elaborator, as an EDSL, which is a language for applying primitive tactics and
       constructing derived tactics, from a high level syntax withe implicit arguments.
-\item Adding primitive operators and a link to Epic~\cite{epic-tfp}.
+\item Adding primitive operators and a link to Epic~\cite{brady2011epic}.
 \item Advanced elaborations: using declarations, where clauses, type classes.
 \end{itemize}
 
