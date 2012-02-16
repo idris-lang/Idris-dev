@@ -78,12 +78,12 @@ init' (x::xs) =
 --------------------------------------------------------------------------------
 
 take : Nat -> List a -> List a
-take Z     xs      = []
+take O     xs      = []
 take (S n) []      = []
 take (S n) (x::xs) = x :: take n xs
 
 drop : Nat -> List a -> List a
-drop Z     xs      = xs
+drop O     xs      = xs
 drop (S n) []      = []
 drop (S n) (x::xs) = drop n xs
 
