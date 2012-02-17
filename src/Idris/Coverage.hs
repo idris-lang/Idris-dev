@@ -280,7 +280,7 @@ checkTotality path fc n
         i <- getIState
         let opts = case lookupCtxt Nothing n (idris_flags i) of
                             [fs] -> fs
-                            [] -> []
+                            _ -> []
         t' <- case t of 
                 Unchecked -> 
                     case lookupDef Nothing n ctxt of

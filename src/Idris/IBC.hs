@@ -777,6 +777,10 @@ instance Binary Plicity where
                 Constraint x1 x2 -> do putWord8 2
                                        put x1
                                        put x2
+                TacImp x1 x2 x3 -> do putWord8 3
+                                      put x1
+                                      put x2
+                                      put x3
         get
           = do i <- getWord8
                case i of
@@ -789,6 +793,10 @@ instance Binary Plicity where
                    2 -> do x1 <- get
                            x2 <- get
                            return (Constraint x1 x2)
+                   3 -> do x1 <- get
+                           x2 <- get
+                           x3 <- get
+                           return (TacImp x1 x2 x3)
                    _ -> error "Corrupted binary data for Plicity"
 
  
@@ -1061,6 +1069,12 @@ instance (Binary t) => Binary (PArg' t) where
                                            put x1
                                            put x2
                                            put x3
+                PTacImplicit x1 x2 x3 x4 x5 -> do putWord8 3
+                                                  put x1
+                                                  put x2
+                                                  put x3
+                                                  put x4
+                                                  put x5
         get
           = do i <- getWord8
                case i of
@@ -1077,6 +1091,12 @@ instance (Binary t) => Binary (PArg' t) where
                            x2 <- get
                            x3 <- get
                            return (PConstraint x1 x2 x3)
+                   3 -> do x1 <- get
+                           x2 <- get
+                           x3 <- get
+                           x4 <- get
+                           x5 <- get
+                           return (PTacImplicit x1 x2 x3 x4 x5)
                    _ -> error "Corrupted binary data for PArg'"
 
  

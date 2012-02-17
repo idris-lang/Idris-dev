@@ -797,6 +797,8 @@ showImp impl tm = se 10 tm where
                     _ -> ""
     se p (PPi (Constraint _ _) n ty sc)
         = bracket p 2 $ se 10 ty ++ " => " ++ se 10 sc
+    se p (PPi (TacImp _ _ s) n ty sc)
+        = bracket p 2 $ "{tacimp " ++ show n ++ " : " ++ se 10 ty ++ "} -> " ++ se 10 sc
     se p (PApp _ (PRef _ f) [])
         | not impl = show f
     se p (PApp _ (PRef _ op@(UN (f:_))) args)
