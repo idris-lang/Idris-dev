@@ -926,7 +926,7 @@ pConstant = do reserved "Integer";return BIType
         <|> do reserved "String"; return StrType
         <|> do reserved "Ptr";    return PtrType
         <|> try (do f <- float;   return $ Fl f)
-        <|> try (do i <- natural; lchar 'L'; return $ BI i)
+--         <|> try (do i <- natural; lchar 'L'; return $ BI i)
         <|> try (do i <- natural; return $ I (fromInteger i))
         <|> try (do s <- strlit;  return $ Str s)
         <|> try (do c <- chlit;   return $ Ch c)
