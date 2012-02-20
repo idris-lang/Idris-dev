@@ -37,6 +37,21 @@ index fO     [] impossible
 index (fS _) [] impossible
 
 --------------------------------------------------------------------------------
+-- Subvectors
+--------------------------------------------------------------------------------
+
+take : Fin n -> Vect a n -> (p ** Vect a p)
+take fO     xs      = (_ ** [])
+take (fS k) []      impossible
+take (fS k) (x::xs) with (take k xs)
+  | (_ ** tail) = (_ ** x::tail)
+
+drop : Fin n -> Vect a n -> (p ** Vect a p)
+drop fO     xs      = (_ ** xs)
+drop (fS k) []      impossible
+drop (fS k) (x::xs) = drop k xs
+
+--------------------------------------------------------------------------------
 -- Conversions to and from list
 --------------------------------------------------------------------------------
 
@@ -63,6 +78,16 @@ fromList (x::xs) = x :: fromList xs
 total map : (a -> b) -> Vect a n -> Vect b n
 map f []        = []
 map f (x::xs) = f x :: map f xs
+
+-- XXX: causes Idris to enter an infinite loop when type checking in the REPL
+--mapMaybe : (a -> Maybe b) -> Vect a n -> (p ** Vect b p)
+--mapMaybe f []      = (_ ** [])
+--mapMaybe f (x::xs) = mapMaybe' (f x) 
+-- XXX: working around the type restrictions on case statements
+--  where
+--    mapMaybe' : (Maybe b) -> (n ** Vect b n) -> (p ** Vect b p)
+--    mapMaybe' Nothing  (n ** tail) = (n   ** tail)
+--    mapMaybe' (Just j) (n ** tail) = (S n ** j::tail)
 
 --------------------------------------------------------------------------------
 -- Folds
@@ -216,8 +241,6 @@ nub = nubBy (==)
 --------------------------------------------------------------------------------
 -- Splitting and breaking lists
 --------------------------------------------------------------------------------
-
--- XXX: todo
 
 --------------------------------------------------------------------------------
 -- Predicates
