@@ -2,6 +2,7 @@ module prelude.list
 
 import builtins
 
+import prelude.algebra
 import prelude.maybe
 import prelude.nat
 
@@ -435,28 +436,6 @@ catMaybes (x::xs) =
     Just j  => j :: catMaybes xs
 
 --------------------------------------------------------------------------------
--- Instances
---------------------------------------------------------------------------------
-
-instance (Eq a) => Eq (List a) where
-  (==) [] [] = True
-  (==) (a::restA) (b::restB) =
-    if a == b
-      then restA == restB
-      else False
-  (==) _ _ = False
-
-
-instance Ord a => Ord (List a) where
-  compare [] [] = EQ
-  compare [] _ = LT
-  compare _ [] = GT
-  compare (a::restA) (b::restB) =
-    if a /= b
-      then compare a b
-      else compare restA restB
-
---------------------------------------------------------------------------------
 -- Properties
 --------------------------------------------------------------------------------
 
@@ -469,7 +448,7 @@ appendNilRightNeutral (x::xs) =
     ?appendNilRightNeutralStepCase
 
 appendAssociative : (l : List a) -> (c : List a) -> (r : List a) ->
-  (l ++ c) ++ r = l ++ (c ++ r)
+  l ++ (c ++ r) = (l ++ c) ++ r
 appendAssociative []      c r = refl
 appendAssociative (x::xs) c r =
   let inductiveHypothesis = appendAssociative xs c r in
@@ -515,6 +494,40 @@ hasAnyByNilFalse p (x::xs) =
 
 hasAnyNilFalse : Eq a => (l : List a) -> hasAny [] l = False
 hasAnyNilFalse l = ?hasAnyNilFalseBody
+
+--------------------------------------------------------------------------------
+-- Instances
+--------------------------------------------------------------------------------
+
+instance (Eq a) => Eq (List a) where
+  (==) []      []      = True
+  (==) (x::xs) (y::ys) =
+    if x == y then
+      xs == ys
+    else
+      False
+  (==) _ _ = False
+
+
+instance Ord a => Ord (List a) where
+  compare [] [] = EQ
+  compare [] _ = LT
+  compare _ [] = GT
+  compare (x::xs) (y::ys) =
+    if x /= y then
+      compare x y
+    else
+      compare xs ys
+
+instance Semigroup (List a) where
+  (<+>) = (++)
+
+instance Monoid (List a) where
+  neutral = []
+
+-- XXX: unification failure
+-- instance VerifiedSemigroup (List a) where
+--  semigroupOpIsAssociative = appendAssociative
     
 --------------------------------------------------------------------------------
 -- Proofs
@@ -595,4 +608,3 @@ prelude.list.zipWith3TailProof' = proof {
     rewrite (succInjective (length ys) (length zs) q);
     trivial;
 }
-
