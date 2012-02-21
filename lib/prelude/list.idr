@@ -109,6 +109,40 @@ length (x::xs) = 1 + length xs
 (++) (x::xs) right = x :: (xs ++ right)
 
 --------------------------------------------------------------------------------
+-- Instances
+--------------------------------------------------------------------------------
+
+instance (Eq a) => Eq (List a) where
+  (==) []      []      = True
+  (==) (x::xs) (y::ys) =
+    if x == y then
+      xs == ys
+    else
+      False
+  (==) _ _ = False
+
+
+instance Ord a => Ord (List a) where
+  compare [] [] = EQ
+  compare [] _ = LT
+  compare _ [] = GT
+  compare (x::xs) (y::ys) =
+    if x /= y then
+      compare x y
+    else
+      compare xs ys
+
+instance Semigroup (List a) where
+  (<+>) = (++)
+
+instance Monoid (List a) where
+  neutral = []
+
+-- XXX: unification failure
+-- instance VerifiedSemigroup (List a) where
+--  semigroupOpIsAssociative = appendAssociative
+
+--------------------------------------------------------------------------------
 -- Zips and unzips
 --------------------------------------------------------------------------------
 
@@ -171,8 +205,12 @@ foldr f e (x::xs) = f x (foldr f e xs)
 -- Special folds
 --------------------------------------------------------------------------------
 
+mconcat : Monoid a => List a -> a
+mconcat = foldr (<+>) neutral
+
 concat : List (List a) -> List a
-concat = foldr (++) []
+concat []      = []
+concat (x::xs) = x ++ concat xs
 
 concatMap : (a -> List b) -> List a -> List b
 concatMap f []      = []
@@ -494,40 +532,6 @@ hasAnyByNilFalse p (x::xs) =
 
 hasAnyNilFalse : Eq a => (l : List a) -> hasAny [] l = False
 hasAnyNilFalse l = ?hasAnyNilFalseBody
-
---------------------------------------------------------------------------------
--- Instances
---------------------------------------------------------------------------------
-
-instance (Eq a) => Eq (List a) where
-  (==) []      []      = True
-  (==) (x::xs) (y::ys) =
-    if x == y then
-      xs == ys
-    else
-      False
-  (==) _ _ = False
-
-
-instance Ord a => Ord (List a) where
-  compare [] [] = EQ
-  compare [] _ = LT
-  compare _ [] = GT
-  compare (x::xs) (y::ys) =
-    if x /= y then
-      compare x y
-    else
-      compare xs ys
-
-instance Semigroup (List a) where
-  (<+>) = (++)
-
-instance Monoid (List a) where
-  neutral = []
-
--- XXX: unification failure
--- instance VerifiedSemigroup (List a) where
---  semigroupOpIsAssociative = appendAssociative
     
 --------------------------------------------------------------------------------
 -- Proofs
@@ -591,20 +595,21 @@ mapPreservesLengthStepCase = proof {
     trivial;
 }
 
-prelude.list.zipWithTailProof = proof {
+zipWithTailProof = proof {
     intros;
     rewrite (succInjective (length xs) (length ys) p);
     trivial;
 }
 
-prelude.list.zipWith3TailProof = proof {
+zipWith3TailProof = proof {
     intros;
     rewrite (succInjective (length xs) (length ys) p);
     trivial;
 }
 
-prelude.list.zipWith3TailProof' = proof {
+zipWith3TailProof' = proof {
     intros;
     rewrite (succInjective (length ys) (length zs) q);
     trivial;
 }
+
