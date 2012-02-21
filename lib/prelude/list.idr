@@ -460,6 +460,30 @@ instance Ord a => Ord (List a) where
 -- Properties
 --------------------------------------------------------------------------------
 
+-- append
+appendNilRightNeutral : (l : List a) ->
+  l ++ [] = l
+appendNilRightNeutral []      = refl
+appendNilRightNeutral (x::xs) =
+  let inductiveHypothesis = appendNilRightNeutral xs in
+    ?appendNilRightNeutralStepCase
+
+appendAssociative : (l : List a) -> (c : List a) -> (r : List a) ->
+  (l ++ c) ++ r = l ++ (c ++ r)
+appendAssociative []      c r = refl
+appendAssociative (x::xs) c r =
+  let inductiveHypothesis = appendAssociative xs c r in
+    ?appendAssociativeStepCase
+
+-- length
+lengthAppend : (left : List a) -> (right : List a) ->
+  length (left ++ right) = length left + length right
+lengthAppend []      right = refl
+lengthAppend (x::xs) right =
+  let inductiveHypothesis = lengthAppend xs right in
+    ?lengthAppendStepCase
+
+-- map
 mapPreservesLength : (f : a -> b) -> (l : List a) ->
   length (map f l) = length l
 mapPreservesLength f []      = refl
@@ -481,20 +505,7 @@ mapFusion f g (x::xs) =
   let inductiveHypothesis = mapFusion f g xs in
     ?mapFusionStepCase
 
-appendNilRightNeutral : (l : List a) ->
-  l ++ [] = l
-appendNilRightNeutral []      = refl
-appendNilRightNeutral (x::xs) =
-  let inductiveHypothesis = appendNilRightNeutral xs in
-    ?appendNilRightNeutralStepCase
-
-appendAssociative : (l : List a) -> (c : List a) -> (r : List a) ->
-  (l ++ c) ++ r = l ++ (c ++ r)
-appendAssociative []      c r = refl
-appendAssociative (x::xs) c r =
-  let inductiveHypothesis = appendAssociative xs c r in
-    ?appendAssociativeStepCase
-
+-- hasAny
 hasAnyByNilFalse : (p : a -> a -> Bool) -> (l : List a) ->
   hasAnyBy p [] l = False
 hasAnyByNilFalse p []      = refl
@@ -502,16 +513,9 @@ hasAnyByNilFalse p (x::xs) =
   let inductiveHypothesis = hasAnyByNilFalse p xs in
     ?hasAnyByNilFalseStepCase
 
-lengthAppend : (left : List a) -> (right : List a) ->
-  length (left ++ right) = length left + length right
-lengthAppend []      right = refl
-lengthAppend (x::xs) right =
-  let inductiveHypothesis = lengthAppend xs right in
-    ?lengthAppendStepCase
-
 hasAnyNilFalse : Eq a => (l : List a) -> hasAny [] l = False
 hasAnyNilFalse l = ?hasAnyNilFalseBody
-
+    
 --------------------------------------------------------------------------------
 -- Proofs
 --------------------------------------------------------------------------------
@@ -579,9 +583,6 @@ prelude.list.zipWithTailProof = proof {
     rewrite (succInjective (length xs) (length ys) p);
     trivial;
 }
-
-
----------- Proofs ----------
 
 prelude.list.zipWith3TailProof = proof {
     intros;
