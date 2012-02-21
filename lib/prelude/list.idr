@@ -108,6 +108,38 @@ length (x::xs) = 1 + length xs
 (++) (x::xs) right = x :: (xs ++ right)
 
 --------------------------------------------------------------------------------
+-- Zips and unzips
+--------------------------------------------------------------------------------
+
+zipWith : (f : a -> b -> c) -> (l : List a) -> (r : List b) ->
+  (length l = length r) -> List c
+zipWith f []      []      p = []
+zipWith f (x::xs) (y::ys) p = f x y :: (zipWith f xs ys ?zipWithTailProof)
+
+zipWith3 : (f : a -> b -> c -> d) -> (x : List a) -> (y : List b) ->
+  (z : List c) -> (length x = length y) -> (length y = length z) -> List d
+zipWith3 f []      []      []      p q = []
+zipWith3 f (x::xs) (y::ys) (z::zs) p q =
+  f x y z :: (zipWith3 f xs ys zs ?zipWith3TailProof ?zipWith3TailProof')
+
+zip : (l : List a) -> (r : List b) -> (length l = length r) -> List (a, b)
+zip = zipWith (\x => \y => (x, y))
+
+zip3 : (x : List a) -> (y : List b) -> (z : List c) -> (length x = length y) ->
+  (length y = length z) -> List (a, b, c)
+zip3 = zipWith3 (\x => \y => \z => (x, y, z))
+
+unzip : List (a, b) -> (List a, List b)
+unzip []           = ([], [])
+unzip ((l, r)::xs) with (unzip xs)
+  | (lefts, rights) = (l::lefts, r::rights)
+
+unzip3 : List (a, b, c) -> (List a, List b, List c)
+unzip3 []              = ([], [], [])
+unzip3 ((l, c, r)::xs) with (unzip3 xs)
+  | (lefts, centres, rights) = (l::lefts, c::centres, r::rights)
+
+--------------------------------------------------------------------------------
 -- Maps
 --------------------------------------------------------------------------------
 
@@ -539,6 +571,27 @@ mapDistributesOverAppendStepCase = proof {
 mapPreservesLengthStepCase = proof {
     intros;
     rewrite inductiveHypothesis;
+    trivial;
+}
+
+prelude.list.zipWithTailProof = proof {
+    intros;
+    rewrite (succInjective (length xs) (length ys) p);
+    trivial;
+}
+
+
+---------- Proofs ----------
+
+prelude.list.zipWith3TailProof = proof {
+    intros;
+    rewrite (succInjective (length xs) (length ys) p);
+    trivial;
+}
+
+prelude.list.zipWith3TailProof' = proof {
+    intros;
+    rewrite (succInjective (length ys) (length zs) q);
     trivial;
 }
 
