@@ -45,7 +45,7 @@ prove ctxt lit n ty
          put (i { last_proof = Just (n, prf) })
          let tree = simpleCase False True [(P Ref n ty, tm)]
          logLvl 3 (show tree)
-         (ptm, pty) <- recheckC ctxt (FC "proof" 0) [] tm
+         (ptm, pty) <- recheckC (FC "proof" 0) [] tm
          ptm' <- applyOpts ptm
          updateContext (addCasedef n True False True [(P Ref n ty, ptm)] 
                                                 [(P Ref n ty, ptm')] ty)
