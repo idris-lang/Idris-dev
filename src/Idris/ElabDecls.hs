@@ -26,8 +26,9 @@ import Data.Maybe
 import Debug.Trace
 
 
-recheckC ctxt fc env t 
+recheckC fc env t 
     = do -- t' <- applyOpts (forget t) (doesn't work, or speed things up...)
+         ctxt <- getContext 
          (tm, ty, cs) <- tclift $ case recheck ctxt env (forget t) t of
                                    Error e -> tfail (At fc e)
                                    OK x -> return x
@@ -35,7 +36,7 @@ recheckC ctxt fc env t
          return (tm, ty)
 
 checkDef fc ns = do ctxt <- getContext
-                    mapM (\(n, t) -> do (t', _) <- recheckC ctxt fc [] t
+                    mapM (\(n, t) -> do (t', _) <- recheckC fc [] t
                                         return (n, t')) ns
 
 elabType :: ElabInfo -> SyntaxInfo -> FC -> FnOpts -> Name -> PTerm -> Idris ()
@@ -54,7 +55,7 @@ elabType info syn fc opts n ty' = {- let ty' = piBind (params info) ty_in
          addDeferred ds
          mapM_ (elabCaseBlock info) is 
          ctxt <- getContext
-         (cty, _)   <- recheckC ctxt fc [] tyT
+         (cty, _)   <- recheckC fc [] tyT
          addStatics n cty ty'
          logLvl 2 $ "---> " ++ show cty
          let nty = normalise ctxt [] cty
@@ -77,7 +78,7 @@ elabData info syn fc (PDatadecl n t_in dcons)
          def' <- checkDef fc defer
          addDeferred def'
          mapM_ (elabCaseBlock info) is
-         (cty, _)  <- recheckC ctxt fc [] t'
+         (cty, _)  <- recheckC fc [] t'
          logLvl 2 $ "---> " ++ show cty
          updateContext (addTyDecl n cty) -- temporary, to check cons
          cons <- mapM (elabCon info syn n) dcons
@@ -205,7 +206,7 @@ elabCon info syn tn (n, t_in, fc)
          addDeferred def'
          mapM_ (elabCaseBlock info) is
          ctxt <- getContext
-         (cty, _)  <- recheckC ctxt fc [] t'
+         (cty, _)  <- recheckC fc [] t'
          tyIs cty
          logLvl 2 $ "---> " ++ show n ++ " : " ++ show cty
          addIBC (IBCDef n)
@@ -326,7 +327,7 @@ elabVal info aspat tm_in
         logLvl 3 ("Value: " ++ show tm')
         let vtm = getInferTerm tm'
         logLvl 2 (show vtm)
-        recheckC ctxt (FC "(input)" 0) [] vtm
+        recheckC (FC "(input)" 0) [] vtm
 
 -- checks if the clause is a possible left hand side. Returns the term if
 -- possible, otherwise Nothing.
@@ -365,7 +366,7 @@ elabClause info tcgen (PClause fc fname lhs_in withs rhs_in whereblock)
         let lhs_tm = orderPats (getInferTerm lhs')
         let lhs_ty = getInferType lhs'
         logLvl 3 (show lhs_tm)
-        (clhs, clhsty) <- recheckC ctxt fc [] lhs_tm
+        (clhs, clhsty) <- recheckC fc [] lhs_tm
         logLvl 5 ("Checked " ++ show clhs)
         -- Elaborate where block
         ist <- getIState
@@ -398,7 +399,7 @@ elabClause info tcgen (PClause fc fname lhs_in withs rhs_in whereblock)
         mapM_ (elabCaseBlock info) is
         ctxt <- getContext
         logLvl 5 $ "Rechecking"
-        (crhs, crhsty) <- recheckC ctxt fc [] rhs'
+        (crhs, crhsty) <- recheckC fc [] rhs'
         i <- get
         checkInferred fc (delab' i crhs True) rhs
         return $ Just (clhs, crhs)
@@ -430,7 +431,7 @@ elabClause info tcgen (PWith fc fname lhs_in withs wval_in withblock)
         let lhs_ty = getInferType lhs'
         let ret_ty = getRetTy lhs_ty
         logLvl 3 (show lhs_tm)
-        (clhs, clhsty) <- recheckC ctxt fc [] lhs_tm
+        (clhs, clhsty) <- recheckC fc [] lhs_tm
         logLvl 5 ("Checked " ++ show clhs)
         let bargs = getPBtys lhs_tm
         let wval = addImplBound i (map fst bargs) wval_in
@@ -448,7 +449,7 @@ elabClause info tcgen (PWith fc fname lhs_in withs wval_in withblock)
         def' <- checkDef fc defer
         addDeferred def'
         mapM_ (elabCaseBlock info) is
-        (cwval, cwvalty) <- recheckC ctxt fc [] (getInferTerm wval')
+        (cwval, cwvalty) <- recheckC fc [] (getInferTerm wval')
         logLvl 3 ("With type " ++ show cwvalty ++ "\nRet type " ++ show ret_ty)
         windex <- getName
         -- build a type declaration for the new function:
@@ -485,7 +486,7 @@ elabClause info tcgen (PWith fc fname lhs_in withs wval_in withblock)
         def' <- checkDef fc defer
         addDeferred def'
         mapM_ (elabCaseBlock info) is
-        (crhs, crhsty) <- recheckC ctxt fc [] rhs'
+        (crhs, crhsty) <- recheckC fc [] rhs'
         return $ Just (clhs, crhs)
   where
     getImps (Bind n (Pi _) t) = pexp Placeholder : getImps t

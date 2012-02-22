@@ -32,7 +32,7 @@ mkRels ((c, f) : cs) acc
 acyclic :: Relations -> [UExp] -> TC ()
 acyclic r cvs = checkCycle (FC "root" 0) r [] 0 cvs 
   where
-    checkCycle :: FC -> Relations -> [UExp] -> Int -> [UExp] -> TC ()
+    checkCycle :: FC -> Relations -> [(UExp, FC)] -> Int -> [UExp] -> TC ()
     checkCycle fc r path inc [] = return ()
     checkCycle fc r path inc (c : cs)
         = do check fc path inc c
@@ -42,10 +42,13 @@ acyclic r cvs = checkCycle (FC "root" 0) r [] 0 cvs
 
     check fc path inc (UVar x) | x < 0 = return ()
     check fc path inc cv
-        | inc > 0 && cv `elem` path = Error $ At fc UniverseError
+        | inc > 0 && cv `elem` map fst path 
+            = Error $ At fc UniverseError
+                -- FIXME: Make informative
+                -- e.g. (Msg ("Cycle: " ++ show cv ++ ", " ++ show path))
         | otherwise = case M.lookup cv r of
                             Nothing       -> return ()
-                            Just cs -> mapM_ (next (cv:path) inc) cs
+                            Just cs -> mapM_ (next ((cv, fc):path) inc) cs
     
     next path inc (ULT l r, fc) = check fc path (inc + 1) r
     next path inc (ULE l r, fc) = check fc path inc r
