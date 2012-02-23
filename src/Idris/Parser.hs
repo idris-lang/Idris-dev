@@ -941,7 +941,8 @@ table fixes
    = [[prefix "-" (\fc x -> PApp fc (PRef fc (UN "-")) 
         [pexp (PApp fc (PRef fc (UN "fromInteger")) [pexp (PConstant (I 0))]), pexp x])]] 
        ++ toTable (reverse fixes) ++
-      [[binary "="  (\fc x y -> PEq fc x y) AssocLeft],
+      [[backtick],
+       [binary "="  (\fc x y -> PEq fc x y) AssocLeft],
        [binary "->" (\fc x y -> PPi expl (MN 42 "__pi_arg") x y) AssocRight]]
 
 toTable fs = map (map toBin) 
@@ -954,10 +955,13 @@ toTable fs = map (map toBin)
          assoc (Infixr _) = AssocRight
          assoc (InfixN _) = AssocNone
 
-binary name f assoc = Infix (do { reservedOp name; fc <- pfc; 
-                                  return (f fc) }) assoc
-prefix name f = Prefix (do { reservedOp name; fc <- pfc;
-                             return (f fc) })
+binary name f assoc = Infix (do reservedOp name; fc <- pfc; 
+                                return (f fc)) assoc
+prefix name f = Prefix (do reservedOp name; fc <- pfc;
+                           return (f fc))
+backtick = Infix (do lchar '`'; n <- pfName; lchar '`'
+                     fc <- pfc
+                     return (\x y -> PApp fc (PRef fc n) [pexp x, pexp y])) AssocNone
 
 --------- Data declarations ---------
 
