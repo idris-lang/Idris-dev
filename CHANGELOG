@@ -3,12 +3,14 @@ New in 0.9.2:
 
 User visible changes:
 
+* backtick notation added: x `foo` y  ==> foo x y
 * case expressions allowed in type signatures
 * Library extensions in prelude.vect and prelude.algebra
 
 Internal changes:
 
 * Some type class resolution fixes
+* Several minor bug fixes 
 
 New in 0.9.1:
 -------------
