@@ -141,22 +141,23 @@ parseTac i = runParser (do t <- pTactic defaultSyntax
 parseImports :: FilePath -> String -> Idris ([String], [String], String, SourcePos)
 parseImports fname input 
     = do i <- get
-         case (runParser (do mname <- pHeader
+         case (runParser (do whiteSpace
+                             mname <- pHeader
                              ps <- many pImport
                              rest <- getInput
                              pos <- getPosition
                              return ((mname, ps, rest, pos), i)) i fname input) of
-            Left err -> fail (ishow err)
+            Left err -> fail (show err)
             Right (x, i) -> do put i
                                return x
   where ishow err = let ln = sourceLine (errorPos err) in
                         fname ++ ":" ++ show ln ++ ":parse error"
---                           show (map messageString (errorMessages err))
+--                            ++ show (map messageString (errorMessages err))
 
 pHeader :: IParser [String]
 pHeader = try (do reserved "module"; i <- identifier; option ';' (lchar ';')
                   return (parseName i))
-      <|> return []
+     <|> return []
   where parseName x = case span (/='.') x of
                             (x, "") -> [x]
                             (x, '.':y) -> x : parseName y
