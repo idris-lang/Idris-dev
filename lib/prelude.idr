@@ -158,10 +158,18 @@ count : Num a => a -> a -> a -> List a
 count a inc b = if a <= b then a :: count (a + inc) inc b
                           else []
   
+countFrom : Num a => a -> a -> List a
+countFrom a inc = a :: lazy (countFrom (a + inc) inc)
+  
 syntax "[" [start] ".." [end] "]" 
      = count start 1 end 
 syntax "[" [start] "," [next] ".." [end] "]" 
      = count start (next - start) end 
+
+syntax "[" [start] "..]" 
+     = countFrom start 1
+syntax "[" [start] "," [next] "..]" 
+     = countFrom start (next - start)
 
 ---- More utilities
 
