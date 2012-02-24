@@ -20,6 +20,7 @@ import prelude.either
 import prelude.vect
 import prelude.strings
 import prelude.char
+import prelude.complex
 
 import network.cgi 
 
