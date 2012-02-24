@@ -165,7 +165,7 @@ eval ctxt maxred ntimes genv tm opts = ev ntimes [] True [] tm where
     ev ntimes_in stk top env (P Ref n ty) 
       | (True, ntimes) <- usable n ntimes_in
          = do let val = lookupDefAcc Nothing n atRepl ctxt 
-              step maxred
+              when (not atRepl) $ step maxred
               case val of
                 [(Function _ tm, Public)] -> 
                        ev ntimes (n:stk) True env tm
@@ -184,24 +184,24 @@ eval ctxt maxred ntimes genv tm opts = ev ntimes [] True [] tm where
                      | otherwise      = return $ VV i 
     ev ntimes stk top env (Bind n (Let t v) sc)
            = do v' <- ev ntimes stk top env v --(finalise v)
-                step maxred
+                when (not atRepl) $ step maxred
                 sc' <- ev ntimes stk top (v' : env) sc
                 wknV (-1) sc'
     ev ntimes stk top env (Bind n (NLet t v) sc)
            = do t' <- ev ntimes stk top env (finalise t)
                 v' <- ev ntimes stk top env (finalise v)
-                step maxred
+                when (not atRepl) $ step maxred
                 sc' <- ev ntimes stk top (v' : env) sc
                 return $ VBind n (Let t' v') (\x -> return sc')
     ev ntimes stk top env (Bind n b sc) 
            = do b' <- vbind env b
-                step maxred
+                when (not atRepl) $ step maxred
                 return $ VBind n b' (\x -> ev ntimes stk top (x:env) sc)
        where vbind env t = fmapMB (\tm -> ev ntimes stk top env (finalise tm)) t
     ev ntimes stk top env (App f a) 
            = do f' <- ev ntimes stk top env f
                 a' <- ev ntimes stk False env a
-                step maxred
+                when (not atRepl) $ step maxred
                 evApply ntimes stk top env [a'] f'
     ev ntimes stk top env (Constant c) = return $ VConstant c
     ev ntimes stk top env Erased    = return VErased
@@ -209,7 +209,7 @@ eval ctxt maxred ntimes genv tm opts = ev ntimes [] True [] tm where
     
     evApply ntimes stk top env args (VApp f a) = 
             evApply ntimes stk top env (a:args) f
-    evApply ntimes stk top env args f = do step maxred
+    evApply ntimes stk top env args f = do when (not atRepl) $ step maxred
                                            apply ntimes stk top env f args
 
     apply ntimes stk top env (VBind n (Lam t) sc) (a:as) 
