@@ -15,6 +15,14 @@ imagPart : Complex a -> a
 imagPart (r:+i) = i
 
 
+------------------------------ Instances
+
+instance Eq a => Eq (Complex a) where
+    (==) a b = realPart a == realPart b && imagPart a == imagPart b
+
+instance Show a => Show (Complex a) where
+    show (r:+i) = "("++show r++":+"++show i++")"
+
 ------------------------------ Polarform
 
 mkPolar : Float -> Float -> Complex Float
