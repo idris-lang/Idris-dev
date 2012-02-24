@@ -45,6 +45,7 @@ intToStr x = foreign_ tyString "intToStr" [(x, tyInt)]
 charToInt x = x
 intToChar x = x
 intToBigInt x = foreign_ tyBigInt "intToBigInt" [(x, tyInt)]
+bigIntToInt x = foreign_ tyInt "bigIntToInt" [(x, tyBigInt)]
 strToBigInt x = foreign_ tyBigInt "strToBig" [(x, tyString)]
 bigIntToStr x = foreign_ tyString "bigToStr" [(x, tyBigInt)]
 strToFloat x = foreign_ tyFloat "strToFloat" [(x, tyString)]
@@ -158,6 +159,8 @@ primitives =
     ([E.name "x"], intToChar (fun "x")) total,
    Prim (UN "prim__intToBigInt") (ty [IType] BIType) 1 (c_intToBigInt)
     ([E.name "x"], intToBigInt (fun "x")) total,
+   Prim (UN "prim__bigIntToInt") (ty [BIType] IType) 1 (c_bigIntToInt)
+    ([E.name "x"], bigIntToInt (fun "x")) total,
    Prim (UN "prim__strToBigInt") (ty [StrType] BIType) 1 (c_strToBigInt)
     ([E.name "x"], strToBigInt (fun "x")) total,
    Prim (UN "prim__bigIntToStr") (ty [BIType] StrType) 1 (c_bigIntToStr)
@@ -257,6 +260,8 @@ c_charToInt _ = Nothing
 
 c_intToBigInt [VConstant (I x)] = Just $ VConstant (BI (fromIntegral x))
 c_intToBigInt _ = Nothing
+c_bigIntToInt [VConstant (BI x)] = Just $ VConstant (I (fromInteger x))
+c_bigIntToInt _ = Nothing
 
 c_bigIntToStr [VConstant (BI x)] = Just $ VConstant (Str (show x))
 c_bigIntToStr _ = Nothing
