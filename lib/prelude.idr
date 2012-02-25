@@ -143,6 +143,9 @@ acos x = prim__floatACos x
 atan : Float -> Float
 atan x = prim__floatATan x
 
+atan2 : Float -> Float -> Float
+atan2 y x = atan (y/x)
+
 sqrt : Float -> Float
 sqrt x = prim__floatSqrt x
 
