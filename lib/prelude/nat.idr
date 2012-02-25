@@ -113,6 +113,8 @@ instance Num Nat where
   (-) = minus
   (*) = mult
 
+  abs x = x
+
   fromInteger = fromInteger'
     where
       %assert_total

@@ -143,6 +143,9 @@ acos x = prim__floatACos x
 atan : Float -> Float
 atan x = prim__floatATan x
 
+atan2 : Float -> Float -> Float
+atan2 y x = atan (y/x)
+
 sqrt : Float -> Float
 sqrt x = prim__floatSqrt x
 
@@ -154,11 +157,11 @@ ceiling x = prim__floatCeil x
 
 ---- Ranges
 
-count : Num a => a -> a -> a -> List a
+count : (Ord a, Num a) => a -> a -> a -> List a
 count a inc b = if a <= b then a :: count (a + inc) inc b
                           else []
   
-countFrom : Num a => a -> a -> List a
+countFrom : (Ord a, Num a) => a -> a -> List a
 countFrom a inc = a :: lazy (countFrom (a + inc) inc)
   
 syntax "[" [start] ".." [end] "]" 

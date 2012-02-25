@@ -186,14 +186,12 @@ instance (Ord a, Ord b) => Ord (a, b) where
       else compare xr yr
 
 
-class (Eq a, Ord a) => Num a where 
+class Eq a => Num a where 
     (+) : a -> a -> a
     (-) : a -> a -> a
     (*) : a -> a -> a
 
     abs : a -> a
-    abs x = if (x < 0) then (-x) else x
-
     fromInteger : Int -> a
 
 
@@ -203,7 +201,8 @@ instance Num Int where
     (-) = prim__subInt
     (*) = prim__mulInt
 
-    fromInteger = id -- prim__bigIntToInt
+    fromInteger = id
+    abs x = if x<0 then -x else x
 
 
 instance Num Integer where 
@@ -211,6 +210,7 @@ instance Num Integer where
     (-) = prim__subBigInt
     (*) = prim__mulBigInt
 
+    abs x = if x<0 then -x else x
     fromInteger = prim__intToBigInt
 
 
@@ -219,6 +219,7 @@ instance Num Float where
     (-) = prim__subFloat
     (*) = prim__mulFloat
 
+    abs x = if x<0 then -x else x
     fromInteger = prim__intToFloat 
 
 
