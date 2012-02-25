@@ -203,7 +203,7 @@ instance Num Int where
     (-) = prim__subInt
     (*) = prim__mulInt
 
-    fromInteger = id
+    fromInteger = id -- prim__bigIntToInt
 
 
 instance Num Integer where 

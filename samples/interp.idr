@@ -62,7 +62,7 @@ using (G : Vect Ty n)
 
     abs x = If (Op (<) x (Val 0)) (Op (-) 0 x) x
 
-    fromInteger = Val
+    fromInteger = Val . fromInteger
   
   interp : Env G -> {static} Expr G t -> interpTy t
   interp env (Var i)     = lookup i env
