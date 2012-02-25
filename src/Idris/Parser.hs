@@ -459,7 +459,7 @@ pFixity = do push_indent
              istate <- getState
              let fs = map (Fix (f prec)) ops
              setState (istate { 
-                idris_infixes = sort (fs ++ idris_infixes istate),
+                idris_infixes = nub $ sort (fs ++ idris_infixes istate),
                 ibc_write = map IBCFix fs ++ ibc_write istate })
              fc <- pfc
              return (PFix fc (f prec) ops)
@@ -687,6 +687,7 @@ modifyConst :: SyntaxInfo -> FC -> PTerm -> PTerm
 modifyConst syn fc (PConstant (I x)) 
     | not (inPattern syn)
         = PApp fc (PRef fc (UN "fromInteger")) [pexp (PConstant (I x))]
+    | otherwise = PConstant (I x)
 modifyConst syn fc x = x
 
 pList syn = do lchar '['; fc <- pfc

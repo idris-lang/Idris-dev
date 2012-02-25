@@ -177,7 +177,7 @@ pImps imps = mapM_ (\ (n, imp) ->
 
 pFixes :: [FixDecl] -> Idris ()
 pFixes f = do i <- getIState
-              putIState (i { idris_infixes = f ++ idris_infixes i })
+              putIState (i { idris_infixes = sort $ f ++ idris_infixes i })
 
 pStatics :: [(Name, [Bool])] -> Idris ()
 pStatics ss = mapM_ (\ (n, s) ->

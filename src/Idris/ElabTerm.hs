@@ -321,6 +321,9 @@ elab ist info pattern tcgen fn tm
                                    False -> return failed
                      elabArgs ina failed r ns args
 
+-- For every alternative, look at the function at the head. Automatically resolve
+-- any nested alternatives where that function is also at the head
+
 pruneAlt :: [PTerm] -> [PTerm]
 pruneAlt xs = map prune xs
   where
@@ -328,10 +331,17 @@ pruneAlt xs = map prune xs
         = PApp fc1 (PRef fc2 f) (fmap (fmap (choose f)) as)
     prune t = t
 
-    choose f (PAlternative as) = PAlternative (filter (headIs f) as)
+    choose f (PAlternative as)
+        = let as' = fmap (choose f) as
+              fs = filter (headIs f) as' in
+              case fs of
+                 [a] -> a
+                 _ -> PAlternative as'
+    choose f (PApp fc f' as) = PApp fc (choose f f') (fmap (fmap (choose f)) as)
     choose f t = t
 
     headIs f (PApp _ (PRef _ f') _) = f == f'
+    headIs f (PApp _ f' _) = headIs f f'
     headIs f _ = True -- keep if it's not an application
 
 trivial :: IState -> ElabD ()

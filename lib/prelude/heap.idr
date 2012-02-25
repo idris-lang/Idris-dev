@@ -95,7 +95,7 @@ toList Empty          = []
 toList (Node s l e r) = toList' (Node s l e r) refl
   where
     toList' : Ord a => (h : MaxiphobicHeap a) -> (isEmpty h = False) -> List a
-    toList' heap p = findMinimum heap p :: toList $ deleteMinimum heap p
+    toList' heap p = findMinimum heap p :: (toList $ deleteMinimum heap p)
 
 fromList : Ord a => List a -> MaxiphobicHeap a
 fromList = foldr insert empty
