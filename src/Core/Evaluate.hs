@@ -26,7 +26,7 @@ data EvalState = ES { limited :: [(Name, Int)],
 -- Evaluation fails if we hit a boredom threshold - in which case, just return
 -- the original (capture the failure in a Maybe)
 
-type Eval a = StateT EvalState Maybe a
+type Eval a = State EvalState a
 
 data EvalOpt = Spec | HNF | Simplify | AtREPL
   deriving (Show, Eq)
@@ -52,6 +52,7 @@ data Value = VP NameType Name Value
            | VSet UExp
            | VErased
            | VConstant Const
+--            | VLazy Env [Value] Term
            | VTmp Int
 
 data HNF = HP NameType Name (TT Name)
@@ -64,7 +65,7 @@ data HNF = HP NameType Name (TT Name)
     deriving Show
 
 instance Show Value where
-    show x = show $ evalStateT (quote 100 x) initEval
+    show x = show $ evalState (quote 100 x) initEval
 
 instance Show (a -> b) where
     show x = "<<fn>>"
@@ -76,53 +77,42 @@ instance Show (a -> b) where
 -- i.e. it's an intermediate environment that we have while type checking or
 -- while building a proof.
 
-threshold = 150000 -- boredom threshold for evaluation, to prevent infinite typechecking
+threshold = 1000 -- boredom threshold for evaluation, to prevent infinite typechecking
+                 -- in fact it's a maximum recursion depth
 
 normaliseC :: Context -> Env -> TT Name -> TT Name
 normaliseC ctxt env t 
-   = case evalStateT (do val <- eval ctxt threshold [] env t []
-                         quote 0 val) initEval of
-            Just v -> v
-            Nothing -> t
+   = evalState (do val <- eval ctxt threshold [] env t []
+                   quote 0 val) initEval
 
 normaliseAll :: Context -> Env -> TT Name -> TT Name
 normaliseAll ctxt env t 
-   = case evalStateT (do val <- eval ctxt threshold [] env t [AtREPL]
-                         quote 0 val) initEval of
-            Just v -> v
-            Nothing -> t
+   = evalState (do val <- eval ctxt threshold [] env t [AtREPL]
+                   quote 0 val) initEval
 
 normalise :: Context -> Env -> TT Name -> TT Name
 normalise ctxt env t 
-   = case evalStateT (do val <- eval ctxt threshold [] (map finalEntry env) (finalise t) []
-                         quote 0 val) initEval of
-            Just v -> v
-            Nothing -> t
+   = evalState (do val <- eval ctxt threshold [] (map finalEntry env) (finalise t) []
+                   quote 0 val) initEval
 
 specialise :: Context -> Env -> [(Name, Int)] -> TT Name -> TT Name
 specialise ctxt env limits t 
-   = case evalStateT (do val <- eval ctxt threshold limits (map finalEntry env) (finalise t) []
-                         quote 0 val) (initEval { limited = limits }) of
-            Just v -> v
-            Nothing -> t
+   = evalState (do val <- eval ctxt threshold limits (map finalEntry env) (finalise t) []
+                   quote 0 val) (initEval { limited = limits })
 
 -- Like normalise, but we only reduce functions that are marked as okay to 
 -- inline (and probably shouldn't reduce lets?)
 
 simplify :: Context -> Env -> TT Name -> TT Name
 simplify ctxt env t 
-   = case evalStateT (do val <- eval ctxt threshold [] 
-                                     (map finalEntry env) (finalise t) [Simplify]
-                         quote 0 val) initEval of
-            Just v -> v
-            Nothing -> t
+   = evalState (do val <- eval ctxt threshold [] 
+                                 (map finalEntry env) (finalise t) [Simplify]
+                   quote 0 val) initEval
 
 hnf :: Context -> Env -> TT Name -> TT Name
 hnf ctxt env t 
-   = case evalStateT (do val <- eval ctxt threshold [] (map finalEntry env) (finalise t) [HNF]
-                         quote 0 val) initEval of
-            Just v -> v
-            Nothing -> t
+   = evalState (do val <- eval ctxt threshold [] (map finalEntry env) (finalise t) [HNF]
+                   quote 0 val) initEval
 
 
 -- unbindEnv env (quote 0 (eval ctxt (bindEnv env t)))
@@ -160,7 +150,7 @@ eval ctxt maxred ntimes genv tm opts = ev ntimes [] True [] tm where
     atRepl = AtREPL `elem` opts
 
     ev ntimes stk top env (P _ n ty)
-        | Just (Let t v) <- lookup n genv = do step maxred
+        | Just (Let t v) <- lookup n genv = do when (not atRepl) $ step maxred
                                                ev ntimes stk top env v 
     ev ntimes_in stk top env (P Ref n ty) 
       | (True, ntimes) <- usable n ntimes_in
@@ -198,6 +188,9 @@ eval ctxt maxred ntimes genv tm opts = ev ntimes [] True [] tm where
                 when (not atRepl) $ step maxred
                 return $ VBind n b' (\x -> ev ntimes stk top (x:env) sc)
        where vbind env t = fmapMB (\tm -> ev ntimes stk top env (finalise tm)) t
+--     ev ntimes stk top env (App (App (P _ laz _) _) a)
+--         | laz == UN "lazy"
+--            = trace (showEnvDbg genv a) $ ev ntimes stk top env a
     ev ntimes stk top env (App f a) 
            = do f' <- ev ntimes stk top env f
                 a' <- ev ntimes stk False env a
@@ -212,6 +205,8 @@ eval ctxt maxred ntimes genv tm opts = ev ntimes [] True [] tm where
     evApply ntimes stk top env args f = do when (not atRepl) $ step maxred
                                            apply ntimes stk top env f args
 
+    apply ntimes stk top env f as 
+        | length stk > threshold = return $ unload env f as
     apply ntimes stk top env (VBind n (Lam t) sc) (a:as) 
         = do a' <- sc a
              app <- apply ntimes stk top env a' as 
@@ -632,9 +627,7 @@ initContext = MkContext [] 0 emptyContext
 ctxtAlist :: Context -> [(Name, Def)]
 ctxtAlist ctxt = map (\(n, (d, a, t)) -> (n, d)) $ toAlist (definitions ctxt)
 
-veval ctxt env t = case evalStateT (eval ctxt threshold [] env t []) initEval of
-                        Just v -> v
-                        Nothing -> error "Evaluation failed" 
+veval ctxt env t = evalState (eval ctxt threshold [] env t []) initEval
 
 addToCtxt :: Name -> Term -> Type -> Context -> Context
 addToCtxt n tm ty uctxt 
