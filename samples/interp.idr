@@ -1,6 +1,6 @@
 module main
 
-data Ty = TyInt | TyBool| TyFun Ty Ty
+data Ty = TyInt | TyBool | TyFun Ty Ty
 
 interpTy : Ty -> Set
 interpTy TyInt       = Int
