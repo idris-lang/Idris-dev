@@ -341,12 +341,12 @@ at the \Idris{} interactive environment is shown in Figure \ref{factrun}.
 $ idris interp.idr  
      ____    __     _                                          
     /  _/___/ /____(_)____                                     
-    / // __  / ___/ / ___/     Version 0.9.1
+    / // __  / ___/ / ___/     Version 0.9.2
   _/ // /_/ / /  / (__  )      http://www.idris-lang.org/      
  /___/\__,_/_/  /_/____/       Type :? for help                
 
 Type checking ./interp.idr
-*interp> :exec interp 
+*interp> :exec 
 Enter a number: 6 
 720
 *interp> 
@@ -373,5 +373,39 @@ type of the cast. It must be possible for the type checker to infer \remph{both}
 parameters at the point where the cast is applied.
 There are casts defined between all of the primitive types, as far as
 they make sense.
+
+\subsection{Unit testing}
+
+Recall the \texttt{so} data type:
+
+\useverb{sotype}
+
+\noindent
+This requires its parameter to be a \texttt{True} value. One simple application of this
+is to perform unit testing of functions at compile time. For example, we know that 
+\texttt{4! = 24} so we can set up a test case as follows:
+
+\begin{SaveVerbatim}{unitTestFac}
+
+unitTestFac : so (interp [] fact 4 == 24)
+unitTestFac = oh
+
+\end{SaveVerbatim}
+\useverb{unitTestFac} 
+
+\noindent
+For the program the compile, the test case must pass. If we change \texttt{24} to \texttt{25},
+say, we will get an error message like the following:
+
+\begin{SaveVerbatim}{unitTestErr}
+
+Type checking ./interp.idr
+interp.idr:64:Can't unify so True with so False
+
+Specifically:
+	 Can't unify True with False
+
+\end{SaveVerbatim}
+\useverb{unitTestErr} 
 
 
