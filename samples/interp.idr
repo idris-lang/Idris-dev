@@ -92,5 +92,5 @@ testFac : Int
 testFac = interp [] eFac 4
 
 main : IO ()
-main = malloc 79856 (print testFac)
+main = print testFac
 
