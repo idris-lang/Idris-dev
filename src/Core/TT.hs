@@ -10,6 +10,8 @@ import Data.List
 import qualified Data.Binary as B
 import Data.Binary hiding (get, put)
 
+import Util.Pretty hiding (Str)
+
 {- The language has:
    * Full dependent types
    * A hierarchy of universes, with cumulativity: Set : Set1, Set1 : Set2, ...
@@ -197,6 +199,15 @@ data Raw = Var Name
          | RForce Raw
          | RConstant Const
   deriving (Show, Eq)
+
+instance Sized Raw where
+  size (Var name) = 1
+  size (RBind name bind right) = 1 + size bind + size right
+  size (RApp left right) = 1 + size left + size right
+  size RSet = 1
+  size (RForce raw) = 1 + size raw
+  size (RConstant const) = size const
+
 {-! 
 deriving instance Binary Raw 
 !-}
