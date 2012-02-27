@@ -9,13 +9,18 @@ import Core.Elaborate
 import Core.Typecheck
 
 import System.Console.Haskeline
+
 import Control.Monad.State
+
 import Data.List
 import Data.Char
 import Data.Either
+
 import Debug.Trace
 
 import qualified Epic.Epic as E
+
+import Util.Pretty
 
 data IOption = IOption { opt_logLevel :: Int,
                          opt_typecase :: Bool,
@@ -845,6 +850,66 @@ showImp impl tm = se 10 tm where
 
     bracket outer inner str | inner > outer = "(" ++ str ++ ")"
                             | otherwise = str
+
+{-
+ PQuote Raw
+           | PRef FC Name
+           | PLam Name PTerm PTerm
+           | PPi  Plicity Name PTerm PTerm
+           | PLet Name PTerm PTerm PTerm 
+           | PTyped PTerm PTerm -- term with explicit type
+           | PApp FC PTerm [PArg]
+           | PCase FC PTerm [(PTerm, PTerm)]
+           | PTrue FC
+           | PFalse FC
+           | PRefl FC
+           | PResolveTC FC
+           | PEq FC PTerm PTerm
+           | PPair FC PTerm PTerm
+           | PDPair FC PTerm PTerm PTerm
+           | PAlternative [PTerm]
+           | PHidden PTerm -- irrelevant or hidden pattern
+           | PSet
+           | PConstant Const
+           | Placeholder
+           | PDoBlock [PDo]
+           | PIdiom FC PTerm
+           | PReturn FC
+           | PMetavar Name
+           | PProof [PTactic]
+           | PTactics [PTactic] -- as PProof, but no auto solving
+           | PElabError Err -- error to report on elaboration
+           | PImpossible -- special case for declaring when an LHS can't typecheck
+-}
+
+instance Sized PTerm where
+  size (PQuote rawTerm) = size rawTerm
+  size (PRef fc name) = size name
+  size (PLam name ty bdy) = 1 + size ty + size bdy
+  size (PPi name ty bdy) = 1 + size ty + size bdy
+  size (PLet name ty def bdy) = 1 + size ty + size def + size bdy
+  size (PTyped trm ty) = 1 + size trm + size ty
+  size (PApp fc name args) = 1 + size args
+  size (PCase fc trm bdy) = 1 + size trm + size bdy
+  size (PTrue fc) = 1
+  size (PFalse fc) = 1
+  size (PRefl fc) = 1
+  size (PResolveTC fc) = 1
+  size (PEq fc left right) = 1 + size left + size right
+  size (PPair fc left right) = 1 + size left + size right
+  size (PDPair fs left right) = 1 + size left + size right
+  size (PAlternative alts) = 1 + size alts
+  size (PHidden hidden) = size hidden
+  size PSet = 1
+  size (PConstant const) = 1 + size const
+  size Placeholder = 1
+  size (PDoBlock dos) = 1 + size dos
+  size (PIdiom fc term) = 1 + size term
+  size (PReturn fc) = 1
+  size (PMetavar name) = 1
+  size (PProof tactics) = size tactics
+  size (PElabError err) = size err
+  size PImpossible = 1
 
 allNamesIn :: PTerm -> [Name]
 allNamesIn tm = nub $ ni [] tm 
