@@ -58,7 +58,7 @@ using (G : Vect Ty n)
 testFac : Int
 testFac = interp [] fact 4
 
-unitTestFac : so (interp [] fact 4 == 25)
+unitTestFac : so (interp [] fact 4 == 24)
 unitTestFac = oh
 
 main : IO ()
