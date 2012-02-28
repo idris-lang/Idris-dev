@@ -5,7 +5,7 @@ module Idris.AbsSyntax where
 
 import Core.TT
 import Core.Evaluate
-import Core.Elaborate
+import Core.Elaborate hiding (Tactic(..))
 import Core.Typecheck
 
 import System.Console.Haskeline
@@ -576,6 +576,26 @@ data PTactic' t = Intro [Name] | Intros | Focus Name
 deriving instance Binary PTactic' 
 !-}
 
+instance Sized a => Sized (PTactic' a) where
+  size (Intro nms) = 1 + size nms
+  size Intros = 1
+  size (Focus nm) = 1 + size nm
+  size (Refine nm bs) = 1 + size nm + length bs
+  size (Rewrite t) = 1 + size t
+  size (LetTac nm t) = 1 + size nm + size t
+  size (Exact t) = 1 + size t
+  size Compute = 1
+  size Trivial = 1
+  size Solve = 1
+  size Attack = 1
+  size ProofState = 1
+  size ProofTerm = 1
+  size Undo = 1
+  size (Try l r) = 1 + size l + size r
+  size (TSeq l r) = 1 + size l + size r
+  size Qed = 1
+  size Abandon = 1
+
 type PTactic = PTactic' PTerm
 
 data PDo' t = DoExp  FC t
@@ -587,6 +607,13 @@ data PDo' t = DoExp  FC t
 {-! 
 deriving instance Binary PDo' 
 !-}
+
+instance Sized a => Sized (PDo' a) where
+  size (DoExp fc t) = 1 + size fc + size t
+  size (DoBind fc nm t) = 1 + size fc + size nm + size t
+  size (DoBindP fc l r) = 1 + size fc + size l + size r
+  size (DoLet fc nm l r) = 1 + size fc + size nm + size l + size r
+  size (DoLetP fc l r) = 1 + size fc + size l + size r
 
 type PDo = PDo' PTerm
 
@@ -605,6 +632,13 @@ data PArg' t = PImp { priority :: Int,
                               getScript :: t,
                               getTm :: t }
     deriving (Show, Eq, Functor)
+
+instance Sized a => Sized (PArg' a) where
+  size (PImp p l nm trm) = 1 + size nm + size trm
+  size (PExp p l trm) = 1 + size trm
+  size (PConstraint p l trm) = 1 + size trm
+  size (PTacImplicit p l nm scr trm) = 1 + size nm + size scr + size trm
+
 {-! 
 deriving instance Binary PArg' 
 !-}
@@ -886,7 +920,7 @@ instance Sized PTerm where
   size (PQuote rawTerm) = size rawTerm
   size (PRef fc name) = size name
   size (PLam name ty bdy) = 1 + size ty + size bdy
-  size (PPi name ty bdy) = 1 + size ty + size bdy
+  size (PPi plicity name ty bdy) = 1 + size ty + size bdy
   size (PLet name ty def bdy) = 1 + size ty + size def + size bdy
   size (PTyped trm ty) = 1 + size trm + size ty
   size (PApp fc name args) = 1 + size args
@@ -897,7 +931,7 @@ instance Sized PTerm where
   size (PResolveTC fc) = 1
   size (PEq fc left right) = 1 + size left + size right
   size (PPair fc left right) = 1 + size left + size right
-  size (PDPair fs left right) = 1 + size left + size right
+  size (PDPair fs left ty right) = 1 + size left + size ty + size right
   size (PAlternative alts) = 1 + size alts
   size (PHidden hidden) = size hidden
   size PSet = 1

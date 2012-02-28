@@ -17,6 +17,8 @@ import Idris.DataOpts
 import System.Console.Haskeline
 import Control.Monad.State
 
+import Util.Pretty
+
 prover :: Bool -> Name -> Idris ()
 prover lit x =
            do ctxt <- getContext
@@ -55,7 +57,11 @@ elabStep st e = do case runStateT e st of
                      OK (a, st') -> return (a, st')
                      Error a -> do i <- get
                                    fail (pshow i a)
-                  
+
+dumpState :: IState -> ProofState -> IO ()
+dumpState _ pst = putStrLn . render . pretty $ pst
+         
+{-      
 dumpState :: IState -> ProofState -> IO ()
 dumpState ist (PS nm [] _ tm _ _ _ _ _ _ _ _ _ _ _) = putStrLn $ (show nm) ++ ": no more goals"
 dumpState ist ps@(PS nm (h:hs) _ tm _ _ _ _ problems i _ _ ctxy _ _)
@@ -80,6 +86,7 @@ dumpState ist ps@(PS nm (h:hs) _ tm _ _ _ _ problems i _ _ ctxy _ _)
 
     showG (Guess t v) = tshow t ++ " =?= " ++ tshow v
     showG b = tshow (binderTy b)
+-}
 
 lifte :: ElabState [PDecl] -> ElabD a -> Idris a
 lifte st e = do (v, _) <- elabStep st e
