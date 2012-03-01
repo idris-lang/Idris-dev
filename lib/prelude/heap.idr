@@ -30,6 +30,15 @@ total size : MaxiphobicHeap a -> Nat
 size Empty          = O
 size (Node s l e r) = s
 
+isValidHeap : Ord a => MaxiphobicHeap a -> Bool
+isValidHeap Empty          = True
+isValidHeap (Node s l e r) =
+  dominates e l && dominates e r && s == S (size l + size r)
+  where
+    dominates : Ord a => a -> MaxiphobicHeap a -> Bool
+    dominates e Empty           = True
+    dominates e (Node s l e' r) = e' <= e
+
 --------------------------------------------------------------------------------
 -- Basic heaps
 --------------------------------------------------------------------------------
@@ -140,6 +149,23 @@ absurdBoolDischarge p = replace {P = disjointTy} p ()
 total isEmptySizeZero : (h : MaxiphobicHeap a) -> (isEmpty h = True) -> size h = O
 isEmptySizeZero Empty          p = refl
 isEmptySizeZero (Node s l e r) p = ?isEmptySizeZeroNodeAbsurd
+
+total emptyHeapValid : Ord a => isValidHeap empty = True
+emptyHeapValid = refl
+
+total singletonHeapValid : Ord a => (e : a) -> isValidHeap $ singleton e = True
+singletonHeapValid e = refl
+
+{-
+total mergePreservesValidHeaps : Ord a => (left : MaxiphobicHeap a) ->
+  (right : MaxiphobicHeap a) -> (leftValid : isValidHeap left = True) ->
+  (rightValid : isValidHeap right = True) -> isValidHeap $ merge left right = True
+mergePreservesValidHeaps Empty              Empty              lp rp = refl
+mergePreservesValidHeaps Empty              (Node rs rl re rr) lp rp = rp
+mergePreservesValidHeaps (Node ls ll le lr) Empty              lp rp = lp
+mergePreservesValidHeaps (Node ls ll le lr) (Node rs rl re rr) lp rp =
+  ?mergePreservesValidHeapsBody
+-}
 
 --------------------------------------------------------------------------------
 -- Proofs
