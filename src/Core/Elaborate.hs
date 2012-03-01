@@ -21,6 +21,8 @@ import Data.Char
 import Data.List
 import Debug.Trace
 
+import Util.Pretty
+
 -- I don't really want this here, but it's useful for the test shell
 data Command = Theorem Name Raw
              | Eval Raw
@@ -29,7 +31,10 @@ data Command = Theorem Name Raw
              | Tac (Elab ())
 
 data ElabState aux = ES (ProofState, aux) String (Maybe (ElabState aux))
-  deriving Show
+
+instance Pretty aux => Pretty (ElabState aux) where
+  pretty (ES (pState, aux) str _) = text "test"
+
 type Elab' aux a = StateT (ElabState aux) TC a
 type Elab a = Elab' () a
 

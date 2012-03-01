@@ -11,6 +11,8 @@ import Core.Elaborate
 import Control.Monad.State
 import System.Console.Haskeline
 
+import Util.Pretty
+
 data ShellState = ShellState 
                         { ctxt     :: Context,
                           prf      :: Maybe ProofState,
@@ -50,13 +52,13 @@ processCommand (Tac e)  state
                                                                      (pterm ps')
                                                                      (ptype ps')
                                                                      (context ps') }, resp)
-                                err -> (state, show err)
+                                err -> (state, show . render . pretty $ err)
     | otherwise = (state, "No proof in progress")
 
 runShell :: ShellState -> InputT IO ShellState
 runShell st = do (prompt, parser) <- 
                            maybe (return ("TT# ", parseCommand)) 
-                                 (\st -> do outputStrLn (show st)
+                                 (\st -> do outputStrLn . render . pretty $ st
                                             return (show (thname st) ++ "# ", parseTactic)) 
                                  (prf st)
                  x <- getInputLine prompt
