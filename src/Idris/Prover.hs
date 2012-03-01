@@ -59,7 +59,49 @@ elabStep st e = do case runStateT e st of
                                    fail (pshow i a)
 
 dumpState :: IState -> ProofState -> IO ()
-dumpState _ pst = putStrLn . render . pretty $ pst
+dumpState ist (PS nm [] _ tm _ _ _ _ _ _ _ _ _ _ _) =
+  putStrLn . render $ pretty nm <> colon <+> text "No more goals."
+dumpState ist ps@(PS nm (h:hs) _ tm _ _ _ _ problems i _ _ ctxy _ _) = do
+  let OK ty  = goalAtFocus ps
+  let OK env = envAtFocus ps
+  putStrLn . render $
+    prettyOtherGoals hs $$
+    prettyAssumptions env $$
+    prettyGoal ty
+  where
+    -- XXX
+    tPretty t = pretty $ delab ist t
+
+    prettyPs [] = empty
+    prettyPs ((MN _ "rewrite_rule", _) : bs) = prettyPs bs
+    prettyPs ((n, Let t v) : bs) =
+      nest nestingSize (pretty n <+> text "=" <+> tPretty v <> colon <+>
+        tPretty t $$ prettyPs bs)
+    prettyPs ((n, b) : bs) = 
+      pretty n <+> colon <+> tPretty (binderTy b) $$ prettyPs bs
+
+    prettyG (Guess t v) = tPretty t <+> text "=?=" <+> tPretty v
+    prettyG b = tPretty $ binderTy b
+
+    prettyGoal ty =
+      text "----------" <+> text "Metavariable currently in focus" <> colon
+      <+> pretty nm <+> text "----------" $$
+      pretty h <> colon $$ nest nestingSize (prettyG ty)
+
+    prettyAssumptions env =
+      if length env == 0 then
+        empty
+      else
+        text "----------              Assumptions:              ----------" $$
+        nest nestingSize (prettyPs $ reverse env)
+
+    prettyOtherGoals hs =
+      if length hs == 0 then
+        empty
+      else
+        text "----------              Other goals:              ----------" $$
+        pretty hs
+
          
 {-      
 dumpState :: IState -> ProofState -> IO ()

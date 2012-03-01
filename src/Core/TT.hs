@@ -269,6 +269,9 @@ instance Sized Raw where
   size (RForce raw) = 1 + size raw
   size (RConstant const) = size const
 
+instance Pretty Raw where
+  pretty = text . show
+
 {-! 
 deriving instance Binary Raw 
 !-}
@@ -410,7 +413,7 @@ instance Sized a => Sized (TT a) where
   size (Set u) = 1 + size u
 
 instance Pretty a => Pretty (TT a) where
-  pretty 
+  pretty _ = text "test"
 
 type EnvTT n = [(n, Binder (TT n))]
 

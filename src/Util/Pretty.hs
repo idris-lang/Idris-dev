@@ -18,7 +18,7 @@ instance Sized a => Sized [a] where
 
 -- The maximum size before we break on to another line.
 breakingSize :: Int
-breakingSize = 5
+breakingSize = 14
 
 nestingSize :: Int
 nestingSize = 2
@@ -30,4 +30,4 @@ instance Pretty () where
   pretty () = text "()"
 
 instance Pretty a => Pretty [a] where
-  pretty l = foldr (<+>) empty $ map pretty l
+  pretty l = foldr ($$) empty $ map pretty l
