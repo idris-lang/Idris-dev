@@ -912,13 +912,13 @@ prettyImp impl = prettySe 10
       where
         fS l r =
           if size r > breakingSize then
-            l $+$ prettyArgS r
+            l $+$ nest nestingSize (prettyArgS r)
           else
             l <+> prettyArgS r
 
         fSe l r =
           if size r > breakingSize then
-            l $+$ prettyArgSe r
+            l $+$ nest nestingSize (prettyArgSe r)
           else
             l <+> prettyArgSe r
     prettySe p (PCase _ scr opts) =
@@ -935,9 +935,9 @@ prettyImp impl = prettySe 10
     prettySe p (PEq _ l r) =
       bracket p 2 $
         if size r > breakingSize then
-          prettySe 10 l <+> text "=" $+$ prettySe 10 r
+          prettySe 10 l <+> text "=" $$ nest nestingSize (prettySe 10 r)
         else
-          hang (prettySe 10 l <+> text "=") nestingSize $ prettySe 10 r
+          prettySe 10 l <+> text "=" <+> prettySe 10 r
     prettySe p (PTyped l r) =
       lparen <> prettySe 10 l <+> colon <+> prettySe 10 r <> rparen
     prettySe p (PPair _ l r) =

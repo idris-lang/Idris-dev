@@ -18,10 +18,10 @@ instance Sized a => Sized [a] where
 
 -- The maximum size before we break on to another line.
 breakingSize :: Int
-breakingSize = 14
+breakingSize = 15
 
 nestingSize :: Int
-nestingSize = 2
+nestingSize = 1
 
 class Pretty a where
   pretty :: a -> Doc

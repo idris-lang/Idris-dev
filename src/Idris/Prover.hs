@@ -84,8 +84,7 @@ dumpState ist ps@(PS nm (h:hs) _ tm _ _ _ _ problems i _ _ ctxy _ _) = do
     prettyG b = tPretty $ binderTy b
 
     prettyGoal ty =
-      text "----------" <+> text "Metavariable currently in focus" <> colon
-      <+> pretty nm <+> text "----------" $$
+      text "----------                 Goal:                  ----------" $$
       pretty h <> colon $$ nest nestingSize (prettyG ty)
 
     prettyAssumptions env =
@@ -101,34 +100,6 @@ dumpState ist ps@(PS nm (h:hs) _ tm _ _ _ _ problems i _ _ ctxy _ _) = do
       else
         text "----------              Other goals:              ----------" $$
         pretty hs
-
-         
-{-      
-dumpState :: IState -> ProofState -> IO ()
-dumpState ist (PS nm [] _ tm _ _ _ _ _ _ _ _ _ _ _) = putStrLn $ (show nm) ++ ": no more goals"
-dumpState ist ps@(PS nm (h:hs) _ tm _ _ _ _ problems i _ _ ctxy _ _)
-   = do let OK ty = goalAtFocus ps
-        let OK env = envAtFocus ps
---         putStrLn $ "Other goals: " ++ show hs ++ "\n"
-        putStr $ "\n" ++ showPs (reverse env)
-        putStrLn $ "---------------------------------- (" ++ show nm
-                     ++ ") --------"
-        putStrLn $ show h ++ " : " ++ showG ty ++ "\n"
-  where
-    tshow t = show (delab ist t)
-
-    showPs [] = ""
-    showPs ((MN _ "rewrite_rule", _) : bs) = showPs bs
-    showPs ((n, Let t v) : bs)
-        = "  " ++ show n ++ " = " ++ tshow v ++ " : " ++
-            tshow t ++ "\n" ++ showPs bs
-    showPs ((n, b) : bs)
-        = "  " ++ show n ++ " : " ++
-            tshow (binderTy b) ++ "\n" ++ showPs bs
-
-    showG (Guess t v) = tshow t ++ " =?= " ++ tshow v
-    showG b = tshow (binderTy b)
--}
 
 lifte :: ElabState [PDecl] -> ElabD a -> Idris a
 lifte st e = do (v, _) <- elabStep st e
