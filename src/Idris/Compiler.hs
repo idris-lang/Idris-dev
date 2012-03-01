@@ -102,6 +102,13 @@ instance ToEpic (TT Name) where
               = do v' <- epic' env v 
                    k' <- epic' env k
                    return (k' @@ (effect_ v'))
+          | (P _ (UN "malloc") _, [_,size,t]) <- unApply tm
+              = do size' <- epic' env size
+                   t' <- epic' env t
+                   return $ malloc_ size' t'
+          | (P _ (UN "trace_malloc") _, [_,t]) <- unApply tm
+              = do t' <- epic' env t
+                   return $ mallocTrace_ t'
           | (P (DCon t a) n _, args) <- unApply tm
               = epicCon env t a n args
       epic' env (P (DCon t a) n _) = return $ con_ t

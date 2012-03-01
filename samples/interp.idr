@@ -48,19 +48,15 @@ using (G : Vect Ty n)
   (==) : Expr G TyInt -> Expr G TyInt -> Expr G TyBool
   (==) = Op (==)
 
-  -- Some dummy instances for Num overloading
-  instance Eq (Expr G TyInt) where
-    (==) x y = False
-
-  instance Ord (Expr G TyInt) where
-    compare x y = EQ
+  (<) : Expr G TyInt -> Expr G TyInt -> Expr G TyBool
+  (<) = Op (<)
 
   instance Num (Expr G TyInt) where
     (+) x y = Op (+) x y
     (-) x y = Op (-) x y
     (*) x y = Op (*) x y
 
-    abs x = If (Op (<) x (Val 0)) (Op (-) 0 x) x
+    abs x = IF (x < 0) THEN (-x) ELSE x
 
     fromInteger = Val . fromInteger
   

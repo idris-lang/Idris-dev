@@ -6,11 +6,13 @@ User visible changes:
 * backtick notation added: x `foo` y  ==> foo x y
 * case expressions allowed in type signatures
 * Library extensions in prelude.vect and prelude.algebra
+* malloc/trace_malloc added to builtins.idr
 
 Internal changes:
 
 * Some type class resolution fixes
 * Several minor bug fixes 
+* Performance improvements in resolving overloading and type classes
 
 New in 0.9.1:
 -------------

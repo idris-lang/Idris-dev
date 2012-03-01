@@ -207,11 +207,12 @@ elabCon info syn tn (n, t_in, fc)
          mapM_ (elabCaseBlock info) is
          ctxt <- getContext
          (cty, _)  <- recheckC fc [] t'
-         tyIs cty
-         logLvl 2 $ "---> " ++ show n ++ " : " ++ show cty
+         let cty' = normaliseC ctxt [] cty
+         tyIs cty'
+         logLvl 2 $ "---> " ++ show n ++ " : " ++ show cty'
          addIBC (IBCDef n)
-         forceArgs n cty
-         return (n, cty)
+         forceArgs n cty'
+         return (n, cty')
   where
     tyIs (Bind n b sc) = tyIs sc
     tyIs t | (P _ n' _, _) <- unApply t 
@@ -801,6 +802,7 @@ decorateid decorate (PClauses f o n cs)
           dappname (PApp fc (PRef fc' n) as) = PApp fc (PRef fc' (decorate n)) as
           dappname t = t
 
+
 pbinds (Bind n (PVar t) sc) = do attack; patbind n 
                                  pbinds sc
 pbinds tm = return ()
@@ -862,7 +864,6 @@ elabDecl' info (PDSL n dsl)
     = do i <- get
          put (i { idris_dsls = addDef n dsl (idris_dsls i) }) 
          addIBC (IBCDSL n)
-
 elabDecl' info (PDirective i) = i
 
 elabCaseBlock info d@(PClauses f o n ps) 
