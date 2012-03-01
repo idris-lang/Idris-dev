@@ -31,9 +31,7 @@ data Command = Theorem Name Raw
              | Tac (Elab ())
 
 data ElabState aux = ES (ProofState, aux) String (Maybe (ElabState aux))
-
-instance Pretty aux => Pretty (ElabState aux) where
-  pretty (ES (pState, aux) str _) = text "test"
+  deriving Show
 
 type Elab' aux a = StateT (ElabState aux) TC a
 type Elab a = Elab' () a

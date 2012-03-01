@@ -52,7 +52,7 @@ processCommand (Tac e)  state
                                                                      (pterm ps')
                                                                      (ptype ps')
                                                                      (context ps') }, resp)
-                                err -> (state, show . render . pretty $ err)
+                                err -> (state, show err)
     | otherwise = (state, "No proof in progress")
 
 runShell :: ShellState -> InputT IO ShellState
