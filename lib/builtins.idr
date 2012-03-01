@@ -192,7 +192,7 @@ instance (Ord a, Ord b) => Ord (a, b) where
       else compare xr yr
 
 
-class Eq a => Num a where 
+class Num a where 
     (+) : a -> a -> a
     (-) : a -> a -> a
     (*) : a -> a -> a
