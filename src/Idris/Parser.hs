@@ -1261,8 +1261,8 @@ pDirective = try (do lchar '%'; reserved "lib"; lib <- strlit;
          <|> try (do lchar '%'; reserved "access"; acc <- pAccessibility'
                      return [PDirective (do i <- getIState
                                             putIState (i { default_access = acc }))])
-         <|> do lchar '%'; reserved "logging"; i <- natural;
-                return [PDirective (setLogLevel (fromInteger i))] 
+         <|> try (do lchar '%'; reserved "logging"; i <- natural;
+                     return [PDirective (setLogLevel (fromInteger i))])
 
 pTactic :: SyntaxInfo -> IParser PTactic
 pTactic syn = do reserved "intro"; ns <- sepBy pName (lchar ',')

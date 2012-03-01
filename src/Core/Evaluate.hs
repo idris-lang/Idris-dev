@@ -80,6 +80,7 @@ instance Show (a -> b) where
 threshold = 1000 -- boredom threshold for evaluation, to prevent infinite typechecking
                  -- in fact it's a maximum recursion depth
 
+-- Normalise fully type checked terms (so, assume all names/let bindings resolved)
 normaliseC :: Context -> Env -> TT Name -> TT Name
 normaliseC ctxt env t 
    = evalState (do val <- eval ctxt threshold [] env t []

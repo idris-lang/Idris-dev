@@ -188,7 +188,7 @@ process fn (TotCheck n) = do i <- get
                                 [t] -> iputStrLn (showTotal t i)
                                 _ -> return ()
 process fn (Info n) = do i <- get
-                         let oi = lookupCtxt Nothing n (idris_optimisation i)
+                         let oi = lookupCtxtName Nothing n (idris_optimisation i)
                          when (not (null oi)) $ iputStrLn (show oi)
                          let si = lookupCtxt Nothing n (idris_statics i)
                          when (not (null si)) $ iputStrLn (show si)
