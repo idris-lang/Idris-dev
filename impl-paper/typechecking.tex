@@ -1,6 +1,19 @@
 \section{The Core Type Theory}
 
-\DM{
+High level \Idris{} programs, as described in Section \ref{sect:hll} are 
+\remph{elaborated} to a small core language, \TT{}, then type checked. We keep the
+core language as small as is reasonable. This has several advantages: it is
+easy to type check, since type checking dependent type theory is well understood
+~\cite{loh2010tutorial}; and it is easy to transform, optimise and compile. Keeping
+the language small increases our confidence that these important components of
+the language are correct. In this section, we describe \TT{} and
+its semantics.
+
+\subsection{\TT{} syntax}
+
+The syntax of \TT{} expressions is given in Figure \ref{ttsyn}.
+
+\FFIG{
 \begin{array}{rll@{\hg}|rll}
 \vt ::= & \Type_i & (\mbox{type universes}) &
 \hg\vb ::= & \lam{\vx}{\vt} & (\mbox{abstraction}) \\
@@ -15,4 +28,20 @@
 
 \end{array}
 }
+{\TT{} expression syntax}
+{ttsyn}
 
+\subsection{Evaluation rules}
+
+\subsection{Typing rules}
+
+\subsection{The Development Calculus \TTdev}
+
+\TTdev{} is \TT{} extended with hole binders, Oleg-style~\cite{McBride1999}. 
+
+\subsection{The $\MO{Elab}$ meta-language}
+
+
+\begin{itemize}
+\item $\MO{Check}\:\vt\:\cq\:(\vt, \vt)$
+\end{itemize}

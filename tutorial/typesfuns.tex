@@ -97,7 +97,7 @@ such as this can be added using a fixity declaration, as follows:
 
 \begin{SaveVerbatim}{infixcons}
 
-infixr 7 :: 
+infixr 10 :: 
 
 \end{SaveVerbatim}
 \useverb{infixcons}
@@ -105,7 +105,7 @@ infixr 7 ::
 \noindent
 Functions, data constructors and type constuctors may all be given infix
 operators as names. They may be used in prefix form if enclosed in brackets,
-e.g. (::). Infix operators can use any of the symbols:
+e.g. \tDC{(::)}. Infix operators can use any of the symbols:
 
 \begin{SaveVerbatim}{infixsyms}
 
@@ -150,7 +150,7 @@ names (\tFN{plus} and \tFN{mult} above), data constructors (\tDC{O}, \tDC{S},
 \tDC{Nil} and \tDC{::}) and type constructors (\tTC{Nat} and \tTC{List}) are
 all part of the same namespace.
 
-We can test these functions at the Idris prompt:
+We can test these functions at the \Idris{} prompt:
 
 \begin{SaveVerbatim}{fntest}
 
@@ -254,7 +254,7 @@ of the type constructor \tTC{Vect} --- it takes a type and a \tTC{Nat} as an
 argument, where \tTC{Set} stands for the type of types. We say that \tTC{Vect}
 is \emph{parameterised} by a type, and \emph{indexed} over \tTC{Nat}. Each
 constructor targets a different part of the family of types. \tDC{Nil} can only
-be used to construct vectors with zero length, and \tDC{::} to constructor
+be used to construct vectors with zero length, and \tDC{::} to construct
 vectors with non-zero length. In the type of \tDC{::}, we state explicitly that an element
 of type \texttt{a} and a tail of type \texttt{Vect a k} (i.e., a vector of length \texttt{k})
 combine to make a vector of length \texttt{S k}.
@@ -275,7 +275,7 @@ library, appends two \tTC{Vect}s:
 \useverb{vapp}
 
 \noindent
-The type of \tFN{app} states that the resulting vector's length will be the sum of
+The type of \tFN{(++)} states that the resulting vector's length will be the sum of
 the input lengths. If we get the definition wrong in such a way that this does
 not hold, \Idris{} will not accept the definition. For example:
 
@@ -339,14 +339,14 @@ numbers bounded by \tTC{n}.
 For example, the following function which looks up an element in a \tTC{Vect},
 by a bounded index given as a \tTC{Fin n}, is defined in the prelude:
 
-\begin{SaveVerbatim}{vlookup}
+\begin{SaveVerbatim}{vindex}
 
-lookup : Fin n -> Vect a n -> a
-lookup fO     (x :: xs) = x
-lookup (fS k) (x :: xs) = lookup k xs
+index : Fin n -> Vect a n -> a
+index fO     (x :: xs) = x
+index (fS k) (x :: xs) = index k xs
 
 \end{SaveVerbatim}
-\useverb{vlookup}
+\useverb{vindex}
 
 \noindent
 This function looks up a value at a given location in a vector. The location is
@@ -362,54 +362,54 @@ since it would force \texttt{n} to be \tDC{O}.
 
 \subsubsection{Implicit Arguments}
 
-Let us take a closer look at the type of \texttt{lookup}:
+Let us take a closer look at the type of \texttt{index}:
 
-\begin{SaveVerbatim}{vlookupty}
+\begin{SaveVerbatim}{vindexty}
 
-lookup : Fin n -> Vect a n -> a
+index : Fin n -> Vect a n -> a
 
 \end{SaveVerbatim}
-\useverb{vlookupty}
+\useverb{vindexty}
 
 \noindent
 It takes two arguments, an element of the finite set of \texttt{n} elements, and a vector
 with \texttt{n} elements of type \texttt{a}. But there are also two names, 
 \texttt{n} and \texttt{a}, which are not declared explictly. These are \emph{implicit}
-arguments to \texttt{lookup}. We could also write the type of \texttt{lookup} as:
+arguments to \texttt{index}. We could also write the type of \texttt{index} as:
 
-\begin{SaveVerbatim}{vlookupimpty}
+\begin{SaveVerbatim}{vindeximpty}
 
-lookup : {a:Set} -> {n:Nat} -> Fin n -> Vect a n -> a
+index : {a:Set} -> {n:Nat} -> Fin n -> Vect a n -> a
 
 \end{SaveVerbatim}
-\useverb{vlookupimpty}
+\useverb{vindeximpty}
 
 \noindent
 Implicit arguments, given in braces \texttt{\{\}} in the type declaration, are not given in
-applications of \texttt{lookup}; their values can be inferred from the types of
+applications of \texttt{index}; their values can be inferred from the types of
 the \texttt{Fin n} and \texttt{Vect a n} arguments. Any name which appears as a parameter
 or index in a type declaration, but which is otherwise free, will be automatically
 bound as an implicit argument.
 Implicit arguments can still be given explicitly in applications, using
-{a=value} and {n=value}, for example:
+\texttt{\{a=value\}} and \texttt{\{n=value\}}, for example:
 
-\begin{SaveVerbatim}{vlookupexp}
+\begin{SaveVerbatim}{vindexexp}
 
-lookup {a=Int} {n=2} fO (2 :: 3 :: Nil)
+index {a=Int} {n=2} fO (2 :: 3 :: Nil)
 
 \end{SaveVerbatim}
-\useverb{vlookupexp}
+\useverb{vindexexp}
 
 \noindent
 In fact, any argument, implicit or explicit, may be given a name. We could have
-declared the type of \texttt{lookup} as:
+declared the type of \texttt{index} as:
 
-\begin{SaveVerbatim}{vlookupn}
+\begin{SaveVerbatim}{vindexn}
 
-lookup : (i:Fin n) -> (xs:Vect a n) -> a
+index : (i:Fin n) -> (xs:Vect a n) -> a
 
 \end{SaveVerbatim}
-\useverb{vlookupn}
+\useverb{vindexn}
 
 \noindent
 It is a matter of taste whether you want to do this --- sometimes it can help
