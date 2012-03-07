@@ -1,21 +1,37 @@
 \section{The Core Type Theory}
 
 High level \Idris{} programs, as described in Section \ref{sect:hll} are 
-\remph{elaborated} to a small core language, \TT{}, then type checked. We keep the
-core language as small as is reasonable. This has several advantages: it is
+\remph{elaborated} to a small core language, \TT{}, then type checked. 
+\TT{} is a dependently typed $\lambda$-calculus with inductive families
+and pattern matching definitions similar to UTT~\cite{luo1994}, and building
+on an earlier implementation, \Ivor{}~\cite{Brady2006b}.
+We keep the
+core language as small as is reasonable, which has several advantages: it is
 easy to type check, since type checking dependent type theory is well understood
 ~\cite{loh2010tutorial}; and it is easy to transform, optimise and compile. Keeping
-the language small increases our confidence that these important components of
+the core language small increases our confidence that these important components of
 the language are correct. In this section, we describe \TT{} and
 its semantics.
 
 \subsection{\TT{} syntax}
 
-The syntax of \TT{} expressions is given in Figure \ref{ttsyn}.
+The syntax of \TT{} expressions is given in Figure \ref{ttsyn}. This defines:
+
+\begin{itemize}
+\item \demph{Terms}, $\vt$, which are variables, bindings, applications or constants.
+\item \demph{Bindings}, $\vb$, which are lambda abstractions, let bindings, or function spaces.
+\item \demph{Constants}, $\vc$, which are integer or string literals, or $\Type_i$, the
+type of types.
+\end{itemize}
+
+We may also write the function space $\all{\vx}{\vS}\SC\vT$ as $(\vx\Hab\vS)\to\vT$,
+or $\vS\to\vT$ if $\vx$ is not free in $\vT$, to make the notation more consistent with
+the high level language. Universe levels on sets ($\Type_i$) may be left implicit and
+inferred by the machine~\cite{pollack1990implicit}.
 
 \FFIG{
-\begin{array}{rll@{\hg}|rll}
-\vt ::= & \Type_i & (\mbox{type universes}) &
+\begin{array}{rll@{\hg}rll}
+\vt ::= & \vc & (\mbox{constants}) &
 \hg\vb ::= & \lam{\vx}{\vt} & (\mbox{abstraction}) \\
 
  \mid  & \vx & (\mbox{variable}) &
@@ -24,16 +40,218 @@ The syntax of \TT{} expressions is given in Figure \ref{ttsyn}.
  \mid   & \vb\SC\:\vt & (\mbox{binding}) &
  \mid & \all{\vx}{\vt} & (\mbox{function space}) \\
 
- \mid   & \vt\:\vt & (\mbox{application})
-
+ \mid   & \vt\:\vt & (\mbox{application}) &
+% \mid & \pat{\vx}{\vt} & (\mbox{pattern variable}) \\
+% & & &
+% \mid & \pty{\vx}{\vt} & (\mbox{pattern type}) \\
+\medskip\\
+ \vc ::= & \Type_i & (\mbox{type universes}) \\
+   \mid & \vi & (\mbox{integer literal}) \\
+   \mid & \VV{str} & (\mbox{string literal}) \\
 \end{array}
 }
 {\TT{} expression syntax}
 {ttsyn}
 
-\subsection{Evaluation rules}
+\subsection{\TT{} semantics}
 
-\subsection{Typing rules}
+The static and dynamic semantics of \TT{} are defined mutually, since
+evaluation relies on a well-typed term, and type checking relies on 
+evaluation. Everything is defined relative
+to a context, $\Gamma$. The empty context
+is valid, as is a context extended with a $\lambda$, $\forall$ or
+$\LET$ binding:
+
+\DM{
+\Axiom{\proves\RW{valid}}
+\hg
+\Rule{\Gamma\proves\RW{valid}}
+{\Gamma;\vb\proves\RW{valid}}
+}
+
+\subsubsection{Evaluation}
+
+Conceptually, evaluation of \TT{} is defined by contraction schemes, given in Figure
+\ref{ttcontract}. \demph{Contraction}, relative to a context $\Gamma$, is given
+by one of the following schemes:
+
+\begin{itemize}
+\item $\beta$-contraction, which substitutes a value applied to a $\lambda$-binding for
+the bound variable. We define $\beta$-constraction simply by replacing the $\lambda$-binding
+with a $\LET$ binding.
+\item $\delta$-contraction, which replaces a $\LET$ bound variable with its value.
+\end{itemize}
+
+\demph{Reduction} ($\reduces$) is the structural closure of contraction, and evaluation
+is ($\reducesto$) is the transitive closure of reduction. \demph{Conversion} ($\converts$)
+is the smallest equivalence relation closed under reduction. If $\Gamma\proves\vx\converts\vy$
+then $\vy$ can be obtained from $\vx$ by a finite, possibly empty, sequence of
+contractions and reversed contractions. Terms which are convertible are also said to
+be computationally equal.
+
+\FFIG{
+\begin{array}{lc}
+\beta\mathrm{-contraction} &
+\Axiom{
+\Gamma\proves(\lam{\vx}{\vS}\SC\vt)\:\vs\leadsto\LET\:\vx\defq\vs\Hab\vS\SC\vt
+} \\
+\delta\mathrm{-contraction} &
+\Axiom{
+\Gamma;\LET\:\vx\defq\vs\Hab\vS;\Gamma'
+\proves
+\vx\leadsto\vs
+}
+\end{array}
+}
+{\TT{} contraction schemes}
+{ttcontract}
+
+\subsubsection{Cumulativity}
+
+Figure \ref{cumul} gives the \demph{cumulativity} relation.
+
+\FFIG{
+\begin{array}{c}
+\Rule{\Gamma\proves\vS\converts\vT}
+{\Gamma\proves\vS\cumul\vT}
+\hg
+\Axiom{\Gamma\proves\Type_n\cumul\Type_{n+1}}
+\\
+\Rule{\Gamma\proves\vR\cumul\vS\hg\Gamma\proves\vS\cumul\vT}
+{\Gamma\proves\vR\cumul\vT}
+\\
+\Rule{\Gamma\proves\vS_1\converts\vS_2\hg\Gamma;\vx\Hab\vS_1\proves\vT_1\cumul\vT_2}
+{\Gamma\proves\all{\vx}{\vS_1}\SC\vT_1\cumul\all{\vx}{\vS_2}{\vT_2}}
+\end{array}
+}
+{Cumulativity}
+{cumul}
+
+\subsubsection{Typing rules}
+
+\FFIG{\begin{array}{c}
+\mathsf{Type}\:
+\Rule{\Gamma\proves\RW{valid}}
+{\Gamma\vdash\Type_n\Hab\Type_{n+1}}
+\\
+\mathsf{Var}_1\:
+\Rule{(\lam{\vx}{\vS})\in\Gamma}
+{\Gamma\vdash\vx\Hab\vS}
+\hg
+\mathsf{Var}_2\:
+\Rule{(\all{\vx}{\vS})\in\Gamma}
+{\Gamma\vdash\vx\Hab\vS}
+\hg
+\mathsf{Val}\:
+\Rule{(\LET\:\vx\Hab\vS\defq\vs)\in\Gamma}
+{\Gamma\vdash\vx\Hab\vS}
+\\
+%\mathsf{Pat}_1\:
+%\Rule{(\pat{\vx}{\vS})\in\Gamma}
+%{\Gamma\vdash\vx\Hab\vS}
+%\hg
+%\mathsf{Pat}_2\:
+%\Rule{(\pty{\vx}{\vS})\in\Gamma}
+%{\Gamma\vdash\vx\Hab\vS}
+\\
+\mathsf{App}\:
+\Rule{\Gamma\vdash\vf\Hab\fbind{\vx}{\vS}{\vT}\hg\Gamma\vdash\vs\Hab\vS}
+{\Gamma\vdash\vf\:\vs\Hab\vT[\vs/\vx]} % \LET\:\vx\Hab\vS\:\defq\:\vs\:\IN\:\vT}
+\\
+\mathsf{Lam}\:
+\Rule{\Gamma;\lam{\vx}{\vS}\vdash\ve\Hab\vT\hg\Gamma\proves\fbind{\vx}{\vS}{\vT}\Hab\Type_n}
+{\Gamma\vdash\lam{\vx}{\vS}.\ve\Hab\fbind{\vx}{\vS}{\vT}}
+\\
+\mathsf{Forall}\:
+\Rule{\Gamma;\all{\vx}{\vS}\vdash\vT\Hab\Type_m\hg\Gamma\vdash\vS\Hab\Type_n}
+{\Gamma\vdash\fbind{\vx}{\vS}{\vT}\Hab\Type_p}
+\:(\exists\vp.\vm\le\vp,\:\vn\le\vp)
+\\
+\mathsf{Let}\:
+\Rule{\begin{array}{c}\Gamma\proves\ve_1\Hab\vS\hg
+      \Gamma;\LET\:\vx\defq\ve_1\Hab\vS\proves\ve_2\Hab\vT\\
+      \Gamma\proves\vS\Hab\Type_n\hg
+      \Gamma;\LET\:\vx\defq\ve_1\Hab\vS\proves\vT\Hab\Type_n\end{array}
+      }
+{\Gamma\vdash\LET\:\vx\defq\ve_1\Hab\vS\SC\:\ve_2\Hab
+   \vT[\ve_1/\vx]}   
+%\Let\:\vx\Hab\vS\defq\ve_1\:\IN\:\vT}
+\\
+
+\mathsf{Conv}\:
+\Rule{\Gamma\proves\vx\Hab\vA\hg\Gamma\proves\vA'\Hab\Type_n\hg
+      \Gamma\proves\vA\cumul\vA'}
+     {\Gamma\proves\vx\Hab\vA'}
+\end{array}
+}
+{Typing rules for \TT{}}
+{typerules}
+
+\subsection{Inductive Families}
+
+Inductive families \cite{dybjer1994inductive} are a form of simultaneously
+defined collection of algebraic data types (such as Haskell
+\texttt{data} declarations) which can be parametrised over
+\remph{values} as well as types.  An inductive family is declared 
+in a similar style to a Haskell GADT declaration~\cite{pj2006gadts}
+as
+follows, using the de Bruijn telescope notation, $\tx$, to indicate a
+sequence of zero or more $\vx$:
+
+\DM{
+\AR{
+\Data\hg\TC{T}\:(\tx\Hab\ttt)\Hab\vt\hg\Where\hg
+\DC{c}_1\Hab\vt\:\mid\:\ldots\:\mid\:\DC{c}_n\Hab\vt
+}
+}
+
+Constructors may take recursive arguments in the family
+$\TC{T}$. Furthermore these arguments may themselves be indexed by another type ---
+if such indices do not involve $\TC{T}$ then the constructor is
+\demph{strictly positive}, which ensures that recursive arguments of the
+constructor are structurally smaller than the value itself.
+
+For example, the \Idris{} data type \tTC{Nat} would be declared in \TT{} as follows:
+
+\DM{
+\Data\hg\Nat\Hab\Type\hg\Where\hg\Z\Hab\Nat\:\mid\:\suc\Hab\fbind{\vk}{\Nat}{\Nat}
+}
+
+A data type may have zero or more parameters (which are invariant
+across a structure) and a number of indices, given by the type. For
+example, the \TT{} equivalent of \tTC{List} is parametrised over its element type:
+
+\DM{
+\AR{
+\Data\hg\List\:(\va\Hab\Type)\Hab\Type\hg\Where
+\ARd{
+& \nil\Hab\List\:\va\\
+\mid & (\cons)\Hab\fbind{\vx}{\va}{\fbind{\vxs}{\List\:\va}{\List\:\va}}
+}
+}
+}
+
+Types can be
+parametrised over values. Using this, we can declare the type of
+vectors (lists with length), where the empty list is statically known
+to have length zero, and the non empty list is statically known to
+have a non zero length. The \TT{} equivalent of \tTC{Vect} is parametrised over its element type,
+like $\List$, but \remph{indexed} over its length. Note also that the length
+index $\vk$ is given \remph{explicitly}.
+
+\DM{
+\AR{
+\Data\hg\Vect\:(\va\Hab\Type)\Hab\Nat\to\Type\hg\Where \\
+\hg\hg\ARd{
+& \nil\Hab\Vect\:\va\:\Z\\
+\mid & (\cons)\Hab\fbind{\vk}{\Nat}{
+\fbind{\vx}{\va}{\fbind{\vxs}{\Vect\:\va\:\vk}{\Vect\:\va\:(\suc\:\vk)}}
+}
+}
+}
+}
+
+\subsection{Pattern matching definitions}
 
 \subsection{The Development Calculus \TTdev}
 

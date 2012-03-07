@@ -108,10 +108,10 @@
 
 %%%%%%%%%%%% FONTS
 
-\newcommand{\TC}[1]{\mathsf{#1}}
-\newcommand{\DC}[1]{\mathsf{#1}}
+\newcommand{\TC}[1]{\mathtt{#1}}
+\newcommand{\DC}[1]{\mathtt{#1}}
 \newcommand{\VV}[1]{\mathit{#1}}
-\newcommand{\FN}[1]{\mathbf{#1}}
+\newcommand{\FN}[1]{\mathtt{#1}}
 \newcommand{\HFN}[1]{\mathtt{#1}}
 \newcommand{\RW}[1]{\underline{\textrm{#1}}}
 \newcommand{\MO}[1]{\mbox{\textsc{#1}}}
@@ -405,6 +405,8 @@ Program & Version & Instructions & Thunks & Memory Accesses & Cells \\
 \newcommand{\lam}[2]{\lambda#1\pad{\!}{:}#2}
 \newcommand{\fbind}[3]{(#1\Hab#2)\to#3}
 \newcommand{\all}[2]{\forall#1\pad{\!}{:}#2}
+\newcommand{\pat}[2]{\RW{pat}\:#1\pad{\!}{:}#2}
+\newcommand{\pty}[2]{\RW{pty}\:#1\pad{\!}{:}#2}
 \newcommand{\hole}[2]{?#1\pad{\!}{:}#2}
 \newcommand{\guess}[3]{?#1\pad{\!}{:}#2\approx#3}
 \newcommand{\remlam}[2]{\lambda\{#1\pad{\!}{:}#2\}}
@@ -561,8 +563,8 @@ Program & Version & Instructions & Thunks & Memory Accesses & Cells \\
 \newcommand{\CoqType}{\TC{Type}}
 
 \newcommand{\List}{\TC{List}}
-\newcommand{\nil}{\DC{nil}}
-\newcommand{\cons}{\DC{cons}}
+\newcommand{\nil}{\DC{Nil}}
+\newcommand{\cons}{\DC{::}}
 
 \newcommand{\Zip}{\TC{Tsil}}
 \newcommand{\zip}{\FN{tsil}}
@@ -627,7 +629,7 @@ Program & Version & Instructions & Thunks & Memory Accesses & Cells \\
 
 % Reductions
 
-\newcommand{\reduces}{\mapsto}
+\newcommand{\reduces}{\rhd}
 \newcommand{\translation}{\Rightarrow}
 %\newcommand{\reducesn}[1]{\reduces\hspace*{-0.15cm}_{#1}}
 %\newcommand{\reducesto}{\reduces\hspace*{-0.15cm}^{*}}
