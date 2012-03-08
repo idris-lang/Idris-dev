@@ -1,12 +1,12 @@
 \section{The Core Type Theory}
 
-High level \Idris{} programs, as described in Section \ref{sect:hll} are 
+High level \Idris{} programs, as described in Section \ref{sect:hll}, are 
 \remph{elaborated} to a small core language, \TT{}, then type checked. 
 \TT{} is a dependently typed $\lambda$-calculus with inductive families
 and pattern matching definitions similar to UTT~\cite{luo1994}, and building
 on an earlier implementation, \Ivor{}~\cite{Brady2006b}.
 We keep the
-core language as small as is reasonable, which has several advantages: it is
+core language as small as is reasonably possible, which has several advantages: it is
 easy to type check, since type checking dependent type theory is well understood
 ~\cite{loh2010tutorial}; and it is easy to transform, optimise and compile. Keeping
 the core language small increases our confidence that these important components of
@@ -53,6 +53,12 @@ inferred by the machine~\cite{pollack1990implicit}.
 {\TT{} expression syntax}
 {ttsyn}
 
+A \TT{} program is a collection of \demph{inductive family} definitions (Section 
+\ref{sect:inductivefams}) and \demph{pattern matching} function definitions (Section
+\ref{sect:patdefs}), as well as primitive operators on constants. 
+Before defining these, let us define the semantics of \TT{}
+expressions.
+
 \subsection{\TT{} semantics}
 
 The static and dynamic semantics of \TT{} are defined mutually, since
@@ -71,7 +77,7 @@ $\LET$ binding:
 
 \subsubsection{Evaluation}
 
-Conceptually, evaluation of \TT{} is defined by contraction schemes, given in Figure
+Evaluation of \TT{} is defined by contraction schemes, given in Figure
 \ref{ttcontract}. \demph{Contraction}, relative to a context $\Gamma$, is given
 by one of the following schemes:
 
@@ -88,6 +94,10 @@ is the smallest equivalence relation closed under reduction. If $\Gamma\proves\v
 then $\vy$ can be obtained from $\vx$ by a finite, possibly empty, sequence of
 contractions and reversed contractions. Terms which are convertible are also said to
 be computationally equal.
+The evaluator can also be extended by defining pattern matching functions, which
+will be described in more detail in Section \ref{sect:patdefs}. In principle, pattern
+matching functions can be understood as extending the core language with high level
+reduction rules.
 
 \FFIG{
 \begin{array}{lc}
@@ -106,28 +116,20 @@ be computationally equal.
 {\TT{} contraction schemes}
 {ttcontract}
 
-\subsubsection{Cumulativity}
 
-Figure \ref{cumul} gives the \demph{cumulativity} relation.
-
-\FFIG{
-\begin{array}{c}
-\Rule{\Gamma\proves\vS\converts\vT}
-{\Gamma\proves\vS\cumul\vT}
-\hg
-\Axiom{\Gamma\proves\Type_n\cumul\Type_{n+1}}
-\\
-\Rule{\Gamma\proves\vR\cumul\vS\hg\Gamma\proves\vS\cumul\vT}
-{\Gamma\proves\vR\cumul\vT}
-\\
-\Rule{\Gamma\proves\vS_1\converts\vS_2\hg\Gamma;\vx\Hab\vS_1\proves\vT_1\cumul\vT_2}
-{\Gamma\proves\all{\vx}{\vS_1}\SC\vT_1\cumul\all{\vx}{\vS_2}{\vT_2}}
-\end{array}
-}
-{Cumulativity}
-{cumul}
 
 \subsubsection{Typing rules}
+
+The type inference rules for \TT{} expressions are given in Figure \ref{typerules}.
+These rules use the \demph{cumulativity} relation, defined in 
+Figure \ref{cumul}. The type of types, $\Type_i$ is parameterised by a universe level,
+to prevent Girard's paradox~\cite{coquand1986analysis}. Cumulativity allows programs at
+lower universe levels to inhabit higher universe levels. In practice, universe levels
+can be left implicit (and will be left implicit in the rest of this paper) ---
+the type checker generates a graph of constraints between universe levels (such
+as that produced by the $\mathsf{Forall}$ typing rule) and checks that there
+are no cycles. Otherwise, the typing rules are standard and type inference can
+be implemented in the usual way~\cite{loh2010tutorial}.
 
 \FFIG{\begin{array}{c}
 \mathsf{Type}\:
@@ -187,11 +189,29 @@ Figure \ref{cumul} gives the \demph{cumulativity} relation.
 {Typing rules for \TT{}}
 {typerules}
 
+\FFIG{
+\begin{array}{c}
+\Rule{\Gamma\proves\vS\converts\vT}
+{\Gamma\proves\vS\cumul\vT}
+\hg
+\Axiom{\Gamma\proves\Type_n\cumul\Type_{n+1}}
+\\
+\Rule{\Gamma\proves\vR\cumul\vS\hg\Gamma\proves\vS\cumul\vT}
+{\Gamma\proves\vR\cumul\vT}
+\\
+\Rule{\Gamma\proves\vS_1\converts\vS_2\hg\Gamma;\vx\Hab\vS_1\proves\vT_1\cumul\vT_2}
+{\Gamma\proves\all{\vx}{\vS_1}\SC\vT_1\cumul\all{\vx}{\vS_2}{\vT_2}}
+\end{array}
+}
+{Cumulativity}
+{cumul}
+
 \subsection{Inductive Families}
 
+\label{sect:inductivefams}
+
 Inductive families \cite{dybjer1994inductive} are a form of simultaneously
-defined collection of algebraic data types (such as Haskell
-\texttt{data} declarations) which can be parametrised over
+defined collection of algebraic data types which can be parametrised over
 \remph{values} as well as types.  An inductive family is declared 
 in a similar style to a Haskell GADT declaration~\cite{pj2006gadts}
 as
@@ -252,6 +272,155 @@ index $\vk$ is given \remph{explicitly}.
 }
 
 \subsection{Pattern matching definitions}
+
+\label{sect:patdefs}
+
+\subsubsection{Syntax}
+
+A pattern matching definition for a function named $\FN{f}$ takes the following form,
+consisting of a type declaration followed by one or more pattern clauses:
+
+\DM{
+\AR{
+\FN{f}\Hab\vt\\
+\pat{\tx_1}{\ttt_1}\SC\FN{f}\:\ttt_1\:=\:\vt_1\\
+\ldots\\
+\pat{\tx_n}{\ttt_n}\SC\FN{f}\:\ttt_n\:=\:\vt_n\\
+}
+}
+
+A pattern clause consists of a list of pattern variable bindings, 
+and a left and right hand side, both of which
+are \TT{} expressions. Each side is type checked relative to the variable bindings,
+and the types of each side must convert. Additionally, the
+left hand side must take the form of $\FN{f}$ applied to a number of \TT{} expressions,
+and the number of arguments must be the same in each clause. The right hand
+sides may include applications of $\FN{f}$, i.e. pattern matching definitions may
+be recursive. Termination analysis is implemented separately. The validity of a pattern
+clause is defined by the following rule:
+
+\DM{
+\Rule{
+\Gamma;\lam{\tx}{\tU}\proves\FN{f}\:\tts\Hab\vS\hg
+\Gamma;\lam{\tx}{\tU}\proves\ve\Hab\vT\hg
+\Gamma\proves\vS\converts\vT}
+{
+\Gamma\proves\pat{\tx}{\tU}\SC\FN{f}\:\tts\:=\:\ve\:\RW{valid}
+}
+}
+
+\subsubsection{Semantics}
+
+Matching on an expression proceeds by comparing the expression to
+each match clause in order, resulting in either:
+
+\begin{itemize}
+\item \demph{Success}, with pattern variables mapping to expressions
+\item \demph{Failure}, with matching continuing by proceeding to the next match clause
+\item Matching being \demph{blocked}, for example by attempting to match a variable
+against a constructor pattern. In this case, no reduction occurs, because instantiating
+the variable may provide enough information for the clause to match.
+\end{itemize}
+
+% Pat(x args) => x (Pat' args)
+% Pat (x) => x
+% Pat _ => _
+
+In order to implement pattern matching, we must separate the \remph{accessible} and
+\remph{inaccessible} patterns. A pattern is \demph{accessible} (that is, it is possible
+to match against it) if it is constructor headed, or a variable. Inaccessible patterns
+are converted to ``match anything'' patterns. We convert clauses to matchable pattern
+clauses with the $\MO{Clause}$ operation, given in Figure \ref{mkclause}.
+We extend the telescope notation to meta-operations: the notation $\vec{\MO{Pat}}$ lifts the
+$\MO{Pat}$ operation across a list of arguments.
+
+\FFIG{
+\AR{
+\PA{\A}{
+& \MO{Clause} & (\pat{\tx}{\tU}\SC\FN{f}\:\tts\:=\:\ve)
+ & \MoRet{\FN{f}\:(\vec{\MO{Pat}}\:\tts)\:=\:\ve}
+}
+\medskip\\
+\PA{\A}{
+& \MO{Pat} & (\vx\:\tts) & \MoRet{\vx\:(\vec{\MO{Pat}}\:\tts) 
+  \hg\mbox{(if $\MO{Con}\:\vx$ and $\MO{Arity}\:\vx = \MO{Length}\:\tts$)}} \\
+& \MO{Pat} & \vx & \MoRet{\vx} \hg\mbox(if $\vx$ is a pattern variable)\\
+& \MO{Pat} & \cdot & \MoRet{\_} \hg\mbox(in all other cases)\\
+}
+}
+}
+{Building matchable pattern clauses}
+{mkclause}
+
+
+% Match (c args, c args') => Match' (args, args')
+% Match (c args, x)       => Blocked
+% Match (x, t)            => Success (x => t)
+% Match (_, t)            => Success ()  
+
+\newcommand{\Blocked}{\mathsf{Blocked}}
+\newcommand{\Success}{\mathsf{Success}}
+\newcommand{\Failure}{\mathsf{Failure}}
+
+Pattern matching is invoked by the evaluator on encountering a function with
+a pattern matching definition applied to some arguments. If successful, pattern
+matching returns a new expression, which can then be reduced further.
+Figure \ref{pmatch} gives the semantics of pattern matching a collection of 
+matchable clauses
+$\tc$ against an expression $\ve$. $\MO{Match}$ attempts to match each clause in
+turn against $\ve$. If matching a clause returns $\Success$ or $\Blocked$, then
+matching terminates. If matching a clause returns $\Failure$, then matching proceeds
+with the next clause. The algorithm uses the following meta-operations:
+
+\begin{itemize}
+\item $\MO{Con}\:\vx$, which returns true if $\vx$ is a constructor name
+\item $\MO{Arity}\:\vx$, which, if $\vx$ is a constructor name, returns the number of arguments
+$\vx$ requires.
+\item $\MO{Length}\:\tts$, which returns the length of the telescope $\tts$
+\end{itemize}
+
+
+\FFIG{
+\AR{
+\PA{\A\A}{
+& \MO{MatchArg} & (\vx\:\tts) & (\vx\:\tts')
+    & \MoRet{\vec{\MO{MatchArg}}\:\tts\:\tts'\hg\mbox{(if $\MO{Con}\:\vx$)}}\\
+& \MO{MatchArg} & (\vx\:\tts) & \vx & \MoRet{\Blocked} \\
+& \MO{MatchArg} & \vx & \vt & \MoRet{\Success\:(\vx\mapsto\vt)} \\
+& \MO{MatchArg} & \_ & \vt & \MoRet{\Success\:()} \\
+& \MO{MatchArg} & \cdot & \cdot & \MoRet{\Failure} 
+}
+\medskip\\
+\PA{\A\A}{
+& \MO{MatchClause} & (\vf\:\tp = \ve) & (\vf\:\tts) &
+ \MoRet{
+ \AR{
+ \Success\:\ve[\tx/\tv]\hg\mbox{(if $\vec{\MO{MatchArg}}\:\tp\:\tts \mq \Success\:(\tx,\tv)$)}\\
+ \Blocked\hg\mbox{(if $\vec{\MO{MatchArg}}\:\tp\:\tts \mq \Blocked$)}\\
+ \Failure\hg\mbox{(if $\vec{\MO{MatchArg}}\:\tp\:\tts \mq \Failure$)}\\
+ }
+ } \\
+& \MO{MatchClause} & (\vf\:\tp = \ve) & \cdot & \MoRet{\Failure} \\
+}
+\medskip\\
+\PA{\A\A}{
+& \MO{Match} & (\vc ; \tc) & \ve &
+ \MoRet{
+ \AR{
+ \Success\:\vx\hg\mbox{(if $\MO{MatchClause}\:\vc\:\ve \mq \Success\:\vx)$} \\
+ \Blocked\hg\mbox{(if $\MO{MatchClause}\:\vc\:\ve \mq \Blocked)$} \\
+ \MO{Match}\:\tc\:\ve\hg\mbox{(otherwise)}
+ }
+ } \\
+& \MO{Match} & \cdot & \ve & \MoRet{\Failure}
+}
+}
+}
+{Pattern matching semantics}
+{pmatch}
+
+In practice, for efficiency, pattern matching is implemented by compiling the match clauses to
+a tree of case expressions~\cite{Augustsson1985}. 
 
 \subsection{The Development Calculus \TTdev}
 
