@@ -1,12 +1,133 @@
+\newcommand{\ttinterp}[1]{\mathcal{E}\interp{#1}}
+
 \section{Elaborating \Idris{}}
+
+An \Idris{} program consists of a series of declarations --- data types, functions,
+type classes and instances. In this section, we describe how these high level declarations
+are translated into a \TT{} program consisting of inductive families and pattern matching
+function definitions. We will need to work at the \remph{declaration} level, and at
+the \remph{expression} level, defining the following meta-operations:
+
+\begin{itemize}
+\item $\ttinterp{\cdot}$, which builds a \TT{} expression from an \Idris{} expression
+\item $\MO{Elab}$, which processes a top level \Idris{} declaration by generating
+one or more \TT{} declarations.
+\end{itemize}
 
 \subsection{The Development Calculus \TTdev}
 
-\TTdev{} is \TT{} extended with hole binders, Oleg-style~\cite{McBride1999}. 
+We build \TT{} expressions by using high level \Idris{} expressions to
+direct a tactic based theorem prover, which builds the \TT{} expressions
+step by step, by refinement. In order to build expressions in this way,
+the type theory needs to support
+\remph{incomplete} terms, and a method for term construction. 
+To achieve this, we extend \TT{} with \remph{holes},
+calling the extended calculus \TTdev{}.
+Holes stand for the parts of programs which have not yet been
+instantiated; this largely follows the \Oleg{} development
+calculus~\cite{McBride1999}.
 
-\subsection{The $\MO{Elab}$ meta-language}
+The basic idea is to extend the syntax for binders with a \remph{hole}
+binding and a \remph{guess} binding. 
+These extensions are given in Figure \ref{ttdev}.
+The \remph{guess} binding is
+similar to a $\LET$ binding, but without any computational force,
+i.e. the bound names do not reduce.
+Using binders to represent holes is useful in a dependently typed setting since
+one value may determine another. Attaching a ``guess'' to a binder ensures that
+instantiating one such value also instantiates all of its dependencies. The
+typing rules for binders ensure that no $?$ bindings leak into types.
 
+\FFIG{
+\AR{
+\vb ::= \ldots 
+ \:\mid\: \hole{\vx}{\vt} \:\:(\mbox{hole binding}) \:\:
+ \:\mid\: \guess{\vx}{\vt}{\vt} \:\:(\mbox{guess})
+\medskip\\
+\Rule{
+\Gamma;\hole{\vx}{\vS}\proves\ve\Hab\vT
+}
+{
+\Gamma\proves\hole{\vx}{\vS}\SC\ve\Hab\vT
+}
+\hspace*{0.1cm}\vx\not\in\vT
+\hspace*{0.1in}\mathsf{Hole}
+\hg
+\Rule{
+\Gamma;\guess{\vx}{\vS}{\ve_1}\proves\ve_2\Hab\vT
+}
+{
+\Gamma\proves\guess{\vx}{\vS}{\ve_1}\SC\ve_2\Hab\vT
+}
+\hspace*{0.1cm}\vx\not\in\vT
+\hspace*{0.1in}\mathsf{Guess}
+}
+}
+{\TTdev{} extensions}
+{ttdev}
+
+
+\subsection{Proof State}
+
+A proof state is a tuple, $(\vC, \Delta, \vT, \vQ)$, containing:
 
 \begin{itemize}
-\item $\MO{Check}\:\vt\:\cq\:(\vt, \vt)$
+\item A global context, $\vC$, containing pattern matching definitions
+\item A local context, $\Delta$, containing pattern bindings
+\item A proof term, $\vT$, in \TTdev{}
+\item A hole queue, $\vQ$
+%\item \remph{Deferred} definitions, $\vD$, for introducing global metavariables
 \end{itemize}
+
+The \remph{hole queue} is a list of names of hole and guess binders in the proof term ---
+we ensure that each bound name is unique. Holes essentially refer to \remph{sub goals}
+in the proof.
+When this queue is empty, the proof term is complete.
+Creating a \TT{} expression from an \Idris{} expresson involves creating
+a new proof state, with an empty proof term, and using the high level definition
+to direct the building of a final proof state, with a complete proof term.
+
+In the implementation, the proof state is captured in an elaboration monad,
+\texttt{Elab}, which includes various operations for querying and updating
+the proof state, manipulating terms, generating fresh names, etc. However, we will
+describe \Idris{} elaboration in terms of meta-operations on the proof state,
+in order to capture the essence of the elaboration process without being distracted
+by implementation details. These meta-operations include: 
+
+\begin{itemize}
+\item \demph{Queries} which retrieve values from the proof state, without modifying
+the state. For example, we can:
+\begin{itemize}
+\item Retrieve the local context $\Gamma$ at the current sub goal
+\item Type check or normalise a term relative to $\Gamma$
+\item Unify two terms (potentially solving sub goals) relative to $\Gamma$ 
+\end{itemize}
+\item \demph{Tactics} which update the proof term. Tactics operate on the sub term
+at the binder specified by the head of the hole queue $\vQ$.
+\item \demph{Focussing} on a specific sub goal, which brings a different sub goal to the
+head of the hole queue.
+\item \demph{Deferring} a sub goal, which adds a new definition to the global context
+$\vC$ which solves the sub goal.
+\end{itemize}
+
+Elaboration of an \Idris{} expression involves creating a new proof state, running
+a series of tactics to build a complete proof term, then retrieving and \remph{rechecking}
+the final proof term, which must be a \TT{} program (i.e. does not contain any of the
+\TTdev{} extensions).
+
+\subsection{System State}
+
+We need the global state, for implicits, global context.
+
+\subsection{Elaborating Expressions}
+
+
+\IdrisM{}, a subset of \Idris{} not including syntactic sugar (e.g. pairs, do notation, etc).
+
+Implicit and type class arguments? Expanded at the application site (we need to know
+it's the global name after all and we do that by type).
+
+\subsection{Elaborating Data Types}
+
+\subsection{Elaborating Pattern Matching}
+

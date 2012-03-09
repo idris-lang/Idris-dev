@@ -77,6 +77,8 @@ $\LET$ binding:
 
 \subsubsection{Evaluation}
 
+\label{sect:evaluation}
+
 Evaluation of \TT{} is defined by contraction schemes, given in Figure
 \ref{ttcontract}. \demph{Contraction}, relative to a context $\Gamma$, is given
 by one of the following schemes:
@@ -119,6 +121,8 @@ reduction rules.
 
 
 \subsubsection{Typing rules}
+
+\label{sect:typerules}
 
 The type inference rules for \TT{} expressions are given in Figure \ref{typerules}.
 These rules use the \demph{cumulativity} relation, defined in 
@@ -309,6 +313,11 @@ clause is defined by the following rule:
 }
 }
 
+A valid pattern matching definition effectively extends \TT{} with a new constant,
+with the given type (extending the initial typing rules given in Section \ref{sect:typerules})
+and reduction behaviour (extending the initial reduction rules given in Section
+\ref{sect:evaluation}). 
+
 \subsubsection{Semantics}
 
 Matching on an expression proceeds by comparing the expression to
@@ -435,8 +444,9 @@ level language implementation that if it were implemented directly.
 
 The process of elaborating a high level language into a core type theory like \TT{} is,
 however, less well understood, and presents several challenges depending on the
-features of the high level language. Elaboration has been implemented in various different ways, 
-for example in Agda~\cite{norell2007thesis} and Epigram~\cite{McBride2004a}.
+features of the high level language. 
+%Elaboration has been implemented in various different ways, 
+%for example in Agda~\cite{norell2007thesis} and Epigram~\cite{McBride2004a}.
 
 \subsubsection{Example Elaboration}
 
