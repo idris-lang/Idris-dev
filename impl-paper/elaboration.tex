@@ -98,16 +98,18 @@ by implementation details. These meta-operations include:
 \item \demph{Queries} which retrieve values from the proof state, without modifying
 the state. For example, we can:
 \begin{itemize}
+\item Get the type of the current sub goal
 \item Retrieve the local context $\Gamma$ at the current sub goal
 \item Type check or normalise a term relative to $\Gamma$
-\item Unify two terms (potentially solving sub goals) relative to $\Gamma$ 
 \end{itemize}
+\item \demph{Unification}, which unifies two terms (potentially solving sub goals) 
+relative to $\Gamma$
 \item \demph{Tactics} which update the proof term. Tactics operate on the sub term
 at the binder specified by the head of the hole queue $\vQ$.
 \item \demph{Focussing} on a specific sub goal, which brings a different sub goal to the
 head of the hole queue.
-\item \demph{Deferring} a sub goal, which adds a new definition to the global context
-$\vC$ which solves the sub goal.
+%\item \demph{Deferring} a sub goal, which adds a new definition to the global context
+%$\vC$ which solves the sub goal.
 \end{itemize}
 
 Elaboration of an \Idris{} expression involves creating a new proof state, running
@@ -117,7 +119,110 @@ the final proof term, which must be a \TT{} program (i.e. does not contain any o
 
 \subsection{System State}
 
-We need the global state, for implicits, global context.
+The system state is a tuple, $(\vC,\vA,\vI)$, containing:
+
+\begin{itemize}
+\item A global context, $\vC$, containing pattern matching definitions
+\item Implicit arguments, $\vA$, recording which arguments are implicit for each global name
+\item Type class instances, $\vI$, containing dictionaries for type classes
+\end{itemize}
+
+In the implementation, the system state is captured in a monad, \texttt{Idris}, and
+includes additional information such as syntax overloadings,
+command line options, and optimisations, which do not concern us here. Elaboration
+of expressions requires access to the system state in particular in order to expand
+implicit arguments and resolve type classes. 
+
+For each global name, $\vA$ records whether its arguments are explicit, implicit,
+or type class constraints.  For example, recall the declaration
+of \texttt{vAdd}:
+
+\begin{SaveVerbatim}{vAddImpT}
+
+vAdd : Num a => Vect a n -> Vect a n -> Vect a n
+
+\end{SaveVerbatim}
+\useverb{vAddImpT} 
+
+\noindent
+Written in full, and giving each argument an explicit name, we get the
+type declaration:
+
+\begin{SaveVerbatim}{vAddImpT}
+
+vAdd : (a : _) -> (n : _) -> (c : Num a) -> 
+       (xs : Vect a n) -> (ys : Vect a n) -> Vect a n
+
+\end{SaveVerbatim}
+\useverb{vAddImpT} 
+
+\noindent
+For \tFN{vAdd}, we record that \texttt{a} and \texttt{n} are implicit, 
+\texttt{c} is a constraint, and \texttt{xs} and \texttt{ys} are explicit. When
+the elaborator encounters an application of \tFN{vAdd}, it knows that unless these arguments
+are given explicitly, the application must be expanded.
+
+\newcommand{\Check}{\MO{Check}_\Gamma}
+\newcommand{\Eval}{\MO{Normalise}_\Gamma}
+\newcommand{\Unify}{\MO{Unify}_\Gamma}
+
+\subsection{Tactics}
+
+% Meta-operations Check, Normalise, Unify 
+In order to build \TT{} expressions from \Idris{} programs, we define a collection
+of meta-operations for querying and modifying the proof state. Meta-operations
+may have side-effects including failure, or updating the proof state. We have the following
+primitive meta-operations:
+
+\begin{itemize}
+\item $\MO{Focus}\:\vn$, which moves $\vn$ to the head of the hole queue
+\item $\MO{Check}$, which type checks an expression relative to a context
+$\Gamma$. \\
+$\Check\:\ve\:\mq\:(\vv,\vt)$ means that checking an expression $\ve$
+returns a well typed value $\vv$ and its type $\vt$. $\MO{Check}$ will fail
+if the expression is not well-typed.
+\item $\MO{Normalise}$, which evaluates a well-typed expression relative to a context 
+$\Gamma$.\\
+$\Eval\:\ve\:\mq\:\vv$ means that evaluating the expression $\ve$ returns the
+value $\vv$.
+\item $\MO{Unify}$, which unifies two well-typed expressions.
+\\
+$\Unify\:\ve_1\:\ve_2\:\mq\:\tv$ means that unifying $\ve_1$ and $\ve_2$ produces a
+mapping $\tv$ from hole names to the values the holes must be instantiated with for
+$\ve_1$ and $\ve_2$ to be convertible relative to $\Gamma$ 
+(i.e. for $\Gamma\proves\ve_1\converts\ve_2$ to hold). $\MO{Unify}$ will fail
+if it cannot find such a mapping.
+\end{itemize}
+
+\remph{Tactics} are specifically meta-operations which operate on the sub-term given
+by the hole at the head of the hole queue in the proof state. 
+
+
+Creating and destroying holes: Claim, Exact, Solve
+
+Attack, Lambda, Pi, Let
+
+Apply
+
+
+%--- give unify in full, esp. as it solves sub goals? Maybe...
+
+% Unify' G x t             = Success (x, t) if ?x : t in G
+% Unify' G t x             = Success (x, t) if ?x : t in G
+% Unify' G (b x. e) (b' x'. e')   = Unify' G b b'; Unify' G;b e e'[x/x']
+% Unify' G ((\x.e) x) e'   = Unify' G e e' 
+% Unify' G e ((\x.e') x)   = Unify' G e e' 
+% Unify' G (f es) (f' es') = vs <- Unify' G f f'; Injective f
+                             
+% Unify' G x y             = Success () if G |- x == y
+% Unify' G . .             = Failure
+
+% Unify' G (\x : t . e) (\x : t' . e') = Unify' G t t'; Unify' G e e'
+% ...
+
+
+%\DM{
+%}
 
 \subsection{Elaborating Expressions}
 
