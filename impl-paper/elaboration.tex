@@ -72,12 +72,12 @@ typing rules for binders ensure that no $?$ bindings leak into types.
 
 \subsection{Proof State}
 
-A proof state is a tuple, $(\vC, \Delta, \vT, \vQ)$, containing:
+A proof state is a tuple, $(\vC, \Delta, \ve, \vQ)$, containing:
 
 \begin{itemize}
-\item A global context, $\vC$, containing pattern matching definitions
+\item A global context, $\vC$, containing pattern matching definitions and their types
 \item A local context, $\Delta$, containing pattern bindings
-\item A proof term, $\vT$, in \TTdev{}
+\item A proof term, $\ve$, in \TTdev{}
 \item A hole queue, $\vQ$
 %\item \remph{Deferred} definitions, $\vD$, for introducing global metavariables
 \end{itemize}
@@ -120,7 +120,9 @@ head of the hole queue.
 Elaboration of an \Idris{} expression involves creating a new proof state, running
 a series of tactics to build a complete proof term, then retrieving and \remph{rechecking}
 the final proof term, which must be a \TT{} program (i.e. does not contain any of the
-\TTdev{} extensions).
+\TTdev{} extensions). We call a sub-term which contains no hole or guess bindings 
+\demph{pure}. Although a pure term does not containg hole or guess bindings, it may
+neverthless \remph{refer} to hole- or guess-bound variables.
 
 We initialise a proof state with the $\MO{NewProof}$ operation. Given a global
 context $\vC$, $\MO{NewProof}\:\vt$ sets up the proof state as:
@@ -132,11 +134,13 @@ context $\vC$, $\MO{NewProof}\:\vt$ sets up the proof state as:
 The local context is initially empty, and the initial hole queue is the $\vx$ standing for
 the entire expression. We can reset the proof term with the $\MO{NewTerm}$ operation.
 In an existing proof state $(\vC, \Delta, \ve, \vQ)$,
-$\MO{NewTerm}\:\vt$ updates the proof state to:
+$\MO{NewTerm}\:\vt$ discards the proof term and hole queue, and
+updates the proof state to:
 
 \DM{
 (\vC, \Delta, \hole{\vx}{\vt}\SC\vx, \langle\vx\rangle)
 }
+
 
 This allows us in particular to use pattern bindings from the left hand side of a pattern
 matching definition in the term on the right hand side.
@@ -146,7 +150,7 @@ matching definition in the term on the right hand side.
 The system state is a tuple, $(\vC,\vA,\vI)$, containing:
 
 \begin{itemize}
-\item A global context, $\vC$, containing pattern matching definitions
+\item A global context, $\vC$, containing pattern matching definitions and their types
 \item Implicit arguments, $\vA$, recording which arguments are implicit for each global name
 \item Type class instances, $\vI$, containing dictionaries for type classes
 \end{itemize}
@@ -205,7 +209,7 @@ $\Gamma$, returning its type.
 $\MO{Check}$ will fail
 if the expression is not well-typed.
 \item $\Eval\:\ve$, which evaluates a well-typed expression $\ve$ relative to a context 
-$\Gamma$, returing its normal form.
+$\Gamma$, returning its normal form.
 \item 
 $\Unify\:\ve_1\:\ve_2$, 
 which unifies $\ve_1$ and $\ve_2$ by finding the values that holes must be instantiated
@@ -229,7 +233,8 @@ $\Gamma$ which contains all the bindings and pattern bindings in scope at that
 point in the term. The sub-term $\vt$ will either be a hole binding
 $\hole{\vx}{\vT}\SC\ve$ or a guess binding $\guess{\vx}{\vT}{\vv}\SC\ve$. The
 tactic returns a new term $\vt'$ which can take any form, provided it is
-well-typed. Tactics may also have the side effect of updating the proof state,
+well-typed, with a type convertible to the type of $\vt$. 
+Tactics may also have the side effect of updating the proof state,
 therefore we will describe tactics in a pseudo-code with $\RW{do}$ notation.
 
 We define a set of primitive tactics: $\MO{Create}$, $\MO{Fill}$ and $\MO{Solve}$
@@ -305,7 +310,7 @@ the guess is substituted into its scope:
 \DM{
 \PA{\A}{
 \MO{Solve}_\Gamma & (\guess{\vx}{\vT}{\vv}\SC\ve) &
-   \MoRet{\RW{return}\:\ve[\vv/\vx]\hg\RW{if}\:\MO{Pure}\:\vv}
+   \MoRet{\RW{return}\:\ve[\vv/\vx]\hg\mbox{(if $\MO{Pure}\:\vv$)}}
 }
 }
 
@@ -317,15 +322,15 @@ handle failure using the $\MO{Try}$ tactic combinator:
 \DM{
 \PA{\A\A\A}{
 \MO{Try}_\Gamma & \VV{t1} & \VV{t2} & \vt &
-   \MoRet{\AR{\VV{t1}_\Gamma\:\vt\hg\RW{if}\:\VV{t1}\:\mbox{succeeds} \\
-              \VV{t2}_\Gamma\:\vt\hg\RW{otherwise}}}
+   \MoRet{\AR{\VV{t1}_\Gamma\:\vt\hg\mbox{(if $\VV{t1}$ succeeds)} \\
+              \VV{t2}_\Gamma\:\vt\hg\mbox{(otherwise)}}}
 }
 }
 
 \subsubsection{Creating binders}
 
 We also define primitive tactics for constructing binders. We can create a $\lambda$
-binding if the goal is a function type:
+binding if the goal normalises to a function type:
 
 \DM{
 \PA{\A\A}{
@@ -406,10 +411,10 @@ building the right hand side.
 \subsubsection{Example}
 
 Tactics are executed by a higher level meta-operation $\MO{RunTac}$, which
-locates the appropriate sub-term, applies the tactic with the local context
-and local sub-term, and
-replaces it with the term returned by the
-tactic, updates the hole queue in the proof state, and updates holes which have
+locates the appropriate sub-term, applies the tactic with the context
+local to this sub-term, and
+replaces the sub-term with the term returned by the
+tactic. It then updates the hole queue in the proof state, and updates holes which have
 been solved by unification. If the tactic creates new holes, these are automatically
 added to the \remph{head} of the hole queue.
 For example, consider the following simple
@@ -449,6 +454,13 @@ in Figure \ref{idelab}. Note that $\MO{Term}$ retrieves the proof term from the 
 state. Both $\MO{MkIdType}$ and $\MO{MkId}$ finish by returning a completed \TT{} term.
 Note in particular that each $\MO{Attack}$ and each $\MO{Fill}$, which create new guesses,
 are closed with a $\MO{Solve}$.
+
+Setting up elaboration in this way, with a proof state captured in a monad,
+and a primitive collection of tactics,
+makes it easy to derive more complex tactics for elaborating higher level language constructs,
+in much the same way as the \texttt{Ltac} language in Coq. As a result, elaboration of
+a language construct (or a program such as $\FN{id}$) bears a strong resemblance to
+a Coq proof script.
 
 \FFIG{
 \AR{
