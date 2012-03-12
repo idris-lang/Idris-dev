@@ -187,18 +187,58 @@ $\Eval\:\ve\:\mq\:\vv$ means that evaluating the expression $\ve$ returns the
 value $\vv$.
 \item $\MO{Unify}$, which unifies two well-typed expressions.
 \\
-$\Unify\:\ve_1\:\ve_2\:\mq\:\tv$ means that unifying $\ve_1$ and $\ve_2$ produces a
-mapping $\tv$ from hole names to the values the holes must be instantiated with for
+$\Unify\:\ve_1\:\ve_2\:\mq\:\tu$ means that unifying $\ve_1$ and $\ve_2$ produces a
+mapping $\tu$ from hole names to the values the holes must be instantiated with for
 $\ve_1$ and $\ve_2$ to be convertible relative to $\Gamma$ 
 (i.e. for $\Gamma\proves\ve_1\converts\ve_2$ to hold). $\MO{Unify}$ will fail
 if it cannot find such a mapping.
 \end{itemize}
 
 \remph{Tactics} are specifically meta-operations which operate on the sub-term given
-by the hole at the head of the hole queue in the proof state. 
+by the hole at the head of the hole queue in the proof state. They take the following form:
 
+\DM{
+\PA{\A\A}{
+\MO{Tactic}_\Gamma & \vec{\VV{args}} & \vt & \MoRet{\vt'}
+}
+}
 
-Creating and destroying holes: Claim, Exact, Solve
+A tactic takes a sequence of zero or more arguments $\vec{\VV{args}}$ followed by the sub-term $\vt$
+on which it is operating. It runs relative to a context $\Gamma$ which contains all the bindings
+and pattern bindings
+in scope at that point in the term. The sub-term $\vt$ will either be a hole binding 
+$\hole{\vx}{\vT}\SC\ve$ or a guess binding $\guess{\vx}{\vT}{\vv}\SC\ve$. The tactic returns a 
+new term $\vt'$ which can take any form, provided it is well-typed. Tactics are executed by a higher
+level meta-operation $\MO{RunTac}$, which locates the appropriate sub-term, replaces it with the
+term returns by the tactic, updates the hole queue in the proof state, and updates holes which
+have been solved by unification.
+
+Creating and destroying holes: Claim, Fill, Solve
+
+\DM{
+\PA{\A\A}{
+\MO{Claim}_\Gamma & (\vy \Hab\vS) & (\hole{\vx}{\vT}\SC\ve) & 
+   \MoRet{\hole{\vx}{\vT}\SC\hole{\vy}{\vS}\SC\ve} \\
+}
+}
+
+\DM{
+\PA{\A\A}{
+\MO{Fill}_\Gamma & \vv & (\hole{\vx}{\vT}\SC\ve) & 
+   \MoRet{\RW{do}\:\AR{
+   (\vv',\vT') \leftarrow \Check\:\vv\\
+   \Unify\:\vT\:\vT'\\
+   \RW{return}\:\guess{\vx}{\vT}{\vv'}\SC\SC\ve}
+   } \\
+}
+}
+
+\DM{
+\PA{\A}{
+\MO{Solve}_\Gamma & (\guess{\vx}{\vT}{\vv}\SC\ve) &
+   \MoRet{\ve[\vv/\vx]}
+}
+}
 
 Attack, Lambda, Pi, Let
 
