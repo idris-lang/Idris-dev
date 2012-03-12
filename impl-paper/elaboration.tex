@@ -6,13 +6,16 @@ An \Idris{} program consists of a series of declarations --- data types, functio
 type classes and instances. In this section, we describe how these high level declarations
 are translated into a \TT{} program consisting of inductive families and pattern matching
 function definitions. We will need to work at the \remph{declaration} level, and at
-the \remph{expression} level, defining the following meta-operations:
+the \remph{expression} level, defining the following meta-operations
+which together constitute an algorithm for elaborating \Idris{}
+programs to \TT{}.
 
 \begin{itemize}
 \item $\ttinterp{\cdot}$, which builds a \TT{} expression from an \Idris{} expression
 \item $\MO{Elab}$, which processes a top level \Idris{} declaration by generating
 one or more \TT{} declarations.
 \end{itemize}
+
 
 \subsection{The Development Calculus \TTdev}
 
@@ -32,9 +35,9 @@ binding and a \remph{guess} binding.
 These extensions are given in Figure \ref{ttdev}.
 The \remph{guess} binding is
 similar to a $\LET$ binding, but without any computational force,
-i.e. the bound names do not reduce.
+i.e. there are no reduction rules for guess bindings. 
 Using binders to represent holes is useful in a dependently typed setting since
-one value may determine another. Attaching a ``guess'' to a binder ensures that
+one value may determine another. Attaching a guess to a binder ensures that
 instantiating one such value also instantiates all of its dependencies. The
 typing rules for binders ensure that no $?$ bindings leak into types.
 
@@ -79,7 +82,9 @@ A proof state is a tuple, $(\vC, \Delta, \vT, \vQ)$, containing:
 %\item \remph{Deferred} definitions, $\vD$, for introducing global metavariables
 \end{itemize}
 
-The \remph{hole queue} is a list of names of hole and guess binders in the proof term ---
+The \remph{hole queue} is a list of names of hole and guess binders 
+$\langle\vx_1,\vx_2,\ldots,\vx_n\rangle$
+in the proof term ---
 we ensure that each bound name is unique. Holes essentially refer to \remph{sub goals}
 in the proof.
 When this queue is empty, the proof term is complete.
@@ -116,6 +121,25 @@ Elaboration of an \Idris{} expression involves creating a new proof state, runni
 a series of tactics to build a complete proof term, then retrieving and \remph{rechecking}
 the final proof term, which must be a \TT{} program (i.e. does not contain any of the
 \TTdev{} extensions).
+
+We initialise a proof state with the $\MO{NewProof}$ operation. Given a global
+context $\vC$, $\MO{NewProof}\:\vt$ sets up the proof state as:
+
+\DM{
+(\vC, \cdot, \hole{\vx}{\vt}\SC\vx, \langle\vx\rangle)
+}
+
+The local context is initially empty, and the initial hole queue is the $\vx$ standing for
+the entire expression. We can reset the proof term with the $\MO{NewTerm}$ operation.
+In an existing proof state $(\vC, \Delta, \ve, \vQ)$,
+$\MO{NewTerm}\:\vt$ updates the proof state to:
+
+\DM{
+(\vC, \Delta, \hole{\vx}{\vt}\SC\vx, \langle\vx\rangle)
+}
+
+This allows us in particular to use pattern bindings from the left hand side of a pattern
+matching definition in the term on the right hand side.
 
 \subsection{System State}
 
@@ -175,23 +199,19 @@ may have side-effects including failure, or updating the proof state. We have th
 primitive meta-operations:
 
 \begin{itemize}
-\item $\MO{Focus}\:\vn$, which moves $\vn$ to the head of the hole queue
-\item $\MO{Check}$, which type checks an expression relative to a context
-$\Gamma$. \\
-$\Check\:\ve\:\mq\:(\vv,\vt)$ means that checking an expression $\ve$
-returns a well typed value $\vv$ and its type $\vt$. $\MO{Check}$ will fail
+\item $\MO{Focus}\:\vn$, which moves $\vn$ to the head of the hole queue.
+\item $\Check\:\ve$, which type checks an expression $\ve$ relative to a context
+$\Gamma$, returning its type.
+$\MO{Check}$ will fail
 if the expression is not well-typed.
-\item $\MO{Normalise}$, which evaluates a well-typed expression relative to a context 
-$\Gamma$.\\
-$\Eval\:\ve\:\mq\:\vv$ means that evaluating the expression $\ve$ returns the
-value $\vv$.
-\item $\MO{Unify}$, which unifies two well-typed expressions.
-\\
-$\Unify\:\ve_1\:\ve_2\:\mq\:\tu$ means that unifying $\ve_1$ and $\ve_2$ produces a
-mapping $\tu$ from hole names to the values the holes must be instantiated with for
-$\ve_1$ and $\ve_2$ to be convertible relative to $\Gamma$ 
+\item $\Eval\:\ve$, which evaluates a well-typed expression $\ve$ relative to a context 
+$\Gamma$, returing its normal form.
+\item 
+$\Unify\:\ve_1\:\ve_2$, 
+which unifies $\ve_1$ and $\ve_2$ by finding the values that holes must be instantiated
+with for $\ve_1$ and $\ve_2$ to be convertible relative to $\Gamma$
 (i.e. for $\Gamma\proves\ve_1\converts\ve_2$ to hold). $\MO{Unify}$ will fail
-if it cannot find such a mapping.
+if it cannot find such values. If successful, $\MO{Unify}$ will update the proof state.
 \end{itemize}
 
 \remph{Tactics} are specifically meta-operations which operate on the sub-term given
@@ -199,51 +219,262 @@ by the hole at the head of the hole queue in the proof state. They take the foll
 
 \DM{
 \PA{\A\A}{
-\MO{Tactic}_\Gamma & \vec{\VV{args}} & \vt & \MoRet{\vt'}
+\MO{Tactic}_\Gamma & \:\vec{\VV{args}} & \:\vt & \MoRet{\vt'}
 }
 }
 
-A tactic takes a sequence of zero or more arguments $\vec{\VV{args}}$ followed by the sub-term $\vt$
-on which it is operating. It runs relative to a context $\Gamma$ which contains all the bindings
-and pattern bindings
-in scope at that point in the term. The sub-term $\vt$ will either be a hole binding 
-$\hole{\vx}{\vT}\SC\ve$ or a guess binding $\guess{\vx}{\vT}{\vv}\SC\ve$. The tactic returns a 
-new term $\vt'$ which can take any form, provided it is well-typed. Tactics are executed by a higher
-level meta-operation $\MO{RunTac}$, which locates the appropriate sub-term, replaces it with the
-term returns by the tactic, updates the hole queue in the proof state, and updates holes which
-have been solved by unification.
+A tactic takes a sequence of zero or more arguments $\vec{\VV{args}}$ followed
+by the sub-term $\vt$ on which it is operating. It runs relative to a context
+$\Gamma$ which contains all the bindings and pattern bindings in scope at that
+point in the term. The sub-term $\vt$ will either be a hole binding
+$\hole{\vx}{\vT}\SC\ve$ or a guess binding $\guess{\vx}{\vT}{\vv}\SC\ve$. The
+tactic returns a new term $\vt'$ which can take any form, provided it is
+well-typed. Tactics may also have the side effect of updating the proof state,
+therefore we will describe tactics in a pseudo-code with $\RW{do}$ notation.
 
-Creating and destroying holes: Claim, Fill, Solve
+We define a set of primitive tactics: $\MO{Create}$, $\MO{Fill}$ and $\MO{Solve}$
+which are used to create and destroy holes; and $\MO{Lambda}$, $\MO{Pi}$, $\MO{Let}$
+and $\MO{Attack}$ which are used to create binders.
+
+\subsubsection{Creating and destroying holes}
+
+The $\MO{Claim}$ tactic, given a name and a type, adds a new hole binding in
+the scope of the current goal $\vx$, adding the new binding to the hole queue, but
+keeping $\vx$ at the head:
 
 \DM{
 \PA{\A\A}{
 \MO{Claim}_\Gamma & (\vy \Hab\vS) & (\hole{\vx}{\vT}\SC\ve) & 
-   \MoRet{\hole{\vx}{\vT}\SC\hole{\vy}{\vS}\SC\ve} \\
+   \MoRet{\RW{return}\:\hole{\vx}{\vT}\SC\hole{\vy}{\vS}\SC\ve} \\
 }
 }
+
+The $\MO{Fill}$ tactic, given a value $\vv$, attempts to solve the current goal
+with $\vv$, creating a guess binding in its place. $\MO{Fill}$ attempts to
+solve other holes by unifying the expected type of $\vx$ with the type of $\vv$:
 
 \DM{
 \PA{\A\A}{
 \MO{Fill}_\Gamma & \vv & (\hole{\vx}{\vT}\SC\ve) & 
    \MoRet{\RW{do}\:\AR{
-   (\vv',\vT') \leftarrow \Check\:\vv\\
+   \vT' \leftarrow \Check\:\vv\\
    \Unify\:\vT\:\vT'\\
-   \RW{return}\:\guess{\vx}{\vT}{\vv'}\SC\SC\ve}
+   \RW{return}\:\guess{\vx}{\vT}{\vv'}\SC\ve}
    } \\
 }
 }
 
+\noindent
+For example, consider the following proof term:
+
+\DM{
+\AR{
+\hole{\vA}{\Set}\SC\hole{\vk}{\Nat}\SC
+\hole{\vx}{\vA}\SC\hole{\vxs}{\Vect\:\vA\:\vk}\SC
+\\
+\hole{\vys}{\Vect\:\vA\:(\suc\:\vk)}\SC\vys
+}
+}
+
+\noindent
+If $\vx$ is in focus (i.e., at the head of the hole queue) and we attempt to
+$\MO{Fill}$ it with an $\TC{Int}$ value $42$, we have:
+
+\begin{itemize}
+\item $\Check\:42\:\mq\:\TC{Int}$
+\item Unifying $\TC{Int}$ with $\vA$ (the type of $\vx$) is only possible if
+$\vA\:=\:\TC{Int}$, so we solve $\vA$.
+\end{itemize}
+
+\noindent
+Therefore the resulting proof term is:
+
+\DM{
+\AR{
+\hole{\vk}{\Nat}\SC
+\guess{\vx}{\TC{Int}}{42}\SC\hole{\vxs}{\Vect\:\TC{Int}\:\vk}\SC
+\\
+\hole{\vys}{\Vect\:\TC{Int}\:(\suc\:\vk)}\SC\vys
+}
+}
+
+The $\MO{Solve}$ tactic operates on a guess binding. If the guess is \remph{pure}, i.e., it
+is a \TT{} term containing no hole or guess bindings, then the value attached to
+the guess is substituted into its scope:
+
 \DM{
 \PA{\A}{
 \MO{Solve}_\Gamma & (\guess{\vx}{\vT}{\vv}\SC\ve) &
-   \MoRet{\ve[\vv/\vx]}
+   \MoRet{\RW{return}\:\ve[\vv/\vx]\hg\RW{if}\:\MO{Pure}\:\vv}
 }
 }
 
-Attack, Lambda, Pi, Let
+In each of these tactics, if any step fails, or the term in focus does not take
+the correct form (e.g. is not a guess in the case of $\MO{Solve}$ or not a hole
+in the case of $\MO{Claim}$ and $\MO{Fill}$, the entire tactic fails. We can
+handle failure using the $\MO{Try}$ tactic combinator:
 
-Apply
+\DM{
+\PA{\A\A\A}{
+\MO{Try}_\Gamma & \VV{t1} & \VV{t2} & \vt &
+   \MoRet{\AR{\VV{t1}_\Gamma\:\vt\hg\RW{if}\:\VV{t1}\:\mbox{succeeds} \\
+              \VV{t2}_\Gamma\:\vt\hg\RW{otherwise}}}
+}
+}
 
+\subsubsection{Creating binders}
+
+We also define primitive tactics for constructing binders. We can create a $\lambda$
+binding if the goal is a function type:
+
+\DM{
+\PA{\A\A}{
+\MO{Lambda}_\Gamma & \vn & (\hole{\vx}{\vT}\SC\vx) &
+ \MoRet{\RW{do}\:\AR{
+   \all{\vy}{\vS}\SC\vT'\:\leftarrow\:\Eval\:\vT \\
+   \RW{return}\:\lam{\vn}{\vS}\SC\hole{\vx}{\vT'[\vn/\vy]}\SC\vx
+   }
+   }
+}
+}
+
+\noindent
+We can create a $\forall$ binding if the goal is a $\TC{Set}$:
+
+\DM{
+\PA{\A\A}{
+\MO{Pi}_\Gamma & (\vn\Hab\vS) & (\hole{\vx}{\Set}\SC\vx) &
+ \MoRet{\RW{do}\:\AR{
+   \Set\:\leftarrow\:\Check\:\vS\\
+   \RW{return}\:\all{\vn}{\vS}\SC\hole{\vx}{\Set}\SC\vx
+   }
+   }
+}
+}
+
+\noindent
+To create a $\LET$ binding, we give a type and a value.
+
+\DM{
+\PA{\A\A}{
+\MO{Let}_\Gamma & (\vn\Hab\vS\defq\vv) & (\hole{\vx}{\vT}\SC\vx) &
+ \MoRet{\RW{do}\:\AR{
+   \Set\:\leftarrow\:\Check\:\vS\\
+   \vS'\:\leftarrow\:\Check\:\vv\\
+   \Unify\:\vS\:\vS'\\
+   \RW{return}\:\LET\:\vn\Hab\vS\defq\vv\SC\hole{\vx}{\vT}\SC\vx
+   }
+   }
+}
+}
+
+Each of these tactics require the term in focus to be of the form $\hole{\vx}{\vT}\SC\vx$.
+This is important, because if the scope of the binding was an arbitrary expression $\ve$,
+the binder would be scoped across this whole expression rather than the subexpression
+$\vx$ as intended.
+The $\MO{attack}$ tactic ensures that a hole
+is in the appropriate form, creating a new hole $\vh$ which is placed at the head
+of the queue:
+
+\DM{
+\PA{\A}{
+\MO{Attack}_\Gamma & (\hole{\vx}{\vT}\SC\ve) &
+ \MoRet{\RW{return}\:\guess{\vx}{\vT}{(\hole{\vh}{\vT}\SC\vh)}\SC\ve}
+}
+}
+
+Finally, we can convert a hole binding to a pattern binding by giving the 
+pattern variable a name. This solves a hole
+by adding the pattern binding to the proof state, and updating the proof term
+with the pattern variable directly:
+
+\DM{
+\PA{\A\A}{
+\MO{Pat}_\Gamma & \vn & (\hole{\vx}{\vT}\SC\ve) &
+  \MoRet{\RW{do}\:\AR{
+    \MO{PatBind}\:(\vx\Hab\vT)\\
+    \RW{return}\:\ve[\vn/\vx]
+  }}
+}
+}
+
+The $\MO{PatBind}$ operation simply updates the proof state with the given pattern
+binding. Once we have created bindings from the left hand side of a pattern
+matching definition, for example, we can retain these bindings for use when
+building the right hand side.
+
+\subsubsection{Example}
+
+Tactics are executed by a higher level meta-operation $\MO{RunTac}$, which
+locates the appropriate sub-term, applies the tactic with the local context
+and local sub-term, and
+replaces it with the term returned by the
+tactic, updates the hole queue in the proof state, and updates holes which have
+been solved by unification. If the tactic creates new holes, these are automatically
+added to the \remph{head} of the hole queue.
+For example, consider the following simple
+\TT{} definition for the identify function:
+
+\DM{
+\AR{
+\FN{id}\Hab\all{\vA}{\Set}\SC\all{\va}{\vA}\SC\vA \\
+\FN{id}\:=\:\lam{\vA}{\Set}\SC\lam{\va}{\vA}\SC\va  
+}
+}
+
+We can build $\FN{id}$ either as a complete term, or by applying a sequence of tactics.
+To achieve this, we create a proof state initialised with the type of $\FN{id}$ and
+apply a series of $\MO{Lambda}$ and $\MO{Fill}$ operations using $\MO{RunTac}$:
+
+\DM{
+\AR{
+\MO{MkId}\:\mq\:\RW{do}\:
+ \AR{
+   \MO{NewProof}\:\all{\vA}{\Set}\SC\all{\va}{\vA}\SC\vA \\
+   \MO{RunTac}\;\MO{Attack} \\
+   \MO{RunTac}\;(\MO{Lambda}\;\vA) \\
+   \MO{RunTac}\;\MO{Attack} \\
+   \MO{RunTac}\;(\MO{Lambda}\;\va) \\
+   \MO{RunTac}\;(\MO{Fill}\;\va)\\ 
+   \MO{RunTac}\;\MO{Solve}\\
+   \MO{RunTac}\;\MO{Solve}\\
+   \MO{RunTac}\;\MO{Solve}\\
+ }
+}
+}
+
+To aid readability, we will elide $\MO{RunTac}$, and use a semi-colon to indicate
+sequencing. Using this convention, we can build $\FN{id}$'s type and definition as shown
+in Figure \ref{idelab}. Note that $\MO{Term}$ retrieves the proof term from the current proof
+state. Both $\MO{MkIdType}$ and $\MO{MkId}$ finish by returning a completed \TT{} term.
+Note in particular that each $\MO{Attack}$ and each $\MO{Fill}$, which create new guesses,
+are closed with a $\MO{Solve}$.
+
+\FFIG{
+\AR{
+\MO{MkIdType}\:\mq\:\RW{do}\;
+ \AR{
+   \MO{NewProof}\:\Set\\
+   \MO{Attack} ; \MO{Pi}\:(\vA\Hab\Set) ;
+   \MO{Attack} ; \MO{Pi}\:(\va\Hab\vA) \\
+   \MO{Fill}\;\vA \\
+   \MO{Solve} ; \MO{Solve} ; \MO{Solve} \\
+   \MO{Term}
+ }
+ \medskip\\
+\MO{MkId}\:\mq\:\RW{do}\;
+ \AR{
+   \vt\:\leftarrow\:\MO{MkIdType}; \MO{NewProof}\:\vt\\
+   \MO{Attack} ; \MO{Lambda}\;\vA ; 
+   \MO{Attack} ; \MO{Lambda}\;\va \\
+   \MO{Fill}\;\va \\
+   \MO{Solve} ; \MO{Solve} ; \MO{Solve}\\
+   \MO{Term}
+ }
+}
+}
+{Building $\FN{id}$ with tactics}
+{idelab}
 
 %--- give unify in full, esp. as it solves sub goals? Maybe...
 
