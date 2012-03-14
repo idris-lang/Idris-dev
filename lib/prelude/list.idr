@@ -8,7 +8,7 @@ import prelude.nat
 
 %access public
 
-infixr 10 :: 
+infixr 7 :: 
 
 data List a
   = Nil

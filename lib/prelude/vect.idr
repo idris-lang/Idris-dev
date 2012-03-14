@@ -6,7 +6,7 @@ import prelude.nat
 
 %access public
 
-infixr 10 :: 
+infixr 7 :: 
 
 data Vect : Set -> Nat -> Set where
   Nil  : Vect a O
@@ -67,6 +67,7 @@ fromList (x::xs) = x :: fromList xs
 -- Building bigger vectors
 --------------------------------------------------------------------------------
 
+total
 (++) : Vect a m -> Vect a n -> Vect a (m + n)
 (++) []      ys = ys
 (++) (x::xs) ys = x :: xs ++ ys
