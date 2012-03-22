@@ -151,9 +151,9 @@ process fn (Check (PRef _ n))
                        ist <- get
                        imp <- impShow
                        case lookupTy Nothing n ctxt of
-                        [t] -> iputStrLn $ show n ++ " : " ++
-                                  showImp imp (delab ist t)
-                        _ -> iputStrLn $ "No such variable " ++ show n
+                        ts@(_:_) -> mapM_ (\t -> iputStrLn $ show n ++ " : " ++
+                                                       showImp imp (delab ist t)) ts
+                        [] -> iputStrLn $ "No such variable " ++ show n
 process fn (Check t) = do (tm, ty) <- elabVal toplevel False t
                           ctxt <- getContext
                           ist <- get 
