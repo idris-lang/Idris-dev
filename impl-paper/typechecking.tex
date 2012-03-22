@@ -31,7 +31,7 @@ inferred by the machine~\cite{pollack1990implicit}.
 
 \FFIG{
 \begin{array}{rll@{\hg}rll}
-\vt ::= & \vc & (\mbox{constants}) &
+\vt ::= & \vc & (\mbox{constant}) &
 \hg\vb ::= & \lam{\vx}{\vt} & (\mbox{abstraction}) \\
 
  \mid  & \vx & (\mbox{variable}) &
@@ -85,10 +85,19 @@ by one of the following schemes:
 
 \begin{itemize}
 \item $\beta$-contraction, which substitutes a value applied to a $\lambda$-binding for
-the bound variable. We define $\beta$-constraction simply by replacing the $\lambda$-binding
+the bound variable. We define $\beta$-contraction simply by replacing the $\lambda$-binding
 with a $\LET$ binding.
 \item $\delta$-contraction, which replaces a $\LET$ bound variable with its value.
 \end{itemize}
+
+\noindent
+We use the following contextual closure rule to reduce a $\LET$ binding by creating
+a $\delta$-reducible expression:
+
+\DM{
+\Rule{\Gamma;\LET\:\vx\defq\vs\proves\vt\leadsto\vu}
+{\Gamma\proves\LET\:\vx\defq\vs\Hab\vS\SC\vt\leadsto\vu}
+}
 
 \demph{Reduction} ($\reduces$) is the structural closure of contraction, and evaluation
 is ($\reducesto$) is the transitive closure of reduction. \demph{Conversion} ($\converts$)
@@ -296,7 +305,7 @@ consisting of a type declaration followed by one or more pattern clauses:
 A pattern clause consists of a list of pattern variable bindings, 
 and a left and right hand side, both of which
 are \TT{} expressions. Each side is type checked relative to the variable bindings,
-and the types of each side must convert. Additionally, the
+and the types of each side must be convertible. Additionally, the
 left hand side must take the form of $\FN{f}$ applied to a number of \TT{} expressions,
 and the number of arguments must be the same in each clause. The right hand
 sides may include applications of $\FN{f}$, i.e. pattern matching definitions may
@@ -428,6 +437,8 @@ $\vx$ requires.
 {Pattern matching semantics}
 {pmatch}
 
+By convention, we write the application of a meta-operation $\MO{Op}$ 
+to a telescope $\tx$ as $\vec{\MO{Op}}\:\tx$.
 In practice, for efficiency, pattern matching is implemented by compiling the match clauses to
 a tree of case expressions~\cite{Augustsson1985}. 
 
@@ -440,7 +451,7 @@ The kernel of the \TT{} implementation, consisting of a type checker, evaluator 
 pattern match compiler, is less than 1000 lines of Haskell code. If we are confident
 in the correctness of the kernel of \TT{}, and any higher level language feature
 can be translated into \TT{}, we can be more confident of the correctness of the high
-level language implementation that if it were implemented directly.
+level language implementation than if it were implemented directly.
 
 The process of elaborating a high level language into a core type theory like \TT{} is,
 however, less well understood, and presents several challenges depending on the

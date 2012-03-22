@@ -82,7 +82,7 @@ A proof state is a tuple, $(\vC, \Delta, \ve, \vQ)$, containing:
 %\item \remph{Deferred} definitions, $\vD$, for introducing global metavariables
 \end{itemize}
 
-The \remph{hole queue} is a list of names of hole and guess binders 
+The \remph{hole queue} is a priority queue of names of hole and guess binders 
 $\langle\vx_1,\vx_2,\ldots,\vx_n\rangle$
 in the proof term ---
 we ensure that each bound name is unique. Holes essentially refer to \remph{sub goals}
@@ -204,6 +204,7 @@ primitive meta-operations:
 
 \begin{itemize}
 \item $\MO{Focus}\:\vn$, which moves $\vn$ to the head of the hole queue.
+\item $\MO{Unfocus}$, which moves the current hole to the back of the hole queue.
 \item $\Check\:\ve$, which type checks an expression $\ve$ relative to a context
 $\Gamma$, returning its type.
 $\MO{Check}$ will fail
@@ -212,8 +213,8 @@ if the expression is not well-typed.
 $\Gamma$, returning its normal form.
 \item 
 $\Unify\:\ve_1\:\ve_2$, 
-which unifies $\ve_1$ and $\ve_2$ by finding the values that holes must be instantiated
-with for $\ve_1$ and $\ve_2$ to be convertible relative to $\Gamma$
+which unifies $\ve_1$ and $\ve_2$ by finding the values with which holes must be instantiated
+for $\ve_1$ and $\ve_2$ to be convertible relative to $\Gamma$
 (i.e. for $\Gamma\proves\ve_1\converts\ve_2$ to hold). $\MO{Unify}$ will fail
 if it cannot find such values. If successful, $\MO{Unify}$ will update the proof state.
 \end{itemize}
@@ -237,7 +238,7 @@ well-typed, with a type convertible to the type of $\vt$.
 Tactics may also have the side effect of updating the proof state,
 therefore we will describe tactics in a pseudo-code with $\RW{do}$ notation.
 
-We define a set of primitive tactics: $\MO{Create}$, $\MO{Fill}$ and $\MO{Solve}$
+We define a set of primitive tactics: $\MO{Claim}$, $\MO{Fill}$ and $\MO{Solve}$
 which are used to create and destroy holes; and $\MO{Lambda}$, $\MO{Pi}$, $\MO{Let}$
 and $\MO{Attack}$ which are used to create binders.
 
@@ -253,6 +254,10 @@ keeping $\vx$ at the head:
    \MoRet{\RW{return}\:\hole{\vx}{\vT}\SC\hole{\vy}{\vS}\SC\ve} \\
 }
 }
+
+An obvious difficulty is in ensuring that names are unique throughout a proof term.
+In the implementation, we ensure that any hole created by the $\MO{Claim}$ tactic
+has a unique name. In this paper, we will assume that all names are fresh.
 
 The $\MO{Fill}$ tactic, given a value $\vv$, attempts to solve the current goal
 with $\vv$, creating a guess binding in its place. $\MO{Fill}$ attempts to
@@ -458,7 +463,8 @@ are closed with a $\MO{Solve}$.
 Setting up elaboration in this way, with a proof state captured in a monad,
 and a primitive collection of tactics,
 makes it easy to derive more complex tactics for elaborating higher level language constructs,
-in much the same way as the \texttt{Ltac} language in Coq. As a result, elaboration of
+in much the same way as the \texttt{Ltac} language in Coq. As a result, the
+description of elaboration of
 a language construct (or a program such as $\FN{id}$) bears a strong resemblance to
 a Coq proof script.
 
@@ -509,13 +515,333 @@ a Coq proof script.
 
 \subsection{Elaborating Expressions}
 
+\newcommand{\piimp}[2]{\mbox{\texttt{\{ $#1$ : $#2$ \} -> }}}
+%\mathtt{\{}#1\mathtt{:}#2\mbox{\texttt{\} -> }}}
+\newcommand{\piexp}[2]{\mbox{\texttt{( $#1$ : $#2$ ) -> }}}
+%\newcommand{\piexp}[2]{\mathtt{(}#1\mathtt{:}#2\mbox{\texttt{) -> }}}
+\newcommand{\piconst}[1]{\mbox{\texttt{$#1$ => }}}
+\newcommand{\icase}{\mathtt{case}}
+\newcommand{\iwith}{\mathtt{with}}
+\newcommand{\idata}{\mathtt{data}}
+\newcommand{\iclass}{\mathtt{class}}
+\newcommand{\iinstance}{\mathtt{instance}}
+\newcommand{\iwhere}{\mathtt{where}}
+\newcommand{\iof}{\mathtt{of}}
+\newcommand{\ilet}[2]{\mathtt{let}\;#1\;\mathtt{=}\;#2\;\mathtt{in}}
+\newcommand{\ilam}[1]{\mathtt{\backslash}\;#1\;\mathtt{=>}}
+\newcommand{\iarg}[2]{\mbox{\texttt{\{ $#1$ = $#2$ \}}}}
+\newcommand{\ihab}[2]{\mbox{\texttt{$#1$ : $#2$}}}
+\newcommand{\carg}[1]{\mbox{\texttt{\{\{ $#1$ \}\}}}}
+\newcommand{\fatarrow}{\mbox{\texttt{=>}}}
+\newcommand{\ibar}{\mbox{\texttt{|}}}
+\newcommand{\mvar}[1]{\mbox{\texttt{?}}#1}
 
-\IdrisM{}, a subset of \Idris{} not including syntactic sugar (e.g. pairs, do notation, etc).
+\FFIG{
+\AR{
+\begin{array}{rll@{\hg}rll}
+\ve ::= & \vc & (\mbox{constant}) &
+\mid & \vx & (\mbox{variable}) \\
+\mid & \vt & (\mbox{type}) &
+\mid & \ve\:\ta & (\mbox{function application}) \\
+\mid & \ilam{\vx}\:\ve & (\mbox{lambda abstraction}) &
+\mid & \ilet{\vx}{\ve}\:\ve & (\mbox{let binding}) \\
+\mid & \icase\:\ve\:\iof\:\vec{\VV{alt}} & (\mbox{case expression}) &
+\mid & \mvar{\vx} & (\mbox{metavariable}) \\
+\mid & \_ & (\mbox{placeholder})
+\end{array}
+\medskip\\
+\begin{array}{rll}
+\va :: = & \ve & (\mbox{normal argument}) \\
+\mid & \iarg{\vx}{\ve} & (\mbox{implicit argument with value}) \\
+\mid & \carg{\ve} & (\mbox{explicit class instance}) 
+\medskip\\
+\VV{alt} ::= & \ve\:\fatarrow\:\ve & (\mbox{case alternative})\\
+\end{array}
+\medskip\\
+\begin{array}{rll}
+\vt ::= & \ve & (\mbox{expression}) \\
+\mid & \piimp{\vx}{\vt}\vt & (\mbox{implicit function space}) \\
+\mid & \piexp{\vx}{\vt}\vt & (\mbox{explicit function space}) \\
+\mid & \VV{constr}\;\vt & (\mbox{constrained type}) \\
+\end{array}
+\medskip\\
+\begin{array}{rll}
+\VV{constr} ::= & \piconst{\ttt} & (\mbox{type class constraint}) \\
+\end{array}
+}
+}
+{\IdrisM{} expressions}
+{idrism}
+
+\FFIG{
+\AR{
+\begin{array}{rll}
+\vd ::= & \ihab{\vx}{\vt} & (\mbox{type declaration}) \\
+\mid & \VV{pclause} & (\mbox{pattern clause}) \\
+\mid & \VV{ddecl} & (\mbox{data type declaration}) \\
+\mid & \VV{cdecl} & (\mbox{class declaration}) \\
+\mid & \VV{idecl} & (\mbox{instance declaration}) \\
+\end{array}
+\medskip\\
+\begin{array}{ll}
+\begin{array}{rll}
+\VV{pclause} ::= & 
+\vx\:\ttt\:[\ibar\;\te]\mbox{\texttt{ = }}\ve \hg[\iwhere\;\td]\\ 
+\mid & \AR{
+\vx\:\ttt\:[\ibar\;\te]\;\iwith\;\ve\\
+\hg\vec{\VV{pclause}}
+}
+\end{array}
+&
+\begin{array}{rll}
+\VV{ddecl} ::= & \idata\;\ihab{\vx}{\vt}\;\iwhere\;\vec{\VV{con}}\\
+\VV{con} ::= & \ihab{\vx}{\vt}\\
+\medskip\\
+\VV{cdecl} ::= & \iclass\;[\VV{constr}]\;\vx\;(\ihab{\tx}{\ttt})\;\iwhere\;\td
+\\
+\VV{idecl} ::= & \iinstance\:[\VV{constr}]\;\vx\;\vt\;\iwhere\;\td
+\end{array}
+\end{array}
+}
+}
+{\IdrisM{} declarations}
+{idrismd}
+
+\IdrisM{}, a subset of \Idris{} not including syntactic sugar (e.g. pairs, do notation, 
+infix operators, etc),
+and with implicit types written in full.
+Extensions over \TT{}: implicit syntax, case expressions. Functions are applied to
+multiple arguments, rather than one at a time (this helps with implicit syntax).
+\IdrisM{} also supports explicit \demph{metavariables}. A metavariable \texttt{?mvar}
+creates a new global function \tFN{mvar}, with its type such that it would
+be type correct to apply \tFN{mvar} to all of the variables in scope.
 
 Implicit and type class arguments? Expanded at the application site (we need to know
 it's the global name after all and we do that by type).
 
-\subsection{Elaborating Data Types}
+We define a meta-operation $\ttinterp{\cdot}$ which runs relative to a proof state.
+Its effect is to update the proof state so that the hole in focus contains a representation
+of the given expression, by applying tactics. We assume that the proof
+state has already been set up, which means that we always know the type of the
+expression we are building.
 
-\subsection{Elaborating Pattern Matching}
+\subsubsection{Elaborating variables and constants}
+
+In the simplest cases, there is a direct translation from an \IdrisM{} expression to
+a \TT{} expression --- we build \TT{} representations of variables and constants using
+the \MO{Fill} tactic:
+
+\DM{
+\AR{
+\ttinterp{\vx}\:\mq\:\MO{Fill}\:\vx;\:\MO{Solve}\\
+\ttinterp{\vc}\:\mq\:\MO{Fill}\:\vc;\:\MO{Solve}\\
+}
+}
+
+We need not concern ourselves with type checking variables or constants here --- $\MO{Fill}$
+will handle this, type checking $\vx$ or $\vc$ and unifying the result with the
+hole type. If there are any errors, elaboration will fail.
+
+We also need to elaborate \remph{placeholders}, which are subexpressions we expect to
+solve by unification. In this case, we simply move on to the next hole in the queue, moving
+the current hole to the end of the queue with $\MO{Unfocus}$:
+
+\DM{
+\ttinterp{\_}\:\mq\:\MO{Unfocus}
+}
+
+On encountering a placeholder, our assumption is that unification will eventually solve
+the hole.
+
+\subsubsection{Elaborating bindings}
+
+To elaborate a $\lambda$ binding, we $\MO{Attack}$ the hole, which must be a function type
+or elaboration will fail,
+apply the $\MO{Lambda}$ tactic, elaborate the scope, then $\MO{Solve}$, which discharges
+the $\MO{Attack}$:
+
+\DM{
+\ttinterp{\ilam{\vx}\ve}\:\mq\:
+\RW{do}\:
+\AR{
+\MO{Attack};\;\MO{Lambda}\:\vx\\
+\ttinterp{\ve}\\
+\MO{Solve}
+}
+}
+
+Note that there is no type on the $\lambda$-binding in \IdrisM{}. There is no need --- since
+elaboration is type directed, the $\MO{Lambda}$ tactic finds the type of the binding by
+looking at the type of the hole. In full \Idris{}, types are allowed on bindings, and the
+elaborator merely checks that the given type is equivalent to the inferred type.
+
+Elaborating a function type is more tricky, since we have to elaborate the argument
+type (itself an \IdrisM{} expression) then elaborate the scope. To achieve this, we
+create a new goal $\vX$ for the argument type $\vt$, where $\vX$ is a fresh name,
+and introduce a function binding with argument type $\vX$. We can then focus on
+$\vX$, and elaborate it with the expression $\vt$. Finally, we elaborate the
+scope of the binding.
+
+\DM{
+\AR{
+\ttinterp{\piexp{\vx}{\vt}\ve}\:\mq\:
+\RW{do}\:
+\AR{
+\MO{Attack};\;\MO{Claim}\:(\vX\Hab\Set)\\
+\MO{Pi}\:(\vx\Hab\vX)\\
+\MO{Focus}\:\vX\\
+\ttinterp{\vt};\;
+\ttinterp{\ve}\\
+\MO{Solve}
+}
+}
+}
+
+Elaborating $\vt$ will involve solving unification problems, which will, if the
+program is type correct, solve $\vX$. After focussing on $\vX$ and elaborating
+$\vt$, there is no need to refocus on the hole representing the scope, as it was
+previously at the head of the hole queue before focussing on $\vX$.
+Elaboration of implicit and constraint
+argument types is exactly the same --- \TT{} makes no distinction between then.
+
+To elaborate a \texttt{let} binding, we take a similar approach, creating new subgoals
+for the \texttt{let}-bound value and its type, then elaborating the scope. Again,
+if elaborating the scope is successful, unification will solve the claimed variables
+$\vV$ and $\vX$.
+
+\DM{
+\ttinterp{\ilet{\vx}{\vv}\:{\ve}}\:\mq\:\RW{do}\:
+\AR{
+\MO{Attack};\;
+\MO{Claim}\:(\vX\Hab\Set);\; 
+\MO{Claim}\:(\vV\Hab\vX)\\
+\MO{Let}\:(\vx\Hab\vX\defq\vV)\\
+\MO{Focus}\:\vV\\
+\ttinterp{\vv};\;
+\ttinterp{\ve}
+}
+}
+
+\subsubsection{Elaborating applications}
+
+There are two cases to consider when elaborating applications:
+
+\begin{itemize}
+\item Applying a global function name to arguments, some of which may be implicit.
+\item Applying an expression, which does not have implicit arguments, to an argument.
+\end{itemize}
+
+In the first case, we must expand the application to include implicit arguments.
+For example \texttt{vAdd xs ys} is expanded to
+\texttt{vAdd \{a=\_\} \{n=\_\} \{\{\_\}\} xs ys}, adding the implicit arguments
+\texttt{a} and \texttt{n} and a type class instance argument. The meta-operation
+$\MO{Expand}\:\vx\:\ta$, given a global function name $\vx$ and the
+arguments supplied by the programmer $\ta$, returns a new argument list
+$\ta'$ with implicit and type class arguments added. Each value in
+$\ta'$ is paired with an explicit name for the argument.
+
+Implicit arguments are solved by unification
+--- the type or value of another argument determines the value of an implicit argument,
+with the appeal to $\MO{Unify}$ in the $\MO{Fill}$ tactic solving as many extra holes
+as it can. However, unification problems can take several forms. For example, assuming
+$\vf$, $\vg$, $\vx$ are holes, we might have unification problems of the following
+forms:
+
+\DM{
+\AR{
+\MO{Unify}_\Gamma\;\vf\:\TC{Int}\\
+\MO{Unify}_\Gamma\;(\vf\:\vx)\:\TC{Int}\\
+\MO{Unify}_\Gamma\;(\vf\:\vx)\:(\vg\:\vx)\\
+}
+}
+
+The first problem has a solution: $\vf=\TC{Int}$. The second and third problems have
+no solution without further information. In the second case, we cannot conclude 
+anything about $\vf$ or $\vx$ just from knowing that $\vf\:\vx\:=\:\TC{Int}$.
+In the third case, although we have $\vx\:=\:\vx$ in argument position, we cannot
+conclude that $\vf\:=\:\vg$ unless we know that the function which solves $\vf$ or
+$\vg$ is injective.
+
+Once $\vf$ or $\vg$ is solved in some other way, perhaps by being given explicitly
+in another argument, these unification problems can make progress. Otherwise, unification
+fails. As a result, the order in which functions and arguments are
+elaborated matters. Sometimes, we may learn more by elaborating a function first
+and the arguments later, sometimes it may be the other way around. 
+
+One option when unification fails is to store the problem (i.e. the expressions to be
+unified with their local context) and refine it with further information when it becomes 
+available. In practice, we have found a simpler approach to be effective: try
+elaborating the function first, then arguments. If that fails, try elaborating the
+arguments first.
+
+Elaborating a global function application makes a $\MO{Claim}$ for each argument
+in turn. Then the function is elaborated, applied to each of the claimed arguments.
+Finally, each argument which has been given explicitly is elaborated. If this fails,
+elaboration tries again in the opposite order. Finally, we resolve any type
+class instance arguments with the built-in $\MO{Instance}$ tactic.
+
+\DM{
+\ttinterp{\vx\:\ta}\:\mq\:
+\AR{
+\RW{do}\:
+\AR{
+(\tn,\tv)\:\gets\:\MO{Expand}\:\vx\:\ta\\
+\vec{\MO{Claim}}\:(\tn\Hab\tT)\\
+\MO{Try}\:\AR{
+(\RW{do}\:\AR{
+\MO{Fill}\:\vx\:\tn\\
+\vec{\MO{Focus}}\:\tn;\:\ttinterp{\tv}\hg\mbox{(for non-placeholder $\vv$)}\\
+\MO{Solve})
+}\\
+(\RW{do}\:\AR{
+\vec{\MO{Focus}}\:\tn;\:\ttinterp{\tv}\hg\mbox{(for non-placeholder $\vv$)}\\
+\MO{Fill}\:\vx\:\tn\\
+\MO{Solve})
+}}
+\\
+\vec{\MO{Instance}}\:\tn\hg\mbox{(for type class constraint argument $\vn$)}
+}
+}
+}
+
+The $\MO{Instance}$ tactic focuses on the given hole and searches the context for
+a type class instance which would solve the goal directly. First, it examines the local
+context, then recursively searches the global context.
+
+To elaborate a simple function application, of an arbitrary expression to an arbitrary
+argument, we need not worry about implicit arguments or class constraints. Instead,
+we simply elaborate the function and argument, and apply the results. Since elaboration
+is type directed, however, we do need to construct an appropriate type for the function.
+As before, we try elaboration in two orders, as we may learn something from elaborating
+the function or argument which helps with unification:
+
+\DM{
+\ttinterp{\ve\:\va}\:\mq\:\RW{do}\:
+\AR{
+\MO{Claim}\:(\vA\Hab\Set);\;\MO{Claim}\:(\vB\Hab\Set)\\
+\MO{Claim}\:(\vf\Hab\vA\to\vB);\;\MO{Claim}\:(\vs\Hab\vA)\\
+\MO{Try}\:
+\AR{
+(\RW{do}\:\AR{
+\MO{Focus}\:\vf;\;\ttinterp{\ve}\\
+\MO{Focus}\:\vs;\;\ttinterp{\va})}\\
+(\RW{do}\:\AR{
+\MO{Focus}\:\vs;\;\ttinterp{\va}\\
+\MO{Focus}\:\vf;\;\ttinterp{\ve})}\\
+}
+}
+}
+
+\subsubsection{Elaborating metavariables}
+
+\subsubsection{Elaborating \texttt{case} expressions}
+
+\subsection{Elaborating Declarations}
+
+
+\subsubsection{Elaborating Data Types}
+
+\subsubsection{Elaborating Pattern Matching}
+
+\subsubsection{Elaborating Class and Instance Declarations}
 
