@@ -11,9 +11,10 @@ which together constitute an algorithm for elaborating \Idris{}
 programs to \TT{}.
 
 \begin{itemize}
-\item $\ttinterp{\cdot}$, which builds a \TT{} expression from an \Idris{} expression
+\item $\ttinterp{\cdot}$, which builds a \TT{} expression from an \Idris{} expression.
 \item $\MO{Elab}$, which processes a top level \Idris{} declaration by generating
 one or more \TT{} declarations.
+\item $\MO{TTDecl}$, which adds a top level \TT{} declaration.
 \end{itemize}
 
 
@@ -545,8 +546,8 @@ a Coq proof script.
 \mid & \ve\:\ta & (\mbox{function application}) \\
 \mid & \ilam{\vx}\:\ve & (\mbox{lambda abstraction}) &
 \mid & \ilet{\vx}{\ve}\:\ve & (\mbox{let binding}) \\
-\mid & \icase\:\ve\:\iof\:\vec{\VV{alt}} & (\mbox{case expression}) &
-\mid & \mvar{\vx} & (\mbox{metavariable}) \\
+%\mid & \icase\:\ve\:\iof\:\vec{\VV{alt}} & (\mbox{case expression}) &
+%\mid & \mvar{\vx} & (\mbox{metavariable}) \\
 \mid & \_ & (\mbox{placeholder})
 \end{array}
 \medskip\\
@@ -633,14 +634,25 @@ the \MO{Fill} tactic:
 
 \DM{
 \AR{
-\ttinterp{\vx}\:\mq\:\MO{Fill}\:\vx;\:\MO{Solve}\\
-\ttinterp{\vc}\:\mq\:\MO{Fill}\:\vc;\:\MO{Solve}\\
+\ttinterp{\vx}\:\mq\:\RW{do}\:\MO{Fill}\:\vx;\:\MO{Solve}\\
+\ttinterp{\vc}\:\mq\:\RW{do}\:\MO{Fill}\:\vc;\:\MO{Solve}\\
 }
 }
 
 We need not concern ourselves with type checking variables or constants here --- $\MO{Fill}$
 will handle this, type checking $\vx$ or $\vc$ and unifying the result with the
 hole type. If there are any errors, elaboration will fail.
+
+If we are building the left hand side of a pattern clause, however, there is a problem,
+as it is the left hand side which \remph{defines} variables. In this context, we assume
+that attempting to elaborate a variable which does not type check means that the variable
+is a pattern variable:
+
+\DM{
+\ttinterp{\vx}\:\mq\:
+\MO{Try}\:\AR{(\RW{do}\:\MO{Fill}\:\vx;\:\MO{Solve})\\
+(\MO{Pat}\:\vx)\hg\hg\mbox{(If elaborating a left hand side)}}
+}
 
 We also need to elaborate \remph{placeholders}, which are subexpressions we expect to
 solve by unification. In this case, we simply move on to the next hole in the queue, moving
@@ -721,7 +733,6 @@ $\vV$ and $\vX$.
 \ttinterp{\ve}
 }
 }
-
 \subsubsection{Elaborating applications}
 
 There are two cases to consider when elaborating applications:
@@ -832,16 +843,223 @@ the function or argument which helps with unification:
 }
 }
 
-\subsubsection{Elaborating metavariables}
+%\subsubsection{Elaborating metavariables}
 
-\subsubsection{Elaborating \texttt{case} expressions}
+%\subsubsection{Elaborating \texttt{case} expressions}
 
 \subsection{Elaborating Declarations}
 
+We can use $\ttinterp{\cdot}$ to
+build the top level $\MO{Elab}$ operation, which translates \IdrisM{} type, function
+and class declarations into \TT{} declarations.
+
+\newcommand{\edo}[1]{\RW{do}\:\AR{#1}}
+
+\subsubsection{Elaborating Type Declarations}
+
+To elaborate a type declaration, we simply create a new proof state,
+translate the \IdrisM{} type to a \TT{} type, then add the resulting type
+as a \TT{} declaration:
+
+\DM{
+\MO{Elab}\:(\vx\Hab\vt)\:\mq
+\:\edo{\MO{NewProof}\:\Set\\
+       \ttinterp{\vt}\\
+       \vt'\gets\MO{Term}\\
+       \MO{TTDecl}\:(\vx\Hab\vt')
+}}
+
+The final $\MO{TTDecl}$ takes the result of elaboration, type checks it,
+and adds it to the global context if type checking succeeds. This final type check
+ensures that the elaboration process does not allow any ill-typed terms to creep
+into the context.
 
 \subsubsection{Elaborating Data Types}
 
+To elaborate a data declaration, we need to elaborate the type declaration itself,
+as a normal type declaration. This ensures that the type is in scope when
+elaborating the constructor types. We then use the results to build a \TT{} data
+declaration.
+
+\DM{
+\AR{
+\MO{Elab}\:(\idata\;\ihab{\vx}{\vt}\;\iwhere\;\tc)\\
+\hg\hg\mq\:\edo{\MO{NewProof}\:\Set\\
+                \ttinterp{\vt}\\
+                \vt'\gets\MO{Term}\\
+                \MO{TTDecl}\:(\vx\Hab\vt')\\
+                \tc'\gets\vec{\MO{ElabCon}}\:\tc\\
+                \MO{TTDecl}\:(\Data\:\vx\Hab\vt'\:\Where\:\tc')
+}
+\AR{
+\MO{ElabCon}\:(\vx\Hab\vt)\\
+\hg\hg\mq\: \edo{\MO{NewProof}\:\Set\\
+                 \ttinterp{\vt}\\
+                 \vt'\gets\MO{Term}\\
+                 \RW{return}\:(\vx\Hab\vt')
+}
+}}}
+
 \subsubsection{Elaborating Pattern Matching}
 
+Work clause by clause, $\MO{ElabClause}$ returns a left and right hand side, and
+may have the side effect of adding things to the context, such as definitions in
+$\iwhere$ clauses. Collect together in a full definition at the end. 
+
+In the simplest case, no $\iwhere$ clause:
+
+\DM{
+\MO{ElabClause}\:(\vx\:\ttt\:=\:\ve)\:\mq\:?
+}
+
+How do we elaborate the left hand side, given that elaboration is type directed, and
+we do not know its type until after we have elaborated it? The easiest way, which
+requires no change to the elaborator, is to define a type $\TC{Infer}$:
+
+\DM{
+\Data\hg\TC{Infer}\Hab\Set\hg\Where\hg\DC{MkInfer}\Hab\all{\va}{\Set}\SC\va\to\TC{Infer}
+}
+
+Now to elaborate the left hand side, we elaborate $\DC{MkInfer}\:\_\:(\vx\:\ttt)$ and
+extract the value and unified type when complete.
+
+\DM{
+\AR{
+\MO{ElabClause}\:(\vx\:\ttt\:=\:\ve)\:\mq\:\\
+\hg\hg\edo{
+\MO{NewProof}\:\TC{Infer};\;
+\ttinterp{\DC{MkInfer}\:\_\:(\vx\:\ttt)}\\
+\DC{MkInfer}\:\vT\:\VV{lhs}\gets\MO{Term}\\
+\tp\gets\MO{Patterns}\\
+\MO{NewTerm}\:\vT;\;
+\ttinterp{\ve}\\
+\VV{rhs}\gets\MO{Term}\\
+\RW{return}\:(\RW{var}\:\tp\SC\VV{lhs}\:=\:\VV{rhs})
+}
+}
+}
+
+This infers a type for the left hand side, creating pattern variable bindings. Then, 
+it elaborates the right hand side using the inferred type of the left hand side
+and the inferred pattern bindings, which are retrieved from the state with the
+$\MO{Patterns}$ operation. Finally, it returns a pattern clause in \TT{} form.
+To elaborate a collection of pattern clauses, we simply map $\MO{ElabClause}$ over
+the clauses and add the resulting collection to \TT{}.
+
+\DM{
+\AR{
+\MO{Elab}\:\vec{\VV{pclause}}\:\mq\:
+\edo{
+\tc\gets\vec{\MO{ElabClause}}\:\vec{\VV{pclause}}\\
+\MO{TTDecl}\:\tc
+}
+}
+}
+
+Elaborating a clause is made only slightly more complex by the presence of
+$\iwhere$ clauses. In this case, we elaborate the left hand side, add the pattern
+bound variables as extra arguments to the declarations in the $\iwhere$ block,
+and recursively elaborate before elaborating the right hand side.
+
+\DM{
+\AR{
+\MO{ElabClause}\:(\vx\:\ttt\:=\:\ve\:\iwhere\:\td)\:\mq\:\\
+\hg\hg\edo{
+\MO{NewProof}\:\TC{Infer};\;
+\ttinterp{\DC{MkInfer}\:\_\:(\vx\:\ttt)}\\
+\DC{MkInfer}\:\vT\:\VV{lhs}\gets\MO{Term}\\
+\tp\gets\MO{Patterns}\\
+(\td', \ve') \gets\MO{Lift}\:\tp\:\td\:\ve\\
+\vec{\MO{Elab}}\:\td'\\
+\MO{NewTerm}\:\vT;\;
+\ttinterp{\ve'}\\
+\VV{rhs}\gets\MO{Term}\\
+\RW{return}\:(\RW{var}\:\tp\SC\VV{lhs}\:=\:\VV{rhs})
+}
+}
+}
+
+In \TT{}, all definitions must be at the top level. Therefore, the declarations 
+in the $\iwhere$ block are lifted out, adding the pattern bound names as additional arguments
+to ensure they are in scope, using the $\MO{Lift}$ operation. This also modifies
+the right hand side $\ve$ to use the lifted definitions, rather than the original.
+
+\subsubsection{Elaborating the \texttt{with} rule}
+
+The \texttt{with} rule allows \remph{dependent} pattern matching on intermediate values.
+To translate this into \TT{}, we need to construct an auxiliary top level
+definition for 
+the intermediate pattern match. For example, recall \tFN{natToBin}:
+
+\useverb{natToBin}
+
+\noindent
+This is equivalent to the following, using top level definitions only:
+
+\begin{SaveVerbatim}{natToBinw}
+
+natToBin : Nat -> List Bool
+natToBin O = Nil
+natToBin k = natToBin' k (parity k)
+
+\end{SaveVerbatim}
+\begin{SaveVerbatim}{natToBinwp}
+
+natToBin' : (n : Nat) -> Parity n -> List Bool
+natToBin' (j + j)     even = False :: natToBin j
+natToBin' (S (j + j)) odd  = True  :: natToBin j
+
+\end{SaveVerbatim}
+\useverb{natToBinw}
+
+\useverb{natToBinwp}
+
+The difference when using the \texttt{with} rule is that there is no need for
+the explicit type declaration for the auxiliary function \texttt{natToBin}.
+Elaboration of \texttt{with} builds the type declaration and auxiliary function
+automatically:
+
+
+\DM{
+\AR{
+\MO{ElabClause}\:(\vx\:\ttt\:\iwith\:\ve\:\vec{\VV{pclause}})\:\mq\\
+\hg\hg\edo{
+\MO{NewProof}\:\TC{Infer};\;
+\ttinterp{\DC{MkInfer}\:\_\:(\vx\:\ttt)}\\
+\DC{MkInfer}\:\vT\:\VV{lhs}\gets\MO{Term}\\
+\tp\gets\MO{Patterns}\\
+\MO{NewTerm}\:\TC{Infer};\;
+\ttinterp{\DC{MkInfer}\:\_\:\ve}\\
+\DC{MkInfer}\:\vW\:\vw'\gets\MO{Term}\\
+\MO{TTDecl}\:(\vx'\Hab\tp\to\vW\to\vT)\\
+\tc'\gets\vec{\MO{MatchWith}}\:\tp\:(\vx\:\ttt)\:\vec{\VV{pclause}}\\
+\vec{\MO{Elab}}\:\tc'\\
+\RW{return}\:(\RW{var}\:\tp\SC\VV{lhs}\:=\:\vx'\:\tp\:\vw')
+}
+\medskip\\
+\MO{MatchWith}\:\tp\:(\vx\:\ttt)\:(\vx\:\tw)\:\mq\\
+\hg\hg\edo{
+
+}
+}
+}
+
+A $\iwith$ block in a clause for $\vx$
+results in an auxiliary definition $\vx'$, where $\vx'$ is a fresh name,
+which takes an extra argument corresponding to the intermediate result which
+is to be matched.
+$\MO{MatchWith}$ matches the left hand side of the top level definition against
+each $\VV{pclause}$, using the result of the match to build each pattern clause
+for $\vx'$. 
+
+
 \subsubsection{Elaborating Class and Instance Declarations}
+
+\subsection{Syntax Extensions}
+
+\subsubsection{Metavariables}
+
+\subsubsection{\texttt{case} expressions}
+
+\subsubsection{Pairs and Dependent Pairs}
 
