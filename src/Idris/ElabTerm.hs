@@ -102,8 +102,12 @@ elab ist info pattern tcgen fn tm
     elab' ina (PFalse fc)    = elab' ina (PRef fc falseTy)
     elab' ina (PResolveTC (FC "HACK" _)) -- for chasing parent classes
        = resolveTC 5 fn ist
-    elab' ina (PResolveTC fc) = do c <- unique_hole (MN 0 "c")
-                                   instanceArg c
+    elab' ina (PResolveTC fc) 
+        | pattern = do c <- unique_hole (MN 0 "c")
+                       instanceArg c
+        | otherwise = try (resolveTC 2 fn ist)
+                          (do c <- unique_hole (MN 0 "c")
+                              instanceArg c)
     elab' ina (PRefl fc)     = elab' ina (PApp fc (PRef fc eqCon) [pimp (MN 0 "a") Placeholder,
                                                            pimp (MN 0 "x") Placeholder])
     elab' ina (PEq fc l r)   = elab' ina (PApp fc (PRef fc eqTy) [pimp (MN 0 "a") Placeholder,

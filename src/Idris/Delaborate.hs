@@ -71,6 +71,7 @@ pshow i (Msg s) = s
 pshow i (CantUnify x y e s) 
     = "Can't unify " ++ show (delab i x)
         ++ " with " ++ show (delab i y) ++
+--         " (" ++ show x ++ " and " ++ show y ++ ") " ++
         case e of
             Msg "" -> ""
             _ -> "\n\nSpecifically:\n\t " ++ pshow i e 
