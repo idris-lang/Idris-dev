@@ -1037,9 +1037,11 @@ automatically:
 \RW{return}\:(\RW{var}\:\tp\SC\VV{lhs}\:=\:\vx'\:\tp\:\vw')
 }
 \medskip\\
-\MO{MatchWith}\:\tp\:(\vx\:\ttt)\:(\vx\:\tw)\:\mq\\
+\MO{MatchWith}\:\tp\:(\vx\:\ttt)\:(\vx\:\tw\:\mid\:\ve\:\VV{rhs})\:\mq\\
 \hg\hg\edo{
-
+\tp'\gets\vec{\MO{Match}}\:\tw\:\ttt\\
+\MO{CheckComplete}\:\tp\:\tp'\\
+\RW{return}\:(\vx'\:\tp'\:\ve\:\VV{rhs})
 }
 }
 }
@@ -1051,6 +1053,18 @@ is to be matched.
 $\MO{MatchWith}$ matches the left hand side of the top level definition against
 each $\VV{pclause}$, using the result of the match to build each pattern clause
 for $\vx'$. 
+The clauses in the with block must be of a specific form: they must have an initial
+set of arguments $\tw$ which matches the outer clause arguments
+$\ttt$, and an extra argument
+$\ve$ which is the same type as the scrutinee of the \texttt{with}, $\vW$.
+The right hand side, $\VV{rhs}$, may either return a value directly, containing 
+\texttt{where} clauses, or be a nested \texttt{with} block. In any case, it
+remains unchanged.
+$\MO{Match}\:\vw\:\vt$ returns a list of pattern bindings containing
+the variables in $\vt$ and their matches in $\vw$.
+If the \texttt{with} block is well-formed, then
+the resulting set of patterns $\tp'$ contains exactly the same pattern variables
+as $\tp$, which is verified by $\MO{CheckComplete}$.
 
 
 \subsubsection{Elaborating Class and Instance Declarations}
