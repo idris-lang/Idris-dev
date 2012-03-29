@@ -995,7 +995,9 @@ showImp impl tm = se 10 tm where
       where showbasic n@(UN _) = show n
             showbasic (MN _ s) = s
             showbasic (NS n s) = showSep "." (reverse s) ++ "." ++ showbasic n
-    se p (PLam n ty sc) = bracket p 2 $ "\\ " ++ show n ++ " => " ++ show sc
+    se p (PLam n ty sc) = bracket p 2 $ "\\ " ++ show n ++ 
+                            (if impl then " : " ++ se 10 ty else "") ++ " => " 
+                            ++ se 10 sc
     se p (PLet n ty v sc) = bracket p 2 $ "let " ++ show n ++ " = " ++ se 10 v ++
                             " in " ++ se 10 sc 
     se p (PPi (Exp l s) n ty sc)

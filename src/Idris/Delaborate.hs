@@ -47,8 +47,10 @@ delab' ist tm fullname = de [] tm
     deFn env (P _ n _) [l,r]     | n == pairTy  = PPair un (de env l) (de env r)
                                  | n == eqCon   = PRefl un
                                  | n == UN "lazy" = de env r
-                                 | n == UN "Exists" = PDPair un (de env l) Placeholder
-                                                                (de env r)
+    deFn env (P _ n _) [ty, Bind x (Lam _) r]
+                                 | n == UN "Exists" 
+                                       = PDPair un (PRef un x) (de env ty)
+                                                   (de env (instantiate (P Bound x ty) r))
     deFn env (P _ n _) [_,_,l,r] | n == pairCon = PPair un (de env l) (de env r)
                                  | n == eqTy    = PEq un (de env l) (de env r)
                                  | n == UN "Ex_intro" = PDPair un (de env l) Placeholder
@@ -71,6 +73,7 @@ pshow i (Msg s) = s
 pshow i (CantUnify x y e s) 
     = "Can't unify " ++ show (delab i x)
         ++ " with " ++ show (delab i y) ++
+--         " (" ++ show x ++ " and " ++ show y ++ ") " ++
         case e of
             Msg "" -> ""
             _ -> "\n\nSpecifically:\n\t " ++ pshow i e 

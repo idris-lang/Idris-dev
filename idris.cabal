@@ -63,6 +63,8 @@ Executable     idris
                               Idris.Coverage, Idris.IBC, Idris.Unlit,
                               Idris.DataOpts, Idris.Transforms, Idris.DSL, 
 
+                              Util.Pretty,
+
                               Paths_idris
 
                Build-depends:   base>=4 && <5, parsec, mtl, Cabal, haskeline,
