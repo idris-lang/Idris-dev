@@ -104,9 +104,9 @@ by implementation details. These meta-operations include:
 \item \demph{Queries} which retrieve values from the proof state, without modifying
 the state. For example, we can:
 \begin{itemize}
-\item Get the type of the current sub goal
-\item Retrieve the local context $\Gamma$ at the current sub goal
-\item Type check or normalise a term relative to $\Gamma$
+\item Get the type of the current sub goal ($\MO{Type}$)
+\item Retrieve the local context $\Gamma$ at the current sub goal ($\MO{Context}$)
+\item Type check ($\MO{Check}$) or normalise ($\MO{Normalise}$) a term relative to $\Gamma$
 \end{itemize}
 \item \demph{Unification}, which unifies two terms (potentially solving sub goals) 
 relative to $\Gamma$
@@ -332,6 +332,10 @@ handle failure using the $\MO{Try}$ tactic combinator:
               \VV{t2}_\Gamma\:\vt\hg\mbox{(otherwise)}}}
 }
 }
+
+We have a primitive tactic $\MO{Fail}$, which may be invoked by
+any tactic which encounters a failure condition (for example, an unsolvable unification
+problem) and is handled by $\MO{Try}$.
 
 \subsubsection{Creating binders}
 
@@ -667,8 +671,7 @@ the hole.
 
 \subsubsection{Elaborating bindings}
 
-To elaborate a $\lambda$ binding, we $\MO{Attack}$ the hole, which must be a function type
-or elaboration will fail,
+To elaborate a $\lambda$ binding, we $\MO{Attack}$ the hole, which must be a function type,
 apply the $\MO{Lambda}$ tactic, elaborate the scope, then $\MO{Solve}$, which discharges
 the $\MO{Attack}$:
 
@@ -1226,6 +1229,89 @@ programs in \TT{}.
 \subsubsection{The $\MO{Instance}$ tactic}
 
 \label{sect:instance}
+
+When elaborating applications, recall that we fill in implicit arguments by
+unification, and type class constraints by an $\MO{Instance}$ tactic which searches
+the context for an instance of the required type class. 
+
+The $\MO{Instance}$ tactic begins by trying to find a solution in the local context,
+using the $\MO{Trivial}$ tactic, which attempts
+to solve the current goal with each local variable in turn. It is used as a very
+basic primitive for proof search, and is defined as follows:
+
+\DM{
+\AR{
+\MO{Trivial}\:\mq\:
+\RW{do}\:\AR{
+      \tv\gets\MO{Context}\\
+      \MO{TryAll}\:\tv
+    }
+\medskip\\
+\MO{TryAll}\:(\vv_1,\vv_2\ldots)\:\mq\:\MO{Try}\:\vv_1\:(\MO{TryAll}\:\vv_2\ldots)
+\\
+\MO{TryAll}\:\langle\rangle\:\mq\:\MO{Fail}
+}
+}
+
+For example, in the following function, we resolve the type class constraint required
+for the $\texttt{>}$ operator by finding an instance for \texttt{Ord a} in the local
+context:
+
+\begin{SaveVerbatim}{ordlocal}
+
+max : Ord a => a -> a -> a
+max x y = if (x > y) then x else y
+
+\end{SaveVerbatim}
+\useverb{ordlocal} 
+
+If $\MO{Trivial}$ does not find a solution, $\MO{Instance}$ begins a global search,
+applying every type class instance, and attempting to resolve the instance's parameters
+recursively. Given an instance $\vI$ with parameters $\ta$:
+
+\DM{
+\MO{TryInstance}\:(\vI\:\ta)\:\mq\:\RW{do}\;
+\AR{
+\vec{\MO{Claim}}\:(\tx\Hab\ta)\\
+\ttinterp{\vI\:\tx}\\
+\vec{\MO{Focus}}\:\tx;\;\vec{\MO{Instance}}
+}
+}
+
+We define $\MO{Instance}$ as follows, using $\MO{AllInstances}$ to retrieve
+all possible type class instances in the form required by $\MO{TryInstance}$:
+
+\DM{
+\MO{Instance}\:\mq\:
+\MO{Try}\:
+\AR{
+\MO{Trivial}\\
+(\RW{do}\:\AR{
+\ti\gets\MO{AllInstances}\\
+\vec{\MO{TryInstance}}\:\ti
+)
+}
+}
+}
+
+In practice, for efficiency and to ensure that type class resolution terminates,
+we constrain the search by recording which instances are defined for each type class,
+and by ensuring that a recursive call of $\MO{Instance}$ is either searching for
+a different class, or a structurally smaller instance of the current class. 
+
+For example, in the following function, we resolve the constraints required by the 
+\tFN{show} function by a global search which locates a \tTC{Show} instance for
+\tTC{List a}, which in turn requires a \tTC{Show} instance for \texttt{a}.
+In this case \texttt{a} is instantiated by \tTC{Int}, so we finish by locating
+a \tTC{Show} instance for \tTC{Int}:
+
+\begin{SaveVerbatim}{showinst}
+
+main : IO ()
+main = putStrLn (show [1,2,3,4]) 
+
+\end{SaveVerbatim}
+\useverb{showinst} 
 
 \subsection{Syntax Extensions}
 
