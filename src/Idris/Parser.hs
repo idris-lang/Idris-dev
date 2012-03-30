@@ -658,6 +658,7 @@ pSimpleExpr syn =
         <|> try (do c <- pConstant; fc <- pfc
                     return (modifyConst syn fc (PConstant c)))
         <|> do reserved "Set"; return PSet
+--         <|> do symbol "*"; return PSet
         <|> try (do symbol "()"; fc <- pfc; return (PTrue fc))
         <|> try (do symbol "_|_"; fc <- pfc; return (PFalse fc))
         <|> do lchar '_'; return Placeholder

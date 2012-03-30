@@ -530,9 +530,9 @@ a Coq proof script.
 \newcommand{\iof}{\mathtt{of}}
 \newcommand{\ilet}[2]{\mathtt{let}\;#1\;\mathtt{=}\;#2\;\mathtt{in}}
 \newcommand{\ilam}[1]{\mathtt{\backslash}\;#1\;\mathtt{=>}}
-\newcommand{\iarg}[2]{\mbox{\texttt{\{ $#1$ = $#2$ \}}}}
+\newcommand{\iarg}[2]{\mbox{\texttt{\{$#1$ = $#2$\}}}}
 \newcommand{\ihab}[2]{\mbox{\texttt{$#1$ : $#2$}}}
-\newcommand{\carg}[1]{\mbox{\texttt{\{\{ $#1$ \}\}}}}
+\newcommand{\carg}[1]{\mbox{\texttt{\{\{$#1$\}\}}}}
 \newcommand{\fatarrow}{\mbox{\texttt{=>}}}
 \newcommand{\ibar}{\mbox{\texttt{|}}}
 \newcommand{\mvar}[1]{\mbox{\texttt{?}}#1}
@@ -600,7 +600,7 @@ a Coq proof script.
 \medskip\\
 \VV{cdecl} ::= & \iclass\;[\VV{constr}]\;\vx\;(\ihab{\tx}{\ttt})\;\iwhere\;\td
 \\
-\VV{idecl} ::= & \iinstance\:[\VV{constr}]\;\vx\;\vt\;\iwhere\;\td
+\VV{idecl} ::= & \iinstance\:[\VV{constr}]\;\vx\;\ttt\;\iwhere\;\td
 \end{array}
 \end{array}
 }
@@ -789,7 +789,8 @@ Elaborating a global function application makes a $\MO{Claim}$ for each argument
 in turn. Then the function is elaborated, applied to each of the claimed arguments.
 Finally, each argument which has been given explicitly is elaborated. If this fails,
 elaboration tries again in the opposite order. Finally, we resolve any type
-class instance arguments with the built-in $\MO{Instance}$ tactic.
+class instance arguments with the built-in $\MO{Instance}$ tactic (see Section
+\ref{sect:instance}).
 
 \DM{
 \ttinterp{\vx\:\ta}\:\mq\:
@@ -1068,6 +1069,163 @@ as $\tp$, which is verified by $\MO{CheckComplete}$.
 
 
 \subsubsection{Elaborating Class and Instance Declarations}
+
+Type classes are implemented as dictionaries of functions for each instance. Therefore,
+a type class declaration elaborates to a record type containing all of the functions
+in the class, and an instance is simply an instance of the record. The methods
+are translated to top level functions which extract the relevant function from the 
+dictionary.  
+For example, for the \texttt{Show} type class, we translate the \texttt{class}
+declaration to:
+
+\begin{SaveVerbatim}{showdata}
+
+data Show : Set -> Set where
+    instanceShow : (show : a -> String) -> Show a
+
+show : Show a -> a -> String
+show (instanceShow show') = show'
+
+\end{SaveVerbatim}
+\useverb{showdata} 
+
+\noindent
+An instance for a type \texttt{a} is then a value of type \texttt{Show a}; for example for Nat:
+
+\begin{SaveVerbatim}{shownatf}
+
+showNat : Show Nat;
+showNat = instanceShow show' where
+    show' : Nat -> String
+    show' O = "O"
+    show' (S k) = "s" ++ show k
+
+\end{SaveVerbatim}
+\useverb{shownatf} 
+
+The call to \tFN{show} in the body of the instance uses the top level \tFN{show}
+function, with the type class instance resolved by the elaborator.
+Where instances have constraints, we can simply pass these constraints on to
+the function declaration for the instance. For example, for \texttt{Show (List a)}:
+
+\begin{SaveVerbatim}{showlista}
+
+showList : Show a => Show (List a)
+showList = instanceShow show' where
+    show' : List a -> String
+    show' []        = "[]"
+    show' (x :: xs) = show x ++ " :: " ++ show xs
+
+\end{SaveVerbatim}
+\useverb{showlista} 
+
+\noindent
+Where classes have constraints, we can again pass the
+constraints on to the data type declaration, and leave resolving the
+constraints to the elaborator. For example, for \texttt{Ord}:
+
+\begin{SaveVerbatim}{eqorda}
+
+class Eq a => Ord a where
+    compare : a -> a -> Ordering
+    max : a -> a -> a
+    -- remaining methods elided
+
+\end{SaveVerbatim}
+\useverb{eqorda}
+
+\noindent
+This translates to:
+
+\begin{SaveVerbatim}{orddata}
+
+data Ord : Set -> Set where
+    instanceOrd : Eq a => (compare : a -> a -> Ordering) -> 
+                          (max : a -> a -> a) ->  Ord a 
+
+compare : Ord a -> a -> a -> Ordering
+compare (instanceOrd compare' max') = compare'
+
+max : Ord a -> a -> a -> Ordering
+max (instanceOrd compare' max') = max'
+
+\end{SaveVerbatim}
+\useverb{orddata}
+
+We also add functions to retrieve parent classes from a dictionary, to assist
+with type class resolution. In this case, we add:
+
+\begin{SaveVerbatim}{ordparent}
+
+OrdEq : Ord a -> Eq a
+OrdEq (instanceOrd {{eq}} compare' max') = eq
+
+\end{SaveVerbatim}
+\useverb{ordparent} 
+
+In general, we elaborate \texttt{class} declarations as follows:
+
+\DM{
+\AR{
+\MO{Elab}\:(\iclass\;\piconst{\tc}\TC{C}\:(\ta\Hab\ttt)\:\iwhere\:\td)
+\\
+\hg\hg
+\mq\:\RW{do}\:\AR{
+(\vec{\VV{meth}}\Hab\ttt)\gets\td\\
+\MO{Elab}\:
+\AR{(\RW{data}\:\TC{C}\Hab(\ta\Hab\ttt)\to\Set\:\iwhere\\
+\hg\DC{InstanceC}\Hab\piconst{\tc}\td\to\TC{C}\:\ta)}
+\\
+\vec{\MO{ElabMeth}}\:\vec{\VV{meth}}\:\td\\
+\vec{\MO{ElabParent}}\:\tc
+}
+\medskip\\
+\MO{ElabMeth}\:(\vf\Hab\vt)\\
+\hg\hg\mq\:\RW{do}\:\AR{
+\MO{Elab}\:(\vf\Hab\TC{C}\:\ta\to\vt)\\
+\MO{Elab}\:(\vf\:(\DC{InstanceC}\:\vec{\VV{meth}})\:=\:\vec{\VV{meth}[\vf]})
+}
+\medskip\\
+\MO{ElabParent}\:\vc\\
+\hg\hg\mq\:\RW{do}\:\AR{
+\MO{Elab}\:(\VV{cC}\Hab\TC{C}\:\ta\to\vc)\\
+\MO{Elab}\:(\VV{cC}\:(\DC{InstanceC}\:\carg{\vc'}\:\vec{\VV{meth}})\:=\:\vc')
+}
+}
+}
+
+Then we elaborate \texttt{instance} declarations as follows:
+
+\DM{
+\AR{
+\MO{Elab}\:(\iinstance\;\piconst{\tc}\TC{C}\:\ttt\:\iwhere\:\td)\\
+\hg\hg\mq\:\RW{do}\:\AR{
+(\vec{\VV{meth}}, \vec{\VV{ty}})\gets\td\\
+\vec{\VV{ty'}}\:=\:\vec{\VV{ty}}[\ttt/\ta]\\
+\MO{Elab}\:(\FN{instanceC}\Hab\piconst{\tc}\TC{C}\:\ttt)\\
+\MO{Elab}\:\AR{
+(\FN{instanceC}\:=\:\DC{InstanceC}\;\vec{\VV{meth'}}\;\iwhere
+\\
+\hg\vec{\VV{meth'}}\Hab\vec{\VV{ty'}}\\
+\hg\td
+)}
+}
+}
+}
+
+Adding default definitions is straightforward: simply insert the default definition where
+there is a method missing in an \texttt{instance} declaration.
+
+Key point: we've added a higher level language construct simply by elaborating in terms of
+a lower level language construct. In particular, we don't need to worry about type
+class \remph{resolution}, because we have a tactic to do that.
+We can build a lot of extensions this way because we
+have effectively built, bottom up, an Embedded Domain Specific Language for constructing
+programs in \TT{}.
+
+\subsubsection{The $\MO{Instance}$ tactic}
+
+\label{sect:instance}
 
 \subsection{Syntax Extensions}
 
