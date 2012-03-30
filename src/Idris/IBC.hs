@@ -64,7 +64,8 @@ writeIBC src f
                 (_:_) -> fail "Can't write ibc when there are unsolved metavariables"
                 [] -> return ()
          ibcf <- mkIBC (ibc_write i) (initIBC { sourcefile = src }) 
-         idrisCatch (do liftIO $ encodeFile f ibcf
+         idrisCatch (do liftIO $ createDirectoryIfMissing True (dropFileName f)
+                        liftIO $ encodeFile f ibcf
                         iLOG "Written")
             (\c -> do iLOG $ "Failed " ++ show c)
          return ()
@@ -155,8 +156,9 @@ timestampOlder src ibc = do srct <- getModificationTime src
 pImports :: [FilePath] -> Idris ()
 pImports fs 
   = do datadir <- liftIO $ getDataDir
-       mapM_ (\f -> do fp <- liftIO $ findImport [".", datadir] f
-                       i <- getIState
+       mapM_ (\f -> do i <- getIState
+                       ibcsd <- valIBCSubDir i
+                       fp <- liftIO $ findImport [".", datadir] ibcsd f
                        if (f `elem` imported i)
                         then iLOG $ "Already read " ++ f
                         else do putIState (i { imported = f : imported i })

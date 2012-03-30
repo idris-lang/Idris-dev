@@ -28,11 +28,12 @@ data IOption = IOption { opt_logLevel :: Int,
                          opt_coverage :: Bool,
                          opt_showimp  :: Bool,
                          opt_repl     :: Bool,
-                         opt_verbose  :: Bool
+                         opt_verbose  :: Bool,
+                         opt_ibcsubdir :: FilePath
                        }
     deriving (Show, Eq)
 
-defaultOpts = IOption 0 False False True False True True
+defaultOpts = IOption 0 False False True False True True ""
 
 -- TODO: Add 'module data' to IState, which can be saved out and reloaded quickly (i.e
 -- without typechecking).
@@ -316,6 +317,15 @@ setCoverage t = do i <- get
                    let opts = idris_options i
                    let opt' = opts { opt_coverage = t }
                    put (i { idris_options = opt' })
+
+setIBCSubDir :: FilePath -> Idris ()
+setIBCSubDir fp = do i <- get
+                     let opts = idris_options i
+                     let opt' = opts { opt_ibcsubdir =fp }
+                     put (i { idris_options = opt' })
+
+valIBCSubDir :: IState -> Idris FilePath
+valIBCSubDir i = return (opt_ibcsubdir (idris_options i))
 
 impShow :: Idris Bool
 impShow = do i <- get

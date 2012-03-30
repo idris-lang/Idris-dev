@@ -25,28 +25,44 @@ lsrcPath fp = let (n, ext) = splitExtension fp in
                      _ -> fp ++ ".lidr"
 
 -- Get name of byte compiled version of an import
-ibcPath :: FilePath -> FilePath
-ibcPath fp = let (n, ext) = splitExtension fp in
-                 n ++ ".ibc"
+ibcPath :: FilePath -> Bool -> FilePath -> FilePath
+ibcPath ibcsd use_ibcsd fp = let (d_fp, n_fp) = splitFileName fp
+                                 d = if (not use_ibcsd) || ibcsd == ""
+                                     then d_fp
+                                     else d_fp ++ ibcsd ++ "/"
+                                 n = dropExtension n_fp
+                             in d ++ n ++ ".ibc"
 
-findImport :: [FilePath] -> FilePath -> IO IFileType
-findImport []     fp = fail $ "Can't find import " ++ fp
-findImport (d:ds) fp = do let ibcp = ibcPath (d ++ "/" ++ fp)
-                          let idrp = srcPath (d ++ "/" ++ fp)
-                          let lidrp = lsrcPath (d ++ "/" ++ fp)
-                          ibc  <- doesFileExist ibcp
-                          idr  <- doesFileExist idrp
-                          lidr <- doesFileExist lidrp
---                           when idr $ putStrLn $ idrp ++ " ok"
---                           when lidr $ putStrLn $ lidrp ++ " ok"
---                           when ibc $ putStrLn $ ibcp ++ " ok"
-                          let isrc = if lidr then LIDR lidrp
-                                             else IDR idrp
-                          if ibc 
-                             then return (IBC ibcp isrc)
-                             else if (idr || lidr) 
-                                     then return isrc
-                                     else findImport ds fp
+ibcPathWithFallback :: FilePath -> FilePath -> IO FilePath
+ibcPathWithFallback ibcsd fp = do let ibcp = ibcPath ibcsd True fp
+                                  ibc <- doesFileExist ibcp
+                                  return (if ibc
+                                          then ibcp
+                                          else ibcPath ibcsd False fp)
+
+ibcPathNoFallback :: FilePath -> FilePath -> FilePath
+ibcPathNoFallback ibcsd fp = ibcPath ibcsd True fp
+
+findImport :: [FilePath] -> FilePath -> FilePath -> IO IFileType
+findImport []     ibcsd fp = fail $ "Can't find import " ++ fp
+findImport (d:ds) ibcsd fp = do let fp_full = d ++ "/" ++ fp
+                                ibcp <- ibcPathWithFallback ibcsd fp_full
+                                let idrp = srcPath fp_full
+                                let lidrp = lsrcPath fp_full
+                                ibc <- doesFileExist ibcp
+                                idr  <- doesFileExist idrp
+                                lidr <- doesFileExist lidrp
+--                              when idr $ putStrLn $ idrp ++ " ok"
+--                              when lidr $ putStrLn $ lidrp ++ " ok"
+--                              when ibc $ putStrLn $ ibcp ++ " ok"
+                                let isrc = if lidr
+                                           then LIDR lidrp
+                                           else IDR idrp
+                                if ibc
+                                  then return (IBC ibcp isrc)
+                                  else if (idr || lidr) 
+                                       then return isrc
+                                       else findImport ds ibcsd fp
 
 -- find a specific filename somewhere in a path
 
