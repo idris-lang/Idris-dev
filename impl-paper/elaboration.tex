@@ -1315,9 +1315,136 @@ main = putStrLn (show [1,2,3,4])
 
 \subsection{Syntax Extensions}
 
+We now have a complete elaborator for \IdrisM{}, covering 
+dependent pattern matching definitions and expansion of implicit arguments
+and type classes. In order to make the language truly general purpose, however, we
+will need to add higher level extensions. Full \Idris{} is \IdrisM{} extended
+with \texttt{do}-notation, idiom brackets~\cite{McBride2007}, \texttt{case} expressions,
+pattern matching \texttt{let}, metavariables and tactic based theorem proving.
+The majority of these extensions are straightforward transformations of high level
+\Idris{} programs --- for example, \texttt{do}-notation can be reduced directly to
+\IdrisM{} function applications. Some, however, require further support. In this section,
+we complete the presentation of \IdrisM{} by extending it with metavariables
+and $\icase$ expressions:
+
+\DM{
+\AR{
+\begin{array}{rll@{\hg}rll}
+\ve ::= & \ldots \\
+\mid & \mvar{\vx} & (\mbox{metavariable}) &
+\mid & \icase\:\ve\:\iof\:\vec{\VV{alt}} & (\mbox{case expression}) \\
+\end{array}
+}
+}
+
 \subsubsection{Metavariables}
+
+\demph{Metavariables} are terms which stand for incomplete programs. A
+metavariable serves a similar
+purpose to a hole binding in \TT{}, but gives rise to a global rather than a
+local variable. For example, the following is an incomplete definition of
+the vector append function, containing a metavariable \texttt{append\_rec}:
+
+\begin{SaveVerbatim}{vappmv}
+
+(++) : Vect A n -> Vect A m -> Vect A (n + m)
+(++) Nil       ys = ys
+(++) (x :: xs) ys = x :: ?append_rec
+
+\end{SaveVerbatim}
+\useverb{vappmv} 
+
+This generates a new (as yet undefined)
+function \texttt{append\_rec}, which takes all of the variables
+in scope at the point it is used, and returns a value of the required type.
+We can inspect the type of \texttt{append\_rec} at the \Idris{} prompt:
+
+\begin{SaveVerbatim}{appendrec}
+
+*vec> :t append_rec
+append_rec : (a : Set) -> (m : Nat) -> (n : Nat) -> a -> 
+             Vect a n -> Vect a m -> Vect a (n + m)
+
+\end{SaveVerbatim}
+\useverb{appendrec} 
+
+Metavariables serve two purposes: Firstly, they aid type directed program development
+by allowing a programmer direct access to the inferred types of local variables, and
+the types of subexpressions. Secondly, they allow a separation of program structure
+from proof details. Metavariables can be solved either by directly editing program
+source, or by providing a definition elsewhere in the file. For example, we can later say:
+
+\begin{SaveVerbatim}{appendrec_def}
+
+append_rec a m n x xs ys = app xs ys
+
+\end{SaveVerbatim}
+\useverb{appendrec_def} 
+
+To elaborate a metavariable, we simply add a new top level definition, and apply
+it to the current context:
+
+\DM{
+\ttinterp{\mvar{\vx}}\:\mq\:
+\edo{
+(\tv\Hab\ttt)\gets\MO{Context}\\
+\vT\gets\MO{Type}\\
+\MO{TTDecl}\:(\vx\Hab(\tv\Hab\ttt)\to\vt)\\
+\ttinterp{\vx\:\tv}
+}
+}
 
 \subsubsection{\texttt{case} expressions}
 
-\subsubsection{Pairs and Dependent Pairs}
+A \texttt{case} expression allows pattern matching on intermediate values. The difficulty
+in elaborating \texttt{case} expressions is that \TT{} allows matching only on
+\emph{top level} values. To elaborate a \texttt{case} expression, therefore,
+we create a new top level function standing for the expression, and call it. The natural
+way to implement this is to use a metavariable. For example, we have already seen
+\texttt{lookup\_default}:
+
+\useverb{listlookup}
+
+\noindent
+This elaborates as follows:
+
+\begin{SaveVerbatim}{listlookupmv}
+
+lookup_default : Nat -> List a -> a -> a
+lookup_default i xs def = 
+   let scrutinee = list_lookup i xs in ?lookup_default_case
+
+lookup_default_case i xs def Nothing  = def
+lookup_default_case i xs def (Just x) = x
+
+\end{SaveVerbatim}
+\useverb{listlookupmv} 
+
+To elaborate a $\icase$ expression, we begin by \texttt{let} binding the scrutinee of
+the $\icase$ expression and creating a metavariable $\VV{xcase}$ to implement the
+pattern matching. We then build a new pattern matching definition for $\VV{xcase}$
+and elaborate it:
+
+\DM{
+\AR{
+\ttinterp{\icase\:\ve\:\iof\:\vec{\VV{alt}}}\:\mq\:
+\edo{
+\ttinterp{\ilet{\VV{scrutinee}}{\ve}\:\mvar{\VV{xcase}}}\\
+(\tv\Hab\ttt)\gets\MO{Context}\\
+\vec{\MO{MkCase}}\:\tv\:\VV{alt}\\
+}
+\medskip\\
+\MO{MkCase}\:\tv\:(\vl\:\fatarrow\:\vr)\:\mq\:\MO{Elab}\:(\VV{xcase}\:\tv\:\vl\:=\:\vr)
+}
+}
+
+Any nested $\icase$ expressions will be handled by the recursive call to
+$\MO{Elab}$. Again, because of the way we have set up an Embedded Domain Specific
+Language for describing elaboration, we have been able to implement a new higher
+level language feature in terms of elaboration of lower level language features.
+
+%\subsubsection{Pairs and Dependent Pairs}
+
+% Other extensions: do notation, idiom brackets, pairs, etc, are easily expressed
+% by transformations of the high level syntax
 
