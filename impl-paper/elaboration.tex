@@ -1243,11 +1243,11 @@ basic primitive for proof search, and is defined as follows:
 \AR{
 \MO{Trivial}\:\mq\:
 \RW{do}\:\AR{
-      \tv\gets\MO{Context}\\
+      (\tv\Hab\ttt)\gets\MO{Context}\\
       \MO{TryAll}\:\tv
     }
 \medskip\\
-\MO{TryAll}\:(\vv_1,\vv_2\ldots)\:\mq\:\MO{Try}\:\vv_1\:(\MO{TryAll}\:\vv_2\ldots)
+\MO{TryAll}\:(\vv_1,\vv_2\ldots)\:\mq\:\MO{Try}\:(\MO{Fill}\:\vv_1)\:(\MO{TryAll}\:\vv_2\ldots)
 \\
 \MO{TryAll}\:\langle\rangle\:\mq\:\MO{Fail}
 }
