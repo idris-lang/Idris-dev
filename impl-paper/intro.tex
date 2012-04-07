@@ -4,43 +4,45 @@ Dependently typed programming languages, such as Agda \cite{norell2007thesis}
 and Coq \cite{Bertot2004}, have emerged in recent years as a promising approach
 to ensuring the correctness of software. The \Idris{} language
 \cite{Brady2011a} aims to take these ideas further, by providing support for
-verification of general-purpose systems software. In contrast to Agda and Coq,
+verification of general purpose systems software. In contrast to Agda and Coq,
 which have arisen from the theorem proving community, \Idris{} takes Haskell as
-its baseline.  Recent Haskell extensions such as GADTs and type families have
-given some of the power of dependent types to Haskell programmers. However,
+its main influence.  Recent Haskell extensions such as GADTs and type families have
+given some of the power of dependent types to Haskell programmers. In the short
+term this approach has a clear advantage, since it builds on a mature language
+infrastructure with extensive library support.
+Taking a longer term view, however,
 these extensions are inherently limited in that they are required to maintain
-backwards compatibility with existing Haskell programs.  \Idris{}, being a new
+backwards compatibility with existing Haskell implemtations.  \Idris{}, being a new
 language, has no such limitation, essentially asking the question:
 
 \begin{center}
 \emph{``What if Haskell had \emph{full} dependent types?''}
 \end{center}
 
-It is important, for the sake of usability of a programming language, to provide
+It is important for the sake of usability of a programming language to provide
 a notation which allows programmers to express high level concepts
 in a natural way. Taking Haskell as a starting point means that \Idris{} offers
 high level structures such as type classes, \texttt{do}-notation, primitive types
 and monadic I/O, for example.
 Nevertheless, it is important for the sake of correctness of the language implementation
 to have a small core language with well understood meta-theory
-\cite{Altenkirch2010}.
-
+\cite{Altenkirch2010}.  
 How can we achieve both of these goals?
 
 This paper describes a method for elaborating a high level dependently typed
 functional programming language to a low level core language based on dependent
 type theory.  The method involves building an Embedded Domain Specific Language
 (EDSL) for constructing programs in the core language, using \emph{tactics}
-directed by high level
-program syntax.  
-%This method allows higher level language constructs to be
-%constructed in a straightforward manner.
+directed by high level program syntax.  
+As we shall see, this method allows higher level language constructs to be
+constructed in a straightforward manner, without compromising the simplicity
+of the underlying type theory.
 
 \subsection{Overview}
 
 A dependently typed programming language relies on several components, many of
 which are now well understood. For example, we rely on a type checker for
-the underlying type theory \cite{Chapman2005epigram,loh2010tutorial}, a
+the core type theory \cite{Chapman2005epigram,loh2010tutorial}, a
 unification algorithm \cite{Miller1992} and an evaluator. However, it is less
 well understood how to combine these components effectively into a practical
 programming language. Therefore, the primary contribution of this paper is

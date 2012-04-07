@@ -66,14 +66,30 @@ KY16 9SX, UK}
 \maketitle
 
 \begin{abstract}
-I describe the implementation of a dependently typed functional
-programming language, \Idris{}. Much has been written about various
-aspects of dependently typed language implementation (e.g. checking
-dependent types, unification, optimisation) but nothing yet about how
-to bring it all together into a complete, practical, usable tool. This paper
-attempts to do so. In particular, I explain what is needed to turn 
-concrete syntax with implicit arguments into fully elaborated type
-theory, using unification and a tactic engine.
+Many components of a dependently typed programming language are by now well
+understood, such as the underlying type theory, type checking, unification and
+evaluation.  How to combine these components into a realistic and usable high
+level language is, however, folklore, discovered anew by each succesive
+language implementations.  In this paper, I describe the implementation of a
+new dependently typed functional programming language, \Idris{}.
+\Idris{} is intended to be a \emph{general purpose} programming language
+and as such provides high level concepts such as implicit syntax, 
+type classes and \texttt{do} notation. 
+I describe the high level language and the underlying type theory, and present
+a method for \emph{elaborating} concrete high level syntax with implicit
+arguments and type classes into a fully explicit type theory. Furthermore,
+I show how this method,
+based on a domain specific language embedded in Haskell, facilitates the
+implementation of new high level language constructs.
+
+%I describe the implementation of a dependently typed functional
+%programming language, \Idris{}. Much has been written about various
+%aspects of dependently typed language implementation (e.g. checking
+%dependent types, unification, optimisation) but nothing yet about how
+%to bring it all together into a complete, practical, usable tool. This paper
+%attempts to do so. In particular, I explain what is needed to turn 
+%concrete syntax with implicit arguments into fully elaborated type
+%theory, using unification and a tactic engine.
 \end{abstract}
 
 %\category{D.3.2}{Programming Languages}{Language
