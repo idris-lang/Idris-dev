@@ -361,12 +361,14 @@ setTypeCase t = do i <- get
 
 -- Commands in the REPL
 
-data Command = Quit | Help | Eval PTerm | Check PTerm | TotCheck Name
+data Command = Quit   | Help | Eval PTerm | Check PTerm | TotCheck Name
              | Reload | Edit
              | Compile String | Execute | ExecVal PTerm
-             | Metavars | Prove Name | AddProof | Universes
+             | Metavars    | Prove Name | AddProof | Universes
              | TTShell 
-             | LogLvl Int | Spec PTerm | HNF PTerm | Defn Name | Info Name
+             | LogLvl Int | Spec PTerm | HNF PTerm | Defn Name 
+             | Info Name  | DebugInfo Name
+             | Search PTerm
              | NOP
 
 -- Parsed declarations

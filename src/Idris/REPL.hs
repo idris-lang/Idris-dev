@@ -187,11 +187,17 @@ process fn (TotCheck n) = do i <- get
                              case lookupTotal n (tt_ctxt i) of
                                 [t] -> iputStrLn (showTotal t i)
                                 _ -> return ()
-process fn (Info n) = do i <- get
+process fn (DebugInfo n) 
+                    = do i <- get
                          let oi = lookupCtxtName Nothing n (idris_optimisation i)
                          when (not (null oi)) $ iputStrLn (show oi)
                          let si = lookupCtxt Nothing n (idris_statics i)
                          when (not (null si)) $ iputStrLn (show si)
+process fn (Info n) = do i <- get
+                         case lookupCtxt Nothing n (idris_classes i) of
+                              [c] -> classInfo c
+                              _ -> iputStrLn "Not a class"
+process fn (Search t) = iputStrLn "Not implemented"
 process fn (Spec t) = do (tm, ty) <- elabVal toplevel False t
                          ctxt <- getContext
                          ist <- get
@@ -237,6 +243,23 @@ process fn Metavars
                         [] -> iputStrLn "No global metavariables to solve"
                         _ -> iputStrLn $ "Global metavariables:\n\t" ++ show mvs
 process fn NOP      = return ()
+
+classInfo :: ClassInfo -> Idris ()
+classInfo ci = do iputStrLn "Methods:\n"
+                  mapM_ dumpMethod (class_methods ci)
+                  iputStrLn ""
+                  iputStrLn "Instances:\n"
+                  mapM_ dumpInstance (class_instances ci)
+
+dumpMethod :: (Name, (FnOpts, PTerm)) -> Idris ()
+dumpMethod (n, (_, t)) = iputStrLn $ show n ++ " : " ++ show t
+
+dumpInstance :: Name -> Idris ()
+dumpInstance n = do i <- get
+                    ctxt <- getContext
+                    imp <- impShow
+                    case lookupTy Nothing n ctxt of
+                         ts -> mapM_ (\t -> iputStrLn $ showImp imp (delab i t)) ts
 
 showTotal t@(Partial (Other ns)) i
    = show t ++ "\n\t" ++ showSep "\n\t" (map (showTotalN i) ns)
