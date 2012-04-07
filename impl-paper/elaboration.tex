@@ -75,6 +75,8 @@ typing rules for binders ensure that no $?$ bindings leak into types.
 
 \subsection{Proof State}
 
+\label{sect:prfstate}
+
 A proof state is a tuple, $(\vC, \Delta, \ve, \vQ)$, containing:
 
 \begin{itemize}
@@ -149,6 +151,8 @@ This allows us in particular to use pattern bindings from the left hand side of 
 matching definition in the term on the right hand side.
 
 \subsection{System State}
+
+\label{sect:sysstate}
 
 The system state is a tuple, $(\vC,\vA,\vI)$, containing:
 
@@ -615,23 +619,38 @@ a Coq proof script.
 {\IdrisM{} declarations}
 {idrismd}
 
-\IdrisM{}, a subset of \Idris{} not including syntactic sugar (e.g. pairs, do notation, 
-infix operators, etc),
-and with implicit types written in full.
-Extensions over \TT{}: implicit syntax, case expressions. Functions are applied to
-multiple arguments, rather than one at a time (this helps with implicit syntax).
-\IdrisM{} also supports explicit \demph{metavariables}. A metavariable \texttt{?mvar}
-creates a new global function \tFN{mvar}, with its type such that it would
-be type correct to apply \tFN{mvar} to all of the variables in scope.
+We define a language \IdrisM{}, with expression syntax given in Figure \ref{idrism}
+and declaration syntax given in Figure \ref{idrismd}.
+\IdrisM{} is a subset of \Idris{} without syntactic sugar --- that is, without
+tuple sytax, \texttt{do}-notation or infix operators --- and with implicit
+arguments in types bound explicitly 
+(e.g. $\piimp{\va}{\_}\piimp{\vn}{\_}\TC{Vect}\:\va\:\vn$
+instead of simply $\Vect\:\va\:\vn$).
+It is in general straightforward to
+convert full \Idris{} to \IdrisM{} --- syntactic sugar is implemented by a
+direct source transformation, and implicit arguments can be identified as the names
+which are free in a type in a non-function position.
+%
+\IdrisM{} differs from \TT{} in several important respects. It has implicit
+syntax and type classes, and functions are applied to multiple arguments rather
+than one at a time. 
 
-Implicit and type class arguments? Expanded at the application site (we need to know
-it's the global name after all and we do that by type).
+%Extensions over \TT{}: implicit syntax, case expressions. Functions are applied to
+%multiple arguments, rather than one at a time (this helps with implicit syntax).
+%\IdrisM{} also supports explicit \demph{metavariables}. A metavariable \texttt{?mvar}
+%creates a new global function \tFN{mvar}, with its type such that it would
+%be type correct to apply \tFN{mvar} to all of the variables in scope.
 
-We define a meta-operation $\ttinterp{\cdot}$ which runs relative to a proof state.
-Its effect is to update the proof state so that the hole in focus contains a representation
-of the given expression, by applying tactics. We assume that the proof
-state has already been set up, which means that we always know the type of the
-expression we are building.
+%Implicit and type class arguments? Expanded at the application site (we need to know
+%it's the global name after all and we do that by type).
+
+To elaborate expressions, we define a meta-operation $\ttinterp{\cdot}$ which
+runs relative to a proof state (see Section \ref{sect:prfstate}.  Its effect is
+to update the proof state so that the hole in focus contains a representation
+of the given expression, by applying tactics. We assume that the proof state
+has already been set up, which means that elaboration can always be
+\remph{type-directed}. The proof state contains the type of the expression we
+are building.
 
 \subsubsection{Elaborating variables and constants}
 
@@ -856,9 +875,10 @@ the function or argument which helps with unification:
 
 \subsection{Elaborating Declarations}
 
-We can use $\ttinterp{\cdot}$ to
-build the top level $\MO{Elab}$ operation, which translates \IdrisM{} type, function
-and class declarations into \TT{} declarations.
+To elaborate declarations, we define a meta-operation $\MO{Elab}$, which runs
+relative to the system state (see Section \ref{sect:sysstate}) and has access to the
+current proof state. $\MO{Elab}$ uses $\ttinterp{\cdot}$ to help translate
+\IdrisM{} type, function and class declarations into \TT{} declarations.
 
 \newcommand{\edo}[1]{\RW{do}\:\AR{#1}}
 
@@ -909,11 +929,11 @@ declaration.
 
 \subsubsection{Elaborating Pattern Matching}
 
-Work clause by clause, $\MO{ElabClause}$ returns a left and right hand side, and
+[Work clause by clause, $\MO{ElabClause}$ returns a left and right hand side, and
 may have the side effect of adding things to the context, such as definitions in
-$\iwhere$ clauses. Collect together in a full definition at the end. 
+$\iwhere$ clauses. Collect together in a full definition at the end.
 
-In the simplest case, no $\iwhere$ clause:
+In the simplest case, no $\iwhere$ clause:]
 
 \DM{
 \MO{ElabClause}\:(\vx\:\ttt\:=\:\ve)\:\mq\:?
@@ -1222,12 +1242,12 @@ Then we elaborate \texttt{instance} declarations as follows:
 Adding default definitions is straightforward: simply insert the default definition where
 there is a method missing in an \texttt{instance} declaration.
 
-Key point: we've added a higher level language construct simply by elaborating in terms of
+[Key point: we've added a higher level language construct simply by elaborating in terms of
 a lower level language construct. In particular, we don't need to worry about type
 class \remph{resolution}, because we have a tactic to do that.
 We can build a lot of extensions this way because we
 have effectively built, bottom up, an Embedded Domain Specific Language for constructing
-programs in \TT{}.
+programs in \TT{}.]
 
 \subsubsection{The $\MO{Instance}$ tactic}
 
