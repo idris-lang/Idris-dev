@@ -2,13 +2,15 @@
 
 \section{Elaborating \Idris{}}
 
-An \Idris{} program consists of a series of declarations --- data types, functions,
-type classes and instances. In this section, we describe how these high level declarations
-are translated into a \TT{} program consisting of inductive families and pattern matching
-function definitions. We will need to work at the \remph{declaration} level, and at
-the \remph{expression} level, defining the following meta-operations
-which together constitute an algorithm for elaborating \Idris{}
-programs to \TT{}.
+\label{sect:elaboration}
+
+An \Idris{} program consists of a series of declarations --- data types,
+functions, type classes and instances. In this section, we describe how these
+high level declarations are translated into a \TT{} program consisting of
+inductive families and pattern matching function definitions. We will need to
+work at the \remph{declaration} level, and at the \remph{expression} level,
+defining the following meta-operations which together constitute an algorithm
+for elaborating \Idris{} programs to \TT{}.
 
 \begin{itemize}
 \item $\ttinterp{\cdot}$, which builds a \TT{} expression from an \Idris{} expression.
@@ -454,6 +456,7 @@ apply a series of $\MO{Lambda}$ and $\MO{Fill}$ operations using $\MO{RunTac}$:
    \MO{RunTac}\;\MO{Solve}\\
    \MO{RunTac}\;\MO{Solve}\\
    \MO{RunTac}\;\MO{Solve}\\
+   \MO{Term}
  }
 }
 }

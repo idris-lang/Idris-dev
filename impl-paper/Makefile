@@ -2,7 +2,7 @@ PAPER = impldtp
 
 all: ${PAPER}.pdf .PHONY
 
-TEXFILES = ${PAPER}.tex intro.tex conclusions.tex overview.tex hll.tex\
+TEXFILES = ${PAPER}.tex intro.tex conclusions.tex hll.tex\
            typechecking.tex elaboration.tex compiling.tex\
 	   syntax.tex
 

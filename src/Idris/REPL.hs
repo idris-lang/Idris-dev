@@ -282,6 +282,7 @@ help =
     ([""], "", ""),
     (["<expr>"], "", "Evaluate an expression"),
     ([":t"], "<expr>", "Check the type of an expression"),
+    ([":i", ":info"], "<name>", "Display information about a type class"),
     ([":total"], "<name>", "Check the totality of a name"),
     ([":r",":reload"], "", "Reload current file"),
     ([":e",":edit"], "", "Edit current file using $EDITOR or $VISUAL"),

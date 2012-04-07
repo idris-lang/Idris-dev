@@ -3,7 +3,7 @@
 Dependently typed programming languages, such as Agda \cite{norell2007thesis}
 and Coq \cite{Bertot2004}, have emerged in recent years as a promising approach
 to ensuring the correctness of software. The \Idris{} language
-\cite{Brady2011a} aims to take these ideas further, and provide support for
+\cite{Brady2011a} aims to take these ideas further, by providing support for
 verification of general-purpose systems software. In contrast to Agda and Coq,
 which have arisen from the theorem proving community, \Idris{} takes Haskell as
 its baseline.  Recent Haskell extensions such as GADTs and type families have
@@ -17,7 +17,7 @@ language, has no such limitation, essentially asking the question:
 \end{center}
 
 It is important, for the sake of usability of a programming language, to provide
-a programming notation which allows programmers to express high level concepts
+a notation which allows programmers to express high level concepts
 in a natural way. Taking Haskell as a starting point means that \Idris{} offers
 high level structures such as type classes, \texttt{do}-notation, primitive types
 and monadic I/O, for example.
@@ -27,35 +27,62 @@ to have a small core language with well understood meta-theory
 
 How can we achieve both of these goals?
 
-This paper describes a method for elaborating a high level dependently
-typed functional programming language to a low level core
-language based on dependent type theory.
-The method involves building an Embedded Domain Specific Language (EDSL) for constructing
-programs in the core language, directed by high level program syntax. 
-This method allows higher level language constructs to be constructed in a straightforward
-manner.
+This paper describes a method for elaborating a high level dependently typed
+functional programming language to a low level core language based on dependent
+type theory.  The method involves building an Embedded Domain Specific Language
+(EDSL) for constructing programs in the core language, using \emph{tactics}
+directed by high level
+program syntax.  
+%This method allows higher level language constructs to be
+%constructed in a straightforward manner.
 
+\subsection{Overview}
 
-\subsection{Contributions}
+A dependently typed programming language relies on several components, many of
+which are now well understood. For example, we rely on a type checker for
+the underlying type theory \cite{Chapman2005epigram,loh2010tutorial}, a
+unification algorithm \cite{Miller1992} and an evaluator. However, it is less
+well understood how to combine these components effectively into a practical
+programming language. Therefore, the primary contribution of this paper is
+an EDSL based method for translating programs in a
+high level dependently typed programming language to a small core type theory,
+\TT{}, based on UTT \cite{luo1994}. The paper describes the structure of the
+EDSL including proof and system state, and introduces a collection of \remph{tactics}
+for manipulating incompete programs.
+Secondly, the paper gives a detailed description of the core type theory used
+by \Idris{}, including a full description of the typing rules. Finally, through
+describing the EDSL and the specific tactics, the paper shows how to extend
+\Idris{} with higher level features.
 
-\begin{itemize}
-\item Type checking dependent types~\cite{Chapman2005epigram,loh2010tutorial} is just one component
- of a language. There is folklore about what to do to turn it into a language. This
- paper aims to help language implementers avoid working things out for themselves.
-\item What's the difference between a theorem prover and a practical systems programming
- language? Not much...
-\end{itemize}
+The paper is structured as follows: In Section \ref{sect:hll} I give an overview of
+programming in \Idris{}, introducing the high level constructs which will be
+translated to the core language; Section \ref{sect:typechecking} describes the
+core language \TT{} and its typing rules, covering expressions, data types
+and pattern matching; Section \ref{sect:elaboration} describes the method
+for translating \Idris{} to \TT{}, beginning with a restricted language
+\IdrisM{} before extending to higher level features; finally, in 
+Section \ref{sect:discussion} we discuss related work and conclude.
 
-Also note --- to be an expert user of a language requires good understanding of the internals.
 
 \subsection{Typographical conventions}
 
-We'll have \Idris{} programs, \TT{} programs and meta-operations (standing for
-Haskell programs which operate on \Idris{} or \TT{} programs). Suggestion:
-\Idris{} always in \texttt{texttt}, with \texttt{e$_i$} standing for
-non-terminal expressions.  \TT{} in mathematical notation, with names arising
-from \Idris{} programs in \texttt{texttt}, and meta-operation
-names either in \textsc{TextSC} or as $\interp{\cdot}$.
+This paper includes programs in two different but related languages: a high level
+language \Idris{} intended for programmers, and a low level language \TT{} to
+which \Idris{} is elaborated. We distinguish these languages typographically as
+follows:
 
-Also we will show some interactions at the \texttt{Idris>} prompt, which can be identified
-by the prompt.
+\begin{itemize}
+\item \Idris{} programs are written in \texttt{truetype}, as they are written
+in a conventional text editor. We use \texttt{e$_i$} to stand for non-terminal
+expressions.
+\item \TT{} programs are written in mathematical notation, with names arising
+from \Idris{} expressions written in \texttt{truetype}. We use vector notation
+$\te$ to stand for sequences of expressions.
+\end{itemize}
+
+Additionally, we describe the translation from \Idris{} to \TT{} in the form
+of \emph{meta-operations}, which in practice are Haskell programs. Meta-operations
+are operations on \Idris{} and \TT{} syntax, and are identified by their names being
+in $\MO{SmallCaps}$.
+
+
