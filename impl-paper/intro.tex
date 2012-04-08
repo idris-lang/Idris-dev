@@ -50,11 +50,13 @@ an EDSL based method for translating programs in a
 high level dependently typed programming language to a small core type theory,
 \TT{}, based on UTT \cite{luo1994}. The paper describes the structure of the
 EDSL including proof and system state, and introduces a collection of \remph{tactics}
-for manipulating incompete programs.
+for manipulating incomplete programs.
 Secondly, the paper gives a detailed description of the core type theory used
 by \Idris{}, including a full description of the typing rules. Finally, through
 describing the EDSL and the specific tactics, the paper shows how to extend
 \Idris{} with higher level features.
+While we apply these ideas to \Idris{} specifically, the method for term construction
+is equally applicable to other typed programming languages.
 
 The paper is structured as follows: In Section \ref{sect:hll} I give an overview of
 programming in \Idris{}, introducing the high level constructs which will be
@@ -68,7 +70,7 @@ Section \ref{sect:discussion} we discuss related work and conclude.
 
 \subsection{Typographical conventions}
 
-This paper includes programs in two different but related languages: a high level
+This paper presents programs in two different but related languages: a high level
 language \Idris{} intended for programmers, and a low level language \TT{} to
 which \Idris{} is elaborated. We distinguish these languages typographically as
 follows:

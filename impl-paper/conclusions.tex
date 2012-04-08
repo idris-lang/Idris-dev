@@ -2,6 +2,13 @@
 
 \label{sect:discussion}
 
+Since we have used a tactic-based EDSL to elaborate \Idris{} to \TT{}, it makes
+sense to expose the tactic language to the programmer.
+Also tactic-implicit arguments as a generalisation of instance resolution.
+
+Discuss performance (anecdotally, how big is the library and how long to check,
+and relative to previous version). 
+
 \subsection{Related Work}
 
 Oleg~\cite{McBride1999} as inspiration. \Epigram{}~\cite{McBride2004a}.
@@ -17,4 +24,11 @@ type checks the high level language and produces a type correct core language.
 Elaboration is effectively a type checker for the high level language, so we have
 a hope of providing reasonable error messages related to the original code.]
 
+
 \subsection{Further Work}
+
+[Would the EDSL approach work in other languages? Adding components of DTP
+to imperative languages, say, using \TT{} as a verified core.
+\Idris{} implementation as the beginning of a project to explore practical
+DTP --- systems, protocols, security especially. And just having full
+dependent types for lightweight correctness guarantees.]

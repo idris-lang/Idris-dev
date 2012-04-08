@@ -9,8 +9,7 @@ functions, type classes and instances. In this section, we describe how these
 high level declarations are translated into a \TT{} program consisting of
 inductive families and pattern matching function definitions. We will need to
 work at the \remph{declaration} level, and at the \remph{expression} level,
-defining the following meta-operations which together constitute an algorithm
-for elaborating \Idris{} programs to \TT{}.
+defining the following meta-operations.
 
 \begin{itemize}
 \item $\ttinterp{\cdot}$, which builds a \TT{} expression from an \Idris{} expression.
@@ -90,10 +89,10 @@ A proof state is a tuple, $(\vC, \Delta, \ve, \vQ)$, containing:
 The \remph{hole queue} is a priority queue of names of hole and guess binders 
 $\langle\vx_1,\vx_2,\ldots,\vx_n\rangle$
 in the proof term ---
-we ensure that each bound name is unique. Holes essentially refer to \remph{sub goals}
+ensuring that each bound name is unique. Holes refer to \remph{sub goals}
 in the proof.
 When this queue is empty, the proof term is complete.
-Creating a \TT{} expression from an \Idris{} expresson involves creating
+Creating a \TT{} expression from an \Idris{} expression involves creating
 a new proof state, with an empty proof term, and using the high level definition
 to direct the building of a final proof state, with a complete proof term.
 
@@ -162,7 +161,8 @@ The system state is a tuple, $(\vC,\vA,\vI)$, containing:
 \item Type class instances, $\vI$, containing dictionaries for type classes
 \end{itemize}
 
-In the implementation, the system state is captured in a monad, \texttt{Idris}, and
+In the implementation, the system state is captured in a monad, \texttt{Idris}, 
+which also wraps the current proof state. This monad 
 includes additional information such as syntax overloadings,
 command line options, and optimisations, which do not concern us here. Elaboration
 of expressions requires access to the system state in particular in order to expand
@@ -226,7 +226,7 @@ for $\ve_1$ and $\ve_2$ to be convertible relative to $\Gamma$
 if it cannot find such values. If successful, $\MO{Unify}$ will update the proof state.
 \end{itemize}
 
-\remph{Tactics} are specifically meta-operations which operate on the sub-term given
+\demph{Tactics} are meta-operations which operate on the sub-term given
 by the hole at the head of the hole queue in the proof state. They take the following form:
 
 \DM{
@@ -264,7 +264,8 @@ keeping $\vx$ at the head:
 
 An obvious difficulty is in ensuring that names are unique throughout a proof term.
 In the implementation, we ensure that any hole created by the $\MO{Claim}$ tactic
-has a unique name. In this paper, we will assume that all names are fresh.
+has a unique name by checking against existing names in scope and modifying
+the name if necessary. In this paper, we will assume that all created names are fresh.
 
 The $\MO{Fill}$ tactic, given a value $\vv$, attempts to solve the current goal
 with $\vv$, creating a guess binding in its place. $\MO{Fill}$ attempts to
@@ -445,7 +446,8 @@ For example, consider the following simple
 
 We can build $\FN{id}$ either as a complete term, or by applying a sequence of tactics.
 To achieve this, we create a proof state initialised with the type of $\FN{id}$ and
-apply a series of $\MO{Lambda}$ and $\MO{Fill}$ operations using $\MO{RunTac}$:
+apply a series of $\MO{Lambda}$ and $\MO{Fill}$ operations using $\MO{RunTac}$.
+Note that the types on each $\MO{Lambda}$ are solved by unification:
 
 \DM{
 \AR{
@@ -466,7 +468,9 @@ apply a series of $\MO{Lambda}$ and $\MO{Fill}$ operations using $\MO{RunTac}$:
 }
 
 To aid readability, we will elide $\MO{RunTac}$, and use a semi-colon to indicate
-sequencing. Using this convention, we can build $\FN{id}$'s type and definition as shown
+sequencing --- in the implementation we use wrapper functions for each tactic to
+apply $\MO{RunTac}$.
+Using this convention, we can build $\FN{id}$'s type and definition as shown
 in Figure \ref{idelab}. Note that $\MO{Term}$ retrieves the proof term from the current proof
 state. Both $\MO{MkIdType}$ and $\MO{MkId}$ finish by returning a completed \TT{} term.
 Note in particular that each $\MO{Attack}$ and each $\MO{Fill}$, which create new guesses,
@@ -566,8 +570,6 @@ a Coq proof script.
 \va :: = & \ve & (\mbox{normal argument}) \\
 \mid & \iarg{\vx}{\ve} & (\mbox{implicit argument with value}) \\
 \mid & \carg{\ve} & (\mbox{explicit class instance}) 
-\medskip\\
-\VV{alt} ::= & \ve\:\fatarrow\:\ve & (\mbox{case alternative})\\
 \end{array}
 \medskip\\
 \begin{array}{rll}
@@ -645,11 +647,11 @@ than one at a time.
 %it's the global name after all and we do that by type).
 
 To elaborate expressions, we define a meta-operation $\ttinterp{\cdot}$ which
-runs relative to a proof state (see Section \ref{sect:prfstate}.  Its effect is
+runs relative to a proof state (see Section \ref{sect:prfstate}).  Its effect is
 to update the proof state so that the hole in focus contains a representation
 of the given expression, by applying tactics. We assume that the proof state
 has already been set up, which means that elaboration can always be
-\remph{type-directed}. The proof state contains the type of the expression we
+\remph{type-directed} since the proof state contains the type of the expression we
 are building.
 
 \subsubsection{Elaborating variables and constants}
@@ -689,11 +691,13 @@ the current hole to the end of the queue with $\MO{Unfocus}$:
 }
 
 On encountering a placeholder, our assumption is that unification will eventually solve
-the hole.
+the hole. At the end of elaboration, any holes remaining unsolved on the left hand side
+become pattern variables. If there are any unsolved on the right hand side, elaboration
+fails.
 
 \subsubsection{Elaborating bindings}
 
-To elaborate a $\lambda$ binding, we $\MO{Attack}$ the hole, which must be a function type,
+To elaborate a $\lambda$-binding, we $\MO{Attack}$ the hole, which must be a function type,
 apply the $\MO{Lambda}$ tactic, elaborate the scope, then $\MO{Solve}$, which discharges
 the $\MO{Attack}$:
 
@@ -843,7 +847,8 @@ class instance arguments with the built-in $\MO{Instance}$ tactic (see Section
 
 The $\MO{Instance}$ tactic focuses on the given hole and searches the context for
 a type class instance which would solve the goal directly. First, it examines the local
-context, then recursively searches the global context.
+context, then recursively searches the global context. $\MO{Instance}$ is covered
+in detail in Section \ref{sect:instance}.
 
 To elaborate a simple function application, of an arbitrary expression to an arbitrary
 argument, we need not worry about implicit arguments or class constraints. Instead,
@@ -929,19 +934,20 @@ declaration.
 
 \subsubsection{Elaborating Pattern Matching}
 
-[Work clause by clause, $\MO{ElabClause}$ returns a left and right hand side, and
-may have the side effect of adding things to the context, such as definitions in
-$\iwhere$ clauses. Collect together in a full definition at the end.
-
-In the simplest case, no $\iwhere$ clause:]
+To elaborate a pattern matching definition, we work clause by clause, elaborating
+the left and right hand sides in turn. $\MO{ElabClause}$ returns the elaborated
+left and right hand sides, and may have the side effect of adding entries
+to the global context, such as definitions in $\iwhere$ clauses.
+First, let us consider the simplest case, with no $\iwhere$ clause:
 
 \DM{
 \MO{ElabClause}\:(\vx\:\ttt\:=\:\ve)\:\mq\:?
 }
 
 How do we elaborate the left hand side, given that elaboration is type directed, and
-we do not know its type until after we have elaborated it? The easiest way, which
-requires no change to the elaborator, is to define a type $\TC{Infer}$:
+we do not know its type until after we have elaborated it? 
+We can achieve this without any change to the elaborator by defining 
+a type $\TC{Infer}$:
 
 \DM{
 \Data\hg\TC{Infer}\Hab\Set\hg\Where\hg\DC{MkInfer}\Hab\all{\va}{\Set}\SC\va\to\TC{Infer}
@@ -978,7 +984,7 @@ the clauses and add the resulting collection to \TT{}.
 \MO{Elab}\:\vec{\VV{pclause}}\:\mq\:
 \edo{
 \tc\gets\vec{\MO{ElabClause}}\:\vec{\VV{pclause}}\\
-\MO{TTDecl}\:\tc
+\vec{\MO{TTDecl}}\:\tc
 }
 }
 }
@@ -1189,6 +1195,7 @@ OrdEq (instanceOrd {{eq}} compare' max') = eq
 \end{SaveVerbatim}
 \useverb{ordparent} 
 
+\noindent
 In general, we elaborate \texttt{class} declarations as follows:
 
 \DM{
@@ -1201,7 +1208,13 @@ In general, we elaborate \texttt{class} declarations as follows:
 \MO{Elab}\:
 \AR{(\RW{data}\:\TC{C}\Hab(\ta\Hab\ttt)\to\Set\:\iwhere\\
 \hg\DC{InstanceC}\Hab\piconst{\tc}\td\to\TC{C}\:\ta)}
-\\
+}
+}
+}
+
+\DM{
+\AR{
+\AR{
 \vec{\MO{ElabMeth}}\:\vec{\VV{meth}}\:\td\\
 \vec{\MO{ElabParent}}\:\tc
 }
@@ -1220,6 +1233,7 @@ In general, we elaborate \texttt{class} declarations as follows:
 }
 }
 
+\noindent
 Then we elaborate \texttt{instance} declarations as follows:
 
 \DM{
@@ -1242,12 +1256,12 @@ Then we elaborate \texttt{instance} declarations as follows:
 Adding default definitions is straightforward: simply insert the default definition where
 there is a method missing in an \texttt{instance} declaration.
 
-[Key point: we've added a higher level language construct simply by elaborating in terms of
-a lower level language construct. In particular, we don't need to worry about type
-class \remph{resolution}, because we have a tactic to do that.
-We can build a lot of extensions this way because we
-have effectively built, bottom up, an Embedded Domain Specific Language for constructing
-programs in \TT{}.]
+\textbf{Remark:} Here, we have added a higher level language construct (type
+classes) simply by elaborating in terms of lower level language constructs
+(data types and functions).  We achieve type class resolution by implementing a
+tactic, $\MO{Instance}$.  We can build several extensions this way because we
+have effectively built, bottom up, an Embedded Domain Specific Language for
+constructing programs in \TT{}.
 
 \subsubsection{The $\MO{Instance}$ tactic}
 
@@ -1356,6 +1370,8 @@ and $\icase$ expressions:
 \ve ::= & \ldots \\
 \mid & \mvar{\vx} & (\mbox{metavariable}) &
 \mid & \icase\:\ve\:\iof\:\vec{\VV{alt}} & (\mbox{case expression}) \\
+\medskip\\
+\VV{alt} ::= & \ve\:\fatarrow\:\ve & (\mbox{case alternative})\\
 \end{array}
 }
 }
@@ -1412,7 +1428,7 @@ it to the current context:
 \edo{
 (\tv\Hab\ttt)\gets\MO{Context}\\
 \vT\gets\MO{Type}\\
-\MO{TTDecl}\:(\vx\Hab(\tv\Hab\ttt)\to\vt)\\
+\MO{TTDecl}\:(\vx\Hab(\tv\Hab\ttt)\to\vT)\\
 \ttinterp{\vx\:\tv}
 }
 }
@@ -1422,7 +1438,7 @@ it to the current context:
 A \texttt{case} expression allows pattern matching on intermediate values. The difficulty
 in elaborating \texttt{case} expressions is that \TT{} allows matching only on
 \emph{top level} values. To elaborate a \texttt{case} expression, therefore,
-we create a new top level function standing for the expression, and call it. The natural
+we create a new top level function standing for the expression, and apply it. The natural
 way to implement this is to use a metavariable. For example, we have already seen
 \texttt{lookup\_default}:
 
@@ -1465,6 +1481,9 @@ Any nested $\icase$ expressions will be handled by the recursive call to
 $\MO{Elab}$. Again, because of the way we have set up an Embedded Domain Specific
 Language for describing elaboration, we have been able to implement a new higher
 level language feature in terms of elaboration of lower level language features.
+
+%\subsubsection{Tactic-implicit arguments}
+
 
 %\subsubsection{Pairs and Dependent Pairs}
 

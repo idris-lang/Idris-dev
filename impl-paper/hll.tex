@@ -4,7 +4,7 @@
 
 \Idris{} is
 a pure functional programming language with dependent types. It is
-eagerly evaluted by default, and is compiled via the Epic supercombinator
+eagerly evaluted by default, and compiled via the Epic supercombinator
 library \cite{brady2011epic}.
 In this section, I will give a brief introduction to programming in \Idris{},
 covering the most important features. A full tutorial is available elsewhere
@@ -75,7 +75,8 @@ infixr 10 ::
 \end{SaveVerbatim}
 \useverb{infixcons}
 
-\noindent
+This declares that \texttt{::} is a right associative operator (\texttt{infixr})
+with a precedence level of 10.
 Functions, data constructors and type constuctors may all be given infix
 operators as names. They may be used in prefix form if enclosed in brackets,
 e.g. \tDC{(::)}. 
@@ -105,10 +106,11 @@ mult (S k) y = plus y (mult k y)
 The standard arithmetic operators \texttt{+} and \texttt{*} are also overloaded
 for use by \texttt{Nat}, and are implemented
 using the above functions.  Unlike Haskell, there is no restriction on whether
-types and function names must begin with a capital letter or not. Function
-names (\tFN{plus} and \tFN{mult} above), data constructors (\tDC{O}, \tDC{S},
-\tDC{Nil} and \tDC{::}) and type constructors (\tTC{Nat} and \tTC{List}) are
-all part of the same namespace.
+types and function names must begin with a capital letter or not. 
+%Function
+%names (\tFN{plus} and \tFN{mult} above), data constructors (\tDC{O}, \tDC{S},
+%\tDC{Nil} and \tDC{::}) and type constructors (\tTC{Nat} and \tTC{List}) are
+%all part of the same namespace.
 
 \Idris{} has an interactive prompt, at which we can test these functions:
 
@@ -160,7 +162,8 @@ further than the outer function.
 \textbf{Scope:} 
 Any names which are visible in the outer scope are also visible in the \texttt{where}
 clause (unless they have been redefined, such as \texttt{xs} here).
-\emph{However}, names which appear in the type are \emph{not} in scope. In particular,
+\emph{However}, names which appear in the type are \emph{not} automatically
+in scope. In particular,
 in the above example, the \texttt{a} in the top level type and the \texttt{a} in the
 auxiliary definifion \texttt{revAcc} are \emph{not} the same. If this is the required
 behaviour, the \texttt{a} can be brought into scope as follows:
@@ -178,7 +181,8 @@ reverse {a} xs = revAcc [] xs where
 \subsubsection{Dependent Types}
 
 A standard example of a dependent type is the type of ``lists with length'',
-conventionally called ``vectors''. In \Idris{}, we declare vectors as follows:
+conventionally called ``vectors'' in the dependently typed programming
+literature. In \Idris{}, we declare vectors as follows:
 
 \begin{SaveVerbatim}{vect}
 
@@ -196,7 +200,7 @@ are declared in different namespaces (in practice, normally in different modules
 Ambiguous constructor names are resolved by type. 
 
 This declares a family of types, which requires a different form of declaration
-different from the simple type declarations above. It resembles a Haskell GADT
+from the simple type declarations above. It resembles a Haskell GADT
 declaration: we explicitly state the type
 of the type constructor \tTC{Vect} --- it takes a type and a \tTC{Nat} as an
 argument, where \tTC{Set} stands for the type of types. We say that \tTC{Vect}
@@ -293,6 +297,17 @@ with \texttt{n} elements of type \texttt{a}. But there are also two names,
 \texttt{n} and \texttt{a}, which are not declared explictly. These are \emph{implicit}
 arguments to \texttt{index}. We could also write the type of \texttt{index} as:
 
+\begin{SaveVerbatim}{vindeximppl}
+
+index : {a:_} -> {n:_} -> Fin n -> Vect a n -> a
+
+\end{SaveVerbatim}
+\useverb{vindeximppl}
+
+\noindent
+Here we have given bindings for \texttt{a} and \texttt{n} with placeholders for
+their types, to be inferred by the machine. We could also give the types explicitly:
+
 \begin{SaveVerbatim}{vindeximpty}
 
 index : {a:Set} -> {n:Nat} -> Fin n -> Vect a n -> a
@@ -339,11 +354,14 @@ this constructors of \texttt{List} and \texttt{Vect}, names
 can be overloaded in an ad-hoc manner and resolved according to the context in which
 they are used. This is mostly for convenience, to eliminate the need to decorate
 constructor names in similarly structured data types, and eliminate explicit qualification
-of ambiguous names where only one is well-typed.
+of ambiguous names where only one is well-typed --- this is especially useful
+for disambiguating record field names\footnote{Records are however beyond the scope
+of this paper}.
 
-Secondly, \Idris{} implements \remph{type classes}. This allows a more principled approach
-to overloading --- a type class gives a collection of overloaded operations which describe
-the interface for \remph{instances} of that class.
+Secondly, \Idris{} implements \remph{type classes}, following Haskell.  This
+allows a more principled approach to overloading --- a type class gives a
+collection of overloaded operations which describe the interface for
+\remph{instances} of that class.
 
 A simple example
 is the \texttt{Show} type class, which is defined in the library and
@@ -380,11 +398,16 @@ instance Show Nat where
     show O = "O"
     show (S k) = "s" ++ show k
 
+\end{SaveVerbatim}
+\useverb{shownat}
+
+\begin{SaveVerbatim}{shownati}
+
 Idris> show (S (S (S O))) 
 "sssO" : String
 
 \end{SaveVerbatim}
-\useverb{shownat}
+\useverb{shownati}
 
 \noindent
 Only one instance of a class can be given for a type --- instances may not overlap.
@@ -473,7 +496,7 @@ mirror xs = let xs' = rev xs in
 \useverb{letb} 
 
 \noindent
-We can also do simple pattern matching in \texttt{let} bindings. For example, we can extract
+We can also pattern match in \texttt{let} bindings. For example, we can extract
 fields from a record as follows, as well as by pattern matching at the top level:
 
 \begin{SaveVerbatim}{letp}
@@ -507,7 +530,7 @@ at the point where the given function returns true. We then deconstruct the
 pair it returns, and remove the first character of the second string.
 
 A \texttt{case} expression can match several cases, for example, to inspect an
-intermediate value of type \texttt{Maybe a}. Recall \texttt{list\_lookup} which
+intermediate value of type \texttt{Maybe a}. For example, \texttt{list\_lookup}
 looks up an index in a list, returning \texttt{Nothing} if the index is out
 of bounds. We can use this to write \texttt{lookup\_default}, which
 looks up an index and returns a default value if the index is out of bounds:

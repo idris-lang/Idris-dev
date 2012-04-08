@@ -23,7 +23,7 @@ The syntax of \TT{} expressions is given in Figure \ref{ttsyn}. This defines:
 \item \demph{Terms}, $\vt$, which are variables, bindings, applications or constants.
 \item \demph{Bindings}, $\vb$, which are lambda abstractions, let bindings, or function spaces.
 \item \demph{Constants}, $\vc$, which are integer or string literals, or $\Type_i$, the
-type of types.
+type of types, and may be extended with other primitives. 
 \end{itemize}
 
 We may also write the function space $\all{\vx}{\vS}\SC\vT$ as $(\vx\Hab\vS)\to\vT$,
@@ -106,7 +106,7 @@ is ($\reducesto$) is the transitive closure of reduction. \demph{Conversion} ($\
 is the smallest equivalence relation closed under reduction. If $\Gamma\proves\vx\converts\vy$
 then $\vy$ can be obtained from $\vx$ by a finite, possibly empty, sequence of
 contractions and reversed contractions. Terms which are convertible are also said to
-be computationally equal.
+be definitionally equal.
 The evaluator can also be extended by defining pattern matching functions, which
 will be described in more detail in Section \ref{sect:patdefs}. In principle, pattern
 matching functions can be understood as extending the core language with high level
@@ -151,6 +151,30 @@ be implemented in the usual way~\cite{loh2010tutorial}.
 \Rule{\Gamma\proves\RW{valid}}
 {\Gamma\vdash\Type_n\Hab\Type_{n+1}}
 \\
+\mathsf{Const}_1\:
+\Rule{\Gamma\proves\RW{valid}}
+{\Gamma\vdash\vi\Hab\TC{Int}}
+\hg
+\mathsf{Const}_2\:
+\Rule{\Gamma\proves\RW{valid}}
+{\Gamma\vdash\VV{str}\Hab\TC{String}}
+\\
+\mathsf{Const}_3\:
+\Rule{\Gamma\proves\RW{valid}}
+{\Gamma\vdash\TC{Int}\Hab\Type_0}
+\hg
+\mathsf{Const}_4\:
+\Rule{\Gamma\proves\RW{valid}}
+{\Gamma\vdash\TC{String}\Hab\Type_0}
+\\
+%\mathsf{Pat}_1\:
+%\Rule{(\pat{\vx}{\vS})\in\Gamma}
+%{\Gamma\vdash\vx\Hab\vS}
+%\hg
+%\mathsf{Pat}_2\:
+%\Rule{(\pty{\vx}{\vS})\in\Gamma}
+%{\Gamma\vdash\vx\Hab\vS}
+\\
 \mathsf{Var}_1\:
 \Rule{(\lam{\vx}{\vS})\in\Gamma}
 {\Gamma\vdash\vx\Hab\vS}
@@ -162,14 +186,6 @@ be implemented in the usual way~\cite{loh2010tutorial}.
 \mathsf{Val}\:
 \Rule{(\LET\:\vx\Hab\vS\defq\vs)\in\Gamma}
 {\Gamma\vdash\vx\Hab\vS}
-\\
-%\mathsf{Pat}_1\:
-%\Rule{(\pat{\vx}{\vS})\in\Gamma}
-%{\Gamma\vdash\vx\Hab\vS}
-%\hg
-%\mathsf{Pat}_2\:
-%\Rule{(\pty{\vx}{\vS})\in\Gamma}
-%{\Gamma\vdash\vx\Hab\vS}
 \\
 \mathsf{App}\:
 \Rule{\Gamma\vdash\vf\Hab\fbind{\vx}{\vS}{\vT}\hg\Gamma\vdash\vs\Hab\vS}
@@ -230,7 +246,7 @@ defined collection of algebraic data types which can be parametrised over
 \remph{values} as well as types.  An inductive family is declared 
 in a similar style to a Haskell GADT declaration~\cite{pj2006gadts}
 as
-follows, using the de Bruijn telescope notation, $\tx$, to indicate a
+follows, using vector notation, $\tx$, to indicate a
 sequence of zero or more $\vx$ (i.e., $\vx_1,\vx_2,\ldots,\vx_n$):
 
 \DM{
@@ -351,7 +367,7 @@ In order to implement pattern matching, we must separate the \remph{accessible} 
 to match against it) if it is constructor headed, or a variable. Inaccessible patterns
 are converted to ``match anything'' patterns. We convert clauses to matchable pattern
 clauses with the $\MO{Clause}$ operation, given in Figure \ref{mkclause}.
-We extend the telescope notation to meta-operations: the notation $\vec{\MO{Pat}}$ lifts the
+We extend the vector notation to meta-operations: the notation $\vec{\MO{Pat}}$ lifts the
 $\MO{Pat}$ operation across a list of arguments.
 
 \FFIG{
@@ -443,6 +459,25 @@ By convention, we write the application of a meta-operation $\MO{Op}$
 to a telescope $\tx$ as $\vec{\MO{Op}}\:\tx$.
 In practice, for efficiency, pattern matching is implemented by compiling the match clauses to
 a tree of case expressions~\cite{Augustsson1985}. 
+
+\subsection{Totality checking}
+
+In order to ensure termination of type checking, and therefore its decidability,
+we must distinguish terms for which evaluation definitely terminates, and
+those which may diverge. \TT{} takes a simple but pragmatic and
+effective approach to termination
+checking: any functions which do not satisfy a syntactic constraint on recursive
+calls are marked as \emph{partial}. Additionally, any function which calls a partial
+function are uses a data type which is not strictly positive is also marked as
+partial. The syntactic constraint we use is that a recursive call in a pattern
+clause must have an argument which is structurally smaller than an input argument
+in the same position. \TT{} also marks functions which do not cover all possible
+inputs as partial. This totality checking is independent of the rest of the type
+theory, and can be extended in future.
+
+This approach, separating the termination requirement from the type theory, means that
+an \Idris{} programmer makes the decision about the importance of totality for each
+function rather than having the totality requirement imposed by the type theory.
 
 \subsection{From \Idris{} to \TT{}}
 
