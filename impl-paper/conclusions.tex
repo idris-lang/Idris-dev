@@ -2,33 +2,122 @@
 
 \label{sect:discussion}
 
-Since we have used a tactic-based EDSL to elaborate \Idris{} to \TT{}, it makes
-sense to expose the tactic language to the programmer.
-Also tactic-implicit arguments as a generalisation of instance resolution.
-
-Discuss performance (anecdotally, how big is the library and how long to check,
-and relative to previous version). 
+%Discuss performance (anecdotally, how big is the library and how long to check,
+%and relative to previous version). 
 
 \subsection{Related Work}
 
-Oleg~\cite{McBride1999} as inspiration. \Epigram{}~\cite{McBride2004a}.
-How does Agda~\cite{norell2007thesis} work?
-Earlier \Idris{}, with \Ivor{}~\cite{Brady2006b}.
+Dependently typed programming languages have becoming more prominent in recent
+years as tools for verifying software correctness, and several experimental
+languages are being developed, in particular Agda \cite{norell2007thesis}, Epigram
+\cite{McBride2004a,Levitation2010} and Trellys \cite{Kimmell2012}.
 
-Comparison with GHC's type system and type checker.
+An earlier implementation of \Idris{} was built on the \Ivor{} proof engine 
+\cite{Brady2006b}. This implementation differed in one important way --- unlike
+the present implementation, there was limited separation between the type theory
+and the high level language. The type theory itself supported implicit syntax and
+unification, with high level constructs such as the \texttt{with} rule implemented
+directly. Two important disadvantages were found with this approach, however: 
+firstly, the type checker is much more complicated when combined with
+unification, making it harder to maintain; secondly, adding new high level features
+requires the type checker to support those features directly. In contrast, elaboration
+by tactics gives a clean separation between the low level and high level languages.
+
+The Agda implementation is based on a type theory with
+implicit syntax and pattern matching --- Norell gives an algorithm for type checking
+a dependently typed language with pattern matching and metavariables 
+\cite{norell2007thesis}. Unlike the present \Idris{} implementation, metavariables
+and implicit arguments are part of the type theory. This has the advantage that
+implicit arguments can be used more freely, at the expense of complicating the type
+system.
+
+Epigram \cite{McBride2004a} and Oleg \cite{McBride1999} 
+have provided much of the inspiration for the \Idris{} elaborator. Indeed,
+the hole and guess bindings of \TTdev{} are taken directly from Oleg.
+\Epigram{} does not implement pattern matching directly, but rather translates
+pattern matching into elimination rules \cite{McBride2002}. This has the
+advantage that
+elimination rules provide termination and coverage proofs \emph{by construction}.
+Furthermore they simplify implementation of the evaluator and provide easy
+optimisation opportunities \cite{Brady2003}. However, it requires the
+implementation of extra machinery for constructor manipulation
+\cite{McBride2006} and so we have avoided it in the present implementation.
+
+%Comparison with GHC's type system and type checker. \cite{Vytiniotis2011}
+
+%[Observation: separate elaboration and type checking, sort of like in GHC which
+%type checks the high level language and produces a type correct core language.
+%Elaboration is effectively a type checker for the high level language, so we have
+%a hope of providing reasonable error messages related to the original code.]
 
 \subsection{Conclusion}
 
-[Observation: separate elaboration and type checking, sort of like in GHC which
-type checks the high level language and produces a type correct core language.
-Elaboration is effectively a type checker for the high level language, so we have
-a hope of providing reasonable error messages related to the original code.]
+In this paper, I have given an overview of the programming language \Idris{},
+and its core type theory \TT{}, giving a detailed algorithm for translating
+high level programs into \TT{}.
+\TT{} itself is deliberately small and simple, and the design has deliberately
+resisted innovation so that we can rely on existing metatheoretic properties
+being preserved. The kernel of the \Idris{} implementation consists of a type checker
+and evaluator for \TT{} along with a pattern match compiler, which are implemented
+in under 1000 lines of Haskell code. It is important that this kernel remains small
+--- the correctness of the language implementation relies to a large extent on
+the correctness of the underlying type system, and keeping the implementation small
+reduces the possibility of errors.
+
+The approach we have taken to implementing the high level language, implementing
+a tactic language as an embedded DSL, allows us to
+build programs on top of a small and unchanging kernel, rather than extending 
+the core language to deal with implicit syntax, unification and type classes.
+High level \Idris{} features are implemented by describing the corresponding
+sequence of tactics to build an equivalent program in \TT{}, via a development
+calculus of incomplete terms, \TTdev{}. A significant advantage we have found with
+this approach is that higher level features can easily be implemented in terms
+of existing elaborator components. For example, once we have implemented elaboration
+for data types and functions, it is easy to add several features:
+
+\begin{itemize}
+\item \textbf{Type classes}: A dictionary is merely a record containing the
+functions which implement a type class instance. Since we have a tactic based
+refinement engine, we can implement type class resolution as a tactic.
+\item \textbf{\texttt{where} clauses}: We have access to local variables and
+their types, so we can
+elaborate \texttt{where} clauses at the point of definition simply by lifting
+them to the top level. 
+\item \textbf{\texttt{case} expressions}: Similar to \texttt{where} clauses,
+these are implemented by lifting the branches out to a top level function.
+\end{itemize}
+
+We do not need to make any changes to the core language type system in order to 
+implement these high level features. 
+Other high level features such as dependent records, tuples and monad comprehensions
+can be added equally easily.  Furthermore, 
+since we have used a tactic-based EDSL to elaborate \Idris{} to \TT{}, it is
+possible to expose the tactic language to the programmer. This opens up the
+possibility of implementing domain specific decision procedures, or implementing
+user defined tactics in a style similar to Coq's \texttt{Ltac} language \cite{Bertot2004}.
+
+The objective of this implementation of \Idris{} is to provide a platform
+for experimenting with realistic, general purpose programming with dependent
+types, by implementing a Haskell-like language augmented with \emph{full}
+dependent types.  
+In this paper, we have seen how such a high level language can be implemented
+by building on top of a small, well-understood, easy to reason about type
+theory. However, a programming language implementation is not an end in itself. 
+Programming languages exist to support research and practice in many different
+domains. In future work, therefore, we plan to apply domain specific
+language based techniques to realistic problems
+in important safety critical domains such as security and network protocol
+design and implementation. In order to be successful, we need a language which
+is expressive enough to describe protocol specifications at a high level, and robust 
+enough to guarantee correct implementation of those protocols. We hope that \Idris{}
+is that language!
 
 
-\subsection{Further Work}
 
-[Would the EDSL approach work in other languages? Adding components of DTP
-to imperative languages, say, using \TT{} as a verified core.
-\Idris{} implementation as the beginning of a project to explore practical
-DTP --- systems, protocols, security especially. And just having full
-dependent types for lightweight correctness guarantees.]
+%\subsection{Further Work}
+
+%[Would the EDSL approach work in other languages? Adding components of DTP
+%to imperative languages, say, using \TT{} as a verified core.
+%\Idris{} implementation as the beginning of a project to explore practical
+%DTP --- systems, protocols, security especially. And just having full
+%dependent types for lightweight correctness guarantees.]
