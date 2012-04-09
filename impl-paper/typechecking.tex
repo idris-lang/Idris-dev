@@ -412,7 +412,7 @@ with the next clause. The algorithm uses the following meta-operations:
 \item $\MO{Con}\:\vx$, which returns true if $\vx$ is a constructor name
 \item $\MO{Arity}\:\vx$, which, if $\vx$ is a constructor name, returns the number of arguments
 $\vx$ requires.
-\item $\MO{Length}\:\tts$, which returns the length of the telescope $\tts$
+\item $\MO{Length}\:\tts$, which returns the length of the vector $\tts$
 \end{itemize}
 
 
@@ -456,7 +456,7 @@ $\vx$ requires.
 {pmatch}
 
 By convention, we write the application of a meta-operation $\MO{Op}$ 
-to a telescope $\tx$ as $\vec{\MO{Op}}\:\tx$.
+across a vector $\tx$ as $\vec{\MO{Op}}\:\tx$.
 In practice, for efficiency, pattern matching is implemented by compiling the match clauses to
 a tree of case expressions~\cite{Augustsson1985}. 
 
