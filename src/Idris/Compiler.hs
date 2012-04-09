@@ -97,11 +97,12 @@ instance ToEpic (TT Name) where
               = do arg' <- epic' env arg
                    return $ lazy_ arg'
           | (P _ (UN "prim__IO") _, [v]) <- unApply tm
-              = epic' env v
+              = do v' <- epic' env v
+                   return (effect_ v')
           | (P _ (UN "io_bind") _, [_,_,v,k]) <- unApply tm
               = do v' <- epic' env v 
                    k' <- epic' env k
-                   return (k' @@ (effect_ v'))
+                   return (effect_ (k' @@ (effect_ v')))
           | (P _ (UN "malloc") _, [_,size,t]) <- unApply tm
               = do size' <- epic' env size
                    t' <- epic' env t
