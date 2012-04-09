@@ -4,7 +4,7 @@
 
 \Idris{} is
 a pure functional programming language with dependent types. It is
-eagerly evaluted by default, and compiled via the Epic supercombinator
+eagerly evaluated by default, and compiled via the Epic supercombinator
 library \cite{brady2011epic}.
 In this section, I will give a brief introduction to programming in \Idris{},
 covering the most important features. A full tutorial is available elsewhere
@@ -77,7 +77,7 @@ infixr 10 ::
 
 This declares that \texttt{::} is a right associative operator (\texttt{infixr})
 with a precedence level of 10.
-Functions, data constructors and type constuctors may all be given infix
+Functions, data constructors and type constructors may all be given infix
 operators as names. They may be used in prefix form if enclosed in brackets,
 e.g. \tDC{(::)}. 
 
@@ -165,7 +165,7 @@ clause (unless they have been redefined, such as \texttt{xs} here).
 \emph{However}, names which appear in the type are \emph{not} automatically
 in scope. In particular,
 in the above example, the \texttt{a} in the top level type and the \texttt{a} in the
-auxiliary definifion \texttt{revAcc} are \emph{not} the same. If this is the required
+auxiliary definition \texttt{revAcc} are \emph{not} the same. If this is the required
 behaviour, the \texttt{a} can be brought into scope as follows:
 
 \begin{SaveVerbatim}{revwhereb}
@@ -294,7 +294,7 @@ index : Fin n -> Vect a n -> a
 \noindent
 It takes two arguments, an element of the finite set of \texttt{n} elements, and a vector
 with \texttt{n} elements of type \texttt{a}. But there are also two names, 
-\texttt{n} and \texttt{a}, which are not declared explictly. These are \emph{implicit}
+\texttt{n} and \texttt{a}, which are not declared explicitly. These are \emph{implicit}
 arguments to \texttt{index}. We could also write the type of \texttt{index} as:
 
 \begin{SaveVerbatim}{vindeximppl}

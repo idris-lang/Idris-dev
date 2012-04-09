@@ -242,7 +242,7 @@ be implemented in the usual way~\cite{loh2010tutorial}.
 \label{sect:inductivefams}
 
 Inductive families \cite{dybjer1994inductive} are a form of simultaneously
-defined collection of algebraic data types which can be parametrised over
+defined collection of algebraic data types which can be parameterised over
 \remph{values} as well as types.  An inductive family is declared 
 in a similar style to a Haskell GADT declaration~\cite{pj2006gadts}
 as
@@ -270,7 +270,7 @@ For example, the \Idris{} data type \tTC{Nat} would be declared in \TT{} as foll
 
 A data type may have zero or more parameters (which are invariant
 across a structure) and a number of indices, given by the type. For
-example, the \TT{} equivalent of \tTC{List} is parametrised over its element type:
+example, the \TT{} equivalent of \tTC{List} is parameterised over its element type:
 
 \DM{
 \AR{
@@ -283,10 +283,10 @@ example, the \TT{} equivalent of \tTC{List} is parametrised over its element typ
 }
 
 Types can be
-parametrised over values. Using this, we can declare the type of
+parameterised over values. Using this, we can declare the type of
 vectors (lists with length), where the empty list is statically known
 to have length zero, and the non empty list is statically known to
-have a non zero length. The \TT{} equivalent of \tTC{Vect} is parametrised over its element type,
+have a non zero length. The \TT{} equivalent of \tTC{Vect} is parameterised over its element type,
 like $\List$, but \remph{indexed} over its length. Note also that the length
 index $\vk$ is given \remph{explicitly}.
 
@@ -598,7 +598,7 @@ The idea behind the \Idris{} elaborator, therefore, is to use the high level pro
 to direct \demph{tactics} to build \TT{} programs by refinement. We implement the
 elaborator as an Embedded Domain Specific Language (EDSL) in Haskell. 
 In the remainder
-of this paper, we decribe the EDSL, and demonstrate how it can be used to implement
+of this paper, we describe the EDSL, and demonstrate how it can be used to implement
 all of the high level features of \Idris{}.
 
 

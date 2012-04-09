@@ -125,8 +125,8 @@ Elaboration of an \Idris{} expression involves creating a new proof state, runni
 a series of tactics to build a complete proof term, then retrieving and \remph{rechecking}
 the final proof term, which must be a \TT{} program (i.e. does not contain any of the
 \TTdev{} extensions). We call a sub-term which contains no hole or guess bindings 
-\demph{pure}. Although a pure term does not containg hole or guess bindings, it may
-neverthless \remph{refer} to hole- or guess-bound variables.
+\demph{pure}. Although a pure term does not contain hole or guess bindings, it may
+nevertheless \remph{refer} to hole- or guess-bound variables.
 
 We initialise a proof state with the $\MO{NewProof}$ operation. Given a global
 context $\vC$, $\MO{NewProof}\:\vt$ sets up the proof state as:
@@ -624,7 +624,7 @@ a Coq proof script.
 We define a language \IdrisM{}, with expression syntax given in Figure \ref{idrism}
 and declaration syntax given in Figure \ref{idrismd}.
 \IdrisM{} is a subset of \Idris{} without syntactic sugar --- that is, without
-tuple sytax, \texttt{do}-notation or infix operators --- and with implicit
+tuple syntax, \texttt{do}-notation or infix operators --- and with implicit
 arguments in types bound explicitly 
 (e.g. $\piimp{\va}{\_}\piimp{\vn}{\_}\TC{Vect}\:\va\:\vn$
 instead of simply $\Vect\:\va\:\vn$).
