@@ -468,7 +468,7 @@ those which may diverge. \TT{} takes a simple but pragmatic and
 effective approach to termination
 checking: any functions which do not satisfy a syntactic constraint on recursive
 calls are marked as \emph{partial}. Additionally, any function which calls a partial
-function are uses a data type which is not strictly positive is also marked as
+function or uses a data type which is not strictly positive is also marked as
 partial. The syntactic constraint we use is that a recursive call in a pattern
 clause must have an argument which is structurally smaller than an input argument
 in the same position. \TT{} also marks functions which do not cover all possible
