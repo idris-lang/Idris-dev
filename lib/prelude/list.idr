@@ -88,6 +88,14 @@ drop O     xs      = xs
 drop (S n) []      = []
 drop (S n) (x::xs) = drop n xs
 
+takeWhile : (a -> Bool) -> List a -> List a
+takeWhile p []      = []
+takeWhile p (x::xs) = if p x then x :: takeWhile p xs else []
+
+dropWhile : (a -> Bool) -> List a -> List a
+dropWhile p []      = []
+dropWhile p (x::xs) = if p x then dropWhile p xs else x::xs
+
 --------------------------------------------------------------------------------
 -- Misc.
 --------------------------------------------------------------------------------

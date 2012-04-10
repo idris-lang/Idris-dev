@@ -1,3 +1,8 @@
+{-
+  © 2012 Copyright Mekeor Melire
+-}
+
+
 module prelude.complex
 
 import builtins

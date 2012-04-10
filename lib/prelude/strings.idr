@@ -62,3 +62,11 @@ ltrim xs with (strM xs)
 trim : String -> String
 trim xs = ltrim (reverse (ltrim (reverse xs)))
 
+words' : List Char -> List (List Char)
+words' s = case dropWhile isSpace s of
+            [] => []
+            s' => let (w, s'') = break isSpace s'
+                  in w :: words' s''
+
+words : String -> List String
+words s = map pack $ words' $ unpack s
