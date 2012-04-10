@@ -41,7 +41,8 @@ Cabal-Version:  >= 1.6
 Build-type:     Custom
 
 Extra-source-files:    lib/Makefile  lib/*.idr lib/prelude/*.idr lib/network/*.idr
-                       lib/control/monad/*.idr tutorial/examples/*.idr
+                       lib/control/monad/*.idr lib/language/*.idr
+                       tutorial/examples/*.idr
 
 source-repository head
   type:     git

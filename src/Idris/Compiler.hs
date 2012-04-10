@@ -16,6 +16,8 @@ import System.IO
 import System.Directory
 import System.Environment
 
+import Paths_idris
+
 import Epic.Epic hiding (Term, Type, Name, fn, compile)
 import qualified Epic.Epic as E
 
@@ -32,13 +34,15 @@ compile f tm
          hdrs <- getHdrs
          let incs = map Include hdrs
          so <- getSO
+         ddir <- liftIO $ getDataDir
+         let ilib = ddir ++ "/libidris.a"
          case so of
             Nothing ->
                 do m <- epicMain tm
                    let mainval = EpicFn (name "main") m
                    liftIO $ compileObjWith [] 
                                 (mkProgram (incs ++ mainval : ds)) (f ++ ".o")
-                   liftIO $ link ((f ++ ".o") : objs ++ (map ("-l"++) libs)) f
+                   liftIO $ link ((f ++ ".o") : ilib : objs ++ (map ("-l"++) libs)) f
   where checkMVs = do i <- get
                       case idris_metavars i \\ primDefs of
                             [] -> return ()
