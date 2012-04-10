@@ -18,15 +18,16 @@ io_return x = prim__IO x
 run__IO : IO () -> IO ()
 run__IO v = io_bind v (\v' => io_return v')
 
-data FTy = FInt | FFloat | FChar | FString | FPtr | FUnit
+data FTy = FInt | FFloat | FChar | FString | FPtr | FAny Set | FUnit
 
 interpFTy : FTy -> Set
-interpFTy FInt    = Int
-interpFTy FFloat  = Float
-interpFTy FChar   = Char
-interpFTy FString = String
-interpFTy FPtr    = Ptr
-interpFTy FUnit   = ()
+interpFTy FInt     = Int
+interpFTy FFloat   = Float
+interpFTy FChar    = Char
+interpFTy FString  = String
+interpFTy FPtr     = Ptr
+interpFTy (FAny t) = t
+interpFTy FUnit    = ()
 
 ForeignTy : (xs:List FTy) -> (t:FTy) -> Set
 ForeignTy xs t = mkForeign' (reverse xs) (IO (interpFTy t)) where 

@@ -32,9 +32,11 @@ compile f tm
          objs <- getObjectFiles
          libs <- getLibs
          hdrs <- getHdrs
-         let incs = map Include hdrs
-         so <- getSO
          ddir <- liftIO $ getDataDir
+         -- if any includes exist in the data directory, use that
+         hdrs' <- liftIO $ mapM (inDir ddir) hdrs
+         let incs = map Include hdrs'
+         so <- getSO
          let ilib = ddir ++ "/libidris.a"
          case so of
             Nothing ->
@@ -47,6 +49,10 @@ compile f tm
                       case idris_metavars i \\ primDefs of
                             [] -> return ()
                             ms -> fail $ "There are undefined metavariables: " ++ show ms
+        inDir d h = do let f = d ++ "/" ++ h
+                       ex <- doesFileExist f
+                       if ex then return f else return h
+
 
 allNames :: [Name] -> Name -> Idris [Name]
 allNames ns n | n `elem` ns = return []
@@ -151,9 +157,9 @@ instance ToEpic (TT Name) where
 
 doForeign :: [TT Name] -> Idris E.Term
 doForeign (_ : fgn : args)
-   | (_, (Constant (Str fgnName) : fgnArgTys : P _ (UN ret) _ : [])) <- unApply fgn
+   | (_, (Constant (Str fgnName) : fgnArgTys : ret : [])) <- unApply fgn
         = let tys = getFTypes fgnArgTys
-              rty = mkEty ret in
+              rty = mkEty' ret in
               do args' <- mapM epic args
                  -- wrap it in a prim__IO
                  -- return $ con_ 0 @@ impossible @@ 
@@ -163,9 +169,12 @@ doForeign (_ : fgn : args)
 getFTypes :: TT Name -> [E.Type]
 getFTypes tm = case unApply tm of
                  (nil, []) -> []
-                 (cons, [(P _ (UN ty) _), xs]) -> 
+                 (cons, [ty, xs]) -> 
                     let rest = getFTypes xs in
-                        mkEty ty : rest                        
+                        mkEty' ty : rest
+
+mkEty' (P _ (UN ty) _) = mkEty ty
+mkEty' _ = tyAny
 
 mkEty "FInt"    = tyInt
 mkEty "FFloat"  = tyFloat
