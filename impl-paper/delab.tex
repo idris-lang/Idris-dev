@@ -1,6 +1,28 @@
-\section{Reversing Elaboration: From \TT{} to \Idris{}}
+\section{Reversing Elaboration}
 
 \label{sect:delab}
+
+As well as translating from \Idris{} to \TT{}, so that programs can be type
+checked and evaluated, it is valuable to define the reverse transformation. This
+serves two principal purposes:
+
+\begin{itemize}
+\item To assist the user, it is preferable that the results of evaluation, and any
+error messages produced by the elaborator, are presented in \Idris{} syntax
+rather than \TT{}.
+\item For correctness, we would like to ensure as far as possible that the 
+result of elaboration is equivalent to the original program. Informally, we can
+achieve this by checking that reversing the elaboration process yields the original
+program (with implicit arguments expanded).
+\end{itemize}
+
+\noindent
+In this section, we describe the process for reversing elaboration and the required
+properties of the elaboration process as a whole. Fortunately, translating from
+\TT{} to \Idris{} is significantly easier than \Idris{} to \TT{}, because it is
+primarily \emph{erasing} information.
+
+\subsection{From \TT{} to \Idris{}}
 
 \subsection{Elaboration Properties}
 
@@ -10,4 +32,11 @@ Need to define unelaboration, and say that elaborating then unelaborating
 an expression yields the original expression.
 (Works for expressions but not declarations)
 }
+
+Properties:
+\begin{itemize}
+\item Elaboration produces a well-typed term
+\item $\ve \MO{Matches} \uninterp{\ttinterp{\ve}}$
+\end{itemize}
+
 
