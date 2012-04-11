@@ -21,16 +21,7 @@ arithmetic and comparison operators are defined for the primitive types,
 and are overloaded using type classes.
 
 An \Idris{} program consists of a module declaration, followed by an optional
-list of imports and a collection of definitions and declarations, a simple example
-of which is shown in Figure \ref{constprims}. Like Haskell, the main function
-is called \texttt{main}, and input and output is managed with an \texttt{IO}
-monad. Unlike Haskell, however, we use a single colon \texttt{:} for type
-declarations, and \remph{all} functions must have a top level type
-declaration, since type inference is in general undecidable for languages with
-dependent types.
-
-A module declaration also opens a \remph{namespace}. The fully qualified names
-declared in this module are \texttt{main.x} and \texttt{main.main}.
+list of imports and a collection of definitions and declarations, for example:
 
 \begin{SaveVerbatim}{constprims}
 
@@ -43,13 +34,27 @@ main : IO ()
 main = putStrLn ("The answer is " ++ show x)
 
 \end{SaveVerbatim}
-\codefig{constprims}{A simple \Idris{} module}
+\useverb{constprims}
+
+\noindent
+Like Haskell, the main function
+is called \texttt{main}, and input and output is managed with an \texttt{IO}
+monad. Unlike Haskell, however, we use a single colon \texttt{:} for type
+declarations, emphasising the importance of types, 
+and \remph{all} functions must have a top level type
+declaration. This is due to type inference being, in general, 
+undecidable for languages with
+dependent types.
+
+A module declaration also opens a \remph{namespace}. The fully qualified names
+declared in this module are \texttt{main.x} and \texttt{main.main}.
+
 
 \subsection{Types and Functions}
 
 Data types are declared in a similar way to Haskell data types, with a similar
 syntax. Natural numbers and lists, for example, are declared as follows in the
-library.
+library:
 
 \begin{SaveVerbatim}{natlist}
 
@@ -60,6 +65,7 @@ data List a = Nil | (::) a (List a) -- Polymorphic lists
 \end{SaveVerbatim}
 \useverb{natlist}
 
+\noindent
 The above declarations are taken from the standard library. Unary natural
 numbers can be either zero, or
 the successor of another natural number (\texttt{S k}). 
@@ -75,6 +81,7 @@ infixr 10 ::
 \end{SaveVerbatim}
 \useverb{infixcons}
 
+\noindent
 This declares that \texttt{::} is a right associative operator (\texttt{infixr})
 with a precedence level of 10.
 Functions, data constructors and type constructors may all be given infix
@@ -469,13 +476,8 @@ data Ordering = LT | EQ | GT
 
 class Eq a => Ord a where
     compare : a -> a -> Ordering
-
     (<) : a -> a -> Bool
-    (>) : a -> a -> Bool
-    (<=) : a -> a -> Bool
-    (>=) : a -> a -> Bool
-    max : a -> a -> a
-    min : a -> a -> a
+    -- etc
 
 \end{SaveVerbatim}
 \useverb{eqord}
@@ -513,24 +515,7 @@ showPerson p = let MkPerson name age = p in
 
 Another way of inspecting intermediate values of \emph{simple} types
 is to use a \texttt{case} expression.
-The following function, for example, splits a string into two at a given character:
-
-\begin{SaveVerbatim}{split}
-
-splitAt : Char -> String -> (String, String)
-splitAt c x = case break (== c) x of
-                  (x, y) => (x, strTail y)
-
-\end{SaveVerbatim}
-\useverb{split} 
-
-\noindent
-\texttt{break} is a library function which breaks a string into a pair of strings
-at the point where the given function returns true. We then deconstruct the
-pair it returns, and remove the first character of the second string.
-
-A \texttt{case} expression can match several cases, for example, to inspect an
-intermediate value of type \texttt{Maybe a}. For example, \texttt{list\_lookup}
+For example, \texttt{list\_lookup}
 looks up an index in a list, returning \texttt{Nothing} if the index is out
 of bounds. We can use this to write \texttt{lookup\_default}, which
 looks up an index and returns a default value if the index is out of bounds:

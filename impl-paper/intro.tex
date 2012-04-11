@@ -2,9 +2,13 @@
 
 Dependently typed programming languages, such as Agda \cite{norell2007thesis}
 and Coq \cite{Bertot2004}, have emerged in recent years as a promising approach
-to ensuring the correctness of software. The \Idris{} language
-\cite{Brady2011a} aims to take these ideas further, by providing support for
-verification of general purpose systems software. In contrast to Agda and Coq,
+to ensuring the correctness of software. Type checking ensures a program has
+the intended meaning; \emph{dependent} types, where types may be predicated
+on values, allow a programmer to give a program a \emph{precise} type and 
+hence have increased confidence of its correctness.
+The \Idris{} language
+\cite{Brady2011a} aims to take this ideas further, by providing support for
+verification of \emph{general purpose} systems software. In contrast to Agda and Coq,
 which have arisen from the theorem proving community, \Idris{} takes Haskell as
 its main influence.  Recent Haskell extensions such as GADTs and type families have
 given some of the power of dependent types to Haskell programmers. In the short
@@ -19,18 +23,18 @@ language, has no such limitation, essentially asking the question:
 \emph{``What if Haskell had \emph{full} dependent types?''}
 \end{center}
 
-It is important for the sake of usability of a programming language to provide
-a notation which allows programmers to express high level concepts
-in a natural way. Taking Haskell as a starting point means that \Idris{} offers
-high level structures such as type classes, \texttt{do}-notation, primitive types
-and monadic I/O, for example.
-Furthermore, a goal of \Idris{} is to
-support high level domain specific language implementation, providing appropriate
-notation for \emph{domain experts} and \emph{systems programmers}, who should not
-be required to be type theorists in order to solve programming problems.
-Nevertheless, it is important for the sake of correctness of the language implementation
-to have a small core language with well understood meta-theory
-\cite{Altenkirch2010}. 
+By \emph{full} dependent types, we mean that there is no restriction on which
+values may appear in types.  It is important for the sake of usability of a
+programming language to provide a notation which allows programmers to express
+high level concepts in a natural way. Taking Haskell as a starting point means
+that \Idris{} offers a variety of high level structures such as type classes,
+\texttt{do}-notation, primitive types and monadic I/O, for example.
+Furthermore, a goal of \Idris{} is to support high level domain specific
+language implementation, providing appropriate notation for \emph{domain
+experts} and \emph{systems programmers}, who should not be required to be type
+theorists in order to solve programming problems.  Nevertheless, it is
+important for the sake of correctness of the language implementation to have a
+well-defined core language with well-understood meta-theory \cite{Altenkirch2010}. 
 How can we achieve both of these goals?
 
 This paper describes a method for elaborating a high level dependently typed
@@ -42,14 +46,18 @@ As we shall see, this method allows higher level language constructs to be
 constructed in a straightforward manner, without compromising the simplicity
 of the underlying type theory.
 
-\subsection{Overview}
+\subsection{Contributions}
+
+\todo{Who is this paper for?}
 
 A dependently typed programming language relies on several components, many of
 which are now well understood. For example, we rely on a type checker for
 the core type theory \cite{Chapman2005epigram,loh2010tutorial}, a
 unification algorithm \cite{Miller1992} and an evaluator. However, it is less
 well understood how to combine these components effectively into a practical
-programming language. Therefore, the primary contribution of this paper is
+programming language. 
+\todo{Anecdotal evidence for this?}
+Therefore, the primary contribution of this paper is
 an EDSL based method for translating programs in a
 high level dependently typed programming language to a small core type theory,
 \TT{}, based on UTT \cite{luo1994}. The paper describes the structure of the
@@ -62,15 +70,16 @@ describing the EDSL and the specific tactics, the paper shows how to extend
 While we apply these ideas to \Idris{} specifically, the method for term construction
 is equally applicable to other typed programming languages.
 
-The paper is structured as follows: In Section \ref{sect:hll} I give an overview of
+The paper is structured as follows: Section \ref{sect:hll} gives an overview of
 programming in \Idris{}, introducing the high level constructs which will be
 translated to the core language; Section \ref{sect:typechecking} describes the
 core language \TT{} and its typing rules, covering expressions, data types
 and pattern matching; Section \ref{sect:elaboration} describes the method
 for translating \Idris{} to \TT{}, beginning with a restricted language
-\IdrisM{} before extending to higher level features; finally, in 
-Section \ref{sect:discussion} we discuss related work and conclude.
-
+\IdrisM{} before extending to higher level features; Section
+\ref{sect:delab} describes the process for translating back to \Idris{}
+and properties of the translation; finally, 
+Section \ref{sect:discussion} discusses related work and concludes.
 
 \subsection{Typographical conventions}
 
@@ -93,4 +102,74 @@ of \emph{meta-operations}, which in practice are Haskell programs. Meta-operatio
 are operations on \Idris{} and \TT{} syntax, and are identified by their names being
 in $\MO{SmallCaps}$.
 
+\subsection{Elaboration Example}
+
+\Idris{} is a Haskell-like pure functional programming language with dependent types.
+A simple example program is the following, which adds corresponding elements of
+vectors of the same length:
+
+\begin{SaveVerbatim}{vadd}
+
+vAdd : Num a => Vect a n -> Vect a n -> Vect a n
+vAdd []        []        = []
+vAdd (x :: xs) (y :: ys) = x + y :: vAdd xs ys
+
+\end{SaveVerbatim}
+\useverb{vadd}
+
+\noindent
+This illustrates some basic features of \Idris{}:
+
+\begin{itemize}
+\item A single colon is used for type declarations, and a double colon for the
+cons operator.
+\item Functions are defined by pattern matching, with a top level type declaration.
+Names which are free in the type declaration (\texttt{a} and \texttt{n}) here
+are implicitly bound.
+\item The type system ensures that both input vectors are the same length (\texttt{n})
+and have the same element type (\texttt{a}), and that the element type and length
+are preserved in the output vector.
+\item Functions can be overloaded using \remph{type classes}. Here, the element type
+of the vector \texttt{a} must be numeric and therefore supports the \texttt{+} operator.
+\end{itemize}
+
+\noindent
+\Idris{} programs elaborate into a small core language, \TT{}, which is a $\lambda$-calculus
+with dependent types, augmented with algebraic data types and pattern matching.
+\TT{} programs are fully explicitly typed, including the names \texttt{a} and \texttt{n}
+in the type declaration, and the names bound in each pattern match clause.
+Type classes are also made explicit.
+The \TT{} translation of \texttt{vAdd} is:
+
+\DM{
+\AR{
+\begin{array}{ll}
+\FN{vAdd} & \Hab(\va\Hab\Set)\to(\vn\Hab\Nat)\to\TC{Num}\:\va\to
+  \Vect\:\va\:\vn\to\Vect\:\va\:\vn\to\Vect\:\va\:\vn\\
+\end{array}
+\\
+\begin{array}{lccccccc}
+\multicolumn{5}{l}{
+\RW{var}\:\va\Hab\Set,\:\vc\Hab\TC{Num}\;\va\SC}\\
+\hg\FN{vAdd} & \va & \Z & \vc & (\DC{Nil}\;\va) & (\DC{Nil}\;\va) & \Ret{\DC{Nil}\;\va} \\
+\multicolumn{5}{l}{
+\RW{var}\:\AR{
+\va\Hab\Set,\:\vk\Hab\Nat,\;\vc\Hab\TC{Num}\;\va,\\
+\vx\Hab\va,\;\vxs\Hab\Vect\;\va\;\vk,\;
+\vy\Hab\va,\;\vys\Hab\Vect\;\va\;\vk
+\SC
+}
+}\\
+\hg\FN{vAdd} & \va & (\suc\;\vk) & \vc 
+  & ((\DC{::})\;\va\;\vk\;\vx\;\vxs) 
+  & ((\DC{::})\;\va\;\vk\;\vy\;\vys) 
+   & \\
+   & & \MRet{5}{((\DC{::})\;\va\;\vk\;((+)\;\vc\;\vx\;\vy)\; (\FN{vAdd}\;\va\;\vk\;\vc\;\vxs\;\vys))}
+\end{array}
+}
+}
+
+\noindent
+The rest of this paper describes \Idris{} and \TT{}, and systematically explains
+how to translate from one to the other.
 

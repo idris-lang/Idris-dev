@@ -479,6 +479,14 @@ This approach, separating the termination requirement from the type theory, mean
 an \Idris{} programmer makes the decision about the importance of totality for each
 function rather than having the totality requirement imposed by the type theory.
 
+\subsection{\TT{} examples}
+
+\todo[inline]{
+\TT{} as a more general purpose intermediate language --- superset of System $\mathcal{F}$
+for example. Primitive operators. A couple of example programs (derived from high
+level examples in e.g. ML?).
+}
+
 \subsection{From \Idris{} to \TT{}}
 
 \TT{} is a very small language, consisting only of data declarations and pattern matching
@@ -498,22 +506,13 @@ features of the high level language.
 
 \subsubsection{Example Elaboration}
 
-Consider the following \Idris{} function:
+Recall the following \Idris{} function:
 
-\begin{SaveVerbatim}{vadd}
-
-vAdd : Num a => Vect a n -> Vect a n -> Vect a n
-vAdd []        []        = []
-vAdd (x :: xs) (y :: ys) = x + y :: vAdd xs ys
-
-\end{SaveVerbatim}
 \useverb{vadd} 
 
 \noindent
-This adds corresponding elements of vectors of the same length. The vectors can contain
-any numeric type, overloaded using the \texttt{Num} type class. In order to elaborate
+In order to elaborate
 this to \TT{}, we must resolve the implicit arguments, and make the type class explicit.
-
 The first step is to make the implicit arguments explicit, using a placeholder
 to stand for the arguments we have not yet resolved. The type class argument is
 also treated as an implicit argument, to which we give the name \texttt{c}:

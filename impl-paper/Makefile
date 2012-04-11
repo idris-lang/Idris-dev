@@ -3,7 +3,7 @@ PAPER = impldtp
 all: ${PAPER}.pdf .PHONY
 
 TEXFILES = ${PAPER}.tex intro.tex conclusions.tex hll.tex\
-           typechecking.tex elaboration.tex \
+           typechecking.tex elaboration.tex delab.tex \
 	   syntax.tex
 
 DIAGS = 
