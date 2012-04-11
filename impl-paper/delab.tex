@@ -24,6 +24,98 @@ primarily \emph{erasing} information.
 
 \subsection{From \TT{} to \Idris{}}
 
+We define a meta-operation $\uninterp{\vt}$, which converts a \TT{} expression
+$\vt$ to an \Idris{} expression which would elaborate to $\vt$:
+
+\DM{
+\AR{
+\begin{array}{rl}
+\uninterp{\vx} &\mq\:\vx\\
+\uninterp{\vc} &\mq\:\vc\\
+\uninterp{\vx\;\ta} &\mq\:\vx\;(\vec{\MO{Impl}}\:\vx\:\ta) \\
+\uninterp{\vf\:\va} &\mq\:\uninterp{\vf}\:\uninterp{\va}\\
+\uninterp{\lam{\vx}{\vT}\SC\ve} &\mq \:\ilam{\vx}\uninterp{\ve}  \\
+\uninterp{\all{\vx}{\vT}\SC\ve} &\mq \:\piexp{\vx}{\uninterp{\vT}}\uninterp{\ve}  \\
+\uninterp{\LET\:\vx\defq\vt\Hab\vT\SC\ve} &\mq  
+\ilet{\vx}{\uninterp{\vt}}\uninterp{\ve}\\
+\end{array}
+\medskip\\
+\begin{array}{rll}
+\MO{Impl}\:\vx\:\va_i\:\mq
+&
+\iarg{\vn}{\ttinterp{\va_i}}&
+\mbox{(if the $i$th argument to $\vx$ is implicit argument $\vn$)}\\
+& \carg{\ttinterp{\va_i}} &
+\mbox{(if the $i$th argument to $\vx$ is a constraint argument)}\\
+& \ttinterp{\va_i} & \mbox{(otherwise)}
+\end{array}
+}
+}
+
+\noindent
+This is mostly a straightforward
+traversal of the \TT{} expression, translating directly to an \Idris{} equivalent.
+The interesting case is for applications of named functions,
+$\uninterp{\vx\:\ta}$, where the arguments are translated to either implicit,
+constraint or explicit arguments according to the definition of $\vx$.
+Since only type declarations are allowed to have implicit or constraint arguments,
+and $\uninterp{\cdot}$ translates \emph{expressions},
+all function types are assumed to take explicit arguments.
+
+We also define an operation $\MO{Unelab}$, which translates \TT{} declarations
+to corresponding \Idris{} declarations. This generates data declarations and
+pattern matching definitions only --- it makes no attempt to reconstruct 
+\texttt{class}
+or \texttt{instance} declarations, or rebuild \texttt{case} expressions.
+First, we define the reverse elaboration of type declarations, which must reconstruct
+which arguments are implicit or constraint arguments:
+
+\DM{
+\AR{
+\begin{array}{l}
+\MO{UnelabType}\:(\vx\Hab\vt)\:\mq\:\vx\Hab\MO{UnelabTyDecl}\:0\:\vt
+\end{array}
+\medskip\\
+\begin{array}{ll}
+\MO{UnelabTyDecl}\:\vi\:(\all{\vx}{\vT}\SC\ve)
+\mq & \piimp{\vx}{\uninterp{\vT}}(\MO{UnelabTyDecl}\:(\vi+1)\:\ve) \\
+ & \hg\mbox{(if the $i$th argument to $\vx$ is an implicit argument)} \\
+ & \piconst{\uninterp{\vT}}(\MO{UnelabTyDecl}\:(\vi+1)\:\ve) \\
+ & \hg\mbox{(if the $i$th argument to $\vx$ is a constraint argument)} \\
+ & \piexp{\vx}{\uninterp{\vT}}(\MO{UnelabTyDecl}\:(\vi+1)\:\ve) \\
+ & \hg\mbox{(otherwise)} \\
+\end{array}
+}
+}
+
+\noindent
+Using this, we define $\MO{Unelab}$ for top level declarations. For pattern
+matching clauses, we reverse elaborate as follows, discarding the explicit
+pattern variable bindings and applying $\MO{UnelabType}$ to reconstruct
+the type declaration:
+
+\DM{
+\AR{
+\MO{Unelab}\:(\vx\Hab\vt)\:\mq\:\MO{UnelabType}\:(\vx\Hab\vt)\\
+\MO{Unelab}\:(\pat{\tx}{\tU}\SC\FN{f}\:\tts\:=\:\ve)
+\:\mq\:\uninterp{\FN{f}\:\tts}\:=\:\uninterp{\ve}
+}
+}
+
+\noindent
+For data type declarations, we unelaborate as follows, applying $\MO{UnelabType}$
+for each of the top level type declarations:
+
+\DM{
+\AR{
+\MO{Unelab}\:(\Data\;\TC{T}\:(\tx\Hab\ttt)\Hab\vT\;\Where\;\vec{\VV{cons}})
+\:\\
+\hg\hg\mq\:\idata\:\MO{UnelabType}\:(\TC{T}\Hab\all{\tx}{\ttt}\SC\vT)\:\iwhere\:
+(\vec{\MO{UnelabType}}\:\vec{\VV{cons}})
+}
+}
+
+
 \subsection{Elaboration Properties}
 
 \todo[inline]{

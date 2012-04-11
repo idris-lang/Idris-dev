@@ -1,5 +1,5 @@
 \newcommand{\ttinterp}[1]{\mathcal{E}\interp{#1}}
-\newcommand{\uninterp}[1]{\mathcal{U}\interp{#1}}
+\newcommand{\uninterp}[1]{\mathcal{T}\interp{#1}}
 
 \section{Elaborating \Idris{}}
 
@@ -575,9 +575,14 @@ a Coq proof script.
 \medskip\\
 \begin{array}{rll}
 \vt ::= & \ve & (\mbox{expression}) \\
-\mid & \piimp{\vx}{\vt}\vt & (\mbox{implicit function space}) \\
 \mid & \piexp{\vx}{\vt}\vt & (\mbox{explicit function space}) \\
-\mid & \VV{constr}\;\vt & (\mbox{constrained type}) \\
+\end{array}
+\medskip\\
+\begin{array}{rll}
+\VV{declty} ::= & \ve & (\mbox{expression}) \\
+\mid & \piexp{\vx}{\vt}\VV{declty} & (\mbox{explicit function space}) \\
+\mid & \piimp{\vx}{\vt}\VV{declty} & (\mbox{implicit function space}) \\
+\mid & \VV{constr}\;\VV{declty} & (\mbox{constrained type}) \\
 \end{array}
 \medskip\\
 \begin{array}{rll}
@@ -591,7 +596,7 @@ a Coq proof script.
 \FFIG{
 \AR{
 \begin{array}{rll}
-\vd ::= & \ihab{\vx}{\vt} & (\mbox{type declaration}) \\
+\vd ::= & \ihab{\vx}{\VV{declty}} & (\mbox{type declaration}) \\
 \mid & \VV{pclause} & (\mbox{pattern clause}) \\
 \mid & \VV{ddecl} & (\mbox{data type declaration}) \\
 \mid & \VV{cdecl} & (\mbox{class declaration}) \\
@@ -609,8 +614,8 @@ a Coq proof script.
 \end{array}
 &
 \begin{array}{rll}
-\VV{ddecl} ::= & \idata\;\ihab{\vx}{\vt}\;\iwhere\;\vec{\VV{con}}\\
-\VV{con} ::= & \ihab{\vx}{\vt}\\
+\VV{ddecl} ::= & \idata\;\ihab{\vx}{\VV{declty}}\;\iwhere\;\vec{\VV{con}}\\
+\VV{con} ::= & \ihab{\vx}{\VV{declty}}\\
 \medskip\\
 \VV{cdecl} ::= & \iclass\;[\VV{constr}]\;\vx\;(\ihab{\tx}{\ttt})\;\iwhere\;\td
 \\
@@ -629,6 +634,8 @@ tuple syntax, \texttt{do}-notation or infix operators --- and with implicit
 arguments in types bound explicitly 
 (e.g. $\piimp{\va}{\_}\piimp{\vn}{\_}\TC{Vect}\:\va\:\vn$
 instead of simply $\Vect\:\va\:\vn$).
+Note that we separate implicit and type constraint bindings, to ensure that they
+only appear in top level declarations.
 It is in general straightforward to
 convert full \Idris{} to \IdrisM{} --- syntactic sugar is implemented by a
 direct source transformation, and implicit arguments can be identified as the names
