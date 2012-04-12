@@ -118,12 +118,18 @@ for each of the top level type declarations:
 
 \subsection{Elaboration Properties}
 
-\todo[inline]{
-What are the properties of elaboration?
-Need to define unelaboration, and say that elaborating then unelaborating
-an expression yields the original expression.
-(Works for expressions but not declarations)
-}
+Elaboration satisfies two important properties. Informally stated, these are
+i) that if elaboration is successful, the
+resulting program is a well-typed \TT{} program; ii) elaboration preserves the
+meaning of the original \Idris{} program. The first property is true by the
+definition of elaboration --- elaboration fails if it attempts to construct an ill-typed
+term at any point. Furthermore, the development calculus \TTdev{} ensures that 
+partial constructions are well-typed.
+
+The second property, that elaboration preserves meaning, can be stated more formally
+as follows: 
+
+If $\MO{Elab}\:\vd\:\mq\:\vt$ then $\MO{Unelab}\:\vt\:\mq\:\vd$
 
 Properties:
 \begin{itemize}
