@@ -118,23 +118,42 @@ for each of the top level type declarations:
 
 \subsection{Elaboration Properties}
 
-Elaboration satisfies two important properties. Informally stated, these are
+Elaboration satisfies two important properties. We limit our discussion of
+these properties to \IdrisM{} without type classes, i.e. elaboration of type 
+declarations, functions, and data types. This is primarily because there is not
+enough information in a \TT{} program alone to reverse elaboration fully. However, since
+elaboration of the higher level \Idris{} constructs is implemented in terms of
+the lower level \IdrisM{} constructs, we should not consider this a serious
+limitation.
+
+Informally stated, the properties that elaboration satisfies are
 i) that if elaboration is successful, the
 resulting program is a well-typed \TT{} program; ii) elaboration preserves the
 meaning of the original \Idris{} program. The first property is true by the
 definition of elaboration --- elaboration fails if it attempts to construct an ill-typed
 term at any point. Furthermore, the development calculus \TTdev{} ensures that 
 partial constructions are well-typed.
+The second property can be stated as the following conjecture:
+\\
 
-The second property, that elaboration preserves meaning, can be stated more formally
-as follows: 
+\noindent
+\textbf{Conjecture: Preservation of meaning}\\
+Given an \IdrisM{} declaration $\vd$, which is either a type declaration, a
+pattern match clause, or a data type declaration,
+if $\MO{Elab}\:\vd\:\mq\:\vt$, and $\MO{Unelab}\:\vt\:\mq\:\vd'$,
+then $\MO{Match}\:\vd\:\vd'$ produces a valid match.
+\\
 
-If $\MO{Elab}\:\vd\:\mq\:\vt$ then $\MO{Unelab}\:\vt\:\mq\:\vd$
+The output of $\MO{Unelab}$ is not necessarily equal to the input of $\MO{Elab}$
+because elaboration fills in placeholder subexpressions. Therefore it suffices for
+the input to match the output.
 
-Properties:
-\begin{itemize}
-\item Elaboration produces a well-typed term
-\item $\ve \MO{Matches} \uninterp{\ttinterp{\ve}}$
-\end{itemize}
-
+We have not yet proved this conjecture. Its truth depends on the implementation
+of $\MO{Elab}$ faithfully translating each construct, and we observe that the
+present description of $\MO{Elab}$ elaborates each non-placeholder subexpression
+according to the structure of the expression. However, since the truth of this
+conjecture is crucial to the correctness of the implementation, the elaborator
+checks \emph{dynamically} that meaning is preserved by evaluating
+$\MO{Unelab}\:\vt$ and matching the input against the result. In practice, this
+does not have a significant impact on performance.
 
