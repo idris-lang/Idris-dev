@@ -281,7 +281,7 @@ need for a run-time bounds check. The type checker guarantees that the location
 is no larger than the length of the vector.
 
 Note also that there is no case for \texttt{Nil} here. It would be impossible
-to add such a case ---
+to apply such a case ---
 since there is no element of \texttt{Fin O}, and the location is a
 \texttt{Fin n}, then \texttt{n} can not be \tDC{O}.  As a result, attempting to
 look up an element in an empty vector would give a compile time type error,

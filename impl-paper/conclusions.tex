@@ -1,11 +1,6 @@
-\section{Discussion}
+\section{Related Work}
 
-\label{sect:discussion}
-
-%Discuss performance (anecdotally, how big is the library and how long to check,
-%and relative to previous version). 
-
-\subsection{Related Work}
+\label{sect:related}
 
 Dependently typed programming languages have becoming more prominent in recent
 years as tools for verifying software correctness, and several experimental
@@ -50,7 +45,9 @@ implementation of extra machinery for constructor manipulation
 %Elaboration is effectively a type checker for the high level language, so we have
 %a hope of providing reasonable error messages related to the original code.]
 
-\subsection{Conclusion}
+\section{Conclusion}
+
+\label{sect:conclusion}
 
 In this paper, I have given an overview of the programming language \Idris{},
 and its core type theory \TT{}, giving a detailed algorithm for translating
@@ -95,8 +92,11 @@ since we have used a tactic-based EDSL to elaborate \Idris{} to \TT{}, it is
 possible to expose the tactic language to the programmer. This opens up the
 possibility of implementing domain specific decision procedures, or implementing
 user defined tactics in a style similar to Coq's \texttt{Ltac} language \cite{Delahaye2000}.
+Although \TT{} is primarily intended as a core language for \Idris{}, 
+its rich type system also allows it to capture a number of high level languages, especially
+when augmented with primitive operators. 
 
-In this paper we have not discussed the performance of the elaboration
+We have not discussed the performance of the elaboration
 algorithm, or described how \Idris{} compiles to executable code. In practice,
 we have found performance to be acceptable --- for example, the \Idris{}
 library (25 files, 3532 lines of code in total at the time of writing)
@@ -110,11 +110,10 @@ functions handled using command-response interaction trees \cite{Hancock2000}.
 The objective of this implementation of \Idris{} is to provide a platform
 for experimenting with realistic, general purpose programming with dependent
 types, by implementing a Haskell-like language augmented with \emph{full}
-dependent types.  
+dependent types. 
 In this paper, we have seen how such a high level language can be implemented
 by building on top of a small, well-understood, easy to reason about type
 theory. 
-%\todo{What makes Idris general purpose?}
 However, a programming language implementation is not an end in itself. 
 Programming languages exist to support research and practice in many different
 domains. In future work, therefore, we plan to apply domain specific

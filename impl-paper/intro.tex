@@ -48,16 +48,14 @@ of the underlying type theory.
 
 \subsection{Contributions}
 
-\todo{Who is this paper for?}
-
 A dependently typed programming language relies on several components, many of
 which are now well understood. For example, we rely on a type checker for
 the core type theory \cite{Chapman2005epigram,loh2010tutorial}, a
 unification algorithm \cite{Miller1992} and an evaluator. However, it is less
 well understood how to combine these components effectively into a practical
 programming language. 
-\todo{Anecdotal evidence for this?}
-Therefore, the primary contribution of this paper is
+
+The primary contribution of this paper is
 an EDSL based method for translating programs in a
 high level dependently typed programming language to a small core type theory,
 \TT{}, based on UTT \cite{luo1994}. The paper describes the structure of the
@@ -79,7 +77,8 @@ for translating \Idris{} to \TT{}, beginning with a restricted language
 \IdrisM{} before extending to higher level features; Section
 \ref{sect:delab} describes the process for translating back to \Idris{}
 and properties of the translation; finally, 
-Section \ref{sect:discussion} discusses related work and concludes.
+Section \ref{sect:related} discusses related work and Section \ref{sect:conclusion}
+concludes.
 
 \subsection{Typographical conventions}
 
@@ -89,11 +88,11 @@ which \Idris{} is elaborated. We distinguish these languages typographically as
 follows:
 
 \begin{itemize}
-\item \Idris{} programs are written in \texttt{truetype}, as they are written
+\item \Idris{} programs are written in \texttt{typewriter} font, as they are written
 in a conventional text editor. We use \texttt{e$_i$} to stand for non-terminal
 expressions.
 \item \TT{} programs are written in mathematical notation, with names arising
-from \Idris{} expressions written in \texttt{truetype}. We use vector notation
+from \Idris{} expressions written in \texttt{typewriter} font. We use vector notation
 $\te$ to stand for sequences of expressions.
 \end{itemize}
 

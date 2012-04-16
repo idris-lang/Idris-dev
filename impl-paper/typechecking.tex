@@ -320,7 +320,8 @@ consisting of a type declaration followed by one or more pattern clauses:
 }
 }
 
-A pattern clause consists of a list of pattern variable bindings, 
+A pattern clause consists of a list of pattern variable bindings, introduced by
+$\RW{var}$,
 and a left and right hand side, both of which
 are \TT{} expressions. Each side is type checked relative to the variable bindings,
 and the types of each side must be convertible. Additionally, the
@@ -462,7 +463,7 @@ a tree of case expressions~\cite{Augustsson1985}.
 
 \subsection{Totality checking}
 
-In order to ensure termination of type checking, and therefore its decidability,
+In order to ensure termination of type checking
 we must distinguish terms for which evaluation definitely terminates, and
 those which may diverge. \TT{} takes a simple but pragmatic and
 effective approach to termination
@@ -473,19 +474,11 @@ partial. The syntactic constraint we use is that a recursive call in a pattern
 clause must have an argument which is structurally smaller than an input argument
 in the same position. \TT{} also marks functions which do not cover all possible
 inputs as partial. This totality checking is independent of the rest of the type
-theory, and can be extended in future.
+theory, and can be extended.
 
 This approach, separating the termination requirement from the type theory, means that
 an \Idris{} programmer makes the decision about the importance of totality for each
 function rather than having the totality requirement imposed by the type theory.
-
-\subsection{\TT{} examples}
-
-\todo[inline]{
-\TT{} as a more general purpose intermediate language --- superset of System $\mathcal{F}$
-for example. Primitive operators. A couple of example programs (derived from high
-level examples in e.g. ML?).
-}
 
 \subsection{From \Idris{} to \TT{}}
 
