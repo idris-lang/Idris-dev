@@ -407,7 +407,8 @@ letbind n ty val ctxt env _ = fail "Can't let bind here"
 rewrite :: Raw -> RunTactic
 rewrite tm ctxt env (Bind x (Hole t) xp@(P _ x' _)) | x == x' =
     do (tmv, tmt) <- lift $ check ctxt env tm
-       case unApply tmt of
+       let tmt' = normalise ctxt env tmt
+       case unApply tmt' of
          (P _ (UN "=") _, [lt,rt,l,r]) ->
             do let p = Bind rname (Lam lt) (mkP (P Bound rname lt) r l t)
                let newt = mkP l r l t 
