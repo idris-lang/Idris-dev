@@ -849,8 +849,9 @@ instance Binary PTerm where
                                          put x2
                                          put x3
                                          put x4
-                PAlternative x1 -> do putWord8 13
-                                      put x1
+                PAlternative x1 x2 -> do putWord8 13
+                                         put x1
+                                         put x2
                 PHidden x1 -> do putWord8 14
                                  put x1
                 PSet -> putWord8 15
@@ -918,7 +919,8 @@ instance Binary PTerm where
                             x4 <- get
                             return (PDPair x1 x2 x3 x4)
                    13 -> do x1 <- get
-                            return (PAlternative x1)
+                            x2 <- get
+                            return (PAlternative x1 x2)
                    14 -> do x1 <- get
                             return (PHidden x1)
                    15 -> return PSet

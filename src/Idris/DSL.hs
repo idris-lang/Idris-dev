@@ -34,7 +34,7 @@ expandDo dsl (PCase fc s opts) = PCase fc (expandDo dsl s)
 expandDo dsl (PPair fc l r) = PPair fc (expandDo dsl l) (expandDo dsl r)
 expandDo dsl (PDPair fc l t r) = PDPair fc (expandDo dsl l) (expandDo dsl t) 
                                            (expandDo dsl r)
-expandDo dsl (PAlternative as) = PAlternative (map (expandDo dsl) as)
+expandDo dsl (PAlternative a as) = PAlternative a (map (expandDo dsl) as)
 expandDo dsl (PHidden t) = PHidden (expandDo dsl t)
 expandDo dsl (PReturn fc) = dsl_return dsl
 expandDo dsl (PDoBlock ds) = expandDo dsl $ block (dsl_bind dsl) ds 
@@ -81,7 +81,7 @@ var dsl n t i = v' i t where
     v' i (PEq f l r)     = PEq f (v' i l) (v' i r)
     v' i (PPair f l r)   = PPair f (v' i l) (v' i r)
     v' i (PDPair f l t r) = PDPair f (v' i l) (v' i t) (v' i r)
-    v' i (PAlternative as) = PAlternative $ map (v' i) as
+    v' i (PAlternative a as) = PAlternative a $ map (v' i) as
     v' i (PHidden t)     = PHidden (v' i t)
     v' i (PIdiom f t)    = PIdiom f (v' i t)
     v' i (PDoBlock ds)   = PDoBlock (map (fmap (v' i)) ds)

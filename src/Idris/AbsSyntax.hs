@@ -537,7 +537,7 @@ data PTerm = PQuote Raw
            | PEq FC PTerm PTerm
            | PPair FC PTerm PTerm
            | PDPair FC PTerm PTerm PTerm
-           | PAlternative [PTerm]
+           | PAlternative Bool [PTerm] -- True if only one may work
            | PHidden PTerm -- irrelevant or hidden pattern
            | PSet
            | PConstant Const
@@ -566,7 +566,7 @@ mapPT f t = f (mpt t) where
   mpt (PTyped l r) = PTyped (mapPT f l) (mapPT f r)
   mpt (PPair fc l r) = PPair fc (mapPT f l) (mapPT f r)
   mpt (PDPair fc l t r) = PDPair fc (mapPT f l) (mapPT f t) (mapPT f r)
-  mpt (PAlternative as) = PAlternative (map (mapPT f) as)
+  mpt (PAlternative a as) = PAlternative a (map (mapPT f) as)
   mpt (PHidden t) = PHidden (mapPT f t)
   mpt (PDoBlock ds) = PDoBlock (map (fmap (mapPT f)) ds)
   mpt (PProof ts) = PProof (map (fmap (mapPT f)) ts)
@@ -964,7 +964,7 @@ prettyImp impl = prettySe 10
           prettySe 10 r <> rparen
       else
         lparen <> prettySe 10 l <+> text "**" <+> prettySe 10 r <> rparen
-    prettySe p (PAlternative as) =
+    prettySe p (PAlternative a as) =
       lparen <> text "|" <> prettyAs <> text "|" <> rparen
         where
           prettyAs =
@@ -1056,7 +1056,7 @@ showImp impl tm = se 10 tm where
     se p (PTyped l r) = "(" ++ se 10 l ++ " : " ++ se 10 r ++ ")"
     se p (PPair _ l r) = "(" ++ se 10 l ++ ", " ++ se 10 r ++ ")"
     se p (PDPair _ l t r) = "(" ++ se 10 l ++ " ** " ++ se 10 r ++ ")"
-    se p (PAlternative as) = "(|" ++ showSep " , " (map (se 10) as) ++ "|)"
+    se p (PAlternative a as) = "(|" ++ showSep " , " (map (se 10) as) ++ "|)"
     se p PSet = "Set"
     se p (PConstant c) = show c
     se p (PProof ts) = "proof { " ++ show ts ++ "}"
@@ -1129,7 +1129,7 @@ instance Sized PTerm where
   size (PEq fc left right) = 1 + size left + size right
   size (PPair fc left right) = 1 + size left + size right
   size (PDPair fs left ty right) = 1 + size left + size ty + size right
-  size (PAlternative alts) = 1 + size alts
+  size (PAlternative a alts) = 1 + size alts
   size (PHidden hidden) = size hidden
   size PSet = 1
   size (PConstant const) = 1 + size const
@@ -1157,7 +1157,7 @@ allNamesIn tm = nub $ ni [] tm
     ni env (PPair _ l r)   = ni env l ++ ni env r
     ni env (PDPair _ (PRef _ n) t r)  = ni env t ++ ni (n:env) r
     ni env (PDPair _ l t r)  = ni env l ++ ni env t ++ ni env r
-    ni env (PAlternative ls) = concatMap (ni env) ls
+    ni env (PAlternative a ls) = concatMap (ni env) ls
     ni env _               = []
 
 namesIn :: [(Name, PTerm)] -> IState -> PTerm -> [Name]
@@ -1177,7 +1177,7 @@ namesIn uvars ist tm = nub $ ni [] tm
     ni env (PPair _ l r)   = ni env l ++ ni env r
     ni env (PDPair _ (PRef _ n) t r) = ni env t ++ ni (n:env) r
     ni env (PDPair _ l t r) = ni env l ++ ni env t ++ ni env r
-    ni env (PAlternative as) = concatMap (ni env) as
+    ni env (PAlternative a as) = concatMap (ni env) as
     ni env (PHidden tm)    = ni env tm
     ni env _               = []
 
@@ -1288,7 +1288,7 @@ expandParams dec ps ns tm = en tm
     en (PTyped l r) = PTyped (en l) (en r)
     en (PPair f l r) = PPair f (en l) (en r)
     en (PDPair f l t r) = PDPair f (en l) (en t) (en r)
-    en (PAlternative as) = PAlternative (map en as)
+    en (PAlternative a as) = PAlternative a (map en as)
     en (PHidden t) = PHidden (en t)
     en (PDoBlock ds) = PDoBlock (map (fmap en) ds)
     en (PProof ts)   = PProof (map (fmap en) ts)
@@ -1364,7 +1364,7 @@ getPriority i tm = pri tm
     pri (PTyped l r) = pri l
     pri (PPair _ l r) = max 1 (max (pri l) (pri r))
     pri (PDPair _ l t r) = max 1 (max (pri l) (max (pri t) (pri r)))
-    pri (PAlternative as) = maximum (map pri as)
+    pri (PAlternative a as) = maximum (map pri as)
     pri (PConstant _) = 0
     pri Placeholder = 1
     pri _ = 3
@@ -1480,7 +1480,7 @@ implicitise syn ist tm
              let isn = namesIn uvars ist l ++ namesIn uvars ist t ++ 
                        namesIn uvars ist r
              put (decls, nub (ns ++ (isn \\ (env ++ map fst (getImps decls)))))
-    imps top env (PAlternative as)
+    imps top env (PAlternative a as)
         = do (decls, ns) <- get
              let isn = concatMap (namesIn uvars ist) as
              put (decls, nub (ns ++ (isn `dropAll` (env ++ map fst (getImps decls)))))
@@ -1529,8 +1529,8 @@ addImpl' inpat env ist ptm = ai env ptm
                                    t' = ai env t
                                    r' = ai env r in
                                    PDPair fc l' t' r'
-    ai env (PAlternative as) = let as' = map (ai env) as in
-                                   PAlternative as'
+    ai env (PAlternative a as) = let as' = map (ai env) as in
+                                     PAlternative a as'
     ai env (PApp fc (PRef _ f) as) 
         | not (f `elem` env)
                           = let as' = map (fmap (ai env)) as in
@@ -1582,7 +1582,7 @@ aiFn inpat ist fc f as
                     then Right $ PApp fc (PRef fc f) as
                     else Right $ mkPApp fc (length as) (PRef fc f) as
             alts -> Right $
-                     PAlternative $
+                     PAlternative True $
                        map (\(f', ns) -> mkPApp fc (length ns) (PRef fc f') 
                                                    (insertImpl ns as)) alts
   where
@@ -1727,10 +1727,10 @@ matchClause' names i x y = checkRpts $ match (fullApp x) (fullApp y) where
                                                     mt <- match' t t'
                                                     mr <- match' r r'
                                                     return (ml ++ mt ++ mr)
-    match (PAlternative as) (PAlternative as') 
+    match (PAlternative a as) (PAlternative a' as') 
         = do ms <- zipWithM match' as as' 
              return (concat ms)
-    match a@(PAlternative as) b
+    match a@(PAlternative _ as) b
         = do let ms = zipWith match' as (repeat b)
              case (rights (map toEither ms)) of
                 (x: _) -> return x
@@ -1786,7 +1786,7 @@ substMatch n tm t = sm t where
     sm (PTyped x y) = PTyped (sm x) (sm y)
     sm (PPair f x y) = PPair f (sm x) (sm y)
     sm (PDPair f x t y) = PDPair f (sm x) (sm t) (sm y)
-    sm (PAlternative as) = PAlternative (map sm as)
+    sm (PAlternative a as) = PAlternative a (map sm as)
     sm (PHidden x) = PHidden (sm x)
     sm x = x
 
@@ -1801,7 +1801,7 @@ shadow n n' t = sm t where
     sm (PTyped x y) = PTyped (sm x) (sm y)
     sm (PPair f x y) = PPair f (sm x) (sm y)
     sm (PDPair f x t y) = PDPair f (sm x) (sm t) (sm y)
-    sm (PAlternative as) = PAlternative (map sm as)
+    sm (PAlternative a as) = PAlternative a (map sm as)
     sm (PHidden x) = PHidden (sm x)
     sm x = x
 

@@ -580,7 +580,7 @@ pExt syn (Rule ssym ptm _)
     update ns (PCase fc c opts) = PCase fc (update ns c) (map (pmap (update ns)) opts) 
     update ns (PPair fc l r) = PPair fc (update ns l) (update ns r)
     update ns (PDPair fc l t r) = PDPair fc (update ns l) (update ns t) (update ns r)
-    update ns (PAlternative as) = PAlternative (map (update ns) as)
+    update ns (PAlternative a as) = PAlternative a (map (update ns) as)
     update ns (PHidden t) = PHidden (update ns t)
     update ns (PDoBlock ds) = PDoBlock $ upd ns ds
       where upd ns (DoExp fc t : ds) = DoExp fc (update ns t) : upd ns ds
@@ -735,7 +735,7 @@ pPair syn = try (do l <- pExpr syn
 pAlt syn = do symbol "(|"; 
               alts <- sepBy1 (pExpr' syn) (lchar ',')
               symbol "|)"
-              return (PAlternative alts)
+              return (PAlternative False alts)
 
 pHSimpleExpr syn
              = do lchar '.'

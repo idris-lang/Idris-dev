@@ -135,12 +135,16 @@ elab ist info pattern tcgen fn tm
                                             [pimp (MN 0 "a") t,
                                              pimp (MN 0 "P") Placeholder,
                                              pexp l, pexp r])
-    elab' ina (PAlternative as) 
+    elab' ina (PAlternative True as) 
         = let as' = pruneAlt as in
               try (tryAll (zip (map (elab' ina) as') (map showHd as')))
                   (tryAll (zip (map (elab' ina) as) (map showHd as)))
         where showHd (PApp _ h _) = show h
               showHd x = show x
+    elab' ina (PAlternative False as) 
+        = trySeq as
+        where trySeq [] = fail "All alternatives fail to elaborate"
+              trySeq (x : xs) = try (elab' ina x) (trySeq xs)
     elab' (ina, guarded) (PRef fc n) | pattern && not (inparamBlock n)
                          = do ctxt <- get_context
                               let iscon = isConName Nothing n ctxt
@@ -335,12 +339,12 @@ pruneAlt xs = map prune xs
         = PApp fc1 (PRef fc2 f) (fmap (fmap (choose f)) as)
     prune t = t
 
-    choose f (PAlternative as)
+    choose f (PAlternative a as)
         = let as' = fmap (choose f) as
               fs = filter (headIs f) as' in
               case fs of
                  [a] -> a
-                 _ -> PAlternative as'
+                 _ -> PAlternative a as'
     choose f (PApp fc f' as) = PApp fc (choose f f') (fmap (fmap (choose f)) as)
     choose f t = t
 
