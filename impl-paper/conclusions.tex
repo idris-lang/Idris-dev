@@ -87,7 +87,8 @@ these are implemented by lifting the branches out to a top level function.
 We do not need to make any changes to the core language type system in order to 
 implement these high level features. 
 Other high level features such as dependent records, tuples and monad comprehensions
-can be added equally easily.  Furthermore, 
+can be added equally easily --- and indeed have been added in the full implementation.  
+Furthermore, 
 since we have used a tactic-based EDSL to elaborate \Idris{} to \TT{}, it is
 possible to expose the tactic language to the programmer. This opens up the
 possibility of implementing domain specific decision procedures, or implementing
@@ -116,12 +117,12 @@ by building on top of a small, well-understood, easy to reason about type
 theory. 
 However, a programming language implementation is not an end in itself. 
 Programming languages exist to support research and practice in many different
-domains. In future work, therefore, we plan to apply domain specific
+domains. In future work, therefore, I plan to apply domain specific
 language based techniques to realistic problems
 in important safety critical domains such as security and network protocol
-design and implementation. In order to be successful, we need a language which
+design and implementation. In order to be successful, this will require a language which
 is expressive enough to describe protocol specifications at a high level, and robust 
-enough to guarantee correct implementation of those protocols. \Idris{}, we believe,
+enough to guarantee correct implementation of those protocols. \Idris{}, I believe,
 is the right tool for this work.
 
 

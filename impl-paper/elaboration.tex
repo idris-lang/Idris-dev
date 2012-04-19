@@ -22,7 +22,7 @@ one or more \TT{} declarations.
 
 \subsection{The Development Calculus \TTdev}
 
-We build \TT{} expressions by using high level \Idris{} expressions to
+\TT{} expressions are built by using high level \Idris{} expressions to
 direct a tactic based theorem prover, which builds the \TT{} expressions
 step by step, by refinement. In order to build expressions in this way,
 the type theory needs to support
@@ -129,7 +129,7 @@ the final proof term, which must be a \TT{} program (i.e. does not contain any o
 \demph{pure}. Although a pure term does not contain hole or guess bindings, it may
 nevertheless \remph{refer} to hole- or guess-bound variables.
 
-We initialise a proof state with the $\MO{NewProof}$ operation. Given a global
+The proof state is initialised with the $\MO{NewProof}$ operation. Given a global
 context $\vC$, $\MO{NewProof}\:\vt$ sets up the proof state as:
 
 \DM{
@@ -137,7 +137,7 @@ context $\vC$, $\MO{NewProof}\:\vt$ sets up the proof state as:
 }
 
 The local context is initially empty, and the initial hole queue is the $\vx$ standing for
-the entire expression. We can reset the proof term with the $\MO{NewTerm}$ operation.
+the entire expression. The proof term is reset with the $\MO{NewTerm}$ operation.
 In an existing proof state $(\vC, \Delta, \ve, \vQ)$,
 $\MO{NewTerm}\:\vt$ discards the proof term and hole queue, and
 updates the proof state to:
@@ -147,8 +147,8 @@ updates the proof state to:
 }
 
 
-This allows us in particular to use pattern bindings from the left hand side of a pattern
-matching definition in the term on the right hand side.
+This allows the elaborator to use pattern bindings from the left
+hand side of a pattern matching definition in the term on the right hand side.
 
 \subsection{System State}
 
@@ -193,7 +193,7 @@ vAdd : (a : _) -> (n : _) -> (c : Num a) ->
 \useverb{vAddImpT} 
 
 \noindent
-For \tFN{vAdd}, we record that \texttt{a} and \texttt{n} are implicit, 
+For \tFN{vAdd}, the state records that \texttt{a} and \texttt{n} are implicit, 
 \texttt{c} is a constraint, and \texttt{xs} and \texttt{ys} are explicit. When
 the elaborator encounters an application of \tFN{vAdd}, it knows that unless these arguments
 are given explicitly, the application must be expanded.
@@ -264,7 +264,7 @@ keeping $\vx$ at the head:
 }
 
 An obvious difficulty is in ensuring that names are unique throughout a proof term.
-In the implementation, we ensure that any hole created by the $\MO{Claim}$ tactic
+The implementation ensures that any hole created by the $\MO{Claim}$ tactic
 has a unique name by checking against existing names in scope and modifying
 the name if necessary. In this paper, we will assume that all created names are fresh.
 
@@ -296,13 +296,14 @@ For example, consider the following proof term:
 }
 
 \noindent
-If $\vx$ is in focus (i.e., at the head of the hole queue) and we attempt to
+If $\vx$ is in focus (i.e., at the head of the hole queue) and the elaborator
+attempts to
 $\MO{Fill}$ it with an $\TC{Int}$ value $42$, we have:
 
 \begin{itemize}
 \item $\Check\:42\:\mq\:\TC{Int}$
 \item Unifying $\TC{Int}$ with $\vA$ (the type of $\vx$) is only possible if
-$\vA\:=\:\TC{Int}$, so we solve $\vA$.
+$\vA\:=\:\TC{Int}$, so solve $\vA$.
 \end{itemize}
 
 \noindent
@@ -328,6 +329,10 @@ the guess is substituted into its scope:
 }
 }
 
+The two step process, with $\MO{Fill}$ followed by $\MO{Solve}$, allows the elaborator
+to work safely with incomplete terms, since an incomplete guess binding has no 
+computational force. Once a term is complete in a guess binding, it may be substituted into the 
+scope of the binding safely.
 In each of these tactics, if any step fails, or the term in focus does not take
 the correct form (e.g. is not a guess in the case of $\MO{Solve}$ or not a hole
 in the case of $\MO{Claim}$ and $\MO{Fill}$, the entire tactic fails. We can
@@ -347,8 +352,8 @@ problem) and is handled by $\MO{Try}$.
 
 \subsubsection{Creating binders}
 
-We also define primitive tactics for constructing binders. We can create a $\lambda$
-binding if the goal normalises to a function type:
+We also define primitive tactics for constructing binders. Creating a $\lambda$
+binding requires that the goal normalises to a function type:
 
 \DM{
 \PA{\A\A}{
@@ -362,7 +367,7 @@ binding if the goal normalises to a function type:
 }
 
 \noindent
-We can create a $\forall$ binding if the goal is a $\TC{Set}$:
+Creating a $\forall$ binding requires that the goal is a $\TC{Set}$:
 
 \DM{
 \PA{\A\A}{
@@ -376,7 +381,7 @@ We can create a $\forall$ binding if the goal is a $\TC{Set}$:
 }
 
 \noindent
-To create a $\LET$ binding, we give a type and a value.
+Creating a $\LET$ binding requires a type and a value.
 
 \DM{
 \PA{\A\A}{
@@ -392,8 +397,8 @@ To create a $\LET$ binding, we give a type and a value.
 }
 
 Each of these tactics require the term in focus to be of the form $\hole{\vx}{\vT}\SC\vx$.
-This is important, because if the scope of the binding was an arbitrary expression $\ve$,
-the binder would be scoped across this whole expression rather than the subexpression
+This is important, because if the scope of the binding were an arbitrary expression $\ve$,
+the binder would be scoped across this \emph{whole} expression rather than the subexpression
 $\vx$ as intended.
 The $\MO{attack}$ tactic ensures that a hole
 is in the appropriate form, creating a new hole $\vh$ which is placed at the head
@@ -779,7 +784,7 @@ There are two cases to consider when elaborating applications:
 \item Applying an expression, which does not have implicit arguments, to an argument.
 \end{itemize}
 
-In the first case, we must expand the application to include implicit arguments.
+In the first case, the elaborator must expand the application to include implicit arguments.
 For example \texttt{vAdd xs ys} is expanded to
 \texttt{vAdd \{a=\_\} \{n=\_\} \{\{\_\}\} xs ys}, adding the implicit arguments
 \texttt{a} and \texttt{n} and a type class instance argument. The meta-operation
@@ -825,9 +830,8 @@ arguments first.
 Elaborating a global function application makes a $\MO{Claim}$ for each argument
 in turn. Then the function is elaborated, applied to each of the claimed arguments.
 Finally, each argument which has been given explicitly is elaborated. If this fails,
-elaboration tries again in the opposite order. Finally, we resolve any type
-class instance arguments with the built-in $\MO{Instance}$ tactic (see Section
-\ref{sect:instance}).
+elaboration tries again in the opposite order. Finally, any type
+class instance arguments are resolved with the built-in $\MO{Instance}$ tactic.
 
 \DM{
 \ttinterp{\vx\:\ta}\:\mq\:
@@ -860,9 +864,9 @@ in detail in Section \ref{sect:instance}.
 
 To elaborate a simple function application, of an arbitrary expression to an arbitrary
 argument, we need not worry about implicit arguments or class constraints. Instead,
-we simply elaborate the function and argument, and apply the results. Since elaboration
-is type directed, however, we do need to construct an appropriate type for the function.
-As before, we try elaboration in two orders, as we may learn something from elaborating
+the function and argument are elaborated, and the results applied. Since elaboration
+is type directed, however, there must be an appropriate type for the function.
+As before, elaboration tries two orders, as it may learn something from elaborating
 the function or argument which helps with unification:
 
 \DM{
@@ -897,8 +901,8 @@ current proof state. $\MO{Elab}$ uses $\ttinterp{\cdot}$ to help translate
 
 \subsubsection{Elaborating Type Declarations}
 
-To elaborate a type declaration, we simply create a new proof state,
-translate the \IdrisM{} type to a \TT{} type, then add the resulting type
+Elaborating a type declaration involves creating a new proof state,
+translating the \IdrisM{} type to a \TT{} type, then adding the resulting type
 as a \TT{} declaration:
 
 \DM{
@@ -916,10 +920,10 @@ into the context.
 
 \subsubsection{Elaborating Data Types}
 
-To elaborate a data declaration, we need to elaborate the type declaration itself,
+Elaborating a data declaration involves elaborating the type declaration itself,
 as a normal type declaration. This ensures that the type is in scope when
-elaborating the constructor types. We then use the results to build a \TT{} data
-declaration.
+elaborating the constructor types. Then using the results, the elaborator
+adds a \TT{} data declaration.
 
 \DM{
 \AR{
@@ -942,7 +946,7 @@ declaration.
 
 \subsubsection{Elaborating Pattern Matching}
 
-To elaborate a pattern matching definition, we work clause by clause, elaborating
+Elaborating a pattern matching definition works clause by clause, elaborating
 the left and right hand sides in turn. $\MO{ElabClause}$ returns the elaborated
 left and right hand sides, and may have the side effect of adding entries
 to the global context, such as definitions in $\iwhere$ clauses.
@@ -952,17 +956,17 @@ First, let us consider the simplest case, with no $\iwhere$ clause:
 \MO{ElabClause}\:(\vx\:\ttt\:=\:\ve)\:\mq\:?
 }
 
-How do we elaborate the left hand side, given that elaboration is type directed, and
-we do not know its type until after we have elaborated it? 
-We can achieve this without any change to the elaborator by defining 
+How does the left hand side get elaborated, given that elaboration is type directed, and
+its type is not known until after elaboration? 
+This can be achieved without any change to the elaborator by defining 
 a type $\TC{Infer}$:
 
 \DM{
 \Data\hg\TC{Infer}\Hab\Set\hg\Where\hg\DC{MkInfer}\Hab\all{\va}{\Set}\SC\va\to\TC{Infer}
 }
 
-Now to elaborate the left hand side, we elaborate $\DC{MkInfer}\:\_\:(\vx\:\ttt)$ and
-extract the value and unified type when complete.
+Now elaboration of the left hand side proceeds by elaborating $\DC{MkInfer}\:\_\:(\vx\:\ttt)$ and
+extracting the value and unified type when complete.
 
 \DM{
 \AR{
@@ -984,8 +988,8 @@ This infers a type for the left hand side, creating pattern variable bindings. T
 it elaborates the right hand side using the inferred type of the left hand side
 and the inferred pattern bindings, which are retrieved from the state with the
 $\MO{Patterns}$ operation. Finally, it returns a pattern clause in \TT{} form.
-To elaborate a collection of pattern clauses, we simply map $\MO{ElabClause}$ over
-the clauses and add the resulting collection to \TT{}.
+Elaborating a collection of pattern clauses then proceeds by mapping $\MO{ElabClause}$ over
+the clauses and adding the resulting collection to \TT{}.
 
 \DM{
 \AR{
@@ -998,9 +1002,9 @@ the clauses and add the resulting collection to \TT{}.
 }
 
 Elaborating a clause is made only slightly more complex by the presence of
-$\iwhere$ clauses. In this case, we elaborate the left hand side, add the pattern
-bound variables as extra arguments to the declarations in the $\iwhere$ block,
-and recursively elaborate before elaborating the right hand side.
+$\iwhere$ clauses. In this case, after elaborating the left hand side, the pattern
+bound variables are added as extra arguments to the declarations in the $\iwhere$ block,
+which are then recursively elaborated before the right hand side.
 
 \DM{
 \AR{
@@ -1028,7 +1032,7 @@ the right hand side $\ve$ to use the lifted definitions, rather than the origina
 \subsubsection{Elaborating the \texttt{with} rule}
 
 The \texttt{with} rule allows \remph{dependent} pattern matching on intermediate values.
-To translate this into \TT{}, we need to construct an auxiliary top level
+Translating this into \TT{} involves constructing an auxiliary top level
 definition for 
 the intermediate pattern match. For example, recall \tFN{natToBin}:
 
@@ -1055,8 +1059,7 @@ natToBin' (S (j + j)) odd  = True  :: natToBin j
 
 \useverb{natToBinwp}
 
-The difference when using the \texttt{with} rule is that there is no need for
-the explicit type declaration for the auxiliary function \texttt{natToBin}.
+\noindent
 Elaboration of \texttt{with} builds the type declaration and auxiliary function
 automatically:
 
@@ -1115,8 +1118,8 @@ a type class declaration elaborates to a record type containing all of the funct
 in the class, and an instance is simply an instance of the record. The methods
 are translated to top level functions which extract the relevant function from the 
 dictionary.  
-For example, for the \texttt{Show} type class, we translate the \texttt{class}
-declaration to:
+For example, for the \texttt{Show} type class, the \texttt{class}
+declaration is translated to:
 
 \begin{SaveVerbatim}{showdata}
 
@@ -1145,7 +1148,7 @@ showNat = instanceShow show' where
 
 The call to \tFN{show} in the body of the instance uses the top level \tFN{show}
 function, with the type class instance resolved by the elaborator.
-Where instances have constraints, we can simply pass these constraints on to
+Where instances have constraints, these constraints are passed on to
 the function declaration for the instance. For example, for \texttt{Show (List a)}:
 
 \begin{SaveVerbatim}{showlista}
@@ -1160,9 +1163,9 @@ showList = instanceShow show' where
 \useverb{showlista} 
 
 \noindent
-Where classes have constraints, we can again pass the
-constraints on to the data type declaration, and leave resolving the
-constraints to the elaborator. For example, for \texttt{Ord}:
+Where classes have constraints, the
+constraints are again passed on to the data type declaration, and resolved by the
+elaborator. For example, for \texttt{Ord}:
 
 \begin{SaveVerbatim}{eqorda}
 
@@ -1183,6 +1186,9 @@ data Ord : Set -> Set where
     instanceOrd : Eq a => (compare : a -> a -> Ordering) -> 
                           (max : a -> a -> a) ->  Ord a 
 
+\end{SaveVerbatim}
+
+\begin{SaveVerbatim}{orddatab}
 compare : Ord a -> a -> a -> Ordering
 compare (instanceOrd compare' max') = compare'
 
@@ -1192,8 +1198,11 @@ max (instanceOrd compare' max') = max'
 \end{SaveVerbatim}
 \useverb{orddata}
 
-We also add functions to retrieve parent classes from a dictionary, to assist
-with type class resolution. In this case, we add:
+\useverb{orddatab}
+
+\noindent
+The elaborator also adds functions to retrieve parent classes from a dictionary, to assist
+with type class resolution. In this case:
 
 \begin{SaveVerbatim}{ordparent}
 
@@ -1204,7 +1213,7 @@ OrdEq (instanceOrd {{eq}} compare' max') = eq
 \useverb{ordparent} 
 
 \noindent
-In general, we elaborate \texttt{class} declarations as follows:
+In general, \texttt{class} declarations are elaborated as follows:
 
 \DM{
 \AR{
@@ -1242,7 +1251,7 @@ In general, we elaborate \texttt{class} declarations as follows:
 }
 
 \noindent
-Then we elaborate \texttt{instance} declarations as follows:
+Then \texttt{instance} declarations are elaborated as follows:
 
 \DM{
 \AR{
@@ -1275,7 +1284,7 @@ constructing programs in \TT{}.
 
 \label{sect:instance}
 
-When elaborating applications, recall that we fill in implicit arguments by
+When elaborating applications, recall that implicit arguments are filled in by
 unification, and type class constraints by an $\MO{Instance}$ tactic which searches
 the context for an instance of the required type class. 
 
@@ -1298,9 +1307,9 @@ basic primitive for proof search, and is defined as follows:
 }
 }
 
-For example, in the following function, we resolve the type class constraint required
-for the $\texttt{>}$ operator by finding an instance for \texttt{Ord a} in the local
-context:
+For example, in the following function, the type class constraint required for
+the $\texttt{>}$ operator is resolved by finding an instance for \texttt{Ord a}
+in the local context:
 
 \begin{SaveVerbatim}{ordlocal}
 
@@ -1344,11 +1353,11 @@ we constrain the search by recording which instances are defined for each type c
 and by ensuring that a recursive call of $\MO{Instance}$ is either searching for
 a different class, or a structurally smaller instance of the current class. 
 
-For example, in the following function, we resolve the constraints required by the 
-\tFN{show} function by a global search which locates a \tTC{Show} instance for
-\tTC{List a}, which in turn requires a \tTC{Show} instance for \texttt{a}.
-In this case \texttt{a} is instantiated by \tTC{Int}, so we finish by locating
-a \tTC{Show} instance for \tTC{Int}:
+For example, in the following function, the constraints required by the
+\tFN{show} function are resolved by a global search which locates a \tTC{Show}
+instance for \tTC{List a}, which in turn requires a \tTC{Show} instance for
+\texttt{a}.  In this case \texttt{a} is instantiated by \tTC{Int}, so resolution finishes
+by locating a \tTC{Show} instance for \tTC{Int}:
 
 \begin{SaveVerbatim}{showinst}
 
@@ -1428,8 +1437,8 @@ append_rec a m n x xs ys = app xs ys
 \end{SaveVerbatim}
 \useverb{appendrec_def} 
 
-To elaborate a metavariable, we simply add a new top level definition, and apply
-it to the current context:
+Elaborating a metavariable involves adding a new top level definition which is applied
+to all of the variables in local scope.
 
 \DM{
 \ttinterp{\mvar{\vx}}\:\mq\:
@@ -1445,8 +1454,9 @@ it to the current context:
 
 A \texttt{case} expression allows pattern matching on intermediate values. The difficulty
 in elaborating \texttt{case} expressions is that \TT{} allows matching only on
-\emph{top level} values. To elaborate a \texttt{case} expression, therefore,
-we create a new top level function standing for the expression, and apply it. The natural
+\emph{top level} values. Elaborating a \texttt{case} expression, therefore,
+involves creating a new top level function standing for the expression, and applying it. 
+The natural
 way to implement this is to use a metavariable. For example, we have already seen
 \texttt{lookup\_default}:
 
@@ -1467,9 +1477,9 @@ lookup_default_case i xs def (Just x) = x
 \end{SaveVerbatim}
 \useverb{listlookupmv} 
 
-To elaborate a $\icase$ expression, we begin by \texttt{let} binding the scrutinee of
+To elaborate a $\icase$ expression involves \texttt{let} binding the scrutinee of
 the $\icase$ expression and creating a metavariable $\VV{xcase}$ to implement the
-pattern matching. We then build a new pattern matching definition for $\VV{xcase}$
+pattern matching. Then the elaborator builds a new pattern matching definition for $\VV{xcase}$
 and elaborate it:
 
 \DM{

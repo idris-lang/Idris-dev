@@ -39,8 +39,8 @@ main = putStrLn ("The answer is " ++ show x)
 \noindent
 Like Haskell, the main function
 is called \texttt{main}, and input and output is managed with an \texttt{IO}
-monad. Unlike Haskell, however, we use a single colon \texttt{:} for type
-declarations, emphasising the importance of types, 
+monad. Unlike Haskell, however, a single colon indicates \texttt{:} a type
+declaration, emphasising the importance of types, 
 and \remph{all} functions must have a top level type
 declaration. This is due to type inference being, in general, 
 undecidable for languages with
@@ -189,7 +189,7 @@ reverse {a} xs = revAcc [] xs where
 
 A standard example of a dependent type is the type of ``lists with length'',
 conventionally called ``vectors'' in the dependently typed programming
-literature. In \Idris{}, we declare vectors as follows:
+literature. In \Idris{}, vectors are declared as follows:
 
 \begin{SaveVerbatim}{vect}
 
@@ -201,24 +201,24 @@ data Vect : Set -> Nat -> Set where
 \useverb{vect}
 
 \noindent
-Note that we have used the same constructor names as for \tTC{List}. Ad-hoc
+Note that this uses the same constructor names as for \tTC{List}. Ad-hoc
 name overloading such as this is accepted by \Idris{}, provided that the names
 are declared in different namespaces (in practice, normally in different modules).
 Ambiguous constructor names are resolved by type. 
 
 This declares a family of types, which requires a different form of declaration
 from the simple type declarations above. It resembles a Haskell GADT
-declaration: we explicitly state the type
+declaration: it explicitly states the type
 of the type constructor \tTC{Vect} --- it takes a type and a \tTC{Nat} as an
 argument, where \tTC{Set} stands for the type of types. We say that \tTC{Vect}
 is \emph{parameterised} by a type, and \emph{indexed} over \tTC{Nat}. Each
 constructor targets a different part of the family of types. \tDC{Nil} can only
 be used to construct vectors with zero length, and \tDC{::} to construct
-vectors with non-zero length. In the type of \tDC{::}, we state explicitly that an element
+vectors with non-zero length. The type of \tDC{::} states explicitly that an element
 of type \texttt{a} and a tail of type \texttt{Vect a k} (i.e., a vector of length \texttt{k})
 combine to make a vector of length \texttt{S k}.
 
-We can define functions on dependent types such as \tTC{Vect} in the same way
+Functions on dependent types such as \tTC{Vect} are declared in the same way
 as on simple types such as \tTC{List} and \tTC{Nat} above, by pattern matching.
 The type of a function over \tTC{Vect} will describe what happens to the
 lengths of the vectors involved. For example, \tFN{++}, defined in the
@@ -302,7 +302,7 @@ index : Fin n -> Vect a n -> a
 It takes two arguments, an element of the finite set of \texttt{n} elements, and a vector
 with \texttt{n} elements of type \texttt{a}. But there are also two names, 
 \texttt{n} and \texttt{a}, which are not declared explicitly. These are \emph{implicit}
-arguments to \texttt{index}. We could also write the type of \texttt{index} as:
+arguments to \texttt{index}. The type of \texttt{index} could also be written as:
 
 \begin{SaveVerbatim}{vindeximppl}
 
@@ -312,8 +312,8 @@ index : {a:_} -> {n:_} -> Fin n -> Vect a n -> a
 \useverb{vindeximppl}
 
 \noindent
-Here we have given bindings for \texttt{a} and \texttt{n} with placeholders for
-their types, to be inferred by the machine. We could also give the types explicitly:
+This gives bindings for \texttt{a} and \texttt{n} with placeholders for
+their types, to be inferred by the machine. These types could also be given explicitly:
 
 \begin{SaveVerbatim}{vindeximpty}
 
@@ -341,7 +341,7 @@ index {a=Int} {n=2} fO (2 :: 3 :: Nil)
 
 \noindent
 In fact, any argument, implicit or explicit, may be given a name. For example,
-we could have declared the type of \texttt{index} as:
+the type of \texttt{index} could be declared as:
 
 \begin{SaveVerbatim}{vindexn}
 
@@ -439,10 +439,10 @@ instance Show a => Show (Vect a n) where
 \textbf{Remark: } The type of the auxiliary function \texttt{show'} is
 important. The type variables \texttt{a} and \texttt{n} which are part of the
 instance declaration for \texttt{Show (Vect a n)} are fixed across the entire
-instance declaration. As a result, we do not have to constrain \texttt{a}
-again. Furthermore, it means that if we use \texttt{n} in the type, it refers
+instance declaration. As a result, \texttt{a} need not be constrained
+again. Furthermore, it means that if \texttt{n} is used again in the type, it refers
 to the (fixed) length of the outermost list \texttt{xs}. Therefore,
-we use a different name for the length \texttt{n'} in \texttt{show'}.
+there is a different name for the length \texttt{n'} in \texttt{show'}.
 
 Like Haskell type classes, default definitions can be given in the class declaration.
 Otherwise, all methods must be given in an instance. For example, there is an
@@ -498,8 +498,8 @@ mirror xs = let xs' = rev xs in
 \useverb{letb} 
 
 \noindent
-We can also pattern match in \texttt{let} bindings. For example, we can extract
-fields from a record as follows, as well as by pattern matching at the top level:
+Pattern matching is also supported in \texttt{let} bindings. For example, extracting
+fields from a record can be achieved as follows, as well as by pattern matching at the top level:
 
 \begin{SaveVerbatim}{letp}
 
@@ -517,7 +517,7 @@ Another way of inspecting intermediate values of \emph{simple} types
 is to use a \texttt{case} expression.
 For example, \texttt{list\_lookup}
 looks up an index in a list, returning \texttt{Nothing} if the index is out
-of bounds. We can use this to write \texttt{lookup\_default}, which
+of bounds. This can be used this to write \texttt{lookup\_default}, which
 looks up an index and returns a default value if the index is out of bounds:
 
 \begin{SaveVerbatim}{listlookup}
@@ -546,7 +546,7 @@ determined \emph{without} type checking the \texttt{case}-expression itself.
 
 Since types can depend on values, the form of some arguments can be determined
 by the value of others. For example, if we were to write down the implicit
-length arguments to \texttt{(++)}, we'd see that the form of the length argument was
+length arguments to \texttt{(++)}, we would see that the form of the length argument was
 determined by whether the vector was empty or not:
 
 \begin{SaveVerbatim}{appdep}
@@ -563,13 +563,13 @@ If \texttt{n} was a successor in the \texttt{[]} case, or zero in the
 \texttt{::} case, the definition
 would not be well typed.
 
-Often, we need to match on the result of an intermediate computation
+Often, matching is required on the result of an intermediate computation
 with a dependent type.
 \Idris{} provides a construct for this, the \texttt{with} rule, 
 inspired by views in \Epigram~\cite{McBride2004a},
 which takes account of the
 fact that matching on a value in a dependently typed language can affect what
-we know about the forms of other values. 
+is known about the forms of other values. 
 
 For example, a \texttt{Nat} is either even or odd. 
 If it is even it will
@@ -598,8 +598,8 @@ parity : (n:Nat) -> Parity n
 \useverb{parityty}
 
 \noindent
-Using this, we can write a function which converts a natural number to a list
-of binary digits (least significant first) as follows, using the \texttt{with}
+Using this, a function which converts a natural number to a list
+of binary digits (least significant first) is written as follows, using the \texttt{with}
 rule:
 
 \begin{SaveVerbatim}{natToBin}
@@ -619,7 +619,7 @@ because the result
 of \texttt{parity k} depends on \texttt{k}. 
 So, as well as the patterns for the result of the
 intermediate computation (\texttt{even} and \texttt{odd}) right of the 
-\texttt{$\mid$}, we also write how
+\texttt{$\mid$}, the definition also expresses how
 the results affect the other patterns left of the $\mid$. Note that there is a
 function in the patterns (\texttt{+}) and repeated occurrences of \texttt{j} --- 
 this is allowed

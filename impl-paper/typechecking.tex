@@ -7,11 +7,11 @@ High level \Idris{} programs, as described in Section \ref{sect:hll}, are
 \TT{} is a dependently typed $\lambda$-calculus with inductive families
 and pattern matching definitions similar to UTT~\cite{luo1994}, and building
 on an earlier implementation, \Ivor{}~\cite{Brady2006b}.
-We keep the
-core language as small as is reasonably possible, which has several advantages: it is
+The
+core language is kept as small as is reasonably possible, which has several advantages: it is
 easy to type check, since type checking dependent type theory is well understood
 ~\cite{loh2010tutorial}; and it is easy to transform, optimise and compile. Keeping
-the core language small increases our confidence that these important components of
+the core language small increases confidence that these important components of
 the language are correct. In this section, we describe \TT{} and
 its semantics.
 
@@ -26,7 +26,7 @@ The syntax of \TT{} expressions is given in Figure \ref{ttsyn}. This defines:
 type of types, and may be extended with other primitives. 
 \end{itemize}
 
-We may also write the function space $\all{\vx}{\vS}\SC\vT$ as $(\vx\Hab\vS)\to\vT$,
+The function space $\all{\vx}{\vS}\SC\vT$ may also be written as $(\vx\Hab\vS)\to\vT$,
 or $\vS\to\vT$ if $\vx$ is not free in $\vT$, to make the notation more consistent with
 the high level language. Universe levels on sets ($\Type_i$) may be left implicit and
 inferred by the machine~\cite{pollack1990implicit}.
@@ -93,7 +93,7 @@ with a $\LET$ binding.
 \end{itemize}
 
 \noindent
-We use the following contextual closure rule to reduce a $\LET$ binding by creating
+The following contextual closure rule reduces a $\LET$ binding by creating
 a $\delta$-reducible expression:
 
 \DM{
@@ -366,7 +366,7 @@ the variable may provide enough information for the clause to match.
 In order to implement pattern matching, we must separate the \remph{accessible} and
 \remph{inaccessible} patterns. A pattern is \demph{accessible} (that is, it is possible
 to match against it) if it is constructor headed, or a variable. Inaccessible patterns
-are converted to ``match anything'' patterns. We convert clauses to matchable pattern
+are converted to ``match anything'' patterns. Clauses are converted to matchable pattern
 clauses with the $\MO{Clause}$ operation, given in Figure \ref{mkclause}.
 We extend the vector notation to meta-operations: the notation $\vec{\MO{Pat}}$ lifts the
 $\MO{Pat}$ operation across a list of arguments.
@@ -433,8 +433,8 @@ $\vx$ requires.
  \MoRet{
  \AR{
  \Success\:\ve[\tx/\tv]\hg\mbox{(if $\vec{\MO{MatchArg}}\:\tp\:\tts \mq \Success\:(\tx,\tv)$)}\\
- \Blocked\hg\mbox{(if $\vec{\MO{MatchArg}}\:\tp\:\tts \mq \Blocked$)}\\
- \Failure\hg\mbox{(if $\vec{\MO{MatchArg}}\:\tp\:\tts \mq \Failure$)}\\
+ \Blocked\;\;\;\hg\hg\mbox{(if $\vec{\MO{MatchArg}}\:\tp\:\tts \mq \Blocked$)}\\
+ \Failure\;\;\;\;\;\hg\hg\mbox{(if $\vec{\MO{MatchArg}}\:\tp\:\tts \mq \Failure$)}\\
  }
  } \\
 & \MO{MatchClause} & (\vf\:\tp = \ve) & \cdot & \MoRet{\Failure} \\
@@ -444,8 +444,8 @@ $\vx$ requires.
 & \MO{Match} & (\vc ; \tc) & \ve &
  \MoRet{
  \AR{
- \Success\:\vx\hg\mbox{(if $\MO{MatchClause}\:\vc\:\ve \mq \Success\:\vx)$} \\
- \Blocked\hg\mbox{(if $\MO{MatchClause}\:\vc\:\ve \mq \Blocked)$} \\
+ \Success\;\vx\;\;\hg\mbox{(if $\MO{MatchClause}\:\vc\:\ve \mq \Success\:\vx)$} \\
+ \Blocked\hg\;\;\;\;\mbox{(if $\MO{MatchClause}\:\vc\:\ve \mq \Blocked)$} \\
  \MO{Match}\:\tc\:\ve\hg\mbox{(otherwise)}
  }
  } \\
@@ -587,10 +587,10 @@ are a convenient abstraction for building proofs and programs by \remph{refineme
 \end{itemize}
 
 The idea behind the \Idris{} elaborator, therefore, is to use the high level program
-to direct \demph{tactics} to build \TT{} programs by refinement. We implement the
-elaborator as an Embedded Domain Specific Language (EDSL) in Haskell. 
-In the remainder
-of this paper, we describe the EDSL, and demonstrate how it can be used to implement
+to direct \demph{tactics} to build \TT{} programs by refinement. The
+elaborator is implemented as an Embedded Domain Specific Language (EDSL) in Haskell. 
+The remainder
+of this paper describes the EDSL and demonstrates how it is used to implement
 all of the high level features of \Idris{}.
 
 
