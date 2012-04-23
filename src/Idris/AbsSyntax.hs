@@ -49,7 +49,7 @@ data IState = IState { tt_ctxt :: Context,
                        idris_dsls :: Ctxt DSL,
                        idris_optimisation :: Ctxt OptInfo, 
                        idris_datatypes :: Ctxt TypeInfo,
-                       idris_patdefs :: Ctxt [(Term, Term)], -- not exported
+                       idris_patdefs :: Ctxt [([Name], Term, Term)], -- not exported
                        idris_flags :: Ctxt [FnOpt],
                        idris_callgraph :: Ctxt [Name],
                        idris_totcheck :: [(FC, Name)],

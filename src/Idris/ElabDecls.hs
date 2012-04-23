@@ -230,11 +230,11 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
                                         show r) pats))
          ist <- get
          let tcase = opt_typecase (idris_options ist)
-         let pdef = map debind (map (simpl (tt_ctxt ist)) pats)
+         let pdef = map debind $ map (simpl (tt_ctxt ist)) pats
          cov <- coverage
          pcover <-
                  if cov  
-                    then do missing <- genClauses fc n (map fst pdef) cs
+                    then do missing <- genClauses fc n (map getLHS pdef) cs
                             missing' <- filterM (checkPossible info fc True n) missing
 --                             let missing' = mapMaybe (\x -> case x of
 --                                                                 Nothing -> Nothing
@@ -243,7 +243,7 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
                             logLvl 3 $ "Must be unreachable:\n" ++ 
                                         showSep "\n" (map (showImp True) missing') ++
                                        "\nAgainst: " ++
-                                        showSep "\n" (map (\t -> showImp True (delab ist t)) (map fst pdef))
+                                        showSep "\n" (map (\t -> showImp True (delab ist t)) (map getLHS pdef))
                             if null missing'
                               then return True
                               else return False 
@@ -304,13 +304,17 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
 --                         addIBC (IBCTotal n tot)
              [] -> return ()
   where
-    debind (x, y) = (depat x, depat y)
-    depat (Bind n (PVar t) sc) = depat (instantiate (P Bound n t) sc)
-    depat x = x
+    debind (x, y) = let (vs, x') = depat [] x 
+                        (_, y') = depat [] y in
+                        (vs, x', y')
+    depat acc (Bind n (PVar t) sc) = depat (n : acc) (instantiate (P Bound n t) sc)
+    depat acc x = (acc, x)
+    
+    getLHS (_, l, _) = l
 
     simpl ctxt (x, y) = (x, simplify ctxt [] y)
 
-    sameLength ((x, _) : xs) 
+    sameLength ((_, x, _) : xs) 
         = do l <- sameLength xs
              let (f, as) = unApply x
              if (null xs || l == length as) then return (length as)

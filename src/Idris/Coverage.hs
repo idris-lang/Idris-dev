@@ -140,7 +140,7 @@ checkPositive n (cn, ty)
 data LexOrder = LexXX | LexEQ | LexLT
     deriving (Show, Eq, Ord)
 
-calcTotality :: [Name] -> FC -> Name -> [(Term, Term)] -> Idris Totality
+calcTotality :: [Name] -> FC -> Name -> [([Name], Term, Term)] -> Idris Totality
 calcTotality path fc n pats 
     = do orders <- mapM ctot pats 
          let order = sortBy cmpOrd $ concat orders
@@ -177,7 +177,7 @@ calcTotality path fc n pats
                         [] -> [[]] -- recursive calls are all useless...
                         xs -> xs
 
-    ctot (lhs, rhs) 
+    ctot (_, lhs, rhs) 
         | (_, args) <- unApply lhs
             = do -- check lhs doesn't use any dodgy names
                     lhsOK <- mapM (chkOrd [] []) args

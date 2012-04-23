@@ -53,11 +53,11 @@ namesUsed sc = nub $ nu' [] sc where
     nut ps (Bind n b sc) = nut (n:ps) sc
     nut ps _ = []
 
-simpleCase :: Bool -> Bool -> [(Term, Term)] -> CaseDef
+simpleCase :: Bool -> Bool -> [([Name], Term, Term)] -> CaseDef
 simpleCase tc cover [] 
                  = CaseDef [] (UnmatchedCase "No pattern clauses") []
 simpleCase tc cover cs 
-      = let pats       = map (\ (l, r) -> (toPats tc l, (l, r))) cs
+      = let pats       = map (\ (avs, l, r) -> (toPats tc l, (l, r))) cs
             numargs    = length (fst (head pats)) 
             ns         = take numargs args
             (tree, st) = runState (match ns pats (defaultCase cover)) ([], numargs) in

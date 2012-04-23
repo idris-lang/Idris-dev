@@ -60,6 +60,11 @@ instance (Optimisable a, Optimisable b) => Optimisable (a, b) where
                           y' <- applyOpts y
                           return (x', y')
 
+instance (Optimisable a, Optimisable b) => Optimisable (vs, a, b) where
+    applyOpts (v, x, y) = do x' <- applyOpts x
+                             y' <- applyOpts y
+                             return (v, x', y')
+
 instance Optimisable a => Optimisable [a] where
     applyOpts = mapM applyOpts
 

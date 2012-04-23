@@ -558,7 +558,7 @@ spec ctxt statics genv tm = error "spec undefined"
 data Def = Function Type Term
          | TyDecl NameType Type 
          | Operator Type Int ([Value] -> Maybe Value)
-         | CaseOp Bool Type [(Term, Term)] -- Bool for inlineable
+         | CaseOp Bool Type [([Name], Term, Term)] -- Bool for inlineable
                   [Name] SC -- Compile time case definition
                   [Name] SC -- Run time cae definitions
 {-! 
@@ -673,7 +673,8 @@ addDatatype (Data n tag ty cons) uctxt
               addCons (tag+1) cons (addDef n
                   (TyDecl (DCon tag (arity ty')) ty, Public, Unchecked) ctxt)
 
-addCasedef :: Name -> Bool -> Bool -> Bool -> [(Term, Term)] -> [(Term, Term)] ->
+addCasedef :: Name -> Bool -> Bool -> Bool -> 
+              [([Name], Term, Term)] -> [([Name], Term, Term)] ->
               Type -> Context -> Context
 addCasedef n alwaysInline tcase covering ps psrt ty uctxt 
     = let ctxt = definitions uctxt

@@ -180,9 +180,9 @@ process fn (Defn n) = do i <- get
                          case lookupTotal n (tt_ctxt i) of
                             [t] -> iputStrLn (showTotal t i)
                             _ -> return ()
-    where printCase i (lhs, rhs) = do liftIO $ putStr $ showImp True (delab i lhs)
-                                      liftIO $ putStr " = "
-                                      liftIO $ putStrLn $ showImp True (delab i rhs)
+    where printCase i (_, lhs, rhs) = do liftIO $ putStr $ showImp True (delab i lhs)
+                                         liftIO $ putStr " = "
+                                         liftIO $ putStrLn $ showImp True (delab i rhs)
 process fn (TotCheck n) = do i <- get
                              case lookupTotal n (tt_ctxt i) of
                                 [t] -> iputStrLn (showTotal t i)
