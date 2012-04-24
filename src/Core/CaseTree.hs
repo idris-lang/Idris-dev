@@ -53,18 +53,31 @@ namesUsed sc = nub $ nu' [] sc where
     nut ps (Bind n b sc) = nut (n:ps) sc
     nut ps _ = []
 
-simpleCase :: Bool -> Bool -> [([Name], Term, Term)] -> CaseDef
-simpleCase tc cover [] 
-                 = CaseDef [] (UnmatchedCase "No pattern clauses") []
-simpleCase tc cover cs 
-      = let pats       = map (\ (avs, l, r) -> (toPats tc l, (l, r))) cs
-            numargs    = length (fst (head pats)) 
-            ns         = take numargs args
-            (tree, st) = runState (match ns pats (defaultCase cover)) ([], numargs) in
-            CaseDef ns (prune tree) (fst st)
+simpleCase :: Bool -> Bool -> FC -> [([Name], Term, Term)] -> TC CaseDef
+simpleCase tc cover fc [] 
+                 = return $ CaseDef [] (UnmatchedCase "No pattern clauses") []
+simpleCase tc cover fc cs 
+      = let pats       = map (\ (avs, l, r) -> (avs, toPats tc l, (l, r))) cs
+            chkPats    = mapM chkAccessible pats in
+            case chkPats of
+                OK pats ->
+                    let numargs    = length (fst (head pats)) 
+                        ns         = take numargs args
+                        (tree, st) = runState 
+                                         (match ns pats (defaultCase cover)) ([], numargs) in
+                        return $ CaseDef ns (prune tree) (fst st)
+                Error err -> Error (At fc err)
     where args = map (\i -> MN i "e") [0..]
           defaultCase True = STerm Erased
           defaultCase False = UnmatchedCase "Error"
+
+          chkAccessible (avs, l, c) = do mapM_ (acc l) avs
+                                         return (l, c)
+
+          acc [] n = Error (Inaccessible n) 
+          acc (PV x : xs) n | x == n = OK ()
+          acc (PCon _ _ ps : xs) n = acc (ps ++ xs) n
+          acc (_ : xs) n = acc xs n
 
 data Pat = PCon Name Int [Pat]
          | PConst Const

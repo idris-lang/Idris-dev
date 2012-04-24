@@ -679,9 +679,9 @@ addCasedef :: Name -> Bool -> Bool -> Bool ->
 addCasedef n alwaysInline tcase covering ps psrt ty uctxt 
     = let ctxt = definitions uctxt
           ps' = ps -- simpl ps in
-          ctxt' = case (simpleCase tcase covering ps', 
-                        simpleCase tcase covering psrt) of
-                    (CaseDef args sc _, CaseDef args' sc' _) -> 
+          ctxt' = case (simpleCase tcase covering (FC "" 0) ps', 
+                        simpleCase tcase covering (FC "" 0) psrt) of
+                    (OK (CaseDef args sc _), OK (CaseDef args' sc' _)) -> 
                                        let inl = alwaysInline in
                                            addDef n (CaseOp inl ty ps args sc args' sc',
                                                      Public, Unchecked) ctxt in

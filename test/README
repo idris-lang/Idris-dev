@@ -11,3 +11,4 @@ Tests:
 009: ranges and list monad
 010: total
 011: record projection and update
+012: various error regressions

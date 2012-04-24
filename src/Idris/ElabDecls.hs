@@ -260,7 +260,7 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
 --                                   return False
                     else return False
          pdef' <- applyOpts pdef 
-         let tree@(CaseDef _ sc _) = simpleCase tcase pcover pdef
+         tree@(CaseDef _ sc _) <- tclift $ simpleCase tcase pcover fc pdef
          ist <- get
 --          let wf = wellFounded ist n sc
          let tot = if pcover || AssertTotal `elem` opts
@@ -279,7 +279,7 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
                                         iputStrLn $ show fc ++
                                                     ":warning - Unreachable case: " ++ 
                                                     show (delab ist x)) xs
-         let tree' = simpleCase tcase pcover pdef'
+         tree' <- tclift $ simpleCase tcase pcover fc pdef'
          tclift $ sameLength pdef
          logLvl 3 (show tree)
          logLvl 3 $ "Optimised: " ++ show tree'

@@ -45,7 +45,7 @@ prove ctxt lit n ty
          iputStrLn $ showProof lit n prf
          i <- get
          put (i { last_proof = Just (n, prf) })
-         let tree = simpleCase False True [([], P Ref n ty, tm)]
+         let tree = simpleCase False True (FC "proof" 0) [([], P Ref n ty, tm)]
          logLvl 3 (show tree)
          (ptm, pty) <- recheckC (FC "proof" 0) [] tm
          ptm' <- applyOpts ptm

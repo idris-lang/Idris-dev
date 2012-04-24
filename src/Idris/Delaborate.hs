@@ -85,5 +85,6 @@ pshow i (NoSuchVariable n) = "No such variable " ++ show n
 pshow i (IncompleteTerm t) = "Incomplete term " ++ show (delab i t)
 pshow i UniverseError = "Universe inconsistency"
 pshow i ProgramLineComment = "Program line next to comment"
+pshow i (Inaccessible n) = show n ++ " is not an accessible pattern variable"
 pshow i (At f e) = show f ++ ":" ++ pshow i e
 

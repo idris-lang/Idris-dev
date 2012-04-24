@@ -50,6 +50,7 @@ data Err = Msg String
          | IncompleteTerm Term
          | UniverseError
          | ProgramLineComment
+         | Inaccessible Name
          | At FC Err
   deriving Eq
 
@@ -63,6 +64,7 @@ instance Sized Err where
   size UniverseError = 1
   size ProgramLineComment = 1
   size (At fc err) = size fc + size err
+  size (Inaccessible _) = 1
 
 score :: Err -> Int
 score (CantUnify _ _ m s) = s + score m
@@ -74,6 +76,7 @@ instance Show Err where
     show (Msg s) = s
     show (CantUnify l r e i) = "CantUnify " ++ show l ++ " " ++ show r ++ " "
                                ++ show e ++ " " ++ show i
+    show (Inaccessible n) = show n ++ " is not an accessible pattern variable"
     show _ = "Error"
 
 instance Pretty Err where
