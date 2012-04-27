@@ -25,3 +25,6 @@ getEnv x = mkForeign (FFun "getenv" [FString] FString) x
 exit : Int -> IO ()
 exit code = mkForeign (FFun "exit" [FInt] FUnit) code
 
+usleep : Int -> IO ()
+usleep i = mkForeign (FFun "usleep" [FInt] FUnit) i
+

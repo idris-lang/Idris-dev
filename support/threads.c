@@ -5,72 +5,77 @@
 
 typedef struct {
     pthread_mutex_t m_id;
-} Mutex;
+} IdrisMutex;
 
 typedef struct {
     pthread_t t_id;
-} Thread;
+} IdrisThread;
 
-Mutex** ms = NULL;
-int mutexes = 0;
+IdrisMutex** idris_ms = NULL;
+int idris_mutexes = 0;
 
-int idris_newLock(int sem)
+int idris_newLock()
 {
     pthread_mutex_t m;
 
     pthread_mutex_init(&m, NULL);
-    Mutex* newm = EMALLOC(sizeof(Mutex));
+    IdrisMutex* newm = EMALLOC(sizeof(IdrisMutex));
     newm->m_id = m;
 
     // Increase space for the mutexes
-    if (ms==NULL) {
-	ms = (Mutex**)EMALLOC(sizeof(Mutex*));
-	mutexes=1;
+    if (idris_ms==NULL) {
+	idris_ms = (IdrisMutex**)EMALLOC(sizeof(IdrisMutex*));
+	idris_mutexes=1;
     } else {
-	ms = (Mutex**)(EREALLOC(ms, sizeof(Mutex*)*(mutexes+1)));
-	mutexes++;
+	idris_ms = (IdrisMutex**)(EREALLOC(idris_ms, sizeof(IdrisMutex*)*(idris_mutexes+1)));
+	idris_mutexes++;
     }
 
-    ms[mutexes-1] = newm;
-    return mutexes-1;
+    idris_ms[idris_mutexes-1] = newm;
+    return idris_mutexes-1;
 }
 
 void idris_doLock(int lock)
 {
-    pthread_mutex_lock(&(ms[lock]->m_id));
+    pthread_mutex_lock(&(idris_ms[lock]->m_id));
 }
 
 void idris_doUnlock(int lock)
 {
-    pthread_mutex_unlock(&(ms[lock]->m_id));
+    pthread_mutex_unlock(&(idris_ms[lock]->m_id));
 }
 
-struct threadinfo {
+struct idris_threadinfo {
     void* proc;
     void* result;
 };
 
 void* idris_runThread(void* th_in) {
-    struct threadinfo* th = (struct threadinfo*)th_in;
-    void* v = DO_EVAL(th->proc, 1);
+    printf("IN THREAD\n");
+    struct idris_threadinfo* th = (struct idris_threadinfo*)th_in;
+    printf("using %d\n", th_in);
+    void* v = DO_EVAL(th_in, 1);
     th->result = v;
     return v;
 }
 
 void idris_doFork(void* proc)
 {
-    pthread_t* t = EMALLOC(sizeof(pthread_t));
-    struct threadinfo th;
+    printf("FORKING!\n");
+    pthread_t* t = malloc(sizeof(pthread_t));
+    struct idris_threadinfo th;
+    printf("in %d\n", proc);
     th.proc = proc;
     th.result = NULL;
-    pthread_create(t, NULL, idris_runThread, &th);
+    pthread_create(t, NULL, idris_runThread, proc);
+    printf("FORKED!\n");
 }
 
 void* idris_doWithin(int limit, void* proc, void* doOnFail)
 {
     pthread_t* t = EMALLOC(sizeof(pthread_t));
 //    printf("CREATING THREAD %d\n", t);
-    struct threadinfo th;
+    struct idris_threadinfo th;
     th.proc = proc;
     th.result = NULL;
 

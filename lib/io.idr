@@ -41,6 +41,7 @@ data Foreign : Set -> Set where
            Foreign (ForeignTy xs t)
 
 mkForeign : Foreign x -> x
--- mkForeign compiled as primitive
+mkLazyForeign : Foreign x -> x
+-- mkForeign and mkLazyForeign compiled as primitives
 
 

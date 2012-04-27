@@ -1,8 +1,7 @@
 #ifndef _THREADS_H
 #define _THREADS_H
 
-
-int idris_newLock(int sem);
+int idris_newLock();
 void idris_doLock(int lock);
 void idris_doUnlock(int lock);
 void idris_doFork(void* proc);

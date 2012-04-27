@@ -21,7 +21,7 @@ import Paths_idris
 import Epic.Epic hiding (Term, Type, Name, fn, compile)
 import qualified Epic.Epic as E
 
-primDefs = [UN "mkForeign", UN "FalseElim"]
+primDefs = [UN "mkLazyForeign", UN "mkForeign", UN "FalseElim"]
 
 compile :: FilePath -> Term -> Idris ()
 compile f tm
@@ -102,7 +102,9 @@ instance ToEpic (TT Name) where
     epic tm = epic' [] tm where
       epic' env tm@(App f a)
           | (P _ (UN "mkForeign") _, args) <- unApply tm
-              = doForeign args
+              = doForeign False args
+          | (P _ (UN "mkLazyForeign") _, args) <- unApply tm
+              = doForeign True args
           | (P _ (UN "lazy") _, [_,arg]) <- unApply tm
               = do arg' <- epic' env arg
                    return $ lazy_ arg'
@@ -155,15 +157,17 @@ instance ToEpic (TT Name) where
                                  buildApp env (e @@ x') xs
                                     
 
-doForeign :: [TT Name] -> Idris E.Term
-doForeign (_ : fgn : args)
+doForeign :: Bool -> [TT Name] -> Idris E.Term
+doForeign lazy (_ : fgn : args)
    | (_, (Constant (Str fgnName) : fgnArgTys : ret : [])) <- unApply fgn
         = let tys = getFTypes fgnArgTys
               rty = mkEty' ret in
               do args' <- mapM epic args
                  -- wrap it in a prim__IO
                  -- return $ con_ 0 @@ impossible @@ 
-                 return $ lazy_ $ foreign_ rty fgnName (zip args' tys)
+                 if lazy 
+                   then return $ lazy_ $ foreignL_ rty fgnName (zip args' tys)
+                   else return $ lazy_ $ foreign_ rty fgnName (zip args' tys)
    | otherwise = fail "Badly formed foreign function call"
 
 getFTypes :: TT Name -> [E.Type]
