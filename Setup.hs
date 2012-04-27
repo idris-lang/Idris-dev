@@ -22,12 +22,12 @@ installStdLib pkg local verbosity copy
          let icmd = ".." </> buildDir local </> "idris" </> "idris"
          putStrLn $ "Installing libraries in " ++ idir
          make verbosity
-               [ "-C", "support", "install"
+               [ "-C", "lib", "install"
                , "TARGET=" ++ idir
                , "IDRIS=" ++ icmd
                ]
          make verbosity
-               [ "-C", "lib", "install"
+               [ "-C", "support", "install"
                , "TARGET=" ++ idir
                , "IDRIS=" ++ icmd
                ]
@@ -36,11 +36,11 @@ checkStdLib local verbosity
     = do let icmd = ".." </> buildDir local </> "idris" </> "idris"
          putStrLn $ "Building libraries..."
          make verbosity
-               [ "-C", "support", "check"
+               [ "-C", "lib", "check"
                , "IDRIS=" ++ icmd
                ]
          make verbosity
-               [ "-C", "lib", "check"
+               [ "-C", "support", "check"
                , "IDRIS=" ++ icmd
                ]
 
