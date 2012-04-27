@@ -155,10 +155,10 @@ timestampOlder src ibc = do srct <- getModificationTime src
 
 pImports :: [FilePath] -> Idris ()
 pImports fs 
-  = do datadir <- liftIO $ getDataDir
-       mapM_ (\f -> do i <- getIState
+  = do mapM_ (\f -> do i <- getIState
                        ibcsd <- valIBCSubDir i
-                       fp <- liftIO $ findImport [".", datadir] ibcsd f
+                       ids <- allImportDirs i
+                       fp <- liftIO $ findImport ids ibcsd f
                        if (f `elem` imported i)
                         then iLOG $ "Already read " ++ f
                         else do putIState (i { imported = f : imported i })

@@ -41,6 +41,7 @@ data Opt = Filename String
          | NoCoverage 
          | Verbose
          | IBCSubDir String
+         | ImportDir String
     deriving Eq
 
 main = do xs <- getArgs
@@ -53,6 +54,7 @@ runIdris opts =
        let runrepl = not (NoREPL `elem` opts)
        let output = opt getOutput opts
        let ibcsubdir = opt getIBCSubDir opts
+       let importdirs = opt getImportDir opts
        when (Ver `elem` opts) $ liftIO showver
        when (Usage `elem` opts) $ liftIO usage
        setREPL runrepl
@@ -62,6 +64,7 @@ runIdris opts =
        case ibcsubdir of
          [] -> setIBCSubDir ""
          (d:_) -> setIBCSubDir d
+       setImportDirs importdirs
        elabPrims
        when (not (NoPrelude `elem` opts)) $ do x <- loadModule "prelude"
                                                return ()
@@ -94,6 +97,10 @@ getIBCSubDir :: Opt -> Maybe String
 getIBCSubDir (IBCSubDir str) = Just str
 getIBCSubDir _ = Nothing
 
+getImportDir :: Opt -> Maybe String
+getImportDir (ImportDir str) = Just str
+getImportDir _ = Nothing
+
 opt :: (Opt -> Maybe a) -> [Opt] -> [a]
 opt = mapMaybe 
 
@@ -116,6 +123,7 @@ parseArgs ("--help":ns)      = liftM (Usage : ) (parseArgs ns)
 parseArgs ("--version":ns)   = liftM (Ver : ) (parseArgs ns)
 parseArgs ("--verbose":ns)   = liftM (Verbose : ) (parseArgs ns)
 parseArgs ("--ibcsubdir":n:ns)   = liftM (IBCSubDir n : ) (parseArgs ns)
+parseArgs ("-i":n:ns) = liftM (ImportDir n : ) (parseArgs ns)
 parseArgs (n:ns)             = liftM (Filename n : ) (parseArgs ns)
 
 ver = showVersion version
@@ -132,6 +140,7 @@ usagemsg = "Idris version " ++ ver ++ "\n" ++
            "Options:\n" ++
            "\t--check           Type check only\n" ++
            "\t-o [file]         Generate executable\n" ++
+           "\t-i [dir]          Add directory to the list of import paths\n" ++
            "\t--ibcsubdir [dir] Write IBC files into sub directory\n" ++
            "\t--noprelude       Don't import the prelude\n" ++
            "\t--typeintype      Disable universe checking\n" ++

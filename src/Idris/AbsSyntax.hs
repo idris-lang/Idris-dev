@@ -8,6 +8,8 @@ import Core.Evaluate
 import Core.Elaborate hiding (Tactic(..))
 import Core.Typecheck
 
+import Paths_idris
+
 import System.Console.Haskeline
 
 import Control.Monad.State
@@ -29,11 +31,12 @@ data IOption = IOption { opt_logLevel :: Int,
                          opt_showimp  :: Bool,
                          opt_repl     :: Bool,
                          opt_verbose  :: Bool,
-                         opt_ibcsubdir :: FilePath
+                         opt_ibcsubdir :: FilePath,
+                         opt_importdirs :: [FilePath]
                        }
     deriving (Show, Eq)
 
-defaultOpts = IOption 0 False False True False True True ""
+defaultOpts = IOption 0 False False True False True True "" []
 
 -- TODO: Add 'module data' to IState, which can be saved out and reloaded quickly (i.e
 -- without typechecking).
@@ -321,11 +324,22 @@ setCoverage t = do i <- get
 setIBCSubDir :: FilePath -> Idris ()
 setIBCSubDir fp = do i <- get
                      let opts = idris_options i
-                     let opt' = opts { opt_ibcsubdir =fp }
+                     let opt' = opts { opt_ibcsubdir = fp }
                      put (i { idris_options = opt' })
 
 valIBCSubDir :: IState -> Idris FilePath
 valIBCSubDir i = return (opt_ibcsubdir (idris_options i))
+
+setImportDirs :: [FilePath] -> Idris ()
+setImportDirs fps = do i <- get
+                       let opts = idris_options i
+                       let opt' = opts { opt_importdirs = fps }
+                       put (i { idris_options = opt' })
+
+allImportDirs :: IState -> Idris [FilePath]
+allImportDirs i = do datadir <- liftIO $ getDataDir
+                     let optdirs = opt_importdirs (idris_options i)
+                     return ("." : (optdirs ++ [datadir]))
 
 impShow :: Idris Bool
 impShow = do i <- get
