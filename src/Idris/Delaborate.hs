@@ -50,7 +50,7 @@ delab' ist tm fullname = de [] tm
     deFn env (P _ n _) [ty, Bind x (Lam _) r]
                                  | n == UN "Exists" 
                                        = PDPair un (PRef un x) (de env ty)
-                                                   (de env (instantiate (P Bound x ty) r))
+                                                   (de ((x,x):env) (instantiate (P Bound x ty) r))
     deFn env (P _ n _) [_,_,l,r] | n == pairCon = PPair un (de env l) (de env r)
                                  | n == eqTy    = PEq un (de env l) (de env r)
                                  | n == UN "Ex_intro" = PDPair un (de env l) Placeholder
