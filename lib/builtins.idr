@@ -128,6 +128,12 @@ instance (Eq a, Eq b) => Eq (a, b) where
 
 data Ordering = LT | EQ | GT
 
+instance Eq Ordering where
+    LT == LT = True
+    EQ == EQ = True
+    GT == GT = True
+    _  == _  = False
+
 class Eq a => Ord a where 
     compare : a -> a -> Ordering
 
