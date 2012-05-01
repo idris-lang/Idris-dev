@@ -70,13 +70,20 @@ delab' ist tm fullname = de [] tm
 
 pshow :: IState -> Err -> String
 pshow i (Msg s) = s
-pshow i (CantUnify x y e s) 
+pshow i (CantUnify x y e sc s) 
     = "Can't unify " ++ show (delab i x)
         ++ " with " ++ show (delab i y) ++
 --         " (" ++ show x ++ " and " ++ show y ++ ") " ++
         case e of
             Msg "" -> ""
-            _ -> "\n\nSpecifically:\n\t " ++ pshow i e 
+            _ -> "\n\nSpecifically:\n\t" ++ pshow i e ++ 
+                 if (opt_errContext (idris_options i)) then showSc sc else ""
+    where showSc [] = ""
+          showSc xs = "\n\nIn context:\n" ++ showSep "\n" (map showVar (reverse xs))
+          showVar (x, y) = "\t" ++ showbasic x ++ " : " ++ show (delab i y)
+          showbasic n@(UN _) = show n
+          showbasic (MN _ s) = s
+          showbasic (NS n s) = showSep "." (reverse s) ++ "." ++ showbasic n
 pshow i (NotInjective p x y) = "Can't verify injectivity of " ++ show (delab i p) ++
                                " when unifying " ++ show (delab i x) ++ " and " ++ 
                                                     show (delab i y)

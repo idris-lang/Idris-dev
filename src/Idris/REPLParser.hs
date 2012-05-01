@@ -39,8 +39,14 @@ pCmd = try (do cmd ["q", "quit"]; eof; return Quit)
    <|> try (do cmd ["u", "universes"]; eof; return Universes)
    <|> try (do cmd ["di", "dbginfo"]; n <- pfName; eof; return (DebugInfo n))
    <|> try (do cmd ["i", "info"]; n <- pfName; eof; return (Info n))
+   <|> try (do cmd ["set"]; o <-pOption; return (SetOpt o))
+   <|> try (do cmd ["unset"]; o <-pOption; return (UnsetOpt o))
    <|> try (do cmd ["s", "search"]; t <- pFullExpr defaultSyntax; return (Search t))
    <|> try (do cmd ["x"]; t <- pFullExpr defaultSyntax; return (ExecVal t))
    <|> do t <- pFullExpr defaultSyntax; return (Eval t)
    <|> do eof; return NOP
+
+pOption :: IParser Opt
+pOption = do discard (symbol "errorcontext"); return ErrContext
+      <|> do discard (symbol "showimplicits"); return ShowImpl
 

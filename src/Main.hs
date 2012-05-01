@@ -29,21 +29,6 @@ import Paths_idris
 -- Main program reads command line options, parses the main program, and gets
 -- on with the REPL.
 
-data Opt = Filename String
-         | Ver
-         | Usage
-         | NoPrelude
-         | NoREPL
-         | OLogging Int
-         | Output String
-         | TypeCase
-         | TypeInType
-         | NoCoverage 
-         | Verbose
-         | IBCSubDir String
-         | ImportDir String
-    deriving Eq
-
 main = do xs <- getArgs
           opts <- parseArgs xs
           runInputT defaultSettings $ execStateT (runIdris opts) idrisInit
@@ -83,6 +68,7 @@ runIdris opts =
     makeOption TypeCase = setTypeCase True
     makeOption TypeInType = setTypeInType True
     makeOption NoCoverage = setCoverage False
+    makeOption ErrContext = setErrContext True
     makeOption _ = return ()
 
 getFile :: Opt -> Maybe String
@@ -119,6 +105,7 @@ parseArgs ("-o":n:ns)        = liftM (\x -> NoREPL : Output n : x) (parseArgs ns
 parseArgs ("--typecase":ns)  = liftM (TypeCase : ) (parseArgs ns)
 parseArgs ("--typeintype":ns) = liftM (TypeInType : ) (parseArgs ns)
 parseArgs ("--nocoverage":ns) = liftM (NoCoverage : ) (parseArgs ns)
+parseArgs ("--errorcontext":ns) = liftM (ErrContext : ) (parseArgs ns)
 parseArgs ("--help":ns)      = liftM (Usage : ) (parseArgs ns)
 parseArgs ("--version":ns)   = liftM (Ver : ) (parseArgs ns)
 parseArgs ("--verbose":ns)   = liftM (Verbose : ) (parseArgs ns)

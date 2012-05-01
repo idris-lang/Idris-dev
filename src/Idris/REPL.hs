@@ -244,6 +244,15 @@ process fn Metavars
                         _ -> iputStrLn $ "Global metavariables:\n\t" ++ show mvs
 process fn NOP      = return ()
 
+process fn (SetOpt   ErrContext) = setErrContext True
+process fn (UnsetOpt ErrContext) = setErrContext False
+process fn (SetOpt ShowImpl)     = setImpShow True
+process fn (UnsetOpt ShowImpl)   = setImpShow False
+
+process fn (SetOpt _) = iputStrLn "Not a valid option"
+process fn (UnsetOpt _) = iputStrLn "Not a valid option"
+
+
 classInfo :: ClassInfo -> Idris ()
 classInfo ci = do iputStrLn "Methods:\n"
                   mapM_ dumpMethod (class_methods ci)
@@ -292,6 +301,8 @@ help =
     ([":c",":compile"], "<filename>", "Compile to an executable <filename>"),
     ([":exec",":execute"], "", "Compile to an executable and run"),
     ([":?",":h",":help"], "", "Display this help text"),
+    ([":set"], "<option>", "Set an option (errorcontext, showimplicits)"),
+    ([":unset"], "<option>", "Unset an option"),
     ([":q",":quit"], "", "Exit the Idris system")
   ]
 

@@ -43,7 +43,7 @@ instance Show FC where
     show (FC f l) = f ++ ":" ++ show l
 
 data Err = Msg String
-         | CantUnify Term Term Err Int -- Int is 'score' - how much we did unify
+         | CantUnify Term Term Err [(Name, Type)] Int -- Int is 'score' - how much we did unify
          | NoSuchVariable Name
          | NotInjective Term Term Term
          | CantResolve Term
@@ -56,7 +56,7 @@ data Err = Msg String
 
 instance Sized Err where
   size (Msg msg) = length msg
-  size (CantUnify left right err score) = size left + size right + size err
+  size (CantUnify left right err _ score) = size left + size right + size err
   size (NoSuchVariable name) = size name
   size (NotInjective l c r) = size l + size c + size r
   size (CantResolve trm) = size trm
@@ -67,21 +67,21 @@ instance Sized Err where
   size (Inaccessible _) = 1
 
 score :: Err -> Int
-score (CantUnify _ _ m s) = s + score m
+score (CantUnify _ _ m _ s) = s + score m
 score (CantResolve _) = 20
 score (NoSuchVariable _) = 1000
 score _ = 0
 
 instance Show Err where
     show (Msg s) = s
-    show (CantUnify l r e i) = "CantUnify " ++ show l ++ " " ++ show r ++ " "
-                               ++ show e ++ " " ++ show i
+    show (CantUnify l r e sc i) = "CantUnify " ++ show l ++ " " ++ show r ++ " "
+                                  ++ show e ++ " in " ++ show sc ++ " " ++ show i
     show (Inaccessible n) = show n ++ " is not an accessible pattern variable"
     show _ = "Error"
 
 instance Pretty Err where
   pretty (Msg m) = text m
-  pretty (CantUnify l r e i) =
+  pretty (CantUnify l r e _ i) =
     if size l + size r > breakingSize then
       text "Cannot unify" <+> colon $$
         nest nestingSize (pretty l <+> text "and" <+> pretty r) $$

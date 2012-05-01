@@ -780,10 +780,6 @@ elabInstance info syn fc cs n ps t ds
             = let newd = expandParamsD i (\n -> meth) [] [def] clauses in
                   -- trace (show newd) $ 
                   decls ++ [newd]
-            
---             [PClauses fc [Inlinable,TCGen] meth 
---                         [PClause fc meth (PApp fc (PRef fc meth) []) [] 
---                                          (PApp fc (PRef fc def) []) []]]
         | otherwise = decls
 
     warnMissing decls ns meth

@@ -29,6 +29,7 @@ data IOption = IOption { opt_logLevel :: Int,
                          opt_typeintype :: Bool,
                          opt_coverage :: Bool,
                          opt_showimp  :: Bool,
+                         opt_errContext :: Bool,
                          opt_repl     :: Bool,
                          opt_verbose  :: Bool,
                          opt_ibcsubdir :: FilePath,
@@ -36,7 +37,7 @@ data IOption = IOption { opt_logLevel :: Int,
                        }
     deriving (Show, Eq)
 
-defaultOpts = IOption 0 False False True False True True "" []
+defaultOpts = IOption 0 False False True False False True True "" []
 
 -- TODO: Add 'module data' to IState, which can be saved out and reloaded quickly (i.e
 -- without typechecking).
@@ -281,6 +282,16 @@ logLevel :: Idris Int
 logLevel = do i <- get
               return (opt_logLevel (idris_options i))
 
+setErrContext :: Bool -> Idris ()
+setErrContext t = do i <- get
+                     let opts = idris_options i
+                     let opt' = opts { opt_errContext = t }
+                     put (i { idris_options = opt' })
+
+errContext :: Idris Bool
+errContext = do i <- get
+                return (opt_errContext (idris_options i))
+
 useREPL :: Idris Bool
 useREPL = do i <- get
              return (opt_repl (idris_options i))
@@ -383,7 +394,26 @@ data Command = Quit   | Help | Eval PTerm | Check PTerm | TotCheck Name
              | LogLvl Int | Spec PTerm | HNF PTerm | Defn Name 
              | Info Name  | DebugInfo Name
              | Search PTerm
+             | SetOpt Opt | UnsetOpt Opt
              | NOP
+
+data Opt = Filename String
+         | Ver
+         | Usage
+         | NoPrelude
+         | NoREPL
+         | OLogging Int
+         | Output String
+         | TypeCase
+         | TypeInType
+         | NoCoverage 
+         | ErrContext 
+         | ShowImpl
+         | Verbose
+         | IBCSubDir String
+         | ImportDir String
+    deriving Eq
+
 
 -- Parsed declarations
 

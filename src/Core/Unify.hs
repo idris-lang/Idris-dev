@@ -99,7 +99,7 @@ unify ctxt env topx topy
     un' fn bnames x y 
         | OK True <- convEq' ctxt x y = do sc 1; return []
         | otherwise = do UI s i f <- get
-                         let err = CantUnify topx topy (CantUnify x y (Msg "") s) s
+                         let err = CantUnify topx topy (CantUnify x y (Msg "") [] s) (errEnv env) s
                          put (UI s i ((x, y, env, err) : f))
                          return [] -- lift $ tfail err
 
@@ -119,8 +119,8 @@ unify ctxt env topx topy
     uB bnames (PVar tx) (PVar ty) = un' False bnames tx ty
     uB bnames x y = do UI s i f <- get
                        let err = CantUnify topx topy
-                                  (CantUnify (binderTy x) (binderTy y) (Msg "") s)
-                                  s
+                                  (CantUnify (binderTy x) (binderTy y) (Msg "") [] s)
+                                  (errEnv env) s
                        put (UI s i ((binderTy x, binderTy y, env, err) : f))
                        return [] -- lift $ tfail err
 
@@ -131,6 +131,8 @@ unify ctxt env topx topy
             Just t' -> do un' False bnames t t'
                           sc 1
                           combine bnames as bs
+
+errEnv = map (\(x, b) -> (x, binderTy b))
 
 holeIn :: Env -> Name -> Bool
 holeIn env n = case lookup n env of
