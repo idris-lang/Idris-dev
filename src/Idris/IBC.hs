@@ -21,7 +21,7 @@ import System.Directory
 import Paths_idris
 
 ibcVersion :: Word8
-ibcVersion = 17
+ibcVersion = 18
 
 data IBCFile = IBCFile { ver :: Word8,
                          sourcefile :: FilePath,
@@ -802,6 +802,202 @@ instance Binary Plicity where
                    _ -> error "Corrupted binary data for Plicity"
 
  
+instance (Binary t) => Binary (PDecl' t) where
+        put x
+          = case x of
+                PFix x1 x2 x3 -> do putWord8 0
+                                    put x1
+                                    put x2
+                                    put x3
+                PTy x1 x2 x3 x4 x5 -> do putWord8 1
+                                         put x1
+                                         put x2
+                                         put x3
+                                         put x4
+                                         put x5
+                PClauses x1 x2 x3 x4 -> do putWord8 2
+                                           put x1
+                                           put x2
+                                           put x3
+                                           put x4
+                PData x1 x2 x3 -> do putWord8 3
+                                     put x1
+                                     put x2
+                                     put x3
+                PParams x1 x2 x3 -> do putWord8 4
+                                       put x1
+                                       put x2
+                                       put x3
+                PNamespace x1 x2 -> do putWord8 5
+                                       put x1
+                                       put x2
+                PRecord x1 x2 x3 x4 x5 x6 -> do putWord8 6
+                                                put x1
+                                                put x2
+                                                put x3
+                                                put x4
+                                                put x5
+                                                put x6
+                PClass x1 x2 x3 x4 x5 x6 -> do putWord8 7
+                                               put x1
+                                               put x2
+                                               put x3
+                                               put x4
+                                               put x5
+                                               put x6
+                PInstance x1 x2 x3 x4 x5 x6 x7 -> do putWord8 8
+                                                     put x1
+                                                     put x2
+                                                     put x3
+                                                     put x4
+                                                     put x5
+                                                     put x6
+                                                     put x7
+                PDSL x1 x2 -> do putWord8 9
+                                 put x1
+                                 put x2
+        get
+          = do i <- getWord8
+               case i of
+                   0 -> do x1 <- get
+                           x2 <- get
+                           x3 <- get
+                           return (PFix x1 x2 x3)
+                   1 -> do x1 <- get
+                           x2 <- get
+                           x3 <- get
+                           x4 <- get
+                           x5 <- get
+                           return (PTy x1 x2 x3 x4 x5)
+                   2 -> do x1 <- get
+                           x2 <- get
+                           x3 <- get
+                           x4 <- get
+                           return (PClauses x1 x2 x3 x4)
+                   3 -> do x1 <- get
+                           x2 <- get
+                           x3 <- get
+                           return (PData x1 x2 x3)
+                   4 -> do x1 <- get
+                           x2 <- get
+                           x3 <- get
+                           return (PParams x1 x2 x3)
+                   5 -> do x1 <- get
+                           x2 <- get
+                           return (PNamespace x1 x2)
+                   6 -> do x1 <- get
+                           x2 <- get
+                           x3 <- get
+                           x4 <- get
+                           x5 <- get
+                           x6 <- get
+                           return (PRecord x1 x2 x3 x4 x5 x6)
+                   7 -> do x1 <- get
+                           x2 <- get
+                           x3 <- get
+                           x4 <- get
+                           x5 <- get
+                           x6 <- get
+                           return (PClass x1 x2 x3 x4 x5 x6)
+                   8 -> do x1 <- get
+                           x2 <- get
+                           x3 <- get
+                           x4 <- get
+                           x5 <- get
+                           x6 <- get
+                           x7 <- get
+                           return (PInstance x1 x2 x3 x4 x5 x6 x7)
+                   9 -> do x1 <- get
+                           x2 <- get
+                           return (PDSL x1 x2)
+                   _ -> error "Corrupted binary data for PDecl'"
+
+instance Binary SyntaxInfo where
+        put (Syn x1 x2 x3 x4 x5 x6 x7)
+          = do put x1
+               put x2
+               put x3
+               put x4
+               put x5
+               put x6
+               put x7
+        get
+          = do x1 <- get
+               x2 <- get
+               x3 <- get
+               x4 <- get
+               x5 <- get
+               x6 <- get
+               x7 <- get
+               return (Syn x1 x2 x3 x4 x5 x6 x7)
+
+instance (Binary t) => Binary (PClause' t) where
+        put x
+          = case x of
+                PClause x1 x2 x3 x4 x5 x6 -> do putWord8 0
+                                                put x1
+                                                put x2
+                                                put x3
+                                                put x4
+                                                put x5
+                                                put x6
+                PWith x1 x2 x3 x4 x5 x6 -> do putWord8 1
+                                              put x1
+                                              put x2
+                                              put x3
+                                              put x4
+                                              put x5
+                                              put x6
+                PClauseR x1 x2 x3 x4 -> do putWord8 2
+                                           put x1
+                                           put x2
+                                           put x3
+                                           put x4
+                PWithR x1 x2 x3 x4 -> do putWord8 3
+                                         put x1
+                                         put x2
+                                         put x3
+                                         put x4
+        get
+          = do i <- getWord8
+               case i of
+                   0 -> do x1 <- get
+                           x2 <- get
+                           x3 <- get
+                           x4 <- get
+                           x5 <- get
+                           x6 <- get
+                           return (PClause x1 x2 x3 x4 x5 x6)
+                   1 -> do x1 <- get
+                           x2 <- get
+                           x3 <- get
+                           x4 <- get
+                           x5 <- get
+                           x6 <- get
+                           return (PWith x1 x2 x3 x4 x5 x6)
+                   2 -> do x1 <- get
+                           x2 <- get
+                           x3 <- get
+                           x4 <- get
+                           return (PClauseR x1 x2 x3 x4)
+                   3 -> do x1 <- get
+                           x2 <- get
+                           x3 <- get
+                           x4 <- get
+                           return (PWithR x1 x2 x3 x4)
+                   _ -> error "Corrupted binary data for PClause'"
+
+instance (Binary t) => Binary (PData' t) where
+        put (PDatadecl x1 x2 x3)
+          = do put x1
+               put x2
+               put x3
+        get
+          = do x1 <- get
+               x2 <- get
+               x3 <- get
+               return (PDatadecl x1 x2 x3)
+
 instance Binary PTerm where
         put x
           = case x of
@@ -824,53 +1020,61 @@ instance Binary PTerm where
                                        put x2
                                        put x3
                                        put x4
-                PApp x1 x2 x3 -> do putWord8 5
+                PTyped x1 x2 -> do putWord8 5
+                                   put x1
+                                   put x2
+                PApp x1 x2 x3 -> do putWord8 6
                                     put x1
                                     put x2
                                     put x3
-                PTrue x1 -> do putWord8 6
-                               put x1
-                PFalse x1 -> do putWord8 7
-                                put x1
-                PRefl x1 -> do putWord8 8
-                               put x1
-                PResolveTC x1 -> do putWord8 9
-                                    put x1
-                PEq x1 x2 x3 -> do putWord8 10
-                                   put x1
-                                   put x2
-                                   put x3
-                PPair x1 x2 x3 -> do putWord8 11
+                PCase x1 x2 x3 -> do putWord8 7
                                      put x1
                                      put x2
                                      put x3
-                PDPair x1 x2 x3 x4 -> do putWord8 12
+                PTrue x1 -> do putWord8 8
+                               put x1
+                PFalse x1 -> do putWord8 9
+                                put x1
+                PRefl x1 -> do putWord8 10
+                               put x1
+                PResolveTC x1 -> do putWord8 11
+                                    put x1
+                PEq x1 x2 x3 -> do putWord8 12
+                                   put x1
+                                   put x2
+                                   put x3
+                PPair x1 x2 x3 -> do putWord8 13
+                                     put x1
+                                     put x2
+                                     put x3
+                PDPair x1 x2 x3 x4 -> do putWord8 14
                                          put x1
                                          put x2
                                          put x3
                                          put x4
-                PAlternative x1 x2 -> do putWord8 13
+                PAlternative x1 x2 -> do putWord8 15
                                          put x1
                                          put x2
-                PHidden x1 -> do putWord8 14
+                PHidden x1 -> do putWord8 16
                                  put x1
-                PSet -> putWord8 15
-                PConstant x1 -> do putWord8 16
+                PSet -> putWord8 17
+                PConstant x1 -> do putWord8 18
                                    put x1
-                Placeholder -> putWord8 17
-                PDoBlock x1 -> do putWord8 18
+                Placeholder -> putWord8 19
+                PDoBlock x1 -> do putWord8 20
                                   put x1
-                PReturn x1 -> do putWord8 19
+                PIdiom x1 x2 -> do putWord8 21
+                                   put x1
+                                   put x2
+                PReturn x1 -> do putWord8 22
                                  put x1
-                PMetavar x1 -> do putWord8 20
+                PMetavar x1 -> do putWord8 23
                                   put x1
-                PProof x1 -> do putWord8 21
+                PProof x1 -> do putWord8 24
                                 put x1
-                PTactics x1 -> do putWord8 22
+                PTactics x1 -> do putWord8 25
                                   put x1
---                 PElabError x1 -> do putWord8 23
---                                     put x1
-                PImpossible -> putWord8 24
+                PImpossible -> putWord8 27
         get
           = do i <- getWord8
                case i of
@@ -895,53 +1099,60 @@ instance Binary PTerm where
                            return (PLet x1 x2 x3 x4)
                    5 -> do x1 <- get
                            x2 <- get
+                           return (PTyped x1 x2)
+                   6 -> do x1 <- get
+                           x2 <- get
                            x3 <- get
                            return (PApp x1 x2 x3)
-                   6 -> do x1 <- get
-                           return (PTrue x1)
                    7 -> do x1 <- get
-                           return (PFalse x1)
+                           x2 <- get
+                           x3 <- get
+                           return (PCase x1 x2 x3)
                    8 -> do x1 <- get
-                           return (PRefl x1)
+                           return (PTrue x1)
                    9 -> do x1 <- get
-                           return (PResolveTC x1)
+                           return (PFalse x1)
                    10 -> do x1 <- get
+                            return (PRefl x1)
+                   11 -> do x1 <- get
+                            return (PResolveTC x1)
+                   12 -> do x1 <- get
                             x2 <- get
                             x3 <- get
                             return (PEq x1 x2 x3)
-                   11 -> do x1 <- get
+                   13 -> do x1 <- get
                             x2 <- get
                             x3 <- get
                             return (PPair x1 x2 x3)
-                   12 -> do x1 <- get
+                   14 -> do x1 <- get
                             x2 <- get
                             x3 <- get
                             x4 <- get
                             return (PDPair x1 x2 x3 x4)
-                   13 -> do x1 <- get
+                   15 -> do x1 <- get
                             x2 <- get
                             return (PAlternative x1 x2)
-                   14 -> do x1 <- get
-                            return (PHidden x1)
-                   15 -> return PSet
                    16 -> do x1 <- get
-                            return (PConstant x1)
-                   17 -> return Placeholder
+                            return (PHidden x1)
+                   17 -> return PSet
                    18 -> do x1 <- get
-                            return (PDoBlock x1)
-                   19 -> do x1 <- get
-                            return (PReturn x1)
+                            return (PConstant x1)
+                   19 -> return Placeholder
                    20 -> do x1 <- get
-                            return (PMetavar x1)
+                            return (PDoBlock x1)
                    21 -> do x1 <- get
-                            return (PProof x1)
+                            x2 <- get
+                            return (PIdiom x1 x2)
                    22 -> do x1 <- get
+                            return (PReturn x1)
+                   23 -> do x1 <- get
+                            return (PMetavar x1)
+                   24 -> do x1 <- get
+                            return (PProof x1)
+                   25 -> do x1 <- get
                             return (PTactics x1)
---                    23 -> do x1 <- get
---                             return (PElabError x1)
-                   24 -> return PImpossible
+                   27 -> return PImpossible
                    _ -> error "Corrupted binary data for PTerm"
-
  
 instance (Binary t) => Binary (PTactic' t) where
         put x

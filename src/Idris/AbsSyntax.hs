@@ -472,17 +472,26 @@ data PDecl' t = PFix     FC Fixity [String] -- fixity declaration
               | PSyntax  FC Syntax
               | PDirective (Idris ())
     deriving Functor
+{-!
+deriving instance Binary PDecl'
+!-}
 
 data PClause' t = PClause  FC Name t [t] t [PDecl' t]
                 | PWith    FC Name t [t] t [PDecl' t]
                 | PClauseR FC        [t] t [PDecl' t]
                 | PWithR   FC        [t] t [PDecl' t]
     deriving Functor
+{-!
+deriving instance Binary PClause'
+!-}
 
 data PData' t  = PDatadecl { d_name :: Name,
                              d_tcon :: t,
                              d_cons :: [(Name, t, FC)] }
     deriving Functor
+{-!
+deriving instance Binary PData'
+!-}
 
 -- Handy to get a free function for applying PTerm -> PTerm functions
 -- across a program, by deriving Functor
@@ -680,7 +689,7 @@ type PArg = PArg' PTerm
 
 data ClassInfo = CI { instanceName :: Name,
                       class_methods :: [(Name, (FnOpts, PTerm))],
-                      class_defaults :: [(Name, Name)], -- method name -> default impl
+                      class_defaults :: [(Name, (Name, PDecl))], -- method name -> default impl
                       class_params :: [Name],
                       class_instances :: [Name] }
     deriving Show
@@ -762,6 +771,9 @@ data SyntaxInfo = Syn { using :: [(Name, PTerm)],
                         inPattern :: Bool,
                         dsl_info :: DSL }
     deriving Show
+{-!
+deriving instance Binary SyntaxInfo
+!-}
 
 defaultSyntax = Syn [] [] [] [] id False initDSL
 

@@ -586,7 +586,7 @@ elabClass info syn fc constraints tn ps ds
                                                  [PTy syn fc [] n ty', 
                                                   PClauses fc (TCGen:o ++ opts) n cs]
                                     iLOG (show ds)
-                                    return (n, (defaultdec n, ds))
+                                    return (n, ((defaultdec n, ds!!1), ds))
             _ -> fail $ show n ++ " is not a method"
     defdecl _ _ _ = fail "Can't happen (defdecl)"
 
@@ -689,7 +689,7 @@ elabInstance info syn fc cs n ps t ds
                                     (decorate ns n, op, coninsert cs t', t'))
                         (class_methods ci)
          logLvl 3 (show (mtys, ips))
-         let ds' = insertDefaults (class_defaults ci) ns ds
+         let ds' = insertDefaults i (class_defaults ci) ns ds
          iLOG ("Defaults inserted: " ++ show ds' ++ "\n" ++ show ci)
          mapM_ (warnMissing ds' ns) (map fst (class_methods ci))
          mapM_ (checkInClass (map fst (class_methods ci))) (concatMap defined ds')
@@ -770,16 +770,20 @@ elabInstance info syn fc cs n ps t ds
     coninsert cs (PPi p@(Imp _ _) n t sc) = PPi p n t (coninsert cs sc)
     coninsert cs sc = conbind cs sc
 
-    insertDefaults :: [(Name, Name)] -> [String] -> [PDecl] -> [PDecl]
-    insertDefaults [] ns ds = ds
-    insertDefaults ((n,dn) : defs) ns ds 
-       = insertDefaults defs ns (insertDef n dn ns ds)
+    insertDefaults :: IState -> [(Name, (Name, PDecl))] -> [String] -> [PDecl] -> [PDecl]
+    insertDefaults i [] ns ds = ds
+    insertDefaults i ((n,(dn, clauses)) : defs) ns ds 
+       = insertDefaults i defs ns (insertDef i n dn clauses ns ds)
 
-    insertDef meth def ns decls
+    insertDef i meth def clauses ns decls
         | null $ filter (clauseFor meth ns) decls
-            = decls ++ [PClauses fc [Inlinable,TCGen] meth 
-                        [PClause fc meth (PApp fc (PRef fc meth) []) [] 
-                                         (PApp fc (PRef fc def) []) []]]
+            = let newd = expandParamsD i (\n -> meth) [] [def] clauses in
+                  -- trace (show newd) $ 
+                  decls ++ [newd]
+            
+--             [PClauses fc [Inlinable,TCGen] meth 
+--                         [PClause fc meth (PApp fc (PRef fc meth) []) [] 
+--                                          (PApp fc (PRef fc def) []) []]]
         | otherwise = decls
 
     warnMissing decls ns meth
@@ -883,14 +887,16 @@ elabCaseBlock info d@(PClauses f o n ps)
 
 checkInferred :: FC -> PTerm -> PTerm -> Idris ()
 checkInferred fc inf user =
-     do logLvl 6 $ "Checked to\n" ++ showImp True inf ++ "\n" ++
+     do logLvl 6 $ "Checked to\n" ++ showImp True inf ++ "\n\nFROM\n\n" ++
                                      showImp True user
+        logLvl 10 $ "Checking match"
         i <- get
         tclift $ case matchClause' True i user inf of 
             Right vs -> return ()
             Left (x, y) -> tfail $ At fc 
                                     (Msg $ "The type-checked term and given term do not match: "
                                            ++ show x ++ " and " ++ show y)
+        logLvl 10 $ "Checked match"
 --                           ++ "\n" ++ showImp True inf ++ "\n" ++ showImp True user)
 
 -- Return whether inferred term is different from given term
