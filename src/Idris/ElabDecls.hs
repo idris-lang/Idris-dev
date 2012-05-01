@@ -58,7 +58,7 @@ elabType info syn fc opts n ty' = {- let ty' = piBind (params info) ty_in
          (cty, _)   <- recheckC fc [] tyT
          addStatics n cty ty'
          logLvl 2 $ "---> " ++ show cty
-         let nty = normalise ctxt [] cty
+         let nty = cty -- normalise ctxt [] cty
          ds <- checkDef fc [(n, nty)]
          addIBC (IBCDef n)
          addDeferred ds
