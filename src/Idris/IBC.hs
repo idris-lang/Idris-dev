@@ -21,7 +21,7 @@ import System.Directory
 import Paths_idris
 
 ibcVersion :: Word8
-ibcVersion = 18
+ibcVersion = 19
 
 data IBCFile = IBCFile { ver :: Word8,
                          sourcefile :: FilePath,
@@ -913,7 +913,7 @@ instance (Binary t) => Binary (PDecl' t) where
                    _ -> error "Corrupted binary data for PDecl'"
 
 instance Binary SyntaxInfo where
-        put (Syn x1 x2 x3 x4 x5 x6 x7)
+        put (Syn x1 x2 x3 x4 x5 x6 x7 x8)
           = do put x1
                put x2
                put x3
@@ -921,6 +921,7 @@ instance Binary SyntaxInfo where
                put x5
                put x6
                put x7
+               put x8
         get
           = do x1 <- get
                x2 <- get
@@ -929,7 +930,8 @@ instance Binary SyntaxInfo where
                x5 <- get
                x6 <- get
                x7 <- get
-               return (Syn x1 x2 x3 x4 x5 x6 x7)
+               x8 <- get
+               return (Syn x1 x2 x3 x4 x5 x6 x7 x8)
 
 instance (Binary t) => Binary (PClause' t) where
         put x

@@ -799,13 +799,14 @@ data SyntaxInfo = Syn { using :: [(Name, PTerm)],
                         no_imp :: [Name],
                         decoration :: Name -> Name,
                         inPattern :: Bool,
+                        implicitAllowed :: Bool,
                         dsl_info :: DSL }
     deriving Show
 {-!
 deriving instance Binary SyntaxInfo
 !-}
 
-defaultSyntax = Syn [] [] [] [] id False initDSL
+defaultSyntax = Syn [] [] [] [] id False False initDSL
 
 expandNS :: SyntaxInfo -> Name -> Name
 expandNS syn n@(NS _ _) = n

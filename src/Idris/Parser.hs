@@ -409,7 +409,7 @@ pFunDecl' syn = try (do push_indent
                         opts' <- pFnOpts
                         n_in <- pfName
                         let n = expandNS syn n_in
-                        ty <- pTSig syn
+                        ty <- pTSig (impOK syn)
                         fc <- pfc
                         pTerminator 
 --                         ty' <- implicit syn n ty
@@ -656,7 +656,7 @@ pSimpleExpr syn =
         <|> try (pList syn)
         <|> try (pAlt syn)
         <|> try (pIdiom syn)
-        <|> try (do lchar '('; bracketed syn)
+        <|> try (do lchar '('; bracketed (noImp syn))
         <|> try (do c <- pConstant; fc <- pfc
                     return (modifyConst syn fc (PConstant c)))
         <|> do reserved "Set"; return PSet
@@ -793,9 +793,12 @@ mkSet (UN n) = UN ("set_" ++ n)
 mkSet (MN 0 n) = MN 0 ("set_" ++ n)
 mkSet (NS n s) = NS (mkSet n) s
 
+noImp syn = syn { implicitAllowed = False }
+impOK syn = syn { implicitAllowed = True }
+
 pTSig syn = do lchar ':'
-               cs <- pConstList syn
-               sc <- pExpr syn
+               cs <- if implicitAllowed syn then pConstList syn else return []
+               sc <- pExpr syn 
                return (bindList (PPi constraint) (map (\x -> (MN 0 "c", x)) cs) sc)
 
 pLambda syn = do lchar '\\'
@@ -832,12 +835,14 @@ pPi syn =
              symbol "->"
              sc <- pExpr syn
              return (bindList (PPi (Exp lazy st)) xt sc))
- <|> try (do lazy <- option False (do lchar '|'; return True)
-             st <- pStatic
-             lchar '{'; xt <- tyDeclList syn; lchar '}'
-             symbol "->"
-             sc <- pExpr syn
-             return (bindList (PPi (Imp lazy st)) xt sc))
+ <|> try (if implicitAllowed syn then
+             do lazy <- option False (do lchar '|'; return True)
+                st <- pStatic
+                lchar '{'; xt <- tyDeclList syn; lchar '}'
+                symbol "->"
+                sc <- pExpr syn
+                return (bindList (PPi (Imp lazy st)) xt sc)
+             else fail "No implicit arguments allowed here")
  <|> try (do lchar '{'; reserved "auto"
              xt <- tyDeclList syn; lchar '}'
              symbol "->"
@@ -858,19 +863,19 @@ pPi syn =
 
 pConstList :: SyntaxInfo -> IParser [PTerm]
 pConstList syn = try (do lchar '(' 
-                         tys <- sepBy1 (pExpr' syn) (lchar ',')
+                         tys <- sepBy1 (pExpr' (noImp syn)) (lchar ',')
                          lchar ')'
                          reservedOp "=>"
                          return tys)
-             <|> try (do t <- pExpr syn
+             <|> try (do t <- pExpr (noImp syn)
                          reservedOp "=>"
                          return [t])
              <|> return []
 
-tyDeclList syn = try (sepBy1 (do x <- pfName; t <- pTSig syn; return (x,t))
+tyDeclList syn = try (sepBy1 (do x <- pfName; t <- pTSig (noImp syn); return (x,t))
                          (lchar ','))
              <|> do ns <- sepBy1 pName (lchar ',')
-                    t <- pTSig syn
+                    t <- pTSig (noImp syn)
                     return (map (\x -> (x, t)) ns)
 
 tyOptDeclList syn = sepBy1 (do x <- pfName; 
@@ -978,7 +983,7 @@ accData a n ns = do addAcc n a; mapM_ (\n -> addAcc n a) ns
 pRecord :: SyntaxInfo -> IParser PDecl
 pRecord syn = do acc <- pAccessibility
                  reserved "record"; fc <- pfc
-                 tyn_in <- pfName; ty <- pTSig syn
+                 tyn_in <- pfName; ty <- pTSig (impOK syn)
                  let tyn = expandNS syn tyn_in
                  reserved "where"
                  open_block
@@ -1004,7 +1009,7 @@ pRecord syn = do acc <- pAccessibility
 pData :: SyntaxInfo -> IParser PDecl
 pData syn = try (do acc <- pAccessibility
                     reserved "data"; fc <- pfc
-                    tyn_in <- pfName; ty <- pTSig syn
+                    tyn_in <- pfName; ty <- pTSig (impOK syn)
                     let tyn = expandNS syn tyn_in
                     reserved "where"
                     open_block
@@ -1044,7 +1049,7 @@ pConstructor :: SyntaxInfo -> IParser (Name, PTerm, FC)
 pConstructor syn 
     = do cn_in <- pfName; fc <- pfc
          let cn = expandNS syn cn_in
-         ty <- pTSig syn
+         ty <- pTSig (impOK syn)
 --          ty' <- implicit syn cn ty
          return (cn, ty, fc)
  

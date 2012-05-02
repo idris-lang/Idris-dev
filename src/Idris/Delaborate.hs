@@ -73,7 +73,8 @@ delab' ist tm fullname = de [] tm
 pshow :: IState -> Err -> String
 pshow i (Msg s) = s
 pshow i (InternalMsg s) = "INTERNAL ERROR: " ++ show s ++ 
-   "\nThis is probably a bug. Please consider reporting at " ++ bugaddr
+   "\nThis is probably a bug, or a missing error message.\n" ++
+   "Please consider reporting at " ++ bugaddr
 pshow i (CantUnify x y e sc s) 
     = "Can't unify " ++ show (delab i x)
         ++ " with " ++ show (delab i y) ++
