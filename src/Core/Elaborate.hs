@@ -169,6 +169,10 @@ elog :: String -> Elab' aux ()
 elog str = do ES p logs prev <- get
               put (ES p (logs ++ str ++ "\n") prev)
 
+getLog :: Elab' aux String
+getLog = do ES p logs _ <- get
+            return logs
+
 -- The primitives, from ProofState
 
 attack :: Elab' aux ()
@@ -402,6 +406,12 @@ simple_app fun arg =
            (do focus f; fun
                focus s; arg)
        complete_fill
+       hs <- get_holes
+       -- We don't need a and b in the hole queue any more since they were just for
+       -- checking f, so discard them if they are still there. If they haven't been solved,
+       -- regret will fail
+       when (a `elem` hs) $ do focus a; regret 
+       when (b `elem` hs) $ do focus b; regret 
        end_unify
 
 -- Abstract over an argument of unknown type, giving a name for the hole

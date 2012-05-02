@@ -43,6 +43,7 @@ instance Show FC where
     show (FC f l) = f ++ ":" ++ show l
 
 data Err = Msg String
+         | InternalMsg String
          | CantUnify Term Term Err [(Name, Type)] Int -- Int is 'score' - how much we did unify
          | NoSuchVariable Name
          | NotInjective Term Term Term
@@ -56,6 +57,7 @@ data Err = Msg String
 
 instance Sized Err where
   size (Msg msg) = length msg
+  size (InternalMsg msg) = length msg
   size (CantUnify left right err _ score) = size left + size right + size err
   size (NoSuchVariable name) = size name
   size (NotInjective l c r) = size l + size c + size r
@@ -74,6 +76,7 @@ score _ = 0
 
 instance Show Err where
     show (Msg s) = s
+    show (InternalMsg s) = "Internal error: " ++ show s
     show (CantUnify l r e sc i) = "CantUnify " ++ show l ++ " " ++ show r ++ " "
                                   ++ show e ++ " in " ++ show sc ++ " " ++ show i
     show (Inaccessible n) = show n ++ " is not an accessible pattern variable"
@@ -115,7 +118,7 @@ instance Monad TC where
     x >>= k = case x of 
                 OK v -> k v
                 Error e -> Error e
-    fail e = Error (Msg e)
+    fail e = Error (InternalMsg e)
 
 tfail :: Err -> TC a
 tfail e = Error e

@@ -25,12 +25,15 @@ data UInfo = UI Int Injs Fails
 unify :: Context -> Env -> TT Name -> TT Name -> TC ([(Name, TT Name)], 
                                                      Injs, Fails)
 unify ctxt env topx topy 
-    = case runStateT 
-             (un' False [] (normalise ctxt env topx) (normalise ctxt env topy))
-             (UI 0 [] []) of
-              OK (v, UI _ inj fails) -> return (filter notTrivial v, inj, reverse fails)
---               OK (_, UI s _ ((_,_,f):fs)) -> tfail $ CantUnify topx topy f s
-              Error e -> tfail e
+    = -- case runStateT (un' False [] topx topy) (UI 0 [] []) of
+      -- OK (v, UI _ inj []) -> return (filter notTrivial v, inj, [])
+      let topxn = normalise ctxt env topx
+	  topyn = normalise ctxt env topy in
+		  case runStateT (un' False [] topxn topyn)
+			        (UI 0 [] []) of
+	              OK (v, UI _ inj fails) -> return (filter notTrivial v, inj, reverse fails)
+--                    OK (_, UI s _ ((_,_,f):fs)) -> tfail $ CantUnify topx topy f s
+		      Error e -> tfail e
   where
     notTrivial (x, P _ x' _) = x /= x'
     notTrivial _ = True
@@ -76,18 +79,19 @@ unify ctxt env topx topy
     un' fn bnames (App fx ax) (App fy ay)    
         = do uplus -- do the second one if the first adds any errors 
                 (do hf <- un' True bnames fx fy 
-                    let ax' = normalise ctxt env (substNames hf ax)
-                    let ay' = normalise ctxt env (substNames hf ay)
+                    let ax' = hnormalise hf ctxt env (substNames hf ax)
+                    let ay' = hnormalise hf ctxt env (substNames hf ay)
                     ha <- un' False bnames ax' ay'
                     sc 1
                     combine bnames hf ha)
                 (do ha <- un' False bnames ax ay
-                    let fx' = normalise ctxt env (substNames ha fx)
-                    let fy' = normalise ctxt env (substNames ha fy)
+                    let fx' = hnormalise ha ctxt env (substNames ha fx)
+                    let fy' = hnormalise ha ctxt env (substNames ha fy)
                     hf <- un' False bnames fx' fy'
                     sc 1
                     combine bnames hf ha)
-
+      where hnormalise [] _ _ t = t
+            hnormalise ns ctxt env t = normalise ctxt env t
     un' fn bnames x (Bind n (Lam t) (App y (P Bound n' _)))
         | n == n' = un' False bnames x y
     un' fn bnames (Bind n (Lam t) (App x (P Bound n' _))) y

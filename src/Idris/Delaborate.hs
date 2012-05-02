@@ -10,6 +10,8 @@ import Core.TT
 
 import Debug.Trace
 
+bugaddr = "https://github.com/edwinb/Idris-dev/issues"
+
 delab :: IState -> Term -> PTerm
 delab i tm = delab' i tm False
 
@@ -70,6 +72,8 @@ delab' ist tm fullname = de [] tm
 
 pshow :: IState -> Err -> String
 pshow i (Msg s) = s
+pshow i (InternalMsg s) = "INTERNAL ERROR: " ++ show s ++ 
+   "\nThis is probably a bug. Please consider reporting at " ++ bugaddr
 pshow i (CantUnify x y e sc s) 
     = "Can't unify " ++ show (delab i x)
         ++ " with " ++ show (delab i y) ++

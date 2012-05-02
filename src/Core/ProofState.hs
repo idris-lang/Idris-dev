@@ -294,9 +294,12 @@ defer n ctxt env (Bind x (Hole t) (P nt x' ty)) | x == x' =
 
     getP (n, b) = P Bound n (binderTy b)
 
--- Hmmm. YAGNI?
 regret :: RunTactic
-regret = undefined
+regret ctxt env (Bind x (Hole t) sc) | noOccurrence x sc =
+    do action (\ps -> let hs = holes ps in
+                          ps { holes = hs \\ [x] })
+       return sc
+regret ctxt env (Bind x (Hole t) _) = fail $ show x ++ " : " ++ show t ++ " is not solved"
 
 addInj :: [(Term, Term, Term)] -> StateT TState TC ()
 addInj inj = do ps <- get
@@ -315,6 +318,8 @@ fill :: Raw -> RunTactic
 fill guess ctxt env (Bind x (Hole ty) sc) =
     do (val, valty) <- lift $ check ctxt env guess
        s <- get
+--        let valtyn = normalise ctxt env valty
+--        let tyn = normalise ctxt env ty
        ns <- unify' ctxt env valty ty
        ps <- get
        let (uh, uns) = unified ps
