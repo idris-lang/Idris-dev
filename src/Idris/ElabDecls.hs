@@ -668,17 +668,22 @@ elabInstance :: ElabInfo -> SyntaxInfo ->
                 Name -> -- the class 
                 [PTerm] -> -- class parameters (i.e. instance) 
                 PTerm -> -- full instance type
+                Maybe Name -> -- explicit name
                 [PDecl] -> Idris ()
-elabInstance info syn fc cs n ps t ds
+elabInstance info syn fc cs n ps t expn ds
     = do i <- get 
          (n, ci) <- case lookupCtxtName (namespace info) n (idris_classes i) of
                        [c] -> return c
                        _ -> fail $ show fc ++ ":" ++ show n ++ " is not a type class"
-         let iname = UN ('@':show n ++ "$" ++ show ps)
+         let iname = case expn of
+                         Nothing -> UN ('@':show n ++ "$" ++ show ps)
+                         Just nm -> nm
          -- if the instance type matches any of the instances we have already,
-         -- then it's overlapping, so report an error
-         mapM_ (checkNotOverlapping i t) (class_instances ci) 
-         addInstance intInst n iname
+         -- and it's not a named instance, then it's overlapping, so report an error
+         case expn of
+            Nothing -> do mapM_ (checkNotOverlapping i t) (class_instances ci) 
+                          addInstance intInst n iname
+            Just _ -> addInstance intInst n iname 
          elabType info syn fc [] iname t
          let ips = zip (class_params ci) ps
          let ns = case n of
@@ -858,9 +863,9 @@ elabDecl' info (PNamespace n ps) = mapM_ (elabDecl' ninfo) ps
                 Just ns -> info { namespace = Just (n:ns) } 
 elabDecl' info (PClass s f cs n ps ds) = do iLOG $ "Elaborating class " ++ show n
                                             elabClass info s f cs n ps ds
-elabDecl' info (PInstance s f cs n ps t ds) 
+elabDecl' info (PInstance s f cs n ps t expn ds) 
     = do iLOG $ "Elaborating instance " ++ show n
-         elabInstance info s f cs n ps t ds
+         elabInstance info s f cs n ps t expn ds
 elabDecl' info (PRecord s f tyn ty cn cty)
     = do iLOG $ "Elaborating record " ++ show tyn
          elabRecord info s f tyn ty cn cty

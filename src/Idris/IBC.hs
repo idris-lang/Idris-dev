@@ -845,14 +845,15 @@ instance (Binary t) => Binary (PDecl' t) where
                                                put x4
                                                put x5
                                                put x6
-                PInstance x1 x2 x3 x4 x5 x6 x7 -> do putWord8 8
-                                                     put x1
-                                                     put x2
-                                                     put x3
-                                                     put x4
-                                                     put x5
-                                                     put x6
-                                                     put x7
+                PInstance x1 x2 x3 x4 x5 x6 x7 x8 -> do putWord8 8
+                                                        put x1
+                                                        put x2
+                                                        put x3
+                                                        put x4
+                                                        put x5
+                                                        put x6
+                                                        put x7
+                                                        put x8
                 PDSL x1 x2 -> do putWord8 9
                                  put x1
                                  put x2
@@ -906,7 +907,8 @@ instance (Binary t) => Binary (PDecl' t) where
                            x5 <- get
                            x6 <- get
                            x7 <- get
-                           return (PInstance x1 x2 x3 x4 x5 x6 x7)
+                           x8 <- get
+                           return (PInstance x1 x2 x3 x4 x5 x6 x7 x8)
                    9 -> do x1 <- get
                            x2 <- get
                            return (PDSL x1 x2)

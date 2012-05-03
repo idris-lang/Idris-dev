@@ -497,6 +497,7 @@ data PDecl' t = PFix     FC Fixity [String] -- fixity declaration
                                         Name -- class
                                         [t] -- parameters
                                         t -- full instance type
+                                        (Maybe Name) -- explicit name
                                         [PDecl' t]
               | PDSL     Name (DSL' t)
               | PSyntax  FC Syntax
@@ -1719,7 +1720,7 @@ dumpDecl (PNamespace n ps) = "namespace {" ++ n ++ "\n" ++ dumpDecls ps ++ "}\n"
 dumpDecl (PSyntax _ syn) = "syntax " ++ show syn
 dumpDecl (PClass _ _ cs n ps ds) 
     = "class " ++ show cs ++ " " ++ show n ++ " " ++ show ps ++ "\n" ++ dumpDecls ds
-dumpDecl (PInstance _ _ cs n _ t ds) 
+dumpDecl (PInstance _ _ cs n _ t _ ds) 
     = "instance " ++ show cs ++ " " ++ show n ++ " " ++ show t ++ "\n" ++ dumpDecls ds
 dumpDecl _ = "..."
 -- dumpDecl (PImport i) = "import " ++ i

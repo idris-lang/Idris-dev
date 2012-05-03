@@ -296,8 +296,8 @@ collect (c@(PClauses _ o _ _) : ds)
 collect (PParams f ns ps : ds) = PParams f ns (collect ps) : collect ds
 collect (PNamespace ns ps : ds) = PNamespace ns (collect ps) : collect ds
 collect (PClass f s cs n ps ds : ds') = PClass f s cs n ps (collect ds) : collect ds'
-collect (PInstance f s cs n ps t ds : ds') 
-    = PInstance f s cs n ps t (collect ds) : collect ds'
+collect (PInstance f s cs n ps t en ds : ds') 
+    = PInstance f s cs n ps t en (collect ds) : collect ds'
 collect (d : ds) = d : collect ds
 collect [] = []
 
@@ -496,6 +496,10 @@ pClass syn = do acc <- pAccessibility
 pInstance :: SyntaxInfo -> IParser [PDecl]
 pInstance syn = do reserved "instance"
                    fc <- pfc
+                   en <- option Nothing
+                            (do lchar '['; n_in <- pfName; lchar ']'
+                                let n = expandNS syn n_in
+                                return (Just n))
                    cs <- pConstList syn
                    cn <- pName
                    args <- many1 (pSimpleExpr syn)
@@ -504,7 +508,7 @@ pInstance syn = do reserved "instance"
                    reserved "where"; open_block 
                    ds <- many $ pFunDecl syn
                    close_block
-                   return [PInstance syn fc cs cn args t (concat ds)]
+                   return [PInstance syn fc cs cn args t en (concat ds)]
 
 --------- Expressions ---------
 
