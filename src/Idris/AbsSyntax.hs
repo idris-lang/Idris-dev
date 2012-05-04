@@ -1575,9 +1575,9 @@ addImpl' :: Bool -> [Name] -> IState -> PTerm -> PTerm
 addImpl' inpat env ist ptm = ai env ptm
   where
     ai env (PRef fc f)    
-        | not (f `elem` env) = handleErr $ aiFn inpat ist fc f []
+        | not (f `elem` env) = handleErr $ aiFn inpat inpat ist fc f []
     ai env (PHidden (PRef fc f))
-        | not (f `elem` env) = handleErr $ aiFn False ist fc f []
+        | not (f `elem` env) = handleErr $ aiFn inpat False ist fc f []
     ai env (PEq fc l r)   = let l' = ai env l
                                 r' = ai env r in
                                 PEq fc l' r'
@@ -1596,7 +1596,7 @@ addImpl' inpat env ist ptm = ai env ptm
     ai env (PApp fc (PRef _ f) as) 
         | not (f `elem` env)
                           = let as' = map (fmap (ai env)) as in
-                                handleErr $ aiFn False ist fc f as'
+                                handleErr $ aiFn inpat False ist fc f as'
     ai env (PApp fc f as) = let f' = ai env f
                                 as' = map (fmap (ai env)) as in
                                 mkPApp fc 1 f' as'
@@ -1625,18 +1625,18 @@ addImpl' inpat env ist ptm = ai env ptm
 -- if in a pattern, and there are no arguments, and there's no possible
 -- names with zero explicit arguments, don't add implicits.
 
-aiFn :: Bool -> IState -> FC -> Name -> [PArg] -> Either Err PTerm
-aiFn True ist fc f []
+aiFn :: Bool -> Bool -> IState -> FC -> Name -> [PArg] -> Either Err PTerm
+aiFn inpat True ist fc f []
   = case lookupCtxt Nothing f (idris_implicits ist) of
         [] -> Right $ PRef fc f
         alts -> if (any (all imp) alts)
-                        then aiFn False ist fc f [] -- use it as a constructor
+                        then aiFn inpat False ist fc f [] -- use it as a constructor
                         else Right $ PRef fc f
     where imp (PExp _ _ _) = False
           imp _ = True
-aiFn inpat ist fc f as
+aiFn inpat expat ist fc f as
     | f `elem` primNames = Right $ PApp fc (PRef fc f) as
-aiFn inpat ist fc f as
+aiFn inpat expat ist fc f as
           -- This is where namespaces get resolved by adding PAlternative
         = case lookupCtxtName Nothing f (idris_implicits ist) of
             [(f',ns)] -> Right $ mkPApp fc (length ns) (PRef fc f') (insertImpl ns as)

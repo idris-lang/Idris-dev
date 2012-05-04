@@ -21,7 +21,7 @@ import Paths_idris
 import Epic.Epic hiding (Term, Type, Name, fn, compile)
 import qualified Epic.Epic as E
 
-primDefs = [UN "mkLazyForeign", UN "mkForeign", UN "FalseElim"]
+primDefs = [UN "unsafePerformIO", UN "mkLazyForeign", UN "mkForeign", UN "FalseElim"]
 
 compile :: FilePath -> Term -> Idris ()
 compile f tm
@@ -105,6 +105,8 @@ instance ToEpic (TT Name) where
               = doForeign False args
           | (P _ (UN "mkLazyForeign") _, args) <- unApply tm
               = doForeign True args
+          | (P _ (UN "unsafePerformIO") _, [_, arg]) <- unApply tm
+              = epic' env arg
           | (P _ (UN "lazy") _, [_,arg]) <- unApply tm
               = do arg' <- epic' env arg
                    return $ lazy_ arg'
