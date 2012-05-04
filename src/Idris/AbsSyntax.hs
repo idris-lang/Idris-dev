@@ -56,6 +56,7 @@ data IState = IState { tt_ctxt :: Context,
                        idris_patdefs :: Ctxt [([Name], Term, Term)], -- not exported
                        idris_flags :: Ctxt [FnOpt],
                        idris_callgraph :: Ctxt [Name],
+                       idris_calledgraph :: Ctxt [Name],
                        idris_totcheck :: [(FC, Name)],
                        idris_log :: String,
                        idris_options :: IOption,
@@ -103,7 +104,7 @@ data IBCWrite = IBCFix FixDecl
 
 idrisInit = IState initContext [] [] emptyContext emptyContext emptyContext
                    emptyContext emptyContext emptyContext emptyContext 
-                   emptyContext emptyContext
+                   emptyContext emptyContext emptyContext
                    [] "" defaultOpts 6 [] [] [] [] [] [] [] [] 
                    Nothing Nothing Nothing [] [] [] Hidden [] Nothing
 
@@ -157,6 +158,9 @@ getTotality n
 addToCG :: Name -> [Name] -> Idris ()
 addToCG n ns = do i <- get
                   put (i { idris_callgraph = addDef n ns (idris_callgraph i) })
+
+addToCalledG :: Name -> [Name] -> Idris ()
+addToCalledG n ns = return () -- TODO
 
 -- Add a class instance function. Dodgy hack: Put integer instances first in the
 -- list so they are resolved by default.
@@ -1658,13 +1662,16 @@ aiFn inpat ist fc f as
     insertImpl (PTacImplicit p l n sc ty : ps) given =
         case find n given [] of
             Just (tm, given') -> PTacImplicit p l n sc tm : insertImpl ps given'
-            Nothing ->           PTacImplicit p l n sc sc
-                                    : insertImpl ps given
+            Nothing -> if inpat 
+                          then PTacImplicit p l n sc Placeholder : insertImpl ps given
+                          else PTacImplicit p l n sc sc : insertImpl ps given
     insertImpl expected [] = []
     insertImpl _        given  = given
 
     find n []               acc = Nothing
     find n (PImp _ _ n' t : gs) acc 
+         | n == n' = Just (t, reverse acc ++ gs)
+    find n (PTacImplicit _ _ n' _ t : gs) acc 
          | n == n' = Just (t, reverse acc ++ gs)
     find n (g : gs) acc = find n gs (g : acc)
 

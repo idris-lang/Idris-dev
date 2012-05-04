@@ -8,6 +8,9 @@ abstract
 io_bind : IO a -> (a -> IO b) -> IO b
 io_bind (prim__IO v) k = k v
 
+unsafePerformIO : IO a -> a
+unsafePerformIO (prim__IO x) = x
+
 abstract
 io_return : a -> IO a
 io_return x = prim__IO x

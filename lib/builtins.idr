@@ -85,11 +85,11 @@ not : Bool -> Bool
 not True = False
 not False = True
 
-infixl 5 ==, /=, ==.
-infixl 6 <, <=, >, >=, <., <=., >., >=.
+infixl 5 ==, /=
+infixl 6 <, <=, >, >=
 infixl 7 <<, >>
-infixl 8 +,-,++,+.,-.
-infixl 9 *,/,*.,/.
+infixl 8 +,-,++
+infixl 9 *,/
 
 --- Numeric operators
 

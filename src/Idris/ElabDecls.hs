@@ -299,6 +299,7 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
                                 do let ns = namesUsed sc \\ scargs
                                    logLvl 2 $ "Called names: " ++ show ns
                                    addToCG n ns
+                                   addToCalledG n ns -- plus names in type!
                                    addIBC (IBCCG n)
                             _ -> return ()
 --                         addIBC (IBCTotal n tot)
@@ -380,7 +381,7 @@ elabClause info tcgen (PClause fc fname lhs_in withs rhs_in whereblock)
         let decls = concatMap declared whereblock
         let newargs = pvars ist lhs_tm
         let wb = map (expandParamsD ist decorate newargs decls) whereblock
-        logLvl 5 $ show wb
+        logLvl 5 $ "Where block: " ++ show wb
         mapM_ (elabDecl' info) wb
         -- Now build the RHS, using the type of the LHS as the goal.
         i <- get -- new implicits from where block

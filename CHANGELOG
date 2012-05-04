@@ -3,9 +3,17 @@ New in 0.9.3:
 
 User visible changes:
 
+* Named class instances
+* Added ':set' command, with options 'errorcontext' for displaying local
+  variables in scope when a unification error occurs, and 'showimplicits'
+  for displaying elaborated terms in full
+* Added '--errorcontext' command line swithc
+* Various minor REPL improvements and fixes
+
 Internal changes:
 
 * Normalise before forcing to catch more forceable arguments
+* Types no longer exported in normal form
 
 New in 0.9.2:
 -------------
