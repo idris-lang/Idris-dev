@@ -482,3 +482,49 @@ runEval env e = case eval e of
 \end{SaveVerbatim}
 \useverb{evalexpr} 
 
+\subsection{Named Instances}
+
+It can be desirable to have multiple instances of a type class, for example to provide
+alternative methods for sorting or printing values. To achieve this, instances can
+be \remph{named} as follows:
+
+\begin{SaveVerbatim}{myord}
+
+instance [myord] Ord Nat where
+   compare O (S n)     = GT
+   compare (S n) O     = LT
+   compare O O         = EQ
+   compare (S x) (S y) = compare @{myord} x y
+
+\end{SaveVerbatim}
+\useverb{myord}
+
+\noindent
+This declares an instance as normal, but with an explicit name, \texttt{myord}.
+The syntax \texttt{compare @\{myord\}} gives an explicit instance to 
+\texttt{compare}, otherwise it would use the default instance for \texttt{Nat}.
+We can use this, for example, to sort a list of \texttt{Nat}s in reverse.
+Given the following list:
+
+\begin{SaveVerbatim}{myordlist}
+
+testList : List Nat
+testList = [3,4,1]
+
+\end{SaveVerbatim}
+\useverb{myordlist}
+
+\noindent
+\ldots we can sort it using the default \texttt{Ord} instance, then the named
+instance \texttt{myord} as follows, at the \Idris{} prompt:
+
+\begin{SaveVerbatim}{myordlistrun}
+
+*named_instance> show (sort testList)
+"[sO, sssO, ssssO]" : String
+*named_instance> show (sort @{myord} testList)
+"[ssssO, sssO, sO]" : String
+
+\end{SaveVerbatim}
+\useverb{myordlist}
+
