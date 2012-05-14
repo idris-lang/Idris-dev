@@ -1,5 +1,5 @@
-OBJS = network.o threads.o testidr.o
-HDRS = network.h threads.h testidr.h
+OBJS = network.o testidr.o
+HDRS = network.h testidr.h
 
 CFLAGS = `epic -includedirs` 
 
