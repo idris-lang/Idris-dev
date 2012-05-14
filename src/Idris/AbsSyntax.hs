@@ -404,6 +404,8 @@ data Command = Quit   | Help | Eval PTerm | Check PTerm | TotCheck Name
 data Opt = Filename String
          | Ver
          | Usage
+         | ShowLibs
+         | ShowIncs
          | NoPrelude
          | NoREPL
          | OLogging Int
@@ -474,6 +476,7 @@ constraint = Constraint False Dynamic
 tacimpl = TacImp False Dynamic
 
 data FnOpt = Inlinable | TotalFn | AssertTotal | TCGen
+           | CExport String    -- export, with a C name
            | Specialise [Name] -- specialise it, freeze these names
     deriving (Show, Eq)
 {-!

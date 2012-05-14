@@ -40,9 +40,11 @@ Description:    Idris is a general purpose language with full dependent types.
 Cabal-Version:  >= 1.6
 Build-type:     Custom
 
+Data-files:            rts/libidris_rts.a rts/closure.h
 Extra-source-files:    lib/Makefile  lib/*.idr lib/prelude/*.idr lib/network/*.idr
                        lib/control/monad/*.idr lib/language/*.idr
                        tutorial/examples/*.idr
+                       rts/*.c rts/*.h rts/Makefile
 
 source-repository head
   type:     git
@@ -70,7 +72,7 @@ Executable     idris
 
                Build-depends:   base>=4 && <5, parsec, mtl, Cabal, haskeline,
                                 containers, process, transformers, filepath, directory,
-                                binary, bytestring, epic>=0.9.3, pretty
+                                binary, bytestring, epic>=0.9.3.1, pretty
                                 
                Extensions:      MultiParamTypeClasses, FunctionalDependencies,
                                 FlexibleInstances, TemplateHaskell

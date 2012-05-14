@@ -37,14 +37,14 @@ compile f tm
          hdrs' <- liftIO $ mapM (inDir ddir) hdrs
          let incs = map Include hdrs'
          so <- getSO
-         let ilib = ddir ++ "/libidris.a"
+--          let ilib = ddir ++ "/libidris.a"
          case so of
             Nothing ->
                 do m <- epicMain tm
                    let mainval = EpicFn (name "main") m
                    liftIO $ compileObjWith [] 
                                 (mkProgram (incs ++ mainval : ds)) (f ++ ".o")
-                   liftIO $ link ((f ++ ".o") : ilib : objs ++ (map ("-l"++) libs)) f
+                   liftIO $ link ((f ++ ".o") : objs ++ (map ("-l"++) libs)) f
   where checkMVs = do i <- get
                       case idris_metavars i \\ primDefs of
                             [] -> return ()

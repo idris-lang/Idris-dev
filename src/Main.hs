@@ -42,6 +42,8 @@ runIdris opts =
        let importdirs = opt getImportDir opts
        when (Ver `elem` opts) $ liftIO showver
        when (Usage `elem` opts) $ liftIO usage
+       when (ShowIncs `elem` opts) $ liftIO showIncs
+       when (ShowLibs `elem` opts) $ liftIO showLibs
        setREPL runrepl
        setVerbose runrepl
        when (Verbose `elem` opts) $ setVerbose True
@@ -96,6 +98,14 @@ usage = do putStrLn usagemsg
 showver = do putStrLn $ "Idris version " ++ ver
              exitWith ExitSuccess
 
+showLibs = do dir <- getDataDir
+              putStrLn $ "-L" ++ dir ++ "/rts -lidris_rts"
+              exitWith ExitSuccess
+
+showIncs = do dir <- getDataDir
+              putStrLn $ "-I" ++ dir ++ "/rts"
+              exitWith ExitSuccess
+
 parseArgs :: [String] -> IO [Opt]
 parseArgs [] = return []
 parseArgs ("--log":lvl:ns)   = liftM (OLogging (read lvl) : ) (parseArgs ns)
@@ -107,6 +117,8 @@ parseArgs ("--typeintype":ns) = liftM (TypeInType : ) (parseArgs ns)
 parseArgs ("--nocoverage":ns) = liftM (NoCoverage : ) (parseArgs ns)
 parseArgs ("--errorcontext":ns) = liftM (ErrContext : ) (parseArgs ns)
 parseArgs ("--help":ns)      = liftM (Usage : ) (parseArgs ns)
+parseArgs ("--link":ns)     = liftM (ShowLibs : ) (parseArgs ns)
+parseArgs ("--include":ns) = liftM (ShowIncs : ) (parseArgs ns)
 parseArgs ("--version":ns)   = liftM (Ver : ) (parseArgs ns)
 parseArgs ("--verbose":ns)   = liftM (Verbose : ) (parseArgs ns)
 parseArgs ("--ibcsubdir":n:ns)   = liftM (IBCSubDir n : ) (parseArgs ns)
@@ -131,5 +143,7 @@ usagemsg = "Idris version " ++ ver ++ "\n" ++
            "\t--ibcsubdir [dir] Write IBC files into sub directory\n" ++
            "\t--noprelude       Don't import the prelude\n" ++
            "\t--typeintype      Disable universe checking\n" ++
-           "\t--log [level]     Set debugging log level\n"
+           "\t--log [level]     Set debugging log level\n" ++
+	   "\t--link            Show library directories and exit (for C linking)\n" ++
+	   "\t--include         Show include directories and exit (for C linking)\n"
 

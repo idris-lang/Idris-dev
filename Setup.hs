@@ -26,9 +26,22 @@ installStdLib pkg local verbosity copy
                , "TARGET=" ++ idir
                , "IDRIS=" ++ icmd
                ]
+         putStrLn $ "Installing run time system in " ++ idir ++ "/rts"
          make verbosity
-               [ "-C", "support", "install"
-               , "TARGET=" ++ idir
+               [ "-C", "rts", "install"
+               , "TARGET=" ++ idir ++ "/rts"
+               , "IDRIS=" ++ icmd
+               ]
+
+-- This is a hack. I don't know how to tell cabal that a data file needs
+-- installing but shouldn't be in the distribution. And it won't make the
+-- distribution if it's not there, so instead I just delete
+-- the file after configure.
+
+removeLibIdris local verbosity
+    = do let icmd = ".." </> buildDir local </> "idris" </> "idris"
+         make verbosity
+               [ "-C", "rts", "clean"
                , "IDRIS=" ++ icmd
                ]
 
@@ -40,7 +53,7 @@ checkStdLib local verbosity
                , "IDRIS=" ++ icmd
                ]
          make verbosity
-               [ "-C", "support", "check"
+               [ "-C", "rts", "check"
                , "IDRIS=" ++ icmd
                ]
 
@@ -53,6 +66,8 @@ main = defaultMainWithHooks $ simpleUserHooks
         , postInst = \ _ flags pkg lbi -> do
               installStdLib pkg lbi (S.fromFlag $ S.installVerbosity flags)
                                     NoCopyDest
+        , postConf  = \ _ flags _ lbi -> do
+              removeLibIdris lbi (S.fromFlag $ S.configVerbosity flags)
         , postClean = \ _ flags _ _ -> do
               cleanStdLib (S.fromFlag $ S.cleanVerbosity flags)
         , postBuild = \ _ flags _ lbi -> do

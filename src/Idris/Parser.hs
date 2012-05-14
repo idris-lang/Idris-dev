@@ -621,6 +621,8 @@ pAccessibility
 
 pFnOpts :: IParser [FnOpt]
 pFnOpts = do reserved "total"; xs <- pFnOpts; return (TotalFn : xs)
+      <|> try (do lchar '%'; reserved "export"; c <- strlit; xs <- pFnOpts
+                  return (CExport c : xs))
       <|> do lchar '%'; reserved "assert_total"; xs <- pFnOpts; return (AssertTotal : xs)
       <|> do lchar '%'; reserved "specialise"; 
              lchar '['; ns <- sepBy pfName (lchar ','); lchar ']'
