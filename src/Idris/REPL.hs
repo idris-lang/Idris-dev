@@ -20,6 +20,8 @@ import Core.ProofShell
 import Core.TT
 import Core.Constraints
 
+import RTS.SC
+
 import System.Console.Haskeline as H
 import System.FilePath
 import System.Environment
@@ -193,6 +195,10 @@ process fn (DebugInfo n)
                          when (not (null oi)) $ iputStrLn (show oi)
                          let si = lookupCtxt Nothing n (idris_statics i)
                          when (not (null si)) $ iputStrLn (show si)
+                         let d = lookupDef Nothing n (tt_ctxt i)
+                         when (not (null d)) $ liftIO $
+                            do print (head d)
+                               print (sclift (n, head d))
 process fn (Info n) = do i <- get
                          case lookupCtxt Nothing n (idris_classes i) of
                               [c] -> classInfo c
