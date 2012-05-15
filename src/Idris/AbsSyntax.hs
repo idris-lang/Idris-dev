@@ -418,6 +418,7 @@ data Opt = Filename String
          | Verbose
          | IBCSubDir String
          | ImportDir String
+         | BCAsm String
     deriving Eq
 
 

@@ -86,6 +86,12 @@ VAL mkCon(VM* vm, int tag, int arity) {
        VAL* v = POP;
        *argptr++ = v;
     }
+}
 
+// if 'update' is set, update the value at the top of the stack
+// otherwise, replace it with a new value
+
+void EVAL(int update) {
+    
 }
 

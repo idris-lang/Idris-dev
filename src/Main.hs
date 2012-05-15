@@ -24,6 +24,11 @@ import Idris.ElabDecls
 import Idris.Primitives
 import Idris.Imports
 import Idris.Error
+
+import RTS.BCParser
+import RTS.Bytecode
+import RTS.Assembler
+
 import Paths_idris
 
 -- Main program reads command line options, parses the main program, and gets
@@ -40,6 +45,8 @@ runIdris opts =
        let output = opt getOutput opts
        let ibcsubdir = opt getIBCSubDir opts
        let importdirs = opt getImportDir opts
+       let bcs = opt getBC opts
+
        when (Ver `elem` opts) $ liftIO showver
        when (Usage `elem` opts) $ liftIO usage
        when (ShowIncs `elem` opts) $ liftIO showIncs
@@ -48,6 +55,10 @@ runIdris opts =
        setVerbose runrepl
        when (Verbose `elem` opts) $ setVerbose True
        mapM_ makeOption opts
+       -- if we have the --bytecode flag, drop into the bytecode assembler
+       case bcs of
+	    [] -> return ()
+	    xs -> liftIO $ mapM_ bcAsm xs 
        case ibcsubdir of
          [] -> setIBCSubDir ""
          (d:_) -> setIBCSubDir d
@@ -76,6 +87,10 @@ runIdris opts =
 getFile :: Opt -> Maybe String
 getFile (Filename str) = Just str
 getFile _ = Nothing
+
+getBC :: Opt -> Maybe String
+getBC (BCAsm str) = Just str
+getBC _ = Nothing
 
 getOutput :: Opt -> Maybe String
 getOutput (Output str) = Just str
@@ -108,22 +123,23 @@ showIncs = do dir <- getDataDir
 
 parseArgs :: [String] -> IO [Opt]
 parseArgs [] = return []
-parseArgs ("--log":lvl:ns)   = liftM (OLogging (read lvl) : ) (parseArgs ns)
-parseArgs ("--noprelude":ns) = liftM (NoPrelude : ) (parseArgs ns)
-parseArgs ("--check":ns)     = liftM (NoREPL : ) (parseArgs ns)
-parseArgs ("-o":n:ns)        = liftM (\x -> NoREPL : Output n : x) (parseArgs ns)
-parseArgs ("--typecase":ns)  = liftM (TypeCase : ) (parseArgs ns)
-parseArgs ("--typeintype":ns) = liftM (TypeInType : ) (parseArgs ns)
-parseArgs ("--nocoverage":ns) = liftM (NoCoverage : ) (parseArgs ns)
+parseArgs ("--log":lvl:ns)      = liftM (OLogging (read lvl) : ) (parseArgs ns)
+parseArgs ("--noprelude":ns)    = liftM (NoPrelude : ) (parseArgs ns)
+parseArgs ("--check":ns)        = liftM (NoREPL : ) (parseArgs ns)
+parseArgs ("-o":n:ns)           = liftM (\x -> NoREPL : Output n : x) (parseArgs ns)
+parseArgs ("--typecase":ns)     = liftM (TypeCase : ) (parseArgs ns)
+parseArgs ("--typeintype":ns)   = liftM (TypeInType : ) (parseArgs ns)
+parseArgs ("--nocoverage":ns)   = liftM (NoCoverage : ) (parseArgs ns)
 parseArgs ("--errorcontext":ns) = liftM (ErrContext : ) (parseArgs ns)
-parseArgs ("--help":ns)      = liftM (Usage : ) (parseArgs ns)
-parseArgs ("--link":ns)     = liftM (ShowLibs : ) (parseArgs ns)
-parseArgs ("--include":ns) = liftM (ShowIncs : ) (parseArgs ns)
-parseArgs ("--version":ns)   = liftM (Ver : ) (parseArgs ns)
-parseArgs ("--verbose":ns)   = liftM (Verbose : ) (parseArgs ns)
-parseArgs ("--ibcsubdir":n:ns)   = liftM (IBCSubDir n : ) (parseArgs ns)
-parseArgs ("-i":n:ns) = liftM (ImportDir n : ) (parseArgs ns)
-parseArgs (n:ns)             = liftM (Filename n : ) (parseArgs ns)
+parseArgs ("--help":ns)         = liftM (Usage : ) (parseArgs ns)
+parseArgs ("--link":ns)         = liftM (ShowLibs : ) (parseArgs ns)
+parseArgs ("--include":ns)      = liftM (ShowIncs : ) (parseArgs ns)
+parseArgs ("--version":ns)      = liftM (Ver : ) (parseArgs ns)
+parseArgs ("--verbose":ns)      = liftM (Verbose : ) (parseArgs ns)
+parseArgs ("--ibcsubdir":n:ns)  = liftM (IBCSubDir n : ) (parseArgs ns)
+parseArgs ("-i":n:ns)           = liftM (ImportDir n : ) (parseArgs ns)
+parseArgs ("--bytecode":n:ns)   = liftM (\x -> NoREPL : BCAsm n : x) (parseArgs ns)
+parseArgs (n:ns)                = liftM (Filename n : ) (parseArgs ns)
 
 ver = showVersion version
 

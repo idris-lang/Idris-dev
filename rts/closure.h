@@ -76,4 +76,6 @@ VAL mkStr(VM* vm, char* str);
 VAL mkThunk(VM* vm, func fn, int args, int arity);
 VAL mkCon(VM* vm, int tag, int arity);
 
+void EVAL(int update);
+
 #endif 
