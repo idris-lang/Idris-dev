@@ -21,6 +21,7 @@ import Core.TT
 import Core.Constraints
 
 import RTS.SC
+import RTS.Bytecode
 
 import System.Console.Haskeline as H
 import System.FilePath
@@ -199,6 +200,8 @@ process fn (DebugInfo n)
                          when (not (null d)) $ liftIO $
                             do print (head d)
                                print (sclift (n, head d))
+                               putStrLn (showSep "\n" 
+                                        (map show (bcdefs (sclift (n, head d)))))
 process fn (Info n) = do i <- get
                          case lookupCtxt Nothing n (idris_classes i) of
                               [c] -> classInfo c

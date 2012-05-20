@@ -17,8 +17,8 @@ data SCDef = SCDef { sc_args :: [(Name, CType)],
 data SCExp = SRef Name
            | SApp SCExp [SCExp]
            | SLet Name SCExp SCExp
-           | SFCall String CType [(SCExp, CType)]
-           | SCon Tag [SCExp]
+           | SFCall String CType [(SCExp, CType)] -- foreign call with types
+           | SCon Tag [SCExp] -- constructor, assume saturated (forcing does this)
            | SConst Const
            | SError String
            | SCase Name [SAlt]

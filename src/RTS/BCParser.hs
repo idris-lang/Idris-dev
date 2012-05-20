@@ -73,7 +73,8 @@ pInstruction =
     <|> try (do reserved "MKTHUNK"; n <- iName []; arg <- integer; arity <- integer
                 return (MKTHUNK n (fromInteger arg) (fromInteger arity)))
     <|> try (do reserved "MKUNIT"; return MKUNIT)
-    <|> try (do reserved "CALL"; n <- iName []; return (CALL n))
+    <|> try (do reserved "CALL"; n <- iName []; i <- integer;
+                return (CALL n (fromInteger i)))
     <|> try (do reserved "ERROR"; s <- strlit; return (ERROR s))
     <|> try (do reserved "SPLIT"; return SPLIT)
     <|> try (do reserved "DUMP"; return DUMP)
