@@ -87,7 +87,7 @@ pInstruction =
                        bc <- many1 pInstruction
                        return (fromInteger t, bc))
 
-pValue :: BParser Value
+pValue :: BParser SValue
 pValue = try (do x <- integer; lchar 'L'; return (VBigInt x))
      <|> try (do x <- integer; return (VInt (fromInteger x)))
      <|> try (do x <- float; return (VFloat x))

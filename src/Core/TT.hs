@@ -236,7 +236,7 @@ addAlist ((n, tm) : ds) ctxt = addDef n tm (addAlist ds ctxt)
 
 data Const = I Int | BI Integer | Fl Double | Ch Char | Str String 
            | IType | BIType     | FlType    | ChType  | StrType    
-           | PtrType | Forgot
+           | PtrType | VoidType | Forgot
   deriving Eq
 {-! 
 deriving instance Binary Const 
@@ -257,6 +257,7 @@ instance Pretty Const where
   pretty ChType = text "Char"
   pretty StrType = text "String"
   pretty PtrType = text "Ptr"
+  pretty VoidType = text "Void"
   pretty Forgot = text "Forgot"
 
 data Raw = Var Name
@@ -605,6 +606,7 @@ instance Show Const where
     show ChType = "Char"
     show StrType = "String"
     show PtrType = "Ptr"
+    show VoidType = "Void"
 
 showEnv env t = showEnv' env t False
 showEnvDbg env t = showEnv' env t True

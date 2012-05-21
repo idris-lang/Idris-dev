@@ -7,6 +7,7 @@ import Core.TT
 import Core.Evaluate
 import Core.Elaborate hiding (Tactic(..))
 import Core.Typecheck
+import RTS.SC
 
 import Paths_idris
 
@@ -66,6 +67,7 @@ data IState = IState { tt_ctxt :: Context,
                        syntax_keywords :: [String],
                        imported :: [FilePath],
                        idris_prims :: [(Name, ([E.Name], E.Term))],
+                       idris_scprims :: [(Name, ([CType], CType, SPrim))],
                        idris_objs :: [FilePath],
                        idris_libs :: [String],
                        idris_hdrs :: [String],
@@ -105,7 +107,7 @@ data IBCWrite = IBCFix FixDecl
 idrisInit = IState initContext [] [] emptyContext emptyContext emptyContext
                    emptyContext emptyContext emptyContext emptyContext 
                    emptyContext emptyContext emptyContext
-                   [] "" defaultOpts 6 [] [] [] [] [] [] [] [] 
+                   [] "" defaultOpts 6 [] [] [] [] [] [] [] [] []
                    Nothing Nothing Nothing [] [] [] Hidden [] Nothing
 
 -- The monad for the main REPL - reading and processing files and updating 

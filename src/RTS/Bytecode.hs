@@ -1,17 +1,21 @@
 module RTS.Bytecode where
 
 import Core.TT
+import Core.CaseTree
+import Core.Evaluate
+
+import Idris.AbsSyntax
 import RTS.SC
 
-data Value = VInt Int
-           | VFloat Double
-           | VString String
-           | VChar Char
-           | VBigInt Integer
-           | VRef Int
+data SValue = VInt Int
+            | VFloat Double
+            | VString String
+            | VChar Char
+            | VBigInt Integer
+            | VRef Int
     deriving Show
 
-data BCOp = PUSH Value
+data BCOp = PUSH SValue
           | SLIDE Int -- Keep top stack value, discard n below it
           | DISCARD Int
           | DISCARDINT Int
@@ -23,11 +27,12 @@ data BCOp = PUSH Value
           | CASE [(Int, Bytecode)] (Maybe Bytecode)
           | INTCASE [(Int, Bytecode)] (Maybe Bytecode)
             -- case looks at top stack item, discards immediately,
-            -- places constructor args on stack, last to first
+            -- places constructor args on stack, last to first (first at ref 0)
           | SPLIT -- get arguments from constructor form
           | CALL Name Int -- name, number of arguments to take
           | CALLVAR Int Int  -- stack ref, number of arguments to take
           | FOREIGNCALL String CType [CType] -- TT constants for types 
+          | PRIMOP SPrim [Int] -- apply to list of stack references
           | ERROR String
           | DUMP
     deriving Show
@@ -36,6 +41,14 @@ type Bytecode = [BCOp]
 
 data BCProg = BCProg [(Name, Bytecode)]
     deriving Show
+
+toSC :: IState -> (Name, Def) -> [(Name, SCDef)]
+toSC i (n, d) = case lookup n (idris_scprims i) of
+                   Nothing -> sclift (n, d)
+                   Just (args, rt, op) -> 
+                        let anames = zipWith mkA args [0..] in 
+                            [(n, SCDef anames (SPrimOp op (map (SRef . fst) anames)))]
+    where mkA t i = (MN i "primArg", t)
 
 bcdefs :: [(Name, SCDef)] -> [(Name, Bytecode)]
 bcdefs = map (\ (n, s) -> (n, bc [] s))
@@ -111,3 +124,7 @@ instance BC SCExp where
               addLocs [] l = l
               addLocs (n : ns) locs = addLocs ns ((n, 0) : offset locs)
 
+    bc locs (SPrimOp p args)
+        = bc' locs (reverse args)
+        where bc' locs [] = [PRIMOP p [0..length args-1]]
+              bc' locs (x : xs) = bc locs x ++ bc' (offset locs) xs
