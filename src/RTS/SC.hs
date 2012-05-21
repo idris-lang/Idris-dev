@@ -52,6 +52,8 @@ data SAlt = SConCase Tag [Name] SCExp
           | SDefaultCase SCExp
     deriving Show
 
+type Prims = [(Name, ([CType], CType, SPrim))]
+
 sInt, sFloat, sChar, sString, sPtr, sBigInt :: CType
 sInt = Just IType
 sFloat = Just FlType
@@ -61,6 +63,15 @@ sPtr = Just PtrType
 sBigInt = Just BIType
 
 type SCState = ([(Name, SCDef)], Name)
+
+toSC :: Prims -> (Name, Def) -> [(Name, SCDef)]
+toSC prims (n, d) 
+         = case lookup n prims of
+                   Nothing -> sclift (n, d)
+                   Just (args, rt, op) -> 
+                        let anames = zipWith mkA args [0..] in 
+                            [(n, SCDef anames (SPrimOp op (map (SRef . fst) anames)))]
+    where mkA t i = (MN i "primArg", t)
 
 sclift :: (Name, Def) -> [(Name, SCDef)]
 sclift (n, d) = fst (execState (sc [] d) ([], n))

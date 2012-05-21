@@ -42,14 +42,6 @@ type Bytecode = [BCOp]
 data BCProg = BCProg [(Name, Bytecode)]
     deriving Show
 
-toSC :: IState -> (Name, Def) -> [(Name, SCDef)]
-toSC i (n, d) = case lookup n (idris_scprims i) of
-                   Nothing -> sclift (n, d)
-                   Just (args, rt, op) -> 
-                        let anames = zipWith mkA args [0..] in 
-                            [(n, SCDef anames (SPrimOp op (map (SRef . fst) anames)))]
-    where mkA t i = (MN i "primArg", t)
-
 bcdefs :: [(Name, SCDef)] -> [(Name, Bytecode)]
 bcdefs = map (\ (n, s) -> (n, bc [] s))
 

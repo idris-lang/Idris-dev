@@ -199,9 +199,10 @@ process fn (DebugInfo n)
                          let d = lookupDef Nothing n (tt_ctxt i)
                          when (not (null d)) $ liftIO $
                             do print (head d)
-                               print (toSC i (n, head d))
+                               let prims = idris_scprims i
+                               print (toSC prims (n, head d))
                                putStrLn (showSep "\n" 
-                                        (map show (bcdefs (toSC i (n, head d)))))
+                                        (map show (bcdefs (toSC prims (n, head d)))))
 process fn (Info n) = do i <- get
                          case lookupCtxt Nothing n (idris_classes i) of
                               [c] -> classInfo c
