@@ -74,7 +74,8 @@ toSC prims (n, d)
                    Just (args, rt, op) -> 
                         let anames = zipWith mkA args [0..] in 
                             [(n, SCDef anames (length anames)
-                                              (SPrimOp op (map (SRef . fst) anames)))]
+                                              (SPrimOp op (take (length anames)
+                                                                (map SLoc [0..]))))]
     where mkA t i = (MN i "primArg", t)
 
 sclift :: (Name, Def) -> [(Name, SCDef)]
