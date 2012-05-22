@@ -20,6 +20,7 @@ data BAtom = BP Name | BL Local | BC Const
 
 data Bytecode = BAtom BAtom
               | BApp BAtom [BAtom]
+              | BTailApp BAtom [BAtom]
               | BLazy BAtom [BAtom]
               | BLet Local Bytecode Bytecode
               | BEval Local Bytecode
@@ -43,7 +44,7 @@ bcdefs = map (\ (n, s) -> (n, bc s))
 bc (SCDef args max c) = GetArgs (map fst args) (bcExp max (length args) c)
 
 bcExp v arity x 
-   = let (code, max) = runState (bc' x) v
+   = let (code, max) = runState (bc' True x) v
          space = max - arity in
          if (space > 0) then Reserve space code else code
   where
@@ -53,31 +54,34 @@ bcExp v arity x
               put (s + 1)
               return s
 
-    bc' :: SCExp -> State Int Bytecode
-    bc' (SRef n) = return $ BAtom (BP n)
-    bc' (SLoc i) = do ref i; return $ BAtom (BL i)
-    bc' (SApp f args) = do f' <- bc' f
-                           args' <- mapM bc' args
-                           case f' of
-                              BAtom r -> mkApp (\x -> BApp r x) args' []
-                              bc -> do v <- next
-                                       mkApp (\x -> BLet v bc (BApp (BL v) x)) args' []
-    bc' (SLazyApp f args) = do args' <- mapM bc' args
-                               mkApp (\x -> BApp (BP f) x) args' []
-    bc' (SCon t args) = do args' <- mapM bc' args
-                           mkApp (\x -> BCon t x) args' []
-    bc' (SFCall c t args) = do args' <- mapM bc' (map fst args)
-                               mkFApp c t (zip args' (map snd args)) []
-    bc' (SConst c) = return $ BAtom (BC c)
-    bc' (SError s) = return $ BError s
-    bc' (SCase e alts) = do e' <- bc' e
-                            alts' <- mapM bcAlt alts
-                            case e' of
-                               BAtom (BL i) -> return $ BCase i alts'
-                               bc -> do v <- next
-                                        return $ BLet v bc (BCase v alts')
-    bc' (SPrimOp p args) = do args' <- mapM bc' args
-                              mkApp (\x -> BPrimOp p x) args' []
+    bc' :: Bool -> SCExp -> State Int Bytecode
+    bc' tl (SRef n) = return $ BAtom (BP n)
+    bc' tl (SLoc i) = do ref i; return $ BAtom (BL i)
+    bc' tl (SApp f args) 
+       = do f' <- bc' False f
+            args' <- mapM (bc' False) args
+            let bapp = if tl then BTailApp else BApp
+            case f' of
+                BAtom r -> mkApp (\x -> bapp r x) args' []
+                bc -> do v <- next
+                         mkApp (\x -> BLet v bc (bapp (BL v) x)) args' []
+    bc' tl (SLazyApp f args) = do args' <- mapM (bc' False) args
+                                  let bapp = if tl then BTailApp else BApp
+                                  mkApp (\x -> bapp (BP f) x) args' []
+    bc' tl (SCon t args) = do args' <- mapM (bc' False) args
+                              mkApp (\x -> BCon t x) args' []
+    bc' tl (SFCall c t args) = do args' <- mapM (bc' False) (map fst args)
+                                  mkFApp c t (zip args' (map snd args)) []
+    bc' tl (SConst c) = return $ BAtom (BC c)
+    bc' tl (SError s) = return $ BError s
+    bc' tl (SCase e alts) = do e' <- bc' False e
+                               alts' <- mapM (bcAlt tl) alts
+                               case e' of
+                                  BAtom (BL i) -> return $ BCase i alts'
+                                  bc -> do v <- next
+                                           return $ BLet v bc (BCase v alts')
+    bc' tl (SPrimOp p args) = do args' <- mapM (bc' tl) args
+                                 mkApp (\x -> BPrimOp p x) args' []
 
     mkApp ap [] locs = return $ ap locs
     mkApp ap (BAtom (BL i) : as) locs = mkApp ap as (locs ++ [BL i]) 
@@ -85,12 +89,12 @@ bcExp v arity x
                                 app <- mkApp ap as (locs ++ [BL v])
                                 return $ BLet v a app
 
-    bcAlt (SConCase t args e) = do e' <- bc' e
-                                   return $ BConCase t args e' 
-    bcAlt (SConstCase i e) = do e' <- bc' e
-                                return $ BConstCase i e' 
-    bcAlt (SDefaultCase e) = do e' <- bc' e
-                                return $ BDefaultCase e' 
+    bcAlt tl (SConCase t args e) = do e' <- bc' tl e
+                                      return $ BConCase t args e' 
+    bcAlt tl (SConstCase i e) = do e' <- bc' tl e
+                                   return $ BConstCase i e' 
+    bcAlt tl (SDefaultCase e) = do e' <- bc' tl e
+                                   return $ BDefaultCase e' 
 
     mkFApp c ty [] locs = return $ BFCall c ty locs
     mkFApp c ty ((BAtom (BL i), t) : as) locs = mkFApp c ty as (locs ++ [(BL i, t)]) 
