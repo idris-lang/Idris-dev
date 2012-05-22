@@ -25,10 +25,6 @@ import Idris.Primitives
 import Idris.Imports
 import Idris.Error
 
-import RTS.BCParser
-import RTS.Bytecode
-import RTS.Assembler
-
 import Paths_idris
 
 -- Main program reads command line options, parses the main program, and gets
@@ -58,7 +54,7 @@ runIdris opts =
        -- if we have the --bytecode flag, drop into the bytecode assembler
        case bcs of
 	    [] -> return ()
-	    xs -> liftIO $ mapM_ bcAsm xs 
+	    xs -> return () -- liftIO $ mapM_ bcAsm xs 
        case ibcsubdir of
          [] -> setIBCSubDir ""
          (d:_) -> setIBCSubDir d

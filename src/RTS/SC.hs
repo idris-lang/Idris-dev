@@ -13,10 +13,12 @@ type Tag = Int
 type Arity = Int
 
 data SCDef = SCDef { sc_args :: [(Name, CType)],
+                     sc_locals :: Int,
                      sc_def :: SCExp }
     deriving Show
 
 data SCExp = SRef Name
+           | SLoc Int -- de Bruijn level
            | SApp SCExp [SCExp]
            | SLazyApp Name [SCExp]
            | SLet Name SCExp SCExp
@@ -24,7 +26,7 @@ data SCExp = SRef Name
            | SCon Tag [SCExp] -- constructor, assume saturated (forcing does this)
            | SConst Const
            | SError String
-           | SCase Name [SAlt]
+           | SCase SCExp [SAlt]
            | SPrimOp SPrim [SCExp]
     deriving Show
 
@@ -71,14 +73,17 @@ toSC prims (n, d)
                    Nothing -> sclift (n, d)
                    Just (args, rt, op) -> 
                         let anames = zipWith mkA args [0..] in 
-                            [(n, SCDef anames (SPrimOp op (map (SRef . fst) anames)))]
+                            [(n, SCDef anames (length anames)
+                                              (SPrimOp op (map (SRef . fst) anames)))]
     where mkA t i = (MN i "primArg", t)
 
 sclift :: (Name, Def) -> [(Name, SCDef)]
 sclift (n, d) = fst (execState (sc [] d) ([], n))
 
-add x = do (xs, b) <- get
-           put (x : xs, b)
+add (n, SCDef args _ def) 
+   = do (xs, b) <- get
+        let (def', maxloc) = dbl (map fst args) def
+        put ((n, SCDef args maxloc def') : xs, b)
 
 nextSC :: State SCState Name
 nextSC = do (xs, n) <- get
@@ -99,15 +104,15 @@ class Lift s t | s -> t where
 instance Lift Def () where
     sc env (Function ty tm) = do n <- sname
                                  tm' <- sc env tm
-                                 add (n, SCDef (zip env (repeat Nothing)) tm')
+                                 add (n, SCDef (zip env (repeat Nothing)) 0 tm')
     sc env (TyDecl _ _) = do n <- sname
-                             add (n, SCDef (zip env (repeat Nothing)) 
+                             add (n, SCDef (zip env (repeat Nothing)) 0
                                            (SError $ "undefined " ++ show n))
     sc env (Operator _ _ _) = return ()
     sc env (CaseOp _ _ _ _ _ args cases) 
         = do n <- sname
              cases' <- sc (env ++ args) cases
-             add (n, SCDef (zip (env ++ args) (repeat Nothing)) cases')
+             add (n, SCDef (zip (env ++ args) (repeat Nothing)) 0 cases')
 
 instance Lift (TT Name) SCExp where
     sc env (P _ n _)    = return $ SRef n
@@ -132,14 +137,14 @@ instance Lift (TT Name) SCExp where
         scLam args (Bind n (Lam _) e) = scLam (n : args) e
         scLam args x = do x' <- sc (args ++ env) x
                           fn <- nextSC
-                          add (fn, SCDef (zip (env ++ reverse args) (repeat Nothing)) x')
+                          add (fn, SCDef (zip (env ++ reverse args) (repeat Nothing)) 0 x')
                           return $ SApp (SRef fn) (map SRef env)
     sc _ _ = return $ SConst (I 42424242)
     
 
 instance Lift SC SCExp where
     sc env (Case n alts) = do alts' <- mapM (sc env) alts
-                              return (SCase n alts')
+                              return (SCase (SRef n) alts')
     sc env (STerm t)     = do t' <- sc env t
                               return t'
     sc env (UnmatchedCase s) = return (SError s)
@@ -160,7 +165,7 @@ sPrim env (P _ (UN "mkForeign") _) args = do x <- doForeign env args
 sPrim env (P _ (UN "lazy") _) [_, arg] 
       = do arg' <- sc env arg
            fn <- nextSC
-           add (fn, SCDef (zip env (repeat Nothing)) arg')
+           add (fn, SCDef (zip env (repeat Nothing)) 0 arg')
            return $ Just $ SLazyApp fn (map SRef env)
 sPrim env (P _ (UN "prim__IO") _) [v] = do v' <- sc env v
                                            return $ Just v'
@@ -194,4 +199,48 @@ mkEty "FChar"   = Just ChType
 mkEty "FString" = Just StrType
 mkEty "FPtr"    = Just PtrType
 mkEty "FUnit"   = Just VoidType
+
+-- Convert local variable names to de Bruijn levels, return the biggest
+
+dbl :: [Name] -> SCExp -> (SCExp, Int)
+dbl ns exp = runState (db' (extends [] ns) exp) (length ns) where
+  db' :: [(Name, Int)] -> SCExp -> State Int SCExp
+  db' env (SRef n) = case lookup n env of
+                          Just i -> do ref i; return $ SLoc i
+                          Nothing -> return $ SRef n
+  db' env (SApp f args) = do f' <- db' env f
+                             args' <- mapM (db' env) args
+                             return $ SApp f' args'
+  db' env (SLazyApp n args) = do args' <- mapM (db' env) args
+                                 return $ SLazyApp n args'
+  db' env (SLet n v sc) = do v' <- db' env v
+                             sc' <- db' (extend env n) sc
+                             ref (length env + 1)
+                             return $ SLet n v' sc'
+  db' env (SFCall n t args) = do args' <- mapM (\ (e,t) -> do e' <- db' env e
+                                                              return (e', t)) args
+                                 return $ SFCall n t args'
+  db' env (SCon t args) = do args' <- mapM (db' env) args
+                             return $ SCon t args'
+  db' env (SCase n alts) = do n' <- db' env n
+                              alts' <- mapM (dbAlt env) alts
+                              return $ SCase n' alts'
+  db' env (SPrimOp p args) = do args' <- mapM (db' env) args
+                                return $ SPrimOp p args'
+  db' env x = return x
+
+  dbAlt env (SConCase t ns exp) = do exp' <- db' (extends env ns) exp
+                                     ref (length env + length ns)
+                                     return $ SConCase t ns exp' 
+  dbAlt env (SConstCase c e) = do e' <- db' env e
+                                  return $ SConstCase c e'
+  dbAlt env (SDefaultCase e) = do e' <- db' env e
+                                  return $ SDefaultCase e'
+
+  extend env n = env ++ [(n, length env)]
+  extends env [] = env
+  extends env (n : ns) = extends (extend env n) ns
+
+  ref i = do s <- get
+             when (i > s) $ put i
 

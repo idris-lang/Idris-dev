@@ -7,126 +7,94 @@ import Core.Evaluate
 import Idris.AbsSyntax
 import RTS.SC
 
-data SValue = VInt Int
-            | VFloat Double
-            | VString String
-            | VChar Char
-            | VBigInt Integer
-            | VRef Int
+import Control.Monad.State
+
+type Local = Int
+
+data BAtom = BP Name | BL Local | BC Const
     deriving Show
 
-data BCOp = PUSH SValue
-          | SLIDE Int -- Keep top stack value, discard n below it
-          | DISCARD Int
-          | DISCARDINT Int
-          | DISCARDFLOAT Int
-          | EVAL Bool
-          | MKCON Tag Arity
-          | MKTHUNK Name Int Arity
-          | MKUNIT
-          | CASE [(Int, Bytecode)] (Maybe Bytecode)
-          | INTCASE [(Int, Bytecode)] (Maybe Bytecode)
-            -- case looks at top stack item, discards immediately,
-            -- places constructor args on stack, last to first (first at ref 0)
-          | SPLIT -- get arguments from constructor form
-          | CALL Name Int -- name, number of arguments to take
-          | CLOSURE Name Int -- as CALL, but always make the closure 
-          | CALLVAR Int Int  -- stack ref, number of arguments to take
-          | FOREIGNCALL String CType [CType] -- TT constants for types 
-          | PRIMOP SPrim [Int] -- apply to list of stack references
-          | ERROR String
-          | DUMP
+-- Like SC, but with explicit evaluation, de Bruijn levels for locals, and all
+-- intermediate values put into variables (which can be stored on the stack or
+-- in registers when generating code)
+
+data Bytecode = BAtom BAtom
+              | BApp BAtom [BAtom]
+              | BLazy BAtom [BAtom]
+              | BLet Local Bytecode Bytecode
+              | BEval Local Bytecode
+              | BFCall String CType [(BAtom, CType)]
+              | BCon Tag [BAtom]
+              | BCase Local [BAlt]
+              | BPrimOp SPrim [BAtom]
+              | BError String
+              | GetArgs [Name] Bytecode -- get function arguments
+              | Reserve Int Bytecode -- reserve stack space, clear on exit
     deriving Show
 
-type Bytecode = [BCOp]
-
-data BCProg = BCProg [(Name, Bytecode)]
+data BAlt = BConCase Tag [Name] Bytecode
+          | BConstCase Const Bytecode
+          | BDefaultCase Bytecode
     deriving Show
 
 bcdefs :: [(Name, SCDef)] -> [(Name, Bytecode)]
-bcdefs = map (\ (n, s) -> (n, bc [] s))
+bcdefs = map (\ (n, s) -> (n, bc s))
 
-class BC a where
-    bc :: [(Name, Int)] -> -- local variables + stack offset
-          a -> Bytecode
+bc (SCDef args max c) = GetArgs (map fst args) (bcExp max (length args) c)
 
-offset :: [(Name, Int)] -> [(Name, Int)]
-offset = map (\ (n, i) -> (n, i+1))
+bcExp v arity x 
+   = let (code, max) = runState (bc' x) v
+         space = max - arity in
+         if (space > 0) then Reserve space code else code
+  where
+    ref i = do s <- get
+               when (i > s) $ put i 
+    next = do s <- get
+              put (s + 1)
+              return s
 
--- A bytecode sequence for an expression evaluates that expression and
--- places the result at the top of the stack.
+    bc' :: SCExp -> State Int Bytecode
+    bc' (SRef n) = return $ BAtom (BP n)
+    bc' (SLoc i) = do ref i; return $ BAtom (BL i)
+    bc' (SApp f args) = do f' <- bc' f
+                           args' <- mapM bc' args
+                           case f' of
+                              BAtom r -> mkApp (\x -> BApp r x) args' []
+                              bc -> do v <- next
+                                       mkApp (\x -> BLet v bc (BApp (BL v) x)) args' []
+    bc' (SLazyApp f args) = do args' <- mapM bc' args
+                               mkApp (\x -> BApp (BP f) x) args' []
+    bc' (SCon t args) = do args' <- mapM bc' args
+                           mkApp (\x -> BCon t x) args' []
+    bc' (SFCall c t args) = do args' <- mapM bc' (map fst args)
+                               mkFApp c t (zip args' (map snd args)) []
+    bc' (SConst c) = return $ BAtom (BC c)
+    bc' (SError s) = return $ BError s
+    bc' (SCase e alts) = do e' <- bc' e
+                            alts' <- mapM bcAlt alts
+                            case e' of
+                               BAtom (BL i) -> return $ BCase i alts'
+                               bc -> do v <- next
+                                        return $ BLet v bc (BCase v alts')
+    bc' (SPrimOp p args) = do args' <- mapM bc' args
+                              mkApp (\x -> BPrimOp p x) args' []
 
-instance BC SCDef where
-    bc [] (SCDef args def) = bc (zip (map fst args) [0..]) def 
-                                ++ [SLIDE (length args)]
+    mkApp ap [] locs = return $ ap locs
+    mkApp ap (BAtom (BL i) : as) locs = mkApp ap as (locs ++ [BL i]) 
+    mkApp ap (a : as) locs = do v <- next
+                                app <- mkApp ap as (locs ++ [BL v])
+                                return $ BLet v a app
 
-instance BC SCExp where
-    bc locs (SRef n) = case lookup n locs of
-                                Nothing -> [CALL n 0]
-                                Just i  -> [PUSH (VRef i)]
-    bc locs (SApp (SRef f) args)
-        = bc' locs (reverse args) f
-        where bc' locs [] n 
-                  = case lookup n locs of
-                         Just i -> [CALLVAR i (length args)]
-                         Nothing -> [CALL n (length args)]
-              bc' locs (x : xs) f = bc locs x ++
-                                    bc' (offset locs) xs f
-    bc locs (SApp e args)
-        = bc locs e ++ bc' (offset locs) (reverse args) ++ [SLIDE 1]
-        where bc' locs []  
-                  = [CALLVAR (length args) (length args)]
-              bc' locs (x : xs) = bc locs x ++
-                                  bc' (offset locs) xs
-    bc locs (SLazyApp f args)
-        = bc' locs (reverse args) f
-        where bc' locs [] n 
-                  = case lookup n locs of
-                         Just i -> error "Internal error: Lazy call"
-                         Nothing -> [CLOSURE n (length args)]
-              bc' locs (x : xs) f = bc locs x ++
-                                    bc' (offset locs) xs f
-    bc locs (SLet n v sc)
-        = bc locs v ++
-          bc ((n, 0) : offset locs) sc ++
-          [SLIDE 1]
+    bcAlt (SConCase t args e) = do e' <- bc' e
+                                   return $ BConCase t args e' 
+    bcAlt (SConstCase i e) = do e' <- bc' e
+                                return $ BConstCase i e' 
+    bcAlt (SDefaultCase e) = do e' <- bc' e
+                                return $ BDefaultCase e' 
 
-    bc locs (SFCall cname ty args)
-        = bc' locs (reverse (map fst args))
-        where bc' locs [] = [FOREIGNCALL cname ty (map snd args)]
-              bc' locs (x : xs) = bc locs x ++ EVAL True : bc' (offset locs) xs
-
-    bc locs (SCon t args)
-        = bc' locs (reverse args)
-        where bc' locs [] = [MKCON t (length args)]
-              bc' locs (x : xs) = bc locs x ++ bc' (offset locs) xs
-
-    bc locs (SConst (I i)) = [PUSH (VInt i)]
-    bc locs (SConst (BI i)) = [PUSH (VBigInt i)]
-    bc locs (SConst (Fl f)) = [PUSH (VFloat f)]
-    bc locs (SConst (Ch c)) = [PUSH (VChar c)]
-    bc locs (SConst (Str s)) = [PUSH (VString s)]
-    bc locs (SConst _) = [MKUNIT]
-
-    bc locs (SError str) = [ERROR str]
-
-    bc locs (SCase n alts)
-        = let (def, cases, ty) = getCases CASE Nothing [] alts in
-              bc locs (SRef n) ++ [EVAL True, ty cases def]
-        where getCases ty def cs [] = (def, reverse cs, ty)
-              getCases ty _ cs (SDefaultCase e : rest) 
-                  = getCases ty (Just (bc locs e)) cs rest
-              getCases _ def cs (SConstCase (I c) e : rest)
-                  = getCases INTCASE def ((c, bc locs e): cs) rest
-              getCases _ def cs (SConCase t ns e : rest)
-                  = let locs' = addLocs (reverse ns) locs in
-                        getCases CASE def ((t, bc locs' e ++ [SLIDE (length locs')])
-                                             : cs) rest
-              addLocs [] l = l
-              addLocs (n : ns) locs = addLocs ns ((n, 0) : offset locs)
-
-    bc locs (SPrimOp p args)
-        = bc' locs (reverse args)
-        where bc' locs [] = [PRIMOP p [0..length args-1]]
-              bc' locs (x : xs) = bc locs x ++ EVAL True : bc' (offset locs) xs
+    mkFApp c ty [] locs = return $ BFCall c ty locs
+    mkFApp c ty ((BAtom (BL i), t) : as) locs = mkFApp c ty as (locs ++ [(BL i, t)]) 
+    mkFApp c ty ((a, t) : as) locs = do v <- next
+                                        app <- mkFApp c ty as (locs ++ [(BL v, t)])
+                                        return $ BLet v a app
 

@@ -424,7 +424,7 @@ resolveTC depth fn ist
                                 [] -> []
                                 [args] -> map isImp (snd args) -- won't be overloaded!
                 args <- apply (Var n) imps
---                 traceWhen (all boundVar ttypes) ("Progress: " ++ show t ++ " with " ++ show n) $
+                --                 traceWhen (all boundVar ttypes) ("Progress: " ++ show t ++ " with " ++ show n) $
                 mapM_ (\ (_,n) -> do focus n
                                      t' <- goal
                                      let (tc', ttype) = unApply t'
