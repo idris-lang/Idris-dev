@@ -24,7 +24,8 @@ data CExp = CAtom CAtom
 data CVal = CTag Local | CIntVal Local
     deriving Show
 
--- Assignment is to the return value, or some local register
+-- Assignment is to the return value, or some local reference
+-- Local reference <n> means <top of stack> - <n>
 data Reg = RVal | LVar Local
     deriving Show
 
@@ -42,41 +43,42 @@ type PreC = [CInst]
 preCdefs :: [(Name, Bytecode)] -> [(Name, (Int, PreC))]
 preCdefs = map (\ (n, b) -> (n, preC b))
 
-atom (BP n) = CP n
-atom (BL n) = CL n
-atom (BC c) = CC c
+atom res (BP n) = CP n
+atom res (BL n) = CL (res - n)
+atom res (BC c) = CC c
 
 preC :: Bytecode -> (Int, PreC)
-preC (BGetArgs ns bc) = (length ns, pc RVal bc) 
-  where pc loc (BAtom b) = [ASSIGN loc (CAtom (atom b))]
-        pc loc (BApp f as) = [ASSIGN loc (CApp (atom f) (map atom as))]
-        pc loc (BTailApp f as) = [TAILCALL (atom f) (map atom as)]
-        pc loc (BLazy f as) = [ASSIGN loc (CLazy (atom f) (map atom as))]
-        pc loc (BLet x val sc) = pc (LVar x) val ++ pc loc sc 
-        pc loc (BFCall c t args) 
-            = [ASSIGN loc (CFCall c t (map (\ (a, ty) -> (atom a, ty)) args))]
-        pc loc (BCon t args) = [ASSIGN loc (CCon t (map atom args))]
-        pc loc (BPrimOp s args)
-            = [ASSIGN loc (CPrimOp s (map atom args))]
-        pc loc (BError s) = [ERROR s]
-        pc loc (BCase l alts)
-            = EVAL l :
-              SWITCH (caseTy alts l) (map (pcAlt loc l) (filter notDef alts)) 
-                                     (getDefault loc alts) : []
-        pc loc (BReserve s bc) = RESERVE s : pc loc bc
+preC (BGetArgs ns bc) = (length ns, pc RVal (length ns) bc) 
+  where pc loc d (BAtom b) = [ASSIGN loc (CAtom (atom d b))]
+        pc loc d (BApp f as) = [ASSIGN loc (CApp (atom d f) (map (atom d) as))]
+        pc loc d (BTailApp f as) = [TAILCALL (atom d f) (map (atom d) as)]
+        pc loc d (BLazy f as) = [ASSIGN loc (CLazy (atom d f) (map (atom d) as))]
+        pc loc d (BLet x val sc) = pc (LVar (d - x)) d val ++ pc loc d sc 
+        pc loc d (BFCall c t args) 
+            = [ASSIGN loc (CFCall c t (map (\ (a, ty) -> (atom d a, ty)) args))]
+        pc loc d (BCon t args) = [ASSIGN loc (CCon t (map (atom d) args))]
+        pc loc d (BPrimOp s args)
+            = [ASSIGN loc (CPrimOp s (map (atom d) args))]
+        pc loc d (BError s) = [ERROR s]
+        pc loc d (BCase l alts)
+            = EVAL (d - l) :
+              SWITCH (caseTy alts (d - l)) 
+                     (map (pcAlt loc d l) (filter notDef alts)) 
+                     (getDefault loc d alts) : []
+        pc loc d (BReserve s bc) = RESERVE s : pc loc (d + s) bc
 
         notDef (BDefaultCase _) = False
         notDef _ = True
 
-        pcAlt loc var (BConCase t args l bc)
-            = (t, PROJECT var l (length args) :
-                  pc loc bc)
-        pcAlt loc var (BConstCase (I c) bc)
-            = (c, pc loc bc)
+        pcAlt loc d var (BConCase t args l bc)
+            = (t, PROJECT (d - var) (d - l) (length args) :
+                  pc loc d bc)
+        pcAlt loc d var (BConstCase (I c) bc)
+            = (c, pc loc d bc)
 
-        getDefault loc (BDefaultCase bc : _) = pc loc bc
-        getDefault loc (_ : xs) = getDefault loc xs
-        getDefault loc [] = []
+        getDefault loc d (BDefaultCase bc : _) = pc loc d bc
+        getDefault loc d (_ : xs) = getDefault loc d xs
+        getDefault loc d [] = []
 
         caseTy (BConCase _ _ _ _ : _) = CTag
         caseTy (BConstCase _ _ : _) = CIntVal
