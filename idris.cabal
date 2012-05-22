@@ -68,7 +68,7 @@ Executable     idris
 
                               Util.Pretty,
 
-                              RTS.Bytecode, RTS.SC,
+                              RTS.Bytecode, RTS.SC, RTS.PreC, 
 
                               Paths_idris
 

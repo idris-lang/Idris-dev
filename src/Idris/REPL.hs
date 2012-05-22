@@ -22,6 +22,7 @@ import Core.Constraints
 
 import RTS.SC
 import RTS.Bytecode
+import RTS.PreC
 
 import System.Console.Haskeline as H
 import System.FilePath
@@ -200,9 +201,15 @@ process fn (DebugInfo n)
                          when (not (null d)) $ liftIO $
                             do print (head d)
                                let prims = idris_scprims i
+                               let scs = toSC prims (n, head d)
+                               let bcs = bcdefs scs
+                               let pcs = preCdefs bcs
+                               putStrLn "Supercombinators:\n"
                                print (toSC prims (n, head d))
-                               putStrLn (showSep "\n" 
-                                        (map show (bcdefs (toSC prims (n, head d)))))
+                               putStrLn "\nBytecode:\n"
+                               putStrLn (showSep "\n" (map show bcs))
+                               putStrLn "\nPre-C:\n"
+                               putStrLn (showSep "\n" (map show pcs))
 process fn (Info n) = do i <- get
                          case lookupCtxt Nothing n (idris_classes i) of
                               [c] -> classInfo c
