@@ -30,6 +30,7 @@ data BCOp = PUSH SValue
             -- places constructor args on stack, last to first (first at ref 0)
           | SPLIT -- get arguments from constructor form
           | CALL Name Int -- name, number of arguments to take
+          | CLOSURE Name Int -- as CALL, but always make the closure 
           | CALLVAR Int Int  -- stack ref, number of arguments to take
           | FOREIGNCALL String CType [CType] -- TT constants for types 
           | PRIMOP SPrim [Int] -- apply to list of stack references
@@ -77,6 +78,14 @@ instance BC SCExp where
                   = [CALLVAR (length args) (length args)]
               bc' locs (x : xs) = bc locs x ++
                                   bc' (offset locs) xs
+    bc locs (SLazyApp f args)
+        = bc' locs (reverse args) f
+        where bc' locs [] n 
+                  = case lookup n locs of
+                         Just i -> error "Internal error: Lazy call"
+                         Nothing -> [CLOSURE n (length args)]
+              bc' locs (x : xs) f = bc locs x ++
+                                    bc' (offset locs) xs f
     bc locs (SLet n v sc)
         = bc locs v ++
           bc ((n, 0) : offset locs) sc ++
@@ -85,7 +94,7 @@ instance BC SCExp where
     bc locs (SFCall cname ty args)
         = bc' locs (reverse (map fst args))
         where bc' locs [] = [FOREIGNCALL cname ty (map snd args)]
-              bc' locs (x : xs) = bc locs x ++ bc' (offset locs) xs
+              bc' locs (x : xs) = bc locs x ++ EVAL True : bc' (offset locs) xs
 
     bc locs (SCon t args)
         = bc' locs (reverse args)
@@ -103,7 +112,7 @@ instance BC SCExp where
 
     bc locs (SCase n alts)
         = let (def, cases, ty) = getCases CASE Nothing [] alts in
-              bc locs (SRef n) ++ [ty cases def]
+              bc locs (SRef n) ++ [EVAL True, ty cases def]
         where getCases ty def cs [] = (def, reverse cs, ty)
               getCases ty _ cs (SDefaultCase e : rest) 
                   = getCases ty (Just (bc locs e)) cs rest
@@ -119,4 +128,5 @@ instance BC SCExp where
     bc locs (SPrimOp p args)
         = bc' locs (reverse args)
         where bc' locs [] = [PRIMOP p [0..length args-1]]
-              bc' locs (x : xs) = bc locs x ++ bc' (offset locs) xs
+              bc' locs (x : xs) = bc locs x ++ EVAL True : bc' (offset locs) xs
+

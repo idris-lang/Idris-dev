@@ -18,6 +18,7 @@ data SCDef = SCDef { sc_args :: [(Name, CType)],
 
 data SCExp = SRef Name
            | SApp SCExp [SCExp]
+           | SLazyApp Name [SCExp]
            | SLet Name SCExp SCExp
            | SFCall String CType [(SCExp, CType)] -- foreign call with types
            | SCon Tag [SCExp] -- constructor, assume saturated (forcing does this)
@@ -156,6 +157,17 @@ instance Lift CaseAlt SAlt where
 sPrim :: [Name] -> TT Name -> [TT Name] -> State SCState (Maybe SCExp)
 sPrim env (P _ (UN "mkForeign") _) args = do x <- doForeign env args
                                              return (Just x)
+sPrim env (P _ (UN "lazy") _) [_, arg] 
+      = do arg' <- sc env arg
+           fn <- nextSC
+           add (fn, SCDef (zip env (repeat Nothing)) arg')
+           return $ Just $ SLazyApp fn (map SRef env)
+sPrim env (P _ (UN "prim__IO") _) [v] = do v' <- sc env v
+                                           return $ Just v'
+sPrim env (P _ (UN "io_bind") _) [_,_,v,k]
+      = do v' <- sc env v
+           k' <- sc env k
+           return $ Just $ SApp k'[v']
 sPrim env f args = return Nothing
 
 doForeign env (_ : fgn : args)
@@ -163,8 +175,6 @@ doForeign env (_ : fgn : args)
         = let tys = getFTypes fgnArgTys
               rty = mkEty' ret in
               do args' <- mapM (sc env) args
-                 -- wrap it in a prim__IO
-                 -- return $ con_ 0 @@ impossible @@ 
                  return $ SFCall fgnName rty (zip args' tys)
    | otherwise = fail "Badly formed foreign function call"
 
