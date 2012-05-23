@@ -54,10 +54,13 @@ bcExp v arity x
               return s
 
     bc' :: Bool -> Int -> SCExp -> State Int Bytecode
-    bc' tl d (SRef n) = return $ BAtom (BP n)
+    bc' tl d (SRef n) = if tl then return $ BTailApp (BP n) []
+                              else return $ BApp (BP n) []
     bc' tl d (SLoc i) = do ref i; return $ BAtom (BL i)
     bc' tl d (SApp f args) 
-       = do f' <- bc' False d f
+       = do f' <- case f of
+                       SRef n -> return $ BAtom (BP n)
+                       _ -> bc' False d f
             args' <- mapM (bc' False d) args
             let bapp = if tl then BTailApp else BApp
             case f' of

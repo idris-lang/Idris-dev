@@ -23,6 +23,7 @@ import Core.Constraints
 import RTS.SC
 import RTS.Bytecode
 import RTS.PreC
+import RTS.CodegenC
 
 import System.Console.Haskeline as H
 import System.FilePath
@@ -204,12 +205,15 @@ process fn (DebugInfo n)
                                let scs = toSC prims (n, head d)
                                let bcs = bcdefs scs
                                let pcs = preCdefs bcs
+                               let code = cdefs pcs
                                putStrLn "Supercombinators:\n"
                                print (toSC prims (n, head d))
                                putStrLn "\nBytecode:\n"
                                putStrLn (showSep "\n" (map show bcs))
                                putStrLn "\nPre-C:\n"
                                putStrLn (showSep "\n" (map show pcs))
+                               putStrLn "\nCode:\n"
+                               putStrLn code
 process fn (Info n) = do i <- get
                          case lookupCtxt Nothing n (idris_classes i) of
                               [c] -> classInfo c

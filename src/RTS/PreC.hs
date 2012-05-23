@@ -14,6 +14,7 @@ data CAtom = CP Name | CL Local | CC Const
 
 data CExp = CAtom CAtom
           | CApp CAtom [CAtom]
+          | CExactApp CAtom [CAtom]
           | CTailApp CAtom [CAtom]
           | CLazy CAtom [CAtom]
           | CFCall String CType [(CAtom, CType)]
@@ -31,11 +32,13 @@ data Reg = RVal | LVar Local
 
 data CInst = ASSIGN Reg CExp
            | RESERVE Int
+           | CLEAR Int
            | EVAL Local
            | PROJECT Local Local Int
            | SWITCH CVal [(Int, PreC)] PreC
            | ERROR String
-           | TAILCALL CAtom [CAtom]
+           | TAILCALL Int -- number of stack items to clear
+                      CAtom [CAtom] 
     deriving Show
 
 type PreC = [CInst]
@@ -51,7 +54,7 @@ preC :: Bytecode -> (Int, PreC)
 preC (BGetArgs ns bc) = (length ns, pc RVal (length ns) bc) 
   where pc loc d (BAtom b) = [ASSIGN loc (CAtom (atom d b))]
         pc loc d (BApp f as) = [ASSIGN loc (CApp (atom d f) (map (atom d) as))]
-        pc loc d (BTailApp f as) = [TAILCALL (atom d f) (map (atom d) as)]
+        pc loc d (BTailApp f as) = [TAILCALL d (atom d f) (map (atom d) as)]
         pc loc d (BLazy f as) = [ASSIGN loc (CLazy (atom d f) (map (atom d) as))]
         pc loc d (BLet x val sc) = pc (LVar (d - x)) d val ++ pc loc d sc 
         pc loc d (BFCall c t args) 
@@ -65,7 +68,8 @@ preC (BGetArgs ns bc) = (length ns, pc RVal (length ns) bc)
               SWITCH (caseTy alts (d - l)) 
                      (map (pcAlt loc d l) (filter notDef alts)) 
                      (getDefault loc d alts) : []
-        pc loc d (BReserve s bc) = RESERVE s : pc loc (d + s) bc
+        pc loc d (BReserve s bc) = RESERVE s : pc loc (d + s) bc ++ 
+                                   [CLEAR s]
 
         notDef (BDefaultCase _) = False
         notDef _ = True
