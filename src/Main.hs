@@ -39,6 +39,7 @@ runIdris opts =
     do let inputs = opt getFile opts
        let runrepl = not (NoREPL `elem` opts)
        let output = opt getOutput opts
+       let newoutput = opt getNewOutput opts
        let ibcsubdir = opt getIBCSubDir opts
        let importdirs = opt getImportDir opts
        let bcs = opt getBC opts
@@ -69,6 +70,9 @@ runIdris opts =
        when ok $ case output of
                     [] -> return ()
                     (o:_) -> process "" (Compile o)  
+       when ok $ case newoutput of
+                    [] -> return ()
+                    (o:_) -> process "" (NewCompile o)  
        when runrepl $ repl ist inputs
        ok <- noErrors
        when (not ok) $ liftIO (exitWith (ExitFailure 1))
@@ -91,6 +95,10 @@ getBC _ = Nothing
 getOutput :: Opt -> Maybe String
 getOutput (Output str) = Just str
 getOutput _ = Nothing
+
+getNewOutput :: Opt -> Maybe String
+getNewOutput (NewOutput str) = Just str
+getNewOutput _ = Nothing
 
 getIBCSubDir :: Opt -> Maybe String
 getIBCSubDir (IBCSubDir str) = Just str
@@ -123,6 +131,7 @@ parseArgs ("--log":lvl:ns)      = liftM (OLogging (read lvl) : ) (parseArgs ns)
 parseArgs ("--noprelude":ns)    = liftM (NoPrelude : ) (parseArgs ns)
 parseArgs ("--check":ns)        = liftM (NoREPL : ) (parseArgs ns)
 parseArgs ("-o":n:ns)           = liftM (\x -> NoREPL : Output n : x) (parseArgs ns)
+parseArgs ("-no":n:ns)          = liftM (\x -> NoREPL : NewOutput n : x) (parseArgs ns)
 parseArgs ("--typecase":ns)     = liftM (TypeCase : ) (parseArgs ns)
 parseArgs ("--typeintype":ns)   = liftM (TypeInType : ) (parseArgs ns)
 parseArgs ("--nocoverage":ns)   = liftM (NoCoverage : ) (parseArgs ns)

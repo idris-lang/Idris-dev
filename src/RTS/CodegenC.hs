@@ -84,6 +84,9 @@ catom (CL l) = reg (LVar l)
 catom (CC (I i)) = "MKINT(" ++ show i ++ ")"
 catom (CC v) = "const(" ++ show v ++ ")"
 catom (CP n) = cname n
+    
+off o (CL i) = CL (i + o)
+off o x = x
 
 assignCon i r tag args
    = indent i ++ reg r ++ " = MKCON(" ++ show tag ++ ", " ++ 
@@ -97,17 +100,22 @@ assignCon i r tag args
 
 assignFn i r f args
    = indent i ++ "EXTEND(" ++ show (length args) ++ ");\n" ++
-     indent i ++ setArgs 1 (reverse args) ++ "\n"
-   --  indent i ++ "CALL(" ++ reg r ++ ", " ++ cname f ++ ");\n"
+     indent i ++ setArgs 1 (map (off (length args)) (reverse args)) ++ "\n" ++
+     indent i ++ cname f ++ "(vm);\n" ++
+     indent i ++ "CLEAR(" ++ show (length args) ++ ");\n" ++
+     case r of
+        RVal -> ""
+        r -> indent i ++ reg r ++ " = " ++ reg RVal ++ "\n"
   where
     setArgs i [] = ""
     setArgs i (a : as) = reg (LVar i) ++ " = " ++ catom a ++ "; "
                          ++ setArgs (i + 1) as
 
-tailCall i d f args
+doTailCall i d f args
    = indent i ++ "EXTEND(" ++ show (length args) ++ ");\n" ++
-     indent i ++ setArgs 1 (reverse args) ++ "\n"
---     indent i ++ "TAILCALL(" ++ show d ++ ", " ++ cname f ++ ");\n"
+     indent i ++ setArgs 1 (map (off (length args)) (reverse args)) ++ "\n" ++
+     indent i ++ "SLIDE(" ++ show d ++ ", " ++ show (length args) ++ ");\n" ++
+     indent i ++ cname f ++ "(vm); return;\n" 
   where
     setArgs i [] = ""
     setArgs i (a : as) = reg (LVar i) ++ " = " ++ catom a ++ "; "
@@ -116,7 +124,7 @@ tailCall i d f args
 cg :: Int -> CInst -> String
 cg i (ASSIGN r (CCon t args))
    = assignCon i r t args
-cg i (ASSIGN r (CApp f args))
+cg i (ASSIGN r (CExactApp f args))
    = assignFn i r f args
 cg i (ASSIGN r (CAtom e)) = indent i ++ reg r ++ " = " ++ catom e ++ ";\n"
 cg i (RESERVE s) = indent i ++ "EXTEND(" ++ show s ++ ");\n"
@@ -137,7 +145,7 @@ cg i (SWITCH v bs def)
          branch (t, c) = indent i ++ "case " ++ show t ++ ":\n" ++
                          concatMap (cg (i+1)) c ++ 
                          indent (i+1) ++ "break;\n"
-cg i (TAILCALL d f args) = tailCall i d f args 
+cg i (TAILCALLEXACT d f args) = doTailCall i d f args 
 cg i (ERROR s) = indent i ++ "ERROR(" ++ show s ++ ")\n";
 cg i _ = indent i ++ "NOT DONE;\n"
 

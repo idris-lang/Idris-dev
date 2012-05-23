@@ -415,6 +415,7 @@ data Opt = Filename String
          | NoREPL
          | OLogging Int
          | Output String
+         | NewOutput String
          | TypeCase
          | TypeInType
          | NoCoverage 

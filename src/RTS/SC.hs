@@ -116,6 +116,8 @@ instance Lift Def () where
              add (n, SCDef (zip (env ++ args) (repeat Nothing)) 0 cases')
 
 instance Lift (TT Name) SCExp where
+    sc env (P (DCon t a) _ _) = return $ SCon t []
+    sc env (P (TCon t a) _ _) = return $ SCon t []
     sc env (P _ n _)    = return $ SRef n
     sc env (V i)        = return $ SRef (env!!i)
     sc env fn@(App _ _)
