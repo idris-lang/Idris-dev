@@ -21,8 +21,6 @@ import Paths_idris
 import Epic.Epic hiding (Term, Type, Name, fn, compile)
 import qualified Epic.Epic as E
 
-primDefs = [UN "unsafePerformIO", UN "mkLazyForeign", UN "mkForeign", UN "FalseElim"]
-
 compile :: FilePath -> Term -> Idris ()
 compile f tm
     = do checkMVs

@@ -81,6 +81,8 @@ data IState = IState { tt_ctxt :: Context,
                        ibc_write :: [IBCWrite],
                        compiled_so :: Maybe String
                      }
+
+primDefs = [UN "unsafePerformIO", UN "mkLazyForeign", UN "mkForeign", UN "FalseElim"]
              
 -- information that needs writing for the current module's .ibc file
 data IBCWrite = IBCFix FixDecl
@@ -395,6 +397,7 @@ setTypeCase t = do i <- get
 data Command = Quit   | Help | Eval PTerm | Check PTerm | TotCheck Name
              | Reload | Edit
              | Compile String | Execute | ExecVal PTerm
+             | NewCompile String
              | Metavars    | Prove Name | AddProof | Universes
              | TTShell 
              | LogLvl Int | Spec PTerm | HNF PTerm | Defn Name 

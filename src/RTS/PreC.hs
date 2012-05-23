@@ -15,7 +15,6 @@ data CAtom = CP Name | CL Local | CC Const
 data CExp = CAtom CAtom
           | CApp CAtom [CAtom]
           | CExactApp CAtom [CAtom]
-          | CTailApp CAtom [CAtom]
           | CLazy CAtom [CAtom]
           | CFCall String CType [(CAtom, CType)]
           | CPrimOp SPrim [CAtom]
@@ -39,22 +38,34 @@ data CInst = ASSIGN Reg CExp
            | ERROR String
            | TAILCALL Int -- number of stack items to clear
                       CAtom [CAtom] 
+           | TAILCALLEXACT Int CAtom [CAtom] 
     deriving Show
 
 type PreC = [CInst]
 
-preCdefs :: [(Name, Bytecode)] -> [(Name, (Int, PreC))]
-preCdefs = map (\ (n, b) -> (n, preC b))
+preCdefs :: [(Name, (Int, Bytecode))] -> [(Name, (Int, PreC))]
+preCdefs xs = map (\ (n, (i, b)) -> (n, preC xs b)) xs
 
 atom res (BP n) = CP n
 atom res (BL n) = CL (res - n)
 atom res (BC c) = CC c
 
-preC :: Bytecode -> (Int, PreC)
-preC (BGetArgs ns bc) = (length ns, pc RVal (length ns) bc) 
-  where pc loc d (BAtom b) = [ASSIGN loc (CAtom (atom d b))]
-        pc loc d (BApp f as) = [ASSIGN loc (CApp (atom d f) (map (atom d) as))]
-        pc loc d (BTailApp f as) = [TAILCALL d (atom d f) (map (atom d) as)]
+preC :: [(Name, (Int, Bytecode))] -> Bytecode -> (Int, PreC)
+preC all (BGetArgs ns bc) = (length ns, pc RVal (length ns) bc) 
+  where arity n = do (i, b) <- lookup n all
+                     return i
+        exact (BP n) as = case arity n of
+                                Just i -> i == length as
+                                Nothing -> False
+        exact _ as = False
+
+        pc loc d (BAtom b) = [ASSIGN loc (CAtom (atom d b))]
+        pc loc d (BApp f as) 
+           | exact f as = [ASSIGN loc (CExactApp (atom d f) (map (atom d) as))]
+           | otherwise = [ASSIGN loc (CApp (atom d f) (map (atom d) as))]
+        pc loc d (BTailApp f as) 
+           | exact f as = [TAILCALLEXACT d (atom d f) (map (atom d) as)]
+           | otherwise = [TAILCALL d (atom d f) (map (atom d) as)]
         pc loc d (BLazy f as) = [ASSIGN loc (CLazy (atom d f) (map (atom d) as))]
         pc loc d (BLet x val sc) = pc (LVar (d - x)) d val ++ pc loc d sc 
         pc loc d (BFCall c t args) 

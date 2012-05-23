@@ -1,10 +1,68 @@
 module RTS.CodegenC where
 
 import Core.TT
+import Core.Evaluate
+import Core.CaseTree
+
 import RTS.PreC
 import RTS.SC
+import RTS.Bytecode
+
+import Idris.AbsSyntax
 
 import Data.Char
+import Data.List
+import Control.Monad.State
+import System.Process
+import System.IO
+import System.Directory
+import System.Environment
+
+import Paths_idris
+
+compileC :: FilePath -> Term -> Idris ()
+compileC f tm
+    = do checkMVs
+         let tmnames = namesUsed (STerm tm)
+         used <- mapM (allNames []) tmnames
+         i <- get
+         let entry = mainFn (idris_scprims i) tm
+         scs' <- mkDecls tm (concat used)
+         let scs = scs' ++ entry
+         objs <- getObjectFiles
+         libs <- getLibs
+         hdrs <- getHdrs
+         ddir <- liftIO $ getDataDir
+         -- if any includes exist in the data directory, use that
+         hdrs' <- liftIO $ mapM (inDir ddir) hdrs
+         let bcs = bcdefs scs
+         let pcs = preCdefs bcs
+         let code = cdefs pcs
+         liftIO $ writeFile (f ++ ".c") code
+  where checkMVs = do i <- get
+                      case idris_metavars i \\ primDefs of
+                            [] -> return ()
+                            ms -> fail $ "There are undefined metavariables: " ++ show ms
+        inDir d h = do let f = d ++ "/" ++ h
+                       ex <- doesFileExist f
+                       if ex then return f else return h
+
+
+mainFn ps tm = toSC ps (MN 0 "_main", Function undefined tm)
+
+allNames :: [Name] -> Name -> Idris [Name]
+allNames ns n | n `elem` ns = return []
+allNames ns n = do i <- get
+                   case lookupCtxt Nothing n (idris_callgraph i) of
+                      [ns'] -> do more <- mapM (allNames (n:ns)) ns' 
+                                  return (nub (n : concat more))
+                      _ -> return [n]
+
+mkDecls :: Term -> [Name] -> Idris [(Name, SCDef)]
+mkDecls t used
+    = do i <- getIState
+         let ds = filter (\ (n, d) -> n `elem` used) $ ctxtAlist (tt_ctxt i)
+         return $ concatMap (toSC (idris_scprims i)) ds
 
 cdefs :: [(Name, (Int, PreC))] -> String
 cdefs xs = concatMap (\ (n, (i, c)) -> proto n) xs ++ "\n" ++
@@ -12,7 +70,8 @@ cdefs xs = concatMap (\ (n, (i, c)) -> proto n) xs ++ "\n" ++
 
 codegenC :: Name -> Int -> PreC -> String
 codegenC n args prec 
-    = "void " ++ cname n ++ "(VM* vm) {\n" ++
+    = "/* " ++ show prec ++ " */\n\n" ++
+      "void " ++ cname n ++ "(VM* vm) {\n" ++
         concatMap (cg 1) prec ++ "}\n\n"
 
 indent i = take (i * 4) (repeat ' ')
@@ -23,6 +82,7 @@ reg (LVar v) = "*(vm->stack-" ++ show v ++ ")"
 catom :: CAtom -> String
 catom (CL l) = reg (LVar l) 
 catom (CC (I i)) = "MKINT(" ++ show i ++ ")"
+catom (CC v) = "const(" ++ show v ++ ")"
 catom (CP n) = cname n
 
 assignCon i r tag args

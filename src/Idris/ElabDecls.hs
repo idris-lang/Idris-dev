@@ -25,7 +25,6 @@ import Data.List
 import Data.Maybe
 import Debug.Trace
 
-
 recheckC fc env t 
     = do -- t' <- applyOpts (forget t) (doesn't work, or speed things up...)
          ctxt <- getContext 

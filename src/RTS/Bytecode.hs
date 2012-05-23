@@ -37,10 +37,11 @@ data BAlt = BConCase Tag [Name] Int Bytecode
           | BDefaultCase Bytecode
     deriving Show
 
-bcdefs :: [(Name, SCDef)] -> [(Name, Bytecode)]
+bcdefs :: [(Name, SCDef)] -> [(Name, (Int, Bytecode))]
 bcdefs = map (\ (n, s) -> (n, bc s))
 
-bc (SCDef args max c) = BGetArgs (map fst args) (bcExp max (length args) c)
+bc (SCDef args max c) = (length args,
+                         BGetArgs (map fst args) (bcExp max (length args) c))
 
 bcExp v arity x 
    = let (code, max) = runState (bc' True arity x) v
