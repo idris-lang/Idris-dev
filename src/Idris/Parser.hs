@@ -375,7 +375,7 @@ pSyntaxRule syn
          when (length ns /= length (nub ns)) 
             $ fail "Repeated variable in syntax rule"
          lchar '='
-         tm <- pExpr syn
+         tm <- pExpr (impOK syn)
          pTerminator
          return (Rule (mkSimple syms) tm sty)
   where
