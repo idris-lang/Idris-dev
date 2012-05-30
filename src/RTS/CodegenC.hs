@@ -17,6 +17,7 @@ import System.Process
 import System.IO
 import System.Directory
 import System.Environment
+import Debug.Trace
 
 import Paths_idris
 
@@ -72,18 +73,19 @@ codegenC :: Name -> Int -> PreC -> String
 codegenC n args prec 
     = "/* " ++ show prec ++ " */\n\n" ++
       "void " ++ cname n ++ "(VM* vm) {\n" ++
+        indent 1 ++ "int i;\n" ++
         concatMap (cg 1) prec ++ "}\n\n"
 
 indent i = take (i * 4) (repeat ' ')
 
 reg RVal = "vm->ret"
-reg (LVar v) = "*(vm->stack-" ++ show v ++ ")"
+reg (LVar v) = "*(vm->valstack_ptr-" ++ show v ++ ")"
 
 catom :: CAtom -> String
 catom (CL l) = reg (LVar l) 
 catom (CC (I i)) = "MKINT(" ++ show i ++ ")"
 catom (CC v) = "const(" ++ show v ++ ")"
-catom (CP n) = cname n
+catom (CP n i) = "MKCLOSURE(" ++ cname n ++ ", " ++ show i ++ ")"
     
 off o (CL i) = CL (i + o)
 off o x = x
@@ -111,6 +113,22 @@ assignFn i r f args
     setArgs i (a : as) = reg (LVar i) ++ " = " ++ catom a ++ "; "
                          ++ setArgs (i + 1) as
 
+assignClosure i lazy r atom args
+    = indent i ++ reg r ++ " = APPLY(" ++ catom atom ++ ", " ++ show (length args) ++
+                                    ");\n" ++
+      indent i ++ setArgs 0 args ++ "\n" ++
+      if not lazy then
+          indent i ++ "if (READY(" ++ reg r ++ ")) {\n" ++
+          indent (i + 1) ++ reg r ++ " = EVAL(" ++ reg r ++ ");\n" ++
+          indent i ++ "} else {\n" ++
+          indent (i + 1) ++ "// do nothing \n" ++
+          indent i ++ "}\n"
+        else ""
+  where
+    setArgs i [] = ""
+    setArgs i (a : as) = "ADDARG(" ++ show i ++ ", " ++ reg r ++ ", " ++ catom a ++ "); "
+                         ++ setArgs (i + 1) as
+
 doTailCall i d f args
    = indent i ++ "EXTEND(" ++ show (length args) ++ ");\n" ++
      indent i ++ setArgs 1 (map (off (length args)) (reverse args)) ++ "\n" ++
@@ -121,11 +139,36 @@ doTailCall i d f args
     setArgs i (a : as) = reg (LVar i) ++ " = " ++ catom a ++ "; "
                          ++ setArgs (i + 1) as
 
+assignFCall i r cfn rt args
+   = indent i ++ reg r ++ " = " ++ fromC rt ++
+       "(" ++
+           cfn ++ "(" ++ showSep ", " (map toCa args) ++ "))" ++ ";\n"
+  where fromC (Just IType) = "MKINT"
+        fromC (Just StrType) = "MKSTR"
+        fromC _ = "MKVAL"
+
+        toC (Just IType) = "GETINT"
+        toC (Just StrType) = "GETSTR"
+        toC _ = "GETVAL"
+
+        toCa (a, ty) = toC ty ++ "(" ++ catom a ++ ")" 
+
+assignPrimOp i r p args
+    = indent i ++ reg r ++ " = " ++ op p args ++ ";\n"
+
 cg :: Int -> CInst -> String
 cg i (ASSIGN r (CCon t args))
    = assignCon i r t args
 cg i (ASSIGN r (CExactApp f args))
    = assignFn i r f args
+cg i (ASSIGN r (CApp f args))
+   = assignClosure i False r f args
+cg i (ASSIGN r (CLazy f args))
+   = assignClosure i True r f args
+cg i (ASSIGN r (CFCall cfn rt args))
+   = assignFCall i r cfn rt args
+cg i (ASSIGN r (CPrimOp p args))
+   = assignPrimOp i r p args
 cg i (ASSIGN r (CAtom e)) = indent i ++ reg r ++ " = " ++ catom e ++ ";\n"
 cg i (RESERVE s) = indent i ++ "EXTEND(" ++ show s ++ ");\n"
 cg i (CLEAR s) = indent i ++ "CLEAR(" ++ show s ++ ");\n"
@@ -145,9 +188,10 @@ cg i (SWITCH v bs def)
          branch (t, c) = indent i ++ "case " ++ show t ++ ":\n" ++
                          concatMap (cg (i+1)) c ++ 
                          indent (i+1) ++ "break;\n"
+cg i (TAILCALL d f args) = assignClosure i False RVal f args -- doTailClosure i d f args 
 cg i (TAILCALLEXACT d f args) = doTailCall i d f args 
 cg i (ERROR s) = indent i ++ "ERROR(" ++ show s ++ ")\n";
-cg i _ = indent i ++ "NOT DONE;\n"
+cg i x = trace (show x ++ " not done") $ indent i ++ "NOT DONE;\n"
 
 cname :: Name -> String
 cname (UN s) = "_I_" ++ toC s
@@ -162,3 +206,13 @@ toC s = concatMap special s
 proto :: Name -> String
 proto n = "void " ++ cname n ++ "(VM* vm);\n" 
 
+op AddI [l, r] = "INTOP(+, " ++ catom l ++ ", " ++ catom r ++ ")"
+op SubI [l, r] = "INTOP(-, " ++ catom l ++ ", " ++ catom r ++ ")"
+op MulI [l, r] = "INTOP(*, " ++ catom l ++ ", " ++ catom r ++ ")"
+op DivI [l, r] = "INTOP(/, " ++ catom l ++ ", " ++ catom r ++ ")"
+
+op ConcatS [l,r] = "CONCAT(" ++ catom l ++ ", " ++ catom r ++ ")"
+
+op o args = trace (show (op, args) ++ " operator undefined")
+                   $ "0 /* Op not defined " ++ show o ++ " */"
+            

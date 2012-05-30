@@ -1,5 +1,7 @@
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "closure.h"
 
@@ -17,6 +19,7 @@ VM* init_vm(int stack_size, size_t heap_size) {
     vm -> floatstack_ptr = floatstack;
     vm -> stack_max = stack_size;
     vm -> heap = malloc(heap_size);
+    vm -> ret = NULL;
     return vm;
 }
 
@@ -95,3 +98,7 @@ void EVAL(int update) {
     
 }
 
+void stackOverflow() {
+  fprintf(stderr, "Stack overflow");
+  exit(-1);
+}

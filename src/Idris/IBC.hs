@@ -1408,6 +1408,8 @@ instance Binary SSymbol where
                               put x1
                 SimpleExpr x1 -> do putWord8 3
                                     put x1
+                Binding x1 -> do putWord8 4
+                                 put x1
         get
           = do i <- getWord8
                case i of
@@ -1419,4 +1421,6 @@ instance Binary SSymbol where
                            return (Expr x1)
                    3 -> do x1 <- get
                            return (SimpleExpr x1)
+                   4 -> do x1 <- get
+                           return (Binding x1)
                    _ -> error "Corrupted binary data for SSymbol"

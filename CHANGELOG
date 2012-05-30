@@ -3,6 +3,7 @@ New in 0.9.3:
 
 User visible changes:
 
+* Added binding forms to syntax rules
 * Named class instances
 * Added ':set' command, with options 'errorcontext' for displaying local
   variables in scope when a unification error occurs, and 'showimplicits'

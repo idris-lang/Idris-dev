@@ -11,7 +11,7 @@ import Control.Monad.State
 
 type Local = Int
 
-data BAtom = BP Name | BL Local | BC Const
+data BAtom = BP Name Int | BL Local | BC Const
     deriving Show
 
 -- Like SC, but with explicit evaluation, de Bruijn levels for locals, and all
@@ -38,12 +38,12 @@ data BAlt = BConCase Tag [Name] Int Bytecode
     deriving Show
 
 bcdefs :: [(Name, SCDef)] -> [(Name, (Int, Bytecode))]
-bcdefs = map (\ (n, s) -> (n, bc s))
+bcdefs xs = map (\ (n, s) -> (n, bc xs s)) xs
 
-bc (SCDef args max c) = (length args,
-                         BGetArgs (map fst args) (bcExp max (length args) c))
+bc all (SCDef args max c) = (length args,
+                            BGetArgs (map fst args) (bcExp all max (length args) c))
 
-bcExp v arity x 
+bcExp all v arity x 
    = let (code, max) = runState (bc' True arity x) v
          space = max - arity in
          if (space > 0) then BReserve space code else code
@@ -53,14 +53,16 @@ bcExp v arity x
     next = do s <- get
               put (s + 1)
               return s
-
+    scarity n = case lookup n all of
+                     Just (SCDef args _ _) -> length args
+                     
     bc' :: Bool -> Int -> SCExp -> State Int Bytecode
-    bc' tl d (SRef n) = if tl then return $ BTailApp (BP n) []
-                              else return $ BApp (BP n) []
+    bc' tl d (SRef n) = if tl then return $ BTailApp (BP n (scarity n)) []
+                              else return $ BApp (BP n (scarity n)) []
     bc' tl d (SLoc i) = do ref i; return $ BAtom (BL i)
     bc' tl d (SApp f args) 
        = do f' <- case f of
-                       SRef n -> return $ BAtom (BP n)
+                       SRef n -> return $ BAtom (BP n (scarity n))
                        _ -> bc' False d f
             args' <- mapM (bc' False d) args
             let bapp = if tl then BTailApp else BApp
@@ -69,8 +71,8 @@ bcExp v arity x
                 bc -> do v <- next
                          mkApp (\x -> BLet v bc (bapp (BL v) x)) args' []
     bc' tl d (SLazyApp f args) = do args' <- mapM (bc' False d) args
-                                    let bapp = if tl then BTailApp else BApp
-                                    mkApp (\x -> bapp (BP f) x) args' []
+                                    -- let bapp = if tl then BTailApp else BApp
+                                    mkApp (\x -> BLazy (BP f (scarity f)) x) args' []
     bc' tl d (SLet n val sc) = do v' <- bc' False d val
                                   sc' <- bc' False (d + 1) sc
                                   return $ BLet d v' sc'

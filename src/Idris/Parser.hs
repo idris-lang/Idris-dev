@@ -397,6 +397,8 @@ pSyntaxRule syn
 pSynSym :: IParser SSymbol
 pSynSym = try (do lchar '['; n <- pName; lchar ']'
                   return (Expr n))
+      <|> try (do lchar '{'; n <- pName; lchar '}'
+                  return (Binding n))
       <|> do n <- iName []
              return (Keyword n)
       <|> do sym <- strlit
@@ -556,6 +558,8 @@ pExtensions syn rules = choice (map (\x -> try (pExt syn x)) (filter valid rules
     valid (Rule _ _ TermSyntax) = not (inPattern syn)
 
 
+data SynMatch = SynTm PTerm | SynBind Name
+
 pExt :: SyntaxInfo -> Syntax -> IParser PTerm
 pExt syn (Rule ssym ptm _)
     = do smap <- mapM pSymbol ssym
@@ -564,21 +568,27 @@ pExt syn (Rule ssym ptm _)
   where
     pSymbol (Keyword n)    = do reserved (show n); return Nothing
     pSymbol (Expr n)       = do tm <- pExpr syn
-                                return $ Just (n, tm)
+                                return $ Just (n, SynTm tm)
     pSymbol (SimpleExpr n) = do tm <- pSimpleExpr syn
-                                return $ Just (n, tm)
+                                return $ Just (n, SynTm tm)
+    pSymbol (Binding n)    = do b <- pName
+                                return $ Just (n, SynBind b)
     pSymbol (Symbol s)     = do symbol s
                                 return Nothing
     dropn n [] = []
     dropn n ((x,t) : xs) | n == x = xs
                          | otherwise = (x,t):dropn n xs
 
+    updateB ns n = case lookup n ns of
+                     Just (SynBind t) -> t
+                     _ -> n
+
     update ns (PRef fc n) = case lookup n ns of
-                              Just t -> t
+                              Just (SynTm t) -> t
                               _ -> PRef fc n
-    update ns (PLam n ty sc) = PLam n (update ns ty) (update (dropn n ns) sc)
-    update ns (PPi p n ty sc) = PPi p n (update ns ty) (update (dropn n ns) sc) 
-    update ns (PLet n ty val sc) = PLet n (update ns ty) (update ns val)
+    update ns (PLam n ty sc) = PLam (updateB ns n) (update ns ty) (update (dropn n ns) sc)
+    update ns (PPi p n ty sc) = PPi p (updateB ns n) (update ns ty) (update (dropn n ns) sc) 
+    update ns (PLet n ty val sc) = PLet (updateB ns n) (update ns ty) (update ns val)
                                           (update (dropn n ns) sc)
     update ns (PApp fc t args) = PApp fc (update ns t) (map (fmap (update ns)) args)
     update ns (PCase fc c opts) = PCase fc (update ns c) (map (pmap (update ns)) opts) 

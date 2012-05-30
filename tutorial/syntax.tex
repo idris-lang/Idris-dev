@@ -41,7 +41,10 @@ be valid identifiers
 and \texttt{[e]} here, which stand for arbitrary expressions. To avoid parsing ambiguities, 
 these expressions cannot use syntax extensions at the top level (though they can be used
 in parentheses).
-\item \textbf{Symbols} --- included in quotations marks, e.g. \texttt{":="}
+\item \textbf{Names} --- included in braces, which stand for names which may be bound
+on the right hand side.
+\item \textbf{Symbols} --- included in quotations marks, e.g. \texttt{":="}. This can
+also be used to include reserved words in syntax rules, such as \texttt{"let"} or \texttt{"in"}.
 \end{itemize}
 
 \noindent
@@ -91,6 +94,26 @@ term    syntax "[" [x] "..." [y] "]" = MkInterval x y ?bounds_lemma
 \noindent
 In terms, the syntax \texttt{[x...y]} will generate a proof obligation
 \texttt{bounds\_lemma} (possibly renamed).
+
+Finally, syntax rules may be used to introduce alternative binding forms. For
+exampe, a \texttt{for} loop binds a variable on each iteration:
+
+\begin{SaveVerbatim}{forloop}
+
+syntax for {x} "in" [xs] [body] = forLoop xs (\x => body)
+  
+main : IO ()
+main = do for x in [1..10] do
+              putStrLn ("Number " ++ show x)
+          putStrLn "Done!"
+
+\end{SaveVerbatim}
+\useverb{forloop} 
+
+\noindent
+Note that we have used the \texttt{\{x\}} form to state that \texttt{x} represents
+a bound variable, substituted on the right hand side. We have also put \texttt{"in"} in
+quotation marks since it is already a reserved word.
 
 \input{dsl}
 

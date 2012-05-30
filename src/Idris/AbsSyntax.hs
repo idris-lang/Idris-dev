@@ -790,6 +790,7 @@ deriving instance Binary Syntax
 
 data SSymbol = Keyword Name
              | Symbol String
+             | Binding Name
              | Expr Name
              | SimpleExpr Name
     deriving Show

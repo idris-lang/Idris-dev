@@ -12,3 +12,4 @@ Tests:
 010: total
 011: record projection and update
 012: various error regressions
+013: binding syntax

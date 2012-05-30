@@ -9,7 +9,7 @@ import RTS.SC
 
 import Control.Monad.State
 
-data CAtom = CP Name | CL Local | CC Const
+data CAtom = CP Name Int | CL Local | CC Const
    deriving Show
 
 data CExp = CAtom CAtom
@@ -46,19 +46,18 @@ type PreC = [CInst]
 preCdefs :: [(Name, (Int, Bytecode))] -> [(Name, (Int, PreC))]
 preCdefs xs = map (\ (n, (i, b)) -> (n, preC xs b)) xs
 
-atom res (BP n) = CP n
-atom res (BL n) = CL (res - n)
-atom res (BC c) = CC c
+atom res (BP n i) = CP n i
+atom res (BL n)   = CL (res - n)
+atom res (BC c)   = CC c
 
 preC :: [(Name, (Int, Bytecode))] -> Bytecode -> (Int, PreC)
 preC all (BGetArgs ns bc) = (length ns, pc RVal (length ns) bc)
   where arity n = do (i, b) <- lookup n all
                      return i
-        exact (BP n) as = case arity n of
-                                Just i -> i == length as
-                                Nothing -> False
+        exact (BP n i) as = i == length as
         exact _ as = False
-        getName (BP n) = n
+
+        getName (BP n i) = n
 
         pc loc d (BAtom b) = [ASSIGN loc (CAtom (atom d b))]
         pc loc d (BApp f as) 
