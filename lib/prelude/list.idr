@@ -109,12 +109,18 @@ length []      = 0
 length (x::xs) = 1 + length xs
 
 --------------------------------------------------------------------------------
--- Building bigger lists
+-- Building (bigger) lists
 --------------------------------------------------------------------------------
 
 (++) : List a -> List a -> List a
 (++) [] right      = right
 (++) (x::xs) right = x :: (xs ++ right)
+
+repeat : a -> List a
+repeat x = x :: repeat x
+
+replicate : Nat -> a -> List a
+replicate n x = take n (repeat x)
 
 --------------------------------------------------------------------------------
 -- Instances
