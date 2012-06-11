@@ -44,6 +44,14 @@ total power : Nat -> Nat -> Nat
 power base O       = S O
 power base (S exp) = mult base $ power base exp
 
+hyper : Nat -> Nat -> Nat -> Nat
+hyper O        a b      = S b
+hyper (S O)    a O      = a
+hyper (S(S O)) a O      = O
+hyper n        a O      = S O
+hyper (S pn)   a (S pb) = hyper pn a (hyper (S pn) a pb)
+
+
 --------------------------------------------------------------------------------
 -- Comparisons
 --------------------------------------------------------------------------------

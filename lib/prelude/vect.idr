@@ -64,13 +64,17 @@ fromList []      = []
 fromList (x::xs) = x :: fromList xs
 
 --------------------------------------------------------------------------------
--- Building bigger vectors
+-- Building (bigger) vectors
 --------------------------------------------------------------------------------
 
 total
 (++) : Vect a m -> Vect a n -> Vect a (m + n)
 (++) []      ys = ys
 (++) (x::xs) ys = x :: xs ++ ys
+
+replicate : (n : Nat) -> a -> Vect a n
+replicate O     x = []
+replicate (S k) x = x :: replicate k x
 
 --------------------------------------------------------------------------------
 -- Maps
