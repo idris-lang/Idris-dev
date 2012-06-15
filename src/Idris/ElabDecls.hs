@@ -389,6 +389,7 @@ elabClause info tcgen (PClause fc fname lhs_in withs rhs_in whereblock)
                                  (expandParams decorate newargs decls rhs_in)
         logLvl 2 (showImp True rhs)
         ctxt <- getContext -- new context with where block added
+        logLvl 5 "STARTING CHECK"
         ((rhs', defer, is), _) <- 
            tclift $ elaborate ctxt (MN 0 "patRHS") clhsty []
                     (do pbinds lhs_tm
@@ -397,6 +398,7 @@ elabClause info tcgen (PClause fc fname lhs_in withs rhs_in whereblock)
                         tt <- get_term
                         let (tm, ds) = runState (collectDeferred tt) []
                         return (tm, ds, is))
+        logLvl 5 "DONE CHECK"
         logLvl 2 $ "---> " ++ show rhs'
         when (not (null defer)) $ iLOG $ "DEFERRED " ++ show defer
         def' <- checkDef fc defer

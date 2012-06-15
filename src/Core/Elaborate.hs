@@ -439,8 +439,7 @@ tryAll :: [(Elab' aux a, String)] -> Elab' aux a
 tryAll xs = tryAll' [] (cantResolve, 0) (map fst xs)
   where
     cantResolve :: Elab' aux a
-    cantResolve = fail $ "Couldn't resolve alternative: " 
-                                  ++ showSep ", " (map snd xs)
+    cantResolve = lift $ tfail $ CantResolveAlts (map snd xs) 
 
     tryAll' :: [Elab' aux a] -> -- successes
                (Elab' aux a, Int) -> -- smallest failure

@@ -140,9 +140,13 @@ elab ist info pattern tcgen fn tm
                                              pimp (MN 0 "P") Placeholder,
                                              pexp l, pexp r])
     elab' ina (PAlternative True as) 
-        = let as' = pruneAlt as in
-              try (tryAll (zip (map (elab' ina) as') (map showHd as')))
-                  (tryAll (zip (map (elab' ina) as) (map showHd as)))
+        = do ty <- goal
+             ctxt <- get_context
+             let (tc, _) = unApply ty
+             let as' = pruneByType tc ctxt as
+             let as'' = as' -- pruneAlt as'
+             try (tryAll (zip (map (elab' ina) as'') (map showHd as'')))
+                 (tryAll (zip (map (elab' ina) as') (map showHd as')))
         where showHd (PApp _ h _) = show h
               showHd x = show x
     elab' ina (PAlternative False as) 
@@ -355,6 +359,29 @@ pruneAlt xs = map prune xs
     headIs f (PApp _ (PRef _ f') _) = f == f'
     headIs f (PApp _ f' _) = headIs f f'
     headIs f _ = True -- keep if it's not an application
+
+-- Rule out alternatives that don't return the same type as the head of the goal
+-- (If there are none left as a result, do nothing)
+
+pruneByType :: Term -> Context -> [PTerm] -> [PTerm]
+pruneByType (P _ n _) c as 
+    = let as' = filter (headIs n) as in
+          case as' of
+            [] -> as
+            _ -> as'
+  where
+    headIs f (PApp _ (PRef _ f') _) = typeHead f f'
+    headIs f (PApp _ f' _) = headIs f f'
+    headIs f (PPi _ _ _ sc) = headIs f sc
+    headIs _ _ = True -- keep if it's not an application
+
+    typeHead f f' = case lookupTy Nothing f' c of
+                       [ty] -> case unApply (getRetTy ty) of
+                                    (P _ ftyn _, _) -> ftyn == f
+                                    _ -> False
+                       _ -> False
+
+pruneByType t _ as = as
 
 trivial :: IState -> ElabD ()
 trivial ist = try (do elab ist toplevel False False (MN 0 "tac") (PRefl (FC "prf" 0))

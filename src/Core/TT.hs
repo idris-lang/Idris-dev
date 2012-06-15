@@ -48,6 +48,7 @@ data Err = Msg String
          | NoSuchVariable Name
          | NotInjective Term Term Term
          | CantResolve Term
+         | CantResolveAlts [String]
          | IncompleteTerm Term
          | UniverseError
          | ProgramLineComment
@@ -62,6 +63,7 @@ instance Sized Err where
   size (NoSuchVariable name) = size name
   size (NotInjective l c r) = size l + size c + size r
   size (CantResolve trm) = size trm
+  size (CantResolveAlts _) = 1
   size (IncompleteTerm trm) = size trm
   size UniverseError = 1
   size ProgramLineComment = 1

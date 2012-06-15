@@ -8,13 +8,15 @@ User visible changes:
 * Added ':set' command, with options 'errorcontext' for displaying local
   variables in scope when a unification error occurs, and 'showimplicits'
   for displaying elaborated terms in full
-* Added '--errorcontext' command line swithc
+* Added '--errorcontext' command line switch
 * Various minor REPL improvements and fixes
 
 Internal changes:
 
 * Normalise before forcing to catch more forceable arguments
 * Types no longer exported in normal form
+* Try to resolve overloading by inspecting types, rather than full type
+  checking
 
 New in 0.9.2:
 -------------

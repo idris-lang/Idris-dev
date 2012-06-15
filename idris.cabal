@@ -78,5 +78,5 @@ Executable     idris
                                 
                Extensions:      MultiParamTypeClasses, FunctionalDependencies,
                                 FlexibleInstances, TemplateHaskell
-               ghc-prof-options: -auto-all
+               ghc-prof-options: -auto-all -caf-all
                ghc-options: -rtsopts
