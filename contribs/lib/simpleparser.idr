@@ -27,7 +27,7 @@ instance MonadPlus Parser where
    mplus p q                  =  P (\inp => case parse p inp of
                                                Left msg 	 => parse q inp
                                                Right (v,out) => Right(v,out))
-
+-- this is a comment for testing
 
 
 {-
