@@ -21,8 +21,8 @@ void* sqlite3_open_idr(const char *filename){
 	int res =sqlite3_open(filename,&db);
 	
 	if(res != SQLITE_OK){
-		
 		printf("Error occured while opening the databse.");
+		return NULL;
 	}
 	DBinfo *dbi = malloc(sizeof(DBinfo));
 	dbi->db_ptr = db;
@@ -209,8 +209,8 @@ int sqlite3_get_val_int(void* p,const char* tbl_name, int nRow, int nCol){
 		
 	}
 	
-	rc =sqlite3_column_int(stmt, nCol);
-	printf("int_val : %d\n", rc );	
+	val =sqlite3_column_int(stmt, nCol);
+	printf("int_val : %d\n", val );	
 	rc =sqlite3_finalize(stmt);
 	if( rc != SQLITE_OK){
 		printf("Couldnt finalize:\n");
@@ -236,8 +236,8 @@ const unsigned char* sqlite3_get_val_text(void* p,const char* tbl_name,int nRow,
 	
 	rc = sqlite3_prepare_v2(dbi->db_ptr, sql_query_buffer, -1, &stmt, &tail);
 	if(rc != SQLITE_OK){
-		fprintf(stderr, "SQL Prepare error");
-		
+		fprintf(stderr, "SQL Prepare error\n");
+		return NULL;
 	}
 	rc = sqlite3_step(stmt);
 
@@ -273,7 +273,7 @@ float sqlite3_get_float(void* p,const char* tbl_name, int nRow, int nCol){
 	
 	rc = sqlite3_prepare_v2(dbi->db_ptr, sql_query_buffer, -1, &stmt, &tail);
 	if(rc != SQLITE_OK){
-		fprintf(stderr, "SQL Prepare error");
+		fprintf(stderr, "SQL Prepare error\n");
 		
 	}
 	rc = sqlite3_step(stmt);

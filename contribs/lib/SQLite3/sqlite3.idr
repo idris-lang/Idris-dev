@@ -249,12 +249,12 @@ bind_null (MkStmtPtr pointer) indexval =do
                 
 instance Show DBVal where
     show (DBInt i) = "Int val: " ++ show i
-    show (DBText i) = "Text val: " ++ i
+    show (DBText i) = "Text val: " ++ show i
     show (DBFloat i) = "Float val: " ++ show i
     show (DBNull ) = "NULL"
 
 print_data_v2 : DBVal -> String
-print_data_v2 val = (show val)
+print_data_v2 = show 
 
 test : DB()
 test = do db <- liftIO (open_db "somedb.db")
@@ -268,12 +268,11 @@ test = do db <- liftIO (open_db "somedb.db")
           return ()  
           
 test2 : DB ()
-test2 = do db <- liftIO (open_db "somedb.db")
-         
-           tbl <- (get_table db "SELECT Student.Name FROM Student, Module, Enrollment WHERE Module.Credits = 30 AND Student.School_student = Enrollment.School_Student AND Student.School = Enrollment.School AND Enrollment.Code = Module.Code")
+test2 = do db <- liftIO (open_db "students.db") 
+          -- tbl <- (get_table db "SELECT Student.Name FROM Student, Module, Enrollment WHERE Module.Credits = 30 AND Student.School_student = Enrollment.School_Student AND Student.School = Enrollment.School AND Enrollment.Code = Module.Code")
            --res <- (toList "Student" "select *from Student;" db)
-          -- mydata <- liftIO ( get_data db "Student" 1 1)
-       
+           mydata <- liftIO ( get_data db "Student" 1 1)
+           liftIO(print mydata)
            c <- liftIO (close_db db)
            return ()  
                                                                                                                
