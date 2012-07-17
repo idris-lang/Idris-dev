@@ -58,6 +58,7 @@ int sqlite3_exec_idr(void* db, const char *sql)
 	int rc;
 	
 	rc = sqlite3_exec(dbi->db_ptr,sql,NULL, NULL, &err);
+	printf("%d\n", rc);
 	if (rc != SQLITE_OK && err != NULL) {
 		strncpy(dbi->buffer, err, sizeof(dbi->buffer));
 		sqlite3_free(err);
@@ -84,7 +85,7 @@ void* sqlite3_prepare_idr(void *db,const char *zSql){
 	
 	if(rec != SQLITE_OK){
 		fprintf(stderr, "SQL Prepare error.\n");
-		return dbi
+		return dbi;
 	}
 	
 	return dbi;
@@ -402,7 +403,6 @@ int sqlite3_column_count_idr(void* db, const char* tbl_name){
 		fprintf(stderr, "SQL column count error\n");
 		return rc;
 	}
-	printf("Column count successful = %d\n", rc);
 	sqlite3_finalize(stmt);
 
 	// rc = actual column count

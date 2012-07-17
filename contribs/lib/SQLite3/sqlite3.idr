@@ -7,6 +7,7 @@ data DBVal = DBInt Int
            | DBText String
            | DBFloat Float
            | DBNull
+           
 
 data DBPointer =  MkDBPointer Ptr
 
@@ -22,6 +23,35 @@ forM : Monad m => List a -> (a -> m b) -> m (List b)
 forM f xs = mapM xs f
 
 
+data DB a = MkDB (IO (Either String a))
+
+instance Monad DB where
+    (MkDB l) >>= k = MkDB (do c <- l
+                              case c of
+                                  Left err => return (Left err)
+                                  Right v  => case k v of
+                                                   MkDB k' => k')
+    return x = MkDB (return (Right x))
+
+fail : String -> DB a
+fail err = MkDB (return (Left err))
+
+liftIO : IO a -> DB a
+liftIO f = MkDB (do f' <- f
+                    return (Right f'))
+
+ioError : String -> IO a
+ioError err = do putStrLn err
+                 return (believe_me ())
+
+runDB : DB a -> IO a
+runDB (MkDB f) = do f' <- f
+                    case f' of
+                         Right v => return v
+                         Left str => ioError str 
+                         
+                                                 
+
 open_db : String -> IO DBPointer
 open_db name = do x <- mkForeign (FFun "sqlite3_open_idr" [FString] FPtr)name
                   return (MkDBPointer x)
@@ -29,10 +59,14 @@ open_db name = do x <- mkForeign (FFun "sqlite3_open_idr" [FString] FPtr)name
 close_db : DBPointer -> IO Int
 close_db (MkDBPointer pointer) =mkForeign (FFun "sqlite3_close_idr" [FPtr] FInt)pointer
 
-
-exec_db : DBPointer  -> String -> IO Int
-exec_db (MkDBPointer pointer) stmt =mkForeign (FFun "sqlite3_exec_idr" [FPtr, FString] FInt)pointer stmt
-
+                
+exec_db : DBPointer  -> String -> DB Int
+exec_db (MkDBPointer pointer) stmt = do 
+        x <- liftIO(mkForeign (FFun "sqlite3_exec_idr" [FPtr, FString] FInt)pointer stmt)
+        if (x /= 0)
+            then fail "Could not execute."
+                else return x
+                                                            
 get_error : DBPointer  -> IO String
 get_error (MkDBPointer pointer) =mkForeign (FFun "sqlite3_get_error" [FPtr] FString)pointer
 
@@ -45,29 +79,38 @@ prepare_db (MkDBPointer pointer) cmd = do
             then return (Left "Error occured")
                 else return (Right (MkStmtPtr result))
 
-step_db : Either String StmtPtr -> IO (Either String Int)
-step_db (Right (MkStmtPtr pointer)) = do x <- mkForeign (FFun "sqlite3_step_idr" [FPtr] FInt)pointer
-                                         return (Right (x))
-                                            
-step_db (Left erro) = return (Left "Error in step")                                          
+step_db :  StmtPtr -> DB Int
+step_db (MkStmtPtr pointer) = do
+         x <- liftIO (mkForeign (FFun "sqlite3_step_idr" [FPtr] FInt)pointer)
+         if ( x /= 0)
+             then fail "Step failed"
+                 else return x
 
 
-finalize_db : Either String StmtPtr -> IO (Either String Int)
-finalize_db (Right (MkStmtPtr pointer)) = do x <- mkForeign (FFun "sqlite3_finalize_idr" [FPtr] FInt)pointer
-                                             return (Right (x))
-finalize_db (Left erro) = return (Left "Error while finalizing") 
+finalize_db : StmtPtr -> DB Int
+finalize_db (MkStmtPtr pointer) = do 
+        x <- liftIO (mkForeign (FFun "sqlite3_finalize_idr" [FPtr] FInt)pointer)
+        if (x /= 0)
+            then fail "Could not finalize"
+                else return x
 
-reset_db : Either String StmtPtr  -> IO (Either String Int)
-reset_db (Right (MkStmtPtr pointer)) = do x <- mkForeign (FFun "sqlite3_reset_idr" [FPtr] FInt)pointer
-                                          return (Right (x))
-reset_db (Left erro) = return (Left "Error while resetting") 
+reset_db : StmtPtr  -> DB Int
+reset_db (MkStmtPtr pointer) = do 
+        x <- liftIO(mkForeign (FFun "sqlite3_reset_idr" [FPtr] FInt)pointer)
+        if (x /=0)
+            then fail "Could not reset"
+                else return x
 
-column_count : DBPointer  -> IO Int
-column_count (MkDBPointer pointer) =mkForeign (FFun "sqlite3_column_count_idr" [FPtr] FInt)pointer
+column_count : DBPointer  -> IO (Either String Int)
+column_count (MkDBPointer pointer) = do 
+        x <- mkForeign (FFun "sqlite3_column_count_idr" [FPtr] FInt)pointer
+        if (x == 0 )
+            then return (Left "No Data")
+                 else return (Right x)
 
 column_name : DBPointer  -> Int -> IO String
 column_name (MkDBPointer pointer) iCol =mkForeign (FFun "sqlite3_column_name_idr" [FPtr, FInt] FString)pointer iCol
-
+                
 column_decltype : DBPointer  -> Int -> IO String
 column_decltype (MkDBPointer pointer) iCol =mkForeign (FFun "sqlite3_column_decltype_idr" [FPtr, FInt] FString)pointer iCol
 
@@ -101,15 +144,29 @@ backup_finish (MkDBPointer pointer) =mkForeign (FFun "sqlite3_backup_finish_idr"
 backup_remaining : DBPointer -> IO Int
 backup_remaining (MkDBPointer pointer) =mkForeign (FFun "sqlite3_backup_remaining_idr" [FPtr] FInt)pointer
 
-get_table : DBPointer -> String -> IO TBPointer
-get_table (MkDBPointer pointer) name = do x <- mkForeign (FFun "sqlite3_get_table_idr" [FPtr, FString]  FPtr)pointer name
-                                          return (MkTBPointer x)
+
+
+get_table : DBPointer -> String -> IO (Either String TBPointer)
+get_table (MkDBPointer pointer) name = do 
+            x <- mkForeign (FFun "sqlite3_get_table_idr" [FPtr, FString] FPtr)pointer name
+            flag <- nullPtr x
+            if flag
+                then do x <- get_error_table pointer ; return (Left (x))
+                  else return (Right (MkTBPointer x))
+        where
+            get_error_table : Ptr-> IO String
+            get_error_table pointer = do x <- mkForeign (FFun "sqlite3_get_error" [FPtr] FString)pointer
+                                         return x
+
 
 num_row : TBPointer -> IO Int
-num_row (MkTBPointer pointer) = mkForeign (FFun "sqlite3_get_num_row" [FPtr] FInt)pointer
+num_row (MkTBPointer pointer) = do x <- mkForeign (FFun "sqlite3_get_num_row" [FPtr] FInt)pointer    
+                                   return (x)
 
 num_col : TBPointer -> IO Int
-num_col (MkTBPointer pointer) = mkForeign (FFun "sqlite3_get_num_col" [FPtr] FInt)pointer
+num_col (MkTBPointer pointer) = do x <- mkForeign (FFun "sqlite3_get_num_col" [FPtr] FInt)pointer
+                                   return (x)
+   
 
 get_data : DBPointer -> String -> Int -> Int -> IO DBVal
 get_data (MkDBPointer pointer) tbl_name row col = do
@@ -140,19 +197,21 @@ strcat : String -> String-> String
 strcat str1 str2 = (str1 ++ str2)		
 
 free_table : TBPointer -> IO ()
-free_table (MkTBPointer pointer) =mkForeign (FFun "sqlite3_free_table_idr" [FPtr] FUnit)pointer
+free_table (MkTBPointer pointer) = do x <- mkForeign (FFun "sqlite3_free_table_idr" [FPtr] FUnit)pointer
+                                      return ()
+
 		
-toList : String -> String -> DBPointer -> IO Table
+toList : String -> String -> DBPointer -> DB Table
 toList name stmt x =  do
-    				ptr <- get_table x (stmt)
-    				nbR <- num_row ptr
-    				nmC <- num_col ptr
+    				ptr <- MkDB (get_table x (stmt))
+    				nbR <- liftIO (num_row ptr)
+    				nmC <- liftIO (num_col ptr)
     				res <- forM [0..(nbR-1)] (\ i =>
-    					   forM [0..(nmC-1)] (\ j =>
-    						get_data x name i j
-    					)
+    					     forM [0..(nmC-1)] (\ j =>
+    						         liftIO(get_data x name i j)
+    				        )
     				)
-    				free_table ptr
+    				liftIO (free_table ptr)
     				return res
     				
 bind_int : Either String StmtPtr -> Int -> Int -> IO (Either String Int)
@@ -180,51 +239,27 @@ bind_null (Right (MkStmtPtr pointer)) indexval =do x <- mkForeign (FFun "sqlite3
 bind_null (Left erro) indexval = return (Left "Could not bind null.")  
 
 
--- May need some alterations
+instance Show DBVal where
+    show (DBInt i) = "Int val: " ++ show i
+    show (DBText i) = "Text val: " ++ i
+    show (DBFloat i) = "Float val: " ++ show i
+    show (DBNull ) = "NULL"
 
-print_data : (Show DBVal) => String -> DBVal -> String -> Int -> Int -> IO String
-print_data  dbname val tblname dig1 dig2 = do x <- open_db dbname
-                                              val <- get_data x tblname 1 0
-                                              close_db x
-                                              return (show val)
+print_data_v2 : DBVal -> String
+print_data_v2 val = (show val)
 
--- Some simple test cases
-                                          
-test : IO ()
-test = do x <- open_db "somedb.db"
-          stmt <- prepare_db x "SELECT * FROM tbl1 WHERE data='test2'"
-          f <- step_db stmt
-          finalize_db stmt
-          close_db x
-          return ()
-          
-test2 : IO ()
-test2 = do x <- open_db "somedb.db"
-           tbl <- get_table x "SELECT * FROM tbl1 WHERE num =44'"
-           free_table tbl
-           close_db x
-           return ()          
-
-test3 : IO ()
-test3 = do x <- open_db "somedb.db"
-           e <- open_db "./newdb.db"
-           tbl <- get_table x "SELECT * FROM tbl1;"
-           tbl2 <- get_table x "SELECT * FROM mytable ;" 
-           free_table tbl
-           free_table tbl2
-           close_db x
-           close_db e
-           return ()
            
-test4 : IO ()
-test4 = do x <- open_db "somedb.db"
-           somedata <- get_data x "tbl1" 1 0
-           mylist <- toList "tbl1" "SELECT * FROM tbl1 WHERE data='test4'"  x        
-           close_db x
-           return ()            
+test4 : DB ()
+test4 = do db <- liftIO (open_db "somedb.db")
+           tbl <- liftIO (get_table db "SELECT Student.Name FROM Student, Module, Enrollment WHERE Module.Credits = 30 AND Student.School_student = Enrollment.School_Student AND Student.School = Enrollment.School AND Enrollment.Code = Module.Code")
+           res <- (toList "Student" "select *from Student;" db)
+           mydata <- liftIO ( get_data db "Student" 1 1)
+          
+           c <- liftIO (close_db db)
+           return ()  
                                                                                                                
 main : IO ()
-main = do x <- test4
+main = do x <- runDB (test4) 
           return ()
 
        
