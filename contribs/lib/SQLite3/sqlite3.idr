@@ -153,8 +153,8 @@ get_table (MkDBPointer pointer) name = do
             x <- liftIO(mkForeign (FFun "sqlite3_get_table_idr" [FPtr, FString] FPtr)pointer name)
             flag <- liftIO(nullPtr x)
             if flag
-                then fail "Boooo"
-                  else return  (MkTBPointer x)
+                then  do x <- liftIO(get_error_table pointer) ; fail x                    
+                     else return  (MkTBPointer x)
         where
             get_error_table : Ptr-> IO String
             get_error_table pointer = do x <- mkForeign (FFun "sqlite3_get_error" [FPtr] FString)pointer
@@ -269,11 +269,11 @@ test = do db <- liftIO (open_db "somedb.db")
           
 test2 : DB ()
 test2 = do db <- liftIO (open_db "somedb.db")
-           stmt <- (prepare_db db "insert into tbl1 values (?,?);")
-          -- tbl <-  (get_table db "SELECT Student.Name FROM Student, Module, Enrollment WHERE Module.Credits = 30 AND Student.School_student = Enrollment.School_Student AND Student.School = Enrollment.School AND Enrollment.Code = Module.Code")
+         
+           tbl <- (get_table db "SELECT Student.Name FROM Student, Module, Enrollment WHERE Module.Credits = 30 AND Student.School_student = Enrollment.School_Student AND Student.School = Enrollment.School AND Enrollment.Code = Module.Code")
            --res <- (toList "Student" "select *from Student;" db)
           -- mydata <- liftIO ( get_data db "Student" 1 1)
-           finalize_db stmt
+       
            c <- liftIO (close_db db)
            return ()  
                                                                                                                

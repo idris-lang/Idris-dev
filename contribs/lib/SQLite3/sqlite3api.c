@@ -106,6 +106,7 @@ void* sqlite3_get_table_idr(void* db,
 	if( res != SQLITE_OK && err != NULL){
 		strncpy(dbi->buffer, err, sizeof(dbi->buffer));
 		sqlite3_free(err);
+		return NULL;
 	}
 	
 	tbl -> data_size = array_size;
