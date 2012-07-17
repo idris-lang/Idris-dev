@@ -13,7 +13,7 @@
 
 
 static char sql_query_buffer[2000];
-
+unsigned char* array;
 
 void* sqlite3_open_idr(const char *filename){
 	
@@ -242,19 +242,22 @@ const unsigned char* sqlite3_get_val_text(void* p,const char* tbl_name,int nRow,
 	rc = sqlite3_step(stmt);
 
 	while (rc == SQLITE_ROW && counter < nRow){
-		
-		
+
 		rc = sqlite3_step(stmt);
 		counter++;
 		
 	}
+
+	array =(unsigned char *) malloc(1000*sizeof(char));
 	text_val =sqlite3_column_text(stmt, nCol);
+	memcpy(array, text_val, sizeof(text_val));
 	printf("text_val : %s\n", text_val );
 	rc =sqlite3_finalize(stmt);
 	if( rc != SQLITE_OK){
 		printf("Couldn't finalize.\n");
 	}
-	return text_val;
+
+	return array;
 	
 }
 
