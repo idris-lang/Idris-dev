@@ -84,8 +84,7 @@ void* sqlite3_prepare_idr(void *db,const char *zSql){
 	dbi ->Ptr_tail = tail;
 	
 	if(rec != SQLITE_OK){
-		fprintf(stderr, "SQL Prepare error.\n");
-		return dbi;
+		return NULL;
 	}
 	
 	return dbi;
@@ -158,7 +157,7 @@ int sqlite3_get_data_type(void* p,const char* tbl_name, int nRow, int nCol){
 	
 	rc = sqlite3_prepare_v2(dbi->db_ptr, sql_query_buffer, -1, &stmt, &tail);
 	if(rc != SQLITE_OK){
-		fprintf(stderr, "SQL Prepare error");
+		fprintf(stderr, "SQL Prepare error\n");
 		return rc;
 	}
 	rc = sqlite3_step(stmt);
@@ -197,7 +196,7 @@ int sqlite3_get_val_int(void* p,const char* tbl_name, int nRow, int nCol){
 	
 	rc = sqlite3_prepare_v2(dbi->db_ptr, sql_query_buffer, -1, &stmt, &tail);
 	if(rc != SQLITE_OK){
-		fprintf(stderr, "SQL Prepare error");
+		fprintf(stderr, "SQL Prepare error\n");
 		return rc;
 	}
 	rc = sqlite3_step(stmt);
@@ -308,7 +307,6 @@ int sqlite3_step_idr(void* db){
 	
 	DBinfo* dbi =(DBinfo*) db;
 	int rc =sqlite3_step(dbi->ppStmt);
-	
 	return rc;
 }
 
@@ -320,13 +318,9 @@ int sqlite3_bind_int_idr(void* p,int index, int val){
 	printf("\nThe statement has %d wildcards\n", sqlite3_bind_parameter_count(dbi->ppStmt));
 	rc =sqlite3_bind_int(dbi->ppStmt,index,val);
 	if(rc != SQLITE_OK){
-		printf("\nCould not bind int.\n");
 		return 1;
 	}
-	if (sqlite3_step(dbi->ppStmt) != SQLITE_DONE) {
-		printf("\nCould not step (execute) stmt.\n");
-		return 1;
-	}
+
 	return rc;
 }
 
@@ -339,14 +333,9 @@ int sqlite3_bind_float_idr(void* p,int index, float val){
 	rc =sqlite3_bind_double(dbi->ppStmt,index,res);
 	
 	if(rc != SQLITE_OK){
-		printf("\nCould not bind float.\n");
 		return 1;
 	}
 
-	if (sqlite3_step(dbi->ppStmt) != SQLITE_DONE) {
-		printf("\nCould not step (execute) stmt.\n");
-		return 1;
-	}
 	return rc;
 }
 
@@ -356,13 +345,9 @@ int sqlite3_bind_null_idr(void* p,int index){
 	int rc;
 	rc =sqlite3_bind_null(dbi->ppStmt,index);
 	if(rc != SQLITE_OK){
-		printf("\nCould not bind null.\n");
 		return 1;
 	}
-	if (sqlite3_step(dbi->ppStmt) != SQLITE_DONE) {
-		printf("\nCould not step (execute) stmt.\n");
-		return 1;
-	}
+
 	return rc;
 }
 
@@ -372,13 +357,9 @@ int sqlite3_bind_text_idr(void* p,const char* text, int index,int length){
 	int rc;
 	rc =sqlite3_bind_text(dbi->ppStmt,index,text,length,SQLITE_STATIC);
 	if(rc != SQLITE_OK){
-		printf("\nCould not bind null.\n");
 		return 1;
 	}
-	if (sqlite3_step(dbi->ppStmt) != SQLITE_DONE) {
-		printf("\nCould not step (execute) stmt.\n");
-		return 1;
-	}
+
 	return rc;
 	
 }

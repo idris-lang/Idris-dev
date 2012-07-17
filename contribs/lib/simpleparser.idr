@@ -27,7 +27,6 @@ instance MonadPlus Parser where
    mplus p q                  =  P (\inp => case parse p inp of
                                                Left msg 	 => parse q inp
                                                Right (v,out) => Right(v,out))
--- this is a comment for testing
 
 
 {-
@@ -162,13 +161,13 @@ expr                          =  do t <- term
                                       				 
 
 factor                        =  do symbol "("
-                                    e <- expr
+                                    do e <- expr
                                     symbol ")"
                                     return e
                                   ||| natural
 
 term                          =  do f <- factor
-                                    symbol "*"
+                                    do symbol "*"
                                     t <- term
                                     return (f * t)
                                   ||| return f

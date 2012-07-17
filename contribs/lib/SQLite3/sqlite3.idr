@@ -70,17 +70,7 @@ exec_db (MkDBPointer pointer) stmt = do
 get_error : DBPointer  -> IO String
 get_error (MkDBPointer pointer) =mkForeign (FFun "sqlite3_get_error" [FPtr] FString)pointer
 
-
---prepare_db : DBPointer  -> String -> IO (Either String StmtPtr)
---prepare_db (MkDBPointer pointer) cmd = do
---
---        result <- mkForeign (FFun "sqlite3_prepare_idr" [FPtr, FString] FPtr)pointer cmd
---        flag <- nullPtr result
---        if flag
---            then return (Left "Error occured")
---                else return (Right (MkStmtPtr result))
-                
-                
+                               
 prepare_db : DBPointer  -> String -> DB StmtPtr
 prepare_db (MkDBPointer pointer) cmd = do
 
@@ -89,6 +79,7 @@ prepare_db (MkDBPointer pointer) cmd = do
         if flag
             then fail "Error occured"
                 else return (MkStmtPtr result)
+
 
 step_db : StmtPtr -> DB Int
 step_db (MkStmtPtr pointer) = do
@@ -157,13 +148,13 @@ backup_remaining (MkDBPointer pointer) =mkForeign (FFun "sqlite3_backup_remainin
 
 
 
-get_table : DBPointer -> String -> IO (Either String TBPointer)
+get_table : DBPointer -> String -> DB TBPointer
 get_table (MkDBPointer pointer) name = do 
-            x <- mkForeign (FFun "sqlite3_get_table_idr" [FPtr, FString] FPtr)pointer name
-            flag <- nullPtr x
+            x <- liftIO(mkForeign (FFun "sqlite3_get_table_idr" [FPtr, FString] FPtr)pointer name)
+            flag <- liftIO(nullPtr x)
             if flag
-                then do x <- get_error_table pointer ; return (Left (x))
-                  else return (Right (MkTBPointer x))
+                then fail "Boooo"
+                  else return  (MkTBPointer x)
         where
             get_error_table : Ptr-> IO String
             get_error_table pointer = do x <- mkForeign (FFun "sqlite3_get_error" [FPtr] FString)pointer
@@ -214,7 +205,7 @@ free_table (MkTBPointer pointer) = do x <- mkForeign (FFun "sqlite3_free_table_i
 		
 toList : String -> String -> DBPointer -> DB Table
 toList name stmt x =  do
-    				ptr <- MkDB (get_table x (stmt))
+    				ptr <- (get_table x (stmt))
     				nbR <- liftIO (num_row ptr)
     				nmC <- liftIO (num_col ptr)
     				res <- forM [0..(nbR-1)] (\ i =>
@@ -267,7 +258,7 @@ print_data_v2 val = (show val)
 
 test : DB()
 test = do db <- liftIO (open_db "somedb.db")
-          stmt <- (prepare_db db "insert into tbl1 values (?,?);;")
+          stmt <- (prepare_db db "insert into tbl1 values (?,?);")
           bind_int stmt 1 456
           bind_text stmt "testing" 2 4
           step_db stmt
@@ -277,10 +268,12 @@ test = do db <- liftIO (open_db "somedb.db")
           return ()  
           
 test2 : DB ()
-test2 = do db <- liftIO (open_db "students.db")
-           tbl <- liftIO (get_table db "SELECT Student.Name FROM Student, Module, Enrollment WHERE Module.Credits = 30 AND Student.School_student = Enrollment.School_Student AND Student.School = Enrollment.School AND Enrollment.Code = Module.Code")
-           res <- (toList "Student" "select *from Student;" db)
-           mydata <- liftIO ( get_data db "Student" 1 1)
+test2 = do db <- liftIO (open_db "somedb.db")
+           stmt <- (prepare_db db "insert into tbl1 values (?,?);")
+          -- tbl <-  (get_table db "SELECT Student.Name FROM Student, Module, Enrollment WHERE Module.Credits = 30 AND Student.School_student = Enrollment.School_Student AND Student.School = Enrollment.School AND Enrollment.Code = Module.Code")
+           --res <- (toList "Student" "select *from Student;" db)
+          -- mydata <- liftIO ( get_data db "Student" 1 1)
+           finalize_db stmt
            c <- liftIO (close_db db)
            return ()  
                                                                                                                
