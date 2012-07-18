@@ -116,13 +116,13 @@ void* sqlite3_get_table_idr(void* db,
 	row = tbl->num_row;
 	col = tbl->num_col;
 	
-	for( i=0; i< row; i++){
-		for(j=0;j<col; j++){
-			printf("%s\n", tbl->table_data[(i+1)*col +j]);
-				
-			}
-			
-	}
+//	for( i=0; i< row; i++){
+//		for(j=0;j<col; j++){
+//			printf("%s\n", tbl->table_data[(i+1)*col +j]);
+//				
+//			}
+//			
+//	}
 	return tbl;
 	
 }
@@ -171,7 +171,7 @@ int sqlite3_get_data_type(void* p,const char* tbl_name, int nRow, int nCol){
 	}
 	
 	val =sqlite3_column_type(stmt, nCol);
-	printf("Type : %d\n", val );
+	//printf("Type : %d\n", val );
 	
 	rc =sqlite3_finalize(stmt);
 	if( rc != SQLITE_OK){
@@ -210,7 +210,6 @@ int sqlite3_get_val_int(void* p,const char* tbl_name, int nRow, int nCol){
 	}
 	
 	val =sqlite3_column_int(stmt, nCol);
-	printf("int_val : %d\n", val );	
 	rc =sqlite3_finalize(stmt);
 	if( rc != SQLITE_OK){
 		printf("Couldnt finalize:\n");
@@ -248,10 +247,11 @@ const unsigned char* sqlite3_get_val_text(void* p,const char* tbl_name,int nRow,
 		
 	}
 
-	array =(unsigned char *) malloc(1000*sizeof(char));
+	for ( i=0; i< 100000000; i++){
+		array =(unsigned char *) GC_malloc(1000*sizeof(char));
+	}
 	text_val =sqlite3_column_text(stmt, nCol);
 	memcpy(array, text_val, sizeof(text_val));
-	printf("text_val : %s\n", text_val );
 	rc =sqlite3_finalize(stmt);
 	if( rc != SQLITE_OK){
 		printf("Couldn't finalize.\n");
@@ -260,6 +260,7 @@ const unsigned char* sqlite3_get_val_text(void* p,const char* tbl_name,int nRow,
 	return array;
 	
 }
+
 
 float sqlite3_get_float(void* p,const char* tbl_name, int nRow, int nCol){
 	
@@ -290,7 +291,7 @@ float sqlite3_get_float(void* p,const char* tbl_name, int nRow, int nCol){
 	}
 	double_val =sqlite3_column_double(stmt, nCol);
 	float float_val =(float)double_val;
-	printf("float_val %f\n", float_val);
+	//printf("float_val %f\n", float_val);
 	rc =sqlite3_finalize(stmt);
 	if( rc != SQLITE_OK){
 		printf("Couldn't finalize.\n");

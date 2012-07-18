@@ -211,6 +211,7 @@ toList name stmt x =  do
     				res <- forM [0..(nbR-1)] (\ i =>
     					     forM [0..(nmC-1)] (\ j =>
     						         liftIO(get_data x name i j)
+    						         
     				        )
     				)
     				liftIO (free_table ptr)
@@ -248,9 +249,9 @@ bind_null (MkStmtPtr pointer) indexval =do
                 
                 
 instance Show DBVal where
-    show (DBInt i) = "Int val: " ++ show i
-    show (DBText i) = "Text val: " ++ show i
-    show (DBFloat i) = "Float val: " ++ show i
+    show (DBInt i) =  "Int val: " ++  show i ++ "\n"
+    show (DBText i) =  "Text val: " ++ show i ++ "\n" 
+    show (DBFloat i) = "Float val: " ++  show i ++ "\n" 
     show (DBNull ) = "NULL"
 
 print_data_v2 : DBVal -> String
@@ -269,10 +270,10 @@ test = do db <- liftIO (open_db "somedb.db")
           
 test2 : DB ()
 test2 = do db <- liftIO (open_db "students.db") 
-          -- tbl <- (get_table db "SELECT Student.Name FROM Student, Module, Enrollment WHERE Module.Credits = 30 AND Student.School_student = Enrollment.School_Student AND Student.School = Enrollment.School AND Enrollment.Code = Module.Code")
-           --res <- (toList "Student" "select *from Student;" db)
-           mydata <- liftIO ( get_data db "Student" 1 1)
-           liftIO(print mydata)
+           tbl <- (get_table db "SELECT Student.Name FROM Student, Module, Enrollment WHERE Module.Credits = 30 AND Student.School_student = Enrollment.School_Student AND Student.School = Enrollment.School AND Enrollment.Code = Module.Code")
+           res <- (toList "Student" "select *from Student;" db)
+           --mydata <- liftIO ( get_data db "Student" 1 1)
+           liftIO(print res)
            c <- liftIO (close_db db)
            return ()  
                                                                                                                
