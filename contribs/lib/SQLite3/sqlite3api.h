@@ -11,6 +11,7 @@
 #include <string.h>
 #include <sqlite3.h>
 #include <ctype.h>
+#include <gc.h>
 
 typedef struct  {
 	sqlite3 *db_ptr;

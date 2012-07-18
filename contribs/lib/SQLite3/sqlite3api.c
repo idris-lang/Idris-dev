@@ -247,9 +247,9 @@ const unsigned char* sqlite3_get_val_text(void* p,const char* tbl_name,int nRow,
 		
 	}
 
-	for ( i=0; i< 100000000; i++){
-		array =(unsigned char *) GC_malloc(1000*sizeof(char));
-	}
+
+	array =(unsigned char *) GC_malloc(1000*sizeof(char));
+	
 	text_val =sqlite3_column_text(stmt, nCol);
 	memcpy(array, text_val, sizeof(text_val));
 	rc =sqlite3_finalize(stmt);
