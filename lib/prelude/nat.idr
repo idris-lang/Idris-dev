@@ -813,7 +813,7 @@ plusLeftLeftRightZeroStepCase = proof {
 plusRightCancelStepCase = proof {
     intros;
     refine inductiveHypothesis;
-    refine succInjective;
+    refine succInjective _ _ ?;
     rewrite sym (plusSuccRightSucc left right);
     rewrite sym (plusSuccRightSucc left' right);
     rewrite p;
@@ -840,4 +840,3 @@ plusLeftCancelBaseCase = proof {
     rewrite p;
     trivial;
 }
-

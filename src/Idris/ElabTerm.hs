@@ -504,7 +504,7 @@ runTac autoSolve ist tac = runT (fmap (addImpl ist) tac) where
                                              return (fn, a)
                                     -- FIXME: resolve ambiguities
                                     [(n, args)] -> return $ (n, map isImp args)
-             ns <- apply (Var fn') (map (\x -> (x,0)) imps)
+             ns <- apply (Var fn') (map (\x -> (x, 0)) imps)
              when autoSolve solveAll
        where isImp (PImp _ _ _ _) = True
              isImp _ = False

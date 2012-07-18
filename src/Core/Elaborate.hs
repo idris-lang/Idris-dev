@@ -317,16 +317,24 @@ apply fn imps =
        -- HMMM: Actually, if we get it wrong, the typechecker will complain!
        -- so do nothing
        ptm <- get_term
-       let dontunify = [] -- map fst (filter (not.snd) (zip args (map fst imps)))
+       let dontunify = if null imps then [] -- do all we can 
+                          else
+                          map fst (filter (not.snd) (zip args (map fst imps)))
        ES (p, a) s prev <- get
-       let (n, hs) = unified p
-       let unify = (n, filter (\ (n, t) -> not (n `elem` dontunify)) hs)
-       put (ES (p { unified = unify }, a) s prev)
+       let (n, hs) = -- trace ("AVOID UNIFY: " ++ show (fn, dontunify)) $ 
+                     unified p
+       let unify = dropGiven dontunify hs
+       put (ES (p { unified = (n, unify) }, a) s prev)
        end_unify
-       return (map (updateUnify hs) args)
+       return (map (updateUnify unify) args)
   where updateUnify hs n = case lookup n hs of
                                 Just (P _ t _) -> t
                                 _ -> n
+        dropGiven du [] = []
+        dropGiven du ((n, P a t ty) : us) | n `elem` du && not (t `elem` du)
+                                   = (t, P a n ty) : dropGiven du us
+        dropGiven du (u@(n, _) : us) | n `elem` du = dropGiven du us
+        dropGiven du (u : us) = u : dropGiven du us
 
 apply2 :: Raw -> [Maybe (Elab' aux ())] -> Elab' aux () 
 apply2 fn elabs = 
