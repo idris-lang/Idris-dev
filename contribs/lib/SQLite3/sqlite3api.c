@@ -117,16 +117,18 @@ void* sqlite3_get_table_idr(void* db,
 int exec_db(void*p){
 	
 	DBinfo* dbi =(DBinfo*) p;
-	int rc, col, type, row_counter,i;
+	int rc, col, row_counter;
 	
 	const char* col_name;
 	
 	rc = sqlite3_step(dbi->ppStmt);
 
-	if(rc != SQLITE_ROW && rc != SQLITE_DONE){
-		return 21;
+	if( rc == SQLITE_DONE){
+		return rc;
 	}
-	col = sqlite3_column_count(dbi->ppStmt);
+	if(rc == SQLITE_ERROR && rc == SQLITE_MIUSE){
+		return 1;
+	}
 
 	row_counter =0;
 	
@@ -136,12 +138,10 @@ int exec_db(void*p){
 		row_counter++;
 	}
 	
+	col = sqlite3_column_count(dbi->ppStmt);
 	dbi->row_count = row_counter;
-	
 	dbi->col_count = col;
-	
-
-	return type;
+	return rc;
 	
 }
 
