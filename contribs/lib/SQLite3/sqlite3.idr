@@ -1,7 +1,12 @@
 module main
+import sqlexpr
+
+
 %lib "sqlite3"
 %link "sqlite3api.o"
 %include "sqlite3api.h"
+
+
 
 data DBVal = DBInt Int
            | DBText String
@@ -79,7 +84,7 @@ prepare_db (MkDBPointer pointer) cmd = do
         result <- liftIO (mkForeign (FFun "sqlite3_prepare_idr" [FPtr, FString] FPtr)pointer cmd)
         flag <- liftIO(nullPtr result)
         if flag
-            then fail "Error occured"
+            then fail "Error occured while preparing"
                 else return (MkStmtPtr result)
 
 exec_db_v2 : StmtPtr -> DB Int
@@ -241,7 +246,7 @@ toList_v2 :  DBPointer -> DB Table
 toList_v2 db =  do
     				nbR <- liftIO (num_row_v2 db)
     				nmC <- liftIO (num_col_v2 db)
-    				res <- forM [1..(nbR)] (\ i =>
+    				res <- forM [0..(nbR-1)] (\ i =>
     					     forM [0..(nmC-1)] (\ j =>
     						         liftIO(get_data_v2 db i j)
     						         
@@ -320,29 +325,43 @@ test = do db <- liftIO (open_db "somedb.db")
           reset_db stmt
           finalize_db stmt
           c <- liftIO (close_db db)
-          return ()  
-          
-test2 : DB ()
-test2 = do db <- liftIO (open_db "students.db") 
-           tbl <- (get_table db "SELECT Student.Name FROM Student, Module, Enrollment WHERE Module.Credits = 30 AND Student.School_student = Enrollment.School_Student AND Student.School = Enrollment.School AND Enrollment.Code = Module.Code")
-           res <- (toList "Student" "select *from Student;" db)
-           liftIO(print res)
-           c <- liftIO (close_db db)
-           return ()  
+          return ()          
  
 test3 : DB()
-test3 = do db <- liftIO (open_db "somedb.db")
-           stmt <- (prepare_db db "select *from tbl1 where num >10;")
+test3 = do db <- liftIO (open_db "students.db")
+           stmt <- (prepare_db db "SELECT Student.Name FROM Student, Module, Enrollment WHERE Module.Credits = 30 AND Student.School_student = Enrollment.School_Student AND Student.School = Enrollment.School AND Enrollment.Code = Module.Code")
            exec_db_v2 stmt
            res <- toList_v2 db
            liftIO(print res)
            finalize_db stmt
            c <- liftIO (close_db db)
-           return ()  
-           
+           return () 
+
+--bindMulti : StmtPtr -> List (Int, (Maybe Value)) -> StmtPtr
+--bindMulti (MkStmtPtr pointer) [] = (MkStmtPtr pointer)
+--bindMulti (MkStmtPtr pointer) xs = let newxs = mapping 0 xs in
+--                                   case newxs of
+--                                         ((_, Nothing):: vs) => bindMulti (MkStmtPtr pointer) vs
+--                                         ((index, Just v)::vs) => bindMulti(bind pointer index v) vs 
+
+testexpr : DB()
+testexpr = do db <- liftIO (open_db "somedb.db")
+              let sql = (evalSQL [] ((SELECT ALL)(TBL "tbl1")(MkCond (Equals (VCol "data")(VInt 1)))))
+              let x = (display sql)
+              liftIO(print x)
+              stmt <- (prepare_db db "select * from tbl1 where num =?")
+              --let Int(theval) = getval(getlist(sql))
+              bind_int stmt 0 2  
+              exec_db_v2 stmt 
+              res <- toList_v2 db
+              liftIO(print res)          
+              finalize_db stmt
+              c <- liftIO (close_db db)
+              return ()
                                                                                                                       
 main : IO ()
-main = do x <- runDB (test3) 
+main = do --x <- runDB (test3) 
+          y <- runDB (testexpr)
           return ()
 
        

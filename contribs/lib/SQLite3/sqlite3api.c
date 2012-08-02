@@ -126,7 +126,7 @@ int exec_db(void*p){
 	if( rc == SQLITE_DONE){
 		return rc;
 	}
-	if(rc == SQLITE_ERROR && rc == SQLITE_MIUSE){
+	if(rc == SQLITE_ERROR && rc == SQLITE_MISUSE){
 		return 1;
 	}
 
@@ -296,7 +296,9 @@ const unsigned char* sqlite3_get_val_text_v2(void* p,int nCol){
 	array =(unsigned char *) GC_malloc(1000*sizeof(char));
 	
 	text_val =sqlite3_column_text(dbi->ppStmt, nCol);
-	memcpy(array, text_val, sizeof(text_val));
+	memcpy(array, text_val, strlen(text_val));
+	int size = strlen(text_val);
+
 	return array;
 	
 }
