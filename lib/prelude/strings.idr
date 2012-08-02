@@ -70,3 +70,20 @@ words' s = case dropWhile isSpace s of
 
 words : String -> List String
 words s = map pack $ words' $ unpack s
+
+foldr1 : (a -> a -> a) -> List a -> a	
+foldr1 f [x] = x
+foldr1 f (x::xs) = f x (foldr1 f xs)
+
+
+unwords' : List (List Char) -> List Char
+unwords' [] = []                         
+unwords' ws = (foldr1 addSpace ws)
+        where
+            addSpace : List Char -> List Char -> List Char
+            addSpace w s = w ++ (' ' :: s) 
+          
+               
+unwords :  List String -> String
+unwords = pack . unwords' . map unpack
+

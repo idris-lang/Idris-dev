@@ -11,6 +11,7 @@
 #include <string.h>
 #include <sqlite3.h>
 #include <ctype.h>
+#include <gc.h>
 
 typedef struct  {
 	sqlite3 *db_ptr;
@@ -19,6 +20,8 @@ typedef struct  {
 	const char *Ptr_tail;
 	sqlite3_blob *blob_ptr;
 	sqlite3_value *value;
+	int row_count;
+	int col_count;
 	
 } DBinfo;
 
@@ -36,7 +39,11 @@ typedef struct {
 	DBinfo* database;
 }Table;	
 
+int* int_list ();
+
 void* sqlite3_open_idr(const char *filename);
+
+int exec_db(void*p);
 
 int sqlite3_close_idr(void* db);
 
@@ -46,6 +53,10 @@ char* sqlite3_get_error(void* db);
 
 
 const unsigned char* sqlite3_get_val_text(void* p,const char* tbl_name,int nRow, int nCol);
+
+const unsigned char* sqlite3_get_val_text_v2(void* p,int nCol);
+
+float sqlite3_get_float_v2(void* p, int nCol);
 	
 void* sqlite3_get_table_idr(void* db, const char *sql);
 
@@ -53,9 +64,17 @@ int sqlite3_get_num_col(void* p);
 
 int sqlite3_get_num_row(void* p);
 
+int sqlite3_get_num_row_v2(void* p);
+
+int sqlite3_get_num_col_v2(void* p);
+
 void* sqlite3_get_data(void* p, int nRow, int nCol);
 
 int sqlite3_get_data_type(void* p,const char* tbl_name,int nRow, int nCol);
+
+int sqlite3_get_data_type_v2(void* p, int nRow, int nCol);
+
+int sqlite3_get_val_int_v2(void* p,int nCo);
 
 int sqlite3_get_val_int(void* p,const char* tbl_name, int nRow, int nCol);
 
