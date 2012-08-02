@@ -110,22 +110,58 @@ void* sqlite3_get_table_idr(void* db,
 	}
 	
 	tbl -> data_size = array_size;
-	
-	int i, j, row, col;
-		
-	row = tbl->num_row;
-	col = tbl->num_col;
-	
-	for( i=0; i< row; i++){
-		for(j=0;j<col; j++){
-			printf("%s\n", tbl->table_data[(i+1)*col +j]);
-				
-			}
-			
-	}
 	return tbl;
 	
 }
+
+int exec_db(void*p){
+	
+	DBinfo* dbi =(DBinfo*) p;
+	int rc, col, row_counter;
+	
+	const char* col_name;
+	
+	rc = sqlite3_step(dbi->ppStmt);
+
+	if( rc == SQLITE_DONE){
+		return rc;
+	}
+	if(rc == SQLITE_ERROR && rc == SQLITE_MISUSE){
+		return 1;
+	}
+
+	row_counter =0;
+	
+	while (rc == SQLITE_ROW) {
+		
+		rc = sqlite3_step(dbi->ppStmt);
+		row_counter++;
+	}
+	
+	col = sqlite3_column_count(dbi->ppStmt);
+	dbi->row_count = row_counter;
+	dbi->col_count = col;
+	return rc;
+	
+}
+
+int sqlite3_get_num_row_v2(void* p){
+	
+	DBinfo* dbi =(DBinfo*) p;
+	int row_number =dbi->row_count;
+	return row_number;
+	
+	
+}
+
+int sqlite3_get_num_col_v2(void* p){
+	
+	DBinfo* dbi =(DBinfo*) p;
+	int col_number =dbi-> col_count;
+	return col_number;
+	
+}
+
 
 int sqlite3_get_num_row(void* p){
 	
@@ -141,6 +177,38 @@ int sqlite3_get_num_col(void* p){
 	Table* tbl =(Table*) p;
 	int col_number =tbl-> num_col;
 	return col_number;
+	
+}
+int sqlite3_get_data_type_v2(void* p, int nRow, int nCol){
+	
+	DBinfo* dbi =(DBinfo*) p;
+	int rc, type, row_counter;
+	const char* char_int;
+
+	rc = sqlite3_reset(dbi->ppStmt);
+	rc = sqlite3_step(dbi->ppStmt);
+	row_counter =0;
+	
+	while (rc == SQLITE_ROW && row_counter < nRow) {
+		
+		rc = sqlite3_step(dbi->ppStmt);
+		row_counter++;
+	}
+	type =sqlite3_column_type(dbi->ppStmt, nCol);
+	return  type;
+	
+}
+
+
+int sqlite3_get_val_int_v2(void* p, int nCol){
+	
+	
+	DBinfo* dbi =(DBinfo*) p;
+	int val, col;
+	
+	val =sqlite3_column_int(dbi->ppStmt, nCol);
+	return  val;
+	
 	
 }
 
@@ -171,7 +239,6 @@ int sqlite3_get_data_type(void* p,const char* tbl_name, int nRow, int nCol){
 	}
 	
 	val =sqlite3_column_type(stmt, nCol);
-	printf("Type : %d\n", val );
 	
 	rc =sqlite3_finalize(stmt);
 	if( rc != SQLITE_OK){
@@ -210,7 +277,6 @@ int sqlite3_get_val_int(void* p,const char* tbl_name, int nRow, int nCol){
 	}
 	
 	val =sqlite3_column_int(stmt, nCol);
-	printf("int_val : %d\n", val );	
 	rc =sqlite3_finalize(stmt);
 	if( rc != SQLITE_OK){
 		printf("Couldnt finalize:\n");
@@ -219,6 +285,24 @@ int sqlite3_get_val_int(void* p,const char* tbl_name, int nRow, int nCol){
 	
 		
 }
+
+const unsigned char* sqlite3_get_val_text_v2(void* p,int nCol){
+	
+	
+	DBinfo* dbi =(DBinfo*) p;
+	int rc,i, val, counter;
+	const unsigned char* text_val;
+	
+	array =(unsigned char *) GC_malloc(1000*sizeof(char));
+	
+	text_val =sqlite3_column_text(dbi->ppStmt, nCol);
+	memcpy(array, text_val, strlen(text_val));
+	int size = strlen(text_val);
+
+	return array;
+	
+}
+
 
 
 const unsigned char* sqlite3_get_val_text(void* p,const char* tbl_name,int nRow, int nCol){
@@ -248,10 +332,11 @@ const unsigned char* sqlite3_get_val_text(void* p,const char* tbl_name,int nRow,
 		
 	}
 
-	array =(unsigned char *) malloc(1000*sizeof(char));
+
+	array =(unsigned char *) GC_malloc(1000*sizeof(char));
+	
 	text_val =sqlite3_column_text(stmt, nCol);
 	memcpy(array, text_val, sizeof(text_val));
-	printf("text_val : %s\n", text_val );
 	rc =sqlite3_finalize(stmt);
 	if( rc != SQLITE_OK){
 		printf("Couldn't finalize.\n");
@@ -260,6 +345,7 @@ const unsigned char* sqlite3_get_val_text(void* p,const char* tbl_name,int nRow,
 	return array;
 	
 }
+
 
 float sqlite3_get_float(void* p,const char* tbl_name, int nRow, int nCol){
 	
@@ -290,11 +376,21 @@ float sqlite3_get_float(void* p,const char* tbl_name, int nRow, int nCol){
 	}
 	double_val =sqlite3_column_double(stmt, nCol);
 	float float_val =(float)double_val;
-	printf("float_val %f\n", float_val);
 	rc =sqlite3_finalize(stmt);
 	if( rc != SQLITE_OK){
 		printf("Couldn't finalize.\n");
 	}
+	return float_val;
+	
+}
+
+float sqlite3_get_float_v2(void* p, int nCol){
+	
+	DBinfo* dbi =(DBinfo*) p;
+	double double_val;
+
+	double_val =sqlite3_column_double(dbi->ppStmt, nCol);
+	float float_val =(float)double_val;
 	return float_val;
 	
 }
