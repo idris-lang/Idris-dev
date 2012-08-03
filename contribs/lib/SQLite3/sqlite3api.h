@@ -39,7 +39,6 @@ typedef struct {
 	DBinfo* database;
 }Table;	
 
-int* int_list ();
 
 void* sqlite3_open_idr(const char *filename);
 
@@ -51,14 +50,13 @@ int sqlite3_exec_idr(void*, const char *sql);
 
 char* sqlite3_get_error(void* db);
 
-
 const unsigned char* sqlite3_get_val_text(void* p,const char* tbl_name,int nRow, int nCol);
 
 const unsigned char* sqlite3_get_val_text_v2(void* p,int nCol);
 
-float sqlite3_get_float_v2(void* p, int nCol);
-	
 void* sqlite3_get_table_idr(void* db, const char *sql);
+
+void sqlite3_free_table_idr(void* db);
 
 int sqlite3_get_num_col(void* p);
 
@@ -67,8 +65,6 @@ int sqlite3_get_num_row(void* p);
 int sqlite3_get_num_row_v2(void* p);
 
 int sqlite3_get_num_col_v2(void* p);
-
-void* sqlite3_get_data(void* p, int nRow, int nCol);
 
 int sqlite3_get_data_type(void* p,const char* tbl_name,int nRow, int nCol);
 
@@ -80,7 +76,7 @@ int sqlite3_get_val_int(void* p,const char* tbl_name, int nRow, int nCol);
 
 float sqlite3_get_float(void* p,const char* tbl_name, int nRow, int nCol);
 
-void sqlite3_free_table_idr(void* db);
+float sqlite3_get_float_v2(void* p, int nCol);
 
 void* sqlite3_prepare_idr(
   void *db,            /* Database handle */
@@ -89,15 +85,13 @@ void* sqlite3_prepare_idr(
 
 int sqlite3_step_idr(void* stmt);
 
-int sqlite3_bind_float_idr(void* p,int index, float val);
+void* sqlite3_bind_float_idr(void* p,int index, float val);
 
-int sqlite3_bind_int_idr(void* p,int index , int val);
-
-int sqlite3_bind_int_idr_v2(void* p,int index , int val);
+void* sqlite3_bind_int_idr(void* p,int index , int val);
 
 int sqlite3_bind_null_idr(void* p,int index);
 
-int sqlite3_bind_text_idr(void* p,const char* text, int index,int length);
+void* sqlite3_bind_text_idr(void* p,const char* text, int index,int length);
 
 int sqlite3_column_count_idr(void* stmt, const char* tbl_name);
 
@@ -142,5 +136,4 @@ int sqlite3_value_bytes_idr(void* value);
 
 int sqlite3_value_bytes16_idr(void* value);
 
-int sqlite3_errcode(sqlite3 *db);
-
+int strLength(const char * str);

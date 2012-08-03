@@ -297,7 +297,6 @@ const unsigned char* sqlite3_get_val_text_v2(void* p,int nCol){
 	
 	text_val =sqlite3_column_text(dbi->ppStmt, nCol);
 	memcpy(array, text_val, strlen(text_val));
-	int size = strlen(text_val);
 
 	return array;
 	
@@ -410,7 +409,7 @@ int sqlite3_step_idr(void* db){
 	return rc;
 }
 
-int sqlite3_bind_int_idr(void* p,int index, int val){
+void* sqlite3_bind_int_idr(void* p,int index, int val){
 	
 	DBinfo* dbi =(DBinfo*) p;
 	int rc;
@@ -418,13 +417,14 @@ int sqlite3_bind_int_idr(void* p,int index, int val){
 	printf("\nThe statement has %d wildcards\n", sqlite3_bind_parameter_count(dbi->ppStmt));
 	rc =sqlite3_bind_int(dbi->ppStmt,index,val);
 	if(rc != SQLITE_OK){
-		return 1;
+		printf("Error in binding\n");
+		return NULL;
 	}
 
-	return rc;
+	return dbi;
 }
 
-int sqlite3_bind_float_idr(void* p,int index, float val){
+void* sqlite3_bind_float_idr(void* p,int index, float val){
 	
 	DBinfo* dbi =(DBinfo*) p;
 	int rc;
@@ -433,10 +433,10 @@ int sqlite3_bind_float_idr(void* p,int index, float val){
 	rc =sqlite3_bind_double(dbi->ppStmt,index,res);
 	
 	if(rc != SQLITE_OK){
-		return 1;
+		return NULL;
 	}
 
-	return rc;
+	return dbi;
 }
 
 int sqlite3_bind_null_idr(void* p,int index){
@@ -451,16 +451,17 @@ int sqlite3_bind_null_idr(void* p,int index){
 	return rc;
 }
 
-int sqlite3_bind_text_idr(void* p,const char* text, int index,int length){
+void* sqlite3_bind_text_idr(void* p,const char* text, int index,int length){
 	
 	DBinfo* dbi =(DBinfo*) p;
 	int rc;
 	rc =sqlite3_bind_text(dbi->ppStmt,index,text,length,SQLITE_STATIC);
 	if(rc != SQLITE_OK){
-		return 1;
+		printf("Error in binding\n");
+		return NULL;
 	}
 
-	return rc;
+	return dbi;
 	
 }
 int sqlite3_column_count_idr(void* db, const char* tbl_name){
@@ -644,6 +645,12 @@ int sqlite3_value_bytes16_idr(void* value){
 	
 }
 
-
+int strLength(const char * str){
+	
+	int length = strlen(str);
+	return length;
+	
+	
+}
 
 

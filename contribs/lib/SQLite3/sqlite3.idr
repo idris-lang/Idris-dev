@@ -56,13 +56,18 @@ runDB (MkDB f) = do f' <- f
                          Left str => ioError str 
                          
                                                  
-
-open_db : String -> IO DBPointer
-open_db name = do x <- mkForeign (FFun "sqlite3_open_idr" [FString] FPtr)name
+open_db : String -> DB DBPointer
+open_db name = do x <- liftIO(mkForeign (FFun "sqlite3_open_idr" [FString] FPtr) name)
                   return (MkDBPointer x)
 
-close_db : DBPointer -> IO Int
-close_db (MkDBPointer pointer) =mkForeign (FFun "sqlite3_close_idr" [FPtr] FInt)pointer
+close_db : DBPointer -> DB Int
+close_db (MkDBPointer pointer) = liftIO (mkForeign (FFun "sqlite3_close_idr" [FPtr] FInt)pointer)
+--close_db pointer = liftIO ((runDB pointer) >>= mkForeign (FFun "sqlite3_close_idr" [FPtr] FInt) )
+--close_db pointer = liftIO (do 
+--        (MkDBPointer ptr) <- (runDB pointer)
+--        i <- mkForeign (FFun "sqlite3_close_idr" [FPtr] FInt) ptr
+--        return i)
+
 
                 
 exec_db : DBPointer  -> String -> DB Int
@@ -80,8 +85,7 @@ get_error (MkDBPointer pointer) =mkForeign (FFun "sqlite3_get_error" [FPtr] FStr
                                
 prepare_db : DBPointer  -> String -> DB StmtPtr
 prepare_db (MkDBPointer pointer) cmd = do
-
-        result <- liftIO (mkForeign (FFun "sqlite3_prepare_idr" [FPtr, FString] FPtr)pointer cmd)
+        result <- liftIO(mkForeign (FFun "sqlite3_prepare_idr" [FPtr, FString] FPtr)pointer cmd)
         flag <- liftIO(nullPtr result)
         if flag
             then fail "Error occured while preparing"
@@ -89,13 +93,13 @@ prepare_db (MkDBPointer pointer) cmd = do
 
 exec_db_v2 : StmtPtr -> DB Int
 exec_db_v2 (MkStmtPtr pointer) = do 
-        x <- liftIO(mkForeign (FFun "exec_db" [FPtr] FInt)pointer)
+        x <- liftIO (mkForeign (FFun "exec_db" [FPtr] FInt) pointer)
         if (x == 21)
             then fail "No data returned."
                 else return x
 
 step_db : StmtPtr -> DB Int
-step_db (MkStmtPtr pointer) = do
+step_db (MkStmtPtr pointer)= do
          x <- liftIO (mkForeign (FFun "sqlite3_step_idr" [FPtr] FInt)pointer)
          if ( x == 101)
              then fail "SQLITE_DONE"
@@ -277,35 +281,47 @@ toList name stmt x =  do
     				liftIO (free_table ptr)
     				return res				
 
-bind_int : StmtPtr -> Int -> Int -> DB Int
-bind_int  (MkStmtPtr pointer) indexval val = do 
-        x <- liftIO(mkForeign (FFun "sqlite3_bind_int_idr" [FPtr, FInt, FInt] FInt)pointer indexval val)                                   
-        if (x /= 0 )
+--bind_int : StmtPtr -> Int -> Int -> DB Int
+--bind_int  (MkStmtPtr pointer) indexval val = do 
+--        x <- liftIO(mkForeign (FFun "sqlite3_bind_int_idr" [FPtr, FInt, FInt] FInt)pointer indexval val)                                   
+--        if (x /= 0 )
+--            then fail "Could not bind int."
+--                else return x                                             
+
+bind_int : StmtPtr -> Int -> Int -> DB StmtPtr
+bind_int (MkStmtPtr pointer) indexval val = do 
+        x <- liftIO(mkForeign (FFun "sqlite3_bind_int_idr" [FPtr, FInt, FInt] FPtr)pointer indexval val)  
+        flag <- liftIO(nullPtr x)                                 
+        if flag
             then fail "Could not bind int."
-                else return x                                             
+                else return (MkStmtPtr x) 
+                                                 
                                  
-                                 
-bind_float : StmtPtr -> Int -> Int -> DB Int
+bind_float : StmtPtr -> Int -> Float -> DB StmtPtr
 bind_float (MkStmtPtr pointer) indexval val = do 
-        x <- liftIO(mkForeign (FFun "sqlite3_bind_float_idr" [FPtr, FInt, FInt] FInt)pointer indexval val)
-        if (x /= 0)
+        x <- liftIO(mkForeign (FFun "sqlite3_bind_float_idr" [FPtr, FInt, FFloat] FPtr)pointer indexval val)
+        flag <- liftIO(nullPtr x)
+        if flag
             then fail "Could not bind float."
-                else return x 
+                else return (MkStmtPtr x) 
 
-bind_text :  StmtPtr -> String -> Int -> Int -> DB Int
+bind_text :  StmtPtr -> String -> Int -> Int -> DB StmtPtr
 bind_text (MkStmtPtr pointer) text indexval lengthval = do
-         x <- liftIO(mkForeign (FFun "sqlite3_bind_text_idr" [FPtr, FString, FInt, FInt] FInt)pointer text indexval lengthval)
-         if (x /= 0)
+         x <- liftIO(mkForeign (FFun "sqlite3_bind_text_idr" [FPtr, FString, FInt, FInt] FPtr)pointer text indexval lengthval)
+         flag <- liftIO(nullPtr x)  
+         if flag
              then fail "Could not bind text."
-                  else return x  
+                  else return (MkStmtPtr x)  
 
-bind_null : StmtPtr -> Int -> DB Int
-bind_null (MkStmtPtr pointer) indexval =do 
-        x <- liftIO(mkForeign (FFun "sqlite3_bind_null_idr" [FPtr, FInt] FInt)pointer indexval)
-        if (x /= 0)
-             then fail "Could not bind null."
-                 else return x
+--bind_null : StmtPtr -> Int -> DB StmtPtr
+--bind_null (MkStmtPtr pointer) indexval =do 
+--        x <- liftIO(mkForeign (FFun "sqlite3_bind_null_idr" [FPtr, FInt] FInt)pointer indexval)
+--        if (x /= 0)
+--             then fail "Could not bind null."
+--                 else return x
                 
+strlen : String -> DB Int
+strlen str = liftIO(mkForeign (FFun "strLength" [FString] FInt) str)
                 
 instance Show DBVal where
     show (DBInt i) =  "Int val: " ++  show i ++ "\n"
@@ -316,47 +332,55 @@ instance Show DBVal where
 print_data_v2 : DBVal -> String
 print_data_v2 = show 
 
-test : DB()
-test = do db <- liftIO (open_db "somedb.db")
+test : DB ()
+test = do db <- open_db "somedb.db"
           stmt <- (prepare_db db "insert into tbl1 values (?,?);")
           bind_int stmt 1 456
           bind_text stmt "testing" 2 4
           step_db stmt
           reset_db stmt
           finalize_db stmt
-          c <- liftIO (close_db db)
+          c <- close_db db
           return ()          
  
 test3 : DB()
-test3 = do db <- liftIO (open_db "students.db")
+test3 = do db <- open_db "students.db"
            stmt <- (prepare_db db "SELECT Student.Name FROM Student, Module, Enrollment WHERE Module.Credits = 30 AND Student.School_student = Enrollment.School_Student AND Student.School = Enrollment.School AND Enrollment.Code = Module.Code")
            exec_db_v2 stmt
            res <- toList_v2 db
            liftIO(print res)
            finalize_db stmt
-           c <- liftIO (close_db db)
+           c <- close_db db
            return () 
 
---bindMulti : StmtPtr -> List (Int, (Maybe Value)) -> StmtPtr
---bindMulti (MkStmtPtr pointer) [] = (MkStmtPtr pointer)
---bindMulti (MkStmtPtr pointer) xs = let newxs = mapping 0 xs in
---                                   case newxs of
---                                         ((_, Nothing):: vs) => bindMulti (MkStmtPtr pointer) vs
---                                         ((index, Just v)::vs) => bindMulti(bind pointer index v) vs 
-
+bindMulti : StmtPtr-> List (Maybe (Int, Value)) -> DB StmtPtr
+bindMulti  pointer [] = return pointer
+bindMulti  pointer (Nothing :: vs) = bindMulti pointer vs
+bindMulti  pointer ((Just (indexs, val))::vs) = case val of 
+                                                     (VInt intval) => do x <- bind_int pointer indexs intval
+                                                                         bindMulti(x) vs
+                                                                         
+                                                     (VStr strval) => do len <- strlen strval
+                                                                         x <- bind_text pointer strval indexs len
+                                                                         bindMulti(x) vs
+                                                                       
+                                                      
+                                                     (VFloat floatval) => do x <- bind_float pointer indexs floatval
+                                                                             bindMulti(x) vs             
 testexpr : DB()
-testexpr = do db <- liftIO (open_db "somedb.db")
-              let sql = (evalSQL [] ((SELECT ALL)(TBL "tbl1")(MkCond (Equals (VCol "data")(VInt 1)))))
+testexpr = do db <- open_db "somedb.db"
+              --let db = open_db "somedb.db"
+              let sql = (evalSQL [] ((SELECT ALL)(TBL "tbl1")(MkCond (Equals (VCol "data")(VStr "data1")))))
               let x = (display sql)
+              let list = (getlist sql)
               liftIO(print x)
-              stmt <- (prepare_db db "select * from tbl1 where num =?")
-              --let Int(theval) = getval(getlist(sql))
-              bind_int stmt 0 2  
+              stmt <- (prepare_db db x)
+              bindMulti stmt list 
               exec_db_v2 stmt 
               res <- toList_v2 db
               liftIO(print res)          
               finalize_db stmt
-              c <- liftIO (close_db db)
+              close_db db
               return ()
                                                                                                                       
 main : IO ()
