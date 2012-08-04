@@ -11,6 +11,7 @@ import Core.Typecheck
 import Core.Constraints
 
 import System.Console.Haskeline
+import System.Console.Haskeline.MonadException
 import Control.Monad.State
 import System.IO.Error(isUserError, ioeGetErrorString)
 import Data.Char

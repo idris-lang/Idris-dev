@@ -224,12 +224,19 @@ process fn (Spec t) = do (tm, ty) <- elabVal toplevel False t
                          ist <- get
                          let tm' = specialise ctxt [] [] {- (idris_statics ist) -} tm
                          iputStrLn (show (delab ist tm'))
-process fn (Prove n) = do prover (lit fn) n
-                          -- recheck totality
-                          i <- get
-                          totcheck (FC "(input)" 0, n)
-                          mapM_ (\ (f,n) -> setTotality n Unchecked) (idris_totcheck i)
-                          mapM_ checkDeclTotality (idris_totcheck i)
+process fn (Prove n') 
+     = do ctxt <- getContext
+          ist <- get
+          n <- case lookupNames Nothing n' ctxt of
+                    [x] -> return x
+                    [] -> return n'
+                    ns -> fail $ pshow ist (CantResolveAlts (map show ns)) 
+          prover (lit fn) n
+          -- recheck totality
+          i <- get
+          totcheck (FC "(input)" 0, n)
+          mapM_ (\ (f,n) -> setTotality n Unchecked) (idris_totcheck i)
+          mapM_ checkDeclTotality (idris_totcheck i)
 process fn (HNF t)  = do (tm, ty) <- elabVal toplevel False t
                          ctxt <- getContext
                          ist <- get

@@ -7,7 +7,7 @@ module Core.Evaluate(normalise, normaliseC, normaliseAll,
                 Context, initContext, ctxtAlist, uconstraints, next_tvar,
                 addToCtxt, setAccess, setTotal, addCtxtDef, addTyDecl, addDatatype, 
                 addCasedef, addOperator,
-                lookupTy, lookupP, lookupDef, lookupVal, lookupTotal,
+                lookupNames, lookupTy, lookupP, lookupDef, lookupVal, lookupTotal,
                 lookupTyEnv, isConName, isFnName,
                 Value(..)) where
 
@@ -696,6 +696,11 @@ addOperator n ty a op uctxt
           uctxt { definitions = ctxt' }
 
 tfst (a, _, _) = a
+
+lookupNames :: Maybe [String] -> Name -> Context -> [Name]
+lookupNames root n ctxt
+                = let ns = lookupCtxtName root n (definitions ctxt) in
+                      map fst ns
 
 lookupTy :: Maybe [String] -> Name -> Context -> [Type]
 lookupTy root n ctxt 
