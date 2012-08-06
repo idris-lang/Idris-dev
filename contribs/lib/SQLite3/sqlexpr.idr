@@ -52,28 +52,6 @@ unwords' ws = (foldr1 addSpace ws)
 unwords :  List String -> String
 unwords = pack . unwords' . map unpack
 
-
-mapping : Int -> List a -> List (Int, a)
-mapping counter [] = []
-mapping counter (x :: xs) = (counter, x) :: mapping (counter + 1) xs
-
-fromJust : Maybe Value -> Value
-fromJust Nothing = VNULL
-fromJust (Just x) = x
-
-popintoList : Maybe Value -> List (Maybe Value) -> List (Maybe Value)
-popintoList (Just x) [] =  [(Just x)]
-popintoList (Just (x)) ((Just x) :: xs) =  (popintoList (Just x) xs)
-popintoList Nothing [] = []
-
-getlist : (String, List (Maybe(Int, Value))) -> List (Maybe(Int, Value))
-getlist (x, (xs)) = xs
-
-
-outList : List (Maybe Value) -> Maybe Value
-outList [] = Nothing
-outList ((Just x)::xs) = Just x
-
 valString : List (Maybe(Int, Value)) -> Value -> (String, List (Maybe(Int, Value)))
 valString xs (VInt x) = ("?" ++ show (cast(length xs)+1), xs ++ [Just (cast((length xs)+1),(VInt x))])
 valString xs (VStr x) = ("?" ++ show (cast(length xs)+1), xs ++ [Just (cast((length xs)+1),(VStr x))])
@@ -154,10 +132,5 @@ evalSQL xs (INSERT sql vals) = let (tblname, newvals) = evalSQL xs sql in
 evalSQL xs (UPDATE sql cl) = let (tblname, newxs) = evalSQL xs sql in
                                let (csstring, newxs') = condClauseStr newxs cl in
                                    ("UPDATE " ++ tblname ++ csstring, newxs')
-
-                               
-
-display : (String, List (Maybe(Int, Value))) -> String
-display (x, (xs)) = x 
 
                             

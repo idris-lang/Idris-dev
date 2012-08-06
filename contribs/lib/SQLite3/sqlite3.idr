@@ -359,8 +359,8 @@ bindMulti  pointer ((Just (indexs, val))::vs) = case val of
 testexpr : DB()
 testexpr = do db <- open_db "somedb.db"
               let sql = (evalSQL [] ((SELECT ALL)(TBL "tbl1")  (OR (AND (MkCond (Equals (VCol "data")(VStr "data0"))) (MkCond (Equals (VCol "num")(VInt 1))) )  (MkCond (Equals (VCol "num")(VInt 2))))))
-              let x = (display sql)
-              let list = (getlist sql)
+              let x = (fst sql)
+              let list = (snd sql)
               liftIO(print x)
               stmt <- (prepare_db db x)
               bindMulti stmt list 
@@ -374,8 +374,8 @@ testexpr = do db <- open_db "somedb.db"
 testupdate : DB()
 testupdate = do db <- open_db "somedb.db"
                 let sql = (evalSQL [] (UPDATE (TBL "tbl1") (WHERE (SET (MkCond (Equals(VCol "data") (VStr "data0"))) ) (MkCond (Equals (VCol "num") (VInt 2))) ) ))
-                let x = (display sql)
-                let list = (getlist sql)
+                let x = (fst sql)
+                let list = (snd sql)
                 liftIO(print x)
                 stmt <- (prepare_db db x)
                 bindMulti stmt list 
@@ -387,8 +387,8 @@ testupdate = do db <- open_db "somedb.db"
 testInsert : DB()
 testInsert = do db <- open_db "somedb.db"
                 let sql = (evalSQL [] (INSERT (TBL "tbl1") [(VInt 2),(VStr "histring2")]))
-                let x = (display sql)
-                let list = (getlist sql)
+                let x = (fst sql)
+                let list = (snd sql)
                 liftIO(print x)
                 stmt <- (prepare_db db x)
                 bindMulti stmt list 
@@ -398,7 +398,7 @@ testInsert = do db <- open_db "somedb.db"
                 return ()                                                                                                                    
 main : IO ()
 main = do --x <- runDB (test3) 
-          y <- runDB (testInsert)
+          y <- runDB (testexpr)
           return ()
 
 
