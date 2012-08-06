@@ -42,19 +42,22 @@ lchar = lexeme.char
 
 fovm :: FilePath -> IO ()
 fovm f = do defs <- parseFOVM f
-            print $ toAlist defs
+            let tagged = addTags defs
+            let ctxtIn = addAlist tagged emptyContext
+            let checked = checkDefs ctxtIn tagged 
+            print checked
 
-parseFOVM :: FilePath -> IO LDefs
+parseFOVM :: FilePath -> IO [(Name, LDecl)]
 parseFOVM fname = do putStrLn $ "Reading " ++ fname
                      fp <- readFile fname
                      case runParser pProgram () fname fp of
                         Left err-> fail (show err)
                         Right x -> return x
 
-pProgram :: LParser LDefs
+pProgram :: LParser [(Name, LDecl)]
 pProgram = do fs <- many1 pLDecl
               eof
-              return $ addAlist fs emptyContext
+              return fs 
 
 pLDecl :: LParser (Name, LDecl)
 pLDecl = do reserved "data"
@@ -81,7 +84,11 @@ optable = [[binary "*" (\x y -> LOp LTimes [x,y]) AssocLeft,
 binary name f assoc = Infix (do reservedOp name; return f) assoc
 
 pLExp' :: LParser LExp
-pLExp' = try (do x <- iName [];
+pLExp' = try (do reserved "printNum"; e <- pLExp
+                 return (LOp LPrintNum [e]))
+     <|> try (do reserved "print"; e <- pLExp
+                 return (LOp LPrintStr [e]))
+     <|> try (do x <- iName [];
                  lchar '('
                  args <- sepBy pLExp (lchar ',')
                  lchar ')'
@@ -90,12 +97,8 @@ pLExp' = try (do x <- iName [];
      <|> pLConst
      <|> do reserved "let"; x <- iName []; lchar '='; v <- pLExp
             reserved "in"; e <- pLExp
-            return (LLet (Glob x) v e)
+            return (LLet x v e)
      <|> pCase
-     <|> do reserved "printNum"; e <- pLExp
-            return (LOp LPrintNum [e])
-     <|> do reserved "print"; e <- pLExp
-            return (LOp LPrintStr [e])
      <|> do x <- iName []
             return (LV (Glob x))
      
