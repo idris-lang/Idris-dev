@@ -17,6 +17,7 @@ data Cond = Equals Value Value
             |MkGTE Value Value
             |MkLT Value Value
             |MkLTE Value Value
+            |MkNULL Value
 
               
 data Clause = MkCond Cond
@@ -25,7 +26,7 @@ data Clause = MkCond Cond
              | Empty
 
 data condClause = SET Clause
-                  | WHERE condClause Clause
+                  |WHERE condClause Clause
              
 data SelVar = Cols (List String)
               |ALL
@@ -33,7 +34,9 @@ data SelVar = Cols (List String)
 data SQL  = SELECT SelVar SQL Clause
             | TBL String 
             | INSERT SQL (List Value)
+            | INSERTC SQL (List Value) (List Value)
             | UPDATE SQL condClause
+            | CREATE SQL (List Value)
             
 -- remember to remove these funcs later
 foldr1 : (a -> a -> a) -> List a -> a	
@@ -85,6 +88,8 @@ evalCond xs (MkLTE val1 val2) = let (restring , newxs ) = valString xs val1 in
                                  let (restring2, newxs') = valString newxs val2 in
                                      (restring ++ " =< " ++ restring2, ( newxs'))
                                                                                                                                                     
+evalCond xs (MkNULL val) = let (restring , newxs ) = valString xs val in
+                               (restring ++ " IS NULL " , newxs)
                                      
 clauseString : List (Maybe(Int, Value)) -> Clause -> (String, List (Maybe(Int, Value)))
 clauseString xs (Empty) = ("" , []) -- No condition
@@ -128,6 +133,12 @@ evalSQL xs (SELECT vars sql' c) = let (sqlstring, newxs) = evalSQL xs sql' in
 evalSQL xs (INSERT sql vals) = let (tblname, newvals) = evalSQL xs sql in 
                                let (str, newxs ) = listVal newvals vals in  
                                    ("INSERT INTO " ++ tblname ++ " VALUES (" ++ str ++ ")"  , newxs)
+
+evalSQL xs (INSERTC sql cols vals) = let (tblname, newvals) = evalSQL xs sql in 
+                                     let (strcol, newcol) = listVal newvals cols in
+                                     let (strval, newcolval) = listVal newcol vals in
+                                         ("INSERT INTO " ++ tblname ++ "(" ++ strcol ++ ")" ++ "VALUES (" ++  strval ++ ")", newcolval)
+
 
 evalSQL xs (UPDATE sql cl) = let (tblname, newxs) = evalSQL xs sql in
                                let (csstring, newxs') = condClauseStr newxs cl in

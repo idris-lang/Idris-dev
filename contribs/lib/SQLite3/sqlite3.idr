@@ -395,11 +395,42 @@ testInsert = do db <- open_db "somedb.db"
                 exec_db_v2 stmt          
                 finalize_db stmt
                 close_db db
-                return ()                                                                                                                    
+                return ()  
+                
+testNull : DB()
+testNull = do db <- open_db "somedb.db"
+              let sql = (evalSQL [] ((SELECT ALL)(TBL "tbl1") (MkCond (MkNULL (VCol "data")))))
+              let x = (fst sql)
+              let list = (snd sql)
+              liftIO(print x)
+              stmt <- (prepare_db db x)
+              bindMulti stmt list 
+              exec_db_v2 stmt
+              res <- toList_v2 db
+              liftIO(print res)           
+              finalize_db stmt
+              close_db db
+              return ()     
+                           
+testInsertWithCond : DB()
+testInsertWithCond = do db <- open_db "somedb.db"
+                        let sql = (evalSQL [] (INSERTC (TBL "tbl1") [(VCol "data"),(VCol "num")] [(VInt 201),(VStr "newinserted")]))
+                        let x = (fst sql)
+                        let list = (snd sql)
+                        liftIO(print x)
+                        stmt <- (prepare_db db x)
+                        bindMulti stmt list 
+                        exec_db_v2 stmt           
+                        finalize_db stmt
+                        close_db db
+                        return ()                  
+                                
+                                                                                                                                  
 main : IO ()
 main = do --x <- runDB (test3) 
-          y <- runDB (testexpr)
+          y <- runDB (testInsertWithCond)
           return ()
 
+ 
 
 
