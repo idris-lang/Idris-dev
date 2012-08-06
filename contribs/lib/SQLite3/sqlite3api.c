@@ -414,7 +414,7 @@ void* sqlite3_bind_int_idr(void* p,int index, int val){
 	DBinfo* dbi =(DBinfo*) p;
 	int rc;
 
-	printf("\nThe statement has %d wildcards\n", sqlite3_bind_parameter_count(dbi->ppStmt));
+	//printf("\nThe statement has %d wildcards\n", sqlite3_bind_parameter_count(dbi->ppStmt));
 	rc =sqlite3_bind_int(dbi->ppStmt,index,val);
 	if(rc != SQLITE_OK){
 		printf("Error in binding\n");

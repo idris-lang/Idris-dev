@@ -62,11 +62,6 @@ open_db name = do x <- liftIO(mkForeign (FFun "sqlite3_open_idr" [FString] FPtr)
 
 close_db : DBPointer -> DB Int
 close_db (MkDBPointer pointer) = liftIO (mkForeign (FFun "sqlite3_close_idr" [FPtr] FInt)pointer)
---close_db pointer = liftIO ((runDB pointer) >>= mkForeign (FFun "sqlite3_close_idr" [FPtr] FInt) )
---close_db pointer = liftIO (do 
---        (MkDBPointer ptr) <- (runDB pointer)
---        i <- mkForeign (FFun "sqlite3_close_idr" [FPtr] FInt) ptr
---        return i)
 
 
                 
@@ -280,13 +275,7 @@ toList name stmt x =  do
     				)
     				liftIO (free_table ptr)
     				return res				
-
---bind_int : StmtPtr -> Int -> Int -> DB Int
---bind_int  (MkStmtPtr pointer) indexval val = do 
---        x <- liftIO(mkForeign (FFun "sqlite3_bind_int_idr" [FPtr, FInt, FInt] FInt)pointer indexval val)                                   
---        if (x /= 0 )
---            then fail "Could not bind int."
---                else return x                                             
+                                           
 
 bind_int : StmtPtr -> Int -> Int -> DB StmtPtr
 bind_int (MkStmtPtr pointer) indexval val = do 
@@ -369,8 +358,7 @@ bindMulti  pointer ((Just (indexs, val))::vs) = case val of
                                                                              bindMulti(x) vs             
 testexpr : DB()
 testexpr = do db <- open_db "somedb.db"
-              --let db = open_db "somedb.db"
-              let sql = (evalSQL [] ((SELECT ALL)(TBL "tbl1")(MkCond (Equals (VCol "data")(VStr "data1")))))
+              let sql = (evalSQL [] ((SELECT ALL)(TBL "tbl1")  (OR (AND (MkCond (Equals (VCol "data")(VStr "data0"))) (MkCond (Equals (VCol "num")(VInt 1))) )  (MkCond (Equals (VCol "num")(VInt 2))))))
               let x = (display sql)
               let list = (getlist sql)
               liftIO(print x)
@@ -382,10 +370,36 @@ testexpr = do db <- open_db "somedb.db"
               finalize_db stmt
               close_db db
               return ()
-                                                                                                                      
+
+testupdate : DB()
+testupdate = do db <- open_db "somedb.db"
+                let sql = (evalSQL [] (UPDATE (TBL "tbl1") (WHERE (SET (MkCond (Equals(VCol "data") (VStr "data0"))) ) (MkCond (Equals (VCol "num") (VInt 2))) ) ))
+                let x = (display sql)
+                let list = (getlist sql)
+                liftIO(print x)
+                stmt <- (prepare_db db x)
+                bindMulti stmt list 
+                exec_db_v2 stmt           
+                finalize_db stmt
+                close_db db
+                return ()
+
+testInsert : DB()
+testInsert = do db <- open_db "somedb.db"
+                let sql = (evalSQL [] (INSERT (TBL "tbl1") [(VInt 2),(VStr "histring2")]))
+                let x = (display sql)
+                let list = (getlist sql)
+                liftIO(print x)
+                stmt <- (prepare_db db x)
+                bindMulti stmt list 
+                exec_db_v2 stmt          
+                finalize_db stmt
+                close_db db
+                return ()                                                                                                                    
 main : IO ()
 main = do --x <- runDB (test3) 
-          y <- runDB (testexpr)
+          y <- runDB (testInsert)
           return ()
 
-       
+
+
