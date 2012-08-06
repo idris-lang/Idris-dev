@@ -60,7 +60,7 @@ pLDecl :: LParser (Name, LDecl)
 pLDecl = do reserved "data"
             n <- iName []
             ar <- natural
-            return (n, LConstructor n (fromInteger ar))
+            return (n, LConstructor n (-1) (fromInteger ar))
      <|> do reserved "fun"
             n <- iName []
             lchar '('

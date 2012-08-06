@@ -70,6 +70,7 @@ Executable     idris
                               Util.Pretty,
 
                               RTS.Bytecode, RTS.SC, RTS.PreC, RTS.CodegenC,
+                              IRTS.Lang, IRTS.LParser,
 
                               Paths_idris
 

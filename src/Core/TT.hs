@@ -239,7 +239,7 @@ addAlist ((n, tm) : ds) ctxt = addDef n tm (addAlist ds ctxt)
 data Const = I Int | BI Integer | Fl Double | Ch Char | Str String 
            | IType | BIType     | FlType    | ChType  | StrType    
            | PtrType | VoidType | Forgot
-  deriving Eq
+  deriving (Eq, Ord)
 {-! 
 deriving instance Binary Const 
 !-}
@@ -297,7 +297,7 @@ data Binder b = Lam   { binderTy  :: b }
                         binderVal :: b }
               | PVar  { binderTy  :: b }
               | PVTy  { binderTy  :: b }
-  deriving (Show, Eq, Functor)
+  deriving (Show, Eq, Ord, Functor)
 {-! 
 deriving instance Binary Binder 
 !-}
@@ -382,7 +382,7 @@ instance Show UConstraint where
 type UCs = (Int, [UConstraint])
 
 data NameType = Bound | Ref | DCon Int Int | TCon Int Int
-  deriving (Show)
+  deriving (Show, Ord)
 {-! 
 deriving instance Binary NameType 
 !-}
@@ -407,7 +407,7 @@ data TT n = P NameType n (TT n) -- embed type
           | Constant Const
           | Erased
           | Set UExp
-  deriving Functor
+  deriving (Ord, Functor)
 {-! 
 deriving instance Binary TT 
 !-}

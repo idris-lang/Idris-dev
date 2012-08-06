@@ -1,0 +1,14 @@
+data O 0
+data S 1
+
+fun plus(x, y) = case x of {
+                     O => y
+                   | S(k) => S(plus(k, y))
+                 }
+
+fun natToInt(x) = case x of {
+                     O => 0
+                   | S(k) => natToInt(k) + 1
+                  }
+
+fun main() = printNum(natToInt(plus(S(S(O)), S(S(O)))))

@@ -148,6 +148,7 @@ data Opt = Filename String
          | IBCSubDir String
          | ImportDir String
          | BCAsm String
+         | FOVM String
     deriving Eq
 
 

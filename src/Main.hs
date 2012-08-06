@@ -25,6 +25,9 @@ import Idris.Primitives
 import Idris.Imports
 import Idris.Error
 
+import IRTS.Lang
+import IRTS.LParser
+
 import Paths_idris
 
 -- Main program reads command line options, parses the main program, and gets
@@ -43,6 +46,7 @@ runIdris opts =
        let ibcsubdir = opt getIBCSubDir opts
        let importdirs = opt getImportDir opts
        let bcs = opt getBC opts
+       let vm = opt getFOVM opts
 
        when (Ver `elem` opts) $ liftIO showver
        when (Usage `elem` opts) $ liftIO usage
@@ -52,6 +56,10 @@ runIdris opts =
        setVerbose runrepl
        when (Verbose `elem` opts) $ setVerbose True
        mapM_ makeOption opts
+       -- if we have the --fovm flag, drop into the first order VM testing
+       case vm of
+	    [] -> return ()
+	    xs -> liftIO $ mapM_ fovm xs 
        -- if we have the --bytecode flag, drop into the bytecode assembler
        case bcs of
 	    [] -> return ()
@@ -91,6 +99,10 @@ getFile _ = Nothing
 getBC :: Opt -> Maybe String
 getBC (BCAsm str) = Just str
 getBC _ = Nothing
+
+getFOVM :: Opt -> Maybe String
+getFOVM (FOVM str) = Just str
+getFOVM _ = Nothing
 
 getOutput :: Opt -> Maybe String
 getOutput (Output str) = Just str
@@ -144,6 +156,7 @@ parseArgs ("--verbose":ns)      = liftM (Verbose : ) (parseArgs ns)
 parseArgs ("--ibcsubdir":n:ns)  = liftM (IBCSubDir n : ) (parseArgs ns)
 parseArgs ("-i":n:ns)           = liftM (ImportDir n : ) (parseArgs ns)
 parseArgs ("--bytecode":n:ns)   = liftM (\x -> NoREPL : BCAsm n : x) (parseArgs ns)
+parseArgs ("--fovm":n:ns)       = liftM (\x -> NoREPL : FOVM n : x) (parseArgs ns)
 parseArgs (n:ns)                = liftM (Filename n : ) (parseArgs ns)
 
 ver = showVersion version

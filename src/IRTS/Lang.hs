@@ -24,10 +24,10 @@ data LAlt = LConCase Int Name [Name] LExp
   deriving Show
 
 data LDecl = LFun Name [Name] LExp -- name, arg names, definition
-           | LConstructor Name Int -- constructor name, arity
+           | LConstructor Name Int Int -- constructor name, tag, arity
   deriving Show
 
 type LDefs = Ctxt LDecl
 
-
+-- TODO: Add constructor tags, then scope and arity checker.
 

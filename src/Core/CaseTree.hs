@@ -11,10 +11,10 @@ import Debug.Trace
 data CaseDef = CaseDef [Name] SC [Term]
     deriving Show
 
-data SC = Case Name [CaseAlt]
+data SC = Case Name [CaseAlt] -- invariant: lowest tags first
         | STerm Term
         | UnmatchedCase String -- error message
-    deriving Show
+    deriving (Show, Eq, Ord)
 {-! 
 deriving instance Binary SC 
 !-}
@@ -22,7 +22,7 @@ deriving instance Binary SC
 data CaseAlt = ConCase Name Int [Name] SC
              | ConstCase Const         SC
              | DefaultCase             SC
-    deriving Show
+    deriving (Show, Eq, Ord)
 {-! 
 deriving instance Binary CaseAlt 
 !-}
@@ -167,7 +167,7 @@ conRule (v:vs) cs err = do groups <- groupCons cs
 
 caseGroups :: [Name] -> [Group] -> SC -> State CS SC
 caseGroups (v:vs) gs err = do g <- altGroups gs
-                              return $ Case v g
+                              return $ Case v (sort g)
   where
     altGroups [] = return [DefaultCase err]
     altGroups (ConGroup (CName n i) args : cs)
