@@ -10,7 +10,7 @@ import Control.Monad.State
 
 data SExp = SV LVar
           | SApp Bool Name [LVar]
-          | SLet Name SExp SExp
+          | SLet LVar SExp SExp
           | SCon Int Name [LVar]
           | SCase LVar [SAlt]
           | SConst Const
@@ -25,19 +25,27 @@ data SAlt = SConCase Int Name [Name] SExp
 data SDecl = SFun Name [Name] SExp
   deriving Show
 
-hvar :: State Int Int
-hvar = do h <- get
-          put (h + 1)
+hvar :: State (LDefs, Int) Int
+hvar = do (l, h) <- get
+          put (l, h + 1)
           return h
 
-simplify :: LExp -> State Int SExp
+ldefs :: State (LDefs, Int) LDefs
+ldefs = do (l, h) <- get
+           return l
+
+simplify :: LExp -> State (LDefs, Int) SExp
 simplify (LV (Loc i)) = return (SV (Loc i))
-simplify (LV x) = return (SV x)
+simplify (LV (Glob x)) 
+    = do ctxt <- ldefs
+         case lookupCtxt Nothing x ctxt of
+              [LConstructor _ t 0] -> return $ SCon t x []
+              _ -> return $ SV (Glob x)
 simplify (LApp tc n args) = do args' <- mapM sVar args
                                mkapp (SApp tc n) args'
 simplify (LLet n v e) = do v' <- simplify v
                            e' <- simplify e
-                           return (SLet n v' e')
+                           return (SLet (Glob n) v' e')
 simplify (LCon i n args) = do args' <- mapM sVar args
                               mkapp (SCon i n) args'
 simplify (LCase e alts) = do v <- sVar e
@@ -45,11 +53,16 @@ simplify (LCase e alts) = do v <- sVar e
                              case v of 
                                   (x, Nothing) -> return (SCase x alts')
                                   (Glob x, Just e) -> 
-                                      return (SLet x e (SCase (Glob x) alts'))
+                                      return (SLet (Glob x) e (SCase (Glob x) alts'))
 simplify (LConst c) = return (SConst c)
 simplify (LOp p args) = do args' <- mapM sVar args
                            mkapp (SOp p) args'
 
+sVar (LV (Glob x))
+    = do ctxt <- ldefs
+         case lookupCtxt Nothing x ctxt of
+              [LConstructor _ t 0] -> sVar (LCon t x [])
+              _ -> return (Glob x, Nothing)
 sVar (LV x) = return (x, Nothing)
 sVar e = do e' <- simplify e
             i <- hvar
@@ -58,8 +71,8 @@ sVar e = do e' <- simplify e
 mkapp f args = mkapp' f args [] where
    mkapp' f [] args = return $ f (reverse args)
    mkapp' f ((x, Nothing) : xs) args = mkapp' f xs (x : args)
-   mkapp' f ((Glob x, Just e) : xs) args 
-       = do sc <- mkapp' f xs (Glob x : args)
+   mkapp' f ((x, Just e) : xs) args 
+       = do sc <- mkapp' f xs (x : args)
             return (SLet x e sc)
 
 sAlt (LConCase i n args e) = do e' <- simplify e
@@ -75,15 +88,15 @@ checkDefs ctxt (con@(n, LConstructor _ _ _) : xs)
     = do xs' <- checkDefs ctxt xs
          return xs'
 checkDefs ctxt ((n, LFun n' args exp) : xs) 
-    = do let sexp = evalState (simplify exp) 0
+    = do let sexp = evalState (simplify exp) (ctxt, 0)
          exp' <- scopecheck ctxt (zip args [0..]) sexp
          xs' <- checkDefs ctxt xs
          return ((n, SFun n' args exp') : xs')
 
 scopecheck :: LDefs -> [(Name, Int)] -> SExp -> TC SExp 
 scopecheck ctxt env tm = sc env tm where
-    sc env (SV (Glob n)) 
-       = case lookup n (reverse env) of -- most recent first
+    sc env (SV (Glob n)) =
+       case lookup n (reverse env) of -- most recent first
               Just i -> return (SV (Loc i))
               Nothing -> case lookupCtxt Nothing n ctxt of
                               [LConstructor _ i ar] ->
@@ -93,24 +106,48 @@ scopecheck ctxt env tm = sc env tm where
                               [_] -> return (SV (Glob n))
                               [] -> fail $ "Codegen error: No such variable " ++ show n
     sc env (SApp tc f args)
-       = do case lookupCtxt Nothing f ctxt of
+       = do args' <- mapM (scVar env) args
+            case lookupCtxt Nothing f ctxt of
                 [LConstructor n tag ar] ->
                     if (ar == length args)
-                       then return $ SCon tag n args
+                       then return $ SCon tag n args'
                        else fail $ "Codegen error: Constructor " ++ show f ++ 
                                    " has arity " ++ show ar
-                [_] -> return $ SApp tc f args
+                [_] -> return $ SApp tc f args'
                 [] -> fail $ "Codegen error: No such variable " ++ show f
+    sc env (SCon tag f args)
+       = do args' <- mapM (scVar env) args
+            case lookupCtxt Nothing f ctxt of
+                [LConstructor n tag ar] ->
+                    if (ar == length args)
+                       then return $ SCon tag n args'
+                       else fail $ "Codegen error: Constructor " ++ show f ++ 
+                                   " has arity " ++ show ar
+                _ -> fail $ "Codegen error: No such constructor " ++ show f
     sc env (SCase e alts)
-       = do alts' <- mapM (scalt env) alts
-            return (SCase e alts')
-    sc env (SLet n v e)
-       = do v' <- sc env v
-            e' <- sc (env ++ [(n, length env)]) e
-            return (SLet n v' e')
+       = do e' <- scVar env e
+            alts' <- mapM (scalt env) alts
+            return (SCase e' alts')
+    sc env (SLet (Glob n) v e)
+       = do let env' = env ++ [(n, length env)]
+            v' <- sc env v
+            n' <- scVar env' (Glob n)
+            e' <- sc env' e
+            return (SLet n' v' e')
     sc env (SOp prim args)
-       = do return (SOp prim args)
+       = do args' <- mapM (scVar env) args
+            return (SOp prim args')
     sc env x = return x
+
+    scVar env (Glob n) =
+       case lookup n (reverse env) of -- most recent first
+              Just i -> return (Loc i)
+              Nothing -> case lookupCtxt Nothing n ctxt of
+                              [LConstructor _ i ar] ->
+                                  fail $ "Codegen error : can't pass constructor here"
+                              [_] -> return (Glob n)
+                              [] -> fail $ "Codegen error: No such variable " ++ show n
+    scVar _ x = return x
 
     scalt env (SConCase i n args e)
        = do let env' = env ++ zip args [length env..]
