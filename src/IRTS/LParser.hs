@@ -3,7 +3,7 @@ module IRTS.LParser where
 import Core.CoreParser
 import Core.TT
 import IRTS.Lang
-import IRTS.Bytecode
+import IRTS.Simplified
 
 import Text.ParserCombinators.Parsec
 import Text.ParserCombinators.Parsec.Error
@@ -47,9 +47,9 @@ fovm f = do defs <- parseFOVM f
             let ctxtIn = addAlist tagged emptyContext
             let checked = checkDefs ctxtIn tagged 
             print checked
-            case checked of
-                OK c -> do let bc = mapMaybe toBC c
-                           print bc
+--             case checked of
+--                 OK c -> do let bc = mapMaybe toBC c
+--                            print bc
 
 parseFOVM :: FilePath -> IO [(Name, LDecl)]
 parseFOVM fname = do putStrLn $ "Reading " ++ fname
@@ -92,11 +92,12 @@ pLExp' = try (do reserved "printNum"; e <- pLExp
                  return (LOp LPrintNum [e]))
      <|> try (do reserved "print"; e <- pLExp
                  return (LOp LPrintStr [e]))
-     <|> try (do x <- iName [];
+     <|> try (do tc <- option False (do lchar '%'; reserved "tc"; return True)
+                 x <- iName [];
                  lchar '('
                  args <- sepBy pLExp (lchar ',')
                  lchar ')'
-                 if null args then return (LV (Glob x)) else return (LApp x args))
+                 if null args then return (LV (Glob x)) else return (LApp tc x args))
      <|> do lchar '('; e <- pLExp; lchar ')'; return e
      <|> pLConst
      <|> do reserved "let"; x <- iName []; lchar '='; v <- pLExp
