@@ -29,7 +29,7 @@ data DBPointer =  MkDBPointer Ptr
 data TBPointer = MkTBPointer Ptr
 
 data StmtPtr = MkStmtPtr Ptr
-				
+
 Table : Set
 Table = List (List DBVal)
 
@@ -298,19 +298,19 @@ get_data (MkDBPointer pointer) row col = do
 -- | This function makes use of get_data to get all the result.
 -----------------------------------------------------------------------------
 
-toList :  DBPointer -> DB Table
-toList db =  do
+toList_v1 :  DBPointer -> DB Table
+toList_v1 db =  do
     		   nbR <- liftIO (num_row_v2 db)
     		   nmC <- liftIO (num_col_v2 db)
     		   res <- forM [0..(nbR-1)] (\ i =>
-    					  forM [0..(nmC-1)] (\ j =>
-    						    liftIO(get_data db i j)
+    					 forM [0..(nmC-1)] (\ j =>
+    						   liftIO(get_data db i j)
     						         
     				  )
     		   )
     		   return res	
-    						
-		            
+    					
+    					
 strcat : String -> String-> String
 strcat str1 str2 = (str1 ++ str2)		
 
@@ -320,17 +320,17 @@ strcat str1 str2 = (str1 ++ str2)
 		
 --toList_v2 : String -> String -> DBPointer -> DB Table
 --toList_v2 name stmt x =  do
---    				         ptr <- (get_table x (stmt))
---    				         nbR <- liftIO (num_row ptr)
---    				         nmC <- liftIO (num_col ptr)
---    				         res <- forM [0..(nbR-1)] (\ i =>
---    					              forM [0..(nmC-1)] (\ j =>
---    						                  liftIO(get_data x name i j)
+--    				       ptr <- (get_table x (stmt))
+--    				       nbR <- liftIO (num_row ptr)
+--    				       nmC <- liftIO (num_col ptr)
+--    				       res <- forM [0..(nbR-1)] (\ i =>
+--    					            forM [0..(nmC-1)] (\ j =>
+--    						                liftIO(get_data x name i j)
 --    						         
---    				                 )
---    				         )
---    				         liftIO (free_table ptr)
---    				         return res				
+--    				               )
+--    				       )
+--    				       liftIO (free_table ptr)
+--    				       return res				
                                            
 
 -----------------------------------------------------------------------------
@@ -400,4 +400,6 @@ bindMulti  pointer ((Just (indexs, val))::vs) = case val of
                                                                        
                                                       
                                                      (VFloat floatval) => do x <- bind_float pointer indexs floatval
+
                                                                              bindMulti(x) vs             
+

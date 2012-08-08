@@ -55,7 +55,7 @@ data Constr = NOTNULL
 
 
 data SQL  = SELECT SelVar SQL Clause
-            | TBL String 
+            | TBL (List String) 
             | INSERT SQL (List Value)
             | INSERTC SQL (List Value) (List Value)
             | UPDATE SQL condClause
@@ -142,6 +142,7 @@ listValType xs ((val, types, constr) :: vs) = let (str , newxs) = valString xs v
                                               let (finalstr, finalxs) = listValType newxs'' vs in
                                                     ((unwords(intersperse  " " (words(str) ++ words(str') ++ words(str'') ++ words(finalstr)))) , finalxs)
 
+
 -----------------------------------------------------------
 -- | Evaluates a condition after WHERE clause
 ----------------------------------------------------------- 
@@ -204,37 +205,41 @@ condClauseStr xs (WHERE setcl1 setcl2) = let (condstr, newxs) = condClauseStr xs
                                          let (condstr', newxs') = clauseString newxs setcl2 in
                                              ( condstr ++ " WHERE " ++ condstr', newxs')
                                              
---TODO SELECT data from tbl1 where num > (SELECT num from tbl1 where num = 24) 
--- evalSQL [] ((SELECT ALL) (TBL "tbl") (MkSQL ((SELECT ALL) (TBL "tbl") (MkCond (VCol ") ) )  )                                            
+-- SELECT data from tbl1 where num > (SELECT num from tbl1 where num = 24) 
+-- evalSQL [] ((SELECT ALL) (TBL "tbl") (MkSQL ((SELECT ALL) (TBL "tbl") (MkCond (VCol ") ) )  ) 
+-- NTBF                                           
 --clauseString xs (MkSQL sql) = (evalSQL xs sql)
-                            
 
-evalSQL xs (TBL tbl) = (tbl, xs)
+-- Separate list of tables                            
+evalSQL xs (TBL tbl) = ((unwords (intersperse "," ( tbl))), xs)
 evalSQL xs (SELECT vars sql' c) = let (sqlstring, newxs) = evalSQL xs sql' in
                                   let (csstring, newxs') = clauseString newxs c in
                                   case c of 
                                         Empty => case vars of 
                                                       (ALL ) => if complexType sql' then ("SELECT " ++ "*" ++ " FROM " 
                                                                                          ++ (putBrackets sqlstring) ++ csstring,  newxs')
-                                                                   else ("SELECT " ++ "*" ++ " FROM " ++ sqlstring ++ csstring,  newxs')
+                                                                                         
+                                                                   else ("SELECT " ++ "*" ++ " FROM " ++ sqlstring
+                                                                          ++ csstring,  newxs')
  
-                                                      (Cols selvar) => if complexType sql' then ("SELECT " ++ unwords ( intersperse "" ( selvar ++ 
-                                                                             (words ( " FROM " ++ (putBrackets sqlstring) )))) ++ csstring,  newxs')
-                                                                           else ("SELECT " ++ unwords ( intersperse "" ( selvar ++ 
-                                                                                (words ( "FROM " ++ sqlstring )))) ++ csstring,  newxs')    
+                                                      (Cols selvar) => if complexType sql' then ("SELECT " ++ (unwords selvar) ++ 
+                                                                              " FROM " ++ (putBrackets sqlstring) ++ csstring,  newxs')
+                                                                             
+                                                                           else ("SELECT " ++ (unwords selvar )++  " FROM " ++ sqlstring
+                                                                                   ++ csstring,  newxs')    
                                                       
                                         _  => case vars of 
                                                    (ALL ) => if complexType sql' then  ("SELECT " ++ "*" ++ " FROM " 
-                                                                                        ++ (putBrackets sqlstring)  ++ " WHERE " ++ csstring ,  newxs')
-                                                                    else ("SELECT " ++ "*" ++ " FROM " 
-                                                                          ++ sqlstring  ++ " WHERE " ++ csstring ,  newxs')
+                                                                                          ++ " WHERE " ++ csstring ,  newxs')
+                                                                    else ("SELECT " ++ "*" ++ " FROM " ++  sqlstring
+                                                                           ++ " WHERE " ++ csstring ,  newxs')
                                                                                          
-                                                   (Cols selvar) => if complexType sql' then ("SELECT " ++ unwords ( intersperse "" ( selvar ++
-                                                                                        (words ( " FROM " ++ (putBrackets sqlstring) )))) 
-                                                                                         ++ " WHERE " ++ csstring , newxs')
+                                                   (Cols selvar) => if complexType sql' then ("SELECT " ++ (unwords selvar) ++ " FROM " ++
+                                                                                              (putBrackets sqlstring)  ++ " WHERE " 
+                                                                                                ++ csstring , newxs')
                                                                                          
-                                                                        else ("SELECT " ++ unwords ( intersperse "" ( selvar ++
-                                                                              (words ( "FROM " ++ sqlstring )))) ++ " WHERE " ++ csstring , newxs')
+                                                                        else ("SELECT " ++ (unwords selvar) ++ " FROM " ++ sqlstring 
+                                                                                ++ " WHERE " ++ csstring , newxs')
 
 
 evalSQL xs (INSERT sql vals) = let (tblname, newvals) = evalSQL xs sql in 
