@@ -5,65 +5,67 @@ import IRTS.Simplified
 import Core.TT
 import Data.Maybe
 
--- data Reg = RVal | CaseVar | L Int
+-- TODO: Need L to refer from the bottom of the current stack frame,
+-- T from the top.
 
--- data BC = ASSIGN Reg Reg
---         | ASSIGNCONST Reg Const
---         | MKCON Reg Int Int
---         | CASE [(Int, [BC])] (Maybe [BC])
---         | GETARGS Int -- discards afterwards
---         | CONSTCASE [(Const, [BC])] (Maybe [BC])
---         | CALL Name
---         | TAILCALL Name
---         | PRINTNUM
---         | PRINTSTR
---         | GROWSTACK Int
---         | DROPSTACK Int
---         | SLIDE Int Int -- number to drop, number to keep
---         | OP PrimFn
---     deriving Show
+data Reg = RVal | L Int | T Int
+   deriving (Show, Eq)
 
--- toBC :: (Name, LDecl) -> Maybe (Name, [BC])
--- toBC (n, LConstructor _ _ _) = Nothing
--- toBC (n, LFun n' args exp) = let cleanup = [SLIDE (length args) 1] in
---                                  Just (n, bc (length args - 1) exp cleanup)
--- 
--- bc :: Int -> LExp -> [BC] -> [BC]
--- bc top (LV (Glob n)) c = [CALL n] ++ c
--- bc top (LV (Loc i)) c = [PUSH (top-i)] ++ c
--- bc top (LApp tc fn args) c
---     = bcArgs top args ++
---          if tc then [SLIDE top (length args), TAILCALL fn]
---                else [CALL fn] ++ c
--- bc top (LCon tag _ args) c
---     = bcArgs top args ++ [MKCON tag (length args)] ++ c
--- bc top (LConst i) c = [PUSHCONST i] ++ c
--- bc top (LCase e alts) c = bc top e [] ++
---                            if constCase alts then bcCaseConst top alts
---                                              else bcCase top alts
---                            ++ c
--- bc top (LLet _ v e) c = bc top v [] ++ bc (top + 1) e [] ++ c
--- bc top (LOp prim args) c = bcArgs top args ++ [OP prim] ++ c
--- 
--- bcArgs top [] = []
--- bcArgs top (x : xs) = bc top x [] ++ bcArgs (top + 1) xs
--- 
--- constCase (LConstCase _ _ : _) = True
--- constCase (LConCase _ _ _ _ : _) = False
--- constCase (_ : xs) = constCase xs
--- constCase _ = False
--- 
--- bcCase      top xs = [CASE (mapMaybe (conClause top) xs) (defaultCase top xs)]
--- bcCaseConst top xs = [CONSTCASE (mapMaybe (constClause top) xs) (defaultCase top xs)]
--- 
--- conClause top (LConCase tag _ args e) = Just (tag, GETARGS (length args) :
---                                                bc (top + length args) e []
---                                                   ++ [SLIDE (length args) 1])
--- conClause top _ = Nothing
--- 
--- constClause top (LConstCase c e) = Just (c, bc top e [])
--- constClause top _ = Nothing
--- 
--- defaultCase top [] = Nothing
--- defaultCase top (LDefaultCase e : xs) = Just (bc top e [])
--- defaultCase top (_ : xs) = defaultCase top xs
+data BC = ASSIGN Reg Reg
+        | ASSIGNCONST Reg Const
+        | MKCON Reg Int [Reg]
+        | CASE Reg [(Int, [BC])] (Maybe [BC])
+        | PROJECT Reg Int Int -- get all args from reg, put them from Int onwards
+        | GETARGS Int -- discards afterwards
+        | CONSTCASE [(Const, [BC])] (Maybe [BC])
+        | CALL Name
+        | TAILCALL Name
+        | PRINTNUM
+        | PRINTSTR
+        | GROWSTACK Int
+        | DROPSTACK Int
+        | SLIDE Int Int -- number to drop, number to keep
+        | OP Reg PrimFn [Reg]
+    deriving Show
+
+toBC :: (Name, SDecl) -> (Name, [BC])
+toBC (n, SFun n' args locs exp) 
+   = (n, GROWSTACK locs : bc RVal exp (length args + locs))
+
+clean 0 = []
+clean c = [DROPSTACK c]
+
+bc :: Reg -> SExp -> Int -> [BC]
+bc reg (SV (Glob n))   c = [CALL n] ++ assign reg RVal ++ clean c
+bc reg (SV (Loc i))    c = assign reg (L i) ++ clean c
+bc reg (SApp tc f vs)  c 
+    = GROWSTACK (length vs) : moveReg (c + length vs) vs
+      ++ [CALL f] ++ assign reg RVal ++ clean c
+bc reg (SLet (Loc i) e sc) c = bc (L i) e 0 ++ bc reg sc c
+bc reg (SCon i _ vs) c = MKCON reg i (map getL vs) : clean c
+    where getL (Loc x) = L x
+bc reg (SConst i) c = ASSIGNCONST reg i : clean c
+bc reg (SOp p vs) c = OP reg p (map getL vs) : clean c
+    where getL (Loc x) = L x
+bc reg (SCase (Loc l) alts) c 
+   | isConst alts = undefined -- constCase reg c l alts
+   | otherwise = conCase reg c (L l) alts : clean c
+
+isConst [] = False
+isConst (SConstCase _ _ : xs) = True
+isConst (SConCase _ _ _ _ _ : xs) = False
+isConst (_ : xs) = False
+
+moveReg off [] = []
+moveReg off (Loc x : xs) = assign (L off) (L x) ++ moveReg (off + 1) xs
+
+assign r1 r2 | r1 == r2 = []
+             | otherwise = [ASSIGN r1 r2]
+
+conCase reg c l xs = CASE l (mapMaybe (caseAlt l reg c) xs)
+                                    Nothing
+
+caseAlt l reg c (SConCase lvar tag _ args e)
+    = Just (tag, PROJECT l lvar (length args) : bc reg e c) 
+caseAlt l reg c _ = Nothing
+

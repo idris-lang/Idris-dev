@@ -17,12 +17,12 @@ data SExp = SV LVar
           | SOp PrimFn [LVar]
   deriving Show
 
-data SAlt = SConCase Int Name [Name] SExp
+data SAlt = SConCase Int Int Name [Name] SExp
           | SConstCase Const SExp
           | SDefaultCase SExp
   deriving Show
 
-data SDecl = SFun Name [Name] SExp
+data SDecl = SFun Name [Name] Int SExp
   deriving Show
 
 hvar :: State (LDefs, Int) Int
@@ -76,7 +76,7 @@ mkapp f args = mkapp' f args [] where
             return (SLet x e sc)
 
 sAlt (LConCase i n args e) = do e' <- simplify e
-                                return (SConCase i n args e')
+                                return (SConCase (-1) i n args e')
 sAlt (LConstCase c e) = do e' <- simplify e
                            return (SConstCase c e')
 sAlt (LDefaultCase e) = do e' <- simplify e
@@ -89,15 +89,18 @@ checkDefs ctxt (con@(n, LConstructor _ _ _) : xs)
          return xs'
 checkDefs ctxt ((n, LFun n' args exp) : xs) 
     = do let sexp = evalState (simplify exp) (ctxt, 0)
-         exp' <- scopecheck ctxt (zip args [0..]) sexp
+         (exp', locs) <- runStateT (scopecheck ctxt (zip args [0..]) sexp) (-1)
          xs' <- checkDefs ctxt xs
-         return ((n, SFun n' args exp') : xs')
+         return ((n, SFun n' args ((locs + 1) - length args) exp') : xs')
 
-scopecheck :: LDefs -> [(Name, Int)] -> SExp -> TC SExp 
+lvar v = do i <- get
+            put (max i v)
+
+scopecheck :: LDefs -> [(Name, Int)] -> SExp -> StateT Int TC SExp 
 scopecheck ctxt env tm = sc env tm where
     sc env (SV (Glob n)) =
        case lookup n (reverse env) of -- most recent first
-              Just i -> return (SV (Loc i))
+              Just i -> do lvar i; return (SV (Loc i))
               Nothing -> case lookupCtxt Nothing n ctxt of
                               [LConstructor _ i ar] ->
                                   if ar == 0 then return (SCon i n [])
@@ -141,7 +144,7 @@ scopecheck ctxt env tm = sc env tm where
 
     scVar env (Glob n) =
        case lookup n (reverse env) of -- most recent first
-              Just i -> return (Loc i)
+              Just i -> do lvar i; return (Loc i)
               Nothing -> case lookupCtxt Nothing n ctxt of
                               [LConstructor _ i ar] ->
                                   fail $ "Codegen error : can't pass constructor here"
@@ -149,7 +152,7 @@ scopecheck ctxt env tm = sc env tm where
                               [] -> fail $ "Codegen error: No such variable " ++ show n
     scVar _ x = return x
 
-    scalt env (SConCase i n args e)
+    scalt env (SConCase _ i n args e)
        = do let env' = env ++ zip args [length env..]
             tag <- case lookupCtxt Nothing n ctxt of
                         [LConstructor _ i ar] -> 
@@ -158,7 +161,7 @@ scopecheck ctxt env tm = sc env tm where
                                             " has arity " ++ show ar
                         _ -> fail $ "Codegen error: No constructor " ++ show n
             e' <- sc env' e
-            return (SConCase tag n args e')
+            return (SConCase (length env) tag n args e')
     scalt env (SConstCase c e) = do e' <- sc env e
                                     return (SConstCase c e')
     scalt env (SDefaultCase e) = do e' <- sc env e

@@ -4,6 +4,7 @@ import Core.CoreParser
 import Core.TT
 import IRTS.Lang
 import IRTS.Simplified
+import IRTS.Bytecode
 
 import Text.ParserCombinators.Parsec
 import Text.ParserCombinators.Parsec.Error
@@ -47,9 +48,9 @@ fovm f = do defs <- parseFOVM f
             let ctxtIn = addAlist tagged emptyContext
             let checked = checkDefs ctxtIn tagged 
             print checked
---             case checked of
---                 OK c -> do let bc = mapMaybe toBC c
---                            print bc
+            case checked of
+                   OK c -> do let bc = map toBC c
+                              print bc
 
 parseFOVM :: FilePath -> IO [(Name, LDecl)]
 parseFOVM fname = do putStrLn $ "Reading " ++ fname
