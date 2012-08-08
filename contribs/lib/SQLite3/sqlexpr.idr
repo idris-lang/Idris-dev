@@ -1,8 +1,18 @@
-module main
+module sqlexpr
 import prelude.list
 
+-----------------------------------------------------------------------------
+-- |
+-- Module      :  sqlexpr
+-- Copyright   :  (c) The University of St Andrews, 2012
+-- 
+-- Implementations for SQLite query data type.
+--
+-----------------------------------------------------------------------------
+
+
 -----------------------------------------------------------
--- * SQL data type
+-- | SQL data type
 -----------------------------------------------------------
         
 data Value = VInt Int
@@ -24,6 +34,7 @@ data Clause = MkCond Cond
              | AND Clause Clause
              | OR Clause Clause
              | Empty
+             | MkSQL SQL
 
 data condClause = SET Clause
                   |WHERE condClause Clause
@@ -31,12 +42,24 @@ data condClause = SET Clause
 data SelVar = Cols (List String)
               |ALL
 
+data ColType = CInt String -- parsed as string "int"
+               |Varchar String
+               
+data Constr = NOTNULL
+             | UNIQUE Constr
+             | None
+             | PRIMARYKEY
+             | FOREIGNKEY
+             | CHECK
+             | DEFAULT
+
+
 data SQL  = SELECT SelVar SQL Clause
             | TBL String 
             | INSERT SQL (List Value)
             | INSERTC SQL (List Value) (List Value)
             | UPDATE SQL condClause
-            | CREATE SQL (List Value)
+            | CREATE SQL (List (Value, ColType , Constr))
             
 -- remember to remove these funcs later
 foldr1 : (a -> a -> a) -> List a -> a	
@@ -55,17 +78,73 @@ unwords' ws = (foldr1 addSpace ws)
 unwords :  List String -> String
 unwords = pack . unwords' . map unpack
 
+-----------------------------------------------------------
+-- | This function replaces values with question mark
+-- following by an index number.
+-----------------------------------------------------------
+
 valString : List (Maybe(Int, Value)) -> Value -> (String, List (Maybe(Int, Value)))
 valString xs (VInt x) = ("?" ++ show (cast(length xs)+1), xs ++ [Just (cast((length xs)+1),(VInt x))])
 valString xs (VStr x) = ("?" ++ show (cast(length xs)+1), xs ++ [Just (cast((length xs)+1),(VStr x))])
 valString xs (VFloat x) = ("?" ++ show (cast(length xs)+1), xs ++ [Just (cast((length xs)+1),(VFloat x))])
 valString xs (VCol n) = (n, xs)  
 
+-----------------------------------------------------------
+-- | This function calls valString on a list of Values.
+-----------------------------------------------------------
+
 listVal : List (Maybe(Int, Value)) -> List Value -> (String, List (Maybe(Int, Value)))
 listVal xs [] = ("", xs)
 listVal xs (v::vs) = let (str, newxs) = (valString xs v) in
                       let (str', newxs') = listVal newxs vs in
                           ((unwords(intersperse  "," (words(str) ++ words (str')))), newxs')
+
+-----------------------------------------------------------
+-- | Parses the type of column to be created.
+-----------------------------------------------------------
+                                    
+getColType : List (Maybe(Int, Value)) -> ColType -> (String, List (Maybe(Int, Value)))
+getColType xs (CInt x) = ("int", xs)
+getColType xs (Varchar str) = ("varchar(255)", xs)
+
+-----------------------------------------------------------
+-- | CREATE Constraints
+-----------------------------------------------------------
+
+getConstr : List (Maybe(Int, Value)) -> Constr -> (String, List (Maybe(Int, Value))) 
+getConstr xs (NOTNULL) = ("NOT NULL", xs)
+getConstr xs (UNIQUE constr) = ("NOT NULL UNIQUE", xs)
+getConstr xs (PRIMARYKEY) = ("PRIMARY KEY", xs)
+getConstr xs (FOREIGNKEY) = ("FOREIGN KEY", xs)
+getConstr xs (CHECK) = ("CHECK", xs)
+getConstr xs (DEFAULT) = ("DEFAULT", xs)
+getConstr xs (None) = ("", xs)
+
+putBrackets : String -> String
+putBrackets str = "(" ++ str ++ ")"
+
+-----------------------------------------------------------
+-- | Used to detect a complex type in a nested SQLite query
+-----------------------------------------------------------
+complexType : SQL -> Bool
+complexType (TBL tbl) = False
+complexType (SELECT vars sql c) = True
+                    
+-----------------------------------------------------------
+-- | Used in CREATE
+-----------------------------------------------------------                    
+                   
+listValType : List (Maybe(Int, Value)) -> List (Value, ColType , Constr) -> (String, List (Maybe(Int, Value)))
+listValType xs [] = ("", xs)
+listValType xs ((val, types, constr) :: vs) = let (str , newxs) = valString xs val in
+                                              let (str' , newxs') = getColType newxs types in
+                                              let (str'', newxs'') = getConstr newxs' constr in
+                                              let (finalstr, finalxs) = listValType newxs'' vs in
+                                                    ((unwords(intersperse  " " (words(str) ++ words(str') ++ words(str'') ++ words(finalstr)))) , finalxs)
+
+-----------------------------------------------------------
+-- | Evaluates a condition after WHERE clause
+----------------------------------------------------------- 
 
 evalCond : List (Maybe(Int, Value)) -> Cond -> (String, List (Maybe(Int, Value)))
 evalCond xs (Equals val1 val2) = let (restring , newxs ) = valString xs val1 in
@@ -90,8 +169,16 @@ evalCond xs (MkLTE val1 val2) = let (restring , newxs ) = valString xs val1 in
                                                                                                                                                     
 evalCond xs (MkNULL val) = let (restring , newxs ) = valString xs val in
                                (restring ++ " IS NULL " , newxs)
-                                     
+
+-----------------------------------------------------------
+-- | Evaluates queries
+----------------------------------------------------------- 
+evalSQL : List (Maybe(Int, Value)) -> SQL -> ( String, List (Maybe(Int, Value)))
+-----------------------------------------------------------
+-- | Evaluates clauses
+-----------------------------------------------------------                                      
 clauseString : List (Maybe(Int, Value)) -> Clause -> (String, List (Maybe(Int, Value)))
+
 clauseString xs (Empty) = ("" , []) -- No condition
 clauseString xs (MkCond cond') = let (condstr, newxs) = evalCond xs cond' in
                                      (condstr , newxs)
@@ -103,6 +190,11 @@ clauseString xs (AND c1 c2) = let (clausestr, newxs) = clauseString xs c1 in
 clauseString xs (OR c1 c2) =  let (clausestr, newxs) = clauseString xs c1 in
                               let (clausestr2, newxs') = clauseString newxs c2 in
                                   (clausestr ++ " OR " ++clausestr2 , newxs')
+                                  
+
+-----------------------------------------------------------
+-- | Evaluates conditional clauses.
+-----------------------------------------------------------
                                                         
 condClauseStr : List (Maybe(Int, Value)) -> condClause -> (String, List (Maybe(Int, Value)))
 condClauseStr xs (SET setcl) = let (condstr, newxs) = clauseString xs setcl in
@@ -111,24 +203,39 @@ condClauseStr xs (SET setcl) = let (condstr, newxs) = clauseString xs setcl in
 condClauseStr xs (WHERE setcl1 setcl2) = let (condstr, newxs) = condClauseStr xs setcl1 in
                                          let (condstr', newxs') = clauseString newxs setcl2 in
                                              ( condstr ++ " WHERE " ++ condstr', newxs')
+                                             
+--TODO SELECT data from tbl1 where num > (SELECT num from tbl1 where num = 24) 
+-- evalSQL [] ((SELECT ALL) (TBL "tbl") (MkSQL ((SELECT ALL) (TBL "tbl") (MkCond (VCol ") ) )  )                                            
+--clauseString xs (MkSQL sql) = (evalSQL xs sql)
+                            
 
-                              
-evalSQL : List (Maybe(Int, Value)) -> SQL -> ( String, List (Maybe(Int, Value)))
 evalSQL xs (TBL tbl) = (tbl, xs)
 evalSQL xs (SELECT vars sql' c) = let (sqlstring, newxs) = evalSQL xs sql' in
                                   let (csstring, newxs') = clauseString newxs c in
                                   case c of 
                                         Empty => case vars of 
-                                                      (ALL ) => ("SELECT " ++ "*" ++ " FROM (" 
-                                                                ++ sqlstring ++ ") " ++ csstring++ ";",  newxs')
-                                                      (Cols selvar) => ("SELECT " ++ unwords ( intersperse "" ( selvar ++ 
-                                                                       (words ( " FROM (" ++ sqlstring ++ ")")))) ++ csstring++ ";",  newxs')
+                                                      (ALL ) => if complexType sql' then ("SELECT " ++ "*" ++ " FROM " 
+                                                                                         ++ (putBrackets sqlstring) ++ csstring,  newxs')
+                                                                   else ("SELECT " ++ "*" ++ " FROM " ++ sqlstring ++ csstring,  newxs')
+ 
+                                                      (Cols selvar) => if complexType sql' then ("SELECT " ++ unwords ( intersperse "" ( selvar ++ 
+                                                                             (words ( " FROM " ++ (putBrackets sqlstring) )))) ++ csstring,  newxs')
+                                                                           else ("SELECT " ++ unwords ( intersperse "" ( selvar ++ 
+                                                                                (words ( "FROM " ++ sqlstring )))) ++ csstring,  newxs')    
                                                       
                                         _  => case vars of 
-                                                   (ALL ) => ("SELECT " ++ "*" ++ " FROM (" 
-                                                             ++ sqlstring ++ ") " ++ "WHERE " ++ csstring++ ";",  newxs')
-                                                   (Cols selvar) => ("SELECT " ++ unwords ( intersperse "" ( selvar ++
-                                                                    (words ( " FROM (" ++ sqlstring ++ ")")))) ++ "WHERE" ++ csstring ++ ";", newxs')
+                                                   (ALL ) => if complexType sql' then  ("SELECT " ++ "*" ++ " FROM " 
+                                                                                        ++ (putBrackets sqlstring)  ++ " WHERE " ++ csstring ,  newxs')
+                                                                    else ("SELECT " ++ "*" ++ " FROM " 
+                                                                          ++ sqlstring  ++ " WHERE " ++ csstring ,  newxs')
+                                                                                         
+                                                   (Cols selvar) => if complexType sql' then ("SELECT " ++ unwords ( intersperse "" ( selvar ++
+                                                                                        (words ( " FROM " ++ (putBrackets sqlstring) )))) 
+                                                                                         ++ " WHERE " ++ csstring , newxs')
+                                                                                         
+                                                                        else ("SELECT " ++ unwords ( intersperse "" ( selvar ++
+                                                                              (words ( "FROM " ++ sqlstring )))) ++ " WHERE " ++ csstring , newxs')
+
 
 evalSQL xs (INSERT sql vals) = let (tblname, newvals) = evalSQL xs sql in 
                                let (str, newxs ) = listVal newvals vals in  
@@ -144,4 +251,6 @@ evalSQL xs (UPDATE sql cl) = let (tblname, newxs) = evalSQL xs sql in
                                let (csstring, newxs') = condClauseStr newxs cl in
                                    ("UPDATE " ++ tblname ++ csstring, newxs')
 
-                            
+evalSQL xs (CREATE sql details) = let (sqlstring, newxs) = evalSQL xs sql in
+                                  let (csstring, newxs') = listValType newxs details in
+                                      ("CREATE TABLE " ++ sqlstring ++ "(" ++ csstring ++ ")", newxs') 
