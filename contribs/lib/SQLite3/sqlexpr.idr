@@ -21,6 +21,10 @@ data Value = VInt Int
             |VCol String
             |VNULL
             
+--Perhaps could extend this by adding 
+-- a dot operator to allow mapping 
+-- between table and column and 
+-- comparing different table columns.  
 
 data Cond = Equals Value Value
             |MkGT Value Value
@@ -29,7 +33,7 @@ data Cond = Equals Value Value
             |MkLTE Value Value
             |MkNULL Value
 
-              
+           
 data Clause = MkCond Cond
              | AND Clause Clause
              | OR Clause Clause
@@ -80,7 +84,8 @@ unwords = pack . unwords' . map unpack
 
 -----------------------------------------------------------
 -- | This function replaces values with question mark
--- following by an index number.
+-- following by an index number. It then puts the value 
+-- replaced, in the list.
 -----------------------------------------------------------
 
 valString : List (Maybe(Int, Value)) -> Value -> (String, List (Maybe(Int, Value)))
@@ -90,7 +95,8 @@ valString xs (VFloat x) = ("?" ++ show (cast(length xs)+1), xs ++ [Just (cast((l
 valString xs (VCol n) = (n, xs)  
 
 -----------------------------------------------------------
--- | This function calls valString on a list of Values.
+-- | This function calls valString on a list of Values
+-- and separates the values by commas.
 -----------------------------------------------------------
 
 listVal : List (Maybe(Int, Value)) -> List Value -> (String, List (Maybe(Int, Value)))
@@ -125,6 +131,7 @@ putBrackets str = "(" ++ str ++ ")"
 
 -----------------------------------------------------------
 -- | Used to detect a complex type in a nested SQLite query
+-- This function is used for bracketing the nested queries.
 -----------------------------------------------------------
 complexType : SQL -> Bool
 complexType (TBL tbl) = False
@@ -144,7 +151,7 @@ listValType xs ((val, types, constr) :: vs) = let (str , newxs) = valString xs v
 
 
 -----------------------------------------------------------
--- | Evaluates a condition after WHERE clause
+-- | Evaluates a conditional WHERE clause
 ----------------------------------------------------------- 
 
 evalCond : List (Maybe(Int, Value)) -> Cond -> (String, List (Maybe(Int, Value)))
@@ -172,11 +179,15 @@ evalCond xs (MkNULL val) = let (restring , newxs ) = valString xs val in
                                (restring ++ " IS NULL " , newxs)
 
 -----------------------------------------------------------
--- | Evaluates queries
+-- | Evaluates queries by calling the other functions
+-- on each part of the query
 ----------------------------------------------------------- 
 evalSQL : List (Maybe(Int, Value)) -> SQL -> ( String, List (Maybe(Int, Value)))
 -----------------------------------------------------------
 -- | Evaluates clauses
+-- Supports WHERE Clause
+-- WHERE Clause And Another-Clause
+-- WHERE Clause Or Another-Clause
 -----------------------------------------------------------                                      
 clauseString : List (Maybe(Int, Value)) -> Clause -> (String, List (Maybe(Int, Value)))
 
@@ -206,7 +217,7 @@ condClauseStr xs (WHERE setcl1 setcl2) = let (condstr, newxs) = condClauseStr xs
                                              ( condstr ++ " WHERE " ++ condstr', newxs')
                                              
 -- SELECT data from tbl1 where num > (SELECT num from tbl1 where num = 24) 
--- evalSQL [] ((SELECT ALL) (TBL "tbl") (MkSQL ((SELECT ALL) (TBL "tbl") (MkCond (VCol ") ) )  ) 
+-- evalSQL [] ((SELECT ALL)(TBL "tbl")(MkSQL ((SELECT ALL) (TBL "tbl")(MkCond (VCol ")))) 
 -- NTBF                                           
 --clauseString xs (MkSQL sql) = (evalSQL xs sql)
 

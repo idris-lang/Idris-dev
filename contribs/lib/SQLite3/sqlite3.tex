@@ -1,0 +1,101 @@
+ \documentclass[11pt]{article}
+ \topmargin -1.5cm       
+ \oddsidemargin -0.04cm  
+ \evensidemargin -0.04cm  
+ \textwidth 16.59cm
+ \textheight 21.94cm 
+ %\pagestyle{empty} 
+ \parskip 7.2pt         
+ \parindent 0pt	
+
+ \begin{document}         
+ \section{Introduction}
+\label{Introduction} 
+This document provides overview of how the library for SQLite works. The code base is written on top of the SQLite3 C/C++ Interface. This library supports some features of the low-level library, implemented in a higher level basis.
+The library allows making use of data types as queries. The aim of this library is to avoid SQL injections which are the most common security issues. To avoid this we have defined a datatype which describes qqueries. The queries are written using these data types and parsed as quoted string while replacing values with indexed question mark to be binded with the statement.
+\section{Using the library}
+\label{Using the library}
+Simple examples have been provided in the testunit.idr file.
+To open a database, use the open\_db function which takes the filename as a string.  This function implements the sqlite3\_open function . This function returns a pointer to the database which can be used by other function to access the database object.
+Whether or not an error occurs when it is opened, resources should be released by passing it to close\_db when it is no longer required.
+A query can then be builts using the supported data types . The library supports limited number of queries at the moment. The supported sql commands are :
+\newline
+\newline
+\textbf{SELECT,}
+\textbf{INSERT,}
+\textbf{UPDATE,}
+\textbf{CREATE}
+
+\subsection{Creating Queries}
+\label{Creating Queries}
+
+To create a query, use the evalSQL function which takes an empty list and the SQL query. The routine evaluates the expression in a divide and conquer manner (or recursive?)
+filling up the list with the received values. For instance the following is a valid query:
+
+let sql = evalSQL [ ] ((SELECT ALL)(TBL ["tbl1"]) (MkCond (MkNULL (VCol "data"))))
+\newline
+\newline{This will be parsed as :}
+\\“SELECT * FROM tbl1 WHERE data IS NULL “
+
+The evaluator returns a string and a list of indexed values. The string part of the query could be parsed to prepare. 
+evalSQL parses the query as a string replacing values with ? and an index starting from one, storing them in the list given to it as an argument.
+For example:
+
+
+evalSQL [ ] (SELECT (Cols ["data"]) (SELECT (Cols["num","data"]) (TBL ["tbl1"]) (MkCond (Equals (VCol "num")(VInt 2))) ) Empty ) )
+
+is passed to prepare as :
+
+SELECT * FROM tbl1 WHERE data = ?1 AND num = ?2 OR num = ?3
+
+and returns the list as follows:
+\newline{(Just (1, VStr "data0")) ,(Just (2, VInt 1)) , (Just (3, VInt 2))} 
+
+The values in the list are binded to the statement using bindMulti function. This function takes the statement pointer returned by prepare and the list returned by evalSQL, and binds the values by calling the appropriate functions.
+
+The function exec\_db\_v2 executes the statement. Note that the other version of exec\_db implements the sqlite3\_exec() interface which is a wrapper around sqlite3\_prepare\_v2(), sqlite3\_step(), and sqlite3\_finalize(), without having to use a lot of code, though the use of this function is not recommended in this case.
+
+The functions finalize\_db and close\_db must be called to clean up the open resources.
+To print the result, the function toList\_v1 can be used which takes a DBPointer.
+
+\subsection{More Examples}
+\label{More Examples}
+Nested expressions are also supported. You could write queries such as :
+
+evalSQL [ ] (SELECT (Cols ["data"]) (SELECT (Cols["num","data"]) (TBL ["tbl1"]) (MkCond (Equals (VCol "num")(VInt 2)))) Empty)
+
+Parsed as :
+
+SELECT data FROM (SELECT num data FROM tbl1 WHERE num = ?1)
+
+Note that in this example, the inner query must include the same column as the outer one otherwise this query will not validate.
+Use tricky examples of things that work and things that dont work
+
+\section{Evaluating Queries}
+\label{Evaluating Queries}
+\subsection{SQL Data Type}
+\label{SQL Data Type}
+The SQL Data Types describe the queries that are supported by the library. Data type Value consists of Int, String and Float. The data type can be extended to further support queries. The evaulator function makes use of smaller function to evaulate parts of the query. For instance given a SELECT qeury, it calls evalSQL to obtain the list of tables, and clauseString to evaluate the rest of the expression which could include a WHERE clause or could be Empty.
+\subsection{evalSQL Function}
+\label{evalSQL Function}
+This is a recursive evaluator which makes a call to itself. An SQL could consist of a SELECT ALL or Columns followed by another SQL which could be a nested query or just the name of the table(s). It then call the appropriate functions to evaluate the query. It returns the well-quoted String expression and a list of indexed values which are passed to the bind function.
+\section{Pointers passed to Idris functions}
+\label{Pointers passed to Idris functions}
+
+The library uses FFI. In order to make the pointers passed to functions more explicit, we have defined them as data types. For instance open\_db takes a String and returns a DBPointer and prepare\_db
+takes a DBPointer and returns a StmtPtr(Statemenet Pointer).
+Error handling is done using the \emph {DB a} data type which is either \emph {IO String} which indicates an error or \emph{ IO a}.
+To test the functions in main, you need to use runDB which takes a \emph{ DB a} and returns IO a.
+\begin{center}
+\centering                                           runDB : DB a $\rightarrow$ IO a
+\end{center}
+More examples on how to use the functions can be found in \emph{testunit.idr}
+
+\section{Using the C Functions}
+\label{Using the C Functions}
+
+For example calling get\_table after prepare\_db could lead to segmentation fault since get\_table calls sqlite3\_prepare etc
+Functions such as exec\_db and get\_table are wrapper functions and calling these before finalizing a prepared query could cause segmentation fault.
+Perhaps these functions could be removed from the library if no longer required in the future.
+
+\end{document}
