@@ -11,14 +11,18 @@
  \begin{document}         
  \section{Introduction}
 \label{Introduction} 
-This document provides overview on how the library for SQLite works. The code base is written on top of the
+This document provides overview on how the Idris library for SQLite3 works. The code base is written on top of the
 SQLite3 C/C++ Interface.
 This library supports some features of the low-level library, implemented in a higher level basis.
-The library allows making use of data types as queries. The aim of this library is to avoid
+The library allows making use of queries as data types. The aim of this library is to avoid
 SQL injections which are the most common security issues.
 To avoid this we have defined a datatype which describes queries.
 The queries are written using these data types and parsed as quoted string
-while replacing values with indexed question mark to be binded with the statement.
+while replacing values with \emph{indexed question mark} to be binded with the prepared statement.
+This prevents the user from preparing the queries inappropriately by not allowing to pass
+any types of values directly to the prepare function. However this is a design choice, the library
+does not prevent the user from passing a String directly to the prepare function.
+
 \section{Using the library}
 \label{Using the library}
 Simple examples have been provided in the \emph{testunit.idr} file.
@@ -47,7 +51,7 @@ filling up the list with the received values. For instance the following is a va
 let sql = evalSQL [ ] ((SELECT ALL)(TBL ["tbl1"]) (MkCond (MkNULL (VCol "data"))))
 \newline
 \newline{This will be parsed as :}
-\\“SELECT * FROM tbl1 WHERE data IS NULL “
+\b{“SELECT * FROM tbl1 WHERE data IS NULL “}
 
 The evaluator returns a string and a list of indexed values.
 The string part of the query could be parsed to prepare. 
@@ -56,7 +60,8 @@ storing them in the list given to it as an argument.
 For example:
 
 
-evalSQL [ ] (SELECT (Cols ["data"]) (SELECT (Cols["num","data"]) (TBL ["tbl1"])(MkCond(Equals(VCol "num")(VInt 2))))Empty))
+evalSQL [ ] (SELECT (Cols ["data"]) (SELECT (Cols["num","data"]) (TBL ["tbl1"])
+\newline (MkCond(Equals(VCol "num")(VInt 2))))Empty))
 
 is passed to prepare as :
 
@@ -137,8 +142,8 @@ The library includes some wrapper functions such as get\_table
 and exec\_db. Using these functions mixed with prepare, step or finalize
 inappropriately could cause segmentation faults.
 Perhaps these functions could be removed from the library if no longer required in the future
-since the main purpose of this library is to make use of data types, or perhaps 
-these functionalities could be implemented internally without calling 
+since the main purpose of this library is to make use of data types.
+However these functionalities could be implemented internally without calling 
 the C Interface wrapper functions.
 
 \section{Further improving the library}
@@ -146,4 +151,7 @@ the C Interface wrapper functions.
 There are many features that could be added to this library. These include adding more useful SQL Commands,
 extending the SQL datatype to support more complex queries and possibly improving \emph{evalSQL}
 for a faster performance.
+Another useful thing to implement is the dot operator(.) which is the member access operator to yield
+the value of a field in a table. This enables comparing values in different tables and constructing
+more complex queries.
 \end{document}

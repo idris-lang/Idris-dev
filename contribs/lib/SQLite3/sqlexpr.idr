@@ -221,7 +221,9 @@ condClauseStr xs (WHERE setcl1 setcl2) = let (condstr, newxs) = condClauseStr xs
 -- NTBF                                           
 --clauseString xs (MkSQL sql) = (evalSQL xs sql)
 
--- Separate list of tables                            
+-- Separate list of tables  
+-- For complex type, return list returned by evalSQL
+-- And add brackets                           
 evalSQL xs (TBL tbl) = ((unwords (intersperse "," ( tbl))), xs)
 evalSQL xs (SELECT vars sql' c) = let (sqlstring, newxs) = evalSQL xs sql' in
                                   let (csstring, newxs') = clauseString newxs c in
