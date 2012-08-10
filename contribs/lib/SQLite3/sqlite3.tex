@@ -11,25 +11,27 @@
  \begin{document}         
  \section{Introduction}
 \label{Introduction} 
-This document provides overview of how the library for SQLite works. The code base is written on top of the SQLite3 C/C++ Interface.
+This document provides overview of how the library for SQLite works. The code base is written on top of the
+SQLite3 C/C++ Interface.
 This library supports some features of the low-level library, implemented in a higher level basis.
 The library allows making use of data types as queries. The aim of this library is to avoid
 SQL injections which are the most common security issues.
-To avoid this we have defined a datatype which describes qqueries.
+To avoid this we have defined a datatype which describes queries.
 The queries are written using these data types and parsed as quoted string
 while replacing values with indexed question mark to be binded with the statement.
 \section{Using the library}
 \label{Using the library}
-Simple examples have been provided in the testunit.idr file.
+Simple examples have been provided in the \emph{testunit.idr} file.
 To open a database, use the open\_db function which takes the filename as a string. 
-This function implements the sqlite3\_open function .
-This function returns a pointer to the database which can be used by other function to access the database object.
+This function implements the sqlite3\_open function.
+This function returns a pointer to the database which can be used by other function
+to access the database object.
 Whether or not an error occurs when it is opened,
 resources should be released by passing it to close\_db when it is no longer required.
-A query can then be builts using the supported data types .
+A query can then be builts using the supported data types.
 The library supports limited number of queries at the moment. The supported sql commands are :
 \newline
-\newline
+
 \textbf{SELECT,}
 \textbf{INSERT,}
 \textbf{UPDATE,}
@@ -39,7 +41,7 @@ The library supports limited number of queries at the moment. The supported sql 
 \label{Creating Queries}
 
 To create a query, use the evalSQL function which takes an empty list and the SQL query.
-The routine evaluates the expression in a divide and conquer manner (or recursive?)
+The routine evaluates the expression recrusively by dividing it into smaller parts,
 filling up the list with the received values. For instance the following is a valid query:
 
 let sql = evalSQL [ ] ((SELECT ALL)(TBL ["tbl1"]) (MkCond (MkNULL (VCol "data"))))
@@ -49,12 +51,12 @@ let sql = evalSQL [ ] ((SELECT ALL)(TBL ["tbl1"]) (MkCond (MkNULL (VCol "data"))
 
 The evaluator returns a string and a list of indexed values.
 The string part of the query could be parsed to prepare. 
-evalSQL parses the query as a string replacing values with ? and an index starting from one,
+\emph{evalSQL} parses the query as a string replacing values with \emph{?} and an index starting from one,
 storing them in the list given to it as an argument.
 For example:
 
 
-evalSQL [ ] (SELECT (Cols ["data"]) (SELECT (Cols["num","data"]) (TBL ["tbl1"]) (MkCond (Equals (VCol "num")(VInt 2))) ) Empty ) )
+evalSQL [ ] (SELECT (Cols ["data"]) (SELECT (Cols["num","data"]) (TBL ["tbl1"])(MkCond(Equals(VCol "num")(VInt 2))))Empty))
 
 is passed to prepare as :
 

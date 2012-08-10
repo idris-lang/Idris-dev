@@ -157,23 +157,23 @@ listValType xs ((val, types, constr) :: vs) = let (str , newxs) = valString xs v
 evalCond : List (Maybe(Int, Value)) -> Cond -> (String, List (Maybe(Int, Value)))
 evalCond xs (Equals val1 val2) = let (restring , newxs ) = valString xs val1 in
                                  let (restring2, newxs') = valString newxs val2 in
-                                     (restring ++ " = " ++ restring2, (newxs'))
+                                     (restring ++ " = " ++ restring2, newxs')
                                      
 evalCond xs (MkGT val1 val2) = let (restring , newxs ) = valString xs val1 in
                                  let (restring2, newxs') = valString newxs val2 in
-                                     (restring ++ " > " ++ restring2, (newxs'))
+                                     (restring ++ " > " ++ restring2, newxs')
 
 evalCond xs (MkGTE val1 val2) = let (restring , newxs ) = valString xs val1 in
                                  let (restring2, newxs') = valString newxs val2 in
-                                     (restring ++ " >= " ++ restring2, ( newxs'))
+                                     (restring ++ " >= " ++ restring2, newxs')
 
 evalCond xs (MkLT val1 val2) = let (restring , newxs ) = valString xs val1 in
                                  let (restring2, newxs') = valString newxs val2 in
-                                     (restring ++ " < " ++ restring2, (newxs'))
+                                     (restring ++ " < " ++ restring2, newxs')
                                      
 evalCond xs (MkLTE val1 val2) = let (restring , newxs ) = valString xs val1 in
                                  let (restring2, newxs') = valString newxs val2 in
-                                     (restring ++ " =< " ++ restring2, ( newxs'))
+                                     (restring ++ " =< " ++ restring2, newxs')
                                                                                                                                                     
 evalCond xs (MkNULL val) = let (restring , newxs ) = valString xs val in
                                (restring ++ " IS NULL " , newxs)
@@ -228,26 +228,26 @@ evalSQL xs (SELECT vars sql' c) = let (sqlstring, newxs) = evalSQL xs sql' in
                                   case c of 
                                         Empty => case vars of 
                                                       (ALL ) => if complexType sql' then ("SELECT " ++ "*" ++ " FROM " 
-                                                                                         ++ (putBrackets sqlstring) ++ csstring,  newxs')
+                                                                                         ++ (putBrackets sqlstring) ++ csstring,  newxs)
                                                                                          
                                                                    else ("SELECT " ++ "*" ++ " FROM " ++ sqlstring
                                                                           ++ csstring,  newxs')
  
                                                       (Cols selvar) => if complexType sql' then ("SELECT " ++ (unwords selvar) ++ 
-                                                                              " FROM " ++ (putBrackets sqlstring) ++ csstring,  newxs')
+                                                                              " FROM " ++ (putBrackets sqlstring) ++ csstring,  newxs)
                                                                              
                                                                            else ("SELECT " ++ (unwords selvar )++  " FROM " ++ sqlstring
                                                                                    ++ csstring,  newxs')    
                                                       
                                         _  => case vars of 
                                                    (ALL ) => if complexType sql' then  ("SELECT " ++ "*" ++ " FROM " 
-                                                                                          ++ " WHERE " ++ csstring ,  newxs')
+                                                                                          ++ " WHERE " ++ csstring ,  newxs)
                                                                     else ("SELECT " ++ "*" ++ " FROM " ++  sqlstring
                                                                            ++ " WHERE " ++ csstring ,  newxs')
                                                                                          
                                                    (Cols selvar) => if complexType sql' then ("SELECT " ++ (unwords selvar) ++ " FROM " ++
                                                                                               (putBrackets sqlstring)  ++ " WHERE " 
-                                                                                                ++ csstring , newxs')
+                                                                                                ++ csstring , newxs)
                                                                                          
                                                                         else ("SELECT " ++ (unwords selvar) ++ " FROM " ++ sqlstring 
                                                                                 ++ " WHERE " ++ csstring , newxs')
