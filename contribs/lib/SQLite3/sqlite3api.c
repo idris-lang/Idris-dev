@@ -17,7 +17,6 @@ static char sql_query_buffer[2000];
 // array used to store the string
 //value obtain by get_val_text
 unsigned char* array;
-
 /*
  open an SQLite database file as 
  specified by the filename argument. 
@@ -38,7 +37,6 @@ void* sqlite3_open_idr(const char *filename){
 	return dbi;
 	
 }
-
 /*
  Frees the resource and returns 0 on success
  */
@@ -50,12 +48,10 @@ int sqlite3_close_idr(void* db){
 		free(dbi);
 		return 0;
 	}
-	
 	else {
 		return res;
 	}	
 }
-
 /*
  SQLite wrapper around  sqlite3_prepare_v2(), 
  sqlite3_step(), and sqlite3_finalize().
@@ -64,11 +60,9 @@ int sqlite3_close_idr(void* db){
  */
 int sqlite3_exec_idr(void* db, const char *sql)
 {
-	
 	DBinfo* dbi =(DBinfo*) db;
 	char* err;
 	int rc;
-	
 	rc = sqlite3_exec(dbi->db_ptr,sql,NULL, NULL, &err);
 	if (rc != SQLITE_OK && err != NULL) {
 		strncpy(dbi->buffer, err, sizeof(dbi->buffer));
@@ -76,7 +70,6 @@ int sqlite3_exec_idr(void* db, const char *sql)
 	}
 	return rc;
 }
-
 /*
  Gets the error store in the buffer
  in the struct. Some certain functions 
@@ -86,15 +79,12 @@ char* sqlite3_get_error(void* db) {
 	DBinfo* dbi =(DBinfo*) db;
 	return dbi->buffer;
 }
-
-
 /*
  Compiles the query into a byte-code program
  Returns a pointer to the sqlite3_stmt pointer
  and stores it in the struct.
  */
 void* sqlite3_prepare_idr(void *db,const char *zSql){
-	
 	sqlite3_stmt* stmt;
 	const char *tail;
 	
@@ -107,10 +97,8 @@ void* sqlite3_prepare_idr(void *db,const char *zSql){
 	if(rec != SQLITE_OK){
 		return NULL;
 	}
-	
 	return dbi;
 }
-
 /*
  Another wrapper interface that is preserved 
  for backwards compatibility. 
@@ -118,7 +106,6 @@ void* sqlite3_prepare_idr(void *db,const char *zSql){
  This was mainly used for testing within the 
  library.
  */
-
 void* sqlite3_get_table_idr(void* db,
 							const char *sql){
 	
@@ -127,9 +114,7 @@ void* sqlite3_get_table_idr(void* db,
 
 	Table* tbl = malloc(sizeof(Table));
 	tbl->database = dbi;
-	
 	int res = sqlite3_get_table(dbi->db_ptr,sql,&tbl->table_data,&tbl->num_row,&tbl->num_col,&err);
-	
 	int array_size = sizeof(&tbl->table_data);
 
 	if( res != SQLITE_OK && err != NULL){
@@ -137,16 +122,11 @@ void* sqlite3_get_table_idr(void* db,
 		sqlite3_free(err);
 		return NULL;
 	}
-	
 	tbl -> data_size = array_size;
-	return tbl;
-	
+	return tbl;	
 }
 
-
-
 /*
- 
  This function executes queries.
  This can be used after preparing a query
  In case of error or library misuse 
@@ -171,7 +151,6 @@ int exec_db(void*p){
 	if(rc == SQLITE_ERROR && rc == SQLITE_MISUSE){
 		return 1;
 	}
-
 	row_counter =0;
 	
 	while (rc == SQLITE_ROW) {
@@ -184,7 +163,6 @@ int exec_db(void*p){
 	dbi->row_count = row_counter;
 	dbi->col_count = col;
 	return rc;
-	
 }
 /*
  Returns row number from DB Struct
@@ -195,12 +173,9 @@ int sqlite3_get_num_row_v2(void* p){
 	DBinfo* dbi =(DBinfo*) p;
 	int row_number =dbi->row_count;
 	return row_number;
-	
-	
 }
 
 /*
- 
  Returns column number from DB Struct
  */
 int sqlite3_get_num_col_v2(void* p){
@@ -208,11 +183,9 @@ int sqlite3_get_num_col_v2(void* p){
 	DBinfo* dbi =(DBinfo*) p;
 	int col_number =dbi-> col_count;
 	return col_number;
-	
 }
 
 /*
- 
  Another way of obtaining row number
  Thought this function gets the value
  from Table struct. The value is stored
@@ -225,12 +198,9 @@ int sqlite3_get_num_row(void* p){
 	Table* tbl =(Table*) p;
 	int row_number =tbl->num_row;
 	return row_number;
-	
-	
 }
 
 /*
- 
  Another way of obtaining column number
  Thought this function gets the value
  from Table struct. The value is stored
@@ -238,13 +208,11 @@ int sqlite3_get_num_row(void* p){
  Using this version is not recommended
  unless used with get_table
  */
-
 int sqlite3_get_num_col(void* p){
 	
 	Table* tbl =(Table*) p;
 	int col_number =tbl-> num_col;
-	return col_number;
-	
+	return col_number;	
 }
 
 /*
@@ -255,7 +223,6 @@ int sqlite3_get_num_col(void* p){
  set the pointer to its initial state
  and then calls sqlite3_column_type
  to get the type
- 
 */
 int sqlite3_get_data_type(void* p, int nRow, int nCol){
 	
@@ -277,24 +244,18 @@ int sqlite3_get_data_type(void* p, int nRow, int nCol){
 	
 }
 /*
- 
  Obtains the integer value in a given column
 */
 
 int sqlite3_get_val_int(void* p, int nCol){
 	
-	
 	DBinfo* dbi =(DBinfo*) p;
 	int val, col;
-	
 	val =sqlite3_column_int(dbi->ppStmt, nCol);
 	return  val;
-	
-	
 }
 
 /*
- 
  Obtains the text value
  Need to allocate memory to store the string
  Use GC_malloc since Boehm garbage collector
@@ -306,16 +267,12 @@ const unsigned char* sqlite3_get_val_text(void* p,int nCol){
 	DBinfo* dbi =(DBinfo*) p;
 	int rc,i, val, counter;
 	const unsigned char* text_val;
-	
 	array =(unsigned char *) GC_malloc(1000*sizeof(char));
-	
 	text_val =sqlite3_column_text(dbi->ppStmt, nCol);
 	memcpy(array, text_val, strlen(text_val));
-
 	return array;
 	
 }
-
 float sqlite3_get_float(void* p, int nCol){
 	
 	DBinfo* dbi =(DBinfo*) p;
@@ -326,7 +283,6 @@ float sqlite3_get_float(void* p, int nCol){
 	return float_val;
 	
 }
-
 /*
  frees the pointer returned by get_table.
  */
@@ -336,16 +292,12 @@ void sqlite3_free_table_idr(void* db){
 	sqlite3_free_table(tbl->table_data);
 	free(tbl);
 }
-
-
 int sqlite3_step_idr(void* db){
 	
 	DBinfo* dbi =(DBinfo*) db;
 	int rc =sqlite3_step(dbi->ppStmt);
 	return rc;
 }
-
-
 /*
  Binds integer. This returns a pointer
  because of the implementation of BindMulti
@@ -375,7 +327,6 @@ void* sqlite3_bind_float_idr(void* p,int index, float val){
 	if(rc != SQLITE_OK){
 		return NULL;
 	}
-
 	return dbi;
 }
 
@@ -401,10 +352,7 @@ void* sqlite3_bind_text_idr(void* p,const char* text, int index,int length){
 	}
 
 	return dbi;
-	
 }
-
-
 /*
  Used for testing column count function.
  This function prepares query and by passing
@@ -440,17 +388,13 @@ int sqlite3_column_count_idr(void* db, const char* tbl_name){
 	return rc;
 }
 
-
 int sqlite3_data_count_idr(void* db){
 	
 	DBinfo* dbi =(DBinfo*) db;
 	int rc = sqlite3_data_count(dbi->ppStmt);
 	
 	return rc;
-	
 }
-
-
 /*
  Must be called after prepare to clean up
  the resources.
@@ -466,8 +410,6 @@ int sqlite3_complete_idr(const char *sql){
 	
 	int rc = sqlite3_complete(sql);
 	return rc;
-	
-	
 }
 
 /*
@@ -481,12 +423,10 @@ int sqlite3_reset_idr(void* db){
 	return rc;
 	
 }
-
 /*
  The following routines may be used to 
  obtain column related information.
  */
-
 const char *sqlite3_column_name_idr(void* db, int N){
 	
 	DBinfo* dbi=(DBinfo*) db;
@@ -502,8 +442,6 @@ const char *sqlite3_column_decltype_idr(void* db,int n){
 	return dectype;
 	
 }
-
-
 int sqlite3_column_bytes_idr(void* db, int n){
 	
 	DBinfo* dbi=(DBinfo*) db;
@@ -512,7 +450,6 @@ int sqlite3_column_bytes_idr(void* db, int n){
 	
 	
 }
-
 const void *sqlite3_column_blob_idr(void* db, int iCol){
 	DBinfo* dbi=(DBinfo*) db;
 	const void* data =sqlite3_column_blob(dbi-> ppStmt, iCol);
@@ -590,7 +527,6 @@ int sqlite3_backup_pagecount_idr(void *backup){
 	return res;
 	
 }
-
 /*
  Get the length of string
  Need this in Idris since length will not
