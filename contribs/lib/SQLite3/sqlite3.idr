@@ -23,21 +23,21 @@ data DBVal = DBInt Int
            | DBFloat Float
            | DBNull
            
-
+-- Database pointer
 data DBPointer =  MkDBPointer Ptr
-
+-- Table pointer
 data TBPointer = MkTBPointer Ptr
-
+-- Statement pointer
 data StmtPtr = MkStmtPtr Ptr
 
 Table : Set
 Table = List (List DBVal)
 
-
+-- ForMap used in to_list_v1
 forM : Monad m => List a -> (a -> m b) -> m (List b)
 forM f xs = mapM xs f
 
-
+-- Neater error handling done using DB
 data DB a = MkDB (IO (Either String a))
 
 instance Monad DB where
@@ -275,18 +275,18 @@ get_data (MkDBPointer pointer) row col = do
     helper ty
    where
 		get_data_type      : Ptr ->Int -> Int -> IO Int
-		get_data_type pointer row col =mkForeign (FFun "sqlite3_get_data_type_v2" [FPtr, FInt, FInt] FInt)pointer row col
+		get_data_type pointer row col =mkForeign (FFun "sqlite3_get_data_type" [FPtr, FInt, FInt] FInt)pointer row col
 		
 		get_data_val_int      : Ptr  -> Int -> IO Int
-		get_data_val_int pointer col =mkForeign (FFun "sqlite3_get_val_int_v2" [FPtr,FInt] FInt)pointer col
+		get_data_val_int pointer col =mkForeign (FFun "sqlite3_get_val_int" [FPtr,FInt] FInt)pointer col
 		
 		get_data_val_text     : Ptr -> Int -> IO String
-		get_data_val_text pointer col =mkForeign (FFun "sqlite3_get_val_text_v2" [FPtr, FInt] FString)pointer col
+		get_data_val_text pointer col =mkForeign (FFun "sqlite3_get_val_text" [FPtr, FInt] FString)pointer col
 
 		
 		
 		get_data_val_float : Ptr -> Int -> IO Float
-		get_data_val_float pointer col =mkForeign (FFun "sqlite3_get_float_v2" [FPtr, FInt] FFloat)pointer col
+		get_data_val_float pointer col =mkForeign (FFun "sqlite3_get_float" [FPtr, FInt] FFloat)pointer col
 		
 		helper : Int -> IO DBVal
 		helper 1 = do i <- get_data_val_int pointer col ; return (DBInt i)
@@ -316,6 +316,7 @@ strcat str1 str2 = (str1 ++ str2)
 
 -----------------------------------------------------------------------------
 -- | This version of toList retunrs result from get_table
+-- This could be removed if not needed in the future.
 -----------------------------------------------------------------------------
 		
 --toList_v2 : String -> String -> DBPointer -> DB Table
@@ -335,6 +336,8 @@ strcat str1 str2 = (str1 ++ str2)
 
 -----------------------------------------------------------------------------
 -- | These routines support binding the types supported by Idris.
+-- These return a pointer to statement pointer since we want to allow
+-- binding multiple values by implementing a recursive function.
 -----------------------------------------------------------------------------
 
 bind_int : StmtPtr -> Int -> Int -> DB StmtPtr

@@ -14,22 +14,25 @@
 #include <gc.h>
 
 typedef struct  {
-	sqlite3 *db_ptr;
-	sqlite3_stmt *ppStmt;
-	char buffer[1000];
+	sqlite3 *db_ptr; // database pointer
+	sqlite3_stmt *ppStmt; // statement pointer
+	char buffer[1000]; // bufer to store errors returned by certain functions
 	const char *Ptr_tail;
-	sqlite3_blob *blob_ptr;
 	sqlite3_value *value;
-	int row_count;
+	int row_count; // row number store by exec function
 	int col_count;
 	
 } DBinfo;
 
+// struct used for backup functions
 typedef struct {
 	sqlite3 *source_ptr;
 	sqlite3_backup *backup;
 }DBbackup ;
 
+// Table struct used by get_table function
+// stores row and column
+// returned by get_table
 typedef struct {
 	int num_row;
 	int num_col;
@@ -50,9 +53,7 @@ int sqlite3_exec_idr(void*, const char *sql);
 
 char* sqlite3_get_error(void* db);
 
-const unsigned char* sqlite3_get_val_text(void* p,const char* tbl_name,int nRow, int nCol);
-
-const unsigned char* sqlite3_get_val_text_v2(void* p,int nCol);
+const unsigned char* sqlite3_get_val_text(void* p,int nCol);
 
 void* sqlite3_get_table_idr(void* db, const char *sql);
 
@@ -66,17 +67,11 @@ int sqlite3_get_num_row_v2(void* p);
 
 int sqlite3_get_num_col_v2(void* p);
 
-int sqlite3_get_data_type(void* p,const char* tbl_name,int nRow, int nCol);
+int sqlite3_get_data_type(void* p, int nRow, int nCol);
 
-int sqlite3_get_data_type_v2(void* p, int nRow, int nCol);
+int sqlite3_get_val_int(void* p,int nCo);
 
-int sqlite3_get_val_int_v2(void* p,int nCo);
-
-int sqlite3_get_val_int(void* p,const char* tbl_name, int nRow, int nCol);
-
-float sqlite3_get_float(void* p,const char* tbl_name, int nRow, int nCol);
-
-float sqlite3_get_float_v2(void* p, int nCol);
+float sqlite3_get_float(void* p, int nCol);
 
 void* sqlite3_prepare_idr(
   void *db,            /* Database handle */
@@ -89,7 +84,7 @@ void* sqlite3_bind_float_idr(void* p,int index, float val);
 
 void* sqlite3_bind_int_idr(void* p,int index , int val);
 
-int sqlite3_bind_null_idr(void* p,int index);
+void* sqlite3_bind_null_idr(void* p,int index);
 
 void* sqlite3_bind_text_idr(void* p,const char* text, int index,int length);
 
@@ -131,9 +126,5 @@ int sqlite3_backup_step_idr(void *backup, int nPage);
 int sqlite3_backup_remaining_idr(void *backup);
 
 int sqlite3_backup_pagecount_idr(void *backup);
-
-int sqlite3_value_bytes_idr(void* value);
-
-int sqlite3_value_bytes16_idr(void* value);
 
 int strLength(const char * str);
