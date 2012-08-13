@@ -474,7 +474,7 @@ fixity = try (do reserved "infixl"; return Infixl)
      <|> try (do reserved "infix";  return InfixN)
      <|> try (do reserved "prefix"; return PrefixN)
 
---------- Tyoe classes ---------
+--------- Type classes ---------
 
 pClass :: SyntaxInfo -> IParser [PDecl]
 pClass syn = do acc <- pAccessibility
