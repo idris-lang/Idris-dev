@@ -10,9 +10,6 @@ DIAGS =
 
 SOURCES = ${TEXFILES} ${DIAGS} macros.ltx library.bib
 
-library.bib: .PHONY
-	cp ~/Research/Papers/library.bib .
-
 DITAA = java -jar ~/Downloads/ditaa.jar
 
 ${PAPER}.pdf: ${SOURCES}
