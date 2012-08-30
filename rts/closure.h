@@ -100,6 +100,7 @@ VAL MKSTR(VM* vm, char* str);
 VAL MKCON(VM* vm, int tag, int arity, ...);
 
 void PROJECT(VM* vm, VAL r, int loc, int arity); 
+void SLIDE(VM* vm, int args);
 
 void dumpVal(VAL r);
 

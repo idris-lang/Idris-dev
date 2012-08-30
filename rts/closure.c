@@ -88,6 +88,13 @@ void PROJECT(VM* vm, VAL r, int loc, int arity) {
     }
 }
 
+void SLIDE(VM* vm, int args) {
+    int i;
+    for(i = 0; i < args; ++i) {
+        LOC(i) = TOP(i);
+    }
+}
+
 void dumpVal(VAL v) {
     int i;
     switch(v->ty) {

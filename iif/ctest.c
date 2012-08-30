@@ -7,7 +7,7 @@ void plus(VM* vm, VAL* oldbase) {
 
     switch(TAG(LOC(0))) {
     case 0:
-//        PROJECT(vm, LOC(0), 2, 0);
+        PROJECT(vm, LOC(0), 2, 0);
         RVAL = LOC(1);
         TOPBASE(0);
         REBASE;
@@ -36,7 +36,7 @@ void natToInt(VM* vm, VAL* oldbase) {
 
     switch(TAG(LOC(0))) {
     case 0:
-    //    PROJECT(vm, LOC(0), 2, 0);
+        PROJECT(vm, LOC(0), 2, 0);
         RVAL = MKINT(0);
         TOPBASE(0);
         REBASE;
@@ -57,10 +57,8 @@ void natToInt(VM* vm, VAL* oldbase) {
     }
 }
 
-int main() {
+int do_main(VM* vm, VAL* oldbase) {
     INITFRAME;
-    VM* vm = init_vm(100,100);
-
     RESERVE(2);
     ADDTOP(2);
 
@@ -87,13 +85,22 @@ int main() {
 
     RESERVE(1);
     TOP(0) = LOC(0);
-    STOREOLD;
+    SLIDE(vm, 1);
+    TOPBASE(1);
+    TAILCALL(natToInt);
+/*    STOREOLD;
     BASETOP(0);
     ADDTOP(1);
     CALL(natToInt);
-    LOC(0) = RVAL;
+    TOPBASE(0);
+    REBASE; */
+}
 
-    printf("%ld\n", GETINT(LOC(0)));    
+int main() {
+    VM* vm = init_vm(100,100);
 
-    printf("%d %d\n", vm->valstack, vm->valstack_base);
+    do_main(vm, NULL);
+    printf("%ld\n", GETINT(RVAL));    
+
+    printf("%d %d %d\n", vm->valstack, vm->valstack_base, vm->valstack_top);
 }
