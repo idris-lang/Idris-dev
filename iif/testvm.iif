@@ -3,12 +3,17 @@ data S 1
 
 fun plus(x, y) = case x of {
                      O => y
-                   | S(k) => S(plus(k, y))
+                   | S(k) => S (plus(k, y))
                  }
 
 fun natToInt(x) = case x of {
                      O => 0
                    | S(k) => let y = natToInt(k) in y + 1
+                  }
+
+fun intToNat(x) = case x of {
+                     0 => O
+                   | _ => S (intToNat (x - 1))
                   }
 
 fun main() = printNum(natToInt(plus(S(S(O)), S(S(O)))))
