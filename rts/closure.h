@@ -1,56 +1,27 @@
 #ifndef _CLOSURE_H
 #define _CLOSURE_H
 
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+#include <unistd.h>
+#include <stdarg.h>
 
 // Closures
-typedef void* VAL;
-
-typedef struct {
-    VAL* valstack;
-    int* intstack;
-    double* floatstack;
-    VAL* valstack_ptr;
-    int* intstack_ptr;
-    double* floatstack_ptr;
-    void* heap;
-    int stack_max;
-    VAL ret;
-} VM;
-
-VM* init_vm(int stack_size, size_t heap_size);
-
-// Functions all take a pointer to their VM, and return nothing.
-typedef void(*func)(VM*);
-
-#define EXTEND(n) if (vm->valstack_ptr-vm->valstack + n < vm -> stack_max) \
-    { vm->valstack_ptr+=(n) } else { stackOverflow(vm); }
-#define CLEAR(n) vm->valstack_ptr-=(n)
-#define SLIDE(drop, keep)			\
-    for (i=1; i<=keep; ++i) {			\
-	*(vm->valstack_ptr-i-drop) = *(vm->valstack_ptr-i);	\
-    }						\
-    vm->valstack_ptr-=(drop)
 
 typedef enum {
-    THUNK, CON, INT, FLOAT, STRING, UNIT, PTR
+    CON, INT, FLOAT, STRING, UNIT, PTR
 } ClosureType;
 
 typedef struct {
-    VAL fn;
-    int arity;
-    int numargs;
-    VAL* args;
-} thunk;
-
-typedef struct {
     int tag;
-    VAL* args;
+    int arity;
+    void* args;
 } con;
 
 typedef struct {
     ClosureType ty;
     union {
-        thunk t;
         con c;
         int i;
         double f;
@@ -59,30 +30,78 @@ typedef struct {
     } info;
 } Closure;
 
-// Stack manipulation instructions
+typedef Closure* VAL;
 
-#define PUSH(i) *(vm->valstack_ptr++) = i;
-#define POP --vm->valstack_ptr;
+typedef struct {
+    VAL* valstack;
+    int* intstack;
+    double* floatstack;
+    VAL* valstack_top;
+    VAL* valstack_base;
+    int* intstack_ptr;
+    double* floatstack_ptr;
+    void* heap;
+    void* heap_next;
+    int stack_max;
+    VAL ret;
+} VM;
 
-#define PUSHINT(i) *(vm->intstack_ptr++) = i;
-#define POPINT --vm->intstack_ptr;
+VM* init_vm(int stack_size, size_t heap_size);
 
-#define PUSHFLOAT(i) *(vm->floatstack_ptr++) = i;
-#define POPFLOAT --vm->floatstack_ptr;
+// Functions all take a pointer to their VM, and previous stack base, 
+// and return nothing.
+typedef void(*func)(VM*, VAL*);
 
-#define DISCARD(n) vm->valstack_ptr-=n;
-#define DISCARDINT(n) vm->intstack_ptr-=n;
-#define DISCARDFLOAT(n) vm->floatstack_ptr-=n;
+// Register access 
+
+#define RVAL (vm->ret)
+#define LOC(x) (*(vm->valstack_base + (x)))
+#define TOP(x) (*(vm->valstack_top + (x)))
+
+// Retrieving values
+
+#define GETSTR(x) (((VAL)(x))->info.str) 
+#define GETPTR(x) (((void*)(x))->info.ptr) 
+#define GETFLOAT(x) (((double)(x))->info.f)
+
+#define TAG(x) ((x)->info.c.tag)
+
+// Integers, floats and operators
+
+typedef intptr_t i_int;
+
+#define MKINT(x) ((void*)((x)<<1)+1)
+#define GETINT(x) ((i_int)(x)>>1)
+#define ISINT(x) ((((i_int)x)&1) == 1)
+
+#define INTOP(op,x,y) MKINT((i_int)((((i_int)x)>>1) op (((i_int)y)>>1)))
+#define FLOATOP(op,x,y) MKFLOAT(((GETFLOAT(x)) op (GETFLOAT(y))))
+#define FLOATBOP(op,x,y) MKINT((i_int)(((GETFLOAT(x)) op (GETFLOAT(y)))))
+#define ADD(x,y) (void*)(((i_int)x)+(((i_int)y)-1))
+#define MULT(x,y) (MKINT((((i_int)x)>>1) * (((i_int)y)>>1)))
+
+// Stack management
+
+#define INITFRAME VAL* myoldbase
+#define REBASE vm->valstack_base = oldbase
+#define RESERVE(x)
+#define ADDTOP(x) vm->valstack_top += (x)
+#define TOPBASE(x) vm->valstack_top = vm->valstack_base + (x)
+#define BASETOP(x) vm->valstack_base = vm->valstack_top + (x)
+#define STOREOLD myoldbase = vm->valstack_base
+
+#define CALL(f) f(vm, myoldbase);
+#define TAILCALL(f) f(vm, oldbase);
 
 // Creating new values (each value placed at the top of the stack)
-VAL mkInt(VM* vm, int val);
-VAL mkFloat(VM* vm, double val);
-VAL mkStr(VM* vm, char* str);
+VAL MKFLOAT(VM* vm, double val);
+VAL MKSTR(VM* vm, char* str);
 
-VAL mkThunk(VM* vm, func fn, int args, int arity);
-VAL mkCon(VM* vm, int tag, int arity);
+VAL MKCON(VM* vm, int tag, int arity, ...);
 
-void EVAL(int update);
+void PROJECT(VM* vm, VAL r, int loc, int arity); 
+
+void dumpVal(VAL r);
 
 // Handle stack overflow. 
 // Just reports an error and exits.

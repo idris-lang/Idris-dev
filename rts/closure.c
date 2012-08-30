@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+#include <stdarg.h>
 
 #include "closure.h"
 
@@ -12,13 +13,15 @@ VM* init_vm(int stack_size, size_t heap_size) {
 
     VM* vm = malloc(sizeof(VM));
     vm -> valstack = valstack;
-    vm -> valstack_ptr = valstack;
+    vm -> valstack_top = valstack;
+    vm -> valstack_base = valstack;
     vm -> intstack = intstack;
     vm -> intstack_ptr = intstack;
     vm -> floatstack = floatstack;
     vm -> floatstack_ptr = floatstack;
     vm -> stack_max = stack_size;
     vm -> heap = malloc(heap_size);
+    vm -> heap_next = vm -> heap;
     vm -> ret = NULL;
     return vm;
 }
@@ -27,78 +30,80 @@ void* allocate(VM* vm, int size) {
     return malloc(size); // TMP!
 }
 
-void* allocThunk(VM* vm, int argspace) {
-    Closure* cl = allocate(vm, sizeof(ClosureType) + 
-                               sizeof(VAL) * (argspace + 1) +
-                               sizeof(int) * 2);
-    cl -> ty = THUNK;
-    return (void*)cl;
-}
-
 void* allocCon(VM* vm, int arity) {
     Closure* cl = allocate(vm, sizeof(ClosureType) +
-                               sizeof(int) +
-                               sizeof(VAL) * arity);
+                               sizeof(con));
     cl -> ty = CON;
+    if (arity == 0) {
+       cl -> info.c.args = NULL;
+    } else {
+       cl -> info.c.args = allocate(vm, sizeof(VAL)*arity);
+    }
     return (void*)cl;
 }
 
-VAL mkInt(VM* vm, int val) {
-    Closure* cl = allocate(vm, sizeof(ClosureType) + sizeof(int));
-    cl -> ty = INT;
-    cl -> info.i = val;
-    return cl;
-}
-
-VAL mkFloat(VM* vm, double val) {
+VAL MKFLOAT(VM* vm, double val) {
     Closure* cl = allocate(vm, sizeof(ClosureType) + sizeof(double));
     cl -> ty = FLOAT;
     cl -> info.f = val;
     return cl;
 }
 
-VAL mkStr(VM* vm, char* str) {
-    Closure* cl = allocate(vm, sizeof(ClosureType) + sizeof(char*) * strlen(str));
+VAL MKSTR(VM* vm, char* str) {
+    Closure* cl = allocate(vm, sizeof(ClosureType) + sizeof(char*));
     cl -> ty = STRING;
+    cl -> info.str = allocate(vm, sizeof(char)*strlen(str)+1);
     strcpy(cl -> info.str, str);
     return cl;
 }
 
-VAL mkThunk(VM* vm, func fn, int args, int arity) {
+VAL MKCON(VM* vm, int tag, int arity, ...) {
+    Closure* cl;
     int i;
-    Closure* cl = allocThunk(vm, arity);
-    cl -> info.t.fn = fn;
-    cl -> info.t.arity = arity;
-    cl -> info.t.numargs = args;
-    VAL** argptr = &(cl -> info.t.args);
+    va_list args;
 
-    for (i = 0; i < args; ++i) {
-       VAL* v = POP;
-       *argptr++ = v;
-    }
-}
+    va_start(args, arity);
 
-VAL mkCon(VM* vm, int tag, int arity) {
-    Closure* cl = allocCon(vm, arity);
-
-    int i;
+    cl = allocCon(vm, arity);
     cl -> info.c.tag = tag;
-    VAL** argptr = &(cl -> info.c.args);
+    cl -> info.c.arity = arity;
+    VAL* argptr = (VAL*)(cl -> info.c.args);
 
     for (i = 0; i < arity; ++i) {
-       VAL* v = POP;
-       *argptr++ = v;
+       VAL v = va_arg(args, VAL);
+       *argptr = v;
+       argptr++;
+    }
+    va_end(args);
+
+    return cl;
+}
+
+void PROJECT(VM* vm, VAL r, int loc, int arity) {
+    int i;
+    VAL* argptr = (VAL*)(r -> info.c.args);
+    
+    for(i = 0; i < arity; ++i) {
+        LOC(i+loc) = *argptr++;
     }
 }
 
-// if 'update' is set, update the value at the top of the stack
-// otherwise, replace it with a new value
+void dumpVal(VAL v) {
+    int i;
+    switch(v->ty) {
+    case CON:
+        printf("%d[", v->info.c.tag);
+        for(i = 0; i < v->info.c.arity; ++i) {
+            VAL* args = (VAL*)v->info.c.args;
+            dumpVal(args[i]);
+        }
+        printf("] ");
+    }
 
-void EVAL(int update) {
-    
 }
 
 void stackOverflow() {
   fprintf(stderr, "Stack overflow");
   exit(-1);
 }
+
