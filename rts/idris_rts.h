@@ -1,5 +1,5 @@
-#ifndef _CLOSURE_H
-#define _CLOSURE_H
+#ifndef _IDRISRTS_H
+#define _IDRISRTS_H
 
 #include <stdlib.h>
 #include <stdio.h>

@@ -322,7 +322,7 @@ apply fn imps =
                           map fst (filter (not.snd) (zip args (map fst imps)))
        ES (p, a) s prev <- get
        let (n, hs) = -- trace ("AVOID UNIFY: " ++ show (fn, dontunify)) $ 
-                     unified p
+                      unified p
        let unify = dropGiven dontunify hs
        put (ES (p { unified = (n, unify) }, a) s prev)
        end_unify

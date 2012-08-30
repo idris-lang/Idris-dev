@@ -1,4 +1,4 @@
-#include <closure.h>
+#include <idris_rts.h>
 
 void plus(VM* vm, VAL* oldbase) {
     INITFRAME;

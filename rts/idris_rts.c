@@ -4,7 +4,7 @@
 #include <unistd.h>
 #include <stdarg.h>
 
-#include "closure.h"
+#include "idris_rts.h"
 
 VM* init_vm(int stack_size, size_t heap_size) {
     VAL* valstack = malloc(stack_size*sizeof(VAL));

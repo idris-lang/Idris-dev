@@ -40,7 +40,7 @@ Description:    Idris is a general purpose language with full dependent types.
 Cabal-Version:  >= 1.6
 Build-type:     Custom
 
-Data-files:            rts/libidris_rts.a rts/closure.h
+Data-files:            rts/libidris_rts.a rts/idris_rts.h
 Extra-source-files:    lib/Makefile  lib/*.idr lib/prelude/*.idr lib/network/*.idr
                        lib/control/monad/*.idr lib/language/*.idr
                        tutorial/examples/*.idr

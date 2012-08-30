@@ -1,5 +1,5 @@
-OBJS = closure.o
-HDRS = closure.h
+OBJS = idris_rts.o
+HDRS = idris_rts.h
 CFLAGS = -g
 
 LIBTARGET = libidris_rts.a
@@ -17,6 +17,6 @@ install : .PHONY
 clean : .PHONY
 	rm -f $(OBJS) $(LIBTARGET)
 
-closure.o: closure.h
+idris_rts.o: idris_rts.h
 
 .PHONY:

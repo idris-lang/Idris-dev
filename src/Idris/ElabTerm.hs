@@ -234,7 +234,9 @@ elab ist info pattern tcgen fn tm
             let isinf = f == inferCon || tcname f
             ctxt <- get_context
             let guarded = isConName Nothing f ctxt
-            try (do ns <- apply (Var f) (map isph args)
+--             when True
+            try
+                (do ns <- apply (Var f) (map isph args)
                     let (ns', eargs) 
                          = unzip $
                              sortBy (\(_,x) (_,y) -> compare (priority x) (priority y))
