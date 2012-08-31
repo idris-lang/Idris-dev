@@ -55,6 +55,7 @@ fovm f = do defs <- parseFOVM f
                               -- print bc
                               let h = concatMap toDecl (map fst bc)
                               let cc = concatMap (uncurry toC) bc
+                              putStrLn "#include <idris_rts.h>\n"
                               putStrLn h
                               putStrLn cc
                               d <- getDataDir
@@ -62,7 +63,7 @@ fovm f = do defs <- parseFOVM f
                               putStrLn mprog
 
 parseFOVM :: FilePath -> IO [(Name, LDecl)]
-parseFOVM fname = do putStrLn $ "Reading " ++ fname
+parseFOVM fname = do -- putStrLn $ "Reading " ++ fname
                      fp <- readFile fname
                      case runParser pProgram () fname fp of
                         Left err-> fail (show err)

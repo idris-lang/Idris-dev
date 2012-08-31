@@ -16,4 +16,4 @@ fun intToNat(x) = case x of {
                    | _ => S (intToNat (x - 1))
                   }
 
-fun main() = printNum(natToInt(plus(S(S(O)), S(S(O)))))
+fun main() = printNum(natToInt(plus(S(S(O)), intToNat(2))))

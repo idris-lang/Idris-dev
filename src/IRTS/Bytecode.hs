@@ -27,7 +27,6 @@ data BC = ASSIGN Reg Reg
         | MKCON Reg Int [Reg]
         | CASE Reg [(Int, [BC])] (Maybe [BC])
         | PROJECT Reg Int Int -- get all args from reg, put them from Int onwards
-        | GETARGS Int -- discards afterwards
         | CONSTCASE Reg [(Const, [BC])] (Maybe [BC])
         | CALL Name
         | TAILCALL Name
