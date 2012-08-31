@@ -62,6 +62,7 @@ fovm f = do defs <- parseFOVM f
                               d <- getDataDir
                               mprog <- readFile (d ++ "/rts/idris_main.c")
                               putStrLn mprog
+                   err -> print err
 
 parseFOVM :: FilePath -> IO [(Name, LDecl)]
 parseFOVM fname = do -- putStrLn $ "Reading " ++ fname
@@ -92,18 +93,35 @@ pLDecl = do reserved "data"
 pLExp = buildExpressionParser optable pLExp' 
 
 optable = [[binary "*" (\x y -> LOp LTimes [x,y]) AssocLeft,
-            binary "/" (\x y -> LOp LDiv [x,y]) AssocLeft],
-           [binary "+" (\x y -> LOp LPlus [x,y]) AssocLeft,
-            binary "-" (\x y -> LOp LMinus [x,y]) AssocLeft],
-           [binary "==" (\x y -> LOp LEq [x, y]) AssocNone]]
+            binary "/" (\x y -> LOp LDiv [x,y]) AssocLeft,
+            binary "*." (\x y -> LOp LFTimes [x,y]) AssocLeft,
+            binary "/." (\x y -> LOp LFTimes [x,y]) AssocLeft
+            ],
+           [
+            binary "+" (\x y -> LOp LPlus [x,y]) AssocLeft,
+            binary "-" (\x y -> LOp LMinus [x,y]) AssocLeft,
+            binary "++" (\x y -> LOp LStrConcat [x,y]) AssocLeft,
+            binary "+." (\x y -> LOp LFPlus [x,y]) AssocLeft,
+            binary "-." (\x y -> LOp LFMinus [x,y]) AssocLeft
+            ],
+           [
+            binary "==" (\x y -> LOp LEq [x, y]) AssocNone,
+            binary "==." (\x y -> LOp LFEq [x, y]) AssocNone,
+            binary "<" (\x y -> LOp LLt [x, y]) AssocNone,
+            binary "<." (\x y -> LOp LFLt [x, y]) AssocNone,
+            binary ">" (\x y -> LOp LGt [x, y]) AssocNone,
+            binary ">." (\x y -> LOp LFGt [x, y]) AssocNone,
+            binary "<=" (\x y -> LOp LLe [x, y]) AssocNone,
+            binary "<=." (\x y -> LOp LFLe [x, y]) AssocNone,
+            binary ">=" (\x y -> LOp LGe [x, y]) AssocNone,
+            binary ">=." (\x y -> LOp LFGe [x, y]) AssocNone
+          ]]
 
 binary name f assoc = Infix (do reservedOp name; return f) assoc
 
 pLExp' :: LParser LExp
-pLExp' = try (do reserved "printNum"; e <- pLExp
-                 return (LOp LPrintNum [e]))
-     <|> try (do reserved "print"; e <- pLExp
-                 return (LOp LPrintStr [e]))
+pLExp' = try (do lchar '%'; pCast)
+     <|> try (do lchar '%'; pPrim)
      <|> try (do tc <- option False (do lchar '%'; reserved "tc"; return True)
                  x <- iName [];
                  lchar '('
@@ -115,16 +133,47 @@ pLExp' = try (do reserved "printNum"; e <- pLExp
      <|> do reserved "let"; x <- iName []; lchar '='; v <- pLExp
             reserved "in"; e <- pLExp
             return (LLet x v e)
+     <|> do reserved "foreign"; l <- pLang; t <- pType
+            fname <- strlit
+            lchar '('
+            fargs <- sepBy (do t' <- pType; e <- pLExp; return (t', e)) (lchar ',')
+            lchar ')'
+            return (LForeign l t fname fargs)
      <|> pCase
      <|> do x <- iName []
             return (LV (Glob x))
      
+pLang = do reserved "C"; return LANG_C
+
+pType = do reserved "Int"; return FInt
+    <|> do reserved "Float"; return FDouble
+    <|> do reserved "String"; return FString
+    <|> do reserved "Unit"; return FUnit
+    <|> do reserved "Ptr"; return FPtr
+    <|> do reserved "Any"; return FAny
+
 pCase :: LParser LExp
 pCase = do reserved "case"; e <- pLExp; reserved "of"
            lchar '{'
            alts <- sepBy1 pAlt (lchar '|')
            lchar '}'
            return (LCase e alts)
+
+pCast :: LParser LExp
+pCast = do reserved "FloatString"; e <- pLExp; return (LOp LFloatStr [e])
+    <|> do reserved "StringFloat"; e <- pLExp; return (LOp LStrFloat [e])
+    <|> do reserved "FloatInt"; e <- pLExp; return (LOp LFloatInt [e])
+    <|> do reserved "IntFloat"; e <- pLExp; return (LOp LIntFloat [e])
+    <|> do reserved "StringInt"; e <- pLExp; return (LOp LStrInt [e])
+    <|> do reserved "IntString"; e <- pLExp; return (LOp LIntStr [e])
+
+pPrim :: LParser LExp
+pPrim = do reserved "StrEq"; e <- pLExp; e' <- pLExp; return (LOp LStrEq [e, e'])
+    <|> do reserved "StrLt"; e <- pLExp; e' <- pLExp; return (LOp LStrLt [e, e'])
+    <|> do reserved "StrLen"; e <- pLExp; return (LOp LStrLen [e])
+    <|> do reserved "ReadString"; return (LOp LReadStr [])
+    <|> do reserved "WriteString"; e <- pLExp; return (LOp LPrintStr [e])
+    <|> do reserved "WriteInt"; e <- pLExp; return (LOp LPrintNum [e])
 
 pAlt :: LParser LAlt
 pAlt = try (do x <- iName []

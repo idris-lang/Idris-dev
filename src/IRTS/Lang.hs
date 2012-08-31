@@ -11,11 +11,23 @@ data LExp = LV LVar
           | LCon Int Name [LExp]
           | LCase LExp [LAlt]
           | LConst Const
+          | LForeign FLang FType String [(FType, LExp)]
           | LOp PrimFn [LExp]
   deriving Show
 
-data PrimFn = LPlus | LMinus | LTimes | LDiv | LEq 
-            | LPrintNum | LPrintStr
+data PrimFn = LPlus | LMinus | LTimes | LDiv | LEq | LLt | LLe | LGt | LGe
+            | LFPlus | LFMinus | LFTimes | LFDiv | LFEq | LFLt | LFLe | LFGt | LFGe
+            | LStrConcat | LStrLt | LStrEq | LStrLen
+            | LIntFloat | LFloatInt | LIntStr | LStrInt | LFloatStr | LStrFloat
+            | LPrintNum | LPrintStr | LReadStr
+  deriving Show
+
+-- Supported target languages for foreign calls
+
+data FLang = LANG_C
+  deriving Show
+
+data FType = FInt | FString | FUnit | FPtr | FDouble | FAny
   deriving Show
 
 data LAlt = LConCase Int Name [Name] LExp

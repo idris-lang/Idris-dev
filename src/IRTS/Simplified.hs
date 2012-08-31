@@ -14,6 +14,7 @@ data SExp = SV LVar
           | SCon Int Name [LVar]
           | SCase LVar [SAlt]
           | SConst Const
+          | SForeign FLang FType String [(FType, LVar)]
           | SOp PrimFn [LVar]
   deriving Show
 
@@ -43,6 +44,10 @@ simplify tl (LV (Glob x))
               _ -> return $ SV (Glob x)
 simplify tl (LApp tc n args) = do args' <- mapM sVar args
                                   mkapp (SApp (tl || tc) n) args'
+simplify tl (LForeign lang ty fn args) 
+                            = do args' <- mapM sVar (map snd args)
+                                 let fargs = zip (map fst args) args'
+                                 mkfapp (SForeign lang ty fn) fargs
 simplify tl (LLet n v e) = do v' <- simplify False v
                               e' <- simplify tl e
                               return (SLet (Glob n) v' e')
@@ -73,6 +78,13 @@ mkapp f args = mkapp' f args [] where
    mkapp' f ((x, Nothing) : xs) args = mkapp' f xs (x : args)
    mkapp' f ((x, Just e) : xs) args 
        = do sc <- mkapp' f xs (x : args)
+            return (SLet x e sc)
+
+mkfapp f args = mkapp' f args [] where
+   mkapp' f [] args = return $ f (reverse args)
+   mkapp' f ((ty, (x, Nothing)) : xs) args = mkapp' f xs ((ty, x) : args)
+   mkapp' f ((ty, (x, Just e)) : xs) args 
+       = do sc <- mkapp' f xs ((ty, x) : args)
             return (SLet x e sc)
 
 sAlt tl (LConCase i n args e) = do e' <- simplify tl e

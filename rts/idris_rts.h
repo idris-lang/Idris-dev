@@ -61,8 +61,8 @@ typedef void(*func)(VM*, VAL*);
 // Retrieving values
 
 #define GETSTR(x) (((VAL)(x))->info.str) 
-#define GETPTR(x) (((void*)(x))->info.ptr) 
-#define GETFLOAT(x) (((double)(x))->info.f)
+#define GETPTR(x) (((VAL)(x))->info.ptr) 
+#define GETFLOAT(x) (((VAL)(x))->info.f)
 
 #define TAG(x) ((x)->info.c.tag)
 
@@ -96,6 +96,7 @@ typedef intptr_t i_int;
 // Creating new values (each value placed at the top of the stack)
 VAL MKFLOAT(VM* vm, double val);
 VAL MKSTR(VM* vm, char* str);
+VAL MKPTR(VM* vm, void* ptr);
 
 VAL MKCON(VM* vm, int tag, int arity, ...);
 
@@ -103,6 +104,24 @@ void PROJECT(VM* vm, VAL r, int loc, int arity);
 void SLIDE(VM* vm, int args);
 
 void dumpVal(VAL r);
+
+// Casts
+
+#define idris_castIntFloat(x) MKFLOAT(vm, (double)(GETINT(x)))
+#define idris_castFloatInt(x) MKINT((i_int)(GETFLOAT(x)))
+
+VAL idris_castIntStr(VM* vm, VAL i);
+VAL idris_castStrInt(VM* vm, VAL i);
+VAL idris_castFloatStr(VM* vm, VAL i);
+VAL idris_castStrFloat(VM* vm, VAL i);
+
+// String primitives
+
+VAL idris_concat(VM* vm, VAL l, VAL r);
+VAL idris_strlt(VM* vm, VAL l, VAL r);
+VAL idris_streq(VM* vm, VAL l, VAL r);
+VAL idris_strlen(VM* vm, VAL l);
+VAL idris_readStr(VM* vm, FILE* h);
 
 // Handle stack overflow. 
 // Just reports an error and exits.

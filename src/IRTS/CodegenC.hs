@@ -79,12 +79,54 @@ bcc i STOREOLD = indent i ++ "STOREOLD;\n"
 bcc i (OP l fn args) = indent i ++ creg l ++ " = " ++ doOp fn args ++ ";\n"
 -- bcc i _ = indent i ++ "// not done yet\n"
 
+c_irts FInt x = "MKINT((i_int)(" ++ x ++ ")"
+c_irts FString x = "MKSTR(" ++ x ++ ")"
+c_irts FUnit x = "MKINT(42424242)"
+c_irts FPtr x = "MKPTR(" ++ x ++ ")"
+c_irts FDouble x = "MKFLOAT(vm, " ++ x ++ ")"
+c_irts FAny x = x
+
+irts_c FInt x = "GETINT(" ++ x ++ ")"
+irts_c FString x = "GETSTR(" ++ x ++ ")"
+irts_c FUnit x = x
+irts_c FPtr x = "GETPTR(" ++ x ++ ")"
+irts_c FDouble x = "GETFLOAT(" ++ x ++ ")"
+irts_c FAny x = x
+
 doOp LPlus [l, r] = "ADD(" ++ creg l ++ ", " ++ creg r ++ ")"
 doOp LMinus [l, r] = "INTOP(-," ++ creg l ++ ", " ++ creg r ++ ")"
 doOp LTimes [l, r] = "MULT(" ++ creg l ++ ", " ++ creg r ++ ")"
 doOp LDiv [l, r] = "INTOP(/," ++ creg l ++ ", " ++ creg r ++ ")"
 doOp LEq [l, r] = "INTOP(==," ++ creg l ++ ", " ++ creg r ++ ")"
+doOp LLt [l, r] = "INTOP(<," ++ creg l ++ ", " ++ creg r ++ ")"
+doOp LLe [l, r] = "INTOP(<=," ++ creg l ++ ", " ++ creg r ++ ")"
+doOp LGt [l, r] = "INTOP(>," ++ creg l ++ ", " ++ creg r ++ ")"
+doOp LGe [l, r] = "INTOP(>=," ++ creg l ++ ", " ++ creg r ++ ")"
+
+doOp LFPlus [l, r] = "FLOATOP(+" ++ creg l ++ ", " ++ creg r ++ ")"
+doOp LFMinus [l, r] = "FLOATOP(-," ++ creg l ++ ", " ++ creg r ++ ")"
+doOp LFTimes [l, r] = "FLOATOP(*" ++ creg l ++ ", " ++ creg r ++ ")"
+doOp LFDiv [l, r] = "FLOATOP(/," ++ creg l ++ ", " ++ creg r ++ ")"
+doOp LFEq [l, r] = "FLOATBOP(==," ++ creg l ++ ", " ++ creg r ++ ")"
+doOp LFLt [l, r] = "FLOATBOP(<," ++ creg l ++ ", " ++ creg r ++ ")"
+doOp LFLe [l, r] = "FLOATBOP(<=," ++ creg l ++ ", " ++ creg r ++ ")"
+doOp LFGt [l, r] = "FLOATBOP(>," ++ creg l ++ ", " ++ creg r ++ ")"
+doOp LFGe [l, r] = "FLOATBOP(>=," ++ creg l ++ ", " ++ creg r ++ ")"
+
+doOp LStrConcat [l,r] = "idris_concat(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
+doOp LStrLt [l,r] = "idris_strlt(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
+doOp LStrEq [l,r] = "idris_streq(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
+doOp LStrLen [x] = "idris_strlen(vm, " ++ creg x ++ ")"
+
+doOp LIntFloat [x] = "idris_castIntFloat(" ++ creg x ++ ")"
+doOp LFloatInt [x] = "idris_castFloatInt(" ++ creg x ++ ")"
+doOp LIntStr [x] = "idris_castIntStr(vm, " ++ creg x ++ ")"
+doOp LStrInt [x] = "idris_castFloatStr(vm, " ++ creg x ++ ")"
+doOp LFloatStr [x] = "idris_castFloatStr(vm, " ++ creg x ++ ")"
+doOp LStrFloat [x] = "idris_castStrFloat(vm, " ++ creg x ++ ")"
+
+doOp LReadStr [] = "idris_readStr(vm, stdin)"
 doOp LPrintNum [x] = "NULL; printf(\"%ld\\n\", GETINT(" ++ creg x ++ "))"
-doOp LPrintStr [x] = "NULL; printf(GETSTR(" ++ creg x ++ "))"
+doOp LPrintStr [x] = "NULL; puts(GETSTR(" ++ creg x ++ "))"
 doOp _ _ = "FAIL"
 

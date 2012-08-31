@@ -57,6 +57,13 @@ VAL MKSTR(VM* vm, char* str) {
     return cl;
 }
 
+VAL MKPTR(VM* vm, void* ptr) {
+    Closure* cl = allocate(vm, sizeof(ClosureType) + sizeof(void*));
+    cl -> ty = PTR;
+    cl -> info.ptr = ptr;
+    return cl;
+}
+
 VAL MKCON(VM* vm, int tag, int arity, ...) {
     Closure* cl;
     int i;
@@ -108,6 +115,66 @@ void dumpVal(VAL v) {
     }
 
 }
+
+VAL idris_castIntStr(VM* vm, VAL i) {
+    Closure* cl = allocate(vm, sizeof(ClosureType) + sizeof(char*));
+    cl -> ty = STRING;
+    cl -> info.str = allocate(vm, sizeof(char)*16);
+    sprintf(cl -> info.str, "%ld", GETINT(i));
+    return cl;
+}
+
+VAL idris_castStrInt(VM* vm, VAL i) {
+    char *end;
+    i_int v = strtol(GETSTR(i), &end, 10);
+    if (*end != '\0') return MKINT(0); else return MKINT(v);
+}
+
+VAL idris_castFloatStr(VM* vm, VAL i) {
+    Closure* cl = allocate(vm, sizeof(ClosureType) + sizeof(char*));
+    cl -> ty = STRING;
+    cl -> info.str = allocate(vm, sizeof(char)*32);
+    sprintf(cl -> info.str, "%g", GETFLOAT(i));
+    return cl;
+}
+
+VAL idris_castStrFloat(VM* vm, VAL i) {
+    return MKFLOAT(vm, strtod(GETSTR(i), NULL));
+}
+
+VAL idris_concat(VM* vm, VAL l, VAL r) {
+    char *ls = GETSTR(l);
+    char *rs = GETSTR(r);
+
+    Closure* cl = allocate(vm, sizeof(ClosureType) + sizeof(char*));
+    cl -> ty = STRING;
+    cl -> info.str = allocate(vm, sizeof(char)*(strlen(ls)+strlen(rs)+1));
+    strcpy(cl -> info.str, ls);
+    strcat(cl -> info.str, rs); 
+    return cl;
+}
+
+VAL idris_strlt(VM* vm, VAL l, VAL r) {
+    char *ls = GETSTR(l);
+    char *rs = GETSTR(r);
+
+    return MKINT((i_int)(strcmp(ls, rs) < 0));
+}
+
+VAL idris_streq(VM* vm, VAL l, VAL r) {
+    char *ls = GETSTR(l);
+    char *rs = GETSTR(r);
+
+    return MKINT((i_int)(strcmp(ls, rs) == 0));
+}
+
+VAL idris_strlen(VM* vm, VAL l) {
+    return MKINT((i_int)(strlen(GETSTR(l))));
+}
+
+VAL idris_readStr(VM* vm, FILE* h) {
+}
+
 
 void stackOverflow() {
   fprintf(stderr, "Stack overflow");

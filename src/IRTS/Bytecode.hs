@@ -30,6 +30,7 @@ data BC = ASSIGN Reg Reg
         | CONSTCASE Reg [(Const, [BC])] (Maybe [BC])
         | CALL Name
         | TAILCALL Name
+        | FOREIGNCALL Reg FLang FType String [(FType, Reg)] 
         | SLIDE Int -- move this number from TOP to BASE 
         | REBASE -- set BASE = OLDBASE
         | RESERVE Int -- reserve n more stack items 
@@ -61,6 +62,9 @@ bc reg (SApp False f vs) r
 bc reg (SApp True f vs) r
     = RESERVE (length vs) : moveReg 0 vs
       ++ [SLIDE (length vs), TOPBASE (length vs), TAILCALL f]
+bc reg (SForeign l t fname args) r
+    = FOREIGNCALL reg l t fname (map farg args) : clean r
+  where farg (ty, Loc i) = (ty, L i)
 bc reg (SLet (Loc i) e sc) r = bc (L i) e False ++ bc reg sc r
 bc reg (SCon i _ vs) r = MKCON reg i (map getL vs) : clean r
     where getL (Loc x) = L x
