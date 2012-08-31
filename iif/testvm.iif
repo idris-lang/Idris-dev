@@ -6,6 +6,13 @@ fun plus(x, y) = case x of {
                    | S(k) => S (plus(k, y))
                  }
 
+fun fact(x) = factAux(x, 1)
+
+fun factAux(x, acc) = case (x == 1) of {
+                           0 => factAux(x-1, acc * x)
+                         | 1 => acc
+                       }
+
 fun natToInt(x) = case x of {
                      O => 0
                    | S(k) => let y = natToInt(k) in y + 1
@@ -16,4 +23,5 @@ fun intToNat(x) = case x of {
                    | _ => S (intToNat (x - 1))
                   }
 
-fun main() = printNum(natToInt(plus(S(S(O)), intToNat(2))))
+fun main() = printNum(natToInt(plus(intToNat(fact(6)), S(S(O)))))
+

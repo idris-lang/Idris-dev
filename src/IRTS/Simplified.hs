@@ -34,29 +34,29 @@ ldefs :: State (LDefs, Int) LDefs
 ldefs = do (l, h) <- get
            return l
 
-simplify :: LExp -> State (LDefs, Int) SExp
-simplify (LV (Loc i)) = return (SV (Loc i))
-simplify (LV (Glob x)) 
+simplify :: Bool -> LExp -> State (LDefs, Int) SExp
+simplify tl (LV (Loc i)) = return (SV (Loc i))
+simplify tl (LV (Glob x)) 
     = do ctxt <- ldefs
          case lookupCtxt Nothing x ctxt of
               [LConstructor _ t 0] -> return $ SCon t x []
               _ -> return $ SV (Glob x)
-simplify (LApp tc n args) = do args' <- mapM sVar args
-                               mkapp (SApp tc n) args'
-simplify (LLet n v e) = do v' <- simplify v
-                           e' <- simplify e
-                           return (SLet (Glob n) v' e')
-simplify (LCon i n args) = do args' <- mapM sVar args
-                              mkapp (SCon i n) args'
-simplify (LCase e alts) = do v <- sVar e
-                             alts' <- mapM sAlt alts
-                             case v of 
-                                  (x, Nothing) -> return (SCase x alts')
-                                  (Glob x, Just e) -> 
-                                      return (SLet (Glob x) e (SCase (Glob x) alts'))
-simplify (LConst c) = return (SConst c)
-simplify (LOp p args) = do args' <- mapM sVar args
-                           mkapp (SOp p) args'
+simplify tl (LApp tc n args) = do args' <- mapM sVar args
+                                  mkapp (SApp (tl || tc) n) args'
+simplify tl (LLet n v e) = do v' <- simplify False v
+                              e' <- simplify tl e
+                              return (SLet (Glob n) v' e')
+simplify tl (LCon i n args) = do args' <- mapM sVar args
+                                 mkapp (SCon i n) args'
+simplify tl (LCase e alts) = do v <- sVar e
+                                alts' <- mapM (sAlt tl) alts
+                                case v of 
+                                    (x, Nothing) -> return (SCase x alts')
+                                    (Glob x, Just e) -> 
+                                        return (SLet (Glob x) e (SCase (Glob x) alts'))
+simplify tl (LConst c) = return (SConst c)
+simplify tl (LOp p args) = do args' <- mapM sVar args
+                              mkapp (SOp p) args'
 
 sVar (LV (Glob x))
     = do ctxt <- ldefs
@@ -64,7 +64,7 @@ sVar (LV (Glob x))
               [LConstructor _ t 0] -> sVar (LCon t x [])
               _ -> return (Glob x, Nothing)
 sVar (LV x) = return (x, Nothing)
-sVar e = do e' <- simplify e
+sVar e = do e' <- simplify False e
             i <- hvar
             return (Glob (MN i "R"), Just e')
 
@@ -75,12 +75,12 @@ mkapp f args = mkapp' f args [] where
        = do sc <- mkapp' f xs (x : args)
             return (SLet x e sc)
 
-sAlt (LConCase i n args e) = do e' <- simplify e
-                                return (SConCase (-1) i n args e')
-sAlt (LConstCase c e) = do e' <- simplify e
-                           return (SConstCase c e')
-sAlt (LDefaultCase e) = do e' <- simplify e
-                           return (SDefaultCase e')
+sAlt tl (LConCase i n args e) = do e' <- simplify tl e
+                                   return (SConCase (-1) i n args e')
+sAlt tl (LConstCase c e) = do e' <- simplify tl e
+                              return (SConstCase c e')
+sAlt tl (LDefaultCase e) = do e' <- simplify tl e
+                              return (SDefaultCase e')
 
 checkDefs :: LDefs -> [(Name, LDecl)] -> TC [(Name, SDecl)]
 checkDefs ctxt [] = return []
@@ -88,7 +88,7 @@ checkDefs ctxt (con@(n, LConstructor _ _ _) : xs)
     = do xs' <- checkDefs ctxt xs
          return xs'
 checkDefs ctxt ((n, LFun n' args exp) : xs) 
-    = do let sexp = evalState (simplify exp) (ctxt, 0)
+    = do let sexp = evalState (simplify True exp) (ctxt, 0)
          (exp', locs) <- runStateT (scopecheck ctxt (zip args [0..]) sexp) (-1)
          xs' <- checkDefs ctxt xs
          return ((n, SFun n' args ((locs + 1) - length args) exp') : xs')

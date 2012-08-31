@@ -56,6 +56,7 @@ fovm f = do defs <- parseFOVM f
                               let h = concatMap toDecl (map fst bc)
                               let cc = concatMap (uncurry toC) bc
                               putStrLn "#include <idris_rts.h>\n"
+                              putStrLn "#define IDRIS_DEBUG\n"
                               putStrLn h
                               putStrLn cc
                               d <- getDataDir

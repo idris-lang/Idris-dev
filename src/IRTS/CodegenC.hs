@@ -81,6 +81,10 @@ bcc i (OP l fn args) = indent i ++ creg l ++ " = " ++ doOp fn args ++ ";\n"
 
 doOp LPlus [l, r] = "ADD(" ++ creg l ++ ", " ++ creg r ++ ")"
 doOp LMinus [l, r] = "INTOP(-," ++ creg l ++ ", " ++ creg r ++ ")"
+doOp LTimes [l, r] = "MULT(" ++ creg l ++ ", " ++ creg r ++ ")"
+doOp LDiv [l, r] = "INTOP(/," ++ creg l ++ ", " ++ creg r ++ ")"
+doOp LEq [l, r] = "INTOP(==," ++ creg l ++ ", " ++ creg r ++ ")"
 doOp LPrintNum [x] = "NULL; printf(\"%ld\\n\", GETINT(" ++ creg x ++ "))"
+doOp LPrintStr [x] = "NULL; printf(GETSTR(" ++ creg x ++ "))"
 doOp _ _ = "FAIL"
 
