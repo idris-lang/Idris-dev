@@ -5,6 +5,8 @@ import Core.TT
 import IRTS.Lang
 import IRTS.Simplified
 import IRTS.Bytecode
+import IRTS.CodegenC
+import Paths_idris
 
 import Text.ParserCombinators.Parsec
 import Text.ParserCombinators.Parsec.Error
@@ -47,10 +49,17 @@ fovm f = do defs <- parseFOVM f
             let tagged = addTags defs
             let ctxtIn = addAlist tagged emptyContext
             let checked = checkDefs ctxtIn tagged 
-            print checked
+            -- print checked
             case checked of
                    OK c -> do let bc = map toBC c
-                              print bc
+                              -- print bc
+                              let h = concatMap toDecl (map fst bc)
+                              let cc = concatMap (uncurry toC) bc
+                              putStrLn h
+                              putStrLn cc
+                              d <- getDataDir
+                              mprog <- readFile (d ++ "/rts/idris_main.c")
+                              putStrLn mprog
 
 parseFOVM :: FilePath -> IO [(Name, LDecl)]
 parseFOVM fname = do putStrLn $ "Reading " ++ fname
