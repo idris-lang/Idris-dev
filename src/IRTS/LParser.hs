@@ -46,23 +46,7 @@ lchar = lexeme.char
 
 fovm :: FilePath -> IO ()
 fovm f = do defs <- parseFOVM f
-            let tagged = addTags defs
-            let ctxtIn = addAlist tagged emptyContext
-            let checked = checkDefs ctxtIn tagged 
-            -- print checked
-            case checked of
-                   OK c -> do let bc = map toBC c
-                              -- print bc
-                              let h = concatMap toDecl (map fst bc)
-                              let cc = concatMap (uncurry toC) bc
-                              putStrLn "#include <idris_rts.h>\n"
-                              putStrLn "#define IDRIS_DEBUG\n"
-                              putStrLn h
-                              putStrLn cc
-                              d <- getDataDir
-                              mprog <- readFile (d ++ "/rts/idris_main.c")
-                              putStrLn mprog
-                   err -> print err
+            codegenC defs "a.out" True [] "" DEBUG
 
 parseFOVM :: FilePath -> IO [(Name, LDecl)]
 parseFOVM fname = do -- putStrLn $ "Reading " ++ fname

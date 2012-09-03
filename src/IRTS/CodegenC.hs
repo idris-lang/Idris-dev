@@ -1,11 +1,67 @@
+{-# LANGUAGE CPP #-}
+
 module IRTS.CodegenC where
 
 import IRTS.Bytecode
 import IRTS.Lang
+import IRTS.Simplified
 import Core.TT
 import Paths_idris
 
 import Data.Char
+import System.Process
+import System.Exit
+import System.IO
+import System.Directory
+import System.Environment
+import Control.Monad
+
+data DbgLevel = NONE | DEBUG | TRACE
+
+codegenC :: [(Name, LDecl)] -> 
+            String -> -- output file name
+            Bool ->   -- generate executable if True, only .o if False 
+            [FilePath] -> -- include files
+            String -> -- extra compiler flags
+            DbgLevel ->
+            IO ()
+codegenC defs out exec incs libs dbg
+    = do let tagged = addTags defs
+         let ctxtIn = addAlist tagged emptyContext
+         let checked = checkDefs ctxtIn tagged 
+         case checked of
+             OK c -> do let bc = map toBC c
+                        let h = concatMap toDecl (map fst bc)
+                        let cc = concatMap (uncurry toC) bc
+                        d <- getDataDir
+                        mprog <- readFile (d ++ "/rts/idris_main.c")
+                        let cout = headers incs ++ debug dbg ++ h ++ cc ++ 
+                                   (if exec then mprog else "")
+                        (tmpn, tmph) <- tempfile
+                        hPutStr tmph cout
+                        hFlush tmph
+                        hClose tmph
+                        let gcc = "gcc -x c " ++ 
+                                  (if exec then "" else " - c ") ++
+                                  gccDbg dbg ++
+                                  " " ++ tmpn ++
+                                  " `idris --link` `idris --include` " ++ libs ++
+                                  " -lidris_rts -o " ++ out
+                        exit <- system gcc
+                        when (exit /= ExitSuccess) $
+                           putStrLn ("FAILURE: " ++ gcc)
+
+             Error e -> fail $ "Can't happen: Something went wrong in codegenC\n" ++ show e
+
+headers [] = "#include <idris_rts.h>\n\n"
+headers (x : xs) = "#include <" ++ x ++ ">\n" ++ headers xs
+
+debug DEBUG = "#define IDRIS_DEBUG\n\n"
+debug _ = ""
+
+gccDbg DEBUG = "-g"
+gccDbg TRACE = "-g"
+gccDbg _ = "-O2"
 
 cname :: Name -> String
 cname n = "_idris_" ++ concatMap cchar (show n)
@@ -77,6 +133,10 @@ bcc i (TOPBASE n) = indent i ++ "TOPBASE(" ++ show n ++ ");\n"
 bcc i (BASETOP n) = indent i ++ "BASETOP(" ++ show n ++ ");\n"
 bcc i STOREOLD = indent i ++ "STOREOLD;\n"
 bcc i (OP l fn args) = indent i ++ creg l ++ " = " ++ doOp fn args ++ ";\n"
+bcc i (FOREIGNCALL l LANG_C rty fn args)
+      = indent i ++ creg l ++ " = " ++
+        c_irts rty (fn ++ "(" ++ showSep "," (map fcall args) ++ ")") ++ ";\n"
+    where fcall (t, arg) = irts_c t (creg l)
 -- bcc i _ = indent i ++ "// not done yet\n"
 
 c_irts FInt x = "MKINT((i_int)(" ++ x ++ ")"
@@ -130,3 +190,19 @@ doOp LPrintNum [x] = "NULL; printf(\"%ld\\n\", GETINT(" ++ creg x ++ "))"
 doOp LPrintStr [x] = "NULL; puts(GETSTR(" ++ creg x ++ "))"
 doOp _ _ = "FAIL"
 
+tempfile :: IO (FilePath, Handle)
+tempfile = do env <- environment "TMPDIR"
+              let dir = case env of
+                              Nothing -> "/tmp"
+                              (Just d) -> d
+              openTempFile dir "idris"
+
+environment :: String -> IO (Maybe String)
+environment x = catch (do e <- getEnv x
+                          return (Just e))
+#if MIN_VERSION_base(4,6,0)
+                          (\y-> do return (y::SomeException);  return Nothing)  
+#endif
+#if !MIN_VERSION_base(4,6,0)
+                          (\_->  return Nothing)  
+#endif  
