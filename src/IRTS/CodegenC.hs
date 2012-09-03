@@ -26,7 +26,8 @@ codegenC :: [(Name, LDecl)] ->
             DbgLevel ->
             IO ()
 codegenC defs out exec incs libs dbg
-    = do let tagged = addTags defs
+    = do -- print defs
+         let tagged = addTags defs
          let ctxtIn = addAlist tagged emptyContext
          let checked = checkDefs ctxtIn tagged 
          case checked of
@@ -47,6 +48,7 @@ codegenC defs out exec incs libs dbg
                                   " " ++ tmpn ++
                                   " `idris --link` `idris --include` " ++ libs ++
                                   " -lidris_rts -o " ++ out
+--                         putStrLn cout
                         exit <- system gcc
                         when (exit /= ExitSuccess) $
                            putStrLn ("FAILURE: " ++ gcc)
@@ -56,7 +58,7 @@ codegenC defs out exec incs libs dbg
 headers [] = "#include <idris_rts.h>\n\n"
 headers (x : xs) = "#include <" ++ x ++ ">\n" ++ headers xs
 
-debug DEBUG = "#define IDRIS_DEBUG\n\n"
+debug TRACE = "#define IDRIS_DEBUG\n\n"
 debug _ = ""
 
 gccDbg DEBUG = "-g"
@@ -136,7 +138,7 @@ bcc i (OP l fn args) = indent i ++ creg l ++ " = " ++ doOp fn args ++ ";\n"
 bcc i (FOREIGNCALL l LANG_C rty fn args)
       = indent i ++ creg l ++ " = " ++
         c_irts rty (fn ++ "(" ++ showSep "," (map fcall args) ++ ")") ++ ";\n"
-    where fcall (t, arg) = irts_c t (creg l)
+    where fcall (t, arg) = irts_c t (creg arg)
 -- bcc i _ = indent i ++ "// not done yet\n"
 
 c_irts FInt x = "MKINT((i_int)(" ++ x ++ ")"

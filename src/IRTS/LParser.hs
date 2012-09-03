@@ -46,7 +46,7 @@ lchar = lexeme.char
 
 fovm :: FilePath -> IO ()
 fovm f = do defs <- parseFOVM f
-            codegenC defs "a.out" True [] "" DEBUG
+            codegenC defs "a.out" True ["math.h"] "" TRACE
 
 parseFOVM :: FilePath -> IO [(Name, LDecl)]
 parseFOVM fname = do -- putStrLn $ "Reading " ++ fname
@@ -144,20 +144,37 @@ pCase = do reserved "case"; e <- pLExp; reserved "of"
            return (LCase e alts)
 
 pCast :: LParser LExp
-pCast = do reserved "FloatString"; e <- pLExp; return (LOp LFloatStr [e])
-    <|> do reserved "StringFloat"; e <- pLExp; return (LOp LStrFloat [e])
-    <|> do reserved "FloatInt"; e <- pLExp; return (LOp LFloatInt [e])
-    <|> do reserved "IntFloat"; e <- pLExp; return (LOp LIntFloat [e])
-    <|> do reserved "StringInt"; e <- pLExp; return (LOp LStrInt [e])
-    <|> do reserved "IntString"; e <- pLExp; return (LOp LIntStr [e])
+pCast = do reserved "FloatString"; lchar '('; e <- pLExp; lchar ')'
+           return (LOp LFloatStr [e])
+    <|> do reserved "StringFloat"; lchar '('; e <- pLExp; lchar ')'
+           return (LOp LStrFloat [e])
+    <|> do reserved "FloatInt"; lchar '('; e <- pLExp; lchar ')'
+           return (LOp LFloatInt [e])
+    <|> do reserved "IntFloat"; lchar '('; e <- pLExp; lchar ')'
+           return (LOp LIntFloat [e])
+    <|> do reserved "StringInt"; lchar '('; e <- pLExp; lchar ')'
+           return (LOp LStrInt [e])
+    <|> do reserved "IntString"; lchar '('; e <- pLExp; lchar ')'
+           return (LOp LIntStr [e])
 
 pPrim :: LParser LExp
-pPrim = do reserved "StrEq"; e <- pLExp; e' <- pLExp; return (LOp LStrEq [e, e'])
-    <|> do reserved "StrLt"; e <- pLExp; e' <- pLExp; return (LOp LStrLt [e, e'])
-    <|> do reserved "StrLen"; e <- pLExp; return (LOp LStrLen [e])
+pPrim = do reserved "StrEq"; lchar '(';
+           e <- pLExp; lchar ',';
+           e' <- pLExp; lchar ')'; 
+           return (LOp LStrEq [e, e'])
+    <|> do reserved "StrLt"; lchar '('
+           e <- pLExp; lchar ','; e' <- pLExp; 
+           lchar ')'
+           return (LOp LStrLt [e, e'])
+    <|> do reserved "StrLen"; lchar '('; e <- pLExp; lchar ')';
+           return (LOp LStrLen [e])
     <|> do reserved "ReadString"; return (LOp LReadStr [])
-    <|> do reserved "WriteString"; e <- pLExp; return (LOp LPrintStr [e])
-    <|> do reserved "WriteInt"; e <- pLExp; return (LOp LPrintNum [e])
+    <|> do reserved "WriteString"; lchar '(';
+           e <- pLExp; lchar ')'
+           return (LOp LPrintStr [e])
+    <|> do reserved "WriteInt"; lchar '('; 
+           e <- pLExp; lchar ')';
+           return (LOp LPrintNum [e])
 
 pAlt :: LParser LAlt
 pAlt = try (do x <- iName []

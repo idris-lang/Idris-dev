@@ -130,6 +130,10 @@ scopecheck ctxt env tm = sc env tm where
                                    " has arity " ++ show ar
                 [_] -> return $ SApp tc f args'
                 [] -> fail $ "Codegen error: No such variable " ++ show f
+    sc env (SForeign l ty f args)
+       = do args' <- mapM (\ (t, a) -> do a' <- scVar env a
+                                          return (t, a')) args
+            return $ SForeign l ty f args'
     sc env (SCon tag f args)
        = do args' <- mapM (scVar env) args
             case lookupCtxt Nothing f ctxt of
