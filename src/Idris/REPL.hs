@@ -82,6 +82,10 @@ processInput cmd orig inputs
                 Right AddProof -> do idrisCatch (addProof fn orig)
                                                 (\e -> iputStrLn (show e))
                                      return (Just inputs)
+                Right RmProof -> do rmProof orig
+                                    return (Just inputs)
+                Right Proofs -> do proofs orig
+                                   return (Just inputs)
                 Right Quit -> do iputStrLn "Bye bye"
                                  return Nothing
                 Right cmd  -> do idrisCatch (process fn cmd)
@@ -115,13 +119,31 @@ addProof f orig
          liftIO $ copyFile f fb -- make a backup in case something goes wrong!
          prog <- liftIO $ readFile fb
          i <- get
-         case last_proof i of
-            Nothing -> iputStrLn "No proof to add"
-            Just (n, p) -> do let prog' = insertScript (showProof (lit f) n p) (lines prog)
-                              liftIO $ writeFile f (unlines prog')
-                              iputStrLn $ "Added proof " ++ show n
-                              put (i { last_proof = Nothing })
-                              -- lift $ removeFile fb -- uncomment when less scared :)
+         case proof_list i of
+            [] -> iputStrLn "No proof to add"
+            (n, p) : proofs -> do let prog' = insertScript (showProof (lit f) n p) (lines prog)
+                                  liftIO $ writeFile f (unlines prog')
+                                  iputStrLn $ "Added proof " ++ show n
+                                  put (i { proof_list = proofs })
+                                  -- lift $ removeFile fb -- uncomment when less scared :)
+
+rmProof :: IState -> Idris ()
+rmProof orig
+  = do i <- get
+       case proof_list i of
+            [] -> iputStrLn "Nothing to remove"
+            (n, p) : ps -> do iputStrLn $ "Removed proof " ++ show n
+                              let metavars = idris_metavars i
+                              put (i { proof_list     = ps
+                                     , idris_metavars = n : metavars
+                                     })
+
+proofs :: IState -> Idris ()
+proofs orig
+  = do i <- get
+       case proof_list i of
+            [] -> iputStrLn "No proofs"
+            ps -> mapM_ (\(n, p) -> iputStrLn $ showProof False n p) ps
 
 insertScript :: String -> [String] -> [String]
 insertScript prf [] = "\n---------- Proofs ----------" : "" : [prf]
@@ -332,6 +354,8 @@ help =
     ([":m",":metavars"], "", "Show remaining proof obligations (metavariables)"),
     ([":p",":prove"], "<name>", "Prove a metavariable"),
     ([":a",":addproof"], "", "Add last proof to source file"),
+    ([":rmproof"], "", "Remove last proof from proof stack"),
+    ([":proofs"], "", "Show proof stack"),
     ([":c",":compile"], "<filename>", "Compile to an executable <filename>"),
     ([":exec",":execute"], "", "Compile to an executable and run"),
     ([":?",":h",":help"], "", "Display this help text"),
