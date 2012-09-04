@@ -44,7 +44,8 @@ prove ctxt lit n ty
          iLOG $ "Adding " ++ show tm
          iputStrLn $ showProof lit n prf
          i <- get
-         put (i { last_proof = Just (n, prf) })
+         let proofs = proof_list i
+         put (i { proof_list = (n, prf) : proofs })
          let tree = simpleCase False True (FC "proof" 0) [([], P Ref n ty, tm)]
          logLvl 3 (show tree)
          (ptm, pty) <- recheckC (FC "proof" 0) [] tm
