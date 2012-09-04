@@ -64,7 +64,7 @@ typedef void(*func)(VM*, VAL*);
 #define GETPTR(x) (((VAL)(x))->info.ptr) 
 #define GETFLOAT(x) (((VAL)(x))->info.f)
 
-#define TAG(x) ((x)->info.c.tag)
+#define TAG(x) (ISINT(x) ? (-1) : ( (x)->ty == CON ? (x)->info.c.tag : (-1)) )
 
 // Integers, floats and operators
 

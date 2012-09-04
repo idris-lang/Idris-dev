@@ -1,0 +1,18 @@
+data Nil 0
+data Cons 2
+
+fun twice(f, x) = f(f(x))
+
+fun map(f, xs) = case xs of {
+                     Nil => Nil
+                   | Cons(y, ys) => Cons(f(y), map(f, ys))
+                 }
+
+fun dumpList(xs) = case xs of {
+                       Nil => "END"
+                     | Cons(y, ys) => %IntString(y) ++ ", " ++ dumpList(ys)
+                   }
+
+fun double(x) = x + x
+
+fun main() = %WriteString(dumpList(map(twice(double), Cons(4, Cons(6, Nil)))))

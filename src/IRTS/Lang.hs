@@ -41,10 +41,10 @@ data LDecl = LFun Name [Name] LExp -- name, arg names, definition
 
 type LDefs = Ctxt LDecl
 
-addTags :: [(Name, LDecl)] -> [(Name, LDecl)]
-addTags ds = tag 0 ds
-  where tag i ((n, LConstructor n' t a) : as) 
-            = (n, LConstructor n' i a) : tag (i + 1) as
-        tag i (x : as) = x : tag i as
-        tag i [] = []
+addTags :: Int -> [(Name, LDecl)] -> (Int, [(Name, LDecl)])
+addTags i ds = tag i ds []
+  where tag i ((n, LConstructor n' t a) : as) acc
+            = tag (i + 1) as ((n, LConstructor n' i a) : acc) 
+        tag i (x : as) acc = tag i as (x : acc)
+        tag i [] acc  = (i, reverse acc)
 

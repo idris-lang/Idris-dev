@@ -18,7 +18,7 @@ import Control.Monad
 
 data DbgLevel = NONE | DEBUG | TRACE
 
-codegenC :: [(Name, LDecl)] -> 
+codegenC :: [(Name, SDecl)] ->
             String -> -- output file name
             Bool ->   -- generate executable if True, only .o if False 
             [FilePath] -> -- include files
@@ -27,33 +27,27 @@ codegenC :: [(Name, LDecl)] ->
             IO ()
 codegenC defs out exec incs libs dbg
     = do -- print defs
-         let tagged = addTags defs
-         let ctxtIn = addAlist tagged emptyContext
-         let checked = checkDefs ctxtIn tagged 
-         case checked of
-             OK c -> do let bc = map toBC c
-                        let h = concatMap toDecl (map fst bc)
-                        let cc = concatMap (uncurry toC) bc
-                        d <- getDataDir
-                        mprog <- readFile (d ++ "/rts/idris_main.c")
-                        let cout = headers incs ++ debug dbg ++ h ++ cc ++ 
-                                   (if exec then mprog else "")
-                        (tmpn, tmph) <- tempfile
-                        hPutStr tmph cout
-                        hFlush tmph
-                        hClose tmph
-                        let gcc = "gcc -x c " ++ 
-                                  (if exec then "" else " - c ") ++
-                                  gccDbg dbg ++
-                                  " " ++ tmpn ++
-                                  " `idris --link` `idris --include` " ++ libs ++
-                                  " -lidris_rts -o " ++ out
---                         putStrLn cout
-                        exit <- system gcc
-                        when (exit /= ExitSuccess) $
-                           putStrLn ("FAILURE: " ++ gcc)
-
-             Error e -> fail $ "Can't happen: Something went wrong in codegenC\n" ++ show e
+         let bc = map toBC defs
+         let h = concatMap toDecl (map fst bc)
+         let cc = concatMap (uncurry toC) bc
+         d <- getDataDir
+         mprog <- readFile (d ++ "/rts/idris_main.c")
+         let cout = headers incs ++ debug dbg ++ h ++ cc ++ 
+                     (if exec then mprog else "")
+         (tmpn, tmph) <- tempfile
+         hPutStr tmph cout
+         hFlush tmph
+         hClose tmph
+         let gcc = "gcc -x c " ++ 
+                     (if exec then "" else " - c ") ++
+                     gccDbg dbg ++
+                     " " ++ tmpn ++
+                     " `idris --link` `idris --include` " ++ libs ++
+                     " -lidris_rts -o " ++ out
+--          putStrLn cout
+         exit <- system gcc
+         when (exit /= ExitSuccess) $
+             putStrLn ("FAILURE: " ++ gcc)
 
 headers [] = "#include <idris_rts.h>\n\n"
 headers (x : xs) = "#include <" ++ x ++ ">\n" ++ headers xs

@@ -6,6 +6,7 @@ import IRTS.Lang
 import IRTS.Simplified
 import IRTS.Bytecode
 import IRTS.CodegenC
+import IRTS.Defunctionalise
 import Paths_idris
 
 import Text.ParserCombinators.Parsec
@@ -46,7 +47,15 @@ lchar = lexeme.char
 
 fovm :: FilePath -> IO ()
 fovm f = do defs <- parseFOVM f
-            codegenC defs "a.out" True ["math.h"] "" TRACE
+            let (nexttag, tagged) = addTags 0 defs
+            let ctxtIn = addAlist tagged emptyContext
+            let defuns = defunctionalise nexttag ctxtIn
+--             print defuns
+            let checked = checkDefs defuns (toAlist defuns)
+--             print checked
+            case checked of
+                 OK c -> codegenC c "a.out" True ["math.h"] "" TRACE
+                 Error e -> fail $ show e 
 
 parseFOVM :: FilePath -> IO [(Name, LDecl)]
 parseFOVM fname = do -- putStrLn $ "Reading " ++ fname

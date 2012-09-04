@@ -71,7 +71,7 @@ Executable     idris
 
                               RTS.Bytecode, RTS.SC, RTS.PreC, RTS.CodegenC,
                               IRTS.Lang, IRTS.LParser, IRTS.Bytecode, IRTS.Simplified,
-                              IRTS.CodegenC,
+                              IRTS.CodegenC, IRTS.Defunctionalise,
 
                               Paths_idris
 

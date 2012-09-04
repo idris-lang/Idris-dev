@@ -1,0 +1,30 @@
+data O 0
+data S 1
+
+fun plus(x, y) = case x of {
+                     O => y
+                   | S(k) => S (plus(k, y))
+                 }
+
+fun natToInt(x) = case x of {
+                     O => 0
+                   | S(k) => let y = natToInt(k) in y + 1
+                  }
+
+fun adder(arity, acc) = case arity of {
+                           O => acc
+                         | S(k) => adderAux(k, acc)
+                        }
+
+fun adderAux(k, acc, n) = adder(k, plus(acc, n))
+
+fun zero()  = O
+fun one()   = S(zero)
+fun two()   = S(one)
+fun three() = S(two)
+fun four()  = S(three)
+fun five()  = S(four)
+
+fun main() = %WriteInt(natToInt(adder(three, two, three, four, five)))
+
+
