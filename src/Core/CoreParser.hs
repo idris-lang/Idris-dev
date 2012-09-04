@@ -1,6 +1,7 @@
 {-# LANGUAGE MultiParamTypeClasses, FlexibleInstances #-}
 
-module Core.CoreParser(parseTerm, parseFile, parseDef, pTerm, iName, idrisDef) where
+module Core.CoreParser(parseTerm, parseFile, parseDef, pTerm, iName, idrisDef,
+                       maybeWithNS) where
 
 import Core.TT
 
@@ -60,15 +61,40 @@ pTestFile = do p <- many1 pDef ; eof
                return p
 
 iName :: [String] -> CParser a Name
-iName bad = do x <- identifier
-               when (x `elem` bad) $ fail "Reserved identifier"
-               return $ mkNS (reverse (parseName x))
+iName bad = maybeWithNS identifier False bad
+
+-- Enhances a given parser to accept an optional namespace.  All possible
+-- namespace prefixes are tried in ascending / descending order, and
+-- identifiers of a given list fail.
+maybeWithNS :: CParser a String -> Bool -> [String] -> CParser a Name
+maybeWithNS parser ascend bad = do
+  i <- option "" (lookAhead identifier)
+  when (i `elem` bad) $ fail "Reserved identifier"
+  let transf = if ascend then id else reverse
+  (x, xs) <- choice $ transf (parserNoNS : parsersNS i)
+  return $ mkName (x, xs)
   where
-    mkNS [x] = UN x
-    mkNS (x:xs) = NS (UN x) xs 
-    parseName x = case span (/= '.') x of
-                       (x, "") -> [x]
-                       (x, '.':y) -> x : parseName y
+    parserNoNS = do x <- parser; return (x, "")
+    parserNS ns = do xs <- string ns; lchar '.'; x <- parser; return (x, xs)
+    parsersNS i = [try (parserNS ns) | ns <- (initsEndAt (=='.') i)]
+
+-- List of all initial segments in ascending order of a list.  Every such
+-- initial segment ends right before an element satisfying the given
+-- condition.
+initsEndAt :: (a -> Bool) -> [a] -> [[a]]
+initsEndAt p [] = []
+initsEndAt p (x:xs) | p x = [] : x_inits_xs
+                    | otherwise = x_inits_xs
+  where x_inits_xs = [x : cs | cs <- initsEndAt p xs]
+
+-- Create a `Name' from a pair of strings representing a base name and its
+-- namespace.
+mkName :: (String, String) -> Name
+mkName (n, "") = UN n 
+mkName (n, ns) = NS (UN n) (reverse (parseNS ns))
+  where parseNS x = case span (/= '.') x of
+                      (x, "")    -> [x]
+                      (x, '.':y) -> x : parseNS y
 
 pDef :: CParser a (Name, RDef)
 pDef = try (do x <- iName []; lchar ':'; ty <- pTerm

@@ -613,10 +613,14 @@ pName = do i <- getState
            i <- getState
            UN n <- iName (syntax_keywords i)
            return (UN ('@':n))
-    
 
-pfName = try pName
-     <|> do lchar '('; o <- operator; lchar ')'; return (UN o)
+-- Parser for an operator in function position, i.e. enclosed by `()', with an
+-- optional namespace.
+pOpFront = maybeWithNS pOpFrontNoNS False []
+  where pOpFrontNoNS = do lchar '('; o <- operator; lchar ')'; return o
+
+pfName = try pOpFront
+         <|> pName
 
 pAccessibility' :: IParser Accessibility
 pAccessibility'
