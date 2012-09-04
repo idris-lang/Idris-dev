@@ -70,7 +70,7 @@ data IState = IState { tt_ctxt :: Context,
                        idris_objs :: [FilePath],
                        idris_libs :: [String],
                        idris_hdrs :: [String],
-                       last_proof :: Maybe (Name, [String]),
+                       proof_list :: [(Name, [String])],
                        errLine :: Maybe Int,
                        lastParse :: Maybe Name, 
                        indent_stack :: [Int],
@@ -109,7 +109,7 @@ idrisInit = IState initContext [] [] emptyContext emptyContext emptyContext
                    emptyContext emptyContext emptyContext emptyContext 
                    emptyContext emptyContext emptyContext
                    [] "" defaultOpts 6 [] [] [] [] [] [] [] [] []
-                   Nothing Nothing Nothing [] [] [] Hidden [] Nothing
+                   [] Nothing Nothing [] [] [] Hidden [] Nothing
 
 -- The monad for the main REPL - reading and processing files and updating 
 -- global state (hence the IO inner monad).
@@ -121,7 +121,7 @@ data Command = Quit   | Help | Eval PTerm | Check PTerm | TotCheck Name
              | Reload | Edit
              | Compile String | Execute | ExecVal PTerm
              | NewCompile String
-             | Metavars    | Prove Name | AddProof | Universes
+             | Metavars    | Prove Name | AddProof | RmProof | Proofs | Universes
              | TTShell 
              | LogLvl Int | Spec PTerm | HNF PTerm | Defn Name 
              | Info Name  | DebugInfo Name
