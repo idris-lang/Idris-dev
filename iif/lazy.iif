@@ -1,0 +1,21 @@
+data Nil 0
+data Cons 2
+
+fun countFrom(x) = Cons(x, countFrom@(x+1))  
+
+fun take(n, xs) = case n of {
+                       0 => Nil
+                     | _ => case xs of {
+                                Nil => Nil
+                              | Cons(y, ys) => Cons(y, take(n-1, ys))
+                            }
+                  }
+
+fun dumpList(xs) = case xs of {
+                       Nil => "END"
+                     | Cons(y, ys) => %IntString(y) ++ ", " ++ dumpList(ys)
+                   }
+
+fun double(x) = x + x
+
+fun main() = %WriteString(dumpList(take(5, countFrom(10))))

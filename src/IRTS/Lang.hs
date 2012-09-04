@@ -7,6 +7,7 @@ data LVar = Loc Int | Glob Name
 
 data LExp = LV LVar
           | LApp Bool Name [LExp] -- True = tail call
+          | LLazyApp Name [LExp] -- True = tail call
           | LLet Name LExp LExp -- name just for pretty printing
           | LCon Int Name [LExp]
           | LCase LExp [LAlt]

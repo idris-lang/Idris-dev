@@ -182,8 +182,8 @@ doOp LFloatStr [x] = "idris_castFloatStr(vm, " ++ creg x ++ ")"
 doOp LStrFloat [x] = "idris_castStrFloat(vm, " ++ creg x ++ ")"
 
 doOp LReadStr [] = "idris_readStr(vm, stdin)"
-doOp LPrintNum [x] = "NULL; printf(\"%ld\\n\", GETINT(" ++ creg x ++ "))"
-doOp LPrintStr [x] = "NULL; puts(GETSTR(" ++ creg x ++ "))"
+doOp LPrintNum [x] = creg x ++ "; printf(\"%ld\\n\", GETINT(" ++ creg x ++ "))"
+doOp LPrintStr [x] = creg x ++ "; puts(GETSTR(" ++ creg x ++ "))"
 doOp _ _ = "FAIL"
 
 tempfile :: IO (FilePath, Handle)

@@ -9,6 +9,7 @@ User visible changes:
   variables in scope when a unification error occurs, and 'showimplicits'
   for displaying elaborated terms in full
 * Added '--errorcontext' command line switch
+* Added ':proofs' and ':rmproofs' commands
 * Various minor REPL improvements and fixes
 
 Internal changes:

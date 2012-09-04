@@ -47,6 +47,13 @@ addApps defs (n, LFun _ args e) = (n, LFun n args (aa args e))
                 [LFun _ as _] -> let arity = length as in
                                      fixApply tc n args' arity
                 [] -> chainAPPLY (LV (Glob n)) args'
+    aa env (LLazyApp n args)
+       = let args' = map (aa env) args in
+             case lookupCtxt Nothing n defs of
+                [LConstructor _ i ar] -> LApp False n args'
+                [LFun _ as _] -> let arity = length as in
+                                     fixLazyApply n args' arity
+                [] -> chainAPPLY (LV (Glob n)) args'
     aa env (LLet n v sc) = LLet n (aa env v) (aa (n : env) sc)
     aa env (LCon i n args) = LCon i n (map (aa env) args)
     aa env (LCase e alts) = LCase (eEVAL (aa env e)) (map (aaAlt env) alts)
@@ -66,6 +73,11 @@ addApps defs (n, LFun _ args e) = (n, LFun n args (aa args e))
         | length args == ar = LApp tc n args
         | length args < ar = LApp tc (mkUnderCon n (ar - length args)) args
         | length args > ar = chainAPPLY (LApp tc n (take ar args)) (drop ar args)
+
+    fixLazyApply n args ar 
+        | length args == ar = LApp False (mkFnCon n) args
+        | length args < ar = LApp False (mkUnderCon n (ar - length args)) args
+        | length args > ar = chainAPPLY (LApp False n (take ar args)) (drop ar args)
                                     
     chainAPPLY f [] = f
     chainAPPLY f (a : as) = chainAPPLY (LApp False (MN 0 "APPLY") [f, a]) as

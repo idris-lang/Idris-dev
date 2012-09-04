@@ -52,7 +52,7 @@ fovm f = do defs <- parseFOVM f
             let defuns = defunctionalise nexttag ctxtIn
 --             print defuns
             let checked = checkDefs defuns (toAlist defuns)
---             print checked
+            print checked
             case checked of
                  OK c -> codegenC c "a.out" True ["math.h"] "" TRACE
                  Error e -> fail $ show e 
@@ -117,10 +117,15 @@ pLExp' = try (do lchar '%'; pCast)
      <|> try (do lchar '%'; pPrim)
      <|> try (do tc <- option False (do lchar '%'; reserved "tc"; return True)
                  x <- iName [];
+                 lazy <- option False (do lchar '@'; return True)
                  lchar '('
                  args <- sepBy pLExp (lchar ',')
                  lchar ')'
-                 if null args then return (LV (Glob x)) else return (LApp tc x args))
+                 if null args 
+                    then if lazy then return (LLazyApp x [])
+                                 else return (LV (Glob x)) 
+                    else if lazy then return (LLazyApp x args)
+                                 else return (LApp tc x args))
      <|> do lchar '('; e <- pLExp; lchar ')'; return e
      <|> pLConst
      <|> do reserved "let"; x <- iName []; lchar '='; v <- pLExp
