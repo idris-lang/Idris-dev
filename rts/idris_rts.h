@@ -10,7 +10,7 @@
 // Closures
 
 typedef enum {
-    CON, INT, FLOAT, STRING, UNIT, PTR
+    CON, INT, FLOAT, STRING, UNIT, PTR, FWD
 } ClosureType;
 
 typedef struct {
@@ -40,9 +40,13 @@ typedef struct {
     VAL* valstack_base;
     int* intstack_ptr;
     double* floatstack_ptr;
-    void* heap;
-    void* heap_next;
+    char* heap;
+    char* heap_next;
+    char* heap_end;
     int stack_max;
+    size_t heap_size;
+    size_t heap_growth;
+    int collections;
     VAL ret;
 } VM;
 
@@ -103,6 +107,7 @@ VAL MKCON(VM* vm, int tag, int arity, ...);
 void PROJECT(VM* vm, VAL r, int loc, int arity); 
 void SLIDE(VM* vm, int args);
 
+void* allocCon(VM* vm, int arity);
 void dumpVal(VAL r);
 
 // Casts
@@ -127,5 +132,6 @@ VAL idris_readStr(VM* vm, FILE* h);
 // Just reports an error and exits.
 
 void stackOverflow();
+
 
 #endif 

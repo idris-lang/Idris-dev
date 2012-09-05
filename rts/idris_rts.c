@@ -5,6 +5,7 @@
 #include <stdarg.h>
 
 #include "idris_rts.h"
+#include "idris_gc.h"
 
 VM* init_vm(int stack_size, size_t heap_size) {
     VAL* valstack = malloc(stack_size*sizeof(VAL));
@@ -22,12 +23,27 @@ VM* init_vm(int stack_size, size_t heap_size) {
     vm -> stack_max = stack_size;
     vm -> heap = malloc(heap_size);
     vm -> heap_next = vm -> heap;
+    vm -> heap_end = vm -> heap + heap_size;
+    vm -> heap_size = heap_size;
+    vm -> collections = 0;
+    vm -> heap_growth = heap_size;
     vm -> ret = NULL;
     return vm;
 }
 
-void* allocate(VM* vm, int size) {
-    return malloc(size); // TMP!
+void* allocate(VM* vm, size_t size) {
+    if ((size & 7)!=0) {
+	size = 8 + ((size >> 3) << 3);
+    }
+    if (vm -> heap_next + size < vm -> heap_end) {
+        void* ptr = (void*)(((size_t*)(vm->heap_next))+2);
+        *((size_t*)(vm->heap_next)) = size+sizeof(size_t)*2;
+        vm -> heap_next += size+sizeof(size_t)*2;
+        return ptr;
+    } else {
+        gc(vm);
+        return allocate(vm, size);
+    }
 }
 
 void* allocCon(VM* vm, int arity) {

@@ -52,7 +52,7 @@ fovm f = do defs <- parseFOVM f
             let defuns = defunctionalise nexttag ctxtIn
 --             print defuns
             let checked = checkDefs defuns (toAlist defuns)
-            print checked
+--             print checked
             case checked of
                  OK c -> codegenC c "a.out" True ["math.h"] "" TRACE
                  Error e -> fail $ show e 

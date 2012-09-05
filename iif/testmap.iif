@@ -13,7 +13,18 @@ fun dumpList(xs) = case xs of {
                      | Cons(y, ys) => %IntString(y) ++ ", " ++ dumpList(ys)
                    }
 
+fun countFrom(x) = Cons(x, countFrom@(x+1))  
+
+fun take(n, xs) = case n of {
+                       0 => Nil
+                     | _ => case xs of {
+                                Nil => Nil
+                              | Cons(y, ys) => Cons(y, take(n-1, ys))
+                            }
+                  }
+
 fun double(x) = x + x
 
 fun main() = let mult = 2 in
-      %WriteString(dumpList(map(twice(\ x => x*mult), Cons(4, Cons(6, Nil)))))
+      %WriteString(dumpList(map(twice(\ x => x*mult), take(1010, countFrom(10)))))
+
