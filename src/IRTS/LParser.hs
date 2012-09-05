@@ -52,7 +52,7 @@ fovm f = do defs <- parseFOVM f
             let defuns = defunctionalise nexttag ctxtIn
 --             print defuns
             let checked = checkDefs defuns (toAlist defuns)
---             print checked
+--            print checked
             case checked of
                  OK c -> codegenC c "a.out" True ["math.h"] "" TRACE
                  Error e -> fail $ show e 
@@ -193,6 +193,9 @@ pPrim = do reserved "StrEq"; lchar '(';
     <|> do reserved "WriteInt"; lchar '('; 
            e <- pLExp; lchar ')';
            return (LOp LPrintNum [e])
+    <|> do reserved "lazy"; lchar '(';
+           e <- pLExp; lchar ')';
+           return (LLazyExp e)
 
 pAlt :: LParser LAlt
 pAlt = try (do x <- iName []

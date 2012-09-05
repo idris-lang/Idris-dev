@@ -9,6 +9,7 @@ data LVar = Loc Int | Glob Name
 data LExp = LV LVar
           | LApp Bool Name [LExp] -- True = tail call
           | LLazyApp Name [LExp] -- True = tail call
+          | LLazyExp LExp
           | LLet Name LExp LExp -- name just for pretty printing
           | LLam [Name] LExp -- lambda, lifted out before compiling
           | LCon Int Name [LExp]
@@ -81,6 +82,11 @@ lift env (LApp tc n args) = do args' <- mapM (lift env) args
                                return (LApp tc n args')
 lift env (LLazyApp n args) = do args' <- mapM (lift env) args
                                 return (LLazyApp n args')
+lift env (LLazyExp (LConst c)) = return (LConst c)
+lift env (LLazyExp e) = do e' <- lift env e
+                           fn <- getNextName
+                           addFn fn (LFun fn env e')
+                           return (LLazyApp fn (map (LV . Glob) env))
 lift env (LLet n v e) = do v' <- lift env v
                            e' <- lift (env ++ [n]) e
                            return (LLet n v' e')
