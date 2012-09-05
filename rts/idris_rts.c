@@ -188,7 +188,42 @@ VAL idris_strlen(VM* vm, VAL l) {
     return MKINT((i_int)(strlen(GETSTR(l))));
 }
 
+#define BUFSIZE 256
+
 VAL idris_readStr(VM* vm, FILE* h) {
+// Modified from 'safe-fgets.c' in the gdb distribution.
+// (see http://www.gnu.org/software/gdb/current/)
+    char *line_ptr;
+    char* line_buf = (char *) malloc (BUFSIZE);
+    int line_buf_size = BUFSIZE;
+
+    /* points to last byte */
+    line_ptr = line_buf + line_buf_size - 1;
+
+    /* so we can see if fgets put a 0 there */
+    *line_ptr = 1;
+    if (fgets (line_buf, line_buf_size, h) == 0)
+        return MKSTR(vm, "");
+
+    /* we filled the buffer? */
+    while (line_ptr[0] == 0 && line_ptr[-1] != '\n')
+    {
+        /* Make the buffer bigger and read more of the line */
+        line_buf_size += BUFSIZE;
+        line_buf = (char *) realloc (line_buf, line_buf_size);
+
+        /* points to last byte again */
+        line_ptr = line_buf + line_buf_size - 1;
+        /* so we can see if fgets put a 0 there */
+        *line_ptr = 1;
+
+        if (fgets (line_buf + line_buf_size - BUFSIZE - 1, BUFSIZE + 1, h) == 0)
+           return MKSTR(vm, "");
+    }
+
+    VAL str = MKSTR(vm, line_buf);
+    free(line_buf);
+    return str;
 }
 
 
