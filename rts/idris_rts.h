@@ -10,7 +10,7 @@
 // Closures
 
 typedef enum {
-    CON, INT, FLOAT, STRING, UNIT, PTR, FWD
+    CON, INT, BIGINT, FLOAT, STRING, UNIT, PTR, FWD
 } ClosureType;
 
 typedef struct {
@@ -107,7 +107,9 @@ VAL MKCON(VM* vm, int tag, int arity, ...);
 void PROJECT(VM* vm, VAL r, int loc, int arity); 
 void SLIDE(VM* vm, int args);
 
+void* allocate(VM* vm, size_t size);
 void* allocCon(VM* vm, int arity);
+
 void dumpVal(VAL r);
 
 // Casts
@@ -133,5 +135,6 @@ VAL idris_readStr(VM* vm, FILE* h);
 
 void stackOverflow();
 
+#include "idris_gmp.h"
 
 #endif 

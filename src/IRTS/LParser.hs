@@ -54,7 +54,7 @@ fovm f = do defs <- parseFOVM f
             let checked = checkDefs defuns (toAlist defuns)
 --            print checked
             case checked of
-                 OK c -> codegenC c "a.out" True ["math.h"] "" TRACE
+                 OK c -> codegenC c "a.out" True ["math.h"] "" NONE
                  Error e -> fail $ show e 
 
 parseFOVM :: FilePath -> IO [(Name, LDecl)]
@@ -88,14 +88,18 @@ pLExp = buildExpressionParser optable pLExp'
 optable = [[binary "*" (\x y -> LOp LTimes [x,y]) AssocLeft,
             binary "/" (\x y -> LOp LDiv [x,y]) AssocLeft,
             binary "*." (\x y -> LOp LFTimes [x,y]) AssocLeft,
-            binary "/." (\x y -> LOp LFTimes [x,y]) AssocLeft
+            binary "/." (\x y -> LOp LFDiv [x,y]) AssocLeft,
+            binary "*:" (\x y -> LOp LBTimes [x,y]) AssocLeft,
+            binary "/:" (\x y -> LOp LBDiv [x,y]) AssocLeft
             ],
            [
             binary "+" (\x y -> LOp LPlus [x,y]) AssocLeft,
             binary "-" (\x y -> LOp LMinus [x,y]) AssocLeft,
             binary "++" (\x y -> LOp LStrConcat [x,y]) AssocLeft,
             binary "+." (\x y -> LOp LFPlus [x,y]) AssocLeft,
-            binary "-." (\x y -> LOp LFMinus [x,y]) AssocLeft
+            binary "-." (\x y -> LOp LFMinus [x,y]) AssocLeft,
+            binary "+:" (\x y -> LOp LBPlus [x,y]) AssocLeft,
+            binary "-:" (\x y -> LOp LBMinus [x,y]) AssocLeft
             ],
            [
             binary "==" (\x y -> LOp LEq [x, y]) AssocNone,
@@ -107,7 +111,13 @@ optable = [[binary "*" (\x y -> LOp LTimes [x,y]) AssocLeft,
             binary "<=" (\x y -> LOp LLe [x, y]) AssocNone,
             binary "<=." (\x y -> LOp LFLe [x, y]) AssocNone,
             binary ">=" (\x y -> LOp LGe [x, y]) AssocNone,
-            binary ">=." (\x y -> LOp LFGe [x, y]) AssocNone
+            binary ">=." (\x y -> LOp LFGe [x, y]) AssocNone,
+
+            binary "==:" (\x y -> LOp LBEq [x, y]) AssocNone,
+            binary "<:" (\x y -> LOp LBLt [x, y]) AssocNone,
+            binary ">:" (\x y -> LOp LBGt [x, y]) AssocNone,
+            binary "<=:" (\x y -> LOp LBLe [x, y]) AssocNone,
+            binary ">=:" (\x y -> LOp LBGe [x, y]) AssocNone
           ]]
 
 binary name f assoc = Infix (do reservedOp name; return f) assoc
@@ -174,6 +184,14 @@ pCast = do reserved "FloatString"; lchar '('; e <- pLExp; lchar ')'
            return (LOp LStrInt [e])
     <|> do reserved "IntString"; lchar '('; e <- pLExp; lchar ')'
            return (LOp LIntStr [e])
+    <|> do reserved "BigInt"; lchar '('; e <- pLExp; lchar ')'
+           return (LOp LBigInt [e])
+    <|> do reserved "IntBig"; lchar '('; e <- pLExp; lchar ')'
+           return (LOp LIntBig [e])
+    <|> do reserved "BigString"; lchar '('; e <- pLExp; lchar ')'
+           return (LOp LBigStr [e])
+    <|> do reserved "StringBig"; lchar '('; e <- pLExp; lchar ')'
+           return (LOp LStrBig [e])
 
 pPrim :: LParser LExp
 pPrim = do reserved "StrEq"; lchar '(';
@@ -219,6 +237,7 @@ pAlt = try (do x <- iName []
 
 pLConst :: LParser LExp
 pLConst = try (do f <- float; return $ LConst (Fl f))
+      <|> try (do i <- natural; lchar ':'; return $ LConst (BI i))     
       <|> try (do i <- natural; return $ LConst (I (fromInteger i)))     
       <|> try (do s <- strlit; return $ LConst (Str s))
       <|> try (do c <- chlit; return $ LConst (Ch c))

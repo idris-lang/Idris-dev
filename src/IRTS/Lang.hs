@@ -21,8 +21,10 @@ data LExp = LV LVar
 
 data PrimFn = LPlus | LMinus | LTimes | LDiv | LEq | LLt | LLe | LGt | LGe
             | LFPlus | LFMinus | LFTimes | LFDiv | LFEq | LFLt | LFLe | LFGt | LFGe
+            | LBPlus | LBMinus | LBTimes | LBDiv | LBEq | LBLt | LBLe | LBGt | LBGe
             | LStrConcat | LStrLt | LStrEq | LStrLen
             | LIntFloat | LFloatInt | LIntStr | LStrInt | LFloatStr | LStrFloat
+            | LIntBig | LBigInt | LStrBig | LBigStr
             | LPrintNum | LPrintStr | LReadStr
   deriving Show
 

@@ -43,7 +43,7 @@ codegenC defs out exec incs libs dbg
                      gccDbg dbg ++
                      " " ++ tmpn ++
                      " `idris --link` `idris --include` " ++ libs ++
-                     " -lidris_rts -o " ++ out
+                     " -lidris_rts -lgmp -o " ++ out
 --          putStrLn cout
          exit <- system gcc
          when (exit /= ExitSuccess) $
@@ -86,7 +86,8 @@ bcc i (ASSIGNCONST l c)
     = indent i ++ creg l ++ " = " ++ mkConst c ++ ";\n"
   where
     mkConst (I i) = "MKINT(" ++ show i ++ ")"
-    mkConst (BI i) = "MKINT(" ++ show i ++ ")" -- TODO
+    mkConst (BI i) | i < (2^30) = "MKINT(" ++ show i ++ ")"
+                   | otherwise = "MKBIGC(vm,\"" ++ show i ++ "\")"
     mkConst (Fl f) = "MKFLOAT(vm, " ++ show f ++ ")"
     mkConst (Ch c) = "MKINT(" ++ show (fromEnum c) ++ ")"
     mkConst (Str s) = "MKSTR(vm, " ++ show s ++ ")"
@@ -169,6 +170,16 @@ doOp LFLe [l, r] = "FLOATBOP(<=," ++ creg l ++ ", " ++ creg r ++ ")"
 doOp LFGt [l, r] = "FLOATBOP(>," ++ creg l ++ ", " ++ creg r ++ ")"
 doOp LFGe [l, r] = "FLOATBOP(>=," ++ creg l ++ ", " ++ creg r ++ ")"
 
+doOp LBPlus [l, r] = "idris_bigPlus(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
+doOp LBMinus [l, r] = "idris_bigMinus(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
+doOp LBTimes [l, r] = "idris_bigTimes(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
+doOp LBDiv [l, r] = "idris_bigDivide(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
+doOp LBEq [l, r] = "idris_bigEq(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
+doOp LBLt [l, r] = "idris_bigLt(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
+doOp LBLe [l, r] = "idris_bigLe(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
+doOp LBGt [l, r] = "idris_bigGt(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
+doOp LBGe [l, r] = "idris_bigGe(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
+
 doOp LStrConcat [l,r] = "idris_concat(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
 doOp LStrLt [l,r] = "idris_strlt(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
 doOp LStrEq [l,r] = "idris_streq(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
@@ -177,7 +188,11 @@ doOp LStrLen [x] = "idris_strlen(vm, " ++ creg x ++ ")"
 doOp LIntFloat [x] = "idris_castIntFloat(" ++ creg x ++ ")"
 doOp LFloatInt [x] = "idris_castFloatInt(" ++ creg x ++ ")"
 doOp LIntStr [x] = "idris_castIntStr(vm, " ++ creg x ++ ")"
-doOp LStrInt [x] = "idris_castFloatStr(vm, " ++ creg x ++ ")"
+doOp LStrInt [x] = "idris_castStrInt(vm, " ++ creg x ++ ")"
+doOp LIntBig [x] = "idris_castIntBig(vm, " ++ creg x ++ ")"
+doOp LBigInt [x] = "idris_castBigInt(vm, " ++ creg x ++ ")"
+doOp LStrBig [x] = "idris_castStrBig(vm, " ++ creg x ++ ")"
+doOp LBigStr [x] = "idris_castBigStr(vm, " ++ creg x ++ ")"
 doOp LFloatStr [x] = "idris_castFloatStr(vm, " ++ creg x ++ ")"
 doOp LStrFloat [x] = "idris_castStrFloat(vm, " ++ creg x ++ ")"
 

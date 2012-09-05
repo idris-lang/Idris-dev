@@ -27,6 +27,9 @@ VAL copy(VM* vm, VAL x) {
     case STRING:
         cl = MKSTR(vm, x->info.str);
         break;
+    case BIGINT:
+        cl = MKBIGM(vm, x->info.ptr);
+        break;
     case PTR:
         cl = MKPTR(vm, x->info.ptr);
         break;
