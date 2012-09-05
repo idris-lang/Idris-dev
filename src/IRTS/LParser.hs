@@ -47,7 +47,7 @@ lchar = lexeme.char
 
 fovm :: FilePath -> IO ()
 fovm f = do defs <- parseFOVM f
-            let (nexttag, tagged) = addTags 0 defs
+            let (nexttag, tagged) = addTags 0 (liftAll defs)
             let ctxtIn = addAlist tagged emptyContext
             let defuns = defunctionalise nexttag ctxtIn
 --             print defuns
@@ -131,6 +131,10 @@ pLExp' = try (do lchar '%'; pCast)
      <|> do reserved "let"; x <- iName []; lchar '='; v <- pLExp
             reserved "in"; e <- pLExp
             return (LLet x v e)
+     <|> do lchar '\\'; xs <- sepBy (iName []) (lchar ',')
+            symbol "=>"
+            e <- pLExp
+            return (LLam xs e)
      <|> do reserved "foreign"; l <- pLang; t <- pType
             fname <- strlit
             lchar '('

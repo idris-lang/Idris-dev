@@ -15,4 +15,5 @@ fun dumpList(xs) = case xs of {
 
 fun double(x) = x + x
 
-fun main() = %WriteString(dumpList(map(twice(double), Cons(4, Cons(6, Nil)))))
+fun main() = let mult = 2 in
+      %WriteString(dumpList(map(twice(\ x => x*mult), Cons(4, Cons(6, Nil)))))
