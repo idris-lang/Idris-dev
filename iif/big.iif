@@ -4,4 +4,4 @@ fun fact(x) = case (x ==: 0:) of {
               }
 
 fun main() = let f = fact(200:) in
-                 %WriteString(%BigStr(f) ++ "\n")
+                 %WriteString(%BigString(f) ++ "\n")

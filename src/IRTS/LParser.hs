@@ -54,7 +54,7 @@ fovm f = do defs <- parseFOVM f
             let checked = checkDefs defuns (toAlist defuns)
 --            print checked
             case checked of
-                 OK c -> codegenC c "a.out" True ["math.h"] "" NONE
+                 OK c -> codegenC c "a.out" True ["math.h"] "" TRACE
                  Error e -> fail $ show e 
 
 parseFOVM :: FilePath -> IO [(Name, LDecl)]

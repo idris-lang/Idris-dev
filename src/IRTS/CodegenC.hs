@@ -52,11 +52,11 @@ codegenC defs out exec incs libs dbg
 headers [] = "#include <idris_rts.h>\n\n"
 headers (x : xs) = "#include <" ++ x ++ ">\n" ++ headers xs
 
-debug TRACE = "#define IDRIS_DEBUG\n\n"
+debug TRACE = "#define IDRIS_TRACE\n\n"
 debug _ = ""
 
 gccDbg DEBUG = "-g"
-gccDbg TRACE = "-g"
+gccDbg TRACE = "-O2"
 gccDbg _ = "-O2"
 
 cname :: Name -> String
