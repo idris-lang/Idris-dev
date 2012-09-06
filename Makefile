@@ -19,7 +19,7 @@ relib: .PHONY
 	make -C lib IDRIS=../dist/build/idris/idris
 
 linecount : .PHONY
-	wc -l src/Idris/*.hs src/Core/*.hs src/RTS/*.hs
+	wc -l src/Idris/*.hs src/Core/*.hs src/IRTS/*.hs
 
 .PHONY:
 

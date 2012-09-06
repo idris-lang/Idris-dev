@@ -49,7 +49,7 @@ codegenC defs out exec incs libs dbg
          when (exit /= ExitSuccess) $
              putStrLn ("FAILURE: " ++ gcc)
 
-headers [] = "#include <idris_rts.h>\n\n"
+headers [] = "#include <idris_rts.h>\n#include <idris_stdfgn.h>\n"
 headers (x : xs) = "#include <" ++ x ++ ">\n" ++ headers xs
 
 debug TRACE = "#define IDRIS_TRACE\n\n"
@@ -137,13 +137,15 @@ bcc i (FOREIGNCALL l LANG_C rty fn args)
 -- bcc i _ = indent i ++ "// not done yet\n"
 
 c_irts FInt x = "MKINT((i_int)(" ++ x ++ ")"
+c_irts FChar x = "MKINT((i_int)(" ++ x ++ ")"
 c_irts FString x = "MKSTR(" ++ x ++ ")"
 c_irts FUnit x = "MKINT(42424242)"
-c_irts FPtr x = "MKPTR(" ++ x ++ ")"
+c_irts FPtr x = "MKPTR(vm, " ++ x ++ ")"
 c_irts FDouble x = "MKFLOAT(vm, " ++ x ++ ")"
 c_irts FAny x = x
 
 irts_c FInt x = "GETINT(" ++ x ++ ")"
+irts_c FChar x = "GETINT(" ++ x ++ ")"
 irts_c FString x = "GETSTR(" ++ x ++ ")"
 irts_c FUnit x = x
 irts_c FPtr x = "GETPTR(" ++ x ++ ")"
@@ -196,7 +198,7 @@ doOp LBigStr [x] = "idris_castBigStr(vm, " ++ creg x ++ ")"
 doOp LFloatStr [x] = "idris_castFloatStr(vm, " ++ creg x ++ ")"
 doOp LStrFloat [x] = "idris_castStrFloat(vm, " ++ creg x ++ ")"
 
-doOp LReadStr [] = "idris_readStr(vm, stdin)"
+doOp LReadStr [x] = "idris_readStr(vm, GETPTR(" ++ creg x ++ "))"
 doOp LPrintNum [x] = creg x ++ "; printf(\"%ld\\n\", GETINT(" ++ creg x ++ "))"
 doOp LPrintStr [x] = creg x ++ "; fputs(GETSTR(" ++ creg x ++ "), stdout)"
 

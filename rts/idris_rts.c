@@ -50,36 +50,35 @@ void* allocate(VM* vm, size_t size) {
 }
 
 void* allocCon(VM* vm, int arity) {
-    Closure* cl = allocate(vm, sizeof(ClosureType) +
-                               sizeof(con) + sizeof(VAL)*arity);
+    Closure* cl = allocate(vm, sizeof(Closure) + sizeof(VAL)*arity);
     cl -> ty = CON;
     if (arity == 0) {
        cl -> info.c.args = NULL;
     } else {
-       cl -> info.c.args = (void*)((char*)cl + sizeof(ClosureType)
-                                             + sizeof(con));
+       cl -> info.c.args = (void*)((char*)cl + sizeof(Closure));
     }
     return (void*)cl;
 }
 
 VAL MKFLOAT(VM* vm, double val) {
-    Closure* cl = allocate(vm, sizeof(ClosureType) + sizeof(double));
+    Closure* cl = allocate(vm, sizeof(Closure));
     cl -> ty = FLOAT;
     cl -> info.f = val;
     return cl;
 }
 
 VAL MKSTR(VM* vm, char* str) {
-    Closure* cl = allocate(vm, sizeof(ClosureType) + sizeof(char*) +
+    Closure* cl = allocate(vm, sizeof(Closure) + // Type) + sizeof(char*) +
                                sizeof(char)*strlen(str)+1);
     cl -> ty = STRING;
-    cl -> info.str = (char*)cl + sizeof(ClosureType) + sizeof(char*);
+    cl -> info.str = (char*)cl + sizeof(Closure);
+
     strcpy(cl -> info.str, str);
     return cl;
 }
 
 VAL MKPTR(VM* vm, void* ptr) {
-    Closure* cl = allocate(vm, sizeof(ClosureType) + sizeof(void*));
+    Closure* cl = allocate(vm, sizeof(Closure));
     cl -> ty = PTR;
     cl -> info.ptr = ptr;
     return cl;
@@ -138,9 +137,9 @@ void dumpVal(VAL v) {
 }
 
 VAL idris_castIntStr(VM* vm, VAL i) {
-    Closure* cl = allocate(vm, sizeof(ClosureType) + sizeof(char*) + sizeof(char)*16);
+    Closure* cl = allocate(vm, sizeof(Closure) + sizeof(char)*16);
     cl -> ty = STRING;
-    cl -> info.str = (char*)cl + sizeof(ClosureType) + sizeof(char*);
+    cl -> info.str = (char*)cl + sizeof(Closure);
     sprintf(cl -> info.str, "%ld", GETINT(i));
     return cl;
 }
@@ -152,9 +151,9 @@ VAL idris_castStrInt(VM* vm, VAL i) {
 }
 
 VAL idris_castFloatStr(VM* vm, VAL i) {
-    Closure* cl = allocate(vm, sizeof(ClosureType) + sizeof(char*) + sizeof(char)*32);
+    Closure* cl = allocate(vm, sizeof(Closure) + sizeof(char)*32);
     cl -> ty = STRING;
-    cl -> info.str = (char*)cl + sizeof(ClosureType) + sizeof(char*);
+    cl -> info.str = (char*)cl + sizeof(Closure);
     sprintf(cl -> info.str, "%g", GETFLOAT(i));
     return cl;
 }
@@ -166,10 +165,9 @@ VAL idris_castStrFloat(VM* vm, VAL i) {
 VAL idris_concat(VM* vm, VAL l, VAL r) {
     char *ls = GETSTR(l);
     char *rs = GETSTR(r);
-    Closure* cl = allocate(vm, sizeof(ClosureType) + sizeof(char*) +
-                               strlen(ls) + strlen(rs) + 1);
+    Closure* cl = allocate(vm, sizeof(Closure) + strlen(ls) + strlen(rs) + 1);
     cl -> ty = STRING;
-    cl -> info.str = (char*)cl + sizeof(ClosureType) + sizeof(char*);
+    cl -> info.str = (char*)cl + sizeof(Closure);
     strcpy(cl -> info.str, ls);
     strcat(cl -> info.str, rs); 
     return cl;

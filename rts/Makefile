@@ -1,5 +1,5 @@
-OBJS = idris_rts.o idris_gc.o idris_gmp.o
-HDRS = idris_rts.h idris_gc.h idris_gmp.h
+OBJS = idris_rts.o idris_gc.o idris_gmp.o idris_stdfgn.o
+HDRS = idris_rts.h idris_gc.h idris_gmp.h idris_stdfgn.h
 CFLAGS = -g
 
 LIBTARGET = libidris_rts.a

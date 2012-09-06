@@ -204,7 +204,8 @@ pPrim = do reserved "StrEq"; lchar '(';
            return (LOp LStrLt [e, e'])
     <|> do reserved "StrLen"; lchar '('; e <- pLExp; lchar ')';
            return (LOp LStrLen [e])
-    <|> do reserved "ReadString"; return (LOp LReadStr [])
+    <|> do reserved "ReadString"; lchar '('; e <- pLExp; lchar ')';
+           return (LOp LReadStr [e])
     <|> do reserved "WriteString"; lchar '(';
            e <- pLExp; lchar ')'
            return (LOp LPrintStr [e])

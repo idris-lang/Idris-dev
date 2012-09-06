@@ -196,7 +196,7 @@ VAL idris_bigLt(VM* vm, VAL x, VAL y) {
 
 VAL idris_bigLe(VM* vm, VAL x, VAL y) {
     if (ISINT(x) && ISINT(y)) {
-        return MKINT((i_int)GETINT(x) <= GETINT(y));
+        return MKINT((i_int)(GETINT(x) <= GETINT(y)));
     } else {
         return bigLe(vm, x, y);
     }
