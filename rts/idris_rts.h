@@ -41,11 +41,13 @@ typedef struct {
     int* intstack_ptr;
     double* floatstack_ptr;
     char* heap;
+    char* oldheap;
     char* heap_next;
     char* heap_end;
     int stack_max;
     size_t heap_size;
     size_t heap_growth;
+    int allocations;
     int collections;
     VAL ret;
 } VM;

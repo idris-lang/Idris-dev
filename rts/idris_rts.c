@@ -22,10 +22,12 @@ VM* init_vm(int stack_size, size_t heap_size) {
     vm -> floatstack_ptr = floatstack;
     vm -> stack_max = stack_size;
     vm -> heap = malloc(heap_size);
+    vm -> oldheap = NULL;
     vm -> heap_next = vm -> heap;
     vm -> heap_end = vm -> heap + heap_size;
     vm -> heap_size = heap_size;
     vm -> collections = 0;
+    vm -> allocations = 0;
     vm -> heap_growth = heap_size;
     vm -> ret = NULL;
     return vm;
@@ -35,6 +37,7 @@ void* allocate(VM* vm, size_t size) {
     if ((size & 7)!=0) {
 	size = 8 + ((size >> 3) << 3);
     }
+    vm->allocations += size+sizeof(size_t)*2;
     if (vm -> heap_next + size < vm -> heap_end) {
         void* ptr = (void*)(((size_t*)(vm->heap_next))+2);
         *((size_t*)(vm->heap_next)) = size+sizeof(size_t)*2;
@@ -48,12 +51,13 @@ void* allocate(VM* vm, size_t size) {
 
 void* allocCon(VM* vm, int arity) {
     Closure* cl = allocate(vm, sizeof(ClosureType) +
-                               sizeof(con));
+                               sizeof(con) + sizeof(VAL)*arity);
     cl -> ty = CON;
     if (arity == 0) {
        cl -> info.c.args = NULL;
     } else {
-       cl -> info.c.args = allocate(vm, sizeof(VAL)*arity);
+       cl -> info.c.args = (void*)((char*)cl + sizeof(ClosureType)
+                                             + sizeof(con));
     }
     return (void*)cl;
 }
@@ -66,9 +70,10 @@ VAL MKFLOAT(VM* vm, double val) {
 }
 
 VAL MKSTR(VM* vm, char* str) {
-    Closure* cl = allocate(vm, sizeof(ClosureType) + sizeof(char*));
+    Closure* cl = allocate(vm, sizeof(ClosureType) + sizeof(char*) +
+                               sizeof(char)*strlen(str)+1);
     cl -> ty = STRING;
-    cl -> info.str = allocate(vm, sizeof(char)*strlen(str)+1);
+    cl -> info.str = (char*)cl + sizeof(ClosureType) + sizeof(char*);
     strcpy(cl -> info.str, str);
     return cl;
 }
@@ -133,9 +138,9 @@ void dumpVal(VAL v) {
 }
 
 VAL idris_castIntStr(VM* vm, VAL i) {
-    Closure* cl = allocate(vm, sizeof(ClosureType) + sizeof(char*));
+    Closure* cl = allocate(vm, sizeof(ClosureType) + sizeof(char*) + sizeof(char)*16);
     cl -> ty = STRING;
-    cl -> info.str = allocate(vm, sizeof(char)*16);
+    cl -> info.str = (char*)cl + sizeof(ClosureType) + sizeof(char*);
     sprintf(cl -> info.str, "%ld", GETINT(i));
     return cl;
 }
@@ -147,9 +152,9 @@ VAL idris_castStrInt(VM* vm, VAL i) {
 }
 
 VAL idris_castFloatStr(VM* vm, VAL i) {
-    Closure* cl = allocate(vm, sizeof(ClosureType) + sizeof(char*));
+    Closure* cl = allocate(vm, sizeof(ClosureType) + sizeof(char*) + sizeof(char)*32);
     cl -> ty = STRING;
-    cl -> info.str = allocate(vm, sizeof(char)*32);
+    cl -> info.str = (char*)cl + sizeof(ClosureType) + sizeof(char*);
     sprintf(cl -> info.str, "%g", GETFLOAT(i));
     return cl;
 }
@@ -161,10 +166,15 @@ VAL idris_castStrFloat(VM* vm, VAL i) {
 VAL idris_concat(VM* vm, VAL l, VAL r) {
     char *ls = GETSTR(l);
     char *rs = GETSTR(r);
+    Closure* cl = allocate(vm, sizeof(ClosureType) + sizeof(char*) +
+                               strlen(ls) + strlen(rs) + 1);
+    // Oops! problem if the second allocate triggers a gc because cl has
+    // to be a root. Fix by allocating all in one go.
 
-    Closure* cl = allocate(vm, sizeof(ClosureType) + sizeof(char*));
+    // Also note that l/r may be in from space, so don't delete after collection,
+    // rather, delete just before the next collection.
     cl -> ty = STRING;
-    cl -> info.str = allocate(vm, sizeof(char)*(strlen(ls)+strlen(rs)+1));
+    cl -> info.str = (char*)cl + sizeof(ClosureType) + sizeof(char*);
     strcpy(cl -> info.str, ls);
     strcat(cl -> info.str, rs); 
     return cl;

@@ -67,6 +67,7 @@ void cheney(VM *vm) {
 void gc(VM* vm) {
     char* newheap = malloc(vm -> heap_size);
     char* oldheap = vm -> heap;
+    if (vm->oldheap != NULL) free(vm->oldheap);
 
     vm->heap = newheap;
     vm->heap_next = newheap;
@@ -88,6 +89,5 @@ void gc(VM* vm) {
     if ((vm->heap_next - vm->heap) > vm->heap_size >> 1) {
         vm->heap_size += vm->heap_growth;
     }
-
-    free(oldheap);
+    vm->oldheap = oldheap;
 }
