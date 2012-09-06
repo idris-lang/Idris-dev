@@ -132,6 +132,12 @@ VAL idris_streq(VM* vm, VAL l, VAL r);
 VAL idris_strlen(VM* vm, VAL l);
 VAL idris_readStr(VM* vm, FILE* h);
 
+VAL idris_strHead(VM* vm, VAL str);
+VAL idris_strTail(VM* vm, VAL str);
+VAL idris_strCons(VM* vm, VAL x, VAL xs);
+VAL idris_strIndex(VM* vm, VAL str, VAL i);
+VAL idris_strRev(VM* vm, VAL str);
+
 // Handle stack overflow. 
 // Just reports an error and exits.
 

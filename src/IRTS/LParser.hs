@@ -214,6 +214,18 @@ pPrim = do reserved "StrEq"; lchar '(';
     <|> do reserved "lazy"; lchar '(';
            e <- pLExp; lchar ')';
            return (LLazyExp e)
+    <|> do reserved "StrHead"; lchar '('; e <- pLExp; lchar ')';
+           return (LOp LStrHead [e])
+    <|> do reserved "StrTail"; lchar '('; e <- pLExp; lchar ')';
+           return (LOp LStrTail [e])
+    <|> do reserved "StrRev"; lchar '('; e <- pLExp; lchar ')';
+           return (LOp LStrRev [e])
+    <|> do reserved "StrCons"; lchar '('; x <- pLExp; lchar ','; 
+           xs <- pLExp; lchar ')';
+           return (LOp LStrCons [x, xs])
+    <|> do reserved "StrIndex"; lchar '('; x <- pLExp; lchar ','; 
+           i <- pLExp; lchar ')';
+           return (LOp LStrIndex [x, i])
 
 pAlt :: LParser LAlt
 pAlt = try (do x <- iName []

@@ -199,6 +199,25 @@ doOp LStrFloat [x] = "idris_castStrFloat(vm, " ++ creg x ++ ")"
 doOp LReadStr [] = "idris_readStr(vm, stdin)"
 doOp LPrintNum [x] = creg x ++ "; printf(\"%ld\\n\", GETINT(" ++ creg x ++ "))"
 doOp LPrintStr [x] = creg x ++ "; fputs(GETSTR(" ++ creg x ++ "), stdout)"
+
+doOp LFExp [x] = "MKFLOAT(exp(GETFLOAT(" ++ creg x ++ ")))"
+doOp LFLog [x] = "MKFLOAT(log(GETFLOAT(" ++ creg x ++ ")))"
+doOp LFSin [x] = "MKFLOAT(sin(GETFLOAT(" ++ creg x ++ ")))"
+doOp LFCos [x] = "MKFLOAT(cos(GETFLOAT(" ++ creg x ++ ")))"
+doOp LFTan [x] = "MKFLOAT(tan(GETFLOAT(" ++ creg x ++ ")))"
+doOp LFASin [x] = "MKFLOAT(asin(GETFLOAT(" ++ creg x ++ ")))"
+doOp LFACos [x] = "MKFLOAT(acos(GETFLOAT(" ++ creg x ++ ")))"
+doOp LFATan [x] = "MKFLOAT(atan(GETFLOAT(" ++ creg x ++ ")))"
+doOp LFSqrt [x] = "MKFLOAT(floor(GETFLOAT(" ++ creg x ++ ")))"
+doOp LFFloor [x] = "MKFLOAT(ceil(GETFLOAT(" ++ creg x ++ ")))"
+doOp LFCeil [x] = "MKFLOAT(sqrt(GETFLOAT(" ++ creg x ++ ")))"
+
+doOp LStrHead [x] = "idris_strHead(vm, " ++ creg x ++ ")"
+doOp LStrTail [x] = "idris_strTail(vm, " ++ creg x ++ ")"
+doOp LStrCons [x, y] = "idris_strCons(vm, " ++ creg x ++ "," ++ creg y ++ ")"
+doOp LStrIndex [x, y] = "idris_strIndex(vm, " ++ creg x ++ "," ++ creg y ++ ")"
+doOp LStrRev [x] = "idris_strRev(vm, " ++ creg x ++ ")"
+
 doOp _ _ = "FAIL"
 
 tempfile :: IO (FilePath, Handle)

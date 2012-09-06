@@ -26,6 +26,11 @@ data PrimFn = LPlus | LMinus | LTimes | LDiv | LEq | LLt | LLe | LGt | LGe
             | LIntFloat | LFloatInt | LIntStr | LStrInt | LFloatStr | LStrFloat
             | LIntBig | LBigInt | LStrBig | LBigStr
             | LPrintNum | LPrintStr | LReadStr
+
+            | LFExp | LFLog | LFSin | LFCos | LFTan | LFASin | LFACos | LFATan
+            | LFSqrt | LFFloor | LFCeil
+
+            | LStrHead | LStrTail | LStrCons | LStrIndex | LStrRev
   deriving Show
 
 -- Supported target languages for foreign calls
