@@ -33,7 +33,7 @@ data PrimFn = LPlus | LMinus | LTimes | LDiv | LEq | LLt | LLe | LGt | LGe
 data FLang = LANG_C
   deriving Show
 
-data FType = FInt | FString | FUnit | FPtr | FDouble | FAny
+data FType = FInt | FChar | FString | FUnit | FPtr | FDouble | FAny
   deriving Show
 
 data LAlt = LConCase Int Name [Name] LExp
