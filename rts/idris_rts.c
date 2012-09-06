@@ -166,11 +166,6 @@ VAL idris_concat(VM* vm, VAL l, VAL r) {
     char *ls = GETSTR(l);
     char *rs = GETSTR(r);
     Closure* cl = allocate(vm, sizeof(Closure) + strlen(ls) + strlen(rs) + 1);
-    // Oops! problem if the second allocate triggers a gc because cl has
-    // to be a root. Fix by allocating all in one go.
-
-    // Also note that l/r may be in from space, so don't delete after collection,
-    // rather, delete just before the next collection.
     cl -> ty = STRING;
     cl -> info.str = (char*)cl + sizeof(Closure);
     strcpy(cl -> info.str, ls);
@@ -232,6 +227,45 @@ VAL idris_readStr(VM* vm, FILE* h) {
     VAL str = MKSTR(vm, line_buf);
     free(line_buf);
     return str;
+}
+
+VAL idris_strHead(VM* vm, VAL str) {
+    return MKINT(GETSTR(str)[0]);
+}
+
+VAL idris_strTail(VM* vm, VAL str) {
+    return MKSTR(vm, GETSTR(str)+1);
+}
+
+VAL idris_strCons(VM* vm, VAL x, VAL xs) {
+    char *xstr = GETSTR(xs);
+    Closure* cl = allocate(vm, sizeof(ClosureType) + sizeof(char*) +
+                               strlen(xstr) + 2);
+    cl -> ty = STRING;
+    cl -> info.str = (char*)cl + sizeof(ClosureType) + sizeof(char*);
+    cl -> info.str[0] = (char)(GETINT(x));
+    strcpy(cl -> info.str+1, xstr);
+    return cl;
+}
+
+VAL idris_strIndex(VM* vm, VAL str, VAL i) {
+    return MKINT(GETSTR(str)[GETINT(i)]);
+}
+
+VAL idris_strRev(VM* vm, VAL str) {
+    char *xstr = GETSTR(str);
+    Closure* cl = allocate(vm, sizeof(ClosureType) + sizeof(char*) +
+                               strlen(xstr) + 1);
+    cl -> ty = STRING;
+    cl -> info.str = (char*)cl + sizeof(ClosureType) + sizeof(char*);
+    int y = 0;
+    int x = strlen(xstr);
+
+    cl-> info.str[x+1] = '\0';
+    while(x>0) {
+        cl -> info.str[y++] = xstr[--x];
+    }
+    return cl;
 }
 
 
