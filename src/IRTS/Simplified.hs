@@ -16,6 +16,7 @@ data SExp = SV LVar
           | SConst Const
           | SForeign FLang FType String [(FType, LVar)]
           | SOp PrimFn [LVar]
+          | SError String
   deriving Show
 
 data SAlt = SConCase Int Int Name [Name] SExp
@@ -42,7 +43,8 @@ simplify tl (LV (Glob x))
          case lookupCtxt Nothing x ctxt of
               [LConstructor _ t 0] -> return $ SCon t x []
               _ -> return $ SV (Glob x)
-simplify tl (LApp tc n args) = do args' <- mapM sVar args
+simplify tl (LApp tc (LV (Glob n)) args) 
+                             = do args' <- mapM sVar args
                                   mkapp (SApp (tl || tc) n) args'
 simplify tl (LForeign lang ty fn args) 
                             = do args' <- mapM sVar (map snd args)
@@ -62,6 +64,7 @@ simplify tl (LCase e alts) = do v <- sVar e
 simplify tl (LConst c) = return (SConst c)
 simplify tl (LOp p args) = do args' <- mapM sVar args
                               mkapp (SOp p) args'
+simplify tl (LError str) = return $ SError str
 
 sVar (LV (Glob x))
     = do ctxt <- ldefs
@@ -115,7 +118,8 @@ scopecheck ctxt env tm = sc env tm where
               Just i -> do lvar i; return (SV (Loc i))
               Nothing -> case lookupCtxt Nothing n ctxt of
                               [LConstructor _ i ar] ->
-                                  if ar == 0 then return (SCon i n [])
+                                  if True -- ar == 0 
+                                     then return (SCon i n [])
                                      else fail $ "Codegen error: Constructor " ++ show n ++
                                                  " has arity " ++ show ar
                               [_] -> return (SV (Glob n))
@@ -124,7 +128,7 @@ scopecheck ctxt env tm = sc env tm where
        = do args' <- mapM (scVar env) args
             case lookupCtxt Nothing f ctxt of
                 [LConstructor n tag ar] ->
-                    if (ar == length args)
+                    if True -- (ar == length args)
                        then return $ SCon tag n args'
                        else fail $ "Codegen error: Constructor " ++ show f ++ 
                                    " has arity " ++ show ar
@@ -138,7 +142,7 @@ scopecheck ctxt env tm = sc env tm where
        = do args' <- mapM (scVar env) args
             case lookupCtxt Nothing f ctxt of
                 [LConstructor n tag ar] ->
-                    if (ar == length args)
+                    if True -- (ar == length args)
                        then return $ SCon tag n args'
                        else fail $ "Codegen error: Constructor " ++ show f ++ 
                                    " has arity " ++ show ar
@@ -172,7 +176,8 @@ scopecheck ctxt env tm = sc env tm where
        = do let env' = env ++ zip args [length env..]
             tag <- case lookupCtxt Nothing n ctxt of
                         [LConstructor _ i ar] -> 
-                             if (length args == ar) then return i
+                             if True -- (length args == ar) 
+                                then return i
                                 else fail $ "Codegen error: Constructor " ++ show n ++
                                             " has arity " ++ show ar
                         _ -> fail $ "Codegen error: No constructor " ++ show n

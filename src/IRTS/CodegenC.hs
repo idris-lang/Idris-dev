@@ -135,6 +135,7 @@ bcc i (FOREIGNCALL l LANG_C rty fn args)
         c_irts rty (creg l ++ " = ") 
                    (fn ++ "(" ++ showSep "," (map fcall args) ++ ")") ++ ";\n"
     where fcall (t, arg) = irts_c t (creg arg)
+bcc i (ERROR str) = indent i ++ "fprintf(stderr, " ++ show str ++ "); exit(-1);"
 -- bcc i _ = indent i ++ "// not done yet\n"
 
 c_irts FInt l x = l ++ "MKINT((i_int)(" ++ x ++ ")"
@@ -220,6 +221,7 @@ doOp v LStrTail [x] = v ++ "idris_strTail(vm, " ++ creg x ++ ")"
 doOp v LStrCons [x, y] = v ++ "idris_strCons(vm, " ++ creg x ++ "," ++ creg y ++ ")"
 doOp v LStrIndex [x, y] = v ++ "idris_strIndex(vm, " ++ creg x ++ "," ++ creg y ++ ")"
 doOp v LStrRev [x] = v ++ "idris_strRev(vm, " ++ creg x ++ ")"
+doOp v LNoOp [x] = ""
 doOp _ _ _ = "FAIL"
 
 tempfile :: IO (FilePath, Handle)

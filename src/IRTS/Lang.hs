@@ -7,9 +7,10 @@ data LVar = Loc Int | Glob Name
   deriving Show
 
 data LExp = LV LVar
-          | LApp Bool Name [LExp] -- True = tail call
+          | LApp Bool LExp [LExp] -- True = tail call
           | LLazyApp Name [LExp] -- True = tail call
           | LLazyExp LExp
+          | LForce LExp -- make sure Exp is evaluted
           | LLet Name LExp LExp -- name just for pretty printing
           | LLam [Name] LExp -- lambda, lifted out before compiling
           | LCon Int Name [LExp]
@@ -17,6 +18,7 @@ data LExp = LV LVar
           | LConst Const
           | LForeign FLang FType String [(FType, LExp)]
           | LOp PrimFn [LExp]
+          | LError String
   deriving Show
 
 data PrimFn = LPlus | LMinus | LTimes | LDiv | LEq | LLt | LLe | LGt | LGe
@@ -31,6 +33,7 @@ data PrimFn = LPlus | LMinus | LTimes | LDiv | LEq | LLt | LLe | LGt | LGe
             | LFSqrt | LFFloor | LFCeil
 
             | LStrHead | LStrTail | LStrCons | LStrIndex | LStrRev
+            | LNoOp
   deriving Show
 
 -- Supported target languages for foreign calls
@@ -85,8 +88,13 @@ addFn fn d = do LS n i ds <- get
 
 lift :: [Name] -> LExp -> State LiftState LExp
 lift env (LV v) = return (LV v)
-lift env (LApp tc n args) = do args' <- mapM (lift env) args
-                               return (LApp tc n args')
+lift env (LApp tc (LV (Glob n)) args) = do args' <- mapM (lift env) args
+                                           return (LApp tc (LV (Glob n)) args')
+lift env (LApp tc f args) = do f' <- lift env f
+                               fn <- getNextName
+                               addFn fn (LFun fn env f')
+                               args' <- mapM (lift env) args
+                               return (LApp tc (LV (Glob fn)) (map (LV . Glob) env ++ args'))
 lift env (LLazyApp n args) = do args' <- mapM (lift env) args
                                 return (LLazyApp n args')
 lift env (LLazyExp (LConst c)) = return (LConst c)
@@ -94,13 +102,15 @@ lift env (LLazyExp e) = do e' <- lift env e
                            fn <- getNextName
                            addFn fn (LFun fn env e')
                            return (LLazyApp fn (map (LV . Glob) env))
+lift env (LForce e) = do e' <- lift env e
+                         return (LForce e') 
 lift env (LLet n v e) = do v' <- lift env v
                            e' <- lift (env ++ [n]) e
                            return (LLet n v' e')
 lift env (LLam args e) = do e' <- lift (env ++ args) e
                             fn <- getNextName
                             addFn fn (LFun fn (env ++ args) e')
-                            return (LApp False fn (map (LV . Glob) env))
+                            return (LApp False (LV (Glob fn)) (map (LV . Glob) env))
 lift env (LCon i n args) = do args' <- mapM (lift env) args
                               return (LCon i n args')
 lift env (LCase e alts) = do alts' <- mapM liftA alts
@@ -121,7 +131,7 @@ lift env (LForeign l t s args) = do args' <- mapM (liftF env) args
                           return (t, e')
 lift env (LOp f args) = do args' <- mapM (lift env) args
                            return (LOp f args')
-
+lift env (LError str) = return $ LError str
 
 
 

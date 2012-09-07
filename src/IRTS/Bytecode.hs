@@ -40,6 +40,7 @@ data BC = ASSIGN Reg Reg
         | BASETOP Int -- set BASE = TOP + n
         | STOREOLD -- set OLDBASE = BASE
         | OP Reg PrimFn [Reg]
+        | ERROR String
     deriving Show
 
 toBC :: (Name, SDecl) -> (Name, [BC])
@@ -55,7 +56,7 @@ bc :: Reg -> SExp -> Bool -> -- returning
       [BC]
 bc reg (SV (Glob n)) r = bc reg (SApp False n []) r
 bc reg (SV (Loc i))  r = assign reg (L i) ++ clean r
-bc reg (SApp False f vs) r
+bc reg (SApp _ f vs) r
     = RESERVE (length vs) : moveReg 0 vs
       ++ [STOREOLD, BASETOP 0, ADDTOP (length vs), CALL f] ++ 
          assign reg RVal ++ clean r
@@ -71,6 +72,7 @@ bc reg (SCon i _ vs) r = MKCON reg i (map getL vs) : clean r
 bc reg (SConst i) r = ASSIGNCONST reg i : clean r
 bc reg (SOp p vs) r = OP reg p (map getL vs) : clean r
     where getL (Loc x) = L x
+bc reg (SError str) r = [ERROR str]
 bc reg (SCase (Loc l) alts) r 
    | isConst alts = constCase reg (L l) alts r
    | otherwise = conCase reg (L l) alts r

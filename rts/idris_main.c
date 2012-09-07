@@ -1,7 +1,7 @@
 int main(int argc, char* argv[]) {
     VM* vm = init_vm(1024000, 1024000);
-
-    _idris_main(vm, NULL);
+    _idris__123_runMain0_125_(vm, NULL);
+    //_idris_main(vm, NULL);
 #ifdef IDRIS_TRACE
     printf("\nStack: %p %p\n", vm->valstack, vm->valstack_top); 
     printf("Total allocations: %d\n", vm->allocations);

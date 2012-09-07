@@ -7,7 +7,7 @@ import Core.TT
 import Core.Evaluate
 import Core.Elaborate hiding (Tactic(..))
 import Core.Typecheck
-import RTS.SC
+import IRTS.Lang
 import Util.Pretty
 
 import Paths_idris
@@ -66,7 +66,7 @@ data IState = IState { tt_ctxt :: Context,
                        syntax_keywords :: [String],
                        imported :: [FilePath],
                        idris_prims :: [(Name, ([E.Name], E.Term))],
-                       idris_scprims :: Prims,
+                       idris_scprims :: [(Name, (Int, PrimFn))],
                        idris_objs :: [FilePath],
                        idris_libs :: [String],
                        idris_hdrs :: [String],

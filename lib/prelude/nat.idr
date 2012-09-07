@@ -123,7 +123,7 @@ instance Num Nat where
 
   abs x = x
 
-  fromInteger = fromInteger'
+  fromInteger x = fromInteger' x
     where
       %assert_total
       fromInteger' : Int -> Nat

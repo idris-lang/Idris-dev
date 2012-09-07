@@ -124,6 +124,10 @@ void SLIDE(VM* vm, int args) {
 
 void dumpVal(VAL v) {
     int i;
+    if (ISINT(v)) { 
+        printf("%ld ", GETINT(v));
+        return;
+    }
     switch(v->ty) {
     case CON:
         printf("%d[", v->info.c.tag);
@@ -132,6 +136,9 @@ void dumpVal(VAL v) {
             dumpVal(args[i]);
         }
         printf("] ");
+        break;
+    default:
+        printf("val");
     }
 
 }
@@ -230,7 +237,7 @@ VAL idris_readStr(VM* vm, FILE* h) {
 }
 
 VAL idris_strHead(VM* vm, VAL str) {
-    return MKINT(GETSTR(str)[0]);
+    return MKINT((i_int)(GETSTR(str)[0]));
 }
 
 VAL idris_strTail(VM* vm, VAL str) {
@@ -249,7 +256,7 @@ VAL idris_strCons(VM* vm, VAL x, VAL xs) {
 }
 
 VAL idris_strIndex(VM* vm, VAL str, VAL i) {
-    return MKINT(GETSTR(str)[GETINT(i)]);
+    return MKINT((i_int)(GETSTR(str)[GETINT(i)]));
 }
 
 VAL idris_strRev(VM* vm, VAL str) {

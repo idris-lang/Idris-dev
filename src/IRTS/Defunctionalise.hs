@@ -38,28 +38,30 @@ addApps defs o@(n, LConstructor _ _ _) = o
 addApps defs (n, LFun _ args e) = (n, LFun n args (aa args e))
   where
     aa env (LV (Glob n)) | n `elem` env = LV (Glob n)
-                         | otherwise = aa env (LApp False n [])
+                         | otherwise = aa env (LApp False (LV (Glob n)) [])
 --     aa env e@(LApp tc (MN 0 "EVAL") [a]) = e
-    aa env (LApp tc n args)
+    aa env (LApp tc (LV (Glob n)) args)
        = let args' = map (aa env) args in
              case lookupCtxt Nothing n defs of
-                [LConstructor _ i ar] -> LApp tc n args'
+                [LConstructor _ i ar] -> LApp tc (LV (Glob n)) args'
                 [LFun _ as _] -> let arity = length as in
                                      fixApply tc n args' arity
                 [] -> chainAPPLY (LV (Glob n)) args'
     aa env (LLazyApp n args)
        = let args' = map (aa env) args in
              case lookupCtxt Nothing n defs of
-                [LConstructor _ i ar] -> LApp False n args'
+                [LConstructor _ i ar] -> LApp False (LV (Glob n)) args'
                 [LFun _ as _] -> let arity = length as in
                                      fixLazyApply n args' arity
                 [] -> chainAPPLY (LV (Glob n)) args'
+    aa env (LForce e) = eEVAL (aa env e)
     aa env (LLet n v sc) = LLet n (aa env v) (aa (n : env) sc)
     aa env (LCon i n args) = LCon i n (map (aa env) args)
     aa env (LCase e alts) = LCase (eEVAL (aa env e)) (map (aaAlt env) alts)
     aa env (LConst c) = LConst c
     aa env (LForeign l t n args) = LForeign l t n (map (aaF env) args)
     aa env (LOp f args) = LOp f (map (eEVAL . (aa env)) args)
+    aa env (LError e) = LError e
 
     aaF env (t, e) = (t, eEVAL (aa env e))
 
@@ -67,20 +69,20 @@ addApps defs (n, LFun _ args e) = (n, LFun n args (aa args e))
     aaAlt env (LConstCase c e) = LConstCase c (aa env e)
     aaAlt env (LDefaultCase e) = LDefaultCase (aa env e)
 
-    eEVAL x = LApp False (MN 0 "EVAL") [x]
-
     fixApply tc n args ar 
-        | length args == ar = LApp tc n args
-        | length args < ar = LApp tc (mkUnderCon n (ar - length args)) args
-        | length args > ar = chainAPPLY (LApp tc n (take ar args)) (drop ar args)
+        | length args == ar = LApp tc (LV (Glob n)) args
+        | length args < ar = LApp tc (LV (Glob (mkUnderCon n (ar - length args)))) args
+        | length args > ar = chainAPPLY (LApp tc (LV (Glob n)) (take ar args)) (drop ar args)
 
     fixLazyApply n args ar 
-        | length args == ar = LApp False (mkFnCon n) args
-        | length args < ar = LApp False (mkUnderCon n (ar - length args)) args
-        | length args > ar = chainAPPLY (LApp False n (take ar args)) (drop ar args)
+        | length args == ar = LApp False (LV (Glob (mkFnCon n))) args
+        | length args < ar = LApp False (LV (Glob (mkUnderCon n (ar - length args)))) args
+        | length args > ar = chainAPPLY (LApp False (LV (Glob n)) (take ar args)) (drop ar args)
                                     
     chainAPPLY f [] = f
-    chainAPPLY f (a : as) = chainAPPLY (LApp False (MN 0 "APPLY") [f, a]) as
+    chainAPPLY f (a : as) = chainAPPLY (LApp False (LV (Glob (MN 0 "APPLY"))) [f, a]) as
+
+eEVAL x = LApp False (LV (Glob (MN 0 "EVAL"))) [x]
 
 data EvalApply a = EvalCase a
                  | ApplyCase a
@@ -90,17 +92,17 @@ data EvalApply a = EvalCase a
 -- data constuctors, and whether to handle them in EVAL or APPLY
 
 toCons :: (Name, Int) -> [(Name, Int, EvalApply LAlt)]
-toCons (n, i) = (mkFnCon n, i, 
-                    EvalCase (LConCase (-1) (mkFnCon n) (take i (genArgs 0))
-                             (LApp False n (map (LV . Glob) (take i (genArgs 0))))))
-                          : 
-                mkApplyCase n 0 i
+toCons (n, i) 
+   = (mkFnCon n, i, 
+        EvalCase (LConCase (-1) (mkFnCon n) (take i (genArgs 0))
+                 (eEVAL (LApp False (LV (Glob n)) (map (LV . Glob) (take i (genArgs 0)))))))
+        : mkApplyCase n 0 i
 
 mkApplyCase fname n ar | n == ar = []
 mkApplyCase fname n ar 
         = let nm = mkUnderCon fname (ar - n) in
               (nm, n, ApplyCase (LConCase (-1) nm (take n (genArgs 0))
-                              (LApp False (mkUnderCon fname (ar - (n + 1))) 
+                              (LApp False (LV (Glob (mkUnderCon fname (ar - (n + 1))))) 
                                           (map (LV . Glob) (take n (genArgs 0) ++ 
                                                                    [MN 0 "arg"])))))
                             : mkApplyCase fname (n + 1) ar
@@ -116,7 +118,8 @@ mkEval xs = (MN 0 "EVAL", LFun (MN 0 "EVAL") [MN 0 "arg"]
 
 mkApply :: [(Name, Int, EvalApply LAlt)] -> (Name, LDecl)
 mkApply xs = (MN 0 "APPLY", LFun (MN 0 "APPLY") [MN 0 "fn", MN 0 "arg"]
-                             (LCase (LApp False (MN 0 "EVAL") [LV (Glob (MN 0 "fn"))])
+                             (LCase (LApp False (LV (Glob (MN 0 "EVAL"))) 
+                                            [LV (Glob (MN 0 "fn"))])
                                  (mapMaybe applyCase xs)))
   where
     applyCase (n, t, ApplyCase x) = Just x

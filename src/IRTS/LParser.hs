@@ -50,7 +50,7 @@ fovm f = do defs <- parseFOVM f
             let (nexttag, tagged) = addTags 0 (liftAll defs)
             let ctxtIn = addAlist tagged emptyContext
             let defuns = defunctionalise nexttag ctxtIn
---             print defuns
+            putStrLn $ showSep "\n" (map show (toAlist defuns))
             let checked = checkDefs defuns (toAlist defuns)
 --            print checked
             case checked of
@@ -135,7 +135,7 @@ pLExp' = try (do lchar '%'; pCast)
                     then if lazy then return (LLazyApp x [])
                                  else return (LV (Glob x)) 
                     else if lazy then return (LLazyApp x args)
-                                 else return (LApp tc x args))
+                                 else return (LApp tc (LV (Glob x)) args))
      <|> do lchar '('; e <- pLExp; lchar ')'; return e
      <|> pLConst
      <|> do reserved "let"; x <- iName []; lchar '='; v <- pLExp
