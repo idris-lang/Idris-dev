@@ -14,6 +14,7 @@ User visible changes:
 
 Internal changes:
 
+* Completely new run time system (not based on Epic or relying on Boehm GC)
 * Normalise before forcing to catch more forceable arguments
 * Types no longer exported in normal form
 * Try to resolve overloading by inspecting types, rather than full type

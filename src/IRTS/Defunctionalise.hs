@@ -5,15 +5,18 @@ import Core.TT
 
 import Debug.Trace
 import Data.Maybe
+import Data.List
 
 defunctionalise :: Int -> LDefs -> LDefs 
 defunctionalise nexttag defs 
      = let all = toAlist defs
-           newcons = concatMap toCons (getFn all)
+           -- sort newcons so that EVAL and APPLY cons get sequential tags
+           newcons = sortBy conord $ concatMap toCons (getFn all)
            eval = mkEval newcons
            app = mkApply newcons
            condecls = declare nexttag newcons in
            addAlist (eval : app : condecls ++ (map (addApps defs) all)) emptyContext
+   where conord (n, _, _) (n', _, _) = compare n n'
 
 getFn :: [(Name, LDecl)] -> [(Name, Int)]
 getFn xs = mapMaybe fnData xs

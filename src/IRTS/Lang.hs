@@ -2,9 +2,11 @@ module IRTS.Lang where
 
 import Core.TT
 import Control.Monad.State hiding(lift)
+import Data.List
+import Debug.Trace
 
 data LVar = Loc Int | Glob Name
-  deriving Show
+  deriving (Show, Eq)
 
 data LExp = LV LVar
           | LApp Bool LExp [LExp] -- True = tail call
@@ -19,7 +21,7 @@ data LExp = LV LVar
           | LForeign FLang FType String [(FType, LExp)]
           | LOp PrimFn [LExp]
           | LError String
-  deriving Show
+  deriving (Show, Eq)
 
 data PrimFn = LPlus | LMinus | LTimes | LDiv | LEq | LLt | LLe | LGt | LGe
             | LFPlus | LFMinus | LFTimes | LFDiv | LFEq | LFLt | LFLe | LFGt | LFGe
@@ -35,24 +37,24 @@ data PrimFn = LPlus | LMinus | LTimes | LDiv | LEq | LLt | LLe | LGt | LGe
             | LStrHead | LStrTail | LStrCons | LStrIndex | LStrRev
             | LStdIn | LStdOut | LStdErr
             | LNoOp
-  deriving Show
+  deriving (Show, Eq)
 
 -- Supported target languages for foreign calls
 
 data FLang = LANG_C
-  deriving Show
+  deriving (Show, Eq)
 
 data FType = FInt | FChar | FString | FUnit | FPtr | FDouble | FAny
-  deriving Show
+  deriving (Show, Eq)
 
 data LAlt = LConCase Int Name [Name] LExp
           | LConstCase Const LExp
           | LDefaultCase LExp
-  deriving Show
+  deriving (Show, Eq)
 
 data LDecl = LFun Name [Name] LExp -- name, arg names, definition
            | LConstructor Name Int Int -- constructor name, tag, arity
-  deriving Show
+  deriving (Show, Eq)
 
 type LDefs = Ctxt LDecl
 
