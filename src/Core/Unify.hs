@@ -26,14 +26,15 @@ unify :: Context -> Env -> TT Name -> TT Name -> TC ([(Name, TT Name)],
                                                      Injs, Fails)
 unify ctxt env topx topy 
     = -- case runStateT (un' False [] topx topy) (UI 0 [] []) of
-      -- OK (v, UI _ inj []) -> return (filter notTrivial v, inj, [])
-      let topxn = normalise ctxt env topx
-	  topyn = normalise ctxt env topy in
-		  case runStateT (un' False [] topxn topyn)
-			        (UI 0 [] []) of
-	              OK (v, UI _ inj fails) -> return (filter notTrivial v, inj, reverse fails)
---                    OK (_, UI s _ ((_,_,f):fs)) -> tfail $ CantUnify topx topy f s
-		      Error e -> tfail e
+      --    OK (v, UI _ inj []) -> return (filter notTrivial v, inj, [])
+      --    _ -> 
+               let topxn = normalise ctxt env topx
+	           topyn = normalise ctxt env topy in
+		     case runStateT (un' False [] topxn topyn)
+		  	        (UI 0 [] []) of
+	               OK (v, UI _ inj fails) -> return (filter notTrivial v, inj, reverse fails)
+--                     OK (_, UI s _ ((_,_,f):fs)) -> tfail $ CantUnify topx topy f s
+		       Error e -> tfail e
   where
     notTrivial (x, P _ x' _) = x /= x'
     notTrivial _ = True

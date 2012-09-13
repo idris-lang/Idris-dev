@@ -19,7 +19,7 @@ returns) are stored.
 
 -}
 
-data Reg = RVal | L Int | T Int
+data Reg = RVal | L Int | T Int | Tmp
    deriving (Show, Eq)
 
 data BC = ASSIGN Reg Reg
@@ -56,7 +56,7 @@ bc :: Reg -> SExp -> Bool -> -- returning
       [BC]
 bc reg (SV (Glob n)) r = bc reg (SApp False n []) r
 bc reg (SV (Loc i))  r = assign reg (L i) ++ clean r
-bc reg (SApp _ f vs) r
+bc reg (SApp False f vs) r
     = RESERVE (length vs) : moveReg 0 vs
       ++ [STOREOLD, BASETOP 0, ADDTOP (length vs), CALL f] ++ 
          assign reg RVal ++ clean r

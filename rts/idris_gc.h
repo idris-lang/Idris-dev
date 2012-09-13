@@ -4,5 +4,6 @@
 #include "idris_rts.h"
 
 void gc(VM* vm);
+void gcInfo(VM* vm, int doGC);
 
 #endif

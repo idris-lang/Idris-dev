@@ -171,7 +171,7 @@ process fn (ExecVal t)
 --                                                           [pexp t])
                          (tmpn, tmph) <- liftIO tempfile
                          liftIO $ hClose tmph
-                         compile tmpn tm
+                         compileC tmpn tm
                          liftIO $ system tmpn
                          return ()
     where fc = FC "(input)" 0 
@@ -268,17 +268,17 @@ process fn Execute = do (m, _) <- elabVal toplevel False
                         liftIO $ system tmpn
                         return ()
   where fc = FC "main" 0                     
-process fn (Compile f) = do (m, _) <- elabVal toplevel False
-                                        (PApp fc 
-                                           (PRef fc (UN "run__IO"))
-                                           [pexp $ PRef fc (NS (UN "main") ["main"])])
-                            compile f m
-  where fc = FC "main" 0                     
 process fn (NewCompile f) 
+     = do (m, _) <- elabVal toplevel False
+                      (PApp fc (PRef fc (UN "run__IO"))
+                          [pexp $ PRef fc (NS (UN "main") ["main"])])
+          compileC f m
+  where fc = FC "main" 0                     
+process fn (Compile f) 
       = do (m, _) <- elabVal toplevel False
                        (PApp fc (PRef fc (UN "run__IO"))
                           [pexp $ PRef fc (NS (UN "main") ["main"])])
-           compileC f m
+           compile f m
   where fc = FC "main" 0                     
 process fn (LogLvl i) = setLogLevel i 
 process fn Metavars 

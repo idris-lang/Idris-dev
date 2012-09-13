@@ -104,7 +104,7 @@ checkDefs ctxt (con@(n, LConstructor _ _ _) : xs)
          return xs'
 checkDefs ctxt ((n, LFun n' args exp) : xs) 
     = do let sexp = evalState (simplify True exp) (ctxt, 0)
-         (exp', locs) <- runStateT (scopecheck ctxt (zip args [0..]) sexp) (-1)
+         (exp', locs) <- runStateT (scopecheck ctxt (zip args [0..]) sexp) (length args)
          xs' <- checkDefs ctxt xs
          return ((n, SFun n' args ((locs + 1) - length args) exp') : xs')
 

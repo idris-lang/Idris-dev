@@ -216,7 +216,8 @@ eval ctxt maxred ntimes genv tm opts = ev ntimes [] True [] tm where
 --         | spec = specApply ntimes stk env f args 
     apply ntimes_in stk top env f@(VP Ref n ty)        args
       | (True, ntimes) <- usable n ntimes_in
-        = do let val = lookupDefAcc Nothing n atRepl ctxt
+        = -- trace (show n) $
+          do let val = lookupDefAcc Nothing n atRepl ctxt
              case val of
                 [(CaseOp inl _ _ ns tree _ _, Public)]  ->
                   if simpl && (not inl || elem n stk) 

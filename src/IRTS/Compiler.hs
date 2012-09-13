@@ -28,15 +28,15 @@ compileC f tm = do checkMVs
                    defsIn <- mkDecls tm (concat used)
                    maindef <- irMain tm
                    let defs = defsIn ++ [(MN 0 "runMain", maindef)]
-                   iputStrLn (show defs)
+                   -- iputStrLn $ showSep "\n" (map show defs)
                    let (nexttag, tagged) = addTags 0 (liftAll defs)
                    let ctxtIn = addAlist tagged emptyContext
                    let defuns = defunctionalise nexttag ctxtIn
---                    print defuns
+--                    iputStrLn $ showSep "\n" (map show (toAlist defuns))
                    let checked = checkDefs defuns (toAlist defuns)
---                    print checked
                    case checked of
-                        OK c -> liftIO $ codegenC c f True [] "" TRACE
+                        OK c -> do -- iputStrLn $ showSep "\n" (map show c)
+                                   liftIO $ codegenC c f True [] "" TRACE
                         Error e -> fail $ show e 
   where checkMVs = do i <- get
                       case idris_metavars i \\ primDefs of
@@ -61,9 +61,12 @@ allNames ns n = do i <- get
 mkDecls :: Term -> [Name] -> Idris [(Name, LDecl)]
 mkDecls t used 
     = do i <- getIState
-         let ds = filter (\ (n, d) -> n `elem` used) $ ctxtAlist (tt_ctxt i)
+         let ds = filter (\ (n, d) -> n `elem` used || isCon d) $ ctxtAlist (tt_ctxt i)
          decls <- mapM build ds
          return decls
+
+isCon (TyDecl _ _) = True
+isCon _ = False
 
 class ToIR a where
     ir :: a -> Idris LExp
@@ -89,7 +92,7 @@ mkLDecl n (CaseOp _ _ pats _ _ args sc) = do e <- ir (args, sc)
                                              return (declArgs [] n e)
 mkLDecl n (TyDecl (DCon t a) _) = return $ LConstructor n (-1) a
 mkLDecl n (TyDecl (TCon t a) _) = return $ LConstructor n (-1) a
-mkLDecl n _ = return (LFun n [] (LError "Impossible"))
+mkLDecl n _ = return (LFun n [] (LError ("Impossible declaration " ++ show n)))
 
 instance ToIR (TT Name) where 
     ir tm = ir' [] tm where
@@ -130,7 +133,7 @@ instance ToIR (TT Name) where
           = do sc' <- ir' (n : env) sc
                v' <- ir' env v
                return $ LLet n v' sc'
-      ir' env (Bind _ _ _) = return $ LError "Impossible"
+      ir' env (Bind _ _ _) = return $ LConst (I 424242)
       ir' env (Constant c) = return $ LConst c
       ir' env _ = return $ LError "Impossible"
 

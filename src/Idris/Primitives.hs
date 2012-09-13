@@ -76,6 +76,11 @@ strRev x = foreign_ tyString "strrev" [(x, tyString)]
 strEq x y = foreign_ tyInt "streq" [(x, tyString), (y, tyString)]
 strLt x y = foreign_ tyInt "strlt" [(x, tyString), (y, tyString)]
 
+readStr x = foreign_ tyString "freadStr" [(x, tyPtr)]
+
+stream_stdin = let args :: [(ETm, E.Type)] = [] in
+                   foreign_ tyPtr "get_stdin" args
+
 total = Total []
 partial = Partial NotCovering 
 
@@ -218,6 +223,12 @@ primitives =
    Prim (UN "prim__strRev") (ty [StrType] StrType) 1 (p_strRev)
     ([E.name "x"], strRev (fun "x")) 
     (1, LStrRev) total,
+   Prim (UN "prim__readString") (ty [PtrType] StrType) 1 (p_cantreduce)
+    ([E.name "h"], readStr (fun "h")) (1, LReadStr) partial,
+
+   -- Streams
+   Prim (UN "prim__stdin") (ty [] PtrType) 0 (p_cantreduce)
+   ([], stream_stdin) (0, LStdIn) partial,
 
    Prim (UN "prim__believe_me") believeTy 3 (p_believeMe)
     ([E.name "a", E.name "b", E.name "x"], fun "x") 
@@ -321,6 +332,8 @@ p_strCons [VConstant (Ch x), VConstant (Str xs)] = Just $ VConstant (Str (x:xs))
 p_strCons _ = Nothing
 p_strRev [VConstant (Str xs)] = Just $ VConstant (Str (reverse xs))
 p_strRev _ = Nothing
+
+p_cantreduce _ = Nothing
 
 elabPrim :: Prim -> Idris ()
 elabPrim (Prim n ty i def epic sc tot) 

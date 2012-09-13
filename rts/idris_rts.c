@@ -20,7 +20,7 @@ VM* init_vm(int stack_size, size_t heap_size) {
     vm -> intstack_ptr = intstack;
     vm -> floatstack = floatstack;
     vm -> floatstack_ptr = floatstack;
-    vm -> stack_max = stack_size;
+    vm -> stack_max = valstack + stack_size;
     vm -> heap = malloc(heap_size);
     vm -> oldheap = NULL;
     vm -> heap_next = vm -> heap;
@@ -30,18 +30,21 @@ VM* init_vm(int stack_size, size_t heap_size) {
     vm -> allocations = 0;
     vm -> heap_growth = heap_size;
     vm -> ret = NULL;
+    vm -> reg1 = NULL;
     return vm;
 }
 
 void* allocate(VM* vm, size_t size) {
+//    return malloc(size);
     if ((size & 7)!=0) {
 	size = 8 + ((size >> 3) << 3);
     }
-    vm->allocations += size+sizeof(size_t)*2;
+    vm->allocations += size + sizeof(size_t);
     if (vm -> heap_next + size < vm -> heap_end) {
-        void* ptr = (void*)(((size_t*)(vm->heap_next))+2);
-        *((size_t*)(vm->heap_next)) = size+sizeof(size_t)*2;
-        vm -> heap_next += size+sizeof(size_t)*2;
+        void* ptr = (void*)(vm->heap_next + sizeof(size_t));
+        *((size_t*)(vm->heap_next)) = size + sizeof(size_t);
+        vm -> heap_next += size + sizeof(size_t);
+        bzero(ptr, size);
         return ptr;
     } else {
         gc(vm);
@@ -57,6 +60,9 @@ void* allocCon(VM* vm, int arity) {
     } else {
        cl -> info.c.args = (void*)((char*)cl + sizeof(Closure));
     }
+    cl -> info.c.arity = arity;
+//    cl -> info.c.tag = 42424242;
+//    printf("%p\n", cl);
     return (void*)cl;
 }
 
@@ -84,17 +90,17 @@ VAL MKPTR(VM* vm, void* ptr) {
     return cl;
 }
 
-VAL MKCON(VM* vm, int tag, int arity, ...) {
-    Closure* cl;
+VAL MKCON(VM* vm, VAL cl, int tag, int arity, ...) {
     int i;
     va_list args;
 
     va_start(args, arity);
 
-    cl = allocCon(vm, arity);
+//    Closure* cl = allocCon(vm, arity);
     cl -> info.c.tag = tag;
     cl -> info.c.arity = arity;
     VAL* argptr = (VAL*)(cl -> info.c.args);
+    printf("... %p %p\n", cl, argptr);
 
     for (i = 0; i < arity; ++i) {
        VAL v = va_arg(args, VAL);
@@ -102,7 +108,6 @@ VAL MKCON(VM* vm, int tag, int arity, ...) {
        argptr++;
     }
     va_end(args);
-
     return cl;
 }
 
@@ -122,7 +127,23 @@ void SLIDE(VM* vm, int args) {
     }
 }
 
+void dumpStack(VM* vm) {
+    int i = 0;
+    VAL* root;
+
+    for (root = vm->valstack; root < vm->valstack_top; ++root, ++i) {
+        printf("%d: ", i);
+        dumpVal(*root);
+        if (*root >= (VAL)(vm->heap) && *root < (VAL)(vm->heap_end)) { printf("OK"); }
+        printf("\n");
+    }
+    printf("RET: ");
+    dumpVal(vm->ret);
+    printf("\n");
+}
+
 void dumpVal(VAL v) {
+    if (v==NULL) return;
     int i;
     if (ISINT(v)) { 
         printf("%ld ", GETINT(v));
@@ -136,6 +157,10 @@ void dumpVal(VAL v) {
             dumpVal(args[i]);
         }
         printf("] ");
+        break;
+    case FWD:
+        printf("FWD ");
+        dumpVal((VAL)(v->info.ptr));
         break;
     default:
         printf("val");
@@ -154,7 +179,10 @@ VAL idris_castIntStr(VM* vm, VAL i) {
 VAL idris_castStrInt(VM* vm, VAL i) {
     char *end;
     i_int v = strtol(GETSTR(i), &end, 10);
-    if (*end != '\0') return MKINT(0); else return MKINT(v);
+    if (*end == '\0' || *end == '\n' || *end == '\r') 
+        return MKINT(v);
+    else 
+        return MKINT(0); 
 }
 
 VAL idris_castFloatStr(VM* vm, VAL i) {
@@ -170,8 +198,10 @@ VAL idris_castStrFloat(VM* vm, VAL i) {
 }
 
 VAL idris_concat(VM* vm, VAL l, VAL r) {
-    char *ls = GETSTR(l);
     char *rs = GETSTR(r);
+    char *ls = GETSTR(l);
+    // dumpVal(l);
+    // printf("\n");
     Closure* cl = allocate(vm, sizeof(Closure) + strlen(ls) + strlen(rs) + 1);
     cl -> ty = STRING;
     cl -> info.str = (char*)cl + sizeof(Closure);
@@ -246,10 +276,10 @@ VAL idris_strTail(VM* vm, VAL str) {
 
 VAL idris_strCons(VM* vm, VAL x, VAL xs) {
     char *xstr = GETSTR(xs);
-    Closure* cl = allocate(vm, sizeof(ClosureType) + sizeof(char*) +
+    Closure* cl = allocate(vm, sizeof(Closure) +
                                strlen(xstr) + 2);
     cl -> ty = STRING;
-    cl -> info.str = (char*)cl + sizeof(ClosureType) + sizeof(char*);
+    cl -> info.str = (char*)cl + sizeof(Closure);
     cl -> info.str[0] = (char)(GETINT(x));
     strcpy(cl -> info.str+1, xstr);
     return cl;
@@ -261,10 +291,10 @@ VAL idris_strIndex(VM* vm, VAL str, VAL i) {
 
 VAL idris_strRev(VM* vm, VAL str) {
     char *xstr = GETSTR(str);
-    Closure* cl = allocate(vm, sizeof(ClosureType) + sizeof(char*) +
+    Closure* cl = allocate(vm, sizeof(Closure) +
                                strlen(xstr) + 1);
     cl -> ty = STRING;
-    cl -> info.str = (char*)cl + sizeof(ClosureType) + sizeof(char*);
+    cl -> info.str = (char*)cl + sizeof(Closure);
     int y = 0;
     int x = strlen(xstr);
 

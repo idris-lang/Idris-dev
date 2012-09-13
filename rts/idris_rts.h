@@ -44,12 +44,13 @@ typedef struct {
     char* oldheap;
     char* heap_next;
     char* heap_end;
-    int stack_max;
+    VAL* stack_max;
     size_t heap_size;
     size_t heap_growth;
     int allocations;
     int collections;
     VAL ret;
+    VAL reg1;
 } VM;
 
 VM* init_vm(int stack_size, size_t heap_size);
@@ -63,6 +64,7 @@ typedef void(*func)(VM*, VAL*);
 #define RVAL (vm->ret)
 #define LOC(x) (*(vm->valstack_base + (x)))
 #define TOP(x) (*(vm->valstack_top + (x)))
+#define REG1 (vm->reg1)
 
 // Retrieving values
 
@@ -90,7 +92,8 @@ typedef intptr_t i_int;
 
 #define INITFRAME VAL* myoldbase
 #define REBASE vm->valstack_base = oldbase
-#define RESERVE(x)
+#define RESERVE(x) if (vm->valstack_top+(x) > vm->stack_max) { stackOverflow(); } \
+                   else { bzero(vm->valstack_top, (x)); }
 #define ADDTOP(x) vm->valstack_top += (x)
 #define TOPBASE(x) vm->valstack_top = vm->valstack_base + (x)
 #define BASETOP(x) vm->valstack_base = vm->valstack_top + (x)
@@ -104,7 +107,10 @@ VAL MKFLOAT(VM* vm, double val);
 VAL MKSTR(VM* vm, char* str);
 VAL MKPTR(VM* vm, void* ptr);
 
-VAL MKCON(VM* vm, int tag, int arity, ...);
+VAL MKCON(VM* vm, VAL cl, int tag, int arity, ...);
+
+#define SETTAG(x, a) (x)->info.c.tag = (a)
+#define SETARG(x, i, a) ((VAL*)((x)->info.c.args))[i] = ((VAL)(a))
 
 void PROJECT(VM* vm, VAL r, int loc, int arity); 
 void SLIDE(VM* vm, int args);
@@ -113,6 +119,7 @@ void* allocate(VM* vm, size_t size);
 void* allocCon(VM* vm, int arity);
 
 void dumpVal(VAL r);
+void dumpStack(VM* vm);
 
 // Casts
 

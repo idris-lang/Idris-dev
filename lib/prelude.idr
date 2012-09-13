@@ -194,7 +194,7 @@ print : Show a => a -> IO ()
 print x = putStrLn (show x)
 
 getLine : IO String
-getLine = mkForeign (FFun "readStr" Nil FString)
+getLine = return (prim__readString prim__stdin)
 
 putChar : Char -> IO ()
 putChar c = mkForeign (FFun "putchar" [FChar] FUnit) c
@@ -230,7 +230,7 @@ closeFile : File -> IO ()
 closeFile (FHandle h) = do_fclose h
 
 do_fread : Ptr -> IO String
-do_fread h = mkForeign (FFun "freadStr" [FPtr] FString) h
+do_fread h = return (prim__readString h)
 
 fread : File -> IO String
 fread (FHandle h) = do_fread h

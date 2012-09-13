@@ -33,6 +33,7 @@ data PrimFn = LPlus | LMinus | LTimes | LDiv | LEq | LLt | LLe | LGt | LGe
             | LFSqrt | LFFloor | LFCeil
 
             | LStrHead | LStrTail | LStrCons | LStrIndex | LStrRev
+            | LStdIn | LStdOut | LStdErr
             | LNoOp
   deriving Show
 

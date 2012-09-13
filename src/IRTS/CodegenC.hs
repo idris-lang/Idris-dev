@@ -49,7 +49,7 @@ codegenC defs out exec incs libs dbg
          when (exit /= ExitSuccess) $
              putStrLn ("FAILURE: " ++ gcc)
 
-headers [] = "#include <idris_rts.h>\n#include <idris_stdfgn.h>\n"
+headers [] = "#include <idris_rts.h>\n#include <idris_stdfgn.h>\n#include<assert.h>\n"
 headers (x : xs) = "#include <" ++ x ++ ">\n" ++ headers xs
 
 debug TRACE = "#define IDRIS_TRACE\n\n"
@@ -69,6 +69,7 @@ indent i = take (i * 4) (repeat ' ')
 creg RVal = "RVAL"
 creg (L i) = "LOC(" ++ show i ++ ")"
 creg (T i) = "TOP(" ++ show i ++ ")"
+creg Tmp = "REG1"
 
 toDecl :: Name -> String
 toDecl f = "void " ++ cname f ++ "(VM*, VAL*);\n" 
@@ -93,9 +94,18 @@ bcc i (ASSIGNCONST l c)
     mkConst (Str s) = "MKSTR(vm, " ++ show s ++ ")"
     mkConst _ = "MKINT(42424242)"
 bcc i (MKCON l tag args)
-    = indent i ++ creg l ++ " = MKCON(vm, " ++ show tag ++ ", " ++
-         show (length args) ++ concatMap showArg args ++ ");\n"
+    = indent i ++ creg Tmp ++ " = allocCon(vm, " ++ show (length args) ++ 
+         "); " ++ "SETTAG(" ++ creg Tmp ++ ", " ++ show tag ++ ");\n" ++
+      indent i ++ setArgs 0 args ++ "\n" ++ 
+      indent i ++ creg l ++ " = " ++ creg Tmp ++ ";\n"
+         
+--         "MKCON(vm, " ++ creg l ++ ", " ++ show tag ++ ", " ++
+--         show (length args) ++ concatMap showArg args ++ ");\n"
   where showArg r = ", " ++ creg r
+        setArgs i [] = ""
+        setArgs i (x : xs) = "SETARG(" ++ creg Tmp ++ ", " ++ show i ++ ", " ++ creg x ++
+                             "); " ++ setArgs (i + 1) xs
+
 bcc i (PROJECT l loc a) = indent i ++ "PROJECT(vm, " ++ creg l ++ ", " ++ show loc ++ 
                                       ", " ++ show a ++ ");\n"
 bcc i (CASE r code def) 
@@ -135,11 +145,11 @@ bcc i (FOREIGNCALL l LANG_C rty fn args)
         c_irts rty (creg l ++ " = ") 
                    (fn ++ "(" ++ showSep "," (map fcall args) ++ ")") ++ ";\n"
     where fcall (t, arg) = irts_c t (creg arg)
-bcc i (ERROR str) = indent i ++ "fprintf(stderr, " ++ show str ++ "); exit(-1);"
+bcc i (ERROR str) = indent i ++ "fprintf(stderr, " ++ show str ++ "); assert(0); exit(-1);"
 -- bcc i _ = indent i ++ "// not done yet\n"
 
-c_irts FInt l x = l ++ "MKINT((i_int)(" ++ x ++ ")"
-c_irts FChar l x = l ++ "MKINT((i_int)(" ++ x ++ ")"
+c_irts FInt l x = l ++ "MKINT((i_int)(" ++ x ++ "))"
+c_irts FChar l x = l ++ "MKINT((i_int)(" ++ x ++ "))"
 c_irts FString l x = l ++ "MKSTR(" ++ x ++ ")"
 c_irts FUnit l x = x
 c_irts FPtr l x = l ++ "MKPTR(vm, " ++ x ++ ")"
@@ -221,6 +231,11 @@ doOp v LStrTail [x] = v ++ "idris_strTail(vm, " ++ creg x ++ ")"
 doOp v LStrCons [x, y] = v ++ "idris_strCons(vm, " ++ creg x ++ "," ++ creg y ++ ")"
 doOp v LStrIndex [x, y] = v ++ "idris_strIndex(vm, " ++ creg x ++ "," ++ creg y ++ ")"
 doOp v LStrRev [x] = v ++ "idris_strRev(vm, " ++ creg x ++ ")"
+
+doOp v LStdIn [] = v ++ "MKPTR(vm, stdin)"
+doOp v LStdOut [] = v ++ "MKPTR(vm, stdout)"
+doOp v LStdErr [] = v ++ "MKPTR(vm, stderr)"
+
 doOp v LNoOp [x] = ""
 doOp _ _ _ = "FAIL"
 
