@@ -36,7 +36,7 @@ compileC f tm = do checkMVs
                    let checked = checkDefs defuns (toAlist defuns)
                    case checked of
                         OK c -> do -- iputStrLn $ showSep "\n" (map show c)
-                                   liftIO $ codegenC c f True [] "" TRACE
+                                   liftIO $ codegenC c f True [] "" NONE
                         Error e -> fail $ show e 
   where checkMVs = do i <- get
                       case idris_metavars i \\ primDefs of

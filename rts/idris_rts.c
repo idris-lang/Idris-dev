@@ -100,7 +100,7 @@ VAL MKCON(VM* vm, VAL cl, int tag, int arity, ...) {
     cl -> info.c.tag = tag;
     cl -> info.c.arity = arity;
     VAL* argptr = (VAL*)(cl -> info.c.args);
-    printf("... %p %p\n", cl, argptr);
+    // printf("... %p %p\n", cl, argptr);
 
     for (i = 0; i < arity; ++i) {
        VAL v = va_arg(args, VAL);
@@ -146,7 +146,7 @@ void dumpVal(VAL v) {
     if (v==NULL) return;
     int i;
     if (ISINT(v)) { 
-        printf("%ld ", GETINT(v));
+        printf("%d ", (int)(GETINT(v)));
         return;
     }
     switch(v->ty) {
@@ -172,7 +172,7 @@ VAL idris_castIntStr(VM* vm, VAL i) {
     Closure* cl = allocate(vm, sizeof(Closure) + sizeof(char)*16);
     cl -> ty = STRING;
     cl -> info.str = (char*)cl + sizeof(Closure);
-    sprintf(cl -> info.str, "%ld", GETINT(i));
+    sprintf(cl -> info.str, "%d", (int)(GETINT(i)));
     return cl;
 }
 

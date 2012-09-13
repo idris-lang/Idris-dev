@@ -55,9 +55,9 @@ void cheney(VM *vm) {
        case CON:
            argptr = (VAL*)(heap_item->info.c.args);
            for(i = 0; i < heap_item->info.c.arity; ++i) {
-               printf("Copying %d %p\n", heap_item->info.c.tag, *argptr);
+               // printf("Copying %d %p\n", heap_item->info.c.tag, *argptr);
                VAL newptr = copy(vm, *argptr);
-               printf("Got %p\t\t%p %p\n", newptr, scan, vm->heap_next);
+               // printf("Got %p\t\t%p %p\n", newptr, scan, vm->heap_next);
                *argptr = newptr;
                argptr++;
            }
@@ -69,7 +69,7 @@ void cheney(VM *vm) {
 }
 
 void gc(VM* vm) {
-    printf("Collecting\n");
+    // printf("Collecting\n");
 
     char* newheap = malloc(vm -> heap_size);
     char* oldheap = vm -> heap;
@@ -99,7 +99,7 @@ void gc(VM* vm) {
     } 
     vm->oldheap = oldheap;
 
-    gcInfo(vm, 0);
+    // gcInfo(vm, 0);
 }
 
 void gcInfo(VM* vm, int doGC) {

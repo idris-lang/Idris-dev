@@ -44,7 +44,7 @@ codegenC defs out exec incs libs dbg
                      " " ++ tmpn ++
                      " `idris --link` `idris --include` " ++ libs ++
                      " -lidris_rts -lgmp -o " ++ out
---          putStrLn cout
+         -- putStrLn cout
          exit <- system gcc
          when (exit /= ExitSuccess) $
              putStrLn ("FAILURE: " ++ gcc)
