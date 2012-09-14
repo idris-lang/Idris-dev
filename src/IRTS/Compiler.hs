@@ -32,7 +32,7 @@ compileC f tm = do checkMVs
                    let (nexttag, tagged) = addTags 0 (liftAll defs)
                    let ctxtIn = addAlist tagged emptyContext
                    let defuns = defunctionalise nexttag ctxtIn
---                    iputStrLn $ showSep "\n" (map show (toAlist defuns))
+                   -- iputStrLn $ showSep "\n" (map show (toAlist defuns))
                    let checked = checkDefs defuns (toAlist defuns)
                    case checked of
                         OK c -> do -- iputStrLn $ showSep "\n" (map show c)

@@ -8,7 +8,6 @@ import Core.Evaluate
 import Core.Elaborate hiding (Tactic(..))
 import Core.Typecheck
 import Idris.AbsSyntaxTree
-import RTS.SC
 
 import Paths_idris
 

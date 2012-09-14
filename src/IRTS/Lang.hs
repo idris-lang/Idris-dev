@@ -21,7 +21,7 @@ data LExp = LV LVar
           | LForeign FLang FType String [(FType, LExp)]
           | LOp PrimFn [LExp]
           | LError String
-  deriving (Show, Eq)
+  deriving Eq
 
 data PrimFn = LPlus | LMinus | LTimes | LDiv | LEq | LLt | LLe | LGt | LGe
             | LFPlus | LFMinus | LFTimes | LFDiv | LFEq | LFLt | LFLe | LFGt | LFGe
@@ -90,7 +90,7 @@ addFn fn d = do LS n i ds <- get
                 put (LS n i ((fn, d) : ds))
 
 lift :: [Name] -> LExp -> State LiftState LExp
-lift env (LV v) = return (LV v)
+lift env (LV v) = return (LV v) -- Lifting happens before these can exist...
 lift env (LApp tc (LV (Glob n)) args) = do args' <- mapM (lift env) args
                                            return (LApp tc (LV (Glob n)) args')
 lift env (LApp tc f args) = do f' <- lift env f
@@ -102,18 +102,20 @@ lift env (LLazyApp n args) = do args' <- mapM (lift env) args
                                 return (LLazyApp n args')
 lift env (LLazyExp (LConst c)) = return (LConst c)
 lift env (LLazyExp e) = do e' <- lift env e
+                           let usedArgs = nub $ usedIn env e'
                            fn <- getNextName
-                           addFn fn (LFun fn env e')
-                           return (LLazyApp fn (map (LV . Glob) env))
+                           addFn fn (LFun fn usedArgs e')
+                           return (LLazyApp fn (map (LV . Glob) usedArgs))
 lift env (LForce e) = do e' <- lift env e
                          return (LForce e') 
 lift env (LLet n v e) = do v' <- lift env v
                            e' <- lift (env ++ [n]) e
                            return (LLet n v' e')
 lift env (LLam args e) = do e' <- lift (env ++ args) e
+                            let usedArgs = nub $ usedIn env e'
                             fn <- getNextName
-                            addFn fn (LFun fn (env ++ args) e')
-                            return (LApp False (LV (Glob fn)) (map (LV . Glob) env))
+                            addFn fn (LFun fn (usedArgs ++ args) e')
+                            return (LApp False (LV (Glob fn)) (map (LV . Glob) usedArgs))
 lift env (LCon i n args) = do args' <- mapM (lift env) args
                               return (LCon i n args')
 lift env (LCase e alts) = do alts' <- mapM liftA alts
@@ -137,7 +139,54 @@ lift env (LOp f args) = do args' <- mapM (lift env) args
 lift env (LError str) = return $ LError str
 
 
+-- Return variables in list which are used in the expression
 
+usedArg env n | n `elem` env = [n]
+              | otherwise = []
+
+usedIn :: [Name] -> LExp -> [Name]
+usedIn env (LV (Glob n)) = usedArg env n 
+usedIn env (LApp _ e args) = usedIn env e ++ concatMap (usedIn env) args 
+usedIn env (LLazyApp n args) = concatMap (usedIn env) args ++ usedArg env n
+usedIn env (LLazyExp e) = usedIn env e
+usedIn env (LForce e) = usedIn env e
+usedIn env (LLet n v e) = usedIn env v ++ usedIn (env \\ [n]) e
+usedIn env (LLam ns e) = usedIn (env \\ ns) e
+usedIn env (LCon i n args) = concatMap (usedIn env) args
+usedIn env (LCase e alts) = concatMap (usedInA env) alts
+  where usedInA env (LConCase i n ns e) = usedIn env e
+        usedInA env (LConstCase c e) = usedIn env e
+        usedInA env (LDefaultCase e) = usedIn env e
+usedIn env (LForeign _ _ _ args) = concatMap (usedIn env) (map snd args)
+usedIn env (LOp f args) = concatMap (usedIn env) args
+usedIn env _ = []
+
+instance Show LExp where
+   show e = show' [] e where
+     show' env (LV (Loc i)) = env!!i
+     show' env (LV (Glob n)) = show n
+     show' env (LApp _ e args) = show' env e ++ "(" ++
+                                   showSep ", " (map (show' env) args) ++")"
+     show' env (LLazyExp e) = "%lazy(" ++ show' env e ++ ")" 
+     show' env (LForce e) = "%force(" ++ show' env e ++ ")"
+     show' env (LLet n v e) = "let " ++ show n ++ " = " ++ show' env v ++ " in " ++
+                               show' (env ++ [show n]) e
+     show' env (LLam args e) = "\\ " ++ showSep "," (map show args) ++ " => " ++
+                                 show' (env ++ (map show args)) e
+     show' env (LCon i n args) = show n ++ ")" ++ showSep ", " (map (show' env) args) ++ ")"
+     show' env (LCase e alts) = "case " ++ show' env e ++ " of {\n\t" ++
+                                    showSep "\n\t| " (map (showAlt env) alts)
+     show' env (LConst c) = show c
+     show' env (LForeign lang ty n args)
+           = "foreign " ++ n ++ "(" ++ showSep ", " (map (show' env) (map snd args)) ++ ")"
+     show' env (LOp f args) = show f ++ "(" ++ showSep ", " (map (show' env) args) ++ ")"
+     show' env (LError str) = "error " ++ show str
+
+     showAlt env (LConCase _ n args e) 
+          = show n ++ "(" ++ showSep ", " (map show args) ++ ") => "
+             ++ show' env e
+     showAlt env (LConstCase c e) = show c ++ " => " ++ show' env e
+     showAlt env (LDefaultCase e) = "_ => " ++ show' env e
 
 
 
