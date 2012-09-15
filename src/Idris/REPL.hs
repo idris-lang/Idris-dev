@@ -322,6 +322,18 @@ showTotalN i n = case lookupTotal n (tt_ctxt i) of
                         [t] -> showTotal t i
                         _ -> ""
 
+tempfile :: IO (FilePath, Handle)
+tempfile = do env <- environment "TMPDIR"
+              let dir = case env of
+                              Nothing -> "/tmp"
+                              (Just d) -> d
+              openTempFile dir "esc"
+
+environment :: String -> IO (Maybe String)
+environment x = Prelude.catch (do e <- getEnv x
+                                  return (Just e))
+                              (\_ -> return Nothing)
+
 displayHelp = let vstr = showVersion version in
               "\nIdris version " ++ vstr ++ "\n" ++
               "--------------" ++ map (\x -> '-') vstr ++ "\n\n" ++

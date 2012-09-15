@@ -3,9 +3,11 @@
 module Idris.Compiler where
 
 import Idris.AbsSyntax
+import Core.TT
+
+{-
 import Idris.Transforms
 
-import Core.TT
 import Core.Evaluate
 import Core.CaseTree
 
@@ -20,8 +22,12 @@ import Paths_idris
 
 import Epic.Epic hiding (Term, Type, Name, fn, compile)
 import qualified Epic.Epic as E
+-}
 
 compile :: FilePath -> Term -> Idris ()
+compile f t = fail "Epic backend disabled"
+
+{-
 compile f tm
     = do checkMVs
          let tmnames = namesUsed (STerm tm)
@@ -230,15 +236,4 @@ instance ToEpic SC where
         mkEpicAlt (DefaultCase rhs)      = do rhs' <- epic rhs
                                               return $ defaultcase rhs'
 
-tempfile :: IO (FilePath, Handle)
-tempfile = do env <- environment "TMPDIR"
-              let dir = case env of
-                              Nothing -> "/tmp"
-                              (Just d) -> d
-              openTempFile dir "esc"
-
-environment :: String -> IO (Maybe String)
-environment x = catch (do e <- getEnv x
-                          return (Just e))
-                      (\_ -> return Nothing)
-
+-}

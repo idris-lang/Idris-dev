@@ -11,14 +11,10 @@ import IRTS.Lang
 import Core.TT
 import Core.Evaluate
 
-import Epic.Epic hiding (Term, Type, Name, fn)
-import qualified Epic.Epic as E
-
 data Prim = Prim { p_name  :: Name,
                    p_type  :: Type,
                    p_arity :: Int,
                    p_def   :: [Value] -> Maybe Value,
-                   p_epic  :: ([E.Name], E.Term),
 		   p_lexp  :: (Int, PrimFn),
                    p_total :: Totality
                  }
@@ -30,208 +26,147 @@ believeTy = Bind (UN "a") (Pi (Set (UVar (-2))))
             (Bind (UN "b") (Pi (Set (UVar (-2))))
             (Bind (UN "x") (Pi (V 1)) (V 1)))
 
-type ETm = E.Term
-type EOp = E.Op
-
-fun = E.fn
-ref = E.ref
-
-eOp :: EOp -> ([E.Name], ETm)
-eOp op = ([E.name "x", E.name "y"], E.op_ op (E.fn "x") (E.fn "y")) 
-
-eOpFn :: E.Type -> E.Type -> String -> ([E.Name], ETm)
-eOpFn ty rty op = ([E.name "x", E.name "y"], 
-                    foreign_ rty op [(E.fn "x", ty), (E.fn "y", ty)])
-
-strToInt x = foreign_ tyInt "strToInt" [(x, tyString)]
-intToStr x = foreign_ tyString "intToStr" [(x, tyInt)]
-charToInt x = x
-intToChar x = x
-intToBigInt x = foreign_ tyBigInt "intToBigInt" [(x, tyInt)]
-bigIntToInt x = foreign_ tyInt "bigIntToInt" [(x, tyBigInt)]
-strToBigInt x = foreign_ tyBigInt "strToBig" [(x, tyString)]
-bigIntToStr x = foreign_ tyString "bigToStr" [(x, tyBigInt)]
-strToFloat x = foreign_ tyFloat "strToFloat" [(x, tyString)]
-floatToStr x = foreign_ tyString "floatToStr" [(x, tyFloat)]
-intToFloat x = foreign_ tyFloat "intToFloat" [(x, tyInt)]
-floatToInt x = foreign_ tyInt "floatToInt" [(x, tyFloat)]
-
-floatExp x = foreign_ tyFloat "exp" [(x, tyFloat)]
-floatLog x = foreign_ tyFloat "log" [(x, tyFloat)]
-floatSin x = foreign_ tyFloat "sin" [(x, tyFloat)]
-floatCos x = foreign_ tyFloat "cos" [(x, tyFloat)]
-floatTan x = foreign_ tyFloat "tan" [(x, tyFloat)]
-floatASin x = foreign_ tyFloat "asin" [(x, tyFloat)]
-floatACos x = foreign_ tyFloat "acos" [(x, tyFloat)]
-floatATan x = foreign_ tyFloat "atan" [(x, tyFloat)]
-floatFloor x = foreign_ tyFloat "floor" [(x, tyFloat)]
-floatCeil x = foreign_ tyFloat "ceil" [(x, tyFloat)]
-floatSqrt x = foreign_ tyFloat "sqrt" [(x, tyFloat)]
-
-strIndex x i = foreign_ tyChar "strIndex" [(x, tyString), (i, tyInt)]
-strHead x = foreign_ tyChar "strHead" [(x, tyString)]
-strTail x = foreign_ tyString "strTail" [(x, tyString)]
-strCons x xs = foreign_ tyString "strCons" [(x, tyChar), (xs, tyString)]
-strRev x = foreign_ tyString "strrev" [(x, tyString)]
-strEq x y = foreign_ tyInt "streq" [(x, tyString), (y, tyString)]
-strLt x y = foreign_ tyInt "strlt" [(x, tyString), (y, tyString)]
-
-readStr x = foreign_ tyString "freadStr" [(x, tyPtr)]
-
-stream_stdin = let args :: [(ETm, E.Type)] = [] in
-                   foreign_ tyPtr "get_stdin" args
-
 total = Total []
 partial = Partial NotCovering 
 
 primitives =
    -- operators
   [Prim (UN "prim__addInt") (ty [IType, IType] IType) 2 (iBin (+))
-   (eOp E.plus_) (2, LPlus) total,
+    (2, LPlus) total,
    Prim (UN "prim__subInt") (ty [IType, IType] IType) 2 (iBin (-))
-    (eOp E.minus_) 
-    (2, LMinus) total,
+     (2, LMinus) total,
    Prim (UN "prim__mulInt") (ty [IType, IType] IType) 2 (iBin (*))
-    (eOp E.times_) (2, LTimes) total,
+     (2, LTimes) total,
    Prim (UN "prim__divInt") (ty [IType, IType] IType) 2 (iBin (div))
-    (eOp E.divide_) (2, LDiv) partial,
+     (2, LDiv) partial,
    Prim (UN "prim__eqInt")  (ty [IType, IType] IType) 2 (biBin (==))
-    (eOp E.eq_) (2, LEq) total,
+     (2, LEq) total,
    Prim (UN "prim__ltInt")  (ty [IType, IType] IType) 2 (biBin (<))
-    (eOp E.lt_) (2, LLt) total,
+     (2, LLt) total,
    Prim (UN "prim__lteInt") (ty [IType, IType] IType) 2 (biBin (<=))
-    (eOp E.lte_) (2, LLe) total,
+     (2, LLe) total,
    Prim (UN "prim__gtInt")  (ty [IType, IType] IType) 2 (biBin (>))
-    (eOp E.gt_) (2, LGt) total,
+     (2, LGt) total,
    Prim (UN "prim__gteInt") (ty [IType, IType] IType) 2 (biBin (>=))
-    (eOp E.gte_) (2, LGe) total,
+     (2, LGe) total,
    Prim (UN "prim__eqChar")  (ty [ChType, ChType] IType) 2 (bcBin (==))
-    (eOp E.eq_) (2, LEq) total,
+     (2, LEq) total,
    Prim (UN "prim__ltChar")  (ty [ChType, ChType] IType) 2 (bcBin (<))
-    (eOp E.lt_) (2, LLt) total,
+     (2, LLt) total,
    Prim (UN "prim__lteChar") (ty [ChType, ChType] IType) 2 (bcBin (<=))
-    (eOp E.lte_) (2, LLe) total,
+     (2, LLe) total,
    Prim (UN "prim__gtChar")  (ty [ChType, ChType] IType) 2 (bcBin (>))
-    (eOp E.gt_) (2, LGt) total,
+     (2, LGt) total,
    Prim (UN "prim__gteChar") (ty [ChType, ChType] IType) 2 (bcBin (>=))
-    (eOp E.gte_) (2, LGe) total,
+     (2, LGe) total,
    Prim (UN "prim__addBigInt") (ty [BIType, BIType] BIType) 2 (bBin (+))
-    (eOpFn tyBigInt tyBigInt "addBig") 
+     
     (2, LBPlus) total,
    Prim (UN "prim__subBigInt") (ty [BIType, BIType] BIType) 2 (bBin (-))
-    (eOpFn tyBigInt tyBigInt "subBig") (2, LBMinus) total,
+     (2, LBMinus) total,
    Prim (UN "prim__mulBigInt") (ty [BIType, BIType] BIType) 2 (bBin (*))
-    (eOpFn tyBigInt tyBigInt "mulBig") (2, LBTimes) total,
+     (2, LBTimes) total,
    Prim (UN "prim__divBigInt") (ty [BIType, BIType] BIType) 2 (bBin (div))
-    (eOpFn tyBigInt tyBigInt "divBig") (2, LBDiv) partial,
+     (2, LBDiv) partial,
    Prim (UN "prim__eqBigInt")  (ty [BIType, BIType] IType) 2 (bbBin (==))
-    (eOpFn tyBigInt tyInt "eqBig") (2, LBEq) total,
+     (2, LBEq) total,
    Prim (UN "prim__ltBigInt")  (ty [BIType, BIType] IType) 2 (bbBin (<))
-    (eOpFn tyBigInt tyInt "ltBig") (2, LBLt) total,
+     (2, LBLt) total,
    Prim (UN "prim__lteBigInt")  (ty [BIType, BIType] IType) 2 (bbBin (<=))
-    (eOpFn tyBigInt tyInt "leBig") (2, LBLe) total,
+     (2, LBLe) total,
    Prim (UN "prim__gtBigInt")  (ty [BIType, BIType] IType) 2 (bbBin (>))
-    (eOpFn tyBigInt tyInt "gtBig") (2, LBGt) total,
+     (2, LBGt) total,
    Prim (UN "prim__gtBigInt")  (ty [BIType, BIType] IType) 2 (bbBin (>=))
-    (eOpFn tyBigInt tyInt "geBig") (2, LBGe) total,
+     (2, LBGe) total,
    Prim (UN "prim__addFloat") (ty [FlType, FlType] FlType) 2 (fBin (+))
-    (eOp E.plusF_) (2, LFPlus) total,
+     (2, LFPlus) total,
    Prim (UN "prim__subFloat") (ty [FlType, FlType] FlType) 2 (fBin (-))
-    (eOp E.minusF_) (2, LFMinus) total,
+     (2, LFMinus) total,
    Prim (UN "prim__mulFloat") (ty [FlType, FlType] FlType) 2 (fBin (*))
-    (eOp E.timesF_) (2, LFTimes) total,
+     (2, LFTimes) total,
    Prim (UN "prim__divFloat") (ty [FlType, FlType] FlType) 2 (fBin (/))
-    (eOp E.divideF_) (2, LFDiv) total,
+     (2, LFDiv) total,
    Prim (UN "prim__eqFloat")  (ty [FlType, FlType] IType) 2 (bfBin (==))
-    (eOp E.eqF_) (2, LFEq) total,
+     (2, LFEq) total,
    Prim (UN "prim__ltFloat")  (ty [FlType, FlType] IType) 2 (bfBin (<))
-    (eOp E.ltF_) (2, LFLt) total,
+     (2, LFLt) total,
    Prim (UN "prim__lteFloat") (ty [FlType, FlType] IType) 2 (bfBin (<=))
-    (eOp E.lteF_) (2, LFLe) total,
+     (2, LFLe) total,
    Prim (UN "prim__gtFloat")  (ty [FlType, FlType] IType) 2 (bfBin (>))
-    (eOp E.gtF_) (2, LFGt) total,
+     (2, LFGt) total,
    Prim (UN "prim__gteFloat") (ty [FlType, FlType] IType) 2 (bfBin (>=))
-    (eOp E.gteF_) (2, LFGe) total,
+     (2, LFGe) total,
    Prim (UN "prim__concat") (ty [StrType, StrType] StrType) 2 (sBin (++))
-    ([E.name "x", E.name "y"], (fun "append") @@ fun "x" @@ fun "y") 
     (2, LStrConcat) total,
    Prim (UN "prim__eqString") (ty [StrType, StrType] IType) 2 (bsBin (==))
-    ([E.name "x", E.name "y"], strEq (fun "x") (fun "y")) 
     (2, LStrEq) total,
    Prim (UN "prim__ltString") (ty [StrType, StrType] IType) 2 (bsBin (<))
-    ([E.name "x", E.name "y"], strLt (fun "x") (fun "y")) 
     (2, LStrLt) total,
     -- Conversions
    Prim (UN "prim__strToInt") (ty [StrType] IType) 1 (c_strToInt)
-    ([E.name "x"], strToInt (fun "x")) (1, LStrInt) total,
+     (1, LStrInt) total,
    Prim (UN "prim__intToStr") (ty [IType] StrType) 1 (c_intToStr)
-    ([E.name "x"], intToStr (fun "x")) (1, LIntStr) total,
+     (1, LIntStr) total,
    Prim (UN "prim__charToInt") (ty [ChType] IType) 1 (c_charToInt)
-    ([E.name "x"], charToInt (fun "x")) (1, LNoOp) total,
+     (1, LNoOp) total,
    Prim (UN "prim__intToChar") (ty [IType] ChType) 1 (c_intToChar)
-    ([E.name "x"], intToChar (fun "x")) (1, LNoOp) total,
+     (1, LNoOp) total,
    Prim (UN "prim__intToBigInt") (ty [IType] BIType) 1 (c_intToBigInt)
-    ([E.name "x"], intToBigInt (fun "x")) (1, LIntBig) total,
+     (1, LIntBig) total,
    Prim (UN "prim__bigIntToInt") (ty [BIType] IType) 1 (c_bigIntToInt)
-    ([E.name "x"], bigIntToInt (fun "x")) (1, LBigInt) total,
+     (1, LBigInt) total,
    Prim (UN "prim__strToBigInt") (ty [StrType] BIType) 1 (c_strToBigInt)
-    ([E.name "x"], strToBigInt (fun "x")) (1, LStrBig) total,
+     (1, LStrBig) total,
    Prim (UN "prim__bigIntToStr") (ty [BIType] StrType) 1 (c_bigIntToStr)
-    ([E.name "x"], bigIntToStr (fun "x")) (1, LBigStr) total,
+     (1, LBigStr) total,
    Prim (UN "prim__strToFloat") (ty [StrType] FlType) 1 (c_strToFloat)
-    ([E.name "x"], strToFloat (fun "x")) (1, LStrFloat) total,
+     (1, LStrFloat) total,
    Prim (UN "prim__floatToStr") (ty [FlType] StrType) 1 (c_floatToStr)
-    ([E.name "x"], floatToStr (fun "x")) (1, LFloatStr) total,
+     (1, LFloatStr) total,
    Prim (UN "prim__intToFloat") (ty [IType] FlType) 1 (c_intToFloat)
-    ([E.name "x"], intToFloat (fun "x")) (1, LIntFloat) total,
+     (1, LIntFloat) total,
    Prim (UN "prim__floatToInt") (ty [FlType] IType) 1 (c_floatToInt)
-    ([E.name "x"], floatToInt (fun "x")) (1, LFloatInt) total,
+     (1, LFloatInt) total,
 
    Prim (UN "prim__floatExp") (ty [FlType] FlType) 1 (p_floatExp)
-    ([E.name "x"], floatExp (fun "x")) (1, LFExp) total, 
+     (1, LFExp) total, 
    Prim (UN "prim__floatLog") (ty [FlType] FlType) 1 (p_floatLog)
-    ([E.name "x"], floatLog (fun "x")) (1, LFLog) total,
+     (1, LFLog) total,
    Prim (UN "prim__floatSin") (ty [FlType] FlType) 1 (p_floatSin)
-    ([E.name "x"], floatSin (fun "x")) (1, LFSin) total,
+     (1, LFSin) total,
    Prim (UN "prim__floatCos") (ty [FlType] FlType) 1 (p_floatCos)
-    ([E.name "x"], floatCos (fun "x")) (1, LFCos) total,
+     (1, LFCos) total,
    Prim (UN "prim__floatTan") (ty [FlType] FlType) 1 (p_floatTan)
-    ([E.name "x"], floatTan (fun "x")) (1, LFTan) total,
+     (1, LFTan) total,
    Prim (UN "prim__floatASin") (ty [FlType] FlType) 1 (p_floatASin)
-    ([E.name "x"], floatASin (fun "x")) (1, LFASin) total,
+     (1, LFASin) total,
    Prim (UN "prim__floatACos") (ty [FlType] FlType) 1 (p_floatACos)
-    ([E.name "x"], floatACos (fun "x")) (1, LFACos) total,
+     (1, LFACos) total,
    Prim (UN "prim__floatATan") (ty [FlType] FlType) 1 (p_floatATan)
-    ([E.name "x"], floatATan (fun "x")) (1, LFATan) total,
+     (1, LFATan) total,
    Prim (UN "prim__floatSqrt") (ty [FlType] FlType) 1 (p_floatSqrt)
-    ([E.name "x"], floatSqrt (fun "x")) (1, LFSqrt) total,
+     (1, LFSqrt) total,
    Prim (UN "prim__floatFloor") (ty [FlType] FlType) 1 (p_floatFloor)
-    ([E.name "x"], floatFloor (fun "x")) (1, LFFloor) total,
+     (1, LFFloor) total,
    Prim (UN "prim__floatCeil") (ty [FlType] FlType) 1 (p_floatCeil)
-    ([E.name "x"], floatCeil (fun "x")) (1, LFCeil) total,
+     (1, LFCeil) total,
 
    Prim (UN "prim__strHead") (ty [StrType] ChType) 1 (p_strHead)
-    ([E.name "x"], strHead (fun "x")) (1, LStrHead) partial,
+     (1, LStrHead) partial,
    Prim (UN "prim__strTail") (ty [StrType] StrType) 1 (p_strTail)
-    ([E.name "x"], strTail (fun "x")) (1, LStrTail) partial,
+     (1, LStrTail) partial,
    Prim (UN "prim__strCons") (ty [ChType, StrType] StrType) 2 (p_strCons)
-    ([E.name "x", E.name "xs"], strCons (fun "x") (fun "xs")) 
     (2, LStrCons) total,
    Prim (UN "prim__strIndex") (ty [StrType, IType] ChType) 2 (p_strIndex)
-    ([E.name "x", E.name "i"], strIndex (fun "x") (fun "i")) 
     (2, LStrIndex) partial,
    Prim (UN "prim__strRev") (ty [StrType] StrType) 1 (p_strRev)
-    ([E.name "x"], strRev (fun "x")) 
     (1, LStrRev) total,
    Prim (UN "prim__readString") (ty [PtrType] StrType) 1 (p_cantreduce)
-    ([E.name "h"], readStr (fun "h")) (1, LReadStr) partial,
-
+     (1, LReadStr) partial,
    -- Streams
    Prim (UN "prim__stdin") (ty [] PtrType) 0 (p_cantreduce)
-   ([], stream_stdin) (0, LStdIn) partial,
-
+    (0, LStdIn) partial,
    Prim (UN "prim__believe_me") believeTy 3 (p_believeMe)
-    ([E.name "a", E.name "b", E.name "x"], fun "x") 
     (1, LNoOp) total -- ahem
   ]
 
@@ -336,12 +271,11 @@ p_strRev _ = Nothing
 p_cantreduce _ = Nothing
 
 elabPrim :: Prim -> Idris ()
-elabPrim (Prim n ty i def epic sc tot) 
+elabPrim (Prim n ty i def sc tot) 
     = do updateContext (addOperator n ty i def)
          setTotality n tot
          i <- getIState
-         putIState i { idris_prims = (n, epic) : idris_prims i,
-	               idris_scprims = (n, sc) : idris_scprims i }
+         putIState i { idris_scprims = (n, sc) : idris_scprims i }
 
 elabPrims :: Idris ()
 elabPrims = do mapM_ (elabDecl toplevel) 

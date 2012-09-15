@@ -21,8 +21,6 @@ import Data.Either
 
 import Debug.Trace
 
-import qualified Epic.Epic as E
-
 import Util.Pretty
 
 

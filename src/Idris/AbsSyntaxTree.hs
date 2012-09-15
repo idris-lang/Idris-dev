@@ -22,8 +22,6 @@ import Data.Either
 
 import Debug.Trace
 
-import qualified Epic.Epic as E
-
 data IOption = IOption { opt_logLevel :: Int,
                          opt_typecase :: Bool,
                          opt_typeintype :: Bool,
@@ -65,7 +63,6 @@ data IState = IState { tt_ctxt :: Context,
                        syntax_rules :: [Syntax],
                        syntax_keywords :: [String],
                        imported :: [FilePath],
-                       idris_prims :: [(Name, ([E.Name], E.Term))],
                        idris_scprims :: [(Name, (Int, PrimFn))],
                        idris_objs :: [FilePath],
                        idris_libs :: [String],
@@ -108,7 +105,7 @@ data IBCWrite = IBCFix FixDecl
 idrisInit = IState initContext [] [] emptyContext emptyContext emptyContext
                    emptyContext emptyContext emptyContext emptyContext 
                    emptyContext emptyContext emptyContext
-                   [] "" defaultOpts 6 [] [] [] [] [] [] [] [] []
+                   [] "" defaultOpts 6 [] [] [] [] [] [] [] []
                    [] Nothing Nothing [] [] [] Hidden [] Nothing
 
 -- The monad for the main REPL - reading and processing files and updating 

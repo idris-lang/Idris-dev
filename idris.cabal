@@ -77,7 +77,7 @@ Executable     idris
 
                Build-depends:   base>=4 && <5, parsec, mtl, Cabal, haskeline<0.7,
                                 containers, process, transformers, filepath, directory,
-                                binary, bytestring, epic>=0.9.3.2, pretty
+                                binary, bytestring, pretty
                                 
                Extensions:      MultiParamTypeClasses, FunctionalDependencies,
                                 FlexibleInstances, TemplateHaskell
