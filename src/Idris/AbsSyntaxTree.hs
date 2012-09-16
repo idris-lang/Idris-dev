@@ -114,16 +114,34 @@ type Idris = StateT IState (InputT IO)
 
 -- Commands in the REPL
 
-data Command = Quit   | Help | Eval PTerm | Check PTerm | TotCheck Name
-             | Reload | Edit
-             | Compile String | Execute | ExecVal PTerm
+data Command = Quit
+             | Help
+             | Eval PTerm
+             | Check PTerm
+             | TotCheck Name
+             | Reload
+             | Edit
+             | Compile String
+             | Execute
+             | ExecVal PTerm
              | NewCompile String
-             | Metavars    | Prove Name | AddProof | RmProof | Proofs | Universes
-             | TTShell 
-             | LogLvl Int | Spec PTerm | HNF PTerm | Defn Name 
-             | Info Name  | DebugInfo Name
+             | Metavars
+             | Prove Name
+             | AddProof Name
+             | RmProof Name
+             | ShowProof Name
+             | Proofs
+             | Universes
+             | TTShell
+             | LogLvl Int
+             | Spec PTerm
+             | HNF PTerm
+             | Defn Name
+             | Info Name
+             | DebugInfo Name
              | Search PTerm
-             | SetOpt Opt | UnsetOpt Opt
+             | SetOpt Opt
+             | UnsetOpt Opt
              | NOP
 
 data Opt = Filename String
