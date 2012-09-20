@@ -27,6 +27,9 @@ compileC f tm = do checkMVs
                    used <- mapM (allNames []) tmnames
                    defsIn <- mkDecls tm (concat used)
                    maindef <- irMain tm
+                   objs <- getObjectFiles
+                   libs <- getLibs
+                   hdrs <- getHdrs
                    let defs = defsIn ++ [(MN 0 "runMain", maindef)]
                    -- iputStrLn $ showSep "\n" (map show defs)
                    let (nexttag, tagged) = addTags 0 (liftAll defs)
@@ -36,7 +39,9 @@ compileC f tm = do checkMVs
                    let checked = checkDefs defuns (toAlist defuns)
                    case checked of
                         OK c -> do -- iputStrLn $ showSep "\n" (map show c)
-                                   liftIO $ codegenC c f True [] "" NONE
+                                   liftIO $ codegenC c f True hdrs 
+                                               (concatMap mkObj objs)
+                                               (concatMap mkLib libs) NONE
                         Error e -> fail $ show e 
   where checkMVs = do i <- get
                       case idris_metavars i \\ primDefs of
@@ -45,6 +50,8 @@ compileC f tm = do checkMVs
         inDir d h = do let f = d ++ "/" ++ h
                        ex <- doesFileExist f
                        if ex then return f else return h
+        mkObj f = f ++ " "
+        mkLib l = "-l" ++ l ++ " "
 
 irMain :: TT Name -> Idris LDecl
 irMain tm = do i <- ir tm

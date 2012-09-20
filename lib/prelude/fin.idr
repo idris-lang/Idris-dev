@@ -13,3 +13,7 @@ instance Eq (Fin n) where
      eq (fS k) (fS k') = eq k k'
      eq _ _ = False
 
+wkn : Fin n -> Fin (S n)
+wkn fO = fO
+wkn (fS k) = fS (wkn k)
+

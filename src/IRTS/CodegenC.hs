@@ -22,10 +22,11 @@ codegenC :: [(Name, SDecl)] ->
             String -> -- output file name
             Bool ->   -- generate executable if True, only .o if False 
             [FilePath] -> -- include files
+            String -> -- extra object files 
             String -> -- extra compiler flags
             DbgLevel ->
             IO ()
-codegenC defs out exec incs libs dbg
+codegenC defs out exec incs objs libs dbg
     = do -- print defs
          let bc = map toBC defs
          let h = concatMap toDecl (map fst bc)
@@ -38,7 +39,9 @@ codegenC defs out exec incs libs dbg
          hPutStr tmph cout
          hFlush tmph
          hClose tmph
-         let gcc = "gcc -x c " ++ 
+         let useclang = False
+         let comp = if useclang then "clang" else "gcc"
+         let gcc = comp ++ " -I. " ++ objs ++ " -x c " ++ 
                      (if exec then "" else " - c ") ++
                      gccDbg dbg ++
                      " " ++ tmpn ++
@@ -150,7 +153,7 @@ bcc i (ERROR str) = indent i ++ "fprintf(stderr, " ++ show str ++ "); assert(0);
 
 c_irts FInt l x = l ++ "MKINT((i_int)(" ++ x ++ "))"
 c_irts FChar l x = l ++ "MKINT((i_int)(" ++ x ++ "))"
-c_irts FString l x = l ++ "MKSTR(" ++ x ++ ")"
+c_irts FString l x = l ++ "MKSTR(vm, " ++ x ++ ")"
 c_irts FUnit l x = x
 c_irts FPtr l x = l ++ "MKPTR(vm, " ++ x ++ ")"
 c_irts FDouble l x = l ++ "MKFLOAT(vm, " ++ x ++ ")"

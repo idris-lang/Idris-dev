@@ -267,7 +267,7 @@ const unsigned char* sqlite3_get_val_text(void* p,int nCol){
 	DBinfo* dbi =(DBinfo*) p;
 	int rc,i, val, counter;
 	const unsigned char* text_val;
-	array =(unsigned char *) GC_malloc(1000*sizeof(char));
+	array =(unsigned char *) malloc(1000*sizeof(char));
 	text_val =sqlite3_column_text(dbi->ppStmt, nCol);
 	memcpy(array, text_val, strlen(text_val));
 	return array;

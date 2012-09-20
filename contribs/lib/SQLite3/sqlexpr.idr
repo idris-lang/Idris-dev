@@ -66,21 +66,21 @@ data SQL  = SELECT SelVar SQL Clause
             | CREATE SQL (List (Value, ColType , Constr))
             
 -- remember to remove these funcs later
-foldr1 : (a -> a -> a) -> List a -> a	
-foldr1 f [x] = x
-foldr1 f (x::xs) = f x (foldr1 f xs)
+-- foldr1 : (a -> a -> a) -> List a -> a	
+-- foldr1 f [x] = x
+-- foldr1 f (x::xs) = f x (foldr1 f xs)
 
 
-unwords' : List (List Char) -> List Char
-unwords' [] = []                         
-unwords' ws = (foldr1 addSpace ws)
-        where
-            addSpace : List Char -> List Char -> List Char
-            addSpace w s = w ++ (' ' :: s) 
-          
-               
-unwords :  List String -> String
-unwords = pack . unwords' . map unpack
+-- unwords' : List (List Char) -> List Char
+-- unwords' [] = []                         
+-- unwords' ws = (foldr1 addSpace ws)
+--         where
+--             addSpace : List Char -> List Char -> List Char
+--             addSpace w s = w ++ (' ' :: s) 
+--           
+--                
+-- unwords :  List String -> String
+-- unwords = pack . unwords' . map unpack
 
 -----------------------------------------------------------
 -- | This function replaces values with question mark
