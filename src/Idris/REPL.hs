@@ -14,6 +14,7 @@ import Idris.Prover
 import Idris.Parser
 import Idris.Coverage
 import Paths_idris
+import Util.System
 
 import Core.Evaluate
 import Core.ProofShell
@@ -350,18 +351,6 @@ showTotal t i = show t
 showTotalN i n = case lookupTotal n (tt_ctxt i) of
                         [t] -> showTotal t i
                         _ -> ""
-
-tempfile :: IO (FilePath, Handle)
-tempfile = do env <- environment "TMPDIR"
-              let dir = case env of
-                              Nothing -> "/tmp"
-                              (Just d) -> d
-              openTempFile dir "esc"
-
-environment :: String -> IO (Maybe String)
-environment x = Prelude.catch (do e <- getEnv x
-                                  return (Just e))
-                              (\_ -> return Nothing)
 
 displayHelp = let vstr = showVersion version in
               "\nIdris version " ++ vstr ++ "\n" ++

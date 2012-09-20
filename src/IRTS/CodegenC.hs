@@ -1,5 +1,3 @@
-{-# LANGUAGE CPP #-}
-
 module IRTS.CodegenC where
 
 import IRTS.Bytecode
@@ -7,13 +5,13 @@ import IRTS.Lang
 import IRTS.Simplified
 import Core.TT
 import Paths_idris
+import Util.System
 
 import Data.Char
 import System.Process
 import System.Exit
 import System.IO
 import System.Directory
-import System.Environment
 import Control.Monad
 
 data DbgLevel = NONE | DEBUG | TRACE
@@ -241,20 +239,3 @@ doOp v LStdErr [] = v ++ "MKPTR(vm, stderr)"
 
 doOp v LNoOp [x] = ""
 doOp _ _ _ = "FAIL"
-
-tempfile :: IO (FilePath, Handle)
-tempfile = do env <- environment "TMPDIR"
-              let dir = case env of
-                              Nothing -> "/tmp"
-                              (Just d) -> d
-              openTempFile dir "idris"
-
-environment :: String -> IO (Maybe String)
-environment x = catch (do e <- getEnv x
-                          return (Just e))
-#if MIN_VERSION_base(4,6,0)
-                          (\y-> do return (y::SomeException);  return Nothing)  
-#endif
-#if !MIN_VERSION_base(4,6,0)
-                          (\_->  return Nothing)  
-#endif  

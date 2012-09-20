@@ -68,7 +68,7 @@ Executable     idris
                               Idris.Coverage, Idris.IBC, Idris.Unlit,
                               Idris.DataOpts, Idris.Transforms, Idris.DSL, 
 
-                              Util.Pretty,
+                              Util.Pretty, Util.System,
 
                               IRTS.Lang, IRTS.LParser, IRTS.Bytecode, IRTS.Simplified,
                               IRTS.CodegenC, IRTS.Defunctionalise, IRTS.Compiler,
