@@ -77,7 +77,7 @@ runIdris opts =
        ok <- noErrors
        when ok $ case output of
                     [] -> return ()
-                    (o:_) -> process "" (Compile o)  
+                    (o:_) -> process "" (Compile ViaC o)  
        when ok $ case newoutput of
                     [] -> return ()
                     (o:_) -> process "" (NewCompile o)  

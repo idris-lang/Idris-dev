@@ -6,6 +6,7 @@ import IRTS.Lang
 import IRTS.Defunctionalise
 import IRTS.Simplified
 import IRTS.CodegenC
+import IRTS.CodegenJava
 
 import Idris.AbsSyntax
 import Core.TT
@@ -21,28 +22,30 @@ import System.Environment
 
 import Paths_idris
 
-compileC :: FilePath -> Term -> Idris ()
-compileC f tm = do checkMVs
-                   let tmnames = namesUsed (STerm tm)
-                   used <- mapM (allNames []) tmnames
-                   defsIn <- mkDecls tm (concat used)
-                   maindef <- irMain tm
-                   objs <- getObjectFiles
-                   libs <- getLibs
-                   hdrs <- getHdrs
-                   let defs = defsIn ++ [(MN 0 "runMain", maindef)]
-                   -- iputStrLn $ showSep "\n" (map show defs)
-                   let (nexttag, tagged) = addTags 0 (liftAll defs)
-                   let ctxtIn = addAlist tagged emptyContext
-                   let defuns = defunctionalise nexttag ctxtIn
-                   -- iputStrLn $ showSep "\n" (map show (toAlist defuns))
-                   let checked = checkDefs defuns (toAlist defuns)
-                   case checked of
-                        OK c -> do -- iputStrLn $ showSep "\n" (map show c)
-                                   liftIO $ codegenC c f True hdrs 
-                                               (concatMap mkObj objs)
-                                               (concatMap mkLib libs) NONE
-                        Error e -> fail $ show e 
+compile :: Target -> FilePath -> Term -> Idris ()
+compile target f tm 
+   = do checkMVs
+        let tmnames = namesUsed (STerm tm)
+        used <- mapM (allNames []) tmnames
+        defsIn <- mkDecls tm (concat used)
+        maindef <- irMain tm
+        objs <- getObjectFiles
+        libs <- getLibs
+        hdrs <- getHdrs
+        let defs = defsIn ++ [(MN 0 "runMain", maindef)]
+        -- iputStrLn $ showSep "\n" (map show defs)
+        let (nexttag, tagged) = addTags 0 (liftAll defs)
+        let ctxtIn = addAlist tagged emptyContext
+        let defuns = defunctionalise nexttag ctxtIn
+        -- iputStrLn $ showSep "\n" (map show (toAlist defuns))
+        let checked = checkDefs defuns (toAlist defuns)
+        case checked of
+            OK c -> case target of
+                         ViaC -> liftIO $ codegenC c f True hdrs 
+                                   (concatMap mkObj objs)
+                                   (concatMap mkLib libs) NONE
+                         ViaJava -> liftIO $ codegenJava c f 
+            Error e -> fail $ show e 
   where checkMVs = do i <- get
                       case idris_metavars i \\ primDefs of
                             [] -> return ()

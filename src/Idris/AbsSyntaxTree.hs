@@ -114,6 +114,8 @@ type Idris = StateT IState (InputT IO)
 
 -- Commands in the REPL
 
+data Target = ViaC | ViaJava
+
 data Command = Quit
              | Help
              | Eval PTerm
@@ -121,7 +123,7 @@ data Command = Quit
              | TotCheck Name
              | Reload
              | Edit
-             | Compile String
+             | Compile Target String
              | Execute
              | ExecVal PTerm
              | NewCompile String

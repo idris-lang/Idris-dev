@@ -24,8 +24,8 @@ import Epic.Epic hiding (Term, Type, Name, fn, compile)
 import qualified Epic.Epic as E
 -}
 
-compile :: FilePath -> Term -> Idris ()
-compile f t = fail "Epic backend disabled"
+compileEpic :: FilePath -> Term -> Idris ()
+compileEpic f t = fail "Epic backend disabled"
 
 {-
 compile f tm

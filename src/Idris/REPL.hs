@@ -160,7 +160,7 @@ process fn (ExecVal t)
 --                                                           [pexp t])
                          (tmpn, tmph) <- liftIO tempfile
                          liftIO $ hClose tmph
-                         compileC tmpn tm
+                         compile ViaC tmpn tm
                          liftIO $ system tmpn
                          return ()
     where fc = FC "(input)" 0 
@@ -294,7 +294,7 @@ process fn Execute = do (m, _) <- elabVal toplevel False
 --                                      (PRef (FC "main" 0) (NS (UN "main") ["main"]))
                         (tmpn, tmph) <- liftIO tempfile
                         liftIO $ hClose tmph
-                        compileC tmpn m
+                        compile ViaC tmpn m
                         liftIO $ system tmpn
                         return ()
   where fc = FC "main" 0                     
@@ -302,13 +302,13 @@ process fn (NewCompile f)
      = do (m, _) <- elabVal toplevel False
                       (PApp fc (PRef fc (UN "run__IO"))
                           [pexp $ PRef fc (NS (UN "main") ["main"])])
-          compile f m
+          compileEpic f m
   where fc = FC "main" 0                     
-process fn (Compile f) 
+process fn (Compile target f) 
       = do (m, _) <- elabVal toplevel False
                        (PApp fc (PRef fc (UN "run__IO"))
                        [pexp $ PRef fc (NS (UN "main") ["main"])])
-           compileC f m
+           compile target f m
   where fc = FC "main" 0                     
 process fn (LogLvl i) = setLogLevel i 
 process fn Metavars 

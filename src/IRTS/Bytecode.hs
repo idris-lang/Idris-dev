@@ -1,5 +1,8 @@
 module IRTS.Bytecode where
 
+-- Bytecode for a stack based VM (e.g. for generating C code with an accurate
+-- hand written GC)
+
 import IRTS.Lang
 import IRTS.Simplified
 import Core.TT
