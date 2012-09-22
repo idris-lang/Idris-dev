@@ -183,6 +183,9 @@ void dumpVal(VAL v) {
         }
         printf("] ");
         break;
+    case STRING:
+        printf("STR[%s]", v->info.str);
+        break;
     case FWD:
         printf("FWD ");
         dumpVal((VAL)(v->info.ptr));
@@ -340,14 +343,11 @@ void* runThread(void* arg) {
     ThreadData* td = (ThreadData*)arg;
     VM* vm = td->vm;
 
-    printf("We're off\n");
-
     TOP(0) = td->arg;
     BASETOP(0);
     ADDTOP(1);
     td->fn(vm, NULL);
 
-    printf("We're done\n");
     free(td);
 }
 
@@ -358,20 +358,16 @@ void* vmThread(VM* callvm, func f, VAL arg) {
     size_t stacksize;
 
     pthread_attr_init(&attr);
-    pthread_attr_getstacksize (&attr, &stacksize);
-    pthread_attr_setstacksize (&attr, stacksize*64);
-    printf("Default stack size = %li\n", stacksize);
+//    pthread_attr_getstacksize (&attr, &stacksize);
+//    pthread_attr_setstacksize (&attr, stacksize*64);
 
     ThreadData *td = malloc(sizeof(ThreadData));
     td->vm = vm;
     td->fn = f;
     td->arg = copyTo(vm, arg);
 
-    dumpVal(arg);
-    dumpVal(td->arg);
-
-    printf("Threading\n");
     pthread_create(&t, &attr, runThread, td);
+    usleep(100);
     return vm;
 }
 
@@ -419,10 +415,11 @@ VAL copyTo(VM* vm, VAL x) {
 // Add a message to another VM's message queue
 void sendMessage(VM* sender, VM* dest, VAL msg) {
     VAL dmsg = copyTo(dest, msg);
+
     pthread_mutex_lock(&(dest->inbox_lock));
 
     *(dest->inbox_write) = dmsg;
-    
+   
     dest->inbox_write++;
     if (dest->inbox_write >= dest->inbox_end) {
         dest->inbox_write = dest->inbox;
@@ -441,10 +438,14 @@ void sendMessage(VM* sender, VM* dest, VAL msg) {
 
 // block until there is a message in the queue
 VAL recvMessage(VM* vm) {
-    pthread_mutex_lock(&vm->inbox_block);
-    pthread_cond_wait(&vm->inbox_waiting, &vm->inbox_block);
+    VAL msg = NULL;
 
-    VAL msg = *(vm->inbox_ptr);
+    while (msg == NULL) {
+        pthread_mutex_lock(&vm->inbox_block);
+        pthread_cond_wait(&vm->inbox_waiting, &vm->inbox_block);
+        pthread_mutex_unlock(&vm->inbox_block);
+        msg = *(vm->inbox_ptr);
+    }
     if (msg != NULL) {
         pthread_mutex_lock(&(vm->inbox_lock));
         *(vm->inbox_ptr) = NULL;
@@ -458,7 +459,7 @@ VAL recvMessage(VM* vm) {
         exit(-1);
     }
 
-    pthread_mutex_unlock(&vm->inbox_block);
+    return msg;
 }
 
 void stackOverflow() {

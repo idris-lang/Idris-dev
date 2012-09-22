@@ -237,7 +237,7 @@ doOp v LStdIn [] = v ++ "MKPTR(vm, stdin)"
 doOp v LStdOut [] = v ++ "MKPTR(vm, stdout)"
 doOp v LStdErr [] = v ++ "MKPTR(vm, stderr)"
 
-doOp v LFork [x] = v ++ "vmThread(vm, " ++ cname (MN 0 "EVAL") ++ ", " ++ creg x ++ ")"
+doOp v LFork [x] = v ++ "MKPTR(vm, vmThread(vm, " ++ cname (MN 0 "EVAL") ++ ", " ++ creg x ++ "))"
 doOp v LVMPtr [] = v ++ "MKPTR(vm, vm)"
 doOp v LNoOp [x] = ""
 doOp _ _ _ = "FAIL"
