@@ -36,7 +36,7 @@ data PrimFn = LPlus | LMinus | LTimes | LDiv | LEq | LLt | LLe | LGt | LGe
 
             | LStrHead | LStrTail | LStrCons | LStrIndex | LStrRev
             | LStdIn | LStdOut | LStdErr
-            | LNoOp
+            | LFork | LVMPtr | LNoOp
   deriving (Show, Eq)
 
 -- Supported target languages for foreign calls

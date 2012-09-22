@@ -47,4 +47,7 @@ mkForeign : Foreign x -> x
 mkLazyForeign : Foreign x -> x
 -- mkForeign and mkLazyForeign compiled as primitives
 
+fork : |(thread:IO ()) -> IO Ptr
+fork x = io_return prim__vm -- compiled specially
+
 

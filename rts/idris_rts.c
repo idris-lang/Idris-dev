@@ -3,6 +3,8 @@
 #include <string.h>
 #include <unistd.h>
 #include <stdarg.h>
+#include <assert.h>
+#include <pthread.h>
 
 #include "idris_rts.h"
 #include "idris_gc.h"
@@ -31,7 +33,30 @@ VM* init_vm(int stack_size, size_t heap_size) {
     vm -> heap_growth = heap_size;
     vm -> ret = NULL;
     vm -> reg1 = NULL;
+
+    vm -> inbox = malloc(1024*sizeof(VAL));
+    vm -> inbox_end = vm -> inbox + 1024;
+    vm -> inbox_ptr = vm -> inbox;
+    vm -> inbox_write = vm -> inbox;
+
+    pthread_mutex_init(&(vm -> inbox_lock), NULL);
+    pthread_mutex_init(&(vm -> inbox_block), NULL);
+    pthread_cond_init(&(vm -> inbox_waiting), NULL);
+
     return vm;
+}
+
+void terminate(VM* vm) {
+    free(vm->inbox);
+    free(vm->valstack);
+    free(vm->intstack);
+    free(vm->floatstack);
+    free(vm->heap);
+    if (vm->oldheap != NULL) { free(vm->oldheap); }
+    pthread_mutex_destroy(&(vm -> inbox_lock));
+    pthread_mutex_destroy(&(vm -> inbox_block));
+    pthread_cond_destroy(&(vm -> inbox_waiting));
+    free(vm);
 }
 
 void* allocate(VM* vm, size_t size) {
@@ -305,6 +330,136 @@ VAL idris_strRev(VM* vm, VAL str) {
     return cl;
 }
 
+typedef struct {
+    VM* vm;
+    func fn;
+    VAL arg;
+} ThreadData;
+
+void* runThread(void* arg) {
+    ThreadData* td = (ThreadData*)arg;
+    VM* vm = td->vm;
+
+    printf("We're off\n");
+
+    TOP(0) = td->arg;
+    BASETOP(0);
+    ADDTOP(1);
+    td->fn(vm, NULL);
+
+    printf("We're done\n");
+    free(td);
+}
+
+void* vmThread(VM* callvm, func f, VAL arg) {
+    VM* vm = init_vm(callvm->stack_max - callvm->valstack, callvm->heap_size);
+    pthread_t t;
+    pthread_attr_t attr;
+    size_t stacksize;
+
+    pthread_attr_init(&attr);
+    pthread_attr_getstacksize (&attr, &stacksize);
+    pthread_attr_setstacksize (&attr, stacksize*64);
+    printf("Default stack size = %li\n", stacksize);
+
+    ThreadData *td = malloc(sizeof(ThreadData));
+    td->vm = vm;
+    td->fn = f;
+    td->arg = copyTo(vm, arg);
+
+    dumpVal(arg);
+    dumpVal(td->arg);
+
+    printf("Threading\n");
+    pthread_create(&t, &attr, runThread, td);
+    return vm;
+}
+
+// VM is assumed to be a different vm from the one x lives on (so we don't need
+// to worry about gc moving things, as the VM x is on will not be allocating)
+
+VAL copyTo(VM* vm, VAL x) {
+    int i;
+    VAL* argptr;
+    Closure* cl;
+    if (x==NULL || ISINT(x)) {
+        return x;
+    }
+    switch(x->ty) {
+    case CON:
+        cl = allocCon(vm, x->info.c.arity);
+        cl->info.c.tag = x->info.c.tag;
+        cl->info.c.arity = x->info.c.arity;
+
+        argptr = (VAL*)(cl->info.c.args);
+        for(i = 0; i < x->info.c.arity; ++i) {
+            *argptr = copyTo(vm, *((VAL*)(x->info.c.args)+i)); // recursive version
+            argptr++;
+        }
+        break;
+    case FLOAT:
+        cl = MKFLOAT(vm, x->info.f);
+        break;
+    case STRING:
+        cl = MKSTR(vm, x->info.str);
+        break;
+    case BIGINT:
+        cl = MKBIGM(vm, x->info.ptr);
+        break;
+    case PTR:
+        cl = MKPTR(vm, x->info.ptr);
+        break;
+    case FWD: 
+        assert(0); // We're in trouble if this happens...
+        return x->info.ptr;
+    }
+    return cl;
+}
+
+// Add a message to another VM's message queue
+void sendMessage(VM* sender, VM* dest, VAL msg) {
+    VAL dmsg = copyTo(dest, msg);
+    pthread_mutex_lock(&(dest->inbox_lock));
+
+    *(dest->inbox_write) = dmsg;
+    
+    dest->inbox_write++;
+    if (dest->inbox_write >= dest->inbox_end) {
+        dest->inbox_write = dest->inbox;
+    }
+
+    if (dest->inbox_write == dest->inbox_ptr) {
+        fprintf(stderr, "Inbox full"); // Maybe grow it instead...
+        exit(-1);
+    }
+
+    // Wake up the other thread
+    pthread_cond_signal(&(dest->inbox_waiting));
+
+    pthread_mutex_unlock(&(dest->inbox_lock));
+}
+
+// block until there is a message in the queue
+VAL recvMessage(VM* vm) {
+    pthread_mutex_lock(&vm->inbox_block);
+    pthread_cond_wait(&vm->inbox_waiting, &vm->inbox_block);
+
+    VAL msg = *(vm->inbox_ptr);
+    if (msg != NULL) {
+        pthread_mutex_lock(&(vm->inbox_lock));
+        *(vm->inbox_ptr) = NULL;
+        vm->inbox_ptr++;
+        if (vm->inbox_ptr >= vm->inbox_end) {
+            vm->inbox_ptr = vm->inbox;
+        }
+        pthread_mutex_unlock(&(vm->inbox_lock));
+    } else {
+        fprintf(stderr, "No messages waiting");
+        exit(-1);
+    }
+
+    pthread_mutex_unlock(&vm->inbox_block);
+}
 
 void stackOverflow() {
   fprintf(stderr, "Stack overflow");

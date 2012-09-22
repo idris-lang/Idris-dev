@@ -163,6 +163,8 @@ primitives =
     (1, LStrRev) total,
    Prim (UN "prim__readString") (ty [PtrType] StrType) 1 (p_cantreduce)
      (1, LReadStr) partial,
+   Prim (UN "prim__vm") (ty [] PtrType) 0 (p_cantreduce)
+     (0, LVMPtr) total,
    -- Streams
    Prim (UN "prim__stdin") (ty [] PtrType) 0 (p_cantreduce)
     (0, LStdIn) partial,

@@ -114,6 +114,9 @@ instance ToIR (TT Name) where
           | (P _ (UN "lazy") _, [_, arg]) <- unApply tm
               = do arg' <- ir' env arg
                    return $ LLazyExp arg'
+          | (P _ (UN "fork") _, [arg]) <- unApply tm
+              = do arg' <- ir' env arg
+                   return $ LOp LFork [LLazyExp arg']
           | (P _ (UN "prim__IO") _, [v]) <- unApply tm
               = do v' <- ir' env v
                    return v'

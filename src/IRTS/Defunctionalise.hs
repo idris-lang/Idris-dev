@@ -63,6 +63,7 @@ addApps defs (n, LFun _ args e) = (n, LFun n args (aa args e))
     aa env (LCase e alts) = LCase (eEVAL (aa env e)) (map (aaAlt env) alts)
     aa env (LConst c) = LConst c
     aa env (LForeign l t n args) = LForeign l t n (map (aaF env) args)
+    aa env (LOp LFork args) = LOp LFork (map (aa env) args)
     aa env (LOp f args) = LOp f (map (eEVAL . (aa env)) args)
     aa env (LError e) = LError e
 

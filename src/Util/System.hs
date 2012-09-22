@@ -21,7 +21,7 @@ tempfile = do env <- environment "TMPDIR"
               let dir = case env of
                               Nothing -> "/tmp"
                               (Just d) -> d
-              openTempFile dir "esc"
+              openTempFile dir "idris"
 
 environment :: String -> IO (Maybe String)
 environment x = catchIO (do e <- getEnv x

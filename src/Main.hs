@@ -130,7 +130,7 @@ showver = do putStrLn $ "Idris version " ++ ver
              exitWith ExitSuccess
 
 showLibs = do dir <- getDataDir
-              putStrLn $ "-L" ++ dir ++ "/rts -lidris_rts"
+              putStrLn $ "-L" ++ dir ++ "/rts -lidris_rts -lgmp -lpthread"
               exitWith ExitSuccess
 
 showIncs = do dir <- getDataDir

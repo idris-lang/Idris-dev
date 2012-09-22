@@ -5,4 +5,5 @@ int main(int argc, char* argv[]) {
 #ifdef IDRIS_TRACE
     gcInfo(vm, 1);
 #endif
+    terminate(vm);
 }

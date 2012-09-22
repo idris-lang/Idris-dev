@@ -44,7 +44,7 @@ codegenC defs out exec incs objs libs dbg
                      gccDbg dbg ++
                      " " ++ tmpn ++
                      " `idris --link` `idris --include` " ++ libs ++
-                     " -lidris_rts -lgmp -o " ++ out
+                     " -o " ++ out
          -- putStrLn cout
          exit <- system gcc
          when (exit /= ExitSuccess) $
@@ -237,5 +237,7 @@ doOp v LStdIn [] = v ++ "MKPTR(vm, stdin)"
 doOp v LStdOut [] = v ++ "MKPTR(vm, stdout)"
 doOp v LStdErr [] = v ++ "MKPTR(vm, stderr)"
 
+doOp v LFork [x] = v ++ "vmThread(vm, " ++ cname (MN 0 "EVAL") ++ ", " ++ creg x ++ ")"
+doOp v LVMPtr [] = v ++ "MKPTR(vm, vm)"
 doOp v LNoOp [x] = ""
 doOp _ _ _ = "FAIL"

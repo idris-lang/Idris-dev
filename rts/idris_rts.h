@@ -6,11 +6,12 @@
 #include <string.h>
 #include <unistd.h>
 #include <stdarg.h>
+#include <pthread.h>
 
 // Closures
 
 typedef enum {
-    CON, INT, BIGINT, FLOAT, STRING, UNIT, PTR, FWD
+    CON, INT, BIGINT, FLOAT, STRING, UNIT, PTR, MSG, FWD
 } ClosureType;
 
 typedef struct {
@@ -45,6 +46,17 @@ typedef struct {
     char* heap_next;
     char* heap_end;
     VAL* stack_max;
+   
+    pthread_mutex_t inbox_lock;
+    pthread_mutex_t inbox_block;
+    pthread_cond_t inbox_waiting;
+
+    VAL* inbox; // Block of memory for storing messages
+    VAL* inbox_end; // End of block of memory
+
+    VAL* inbox_ptr; // Next message to read
+    VAL* inbox_write; // Location of next message to write
+
     size_t heap_size;
     size_t heap_growth;
     int allocations;
@@ -53,7 +65,10 @@ typedef struct {
     VAL reg1;
 } VM;
 
+// Create a new VM
 VM* init_vm(int stack_size, size_t heap_size);
+// Clean up a VM once it's no longer needed
+void terminate(VM* vm);
 
 // Functions all take a pointer to their VM, and previous stack base, 
 // and return nothing.
@@ -117,6 +132,16 @@ void SLIDE(VM* vm, int args);
 
 void* allocate(VM* vm, size_t size);
 void* allocCon(VM* vm, int arity);
+
+void* vmThread(VM* callvm, func f, VAL arg);
+
+// Copy a structure to another vm's heap
+VAL copyTo(VM* newVM, VAL x);
+
+// Add a message to another VM's message queue
+void sendMessage(VM* sender, VM* dest, VAL msg);
+// block until there is a message in the queue
+VAL recvMessage(VM* vm);
 
 void dumpVal(VAL r);
 void dumpStack(VM* vm);
