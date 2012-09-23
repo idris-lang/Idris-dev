@@ -1,0 +1,8 @@
+Copy content into your ~/.vim directory.
+
+Be sure that the following lines are in your
+.vimrc
+
+syntax on
+filetype on
+filetype plugin indent on
