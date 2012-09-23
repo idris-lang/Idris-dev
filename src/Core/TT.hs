@@ -44,7 +44,10 @@ instance Show FC where
 
 data Err = Msg String
          | InternalMsg String
-         | CantUnify Term Term Err [(Name, Type)] Int -- Int is 'score' - how much we did unify
+         | CantUnify Bool Term Term Err [(Name, Type)] Int 
+              -- Int is 'score' - how much we did unify
+              -- Bool indicates recoverability, True indicates more info may make
+              -- unification succeed
          | NoSuchVariable Name
          | NotInjective Term Term Term
          | CantResolve Term
@@ -59,7 +62,7 @@ data Err = Msg String
 instance Sized Err where
   size (Msg msg) = length msg
   size (InternalMsg msg) = length msg
-  size (CantUnify left right err _ score) = size left + size right + size err
+  size (CantUnify _ left right err _ score) = size left + size right + size err
   size (NoSuchVariable name) = size name
   size (NotInjective l c r) = size l + size c + size r
   size (CantResolve trm) = size trm
@@ -71,7 +74,7 @@ instance Sized Err where
   size (Inaccessible _) = 1
 
 score :: Err -> Int
-score (CantUnify _ _ m _ s) = s + score m
+score (CantUnify _ _ _ m _ s) = s + score m
 score (CantResolve _) = 20
 score (NoSuchVariable _) = 1000
 score _ = 0
@@ -79,14 +82,14 @@ score _ = 0
 instance Show Err where
     show (Msg s) = s
     show (InternalMsg s) = "Internal error: " ++ show s
-    show (CantUnify l r e sc i) = "CantUnify " ++ show l ++ " " ++ show r ++ " "
-                                  ++ show e ++ " in " ++ show sc ++ " " ++ show i
+    show (CantUnify _ l r e sc i) = "CantUnify " ++ show l ++ " " ++ show r ++ " "
+                                      ++ show e ++ " in " ++ show sc ++ " " ++ show i
     show (Inaccessible n) = show n ++ " is not an accessible pattern variable"
     show _ = "Error"
 
 instance Pretty Err where
   pretty (Msg m) = text m
-  pretty (CantUnify l r e _ i) =
+  pretty (CantUnify _ l r e _ i) =
     if size l + size r > breakingSize then
       text "Cannot unify" <+> colon $$
         nest nestingSize (pretty l <+> text "and" <+> pretty r) $$
