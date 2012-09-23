@@ -1,7 +1,7 @@
 {-# LANGUAGE MultiParamTypeClasses, FlexibleInstances,
              PatternGuards #-}
 
-module Core.Evaluate(normalise, normaliseC, normaliseAll,
+module Core.Evaluate(normalise, normaliseTrace, normaliseC, normaliseAll,
                 simplify, specialise, hnf, convEq, convEq',
                 Def(..), Accessibility(..), Totality(..), PReason(..),
                 Context, initContext, ctxtAlist, uconstraints, next_tvar,
@@ -83,22 +83,25 @@ threshold = 1000 -- boredom threshold for evaluation, to prevent infinite typech
 -- Normalise fully type checked terms (so, assume all names/let bindings resolved)
 normaliseC :: Context -> Env -> TT Name -> TT Name
 normaliseC ctxt env t 
-   = evalState (do val <- eval ctxt threshold [] env t []
+   = evalState (do val <- eval False ctxt threshold [] env t []
                    quote 0 val) initEval
 
 normaliseAll :: Context -> Env -> TT Name -> TT Name
 normaliseAll ctxt env t 
-   = evalState (do val <- eval ctxt threshold [] env t [AtREPL]
+   = evalState (do val <- eval False ctxt threshold [] env t [AtREPL]
                    quote 0 val) initEval
 
 normalise :: Context -> Env -> TT Name -> TT Name
-normalise ctxt env t 
-   = evalState (do val <- eval ctxt threshold [] (map finalEntry env) (finalise t) []
+normalise = normaliseTrace False
+
+normaliseTrace :: Bool -> Context -> Env -> TT Name -> TT Name
+normaliseTrace tr ctxt env t 
+   = evalState (do val <- eval tr ctxt threshold [] (map finalEntry env) (finalise t) []
                    quote 0 val) initEval
 
 specialise :: Context -> Env -> [(Name, Int)] -> TT Name -> TT Name
 specialise ctxt env limits t 
-   = evalState (do val <- eval ctxt threshold limits (map finalEntry env) (finalise t) []
+   = evalState (do val <- eval False ctxt threshold limits (map finalEntry env) (finalise t) []
                    quote 0 val) (initEval { limited = limits })
 
 -- Like normalise, but we only reduce functions that are marked as okay to 
@@ -106,13 +109,13 @@ specialise ctxt env limits t
 
 simplify :: Context -> Env -> TT Name -> TT Name
 simplify ctxt env t 
-   = evalState (do val <- eval ctxt threshold [] 
+   = evalState (do val <- eval False ctxt threshold [] 
                                  (map finalEntry env) (finalise t) [Simplify]
                    quote 0 val) initEval
 
 hnf :: Context -> Env -> TT Name -> TT Name
 hnf ctxt env t 
-   = evalState (do val <- eval ctxt threshold [] (map finalEntry env) (finalise t) [HNF]
+   = evalState (do val <- eval False ctxt threshold [] (map finalEntry env) (finalise t) [HNF]
                    quote 0 val) initEval
 
 
@@ -144,8 +147,9 @@ reduction = do ES ns s <- get
 -- Evaluate in a context of locally named things (i.e. not de Bruijn indexed,
 -- such as we might have during construction of a proof)
 
-eval :: Context -> Int -> [(Name, Int)] -> Env -> TT Name -> [EvalOpt] -> Eval Value
-eval ctxt maxred ntimes genv tm opts = ev ntimes [] True [] tm where
+eval :: Bool -> Context -> Int -> [(Name, Int)] -> Env -> TT Name -> 
+        [EvalOpt] -> Eval Value
+eval traceon ctxt maxred ntimes genv tm opts = ev ntimes [] True [] tm where
     spec = Spec `elem` opts
     simpl = Simplify `elem` opts
     atRepl = AtREPL `elem` opts
@@ -216,7 +220,7 @@ eval ctxt maxred ntimes genv tm opts = ev ntimes [] True [] tm where
 --         | spec = specApply ntimes stk env f args 
     apply ntimes_in stk top env f@(VP Ref n ty)        args
       | (True, ntimes) <- usable n ntimes_in
-        = -- trace (show n) $
+        = traceWhen traceon (show stk) $
           do let val = lookupDefAcc Nothing n atRepl ctxt
              case val of
                 [(CaseOp inl _ _ ns tree _ _, Public)]  ->
@@ -629,7 +633,7 @@ initContext = MkContext [] 0 emptyContext
 ctxtAlist :: Context -> [(Name, Def)]
 ctxtAlist ctxt = map (\(n, (d, a, t)) -> (n, d)) $ toAlist (definitions ctxt)
 
-veval ctxt env t = evalState (eval ctxt threshold [] env t []) initEval
+veval ctxt env t = evalState (eval False ctxt threshold [] env t []) initEval
 
 addToCtxt :: Name -> Term -> Type -> Context -> Context
 addToCtxt n tm ty uctxt 

@@ -28,6 +28,7 @@ unify ctxt env topx topy
     = -- case runStateT (un' False [] topx topy) (UI 0 [] []) of
       --    OK (v, UI _ inj []) -> return (filter notTrivial v, inj, [])
       --    _ -> 
+      -- trace ("Unifying " ++ show (topx, topy)) $
                let topxn = normalise ctxt env topx
 	           topyn = normalise ctxt env topy in
 		     case runStateT (un' False [] topxn topyn)

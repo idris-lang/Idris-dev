@@ -1190,14 +1190,14 @@ pClause syn
                    wargs <- many (pWExpr syn)
                    let capp = PApp fc (PRef fc n) 
                                 (iargs ++ cargs ++ map pexp args)
+                   ist <- getState
+                   setState (ist { lastParse = Just n })
                    reserved "with"
                    wval <- pSimpleExpr syn
                    open_block
                    ds <- many1 $ pFunDecl syn
                    let withs = map (fillLHSD n capp wargs) $ concat ds
                    close_block
-                   ist <- getState
-                   setState (ist { lastParse = Just n })
                    pop_indent
                    return $ PWith fc n capp wargs wval withs)
 
