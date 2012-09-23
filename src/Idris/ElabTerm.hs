@@ -235,7 +235,7 @@ elab ist info pattern tcgen fn tm
             ctxt <- get_context
             let guarded = isConName Nothing f ctxt
 --             when True
-            try
+            tryWhen True
                 (do ns <- apply (Var f) (map isph args)
                     let (ns', eargs) 
                          = unzip $

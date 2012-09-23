@@ -441,7 +441,12 @@ try t1 t2 = do s <- get
                                      Error e2 -> if score e1 > score e2 
                                                     then lift (tfail e1) 
                                                     else lift (tfail e2)
-                        
+
+tryWhen :: Bool -> Elab' aux a -> Elab' aux a -> Elab' aux a
+tryWhen True a b = try a b
+tryWhen False a b = a
+
+
 -- Try a selection of tactics. Exactly one must work, all others must fail
 tryAll :: [(Elab' aux a, String)] -> Elab' aux a
 tryAll xs = tryAll' [] (cantResolve, 0) (map fst xs)

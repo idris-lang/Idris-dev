@@ -98,7 +98,7 @@ typedef intptr_t i_int;
 #define ISINT(x) ((((i_int)x)&1) == 1)
 
 #define INTOP(op,x,y) MKINT((i_int)((((i_int)x)>>1) op (((i_int)y)>>1)))
-#define FLOATOP(op,x,y) MKFLOAT(((GETFLOAT(x)) op (GETFLOAT(y))))
+#define FLOATOP(op,x,y) MKFLOAT(vm, ((GETFLOAT(x)) op (GETFLOAT(y))))
 #define FLOATBOP(op,x,y) MKINT((i_int)(((GETFLOAT(x)) op (GETFLOAT(y)))))
 #define ADD(x,y) (void*)(((i_int)x)+(((i_int)y)-1))
 #define MULT(x,y) (MKINT((((i_int)x)>>1) * (((i_int)y)>>1)))
