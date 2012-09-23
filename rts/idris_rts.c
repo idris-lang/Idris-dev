@@ -414,6 +414,9 @@ VAL copyTo(VM* vm, VAL x) {
 
 // Add a message to another VM's message queue
 void sendMessage(VM* sender, VM* dest, VAL msg) {
+    // FIXME: If GC kicks in in the middle of the copy, we're in trouble.
+    // Probably best check there is enough room in advance. (How?)
+
     VAL dmsg = copyTo(dest, msg);
 
     pthread_mutex_lock(&(dest->inbox_lock));
