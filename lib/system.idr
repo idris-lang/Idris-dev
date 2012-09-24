@@ -9,10 +9,10 @@ getArgs = do n <- numArgs
              ga' [] 0 n 
   where
     numArgs : IO Int
-    numArgs = mkForeign (FFun "epic_numArgs" [] FInt)
+    numArgs = mkForeign (FFun "idris_numArgs" [FPtr] FInt) prim__vm
 
     getArg : Int -> IO String
-    getArg x = mkForeign (FFun "epic_getArg" [FInt] FString) x
+    getArg x = mkForeign (FFun "idris_getArg" [FPtr, FInt] (FAny String)) prim__vm x
 
     ga' : List String -> Int -> Int -> IO (List String)
     ga' acc i n = if (i == n) then (return $ reverse acc) else

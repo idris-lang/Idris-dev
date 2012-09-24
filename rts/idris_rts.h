@@ -11,7 +11,7 @@
 // Closures
 
 typedef enum {
-    CON, INT, BIGINT, FLOAT, STRING, UNIT, PTR, MSG, FWD
+    CON, INT, BIGINT, FLOAT, STRING, UNIT, PTR, FWD
 } ClosureType;
 
 typedef struct {
@@ -57,6 +57,9 @@ typedef struct {
     VAL* inbox_ptr; // Next message to read
     VAL* inbox_write; // Location of next message to write
 
+    int argc;
+    VAL* argv; // command line arguments
+
     size_t heap_size;
     size_t heap_growth;
     int allocations;
@@ -66,7 +69,7 @@ typedef struct {
 } VM;
 
 // Create a new VM
-VM* init_vm(int stack_size, size_t heap_size);
+VM* init_vm(int stack_size, size_t heap_size, int argc, char* argv[]);
 // Clean up a VM once it's no longer needed
 void terminate(VM* vm);
 
@@ -169,6 +172,11 @@ VAL idris_strTail(VM* vm, VAL str);
 VAL idris_strCons(VM* vm, VAL x, VAL xs);
 VAL idris_strIndex(VM* vm, VAL str, VAL i);
 VAL idris_strRev(VM* vm, VAL str);
+
+// Command line args
+
+int idris_numArgs(VM* vm);
+VAL idris_getArg(VM* vm, int i);
 
 // Handle stack overflow. 
 // Just reports an error and exits.

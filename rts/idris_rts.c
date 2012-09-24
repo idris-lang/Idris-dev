@@ -9,39 +9,49 @@
 #include "idris_rts.h"
 #include "idris_gc.h"
 
-VM* init_vm(int stack_size, size_t heap_size) {
+VM* init_vm(int stack_size, size_t heap_size, int argc, char* argv[]) {
     VAL* valstack = malloc(stack_size*sizeof(VAL));
     int* intstack = malloc(stack_size*sizeof(int));
     double* floatstack = malloc(stack_size*sizeof(double));
 
     VM* vm = malloc(sizeof(VM));
-    vm -> valstack = valstack;
-    vm -> valstack_top = valstack;
-    vm -> valstack_base = valstack;
-    vm -> intstack = intstack;
-    vm -> intstack_ptr = intstack;
-    vm -> floatstack = floatstack;
-    vm -> floatstack_ptr = floatstack;
-    vm -> stack_max = valstack + stack_size;
-    vm -> heap = malloc(heap_size);
-    vm -> oldheap = NULL;
-    vm -> heap_next = vm -> heap;
-    vm -> heap_end = vm -> heap + heap_size;
-    vm -> heap_size = heap_size;
-    vm -> collections = 0;
-    vm -> allocations = 0;
-    vm -> heap_growth = heap_size;
-    vm -> ret = NULL;
-    vm -> reg1 = NULL;
+    vm->valstack = valstack;
+    vm->valstack_top = valstack;
+    vm->valstack_base = valstack;
+    vm->intstack = intstack;
+    vm->intstack_ptr = intstack;
+    vm->floatstack = floatstack;
+    vm->floatstack_ptr = floatstack;
+    vm->stack_max = valstack + stack_size;
+    vm->heap = malloc(heap_size);
+    vm->oldheap = NULL;
+    vm->heap_next = vm->heap;
+    vm->heap_end = vm->heap + heap_size;
+    vm->heap_size = heap_size;
+    vm->collections = 0;
+    vm->allocations = 0;
+    vm->heap_growth = heap_size;
+    vm->ret = NULL;
+    vm->reg1 = NULL;
 
-    vm -> inbox = malloc(1024*sizeof(VAL));
-    vm -> inbox_end = vm -> inbox + 1024;
-    vm -> inbox_ptr = vm -> inbox;
-    vm -> inbox_write = vm -> inbox;
+    vm->inbox = malloc(1024*sizeof(VAL));
+    vm->inbox_end = vm->inbox + 1024;
+    vm->inbox_ptr = vm->inbox;
+    vm->inbox_write = vm->inbox;
 
-    pthread_mutex_init(&(vm -> inbox_lock), NULL);
-    pthread_mutex_init(&(vm -> inbox_block), NULL);
-    pthread_cond_init(&(vm -> inbox_waiting), NULL);
+    pthread_mutex_init(&(vm->inbox_lock), NULL);
+    pthread_mutex_init(&(vm->inbox_block), NULL);
+    pthread_cond_init(&(vm->inbox_waiting), NULL);
+
+    int i;
+    
+    // Assumption: there's enough space for this in the initial heap.
+    vm->argv = malloc(argc*sizeof(VAL));
+    vm->argc = argc;
+
+    for(i = 0; i < argc; ++i) {
+        vm->argv[i] = MKSTR(vm, argv[i]);
+    }
 
     return vm;
 }
@@ -52,6 +62,7 @@ void terminate(VM* vm) {
     free(vm->intstack);
     free(vm->floatstack);
     free(vm->heap);
+    free(vm->argv);
     if (vm->oldheap != NULL) { free(vm->oldheap); }
     pthread_mutex_destroy(&(vm -> inbox_lock));
     pthread_mutex_destroy(&(vm -> inbox_block));
@@ -349,13 +360,14 @@ void* runThread(void* arg) {
     td->fn(vm, NULL);
 
     free(td);
+    return NULL;
 }
 
 void* vmThread(VM* callvm, func f, VAL arg) {
-    VM* vm = init_vm(callvm->stack_max - callvm->valstack, callvm->heap_size);
+    VM* vm = init_vm(callvm->stack_max - callvm->valstack, callvm->heap_size, 0, NULL);
     pthread_t t;
     pthread_attr_t attr;
-    size_t stacksize;
+//    size_t stacksize;
 
     pthread_attr_init(&attr);
 //    pthread_attr_getstacksize (&attr, &stacksize);
@@ -405,9 +417,8 @@ VAL copyTo(VM* vm, VAL x) {
     case PTR:
         cl = MKPTR(vm, x->info.ptr);
         break;
-    case FWD: 
+    default:
         assert(0); // We're in trouble if this happens...
-        return x->info.ptr;
     }
     return cl;
 }
@@ -463,6 +474,14 @@ VAL recvMessage(VM* vm) {
     }
 
     return msg;
+}
+
+int idris_numArgs(VM* vm) {
+    return vm->argc;
+}
+
+VAL idris_getArg(VM* vm, int i) {
+    return vm->argv[i];
 }
 
 void stackOverflow() {

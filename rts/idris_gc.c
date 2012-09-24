@@ -5,7 +5,7 @@
 VAL copy(VM* vm, VAL x) {
     int i;
     VAL* argptr;
-    Closure* cl;
+    Closure* cl = NULL;
     if (x==NULL || ISINT(x)) {
         return x;
     }
@@ -36,6 +36,8 @@ VAL copy(VM* vm, VAL x) {
         break;
     case FWD:
         return x->info.ptr;
+    default:
+        break;
     }
     x->ty = FWD;
     x->info.ptr = cl;
@@ -62,6 +64,8 @@ void cheney(VM *vm) {
                argptr++;
            }
            break;
+       default: // Nothing to copy
+           break;
        }
        scan += inc;
     }
@@ -87,6 +91,9 @@ void gc(VM* vm) {
         *root = copy(vm, *root);
     }
     for(root = vm->inbox_ptr; root < vm->inbox_write; ++root) {
+        *root = copy(vm, *root);
+    }
+    for(root = vm->argv; root < vm->argv + vm->argc; ++root) {
         *root = copy(vm, *root);
     }
     vm->ret = copy(vm, vm->ret);
