@@ -150,6 +150,7 @@ data Opt = Filename String
          | Ver
          | Usage
          | ShowLibs
+         | ShowLibdir
          | ShowIncs
          | NoPrelude
          | NoREPL

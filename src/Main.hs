@@ -52,6 +52,7 @@ runIdris opts =
        when (Usage `elem` opts) $ liftIO usage
        when (ShowIncs `elem` opts) $ liftIO showIncs
        when (ShowLibs `elem` opts) $ liftIO showLibs
+       when (ShowLibdir `elem` opts) $ liftIO showLibdir
        setREPL runrepl
        setVerbose runrepl
        when (Verbose `elem` opts) $ setVerbose True
@@ -133,6 +134,10 @@ showLibs = do dir <- getDataDir
               putStrLn $ "-L" ++ dir ++ "/rts -lidris_rts -lgmp -lpthread"
               exitWith ExitSuccess
 
+showLibdir = do dir <- getDataDir
+                putStrLn $ dir ++ "/"
+                exitWith ExitSuccess
+
 showIncs = do dir <- getDataDir
               putStrLn $ "-I" ++ dir ++ "/rts"
               exitWith ExitSuccess
@@ -150,6 +155,7 @@ parseArgs ("--nocoverage":ns)   = liftM (NoCoverage : ) (parseArgs ns)
 parseArgs ("--errorcontext":ns) = liftM (ErrContext : ) (parseArgs ns)
 parseArgs ("--help":ns)         = liftM (Usage : ) (parseArgs ns)
 parseArgs ("--link":ns)         = liftM (ShowLibs : ) (parseArgs ns)
+parseArgs ("--libdir":ns)       = liftM (ShowLibdir : ) (parseArgs ns)
 parseArgs ("--include":ns)      = liftM (ShowIncs : ) (parseArgs ns)
 parseArgs ("--version":ns)      = liftM (Ver : ) (parseArgs ns)
 parseArgs ("--verbose":ns)      = liftM (Verbose : ) (parseArgs ns)
@@ -178,6 +184,7 @@ usagemsg = "Idris version " ++ ver ++ "\n" ++
            "\t--noprelude       Don't import the prelude\n" ++
            "\t--typeintype      Disable universe checking\n" ++
            "\t--log [level]     Set debugging log level\n" ++
-	   "\t--link            Show library directories and exit (for C linking)\n" ++
-	   "\t--include         Show include directories and exit (for C linking)\n"
+	   "\t--libdir          Show library install directory and exit\n" ++
+	   "\t--link            Show C library directories and exit (for C linking)\n" ++
+	   "\t--include         Show C include directories and exit (for C linking)\n"
 
