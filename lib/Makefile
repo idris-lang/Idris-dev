@@ -4,7 +4,7 @@ check: .PHONY
 
 recheck: clean check
 
-install: check
+install: 
 	$(IDRIS) --install base.ipkg
 
 clean: .PHONY
