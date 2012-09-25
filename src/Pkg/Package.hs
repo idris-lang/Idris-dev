@@ -64,6 +64,7 @@ installPkg pkgdesc
           case (execout pkgdesc) of
               Nothing -> mapM_ (installIBC (pkgname pkgdesc)) (modules pkgdesc)
               Just o -> return () -- do nothing, keep executable locally, for noe
+          mapM_ (installObj (pkgname pkgdesc)) (objs pkgdesc)
 
 buildMod :: [Opt] -> Name -> IO ()
 buildMod opts n = do let f = map slash $ show n
@@ -113,6 +114,14 @@ installIBC p m = do let f = toIBCFile m
                     return ()
     where getDest (UN n) = ""
           getDest (NS n ns) = concat (intersperse "/" (reverse ns)) ++ "/" ++ getDest n 
+
+installObj :: String -> String -> IO ()
+installObj p o = do d <- getDataDir
+                    let destdir = d ++ "/" ++ p ++ "/"
+                    putStrLn $ "Installing " ++ o ++ " to " ++ destdir
+                    system $ "mkdir -p " ++ destdir 
+                    system $ "install " ++ o ++ " " ++ destdir
+                    return ()
 
 make :: Maybe String -> IO ()
 make Nothing = return ()
