@@ -17,11 +17,12 @@ import Core.CoreParser
 import Core.TT
 import Core.Evaluate
 
-import Text.ParserCombinators.Parsec
-import Text.ParserCombinators.Parsec.Error
-import Text.ParserCombinators.Parsec.Expr
-import Text.ParserCombinators.Parsec.Language
-import qualified Text.ParserCombinators.Parsec.Token as PTok
+import Text.Parsec
+import Text.Parsec.Error
+import Text.Parsec.Expr
+import Text.Parsec.Language
+import Text.Parsec.String
+import qualified Text.Parsec.Token as PTok
 
 import Data.List
 import Control.Monad.State
