@@ -165,9 +165,14 @@ data Opt = Filename String
          | Verbose
          | IBCSubDir String
          | ImportDir String
+         | PkgBuild String
+         | PkgInstall String
+         | PkgClean String
+         | WarnOnly
+         | Pkg String
          | BCAsm String
          | FOVM String
-    deriving Eq
+    deriving (Show, Eq)
 
 
 -- Parsed declarations

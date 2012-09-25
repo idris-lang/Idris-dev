@@ -257,6 +257,12 @@ setIBCSubDir fp = do i <- get
 valIBCSubDir :: IState -> Idris FilePath
 valIBCSubDir i = return (opt_ibcsubdir (idris_options i))
 
+addImportDir :: FilePath -> Idris ()
+addImportDir fp = do i <- get
+                     let opts = idris_options i
+                     let opt' = opts { opt_importdirs = fp : opt_importdirs opts }
+                     put (i { idris_options = opt' })
+
 setImportDirs :: [FilePath] -> Idris ()
 setImportDirs fps = do i <- get
                        let opts = idris_options i
@@ -264,9 +270,8 @@ setImportDirs fps = do i <- get
                        put (i { idris_options = opt' })
 
 allImportDirs :: IState -> Idris [FilePath]
-allImportDirs i = do datadir <- liftIO $ getDataDir
-                     let optdirs = opt_importdirs (idris_options i)
-                     return ("." : (optdirs ++ [datadir]))
+allImportDirs i = do let optdirs = opt_importdirs (idris_options i)
+                     return ("." : optdirs)
 
 impShow :: Idris Bool
 impShow = do i <- get

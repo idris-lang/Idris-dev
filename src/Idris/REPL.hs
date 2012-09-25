@@ -365,6 +365,35 @@ displayHelp = let vstr = showVersion version in
             l ++ take (c1 - length l) (repeat ' ') ++ 
             m ++ take (c2 - length m) (repeat ' ') ++ r ++ "\n"
 
+parseArgs :: [String] -> [Opt]
+parseArgs [] = []
+parseArgs ("--log":lvl:ns)      = OLogging (read lvl) : (parseArgs ns)
+parseArgs ("--noprelude":ns)    = NoPrelude : (parseArgs ns)
+parseArgs ("--check":ns)        = NoREPL : (parseArgs ns)
+parseArgs ("-o":n:ns)           = NoREPL : Output n : (parseArgs ns)
+parseArgs ("-no":n:ns)          = NoREPL : NewOutput n : (parseArgs ns)
+parseArgs ("--typecase":ns)     = TypeCase : (parseArgs ns)
+parseArgs ("--typeintype":ns)   = TypeInType : (parseArgs ns)
+parseArgs ("--nocoverage":ns)   = NoCoverage : (parseArgs ns)
+parseArgs ("--errorcontext":ns) = ErrContext : (parseArgs ns)
+parseArgs ("--help":ns)         = Usage : (parseArgs ns)
+parseArgs ("--link":ns)         = ShowLibs : (parseArgs ns)
+parseArgs ("--libdir":ns)       = ShowLibdir : (parseArgs ns)
+parseArgs ("--include":ns)      = ShowIncs : (parseArgs ns)
+parseArgs ("--version":ns)      = Ver : (parseArgs ns)
+parseArgs ("--verbose":ns)      = Verbose : (parseArgs ns)
+parseArgs ("--ibcsubdir":n:ns)  = IBCSubDir n : (parseArgs ns)
+parseArgs ("-i":n:ns)           = ImportDir n : (parseArgs ns)
+parseArgs ("--warn":ns)         = WarnOnly : (parseArgs ns)
+parseArgs ("--package":n:ns)    = Pkg n : (parseArgs ns)
+parseArgs ("-p":n:ns)           = Pkg n : (parseArgs ns)
+parseArgs ("--build":n:ns)      = PkgBuild n : (parseArgs ns)
+parseArgs ("--install":n:ns)    = PkgInstall n : (parseArgs ns)
+parseArgs ("--clean":n:ns)      = PkgClean n : (parseArgs ns)
+parseArgs ("--bytecode":n:ns)   = NoREPL : BCAsm n : (parseArgs ns)
+parseArgs ("--fovm":n:ns)       = NoREPL : FOVM n : (parseArgs ns)
+parseArgs (n:ns)                = Filename n : (parseArgs ns)
+
 help =
   [ (["Command"], "Arguments", "Purpose"),
     ([""], "", ""),
@@ -402,6 +431,7 @@ idrisMain opts =
        let importdirs = opt getImportDir opts
        let bcs = opt getBC opts
        let vm = opt getFOVM opts
+       let pkgdirs = opt getPkgDir opts
        setREPL runrepl
        setVerbose runrepl
        when (Verbose `elem` opts) $ setVerbose True
@@ -418,6 +448,8 @@ idrisMain opts =
          [] -> setIBCSubDir ""
          (d:_) -> setIBCSubDir d
        setImportDirs importdirs
+       addPkgDir "base"
+       mapM_ addPkgDir pkgdirs
        elabPrims
        when (not (NoPrelude `elem` opts)) $ do x <- loadModule "prelude"
                                                return ()
@@ -441,6 +473,10 @@ idrisMain opts =
     makeOption NoCoverage = setCoverage False
     makeOption ErrContext = setErrContext True
     makeOption _ = return ()
+
+    addPkgDir :: String -> Idris ()
+    addPkgDir p = do ddir <- liftIO $ getDataDir 
+                     addImportDir (ddir ++ "/" ++ p)
 
 getFile :: Opt -> Maybe String
 getFile (Filename str) = Just str
@@ -469,6 +505,19 @@ getIBCSubDir _ = Nothing
 getImportDir :: Opt -> Maybe String
 getImportDir (ImportDir str) = Just str
 getImportDir _ = Nothing
+
+getPkgDir :: Opt -> Maybe String
+getPkgDir (Pkg str) = Just str
+getPkgDir _ = Nothing
+
+getPkg :: Opt -> Maybe (Bool, String)
+getPkg (PkgBuild str) = Just (False, str)
+getPkg (PkgInstall str) = Just (True, str)
+getPkg _ = Nothing
+
+getPkgClean :: Opt -> Maybe String
+getPkgClean (PkgClean str) = Just str
+getPkgClean _ = Nothing
 
 opt :: (Opt -> Maybe a) -> [Opt] -> [a]
 opt = mapMaybe 

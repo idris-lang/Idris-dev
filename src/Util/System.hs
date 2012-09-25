@@ -1,5 +1,5 @@
 {-# LANGUAGE CPP #-}
-module Util.System(tempfile,environment) where
+module Util.System(tempfile,environment,getCC) where
 
 -- System helper functions.
 
@@ -15,6 +15,12 @@ catchIO = CE.catch
 #else
 catchIO = catch
 #endif
+
+getCC :: IO String
+getCC = do env <- environment "IDRIS_CC"
+           case env of
+                Nothing -> return "gcc"
+                Just cc -> return cc
 
 tempfile :: IO (FilePath, Handle)
 tempfile = do env <- environment "TMPDIR"

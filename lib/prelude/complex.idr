@@ -6,7 +6,7 @@
 module prelude.complex
 
 import builtins
-
+import prelude
 
 ------------------------------ Rectangular form 
 

@@ -38,7 +38,7 @@ codegenC defs out exec incs objs libs dbg
          hFlush tmph
          hClose tmph
          let useclang = False
-         let comp = if useclang then "clang" else "gcc"
+         comp <- getCC
          let gcc = comp ++ " -I. " ++ objs ++ " -x c " ++ 
                      (if exec then "" else " - c ") ++
                      gccDbg dbg ++

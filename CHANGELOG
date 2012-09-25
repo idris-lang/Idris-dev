@@ -1,7 +1,13 @@
 New in 0.9.4:
 -------------
 
+User visible changes:
 
+* Simple packaging system
+
+Internal changes:
+
+* Improve overloading resolution (especially where this is a type error)
 
 New in 0.9.3:
 -------------

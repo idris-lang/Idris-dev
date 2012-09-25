@@ -15,7 +15,7 @@ test : .PHONY
 	make -C test
 
 relib: .PHONY
-	make -C lib clean
+	make -C lib IDRIS=../dist/build/idris/idris clean
 	make -C lib IDRIS=../dist/build/idris/idris
 
 linecount : .PHONY

@@ -1,26 +1,14 @@
 
 check: .PHONY
-	$(IDRIS) --noprelude --verbose --check checkall.idr
+	$(IDRIS) --build base.ipkg
 
 recheck: clean check
 
 install: check
-	mkdir -p $(TARGET)/prelude
-	mkdir -p $(TARGET)/network
-	mkdir -p $(TARGET)/language
-	mkdir -p $(TARGET)/control/monad
-	install *.ibc $(TARGET)
-	install prelude/*.ibc $(TARGET)/prelude
-	install network/*.ibc $(TARGET)/network
-	install language/*.ibc $(TARGET)/language
-	install control/monad/*.ibc $(TARGET)/control/monad
+	$(IDRIS) --install base.ipkg
 
 clean: .PHONY
-	rm -f *.ibc
-	rm -f prelude/*.ibc
-	rm -f network/*.ibc
-	rm -f language/*.ibc
-	rm -f control/monad/*.ibc
+	$(IDRIS) --clean base.ipkg
 
 linecount: .PHONY
 	wc -l *.idr network/*.idr language/*.idr prelude/*.idr control/monad/*.idr
