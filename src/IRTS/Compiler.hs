@@ -34,7 +34,7 @@ compile target f tm
         hdrs <- getHdrs
         let defs = defsIn ++ [(MN 0 "runMain", maindef)]
         -- iputStrLn $ showSep "\n" (map show defs)
-        let (nexttag, tagged) = addTags 0 (liftAll defs)
+        let (nexttag, tagged) = addTags 65536 (liftAll defs)
         let ctxtIn = addAlist tagged emptyContext
         let defuns = defunctionalise nexttag ctxtIn
         -- iputStrLn $ showSep "\n" (map show (toAlist defuns))
@@ -100,7 +100,7 @@ mkLDecl n (Function tm _) = do e <- ir tm
                                return (declArgs [] n e)
 mkLDecl n (CaseOp _ _ pats _ _ args sc) = do e <- ir (args, sc)
                                              return (declArgs [] n e)
-mkLDecl n (TyDecl (DCon t a) _) = return $ LConstructor n (-1) a
+mkLDecl n (TyDecl (DCon t a) _) = return $ LConstructor n t a
 mkLDecl n (TyDecl (TCon t a) _) = return $ LConstructor n (-1) a
 mkLDecl n _ = return (LFun n [] (LError ("Impossible declaration " ++ show n)))
 

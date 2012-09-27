@@ -60,8 +60,10 @@ type LDefs = Ctxt LDecl
 
 addTags :: Int -> [(Name, LDecl)] -> (Int, [(Name, LDecl)])
 addTags i ds = tag i ds []
-  where tag i ((n, LConstructor n' t a) : as) acc
+  where tag i ((n, LConstructor n' (-1) a) : as) acc
             = tag (i + 1) as ((n, LConstructor n' i a) : acc) 
+        tag i ((n, LConstructor n' t a) : as) acc
+            = tag i as ((n, LConstructor n' t a) : acc) 
         tag i (x : as) acc = tag i as (x : acc)
         tag i [] acc  = (i, reverse acc)
 
