@@ -221,7 +221,14 @@ elabCon info syn tn (n, t_in, fc)
 
 elabClauses :: ElabInfo -> FC -> FnOpts -> Name -> [PClause] -> Idris ()
 elabClauses info fc opts n_in cs = let n = liftname info n_in in  
-      do pats_in <- mapM (elabClause info (TCGen `elem` opts)) cs
+      do ctxt <- getContext
+         -- Check n actually exists
+         case lookupTy Nothing n ctxt of
+            [] -> tclift $ tfail $ (At fc (NoTypeDecl n))
+            _ -> return ()
+         pats_in <- mapM (elabClause info (TCGen `elem` opts)) cs
+         
+         
          solveDeferred n
          let pats = mapMaybe id pats_in
          logLvl 3 (showSep "\n" (map (\ (l,r) -> 

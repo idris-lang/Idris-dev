@@ -49,6 +49,7 @@ data Err = Msg String
               -- Bool indicates recoverability, True indicates more info may make
               -- unification succeed
          | NoSuchVariable Name
+         | NoTypeDecl Name
          | NotInjective Term Term Term
          | CantResolve Term
          | CantResolveAlts [String]
@@ -64,6 +65,7 @@ instance Sized Err where
   size (InternalMsg msg) = length msg
   size (CantUnify _ left right err _ score) = size left + size right + size err
   size (NoSuchVariable name) = size name
+  size (NoTypeDecl name) = size name
   size (NotInjective l c r) = size l + size c + size r
   size (CantResolve trm) = size trm
   size (CantResolveAlts _) = 1

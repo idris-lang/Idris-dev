@@ -94,6 +94,7 @@ pshow i (NotInjective p x y) = "Can't verify injectivity of " ++ show (delab i p
                                                     show (delab i y)
 pshow i (CantResolve c) = "Can't resolve type class " ++ show (delab i c)
 pshow i (CantResolveAlts as) = "Can't disambiguate name: " ++ showSep ", " as
+pshow i (NoTypeDecl n) = "No type declaration for " ++ show n
 pshow i (NoSuchVariable n) = "No such variable " ++ show n
 pshow i (IncompleteTerm t) = "Incomplete term " ++ show (delab i t)
 pshow i UniverseError = "Universe inconsistency"

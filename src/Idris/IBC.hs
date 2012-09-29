@@ -857,6 +857,10 @@ instance (Binary t) => Binary (PDecl' t) where
                 PDSL x1 x2 -> do putWord8 9
                                  put x1
                                  put x2
+                PCAF x1 x2 x3 -> do putWord8 10
+                                    put x1
+                                    put x2
+                                    put x3
         get
           = do i <- getWord8
                case i of
@@ -912,6 +916,10 @@ instance (Binary t) => Binary (PDecl' t) where
                    9 -> do x1 <- get
                            x2 <- get
                            return (PDSL x1 x2)
+                   10 -> do x1 <- get
+                            x2 <- get
+                            x3 <- get
+                            return (PCAF x1 x2 x3)
                    _ -> error "Corrupted binary data for PDecl'"
 
 instance Binary SyntaxInfo where
