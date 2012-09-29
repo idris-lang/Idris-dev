@@ -143,12 +143,14 @@ unify ctxt env topx topy
 
     -- If there are any clashes of constructors, deem it unrecoverable, otherwise some
     -- more work may help.
+    -- FIXME: Depending on how overloading gets used, this may cause problems. Better
+    -- rethink overloading properly...
 
     recoverable (P (DCon _ _) x _) (P (DCon _ _) y _)
         | x == y = True
         | otherwise = False
-    recoverable (P (DCon _ _) x _) (P (TCon _ _) y _) = False
-    recoverable (P (TCon _ _) x _) (P (DCon _ _) y _) = False
+--     recoverable (P (DCon _ _) x _) (P (TCon _ _) y _) = False
+--     recoverable (P (TCon _ _) x _) (P (DCon _ _) y _) = False
     recoverable p@(P _ _ _) (App f a) = recoverable p f
     recoverable (App f a) p@(P _ _ _) = recoverable f p
     recoverable (App f a) (App f' a')
