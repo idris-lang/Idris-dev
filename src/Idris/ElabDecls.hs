@@ -224,7 +224,9 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
       do ctxt <- getContext
          -- Check n actually exists
          case lookupTy Nothing n ctxt of
-            [] -> tclift $ tfail $ (At fc (NoTypeDecl n))
+            [] -> -- TODO: turn into a CAF if there's no arguments
+                  -- question: CAFs in where blocks?
+                  tclift $ tfail $ (At fc (NoTypeDecl n))
             _ -> return ()
          pats_in <- mapM (elabClause info (TCGen `elem` opts)) cs
          

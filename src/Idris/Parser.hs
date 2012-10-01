@@ -412,6 +412,7 @@ pFunDecl' syn = try (do pushIndent
                         addAcc n acc
                         return (PTy syn fc (opts ++ opts') n ty))
             <|> try (pPattern syn)
+            <|> try (pCAF syn)
 
 pUsing :: SyntaxInfo -> IParser [PDecl]
 pUsing syn = 
@@ -847,7 +848,7 @@ pLet syn = try (do reserved "let"; n <- pName;
                    v <- pExpr syn
                    reserved "in";  sc <- pExpr syn
                    return (PLet n ty v sc))
-           <|> (do reserved "let"; fc <- pfc; pat <- pExpr' syn
+           <|> (do reserved "let"; fc <- pfc; pat <- pExpr' (syn { inPattern = True } )
                    symbol "="; v <- pExpr syn
                    reserved "in"; sc <- pExpr syn
                    return (PCase fc v [(pat, sc)]))
@@ -1179,17 +1180,31 @@ pPattern syn = do fc <- pfc
                   clause <- pClause syn
                   return (PClauses fc [] (MN 2 "_") [clause]) -- collect together later
 
+pCAF :: SyntaxInfo -> IParser PDecl
+pCAF syn = do reserved "let"
+              n_in <- pfName; let n = expandNS syn n_in
+              lchar '='
+              t <- pExpr syn
+              pTerminator
+              fc <- pfc
+              return (PCAF fc n t)
+
 pArgExpr syn = let syn' = syn { inPattern = True } in
                    try (pHSimpleExpr syn') <|> pSimpleExtExpr syn'
 
 pRHS :: SyntaxInfo -> Name -> IParser PTerm
 pRHS syn n = do lchar '='; pExpr syn
          <|> do symbol "?="; rhs <- pExpr syn;
-                return (PLet (UN "value") Placeholder rhs (PMetavar n')) 
+                return (addLet rhs)
          <|> do reserved "impossible"; return PImpossible
   where mkN (UN x)   = UN (x++"_lemma_1")
         mkN (NS x n) = NS (mkN x) n
         n' = mkN n
+
+        addLet (PLet n ty val rhs) = PLet n ty val (addLet rhs)
+        addLet (PCase fc t cs) = PCase fc t (map addLetC cs)
+          where addLetC (l, r) = (l, addLet r)
+        addLet rhs = (PLet (UN "value") Placeholder rhs (PMetavar n')) 
 
 pClause :: SyntaxInfo -> IParser PClause
 pClause syn
