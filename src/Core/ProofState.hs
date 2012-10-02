@@ -425,11 +425,21 @@ rewrite tm ctxt env (Bind x (Hole t) xp@(P _ x' _)) | x == x' =
          _ -> fail "Not an equality type"
   where
     -- to make the P for rewrite, replace syntactic occurrences of l in ty with
-    -- and x, and put \x : lt in front
+    -- an x, and put \x : lt in front
     mkP lt l r ty | l == ty = lt
     mkP lt l r (App f a) = let f' = if (r /= f) then mkP lt l r f else f
                                a' = if (r /= a) then mkP lt l r a else a in
                                App f' a'
+    mkP lt l r (Bind n b sc) 
+                         = let b' = mkPB b 
+                               sc' = if (r /= sc) then mkP lt l r sc else sc in
+                               Bind n b' sc'
+        where mkPB (Let t v) = let t' = if (r /= t) then mkP lt l r t else t
+                                   v' = if (r /= v) then mkP lt l r v else v in
+                                   Let t' v'
+              mkPB b = let ty = binderTy b 
+                           ty' = if (r /= ty) then mkP lt l r ty else ty in
+                                 b { binderTy = ty' }
     mkP lt l r x = x
 
     rname = MN 0 "replaced"
