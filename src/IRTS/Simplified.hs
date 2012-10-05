@@ -1,6 +1,7 @@
 module IRTS.Simplified where
 
 import IRTS.Lang
+import IRTS.Defunctionalise
 import Core.TT
 import Data.Maybe
 import Control.Monad.State
@@ -27,51 +28,50 @@ data SAlt = SConCase Int Int Name [Name] SExp
 data SDecl = SFun Name [Name] Int SExp
   deriving Show
 
-hvar :: State (LDefs, Int) Int
+hvar :: State (DDefs, Int) Int
 hvar = do (l, h) <- get
           put (l, h + 1)
           return h
 
-ldefs :: State (LDefs, Int) LDefs
+ldefs :: State (DDefs, Int) DDefs
 ldefs = do (l, h) <- get
            return l
 
-simplify :: Bool -> LExp -> State (LDefs, Int) SExp
-simplify tl (LV (Loc i)) = return (SV (Loc i))
-simplify tl (LV (Glob x)) 
+simplify :: Bool -> DExp -> State (DDefs, Int) SExp
+simplify tl (DV (Loc i)) = return (SV (Loc i))
+simplify tl (DV (Glob x)) 
     = do ctxt <- ldefs
          case lookupCtxt Nothing x ctxt of
-              [LConstructor _ t 0] -> return $ SCon t x []
+              [DConstructor _ t 0] -> return $ SCon t x []
               _ -> return $ SV (Glob x)
-simplify tl (LApp tc (LV (Glob n)) args) 
-                             = do args' <- mapM sVar args
+simplify tl (DApp tc n args) = do args' <- mapM sVar args
                                   mkapp (SApp (tl || tc) n) args'
-simplify tl (LForeign lang ty fn args) 
+simplify tl (DForeign lang ty fn args) 
                             = do args' <- mapM sVar (map snd args)
                                  let fargs = zip (map fst args) args'
                                  mkfapp (SForeign lang ty fn) fargs
-simplify tl (LLet n v e) = do v' <- simplify False v
+simplify tl (DLet n v e) = do v' <- simplify False v
                               e' <- simplify tl e
                               return (SLet (Glob n) v' e')
-simplify tl (LCon i n args) = do args' <- mapM sVar args
-                                 mkapp (SCon i n) args'
-simplify tl (LCase e alts) = do v <- sVar e
+simplify tl (DC i n args) = do args' <- mapM sVar args
+                               mkapp (SCon i n) args'
+simplify tl (DCase e alts) = do v <- sVar e
                                 alts' <- mapM (sAlt tl) alts
                                 case v of 
                                     (x, Nothing) -> return (SCase x alts')
                                     (Glob x, Just e) -> 
                                         return (SLet (Glob x) e (SCase (Glob x) alts'))
-simplify tl (LConst c) = return (SConst c)
-simplify tl (LOp p args) = do args' <- mapM sVar args
+simplify tl (DConst c) = return (SConst c)
+simplify tl (DOp p args) = do args' <- mapM sVar args
                               mkapp (SOp p) args'
-simplify tl (LError str) = return $ SError str
+simplify tl (DError str) = return $ SError str
 
-sVar (LV (Glob x))
+sVar (DV (Glob x))
     = do ctxt <- ldefs
          case lookupCtxt Nothing x ctxt of
-              [LConstructor _ t 0] -> sVar (LCon t x [])
+              [DConstructor _ t 0] -> sVar (DC t x [])
               _ -> return (Glob x, Nothing)
-sVar (LV x) = return (x, Nothing)
+sVar (DV x) = return (x, Nothing)
 sVar e = do e' <- simplify False e
             i <- hvar
             return (Glob (MN i "R"), Just e')
@@ -90,19 +90,19 @@ mkfapp f args = mkapp' f args [] where
        = do sc <- mkapp' f xs ((ty, x) : args)
             return (SLet x e sc)
 
-sAlt tl (LConCase i n args e) = do e' <- simplify tl e
+sAlt tl (DConCase i n args e) = do e' <- simplify tl e
                                    return (SConCase (-1) i n args e')
-sAlt tl (LConstCase c e) = do e' <- simplify tl e
+sAlt tl (DConstCase c e) = do e' <- simplify tl e
                               return (SConstCase c e')
-sAlt tl (LDefaultCase e) = do e' <- simplify tl e
+sAlt tl (DDefaultCase e) = do e' <- simplify tl e
                               return (SDefaultCase e')
 
-checkDefs :: LDefs -> [(Name, LDecl)] -> TC [(Name, SDecl)]
+checkDefs :: DDefs -> [(Name, DDecl)] -> TC [(Name, SDecl)]
 checkDefs ctxt [] = return []
-checkDefs ctxt (con@(n, LConstructor _ _ _) : xs) 
+checkDefs ctxt (con@(n, DConstructor _ _ _) : xs) 
     = do xs' <- checkDefs ctxt xs
          return xs'
-checkDefs ctxt ((n, LFun n' args exp) : xs) 
+checkDefs ctxt ((n, DFun n' args exp) : xs) 
     = do let sexp = evalState (simplify True exp) (ctxt, 0)
          (exp', locs) <- runStateT (scopecheck ctxt (zip args [0..]) sexp) (length args)
          xs' <- checkDefs ctxt xs
@@ -111,13 +111,13 @@ checkDefs ctxt ((n, LFun n' args exp) : xs)
 lvar v = do i <- get
             put (max i v)
 
-scopecheck :: LDefs -> [(Name, Int)] -> SExp -> StateT Int TC SExp 
+scopecheck :: DDefs -> [(Name, Int)] -> SExp -> StateT Int TC SExp 
 scopecheck ctxt env tm = sc env tm where
     sc env (SV (Glob n)) =
        case lookup n (reverse env) of -- most recent first
               Just i -> do lvar i; return (SV (Loc i))
               Nothing -> case lookupCtxt Nothing n ctxt of
-                              [LConstructor _ i ar] ->
+                              [DConstructor _ i ar] ->
                                   if True -- ar == 0 
                                      then return (SCon i n [])
                                      else fail $ "Codegen error: Constructor " ++ show n ++
@@ -127,7 +127,7 @@ scopecheck ctxt env tm = sc env tm where
     sc env (SApp tc f args)
        = do args' <- mapM (scVar env) args
             case lookupCtxt Nothing f ctxt of
-                [LConstructor n tag ar] ->
+                [DConstructor n tag ar] ->
                     if True -- (ar == length args)
                        then return $ SCon tag n args'
                        else fail $ "Codegen error: Constructor " ++ show f ++ 
@@ -141,7 +141,7 @@ scopecheck ctxt env tm = sc env tm where
     sc env (SCon tag f args)
        = do args' <- mapM (scVar env) args
             case lookupCtxt Nothing f ctxt of
-                [LConstructor n tag ar] ->
+                [DConstructor n tag ar] ->
                     if True -- (ar == length args)
                        then return $ SCon tag n args'
                        else fail $ "Codegen error: Constructor " ++ show f ++ 
@@ -166,7 +166,7 @@ scopecheck ctxt env tm = sc env tm where
        case lookup n (reverse env) of -- most recent first
               Just i -> do lvar i; return (Loc i)
               Nothing -> case lookupCtxt Nothing n ctxt of
-                              [LConstructor _ i ar] ->
+                              [DConstructor _ i ar] ->
                                   fail $ "Codegen error : can't pass constructor here"
                               [_] -> return (Glob n)
                               [] -> fail $ "Codegen error: No such variable " ++ show n
@@ -175,7 +175,7 @@ scopecheck ctxt env tm = sc env tm where
     scalt env (SConCase _ i n args e)
        = do let env' = env ++ zip args [length env..]
             tag <- case lookupCtxt Nothing n ctxt of
-                        [LConstructor _ i ar] -> 
+                        [DConstructor _ i ar] -> 
                              if True -- (length args == ar) 
                                 then return i
                                 else fail $ "Codegen error: Constructor " ++ show n ++
