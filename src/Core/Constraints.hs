@@ -11,6 +11,7 @@ import Data.List
 import Data.Maybe
 import qualified Data.Map as M
 
+import Debug.Trace
 
 ucheck :: [(UConstraint, FC)] -> TC ()
 ucheck cs = acyclic rels (map fst (M.toList rels))
@@ -23,11 +24,16 @@ type Relations = M.Map UExp [(UConstraint, FC)]
 mkRels :: [(UConstraint, FC)] -> Relations -> Relations
 mkRels [] acc = acc
 mkRels ((c, f) : cs) acc 
-    = case M.lookup (lhs c) acc of
-            Nothing -> mkRels cs (M.insert (lhs c) [(c,f)] acc)
-            Just rs -> mkRels cs (M.insert (lhs c) ((c,f):rs) acc)
+    | not (ignore c)
+       = case M.lookup (lhs c) acc of
+              Nothing -> mkRels cs (M.insert (lhs c) [(c,f)] acc)
+              Just rs -> mkRels cs (M.insert (lhs c) ((c,f):rs) acc)
+    | otherwise = mkRels cs acc
   where lhs (ULT l _) = l
         lhs (ULE l _) = l
+        ignore (ULE l r) = l == r
+        ignore _ = False
+
 
 acyclic :: Relations -> [UExp] -> TC ()
 acyclic r cvs = checkCycle (FC "root" 0) r [] 0 cvs 

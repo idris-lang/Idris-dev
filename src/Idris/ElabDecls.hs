@@ -554,15 +554,20 @@ elabClass info syn fc constraints tn ps ds
          let constraint = PApp fc (PRef fc tn)
                                   (map (pexp . PRef fc) (map fst ps))
          -- build data declaration
-         ims <- mapM tdecl (filter tydecl ds)
+         let mdecls = filter tydecl ds -- method declarations
+         let mnames = map getMName mdecls
+         logLvl 2 $ "Building methods " ++ show mnames
+         ims <- mapM (tdecl mnames) mdecls
          defs <- mapM (defdecl (map (\ (x,y,z) -> z) ims) constraint) 
                       (filter clause ds)
          let (methods, imethods) = unzip (map (\ (x,y,z) -> (x, y)) ims)
          let cty = impbind ps $ conbind constraints $ pibind methods constraint
          let cons = [(cn, cty, fc)]
-         let ddecl = PData syn fc (PDatadecl tn tty cons)
-         elabDecl info ddecl
+         let ddecl = PDatadecl tn tty cons
+         logLvl 5 $ "Class data " ++ showDImp True ddecl
+         elabData info (syn { no_imp = no_imp syn ++ mnames }) fc ddecl
          -- for each constraint, build a top level function to chase it
+         logLvl 5 $ "Building functions"
          let usyn = syn { using = ps ++ using syn }
          fns <- mapM (cfun cn constraint usyn (map fst imethods)) constraints
          mapM_ (elabDecl info) (concat fns)
@@ -583,11 +588,14 @@ elabClass info syn fc constraints tn ps ds
     conbind (ty : ns) x = PPi constraint (MN 0 "c") ty (conbind ns x)
     conbind [] x = x
 
-    tdecl (PTy syn _ o n t) = do t' <- implicit syn n t
-                                 return ( (n, (toExp (map fst ps) Exp t')),
-                                          (n, (o, (toExp (map fst ps) Imp t'))),
-                                          (n, (syn, o, t) ) )
-    tdecl _ = fail "Not allowed in a class declaration"
+    getMName (PTy _ _ _ n _) = nsroot n
+    tdecl allmeths (PTy syn _ o n t) 
+           = do t' <- implicit' syn allmeths n t
+                logLvl 5 $ "Method " ++ show n ++ " : " ++ showImp True t'
+                return ( (n, (toExp (map fst ps) Exp t')),
+                         (n, (o, (toExp (map fst ps) Imp t'))),
+                         (n, (syn, o, t) ) )
+    tdecl _ _ = fail "Not allowed in a class declaration"
 
     -- Create default definitions 
     defdecl mtys c d@(PClauses fc opts n cs) =

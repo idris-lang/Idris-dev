@@ -526,9 +526,12 @@ addStatics n tm ptm =
 -- This has become a right mess already. Better redo it some time...
 
 implicit :: SyntaxInfo -> Name -> PTerm -> Idris PTerm
-implicit syn n ptm 
+implicit syn n ptm = implicit' syn [] n ptm
+
+implicit' :: SyntaxInfo -> [Name] -> Name -> PTerm -> Idris PTerm
+implicit' syn ignore n ptm 
     = do i <- get
-         let (tm', impdata) = implicitise syn i ptm
+         let (tm', impdata) = implicitise syn ignore i ptm
 --          let (tm'', spos) = findStatics i tm'
          put (i { idris_implicits = addDef n impdata (idris_implicits i) })
          addIBC (IBCImp n)
@@ -537,13 +540,13 @@ implicit syn n ptm
 --          put (i { idris_statics = addDef n spos (idris_statics i) })
          return tm'
 
-implicitise :: SyntaxInfo -> IState -> PTerm -> (PTerm, [PArg])
-implicitise syn ist tm
+implicitise :: SyntaxInfo -> [Name] -> IState -> PTerm -> (PTerm, [PArg])
+implicitise syn ignore ist tm
     = let (declimps, ns') = execState (imps True [] tm) ([], []) 
-          ns = ns' \\ (map fst pvars ++ no_imp syn) in
+          ns = ns' \\ (map fst pvars ++ no_imp syn ++ ignore) in
           if null ns 
             then (tm, reverse declimps) 
-            else implicitise syn ist (pibind uvars ns tm)
+            else implicitise syn ignore ist (pibind uvars ns tm)
   where
     uvars = using syn
     pvars = syn_params syn
