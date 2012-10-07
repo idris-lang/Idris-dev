@@ -31,11 +31,12 @@ data IOption = IOption { opt_logLevel :: Int,
                          opt_repl     :: Bool,
                          opt_verbose  :: Bool,
                          opt_ibcsubdir :: FilePath,
-                         opt_importdirs :: [FilePath]
+                         opt_importdirs :: [FilePath],
+                         opt_cmdline :: [Opt] -- remember whole command line
                        }
     deriving (Show, Eq)
 
-defaultOpts = IOption 0 False False True False False True True "" []
+defaultOpts = IOption 0 False False True False False True True "" [] []
 
 -- TODO: Add 'module data' to IState, which can be saved out and reloaded quickly (i.e
 -- without typechecking).
@@ -171,6 +172,7 @@ data Opt = Filename String
          | WarnOnly
          | Pkg String
          | BCAsm String
+         | DumpC String
          | FOVM String
     deriving (Show, Eq)
 

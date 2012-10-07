@@ -46,9 +46,10 @@ compile target f tm
 
         -- iputStrLn $ showSep "\n" (map show (toAlist defuns))
         let checked = checkDefs defuns (toAlist defuns)
+        dumpC <- getDumpC
         case checked of
             OK c -> case target of
-                         ViaC -> liftIO $ codegenC c f True hdrs 
+                         ViaC -> liftIO $ codegenC dumpC c f True hdrs 
                                    (concatMap mkObj objs)
                                    (concatMap mkLib libs) NONE
                          ViaJava -> liftIO $ codegenJava c f 

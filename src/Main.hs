@@ -80,6 +80,7 @@ usagemsg = "Idris version " ++ ver ++ "\n" ++
            "\t--noprelude       Don't import the prelude\n" ++
            "\t--typeintype      Disable universe checking\n" ++
            "\t--log [level]     Set debugging log level\n" ++
+           "\t--dumpc [file]    Dump generated C code\n" ++
 	   "\t--libdir          Show library install directory and exit\n" ++
 	   "\t--link            Show C library directories and exit (for C linking)\n" ++
 	   "\t--include         Show C include directories and exit (for C linking)\n"

@@ -16,7 +16,8 @@ import Control.Monad
 
 data DbgLevel = NONE | DEBUG | TRACE
 
-codegenC :: [(Name, SDecl)] ->
+codegenC :: Maybe FilePath -> -- dump output
+            [(Name, SDecl)] ->
             String -> -- output file name
             Bool ->   -- generate executable if True, only .o if False 
             [FilePath] -> -- include files
@@ -24,7 +25,7 @@ codegenC :: [(Name, SDecl)] ->
             String -> -- extra compiler flags
             DbgLevel ->
             IO ()
-codegenC defs out exec incs objs libs dbg
+codegenC dump defs out exec incs objs libs dbg
     = do -- print defs
          let bc = map toBC defs
          let h = concatMap toDecl (map fst bc)
@@ -45,12 +46,14 @@ codegenC defs out exec incs objs libs dbg
                      " " ++ tmpn ++
                      " `idris --link` `idris --include` " ++ libs ++
                      " -o " ++ out
-         -- putStrLn cout
+         case dump of
+            Just co -> do writeFile co cout
+            Nothing -> return ()
          exit <- system gcc
          when (exit /= ExitSuccess) $
              putStrLn ("FAILURE: " ++ gcc)
 
-headers [] = "#include <idris_rts.h>\n#include <idris_stdfgn.h>\n#include<assert.h>\n"
+headers [] = "#include <idris_rts.h>\n#include <idris_stdfgn.h>\n#include <assert.h>\n"
 headers (x : xs) = "#include <" ++ x ++ ">\n" ++ headers xs
 
 debug TRACE = "#define IDRIS_TRACE\n\n"

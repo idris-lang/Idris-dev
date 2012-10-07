@@ -392,6 +392,7 @@ parseArgs ("--install":n:ns)    = PkgInstall n : (parseArgs ns)
 parseArgs ("--clean":n:ns)      = PkgClean n : (parseArgs ns)
 parseArgs ("--bytecode":n:ns)   = NoREPL : BCAsm n : (parseArgs ns)
 parseArgs ("--fovm":n:ns)       = NoREPL : FOVM n : (parseArgs ns)
+parseArgs ("--dumpc":n:ns)      = DumpC n : (parseArgs ns)
 parseArgs (n:ns)                = Filename n : (parseArgs ns)
 
 help =
@@ -434,6 +435,7 @@ idrisMain opts =
        let pkgdirs = opt getPkgDir opts
        setREPL runrepl
        setVerbose runrepl
+       setCmdLine opts
        when (Verbose `elem` opts) $ setVerbose True
        mapM_ makeOption opts
        -- if we have the --fovm flag, drop into the first order VM testing

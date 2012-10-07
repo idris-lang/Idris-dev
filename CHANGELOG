@@ -4,10 +4,13 @@ New in 0.9.4:
 User visible changes:
 
 * Simple packaging system
+* Added --dumpc flag for displaying generated code
 
 Internal changes:
 
 * Improve overloading resolution (especially where this is a type error)
+* Various important bug fixes with evaluation and compilation
+* More aggressive compile-time evaluation
 
 New in 0.9.3:
 -------------
