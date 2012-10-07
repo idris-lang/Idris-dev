@@ -342,6 +342,7 @@ updateNs ns t = mapPT updateRef t
 
 data PTerm = PQuote Raw
            | PRef FC Name
+           | PPatvar FC Name
            | PLam Name PTerm PTerm
            | PPi  Plicity Name PTerm PTerm
            | PLet Name PTerm PTerm PTerm 
@@ -650,6 +651,7 @@ prettyImp impl = prettySe 10
         text "![" $$ pretty r <> text "]"
       else
         text "![" <> pretty r <> text "]"
+    prettySe p (PPatvar fc n) = pretty n
     prettySe p (PRef fc n) =
       if impl then
         pretty n
@@ -825,6 +827,7 @@ prettyImp impl = prettySe 10
 showImp :: Bool -> PTerm -> String
 showImp impl tm = se 10 tm where
     se p (PQuote r) = "![" ++ show r ++ "]"
+    se p (PPatvar fc n) = show n
     se p (PRef fc n) = if impl then show n -- ++ "[" ++ show fc ++ "]"
                                else showbasic n
       where showbasic n@(UN _) = show n

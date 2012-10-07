@@ -705,13 +705,24 @@ addImpl' inpat env ist ptm = ai env ptm
 
 aiFn :: Bool -> Bool -> IState -> FC -> Name -> [PArg] -> Either Err PTerm
 aiFn inpat True ist fc f []
-  = case lookupCtxt Nothing f (idris_implicits ist) of
-        [] -> Right $ PRef fc f
-        alts -> if (any (all imp) alts)
+  = case lookupDef Nothing f (tt_ctxt ist) of
+        [] -> Right $ PPatvar fc f
+        alts -> let ialts = lookupCtxt Nothing f (idris_implicits ist) in
+                    -- trace (show f ++ " " ++ show (fc, any (all imp) ialts, ialts, any constructor alts)) $ 
+                    if (not (vname f) || tcname f 
+                           || any constructor alts || any allImp ialts)
                         then aiFn inpat False ist fc f [] -- use it as a constructor
-                        else Right $ PRef fc f
+                        else Right $ PPatvar fc f
     where imp (PExp _ _ _) = False
           imp _ = True
+          allImp [] = False
+          allImp xs = all imp xs
+          constructor (TyDecl (DCon _ _) _) = True
+          constructor _ = False
+
+          vname (UN n) = True -- non qualified
+          vname _ = False
+
 aiFn inpat expat ist fc f as
     | f `elem` primNames = Right $ PApp fc (PRef fc f) as
 aiFn inpat expat ist fc f as
