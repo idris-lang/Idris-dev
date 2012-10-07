@@ -31,10 +31,19 @@ type CaseTree = SC
 type Clause   = ([Pat], (Term, Term))
 type CS = ([Term], Int)
 
+instance TermSize SC where
+    termsize (Case n as) = termsize as
+    termsize (STerm t) = termsize t
+    termsize _ = 1
+
+instance TermSize CaseAlt where
+    termsize (ConCase _ _ _ s) = termsize s
+    termsize (ConstCase _ s) = termsize s
+    termsize (DefaultCase s) = termsize s
+
 -- simple terms can be inlined trivially - good for primitives in particular
 small :: SC -> Bool
--- small (STerm t) = True
-small _ = False
+small t = termsize t < 150
 
 namesUsed :: SC -> [Name]
 namesUsed sc = nub $ nu' [] sc where
@@ -121,6 +130,7 @@ toPat tc tms = evalState (mapM (\x -> toPat' x []) tms) []
 
 data Partition = Cons [Clause]
                | Vars [Clause]
+    deriving Show
 
 isVarPat (PV _ : ps , _) = True
 isVarPat (PAny : ps , _) = True
@@ -145,7 +155,8 @@ match [] (([], ret) : xs) err
     = do (ts, v) <- get
          put (ts ++ (map (fst.snd) xs), v)
          return $ STerm (snd ret) -- run out of arguments
-match vs cs err = do cs <- mixture vs (partition cs) err
+match vs cs err = do let ps = partition cs
+                     cs <- mixture vs ps err
                      return cs
 
 mixture :: [Name] -> [Partition] -> SC -> State CS SC
@@ -188,18 +199,22 @@ caseGroups (v:vs) gs err = do g <- altGroups gs
 
 argsToAlt :: [([Pat], Clause)] -> State CS ([Name], [Clause])
 argsToAlt [] = return ([], [])
-argsToAlt rs@((r, m) : _)
+argsToAlt rs@((r, m) : rest)
     = do newArgs <- getNewVars r
          return (newArgs, addRs rs)
   where 
     getNewVars [] = return []
-    getNewVars ((PV n) : ns) = do nsv <- getNewVars ns
-                                  return (n : nsv)
+    getNewVars ((PV n) : ns) = do v <- getVar
+                                  nsv <- getNewVars ns
+                                  return (v : nsv)
     getNewVars (_ : ns) = do v <- getVar
                              nsv <- getNewVars ns
                              return (v : nsv)
     addRs [] = []
     addRs ((r, (ps, res)) : rs) = ((r++ps, res) : addRs rs)
+
+    uniq i (UN n) = MN i n
+    uniq i n = n
 
 getVar :: State CS Name
 getVar = do (t, v) <- get; put (t, v+1); return (MN v "e")

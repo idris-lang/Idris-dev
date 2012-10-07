@@ -109,7 +109,7 @@ specialise ctxt env limits t
 
 simplify :: Context -> Env -> TT Name -> TT Name
 simplify ctxt env t 
-   = evalState (do val <- eval False ctxt threshold [] 
+   = evalState (do val <- eval False ctxt threshold [(UN "lazy", 0)] 
                                  (map finalEntry env) (finalise t) [Simplify]
                    quote 0 val) initEval
 
@@ -133,12 +133,13 @@ unbindEnv :: EnvTT n -> TT n -> TT n
 unbindEnv [] tm = tm
 unbindEnv (_:bs) (Bind n b sc) = unbindEnv bs sc
 
-usable :: Name -> [(Name, Int)] -> (Bool, [(Name, Int)])
-usable n [] = (True, [])
-usable n ns = case lookup n ns of
-                Just 0 -> (False, ns)
-                Just i -> (True, (n, abs (i-1)) : filter (\ (n', _) -> n/=n') ns)
-                _ -> (True, (n, 100) : filter (\ (n', _) -> n/=n') ns)
+usable :: Bool -> Name -> [(Name, Int)] -> (Bool, [(Name, Int)])
+usable s n [] = (True, [])
+usable s n ns = case lookup n ns of
+                  Just 0 -> (False, ns)
+                  Just i -> (True, (n, abs (i-1)) : filter (\ (n', _) -> n/=n') ns)
+                  _ -> if s then (True, (n, 0) : filter (\ (n', _) -> n/=n') ns)
+                            else (True, (n, 100) : filter (\ (n', _) -> n/=n') ns)
 
 reduction :: Eval ()
 reduction = do ES ns s <- get
@@ -158,7 +159,7 @@ eval traceon ctxt maxred ntimes genv tm opts = ev ntimes [] True [] tm where
         | Just (Let t v) <- lookup n genv = do when (not atRepl) $ step maxred
                                                ev ntimes stk top env v 
     ev ntimes_in stk top env (P Ref n ty) 
-      | (True, ntimes) <- usable n ntimes_in
+      | (True, ntimes) <- usable simpl n ntimes_in
          = do let val = lookupDefAcc Nothing n atRepl ctxt 
               when (not atRepl) $ step maxred
               case val of
@@ -178,10 +179,17 @@ eval traceon ctxt maxred ntimes genv tm opts = ev ntimes [] True [] tm where
     ev ntimes stk top env (V i) | i < length env = return $ env !! i
                      | otherwise      = return $ VV i 
     ev ntimes stk top env (Bind n (Let t v) sc)
+        | not simpl || vinstances 0 sc < 2
            = do v' <- ev ntimes stk top env v --(finalise v)
                 when (not atRepl) $ step maxred
                 sc' <- ev ntimes stk top (v' : env) sc
                 wknV (-1) sc'
+        | otherwise
+           = do t' <- ev ntimes stk top env t
+                v' <- ev ntimes stk top env v --(finalise v)
+                when (not atRepl) $ step maxred
+                sc' <- ev ntimes stk top (v' : env) sc
+                return $ VBind n (Let t' v') (\x -> return sc')
     ev ntimes stk top env (Bind n (NLet t v) sc)
            = do t' <- ev ntimes stk top env (finalise t)
                 v' <- ev ntimes stk top env (finalise v)
@@ -219,7 +227,7 @@ eval traceon ctxt maxred ntimes genv tm opts = ev ntimes [] True [] tm where
 --     apply ntimes stk False env f args
 --         | spec = specApply ntimes stk env f args 
     apply ntimes_in stk top env f@(VP Ref n ty)        args
-      | (True, ntimes) <- usable n ntimes_in
+      | (True, ntimes) <- usable simpl n ntimes_in
         = traceWhen traceon (show stk) $
           do let val = lookupDefAcc Nothing n atRepl ctxt
              case val of
@@ -683,16 +691,13 @@ addCasedef :: Name -> Bool -> Bool -> Bool ->
               Type -> Context -> Context
 addCasedef n alwaysInline tcase covering ps psrt ty uctxt 
     = let ctxt = definitions uctxt
-          ps' = ps -- simpl ps in
-          ctxt' = case (simpleCase tcase covering (FC "" 0) ps', 
+          ctxt' = case (simpleCase tcase covering (FC "" 0) ps, 
                         simpleCase tcase covering (FC "" 0) psrt) of
                     (OK (CaseDef args sc _), OK (CaseDef args' sc' _)) -> 
-                                       let inl = alwaysInline in
+                                       let inl = alwaysInline || small sc' in
                                            addDef n (CaseOp inl ty ps args sc args' sc',
                                                      Public, Unchecked) ctxt in
           uctxt { definitions = ctxt' }
-  where simpl [] = []
-        simpl ((l,r) : xs) = (l, simplify uctxt [] r) : simpl xs
 
 addOperator :: Name -> Type -> Int -> ([Value] -> Maybe Value) -> Context -> Context
 addOperator n ty a op uctxt

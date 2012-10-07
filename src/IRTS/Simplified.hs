@@ -1,6 +1,5 @@
 module IRTS.Simplified where
 
-import IRTS.Lang
 import IRTS.Defunctionalise
 import Core.TT
 import Data.Maybe

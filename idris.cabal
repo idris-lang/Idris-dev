@@ -73,7 +73,8 @@ Executable     idris
                               Pkg.Package, Pkg.PParser,
 
                               IRTS.Lang, IRTS.LParser, IRTS.Bytecode, IRTS.Simplified,
-                              IRTS.CodegenC, IRTS.Defunctionalise, IRTS.Compiler,
+                              IRTS.CodegenC, IRTS.Defunctionalise, IRTS.Inliner,
+                              IRTS.Compiler,
 
                               Paths_idris
 

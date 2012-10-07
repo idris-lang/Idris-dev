@@ -7,6 +7,7 @@ import IRTS.Defunctionalise
 import IRTS.Simplified
 import IRTS.CodegenC
 import IRTS.CodegenJava
+import IRTS.Inliner
 
 import Idris.AbsSyntax
 import Core.TT
@@ -36,7 +37,13 @@ compile target f tm
         -- iputStrLn $ showSep "\n" (map show defs)
         let (nexttag, tagged) = addTags 65536 (liftAll defs)
         let ctxtIn = addAlist tagged emptyContext
-        let defuns = defunctionalise nexttag ctxtIn
+        iLOG "Defunctionalising"
+        let defuns_in = defunctionalise nexttag ctxtIn
+        logLvl 5 $ show defuns_in
+        iLOG "Inlining"
+        let defuns = inline defuns_in
+        logLvl 5 $ show defuns
+
         -- iputStrLn $ showSep "\n" (map show (toAlist defuns))
         let checked = checkDefs defuns (toAlist defuns)
         case checked of
@@ -108,7 +115,7 @@ instance ToIR (TT Name) where
     ir tm = ir' [] tm where
       ir' env tm@(App f a)
           | (P _ (UN "mkForeign") _, args) <- unApply tm
-              = doForeign args
+              = doForeign env args
           | (P _ (UN "unsafePerformIO") _, [_, arg]) <- unApply tm
               = ir' env arg
           | (P _ (UN "lazy") _, [_, arg]) <- unApply tm
@@ -138,10 +145,12 @@ instance ToIR (TT Name) where
                    args' <- mapM (ir' env) args
                    return (LApp False f' args')
       ir' env (P _ n _) = return $ LV (Glob n)
-      ir' env (V i)     = return $ LV (Glob (env!!i))
+      ir' env (V i)     | i < length env = return $ LV (Glob (env!!i))
+                        | otherwise = error $ "IR fail " ++ show i ++ " " ++ show tm
       ir' env (Bind n (Lam _) sc)
-          = do sc' <- ir' (n : env) sc
-               return $ LLam [n] sc'
+          = do let n' = uniqueName n env
+               sc' <- ir' (n' : env) sc
+               return $ LLam [n'] sc'
       ir' env (Bind n (Let _ v) sc)
           = do sc' <- ir' (n : env) sc
                v' <- ir' env v
@@ -163,16 +172,16 @@ instance ToIR (TT Name) where
       buildApp env e xs = do xs' <- mapM (ir' env) xs
                              return $ LApp False e xs'
 
-doForeign :: [TT Name] -> Idris LExp
-doForeign (_ : fgn : args)
-   | (_, (Constant (Str fgnName) : fgnArgTys : ret : [])) <- unApply fgn
-        = let tys = getFTypes fgnArgTys
-              rty = mkIty' ret in
-              do args' <- mapM ir args
-                 -- wrap it in a prim__IO
-                 -- return $ con_ 0 @@ impossible @@ 
-                 return $ LLazyExp $ LForeign LANG_C rty fgnName (zip tys args')
-   | otherwise = fail "Badly formed foreign function call"
+      doForeign :: [Name] -> [TT Name] -> Idris LExp
+      doForeign env (_ : fgn : args)
+         | (_, (Constant (Str fgnName) : fgnArgTys : ret : [])) <- unApply fgn
+              = let tys = getFTypes fgnArgTys
+                    rty = mkIty' ret in
+                    do args' <- mapM (ir' env) args
+                       -- wrap it in a prim__IO
+                       -- return $ con_ 0 @@ impossible @@ 
+                       return $ LLazyExp $ LForeign LANG_C rty fgnName (zip tys args')
+         | otherwise = fail "Badly formed foreign function call"
 
 getFTypes :: TT Name -> [FType]
 getFTypes tm = case unApply tm of

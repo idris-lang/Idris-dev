@@ -52,7 +52,7 @@ data LAlt = LConCase Int Name [Name] LExp
           | LDefaultCase LExp
   deriving (Show, Eq)
 
-data LDecl = LFun Name [Name] LExp -- name, arg names, definition
+data LDecl = LFun Name [Name] LExp -- name, arg names, definition, inlinable
            | LConstructor Name Int Int -- constructor name, tag, arity
   deriving (Show, Eq)
 

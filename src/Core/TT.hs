@@ -417,6 +417,20 @@ data TT n = P NameType n (TT n) -- embed type
 deriving instance Binary TT 
 !-}
 
+class TermSize a where
+  termsize :: a -> Int
+
+instance TermSize a => TermSize [a] where
+    termsize [] = 0
+    termsize (x : xs) = termsize x + termsize xs
+
+instance TermSize (TT a) where
+    termsize (P _ _ _) = 1
+    termsize (V _) = 1
+    termsize (Bind n (Let t v) sc) = termsize v + termsize sc
+    termsize (App f a) = termsize f + termsize a
+    termsize _ = 1
+
 instance Sized a => Sized (TT a) where
   size (P name n trm) = 1 + size name + size n + size trm
   size (V v) = 1
@@ -458,6 +472,15 @@ isInjective (Set x)            = True
 isInjective (Bind _ (Pi _) sc) = True
 isInjective (App f a)          = isInjective f
 isInjective _                  = False
+
+-- Count the number of instances of a de Bruijn index in a term
+vinstances :: Int -> TT n -> Int
+vinstances i (V x) | i == x = 1
+vinstances i (App f a) = vinstances i f + vinstances i a
+vinstances i (Bind x b sc) = instancesB b + vinstances (i + 1) sc 
+  where instancesB (Let t v) = vinstances i v
+        instancesB _ = 0
+vinstances i t = 0
 
 instantiate :: TT n -> TT n -> TT n
 instantiate e = subst 0 where

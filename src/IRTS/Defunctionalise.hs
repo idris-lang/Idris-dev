@@ -1,4 +1,5 @@
-module IRTS.Defunctionalise where
+module IRTS.Defunctionalise(module IRTS.Defunctionalise, 
+                            module IRTS.Lang) where
 
 import IRTS.Lang
 import Core.TT
@@ -137,7 +138,7 @@ mkApplyCase fname n ar
 
 mkEval :: [(Name, Int, EvalApply DAlt)] -> (Name, DDecl)
 mkEval xs = (MN 0 "EVAL", DFun (MN 0 "EVAL") [MN 0 "arg"]
-                             (DCase (DV (Glob (MN 0 "arg")))
+                             (mkBigCase (MN 0 "EVAL") 256 (DV (Glob (MN 0 "arg")))
                                  (mapMaybe evalCase xs ++
                                    [DDefaultCase (DV (Glob (MN 0 "arg")))])))
   where
@@ -146,12 +147,14 @@ mkEval xs = (MN 0 "EVAL", DFun (MN 0 "EVAL") [MN 0 "arg"]
 
 mkApply :: [(Name, Int, EvalApply DAlt)] -> (Name, DDecl)
 mkApply xs = (MN 0 "APPLY", DFun (MN 0 "APPLY") [MN 0 "fn", MN 0 "arg"]
-                             (DCase (DApp False (MN 0 "EVAL")
+                             (mkBigCase (MN 0 "APPLY")
+                                        256 (DApp False (MN 0 "EVAL")
                                             [DV (Glob (MN 0 "fn"))])
                                  (mapMaybe applyCase xs)))
   where
     applyCase (n, t, ApplyCase x) = Just x
     applyCase _ = Nothing
+
 
 declare :: Int -> [(Name, Int, EvalApply DAlt)] -> [(Name, DDecl)]
 declare t xs = dec' t xs [] where
@@ -189,3 +192,45 @@ instance Show DExp where
              ++ show' env e
      showAlt env (DConstCase c e) = show c ++ " => " ++ show' env e
      showAlt env (DDefaultCase e) = "_ => " ++ show' env e
+
+-- Divide up a large case expression so that each has a maximum of
+-- 'max' branches
+
+mkBigCase cn max arg branches 
+   | length branches <= max = DCase arg branches
+   | otherwise = -- DCase arg branches -- until I think of something...
+       -- divide the branches into groups of at most max (by tag),
+       -- generate a new case and shrink, recursively
+       let bs = sortBy tagOrd branches
+           (all, def) = case (last bs) of
+                    DDefaultCase t -> (init all, Just (DDefaultCase t))
+                    _ -> (all, Nothing)
+           bss = groupsOf max all
+           cs = map mkCase bss in
+           DCase arg branches
+
+    where mkCase bs = DCase arg bs 
+
+          tagOrd (DConCase t _ _ _) (DConCase t' _ _ _) = compare t t'
+          tagOrd (DConstCase c _) (DConstCase c' _) = compare c c'
+          tagOrd (DDefaultCase _) (DDefaultCase _) = EQ
+          tagOrd (DConCase _ _ _ _) (DDefaultCase _) = LT
+          tagOrd (DConCase _ _ _ _) (DConstCase _ _) = LT
+          tagOrd (DConstCase _ _) (DDefaultCase _) = LT
+          tagOrd (DDefaultCase _) (DConCase _ _ _ _) = GT
+          tagOrd (DConstCase _ _) (DConCase _ _ _ _) = GT
+          tagOrd (DDefaultCase _) (DConstCase _ _) = GT
+          
+
+groupsOf :: Int -> [DAlt] -> [[DAlt]]
+groupsOf x [] = []
+groupsOf x xs = let (batch, rest) = span (tagLT (x + tagHead xs)) xs in
+                    batch : groupsOf x rest
+  where tagHead (DConstCase (I i) _ : _) = i
+        tagHead (DConCase t _ _ _ : _) = t
+        tagHead (DDefaultCase _ : _) = -1 -- must be the end
+
+        tagLT i (DConstCase (I j) _) = i < j
+        tagLT i (DConCase j _ _ _) = i < j
+        tagLT i (DDefaultCase _) = False
+

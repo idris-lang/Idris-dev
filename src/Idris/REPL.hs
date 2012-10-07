@@ -226,7 +226,7 @@ process fn (Search t) = iputStrLn "Not implemented"
 process fn (Spec t) = do (tm, ty) <- elabVal toplevel False t
                          ctxt <- getContext
                          ist <- get
-                         let tm' = specialise ctxt [] [] {- (idris_statics ist) -} tm
+                         let tm' = simplify ctxt [] {- (idris_statics ist) -} tm
                          iputStrLn (show (delab ist tm'))
 
 process fn (RmProof n')
