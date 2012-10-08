@@ -230,7 +230,6 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
             _ -> return ()
          pats_in <- mapM (elabClause info (TCGen `elem` opts)) cs
          
-         
          solveDeferred n
          let pats = mapMaybe id pats_in
          logLvl 3 (showSep "\n" (map (\ (l,r) -> 
@@ -239,6 +238,7 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
          ist <- get
          let tcase = opt_typecase (idris_options ist)
          let pdef = map debind $ map (simpl (tt_ctxt ist)) pats
+         tclift $ sameLength pdef
          cov <- coverage
          pcover <-
                  if cov  
@@ -288,7 +288,6 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
                                                     ":warning - Unreachable case: " ++ 
                                                     show (delab ist x)) xs
          tree' <- tclift $ simpleCase tcase pcover fc pdef'
-         tclift $ sameLength pdef
          logLvl 3 (show tree)
          logLvl 3 $ "Optimised: " ++ show tree'
          ctxt <- getContext
