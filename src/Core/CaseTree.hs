@@ -66,14 +66,15 @@ simpleCase :: Bool -> Bool -> FC -> [([Name], Term, Term)] -> TC CaseDef
 simpleCase tc cover fc [] 
                  = return $ CaseDef [] (UnmatchedCase "No pattern clauses") []
 simpleCase tc cover fc cs 
-      = let pats       = map (\ (avs, l, r) -> (avs, toPats tc l, (l, r))) cs
+      = let pats       = map (\ (avs, l, r) -> 
+                                   (avs, reverse (toPats tc l), (l, r))) cs
             chkPats    = mapM chkAccessible pats in
             case chkPats of
                 OK pats ->
                     let numargs    = length (fst (head pats)) 
                         ns         = take numargs args
                         (tree, st) = runState 
-                                         (match ns pats (defaultCase cover)) ([], numargs) in
+                                         (match (reverse ns) pats (defaultCase cover)) ([], numargs) in
                         return $ CaseDef ns (prune tree) (fst st)
                 Error err -> Error (At fc err)
     where args = map (\i -> MN i "e") [0..]
@@ -123,9 +124,9 @@ toPat tc tms = evalState (mapM (\x -> toPat' x []) tms) []
                                           then return PAny 
                                           else do put (n : ns)
                                                   return (PV n)
-    toPat' (App f a)          args = toPat' f (a : args)
-    toPat' (Constant (I c)) [] = return $ PConst (I c) 
-    toPat' _                _  = return PAny
+    toPat' (App f a)  args = toPat' f (a : args)
+    toPat' (Constant x@(I _)) [] = return $ PConst x 
+    toPat' _            _  = return PAny
 
 
 data Partition = Cons [Clause]
