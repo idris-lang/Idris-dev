@@ -279,14 +279,18 @@ parseProg syn fname input pos
 collect :: [PDecl] -> [PDecl]
 collect (c@(PClauses _ o _ _) : ds) 
     = clauses (cname c) [] (c : ds)
-  where clauses n acc (PClauses fc _ _ [PClause fc' n' l ws r w] : ds)
-           | n == n' = clauses n (PClause fc' n' l ws r (collect w) : acc) ds
-        clauses n acc (PClauses fc _ _ [PWith fc' n' l ws r w] : ds)
-           | n == n' = clauses n (PWith fc' n' l ws r (collect w) : acc) ds
-        clauses n acc xs = PClauses (getfc c) o n (reverse acc) : collect xs
+  where clauses j@(Just n) acc (PClauses fc _ _ [PClause fc' n' l ws r w] : ds)
+           | n == n' = clauses j (PClause fc' n' l ws r (collect w) : acc) ds
+        clauses j@(Just n) acc (PClauses fc _ _ [PWith fc' n' l ws r w] : ds)
+           | n == n' = clauses j (PWith fc' n' l ws r (collect w) : acc) ds
+        clauses (Just n) acc xs = PClauses (getfc c) o n (reverse acc) : collect xs
+        clauses Nothing acc (x:xs) = collect xs
+        clauses Nothing acc [] = []
 
-        cname (PClauses fc _ _ [PClause _ n _ _ _ _]) = n
-        cname (PClauses fc _ _ [PWith   _ n _ _ _ _]) = n
+        cname (PClauses fc _ _ [PClause _ n _ _ _ _]) = Just n
+        cname (PClauses fc _ _ [PWith   _ n _ _ _ _]) = Just n
+        cname (PClauses fc _ _ [PClauseR _ _ _ _]) = Nothing
+        cname (PClauses fc _ _ [PWithR _ _ _ _]) = Nothing
         getfc (PClauses fc _ _ _) = fc
 
 collect (PParams f ns ps : ds) = PParams f ns (collect ps) : collect ds
