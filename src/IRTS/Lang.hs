@@ -15,11 +15,13 @@ data LExp = LV LVar
           | LForce LExp -- make sure Exp is evaluted
           | LLet Name LExp LExp -- name just for pretty printing
           | LLam [Name] LExp -- lambda, lifted out before compiling
+          | LProj LExp Int -- projection
           | LCon Int Name [LExp]
           | LCase LExp [LAlt]
           | LConst Const
           | LForeign FLang FType String [(FType, LExp)]
           | LOp PrimFn [LExp]
+          | LNothing
           | LError String
   deriving Eq
 
@@ -118,6 +120,8 @@ lift env (LLam args e) = do e' <- lift (env ++ args) e
                             fn <- getNextName
                             addFn fn (LFun fn (usedArgs ++ args) e')
                             return (LApp False (LV (Glob fn)) (map (LV . Glob) usedArgs))
+lift env (LProj t i) = do t' <- lift env t
+                          return (LProj t' i)
 lift env (LCon i n args) = do args' <- mapM (lift env) args
                               return (LCon i n args')
 lift env (LCase e alts) = do alts' <- mapM liftA alts
@@ -155,7 +159,8 @@ usedIn env (LForce e) = usedIn env e
 usedIn env (LLet n v e) = usedIn env v ++ usedIn (env \\ [n]) e
 usedIn env (LLam ns e) = usedIn (env \\ ns) e
 usedIn env (LCon i n args) = concatMap (usedIn env) args
-usedIn env (LCase e alts) = concatMap (usedInA env) alts
+usedIn env (LProj t i) = usedIn env t
+usedIn env (LCase e alts) = usedIn env e ++ concatMap (usedInA env) alts
   where usedInA env (LConCase i n ns e) = usedIn env e
         usedInA env (LConstCase c e) = usedIn env e
         usedInA env (LDefaultCase e) = usedIn env e
@@ -175,6 +180,7 @@ instance Show LExp where
                                show' (env ++ [show n]) e
      show' env (LLam args e) = "\\ " ++ showSep "," (map show args) ++ " => " ++
                                  show' (env ++ (map show args)) e
+     show' env (LProj t i) = show t ++ "!" ++ show i
      show' env (LCon i n args) = show n ++ ")" ++ showSep ", " (map (show' env) args) ++ ")"
      show' env (LCase e alts) = "case " ++ show' env e ++ " of {\n\t" ++
                                     showSep "\n\t| " (map (showAlt env) alts)

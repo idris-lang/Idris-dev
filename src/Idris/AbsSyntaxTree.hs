@@ -43,41 +43,48 @@ defaultOpts = IOption 0 False False True False False True True "" [] []
 -- This will include all the functions and data declarations, plus fixity declarations
 -- and syntax macros.
 
-data IState = IState { tt_ctxt :: Context,
-                       idris_constraints :: [(UConstraint, FC)],
-                       idris_infixes :: [FixDecl],
-                       idris_implicits :: Ctxt [PArg],
-                       idris_statics :: Ctxt [Bool],
-                       idris_classes :: Ctxt ClassInfo,
-                       idris_dsls :: Ctxt DSL,
-                       idris_optimisation :: Ctxt OptInfo, 
-                       idris_datatypes :: Ctxt TypeInfo,
-                       idris_patdefs :: Ctxt [([Name], Term, Term)], -- not exported
-                       idris_flags :: Ctxt [FnOpt],
-                       idris_callgraph :: Ctxt [Name],
-                       idris_calledgraph :: Ctxt [Name],
-                       idris_totcheck :: [(FC, Name)],
-                       idris_log :: String,
-                       idris_options :: IOption,
-                       idris_name :: Int,
-                       idris_metavars :: [Name],
-                       syntax_rules :: [Syntax],
-                       syntax_keywords :: [String],
-                       imported :: [FilePath],
-                       idris_scprims :: [(Name, (Int, PrimFn))],
-                       idris_objs :: [FilePath],
-                       idris_libs :: [String],
-                       idris_hdrs :: [String],
-                       proof_list :: [(Name, [String])],
-                       errLine :: Maybe Int,
-                       lastParse :: Maybe Name, 
-                       indent_stack :: [Int],
-                       brace_stack :: [Maybe Int],
-                       hide_list :: [(Name, Maybe Accessibility)],
-                       default_access :: Accessibility,
-                       ibc_write :: [IBCWrite],
-                       compiled_so :: Maybe String
-                     }
+data IState = IState {
+    tt_ctxt :: Context,
+    idris_constraints :: [(UConstraint, FC)],
+    idris_infixes :: [FixDecl],
+    idris_implicits :: Ctxt [PArg],
+    idris_statics :: Ctxt [Bool],
+    idris_classes :: Ctxt ClassInfo,
+    idris_dsls :: Ctxt DSL,
+    idris_optimisation :: Ctxt OptInfo, 
+    idris_datatypes :: Ctxt TypeInfo,
+    idris_patdefs :: Ctxt [([Name], Term, Term)], -- not exported
+    idris_flags :: Ctxt [FnOpt],
+    idris_callgraph :: Ctxt CGInfo, -- name, args used in each pos
+    idris_calledgraph :: Ctxt [Name],
+    idris_totcheck :: [(FC, Name)],
+    idris_log :: String,
+    idris_options :: IOption,
+    idris_name :: Int,
+    idris_metavars :: [Name],
+    syntax_rules :: [Syntax],
+    syntax_keywords :: [String],
+    imported :: [FilePath],
+    idris_scprims :: [(Name, (Int, PrimFn))],
+    idris_objs :: [FilePath],
+    idris_libs :: [String],
+    idris_hdrs :: [String],
+    proof_list :: [(Name, [String])],
+    errLine :: Maybe Int,
+    lastParse :: Maybe Name, 
+    indent_stack :: [Int],
+    brace_stack :: [Maybe Int],
+    hide_list :: [(Name, Maybe Accessibility)],
+    default_access :: Accessibility,
+    ibc_write :: [IBCWrite],
+    compiled_so :: Maybe String
+   }
+
+data CGInfo = CGInfo { calls :: [(Name, [[Name]])],
+                       argsused :: [Name] }
+{-! 
+deriving instance Binary CGInfo 
+!-}
 
 primDefs = [UN "unsafePerformIO", UN "mkLazyForeign", UN "mkForeign", UN "FalseElim"]
              

@@ -5,6 +5,8 @@ import Core.TT
 import Data.Maybe
 import Control.Monad.State
 
+import Debug.Trace
+
 -- Simplified expressions, where functions/constructors can only be applied 
 -- to variables
 
@@ -13,9 +15,11 @@ data SExp = SV LVar
           | SLet LVar SExp SExp
           | SCon Int Name [LVar]
           | SCase LVar [SAlt]
+          | SProj LVar Int
           | SConst Const
           | SForeign FLang FType String [(FType, LVar)]
           | SOp PrimFn [LVar]
+          | SNothing -- erased value, will never be inspected
           | SError String
   deriving Show
 
@@ -54,6 +58,11 @@ simplify tl (DLet n v e) = do v' <- simplify False v
                               return (SLet (Glob n) v' e')
 simplify tl (DC i n args) = do args' <- mapM sVar args
                                mkapp (SCon i n) args'
+simplify tl (DProj t i) = do v <- sVar t
+                             case v of
+                                (x, Nothing) -> return (SProj x i)
+                                (Glob x, Just e) ->
+                                    return (SLet (Glob x) e (SProj (Glob x) i))
 simplify tl (DCase e alts) = do v <- sVar e
                                 alts' <- mapM (sAlt tl) alts
                                 case v of 
@@ -63,6 +72,7 @@ simplify tl (DCase e alts) = do v <- sVar e
 simplify tl (DConst c) = return (SConst c)
 simplify tl (DOp p args) = do args' <- mapM sVar args
                               mkapp (SOp p) args'
+simplify tl DNothing = return SNothing 
 simplify tl (DError str) = return $ SError str
 
 sVar (DV (Glob x))
@@ -111,7 +121,7 @@ lvar v = do i <- get
             put (max i v)
 
 scopecheck :: DDefs -> [(Name, Int)] -> SExp -> StateT Int TC SExp 
-scopecheck ctxt env tm = sc env tm where
+scopecheck ctxt envTop tm = sc envTop tm where
     sc env (SV (Glob n)) =
        case lookup n (reverse env) of -- most recent first
               Just i -> do lvar i; return (SV (Loc i))
@@ -146,6 +156,9 @@ scopecheck ctxt env tm = sc env tm where
                        else fail $ "Codegen error: Constructor " ++ show f ++ 
                                    " has arity " ++ show ar
                 _ -> fail $ "Codegen error: No such constructor " ++ show f
+    sc env (SProj e i)
+       = do e' <- scVar env e
+            return (SProj e' i)
     sc env (SCase e alts)
        = do e' <- scVar env e
             alts' <- mapM (scalt env) alts
@@ -168,7 +181,8 @@ scopecheck ctxt env tm = sc env tm where
                               [DConstructor _ i ar] ->
                                   fail $ "Codegen error : can't pass constructor here"
                               [_] -> return (Glob n)
-                              [] -> fail $ "Codegen error: No such variable " ++ show n
+                              [] -> fail $ "Codegen error: No such variable " ++ show n ++ 
+                                           " in " ++ show tm ++ " " ++ show envTop
     scVar _ x = return x
 
     scalt env (SConCase _ i n args e)

@@ -162,6 +162,7 @@ traceWhen False _  a = a
 data Name = UN String
           | NS Name [String] -- root, namespaces 
           | MN Int String
+          | NErased -- name of somethng which is never used in scope
   deriving (Eq, Ord)
 {-! 
 deriving instance Binary Name 
@@ -171,6 +172,7 @@ instance Sized Name where
   size (UN n)     = 1
   size (NS n els) = 1 + length els
   size (MN i n) = 1
+  size NErased = 1
 
 instance Pretty Name where
   pretty (UN n) = text n
@@ -181,7 +183,7 @@ instance Show Name where
     show (UN n) = n
     show (NS n s) = showSep "." (reverse s) ++ "." ++ show n
     show (MN i s) = "{" ++ s ++ show i ++ "}"
-
+    show NErased = "_"
 
 -- Contexts allow us to map names to things. A root name maps to a collection
 -- of things in different namespaces with that name.
@@ -410,6 +412,7 @@ data TT n = P NameType n (TT n) -- embed type
           | Bind n (Binder (TT n)) (TT n)
           | App (TT n) (TT n) -- function, function type, arg
           | Constant Const
+          | Proj (TT n) Int -- argument projection; runtime only
           | Erased
           | Set UExp
   deriving (Ord, Functor)
@@ -458,6 +461,7 @@ instance Eq n => Eq (TT n) where
     (==) (App fx ax)    (App fy ay)    = fx == fy && ax == ay
     (==) (Set _)        (Set _)        = True -- deal with constraints later
     (==) (Constant x)   (Constant y)   = x == y
+    (==) (Proj x i)     (Proj y j)     = x == y && i == j
     (==) Erased         _              = True
     (==) _              Erased         = True
     (==) _              _              = False
@@ -487,6 +491,7 @@ instantiate e = subst 0 where
     subst i (V x) | i == x = e
     subst i (Bind x b sc) = Bind x (fmap (subst i) b) (subst (i+1) sc)
     subst i (App f a) = App (subst i f) (subst i a)
+    subst i (Proj x idx) = Proj (subst i x) idx 
     subst i t = t
 
 pToV :: Eq n => n -> TT n -> TT n
@@ -496,6 +501,7 @@ pToV' n i (Bind x b sc)
                 | n == x    = Bind x (fmap (pToV' n i) b) sc
                 | otherwise = Bind x (fmap (pToV' n i) b) (pToV' n (i+1) sc)
 pToV' n i (App f a) = App (pToV' n i f) (pToV' n i a)
+pToV' n i (Proj t idx) = Proj (pToV' n i t) idx
 pToV' n i t = t
 
 -- Convert several names. First in the list comes out as V 0
@@ -537,6 +543,7 @@ noOccurrence n t = no' 0 t
              noB' i (Guess t v) = no' i t && no' i v
              noB' i b = no' i (binderTy b)
     no' i (App f a) = no' i f && no' i a
+    no' i (Proj x _) = no' i x
     no' i _ = True
 
 -- Returns all names used free in the term
@@ -547,6 +554,7 @@ freeNames (Bind n (Let t v) sc) = nub $ freeNames v ++ (freeNames sc \\ [n])
                                         ++ freeNames t
 freeNames (Bind n b sc) = nub $ freeNames (binderTy b) ++ (freeNames sc \\ [n])
 freeNames (App f a) = nub $ freeNames f ++ freeNames a
+freeNames (Proj x i) = nub $ freeNames x
 freeNames _ = []
 
 -- Return the arity of a (normalised) type
@@ -669,6 +677,8 @@ prettyEnv env t = prettyEnv' env t False
       bracket p 2 $ prettySb env n b debug <> prettySe 10 ((n, b):env) sc debug
     prettySe p env (App f a) debug =
       bracket p 1 $ prettySe 1 env f debug <+> prettySe 0 env a debug
+    prettySe p env (Proj x i) debug =
+      prettySe 1 env x debug <+> text ("!" ++ show i)
     prettySe p env (Constant c) debug = pretty c
     prettySe p env Erased debug = text "[_]"
     prettySe p env (Set i) debug = text "Set" <+> (text . show $ i)
@@ -699,6 +709,7 @@ showEnv' env t dbg = se 10 env t where
         | noOccurrence n sc && not dbg = bracket p 2 $ se 1 env t ++ " -> " ++ se 10 ((n,b):env) sc
     se p env (Bind n b sc) = bracket p 2 $ sb env n b ++ se 10 ((n,b):env) sc
     se p env (App f a) = bracket p 1 $ se 1 env f ++ " " ++ se 0 env a
+    se p env (Proj x i) = se 1 env x ++ "!" ++ show i
     se p env (Constant c) = show c
     se p env Erased = "[__]"
     se p env (Set i) = "Set " ++ show i

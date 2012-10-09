@@ -67,9 +67,10 @@ getTotality n
                 [t] -> return t
                 _ -> return (Total [])
 
-addToCG :: Name -> [Name] -> Idris ()
+addToCG :: Name -> [(Name, [[Name]])] -> Idris ()
 addToCG n ns = do i <- get
-                  put (i { idris_callgraph = addDef n ns (idris_callgraph i) })
+                  put (i { idris_callgraph = addDef n (CGInfo ns [])
+                                                      (idris_callgraph i) })
 
 addToCalledG :: Name -> [Name] -> Idris ()
 addToCalledG n ns = return () -- TODO

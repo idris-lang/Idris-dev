@@ -30,6 +30,7 @@ data BC = ASSIGN Reg Reg
         | MKCON Reg Int [Reg]
         | CASE Reg [(Int, [BC])] (Maybe [BC])
         | PROJECT Reg Int Int -- get all args from reg, put them from Int onwards
+        | PROJECTINTO Reg Reg Int -- project argument from one reg into another 
         | CONSTCASE Reg [(Const, [BC])] (Maybe [BC])
         | CALL Name
         | TAILCALL Name
@@ -43,6 +44,7 @@ data BC = ASSIGN Reg Reg
         | BASETOP Int -- set BASE = TOP + n
         | STOREOLD -- set OLDBASE = BASE
         | OP Reg PrimFn [Reg]
+        | NULL Reg -- clear reg
         | ERROR String
     deriving Show
 
@@ -72,10 +74,12 @@ bc reg (SForeign l t fname args) r
 bc reg (SLet (Loc i) e sc) r = bc (L i) e False ++ bc reg sc r
 bc reg (SCon i _ vs) r = MKCON reg i (map getL vs) : clean r
     where getL (Loc x) = L x
+bc reg (SProj (Loc l) i) r = PROJECTINTO reg (L l) i : clean r 
 bc reg (SConst i) r = ASSIGNCONST reg i : clean r
 bc reg (SOp p vs) r = OP reg p (map getL vs) : clean r
     where getL (Loc x) = L x
 bc reg (SError str) r = [ERROR str]
+bc reg SNothing r = NULL reg : clean r
 bc reg (SCase (Loc l) alts) r 
    | isConst alts = constCase reg (L l) alts r
    | otherwise = conCase reg (L l) alts r

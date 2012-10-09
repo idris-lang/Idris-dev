@@ -80,7 +80,7 @@ void* allocate(VM* vm, size_t size) {
         void* ptr = (void*)(vm->heap_next + sizeof(size_t));
         *((size_t*)(vm->heap_next)) = size + sizeof(size_t);
         vm -> heap_next += size + sizeof(size_t);
-        bzero(ptr, size);
+        memset(ptr, 0, size);
         return ptr;
     } else {
         gc(vm);

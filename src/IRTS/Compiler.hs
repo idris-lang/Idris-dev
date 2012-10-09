@@ -72,7 +72,7 @@ allNames :: [Name] -> Name -> Idris [Name]
 allNames ns n | n `elem` ns = return []
 allNames ns n = do i <- get
                    case lookupCtxt Nothing n (idris_callgraph i) of
-                      [ns'] -> do more <- mapM (allNames (n:ns)) ns' 
+                      [ns'] -> do more <- mapM (allNames (n:ns)) (map fst (calls ns')) 
                                   return (nub (n : concat more))
                       _ -> return [n]
 
@@ -157,6 +157,8 @@ instance ToIR (TT Name) where
                v' <- ir' env v
                return $ LLet n v' sc'
       ir' env (Bind _ _ _) = return $ LConst (I 424242)
+      ir' env (Proj t i) = do t' <- ir' env t
+                              return $ LProj t' i
       ir' env (Constant c) = return $ LConst c
       ir' env _ = return $ LError "Impossible"
 
@@ -207,11 +209,16 @@ instance ToIR ([Name], SC) where
                          return $ LLam args tree'
 
 instance ToIR SC where
-    ir (STerm t) = ir t
-    ir (UnmatchedCase str) = return $ LError str
-    ir (Case n alts) = do alts' <- mapM mkIRAlt alts
-                          return $ LCase (LV (Glob n)) alts'
-      where
+    ir t = ir' t where
+
+        ir' (STerm t) = ir t
+        ir' (UnmatchedCase str) = return $ LError str
+        ir' (ProjCase tm alts) = do alts' <- mapM mkIRAlt alts
+                                    tm' <- ir tm
+                                    return $ LCase tm' alts'
+        ir' (Case n alts) = do alts' <- mapM mkIRAlt alts
+                               return $ LCase (LV (Glob n)) alts'
+
         mkIRAlt (ConCase n t args rhs) 
              = do rhs' <- ir rhs
                   return $ LConCase (-1) n args rhs'
@@ -226,8 +233,4 @@ instance ToIR SC where
         mkIRAlt (DefaultCase rhs)
            = do rhs' <- ir rhs
                 return $ LDefaultCase rhs'
-
-
-
-
 

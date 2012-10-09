@@ -268,7 +268,7 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
 --                                   return False
                     else return False
          pdef' <- applyOpts pdef 
-         tree@(CaseDef _ sc _) <- tclift $ simpleCase tcase pcover fc pdef
+         tree@(CaseDef _ sc _) <- tclift $ simpleCase tcase pcover False fc pdef
          ist <- get
 --          let wf = wellFounded ist n sc
          let tot = if pcover || AssertTotal `elem` opts
@@ -287,7 +287,7 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
                                         iputStrLn $ show fc ++
                                                     ":warning - Unreachable case: " ++ 
                                                     show (delab ist x)) xs
-         tree' <- tclift $ simpleCase tcase pcover fc pdef'
+         tree' <- tclift $ simpleCase tcase pcover True fc pdef'
          logLvl 3 (show tree)
          logLvl 3 $ "Optimised: " ++ show tree'
          ctxt <- getContext
@@ -303,10 +303,10 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
                         i <- get
                         case lookupDef Nothing n (tt_ctxt i) of
                             (CaseOp _ _ _ scargs sc _ _ : _) ->
-                                do let ns = namesUsed sc \\ scargs
-                                   logLvl 2 $ "Called names: " ++ show ns
-                                   addToCG n ns
-                                   addToCalledG n ns -- plus names in type!
+                                do let calls = findCalls sc scargs
+                                   logLvl 2 $ "Called names: " ++ show calls
+                                   addToCG n calls
+                                   addToCalledG n (nub (map fst calls)) -- plus names in type!
                                    addIBC (IBCCG n)
                             _ -> return ()
 --                         addIBC (IBCTotal n tot)

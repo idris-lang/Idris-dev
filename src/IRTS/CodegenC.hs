@@ -112,6 +112,8 @@ bcc i (MKCON l tag args)
 
 bcc i (PROJECT l loc a) = indent i ++ "PROJECT(vm, " ++ creg l ++ ", " ++ show loc ++ 
                                       ", " ++ show a ++ ");\n"
+bcc i (PROJECTINTO r t idx)
+    = indent i ++ creg r ++ " = GETARG(" ++ creg t ++ ", " ++ show idx ++ ");\n" 
 bcc i (CASE r code def) 
     = indent i ++ "switch(TAG(" ++ creg r ++ ")) {\n" ++
       concatMap (showCase i) code ++
@@ -149,6 +151,7 @@ bcc i (FOREIGNCALL l LANG_C rty fn args)
         c_irts rty (creg l ++ " = ") 
                    (fn ++ "(" ++ showSep "," (map fcall args) ++ ")") ++ ";\n"
     where fcall (t, arg) = irts_c t (creg arg)
+bcc i (NULL r) = indent i ++ creg r ++ " = NULL;\n" -- clear, so it'll be GCed
 bcc i (ERROR str) = indent i ++ "fprintf(stderr, " ++ show str ++ "); assert(0); exit(-1);"
 -- bcc i _ = indent i ++ "// not done yet\n"
 

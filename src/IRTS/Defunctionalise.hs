@@ -11,12 +11,14 @@ import Data.List
 data DExp = DV LVar
           | DApp Bool Name [DExp] -- True = tail call
           | DLet Name DExp DExp -- name just for pretty printing
-          | DLam [Name] DExp -- lambda, lifted out before compiling
+          | DProj DExp Int
           | DC Int Name [DExp]
           | DCase DExp [DAlt]
           | DConst Const
           | DForeign FLang FType String [(FType, DExp)]
           | DOp PrimFn [DExp]
+          | DNothing -- erased value, can be compiled to anything since it'll never
+                     -- be inspected
           | DError String
   deriving Eq
 
@@ -85,11 +87,13 @@ addApps defs (n, LFun _ args e) = (n, DFun n args (aa args e))
     aa env (LForce e) = eEVAL (aa env e)
     aa env (LLet n v sc) = DLet n (aa env v) (aa (n : env) sc)
     aa env (LCon i n args) = DC i n (map (aa env) args)
+    aa env (LProj t i) = DProj (eEVAL (aa env t)) i
     aa env (LCase e alts) = DCase (eEVAL (aa env e)) (map (aaAlt env) alts)
     aa env (LConst c) = DConst c
     aa env (LForeign l t n args) = DForeign l t n (map (aaF env) args)
     aa env (LOp LFork args) = DOp LFork (map (aa env) args)
     aa env (LOp f args) = DOp f (map (eEVAL . (aa env)) args)
+    aa env LNothing = DNothing
     aa env (LError e) = DError e
 
     aaF env (t, e) = (t, eEVAL (aa env e))
@@ -176,9 +180,8 @@ instance Show DExp where
                                    showSep ", " (map (show' env) args) ++")"
      show' env (DLet n v e) = "let " ++ show n ++ " = " ++ show' env v ++ " in " ++
                                show' (env ++ [show n]) e
-     show' env (DLam args e) = "\\ " ++ showSep "," (map show args) ++ " => " ++
-                                 show' (env ++ (map show args)) e
      show' env (DC i n args) = show n ++ ")" ++ showSep ", " (map (show' env) args) ++ ")"
+     show' env (DProj t i) = show t ++ "!" ++ show i
      show' env (DCase e alts) = "case " ++ show' env e ++ " of {\n\t" ++
                                     showSep "\n\t| " (map (showAlt env) alts)
      show' env (DConst c) = show c

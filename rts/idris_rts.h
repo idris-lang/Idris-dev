@@ -129,6 +129,7 @@ VAL MKCON(VM* vm, VAL cl, int tag, int arity, ...);
 
 #define SETTAG(x, a) (x)->info.c.tag = (a)
 #define SETARG(x, i, a) ((VAL*)((x)->info.c.args))[i] = ((VAL)(a))
+#define GETARG(x, i) ((VAL*)((x)->info.c.args))[i]
 
 void PROJECT(VM* vm, VAL r, int loc, int arity); 
 void SLIDE(VM* vm, int args);
