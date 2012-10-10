@@ -1,5 +1,7 @@
+{-# LANGUAGE PatternGuards #-}
+
 module Core.CaseTree(CaseDef(..), SC(..), CaseAlt(..), CaseTree,
-                     simpleCase, small, namesUsed, findCalls) where
+                     simpleCase, small, namesUsed, findCalls, findUsedArgs) where
 
 import Core.TT
 
@@ -68,7 +70,7 @@ namesUsed sc = nub $ nu' [] sc where
 -- arguments
 
 findCalls :: SC -> [Name] -> [(Name, [[Name]])]
-findCalls sc ign = nub $ nu' ign sc where
+findCalls sc topargs = nub $ nu' topargs sc where
     nu' ps (Case n alts) = nub (concatMap (nua (n : ps)) alts)
     nu' ps (STerm t)     = nub $ nut ps t
     nu' ps _ = []
@@ -77,32 +79,44 @@ findCalls sc ign = nub $ nu' ign sc where
     nua ps (ConstCase _ sc) = nu' ps sc
     nua ps (DefaultCase sc) = nu' ps sc
 
-    nut ps (P _ n _) | n `elem` ps = []
+    nut ps (P Ref n _) | n `elem` ps = []
                      | otherwise = [(n, [])] -- tmp
-    nut ps (App f a) = nut ps f ++ nut ps a
+    nut ps fn@(App f a) 
+        | (P Ref n _, args) <- unApply fn
+             = if n `elem` ps then nut ps f ++ nut ps a
+                  else [(n, map argNames args)] ++ concatMap (nut ps) args
+        | otherwise = nut ps f ++ nut ps a
     nut ps (Bind n (Let t v) sc) = nut ps v ++ nut (n:ps) sc
     nut ps (Bind n b sc) = nut (n:ps) sc
     nut ps _ = []
 
--- Find directly used arguments (i.e. used but not in function calls)
-{-
-findUsedArgs :: SC -> [Name] -> [(Name, [[Name]])]
-findUsedArgs sc ign = nub $ nu' ign sc where
-    nu' ps (Case n alts) = nub (concatMap (nua (n : ps)) alts)
-    nu' ps (STerm t)     = nub $ nut ps t
-    nu' ps _ = []
+    argNames tm = let ns = directUse tm in
+                      filter (\x -> x `elem` ns) topargs
 
-    nua ps (ConCase n i args sc) = nub (nu' (ps ++ args) sc) 
-    nua ps (ConstCase _ sc) = nu' ps sc
-    nua ps (DefaultCase sc) = nu' ps sc
+-- Find names which are used directly (i.e. not in a function call) in a term
 
-    nut ps (P _ n _) | n `elem` ps = []
-                     | otherwise = [(n, [])] -- tmp
-    nut ps (App f a) = nut ps f ++ nut ps a
-    nut ps (Bind n (Let t v) sc) = nut ps v ++ nut (n:ps) sc
-    nut ps (Bind n b sc) = nut (n:ps) sc
-    nut ps _ = []
--}
+directUse :: Eq n => TT n -> [n]
+directUse (P _ n _) = [n]
+directUse (Bind n (Let t v) sc) = nub $ directUse v ++ (directUse sc \\ [n])
+                                        ++ directUse t
+directUse (Bind n b sc) = nub $ directUse (binderTy b) ++ (directUse sc \\ [n])
+directUse fn@(App f a) 
+    | (P Ref n _, args) <- unApply fn = [] -- need to know what n does with them
+    | otherwise = nub $ directUse f ++ directUse a
+directUse (Proj x i) = nub $ directUse x
+directUse _ = []
+
+-- Find all directly used arguments (i.e. used but not in function calls)
+
+findUsedArgs :: SC -> [Name] -> [Name]
+findUsedArgs sc topargs = filter (\x -> x `elem` topargs) (nub $ nu' sc) where
+    nu' (Case n alts) = n : concatMap nua alts
+    nu' (STerm t)     = directUse t
+    nu' _             = []
+
+    nua (ConCase n i args sc) = nu' sc 
+    nua (ConstCase _ sc)      = nu' sc
+    nua (DefaultCase sc)      = nu' sc
 
 simpleCase :: Bool -> Bool -> Bool -> FC -> [([Name], Term, Term)] -> TC CaseDef
 simpleCase tc cover proj fc [] 

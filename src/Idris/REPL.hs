@@ -218,6 +218,9 @@ process fn (DebugInfo n)
                          let d = lookupDef Nothing n (tt_ctxt i)
                          when (not (null d)) $ liftIO $
                             do print (head d)
+                         let cg = lookupCtxtName Nothing n (idris_callgraph i)
+                         when (not (null cg)) $ do iputStrLn "Call graph:\n"
+                                                   iputStrLn (show cg)
 process fn (Info n) = do i <- get
                          case lookupCtxt Nothing n (idris_classes i) of
                               [c] -> classInfo c

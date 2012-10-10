@@ -302,10 +302,12 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
                         when (tot /= Unchecked) $ addIBC (IBCTotal n tot)
                         i <- get
                         case lookupDef Nothing n (tt_ctxt i) of
-                            (CaseOp _ _ _ scargs sc _ _ : _) ->
-                                do let calls = findCalls sc scargs
-                                   logLvl 2 $ "Called names: " ++ show calls
-                                   addToCG n calls
+                            (CaseOp _ _ _ scargs sc scargs' sc' : _) ->
+                                do let calls = findCalls sc' scargs'
+                                   let used = findUsedArgs sc' scargs'
+                                   let cg = CGInfo calls used
+                                   logLvl 2 $ "Called names: " ++ show cg
+                                   addToCG n cg
                                    addToCalledG n (nub (map fst calls)) -- plus names in type!
                                    addIBC (IBCCG n)
                             _ -> return ()

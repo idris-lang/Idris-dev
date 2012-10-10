@@ -183,7 +183,7 @@ doOp v LGe [l, r] = v ++ "INTOP(>=," ++ creg l ++ ", " ++ creg r ++ ")"
 
 doOp v LFPlus [l, r] = v ++ "FLOATOP(+," ++ creg l ++ ", " ++ creg r ++ ")"
 doOp v LFMinus [l, r] = v ++ "FLOATOP(-," ++ creg l ++ ", " ++ creg r ++ ")"
-doOp v LFTimes [l, r] = v ++ "FLOATOP(*" ++ creg l ++ ", " ++ creg r ++ ")"
+doOp v LFTimes [l, r] = v ++ "FLOATOP(*," ++ creg l ++ ", " ++ creg r ++ ")"
 doOp v LFDiv [l, r] = v ++ "FLOATOP(/," ++ creg l ++ ", " ++ creg r ++ ")"
 doOp v LFEq [l, r] = v ++ "FLOATBOP(==," ++ creg l ++ ", " ++ creg r ++ ")"
 doOp v LFLt [l, r] = v ++ "FLOATBOP(<," ++ creg l ++ ", " ++ creg r ++ ")"

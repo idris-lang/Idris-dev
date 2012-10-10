@@ -82,6 +82,7 @@ data IState = IState {
 
 data CGInfo = CGInfo { calls :: [(Name, [[Name]])],
                        argsused :: [Name] }
+    deriving Show
 {-! 
 deriving instance Binary CGInfo 
 !-}
