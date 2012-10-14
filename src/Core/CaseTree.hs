@@ -17,7 +17,7 @@ data SC = Case Name [CaseAlt] -- invariant: lowest tags first
         | ProjCase Term [CaseAlt] -- special case for projections
         | STerm Term
         | UnmatchedCase String -- error message
-    deriving (Show, Eq, Ord)
+    deriving (Eq, Ord)
 {-! 
 deriving instance Binary SC 
 !-}
@@ -29,6 +29,27 @@ data CaseAlt = ConCase Name Int [Name] SC
 {-! 
 deriving instance Binary CaseAlt 
 !-}
+
+instance Show SC where
+    show sc = show' 1 sc
+      where
+        show' i (Case n alts) = "case " ++ show n ++ " of\n" ++ indent i ++ 
+                                    showSep ("\n" ++ indent i) (map (showA i) alts)
+        show' i (ProjCase tm alts) = "case " ++ show tm ++ " of " ++
+                                      showSep ("\n" ++ indent i) (map (showA i) alts)
+        show' i (STerm tm) = show tm
+        show' i (UnmatchedCase str) = "error " ++ show str
+
+        indent i = concat $ take i (repeat "    ")
+
+        showA i (ConCase n t args sc) 
+           = show n ++ "(" ++ showSep (", ") (map show args) ++ ") => "
+                ++ show' (i+1) sc
+        showA i (ConstCase t sc) 
+           = show t ++ " => " ++ show' (i+1) sc
+        showA i (DefaultCase sc) 
+           = "_ => " ++ show' (i+1) sc
+              
 
 type CaseTree = SC
 type Clause   = ([Pat], (Term, Term))
