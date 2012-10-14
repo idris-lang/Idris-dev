@@ -45,6 +45,10 @@ instance Exception IdrisErr
 ifail :: String -> Idris ()
 ifail str = throwIO (IErr str)
 
+ierror :: Err -> Idris ()
+ierror err = do i <- get
+                throwIO (IErr $ pshow i err)
+
 tclift :: TC a -> Idris a
 tclift tc = case tc of
                OK v -> return v

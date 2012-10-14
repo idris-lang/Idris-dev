@@ -80,8 +80,10 @@ data IState = IState {
     compiled_so :: Maybe String
    }
 
-data CGInfo = CGInfo { calls :: [(Name, [[Name]])],
-                       argsused :: [Name] }
+data CGInfo = CGInfo { argsdef :: [Name],
+                       calls :: [(Name, [[Name]])],
+                       argsused :: [Name],
+                       unusedpos :: [Int] }
     deriving Show
 {-! 
 deriving instance Binary CGInfo 

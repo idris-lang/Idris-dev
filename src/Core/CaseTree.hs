@@ -130,8 +130,9 @@ simpleCase tc cover proj fc cs
                     let numargs    = length (fst (head pats)) 
                         ns         = take numargs args
                         (tree, st) = runState 
-                                         (match (reverse ns) pats (defaultCase cover)) ([], numargs) in
-                        return $ CaseDef ns (prune proj tree) (fst st)
+                                         (match (reverse ns) pats (defaultCase cover)) ([], numargs)
+                        t          = CaseDef ns (prune proj tree) (fst st) in
+                        if proj then return (stripLambdas t) else return t
                 Error err -> Error (At fc err)
     where args = map (\i -> MN i "e") [0..]
           defaultCase True = STerm Erased
@@ -346,5 +347,12 @@ prune proj (Case n alts)
           projRepTm arg n i t = subst arg (Proj (P Bound n Erased) i) t 
 
 prune _ t = t
+
+stripLambdas :: CaseDef -> CaseDef
+stripLambdas (CaseDef ns (STerm (Bind x (Lam _) sc)) tm)
+    = stripLambdas (CaseDef (ns ++ [x]) (STerm (instantiate (P Bound x Erased) sc)) tm)
+stripLambdas x = x
+
+
 
 

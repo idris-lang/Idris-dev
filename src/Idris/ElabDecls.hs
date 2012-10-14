@@ -305,7 +305,7 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
                             (CaseOp _ _ _ scargs sc scargs' sc' : _) ->
                                 do let calls = findCalls sc' scargs'
                                    let used = findUsedArgs sc' scargs'
-                                   let cg = CGInfo calls used
+                                   let cg = CGInfo scargs' calls used []
                                    logLvl 2 $ "Called names: " ++ show cg
                                    addToCG n cg
                                    addToCalledG n (nub (map fst calls)) -- plus names in type!
@@ -380,7 +380,7 @@ elabClause info tcgen (PClause fc fname lhs_in withs rhs_in whereblock)
                      (erun fc (buildTC i info True tcgen fname (infTerm lhs)))
         let lhs_tm = orderPats (getInferTerm lhs')
         let lhs_ty = getInferType lhs'
-        logLvl 3 (show lhs_tm)
+        logLvl 3 ("Elaborated: " ++ show lhs_tm)
         (clhs, clhsty) <- recheckC fc [] lhs_tm
         logLvl 5 ("Checked " ++ show clhs)
         -- Elaborate where block
@@ -417,6 +417,10 @@ elabClause info tcgen (PClause fc fname lhs_in withs rhs_in whereblock)
         ctxt <- getContext
         logLvl 5 $ "Rechecking"
         (crhs, crhsty) <- recheckC fc [] rhs'
+        logLvl 6 $ " ==> " ++ show crhsty ++ "   against   " ++ show clhsty
+        case  converts ctxt [] clhsty crhsty of
+            OK _ -> return ()
+            Error _ -> ierror (At fc (CantUnify False clhsty crhsty (Msg "") [] 0))
         i <- get
         checkInferred fc (delab' i crhs True) rhs
         return $ Just (clhs, crhs)

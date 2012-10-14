@@ -68,6 +68,7 @@ Executable     idris
                               Idris.Compiler, Idris.Prover, Idris.ElabTerm,
                               Idris.Coverage, Idris.IBC, Idris.Unlit,
                               Idris.DataOpts, Idris.Transforms, Idris.DSL, 
+                              Idris.UnusedArgs,
 
                               Util.Pretty, Util.System,
                               Pkg.Package, Pkg.PParser,

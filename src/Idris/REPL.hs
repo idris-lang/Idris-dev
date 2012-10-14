@@ -14,6 +14,8 @@ import Idris.Prover
 import Idris.Parser
 import Idris.Primitives
 import Idris.Coverage
+import Idris.UnusedArgs
+
 import Paths_idris
 import Util.System
 
@@ -219,8 +221,11 @@ process fn (DebugInfo n)
                          when (not (null d)) $ liftIO $
                             do print (head d)
                          let cg = lookupCtxtName Nothing n (idris_callgraph i)
-                         when (not (null cg)) $ do iputStrLn "Call graph:\n"
-                                                   iputStrLn (show cg)
+                         findUnusedArgs (map fst cg)
+                         i <- get
+                         let cg' = lookupCtxtName Nothing n (idris_callgraph i)
+                         when (not (null cg')) $ do iputStrLn "Call graph:\n"
+                                                    iputStrLn (show cg')
 process fn (Info n) = do i <- get
                          case lookupCtxt Nothing n (idris_classes i) of
                               [c] -> classInfo c

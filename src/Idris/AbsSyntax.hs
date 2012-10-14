@@ -911,7 +911,7 @@ matchClause' names i x y = checkRpts $ match (fullApp x) (fullApp y) where
                                                   return (mt ++ mty ++ ms)
     match (PHidden x) (PHidden y) = match' x y
     match Placeholder _ = return []
---     match _ Placeholder = return []
+    match _ Placeholder = return []
     match (PResolveTC _) _ = return []
     match a b | a == b = return []
               | otherwise = LeftErr (a, b)

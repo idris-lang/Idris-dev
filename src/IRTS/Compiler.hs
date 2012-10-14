@@ -10,6 +10,8 @@ import IRTS.CodegenJava
 import IRTS.Inliner
 
 import Idris.AbsSyntax
+import Idris.UnusedArgs
+
 import Core.TT
 import Core.Evaluate
 import Core.CaseTree
@@ -29,6 +31,7 @@ compile target f tm
         let tmnames = namesUsed (STerm tm)
         used <- mapM (allNames []) tmnames
         defsIn <- mkDecls tm (concat used)
+        findUnusedArgs (concat used)
         maindef <- irMain tm
         objs <- getObjectFiles
         libs <- getLibs
