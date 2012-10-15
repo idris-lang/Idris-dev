@@ -151,6 +151,7 @@ data Command = Quit
              | HNF PTerm
              | Defn Name
              | Info Name
+             | Missing Name
              | DebugInfo Name
              | Search PTerm
              | SetOpt Opt
@@ -183,6 +184,7 @@ data Opt = Filename String
          | Pkg String
          | BCAsm String
          | DumpC String
+         | DumpCases String
          | FOVM String
     deriving (Show, Eq)
 

@@ -46,10 +46,16 @@ compile target f tm
         iLOG "Inlining"
         let defuns = inline defuns_in
         logLvl 5 $ show defuns
-
+        iLOG "Resolving variables for CG"
         -- iputStrLn $ showSep "\n" (map show (toAlist defuns))
         let checked = checkDefs defuns (toAlist defuns)
         dumpC <- getDumpC
+        dumpCases <- getDumpCases
+        case dumpCases of
+            Nothing -> return ()
+            Just f -> do cs <- getCaseTrees (concat used)
+                         liftIO $ writeFile f (showCaseTrees cs)
+        iLOG "Building output"
         case checked of
             OK c -> case target of
                          ViaC -> liftIO $ codegenC dumpC c f True hdrs 
@@ -66,6 +72,8 @@ compile target f tm
                        if ex then return f else return h
         mkObj f = f ++ " "
         mkLib l = "-l" ++ l ++ " "
+
+
 
 irMain :: TT Name -> Idris LDecl
 irMain tm = do i <- ir tm
@@ -85,6 +93,19 @@ mkDecls t used
          let ds = filter (\ (n, d) -> n `elem` used || isCon d) $ ctxtAlist (tt_ctxt i)
          decls <- mapM build ds
          return decls
+
+getCaseTrees :: [Name] -> Idris [(Name, Def)]
+getCaseTrees used 
+    = do i <- getIState
+         let ds = filter (\ (n, d) -> n `elem` used || isCon d) $ ctxtAlist (tt_ctxt i)
+         return ds
+
+showCaseTrees :: [(Name, Def)] -> String
+showCaseTrees ds = showSep "\n\n" (map showCT ds)
+  where
+    showCT (n, CaseOp _ _ _ _ _ args sc)
+        = show n ++ " " ++ showSep " " (map show args) ++ " = " ++ show sc
+    showCT (n, _) = ""
 
 isCon (TyDecl _ _) = True
 isCon _ = False

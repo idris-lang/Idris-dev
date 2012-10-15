@@ -1,6 +1,6 @@
 {-# LANGUAGE PatternGuards #-}
 
-module Core.CaseTree(CaseDef(..), SC(..), CaseAlt(..), CaseTree,
+module Core.CaseTree(CaseDef(..), SC(..), CaseAlt(..), Phase(..), CaseTree,
                      simpleCase, small, namesUsed, findCalls, findUsedArgs) where
 
 import Core.TT
@@ -139,11 +139,18 @@ findUsedArgs sc topargs = filter (\x -> x `elem` topargs) (nub $ nu' sc) where
     nua (ConstCase _ sc)      = nu' sc
     nua (DefaultCase sc)      = nu' sc
 
-simpleCase :: Bool -> Bool -> Bool -> FC -> [([Name], Term, Term)] -> TC CaseDef
-simpleCase tc cover proj fc [] 
+data Phase = CompileTime | RunTime
+    deriving (Show, Eq)
+
+-- Generate a simple case tree
+-- 
+
+simpleCase :: Bool -> Bool -> Phase -> FC -> [([Name], Term, Term)] -> TC CaseDef
+simpleCase tc cover phase fc [] 
                  = return $ CaseDef [] (UnmatchedCase "No pattern clauses") []
-simpleCase tc cover proj fc cs 
-      = let pats       = map (\ (avs, l, r) -> 
+simpleCase tc cover phase fc cs 
+      = let proj       = phase == RunTime
+            pats       = map (\ (avs, l, r) -> 
                                    (avs, reverse (toPats tc l), (l, r))) cs
             chkPats    = mapM chkAccessible pats in
             case chkPats of

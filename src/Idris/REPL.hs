@@ -323,6 +323,13 @@ process fn (Compile target f)
            compile target f m
   where fc = FC "main" 0                     
 process fn (LogLvl i) = setLogLevel i 
+process fn (Missing n) = do i <- get
+                            case lookupDef Nothing n (tt_ctxt i) of
+                                [CaseOp _ _ _ args t _ _]
+                                    -> do tms <- genMissing args t
+                                          iputStrLn (show tms)
+                                [] -> iputStrLn $ show n ++ " undefined"
+                                _ -> iputStrLn $ "Ambiguous name"
 process fn Metavars 
                  = do ist <- get
                       let mvs = idris_metavars ist \\ primDefs
@@ -401,6 +408,7 @@ parseArgs ("--clean":n:ns)      = PkgClean n : (parseArgs ns)
 parseArgs ("--bytecode":n:ns)   = NoREPL : BCAsm n : (parseArgs ns)
 parseArgs ("--fovm":n:ns)       = NoREPL : FOVM n : (parseArgs ns)
 parseArgs ("--dumpc":n:ns)      = DumpC n : (parseArgs ns)
+parseArgs ("--dumpcases":n:ns)  = DumpCases n : (parseArgs ns)
 parseArgs (n:ns)                = Filename n : (parseArgs ns)
 
 help =
@@ -408,6 +416,7 @@ help =
     ([""], "", ""),
     (["<expr>"], "", "Evaluate an expression"),
     ([":t"], "<expr>", "Check the type of an expression"),
+    ([":miss", ":missing"], "<name>", "Show missing clauses"),
     ([":i", ":info"], "<name>", "Display information about a type class"),
     ([":total"], "<name>", "Check the totality of a name"),
     ([":r",":reload"], "", "Reload current file"),

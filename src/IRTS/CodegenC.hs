@@ -1,5 +1,6 @@
 module IRTS.CodegenC where
 
+import Idris.AbsSyntax
 import IRTS.Bytecode
 import IRTS.Lang
 import IRTS.Simplified

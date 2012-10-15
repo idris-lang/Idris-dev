@@ -14,6 +14,93 @@ import Data.List
 import Data.Either
 import Debug.Trace
 
+import Control.Monad.State
+
+-- Generate the LHSes which are missing from a case tree
+-- Eliminate the ones which cannot be well typed
+
+genMissing :: [Name] -> SC -> Idris [PTerm] 
+genMissing args sc = do sc' <- expandTree sc
+                        iputStrLn (show sc')
+                        gm (map (\x -> P Bound x Erased) args) sc'
+
+gm :: [TT Name] -> SC -> Idris [PTerm]
+gm args (Case n alts) = do m <- mapM (gmAlt args n) alts
+                           return (concat m)
+gm args (STerm tm)    = do iputStrLn ("Covered: " ++ show args)
+                           return []
+gm args (UnmatchedCase _) = do iputStrLn ("Missing: " ++ show args)
+                               return []
+
+gmAlt args n (ConCase cn t cargs sc)
+   = do let args' = map (subst n (mkApp (P Bound cn Erased)
+                                        (map (\x -> P Bound x Erased) cargs))) args
+        gm args' sc
+gmAlt args n (ConstCase c sc)
+   = do let args' = map (subst n (Constant c)) args
+        gm args' sc
+gmAlt args n (DefaultCase sc)
+   = do gm args sc
+
+getDefault (DefaultCase sc : _) = sc
+getDefault (_ : cs) = getDefault cs
+getDefault [] = UnmatchedCase ""
+
+dropDefault (DefaultCase sc : rest) = dropDefault rest
+dropDefault (c : cs) = c : dropDefault cs
+dropDefault [] = [] 
+
+expandTree :: SC -> Idris SC
+expandTree (Case n alts) = do i <- get
+                              as <- expandAlts i (dropDefault alts) (getDefault alts)
+                              alts' <- mapM expandTreeA as
+                              return (Case n alts')
+    where expandTreeA (ConCase n i ns sc) = do sc' <- expandTree sc
+                                               return (ConCase n i ns sc')
+          expandTreeA (ConstCase i sc) = do sc' <- expandTree sc
+                                            return (ConstCase i sc')
+          expandTreeA (DefaultCase sc) = do sc' <- expandTree sc
+                                            return (DefaultCase sc')
+expandTree t = return t
+
+expandAlts :: IState -> [CaseAlt] -> SC -> Idris [CaseAlt]
+expandAlts i all@(ConstCase c _ : alts) def
+    = return $ all ++ [DefaultCase def]
+expandAlts i all@(ConCase n _ _ _ : alts) def
+    | (TyDecl c@(DCon _ arity) ty : _) <- lookupDef Nothing n (tt_ctxt i)
+         = do let tyn = getTy n (tt_ctxt i)
+              case lookupCtxt Nothing tyn (idris_datatypes i) of
+                  (TI ns : _) -> do let ps = map mkPat ns
+                                    return $ addAlts ps (altsFor all) all
+                  _ -> return all
+  where
+    altsFor [] = []
+    altsFor (ConCase n _ _ _ : alts) = n : altsFor alts
+    altsFor (_ : alts) = altsFor alts
+
+    addAlts [] got alts = alts
+    addAlts ((n, arity) : ps) got alts
+        | n `elem` got = addAlts ps got alts
+        | otherwise = addAlts ps got (alts ++ [ConCase n (-1) (argList arity) def])
+
+    argList i = take i (map (\x -> (MN x "ign")) [0..])
+
+    getTy n ctxt = case lookupTy Nothing n ctxt of
+                          (t : _) -> case unApply (getRetTy t) of
+                                        (P _ tyn _, _) -> tyn
+                                        x -> error $ "Can't happen getTy 1 " ++ show (n, x)
+                          _ -> error "Can't happen getTy 2"
+
+    mkPat x = case lookupCtxt Nothing x (idris_implicits i) of
+                    (pargs : _)
+                       -> (x, length pargs)  
+                    _ -> error "Can't happen - genAll"
+expandAlts i alts def = return alts 
+        
+
+
+-- OLD STUFF: probably broken...
+
 -- Given a list of LHSs, generate a extra clauses which cover the remaining
 -- cases. The ones which haven't been provided are marked 'absurd' so that the
 -- checker will make sure they can't happen.
