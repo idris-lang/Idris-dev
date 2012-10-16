@@ -5,7 +5,7 @@
    evaluation/checking inside the proof system, etc. --}
 
 module Core.ProofState(ProofState(..), newProof, envAtFocus, goalAtFocus,
-                  Tactic(..), Goal(..), processTactic) where
+                  Tactic(..), Goal(..), processTactic, dropGiven) where
 
 import Core.Typecheck
 import Core.Evaluate
@@ -24,6 +24,7 @@ data ProofState = PS { thname   :: Name,
                        nextname :: Int,    -- name supply
                        pterm    :: Term,   -- current proof term
                        ptype    :: Type,   -- original goal
+                       dontunify :: [Name], -- explicitly given by programmer, leave it
                        unified  :: (Name, [(Name, Term)]),
                        solved   :: Maybe (Name, Term),
                        problems :: Fails,
@@ -73,8 +74,8 @@ data Tactic = Attack
 -- Some utilites on proof and tactic states
 
 instance Show ProofState where
-    show (PS nm [] _ tm _ _ _ _ _ _ _ _ _ _ _) = show nm ++ ": no more goals"
-    show (PS nm (h:hs) _ tm _ _ _ _ _ i _ _ ctxt _ _) 
+    show (PS nm [] _ tm _ _ _ _ _ _ _ _ _ _ _ _) = show nm ++ ": no more goals"
+    show (PS nm (h:hs) _ tm _ _ _ _ _ _ i _ _ ctxt _ _) 
           = let OK g = goal (Just h) tm
                 wkenv = premises g in
                 "Other goals: " ++ show hs ++ "\n" ++
@@ -97,12 +98,12 @@ instance Show ProofState where
                showG ps b = showEnv ps (binderTy b)
 
 instance Pretty ProofState where
-  pretty (PS nm [] _ trm _ _ _ _ _ _ _ _ _ _ _) =
+  pretty (PS nm [] _ trm _ _ _ _ _ _ _ _ _ _ _ _) =
     if size nm > breakingSize then
       pretty nm <> colon $$ nest nestingSize (text " no more goals.")
     else
       pretty nm <> colon <+> text " no more goals."
-  pretty p@(PS nm (h:hs) _ tm _ _ _ _ _ i _ _ ctxt _ _) =
+  pretty p@(PS nm (h:hs) _ tm _ _ _ _ _ _ i _ _ ctxt _ _) =
     let OK g  = goal (Just h) tm in
     let wkEnv = premises g in
       text "Other goals" <+> colon <+> pretty hs $$
@@ -170,7 +171,7 @@ addLog str = action (\ps -> ps { plog = plog ps ++ str ++ "\n" })
 newProof :: Name -> Context -> Type -> ProofState
 newProof n ctxt ty = let h = holeName 0 
                          ty' = vToP ty in
-                         PS n [h] 1 (Bind h (Hole ty') (P Bound h ty')) ty (h, []) 
+                         PS n [h] 1 (Bind h (Hole ty') (P Bound h ty')) ty [] (h, []) 
                             Nothing [] []
                             [] []
                             Nothing ctxt "" False
@@ -351,6 +352,7 @@ solve ctxt env (Bind x (Guess ty val) sc)
                        let (uh, uns) = unified ps
                        action (\ps -> ps { holes = holes ps \\ [x],
                                            solved = Just (x, val),
+                                           -- dontunify = dontunify ps \\ [x],
                                            -- unified = (uh, uns ++ [(x, val)]),
                                            instances = instances ps \\ [x] })
                        return $ {- Bind x (Let ty val) sc -} instantiate val (pToV x sc)
@@ -487,10 +489,19 @@ solve_unified :: RunTactic
 solve_unified ctxt env tm = 
     do ps <- get
        let (_, ns) = unified ps
-       action (\ps -> ps { holes = holes ps \\ map fst ns })
-       action (\ps -> ps { pterm = updateSolved ns (pterm ps) })
-       action (\ps -> ps { injective = map (tmap (updateSolved ns)) (injective ps) })
-       return (updateSolved ns tm)
+       let unify = dropGiven (dontunify ps) ns
+       action (\ps -> ps { holes = holes ps \\ map fst unify })
+       action (\ps -> ps { pterm = updateSolved unify (pterm ps) })
+       action (\ps -> ps { injective = map (tmap (updateSolved unify)) (injective ps) })
+       return (updateSolved unify tm)
+  where
+
+dropGiven du [] = []
+dropGiven du ((n, P Bound t ty) : us) | n `elem` du && not (t `elem` du)
+                           = (t, P Bound n ty) : dropGiven du us
+dropGiven du (u@(n, _) : us) | n `elem` du = dropGiven du us
+-- dropGiven du (u@(_, P a n ty) : us) | n `elem` du = dropGiven du us
+dropGiven du (u : us) = u : dropGiven du us
 
 updateSolved xs (Bind n (Hole ty) t)
     | Just v <- lookup n xs = instantiate v (pToV n (updateSolved xs t))
@@ -519,9 +530,10 @@ processTactic Undo ps = case previous ps of
                             Nothing -> fail "Nothing to undo."
                             Just pold -> return (pold, "")
 processTactic EndUnify ps 
-    = let (h, ns) = unified ps
+    = let (h, ns_in) = unified ps
+          ns = dropGiven (dontunify ps) ns_in
           ns' = map (\ (n, t) -> (n, updateSolved ns t)) ns 
-          tm' = -- trace ("Updating " ++ show ns' ++ " in " ++ show (pterm ps)) $
+          tm' = -- trace ("Updating " ++ show ns') $ --  ++ " in " ++ show (pterm ps)) $
                 updateSolved ns' (pterm ps) 
           probs' = updateProblems ns' (problems ps) in
           case probs' of

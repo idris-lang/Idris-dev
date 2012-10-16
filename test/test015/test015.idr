@@ -5,11 +5,13 @@ import system
 
 data Bit : Nat -> Set where
      b0 : Bit 0
-     b1 : Bit 1
+     b1 : Bit 1 
 
 instance Show (Bit n) where
-     show b0 = "0"
-     show b1 = "1"
+     show = show' where
+        show' : Bit x -> String
+        show' b0 = "0"
+        show' b1 = "1"
 
 infixl 5 #
 
@@ -18,8 +20,10 @@ data Binary : (width : Nat) -> (value : Nat) -> Set where
      (#)  : Binary w v -> Bit bit -> Binary (S w) (bit + 2 * v)
 
 instance Show (Binary w k) where
-     show zero = ""
-     show (bin # bit) = show bin ++ show bit
+     show = show' where
+        show' : Binary w' k' -> String
+        show' zero = ""
+        show' (bin # bit) = show bin ++ show bit
 
 pad : Binary w n -> Binary (S w) n
 pad zero = zero # b0 

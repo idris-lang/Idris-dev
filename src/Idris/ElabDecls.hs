@@ -231,23 +231,21 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
          pats_in <- mapM (elabClause info (TCGen `elem` opts)) cs
          
          solveDeferred n
-         let pats = mapMaybe id pats_in
-         logLvl 3 (showSep "\n" (map (\ (l,r) -> 
-                                        show l ++ " = " ++ 
-                                        show r) pats))
+         let pats = pats_in
+--          logLvl 3 (showSep "\n" (map (\ (l,r) -> 
+--                                         show l ++ " = " ++ 
+--                                         show r) pats))
          ist <- get
          let tcase = opt_typecase (idris_options ist)
          let pdef = map debind $ map (simpl (tt_ctxt ist)) pats
+         tree@(CaseDef scargs sc _) <- tclift $ simpleCase tcase False CompileTime fc pdef
          tclift $ sameLength pdef
          cov <- coverage
          pcover <-
                  if cov  
-                    then do missing <- genClauses fc n (map getLHS pdef) cs
+                    then do -- missing <- genClauses fc n (map getLHS pdef) cs
+                            missing <- genMissing n scargs sc  
                             missing' <- filterM (checkPossible info fc True n) missing
---                             let missing' = mapMaybe (\x -> case x of
---                                                                 Nothing -> Nothing
---                                                                 Just t -> Just $ delab ist t) 
---                                                     poss
                             logLvl 3 $ "Must be unreachable:\n" ++ 
                                         showSep "\n" (map (showImp True) missing') ++
                                        "\nAgainst: " ++
@@ -255,20 +253,8 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
                             if null missing'
                               then return True
                               else return False 
---                                -- if there's missing cases, add a catch all case. If it's
---                                -- unreachable, we're still covering
---                                do let mrhs = P Ref (MN 0 "reach?") undefined
---                                   let (f,as) = unApply $ depat (head missing')
---                                   let arity = length as
---                                   let mlhs = mkApp f (map (\a -> P Bound (MN a "v") undefined)
---                                                         [0..arity-1]) 
---                                   let untree@(CaseDef _ sc _) = simpleCase tcase True 
---                                                                  (pdef ++ [(mlhs, mrhs)])
---                                   logLvl 5 $ "Tree is " ++ show sc
---                                   return False
                     else return False
          pdef' <- applyOpts pdef 
-         tree@(CaseDef _ sc _) <- tclift $ simpleCase tcase pcover CompileTime fc pdef
          ist <- get
 --          let wf = wellFounded ist n sc
          let tot = if pcover || AssertTotal `elem` opts
@@ -314,15 +300,19 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
 --                         addIBC (IBCTotal n tot)
              [] -> return ()
   where
-    debind (x, y) = let (vs, x') = depat [] x 
-                        (_, y') = depat [] y in
-                        (vs, x', y')
+    debind (Right (x, y)) = let (vs, x') = depat [] x 
+                                (_, y') = depat [] y in
+                                (vs, x', y')
+    debind (Left x)       = let (vs, x') = depat [] x in
+                                (vs, x', Impossible)
+
     depat acc (Bind n (PVar t) sc) = depat (n : acc) (instantiate (P Bound n t) sc)
     depat acc x = (acc, x)
     
     getLHS (_, l, _) = l
 
-    simpl ctxt (x, y) = (x, simplify ctxt [] y)
+    simpl ctxt (Right (x, y)) = Right (x, simplify ctxt [] y)
+    simpl ctxt t = t
 
     sameLength ((_, x, _) : xs) 
         = do l <- sameLength xs
@@ -357,17 +347,21 @@ checkPossible info fc tcgen fname lhs_in
                             (erun fc (buildTC i info True tcgen fname (infTerm lhs))) of
             OK ((lhs', _, _), _) ->
                do let lhs_tm = orderPats (getInferTerm lhs')
-                  b <- inferredDiff fc (delab' i lhs_tm True) lhs
-                  return (not b) -- then return (Just lhs_tm) else return Nothing
+                  case recheck ctxt [] (forget lhs_tm) lhs_tm of
+                       OK _ -> return True
+                       _ -> return False
+--                   b <- inferredDiff fc (delab' i lhs_tm True) lhs
+--                   return (not b) -- then return (Just lhs_tm) else return Nothing
 --                   trace (show (delab' i lhs_tm True) ++ "\n" ++ show lhs) $ return (not b)
             Error _ -> return False
 
-elabClause :: ElabInfo -> Bool -> PClause -> Idris (Maybe (Term, Term))
+elabClause :: ElabInfo -> Bool -> PClause -> Idris (Either Term (Term, Term))
 elabClause info tcgen (PClause fc fname lhs_in [] PImpossible [])
    = do b <- checkPossible info fc tcgen fname lhs_in
         case b of
             True -> fail $ show fc ++ ":" ++ show lhs_in ++ " is a possible case"
-            False -> return Nothing
+            False -> do ptm <- mkPatTm lhs_in
+                        return (Left ptm)
 elabClause info tcgen (PClause fc fname lhs_in withs rhs_in whereblock) 
    = do ctxt <- getContext
         -- Build the LHS as an "Infer", and pull out its type and
@@ -423,7 +417,7 @@ elabClause info tcgen (PClause fc fname lhs_in withs rhs_in whereblock)
             Error _ -> ierror (At fc (CantUnify False clhsty crhsty (Msg "") [] 0))
         i <- get
         checkInferred fc (delab' i crhs True) rhs
-        return $ Just (clhs, crhs)
+        return $ Right (clhs, crhs)
   where
     decorate x = UN (show fname ++ "#" ++ show x)
     pinfo ns ps i 
@@ -508,7 +502,7 @@ elabClause info tcgen (PWith fc fname lhs_in withs wval_in withblock)
         addDeferred def'
         mapM_ (elabCaseBlock info) is
         (crhs, crhsty) <- recheckC fc [] rhs'
-        return $ Just (clhs, crhs)
+        return $ Right (clhs, crhs)
   where
     getImps (Bind n (Pi _) t) = pexp Placeholder : getImps t
     getImps _ = []

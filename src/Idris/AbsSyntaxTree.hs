@@ -152,6 +152,7 @@ data Command = Quit
              | Defn Name
              | Info Name
              | Missing Name
+             | Pattelab PTerm
              | DebugInfo Name
              | Search PTerm
              | SetOpt Opt
@@ -363,7 +364,7 @@ data PTerm = PQuote Raw
            | PCase FC PTerm [(PTerm, PTerm)]
            | PTrue FC
            | PFalse FC
-           | PRefl FC
+           | PRefl FC PTerm
            | PResolveTC FC
            | PEq FC PTerm PTerm
            | PPair FC PTerm PTerm
@@ -777,7 +778,7 @@ prettyImp impl = prettySe 10
 
         sc (l, r) = prettySe 10 l <+> text "=>" <+> prettySe 10 r
     prettySe p (PHidden tm) = text "." <> prettySe 0 tm
-    prettySe p (PRefl _) = text "refl"
+    prettySe p (PRefl _ _) = text "refl"
     prettySe p (PResolveTC _) = text "resolvetc"
     prettySe p (PTrue _) = text "()"
     prettySe p (PFalse _) = text "_|_"
@@ -886,7 +887,9 @@ showImp impl tm = se 10 tm where
     se p (PCase _ scr opts) = "case " ++ se 10 scr ++ " of " ++ showSep " | " (map sc opts)
        where sc (l, r) = se 10 l ++ " => " ++ se 10 r
     se p (PHidden tm) = "." ++ se 0 tm
-    se p (PRefl _) = "refl"
+    se p (PRefl _ t) 
+        | not impl = "refl"
+        | otherwise = "refl {" ++ se 10 t ++ "}"
     se p (PResolveTC _) = "resolvetc"
     se p (PTrue _) = "()"
     se p (PFalse _) = "_|_"
@@ -962,7 +965,7 @@ instance Sized PTerm where
   size (PCase fc trm bdy) = 1 + size trm + size bdy
   size (PTrue fc) = 1
   size (PFalse fc) = 1
-  size (PRefl fc) = 1
+  size (PRefl fc _) = 1
   size (PResolveTC fc) = 1
   size (PEq fc left right) = 1 + size left + size right
   size (PPair fc left right) = 1 + size left + size right

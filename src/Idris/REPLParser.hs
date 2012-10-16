@@ -49,6 +49,7 @@ pCmd = try (do cmd ["q", "quit"]; eof; return Quit)
    <|> try (do cmd ["unset"]; o <-pOption; return (UnsetOpt o))
    <|> try (do cmd ["s", "search"]; t <- pFullExpr defaultSyntax; return (Search t))
    <|> try (do cmd ["x"]; t <- pFullExpr defaultSyntax; return (ExecVal t))
+   <|> try (do cmd ["patt"]; t <- pFullExpr defaultSyntax; return (Pattelab t))
    <|> do t <- pFullExpr defaultSyntax; return (Eval t)
    <|> do eof; return NOP
 

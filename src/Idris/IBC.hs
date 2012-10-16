@@ -21,7 +21,7 @@ import System.Directory
 import Paths_idris
 
 ibcVersion :: Word8
-ibcVersion = 21
+ibcVersion = 22
 
 data IBCFile = IBCFile { ver :: Word8,
                          sourcefile :: FilePath,
@@ -493,6 +493,7 @@ instance (Binary n) => Binary (TT n) where
                 Erased -> putWord8 6
                 Set x1 -> do putWord8 7
                              put x1
+                Impossible -> putWord8 8
         get
           = do i <- getWord8
                case i of
@@ -517,6 +518,7 @@ instance (Binary n) => Binary (TT n) where
                    6 -> return Erased
                    7 -> do x1 <- get
                            return (Set x1)
+                   8 -> return Impossible
                    _ -> error "Corrupted binary data for TT"
 
 instance Binary SC where
@@ -532,6 +534,7 @@ instance Binary SC where
                                put x1
                 UnmatchedCase x1 -> do putWord8 3
                                        put x1
+                ImpossibleCase -> do putWord8 4
         get
           = do i <- getWord8
                case i of
@@ -545,6 +548,7 @@ instance Binary SC where
                            return (STerm x1)
                    3 -> do x1 <- get
                            return (UnmatchedCase x1)
+                   4 -> return ImpossibleCase
                    _ -> error "Corrupted binary data for SC" 
 
  
@@ -1072,8 +1076,9 @@ instance Binary PTerm where
                                put x1
                 PFalse x1 -> do putWord8 9
                                 put x1
-                PRefl x1 -> do putWord8 10
-                               put x1
+                PRefl x1 x2 -> do putWord8 10
+                                  put x1
+                                  put x2
                 PResolveTC x1 -> do putWord8 11
                                     put x1
                 PEq x1 x2 x3 -> do putWord8 12
@@ -1153,7 +1158,8 @@ instance Binary PTerm where
                    9 -> do x1 <- get
                            return (PFalse x1)
                    10 -> do x1 <- get
-                            return (PRefl x1)
+                            x2 <- get
+                            return (PRefl x1 x2)
                    11 -> do x1 <- get
                             return (PResolveTC x1)
                    12 -> do x1 <- get

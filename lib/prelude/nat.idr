@@ -239,11 +239,11 @@ div left (S right) = div' left left right
 -- Succ
 total eqSucc : (left : Nat) -> (right : Nat) -> (p : left = right) ->
   S left = S right
-eqSucc left right refl = refl
+eqSucc left _ refl = refl
 
 total succInjective : (left : Nat) -> (right : Nat) -> (p : S left = S right) ->
   left = right
-succInjective left right refl = refl
+succInjective left _ refl = refl
 
 -- Plus
 total plusZeroLeftNeutral : (right : Nat) -> 0 + right = right
@@ -278,11 +278,11 @@ plusAssociative (S left) centre right =
 
 total plusConstantRight : (left : Nat) -> (right : Nat) -> (c : Nat) ->
   (p : left = right) -> left + c = right + c
-plusConstantRight left right c refl = refl
+plusConstantRight left _ c refl = refl
 
 total plusConstantLeft : (left : Nat) -> (right : Nat) -> (c : Nat) ->
   (p : left = right) -> c + left = c + right
-plusConstantLeft left right c refl = refl
+plusConstantLeft left _ c refl = refl
 
 total plusOneSucc : (right : Nat) -> 1 + right = S right
 plusOneSucc n = refl

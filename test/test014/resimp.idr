@@ -60,11 +60,14 @@ using (i: Fin n, gam : Vect Ty n, gam' : Vect Ty n, gam'' : Vect Ty n)
   update : (gam : Vect Ty n) -> HasType gam i b -> Ty -> Vect Ty n
   update (x :: xs) stop    y = y :: xs
   update (x :: xs) (pop k) y = x :: update xs k y
+  update Nil       stop    _ impossible
 
+  total
   envUpdate : (p:HasType gam i a) -> (val:interpTy b) -> 
               Env gam -> Env (update gam p b)
   envUpdate stop    val (x :: xs) = val :: xs
   envUpdate (pop k) val (x :: xs) = x :: envUpdate k val xs
+  envUpdate stop    _   Nil impossible
 
   envTail : Env (a :: gam) -> Env gam
   envTail (x :: xs) = xs

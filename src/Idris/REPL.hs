@@ -323,11 +323,16 @@ process fn (Compile target f)
            compile target f m
   where fc = FC "main" 0                     
 process fn (LogLvl i) = setLogLevel i 
+-- Elaborate as if LHS of a pattern (debug command)
+process fn (Pattelab t) 
+     = do (tm, ty) <- elabVal toplevel True t
+          iputStrLn $ show tm ++ "\n\n : " ++ show ty
+
 process fn (Missing n) = do i <- get
                             case lookupDef Nothing n (tt_ctxt i) of
                                 [CaseOp _ _ _ args t _ _]
-                                    -> do tms <- genMissing args t
-                                          iputStrLn (show tms)
+                                    -> do tms <- genMissing n args t
+                                          iputStrLn (showSep "\n" (map (showImp True) tms))
                                 [] -> iputStrLn $ show n ++ " undefined"
                                 _ -> iputStrLn $ "Ambiguous name"
 process fn Metavars 

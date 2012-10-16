@@ -414,6 +414,7 @@ data TT n = P NameType n (TT n) -- embed type
           | Constant Const
           | Proj (TT n) Int -- argument projection; runtime only
           | Erased
+          | Impossible -- special case for totality checking
           | Set UExp
   deriving (Ord, Functor)
 {-! 
@@ -712,6 +713,7 @@ showEnv' env t dbg = se 10 env t where
     se p env (Proj x i) = se 1 env x ++ "!" ++ show i
     se p env (Constant c) = show c
     se p env Erased = "[__]"
+    se p env Impossible = "[impossible]"
     se p env (Set i) = "Set " ++ show i
 
     sb env n (Lam t)  = showb env "\\ " " => " n t

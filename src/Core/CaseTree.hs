@@ -17,6 +17,7 @@ data SC = Case Name [CaseAlt] -- invariant: lowest tags first
         | ProjCase Term [CaseAlt] -- special case for projections
         | STerm Term
         | UnmatchedCase String -- error message
+        | ImpossibleCase -- already checked to be impossible
     deriving (Eq, Ord)
 {-! 
 deriving instance Binary SC 
@@ -39,6 +40,7 @@ instance Show SC where
                                       showSep ("\n" ++ indent i) (map (showA i) alts)
         show' i (STerm tm) = show tm
         show' i (UnmatchedCase str) = "error " ++ show str
+        show' i ImpossibleCase = "impossible"
 
         indent i = concat $ take i (repeat "    ")
 
@@ -143,7 +145,7 @@ data Phase = CompileTime | RunTime
     deriving (Show, Eq)
 
 -- Generate a simple case tree
--- 
+-- Work Left to Right at Compile Time 
 
 simpleCase :: Bool -> Bool -> Phase -> FC -> [([Name], Term, Term)] -> TC CaseDef
 simpleCase tc cover phase fc [] 
@@ -151,14 +153,14 @@ simpleCase tc cover phase fc []
 simpleCase tc cover phase fc cs 
       = let proj       = phase == RunTime
             pats       = map (\ (avs, l, r) -> 
-                                   (avs, reverse (toPats tc l), (l, r))) cs
+                                   (avs, rev phase (toPats tc l), (l, r))) cs
             chkPats    = mapM chkAccessible pats in
             case chkPats of
                 OK pats ->
                     let numargs    = length (fst (head pats)) 
                         ns         = take numargs args
                         (tree, st) = runState 
-                                         (match (reverse ns) pats (defaultCase cover)) ([], numargs)
+                                         (match (rev phase ns) pats (defaultCase cover)) ([], numargs)
                         t          = CaseDef ns (prune proj tree) (fst st) in
                         if proj then return (stripLambdas t) else return t
                 Error err -> Error (At fc err)
@@ -173,6 +175,9 @@ simpleCase tc cover phase fc cs
           acc (PV x : xs) n | x == n = OK ()
           acc (PCon _ _ ps : xs) n = acc (ps ++ xs) n
           acc (_ : xs) n = acc xs n
+
+rev CompileTime = id
+rev _ = reverse
 
 data Pat = PCon Name Int [Pat]
          | PConst Const
@@ -240,7 +245,9 @@ match :: [Name] -> [Clause] -> SC -- error case
 match [] (([], ret) : xs) err 
     = do (ts, v) <- get
          put (ts ++ (map (fst.snd) xs), v)
-         return $ STerm (snd ret) -- run out of arguments
+         case snd ret of
+            Impossible -> return ImpossibleCase
+            tm -> return $ STerm tm -- run out of arguments
 match vs cs err = do let ps = partition cs
                      cs <- mixture vs ps err
                      return cs
@@ -338,10 +345,9 @@ varRule (v : vs) alts err =
 prune :: Bool -> -- ^ Convert single brances to projections (only useful at runtime)
          SC -> SC
 prune proj (Case n alts) 
-    = let alts' = map pruneAlt $ 
-                      filter notErased alts in
+    = let alts' = filter notErased (map pruneAlt alts) in
           case alts' of
-            [] -> STerm Erased
+            [] -> ImpossibleCase
             as@[ConCase cn i args sc] -> if proj then mkProj n 0 args sc
                                                  else Case n as
             as  -> Case n as
@@ -350,6 +356,7 @@ prune proj (Case n alts)
           pruneAlt (DefaultCase sc) = DefaultCase (prune proj sc)
 
           notErased (DefaultCase (STerm Erased)) = False
+          notErased (DefaultCase ImpossibleCase) = False
           notErased _ = True
 
           mkProj n i []       sc = sc

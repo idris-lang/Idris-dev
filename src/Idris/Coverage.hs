@@ -19,28 +19,63 @@ import Control.Monad.State
 -- Generate the LHSes which are missing from a case tree
 -- Eliminate the ones which cannot be well typed
 
-genMissing :: [Name] -> SC -> Idris [PTerm] 
-genMissing args sc = do sc' <- expandTree sc
-                        iputStrLn (show sc')
-                        gm (map (\x -> P Bound x Erased) args) sc'
+genMissing :: Name -> [Name] -> SC -> Idris [PTerm] 
+genMissing fn args sc 
+   = do sc' <- expandTree sc
+        logLvl 5 $ "Checking missing cases for " ++ show fn ++ "\n" ++ (show sc')
+        (got, missing) <- gm fn (map (\x -> P Bound x Erased) args) sc'
+        return $ filter (\x -> not (x `elem` got)) missing
 
-gm :: [TT Name] -> SC -> Idris [PTerm]
-gm args (Case n alts) = do m <- mapM (gmAlt args n) alts
-                           return (concat m)
-gm args (STerm tm)    = do iputStrLn ("Covered: " ++ show args)
-                           return []
-gm args (UnmatchedCase _) = do iputStrLn ("Missing: " ++ show args)
-                               return []
+-- Make a term to feed to the pattern matcher from a LHS declared impossible
+-- (we can't type check it, but we need the case analysis to check for covering...)
 
-gmAlt args n (ConCase cn t cargs sc)
+mkPatTm :: PTerm -> Idris Term
+mkPatTm t = do i <- get
+               let timp = addImpl' True [] i t
+               evalStateT (toTT timp) 0
+  where
+    toTT (PRef _ n) = do i <- lift $ get
+                         case lookupDef Nothing n (tt_ctxt i) of
+                              [TyDecl nt _] -> return $ P nt n Erased
+                              _ -> return $ P Ref n Erased
+    toTT (PApp _ t args) = do t' <- toTT t
+                              args' <- mapM (toTT . getTm) args
+                              return $ mkApp t' args'
+    toTT _ = do v <- get 
+                put (v + 1)
+                return (P Bound (MN v "imp") Erased) 
+
+mkPTerm :: Name -> [TT Name] -> Idris PTerm
+mkPTerm f args = do i <- get
+                    let fapp = mkApp (P Bound f Erased) (map eraseName args)
+                    return $ delab i fapp
+  where eraseName (App f a) = App (eraseName f) (eraseName a)
+        eraseName (P _ (MN _ _) _) = Erased
+        eraseName t                = t
+
+gm :: Name -> [TT Name] -> SC -> Idris ([PTerm], [PTerm])
+gm fn args (Case n alts) = do m <- mapM (gmAlt fn args n) alts
+                              let (got, missing) = unzip m
+                              return (concat got, concat missing)
+gm fn args (STerm tm)    = do logLvl 3 ("Covered: " ++ show args)
+                              t <- mkPTerm fn args
+                              return ([t], [])
+gm fn args ImpossibleCase = do logLvl 3 ("Impossible: " ++ show args)
+                               t <- mkPTerm fn args
+                               return ([], [])
+gm fn args (UnmatchedCase _) = do logLvl 3 ("Missing: " ++ show args)
+                                  t <- mkPTerm fn args
+                                  return ([], [t])
+
+gmAlt fn args n (ConCase cn t cargs sc)
    = do let args' = map (subst n (mkApp (P Bound cn Erased)
                                         (map (\x -> P Bound x Erased) cargs))) args
-        gm args' sc
-gmAlt args n (ConstCase c sc)
+        gm fn args' sc
+gmAlt fn args n (ConstCase c sc)
    = do let args' = map (subst n (Constant c)) args
-        gm args' sc
-gmAlt args n (DefaultCase sc)
-   = do gm args sc
+        gm fn args' sc
+gmAlt fn args n (DefaultCase sc)
+   = do gm fn args sc
 
 getDefault (DefaultCase sc : _) = sc
 getDefault (_ : cs) = getDefault cs

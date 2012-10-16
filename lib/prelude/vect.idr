@@ -34,7 +34,6 @@ index : Fin n -> Vect a n -> a
 index fO     (x::xs) = x
 index (fS k) (x::xs) = index k xs
 index fO     [] impossible
-index (fS _) [] impossible
 
 --------------------------------------------------------------------------------
 -- Subvectors

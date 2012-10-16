@@ -37,6 +37,7 @@ delab' ist tm fullname = de [] tm
     de env (Bind n _ sc) = de ((n,n):env) sc
     de env (Constant i) = PConstant i
     de env Erased = Placeholder
+    de env Impossible = Placeholder
     de env (Set i) = PSet 
 
     dens x | fullname = x
@@ -47,7 +48,7 @@ delab' ist tm fullname = de [] tm
 
     deFn env (App f a) args = deFn env f (a:args)
     deFn env (P _ n _) [l,r]     | n == pairTy  = PPair un (de env l) (de env r)
-                                 | n == eqCon   = PRefl un
+                                 | n == eqCon   = PRefl un (de env r)
                                  | n == UN "lazy" = de env r
     deFn env (P _ n _) [ty, Bind x (Lam _) r]
                                  | n == UN "Exists" 

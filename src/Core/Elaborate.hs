@@ -148,7 +148,7 @@ get_instances = do ES p _ _ <- get
 unique_hole :: Name -> Elab' aux Name
 unique_hole n = do ES p _ _ <- get
                    let bs = bound_in (pterm (fst p)) ++ bound_in (ptype (fst p))
-                   n' <- uniqueNameCtxt (context (fst p)) n (holes (fst p) ++ bs)
+                   n' <- uniqueNameCtxt (context (fst p)) n (holes (fst p) ++ bs ++ dontunify (fst p))
                    return n'
   where
     bound_in (Bind n b sc) = n : bi b ++ bound_in sc
@@ -317,24 +317,20 @@ apply fn imps =
        -- HMMM: Actually, if we get it wrong, the typechecker will complain!
        -- so do nothing
        ptm <- get_term
-       let dontunify = if null imps then [] -- do all we can 
-                          else
-                          map fst (filter (not.snd) (zip args (map fst imps)))
        ES (p, a) s prev <- get
-       let (n, hs) = -- trace ("AVOID UNIFY: " ++ show (fn, dontunify)) $ 
+       let dont = nub $ dontunify p ++
+                          if null imps then [] -- do all we can 
+                             else
+                             map fst (filter (not.snd) (zip args (map fst imps)))
+       let (n, hs) = -- trace ("AVOID UNIFY: " ++ show (fn, dont) ++ "\n" ++ show ptm) $ 
                       unified p
-       let unify = dropGiven dontunify hs
-       put (ES (p { unified = (n, unify) }, a) s prev)
+       let unify = dropGiven dont hs
+       put (ES (p { dontunify = dont, unified = (n, unify) }, a) s prev)
        end_unify
        return (map (updateUnify unify) args)
   where updateUnify hs n = case lookup n hs of
                                 Just (P _ t _) -> t
                                 _ -> n
-        dropGiven du [] = []
-        dropGiven du ((n, P a t ty) : us) | n `elem` du && not (t `elem` du)
-                                   = (t, P a n ty) : dropGiven du us
-        dropGiven du (u@(n, _) : us) | n `elem` du = dropGiven du us
-        dropGiven du (u : us) = u : dropGiven du us
 
 apply2 :: Raw -> [Maybe (Elab' aux ())] -> Elab' aux () 
 apply2 fn elabs = 
@@ -375,6 +371,11 @@ apply_elab n args =
            when (null claims) (start_unify n)
            let sc' = instantiate (P Bound n t) sc
            claim n (forget t)
+           case i of
+               Nothing -> return ()
+               Just _ -> -- don't solve by unification as there is an explicit value
+                         do ES (p, a) s prev <- get
+                            put (ES (p { dontunify = n : dontunify p }, a) s prev)
            doClaims sc' is ((n, i) : claims)
     doClaims t [] claims = return (reverse claims)
     doClaims _ _ _ = fail $ "Wrong number of arguments for " ++ show n

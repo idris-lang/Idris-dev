@@ -665,7 +665,10 @@ pTacticsExpr syn = do
 pSimpleExpr syn = 
         try (do symbol "!["; t <- pTerm; lchar ']'; return $ PQuote t)
         <|> do lchar '?'; x <- pName; return (PMetavar x)
-        <|> do reserved "refl"; fc <- pfc; return (PRefl fc)
+        <|> do reserved "refl"; fc <- pfc; 
+               tm <- option Placeholder (do lchar '{'; t <- pExpr syn; lchar '}';
+                                            return t)
+               return (PRefl fc tm)
 --         <|> do reserved "return"; fc <- pfc; return (PReturn fc)
         <|> pProofExpr syn 
         <|> pTacticsExpr syn
