@@ -48,6 +48,8 @@ data Err = Msg String
               -- Int is 'score' - how much we did unify
               -- Bool indicates recoverability, True indicates more info may make
               -- unification succeed
+         | InfiniteUnify Name Term [(Name, Type)]
+         | CantConvert Term Term [(Name, Type)]
          | NoSuchVariable Name
          | NoTypeDecl Name
          | NotInjective Term Term Term
@@ -64,6 +66,8 @@ instance Sized Err where
   size (Msg msg) = length msg
   size (InternalMsg msg) = length msg
   size (CantUnify _ left right err _ score) = size left + size right + size err
+  size (InfiniteUnify _ right _) = size right
+  size (CantConvert left right _) = size left + size right
   size (NoSuchVariable name) = size name
   size (NoTypeDecl name) = size name
   size (NotInjective l c r) = size l + size c + size r

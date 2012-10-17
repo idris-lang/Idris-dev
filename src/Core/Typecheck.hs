@@ -19,17 +19,19 @@ convertsC ctxt env x y
    = do c <- convEq ctxt (finalise (normalise ctxt env x))
                          (finalise (normalise ctxt env y))
         if c then return ()
-             else fail ("Can't convert between " ++ 
-                        showEnv env (finalise (normalise ctxt env x)) ++ " and " ++ 
-                        showEnv env (finalise (normalise ctxt env y)))
+             else lift $ tfail (CantConvert
+                          (finalise (normalise ctxt env x))
+                          (finalise (normalise ctxt env y)) (errEnv env))
 
 converts :: Context -> Env -> Term -> Term -> TC ()
 converts ctxt env x y = if (finalise (normalise ctxt env x) == 
                             finalise (normalise ctxt env y))
                           then return ()
-                          else fail ("Can't convert between " ++ 
-                                     showEnvDbg env (finalise (normalise ctxt env x)) ++ " and " ++ 
-                                     showEnvDbg env (finalise (normalise ctxt env y)))
+                          else tfail (CantConvert
+                                      (finalise (normalise ctxt env x))
+                                      (finalise (normalise ctxt env y)) (errEnv env))
+
+errEnv = map (\(x, b) -> (x, binderTy b))
 
 isSet :: Context -> Env -> Term -> TC ()
 isSet ctxt env tm = isSet' (normalise ctxt env tm)

@@ -241,7 +241,7 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
          tree@(CaseDef scargs sc _) <- tclift $ simpleCase tcase False CompileTime fc pdef
          tclift $ sameLength pdef
          cov <- coverage
-         pcover <-
+         pmissing <-
                  if cov  
                     then do -- missing <- genClauses fc n (map getLHS pdef) cs
                             missing <- genMissing n scargs sc  
@@ -250,10 +250,9 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
                                         showSep "\n" (map (showImp True) missing') ++
                                        "\nAgainst: " ++
                                         showSep "\n" (map (\t -> showImp True (delab ist t)) (map getLHS pdef))
-                            if null missing'
-                              then return True
-                              else return False 
-                    else return False
+                            return missing'
+                    else return []
+         let pcover = null pmissing
          pdef' <- applyOpts pdef 
          ist <- get
 --          let wf = wellFounded ist n sc

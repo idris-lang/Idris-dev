@@ -77,12 +77,12 @@ unify ctxt env topx topy
         | holeIn env x = do UI s i f <- get
                             when (notP tm && fn) $ put (UI s ((tm, topx, topy) : i) f)
                             sc 1
-                            return [(x, tm)]
+                            checkCycle (x, tm)
     un' fn bnames tm (P Bound y _)
         | holeIn env y = do UI s i f <- get
                             when (notP tm && fn) $ put (UI s ((tm, topx, topy) : i) f)
                             sc 1
-                            return [(y, tm)]
+                            checkCycle (y, tm)
     un' fn bnames (V i) (P Bound x _)
         | fst (bnames!!i) == x || snd (bnames!!i) == x = do sc 1; return []
     un' fn bnames (P Bound x _) (V i)
@@ -164,6 +164,11 @@ unify ctxt env topx topy
                                   (errEnv env) s
                        put (UI s i ((binderTy x, binderTy y, env, err) : f))
                        return [] -- lift $ tfail err
+
+    checkCycle p@(x, P _ _ _) = return [p] 
+    checkCycle (x, tm) 
+        | not (x `elem` freeNames tm) = return [(x, tm)]
+        | otherwise = lift $ tfail (InfiniteUnify x tm (errEnv env)) 
 
     combine bnames as [] = return as
     combine bnames as ((n, t) : bs)

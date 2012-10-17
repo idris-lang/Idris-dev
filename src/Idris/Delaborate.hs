@@ -83,13 +83,14 @@ pshow i (CantUnify _ x y e sc s)
         case e of
             Msg "" -> ""
             _ -> "\n\nSpecifically:\n\t" ++ pshow i e ++ 
-                 if (opt_errContext (idris_options i)) then showSc sc else ""
-    where showSc [] = ""
-          showSc xs = "\n\nIn context:\n" ++ showSep "\n" (map showVar (reverse xs))
-          showVar (x, y) = "\t" ++ showbasic x ++ " : " ++ show (delab i y)
-          showbasic n@(UN _) = show n
-          showbasic (MN _ s) = s
-          showbasic (NS n s) = showSep "." (reverse s) ++ "." ++ showbasic n
+                 if (opt_errContext (idris_options i)) then showSc i sc else ""
+pshow i (CantConvert x y env) 
+    = "Can't unify " ++ show (delab i x) ++ " with " ++ show (delab i y) ++
+                 if (opt_errContext (idris_options i)) then showSc i env else ""
+pshow i (InfiniteUnify x tm env)
+    = "Unifying " ++ showbasic x ++ " and " ++ show (delab i tm) ++ 
+      " would lead to infinite value" ++
+                 if (opt_errContext (idris_options i)) then showSc i env else ""
 pshow i (NotInjective p x y) = "Can't verify injectivity of " ++ show (delab i p) ++
                                " when unifying " ++ show (delab i x) ++ " and " ++ 
                                                     show (delab i y)
@@ -103,3 +104,10 @@ pshow i ProgramLineComment = "Program line next to comment"
 pshow i (Inaccessible n) = show n ++ " is not an accessible pattern variable"
 pshow i (At f e) = show f ++ ":" ++ pshow i e
 
+showSc i [] = ""
+showSc i xs = "\n\nIn context:\n" ++ showSep "\n" (map showVar (reverse xs))
+  where showVar (x, y) = "\t" ++ showbasic x ++ " : " ++ show (delab i y)
+
+showbasic n@(UN _) = show n
+showbasic (MN _ s) = s
+showbasic (NS n s) = showSep "." (reverse s) ++ "." ++ showbasic n
