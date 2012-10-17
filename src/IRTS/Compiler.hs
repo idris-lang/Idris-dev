@@ -51,10 +51,14 @@ compile target f tm
         let checked = checkDefs defuns (toAlist defuns)
         dumpC <- getDumpC
         dumpCases <- getDumpCases
+        dumpDefun <- getDumpDefun
         case dumpCases of
             Nothing -> return ()
             Just f -> do cs <- getCaseTrees (concat used)
                          liftIO $ writeFile f (showCaseTrees cs)
+        case dumpDefun of
+            Nothing -> return ()
+            Just f -> liftIO $ writeFile f (dumpDefuns defuns)
         iLOG "Building output"
         case checked of
             OK c -> case target of

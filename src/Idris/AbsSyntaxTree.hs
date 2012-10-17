@@ -185,6 +185,7 @@ data Opt = Filename String
          | Pkg String
          | BCAsm String
          | DumpC String
+         | DumpDefun String
          | DumpCases String
          | FOVM String
     deriving (Show, Eq)

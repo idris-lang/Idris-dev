@@ -206,6 +206,13 @@ getDumpC = do i <- get
           findC (DumpC x : _) = Just x
           findC (_ : xs) = findC xs
 
+getDumpDefun :: Idris (Maybe FilePath)
+getDumpDefun = do i <- get
+                  return $ findC (opt_cmdline (idris_options i))
+    where findC [] = Nothing
+          findC (DumpDefun x : _) = Just x
+          findC (_ : xs) = findC xs
+
 getDumpCases :: Idris (Maybe FilePath)
 getDumpCases = do i <- get
                   return $ findC (opt_cmdline (idris_options i))

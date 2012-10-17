@@ -413,6 +413,7 @@ parseArgs ("--clean":n:ns)      = PkgClean n : (parseArgs ns)
 parseArgs ("--bytecode":n:ns)   = NoREPL : BCAsm n : (parseArgs ns)
 parseArgs ("--fovm":n:ns)       = NoREPL : FOVM n : (parseArgs ns)
 parseArgs ("--dumpc":n:ns)      = DumpC n : (parseArgs ns)
+parseArgs ("--dumpdefuns":n:ns) = DumpDefun n : (parseArgs ns)
 parseArgs ("--dumpcases":n:ns)  = DumpCases n : (parseArgs ns)
 parseArgs (n:ns)                = Filename n : (parseArgs ns)
 
