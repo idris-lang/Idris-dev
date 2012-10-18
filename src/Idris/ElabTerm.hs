@@ -240,8 +240,8 @@ elab ist info pattern tcgen fn tm
                 (do apply_elab f (map (toElab (ina || not isinf, guarded)) args)
                     mkSpecialised ist fc f (map getTm args') tm
                     solve)
-            -- ptm <- get_term
-            -- elog (show ptm)
+--             ptm <- get_term
+--             elog (show ptm)
             ivs' <- get_instances
             when (not pattern || (ina && not tcgen)) $
                 mapM_ (\n -> do focus n

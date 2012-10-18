@@ -28,15 +28,15 @@ unify ctxt env topx topy
     = -- case runStateT (un' False [] topx topy) (UI 0 [] []) of
       --    OK (v, UI _ inj []) -> return (filter notTrivial v, inj, [])
       --    _ -> 
-      -- trace ("Unifying " ++ show (topx, topy)) $
+--       trace ("Unifying " ++ show (topx, topy)) $
                let topxn = normalise ctxt env topx
-	           topyn = normalise ctxt env topy in
+                   topyn = normalise ctxt env topy in
 --                     trace ("Unifying " ++ show (topxn, topyn)) $
-		     case runStateT (un' False [] topxn topyn)
-		  	        (UI 0 [] []) of
-	               OK (v, UI _ inj fails) -> return (filter notTrivial v, inj, reverse fails)
+                     case runStateT (un' False [] topxn topyn)
+        	  	        (UI 0 [] []) of
+                       OK (v, UI _ inj fails) -> return (filter notTrivial v, inj, reverse fails)
 --                     OK (_, UI s _ ((_,_,f):fs)) -> tfail $ CantUnify topx topy f s
-		       Error e -> tfail e
+        	       Error e -> tfail e
   where
     notTrivial (x, P _ x' _) = x /= x'
     notTrivial _ = True
@@ -174,9 +174,11 @@ unify ctxt env topx topy
     combine bnames as ((n, t) : bs)
         = case lookup n as of 
             Nothing -> combine bnames (as ++ [(n,t)]) bs
-            Just t' -> do un' False bnames t t'
+            Just t' -> do ns <- un' False bnames t t'
+                          -- make sure there's n mapping from n in ns
+                          let ns' = filter (\ (x, _) -> x/=n) ns
                           sc 1
-                          combine bnames as bs
+                          combine bnames as (ns' ++ bs)
 
     -- If there are any clashes of constructors, deem it unrecoverable, otherwise some
     -- more work may help.

@@ -16,5 +16,7 @@ inl ds d@(n, DFun n' args exp)
            _ -> d
 inl ds d = d
 
-evalD _ e = Just e
+evalD _ e = ev e
+  where
+    ev e = Just e
 
