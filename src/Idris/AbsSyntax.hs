@@ -76,6 +76,7 @@ addToCalledG n ns = return () -- TODO
 
 -- Add a class instance function. Dodgy hack: Put integer instances first in the
 -- list so they are resolved by default.
+-- Dodgy hack 2: put constraint chasers (@@) last
 
 addInstance :: Bool -> Name -> Name -> Idris ()
 addInstance int n i 
@@ -87,7 +88,15 @@ addInstance int n i
                 _ -> do let cs = addDef n (CI (MN 0 "none") [] [] [] [i]) (idris_classes ist)
                         put (ist { idris_classes = cs })
   where addI i ins | int = i : ins
-                   | otherwise = ins ++ [i]
+                   | chaser n = ins ++ [i]
+                   | otherwise = insI i ins
+        insI i [] = [i]
+        insI i (n : ns) | chaser n = i : n : ns
+                        | otherwise = n : insI i ns
+
+        chaser (UN ('@':'@':_)) = True
+        chaser (NS n _) = chaser n
+        chaser _ = False
 
 addClass :: Name -> ClassInfo -> Idris ()
 addClass n i 
