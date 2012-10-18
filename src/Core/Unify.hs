@@ -121,6 +121,10 @@ unify ctxt env topx topy
         | n == n' = un' False bnames x y
     un' fn bnames (Bind n (Lam t) (App x (P Bound n' _))) y
         | n == n' = un' False bnames x y
+--     un' fn bnames (Bind x (PVar _) sx) (Bind y (PVar _) sy) 
+--         = un' False ((x,y):bnames) sx sy
+--     un' fn bnames (Bind x (PVTy _) sx) (Bind y (PVTy _) sy) 
+--         = un' False ((x,y):bnames) sx sy
     un' fn bnames (Bind x bx sx) (Bind y by sy) 
         = do h1 <- uB bnames bx by
              h2 <- un' False ((x,y):bnames) sx sy

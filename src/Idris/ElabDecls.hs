@@ -112,12 +112,22 @@ elabRecord info syn fc tyn ty cn cty
          let nonImp = mapMaybe isNonImp (zip cimp ptys_u)
          let implBinds = getImplB id cty'
          update_decls <- mapM (mkUpdate recty implBinds (length nonImp)) (zip nonImp [0..])
-         mapM_ (elabDecl info) (concat (proj_decls ++ update_decls))
+         mapM_ (elabDecl info) (concat proj_decls)
+         mapM_ (tryElabDecl info) (update_decls)
   where
 --     syn = syn_in { syn_namespace = show (nsroot tyn) : syn_namespace syn_in }
 
     isNonImp (PExp _ _ _, a) = Just a
     isNonImp _ = Nothing
+
+    tryElabDecl info (fn, ty, val)
+        = do i <- get
+             idrisCatch (do elabDecl' info ty
+                            elabDecl' info val)
+                        (\v -> do iputStrLn $ show fc ++ 
+                                      ":Warning - can't generate setter for " ++ 
+                                      show fn ++ " (" ++ show ty ++ ")"
+                                  put i)
 
     getImplB k (PPi (Imp l s) n Placeholder sc)
         = getImplB k sc
@@ -188,7 +198,7 @@ elabRecord info syn fc tyn ty cn cty
                                              []
                                              (PApp fc (PRef fc cn)
                                                       (map pexp rhsArgs)) []
-            return [pfnTy, PClauses fc [] setname [pclause]]
+            return (pn, pfnTy, PClauses fc [] setname [pclause])
 
 elabCon :: ElabInfo -> SyntaxInfo -> Name -> (Name, PTerm, FC) -> Idris (Name, Type)
 elabCon info syn tn (n, t_in, fc)
@@ -390,7 +400,7 @@ elabClause info tcgen (PClause fc fname lhs_in withs rhs_in whereblock)
         logLvl 5 (showImp True (expandParams decorate newargs decls rhs_in))
         let rhs = addImplBound i (map fst newargs) 
                                  (expandParams decorate newargs decls rhs_in)
-        logLvl 2 (showImp True rhs)
+        logLvl 2 $ "RHS: " ++ showImp True rhs
         ctxt <- getContext -- new context with where block added
         logLvl 5 "STARTING CHECK"
         ((rhs', defer, is), _) <- 

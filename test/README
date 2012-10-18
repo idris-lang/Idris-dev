@@ -13,3 +13,7 @@ Tests:
 011: record projection and update
 012: various error regressions
 013: binding syntax
+014: resource DSL
+015: verified binary adder
+
+regxxx: various regression tests

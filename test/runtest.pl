@@ -40,7 +40,7 @@ if ($#ARGV>=0) {
 	opendir(DIR, ".");
 	@list = readdir(DIR);
 	foreach $file (@list) {
-	    if ($file =~ /^test/) {
+	    if ($file =~ /[0-9][0-9][0-9]/) {
 		push(@tests,$file);
 	    }
 	}

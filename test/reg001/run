@@ -1,0 +1,4 @@
+#!/bin/bash
+idris reg001.idr --check
+rm -rf reg001.ibc
+
