@@ -3,7 +3,7 @@
 " Based on haskell indentation by motemen <motemen@gmail.com>
 " 
 " author: raichoo (raichoo@googlemail.com)
-" date: Sep 21 2012 
+" date: Oct 19 2012
 "
 " Modify g:idris_indent_if and g:idris_indent_case to
 " change indentation for `if'(default 3) and `case'(default 5).
@@ -11,92 +11,109 @@
 " > let g:idris_indent_if = 2
 
 if exists('b:did_indent')
-    finish
+  finish
 endif
 
 let b:did_indent = 1
 
 if !exists('g:idris_indent_if')
-    " if bool
-    " >>>then ...
-    " >>>else ...
-    let g:idris_indent_if = 3
+  " if bool
+  " >>>then ...
+  " >>>else ...
+  let g:idris_indent_if = 3
 endif
 
 if !exists('g:idris_indent_case')
-    " case xs of
-    " >>>>>[] -> ...
-    " >>>>>(y:ys) -> ...
-    let g:idris_indent_case = 5
+  " case xs of
+  " >>>>>[] -> ...
+  " >>>>>(y::ys) -> ...
+  let g:idris_indent_case = 5
+endif
+
+if !exists('g:idris_indent_let')
+  " let x : Nat = O in
+  " >>>>x
+  let g:idris_indent_let = 4
+endif
+
+if !exists('g:idris_indent_where')
+  " where f : Nat -> Nat
+  " >>>>>>f x = x
+  let g:idris_indent_where = 6
+endif
+
+if !exists('g:idris_indent_do')
+  " do x <- a
+  " >>>y <- b
+  let g:idris_indent_do = 3
 endif
 
 setlocal indentexpr=GetIdrisIndent()
 setlocal indentkeys=!^F,o,O
 
 function! GetIdrisIndent()
-    let line = substitute(getline(getpos('.')[1] - 1), '\t', repeat(' ', &tabstop), 'g')
+  let prevline = getline(v:lnum - 1)
 
-    if line =~ '[!#$%&*+./<=>?@\\^|~-]$\|\<do$'
-        return match(line, '\s*where \zs\|\S') + &shiftwidth
-    endif
-
-    if line =~ '{$'
-        return match(line, '\s*where \zs\|\S') + &shiftwidth
-    endif
-
-    if line =~ '^\s*\(data\|instance\|class\).*\&.*where$'
-        return match(line, '\(data\|instance\|class\)') + &shiftwidth
-    endif
-
-    if line =~ '^\s*using\s*(.\+)$'
-        return match(line, 'using') + &shiftwidth
-    endif
-
-    if line =~ '\<with\>'
-      return &shiftwidth
-    endif
-
-    if line =~ '^\s*data\s\+\S*\s\+=\s\+\S\+$'
-      return match(line, '=')
-    endif
-
-    if line =~ '^\s*namespace\s\+\S\+$'
-      return match(line, 'namespace') + &shiftwidth
-    endif
-
-    if line =~ ')$'
-        let pos = getpos('.')
-        normal k$
-        let paren_end   = getpos('.')
-        normal %
-        let paren_begin = getpos('.')
-        call setpos('.', pos)
-        if paren_begin[1] != paren_end[1]
-            return paren_begin[2] - 1
-        endif
-    endif
-
-    if line !~ '\<else\>'
-        let s = match(line, '\<if\>.*\&.*\zs\<then\>')
-        if s > 0
-            return s
-        endif
-
-        let s = match(line, '\<if\>')
-        if s > 0
-            return s + g:idris_indent_if
-        endif
-    endif
-
-    let s = match(line, '\<do\s\+\zs[^{]\|\<where\s\+\zs\w\|\<let\s\+\zs\S\|^\s*\zs|\s')
+  if prevline =~ '[!#$%&*+./<>?@\\^|~-]\s*$'
+    let s = match(prevline, '[:=]')
     if s > 0
-        return s
+      return s + 2
+    else
+      return match(prevline, '\S')
     endif
+  endif
 
-    let s = match(line, '\<case\>')
+  if prevline =~ '[{([]\s*$'
+    return match(prevline, '[{([]')
+  endif
+
+  if prevline =~ 'let\s\+.\+in\s*$'
+    return match(prevline, 'let') + g:idris_indent_let
+  endif
+
+  if prevline !~ '\<else\>'
+    let s = match(prevline, '\<if\>.*\&.*\zs\<then\>')
     if s > 0
-        return s + g:idris_indent_case
+      return s
     endif
 
-    return match(line, '\S')
+    let s = match(prevline, '\<if\>')
+    if s > 0
+      return s + g:idris_indent_if
+    endif
+  endif
+
+  if prevline =~ '\(where\|do\|=\)\s*$'
+    return match(prevline, '\S') + &shiftwidth
+  endif
+
+  if prevline =~ 'where\s\+\S\+.*$'
+    return match(prevline, 'where') + g:idris_indent_where
+  endif
+
+  if prevline =~ 'do\s\+\S\+.*$'
+    return match(prevline, 'do') + g:idris_indent_do
+  endif
+
+  if prevline =~ '^\s*data\s\+[^=]\+\s\+=\s\+\S\+.*$'
+    return match(prevline, '=')
+  endif
+
+  if prevline =~ 'with\s\+([^)]*)\s*$'
+    return match(prevline, '\S') + &shiftwidth
+  endif
+
+  if prevline =~ 'case\s\+.\+of\s*$'
+    return match(prevline, 'case') + g:idris_indent_case
+  endif
+
+  if prevline =~ '^\s*\(namespace\|data\)\s\+\S\+\s*$'
+    return match(prevline, '\(namespace\|data\)') + &shiftwidth
+  endif
+
+  if prevline =~ '^\s*using\s\+([^(]*)\s*$'
+    return match(prevline, 'using') + &shiftwidth
+  endif
+
+  return match(prevline, '\S')
 endfunction
