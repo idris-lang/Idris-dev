@@ -172,6 +172,8 @@ instance Show LExp where
    show e = show' [] e where
      show' env (LV (Loc i)) = env!!i
      show' env (LV (Glob n)) = show n
+     show' env (LLazyApp e args) = show e ++ "|(" ++
+                                     showSep ", " (map (show' env) args) ++")"
      show' env (LApp _ e args) = show' env e ++ "(" ++
                                    showSep ", " (map (show' env) args) ++")"
      show' env (LLazyExp e) = "%lazy(" ++ show' env e ++ ")" 
