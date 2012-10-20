@@ -49,7 +49,7 @@ used path g j
                                            used ((g,j):path) g' j') garg
                             -- used on any route from here, or not used recursively
                             return (null recused || or recused) 
-               _ -> return False -- clearly...
+               _ -> return True -- no definition, assume used
 
 getFargpos :: [(Name, [[Name]])] -> (Name, Int) -> [(Name, Int, (Name, Int))]
 getFargpos calls (n, i) = concatMap (getCallArgpos n i) calls

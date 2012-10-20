@@ -189,6 +189,7 @@ instance Show DExp where
            = "foreign " ++ n ++ "(" ++ showSep ", " (map (show' env) (map snd args)) ++ ")"
      show' env (DOp f args) = show f ++ "(" ++ showSep ", " (map (show' env) args) ++ ")"
      show' env (DError str) = "error " ++ show str
+     show' env DNothing = "____"
 
      showAlt env (DConCase _ n args e) 
           = show n ++ "(" ++ showSep ", " (map show args) ++ ") => "

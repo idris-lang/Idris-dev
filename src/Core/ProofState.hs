@@ -266,6 +266,7 @@ focus n ctxt env t = do action (\ps -> let hs = holes ps in
                                             if n `elem` hs
                                                then ps { holes = n : (hs \\ [n]) }
                                                else ps)
+                        ps <- get
                         return t 
 
 movelast :: Name -> RunTactic
@@ -357,7 +358,8 @@ solve ctxt env (Bind x (Guess ty val) sc)
                                            instances = instances ps \\ [x] })
                        return $ {- Bind x (Let ty val) sc -} instantiate val (pToV x sc)
    | otherwise    = lift $ tfail $ IncompleteTerm val
-solve _ _ h = fail $ "Not a guess " ++ show h
+solve _ _ h = do ps <- get
+                 fail $ "Not a guess " ++ show h ++ "\n" ++ show (holes ps, pterm ps)
 
 introTy :: Raw -> Maybe Name -> RunTactic
 introTy ty mn ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' =

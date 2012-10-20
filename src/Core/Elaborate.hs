@@ -317,8 +317,9 @@ apply fn imps =
        -- HMMM: Actually, if we get it wrong, the typechecker will complain!
        -- so do nothing
        ptm <- get_term
+       hs <- get_holes
        ES (p, a) s prev <- get
-       let dont = nub $ dontunify p ++
+       let dont = nub $ head hs : dontunify p ++
                           if null imps then [] -- do all we can 
                              else
                              map fst (filter (not.snd) (zip args (map fst imps)))

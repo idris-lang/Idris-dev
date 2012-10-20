@@ -143,7 +143,7 @@ lift env (LForeign l t s args) = do args' <- mapM (liftF env) args
 lift env (LOp f args) = do args' <- mapM (lift env) args
                            return (LOp f args')
 lift env (LError str) = return $ LError str
-
+lift env LNothing = return $ LNothing
 
 -- Return variables in list which are used in the expression
 
@@ -189,6 +189,7 @@ instance Show LExp where
            = "foreign " ++ n ++ "(" ++ showSep ", " (map (show' env) (map snd args)) ++ ")"
      show' env (LOp f args) = show f ++ "(" ++ showSep ", " (map (show' env) args) ++ ")"
      show' env (LError str) = "error " ++ show str
+     show' env LNothing = "____"
 
      showAlt env (LConCase _ n args e) 
           = show n ++ "(" ++ showSep ", " (map show args) ++ ") => "

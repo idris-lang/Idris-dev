@@ -120,6 +120,7 @@ class ToIR a where
 build :: (Name, Def) -> Idris (Name, LDecl)
 build (n, d)
     = do i <- getIState
+         traceUnused n
          case lookup n (idris_scprims i) of
               Just (ar, op) -> 
                   let args = map (\x -> MN x "op") [0..] in
@@ -169,10 +170,20 @@ instance ToIR (TT Name) where
                    return t' -- TODO
           | (P (DCon t a) n _, args) <- unApply tm
               = irCon env t a n args
+          | (P _ n _, args) <- unApply tm
+              = do i <- get
+                   let unused = case lookupCtxt Nothing n (idris_callgraph i) of
+                                    [CGInfo _ _ _ unusedpos] -> unusedpos
+                                    _ -> []
+                   args' <- mapM (ir' env) args
+                   return (LApp False (LV (Glob n)) (mkUnused unused 0 args'))
           | (f, args) <- unApply tm
               = do f' <- ir' env f
                    args' <- mapM (ir' env) args
                    return (LApp False f' args')
+        where mkUnused u i [] = []
+              mkUnused u i (x : xs) | i `elem` u = LNothing : mkUnused u (i + 1) xs
+                                    | otherwise = x : mkUnused u (i + 1) xs
       ir' env (P _ n _) = return $ LV (Glob n)
       ir' env (V i)     | i < length env = return $ LV (Glob (env!!i))
                         | otherwise = error $ "IR fail " ++ show i ++ " " ++ show tm
@@ -184,10 +195,11 @@ instance ToIR (TT Name) where
           = do sc' <- ir' (n : env) sc
                v' <- ir' env v
                return $ LLet n v' sc'
-      ir' env (Bind _ _ _) = return $ LConst (I 424242)
+      ir' env (Bind _ _ _) = return $ LNothing
       ir' env (Proj t i) = do t' <- ir' env t
                               return $ LProj t' i
       ir' env (Constant c) = return $ LConst c
+      ir' env (Set _) = return $ LNothing
       ir' env _ = return $ LError "Impossible"
 
       irCon env t arity n args

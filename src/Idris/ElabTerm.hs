@@ -174,12 +174,20 @@ elab ist info pattern tcgen fn tm
     elab' ina@(_, a) (PLam n Placeholder sc)
           = do attack; intro (Just n); elabE (True, a) sc; solve
     elab' ina@(_, a) (PLam n ty sc)
-          = do tyn <- unique_hole (MN 0 "lamty")
+          = do hsin <- get_holes
+               ptmin <- get_term
+               tyn <- unique_hole (MN 0 "lamty")
                claim tyn RSet
                attack
+               ptm <- get_term
+               hs <- get_holes
+               -- trace ("BEFORE:\n" ++ show hsin ++ "\n" ++ show ptmin ++
+               --       "\nNOW:\n" ++ show hs ++ "\n" ++ show ptm) $ 
                introTy (Var tyn) (Just n)
                -- end_unify
                focus tyn
+               ptm <- get_term
+               hs <- get_holes
                elabE (True, a) ty
                elabE (True, a) sc
                solve
