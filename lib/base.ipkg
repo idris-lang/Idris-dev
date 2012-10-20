@@ -6,10 +6,11 @@ modules = builtins, prelude, io, system,
           prelude.algebra, prelude.cast, prelude.nat, prelude.fin,
           prelude.list, prelude.maybe, prelude.monad, prelude.applicative,
           prelude.either, prelude.vect, prelude.strings, prelude.char,
-          prelude.heap, prelude.complex,
+          prelude.heap, prelude.complex, prelude.morphisms,
 
           network.cgi,
 
           language.reflection,
 
-          control.monad.identity, control.monad.state
+          control.monad.identity, control.monad.state, control.category,
+          control.arrow
