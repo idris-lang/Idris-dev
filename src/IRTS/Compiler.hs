@@ -95,6 +95,7 @@ mkDecls :: Term -> [Name] -> Idris [(Name, LDecl)]
 mkDecls t used 
     = do i <- getIState
          let ds = filter (\ (n, d) -> n `elem` used || isCon d) $ ctxtAlist (tt_ctxt i)
+         mapM traceUnused used
          decls <- mapM build ds
          return decls
 
@@ -120,7 +121,6 @@ class ToIR a where
 build :: (Name, Def) -> Idris (Name, LDecl)
 build (n, d)
     = do i <- getIState
-         traceUnused n
          case lookup n (idris_scprims i) of
               Just (ar, op) -> 
                   let args = map (\x -> MN x "op") [0..] in
