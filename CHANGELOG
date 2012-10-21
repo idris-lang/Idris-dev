@@ -1,9 +1,15 @@
 New in 0.9.5:
 -------------
 
+User visible changes:
+
+* Added 'parameters' blocks
+* Allow local data definitions in where blocks
+
 Internal changes:
 
 * Several improvements and fixes to unification
+* Added collapsing optimisation and more aggressive erasure
 
 New in 0.9.4:
 -------------

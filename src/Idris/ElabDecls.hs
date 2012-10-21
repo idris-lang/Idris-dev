@@ -907,7 +907,11 @@ elabDecl' info d@(PClauses f o n ps) = do iLOG $ "Elaborating clause " ++ show n
                                                     [fs] -> fs
                                                     [] -> []
                                           elabClauses info f (o ++ o') n ps
-elabDecl' info (PParams f ns ps) = mapM_ (elabDecl' pinfo) ps
+elabDecl' info (PParams f ns ps) 
+    = do i <- get
+         iLOG $ "Expanding params block with " ++ show (concatMap declared ps)
+         let nblock = pblock i
+         mapM_ (elabDecl' info) nblock 
   where
     pinfo = let ds = concatMap declared ps
                 newps = params info ++ ns
@@ -915,6 +919,8 @@ elabDecl' info (PParams f ns ps) = mapM_ (elabDecl' pinfo) ps
                 newb = addAlist dsParams (inblock info) in 
                 info { params = newps,
                        inblock = newb }
+    pblock i = map (expandParamsD i id ns (concatMap declared ps)) ps
+
 elabDecl' info (PNamespace n ps) = mapM_ (elabDecl' ninfo) ps
   where
     ninfo = case namespace info of

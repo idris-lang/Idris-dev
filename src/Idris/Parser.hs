@@ -430,11 +430,11 @@ pUsing syn =
 
 pParams :: SyntaxInfo -> IParser [PDecl]
 pParams syn = 
-    do reserved "params"; lchar '('; ns <- tyDeclList syn; lchar ')'
-       lchar '{'
+    do reserved "parameters"; lchar '('; ns <- tyDeclList syn; lchar ')'
+       openBlock 
        let pvars = syn_params syn
        ds <- many1 (pDecl syn { syn_params = pvars ++ ns })
-       lchar '}'
+       closeBlock 
        fc <- pfc
        return [PParams fc ns (concat ds)]
 
@@ -1337,7 +1337,7 @@ pWExpr syn = do lchar '|'
 pWhereblock :: Name -> SyntaxInfo -> IParser ([PDecl], [(Name, Name)])
 pWhereblock n syn 
     = do reserved "where"; openBlock
-         ds <- many1 $ pFunDecl syn
+         ds <- many1 $ pDecl syn
          let dns = concatMap (concatMap declared) ds
          closeBlock
          return (concat ds, map (\x -> (x, decoration syn x)) dns)

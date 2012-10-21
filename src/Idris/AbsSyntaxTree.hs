@@ -617,6 +617,9 @@ showDeclImp _ (PFix _ f ops) = show f ++ " " ++ showSep ", " ops
 showDeclImp t (PTy _ _ _ n ty) = show n ++ " : " ++ showImp t ty
 showDeclImp _ (PClauses _ _ n c) = showSep "\n" (map show c)
 showDeclImp _ (PData _ _ d) = show d
+showDeclImp _ (PParams f ns ps) = "parameters " ++ show ns ++ "\n" ++ 
+                                    showSep "\n" (map show ps)
+
 
 showCImp :: Bool -> PClause -> String
 showCImp impl (PClause _ n l ws r w) 
