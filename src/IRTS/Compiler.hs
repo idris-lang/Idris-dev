@@ -166,11 +166,16 @@ instance ToIR (TT Name) where
               = irCon env t a n args
           | (P _ n _, args) <- unApply tm
               = do i <- get
+                   let collapse = case lookupCtxt Nothing n (idris_optimisation i) of
+                                    [oi] -> collapsible oi
+                                    _ -> False
                    let unused = case lookupCtxt Nothing n (idris_callgraph i) of
                                     [CGInfo _ _ _ unusedpos] -> unusedpos
                                     _ -> []
                    args' <- mapM (ir' env) args
-                   return (LApp False (LV (Glob n)) (mkUnused unused 0 args'))
+                   if collapse then return LNothing
+                               else return (LApp False (LV (Glob n)) 
+                                                 (mkUnused unused 0 args'))
           | (f, args) <- unApply tm
               = do f' <- ir' env f
                    args' <- mapM (ir' env) args
@@ -194,7 +199,9 @@ instance ToIR (TT Name) where
                               return $ LProj t' i
       ir' env (Constant c) = return $ LConst c
       ir' env (Set _) = return $ LNothing
-      ir' env _ = return $ LError "Impossible"
+      ir' env Erased = return $ LNothing
+      ir' env Impossible = return $ LNothing
+--       ir' env _ = return $ LError "Impossible"
 
       irCon env t arity n args
         | length args == arity = buildApp env (LV (Glob n)) args

@@ -168,8 +168,10 @@ simpleCase tc cover phase fc cs
           defaultCase True = STerm Erased
           defaultCase False = UnmatchedCase "Error"
 
-          chkAccessible (avs, l, c) = do mapM_ (acc l) avs
-                                         return (l, c)
+          chkAccessible (avs, l, c) 
+               | phase == RunTime = return (l, c)
+               | otherwise = do mapM_ (acc l) avs
+                                return (l, c)
 
           acc [] n = Error (Inaccessible n) 
           acc (PV x : xs) n | x == n = OK ()

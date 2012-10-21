@@ -4,8 +4,8 @@ import parity
 import system
 
 data Bit : Nat -> Set where
-     b0 : Bit 0
-     b1 : Bit 1 
+     b0 : Bit O
+     b1 : Bit (S O) 
 
 instance Show (Bit n) where
      show = show' where

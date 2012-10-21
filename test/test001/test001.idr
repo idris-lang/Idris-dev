@@ -7,7 +7,7 @@ interpTy TyInt       = Int
 interpTy TyBool      = Bool
 interpTy (TyFun s t) = interpTy s -> interpTy t
 
-using (G : Vect Ty n) {
+using (G : Vect Ty n)
 
   data Env : Vect Ty n -> Set where
       Nil  : Env Nil
@@ -20,6 +20,7 @@ using (G : Vect Ty n) {
   lookup : HasType i G t -> Env G -> interpTy t
   lookup stop    (x :: xs) = x
   lookup (pop k) (x :: xs) = lookup k xs
+  lookup stop    [] impossible
 
   data Expr : Vect Ty n -> Ty -> Set where
       Var : HasType i G t -> Expr G t
@@ -78,13 +79,14 @@ using (G : Vect Ty n) {
               (\y => Bind (App eDouble (Val x))
               (\z => App (App eAdd (Val y)) (Val z))))))
 
-}
-
 test : Int
 test = interp [] eProg 2 2
 
 testFac : Int
 testFac = interp [] eFac 4
+
+testEnv : Int -> Env [TyInt,TyInt]
+testEnv x = [x,x]
 
 main : IO ()
 main = do { print testFac

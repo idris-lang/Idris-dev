@@ -37,18 +37,20 @@ used :: [(Name, Int)] -> Name -> Int -> Idris Bool
 used path g j 
    | (g, j) `elem` path = return False -- cycle, never used on the way
    | otherwise 
-       = do i <- get
+       = do logLvl 5 $ (show ((g, j) : path)) 
+            i <- get
             case lookupCtxt Nothing g (idris_callgraph i) of
                [CGInfo args calls usedns unused] ->
                   if (j >= length args) 
                     then -- overapplied, assume used
                          return True
-                    else do let garg = getFargpos calls (args!!j, j)
+                    else do let directuse = args!!j `elem` usedns
+                            let garg = getFargpos calls (args!!j, j)
                             logLvl 5 $ show (g, j, garg)
                             recused <- mapM (\ (argn, j, (g', j')) ->
                                            used ((g,j):path) g' j') garg
                             -- used on any route from here, or not used recursively
-                            return (null recused || or recused) 
+                            return (directuse || null recused || or recused) 
                _ -> return True -- no definition, assume used
 
 getFargpos :: [(Name, [[Name]])] -> (Name, Int) -> [(Name, Int, (Name, Int))]

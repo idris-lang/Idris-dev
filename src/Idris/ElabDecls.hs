@@ -233,23 +233,55 @@ elabClauses :: ElabInfo -> FC -> FnOpts -> Name -> [PClause] -> Idris ()
 elabClauses info fc opts n_in cs = let n = liftname info n_in in  
       do ctxt <- getContext
          -- Check n actually exists
-         case lookupTy Nothing n ctxt of
+         fty <- case lookupTy Nothing n ctxt of
             [] -> -- TODO: turn into a CAF if there's no arguments
                   -- question: CAFs in where blocks?
                   tclift $ tfail $ (At fc (NoTypeDecl n))
-            _ -> return ()
+            [ty] -> return ty
          pats_in <- mapM (elabClause info (TCGen `elem` opts)) cs
-         
+         -- if the return type of 'ty' is collapsible, the optimised version should
+         -- just do nothing
+         ist <- get
+         let (ap, _) = unApply (getRetTy fty)
+         logLvl 5 $ "Checking collapsibility of " ++ show (ap, fty)
+         -- FIXME: Really ought to only do this for total functions!
+         let doNothing = case ap of
+                            P _ tn _ -> case lookupCtxt Nothing tn
+                                                (idris_optimisation ist) of
+                                            [oi] -> collapsible oi
+                                            _ -> False
+                            _ -> False
          solveDeferred n
+         ist <- get
+         when doNothing $ 
+            case lookupCtxt Nothing n (idris_optimisation ist) of
+               [oi] -> do let opts = addDef n (oi { collapsible = True }) 
+                                         (idris_optimisation ist)
+                          put (ist { idris_optimisation = opts })
+               _ -> do let opts = addDef n (Optimise True [] [])
+                                         (idris_optimisation ist)
+                       put (ist { idris_optimisation = opts })
+                       addIBC (IBCOpt n)
+         ist <- get
          let pats = pats_in
 --          logLvl 3 (showSep "\n" (map (\ (l,r) -> 
 --                                         show l ++ " = " ++ 
 --                                         show r) pats))
-         ist <- get
          let tcase = opt_typecase (idris_options ist)
          let pdef = map debind $ map (simpl (tt_ctxt ist)) pats
+         
+         numArgs <- tclift $ sameLength pdef
+
+         optpats <- if doNothing 
+                       then return $ [Right (mkApp (P Bound n Erased)
+                                                  (take numArgs (repeat Erased)), Erased)]
+                       else stripCollapsed pats
+
+         logLvl 5 $ "Patterns:\n" ++ show pats
+         logLvl 5 $ "Optimised patterns:\n" ++ show optpats
+
+         let optpdef = map debind $ map (simpl (tt_ctxt ist)) optpats
          tree@(CaseDef scargs sc _) <- tclift $ simpleCase tcase False CompileTime fc pdef
-         tclift $ sameLength pdef
          cov <- coverage
          pmissing <-
                  if cov  
@@ -263,7 +295,7 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
                             return missing'
                     else return []
          let pcover = null pmissing
-         pdef' <- applyOpts pdef 
+         pdef' <- applyOpts optpdef 
          ist <- get
 --          let wf = wellFounded ist n sc
          let tot = if pcover || AssertTotal `elem` opts
