@@ -265,7 +265,8 @@ data PDecl' t = PFix     FC Fixity [String] -- fixity declaration
               | PTy      SyntaxInfo FC FnOpts Name t   -- type declaration
               | PClauses FC FnOpts Name [PClause' t]   -- pattern clause
               | PCAF     FC Name t -- top level constant
-              | PData    SyntaxInfo FC (PData' t)      -- data declaration
+              | PData    SyntaxInfo FC Bool -- codata
+                                       (PData' t)  -- data declaration
               | PParams  FC [(Name, t)] [PDecl' t] -- params block
               | PNamespace String [PDecl' t] -- new namespace
               | PRecord  SyntaxInfo FC Name t Name t     -- record declaration
@@ -318,7 +319,7 @@ declared :: PDecl -> [Name]
 declared (PFix _ _ _) = []
 declared (PTy _ _ _ n t) = [n]
 declared (PClauses _ _ n _) = [] -- not a declaration
-declared (PData _ _ (PDatadecl n _ ts)) = n : map fstt ts
+declared (PData _ _ _ (PDatadecl n _ ts)) = n : map fstt ts
    where fstt (a, _, _) = a
 declared (PParams _ _ ds) = concatMap declared ds
 declared (PNamespace _ ds) = concatMap declared ds
@@ -328,7 +329,7 @@ defined :: PDecl -> [Name]
 defined (PFix _ _ _) = []
 defined (PTy _ _ _ n t) = []
 defined (PClauses _ _ n _) = [n] -- not a declaration
-defined (PData _ _ (PDatadecl n _ ts)) = n : map fstt ts
+defined (PData _ _ _ (PDatadecl n _ ts)) = n : map fstt ts
    where fstt (a, _, _) = a
 defined (PParams _ _ ds) = concatMap defined ds
 defined (PNamespace _ ds) = concatMap defined ds
@@ -519,7 +520,7 @@ deriving instance Binary OptInfo
 !-}
 
 
-data TypeInfo = TI { con_names :: [Name] }
+data TypeInfo = TI { con_names :: [Name], codata :: Bool }
     deriving Show
 {-!
 deriving instance Binary TypeInfo
@@ -619,7 +620,7 @@ instance Show PData where
 showDeclImp _ (PFix _ f ops) = show f ++ " " ++ showSep ", " ops
 showDeclImp t (PTy _ _ _ n ty) = show n ++ " : " ++ showImp t ty
 showDeclImp _ (PClauses _ _ n c) = showSep "\n" (map show c)
-showDeclImp _ (PData _ _ d) = show d
+showDeclImp _ (PData _ _ _ d) = show d
 showDeclImp _ (PParams f ns ps) = "parameters " ++ show ns ++ "\n" ++ 
                                     showSep "\n" (map show ps)
 
@@ -930,36 +931,6 @@ showImp impl tm = se 10 tm where
     bracket outer inner str | inner > outer = "(" ++ str ++ ")"
                             | otherwise = str
 
-{-
- PQuote Raw
-           | PRef FC Name
-           | PLam Name PTerm PTerm
-           | PPi  Plicity Name PTerm PTerm
-           | PLet Name PTerm PTerm PTerm 
-           | PTyped PTerm PTerm -- term with explicit type
-           | PApp FC PTerm [PArg]
-           | PCase FC PTerm [(PTerm, PTerm)]
-           | PTrue FC
-           | PFalse FC
-           | PRefl FC
-           | PResolveTC FC
-           | PEq FC PTerm PTerm
-           | PPair FC PTerm PTerm
-           | PDPair FC PTerm PTerm PTerm
-           | PAlternative [PTerm]
-           | PHidden PTerm -- irrelevant or hidden pattern
-           | PSet
-           | PConstant Const
-           | Placeholder
-           | PDoBlock [PDo]
-           | PIdiom FC PTerm
-           | PReturn FC
-           | PMetavar Name
-           | PProof [PTactic]
-           | PTactics [PTactic] -- as PProof, but no auto solving
-           | PElabError Err -- error to report on elaboration
-           | PImpossible -- special case for declaring when an LHS can't typecheck
--}
 
 instance Sized PTerm where
   size (PQuote rawTerm) = size rawTerm

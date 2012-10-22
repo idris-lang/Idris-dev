@@ -1089,9 +1089,12 @@ pRecord syn = do acc <- pAccessibility
     toFreeze (Just Frozen) = Just Hidden
     toFreeze x = x
 
+pDataI = do reserved "data"; return False
+     <|> do reserved "codata"; return True
+
 pData :: SyntaxInfo -> IParser PDecl
 pData syn = try (do acc <- pAccessibility
-                    reserved "data"
+                    co <- pDataI
                     fc <- pfc
                     tyn_in <- pfName
                     ty <- pTSig (impOK syn)
@@ -1106,10 +1109,10 @@ pData syn = try (do acc <- pAccessibility
                     popIndent
                     closeBlock 
                     accData acc tyn (map (\ (n, _, _) -> n) cons)
-                    return $ PData syn fc (PDatadecl tyn ty cons))
+                    return $ PData syn fc co (PDatadecl tyn ty cons))
         <|> try (do pushIndent
                     acc <- pAccessibility
-                    reserved "data"
+                    co <- pDataI
                     fc <- pfc
                     tyn_in <- pfName
                     args <- many pName
@@ -1123,7 +1126,7 @@ pData syn = try (do acc <- pAccessibility
                                  do let cty = bindArgs cargs conty
                                     return (x, cty, cfc)) cons
                     accData acc tyn (map (\ (n, _, _) -> n) cons')
-                    return $ PData syn fc (PDatadecl tyn ty cons'))
+                    return $ PData syn fc co (PDatadecl tyn ty cons'))
   where
     mkPApp fc t [] = t
     mkPApp fc t xs = PApp fc t (map pexp xs)

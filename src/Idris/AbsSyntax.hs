@@ -505,7 +505,7 @@ expandParamsD ist dec ps ns (PClauses fc opts n cs)
     updateps yn nm (((a, t), i):as)
         | (a `elem` nm) == yn = (a, t) : updateps yn nm as
         | otherwise = (MN i (show n ++ "_u"), t) : updateps yn nm as
-expandParamsD ist dec ps ns (PData syn fc pd) = PData syn fc (expandPData pd)
+expandParamsD ist dec ps ns (PData syn fc co pd) = PData syn fc co (expandPData pd)
   where
     -- just do the type decl, leave constructors alone (parameters will be
     -- added implicitly)
@@ -869,7 +869,7 @@ dumpDecls (d:ds) = dumpDecl d ++ "\n" ++ dumpDecls ds
 dumpDecl (PFix _ f ops) = show f ++ " " ++ showSep ", " ops 
 dumpDecl (PTy _ _ _ n t) = "tydecl " ++ show n ++ " : " ++ showImp True t
 dumpDecl (PClauses _ _ n cs) = "pat " ++ show n ++ "\t" ++ showSep "\n\t" (map (showCImp True) cs)
-dumpDecl (PData _ _ d) = showDImp True d
+dumpDecl (PData _ _ _ d) = showDImp True d
 dumpDecl (PParams _ ns ps) = "params {" ++ show ns ++ "\n" ++ dumpDecls ps ++ "}\n"
 dumpDecl (PNamespace n ps) = "namespace {" ++ n ++ "\n" ++ dumpDecls ps ++ "}\n"
 dumpDecl (PSyntax _ syn) = "syntax " ++ show syn

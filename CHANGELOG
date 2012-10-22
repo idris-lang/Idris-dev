@@ -3,6 +3,9 @@ New in 0.9.5:
 
 User visible changes:
 
+* Added codata
+  - as data declarations, but constructor arguments are evaluated lazily
+  - functions which return a codata type do not reduce at compile time
 * Added 'parameters' blocks
 * Allow local data definitions in where blocks
 * Added '%default' directive to declare total-by-default or partial-by-default

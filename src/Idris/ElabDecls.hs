@@ -58,14 +58,24 @@ elabType info syn fc opts n ty' = {- let ty' = piBind (params info) ty_in
          addStatics n cty ty'
          logLvl 2 $ "---> " ++ show cty
          let nty = cty -- normalise ctxt [] cty
+         -- if the return type is something coinductive, freeze the definition
+         let nty' = normalise ctxt [] nty
          ds <- checkDef fc [(n, nty)]
          addIBC (IBCDef n)
          addDeferred ds
          setFlags n opts
          addIBC (IBCFlags n opts)
+         let (t, _) = unApply (getRetTy nty')
+         case t of
+            P _ rcty _ -> case lookupCtxt Nothing rcty (idris_datatypes i) of
+                               [TI _ True] -> do setAccessibility n Frozen
+                                                 addIBC (IBCAccess n Frozen)
+                                                 iputStrLn $ "Co " ++ show n
+                               _ -> return ()
+            _ -> return ()
 
-elabData :: ElabInfo -> SyntaxInfo -> FC -> PData -> Idris ()
-elabData info syn fc (PDatadecl n t_in dcons)
+elabData :: ElabInfo -> SyntaxInfo -> FC -> Bool -> PData -> Idris ()
+elabData info syn fc codata (PDatadecl n t_in dcons)
     = do iLOG (show fc)
          checkUndefined fc n
          ctxt <- getContext
@@ -80,11 +90,11 @@ elabData info syn fc (PDatadecl n t_in dcons)
          (cty, _)  <- recheckC fc [] t'
          logLvl 2 $ "---> " ++ show cty
          updateContext (addTyDecl n cty) -- temporary, to check cons
-         cons <- mapM (elabCon info syn n) dcons
+         cons <- mapM (elabCon info syn n codata) dcons
          ttag <- getName
          i <- get
-         put (i { idris_datatypes = addDef n (TI (map fst cons)) 
-                                            (idris_datatypes i) })
+         put (i { idris_datatypes = addDef n (TI (map fst cons) codata)
+                                             (idris_datatypes i) })
          addIBC (IBCDef n)
          addIBC (IBCData n)
          collapseCons n cons
@@ -94,7 +104,7 @@ elabData info syn fc (PDatadecl n t_in dcons)
 elabRecord :: ElabInfo -> SyntaxInfo -> FC -> Name -> 
               PTerm -> Name -> PTerm -> Idris ()
 elabRecord info syn fc tyn ty cn cty
-    = do elabData info syn fc (PDatadecl tyn ty [(cn, cty, fc)]) 
+    = do elabData info syn fc False (PDatadecl tyn ty [(cn, cty, fc)]) 
          cty' <- implicit syn cn cty
          i <- get
          cty <- case lookupTy Nothing cn (tt_ctxt i) of
@@ -200,12 +210,12 @@ elabRecord info syn fc tyn ty cn cty
                                                       (map pexp rhsArgs)) []
             return (pn, pfnTy, PClauses fc [] setname [pclause])
 
-elabCon :: ElabInfo -> SyntaxInfo -> Name -> (Name, PTerm, FC) -> Idris (Name, Type)
-elabCon info syn tn (n, t_in, fc)
+elabCon :: ElabInfo -> SyntaxInfo -> Name -> Bool -> (Name, PTerm, FC) -> Idris (Name, Type)
+elabCon info syn tn codata (n, t_in, fc)
     = do checkUndefined fc n
          ctxt <- getContext
          i <- get
-         t_in <- implicit syn n t_in
+         t_in <- implicit syn n (if codata then mkLazy t_in else t_in)
          let t = addImpl i t_in
          logLvl 2 $ show fc ++ ":Constructor " ++ show n ++ " : " ++ showImp True t
          ((t', defer, is), log) <- tclift $ elaborate ctxt n (Set (UVal 0)) []
@@ -228,6 +238,9 @@ elabCon info syn tn (n, t_in, fc)
         = if n' /= tn then tclift $ tfail (At fc (Msg (show n' ++ " is not " ++ show tn))) 
              else return ()
     tyIs t = tclift $ tfail (At fc (Msg (show t ++ " is not " ++ show tn)))
+
+    mkLazy (PPi pl n ty sc) = PPi (pl { plazy = True }) n ty (mkLazy sc)
+    mkLazy t = t
 
 elabClauses :: ElabInfo -> FC -> FnOpts -> Name -> [PClause] -> Idris ()
 elabClauses info fc opts n_in cs = let n = liftname info n_in in  
@@ -605,7 +618,7 @@ elabClass info syn fc constraints tn ps ds
          let cons = [(cn, cty, fc)]
          let ddecl = PDatadecl tn tty cons
          logLvl 5 $ "Class data " ++ showDImp True ddecl
-         elabData info (syn { no_imp = no_imp syn ++ mnames }) fc ddecl
+         elabData info (syn { no_imp = no_imp syn ++ mnames }) fc False ddecl
          -- for each constraint, build a top level function to chase it
          logLvl 5 $ "Building functions"
          let usyn = syn { using = ps ++ using syn }
@@ -899,8 +912,8 @@ elabDecl' info (PFix _ _ _)      = return () -- nothing to elaborate
 elabDecl' info (PSyntax _ p) = return () -- nothing to elaborate
 elabDecl' info (PTy s f o n ty)    = do iLOG $ "Elaborating type decl " ++ show n ++ show o
                                         elabType info s f o n ty
-elabDecl' info (PData s f d)     = do iLOG $ "Elaborating " ++ show (d_name d)
-                                      elabData info s f d
+elabDecl' info (PData s f co d)    = do iLOG $ "Elaborating " ++ show (d_name d)
+                                        elabData info s f co d
 elabDecl' info d@(PClauses f o n ps) = do iLOG $ "Elaborating clause " ++ show n
                                           i <- get -- get the type options too
                                           let o' = case lookupCtxt Nothing n (idris_flags i) of

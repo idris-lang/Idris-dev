@@ -691,12 +691,15 @@ addCasedef :: Name -> Bool -> Bool -> Bool ->
               Type -> Context -> Context
 addCasedef n alwaysInline tcase covering ps psrt ty uctxt 
     = let ctxt = definitions uctxt
+          access = case lookupDefAcc Nothing n False uctxt of
+                        [(_, acc)] -> acc
+                        _ -> Public
           ctxt' = case (simpleCase tcase covering CompileTime (FC "" 0) ps, 
                         simpleCase tcase covering RunTime (FC "" 0) psrt) of
                     (OK (CaseDef args sc _), OK (CaseDef args' sc' _)) -> 
                                        let inl = alwaysInline || small sc' in
                                            addDef n (CaseOp inl ty ps args sc args' sc',
-                                                     Public, Unchecked) ctxt in
+                                                     access, Unchecked) ctxt in
           uctxt { definitions = ctxt' }
             
 addOperator :: Name -> Type -> Int -> ([Value] -> Maybe Value) -> Context -> Context

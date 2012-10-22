@@ -105,8 +105,8 @@ expandAlts i all@(ConCase n _ _ _ : alts) def
     | (TyDecl c@(DCon _ arity) ty : _) <- lookupDef Nothing n (tt_ctxt i)
          = do let tyn = getTy n (tt_ctxt i)
               case lookupCtxt Nothing tyn (idris_datatypes i) of
-                  (TI ns : _) -> do let ps = map mkPat ns
-                                    return $ addAlts ps (altsFor all) all
+                  (TI ns _ : _) -> do let ps = map mkPat ns
+                                      return $ addAlts ps (altsFor all) all
                   _ -> return all
   where
     altsFor [] = []
@@ -218,7 +218,7 @@ genAll i args = case filter (/=Placeholder) $ concatMap otherPats (nub args) of
                  let p = PApp fc (PRef fc n) (zipWith upd xs' xs)
                  let tyn = getTy n (tt_ctxt i)
                  case lookupCtxt Nothing tyn (idris_datatypes i) of
-                         (TI ns : _) -> p : map (mkPat fc) (ns \\ [n])
+                         (TI ns _ : _) -> p : map (mkPat fc) (ns \\ [n])
                          _ -> [p]
     ops fc n arg o = return Placeholder
 

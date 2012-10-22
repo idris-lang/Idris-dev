@@ -849,10 +849,11 @@ instance (Binary t) => Binary (PDecl' t) where
                                            put x2
                                            put x3
                                            put x4
-                PData x1 x2 x3 -> do putWord8 3
-                                     put x1
-                                     put x2
-                                     put x3
+                PData x1 x2 x3 x4 -> do putWord8 3
+                                        put x1
+                                        put x2
+                                        put x3
+                                        put x4
                 PParams x1 x2 x3 -> do putWord8 4
                                        put x1
                                        put x2
@@ -911,7 +912,8 @@ instance (Binary t) => Binary (PDecl' t) where
                    3 -> do x1 <- get
                            x2 <- get
                            x3 <- get
-                           return (PData x1 x2 x3)
+                           x4 <- get
+                           return (PData x1 x2 x3 x4)
                    4 -> do x1 <- get
                            x2 <- get
                            x3 <- get
@@ -1389,9 +1391,11 @@ instance Binary OptInfo where
                return (Optimise x1 x2 x3)
 
 instance Binary TypeInfo where
-        put (TI x1) = put x1
+        put (TI x1 x2) = do put x1
+                            put x2
         get = do x1 <- get
-                 return (TI x1)
+                 x2 <- get
+                 return (TI x1 x2)
 
 instance Binary SynContext where
         put x
