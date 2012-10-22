@@ -140,7 +140,7 @@ data Command = Quit
              | NewCompile String
              | Metavars
              | Prove Name
-             | AddProof Name
+             | AddProof (Maybe Name)
              | RmProof Name
              | ShowProof Name
              | Proofs

@@ -253,13 +253,18 @@ process fn (RmProof n')
                                  let ms = idris_metavars i
                                  put $ i { idris_metavars = n : ms }
 
-process fn (AddProof n')
+process fn (AddProof prf)
   = do let fb = fn ++ "~"
        liftIO $ copyFile fn fb -- make a backup in case something goes wrong!
        prog <- liftIO $ readFile fb
        i <- get
-       n <- resolveProof n'
        let proofs = proof_list i
+       n' <- case prf of
+                Nothing -> case proofs of
+                             [] -> fail "No proof to add"
+                             ((x, p) : _) -> return x
+                Just nm -> return nm
+       n <- resolveProof n'
        case lookup n proofs of
             Nothing -> iputStrLn "No proof to add"
             Just p  -> do let prog' = insertScript (showProof (lit fn) n p) ls
