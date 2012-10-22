@@ -259,6 +259,7 @@ instance ToIR SC where
                                     return $ LCase tm' alts'
         ir' (Case n alts) = do alts' <- mapM mkIRAlt alts
                                return $ LCase (LV (Glob n)) alts'
+        ir' ImpossibleCase = return LNothing
 
         mkIRAlt (ConCase n t args rhs) 
              = do rhs' <- ir rhs

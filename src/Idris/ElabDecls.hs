@@ -285,8 +285,8 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
          cov <- coverage
          pmissing <-
                  if cov  
-                    then do -- missing <- genClauses fc n (map getLHS pdef) cs
-                            missing <- genMissing n scargs sc  
+                    then do missing <- genClauses fc n (map getLHS pdef) cs
+                            -- missing <- genMissing n scargs sc  
                             missing' <- filterM (checkPossible info fc True n) missing
                             logLvl 3 $ "Must be unreachable:\n" ++ 
                                         showSep "\n" (map (showImp True) missing') ++
