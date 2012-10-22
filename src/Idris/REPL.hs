@@ -399,6 +399,8 @@ parseArgs ("-o":n:ns)           = NoREPL : Output n : (parseArgs ns)
 parseArgs ("-no":n:ns)          = NoREPL : NewOutput n : (parseArgs ns)
 parseArgs ("--typecase":ns)     = TypeCase : (parseArgs ns)
 parseArgs ("--typeintype":ns)   = TypeInType : (parseArgs ns)
+parseArgs ("--total":ns)        = DefaultTotal : (parseArgs ns)
+parseArgs ("--partial":ns)      = DefaultPartial : (parseArgs ns)
 parseArgs ("--nocoverage":ns)   = NoCoverage : (parseArgs ns)
 parseArgs ("--errorcontext":ns) = ErrContext : (parseArgs ns)
 parseArgs ("--help":ns)         = Usage : (parseArgs ns)
@@ -461,6 +463,8 @@ idrisMain opts =
        let bcs = opt getBC opts
        let vm = opt getFOVM opts
        let pkgdirs = opt getPkgDir opts
+       when (DefaultTotal `elem` opts) $ do i <- get
+                                            put (i { default_total = True })
        setREPL runrepl
        setVerbose runrepl
        setCmdLine opts

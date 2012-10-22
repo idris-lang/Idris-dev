@@ -173,6 +173,8 @@ data Opt = Filename String
          | NewOutput String
          | TypeCase
          | TypeInType
+         | DefaultTotal
+         | DefaultPartial
          | NoCoverage 
          | ErrContext 
          | ShowImpl
