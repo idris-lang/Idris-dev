@@ -111,8 +111,8 @@ function! GetIdrisIndent()
     return match(prevline, '\(namespace\|data\)') + &shiftwidth
   endif
 
-  if prevline =~ '^\s*using\s\+([^(]*)\s*$'
-    return match(prevline, 'using') + &shiftwidth
+  if prevline =~ '^\s*\(using\|parameters\)\s*([^(]*)\s*$'
+    return match(prevline, '\(using\|parameters\)') + &shiftwidth
   endif
 
   return match(prevline, '\S')
