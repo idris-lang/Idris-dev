@@ -1,6 +1,6 @@
-module main
+module Main
 
-import resimp
+import Resimp
 
 data Purpose = Reading | Writing
 

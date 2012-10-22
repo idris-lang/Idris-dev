@@ -1,5 +1,5 @@
-module sqlite3
-import sqlexpr
+module Sqlite3
+import Sqlexpr
 
 
 %lib "sqlite3"

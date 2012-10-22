@@ -1,4 +1,4 @@
-module main
+module Main
 
 data Ty = TyInt | TyBool| TyFun Ty Ty
 

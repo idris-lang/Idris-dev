@@ -1,4 +1,4 @@
-module main
+module Main
 
 data Expr = Var String
           | Val Int

@@ -1,4 +1,4 @@
-module main
+module Main
 
 testlist : List (String, Int)
 testlist = [("foo", 1), ("bar", 2)]

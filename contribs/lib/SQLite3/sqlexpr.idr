@@ -1,5 +1,5 @@
-module sqlexpr
-import prelude.list
+module Sqlexpr
+import Prelude.List
 
 -----------------------------------------------------------------------------
 -- |

@@ -1,4 +1,4 @@
-module main
+module Main
 
 tstr : String
 tstr = "abc123"

@@ -1,8 +1,8 @@
-> module main
+> module Main
 
 Import the literate module
 
-> import lit
+> import Lit
 
 > main : IO ()
-> main = lit.main
+> main = Lit.main
