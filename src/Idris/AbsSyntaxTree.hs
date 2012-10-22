@@ -76,6 +76,7 @@ data IState = IState {
     brace_stack :: [Maybe Int],
     hide_list :: [(Name, Maybe Accessibility)],
     default_access :: Accessibility,
+    default_total :: Bool,
     ibc_write :: [IBCWrite],
     compiled_so :: Maybe String
    }
@@ -117,7 +118,7 @@ idrisInit = IState initContext [] [] emptyContext emptyContext emptyContext
                    emptyContext emptyContext emptyContext emptyContext 
                    emptyContext emptyContext emptyContext
                    [] "" defaultOpts 6 [] [] [] [] [] [] [] []
-                   [] Nothing Nothing [] [] [] Hidden [] Nothing
+                   [] Nothing Nothing [] [] [] Hidden False [] Nothing
 
 -- The monad for the main REPL - reading and processing files and updating 
 -- global state (hence the IO inner monad).

@@ -5,6 +5,9 @@ User visible changes:
 
 * Added 'parameters' blocks
 * Allow local data definitions in where blocks
+* Added '%default' directive to declare total-by-default or partial-by-default
+  for functions, and a corresponding "partial" reserved words to mark functions as
+  allowed to be partial.
 
 Internal changes:
 

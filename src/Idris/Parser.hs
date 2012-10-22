@@ -405,9 +405,13 @@ pSynSym = try (do lchar '['; n <- pName; lchar ']'
 
 pFunDecl' :: SyntaxInfo -> IParser PDecl
 pFunDecl' syn = try (do pushIndent
-                        opts <- pFnOpts
+                        ist <- getState
+                        let initOpts = if default_total ist
+                                          then [TotalFn]
+                                          else []
+                        opts <- pFnOpts initOpts
                         acc <- pAccessibility
-                        opts' <- pFnOpts
+                        opts' <- pFnOpts opts
                         n_in <- pfName
                         let n = expandNS syn n_in
                         ty <- pTSig (impOK syn)
@@ -415,7 +419,7 @@ pFunDecl' syn = try (do pushIndent
                         pTerminator 
 --                         ty' <- implicit syn n ty
                         addAcc n acc
-                        return (PTy syn fc (opts ++ opts') n ty))
+                        return (PTy syn fc opts' n ty))
             <|> try (pPattern syn)
             <|> try (pCAF syn)
 
@@ -612,6 +616,11 @@ pOpFront = maybeWithNS pOpFrontNoNS False []
 pfName = try pOpFront
          <|> pName
 
+pTotality :: IParser Bool
+pTotality
+        = do reserved "total";   return True
+      <|> do reserved "partial"; return False
+
 pAccessibility' :: IParser Accessibility
 pAccessibility'
         = do reserved "public";   return Public
@@ -623,16 +632,17 @@ pAccessibility
         = do acc <- pAccessibility'; return (Just acc)
       <|> return Nothing
 
-pFnOpts :: IParser [FnOpt]
-pFnOpts = do reserved "total"; xs <- pFnOpts; return (TotalFn : xs)
-      <|> try (do lchar '%'; reserved "export"; c <- strlit; xs <- pFnOpts
-                  return (CExport c : xs))
-      <|> do lchar '%'; reserved "assert_total"; xs <- pFnOpts; return (AssertTotal : xs)
+pFnOpts :: [FnOpt] -> IParser [FnOpt]
+pFnOpts opts
+        = do reserved "total"; pFnOpts (TotalFn : opts)
+      <|> do reserved "partial"; pFnOpts (opts \\ [TotalFn])
+      <|> try (do lchar '%'; reserved "export"; c <- strlit; 
+                  pFnOpts (CExport c : opts))
+      <|> do lchar '%'; reserved "assert_total"; pFnOpts (AssertTotal : opts)
       <|> do lchar '%'; reserved "specialise"; 
              lchar '['; ns <- sepBy pfName (lchar ','); lchar ']'
-             xs <- pFnOpts
-             return (Specialise ns : xs)
-      <|> return []
+             pFnOpts (Specialise ns : opts)
+      <|> return opts
 
 addAcc :: Name -> Maybe Accessibility -> IParser ()
 addAcc n a = do i <- getState
@@ -1363,6 +1373,11 @@ pDirective = try (do lchar '%'; reserved "lib"; lib <- strlit;
          <|> try (do lchar '%'; reserved "access"; acc <- pAccessibility'
                      return [PDirective (do i <- getIState
                                             putIState (i { default_access = acc }))])
+         <|> try (do lchar '%'; reserved "default"; tot <- pTotality
+                     i <- getState
+                     setState (i { default_total = tot } )
+                     return [PDirective (do i <- getIState
+                                            putIState (i { default_total = tot }))])
          <|> try (do lchar '%'; reserved "logging"; i <- natural;
                      return [PDirective (setLogLevel (fromInteger i))])
 

@@ -22,7 +22,7 @@ idrisDef = haskellDef {
               reservedOpNames = [":", "..", "=", "\\", "|", "<-", "->", "=>", "**"],
               reservedNames = ["let", "in", "data", "record", "Set", 
                                "do", "dsl", "import", "impossible", 
-                               "case", "of", "total",
+                               "case", "of", "total", "partial",
                                "infix", "infixl", "infixr", 
                                "where", "with", "syntax", "proof", "postulate",
                                "using", "namespace", "class", "instance",

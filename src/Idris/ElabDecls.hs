@@ -897,7 +897,7 @@ elabDecl info d = idrisCatch (elabDecl' info d)
 
 elabDecl' info (PFix _ _ _)      = return () -- nothing to elaborate
 elabDecl' info (PSyntax _ p) = return () -- nothing to elaborate
-elabDecl' info (PTy s f o n ty)    = do iLOG $ "Elaborating type decl " ++ show n
+elabDecl' info (PTy s f o n ty)    = do iLOG $ "Elaborating type decl " ++ show n ++ show o
                                         elabType info s f o n ty
 elabDecl' info (PData s f d)     = do iLOG $ "Elaborating " ++ show (d_name d)
                                       elabData info s f d
