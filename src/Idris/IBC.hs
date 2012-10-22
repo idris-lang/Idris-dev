@@ -649,6 +649,7 @@ instance Binary PReason where
                 NotPositive -> putWord8 3
                 Mutual x1 -> do putWord8 4
                                 put x1
+                NotProductive -> putWord8 5
         get
           = do i <- getWord8
                case i of
@@ -659,6 +660,7 @@ instance Binary PReason where
                    3 -> return NotPositive
                    4 -> do x1 <- get
                            return (Mutual x1)
+                   5 -> return NotProductive
                    _ -> error "Corrupted binary data for PReason"
 
 instance Binary Totality where
@@ -737,6 +739,7 @@ instance Binary FnOpt where
                 AssertTotal -> putWord8 3
                 Specialise x -> do putWord8 4
                                    put x
+                Coinductive -> putWord8 5
         get
           = do i <- getWord8
                case i of
@@ -746,6 +749,7 @@ instance Binary FnOpt where
                    3 -> return AssertTotal
                    4 -> do x <- get
                            return (Specialise x)
+                   5 -> return Coinductive
                    _ -> error "Corrupted binary data for FnOpt"
 
 instance Binary Fixity where

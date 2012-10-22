@@ -607,7 +607,7 @@ data Totality = Total [Int] -- well-founded arguments
     deriving Eq
 
 data PReason = Other [Name] | Itself | NotCovering | NotPositive | UseUndef Name
-             | Mutual [Name]
+             | Mutual [Name] | NotProductive
     deriving (Show, Eq)
 
 instance Show Totality where
@@ -616,6 +616,7 @@ instance Show Totality where
     show (Partial Itself) = "possibly not total as it is not well founded"
     show (Partial NotCovering) = "not total as there are missing cases"
     show (Partial NotPositive) = "not strictly positive"
+    show (Partial NotProductive) = "not productive"
     show (Partial (Other ns)) = "possibly not total due to: " ++ showSep ", " (map show ns)
     show (Partial (Mutual ns)) = "possibly not total due to mutual recursive path " ++ 
                                  showSep " --> " (map show ns)

@@ -60,19 +60,20 @@ elabType info syn fc opts n ty' = {- let ty' = piBind (params info) ty_in
          let nty = cty -- normalise ctxt [] cty
          -- if the return type is something coinductive, freeze the definition
          let nty' = normalise ctxt [] nty
+         let (t, _) = unApply (getRetTy nty')
+         let corec = case t of
+                        P _ rcty _ -> case lookupCtxt Nothing rcty (idris_datatypes i) of
+                                        [TI _ True] -> True
+                                        _ -> False
+                        _ -> False
+         let opts' = if corec then (Coinductive : opts) else opts
          ds <- checkDef fc [(n, nty)]
          addIBC (IBCDef n)
          addDeferred ds
-         setFlags n opts
-         addIBC (IBCFlags n opts)
-         let (t, _) = unApply (getRetTy nty')
-         case t of
-            P _ rcty _ -> case lookupCtxt Nothing rcty (idris_datatypes i) of
-                               [TI _ True] -> do setAccessibility n Frozen
-                                                 addIBC (IBCAccess n Frozen)
-                                                 iputStrLn $ "Co " ++ show n
-                               _ -> return ()
-            _ -> return ()
+         setFlags n opts'
+         addIBC (IBCFlags n opts')
+         when corec $ do setAccessibility n Frozen
+                         addIBC (IBCAccess n Frozen)
 
 elabData :: ElabInfo -> SyntaxInfo -> FC -> Bool -> PData -> Idris ()
 elabData info syn fc codata (PDatadecl n t_in dcons)

@@ -262,17 +262,50 @@ checkPositive n (cn, ty)
 data LexOrder = LexXX | LexEQ | LexLT
     deriving (Show, Eq, Ord)
 
+calcProd :: IState -> FC -> Name -> [([Name], Term, Term)] -> Idris Totality
+calcProd i fc n pats 
+    | and (map prodRec pats) = return (Total [])
+    | otherwise = return (Partial NotProductive)
+   where
+     -- every application of n must be in an argument of a coinductive constructor
+
+     prodRec :: ([Name], Term, Term) -> Bool
+     prodRec (_, _, tm) = prod False tm 
+
+     prod ok ap@(App _ _)
+        | (P _ (UN "lazy") _, [_, arg]) <- unApply ap = prod ok arg
+        | (P _ f ty, args) <- unApply ap
+            = let co = cotype ty in
+                  if f == n then and (ok : map (prod co) args)
+                     else and (map (prod co) args)
+     prod ok (App f a) = prod False f && prod False a
+     prod ok (Bind _ (Let t v) sc) = prod False v && prod False v
+     prod ok (Bind _ b sc) = prod False sc
+     prod ok t = True 
+    
+     cotype ty 
+        | (P _ t _, _) <- unApply (getRetTy ty)
+            = case lookupCtxt Nothing t (idris_datatypes i) of
+                   [TI _ True] -> True
+                   _ -> False
+        | otherwise = False
+
 calcTotality :: [Name] -> FC -> Name -> [([Name], Term, Term)] -> Idris Totality
 calcTotality path fc n pats 
-    = do orders <- mapM ctot pats 
-         let order = sortBy cmpOrd $ concat orders
-         let (errs, valid) = partitionEithers order
-         let lex = stripNoLT (stripXX valid)
-         case errs of
-            [] -> do logLvl 3 $ show n ++ ":\n" ++ showSep "\n" (map show lex) 
-                     logLvl 10 $ show pats
-                     checkDecreasing lex
-            (e : _) -> return e -- FIXME: should probably combine them
+    = do i <- get
+         let opts = case lookupCtxt Nothing n (idris_flags i) of
+                            [fs] -> fs
+                            _ -> []
+         if (Coinductive `elem` opts) then calcProd i fc n pats
+           else do orders <- mapM ctot pats 
+                   let order = sortBy cmpOrd $ concat orders
+                   let (errs, valid) = partitionEithers order
+                   let lex = stripNoLT (stripXX valid)
+                   case errs of
+                      [] -> do logLvl 3 $ show n ++ ":\n" ++ showSep "\n" (map show lex) 
+                               logLvl 10 $ show pats
+                               checkDecreasing lex
+                      (e : _) -> return e -- FIXME: should probably combine them
   where
     cmpOrd (Left _) (Left _) = EQ
     cmpOrd (Left _) (Right _) = LT
