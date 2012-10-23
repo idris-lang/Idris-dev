@@ -23,7 +23,7 @@ syn match idrisType "\<\([A-Z][a-zA-Z0-9_]*\|_|_\)\>"
 syn match idrisLineComment "---*\([^-!#$%&\*\+./<=>\?@\\^|~].*\)\?$"
 syn match idrisMetaVar "?[a-z][A-Za-z0-9_]\+"
 syn match idrisLink "%\(lib\|link\|include\)"
-syn match idrisAccess "%access"
+syn match idrisDirective "%\(access\|default\)"
 syn region idrisString start=+"+ skip=+\\\\\|\\"+ end=+"+
 syn region idrisBlockComment start="{-" end="-}"
 syn region idrisProofBlock start="\(default\s\+\)\?proof *{" end="}" contains=idrisTactic
@@ -38,7 +38,7 @@ highlight def link idrisConditional Conditional
 highlight def link idrisProofBlock Macro
 highlight idrisTactic ctermfg=cyan
 highlight idrisLink ctermbg=yellow ctermfg=magenta
-highlight idrisAccess ctermbg=magenta ctermfg=yellow
+highlight idrisDirective ctermbg=magenta ctermfg=yellow
 highlight def link idrisNumber Number
 highlight def link idrisFloat Float
 highlight def link idrisDelimiter Delimiter
