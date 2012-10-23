@@ -8,7 +8,7 @@
 
 syn match idrisModule "\<\(module\|namespace\)\>"
 syn match idrisImport "\<import\>"
-syn match idrisStructure "\<\(class\|data\|instance\|where\|record\)\>"
+syn match idrisStructure "\<\(class\|\(co\)\?data\|instance\|where\|record\)\>"
 syn match idrisVisibility "\<\(public\|abstract\|private\)\>"
 syn match idrisStatement "\<\(do\|case\|of\|let\|in\|with\|total\|dsl\|auto\|using\)\>"
 syn match idrisSyntax "\(pattern \+\|term \+\)\?syntax"
@@ -29,7 +29,7 @@ syn region idrisBlockComment start="{-" end="-}"
 syn region idrisProofBlock start="\(default\s\+\)\?proof *{" end="}" contains=idrisTactic
 
 highlight def link idrisImport Include
-highlight def link idrisModule idrisStructure
+highlight def link idrisModule Include
 highlight def link idrisStructure Structure
 highlight def link idrisStatement Statement
 highlight def link idrisSyntax Statement
