@@ -95,7 +95,7 @@ function! GetIdrisIndent()
     return match(prevline, 'do') + g:idris_indent_do
   endif
 
-  if prevline =~ '^\s*data\s\+[^=]\+\s\+=\s\+\S\+.*$'
+  if prevline =~ '^\s*\(co\)\?data\s\+[^=]\+\s\+=\s\+\S\+.*$'
     return match(prevline, '=')
   endif
 
@@ -107,8 +107,8 @@ function! GetIdrisIndent()
     return match(prevline, 'case') + g:idris_indent_case
   endif
 
-  if prevline =~ '^\s*\(namespace\|data\)\s\+\S\+\s*$'
-    return match(prevline, '\(namespace\|data\)') + &shiftwidth
+  if prevline =~ '^\s*\(namespace\|\(co\)\?data\)\s\+\S\+\s*$'
+    return match(prevline, '\(namespace\|\(co\)\?data\)') + &shiftwidth
   endif
 
   if prevline =~ '^\s*using\s\+([^(]*)\s*$'
