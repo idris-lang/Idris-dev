@@ -27,6 +27,8 @@ Description:    Idris is a general purpose language with full dependent types.
                 * do notation, idiom brackets, syntactic conveniences for lists, 
                   tuples, dependent pairs
                 .
+                * Coinductive types
+                .
                 * Indentation significant syntax, extensible syntax
                 .
                 * Tactic based theorem proving (influenced by Coq)

@@ -671,6 +671,7 @@ instance Binary Totality where
                 Partial x1 -> do putWord8 1
                                  put x1
                 Unchecked -> do putWord8 2
+                Productive -> do putWord8 3
         get
           = do i <- getWord8
                case i of
@@ -679,6 +680,7 @@ instance Binary Totality where
                    1 -> do x1 <- get
                            return (Partial x1)
                    2 -> return Unchecked
+                   3 -> return Productive
                    _ -> error "Corrupted binary data for Totality"
 
 instance Binary IBCFile where

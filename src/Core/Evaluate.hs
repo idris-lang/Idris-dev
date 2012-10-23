@@ -602,6 +602,7 @@ data Accessibility = Public | Frozen | Hidden
     deriving (Show, Eq)
 
 data Totality = Total [Int] -- well-founded arguments
+              | Productive
               | Partial PReason
               | Unchecked
     deriving Eq
@@ -612,6 +613,7 @@ data PReason = Other [Name] | Itself | NotCovering | NotPositive | UseUndef Name
 
 instance Show Totality where
     show (Total args)= "Total" -- ++ show args ++ " decreasing arguments"
+    show Productive = "Productive" -- ++ show args ++ " decreasing arguments"
     show Unchecked = "not yet checked for totality"
     show (Partial Itself) = "possibly not total as it is not well founded"
     show (Partial NotCovering) = "not total as there are missing cases"

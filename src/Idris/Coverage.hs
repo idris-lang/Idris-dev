@@ -263,25 +263,29 @@ data LexOrder = LexXX | LexEQ | LexLT
     deriving (Show, Eq, Ord)
 
 calcProd :: IState -> FC -> Name -> [([Name], Term, Term)] -> Idris Totality
-calcProd i fc n pats 
-    | and (map prodRec pats) = return (Total [])
-    | otherwise = return (Partial NotProductive)
+calcProd i fc n pats = do patsprod <- mapM prodRec pats
+                          if (and patsprod) 
+                             then return Productive
+                             else return (Partial NotProductive)
    where
      -- every application of n must be in an argument of a coinductive constructor
 
-     prodRec :: ([Name], Term, Term) -> Bool
+     prodRec :: ([Name], Term, Term) -> Idris Bool
      prodRec (_, _, tm) = prod False tm 
 
      prod ok ap@(App _ _)
         | (P _ (UN "lazy") _, [_, arg]) <- unApply ap = prod ok arg
         | (P _ f ty, args) <- unApply ap
             = let co = cotype ty in
-                  if f == n then and (ok : map (prod co) args)
-                     else and (map (prod co) args)
-     prod ok (App f a) = prod False f && prod False a
-     prod ok (Bind _ (Let t v) sc) = prod False v && prod False v
+                  if f == n 
+                     then do argsprod <- mapM (prod co) args
+                             return (and (ok : argsprod) )
+                     else do argsprod <- mapM (prod co) args
+                             return (and argsprod)
+     prod ok (App f a) = liftM2 (&&) (prod False f) (prod False a)
+     prod ok (Bind _ (Let t v) sc) = liftM2 (&&) (prod False v) (prod False v)
      prod ok (Bind _ b sc) = prod False sc
-     prod ok t = True 
+     prod ok t = return True 
     
      cotype ty 
         | (P _ t _, _) <- unApply (getRetTy ty)
@@ -407,6 +411,7 @@ checkTotality path fc n
         if TotalFn `elem` opts
             then case t' of
                     Total _ -> return t'
+                    Productive -> return t'
                     e -> totalityError t'
             else return t'
   where
