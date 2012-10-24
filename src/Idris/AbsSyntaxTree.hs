@@ -81,8 +81,15 @@ data IState = IState {
     compiled_so :: Maybe String
    }
 
+data SizeChange = Smaller | Same | Bigger | Unknown
+    deriving Show
+{-! 
+deriving instance Binary SizeChange
+!-}
+
 data CGInfo = CGInfo { argsdef :: [Name],
                        calls :: [(Name, [[Name]])],
+                       scg :: [(Name, [[Maybe (Name, SizeChange)]])],
                        argsused :: [Name],
                        unusedpos :: [Int] }
     deriving Show

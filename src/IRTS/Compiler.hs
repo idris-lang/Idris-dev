@@ -170,7 +170,7 @@ instance ToIR (TT Name) where
                                     [oi] -> collapsible oi
                                     _ -> False
                    let unused = case lookupCtxt Nothing n (idris_callgraph i) of
-                                    [CGInfo _ _ _ unusedpos] -> unusedpos
+                                    [CGInfo _ _ _ _ unusedpos] -> unusedpos
                                     _ -> []
                    args' <- mapM (ir' env) args
                    if collapse then return LNothing

@@ -16,7 +16,7 @@ traceUnused :: Name -> Idris ()
 traceUnused n 
    = do i <- get
         case lookupCtxt Nothing n (idris_callgraph i) of 
-          [CGInfo args calls usedns _] ->
+          [CGInfo args calls scg usedns _] ->
                 do let argpos = zip args [0..]
                    let fargs = concatMap (getFargpos calls) argpos
                    logLvl 3 $ show n ++ " used TRACE: " ++ show fargs
@@ -27,7 +27,7 @@ traceUnused n
                    logLvl 1 $ show n ++ " used args: " ++ show fused 
                    let unusedpos = mapMaybe (getUnused fused) (zip [0..] args)
                    logLvl 1 $ show n ++ " unused args: " ++ show (args, unusedpos)
-                   addToCG n (CGInfo args calls usedns unusedpos) -- updates
+                   addToCG n (CGInfo args calls scg usedns unusedpos) -- updates
           _ -> return ()
   where
     getUnused fused (i,n) | n `elem` fused = Nothing
@@ -40,7 +40,7 @@ used path g j
        = do logLvl 5 $ (show ((g, j) : path)) 
             i <- get
             case lookupCtxt Nothing g (idris_callgraph i) of
-               [CGInfo args calls usedns unused] ->
+               [CGInfo args calls scg usedns unused] ->
                   if (j >= length args) 
                     then -- overapplied, assume used
                          return True

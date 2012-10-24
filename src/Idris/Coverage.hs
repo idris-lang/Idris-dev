@@ -284,7 +284,7 @@ calcProd i fc n pats = do patsprod <- mapM prodRec pats
                              return (and argsprod)
      prod ok (App f a) = liftM2 (&&) (prod False f) (prod False a)
      prod ok (Bind _ (Let t v) sc) = liftM2 (&&) (prod False v) (prod False v)
-     prod ok (Bind _ b sc) = prod False sc
+     prod ok (Bind _ b sc) = prod ok sc
      prod ok t = return True 
     
      cotype ty 
@@ -421,4 +421,17 @@ checkDeclTotality :: (FC, Name) -> Idris Totality
 checkDeclTotality (fc, n) 
     = do logLvl 2 $ "Checking " ++ show n ++ " for totality"
          checkTotality [] fc n
+
+-- Calculate the size change graph for this definition
+
+-- SCG for a function f consists of a list of:
+--    (g, [(a1, sizechange1), (a2, sizechange2), ..., (an, sizechangen)])
+
+-- where g is a function called
+-- a1 ... an are the arguments of f in positions 1..n of g
+-- sizechange1 ... sizechange2 is how their size has changed wrt the input to f
+--    Nothing, if the argument is unrelated to the input
+
+buildSCG :: SC -> [Name] -> [(Name, [[Maybe (Name, SizeChange)]])] 
+buildSCG _ _ = []
 
