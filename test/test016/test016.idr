@@ -1,4 +1,4 @@
-module main
+module Main
 
 %default total
 
@@ -16,5 +16,5 @@ take n [] = []
 -- foo = refl
 
 main : IO ()
-main = do print (take 10 (main.countFrom 10))
+main = do print (take 10 (Main.countFrom 10))
 
