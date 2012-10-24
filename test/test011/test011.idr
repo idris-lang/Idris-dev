@@ -1,4 +1,4 @@
-module main
+module Main
 
 record Foo : Nat -> Set where
     MkFoo : (name : String) ->

@@ -162,7 +162,7 @@ process fn (Eval t)
                                  showImp imp (delab ist ty'))
 process fn (ExecVal t) 
                     = do (tm, ty) <- elabVal toplevel False t 
---                                         (PApp fc (PRef fc (NS (UN "print") ["prelude"]))
+--                                         (PApp fc (PRef fc (NS (UN "print") ["Prelude"]))
 --                                                           [pexp t])
                          (tmpn, tmph) <- liftIO tempfile
                          liftIO $ hClose tmph
@@ -307,7 +307,7 @@ process fn TTShell  = do ist <- get
 process fn Execute = do (m, _) <- elabVal toplevel False 
                                         (PApp fc 
                                            (PRef fc (UN "run__IO"))
-                                           [pexp $ PRef fc (NS (UN "main") ["main"])])
+                                           [pexp $ PRef fc (NS (UN "main") ["Main"])])
 --                                      (PRef (FC "main" 0) (NS (UN "main") ["main"]))
                         (tmpn, tmph) <- liftIO tempfile
                         liftIO $ hClose tmph
@@ -318,13 +318,13 @@ process fn Execute = do (m, _) <- elabVal toplevel False
 process fn (NewCompile f) 
      = do (m, _) <- elabVal toplevel False
                       (PApp fc (PRef fc (UN "run__IO"))
-                          [pexp $ PRef fc (NS (UN "main") ["main"])])
+                          [pexp $ PRef fc (NS (UN "main") ["Main"])])
           compileEpic f m
   where fc = FC "main" 0                     
 process fn (Compile target f) 
       = do (m, _) <- elabVal toplevel False
                        (PApp fc (PRef fc (UN "run__IO"))
-                       [pexp $ PRef fc (NS (UN "main") ["main"])])
+                       [pexp $ PRef fc (NS (UN "main") ["Main"])])
            compile target f m
   where fc = FC "main" 0                     
 process fn (LogLvl i) = setLogLevel i 
@@ -485,7 +485,7 @@ idrisMain opts =
        addPkgDir "base"
        mapM_ addPkgDir pkgdirs
        elabPrims
-       when (not (NoPrelude `elem` opts)) $ do x <- loadModule "prelude"
+       when (not (NoPrelude `elem` opts)) $ do x <- loadModule "Prelude"
                                                return ()
        when runrepl $ iputStrLn banner 
        ist <- get

@@ -1,4 +1,4 @@
-module main
+module Main
 
 data Parity : Nat -> Set where
    even : Parity (n + n)
@@ -22,14 +22,14 @@ main = do print (natToBin 42)
 
 ---------- Proofs ----------
 
-main.parity_lemma_2 = proof {
+Main.parity_lemma_2 = proof {
     intro;
     intro;
     rewrite sym (plusSuccRightSucc j j);
     trivial;
 };
 
-main.parity_lemma_1 = proof {
+Main.parity_lemma_1 = proof {
     intro j;
     intro;
     rewrite sym (plusSuccRightSucc j j);

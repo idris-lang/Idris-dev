@@ -1,4 +1,4 @@
-module main
+module Main
   
 f : Nat -> Nat
 f x = x + 1

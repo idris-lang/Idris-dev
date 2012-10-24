@@ -1,4 +1,4 @@
-module main
+module Main
 
 forLoop : List a -> (a -> IO ()) -> IO ()
 forLoop [] f = return ()

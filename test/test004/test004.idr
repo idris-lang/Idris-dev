@@ -1,4 +1,4 @@
-module main
+module Main
 
 dumpFile : String -> IO ()
 dumpFile fn = do { h <- openFile fn Read

@@ -1,16 +1,16 @@
 package base
 
 opts = "--noprelude"
-modules = builtins, prelude, io, system,
+modules = Builtins, Prelude, IO, System,
 
-          prelude.algebra, prelude.cast, prelude.nat, prelude.fin,
-          prelude.list, prelude.maybe, prelude.monad, prelude.applicative,
-          prelude.either, prelude.vect, prelude.strings, prelude.char,
-          prelude.heap, prelude.complex, prelude.morphisms,
+          Prelude.Algebra, Prelude.Cast, Prelude.Nat, Prelude.Fin,
+          Prelude.List, Prelude.Maybe, Prelude.Monad, Prelude.Applicative,
+          Prelude.Either, Prelude.Vect, Prelude.Strings, Prelude.Chars, Prelude.Heap,
+          Prelude.Complex, Prelude.Morphisms,
 
-          network.cgi,
+          Network.Cgi,
 
-          language.reflection,
+          Language.Reflection,
 
-          control.monad.identity, control.monad.state, control.category,
-          control.arrow
+          Control.Monad.Identity, Control.Monad.State, Control.Category,
+          Control.Arrow

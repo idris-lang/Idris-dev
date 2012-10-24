@@ -1,4 +1,4 @@
-module main
+module Main
 
 %default total
 
@@ -10,7 +10,7 @@ S : CoNat -> CoNat
 S (Co n)   = Co (S n)
 S Infinity = Infinity
 
-Sn_notzero : main.S n = Co 0 -> _|_
+Sn_notzero : Main.S n = Co 0 -> _|_
 Sn_notzero = believe_me 
 
 S_Co_not_Inf : S (Co n) = Infinity -> _|_

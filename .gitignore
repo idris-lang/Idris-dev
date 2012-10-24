@@ -1,2 +1,6 @@
 dist
 *.ibc
+*.o
+*.a
+test/output
+test/test???/output

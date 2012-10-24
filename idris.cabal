@@ -45,8 +45,8 @@ Build-type:     Custom
 Data-files:            rts/libidris_rts.a rts/idris_rts.h rts/idris_gc.h
                        rts/idris_stdfgn.h rts/idris_main.c rts/idris_gmp.h
                        rts/libtest.c
-Extra-source-files:    lib/Makefile  lib/*.idr lib/prelude/*.idr lib/network/*.idr
-                       lib/control/monad/*.idr lib/language/*.idr
+Extra-source-files:    lib/Makefile  lib/*.idr lib/Prelude/*.idr lib/Network/*.idr
+                       lib/Control/Monad/*.idr lib/Language/*.idr
                        tutorial/examples/*.idr lib/base.ipkg
                        rts/*.c rts/*.h rts/Makefile
 

@@ -1,5 +1,5 @@
-module main
-import sqlite3
+module Main
+import Sqlite3
 
           
 testexpr : DB()
