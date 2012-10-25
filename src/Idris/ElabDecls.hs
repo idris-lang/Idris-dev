@@ -346,7 +346,7 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
                             (CaseOp _ _ _ scargs sc scargs' sc' : _) ->
                                 do let calls = findCalls sc' scargs'
                                    let used = findUsedArgs sc' scargs'
-                                   let scg = buildSCG sc scargs
+                                   let scg = buildSCG i sc scargs
                                    let cg = CGInfo scargs' calls scg used []
                                    logLvl 2 $ "Called names: " ++ show cg
                                    addToCG n cg

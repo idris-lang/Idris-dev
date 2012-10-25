@@ -89,7 +89,7 @@ deriving instance Binary SizeChange
 
 data CGInfo = CGInfo { argsdef :: [Name],
                        calls :: [(Name, [[Name]])],
-                       scg :: [(Name, [[Maybe (Name, SizeChange)]])],
+                       scg :: [(Name, [Maybe (Name, SizeChange)])],
                        argsused :: [Name],
                        unusedpos :: [Int] }
     deriving Show

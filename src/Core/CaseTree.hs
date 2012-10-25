@@ -161,7 +161,7 @@ simpleCase tc cover phase fc cs
                         ns         = take numargs args
                         (tree, st) = runState 
                                          (match (rev phase ns) pats (defaultCase cover)) ([], numargs)
-                        t          = CaseDef ns (prune proj tree) (fst st) in
+                        t          = CaseDef ns (prune proj (depatt ns tree)) (fst st) in
                         if proj then return (stripLambdas t) else return t
                 Error err -> Error (At fc err)
     where args = map (\i -> MN i "e") [0..]
@@ -341,10 +341,37 @@ varRule (v : vs) alts err =
     do let alts' = map (repVar v) alts
        match vs alts' err
   where
-    repVar v (PV p : ps , (lhs, res)) = (ps, (lhs, subst p (P Bound v (V 0)) res))
+    repVar v (PV p : ps , (lhs, res)) = (ps, (lhs, subst p (P Bound v Erased) res))
     repVar v (PAny : ps , res) = (ps, res)
 
-prune :: Bool -> -- ^ Convert single brances to projections (only useful at runtime)
+-- fix: case e of S k -> f (S k)  ==> case e of S k -. f e
+depatt :: [Name] -> SC -> SC
+depatt ns tm = dp [] tm
+  where
+    dp ms (STerm tm) = STerm (applyMaps ms tm)
+    dp ms (Case x alts) = Case x (map (dpa ms x) alts)
+    dp ms sc = sc
+
+    dpa ms x (ConCase n i args sc)
+        = ConCase n i args (dp ((x, (n, args)) : ms) sc)
+    dpa ms x (ConstCase c sc) = ConstCase c (dp ms sc)
+    dpa ms x (DefaultCase sc) = DefaultCase (dp ms sc)
+
+    applyMaps ms f@(App _ _)
+       | (P nt cn pty, args) <- unApply f
+            = let args' = map (applyMaps ms) args in
+                  applyMap ms nt cn pty args'
+        where
+          applyMap [] nt cn pty args' = mkApp (P nt cn pty) args'
+          applyMap ((x, (n, args)) : ms) nt cn pty args'
+            | and ((n == cn) : zipWith same args args') = P Ref x Erased
+            | otherwise = applyMap ms nt cn pty args'
+          same n (P _ n' _) = n == n'
+          same _ _ = False
+    applyMaps ms (App f a) = App (applyMaps ms f) (applyMaps ms a)
+    applyMaps ms t = t
+
+prune :: Bool -> -- ^ Convert single branches to projections (only useful at runtime)
          SC -> SC
 prune proj (Case n alts) 
     = let alts' = filter notErased (map pruneAlt alts) in

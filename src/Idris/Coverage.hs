@@ -432,6 +432,56 @@ checkDeclTotality (fc, n)
 -- sizechange1 ... sizechange2 is how their size has changed wrt the input to f
 --    Nothing, if the argument is unrelated to the input
 
-buildSCG :: SC -> [Name] -> [(Name, [[Maybe (Name, SizeChange)]])] 
-buildSCG _ _ = []
+buildSCG :: IState -> SC -> [Name] -> [(Name, [Maybe (Name, SizeChange)])] 
+buildSCG ist sc args = scg sc (zip args args) (zip args (zip args (repeat Same)))
+   where
+      scg :: SC -> [(Name, Name)] -> -- local var, originating top level var
+             [(Name, (Name, SizeChange))] -> -- map from orig to new and relationship
+             [(Name, [Maybe (Name, SizeChange)])]
+      scg (Case x alts) vars szs = concatMap (scgAlt x vars szs) alts
+      scg (STerm tm) vars szs = scgTerm tm vars szs
+      scg _ _ _ = []
+
+      -- how the arguments relate - either Smaller or Unknown
+      argRels :: Name -> [(Name, SizeChange)]
+      argRels n = let ctxt = tt_ctxt ist
+                      [ty] = lookupTy Nothing n ctxt -- must exist!
+                      P _ nty _ = fst (unApply (getRetTy ty))
+                      args = map snd (getArgTys ty) in
+                      map (getRel nty) (map (fst . unApply) args)
+        where
+          getRel ty (P _ n' _) | n' == ty = (n, Smaller)
+          getRel ty _ = (n, Unknown)
+
+      scgAlt x vars szs (ConCase n _ args sc)
+           -- all args smaller than top variable of x in sc
+           -- (as long as they are in the same type family)
+         | Just tvar <- lookup x vars
+              = let arel = argRels n
+                    szs' = zipWith (\arg (_,t) -> (arg, (x, t))) args arel ++ szs
+                    vars' = zip args (repeat tvar) ++ vars in
+                    scg sc vars' szs'
+         | otherwise = scg sc vars szs
+      scgAlt x vars szs (ConstCase _ sc) = scg sc vars szs
+      scgAlt x vars szs (DefaultCase sc) = scg sc vars szs
+
+      scgTerm f@(App _ _) vars szs
+         | (P _ fn _, args) <- unApply f
+            = let rest = concatMap (\x -> scgTerm x vars szs) args in
+                  case lookup fn vars of
+                       Just _ -> rest
+                       Nothing -> (fn, map (mkChange szs) args) : rest 
+      scgTerm (App f a) vars szs
+            = scgTerm f vars szs ++ scgTerm a vars szs
+      scgTerm (Bind n (Let t v) e) vars szs
+            = scgTerm v vars szs ++ scgTerm e vars szs
+      scgTerm (Bind n _ e) vars szs
+            = scgTerm e ((n, n) : vars) szs
+      scgTerm _ _ _ = []
+
+      mkChange :: [(Name, (Name, SizeChange))] -> Term -> Maybe (Name, SizeChange)
+      mkChange szs (P _ n ty) = case lookup n szs of
+                                     Just (_, Unknown) -> Nothing
+                                     t -> t
+      mkChange _ _ = Nothing
 
