@@ -16,5 +16,6 @@ Tests:
 014: resource DSL
 015: verified binary adder
 016: codata
+017: mutually recursive totality checking
 
 regxxx: various regression tests

@@ -408,7 +408,7 @@ buildSCG ist sc args = scg sc (zip args args)
                       [ty] = lookupTy Nothing n ctxt -- must exist!
                       P _ nty _ = fst (unApply (getRetTy ty))
                       args = map snd (getArgTys ty) in
-                      map (getRel nty) (map (fst . unApply) args)
+                      map (getRel nty) (map (fst . unApply . getRetTy) args)
         where
           getRel ty (P _ n' _) | n' == ty = (n, Smaller)
           getRel ty _ = (n, Unknown)
@@ -446,7 +446,8 @@ buildSCG ist sc args = scg sc (zip args args)
 
       mkChange :: [(Name, (Name, SizeChange))] -> Term 
                    -> Maybe (Int, SizeChange)
-      mkChange szs (P _ n ty) 
+      mkChange szs tm
+         | (P _ n ty, _) <- unApply tm -- get higher order args too
           = do sc <- lookup n szs
                case sc of
                   (_, Unknown) -> Nothing
