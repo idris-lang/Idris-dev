@@ -167,7 +167,7 @@ zipWith f (x::xs) (y::ys) p = f x y :: (zipWith f xs ys ?zipWithTailProof)
 
 zipWith3 : (f : a -> b -> c -> d) -> (x : List a) -> (y : List b) ->
   (z : List c) -> (length x = length y) -> (length y = length z) -> List d
-zipWith3 f []      []      []      p q = []
+zipWith3 f []      []      []      refl refl = []
 zipWith3 f (x::xs) (y::ys) (z::zs) p q =
   f x y z :: (zipWith3 f xs ys zs ?zipWith3TailProof ?zipWith3TailProof')
 

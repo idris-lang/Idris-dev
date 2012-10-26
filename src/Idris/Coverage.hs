@@ -12,6 +12,7 @@ import Idris.Error
 
 import Data.List
 import Data.Either
+import Data.Maybe
 import Debug.Trace
 
 import Control.Monad.State
@@ -22,12 +23,14 @@ import Control.Monad.State
 genMissing :: Name -> [Name] -> SC -> Idris [PTerm] 
 genMissing fn args sc 
    = do sc' <- expandTree sc
-        logLvl 5 $ "Checking missing cases for " ++ show fn ++ "\n" ++ (show sc')
+        logLvl 5 $ "Checking missing cases for " ++ 
+                     show fn ++ "\n" ++ (show sc')
         (got, missing) <- gm fn (map (\x -> P Bound x Erased) args) sc'
         return $ filter (\x -> not (x `elem` got)) missing
 
 -- Make a term to feed to the pattern matcher from a LHS declared impossible
--- (we can't type check it, but we need the case analysis to check for covering...)
+-- (we can't type check it, but we need the case analysis to check for 
+-- covering...)
 
 mkPatTm :: PTerm -> Idris Term
 mkPatTm t = do i <- get
@@ -69,7 +72,8 @@ gm fn args (UnmatchedCase _) = do logLvl 3 ("Missing: " ++ show args)
 
 gmAlt fn args n (ConCase cn t cargs sc)
    = do let args' = map (subst n (mkApp (P Bound cn Erased)
-                                        (map (\x -> P Bound x Erased) cargs))) args
+                                        (map (\x -> P Bound x Erased) cargs))) 
+                        args
         gm fn args' sc
 gmAlt fn args n (ConstCase c sc)
    = do let args' = map (subst n (Constant c)) args
@@ -87,7 +91,8 @@ dropDefault [] = []
 
 expandTree :: SC -> Idris SC
 expandTree (Case n alts) = do i <- get
-                              as <- expandAlts i (dropDefault alts) (getDefault alts)
+                              as <- expandAlts i (dropDefault alts) 
+                                                 (getDefault alts)
                               alts' <- mapM expandTreeA as
                               return (Case n alts')
     where expandTreeA (ConCase n i ns sc) = do sc' <- expandTree sc
@@ -116,15 +121,17 @@ expandAlts i all@(ConCase n _ _ _ : alts) def
     addAlts [] got alts = alts
     addAlts ((n, arity) : ps) got alts
         | n `elem` got = addAlts ps got alts
-        | otherwise = addAlts ps got (alts ++ [ConCase n (-1) (argList arity) def])
+        | otherwise = addAlts ps got (alts ++ 
+                             [ConCase n (-1) (argList arity) def])
 
     argList i = take i (map (\x -> (MN x "ign")) [0..])
 
-    getTy n ctxt = case lookupTy Nothing n ctxt of
-                          (t : _) -> case unApply (getRetTy t) of
-                                        (P _ tyn _, _) -> tyn
-                                        x -> error $ "Can't happen getTy 1 " ++ show (n, x)
-                          _ -> error "Can't happen getTy 2"
+    getTy n ctxt 
+      = case lookupTy Nothing n ctxt of
+            (t : _) -> case unApply (getRetTy t) of
+                        (P _ tyn _, _) -> tyn
+                        x -> error $ "Can't happen getTy 1 " ++ show (n, x)
+            _ -> error "Can't happen getTy 2"
 
     mkPat x = case lookupCtxt Nothing x (idris_implicits i) of
                     (pargs : _)
@@ -152,14 +159,14 @@ genClauses fc n xs given
         logLvl 7 $ "COVERAGE of " ++ show n
         logLvl 10 $ show argss ++ "\n" ++ show all_args
         logLvl 10 $ "Original: \n" ++ 
-                        showSep "\n" (map (\t -> showImp True (delab' i t True)) xs)
+             showSep "\n" (map (\t -> showImp True (delab' i t True)) xs)
         let parg = case lookupCtxt Nothing n (idris_implicits i) of
                         (p : _) -> p
                         _ -> repeat (pexp Placeholder)
         let tryclauses = mkClauses parg all_args
         let new = mnub i $ filter (noMatch i) tryclauses 
         logLvl 7 $ "New clauses: \n" ++ showSep "\n" (map (showImp True) new)
---                     ++ " from:\n" ++ showSep "\n" (map (showImp True) tryclauses) 
+--           ++ " from:\n" ++ showSep "\n" (map (showImp True) tryclauses) 
         return new
 --         return (map (\t -> PClause n t [] PImpossible []) new)
   where getLHS i term 
@@ -195,8 +202,8 @@ genClauses fc n xs given
                                 as' <- mkArg as
                                 return (a':as')
 
--- FIXME: Just look for which one is the deepest, then generate all possibilities
--- up to that depth.
+-- FIXME: Just look for which one is the deepest, then generate all 
+-- possibilities up to that depth.
 
 genAll :: IState -> [PTerm] -> [PTerm]
 genAll i args = case filter (/=Placeholder) $ concatMap otherPats (nub args) of
@@ -257,7 +264,8 @@ checkPositive n (cn, ty)
             = n /= n' && posArg sc
     posArg t = True
 
--- Totality checking - check for structural recursion (no mutual definitions yet)
+-- Totality checking - check for structural recursion 
+-- (no mutual definitions yet)
 
 data LexOrder = LexXX | LexEQ | LexLT
     deriving (Show, Eq, Ord)
@@ -268,7 +276,8 @@ calcProd i fc n pats = do patsprod <- mapM prodRec pats
                              then return Productive
                              else return (Partial NotProductive)
    where
-     -- every application of n must be in an argument of a coinductive constructor
+     -- every application of n must be in an argument of a coinductive 
+     -- constructor
 
      prodRec :: ([Name], Term, Term) -> Idris Bool
      prodRec (_, _, tm) = prod False tm 
@@ -294,88 +303,25 @@ calcProd i fc n pats = do patsprod <- mapM prodRec pats
                    _ -> False
         | otherwise = False
 
-calcTotality :: [Name] -> FC -> Name -> [([Name], Term, Term)] -> Idris Totality
+calcTotality :: [Name] -> FC -> Name -> [([Name], Term, Term)]
+                -> Idris Totality
 calcTotality path fc n pats 
     = do i <- get
          let opts = case lookupCtxt Nothing n (idris_flags i) of
                             [fs] -> fs
                             _ -> []
-         if (Coinductive `elem` opts) then calcProd i fc n pats
-           else do orders <- mapM ctot pats 
-                   let order = sortBy cmpOrd $ concat orders
-                   let (errs, valid) = partitionEithers order
-                   let lex = stripNoLT (stripXX valid)
-                   case errs of
-                      [] -> do logLvl 3 $ show n ++ ":\n" ++ showSep "\n" (map show lex) 
-                               logLvl 10 $ show pats
-                               checkDecreasing lex
-                      (e : _) -> return e -- FIXME: should probably combine them
+         case mapMaybe (checkLHS i) (map (\ (_, l, r) -> l) pats) of
+            (failure : _) -> return failure
+            _ -> if (Coinductive `elem` opts) 
+                      then calcProd i fc n pats
+                      else checkSizeChange n
   where
-    cmpOrd (Left _) (Left _) = EQ
-    cmpOrd (Left _) (Right _) = LT
-    cmpOrd (Right _) (Left _) = GT
-    cmpOrd (Right x) (Right y) = compare x y
-
-    checkDecreasing [] = return (Total [])
-    checkDecreasing (c : cs) | dec c = checkDecreasing cs
-                             | otherwise = return (Partial Itself)
-    
-    dec [] = False
-    dec (LexLT : _) = True
-    dec (LexEQ : xs) = dec xs
-    dec (LexXX : xs) = False
-
-    stripXX [] = []
-    stripXX v@(c : cs) 
-        = case span (==LexXX) c of
-               (ns, rest) -> map (drop (length ns)) v
-
-    -- argument positions which are never LT are no use to us
-    stripNoLT [] = [] -- no recursive calls
-    stripNoLT xs = case transpose (filter (any (==LexLT)) (transpose xs)) of
-                        [] -> [[]] -- recursive calls are all useless...
-                        xs -> xs
-
-    ctot (_, lhs, rhs) 
-        | (_, args) <- unApply lhs
-            = do -- check lhs doesn't use any dodgy names
-                    lhsOK <- mapM (chkOrd [] []) args
-                    chkOrd (filter isLeft (concat lhsOK)) args rhs
-
-    isLeft (Left _) = True
-    isLeft _ = False
-
-    chkOrd ords args (Bind n (Let t v) sc) 
-        = do ov <- chkOrd ords args v
-             chkOrd ov args sc
-    chkOrd ords args (Bind n b sc) = chkOrd ords (args ++ [P Ref n Erased]) sc
-    chkOrd ords args ap@(App f a)
-        | (P _ fn _, args') <- unApply ap
-            = if fn == n && length args == length args'
-                 then do orf <- chkOrd (Right (zipWith lexOrd args args') : ords) args f
-                         chkOrd orf args a
-                 else do orf <- chkOrd ords args f
-                         chkOrd orf args a
-        | otherwise = do orf <- chkOrd ords args f
-                         chkOrd orf args a
-    chkOrd ords args (P _ fn _)
-        | n /= fn
-            = do tf <- checkTotality (n : path) fc fn
-                 case tf of
-                    Total _ -> return ords
-                    p@(Partial (Mutual x)) -> return ((Left p) : ords)
-                    _ -> return (Left (Partial (Other [fn])) : ords)
-        | null args = return (Left (Partial Itself) : ords)
-    chkOrd ords args _ = return ords
-
-    lexOrd x y | x == y = LexEQ
-    lexOrd f@(App _ _) x 
-        | (f', args) <- unApply f
-            = let ords = map (\x' -> lexOrd x' x) args in
-                if any (\o -> o == LexEQ || o == LexLT) ords
-                    then LexLT
-                    else LexXX
-    lexOrd _ _ = LexXX
+    checkLHS i (P _ fn _) 
+        = case lookupTotal fn (tt_ctxt i) of
+               [Partial _] -> return (Partial (Other [fn]))                
+               _ -> Nothing
+    checkLHS i (App f a) = mplus (checkLHS i f) (checkLHS i a)
+    checkLHS _ _ = Nothing
 
 checkTotality :: [Name] -> FC -> Name -> Idris Totality
 checkTotality path fc n 
@@ -400,10 +346,11 @@ checkTotality path fc n
                             -- typechecking decidable
                                case t' of
 -- FIXME: Put this back when we can handle mutually recursive things
---                                            p@(Partial _) -> 
---                                                 do setAccessibility n Frozen 
---                                                    addIBC (IBCAccess n Frozen)
---                                                    iputStrLn $ "HIDDEN: " ++ show n ++ show p
+--                                  p@(Partial _) -> 
+--                                      do setAccessibility n Frozen 
+--                                         addIBC (IBCAccess n Frozen)
+--                                         iputStrLn $ "HIDDEN: " 
+--                                               ++ show n ++ show p
                                            _ -> return ()
                                return t'
                         _ -> return $ Total []
@@ -429,16 +376,29 @@ checkDeclTotality (fc, n)
 
 -- where g is a function called
 -- a1 ... an are the arguments of f in positions 1..n of g
--- sizechange1 ... sizechange2 is how their size has changed wrt the input to f
+-- sizechange1 ... sizechange2 is how their size has changed wrt the input 
+-- to f
 --    Nothing, if the argument is unrelated to the input
 
-buildSCG :: IState -> SC -> [Name] -> [(Name, [Maybe (Name, SizeChange)])] 
-buildSCG ist sc args = scg sc (zip args args) (zip args (zip args (repeat Same)))
+-- FIXME: Higher order recursive arguments
+
+buildSCG :: IState -> SC -> [Name] -> [SCGEntry] 
+buildSCG ist sc args = scg sc (zip args args) 
+                              (zip args (zip args (repeat Same)))
    where
       scg :: SC -> [(Name, Name)] -> -- local var, originating top level var
-             [(Name, (Name, SizeChange))] -> -- map from orig to new and relationship
-             [(Name, [Maybe (Name, SizeChange)])]
-      scg (Case x alts) vars szs = concatMap (scgAlt x vars szs) alts
+             [(Name, (Name, SizeChange))] -> -- orig to new,  and relationship
+             [SCGEntry]
+      scg (Case x alts) vars szs 
+          = let x' = findTL x vars in
+                concatMap (scgAlt x' vars szs) alts
+        where
+          findTL x vars 
+            | Just x' <- lookup x vars
+               = if x' `elem`  args then x'
+                    else findTL x' vars
+            | otherwise = x
+
       scg (STerm tm) vars szs = scgTerm tm vars szs
       scg _ _ _ = []
 
@@ -458,7 +418,8 @@ buildSCG ist sc args = scg sc (zip args args) (zip args (zip args (repeat Same))
            -- (as long as they are in the same type family)
          | Just tvar <- lookup x vars
               = let arel = argRels n
-                    szs' = zipWith (\arg (_,t) -> (arg, (x, t))) args arel ++ szs
+                    szs' = zipWith (\arg (_,t) -> (arg, (x, t))) args arel 
+                                                       ++ szs
                     vars' = zip args (repeat tvar) ++ vars in
                     scg sc vars' szs'
          | otherwise = scg sc vars szs
@@ -477,11 +438,108 @@ buildSCG ist sc args = scg sc (zip args args) (zip args (zip args (repeat Same))
             = scgTerm v vars szs ++ scgTerm e vars szs
       scgTerm (Bind n _ e) vars szs
             = scgTerm e ((n, n) : vars) szs
+      scgTerm (P _ fn _) vars szs
+            = case lookup fn vars of
+                   Just _ -> []
+                   Nothing -> [(fn, [])]
       scgTerm _ _ _ = []
 
-      mkChange :: [(Name, (Name, SizeChange))] -> Term -> Maybe (Name, SizeChange)
-      mkChange szs (P _ n ty) = case lookup n szs of
-                                     Just (_, Unknown) -> Nothing
-                                     t -> t
+      mkChange :: [(Name, (Name, SizeChange))] -> Term 
+                   -> Maybe (Int, SizeChange)
+      mkChange szs (P _ n ty) 
+          = do sc <- lookup n szs
+               case sc of
+                  (_, Unknown) -> Nothing
+                  (o, sc) -> do i <- getArgPos 0 o args
+                                return (i, sc)
       mkChange _ _ = Nothing
+
+      getArgPos :: Int -> Name -> [Name] -> Maybe Int
+      getArgPos i n [] = Nothing
+      getArgPos i n (x : xs) | n == x = Just i
+                             | otherwise = getArgPos (i + 1) n xs
+
+checkSizeChange :: Name -> Idris Totality
+checkSizeChange n = do
+   ist <- get
+   case lookupCtxt Nothing n (idris_callgraph ist) of
+       [cg] -> do let ms = mkMultiPaths ist [] (scg cg)
+                  logLvl 6 ("Multipath for " ++ show n ++ ":\n" ++
+                            showSep "\n" (map show ms))
+                  -- every multipath must have an infinitely descending 
+                  -- thread, then the function terminates
+                  -- also need to checks functions called are all total 
+                  -- (Unchecked is okay as we'll spot problems here)
+                  let tot = map (checkMP ist (length (argsdef cg))) ms
+                  logLvl 3 $ "Paths for " ++ show n ++ " yield " ++ (show tot)
+                  return (noPartial tot)
+
+type MultiPath = [SCGEntry]
+
+mkMultiPaths :: IState -> MultiPath -> [SCGEntry] -> [MultiPath]
+mkMultiPaths ist path cg
+    = do (nextf, args) <- cg
+         if ((nextf, args) `elem` path)
+            then return (reverse ((nextf, args) : path))
+            else case lookupCtxt Nothing nextf (idris_callgraph ist) of
+                    [ncg] -> mkMultiPaths ist ((nextf, args) : path) (scg ncg) 
+                    _ -> return (reverse ((nextf, args) : path))
+
+-- If any route along the multipath leads to infinite descent, we're fine.
+-- Try a route beginning with every argument.
+--   If we reach a point we've been to before, but with a smaller value,
+--   that means there is an infinitely descending path.
+
+checkMP :: IState -> Int -> MultiPath -> Totality
+checkMP ist i mp = if i > 0 
+                     then collapse (map (tryPath 0 [] mp) [0..i-1])
+                     else tryPath 0 [] mp 0
+  where
+    tryPath :: Int -> [(SCGEntry, Int)] -> MultiPath -> Int -> Totality
+    tryPath desc path [] _ = Total []
+    -- if we get to a constructor, it's fine as long as it's strictly positive
+    tryPath desc path ((f, _) :es) arg
+        | [TyDecl (DCon _ _) _] <- lookupDef Nothing f (tt_ctxt ist)
+            = case lookupTotal f (tt_ctxt ist) of
+                   [Total _] -> Total []
+                   [Partial _] -> Partial (Other [f])
+                   x -> error (show x)
+        | [TyDecl (TCon _ _) _] <- lookupDef Nothing f (tt_ctxt ist)
+            = Total []
+    tryPath desc path (e@(f, nextargs) : es) arg
+        | Just d <- lookup e path
+            = if (desc - d) > 0 
+                   then Total []
+                   else Partial Itself
+        | [Unchecked] <- lookupTotal f (tt_ctxt ist) =
+            let argspos = zip nextargs [0..] in
+                collapse $ 
+                  do (arg, pos) <- argspos
+                     case arg of
+                        Nothing -> -- don't know, but it's okay if the
+                                   -- rest definitely terminates without
+                                   -- any cycles with route so far
+                            map (tryPath (-10000) ((e, desc):path) es)
+                                [0..length nextargs - 1]
+                        Just (nextarg, sc) ->
+                          case sc of
+                            Same -> return $ tryPath desc ((e, desc):path) 
+                                                     es
+                                                     nextarg
+                            Smaller -> return $ tryPath (desc+1) 
+                                                        ((e, desc):path) 
+                                                        es
+                                                        nextarg
+                            _ -> trace ("Shouldn't happen " ++ show e) $ 
+                                    return (Partial Itself)
+        | [tot] <- lookupTotal f (tt_ctxt ist) = tot
+        | otherwise = Total []
+
+noPartial (Partial p : xs) = Partial p
+noPartial (_ : xs)         = noPartial xs
+noPartial []               = Total [] 
+
+collapse (Total r  : xs)  = Total r
+collapse (_ : xs)         = collapse xs
+collapse []               = Partial Itself
 

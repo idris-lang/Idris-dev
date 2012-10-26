@@ -82,14 +82,16 @@ data IState = IState {
    }
 
 data SizeChange = Smaller | Same | Bigger | Unknown
-    deriving Show
+    deriving (Show, Eq)
 {-! 
 deriving instance Binary SizeChange
 !-}
 
+type SCGEntry = (Name, [Maybe (Int, SizeChange)])
+
 data CGInfo = CGInfo { argsdef :: [Name],
                        calls :: [(Name, [[Name]])],
-                       scg :: [(Name, [Maybe (Name, SizeChange)])],
+                       scg :: [SCGEntry],
                        argsused :: [Name],
                        unusedpos :: [Int] }
     deriving Show

@@ -759,7 +759,8 @@ lookupP root n ctxt
 lookupDef :: Maybe [String] -> Name -> Context -> [Def]
 lookupDef root n ctxt = map tfst $ lookupCtxt root n (definitions ctxt)
 
-lookupDefAcc :: Maybe [String] -> Name -> Bool -> Context -> [(Def, Accessibility)]
+lookupDefAcc :: Maybe [String] -> Name -> Bool -> Context -> 
+                [(Def, Accessibility)]
 lookupDefAcc root n mkpublic ctxt 
     = map mkp $ lookupCtxt root n (definitions ctxt)
   where mkp (d, a, _) = if mkpublic then (d, Public) else (d, a)

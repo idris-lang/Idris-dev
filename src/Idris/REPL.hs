@@ -204,28 +204,31 @@ process fn (Defn n) = do i <- get
                          case lookupTotal n (tt_ctxt i) of
                             [t] -> iputStrLn (showTotal t i)
                             _ -> return ()
-    where printCase i (_, lhs, rhs) = do liftIO $ putStr $ showImp True (delab i lhs)
-                                         liftIO $ putStr " = "
-                                         liftIO $ putStrLn $ showImp True (delab i rhs)
+    where printCase i (_, lhs, rhs) 
+             = do liftIO $ putStr $ showImp True (delab i lhs)
+                  liftIO $ putStr " = "
+                  liftIO $ putStrLn $ showImp True (delab i rhs)
 process fn (TotCheck n) = do i <- get
                              case lookupTotal n (tt_ctxt i) of
                                 [t] -> iputStrLn (showTotal t i)
                                 _ -> return ()
 process fn (DebugInfo n) 
-                    = do i <- get
-                         let oi = lookupCtxtName Nothing n (idris_optimisation i)
-                         when (not (null oi)) $ iputStrLn (show oi)
-                         let si = lookupCtxt Nothing n (idris_statics i)
-                         when (not (null si)) $ iputStrLn (show si)
-                         let d = lookupDef Nothing n (tt_ctxt i)
-                         when (not (null d)) $ liftIO $
-                            do print (head d)
-                         let cg = lookupCtxtName Nothing n (idris_callgraph i)
-                         findUnusedArgs (map fst cg)
-                         i <- get
-                         let cg' = lookupCtxtName Nothing n (idris_callgraph i)
-                         when (not (null cg')) $ do iputStrLn "Call graph:\n"
-                                                    iputStrLn (show cg')
+   = do i <- get
+        let oi = lookupCtxtName Nothing n (idris_optimisation i)
+        when (not (null oi)) $ iputStrLn (show oi)
+        let si = lookupCtxt Nothing n (idris_statics i)
+        when (not (null si)) $ iputStrLn (show si)
+        let d = lookupDef Nothing n (tt_ctxt i)
+        when (not (null d)) $ liftIO $
+           do print (head d)
+        let cg = lookupCtxtName Nothing n (idris_callgraph i)
+        findUnusedArgs (map fst cg)
+        i <- get
+        let cg' = lookupCtxtName Nothing n (idris_callgraph i)
+        sc <- checkSizeChange n
+        iputStrLn $ "Size change: " ++ show sc
+        when (not (null cg')) $ do iputStrLn "Call graph:\n"
+                                   iputStrLn (show cg')
 process fn (Info n) = do i <- get
                          case lookupCtxt Nothing n (idris_classes i) of
                               [c] -> classInfo c
