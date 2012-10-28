@@ -14,7 +14,7 @@ import Paths_idris
 
 import System.Console.Haskeline
 
-import Control.Monad.State
+import Control.Monad.Trans.State.Strict
 
 import Data.List
 import Data.Char

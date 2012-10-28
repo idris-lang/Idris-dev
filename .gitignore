@@ -1,6 +1,8 @@
 dist
+cabal-dev/
 *.ibc
 *.o
 *.a
+*.swp
 test/output
 test/test???/output
