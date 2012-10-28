@@ -339,7 +339,7 @@ process fn (Pattelab t)
 
 process fn (Missing n) = do i <- get
                             case lookupDef Nothing n (tt_ctxt i) of
-                                [CaseOp _ _ _ args t _ _]
+                                [CaseOp _ _ _ _ args t _ _]
                                     -> do tms <- genMissing n args t
                                           iputStrLn (showSep "\n" (map (showImp True) tms))
                                 [] -> iputStrLn $ show n ++ " undefined"
@@ -405,6 +405,7 @@ parseArgs ("--typecase":ns)     = TypeCase : (parseArgs ns)
 parseArgs ("--typeintype":ns)   = TypeInType : (parseArgs ns)
 parseArgs ("--total":ns)        = DefaultTotal : (parseArgs ns)
 parseArgs ("--partial":ns)      = DefaultPartial : (parseArgs ns)
+parseArgs ("--warnpartial":ns)  = WarnPartial : (parseArgs ns)
 parseArgs ("--nocoverage":ns)   = NoCoverage : (parseArgs ns)
 parseArgs ("--errorcontext":ns) = ErrContext : (parseArgs ns)
 parseArgs ("--help":ns)         = Usage : (parseArgs ns)

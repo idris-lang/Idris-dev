@@ -16,6 +16,7 @@ import Prelude.Strings
 import Prelude.Chars
 
 %access public
+%default total
 
 -- Show and instances
 
@@ -157,10 +158,12 @@ ceiling x = prim__floatCeil x
 
 ---- Ranges
 
+partial
 count : (Ord a, Num a) => a -> a -> a -> List a
 count a inc b = if a <= b then a :: count (a + inc) inc b
                           else []
   
+partial
 countFrom : (Ord a, Num a) => a -> a -> List a
 countFrom a inc = a :: lazy (countFrom (a + inc) inc)
   
@@ -184,21 +187,27 @@ prod = foldl (*) 1
 
 ---- some basic io
 
+partial
 putStr : String -> IO ()
 putStr x = mkForeign (FFun "putStr" [FString] FUnit) x
 
+partial
 putStrLn : String -> IO ()
 putStrLn x = putStr (x ++ "\n")
 
+partial
 print : Show a => a -> IO ()
 print x = putStrLn (show x)
 
+partial
 getLine : IO String
 getLine = return (prim__readString prim__stdin)
 
+partial
 putChar : Char -> IO ()
 putChar c = mkForeign (FFun "putchar" [FChar] FUnit) c
 
+partial
 getChar : IO Char
 getChar = mkForeign (FFun "getchar" [] FChar)
 
@@ -216,6 +225,7 @@ fopen f m = do h <- do_fopen f m
 
 data Mode = Read | Write | ReadWrite
 
+partial
 openFile : String -> Mode -> IO File
 openFile f m = fopen f (modeStr m) where 
   modeStr : Mode -> String
@@ -223,24 +233,31 @@ openFile f m = fopen f (modeStr m) where
   modeStr Write = "w"
   modeStr ReadWrite = "r+"
 
+partial
 do_fclose : Ptr -> IO ()
 do_fclose h = mkForeign (FFun "fileClose" [FPtr] FUnit) h
 
+partial
 closeFile : File -> IO ()
 closeFile (FHandle h) = do_fclose h
 
+partial
 do_fread : Ptr -> IO String
 do_fread h = return (prim__readString h)
 
+partial
 fread : File -> IO String
 fread (FHandle h) = do_fread h
 
+partial
 do_fwrite : Ptr -> String -> IO ()
 do_fwrite h s = mkForeign (FFun "fputStr" [FPtr, FString] FUnit) h s
 
+partial
 fwrite : File -> String -> IO ()
 fwrite (FHandle h) s = do_fwrite h s
 
+partial
 do_feof : Ptr -> IO Int
 do_feof h = mkForeign (FFun "feof" [FPtr] FInt) h
 
@@ -248,27 +265,31 @@ feof : File -> IO Bool
 feof (FHandle h) = do eof <- do_feof h
                       return (not (eof == 0)) 
 
+partial
 nullPtr : Ptr -> IO Bool
 nullPtr p = do ok <- mkForeign (FFun "isNull" [FPtr] FInt) p 
                return (ok /= 0);
 
+partial
 validFile : File -> IO Bool
 validFile (FHandle h) = do x <- nullPtr h
                            return (not x)
 
+partial -- obviously
 while : |(test : IO Bool) -> |(body : IO ()) -> IO ()
 while t b = do v <- t
                if v then do b
                             while t b
                     else return ()
                
-
+partial -- no error checking!
 readFile : String -> IO String
 readFile fn = do h <- openFile fn Read
                  c <- readFile' h ""
                  closeFile h
                  return c
   where 
+    partial
     readFile' : File -> String -> IO String
     readFile' h contents = 
        do x <- feof h

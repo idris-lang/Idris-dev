@@ -5,10 +5,10 @@ module Core.Evaluate(normalise, normaliseTrace, normaliseC, normaliseAll,
                 simplify, specialise, hnf, convEq, convEq',
                 Def(..), Accessibility(..), Totality(..), PReason(..),
                 Context, initContext, ctxtAlist, uconstraints, next_tvar,
-                addToCtxt, setAccess, setTotal, addCtxtDef, addTyDecl, addDatatype, 
-                addCasedef, addOperator,
-                lookupNames, lookupTy, lookupP, lookupDef, lookupVal, lookupTotal,
-                lookupTyEnv, isConName, isFnName,
+                addToCtxt, setAccess, setTotal, addCtxtDef, addTyDecl, 
+                addDatatype, addCasedef, simplifyCasedef, addOperator,
+                lookupNames, lookupTy, lookupP, lookupDef, lookupVal, 
+                lookupTotal, lookupTyEnv, isConName, isFnName,
                 Value(..)) where
 
 import Debug.Trace
@@ -167,7 +167,7 @@ eval traceon ctxt maxred ntimes genv tm opts = ev ntimes [] True [] tm where
                        ev ntimes (n:stk) True env tm
                 [(TyDecl nt ty, _)] -> do vty <- ev ntimes stk True env ty
                                           return $ VP nt n vty
-                [(CaseOp inl _ _ [] tree _ _, Public)] -> -- unoptimised version
+                [(CaseOp inl _ _ _ [] tree _ _, Public)] -> -- unoptimised version
                    if simpl && (not inl || elem n stk) 
                         then liftM (VP Ref n) (ev ntimes stk top env ty)
                         else do c <- evCase ntimes (n:stk) top env [] [] tree 
@@ -231,7 +231,7 @@ eval traceon ctxt maxred ntimes genv tm opts = ev ntimes [] True [] tm where
         = traceWhen traceon (show stk) $
           do let val = lookupDefAcc Nothing n atRepl ctxt
              case val of
-                [(CaseOp inl _ _ ns tree _ _, Public)]  ->
+                [(CaseOp inl _ _ _ ns tree _ _, Public)]  ->
                   if simpl && (not inl || elem n stk) 
                      then return $ unload env (VP Ref n ty) args
                      else do c <- evCase ntimes (n:stk) top env ns args tree
@@ -391,7 +391,7 @@ eval_hnf ctxt statics genv tm = ev [] tm where
     ev env (P Ref n ty) = case lookupDef Nothing n ctxt of
         [Function _ t]           -> ev env t
         [TyDecl nt ty]           -> return $ HP nt n ty
-        [CaseOp inl _ _ [] tree _ _] ->
+        [CaseOp inl _ _ _ [] tree _ _] ->
             do c <- evCase env [] [] tree
                case c of
                    (Nothing, _, _) -> return $ HP Ref n ty
@@ -421,7 +421,7 @@ eval_hnf ctxt statics genv tm = ev [] tm where
                                                app <- apply env sc' as
                                                wknH (-1) app
     apply env (HP Ref n ty) args
-        | [CaseOp _ _ _ ns tree _ _] <- lookupDef Nothing n ctxt
+        | [CaseOp _ _ _ _ ns tree _ _] <- lookupDef Nothing n ctxt
             = do c <- evCase env ns args tree
                  case c of
                     (Nothing, _, env') -> return $ unload env' (HP Ref n ty) args
@@ -548,8 +548,8 @@ convEq ctxt = ceq [] where
     sameDefs ps x y = case (lookupDef Nothing x ctxt, lookupDef Nothing y ctxt) of
                         ([Function _ xdef], [Function _ ydef])
                               -> ceq ((x,y):ps) xdef ydef
-                        ([CaseOp _ _ _ _ xdef _ _],   
-                         [CaseOp _ _ _ _ ydef _ _])
+                        ([CaseOp _ _ _ _ _ xdef _ _],   
+                         [CaseOp _ _ _ _ _ ydef _ _])
                               -> caseeq ((x,y):ps) xdef ydef
                         _ -> return False
 
@@ -571,7 +571,9 @@ spec ctxt statics genv tm = error "spec undefined"
 data Def = Function Type Term
          | TyDecl NameType Type 
          | Operator Type Int ([Value] -> Maybe Value)
-         | CaseOp Bool Type [([Name], Term, Term)] -- Bool for inlineable
+         | CaseOp Bool Type -- bool for inlinable
+                  [Either Term (Term, Term)] -- original definition
+                  [([Name], Term, Term)] -- simplified definition
                   [Name] SC -- Compile time case definition
                   [Name] SC -- Run time cae definitions
 {-! 
@@ -582,7 +584,7 @@ instance Show Def where
     show (Function ty tm) = "Function: " ++ show (ty, tm)
     show (TyDecl nt ty) = "TyDecl: " ++ show nt ++ " " ++ show ty
     show (Operator ty _ _) = "Operator: " ++ show ty
-    show (CaseOp _ ty ps ns sc ns' sc') 
+    show (CaseOp _ ty ps_in ps ns sc ns' sc') 
         = "Case: " ++ show ty ++ " " ++ show ps ++ "\n" ++ 
                                         show ns ++ " " ++ show sc ++ "\n" ++
                                         show ns' ++ " " ++ show sc'
@@ -620,7 +622,7 @@ instance Show Totality where
     show (Partial NotPositive) = "not strictly positive"
     show (Partial NotProductive) = "not productive"
     show (Partial (Other ns)) = "possibly not total due to: " ++ showSep ", " (map show ns)
-    show (Partial (Mutual ns)) = "possibly not total due to mutual recursive path " ++ 
+    show (Partial (Mutual ns)) = "possibly not total due to recursive path " ++ 
                                  showSep " --> " (map show ns)
 
 {-!
@@ -635,9 +637,11 @@ deriving instance Binary Totality
 deriving instance Binary PReason
 !-}
 
-data Context = MkContext { uconstraints :: [UConstraint],
-                           next_tvar    :: Int,
-                           definitions  :: Ctxt (Def, Accessibility, Totality) }
+data Context = MkContext { 
+                  uconstraints :: [UConstraint],
+                  next_tvar    :: Int,
+                  definitions  :: Ctxt (Def, Accessibility, Totality) 
+                }
 
 initContext = MkContext [] 0 emptyContext
 
@@ -690,9 +694,11 @@ addDatatype (Data n tag ty cons) uctxt
                   (TyDecl (DCon tag (arity ty')) ty, Public, Unchecked) ctxt)
 
 addCasedef :: Name -> Bool -> Bool -> Bool -> 
-              [([Name], Term, Term)] -> [([Name], Term, Term)] ->
+              [Either Term (Term, Term)] -> 
+              [([Name], Term, Term)] -> 
+              [([Name], Term, Term)] ->
               Type -> Context -> Context
-addCasedef n alwaysInline tcase covering ps psrt ty uctxt 
+addCasedef n alwaysInline tcase covering ps_in ps psrt ty uctxt 
     = let ctxt = definitions uctxt
           access = case lookupDefAcc Nothing n False uctxt of
                         [(_, acc)] -> acc
@@ -700,12 +706,39 @@ addCasedef n alwaysInline tcase covering ps psrt ty uctxt
           ctxt' = case (simpleCase tcase covering CompileTime (FC "" 0) ps, 
                         simpleCase tcase covering RunTime (FC "" 0) psrt) of
                     (OK (CaseDef args sc _), OK (CaseDef args' sc' _)) -> 
-                                       let inl = alwaysInline || small sc' in
-                                           addDef n (CaseOp inl ty ps args sc args' sc',
-                                                     access, Unchecked) ctxt in
+                       let inl = alwaysInline || small sc' in
+                           addDef n (CaseOp inl ty ps_in ps args sc args' sc',
+                                      access, Unchecked) ctxt in
           uctxt { definitions = ctxt' }
-            
-addOperator :: Name -> Type -> Int -> ([Value] -> Maybe Value) -> Context -> Context
+
+simplifyCasedef :: Name -> Context -> Context
+simplifyCasedef n uctxt
+   = let ctxt = definitions uctxt
+         ctxt' = case lookupCtxt Nothing n ctxt of
+              [(CaseOp inl ty ps_in ps args sc args' sc', acc, tot)] ->
+                 let pdef = map debind $ map simpl ps_in in
+                     case simpleCase False True CompileTime (FC "" 0) pdef of
+                       OK (CaseDef args sc _) ->
+--                           trace ("Simplify " ++ show n ++ "\n" ++
+--                                  show sc) $
+                          addDef n (CaseOp inl ty ps_in ps args sc args' sc',
+                                    acc, tot) ctxt 
+              _ -> ctxt in
+         uctxt { definitions = ctxt' }
+  where                  
+    depat acc (Bind n (PVar t) sc) 
+        = depat (n : acc) (instantiate (P Bound n t) sc)
+    depat acc x = (acc, x)
+    debind (Right (x, y)) = let (vs, x') = depat [] x 
+                                (_, y') = depat [] y in
+                                (vs, x', y')
+    debind (Left x)       = let (vs, x') = depat [] x in
+                                (vs, x', Impossible)
+    simpl (Right (x, y)) = Right (x, simplify uctxt [] y)
+    simpl t = t
+
+addOperator :: Name -> Type -> Int -> ([Value] -> Maybe Value) -> 
+               Context -> Context
 addOperator n ty a op uctxt
     = let ctxt = definitions uctxt 
           ctxt' = addDef n (Operator ty a op, Public, Unchecked) ctxt in
@@ -725,7 +758,7 @@ lookupTy root n ctxt
                        (Function ty _) -> return ty
                        (TyDecl _ ty) -> return ty
                        (Operator ty _ _) -> return ty
-                       (CaseOp _ ty _ _ _ _ _) -> return ty
+                       (CaseOp _ ty _ _ _ _ _ _) -> return ty
 
 isConName :: Maybe [String] -> Name -> Context -> Bool
 isConName root n ctxt 
@@ -741,7 +774,7 @@ isFnName root n ctxt
                case tfst def of
                     (Function _ _) -> return True
                     (Operator _ _ _) -> return True
-                    (CaseOp _ _ _ _ _ _ _) -> return True
+                    (CaseOp _ _ _ _ _ _ _ _) -> return True
                     _ -> return False
 
 lookupP :: Maybe [String] -> Name -> Context -> [Term]
@@ -750,7 +783,7 @@ lookupP root n ctxt
         p <- case def of
           (Function ty tm, a, _) -> return (P Ref n ty, a)
           (TyDecl nt ty, a, _) -> return (P nt n ty, a)
-          (CaseOp _ ty _ _ _ _ _, a, _) -> return (P Ref n ty, a)
+          (CaseOp _ ty _ _ _ _ _ _, a, _) -> return (P Ref n ty, a)
           (Operator ty _ _, a, _) -> return (P Ref n ty, a)
         case snd p of
             Hidden -> []

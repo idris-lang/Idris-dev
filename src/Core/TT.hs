@@ -195,6 +195,10 @@ instance Show Name where
 type Ctxt a = Map.Map Name (Map.Map Name a)
 emptyContext = Map.empty
 
+tcname (UN ('@':_)) = True
+tcname (NS n _) = tcname n
+tcname _ = False
+
 nsroot (NS n _) = n
 nsroot n = n
 

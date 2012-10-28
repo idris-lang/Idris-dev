@@ -12,6 +12,7 @@ User visible changes:
   for functions, and a corresponding "partial" reserved words to mark functions
   as allowed to be partial. Also "--total" and "--partial" added as command
   line options.
+* New termination checker supporting mutually recursive definitions.
 
 Internal changes:
 

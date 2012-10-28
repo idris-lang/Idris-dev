@@ -2,7 +2,7 @@ import Prelude.List
 
 %access public
 
-abstract codata IO a = prim__IO a
+abstract data IO a = prim__IO a
 
 abstract
 io_bind : IO a -> (a -> IO b) -> IO b

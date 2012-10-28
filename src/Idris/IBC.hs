@@ -612,7 +612,8 @@ instance Binary Def where
                                         put x1
                                         put x2
                                         put x3
-                CaseOp x1 x2 x3 x4 x5 x6 x7 -> do putWord8 3
+                CaseOp x1 x2 x3 x4 x5 x6 x7 x8 -> 
+                                               do putWord8 3
                                                   put x1
                                                   put x2
                                                   put x3
@@ -620,6 +621,7 @@ instance Binary Def where
                                                   put x5
                                                   put x6
                                                   put x7
+                                                  put x8
         get
           = do i <- getWord8
                case i of
@@ -640,7 +642,8 @@ instance Binary Def where
                            x5 <- get
                            x6 <- get
                            x7 <- get
-                           return (CaseOp x1 x2 x3 x4 x5 x6 x7)
+                           x8 <- get
+                           return (CaseOp x1 x2 x3 x4 x5 x6 x7 x8)
                    _ -> error "Corrupted binary data for Def"
 
 instance Binary Accessibility where

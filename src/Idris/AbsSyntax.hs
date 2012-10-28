@@ -43,7 +43,7 @@ addHdr :: String -> Idris ()
 addHdr f = do i <- get; put (i { idris_hdrs = f : idris_hdrs i })
 
 totcheck :: (FC, Name) -> Idris ()
-totcheck n = do i <- get; put (i { idris_totcheck = n : idris_totcheck i })
+totcheck n = do i <- get; put (i { idris_totcheck = idris_totcheck i ++ [n] })
 
 setFlags :: Name -> [FnOpt] -> Idris ()
 setFlags n fs = do i <- get; put (i { idris_flags = addDef n fs (idris_flags i) }) 
@@ -325,6 +325,10 @@ logLvl l str = do i <- get
                       $ do liftIO (putStrLn str)
                            put (i { idris_log = idris_log i ++ str ++ "\n" } )
 
+cmdOptSet :: Opt -> Idris Bool
+cmdOptSet x = do i <- get
+                 return $ x `elem` opt_cmdline (idris_options i)
+
 iLOG :: String -> Idris ()
 iLOG = logLvl 1
 
@@ -413,10 +417,6 @@ piBindp :: Plicity -> [(Name, PTerm)] -> PTerm -> PTerm
 piBindp p [] t = t
 piBindp p ((n, ty):ns) t = PPi p n ty (piBind ns t)
     
-tcname (UN ('@':_)) = True
-tcname (NS n _) = tcname n
-tcname _ = False
-
 -- Dealing with parameters
 
 expandParams :: (Name -> Name) -> [(Name, PTerm)] -> [Name] -> PTerm -> PTerm
