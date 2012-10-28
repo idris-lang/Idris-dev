@@ -11,14 +11,17 @@ data StrM : String -> Set where
     StrNil : StrM ""
     StrCons : (x : Char) -> (xs : String) -> StrM (strCons x xs)
 
+%assert_total
 strHead' : (x : String) -> so (not (x == "")) -> Char
 strHead' x p = prim__strHead x
 
+%assert_total
 strTail' : (x : String) -> so (not (x == "")) -> String
 strTail' x p = prim__strTail x
 
 -- we need the 'believe_me' because the operations are primitives
 
+%assert_total
 strM : (x : String) -> StrM x
 strM x with (choose (not (x == "")))
   strM x | (Left p)  = believe_me $ StrCons (strHead' x p) (strTail' x p)
@@ -71,11 +74,12 @@ words' s = case dropWhile isSpace s of
 words : String -> List String
 words s = map pack $ words' $ unpack s
 
+partial
 foldr1 : (a -> a -> a) -> List a -> a	
 foldr1 f [x] = x
 foldr1 f (x::xs) = f x (foldr1 f xs)
 
-
+%assert_total -- due to foldr1, but used safely
 unwords' : List (List Char) -> List Char
 unwords' [] = []                         
 unwords' ws = (foldr1 addSpace ws)
@@ -83,7 +87,6 @@ unwords' ws = (foldr1 addSpace ws)
             addSpace : List Char -> List Char -> List Char
             addSpace w s = w ++ (' ' :: s) 
           
-               
-unwords :  List String -> String
+unwords : List String -> String
 unwords = pack . unwords' . map unpack
 

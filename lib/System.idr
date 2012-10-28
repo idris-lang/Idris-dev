@@ -2,6 +2,7 @@ module System
 
 import Prelude
 
+%default partial
 %access public
 
 getArgs : IO (List String)

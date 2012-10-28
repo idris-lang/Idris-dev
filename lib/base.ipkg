@@ -1,6 +1,6 @@
 package base
 
-opts = "--noprelude"
+opts = "--noprelude --total"
 modules = Builtins, Prelude, IO, System,
 
           Prelude.Algebra, Prelude.Cast, Prelude.Nat, Prelude.Fin,

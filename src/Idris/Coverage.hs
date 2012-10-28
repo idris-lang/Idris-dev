@@ -512,7 +512,7 @@ mkMultiPaths ist path [] = [reverse path]
 mkMultiPaths ist path cg
     = concat (map extend cg)
   where extend (nextf, args) 
-           | (nextf, args) `elem` path = [ (nextf, args) : path ]
+           | (nextf, args) `elem` path = [ reverse ((nextf, args) : path) ]
            | otherwise 
                = case lookupCtxt Nothing nextf (idris_callgraph ist) of
                     [ncg] -> mkMultiPaths ist ((nextf, args) : path) (scg ncg) 
