@@ -1,1 +1,1 @@
-test017a.idr:5:scg.vtrans is possibly not total as it is not well founded
+test017a.idr:5:scg.vtrans is possibly not total due to recursive path scg.vtrans --> scg.vtrans

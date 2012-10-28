@@ -6,6 +6,7 @@ import Prelude.Algebra
 import Prelude.Cast
 
 %access public
+%default total
 
 data Nat
   = O

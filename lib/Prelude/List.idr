@@ -7,6 +7,7 @@ import Prelude.Maybe
 import Prelude.Nat
 
 %access public
+%default total
 
 infixr 7 :: 
 
@@ -30,6 +31,7 @@ isCons (x::xs) = True
 -- Indexing into lists
 --------------------------------------------------------------------------------
 
+%assert_total
 head : (l : List a) -> (isCons l = True) -> a
 head (x::xs) p = x
 
@@ -37,6 +39,7 @@ head' : (l : List a) -> Maybe a
 head' []      = Nothing
 head' (x::xs) = Just x
 
+%assert_total
 tail : (l : List a) -> (isCons l = True) -> List a
 tail (x::xs) p = xs
 
@@ -44,6 +47,7 @@ tail' : (l : List a) -> Maybe (List a)
 tail' []      = Nothing
 tail' (x::xs) = Just xs
 
+%assert_total
 last : (l : List a) -> (isCons l = True) -> a
 last (x::xs) p =
   case xs of
@@ -57,6 +61,7 @@ last' (x::xs) =
     []    => Just x
     y::ys => last' xs
 
+%assert_total
 init : (l : List a) -> (isCons l = True) -> List a
 init (x::xs) p =
   case xs of
@@ -116,9 +121,11 @@ length (x::xs) = 1 + length xs
 (++) [] right      = right
 (++) (x::xs) right = x :: (xs ++ right)
 
+partial
 repeat : a -> List a
 repeat x = x :: repeat x
 
+%assert_total
 replicate : Nat -> a -> List a
 replicate n x = take n (repeat x)
 
@@ -160,11 +167,13 @@ instance Monoid (List a) where
 -- Zips and unzips
 --------------------------------------------------------------------------------
 
+%assert_total
 zipWith : (f : a -> b -> c) -> (l : List a) -> (r : List b) ->
   (length l = length r) -> List c
 zipWith f []      []      p = []
 zipWith f (x::xs) (y::ys) p = f x y :: (zipWith f xs ys ?zipWithTailProof)
 
+%assert_total
 zipWith3 : (f : a -> b -> c -> d) -> (x : List a) -> (y : List b) ->
   (z : List c) -> (length x = length y) -> (length y = length z) -> List d
 zipWith3 f []      []      []      refl refl = []
@@ -450,12 +459,13 @@ mergeBy order (x::xs) (y::ys) =
 merge : Ord a => List a -> List a -> List a
 merge = mergeBy compare
 
+%assert_total
 sort : Ord a => List a -> List a
 sort []  = []
 sort [x] = [x]
 sort xs  =
   let (x, y) = split xs in
-    merge (sort x) (sort y)
+    merge (sort x) (sort y) -- not structurally smaller, hence assert
   where
     splitRec : List a -> List a -> (List a -> List a) -> (List a, List a)
     splitRec (_::_::xs) (y::ys) zs = splitRec xs ys (zs . ((::) y))

@@ -15,6 +15,6 @@ take n [] = []
 -- foo : main.countFrom 4 = 4 :: main.countFrom 5
 -- foo = refl
 
-main : IO ()
+partial main : IO ()
 main = do print (take 10 (Main.countFrom 10))
 

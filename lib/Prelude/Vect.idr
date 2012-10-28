@@ -5,6 +5,7 @@ import Prelude.List
 import Prelude.Nat
 
 %access public
+%default total
 
 infixr 7 :: 
 
@@ -54,11 +55,11 @@ drop (fS k) (x::xs) = drop k xs
 -- Conversions to and from list
 --------------------------------------------------------------------------------
 
-total toList : Vect a n -> List a
+toList : Vect a n -> List a
 toList []      = []
 toList (x::xs) = x :: toList xs
 
-total fromList : (l : List a) -> Vect a (length l)
+fromList : (l : List a) -> Vect a (length l)
 fromList []      = []
 fromList (x::xs) = x :: fromList xs
 
@@ -66,7 +67,6 @@ fromList (x::xs) = x :: fromList xs
 -- Building (bigger) vectors
 --------------------------------------------------------------------------------
 
-total
 (++) : Vect a m -> Vect a n -> Vect a (m + n)
 (++) []      ys = ys
 (++) (x::xs) ys = x :: xs ++ ys
@@ -79,7 +79,7 @@ replicate (S k) x = x :: replicate k x
 -- Maps
 --------------------------------------------------------------------------------
 
-total map : (a -> b) -> Vect a n -> Vect b n
+map : (a -> b) -> Vect a n -> Vect b n
 map f []        = []
 map f (x::xs) = f x :: map f xs
 

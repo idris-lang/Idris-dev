@@ -84,6 +84,8 @@ loadModule f
 loadSource :: Bool -> FilePath -> Idris () 
 loadSource lidr f 
              = do iLOG ("Reading " ++ f)
+                  i <- getIState
+                  let def_total = default_total i
                   file_in <- liftIO $ readFile f
                   file <- if lidr then tclift $ unlit f file_in else return file_in
                   (mname, modules, rest, pos) <- parseImports f file
@@ -104,6 +106,15 @@ loadSource lidr f
                   when v $ iputStrLn $ "Type checking " ++ f
                   mapM_ (elabDecl toplevel) ds
                   i <- get
+                  -- simplify every definition do give the totality checker
+                  -- a better chance
+                  mapM_ (\n -> do logLvl 5 $ "Simplifying " ++ show n
+                                  updateContext (simplifyCasedef n))
+                           (map snd (idris_totcheck i))
+                  -- build size change graph from simplified definitions
+                  iLOG "Totality checking"
+                  i <- get
+--                   mapM_ buildSCG (idris_totcheck i)
                   mapM_ checkDeclTotality (idris_totcheck i)
                   iLOG ("Finished " ++ f)
                   ibcsd <- valIBCSubDir i
@@ -117,7 +128,8 @@ loadSource lidr f
                     idrisCatch (do writeIBC f ibc; clearIBC)
                                (\c -> return ()) -- failure is harmless
                   i <- getIState
-                  putIState (i { hide_list = [] })
+                  putIState (i { default_total = def_total,
+                                 hide_list = [] })
                   return ()
   where
     namespaces []     ds = ds

@@ -252,6 +252,7 @@ checkPositive n (cn, ty)
          let tot = if p then Total (args ty) else Partial NotPositive
          let ctxt' = setTotal cn tot (tt_ctxt i)
          putIState (i { tt_ctxt = ctxt' })
+         logLvl 5 $ "Constructor " ++ show cn ++ " is " ++ show tot
          addIBC (IBCTotal cn tot)
   where
     args t = [0..length (getArgTys t)-1]
@@ -328,6 +329,7 @@ checkTotality path fc n
     | n `elem` path = return (Partial (Mutual (n : path)))
     | otherwise = do
         t <- getTotality n
+        updateContext (simplifyCasedef n)
         ctxt <- getContext
         i <- getIState
         let opts = case lookupCtxt Nothing n (idris_flags i) of
@@ -336,7 +338,7 @@ checkTotality path fc n
         t' <- case t of 
                 Unchecked -> 
                     case lookupDef Nothing n ctxt of
-                        [CaseOp _ _ pats _ _ _ _] -> 
+                        [CaseOp _ _ _ pats _ _ _ _] -> 
                             do t' <- if AssertTotal `elem` opts
                                         then return $ Total []
                                         else calcTotality path fc n pats
@@ -349,24 +351,37 @@ checkTotality path fc n
 --                                  p@(Partial _) -> 
 --                                      do setAccessibility n Frozen 
 --                                         addIBC (IBCAccess n Frozen)
---                                         iputStrLn $ "HIDDEN: " 
+--                                         logLvl 5 $ "HIDDEN: " 
 --                                               ++ show n ++ show p
-                                           _ -> return ()
+                                 _ -> return ()
                                return t'
                         _ -> return $ Total []
                 x -> return x
-        if TotalFn `elem` opts
-            then case t' of
-                    Total _ -> return t'
-                    Productive -> return t'
-                    e -> totalityError t'
-            else return t'
+        case t' of
+            Total _ -> return t'
+            Productive -> return t'
+            e -> do w <- cmdOptSet WarnPartial
+                    if TotalFn `elem` opts
+                       then totalityError t'
+                       else do when w $ warnPartial n t'
+                               return t'
   where
     totalityError t = tclift $ tfail (At fc (Msg (show n ++ " is " ++ show t)))
+
+    warnPartial n t
+       = do i <- get
+            case lookupDef Nothing n (tt_ctxt i) of
+               [x] -> do
+                  iputStrLn $ show fc ++ ":Warning - " ++ show n ++ " is " ++ show t 
+--                                ++ "\n" ++ show x
+--                   let cg = lookupCtxtName Nothing n (idris_callgraph i)
+--                   iputStrLn (show cg)
+
 
 checkDeclTotality :: (FC, Name) -> Idris Totality
 checkDeclTotality (fc, n) 
     = do logLvl 2 $ "Checking " ++ show n ++ " for totality"
+         buildSCG (fc, n)
          checkTotality [] fc n
 
 -- Calculate the size change graph for this definition
@@ -380,10 +395,20 @@ checkDeclTotality (fc, n)
 -- to f
 --    Nothing, if the argument is unrelated to the input
 
--- FIXME: Higher order recursive arguments
+buildSCG :: (FC, Name) -> Idris ()
+buildSCG (_, n) = do
+   ist <- get
+   case lookupCtxt Nothing n (idris_callgraph ist) of
+       [cg] -> case lookupDef Nothing n (tt_ctxt ist) of
+           [CaseOp _ _ _ _ args sc _ _] -> 
+               do logLvl 5 $ "Building SCG for " ++ show n ++ " from\n" 
+                                ++ show sc
+                  let newscg = buildSCG' ist sc args
+                  logLvl 5 $ show newscg
+                  addToCG n ( cg { scg = newscg } )
 
-buildSCG :: IState -> SC -> [Name] -> [SCGEntry] 
-buildSCG ist sc args = scg sc (zip args args) 
+buildSCG' :: IState -> SC -> [Name] -> [SCGEntry] 
+buildSCG' ist sc args = nub $ scg sc (zip args args) 
                               (zip args (zip args (repeat Same)))
    where
       scg :: SC -> [(Name, Name)] -> -- local var, originating top level var
@@ -427,6 +452,8 @@ buildSCG ist sc args = scg sc (zip args args)
       scgAlt x vars szs (DefaultCase sc) = scg sc vars szs
 
       scgTerm f@(App _ _) vars szs
+         | (P _ (UN "lazy") _, [_, arg]) <- unApply f
+             = scgTerm arg vars szs
          | (P _ fn _, args) <- unApply f
             = let rest = concatMap (\x -> scgTerm x vars szs) args in
                   case lookup fn vars of
@@ -447,6 +474,7 @@ buildSCG ist sc args = scg sc (zip args args)
       mkChange :: [(Name, (Name, SizeChange))] -> Term 
                    -> Maybe (Int, SizeChange)
       mkChange szs tm
+         | (P _ (UN "lazy") _, [_, arg]) <- unApply tm = mkChange szs arg
          | (P _ n ty, _) <- unApply tm -- get higher order args too
           = do sc <- lookup n szs
                case sc of
@@ -466,7 +494,9 @@ checkSizeChange n = do
    case lookupCtxt Nothing n (idris_callgraph ist) of
        [cg] -> do let ms = mkMultiPaths ist [] (scg cg)
                   logLvl 6 ("Multipath for " ++ show n ++ ":\n" ++
+                            "from " ++ show (scg cg) ++ "\n" ++
                             showSep "\n" (map show ms))
+                  logLvl 6 (show cg)
                   -- every multipath must have an infinitely descending 
                   -- thread, then the function terminates
                   -- also need to checks functions called are all total 
@@ -478,13 +508,22 @@ checkSizeChange n = do
 type MultiPath = [SCGEntry]
 
 mkMultiPaths :: IState -> MultiPath -> [SCGEntry] -> [MultiPath]
+mkMultiPaths ist path [] = [reverse path]
 mkMultiPaths ist path cg
-    = do (nextf, args) <- cg
-         if ((nextf, args) `elem` path)
-            then return (reverse ((nextf, args) : path))
-            else case lookupCtxt Nothing nextf (idris_callgraph ist) of
+    = concat (map extend cg)
+  where extend (nextf, args) 
+           | (nextf, args) `elem` path = [ (nextf, args) : path ]
+           | otherwise 
+               = case lookupCtxt Nothing nextf (idris_callgraph ist) of
                     [ncg] -> mkMultiPaths ist ((nextf, args) : path) (scg ncg) 
-                    _ -> return (reverse ((nextf, args) : path))
+                    _ -> [ reverse ((nextf, args) : path) ]
+
+--     do (nextf, args) <- cg
+--          if ((nextf, args) `elem` path)
+--             then return (reverse ((nextf, args) : path))
+--             else case lookupCtxt Nothing nextf (idris_callgraph ist) of
+--                     [ncg] -> mkMultiPaths ist ((nextf, args) : path) (scg ncg) 
+--                     _ -> return (reverse ((nextf, args) : path))
 
 -- If any route along the multipath leads to infinite descent, we're fine.
 -- Try a route beginning with every argument.
@@ -507,14 +546,17 @@ checkMP ist i mp = if i > 0
                    x -> error (show x)
         | [TyDecl (TCon _ _) _] <- lookupDef Nothing f (tt_ctxt ist)
             = Total []
+--     tryPath desc path (e@(f, []) : es) arg
+--         | [Unchecked] <- lookupTotal f (tt_ctxt ist) =
+--              tryPath (-10000) ((e, desc) : path) es 0
     tryPath desc path (e@(f, nextargs) : es) arg
         | Just d <- lookup e path
             = if (desc - d) > 0 
                    then Total []
-                   else Partial Itself
+                   else Partial (Mutual (map (fst . fst) path ++ [f]))
         | [Unchecked] <- lookupTotal f (tt_ctxt ist) =
             let argspos = zip nextargs [0..] in
-                collapse $ 
+                collapse' (Partial (Other (map (fst . fst) path ++ [f]))) $ 
                   do (arg, pos) <- argspos
                      case arg of
                         Nothing -> -- don't know, but it's okay if the
@@ -540,7 +582,8 @@ noPartial (Partial p : xs) = Partial p
 noPartial (_ : xs)         = noPartial xs
 noPartial []               = Total [] 
 
-collapse (Total r  : xs)  = Total r
-collapse (_ : xs)         = collapse xs
-collapse []               = Partial Itself
+collapse xs = collapse' (Partial Itself) xs
+collapse' def (Total r  : xs)  = Total r
+collapse' def (d : xs)         = collapse' d xs
+collapse' def []               = def
 
