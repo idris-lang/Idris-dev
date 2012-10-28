@@ -7,7 +7,9 @@ import System.Exit
 
 import Data.Maybe
 import Data.Version
-import Control.Monad.State
+import Control.Monad.Trans.State.Strict ( execStateT, get, put )
+import Control.Monad.Trans ( liftIO )
+import Control.Monad ( when )
 
 import Core.CoreParser
 import Core.ShellParser

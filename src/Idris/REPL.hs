@@ -40,7 +40,8 @@ import System.Process
 import System.Directory
 import System.IO
 import Control.Monad
-import Control.Monad.State
+import Control.Monad.Trans.State.Strict ( StateT, execStateT, get, put )
+import Control.Monad.Trans ( liftIO, lift )
 import Data.Maybe
 import Data.List
 import Data.Char
