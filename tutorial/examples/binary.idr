@@ -1,4 +1,4 @@
-module main
+module Main
 
 data Binary : Nat -> Set where
     bEnd : Binary O
@@ -40,7 +40,7 @@ main = do putStr "Enter a number: "
 
 ---------- Proofs ----------
 
-main.parity_lemma_1 = proof {
+parity_lemma_1 = proof {
     intros;
     rewrite sym (plusSuccRightSucc j j);
     trivial;

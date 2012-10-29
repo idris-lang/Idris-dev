@@ -1,4 +1,4 @@
-module main
+module Main
 
 import btree
 

@@ -143,6 +143,8 @@ data Command = Quit
              | Check PTerm
              | TotCheck Name
              | Reload
+             | Load FilePath 
+             | ModImport String 
              | Edit
              | Compile Target String
              | Execute

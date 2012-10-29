@@ -81,21 +81,31 @@ processInput cmd orig inputs
                         (f:_) -> f
                         _ -> ""
          case parseCmd i cmd of
-                Left err ->   do liftIO $ print err
-                                 return (Just inputs)
-                Right Reload -> do put (orig { idris_options = idris_options i })
-                                   clearErr
-                                   mods <- mapM loadModule inputs  
-                                   return (Just inputs)
-                Right Edit -> do edit fn orig
-                                 return (Just inputs)
-                Right Proofs -> do proofs orig
-                                   return (Just inputs)
-                Right Quit -> do iputStrLn "Bye bye"
-                                 return Nothing
-                Right cmd  -> do idrisCatch (process fn cmd)
-                                            (\e -> iputStrLn (show e))
-                                 return (Just inputs)
+            Left err ->   do liftIO $ print err
+                             return (Just inputs)
+            Right Reload -> 
+                do put (orig { idris_options = idris_options i })
+                   clearErr
+                   mods <- mapM loadModule inputs  
+                   return (Just inputs)
+            Right (Load f) -> 
+                do put (orig { idris_options = idris_options i })
+                   clearErr
+                   mod <- loadModule f
+                   return (Just [f])
+            Right (ModImport f) -> 
+                do clearErr
+                   fmod <- loadModule f
+                   return (Just (inputs ++ [fmod]))
+            Right Edit -> do edit fn orig
+                             return (Just inputs)
+            Right Proofs -> do proofs orig
+                               return (Just inputs)
+            Right Quit -> do iputStrLn "Bye bye"
+                             return Nothing
+            Right cmd  -> do idrisCatch (process fn cmd)
+                                        (\e -> iputStrLn (show e))
+                             return (Just inputs)
 
 resolveProof :: Name -> Idris Name
 resolveProof n'
@@ -438,6 +448,8 @@ help =
     ([":i", ":info"], "<name>", "Display information about a type class"),
     ([":total"], "<name>", "Check the totality of a name"),
     ([":r",":reload"], "", "Reload current file"),
+    ([":l",":load"], "<filename>", "Load a new file"),
+    ([":m",":module"], "<module>", "Import an extra module"),
     ([":e",":edit"], "", "Edit current file using $EDITOR or $VISUAL"),
     ([":m",":metavars"], "", "Show remaining proof obligations (metavariables)"),
     ([":p",":prove"], "<name>", "Prove a metavariable"),

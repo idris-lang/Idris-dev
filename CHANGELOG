@@ -13,6 +13,9 @@ User visible changes:
   as allowed to be partial. Also "--total" and "--partial" added as command
   line options.
 * New termination checker supporting mutually recursive definitions.
+* Added ':load' command to REPL, for loading a new file
+* Added ':module' command to REPL, for adding modules
+* Renamed library modules (now have initial capital)
 
 Internal changes:
 
