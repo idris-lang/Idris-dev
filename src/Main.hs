@@ -80,6 +80,8 @@ usagemsg = "Idris version " ++ ver ++ "\n" ++
            "\t-i [dir]          Add directory to the list of import paths\n" ++
            "\t--ibcsubdir [dir] Write IBC files into sub directory\n" ++
            "\t--noprelude       Don't import the prelude\n" ++
+           "\t--total           Require functions to be total by default\n" ++
+           "\t--warnpartial     Warn about undeclared partial functions\n" ++
            "\t--typeintype      Disable universe checking\n" ++
            "\t--log [level]     Set debugging log level\n" ++
            "\t--dumpc [file]    Dump generated C code\n" ++
