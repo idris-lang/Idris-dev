@@ -172,7 +172,11 @@ elab ist info pattern tcgen fn tm
                                 _ -> True
     elab' ina (PRef fc n) = erun fc $ do apply (Var n) []; solve
     elab' ina@(_, a) (PLam n Placeholder sc)
-          = do attack; intro (Just n); elabE (True, a) sc; solve
+          = do -- n' <- unique_hole n
+               -- let sc' = mapPT (repN n n') sc
+               attack; intro (Just n); elabE (True, a) sc; solve
+       where repN n n' (PRef fc x) | x == n' = PRef fc n'
+             repN _ _ t = t
     elab' ina@(_, a) (PLam n ty sc)
           = do hsin <- get_holes
                ptmin <- get_term

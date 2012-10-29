@@ -763,6 +763,7 @@ instance Binary FnOpt where
                 Specialise x -> do putWord8 4
                                    put x
                 Coinductive -> putWord8 5
+                PartialFn -> putWord8 6
         get
           = do i <- getWord8
                case i of
@@ -773,6 +774,7 @@ instance Binary FnOpt where
                    4 -> do x <- get
                            return (Specialise x)
                    5 -> return Coinductive
+                   6 -> return PartialFn
                    _ -> error "Corrupted binary data for FnOpt"
 
 instance Binary Fixity where

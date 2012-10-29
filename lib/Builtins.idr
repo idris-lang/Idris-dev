@@ -63,7 +63,7 @@ cong refl = refl
 
 data Bool = False | True
 
-boolElim : (x:Bool) -> |(t : a) -> |(f : a) -> a 
+boolElim : Bool -> |(t : a) -> |(f : a) -> a 
 boolElim True  t e = t
 boolElim False t e = e
 

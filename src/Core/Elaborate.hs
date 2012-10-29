@@ -305,7 +305,7 @@ prepare_apply fn imps =
                                 when i (movelast n)
 
     mkMN n@(MN _ _) = n
-    mkMN n@(UN x) = MN 0 x
+    mkMN n@(UN x) = MN 1000 x
     mkMN (NS n xs) = NS (mkMN n) xs
 
 apply :: Raw -> [(Bool, Int)] -> Elab' aux [Name]

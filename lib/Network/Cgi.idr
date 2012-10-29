@@ -102,8 +102,8 @@ getContent x = getC x "" where
     getC : Int -> String -> IO String
     getC 0 acc = return $ reverse acc
     getC n acc = if (n > 0)
-                    then do x' <- getChar
-                            getC (n-1) (strCons x' acc)
+                    then do x <- getChar
+                            getC (n-1) (strCons x acc)
                     else (return "")
 
 abstract

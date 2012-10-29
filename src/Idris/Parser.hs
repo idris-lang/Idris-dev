@@ -723,13 +723,13 @@ bracketed syn =
 --                     e <- pExpr syn; symbol ":"; t <- pExpr syn; lchar ')'
 --                     return (PTyped e t))
         <|> try (do fc <- pfc; o <- operator; e <- pExpr syn; lchar ')'
-                    return $ PLam (MN 0 "x") Placeholder
-                                  (PApp fc (PRef fc (UN o)) [pexp (PRef fc (MN 0 "x")), 
+                    return $ PLam (MN 1000 "ARG") Placeholder
+                                  (PApp fc (PRef fc (UN o)) [pexp (PRef fc (MN 1000 "ARG")), 
                                                              pexp e]))
         <|> try (do fc <- pfc; e <- pSimpleExpr syn; o <- operator; lchar ')'
-                    return $ PLam (MN 0 "x") Placeholder
+                    return $ PLam (MN 1000 "ARG") Placeholder
                                   (PApp fc (PRef fc (UN o)) [pexp e,
-                                                             pexp (PRef fc (MN 0 "x"))]))
+                                                             pexp (PRef fc (MN 1000 "ARG"))]))
 
 pCaseOpt :: SyntaxInfo -> IParser (PTerm, PTerm)
 pCaseOpt syn = do lhs <- pExpr syn; symbol "=>"; rhs <- pExpr syn
