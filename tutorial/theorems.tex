@@ -339,9 +339,9 @@ command at the interactive prompt.
 \label{sect:totality}
 
 If we really want to trust our proofs, it is important that they are defined by
-\emph{total} functions --- that is, a function which is defined for all possible inputs
-and is guaranteed to terminate. Otherwise we could construct an element of the empty type,
-from which we could prove anything:
+\emph{total} functions --- that is, a function which is defined for all
+possible inputs and is guaranteed to terminate. Otherwise we could construct an
+element of the empty type, from which we could prove anything:
 
 \begin{SaveVerbatim}{empties}
 
@@ -359,8 +359,9 @@ empty2 = empty2
 \useverb{empties} 
 
 \noindent
-Internally, \Idris{} checks every definition for totality, and we can check at the prompt
-with the \texttt{:total} command. We see that neither of the above definitions is total:
+Internally, \Idris{} checks every definition for totality, and we can check at
+the prompt with the \texttt{:total} command. We see that neither of the above
+definitions is total:
 
 \begin{SaveVerbatim}{totalcheck}
 
@@ -368,16 +369,17 @@ with the \texttt{:total} command. We see that neither of the above definitions i
 possibly not total due to: empty1#hd
 	not total as there are missing cases
 *theorems> :total empty2
-possibly not total as it is not well founded
+possibly not total due to recursive path empty2
 
 \end{SaveVerbatim}
 \useverb{totalcheck} 
 
 \noindent
-Note the use of the word ``possibly'' --- a totality check can, of course, never be certain
-due to the undecidability of the halting problem. The check is, therefore, conservative.
-It is also possible (and indeed advisable, in the case of proofs) to mark functions as
-total so that it will be a compile time error for the totality check to fail:
+Note the use of the word ``possibly'' --- a totality check can, of course,
+never be certain due to the undecidability of the halting problem. The check
+is, therefore, conservative.  It is also possible (and indeed advisable, in the
+case of proofs) to mark functions as total so that it will be a compile time
+error for the totality check to fail:
 
 \begin{SaveVerbatim}{emptyfail}
 
@@ -385,7 +387,7 @@ total empty2 : _|_
 empty2 = empty2
 
 Type checking ./theorems.idr
-theorems.idr:25:empty2 is possibly not total as it is not well founded
+theorems.idr:25:empty2 is possibly not total due to recursive path empty2 
 
 \end{SaveVerbatim}
 \useverb{emptyfail} 
@@ -403,15 +405,36 @@ Total
 \useverb{totdisjoint} 
 
 \noindent
-The totality check is currently very conservative. To be recorded as total, a function must:
+The totality check is, necessarily, conservative. To be recorded as total, a
+function \texttt{f} must:
 
 \begin{itemize}
 \item Cover all possible inputs
-\item Be \emph{well-founded} --- i.e. each recursive call must have a decreasing argument
-\item Not call any non-total functions
+\item Be \emph{well-founded} --- i.e. by the time a sequence of 
+(possibly mutually) recursive calls reaches \texttt{f} again, it must
+be possible to show that one its has decreased.
 \item Not use any data types which are not \emph{strictly positive}
-\item (In version 0.9.5) Not be mutually recursive
+\item Not call any non-total functions
+\end{itemize}
+
+\subsubsection{Directives and Compiler Flags for Totality}
+
+By default, \Idris{} allows all definitions, whether total or not. However,
+it is desirable for functions to be total as far as possible, as this
+provides a guarantee that they provide a result for all possible inputs,
+in finite time. It is possible to make total functions a requirement,
+either:
+
+\begin{itemize}
+\item By using the \texttt{--total} compiler flag.
+\item By adding a \texttt{\%default total} directive to a source file.
+All definitions after this will be required to be total, unless
+explicitly flagged as \texttt{partial}.
 \end{itemize}
 
 \noindent
-The last of these conditions may be relaxed in the future.
+All functions \remph{after} a \texttt{\%default total} declaration are required
+to be total. Correspondingly, after a \texttt{\%default partial} declaration,
+the requirement is relaxed.
+
+

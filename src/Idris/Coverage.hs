@@ -556,7 +556,7 @@ checkMP ist i mp = if i > 0
                    else Partial (Mutual (map (fst . fst) path ++ [f]))
         | [Unchecked] <- lookupTotal f (tt_ctxt ist) =
             let argspos = zip nextargs [0..] in
-                collapse' (Partial (Other (map (fst . fst) path ++ [f]))) $ 
+                collapse' (Partial (Mutual (map (fst . fst) path ++ [f]))) $ 
                   do (arg, pos) <- argspos
                      case arg of
                         Nothing -> -- don't know, but it's okay if the
@@ -575,7 +575,8 @@ checkMP ist i mp = if i > 0
                                                         nextarg
                             _ -> trace ("Shouldn't happen " ++ show e) $ 
                                     return (Partial Itself)
-        | [tot] <- lookupTotal f (tt_ctxt ist) = tot
+        | [Total _] <- lookupTotal f (tt_ctxt ist) = Total []
+        | [Partial _] <- lookupTotal f (tt_ctxt ist) = Partial (Other [f])
         | otherwise = Total []
 
 noPartial (Partial p : xs) = Partial p
