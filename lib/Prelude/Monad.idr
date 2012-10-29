@@ -1,4 +1,4 @@
-module prelude.monad
+module Prelude.Monad
 
 -- Monads and Functors
 
