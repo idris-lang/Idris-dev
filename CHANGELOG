@@ -12,6 +12,8 @@ User visible changes:
   for functions, and a corresponding "partial" reserved words to mark functions
   as allowed to be partial. Also "--total" and "--partial" added as command
   line options.
+* Command line option "--warnpartial" for flagging all undeclared
+  partial functions, without error.
 * New termination checker supporting mutually recursive definitions.
 * Added ':load' command to REPL, for loading a new file
 * Added ':module' command to REPL, for adding modules

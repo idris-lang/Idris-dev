@@ -363,7 +363,8 @@ checkTotality path fc n
             e -> do w <- cmdOptSet WarnPartial
                     if TotalFn `elem` opts
                        then totalityError t'
-                       else do when w $ warnPartial n t'
+                       else do when (w && not (PartialFn `elem` opts)) $ 
+                                   warnPartial n t'
                                return t'
   where
     totalityError t = tclift $ tfail (At fc (Msg (show n ++ " is " ++ show t)))

@@ -260,7 +260,8 @@ expl = Exp False Dynamic
 constraint = Constraint False Dynamic
 tacimpl = TacImp False Dynamic
 
-data FnOpt = Inlinable | TotalFn | Coinductive | AssertTotal | TCGen
+data FnOpt = Inlinable | TotalFn | PartialFn
+           | Coinductive | AssertTotal | TCGen
            | CExport String    -- export, with a C name
            | Specialise [Name] -- specialise it, freeze these names
     deriving (Show, Eq)

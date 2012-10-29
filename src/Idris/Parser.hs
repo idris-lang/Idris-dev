@@ -647,7 +647,7 @@ pAccessibility
 pFnOpts :: [FnOpt] -> IParser [FnOpt]
 pFnOpts opts
         = do reserved "total"; pFnOpts (TotalFn : opts)
-      <|> do reserved "partial"; pFnOpts (opts \\ [TotalFn])
+      <|> do reserved "partial"; pFnOpts (PartialFn : (opts \\ [TotalFn]))
       <|> try (do lchar '%'; reserved "export"; c <- strlit; 
                   pFnOpts (CExport c : opts))
       <|> do lchar '%'; reserved "assert_total"; pFnOpts (AssertTotal : opts)
