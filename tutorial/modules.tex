@@ -35,7 +35,7 @@ toTree (x :: xs) = insert x (toTree xs)
 
 \begin{SaveVerbatim}{bstmain}
 
-module main
+module Main
 
 import btree
 
@@ -61,13 +61,14 @@ If names are otherwise unambiguous, there is no need to give the fully qualified
 Names can be disambiguated either by giving an explicit qualification, or according to
 their type.
 
-There is no formal link between the module name and its filename, although it is generally
-advisable to use the same name for each. An \texttt{import} statement refers to a filename,
-using dots to separate directories. For example, \texttt{import foo.bar} would import
-the file \texttt{foo/bar.idr}, which would conventionally have the module declaration
-\texttt{module foo.bar}. The only requirement for module names is that the main module, with
-the \texttt{main} function, must be called \texttt{main} (though its filename need not be
-\texttt{main.idr}).
+There is no formal link between the module name and its filename, although it
+is generally advisable to use the same name for each. An \texttt{import}
+statement refers to a filename, using dots to separate directories. For
+example, \texttt{import foo.bar} would import the file \texttt{foo/bar.idr},
+which would conventionally have the module declaration \texttt{module foo.bar}.
+The only requirement for module names is that the main module, with the
+\texttt{main} function, must be called \texttt{Main} (though its filename need
+not be \texttt{Main.idr}).
 
 \subsection{Export Modifiers}
 
