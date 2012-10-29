@@ -1,1 +1,4 @@
 language: haskell
+script:
+  - cd test
+  - ./runtest.pl all
