@@ -715,13 +715,15 @@ simplifyCasedef :: Name -> Context -> Context
 simplifyCasedef n uctxt
    = let ctxt = definitions uctxt
          ctxt' = case lookupCtxt Nothing n ctxt of
+              [(CaseOp inl ty [] ps args sc args' sc', acc, tot)] ->
+                 ctxt -- nothing to simplify (or already done...)
               [(CaseOp inl ty ps_in ps args sc args' sc', acc, tot)] ->
                  let pdef = map debind $ map simpl ps_in in
                      case simpleCase False True CompileTime (FC "" 0) pdef of
                        OK (CaseDef args sc _) ->
---                           trace ("Simplify " ++ show n ++ "\n" ++
---                                  show sc) $
-                          addDef n (CaseOp inl ty ps_in ps args sc args' sc',
+-- Erase the original patterns, since we won't use them again and it
+-- only clutters the .ibc
+                          addDef n (CaseOp inl ty [] ps args sc args' sc',
                                     acc, tot) ctxt 
               _ -> ctxt in
          uctxt { definitions = ctxt' }

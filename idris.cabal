@@ -1,5 +1,5 @@
 Name:           idris
-Version:        0.9.4.2
+Version:        0.9.5
 License:        BSD3
 License-file:   LICENSE
 Author:         Edwin Brady
@@ -26,6 +26,8 @@ Description:    Idris is a general purpose language with full dependent types.
                 .
                 * do notation, idiom brackets, syntactic conveniences for lists, 
                   tuples, dependent pairs
+                .
+                * Totality checking
                 .
                 * Coinductive types
                 .
