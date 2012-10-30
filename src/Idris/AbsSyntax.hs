@@ -621,7 +621,8 @@ implicit' syn ignore n ptm
 implicitise :: SyntaxInfo -> [Name] -> IState -> PTerm -> (PTerm, [PArg])
 implicitise syn ignore ist tm
     = let (declimps, ns') = execState (imps True [] tm) ([], []) 
-          ns = ns' \\ (map fst pvars ++ no_imp syn ++ ignore) in
+          ns = filter (\n -> implicitable n || elem n (map fst uvars)) $
+                  ns' \\ (map fst pvars ++ no_imp syn ++ ignore) in
           if null ns 
             then (tm, reverse declimps) 
             else implicitise syn ignore ist (pibind uvars ns tm)
@@ -700,7 +701,10 @@ implicitise syn ignore ist tm
     pibind using (n:ns) sc 
       = case lookup n using of
             Just ty -> PPi (Imp False Dynamic) n ty (pibind using ns sc)
-            Nothing -> PPi (Imp False Dynamic) n Placeholder (pibind using ns sc)
+            Nothing -> if (implicitable n)
+                          then PPi (Imp False Dynamic) n Placeholder 
+                                   (pibind using ns sc)
+                          else pibind using ns sc
 
 -- Add implicit arguments in function calls
 addImplPat :: IState -> PTerm -> PTerm
