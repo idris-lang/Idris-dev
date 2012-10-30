@@ -1,15 +1,17 @@
+include config.mk
+
 install: .PHONY
-	cabal install
+	$(CABAL) install
 
 pinstall: .PHONY
-	cabal configure --enable-executable-profiling
-	cabal install --enable-executable-profiling
+	$(CABAL) configure --enable-executable-profiling
+	$(CABAL) install   --enable-executable-profiling
 
 build: .PHONY
-	cabal build
+	$(CABAL) build
 
 configure: .PHONY
-	cabal configure
+	$(CABAL) configure
 
 test : .PHONY
 	make -C test
