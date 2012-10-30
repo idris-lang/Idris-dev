@@ -477,6 +477,7 @@ VAL idris_recvMessage(VM* vm) {
         timeout.tv_nsec = 0;
         status = pthread_cond_timedwait(&vm->inbox_waiting, &vm->inbox_block,
                                &timeout);
+        (void)(status); //don't emit 'unused' warning
 //        printf("Waiting [unlock]... %d\n", status);
         msg = *(vm->inbox_ptr);
     }
