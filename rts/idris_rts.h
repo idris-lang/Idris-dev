@@ -21,6 +21,8 @@ typedef struct {
 } con;
 
 typedef struct {
+// Use top 16 bits of ty for saying which heap value is in
+// Bottom 16 bits for closure type
     ClosureType ty;
     union {
         con c;
@@ -91,6 +93,15 @@ typedef void(*func)(VM*, VAL*);
 #define GETFLOAT(x) (((VAL)(x))->info.f)
 
 #define TAG(x) (ISINT(x) || x == NULL ? (-1) : ( (x)->ty == CON ? (x)->info.c.tag : (-1)) )
+
+// Use top 16 bits for saying which heap value is in
+// Bottom 16 bits for closure type
+
+#define GETTY(x) ((x)->ty & 0x0000ffff)
+#define SETTY(x,t) (x)->ty = (((x)->ty & 0xffff0000) | (t))
+
+#define GETHEAP(x) ((x)->ty >> 16)
+#define SETHEAP(x,y) (x)->ty = (((x)->ty & 0x0000ffff) | ((t) << 16))
 
 // Integers, floats and operators
 

@@ -224,7 +224,8 @@ instance ToIR (TT Name) where
                     do args' <- mapM (ir' env) args
                        -- wrap it in a prim__IO
                        -- return $ con_ 0 @@ impossible @@ 
-                       return $ LLazyExp $ LForeign LANG_C rty fgnName (zip tys args')
+                       return $ LLazyExp $
+                           LForeign LANG_C rty fgnName (zip tys args')
          | otherwise = fail "Badly formed foreign function call"
 
 getFTypes :: TT Name -> [FType]

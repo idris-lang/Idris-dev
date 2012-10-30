@@ -9,7 +9,7 @@ VAL copy(VM* vm, VAL x) {
     if (x==NULL || ISINT(x)) {
         return x;
     }
-    switch(x->ty) {
+    switch(GETTY(x)) {
     case CON:
         cl = allocCon(vm, x->info.c.arity);
         cl->info.c.tag = x->info.c.tag;
@@ -39,7 +39,7 @@ VAL copy(VM* vm, VAL x) {
     default:
         break;
     }
-    x->ty = FWD;
+    SETTY(x, FWD);
     x->info.ptr = cl;
     return cl;
 }
@@ -53,7 +53,7 @@ void cheney(VM *vm) {
        size_t inc = *((size_t*)scan);
        VAL heap_item = (VAL)(scan+sizeof(size_t));
        // If it's a CON, copy its arguments
-       switch(heap_item->ty) {
+       switch(GETTY(heap_item)) {
        case CON:
            argptr = (VAL*)(heap_item->info.c.args);
            for(i = 0; i < heap_item->info.c.arity; ++i) {
