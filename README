@@ -1,5 +1,7 @@
 Idris (http://idris-lang.org/) is an experimental functional programming 
 language with dependent types.
 
+To configure, edit config.mk. The default values should work for most people.
+
 To install, type 'make'. This will install everything using cabal and
 typecheck the libraries. 
