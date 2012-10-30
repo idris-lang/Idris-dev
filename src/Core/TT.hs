@@ -199,6 +199,10 @@ tcname (UN ('@':_)) = True
 tcname (NS n _) = tcname n
 tcname _ = False
 
+implicitable (NS n _) = implicitable n
+implicitable (UN (x:xs)) = isLower x
+implicitable _ = False
+
 nsroot (NS n _) = n
 nsroot n = n
 

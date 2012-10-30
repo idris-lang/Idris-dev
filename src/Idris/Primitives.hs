@@ -280,7 +280,7 @@ elabPrim (Prim n ty i def sc tot)
          putIState i { idris_scprims = (n, sc) : idris_scprims i }
 
 elabPrims :: Idris ()
-elabPrims = do mapM_ (elabDecl toplevel) 
+elabPrims = do mapM_ (elabDecl EAll toplevel) 
                      (map (PData defaultSyntax (FC "builtin" 0) False)
                          [inferDecl, unitDecl, falseDecl, pairDecl, eqDecl])
                mapM_ elabPrim primitives

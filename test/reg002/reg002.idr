@@ -22,7 +22,7 @@ S_inj (Co n)   Infinity p    = FalseElim (S_Co_not_Inf p)
 S_inj Infinity (Co m)   p    = FalseElim (S_Co_not_Inf (sym p))
 S_inj Infinity Infinity refl = refl
 
-swap : {n : Nat} -> Vect A n -> Vect A n
+swap : {n : Nat} -> Vect a n -> Vect a n
 swap Nil            = Nil
 swap (x :: Nil)     = x :: Nil
 swap (x :: y :: xs) = (y :: x :: (swap xs))

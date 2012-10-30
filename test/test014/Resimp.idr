@@ -100,9 +100,9 @@ using (i: Fin n, gam : Vect Ty n, gam' : Vect Ty n, gam'' : Vect Ty n)
 
        Lift   : IO a -> Res gam gam (R a)
        Check  : (p:HasType gam i (Choice (interpTy a) (interpTy b))) -> 
-                (failure:Res (update gam p a) (update gam p c) T) ->
-                (success:Res (update gam p b) (update gam p c) T) ->
-                Res gam (update gam p c) T
+                (failure:Res (update gam p a) (update gam p c) t) ->
+                (success:Res (update gam p b) (update gam p c) t) ->
+                Res gam (update gam p c) t
        While  : Res gam gam (R Bool) -> 
                 Res gam gam (R ()) -> Res gam gam (R ())
        Return : a -> Res gam gam (R a)

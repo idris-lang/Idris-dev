@@ -314,6 +314,7 @@ deriving instance Binary PClause'
 data PData' t  = PDatadecl { d_name :: Name,
                              d_tcon :: t,
                              d_cons :: [(Name, t, FC)] }
+               | PLaterdecl { d_name :: Name, d_tcon :: t }
     deriving Functor
 {-!
 deriving instance Binary PData'

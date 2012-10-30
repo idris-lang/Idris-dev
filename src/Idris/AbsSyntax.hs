@@ -160,6 +160,13 @@ checkUndefined fc n
                        show n ++ " already defined"
              _ -> return ()
 
+isUndefined :: FC -> Name -> Idris Bool
+isUndefined fc n 
+    = do i <- getContext
+         case lookupTy Nothing n i of
+             (_:_)  -> return False
+             _ -> return True
+
 setContext :: Context -> Idris ()
 setContext ctxt = do i <- get; put (i { tt_ctxt = ctxt } )
 

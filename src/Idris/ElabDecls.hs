@@ -76,7 +76,7 @@ elabType info syn fc opts n ty' = {- let ty' = piBind (params info) ty_in
                          addIBC (IBCAccess n Frozen)
 
 elabData :: ElabInfo -> SyntaxInfo -> FC -> Bool -> PData -> Idris ()
-elabData info syn fc codata (PDatadecl n t_in dcons)
+elabData info syn fc codata (PLaterdecl n t_in)
     = do iLOG (show fc)
          checkUndefined fc n
          ctxt <- getContext
@@ -91,6 +91,23 @@ elabData info syn fc codata (PDatadecl n t_in dcons)
          (cty, _)  <- recheckC fc [] t'
          logLvl 2 $ "---> " ++ show cty
          updateContext (addTyDecl n cty) -- temporary, to check cons
+
+elabData info syn fc codata (PDatadecl n t_in dcons)
+    = do iLOG (show fc)
+         undef <- isUndefined fc n
+         ctxt <- getContext
+         i <- get
+         t_in <- implicit syn n t_in
+         let t = addImpl i t_in
+         ((t', defer, is), log) <- tclift $ elaborate ctxt n (Set (UVal 0)) []
+                                            (erun fc (build i info False n t))
+         def' <- checkDef fc defer
+         addDeferred def'
+         mapM_ (elabCaseBlock info) is
+         (cty, _)  <- recheckC fc [] t'
+         logLvl 2 $ "---> " ++ show cty
+         -- temporary, to check cons
+         when undef $ updateContext (addTyDecl n cty) 
          cons <- mapM (elabCon info syn n codata) dcons
          ttag <- getName
          i <- get
@@ -123,7 +140,7 @@ elabRecord info syn fc tyn ty cn cty
          let nonImp = mapMaybe isNonImp (zip cimp ptys_u)
          let implBinds = getImplB id cty'
          update_decls <- mapM (mkUpdate recty implBinds (length nonImp)) (zip nonImp [0..])
-         mapM_ (elabDecl info) (concat proj_decls)
+         mapM_ (elabDecl EAll info) (concat proj_decls)
          mapM_ (tryElabDecl info) (update_decls)
   where
 --     syn = syn_in { syn_namespace = show (nsroot tyn) : syn_namespace syn_in }
@@ -542,7 +559,7 @@ elabClause info tcgen (PWith fc fname lhs_in withs wval_in withblock)
         --    ==>  fname' ps   wpat [rest], match pats against toplevel for ps
         wb <- mapM (mkAuxC wname lhs (map fst bargs)) withblock
         logLvl 5 ("with block " ++ show wb)
-        mapM_ (elabDecl info) wb
+        mapM_ (elabDecl EAll info) wb
 
         -- rhs becomes: fname' ps wval
         let rhs = PApp fc (PRef fc wname) (map (pexp . (PRef fc) . fst) bargs ++ 
@@ -628,12 +645,12 @@ elabClass info syn fc constraints tn ps ds
          logLvl 5 $ "Building functions"
          let usyn = syn { using = ps ++ using syn }
          fns <- mapM (cfun cn constraint usyn (map fst imethods)) constraints
-         mapM_ (elabDecl info) (concat fns)
+         mapM_ (elabDecl EAll info) (concat fns)
          -- for each method, build a top level function
          fns <- mapM (tfun cn constraint usyn (map fst imethods)) imethods
-         mapM_ (elabDecl info) (concat fns)
+         mapM_ (elabDecl EAll info) (concat fns)
          -- add the default definitions
-         mapM_ (elabDecl info) (concat (map (snd.snd) defs))
+         mapM_ (elabDecl EAll info) (concat (map (snd.snd) defs))
          i <- get
          let defaults = map (\ (x, (y, z)) -> (x,y)) defs
          addClass tn (CI cn imethods defaults (map fst ps) []) 
@@ -795,7 +812,7 @@ elabInstance info syn fc cs n ps t expn ds
          let idecls = [PClauses fc [Inlinable, TCGen] iname 
                                  [PClause fc iname lhs [] rhs wb]]
          iLOG (show idecls)
-         mapM (elabDecl info) idecls
+         mapM (elabDecl EAll info) idecls
          addIBC (IBCInstance intInst n iname)
   where
     intInst = case ps of
@@ -915,11 +932,16 @@ pvars ist _ = []
 data ElabWhat = ETypes | EDefns | EAll
   deriving (Show, Eq)
 
-elabDecl :: ElabInfo -> PDecl -> Idris ()
-elabDecl info d = idrisCatch (elabDecl' EAll info d) 
-                             (\e -> do let msg = show e
-                                       setErrLine (getErrLine msg)
-                                       iputStrLn msg)
+elabDecls :: ElabInfo -> [PDecl] -> Idris ()
+elabDecls info ds = do mapM_ (elabDecl EAll info) ds
+--                       mapM_ (elabDecl EDefns info) ds
+
+elabDecl :: ElabWhat -> ElabInfo -> PDecl -> Idris ()
+elabDecl what info d 
+    = idrisCatch (elabDecl' what info d) 
+                 (\e -> do let msg = show e
+                           setErrLine (getErrLine msg)
+                           iputStrLn msg)
 
 elabDecl' _ info (PFix _ _ _)
      = return () -- nothing to elaborate
@@ -965,7 +987,7 @@ elabDecl' what info (PClass s f cs n ps ds)
     = do iLOG $ "Elaborating class " ++ show n
          elabClass info s f cs n ps ds
 elabDecl' what info (PInstance s f cs n ps t expn ds) 
-  | what /= EDefns
+  | what /= ETypes
     = do iLOG $ "Elaborating instance " ++ show n
          elabInstance info s f cs n ps t expn ds
 elabDecl' what info (PRecord s f tyn ty cn cty)

@@ -104,7 +104,7 @@ loadSource lidr f
                   -- Now add all the declarations to the context
                   v <- verbose
                   when v $ iputStrLn $ "Type checking " ++ f
-                  mapM_ (elabDecl toplevel) ds
+                  elabDecls toplevel ds
                   i <- get
                   -- simplify every definition do give the totality checker
                   -- a better chance
@@ -1111,34 +1111,36 @@ pData syn = try (do acc <- pAccessibility
                     tyn_in <- pfName
                     ty <- pTSig (impOK syn)
                     let tyn = expandNS syn tyn_in
-                    reserved "where"
-                    openBlock
-                    pushIndent
-                    cons <- many (do notEndBlock
-                                     c <- pConstructor syn
-                                     pKeepTerminator
-                                     return c) -- (lchar '|')
-                    popIndent
-                    closeBlock 
-                    accData acc tyn (map (\ (n, _, _) -> n) cons)
-                    return $ PData syn fc co (PDatadecl tyn ty cons))
+                    option (PData syn fc co (PLaterdecl tyn ty)) (do
+                      reserved "where"
+                      openBlock
+                      pushIndent
+                      cons <- many (do notEndBlock
+                                       c <- pConstructor syn
+                                       pKeepTerminator
+                                       return c) -- (lchar '|')
+                      popIndent
+                      closeBlock 
+                      accData acc tyn (map (\ (n, _, _) -> n) cons)
+                      return $ PData syn fc co (PDatadecl tyn ty cons)))
         <|> try (do pushIndent
                     acc <- pAccessibility
                     co <- pDataI
                     fc <- pfc
                     tyn_in <- pfName
                     args <- many pName
-                    let tyn = expandNS syn tyn_in
-                    lchar '='
-                    cons <- sepBy1 (pSimpleCon syn) (lchar '|')
-                    pTerminator
-                    let conty = mkPApp fc (PRef fc tyn) (map (PRef fc) args)
                     let ty = bindArgs (map (const PSet) args) PSet
-                    cons' <- mapM (\ (x, cargs, cfc) -> 
-                                 do let cty = bindArgs cargs conty
-                                    return (x, cty, cfc)) cons
-                    accData acc tyn (map (\ (n, _, _) -> n) cons')
-                    return $ PData syn fc co (PDatadecl tyn ty cons'))
+                    let tyn = expandNS syn tyn_in
+                    option (PData syn fc co (PLaterdecl tyn ty)) (do
+                      lchar '='
+                      cons <- sepBy1 (pSimpleCon syn) (lchar '|')
+                      pTerminator
+                      let conty = mkPApp fc (PRef fc tyn) (map (PRef fc) args)
+                      cons' <- mapM (\ (x, cargs, cfc) -> 
+                                   do let cty = bindArgs cargs conty
+                                      return (x, cty, cfc)) cons
+                      accData acc tyn (map (\ (n, _, _) -> n) cons')
+                      return $ PData syn fc co (PDatadecl tyn ty cons')))
   where
     mkPApp fc t [] = t
     mkPApp fc t xs = PApp fc t (map pexp xs)
