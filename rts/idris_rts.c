@@ -424,7 +424,7 @@ VAL copyTo(VM* vm, VAL x) {
 }
 
 // Add a message to another VM's message queue
-void sendMessage(VM* sender, VM* dest, VAL msg) {
+void idris_sendMessage(VM* sender, VM* dest, VAL msg) {
     // FIXME: If GC kicks in in the middle of the copy, we're in trouble.
     // Probably best check there is enough room in advance. (How?)
 
@@ -457,9 +457,14 @@ void sendMessage(VM* sender, VM* dest, VAL msg) {
 //    printf("Sending [unlock]...\n");
 }
 
+int idris_checkMessages(VM* vm) {
+    VAL msg = *(vm->inbox_ptr);
+    return (msg != NULL);
+}
+
 // block until there is a message in the queue
-VAL recvMessage(VM* vm) {
-    VAL msg = NULL;
+VAL idris_recvMessage(VM* vm) {
+    VAL msg;
     struct timespec timeout;
     int status;
 

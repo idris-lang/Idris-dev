@@ -17,5 +17,6 @@ Tests:
 015: verified binary adder
 016: codata
 017: mutually recursive totality checking
+018: Message passing concurrency (raw form)
 
 regxxx: various regression tests

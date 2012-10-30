@@ -154,9 +154,11 @@ void* vmThread(VM* callvm, func f, VAL arg);
 VAL copyTo(VM* newVM, VAL x);
 
 // Add a message to another VM's message queue
-void sendMessage(VM* sender, VM* dest, VAL msg);
+void idris_sendMessage(VM* sender, VM* dest, VAL msg);
+// Check whether there are any messages in the queue
+int idris_checkMessages(VM* vm);
 // block until there is a message in the queue
-VAL recvMessage(VM* vm);
+VAL idris_recvMessage(VM* vm);
 
 void dumpVal(VAL r);
 void dumpStack(VM* vm);

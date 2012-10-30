@@ -5,10 +5,12 @@ modules = Builtins, Prelude, IO, System,
 
           Prelude.Algebra, Prelude.Cast, Prelude.Nat, Prelude.Fin,
           Prelude.List, Prelude.Maybe, Prelude.Monad, Prelude.Applicative,
-          Prelude.Either, Prelude.Vect, Prelude.Strings, Prelude.Chars, Prelude.Heap,
-          Prelude.Complex, Prelude.Morphisms,
+          Prelude.Either, Prelude.Vect, Prelude.Strings, Prelude.Chars, 
+          Prelude.Heap, Prelude.Complex, Prelude.Morphisms,
 
           Network.Cgi,
+
+          System.Concurrency.Raw,
 
           Language.Reflection,
 

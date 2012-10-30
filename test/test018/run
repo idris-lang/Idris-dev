@@ -1,0 +1,4 @@
+#!/bin/bash
+idris test018.idr -o test018
+./test018
+rm -f test018 *.ibc
