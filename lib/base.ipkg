@@ -10,7 +10,7 @@ modules = Builtins, Prelude, IO, System,
 
           Network.Cgi,
 
-          System.Concurrency.Raw,
+          System.Concurrency.Raw, System.Concurrency.Process,
 
           Language.Reflection,
 

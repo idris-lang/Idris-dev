@@ -3,7 +3,7 @@ int main(int argc, char* argv[]) {
     _idris__123_runMain0_125_(vm, NULL);
     //_idris_main(vm, NULL);
 #ifdef IDRIS_TRACE
-    gcInfo(vm, 1);
+    idris_gcInfo(vm, 1);
 #endif
     terminate(vm);
 }

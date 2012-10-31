@@ -434,18 +434,22 @@ deriving instance Binary TT
 !-}
 
 class TermSize a where
-  termsize :: a -> Int
+  termsize :: Name -> a -> Int
 
 instance TermSize a => TermSize [a] where
-    termsize [] = 0
-    termsize (x : xs) = termsize x + termsize xs
+    termsize n [] = 0
+    termsize n (x : xs) = termsize n x + termsize n xs
 
-instance TermSize (TT a) where
-    termsize (P _ _ _) = 1
-    termsize (V _) = 1
-    termsize (Bind n (Let t v) sc) = termsize v + termsize sc
-    termsize (App f a) = termsize f + termsize a
-    termsize _ = 1
+instance TermSize (TT Name) where
+    termsize n (P _ x _) 
+       | x == n = 1000000 -- recursive => really big
+       | otherwise = 1
+    termsize n (V _) = 1
+    termsize n (Bind n' (Let t v) sc) 
+       = let rn = if n == n' then MN 0 "noname" else n in
+             termsize rn v + termsize rn sc
+    termsize n (App f a) = termsize n f + termsize n a
+    termsize n _ = 1
 
 instance Sized a => Sized (TT a) where
   size (P name n trm) = 1 + size name + size n + size trm

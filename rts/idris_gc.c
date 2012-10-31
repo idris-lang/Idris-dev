@@ -11,7 +11,7 @@ VAL copy(VM* vm, VAL x) {
     }
     switch(GETTY(x)) {
     case CON:
-        cl = allocCon(vm, x->info.c.arity);
+        cl = allocCon(vm, x->info.c.arity, 1);
         cl->info.c.tag = x->info.c.tag;
         cl->info.c.arity = x->info.c.arity;
 
@@ -23,16 +23,16 @@ VAL copy(VM* vm, VAL x) {
         }
         break;
     case FLOAT:
-        cl = MKFLOAT(vm, x->info.f);
+        cl = MKFLOATc(vm, x->info.f);
         break;
     case STRING:
-        cl = MKSTR(vm, x->info.str);
+        cl = MKSTRc(vm, x->info.str);
         break;
     case BIGINT:
-        cl = MKBIGM(vm, x->info.ptr);
+        cl = MKBIGMc(vm, x->info.ptr);
         break;
     case PTR:
-        cl = MKPTR(vm, x->info.ptr);
+        cl = MKPTRc(vm, x->info.ptr);
         break;
     case FWD:
         return x->info.ptr;
@@ -72,7 +72,7 @@ void cheney(VM *vm) {
     assert(scan == vm->heap_next);
 }
 
-void gc(VM* vm) {
+void idris_gc(VM* vm) {
     // printf("Collecting\n");
 
     char* newheap = malloc(vm -> heap_size);
@@ -108,16 +108,16 @@ void gc(VM* vm) {
         vm->heap_size += vm->heap_growth;
     } 
     vm->oldheap = oldheap;
-
+    
     // gcInfo(vm, 0);
 }
 
-void gcInfo(VM* vm, int doGC) {
+void idris_gcInfo(VM* vm, int doGC) {
     printf("\nStack: %p %p\n", vm->valstack, vm->valstack_top); 
     printf("Total allocations: %d\n", vm->allocations);
     printf("GCs: %d\n", vm->collections);
     printf("Final heap size %d\n", (int)(vm->heap_size));
     printf("Final heap use %d\n", (int)(vm->heap_next - vm->heap));
-    if (doGC) { gc(vm); }
+    if (doGC) { idris_gc(vm); }
     printf("Final heap use after GC %d\n", (int)(vm->heap_next - vm->heap));
 }

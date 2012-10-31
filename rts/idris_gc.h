@@ -3,7 +3,7 @@
 
 #include "idris_rts.h"
 
-void gc(VM* vm);
-void gcInfo(VM* vm, int doGC);
+void idris_gc(VM* vm);
+void idris_gcInfo(VM* vm, int doGC);
 
 #endif

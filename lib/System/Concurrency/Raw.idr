@@ -1,3 +1,5 @@
+-- WARNING: No guarantees that this works properly yet! 
+
 module System.Concurrency.Raw
 
 -- Raw (i.e. not type safe) message passing

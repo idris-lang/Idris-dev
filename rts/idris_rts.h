@@ -51,6 +51,7 @@ typedef struct {
    
     pthread_mutex_t inbox_lock;
     pthread_mutex_t inbox_block;
+    pthread_mutex_t alloc_lock;
     pthread_cond_t inbox_waiting;
 
     VAL* inbox; // Block of memory for storing messages
@@ -59,6 +60,7 @@ typedef struct {
     VAL* inbox_ptr; // Next message to read
     VAL* inbox_write; // Location of next message to write
 
+    int processes; // Number of child processes
     int max_threads; // maximum number of threads to run in parallel
 
     int argc;
@@ -140,6 +142,11 @@ VAL MKFLOAT(VM* vm, double val);
 VAL MKSTR(VM* vm, char* str);
 VAL MKPTR(VM* vm, void* ptr);
 
+// following versions don't take a lock when allocating
+VAL MKFLOATc(VM* vm, double val);
+VAL MKSTRc(VM* vm, char* str);
+VAL MKPTRc(VM* vm, void* ptr);
+
 VAL MKCON(VM* vm, VAL cl, int tag, int arity, ...);
 
 #define SETTAG(x, a) (x)->info.c.tag = (a)
@@ -149,8 +156,8 @@ VAL MKCON(VM* vm, VAL cl, int tag, int arity, ...);
 void PROJECT(VM* vm, VAL r, int loc, int arity); 
 void SLIDE(VM* vm, int args);
 
-void* allocate(VM* vm, size_t size);
-void* allocCon(VM* vm, int arity);
+void* allocate(VM* vm, size_t size, int outerlock);
+void* allocCon(VM* vm, int arity, int outerlock);
 
 void* vmThread(VM* callvm, func f, VAL arg);
 

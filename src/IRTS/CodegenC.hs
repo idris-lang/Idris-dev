@@ -100,7 +100,7 @@ bcc i (ASSIGNCONST l c)
     mkConst _ = "MKINT(42424242)"
 bcc i (MKCON l tag args)
     = indent i ++ creg Tmp ++ " = allocCon(vm, " ++ show (length args) ++ 
-         "); " ++ "SETTAG(" ++ creg Tmp ++ ", " ++ show tag ++ ");\n" ++
+         ", 0); " ++ "SETTAG(" ++ creg Tmp ++ ", " ++ show tag ++ ");\n" ++
       indent i ++ setArgs 0 args ++ "\n" ++ 
       indent i ++ creg l ++ " = " ++ creg Tmp ++ ";\n"
          

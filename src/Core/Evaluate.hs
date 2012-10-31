@@ -707,7 +707,7 @@ addCasedef n alwaysInline tcase covering ps_in ps psrt ty uctxt
           ctxt' = case (simpleCase tcase covering CompileTime (FC "" 0) ps, 
                         simpleCase tcase covering RunTime (FC "" 0) psrt) of
                     (OK (CaseDef args sc _), OK (CaseDef args' sc' _)) -> 
-                       let inl = alwaysInline || small sc' in
+                       let inl = alwaysInline || small n sc' in
                            addDef n (CaseOp inl ty ps_in ps args sc args' sc',
                                       access, Unchecked) ctxt in
           uctxt { definitions = ctxt' }

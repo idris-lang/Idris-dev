@@ -58,18 +58,18 @@ type Clause   = ([Pat], (Term, Term))
 type CS = ([Term], Int)
 
 instance TermSize SC where
-    termsize (Case n as) = termsize as
-    termsize (STerm t) = termsize t
-    termsize _ = 1
+    termsize n (Case n' as) = termsize n as
+    termsize n (STerm t) = termsize n t
+    termsize n _ = 1
 
 instance TermSize CaseAlt where
-    termsize (ConCase _ _ _ s) = termsize s
-    termsize (ConstCase _ s) = termsize s
-    termsize (DefaultCase s) = termsize s
+    termsize n (ConCase _ _ _ s) = termsize n s
+    termsize n (ConstCase _ s) = termsize n s
+    termsize n (DefaultCase s) = termsize n s
 
 -- simple terms can be inlined trivially - good for primitives in particular
-small :: SC -> Bool
-small t = False -- termsize t < 150
+small :: Name -> SC -> Bool
+small n t = False -- termsize n t < 10
 
 namesUsed :: SC -> [Name]
 namesUsed sc = nub $ nu' [] sc where
