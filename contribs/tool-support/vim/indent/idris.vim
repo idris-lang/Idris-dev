@@ -115,5 +115,9 @@ function! GetIdrisIndent()
     return match(prevline, '\(using\|parameters\)') + &shiftwidth
   endif
 
+  if prevline =~ '^\s*mutual\s*$'
+    return match(prevline, 'mutual') + &shiftwidth
+  endif
+
   return match(prevline, '\S')
 endfunction
