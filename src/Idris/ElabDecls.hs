@@ -952,9 +952,12 @@ elabDecl' what info (PTy s f o n ty)
     = do iLOG $ "Elaborating type decl " ++ show n ++ show o
          elabType info s f o n ty
 elabDecl' what info (PData s f co d)    
-  | what /= EDefns
+  | what /= ETypes
     = do iLOG $ "Elaborating " ++ show (d_name d)
          elabData info s f co d
+  | otherwise 
+    = do iLOG $ "Elaborating [type of] " ++ show (d_name d)
+         elabData info s f co (PLaterdecl (d_name d) (d_tcon d))
 elabDecl' what info d@(PClauses f o n ps) 
   | what /= ETypes
     = do iLOG $ "Elaborating clause " ++ show n
@@ -963,6 +966,9 @@ elabDecl' what info d@(PClauses f o n ps)
                     [fs] -> fs
                     [] -> []
          elabClauses info f (o ++ o') n ps
+elabDecl' what info (PMutual f ps) 
+    = do mapM_ (elabDecl ETypes info) ps
+         mapM_ (elabDecl EDefns info) ps
 elabDecl' what info (PParams f ns ps) 
     = do i <- get
          iLOG $ "Expanding params block with " ++ show (concatMap declared ps)

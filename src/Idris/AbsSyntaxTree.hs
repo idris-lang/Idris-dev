@@ -296,6 +296,7 @@ data PDecl' t = PFix     FC Fixity [String] -- fixity declaration
                                         [PDecl' t]
               | PDSL     Name (DSL' t)
               | PSyntax  FC Syntax
+              | PMutual  FC [PDecl' t]
               | PDirective (Idris ())
     deriving Functor
 {-!

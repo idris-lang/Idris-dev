@@ -4,6 +4,9 @@ User visible changes:
 
 * Forward declarations of data allowed
   - supporting induction recursion and mutually recursive data
+* 'mutual' blocks added
+  - effect is to elaborate all types of declarations in the block before
+    elaborating their definitions
 * Implicit arguments will be added automatically only if their initial
   letter is lower case, or they are in a using declaration
 

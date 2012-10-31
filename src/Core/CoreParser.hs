@@ -19,15 +19,17 @@ idrisDef = haskellDef {
               opStart = iOpStart,
               opLetter = iOpLetter,
               identLetter = identLetter haskellDef <|> lchar '.',
-              reservedOpNames = [":", "..", "=", "\\", "|", "<-", "->", "=>", "**"],
-              reservedNames = ["let", "in", "data", "codata", "record", "Set", 
-                               "do", "dsl", "import", "impossible", 
-                               "case", "of", "total", "partial",
-                               "infix", "infixl", "infixr", 
-                               "where", "with", "syntax", "proof", "postulate",
-                               "using", "namespace", "class", "instance",
-                               "public", "private", "abstract", 
-                               "Int", "Integer", "Float", "Char", "String", "Ptr"]
+              reservedOpNames 
+                 = [":", "..", "=", "\\", "|", "<-", "->", "=>", "**"],
+              reservedNames 
+                 = ["let", "in", "data", "codata", "record", "Set", 
+                    "do", "dsl", "import", "impossible", 
+                    "case", "of", "total", "partial", "mutual",
+                    "infix", "infixl", "infixr", 
+                    "where", "with", "syntax", "proof", "postulate",
+                    "using", "namespace", "class", "instance",
+                    "public", "private", "abstract", 
+                    "Int", "Integer", "Float", "Char", "String", "Ptr"]
            } 
 
 iOpStart = oneOf ":!#$%&*+./<=>?@\\^|-~"

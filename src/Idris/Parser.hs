@@ -306,6 +306,7 @@ collect (c@(PClauses _ o _ _) : ds)
         getfc (PClauses fc _ _ _) = fc
 
 collect (PParams f ns ps : ds) = PParams f ns (collect ps) : collect ds
+collect (PMutual f ms : ds) = PMutual f (collect ms) : collect ds
 collect (PNamespace ns ps : ds) = PNamespace ns (collect ps) : collect ds
 collect (PClass f s cs n ps ds : ds') = PClass f s cs n ps (collect ds) : collect ds'
 collect (PInstance f s cs n ps t en ds : ds') 
@@ -329,6 +330,7 @@ pDecl syn = do notEndBlock
            return [d']
     <|> pUsing syn
     <|> pParams syn
+    <|> pMutual syn
     <|> pNamespace syn
     <|> pClass syn
     <|> pInstance syn
@@ -453,6 +455,16 @@ pParams syn =
        closeBlock 
        fc <- pfc
        return [PParams fc ns (concat ds)]
+
+pMutual :: SyntaxInfo -> IParser [PDecl]
+pMutual syn = 
+    do reserved "mutual"
+       openBlock 
+       let pvars = syn_params syn
+       ds <- many1 (pDecl syn)
+       closeBlock 
+       fc <- pfc
+       return [PMutual fc (concat ds)]
 
 pNamespace :: SyntaxInfo -> IParser [PDecl]
 pNamespace syn =
