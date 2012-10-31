@@ -4,13 +4,13 @@
 " highlighter to support idris.
 "
 " author: raichoo (raichoo@googlemail.com)
-" date: Sep 21 2012
+" date: Oct 31 2012
 
 syn match idrisModule "\<\(module\|namespace\)\>"
 syn match idrisImport "\<import\>"
 syn match idrisStructure "\<\(class\|\(co\)\?data\|instance\|where\|record\)\>"
 syn match idrisVisibility "\<\(public\|abstract\|private\)\>"
-syn match idrisStatement "\<\(do\|case\|of\|let\|in\|with\|total\|dsl\|auto\|using\|parameters\)\>"
+syn match idrisStatement "\<\(do\|case\|of\|let\|in\|with\|total\|dsl\|auto\|using\|parameters\|mutual\)\>"
 syn match idrisSyntax "\(pattern \+\|term \+\)\?syntax"
 syn match idrisConditional "\<\(if\|then\|else\)\>"
 syn match idrisTactic contained "\<\(intros\?\|rewrite\|exact\|refine\|trivial\|let\|focus\|try\|compute\|solve\|attack\)\>"
