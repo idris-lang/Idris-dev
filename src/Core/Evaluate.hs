@@ -109,7 +109,8 @@ specialise ctxt env limits t
 
 simplify :: Context -> Env -> TT Name -> TT Name
 simplify ctxt env t 
-   = evalState (do val <- eval False ctxt threshold [(UN "lazy", 0)] 
+   = evalState (do val <- eval False ctxt threshold [(UN "lazy", 0),
+                                                     (UN "par", 0)] 
                                  (map finalEntry env) (finalise t) [Simplify]
                    quote 0 val) initEval
 

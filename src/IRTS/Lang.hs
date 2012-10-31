@@ -25,6 +25,9 @@ data LExp = LV LVar
           | LError String
   deriving Eq
 
+-- Primitive operators. Backends are not *required* to implement all
+-- of these, but should report an error if they are unable
+
 data PrimFn = LPlus | LMinus | LTimes | LDiv | LEq | LLt | LLe | LGt | LGe
             | LFPlus | LFMinus | LFTimes | LFDiv | LFEq | LFLt | LFLe | LFGt | LFGe
             | LBPlus | LBMinus | LBTimes | LBDiv | LBEq | LBLt | LBLe | LBGt | LBGe
@@ -38,7 +41,12 @@ data PrimFn = LPlus | LMinus | LTimes | LDiv | LEq | LLt | LLe | LGt | LGe
 
             | LStrHead | LStrTail | LStrCons | LStrIndex | LStrRev
             | LStdIn | LStdOut | LStdErr
-            | LFork | LVMPtr | LNoOp
+
+            | LFork  
+            | LPar -- evaluate argument anywhere, possibly on another
+                   -- core or another machine. 'id' is a valid implementation
+            | LVMPtr 
+            | LNoOp
   deriving (Show, Eq)
 
 -- Supported target languages for foreign calls

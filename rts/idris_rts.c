@@ -9,7 +9,9 @@
 #include "idris_rts.h"
 #include "idris_gc.h"
 
-VM* init_vm(int stack_size, size_t heap_size, int argc, char* argv[]) {
+VM* init_vm(int stack_size, size_t heap_size, 
+            int max_threads, // not implemented yet
+            int argc, char* argv[]) {
     VAL* valstack = malloc(stack_size*sizeof(VAL));
     int* intstack = malloc(stack_size*sizeof(int));
     double* floatstack = malloc(stack_size*sizeof(double));
@@ -43,8 +45,9 @@ VM* init_vm(int stack_size, size_t heap_size, int argc, char* argv[]) {
     pthread_mutex_init(&(vm->inbox_block), NULL);
     pthread_cond_init(&(vm->inbox_waiting), NULL);
 
+    vm->max_threads = max_threads;
+
     int i;
-    
     // Assumption: there's enough space for this in the initial heap.
     vm->argv = malloc(argc*sizeof(VAL));
     vm->argc = argc;
@@ -364,7 +367,9 @@ void* runThread(void* arg) {
 }
 
 void* vmThread(VM* callvm, func f, VAL arg) {
-    VM* vm = init_vm(callvm->stack_max - callvm->valstack, callvm->heap_size, 0, NULL);
+    VM* vm = init_vm(callvm->stack_max - callvm->valstack, callvm->heap_size, 
+                     callvm->max_threads,
+                     0, NULL);
     pthread_t t;
     pthread_attr_t attr;
 //    size_t stacksize;

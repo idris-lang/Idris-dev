@@ -59,6 +59,8 @@ typedef struct {
     VAL* inbox_ptr; // Next message to read
     VAL* inbox_write; // Location of next message to write
 
+    int max_threads; // maximum number of threads to run in parallel
+
     int argc;
     VAL* argv; // command line arguments
 
@@ -71,7 +73,9 @@ typedef struct {
 } VM;
 
 // Create a new VM
-VM* init_vm(int stack_size, size_t heap_size, int argc, char* argv[]);
+VM* init_vm(int stack_size, size_t heap_size, 
+            int max_threads, 
+            int argc, char* argv[]);
 // Clean up a VM once it's no longer needed
 void terminate(VM* vm);
 
