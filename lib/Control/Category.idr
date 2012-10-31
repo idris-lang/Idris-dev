@@ -1,6 +1,8 @@
 module Control.Category
 
-import Prelude.Morphisms
+import Data.Morphisms
+
+%access public
 
 class Category (cat : Set -> Set -> Set) where
   id  : cat a a

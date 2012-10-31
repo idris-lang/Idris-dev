@@ -1,7 +1,9 @@
 module Category.Arrow
 
-import Prelude.Morphisms
+import Data.Morphisms
 import Control.Category
+
+%access public
 
 infixr 3 ***
 infixr 3 &&&
