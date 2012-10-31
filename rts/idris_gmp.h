@@ -11,6 +11,8 @@ VAL idris_bigMinus(VM*, VAL x, VAL y);
 VAL idris_bigTimes(VM*, VAL x, VAL y);
 VAL idris_bigDivide(VM*, VAL x, VAL y);
 
+int bigEqConst(VAL x, int c);
+
 VAL idris_bigEq(VM*, VAL x, VAL y);
 VAL idris_bigLt(VM*, VAL x, VAL y);
 VAL idris_bigLe(VM*, VAL x, VAL y);

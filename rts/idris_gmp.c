@@ -174,6 +174,11 @@ VAL idris_bigDivide(VM* vm, VAL x, VAL y) {
     }
 }
 
+int bigEqConst(VAL x, int c) {
+    if (ISINT(x)) { return (GETINT(x) == c); }
+    else { return mpz_cmp_si(GETMPZ(x), c); }
+}
+
 VAL bigEq(VM* vm, VAL x, VAL y) {
     return MKINT((i_int)(mpz_cmp(GETMPZ(x), GETMPZ(y)) == 0));
 }

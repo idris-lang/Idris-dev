@@ -268,15 +268,28 @@ instance ToIR SC where
         mkIRAlt (ConCase n t args rhs) 
              = do rhs' <- ir rhs
                   return $ LConCase (-1) n args rhs'
-        mkIRAlt (ConstCase (I i) rhs)  
+        mkIRAlt (ConstCase x rhs)
+          | matchable x
              = do rhs' <- ir rhs
-                  return $ LConstCase (I i) rhs'
-        mkIRAlt (ConstCase IType rhs) 
+                  return $ LConstCase x rhs'
+          | matchableTy x
              = do rhs' <- ir rhs 
                   return $ LDefaultCase rhs'
         mkIRAlt (ConstCase c rhs)      
-           = fail $ "Can only pattern match on integer constants (" ++ show c ++ ")"
+           = fail $ "Can't match on (" ++ show c ++ ")"
         mkIRAlt (DefaultCase rhs)
            = do rhs' <- ir rhs
                 return $ LDefaultCase rhs'
+
+        matchable (I _) = True
+        matchable (BI _) = True
+        matchable (Ch _) = True
+        matchable (Str _) = True
+        matchable _ = False
+
+        matchableTy IType = True
+        matchableTy BIType = True
+        matchableTy ChType = True
+        matchableTy StrType = True
+        matchableTy _ = False
 

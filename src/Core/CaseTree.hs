@@ -217,7 +217,7 @@ toPat tc tms = evalState (mapM (\x -> toPat' x []) tms) []
                                           else do put (n : ns)
                                                   return (PV n)
     toPat' (App f a)  args = toPat' f (a : args)
-    toPat' (Constant x@(I _)) [] = return $ PConst x 
+    toPat' (Constant x) [] = return $ PConst x 
     toPat' _            _  = return PAny
 
 

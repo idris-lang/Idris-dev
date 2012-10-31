@@ -751,7 +751,8 @@ modifyConst :: SyntaxInfo -> FC -> PTerm -> PTerm
 modifyConst syn fc (PConstant (I x)) 
     | not (inPattern syn)
         = PApp fc (PRef fc (UN "fromInteger")) [pexp (PConstant (I x))]
-    | otherwise = PConstant (I x)
+    | otherwise = PAlternative False
+                     [PConstant (I x), PConstant (BI (toEnum x))]
 modifyConst syn fc x = x
 
 pList syn = do lchar '['; fc <- pfc; xs <- sepBy (pExpr syn) (lchar ','); lchar ']'
