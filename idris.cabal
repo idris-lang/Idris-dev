@@ -1,5 +1,5 @@
 Name:           idris
-Version:        0.9.5
+Version:        0.9.5.1
 License:        BSD3
 License-file:   LICENSE
 Author:         Edwin Brady
@@ -47,9 +47,12 @@ Build-type:     Custom
 Data-files:            rts/libidris_rts.a rts/idris_rts.h rts/idris_gc.h
                        rts/idris_stdfgn.h rts/idris_main.c rts/idris_gmp.h
                        rts/libtest.c
-Extra-source-files:    lib/Makefile  lib/*.idr lib/Prelude/*.idr lib/Network/*.idr
+Extra-source-files:    lib/Makefile  lib/*.idr lib/Prelude/*.idr 
+                       lib/Network/*.idr lib/Control/*.idr
                        lib/Control/Monad/*.idr lib/Language/*.idr
+                       lib/System/Concurrency/*.idr
                        tutorial/examples/*.idr lib/base.ipkg
+                       config.mk
                        rts/*.c rts/*.h rts/Makefile
 
 source-repository head
