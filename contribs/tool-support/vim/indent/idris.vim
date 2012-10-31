@@ -49,7 +49,7 @@ if !exists('g:idris_indent_do')
 endif
 
 setlocal indentexpr=GetIdrisIndent()
-setlocal indentkeys=!^F,o,O
+setlocal indentkeys=!^F,o,O,}
 
 function! GetIdrisIndent()
   let prevline = getline(v:lnum - 1)
@@ -63,7 +63,7 @@ function! GetIdrisIndent()
     endif
   endif
 
-  if prevline =~ '[{([]\s*$'
+  if prevline =~ '[{([][^})\]]\+$'
     return match(prevline, '[{([]')
   endif
 
@@ -83,7 +83,7 @@ function! GetIdrisIndent()
     endif
   endif
 
-  if prevline =~ '\(where\|do\|=\)\s*$'
+  if prevline =~ '\(where\|do\|=\|[{([]\)\s*$'
     return match(prevline, '\S') + &shiftwidth
   endif
 
@@ -117,6 +117,12 @@ function! GetIdrisIndent()
 
   if prevline =~ '^\s*mutual\s*$'
     return match(prevline, 'mutual') + &shiftwidth
+  endif
+
+  let line = getline(v:lnum)
+
+  if (line =~ '^\s*}\s*' && prevline !~ '^\s*;')
+    return match(prevline, '\S') - &shiftwidth
   endif
 
   return match(prevline, '\S')
