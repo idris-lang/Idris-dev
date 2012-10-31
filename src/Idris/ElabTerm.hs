@@ -151,8 +151,11 @@ elab ist info pattern tcgen fn tm
               showHd x = show x
     elab' ina (PAlternative False as) 
         = trySeq as
-        where trySeq [] = fail "All alternatives fail to elaborate"
-              trySeq (x : xs) = try (elab' ina x) (trySeq xs)
+        where -- if none work, take the error from the first
+              trySeq (x : xs) = let e1 = elab' ina x in
+                                    try e1 (trySeq' e1 xs)
+              trySeq' deferr [] = deferr
+              trySeq' deferr (x : xs) = try (elab' ina x) (trySeq' deferr xs)
     elab' ina (PPatvar fc n) | pattern = patvar n
     elab' (ina, guarded) (PRef fc n) | pattern && not (inparamBlock n)
                          = do ctxt <- get_context

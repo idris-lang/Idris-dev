@@ -1259,7 +1259,7 @@ pClause syn
          = try (do pushIndent
                    n_in <- pfName; let n = expandNS syn n_in
                    cargs <- many (pConstraintArg syn)
-                   iargs <- many (pImplicitArg syn)
+                   iargs <- many (pImplicitArg (syn { inPattern = True } ))
                    fc <- pfc
                    args <- many (pArgExpr syn)
                    wargs <- many (pWExpr syn)
@@ -1297,7 +1297,7 @@ pClause syn
        <|> try (do pushIndent
                    n_in <- pfName; let n = expandNS syn n_in
                    cargs <- many (pConstraintArg syn)
-                   iargs <- many (pImplicitArg syn)
+                   iargs <- many (pImplicitArg (syn { inPattern = True } ))
                    fc <- pfc
                    args <- many (pArgExpr syn)
                    wargs <- many (pWExpr syn)
