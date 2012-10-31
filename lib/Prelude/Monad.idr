@@ -42,4 +42,5 @@ mapM f xs = sequence (map f xs)
 mapM_ : Monad m => (a -> m b) -> List a -> m ()
 mapM_ f xs = sequence_ (map f xs)
 
-
+flatten : Monad m => m (m a) -> m a
+flatten a = a >>= id
