@@ -69,7 +69,7 @@ instance TermSize CaseAlt where
 
 -- simple terms can be inlined trivially - good for primitives in particular
 small :: Name -> SC -> Bool
-small n t = False -- termsize n t < 10
+small n t = termsize n t < 50
 
 namesUsed :: SC -> [Name]
 namesUsed sc = nub $ nu' [] sc where

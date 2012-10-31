@@ -248,7 +248,7 @@ process fn (Search t) = iputStrLn "Not implemented"
 process fn (Spec t) = do (tm, ty) <- elabVal toplevel False t
                          ctxt <- getContext
                          ist <- get
-                         let tm' = simplify ctxt [] {- (idris_statics ist) -} tm
+                         let tm' = simplify ctxt True [] {- (idris_statics ist) -} tm
                          iputStrLn (show (delab ist tm'))
 
 process fn (RmProof n')
@@ -312,7 +312,7 @@ process fn (Prove n')
 process fn (HNF t)  = do (tm, ty) <- elabVal toplevel False t
                          ctxt <- getContext
                          ist <- get
-                         let tm' = simplify ctxt [] tm
+                         let tm' = simplify ctxt True [] tm
                          iputStrLn (show (delab ist tm'))
 process fn TTShell  = do ist <- get
                          let shst = initState (tt_ctxt ist)
@@ -349,7 +349,7 @@ process fn (Pattelab t)
 
 process fn (Missing n) = do i <- get
                             case lookupDef Nothing n (tt_ctxt i) of
-                                [CaseOp _ _ _ _ args t _ _]
+                                [CaseOp _ _ _ _ _ args t _ _]
                                     -> do tms <- genMissing n args t
                                           iputStrLn (showSep "\n" (map (showImp True) tms))
                                 [] -> iputStrLn $ show n ++ " undefined"

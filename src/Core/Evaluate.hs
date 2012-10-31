@@ -28,7 +28,7 @@ data EvalState = ES { limited :: [(Name, Int)],
 
 type Eval a = State EvalState a
 
-data EvalOpt = Spec | HNF | Simplify | AtREPL
+data EvalOpt = Spec | HNF | Simplify Bool | AtREPL
   deriving (Show, Eq)
 
 initEval = ES [] 0
@@ -107,11 +107,13 @@ specialise ctxt env limits t
 -- Like normalise, but we only reduce functions that are marked as okay to 
 -- inline (and probably shouldn't reduce lets?)
 
-simplify :: Context -> Env -> TT Name -> TT Name
-simplify ctxt env t 
+simplify :: Context -> Bool -> Env -> TT Name -> TT Name
+simplify ctxt runtime env t 
    = evalState (do val <- eval False ctxt threshold [(UN "lazy", 0),
-                                                     (UN "par", 0)] 
-                                 (map finalEntry env) (finalise t) [Simplify]
+                                                     (UN "par", 0),
+                                                     (UN "fork", 0)] 
+                                 (map finalEntry env) (finalise t) 
+                                 [Simplify runtime]
                    quote 0 val) initEval
 
 hnf :: Context -> Env -> TT Name -> TT Name
@@ -153,8 +155,12 @@ eval :: Bool -> Context -> Int -> [(Name, Int)] -> Env -> TT Name ->
         [EvalOpt] -> Eval Value
 eval traceon ctxt maxred ntimes genv tm opts = ev ntimes [] True [] tm where
     spec = Spec `elem` opts
-    simpl = Simplify `elem` opts
+    simpl = Simplify True `elem` opts
     atRepl = AtREPL `elem` opts
+
+    canSimplify inl inr n stk 
+       =    (Simplify False `elem` opts && (not inl || elem n stk))
+         || (Simplify True `elem` opts && (not inr || elem n stk))
 
     ev ntimes stk top env (P _ n ty)
         | Just (Let t v) <- lookup n genv = do when (not atRepl) $ step maxred
@@ -168,8 +174,8 @@ eval traceon ctxt maxred ntimes genv tm opts = ev ntimes [] True [] tm where
                        ev ntimes (n:stk) True env tm
                 [(TyDecl nt ty, _)] -> do vty <- ev ntimes stk True env ty
                                           return $ VP nt n vty
-                [(CaseOp inl _ _ _ [] tree _ _, Public)] -> -- unoptimised version
-                   if simpl && (not inl || elem n stk) 
+                [(CaseOp inl inr _ _ _ [] tree _ _, Public)] -> -- unoptimised version
+                   if canSimplify inl inr n stk
                         then liftM (VP Ref n) (ev ntimes stk top env ty)
                         else do c <- evCase ntimes (n:stk) top env [] [] tree 
                                 case c of
@@ -232,8 +238,8 @@ eval traceon ctxt maxred ntimes genv tm opts = ev ntimes [] True [] tm where
         = traceWhen traceon (show stk) $
           do let val = lookupDefAcc Nothing n atRepl ctxt
              case val of
-                [(CaseOp inl _ _ _ ns tree _ _, Public)]  ->
-                  if simpl && (not inl || elem n stk) 
+                [(CaseOp inl inr _ _ _ ns tree _ _, Public)]  ->
+                  if canSimplify inl inr n stk
                      then return $ unload env (VP Ref n ty) args
                      else do c <- evCase ntimes (n:stk) top env ns args tree
                              case c of
@@ -392,7 +398,7 @@ eval_hnf ctxt statics genv tm = ev [] tm where
     ev env (P Ref n ty) = case lookupDef Nothing n ctxt of
         [Function _ t]           -> ev env t
         [TyDecl nt ty]           -> return $ HP nt n ty
-        [CaseOp inl _ _ _ [] tree _ _] ->
+        [CaseOp inl _ _ _ _ [] tree _ _] ->
             do c <- evCase env [] [] tree
                case c of
                    (Nothing, _, _) -> return $ HP Ref n ty
@@ -422,7 +428,7 @@ eval_hnf ctxt statics genv tm = ev [] tm where
                                                app <- apply env sc' as
                                                wknH (-1) app
     apply env (HP Ref n ty) args
-        | [CaseOp _ _ _ _ ns tree _ _] <- lookupDef Nothing n ctxt
+        | [CaseOp _ _ _ _ _ ns tree _ _] <- lookupDef Nothing n ctxt
             = do c <- evCase env ns args tree
                  case c of
                     (Nothing, _, env') -> return $ unload env' (HP Ref n ty) args
@@ -549,8 +555,8 @@ convEq ctxt = ceq [] where
     sameDefs ps x y = case (lookupDef Nothing x ctxt, lookupDef Nothing y ctxt) of
                         ([Function _ xdef], [Function _ ydef])
                               -> ceq ((x,y):ps) xdef ydef
-                        ([CaseOp _ _ _ _ _ xdef _ _],   
-                         [CaseOp _ _ _ _ _ ydef _ _])
+                        ([CaseOp _ _ _ _ _ _ xdef _ _],   
+                         [CaseOp _ _ _ _ _ _ ydef _ _])
                               -> caseeq ((x,y):ps) xdef ydef
                         _ -> return False
 
@@ -572,7 +578,8 @@ spec ctxt statics genv tm = error "spec undefined"
 data Def = Function Type Term
          | TyDecl NameType Type 
          | Operator Type Int ([Value] -> Maybe Value)
-         | CaseOp Bool Type -- bool for inlinable
+         | CaseOp Bool Bool -- compile-time/run-time inlinable
+                  Type 
                   [Either Term (Term, Term)] -- original definition
                   [([Name], Term, Term)] -- simplified definition
                   [Name] SC -- Compile time case definition
@@ -585,7 +592,7 @@ instance Show Def where
     show (Function ty tm) = "Function: " ++ show (ty, tm)
     show (TyDecl nt ty) = "TyDecl: " ++ show nt ++ " " ++ show ty
     show (Operator ty _ _) = "Operator: " ++ show ty
-    show (CaseOp _ ty ps_in ps ns sc ns' sc') 
+    show (CaseOp _ _ ty ps_in ps ns sc ns' sc') 
         = "Case: " ++ show ty ++ " " ++ show ps ++ "\n" ++ 
                                         show ns ++ " " ++ show sc ++ "\n" ++
                                         show ns' ++ " " ++ show sc'
@@ -707,8 +714,9 @@ addCasedef n alwaysInline tcase covering ps_in ps psrt ty uctxt
           ctxt' = case (simpleCase tcase covering CompileTime (FC "" 0) ps, 
                         simpleCase tcase covering RunTime (FC "" 0) psrt) of
                     (OK (CaseDef args sc _), OK (CaseDef args' sc' _)) -> 
-                       let inl = alwaysInline || small n sc' in
-                           addDef n (CaseOp inl ty ps_in ps args sc args' sc',
+                       let inl = alwaysInline in
+                           addDef n (CaseOp inl (inl || small n sc')
+                                            ty ps_in ps args sc args' sc',
                                       access, Unchecked) ctxt in
           uctxt { definitions = ctxt' }
 
@@ -716,15 +724,14 @@ simplifyCasedef :: Name -> Context -> Context
 simplifyCasedef n uctxt
    = let ctxt = definitions uctxt
          ctxt' = case lookupCtxt Nothing n ctxt of
-              [(CaseOp inl ty [] ps args sc args' sc', acc, tot)] ->
+              [(CaseOp inl inr ty [] ps args sc args' sc', acc, tot)] ->
                  ctxt -- nothing to simplify (or already done...)
-              [(CaseOp inl ty ps_in ps args sc args' sc', acc, tot)] ->
+              [(CaseOp inl inr ty ps_in ps args sc args' sc', acc, tot)] ->
                  let pdef = map debind $ map simpl ps_in in
                      case simpleCase False True CompileTime (FC "" 0) pdef of
                        OK (CaseDef args sc _) ->
--- Erase the original patterns, since we won't use them again and it
--- only clutters the .ibc
-                          addDef n (CaseOp inl ty [] ps args sc args' sc',
+                          addDef n (CaseOp inl inr 
+                                           ty ps_in ps args sc args' sc',
                                     acc, tot) ctxt 
               _ -> ctxt in
          uctxt { definitions = ctxt' }
@@ -737,7 +744,7 @@ simplifyCasedef n uctxt
                                 (vs, x', y')
     debind (Left x)       = let (vs, x') = depat [] x in
                                 (vs, x', Impossible)
-    simpl (Right (x, y)) = Right (x, simplify uctxt [] y)
+    simpl (Right (x, y)) = Right (x, simplify uctxt False [] y)
     simpl t = t
 
 addOperator :: Name -> Type -> Int -> ([Value] -> Maybe Value) -> 
@@ -761,7 +768,7 @@ lookupTy root n ctxt
                        (Function ty _) -> return ty
                        (TyDecl _ ty) -> return ty
                        (Operator ty _ _) -> return ty
-                       (CaseOp _ ty _ _ _ _ _ _) -> return ty
+                       (CaseOp _ _ ty _ _ _ _ _ _) -> return ty
 
 isConName :: Maybe [String] -> Name -> Context -> Bool
 isConName root n ctxt 
@@ -777,7 +784,7 @@ isFnName root n ctxt
                case tfst def of
                     (Function _ _) -> return True
                     (Operator _ _ _) -> return True
-                    (CaseOp _ _ _ _ _ _ _ _) -> return True
+                    (CaseOp _ _ _ _ _ _ _ _ _) -> return True
                     _ -> return False
 
 lookupP :: Maybe [String] -> Name -> Context -> [Term]
@@ -786,7 +793,7 @@ lookupP root n ctxt
         p <- case def of
           (Function ty tm, a, _) -> return (P Ref n ty, a)
           (TyDecl nt ty, a, _) -> return (P nt n ty, a)
-          (CaseOp _ ty _ _ _ _ _ _, a, _) -> return (P Ref n ty, a)
+          (CaseOp _ _ ty _ _ _ _ _ _, a, _) -> return (P Ref n ty, a)
           (Operator ty _ _, a, _) -> return (P Ref n ty, a)
         case snd p of
             Hidden -> []

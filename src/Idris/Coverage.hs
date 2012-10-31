@@ -338,7 +338,7 @@ checkTotality path fc n
         t' <- case t of 
                 Unchecked -> 
                     case lookupDef Nothing n ctxt of
-                        [CaseOp _ _ _ pats _ _ _ _] -> 
+                        [CaseOp _ _ _ _ pats _ _ _ _] -> 
                             do t' <- if AssertTotal `elem` opts
                                         then return $ Total []
                                         else calcTotality path fc n pats
@@ -401,7 +401,7 @@ buildSCG (_, n) = do
    ist <- get
    case lookupCtxt Nothing n (idris_callgraph ist) of
        [cg] -> case lookupDef Nothing n (tt_ctxt ist) of
-           [CaseOp _ _ _ _ args sc _ _] -> 
+           [CaseOp _ _ _ _ _ args sc _ _] -> 
                do logLvl 5 $ "Building SCG for " ++ show n ++ " from\n" 
                                 ++ show sc
                   let newscg = buildSCG' ist sc args

@@ -299,7 +299,7 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
 --                                         show l ++ " = " ++ 
 --                                         show r) pats))
          let tcase = opt_typecase (idris_options ist)
-         let pdef = map debind $ map (simpl (tt_ctxt ist)) pats
+         let pdef = map debind $ map (simpl False (tt_ctxt ist)) pats
          
          numArgs <- tclift $ sameLength pdef
 
@@ -311,7 +311,7 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
          logLvl 5 $ "Patterns:\n" ++ show pats
          logLvl 5 $ "Optimised patterns:\n" ++ show optpats
 
-         let optpdef = map debind $ map (simpl (tt_ctxt ist)) optpats
+         let optpdef = map debind $ map (simpl True (tt_ctxt ist)) optpats
          tree@(CaseDef scargs sc _) <- tclift $ 
                  simpleCase tcase False CompileTime fc pdef
          cov <- coverage
@@ -362,7 +362,7 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
                         when (tot /= Unchecked) $ addIBC (IBCTotal n tot)
                         i <- get
                         case lookupDef Nothing n (tt_ctxt i) of
-                            (CaseOp _ _ _ _ scargs sc scargs' sc' : _) ->
+                            (CaseOp _ _ _ _ _ scargs sc scargs' sc' : _) ->
                                 do let calls = findCalls sc' scargs'
                                    let used = findUsedArgs sc' scargs'
                                    -- let scg = buildSCG i sc scargs
@@ -387,8 +387,8 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
     
     getLHS (_, l, _) = l
 
-    simpl ctxt (Right (x, y)) = Right (x, simplify ctxt [] y)
-    simpl ctxt t = t
+    simpl rt ctxt (Right (x, y)) = Right (x, simplify ctxt rt [] y)
+    simpl rt ctxt t = t
 
     sameLength ((_, x, _) : xs) 
         = do l <- sameLength xs
