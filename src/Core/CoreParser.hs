@@ -42,6 +42,7 @@ idrisLexer  = (PTok.makeTokenParser idrisDef) { PTok.whiteSpace = lexWS }
 
 lexer = idrisLexer
 
+-- Taken from Parsec source code
 lexWS = skipMany (simpleSpace <|> oneLineComment <|> multiLineComment <?> "")
   where
 

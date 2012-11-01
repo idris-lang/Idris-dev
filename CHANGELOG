@@ -15,6 +15,7 @@ User visible changes:
 Internal changes:
 
 * Separate inlining methods at compile-time and run-time
+* Fixed nested parameters blocks 
 
 New in 0.9.5:
 -------------

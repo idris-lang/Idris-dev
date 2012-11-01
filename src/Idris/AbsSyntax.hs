@@ -522,8 +522,8 @@ expandParamsD ist dec ps ns (PData syn fc co pd) = PData syn fc co (expandPData 
             else PDatadecl n (expandParams dec ps ns ty) (map econ cons)
     econ (n, t, fc) = (dec n, piBindp expl ps (expandParams dec ps ns t), fc)
 expandParamsD ist dec ps ns (PParams f params pds)
-   = PParams f (map (mapsnd (expandParams dec ps ns)) params) 
-               (map (expandParamsD ist dec ps ns) pds) 
+   = PParams f (ps ++ map (mapsnd (expandParams dec ps ns)) params) pds
+--                (map (expandParamsD ist dec ps ns) pds) 
 expandParamsD ist dec ps ns (PClass info f cs n params decls)
    = PClass info f 
            (map (expandParams dec ps ns) cs)
