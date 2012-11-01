@@ -35,3 +35,8 @@ instance Semigroup (Endomorphism a) where
 
 instance Monoid (Endomorphism a) where
   neutral = Endo id
+
+infixr 1 ~>
+
+(~>) : Set -> Set -> Set
+a ~> b = Homomorphism a b
