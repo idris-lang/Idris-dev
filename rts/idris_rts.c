@@ -111,11 +111,7 @@ void* allocCon(VM* vm, int arity, int outer) {
     Closure* cl = allocate(vm, sizeof(Closure) + sizeof(VAL)*arity,
                                outer);
     SETTY(cl, CON);
-    if (arity == 0) {
-       cl -> info.c.args = NULL;
-    } else {
-       cl -> info.c.args = (void*)((char*)cl + sizeof(Closure));
-    }
+
     cl -> info.c.arity = arity;
 //    cl -> info.c.tag = 42424242;
 //    printf("%p\n", cl);
@@ -179,13 +175,11 @@ VAL MKCON(VM* vm, VAL cl, int tag, int arity, ...) {
 //    Closure* cl = allocCon(vm, arity);
     cl -> info.c.tag = tag;
     cl -> info.c.arity = arity;
-    VAL* argptr = (VAL*)(cl -> info.c.args);
     // printf("... %p %p\n", cl, argptr);
 
     for (i = 0; i < arity; ++i) {
-       VAL v = va_arg(args, VAL);
-       *argptr = v;
-       argptr++;
+        VAL v = va_arg(args, VAL);
+        cl->info.c.args[i] = v;
     }
     va_end(args);
     return cl;
@@ -193,10 +187,8 @@ VAL MKCON(VM* vm, VAL cl, int tag, int arity, ...) {
 
 void PROJECT(VM* vm, VAL r, int loc, int arity) {
     int i;
-    VAL* argptr = (VAL*)(r -> info.c.args);
-    
     for(i = 0; i < arity; ++i) {
-        LOC(i+loc) = *argptr++;
+        LOC(i+loc) = r->info.c.args[i];
     }
 }
 
@@ -233,8 +225,7 @@ void dumpVal(VAL v) {
     case CON:
         printf("%d[", v->info.c.tag);
         for(i = 0; i < v->info.c.arity; ++i) {
-            VAL* args = (VAL*)v->info.c.args;
-            dumpVal(args[i]);
+            dumpVal(v->info.c.args[i]);
         }
         printf("] ");
         break;

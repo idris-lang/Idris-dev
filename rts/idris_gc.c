@@ -4,7 +4,6 @@
 
 VAL copy(VM* vm, VAL x) {
     int i;
-    VAL* argptr;
     Closure* cl = NULL;
     if (x==NULL || ISINT(x)) {
         return x;
@@ -15,11 +14,9 @@ VAL copy(VM* vm, VAL x) {
         cl->info.c.tag = x->info.c.tag;
         cl->info.c.arity = x->info.c.arity;
 
-        argptr = (VAL*)(cl->info.c.args);
         for(i = 0; i < x->info.c.arity; ++i) {
 //            *argptr = copy(vm, *((VAL*)(x->info.c.args)+i)); // recursive version
-            *argptr = *((VAL*)(x->info.c.args)+i);
-            argptr++;
+            cl->info.c.args[i] = x->info.c.args[i];
         }
         break;
     case FLOAT:
@@ -45,7 +42,6 @@ VAL copy(VM* vm, VAL x) {
 }
 
 void cheney(VM *vm) {
-    VAL* argptr;
     int i;
     char* scan = vm->heap;
   
@@ -55,13 +51,11 @@ void cheney(VM *vm) {
        // If it's a CON, copy its arguments
        switch(GETTY(heap_item)) {
        case CON:
-           argptr = (VAL*)(heap_item->info.c.args);
            for(i = 0; i < heap_item->info.c.arity; ++i) {
                // printf("Copying %d %p\n", heap_item->info.c.tag, *argptr);
-               VAL newptr = copy(vm, *argptr);
+               VAL newptr = copy(vm, heap_item->info.c.args[i]);
                // printf("Got %p\t\t%p %p\n", newptr, scan, vm->heap_next);
-               *argptr = newptr;
-               argptr++;
+               heap_item->info.c.args[i] = newptr;
            }
            break;
        default: // Nothing to copy
