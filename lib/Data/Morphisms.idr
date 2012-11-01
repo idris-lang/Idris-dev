@@ -8,6 +8,11 @@ data Homomorphism : Set -> Set -> Set where
 data Endomorphism : Set -> Set where
   Endo : (a -> a) -> Endomorphism a
 
+data Kleislimorphism : (Set -> Set) -> Set -> Set -> Set where
+  Kleisli : Monad m => (a -> m b) -> Kleislimorphism m a b
+
+runKleisli : Monad m => (Kleislimorphism m a b) -> a -> m b
+runKleisli (Kleisli f) a = f a
 
 namespace Homo
   ($) : Homomorphism a b -> a -> b
