@@ -405,13 +405,14 @@ index : {a:Set} -> {n:Nat} -> Fin n -> Vect a n -> a
 \useverb{vindeximpty}
 
 \noindent
-Implicit arguments, given in braces \texttt{\{\}} in the type declaration, are not given in
-applications of \texttt{index}; their values can be inferred from the types of
-the \texttt{Fin n} and \texttt{Vect a n} arguments. Any name which appears as a parameter
-or index in a type declaration, but which is otherwise free, will be automatically
-bound as an implicit argument.
-Implicit arguments can still be given explicitly in applications, using
-\texttt{\{a=value\}} and \texttt{\{n=value\}}, for example:
+Implicit arguments, given in braces \texttt{\{\}} in the type declaration, are
+not given in applications of \texttt{index}; their values can be inferred from
+the types of the \texttt{Fin n} and \texttt{Vect a n} arguments. Any name 
+with a \remph{lower case initial letter} which
+appears as a parameter or index in a type declaration, but which is otherwise
+free, will be automatically bound as an implicit argument.  Implicit arguments
+can still be given explicitly in applications, using \texttt{\{a=value\}} and
+\texttt{\{n=value\}}, for example:
 
 \begin{SaveVerbatim}{vindexexp}
 
@@ -922,7 +923,7 @@ Intermediate values can be calculated using \texttt{let} bindings:
 
 mirror : List a -> List a
 mirror xs = let xs' = rev xs in
-                app xs xs'
+                xs ++ xs'
 
 \end{SaveVerbatim}
 \useverb{letb} 
