@@ -5,11 +5,17 @@ module Data.Morphisms
 data Homomorphism : Set -> Set -> Set where
   Homo : (a -> b) -> Homomorphism a b
 
-($) : Morphism a b -> a -> b
-(Homo f) $ a = f a
+data Endomorphism : Set -> Set where
+  Endo : (a -> a) -> Endomorphism a
 
-($) : Homomorphism a b -> a -> b
-(Homo f) $ a = f a
+
+namespace Homo
+  ($) : Homomorphism a b -> a -> b
+  (Homo f) $ a = f a
+
+namespace Endo
+  ($) : Endomorphism a -> a -> a
+  (Endo f) $ a = f a
 
 instance Monad (Homomorphism r) where
   return a       = Homo $ const a
@@ -19,7 +25,8 @@ instance Applicative (Homomorphism r) where
   pure a                = Homo $ const a
   (Homo f) <$> (Homo a) = Homo $ \r => f r $ a r
 
-infixr 1 ~>
+instance Semigroup (Endomorphism a) where
+  (Endo f) <+> (Endo g) = Endo $ g . f
 
-(~>) : Set -> Set -> Set
-a ~> b = Morphism a b
+instance Monoid (Endomorphism a) where
+  neutral = Endo id
