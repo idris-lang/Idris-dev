@@ -21,7 +21,7 @@ import System.Directory
 import Paths_idris
 
 ibcVersion :: Word8
-ibcVersion = 22
+ibcVersion = 23
 
 data IBCFile = IBCFile { ver :: Word8,
                          sourcefile :: FilePath,
@@ -43,13 +43,15 @@ data IBCFile = IBCFile { ver :: Word8,
                          ibc_total :: [(Name, Totality)],
                          ibc_flags :: [(Name, [FnOpt])],
                          ibc_cg :: [(Name, CGInfo)],
-                         ibc_defs :: [(Name, Def)] }
+                         ibc_defs :: [(Name, Def)],
+                         ibc_docstrings :: [(Name, String)]
+                       }
 {-! 
 deriving instance Binary IBCFile 
 !-}
 
 initIBC :: IBCFile
-initIBC = IBCFile ibcVersion "" [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] []
+initIBC = IBCFile ibcVersion "" [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] []
 
 loadIBC :: FilePath -> Idris ()
 loadIBC fp = do iLOG $ "Loading ibc " ++ fp
@@ -111,6 +113,9 @@ ibc i (IBCHeader n) f = return f { ibc_hdrs = n : ibc_hdrs f }
 ibc i (IBCDef n) f = case lookupDef Nothing n (tt_ctxt i) of
                         [v] -> return f { ibc_defs = (n,v) : ibc_defs f     }
                         _ -> fail "IBC write failed"
+ibc i (IBCDoc n) f = case lookupCtxt Nothing n (idris_docstrings i) of
+                        [v] -> return f { ibc_docstrings = (n,v) : ibc_docstrings f }
+                        _ -> fail "IBC write failed"
 ibc i (IBCCG n) f = case lookupCtxt Nothing n (idris_callgraph i) of
                         [v] -> return f { ibc_cg = (n,v) : ibc_cg f     }
                         _ -> fail "IBC write failed"
@@ -145,6 +150,7 @@ process i fn
                pAccess (ibc_access i)
                pTotal (ibc_total i)
                pCG (ibc_cg i)
+               pDocs (ibc_docstrings i)
 
 timestampOlder :: FilePath -> FilePath -> IO ()
 timestampOlder src ibc = do srct <- getModificationTime src
@@ -242,6 +248,9 @@ pDefs ds = mapM_ (\ (n, d) ->
                         logLvl 5 $ "Added " ++ show (n, d)
                         putIState (i { tt_ctxt = addCtxtDef n d (tt_ctxt i) }))
                  ds       
+
+pDocs :: [(Name, String)] -> Idris ()
+pDocs ds = mapM_ (\ (n, a) -> addDocStr n a) ds
 
 pAccess :: [(Name, Accessibility)] -> Idris ()
 pAccess ds = mapM_ (\ (n, a) ->
@@ -707,7 +716,7 @@ instance Binary Totality where
                    _ -> error "Corrupted binary data for Totality"
 
 instance Binary IBCFile where
-        put (IBCFile x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21)
+        put (IBCFile x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22)
           = do put x1
                put x2
                put x3
@@ -729,6 +738,7 @@ instance Binary IBCFile where
                put x19
                put x20
                put x21
+               put x22
         get
           = do x1 <- get
                if x1 == ibcVersion then 
@@ -752,7 +762,8 @@ instance Binary IBCFile where
                     x19 <- get
                     x20 <- get
                     x21 <- get
-                    return (IBCFile x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21)
+                    x22 <- get
+                    return (IBCFile x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22)
                   else return (initIBC { ver = x1 })
  
 instance Binary FnOpt where
@@ -830,35 +841,47 @@ instance Binary Static where
 instance Binary Plicity where
         put x
           = case x of
-                Imp x1 x2 -> do putWord8 0
+                Imp x1 x2 x3 -> 
+                             do putWord8 0
                                 put x1
                                 put x2
-                Exp x1 x2 -> do putWord8 1
+                                put x3
+                Exp x1 x2 x3 -> 
+                             do putWord8 1
                                 put x1
                                 put x2
-                Constraint x1 x2 -> do putWord8 2
+                                put x3
+                Constraint x1 x2 x3 -> 
+                                    do putWord8 2
                                        put x1
                                        put x2
-                TacImp x1 x2 x3 -> do putWord8 3
+                                       put x3
+                TacImp x1 x2 x3 x4 -> 
+                                   do putWord8 3
                                       put x1
                                       put x2
                                       put x3
+                                      put x4
         get
           = do i <- getWord8
                case i of
                    0 -> do x1 <- get
                            x2 <- get
-                           return (Imp x1 x2)
+                           x3 <- get
+                           return (Imp x1 x2 x3)
                    1 -> do x1 <- get
                            x2 <- get
-                           return (Exp x1 x2)
+                           x3 <- get
+                           return (Exp x1 x2 x3)
                    2 -> do x1 <- get
                            x2 <- get
-                           return (Constraint x1 x2)
+                           x3 <- get
+                           return (Constraint x1 x2 x3)
                    3 -> do x1 <- get
                            x2 <- get
                            x3 <- get
-                           return (TacImp x1 x2 x3)
+                           x4 <- get
+                           return (TacImp x1 x2 x3 x4)
                    _ -> error "Corrupted binary data for Plicity"
 
  
@@ -869,22 +892,26 @@ instance (Binary t) => Binary (PDecl' t) where
                                     put x1
                                     put x2
                                     put x3
-                PTy x1 x2 x3 x4 x5 -> do putWord8 1
+                PTy x1 x2 x3 x4 x5 x6
+                                   -> do putWord8 1
                                          put x1
                                          put x2
                                          put x3
                                          put x4
                                          put x5
+                                         put x6
                 PClauses x1 x2 x3 x4 -> do putWord8 2
                                            put x1
                                            put x2
                                            put x3
                                            put x4
-                PData x1 x2 x3 x4 -> do putWord8 3
+                PData x1 x2 x3 x4 x5 -> 
+                                     do putWord8 3
                                         put x1
                                         put x2
                                         put x3
                                         put x4
+                                        put x5
                 PParams x1 x2 x3 -> do putWord8 4
                                        put x1
                                        put x2
@@ -892,20 +919,25 @@ instance (Binary t) => Binary (PDecl' t) where
                 PNamespace x1 x2 -> do putWord8 5
                                        put x1
                                        put x2
-                PRecord x1 x2 x3 x4 x5 x6 -> do putWord8 6
+                PRecord x1 x2 x3 x4 x5 x6 x7 x8 -> 
+                                             do putWord8 6
                                                 put x1
                                                 put x2
                                                 put x3
                                                 put x4
                                                 put x5
                                                 put x6
-                PClass x1 x2 x3 x4 x5 x6 -> do putWord8 7
+                                                put x7
+                                                put x8
+                PClass x1 x2 x3 x4 x5 x6 x7
+                                         -> do putWord8 7
                                                put x1
                                                put x2
                                                put x3
                                                put x4
                                                put x5
                                                put x6
+                                               put x7
                 PInstance x1 x2 x3 x4 x5 x6 x7 x8 -> do putWord8 8
                                                         put x1
                                                         put x2
@@ -937,7 +969,8 @@ instance (Binary t) => Binary (PDecl' t) where
                            x3 <- get
                            x4 <- get
                            x5 <- get
-                           return (PTy x1 x2 x3 x4 x5)
+                           x6 <- get
+                           return (PTy x1 x2 x3 x4 x5 x6)
                    2 -> do x1 <- get
                            x2 <- get
                            x3 <- get
@@ -947,7 +980,8 @@ instance (Binary t) => Binary (PDecl' t) where
                            x2 <- get
                            x3 <- get
                            x4 <- get
-                           return (PData x1 x2 x3 x4)
+                           x5 <- get
+                           return (PData x1 x2 x3 x4 x5)
                    4 -> do x1 <- get
                            x2 <- get
                            x3 <- get
@@ -961,14 +995,17 @@ instance (Binary t) => Binary (PDecl' t) where
                            x4 <- get
                            x5 <- get
                            x6 <- get
-                           return (PRecord x1 x2 x3 x4 x5 x6)
+                           x7 <- get
+                           x8 <- get
+                           return (PRecord x1 x2 x3 x4 x5 x6 x7 x8)
                    7 -> do x1 <- get
                            x2 <- get
                            x3 <- get
                            x4 <- get
                            x5 <- get
                            x6 <- get
-                           return (PClass x1 x2 x3 x4 x5 x6)
+                           x7 <- get
+                           return (PClass x1 x2 x3 x4 x5 x6 x7)
                    8 -> do x1 <- get
                            x2 <- get
                            x3 <- get
@@ -1370,25 +1407,33 @@ instance (Binary t) => Binary (PDo' t) where
 instance (Binary t) => Binary (PArg' t) where
         put x
           = case x of
-                PImp x1 x2 x3 x4 -> do putWord8 0
+                PImp x1 x2 x3 x4 x5 -> 
+                                    do putWord8 0
                                        put x1
                                        put x2
                                        put x3
                                        put x4
-                PExp x1 x2 x3 -> do putWord8 1
+                                       put x5
+                PExp x1 x2 x3 x4 -> 
+                                 do putWord8 1
                                     put x1
                                     put x2
                                     put x3
-                PConstraint x1 x2 x3 -> do putWord8 2
+                                    put x4
+                PConstraint x1 x2 x3 x4 -> 
+                                        do putWord8 2
                                            put x1
                                            put x2
                                            put x3
-                PTacImplicit x1 x2 x3 x4 x5 -> do putWord8 3
+                                           put x4
+                PTacImplicit x1 x2 x3 x4 x5 x6 -> 
+                                               do putWord8 3
                                                   put x1
                                                   put x2
                                                   put x3
                                                   put x4
                                                   put x5
+                                                  put x6
         get
           = do i <- getWord8
                case i of
@@ -1396,21 +1441,25 @@ instance (Binary t) => Binary (PArg' t) where
                            x2 <- get
                            x3 <- get
                            x4 <- get
-                           return (PImp x1 x2 x3 x4)
+                           x5 <- get
+                           return (PImp x1 x2 x3 x4 x5)
                    1 -> do x1 <- get
                            x2 <- get
                            x3 <- get
-                           return (PExp x1 x2 x3)
+                           x4 <- get
+                           return (PExp x1 x2 x3 x4)
                    2 -> do x1 <- get
                            x2 <- get
                            x3 <- get
-                           return (PConstraint x1 x2 x3)
+                           x4 <- get
+                           return (PConstraint x1 x2 x3 x4)
                    3 -> do x1 <- get
                            x2 <- get
                            x3 <- get
                            x4 <- get
                            x5 <- get
-                           return (PTacImplicit x1 x2 x3 x4 x5)
+                           x6 <- get
+                           return (PTacImplicit x1 x2 x3 x4 x5 x6)
                    _ -> error "Corrupted binary data for PArg'"
 
  

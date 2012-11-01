@@ -66,10 +66,10 @@ delab' ist tm fullname = de [] tm
             = PApp un (PRef un n) (zipWith imp (imps ++ repeat (pexp undefined)) args)
         | otherwise = PApp un (PRef un n) (map pexp args)
 
-    imp (PImp p l n _) arg = PImp p l n arg
-    imp (PExp p l _)   arg = PExp p l arg
-    imp (PConstraint p l _) arg = PConstraint p l arg
-    imp (PTacImplicit p l n sc _) arg = PTacImplicit p l n sc arg
+    imp (PImp p l n _ d) arg = PImp p l n arg d
+    imp (PExp p l _ d)   arg = PExp p l arg d
+    imp (PConstraint p l _ d) arg = PConstraint p l arg d
+    imp (PTacImplicit p l n sc _ d) arg = PTacImplicit p l n sc arg d
 
 pshow :: IState -> Err -> String
 pshow i (Msg s) = s

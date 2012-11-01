@@ -57,6 +57,7 @@ data IState = IState {
     idris_flags :: Ctxt [FnOpt],
     idris_callgraph :: Ctxt CGInfo, -- name, args used in each pos
     idris_calledgraph :: Ctxt [Name],
+    idris_docstrings :: Ctxt String,
     idris_totcheck :: [(FC, Name)],
     idris_log :: String,
     idris_options :: IOption,
@@ -120,12 +121,13 @@ data IBCWrite = IBCFix FixDecl
               | IBCTotal Name Totality
               | IBCFlags Name [FnOpt]
               | IBCCG Name
+              | IBCDoc Name
               | IBCDef Name -- i.e. main context
   deriving Show
 
 idrisInit = IState initContext [] [] emptyContext emptyContext emptyContext
                    emptyContext emptyContext emptyContext emptyContext 
-                   emptyContext emptyContext emptyContext
+                   emptyContext emptyContext emptyContext emptyContext
                    [] "" defaultOpts 6 [] [] [] [] [] [] [] []
                    [] Nothing Nothing [] [] [] Hidden False [] Nothing
 
@@ -241,24 +243,28 @@ deriving instance Binary Static
 
 -- Mark bindings with their explicitness, and laziness
 data Plicity = Imp { plazy :: Bool,
-                     pstatic :: Static }
+                     pstatic :: Static,
+                     pdocstr :: String }
              | Exp { plazy :: Bool,
-                     pstatic :: Static }
+                     pstatic :: Static,
+                     pdocstr :: String }
              | Constraint { plazy :: Bool,
-                            pstatic :: Static }
+                            pstatic :: Static,
+                            pdocstr :: String }
              | TacImp { plazy :: Bool,
                         pstatic :: Static,
-                        pscript :: PTerm }
+                        pscript :: PTerm,
+                        pdocstr :: String }
   deriving (Show, Eq)
 
 {-!
 deriving instance Binary Plicity 
 !-}
 
-impl = Imp False Dynamic
-expl = Exp False Dynamic
-constraint = Constraint False Dynamic
-tacimpl = TacImp False Dynamic
+impl = Imp False Dynamic ""
+expl = Exp False Dynamic ""
+constraint = Constraint False Dynamic ""
+tacimpl t = TacImp False Dynamic t ""
 
 data FnOpt = Inlinable | TotalFn | PartialFn
            | Coinductive | AssertTotal | TCGen
@@ -275,15 +281,15 @@ inlinable :: FnOpts -> Bool
 inlinable = elem Inlinable
 
 data PDecl' t = PFix     FC Fixity [String] -- fixity declaration
-              | PTy      SyntaxInfo FC FnOpts Name t   -- type declaration
+              | PTy      String SyntaxInfo FC FnOpts Name t   -- type declaration
               | PClauses FC FnOpts Name [PClause' t]   -- pattern clause
               | PCAF     FC Name t -- top level constant
-              | PData    SyntaxInfo FC Bool -- codata
+              | PData    String SyntaxInfo FC Bool -- codata
                                        (PData' t)  -- data declaration
               | PParams  FC [(Name, t)] [PDecl' t] -- params block
               | PNamespace String [PDecl' t] -- new namespace
-              | PRecord  SyntaxInfo FC Name t Name t     -- record declaration
-              | PClass   SyntaxInfo FC 
+              | PRecord  String SyntaxInfo FC Name t String Name t     -- record declaration
+              | PClass   String SyntaxInfo FC 
                          [t] -- constraints
                          Name
                          [(Name, t)] -- parameters
@@ -314,7 +320,7 @@ deriving instance Binary PClause'
 
 data PData' t  = PDatadecl { d_name :: Name,
                              d_tcon :: t,
-                             d_cons :: [(Name, t, FC)] }
+                             d_cons :: [(String, Name, t, FC)] }
                | PLaterdecl { d_name :: Name, d_tcon :: t }
     deriving Functor
 {-!
@@ -332,21 +338,25 @@ type PClause = PClause' PTerm
 
 declared :: PDecl -> [Name]
 declared (PFix _ _ _) = []
-declared (PTy _ _ _ n t) = [n]
+declared (PTy _ _ _ _ n t) = [n]
 declared (PClauses _ _ n _) = [] -- not a declaration
-declared (PData _ _ _ (PDatadecl n _ ts)) = n : map fstt ts
-   where fstt (a, _, _) = a
+declared (PRecord _ _ _ n _ _ c _) = [n, c]
+declared (PData _ _ _ _ (PDatadecl n _ ts)) = n : map fstt ts
+   where fstt (_, a, _, _) = a
 declared (PParams _ _ ds) = concatMap declared ds
+declared (PMutual _ ds) = concatMap declared ds
 declared (PNamespace _ ds) = concatMap declared ds
 -- declared (PImport _) = []
 
 defined :: PDecl -> [Name]
 defined (PFix _ _ _) = []
-defined (PTy _ _ _ n t) = []
+defined (PTy _ _ _ _ n t) = []
 defined (PClauses _ _ n _) = [n] -- not a declaration
-defined (PData _ _ _ (PDatadecl n _ ts)) = n : map fstt ts
-   where fstt (a, _, _) = a
+defined (PRecord _ _ _ n _ _ c _) = [n, c]
+defined (PData _ _ _ _ (PDatadecl n _ ts)) = n : map fstt ts
+   where fstt (_, a, _, _) = a
 defined (PParams _ _ ds) = concatMap defined ds
+defined (PMutual _ ds) = concatMap defined ds
 defined (PNamespace _ ds) = concatMap defined ds
 -- declared (PImport _) = []
 
@@ -486,31 +496,35 @@ type PDo = PDo' PTerm
 -- variables, e.g. a before (interpTy a).
 
 data PArg' t = PImp { priority :: Int, 
-                      lazyarg :: Bool, pname :: Name, getTm :: t }
+                      lazyarg :: Bool, pname :: Name, getTm :: t,
+                      pargdoc :: String }
              | PExp { priority :: Int,
-                      lazyarg :: Bool, getTm :: t }
+                      lazyarg :: Bool, getTm :: t,
+                      pargdoc :: String }
              | PConstraint { priority :: Int,
-                             lazyarg :: Bool, getTm :: t }
+                             lazyarg :: Bool, getTm :: t,
+                             pargdoc :: String }
              | PTacImplicit { priority :: Int,
                               lazyarg :: Bool, pname :: Name, 
                               getScript :: t,
-                              getTm :: t }
+                              getTm :: t, 
+                              pargdoc :: String }
     deriving (Show, Eq, Functor)
 
 instance Sized a => Sized (PArg' a) where
-  size (PImp p l nm trm) = 1 + size nm + size trm
-  size (PExp p l trm) = 1 + size trm
-  size (PConstraint p l trm) = 1 + size trm
-  size (PTacImplicit p l nm scr trm) = 1 + size nm + size scr + size trm
+  size (PImp p l nm trm _) = 1 + size nm + size trm
+  size (PExp p l trm _) = 1 + size trm
+  size (PConstraint p l trm _) = 1 + size trm
+  size (PTacImplicit p l nm scr trm _) = 1 + size nm + size scr + size trm
 
 {-! 
 deriving instance Binary PArg' 
 !-}
 
-pimp = PImp 0 True
-pexp = PExp 0 False
-pconst = PConstraint 0 False
-ptacimp = PTacImplicit 0 True
+pimp n t = PImp 0 True n t ""
+pexp t = PExp 0 False t ""
+pconst t = PConstraint 0 False t ""
+ptacimp n s t = PTacImplicit 0 True n s t ""
 
 type PArg = PArg' PTerm
 
@@ -633,9 +647,9 @@ instance Show PData where
     show d = showDImp False d
 
 showDeclImp _ (PFix _ f ops) = show f ++ " " ++ showSep ", " ops
-showDeclImp t (PTy _ _ _ n ty) = show n ++ " : " ++ showImp t ty
+showDeclImp t (PTy _ _ _ _ n ty) = show n ++ " : " ++ showImp t ty
 showDeclImp _ (PClauses _ _ n c) = showSep "\n" (map show c)
-showDeclImp _ (PData _ _ _ d) = show d
+showDeclImp _ (PData _ _ _ _ d) = show d
 showDeclImp _ (PParams f ns ps) = "parameters " ++ show ns ++ "\n" ++ 
                                     showSep "\n" (map show ps)
 
@@ -659,21 +673,21 @@ showDImp :: Bool -> PData -> String
 showDImp impl (PDatadecl n ty cons) 
    = "data " ++ show n ++ " : " ++ showImp impl ty ++ " where\n\t"
      ++ showSep "\n\t| " 
-            (map (\ (n, t, _) -> show n ++ " : " ++ showImp impl t) cons)
+            (map (\ (_, n, t, _) -> show n ++ " : " ++ showImp impl t) cons)
 
 getImps :: [PArg] -> [(Name, PTerm)]
 getImps [] = []
-getImps (PImp _ _ n tm : xs) = (n, tm) : getImps xs
+getImps (PImp _ _ n tm _ : xs) = (n, tm) : getImps xs
 getImps (_ : xs) = getImps xs
 
 getExps :: [PArg] -> [PTerm]
 getExps [] = []
-getExps (PExp _ _ tm : xs) = tm : getExps xs
+getExps (PExp _ _ tm _ : xs) = tm : getExps xs
 getExps (_ : xs) = getExps xs
 
 getConsts :: [PArg] -> [PTerm]
 getConsts [] = []
-getConsts (PConstraint _ _ tm : xs) = tm : getConsts xs
+getConsts (PConstraint _ _ tm _ : xs) = tm : getConsts xs
 getConsts (_ : xs) = getConsts xs
 
 getAll :: [PArg] -> [PTerm]
@@ -711,7 +725,7 @@ prettyImp impl = prettySe 10
         else
           text "let" <+> pretty n <+> text "=" <+> prettySe 10 v <+> text "in" <+>
             prettySe 10 sc
-    prettySe p (PPi (Exp l s) n ty sc)
+    prettySe p (PPi (Exp l s _) n ty sc)
       | n `elem` allNamesIn sc || impl =
           let open = if l then text "|" <> lparen else lparen in
             bracket p 2 $
@@ -732,7 +746,7 @@ prettyImp impl = prettySe 10
           case s of
             Static -> text "[static]"
             _      -> empty
-    prettySe p (PPi (Imp l s) n ty sc)
+    prettySe p (PPi (Imp l s _) n ty sc)
       | impl =
           let open = if l then text "|" <> lbrace else lbrace in
             bracket p 2 $
@@ -748,13 +762,13 @@ prettyImp impl = prettySe 10
           case s of
             Static -> text $ "[static]"
             _      -> empty
-    prettySe p (PPi (Constraint _ _) n ty sc) =
+    prettySe p (PPi (Constraint _ _ _) n ty sc) =
       bracket p 2 $
         if size sc > breakingSize then
           prettySe 10 ty <+> text "=>" <+> prettySe 10 sc
         else
           prettySe 10 ty <+> text "=>" $+$ prettySe 10 sc
-    prettySe p (PPi (TacImp _ _ s) n ty sc) =
+    prettySe p (PPi (TacImp _ _ s _) n ty sc) =
       bracket p 2 $
         if size sc > breakingSize then
           lbrace <> text "tacimp" <+> pretty n <+> colon <+> prettySe 10 ty <>
@@ -846,10 +860,10 @@ prettyImp impl = prettySe 10
 
     prettySe p _ = text "test"
 
-    prettyArgS (PImp _ _ n tm) = prettyArgSi (n, tm)
-    prettyArgS (PExp _ _ tm)   = prettyArgSe tm
-    prettyArgS (PConstraint _ _ tm) = prettyArgSc tm
-    prettyArgS (PTacImplicit _ _ n _ tm) = prettyArgSti (n, tm)
+    prettyArgS (PImp _ _ n tm _) = prettyArgSi (n, tm)
+    prettyArgS (PExp _ _ tm _)   = prettyArgSe tm
+    prettyArgS (PConstraint _ _ tm _) = prettyArgSc tm
+    prettyArgS (PTacImplicit _ _ n _ tm _) = prettyArgSti (n, tm)
 
     prettyArgSe arg = prettySe 0 arg
     prettyArgSi (n, val) = lbrace <> pretty n <+> text "=" <+> prettySe 10 val <> rbrace
@@ -874,7 +888,7 @@ showImp impl tm = se 10 tm where
                             ++ se 10 sc
     se p (PLet n ty v sc) = bracket p 2 $ "let " ++ show n ++ " = " ++ se 10 v ++
                             " in " ++ se 10 sc 
-    se p (PPi (Exp l s) n ty sc)
+    se p (PPi (Exp l s _) n ty sc)
         | n `elem` allNamesIn sc || impl
                                   = bracket p 2 $
                                     if l then "|(" else "(" ++ 
@@ -885,7 +899,7 @@ showImp impl tm = se 10 tm where
       where st = case s of
                     Static -> "[static] "
                     _ -> ""
-    se p (PPi (Imp l s) n ty sc)
+    se p (PPi (Imp l s _) n ty sc)
         | impl = bracket p 2 $ if l then "|{" else "{" ++ 
                                show n ++ " : " ++ se 10 ty ++ 
                                "} " ++ st ++ "-> " ++ se 10 sc
@@ -893,9 +907,9 @@ showImp impl tm = se 10 tm where
       where st = case s of
                     Static -> "[static] "
                     _ -> ""
-    se p (PPi (Constraint _ _) n ty sc)
+    se p (PPi (Constraint _ _ _) n ty sc)
         = bracket p 2 $ se 10 ty ++ " => " ++ se 10 sc
-    se p (PPi (TacImp _ _ s) n ty sc)
+    se p (PPi (TacImp _ _ s _) n ty sc)
         = bracket p 2 $ "{tacimp " ++ show n ++ " : " ++ se 10 ty ++ "} -> " ++ se 10 sc
     se p (PApp _ (PRef _ f) [])
         | not impl = show f
@@ -933,10 +947,10 @@ showImp impl tm = se 10 tm where
     se p (PElabError s) = show s
 --     se p x = "Not implemented"
 
-    sArg (PImp _ _ n tm) = siArg (n, tm)
-    sArg (PExp _ _ tm) = seArg tm
-    sArg (PConstraint _ _ tm) = scArg tm
-    sArg (PTacImplicit _ _ n _ tm) = stiArg (n, tm)
+    sArg (PImp _ _ n tm _) = siArg (n, tm)
+    sArg (PExp _ _ tm _) = seArg tm
+    sArg (PConstraint _ _ tm _) = scArg tm
+    sArg (PTacImplicit _ _ n _ tm _) = stiArg (n, tm)
 
     seArg arg      = " " ++ se 0 arg
     siArg (n, val) = " {" ++ show n ++ " = " ++ se 10 val ++ "}"

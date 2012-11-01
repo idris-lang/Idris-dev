@@ -1,7 +1,7 @@
 {-# LANGUAGE MultiParamTypeClasses, FlexibleInstances #-}
 
 module Core.CoreParser(parseTerm, parseFile, parseDef, pTerm, iName, 
-                       idrisLexer, maybeWithNS) where
+                       idrisLexer, maybeWithNS, pDocComment) where
 
 import Core.TT
 
@@ -122,6 +122,15 @@ mkName (n, ns) = NS (UN n) (reverse (parseNS ns))
   where parseNS x = case span (/= '.') x of
                       (x, "")    -> [x]
                       (x, '.':y) -> x : parseNS y
+
+pDocComment :: Char -> CParser a String
+pDocComment c
+   = do string "--"
+        char c
+        i <- getInput
+        let (doc, rest) = span (/='\n') i
+        setInput rest
+        return doc
 
 pDef :: CParser a (Name, RDef)
 pDef = try (do x <- iName []; lchar ':'; ty <- pTerm

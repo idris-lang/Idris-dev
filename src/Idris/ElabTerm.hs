@@ -262,7 +262,7 @@ elab ist info pattern tcgen fn tm
                 mapM_ (\n -> do focus n
                                 -- let insts = filter tcname $ map fst (ctxtAlist (tt_ctxt ist))
                                 resolveTC 7 fn ist) (ivs' \\ ivs) 
-      where tcArg (n, PConstraint _ _ Placeholder) = True
+      where tcArg (n, PConstraint _ _ Placeholder _) = True
             tcArg _ = False
 
     elab' ina@(_, a) (PApp fc f [arg])
@@ -469,7 +469,7 @@ resolveTC depth fn ist
                       (filter (\ (x, y) -> not x) (zip (map fst imps) args))
                 -- if there's any arguments left, we've failed to resolve
                 solve
-       where isImp (PImp p _ _ _) = (True, p)
+       where isImp (PImp p _ _ _ _) = (True, p)
              isImp arg = (False, priority arg)
 
 collectDeferred :: Term -> State [(Name, Type)] Term
@@ -515,7 +515,7 @@ runTac autoSolve ist tac = runT (fmap (addImpl ist) tac) where
                                     [(n, args)] -> return $ (n, map isImp args)
              ns <- apply (Var fn') (map (\x -> (x, 0)) imps)
              when autoSolve solveAll
-       where isImp (PImp _ _ _ _) = True
+       where isImp (PImp _ _ _ _ _) = True
              isImp _ = False
              envArgs n = do e <- get_env
                             case lookup n e of
