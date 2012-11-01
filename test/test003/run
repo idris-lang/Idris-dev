@@ -1,5 +1,5 @@
 #!/bin/bash
-idris test003a.lidr --check
-idris test003.lidr -o test003
+idris $@ test003a.lidr --check
+idris $@ test003.lidr -o test003
 ./test003
 rm -f test003 test003.ibc Lit.ibc

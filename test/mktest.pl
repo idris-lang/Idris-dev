@@ -13,7 +13,7 @@ chdir($test);
 open(FOO,">run");
 
 print FOO "#!/bin/bash\n";
-print FOO "idris $test.idr -o $test\n";
+print FOO "idris \$@ $test.idr -o $test\n";
 print FOO "./$test\n";print FOO "rm -f $test *.ibc\n";
 
 close(FOO);
