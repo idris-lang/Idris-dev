@@ -14,11 +14,11 @@ data Kleislimorphism : (Set -> Set) -> Set -> Set -> Set where
 runKleisli : Monad m => (Kleislimorphism m a b) -> a -> m b
 runKleisli (Kleisli f) a = f a
 
-namespace Homo
+namespace Homomorphisms
   ($) : Homomorphism a b -> a -> b
   (Homo f) $ a = f a
 
-namespace Endo
+namespace Endomorphisms
   ($) : Endomorphism a -> a -> a
   (Endo f) $ a = f a
 
