@@ -15,9 +15,25 @@ class Category arr => Arrow (arr : Set -> Set -> Set) where
   (***)  : arr a b -> arr a' b' -> arr (a, a') (b, b')
   (&&&)  : arr a b -> arr a b' -> arr a (b, b')
 
-instance Arrow Morphism where
+instance Arrow Homomorphism where
   arrow  f              = Homo f
   first  (Homo f)       = Homo $ \(a, b) => (f a, b)
   second (Homo f)       = Homo $ \(a, b) => (a, f b)
   (Homo f) *** (Homo g) = Homo $ \(a, b) => (f a, g b)
   (Homo f) &&& (Homo g) = Homo $ \a => (f a, g a)
+
+instance Monad m => Arrow (Kleislimorphism m) where
+  arrow f = Kleisli $ return . f
+  first (Kleisli f) = Kleisli $ \(a, b) => do x <- f a
+                                              return (x, b)
+
+  second (Kleisli f) = Kleisli $ \(a, b) => do x <- f b
+                                               return (a, x)
+
+  (Kleisli f) *** (Kleisli g) = Kleisli $ \(a, b) => do x <- f a
+                                                        y <- g b
+                                                        return (x, y)
+
+  (Kleisli f) &&& (Kleisli g) = Kleisli $ \a => do x <- f a
+                                                   y <- g a
+                                                   return (x, y)
