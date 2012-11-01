@@ -2,17 +2,20 @@ module Data.Morphisms
 
 %access public
 
-data Morphism : Set -> Set -> Set where
-    Homo : (a -> b) -> Morphism a b
+data Homomorphism : Set -> Set -> Set where
+  Homo : (a -> b) -> Homomorphism a b
 
 ($) : Morphism a b -> a -> b
 (Homo f) $ a = f a
 
-instance Monad (Morphism r) where
+($) : Homomorphism a b -> a -> b
+(Homo f) $ a = f a
+
+instance Monad (Homomorphism r) where
   return a       = Homo $ const a
   (Homo h) >>= f = Homo $ \r => f (h r) $ r
 
-instance Applicative (Morphism r) where
+instance Applicative (Homomorphism r) where
   pure a                = Homo $ const a
   (Homo f) <$> (Homo a) = Homo $ \r => f r $ a r
 

@@ -15,7 +15,7 @@ class Category arr => Arrow (arr : Set -> Set -> Set) where
   (***)  : arr a b -> arr a' b' -> arr (a, a') (b, b')
   (&&&)  : arr a b -> arr a b' -> arr a (b, b')
 
-instance Arrow Morphism where
+instance Arrow Homomorphism where
   arrow  f              = Homo f
   first  (Homo f)       = Homo $ \(a, b) => (f a, b)
   second (Homo f)       = Homo $ \(a, b) => (a, f b)
