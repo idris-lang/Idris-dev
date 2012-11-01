@@ -1,7 +1,7 @@
 {-# LANGUAGE MultiParamTypeClasses, FlexibleInstances #-}
 
-module Core.CoreParser(parseTerm, parseFile, parseDef, pTerm, iName, idrisDef,
-                       maybeWithNS) where
+module Core.CoreParser(parseTerm, parseFile, parseDef, pTerm, iName, 
+                       idrisLexer, maybeWithNS) where
 
 import Core.TT
 
@@ -11,6 +11,7 @@ import Text.ParserCombinators.Parsec.Language
 import qualified Text.ParserCombinators.Parsec.Token as PTok
 
 import Control.Monad.State
+import Data.Char
 import Debug.Trace
 
 type TokenParser a = PTok.TokenParser a
@@ -36,8 +37,31 @@ iOpStart = oneOf ":!#$%&*+./<=>?@\\^|-~"
 iOpLetter = oneOf ":!#$%&*+./<=>?@\\^|-~"
 --          <|> letter
 
-lexer :: TokenParser a
-lexer  = PTok.makeTokenParser idrisDef
+idrisLexer :: TokenParser a
+idrisLexer  = (PTok.makeTokenParser idrisDef) { PTok.whiteSpace = lexWS }
+
+lexer = idrisLexer
+
+lexWS = skipMany (simpleSpace <|> oneLineComment <|> multiLineComment <?> "")
+  where
+
+    simpleSpace = skipMany1 (satisfy isSpace)
+    oneLineComment = do try (string ("--"))
+                        satisfy (/= '|')
+                        skipMany (satisfy (/= '\n'))
+                        return ()
+    multiLineComment = do try (string "{-")
+                          satisfy (/= '|')
+                          inCommentMulti
+
+    inCommentMulti
+        =   do{ try (string "-}") ; return () }
+        <|> do{ multiLineComment                     ; inCommentMulti }
+        <|> do{ skipMany1 (noneOf startEnd)          ; inCommentMulti }
+        <|> do{ oneOf startEnd                       ; inCommentMulti }
+        <?> "end of comment"
+        where
+          startEnd   = "-}{"
 
 whiteSpace= PTok.whiteSpace lexer
 lexeme    = PTok.lexeme lexer

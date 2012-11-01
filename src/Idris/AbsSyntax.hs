@@ -701,10 +701,8 @@ implicitise syn ignore ist tm
     pibind using (n:ns) sc 
       = case lookup n using of
             Just ty -> PPi (Imp False Dynamic) n ty (pibind using ns sc)
-            Nothing -> if (implicitable n)
-                          then PPi (Imp False Dynamic) n Placeholder 
+            Nothing -> PPi (Imp False Dynamic) n Placeholder 
                                    (pibind using ns sc)
-                          else pibind using ns sc
 
 -- Add implicit arguments in function calls
 addImplPat :: IState -> PTerm -> PTerm

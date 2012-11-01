@@ -35,7 +35,7 @@ type TokenParser a = PTok.TokenParser a
 type IParser = GenParser Char IState
 
 lexer :: TokenParser IState
-lexer  = PTok.makeTokenParser idrisDef
+lexer  = idrisLexer
 
 whiteSpace = PTok.whiteSpace lexer
 lexeme     = PTok.lexeme lexer
