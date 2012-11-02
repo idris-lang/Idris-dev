@@ -3,7 +3,7 @@
 " Based on haskell indentation by motemen <motemen@gmail.com>
 " 
 " author: raichoo (raichoo@googlemail.com)
-" date: Oct 31 2012
+" date: Nov 2 2012
 "
 " Modify g:idris_indent_if and g:idris_indent_case to
 " change indentation for `if'(default 3) and `case'(default 5).
@@ -67,7 +67,7 @@ function! GetIdrisIndent()
     return match(prevline, '[{([]')
   endif
 
-  if prevline =~ 'let\s\+.\+in\s*$'
+  if prevline =~ '\<let\>\s\+.\+\<in\>\s*$'
     return match(prevline, 'let') + g:idris_indent_let
   endif
 
@@ -83,40 +83,40 @@ function! GetIdrisIndent()
     endif
   endif
 
-  if prevline =~ '\(where\|do\|=\|[{([]\)\s*$'
+  if prevline =~ '\(\<where\>\|\<do\>\|=\|[{([]\)\s*$'
     return match(prevline, '\S') + &shiftwidth
   endif
 
-  if prevline =~ 'where\s\+\S\+.*$'
-    return match(prevline, 'where') + g:idris_indent_where
+  if prevline =~ '\<where\>\s\+\S\+.*$'
+    return match(prevline, '\<where\>') + g:idris_indent_where
   endif
 
-  if prevline =~ 'do\s\+\S\+.*$'
-    return match(prevline, 'do') + g:idris_indent_do
+  if prevline =~ '\<do\>\s\+\S\+.*$'
+    return match(prevline, '\<do\>') + g:idris_indent_do
   endif
 
-  if prevline =~ '^\s*\(co\)\?data\s\+[^=]\+\s\+=\s\+\S\+.*$'
+  if prevline =~ '^\s*\<\(co\)\?data\>\s\+[^=]\+\s\+=\s\+\S\+.*$'
     return match(prevline, '=')
   endif
 
-  if prevline =~ 'with\s\+([^)]*)\s*$'
+  if prevline =~ '\<with\>\s\+([^)]*)\s*$'
     return match(prevline, '\S') + &shiftwidth
   endif
 
-  if prevline =~ 'case\s\+.\+of\s*$'
+  if prevline =~ '\<case\>\s\+.\+\<of\>\s*$'
     return match(prevline, 'case') + g:idris_indent_case
   endif
 
-  if prevline =~ '^\s*\(namespace\|\(co\)\?data\)\s\+\S\+\s*$'
-    return match(prevline, '\(namespace\|\(co\)\?data\)') + &shiftwidth
+  if prevline =~ '^\s*\(\<namespace\>\|\<\(co\)\?data\>\)\s\+\S\+\s*$'
+    return match(prevline, '\(\<namespace\>\|\<\(co\)\?data\>\)') + &shiftwidth
   endif
 
-  if prevline =~ '^\s*\(using\|parameters\)\s*([^(]*)\s*$'
-    return match(prevline, '\(using\|parameters\)') + &shiftwidth
+  if prevline =~ '^\s*\(\<using\>\|\<parameters\>\)\s*([^(]*)\s*$'
+    return match(prevline, '\(\<using\>\|\<parameters\>\)') + &shiftwidth
   endif
 
-  if prevline =~ '^\s*mutual\s*$'
-    return match(prevline, 'mutual') + &shiftwidth
+  if prevline =~ '^\s*\<mutual\>\s*$'
+    return match(prevline, '\<mutual\>') + &shiftwidth
   endif
 
   let line = getline(v:lnum)
