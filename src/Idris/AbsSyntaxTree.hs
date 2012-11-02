@@ -143,6 +143,7 @@ data Command = Quit
              | Help
              | Eval PTerm
              | Check PTerm
+             | DocStr Name
              | TotCheck Name
              | Reload
              | Load FilePath 

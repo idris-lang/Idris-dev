@@ -196,6 +196,12 @@ process fn (Check t) = do (tm, ty) <- elabVal toplevel False t
                           let ty' = normaliseC ctxt [] ty
                           iputStrLn (showImp imp (delab ist tm) ++ " : " ++ 
                                     showImp imp (delab ist ty))
+
+process fn (DocStr n) = do i <- get
+                           case lookupCtxtName Nothing n (idris_docstrings i) of
+                                [] -> iputStrLn "No documentation"
+                                ns -> mapM_ showDoc ns 
+    where showDoc (n, d) = iputStrLn $ show n ++ " : " ++ d
 process fn Universes = do i <- get
                           let cs = idris_constraints i
 --                        iputStrLn $ showSep "\n" (map show cs)

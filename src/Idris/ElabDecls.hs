@@ -72,6 +72,8 @@ elabType info syn doc fc opts n ty' = {- let ty' = piBind (params info) ty_in
          addIBC (IBCDef n)
          addDeferred ds
          setFlags n opts'
+         addDocStr n doc
+         addIBC (IBCDoc n)
          addIBC (IBCFlags n opts')
          when corec $ do setAccessibility n Frozen
                          addIBC (IBCAccess n Frozen)
@@ -116,6 +118,8 @@ elabData info syn doc fc codata (PDatadecl n t_in dcons)
                                              (idris_datatypes i) })
          addIBC (IBCDef n)
          addIBC (IBCData n)
+         addDocStr n doc
+         addIBC (IBCDoc n)
          collapseCons n cons
          updateContext (addDatatype (Data n ttag cty cons))
          mapM_ (checkPositive n) cons
@@ -250,6 +254,8 @@ elabCon info syn tn codata (doc, n, t_in, fc)
          tyIs cty'
          logLvl 2 $ "---> " ++ show n ++ " : " ++ show cty'
          addIBC (IBCDef n)
+         addDocStr n doc
+         addIBC (IBCDoc n)
          forceArgs n cty'
          return (n, cty')
   where
