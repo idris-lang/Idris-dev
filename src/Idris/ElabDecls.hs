@@ -80,7 +80,7 @@ elabType info syn doc fc opts n ty' = {- let ty' = piBind (params info) ty_in
 
 elabData :: ElabInfo -> SyntaxInfo -> String -> FC -> Bool -> PData -> Idris ()
 elabData info syn doc fc codata (PLaterdecl n t_in)
-    = do iLOG (show fc)
+    = do iLOG (show (fc, doc))
          checkUndefined fc n
          ctxt <- getContext
          i <- get
