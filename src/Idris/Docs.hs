@@ -7,6 +7,8 @@ import Core.Evaluate
 
 import Data.Maybe
 
+-- TODO: Only include names with public/abstract accessibility
+
 data FunDoc = Doc Name String 
                   [(Name, PArg)] -- args
                   PTerm -- function type

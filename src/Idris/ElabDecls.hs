@@ -277,7 +277,8 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
                   -- question: CAFs in where blocks?
                   tclift $ tfail $ (At fc (NoTypeDecl n))
             [ty] -> return ty
-         pats_in <- mapM (elabClause info (TCGen `elem` opts)) cs
+         pats_in <- mapM (elabClause info (TCGen `elem` opts)) 
+                         (zip [0..] cs)
          -- if the return type of 'ty' is collapsible, the optimised version should
          -- just do nothing
          ist <- get
@@ -439,14 +440,15 @@ checkPossible info fc tcgen fname lhs_in
 --                   trace (show (delab' i lhs_tm True) ++ "\n" ++ show lhs) $ return (not b)
             Error _ -> return False
 
-elabClause :: ElabInfo -> Bool -> PClause -> Idris (Either Term (Term, Term))
-elabClause info tcgen (PClause fc fname lhs_in [] PImpossible [])
+elabClause :: ElabInfo -> Bool -> (Int, PClause) -> 
+              Idris (Either Term (Term, Term))
+elabClause info tcgen (_, PClause fc fname lhs_in [] PImpossible [])
    = do b <- checkPossible info fc tcgen fname lhs_in
         case b of
             True -> fail $ show fc ++ ":" ++ show lhs_in ++ " is a possible case"
             False -> do ptm <- mkPatTm lhs_in
                         return (Left ptm)
-elabClause info tcgen (PClause fc fname lhs_in withs rhs_in whereblock) 
+elabClause info tcgen (cnum, PClause fc fname lhs_in withs rhs_in whereblock) 
    = do ctxt <- getContext
         -- Build the LHS as an "Infer", and pull out its type and
         -- pattern bindings
@@ -503,7 +505,7 @@ elabClause info tcgen (PClause fc fname lhs_in withs rhs_in whereblock)
         checkInferred fc (delab' i crhs True) rhs
         return $ Right (clhs, crhs)
   where
-    decorate x = UN (show x ++ "#" ++ show fname)
+    decorate x = UN (show x ++ "#" ++ show cnum ++ "#" ++ show fname)
     pinfo ns ps i 
           = let ds = concatMap declared ps
                 newps = params info ++ ns
@@ -517,7 +519,7 @@ elabClause info tcgen (PClause fc fname lhs_in withs rhs_in whereblock)
                                      --      _ -> MN i (show n)) . l
                     }
 
-elabClause info tcgen (PWith fc fname lhs_in withs wval_in withblock) 
+elabClause info tcgen (_, PWith fc fname lhs_in withs wval_in withblock) 
    = do ctxt <- getContext
         -- Build the LHS as an "Infer", and pull out its type and
         -- pattern bindings
