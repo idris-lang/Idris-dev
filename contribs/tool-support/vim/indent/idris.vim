@@ -49,7 +49,7 @@ if !exists('g:idris_indent_do')
 endif
 
 setlocal indentexpr=GetIdrisIndent()
-setlocal indentkeys=!^F,o,O,}
+setlocal indentkeys=!^F,o,O,},0=where
 
 function! GetIdrisIndent()
   let prevline = getline(v:lnum - 1)
@@ -124,6 +124,10 @@ function! GetIdrisIndent()
   if (line =~ '^\s*}\s*' && prevline !~ '^\s*;')
     return match(prevline, '\S') - &shiftwidth
   endif
+
+  if prevline =~ ' = ' && line =~ '^\s*\<where\>'
+    return match(prevline, '=') + 2
+  endif 
 
   return match(prevline, '\S')
 endfunction
