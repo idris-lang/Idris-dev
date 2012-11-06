@@ -3,7 +3,7 @@
 " Based on haskell indentation by motemen <motemen@gmail.com>
 " 
 " author: raichoo (raichoo@googlemail.com)
-" date: Nov 2 2012
+" date: Nov 5 2012
 "
 " Modify g:idris_indent_if and g:idris_indent_case to
 " change indentation for `if'(default 3) and `case'(default 5).
@@ -49,7 +49,7 @@ if !exists('g:idris_indent_do')
 endif
 
 setlocal indentexpr=GetIdrisIndent()
-setlocal indentkeys=!^F,o,O,}
+setlocal indentkeys=!^F,o,O,},0=where
 
 function! GetIdrisIndent()
   let prevline = getline(v:lnum - 1)
@@ -104,7 +104,7 @@ function! GetIdrisIndent()
   endif
 
   if prevline =~ '\<case\>\s\+.\+\<of\>\s*$'
-    return match(prevline, 'case') + g:idris_indent_case
+    return match(prevline, '\<case\>') + g:idris_indent_case
   endif
 
   if prevline =~ '^\s*\(\<namespace\>\|\<\(co\)\?data\>\)\s\+\S\+\s*$'
@@ -124,6 +124,10 @@ function! GetIdrisIndent()
   if (line =~ '^\s*}\s*' && prevline !~ '^\s*;')
     return match(prevline, '\S') - &shiftwidth
   endif
+
+  if prevline =~ ' = ' && line =~ '^\s*\<where\>'
+    return match(prevline, '=') + 2
+  endif 
 
   return match(prevline, '\S')
 endfunction
