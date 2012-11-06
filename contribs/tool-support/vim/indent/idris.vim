@@ -3,7 +3,7 @@
 " Based on haskell indentation by motemen <motemen@gmail.com>
 " 
 " author: raichoo (raichoo@googlemail.com)
-" date: Nov 2 2012
+" date: Nov 5 2012
 "
 " Modify g:idris_indent_if and g:idris_indent_case to
 " change indentation for `if'(default 3) and `case'(default 5).
@@ -104,7 +104,7 @@ function! GetIdrisIndent()
   endif
 
   if prevline =~ '\<case\>\s\+.\+\<of\>\s*$'
-    return match(prevline, 'case') + g:idris_indent_case
+    return match(prevline, '\<case\>') + g:idris_indent_case
   endif
 
   if prevline =~ '^\s*\(\<namespace\>\|\<\(co\)\?data\>\)\s\+\S\+\s*$'
