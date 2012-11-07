@@ -1,10 +1,12 @@
 module IRTS.LParser where
 
+import Idris.AbsSyntaxTree
 import Core.CoreParser
 import Core.TT
 import IRTS.Lang
 import IRTS.Simplified
 import IRTS.Bytecode
+import IRTS.CodegenCommon
 import IRTS.CodegenC
 import IRTS.Defunctionalise
 import Paths_idris
@@ -45,17 +47,20 @@ strlit    = PTok.stringLiteral lexer
 chlit     = PTok.charLiteral lexer
 lchar = lexeme.char
 
-fovm :: FilePath -> IO ()
-fovm f = do defs <- parseFOVM f
-            let (nexttag, tagged) = addTags 0 (liftAll defs)
-            let ctxtIn = addAlist tagged emptyContext
-            let defuns = defunctionalise nexttag ctxtIn
-            putStrLn $ showSep "\n" (map show (toAlist defuns))
-            let checked = checkDefs defuns (toAlist defuns)
---            print checked
-            case checked of
-                 OK c -> codegenC Nothing c "a.out" True ["math.h"] "" "" TRACE
-                 Error e -> fail $ show e 
+fovm :: Target -> OutputType -> FilePath -> IO ()
+fovm tgt outty f
+    = do defs <- parseFOVM f
+         let (nexttag, tagged) = addTags 0 (liftAll defs)
+             ctxtIn = addAlist tagged emptyContext
+             defuns = defunctionalise nexttag ctxtIn
+         putStrLn $ showSep "\n" (map show (toAlist defuns))
+         let checked = checkDefs defuns (toAlist defuns)
+--       print checked
+         case checked of
+           OK c -> case tgt of
+                     ViaC -> codegenC c "a.out" outty ["math.h"] "" "" TRACE
+                     ViaJava -> codegenJava c "a.out" outty
+           Error e -> fail $ show e 
 
 parseFOVM :: FilePath -> IO [(Name, LDecl)]
 parseFOVM fname = do -- putStrLn $ "Reading " ++ fname

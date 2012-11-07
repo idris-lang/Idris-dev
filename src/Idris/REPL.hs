@@ -27,6 +27,7 @@ import Core.Constraints
 
 import IRTS.Compiler
 import IRTS.LParser
+import IRTS.CodegenCommon
 
 -- import RTS.SC
 -- import RTS.Bytecode
@@ -178,7 +179,8 @@ process fn (ExecVal t)
 --                                                           [pexp t])
                          (tmpn, tmph) <- liftIO tempfile
                          liftIO $ hClose tmph
-                         compile ViaC tmpn tm
+                         t <- target
+                         compile t tmpn tm
                          liftIO $ system tmpn
                          return ()
     where fc = FC "(input)" 0 
@@ -334,7 +336,8 @@ process fn Execute = do (m, _) <- elabVal toplevel False
 --                                      (PRef (FC "main" 0) (NS (UN "main") ["main"]))
                         (tmpn, tmph) <- liftIO tempfile
                         liftIO $ hClose tmph
-                        compile ViaC tmpn m
+                        t <- target
+                        compile t tmpn m
                         liftIO $ system tmpn
                         return ()
   where fc = FC "main" 0                     
@@ -443,7 +446,8 @@ parseArgs ("--install":n:ns)    = PkgInstall n : (parseArgs ns)
 parseArgs ("--clean":n:ns)      = PkgClean n : (parseArgs ns)
 parseArgs ("--bytecode":n:ns)   = NoREPL : BCAsm n : (parseArgs ns)
 parseArgs ("--fovm":n:ns)       = NoREPL : FOVM n : (parseArgs ns)
-parseArgs ("--dumpc":n:ns)      = DumpC n : (parseArgs ns)
+parseArgs ("-S":ns)             = OutputTy Raw : (parseArgs ns)
+parseArgs ("-c":ns)             = OutputTy Object : (parseArgs ns)
 parseArgs ("--dumpdefuns":n:ns) = DumpDefun n : (parseArgs ns)
 parseArgs ("--dumpcases":n:ns)  = DumpCases n : (parseArgs ns)
 parseArgs (n:ns)                = Filename n : (parseArgs ns)
@@ -489,17 +493,25 @@ idrisMain opts =
        let bcs = opt getBC opts
        let vm = opt getFOVM opts
        let pkgdirs = opt getPkgDir opts
+       let outty = case opt getOutputTy opts of
+                     [] -> Executable
+                     xs -> last xs
+       let tgt = case opt getTarget opts of
+                   [] -> ViaC
+                   xs -> last xs
        when (DefaultTotal `elem` opts) $ do i <- get
                                             put (i { default_total = True })
        setREPL runrepl
        setVerbose runrepl
        setCmdLine opts
+       setOutputTy outty
+       setTarget tgt
        when (Verbose `elem` opts) $ setVerbose True
        mapM_ makeOption opts
        -- if we have the --fovm flag, drop into the first order VM testing
        case vm of
 	    [] -> return ()
-	    xs -> liftIO $ mapM_ fovm xs 
+	    xs -> liftIO $ mapM_ (fovm tgt outty) xs 
        -- if we have the --bytecode flag, drop into the bytecode assembler
        case bcs of
 	    [] -> return ()
@@ -519,7 +531,7 @@ idrisMain opts =
        ok <- noErrors
        when ok $ case output of
                     [] -> return ()
-                    (o:_) -> process "" (Compile ViaC o)  
+                    (o:_) -> process "" (Compile tgt o)  
        when ok $ case newoutput of
                     [] -> return ()
                     (o:_) -> process "" (NewCompile o)  
@@ -578,6 +590,14 @@ getPkg _ = Nothing
 getPkgClean :: Opt -> Maybe String
 getPkgClean (PkgClean str) = Just str
 getPkgClean _ = Nothing
+
+getTarget :: Opt -> Maybe Target
+getTarget (UseTarget x) = Just x
+getTarget _ = Nothing
+
+getOutputTy :: Opt -> Maybe OutputType
+getOutputTy (OutputTy t) = Just t
+getOutputTy _ = Nothing
 
 opt :: (Opt -> Maybe a) -> [Opt] -> [a]
 opt = mapMaybe 

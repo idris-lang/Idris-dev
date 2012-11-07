@@ -8,6 +8,7 @@ import Core.Evaluate
 import Core.Elaborate hiding (Tactic(..))
 import Core.Typecheck
 import IRTS.Lang
+import IRTS.CodegenCommon
 import Util.Pretty
 
 import Paths_idris
@@ -30,13 +31,15 @@ data IOption = IOption { opt_logLevel :: Int,
                          opt_errContext :: Bool,
                          opt_repl     :: Bool,
                          opt_verbose  :: Bool,
+                         opt_target   :: Target,
+                         opt_outputTy :: OutputType,
                          opt_ibcsubdir :: FilePath,
                          opt_importdirs :: [FilePath],
                          opt_cmdline :: [Opt] -- remember whole command line
                        }
     deriving (Show, Eq)
 
-defaultOpts = IOption 0 False False True False False True True "" [] []
+defaultOpts = IOption 0 False False True False False True True ViaC Executable "" [] []
 
 -- TODO: Add 'module data' to IState, which can be saved out and reloaded quickly (i.e
 -- without typechecking).
@@ -138,6 +141,7 @@ type Idris = StateT IState (InputT IO)
 -- Commands in the REPL
 
 data Target = ViaC | ViaJava
+    deriving (Show, Eq)
 
 data Command = Quit
              | Help
@@ -202,12 +206,12 @@ data Opt = Filename String
          | WarnOnly
          | Pkg String
          | BCAsm String
-         | DumpC String
          | DumpDefun String
          | DumpCases String
          | FOVM String
+         | UseTarget Target
+         | OutputTy OutputType
     deriving (Show, Eq)
-
 
 -- Parsed declarations
 

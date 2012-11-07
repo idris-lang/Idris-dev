@@ -1,9 +1,10 @@
-module IRTS.CodegenC where
+module IRTS.CodegenC (codegenC) where
 
 import Idris.AbsSyntax
 import IRTS.Bytecode
 import IRTS.Lang
 import IRTS.Simplified
+import IRTS.CodegenCommon
 import Core.TT
 import Paths_idris
 import Util.System
@@ -15,18 +16,15 @@ import System.IO
 import System.Directory
 import Control.Monad
 
-data DbgLevel = NONE | DEBUG | TRACE
-
-codegenC :: Maybe FilePath -> -- dump output
-            [(Name, SDecl)] ->
+codegenC :: [(Name, SDecl)] ->
             String -> -- output file name
-            Bool ->   -- generate executable if True, only .o if False 
+            OutputType ->   -- generate executable if True, only .o if False 
             [FilePath] -> -- include files
             String -> -- extra object files 
             String -> -- extra compiler flags
             DbgLevel ->
             IO ()
-codegenC dump defs out exec incs objs libs dbg
+codegenC defs out exec incs objs libs dbg
     = do -- print defs
          let bc = map toBC defs
          let h = concatMap toDecl (map fst bc)
@@ -34,25 +32,25 @@ codegenC dump defs out exec incs objs libs dbg
          d <- getDataDir
          mprog <- readFile (d ++ "/rts/idris_main.c")
          let cout = headers incs ++ debug dbg ++ h ++ cc ++ 
-                     (if exec then mprog else "")
-         (tmpn, tmph) <- tempfile
-         hPutStr tmph cout
-         hFlush tmph
-         hClose tmph
-         let useclang = False
-         comp <- getCC
-         let gcc = comp ++ " -I. " ++ objs ++ " -x c " ++ 
-                     (if exec then "" else " - c ") ++
-                     gccDbg dbg ++
-                     " " ++ tmpn ++
-                     " `idris --link` `idris --include` " ++ libs ++
-                     " -o " ++ out
-         case dump of
-            Just co -> do writeFile co cout
-            Nothing -> return ()
-         exit <- system gcc
-         when (exit /= ExitSuccess) $
-             putStrLn ("FAILURE: " ++ gcc)
+                     (if (exec == Executable) then mprog else "")
+         case exec of
+           Raw -> writeFile out cout
+           _ -> do
+             (tmpn, tmph) <- tempfile
+             hPutStr tmph cout
+             hFlush tmph
+             hClose tmph
+             let useclang = False
+             comp <- getCC
+             let gcc = comp ++ " -I. " ++ objs ++ " -x c " ++ 
+                       (if (exec == Executable) then "" else " -c ") ++
+                       gccDbg dbg ++
+                       " " ++ tmpn ++
+                       " `idris --link` `idris --include` " ++ libs ++
+                       " -o " ++ out
+             exit <- system gcc
+             when (exit /= ExitSuccess) $
+                putStrLn ("FAILURE: " ++ gcc)
 
 headers [] = "#include <idris_rts.h>\n#include <idris_stdfgn.h>\n" ++
              "#include <gmp.h>\n#include <assert.h>\n"

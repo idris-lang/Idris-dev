@@ -1,4 +1,4 @@
-module IRTS.CodegenJava where
+module IRTS.CodegenJava (codegenJava) where
 
 import IRTS.BCImp
 import IRTS.Lang
@@ -16,6 +16,7 @@ import Control.Monad
 
 codegenJava :: [(Name, SDecl)] ->
                String -> -- output file name
+               OutputType ->
                IO ()
-codegenJava defs out = putStrLn "Not implemented yet"
+codegenJava defs out exec = putStrLn "Not implemented yet"
 

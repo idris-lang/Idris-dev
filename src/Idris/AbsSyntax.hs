@@ -8,6 +8,7 @@ import Core.Evaluate
 import Core.Elaborate hiding (Tactic(..))
 import Core.Typecheck
 import Idris.AbsSyntaxTree
+import IRTS.CodegenCommon
 
 import Paths_idris
 
@@ -221,13 +222,6 @@ setCmdLine opts = do i <- get
                      let iopts = idris_options i
                      put (i { idris_options = iopts { opt_cmdline = opts } })
 
-getDumpC :: Idris (Maybe FilePath)
-getDumpC = do i <- get
-              return $ findC (opt_cmdline (idris_options i))
-    where findC [] = Nothing
-          findC (DumpC x : _) = Just x
-          findC (_ : xs) = findC xs
-
 getDumpDefun :: Idris (Maybe FilePath)
 getDumpDefun = do i <- get
                   return $ findC (opt_cmdline (idris_options i))
@@ -265,6 +259,26 @@ setREPL t = do i <- get
                let opts = idris_options i
                let opt' = opts { opt_repl = t }
                put (i { idris_options = opt' })
+
+setTarget :: Target -> Idris ()
+setTarget t = do i <- get
+                 let opts = idris_options i
+                 let opt' = opts { opt_target = t }
+                 put (i { idris_options = opt' })
+
+target :: Idris Target
+target = do i <- get
+            return (opt_target (idris_options i))
+
+setOutputTy :: OutputType -> Idris ()
+setOutputTy t = do i <- get
+                   let opts = idris_options i
+                   let opt' = opts { opt_outputTy = t }
+                   put (i { idris_options = opt' })
+
+outputTy :: Idris OutputType
+outputTy = do i <- get
+              return $ opt_outputTy $ idris_options i
 
 verbose :: Idris Bool
 verbose = do i <- get

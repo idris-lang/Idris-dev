@@ -5,6 +5,7 @@ module IRTS.Compiler where
 import IRTS.Lang
 import IRTS.Defunctionalise
 import IRTS.Simplified
+import IRTS.CodegenCommon
 import IRTS.CodegenC
 import IRTS.CodegenJava
 import IRTS.Inliner
@@ -49,7 +50,7 @@ compile target f tm
         iLOG "Resolving variables for CG"
         -- iputStrLn $ showSep "\n" (map show (toAlist defuns))
         let checked = checkDefs defuns (toAlist defuns)
-        dumpC <- getDumpC
+        outty <- outputTy
         dumpCases <- getDumpCases
         dumpDefun <- getDumpDefun
         case dumpCases of
@@ -61,10 +62,10 @@ compile target f tm
         iLOG "Building output"
         case checked of
             OK c -> case target of
-                         ViaC -> liftIO $ codegenC dumpC c f True hdrs 
+                         ViaC -> liftIO $ codegenC c f outty hdrs 
                                    (concatMap mkObj objs)
                                    (concatMap mkLib libs) NONE
-                         ViaJava -> liftIO $ codegenJava c f 
+                         ViaJava -> liftIO $ codegenJava c f outty
             Error e -> fail $ show e 
   where checkMVs = do i <- get
                       case idris_metavars i \\ primDefs of

@@ -76,7 +76,7 @@ usagemsg = "Idris version " ++ ver ++ "\n" ++
            "Usage: idris [input file] [options]\n" ++
            "Options:\n" ++
            "\t--check           Type check only\n" ++
-           "\t-o [file]         Generate executable\n" ++
+           "\t-o [file]         Specify output filename\n" ++
            "\t-i [dir]          Add directory to the list of import paths\n" ++
            "\t--ibcsubdir [dir] Write IBC files into sub directory\n" ++
            "\t--noprelude       Don't import the prelude\n" ++
@@ -84,8 +84,8 @@ usagemsg = "Idris version " ++ ver ++ "\n" ++
            "\t--warnpartial     Warn about undeclared partial functions\n" ++
            "\t--typeintype      Disable universe checking\n" ++
            "\t--log [level]     Set debugging log level\n" ++
-           "\t--dumpc [file]    Dump generated C code\n" ++
+           "\t-S                Do no further compilation of code generator output\n" ++
+           "\t-c                Compile to object files rather than an executable\n" ++
 	   "\t--libdir          Show library install directory and exit\n" ++
 	   "\t--link            Show C library directories and exit (for C linking)\n" ++
 	   "\t--include         Show C include directories and exit (for C linking)\n"
-
