@@ -6,6 +6,7 @@ import IRTS.Simplified
 import Core.TT
 import Paths_idris
 import Util.System
+import IRTS.CodegenCommon
 
 import Data.Char
 import System.Process

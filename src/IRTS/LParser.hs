@@ -8,6 +8,7 @@ import IRTS.Simplified
 import IRTS.Bytecode
 import IRTS.CodegenCommon
 import IRTS.CodegenC
+import IRTS.CodegenJava
 import IRTS.Defunctionalise
 import Paths_idris
 
