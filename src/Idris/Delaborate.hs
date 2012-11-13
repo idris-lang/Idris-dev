@@ -85,7 +85,7 @@ pshow i (CantUnify _ x y e sc s)
             _ -> "\n\nSpecifically:\n\t" ++ pshow i e ++ 
                  if (opt_errContext (idris_options i)) then showSc i sc else ""
 pshow i (CantConvert x y env) 
-    = "Can't unify " ++ show (delab i x) ++ " with " ++ show (delab i y) ++
+    = "Can't convert " ++ show (delab i x) ++ " with " ++ show (delab i y) ++
                  if (opt_errContext (idris_options i)) then showSc i env else ""
 pshow i (InfiniteUnify x tm env)
     = "Unifying " ++ showbasic x ++ " and " ++ show (delab i tm) ++ 
