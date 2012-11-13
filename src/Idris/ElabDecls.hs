@@ -57,7 +57,8 @@ elabType info syn doc fc opts n ty' = {- let ty' = piBind (params info) ty_in
          ctxt <- getContext
          (cty, _)   <- recheckC fc [] tyT
          addStatics n cty ty'
-         logLvl 2 $ "---> " ++ show cty
+         logLvl 6 $ "Elaborated to " ++ showEnvDbg [] tyT
+         logLvl 2 $ "Rechecked to " ++ show cty
          let nty = cty -- normalise ctxt [] cty
          -- if the return type is something coinductive, freeze the definition
          let nty' = normalise ctxt [] nty

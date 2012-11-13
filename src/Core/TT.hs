@@ -515,7 +515,9 @@ pToV :: Eq n => n -> TT n -> TT n
 pToV n = pToV' n 0
 pToV' n i (P _ x _) | n == x = V i
 pToV' n i (Bind x b sc)
-                | n == x    = Bind x (fmap (pToV' n i) b) sc
+-- We can assume the inner scope has been pToVed already, so continue to
+-- resolve names from the *outer* scope which may happen to have the same id.
+--                 | n == x    = Bind x (fmap (pToV' n i) b) sc
                 | otherwise = Bind x (fmap (pToV' n i) b) (pToV' n (i+1) sc)
 pToV' n i (App f a) = App (pToV' n i f) (pToV' n i a)
 pToV' n i (Proj t idx) = Proj (pToV' n i t) idx

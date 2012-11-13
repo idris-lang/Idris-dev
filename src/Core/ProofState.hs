@@ -358,7 +358,8 @@ solve ctxt env (Bind x (Guess ty val) sc)
                                            -- dontunify = dontunify ps \\ [x],
                                            -- unified = (uh, uns ++ [(x, val)]),
                                            instances = instances ps \\ [x] })
-                       return $ {- Bind x (Let ty val) sc -} instantiate val (pToV x sc)
+                       return $ {- Bind x (Let ty val) sc -} 
+                                   instantiate val (pToV x sc)
    | otherwise    = lift $ tfail $ IncompleteTerm val
 solve _ _ h = do ps <- get
                  fail $ "Not a guess " ++ show h ++ "\n" ++ show (holes ps, pterm ps)
