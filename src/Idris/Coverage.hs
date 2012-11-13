@@ -407,6 +407,7 @@ buildSCG (_, n) = do
                   let newscg = buildSCG' ist sc args
                   logLvl 5 $ show newscg
                   addToCG n ( cg { scg = newscg } )
+       [] -> logLvl 5 $ "Could not build SCG for " ++ show n ++ "\n"
 
 buildSCG' :: IState -> SC -> [Name] -> [SCGEntry] 
 buildSCG' ist sc args = nub $ scg sc (zip args args) 
@@ -505,6 +506,8 @@ checkSizeChange n = do
                   let tot = map (checkMP ist (length (argsdef cg))) ms
                   logLvl 3 $ "Paths for " ++ show n ++ " yield " ++ (show tot)
                   return (noPartial tot)
+       [] -> do logLvl 5 $ "No paths for " ++ show n
+                return Unchecked
 
 type MultiPath = [SCGEntry]
 
