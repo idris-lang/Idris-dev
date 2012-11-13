@@ -21,6 +21,7 @@ import Util.Pretty
 
 data ProofState = PS { thname   :: Name,
                        holes    :: [Name], -- holes still to be solved
+                       usedns   :: [Name], -- used names, don't use again
                        nextname :: Int,    -- name supply
                        pterm    :: Term,   -- current proof term
                        ptype    :: Type,   -- original goal
@@ -74,8 +75,8 @@ data Tactic = Attack
 -- Some utilites on proof and tactic states
 
 instance Show ProofState where
-    show (PS nm [] _ tm _ _ _ _ _ _ _ _ _ _ _ _) = show nm ++ ": no more goals"
-    show (PS nm (h:hs) _ tm _ _ _ _ _ _ i _ _ ctxt _ _) 
+    show (PS nm [] _ _ tm _ _ _ _ _ _ _ _ _ _ _ _) = show nm ++ ": no more goals"
+    show (PS nm (h:hs) _ _ tm _ _ _ _ _ _ i _ _ ctxt _ _) 
           = let OK g = goal (Just h) tm
                 wkenv = premises g in
                 "Other goals: " ++ show hs ++ "\n" ++
@@ -98,12 +99,12 @@ instance Show ProofState where
                showG ps b = showEnv ps (binderTy b)
 
 instance Pretty ProofState where
-  pretty (PS nm [] _ trm _ _ _ _ _ _ _ _ _ _ _ _) =
+  pretty (PS nm [] _ _ trm _ _ _ _ _ _ _ _ _ _ _ _) =
     if size nm > breakingSize then
       pretty nm <> colon $$ nest nestingSize (text " no more goals.")
     else
       pretty nm <> colon <+> text " no more goals."
-  pretty p@(PS nm (h:hs) _ tm _ _ _ _ _ _ i _ _ ctxt _ _) =
+  pretty p@(PS nm (h:hs) _ _ tm _ _ _ _ _ _ i _ _ ctxt _ _) =
     let OK g  = goal (Just h) tm in
     let wkEnv = premises g in
       text "Other goals" <+> colon <+> pretty hs $$
@@ -171,7 +172,8 @@ addLog str = action (\ps -> ps { plog = plog ps ++ str ++ "\n" })
 newProof :: Name -> Context -> Type -> ProofState
 newProof n ctxt ty = let h = holeName 0 
                          ty' = vToP ty in
-                         PS n [h] 1 (Bind h (Hole ty') (P Bound h ty')) ty [] (h, []) 
+                         PS n [h] [] 1 (Bind h (Hole ty') 
+                            (P Bound h ty')) ty [] (h, []) 
                             Nothing [] []
                             [] []
                             Nothing ctxt "" False
@@ -505,14 +507,16 @@ dropGiven du (u@(n, _) : us) | n `elem` du = dropGiven du us
 -- dropGiven du (u@(_, P a n ty) : us) | n `elem` du = dropGiven du us
 dropGiven du (u : us) = u : dropGiven du us
 
-updateSolved xs (Bind n (Hole ty) t)
-    | Just v <- lookup n xs = instantiate v (pToV n (updateSolved xs t))
-updateSolved xs (Bind n b t) 
-    | otherwise = Bind n (fmap (updateSolved xs) b) (updateSolved xs t)
-updateSolved xs (App f a) = App (updateSolved xs f) (updateSolved xs a)
-updateSolved xs (P _ n _)
+updateSolved xs x = -- trace ("Updating " ++ show xs ++ " in " ++ show x) $ 
+                    updateSolved' xs x
+updateSolved' xs (Bind n (Hole ty) t)
+    | Just v <- lookup n xs = instantiate v (pToV n (updateSolved' xs t))
+updateSolved' xs (Bind n b t) 
+    | otherwise = Bind n (fmap (updateSolved' xs) b) (updateSolved' xs t)
+updateSolved' xs (App f a) = App (updateSolved' xs f) (updateSolved' xs a)
+updateSolved' xs (P _ n _)
     | Just v <- lookup n xs = v
-updateSolved xs t = t
+updateSolved' xs t = t
 
 updateProblems ns [] = []
 updateProblems ns ((x, y, env, err) : ps) =

@@ -786,8 +786,9 @@ weakenTmEnv i = map (\ (n, b) -> (n, fmap (weakenTm i) b))
 orderPats :: Term -> Term
 orderPats tm = op [] tm
   where
-    op ps (Bind n (PVar t) sc) = op ((n, t) : ps) sc
-    op ps sc = bindAll (map (\ (n, t) -> (n, PVar t)) (sortP ps)) sc 
+    op ps (Bind n (PVar t) sc) = op ((n, PVar t) : ps) sc
+    op ps (Bind n (Hole t) sc) = op ((n, Hole t) : ps) sc
+    op ps sc = bindAll (map (\ (n, t) -> (n, t)) (sortP ps)) sc 
 
     sortP ps = pick [] (reverse ps)
 
@@ -804,7 +805,8 @@ orderPats tm = op [] tm
 
     insert n t [] = [(n, t)]
     insert n t ((n',t') : ps)
-        | n `elem` (namesIn t' ++ concatMap namesIn (map snd ps))
+        | n `elem` (namesIn (binderTy t') ++ 
+                      concatMap namesIn (map (binderTy . snd) ps))
             = (n', t') : insert n t ps
         | otherwise = (n,t):(n',t'):ps
 

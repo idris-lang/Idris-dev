@@ -69,7 +69,9 @@ elab :: IState -> ElabInfo -> Bool -> Bool -> Name -> PTerm ->
 elab ist info pattern tcgen fn tm 
     = do elabE (False, False) tm -- (in argument, guarded)
          when pattern -- convert remaining holes to pattern vars
-              mkPat
+              (do update_term orderPats
+--                   tm <- get_term
+                  mkPat)
          inj <- get_inj
          mapM_ checkInjective inj
   where
@@ -86,6 +88,7 @@ elab ist info pattern tcgen fn tm
         v -> Just (elabE ina v)
 
     mkPat = do hs <- get_holes
+               tm <- get_term
                case hs of
                   (h: hs) -> do patvar h; mkPat
                   [] -> return ()
@@ -293,10 +296,11 @@ elab ist info pattern tcgen fn tm
              focus valn
              elabE (True, a) scr
              args <- get_env
-             cname <- unique_hole (mkCaseName fn)
-             elab' ina (PMetavar cname)
+             cname <- unique_hole' True (mkCaseName fn)
              let cname' = mkN cname
-             let newdef = PClauses fc [] cname' (caseBlock fc cname' (reverse args) opts)
+             elab' ina (PMetavar cname')
+             let newdef = PClauses fc [] cname' 
+                             (caseBlock fc cname' (reverse args) opts)
              -- fail $ "Not implemented " ++ show c ++ "\n" ++ show args
              -- elaborate case
              updateAux (newdef : )

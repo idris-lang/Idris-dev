@@ -20,11 +20,11 @@ data Doc = FunDoc FunDoc
                     [FunDoc] -- method docs
 
 showDoc "" = ""
-showDoc x = "  -- " ++ x ++ "\n"
+showDoc x = "  -- " ++ x 
 
 instance Show FunDoc where
    show (Doc n doc args ty)
-      = show n ++ " : " ++ show ty ++ "\n" ++ showDoc doc ++ 
+      = show n ++ " : " ++ show ty ++ "\n" ++ showDoc doc ++ "\n" ++
         let argshow = mapMaybe showArg args in
         if (not (null argshow)) then "Arguments:\n\t" ++
                                 showSep "\t" argshow

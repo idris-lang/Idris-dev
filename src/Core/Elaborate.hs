@@ -96,6 +96,12 @@ get_term :: Elab' aux Term
 get_term = do ES p _ _ <- get
               return (pterm (fst p))
 
+-- get the proof term
+update_term :: (Term -> Term) -> Elab' aux ()
+update_term f = do ES (p,a) logs prev <- get
+                   let p' = p { pterm = f (pterm p) }
+                   put (ES (p', a) logs prev)
+
 -- get the local context at the currently in focus hole
 get_env :: Elab' aux Env
 get_env = do ES p _ _ <- get
@@ -145,11 +151,20 @@ get_instances = do ES p _ _ <- get
                    return (instances (fst p))
 
 -- given a desired hole name, return a unique hole name
-unique_hole :: Name -> Elab' aux Name
-unique_hole n = do ES p _ _ <- get
-                   let bs = bound_in (pterm (fst p)) ++ bound_in (ptype (fst p))
-                   n' <- uniqueNameCtxt (context (fst p)) n (holes (fst p) ++ bs ++ dontunify (fst p))
-                   return n'
+unique_hole = unique_hole' False
+
+unique_hole' :: Bool -> Name -> Elab' aux Name
+unique_hole' reusable n 
+      = do ES p _ _ <- get
+           let bs = bound_in (pterm (fst p)) ++ 
+                    bound_in (ptype (fst p))
+           n' <- uniqueNameCtxt (context (fst p)) n (holes (fst p) 
+                   ++ bs ++ dontunify (fst p) ++ usedns (fst p))
+           ES (p, a) s u <- get
+           -- Hmm: Do we need this level of uniqueness?
+           let p' = p -- if reusable then p else p { usedns = n' : usedns p } 
+           put (ES (p', a) s u)
+           return n'
   where
     bound_in (Bind n b sc) = n : bi b ++ bound_in sc
       where
