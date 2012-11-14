@@ -45,9 +45,9 @@ elabType info syn doc fc opts n ty' = {- let ty' = piBind (params info) ty_in
       do checkUndefined fc n
          ctxt <- getContext
          i <- get
+         logLvl 3 $ show n ++ " pre-type " ++ showImp True ty'
          ty' <- implicit syn n ty'
          let ty = addImpl i ty'
-         logLvl 3 $ show n ++ " pre-type " ++ showImp True ty'
          logLvl 2 $ show n ++ " type " ++ showImp True ty
          ((tyT, defer, is), log) <- tclift $ elaborate ctxt n (Set (UVal 0)) []
                                              (erun fc (build i info False n ty))
@@ -470,7 +470,7 @@ elabClause info tcgen (cnum, PClause fc fname lhs_in withs rhs_in whereblock)
         let winfo = pinfo (pvars ist lhs_tm) whereblock windex
         let decls = concatMap declared whereblock
         let newargs = pvars ist lhs_tm
-        let wb = map (expandParamsD ist decorate newargs decls) whereblock
+        let wb = map (expandParamsD False ist decorate newargs decls) whereblock
         logLvl 5 $ "Where block: " ++ show wb
         mapM_ (elabDecl' EAll info) wb
         -- Now build the RHS, using the type of the LHS as the goal.
@@ -898,7 +898,7 @@ elabInstance info syn fc cs n ps t expn ds
 
     insertDef i meth def clauses ns iname decls
         | null $ filter (clauseFor meth iname ns) decls
-            = let newd = expandParamsD i (\n -> meth) [] [def] clauses in
+            = let newd = expandParamsD False i (\n -> meth) [] [def] clauses in
                   -- trace (show newd) $ 
                   decls ++ [newd]
         | otherwise = decls
@@ -987,7 +987,8 @@ elabDecl' what info (PMutual f ps)
          mapM_ (elabDecl EDefns info) ps
 elabDecl' what info (PParams f ns ps) 
     = do i <- get
-         iLOG $ "Expanding params block with " ++ show (concatMap declared ps)
+         iLOG $ "Expanding params block with " ++ show ns ++ " decls " ++
+                show (concatMap declared ps)
          let nblock = pblock i
          mapM_ (elabDecl' what info) nblock 
   where
@@ -997,7 +998,8 @@ elabDecl' what info (PParams f ns ps)
                 newb = addAlist dsParams (inblock info) in 
                 info { params = newps,
                        inblock = newb }
-    pblock i = map (expandParamsD i id ns (concatMap declared ps)) ps
+    pblock i = map (expandParamsD False i id ns 
+                      (concatMap declared ps)) ps
 
 elabDecl' what info (PNamespace n ps) = mapM_ (elabDecl' what ninfo) ps
   where

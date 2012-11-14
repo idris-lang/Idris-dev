@@ -502,37 +502,40 @@ expandParams dec ps ns tm = en tm
 
     nseq x y = nsroot x == nsroot y
 
-expandParamsD :: IState -> 
+expandParamsD :: Bool -> -- True = RHS only
+                 IState -> 
                  (Name -> Name) -> [(Name, PTerm)] -> [Name] -> PDecl -> PDecl
-expandParamsD ist dec ps ns (PTy doc syn fc o n ty) 
+expandParamsD False ist dec ps ns (PTy doc syn fc o n ty) 
     = if n `elem` ns
          then PTy doc syn fc o (dec n) (piBind ps (expandParams dec ps ns ty))
          else PTy doc syn fc o n (expandParams dec ps ns ty)
-expandParamsD ist dec ps ns (PClauses fc opts n cs)
+expandParamsD rhsonly ist dec ps ns (PClauses fc opts n cs)
     = let n' = if n `elem` ns then dec n else n in
           PClauses fc opts n' (map expandParamsC cs)
   where
     expandParamsC (PClause fc n lhs ws rhs ds)
         = let -- ps' = updateps True (namesIn ist rhs) (zip ps [0..])
               ps'' = updateps False (namesIn [] ist lhs) (zip ps [0..])
+              lhs' = if rhsonly then lhs else (expandParams dec ps'' ns lhs)
               n' = if n `elem` ns then dec n else n in
-              PClause fc n' (expandParams dec ps'' ns lhs)
+              PClause fc n' lhs'
                             (map (expandParams dec ps'' ns) ws)
                             (expandParams dec ps'' ns rhs)
-                            (map (expandParamsD ist dec ps'' ns) ds)
+                            (map (expandParamsD True ist dec ps'' ns) ds)
     expandParamsC (PWith fc n lhs ws wval ds)
         = let -- ps' = updateps True (namesIn ist wval) (zip ps [0..])
               ps'' = updateps False (namesIn [] ist lhs) (zip ps [0..])
+              lhs' = if rhsonly then lhs else (expandParams dec ps'' ns lhs)
               n' = if n `elem` ns then dec n else n in
-              PWith fc n' (expandParams dec ps'' ns lhs)
+              PWith fc n' lhs'
                           (map (expandParams dec ps'' ns) ws)
                           (expandParams dec ps'' ns wval)
-                          (map (expandParamsD ist dec ps'' ns) ds)
+                          (map (expandParamsD rhsonly ist dec ps'' ns) ds)
     updateps yn nm [] = []
     updateps yn nm (((a, t), i):as)
         | (a `elem` nm) == yn = (a, t) : updateps yn nm as
         | otherwise = (MN i (show n ++ "_u"), t) : updateps yn nm as
-expandParamsD ist dec ps ns (PData doc syn fc co pd) 
+expandParamsD rhs ist dec ps ns (PData doc syn fc co pd) 
     = PData doc syn fc co (expandPData pd)
   where
     -- just do the type decl, leave constructors alone (parameters will be
@@ -543,26 +546,27 @@ expandParamsD ist dec ps ns (PData doc syn fc co pd)
             else PDatadecl n (expandParams dec ps ns ty) (map econ cons)
     econ (doc, n, t, fc) 
        = (doc, dec n, piBindp expl ps (expandParams dec ps ns t), fc)
-expandParamsD ist dec ps ns (PParams f params pds)
-   = PParams f (ps ++ map (mapsnd (expandParams dec ps ns)) params) pds
+expandParamsD rhs ist dec ps ns (PParams f params pds)
+   = PParams f (ps ++ map (mapsnd (expandParams dec ps ns)) params) 
+               (map (expandParamsD True ist dec ps ns) pds)
 --                (map (expandParamsD ist dec ps ns) pds) 
-expandParamsD ist dec ps ns (PMutual f pds)
-   = PMutual f (map (expandParamsD ist dec ps ns) pds)
-expandParamsD ist dec ps ns (PClass doc info f cs n params decls)
+expandParamsD rhs ist dec ps ns (PMutual f pds)
+   = PMutual f (map (expandParamsD rhs ist dec ps ns) pds)
+expandParamsD rhs ist dec ps ns (PClass doc info f cs n params decls)
    = PClass doc info f 
            (map (expandParams dec ps ns) cs)
            n
            (map (mapsnd (expandParams dec ps ns)) params)
-           (map (expandParamsD ist dec ps ns) decls)
-expandParamsD ist dec ps ns (PInstance info f cs n params ty cn decls)
+           (map (expandParamsD rhs ist dec ps ns) decls)
+expandParamsD rhs ist dec ps ns (PInstance info f cs n params ty cn decls)
    = PInstance info f 
            (map (expandParams dec ps ns) cs)
            n
            (map (expandParams dec ps ns) params)
            (expandParams dec ps ns ty)
            cn
-           (map (expandParamsD ist dec ps ns) decls)
-expandParamsD ist dec ps ns d = d
+           (map (expandParamsD rhs ist dec ps ns) decls)
+expandParamsD rhs ist dec ps ns d = d
 
 mapsnd f (x, t) = (x, f t)
 
