@@ -1,6 +1,7 @@
-{-# LANGUAGE PatternGuards #-}
+{-# LANGUAGE PatternGuards, DeriveFunctor #-}
 
-module Core.CaseTree(CaseDef(..), SC(..), CaseAlt(..), Phase(..), CaseTree,
+module Core.CaseTree(CaseDef(..), SC, SC'(..), CaseAlt, CaseAlt'(..), 
+                     Phase(..), CaseTree,
                      simpleCase, small, namesUsed, findCalls, findUsedArgs) where
 
 import Core.TT
@@ -13,25 +14,29 @@ import Debug.Trace
 data CaseDef = CaseDef [Name] SC [Term]
     deriving Show
 
-data SC = Case Name [CaseAlt] -- invariant: lowest tags first
-        | ProjCase Term [CaseAlt] -- special case for projections
-        | STerm Term
-        | UnmatchedCase String -- error message
-        | ImpossibleCase -- already checked to be impossible
-    deriving (Eq, Ord)
+data SC' t = Case Name [CaseAlt' t] -- invariant: lowest tags first
+           | ProjCase t [CaseAlt' t] -- special case for projections
+           | STerm t
+           | UnmatchedCase String -- error message
+           | ImpossibleCase -- already checked to be impossible
+    deriving (Eq, Ord, Functor)
 {-! 
 deriving instance Binary SC 
 !-}
 
-data CaseAlt = ConCase Name Int [Name] SC
-             | ConstCase Const         SC
-             | DefaultCase             SC
-    deriving (Show, Eq, Ord)
+type SC = SC' Term
+
+data CaseAlt' t = ConCase Name Int [Name] (SC' t)
+                | ConstCase Const         (SC' t)
+                | DefaultCase             (SC' t)
+    deriving (Show, Eq, Ord, Functor)
 {-! 
 deriving instance Binary CaseAlt 
 !-}
 
-instance Show SC where
+type CaseAlt = CaseAlt' Term
+
+instance Show t => Show (SC' t) where
     show sc = show' 1 sc
       where
         show' i (Case n alts) = "case " ++ show n ++ " of\n" ++ indent i ++ 

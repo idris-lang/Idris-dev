@@ -30,7 +30,8 @@ compile :: Target -> FilePath -> Term -> Idris ()
 compile target f tm 
    = do checkMVs
         let tmnames = namesUsed (STerm tm)
-        used <- mapM (allNames []) tmnames
+        usedIn <- mapM (allNames []) tmnames
+        let used = [UN "prim__subBigInt", UN "prim__addBigInt"] : usedIn
         defsIn <- mkDecls tm (concat used)
         findUnusedArgs (concat used)
         maindef <- irMain tm
@@ -166,6 +167,9 @@ instance ToIR (TT Name) where
           | (P _ (UN "trace_malloc") _, [_,t]) <- unApply tm
               = do t' <- ir' env t
                    return t' -- TODO
+--           | (P _ (NS (UN "S") ["Nat", "Prelude"]) _, [k]) <- unApply tm
+--               = do k' <- ir' env k
+--                    return (LOp LBPlus [k', LConst (BI 1)])
           | (P (DCon t a) n _, args) <- unApply tm
               = irCon env t a n args
           | (P _ n _, args) <- unApply tm
@@ -187,6 +191,8 @@ instance ToIR (TT Name) where
         where mkUnused u i [] = []
               mkUnused u i (x : xs) | i `elem` u = LNothing : mkUnused u (i + 1) xs
                                     | otherwise = x : mkUnused u (i + 1) xs
+--       ir' env (P _ (NS (UN "O") ["Nat", "Prelude"]) _)
+--                         = return $ LConst (BI 0)
       ir' env (P _ n _) = return $ LV (Glob n)
       ir' env (V i)     | i < length env = return $ LV (Glob (env!!i))
                         | otherwise = error $ "IR fail " ++ show i ++ " " ++ show tm
@@ -249,6 +255,9 @@ mkIty "FString" = FString
 mkIty "FPtr"    = FPtr
 mkIty "FUnit"   = FUnit
 
+zname = NS (UN "O") ["Nat","Prelude"] 
+sname = NS (UN "S") ["Nat","Prelude"] 
+
 instance ToIR ([Name], SC) where
     ir (args, tree) = do logLvl 3 $ "Compiling " ++ show args ++ "\n" ++ show tree
                          tree' <- ir tree
@@ -259,26 +268,36 @@ instance ToIR SC where
 
         ir' (STerm t) = ir t
         ir' (UnmatchedCase str) = return $ LError str
-        ir' (ProjCase tm alts) = do alts' <- mapM mkIRAlt alts
+        ir' (ProjCase tm alts) = do alts' <- mapM (mkIRAlt tm) alts
                                     tm' <- ir tm
                                     return $ LCase tm' alts'
-        ir' (Case n alts) = do alts' <- mapM mkIRAlt alts
+        ir' (Case n alts) = do alts' <- mapM (mkIRAlt (P Bound n Erased)) alts
                                return $ LCase (LV (Glob n)) alts'
         ir' ImpossibleCase = return LNothing
 
-        mkIRAlt (ConCase n t args rhs) 
+        -- special cases for O and S
+        -- Needs rethink: projections make this fail
+--         mkIRAlt n (ConCase z _ [] rhs) | z == zname
+--              = mkIRAlt n (ConstCase (BI 0) rhs)
+--         mkIRAlt n (ConCase s _ [arg] rhs) | s == sname
+--              = do n' <- ir n
+--                   rhs' <- ir rhs
+--                   return $ LDefaultCase
+--                               (LLet arg (LOp LBMinus [n', LConst (BI 1)]) 
+--                                           rhs')
+        mkIRAlt _ (ConCase n t args rhs) 
              = do rhs' <- ir rhs
                   return $ LConCase (-1) n args rhs'
-        mkIRAlt (ConstCase x rhs)
+        mkIRAlt _ (ConstCase x rhs)
           | matchable x
              = do rhs' <- ir rhs
                   return $ LConstCase x rhs'
           | matchableTy x
              = do rhs' <- ir rhs 
                   return $ LDefaultCase rhs'
-        mkIRAlt (ConstCase c rhs)      
+        mkIRAlt _ (ConstCase c rhs)      
            = fail $ "Can't match on (" ++ show c ++ ")"
-        mkIRAlt (DefaultCase rhs)
+        mkIRAlt _ (DefaultCase rhs)
            = do rhs' <- ir rhs
                 return $ LDefaultCase rhs'
 
