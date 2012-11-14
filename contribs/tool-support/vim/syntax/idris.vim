@@ -23,7 +23,7 @@ syn match idrisType "\<\([A-Z][a-zA-Z0-9_]*\|_|_\)\>"
 syn match idrisLineComment "---*\([^-!#$%&\*\+./<=>\?@\\^|~].*\)\?$"
 syn match idrisMetaVar "?[a-z][A-Za-z0-9_]\+"
 syn match idrisLink "%\(lib\|link\|include\)"
-syn match idrisDirective "%\(access\|default\)"
+syn match idrisDirective "%\(access\|default\|assert_total\)"
 syn region idrisString start=+"+ skip=+\\\\\|\\"+ end=+"+
 syn region idrisBlockComment start="{-" end="-}"
 syn region idrisProofBlock start="\(default\s\+\)\?proof *{" end="}" contains=idrisTactic
