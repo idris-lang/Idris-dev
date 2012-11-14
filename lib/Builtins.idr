@@ -127,6 +127,12 @@ instance Eq Char where
 instance Eq String where
     (==) = boolOp prim__eqString
 
+instance Eq Bool where
+    True  == True  = True
+    True  == False = False
+    False == True  = False
+    False == False = True
+
 instance (Eq a, Eq b) => Eq (a, b) where
   (==) (a, c) (b, d) = (a == b) && (c == d)
 
