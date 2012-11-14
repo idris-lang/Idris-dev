@@ -289,7 +289,8 @@ prepare_apply fn imps =
        ctxt <- get_context
        env <- get_env
        -- let claims = getArgs ty imps
-       claims <- mkClaims (normalise ctxt env ty) imps []
+       -- claims <- mkClaims (normalise ctxt env ty) imps []
+       claims <- mkClaims (finalise ty) imps []
        ES (p, a) s prev <- get
        -- reverse the claims we made so that args go left to right
        let n = length (filter not imps)

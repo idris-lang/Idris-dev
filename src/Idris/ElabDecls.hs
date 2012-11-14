@@ -55,6 +55,7 @@ elabType info syn doc fc opts n ty' = {- let ty' = piBind (params info) ty_in
          addDeferred ds
          mapM_ (elabCaseBlock info) is 
          ctxt <- getContext
+         logLvl 5 $ "Rechecking"
          (cty, _)   <- recheckC fc [] tyT
          addStatics n cty ty'
          logLvl 6 $ "Elaborated to " ++ showEnvDbg [] tyT

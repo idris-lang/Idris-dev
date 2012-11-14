@@ -369,7 +369,9 @@ introTy ty mn ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' =
     do let n = case mn of 
                   Just name -> name
                   Nothing -> x
-       let t' = normalise ctxt env t
+       let t' = case t of
+                    x@(Bind y (Pi s) _) -> x
+                    _ -> normalise ctxt env t
        (tyv, tyt) <- lift $ check ctxt env ty
 --        ns <- lift $ unify ctxt env tyv t'
        case t' of
@@ -387,7 +389,9 @@ intro mn ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' =
     do let n = case mn of 
                   Just name -> name
                   Nothing -> x
-       let t' = normalise ctxt env t
+       let t' = case t of
+                    x@(Bind y (Pi s) _) -> x
+                    _ -> normalise ctxt env t
        case t' of
            Bind y (Pi s) t -> let t' = instantiate (P Bound n s) (pToV y t) in 
                                   return $ Bind n (Lam s) (Bind x (Hole t') (P Bound x t'))
@@ -454,7 +458,9 @@ rewrite _ _ _ _ = fail "Can't rewrite here"
 
 patbind :: Name -> RunTactic
 patbind n ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' =
-    do let t' = normalise ctxt env t
+    do let t' = case t of
+                    x@(Bind y (PVTy s) t) -> x
+                    _ -> normalise ctxt env t
        case t' of
            Bind y (PVTy s) t -> let t' = instantiate (P Bound n s) (pToV y t) in
                                     return $ Bind n (PVar s) (Bind x (Hole t') (P Bound x t'))

@@ -280,7 +280,7 @@ elab ist info pattern tcgen fn tm
               mkN n = case namespace info of
                         Just xs@(_:_) -> NS n xs
                         _ -> n
-    elab' ina (PProof ts) = do mapM_ (runTac True ist) ts
+    elab' ina (PProof ts) = do compute; mapM_ (runTac True ist) ts
     elab' ina (PTactics ts) 
         | not pattern = do mapM_ (runTac False ist) ts
         | otherwise = elab' ina Placeholder

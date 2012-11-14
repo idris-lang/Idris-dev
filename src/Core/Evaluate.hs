@@ -137,6 +137,7 @@ unbindEnv [] tm = tm
 unbindEnv (_:bs) (Bind n b sc) = unbindEnv bs sc
 
 usable :: Bool -> Name -> [(Name, Int)] -> (Bool, [(Name, Int)])
+usable _ _ ns@((MN 0 "STOP", _) : _) = (False, ns)
 usable s n [] = (True, [])
 usable s n ns = case lookup n ns of
                   Just 0 -> (False, ns)
@@ -207,7 +208,12 @@ eval traceon ctxt maxred ntimes genv tm opts = ev ntimes [] True [] tm where
            = do b' <- vbind env b
                 when (not atRepl) $ step maxred
                 return $ VBind n b' (\x -> ev ntimes stk top (x:env) sc)
-       where vbind env t = fmapMB (\tm -> ev ntimes stk top env (finalise tm)) t
+       where vbind env t 
+                 | simpl 
+                     = fmapMB (\tm -> ev ((MN 0 "STOP", 0) : ntimes) 
+                                         stk top env (finalise tm)) t 
+                 | otherwise 
+                     = fmapMB (\tm -> ev ntimes stk top env (finalise tm)) t
 --     ev ntimes stk top env (App (App (P _ laz _) _) a)
 --         | laz == UN "lazy"
 --            = trace (showEnvDbg genv a) $ ev ntimes stk top env a

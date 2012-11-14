@@ -16,20 +16,25 @@ import Core.Evaluate
 
 convertsC :: Context -> Env -> Term -> Term -> StateT UCs TC ()
 convertsC ctxt env x y 
-   = do c <- convEq ctxt (finalise (normalise ctxt env x))
+  = do c1 <- convEq ctxt x y
+       if c1 then return ()
+         else 
+            do c2 <- convEq ctxt (finalise (normalise ctxt env x))
                          (finalise (normalise ctxt env y))
-        if c then return ()
-             else lift $ tfail (CantConvert
-                          (finalise (normalise ctxt env x))
-                          (finalise (normalise ctxt env y)) (errEnv env))
+               if c2 then return ()
+                 else lift $ tfail (CantConvert
+                             (finalise (normalise ctxt env x))
+                             (finalise (normalise ctxt env y)) (errEnv env))
 
 converts :: Context -> Env -> Term -> Term -> TC ()
-converts ctxt env x y = if (finalise (normalise ctxt env x) == 
-                            finalise (normalise ctxt env y))
-                          then return ()
-                          else tfail (CantConvert
-                                      (finalise (normalise ctxt env x))
-                                      (finalise (normalise ctxt env y)) (errEnv env))
+converts ctxt env x y 
+     = if x == y then return () else
+          if (finalise (normalise ctxt env x) == 
+              finalise (normalise ctxt env y))
+                then return ()
+                else tfail (CantConvert
+                           (finalise (normalise ctxt env x))
+                           (finalise (normalise ctxt env y)) (errEnv env))
 
 errEnv = map (\(x, b) -> (x, binderTy b))
 
@@ -59,11 +64,16 @@ check' holes ctxt env top = chk env top where
   chk env (RApp f a)
       = do (fv, fty) <- chk env f
            (av, aty) <- chk env a
-           let fty' = renameBinders 0 $ normalise ctxt env fty
+           let fty' = case renameBinders 0 (finalise fty) of
+                        ty@(Bind x (Pi s) t) -> ty
+                        _ -> renameBinders 0 $ normalise ctxt env fty
            case fty' of
              Bind x (Pi s) t ->
                  do convertsC ctxt env aty s
-                    let apty = normalise initContext env (Bind x (Let aty av) t)
+                    -- let apty = normalise initContext env 
+                                       -- (Bind x (Let aty av) t)
+                    let apty = simplify initContext False env 
+                                        (Bind x (Let aty av) t)
                     return (App fv av, apty)
              t -> fail "Can't apply a non-function type"
     -- This rather unpleasant hack is needed because during incomplete 
