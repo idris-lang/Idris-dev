@@ -1,17 +1,20 @@
 module Idris.Docs where
 
 import Idris.AbsSyntax
+import Idris.AbsSyntaxTree
 import Idris.Delaborate
 import Core.TT
 import Core.Evaluate
 
 import Data.Maybe
+import Data.List
 
 -- TODO: Only include names with public/abstract accessibility
 
 data FunDoc = Doc Name String 
                   [(Name, PArg)] -- args
                   PTerm -- function type
+                  (Maybe Fixity)
 
 data Doc = FunDoc FunDoc
          | DataDoc FunDoc -- type constructor docs
@@ -23,12 +26,14 @@ showDoc "" = ""
 showDoc x = "  -- " ++ x 
 
 instance Show FunDoc where
-   show (Doc n doc args ty)
+   show (Doc n doc args ty f)
       = show n ++ " : " ++ show ty ++ "\n" ++ showDoc doc ++ "\n" ++
+        maybe "" (\f -> show f ++ "\n\n") f ++
         let argshow = mapMaybe showArg args in
-        if (not (null argshow)) then "Arguments:\n\t" ++
-                                showSep "\t" argshow
-                             else ""
+            if not (null argshow)
+               then "Arguments:\n\t" ++ showSep "\t" argshow
+               else ""
+
     where showArg (n, arg@(PExp _ _ _ _))
              = Just $ showName n ++ show (getTm arg) ++ 
                       showDoc (pargdoc arg) ++ "\n"
@@ -94,6 +99,12 @@ docFun n
        let args = case lookupCtxt Nothing n (idris_implicits i) of
                        [args] -> zip argnames args
                        _ -> []
-       return (Doc n docstr args (delab i ty))
+       let infixes = idris_infixes i
+       let fixdecls = filter (\(Fix _ x) -> x `isSuffixOf` (show n)) infixes 
+       let f = case fixdecls of
+                    []          -> Nothing
+                    (Fix x _:_) -> Just x 
+
+       return (Doc n docstr args (delab i ty) f)
 
 
