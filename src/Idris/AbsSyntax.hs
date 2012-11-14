@@ -577,13 +577,13 @@ mapsnd f (x, t) = (x, f t)
 -- * finally, everything else (3)
 
 getPriority :: IState -> PTerm -> Int
-getPriority i tm = pri tm 
+getPriority i tm = 1 -- pri tm 
   where
     pri (PRef _ n) =
         case lookupP Nothing n (tt_ctxt i) of
             ((P (DCon _ _) _ _):_) -> 1
             ((P (TCon _ _) _ _):_) -> 1
-            ((P Ref _ _):_) -> 4
+            ((P Ref _ _):_) -> 1
             [] -> 0 -- must be locally bound, if it's not an error...
     pri (PPi _ _ x y) = max 5 (max (pri x) (pri y))
     pri (PTrue _) = 0

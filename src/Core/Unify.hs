@@ -28,14 +28,14 @@ unify ctxt env topx topy
     = -- case runStateT (un' False [] topx topy) (UI 0 [] []) of
       --    OK (v, UI _ inj []) -> return (filter notTrivial v, inj, [])
       --    _ -> 
---       trace ("Unifying " ++ show (topx, topy)) $
+--        trace ("Unifying " ++ show (topx, topy)) $
                let topxn = normalise ctxt env topx
                    topyn = normalise ctxt env topy in
 --                     trace ("Unifying " ++ show (topxn, topyn)) $
                      case runStateT (un' False [] topxn topyn)
         	  	        (UI 0 [] []) of
-                       OK (v, UI _ inj fails) -> return (filter notTrivial v, inj, reverse fails)
---                     OK (_, UI s _ ((_,_,f):fs)) -> tfail $ CantUnify topx topy f s
+                       OK (v, UI _ inj fails) -> 
+                            return (filter notTrivial v, inj, reverse fails)
         	       Error e -> tfail e
   where
     notTrivial (x, P _ x' _) = x /= x'
@@ -75,12 +75,18 @@ unify ctxt env topx topy
         | (x,y) `elem` bnames = do sc 1; return []
     un' fn bnames (P Bound x _) tm
         | holeIn env x = do UI s i f <- get
-                            when (notP tm && fn) $ put (UI s ((tm, topx, topy) : i) f)
+                            -- injectivity check
+                            when (notP tm && fn) $ 
+--                               trace (show (x, tm, normalise ctxt env tm)) $
+                                put (UI s ((tm, topx, topy) : i) f)
                             sc 1
                             checkCycle (x, tm)
     un' fn bnames tm (P Bound y _)
         | holeIn env y = do UI s i f <- get
-                            when (notP tm && fn) $ put (UI s ((tm, topx, topy) : i) f)
+                            -- injectivity check
+                            when (notP tm && fn) $ 
+--                               trace (show (y, tm, normalise ctxt env tm)) $
+                                put (UI s ((tm, topx, topy) : i) f)
                             sc 1
                             checkCycle (y, tm)
     un' fn bnames (V i) (P Bound x _)
