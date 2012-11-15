@@ -42,12 +42,14 @@ codegenC defs out exec incs objs libs dbg
              hClose tmph
              let useclang = False
              comp <- getCC
-             let gcc = comp ++ " -I. " ++ objs ++ " -x c " ++ 
-                       (if (exec == Executable) then "" else " -c ") ++
+             let gcc = comp ++ " " ++
                        gccDbg dbg ++
+                       " -I. " ++ objs ++ " -x c " ++ 
+                       (if (exec == Executable) then "" else " -c ") ++
                        " " ++ tmpn ++
                        " `idris --link` `idris --include` " ++ libs ++
                        " -o " ++ out
+--              putStrLn gcc
              exit <- system gcc
              when (exit /= ExitSuccess) $
                 putStrLn ("FAILURE: " ++ gcc)
@@ -276,5 +278,5 @@ doOp v LStdErr [] = v ++ "MKPTR(vm, stderr)"
 doOp v LFork [x] = v ++ "MKPTR(vm, vmThread(vm, " ++ cname (MN 0 "EVAL") ++ ", " ++ creg x ++ "))"
 doOp v LPar [x] = v ++ creg x -- "MKPTR(vm, vmThread(vm, " ++ cname (MN 0 "EVAL") ++ ", " ++ creg x ++ "))"
 doOp v LVMPtr [] = v ++ "MKPTR(vm, vm)"
-doOp v LNoOp args = ""
+doOp v LNoOp args = v ++ creg (last args)
 doOp _ _ _ = "FAIL"

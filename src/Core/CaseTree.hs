@@ -144,6 +144,7 @@ directUse _ = []
 findUsedArgs :: SC -> [Name] -> [Name]
 findUsedArgs sc topargs = filter (\x -> x `elem` topargs) (nub $ nu' sc) where
     nu' (Case n alts) = n : concatMap nua alts
+    nu' (ProjCase t alts) = directUse t ++ concatMap nua alts
     nu' (STerm t)     = directUse t
     nu' _             = []
 

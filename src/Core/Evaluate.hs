@@ -175,7 +175,8 @@ eval traceon ctxt maxred ntimes genv tm opts = ev ntimes [] True [] tm where
                        ev ntimes (n:stk) True env tm
                 [(TyDecl nt ty, _)] -> do vty <- ev ntimes stk True env ty
                                           return $ VP nt n vty
-                [(CaseOp inl inr _ _ _ [] tree _ _, Public)] -> -- unoptimised version
+                [(CaseOp inl inr _ _ _ [] tree _ _, acc)] 
+                     | acc == Public || simpl -> -- unoptimised version
                    if canSimplify inl inr n stk
                         then liftM (VP Ref n) (ev ntimes stk top env ty)
                         else do c <- evCase ntimes (n:stk) top env [] [] tree 
@@ -244,7 +245,8 @@ eval traceon ctxt maxred ntimes genv tm opts = ev ntimes [] True [] tm where
         = traceWhen traceon (show stk) $
           do let val = lookupDefAcc Nothing n atRepl ctxt
              case val of
-                [(CaseOp inl inr _ _ _ ns tree _ _, Public)]  ->
+                [(CaseOp inl inr _ _ _ ns tree _ _, acc)]
+                     | acc == Public || simpl -> -- unoptimised version
                   if canSimplify inl inr n stk
                      then return $ unload env (VP Ref n ty) args
                      else do c <- evCase ntimes (n:stk) top env ns args tree
