@@ -86,6 +86,12 @@ instance MonadPlus Maybe where
     mplus Nothing (Just y) = Just y
     mplus Nothing Nothing  = Nothing
 
+instance Monad (Either e) where
+    return = Right
+
+    (Left n) >>= _ = Left n
+    (Right r) >>= f = f r
+
 instance Monad List where 
     return x = [x]
     m >>= f = concatMap f m
