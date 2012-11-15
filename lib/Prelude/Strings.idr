@@ -74,6 +74,15 @@ words' s = case dropWhile isSpace s of
 words : String -> List String
 words s = map pack $ words' $ unpack s
 
+lines' : List Char -> List (List Char)
+lines' s = case dropWhile isNL s of
+            [] => []
+            s' => let (w, s'') = break isSpace s'
+                  in w :: words' s''
+
+lines : String -> List String
+lines s = map pack $ words' $ unpack s
+
 partial
 foldr1 : (a -> a -> a) -> List a -> a	
 foldr1 f [x] = x

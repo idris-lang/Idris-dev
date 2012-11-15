@@ -22,6 +22,9 @@ isSpace x = x == ' '  || x == '\t' || x == '\r' ||
             x == '\n' || x == '\f' || x == '\v' ||
             x == '\xa0'
 
+isNL : Char -> Bool
+isNL x = x == '\r' || x == '\n' 
+
 toUpper : Char -> Char
 toUpper x = if (isLower x) 
                then (prim__intToChar (prim__charToInt x - 32))
