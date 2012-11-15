@@ -106,6 +106,10 @@ instance Functor Maybe where
     fmap f (Just x) = Just (f x)
     fmap f Nothing  = Nothing
 
+instance Functor (Either e) where
+    fmap f (Left l) = Left l
+    fmap f (Right r) = Right (f r)
+
 instance Functor List where 
     fmap = map
 
