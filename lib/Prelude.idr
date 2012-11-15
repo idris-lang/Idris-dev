@@ -128,6 +128,11 @@ instance Applicative (Either e) where
     (Right f) <$> (Right r) = Right (f r)
     (Right _) <$> (Left l)  = Left l
 
+instance Applicative List where
+    pure x = [x]
+
+    fs <$> vs = concatMap (\f => map f vs) fs
+
 ---- some mathematical operations
 
 %include "math.h"
