@@ -121,6 +121,12 @@ instance Applicative Maybe where
     (Just f) <$> (Just a) = Just (f a)
     _        <$> _        = Nothing
 
+instance Applicative (Either e) where
+    pure = Right
+
+    (Left a) <$> _          = Left a
+    (Right f) <$> (Right r) = Right (f r)
+    (Right _) <$> (Left l)  = Left l
 
 ---- some mathematical operations
 
