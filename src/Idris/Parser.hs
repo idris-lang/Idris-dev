@@ -1116,7 +1116,7 @@ pRecord syn = do acc <- pAccessibility
                  let rsyn = syn { syn_namespace = show (nsroot tyn) : 
                                                      syn_namespace syn }
                  let fns = getRecNames rsyn cty
-                 mapM_ (\n -> addAcc n (toFreeze acc)) fns
+                 mapM_ (\n -> addAcc n acc) fns
                  return $ PRecord "" rsyn fc tyn ty cdoc cn cty
   where
     getRecNames syn (PPi _ n _ sc) = [expandNS syn n, expandNS syn (mkSet n)]
