@@ -79,6 +79,8 @@ small n t = termsize n t < 50
 namesUsed :: SC -> [Name]
 namesUsed sc = nub $ nu' [] sc where
     nu' ps (Case n alts) = nub (concatMap (nua ps) alts) \\ [n]
+    nu' ps (ProjCase t alts) = nub $ (nut ps t ++ 
+                                      (concatMap (nua ps) alts))
     nu' ps (STerm t)     = nub $ nut ps t
     nu' ps _ = []
 
@@ -89,6 +91,7 @@ namesUsed sc = nub $ nu' [] sc where
     nut ps (P _ n _) | n `elem` ps = []
                      | otherwise = [n]
     nut ps (App f a) = nut ps f ++ nut ps a
+    nut ps (Proj t _) = nut ps t
     nut ps (Bind n (Let t v) sc) = nut ps v ++ nut (n:ps) sc
     nut ps (Bind n b sc) = nut (n:ps) sc
     nut ps _ = []
@@ -100,6 +103,7 @@ namesUsed sc = nub $ nu' [] sc where
 findCalls :: SC -> [Name] -> [(Name, [[Name]])]
 findCalls sc topargs = nub $ nu' topargs sc where
     nu' ps (Case n alts) = nub (concatMap (nua (n : ps)) alts)
+    nu' ps (ProjCase t alts) = nub (nut ps t ++ concatMap (nua ps) alts)
     nu' ps (STerm t)     = nub $ nut ps t
     nu' ps _ = []
 
@@ -115,6 +119,7 @@ findCalls sc topargs = nub $ nu' topargs sc where
                   else [(n, map argNames args)] ++ concatMap (nut ps) args
         | otherwise = nut ps f ++ nut ps a
     nut ps (Bind n (Let t v) sc) = nut ps v ++ nut (n:ps) sc
+    nut ps (Proj t _) = nut ps t
     nut ps (Bind n b sc) = nut (n:ps) sc
     nut ps _ = []
 

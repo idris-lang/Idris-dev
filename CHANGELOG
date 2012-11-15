@@ -1,4 +1,5 @@
 New in 0.9.6:
+-------------
 
 User visible changes:
 
@@ -16,6 +17,7 @@ Internal changes:
 
 * Separate inlining methods at compile-time and run-time
 * Fixed nested parameters blocks 
+* Improve efficiency of elaborator by only normalising when necessary
 
 New in 0.9.5:
 -------------
