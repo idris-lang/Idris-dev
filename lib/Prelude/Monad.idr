@@ -4,6 +4,7 @@ module Prelude.Monad
 
 import Builtins
 import Prelude.List
+import Prelude.Functor
 
 %access public
 
@@ -12,9 +13,6 @@ infixl 5 >>=
 class Monad (m : Set -> Set) where 
     return : a -> m a
     (>>=)  : m a -> (a -> m b) -> m b
-
-class Functor (f : Set -> Set) where 
-    fmap : (a -> b) -> f a -> f b
 
 class Monad m => MonadPlus (m : Set -> Set) where 
     mplus : m a -> m a -> m a

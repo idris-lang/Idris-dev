@@ -10,6 +10,7 @@ import Prelude.List
 import Prelude.Maybe
 import Prelude.Monad
 import Prelude.Applicative
+import Prelude.Functor
 import Prelude.Either
 import Prelude.Vect
 import Prelude.Strings
