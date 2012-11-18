@@ -357,7 +357,9 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
                  iputStrLn $ show fc ++
                               ":warning - Unreachable case: " ++ 
                                  show (delab ist x)) xs
-         tree' <- tclift $ simpleCase tcase pcover RunTime fc pdef'
+         let knowncovering = pcover && cov
+
+         tree' <- tclift $ simpleCase tcase knowncovering RunTime fc pdef'
          logLvl 3 (show tree)
          logLvl 3 $ "Optimised: " ++ show tree'
          ctxt <- getContext
@@ -365,7 +367,7 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
          put (ist { idris_patdefs = addDef n pdef' (idris_patdefs ist) })
          case lookupTy (namespace info) n ctxt of
              [ty] -> do updateContext (addCasedef n (inlinable opts)
-                                                     tcase pcover pats
+                                                     tcase knowncovering pats
                                                      pdef pdef' ty)
                         addIBC (IBCDef n)
                         setTotality n tot

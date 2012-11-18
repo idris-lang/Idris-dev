@@ -144,6 +144,9 @@ instance ToIR (TT Name) where
               = doForeign env args
           | (P _ (UN "unsafePerformIO") _, [_, arg]) <- unApply tm
               = ir' env arg
+            -- TMP HACK - until we get inlining. 
+          | (P _ (UN "replace") _, [_, _, _, _, _, arg]) <- unApply tm
+              = ir' env arg
           | (P _ (UN "lazy") _, [_, arg]) <- unApply tm
               = do arg' <- ir' env arg
                    return $ LLazyExp arg'
