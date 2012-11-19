@@ -100,11 +100,14 @@ docFun n
                        [args] -> zip argnames args
                        _ -> []
        let infixes = idris_infixes i
-       let fixdecls = filter (\(Fix _ x) -> x `isSuffixOf` (show n)) infixes 
+       let fixdecls = filter (\(Fix _ x) -> x == funName n) infixes
        let f = case fixdecls of
                     []          -> Nothing
                     (Fix x _:_) -> Just x 
 
        return (Doc n docstr args (delab i ty) f)
+       where funName :: Name -> String
+             funName (UN n)   = n
+             funName (NS n _) = funName n
 
 
