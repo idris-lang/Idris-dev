@@ -68,39 +68,6 @@ instance Show a => Show (Maybe a) where
     show Nothing = "Nothing"
     show (Just x) = "Just " ++ show x
 
----- Monad instances
-
-instance Monad IO where 
-    return t = io_return t
-    b >>= k = io_bind b k
-
-instance Monad Maybe where 
-    return t = Just t
-
-    Nothing  >>= k = Nothing
-    (Just x) >>= k = k x
-
-instance MonadPlus Maybe where 
-    mzero = Nothing
-
-    mplus (Just x) _       = Just x
-    mplus Nothing (Just y) = Just y
-    mplus Nothing Nothing  = Nothing
-
-instance Monad (Either e) where
-    return = Right
-
-    (Left n) >>= _ = Left n
-    (Right r) >>= f = f r
-
-instance Monad List where 
-    return x = [x]
-    m >>= f = concatMap f m
-
-instance MonadPlus List where 
-    mzero = []
-    mplus = (++)
-
 ---- Functor instances
 
 instance Functor Maybe where 
@@ -133,6 +100,39 @@ instance Applicative List where
     pure x = [x]
 
     fs <$> vs = concatMap (\f => map f vs) fs
+
+---- Monad instances
+
+instance Monad IO where 
+    return t = io_return t
+    b >>= k = io_bind b k
+
+instance Monad Maybe where 
+    return t = Just t
+
+    Nothing  >>= k = Nothing
+    (Just x) >>= k = k x
+
+instance MonadPlus Maybe where 
+    mzero = Nothing
+
+    mplus (Just x) _       = Just x
+    mplus Nothing (Just y) = Just y
+    mplus Nothing Nothing  = Nothing
+
+instance Monad (Either e) where
+    return = Right
+
+    (Left n) >>= _ = Left n
+    (Right r) >>= f = f r
+
+instance Monad List where 
+    return x = [x]
+    m >>= f = concatMap f m
+
+instance MonadPlus List where 
+    mzero = []
+    mplus = (++)
 
 ---- some mathematical operations
 
