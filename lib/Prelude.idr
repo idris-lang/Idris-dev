@@ -83,6 +83,11 @@ instance Functor List where
 
 ---- Applicative instances
 
+instance Applicative IO where
+    pure = io_return
+    
+    am <$> bm = io_bind am (\f => io_bind bm (io_return . f))
+
 instance Applicative Maybe where
     pure = Just
 
