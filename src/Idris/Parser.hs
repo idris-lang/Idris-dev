@@ -486,14 +486,16 @@ pFixity = do pushIndent
              istate <- getState
              let infixes = idris_infixes istate
              let fs      = map (Fix (f prec)) ops
-             let redecl  = map (alreadyDeclared infixes) fs
-             if False `notElem` map checkValidity redecl
+             let redecls = map (alreadyDeclared infixes) fs
+             let ill     = filter (not . checkValidity) redecls
+             if null ill
                 then do setState (istate { idris_infixes = nub $ sort (fs ++ infixes)
                                          , ibc_write     = map IBCFix fs ++ ibc_write istate
                                          })
                         fc <- pfc
                         return (PFix fc (f prec) ops)
-                else fail "Illegal redeclaration of fixity"
+                else fail $ concatMap (\(f, (x:xs)) -> "Illegal redeclaration of fixity: \""
+                                                ++ show f ++ "\" overrides \"" ++ show x ++ "\"\n") ill
              where alreadyDeclared :: [FixDecl] -> FixDecl -> (FixDecl, [FixDecl])
                    alreadyDeclared fs f = (f, filter ((extractName f ==) . extractName) fs)
 
