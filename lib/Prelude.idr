@@ -70,6 +70,9 @@ instance Show a => Show (Maybe a) where
 
 ---- Functor instances
 
+instance Functor IO where
+    fmap f io = io_bind io (io_return . f)
+
 instance Functor Maybe where 
     fmap f (Just x) = Just (f x)
     fmap f Nothing  = Nothing
