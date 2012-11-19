@@ -4,13 +4,13 @@ module Prelude.Monad
 
 import Builtins
 import Prelude.List
-import Prelude.Functor
+import Prelude.Applicative
 
 %access public
 
 infixl 5 >>=
 
-class Monad (m : Set -> Set) where 
+class Applicative m => Monad (m : Set -> Set) where 
     return : a -> m a
     (>>=)  : m a -> (a -> m b) -> m b
 
