@@ -86,6 +86,12 @@ instance MonadPlus Maybe where
     mplus Nothing (Just y) = Just y
     mplus Nothing Nothing  = Nothing
 
+instance Monad (Either e) where
+    return = Right
+
+    (Left n) >>= _ = Left n
+    (Right r) >>= f = f r
+
 instance Monad List where 
     return x = [x]
     m >>= f = concatMap f m
@@ -100,6 +106,10 @@ instance Functor Maybe where
     fmap f (Just x) = Just (f x)
     fmap f Nothing  = Nothing
 
+instance Functor (Either e) where
+    fmap f (Left l) = Left l
+    fmap f (Right r) = Right (f r)
+
 instance Functor List where 
     fmap = map
 
@@ -111,6 +121,17 @@ instance Applicative Maybe where
     (Just f) <$> (Just a) = Just (f a)
     _        <$> _        = Nothing
 
+instance Applicative (Either e) where
+    pure = Right
+
+    (Left a) <$> _          = Left a
+    (Right f) <$> (Right r) = Right (f r)
+    (Right _) <$> (Left l)  = Left l
+
+instance Applicative List where
+    pure x = [x]
+
+    fs <$> vs = concatMap (\f => map f vs) fs
 
 ---- some mathematical operations
 
