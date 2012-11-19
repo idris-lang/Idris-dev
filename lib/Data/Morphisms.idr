@@ -22,6 +22,9 @@ applyHomo (Homo f) a = f a
 applyEndo : Endomorphism a -> a -> a
 applyEndo (Endo f) a = f a
 
+instance Functor (Homomorphism r) where
+  fmap f (Homo a) = Homo (f . a)
+
 instance Applicative (Homomorphism r) where
   pure a                = Homo $ const a
   (Homo f) <$> (Homo a) = Homo $ \r => f r $ a r
