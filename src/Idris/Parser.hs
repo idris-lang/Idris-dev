@@ -490,12 +490,24 @@ pFixity = do pushIndent
              pTerminator 
              let prec = fromInteger i
              istate <- getState
-             let fs = map (Fix (f prec)) ops
-             setState (istate { 
-                idris_infixes = nub $ sort (fs ++ idris_infixes istate),
-                ibc_write = map IBCFix fs ++ ibc_write istate })
-             fc <- pfc
-             return (PFix fc (f prec) ops)
+             let infixes = idris_infixes istate
+             let fs      = map (Fix (f prec)) ops
+             let redecl  = map (alreadyDeclared infixes) fs
+             if False `notElem` map checkValidity redecl
+                then do setState (istate { idris_infixes = nub $ sort (fs ++ infixes)
+                                         , ibc_write     = map IBCFix fs ++ ibc_write istate
+                                         })
+                        fc <- pfc
+                        return (PFix fc (f prec) ops)
+                else fail "Illegal redeclaration of fixity"
+             where alreadyDeclared :: [FixDecl] -> FixDecl -> (FixDecl, [FixDecl])
+                   alreadyDeclared fs f = (f, filter ((extractName f ==) . extractName) fs)
+
+                   checkValidity :: (FixDecl, [FixDecl]) -> Bool
+                   checkValidity (f, fs) = all (== f) fs
+
+                   extractName :: FixDecl -> String
+                   extractName (Fix _ n) = n
 
 fixity :: IParser (Int -> Fixity) 
 fixity = try (do reserved "infixl"; return Infixl)
