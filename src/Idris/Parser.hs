@@ -206,14 +206,13 @@ openBlock = do lchar '{'
 closeBlock :: IParser ()
 closeBlock = do ist <- getState
                 bs <- case brace_stack ist of
-                        Nothing : xs -> do lchar '}'
-                                           return xs
-                        Just lvl : xs -> do i   <- indent
-                                            inp <- getInput
+                        Nothing : xs -> (lchar '}' >> return xs) <|> (eof >> return [])
+                        Just lvl : xs -> (do i   <- indent
+                                             inp <- getInput
 --                                              trace (show (take 10 inp, i, lvl)) $
-                                            if i >= lvl && take 1 inp /= ")" 
-                                               then fail "Not end of block"
-                                               else return xs
+                                             if i >= lvl && take 1 inp /= ")" 
+                                                then fail "Not end of block"
+                                                else return xs) <|> (eof >> return [])
                 setState (ist { brace_stack = bs })
 
 pTerminator = do lchar ';'; popIndent
