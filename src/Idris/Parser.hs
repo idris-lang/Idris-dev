@@ -154,12 +154,6 @@ parseTac i = runParser (do t <- pTactic defaultSyntax
                            eof
                            return t) i "(proof)"
 
-iShowError fname err = let ln  = sourceLine (errorPos err)
-                           clm = sourceColumn (errorPos err)
-                           msg = map messageString (errorMessages err) in
-                           fname ++ ":" ++ show ln ++ ":parse error"
-                                 ++ " at column " ++ show clm -- ++ " with error:\n\t" ++ show msg
-
 parseImports :: FilePath -> String -> Idris ([String], [String], String, SourcePos)
 parseImports fname input 
     = do i <- get
@@ -169,7 +163,7 @@ parseImports fname input
                             rest  <- getInput
                             pos   <- getPosition
                             return ((mname, ps, rest, pos), i)) i fname input of
-              Left err     -> fail (iShowError fname err)
+              Left err     -> fail (show err)
               Right (x, i) -> do put i
                                  return x
 
@@ -286,7 +280,7 @@ parseProg syn fname input pos
                             eof
                             i' <- getState
                             return (concat ps, i')) i fname input of
-            Left err     -> fail (iShowError fname err)
+            Left err     -> fail (show err)
             Right (x, i) -> do put i
                                return (collect x)
 
@@ -357,10 +351,10 @@ pFunDecl syn
 pDecl' :: SyntaxInfo -> IParser PDecl
 pDecl' syn
        = try pFixity
-     <|> pFunDecl' syn
+     <|> try (pFunDecl' syn)
      <|> try (pData syn)
      <|> try (pRecord syn)
-     <|> pSyntaxDecl syn
+     <|> try (pSyntaxDecl syn)
 
 pSyntaxDecl :: SyntaxInfo -> IParser PDecl
 pSyntaxDecl syn
