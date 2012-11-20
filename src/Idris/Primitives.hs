@@ -169,7 +169,7 @@ primitives =
    Prim (UN "prim__stdin") (ty [] PtrType) 0 (p_cantreduce)
     (0, LStdIn) partial,
    Prim (UN "prim__believe_me") believeTy 3 (p_believeMe)
-    (3, LNoOp) total -- ahem
+    (3, LNoOp) partial -- ahem
   ]
 
 p_believeMe [_,_,x] = Just x

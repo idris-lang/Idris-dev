@@ -408,6 +408,7 @@ buildSCG (_, n) = do
                   logLvl 5 $ show newscg
                   addToCG n ( cg { scg = newscg } )
        [] -> logLvl 5 $ "Could not build SCG for " ++ show n ++ "\n"
+       x -> error $ "buildSCG: " ++ show (n, x)
 
 buildSCG' :: IState -> SC -> [Name] -> [SCGEntry] 
 buildSCG' ist sc args = nub $ scg sc (zip args args) 
@@ -541,6 +542,8 @@ checkMP ist i mp = if i > 0
   where
     tryPath :: Int -> [(SCGEntry, Int)] -> MultiPath -> Int -> Totality
     tryPath desc path [] _ = Total []
+--     tryPath desc path ((UN "believe_me", _) : _) arg
+--             = Partial BelieveMe
     -- if we get to a constructor, it's fine as long as it's strictly positive
     tryPath desc path ((f, _) :es) arg
         | [TyDecl (DCon _ _) _] <- lookupDef Nothing f (tt_ctxt ist)

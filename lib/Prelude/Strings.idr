@@ -4,6 +4,7 @@ import Builtins
 import Prelude.List
 import Prelude.Chars
 import Prelude.Cast
+import Prelude.Either
 
 -- Some more complex string operations
 

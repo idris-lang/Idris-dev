@@ -138,6 +138,7 @@ unbindEnv (_:bs) (Bind n b sc) = unbindEnv bs sc
 
 usable :: Bool -> Name -> [(Name, Int)] -> (Bool, [(Name, Int)])
 usable _ _ ns@((MN 0 "STOP", _) : _) = (False, ns)
+usable True (UN "io_bind") ns = (False, ns)
 usable s n [] = (True, [])
 usable s n ns = case lookup n ns of
                   Just 0 -> (False, ns)
@@ -188,7 +189,7 @@ eval traceon ctxt maxred ntimes genv tm opts = ev ntimes [] True [] tm where
     ev ntimes stk top env (V i) | i < length env = return $ env !! i
                      | otherwise      = return $ VV i 
     ev ntimes stk top env (Bind n (Let t v) sc)
-        | not simpl || vinstances 0 sc < 2
+        | not simpl -- || vinstances 0 sc < 2
            = do v' <- ev ntimes stk top env v --(finalise v)
                 when (not atRepl) $ step maxred
                 sc' <- ev ntimes stk top (v' : env) sc
@@ -626,7 +627,7 @@ data Totality = Total [Int] -- well-founded arguments
     deriving Eq
 
 data PReason = Other [Name] | Itself | NotCovering | NotPositive | UseUndef Name
-             | Mutual [Name] | NotProductive
+             | BelieveMe | Mutual [Name] | NotProductive
     deriving (Show, Eq)
 
 instance Show Totality where
@@ -637,6 +638,7 @@ instance Show Totality where
     show (Partial NotCovering) = "not total as there are missing cases"
     show (Partial NotPositive) = "not strictly positive"
     show (Partial NotProductive) = "not productive"
+    show (Partial BelieveMe) = "not total due to use of believe_me in proof"
     show (Partial (Other ns)) = "possibly not total due to: " ++ showSep ", " (map show ns)
     show (Partial (Mutual ns)) = "possibly not total due to recursive path " ++ 
                                  showSep " --> " (map show ns)

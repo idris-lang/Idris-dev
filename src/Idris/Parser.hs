@@ -771,7 +771,9 @@ pCaseOpt syn = do lhs <- pExpr syn; symbol "=>"; rhs <- pExpr syn
 modifyConst :: SyntaxInfo -> FC -> PTerm -> PTerm
 modifyConst syn fc (PConstant (I x)) 
     | not (inPattern syn)
-        = PApp fc (PRef fc (UN "fromInteger")) [pexp (PConstant (I x))]
+        = PAlternative False
+             [PApp fc (PRef fc (UN "fromInteger")) [pexp (PConstant (I x))],
+              PConstant (I x), PConstant (BI (toEnum x))]
     | otherwise = PAlternative False
                      [PConstant (I x), PConstant (BI (toEnum x))]
 modifyConst syn fc x = x

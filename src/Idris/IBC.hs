@@ -682,6 +682,7 @@ instance Binary PReason where
                 Mutual x1 -> do putWord8 4
                                 put x1
                 NotProductive -> putWord8 5
+                BelieveMe -> putWord8 6
         get
           = do i <- getWord8
                case i of
@@ -693,6 +694,7 @@ instance Binary PReason where
                    4 -> do x1 <- get
                            return (Mutual x1)
                    5 -> return NotProductive
+                   6 -> return BelieveMe
                    _ -> error "Corrupted binary data for PReason"
 
 instance Binary Totality where
