@@ -154,12 +154,6 @@ parseTac i = runParser (do t <- pTactic defaultSyntax
                            eof
                            return t) i "(proof)"
 
-iShowError fname err = let ln  = sourceLine (errorPos err)
-                           clm = sourceColumn (errorPos err)
-                           msg = map messageString (errorMessages err) in
-                           fname ++ ":" ++ show ln ++ ":parse error"
-                                 ++ " at column " ++ show clm -- ++ " with error:\n\t" ++ show msg
-
 parseImports :: FilePath -> String -> Idris ([String], [String], String, SourcePos)
 parseImports fname input 
     = do i <- get
@@ -169,7 +163,7 @@ parseImports fname input
                             rest  <- getInput
                             pos   <- getPosition
                             return ((mname, ps, rest, pos), i)) i fname input of
-              Left err     -> fail (iShowError fname err)
+              Left err     -> fail (show err)
               Right (x, i) -> do put i
                                  return x
 
@@ -212,14 +206,13 @@ openBlock = do lchar '{'
 closeBlock :: IParser ()
 closeBlock = do ist <- getState
                 bs <- case brace_stack ist of
-                        Nothing : xs -> do lchar '}'
-                                           return xs
-                        Just lvl : xs -> do i   <- indent
-                                            inp <- getInput
+                        Nothing : xs -> (lchar '}' >> return xs) <|> (eof >> return [])
+                        Just lvl : xs -> (do i   <- indent
+                                             inp <- getInput
 --                                              trace (show (take 10 inp, i, lvl)) $
-                                            if i >= lvl && take 1 inp /= ")" 
-                                               then fail "Not end of block"
-                                               else return xs
+                                             if i >= lvl && take 1 inp /= ")" 
+                                                then fail "Not end of block"
+                                                else return xs) <|> (eof >> return [])
                 setState (ist { brace_stack = bs })
 
 pTerminator = do lchar ';'; popIndent
@@ -286,7 +279,7 @@ parseProg syn fname input pos
                             eof
                             i' <- getState
                             return (concat ps, i')) i fname input of
-            Left err     -> fail (iShowError fname err)
+            Left err     -> fail (show err)
             Right (x, i) -> do put i
                                return (collect x)
 
@@ -357,10 +350,10 @@ pFunDecl syn
 pDecl' :: SyntaxInfo -> IParser PDecl
 pDecl' syn
        = try pFixity
-     <|> pFunDecl' syn
+     <|> try (pFunDecl' syn)
      <|> try (pData syn)
      <|> try (pRecord syn)
-     <|> pSyntaxDecl syn
+     <|> try (pSyntaxDecl syn)
 
 pSyntaxDecl :: SyntaxInfo -> IParser PDecl
 pSyntaxDecl syn
@@ -492,14 +485,16 @@ pFixity = do pushIndent
              istate <- getState
              let infixes = idris_infixes istate
              let fs      = map (Fix (f prec)) ops
-             let redecl  = map (alreadyDeclared infixes) fs
-             if False `notElem` map checkValidity redecl
+             let redecls = map (alreadyDeclared infixes) fs
+             let ill     = filter (not . checkValidity) redecls
+             if null ill
                 then do setState (istate { idris_infixes = nub $ sort (fs ++ infixes)
                                          , ibc_write     = map IBCFix fs ++ ibc_write istate
                                          })
                         fc <- pfc
                         return (PFix fc (f prec) ops)
-                else fail "Illegal redeclaration of fixity"
+                else fail $ concatMap (\(f, (x:xs)) -> "Illegal redeclaration of fixity: \""
+                                                ++ show f ++ "\" overrides \"" ++ show x ++ "\"\n") ill
              where alreadyDeclared :: [FixDecl] -> FixDecl -> (FixDecl, [FixDecl])
                    alreadyDeclared fs f = (f, filter ((extractName f ==) . extractName) fs)
 

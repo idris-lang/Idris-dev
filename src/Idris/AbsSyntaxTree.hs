@@ -231,7 +231,11 @@ instance Show Fixity where
     show (PrefixN i) = "prefix " ++ show i
 
 data FixDecl = Fix Fixity String 
-    deriving (Show, Eq)
+    deriving Eq
+
+instance Show FixDecl where
+  show (Fix f s) = show f ++ " " ++ s
+
 {-! 
 deriving instance Binary FixDecl 
 !-}
