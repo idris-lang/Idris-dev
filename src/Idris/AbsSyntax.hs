@@ -958,7 +958,11 @@ matchClause' names i x y = checkRpts $ match (fullApp x) (fullApp y) where
 --                                  | otherwise = Nothing
     match (PRef f n) (PApp _ x []) = match (PRef f n) x
     match (PApp _ x []) (PRef f n) = match x (PRef f n)
-    match (PRef _ n) (PRef _ n') | n == n' = return []
+    match (PRef _ n) tm@(PRef _ n')
+        | n == n' && not names && 
+          (not (isConName Nothing n (tt_ctxt i)) || tm == Placeholder)
+            = return [(n, tm)]
+        | n == n' = return []
     match (PRef _ n) tm 
         | not names && (not (isConName Nothing n (tt_ctxt i)) || tm == Placeholder)
             = return [(n, tm)]

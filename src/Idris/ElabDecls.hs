@@ -625,9 +625,14 @@ elabClause info tcgen (_, PWith fc fname lhs_in withs wval_in withblock)
                                   return $ PWith fc wname lhs ws wval withs'
         
     updateLHS n wname mvars ns (PApp fc (PRef fc' n') args) w
-        = return $ substMatches mvars $ 
-                PApp fc (PRef fc' wname) (map (pexp . (PRef fc')) ns ++ [pexp w])
+        = let ns' = map (keepMvar (map fst mvars) fc') ns in
+              return $ substMatches mvars $ 
+                  PApp fc (PRef fc' wname) 
+                      (map pexp ns' ++ [pexp w])
     updateLHS n wname mvars ns tm w = fail $ "Not implemented match " ++ show tm 
+
+    keepMvar mvs fc v | v `elem` mvs = PRef fc v
+                      | otherwise = Placeholder
 
     fullApp (PApp _ (PApp fc f args) xs) = fullApp (PApp fc f (args ++ xs))
     fullApp x = x
