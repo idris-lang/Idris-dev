@@ -11,9 +11,11 @@ import Prelude.Applicative
 infixl 5 >>=
 
 class Applicative m => Monad (m : Set -> Set) where 
-    return : a -> m a
     (>>=)  : m a -> (a -> m b) -> m b
 
+return : Monad m => a -> m a
+return = pure
+    
 class Monad m => MonadPlus (m : Set -> Set) where 
     mplus : m a -> m a -> m a
     mzero : m a
