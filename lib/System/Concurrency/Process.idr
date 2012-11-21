@@ -15,6 +15,13 @@ data ProcID msg = MkPID Ptr
 data Process : (msgType : Set) -> Set -> Set where
      lift : IO a -> Process msg a
 
+instance Functor (Process msg) where
+     fmap f (lift a) = lift (fmap f a)
+
+instance Applicative (Process msg) where
+     pure = lift . return
+     (lift f) <$> (lift a) = lift (f <$> a)
+
 instance Monad (Process msg) where
      return = lift . return
      (lift io) >>= k = lift (do x <- io

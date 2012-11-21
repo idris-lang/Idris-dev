@@ -10,6 +10,7 @@ import Prelude.List
 import Prelude.Maybe
 import Prelude.Monad
 import Prelude.Applicative
+import Prelude.Functor
 import Prelude.Either
 import Prelude.Vect
 import Prelude.Strings
@@ -67,6 +68,47 @@ instance Show a => Show (Maybe a) where
     show Nothing = "Nothing"
     show (Just x) = "Just " ++ show x
 
+---- Functor instances
+
+instance Functor IO where
+    fmap f io = io_bind io (io_return . f)
+
+instance Functor Maybe where 
+    fmap f (Just x) = Just (f x)
+    fmap f Nothing  = Nothing
+
+instance Functor (Either e) where
+    fmap f (Left l) = Left l
+    fmap f (Right r) = Right (f r)
+
+instance Functor List where 
+    fmap = map
+
+---- Applicative instances
+
+instance Applicative IO where
+    pure = io_return
+    
+    am <$> bm = io_bind am (\f => io_bind bm (io_return . f))
+
+instance Applicative Maybe where
+    pure = Just
+
+    (Just f) <$> (Just a) = Just (f a)
+    _        <$> _        = Nothing
+
+instance Applicative (Either e) where
+    pure = Right
+
+    (Left a) <$> _          = Left a
+    (Right f) <$> (Right r) = Right (f r)
+    (Right _) <$> (Left l)  = Left l
+
+instance Applicative List where
+    pure x = [x]
+
+    fs <$> vs = concatMap (\f => map f vs) fs
+
 ---- Monad instances
 
 instance Monad IO where 
@@ -99,39 +141,6 @@ instance Monad List where
 instance MonadPlus List where 
     mzero = []
     mplus = (++)
-
----- Functor instances
-
-instance Functor Maybe where 
-    fmap f (Just x) = Just (f x)
-    fmap f Nothing  = Nothing
-
-instance Functor (Either e) where
-    fmap f (Left l) = Left l
-    fmap f (Right r) = Right (f r)
-
-instance Functor List where 
-    fmap = map
-
----- Applicative instances
-
-instance Applicative Maybe where
-    pure = Just
-
-    (Just f) <$> (Just a) = Just (f a)
-    _        <$> _        = Nothing
-
-instance Applicative (Either e) where
-    pure = Right
-
-    (Left a) <$> _          = Left a
-    (Right f) <$> (Right r) = Right (f r)
-    (Right _) <$> (Left l)  = Left l
-
-instance Applicative List where
-    pure x = [x]
-
-    fs <$> vs = concatMap (\f => map f vs) fs
 
 ---- some mathematical operations
 
