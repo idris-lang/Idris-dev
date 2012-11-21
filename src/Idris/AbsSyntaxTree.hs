@@ -900,7 +900,7 @@ showImp impl tm = se 10 tm where
     se p (PPi (Exp l s _) n ty sc)
         | n `elem` allNamesIn sc || impl
                                   = bracket p 2 $
-                                    if l then "|(" else "(" ++ 
+                                    (if l then "|(" else "(") ++ 
                                     show n ++ " : " ++ se 10 ty ++ 
                                     ") " ++ st ++
                                     "-> " ++ se 10 sc
@@ -909,7 +909,7 @@ showImp impl tm = se 10 tm where
                     Static -> "[static] "
                     _ -> ""
     se p (PPi (Imp l s _) n ty sc)
-        | impl = bracket p 2 $ if l then "|{" else "{" ++ 
+        | impl = bracket p 2 $ (if l then "|{" else "{") ++ 
                                show n ++ " : " ++ se 10 ty ++ 
                                "} " ++ st ++ "-> " ++ se 10 sc
         | otherwise = se 10 sc
