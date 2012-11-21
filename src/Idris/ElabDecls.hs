@@ -510,7 +510,9 @@ elabClause info tcgen (cnum, PClause fc fname lhs_in withs rhs_in whereblock)
         checkInferred fc (delab' i crhs True) rhs
         return $ Right (clhs, crhs)
   where
-    decorate x = UN (show x ++ "#" ++ show cnum ++ "#" ++ show fname)
+    decorate (NS x ns) = NS (UN ('#':show x)) (ns ++ [show cnum, show fname])
+    decorate x = NS (UN ('#':show x)) [show cnum, show fname]
+
     pinfo ns ps i 
           = let ds = concatMap declared ps
                 newps = params info ++ ns
