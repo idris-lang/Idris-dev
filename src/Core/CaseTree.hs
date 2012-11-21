@@ -356,7 +356,7 @@ varRule (v : vs) alts err =
     repVar v (PV p : ps , (lhs, res)) = (ps, (lhs, subst p (P Bound v Erased) res))
     repVar v (PAny : ps , res) = (ps, res)
 
--- fix: case e of S k -> f (S k)  ==> case e of S k -. f e
+-- fix: case e of S k -> f (S k)  ==> case e of S k -> f e
 depatt :: [Name] -> SC -> SC
 depatt ns tm = dp [] tm
   where
@@ -376,7 +376,8 @@ depatt ns tm = dp [] tm
         where
           applyMap [] nt cn pty args' = mkApp (P nt cn pty) args'
           applyMap ((x, (n, args)) : ms) nt cn pty args'
-            | and ((n == cn) : zipWith same args args') = P Ref x Erased
+            | and ((length args == length args') :
+                     (n == cn) : zipWith same args args') = P Ref x Erased
             | otherwise = applyMap ms nt cn pty args'
           same n (P _ n' _) = n == n'
           same _ _ = False
