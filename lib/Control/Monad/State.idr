@@ -24,18 +24,16 @@ instance Monad f => Applicative (StateT s f) where
 
     (ST f) <$> (ST a) = ST (\st => do (g, r) <- f st
                                       (b, t) <- a r
-                                      return (g b, t))
+                                      pure (g b, t))
 
 instance Monad m => Monad (StateT s m) where
-    return x = ST (\st => return (x, st))
-
     (ST f) >>= k = ST (\st => do (v, st') <- f st
                                  let ST kv = k v
                                  kv st')
 
 instance Monad m => MonadState s (StateT s m) where
-    get   = ST (\x => return (x, x))
-    put x = ST (\y => return ((), x)) 
+    get   = ST (\x => pure (x, x))
+    put x = ST (\y => pure ((), x)) 
 
 State : Set -> Set -> Set
 State s a = StateT s Identity a

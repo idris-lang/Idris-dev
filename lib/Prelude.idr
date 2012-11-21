@@ -225,7 +225,7 @@ print x = putStrLn (show x)
 
 partial
 getLine : IO String
-getLine = return (prim__readString prim__stdin)
+getLine = pure (prim__readString prim__stdin)
 
 partial
 putChar : Char -> IO ()
@@ -245,7 +245,7 @@ do_fopen f m = mkForeign (FFun "fileOpen" [FString, FString] FPtr) f m
 
 fopen : String -> String -> IO File
 fopen f m = do h <- do_fopen f m
-               return (FHandle h) 
+               pure (FHandle h) 
 
 data Mode = Read | Write | ReadWrite
 
@@ -267,7 +267,7 @@ closeFile (FHandle h) = do_fclose h
 
 partial
 do_fread : Ptr -> IO String
-do_fread h = return (prim__readString h)
+do_fread h = pure (prim__readString h)
 
 partial
 fread : File -> IO String
@@ -287,31 +287,31 @@ do_feof h = mkForeign (FFun "feof" [FPtr] FInt) h
 
 feof : File -> IO Bool
 feof (FHandle h) = do eof <- do_feof h
-                      return (not (eof == 0)) 
+                      pure (not (eof == 0)) 
 
 partial
 nullPtr : Ptr -> IO Bool
 nullPtr p = do ok <- mkForeign (FFun "isNull" [FPtr] FInt) p 
-               return (ok /= 0);
+               pure (ok /= 0);
 
 partial
 validFile : File -> IO Bool
 validFile (FHandle h) = do x <- nullPtr h
-                           return (not x)
+                           pure (not x)
 
 partial -- obviously
 while : |(test : IO Bool) -> |(body : IO ()) -> IO ()
 while t b = do v <- t
                if v then do b
                             while t b
-                    else return ()
+                    else pure ()
                
 partial -- no error checking!
 readFile : String -> IO String
 readFile fn = do h <- openFile fn Read
                  c <- readFile' h ""
                  closeFile h
-                 return c
+                 pure c
   where 
     partial
     readFile' : File -> String -> IO String
@@ -319,5 +319,5 @@ readFile fn = do h <- openFile fn Read
        do x <- feof h
           if not x then do l <- fread h
                            readFile' h (contents ++ l)
-                   else return contents
+                   else pure contents
 

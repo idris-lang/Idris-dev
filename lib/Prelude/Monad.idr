@@ -21,19 +21,19 @@ class Monad m => MonadPlus (m : Set -> Set) where
     mzero : m a
 
 guard : MonadPlus m => Bool -> m ()
-guard True  = return ()
+guard True  = pure ()
 guard False = mzero
 
 when : Monad m => Bool -> m () -> m ()
 when True  f = f
-when False _ = return ()
+when False _ = pure ()
 
 sequence : Monad m => List (m a) -> m (List a)
-sequence []        = return []
+sequence []        = pure []
 sequence (x :: xs) = [ x' :: xs' | x' <- x, xs' <- sequence xs ]
 
 sequence_ : Monad m => List (m a) -> m ()
-sequence_ [] = return ()
+sequence_ [] = pure ()
 sequence_ (x :: xs) = do x; sequence_ xs
 
 mapM : Monad m => (a -> m b) -> List a -> m (List b)

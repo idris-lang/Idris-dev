@@ -25,15 +25,15 @@ instance Arrow Homomorphism where
 instance Monad m => Arrow (Kleislimorphism m) where
   arrow f = Kleisli (return . f)
   first (Kleisli f) = Kleisli $ \(a, b) => do x <- f a
-                                              return (x, b)
+                                              pure (x, b)
 
   second (Kleisli f) = Kleisli $ \(a, b) => do x <- f b
-                                               return (a, x)
+                                               pure (a, x)
 
   (Kleisli f) *** (Kleisli g) = Kleisli $ \(a, b) => do x <- f a
                                                         y <- g b
-                                                        return (x, y)
+                                                        pure (x, y)
 
   (Kleisli f) &&& (Kleisli g) = Kleisli $ \a => do x <- f a
                                                    y <- g a
-                                                   return (x, y)
+                                                   pure (x, y)

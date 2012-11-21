@@ -19,11 +19,10 @@ instance Functor (Process msg) where
      fmap f (lift a) = lift (fmap f a)
 
 instance Applicative (Process msg) where
-     pure = lift . return
+     pure = lift . pure
      (lift f) <$> (lift a) = lift (f <$> a)
 
 instance Monad (Process msg) where
-     return = lift . return
      (lift io) >>= k = lift (do x <- io
                                 case k x of
                                      lift v => v)
@@ -50,7 +49,7 @@ msgWaiting = lift checkMsgs
 
 recv : Process msg msg
 recv {msg} = do (senderid, m) <- lift get
-                return m
+                pure m
   where get : IO (Ptr, msg)
         get = getMsg
 
@@ -59,11 +58,11 @@ recv {msg} = do (senderid, m) <- lift get
 recvWithSender : Process msg (ProcID msg, msg)
 recvWithSender {msg} 
      = do (senderid, m) <- lift get
-          return (MkPID senderid, m)
+          pure (MkPID senderid, m)
   where get : IO (Ptr, msg)
         get = getMsg
 
 create : |(thread : Process msg ()) -> Process msg (ProcID msg)
 create (lift p) = do ptr <- lift (fork p)
-                     return (MkPID ptr)
+                     pure (MkPID ptr)
 
