@@ -158,7 +158,8 @@ data Phase = CompileTime | RunTime
 -- Generate a simple case tree
 -- Work Left to Right at Compile Time 
 
-simpleCase :: Bool -> Bool -> Phase -> FC -> [([Name], Term, Term)] -> TC CaseDef
+simpleCase :: Bool -> Bool -> Phase -> FC -> [([Name], Term, Term)] -> 
+              TC CaseDef
 simpleCase tc cover phase fc [] 
                  = return $ CaseDef [] (UnmatchedCase "No pattern clauses") []
 simpleCase tc cover phase fc cs 

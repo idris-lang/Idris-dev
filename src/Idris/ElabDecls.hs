@@ -320,7 +320,6 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
                        else stripCollapsed pats
 
          logLvl 5 $ "Patterns:\n" ++ show pats
-         logLvl 5 $ "Optimised patterns:\n" ++ show optpats
 
          let optpdef = map debind $ map (simpl True (tt_ctxt ist)) optpats
          tree@(CaseDef scargs sc _) <- tclift $ 
@@ -339,6 +338,7 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
                     else return []
          let pcover = null pmissing
          pdef' <- applyOpts optpdef 
+         logLvl 5 $ "Optimised patterns:\n" ++ show pdef'
          ist <- get
 --          let wf = wellFounded ist n sc
          let tot = if pcover || AssertTotal `elem` opts
@@ -400,7 +400,8 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
     
     getLHS (_, l, _) = l
 
-    simpl rt ctxt (Right (x, y)) = Right (x, simplify ctxt rt [] y)
+    simpl rt ctxt (Right (x, y)) = Right (normalise ctxt [] x, 
+                                          simplify ctxt rt [] y)
     simpl rt ctxt t = t
 
     sameLength ((_, x, _) : xs) 
