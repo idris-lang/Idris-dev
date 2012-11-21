@@ -994,7 +994,7 @@ pComprehension syn
          qs <- sepBy1 (pDo syn) (lchar ',')
          lchar ']'
          return (PDoBlock (map addGuard qs ++ 
-                    [DoExp fc (PApp fc (PRef fc (UN "return"))
+                    [DoExp fc (PApp fc (PRef fc (UN "pure"))
                                  [pexp pat])]))
     where addGuard (DoExp fc e) = DoExp fc (PApp fc (PRef fc (UN "guard"))
                                                     [pexp e])

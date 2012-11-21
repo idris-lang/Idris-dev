@@ -113,7 +113,7 @@ getContent x = getC x "" where
     getC n acc = if (n > 0)
                     then do x <- getChar
                             getC (n-1) (strCons x acc)
-                    else (return "")
+                    else (pure "")
 
 abstract
 runCGI : CGI a -> IO a

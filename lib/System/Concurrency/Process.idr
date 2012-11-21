@@ -33,7 +33,7 @@ run (lift prog) = prog
 -- Get current process ID
 
 myID : Process msg (ProcID msg)
-myID = lift (return (MkPID prim__vm))
+myID = lift (pure (MkPID prim__vm))
 
 -- Send a message to another process
 

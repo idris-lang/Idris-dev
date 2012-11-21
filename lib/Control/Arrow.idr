@@ -23,7 +23,7 @@ instance Arrow Homomorphism where
   (Homo f) &&& (Homo g) = Homo $ \a => (f a, g a)
 
 instance Monad m => Arrow (Kleislimorphism m) where
-  arrow f = Kleisli (return . f)
+  arrow f = Kleisli (pure . f)
   first (Kleisli f) = Kleisli $ \(a, b) => do x <- f a
                                               pure (x, b)
 
