@@ -9,6 +9,18 @@ import Prelude.Applicative
 %access public
 
 infixl 5 >>=
+infixr 1 <=<
+infixl 1 >=>
+
+-- Monad: instances should satisfy the following laws:
+--   Functor bind:
+--                     bind pure        == id
+--     forall f g .    bind (f <=< g)   == bind f . bind g
+--   Associativity of <=<:
+--     forall f g h .  f <=< (g <=< h)  == (f <=< g) <=< h
+--   Neutral element for <=<:
+--     forall f .      f <=< pure       == f
+--     forall f .      pure <=< f       == f
 
 class Applicative m => Monad (m : Set -> Set) where 
     (>>=)  : m a -> (a -> m b) -> m b
@@ -20,6 +32,10 @@ class Applicative m => Monad (m : Set -> Set) where
     %assert_total
     flatten : m (m a) -> m a
     flatten = bind id
+
+(<=<) : Monad m => (b -> m c) -> (a -> m b) -> (a -> m c)
+f <=< g = bind f . g
+    
     
 class Monad m => MonadPlus (m : Set -> Set) where 
     mplus : m a -> m a -> m a
