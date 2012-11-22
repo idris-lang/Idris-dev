@@ -6,6 +6,8 @@ import Builtins
 import Prelude.List
 import Prelude.Applicative
 
+import Control.Functor.Constant
+
 %access public
 
 infixl 5 >>=
