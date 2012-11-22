@@ -37,7 +37,9 @@ class Applicative m => Monad (m : Set -> Set) where
 
 (<=<) : Monad m => (b -> m c) -> (a -> m b) -> (a -> m c)
 f <=< g = bind f . g
-    
+   
+(>=>) : Monad m => (a -> m b) -> (b -> m c) -> (a -> m c)
+f >=> g = bind g . f 
     
 class Monad m => MonadPlus (m : Set -> Set) where 
     mplus : m a -> m a -> m a

@@ -28,10 +28,14 @@ class Functor w => Comonad (w : Set -> Set) where
     extract : w a -> a
 
     extend  : (w a -> b) -> (w a -> w b)
+    extend f = fmap f . duplicate
     
     duplicate : w a -> w (w a)
     duplicate = extend id
 
 (=<=) : Comonad w => (w b -> c) -> (w a -> b) -> (w a -> c)
 f =<= g = f . extend g
+    
+(=>=) : Comonad w => (w a -> b) -> (w b -> c) -> (w a -> c)
+f =>= g = g . extend f
     
