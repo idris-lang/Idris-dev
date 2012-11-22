@@ -11,4 +11,6 @@ class Functor f => Applicative (f : Set -> Set) where
     pure  : a -> f a
     (<$>) : f (a -> b) -> f a -> f b 
 
+    (>>) : f a -> f b -> f b
+    a >> b = pure (const id) <$> a <$> b 
 

@@ -117,7 +117,7 @@ instance Monad IO where
 instance Monad Maybe where 
     Nothing  >>= k = Nothing
     (Just x) >>= k = k x
-
+    
 instance MonadPlus Maybe where 
     mzero = Nothing
 
@@ -132,6 +132,9 @@ instance Monad (Either e) where
 instance Monad List where 
     m >>= f = concatMap f m
 
+    bind = concatMap
+    flatten = concat
+    
 instance MonadPlus List where 
     mzero = []
     mplus = (++)

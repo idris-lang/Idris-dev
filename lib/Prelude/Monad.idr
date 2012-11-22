@@ -12,6 +12,14 @@ infixl 5 >>=
 
 class Applicative m => Monad (m : Set -> Set) where 
     (>>=)  : m a -> (a -> m b) -> m b
+
+    %assert_total
+    bind : (a -> m b) -> (m a -> m b)
+    bind = flip (>>=)
+    
+    %assert_total
+    flatten : m (m a) -> m a
+    flatten = bind id
     
 class Monad m => MonadPlus (m : Set -> Set) where 
     mplus : m a -> m a -> m a
@@ -38,6 +46,3 @@ mapM f xs = sequence (map f xs)
 
 mapM_ : Monad m => (a -> m b) -> List a -> m ()
 mapM_ f xs = sequence_ (map f xs)
-
-flatten : Monad m => m (m a) -> m a
-flatten a = a >>= id
