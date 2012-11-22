@@ -1,4 +1,4 @@
-module Control.Monad.Identity
+module Control.Functor.Identity
 
 import Prelude.Functor
 import Prelude.Applicative
