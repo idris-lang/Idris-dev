@@ -25,9 +25,11 @@ infixl 1 >=>
 class Applicative m => Monad (m : Set -> Set) where 
     (>>=)  : m a -> (a -> m b) -> m b
 
+--TODO: Remove (>>=) in favor of bind
     %assert_total
     bind : (a -> m b) -> (m a -> m b)
     bind = flip (>>=)
+--  bind f = flatten . fmap f
     
     %assert_total
     flatten : m (m a) -> m a
