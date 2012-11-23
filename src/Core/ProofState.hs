@@ -393,8 +393,9 @@ intro mn ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' =
                     x@(Bind y (Pi s) _) -> x
                     _ -> normalise ctxt env t
        case t' of
-           Bind y (Pi s) t -> let t' = instantiate (P Bound n s) (pToV y t) in 
-                                  return $ Bind n (Lam s) (Bind x (Hole t') (P Bound x t'))
+           Bind y (Pi s) t -> -- trace ("in type " ++ show t') $
+               let t' = instantiate (P Bound n s) (pToV y t) in 
+                   return $ Bind n (Lam s) (Bind x (Hole t') (P Bound x t'))
            _ -> fail "Nothing to introduce"
 intro n ctxt env _ = fail "Can't introduce here."
 

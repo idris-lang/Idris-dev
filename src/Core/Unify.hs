@@ -24,11 +24,11 @@ data UInfo = UI Int Injs Fails
 
 unify :: Context -> Env -> TT Name -> TT Name -> TC ([(Name, TT Name)], 
                                                      Injs, Fails)
-unify ctxt env topx topy 
-    = case runStateT (un' False [] topx topy) (UI 0 [] []) of
+unify ctxt env topx topy =
+--     trace ("Unifying " ++ show (topx, topy)) $
+      case runStateT (un' False [] topx topy) (UI 0 [] []) of
           OK (v, UI _ inj []) -> return (filter notTrivial v, inj, [])
           _ -> 
---        trace ("Unifying " ++ show (topx, topy)) $
                let topxn = normalise ctxt env topx
                    topyn = normalise ctxt env topy in
 --                     trace ("Unifying " ++ show (topxn, topyn)) $

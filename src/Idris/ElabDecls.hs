@@ -808,10 +808,16 @@ elabInstance info syn fc cs n ps t expn ds
          let ns = case n of
                     NS n ns' -> ns'
                     _ -> []
+         -- get the implicit parameters that need passing through to the 
+         -- where block
+         wparams <- mapM (\p -> case p of
+                                  PApp _ _ args -> getWParams args
+                                  _ -> return []) ps
+         let pnames = map pname (concat (nub wparams))
          let mtys = map (\ (n, (op, t)) -> 
-                                let t' = substMatches ips t in
-                                    (decorate ns iname n, 
-                                        op, coninsert cs t', t'))
+                             let t' = substMatchesShadow ips pnames t in
+                                 (decorate ns iname n, 
+                                     op, coninsert cs t', t'))
                         (class_methods ci)
          logLvl 3 (show (mtys, ips))
          let ds' = insertDefaults i iname (class_defaults ci) ns ds
@@ -822,11 +828,6 @@ elabInstance info syn fc cs n ps t expn ds
          let wbVals = map (decorateid (decorate ns iname)) ds'
          let wb = wbTys ++ wbVals
          logLvl 3 $ "Method types " ++ showSep "\n" (map (showDeclImp True . mkTyDecl) mtys)
-         -- get the implicit parameters that need passing through to the 
-         -- where block
-         wparams <- mapM (\p -> case p of
-                                  PApp _ _ args -> getWParams args
-                                  _ -> return []) ps
          logLvl 3 $ "Instance is " ++ show ps ++ " implicits " ++ 
                                       show (concat (nub wparams))
          let lhs = case concat (nub wparams) of

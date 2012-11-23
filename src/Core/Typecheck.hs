@@ -64,11 +64,14 @@ check' holes ctxt env top = chk env top where
   chk env (RApp f a)
       = do (fv, fty) <- chk env f
            (av, aty) <- chk env a
-           let fty' = case renameBinders 0 (finalise fty) of
+           let fty' = case uniqueBinders (map fst env) (finalise fty) of
                         ty@(Bind x (Pi s) t) -> ty
-                        _ -> renameBinders 0 $ normalise ctxt env fty
+                        _ -> uniqueBinders (map fst env) 
+                                 $ normalise ctxt env fty
            case fty' of
              Bind x (Pi s) t ->
+--                trace ("Converting " ++ show aty ++ " and " ++ show s ++
+--                       " from " ++ show fv ++ " : " ++ show fty) $
                  do convertsC ctxt env aty s
                     -- let apty = normalise initContext env 
                                        -- (Bind x (Let aty av) t)
@@ -80,6 +83,7 @@ check' holes ctxt env top = chk env top where
     -- proofs, variables are locally bound with an explicit name. If we just 
     -- make sure bound names in function types are locally unique, machine
     -- generated names, we'll be fine.
+    -- NOTE: now replaced with 'uniqueBinders' above
     where renameBinders i (Bind x (Pi s) t) = Bind (MN i "binder") (Pi s) 
                                                    (renameBinders (i+1) t)
           renameBinders i sc = sc
@@ -107,7 +111,8 @@ check' holes ctxt env top = chk env top where
            let Set su = normalise ctxt env st
            let Set tu = normalise ctxt env tt
            when (not holes) $ put (v+1, ULE su (UVar v):ULE tu (UVar v):cs)
-           return (Bind n (Pi sv) (pToV n tv), Set (UVar v))  
+           return (Bind n (Pi (uniqueBinders (map fst env) sv)) 
+                              (pToV n tv), Set (UVar v))  
   chk env (RBind n b sc)
       = do b' <- checkBinder b
            (scv, sct) <- chk ((n, b'):env) sc

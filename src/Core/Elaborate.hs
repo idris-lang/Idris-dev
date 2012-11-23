@@ -290,7 +290,7 @@ prepare_apply fn imps =
        env <- get_env
        -- let claims = getArgs ty imps
        -- claims <- mkClaims (normalise ctxt env ty) imps []
-       claims <- mkClaims (finalise ty) imps []
+       claims <- mkClaims (finalise ty) imps [] (map fst env)
        ES (p, a) s prev <- get
        -- reverse the claims we made so that args go left to right
        let n = length (filter not imps)
@@ -301,15 +301,17 @@ prepare_apply fn imps =
 --             (h : _) -> reorder_claims h
        return claims
   where
-    mkClaims (Bind n' (Pi t) sc) (i : is) claims =
-        do n <- unique_hole (mkMN n')
+    mkClaims (Bind n' (Pi t_in) sc) (i : is) claims hs =
+        do let t = rebind hs t_in
+           n <- unique_hole (mkMN n')
 --            when (null claims) (start_unify n)
            let sc' = instantiate (P Bound n t) sc
+--            trace ("CLAIMING " ++ show (n, t) ++ " with " ++ show hs) $
            claim n (forget t)
            when i (movelast n)
-           mkClaims sc' is (n : claims)
-    mkClaims t [] claims = return (reverse claims)
-    mkClaims _ _ _ 
+           mkClaims sc' is (n : claims) hs
+    mkClaims t [] claims _ = return (reverse claims)
+    mkClaims _ _ _ _
             | Var n <- fn
                    = do ctxt <- get_context
                         case lookupTy Nothing n ctxt of
@@ -323,6 +325,13 @@ prepare_apply fn imps =
     mkMN n@(MN _ _) = n
     mkMN n@(UN x) = MN 1000 x
     mkMN (NS n xs) = NS (mkMN n) xs
+
+    rebind hs (Bind n t sc)
+        | n `elem` hs = let n' = uniqueName n hs in
+                            Bind n' (fmap (rebind hs) t) (rebind (n':hs) sc)
+        | otherwise = Bind n (fmap (rebind hs) t) (rebind (n:hs) sc)
+    rebind hs (App f a) = App (rebind hs f) (rebind hs a)
+    rebind hs t = t
 
 apply :: Raw -> [(Bool, Int)] -> Elab' aux [Name]
 apply fn imps = 
@@ -343,7 +352,9 @@ apply fn imps =
                       unified p
        let unify = dropGiven dont hs
        put (ES (p { dontunify = dont, unified = (n, unify) }, a) s prev)
+       ptm <- get_term
        end_unify
+       ptm <- get_term
        return (map (updateUnify unify) args)
   where updateUnify hs n = case lookup n hs of
                                 Just (P _ t _) -> t
@@ -410,7 +421,7 @@ apply_elab n args =
                          focus n; elaboration; elabClaims failed r xs
 
     mkMN n@(MN _ _) = n
-    mkMN n@(UN x) = MN 0 x
+    mkMN n@(UN x) = MN 1000 x
     mkMN (NS n ns) = NS (mkMN n) ns
 
 simple_app :: Elab' aux () -> Elab' aux () -> Elab' aux ()

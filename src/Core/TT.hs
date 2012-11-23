@@ -518,7 +518,7 @@ pToV' n i (Bind x b sc)
 -- We can assume the inner scope has been pToVed already, so continue to
 -- resolve names from the *outer* scope which may happen to have the same id.
 --                 | n == x    = Bind x (fmap (pToV' n i) b) sc
-                | otherwise = Bind x (fmap (pToV' n i) b) (pToV' n (i+1) sc)
+     | otherwise = Bind x (fmap (pToV' n i) b) (pToV' n (i+1) sc)
 pToV' n i (App f a) = App (pToV' n i f) (pToV' n i a)
 pToV' n i (Proj t idx) = Proj (pToV' n i t) idx
 pToV' n i t = t
@@ -626,6 +626,14 @@ getRetTy sc = sc
 uniqueName :: Name -> [Name] -> Name
 uniqueName n hs | n `elem` hs = uniqueName (nextName n) hs
                 | otherwise   = n
+
+uniqueBinders :: [Name] -> TT Name -> TT Name
+uniqueBinders ns (Bind n b sc)
+    = let n' = uniqueName n ns in
+          Bind n' (fmap (uniqueBinders (n':ns)) b) (uniqueBinders ns sc)
+uniqueBinders ns (App f a) = App (uniqueBinders ns f) (uniqueBinders ns a)
+uniqueBinders ns t = t
+  
 
 nextName (NS x s)    = NS (nextName x) s
 nextName (MN i n)    = MN (i+1) n

@@ -180,7 +180,10 @@ elab ist info pattern tcgen fn tm
     elab' ina@(_, a) (PLam n Placeholder sc)
           = do -- n' <- unique_hole n
                -- let sc' = mapPT (repN n n') sc
-               attack; intro (Just n); elabE (True, a) sc; solve
+               ptm <- get_term
+               attack; intro (Just n); 
+               -- trace ("------ intro " ++ show n ++ " ---- \n" ++ show ptm) 
+               elabE (True, a) sc; solve
        where repN n n' (PRef fc x) | x == n' = PRef fc n'
              repN _ _ t = t
     elab' ina@(_, a) (PLam n ty sc)
@@ -270,7 +273,8 @@ elab ist info pattern tcgen fn tm
 
     elab' ina@(_, a) (PApp fc f [arg])
           = erun fc $ 
-             do simple_app (elabE ina f) (elabE (True, a) (getTm arg))
+             do ptm <- get_term
+                simple_app (elabE ina f) (elabE (True, a) (getTm arg))
                 solve
     elab' ina Placeholder = do (h : hs) <- get_holes
                                movelast h

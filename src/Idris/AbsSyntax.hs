@@ -1028,23 +1028,35 @@ matchClause' names i x y = checkRpts $ match (fullApp x) (fullApp y) where
     checkRpts (LeftErr x) = Left x
 
 substMatches :: [(Name, PTerm)] -> PTerm -> PTerm
-substMatches [] t = t
-substMatches ((n,tm):ns) t = substMatch n tm (substMatches ns t)
+substMatches ms = substMatchesShadow ms []
+
+substMatchesShadow :: [(Name, PTerm)] -> [Name] -> PTerm -> PTerm
+substMatchesShadow [] shs t = t
+substMatchesShadow ((n,tm):ns) shs t 
+   = substMatchShadow n shs tm (substMatchesShadow ns shs t)
 
 substMatch :: Name -> PTerm -> PTerm -> PTerm
-substMatch n tm t = sm t where
-    sm (PRef _ n') | n == n' = tm
-    sm (PLam x t sc) = PLam x (sm t) (sm sc)
-    sm (PPi p x t sc) = PPi p x (sm t) (sm sc)
-    sm (PApp f x as) = PApp f (sm x) (map (fmap sm) as)
-    sm (PCase f x as) = PCase f (sm x) (map (pmap sm) as)
-    sm (PEq f x y) = PEq f (sm x) (sm y)
-    sm (PTyped x y) = PTyped (sm x) (sm y)
-    sm (PPair f x y) = PPair f (sm x) (sm y)
-    sm (PDPair f x t y) = PDPair f (sm x) (sm t) (sm y)
-    sm (PAlternative a as) = PAlternative a (map sm as)
-    sm (PHidden x) = PHidden (sm x)
-    sm x = x
+substMatch n = substMatchShadow n []
+
+substMatchShadow :: Name -> [Name] -> PTerm -> PTerm -> PTerm
+substMatchShadow n shs tm t = sm shs t where
+    sm xs (PRef _ n') | n == n' = tm
+    sm xs (PLam x t sc) = PLam x (sm xs t) (sm xs sc)
+    sm xs (PPi p x t sc) 
+         | x `elem` xs 
+             = let x' = nextName x in
+                   PPi p x' (sm (x':xs) (substMatch x (PRef (FC "" 0) x') t)) 
+                            (sm (x':xs) (substMatch x (PRef (FC "" 0) x') sc))
+         | otherwise = PPi p x (sm xs t) (sm (x : xs) sc)
+    sm xs (PApp f x as) = PApp f (sm xs x) (map (fmap (sm xs)) as)
+    sm xs (PCase f x as) = PCase f (sm xs x) (map (pmap (sm xs)) as)
+    sm xs (PEq f x y) = PEq f (sm xs x) (sm xs y)
+    sm xs (PTyped x y) = PTyped (sm xs x) (sm xs y)
+    sm xs (PPair f x y) = PPair f (sm xs x) (sm xs y)
+    sm xs (PDPair f x t y) = PDPair f (sm xs x) (sm xs t) (sm xs y)
+    sm xs (PAlternative a as) = PAlternative a (map (sm xs) as)
+    sm xs (PHidden x) = PHidden (sm xs x)
+    sm xs x = x
 
 shadow :: Name -> Name -> PTerm -> PTerm
 shadow n n' t = sm t where
