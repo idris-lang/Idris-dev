@@ -626,7 +626,9 @@ elabClause info tcgen (_, PWith fc fname lhs_in withs wval_in withblock)
                 Left _ -> fail $ show fc ++ "with clause does not match top level"
                 Right mvars -> do lhs <- updateLHS n wname mvars ns (fullApp tm) w
                                   return $ PWith fc wname lhs ws wval withs'
-        
+    mkAux wname toplhs ns c
+        = fail $ show fc ++ "badly formed with clause"
+
     updateLHS n wname mvars ns (PApp fc (PRef fc' n') args) w
         = let ns' = map (keepMvar (map fst mvars) fc') ns in
               return $ substMatches mvars $ 

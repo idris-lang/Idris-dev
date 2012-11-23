@@ -1,5 +1,5 @@
 {-
-  © 2012 Copyright Mekeor Melire
+  (c) 2012 Copyright Mekeor Melire
 -}
 
 
