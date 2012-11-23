@@ -10,6 +10,7 @@ User visible changes:
     elaborating their definitions
 * Implicit arguments will be added automatically only if their initial
   letter is lower case, or they are in a using declaration
+* Added documentation comments (Haddock style) and ':doc' REPL command
 * Pattern matching on strings, big integers and characters
 * Added System.Concurrency modules
 
