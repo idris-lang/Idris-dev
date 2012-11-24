@@ -661,8 +661,12 @@ elabClass info syn doc fc constraints tn ps ds
                       (filter clause ds)
          let (methods, imethods) 
               = unzip (map (\ ( x,y,z) -> (x, y)) ims)
+         -- build instance constructor type
+         -- decorate names of functions to ensure they can't be referred
+         -- to elsewhere in the class declaration
          let cty = impbind ps $ conbind constraints 
-                      $ pibind methods constraint
+                      $ pibind (map (\ (n, ty) -> (mdec n, ty)) methods) 
+                               constraint
          let cons = [("", cn, cty, fc)]
          let ddecl = PDatadecl tn tty cons
          logLvl 5 $ "Class data " ++ showDImp True ddecl
@@ -685,6 +689,11 @@ elabClass info syn doc fc constraints tn ps ds
     nodoc (n, (_, o, t)) = (n, (o, t))
     pibind [] x = x
     pibind ((n, ty): ns) x = PPi expl n ty (pibind ns x) 
+
+    mdec (UN n) = (UN ('!':n))
+    mdec (NS x n) = NS (mdec x) n
+    mdec x = x
+
     impbind [] x = x
     impbind ((n, ty): ns) x = PPi impl n ty (impbind ns x) 
     conbind (ty : ns) x = PPi constraint (MN 0 "c") ty (conbind ns x)
