@@ -467,7 +467,7 @@ try t1 t2 = do s <- get
                     Error e1 -> if recoverableErr e1 then
                                    do case runStateT t2 s of
                                          OK (v, s') -> do put s'; return v
-                                         Error e2 -> if score e1 > score e2 
+                                         Error e2 -> if score e1 >= score e2 
                                                         then lift (tfail e1) 
                                                         else lift (tfail e2)
                                    else lift (tfail e1)
