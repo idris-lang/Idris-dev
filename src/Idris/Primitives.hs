@@ -39,6 +39,8 @@ primitives =
      (2, LTimes) total,
    Prim (UN "prim__divInt") (ty [IType, IType] IType) 2 (iBin (div))
      (2, LDiv) partial,
+   Prim (UN "prim__modInt") (ty [IType, IType] IType) 2 (iBin (mod))
+     (2, LMod) partial,
    Prim (UN "prim__eqInt")  (ty [IType, IType] IType) 2 (biBin (==))
      (2, LEq) total,
    Prim (UN "prim__ltInt")  (ty [IType, IType] IType) 2 (biBin (<))
@@ -68,6 +70,8 @@ primitives =
      (2, LBTimes) total,
    Prim (UN "prim__divBigInt") (ty [BIType, BIType] BIType) 2 (bBin (div))
      (2, LBDiv) partial,
+   Prim (UN "prim__modBigInt") (ty [BIType, BIType] BIType) 2 (bBin (mod))
+     (2, LBMod) partial,
    Prim (UN "prim__eqBigInt")  (ty [BIType, BIType] IType) 2 (bbBin (==))
      (2, LBEq) total,
    Prim (UN "prim__ltBigInt")  (ty [BIType, BIType] IType) 2 (bbBin (<))

@@ -116,6 +116,17 @@ VAL bigDiv(VM* vm, VAL x, VAL y) {
     return cl;
 }
 
+VAL bigMod(VM* vm, VAL x, VAL y) {
+    mpz_t* bigint;
+    VAL cl = allocate(vm, sizeof(ClosureType) + sizeof(void*) + 
+                          sizeof(mpz_t), 0);
+    bigint = (mpz_t*)(((char*)cl) + sizeof(ClosureType) + sizeof(void*));
+    mpz_mod(*bigint, GETMPZ(x), GETMPZ(y));
+    SETTY(cl, BIGINT);
+    cl -> info.ptr = (void*)bigint;
+    return cl;
+}
+
 VAL idris_bigPlus(VM* vm, VAL x, VAL y) {
     if (ISINT(x) && ISINT(y)) {
         i_int vx = GETINT(x);
@@ -178,6 +189,14 @@ VAL idris_bigDivide(VM* vm, VAL x, VAL y) {
         return INTOP(/, x, y);
     } else {
         return bigDiv(vm, GETBIG(vm, x), GETBIG(vm, y));
+    }
+}
+
+VAL idris_bigMod(VM* vm, VAL x, VAL y) {
+    if (ISINT(x) && ISINT(y)) {
+        return INTOP(%, x, y);
+    } else {
+        return bigMod(vm, GETBIG(vm, x), GETBIG(vm, y));
     }
 }
 

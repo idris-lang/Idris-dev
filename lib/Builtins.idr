@@ -249,6 +249,10 @@ partial
 div : Int -> Int -> Int
 div = prim__divInt
 
+partial
+mod : Int -> Int -> Int
+mod = prim__modInt
+
 
 (/) : Float -> Float -> Float
 (/) = prim__divFloat

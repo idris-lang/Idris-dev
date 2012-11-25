@@ -908,7 +908,7 @@ inBounds : Int -> Int -> Bool
 inBounds x y = x >= 0 && x < 640 && y >= 0 && y < 480
 
 drawPoint : (x : Int) -> (y : Int) -> so (inBounds x y) -> IO ()
-drawPoint x y oh = unsafeDrawPoint x y
+drawPoint x y p = unsafeDrawPoint x y
 
 \end{SaveVerbatim}
 \useverb{soexample} 

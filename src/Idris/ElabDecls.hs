@@ -330,7 +330,7 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
                     then do missing <- genClauses fc n (map getLHS pdef) cs
                             -- missing <- genMissing n scargs sc  
                             missing' <- filterM (checkPossible info fc True n) missing
-                            logLvl 3 $ "Must be unreachable:\n" ++ 
+                            logLvl 2 $ "Must be unreachable:\n" ++ 
                                         showSep "\n" (map (showImp True) missing') ++
                                        "\nAgainst: " ++
                                         showSep "\n" (map (\t -> showImp True (delab ist t)) (map getLHS pdef))
@@ -400,7 +400,7 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
     
     getLHS (_, l, _) = l
 
-    simpl rt ctxt (Right (x, y)) = Right (normalise ctxt [] x, 
+    simpl rt ctxt (Right (x, y)) = Right (normalise ctxt [] x,
                                           simplify ctxt rt [] y)
     simpl rt ctxt t = t
 
