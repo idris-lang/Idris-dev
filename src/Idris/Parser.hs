@@ -496,8 +496,8 @@ pFixity = do pushIndent
                                          })
                         fc <- pfc
                         return (PFix fc (f prec) ops)
-                else fail $ concatMap (\(f, (x:xs)) -> "Illegal redeclaration of fixity: \""
-                                                ++ show f ++ "\" overrides \"" ++ show x ++ "\"\n") ill
+                else fail $ concatMap (\(f, (x:xs)) -> "Illegal redeclaration of fixity:\n\t\""
+                                                ++ show f ++ "\" overrides \"" ++ show x ++ "\"") ill
              where alreadyDeclared :: [FixDecl] -> FixDecl -> (FixDecl, [FixDecl])
                    alreadyDeclared fs f = (f, filter ((extractName f ==) . extractName) fs)
 
