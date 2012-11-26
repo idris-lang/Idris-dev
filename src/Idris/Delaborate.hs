@@ -102,6 +102,8 @@ pshow i (IncompleteTerm t) = "Incomplete term " ++ showImp True (delab i t)
 pshow i UniverseError = "Universe inconsistency"
 pshow i ProgramLineComment = "Program line next to comment"
 pshow i (Inaccessible n) = show n ++ " is not an accessible pattern variable"
+pshow i (NonCollapsiblePostulate n) 
+    = "The return type of postulate " ++ show n ++ " is not collapsible"
 pshow i (At f e) = show f ++ ":" ++ pshow i e
 
 showSc i [] = ""

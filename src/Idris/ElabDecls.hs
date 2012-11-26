@@ -80,6 +80,30 @@ elabType info syn doc fc opts n ty' = {- let ty' = piBind (params info) ty_in
          when corec $ do setAccessibility n Frozen
                          addIBC (IBCAccess n Frozen)
 
+elabPostulate :: ElabInfo -> SyntaxInfo -> String ->
+                 FC -> FnOpts -> Name -> PTerm -> Idris ()
+elabPostulate info syn doc fc opts n ty
+    = do elabType info syn doc fc opts n ty
+         -- make sure it's collapsible, so it is never needed at run time
+         -- start by getting the elaborated type
+         ctxt <- getContext
+         fty <- case lookupTy Nothing n ctxt of
+            [] -> tclift $ tfail $ (At fc (NoTypeDecl n)) -- can't happen!
+            [ty] -> return ty
+         ist <- get
+         let (ap, _) = unApply (getRetTy fty)
+         logLvl 5 $ "Checking collapsibility of " ++ show (ap, fty)
+         let postOK = case ap of
+                            P _ tn _ -> case lookupCtxt Nothing tn
+                                                (idris_optimisation ist) of
+                                            [oi] -> collapsible oi
+                                            _ -> False
+                            _ -> False
+         when (not postOK)
+            $ tclift $ tfail (At fc (NonCollapsiblePostulate n))
+         -- remove it from the deferred definitions list
+         solveDeferred n
+
 elabData :: ElabInfo -> SyntaxInfo -> String -> FC -> Bool -> PData -> Idris ()
 elabData info syn doc fc codata (PLaterdecl n t_in)
     = do iLOG (show (fc, doc))
@@ -1002,6 +1026,10 @@ elabDecl' what info (PTy doc s f o n ty)
   | what /= EDefns
     = do iLOG $ "Elaborating type decl " ++ show n ++ show o
          elabType info s doc f o n ty
+elabDecl' what info (PPostulate doc s f o n ty)    
+  | what /= EDefns
+    = do iLOG $ "Elaborating postulate " ++ show n ++ show o
+         elabPostulate info s doc f o n ty
 elabDecl' what info (PData doc s f co d)    
   | what /= ETypes
     = do iLOG $ "Elaborating " ++ show (d_name d)

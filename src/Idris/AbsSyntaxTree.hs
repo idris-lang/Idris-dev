@@ -289,31 +289,33 @@ type FnOpts = [FnOpt]
 inlinable :: FnOpts -> Bool
 inlinable = elem Inlinable
 
-data PDecl' t = PFix     FC Fixity [String] -- fixity declaration
-              | PTy      String SyntaxInfo FC FnOpts Name t   -- type declaration
-              | PClauses FC FnOpts Name [PClause' t]   -- pattern clause
-              | PCAF     FC Name t -- top level constant
-              | PData    String SyntaxInfo FC Bool -- codata
-                                       (PData' t)  -- data declaration
-              | PParams  FC [(Name, t)] [PDecl' t] -- params block
-              | PNamespace String [PDecl' t] -- new namespace
-              | PRecord  String SyntaxInfo FC Name t String Name t     -- record declaration
-              | PClass   String SyntaxInfo FC 
-                         [t] -- constraints
-                         Name
-                         [(Name, t)] -- parameters
-                         [PDecl' t] -- declarations
-              | PInstance SyntaxInfo FC [t] -- constraints
-                                        Name -- class
-                                        [t] -- parameters
-                                        t -- full instance type
-                                        (Maybe Name) -- explicit name
-                                        [PDecl' t]
-              | PDSL     Name (DSL' t)
-              | PSyntax  FC Syntax
-              | PMutual  FC [PDecl' t]
-              | PDirective (Idris ())
-    deriving Functor
+data PDecl' t 
+   = PFix     FC Fixity [String] -- fixity declaration
+   | PTy      String SyntaxInfo FC FnOpts Name t   -- type declaration
+   | PPostulate String SyntaxInfo FC FnOpts Name t
+   | PClauses FC FnOpts Name [PClause' t]   -- pattern clause
+   | PCAF     FC Name t -- top level constant
+   | PData    String SyntaxInfo FC Bool -- codata
+                            (PData' t)  -- data declaration
+   | PParams  FC [(Name, t)] [PDecl' t] -- params block
+   | PNamespace String [PDecl' t] -- new namespace
+   | PRecord  String SyntaxInfo FC Name t String Name t     -- record declaration
+   | PClass   String SyntaxInfo FC 
+              [t] -- constraints
+              Name
+              [(Name, t)] -- parameters
+              [PDecl' t] -- declarations
+   | PInstance SyntaxInfo FC [t] -- constraints
+                             Name -- class
+                             [t] -- parameters
+                             t -- full instance type
+                             (Maybe Name) -- explicit name
+                             [PDecl' t]
+   | PDSL     Name (DSL' t)
+   | PSyntax  FC Syntax
+   | PMutual  FC [PDecl' t]
+   | PDirective (Idris ())
+  deriving Functor
 {-!
 deriving instance Binary PDecl'
 !-}
@@ -348,6 +350,7 @@ type PClause = PClause' PTerm
 declared :: PDecl -> [Name]
 declared (PFix _ _ _) = []
 declared (PTy _ _ _ _ n t) = [n]
+declared (PPostulate _ _ _ _ n t) = [n]
 declared (PClauses _ _ n _) = [] -- not a declaration
 declared (PRecord _ _ _ n _ _ c _) = [n, c]
 declared (PData _ _ _ _ (PDatadecl n _ ts)) = n : map fstt ts
@@ -360,6 +363,7 @@ declared (PNamespace _ ds) = concatMap declared ds
 defined :: PDecl -> [Name]
 defined (PFix _ _ _) = []
 defined (PTy _ _ _ _ n t) = []
+defined (PPostulate _ _ _ _ n t) = []
 defined (PClauses _ _ n _) = [n] -- not a declaration
 defined (PRecord _ _ _ n _ _ c _) = [n, c]
 defined (PData _ _ _ _ (PDatadecl n _ ts)) = n : map fstt ts
@@ -657,6 +661,7 @@ instance Show PData where
 
 showDeclImp _ (PFix _ f ops) = show f ++ " " ++ showSep ", " ops
 showDeclImp t (PTy _ _ _ _ n ty) = show n ++ " : " ++ showImp t ty
+showDeclImp t (PPostulate _ _ _ _ n ty) = show n ++ " : " ++ showImp t ty
 showDeclImp _ (PClauses _ _ n c) = showSep "\n" (map show c)
 showDeclImp _ (PData _ _ _ _ d) = show d
 showDeclImp _ (PParams f ns ps) = "parameters " ++ show ns ++ "\n" ++ 

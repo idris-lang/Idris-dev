@@ -420,8 +420,6 @@ pSynSym = try (do lchar '['; n <- pName; lchar ']'
 
 pFunDecl' :: SyntaxInfo -> IParser PDecl
 pFunDecl' syn = try (do doc <- option "" (pDocComment '|')
-                        -- trace ("Doc: " ++ show doc) $ 
---                         let doc = ""
                         pushIndent
                         ist <- getState
                         let initOpts = if default_total ist
@@ -438,8 +436,29 @@ pFunDecl' syn = try (do doc <- option "" (pDocComment '|')
 --                         ty' <- implicit syn n ty
                         addAcc n acc
                         return (PTy doc syn fc opts' n ty))
+            <|> try (pPostulate syn)
             <|> try (pPattern syn)
             <|> try (pCAF syn)
+
+pPostulate :: SyntaxInfo -> IParser PDecl
+pPostulate syn = do doc <- option "" (pDocComment '|')
+                    pushIndent
+                    reserved "postulate"
+                    ist <- getState
+                    let initOpts = if default_total ist
+                                      then [TotalFn]
+                                      else []
+                    opts <- pFnOpts initOpts
+                    acc <- pAccessibility
+                    opts' <- pFnOpts opts
+                    n_in <- pfName
+                    let n = expandNS syn n_in
+                    ty <- pTSig (impOK syn)
+                    fc <- pfc
+                    pTerminator 
+                    addAcc n acc
+                    return (PPostulate doc syn fc opts' n ty)
+
 
 pUsing :: SyntaxInfo -> IParser [PDecl]
 pUsing syn = 

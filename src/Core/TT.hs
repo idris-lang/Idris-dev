@@ -59,6 +59,7 @@ data Err = Msg String
          | UniverseError
          | ProgramLineComment
          | Inaccessible Name
+         | NonCollapsiblePostulate Name
          | At FC Err
   deriving Eq
 
