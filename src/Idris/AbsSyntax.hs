@@ -511,6 +511,13 @@ expandParamsD rhsonly ist dec ps ns (PTy doc syn fc o n ty)
               PTy doc syn fc o (dec n) (piBind ps (expandParams dec ps ns ty))
          else --trace (show (n, expandParams dec ps ns ty)) $ 
               PTy doc syn fc o n (expandParams dec ps ns ty)
+expandParamsD rhsonly ist dec ps ns (PPostulate doc syn fc o n ty) 
+    = if n `elem` ns && (not rhsonly)
+         then -- trace (show (n, expandParams dec ps ns ty)) $
+              PPostulate doc syn fc o (dec n) (piBind ps 
+                            (expandParams dec ps ns ty))
+         else --trace (show (n, expandParams dec ps ns ty)) $ 
+              PPostulate doc syn fc o n (expandParams dec ps ns ty)
 expandParamsD rhsonly ist dec ps ns (PClauses fc opts n cs)
     = let n' = if n `elem` ns then dec n else n in
           PClauses fc opts n' (map expandParamsC cs)
