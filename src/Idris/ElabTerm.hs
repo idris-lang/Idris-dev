@@ -318,15 +318,23 @@ elab ist info pattern tcgen fn tm
                         _ -> n
     elab' ina x = fail $ "Something's gone wrong. Did you miss a semi-colon somewhere?"
 
-    caseBlock :: FC -> Name -> [(Name, Binder Term)] -> [(PTerm, PTerm)] -> [PClause]
+    caseBlock :: FC -> Name -> [(Name, Binder Term)] -> 
+                               [(PTerm, PTerm)] -> [PClause]
     caseBlock fc n env opts 
         = let args = map mkarg (map fst (init env)) in
               map (mkClause args) opts
        where -- mkarg (MN _ _) = Placeholder
              mkarg n = PRef fc n
+             -- may be shadowed names in the new pattern - so replace the
+             -- old ones with an _
              mkClause args (l, r) 
-                = PClause fc n (PApp fc (PRef fc n)
-                                     (map pexp args ++ [pexp l])) [] r []
+                   = let args' = map (shadowed (allNamesIn l)) args
+                         lhs = PApp fc (PRef fc n)
+                                 (map pexp args' ++ [pexp l]) in
+                         PClause fc n lhs [] r []
+
+             shadowed new (PRef _ n) | n `elem` new = Placeholder
+             shadowed new t = t
 
     elabArgs ina failed retry [] _
 --         | retry = let (ns, ts) = unzip (reverse failed) in
