@@ -417,8 +417,16 @@ elabVal info aspat tm_in
         i <- get
         let tm = addImpl i tm_in
         logLvl 10 (showImp True tm)
-        ((tm', defer, is), _) <- tclift $ elaborate ctxt (MN 0 "val") infP []
-                                          (build i info aspat (MN 0 "val") (infTerm tm))
+        -- try:
+        --    * ordinary elaboration
+        --    * elaboration as a Set
+        --    * elaboration as a function a -> b
+        
+        ((tm', defer, is), _) <- 
+            tctry (elaborate ctxt (MN 0 "val") (Set (UVal 0)) []                         
+                       (build i info aspat (MN 0 "val") tm))
+                  (elaborate ctxt (MN 0 "val") infP []
+                        (build i info aspat (MN 0 "val") (infTerm tm)))
         logLvl 3 ("Value: " ++ show tm')
         let vtm = getInferTerm tm'
         logLvl 2 (show vtm)
@@ -533,8 +541,9 @@ elabClause info tcgen (_, PWith fc fname lhs_in withs wval_in withblock)
         i <- get
         let lhs = addImpl i lhs_in
         logLvl 5 ("LHS: " ++ showImp True lhs)
-        ((lhs', dlhs, []), _) <- tclift $ elaborate ctxt (MN 0 "patLHS") infP []
-                                      (erun fc (buildTC i info True tcgen fname (infTerm lhs)))
+        ((lhs', dlhs, []), _) <- 
+            tclift $ elaborate ctxt (MN 0 "patLHS") infP []
+              (erun fc (buildTC i info True tcgen fname (infTerm lhs))) 
         let lhs_tm = orderPats (getInferTerm lhs')
         let lhs_ty = getInferType lhs'
         let ret_ty = getRetTy lhs_ty

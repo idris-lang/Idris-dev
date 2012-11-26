@@ -390,7 +390,7 @@ infP = P (TCon 6 0) inferTy (Set (UVal 0))
 getInferTerm, getInferType :: Term -> Term
 getInferTerm (Bind n b sc) = Bind n b $ getInferTerm sc
 getInferTerm (App (App _ _) tm) = tm
-getInferTerm tm = error ("getInferTerm " ++ show tm)
+getInferTerm tm = tm -- error ("getInferTerm " ++ show tm)
 
 getInferType (Bind n b sc) = Bind n b $ getInferType sc
 getInferType (App (App _ ty) _) = ty
