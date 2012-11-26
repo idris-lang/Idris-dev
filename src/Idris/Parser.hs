@@ -96,40 +96,42 @@ loadSource lidr f
                   mapM_ (addIBC . IBCImport) modules
                   ds' <- parseProg (defaultSyntax {syn_namespace = reverse mname }) 
                                    f rest pos
-                  let ds = namespaces mname ds'
-                  logLvl 3 (dumpDecls ds)
-                  i <- getIState
-                  logLvl 10 (show (toAlist (idris_implicits i)))
-                  logLvl 3 (show (idris_infixes i))
-                  -- Now add all the declarations to the context
-                  v <- verbose
-                  when v $ iputStrLn $ "Type checking " ++ f
-                  elabDecls toplevel ds
-                  i <- get
-                  -- simplify every definition do give the totality checker
-                  -- a better chance
-                  mapM_ (\n -> do logLvl 5 $ "Simplifying " ++ show n
-                                  updateContext (simplifyCasedef n))
-                           (map snd (idris_totcheck i))
-                  -- build size change graph from simplified definitions
-                  iLOG "Totality checking"
-                  i <- get
---                   mapM_ buildSCG (idris_totcheck i)
-                  mapM_ checkDeclTotality (idris_totcheck i)
-                  iLOG ("Finished " ++ f)
-                  ibcsd <- valIBCSubDir i
-                  let ibc = ibcPathNoFallback ibcsd f
-                  iLOG "Universe checking"
-                  iucheck
-                  i <- getIState
-                  addHides (hide_list i)
-                  ok <- noErrors
-                  when ok $
-                    idrisCatch (do writeIBC f ibc; clearIBC)
-                               (\c -> return ()) -- failure is harmless
-                  i <- getIState
-                  putIState (i { default_total = def_total,
-                                 hide_list = [] })
+                  unless (null ds') $ do
+                    let ds = namespaces mname ds'
+                    logLvl 3 (dumpDecls ds)
+                    i <- getIState
+                    logLvl 10 (show (toAlist (idris_implicits i)))
+                    logLvl 3 (show (idris_infixes i))
+                    -- Now add all the declarations to the context
+                    v <- verbose
+                    when v $ iputStrLn $ "Type checking " ++ f
+                    elabDecls toplevel ds
+                    i <- get
+                    -- simplify every definition do give the totality checker
+                    -- a better chance
+                    mapM_ (\n -> do logLvl 5 $ "Simplifying " ++ show n
+                                    updateContext (simplifyCasedef n))
+                             (map snd (idris_totcheck i))
+                    -- build size change graph from simplified definitions
+                    iLOG "Totality checking"
+                    i <- get
+  --                   mapM_ buildSCG (idris_totcheck i)
+                    mapM_ checkDeclTotality (idris_totcheck i)
+                    iLOG ("Finished " ++ f)
+                    ibcsd <- valIBCSubDir i
+                    let ibc = ibcPathNoFallback ibcsd f
+                    iLOG "Universe checking"
+                    iucheck
+                    i <- getIState
+                    addHides (hide_list i)
+                    ok <- noErrors
+                    when ok $
+                      idrisCatch (do writeIBC f ibc; clearIBC)
+                                 (\c -> return ()) -- failure is harmless
+                    i <- getIState
+                    putIState (i { default_total = def_total,
+                                   hide_list = [] })
+                    return ()
                   return ()
   where
     namespaces []     ds = ds
@@ -279,7 +281,8 @@ parseProg syn fname input pos
                             eof
                             i' <- getState
                             return (concat ps, i')) i fname input of
-            Left err     -> fail (show err)
+            Left err     -> do iputStrLn (show err)
+                               return []
             Right (x, i) -> do put i
                                return (collect x)
 
