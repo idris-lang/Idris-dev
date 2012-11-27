@@ -8,3 +8,5 @@ cabal-dev/
 test/output
 test/test???/output
 test/reg???/output
+test/test???/*.exe
+test/reg???/*.exe
