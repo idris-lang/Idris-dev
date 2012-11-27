@@ -23,6 +23,7 @@ import System.Process
 import System.IO
 import System.Directory
 import System.Environment
+import System.FilePath ((</>), addTrailingPathSeparator)
 
 import Paths_idris
 
@@ -72,7 +73,7 @@ compile target f tm
                       case idris_metavars i \\ primDefs of
                             [] -> return ()
                             ms -> fail $ "There are undefined metavariables: " ++ show ms
-        inDir d h = do let f = d ++ "/" ++ h
+        inDir d h = do let f = d </> h
                        ex <- doesFileExist f
                        if ex then return f else return h
         mkObj f = f ++ " "
