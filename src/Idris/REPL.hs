@@ -548,7 +548,7 @@ idrisMain opts =
 
     addPkgDir :: String -> Idris ()
     addPkgDir p = do ddir <- liftIO $ getDataDir 
-                     addImportDir (ddir ++ "/" ++ p)
+                     addImportDir (ddir </> p)
 
 getFile :: Opt -> Maybe String
 getFile (Filename str) = Just str
