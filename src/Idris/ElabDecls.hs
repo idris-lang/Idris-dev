@@ -80,6 +80,30 @@ elabType info syn doc fc opts n ty' = {- let ty' = piBind (params info) ty_in
          when corec $ do setAccessibility n Frozen
                          addIBC (IBCAccess n Frozen)
 
+elabPostulate :: ElabInfo -> SyntaxInfo -> String ->
+                 FC -> FnOpts -> Name -> PTerm -> Idris ()
+elabPostulate info syn doc fc opts n ty
+    = do elabType info syn doc fc opts n ty
+         -- make sure it's collapsible, so it is never needed at run time
+         -- start by getting the elaborated type
+         ctxt <- getContext
+         fty <- case lookupTy Nothing n ctxt of
+            [] -> tclift $ tfail $ (At fc (NoTypeDecl n)) -- can't happen!
+            [ty] -> return ty
+         ist <- get
+         let (ap, _) = unApply (getRetTy fty)
+         logLvl 5 $ "Checking collapsibility of " ++ show (ap, fty)
+         let postOK = case ap of
+                            P _ tn _ -> case lookupCtxt Nothing tn
+                                                (idris_optimisation ist) of
+                                            [oi] -> collapsible oi
+                                            _ -> False
+                            _ -> False
+         when (not postOK)
+            $ tclift $ tfail (At fc (NonCollapsiblePostulate n))
+         -- remove it from the deferred definitions list
+         solveDeferred n
+
 elabData :: ElabInfo -> SyntaxInfo -> String -> FC -> Bool -> PData -> Idris ()
 elabData info syn doc fc codata (PLaterdecl n t_in)
     = do iLOG (show (fc, doc))
@@ -274,120 +298,123 @@ elabClauses :: ElabInfo -> FC -> FnOpts -> Name -> [PClause] -> Idris ()
 elabClauses info fc opts n_in cs = let n = liftname info n_in in  
       do ctxt <- getContext
          -- Check n actually exists
-         fty <- case lookupTy Nothing n ctxt of
-            [] -> -- TODO: turn into a CAF if there's no arguments
-                  -- question: CAFs in where blocks?
-                  tclift $ tfail $ (At fc (NoTypeDecl n))
-            [ty] -> return ty
-         pats_in <- mapM (elabClause info (TCGen `elem` opts)) 
-                         (zip [0..] cs)
-         -- if the return type of 'ty' is collapsible, the optimised version should
-         -- just do nothing
-         ist <- get
-         let (ap, _) = unApply (getRetTy fty)
-         logLvl 5 $ "Checking collapsibility of " ++ show (ap, fty)
-         -- FIXME: Really ought to only do this for total functions!
-         let doNothing = case ap of
-                            P _ tn _ -> case lookupCtxt Nothing tn
-                                                (idris_optimisation ist) of
-                                            [oi] -> collapsible oi
-                                            _ -> False
-                            _ -> False
-         solveDeferred n
-         ist <- get
-         when doNothing $ 
-            case lookupCtxt Nothing n (idris_optimisation ist) of
-               [oi] -> do let opts = addDef n (oi { collapsible = True }) 
-                                         (idris_optimisation ist)
-                          put (ist { idris_optimisation = opts })
-               _ -> do let opts = addDef n (Optimise True [] [])
-                                         (idris_optimisation ist)
-                       put (ist { idris_optimisation = opts })
-                       addIBC (IBCOpt n)
-         ist <- get
-         let pats = pats_in
---          logLvl 3 (showSep "\n" (map (\ (l,r) -> 
---                                         show l ++ " = " ++ 
---                                         show r) pats))
-         let tcase = opt_typecase (idris_options ist)
-         let pdef = map debind $ map (simpl False (tt_ctxt ist)) pats
-         
-         numArgs <- tclift $ sameLength pdef
+         let tys = lookupTy Nothing n ctxt
+         unless (length tys > 1) $ do
+           fty <- case tys of
+              [] -> -- TODO: turn into a CAF if there's no arguments
+                    -- question: CAFs in where blocks?
+                    tclift $ tfail $ At fc (NoTypeDecl n)
+              [ty] -> return ty
+           pats_in <- mapM (elabClause info (TCGen `elem` opts)) 
+                           (zip [0..] cs)
+           -- if the return type of 'ty' is collapsible, the optimised version should
+           -- just do nothing
+           ist <- get
+           let (ap, _) = unApply (getRetTy fty)
+           logLvl 5 $ "Checking collapsibility of " ++ show (ap, fty)
+           -- FIXME: Really ought to only do this for total functions!
+           let doNothing = case ap of
+                              P _ tn _ -> case lookupCtxt Nothing tn
+                                                  (idris_optimisation ist) of
+                                              [oi] -> collapsible oi
+                                              _ -> False
+                              _ -> False
+           solveDeferred n
+           ist <- get
+           when doNothing $ 
+              case lookupCtxt Nothing n (idris_optimisation ist) of
+                 [oi] -> do let opts = addDef n (oi { collapsible = True }) 
+                                           (idris_optimisation ist)
+                            put (ist { idris_optimisation = opts })
+                 _ -> do let opts = addDef n (Optimise True [] [])
+                                           (idris_optimisation ist)
+                         put (ist { idris_optimisation = opts })
+                         addIBC (IBCOpt n)
+           ist <- get
+           let pats = pats_in
+  --          logLvl 3 (showSep "\n" (map (\ (l,r) -> 
+  --                                         show l ++ " = " ++ 
+  --                                         show r) pats))
+           let tcase = opt_typecase (idris_options ist)
+           let pdef = map debind $ map (simpl False (tt_ctxt ist)) pats
+           
+           numArgs <- tclift $ sameLength pdef
 
-         optpats <- if doNothing 
-                       then return $ [Right (mkApp (P Bound n Erased)
-                                                  (take numArgs (repeat Erased)), Erased)]
-                       else stripCollapsed pats
+           optpats <- if doNothing 
+                         then return $ [Right (mkApp (P Bound n Erased)
+                                                    (take numArgs (repeat Erased)), Erased)]
+                         else stripCollapsed pats
 
-         logLvl 5 $ "Patterns:\n" ++ show pats
+           logLvl 5 $ "Patterns:\n" ++ show pats
 
-         let optpdef = map debind $ map (simpl True (tt_ctxt ist)) optpats
-         tree@(CaseDef scargs sc _) <- tclift $ 
-                 simpleCase tcase False CompileTime fc pdef
-         cov <- coverage
-         pmissing <-
-                 if cov  
-                    then do missing <- genClauses fc n (map getLHS pdef) cs
-                            -- missing <- genMissing n scargs sc  
-                            missing' <- filterM (checkPossible info fc True n) missing
-                            logLvl 2 $ "Must be unreachable:\n" ++ 
-                                        showSep "\n" (map (showImp True) missing') ++
-                                       "\nAgainst: " ++
-                                        showSep "\n" (map (\t -> showImp True (delab ist t)) (map getLHS pdef))
-                            return missing'
-                    else return []
-         let pcover = null pmissing
-         pdef' <- applyOpts optpdef 
-         logLvl 5 $ "Optimised patterns:\n" ++ show pdef'
-         ist <- get
---          let wf = wellFounded ist n sc
-         let tot = if pcover || AssertTotal `elem` opts
-                    then Unchecked -- finish checking later
-                    else Partial NotCovering -- already know it's not total
---          case lookupCtxt (namespace info) n (idris_flags ist) of 
---             [fs] -> if TotalFn `elem` fs 
---                       then case tot of
---                               Total _ -> return ()
---                               t -> tclift $ tfail (At fc (Msg (show n ++ " is " ++ show t)))
---                       else return ()
---             _ -> return ()
-         case tree of
-             CaseDef _ _ [] -> return ()
-             CaseDef _ _ xs -> mapM_ (\x ->
-                 iputStrLn $ show fc ++
-                              ":warning - Unreachable case: " ++ 
-                                 show (delab ist x)) xs
-         let knowncovering = pcover && cov
+           let optpdef = map debind $ map (simpl True (tt_ctxt ist)) optpats
+           tree@(CaseDef scargs sc _) <- tclift $ 
+                   simpleCase tcase False CompileTime fc pdef
+           cov <- coverage
+           pmissing <-
+                   if cov  
+                      then do missing <- genClauses fc n (map getLHS pdef) cs
+                              -- missing <- genMissing n scargs sc  
+                              missing' <- filterM (checkPossible info fc True n) missing
+                              logLvl 2 $ "Must be unreachable:\n" ++ 
+                                          showSep "\n" (map (showImp True) missing') ++
+                                         "\nAgainst: " ++
+                                          showSep "\n" (map (\t -> showImp True (delab ist t)) (map getLHS pdef))
+                              return missing'
+                      else return []
+           let pcover = null pmissing
+           pdef' <- applyOpts optpdef 
+           logLvl 5 $ "Optimised patterns:\n" ++ show pdef'
+           ist <- get
+  --          let wf = wellFounded ist n sc
+           let tot = if pcover || AssertTotal `elem` opts
+                      then Unchecked -- finish checking later
+                      else Partial NotCovering -- already know it's not total
+  --          case lookupCtxt (namespace info) n (idris_flags ist) of 
+  --             [fs] -> if TotalFn `elem` fs 
+  --                       then case tot of
+  --                               Total _ -> return ()
+  --                               t -> tclift $ tfail (At fc (Msg (show n ++ " is " ++ show t)))
+  --                       else return ()
+  --             _ -> return ()
+           case tree of
+               CaseDef _ _ [] -> return ()
+               CaseDef _ _ xs -> mapM_ (\x ->
+                   iputStrLn $ show fc ++
+                                ":warning - Unreachable case: " ++ 
+                                   show (delab ist x)) xs
+           let knowncovering = pcover && cov
 
-         tree' <- tclift $ simpleCase tcase knowncovering RunTime fc pdef'
-         logLvl 3 (show tree)
-         logLvl 3 $ "Optimised: " ++ show tree'
-         ctxt <- getContext
-         ist <- get
-         put (ist { idris_patdefs = addDef n pdef' (idris_patdefs ist) })
-         case lookupTy (namespace info) n ctxt of
-             [ty] -> do updateContext (addCasedef n (inlinable opts)
-                                                     tcase knowncovering pats
-                                                     pdef pdef' ty)
-                        addIBC (IBCDef n)
-                        setTotality n tot
-                        totcheck (fc, n)
-                        when (tot /= Unchecked) $ addIBC (IBCTotal n tot)
-                        i <- get
-                        case lookupDef Nothing n (tt_ctxt i) of
-                            (CaseOp _ _ _ _ _ scargs sc scargs' sc' : _) ->
-                                do let calls = findCalls sc' scargs'
-                                   let used = findUsedArgs sc' scargs'
-                                   -- let scg = buildSCG i sc scargs
-                                   -- add SCG later, when checking totality
-                                   let cg = CGInfo scargs' calls [] used []
-                                   logLvl 2 $ "Called names: " ++ show cg
-                                   addToCG n cg
-                                   addToCalledG n (nub (map fst calls)) -- plus names in type!
-                                   addIBC (IBCCG n)
-                            _ -> return ()
---                         addIBC (IBCTotal n tot)
-             [] -> return ()
+           tree' <- tclift $ simpleCase tcase knowncovering RunTime fc pdef'
+           logLvl 3 (show tree)
+           logLvl 3 $ "Optimised: " ++ show tree'
+           ctxt <- getContext
+           ist <- get
+           put (ist { idris_patdefs = addDef n pdef' (idris_patdefs ist) })
+           case lookupTy (namespace info) n ctxt of
+               [ty] -> do updateContext (addCasedef n (inlinable opts)
+                                                       tcase knowncovering pats
+                                                       pdef pdef' ty)
+                          addIBC (IBCDef n)
+                          setTotality n tot
+                          totcheck (fc, n)
+                          when (tot /= Unchecked) $ addIBC (IBCTotal n tot)
+                          i <- get
+                          case lookupDef Nothing n (tt_ctxt i) of
+                              (CaseOp _ _ _ _ _ scargs sc scargs' sc' : _) ->
+                                  do let calls = findCalls sc' scargs'
+                                     let used = findUsedArgs sc' scargs'
+                                     -- let scg = buildSCG i sc scargs
+                                     -- add SCG later, when checking totality
+                                     let cg = CGInfo scargs' calls [] used []
+                                     logLvl 2 $ "Called names: " ++ show cg
+                                     addToCG n cg
+                                     addToCalledG n (nub (map fst calls)) -- plus names in type!
+                                     addIBC (IBCCG n)
+                              _ -> return ()
+  --                         addIBC (IBCTotal n tot)
+               [] -> return ()
+           return ()
   where
     debind (Right (x, y)) = let (vs, x') = depat [] x 
                                 (_, y') = depat [] y in
@@ -417,8 +444,16 @@ elabVal info aspat tm_in
         i <- get
         let tm = addImpl i tm_in
         logLvl 10 (showImp True tm)
-        ((tm', defer, is), _) <- tclift $ elaborate ctxt (MN 0 "val") infP []
-                                          (build i info aspat (MN 0 "val") (infTerm tm))
+        -- try:
+        --    * ordinary elaboration
+        --    * elaboration as a Set
+        --    * elaboration as a function a -> b
+        
+        ((tm', defer, is), _) <- 
+            tctry (elaborate ctxt (MN 0 "val") (Set (UVal 0)) []                         
+                       (build i info aspat (MN 0 "val") tm))
+                  (elaborate ctxt (MN 0 "val") infP []
+                        (build i info aspat (MN 0 "val") (infTerm tm)))
         logLvl 3 ("Value: " ++ show tm')
         let vtm = getInferTerm tm'
         logLvl 2 (show vtm)
@@ -533,8 +568,9 @@ elabClause info tcgen (_, PWith fc fname lhs_in withs wval_in withblock)
         i <- get
         let lhs = addImpl i lhs_in
         logLvl 5 ("LHS: " ++ showImp True lhs)
-        ((lhs', dlhs, []), _) <- tclift $ elaborate ctxt (MN 0 "patLHS") infP []
-                                      (erun fc (buildTC i info True tcgen fname (infTerm lhs)))
+        ((lhs', dlhs, []), _) <- 
+            tclift $ elaborate ctxt (MN 0 "patLHS") infP []
+              (erun fc (buildTC i info True tcgen fname (infTerm lhs))) 
         let lhs_tm = orderPats (getInferTerm lhs')
         let lhs_ty = getInferType lhs'
         let ret_ty = getRetTy lhs_ty
@@ -990,6 +1026,10 @@ elabDecl' what info (PTy doc s f o n ty)
   | what /= EDefns
     = do iLOG $ "Elaborating type decl " ++ show n ++ show o
          elabType info s doc f o n ty
+elabDecl' what info (PPostulate doc s f o n ty)    
+  | what /= EDefns
+    = do iLOG $ "Elaborating postulate " ++ show n ++ show o
+         elabPostulate info s doc f o n ty
 elabDecl' what info (PData doc s f co d)    
   | what /= ETypes
     = do iLOG $ "Elaborating " ++ show (d_name d)

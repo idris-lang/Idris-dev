@@ -97,40 +97,42 @@ loadSource lidr f
                   mapM_ (addIBC . IBCImport) modules
                   ds' <- parseProg (defaultSyntax {syn_namespace = reverse mname }) 
                                    f rest pos
-                  let ds = namespaces mname ds'
-                  logLvl 3 (dumpDecls ds)
-                  i <- getIState
-                  logLvl 10 (show (toAlist (idris_implicits i)))
-                  logLvl 3 (show (idris_infixes i))
-                  -- Now add all the declarations to the context
-                  v <- verbose
-                  when v $ iputStrLn $ "Type checking " ++ f
-                  elabDecls toplevel ds
-                  i <- get
-                  -- simplify every definition do give the totality checker
-                  -- a better chance
-                  mapM_ (\n -> do logLvl 5 $ "Simplifying " ++ show n
-                                  updateContext (simplifyCasedef n))
-                           (map snd (idris_totcheck i))
-                  -- build size change graph from simplified definitions
-                  iLOG "Totality checking"
-                  i <- get
---                   mapM_ buildSCG (idris_totcheck i)
-                  mapM_ checkDeclTotality (idris_totcheck i)
-                  iLOG ("Finished " ++ f)
-                  ibcsd <- valIBCSubDir i
-                  let ibc = ibcPathNoFallback ibcsd f
-                  iLOG "Universe checking"
-                  iucheck
-                  i <- getIState
-                  addHides (hide_list i)
-                  ok <- noErrors
-                  when ok $
-                    idrisCatch (do writeIBC f ibc; clearIBC)
-                               (\c -> return ()) -- failure is harmless
-                  i <- getIState
-                  putIState (i { default_total = def_total,
-                                 hide_list = [] })
+                  unless (null ds') $ do
+                    let ds = namespaces mname ds'
+                    logLvl 3 (dumpDecls ds)
+                    i <- getIState
+                    logLvl 10 (show (toAlist (idris_implicits i)))
+                    logLvl 3 (show (idris_infixes i))
+                    -- Now add all the declarations to the context
+                    v <- verbose
+                    when v $ iputStrLn $ "Type checking " ++ f
+                    elabDecls toplevel ds
+                    i <- get
+                    -- simplify every definition do give the totality checker
+                    -- a better chance
+                    mapM_ (\n -> do logLvl 5 $ "Simplifying " ++ show n
+                                    updateContext (simplifyCasedef n))
+                             (map snd (idris_totcheck i))
+                    -- build size change graph from simplified definitions
+                    iLOG "Totality checking"
+                    i <- get
+  --                   mapM_ buildSCG (idris_totcheck i)
+                    mapM_ checkDeclTotality (idris_totcheck i)
+                    iLOG ("Finished " ++ f)
+                    ibcsd <- valIBCSubDir i
+                    let ibc = ibcPathNoFallback ibcsd f
+                    iLOG "Universe checking"
+                    iucheck
+                    i <- getIState
+                    addHides (hide_list i)
+                    ok <- noErrors
+                    when ok $
+                      idrisCatch (do writeIBC f ibc; clearIBC)
+                                 (\c -> return ()) -- failure is harmless
+                    i <- getIState
+                    putIState (i { default_total = def_total,
+                                   hide_list = [] })
+                    return ()
                   return ()
   where
     namespaces []     ds = ds
@@ -277,7 +279,8 @@ parseProg syn fname input pos
                             eof
                             i' <- getState
                             return (concat ps, i')) i fname input of
-            Left err     -> fail (show err)
+            Left err     -> do iputStrLn (show err)
+                               return []
             Right (x, i) -> do put i
                                return (collect x)
 
@@ -415,8 +418,6 @@ pSynSym = try (do lchar '['; n <- pName; lchar ']'
 
 pFunDecl' :: SyntaxInfo -> IParser PDecl
 pFunDecl' syn = try (do doc <- option "" (pDocComment '|')
-                        -- trace ("Doc: " ++ show doc) $ 
---                         let doc = ""
                         pushIndent
                         ist <- getState
                         let initOpts = if default_total ist
@@ -433,8 +434,29 @@ pFunDecl' syn = try (do doc <- option "" (pDocComment '|')
 --                         ty' <- implicit syn n ty
                         addAcc n acc
                         return (PTy doc syn fc opts' n ty))
+            <|> try (pPostulate syn)
             <|> try (pPattern syn)
             <|> try (pCAF syn)
+
+pPostulate :: SyntaxInfo -> IParser PDecl
+pPostulate syn = do doc <- option "" (pDocComment '|')
+                    pushIndent
+                    reserved "postulate"
+                    ist <- getState
+                    let initOpts = if default_total ist
+                                      then [TotalFn]
+                                      else []
+                    opts <- pFnOpts initOpts
+                    acc <- pAccessibility
+                    opts' <- pFnOpts opts
+                    n_in <- pfName
+                    let n = expandNS syn n_in
+                    ty <- pTSig (impOK syn)
+                    fc <- pfc
+                    pTerminator 
+                    addAcc n acc
+                    return (PPostulate doc syn fc opts' n ty)
+
 
 pUsing :: SyntaxInfo -> IParser [PDecl]
 pUsing syn = 
@@ -491,8 +513,8 @@ pFixity = do pushIndent
                                          })
                         fc <- pfc
                         return (PFix fc (f prec) ops)
-                else fail $ concatMap (\(f, (x:xs)) -> "Illegal redeclaration of fixity: \""
-                                                ++ show f ++ "\" overrides \"" ++ show x ++ "\"\n") ill
+                else fail $ concatMap (\(f, (x:xs)) -> "Illegal redeclaration of fixity:\n\t\""
+                                                ++ show f ++ "\" overrides \"" ++ show x ++ "\"") ill
              where alreadyDeclared :: [FixDecl] -> FixDecl -> (FixDecl, [FixDecl])
                    alreadyDeclared fs f = (f, filter ((extractName f ==) . extractName) fs)
 

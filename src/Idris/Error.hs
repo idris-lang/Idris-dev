@@ -58,6 +58,12 @@ tclift tc = case tc of
                                   _ -> return ()
                                throwIO (IErr $ pshow i err)
 
+tctry :: TC a -> TC a -> Idris a
+tctry tc1 tc2 
+    = case tc1 of
+           OK v -> return v
+           Error err -> tclift tc2
+
 getErrLine str 
   = case span (/=':') str of
       (_, ':':rest) -> case span isDigit rest of

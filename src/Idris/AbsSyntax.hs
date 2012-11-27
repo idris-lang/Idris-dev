@@ -390,7 +390,7 @@ infP = P (TCon 6 0) inferTy (Set (UVal 0))
 getInferTerm, getInferType :: Term -> Term
 getInferTerm (Bind n b sc) = Bind n b $ getInferTerm sc
 getInferTerm (App (App _ _) tm) = tm
-getInferTerm tm = error ("getInferTerm " ++ show tm)
+getInferTerm tm = tm -- error ("getInferTerm " ++ show tm)
 
 getInferType (Bind n b sc) = Bind n b $ getInferType sc
 getInferType (App (App _ ty) _) = ty
@@ -511,6 +511,13 @@ expandParamsD rhsonly ist dec ps ns (PTy doc syn fc o n ty)
               PTy doc syn fc o (dec n) (piBind ps (expandParams dec ps ns ty))
          else --trace (show (n, expandParams dec ps ns ty)) $ 
               PTy doc syn fc o n (expandParams dec ps ns ty)
+expandParamsD rhsonly ist dec ps ns (PPostulate doc syn fc o n ty) 
+    = if n `elem` ns && (not rhsonly)
+         then -- trace (show (n, expandParams dec ps ns ty)) $
+              PPostulate doc syn fc o (dec n) (piBind ps 
+                            (expandParams dec ps ns ty))
+         else --trace (show (n, expandParams dec ps ns ty)) $ 
+              PPostulate doc syn fc o n (expandParams dec ps ns ty)
 expandParamsD rhsonly ist dec ps ns (PClauses fc opts n cs)
     = let n' = if n `elem` ns then dec n else n in
           PClauses fc opts n' (map expandParamsC cs)
@@ -1072,4 +1079,5 @@ shadow n n' t = sm t where
     sm (PAlternative a as) = PAlternative a (map sm as)
     sm (PHidden x) = PHidden (sm x)
     sm x = x
+
 
