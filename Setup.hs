@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 import Distribution.Simple
 import Distribution.Simple.InstallDirs as I
 import Distribution.Simple.LocalBuildInfo as L
@@ -13,23 +14,31 @@ import System.Process
 
 make verbosity = P.runProgramInvocation verbosity . P.simpleProgramInvocation "make"
 
+#ifdef mingw32_HOST_OS
+-- make on mingw32 exepects unix style separators
+idrisCmd local = "../dist/build/idris/idris"
+#else
+idrisCmd local = ".." </> buildDir local </> "idris" </> "idris"
+#endif
+
 cleanStdLib verbosity
     = make verbosity [ "-C", "lib", "clean" ]
 
 installStdLib pkg local verbosity copy
     = do let dirs = L.absoluteInstallDirs pkg local copy
          let idir = datadir dirs
-         let icmd = ".." </> buildDir local </> "idris" </> "idris"
+         let icmd = idrisCmd local
          putStrLn $ "Installing libraries in " ++ idir
          make verbosity
                [ "-C", "lib", "install"
                , "TARGET=" ++ idir
                , "IDRIS=" ++ icmd
                ]
-         putStrLn $ "Installing run time system in " ++ idir ++ "/rts"
+         let idirRts = idir </> "rts"
+         putStrLn $ "Installing run time system in " ++ idirRts
          make verbosity
                [ "-C", "rts", "install"
-               , "TARGET=" ++ idir ++ "/rts"
+               , "TARGET=" ++ idirRts
                , "IDRIS=" ++ icmd
                ]
 
@@ -39,14 +48,14 @@ installStdLib pkg local verbosity copy
 -- the file after configure.
 
 removeLibIdris local verbosity
-    = do let icmd = ".." </> buildDir local </> "idris" </> "idris"
+    = do let icmd = idrisCmd local
          make verbosity
                [ "-C", "rts", "clean"
                , "IDRIS=" ++ icmd
                ]
 
 checkStdLib local verbosity
-    = do let icmd = ".." </> buildDir local </> "idris" </> "idris"
+    = do let icmd = idrisCmd local
          putStrLn $ "Building libraries..."
          make verbosity
                [ "-C", "lib", "check"
@@ -73,5 +82,3 @@ main = defaultMainWithHooks $ simpleUserHooks
         , postBuild = \ _ flags _ lbi -> do
               checkStdLib lbi (S.fromFlag $ S.buildVerbosity flags)
         }
-
-

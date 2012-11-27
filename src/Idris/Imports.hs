@@ -29,9 +29,9 @@ ibcPath :: FilePath -> Bool -> FilePath -> FilePath
 ibcPath ibcsd use_ibcsd fp = let (d_fp, n_fp) = splitFileName fp
                                  d = if (not use_ibcsd) || ibcsd == ""
                                      then d_fp
-                                     else d_fp ++ ibcsd ++ "/"
+                                     else d_fp </> ibcsd
                                  n = dropExtension n_fp
-                             in d ++ n ++ ".ibc"
+                             in d </> n <.> "ibc"
 
 ibcPathWithFallback :: FilePath -> FilePath -> IO FilePath
 ibcPathWithFallback ibcsd fp = do let ibcp = ibcPath ibcsd True fp
@@ -45,7 +45,7 @@ ibcPathNoFallback ibcsd fp = ibcPath ibcsd True fp
 
 findImport :: [FilePath] -> FilePath -> FilePath -> IO IFileType
 findImport []     ibcsd fp = fail $ "Can't find import " ++ fp
-findImport (d:ds) ibcsd fp = do let fp_full = d ++ "/" ++ fp
+findImport (d:ds) ibcsd fp = do let fp_full = d </> fp
                                 ibcp <- ibcPathWithFallback ibcsd fp_full
                                 let idrp = srcPath fp_full
                                 let lidrp = lsrcPath fp_full
@@ -68,7 +68,7 @@ findImport (d:ds) ibcsd fp = do let fp_full = d ++ "/" ++ fp
 
 findInPath :: [FilePath] -> FilePath -> IO FilePath
 findInPath [] fp = fail $ "Can't find file " ++ fp
-findInPath (d:ds) fp = do let p = d ++ "/" ++ fp
+findInPath (d:ds) fp = do let p = d </> fp
                           e <- doesFileExist p
                           if e then return p else findInPath ds p
 

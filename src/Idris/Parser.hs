@@ -25,6 +25,7 @@ import Text.Parsec.String
 import qualified Text.Parsec.Token as PTok
 
 import Data.List
+import Data.List.Split(splitOn)
 import Control.Monad.State
 import Debug.Trace
 import Data.Maybe
@@ -255,16 +256,13 @@ notEndBlock = do ist <- getState
 pfc :: IParser FC
 pfc = do s <- getPosition
          let (dir, file) = splitFileName (sourceName s)
-         let f = case dir of
-                      "./" -> file
-                      _    -> sourceName s
+         let f = if dir == addTrailingPathSeparator "." then file else sourceName s
          return $ FC f (sourceLine s)
 
 pImport :: IParser String
 pImport = do reserved "import"; f <- identifier; option ';' (lchar ';')
-             return (map dot f)
-  where dot '.' = '/'
-        dot c = c
+             return (toPath f)
+  where toPath n = foldl1 (</>) $ splitOn "." n
 
 -- a program is a list of declarations, possibly with associated
 -- documentation strings

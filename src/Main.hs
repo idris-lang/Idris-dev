@@ -4,6 +4,7 @@ import System.Console.Haskeline
 import System.IO
 import System.Environment
 import System.Exit
+import System.FilePath ((</>), addTrailingPathSeparator)
 
 import Data.Maybe
 import Data.Version
@@ -60,15 +61,15 @@ showver = do putStrLn $ "Idris version " ++ ver
              exitWith ExitSuccess
 
 showLibs = do dir <- getDataDir
-              putStrLn $ "-L" ++ dir ++ "/rts -lidris_rts -lgmp -lpthread"
+              putStrLn $ "-L" ++ (dir </> "rts") ++ " -lidris_rts -lgmp -lpthread"
               exitWith ExitSuccess
 
 showLibdir = do dir <- getDataDir
-                putStrLn $ dir ++ "/"
+                putStrLn $ addTrailingPathSeparator dir
                 exitWith ExitSuccess
 
 showIncs = do dir <- getDataDir
-              putStrLn $ "-I" ++ dir ++ "/rts"
+              putStrLn $ "-I" ++ dir </> "rts"
               exitWith ExitSuccess
 
 usagemsg = "Idris version " ++ ver ++ "\n" ++
