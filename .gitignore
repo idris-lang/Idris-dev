@@ -4,5 +4,7 @@ cabal-dev/
 *.o
 *.a
 *.swp
+*~
 test/output
 test/test???/output
+test/reg???/output

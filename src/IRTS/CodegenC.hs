@@ -14,6 +14,7 @@ import System.Process
 import System.Exit
 import System.IO
 import System.Directory
+import System.FilePath ((</>), (<.>))
 import Control.Monad
 
 codegenC :: [(Name, SDecl)] ->
@@ -30,7 +31,7 @@ codegenC defs out exec incs objs libs dbg
          let h = concatMap toDecl (map fst bc)
          let cc = concatMap (uncurry toC) bc
          d <- getDataDir
-         mprog <- readFile (d ++ "/rts/idris_main.c")
+         mprog <- readFile (d </> "rts" </> "idris_main" <.> "c")
          let cout = headers incs ++ debug dbg ++ h ++ cc ++ 
                      (if (exec == Executable) then mprog else "")
          case exec of
