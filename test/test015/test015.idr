@@ -27,7 +27,7 @@ instance Show (Binary w k) where
 
 pad : Binary w n -> Binary (S w) n
 pad zero = zero # b0 
-pad (num # x) = pad num # x
+pad (num # x) = pad num # x
 
 natToBin : (width : Nat) -> (n : Nat) ->
            Maybe (Binary width n)

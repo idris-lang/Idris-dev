@@ -128,7 +128,7 @@ typedef intptr_t i_int;
 #define INITFRAME VAL* myoldbase
 #define REBASE vm->valstack_base = oldbase
 #define RESERVE(x) if (vm->valstack_top+(x) > vm->stack_max) { stackOverflow(); } \
-                   else { bzero(vm->valstack_top, (x)*sizeof(VAL)); }
+                   else { memset(vm->valstack_top, 0, (x)*sizeof(VAL)); }
 #define ADDTOP(x) vm->valstack_top += (x)
 #define TOPBASE(x) vm->valstack_top = vm->valstack_base + (x)
 #define BASETOP(x) vm->valstack_base = vm->valstack_top + (x)
