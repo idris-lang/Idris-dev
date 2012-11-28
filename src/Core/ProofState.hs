@@ -303,8 +303,10 @@ defer n ctxt env (Bind x (Hole t) (P nt x' ty)) | x == x' =
 deferType :: Name -> Raw -> [Name] -> RunTactic
 deferType n fty_in args ctxt env (Bind x (Hole t) (P nt x' ty)) | x == x' = 
     do (fty, _) <- lift $ check ctxt env fty_in
-       action (\ps -> let hs = holes ps in
-                          ps { holes = hs \\ [x] })
+       action (\ps -> let hs = holes ps 
+                          ds = deferred ps in
+                          ps { holes = hs \\ [x],
+                               deferred = n : ds })
        return (Bind n (GHole fty) 
                       (mkApp (P Ref n ty) (map getP args)))
   where

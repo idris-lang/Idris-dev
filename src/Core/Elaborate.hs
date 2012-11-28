@@ -91,6 +91,13 @@ get_context :: Elab' aux Context
 get_context = do ES p _ _ <- get
                  return (context (fst p))
 
+-- update the context
+-- (should only be used for adding temporary definitions or all sorts of
+--  stuff could go wrong)
+set_context :: Context -> Elab' aux ()
+set_context ctxt = do ES (p, a) logs prev <- get
+                      put (ES (p { context = ctxt }, a) logs prev)
+
 -- get the proof term
 get_term :: Elab' aux Term
 get_term = do ES p _ _ <- get
@@ -131,6 +138,12 @@ get_type tm = do ctxt <- get_context
                  env <- get_env
                  (val, ty) <- lift $ check ctxt env tm
                  return (finalise ty)
+
+get_type_val :: Raw -> Elab' aux (Term, Type)
+get_type_val tm = do ctxt <- get_context
+                     env <- get_env
+                     (val, ty) <- lift $ check ctxt env tm
+                     return (finalise val, finalise ty)
 
 -- get holes we've deferred for later definition
 get_deferred :: Elab' aux [Name]
@@ -267,8 +280,7 @@ defer n = do n' <- unique_hole n
              processTactic' (Defer n')
 
 deferType :: Name -> Raw -> [Name] -> Elab' aux ()
-deferType n ty ns = do n' <- unique_hole n
-                       processTactic' (DeferType n' ty ns)
+deferType n ty ns = processTactic' (DeferType n ty ns)
 
 instanceArg :: Name -> Elab' aux ()
 instanceArg n = processTactic' (Instance n)
