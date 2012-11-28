@@ -10,7 +10,7 @@ sub runtest {
     print "Running $test...";
     $got = `sh ./run @idrOpts`;
     $exp = `cat expected`;
-    
+
     open(OUT,">output");
     print OUT $got;
     close(OUT);
@@ -19,6 +19,16 @@ sub runtest {
 # Mangle newlines in $got and $exp
     $got =~ s/\r\n/\n/g;
     $exp =~ s/\r\n/\n/g;
+
+# Normalize paths in $got and $exp, so the expected outcomes don't change between platforms
+    while($got =~ /(^|.*?\n)(.*?)\\(.*?):(\d+):(.*)/ms)
+    {
+        $got = "$1$2/$3:$4:$5";
+    }
+    while($exp =~ /(^|.*?\n)(.*?)\\(.*?):(\d+):(.*)/ms)
+    {
+        $exp = "$1$2/$3:$4:$5";
+    }
 
     if ($got eq $exp) {
 	print "success\n";
