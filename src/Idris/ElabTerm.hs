@@ -239,7 +239,8 @@ elab ist info pattern tcgen fn tm
          ctxt <- get_context
          -- make a function type a -> b -> c -> ... -> rty for the
          -- new function name
-         argTys <- claimArgTys args
+         env <- get_env
+         argTys <- claimArgTys env args
          fn <- unique_hole (MN 0 "inf_fn")
          let fty = fnTy argTys rty
 --             trace (show (ptm, map fst argTys)) $ focus fn
@@ -248,19 +249,26 @@ elab ist info pattern tcgen fn tm
          -- elaborate the arguments, to unify their types. They all have to
          -- be explicit.
          mapM_ elabIArg (zip argTys args)
-       where claimArgTys [] = return []
-             claimArgTys (arg : xs) | PRef _ n <- getTm arg
+       where claimArgTys env [] = return []
+             claimArgTys env (arg : xs) | Just n <- localVar env (getTm arg)
                                   = do nty <- get_type (Var n) 
-                                       ans <- claimArgTys xs
+                                       ans <- claimArgTys env xs
                                        return ((n, (False, forget nty)) : ans)
-             claimArgTys (_ : xs) = do an <- unique_hole (MN 0 "inf_argTy")
+             claimArgTys env (_ : xs) 
+                                  = do an <- unique_hole (MN 0 "inf_argTy")
                                        aval <- unique_hole (MN 0 "inf_arg")
                                        claim an RSet
                                        claim aval (Var an)
-                                       ans <- claimArgTys xs
+                                       ans <- claimArgTys env xs
                                        return ((aval, (True, (Var an))) : ans)
              fnTy [] ret  = forget ret
              fnTy ((x, (_, xt)) : xs) ret = RBind x (Pi xt) (fnTy xs ret)
+
+             localVar env (PRef _ x) 
+                           = case lookup x env of
+                                  Just _ -> Just x
+                                  _ -> Nothing
+             localVar env _ = Nothing
 
              elabIArg ((n, (True, ty)), def) = do focus n; elabE ina (getTm def) 
              elabIArg _ = return () -- already done, just a name

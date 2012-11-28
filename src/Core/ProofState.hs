@@ -312,6 +312,7 @@ deferType n fty_in args ctxt env (Bind x (Hole t) (P nt x' ty)) | x == x' =
   where
     getP n = case lookup n env of
                   Just b -> P Bound n (binderTy b)
+                  Nothing -> error ("deferType can't find " ++ show n)
 
 regret :: RunTactic
 regret ctxt env (Bind x (Hole t) sc) | noOccurrence x sc =
