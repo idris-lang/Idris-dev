@@ -6,7 +6,6 @@ import System.Directory
 import System.Exit
 import System.IO
 import System.FilePath ((</>), addTrailingPathSeparator)
-import System.Environment (lookupEnv)
 
 import Util.System
 
@@ -103,7 +102,7 @@ toIBCFile (NS n ns) = foldl1 (</>) (reverse (toIBCFile n : ns))
 
 installIBC :: String -> Name -> IO ()
 installIBC p m = do let f = toIBCFile m
-                    target <- lookupEnv "TARGET"
+                    target <- environment "TARGET"
                     d <- maybe getDataDir return target
                     let destdir = d </> p </> getDest m
                     putStrLn $ "Installing " ++ f ++ " to " ++ destdir
