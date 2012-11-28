@@ -241,7 +241,7 @@ elab ist info pattern tcgen fn tm
             let fty = fnTy argTys rty
 --             trace (show (ptm, map fst argTys)) $ focus fn
             -- build and defer the function application
-            attack; deferType f fty (map fst argTys); solve
+            attack; deferType (mkN f) fty (map fst argTys); solve
             -- elaborate the arguments, to unify their types. They all have to
             -- be explicit.
             mapM_ elabIArg (zip argTys args)
@@ -261,6 +261,11 @@ elab ist info pattern tcgen fn tm
 
              elabIArg ((n, (True, ty)), def) = do focus n; elabE ina (getTm def) 
              elabIArg _ = return () -- already done, just a name
+             
+             mkN n@(NS _ _) = n
+             mkN n = case namespace info of
+                        Just xs@(_:_) -> NS n xs
+                        _ -> n
 
     elab' (ina, g) tm@(PApp fc (PRef _ f) args') 
        = do let args = {- case lookupCtxt f (inblock info) of
