@@ -36,7 +36,9 @@ An \Idris{} file consists of an optional module declaration (here
 however \Idris{} programs can consist of several modules, and the definitions
 in each module each have their own namespace, as we will discuss in Section
 \ref{sect:namespaces}) and a
-collection of declarations and definitions. Each definition must have a type
+collection of declarations and definitions. The order of definitions is
+significant --- functions and data types must be defined before use.
+Each definition must have a type
 declaration (here, \texttt{x : Int}, \texttt{foo : String}, etc).
 Indentation is significant --- a new declaration begins at the same level
 of indentation as the preceding declaration. Alternatively, declarations
@@ -244,6 +246,38 @@ foo x = case isLT of
 
 \end{SaveVerbatim}
 \useverb{wheredata}
+
+\noindent
+In general, functions defined in a \texttt{where} clause need a type declaration
+just like any top level function. However, the type declaration for
+a function \texttt{f} \remph{can} be omitted if:
+
+\begin{itemize}
+\item \texttt{f} appears in the right hand side of the top level definition 
+\item The type of \texttt{f} can be completely determined from its first
+application
+\end{itemize}
+
+\noindent
+So, for example, the following definitions are legal:
+
+\begin{SaveVerbatim}{whereinfer}
+
+even : Nat -> Bool 
+even O = True 
+even (S k) = odd k where 
+  odd O = False 
+  odd (S k) = even k 
+
+test : Num a => List a 
+test = [c 1, c 2, d 3] 
+  where c x = 42 + x 
+        d y = c (y + 1 + z y) 
+           where z w = y + w 
+
+\end{SaveVerbatim}
+\useverb{whereinfer}
+
 
 \subsection{Dependent Types}
 
@@ -485,6 +519,33 @@ using (x:a, y:a, xs:Vect a n)
 
 \end{SaveVerbatim}
 \useverb{elemusing}
+
+\subsubsection*{Note: Declaration Order and \texttt{mutual} blocks}
+
+In general, functions and data types must be defined before use, since
+dependent types allow functions to appear as part of types, and their
+reduction behaviour to affect type checking. However, this
+restriction can be relaxed by using a \texttt{mutual} block, which allows
+data types and functions to be defined simultaneously:
+
+\begin{SaveVerbatim}{mutual}
+
+mutual
+  even : Nat -> Bool
+  even O = True
+  even (S k) = odd k
+
+  odd : Nat -> Bool
+  odd O = False
+  odd (S k) = even k
+
+\end{SaveVerbatim}
+\useverb{mutual}
+
+\noindent
+In a \texttt{mutual} block, first all of the type declarations are added,
+then the function bodies. As a result, none of the function types can depend
+on the reduction behaviour of any of the functions in the block.
 
 \subsection{I/O}
 
