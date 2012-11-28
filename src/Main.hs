@@ -28,6 +28,8 @@ import Idris.Primitives
 import Idris.Imports
 import Idris.Error
 
+import Util.System ( getLibFlags, getIdrisLibDir, getIncFlags )
+
 import Pkg.Package
 
 import Paths_idris
@@ -60,16 +62,16 @@ usage = do putStrLn usagemsg
 showver = do putStrLn $ "Idris version " ++ ver
              exitWith ExitSuccess
 
-showLibs = do dir <- getDataDir
-              putStrLn $ "-L" ++ (dir </> "rts") ++ " -lidris_rts -lgmp -lpthread"
+showLibs = do libFlags <- getLibFlags
+              putStrLn libFlags
               exitWith ExitSuccess
 
-showLibdir = do dir <- getDataDir
-                putStrLn $ addTrailingPathSeparator dir
+showLibdir = do dir <- getIdrisLibDir
+                putStrLn dir
                 exitWith ExitSuccess
 
-showIncs = do dir <- getDataDir
-              putStrLn $ "-I" ++ dir </> "rts"
+showIncs = do incFlags <- getIncFlags
+              putStrLn incFlags
               exitWith ExitSuccess
 
 usagemsg = "Idris version " ++ ver ++ "\n" ++

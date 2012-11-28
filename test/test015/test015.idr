@@ -27,7 +27,7 @@ instance Show (Binary w k) where
 
 pad : Binary w n -> Binary (S w) n
 pad zero = zero # b0 
-pad (num # x) = pad num # x
+pad (num # x) = pad num # x
 
 natToBin : (width : Nat) -> (n : Nat) ->
            Maybe (Binary width n)
@@ -37,7 +37,7 @@ natToBin (S k) O = do x <- natToBin k O
                       Just (pad x)
 natToBin (S w) (S k) with (parity k)
   natToBin (S w) (S (plus j j)) | even = do jbin <- natToBin w j
-                                            let value = jbin # b1
+                                            let value = jbin # b1
                                             ?ntbEven
   natToBin (S w) (S (S (plus j j))) | odd = do jbin <- natToBin w (S j)
                                                let value = jbin # b0
