@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 module Pkg.Package where
 
 import System.Process
@@ -104,7 +105,7 @@ installIBC p m = do let f = toIBCFile m
                     d <- getDataDir
                     let destdir = d </> p </> getDest m
                     putStrLn $ "Installing " ++ f ++ " to " ++ destdir
-                    system $ "mkdir -p " ++ destdir 
+                    system $ mkDirCmd ++ destdir 
                     system $ "install " ++ f ++ " " ++ destdir
                     return ()
     where getDest (UN n) = ""
@@ -114,9 +115,15 @@ installObj :: String -> String -> IO ()
 installObj p o = do d <- getDataDir
                     let destdir = addTrailingPathSeparator (d </> p)
                     putStrLn $ "Installing " ++ o ++ " to " ++ destdir
-                    system $ "mkdir -p " ++ destdir 
+                    system $ mkDirCmd ++ destdir 
                     system $ "install " ++ o ++ " " ++ destdir
                     return ()
+
+#ifdef mingw32_HOST_OS
+mkDirCmd = "mkdir "
+#else
+mkDirCmd = "mkdir -p "
+#endif
 
 make :: Maybe String -> IO ()
 make Nothing = return ()

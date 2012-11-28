@@ -43,12 +43,16 @@ codegenC defs out exec incs objs libs dbg
              hClose tmph
              let useclang = False
              comp <- getCC
+             libFlags <- getLibFlags
+             incFlags <- getIncFlags
              let gcc = comp ++ " " ++
                        gccDbg dbg ++
                        " -I. " ++ objs ++ " -x c " ++ 
                        (if (exec == Executable) then "" else " -c ") ++
                        " " ++ tmpn ++
-                       " `idris --link` `idris --include` " ++ libs ++
+                       " " ++ libFlags ++
+                       " " ++ incFlags ++
+                       " " ++ libs ++
                        " -o " ++ out
 --              putStrLn gcc
              exit <- system gcc
