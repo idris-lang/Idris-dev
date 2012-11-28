@@ -29,32 +29,30 @@ getAction (MkCGI act) = act
 
 instance Functor CGI where
     fmap f (MkCGI c) = MkCGI (\s => do (a, i) <- c s
-                                       return (f a, i))
+                                       pure (f a, i))
 
 instance Applicative CGI where
-    pure v = MkCGI (\s => return (v, s))
+    pure v = MkCGI (\s => pure (v, s))
     
     (MkCGI a) <$> (MkCGI b) = MkCGI (\s => do (f, i) <- a s
                                               (c, j) <- b i
-                                              return (f c, j))
+                                              pure (f c, j))
 
 instance Monad CGI where {
     (>>=) (MkCGI f) k = MkCGI (\s => do v <- f s
                                         getAction (k (fst v)) (snd v))
-
-    return v = MkCGI (\s => return (v, s))
 }
 
 setInfo : CGIInfo -> CGI ()
-setInfo i = MkCGI (\s => return ((), i))
+setInfo i = MkCGI (\s => pure ((), i))
 
 getInfo : CGI CGIInfo
-getInfo = MkCGI (\s => return (s, s))
+getInfo = MkCGI (\s => pure (s, s))
 
 abstract
 lift : IO a -> CGI a 
 lift op = MkCGI (\st => do { x <- op
-                             return (x, st) } ) 
+                             pure (x, st) } ) 
 
 abstract
 output : String -> CGI ()
@@ -64,30 +62,30 @@ output s = do i <- getInfo
 abstract
 queryVars : CGI Vars
 queryVars = do i <- getInfo
-               return (GET i)
+               pure (GET i)
 
 abstract
 postVars : CGI Vars
 postVars = do i <- getInfo
-              return (POST i)
+              pure (POST i)
 
 abstract
 cookieVars : CGI Vars
 cookieVars = do i <- getInfo
-                return (Cookies i)
+                pure (Cookies i)
 
 abstract
 queryVar : String -> CGI (Maybe String)
 queryVar x = do vs <- queryVars
-                return (lookup x vs)
+                pure (lookup x vs)
 
 getOutput : CGI String
 getOutput = do i <- getInfo
-               return (Output i)
+               pure (Output i)
 
 getHeaders : CGI String
 getHeaders = do i <- getInfo
-                return (Headers i)
+                pure (Headers i)
 
 abstract
 flushHeaders : CGI ()
@@ -111,11 +109,11 @@ getContent : Int -> IO String
 getContent x = getC x "" where
     %assert_total
     getC : Int -> String -> IO String
-    getC 0 acc = return $ reverse acc
+    getC 0 acc = pure $ reverse acc
     getC n acc = if (n > 0)
                     then do x <- getChar
                             getC (n-1) (strCons x acc)
-                    else (return "")
+                    else (pure "")
 
 abstract
 runCGI : CGI a -> IO a
@@ -136,6 +134,6 @@ runCGI prog = do
                  "")
     putStrLn (Headers st)
     putStr (Output st)
-    return v
+    pure v
 
 

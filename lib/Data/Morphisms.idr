@@ -30,7 +30,6 @@ instance Applicative (Homomorphism r) where
   (Homo f) <$> (Homo a) = Homo $ \r => f r $ a r
 
 instance Monad (Homomorphism r) where
-  return a       = Homo $ const a
   (Homo h) >>= f = Homo $ \r => applyHomo (f $ h r) r
 
 instance Semigroup (Endomorphism a) where

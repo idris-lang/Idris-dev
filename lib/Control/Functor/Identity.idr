@@ -1,4 +1,4 @@
-module Control.Monad.Identity
+module Control.Functor.Identity
 
 import Prelude.Functor
 import Prelude.Applicative
@@ -16,5 +16,4 @@ instance Applicative Identity where
     (Id f) <$> (Id g) = Id (f g)
 
 instance Monad Identity where
-    return x = Id x
     (Id x) >>= k = k x

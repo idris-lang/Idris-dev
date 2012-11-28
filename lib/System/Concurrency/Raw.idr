@@ -16,7 +16,7 @@ sendToThread {a} dest val
 checkMsgs : IO Bool
 checkMsgs = do msgs <- mkForeign (FFun "idris_checkMessage"
                         [FPtr] FInt) prim__vm
-               return (intToBool msgs)
+               pure (intToBool msgs)
 
 -- Check inbox for messages. If there are none, blocks until a message
 -- arrives.

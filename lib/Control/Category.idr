@@ -13,7 +13,7 @@ instance Category Homomorphism where
   (Homo f) . (Homo g) = Homo (f . g)
 
 instance Monad m => Category (Kleislimorphism m) where
-  id                        = Kleisli (return . id)
+  id                        = Kleisli (pure . id)
   (Kleisli f) . (Kleisli g) = Kleisli $ \a => g a >>= f
 
 infixr 1 >>>

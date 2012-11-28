@@ -16,7 +16,7 @@ getArgs = do n <- numArgs
     getArg x = mkForeign (FFun "idris_getArg" [FPtr, FInt] (FAny String)) prim__vm x
 
     ga' : List String -> Int -> Int -> IO (List String)
-    ga' acc i n = if (i == n) then (return $ reverse acc) else
+    ga' acc i n = if (i == n) then (pure $ reverse acc) else
                     do arg <- getArg i
                        ga' (arg :: acc) (i+1) n
 
