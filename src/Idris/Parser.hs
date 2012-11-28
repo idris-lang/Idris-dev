@@ -746,6 +746,9 @@ pSimpleExpr syn =
         <|> try (do x <- pfName
                     fc <- pfc
                     return (PRef fc x))
+        <|> try (do lchar '!'; x <- pfName
+                    fc <- pfc
+                    return (PInferRef fc x))
         <|> try (pList syn)
         <|> try (pAlt syn)
         <|> try (pIdiom syn)
@@ -1469,10 +1472,14 @@ pTactic syn = do reserved "intro"; ns <- sepBy pName (lchar ',')
           <|> do reserved "rewrite"; t <- pExpr syn;
                  i <- getState
                  return $ Rewrite (desugar syn i t)
-          <|> do reserved "let"; n <- pName; lchar '=';
-                 t <- pExpr syn;
-                 i <- getState
-                 return $ LetTac n (desugar syn i t)
+          <|> try (do reserved "let"; n <- pName; lchar ':'; 
+                      ty <- pExpr' syn; lchar '='; t <- pExpr syn;
+                      i <- getState
+                      return $ LetTacTy n (desugar syn i ty) (desugar syn i t))
+          <|> try (do reserved "let"; n <- pName; lchar '=';
+                      t <- pExpr syn;
+                      i <- getState
+                      return $ LetTac n (desugar syn i t))
           <|> do reserved "focus"; n <- pName
                  return $ Focus n
           <|> do reserved "exact"; t <- pExpr syn;

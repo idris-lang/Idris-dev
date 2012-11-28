@@ -232,6 +232,8 @@ elab ist info pattern tcgen fn tm
                elabE (True, a) val
                elabE (True, a) sc
                solve
+    elab' (ina, g) tm@(PApp fc (PInferRef _ f) args') 
+       = fail "Not implemented"
     elab' (ina, g) tm@(PApp fc (PRef _ f) args') 
        = do let args = {- case lookupCtxt f (inblock info) of
                           Just ps -> (map (pexp . (PRef fc)) ps ++ args')
@@ -561,6 +563,19 @@ runTac autoSolve ist tac = runT (fmap (addImpl ist) tac) where
                    claim valn (Var tyn)
                    letn <- unique_hole n
                    letbind letn (Var tyn) (Var valn)
+                   focus valn
+                   elab ist toplevel False False (MN 0 "tac") tm
+                   when autoSolve solveAll
+    runT (LetTacTy n ty tm)
+              = do attack
+                   tyn <- unique_hole (MN 0 "letty")
+                   claim tyn RSet
+                   valn <- unique_hole (MN 0 "letval")
+                   claim valn (Var tyn)
+                   letn <- unique_hole n
+                   letbind letn (Var tyn) (Var valn)
+                   focus tyn
+                   elab ist toplevel False False (MN 0 "tac") ty
                    focus valn
                    elab ist toplevel False False (MN 0 "tac") tm
                    when autoSolve solveAll

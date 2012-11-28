@@ -77,8 +77,8 @@ pshow i (InternalMsg s) = "INTERNAL ERROR: " ++ show s ++
    "\nThis is probably a bug, or a missing error message.\n" ++
    "Please consider reporting at " ++ bugaddr
 pshow i (CantUnify _ x y e sc s) 
-    = "Can't unify " ++ show (delab i x)
-        ++ " with " ++ show (delab i y) ++
+    = "Can't unify " ++ showImp True (delab i x)
+        ++ " with " ++ showImp True (delab i y) ++
 --         " (" ++ show x ++ " and " ++ show y ++ ") " ++
         case e of
             Msg "" -> ""

@@ -13,6 +13,7 @@ User visible changes:
 * Added documentation comments (Haddock style) and ':doc' REPL command
 * Pattern matching on strings, big integers and characters
 * Added System.Concurrency modules
+* Added 'postulate' declarations
 
 Internal changes:
 
