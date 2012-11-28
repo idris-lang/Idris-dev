@@ -232,8 +232,36 @@ elab ist info pattern tcgen fn tm
                elabE (True, a) val
                elabE (True, a) sc
                solve
-    elab' (ina, g) tm@(PApp fc (PInferRef _ f) args') 
-       = fail "Not implemented"
+    elab' ina tm@(PApp fc (PInferRef _ f) args) 
+       = do rty <- goal
+            -- make a function type a -> b -> c -> ... -> rty for the
+            -- new function name
+            argTys <- claimArgTys args
+            fn <- unique_hole (MN 0 "inf_fn")
+            let fty = fnTy argTys rty
+--             trace (show (ptm, map fst argTys)) $ focus fn
+            -- build and defer the function application
+            attack; deferType f fty (map fst argTys); solve
+            -- elaborate the arguments, to unify their types. They all have to
+            -- be explicit.
+            mapM_ elabIArg (zip argTys args)
+       where claimArgTys [] = return []
+             claimArgTys (arg : xs) | PRef _ n <- getTm arg
+                                  = do nty <- get_type (Var n) 
+                                       ans <- claimArgTys xs
+                                       return ((n, (False, forget nty)) : ans)
+             claimArgTys (_ : xs) = do an <- unique_hole (MN 0 "inf_argTy")
+                                       aval <- unique_hole (MN 0 "inf_arg")
+                                       claim an RSet
+                                       claim aval (Var an)
+                                       ans <- claimArgTys xs
+                                       return ((aval, (True, (Var an))) : ans)
+             fnTy [] ret  = forget ret
+             fnTy ((x, (_, xt)) : xs) ret = RBind x (Pi xt) (fnTy xs ret)
+
+             elabIArg ((n, (True, ty)), def) = do focus n; elabE ina (getTm def) 
+             elabIArg _ = return () -- already done, just a name
+
     elab' (ina, g) tm@(PApp fc (PRef _ f) args') 
        = do let args = {- case lookupCtxt f (inblock info) of
                           Just ps -> (map (pexp . (PRef fc)) ps ++ args')

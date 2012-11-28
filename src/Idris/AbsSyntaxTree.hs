@@ -894,6 +894,7 @@ showImp :: Bool -> PTerm -> String
 showImp impl tm = se 10 tm where
     se p (PQuote r) = "![" ++ show r ++ "]"
     se p (PPatvar fc n) = show n
+    se p (PInferRef fc n) = show n -- ++ "[" ++ show fc ++ "]"
     se p (PRef fc n) = if impl then show n -- ++ "[" ++ show fc ++ "]"
                                else showbasic n
       where showbasic n@(UN _) = show n
