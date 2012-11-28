@@ -776,6 +776,9 @@ addImpl' inpat env ist ptm = ai env ptm
                                    PDPair fc l' t' r'
     ai env (PAlternative a as) = let as' = map (ai env) as in
                                      PAlternative a as'
+    ai env (PApp fc (PInferRef _ f) as) 
+        = let as' = map (fmap (ai env)) as in
+              PApp fc (PInferRef fc f) as'  
     ai env (PApp fc (PRef _ f) as) 
         | not (f `elem` env)
                           = let as' = map (fmap (ai env)) as in
@@ -1000,6 +1003,7 @@ matchClause' names i x y = checkRpts $ match (fullApp x) (fullApp y) where
                 _ -> LeftErr (a, b)
     match (PCase _ _ _) _ = return [] -- lifted out
     match (PMetavar _) _ = return [] -- modified
+    match (PInferRef _ _) _ = return [] -- modified
     match (PQuote _) _ = return []
     match (PProof _) _ = return []
     match (PTactics _) _ = return []

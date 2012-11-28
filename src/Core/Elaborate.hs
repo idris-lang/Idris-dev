@@ -266,6 +266,10 @@ defer :: Name -> Elab' aux ()
 defer n = do n' <- unique_hole n
              processTactic' (Defer n')
 
+deferType :: Name -> Raw -> [Name] -> Elab' aux ()
+deferType n ty ns = do n' <- unique_hole n
+                       processTactic' (DeferType n' ty ns)
+
 instanceArg :: Name -> Elab' aux ()
 instanceArg n = processTactic' (Instance n)
 

@@ -65,6 +65,7 @@ data Tactic = Attack
             | PatBind Name
             | Focus Name
             | Defer Name
+            | DeferType Name Raw [Name]
             | Instance Name
             | MoveLast Name
             | ProofState
@@ -297,6 +298,18 @@ defer n ctxt env (Bind x (Hole t) (P nt x' ty)) | x == x' =
     mkTy ((n,b) : bs) t = Bind n (Pi (binderTy b)) (mkTy bs t)
 
     getP (n, b) = P Bound n (binderTy b)
+
+-- as defer, but build the type and application explicitly
+deferType :: Name -> Raw -> [Name] -> RunTactic
+deferType n fty_in args ctxt env (Bind x (Hole t) (P nt x' ty)) | x == x' = 
+    do (fty, _) <- lift $ check ctxt env fty_in
+       action (\ps -> let hs = holes ps in
+                          ps { holes = hs \\ [x] })
+       return (Bind n (GHole fty) 
+                      (mkApp (P Ref n ty) (map getP args)))
+  where
+    getP n = case lookup n env of
+                  Just b -> P Bound n (binderTy b)
 
 regret :: RunTactic
 regret ctxt env (Bind x (Hole t) sc) | noOccurrence x sc =
@@ -577,27 +590,28 @@ process EndUnify _
         let (h, _) = unified ps
         tactic (Just h) solve_unified
 process t h = tactic (Just h) (mktac t)
-   where mktac Attack          = attack
-         mktac (Claim n r)     = claim n r
-         mktac (Exact r)       = exact r
-         mktac (Fill r)        = fill r
-         mktac (PrepFill n ns) = prep_fill n ns
-         mktac CompleteFill    = complete_fill
-         mktac Regret          = regret
-         mktac Solve           = solve
-         mktac (StartUnify n)  = start_unify n
-         mktac Compute         = compute
-         mktac (Intro n)       = intro n
-         mktac (IntroTy ty n)  = introTy ty n
-         mktac (Forall n t)    = forall n t
-         mktac (LetBind n t v) = letbind n t v
-         mktac (Rewrite t)     = rewrite t
-         mktac (PatVar n)      = patvar n
-         mktac (PatBind n)     = patbind n
-         mktac (CheckIn r)     = check_in r
-         mktac (EvalIn r)      = eval_in r
-         mktac (Focus n)       = focus n
-         mktac (Defer n)       = defer n
-         mktac (Instance n)    = instanceArg n
-         mktac (MoveLast n)    = movelast n
+   where mktac Attack            = attack
+         mktac (Claim n r)       = claim n r
+         mktac (Exact r)         = exact r
+         mktac (Fill r)          = fill r
+         mktac (PrepFill n ns)   = prep_fill n ns
+         mktac CompleteFill      = complete_fill
+         mktac Regret            = regret
+         mktac Solve             = solve
+         mktac (StartUnify n)    = start_unify n
+         mktac Compute           = compute
+         mktac (Intro n)         = intro n
+         mktac (IntroTy ty n)    = introTy ty n
+         mktac (Forall n t)      = forall n t
+         mktac (LetBind n t v)   = letbind n t v
+         mktac (Rewrite t)       = rewrite t
+         mktac (PatVar n)        = patvar n
+         mktac (PatBind n)       = patbind n
+         mktac (CheckIn r)       = check_in r
+         mktac (EvalIn r)        = eval_in r
+         mktac (Focus n)         = focus n
+         mktac (Defer n)         = defer n
+         mktac (DeferType n t a) = deferType n t a
+         mktac (Instance n)      = instanceArg n
+         mktac (MoveLast n)      = movelast n
          
