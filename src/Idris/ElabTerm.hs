@@ -176,6 +176,7 @@ elab ist info pattern tcgen fn tm
       where inparamBlock n = case lookupCtxtName Nothing n (inblock info) of
                                 [] -> False
                                 _ -> True
+    elab' ina f@(PInferRef fc n) = elab' ina (PApp fc f [])
     elab' ina (PRef fc n) = erun fc $ do apply (Var n) []; solve
     elab' ina@(_, a) (PLam n Placeholder sc)
           = do -- n' <- unique_hole n
@@ -232,19 +233,21 @@ elab ist info pattern tcgen fn tm
                elabE (True, a) val
                elabE (True, a) sc
                solve
-    elab' ina tm@(PApp fc (PInferRef _ f) args) 
-       = do rty <- goal
-            -- make a function type a -> b -> c -> ... -> rty for the
-            -- new function name
-            argTys <- claimArgTys args
-            fn <- unique_hole (MN 0 "inf_fn")
-            let fty = fnTy argTys rty
+    elab' ina tm@(PApp fc (PInferRef _ f) args) = do
+         rty <- goal
+         ds <- get_deferred
+         ctxt <- get_context
+         -- make a function type a -> b -> c -> ... -> rty for the
+         -- new function name
+         argTys <- claimArgTys args
+         fn <- unique_hole (MN 0 "inf_fn")
+         let fty = fnTy argTys rty
 --             trace (show (ptm, map fst argTys)) $ focus fn
             -- build and defer the function application
-            attack; deferType (mkN f) fty (map fst argTys); solve
-            -- elaborate the arguments, to unify their types. They all have to
-            -- be explicit.
-            mapM_ elabIArg (zip argTys args)
+         attack; deferType (mkN f) fty (map fst argTys); solve
+         -- elaborate the arguments, to unify their types. They all have to
+         -- be explicit.
+         mapM_ elabIArg (zip argTys args)
        where claimArgTys [] = return []
              claimArgTys (arg : xs) | PRef _ n <- getTm arg
                                   = do nty <- get_type (Var n) 
@@ -526,8 +529,8 @@ resolveTC depth fn ist
 collectDeferred :: Term -> State [(Name, Type)] Term
 collectDeferred (Bind n (GHole t) app) =
     do ds <- get
-       put ((n, t) : ds)
-       return app
+       when (not (n `elem` map fst ds)) $ put ((n, t) : ds)
+       collectDeferred app
 collectDeferred (Bind n b t) = do b' <- cdb b
                                   t' <- collectDeferred t
                                   return (Bind n b' t')

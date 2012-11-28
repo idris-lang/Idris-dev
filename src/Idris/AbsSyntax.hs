@@ -446,8 +446,11 @@ piBindp p ((n, ty):ns) t = PPi p n ty (piBind ns t)
     
 -- Dealing with parameters
 
-expandParams :: (Name -> Name) -> [(Name, PTerm)] -> [Name] -> PTerm -> PTerm
-expandParams dec ps ns tm = en tm
+expandParams :: (Name -> Name) -> [(Name, PTerm)] -> 
+                [Name] -> -- all names
+                [Name] -> -- names with no declaration
+                PTerm -> PTerm
+expandParams dec ps ns infs tm = en tm
   where
     -- if we shadow a name (say in a lambda binding) that is used in a call to
     -- a lifted function, we need access to both names - once in the scope of the
@@ -486,11 +489,21 @@ expandParams dec ps ns tm = en tm
 
     en (PQuote (Var n)) 
         | n `nselem` ns = PQuote (Var (dec n))
+    en (PApp fc (PInferRef fc' n) as)
+        | n `nselem` ns = PApp fc (PInferRef fc' (dec n)) 
+                           (map (pexp . (PRef fc)) (map fst ps) ++ (map (fmap en) as))
     en (PApp fc (PRef fc' n) as)
+        | n `elem` infs = PApp fc (PInferRef fc' (dec n)) 
+                           (map (pexp . (PRef fc)) (map fst ps) ++ (map (fmap en) as))
         | n `nselem` ns = PApp fc (PRef fc' (dec n)) 
                            (map (pexp . (PRef fc)) (map fst ps) ++ (map (fmap en) as))
     en (PRef fc n)
+        | n `elem` infs = PApp fc (PInferRef fc (dec n)) 
+                           (map (pexp . (PRef fc)) (map fst ps))
         | n `nselem` ns = PApp fc (PRef fc (dec n)) 
+                           (map (pexp . (PRef fc)) (map fst ps))
+    en (PInferRef fc n)
+        | n `nselem` ns = PApp fc (PInferRef fc (dec n)) 
                            (map (pexp . (PRef fc)) (map fst ps))
     en (PApp fc f as) = PApp fc (en f) (map (fmap en) as)
     en (PCase fc c os) = PCase fc (en c) (map (pmap en) os)
@@ -508,16 +521,16 @@ expandParamsD :: Bool -> -- True = RHS only
 expandParamsD rhsonly ist dec ps ns (PTy doc syn fc o n ty) 
     = if n `elem` ns && (not rhsonly)
          then -- trace (show (n, expandParams dec ps ns ty)) $
-              PTy doc syn fc o (dec n) (piBind ps (expandParams dec ps ns ty))
+              PTy doc syn fc o (dec n) (piBind ps (expandParams dec ps ns [] ty))
          else --trace (show (n, expandParams dec ps ns ty)) $ 
-              PTy doc syn fc o n (expandParams dec ps ns ty)
+              PTy doc syn fc o n (expandParams dec ps ns [] ty)
 expandParamsD rhsonly ist dec ps ns (PPostulate doc syn fc o n ty) 
     = if n `elem` ns && (not rhsonly)
          then -- trace (show (n, expandParams dec ps ns ty)) $
               PPostulate doc syn fc o (dec n) (piBind ps 
-                            (expandParams dec ps ns ty))
+                            (expandParams dec ps ns [] ty))
          else --trace (show (n, expandParams dec ps ns ty)) $ 
-              PPostulate doc syn fc o n (expandParams dec ps ns ty)
+              PPostulate doc syn fc o n (expandParams dec ps ns [] ty)
 expandParamsD rhsonly ist dec ps ns (PClauses fc opts n cs)
     = let n' = if n `elem` ns then dec n else n in
           PClauses fc opts n' (map expandParamsC cs)
@@ -525,20 +538,20 @@ expandParamsD rhsonly ist dec ps ns (PClauses fc opts n cs)
     expandParamsC (PClause fc n lhs ws rhs ds)
         = let -- ps' = updateps True (namesIn ist rhs) (zip ps [0..])
               ps'' = updateps False (namesIn [] ist lhs) (zip ps [0..])
-              lhs' = if rhsonly then lhs else (expandParams dec ps'' ns lhs)
+              lhs' = if rhsonly then lhs else (expandParams dec ps'' ns [] lhs)
               n' = if n `elem` ns then dec n else n in
               PClause fc n' lhs'
-                            (map (expandParams dec ps'' ns) ws)
-                            (expandParams dec ps'' ns rhs)
+                            (map (expandParams dec ps'' ns []) ws)
+                            (expandParams dec ps'' ns [] rhs)
                             (map (expandParamsD True ist dec ps'' ns) ds)
     expandParamsC (PWith fc n lhs ws wval ds)
         = let -- ps' = updateps True (namesIn ist wval) (zip ps [0..])
               ps'' = updateps False (namesIn [] ist lhs) (zip ps [0..])
-              lhs' = if rhsonly then lhs else (expandParams dec ps'' ns lhs)
+              lhs' = if rhsonly then lhs else (expandParams dec ps'' ns [] lhs)
               n' = if n `elem` ns then dec n else n in
               PWith fc n' lhs'
-                          (map (expandParams dec ps'' ns) ws)
-                          (expandParams dec ps'' ns wval)
+                          (map (expandParams dec ps'' ns []) ws)
+                          (expandParams dec ps'' ns [] wval)
                           (map (expandParamsD rhsonly ist dec ps'' ns) ds)
     updateps yn nm [] = []
     updateps yn nm (((a, t), i):as)
@@ -551,28 +564,29 @@ expandParamsD rhs ist dec ps ns (PData doc syn fc co pd)
     -- added implicitly)
     expandPData (PDatadecl n ty cons) 
        = if n `elem` ns
-            then PDatadecl (dec n) (piBind ps (expandParams dec ps ns ty)) (map econ cons)
-            else PDatadecl n (expandParams dec ps ns ty) (map econ cons)
+            then PDatadecl (dec n) (piBind ps (expandParams dec ps ns [] ty)) 
+                           (map econ cons)
+            else PDatadecl n (expandParams dec ps ns [] ty) (map econ cons)
     econ (doc, n, t, fc) 
-       = (doc, dec n, piBindp expl ps (expandParams dec ps ns t), fc)
+       = (doc, dec n, piBindp expl ps (expandParams dec ps ns [] t), fc)
 expandParamsD rhs ist dec ps ns (PParams f params pds)
-   = PParams f (ps ++ map (mapsnd (expandParams dec ps ns)) params) 
+   = PParams f (ps ++ map (mapsnd (expandParams dec ps ns [])) params) 
                (map (expandParamsD True ist dec ps ns) pds)
 --                (map (expandParamsD ist dec ps ns) pds) 
 expandParamsD rhs ist dec ps ns (PMutual f pds)
    = PMutual f (map (expandParamsD rhs ist dec ps ns) pds)
 expandParamsD rhs ist dec ps ns (PClass doc info f cs n params decls)
    = PClass doc info f 
-           (map (expandParams dec ps ns) cs)
+           (map (expandParams dec ps ns []) cs)
            n
-           (map (mapsnd (expandParams dec ps ns)) params)
+           (map (mapsnd (expandParams dec ps ns [])) params)
            (map (expandParamsD rhs ist dec ps ns) decls)
 expandParamsD rhs ist dec ps ns (PInstance info f cs n params ty cn decls)
    = PInstance info f 
-           (map (expandParams dec ps ns) cs)
+           (map (expandParams dec ps ns []) cs)
            n
-           (map (expandParams dec ps ns) params)
-           (expandParams dec ps ns ty)
+           (map (expandParams dec ps ns []) params)
+           (expandParams dec ps ns [] ty)
            cn
            (map (expandParamsD rhs ist dec ps ns) decls)
 expandParamsD rhs ist dec ps ns d = d
@@ -743,21 +757,25 @@ implicitise syn ignore ist tm
 
 -- Add implicit arguments in function calls
 addImplPat :: IState -> PTerm -> PTerm
-addImplPat = addImpl' True []
+addImplPat = addImpl' True [] []
 
 addImplBound :: IState -> [Name] -> PTerm -> PTerm
-addImplBound ist ns = addImpl' False ns ist
+addImplBound ist ns = addImpl' False ns [] ist
+
+addImplBoundInf :: IState -> [Name] -> [Name] -> PTerm -> PTerm
+addImplBoundInf ist ns inf = addImpl' False ns inf ist
 
 addImpl :: IState -> PTerm -> PTerm
-addImpl = addImpl' False []
+addImpl = addImpl' False [] []
 
 -- TODO: in patterns, don't add implicits to function names guarded by constructors
 -- and *not* inside a PHidden
 
-addImpl' :: Bool -> [Name] -> IState -> PTerm -> PTerm
-addImpl' inpat env ist ptm = ai env ptm
+addImpl' :: Bool -> [Name] -> [Name] -> IState -> PTerm -> PTerm
+addImpl' inpat env infns ist ptm = ai env ptm
   where
     ai env (PRef fc f)    
+        | f `elem` infns = PInferRef fc f
         | not (f `elem` env) = handleErr $ aiFn inpat inpat ist fc f []
     ai env (PHidden (PRef fc f))
         | not (f `elem` env) = handleErr $ aiFn inpat False ist fc f []
@@ -780,6 +798,7 @@ addImpl' inpat env ist ptm = ai env ptm
         = let as' = map (fmap (ai env)) as in
               PApp fc (PInferRef fc f) as'  
     ai env (PApp fc (PRef _ f) as) 
+        | f `elem` infns = ai env (PApp fc (PInferRef fc f) as)
         | not (f `elem` env)
                           = let as' = map (fmap (ai env)) as in
                                 handleErr $ aiFn inpat False ist fc f as'

@@ -34,7 +34,7 @@ genMissing fn args sc
 
 mkPatTm :: PTerm -> Idris Term
 mkPatTm t = do i <- get
-               let timp = addImpl' True [] i t
+               let timp = addImpl' True [] [] i t
                evalStateT (toTT timp) 0
   where
     toTT (PRef _ n) = do i <- lift $ get

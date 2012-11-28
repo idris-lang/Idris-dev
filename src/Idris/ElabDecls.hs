@@ -507,16 +507,23 @@ elabClause info tcgen (cnum, PClause fc fname lhs_in withs rhs_in whereblock)
         ist <- getIState
         windex <- getName
         let winfo = pinfo (pvars ist lhs_tm) whereblock windex
-        let decls = concatMap declared whereblock
+        let decls = nub (concatMap declared whereblock)
+        let defs = nub (decls ++ concatMap defined whereblock)
         let newargs = pvars ist lhs_tm
-        let wb = map (expandParamsD False ist decorate newargs decls) whereblock
-        logLvl 5 $ "Where block: " ++ show wb
-        mapM_ (elabDecl' EAll info) wb
+        let wb = map (expandParamsD False ist decorate newargs defs) whereblock
+        
+        -- Split the where block into declarations with a type, and those
+        -- without
+        -- Elaborate those with a type *before* RHS, those without *after*
+        let (wbefore, wafter) = sepBlocks wb
+
+        logLvl 5 $ "Where block:\n " ++ show wbefore ++ "\n" ++ show wafter
+        mapM_ (elabDecl' EAll info) wbefore
         -- Now build the RHS, using the type of the LHS as the goal.
         i <- get -- new implicits from where block
-        logLvl 5 (showImp True (expandParams decorate newargs decls rhs_in))
-        let rhs = addImplBound i (map fst newargs) 
-                                 (expandParams decorate newargs decls rhs_in)
+        logLvl 5 (showImp True (expandParams decorate newargs defs (defs \\ decls) rhs_in))
+        let rhs = addImplBoundInf i (map fst newargs) (defs \\ decls)
+                                 (expandParams decorate newargs defs (defs \\ decls) rhs_in)
         logLvl 2 $ "RHS: " ++ showImp True rhs
         ctxt <- getContext -- new context with where block added
         logLvl 5 "STARTING CHECK"
@@ -533,7 +540,13 @@ elabClause info tcgen (cnum, PClause fc fname lhs_in withs rhs_in whereblock)
         when (not (null defer)) $ iLOG $ "DEFERRED " ++ show defer
         def' <- checkDef fc defer
         addDeferred def'
+
+        -- Now the remaining deferred (i.e. no type declarations) clauses
+        -- from the where block
+
+        mapM_ (elabDecl' EAll info) wafter
         mapM_ (elabCaseBlock info) is
+
         ctxt <- getContext
         logLvl 5 $ "Rechecking"
         (crhs, crhsty) <- recheckC fc [] rhs'
@@ -547,6 +560,17 @@ elabClause info tcgen (cnum, PClause fc fname lhs_in withs rhs_in whereblock)
   where
     decorate (NS x ns) = NS (UN ('#':show x)) (ns ++ [show cnum, show fname])
     decorate x = NS (UN ('#':show x)) [show cnum, show fname]
+
+    sepBlocks bs = sepBlocks' [] bs where
+      sepBlocks' ns (d@(PTy _ _ _ _ n t) : bs)
+            = let (bf, af) = sepBlocks' (n : ns) bs in
+                  (d : bf, af)
+      sepBlocks' ns (d@(PClauses _ _ n _) : bs) 
+         | not (n `elem` ns) = let (bf, af) = sepBlocks' ns bs in
+                                   (bf, d : af)
+      sepBlocks' ns (b : bs) = let (bf, af) = sepBlocks' ns bs in
+                                   (b : bf, af)
+      sepBlocks' ns [] = ([], [])
 
     pinfo ns ps i 
           = let ds = concatMap declared ps
