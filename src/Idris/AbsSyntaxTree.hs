@@ -398,6 +398,7 @@ updateNs ns t = mapPT updateRef t
 
 data PTerm = PQuote Raw
            | PRef FC Name
+           | PInferRef FC Name -- a name to be defined later
            | PPatvar FC Name
            | PLam Name PTerm PTerm
            | PPi  Plicity Name PTerm PTerm
@@ -450,7 +451,8 @@ mapPT f t = f (mpt t) where
 
 
 data PTactic' t = Intro [Name] | Intros | Focus Name
-                | Refine Name [Bool] | Rewrite t | LetTac Name t
+                | Refine Name [Bool] | Rewrite t 
+                | LetTac Name t | LetTacTy Name t t
                 | Exact t | Compute | Trivial
                 | Solve
                 | Attack
