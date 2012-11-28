@@ -5,6 +5,9 @@ User visible changes:
 
 * Forward declarations of data allowed
   - supporting induction recursion and mutually recursive data
+* Type inference of definitions in 'where' clauses
+  - Provided that the type can be completely determined from the first
+    application of the function
 * 'mutual' blocks added
   - effect is to elaborate all types of declarations in the block before
     elaborating their definitions
@@ -14,6 +17,7 @@ User visible changes:
 * Pattern matching on strings, big integers and characters
 * Added System.Concurrency modules
 * Added 'postulate' declarations
+* Allow type annotations on 'let' tactic
 
 Internal changes:
 
