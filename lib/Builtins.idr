@@ -40,6 +40,9 @@ namespace Builtins {
 id : a -> a
 id x = x
 
+the : (A : Set) -> A -> A
+the _ = id
+
 const : a -> b -> a
 const x _ = x
 
