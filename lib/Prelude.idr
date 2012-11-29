@@ -289,11 +289,19 @@ fwrite (FHandle h) s = do_fwrite h s
 
 partial
 do_feof : Ptr -> IO Int
-do_feof h = mkForeign (FFun "feof" [FPtr] FInt) h
+do_feof h = mkForeign (FFun "fileEOF" [FPtr] FInt) h
 
 feof : File -> IO Bool
 feof (FHandle h) = do eof <- do_feof h
-                      return (not (eof == 0)) 
+                      return (not (eof == 0))
+
+partial
+do_ferror : Ptr -> IO Int
+do_ferror h = mkForeign (FFun "fileError" [FPtr] FInt) h
+
+ferror : File -> IO Bool
+ferror (FHandle h) = do err <- do_ferror h
+                        return (not (err == 0))
 
 partial
 nullPtr : Ptr -> IO Bool

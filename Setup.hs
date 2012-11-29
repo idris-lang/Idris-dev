@@ -7,7 +7,8 @@ import qualified Distribution.Simple.Program as P
 import Distribution.PackageDescription
 
 import System.Exit
-import System.FilePath ((</>))
+import System.FilePath ((</>), splitDirectories)
+import qualified System.FilePath.Posix as Px
 import System.Process
 
 -- After Idris is built, we need to check and install the prelude and other libs
@@ -16,9 +17,11 @@ make verbosity = P.runProgramInvocation verbosity . P.simpleProgramInvocation "m
 
 #ifdef mingw32_HOST_OS
 -- make on mingw32 exepects unix style separators
-idrisCmd local = "../dist/build/idris/idris"
+(<//>) = (Px.</>)
+idrisCmd local = Px.joinPath $ splitDirectories $ 
+                 ".." <//> buildDir local <//> "idris" <//> "idris"
 #else
-idrisCmd local = ".." </> buildDir local </> "idris" </> "idris"
+idrisCmd local = ".." </>  buildDir local </>  "idris" </>  "idris"
 #endif
 
 cleanStdLib verbosity

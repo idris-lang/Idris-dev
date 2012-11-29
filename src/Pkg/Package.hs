@@ -1,11 +1,11 @@
-{-# LANGUAGE CPP #-}
 module Pkg.Package where
 
 import System.Process
 import System.Directory
 import System.Exit
 import System.IO
-import System.FilePath ((</>), addTrailingPathSeparator)
+import System.FilePath ((</>), addTrailingPathSeparator, takeFileName)
+import System.Directory (createDirectoryIfMissing, copyFile)
 
 import Util.System
 
@@ -55,10 +55,7 @@ cleanPkg fp
           mapM_ rmIBC (modules pkgdesc)
           case execout pkgdesc of
                Nothing -> return ()
-               Just s -> do let exec = dir </> s
-                            putStrLn $ "Removing " ++ exec
-                            system $ "rm -f " ++ exec 
-                            return ()
+               Just s -> rmFile $ dir </> s
 
 installPkg :: PkgDesc -> IO ()
 installPkg pkgdesc
@@ -92,10 +89,7 @@ testLib warn p f
                        else fail $ "Missing library " ++ f
 
 rmIBC :: Name -> IO ()
-rmIBC m = do let f = toIBCFile m 
-             putStrLn $ "Removing " ++ f
-             system $ "rm -f " ++ f
-             return ()
+rmIBC m = rmFile $ toIBCFile m 
              
 toIBCFile (UN n) = n ++ ".ibc"
 toIBCFile (NS n ns) = foldl1 (</>) (reverse (toIBCFile n : ns))
@@ -106,8 +100,8 @@ installIBC p m = do let f = toIBCFile m
                     d <- maybe getDataDir return target
                     let destdir = d </> p </> getDest m
                     putStrLn $ "Installing " ++ f ++ " to " ++ destdir
-                    system $ mkDirCmd ++ destdir 
-                    system $ "install " ++ f ++ " " ++ destdir
+                    createDirectoryIfMissing True destdir
+                    copyFile f (destdir </> takeFileName f)
                     return ()
     where getDest (UN n) = ""
           getDest (NS n ns) = foldl1 (</>) (reverse (getDest n : ns))
@@ -116,15 +110,9 @@ installObj :: String -> String -> IO ()
 installObj p o = do d <- getDataDir
                     let destdir = addTrailingPathSeparator (d </> p)
                     putStrLn $ "Installing " ++ o ++ " to " ++ destdir
-                    system $ mkDirCmd ++ destdir 
-                    system $ "install " ++ o ++ " " ++ destdir
+                    createDirectoryIfMissing True destdir
+                    copyFile o (destdir </> takeFileName o)
                     return ()
-
-#ifdef mingw32_HOST_OS
-mkDirCmd = "mkdir "
-#else
-mkDirCmd = "mkdir -p "
-#endif
 
 make :: Maybe String -> IO ()
 make Nothing = return ()
@@ -135,4 +123,3 @@ clean :: Maybe String -> IO ()
 clean Nothing = return ()
 clean (Just s) = do system $ "make -f " ++ s ++ " clean"
                     return ()
-
