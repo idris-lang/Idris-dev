@@ -13,7 +13,8 @@ data LineType = Prog | Blank | Comm
 ulLine ('>':' ':xs)        = (Prog, xs)
 ulLine ('>':xs)            = (Prog, xs)
 ulLine xs | all isSpace xs = (Blank, "")
-          | otherwise      = (Comm, '-':'-':xs)
+-- make sure it's not a doc comment
+          | otherwise      = (Comm, '-':'-':' ':'>':xs) 
 
 check f l (a:b:cs) = do chkAdj f l (fst a) (fst b)
                         check f (l+1) (b:cs)
