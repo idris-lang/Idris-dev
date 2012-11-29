@@ -10,6 +10,7 @@ import IRTS.Lang
 
 import Core.TT
 import Core.Evaluate
+import Data.Bits
 
 data Prim = Prim { p_name  :: Name,
                    p_type  :: Type,
@@ -41,6 +42,10 @@ primitives =
      (2, LDiv) partial,
    Prim (UN "prim__modInt") (ty [IType, IType] IType) 2 (iBin (mod))
      (2, LMod) partial,
+   Prim (UN "prim__andInt") (ty [IType, IType] IType) 2 (iBin (.&.))
+     (2, LAnd) partial,
+   Prim (UN "prim__orInt") (ty [IType, IType] IType) 2 (iBin (.|.))
+     (2, LOr) partial,
    Prim (UN "prim__eqInt")  (ty [IType, IType] IType) 2 (biBin (==))
      (2, LEq) total,
    Prim (UN "prim__ltInt")  (ty [IType, IType] IType) 2 (biBin (<))
