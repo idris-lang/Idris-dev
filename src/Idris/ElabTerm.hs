@@ -553,7 +553,9 @@ collectDeferred t = return t
 -- Running tactics directly
 
 runTac :: Bool -> IState -> PTactic -> ElabD ()
-runTac autoSolve ist tac = runT (fmap (addImpl ist) tac) where
+runTac autoSolve ist tac = do env <- get_env
+                              runT (fmap (addImplBound ist (map fst env)) tac) 
+  where
     runT (Intro []) = do g <- goal
                          attack; intro (bname g)
       where
