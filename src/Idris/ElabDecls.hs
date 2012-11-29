@@ -455,6 +455,7 @@ elabVal info aspat tm_in
                   (elaborate ctxt (MN 0 "val") infP []
                         (build i info aspat (MN 0 "val") (infTerm tm)))
         logLvl 3 ("Value: " ++ show tm')
+        recheckC (FC "(input)" 0) [] tm'
         let vtm = getInferTerm tm'
         logLvl 2 (show vtm)
         recheckC (FC "(input)" 0) [] vtm
