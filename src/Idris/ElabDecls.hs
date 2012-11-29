@@ -363,8 +363,10 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
                               return missing'
                       else return []
            let pcover = null pmissing
+           logLvl 2 $ "Optimising patterns"
            pdef' <- applyOpts optpdef 
-           logLvl 5 $ "Optimised patterns:\n" ++ show pdef'
+           logLvl 2 $ "Optimised patterns"
+           logLvl 5 $ show pdef'
            ist <- get
   --          let wf = wellFounded ist n sc
            let tot = if pcover || AssertTotal `elem` opts

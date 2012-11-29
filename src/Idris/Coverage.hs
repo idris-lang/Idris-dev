@@ -383,6 +383,7 @@ checkDeclTotality :: (FC, Name) -> Idris Totality
 checkDeclTotality (fc, n) 
     = do logLvl 2 $ "Checking " ++ show n ++ " for totality"
          buildSCG (fc, n)
+         logLvl 2 $ "Built SCG"
          checkTotality [] fc n
 
 -- Calculate the size change graph for this definition
@@ -411,8 +412,9 @@ buildSCG (_, n) = do
        x -> error $ "buildSCG: " ++ show (n, x)
 
 buildSCG' :: IState -> SC -> [Name] -> [SCGEntry] 
-buildSCG' ist sc args = nub $ scg sc (zip args args) 
-                              (zip args (zip args (repeat Same)))
+buildSCG' ist sc args = -- trace ("Building SCG for " ++ show sc) $
+                           nub $ scg sc (zip args args) 
+                                 (zip args (zip args (repeat Same)))
    where
       scg :: SC -> [(Name, Name)] -> -- local var, originating top level var
              [(Name, (Name, SizeChange))] -> -- orig to new,  and relationship
@@ -448,7 +450,7 @@ buildSCG' ist sc args = nub $ scg sc (zip args args)
               = let arel = argRels n
                     szs' = zipWith (\arg (_,t) -> (arg, (x, t))) args arel 
                                                        ++ szs
-                    vars' = zip args (repeat tvar) ++ vars in
+                    vars' = nub (zip args (repeat tvar) ++ vars) in
                     scg sc vars' szs'
          | otherwise = scg sc vars szs
       scgAlt x vars szs (ConstCase _ sc) = scg sc vars szs
@@ -461,13 +463,13 @@ buildSCG' ist sc args = nub $ scg sc (zip args args)
             = let rest = concatMap (\x -> scgTerm x vars szs) args in
                   case lookup fn vars of
                        Just _ -> rest
-                       Nothing -> (fn, map (mkChange szs) args) : rest 
+                       Nothing -> nub $ (fn, map (mkChange szs) args) : rest 
       scgTerm (App f a) vars szs
             = scgTerm f vars szs ++ scgTerm a vars szs
       scgTerm (Bind n (Let t v) e) vars szs
             = scgTerm v vars szs ++ scgTerm e vars szs
       scgTerm (Bind n _ e) vars szs
-            = scgTerm e ((n, n) : vars) szs
+            = scgTerm e (nub ((n, n) : vars)) szs
       scgTerm (P _ fn _) vars szs
             = case lookup fn vars of
                    Just _ -> []

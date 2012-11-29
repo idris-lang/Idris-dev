@@ -156,7 +156,7 @@ data Phase = CompileTime | RunTime
     deriving (Show, Eq)
 
 -- Generate a simple case tree
--- Work Left to Right at Compile Time 
+-- Work Right to Left
 
 simpleCase :: Bool -> Bool -> Phase -> FC -> [([Name], Term, Term)] -> 
               TC CaseDef
@@ -190,7 +190,9 @@ simpleCase tc cover phase fc cs
           acc (PCon _ _ ps : xs) n = acc (ps ++ xs) n
           acc (_ : xs) n = acc xs n
 
-rev CompileTime = id
+-- right to left gives more chance of discriminating on interesting arguments
+-- rather than indices which are likely to be repeated.
+-- rev CompileTime = id
 rev _ = reverse
 
 data Pat = PCon Name Int [Pat]
