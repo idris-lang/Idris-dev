@@ -14,7 +14,7 @@ modules = Builtins, Prelude, IO, System,
 
           Language.Reflection,
 
-          Data.Morphisms,
+          Data.Morphisms, Data.Bits,
 
           Control.Monad.Identity, Control.Monad.State, Control.Category,
           Control.Arrow
