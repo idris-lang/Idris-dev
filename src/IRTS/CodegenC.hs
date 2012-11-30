@@ -59,9 +59,10 @@ codegenC defs out exec incs objs libs dbg
              when (exit /= ExitSuccess) $
                 putStrLn ("FAILURE: " ++ gcc)
 
-headers [] = "#include <idris_rts.h>\n#include <idris_stdfgn.h>\n" ++
-             "#include <gmp.h>\n#include <assert.h>\n"
-headers (x : xs) = "#include <" ++ x ++ ">\n" ++ headers xs
+headers xs =
+  concatMap
+    (\h -> "#include <" ++ h ++ ">\n")
+    (xs ++ ["idris_rts.h", "idris_stdfgn.h", "gmp.h", "assert.h"])
 
 debug TRACE = "#define IDRIS_TRACE\n\n"
 debug _ = ""
