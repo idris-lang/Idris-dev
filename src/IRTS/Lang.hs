@@ -28,7 +28,8 @@ data LExp = LV LVar
 -- Primitive operators. Backends are not *required* to implement all
 -- of these, but should report an error if they are unable
 
-data PrimFn = LPlus | LMinus | LTimes | LDiv | LMod | LAnd | LOr
+data PrimFn = LPlus | LMinus | LTimes | LDiv | LMod 
+            | LAnd | LOr | LXOr | LCompl | LSHL| LSHR
             | LEq | LLt | LLe | LGt | LGe
             | LFPlus | LFMinus | LFTimes | LFDiv 
             | LFEq | LFLt | LFLe | LFGt | LFGe

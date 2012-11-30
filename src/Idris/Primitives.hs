@@ -38,14 +38,22 @@ primitives =
      (2, LMinus) total,
    Prim (UN "prim__mulInt") (ty [IType, IType] IType) 2 (iBin (*))
      (2, LTimes) total,
-   Prim (UN "prim__divInt") (ty [IType, IType] IType) 2 (iBin (div))
+   Prim (UN "prim__divInt") (ty [IType, IType] IType) 2 (iBin div)
      (2, LDiv) partial,
-   Prim (UN "prim__modInt") (ty [IType, IType] IType) 2 (iBin (mod))
+   Prim (UN "prim__modInt") (ty [IType, IType] IType) 2 (iBin mod)
      (2, LMod) partial,
    Prim (UN "prim__andInt") (ty [IType, IType] IType) 2 (iBin (.&.))
      (2, LAnd) partial,
    Prim (UN "prim__orInt") (ty [IType, IType] IType) 2 (iBin (.|.))
      (2, LOr) partial,
+   Prim (UN "prim__xorInt") (ty [IType, IType] IType) 2 (iBin xor)
+     (2, LXOr) partial,
+   Prim (UN "prim__shLInt") (ty [IType, IType] IType) 2 (iBin shiftL)
+     (2, LSHL) partial,
+   Prim (UN "prim__shRInt") (ty [IType, IType] IType) 2 (iBin shiftR)
+     (2, LSHR) partial,
+   Prim (UN "prim__complInt") (ty [IType] IType) 1 (iUn complement)
+     (1, LCompl) partial,
    Prim (UN "prim__eqInt")  (ty [IType, IType] IType) 2 (biBin (==))
      (2, LEq) total,
    Prim (UN "prim__ltInt")  (ty [IType, IType] IType) 2 (biBin (<))
@@ -73,9 +81,9 @@ primitives =
      (2, LBMinus) total,
    Prim (UN "prim__mulBigInt") (ty [BIType, BIType] BIType) 2 (bBin (*))
      (2, LBTimes) total,
-   Prim (UN "prim__divBigInt") (ty [BIType, BIType] BIType) 2 (bBin (div))
+   Prim (UN "prim__divBigInt") (ty [BIType, BIType] BIType) 2 (bBin div)
      (2, LBDiv) partial,
-   Prim (UN "prim__modBigInt") (ty [BIType, BIType] BIType) 2 (bBin (mod))
+   Prim (UN "prim__modBigInt") (ty [BIType, BIType] BIType) 2 (bBin mod)
      (2, LBMod) partial,
    Prim (UN "prim__eqBigInt")  (ty [BIType, BIType] IType) 2 (bbBin (==))
      (2, LBEq) total,
@@ -183,6 +191,9 @@ primitives =
 
 p_believeMe [_,_,x] = Just x
 p_believeMe _ = Nothing
+
+iUn op [VConstant (I x)] = Just $ VConstant (I (op x))
+iUn _ _ = Nothing
 
 iBin op [VConstant (I x), VConstant (I y)] = Just $ VConstant (I (op x y))
 iBin _ _ = Nothing
