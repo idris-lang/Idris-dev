@@ -11,6 +11,7 @@ import Data.List
 data DExp = DV LVar
           | DApp Bool Name [DExp] -- True = tail call
           | DLet Name DExp DExp -- name just for pretty printing
+          | DUpdate Name DExp -- eval expression, then update var with it
           | DProj DExp Int
           | DC Int Name [DExp]
           | DCase DExp [DAlt]
@@ -87,6 +88,8 @@ addApps defs (n, LFun _ args e) = (n, DFun n args (aa args e))
     aa env (LForce e) = eEVAL (aa env e)
     aa env (LLet n v sc) = DLet n (aa env v) (aa (n : env) sc)
     aa env (LCon i n args) = DC i n (map (aa env) args)
+    aa env (LProj t@(LV (Glob n)) i) 
+        = DProj (DUpdate n (eEVAL (aa env t))) i
     aa env (LProj t i) = DProj (eEVAL (aa env t)) i
     aa env (LCase e alts) = DCase (eEVAL (aa env e)) (map (aaAlt env) alts)
     aa env (LConst c) = DConst c
@@ -115,11 +118,33 @@ addApps defs (n, LFun _ args e) = (n, DFun n args (aa args e))
     chainAPPLY f [] = f
     chainAPPLY f (a : as) = chainAPPLY (DApp False (MN 0 "APPLY") [f, a]) as
 
+    -- if anything in the DExp is projected from, we'll need to evaluate it,
+    -- but we only want to do it once, rather than every time we project.
+
+    preEval [] t = t
+    preEval (x : xs) t 
+       | needsEval x t = DLet x (eEVAL (DV (Glob x))) (preEval xs t)
+       | otherwise = preEval xs t
+
+    needsEval x (DApp _ _ args) = or (map (needsEval x) args)
+    needsEval x (DC _ _ args) = or (map (needsEval x) args)
+    needsEval x (DCase e alts) = needsEval x e || or (map nec alts)
+      where nec (DConCase _ _ _ e) = needsEval x e
+            nec (DConstCase _ e) = needsEval x e
+            nec (DDefaultCase e) = needsEval x e
+    needsEval x (DLet n v e) 
+          | x == n = needsEval x v
+          | otherwise = needsEval x v || needsEval x e
+    needsEval x (DForeign _ _ _ args) = or (map (needsEval x) (map snd args))
+    needsEval x (DOp op args) = or (map (needsEval x) args)
+    needsEval x (DProj (DV (Glob x')) _) = x == x'
+    needsEval x _ = False
+
 eEVAL x = DApp False (MN 0 "EVAL") [x]
 
-data EvalApply a = EvalCase a
+data EvalApply a = EvalCase (Name -> a)
                  | ApplyCase a
-    deriving Show
+--     deriving Show
 
 -- For a function name, generate a list of
 -- data constuctors, and whether to handle them in EVAL or APPLY
@@ -127,26 +152,29 @@ data EvalApply a = EvalCase a
 toCons :: (Name, Int) -> [(Name, Int, EvalApply DAlt)]
 toCons (n, i) 
    = (mkFnCon n, i, 
-        EvalCase (DConCase (-1) (mkFnCon n) (take i (genArgs 0))
-                 (eEVAL (DApp False n (map (DV . Glob) (take i (genArgs 0)))))))
-        : mkApplyCase n 0 i
+        EvalCase (\tlarg ->
+            (DConCase (-1) (mkFnCon n) (take i (genArgs 0))
+              (dupdate tlarg
+                (eEVAL (DApp False n (map (DV . Glob) (take i (genArgs 0)))))))))
+          : mkApplyCase n 0 i
+  where dupdate tlarg x = x
 
 mkApplyCase fname n ar | n == ar = []
 mkApplyCase fname n ar 
         = let nm = mkUnderCon fname (ar - n) in
               (nm, n, ApplyCase (DConCase (-1) nm (take n (genArgs 0))
-                              (DApp False (mkUnderCon fname (ar - (n + 1))) 
-                                          (map (DV . Glob) (take n (genArgs 0) ++ 
-                                                                   [MN 0 "arg"])))))
+                  (DApp False (mkUnderCon fname (ar - (n + 1))) 
+                       (map (DV . Glob) (take n (genArgs 0) ++ 
+                         [MN 0 "arg"])))))
                             : mkApplyCase fname (n + 1) ar
 
 mkEval :: [(Name, Int, EvalApply DAlt)] -> (Name, DDecl)
 mkEval xs = (MN 0 "EVAL", DFun (MN 0 "EVAL") [MN 0 "arg"]
-                             (mkBigCase (MN 0 "EVAL") 256 (DV (Glob (MN 0 "arg")))
-                                 (mapMaybe evalCase xs ++
-                                   [DDefaultCase (DV (Glob (MN 0 "arg")))])))
+               (mkBigCase (MN 0 "EVAL") 256 (DV (Glob (MN 0 "arg")))
+                  (mapMaybe evalCase xs ++
+                      [DDefaultCase (DV (Glob (MN 0 "arg")))])))
   where
-    evalCase (n, t, EvalCase x) = Just x
+    evalCase (n, t, EvalCase x) = Just (x (MN 0 "arg")) 
     evalCase _ = Nothing
 
 mkApply :: [(Name, Int, EvalApply DAlt)] -> (Name, DDecl)
@@ -180,6 +208,7 @@ instance Show DExp where
                                    showSep ", " (map (show' env) args) ++")"
      show' env (DLet n v e) = "let " ++ show n ++ " = " ++ show' env v ++ " in " ++
                                show' (env ++ [show n]) e
+     show' env (DUpdate n e) = "!update " ++ show n ++ "(" ++ show' env e ++ ")"
      show' env (DC i n args) = show n ++ ")" ++ showSep ", " (map (show' env) args) ++ ")"
      show' env (DProj t i) = show t ++ "!" ++ show i
      show' env (DCase e alts) = "case " ++ show' env e ++ " of {\n\t" ++

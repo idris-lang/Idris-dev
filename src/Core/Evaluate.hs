@@ -189,7 +189,7 @@ eval traceon ctxt maxred ntimes genv tm opts = ev ntimes [] True [] tm where
     ev ntimes stk top env (V i) | i < length env = return $ env !! i
                      | otherwise      = return $ VV i 
     ev ntimes stk top env (Bind n (Let t v) sc)
-        | not simpl -- || vinstances 0 sc < 2
+        | not simpl || vinstances 0 sc < 2
            = do v' <- ev ntimes stk top env v --(finalise v)
                 when (not atRepl) $ step maxred
                 sc' <- ev ntimes stk top (v' : env) sc
@@ -198,6 +198,8 @@ eval traceon ctxt maxred ntimes genv tm opts = ev ntimes [] True [] tm where
            = do t' <- ev ntimes stk top env t
                 v' <- ev ntimes stk top env v --(finalise v)
                 when (not atRepl) $ step maxred
+                -- use Tmp as a placeholder, then make it a variable reference
+                -- again when evaluation finished
                 sc' <- ev ntimes stk top (v' : env) sc
                 return $ VBind n (Let t' v') (\x -> return sc')
     ev ntimes stk top env (Bind n (NLet t v) sc)
@@ -346,6 +348,16 @@ eval traceon ctxt maxred ntimes genv tm opts = ev ntimes [] True [] tm where
     getValArgs tm = getValArgs' tm []
     getValArgs' (VApp f a) as = getValArgs' f (a:as)
     getValArgs' f as = (f, as)
+
+tmpToV i (VTmp 0) = return $ VV i
+tmpToV i (VP nt n v) = liftM (VP nt n) (tmpToV i v)
+                          
+tmpToV i (VBind n b sc) = do b' <- fmapMB (tmpToV i) b
+                             let sc' = \x -> do x' <- sc x
+                                                tmpToV (i + 1) x'
+                             return (VBind n b' sc')
+tmpToV i (VApp f a) = liftM2 VApp (tmpToV i f) (tmpToV i a)
+tmpToV i x = return x
 
 class Quote a where
     quote :: Int -> a -> Eval (TT Name)
@@ -725,7 +737,7 @@ addCasedef n alwaysInline tcase covering ps_in ps psrt ty uctxt
                         simpleCase tcase covering RunTime (FC "" 0) psrt) of
                     (OK (CaseDef args sc _), OK (CaseDef args' sc' _)) -> 
                        let inl = alwaysInline in
-                           addDef n (CaseOp inl (inl || small n sc')
+                           addDef n (CaseOp inl (inl || small n args sc')
                                             ty ps_in ps args sc args' sc',
                                       access, Unchecked) ctxt in
           uctxt { definitions = ctxt' }

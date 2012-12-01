@@ -27,6 +27,7 @@ data Reg = RVal | L Int | T Int | Tmp
 
 data BC = ASSIGN Reg Reg
         | ASSIGNCONST Reg Const
+        | UPDATE Reg Reg
         | MKCON Reg Int [Reg]
         | CASE Reg [(Int, [BC])] (Maybe [BC])
         | PROJECT Reg Int Int -- get all args from reg, put them from Int onwards
@@ -72,6 +73,8 @@ bc reg (SForeign l t fname args) r
     = FOREIGNCALL reg l t fname (map farg args) : clean r
   where farg (ty, Loc i) = (ty, L i)
 bc reg (SLet (Loc i) e sc) r = bc (L i) e False ++ bc reg sc r
+bc reg (SUpdate (Loc i) sc) r = bc reg sc False ++ [ASSIGN (L i) reg]
+                                ++ clean r
 bc reg (SCon i _ vs) r = MKCON reg i (map getL vs) : clean r
     where getL (Loc x) = L x
 bc reg (SProj (Loc l) i) r = PROJECTINTO reg (L l) i : clean r 

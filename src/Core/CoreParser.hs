@@ -135,7 +135,7 @@ mkName (n, ns) = NS (UN n) (reverse (parseNS ns))
 pDocComment :: Char -> CParser a String
 pDocComment c 
    = try (do string ("--")
-             skipMany simpleSpace
+             option ' ' (lchar ' ')
              char c
              skipMany simpleSpace
              i <- getInput
@@ -144,7 +144,7 @@ pDocComment c
              whiteSpace
              return doc)
  <|> try (do string ("{-")
-             skipMany simpleSpace
+             option ' ' (lchar ' ')
              char c
              skipMany simpleSpace
              i <- getInput

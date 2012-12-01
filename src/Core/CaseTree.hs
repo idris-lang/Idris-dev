@@ -73,8 +73,12 @@ instance TermSize CaseAlt where
     termsize n (DefaultCase s) = termsize n s
 
 -- simple terms can be inlined trivially - good for primitives in particular
-small :: Name -> SC -> Bool
-small n t = termsize n t < 50
+-- To avoid duplicating work, don't inline something which uses one
+-- of its arguments in more than one place
+
+small :: Name -> [Name] -> SC -> Bool
+small n args t = let as = findAllUsedArgs t args in
+                     length as == length (nub as) && termsize n t < 50
 
 namesUsed :: SC -> [Name]
 namesUsed sc = nub $ nu' [] sc where
@@ -142,7 +146,9 @@ directUse _ = []
 -- Find all directly used arguments (i.e. used but not in function calls)
 
 findUsedArgs :: SC -> [Name] -> [Name]
-findUsedArgs sc topargs = filter (\x -> x `elem` topargs) (nub $ nu' sc) where
+findUsedArgs sc topargs = nub (findAllUsedArgs sc topargs)
+
+findAllUsedArgs sc topargs = filter (\x -> x `elem` topargs) (nu' sc) where
     nu' (Case n alts) = n : concatMap nua alts
     nu' (ProjCase t alts) = directUse t ++ concatMap nua alts
     nu' (STerm t)     = directUse t

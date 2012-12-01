@@ -90,6 +90,9 @@ typedef void(*func)(VM*, VAL*);
 #define RVAL (vm->ret)
 #define LOC(x) (*(vm->valstack_base + (x)))
 #define TOP(x) (*(vm->valstack_top + (x)))
+// Doesn't work! Ordinary assign seems fine though...
+#define UPDATE(x,y) if (!ISINT(x) && !ISINT(y)) \
+   { (x)->ty = (y)->ty; (x)->info = (y)->info; }
 #define REG1 (vm->reg1)
 
 // Retrieving values

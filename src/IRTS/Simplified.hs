@@ -13,6 +13,7 @@ import Debug.Trace
 data SExp = SV LVar
           | SApp Bool Name [LVar]
           | SLet LVar SExp SExp
+          | SUpdate LVar SExp
           | SCon Int Name [LVar]
           | SCase LVar [SAlt]
           | SProj LVar Int
@@ -56,6 +57,8 @@ simplify tl (DForeign lang ty fn args)
 simplify tl (DLet n v e) = do v' <- simplify False v
                               e' <- simplify tl e
                               return (SLet (Glob n) v' e')
+simplify tl (DUpdate n e) = do e' <- simplify False e
+                               return (SUpdate (Glob n) e')
 simplify tl (DC i n args) = do args' <- mapM sVar args
                                mkapp (SCon i n) args'
 simplify tl (DProj t i) = do v <- sVar t
@@ -169,6 +172,11 @@ scopecheck ctxt envTop tm = sc envTop tm where
             n' <- scVar env' (Glob n)
             e' <- sc env' e
             return (SLet n' v' e')
+    sc env (SUpdate (Glob n) e)
+       = do -- n already in env
+            e' <- sc env e
+            n' <- scVar env (Glob n)
+            return (SUpdate n' e')
     sc env (SOp prim args)
        = do args' <- mapM (scVar env) args
             return (SOp prim args')

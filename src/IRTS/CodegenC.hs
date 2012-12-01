@@ -104,6 +104,7 @@ bcc i (ASSIGNCONST l c)
     mkConst (Ch c) = "MKINT(" ++ show (fromEnum c) ++ ")"
     mkConst (Str s) = "MKSTR(vm, " ++ show s ++ ")"
     mkConst _ = "MKINT(42424242)"
+bcc i (UPDATE l r) = indent i ++ creg l ++ " = " ++ creg r ++ ";\n"
 bcc i (MKCON l tag args)
     = indent i ++ creg Tmp ++ " = allocCon(vm, " ++ show (length args) ++ 
          ", 0); " ++ "SETTAG(" ++ creg Tmp ++ ", " ++ show tag ++ ");\n" ++
