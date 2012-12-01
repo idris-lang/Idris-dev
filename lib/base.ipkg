@@ -9,6 +9,7 @@ modules = Builtins, Prelude, IO, System,
           Prelude.Heap, Prelude.Complex, Prelude.Functor,
 
           Network.Cgi,
+          Debug.Trace,
 
           System.Concurrency.Raw, System.Concurrency.Process,
 
