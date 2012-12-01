@@ -35,7 +35,8 @@ idrisDef = haskellDef {
                     "where", "with", "syntax", "proof", "postulate",
                     "using", "namespace", "class", "instance",
                     "public", "private", "abstract", 
-                    "Int", "Integer", "Float", "Char", "String", "Ptr"]
+                    "Int", "Integer", "Float", "Char", "String", "Ptr",
+                    "Word8", "Word16", "Word32"]
            } 
 
 iOpStart = oneOf ":!#$%&*+./<=>?@\\^|-~"

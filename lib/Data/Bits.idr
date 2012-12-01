@@ -23,3 +23,4 @@ instance Bits Int where
   complement = prim__complInt
   shiftL = prim__shLInt
   shiftR = prim__shRInt
+
