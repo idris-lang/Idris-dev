@@ -74,8 +74,27 @@ primitives =
      (2, LGt) total,
    Prim (UN "prim__gteChar") (ty [ChType, ChType] IType) 2 (bcBin (>=))
      (2, LGe) total,
+
+  Prim (UN "prim__addW8") (ty [W8Type, W8Type] W8Type) 2 (w8Bin (+))
+    (2, LW8Plus) total,
+   Prim (UN "prim__subW8") (ty [W8Type, W8Type] W8Type) 2 (w8Bin (-))
+     (2, LW8Minus) total,
+   Prim (UN "prim__mulW8") (ty [W8Type, W8Type] W8Type) 2 (w8Bin (*))
+     (2, LW8Times) total,
+
+  Prim (UN "prim__addW16") (ty [W16Type, W16Type] W16Type) 2 (w16Bin (+))
+    (2, LW16Plus) total,
+   Prim (UN "prim__subW16") (ty [W16Type, W16Type] W16Type) 2 (w16Bin (-))
+     (2, LW16Minus) total,
+   Prim (UN "prim__mulW16") (ty [W16Type, W16Type] W16Type) 2 (w16Bin (*))
+     (2, LW16Times) total,
+
+   Prim (UN "prim__intToWord8") (ty [IType] W8Type) 1 intToWord8
+    (1, LW8) total,
+   Prim (UN "prim__intToWord16") (ty [IType] W16Type) 1 intToWord16
+    (1, LW16) total,
+
    Prim (UN "prim__addBigInt") (ty [BIType, BIType] BIType) 2 (bBin (+))
-     
     (2, LBPlus) total,
    Prim (UN "prim__subBigInt") (ty [BIType, BIType] BIType) 2 (bBin (-))
      (2, LBMinus) total,
@@ -225,6 +244,20 @@ bsBin _ _ = Nothing
 
 sBin op [VConstant (Str x), VConstant (Str y)] = Just $ VConstant (Str (op x y))
 sBin _ _ = Nothing
+
+w8Bin op [VConstant (W8 x), VConstant (W8 y)] = Just $ VConstant (W8 (op x y))
+w8Bin _ _ = Nothing
+
+w16Bin op [VConstant (W16 x), VConstant (W16 y)] = Just $ VConstant (W16 (op x y))
+w16Bin _ _ = Nothing
+
+w32Bin op [VConstant (W32 x), VConstant (W32 y)] = Just $ VConstant (W32 (op x y))
+w32Bin _ _ = Nothing
+
+intToWord8  [VConstant (I x)] = Just $ VConstant (W8  $ fromIntegral x)
+intToWord8 _ = Nothing
+intToWord16 [VConstant (I x)] = Just $ VConstant (W16 $ fromIntegral x)
+intToWord16 _ = Nothing
 
 c_intToStr [VConstant (I x)] = Just $ VConstant (Str (show x))
 c_intToStr _ = Nothing

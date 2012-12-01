@@ -40,6 +40,11 @@ data PrimFn = LPlus | LMinus | LTimes | LDiv | LMod
             | LIntBig | LBigInt | LStrBig | LBigStr
             | LPrintNum | LPrintStr | LReadStr
 
+            | LW8 | LW16
+            
+            | LW8Plus | LW8Minus | LW8Times
+            | LW16Plus | LW16Minus | LW16Times
+
             | LFExp | LFLog | LFSin | LFCos | LFTan | LFASin | LFACos | LFATan
             | LFSqrt | LFFloor | LFCeil
 
