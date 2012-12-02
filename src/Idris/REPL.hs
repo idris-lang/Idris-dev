@@ -510,12 +510,12 @@ idrisMain opts =
        mapM_ makeOption opts
        -- if we have the --fovm flag, drop into the first order VM testing
        case vm of
-	    [] -> return ()
-	    xs -> liftIO $ mapM_ (fovm tgt outty) xs 
+         [] -> return ()
+         xs -> liftIO $ mapM_ (fovm tgt outty) xs 
        -- if we have the --bytecode flag, drop into the bytecode assembler
        case bcs of
-	    [] -> return ()
-	    xs -> return () -- liftIO $ mapM_ bcAsm xs 
+         [] -> return ()
+         xs -> return () -- liftIO $ mapM_ bcAsm xs 
        case ibcsubdir of
          [] -> setIBCSubDir ""
          (d:_) -> setIBCSubDir d
