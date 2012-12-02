@@ -416,6 +416,12 @@ displayHelp = let vstr = showVersion version in
             l ++ take (c1 - length l) (repeat ' ') ++ 
             m ++ take (c2 - length m) (repeat ' ') ++ r ++ "\n"
 
+parseTarget :: String -> Target
+parseTarget "C" = ViaC
+parseTarget "Java" = ViaJava
+parseTarget "bytecode" = Bytecode
+parseTarget _ = error "unknown target" -- FIXME: partial function
+
 parseArgs :: [String] -> [Opt]
 parseArgs [] = []
 parseArgs ("--log":lvl:ns)      = OLogging (read lvl) : (parseArgs ns)
@@ -450,6 +456,7 @@ parseArgs ("-S":ns)             = OutputTy Raw : (parseArgs ns)
 parseArgs ("-c":ns)             = OutputTy Object : (parseArgs ns)
 parseArgs ("--dumpdefuns":n:ns) = DumpDefun n : (parseArgs ns)
 parseArgs ("--dumpcases":n:ns)  = DumpCases n : (parseArgs ns)
+parseArgs ("--target":n:ns)     = UseTarget (parseTarget n) : (parseArgs ns)
 parseArgs (n:ns)                = Filename n : (parseArgs ns)
 
 help =

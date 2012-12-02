@@ -76,7 +76,8 @@ cname n = "_idris_" ++ concatMap cchar (show n)
   where cchar x | isAlpha x || isDigit x = [x]
                 | otherwise = "_" ++ show (fromEnum x) ++ "_"
 
-indent i = take (i * 4) (repeat ' ')
+indent :: Int -> String
+indent n = replicate (n*4) ' '
 
 creg RVal = "RVAL"
 creg (L i) = "LOC(" ++ show i ++ ")"
