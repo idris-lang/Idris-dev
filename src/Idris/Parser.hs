@@ -55,6 +55,9 @@ strlit     = PTok.stringLiteral lexer
 chlit      = PTok.charLiteral lexer
 lchar      = lexeme.char
 
+fixErrorMsg :: String -> [String] -> String
+fixErrorMsg msg fixes = msg ++ ", possible fixes:\n" ++ (concat $ intersperse "\n\nor\n\n" fixes)
+
 -- Loading modules
 
 loadModule :: FilePath -> Idris String
