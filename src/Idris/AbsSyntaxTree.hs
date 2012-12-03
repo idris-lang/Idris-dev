@@ -1007,6 +1007,10 @@ instance Sized PTerm where
   size (PElabError err) = size err
   size PImpossible = 1
 
+getPArity :: PTerm -> Int
+getPArity (PPi _ _ _ sc) = 1 + getPArity sc
+getPArity _ = 0
+
 allNamesIn :: PTerm -> [Name]
 allNamesIn tm = nub $ ni [] tm 
   where

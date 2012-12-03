@@ -772,13 +772,13 @@ addImpl = addImpl' False [] []
 -- and *not* inside a PHidden
 
 addImpl' :: Bool -> [Name] -> [Name] -> IState -> PTerm -> PTerm
-addImpl' inpat env infns ist ptm = ai env ptm
+addImpl' inpat env infns ist ptm = ai (zip env (repeat Nothing)) ptm
   where
     ai env (PRef fc f)    
         | f `elem` infns = PInferRef fc f
-        | not (f `elem` env) = handleErr $ aiFn inpat inpat ist fc f []
+        | not (f `elem` map fst env) = handleErr $ aiFn inpat inpat ist fc f []
     ai env (PHidden (PRef fc f))
-        | not (f `elem` env) = handleErr $ aiFn inpat False ist fc f []
+        | not (f `elem` map fst env) = handleErr $ aiFn inpat False ist fc f []
     ai env (PEq fc l r)   = let l' = ai env l
                                 r' = ai env r in
                                 PEq fc l' r'
@@ -797,11 +797,15 @@ addImpl' inpat env infns ist ptm = ai env ptm
     ai env (PApp fc (PInferRef _ f) as) 
         = let as' = map (fmap (ai env)) as in
               PApp fc (PInferRef fc f) as'  
-    ai env (PApp fc (PRef _ f) as) 
+    ai env (PApp fc ftm@(PRef _ f) as) 
         | f `elem` infns = ai env (PApp fc (PInferRef fc f) as)
-        | not (f `elem` env)
+        | not (f `elem` map fst env)
                           = let as' = map (fmap (ai env)) as in
                                 handleErr $ aiFn inpat False ist fc f as'
+        | Just (Just ty) <- lookup f env
+                          = let as' = map (fmap (ai env)) as 
+                                arity = getPArity ty in
+                                mkPApp fc arity ftm as'
     ai env (PApp fc f as) = let f' = ai env f
                                 as' = map (fmap (ai env)) as in
                                 mkPApp fc 1 f' as'
@@ -809,15 +813,15 @@ addImpl' inpat env infns ist ptm = ai env ptm
                                  os' = map (pmap (ai env)) os in
                                  PCase fc c' os'
     ai env (PLam n ty sc) = let ty' = ai env ty
-                                sc' = ai (n:env) sc in
+                                sc' = ai ((n, Just ty):env) sc in
                                 PLam n ty' sc'
     ai env (PLet n ty val sc)
                           = let ty' = ai env ty
                                 val' = ai env val
-                                sc' = ai (n:env) sc in
+                                sc' = ai ((n, Just ty):env) sc in
                                 PLet n ty' val' sc'
     ai env (PPi p n ty sc) = let ty' = ai env ty
-                                 sc' = ai (n:env) sc in
+                                 sc' = ai ((n, Just ty):env) sc in
                                  PPi p n ty' sc'
     ai env (PHidden tm) = PHidden (ai env tm)
     ai env (PProof ts) = PProof (map (fmap (ai env)) ts)
