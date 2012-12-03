@@ -89,6 +89,7 @@ usagemsg = "Idris version " ++ ver ++ "\n" ++
            "\t--log [level]     Set debugging log level\n" ++
            "\t-S                Do no further compilation of code generator output\n" ++
            "\t-c                Compile to object files rather than an executable\n" ++
-	   "\t--libdir          Show library install directory and exit\n" ++
-	   "\t--link            Show C library directories and exit (for C linking)\n" ++
-	   "\t--include         Show C include directories and exit (for C linking)\n"
+           "\t--libdir          Show library install directory and exit\n" ++
+           "\t--link            Show C library directories and exit (for C linking)\n" ++
+           "\t--include         Show C include directories and exit (for C linking)\n" ++
+           "\t--target [target] Set the target: C, Java, bytecode\n"
