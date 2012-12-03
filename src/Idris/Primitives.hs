@@ -251,8 +251,8 @@ w8Bin _ _ = Nothing
 w16Bin op [VConstant (W16 x), VConstant (W16 y)] = Just $ VConstant (W16 (op x y))
 w16Bin _ _ = Nothing
 
-w32Bin op [VConstant (W32 x), VConstant (W32 y)] = Just $ VConstant (W32 (op x y))
-w32Bin _ _ = Nothing
+-- w32Bin op [VConstant (W32 x), VConstant (W32 y)] = Just $ VConstant (W32 (op x y))
+-- w32Bin _ _ = Nothing
 
 intToWord8  [VConstant (I x)] = Just $ VConstant (W8  $ fromIntegral x)
 intToWord8 _ = Nothing
