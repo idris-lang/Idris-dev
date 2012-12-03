@@ -257,7 +257,11 @@ addAlist [] ctxt = ctxt
 addAlist ((n, tm) : ds) ctxt = addDef n tm (addAlist ds ctxt)
 
 data Const = I Int | BI Integer | Fl Double | Ch Char | Str String 
-           | IType | BIType     | FlType    | ChType  | StrType    
+           | IType | BIType     | FlType    | ChType  | StrType
+
+           | W8 Word8 | W16 Word16
+           | W8Type   | W16Type   
+
            | PtrType | VoidType | Forgot
   deriving (Eq, Ord)
 {-! 
@@ -281,6 +285,8 @@ instance Pretty Const where
   pretty PtrType = text "Ptr"
   pretty VoidType = text "Void"
   pretty Forgot = text "Forgot"
+  pretty W8Type = text "Word8"
+  pretty W16Type = text "Word16"
 
 data Raw = Var Name
          | RBind Name (Binder Raw) Raw
@@ -666,12 +672,16 @@ instance Show Const where
     show (Fl f) = show f
     show (Ch c) = show c
     show (Str s) = show s
+    show (W8 x) = show x
+    show (W16 x) = show x
     show IType = "Int"
     show BIType = "Integer"
     show FlType = "Float"
     show ChType = "Char"
     show StrType = "String"
     show PtrType = "Ptr"
+    show W8Type = "Word8"
+    show W16Type = "Word16"
     show VoidType = "Void"
 
 showEnv env t = showEnv' env t False
