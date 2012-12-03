@@ -360,6 +360,9 @@ instance Binary Const where
                 StrType -> putWord8 9
                 PtrType -> putWord8 10
                 Forgot -> putWord8 11
+
+                W8Type  -> putWord8 12
+                W16Type -> putWord8 13
         get
           = do i <- getWord8
                case i of
@@ -380,6 +383,10 @@ instance Binary Const where
                    9 -> return StrType
                    10 -> return PtrType
                    11 -> return Forgot
+
+                   12 -> return W8Type
+                   13 -> return W16Type
+
                    _ -> error "Corrupted binary data for Const"
 
  
