@@ -71,11 +71,14 @@ data LAlt = LConCase Int Name [Name] LExp
           | LDefaultCase LExp
   deriving (Show, Eq)
 
-data LDecl = LFun Name [Name] LExp -- name, arg names, definition, inlinable
+data LDecl = LFun [LOpt] Name [Name] LExp -- options, name, arg names, def
            | LConstructor Name Int Int -- constructor name, tag, arity
   deriving (Show, Eq)
 
 type LDefs = Ctxt LDecl
+
+data LOpt = Inline | NoInline
+  deriving (Show, Eq)
 
 addTags :: Int -> [(Name, LDecl)] -> (Int, [(Name, LDecl)])
 addTags i ds = tag i ds []
@@ -96,9 +99,9 @@ liftAll :: [(Name, LDecl)] -> [(Name, LDecl)]
 liftAll xs = concatMap (\ (x, d) -> lambdaLift x d) xs
 
 lambdaLift :: Name -> LDecl -> [(Name, LDecl)]
-lambdaLift n (LFun _ args e) 
+lambdaLift n (LFun _ _ args e) 
       = let (e', (LS _ _ decls)) = runState (lift args e) (LS n 0 []) in
-            (n, LFun n args e') : decls
+            (n, LFun [] n args e') : decls
 lambdaLift n x = [(n, x)]
 
 getNextName :: State LiftState Name
@@ -116,7 +119,7 @@ lift env (LApp tc (LV (Glob n)) args) = do args' <- mapM (lift env) args
                                            return (LApp tc (LV (Glob n)) args')
 lift env (LApp tc f args) = do f' <- lift env f
                                fn <- getNextName
-                               addFn fn (LFun fn env f')
+                               addFn fn (LFun [Inline] fn env f')
                                args' <- mapM (lift env) args
                                return (LApp tc (LV (Glob fn)) (map (LV . Glob) env ++ args'))
 lift env (LLazyApp n args) = do args' <- mapM (lift env) args
@@ -125,7 +128,7 @@ lift env (LLazyExp (LConst c)) = return (LConst c)
 lift env (LLazyExp e) = do e' <- lift env e
                            let usedArgs = nub $ usedIn env e'
                            fn <- getNextName
-                           addFn fn (LFun fn usedArgs e')
+                           addFn fn (LFun [NoInline] fn usedArgs e')
                            return (LLazyApp fn (map (LV . Glob) usedArgs))
 lift env (LForce e) = do e' <- lift env e
                          return (LForce e') 
@@ -135,7 +138,7 @@ lift env (LLet n v e) = do v' <- lift env v
 lift env (LLam args e) = do e' <- lift (env ++ args) e
                             let usedArgs = nub $ usedIn env e'
                             fn <- getNextName
-                            addFn fn (LFun fn (usedArgs ++ args) e')
+                            addFn fn (LFun [Inline] fn (usedArgs ++ args) e')
                             return (LApp False (LV (Glob fn)) (map (LV . Glob) usedArgs))
 lift env (LProj t i) = do t' <- lift env t
                           return (LProj t' i)

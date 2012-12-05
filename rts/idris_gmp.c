@@ -44,8 +44,7 @@ VAL MKBIGMc(VM* vm, void* big) {
                           sizeof(mpz_t), 0);
     bigint = (mpz_t*)(((char*)cl) + sizeof(ClosureType) + sizeof(void*));
 
-    mpz_init(*bigint);
-    mpz_set(*bigint, *((mpz_t*)big));
+    mpz_init_set(*bigint, *((mpz_t*)big));
 
     SETTY(cl, BIGINT);
     cl -> info.ptr = (void*)bigint;
@@ -202,7 +201,10 @@ VAL idris_bigMod(VM* vm, VAL x, VAL y) {
 
 int bigEqConst(VAL x, int c) {
     if (ISINT(x)) { return (GETINT(x) == c); }
-    else { return mpz_cmp_si(GETMPZ(x), c); }
+    else { 
+        int rv = mpz_cmp_si(GETMPZ(x), c); 
+        return (rv == 0);
+    }
 }
 
 VAL bigEq(VM* vm, VAL x, VAL y) {

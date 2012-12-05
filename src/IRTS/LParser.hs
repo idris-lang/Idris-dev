@@ -87,7 +87,7 @@ pLDecl = do reserved "data"
             lchar ')'
             lchar '='
             def <- pLExp
-            return (n, LFun n args def)
+            return (n, LFun [] n args def)
 
 pLExp = buildExpressionParser optable pLExp' 
 

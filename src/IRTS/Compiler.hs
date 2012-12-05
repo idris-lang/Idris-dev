@@ -85,7 +85,7 @@ compile target f tm
 
 irMain :: TT Name -> Idris LDecl
 irMain tm = do i <- ir tm
-               return $ LFun (MN 0 "runMain") [] (LForce i)
+               return $ LFun [] (MN 0 "runMain") [] (LForce i)
 
 allNames :: [Name] -> Name -> Idris [Name]
 allNames ns n | n `elem` ns = return []
@@ -106,7 +106,7 @@ mkDecls t used
 showCaseTrees :: [(Name, LDecl)] -> String
 showCaseTrees ds = showSep "\n\n" (map showCT ds)
   where
-    showCT (n, LFun f args lexp) 
+    showCT (n, LFun _ f args lexp) 
        = show n ++ " " ++ showSep " " (map show args) ++ " =\n\t "
             ++ show lexp 
     showCT (n, LConstructor c t a) = "data " ++ show n ++ " " ++ show a 
@@ -123,22 +123,22 @@ build (n, d)
          case lookup n (idris_scprims i) of
               Just (ar, op) -> 
                   let args = map (\x -> MN x "op") [0..] in
-                      return (n, (LFun n (take ar args) 
+                      return (n, (LFun [] n (take ar args) 
                                          (LOp op (map (LV . Glob) (take ar args)))))
               _ -> do def <- mkLDecl n d
                       logLvl 3 $ "Compiled " ++ show n ++ " =\n\t" ++ show def
                       return (n, def)
 
-declArgs args n (LLam xs x) = declArgs (args ++ xs) n x
-declArgs args n x = LFun n args x 
+declArgs args inl n (LLam xs x) = declArgs (args ++ xs) inl n x
+declArgs args inl n x = LFun (if inl then [Inline] else []) n args x 
 
 mkLDecl n (Function tm _) = do e <- ir tm
-                               return (declArgs [] n e)
-mkLDecl n (CaseOp _ _ _ _ pats _ _ args sc) = do e <- ir (args, sc)
-                                                 return (declArgs [] n e)
+                               return (declArgs [] True n e)
+mkLDecl n (CaseOp _ inl _ _ pats _ _ args sc) = do e <- ir (args, sc)
+                                                   return (declArgs [] inl n e)
 mkLDecl n (TyDecl (DCon t a) _) = return $ LConstructor n t a
 mkLDecl n (TyDecl (TCon t a) _) = return $ LConstructor n (-1) a
-mkLDecl n _ = return (LFun n [] (LError ("Impossible declaration " ++ show n)))
+mkLDecl n _ = return (LFun [] n [] (LError ("Impossible declaration " ++ show n)))
 
 instance ToIR (TT Name) where 
     ir tm = ir' [] tm where

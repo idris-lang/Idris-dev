@@ -47,7 +47,7 @@ defunctionalise nexttag defs
 
 getFn :: [(Name, LDecl)] -> [(Name, Int)]
 getFn xs = mapMaybe fnData xs
-  where fnData (n, LFun _ args _) = Just (n, length args) 
+  where fnData (n, LFun _ _ args _) = Just (n, length args) 
         fnData _ = Nothing
 
 -- To defunctionalise:
@@ -65,7 +65,7 @@ getFn xs = mapMaybe fnData xs
 
 addApps :: LDefs -> (Name, LDecl) -> (Name, DDecl)
 addApps defs o@(n, LConstructor _ t a) = (n, DConstructor n t a) 
-addApps defs (n, LFun _ args e) = (n, DFun n args (aa args e))
+addApps defs (n, LFun _ _ args e) = (n, DFun n args (aa args e))
   where
     aa :: [Name] -> LExp -> DExp
     aa env (LV (Glob n)) | n `elem` env = DV (Glob n)
@@ -75,15 +75,15 @@ addApps defs (n, LFun _ args e) = (n, DFun n args (aa args e))
        = let args' = map (aa env) args in
              case lookupCtxt Nothing n defs of
                 [LConstructor _ i ar] -> DApp tc n args'
-                [LFun _ as _] -> let arity = length as in
-                                     fixApply tc n args' arity
+                [LFun _ _ as _] -> let arity = length as in
+                                       fixApply tc n args' arity
                 [] -> chainAPPLY (DV (Glob n)) args'
     aa env (LLazyApp n args)
        = let args' = map (aa env) args in
              case lookupCtxt Nothing n defs of
                 [LConstructor _ i ar] -> DApp False n args'
-                [LFun _ as _] -> let arity = length as in
-                                     fixLazyApply n args' arity
+                [LFun _ _ as _] -> let arity = length as in
+                                       fixLazyApply n args' arity
                 [] -> chainAPPLY (DV (Glob n)) args'
     aa env (LForce e) = eEVAL (aa env e)
     aa env (LLet n v sc) = DLet n (aa env v) (aa (n : env) sc)
