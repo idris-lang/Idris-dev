@@ -38,10 +38,16 @@ pack [] = ""
 pack (x :: xs) = strCons x (pack xs)
 
 instance Cast String (List Char) where
-    cast = unpack
+  cast = unpack
 
 instance Cast (List Char) String where
-    cast = pack
+  cast = pack
+
+instance Semigroup String where
+  (<+>) = (++)
+
+instance Monoid String where
+  neutral = ""
 
 span : (Char -> Bool) -> String -> (String, String)
 span p xs with (strM xs)
@@ -85,18 +91,18 @@ lines : String -> List String
 lines s = map pack $ words' $ unpack s
 
 partial
-foldr1 : (a -> a -> a) -> List a -> a	
+foldr1 : (a -> a -> a) -> List a -> a
 foldr1 f [x] = x
 foldr1 f (x::xs) = f x (foldr1 f xs)
 
 %assert_total -- due to foldr1, but used safely
 unwords' : List (List Char) -> List Char
-unwords' [] = []                         
+unwords' [] = []
 unwords' ws = (foldr1 addSpace ws)
         where
             addSpace : List Char -> List Char -> List Char
-            addSpace w s = w ++ (' ' :: s) 
-          
+            addSpace w s = w ++ (' ' :: s)
+
 unwords : List String -> String
 unwords = pack . unwords' . map unpack
 
