@@ -61,7 +61,7 @@ serializeBC n bc = indent n ++
       STOREOLD -> "STOREOLD"
       OP a b c ->
         "OP " ++ serializeReg a ++ " " ++ show b ++ " [" ++ interMap c ", " serializeReg ++ "]"
-      NULL r -> "NULL " ++ show r
+      NULL r -> "NULL " ++ serializeReg r
       ERROR s -> "ERROR \"" ++ s ++ "\"" -- FIXME: s may contain quotes
 
 serialize :: [(Name, [BC])] -> String
