@@ -129,6 +129,14 @@ build (n, d)
                       logLvl 3 $ "Compiled " ++ show n ++ " =\n\t" ++ show def
                       return (n, def)
 
+getPrim :: IState -> Name -> [LExp] -> Maybe LExp
+getPrim i n args = case lookup n (idris_scprims i) of
+                        Just (ar, op) -> 
+                           if (ar == length args) 
+                             then return (LOp op args)
+                             else Nothing
+                        _ -> Nothing
+
 declArgs args inl n (LLam xs x) = declArgs (args ++ xs) inl n x
 declArgs args inl n x = LFun (if inl then [Inline] else []) n args x 
 
@@ -180,15 +188,24 @@ instance ToIR (TT Name) where
               = irCon env t a n args
           | (P _ n _, args) <- unApply tm
               = do i <- get
-                   let collapse = case lookupCtxt Nothing n (idris_optimisation i) of
-                                    [oi] -> collapsible oi
-                                    _ -> False
-                   let unused = case lookupCtxt Nothing n (idris_callgraph i) of
-                                    [CGInfo _ _ _ _ unusedpos] -> unusedpos
-                                    _ -> []
                    args' <- mapM (ir' env) args
-                   if collapse then return LNothing
-                               else return (LApp False (LV (Glob n)) 
+                   case getPrim i n args' of
+                        Just tm -> return tm
+                        _ -> do
+                                 let collapse 
+                                        = case lookupCtxt Nothing n 
+                                                   (idris_optimisation i) of
+                                               [oi] -> collapsible oi
+                                               _ -> False
+                                 let unused 
+                                        = case lookupCtxt Nothing n 
+                                                      (idris_callgraph i) of
+                                               [CGInfo _ _ _ _ unusedpos] -> 
+                                                      unusedpos
+                                               _ -> []
+                                 if collapse 
+                                     then return LNothing
+                                     else return (LApp False (LV (Glob n)) 
                                                  (mkUnused unused 0 args'))
           | (f, args) <- unApply tm
               = do f' <- ir' env f

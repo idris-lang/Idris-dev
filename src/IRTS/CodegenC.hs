@@ -108,8 +108,8 @@ bcc i (ASSIGNCONST l c)
     mkConst _ = "MKINT(42424242)"
 bcc i (UPDATE l r) = indent i ++ creg l ++ " = " ++ creg r ++ ";\n"
 bcc i (MKCON l tag args)
-    = indent i ++ creg Tmp ++ " = allocCon(vm, " ++ show (length args) ++ 
-         ", 0); " ++ "SETTAG(" ++ creg Tmp ++ ", " ++ show tag ++ ");\n" ++
+    = indent i ++ "allocCon(" ++ creg Tmp ++ ", vm, " ++ show tag ++ "," ++
+         show (length args) ++ ", 0);\n" ++
       indent i ++ setArgs 0 args ++ "\n" ++ 
       indent i ++ creg l ++ " = " ++ creg Tmp ++ ";\n"
          
@@ -124,12 +124,15 @@ bcc i (PROJECT l loc a) = indent i ++ "PROJECT(vm, " ++ creg l ++ ", " ++ show l
                                       ", " ++ show a ++ ");\n"
 bcc i (PROJECTINTO r t idx)
     = indent i ++ creg r ++ " = GETARG(" ++ creg t ++ ", " ++ show idx ++ ");\n" 
-bcc i (CASE r code def) 
-    = indent i ++ "switch(TAG(" ++ creg r ++ ")) {\n" ++
+bcc i (CASE safe r code def) 
+    = indent i ++ "switch(" ++ ctag safe ++ "(" ++ creg r ++ ")) {\n" ++
       concatMap (showCase i) code ++
       showDef i def ++
       indent i ++ "}\n"
   where
+    ctag True = "CTAG"
+    ctag False = "TAG"
+
     showCase i (t, bc) = indent i ++ "case " ++ show t ++ ":\n"
                          ++ concatMap (bcc (i+1)) bc ++ indent (i + 1) ++ "break;\n"
     showDef i Nothing = ""
@@ -180,7 +183,9 @@ bcc i (CALL n) = indent i ++ "CALL(" ++ cname n ++ ");\n"
 bcc i (TAILCALL n) = indent i ++ "TAILCALL(" ++ cname n ++ ");\n"
 bcc i (SLIDE n) = indent i ++ "SLIDE(vm, " ++ show n ++ ");\n"
 bcc i REBASE = indent i ++ "REBASE;\n"
+bcc i (RESERVE 0) = ""
 bcc i (RESERVE n) = indent i ++ "RESERVE(" ++ show n ++ ");\n"
+bcc i (ADDTOP 0) = ""
 bcc i (ADDTOP n) = indent i ++ "ADDTOP(" ++ show n ++ ");\n"
 bcc i (TOPBASE n) = indent i ++ "TOPBASE(" ++ show n ++ ");\n"
 bcc i (BASETOP n) = indent i ++ "BASETOP(" ++ show n ++ ");\n"
@@ -240,6 +245,7 @@ doOp v LFGe [l, r] = v ++ "FLOATBOP(>=," ++ creg l ++ ", " ++ creg r ++ ")"
 
 doOp v LBPlus [l, r] = v ++ "idris_bigPlus(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
 doOp v LBMinus [l, r] = v ++ "idris_bigMinus(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
+doOp v LBDec [l] = v ++ "idris_bigMinus(vm, " ++ creg l ++ ", MKINT(1))"
 doOp v LBTimes [l, r] = v ++ "idris_bigTimes(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
 doOp v LBDiv [l, r] = v ++ "idris_bigDivide(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
 doOp v LBMod [l, r] = v ++ "idris_bigMod(vm, " ++ creg l ++ ", " ++ creg r ++ ")"

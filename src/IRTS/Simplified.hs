@@ -16,6 +16,7 @@ data SExp = SV LVar
           | SUpdate LVar SExp
           | SCon Int Name [LVar]
           | SCase LVar [SAlt]
+          | SChkCase LVar [SAlt]
           | SProj LVar Int
           | SConst Const
           | SForeign FLang FType String [(FType, LVar)]
@@ -72,6 +73,13 @@ simplify tl (DCase e alts) = do v <- sVar e
                                     (x, Nothing) -> return (SCase x alts')
                                     (Glob x, Just e) -> 
                                         return (SLet (Glob x) e (SCase (Glob x) alts'))
+simplify tl (DChkCase e alts) 
+                           = do v <- sVar e
+                                alts' <- mapM (sAlt tl) alts
+                                case v of 
+                                    (x, Nothing) -> return (SChkCase x alts')
+                                    (Glob x, Just e) -> 
+                                        return (SLet (Glob x) e (SChkCase (Glob x) alts'))
 simplify tl (DConst c) = return (SConst c)
 simplify tl (DOp p args) = do args' <- mapM sVar args
                               mkapp (SOp p) args'
@@ -166,6 +174,10 @@ scopecheck ctxt envTop tm = sc envTop tm where
        = do e' <- scVar env e
             alts' <- mapM (scalt env) alts
             return (SCase e' alts')
+    sc env (SChkCase e alts)
+       = do e' <- scVar env e
+            alts' <- mapM (scalt env) alts
+            return (SChkCase e' alts')
     sc env (SLet (Glob n) v e)
        = do let env' = env ++ [(n, length env)]
             v' <- sc env v

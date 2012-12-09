@@ -37,7 +37,7 @@ serializeBC n bc = indent n ++
         "UPDATE " ++ serializeReg a ++ " " ++ serializeReg b
       MKCON a b xs ->
         "MKCON " ++ serializeReg a ++ " " ++ show b ++ " [" ++ (interMap xs ", " serializeReg) ++ "]"
-      CASE r cases def ->
+      CASE safe r cases def ->
         "CASE " ++ serializeReg r ++ ":\n" ++ interMap cases "\n" (serializeCase (n + 1)) ++
         maybe "" (\def' -> "\n" ++ serializeDefault (n + 1) def') def
       PROJECT a b c ->

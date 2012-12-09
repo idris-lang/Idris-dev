@@ -17,8 +17,7 @@ typedef enum {
 typedef struct Closure *VAL;
 
 typedef struct {
-    int tag;
-    int arity;
+    int tag_arity;
     VAL args[];
 } con;
 
@@ -101,7 +100,12 @@ typedef void(*func)(VM*, VAL*);
 #define GETPTR(x) (((VAL)(x))->info.ptr) 
 #define GETFLOAT(x) (((VAL)(x))->info.f)
 
-#define TAG(x) (ISINT(x) || x == NULL ? (-1) : ( (x)->ty == CON ? (x)->info.c.tag : (-1)) )
+#define TAG(x) (ISINT(x) || x == NULL ? (-1) : ( (x)->ty == CON ? (x)->info.c.tag_arity >> 8 : (-1)) )
+#define ARITY(x) (ISINT(x) || x == NULL ? (-1) : ( (x)->ty == CON ? (x)->info.c.tag_arity & 0x000000ff : (-1)) )
+
+// Already checked it's a CON
+#define CTAG(x) (((x)->info.c.tag_arity) >> 8)
+#define CARITY(x) ((x)->info.c.tag_arity & 0x000000ff)
 
 // Use top 16 bits for saying which heap value is in
 // Bottom 16 bits for closure type
@@ -136,7 +140,6 @@ typedef intptr_t i_int;
 #define TOPBASE(x) vm->valstack_top = vm->valstack_base + (x)
 #define BASETOP(x) vm->valstack_base = vm->valstack_top + (x)
 #define STOREOLD myoldbase = vm->valstack_base
-
 #define CALL(f) f(vm, myoldbase);
 #define TAILCALL(f) f(vm, oldbase);
 
@@ -150,9 +153,7 @@ VAL MKFLOATc(VM* vm, double val);
 VAL MKSTRc(VM* vm, char* str);
 VAL MKPTRc(VM* vm, void* ptr);
 
-VAL MKCON(VM* vm, VAL cl, int tag, int arity, ...);
-
-#define SETTAG(x, a) (x)->info.c.tag = (a)
+// #define SETTAG(x, a) (x)->info.c.tag = (a)
 #define SETARG(x, i, a) ((x)->info.c.args)[i] = ((VAL)(a))
 #define GETARG(x, i) ((x)->info.c.args)[i]
 
@@ -160,7 +161,12 @@ void PROJECT(VM* vm, VAL r, int loc, int arity);
 void SLIDE(VM* vm, int args);
 
 void* allocate(VM* vm, size_t size, int outerlock);
-void* allocCon(VM* vm, int arity, int outerlock);
+// void* allocCon(VM* vm, int arity, int outerlock);
+
+#define allocCon(cl, vm, t, a, o) \
+  cl = allocate(vm, sizeof(Closure) + sizeof(VAL)*a, o); \
+  SETTY(cl, CON); \
+  cl->info.c.tag_arity = ((t) << 8) + (a);
 
 void* vmThread(VM* callvm, func f, VAL arg);
 

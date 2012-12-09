@@ -33,7 +33,7 @@ data PrimFn = LPlus | LMinus | LTimes | LDiv | LMod
             | LEq | LLt | LLe | LGt | LGe
             | LFPlus | LFMinus | LFTimes | LFDiv 
             | LFEq | LFLt | LFLe | LFGt | LFGe
-            | LBPlus | LBMinus | LBTimes | LBDiv | LBMod 
+            | LBPlus | LBMinus | LBDec | LBTimes | LBDiv | LBMod 
             | LBEq | LBLt | LBLe | LBGt | LBGe
             | LStrConcat | LStrLt | LStrEq | LStrLen
             | LIntFloat | LFloatInt | LIntStr | LStrInt | LFloatStr | LStrFloat

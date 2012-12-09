@@ -15,6 +15,7 @@ data DExp = DV LVar
           | DProj DExp Int
           | DC Int Name [DExp]
           | DCase DExp [DAlt]
+          | DChkCase DExp [DAlt] -- a case where the type is unknown (for EVAL/APPLY)
           | DConst Const
           | DForeign FLang FType String [(FType, DExp)]
           | DOp PrimFn [DExp]
@@ -132,6 +133,10 @@ addApps defs (n, LFun _ _ args e) = (n, DFun n args (aa args e))
       where nec (DConCase _ _ _ e) = needsEval x e
             nec (DConstCase _ e) = needsEval x e
             nec (DDefaultCase e) = needsEval x e
+    needsEval x (DChkCase e alts) = needsEval x e || or (map nec alts)
+      where nec (DConCase _ _ _ e) = needsEval x e
+            nec (DConstCase _ e) = needsEval x e
+            nec (DDefaultCase e) = needsEval x e
     needsEval x (DLet n v e) 
           | x == n = needsEval x v
           | otherwise = needsEval x v || needsEval x e
@@ -213,6 +218,8 @@ instance Show DExp where
      show' env (DProj t i) = show t ++ "!" ++ show i
      show' env (DCase e alts) = "case " ++ show' env e ++ " of {\n\t" ++
                                     showSep "\n\t| " (map (showAlt env) alts)
+     show' env (DChkCase e alts) = "case' " ++ show' env e ++ " of {\n\t" ++
+                                    showSep "\n\t| " (map (showAlt env) alts)
      show' env (DConst c) = show c
      show' env (DForeign lang ty n args)
            = "foreign " ++ n ++ "(" ++ showSep ", " (map (show' env) (map snd args)) ++ ")"
@@ -230,8 +237,8 @@ instance Show DExp where
 -- 'max' branches
 
 mkBigCase cn max arg branches 
-   | length branches <= max = DCase arg branches
-   | otherwise = -- DCase arg branches -- until I think of something...
+   | length branches <= max = DChkCase arg branches
+   | otherwise = -- DChkCase arg branches -- until I think of something...
        -- divide the branches into groups of at most max (by tag),
        -- generate a new case and shrink, recursively
        let bs = sortBy tagOrd branches
@@ -240,9 +247,9 @@ mkBigCase cn max arg branches
                     _ -> (all, Nothing)
            bss = groupsOf max all
            cs = map mkCase bss in
-           DCase arg branches
+           DChkCase arg branches
 
-    where mkCase bs = DCase arg bs 
+    where mkCase bs = DChkCase arg bs 
 
           tagOrd (DConCase t _ _ _) (DConCase t' _ _ _) = compare t t'
           tagOrd (DConstCase c _) (DConstCase c' _) = compare c c'
