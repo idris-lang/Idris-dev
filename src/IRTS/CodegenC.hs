@@ -124,6 +124,20 @@ bcc i (PROJECT l loc a) = indent i ++ "PROJECT(vm, " ++ creg l ++ ", " ++ show l
                                       ", " ++ show a ++ ");\n"
 bcc i (PROJECTINTO r t idx)
     = indent i ++ creg r ++ " = GETARG(" ++ creg t ++ ", " ++ show idx ++ ");\n" 
+bcc i (CASE True r code def) 
+    | length code < 4 = showCase i def code
+  where
+    showCode :: Int -> [BC] -> String
+    showCode i bc = "{\n" ++ indent i ++ concatMap (bcc (i + 1)) bc ++ 
+                    indent i ++ "}\n"
+
+    showCase :: Int -> Maybe [BC] -> [(Int, [BC])] -> String
+    showCase i Nothing [(t, c)] = showCode i c
+    showCase i (Just def) [] = showCode i def
+    showCase i def ((t, c) : cs)
+        = "if (CTAG(" ++ creg r ++ ") == " ++ show t ++ ") " ++ showCode i c
+           ++ "else " ++ showCase i def cs
+
 bcc i (CASE safe r code def) 
     = indent i ++ "switch(" ++ ctag safe ++ "(" ++ creg r ++ ")) {\n" ++
       concatMap (showCase i) code ++
@@ -140,10 +154,12 @@ bcc i (CASE safe r code def)
                          ++ concatMap (bcc (i+1)) c ++ indent (i + 1) ++ "break;\n"
 bcc i (CONSTCASE r code def) 
    | intConsts code
-     = indent i ++ "switch(GETINT(" ++ creg r ++ ")) {\n" ++
-       concatMap (showCase i) code ++
-       showDef i def ++
-       indent i ++ "}\n"
+--      = indent i ++ "switch(GETINT(" ++ creg r ++ ")) {\n" ++
+--        concatMap (showCase i) code ++
+--        showDef i def ++
+--        indent i ++ "}\n"
+     = concatMap (iCase (creg r)) code ++
+       indent i ++ "{\n" ++ showDefS i def ++ indent i ++ "}\n"
    | strConsts code
      = concatMap (strCase ("GETSTR(" ++ creg r ++ ")")) code ++
        indent i ++ "{\n" ++ showDefS i def ++ indent i ++ "}\n"
@@ -167,6 +183,12 @@ bcc i (CONSTCASE r code def)
            concatMap (bcc (i+1)) bc ++ indent i ++ "} else\n"
     biCase bv (BI b, bc) =
         indent i ++ "if (bigEqConst(" ++ bv ++ ", " ++ show b ++ ")) {\n"
+           ++ concatMap (bcc (i+1)) bc ++ indent i ++ "} else\n"
+    iCase v (I b, bc) =
+        indent i ++ "if (GETINT(" ++ v ++ ") == " ++ show b ++ ") {\n"
+           ++ concatMap (bcc (i+1)) bc ++ indent i ++ "} else\n"
+    iCase v (Ch b, bc) =
+        indent i ++ "if (GETINT(" ++ v ++ ") == " ++ show b ++ ") {\n"
            ++ concatMap (bcc (i+1)) bc ++ indent i ++ "} else\n"
 
     showCase i (t, bc) = indent i ++ "case " ++ show t ++ ":\n"
