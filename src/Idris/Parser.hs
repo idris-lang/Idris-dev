@@ -55,6 +55,9 @@ strlit     = PTok.stringLiteral lexer
 chlit      = PTok.charLiteral lexer
 lchar      = lexeme.char
 
+fixErrorMsg :: String -> [String] -> String
+fixErrorMsg msg fixes = msg ++ ", possible fixes:\n" ++ (concat $ intersperse "\n\nor\n\n" fixes)
+
 -- Loading modules
 
 loadModule :: FilePath -> Idris String
@@ -1193,7 +1196,18 @@ pData syn = try (do doc <- option "" (pDocComment '|')
                     let ty = bindArgs (map (const PSet) args) PSet
                     let tyn = expandNS syn tyn_in
                     option (PData doc syn fc co (PLaterdecl tyn ty)) (do
-                      lchar '='
+                      try (lchar '=') <|> do reserved "where"
+                                             let kw = (if co then "co" else "") ++ "data "
+                                             let n  = show tyn_in ++ " "
+                                             let s  = kw ++ n 
+                                             let as = concat (intersperse " " $ map show args) ++ " "
+                                             let ns = concat (intersperse " -> " $ map ((\x -> "(" ++ x ++ " : Set)") . show) args)
+                                             let ss = concat (intersperse " -> " $ map (const "Set") args)
+                                             let fix1 = s ++ as ++ " = ..."
+                                             let fix2 = s ++ ": " ++ ns ++ " -> Set where\n  ..."
+                                             let fix3 = s ++ ": " ++ ss ++ " -> Set where\n  ..."
+                                             fail $ fixErrorMsg "unexpected \"where\"" [fix1, fix2, fix3]
+                                                         
                       cons <- sepBy1 (pSimpleCon syn) (lchar '|')
                       pTerminator
                       let conty = mkPApp fc (PRef fc tyn) (map (PRef fc) args)
