@@ -1079,18 +1079,18 @@ elabDecl' what info (PMutual f ps)
 elabDecl' what info (PParams f ns ps) 
     = do i <- get
          iLOG $ "Expanding params block with " ++ show ns ++ " decls " ++
-                show (concatMap declared ps)
+                show (concatMap tldeclared ps)
          let nblock = pblock i
          mapM_ (elabDecl' what info) nblock 
   where
-    pinfo = let ds = concatMap declared ps
+    pinfo = let ds = concatMap tldeclared ps
                 newps = params info ++ ns
                 dsParams = map (\n -> (n, map fst newps)) ds
                 newb = addAlist dsParams (inblock info) in 
                 info { params = newps,
                        inblock = newb }
     pblock i = map (expandParamsD False i id ns 
-                      (concatMap declared ps)) ps
+                      (concatMap tldeclared ps)) ps
 
 elabDecl' what info (PNamespace n ps) = mapM_ (elabDecl' what ninfo) ps
   where

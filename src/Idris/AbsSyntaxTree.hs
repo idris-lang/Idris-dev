@@ -358,6 +358,19 @@ declared (PData _ _ _ _ (PDatadecl n _ ts)) = n : map fstt ts
 declared (PParams _ _ ds) = concatMap declared ds
 declared (PMutual _ ds) = concatMap declared ds
 declared (PNamespace _ ds) = concatMap declared ds
+
+-- get the names declared, not counting nested parameter blocks
+tldeclared :: PDecl -> [Name]
+tldeclared (PFix _ _ _) = []
+tldeclared (PTy _ _ _ _ n t) = [n]
+tldeclared (PPostulate _ _ _ _ n t) = [n]
+tldeclared (PClauses _ _ n _) = [] -- not a declaration
+tldeclared (PRecord _ _ _ n _ _ c _) = [n, c]
+tldeclared (PData _ _ _ _ (PDatadecl n _ ts)) = n : map fstt ts
+   where fstt (_, a, _, _) = a
+tldeclared (PParams _ _ ds) = [] 
+tldeclared (PMutual _ ds) = concatMap tldeclared ds
+tldeclared (PNamespace _ ds) = concatMap tldeclared ds
 -- declared (PImport _) = []
 
 defined :: PDecl -> [Name]
