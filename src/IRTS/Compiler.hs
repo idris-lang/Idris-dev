@@ -170,6 +170,10 @@ instance ToIR (TT Name) where
           | (P _ (UN "prim__IO") _, [v]) <- unApply tm
               = do v' <- ir' env v
                    return v'
+          | (P _ (UN "io_bind") _, [_,_,v,Bind n (Lam _) sc]) <- unApply tm
+              = do v' <- ir' env v 
+                   sc' <- ir' (n:env) sc
+                   return (LLet n (LForce v') sc')
           | (P _ (UN "io_bind") _, [_,_,v,k]) <- unApply tm
               = do v' <- ir' env v 
                    k' <- ir' env k
@@ -257,7 +261,7 @@ instance ToIR (TT Name) where
                     do args' <- mapM (ir' env) args
                        -- wrap it in a prim__IO
                        -- return $ con_ 0 @@ impossible @@ 
-                       return $ LLazyExp $
+                       return $ -- LLazyExp $
                            LForeign LANG_C rty fgnName (zip tys args')
          | otherwise = fail "Badly formed foreign function call"
 

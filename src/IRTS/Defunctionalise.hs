@@ -7,6 +7,8 @@ import Core.TT
 import Debug.Trace
 import Data.Maybe
 import Data.List
+import Control.Monad
+import Control.Monad.State
 
 data DExp = DV LVar
           | DApp Bool Name [DExp] -- True = tail call
@@ -39,11 +41,12 @@ defunctionalise :: Int -> LDefs -> DDefs
 defunctionalise nexttag defs 
      = let all = toAlist defs
            -- sort newcons so that EVAL and APPLY cons get sequential tags
-           newcons = sortBy conord $ concatMap toCons (getFn all)
+           (allD, enames) = runState (mapM (addApps defs) all) []
+           newcons = sortBy conord $ concatMap (toCons enames) (getFn all)
            eval = mkEval newcons
            app = mkApply newcons
            condecls = declare nexttag newcons in
-           addAlist (eval : app : condecls ++ (map (addApps defs) all)) emptyContext
+           addAlist (eval : app : condecls ++ allD) emptyContext
    where conord (n, _, _) (n', _, _) = compare n n'
 
 getFn :: [(Name, LDecl)] -> [(Name, Int)]
@@ -64,57 +67,80 @@ getFn xs = mapMaybe fnData xs
 -- 7 Wrap unknown applications (i.e. applications of local variables) in chains of APPLY
 -- 8 Add explicit EVAL to case, primitives, and foreign calls
 
-addApps :: LDefs -> (Name, LDecl) -> (Name, DDecl)
-addApps defs o@(n, LConstructor _ t a) = (n, DConstructor n t a) 
-addApps defs (n, LFun _ _ args e) = (n, DFun n args (aa args e))
+addApps :: LDefs -> (Name, LDecl) -> State [Name] (Name, DDecl)
+addApps defs o@(n, LConstructor _ t a) 
+    = return (n, DConstructor n t a) 
+addApps defs (n, LFun _ _ args e) 
+    = do e' <- aa args e
+         return (n, DFun n args e')
   where
-    aa :: [Name] -> LExp -> DExp
-    aa env (LV (Glob n)) | n `elem` env = DV (Glob n)
+    aa :: [Name] -> LExp -> State [Name] DExp
+    aa env (LV (Glob n)) | n `elem` env = return $ DV (Glob n)
                          | otherwise = aa env (LApp False (LV (Glob n)) [])
 --     aa env e@(LApp tc (MN 0 "EVAL") [a]) = e
     aa env (LApp tc (LV (Glob n)) args)
-       = let args' = map (aa env) args in
-             case lookupCtxt Nothing n defs of
-                [LConstructor _ i ar] -> DApp tc n args'
+       = do args' <- mapM (aa env) args 
+            case lookupCtxt Nothing n defs of
+                [LConstructor _ i ar] -> return $ DApp tc n args'
                 [LFun _ _ as _] -> let arity = length as in
                                        fixApply tc n args' arity
-                [] -> chainAPPLY (DV (Glob n)) args'
+                [] -> return $ chainAPPLY (DV (Glob n)) args'
     aa env (LLazyApp n args)
-       = let args' = map (aa env) args in
-             case lookupCtxt Nothing n defs of
-                [LConstructor _ i ar] -> DApp False n args'
+       = do args' <- mapM (aa env) args
+            case lookupCtxt Nothing n defs of
+                [LConstructor _ i ar] -> return $ DApp False n args'
                 [LFun _ _ as _] -> let arity = length as in
                                        fixLazyApply n args' arity
-                [] -> chainAPPLY (DV (Glob n)) args'
-    aa env (LForce e) = eEVAL (aa env e)
-    aa env (LLet n v sc) = DLet n (aa env v) (aa (n : env) sc)
-    aa env (LCon i n args) = DC i n (map (aa env) args)
+                [] -> return $ chainAPPLY (DV (Glob n)) args'
+    aa env (LForce (LLazyApp n args)) = aa env (LApp False (LV (Glob n)) args)
+    aa env (LForce e) = liftM eEVAL (aa env e)
+    aa env (LLet n v sc) = liftM2 (DLet n) (aa env v) (aa (n : env) sc)
+    aa env (LCon i n args) = liftM (DC i n) (mapM (aa env) args)
     aa env (LProj t@(LV (Glob n)) i) 
-        = DProj (DUpdate n (eEVAL (aa env t))) i
-    aa env (LProj t i) = DProj (eEVAL (aa env t)) i
-    aa env (LCase e alts) = DCase (eEVAL (aa env e)) (map (aaAlt env) alts)
-    aa env (LConst c) = DConst c
-    aa env (LForeign l t n args) = DForeign l t n (map (aaF env) args)
-    aa env (LOp LFork args) = DOp LFork (map (aa env) args)
-    aa env (LOp f args) = DOp f (map (eEVAL . (aa env)) args)
-    aa env LNothing = DNothing
-    aa env (LError e) = DError e
+        = do t' <- aa env t
+             return $ DProj (DUpdate n (eEVAL t')) i
+    aa env (LProj t i) = do t' <- aa env t
+                            return $ DProj (eEVAL t') i
+    aa env (LCase e alts) = do e' <- aa env e
+                               alts' <- mapM (aaAlt env) alts
+                               return $ DCase (eEVAL e') alts'
+    aa env (LConst c) = return $ DConst c
+    aa env (LForeign l t n args) = liftM (DForeign l t n) (mapM (aaF env) args)
+    aa env (LOp LFork args) = liftM (DOp LFork) (mapM (aa env) args)
+    aa env (LOp f args) = do args' <- mapM (aa env) args
+                             return $ DOp f (map eEVAL args')
+    aa env LNothing = return DNothing
+    aa env (LError e) = return $ DError e
 
-    aaF env (t, e) = (t, eEVAL (aa env e))
+    aaF env (t, e) = do e' <- aa env e
+                        return (t, eEVAL e')
 
-    aaAlt env (LConCase i n args e) = DConCase i n args (aa (args ++ env) e)
-    aaAlt env (LConstCase c e) = DConstCase c (aa env e)
-    aaAlt env (LDefaultCase e) = DDefaultCase (aa env e)
+    aaAlt env (LConCase i n args e) 
+         = liftM (DConCase i n args) (aa (args ++ env) e)
+    aaAlt env (LConstCase c e) = liftM (DConstCase c) (aa env e)
+    aaAlt env (LDefaultCase e) = liftM DDefaultCase (aa env e)
 
     fixApply tc n args ar 
-        | length args == ar = DApp tc n args
-        | length args < ar = DApp tc (mkUnderCon n (ar - length args)) args
-        | length args > ar = chainAPPLY (DApp tc n (take ar args)) (drop ar args)
+        | length args == ar 
+             = return $ DApp tc n args
+        | length args < ar 
+             = do ns <- get
+                  put $ nub (n : ns)
+                  return $ DApp tc (mkUnderCon n (ar - length args)) args
+        | length args > ar 
+             = return $ chainAPPLY (DApp tc n (take ar args)) (drop ar args)
 
     fixLazyApply n args ar 
-        | length args == ar = DApp False (mkFnCon n) args
-        | length args < ar = DApp False (mkUnderCon n (ar - length args)) args
-        | length args > ar = chainAPPLY (DApp False n (take ar args)) (drop ar args)
+        | length args == ar 
+             = do ns <- get
+                  put $ nub (n : ns)
+                  return $ DApp False (mkFnCon n) args
+        | length args < ar 
+             = do ns <- get
+                  put $ nub (n : ns)
+                  return $ DApp False (mkUnderCon n (ar - length args)) args
+        | length args > ar 
+             = return $ chainAPPLY (DApp False n (take ar args)) (drop ar args)
                                     
     chainAPPLY f [] = f
     chainAPPLY f (a : as) = chainAPPLY (DApp False (MN 0 "APPLY") [f, a]) as
@@ -154,14 +180,16 @@ data EvalApply a = EvalCase (Name -> a)
 -- For a function name, generate a list of
 -- data constuctors, and whether to handle them in EVAL or APPLY
 
-toCons :: (Name, Int) -> [(Name, Int, EvalApply DAlt)]
-toCons (n, i) 
-   = (mkFnCon n, i, 
-        EvalCase (\tlarg ->
+toCons :: [Name] -> (Name, Int) -> [(Name, Int, EvalApply DAlt)]
+toCons ns (n, i) 
+    | n `elem` ns
+      = (mkFnCon n, i, 
+          EvalCase (\tlarg ->
             (DConCase (-1) (mkFnCon n) (take i (genArgs 0))
               (dupdate tlarg
                 (eEVAL (DApp False n (map (DV . Glob) (take i (genArgs 0)))))))))
           : mkApplyCase n 0 i
+    | otherwise = []
   where dupdate tlarg x = x
 
 mkApplyCase fname n ar | n == ar = []

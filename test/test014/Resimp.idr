@@ -98,7 +98,7 @@ using (i: Fin n, gam : Vect Ty n, gam' : Vect Ty n, gam'' : Vect Ty n)
 
 {-- Control structures --}
 
-       Lift   : IO a -> Res gam gam (R a)
+       Lift   : |(action:IO a) -> Res gam gam (R a)
        Check  : (p:HasType gam i (Choice (interpTy a) (interpTy b))) -> 
                 (failure:Res (update gam p a) (update gam p c) t) ->
                 (success:Res (update gam p b) (update gam p c) t) ->
