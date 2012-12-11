@@ -3,6 +3,7 @@ New in 0.9.6:
 
 User visible changes:
 
+* The type of types is now 'Type' rather than 'Set'
 * Forward declarations of data allowed
   - supporting induction recursion and mutually recursive data
 * Type inference of definitions in 'where' clauses
