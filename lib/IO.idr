@@ -21,9 +21,9 @@ io_return x = prim__IO x
 run__IO : IO () -> IO ()
 run__IO v = io_bind v (\v' => io_return v')
 
-data FTy = FInt | FFloat | FChar | FString | FPtr | FAny Set | FUnit
+data FTy = FInt | FFloat | FChar | FString | FPtr | FAny Type | FUnit
 
-interpFTy : FTy -> Set
+interpFTy : FTy -> Type
 interpFTy FInt     = Int
 interpFTy FFloat   = Float
 interpFTy FChar    = Char
@@ -32,14 +32,14 @@ interpFTy FPtr     = Ptr
 interpFTy (FAny t) = t
 interpFTy FUnit    = ()
 
-ForeignTy : (xs:List FTy) -> (t:FTy) -> Set
+ForeignTy : (xs:List FTy) -> (t:FTy) -> Type
 ForeignTy xs t = mkForeign' (reverse xs) (IO (interpFTy t)) where 
-   mkForeign' : List FTy -> Set -> Set
+   mkForeign' : List FTy -> Type -> Type
    mkForeign' Nil ty       = ty
    mkForeign' (s :: ss) ty = mkForeign' ss (interpFTy s -> ty)
 
 
-data Foreign : Set -> Set where
+data Foreign : Type -> Type where
     FFun : String -> (xs:List FTy) -> (t:FTy) -> 
            Foreign (ForeignTy xs t)
 

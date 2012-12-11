@@ -4,13 +4,13 @@ import Builtins
 
 %access public
 
-data Homomorphism : Set -> Set -> Set where
+data Homomorphism : Type -> Type -> Type where
   Homo : (a -> b) -> Homomorphism a b
 
-data Endomorphism : Set -> Set where
+data Endomorphism : Type -> Type where
   Endo : (a -> a) -> Endomorphism a
 
-data Kleislimorphism : (Set -> Set) -> Set -> Set -> Set where
+data Kleislimorphism : (Type -> Type) -> Type -> Type -> Type where
   Kleisli : Monad m => (a -> m b) -> Kleislimorphism m a b
 
 applyKleisli : Monad m => (Kleislimorphism m a b) -> a -> m b
@@ -41,5 +41,5 @@ instance Monoid (Endomorphism a) where
 
 infixr 1 ~>
 
-(~>) : Set -> Set -> Set
+(~>) : Type -> Type -> Type
 a ~> b = Homomorphism a b

@@ -57,17 +57,17 @@ hyper (S pn)   a (S pb) = hyper pn a (hyper (S pn) a pb)
 -- Comparisons
 --------------------------------------------------------------------------------
 
-data LTE  : Nat -> Nat -> Set where
+data LTE  : Nat -> Nat -> Type where
   lteZero : LTE O    right
   lteSucc : LTE left right -> LTE (S left) (S right)
 
-total GTE : Nat -> Nat -> Set
+total GTE : Nat -> Nat -> Type
 GTE left right = LTE right left
 
-total LT : Nat -> Nat -> Set
+total LT : Nat -> Nat -> Type
 LT left right = LTE (S left) right
 
-total GT : Nat -> Nat -> Set
+total GT : Nat -> Nat -> Type
 GT left right = LT right left
 
 total lte : Nat -> Nat -> Bool
@@ -135,10 +135,10 @@ instance Num Nat where
         else
           O
 
-record Multiplicative : Set where
+record Multiplicative : Type where
   getMultiplicative : Nat -> Multiplicative
 
-record Additive : Set where
+record Additive : Type where
   getAdditive : Nat -> Additive
 
 instance Semigroup Multiplicative where

@@ -72,7 +72,7 @@ that the lower bound is below the upper bound using \texttt{so}:
 
 \begin{SaveVerbatim}{interval}
 
-data Interval : Set where
+data Interval : Type where
    MkInterval : (lower : Float) -> (upper : Float) -> 
                 so (lower < upper) -> Interval
 

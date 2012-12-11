@@ -760,7 +760,7 @@ pSimpleExpr syn =
         <|> try (do c <- pConstant
                     fc <- pfc
                     return (modifyConst syn fc (PConstant c)))
-        <|> do reserved "Set"; return PSet
+        <|> do reserved "Type"; return PSet
         <|> try (do symbol "()"
                     fc <- pfc
                     return (PTrue fc))

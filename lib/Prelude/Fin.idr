@@ -3,7 +3,7 @@ module Prelude.Fin
 import Prelude.Nat
 import Prelude.Either
 
-data Fin : Nat -> Set where
+data Fin : Nat -> Type where
     fO : Fin (S k)
     fS : Fin k -> Fin (S k)
 

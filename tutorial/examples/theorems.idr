@@ -8,7 +8,7 @@ twoPlusTwo = refl
 total disjoint : (n : Nat) -> O = S n -> _|_
 disjoint n p = replace {P = disjointTy} p ()
   where
-    disjointTy : Nat -> Set
+    disjointTy : Nat -> Type
     disjointTy O = ()
     disjointTy (S k) = _|_
 

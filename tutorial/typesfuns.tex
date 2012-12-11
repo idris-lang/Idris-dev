@@ -289,7 +289,7 @@ we declare vectors as follows:
 
 \begin{SaveVerbatim}{vect}
 
-data Vect : Set -> Nat -> Set where
+data Vect : Type -> Nat -> Type where
    Nil  : Vect a O
    (::) : a -> Vect a k -> Vect a (S k)
 
@@ -305,7 +305,7 @@ Ambiguous constructor names can normally be resolved from context.
 This declares a family of types, and so the form of the declaration is rather
 different from the simple type declarations above. We explicitly state the type
 of the type constructor \tTC{Vect} --- it takes a type and a \tTC{Nat} as an
-argument, where \tTC{Set} stands for the type of types. We say that \tTC{Vect}
+argument, where \tTC{Type} stands for the type of types. We say that \tTC{Vect}
 is \emph{parameterised} by a type, and \emph{indexed} over \tTC{Nat}. Each
 constructor targets a different part of the family of types. \tDC{Nil} can only
 be used to construct vectors with zero length, and \tDC{::} to construct
@@ -370,7 +370,7 @@ They are declared as follows (again, in the prelude):
 
 \begin{SaveVerbatim}{findecl}
 
-data Fin : Nat -> Set where
+data Fin : Nat -> Type where
    fO : Fin (S k)
    fS : Fin k -> Fin (S k)
 
@@ -433,7 +433,7 @@ arguments to \texttt{index}. We could also write the type of \texttt{index} as:
 
 \begin{SaveVerbatim}{vindeximpty}
 
-index : {a:Set} -> {n:Nat} -> Fin n -> Vect a n -> a
+index : {a:Type} -> {n:Nat} -> Fin n -> Vect a n -> a
 
 \end{SaveVerbatim}
 \useverb{vindeximpty}
@@ -481,7 +481,7 @@ definition, which defines a predicate on vectors:
 
 \begin{SaveVerbatim}{elem}
 
-data Elem : a -> Vect a n -> Set where
+data Elem : a -> Vect a n -> Type where
    here :  {x:a} ->   {xs:Vect a n} -> Elem x (x :: xs)
    there : {x,y:a} -> {xs:Vect a n} -> Elem x xs -> Elem x (y :: xs)
 
@@ -513,7 +513,7 @@ ordering of any implicit arguments which can appear within the block:
 \begin{SaveVerbatim}{elemusing}
 
 using (x:a, y:a, xs:Vect a n)
-  data Elem : a -> Vect a n -> Set where
+  data Elem : a -> Vect a n -> Type where
      here  : Elem x (x :: xs)
      there : Elem x xs -> Elem x (y :: xs)
 
@@ -674,7 +674,7 @@ We have already seen the \texttt{List} and \texttt{Vect} data types:
 
 data List a = Nil | (::) a (List a)
 
-data Vect : Set -> Nat -> Set where
+data Vect : Type -> Nat -> Type where
    Nil  : Vect a O
    (::) : a -> Vect a k -> Vect a (S k)
 
@@ -858,8 +858,8 @@ the value of the first element:
 
 \begin{SaveVerbatim}{sigma}
 
-data Exists : (A : Set) -> (P : A -> Set) -> Set where
-   Ex_intro : {P : A -> Set} -> (a : A) -> P a -> Exists A P
+data Exists : (A : Type) -> (P : A -> Type) -> Type where
+   Ex_intro : {P : A -> Type} -> (a : A) -> P a -> Exists A P
 
 \end{SaveVerbatim}
 \useverb{sigma}
@@ -951,7 +951,7 @@ value is true:
 
 \begin{SaveVerbatim}{sotype}
 
-data so : Bool -> Set where
+data so : Bool -> Type where
     oh : so True
 
 \end{SaveVerbatim}
@@ -1112,7 +1112,7 @@ can represent a person's name and age in a record:
 
 \begin{SaveVerbatim}{recsimpl}
 
-record Person : Set where
+record Person : Type where
     MkPerson : (name : String) ->
                (age : Int) -> Person
 
@@ -1165,7 +1165,7 @@ the record as a whole. For example:
 
 \begin{SaveVerbatim}{deprec}
 
-record Class : Set where
+record Class : Type where
     ClassInfo : (students : Vect Person n) ->
                 (className : String) ->
                 Class

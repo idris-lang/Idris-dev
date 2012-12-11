@@ -4,7 +4,7 @@ rep : (n : Nat) -> Char -> Vect Char n
 rep O     x = []
 rep (S k) x = x :: rep k x
 
-data RLE : Vect Char n -> Set where
+data RLE : Vect Char n -> Type where
      REnd  : RLE []
      RChar : {xs : Vect Char k} ->
              (n : Nat) -> (x : Char) -> RLE xs -> 

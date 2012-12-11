@@ -3,10 +3,10 @@ module Network.Cgi
 import System
 
 public
-Vars : Set
+Vars : Type
 Vars = List (String, String)
 
-record CGIInfo : Set where
+record CGIInfo : Type where
        CGISt : (GET : Vars) ->
                (POST : Vars) ->
                (Cookies : Vars) ->
@@ -21,7 +21,7 @@ add_Output : String -> CGIInfo -> CGIInfo
 add_Output str st = record { Output = Output st ++ str } st
 
 abstract
-data CGI : Set -> Set where
+data CGI : Type -> Type where
     MkCGI : (CGIInfo -> IO (a, CGIInfo)) -> CGI a
 
 getAction : CGI a -> CGIInfo -> IO (a, CGIInfo)

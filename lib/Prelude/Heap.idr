@@ -14,7 +14,7 @@ import Prelude.Nat
 
 %access public
 
-abstract data MaxiphobicHeap : Set -> Set where
+abstract data MaxiphobicHeap : Type -> Type where
   Empty : MaxiphobicHeap a
   Node  : Nat -> MaxiphobicHeap a -> a -> MaxiphobicHeap a -> MaxiphobicHeap a
 
@@ -142,7 +142,7 @@ instance Ord a => JoinSemilattice (MaxiphobicHeap a) where
 total absurdBoolDischarge : False = True -> _|_
 absurdBoolDischarge p = replace {P = disjointTy} p ()
   where
-    total disjointTy : Bool -> Set
+    total disjointTy : Bool -> Type
     disjointTy False  = ()
     disjointTy True   = _|_
 

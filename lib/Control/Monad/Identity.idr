@@ -4,7 +4,7 @@ import Prelude.Functor
 import Prelude.Applicative
 import Prelude.Monad 
 
-public record Identity : Set -> Set where
+public record Identity : Type -> Type where
     Id : (runIdentity : a) -> Identity a
 
 instance Functor Identity where

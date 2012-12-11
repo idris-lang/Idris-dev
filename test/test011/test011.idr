@@ -1,12 +1,12 @@
 module Main
 
-record Foo : Nat -> Set where
+record Foo : Nat -> Type where
     MkFoo : (name : String) ->
             (things : Vect a n) ->
             (more_things : Vect b m) ->
             Foo n
 
-record Person : Set where
+record Person : Type where
     MkPerson : (name : String) -> (age : Int) -> Person
 
 testFoo : Foo 3

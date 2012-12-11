@@ -1,9 +1,9 @@
 
-data EvenList : Set where
+data EvenList : Type where
     ENil  : EvenList
     ECons : Nat -> OddList -> EvenList
 
-data OddList : Set where
+data OddList : Type where
     OCons : Nat -> EvenList -> OddList                                                                                                                                                 
 
 test : EvenList

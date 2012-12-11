@@ -1,12 +1,12 @@
 
 mutual
   namespace Even
-    data EvenList : Set where
+    data EvenList : Type where
         Nil  : EvenList
         (::) : Nat -> OddList -> EvenList
 
   namespace Odd
-    data OddList : Set where
+    data OddList : Type where
         (::) : Nat -> EvenList -> OddList                                                                                                                                                 
 
 test : EvenList

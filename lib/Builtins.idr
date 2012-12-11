@@ -1,19 +1,19 @@
 %access public
 %default total
 
-data Exists : (a : Set) -> (P : a -> Set) -> Set where
-    Ex_intro : {P : a -> Set} -> (x : a) -> P x -> Exists a P
+data Exists : (a : Type) -> (P : a -> Type) -> Type where
+    Ex_intro : {P : a -> Type} -> (x : a) -> P x -> Exists a P
 
-getWitness : {P : a -> Set} -> Exists a P -> a
+getWitness : {P : a -> Type} -> Exists a P -> a
 getWitness (a ** v) = a
 
-getProof : {P : a -> Set} -> (s : Exists a P) -> P (getWitness s)
+getProof : {P : a -> Type} -> (s : Exists a P) -> P (getWitness s)
 getProof (a ** v) = v
 
 FalseElim : _|_ -> a
 
 -- For rewrite tactic
-replace : {a:_} -> {x:_} -> {y:_} -> {P : a -> Set} -> x = y -> P x -> P y
+replace : {a:_} -> {x:_} -> {y:_} -> {P : a -> Type} -> x = y -> P x -> P y
 replace refl prf = prf
 
 sym : {l:a} -> {r:a} -> l = r -> r = l
@@ -40,7 +40,7 @@ namespace Builtins {
 id : a -> a
 id x = x
 
-the : (A : Set) -> A -> A
+the : (A : Type) -> A -> A
 the _ = id
 
 const : a -> b -> a
@@ -74,7 +74,7 @@ boolElim : Bool -> |(t : a) -> |(f : a) -> a
 boolElim True  t e = t
 boolElim False t e = e
 
-data so : Bool -> Set where oh : so True
+data so : Bool -> Type where oh : so True
 
 syntax if [test] then [t] else [e] = boolElim test t e
 syntax [test] "?" [t] ":" [e] = if test then t else e

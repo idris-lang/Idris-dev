@@ -8,7 +8,7 @@ the following definition:
 
 \begin{SaveVerbatim}{}
 
-data (=) : a -> b -> Set where
+data (=) : a -> b -> Type where
    refl : x = x
 
 \end{SaveVerbatim}
@@ -45,7 +45,7 @@ to a successor:
 disjoint : (n : Nat) -> O = S n -> _|_
 disjoint n p = replace {P = disjointTy} p ()
   where
-    disjointTy : Nat -> Set
+    disjointTy : Nat -> Type
     disjointTy O = ()
     disjointTy (S k) = _|_
 

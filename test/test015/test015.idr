@@ -3,7 +3,7 @@ module Main
 import Parity
 import System
 
-data Bit : Nat -> Set where
+data Bit : Nat -> Type where
      b0 : Bit O
      b1 : Bit (S O) 
 
@@ -15,7 +15,7 @@ instance Show (Bit n) where
 
 infixl 5 #
 
-data Binary : (width : Nat) -> (value : Nat) -> Set where
+data Binary : (width : Nat) -> (value : Nat) -> Type where
      zero : Binary O O
      (#)  : Binary w v -> Bit bit -> Binary (S w) (bit + 2 * v)
 

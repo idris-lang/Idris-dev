@@ -195,14 +195,14 @@ sortAndShow xs = show (sort xs)
 \label{sec:monad}
 
 So far, we have seen single parameter type classes, where the parameter is of type
-\texttt{Set}. In general, there can be any number (greater than 0) of parameters,
+\texttt{Type}. In general, there can be any number (greater than 0) of parameters,
 and the parameters can have \remph{any} type.
-If the type of the parameter is not \texttt{Set}, we need to give an explicit type
+If the type of the parameter is not \texttt{Type}, we need to give an explicit type
 declaration. For example:
 
 \begin{SaveVerbatim}{monad}
 
-class Monad (m : Set -> Set) where
+class Monad (m : Type -> Type) where
     return : a -> m a
     (>>=)  : m a -> (a -> m b) -> m b
 
@@ -272,7 +272,7 @@ general, and applies to anything which is an instance of \texttt{MonadPlus}:
 
 \begin{SaveVerbatim}{monadplus}
 
-class Monad m => MonadPlus (m : Set -> Set) where
+class Monad m => MonadPlus (m : Type -> Type) where
     mplus : m a -> m a -> m a
     mzero : m a
 
@@ -363,7 +363,7 @@ class, which captures the notion of application for a data type:
 
 infixl 2 <$> 
 
-class Applicative (f : Set -> Set) where 
+class Applicative (f : Type -> Type) where 
     pure  : a -> f a
     (<$>) : f (a -> b) -> f a -> f b 
 
@@ -420,7 +420,7 @@ Evaluation will take place relative to a context mapping variables (represented 
 
 \begin{SaveVerbatim}{evalctxt}
 
-data Eval : Set -> Set where
+data Eval : Type -> Type where
      MkEval : (List (String, Int) -> Maybe a) -> Eval a
 
 \end{SaveVerbatim}

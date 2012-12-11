@@ -1,7 +1,7 @@
-myid : (a : Set) -> a -> a
+myid : (a : Type) -> a -> a
 myid _ x = x
 
-idid :  (a : Set) -> a -> a
+idid :  (a : Type) -> a -> a
 idid = myid _ myid
 
 

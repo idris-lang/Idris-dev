@@ -8,7 +8,7 @@ pstring : Purpose -> String
 pstring Reading = "r"
 pstring Writing = "w"
 
-data FILE : Purpose -> Set where
+data FILE : Purpose -> Type where
     OpenH : File -> FILE p
 
 syntax ifM [test] then [t] else [e]

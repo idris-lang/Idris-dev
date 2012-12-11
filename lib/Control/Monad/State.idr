@@ -6,12 +6,12 @@ import Prelude.Functor
 
 %access public
 
-class Monad m => MonadState s (m : Set -> Set) where
+class Monad m => MonadState s (m : Type -> Type) where
     get : m s
     put : s -> m ()
 
-record StateT : Set -> (Set -> Set) -> Set -> Set where
-    ST : {m : Set -> Set} ->
+record StateT : Type -> (Type -> Type) -> Type -> Type where
+    ST : {m : Type -> Type} ->
          (runStateT : s -> m (a, s)) -> StateT s m a
 
 instance Functor f => Functor (StateT s f) where
@@ -37,6 +37,6 @@ instance Monad m => MonadState s (StateT s m) where
     get   = ST (\x => return (x, x))
     put x = ST (\y => return ((), x)) 
 
-State : Set -> Set -> Set
+State : Type -> Type -> Type
 State s a = StateT s Identity a
 

@@ -120,7 +120,7 @@ following function:
 
 \begin{SaveVerbatim}{interpfty}
 
-interpFTy : FTy -> Set
+interpFTy : FTy -> Type
 interpFTy FInt    = Int
 interpFTy FFloat  = Float
 interpFTy FChar   = Char
@@ -137,7 +137,7 @@ can then be converted to an \Idris{} type:
 
 \begin{SaveVerbatim}{ffunty}
 
-ForeignTy : (xs:List FTy) -> (t:FTy) -> Set
+ForeignTy : (xs:List FTy) -> (t:FTy) -> Type
 
 \end{SaveVerbatim}
 \useverb{ffunty}
@@ -149,10 +149,10 @@ A foreign function is assumed to be impure, so \texttt{ForeignTy} builds an
 \begin{SaveVerbatim}{ftyex}
 
 Idris> ForeignTy [FInt, FString] FString
-Int -> String -> IO String : Set
+Int -> String -> IO String : Type
 
 Idris> ForeignTy [FInt, FString] FUnit 
-Int -> String -> IO () : Set
+Int -> String -> IO () : Type
 
 \end{SaveVerbatim}
 \useverb{ftyex}
@@ -164,7 +164,7 @@ converts this description to a function callable by \Idris{}
 
 \begin{SaveVerbatim}{mkForeign}
 
-data Foreign : Set -> Set where
+data Foreign : Type -> Type where
     FFun : String -> (xs:List FTy) -> (t:FTy) -> 
            Foreign (ForeignTy xs t)
 
@@ -206,39 +206,39 @@ have types. For example:
 \begin{SaveVerbatim}{typetypes}
 
 *universe> :t Nat
-Nat : Set
+Nat : Type
 *universe> :t Vect
-Vect : Set -> Nat -> Set
+Vect : Type -> Nat -> Type
 
 \end{SaveVerbatim}
 \useverb{typetypes} 
 
 \noindent
-But what about the type of \texttt{Set}? If we ask \Idris{} it reports
+But what about the type of \texttt{Type}? If we ask \Idris{} it reports
 
 \begin{SaveVerbatim}{setset}
 
-*universe> :t Set
-Set : Set
+*universe> :t Type
+Type : Type
 
 \end{SaveVerbatim}
 \useverb{setset} 
 
 \noindent
-It \emph{appears} that \texttt{Set} is its own type. This would lead to an inconsitency
+It \emph{appears} that \texttt{Type} is its own type. This would lead to an inconsitency
 due to Girard's paradox~\cite{girard-thesis}, so internally there is a \emph{hierarchy}
 of types (or \emph{universes}):
 
 \begin{SaveVerbatim}{sethierarchy}
 
-Set : Set 1 : Set 2 : Set 3 : ...
+Type : Type 1 : Type 2 : Type 3 : ...
 
 \end{SaveVerbatim}
 \useverb{sethierarchy} 
 
 \noindent
-Universes are \emph{cumulative}, that is, if \texttt{x : Set n} we can also have that
-\texttt{x : Set m}, as long as \texttt{n < m}. 
+Universes are \emph{cumulative}, that is, if \texttt{x : Type n} we can also have that
+\texttt{x : Type m}, as long as \texttt{n < m}. 
 The typechecker generates such universe 
 constraints and reports an error if any inconsistencies are found. Ordinarily, a
 programmer does not need to worry about this, but it does prevent (contrived)
@@ -246,10 +246,10 @@ programs such as the following:
 
 \begin{SaveVerbatim}{idid}
 
-myid : (a : Set) -> a -> a
+myid : (a : Type) -> a -> a
 myid _ x = x
 
-idid :  (a : Set) -> a -> a
+idid :  (a : Type) -> a -> a
 idid = myid _ myid
 
 \end{SaveVerbatim}
@@ -257,7 +257,7 @@ idid = myid _ myid
 
 \noindent
 The application of \texttt{myid} to itself leads to a cycle in the universe hierarchy
---- \texttt{myid}'s first argument is a \texttt{Set}, which cannot be at a lower level
+--- \texttt{myid}'s first argument is a \texttt{Type}, which cannot be at a lower level
 than required if it is applied to itself.
 
 %\subsection{Comparison}

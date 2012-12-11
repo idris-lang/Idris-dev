@@ -4,7 +4,7 @@ data Expr = Var String
           | Val Int
           | Add Expr Expr
 
-data Eval : Set -> Set where
+data Eval : Type -> Type where
    MkEval : (List (String, Int) -> Maybe a) -> Eval a
 
 fetch : String -> Eval Int

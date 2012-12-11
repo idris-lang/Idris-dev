@@ -9,7 +9,7 @@ import Prelude.Nat
 
 infixr 7 :: 
 
-data Vect : Set -> Nat -> Set where
+data Vect : Type -> Nat -> Type where
   Nil  : Vect a O
   (::) : a -> Vect a n -> Vect a (S n)
 

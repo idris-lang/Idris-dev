@@ -28,7 +28,7 @@ idrisDef = haskellDef {
               reservedOpNames 
                  = [":", "..", "=", "\\", "|", "<-", "->", "=>", "**"],
               reservedNames 
-                 = ["let", "in", "data", "codata", "record", "Set", 
+                 = ["let", "in", "data", "codata", "record", "Type", 
                     "do", "dsl", "import", "impossible", 
                     "case", "of", "total", "partial", "mutual",
                     "infix", "infixl", "infixr", 

@@ -208,7 +208,7 @@ constructors. They may also be dependent types with implicit arguments:
 \begin{SaveVerbatim}{paramdata}
 
 parameters (xs : Vect a x, y : Nat)
-    data Vects : Set -> Set where
+    data Vects : Type -> Type where
          MkVects : Vect a y -> Vects a
   
     append : Vects a -> Vect a (x + y)

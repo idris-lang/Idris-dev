@@ -1,4 +1,4 @@
 module Prelude.Functor
 
-class Functor (f : Set -> Set) where 
+class Functor (f : Type -> Type) where 
     fmap : (a -> b) -> f a -> f b

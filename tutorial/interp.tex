@@ -23,7 +23,7 @@ any other value:
 
 \begin{SaveVerbatim}{interpty}
 
-interpTy : Ty -> Set
+interpTy : Ty -> Type
 interpTy TyInt       = Int
 interpTy TyBool      = Bool
 interpTy (TyFun A T) = interpTy A -> interpTy T
@@ -51,7 +51,7 @@ indexed by the types of the local variables, and the type of the expression itse
 
 \begin{SaveVerbatim}{exprdecl}
 
-data Expr : Vect Ty n -> Ty -> Set
+data Expr : Vect Ty n -> Ty -> Type
 
 \end{SaveVerbatim}
 \useverb{exprdecl}
@@ -63,11 +63,11 @@ constructor in turn.
 
 \begin{SaveVerbatim}{exprty}
 
-data HasType : (i : Fin n) -> Vect Ty n -> Ty -> Set where
+data HasType : (i : Fin n) -> Vect Ty n -> Ty -> Type where
     stop : HasType fO (t :: G) t
     pop  : HasType k G t -> HasType (fS k) (u :: G) t
 
-data Expr : Vect Ty n -> Ty -> Set where
+data Expr : Vect Ty n -> Ty -> Type where
     Var : HasType i G t -> Expr G t
     Val : (x : Int) -> Expr G TyInt
     Lam : Expr (a :: G) t -> Expr G (TyFun a t)
@@ -87,7 +87,7 @@ Variables are represented by a proof of their membership in the context,
 
 \begin{SaveVerbatim}{hastype}
 
-data HasType : (i : Fin n) -> Vect Ty n -> Ty -> Set where
+data HasType : (i : Fin n) -> Vect Ty n -> Ty -> Type where
     stop : HasType fO (t :: G) t
     pop  : HasType k G t -> HasType (fS k) (u :: G) t
 
@@ -181,7 +181,7 @@ is defined in the context, we can then produce a value from the environment:
 
 \begin{SaveVerbatim}{envtype}
 
-data Env : Vect Ty n -> Set where
+data Env : Vect Ty n -> Type where
     Nil  : Env Nil
     (::) : interpTy a -> Env G -> Env (a :: G)
 

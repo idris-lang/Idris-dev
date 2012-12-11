@@ -7,7 +7,7 @@ import Prelude.Functor
 
 infixl 2 <$> 
 
-class Functor f => Applicative (f : Set -> Set) where 
+class Functor f => Applicative (f : Type -> Type) where 
     pure  : a -> f a
     (<$>) : f (a -> b) -> f a -> f b 
 

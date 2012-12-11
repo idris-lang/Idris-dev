@@ -1,7 +1,7 @@
 module Resimp
 
 -- IO operations which read a resource
-data Reader : Set -> Set where
+data Reader : Type -> Type where
     MkReader : IO a -> Reader a
 
 getReader : Reader a -> IO a
@@ -11,7 +11,7 @@ ior : IO a -> Reader a
 ior = MkReader
 
 -- IO operations which update a resource
-data Updater : Set -> Set where
+data Updater : Type -> Type where
     MkUpdater : IO a -> Updater a
 
 getUpdater : Updater a -> IO a
@@ -21,7 +21,7 @@ iou : IO a -> Updater a
 iou = MkUpdater
 
 -- IO operations which create a resource
-data Creator : Set -> Set where
+data Creator : Type -> Type where
     MkCreator : IO a -> Creator a
 
 getCreator : Creator a -> IO a
@@ -34,22 +34,22 @@ infixr 5 :->
 
 using (i: Fin n, gam : Vect Ty n, gam' : Vect Ty n, gam'' : Vect Ty n)
 
-  data Ty = R Set
-          | Val Set
-          | Choice Set Set
-          | (:->) Set Ty
+  data Ty = R Type
+          | Val Type
+          | Choice Type Type
+          | (:->) Type Ty
 
-  interpTy : Ty -> Set
+  interpTy : Ty -> Type
   interpTy (R t) = IO t
   interpTy (Val t) = t
   interpTy (Choice x y) = Either x y
   interpTy (a :-> b) = a -> interpTy b
 
-  data HasType : Vect Ty n -> Fin n -> Ty -> Set where
+  data HasType : Vect Ty n -> Fin n -> Ty -> Type where
        stop : HasType (a :: gam) fO a
        pop  : HasType gam i b -> HasType (a :: gam) (fS i) b
 
-  data Env : Vect Ty n -> Set where
+  data Env : Vect Ty n -> Type where
        Nil : Env Nil
        (::) : interpTy a -> Env gam -> Env (a :: gam)
 
@@ -72,16 +72,16 @@ using (i: Fin n, gam : Vect Ty n, gam' : Vect Ty n, gam'' : Vect Ty n)
   envTail : Env (a :: gam) -> Env gam
   envTail (x :: xs) = xs
 
-  data Args  : Vect Ty n -> List Set -> Set where
+  data Args  : Vect Ty n -> List Type -> Type where
        ANil  : Args gam []
        ACons : HasType gam i a -> 
                Args gam as -> Args gam (interpTy a :: as)
 
-  funTy : List Set -> Ty -> Ty
+  funTy : List Type -> Ty -> Ty
   funTy list.Nil t = t
   funTy (a :: as) t = a :-> funTy as t
 
-  data Res : Vect Ty n -> Vect Ty n -> Ty -> Set where
+  data Res : Vect Ty n -> Vect Ty n -> Ty -> Type where
 
 {-- Resource creation and usage. 'Let' creates a resource - the type
     at the end means that the resource must have been consumed by the time

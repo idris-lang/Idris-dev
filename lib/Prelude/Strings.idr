@@ -8,7 +8,7 @@ import Prelude.Either
 
 -- Some more complex string operations
 
-data StrM : String -> Set where
+data StrM : String -> Type where
     StrNil : StrM ""
     StrCons : (x : Char) -> (xs : String) -> StrM (strCons x xs)
 

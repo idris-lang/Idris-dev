@@ -1,6 +1,6 @@
 module Language.Reflection
 
-TTName : Set
+TTName : Type
 TTName = String
 
 data TT = Var TTName

@@ -1,6 +1,6 @@
 module Parity
 
-data Parity : Nat -> Set where
+data Parity : Nat -> Type where
    even : Parity (n + n)
    odd  : Parity (S (n + n))
 

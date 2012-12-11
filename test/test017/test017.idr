@@ -4,13 +4,13 @@ module scg
 
 data Ord = Zero | Suc Ord | Sup (Nat -> Ord)
 
-natElim : (n : Nat) -> (P : Nat -> Set) ->
+natElim : (n : Nat) -> (P : Nat -> Type) ->
           (P O) -> ((n : Nat) -> (P n) -> (P (S n))) -> (P n)
 natElim O     P mO mS = mO
 natElim (S k) P mO mS = mS k (natElim k P mO mS)
 
 ordElim : (x : Ord) ->
-          (P : Ord -> Set) ->
+          (P : Ord -> Type) ->
           (P Zero) ->
           ((x : Ord) -> P x -> P (Suc x)) ->
           ((f : Nat -> Ord) -> ((n : Nat) -> P (f n)) -> 

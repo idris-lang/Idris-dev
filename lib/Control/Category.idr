@@ -4,7 +4,7 @@ import Data.Morphisms
 
 %access public
 
-class Category (cat : Set -> Set -> Set) where
+class Category (cat : Type -> Type -> Type) where
   id  : cat a a
   (.) : cat b c -> cat a b -> cat a c
 
