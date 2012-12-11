@@ -386,7 +386,7 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
                    iputStrLn $ show fc ++
                                 ":warning - Unreachable case: " ++ 
                                    show (delab ist x)) xs
-           let knowncovering = pcover && cov
+           let knowncovering = (pcover && cov) || AssertTotal `elem` opts
 
            tree' <- tclift $ simpleCase tcase knowncovering RunTime fc pdef'
            logLvl 3 (show tree)
