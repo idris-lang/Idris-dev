@@ -87,8 +87,8 @@ void* allocate(VM* vm, size_t size, int outerlock) {
     if ((size & 7)!=0) {
 	size = 8 + ((size >> 3) << 3);
     }
-    vm->allocations += size + sizeof(size_t);
     if (vm -> heap_next + size < vm -> heap_end) {
+        vm->allocations += size + sizeof(size_t);
         void* ptr = (void*)(vm->heap_next + sizeof(size_t));
         *((size_t*)(vm->heap_next)) = size + sizeof(size_t);
         vm -> heap_next += size + sizeof(size_t);

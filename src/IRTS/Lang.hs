@@ -125,6 +125,8 @@ lift env (LApp tc f args) = do f' <- lift env f
 lift env (LLazyApp n args) = do args' <- mapM (lift env) args
                                 return (LLazyApp n args')
 lift env (LLazyExp (LConst c)) = return (LConst c)
+-- lift env (LLazyExp (LApp tc (LV (Glob f)) args)) 
+--                       = lift env (LLazyApp f args)
 lift env (LLazyExp e) = do e' <- lift env e
                            let usedArgs = nub $ usedIn env e'
                            fn <- getNextName

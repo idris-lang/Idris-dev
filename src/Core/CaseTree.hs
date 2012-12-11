@@ -171,15 +171,16 @@ simpleCase tc cover phase fc []
 simpleCase tc cover phase fc cs 
       = let proj       = phase == RunTime
             pats       = map (\ (avs, l, r) -> 
-                                   (avs, rev phase (toPats tc l), (l, r))) cs
+                                   (avs, toPats tc l, (l, r))) cs
             chkPats    = mapM chkAccessible pats in
             case chkPats of
                 OK pats ->
                     let numargs    = length (fst (head pats)) 
                         ns         = take numargs args
+                        (ns', ps') = order ns pats
                         (tree, st) = runState 
-                                         (match (rev phase ns) pats (defaultCase cover)) ([], numargs)
-                        t          = CaseDef ns (prune proj (depatt ns tree)) (fst st) in
+                                         (match ns' ps' (defaultCase cover)) ([], numargs)
+                        t          = CaseDef ns (prune proj (depatt ns' tree)) (fst st) in
                         if proj then return (stripLambdas t) else return t
                 Error err -> Error (At fc err)
     where args = map (\i -> MN i "e") [0..]
@@ -195,11 +196,6 @@ simpleCase tc cover phase fc cs
           acc (PV x : xs) n | x == n = OK ()
           acc (PCon _ _ ps : xs) n = acc (ps ++ xs) n
           acc (_ : xs) n = acc xs n
-
--- right to left gives more chance of discriminating on interesting arguments
--- rather than indices which are likely to be repeated.
--- rev CompileTime = id
-rev _ = reverse
 
 data Pat = PCon Name Int [Pat]
          | PConst Const
@@ -264,6 +260,32 @@ partition ms@(m : _)
                        Cons cons : partition rest
 partition xs = error $ "Partition " ++ show xs
 
+-- reorder the patterns so that the one with most distinct names
+-- comes next. Take rightmost first, otherwise (i.e. pick value rather
+-- than dependency)
+
+order :: [Name] -> [Clause] -> ([Name], [Clause])
+order [] cs = ([], cs)
+order ns [] = (ns, [])
+order ns cs = let patnames = transpose (map (zip ns) (map fst cs))
+                  pats' = transpose (sortBy moreDistinct (reverse patnames)) in
+                  (getNOrder pats', zipWith rebuild pats' cs)
+  where
+    getNOrder [] = error $ "Failed order on " ++ show (ns, cs)
+    getNOrder (c : _) = map fst c
+
+    rebuild patnames clause = (map snd patnames, snd clause)
+
+    moreDistinct xs ys = compare (numNames [] (map snd ys)) 
+                                 (numNames [] (map snd xs))
+
+    numNames xs (PCon n _ _ : ps) 
+        | not (Left n `elem` xs) = numNames (Left n : xs) ps
+    numNames xs (PConst c : ps)
+        | not (Right c `elem` xs) = numNames (Right c : xs) ps
+    numNames xs (_ : ps) = numNames xs ps
+    numNames xs [] = length xs
+
 match :: [Name] -> [Clause] -> SC -- error case
                             -> State CS SC
 match [] (([], ret) : xs) err 
@@ -273,8 +295,7 @@ match [] (([], ret) : xs) err
             Impossible -> return ImpossibleCase
             tm -> return $ STerm tm -- run out of arguments
 match vs cs err = do let ps = partition cs
-                     cs <- mixture vs ps err
-                     return cs
+                     mixture vs ps err
 
 mixture :: [Name] -> [Partition] -> SC -> State CS SC
 mixture vs [] err = return err
