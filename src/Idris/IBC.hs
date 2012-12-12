@@ -402,7 +402,7 @@ instance Binary Raw where
                 RApp x1 x2 -> do putWord8 2
                                  put x1
                                  put x2
-                RSet -> putWord8 3
+                RTType -> putWord8 3
                 RConstant x1 -> do putWord8 4
                                    put x1
                 RForce x1 -> do putWord8 5
@@ -419,7 +419,7 @@ instance Binary Raw where
                    2 -> do x1 <- get
                            x2 <- get
                            return (RApp x1 x2)
-                   3 -> return RSet
+                   3 -> return RTType
                    4 -> do x1 <- get
                            return (RConstant x1)
                    5 -> do x1 <- get
@@ -525,8 +525,8 @@ instance (Binary n) => Binary (TT n) where
                                  put x1
                                  put x2
                 Erased -> putWord8 6
-                Set x1 -> do putWord8 7
-                             put x1
+                TType x1 -> do putWord8 7
+                               put x1
                 Impossible -> putWord8 8
         get
           = do i <- getWord8
@@ -551,7 +551,7 @@ instance (Binary n) => Binary (TT n) where
                            return (Proj x1 x2)
                    6 -> return Erased
                    7 -> do x1 <- get
-                           return (Set x1)
+                           return (TType x1)
                    8 -> return Impossible
                    _ -> error "Corrupted binary data for TT"
 

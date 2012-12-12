@@ -446,8 +446,8 @@ simple_app fun arg =
        b <- unique_hole (MN 0 "b")
        f <- unique_hole (MN 0 "f")
        s <- unique_hole (MN 0 "s")
-       claim a RSet
-       claim b RSet
+       claim a RTType
+       claim b RTType
        claim f (RBind (MN 0 "aX") (Pi (Var a)) (Var b))
        start_unify s
        claim s (Var a)
@@ -471,7 +471,7 @@ simple_app fun arg =
 -- which we'll fill with the argument type too.
 arg :: Name -> Name -> Elab' aux ()
 arg n tyhole = do ty <- unique_hole tyhole
-                  claim ty RSet
+                  claim ty RTType
                   forall n (Var ty)
 
 -- Try a tactic, if it fails, try another

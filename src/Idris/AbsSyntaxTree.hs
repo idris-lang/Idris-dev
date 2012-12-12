@@ -873,7 +873,7 @@ prettyImp impl = prettySe 10
         where
           prettyAs =
             foldr (\l -> \r -> l <+> text "," <+> r) empty $ map (prettySe 10) as
-    prettySe p PType = text "Set"
+    prettySe p PType = text "Type"
     prettySe p (PConstant c) = pretty c
     -- XXX: add pretty for tactics
     prettySe p (PProof ts) =
@@ -965,7 +965,7 @@ showImp impl tm = se 10 tm where
     se p (PPair _ l r) = "(" ++ se 10 l ++ ", " ++ se 10 r ++ ")"
     se p (PDPair _ l t r) = "(" ++ se 10 l ++ " ** " ++ se 10 r ++ ")"
     se p (PAlternative a as) = "(|" ++ showSep " , " (map (se 10) as) ++ "|)"
-    se p PType = "Set"
+    se p PType = "Type"
     se p (PConstant c) = show c
     se p (PProof ts) = "proof { " ++ show ts ++ "}"
     se p (PTactics ts) = "tactics { " ++ show ts ++ "}"

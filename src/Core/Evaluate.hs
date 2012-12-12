@@ -49,7 +49,7 @@ data Value = VP NameType Name Value
            | VV Int
            | VBind Name (Binder Value) (Value -> Eval Value)
            | VApp Value Value
-           | VSet UExp
+           | VTType UExp
            | VErased
            | VConstant Const
 --            | VLazy Env [Value] Term
@@ -59,7 +59,7 @@ data HNF = HP NameType Name (TT Name)
          | HV Int
          | HBind Name (Binder HNF) (HNF -> Eval HNF)
          | HApp HNF [HNF] [TT Name]
-         | HSet UExp
+         | HTType UExp
          | HConstant Const
          | HTmp Int
     deriving Show
@@ -228,7 +228,7 @@ eval traceon ctxt maxred ntimes genv tm opts = ev ntimes [] True [] tm where
                 evApply ntimes stk top env [a'] f'
     ev ntimes stk top env (Constant c) = return $ VConstant c
     ev ntimes stk top env Erased    = return VErased
-    ev ntimes stk top env (Set i)   = return $ VSet i
+    ev ntimes stk top env (TType i)   = return $ VTType i
     
     evApply ntimes stk top env args (VApp f a) = 
             evApply ntimes stk top env (a:args) f
@@ -370,7 +370,7 @@ instance Quote Value where
                                 liftM (Bind n b') (quote (i+1) sc')
        where quoteB t = fmapMB (quote i) t
     quote i (VApp f a)     = liftM2 App (quote i f) (quote i a)
-    quote i (VSet u)       = return $ Set u
+    quote i (VTType u)       = return $ TType u
     quote i VErased        = return $ Erased
     quote i (VConstant c)  = return $ Constant c
     quote i (VTmp x)       = return $ V (i - x - 1)
@@ -388,7 +388,7 @@ instance Quote HNF where
         where iEnv [] a = return a
               iEnv (x:xs) a = do x' <- quote i x
                                  iEnv xs (weakenTm (-1) (instantiate x' a))
-    quote i (HSet u)        = return $ Set u
+    quote i (HTType u)        = return $ TType u
     quote i (HConstant c)   = return $ Constant c
     quote i (HTmp x)        = return $ V (i - x - 1)
 
@@ -438,7 +438,7 @@ eval_hnf ctxt statics genv tm = ev [] tm where
       where hbind env t = fmapMB (\tm -> ev env (finalise tm)) t
     ev env (App f a) = evApply env [a] f
     ev env (Constant c) = return $ HConstant c
-    ev env (Set i) = return $ HSet i
+    ev env (TType i) = return $ HTType i
 
     evApply env args (App f a) = evApply env (a : args) f
     evApply env args f = do f' <- ev env f
@@ -550,9 +550,9 @@ convEq ctxt = ceq [] where
             ceqB ps b b' = ceq ps (binderTy b) (binderTy b')
     ceq ps (App fx ax) (App fy ay)   = liftM2 (&&) (ceq ps fx fy) (ceq ps ax ay)
     ceq ps (Constant x) (Constant y) = return (x == y)
-    ceq ps (Set x) (Set y)           = do (v, cs) <- get
-                                          put (v, ULE x y : cs)
-                                          return True
+    ceq ps (TType x) (TType y)           = do (v, cs) <- get
+                                              put (v, ULE x y : cs)
+                                              return True
     ceq ps Erased _ = return True
     ceq ps _ Erased = return True
     ceq ps _ _ = return False

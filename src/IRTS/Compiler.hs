@@ -235,7 +235,7 @@ instance ToIR (TT Name) where
       ir' env (Proj t i) = do t' <- ir' env t
                               return $ LProj t' i
       ir' env (Constant c) = return $ LConst c
-      ir' env (Set _) = return $ LNothing
+      ir' env (TType _) = return $ LNothing
       ir' env Erased = return $ LNothing
       ir' env Impossible = return $ LNothing
 --       ir' env _ = return $ LError "Impossible"
