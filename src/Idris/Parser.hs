@@ -551,7 +551,7 @@ pClass syn = do doc <- option "" (pDocComment '|')
     carg = do lchar '('; i <- pName; lchar ':'; ty <- pExpr syn; lchar ')'
               return (i, ty)
        <|> do i <- pName;
-              return (i, PSet)
+              return (i, PType)
 
 pInstance :: SyntaxInfo -> IParser [PDecl]
 pInstance syn = do reserved "instance"; fc <- pfc
@@ -599,7 +599,7 @@ pSimpleExtExpr syn = do i <- getState
 
 pNoExtExpr syn =
          try (pApp syn) 
-     <|> pRecordSet syn
+     <|> pRecordTType syn
      <|> try (pSimpleExpr syn)
      <|> pLambda syn
      <|> pLet syn
@@ -760,7 +760,7 @@ pSimpleExpr syn =
         <|> try (do c <- pConstant
                     fc <- pfc
                     return (modifyConst syn fc (PConstant c)))
-        <|> do reserved "Type"; return PSet
+        <|> do reserved "Type"; return PType
         <|> try (do symbol "()"
                     fc <- pfc
                     return (PTrue fc))
@@ -879,10 +879,10 @@ pConstraintArg syn = do symbol "@{"
                         symbol "}"
                         return (pconst e)
 
-pRecordSet syn 
+pRecordTType syn 
     = do reserved "record"
          lchar '{'
-         fields <- sepBy1 pFieldSet (lchar ',')
+         fields <- sepBy1 pFieldTType (lchar ',')
          lchar '}'
          fc <- pfc
          rec <- option Nothing (do e <- pSimpleExpr syn
@@ -892,17 +892,17 @@ pRecordSet syn
                 return (PLam (MN 0 "fldx") Placeholder
                             (applyAll fc fields (PRef fc (MN 0 "fldx"))))
             Just v -> return (applyAll fc fields v)
-   where pFieldSet = do n <- pfName
-                        lchar '='
-                        e <- pExpr syn
-                        return (n, e)
+   where pFieldTType = do n <- pfName
+                          lchar '='
+                          e <- pExpr syn
+                          return (n, e)
          applyAll fc [] x = x
          applyAll fc ((n, e) : es) x
-            = applyAll fc es (PApp fc (PRef fc (mkSet n)) [pexp e, pexp x])
+            = applyAll fc es (PApp fc (PRef fc (mkTType n)) [pexp e, pexp x])
                         
-mkSet (UN n) = UN ("set_" ++ n)
-mkSet (MN 0 n) = MN 0 ("set_" ++ n)
-mkSet (NS n s) = NS (mkSet n) s
+mkTType (UN n) = UN ("set_" ++ n)
+mkTType (MN 0 n) = MN 0 ("set_" ++ n)
+mkTType (NS n s) = NS (mkTType n) s
 
 noImp syn = syn { implicitAllowed = False }
 impOK syn = syn { implicitAllowed = True }
@@ -1156,7 +1156,7 @@ pRecord syn = do acc <- pAccessibility
                  mapM_ (\n -> addAcc n acc) fns
                  return $ PRecord "" rsyn fc tyn ty cdoc cn cty
   where
-    getRecNames syn (PPi _ n _ sc) = [expandNS syn n, expandNS syn (mkSet n)]
+    getRecNames syn (PPi _ n _ sc) = [expandNS syn n, expandNS syn (mkTType n)]
                                        ++ getRecNames syn sc
     getRecNames _ _ = []
 
@@ -1193,7 +1193,7 @@ pData syn = try (do doc <- option "" (pDocComment '|')
                     fc <- pfc
                     tyn_in <- pfName
                     args <- many pName
-                    let ty = bindArgs (map (const PSet) args) PSet
+                    let ty = bindArgs (map (const PType) args) PType
                     let tyn = expandNS syn tyn_in
                     option (PData doc syn fc co (PLaterdecl tyn ty)) (do
                       try (lchar '=') <|> do reserved "where"
@@ -1201,11 +1201,11 @@ pData syn = try (do doc <- option "" (pDocComment '|')
                                              let n  = show tyn_in ++ " "
                                              let s  = kw ++ n 
                                              let as = concat (intersperse " " $ map show args) ++ " "
-                                             let ns = concat (intersperse " -> " $ map ((\x -> "(" ++ x ++ " : Set)") . show) args)
-                                             let ss = concat (intersperse " -> " $ map (const "Set") args)
+                                             let ns = concat (intersperse " -> " $ map ((\x -> "(" ++ x ++ " : TType)") . show) args)
+                                             let ss = concat (intersperse " -> " $ map (const "TType") args)
                                              let fix1 = s ++ as ++ " = ..."
-                                             let fix2 = s ++ ": " ++ ns ++ " -> Set where\n  ..."
-                                             let fix3 = s ++ ": " ++ ss ++ " -> Set where\n  ..."
+                                             let fix2 = s ++ ": " ++ ns ++ " -> TType where\n  ..."
+                                             let fix3 = s ++ ": " ++ ss ++ " -> TType where\n  ..."
                                              fail $ fixErrorMsg "unexpected \"where\"" [fix1, fix2, fix3]
                                                          
                       cons <- sepBy1 (pSimpleCon syn) (lchar '|')

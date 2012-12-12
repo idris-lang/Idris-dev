@@ -360,7 +360,7 @@ checkTotality path fc n
         case t' of
             Total _ -> return t'
             Productive -> return t'
-            e -> do w <- cmdOptSet WarnPartial
+            e -> do w <- cmdOptTType WarnPartial
                     if TotalFn `elem` opts
                        then totalityError t'
                        else do when (w && not (PartialFn `elem` opts)) $ 

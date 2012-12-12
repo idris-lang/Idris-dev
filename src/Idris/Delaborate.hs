@@ -38,7 +38,7 @@ delab' ist tm fullname = de [] tm
     de env (Constant i) = PConstant i
     de env Erased = Placeholder
     de env Impossible = Placeholder
-    de env (Set i) = PSet 
+    de env (TType i) = PType 
 
     dens x | fullname = x
     dens ns@(NS n _) = case lookupCtxt Nothing n (idris_implicits ist) of

@@ -220,8 +220,8 @@ pExp = do lchar '\\'; x <- iName []; lchar ':'; ty <- pTerm
                    lchar '.';
                    sc <- pTerm
                    return (RBind x (PVar ty) sc))
-       <|> try (do reserved "Set"
-                   return RSet)
+       <|> try (do reserved "TType"
+                   return RTType)
        <|> try (do x <- iName []
                    return (Var x))
 
