@@ -101,7 +101,7 @@ elab ist info pattern tcgen fn tm
     local f = do e <- get_env
                  return (f `elem` map fst e)
 
-    elab' ina PSet           = do apply RSet []; solve
+    elab' ina PType           = do apply RSet []; solve
     elab' ina (PConstant c)  = do apply (RConstant c) []; solve
     elab' ina (PQuote r)     = do fill r; solve
     elab' ina (PTrue fc)     = try (elab' ina (PRef fc unitCon))

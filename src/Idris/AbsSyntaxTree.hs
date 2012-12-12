@@ -428,7 +428,7 @@ data PTerm = PQuote Raw
            | PDPair FC PTerm PTerm PTerm
            | PAlternative Bool [PTerm] -- True if only one may work
            | PHidden PTerm -- irrelevant or hidden pattern
-           | PSet
+           | PType
            | PConstant Const
            | Placeholder
            | PDoBlock [PDo]
@@ -873,7 +873,7 @@ prettyImp impl = prettySe 10
         where
           prettyAs =
             foldr (\l -> \r -> l <+> text "," <+> r) empty $ map (prettySe 10) as
-    prettySe p PSet = text "Set"
+    prettySe p PType = text "Set"
     prettySe p (PConstant c) = pretty c
     -- XXX: add pretty for tactics
     prettySe p (PProof ts) =
@@ -965,7 +965,7 @@ showImp impl tm = se 10 tm where
     se p (PPair _ l r) = "(" ++ se 10 l ++ ", " ++ se 10 r ++ ")"
     se p (PDPair _ l t r) = "(" ++ se 10 l ++ " ** " ++ se 10 r ++ ")"
     se p (PAlternative a as) = "(|" ++ showSep " , " (map (se 10) as) ++ "|)"
-    se p PSet = "Set"
+    se p PType = "Set"
     se p (PConstant c) = show c
     se p (PProof ts) = "proof { " ++ show ts ++ "}"
     se p (PTactics ts) = "tactics { " ++ show ts ++ "}"
@@ -1009,7 +1009,7 @@ instance Sized PTerm where
   size (PDPair fs left ty right) = 1 + size left + size ty + size right
   size (PAlternative a alts) = 1 + size alts
   size (PHidden hidden) = size hidden
-  size PSet = 1
+  size PType = 1
   size (PConstant const) = 1 + size const
   size Placeholder = 1
   size (PDoBlock dos) = 1 + size dos

@@ -379,8 +379,8 @@ bi = FC "builtin" 0
 inferTy   = MN 0 "__Infer"
 inferCon  = MN 0 "__infer"
 inferDecl = PDatadecl inferTy 
-                      PSet
-                      [("", inferCon, PPi impl (MN 0 "A") PSet (
+                      PType
+                      [("", inferCon, PPi impl (MN 0 "A") PType (
                                   PPi expl (MN 0 "a") (PRef bi (MN 0 "A"))
                                   (PRef bi inferTy)), bi)]
 
@@ -403,17 +403,17 @@ primNames = [unitTy, unitCon,
 
 unitTy   = MN 0 "__Unit"
 unitCon  = MN 0 "__II"
-unitDecl = PDatadecl unitTy PSet
+unitDecl = PDatadecl unitTy PType
                      [("", unitCon, PRef bi unitTy, bi)]
 
 falseTy   = MN 0 "__False"
-falseDecl = PDatadecl falseTy PSet []
+falseDecl = PDatadecl falseTy PType []
 
 pairTy    = MN 0 "__Pair"
 pairCon   = MN 0 "__MkPair"
-pairDecl  = PDatadecl pairTy (piBind [(n "A", PSet), (n "B", PSet)] PSet)
-            [("", pairCon, PPi impl (n "A") PSet (
-                       PPi impl (n "B") PSet (
+pairDecl  = PDatadecl pairTy (piBind [(n "A", PType), (n "B", PType)] PType)
+            [("", pairCon, PPi impl (n "A") PType (
+                       PPi impl (n "B") PType (
                        PPi expl (n "a") (PRef bi (n "A")) (
                        PPi expl (n "b") (PRef bi (n "B"))  
                            (PApp bi (PRef bi pairTy) [pexp (PRef bi (n "A")),
@@ -422,10 +422,10 @@ pairDecl  = PDatadecl pairTy (piBind [(n "A", PSet), (n "B", PSet)] PSet)
 
 eqTy = UN "="
 eqCon = UN "refl"
-eqDecl = PDatadecl eqTy (piBind [(n "a", PSet), (n "b", PSet),
+eqDecl = PDatadecl eqTy (piBind [(n "a", PType), (n "b", PType),
                                  (n "x", PRef bi (n "a")), (n "y", PRef bi (n "b"))]
-                                 PSet)
-                [("", eqCon, PPi impl (n "a") PSet (
+                                 PType)
+                [("", eqCon, PPi impl (n "a") PType (
                          PPi impl (n "x") (PRef bi (n "a"))
                            (PApp bi (PRef bi eqTy) [pimp (n "a") Placeholder,
                                                     pimp (n "b") Placeholder,

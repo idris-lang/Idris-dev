@@ -713,7 +713,7 @@ elabClass :: ElabInfo -> SyntaxInfo -> String ->
              Name -> [(Name, PTerm)] -> [PDecl] -> Idris ()
 elabClass info syn doc fc constraints tn ps ds 
     = do let cn = UN ("instance" ++ show tn) -- MN 0 ("instance" ++ show tn)
-         let tty = pibind ps PSet
+         let tty = pibind ps PType
          let constraint = PApp fc (PRef fc tn)
                                   (map (pexp . PRef fc) (map fst ps))
          -- build data declaration

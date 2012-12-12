@@ -551,7 +551,7 @@ pClass syn = do doc <- option "" (pDocComment '|')
     carg = do lchar '('; i <- pName; lchar ':'; ty <- pExpr syn; lchar ')'
               return (i, ty)
        <|> do i <- pName;
-              return (i, PSet)
+              return (i, PType)
 
 pInstance :: SyntaxInfo -> IParser [PDecl]
 pInstance syn = do reserved "instance"; fc <- pfc
@@ -760,7 +760,7 @@ pSimpleExpr syn =
         <|> try (do c <- pConstant
                     fc <- pfc
                     return (modifyConst syn fc (PConstant c)))
-        <|> do reserved "Type"; return PSet
+        <|> do reserved "Type"; return PType
         <|> try (do symbol "()"
                     fc <- pfc
                     return (PTrue fc))
@@ -1193,7 +1193,7 @@ pData syn = try (do doc <- option "" (pDocComment '|')
                     fc <- pfc
                     tyn_in <- pfName
                     args <- many pName
-                    let ty = bindArgs (map (const PSet) args) PSet
+                    let ty = bindArgs (map (const PType) args) PType
                     let tyn = expandNS syn tyn_in
                     option (PData doc syn fc co (PLaterdecl tyn ty)) (do
                       try (lchar '=') <|> do reserved "where"

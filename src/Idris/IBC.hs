@@ -1210,7 +1210,7 @@ instance Binary PTerm where
                                          put x2
                 PHidden x1 -> do putWord8 16
                                  put x1
-                PSet -> putWord8 17
+                PType -> putWord8 17
                 PConstant x1 -> do putWord8 18
                                    put x1
                 Placeholder -> putWord8 19
@@ -1294,7 +1294,7 @@ instance Binary PTerm where
                             return (PAlternative x1 x2)
                    16 -> do x1 <- get
                             return (PHidden x1)
-                   17 -> return PSet
+                   17 -> return PType
                    18 -> do x1 <- get
                             return (PConstant x1)
                    19 -> return Placeholder
