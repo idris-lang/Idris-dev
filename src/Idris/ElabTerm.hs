@@ -101,7 +101,7 @@ elab ist info pattern tcgen fn tm
     local f = do e <- get_env
                  return (f `elem` map fst e)
 
-    elab' ina PType           = do apply RSet []; solve
+    elab' ina PType           = do apply RType []; solve
     elab' ina (PConstant c)  = do apply (RConstant c) []; solve
     elab' ina (PQuote r)     = do fill r; solve
     elab' ina (PTrue fc)     = try (elab' ina (PRef fc unitCon))
@@ -191,7 +191,7 @@ elab ist info pattern tcgen fn tm
           = do hsin <- get_holes
                ptmin <- get_term
                tyn <- unique_hole (MN 0 "lamty")
-               claim tyn RSet
+               claim tyn RType
                attack
                ptm <- get_term
                hs <- get_holes
@@ -209,7 +209,7 @@ elab ist info pattern tcgen fn tm
           = do attack; arg n (MN 0 "ty"); elabE (True, a) sc; solve
     elab' ina@(_,a) (PPi _ n ty sc) 
           = do attack; tyn <- unique_hole (MN 0 "ty")
-               claim tyn RSet
+               claim tyn RType
                n' <- case n of 
                         MN _ _ -> unique_hole n
                         _ -> return n
@@ -221,7 +221,7 @@ elab ist info pattern tcgen fn tm
     elab' ina@(_,a) (PLet n ty val sc)
           = do attack;
                tyn <- unique_hole (MN 0 "letty")
-               claim tyn RSet
+               claim tyn RType
                valn <- unique_hole (MN 0 "letval")
                claim valn (Var tyn)
                letbind n (Var tyn) (Var valn)
@@ -257,7 +257,7 @@ elab ist info pattern tcgen fn tm
              claimArgTys env (_ : xs) 
                                   = do an <- unique_hole (MN 0 "inf_argTy")
                                        aval <- unique_hole (MN 0 "inf_arg")
-                                       claim an RSet
+                                       claim an RType
                                        claim aval (Var an)
                                        ans <- claimArgTys env xs
                                        return ((aval, (True, (Var an))) : ans)
@@ -338,7 +338,7 @@ elab ist info pattern tcgen fn tm
     elab' ina@(_, a) c@(PCase fc scr opts)
         = do attack
              tyn <- unique_hole (MN 0 "scty")
-             claim tyn RSet
+             claim tyn RType
              valn <- unique_hole (MN 0 "scval")
              scvn <- unique_hole (MN 0 "scvar")
              claim valn (Var tyn)
@@ -592,7 +592,7 @@ runTac autoSolve ist tac = do env <- get_env
               = do attack; -- (h:_) <- get_holes
                    tyn <- unique_hole (MN 0 "rty")
                    -- start_unify h
-                   claim tyn RSet
+                   claim tyn RType
                    valn <- unique_hole (MN 0 "rval")
                    claim valn (Var tyn)
                    letn <- unique_hole (MN 0 "rewrite_rule")
@@ -604,7 +604,7 @@ runTac autoSolve ist tac = do env <- get_env
     runT (LetTac n tm)
               = do attack
                    tyn <- unique_hole (MN 0 "letty")
-                   claim tyn RSet
+                   claim tyn RType
                    valn <- unique_hole (MN 0 "letval")
                    claim valn (Var tyn)
                    letn <- unique_hole n
@@ -615,7 +615,7 @@ runTac autoSolve ist tac = do env <- get_env
     runT (LetTacTy n ty tm)
               = do attack
                    tyn <- unique_hole (MN 0 "letty")
-                   claim tyn RSet
+                   claim tyn RType
                    valn <- unique_hole (MN 0 "letval")
                    claim valn (Var tyn)
                    letn <- unique_hole n

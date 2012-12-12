@@ -599,7 +599,7 @@ pSimpleExtExpr syn = do i <- getState
 
 pNoExtExpr syn =
          try (pApp syn) 
-     <|> pRecordSet syn
+     <|> pRecordType syn
      <|> try (pSimpleExpr syn)
      <|> pLambda syn
      <|> pLet syn
@@ -879,10 +879,10 @@ pConstraintArg syn = do symbol "@{"
                         symbol "}"
                         return (pconst e)
 
-pRecordSet syn 
+pRecordType syn 
     = do reserved "record"
          lchar '{'
-         fields <- sepBy1 pFieldSet (lchar ',')
+         fields <- sepBy1 pFieldType (lchar ',')
          lchar '}'
          fc <- pfc
          rec <- option Nothing (do e <- pSimpleExpr syn
@@ -892,17 +892,17 @@ pRecordSet syn
                 return (PLam (MN 0 "fldx") Placeholder
                             (applyAll fc fields (PRef fc (MN 0 "fldx"))))
             Just v -> return (applyAll fc fields v)
-   where pFieldSet = do n <- pfName
-                        lchar '='
-                        e <- pExpr syn
-                        return (n, e)
+   where pFieldType = do n <- pfName
+                         lchar '='
+                         e <- pExpr syn
+                         return (n, e)
          applyAll fc [] x = x
          applyAll fc ((n, e) : es) x
-            = applyAll fc es (PApp fc (PRef fc (mkSet n)) [pexp e, pexp x])
+            = applyAll fc es (PApp fc (PRef fc (mkType n)) [pexp e, pexp x])
                         
-mkSet (UN n) = UN ("set_" ++ n)
-mkSet (MN 0 n) = MN 0 ("set_" ++ n)
-mkSet (NS n s) = NS (mkSet n) s
+mkType (UN n) = UN ("set_" ++ n)
+mkType (MN 0 n) = MN 0 ("set_" ++ n)
+mkType (NS n s) = NS (mkType n) s
 
 noImp syn = syn { implicitAllowed = False }
 impOK syn = syn { implicitAllowed = True }
@@ -1156,7 +1156,7 @@ pRecord syn = do acc <- pAccessibility
                  mapM_ (\n -> addAcc n acc) fns
                  return $ PRecord "" rsyn fc tyn ty cdoc cn cty
   where
-    getRecNames syn (PPi _ n _ sc) = [expandNS syn n, expandNS syn (mkSet n)]
+    getRecNames syn (PPi _ n _ sc) = [expandNS syn n, expandNS syn (mkType n)]
                                        ++ getRecNames syn sc
     getRecNames _ _ = []
 
@@ -1201,11 +1201,11 @@ pData syn = try (do doc <- option "" (pDocComment '|')
                                              let n  = show tyn_in ++ " "
                                              let s  = kw ++ n 
                                              let as = concat (intersperse " " $ map show args) ++ " "
-                                             let ns = concat (intersperse " -> " $ map ((\x -> "(" ++ x ++ " : Set)") . show) args)
-                                             let ss = concat (intersperse " -> " $ map (const "Set") args)
+                                             let ns = concat (intersperse " -> " $ map ((\x -> "(" ++ x ++ " : Type)") . show) args)
+                                             let ss = concat (intersperse " -> " $ map (const "Type") args)
                                              let fix1 = s ++ as ++ " = ..."
-                                             let fix2 = s ++ ": " ++ ns ++ " -> Set where\n  ..."
-                                             let fix3 = s ++ ": " ++ ss ++ " -> Set where\n  ..."
+                                             let fix2 = s ++ ": " ++ ns ++ " -> Type where\n  ..."
+                                             let fix3 = s ++ ": " ++ ss ++ " -> Type where\n  ..."
                                              fail $ fixErrorMsg "unexpected \"where\"" [fix1, fix2, fix3]
                                                          
                       cons <- sepBy1 (pSimpleCon syn) (lchar '|')

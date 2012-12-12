@@ -23,8 +23,8 @@ data Prim = Prim { p_name  :: Name,
 ty []     x = Constant x
 ty (t:ts) x = Bind (MN 0 "T") (Pi (Constant t)) (ty ts x)
 
-believeTy = Bind (UN "a") (Pi (Set (UVar (-2))))
-            (Bind (UN "b") (Pi (Set (UVar (-2))))
+believeTy = Bind (UN "a") (Pi (TType (UVar (-2))))
+            (Bind (UN "b") (Pi (TType (UVar (-2))))
             (Bind (UN "x") (Pi (V 1)) (V 1)))
 
 total = Total []

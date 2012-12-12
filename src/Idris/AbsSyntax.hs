@@ -352,9 +352,9 @@ logLvl l str = do i <- get
                       $ do liftIO (putStrLn str)
                            put (i { idris_log = idris_log i ++ str ++ "\n" } )
 
-cmdOptSet :: Opt -> Idris Bool
-cmdOptSet x = do i <- get
-                 return $ x `elem` opt_cmdline (idris_options i)
+cmdOptType :: Opt -> Idris Bool
+cmdOptType x = do i <- get
+                  return $ x `elem` opt_cmdline (idris_options i)
 
 iLOG :: String -> Idris ()
 iLOG = logLvl 1
@@ -385,7 +385,7 @@ inferDecl = PDatadecl inferTy
                                   (PRef bi inferTy)), bi)]
 
 infTerm t = PApp bi (PRef bi inferCon) [pimp (MN 0 "A") Placeholder, pexp t]
-infP = P (TCon 6 0) inferTy (Set (UVal 0))
+infP = P (TCon 6 0) inferTy (TType (UVal 0))
 
 getInferTerm, getInferType :: Term -> Term
 getInferTerm (Bind n b sc) = Bind n b $ getInferTerm sc

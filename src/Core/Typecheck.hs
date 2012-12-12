@@ -38,10 +38,10 @@ converts ctxt env x y
 
 errEnv = map (\(x, b) -> (x, binderTy b))
 
-isSet :: Context -> Env -> Term -> TC ()
-isSet ctxt env tm = isSet' (normalise ctxt env tm)
-    where isSet' (Set _) = return ()
-          isSet' tm = fail (showEnv env tm ++ " is not a Set")
+isType :: Context -> Env -> Term -> TC ()
+isType ctxt env tm = isType' (normalise ctxt env tm)
+    where isType' (TType _) = return ()
+          isType' tm = fail (showEnv env tm ++ " is not a TType")
 
 recheck :: Context -> Env -> Raw -> Term -> TC (Term, Type, UCs)
 recheck ctxt env tm orig
@@ -87,12 +87,12 @@ check' holes ctxt env top = chk env top where
     where renameBinders i (Bind x (Pi s) t) = Bind (MN i "binder") (Pi s) 
                                                    (renameBinders (i+1) t)
           renameBinders i sc = sc
-  chk env RSet 
-    | holes = return (Set (UVal 0), Set (UVal 0))
+  chk env RType 
+    | holes = return (TType (UVal 0), TType (UVal 0))
     | otherwise = do (v, cs) <- get
                      let c = ULT (UVar v) (UVar (v+1))
                      put (v+2, (c:cs))
-                     return (Set (UVar v), Set (UVar (v+1)))
+                     return (TType (UVar v), TType (UVar (v+1)))
   chk env (RConstant Forgot) = return (Erased, Erased)
   chk env (RConstant c) = return (Constant c, constType c)
     where constType (I _)   = Constant IType
@@ -103,18 +103,18 @@ check' holes ctxt env top = chk env top where
           constType (W8 _)  = Constant W8Type
           constType (W16 _) = Constant W16Type
           constType Forgot  = Erased
-          constType _       = Set (UVal 0)
+          constType _       = TType (UVal 0)
   chk env (RForce t) = do (_, ty) <- chk env t
                           return (Erased, ty)
   chk env (RBind n (Pi s) t)
       = do (sv, st) <- chk env s
            (tv, tt) <- chk ((n, Pi sv) : env) t
            (v, cs) <- get
-           let Set su = normalise ctxt env st
-           let Set tu = normalise ctxt env tt
+           let TType su = normalise ctxt env st
+           let TType tu = normalise ctxt env tt
            when (not holes) $ put (v+1, ULE su (UVar v):ULE tu (UVar v):cs)
            return (Bind n (Pi (uniqueBinders (map fst env) sv)) 
-                              (pToV n tv), Set (UVar v))  
+                              (pToV n tv), TType (UVar v))  
   chk env (RBind n b sc)
       = do b' <- checkBinder b
            (scv, sct) <- chk ((n, b'):env) sc
@@ -123,13 +123,13 @@ check' holes ctxt env top = chk env top where
             = do (tv, tt) <- chk env t
                  let tv' = normalise ctxt env tv
                  let tt' = normalise ctxt env tt
-                 lift $ isSet ctxt env tt'
+                 lift $ isType ctxt env tt'
                  return (Lam tv)
           checkBinder (Pi t)
             = do (tv, tt) <- chk env t
                  let tv' = normalise ctxt env tv
                  let tt' = normalise ctxt env tt
-                 lift $ isSet ctxt env tt'
+                 lift $ isType ctxt env tt'
                  return (Pi tv)
           checkBinder (Let t v)
             = do (tv, tt) <- chk env t
@@ -137,7 +137,7 @@ check' holes ctxt env top = chk env top where
                  let tv' = normalise ctxt env tv
                  let tt' = normalise ctxt env tt
                  convertsC ctxt env vt tv
-                 lift $ isSet ctxt env tt'
+                 lift $ isType ctxt env tt'
                  return (Let tv vv)
           checkBinder (NLet t v)
             = do (tv, tt) <- chk env t
@@ -145,7 +145,7 @@ check' holes ctxt env top = chk env top where
                  let tv' = normalise ctxt env tv
                  let tt' = normalise ctxt env tt
                  convertsC ctxt env vt tv
-                 lift $ isSet ctxt env tt'
+                 lift $ isType ctxt env tt'
                  return (NLet tv vv)
           checkBinder (Hole t)
             | not holes = lift $ tfail (IncompleteTerm undefined)
@@ -153,13 +153,13 @@ check' holes ctxt env top = chk env top where
                    = do (tv, tt) <- chk env t
                         let tv' = normalise ctxt env tv
                         let tt' = normalise ctxt env tt
-                        lift $ isSet ctxt env tt'
+                        lift $ isType ctxt env tt'
                         return (Hole tv)
           checkBinder (GHole t)
             = do (tv, tt) <- chk env t
                  let tv' = normalise ctxt env tv
                  let tt' = normalise ctxt env tt
-                 lift $ isSet ctxt env tt'
+                 lift $ isType ctxt env tt'
                  return (GHole tv)
           checkBinder (Guess t v)
             | not holes = lift $ tfail (IncompleteTerm undefined)
@@ -169,19 +169,19 @@ check' holes ctxt env top = chk env top where
                         let tv' = normalise ctxt env tv
                         let tt' = normalise ctxt env tt
                         convertsC ctxt env vt tv
-                        lift $ isSet ctxt env tt'
+                        lift $ isType ctxt env tt'
                         return (Guess tv vv)
           checkBinder (PVar t)
             = do (tv, tt) <- chk env t
                  let tv' = normalise ctxt env tv
                  let tt' = normalise ctxt env tt
-                 lift $ isSet ctxt env tt'
+                 lift $ isType ctxt env tt'
                  return (PVar tv)
           checkBinder (PVTy t)
             = do (tv, tt) <- chk env t
                  let tv' = normalise ctxt env tv
                  let tt' = normalise ctxt env tt
-                 lift $ isSet ctxt env tt'
+                 lift $ isType ctxt env tt'
                  return (PVTy tv)
   
           discharge n (Lam t) scv sct
@@ -221,17 +221,17 @@ checkProgram :: Context -> RProgram -> TC Context
 checkProgram ctxt [] = return ctxt
 checkProgram ctxt ((n, RConst t) : xs) 
    = do (t', tt') <- trace (show n) $ check ctxt [] t
-        isSet ctxt [] tt'
+        isType ctxt [] tt'
         checkProgram (addTyDecl n t' ctxt) xs
 checkProgram ctxt ((n, RFunction (RawFun ty val)) : xs)
    = do (ty', tyt') <- trace (show n) $ check ctxt [] ty
         (val', valt') <- check ctxt [] val
-        isSet ctxt [] tyt'
+        isType ctxt [] tyt'
         converts ctxt [] ty' valt'
         checkProgram (addToCtxt n val' ty' ctxt) xs
 checkProgram ctxt ((n, RData (RDatatype _ ty cons)) : xs)
    = do (ty', tyt') <- trace (show n) $ check ctxt [] ty
-        isSet ctxt [] tyt'
+        isType ctxt [] tyt'
         -- add the tycon temporarily so we can check constructors
         let ctxt' = addDatatype (Data n 0 ty' []) ctxt
         cons' <- mapM (checkCon ctxt') cons
