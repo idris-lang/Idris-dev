@@ -14,7 +14,7 @@ import Util.Pretty hiding (Str)
 
 {- The language has:
    * Full dependent types
-   * A hierarchy of universes, with cumulativity: Set : Set1, Set1 : Set2, ...
+   * A hierarchy of universes, with cumulativity: Type : Type1, Type1 : Type2, ...
    * Pattern matching letrec binding
    * (primitive types defined externally)
 
@@ -123,7 +123,7 @@ instance Show a => Show (TC a) where
     show (Error str) = "Error: " ++ show str
 
 -- at some point, this instance should also carry type checking options
--- (e.g. Set:Set)
+-- (e.g. Type:Type)
 
 instance Monad TC where
     return = OK 
@@ -719,7 +719,7 @@ prettyEnv env t = prettyEnv' env t False
       prettySe 1 env x debug <+> text ("!" ++ show i)
     prettySe p env (Constant c) debug = pretty c
     prettySe p env Erased debug = text "[_]"
-    prettySe p env (Set i) debug = text "Set" <+> (text . show $ i)
+    prettySe p env (Set i) debug = text "Type" <+> (text . show $ i)
 
     prettySb env n (Lam t) = prettyB env "λ" "=>" n t
     prettySb env n (Hole t) = prettyB env "?defer" "." n t
@@ -751,7 +751,7 @@ showEnv' env t dbg = se 10 env t where
     se p env (Constant c) = show c
     se p env Erased = "[__]"
     se p env Impossible = "[impossible]"
-    se p env (Set i) = "Set " ++ show i
+    se p env (Set i) = "Type " ++ show i
 
     sb env n (Lam t)  = showb env "\\ " " => " n t
     sb env n (Hole t) = showb env "? " ". " n t
