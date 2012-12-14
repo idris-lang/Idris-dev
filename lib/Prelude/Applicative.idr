@@ -11,4 +11,6 @@ class Functor f => Applicative (f : Type -> Type) where
     pure  : a -> f a
     (<$>) : f (a -> b) -> f a -> f b 
 
-
+class Applicative f => Alternative (f : Type -> Type) where
+    empty : f a
+    (<|>) : f a -> f a -> f a
