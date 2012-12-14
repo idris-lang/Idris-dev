@@ -134,13 +134,6 @@ instance Monad Maybe where
     Nothing  >>= k = Nothing
     (Just x) >>= k = k x
 
-instance MonadPlus Maybe where 
-    mzero = Nothing
-
-    mplus (Just x) _       = Just x
-    mplus Nothing (Just y) = Just y
-    mplus Nothing Nothing  = Nothing
-
 instance Monad (Either e) where
     return = Right
 
@@ -150,10 +143,6 @@ instance Monad (Either e) where
 instance Monad List where 
     return x = [x]
     m >>= f = concatMap f m
-
-instance MonadPlus List where 
-    mzero = []
-    mplus = (++)
 
 ---- some mathematical operations
 

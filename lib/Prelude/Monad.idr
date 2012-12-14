@@ -14,10 +14,6 @@ class Applicative m => Monad (m : Type -> Type) where
     return : a -> m a
     (>>=)  : m a -> (a -> m b) -> m b
 
-class Monad m => MonadPlus (m : Type -> Type) where 
-    mplus : m a -> m a -> m a
-    mzero : m a
-
 mapM : Monad m => (a -> m b) -> List a -> m (List b)
 mapM f xs = sequence (map f xs)
 
