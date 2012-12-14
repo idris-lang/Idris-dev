@@ -1136,7 +1136,8 @@ accData a n ns = do addAcc n a
                     mapM_ (`addAcc` a) ns
 
 pRecord :: SyntaxInfo -> IParser PDecl
-pRecord syn = do acc <- pAccessibility
+pRecord syn = do doc <- option "" (pDocComment '|')
+                 acc <- pAccessibility
                  reserved "record"
                  fc <- pfc
                  tyn_in <- pfName
@@ -1154,7 +1155,7 @@ pRecord syn = do acc <- pAccessibility
                                                      syn_namespace syn }
                  let fns = getRecNames rsyn cty
                  mapM_ (\n -> addAcc n acc) fns
-                 return $ PRecord "" rsyn fc tyn ty cdoc cn cty
+                 return $ PRecord doc rsyn fc tyn ty cdoc cn cty
   where
     getRecNames syn (PPi _ n _ sc) = [expandNS syn n, expandNS syn (mkSet n)]
                                        ++ getRecNames syn sc
