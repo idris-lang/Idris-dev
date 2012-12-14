@@ -18,10 +18,6 @@ class Monad m => MonadPlus (m : Type -> Type) where
     mplus : m a -> m a -> m a
     mzero : m a
 
-when : Monad m => Bool -> m () -> m ()
-when True  f = f
-when False _ = return ()
-
 sequence : Monad m => List (m a) -> m (List a)
 sequence []        = return []
 sequence (x :: xs) = [ x' :: xs' | x' <- x, xs' <- sequence xs ]
