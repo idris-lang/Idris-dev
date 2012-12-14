@@ -109,6 +109,19 @@ instance Applicative List where
 
     fs <$> vs = concatMap (\f => map f vs) fs
 
+---- Alternative instances
+
+instance Alternative Maybe where
+    empty = Nothing
+
+    (Just x) <|> _ = Just x
+    Nothing  <|> v = v
+
+instance Alternative List where
+    empty = []
+    
+    (<|>) = (++)
+
 ---- Monad instances
 
 instance Monad IO where 
