@@ -28,3 +28,11 @@ guard a = if a then pure () else empty
 
 when : Applicative f => Bool -> f () -> f ()
 when a f = if a then f else pure ()
+
+sequence : Applicative f => List (f a) -> f (List a)
+sequence []        = pure []
+sequence (x :: xs) = fmap (::) x <$> sequence xs
+
+sequence_ : Applicative f => List (f a) -> f ()
+sequence_ [] = pure ()
+sequence_ (x :: xs) = x $> sequence_ xs
