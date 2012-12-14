@@ -19,6 +19,7 @@ infixl 2 $>
 ($>) : Applicative f => f a -> f b -> f b
 a $> b = fmap (const id) a <$> b
 
+infixl 3 <|>
 class Applicative f => Alternative (f : Type -> Type) where
     empty : f a
     (<|>) : f a -> f a -> f a
