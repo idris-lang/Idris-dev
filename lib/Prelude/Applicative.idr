@@ -14,3 +14,6 @@ class Functor f => Applicative (f : Type -> Type) where
 class Applicative f => Alternative (f : Type -> Type) where
     empty : f a
     (<|>) : f a -> f a -> f a
+
+guard : Alternative f => Bool -> f ()
+guard a = if a then pure () else empty

@@ -18,10 +18,6 @@ class Monad m => MonadPlus (m : Type -> Type) where
     mplus : m a -> m a -> m a
     mzero : m a
 
-guard : MonadPlus m => Bool -> m ()
-guard True  = return ()
-guard False = mzero
-
 when : Monad m => Bool -> m () -> m ()
 when True  f = f
 when False _ = return ()
