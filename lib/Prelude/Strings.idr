@@ -88,7 +88,7 @@ lines' s = case dropWhile isNL s of
                   in w :: words' s''
 
 lines : String -> List String
-lines s = map pack $ words' $ unpack s
+lines s = map pack $ lines' $ unpack s
 
 partial
 foldr1 : (a -> a -> a) -> List a -> a
