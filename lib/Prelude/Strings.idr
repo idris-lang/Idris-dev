@@ -84,11 +84,11 @@ words s = map pack $ words' $ unpack s
 lines' : List Char -> List (List Char)
 lines' s = case dropWhile isNL s of
             [] => []
-            s' => let (w, s'') = break isSpace s'
-                  in w :: words' s''
+            s' => let (w, s'') = break isNL s'
+                  in w :: lines' s''
 
 lines : String -> List String
-lines s = map pack $ words' $ unpack s
+lines s = map pack $ lines' $ unpack s
 
 partial
 foldr1 : (a -> a -> a) -> List a -> a
