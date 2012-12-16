@@ -301,6 +301,14 @@ catMaybes (Nothing::xs)  = catMaybes xs
 catMaybes ((Just j)::xs) with (catMaybes xs)
   | (_ ** tail) = (_ ** j::tail)
 
+range : Vect (Fin n) n
+range =
+  reverse range_
+ where
+  range_ : Vect (Fin n) n
+  range_ {n=O} = Nil
+  range_ {n=(S _)} = last :: map weaken range_
+
 --------------------------------------------------------------------------------
 -- Proofs
 --------------------------------------------------------------------------------
