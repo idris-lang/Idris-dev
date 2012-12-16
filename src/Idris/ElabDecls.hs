@@ -49,7 +49,7 @@ elabType info syn doc fc opts n ty' = {- let ty' = piBind (params info) ty_in
          ty' <- implicit syn n ty'
          let ty = addImpl i ty'
          logLvl 2 $ show n ++ " type " ++ showImp True ty
-         ((tyT, defer, is), log) <- tclift $ elaborate ctxt n (Set (UVal 0)) []
+         ((tyT, defer, is), log) <- tclift $ elaborate ctxt n (TType (UVal 0)) []
                                              (erun fc (build i info False n ty))
          ds <- checkDef fc defer
          addDeferred ds
@@ -113,7 +113,7 @@ elabData info syn doc fc codata (PLaterdecl n t_in)
          i <- get
          t_in <- implicit syn n t_in
          let t = addImpl i t_in
-         ((t', defer, is), log) <- tclift $ elaborate ctxt n (Set (UVal 0)) []
+         ((t', defer, is), log) <- tclift $ elaborate ctxt n (TType (UVal 0)) []
                                             (erun fc (build i info False n t))
          def' <- checkDef fc defer
          addDeferred def'
@@ -129,7 +129,7 @@ elabData info syn doc fc codata (PDatadecl n t_in dcons)
          i <- get
          t_in <- implicit syn n t_in
          let t = addImpl i t_in
-         ((t', defer, is), log) <- tclift $ elaborate ctxt n (Set (UVal 0)) []
+         ((t', defer, is), log) <- tclift $ elaborate ctxt n (TType (UVal 0)) []
                                             (erun fc (build i info False n t))
          def' <- checkDef fc defer
          addDeferred def'
@@ -218,9 +218,9 @@ elabRecord info syn doc fc tyn ty cdoc cn cty
     mkImp (MN i n) = MN i ("implicit_" ++ n)
     mkImp (NS n s) = NS (mkImp n) s
 
-    mkSet (UN n) = UN ("set_" ++ n)
-    mkSet (MN i n) = MN i ("set_" ++ n)
-    mkSet (NS n s) = NS (mkSet n) s
+    mkType (UN n) = UN ("set_" ++ n)
+    mkType (MN i n) = MN i ("set_" ++ n)
+    mkType (NS n s) = NS (mkType n) s
 
     mkProj recty substs cimp ((pn_in, pty), pos)
         = do let pn = expandNS syn pn_in
@@ -241,7 +241,7 @@ elabRecord info syn doc fc tyn ty cdoc cn cty
     implicitise (pa, t) = pa { getTm = t }
 
     mkUpdate recty k num ((pn, pty), pos)
-       = do let setname = expandNS syn $ mkSet pn
+       = do let setname = expandNS syn $ mkType pn
             let valname = MN 0 "updateval"
             let pt = k (PPi expl pn pty
                            (PPi expl rec recty recty))
@@ -269,7 +269,7 @@ elabCon info syn tn codata (doc, n, t_in, fc)
          t_in <- implicit syn n (if codata then mkLazy t_in else t_in)
          let t = addImpl i t_in
          logLvl 2 $ show fc ++ ":Constructor " ++ show n ++ " : " ++ showImp True t
-         ((t', defer, is), log) <- tclift $ elaborate ctxt n (Set (UVal 0)) []
+         ((t', defer, is), log) <- tclift $ elaborate ctxt n (TType (UVal 0)) []
                                             (erun fc (build i info False n t))
          logLvl 2 $ "Rechecking " ++ show t'
          def' <- checkDef fc defer
@@ -449,11 +449,11 @@ elabVal info aspat tm_in
         logLvl 10 (showImp True tm)
         -- try:
         --    * ordinary elaboration
-        --    * elaboration as a Set
+        --    * elaboration as a Type
         --    * elaboration as a function a -> b
         
         ((tm', defer, is), _) <- 
-            tctry (elaborate ctxt (MN 0 "val") (Set (UVal 0)) []                         
+            tctry (elaborate ctxt (MN 0 "val") (TType (UVal 0)) []                         
                        (build i info aspat (MN 0 "val") tm))
                   (elaborate ctxt (MN 0 "val") infP []
                         (build i info aspat (MN 0 "val") (infTerm tm)))
@@ -713,7 +713,7 @@ elabClass :: ElabInfo -> SyntaxInfo -> String ->
              Name -> [(Name, PTerm)] -> [PDecl] -> Idris ()
 elabClass info syn doc fc constraints tn ps ds 
     = do let cn = UN ("instance" ++ show tn) -- MN 0 ("instance" ++ show tn)
-         let tty = pibind ps PSet
+         let tty = pibind ps PType
          let constraint = PApp fc (PRef fc tn)
                                   (map (pexp . PRef fc) (map fst ps))
          -- build data declaration

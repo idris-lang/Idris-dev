@@ -25,7 +25,7 @@ import Util.Pretty hiding (Str)
      programs with implicit syntax into fully explicit terms.
 -}
 
-data Option = SetInSet
+data Option = TTypeInTType
             | CheckConv
   deriving Eq
 
@@ -291,7 +291,7 @@ instance Pretty Const where
 data Raw = Var Name
          | RBind Name (Binder Raw) Raw
          | RApp Raw Raw
-         | RSet
+         | RType
          | RForce Raw
          | RConstant Const
   deriving (Show, Eq)
@@ -300,7 +300,7 @@ instance Sized Raw where
   size (Var name) = 1
   size (RBind name bind right) = 1 + size bind + size right
   size (RApp left right) = 1 + size left + size right
-  size RSet = 1
+  size RType = 1
   size (RForce raw) = 1 + size raw
   size (RConstant const) = size const
 
@@ -434,7 +434,7 @@ data TT n = P NameType n (TT n) -- embed type
           | Proj (TT n) Int -- argument projection; runtime only
           | Erased
           | Impossible -- special case for totality checking
-          | Set UExp
+          | TType UExp
   deriving (Ord, Functor)
 {-! 
 deriving instance Binary TT 
@@ -465,7 +465,7 @@ instance Sized a => Sized (TT a) where
   size (App l r) = 1 + size l + size r
   size (Constant c) = size c
   size Erased = 1
-  size (Set u) = 1 + size u
+  size (TType u) = 1 + size u
 
 instance Pretty a => Pretty (TT a) where
   pretty _ = text "test"
@@ -483,7 +483,7 @@ instance Eq n => Eq (TT n) where
     (==) (V x)          (V y)          = x == y
     (==) (Bind _ xb xs) (Bind _ yb ys) = xb == yb && xs == ys
     (==) (App fx ax)    (App fy ay)    = fx == fy && ax == ay
-    (==) (Set _)        (Set _)        = True -- deal with constraints later
+    (==) (TType _)        (TType _)        = True -- deal with constraints later
     (==) (Constant x)   (Constant y)   = x == y
     (==) (Proj x i)     (Proj y j)     = x == y && i == j
     (==) Erased         _              = True
@@ -496,7 +496,7 @@ isInjective :: TT n -> Bool
 isInjective (P (DCon _ _) _ _) = True
 isInjective (P (TCon _ _) _ _) = True
 isInjective (Constant _)       = True
-isInjective (Set x)            = True
+isInjective (TType x)            = True
 isInjective (Bind _ (Pi _) sc) = True
 isInjective (App f a)          = isInjective f
 isInjective _                  = False
@@ -610,7 +610,7 @@ forget tm = fe [] tm
     fe env (App f a) = RApp (fe env f) (fe env a)
     fe env (Constant c) 
                      = RConstant c
-    fe env (Set i)   = RSet
+    fe env (TType i)   = RType
     fe env Erased    = RConstant Forgot 
     
 bindAll :: [(n, Binder (TT n))] -> TT n -> TT n 
@@ -719,7 +719,7 @@ prettyEnv env t = prettyEnv' env t False
       prettySe 1 env x debug <+> text ("!" ++ show i)
     prettySe p env (Constant c) debug = pretty c
     prettySe p env Erased debug = text "[_]"
-    prettySe p env (Set i) debug = text "Type" <+> (text . show $ i)
+    prettySe p env (TType i) debug = text "Type" <+> (text . show $ i)
 
     prettySb env n (Lam t) = prettyB env "λ" "=>" n t
     prettySb env n (Hole t) = prettyB env "?defer" "." n t
@@ -751,7 +751,7 @@ showEnv' env t dbg = se 10 env t where
     se p env (Constant c) = show c
     se p env Erased = "[__]"
     se p env Impossible = "[impossible]"
-    se p env (Set i) = "Type " ++ show i
+    se p env (TType i) = "Type " ++ show i
 
     sb env n (Lam t)  = showb env "\\ " " => " n t
     sb env n (Hole t) = showb env "? " ". " n t

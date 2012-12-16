@@ -41,6 +41,6 @@ sequence_ (x :: xs) = x $> sequence_ xs
 traverse : Applicative f => (a -> f b) -> List a -> f (List b)
 traverse f xs = sequence (map f xs)
 
-partial
 traverse_ : Applicative f => (a -> f b) -> List a -> f ()
 traverse_ f (x :: xs) = f x $> traverse_ f xs
+traverse_ f [] = pure []

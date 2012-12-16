@@ -26,7 +26,7 @@ processCommand :: Command -> ShellState -> (ShellState, String)
 processCommand (Theorem n ty) state 
     = case check (ctxt state) [] ty of
               OK (gl, t) -> 
-                 case isSet (ctxt state) [] t of
+                 case isType (ctxt state) [] t of
                     OK _ -> (state { prf = Just (newProof n (ctxt state) gl) }, "")
                     _ ->    (state, "Goal is not a type")
               err ->            (state, show err)

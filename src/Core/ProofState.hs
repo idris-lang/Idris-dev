@@ -236,7 +236,7 @@ attack ctxt env _ = fail "Not an attackable hole"
 claim :: Name -> Raw -> RunTactic
 claim n ty ctxt env t =
     do (tyv, tyt) <- lift $ check ctxt env ty
-       lift $ isSet ctxt env tyt
+       lift $ isType ctxt env tyt
        action (\ps -> let (g:gs) = holes ps in
                           ps { holes = g : n : gs } )
        return $ Bind n (Hole tyv) t -- (weakenTm 1 t)
@@ -418,8 +418,8 @@ intro n ctxt env _ = fail "Can't introduce here."
 forall :: Name -> Raw -> RunTactic
 forall n ty ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' =
     do (tyv, tyt) <- lift $ check ctxt env ty
-       lift $ isSet ctxt env tyt
-       lift $ isSet ctxt env t
+       lift $ isType ctxt env tyt
+       lift $ isType ctxt env t
        return $ Bind n (Pi tyv) (Bind x (Hole t) (P Bound x t))
 forall n ty ctxt env _ = fail "Can't pi bind here"
 
@@ -433,7 +433,7 @@ letbind :: Name -> Raw -> Raw -> RunTactic
 letbind n ty val ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' =
     do (tyv,  tyt)  <- lift $ check ctxt env ty
        (valv, valt) <- lift $ check ctxt env val
-       lift $ isSet ctxt env tyt
+       lift $ isType ctxt env tyt
        return $ Bind n (Let tyv valv) (Bind x (Hole t) (P Bound x t))
 letbind n ty val ctxt env _ = fail "Can't let bind here"
 
@@ -446,7 +446,7 @@ rewrite tm ctxt env (Bind x (Hole t) xp@(P _ x' _)) | x == x' =
             do let p = Bind rname (Lam lt) (mkP (P Bound rname lt) r l t)
                let newt = mkP l r l t 
                let sc = forget $ (Bind x (Hole newt) 
-                                       (mkApp (P Ref (UN "replace") (Set (UVal 0)))
+                                       (mkApp (P Ref (UN "replace") (TType (UVal 0)))
                                               [lt, l, r, p, tmv, xp]))
                (scv, sct) <- lift $ check ctxt env sc
                return scv

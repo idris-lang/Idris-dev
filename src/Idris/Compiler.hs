@@ -147,7 +147,7 @@ instance ToEpic (TT Name) where
                                return (f' @@ a')
       epic' env (Constant c) = epic c
       epic' env Erased       = return impossible
-      epic' env (Set _)      = return impossible
+      epic' env (TType _)      = return impossible
 
       epicCon env t arity n args
         | length args == arity = buildApp env (con_ t) args
