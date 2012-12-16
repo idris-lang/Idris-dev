@@ -24,3 +24,7 @@ strengthen {n = S k} (fS i) with (strengthen i)
   strengthen (fS k) | Left x   = Left (fS x)
   strengthen (fS k) | Right x  = Right (fS x)
 strengthen f = Left f
+
+last : Fin (S n)
+last {n=O} = fO
+last {n=S _} = fS last
