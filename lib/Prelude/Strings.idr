@@ -28,10 +28,15 @@ strM x with (choose (not (x == "")))
   strM x | (Left p)  = believe_me $ StrCons (strHead' x p) (strTail' x p)
   strM x | (Right p) = believe_me StrNil
 
+-- annoyingly, we need these assert_totals because StrCons doesn't have
+-- a recursive argument, therefore the termination checker doesn't believe
+-- the string is guaranteed smaller. It makes a good point.
+
+%assert_total
 unpack : String -> List Char
 unpack s with (strM s)
   unpack ""             | StrNil = []
-  unpack (strCons x xs) | (StrCons _ _) = x :: unpack xs
+  unpack (strCons x xs) | (StrCons _ xs) = x :: unpack xs
 
 pack : List Char -> String
 pack [] = ""
@@ -49,6 +54,7 @@ instance Semigroup String where
 instance Monoid String where
   neutral = ""
 
+%assert_total
 span : (Char -> Bool) -> String -> (String, String)
 span p xs with (strM xs)
   span p ""             | StrNil        = ("", "")
@@ -63,6 +69,7 @@ break p = span (not . p)
 split : (Char -> Bool) -> String -> List String
 split p xs = map pack (split p (unpack xs))
 
+%assert_total
 ltrim : String -> String
 ltrim xs with (strM xs)
     ltrim "" | StrNil = ""
@@ -72,6 +79,7 @@ ltrim xs with (strM xs)
 trim : String -> String
 trim xs = ltrim (reverse (ltrim (reverse xs)))
 
+%assert_total
 words' : List Char -> List (List Char)
 words' s = case dropWhile isSpace s of
             [] => []
@@ -81,6 +89,7 @@ words' s = case dropWhile isSpace s of
 words : String -> List String
 words s = map pack $ words' $ unpack s
 
+%assert_total
 lines' : List Char -> List (List Char)
 lines' s = case dropWhile isNL s of
             [] => []

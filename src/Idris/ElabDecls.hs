@@ -396,7 +396,9 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
            put (ist { idris_patdefs = addDef n pdef' (idris_patdefs ist) })
            case lookupTy (namespace info) n ctxt of
                [ty] -> do updateContext (addCasedef n (inlinable opts)
-                                                       tcase knowncovering pats
+                                                       tcase knowncovering 
+                                                       (AssertTotal `elem` opts)
+                                                       pats
                                                        pdef pdef' ty)
                           addIBC (IBCDef n)
                           setTotality n tot

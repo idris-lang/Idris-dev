@@ -615,10 +615,12 @@ instance Show Def where
     show (Function ty tm) = "Function: " ++ show (ty, tm)
     show (TyDecl nt ty) = "TyDecl: " ++ show nt ++ " " ++ show ty
     show (Operator ty _ _) = "Operator: " ++ show ty
-    show (CaseOp _ _ ty ps_in ps ns sc ns' sc') 
+    show (CaseOp inlc inlr ty ps_in ps ns sc ns' sc') 
         = "Case: " ++ show ty ++ " " ++ show ps ++ "\n" ++ 
                                         show ns ++ " " ++ show sc ++ "\n" ++
-                                        show ns' ++ " " ++ show sc'
+                                        show ns' ++ " " ++ show sc' ++ "\n" ++
+            if inlc then "Inlinable\n" else "Not inlinable\n"
+
 -- We need this for serialising Def. Fortunately, it never gets used because
 -- we'll never serialise a primitive operator
 
@@ -725,12 +727,12 @@ addDatatype (Data n tag ty cons) uctxt
               addCons (tag+1) cons (addDef n
                   (TyDecl (DCon tag (arity ty')) ty, Public, Unchecked) ctxt)
 
-addCasedef :: Name -> Bool -> Bool -> Bool -> 
+addCasedef :: Name -> Bool -> Bool -> Bool -> Bool ->
               [Either Term (Term, Term)] -> 
               [([Name], Term, Term)] -> 
               [([Name], Term, Term)] ->
               Type -> Context -> Context
-addCasedef n alwaysInline tcase covering ps_in ps psrt ty uctxt 
+addCasedef n alwaysInline tcase covering asserted ps_in ps psrt ty uctxt 
     = let ctxt = definitions uctxt
           access = case lookupDefAcc Nothing n False uctxt of
                         [(_, acc)] -> acc
@@ -738,8 +740,10 @@ addCasedef n alwaysInline tcase covering ps_in ps psrt ty uctxt
           ctxt' = case (simpleCase tcase covering CompileTime (FC "" 0) ps, 
                         simpleCase tcase covering RunTime (FC "" 0) psrt) of
                     (OK (CaseDef args sc _), OK (CaseDef args' sc' _)) -> 
-                       let inl = alwaysInline in
-                           addDef n (CaseOp inl (inl || small n args sc')
+                       let inl = alwaysInline 
+                           inlc = (inl || small n args sc') && (not asserted) 
+                           inlr = inl || small n args sc' in
+                           addDef n (CaseOp inlc inlr 
                                             ty ps_in ps args sc args' sc',
                                       access, Unchecked) ctxt in
           uctxt { definitions = ctxt' }

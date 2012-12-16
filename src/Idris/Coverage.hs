@@ -382,8 +382,8 @@ checkTotality path fc n
 checkDeclTotality :: (FC, Name) -> Idris Totality
 checkDeclTotality (fc, n) 
     = do logLvl 2 $ "Checking " ++ show n ++ " for totality"
-         buildSCG (fc, n)
-         logLvl 2 $ "Built SCG"
+--          buildSCG (fc, n)
+--          logLvl 2 $ "Built SCG"
          checkTotality [] fc n
 
 -- Calculate the size change graph for this definition
@@ -441,7 +441,7 @@ buildSCG' ist sc args = -- trace ("Building SCG for " ++ show sc) $
                       map (getRel nty) (map (fst . unApply . getRetTy) args)
         where
           getRel ty (P _ n' _) | n' == ty = (n, Smaller)
-          getRel ty _ = (n, Unknown)
+          getRel ty t = (n, Unknown)
 
       scgAlt x vars szs (ConCase n _ args sc)
            -- all args smaller than top variable of x in sc

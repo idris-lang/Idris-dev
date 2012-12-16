@@ -50,7 +50,7 @@ prove ctxt lit n ty
          logLvl 3 (show tree)
          (ptm, pty) <- recheckC (FC "proof" 0) [] tm
          ptm' <- applyOpts ptm
-         updateContext (addCasedef n True False True 
+         updateContext (addCasedef n True False True False
                                  [Right (P Ref n ty, ptm)]
                                  [([], P Ref n ty, ptm)] 
                                  [([], P Ref n ty, ptm')] ty)
