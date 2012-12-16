@@ -564,7 +564,7 @@ checkMP ist i mp = if i > 0
 --              tryPath (-10000) ((e, desc) : path) es 0
     tryPath desc path (e@(f, nextargs) : es) arg
         | Just d <- lookup e path
-            = if (desc - d) > 0 
+            = if desc > 0 
                    then -- trace ("Descent " ++ show (desc - d) ++ " "
                         --       ++ show (path, e)) $
                         Total []
@@ -585,9 +585,8 @@ checkMP ist i mp = if i > 0
                         Just (nextarg, sc) ->
                           if nextarg == arg then
                             case sc of
-                              Same -> return $ tryPath desc ((e, desc):path) 
-                                                       es
-                                                       pos
+                              Same -> return $ tryPath desc ((e, desc) : path)
+                                                       es pos
                               Smaller -> return $ tryPath (desc+1) 
                                                           ((e, desc):path) 
                                                           es
@@ -607,6 +606,6 @@ collapse xs = collapse' Unchecked xs
 collapse' def (Total r : xs)   = Total r
 collapse' def (Unchecked : xs) = collapse' def xs 
 collapse' def (d : xs)         = collapse' d xs
-collapse' Unchecked []         = Total []
+-- collapse' Unchecked []         = Total []
 collapse' def []               = def
 

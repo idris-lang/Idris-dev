@@ -79,7 +79,7 @@ instance TermSize CaseAlt where
 small :: Name -> [Name] -> SC -> Bool
 small n args t = let as = findAllUsedArgs t args in
                      length as == length (nub as) && 
-                     termsize n t < 6
+                     termsize n t < 20 
 
 namesUsed :: SC -> [Name]
 namesUsed sc = nub $ nu' [] sc where

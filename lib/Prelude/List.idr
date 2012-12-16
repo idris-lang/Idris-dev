@@ -448,6 +448,8 @@ sorted (x::xs) =
     Nil     => True
     (y::ys) => x <= y && sorted (y::ys)
 
+%assert_total -- can't work this out, because in the case which is lifted out
+              -- y::ys and x::xs are bigger than the inputs...
 mergeBy : (a -> a -> Ordering) -> List a -> List a -> List a
 mergeBy order []      right   = right
 mergeBy order left    []      = left
