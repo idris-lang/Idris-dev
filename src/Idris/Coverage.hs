@@ -535,13 +535,17 @@ mkMultiPaths ist path cg
 -- If any route along the multipath leads to infinite descent, we're fine.
 -- Try a route beginning with every argument.
 --   If we reach a point we've been to before, but with a smaller value,
---   that means there is an infinitely descending path.
+--   that means there is an infinitely descending path from that argument.
 
 checkMP :: IState -> Int -> MultiPath -> Totality
 checkMP ist i mp = if i > 0 
                      then collapse (map (tryPath 0 [] mp) [0..i-1])
                      else tryPath 0 [] mp 0
   where
+    tryPath' d path mp arg 
+           = let res = tryPath d path mp arg in
+                 trace (show mp ++ "\n" ++ show arg ++ " " ++ show res) res
+
     tryPath :: Int -> [(SCGEntry, Int)] -> MultiPath -> Int -> Totality
     tryPath desc path [] _ = Total []
 --     tryPath desc path ((UN "believe_me", _) : _) arg
@@ -550,7 +554,7 @@ checkMP ist i mp = if i > 0
     tryPath desc path ((f, _) :es) arg
         | [TyDecl (DCon _ _) _] <- lookupDef Nothing f (tt_ctxt ist)
             = case lookupTotal f (tt_ctxt ist) of
-                   [Total _] -> Total []
+                   [Total _] -> Unchecked -- okay so far
                    [Partial _] -> Partial (Other [f])
                    x -> error (show x)
         | [TyDecl (TCon _ _) _] <- lookupDef Nothing f (tt_ctxt ist)
@@ -561,39 +565,48 @@ checkMP ist i mp = if i > 0
     tryPath desc path (e@(f, nextargs) : es) arg
         | Just d <- lookup e path
             = if (desc - d) > 0 
-                   then Total []
+                   then -- trace ("Descent " ++ show (desc - d) ++ " "
+                        --       ++ show (path, e)) $
+                        Total []
                    else Partial (Mutual (map (fst . fst) path ++ [f]))
         | [Unchecked] <- lookupTotal f (tt_ctxt ist) =
             let argspos = zip nextargs [0..] in
-                collapse' (Partial (Mutual (map (fst . fst) path ++ [f]))) $ 
-                  do (arg, pos) <- argspos
-                     case arg of
-                        Nothing -> -- don't know, but it's okay if the
+                collapse' Unchecked $ 
+                  do (a, pos) <- argspos
+                     case a of
+                        Nothing -> -- don't know, but if the
                                    -- rest definitely terminates without
-                                   -- any cycles with route so far
-                            map (tryPath (-10000) ((e, desc):path) es)
-                                [0..length nextargs - 1]
+                                   -- any cycles with route so far,
+                                   -- then we might yet be total
+                            case collapse (map (tryPath (-10000) ((e, desc):path) es)
+                                          [0..length nextargs - 1]) of
+                                Total _ -> return Unchecked
+                                x -> return x
                         Just (nextarg, sc) ->
-                          case sc of
-                            Same -> return $ tryPath desc ((e, desc):path) 
-                                                     es
-                                                     nextarg
-                            Smaller -> return $ tryPath (desc+1) 
-                                                        ((e, desc):path) 
-                                                        es
-                                                        nextarg
-                            _ -> trace ("Shouldn't happen " ++ show e) $ 
-                                    return (Partial Itself)
-        | [Total _] <- lookupTotal f (tt_ctxt ist) = Total []
+                          if nextarg == arg then
+                            case sc of
+                              Same -> return $ tryPath desc ((e, desc):path) 
+                                                       es
+                                                       pos
+                              Smaller -> return $ tryPath (desc+1) 
+                                                          ((e, desc):path) 
+                                                          es
+                                                          pos
+                              _ -> trace ("Shouldn't happen " ++ show e) $ 
+                                      return (Partial Itself)
+                            else return Unchecked
+        | [Total _] <- lookupTotal f (tt_ctxt ist) = Unchecked
         | [Partial _] <- lookupTotal f (tt_ctxt ist) = Partial (Other [f])
-        | otherwise = Total []
+        | otherwise = Unchecked
 
 noPartial (Partial p : xs) = Partial p
 noPartial (_ : xs)         = noPartial xs
 noPartial []               = Total [] 
 
-collapse xs = collapse' (Partial Itself) xs
-collapse' def (Total r  : xs)  = Total r
+collapse xs = collapse' Unchecked xs
+collapse' def (Total r : xs)   = Total r
+collapse' def (Unchecked : xs) = collapse' def xs 
 collapse' def (d : xs)         = collapse' d xs
+collapse' Unchecked []         = Total []
 collapse' def []               = def
 

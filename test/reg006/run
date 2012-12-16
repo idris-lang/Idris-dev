@@ -1,0 +1,2 @@
+#!/bin/bash
+idris $@ reg006.idr -o reg006
