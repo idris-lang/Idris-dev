@@ -1,4 +1,5 @@
 #!/bin/bash
 idris $@ --check test017.idr
 idris $@ --check test017a.idr
+idris $@ --check test017b.idr
 rm -f *.ibc
