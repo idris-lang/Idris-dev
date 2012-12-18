@@ -626,25 +626,26 @@ elabClause info tcgen (_, PWith fc fname lhs_in withs wval_in withblock)
         (cwval, cwvalty) <- recheckC fc [] (getInferTerm wval')
         let cwvaltyN = explicitNames cwvalty
         let cwvalN = explicitNames cwval
-        logLvl 1 ("With type " ++ show cwvalty ++ "\nRet type " ++ show ret_ty)
+        logLvl 5 ("With type " ++ show cwvalty ++ "\nRet type " ++ show ret_ty)
         let pvars = map fst (getPBtys cwvalty)
         -- we need the unelaborated term to get the names it depends on
         -- rather than a de Bruijn index.
         let pdeps = usedNamesIn pvars i (delab i cwvalty)
         let (bargs_pre, bargs_post) = split pdeps bargs []
-        logLvl 1 ("With type " ++ show (getRetTy cwvaltyN) ++ 
+        logLvl 10 ("With type " ++ show (getRetTy cwvaltyN) ++ 
                   " depends on " ++ show pdeps ++ " from " ++ show pvars)
-        logLvl 1 ("Pre " ++ show bargs_pre ++ "\nPost " ++ show bargs_post)
+        logLvl 10 ("Pre " ++ show bargs_pre ++ "\nPost " ++ show bargs_post)
         windex <- getName
         -- build a type declaration for the new function:
         -- (ps : Xs) -> (withval : cwvalty) -> (ps' : Xs') -> ret_ty 
         let wargval = getRetTy cwvalN
         let wargtype = getRetTy cwvaltyN
-        logLvl 1 ("Abstract over " ++ show wargval)
+        logLvl 5 ("Abstract over " ++ show wargval)
         let wtype = bindTyArgs Pi (bargs_pre ++ 
                      (MN 0 "warg", wargtype) : 
-                     map (abstract (MN 0 "warg") wargval) bargs_post) ret_ty
-        logLvl 1 ("New function type " ++ show wtype)
+                     map (abstract (MN 0 "warg") wargval wargtype) bargs_post) 
+                     (substTerm wargval (P Bound (MN 0 "warg") wargtype) ret_ty)
+        logLvl 3 ("New function type " ++ show wtype)
         let wname = MN windex (show fname)
         let imps = getImps wtype -- add to implicits context
         put (i { idris_implicits = addDef wname imps (idris_implicits i) })
@@ -657,7 +658,7 @@ elabClause info tcgen (_, PWith fc fname lhs_in withs wval_in withblock)
         --    ==>  fname' ps   wpat [rest], match pats against toplevel for ps
         wb <- mapM (mkAuxC wname lhs (map fst bargs_pre) (map fst bargs_post))
                        withblock
-        logLvl 1 ("with block " ++ show wb)
+        logLvl 3 ("with block " ++ show wb)
         mapM_ (elabDecl EAll info) wb
 
         -- rhs becomes: fname' ps wval
@@ -736,7 +737,7 @@ elabClause info tcgen (_, PWith fc fname lhs_in withs wval_in withblock)
           | otherwise = split deps rest ((n, ty) : pre)
     split deps [] pre = (reverse pre, []) 
 
-    abstract wn wty (n, argty) = (n, substTerm wty (P Bound wn wty) argty)
+    abstract wn wv wty (n, argty) = (n, substTerm wv (P Bound wn wty) argty)
 
 data MArgTy = IA | EA | CA deriving Show
 
