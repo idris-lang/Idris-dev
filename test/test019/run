@@ -1,0 +1,4 @@
+#!/bin/bash
+idris $@ test019.lidr -o test019
+./test019
+rm -f test019 *.ibc

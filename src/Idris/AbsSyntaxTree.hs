@@ -1024,6 +1024,8 @@ getPArity :: PTerm -> Int
 getPArity (PPi _ _ _ sc) = 1 + getPArity sc
 getPArity _ = 0
 
+-- Return all names, free or globally bound, in the given term.
+
 allNamesIn :: PTerm -> [Name]
 allNamesIn tm = nub $ ni [] tm 
   where
@@ -1042,6 +1044,8 @@ allNamesIn tm = nub $ ni [] tm
     ni env (PAlternative a ls) = concatMap (ni env) ls
     ni env _               = []
 
+-- Return names which are free in the given term.
+
 namesIn :: [(Name, PTerm)] -> IState -> PTerm -> [Name]
 namesIn uvars ist tm = nub $ ni [] tm 
   where
@@ -1050,6 +1054,29 @@ namesIn uvars ist tm = nub $ ni [] tm
             = case lookupTy Nothing n (tt_ctxt ist) of
                 [] -> [n]
                 _ -> if n `elem` (map fst uvars) then [n] else []
+    ni env (PApp _ f as)   = ni env f ++ concatMap (ni env) (map getTm as)
+    ni env (PCase _ c os)  = ni env c ++ concatMap (ni env) (map snd os)
+    ni env (PLam n ty sc)  = ni env ty ++ ni (n:env) sc
+    ni env (PPi _ n ty sc) = ni env ty ++ ni (n:env) sc
+    ni env (PEq _ l r)     = ni env l ++ ni env r
+    ni env (PTyped l r)    = ni env l ++ ni env r
+    ni env (PPair _ l r)   = ni env l ++ ni env r
+    ni env (PDPair _ (PRef _ n) t r) = ni env t ++ ni (n:env) r
+    ni env (PDPair _ l t r) = ni env l ++ ni env t ++ ni env r
+    ni env (PAlternative a as) = concatMap (ni env) as
+    ni env (PHidden tm)    = ni env tm
+    ni env _               = []
+
+-- Return which of the given names are used in the given term.
+
+usedNamesIn :: [Name] -> IState -> PTerm -> [Name]
+usedNamesIn vars ist tm = nub $ ni [] tm 
+  where
+    ni env (PRef _ n)        
+        | n `elem` vars && not (n `elem` env) 
+            = case lookupTy Nothing n (tt_ctxt ist) of
+                [] -> [n]
+                _ -> []
     ni env (PApp _ f as)   = ni env f ++ concatMap (ni env) (map getTm as)
     ni env (PCase _ c os)  = ni env c ++ concatMap (ni env) (map snd os)
     ni env (PLam n ty sc)  = ni env ty ++ ni (n:env) sc

@@ -518,6 +518,15 @@ instantiate e = subst 0 where
     subst i (Proj x idx) = Proj (subst i x) idx 
     subst i t = t
 
+explicitNames :: TT n -> TT n
+explicitNames (Bind x b sc) = let b' = fmap explicitNames b in
+                                  Bind x b'
+                                     (explicitNames (instantiate 
+                                        (P Bound x (binderTy b')) sc))
+explicitNames (App f a) = App (explicitNames f) (explicitNames a)
+explicitNames (Proj x idx) = Proj (explicitNames x) idx
+explicitNames t = t
+
 pToV :: Eq n => n -> TT n -> TT n
 pToV n = pToV' n 0
 pToV' n i (P _ x _) | n == x = V i
@@ -556,6 +565,13 @@ subst n v tm = instantiate v (pToV n tm)
 substNames :: Eq n => [(n, TT n)] -> TT n -> TT n
 substNames []             t = t
 substNames ((n, tm) : xs) t = subst n tm (substNames xs t)
+
+substTerm :: Eq n => TT n -> TT n -> TT n -> TT n
+substTerm old new = st where
+  st t | t == old = new
+  st (App f a) = App (st f) (st a)
+  st (Bind x b sc) = Bind x (fmap st b) (st sc)
+  st t = t
 
 -- Returns true if V 0 and bound name n do not occur in the term
 
