@@ -60,6 +60,7 @@ data Err = Msg String
          | ProgramLineComment
          | Inaccessible Name
          | NonCollapsiblePostulate Name
+         | AlreadyDefined Name
          | At FC Err
   deriving Eq
 
@@ -78,7 +79,7 @@ instance Sized Err where
   size UniverseError = 1
   size ProgramLineComment = 1
   size (At fc err) = size fc + size err
-  size (Inaccessible _) = 1
+  size _ = 1
 
 score :: Err -> Int
 score (CantUnify _ _ _ m _ s) = s + score m

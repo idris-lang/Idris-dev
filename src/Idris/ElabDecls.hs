@@ -298,8 +298,9 @@ elabCon info syn tn codata (doc, n, t_in, fc)
 elabClauses :: ElabInfo -> FC -> FnOpts -> Name -> [PClause] -> Idris ()
 elabClauses info fc opts n_in cs = let n = liftname info n_in in  
       do ctxt <- getContext
-         -- Check n actually exists
+         -- Check n actually exists, with no definition yet
          let tys = lookupTy Nothing n ctxt
+         checkUndefined n ctxt
          unless (length tys > 1) $ do
            fty <- case tys of
               [] -> -- TODO: turn into a CAF if there's no arguments
@@ -421,6 +422,11 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
                [] -> return ()
            return ()
   where
+    checkUndefined n ctxt = case lookupDef Nothing n ctxt of
+                                 [] -> return ()
+                                 [TyDecl _ _] -> return ()
+                                 _ -> tclift $ tfail (At fc (AlreadyDefined n))
+
     debind (Right (x, y)) = let (vs, x') = depat [] x 
                                 (_, y') = depat [] y in
                                 (vs, x', y')

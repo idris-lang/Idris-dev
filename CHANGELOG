@@ -12,6 +12,9 @@ User visible changes:
 * 'mutual' blocks added
   - effect is to elaborate all types of declarations in the block before
     elaborating their definitions
+  - allows inductive-recursive definitions
+* Expression inspected by 'with' clause now abstracted from the goal
+  - i.e. "magic" with
 * Implicit arguments will be added automatically only if their initial
   letter is lower case, or they are in a using declaration
 * Added documentation comments (Haddock style) and ':doc' REPL command
@@ -25,6 +28,7 @@ Internal changes:
 * Separate inlining methods at compile-time and run-time
 * Fixed nested parameters blocks 
 * Improve efficiency of elaborator by only normalising when necessary
+* Better compilation of case trees
 
 New in 0.9.5:
 -------------
