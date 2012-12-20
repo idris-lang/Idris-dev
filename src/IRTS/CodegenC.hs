@@ -297,6 +297,72 @@ doOp v LReadStr [x] = v ++ "idris_readStr(vm, GETPTR(" ++ creg x ++ "))"
 doOp _ LPrintNum [x] = "printf(\"%ld\\n\", GETINT(" ++ creg x ++ "))"
 doOp _ LPrintStr [x] = "fputs(GETSTR(" ++ creg x ++ "), stdout)"
 
+doOp v LB8 [x] = v ++ "idris_b8(" ++ creg x ++ ")"
+doOp v LB16 [x] = v ++ "idris_b16(" ++ creg x ++ ")"
+doOp v LB32 [x] = v ++ "idris_b32(" ++ creg x ++ ")"
+doOp v LB64 [x] = v ++ "idris_b64(" ++ creg x ++ ")"
+
+doOp v LB8Plus [x, y] = v ++ "idris_b8Plus(" ++ creg x ++ "," ++ creg y ++ ")"
+doOp v LB8Minus [x, y] = v ++ "idris_b8Minus(" ++ creg x ++ "," ++ creg y ++ ")"
+doOp v LB8Times [x, y] = v ++ "idris_b8Times(" ++ creg x ++ "," ++ creg y ++ ")"
+doOp v LB8UDiv [x, y] = v ++ "idris_b8UDiv(" ++ creg x ++ "," ++ creg y ++ ")"
+doOp v LB8SDiv [x, y] = v ++ "idris_b8SDiv(" ++ creg x ++ "," ++ creg y ++ ")"
+
+doOp v LB8Z16 [x] = v ++ "idris_b8Z16(" ++ creg x ++ ")"
+doOp v LB8Z32 [x] = v ++ "idris_b8Z32(" ++ creg x ++ ")"
+doOp v LB8Z64 [x] = v ++ "idris_b8Z64(" ++ creg x ++ ")"
+doOp v LB8S16 [x] = v ++ "idris_b8S16(" ++ creg x ++ ")"
+doOp v LB8S32 [x] = v ++ "idris_b8S32(" ++ creg x ++ ")"
+doOp v LB8S64 [x] = v ++ "idris_b8S64(" ++ creg x ++ ")"
+
+doOp v LB16Plus [x, y] =
+  v ++ "idris_b16Plus(" ++ creg x ++ "," ++ creg y ++ ")"
+doOp v LB16Minus [x, y] =
+  v ++ "idris_b16Minus(" ++ creg x ++ "," ++ creg y ++ ")"
+doOp v LB16Times [x, y] =
+  v ++ "idris_b16Times(" ++ creg x ++ "," ++ creg y ++ ")"
+doOp v LB16UDiv [x, y] =
+  v ++ "idris_b16UDiv(" ++ creg x ++ "," ++ creg y ++ ")"
+doOp v LB16SDiv [x, y] =
+  v ++ "idris_b16SDiv(" ++ creg x ++ "," ++ creg y ++ ")"
+
+doOp v LB16Z32 [x] = v ++ "idris_b16Z32(" ++ creg x ++ ")"
+doOp v LB16Z64 [x] = v ++ "idris_b16Z64(" ++ creg x ++ ")"
+doOp v LB16S32 [x] = v ++ "idris_b16S32(" ++ creg x ++ ")"
+doOp v LB16S64 [x] = v ++ "idris_b16S64(" ++ creg x ++ ")"
+doOp v LB16T8 [x] = v ++ "idris_b16T8(" ++ creg x ++ ")"
+
+doOp v LB32Plus [x, y] =
+  v ++ "idris_b32Plus(" ++ creg x ++ "," ++ creg y ++ ")"
+doOp v LB32Minus [x, y] =
+  v ++ "idris_b32Minus(" ++ creg x ++ "," ++ creg y ++ ")"
+doOp v LB32Times [x, y] =
+  v ++ "idris_b32Times(" ++ creg x ++ "," ++ creg y ++ ")"
+doOp v LB32UDiv [x, y] =
+  v ++ "idris_b32UDiv(" ++ creg x ++ "," ++ creg y ++ ")"
+doOp v LB32SDiv [x, y] =
+  v ++ "idris_b32SDiv(" ++ creg x ++ "," ++ creg y ++ ")"
+
+doOp v LB32Z64 [x] = v ++ "idris_b32Z64(" ++ creg x ++ ")"
+doOp v LB32S64 [x] = v ++ "idris_b32S64(" ++ creg x ++ ")"
+doOp v LB32T8 [x] = v ++ "idris_b32T8(" ++ creg x ++ ")"
+doOp v LB32T16 [x] = v ++ "idris_b32T16(" ++ creg x ++ ")"
+
+doOp v LB64Plus [x, y] =
+  v ++ "idris_b64Plus(" ++ creg x ++ "," ++ creg y ++ ")"
+doOp v LB64Minus [x, y] =
+  v ++ "idris_b64Minus(" ++ creg x ++ "," ++ creg y ++ ")"
+doOp v LB64Times [x, y] =
+  v ++ "idris_b64Times(" ++ creg x ++ "," ++ creg y ++ ")"
+doOp v LB64UDiv [x, y] =
+  v ++ "idris_b64UDiv(" ++ creg x ++ "," ++ creg y ++ ")"
+doOp v LB64SDiv [x, y] =
+  v ++ "idris_b64SDiv(" ++ creg x ++ "," ++ creg y ++ ")"
+
+doOp v LB64T8 [x] = v ++ "idris_b64T8(" ++ creg x ++ ")"
+doOp v LB64T16 [x] = v ++ "idris_b64T16(" ++ creg x ++ ")"
+doOp v LB64T32 [x] = v ++ "idris_b64T32(" ++ creg x ++ ")"
+
 doOp v LFExp [x] = v ++ "MKFLOAT(exp(GETFLOAT(" ++ creg x ++ ")))"
 doOp v LFLog [x] = v ++ "MKFLOAT(log(GETFLOAT(" ++ creg x ++ ")))"
 doOp v LFSin [x] = v ++ "MKFLOAT(sin(GETFLOAT(" ++ creg x ++ ")))"

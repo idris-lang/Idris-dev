@@ -161,6 +161,10 @@ primitives =
     (1, LB8) total,
    Prim (UN "prim__intToBits16") (ty [IType] B16Type) 1 intToBits16
     (1, LB16) total,
+   Prim (UN "prim__intToBits32") (ty [IType] B32Type) 1 intToBits32
+    (1, LB32) total,
+   Prim (UN "prim__intToBits64") (ty [IType] B64Type) 1 intToBits64
+    (1, LB64) total,
 
    Prim (UN "prim__addBigInt") (ty [BIType, BIType] BIType) 2 (bBin (+))
     (2, LBPlus) total,
@@ -400,6 +404,10 @@ intToBits8  [VConstant (I x)] = Just $ toB8 x
 intToBits8 _ = Nothing
 intToBits16 [VConstant (I x)] = Just $ toB16 x
 intToBits16 _ = Nothing
+intToBits32  [VConstant (I x)] = Just $ toB32 x
+intToBits32 _ = Nothing
+intToBits64 [VConstant (I x)] = Just $ toB64 x
+intToBits64 _ = Nothing
 
 c_intToStr [VConstant (I x)] = Just $ VConstant (Str (show x))
 c_intToStr _ = Nothing

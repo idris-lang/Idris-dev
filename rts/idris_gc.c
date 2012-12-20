@@ -29,6 +29,18 @@ VAL copy(VM* vm, VAL x) {
     case PTR:
         cl = MKPTRc(vm, x->info.ptr);
         break;
+    case BITS8:
+        cl = idris_b8CopyForGC(vm, x);
+        break;
+    case BITS16:
+        cl = idris_b16CopyForGC(vm, x);
+        break;
+    case BITS32:
+        cl = idris_b32CopyForGC(vm, x);
+        break;
+    case BITS64:
+        cl = idris_b64CopyForGC(vm, x);
+        break;
     case FWD:
         return x->info.ptr;
     default:
