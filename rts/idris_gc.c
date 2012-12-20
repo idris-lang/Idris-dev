@@ -1,5 +1,6 @@
 #include "idris_rts.h"
 #include "idris_gc.h"
+#include "idris_bitstring.h"
 #include <assert.h>
 
 VAL copy(VM* vm, VAL x) {

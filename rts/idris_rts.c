@@ -8,6 +8,7 @@
 
 #include "idris_rts.h"
 #include "idris_gc.h"
+#include "idris_bitstring.h"
 
 VM* init_vm(int stack_size, size_t heap_size, 
             int max_threads, // not implemented yet
