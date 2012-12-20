@@ -6,6 +6,7 @@ import IO
 import Prelude.Cast
 import Prelude.Nat
 import Prelude.Fin
+import Prelude.Modular
 import Prelude.List
 import Prelude.Maybe
 import Prelude.Monad
