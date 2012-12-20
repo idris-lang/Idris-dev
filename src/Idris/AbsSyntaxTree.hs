@@ -140,7 +140,7 @@ type Idris = StateT IState (InputT IO)
 
 -- Commands in the REPL
 
-data Target = ViaC | ViaJava | Bytecode
+data Target = ViaC | ViaJava | Bytecode | ToJavaScript
     deriving (Show, Eq)
 
 data Command = Quit

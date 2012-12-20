@@ -93,3 +93,4 @@ usagemsg = "Idris version " ++ ver ++ "\n" ++
            "\t--link            Show C library directories and exit (for C linking)\n" ++
            "\t--include         Show C include directories and exit (for C linking)\n" ++
            "\t--target [target] Type the target: C, Java, bytecode\n"
+           "\t--javascript      Compile to JavaScript rather than to native code\n" ++
