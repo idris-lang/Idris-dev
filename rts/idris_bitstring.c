@@ -56,6 +56,10 @@ VAL idris_b64(VM *vm, VAL a) {
     return cl;
 }
 
+VAL idris_castB32Int(VM *vm, VAL a) {
+    return MKINT(a->info.bits32);
+}
+
 VAL idris_b8Plus(VM *vm, VAL a, VAL b) {
     VAL cl = allocate(vm, sizeof(Closure), 0);
     SETTY(cl, BITS8);

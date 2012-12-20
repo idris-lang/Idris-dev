@@ -297,10 +297,12 @@ doOp v LReadStr [x] = v ++ "idris_readStr(vm, GETPTR(" ++ creg x ++ "))"
 doOp _ LPrintNum [x] = "printf(\"%ld\\n\", GETINT(" ++ creg x ++ "))"
 doOp _ LPrintStr [x] = "fputs(GETSTR(" ++ creg x ++ "), stdout)"
 
-doOp v LB8 [x] = v ++ "idris_b8(" ++ creg x ++ ")"
-doOp v LB16 [x] = v ++ "idris_b16(" ++ creg x ++ ")"
-doOp v LB32 [x] = v ++ "idris_b32(" ++ creg x ++ ")"
-doOp v LB64 [x] = v ++ "idris_b64(" ++ creg x ++ ")"
+doOp v LIntB8 [x] = v ++ "idris_b8(" ++ creg x ++ ")"
+doOp v LIntB16 [x] = v ++ "idris_b16(" ++ creg x ++ ")"
+doOp v LIntB32 [x] = v ++ "idris_b32(" ++ creg x ++ ")"
+doOp v LIntB64 [x] = v ++ "idris_b64(" ++ creg x ++ ")"
+
+doOp v LB32Int [x] = v ++ "idris_castB32Int(" ++ creg x ++ ")"
 
 doOp v LB8Plus [x, y] = v ++ "idris_b8Plus(" ++ creg x ++ "," ++ creg y ++ ")"
 doOp v LB8Minus [x, y] = v ++ "idris_b8Minus(" ++ creg x ++ "," ++ creg y ++ ")"

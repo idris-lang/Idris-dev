@@ -157,14 +157,16 @@ primitives =
    Prim (UN "prim__truncB64_32") (ty [B64Type] B32Type) 1 trunc64_32
      (1, LB64T32) total,
 
-   Prim (UN "prim__intToBits8") (ty [IType] B8Type) 1 intToBits8
-    (1, LB8) total,
-   Prim (UN "prim__intToBits16") (ty [IType] B16Type) 1 intToBits16
-    (1, LB16) total,
-   Prim (UN "prim__intToBits32") (ty [IType] B32Type) 1 intToBits32
-    (1, LB32) total,
-   Prim (UN "prim__intToBits64") (ty [IType] B64Type) 1 intToBits64
-    (1, LB64) total,
+   Prim (UN "prim__intToB8") (ty [IType] B8Type) 1 intToBits8
+    (1, LIntB8) total,
+   Prim (UN "prim__intToB16") (ty [IType] B16Type) 1 intToBits16
+    (1, LIntB16) total,
+   Prim (UN "prim__intToB32") (ty [IType] B32Type) 1 intToBits32
+    (1, LIntB32) total,
+   Prim (UN "prim__intToB64") (ty [IType] B64Type) 1 intToBits64
+    (1, LIntB64) total,
+   Prim (UN "prim__B32ToInt") (ty [B32Type] IType) 1 bits32ToInt
+    (1, LB32Int) total,
 
    Prim (UN "prim__addBigInt") (ty [BIType, BIType] BIType) 2 (bBin (+))
     (2, LBPlus) total,
@@ -408,6 +410,8 @@ intToBits32  [VConstant (I x)] = Just $ toB32 x
 intToBits32 _ = Nothing
 intToBits64 [VConstant (I x)] = Just $ toB64 x
 intToBits64 _ = Nothing
+
+bits32ToInt [VConstant (B32 x)] = Just $ VConstant (I (fromIntegral x))
 
 c_intToStr [VConstant (I x)] = Just $ VConstant (Str (show x))
 c_intToStr _ = Nothing
