@@ -40,10 +40,16 @@ data PrimFn = LPlus | LMinus | LTimes | LDiv | LMod
             | LIntBig | LBigInt | LStrBig | LBigStr
             | LPrintNum | LPrintStr | LReadStr
 
-            | LW8 | LW16
-            
-            | LW8Plus | LW8Minus | LW8Times
-            | LW16Plus | LW16Minus | LW16Times
+            | LB8 | LB16
+
+            | LB8Plus | LB8Minus | LB8Times | LB8UDiv | LB8SDiv
+            | LB8Z16 | LB8Z32 | LB8Z64 | LB8S16 | LB8S32 | LB8S64 -- Zero/Sign extension
+            | LB16Plus | LB16Minus | LB16Times | LB16UDiv | LB16SDiv
+            | LB16Z32 | LB16Z64 | LB16S32 | LB16S64 | LB16T8 -- and Truncation
+            | LB32Plus | LB32Minus | LB32Times | LB32UDiv | LB32SDiv
+            | LB32Z64 | LB32S32 | LB32T8 | LB32T16
+            | LB64Plus | LB64Minus | LB64Times | LB64UDiv | LB64SDiv
+            | LB64T8 | LB64T16 | LB64T32
 
             | LFExp | LFLog | LFSin | LFCos | LFTan | LFASin | LFACos | LFATan
             | LFSqrt | LFFloor | LFCeil

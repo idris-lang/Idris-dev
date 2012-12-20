@@ -11,6 +11,8 @@ import IRTS.Lang
 import Core.TT
 import Core.Evaluate
 import Data.Bits
+import Data.Word
+import Data.Int
 
 data Prim = Prim { p_name  :: Name,
                    p_type  :: Type,
@@ -75,24 +77,90 @@ primitives =
    Prim (UN "prim__gteChar") (ty [ChType, ChType] IType) 2 (bcBin (>=))
      (2, LGe) total,
 
-  Prim (UN "prim__addW8") (ty [W8Type, W8Type] W8Type) 2 (w8Bin (+))
-    (2, LW8Plus) total,
-   Prim (UN "prim__subW8") (ty [W8Type, W8Type] W8Type) 2 (w8Bin (-))
-     (2, LW8Minus) total,
-   Prim (UN "prim__mulW8") (ty [W8Type, W8Type] W8Type) 2 (w8Bin (*))
-     (2, LW8Times) total,
+   Prim (UN "prim__addB8") (ty [B8Type, B8Type] B8Type) 2 (b8Bin (+))
+     (2, LB8Plus) total,
+   Prim (UN "prim__subB8") (ty [B8Type, B8Type] B8Type) 2 (b8Bin (-))
+     (2, LB8Minus) total,
+   Prim (UN "prim__mulB8") (ty [B8Type, B8Type] B8Type) 2 (b8Bin (*))
+     (2, LB8Times) total,
+   Prim (UN "prim__udivB8") (ty [B8Type, B8Type] B8Type) 2 (b8Bin div)
+     (2, LB8UDiv) total,
+   Prim (UN "prim__sdivB8") (ty [B8Type, B8Type] B8Type) 2 (b8Bin s8div)
+     (2, LB8SDiv) total,
+   Prim (UN "prim__zextB8_16") (ty [B8Type] B16Type) 1 zext8_16
+     (1, LB8Z16) total,
+   Prim (UN "prim__zextB8_32") (ty [B8Type] B32Type) 1 zext8_32
+     (1, LB8Z32) total,
+   Prim (UN "prim__zextB8_64") (ty [B8Type] B64Type) 1 zext8_64
+     (1, LB8Z64) total,
+   Prim (UN "prim__sextB8_16") (ty [B8Type] B16Type) 1 sext8_16
+     (1, LB8Z16) total,
+   Prim (UN "prim__sextB8_32") (ty [B8Type] B32Type) 1 sext8_32
+     (1, LB8Z32) total,
+   Prim (UN "prim__sextB8_64") (ty [B8Type] B64Type) 1 sext8_64
+     (1, LB8Z64) total,
 
-  Prim (UN "prim__addW16") (ty [W16Type, W16Type] W16Type) 2 (w16Bin (+))
-    (2, LW16Plus) total,
-   Prim (UN "prim__subW16") (ty [W16Type, W16Type] W16Type) 2 (w16Bin (-))
-     (2, LW16Minus) total,
-   Prim (UN "prim__mulW16") (ty [W16Type, W16Type] W16Type) 2 (w16Bin (*))
-     (2, LW16Times) total,
+   Prim (UN "prim__addB16") (ty [B16Type, B16Type] B16Type) 2 (b16Bin (+))
+     (2, LB16Plus) total,
+   Prim (UN "prim__subB16") (ty [B16Type, B16Type] B16Type) 2 (b16Bin (-))
+     (2, LB16Minus) total,
+   Prim (UN "prim__mulB16") (ty [B16Type, B16Type] B16Type) 2 (b16Bin (*))
+     (2, LB16Times) total,
+   Prim (UN "prim__udivB16") (ty [B16Type, B16Type] B16Type) 2 (b16Bin div)
+     (2, LB16UDiv) total,
+   Prim (UN "prim__sdivB16") (ty [B16Type, B16Type] B16Type) 2 (b16Bin s16div)
+     (2, LB16SDiv) total,
+   Prim (UN "prim__zextB16_32") (ty [B16Type] B32Type) 1 zext16_32
+     (1, LB16Z32) total,
+   Prim (UN "prim__zextB16_64") (ty [B16Type] B64Type) 1 zext16_64
+     (1, LB16Z64) total,
+   Prim (UN "prim__sextB16_32") (ty [B16Type] B32Type) 1 sext16_32
+     (1, LB16Z32) total,
+   Prim (UN "prim__sextB16_64") (ty [B16Type] B64Type) 1 sext16_64
+     (1, LB16Z64) total,
+   Prim (UN "prim__truncB16_8") (ty [B16Type] B8Type) 1 trunc16_8
+     (1, LB16T8) total,
 
-   Prim (UN "prim__intToWord8") (ty [IType] W8Type) 1 intToWord8
-    (1, LW8) total,
-   Prim (UN "prim__intToWord16") (ty [IType] W16Type) 1 intToWord16
-    (1, LW16) total,
+   Prim (UN "prim__addB32") (ty [B32Type, B32Type] B32Type) 2 (b32Bin (+))
+     (2, LB32Plus) total,
+   Prim (UN "prim__subB32") (ty [B32Type, B32Type] B32Type) 2 (b32Bin (-))
+     (2, LB32Minus) total,
+   Prim (UN "prim__mulB32") (ty [B32Type, B32Type] B32Type) 2 (b32Bin (*))
+     (2, LB32Times) total,
+   Prim (UN "prim__udivB32") (ty [B32Type, B32Type] B32Type) 2 (b32Bin div)
+     (2, LB32UDiv) total,
+   Prim (UN "prim__sdivB32") (ty [B32Type, B32Type] B32Type) 2 (b32Bin s32div)
+     (2, LB32SDiv) total,
+   Prim (UN "prim__zextB32_64") (ty [B32Type] B64Type) 1 zext32_64
+     (1, LB32Z64) total,
+   Prim (UN "prim__sextB32_64") (ty [B32Type] B64Type) 1 sext32_64
+     (1, LB32Z64) total,
+   Prim (UN "prim__truncB32_8") (ty [B32Type] B8Type) 1 trunc32_8
+     (1, LB32T8) total,
+   Prim (UN "prim__truncB32_16") (ty [B32Type] B16Type) 1 trunc32_16
+     (1, LB32T16) total,
+
+   Prim (UN "prim__addB64") (ty [B64Type, B64Type] B64Type) 2 (b64Bin (+))
+     (2, LB64Plus) total,
+   Prim (UN "prim__subB64") (ty [B64Type, B64Type] B64Type) 2 (b64Bin (-))
+     (2, LB64Minus) total,
+   Prim (UN "prim__mulB64") (ty [B64Type, B64Type] B64Type) 2 (b64Bin (*))
+     (2, LB64Times) total,
+   Prim (UN "prim__udivB64") (ty [B64Type, B64Type] B64Type) 2 (b64Bin div)
+     (2, LB64UDiv) total,
+   Prim (UN "prim__sdivB64") (ty [B64Type, B64Type] B64Type) 2 (b64Bin s64div)
+     (2, LB64SDiv) total,
+   Prim (UN "prim__truncB64_8") (ty [B64Type] B8Type) 1 trunc64_8
+     (1, LB64T8) total,
+   Prim (UN "prim__truncB64_16") (ty [B64Type] B16Type) 1 trunc64_16
+     (1, LB64T16) total,
+   Prim (UN "prim__truncB64_32") (ty [B64Type] B32Type) 1 trunc64_32
+     (1, LB64T32) total,
+
+   Prim (UN "prim__intToBits8") (ty [IType] B8Type) 1 intToBits8
+    (1, LB8) total,
+   Prim (UN "prim__intToBits16") (ty [IType] B16Type) 1 intToBits16
+    (1, LB16) total,
 
    Prim (UN "prim__addBigInt") (ty [BIType, BIType] BIType) 2 (bBin (+))
     (2, LBPlus) total,
@@ -245,19 +313,93 @@ bsBin _ _ = Nothing
 sBin op [VConstant (Str x), VConstant (Str y)] = Just $ VConstant (Str (op x y))
 sBin _ _ = Nothing
 
-w8Bin op [VConstant (W8 x), VConstant (W8 y)] = Just $ VConstant (W8 (op x y))
-w8Bin _ _ = Nothing
+s8div :: Word8 -> Word8 -> Word8
+s8div x y = fromIntegral (fromIntegral x `div` fromIntegral y :: Int8)
 
-w16Bin op [VConstant (W16 x), VConstant (W16 y)] = Just $ VConstant (W16 (op x y))
-w16Bin _ _ = Nothing
+s16div :: Word16 -> Word16 -> Word16
+s16div x y = fromIntegral (fromIntegral x `div` fromIntegral y :: Int16)
 
--- w32Bin op [VConstant (W32 x), VConstant (W32 y)] = Just $ VConstant (W32 (op x y))
--- w32Bin _ _ = Nothing
+s32div :: Word32 -> Word32 -> Word32
+s32div x y = fromIntegral (fromIntegral x `div` fromIntegral y :: Int32)
 
-intToWord8  [VConstant (I x)] = Just $ VConstant (W8  $ fromIntegral x)
-intToWord8 _ = Nothing
-intToWord16 [VConstant (I x)] = Just $ VConstant (W16 $ fromIntegral x)
-intToWord16 _ = Nothing
+s64div :: Word64 -> Word64 -> Word64
+s64div x y = fromIntegral (fromIntegral x `div` fromIntegral y :: Int64)
+
+b8Bin op [VConstant (B8 x), VConstant (B8 y)] = Just $ VConstant (B8 (op x y))
+b8Bin _ _ = Nothing
+
+b16Bin op [VConstant (B16 x), VConstant (B16 y)] = Just $ VConstant (B16 (op x y))
+b16Bin _ _ = Nothing
+
+b32Bin op [VConstant (B32 x), VConstant (B32 y)] = Just $ VConstant (B32 (op x y))
+b32Bin _ _ = Nothing
+
+b64Bin op [VConstant (B64 x), VConstant (B64 y)] = Just $ VConstant (B64 (op x y))
+b64Bin _ _ = Nothing
+
+toB8 x = VConstant (B8 (fromIntegral x))
+toB16 x = VConstant (B16 (fromIntegral x))
+toB32 x = VConstant (B32 (fromIntegral x))
+toB64 x = VConstant (B64 (fromIntegral x))
+
+zext8_16 [VConstant (B8 x)] = Just $ toB16 x
+zext8_16 _ = Nothing
+
+zext8_32 [VConstant (B8 x)] = Just $ toB32 x
+zext8_32 _ = Nothing
+
+zext8_64 [VConstant (B8 x)] = Just $ toB64 x
+zext8_64 _ = Nothing
+
+sext8_16 [VConstant (B8 x)] = Just $ toB16 (fromIntegral x :: Int8)
+sext8_16 _ = Nothing
+
+sext8_32 [VConstant (B8 x)] = Just $ toB32 (fromIntegral x :: Int8)
+sext8_32 _ = Nothing
+
+sext8_64 [VConstant (B8 x)] = Just $ toB64 (fromIntegral x :: Int8)
+sext8_64 _ = Nothing
+
+zext16_32 [VConstant (B16 x)] = Just $ toB32 x
+zext16_32 _ = Nothing
+
+zext16_64 [VConstant (B16 x)] = Just $ toB64 x
+zext16_64 _ = Nothing
+
+sext16_32 [VConstant (B16 x)] = Just $ toB32 (fromIntegral x :: Int16)
+sext16_32 _ = Nothing
+
+sext16_64 [VConstant (B16 x)] = Just $ toB64 (fromIntegral x :: Int16)
+sext16_64 _ = Nothing
+
+trunc16_8 [VConstant (B16 x)] = Just $ toB8 x
+trunc16_8 _ = Nothing
+
+zext32_64 [VConstant (B32 x)] = Just $ toB64 x
+zext32_64 _ = Nothing
+
+sext32_64 [VConstant (B32 x)] = Just $ toB64 (fromIntegral x :: Int32)
+sext32_64 _ = Nothing
+
+trunc32_8 [VConstant (B32 x)] = Just $ toB8 x
+trunc32_8 _ = Nothing
+
+trunc32_16 [VConstant (B32 x)] = Just $ toB16 x
+trunc32_16 _ = Nothing
+
+trunc64_8 [VConstant (B64 x)] = Just $ toB8 x
+trunc64_8 _ = Nothing
+
+trunc64_16 [VConstant (B64 x)] = Just $ toB16 x
+trunc64_16 _ = Nothing
+
+trunc64_32 [VConstant (B64 x)] = Just $ toB32 x
+trunc64_32 _ = Nothing
+
+intToBits8  [VConstant (I x)] = Just $ toB8 x
+intToBits8 _ = Nothing
+intToBits16 [VConstant (I x)] = Just $ toB16 x
+intToBits16 _ = Nothing
 
 c_intToStr [VConstant (I x)] = Just $ VConstant (Str (show x))
 c_intToStr _ = Nothing
