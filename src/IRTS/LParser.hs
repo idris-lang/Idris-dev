@@ -9,6 +9,7 @@ import IRTS.Bytecode
 import IRTS.CodegenCommon
 import IRTS.CodegenC
 import IRTS.CodegenJava
+import IRTS.CodegenJavaScript
 import IRTS.Defunctionalise
 import Paths_idris
 

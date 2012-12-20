@@ -8,6 +8,7 @@ import IRTS.Simplified
 import IRTS.CodegenCommon
 import IRTS.CodegenC
 import IRTS.CodegenJava
+import IRTS.CodegenJavaScript
 import IRTS.Inliner
 
 import Idris.AbsSyntax
@@ -67,6 +68,7 @@ compile target f tm
                                    (concatMap mkObj objs)
                                    (concatMap mkLib libs) NONE
                          ViaJava -> liftIO $ codegenJava c f outty
+                         ToJavaScript -> liftIO $ codegenJavaScript c f outty
             Error e -> fail $ show e 
   where checkMVs = do i <- get
                       case idris_metavars i \\ primDefs of
