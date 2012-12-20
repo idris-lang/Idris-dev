@@ -526,10 +526,11 @@ eval_hnf ctxt statics genv tm = ev [] tm where
     findConst ChType  (ConCase n 3 [] v : xs) = Just v 
     findConst StrType (ConCase n 4 [] v : xs) = Just v 
     findConst PtrType (ConCase n 5 [] v : xs) = Just v 
-    findConst B8Type  (ConCase n 6 [] v : xs) = Just v
-    findConst B16Type (ConCase n 7 [] v : xs) = Just v
-    findConst B32Type (ConCase n 8 [] v : xs) = Just v
-    findConst B64Type (ConCase n 9 [] v : xs) = Just v -- TODO: Verify numbers
+    findConst BIType  (ConCase n 6 [] v : xs) = Just v
+    findConst B8Type  (ConCase n 7 [] v : xs) = Just v
+    findConst B16Type (ConCase n 8 [] v : xs) = Just v
+    findConst B32Type (ConCase n 9 [] v : xs) = Just v
+    findConst B64Type (ConCase n 10 [] v : xs) = Just v
     findConst c (_ : xs) = findConst c xs
 
     getValArgs (HApp t env args) = (t, env, args)
