@@ -738,6 +738,7 @@ pTacticsExpr syn = do
 pSimpleExpr syn = 
         try (do symbol "!["; t <- pTerm; lchar ']'; return $ PQuote t)
         <|> do lchar '?'; x <- pName; return (PMetavar x)
+        <|> do lchar '%'; fc <- pfc; reserved "instance"; return (PResolveTC fc)
         <|> do reserved "refl"; fc <- pfc; 
                tm <- option Placeholder (do lchar '{'; t <- pExpr syn; lchar '}';
                                             return t)

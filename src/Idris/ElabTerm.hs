@@ -478,7 +478,8 @@ resolveTC :: Int -> Name -> IState -> ElabD ()
 resolveTC 0 fn ist = fail $ "Can't resolve type class"
 resolveTC 1 fn ist = try (trivial ist) (resolveTC 0 fn ist)
 resolveTC depth fn ist 
-         = try (trivial ist)
+      = do compute
+           try (trivial ist)
                (do t <- goal
                    let insts = findInstances ist t
                    let (tc, ttypes) = unApply t
