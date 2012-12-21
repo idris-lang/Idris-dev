@@ -89,6 +89,20 @@ primitives =
      (2, LB8UDiv) total,
    Prim (UN "prim__sdivB8") (ty [B8Type, B8Type] B8Type) 2 (b8Bin s8div)
      (2, LB8SDiv) total,
+   Prim (UN "prim__shlB8") (ty [B8Type, B8Type] B8Type) 2 (b8Bin (\x y -> shiftL x (fromIntegral y)))
+     (2, LB8Shl) total,
+   Prim (UN "prim__lshrB8") (ty [B8Type, B8Type] B8Type) 2 (b8Bin (\x y -> shiftR x (fromIntegral y)))
+     (2, LB8AShr) total,
+   Prim (UN "prim__ashrB8") (ty [B8Type, B8Type] B8Type) 2 (b8Bin (\x y -> fromIntegral $
+                                                                           shiftR (fromIntegral x :: Int8)
+                                                                                  (fromIntegral y)))
+     (2, LB8LShr) total,
+   Prim (UN "prim__andB8") (ty [B8Type, B8Type] B8Type) 2 (b8Bin (.&.))
+     (2, LB8And) total,
+   Prim (UN "prim__orB8") (ty [B8Type, B8Type] B8Type) 2 (b8Bin (.|.))
+     (2, LB8Or) total,
+   Prim (UN "prim__xorB8") (ty [B8Type, B8Type] B8Type) 2 (b8Bin xor)
+     (2, LB8Xor) total,
    Prim (UN "prim__zextB8_16") (ty [B8Type] B16Type) 1 zext8_16
      (1, LB8Z16) total,
    Prim (UN "prim__zextB8_32") (ty [B8Type] B32Type) 1 zext8_32
@@ -114,6 +128,20 @@ primitives =
      (2, LB16UDiv) total,
    Prim (UN "prim__sdivB16") (ty [B16Type, B16Type] B16Type) 2 (b16Bin s16div)
      (2, LB16SDiv) total,
+   Prim (UN "prim__shlB16") (ty [B16Type, B16Type] B16Type) 2 (b16Bin (\x y -> shiftL x (fromIntegral y)))
+     (2, LB16Shl) total,
+   Prim (UN "prim__lshrB16") (ty [B16Type, B16Type] B16Type) 2 (b16Bin (\x y -> shiftR x (fromIntegral y)))
+     (2, LB16AShr) total,
+   Prim (UN "prim__ashrB16") (ty [B16Type, B16Type] B16Type) 2 (b16Bin (\x y -> fromIntegral $
+                                                                                shiftR (fromIntegral x :: Int16)
+                                                                                       (fromIntegral y)))
+     (2, LB16LShr) total,
+   Prim (UN "prim__andB16") (ty [B16Type, B16Type] B16Type) 2 (b16Bin (.&.))
+     (2, LB16And) total,
+   Prim (UN "prim__orB16") (ty [B16Type, B16Type] B16Type) 2 (b16Bin (.|.))
+     (2, LB16Or) total,
+   Prim (UN "prim__xorB16") (ty [B16Type, B16Type] B16Type) 2 (b16Bin xor)
+     (2, LB16Xor) total,
    Prim (UN "prim__zextB16_32") (ty [B16Type] B32Type) 1 zext16_32
      (1, LB16Z32) total,
    Prim (UN "prim__zextB16_64") (ty [B16Type] B64Type) 1 zext16_64
@@ -137,6 +165,20 @@ primitives =
      (2, LB32UDiv) total,
    Prim (UN "prim__sdivB32") (ty [B32Type, B32Type] B32Type) 2 (b32Bin s32div)
      (2, LB32SDiv) total,
+   Prim (UN "prim__shlB32") (ty [B32Type, B32Type] B32Type) 2 (b32Bin (\x y -> shiftL x (fromIntegral y)))
+     (2, LB32Shl) total,
+   Prim (UN "prim__lshrB32") (ty [B32Type, B32Type] B32Type) 2 (b32Bin (\x y -> shiftR x (fromIntegral y)))
+     (2, LB32AShr) total,
+   Prim (UN "prim__ashrB32") (ty [B32Type, B32Type] B32Type) 2 (b32Bin (\x y -> fromIntegral $
+                                                                                shiftR (fromIntegral x :: Int32)
+                                                                                       (fromIntegral y)))
+     (2, LB32LShr) total,
+   Prim (UN "prim__andB32") (ty [B32Type, B32Type] B32Type) 2 (b32Bin (.&.))
+     (2, LB32And) total,
+   Prim (UN "prim__orB32") (ty [B32Type, B32Type] B32Type) 2 (b32Bin (.|.))
+     (2, LB32Or) total,
+   Prim (UN "prim__xorB32") (ty [B32Type, B32Type] B32Type) 2 (b32Bin xor)
+     (2, LB32Xor) total,
    Prim (UN "prim__zextB32_64") (ty [B32Type] B64Type) 1 zext32_64
      (1, LB32Z64) total,
    Prim (UN "prim__sextB32_64") (ty [B32Type] B64Type) 1 sext32_64
@@ -158,6 +200,20 @@ primitives =
      (2, LB64UDiv) total,
    Prim (UN "prim__sdivB64") (ty [B64Type, B64Type] B64Type) 2 (b64Bin s64div)
      (2, LB64SDiv) total,
+   Prim (UN "prim__shlB64") (ty [B64Type, B64Type] B64Type) 2 (b64Bin (\x y -> shiftL x (fromIntegral y)))
+     (2, LB64Shl) total,
+   Prim (UN "prim__lshrB64") (ty [B64Type, B64Type] B64Type) 2 (b64Bin (\x y -> shiftR x (fromIntegral y)))
+     (2, LB64AShr) total,
+   Prim (UN "prim__ashrB64") (ty [B64Type, B64Type] B64Type) 2 (b64Bin (\x y -> fromIntegral $
+                                                                                shiftR (fromIntegral x :: Int64)
+                                                                                       (fromIntegral y)))
+     (2, LB64LShr) total,
+   Prim (UN "prim__andB64") (ty [B64Type, B64Type] B64Type) 2 (b64Bin (.&.))
+     (2, LB64And) total,
+   Prim (UN "prim__orB64") (ty [B64Type, B64Type] B64Type) 2 (b64Bin (.|.))
+     (2, LB64Or) total,
+   Prim (UN "prim__xorB64") (ty [B64Type, B64Type] B64Type) 2 (b64Bin xor)
+     (2, LB64Xor) total,
    Prim (UN "prim__truncB64_8") (ty [B64Type] B8Type) 1 trunc64_8
      (1, LB64T8) total,
    Prim (UN "prim__truncB64_16") (ty [B64Type] B16Type) 1 trunc64_16
