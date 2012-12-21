@@ -23,6 +23,10 @@ public
 modDiv : Modulo n -> Modulo n -> Modulo n
 modDiv (MkModulo x) (MkModulo y) = MkModulo (bitsUDiv x y)
 
+public
+modToStr : Modulo n -> String
+modToStr (MkModulo x) = bitsToStr x
+
 instance Num (Modulo (S n)) where
     (+) = modAdd
     (-) = modSub
