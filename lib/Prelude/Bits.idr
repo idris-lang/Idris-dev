@@ -56,3 +56,10 @@ bitsUDiv {n=m} x y with (Bits m)
     | Bits16 = prim__udivB16 x y
     | Bits32 = prim__udivB32 x y
     | Bits64 = prim__udivB64 x y
+
+bitsToStr : {n : Nat} -> Bits n -> String
+bitsToStr {n=m} x with (Bits m)
+    | Bits8 = prim__b8ToStr x
+    | Bits16 = prim__b16ToStr x
+    | Bits32 = prim__b32ToStr x
+    | Bits64 = prim__b64ToStr x

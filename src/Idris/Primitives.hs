@@ -77,6 +77,8 @@ primitives =
    Prim (UN "prim__gteChar") (ty [ChType, ChType] IType) 2 (bcBin (>=))
      (2, LGe) total,
 
+   Prim (UN "prim__b8ToStr") (ty [B8Type] StrType) 1 (b8ToStr)
+     (1, LB8Str) total,
    Prim (UN "prim__addB8") (ty [B8Type, B8Type] B8Type) 2 (b8Bin (+))
      (2, LB8Plus) total,
    Prim (UN "prim__subB8") (ty [B8Type, B8Type] B8Type) 2 (b8Bin (-))
@@ -100,6 +102,8 @@ primitives =
    Prim (UN "prim__sextB8_64") (ty [B8Type] B64Type) 1 sext8_64
      (1, LB8Z64) total,
 
+   Prim (UN "prim__b16ToStr") (ty [B16Type] StrType) 1 (b16ToStr)
+     (1, LB16Str) total,
    Prim (UN "prim__addB16") (ty [B16Type, B16Type] B16Type) 2 (b16Bin (+))
      (2, LB16Plus) total,
    Prim (UN "prim__subB16") (ty [B16Type, B16Type] B16Type) 2 (b16Bin (-))
@@ -121,6 +125,8 @@ primitives =
    Prim (UN "prim__truncB16_8") (ty [B16Type] B8Type) 1 trunc16_8
      (1, LB16T8) total,
 
+   Prim (UN "prim__b32ToStr") (ty [B32Type] StrType) 1 (b32ToStr)
+     (1, LB32Str) total,
    Prim (UN "prim__addB32") (ty [B32Type, B32Type] B32Type) 2 (b32Bin (+))
      (2, LB32Plus) total,
    Prim (UN "prim__subB32") (ty [B32Type, B32Type] B32Type) 2 (b32Bin (-))
@@ -140,6 +146,8 @@ primitives =
    Prim (UN "prim__truncB32_16") (ty [B32Type] B16Type) 1 trunc32_16
      (1, LB32T16) total,
 
+   Prim (UN "prim__b64ToStr") (ty [B64Type] StrType) 1 (b64ToStr)
+     (1, LB64Str) total,
    Prim (UN "prim__addB64") (ty [B64Type, B64Type] B64Type) 2 (b64Bin (+))
      (2, LB64Plus) total,
    Prim (UN "prim__subB64") (ty [B64Type, B64Type] B64Type) 2 (b64Bin (-))
@@ -330,6 +338,18 @@ s32div x y = fromIntegral (fromIntegral x `div` fromIntegral y :: Int32)
 
 s64div :: Word64 -> Word64 -> Word64
 s64div x y = fromIntegral (fromIntegral x `div` fromIntegral y :: Int64)
+
+b8ToStr [VConstant (B8 x)] = Just $ VConstant (Str (show x))
+b8ToStr _ = Nothing
+
+b16ToStr [VConstant (B16 x)] = Just $ VConstant (Str (show x))
+b16ToStr _ = Nothing
+
+b32ToStr [VConstant (B32 x)] = Just $ VConstant (Str (show x))
+b32ToStr _ = Nothing
+
+b64ToStr [VConstant (B64 x)] = Just $ VConstant (Str (show x))
+b64ToStr _ = Nothing
 
 b8Bin op [VConstant (B8 x), VConstant (B8 y)] = Just $ VConstant (B8 (op x y))
 b8Bin _ _ = Nothing
