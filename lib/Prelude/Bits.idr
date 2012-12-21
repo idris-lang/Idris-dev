@@ -22,6 +22,9 @@ intToBits {n=n} x with (Bits n)
     | Bits32 = prim__intToB32 x
     | Bits64 = prim__intToB64 x
 
+instance Cast Int (Bits n) where
+    cast = intToBits
+
 bitsShl : {n: Nat} -> Bits n -> Bits n -> Bits n
 bitsShl {n=n} x c with (Bits n)
     | Bits8 = prim__shlB8 x c
