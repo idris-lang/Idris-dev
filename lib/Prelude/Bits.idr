@@ -19,12 +19,39 @@ abstract
 data Bits : Nat -> Type where
     MkBits : {n : Nat} -> nextBits n -> Bits n
 
+pad8 : Nat -> (Bits8 -> Bits8 -> Bits8) -> Bits8 -> Bits8 -> Bits8
+pad8 n f x y = prim__lshrB8 (f (prim__shlB8 x pad) (prim__shlB8 y pad)) pad
+    where
+      pad = (prim__intToB8 (cast (8-n)))
+
+pad16 : Nat -> (Bits16 -> Bits16 -> Bits16) -> Bits16 -> Bits16 -> Bits16
+pad16 n f x y = prim__lshrB16 (f (prim__shlB16 x pad) (prim__shlB16 y pad)) pad
+    where
+      pad = (prim__intToB16 (cast (16-n)))
+
+pad32 : Nat -> (Bits32 -> Bits32 -> Bits32) -> Bits32 -> Bits32 -> Bits32
+pad32 n f x y = prim__lshrB32 (f (prim__shlB32 x pad) (prim__shlB32 y pad)) pad
+    where
+      pad = (prim__intToB32 (cast (32-n)))
+
+pad64 : Nat -> (Bits64 -> Bits64 -> Bits64) -> Bits64 -> Bits64 -> Bits64
+pad64 n f x y = prim__lshrB64 (f (prim__shlB64 x pad) (prim__shlB64 y pad)) pad
+    where
+      pad = (prim__intToB64 (cast (64-n)))
+
+%assert_total
+pow : Int -> Int -> Int
+pow x y = if y > 0
+          then x * (pow x (y - 1))
+          else 1
+
+%assert_total
 intToBits' : {n: Nat} -> Int -> nextBits n
 intToBits' {n=n} x with (nextBits n)
-    | Bits8 = prim__intToB8 x
-    | Bits16 = prim__intToB16 x
-    | Bits32 = prim__intToB32 x
-    | Bits64 = prim__intToB64 x
+    | Bits8 = prim__intToB8 (x `mod` (pow 2 (cast n)))
+    | Bits16 = prim__intToB16 (x `mod` (pow 2 (cast n)))
+    | Bits32 = prim__intToB32 (x `mod` (pow 2 (cast n)))
+    | Bits64 = prim__intToB64 (x `mod` (pow 2 (cast n)))
 
 public
 intToBits : {n : Nat} -> Int -> Bits n
@@ -32,10 +59,10 @@ intToBits n = MkBits (intToBits' n)
 
 bitsShl' : {n: Nat} -> nextBits n -> nextBits n -> nextBits n
 bitsShl' {n=n} x c with (nextBits n)
-    | Bits8 = prim__shlB8 x c
-    | Bits16 = prim__shlB16 x c
-    | Bits32 = prim__shlB32 x c
-    | Bits64 = prim__shlB64 x c
+    | Bits8 = pad8 n prim__shlB8 x c
+    | Bits16 = pad16 n prim__shlB16 x c
+    | Bits32 = pad32 n prim__shlB32 x c
+    | Bits64 = pad64 n prim__shlB64 x c
 
 public
 bitsShl : Bits n -> Bits n -> Bits n
@@ -98,14 +125,10 @@ bitsXOr (MkBits x) (MkBits y) = MkBits (bitsXOr' x y)
 
 bitsAdd' : {n : Nat} -> nextBits n -> nextBits n -> nextBits n
 bitsAdd' {n=n} x y with (nextBits n)
-    | Bits8 = let pad = prim__intToB8 (the Int (cast (8-n))) in
-              prim__lshrB8 (prim__addB8 (prim__shlB8 x pad) (prim__shlB8 y pad)) pad
-    | Bits16 = let pad = prim__intToB16 (the Int (cast (16-n))) in
-               prim__lshrB16 (prim__addB16 (prim__shlB16 x pad) (prim__shlB16 y pad)) pad
-    | Bits32 = let pad = prim__intToB32 (the Int (cast (32-n))) in
-               prim__lshrB32 (prim__addB32 (prim__shlB32 x pad) (prim__shlB32 y pad)) pad
-    | Bits64 = let pad = prim__intToB64 (the Int (cast (64-n))) in
-               prim__lshrB64 (prim__addB64 (prim__shlB64 x pad) (prim__shlB64 y pad)) pad
+    | Bits8 = pad8 n prim__addB8 x y
+    | Bits16 = pad16 n prim__addB16 x y
+    | Bits32 = pad32 n prim__addB32 x y
+    | Bits64 = pad64 n prim__addB64 x y
 
 public
 bitsAdd : Bits n -> Bits n -> Bits n
@@ -113,10 +136,10 @@ bitsAdd (MkBits x) (MkBits y) = MkBits (bitsAdd' x y)
 
 bitsSub' : {n : Nat} -> nextBits n -> nextBits n -> nextBits n
 bitsSub' {n=n} x y with (nextBits n)
-    | Bits8 = prim__subB8 x y
-    | Bits16 = prim__subB16 x y
-    | Bits32 = prim__subB32 x y
-    | Bits64 = prim__subB64 x y
+    | Bits8 = pad8 n prim__subB8 x y
+    | Bits16 = pad16 n prim__subB16 x y
+    | Bits32 = pad32 n prim__subB32 x y
+    | Bits64 = pad64 n prim__subB64 x y
 
 public
 bitsSub : Bits n -> Bits n -> Bits n
@@ -124,10 +147,10 @@ bitsSub (MkBits x) (MkBits y) = MkBits (bitsSub' x y)
 
 bitsMul' : {n : Nat} -> nextBits n -> nextBits n -> nextBits n
 bitsMul' {n=n} x y with (nextBits n)
-    | Bits8 = prim__mulB8 x y
-    | Bits16 = prim__mulB16 x y
-    | Bits32 = prim__mulB32 x y
-    | Bits64 = prim__mulB64 x y
+    | Bits8 = pad8 n prim__mulB8 x y
+    | Bits16 = pad16 n prim__mulB16 x y
+    | Bits32 = pad32 n prim__mulB32 x y
+    | Bits64 = pad64 n prim__mulB64 x y
 
 public
 bitsMul : Bits n -> Bits n -> Bits n
