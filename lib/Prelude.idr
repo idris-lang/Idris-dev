@@ -32,7 +32,7 @@ instance Show Nat where
 instance Show Int where 
     show = prim__intToStr
 
-instance Show (Modulo (S n)) where
+instance Show (Mod2 n) where
     show = modToStr
 
 instance Show Integer where 

@@ -3,33 +3,47 @@ import Prelude.Bits
 
 %default total
 
+-- Integers modulo 2^n
 abstract
-data Modulo : Nat -> Type where
-    MkModulo : {n : Nat} -> Bits (log2 (2*n)) -> Modulo (S n)
+data Mod2 : Nat -> Type where
+    MkMod2 : {n : Nat} -> Bits n -> Mod2 n
 
 public
-modAdd : Modulo n -> Modulo n -> Modulo n
-modAdd (MkModulo x) (MkModulo y) = MkModulo (bitsAdd x y)
+modAdd : Mod2 n -> Mod2 n -> Mod2 n
+modAdd (MkMod2 x) (MkMod2 y) = MkMod2 (bitsAdd x y)
 
 public
-modSub : Modulo n -> Modulo n -> Modulo n
-modSub (MkModulo x) (MkModulo y) = MkModulo (bitsSub x y)
+modSub : Mod2 n -> Mod2 n -> Mod2 n
+modSub (MkMod2 x) (MkMod2 y) = MkMod2 (bitsSub x y)
 
 public
-modMul : Modulo n -> Modulo n -> Modulo n
-modMul (MkModulo x) (MkModulo y) = MkModulo (bitsMul x y)
+modMul : Mod2 n -> Mod2 n -> Mod2 n
+modMul (MkMod2 x) (MkMod2 y) = MkMod2 (bitsMul x y)
 
 public
-modDiv : Modulo n -> Modulo n -> Modulo n
-modDiv (MkModulo x) (MkModulo y) = MkModulo (bitsUDiv x y)
+modDiv : Mod2 n -> Mod2 n -> Mod2 n
+modDiv (MkMod2 x) (MkMod2 y) = MkMod2 (bitsUDiv x y)
 
 public
-modToStr : Modulo n -> String
-modToStr (MkModulo x) = bitsToStr x
+modToStr : Mod2 n -> String
+modToStr (MkMod2 x) = bitsToStr x
 
-instance Num (Modulo (S n)) where
+%assert_total
+public
+intToMod : {n : Nat} -> Int -> Mod2 n
+intToMod {n=n} x = MkMod2 (intToBits x)
+
+public
+modToBits : Mod2 n -> Bits n
+modToBits (MkMod2 x) = x
+
+public
+bitsToMod : Bits n -> Mod2 n
+bitsToMod x = MkMod2 x
+
+instance Num (Mod2 n) where
     (+) = modAdd
     (-) = modSub
     (*) = modMul
     abs = id
-    fromInteger x = MkModulo (intToBits x)
+    fromInteger = intToMod
