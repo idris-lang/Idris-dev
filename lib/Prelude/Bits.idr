@@ -57,6 +57,9 @@ public
 intToBits : {n : Nat} -> Int -> Bits n
 intToBits n = MkBits (intToBits' n)
 
+instance Cast Int (Bits n) where
+    cast = intToBits
+
 bitsShl' : {n: Nat} -> nextBits n -> nextBits n -> nextBits n
 bitsShl' {n=n} x c with (nextBits n)
     | Bits8 = pad8 n prim__shlB8 x c

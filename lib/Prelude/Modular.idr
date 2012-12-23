@@ -47,3 +47,9 @@ instance Num (Mod2 n) where
     (*) = modMul
     abs = id
     fromInteger = intToMod
+
+instance Cast (Mod2 n) (Bits n) where
+    cast = modToBits
+
+instance Cast (Bits n) (Mod2 n) where
+    cast = bitsToMod
