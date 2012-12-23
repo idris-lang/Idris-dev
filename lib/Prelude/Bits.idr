@@ -191,3 +191,17 @@ bitsToStr' {n=n} x with (nextBits n)
 public
 bitsToStr : Bits n -> String
 bitsToStr (MkBits x) = bitsToStr' x
+
+bitsEq' : (x : nextBits n) -> (y : nextBits n) -> Int
+bitsEq' {n=n} x y with (nextBits n)
+    | Bits8 = prim__eqB8 x y
+    | Bits16 = prim__eqB16 x y
+    | Bits32 = prim__eqB32 x y
+    | Bits64 = prim__eqB64 x y
+
+public
+bitsEq : (x : Bits n) -> (y : Bits n) -> Either (x = y) (x = y -> _|_)
+bitsEq (MkBits x) (MkBits y) =
+    case (bitsEq' x y) of
+      0 => Right (believe_me ())
+      _ => Left (believe_me ())

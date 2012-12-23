@@ -77,6 +77,16 @@ primitives =
    Prim (UN "prim__gteChar") (ty [ChType, ChType] IType) 2 (bcBin (>=))
      (2, LGe) total,
 
+   Prim (UN "prim__ltB8") (ty [B8Type, B8Type] IType) 2 (b8Cmp (<))
+     (2, LB8Lt) total,
+   Prim (UN "prim__lteB8") (ty [B8Type, B8Type] IType) 2 (b8Cmp (<=))
+     (2, LB8Lte) total,
+   Prim (UN "prim__eqB8") (ty [B8Type, B8Type] IType) 2 (b8Cmp (==))
+     (2, LB8Eq) total,
+   Prim (UN "prim__gteB8") (ty [B8Type, B8Type] IType) 2 (b8Cmp (>))
+     (2, LB8Gte) total,
+   Prim (UN "prim__gtB8") (ty [B8Type, B8Type] IType) 2 (b8Cmp (>=))
+     (2, LB8Gt) total,
    Prim (UN "prim__b8ToStr") (ty [B8Type] StrType) 1 (b8ToStr)
      (1, LB8Str) total,
    Prim (UN "prim__addB8") (ty [B8Type, B8Type] B8Type) 2 (b8Bin (+))
@@ -116,6 +126,16 @@ primitives =
    Prim (UN "prim__sextB8_64") (ty [B8Type] B64Type) 1 sext8_64
      (1, LB8Z64) total,
 
+   Prim (UN "prim__ltB16") (ty [B16Type, B16Type] IType) 2 (b16Cmp (<))
+     (2, LB16Lt) total,
+   Prim (UN "prim__lteB16") (ty [B16Type, B16Type] IType) 2 (b16Cmp (<=))
+     (2, LB16Lte) total,
+   Prim (UN "prim__eqB16") (ty [B16Type, B16Type] IType) 2 (b16Cmp (==))
+     (2, LB16Eq) total,
+   Prim (UN "prim__gteB16") (ty [B16Type, B16Type] IType) 2 (b16Cmp (>))
+     (2, LB16Gte) total,
+   Prim (UN "prim__gtB16") (ty [B16Type, B16Type] IType) 2 (b16Cmp (>=))
+     (2, LB16Gt) total,
    Prim (UN "prim__b16ToStr") (ty [B16Type] StrType) 1 (b16ToStr)
      (1, LB16Str) total,
    Prim (UN "prim__addB16") (ty [B16Type, B16Type] B16Type) 2 (b16Bin (+))
@@ -153,6 +173,16 @@ primitives =
    Prim (UN "prim__truncB16_8") (ty [B16Type] B8Type) 1 trunc16_8
      (1, LB16T8) total,
 
+   Prim (UN "prim__ltB32") (ty [B32Type, B32Type] IType) 2 (b32Cmp (<))
+     (2, LB32Lt) total,
+   Prim (UN "prim__lteB32") (ty [B32Type, B32Type] IType) 2 (b32Cmp (<=))
+     (2, LB32Lte) total,
+   Prim (UN "prim__eqB32") (ty [B32Type, B32Type] IType) 2 (b32Cmp (==))
+     (2, LB32Eq) total,
+   Prim (UN "prim__gteB32") (ty [B32Type, B32Type] IType) 2 (b32Cmp (>))
+     (2, LB32Gte) total,
+   Prim (UN "prim__gtB32") (ty [B32Type, B32Type] IType) 2 (b32Cmp (>=))
+     (2, LB32Gt) total,
    Prim (UN "prim__b32ToStr") (ty [B32Type] StrType) 1 (b32ToStr)
      (1, LB32Str) total,
    Prim (UN "prim__addB32") (ty [B32Type, B32Type] B32Type) 2 (b32Bin (+))
@@ -188,6 +218,16 @@ primitives =
    Prim (UN "prim__truncB32_16") (ty [B32Type] B16Type) 1 trunc32_16
      (1, LB32T16) total,
 
+   Prim (UN "prim__ltB64") (ty [B64Type, B64Type] IType) 2 (b64Cmp (<))
+     (2, LB64Lt) total,
+   Prim (UN "prim__lteB64") (ty [B64Type, B64Type] IType) 2 (b64Cmp (<=))
+     (2, LB64Lte) total,
+   Prim (UN "prim__eqB64") (ty [B64Type, B64Type] IType) 2 (b64Cmp (==))
+     (2, LB64Eq) total,
+   Prim (UN "prim__gteB64") (ty [B64Type, B64Type] IType) 2 (b64Cmp (>))
+     (2, LB64Gte) total,
+   Prim (UN "prim__gtB64") (ty [B64Type, B64Type] IType) 2 (b64Cmp (>=))
+     (2, LB64Gt) total,
    Prim (UN "prim__b64ToStr") (ty [B64Type] StrType) 1 (b64ToStr)
      (1, LB64Str) total,
    Prim (UN "prim__addB64") (ty [B64Type, B64Type] B64Type) 2 (b64Bin (+))
@@ -418,6 +458,18 @@ b32Bin _ _ = Nothing
 
 b64Bin op [VConstant (B64 x), VConstant (B64 y)] = Just $ VConstant (B64 (op x y))
 b64Bin _ _ = Nothing
+
+b8Cmp op [VConstant (B8 x), VConstant (B8 y)] = Just $ VConstant (I (if (op x y) then 1 else 0))
+b8Cmp _ _ = Nothing
+
+b16Cmp op [VConstant (B16 x), VConstant (B16 y)] = Just $ VConstant (I (if (op x y) then 1 else 0))
+b16Cmp _ _ = Nothing
+
+b32Cmp op [VConstant (B32 x), VConstant (B32 y)] = Just $ VConstant (I (if (op x y) then 1 else 0))
+b32Cmp _ _ = Nothing
+
+b64Cmp op [VConstant (B64 x), VConstant (B64 y)] = Just $ VConstant (I (if (op x y) then 1 else 0))
+b64Cmp _ _ = Nothing
 
 toB8 x = VConstant (B8 (fromIntegral x))
 toB16 x = VConstant (B16 (fromIntegral x))
