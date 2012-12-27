@@ -203,5 +203,8 @@ public
 bitsEq : (x : Bits n) -> (y : Bits n) -> Either (x = y) (x = y -> _|_)
 bitsEq (MkBits x) (MkBits y) =
     case (bitsEq' x y) of
-      0 => Right (believe_me ())
-      _ => Left (believe_me ())
+      0 => Right uneq
+      _ => Left eq
+    where
+      postulate uneq : {x : Bits n} -> {y : Bits n} -> x = y -> _|_
+      postulate eq : {x : Bits n} -> {y : Bits n} -> x = y
