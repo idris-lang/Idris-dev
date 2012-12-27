@@ -200,11 +200,11 @@ bitsEq' {n=n} x y with (nextBits n)
     | Bits64 = prim__eqB64 x y
 
 public
-bitsEq : (x : Bits n) -> (y : Bits n) -> Either (x = y -> _|_) (x = y)
+bitsEq : (x : Bits n) -> (y : Bits n) -> Equality x y
 bitsEq (MkBits x) (MkBits y) =
     case (bitsEq' x y) of
-      0 => Left uneq
-      _ => Right eq
+      0 => Unequal uneq
+      _ => Equal eq
     where
       postulate uneq : {x : Bits n} -> {y : Bits n} -> x = y -> _|_
       postulate eq : {x : Bits n} -> {y : Bits n} -> x = y

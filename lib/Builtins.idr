@@ -76,6 +76,10 @@ boolElim False t e = e
 
 data so : Bool -> Type where oh : so True
 
+data Equality : {A : Type} -> (x : A) -> (y : A) -> Type where
+    Unequal : {A : Type} -> {x : A} -> {y : A} -> (x = y -> _|_) -> Equality x y
+    Equal : {A : Type} -> {x : A} -> {y : A} -> (x = y) -> Equality x y
+
 syntax if [test] then [t] else [e] = boolElim test t e
 syntax [test] "?" [t] ":" [e] = if test then t else e
 
