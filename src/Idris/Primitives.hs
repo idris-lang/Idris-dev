@@ -113,6 +113,8 @@ primitives =
      (2, LB8Or) total,
    Prim (UN "prim__xorB8") (ty [B8Type, B8Type] B8Type) 2 (b8Bin xor)
      (2, LB8Xor) total,
+   Prim (UN "prim__complB8") (ty [B8Type] B8Type) 1 (b8Un complement)
+     (1, LB8Compl) total,
    Prim (UN "prim__zextB8_16") (ty [B8Type] B16Type) 1 zext8_16
      (1, LB8Z16) total,
    Prim (UN "prim__zextB8_32") (ty [B8Type] B32Type) 1 zext8_32
@@ -162,6 +164,8 @@ primitives =
      (2, LB16Or) total,
    Prim (UN "prim__xorB16") (ty [B16Type, B16Type] B16Type) 2 (b16Bin xor)
      (2, LB16Xor) total,
+   Prim (UN "prim__complB16") (ty [B16Type] B16Type) 1 (b8Un complement)
+     (1, LB16Compl) total,
    Prim (UN "prim__zextB16_32") (ty [B16Type] B32Type) 1 zext16_32
      (1, LB16Z32) total,
    Prim (UN "prim__zextB16_64") (ty [B16Type] B64Type) 1 zext16_64
@@ -209,6 +213,8 @@ primitives =
      (2, LB32Or) total,
    Prim (UN "prim__xorB32") (ty [B32Type, B32Type] B32Type) 2 (b32Bin xor)
      (2, LB32Xor) total,
+   Prim (UN "prim__complB32") (ty [B32Type] B32Type) 1 (b32Un complement)
+     (1, LB32Compl) total,
    Prim (UN "prim__zextB32_64") (ty [B32Type] B64Type) 1 zext32_64
      (1, LB32Z64) total,
    Prim (UN "prim__sextB32_64") (ty [B32Type] B64Type) 1 sext32_64
@@ -254,6 +260,8 @@ primitives =
      (2, LB64Or) total,
    Prim (UN "prim__xorB64") (ty [B64Type, B64Type] B64Type) 2 (b64Bin xor)
      (2, LB64Xor) total,
+   Prim (UN "prim__complB64") (ty [B64Type] B64Type) 1 (b64Un complement)
+     (1, LB64Compl) total,
    Prim (UN "prim__truncB64_8") (ty [B64Type] B8Type) 1 trunc64_8
      (1, LB64T8) total,
    Prim (UN "prim__truncB64_16") (ty [B64Type] B16Type) 1 trunc64_16
@@ -450,14 +458,26 @@ b64ToStr _ = Nothing
 b8Bin op [VConstant (B8 x), VConstant (B8 y)] = Just $ VConstant (B8 (op x y))
 b8Bin _ _ = Nothing
 
+b8Un op [VConstant (B8 x)] = Just $ VConstant (B8 (op x))
+b8Un _ _ = Nothing
+
 b16Bin op [VConstant (B16 x), VConstant (B16 y)] = Just $ VConstant (B16 (op x y))
 b16Bin _ _ = Nothing
+
+b16Un op [VConstant (B16 x)] = Just $ VConstant (B16 (op x))
+b16Un _ _ = Nothing
 
 b32Bin op [VConstant (B32 x), VConstant (B32 y)] = Just $ VConstant (B32 (op x y))
 b32Bin _ _ = Nothing
 
+b32Un op [VConstant (B32 x)] = Just $ VConstant (B32 (op x))
+b32Un _ _ = Nothing
+
 b64Bin op [VConstant (B64 x), VConstant (B64 y)] = Just $ VConstant (B64 (op x y))
 b64Bin _ _ = Nothing
+
+b64Un op [VConstant (B64 x)] = Just $ VConstant (B64 (op x))
+b64Un _ _ = Nothing
 
 b8Cmp op [VConstant (B8 x), VConstant (B8 y)] = Just $ VConstant (I (if (op x y) then 1 else 0))
 b8Cmp _ _ = Nothing
