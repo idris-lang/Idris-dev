@@ -48,10 +48,14 @@ pow x y = if y > 0
 %assert_total
 intToBits' : {n: Nat} -> Int -> nextBits n
 intToBits' {n=n} x with (nextBits n)
-    | Bits8 = prim__intToB8 (x `mod` (pow 2 (cast n)))
-    | Bits16 = prim__intToB16 (x `mod` (pow 2 (cast n)))
-    | Bits32 = prim__intToB32 (x `mod` (pow 2 (cast n)))
-    | Bits64 = prim__intToB64 (x `mod` (pow 2 (cast n)))
+    | Bits8 = let pad = (prim__intToB8 (cast (8-n))) in
+              prim__lshrB8 (prim__shlB8 (prim__intToB8 x) pad) pad
+    | Bits16 = let pad = (prim__intToB16 (cast (16-n))) in
+               prim__lshrB16 (prim__shlB16 (prim__intToB16 x) pad) pad
+    | Bits32 = let pad = (prim__intToB32 (cast (32-n))) in
+               prim__lshrB32 (prim__shlB32 (prim__intToB32 x) pad) pad
+    | Bits64 = let pad = (prim__intToB64 (cast (64-n))) in
+               prim__lshrB64 (prim__shlB64 (prim__intToB64 x) pad) pad
 
 public
 intToBits : {n : Nat} -> Int -> Bits n
