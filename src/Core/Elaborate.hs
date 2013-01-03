@@ -155,8 +155,16 @@ get_inj = do ES p _ _ <- get
              return (injective (fst p))
 
 checkInjective :: (Term, Term, Term) -> Elab' aux ()
-checkInjective (tm, l, r) = if isInjective tm then return ()
+checkInjective (tm, l, r) = do ctxt <- get_context
+                               if isInj ctxt tm then return ()
                                 else lift $ tfail (NotInjective tm l r) 
+  where isInj ctxt (P _ n _) 
+            | isConName Nothing n ctxt = True
+        isInj ctxt (App f a) = isInj ctxt f
+        isInj ctxt (Constant _) = True
+        isInj ctxt (TType _) = True
+        isInj ctxt (Bind _ (Pi _) sc) = True
+        isInj ctxt _ = False
 
 -- get instance argument names
 get_instances :: Elab' aux [Name]
