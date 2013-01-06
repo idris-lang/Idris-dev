@@ -472,6 +472,7 @@ data PTactic' t = Intro [Name] | Intros | Focus Name
                 | ProofState | ProofTerm | Undo
                 | Try (PTactic' t) (PTactic' t)
                 | TSeq (PTactic' t) (PTactic' t)
+                | ReflectTac t -- see Language.Reflection module
                 | Qed | Abandon
     deriving (Show, Eq, Functor)
 {-! 

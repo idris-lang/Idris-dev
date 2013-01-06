@@ -293,8 +293,9 @@ elab ist info pattern tcgen fn tm
             tryWhen True
                 (do ns <- apply (Var f) (map isph args)
                     let (ns', eargs) 
-                         = unzip $
-                             sortBy (\(_,x) (_,y) -> compare (priority x) (priority y))
+                         = unzip $ 
+                             sortBy (\(_,x) (_,y) -> 
+                                            compare (priority x) (priority y))
                                     (zip ns args)
                     try 
                         (elabArgs (ina || not isinf, guarded)
@@ -316,6 +317,10 @@ elab ist info pattern tcgen fn tm
                                 resolveTC 7 fn ist) (ivs' \\ ivs) 
       where tcArg (n, PConstraint _ _ Placeholder _) = True
             tcArg _ = False
+
+            tacTm (PTactics _) = True
+            tacTm (PProof _) = True
+            tacTm _ = False
 
     elab' ina@(_, a) (PApp fc f [arg])
           = erun fc $ 
@@ -630,9 +635,43 @@ runTac autoSolve ist tac = do env <- get_env
     runT Trivial = do trivial ist; when autoSolve solveAll
     runT (Focus n) = focus n
     runT Solve = solve
-    runT (Try l r) = do try (runT l) (runT r)
+    runT (Try l r) = do try' (runT l) (runT r) True
     runT (TSeq l r) = do runT l; runT r
+    runT (ReflectTac tm) = do attack -- let x : Tactic = tm in ...
+                              valn <- unique_hole (MN 0 "tacval")
+                              claim valn (Var tacticTy)
+                              tacn <- unique_hole (MN 0 "tacn")
+                              letbind tacn (Var tacticTy) (Var valn)
+                              focus valn
+                              elab ist toplevel False False (MN 0 "tac") tm
+                              (tm', ty') <- get_type_val (Var tacn)
+                              ctxt <- get_context
+                              env <- get_env
+                              -- g <- goal 
+                              let tactic = normalise ctxt env tm'
+                              runReflected tactic
+--                               p <- get_term
+--                               trace (show p ++ "\n\n") $ 
+                              return ()
+        where tacticTy = tacm "Tactic"
     runT x = fail $ "Not implemented " ++ show x
+
+    runReflected t = do t' <- reify t
+                        runTac autoSolve ist t'
+    tacm n = NS (UN n) ["Reflection", "Language"]
+
+    reify :: Term -> ElabD PTactic
+    reify (P _ n _) | n == tacm "Trivial" = return Trivial
+    reify (P _ n _) | n == tacm "Solve" = return Solve
+    reify f@(App _ _) 
+          | (P _ f _, args) <- unApply f = reifyAp f args
+    reify t = fail "Unknown tactic"
+
+    reifyAp t [l, r] | t == tacm "Try" = liftM2 Try (reify l) (reify r)
+    reifyAp t [Constant (Str x)] 
+                     | t == tacm "Refine" = return $ Refine (UN x) []
+    reifyAp t [l, r] | t == tacm "Seq" = liftM2 TSeq (reify l) (reify r)
+    reifyAp f args = fail "Unknown tactic" -- shouldn't happen
 
 solveAll = try (do solve; solveAll) (return ())
 

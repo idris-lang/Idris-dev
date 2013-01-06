@@ -1503,6 +1503,9 @@ pTactic syn = do reserved "intro"; ns <- sepBy pName (lchar ',')
           <|> do reserved "exact"; t <- pExpr syn;
                  i <- getState
                  return $ Exact (desugar syn i t)
+          <|> do reserved "reflect"; t <- pExpr syn;
+                 i <- getState
+                 return $ ReflectTac (desugar syn i t)
           <|> do reserved "try"; t <- pTactic syn;
                  lchar '|';
                  t1 <- pTactic syn

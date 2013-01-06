@@ -484,11 +484,15 @@ arg n tyhole = do ty <- unique_hole tyhole
 
 -- Try a tactic, if it fails, try another
 try :: Elab' aux a -> Elab' aux a -> Elab' aux a
-try t1 t2 = do s <- get
+try t1 t2 = try' t1 t2 False
+
+try' :: Elab' aux a -> Elab' aux a -> Bool -> Elab' aux a
+try' t1 t2 proofSearch
+          = do s <- get
                case runStateT t1 s of
                     OK (v, s') -> do put s'
                                      return v
-                    Error e1 -> if recoverableErr e1 then
+                    Error e1 -> if proofSearch || recoverableErr e1 then
                                    do case runStateT t2 s of
                                          OK (v, s') -> do put s'; return v
                                          Error e2 -> if score e1 >= score e2 
