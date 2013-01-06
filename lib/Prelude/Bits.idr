@@ -1,4 +1,4 @@
-module Bits
+module Prelude.Bits
 
 %default total
 

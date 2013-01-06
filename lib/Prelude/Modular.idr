@@ -1,4 +1,5 @@
-module Modular
+module Prelude.Modular
+
 import Prelude.Bits
 
 %default total
