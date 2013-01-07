@@ -1,4 +1,4 @@
-{-# LANGUAGE PatternGuards #-}
+{-# LANGUAGE PatternGuards, TypeSynonymInstances #-}
 
 module IRTS.Compiler where
 

@@ -19,6 +19,9 @@ replace refl prf = prf
 sym : {l:a} -> {r:a} -> l = r -> r = l
 sym refl = refl
 
+trans : {a:x} -> {b:x} -> {c:x} -> a = b -> b = c -> a = c
+trans refl refl = refl
+
 lazy : a -> a
 lazy x = x -- compiled specially
 
