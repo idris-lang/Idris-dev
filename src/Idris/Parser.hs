@@ -390,7 +390,7 @@ pSyntaxRule syn
          when (length ns /= length (nub ns)) 
             $ fail "Repeated variable in syntax rule"
          lchar '='
-         tm <- pExpr (impOK syn)
+         tm <- pTExpr (impOK syn)
          pTerminator
          return (Rule (mkSimple syms) tm sty)
   where
@@ -908,10 +908,11 @@ mkType (NS n s) = NS (mkType n) s
 noImp syn = syn { implicitAllowed = False }
 impOK syn = syn { implicitAllowed = True }
 
-pTSig syn = do lchar ':'
-               cs <- if implicitAllowed syn then pConstList syn else return []
-               sc <- pExpr syn 
-               return (bindList (PPi constraint) (map (\x -> (MN 0 "c", x)) cs) sc)
+pTSig syn = do lchar ':'; pTExpr syn
+
+pTExpr syn = do cs <- if implicitAllowed syn then pConstList syn else return []
+                sc <- pExpr syn 
+                return (bindList (PPi constraint) (map (\x -> (MN 0 "c", x)) cs) sc)
 
 pLambda syn = do lchar '\\'
                  try (do xt <- tyOptDeclList syn
