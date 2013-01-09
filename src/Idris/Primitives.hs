@@ -87,8 +87,6 @@ primitives =
      (2, LB8Gte) total,
    Prim (UN "prim__gtB8") (ty [B8Type, B8Type] IType) 2 (b8Cmp (>=))
      (2, LB8Gt) total,
-   Prim (UN "prim__b8ToStr") (ty [B8Type] StrType) 1 (b8ToStr)
-     (1, LB8Str) total,
    Prim (UN "prim__addB8") (ty [B8Type, B8Type] B8Type) 2 (b8Bin (+))
      (2, LB8Plus) total,
    Prim (UN "prim__subB8") (ty [B8Type, B8Type] B8Type) 2 (b8Bin (-))
@@ -138,8 +136,6 @@ primitives =
      (2, LB16Gte) total,
    Prim (UN "prim__gtB16") (ty [B16Type, B16Type] IType) 2 (b16Cmp (>=))
      (2, LB16Gt) total,
-   Prim (UN "prim__b16ToStr") (ty [B16Type] StrType) 1 (b16ToStr)
-     (1, LB16Str) total,
    Prim (UN "prim__addB16") (ty [B16Type, B16Type] B16Type) 2 (b16Bin (+))
      (2, LB16Plus) total,
    Prim (UN "prim__subB16") (ty [B16Type, B16Type] B16Type) 2 (b16Bin (-))
@@ -187,8 +183,6 @@ primitives =
      (2, LB32Gte) total,
    Prim (UN "prim__gtB32") (ty [B32Type, B32Type] IType) 2 (b32Cmp (>=))
      (2, LB32Gt) total,
-   Prim (UN "prim__b32ToStr") (ty [B32Type] StrType) 1 (b32ToStr)
-     (1, LB32Str) total,
    Prim (UN "prim__addB32") (ty [B32Type, B32Type] B32Type) 2 (b32Bin (+))
      (2, LB32Plus) total,
    Prim (UN "prim__subB32") (ty [B32Type, B32Type] B32Type) 2 (b32Bin (-))
@@ -234,8 +228,6 @@ primitives =
      (2, LB64Gte) total,
    Prim (UN "prim__gtB64") (ty [B64Type, B64Type] IType) 2 (b64Cmp (>=))
      (2, LB64Gt) total,
-   Prim (UN "prim__b64ToStr") (ty [B64Type] StrType) 1 (b64ToStr)
-     (1, LB64Str) total,
    Prim (UN "prim__addB64") (ty [B64Type, B64Type] B64Type) 2 (b64Bin (+))
      (2, LB64Plus) total,
    Prim (UN "prim__subB64") (ty [B64Type, B64Type] B64Type) 2 (b64Bin (-))

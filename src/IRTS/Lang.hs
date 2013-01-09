@@ -57,7 +57,6 @@ data PrimFn = LPlus | LMinus | LTimes | LDiv | LMod
             | LB64Shl | LB64LShr | LB64AShr | LB64And | LB64Or | LB64Xor | LB64Compl
             | LB64T8 | LB64T16 | LB64T32
             | LIntB8 | LIntB16 | LIntB32 | LIntB64 | LB32Int
-            | LB8Str | LB16Str | LB32Str | LB64Str
 
             | LFExp | LFLog | LFSin | LFCos | LFTan | LFASin | LFACos | LFATan
             | LFSqrt | LFFloor | LFCeil

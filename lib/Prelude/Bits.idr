@@ -185,17 +185,6 @@ public
 bitsUDiv : Bits n -> Bits n -> Bits n
 bitsUDiv (MkBits x) (MkBits y) = MkBits (bitsUDiv' x y)
 
-bitsToStr' : {n : Nat} -> nextBits n -> String
-bitsToStr' {n=n} x with (nextBits n)
-    | Bits8 = prim__b8ToStr x
-    | Bits16 = prim__b16ToStr x
-    | Bits32 = prim__b32ToStr x
-    | Bits64 = prim__b64ToStr x
-
-public
-bitsToStr : Bits n -> String
-bitsToStr (MkBits x) = bitsToStr' x
-
 -- TODO: Proofy comparisons via postulates
 bitsLt' : (x : nextBits n) -> (y : nextBits n) -> Int
 bitsLt' {n=n} x y with (nextBits n)
@@ -251,3 +240,14 @@ bitsGt' {n=n} x y with (nextBits n)
 public
 bitsGt : (x : Bits n) -> (y : Bits n) -> Bool
 bitsGt (MkBits x) (MkBits y) = bitsGt' x y /= 0
+
+public
+bitsToStr : Bits n -> String
+bitsToStr {n=n} x = helper n x
+    where
+      helper : Nat -> Bits n -> String
+      helper (S x) b = (if bitsAnd (bitsShl (intToBits 1) (intToBits (cast x))) b `bitsEq` (intToBits 0)
+                        then "0"
+                        else "1"
+                       ) ++ helper x b
+      helper O _ = ""
