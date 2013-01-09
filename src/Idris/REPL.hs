@@ -420,6 +420,7 @@ parseTarget :: String -> Target
 parseTarget "C" = ViaC
 parseTarget "Java" = ViaJava
 parseTarget "bytecode" = Bytecode
+parseTarget "javascript" = ToJavaScript
 parseTarget _ = error "unknown target" -- FIXME: partial function
 
 parseArgs :: [String] -> [Opt]
@@ -429,6 +430,7 @@ parseArgs ("--noprelude":ns)    = NoPrelude : (parseArgs ns)
 parseArgs ("--check":ns)        = NoREPL : (parseArgs ns)
 parseArgs ("-o":n:ns)           = NoREPL : Output n : (parseArgs ns)
 parseArgs ("-no":n:ns)          = NoREPL : NewOutput n : (parseArgs ns)
+parseArgs ("--javascript":ns)   = UseTarget ToJavaScript : (parseArgs ns)
 parseArgs ("--typecase":ns)     = TypeCase : (parseArgs ns)
 parseArgs ("--typeintype":ns)   = TypeInType : (parseArgs ns)
 parseArgs ("--total":ns)        = DefaultTotal : (parseArgs ns)
@@ -478,6 +480,7 @@ help =
     ([":showproof"], "<name>", "Show proof"),
     ([":proofs"], "", "Show available proofs"),
     ([":c",":compile"], "<filename>", "Compile to an executable <filename>"),
+    ([":js", ":javascript"], "<filename>", "Compile to JavaScript <filename>"),
     ([":exec",":execute"], "", "Compile to an executable and run"),
     ([":?",":h",":help"], "", "Display this help text"),
     ([":set"], "<option>", "Set an option (errorcontext, showimplicits)"),
