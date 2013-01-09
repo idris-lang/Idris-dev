@@ -787,7 +787,8 @@ bracketed syn =
                                                              pexp (PRef fc (MN 1000 "ARG"))]))
 
 pCaseOpt :: SyntaxInfo -> IParser (PTerm, PTerm)
-pCaseOpt syn = do lhs <- pExpr syn; symbol "=>"; rhs <- pExpr syn
+pCaseOpt syn = do lhs <- pExpr (syn { inPattern = True }) 
+                  symbol "=>"; rhs <- pExpr syn
                   return (lhs, rhs)
 
 modifyConst :: SyntaxInfo -> FC -> PTerm -> PTerm
