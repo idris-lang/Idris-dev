@@ -206,10 +206,7 @@ bitsLt' {n=n} x y with (nextBits n)
 
 public
 bitsLt : (x : Bits n) -> (y : Bits n) -> Bool
-bitsLt (MkBits x) (MkBits y) =
-    case (bitsLt' x y) of
-      0 => False
-      _ => True
+bitsLt (MkBits x) (MkBits y) = bitsLt' x y /= 0
 
 bitsLte' : (x : nextBits n) -> (y : nextBits n) -> Int
 bitsLte' {n=n} x y with (nextBits n)
@@ -220,10 +217,7 @@ bitsLte' {n=n} x y with (nextBits n)
 
 public
 bitsLte : (x : Bits n) -> (y : Bits n) -> Bool
-bitsLte (MkBits x) (MkBits y) =
-    case (bitsLte' x y) of
-      0 => False
-      _ => True
+bitsLte (MkBits x) (MkBits y) = bitsLte' x y /= 0
 
 bitsEq' : (x : nextBits n) -> (y : nextBits n) -> Int
 bitsEq' {n=n} x y with (nextBits n)
@@ -234,10 +228,7 @@ bitsEq' {n=n} x y with (nextBits n)
 
 public
 bitsEq : (x : Bits n) -> (y : Bits n) -> Bool
-bitsEq (MkBits x) (MkBits y) =
-    case (bitsEq' x y) of
-      0 => False
-      _ => True
+bitsEq (MkBits x) (MkBits y) = bitsEq' x y /= 0
 
 bitsGte' : (x : nextBits n) -> (y : nextBits n) -> Int
 bitsGte' {n=n} x y with (nextBits n)
@@ -248,10 +239,7 @@ bitsGte' {n=n} x y with (nextBits n)
 
 public
 bitsGte : (x : Bits n) -> (y : Bits n) -> Bool
-bitsGte (MkBits x) (MkBits y) =
-    case (bitsGte' x y) of
-      0 => False
-      _ => True
+bitsGte (MkBits x) (MkBits y) = bitsGte' x y /= 0
 
 bitsGt' : (x : nextBits n) -> (y : nextBits n) -> Int
 bitsGt' {n=n} x y with (nextBits n)
@@ -262,7 +250,4 @@ bitsGt' {n=n} x y with (nextBits n)
 
 public
 bitsGt : (x : Bits n) -> (y : Bits n) -> Bool
-bitsGt (MkBits x) (MkBits y) =
-    case (bitsGt' x y) of
-      0 => False
-      _ => True
+bitsGt (MkBits x) (MkBits y) = bitsGt' x y /= 0
