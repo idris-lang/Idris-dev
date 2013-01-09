@@ -182,6 +182,33 @@ bitsToStr' {n=n} x with (nextBits n)
 bitsToStr : Bits n -> String
 bitsToStr (MkBits x) = bitsToStr' x
 
+-- TODO: Proofy comparisons via postulates
+bitsLt' : (x : nextBits n) -> (y : nextBits n) -> Int
+bitsLt' {n=n} x y with (nextBits n)
+    | Bits8 = prim__ltB8 x y
+    | Bits16 = prim__ltB16 x y
+    | Bits32 = prim__ltB32 x y
+    | Bits64 = prim__ltB64 x y
+
+bitsLt : (x : Bits n) -> (y : Bits n) -> Bool
+bitsLt (MkBits x) (MkBits y) =
+    case (bitsLt' x y) of
+      0 => False
+      _ => True
+
+bitsLte' : (x : nextBits n) -> (y : nextBits n) -> Int
+bitsLte' {n=n} x y with (nextBits n)
+    | Bits8 = prim__lteB8 x y
+    | Bits16 = prim__lteB16 x y
+    | Bits32 = prim__lteB32 x y
+    | Bits64 = prim__lteB64 x y
+
+bitsLte : (x : Bits n) -> (y : Bits n) -> Bool
+bitsLte (MkBits x) (MkBits y) =
+    case (bitsLte' x y) of
+      0 => False
+      _ => True
+
 bitsEq' : (x : nextBits n) -> (y : nextBits n) -> Int
 bitsEq' {n=n} x y with (nextBits n)
     | Bits8 = prim__eqB8 x y
@@ -192,5 +219,31 @@ bitsEq' {n=n} x y with (nextBits n)
 bitsEq : (x : Bits n) -> (y : Bits n) -> Bool
 bitsEq (MkBits x) (MkBits y) =
     case (bitsEq' x y) of
+      0 => False
+      _ => True
+
+bitsGte' : (x : nextBits n) -> (y : nextBits n) -> Int
+bitsGte' {n=n} x y with (nextBits n)
+    | Bits8 = prim__gteB8 x y
+    | Bits16 = prim__gteB16 x y
+    | Bits32 = prim__gteB32 x y
+    | Bits64 = prim__gteB64 x y
+
+bitsGte : (x : Bits n) -> (y : Bits n) -> Bool
+bitsGte (MkBits x) (MkBits y) =
+    case (bitsGte' x y) of
+      0 => False
+      _ => True
+
+bitsGt' : (x : nextBits n) -> (y : nextBits n) -> Int
+bitsGt' {n=n} x y with (nextBits n)
+    | Bits8 = prim__gtB8 x y
+    | Bits16 = prim__gtB16 x y
+    | Bits32 = prim__gtB32 x y
+    | Bits64 = prim__gtB64 x y
+
+bitsGt : (x : Bits n) -> (y : Bits n) -> Bool
+bitsGt (MkBits x) (MkBits y) =
+    case (bitsGt' x y) of
       0 => False
       _ => True
