@@ -97,6 +97,10 @@ primitives =
      (2, LB8UDiv) total,
    Prim (UN "prim__sdivB8") (ty [B8Type, B8Type] B8Type) 2 (b8Bin s8div)
      (2, LB8SDiv) total,
+   Prim (UN "prim__uremB8") (ty [B8Type, B8Type] B8Type) 2 (b8Bin rem)
+     (2, LB8URem) total,
+   Prim (UN "prim__sremB8") (ty [B8Type, B8Type] B8Type) 2 (b8Bin s8rem)
+     (2, LB8SRem) total,
    Prim (UN "prim__shlB8") (ty [B8Type, B8Type] B8Type) 2 (b8Bin (\x y -> shiftL x (fromIntegral y)))
      (2, LB8Shl) total,
    Prim (UN "prim__lshrB8") (ty [B8Type, B8Type] B8Type) 2 (b8Bin (\x y -> shiftR x (fromIntegral y)))
@@ -146,6 +150,10 @@ primitives =
      (2, LB16UDiv) total,
    Prim (UN "prim__sdivB16") (ty [B16Type, B16Type] B16Type) 2 (b16Bin s16div)
      (2, LB16SDiv) total,
+   Prim (UN "prim__uremB16") (ty [B16Type, B16Type] B16Type) 2 (b16Bin rem)
+     (2, LB16URem) total,
+   Prim (UN "prim__sremB16") (ty [B16Type, B16Type] B16Type) 2 (b16Bin s16rem)
+     (2, LB16SRem) total,
    Prim (UN "prim__shlB16") (ty [B16Type, B16Type] B16Type) 2 (b16Bin (\x y -> shiftL x (fromIntegral y)))
      (2, LB16Shl) total,
    Prim (UN "prim__lshrB16") (ty [B16Type, B16Type] B16Type) 2 (b16Bin (\x y -> shiftR x (fromIntegral y)))
@@ -193,6 +201,10 @@ primitives =
      (2, LB32UDiv) total,
    Prim (UN "prim__sdivB32") (ty [B32Type, B32Type] B32Type) 2 (b32Bin s32div)
      (2, LB32SDiv) total,
+   Prim (UN "prim__uremB32") (ty [B32Type, B32Type] B32Type) 2 (b32Bin rem)
+     (2, LB32URem) total,
+   Prim (UN "prim__sremB32") (ty [B32Type, B32Type] B32Type) 2 (b32Bin s32rem)
+     (2, LB32SRem) total,
    Prim (UN "prim__shlB32") (ty [B32Type, B32Type] B32Type) 2 (b32Bin (\x y -> shiftL x (fromIntegral y)))
      (2, LB32Shl) total,
    Prim (UN "prim__lshrB32") (ty [B32Type, B32Type] B32Type) 2 (b32Bin (\x y -> shiftR x (fromIntegral y)))
@@ -238,6 +250,10 @@ primitives =
      (2, LB64UDiv) total,
    Prim (UN "prim__sdivB64") (ty [B64Type, B64Type] B64Type) 2 (b64Bin s64div)
      (2, LB64SDiv) total,
+   Prim (UN "prim__uremB64") (ty [B64Type, B64Type] B64Type) 2 (b64Bin rem)
+     (2, LB64URem) total,
+   Prim (UN "prim__sremB64") (ty [B64Type, B64Type] B64Type) 2 (b64Bin s64rem)
+     (2, LB64SRem) total,
    Prim (UN "prim__shlB64") (ty [B64Type, B64Type] B64Type) 2 (b64Bin (\x y -> shiftL x (fromIntegral y)))
      (2, LB64Shl) total,
    Prim (UN "prim__lshrB64") (ty [B64Type, B64Type] B64Type) 2 (b64Bin (\x y -> shiftR x (fromIntegral y)))
@@ -434,6 +450,18 @@ s32div x y = fromIntegral (fromIntegral x `div` fromIntegral y :: Int32)
 
 s64div :: Word64 -> Word64 -> Word64
 s64div x y = fromIntegral (fromIntegral x `div` fromIntegral y :: Int64)
+
+s8rem :: Word8 -> Word8 -> Word8
+s8rem x y = fromIntegral (fromIntegral x `rem` fromIntegral y :: Int8)
+
+s16rem :: Word16 -> Word16 -> Word16
+s16rem x y = fromIntegral (fromIntegral x `rem` fromIntegral y :: Int16)
+
+s32rem :: Word32 -> Word32 -> Word32
+s32rem x y = fromIntegral (fromIntegral x `rem` fromIntegral y :: Int32)
+
+s64rem :: Word64 -> Word64 -> Word64
+s64rem x y = fromIntegral (fromIntegral x `rem` fromIntegral y :: Int64)
 
 b8ToStr [VConstant (B8 x)] = Just $ VConstant (Str (show x))
 b8ToStr _ = Nothing

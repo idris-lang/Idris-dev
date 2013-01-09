@@ -185,6 +185,28 @@ public
 bitsUDiv : Bits n -> Bits n -> Bits n
 bitsUDiv (MkBits x) (MkBits y) = MkBits (bitsUDiv' x y)
 
+bitsSRem' : {n : Nat} -> nextBits n -> nextBits n -> nextBits n
+bitsSRem' {n=n} x y with (nextBits n)
+    | Bits8 = prim__sremB8 x y
+    | Bits16 = prim__sremB16 x y
+    | Bits32 = prim__sremB32 x y
+    | Bits64 = prim__sremB64 x y
+
+public
+bitsSRem : Bits n -> Bits n -> Bits n
+bitsSRem (MkBits x) (MkBits y) = MkBits (bitsSRem' x y)
+
+bitsURem' : {n : Nat} -> nextBits n -> nextBits n -> nextBits n
+bitsURem' {n=n} x y with (nextBits n)
+    | Bits8 = prim__uremB8 x y
+    | Bits16 = prim__uremB16 x y
+    | Bits32 = prim__uremB32 x y
+    | Bits64 = prim__uremB64 x y
+
+public
+bitsURem : Bits n -> Bits n -> Bits n
+bitsURem (MkBits x) (MkBits y) = MkBits (bitsURem' x y)
+
 -- TODO: Proofy comparisons via postulates
 bitsLt' : (x : nextBits n) -> (y : nextBits n) -> Int
 bitsLt' {n=n} x y with (nextBits n)
