@@ -9,25 +9,28 @@ public
 data Mod2 : Nat -> Type where
     MkMod2 : {n : Nat} -> Bits n -> Mod2 n
 
+modBin : (Bits n -> Bits n -> Bits n) -> Mod2 n -> Mod2 n -> Mod2 n
+modBin f (MkMod2 x) (MkMod2 y) = MkMod2 (f x y)
+
 public
 modAdd : Mod2 n -> Mod2 n -> Mod2 n
-modAdd (MkMod2 x) (MkMod2 y) = MkMod2 (bitsAdd x y)
+modAdd = modBin bitsAdd
 
 public
 modSub : Mod2 n -> Mod2 n -> Mod2 n
-modSub (MkMod2 x) (MkMod2 y) = MkMod2 (bitsSub x y)
+modSub = modBin bitsSub
 
 public
 modMul : Mod2 n -> Mod2 n -> Mod2 n
-modMul (MkMod2 x) (MkMod2 y) = MkMod2 (bitsMul x y)
+modMul = modBin bitsMul
 
 public partial
 modDiv : Mod2 n -> Mod2 n -> Mod2 n
-modDiv (MkMod2 x) (MkMod2 y) = MkMod2 (bitsUDiv x y)
+modDiv = modBin bitsUDiv
 
 public partial
 modRem : Mod2 n -> Mod2 n -> Mod2 n
-modRem (MkMod2 x) (MkMod2 y) = MkMod2 (bitsURem x y)
+modRem = modBin bitsSDiv
 
 %assert_total
 public
