@@ -163,6 +163,7 @@ public
 bitsMul : Bits n -> Bits n -> Bits n
 bitsMul (MkBits x) (MkBits y) = MkBits (bitsMul' x y)
 
+partial
 bitsSDiv' : {n : Nat} -> nextBits n -> nextBits n -> nextBits n
 bitsSDiv' {n=n} x y with (nextBits n)
     | Bits8 = prim__sdivB8 x y
@@ -171,9 +172,11 @@ bitsSDiv' {n=n} x y with (nextBits n)
     | Bits64 = prim__sdivB64 x y
 
 public
+partial
 bitsSDiv : Bits n -> Bits n -> Bits n
 bitsSDiv (MkBits x) (MkBits y) = MkBits (bitsSDiv' x y)
 
+partial
 bitsUDiv' : {n : Nat} -> nextBits n -> nextBits n -> nextBits n
 bitsUDiv' {n=n} x y with (nextBits n)
     | Bits8 = prim__udivB8 x y
@@ -182,9 +185,11 @@ bitsUDiv' {n=n} x y with (nextBits n)
     | Bits64 = prim__udivB64 x y
 
 public
+partial
 bitsUDiv : Bits n -> Bits n -> Bits n
 bitsUDiv (MkBits x) (MkBits y) = MkBits (bitsUDiv' x y)
 
+partial
 bitsSRem' : {n : Nat} -> nextBits n -> nextBits n -> nextBits n
 bitsSRem' {n=n} x y with (nextBits n)
     | Bits8 = prim__sremB8 x y
@@ -193,9 +198,11 @@ bitsSRem' {n=n} x y with (nextBits n)
     | Bits64 = prim__sremB64 x y
 
 public
+partial
 bitsSRem : Bits n -> Bits n -> Bits n
 bitsSRem (MkBits x) (MkBits y) = MkBits (bitsSRem' x y)
 
+partial
 bitsURem' : {n : Nat} -> nextBits n -> nextBits n -> nextBits n
 bitsURem' {n=n} x y with (nextBits n)
     | Bits8 = prim__uremB8 x y
@@ -204,6 +211,7 @@ bitsURem' {n=n} x y with (nextBits n)
     | Bits64 = prim__uremB64 x y
 
 public
+partial
 bitsURem : Bits n -> Bits n -> Bits n
 bitsURem (MkBits x) (MkBits y) = MkBits (bitsURem' x y)
 

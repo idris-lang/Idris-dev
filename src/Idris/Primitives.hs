@@ -94,13 +94,13 @@ primitives =
    Prim (UN "prim__mulB8") (ty [B8Type, B8Type] B8Type) 2 (b8Bin (*))
      (2, LB8Times) total,
    Prim (UN "prim__udivB8") (ty [B8Type, B8Type] B8Type) 2 (b8Bin div)
-     (2, LB8UDiv) total,
+     (2, LB8UDiv) partial,
    Prim (UN "prim__sdivB8") (ty [B8Type, B8Type] B8Type) 2 (b8Bin s8div)
-     (2, LB8SDiv) total,
+     (2, LB8SDiv) partial,
    Prim (UN "prim__uremB8") (ty [B8Type, B8Type] B8Type) 2 (b8Bin rem)
-     (2, LB8URem) total,
+     (2, LB8URem) partial,
    Prim (UN "prim__sremB8") (ty [B8Type, B8Type] B8Type) 2 (b8Bin s8rem)
-     (2, LB8SRem) total,
+     (2, LB8SRem) partial,
    Prim (UN "prim__shlB8") (ty [B8Type, B8Type] B8Type) 2 (b8Bin (\x y -> shiftL x (fromIntegral y)))
      (2, LB8Shl) total,
    Prim (UN "prim__lshrB8") (ty [B8Type, B8Type] B8Type) 2 (b8Bin (\x y -> shiftR x (fromIntegral y)))
@@ -147,13 +147,13 @@ primitives =
    Prim (UN "prim__mulB16") (ty [B16Type, B16Type] B16Type) 2 (b16Bin (*))
      (2, LB16Times) total,
    Prim (UN "prim__udivB16") (ty [B16Type, B16Type] B16Type) 2 (b16Bin div)
-     (2, LB16UDiv) total,
+     (2, LB16UDiv) partial,
    Prim (UN "prim__sdivB16") (ty [B16Type, B16Type] B16Type) 2 (b16Bin s16div)
-     (2, LB16SDiv) total,
+     (2, LB16SDiv) partial,
    Prim (UN "prim__uremB16") (ty [B16Type, B16Type] B16Type) 2 (b16Bin rem)
-     (2, LB16URem) total,
+     (2, LB16URem) partial,
    Prim (UN "prim__sremB16") (ty [B16Type, B16Type] B16Type) 2 (b16Bin s16rem)
-     (2, LB16SRem) total,
+     (2, LB16SRem) partial,
    Prim (UN "prim__shlB16") (ty [B16Type, B16Type] B16Type) 2 (b16Bin (\x y -> shiftL x (fromIntegral y)))
      (2, LB16Shl) total,
    Prim (UN "prim__lshrB16") (ty [B16Type, B16Type] B16Type) 2 (b16Bin (\x y -> shiftR x (fromIntegral y)))
@@ -198,13 +198,13 @@ primitives =
    Prim (UN "prim__mulB32") (ty [B32Type, B32Type] B32Type) 2 (b32Bin (*))
      (2, LB32Times) total,
    Prim (UN "prim__udivB32") (ty [B32Type, B32Type] B32Type) 2 (b32Bin div)
-     (2, LB32UDiv) total,
+     (2, LB32UDiv) partial,
    Prim (UN "prim__sdivB32") (ty [B32Type, B32Type] B32Type) 2 (b32Bin s32div)
-     (2, LB32SDiv) total,
+     (2, LB32SDiv) partial,
    Prim (UN "prim__uremB32") (ty [B32Type, B32Type] B32Type) 2 (b32Bin rem)
-     (2, LB32URem) total,
+     (2, LB32URem) partial,
    Prim (UN "prim__sremB32") (ty [B32Type, B32Type] B32Type) 2 (b32Bin s32rem)
-     (2, LB32SRem) total,
+     (2, LB32SRem) partial,
    Prim (UN "prim__shlB32") (ty [B32Type, B32Type] B32Type) 2 (b32Bin (\x y -> shiftL x (fromIntegral y)))
      (2, LB32Shl) total,
    Prim (UN "prim__lshrB32") (ty [B32Type, B32Type] B32Type) 2 (b32Bin (\x y -> shiftR x (fromIntegral y)))
@@ -247,13 +247,13 @@ primitives =
    Prim (UN "prim__mulB64") (ty [B64Type, B64Type] B64Type) 2 (b64Bin (*))
      (2, LB64Times) total,
    Prim (UN "prim__udivB64") (ty [B64Type, B64Type] B64Type) 2 (b64Bin div)
-     (2, LB64UDiv) total,
+     (2, LB64UDiv) partial,
    Prim (UN "prim__sdivB64") (ty [B64Type, B64Type] B64Type) 2 (b64Bin s64div)
-     (2, LB64SDiv) total,
+     (2, LB64SDiv) partial,
    Prim (UN "prim__uremB64") (ty [B64Type, B64Type] B64Type) 2 (b64Bin rem)
-     (2, LB64URem) total,
+     (2, LB64URem) partial,
    Prim (UN "prim__sremB64") (ty [B64Type, B64Type] B64Type) 2 (b64Bin s64rem)
-     (2, LB64SRem) total,
+     (2, LB64SRem) partial,
    Prim (UN "prim__shlB64") (ty [B64Type, B64Type] B64Type) 2 (b64Bin (\x y -> shiftL x (fromIntegral y)))
      (2, LB64Shl) total,
    Prim (UN "prim__lshrB64") (ty [B64Type, B64Type] B64Type) 2 (b64Bin (\x y -> shiftR x (fromIntegral y)))
