@@ -15,6 +15,7 @@ nextBits x with (log2ceil x)
   | (S (S (S (S O)))) = Bits16
   | _ = Bits8
 
+public
 data Bits : Nat -> Type where
     MkBits : {n : Nat} -> nextBits n -> Bits n
 
@@ -56,6 +57,7 @@ intToBits' {n=n} x with (nextBits n)
     | Bits64 = let pad = (prim__intToB64 (cast (64-n))) in
                prim__lshrB64 (prim__shlB64 (prim__intToB64 x) pad) pad
 
+public
 intToBits : {n : Nat} -> Int -> Bits n
 intToBits n = MkBits (intToBits' n)
 
@@ -69,6 +71,7 @@ bitsShl' {n=n} x c with (nextBits n)
     | Bits32 = pad32 n prim__shlB32 x c
     | Bits64 = pad64 n prim__shlB64 x c
 
+public
 bitsShl : Bits n -> Bits n -> Bits n
 bitsShl (MkBits x) (MkBits y) = MkBits (bitsShl' x y)
 
@@ -79,6 +82,7 @@ bitsLShr' {n=n} x c with (nextBits n)
     | Bits32 = prim__lshrB32 x c
     | Bits64 = prim__lshrB64 x c
 
+public
 bitsLShr : Bits n -> Bits n -> Bits n
 bitsLShr (MkBits x) (MkBits y) = MkBits (bitsLShr' x y)
 
@@ -89,6 +93,7 @@ bitsAShr' {n=n} x c with (nextBits n)
     | Bits32 = prim__ashrB32 x c
     | Bits64 = prim__ashrB64 x c
 
+public
 bitsAShr : Bits n -> Bits n -> Bits n
 bitsAShr (MkBits x) (MkBits y) = MkBits (bitsAShr' x y)
 
@@ -99,6 +104,7 @@ bitsAnd' {n=n} x y with (nextBits n)
     | Bits32 = prim__andB32 x y
     | Bits64 = prim__andB64 x y
 
+public
 bitsAnd : Bits n -> Bits n -> Bits n
 bitsAnd (MkBits x) (MkBits y) = MkBits (bitsAnd' x y)
 
@@ -109,6 +115,7 @@ bitsOr' {n=n} x y with (nextBits n)
     | Bits32 = prim__orB32 x y
     | Bits64 = prim__orB64 x y
 
+public
 bitsOr : Bits n -> Bits n -> Bits n
 bitsOr (MkBits x) (MkBits y) = MkBits (bitsOr' x y)
 
@@ -119,6 +126,7 @@ bitsXOr' {n=n} x y with (nextBits n)
     | Bits32 = prim__xorB32 x y
     | Bits64 = prim__xorB64 x y
 
+public
 bitsXOr : Bits n -> Bits n -> Bits n
 bitsXOr (MkBits x) (MkBits y) = MkBits (bitsXOr' x y)
 
@@ -129,6 +137,7 @@ bitsAdd' {n=n} x y with (nextBits n)
     | Bits32 = pad32 n prim__addB32 x y
     | Bits64 = pad64 n prim__addB64 x y
 
+public
 bitsAdd : Bits n -> Bits n -> Bits n
 bitsAdd (MkBits x) (MkBits y) = MkBits (bitsAdd' x y)
 
@@ -139,6 +148,7 @@ bitsSub' {n=n} x y with (nextBits n)
     | Bits32 = pad32 n prim__subB32 x y
     | Bits64 = pad64 n prim__subB64 x y
 
+public
 bitsSub : Bits n -> Bits n -> Bits n
 bitsSub (MkBits x) (MkBits y) = MkBits (bitsSub' x y)
 
@@ -149,6 +159,7 @@ bitsMul' {n=n} x y with (nextBits n)
     | Bits32 = pad32 n prim__mulB32 x y
     | Bits64 = pad64 n prim__mulB64 x y
 
+public
 bitsMul : Bits n -> Bits n -> Bits n
 bitsMul (MkBits x) (MkBits y) = MkBits (bitsMul' x y)
 
@@ -159,6 +170,7 @@ bitsSDiv' {n=n} x y with (nextBits n)
     | Bits32 = prim__sdivB32 x y
     | Bits64 = prim__sdivB64 x y
 
+public
 bitsSDiv : Bits n -> Bits n -> Bits n
 bitsSDiv (MkBits x) (MkBits y) = MkBits (bitsSDiv' x y)
 
@@ -169,6 +181,7 @@ bitsUDiv' {n=n} x y with (nextBits n)
     | Bits32 = prim__udivB32 x y
     | Bits64 = prim__udivB64 x y
 
+public
 bitsUDiv : Bits n -> Bits n -> Bits n
 bitsUDiv (MkBits x) (MkBits y) = MkBits (bitsUDiv' x y)
 
@@ -179,6 +192,7 @@ bitsToStr' {n=n} x with (nextBits n)
     | Bits32 = prim__b32ToStr x
     | Bits64 = prim__b64ToStr x
 
+public
 bitsToStr : Bits n -> String
 bitsToStr (MkBits x) = bitsToStr' x
 
@@ -190,6 +204,7 @@ bitsLt' {n=n} x y with (nextBits n)
     | Bits32 = prim__ltB32 x y
     | Bits64 = prim__ltB64 x y
 
+public
 bitsLt : (x : Bits n) -> (y : Bits n) -> Bool
 bitsLt (MkBits x) (MkBits y) =
     case (bitsLt' x y) of
@@ -203,6 +218,7 @@ bitsLte' {n=n} x y with (nextBits n)
     | Bits32 = prim__lteB32 x y
     | Bits64 = prim__lteB64 x y
 
+public
 bitsLte : (x : Bits n) -> (y : Bits n) -> Bool
 bitsLte (MkBits x) (MkBits y) =
     case (bitsLte' x y) of
@@ -216,6 +232,7 @@ bitsEq' {n=n} x y with (nextBits n)
     | Bits32 = prim__eqB32 x y
     | Bits64 = prim__eqB64 x y
 
+public
 bitsEq : (x : Bits n) -> (y : Bits n) -> Bool
 bitsEq (MkBits x) (MkBits y) =
     case (bitsEq' x y) of
@@ -229,6 +246,7 @@ bitsGte' {n=n} x y with (nextBits n)
     | Bits32 = prim__gteB32 x y
     | Bits64 = prim__gteB64 x y
 
+public
 bitsGte : (x : Bits n) -> (y : Bits n) -> Bool
 bitsGte (MkBits x) (MkBits y) =
     case (bitsGte' x y) of
@@ -242,6 +260,7 @@ bitsGt' {n=n} x y with (nextBits n)
     | Bits32 = prim__gtB32 x y
     | Bits64 = prim__gtB64 x y
 
+public
 bitsGt : (x : Bits n) -> (y : Bits n) -> Bool
 bitsGt (MkBits x) (MkBits y) =
     case (bitsGt' x y) of
