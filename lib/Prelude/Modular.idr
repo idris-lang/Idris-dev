@@ -45,6 +45,16 @@ public
 bitsToMod : Bits n -> Mod2 n
 bitsToMod x = MkMod2 x
 
+instance Eq (Mod2 n) where
+    (MkMod2 x) == (MkMod2 y) = x == y
+
+instance Ord (Mod2 n) where
+    (MkMod2 x) > (MkMod2 y) = x > y
+    (MkMod2 x) >= (MkMod2 y) = x > y
+    (MkMod2 x) <= (MkMod2 y) = x > y
+    (MkMod2 x) < (MkMod2 y) = x > y
+    compare (MkMod2 x) (MkMod2 y) = compare x y
+
 instance Num (Mod2 n) where
     (+) = modAdd
     (-) = modSub
