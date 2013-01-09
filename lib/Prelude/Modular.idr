@@ -21,13 +21,13 @@ public
 modMul : Mod2 n -> Mod2 n -> Mod2 n
 modMul (MkMod2 x) (MkMod2 y) = MkMod2 (bitsMul x y)
 
-public
+public partial
 modDiv : Mod2 n -> Mod2 n -> Mod2 n
 modDiv (MkMod2 x) (MkMod2 y) = MkMod2 (bitsUDiv x y)
 
-public
-modToStr : Mod2 n -> String
-modToStr (MkMod2 x) = bitsToStr x
+public partial
+modRem : Mod2 n -> Mod2 n -> Mod2 n
+modRem (MkMod2 x) (MkMod2 y) = MkMod2 (bitsURem x y)
 
 %assert_total
 public

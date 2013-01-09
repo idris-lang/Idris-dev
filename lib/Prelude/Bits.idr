@@ -171,8 +171,7 @@ bitsSDiv' {n=n} x y with (nextBits n)
     | Bits32 = prim__sdivB32 x y
     | Bits64 = prim__sdivB64 x y
 
-public
-partial
+public partial
 bitsSDiv : Bits n -> Bits n -> Bits n
 bitsSDiv (MkBits x) (MkBits y) = MkBits (bitsSDiv' x y)
 
@@ -184,8 +183,7 @@ bitsUDiv' {n=n} x y with (nextBits n)
     | Bits32 = prim__udivB32 x y
     | Bits64 = prim__udivB64 x y
 
-public
-partial
+public partial
 bitsUDiv : Bits n -> Bits n -> Bits n
 bitsUDiv (MkBits x) (MkBits y) = MkBits (bitsUDiv' x y)
 
@@ -197,8 +195,7 @@ bitsSRem' {n=n} x y with (nextBits n)
     | Bits32 = prim__sremB32 x y
     | Bits64 = prim__sremB64 x y
 
-public
-partial
+public partial
 bitsSRem : Bits n -> Bits n -> Bits n
 bitsSRem (MkBits x) (MkBits y) = MkBits (bitsSRem' x y)
 
@@ -210,8 +207,7 @@ bitsURem' {n=n} x y with (nextBits n)
     | Bits32 = prim__uremB32 x y
     | Bits64 = prim__uremB64 x y
 
-public
-partial
+public partial
 bitsURem : Bits n -> Bits n -> Bits n
 bitsURem (MkBits x) (MkBits y) = MkBits (bitsURem' x y)
 
@@ -271,12 +267,26 @@ public
 bitsGt : (x : Bits n) -> (y : Bits n) -> Bool
 bitsGt (MkBits x) (MkBits y) = bitsGt' x y /= 0
 
+instance Eq (Bits n) where
+    (==) = bitsEq
+
+instance Ord (Bits n) where
+    (<) = bitsLt
+    (<=) = bitsLte
+    (>=) = bitsGte
+    (>) = bitsGt
+    compare x y = if x `bitsLt` y
+                  then LT
+                  else if x `bitsEq` y
+                       then EQ
+                       else GT
+
 public
 bitsToStr : Bits n -> String
 bitsToStr {n=n} x = helper n x
     where
       helper : Nat -> Bits n -> String
-      helper (S x) b = (if bitsAnd (bitsShl (intToBits 1) (intToBits (cast x))) b `bitsEq` (intToBits 0)
+      helper (S x) b = (if bitsAnd (bitsShl (intToBits 1) (intToBits (cast x))) b == (intToBits 0)
                         then "0"
                         else "1"
                        ) ++ helper x b
