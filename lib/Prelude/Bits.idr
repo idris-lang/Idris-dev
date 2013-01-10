@@ -39,6 +39,27 @@ pad64 n f x y = prim__lshrB64 (f (prim__shlB64 x pad) (prim__shlB64 y pad)) pad
     where
       pad = (prim__intToB64 (cast (64-n)))
 
+-- These versions only pad the first operand
+pad8' : Nat -> (Bits8 -> Bits8 -> Bits8) -> Bits8 -> Bits8 -> Bits8
+pad8' n f x y = prim__lshrB8 (f (prim__shlB8 x pad) y) pad
+    where
+      pad = (prim__intToB8 (cast (8-n)))
+
+pad16' : Nat -> (Bits16 -> Bits16 -> Bits16) -> Bits16 -> Bits16 -> Bits16
+pad16' n f x y = prim__lshrB16 (f (prim__shlB16 x pad) y) pad
+    where
+      pad = (prim__intToB16 (cast (16-n)))
+
+pad32' : Nat -> (Bits32 -> Bits32 -> Bits32) -> Bits32 -> Bits32 -> Bits32
+pad32' n f x y = prim__lshrB32 (f (prim__shlB32 x pad) y) pad
+    where
+      pad = (prim__intToB32 (cast (32-n)))
+
+pad64' : Nat -> (Bits64 -> Bits64 -> Bits64) -> Bits64 -> Bits64 -> Bits64
+pad64' n f x y = prim__lshrB64 (f (prim__shlB64 x pad) y) pad
+    where
+      pad = (prim__intToB64 (cast (64-n)))
+
 %assert_total
 pow : Int -> Int -> Int
 pow x y = if y > 0
@@ -66,10 +87,10 @@ instance Cast Int (Bits n) where
 
 bitsShl' : {n: Nat} -> nextBits n -> nextBits n -> nextBits n
 bitsShl' {n=n} x c with (nextBits n)
-    | Bits8 = pad8 n prim__shlB8 x c
-    | Bits16 = pad16 n prim__shlB16 x c
-    | Bits32 = pad32 n prim__shlB32 x c
-    | Bits64 = pad64 n prim__shlB64 x c
+    | Bits8 = pad8' n prim__shlB8 x c
+    | Bits16 = pad16' n prim__shlB16 x c
+    | Bits32 = pad32' n prim__shlB32 x c
+    | Bits64 = pad64' n prim__shlB64 x c
 
 public
 bitsShl : Bits n -> Bits n -> Bits n
@@ -282,12 +303,15 @@ instance Ord (Bits n) where
                        else GT
 
 public
-bitsToStr : Bits n -> String
-bitsToStr {n=n} x = helper n x
+bitSet : Fin n -> Bits n -> Bool
+bitSet n x = bitsAnd (intToBits 1 `bitsShl` intToBits (cast (finToNat n))) x /= intToBits 0
+
+public
+bitsToStr : Bits (S n) -> String
+bitsToStr {n=n} x = helper (the (Fin (S n)) last) x
     where
-      helper : Nat -> Bits n -> String
-      helper (S x) b = (if bitsAnd (bitsShl (intToBits 1) (intToBits (cast x))) b == (intToBits 0)
-                        then "0"
-                        else "1"
-                       ) ++ helper x b
-      helper O _ = ""
+      %assert_total
+      helper : Fin (S n) -> Bits (S n) -> String
+      helper fO _ = ""
+      helper (fS x) b = (if bitSet (weaken x) b then "1" else "0")
+                        ++ helper (weaken x) b
