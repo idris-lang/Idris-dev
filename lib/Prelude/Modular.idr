@@ -12,6 +12,9 @@ data Mod2 : Nat -> Type where
 modBin : (Bits n -> Bits n -> Bits n) -> Mod2 n -> Mod2 n -> Mod2 n
 modBin f (MkMod2 x) (MkMod2 y) = MkMod2 (f x y)
 
+modComp : (Bits n -> Bits n -> a) -> Mod2 n -> Mod2 n -> a
+modComp f (MkMod2 x) (MkMod2 y) = f x y
+
 public
 modAdd : Mod2 n -> Mod2 n -> Mod2 n
 modAdd = modBin bitsAdd
@@ -46,14 +49,14 @@ bitsToMod : Bits n -> Mod2 n
 bitsToMod x = MkMod2 x
 
 instance Eq (Mod2 n) where
-    (MkMod2 x) == (MkMod2 y) = x == y
+    (==) = modComp (==)
 
 instance Ord (Mod2 n) where
-    (MkMod2 x) > (MkMod2 y) = x > y
-    (MkMod2 x) >= (MkMod2 y) = x > y
-    (MkMod2 x) <= (MkMod2 y) = x > y
-    (MkMod2 x) < (MkMod2 y) = x > y
-    compare (MkMod2 x) (MkMod2 y) = compare x y
+    (<) = modComp (<)
+    (<=) = modComp (<=)
+    (>=) = modComp (>=)
+    (>) = modComp (>)
+    compare = modComp compare
 
 instance Num (Mod2 n) where
     (+) = modAdd
