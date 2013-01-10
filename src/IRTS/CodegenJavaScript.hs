@@ -26,15 +26,28 @@ codegenJavaScript
   -> FilePath
   -> OutputType
   -> IO ()
-codegenJavaScript definitions filename outputType = do
-  let def = map (first translateNamespace) definitions
-  let output = idrRuntime ++ concatMap (translateModule Nothing) def ++ "\nMain.main()"
+codegenJavaScript definitions filename outputType =
   writeFile filename output
+  where
+    def = map (first translateNamespace) definitions
+
+    mainLoop :: String
+    mainLoop = intercalate "\n" [ "\nfunction main() {"
+                                , createTrampoline "Main.main()" ++ ";"
+                                , "}\n\nmain();\n"
+                                ]
+
+    output :: String
+    output = concat [ idrRuntime
+                    , concatMap (translateModule Nothing) def
+                    , mainLoop
+                    ]
 
 idrRuntime :: String
 idrRuntime =
   createModule Nothing idrNamespace $ concat
     [ "__IDR__.IntType = { type: 'IntType' };"
+    , "__IDR__.Tailcall = function(f) { this.f = f };"
     , "__IDR__.Con = function(i,name,vars)"
     , "{this.i = i;this.name = name;this.vars =  vars;};"
     ]
@@ -165,13 +178,16 @@ translateExpression _ (SConst cst) =
 translateExpression _ (SV var) =
   translateVariableName var
 
-translateExpression modname (SApp tc name vars) =
-     concat (intersperse "." $ translateNamespace name)
-  ++ "."
-  ++ translateName name
-  ++ "("
-  ++ intercalate "," (map translateVariableName vars)
-  ++ ")"
+translateExpression modname (SApp False name vars) =
+  createTrampoline $ translateFunctionCall name vars
+
+translateExpression modname (SApp True name vars) =
+     "(function(){\n"
+  ++ "throw new __IDR__.Tailcall("
+  ++ "function(){\n"
+  ++ "return " ++ translateFunctionCall name vars
+  ++ ";\n});"
+  ++ "\n})()"
 
 translateExpression _ (SOp op vars)
   | LPlus       <- op
@@ -284,14 +300,10 @@ translateExpression _ (SCon i name vars) =
          ]
 
 translateExpression modname (SUpdate var e) =
-     "(function(){\nreturn ("
-  ++ translateVariableName var
-  ++ " = " ++ translateExpression modname e
-  ++ ");\n})()"
+  translateVariableName var ++ " = " ++ translateExpression modname e
 
 translateExpression modname (SProj var i) =
-     "(function(){\nreturn "
-  ++ translateVariableName var ++ ".vars[" ++ show i ++"];\n})()"
+  translateVariableName var ++ ".vars[" ++ show i ++"]"
 
 translateExpression _ SNothing = "null"
 
@@ -324,3 +336,28 @@ createIfBlock cond e =
      "if (" ++ cond ++") {\n"
   ++ "return " ++ e
   ++ ";\n}"
+
+createTrampoline call =
+     "(function(){\n"
+  ++ "var __f = function(){return " ++ call ++ "};\n"
+  ++ "while (__f) {\ntry {\n"
+  ++ "var f = __f;\n"
+  ++ "__f = null;\n"
+  ++ "return f();"
+  ++ "\n} catch(ex) {\n"
+  ++ "if (ex instanceof __IDR__.Tailcall) {\n"
+  ++ "__f = ex.f;"
+  ++ "\n} else {\n"
+  ++ "throw ex;"
+  ++ "\n}"
+  ++ "\n}"
+  ++ "\n}"
+  ++ "\n})()"
+
+translateFunctionCall name vars =
+     concat (intersperse "." $ translateNamespace name)
+  ++ "."
+  ++ translateName name
+  ++ "("
+  ++ intercalate "," (map translateVariableName vars)
+  ++ ")"
