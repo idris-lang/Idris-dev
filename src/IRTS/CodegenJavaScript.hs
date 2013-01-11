@@ -118,6 +118,7 @@ translateIdentifier =
         replaceBadChars '!'  = "__bang__"
         replaceBadChars '#'  = "__hash__"
         replaceBadChars '.'  = "__dot__"
+        replaceBadChars ','  = "__comma__"
         replaceBadChars ':'  = "__colon__"
         replaceBadChars '+'  = "__plus__"
         replaceBadChars '-'  = "__minus__"
