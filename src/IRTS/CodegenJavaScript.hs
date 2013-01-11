@@ -214,7 +214,7 @@ translateExpression _ (SOp op vars)
   | LMod        <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp "%" lhs rhs
   | LEq         <- op
-  , (lhs:rhs:_) <- vars = translateBinaryOp "===" lhs rhs
+  , (lhs:rhs:_) <- vars = translateBinaryOp "==" lhs rhs
   | LLt         <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp "<" lhs rhs
   | LLe         <- op
@@ -233,7 +233,7 @@ translateExpression _ (SOp op vars)
   | LFDiv       <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp "/" lhs rhs
   | LFEq        <- op
-  , (lhs:rhs:_) <- vars = translateBinaryOp "===" lhs rhs
+  , (lhs:rhs:_) <- vars = translateBinaryOp "==" lhs rhs
   | LFLt        <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp "<" lhs rhs
   | LFLe        <- op
@@ -254,7 +254,7 @@ translateExpression _ (SOp op vars)
   | LBMod       <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp "%" lhs rhs
   | LBEq        <- op
-  , (lhs:rhs:_) <- vars = translateBinaryOp "===" lhs rhs
+  , (lhs:rhs:_) <- vars = translateBinaryOp "==" lhs rhs
   | LBLt        <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp "<" lhs rhs
   | LBLe        <- op
@@ -330,12 +330,12 @@ translateCase modname _ (SDefaultCase e) =
   createIfBlock "true" (translateExpression modname e)
 
 translateCase modname var (SConstCase cst e) =
-  let cond = var ++ " === " ++ translateConstant cst in
+  let cond = var ++ " == " ++ translateConstant cst in
       createIfBlock cond (translateExpression modname e)
 
 translateCase modname var (SConCase a i name vars e) =
   let isCon = var ++ " instanceof __IDR__.Con"
-      isI = show i ++ " === " ++ var ++ ".i"
+      isI = show i ++ " == " ++ var ++ ".i"
       params = intercalate "," $ map (("__var_" ++) . show) [a..(a+length vars)]
       args = ".apply(this," ++ var ++ ".vars)"
       f b =
