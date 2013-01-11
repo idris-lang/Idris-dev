@@ -77,15 +77,18 @@ pshow i (InternalMsg s) = "INTERNAL ERROR: " ++ show s ++
    "\nThis is probably a bug, or a missing error message.\n" ++
    "Please consider reporting at " ++ bugaddr
 pshow i (CantUnify _ x y e sc s) 
-    = "Can't unify " ++ show (delab i x)
-        ++ " with " ++ show (delab i y) ++
+    = let imps = opt_showimp (idris_options i) in
+        "Can't unify " ++ showImp imps (delab i x)
+          ++ " with " ++ showImp imps (delab i y) ++
 --         " (" ++ show x ++ " and " ++ show y ++ ") " ++
         case e of
             Msg "" -> ""
             _ -> "\n\nSpecifically:\n\t" ++ pshow i e ++ 
                  if (opt_errContext (idris_options i)) then showSc i sc else ""
 pshow i (CantConvert x y env) 
-    = "Can't convert " ++ show (delab i x) ++ " with " ++ show (delab i y) ++
+    = let imps = opt_showimp (idris_options i) in
+          "Can't convert " ++ showImp imps (delab i x) ++ " with " 
+                 ++ showImp imps (delab i y) ++
                  if (opt_errContext (idris_options i)) then showSc i env else ""
 pshow i (InfiniteUnify x tm env)
     = "Unifying " ++ showbasic x ++ " and " ++ show (delab i tm) ++ 

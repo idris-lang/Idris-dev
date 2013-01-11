@@ -118,7 +118,9 @@ simplify ctxt runtime env t
 
 hnf :: Context -> Env -> TT Name -> TT Name
 hnf ctxt env t 
-   = evalState (do val <- eval False ctxt threshold [] (map finalEntry env) (finalise t) [HNF]
+   = evalState (do val <- eval False ctxt threshold [] 
+                                 (map finalEntry env) 
+                                 (finalise t) [HNF]
                    quote 0 val) initEval
 
 
@@ -159,6 +161,7 @@ eval traceon ctxt maxred ntimes genv tm opts = ev ntimes [] True [] tm where
     spec = Spec `elem` opts
     simpl = Simplify True `elem` opts
     atRepl = AtREPL `elem` opts
+    hnf = HNF `elem` opts
 
     canSimplify inl inr n stk 
        =    (Simplify False `elem` opts && (not inl || elem n stk))
@@ -168,6 +171,7 @@ eval traceon ctxt maxred ntimes genv tm opts = ev ntimes [] True [] tm where
         | Just (Let t v) <- lookup n genv = do when (not atRepl) $ step maxred
                                                ev ntimes stk top env v 
     ev ntimes_in stk top env (P Ref n ty) 
+      | not top && hnf = liftM (VP Ref n) (ev ntimes stk top env ty)
       | (True, ntimes) <- usable simpl n ntimes_in
          = do let val = lookupDefAcc Nothing n atRepl ctxt 
               when (not atRepl) $ step maxred
@@ -211,7 +215,7 @@ eval traceon ctxt maxred ntimes genv tm opts = ev ntimes [] True [] tm where
     ev ntimes stk top env (Bind n b sc) 
            = do b' <- vbind env b
                 when (not atRepl) $ step maxred
-                return $ VBind n b' (\x -> ev ntimes stk top (x:env) sc)
+                return $ VBind n b' (\x -> ev ntimes stk False (x:env) sc)
        where vbind env t 
                  | simpl 
                      = fmapMB (\tm -> ev ((MN 0 "STOP", 0) : ntimes) 
@@ -222,7 +226,7 @@ eval traceon ctxt maxred ntimes genv tm opts = ev ntimes [] True [] tm where
 --         | laz == UN "lazy"
 --            = trace (showEnvDbg genv a) $ ev ntimes stk top env a
     ev ntimes stk top env (App f a) 
-           = do f' <- ev ntimes stk top env f
+           = do f' <- ev ntimes stk False env f
                 a' <- ev ntimes stk False env a
                 when (not atRepl) $ step maxred
                 evApply ntimes stk top env [a'] f'
@@ -243,7 +247,10 @@ eval traceon ctxt maxred ntimes genv tm opts = ev ntimes [] True [] tm where
              wknV (-1) app
 --     apply ntimes stk False env f args
 --         | spec = specApply ntimes stk env f args 
-    apply ntimes_in stk top env f@(VP Ref n ty)        args
+    apply ntimes_in stk top env f@(VP Ref n ty) args
+      | not top && hnf = case args of
+                            [] -> return f
+                            _ -> return $ unload env f args
       | (True, ntimes) <- usable simpl n ntimes_in
         = traceWhen traceon (show stk) $
           do let val = lookupDefAcc Nothing n atRepl ctxt
@@ -284,7 +291,8 @@ eval traceon ctxt maxred ntimes genv tm opts = ev ntimes [] True [] tm where
         | length ns <= length args 
              = do let args' = take (length ns) args
                   let rest  = drop (length ns) args
-                  t <- evTree ntimes stk top env (zipWith (\n t -> (n, t)) ns args') tree
+                  t <- evTree ntimes stk top env 
+                              (zipWith (\n t -> (n, t)) ns args') tree
                   return (t, rest)
         | otherwise = return (Nothing, args)
 
@@ -293,7 +301,8 @@ eval traceon ctxt maxred ntimes genv tm opts = ev ntimes [] True [] tm where
     evTree ntimes stk top env amap (UnmatchedCase str) = return Nothing
     evTree ntimes stk top env amap (STerm tm) 
         = do let etm = pToVs (map fst amap) tm
-             etm' <- ev ntimes stk top (map snd amap ++ env) etm
+             etm' <- ev ntimes stk (not (conHeaded tm)) 
+                                   (map snd amap ++ env) etm
              return $ Just etm'
     evTree ntimes stk top env amap (Case n alts)
         = case lookup n amap of
@@ -305,6 +314,10 @@ eval traceon ctxt maxred ntimes genv tm opts = ev ntimes [] True [] tm where
                                         Just (altmap, sc) -> evTree ntimes stk top env altmap sc
                                         _ -> return Nothing
             _ -> return Nothing
+
+    conHeaded tm@(App _ _) 
+        | (P (DCon _ _) _ _, args) <- unApply tm = True
+    conHeaded t = False
 
     chooseAlt' ntimes  stk env _ (f, args) alts amap
         = do f' <- apply ntimes stk True env f args

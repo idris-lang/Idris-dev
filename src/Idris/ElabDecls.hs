@@ -440,6 +440,7 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
 
     simpl rt ctxt (Right (x, y)) = Right (normalise ctxt [] x,
                                           simplify ctxt rt [] y)
+--     simpl rt ctxt (Right (x, y)) = Right (x, y)
     simpl rt ctxt t = t
 
     sameLength ((_, x, _) : xs) 

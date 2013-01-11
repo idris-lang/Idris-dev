@@ -31,7 +31,7 @@ unify ctxt env topx topy =
           _ -> 
                let topxn = normalise ctxt env topx
                    topyn = normalise ctxt env topy in
---                     trace ("Unifying " ++ show (topxn, topyn)) $
+--                     trace ("Unifying " ++ show (topx, topy) ++ "\n\n==>\n" ++ show (topxn, topyn) ++ "\n\n") $
                      case runStateT (un' False [] topxn topyn)
         	  	        (UI 0 [] []) of
                        OK (v, UI _ inj fails) -> 
@@ -112,7 +112,7 @@ unify ctxt env topx topy =
                     sc 1
                     combine bnames hf ha)
       where hnormalise [] _ _ t = t
-            hnormalise ns ctxt env t = normalise ctxt env t
+            hnormalise ns ctxt env t = hnf ctxt env t
             checkHeads (P (DCon _ _) x _) (P (DCon _ _) y _)
                 | x /= y = unifyFail appx appy
             checkHeads (P (TCon _ _) x _) (P (TCon _ _) y _)
@@ -200,7 +200,7 @@ unify ctxt env topx topy =
         | otherwise = False
 --     recoverable (P (DCon _ _) x _) (P (TCon _ _) y _) = False
 --     recoverable (P (TCon _ _) x _) (P (DCon _ _) y _) = False
-    recoverable p@(P _ _ _) (App f a) = recoverable p f
+    recoverable p@(P _ n _) (App f a) = recoverable p f
     recoverable (App f a) p@(P _ _ _) = recoverable f p
     recoverable (App f a) (App f' a')
         = recoverable f f' && recoverable a a'

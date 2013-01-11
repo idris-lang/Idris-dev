@@ -244,6 +244,9 @@ regret = processTactic' Regret
 compute :: Elab' aux ()
 compute = processTactic' Compute
 
+hnf_compute :: Elab' aux ()
+hnf_compute = processTactic' HNF_Compute
+
 eval_in :: Raw -> Elab' aux ()
 eval_in t = processTactic' (EvalIn t)
 
@@ -406,7 +409,7 @@ apply_elab n args =
     do ty <- get_type (Var n)
        ctxt <- get_context
        env <- get_env
-       claims <- doClaims (normalise ctxt env ty) args []
+       claims <- doClaims (finalise ty) args []
        prep_fill n (map fst claims)
        let eclaims = sortBy (\ (_, x) (_,y) -> priOrder x y) claims
        elabClaims [] False claims

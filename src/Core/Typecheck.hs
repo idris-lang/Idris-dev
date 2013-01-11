@@ -67,7 +67,7 @@ check' holes ctxt env top = chk env top where
            let fty' = case uniqueBinders (map fst env) (finalise fty) of
                         ty@(Bind x (Pi s) t) -> ty
                         _ -> uniqueBinders (map fst env) 
-                                 $ normalise ctxt env fty
+                                 $ hnf ctxt env fty
            case fty' of
              Bind x (Pi s) t ->
 --                trace ("Converting " ++ show aty ++ " and " ++ show s ++

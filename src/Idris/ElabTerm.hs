@@ -483,7 +483,7 @@ resolveTC :: Int -> Name -> IState -> ElabD ()
 resolveTC 0 fn ist = fail $ "Can't resolve type class"
 resolveTC 1 fn ist = try (trivial ist) (resolveTC 0 fn ist)
 resolveTC depth fn ist 
-      = do compute
+      = do hnf_compute
            try (trivial ist)
                (do t <- goal
                    let insts = findInstances ist t
@@ -647,7 +647,6 @@ runTac autoSolve ist tac = do env <- get_env
                               (tm', ty') <- get_type_val (Var tacn)
                               ctxt <- get_context
                               env <- get_env
-                              -- g <- goal 
                               let tactic = normalise ctxt env tm'
                               runReflected tactic
 --                               p <- get_term
@@ -665,13 +664,13 @@ runTac autoSolve ist tac = do env <- get_env
     reify (P _ n _) | n == tacm "Solve" = return Solve
     reify f@(App _ _) 
           | (P _ f _, args) <- unApply f = reifyAp f args
-    reify t = fail "Unknown tactic"
+    reify t = fail ("Unknown tactic " ++ show t)
 
     reifyAp t [l, r] | t == tacm "Try" = liftM2 Try (reify l) (reify r)
     reifyAp t [Constant (Str x)] 
                      | t == tacm "Refine" = return $ Refine (UN x) []
     reifyAp t [l, r] | t == tacm "Seq" = liftM2 TSeq (reify l) (reify r)
-    reifyAp f args = fail "Unknown tactic" -- shouldn't happen
+    reifyAp f args = fail ("Unknown tactic " ++ show (f, args)) -- shouldn't happen
 
 solveAll = try (do solve; solveAll) (return ())
 
