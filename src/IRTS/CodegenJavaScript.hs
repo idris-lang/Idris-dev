@@ -153,7 +153,9 @@ translateConstant c       =
   "(function(){throw 'Unimplemented Const: " ++ show c ++ "';})()"
 
 translateParameterlist =
-  map (\(MN i name) -> name ++ show i)
+  map translateParameter
+  where translateParameter (MN i name) = name ++ show i
+        translateParameter (UN name) = name
 
 translateDeclaration :: NamespaceName -> SDecl -> String
 translateDeclaration modname (SFun name params stackSize body) =
