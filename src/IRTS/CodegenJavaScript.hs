@@ -26,17 +26,53 @@ codegenJavaScript
   -> FilePath
   -> OutputType
   -> IO ()
-codegenJavaScript definitions filename outputType = do
-  let def = map (first translateNamespace) definitions
-  let output = idrRuntime ++ concatMap (translateModule Nothing) def ++ "\nMain.main()"
+codegenJavaScript definitions filename outputType =
   writeFile filename output
+  where
+    def = map (first translateNamespace) definitions
+
+    mainLoop :: String
+    mainLoop = intercalate "\n" [ "\nfunction main() {"
+                                , createTailcall "__IDR__.runMain0()"
+                                , "}\n\nmain();\n"
+                                ]
+
+    output :: String
+    output = concat [ idrRuntime
+                    , concatMap (translateModule Nothing) def
+                    , mainLoop
+                    ]
 
 idrRuntime :: String
 idrRuntime =
   createModule Nothing idrNamespace $ concat
     [ "__IDR__.IntType = { type: 'IntType' };"
+
+    , "__IDR__.Tailcall = function(f) { this.f = f };"
+
     , "__IDR__.Con = function(i,name,vars)"
-    , "{this.i = i;this.name = name;this.vars =  vars;};"
+    , "{this.i = i;this.name = name;this.vars =  vars;};\n"
+
+    ,    "__IDR__.tailcall = function(f){\n"
+      ++ "var __f = f;\n"
+      ++ "while (__f) {\n"
+      ++ "var f = __f;\n"
+      ++ "__f = null;\n"
+      ++ "var ret = f();\n"
+      ++ "if (ret instanceof __IDR__.Tailcall) {\n"
+      ++ "__f = ret.f;"
+      ++ "\n} else {\n"
+      ++ "return ret;"
+      ++ "\n}"
+      ++ "\n}"
+      ++ "\n};\n"
+
+    , "var newline_regex =/(.*)\\n$/;\n"
+
+    ,    "__IDR__.print = function(s){\n"
+      ++ "var m = s.match(newline_regex);\n"
+      ++ "console.log(m ? m[1] : s);"
+      ++ "\n};\n"
     ]
 
 createModule :: Maybe String -> NamespaceName -> String -> String
@@ -75,11 +111,14 @@ translateIdentifier =
         replaceBadChars '@'  = "__at__"
         replaceBadChars '['  = "__OSB__"
         replaceBadChars ']'  = "__CSB__"
+        replaceBadChars '('  = "__OP__"
+        replaceBadChars ')'  = "__CP__"
         replaceBadChars '{'  = "__OB__"
         replaceBadChars '}'  = "__CB__"
         replaceBadChars '!'  = "__bang__"
         replaceBadChars '#'  = "__hash__"
         replaceBadChars '.'  = "__dot__"
+        replaceBadChars ','  = "__comma__"
         replaceBadChars ':'  = "__colon__"
         replaceBadChars '+'  = "__plus__"
         replaceBadChars '-'  = "__minus__"
@@ -117,7 +156,9 @@ translateConstant c       =
   "(function(){throw 'Unimplemented Const: " ++ show c ++ "';})()"
 
 translateParameterlist =
-  map (\(MN i name) -> name ++ show i)
+  map translateParameter
+  where translateParameter (MN i name) = name ++ show i
+        translateParameter (UN name) = name
 
 translateDeclaration :: NamespaceName -> SDecl -> String
 translateDeclaration modname (SFun name params stackSize body) =
@@ -165,13 +206,16 @@ translateExpression _ (SConst cst) =
 translateExpression _ (SV var) =
   translateVariableName var
 
-translateExpression modname (SApp tc name vars) =
-     concat (intersperse "." $ translateNamespace name)
-  ++ "."
-  ++ translateName name
-  ++ "("
-  ++ intercalate "," (map translateVariableName vars)
-  ++ ")"
+translateExpression modname (SApp False name vars) =
+  createTailcall $ translateFunctionCall name vars
+
+translateExpression modname (SApp True name vars) =
+     "(function(){\n"
+  ++ "return new __IDR__.Tailcall("
+  ++ "function(){\n"
+  ++ "return " ++ translateFunctionCall name vars
+  ++ ";\n});"
+  ++ "\n})()"
 
 translateExpression _ (SOp op vars)
   | LPlus       <- op
@@ -185,7 +229,7 @@ translateExpression _ (SOp op vars)
   | LMod        <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp "%" lhs rhs
   | LEq         <- op
-  , (lhs:rhs:_) <- vars = translateBinaryOp "===" lhs rhs
+  , (lhs:rhs:_) <- vars = translateBinaryOp "==" lhs rhs
   | LLt         <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp "<" lhs rhs
   | LLe         <- op
@@ -204,7 +248,7 @@ translateExpression _ (SOp op vars)
   | LFDiv       <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp "/" lhs rhs
   | LFEq        <- op
-  , (lhs:rhs:_) <- vars = translateBinaryOp "===" lhs rhs
+  , (lhs:rhs:_) <- vars = translateBinaryOp "==" lhs rhs
   | LFLt        <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp "<" lhs rhs
   | LFLe        <- op
@@ -225,7 +269,7 @@ translateExpression _ (SOp op vars)
   | LBMod       <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp "%" lhs rhs
   | LBEq        <- op
-  , (lhs:rhs:_) <- vars = translateBinaryOp "===" lhs rhs
+  , (lhs:rhs:_) <- vars = translateBinaryOp "==" lhs rhs
   | LBLt        <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp "<" lhs rhs
   | LBLe        <- op
@@ -237,6 +281,8 @@ translateExpression _ (SOp op vars)
 
   | LStrConcat  <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp "+" lhs rhs
+  | LStrEq      <- op
+  , (lhs:rhs:_) <- vars = translateBinaryOp "=" lhs rhs
 
   | LIntStr     <- op
   , (arg:_)     <- vars = "String(" ++ translateVariableName arg ++ ");"
@@ -252,7 +298,7 @@ translateExpression _ (SError msg) =
   "(function(){throw \'" ++ msg ++ "\';})();"
 
 translateExpression _ (SForeign _ _ "putStr" [(FString, var)]) =
-  "console.log(" ++ translateVariableName var ++ ");"
+  "__IDR__.print(" ++ translateVariableName var ++ ");"
 
 translateExpression _ (SForeign _ _ fun args) =
      fun
@@ -284,14 +330,10 @@ translateExpression _ (SCon i name vars) =
          ]
 
 translateExpression modname (SUpdate var e) =
-     "(function(){\nreturn ("
-  ++ translateVariableName var
-  ++ " = " ++ translateExpression modname e
-  ++ ");\n})()"
+  translateVariableName var ++ " = " ++ translateExpression modname e
 
 translateExpression modname (SProj var i) =
-     "(function(){\nreturn "
-  ++ translateVariableName var ++ ".vars[" ++ show i ++"];\n})()"
+  translateVariableName var ++ ".vars[" ++ show i ++"]"
 
 translateExpression _ SNothing = "null"
 
@@ -305,12 +347,12 @@ translateCase modname _ (SDefaultCase e) =
   createIfBlock "true" (translateExpression modname e)
 
 translateCase modname var (SConstCase cst e) =
-  let cond = var ++ " === " ++ translateConstant cst in
+  let cond = var ++ " == " ++ translateConstant cst in
       createIfBlock cond (translateExpression modname e)
 
 translateCase modname var (SConCase a i name vars e) =
   let isCon = var ++ " instanceof __IDR__.Con"
-      isI = show i ++ " === " ++ var ++ ".i"
+      isI = show i ++ " == " ++ var ++ ".i"
       params = intercalate "," $ map (("__var_" ++) . show) [a..(a+length vars)]
       args = ".apply(this," ++ var ++ ".vars)"
       f b =
@@ -324,3 +366,14 @@ createIfBlock cond e =
      "if (" ++ cond ++") {\n"
   ++ "return " ++ e
   ++ ";\n}"
+
+createTailcall call =
+  "__IDR__.tailcall(function(){return " ++ call ++ "})"
+
+translateFunctionCall name vars =
+     concat (intersperse "." $ translateNamespace name)
+  ++ "."
+  ++ translateName name
+  ++ "("
+  ++ intercalate "," (map translateVariableName vars)
+  ++ ")"
