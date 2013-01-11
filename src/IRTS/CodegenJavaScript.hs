@@ -33,7 +33,7 @@ codegenJavaScript definitions filename outputType =
 
     mainLoop :: String
     mainLoop = intercalate "\n" [ "\nfunction main() {"
-                                , createTrampoline "__IDR__.runMain0()" ++ ";"
+                                , createTailcall "__IDR__.runMain0()"
                                 , "}\n\nmain();\n"
                                 ]
 
@@ -49,7 +49,22 @@ idrRuntime =
     [ "__IDR__.IntType = { type: 'IntType' };"
     , "__IDR__.Tailcall = function(f) { this.f = f };"
     , "__IDR__.Con = function(i,name,vars)"
-    , "{this.i = i;this.name = name;this.vars =  vars;};"
+    , "{this.i = i;this.name = name;this.vars =  vars;};\n"
+    ,    "__IDR__.tailcall = function(f){\n"
+      ++ "var __f = f;\n"
+      ++ "while (__f) {\ntry {\n"
+      ++ "var f = __f;\n"
+      ++ "__f = null;\n"
+      ++ "return f();"
+      ++ "\n} catch(ex) {\n"
+      ++ "if (ex instanceof __IDR__.Tailcall) {\n"
+      ++ "__f = ex.f;"
+      ++ "\n} else {\n"
+      ++ "throw ex;"
+      ++ "\n}"
+      ++ "\n}"
+      ++ "\n}"
+      ++ "\n}"
     ]
 
 createModule :: Maybe String -> NamespaceName -> String -> String
@@ -179,7 +194,7 @@ translateExpression _ (SV var) =
   translateVariableName var
 
 translateExpression modname (SApp False name vars) =
-  createTrampoline $ translateFunctionCall name vars
+  createTailcall $ translateFunctionCall name vars
 
 translateExpression modname (SApp True name vars) =
      "(function(){\n"
@@ -337,22 +352,8 @@ createIfBlock cond e =
   ++ "return " ++ e
   ++ ";\n}"
 
-createTrampoline call =
-     "(function(){\n"
-  ++ "var __f = function(){return " ++ call ++ "};\n"
-  ++ "while (__f) {\ntry {\n"
-  ++ "var f = __f;\n"
-  ++ "__f = null;\n"
-  ++ "return f();"
-  ++ "\n} catch(ex) {\n"
-  ++ "if (ex instanceof __IDR__.Tailcall) {\n"
-  ++ "__f = ex.f;"
-  ++ "\n} else {\n"
-  ++ "throw ex;"
-  ++ "\n}"
-  ++ "\n}"
-  ++ "\n}"
-  ++ "\n})()"
+createTailcall call =
+  "__IDR__.tailcall(function(){return " ++ call ++ "})"
 
 translateFunctionCall name vars =
      concat (intersperse "." $ translateNamespace name)
