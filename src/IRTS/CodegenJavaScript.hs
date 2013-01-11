@@ -47,9 +47,12 @@ idrRuntime :: String
 idrRuntime =
   createModule Nothing idrNamespace $ concat
     [ "__IDR__.IntType = { type: 'IntType' };"
+
     , "__IDR__.Tailcall = function(f) { this.f = f };"
+
     , "__IDR__.Con = function(i,name,vars)"
     , "{this.i = i;this.name = name;this.vars =  vars;};\n"
+
     ,    "__IDR__.tailcall = function(f){\n"
       ++ "var __f = f;\n"
       ++ "while (__f) {\n"
@@ -62,7 +65,14 @@ idrRuntime =
       ++ "return ret;"
       ++ "\n}"
       ++ "\n}"
-      ++ "\n}"
+      ++ "\n};\n"
+
+    , "var newline_regex =/(.*)\\n$/;\n"
+
+    ,    "__IDR__.print = function(s){\n"
+      ++ "var m = s.match(newline_regex);\n"
+      ++ "console.log(m ? m[1] : s);"
+      ++ "\n};\n"
     ]
 
 createModule :: Maybe String -> NamespaceName -> String -> String
@@ -281,7 +291,7 @@ translateExpression _ (SError msg) =
   "(function(){throw \'" ++ msg ++ "\';})();"
 
 translateExpression _ (SForeign _ _ "putStr" [(FString, var)]) =
-  "console.log(" ++ translateVariableName var ++ ");"
+  "__IDR__.print(" ++ translateVariableName var ++ ");"
 
 translateExpression _ (SForeign _ _ fun args) =
      fun
