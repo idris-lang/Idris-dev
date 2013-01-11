@@ -43,7 +43,7 @@ namespace Builtins {
 id : a -> a
 id x = x
 
-the : (A : Type) -> A -> A
+the : (a : Type) -> a -> a
 the _ = id
 
 const : a -> b -> a

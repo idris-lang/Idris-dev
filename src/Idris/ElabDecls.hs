@@ -462,9 +462,9 @@ elabVal info aspat tm_in
         --    * elaboration as a function a -> b
         
         ((tm', defer, is), _) <- 
-            tctry (elaborate ctxt (MN 0 "val") (TType (UVal 0)) []                         
-                       (build i info aspat (MN 0 "val") tm))
-                  (elaborate ctxt (MN 0 "val") infP []
+--             tctry (elaborate ctxt (MN 0 "val") (TType (UVal 0)) []                         
+--                        (build i info aspat (MN 0 "val") tm))
+                tclift (elaborate ctxt (MN 0 "val") infP []
                         (build i info aspat (MN 0 "val") (infTerm tm)))
         logLvl 3 ("Value: " ++ show tm')
         recheckC (FC "(input)" 0) [] tm'
