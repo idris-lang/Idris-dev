@@ -33,7 +33,7 @@ codegenJavaScript definitions filename outputType =
 
     mainLoop :: String
     mainLoop = intercalate "\n" [ "\nfunction main() {"
-                                , createTrampoline "Main.main()" ++ ";"
+                                , createTrampoline "__IDR__.runMain0()" ++ ";"
                                 , "}\n\nmain();\n"
                                 ]
 
