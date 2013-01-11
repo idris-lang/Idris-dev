@@ -10,6 +10,7 @@ data TT = Var TTName
         | App TTName TT TT
 
 data Tactic = Try Tactic Tactic
+            | GoalType TTName Tactic -- only run if the goal has the right type
             | Refine TTName
             | Seq Tactic Tactic
             | Trivial

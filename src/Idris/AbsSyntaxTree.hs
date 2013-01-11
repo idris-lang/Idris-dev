@@ -473,6 +473,7 @@ data PTactic' t = Intro [Name] | Intros | Focus Name
                 | Try (PTactic' t) (PTactic' t)
                 | TSeq (PTactic' t) (PTactic' t)
                 | ReflectTac t -- see Language.Reflection module
+                | GoalType String (PTactic' t)
                 | Qed | Abandon
     deriving (Show, Eq, Functor)
 {-! 

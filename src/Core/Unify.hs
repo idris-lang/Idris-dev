@@ -21,18 +21,21 @@ type Injs = [(TT Name, TT Name, TT Name)]
 type Fails = [(TT Name, TT Name, Env, Err)]
 
 data UInfo = UI Int Injs Fails
+     deriving Show
 
 unify :: Context -> Env -> TT Name -> TT Name -> TC ([(Name, TT Name)], 
                                                      Injs, Fails)
 unify ctxt env topx topy =
 --     trace ("Unifying " ++ show (topx, topy)) $
-      case runStateT (un' False [] topx topy) (UI 0 [] []) of
-          OK (v, UI _ inj []) -> return (filter notTrivial v, inj, [])
-          _ -> 
+             -- don't bother if topx and topy are different at the head
+      case runStateT (un False [] topx topy) (UI 0 [] []) of
+        OK (v, UI _ inj []) -> return (filter notTrivial v, inj, [])
+--         Error e@(CantUnify False _ _ _ _ _)  -> tfail e
+        res ->
                let topxn = normalise ctxt env topx
                    topyn = normalise ctxt env topy in
---                     trace ("Unifying " ++ show (topx, topy) ++ "\n\n==>\n" ++ show (topxn, topyn) ++ "\n\n") $
-                     case runStateT (un' False [] topxn topyn)
+--                     trace ("Unifying " ++ show (topx, topy) ++ "\n\n==>\n" ++ show (topxn, topyn) ++ "\n\n" ++ show res ++ "\n\n") $
+                     case runStateT (un False [] topxn topyn)
         	  	        (UI 0 [] []) of
                        OK (v, UI _ inj fails) -> 
                             return (filter notTrivial v, inj, reverse fails)
@@ -40,6 +43,10 @@ unify ctxt env topx topy =
   where
     notTrivial (x, P _ x' _) = x /= x'
     notTrivial _ = True
+
+    headDiff (P (DCon _ _) x _) (P (DCon _ _) y _) = x /= y
+    headDiff (P (TCon _ _) x _) (P (TCon _ _) y _) = x /= y
+    headDiff _ _ = False
 
     injective (P (DCon _ _) _ _) = True
     injective (P (TCon _ _) _ _) = True
@@ -58,6 +65,16 @@ unify ctxt env topx topy =
                      if (length f == length f') 
                         then return r
                         else do put (UI s i f); u2
+
+    un :: Bool -> [(Name, Name)] -> TT Name -> TT Name ->
+          StateT UInfo 
+          TC [(Name, TT Name)]
+    un fn names x y 
+        = let (xf, _) = unApply x
+              (yf, _) = unApply y in
+              if headDiff xf yf then unifyFail x y else
+                  uplus (un' fn names x y)
+                        (un' fn names (hnf ctxt env x) (hnf ctxt env y))
 
     un' :: Bool -> [(Name, Name)] -> TT Name -> TT Name ->
            StateT UInfo 
@@ -102,10 +119,10 @@ unify ctxt env topx topy =
                 (do hf <- un' True bnames fx fy 
                     let ax' = hnormalise hf ctxt env (substNames hf ax)
                     let ay' = hnormalise hf ctxt env (substNames hf ay)
-                    ha <- un' False bnames ax' ay'
+                    ha <- un False bnames ax' ay'
                     sc 1
                     combine bnames hf ha)
-                (do ha <- un' False bnames ax ay
+                (do ha <- un False bnames ax ay
                     let fx' = hnormalise ha ctxt env (substNames ha fx)
                     let fy' = hnormalise ha ctxt env (substNames ha fy)
                     hf <- un' False bnames fx' fy'
@@ -141,8 +158,9 @@ unify ctxt env topx topy =
                          let r = recoverable x y
                          let err = CantUnify r
                                      topx topy (CantUnify r x y (Msg "") [] s) (errEnv env) s
-                         put (UI s i ((x, y, env, err) : f))
-                         return [] -- lift $ tfail err
+                         if (not r) then lift $ tfail err
+                           else do put (UI s i ((x, y, env, err) : f))
+                                   return [] -- lift $ tfail err
 
     -- shortcut failure, if we *know* nothing can fix it
     unifyFail x y = do UI s i f <- get
@@ -198,12 +216,15 @@ unify ctxt env topx topy =
     recoverable (P (DCon _ _) x _) (P (DCon _ _) y _)
         | x == y = True
         | otherwise = False
---     recoverable (P (DCon _ _) x _) (P (TCon _ _) y _) = False
---     recoverable (P (TCon _ _) x _) (P (DCon _ _) y _) = False
+    recoverable (P (TCon _ _) x _) (P (TCon _ _) y _)
+        | x == y = True
+        | otherwise = False
+    recoverable (P (DCon _ _) x _) (P (TCon _ _) y _) = False
+    recoverable (P (TCon _ _) x _) (P (DCon _ _) y _) = False
     recoverable p@(P _ n _) (App f a) = recoverable p f
-    recoverable (App f a) p@(P _ _ _) = recoverable f p
+--     recoverable (App f a) p@(P _ _ _) = recoverable f p
     recoverable (App f a) (App f' a')
-        = recoverable f f' && recoverable a a'
+        = recoverable f f' -- && recoverable a a'
     recoverable _ _ = True
 
 errEnv = map (\(x, b) -> (x, binderTy b))
