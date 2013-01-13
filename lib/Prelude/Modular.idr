@@ -33,7 +33,7 @@ modDiv = modBin bitsUDiv
 
 public partial
 modRem : Mod2 n -> Mod2 n -> Mod2 n
-modRem = modBin bitsSDiv
+modRem = modBin bitsURem
 
 %assert_total
 public

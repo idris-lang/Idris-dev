@@ -580,6 +580,7 @@ intToBits64 [VConstant (I x)] = Just $ toB64 x
 intToBits64 _ = Nothing
 
 bits32ToInt [VConstant (B32 x)] = Just $ VConstant (I (fromIntegral x))
+bits32ToInt _ = Nothing
 
 c_intToStr [VConstant (I x)] = Just $ VConstant (Str (show x))
 c_intToStr _ = Nothing
