@@ -1,5 +1,7 @@
 module Prelude.Bits
 
+import Prelude.Strings
+
 %default total
 
 log2ceil : Nat -> Nat
@@ -67,7 +69,7 @@ pow x y = if y > 0
           else 1
 
 %assert_total
-intToBits' : {n: Nat} -> Int -> nextBits n
+intToBits' : {n : Nat} -> Int -> nextBits n
 intToBits' {n=n} x with (nextBits n)
     | Bits8 = let pad = (prim__intToB8 (cast (8-n))) in
               prim__lshrB8 (prim__shlB8 (prim__intToB8 x) pad) pad
@@ -84,6 +86,17 @@ intToBits n = MkBits (intToBits' n)
 
 instance Cast Int (Bits n) where
     cast = intToBits
+
+unsafeBitsToInt' : {n : Nat} -> nextBits n -> Int
+unsafeBitsToInt' {n=n} x with (nextBits n)
+    | Bits8 = prim__B32ToInt (prim__zextB8_32 x)
+    | Bits16 = prim__B32ToInt (prim__zextB16_32 x)
+    | Bits32 = prim__B32ToInt x
+    | Bits64 = prim__B32ToInt (prim__truncB64_32 x)
+
+public
+unsafeBitsToInt : Bits n -> Int
+unsafeBitsToInt (MkBits x) = unsafeBitsToInt' x
 
 bitsShl' : {n: Nat} -> nextBits n -> nextBits n -> nextBits n
 bitsShl' {n=n} x c with (nextBits n)
@@ -308,11 +321,9 @@ bitSet n x = bitsAnd (intToBits 1 `bitsShl` intToBits (cast (finToNat n))) x /= 
 
 public
 bitsToStr : Bits n -> String
-bitsToStr x = helper last x
+bitsToStr x = pack (helper last x)
     where
       %assert_total
-      helper : Fin (S n) -> Bits n -> String
-      helper fO _ = ""
-      helper (fS x) b =
-          (if bitSet x b then "1" else "0")
-          ++ helper (weaken x) b
+      helper : Fin (S n) -> Bits n -> List Char
+      helper fO _ = []
+      helper (fS x) b = (if bitSet x b then '1' else '0') :: helper (weaken x) b

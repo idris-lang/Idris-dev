@@ -70,3 +70,14 @@ instance Cast (Mod2 n) (Bits n) where
 
 instance Cast (Bits n) (Mod2 n) where
     cast = bitsToMod
+
+-- TODO: Other bases
+public
+modToStr : Mod2 n -> String
+modToStr x = pack (reverse (helper x))
+    where
+      %assert_total
+      helper : Mod2 n -> List Char
+      helper x = strIndex "0123456789" (unsafeBitsToInt (modToBits (x `modRem` 10)))
+                 :: (let q = (x `modDiv` 10) in
+                     if q == 0 then [] else helper q)

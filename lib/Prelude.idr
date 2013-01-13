@@ -35,9 +35,8 @@ instance Show Int where
 instance Show (Bits n) where
     show = bitsToStr
 
--- TODO: Base 10
 instance Show (Mod2 n) where
-    show (MkMod2 x) = bitsToStr x
+    show = modToStr
 
 instance Show Integer where 
     show = prim__bigIntToStr
