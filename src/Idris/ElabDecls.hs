@@ -566,7 +566,7 @@ elabClause info tcgen (cnum, PClause fc fname lhs_in withs rhs_in whereblock)
         logLvl 6 $ " ==> " ++ show crhsty ++ "   against   " ++ show clhsty
         case  converts ctxt [] clhsty crhsty of
             OK _ -> return ()
-            Error _ -> ierror (At fc (CantUnify False clhsty crhsty (Msg "") [] 0))
+            Error e -> ierror (At fc (CantUnify False clhsty crhsty e [] 0))
         i <- get
         checkInferred fc (delab' i crhs True) rhs
         return $ Right (clhs, crhs)
@@ -794,7 +794,7 @@ elabClass info syn doc fc constraints tn ps ds
     pibind [] x = x
     pibind ((n, ty): ns) x = PPi expl n ty (pibind ns x) 
 
-    mdec (UN n) = (UN ('!':n))
+    mdec (UN n) = UN ('!':n)
     mdec (NS x n) = NS (mdec x) n
     mdec x = x
 

@@ -552,7 +552,7 @@ convEq :: Context -> TT Name -> TT Name -> StateT UCs TC Bool
 convEq ctxt = ceq [] where
     ceq :: [(Name, Name)] -> TT Name -> TT Name -> StateT UCs TC Bool
     ceq ps (P xt x _) (P yt y _) 
-        | (xt == yt && x ==y ) || (x, y) `elem` ps || (y,x) `elem` ps = return True
+        | x == y || (x, y) `elem` ps || (y,x) `elem` ps = return True
         | otherwise = sameDefs ps x y
     ceq ps (V x)      (V y)      = return (x == y)
     ceq ps (Bind _ xb xs) (Bind _ yb ys) 
