@@ -31,7 +31,7 @@ unify ctxt env topx topy =
       case runStateT (un False [] topx topy) (UI 0 [] []) of
         OK (v, UI _ inj []) -> return (filter notTrivial v, inj, [])
 --         Error e@(CantUnify False _ _ _ _ _)  -> tfail e
-        res ->
+        res -> 
                let topxn = normalise ctxt env topx
                    topyn = normalise ctxt env topy in
 --                     trace ("Unifying " ++ show (topx, topy) ++ "\n\n==>\n" ++ show (topxn, topyn) ++ "\n\n" ++ show res ++ "\n\n") $
@@ -129,7 +129,7 @@ unify ctxt env topx topy =
                     sc 1
                     combine bnames hf ha)
       where hnormalise [] _ _ t = t
-            hnormalise ns ctxt env t = hnf ctxt env t
+            hnormalise ns ctxt env t = normalise ctxt env t
             checkHeads (P (DCon _ _) x _) (P (DCon _ _) y _)
                 | x /= y = unifyFail appx appy
             checkHeads (P (TCon _ _) x _) (P (TCon _ _) y _)

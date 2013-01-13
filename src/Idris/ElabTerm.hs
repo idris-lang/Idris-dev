@@ -297,7 +297,8 @@ elab ist info pattern tcgen fn tm
                     solve
                     return ([], False))
             when committed $
-               do let (ns', eargs) = unzip $ 
+               do ptm <- get_term
+                  let (ns', eargs) = unzip $ 
                              sortBy (\(_,x) (_,y) -> 
                                             compare (priority x) (priority y))
                                     (zip ns args)

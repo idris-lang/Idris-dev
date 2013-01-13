@@ -1,6 +1,7 @@
 module Prelude.Maybe
 
 import Builtins
+import Prelude.Algebra
 
 %access public
 %default total
@@ -53,7 +54,7 @@ maybe_bind (Just x) k = k x
 instance (Semigroup a) => Semigroup (Maybe a) where
   Nothing <+> m = m
   m <+> Nothing = m
-  Just m1 <+> Just m2 = Just (m1 <+> m2)
+  (Just m1) <+> (Just m2) = Just (m1 <+> m2)
 
 instance (Monoid a) => Monoid (Maybe a) where
   neutral = Nothing
