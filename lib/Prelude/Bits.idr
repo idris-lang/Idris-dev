@@ -307,11 +307,12 @@ bitSet : Fin n -> Bits n -> Bool
 bitSet n x = bitsAnd (intToBits 1 `bitsShl` intToBits (cast (finToNat n))) x /= intToBits 0
 
 public
-bitsToStr : Bits (S n) -> String
-bitsToStr {n=n} x = helper (the (Fin (S n)) last) x
+bitsToStr : Bits n -> String
+bitsToStr x = helper last x
     where
       %assert_total
-      helper : Fin (S n) -> Bits (S n) -> String
+      helper : Fin (S n) -> Bits n -> String
       helper fO _ = ""
-      helper (fS x) b = (if bitSet (weaken x) b then "1" else "0")
-                        ++ helper (weaken x) b
+      helper (fS x) b =
+          (if bitSet x b then "1" else "0")
+          ++ helper (weaken x) b

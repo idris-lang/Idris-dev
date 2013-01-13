@@ -32,6 +32,9 @@ instance Show Nat where
 instance Show Int where 
     show = prim__intToStr
 
+instance Show (Bits n) where
+    show = bitsToStr
+
 -- TODO: Base 10
 instance Show (Mod2 n) where
     show (MkMod2 x) = bitsToStr x
