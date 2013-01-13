@@ -463,18 +463,6 @@ s32rem x y = fromIntegral (fromIntegral x `rem` fromIntegral y :: Int32)
 s64rem :: Word64 -> Word64 -> Word64
 s64rem x y = fromIntegral (fromIntegral x `rem` fromIntegral y :: Int64)
 
-b8ToStr [VConstant (B8 x)] = Just $ VConstant (Str (show x))
-b8ToStr _ = Nothing
-
-b16ToStr [VConstant (B16 x)] = Just $ VConstant (Str (show x))
-b16ToStr _ = Nothing
-
-b32ToStr [VConstant (B32 x)] = Just $ VConstant (Str (show x))
-b32ToStr _ = Nothing
-
-b64ToStr [VConstant (B64 x)] = Just $ VConstant (Str (show x))
-b64ToStr _ = Nothing
-
 b8Bin op [VConstant (B8 x), VConstant (B8 y)] = Just $ VConstant (B8 (op x y))
 b8Bin _ _ = Nothing
 
