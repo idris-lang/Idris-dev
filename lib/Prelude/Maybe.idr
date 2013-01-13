@@ -2,6 +2,9 @@ module Prelude.Maybe
 
 import Builtins
 
+%access public
+%default total
+
 data Maybe a
     = Nothing
     | Just a
@@ -41,3 +44,16 @@ toMaybe False j = Nothing
 maybe_bind : Maybe a -> (a -> Maybe b) -> Maybe b
 maybe_bind Nothing  k = Nothing
 maybe_bind (Just x) k = k x
+
+-- | Lift a semigroup into 'Maybe' forming a 'Monoid' according to
+-- <http://en.wikipedia.org/wiki/Monoid>: \"Any semigroup S may be
+-- turned into a monoid simply by adjoining an element e not in S
+-- and defining i+i = i and i+s = s = s+i for all s ∈ S.\"
+
+instance (Semigroup a) => Semigroup (Maybe a) where
+  Nothing <+> m = m
+  m <+> Nothing = m
+  Just m1 <+> Just m2 = Just (m1 <+> m2)
+
+instance (Monoid a) => Monoid (Maybe a) where
+  neutral = Nothing
