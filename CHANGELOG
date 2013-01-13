@@ -22,12 +22,15 @@ User visible changes:
 * Added System.Concurrency modules
 * Added 'postulate' declarations
 * Allow type annotations on 'let' tactic
+* EXPERIMENTAL JavaScript generation, with --javascript option
 
 Internal changes:
 
 * Separate inlining methods at compile-time and run-time
 * Fixed nested parameters blocks 
-* Improve efficiency of elaborator by only normalising when necessary
+* Improve efficiency of elaborator by:
+   - only normalising when necessary
+   - reducing backtracking with resolving ambiguities
 * Better compilation of case trees
 
 New in 0.9.5:
