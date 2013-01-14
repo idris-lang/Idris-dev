@@ -323,6 +323,8 @@ doOp v LB8Minus [x, y] = v ++ "idris_b8Minus(vm, " ++ creg x ++ "," ++ creg y ++
 doOp v LB8Times [x, y] = v ++ "idris_b8Times(vm, " ++ creg x ++ "," ++ creg y ++ ")"
 doOp v LB8UDiv [x, y] = v ++ "idris_b8UDiv(vm, " ++ creg x ++ "," ++ creg y ++ ")"
 doOp v LB8SDiv [x, y] = v ++ "idris_b8SDiv(vm, " ++ creg x ++ "," ++ creg y ++ ")"
+doOp v LB8URem [x, y] = v ++ "idris_b8URem(vm, " ++ creg x ++ "," ++ creg y ++ ")"
+doOp v LB8SRem [x, y] = v ++ "idris_b8SRem(vm, " ++ creg x ++ "," ++ creg y ++ ")"
 
 doOp v LB8Z16 [x] = v ++ "idris_b8Z16(vm, " ++ creg x ++ ")"
 doOp v LB8Z32 [x] = v ++ "idris_b8Z32(vm, " ++ creg x ++ ")"
@@ -355,6 +357,10 @@ doOp v LB16UDiv [x, y] =
   v ++ "idris_b16UDiv(vm, " ++ creg x ++ "," ++ creg y ++ ")"
 doOp v LB16SDiv [x, y] =
   v ++ "idris_b16SDiv(vm, " ++ creg x ++ "," ++ creg y ++ ")"
+doOp v LB16URem [x, y] =
+  v ++ "idris_b16URem(vm, " ++ creg x ++ "," ++ creg y ++ ")"
+doOp v LB16SRem [x, y] =
+  v ++ "idris_b16SRem(vm, " ++ creg x ++ "," ++ creg y ++ ")"
 
 doOp v LB16Z32 [x] = v ++ "idris_b16Z32(vm, " ++ creg x ++ ")"
 doOp v LB16Z64 [x] = v ++ "idris_b16Z64(vm, " ++ creg x ++ ")"
@@ -386,6 +392,10 @@ doOp v LB32UDiv [x, y] =
   v ++ "idris_b32UDiv(vm, " ++ creg x ++ "," ++ creg y ++ ")"
 doOp v LB32SDiv [x, y] =
   v ++ "idris_b32SDiv(vm, " ++ creg x ++ "," ++ creg y ++ ")"
+doOp v LB32URem [x, y] =
+  v ++ "idris_b32URem(vm, " ++ creg x ++ "," ++ creg y ++ ")"
+doOp v LB32SRem [x, y] =
+  v ++ "idris_b32SRem(vm, " ++ creg x ++ "," ++ creg y ++ ")"
 
 doOp v LB32Z64 [x] = v ++ "idris_b32Z64(vm, " ++ creg x ++ ")"
 doOp v LB32S64 [x] = v ++ "idris_b32S64(vm, " ++ creg x ++ ")"
@@ -416,6 +426,10 @@ doOp v LB64UDiv [x, y] =
   v ++ "idris_b64UDiv(vm, " ++ creg x ++ "," ++ creg y ++ ")"
 doOp v LB64SDiv [x, y] =
   v ++ "idris_b64SDiv(vm, " ++ creg x ++ "," ++ creg y ++ ")"
+doOp v LB64URem [x, y] =
+  v ++ "idris_b64URem(vm, " ++ creg x ++ "," ++ creg y ++ ")"
+doOp v LB64SRem [x, y] =
+  v ++ "idris_b64SRem(vm, " ++ creg x ++ "," ++ creg y ++ ")"
 
 doOp v LB64T8 [x] = v ++ "idris_b64T8(vm, " ++ creg x ++ ")"
 doOp v LB64T16 [x] = v ++ "idris_b64T16(vm, " ++ creg x ++ ")"

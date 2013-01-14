@@ -95,6 +95,20 @@ VAL idris_b8SDiv(VM *vm, VAL a, VAL b) {
     return cl;
 }
 
+VAL idris_b8URem(VM *vm, VAL a, VAL b) {
+    VAL cl = allocate(vm, sizeof(Closure), 0);
+    SETTY(cl, BITS8);
+    cl->info.bits8 = a->info.bits8 % b->info.bits8;
+    return cl;
+}
+
+VAL idris_b8SRem(VM *vm, VAL a, VAL b) {
+    VAL cl = allocate(vm, sizeof(Closure), 0);
+    SETTY(cl, BITS8);
+    cl->info.bits8 = (uint8_t) (((int8_t) a->info.bits8) % ((int8_t) b->info.bits8));
+    return cl;
+}
+
 VAL idris_b8Lt(VM *vm, VAL a, VAL b) {
     VAL cl = allocate(vm, sizeof(Closure), 0);
     SETTY(cl, BITS8);
@@ -211,7 +225,22 @@ VAL idris_b16SDiv(VM *vm, VAL a, VAL b) {
     VAL cl = allocate(vm, sizeof(Closure), 0);
     SETTY(cl, BITS16);
     cl->info.bits16 =
-	(uint16_t) (((int16_t) a->info.bits16) / ((int16_t) b->info.bits16));
+    (uint16_t) (((int16_t) a->info.bits16) / ((int16_t) b->info.bits16));
+    return cl;
+}
+
+VAL idris_b16URem(VM *vm, VAL a, VAL b) {
+    VAL cl = allocate(vm, sizeof(Closure), 0);
+    SETTY(cl, BITS16);
+    cl->info.bits16 = a->info.bits16 % b->info.bits16;
+    return cl;
+}
+
+VAL idris_b16SRem(VM *vm, VAL a, VAL b) {
+    VAL cl = allocate(vm, sizeof(Closure), 0);
+    SETTY(cl, BITS16);
+    cl->info.bits16 =
+    (uint16_t) (((int16_t) a->info.bits16) % ((int16_t) b->info.bits16));
     return cl;
 }
 
@@ -331,7 +360,22 @@ VAL idris_b32SDiv(VM *vm, VAL a, VAL b) {
     VAL cl = allocate(vm, sizeof(Closure), 0);
     SETTY(cl, BITS32);
     cl->info.bits32 =
-	(uint32_t) (((int32_t) a->info.bits32) / ((int32_t) b->info.bits32));
+    (uint32_t) (((int32_t) a->info.bits32) / ((int32_t) b->info.bits32));
+    return cl;
+}
+
+VAL idris_b32URem(VM *vm, VAL a, VAL b) {
+    VAL cl = allocate(vm, sizeof(Closure), 0);
+    SETTY(cl, BITS32);
+    cl->info.bits32 = a->info.bits32 % b->info.bits32;
+    return cl;
+}
+
+VAL idris_b32SRem(VM *vm, VAL a, VAL b) {
+    VAL cl = allocate(vm, sizeof(Closure), 0);
+    SETTY(cl, BITS32);
+    cl->info.bits32 =
+    (uint32_t) (((int32_t) a->info.bits32) % ((int32_t) b->info.bits32));
     return cl;
 }
 
@@ -451,7 +495,22 @@ VAL idris_b64SDiv(VM *vm, VAL a, VAL b) {
     VAL cl = allocate(vm, sizeof(Closure), 0);
     SETTY(cl, BITS64);
     cl->info.bits64 =
-	(uint64_t) (((int64_t) a->info.bits64) / ((int64_t) b->info.bits64));
+    (uint64_t) (((int64_t) a->info.bits64) / ((int64_t) b->info.bits64));
+    return cl;
+}
+
+VAL idris_b64URem(VM *vm, VAL a, VAL b) {
+    VAL cl = allocate(vm, sizeof(Closure), 0);
+    SETTY(cl, BITS64);
+    cl->info.bits64 = a->info.bits64 % b->info.bits64;
+    return cl;
+}
+
+VAL idris_b64SRem(VM *vm, VAL a, VAL b) {
+    VAL cl = allocate(vm, sizeof(Closure), 0);
+    SETTY(cl, BITS64);
+    cl->info.bits64 =
+    (uint64_t) (((int64_t) a->info.bits64) % ((int64_t) b->info.bits64));
     return cl;
 }
 
