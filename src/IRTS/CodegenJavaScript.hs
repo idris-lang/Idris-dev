@@ -287,7 +287,7 @@ translateExpression _ (SOp op vars)
   | LStrConcat  <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp "+" lhs rhs
   | LStrEq      <- op
-  , (lhs:rhs:_) <- vars = translateBinaryOp "=" lhs rhs
+  , (lhs:rhs:_) <- vars = translateBinaryOp "==" lhs rhs
 
   | LIntStr     <- op
   , (arg:_)     <- vars = "String(" ++ translateVariableName arg ++ ");"
