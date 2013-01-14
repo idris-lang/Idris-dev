@@ -122,6 +122,7 @@ translateIdentifier =
         replaceBadChars ':'  = "__colon__"
         replaceBadChars '+'  = "__plus__"
         replaceBadChars '-'  = "__minus__"
+        replaceBadChars '*'  = "__times__"
         replaceBadChars '<'  = "__lt__"
         replaceBadChars '>'  = "__gt__"
         replaceBadChars '='  = "__eq__"
