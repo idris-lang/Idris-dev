@@ -447,4 +447,4 @@ doOp v LFork [x] = v ++ "MKPTR(vm, vmThread(vm, " ++ cname (MN 0 "EVAL") ++ ", "
 doOp v LPar [x] = v ++ creg x -- "MKPTR(vm, vmThread(vm, " ++ cname (MN 0 "EVAL") ++ ", " ++ creg x ++ "))"
 doOp v LVMPtr [] = v ++ "MKPTR(vm, vm)"
 doOp v LNoOp args = v ++ creg (last args)
-doOp _ _ _ = "FAIL"
+doOp _ op _ = "FAIL /* " ++ show op ++ " */"
