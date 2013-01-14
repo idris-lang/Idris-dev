@@ -279,6 +279,11 @@ translateExpression _ (SOp op vars)
   | LBGe        <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp ">=" lhs rhs
 
+  | LStrHead    <- op
+  , (arg:_)     <- vars = translateVariableName arg ++ "[0]"
+  | LStrTail    <- op
+  , (arg:_)     <- vars = let v = translateVariableName arg in
+                              v ++ ".substr(1," ++ v ++ ".length-1)"
   | LStrConcat  <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp "+" lhs rhs
   | LStrEq      <- op
