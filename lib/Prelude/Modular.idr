@@ -79,5 +79,4 @@ modToStr x = pack (reverse (helper x))
       %assert_total
       helper : Mod2 n -> List Char
       helper x = strIndex "0123456789" (unsafeBitsToInt (modToBits (x `modRem` 10)))
-                 :: (let q = (x `modDiv` 10) in
-                     if q == 0 then [] else helper q)
+                 :: (if x < 10 then [] else helper (x `modDiv` 10))
