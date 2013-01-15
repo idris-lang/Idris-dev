@@ -46,7 +46,10 @@ codegenJavaScript definitions filename outputType =
 idrRuntime :: String
 idrRuntime =
   createModule Nothing idrNamespace $ concat
-    [ "__IDR__.IntType = { type: 'IntType' };"
+    [ "__IDR__.Type = function(type) { this.type = type; };"
+    , "__IDR__.Int = new __IDR__.Type('Int');"
+    , "__IDR__.Char = new __IDR__.Type('Char');"
+    , "__IDR__.String = new __IDR__.Type('String');"
 
     , "__IDR__.Tailcall = function(f) { this.f = f };"
 
@@ -152,7 +155,9 @@ translateConstant (BI i)  = show i
 translateConstant (Fl f)  = show f
 translateConstant (Ch c)  = show c
 translateConstant (Str s) = show s
-translateConstant IType   = "__IDR__.IntType"
+translateConstant IType   = "__IDR__.Int"
+translateConstant ChType  = "__IDR__.Char"
+translateConstant StrType = "__IDR__.String"
 translateConstant c       =
   "(function(){throw 'Unimplemented Const: " ++ show c ++ "';})()"
 
@@ -354,6 +359,12 @@ translateCase :: String -> String -> SAlt -> String
 translateCase modname _ (SDefaultCase e) =
   createIfBlock "true" (translateExpression modname e)
 
+translateCase modname var (SConstCase ChType e) =
+  translateTypeMatch modname var "Char" e
+
+translateCase modname var (SConstCase StrType e) =
+  translateTypeMatch modname var "String" e
+
 translateCase modname var (SConstCase cst e) =
   let cond = var ++ " == " ++ translateConstant cst in
       createIfBlock cond (translateExpression modname e)
@@ -369,6 +380,14 @@ translateCase modname var (SConCase a i name vars e) =
         ++ "){\nreturn " ++ b ++ "\n})" ++ args
       cond = intercalate " && " [isCon, isI] in
       createIfBlock cond $ f (translateExpression modname e)
+
+translateTypeMatch :: String -> String -> String -> SExp -> String
+translateTypeMatch modname var ty exp =
+  let e = translateExpression modname exp in
+      createIfBlock (var
+                  ++ " instanceof __IDR__.Type && "
+                  ++ var ++ ".type == '"++ ty ++"'") e
+
 
 createIfBlock cond e =
      "if (" ++ cond ++") {\n"
