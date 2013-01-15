@@ -289,27 +289,24 @@ elab ist info pattern tcgen fn tm
             ctxt <- get_context
             let guarded = isConName Nothing f ctxt
 --             when True
-            (ns, committed) <- tryWhen True
+            tryWhen True
                 (do ns <- apply (Var f) (map isph args)
-                    return (ns, True)) -- commit to this branch here
-                (do apply_elab f (map (toElab (ina || not isinf, guarded)) args)
-                    mkSpecialised ist fc f (map getTm args') tm
-                    solve
-                    return ([], False))
-            when committed $
-               do ptm <- get_term
-                  let (ns', eargs) = unzip $ 
+                    ptm <- get_term
+                    let (ns', eargs) = unzip $ 
                              sortBy (\(_,x) (_,y) -> 
                                             compare (priority x) (priority y))
                                     (zip ns args)
-                  tryWhen True 
+                    tryWhen True 
                       (elabArgs (ina || not isinf, guarded)
                            [] False ns' (map (\x -> (lazyarg x, getTm x)) eargs))
                       (elabArgs (ina || not isinf, guarded)
                            [] False (reverse ns') 
                                     (map (\x -> (lazyarg x, getTm x)) (reverse eargs)))
-                  mkSpecialised ist fc f (map getTm args') tm
-                  solve
+                    mkSpecialised ist fc f (map getTm args') tm
+                    solve)
+                (do apply_elab f (map (toElab (ina || not isinf, guarded)) args)
+                    mkSpecialised ist fc f (map getTm args') tm
+                    solve)
 --             ptm <- get_term
 --             elog (show ptm)
             ivs' <- get_instances

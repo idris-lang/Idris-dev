@@ -410,7 +410,7 @@ apply_elab n args =
     do ty <- get_type (Var n)
        ctxt <- get_context
        env <- get_env
-       claims <- doClaims (finalise ty) args []
+       claims <- doClaims (hnf ctxt env ty) args []
        prep_fill n (map fst claims)
        let eclaims = sortBy (\ (_, x) (_,y) -> priOrder x y) claims
        elabClaims [] False claims

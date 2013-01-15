@@ -69,12 +69,13 @@ unify ctxt env topx topy =
     un :: Bool -> [(Name, Name)] -> TT Name -> TT Name ->
           StateT UInfo 
           TC [(Name, TT Name)]
-    un fn names x y 
-        = let (xf, _) = unApply x
-              (yf, _) = unApply y in
-              if headDiff xf yf then unifyFail x y else
-                  uplus (un' fn names x y)
-                        (un' fn names (hnf ctxt env x) (hnf ctxt env y))
+    un = un'
+--     un fn names x y 
+--         = let (xf, _) = unApply x
+--               (yf, _) = unApply y in
+--               if headDiff xf yf then unifyFail x y else
+--                   uplus (un' fn names x y)
+--                         (un' fn names (hnf ctxt env x) (hnf ctxt env y))
 
     un' :: Bool -> [(Name, Name)] -> TT Name -> TT Name ->
            StateT UInfo 
@@ -119,10 +120,10 @@ unify ctxt env topx topy =
                 (do hf <- un' True bnames fx fy 
                     let ax' = hnormalise hf ctxt env (substNames hf ax)
                     let ay' = hnormalise hf ctxt env (substNames hf ay)
-                    ha <- un False bnames ax' ay'
+                    ha <- un' False bnames ax' ay'
                     sc 1
                     combine bnames hf ha)
-                (do ha <- un False bnames ax ay
+                (do ha <- un' False bnames ax ay
                     let fx' = hnormalise ha ctxt env (substNames ha fx)
                     let fy' = hnormalise ha ctxt env (substNames ha fy)
                     hf <- un' False bnames fx' fy'
