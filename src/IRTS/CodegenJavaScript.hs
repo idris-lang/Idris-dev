@@ -130,6 +130,7 @@ translateIdentifier =
         replaceBadChars '>'  = "__gt__"
         replaceBadChars '='  = "__eq__"
         replaceBadChars '|'  = "__pipe__"
+        replaceBadChars '&'  = "__amp__"
         replaceBadChars '\'' = "__apo__"
         replaceBadChars c
           | isDigit c = "__" ++ [c] ++ "__"
