@@ -50,6 +50,9 @@ idrRuntime =
     , "__IDR__.Int = new __IDR__.Type('Int');"
     , "__IDR__.Char = new __IDR__.Type('Char');"
     , "__IDR__.String = new __IDR__.Type('String');"
+    , "__IDR__.Integer = new __IDR__.Type('Integer');"
+    , "__IDR__.Float = new __IDR__.Type('Float');"
+    , "__IDR__.Forgot = new __IDR__.Type('Forgot');"
 
     , "__IDR__.Tailcall = function(f) { this.f = f };"
 
@@ -160,6 +163,9 @@ translateConstant (Str s) = show s
 translateConstant IType   = "__IDR__.Int"
 translateConstant ChType  = "__IDR__.Char"
 translateConstant StrType = "__IDR__.String"
+translateConstant BIType  = "__IDR__.Integer"
+translateConstant FlType  = "__IDR__.Float"
+translateConstant Forgot  = "__IDR__.Forgot"
 translateConstant c       =
   "(function(){throw 'Unimplemented Const: " ++ show c ++ "';})()"
 
@@ -362,9 +368,12 @@ translateCase modname _ (SDefaultCase e) =
   createIfBlock "true" (translateExpression modname e)
 
 translateCase modname var (SConstCase ty e)
-  | ChType  <- ty = translateTypeMatch modname var "Char" e
-  | StrType <- ty = translateTypeMatch modname var "String" e
-  | IType   <- ty = translateTypeMatch modname var "Int" e
+  | ChType   <- ty = matchHelper "Char"
+  | StrType  <- ty = matchHelper "String"
+  | IType    <- ty = matchHelper "Int"
+  | BIType   <- ty = matchHelper "Integer"
+  | FlType   <- ty = matchHelper "Float"
+  | Forgot   <- ty = matchHelper "Forgot"
   where
     matchHelper tyName = translateTypeMatch modname var tyName e
 
