@@ -361,11 +361,12 @@ translateCase :: String -> String -> SAlt -> String
 translateCase modname _ (SDefaultCase e) =
   createIfBlock "true" (translateExpression modname e)
 
-translateCase modname var (SConstCase ChType e) =
-  translateTypeMatch modname var "Char" e
-
-translateCase modname var (SConstCase StrType e) =
-  translateTypeMatch modname var "String" e
+translateCase modname var (SConstCase ty e)
+  | ChType  <- ty = translateTypeMatch modname var "Char" e
+  | StrType <- ty = translateTypeMatch modname var "String" e
+  | IType   <- ty = translateTypeMatch modname var "Int" e
+  where
+    matchHelper tyName = translateTypeMatch modname var tyName e
 
 translateCase modname var (SConstCase cst e) =
   let cond = var ++ " == " ++ translateConstant cst in
