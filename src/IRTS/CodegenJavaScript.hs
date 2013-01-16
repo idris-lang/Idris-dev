@@ -138,7 +138,7 @@ translateIdentifier =
 
 translateNamespace :: Name -> [String]
 translateNamespace (UN _)    = [idrNamespace]
-translateNamespace (NS _ ns) = map translateIdentifier ns
+translateNamespace (NS _ ns) = idrNamespace : map translateIdentifier ns
 translateNamespace (MN _ _)  = [idrNamespace]
 
 translateName :: Name -> String
