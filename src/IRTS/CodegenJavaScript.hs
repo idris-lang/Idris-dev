@@ -1,7 +1,8 @@
 {-# LANGUAGE PatternGuards #-}
 
 {-
-  BigInteger Javascript code taken from https://github.com/peterolson/BigInteger.js
+  BigInteger Javascript code taken from:
+    https://github.com/peterolson/BigInteger.js
 -}
 
 module IRTS.CodegenJavaScript (codegenJavaScript) where
@@ -258,25 +259,18 @@ translateExpression _ (SOp op vars)
   , (lhs:rhs:_) <- vars = translateBinaryOp ">" lhs rhs
   | LGe         <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp ">=" lhs rhs
-
-  | LFPlus      <- op
-  , (lhs:rhs:_) <- vars = translateBinaryOp "+" lhs rhs
-  | LFMinus     <- op
-  , (lhs:rhs:_) <- vars = translateBinaryOp "-" lhs rhs
-  | LFTimes     <- op
-  , (lhs:rhs:_) <- vars = translateBinaryOp "*" lhs rhs
-  | LFDiv       <- op
-  , (lhs:rhs:_) <- vars = translateBinaryOp "/" lhs rhs
-  | LFEq        <- op
-  , (lhs:rhs:_) <- vars = translateBinaryOp "==" lhs rhs
-  | LFLt        <- op
-  , (lhs:rhs:_) <- vars = translateBinaryOp "<" lhs rhs
-  | LFLe        <- op
-  , (lhs:rhs:_) <- vars = translateBinaryOp "<=" lhs rhs
-  | LFGt        <- op
-  , (lhs:rhs:_) <- vars = translateBinaryOp ">" lhs rhs
-  | LFGe        <- op
-  , (lhs:rhs:_) <- vars = translateBinaryOp ">=" lhs rhs
+  | LAnd        <- op
+  , (lhs:rhs:_) <- vars = translateBinaryOp "&" lhs rhs
+  | LOr         <- op
+  , (lhs:rhs:_) <- vars = translateBinaryOp "|" lhs rhs
+  | LXOr        <- op
+  , (lhs:rhs:_) <- vars = translateBinaryOp "^" lhs rhs
+  | LSHL        <- op
+  , (lhs:rhs:_) <- vars = translateBinaryOp "<<" rhs lhs
+  | LSHR        <- op
+  , (lhs:rhs:_) <- vars = translateBinaryOp ">>" rhs lhs
+  | LCompl      <- op
+  , (arg:_)     <- vars = "~" ++ translateVariableName arg
 
   | LBPlus      <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp ".add(" lhs rhs  ++ ")"
@@ -298,24 +292,91 @@ translateExpression _ (SOp op vars)
   , (lhs:rhs:_) <- vars = translateBinaryOp ".greater(" lhs rhs ++ ")"
   | LBGe        <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp ".greaterOrEquals(" lhs rhs ++ ")"
-  | LBigStr     <- op
-  , (arg:_)     <- vars = translateVariableName arg ++ ".toString()"
 
-  | LStrHead    <- op
-  , (arg:_)     <- vars = translateVariableName arg ++ "[0]"
-  | LStrTail    <- op
-  , (arg:_)     <- vars = let v = translateVariableName arg in
-                              v ++ ".substr(1," ++ v ++ ".length-1)"
+  | LFPlus      <- op
+  , (lhs:rhs:_) <- vars = translateBinaryOp "+" lhs rhs
+  | LFMinus     <- op
+  , (lhs:rhs:_) <- vars = translateBinaryOp "-" lhs rhs
+  | LFTimes     <- op
+  , (lhs:rhs:_) <- vars = translateBinaryOp "*" lhs rhs
+  | LFDiv       <- op
+  , (lhs:rhs:_) <- vars = translateBinaryOp "/" lhs rhs
+  | LFEq        <- op
+  , (lhs:rhs:_) <- vars = translateBinaryOp "==" lhs rhs
+  | LFLt        <- op
+  , (lhs:rhs:_) <- vars = translateBinaryOp "<" lhs rhs
+  | LFLe        <- op
+  , (lhs:rhs:_) <- vars = translateBinaryOp "<=" lhs rhs
+  | LFGt        <- op
+  , (lhs:rhs:_) <- vars = translateBinaryOp ">" lhs rhs
+  | LFGe        <- op
+  , (lhs:rhs:_) <- vars = translateBinaryOp ">=" lhs rhs
+
   | LStrConcat  <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp "+" lhs rhs
   | LStrEq      <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp "==" lhs rhs
+  | LStrLt      <- op
+  , (lhs:rhs:_) <- vars = translateBinaryOp "<" lhs rhs
+
+  | LStrInt     <- op
+  , (arg:_)     <- vars = "parseInt(" ++ translateVariableName arg ++ ")"
+  | LIntStr     <- op
+  , (arg:_)     <- vars = "String(" ++ translateVariableName arg ++ ")"
+  | LIntBig     <- op
+  , (arg:_)     <- vars = "__IDR__.bigint(" ++ translateVariableName arg ++ ")"
+  | LBigInt     <- op
+  , (arg:_)     <- vars = translateVariableName arg ++ ".valueOf()"
+  | LBigStr     <- op
+  , (arg:_)     <- vars = translateVariableName arg ++ ".toString()"
+  | LStrBig     <- op
+  , (arg:_)     <- vars = "__IDR__.bigint(" ++ translateVariableName arg ++ ")"
+  | LFloatStr   <- op
+  , (arg:_)     <- vars = "String(" ++ translateVariableName arg ++ ")"
+  | LStrFloat   <- op
+  , (arg:_)     <- vars = "parseFloat(" ++ translateVariableName arg ++ ")"
+  | LIntFloat   <- op
+  , (arg:_)     <- vars = translateVariableName arg
+  | LFloatInt   <- op
+  , (arg:_)     <- vars = translateVariableName arg
+
+  | LFExp       <- op
+  , (arg:_)     <- vars = "Math.exp(" ++ translateVariableName arg ++ ")"
+  | LFLog       <- op
+  , (arg:_)     <- vars = "Math.log(" ++ translateVariableName arg ++ ")"
+  | LFSin       <- op
+  , (arg:_)     <- vars = "Math.sin(" ++ translateVariableName arg ++ ")"
+  | LFCos       <- op
+  , (arg:_)     <- vars = "Math.cos(" ++ translateVariableName arg ++ ")"
+  | LFTan       <- op
+  , (arg:_)     <- vars = "Math.tan(" ++ translateVariableName arg ++ ")"
+  | LFASin      <- op
+  , (arg:_)     <- vars = "Math.asin(" ++ translateVariableName arg ++ ")"
+  | LFACos      <- op
+  , (arg:_)     <- vars = "Math.acos(" ++ translateVariableName arg ++ ")"
+  | LFATan      <- op
+  , (arg:_)     <- vars = "Math.atan(" ++ translateVariableName arg ++ ")"
+  | LFSqrt      <- op
+  , (arg:_)     <- vars = "Math.sqrt(" ++ translateVariableName arg ++ ")"
+  | LFFloor     <- op
+  , (arg:_)     <- vars = "Math.floor(" ++ translateVariableName arg ++ ")"
+  | LFCeil      <- op
+  , (arg:_)     <- vars = "Math.ceil(" ++ translateVariableName arg ++ ")"
+
   | LStrCons    <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp "+" lhs rhs
-
-  | LIntStr     <- op
-  , (arg:_)     <- vars = "String(" ++ translateVariableName arg ++ ");"
-  
+  | LStrHead    <- op
+  , (arg:_)     <- vars = translateVariableName arg ++ "[0]"
+  | LStrRev     <- op
+  , (arg:_)     <- vars = let v = translateVariableName arg in
+                              v ++ "split('').reverse().join('')"
+  | LStrIndex   <- op
+  , (lhs:rhs:_) <- vars = let l = translateVariableName lhs
+                              r = translateVariableName rhs in
+                              l ++ "[" ++ r ++ "]"
+  | LStrTail    <- op
+  , (arg:_)     <- vars = let v = translateVariableName arg in
+                              v ++ ".substr(1," ++ v ++ ".length-1)"
   where
     translateBinaryOp :: String -> LVar -> LVar -> String
     translateBinaryOp f lhs rhs =
