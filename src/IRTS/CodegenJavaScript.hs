@@ -231,12 +231,10 @@ translateExpression modname (SApp False name vars) =
   createTailcall $ translateFunctionCall name vars
 
 translateExpression modname (SApp True name vars) =
-     "(function(){\n"
-  ++ "return new __IDR__.Tailcall("
+     "new __IDR__.Tailcall("
   ++ "function(){\n"
   ++ "return " ++ translateFunctionCall name vars
   ++ ";\n});"
-  ++ "\n})()"
 
 translateExpression _ (SOp op vars)
   | LPlus       <- op
