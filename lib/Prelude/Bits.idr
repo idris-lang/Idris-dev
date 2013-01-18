@@ -317,6 +317,17 @@ instance Ord (Bits n) where
                        then EQ
                        else GT
 
+complement' : machineTy n -> machineTy n
+complement' {n=n} x with n
+    | O = prim__complB8 x
+    | S O = prim__complB16 x
+    | S (S O) = prim__complB32 x
+    | S (S (S _)) = prim__complB64 x
+
+public
+complement : Bits n -> Bits n
+complement (MkBits x) = MkBits (complement' x)
+
 public
 bitSet : Fin n -> Bits n -> Bool
 bitSet n x = bitsAnd (intToBits 1 `bitsShl` intToBits (cast (finToNat n))) x /= intToBits 0
