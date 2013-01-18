@@ -273,7 +273,7 @@ translateExpression _ (SOp op vars)
   | LSHR        <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp ">>" rhs lhs
   | LCompl      <- op
-  , (arg:_)     <- vars = "~" ++ translateVariableName arg
+  , (arg:_)     <- vars = '~' : translateVariableName arg
 
   | LBPlus      <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp ".add(" lhs rhs  ++ ")"
