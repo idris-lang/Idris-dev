@@ -21,7 +21,7 @@ machineTy (S (S (S _))) = Bits64
 
 public
 data Bits : Nat -> Type where
-    MkBits : {n : Nat} -> machineTy (log2Bytes n) -> Bits n
+    MkBits : machineTy (log2Bytes n) -> Bits n
 
 pad8 : Nat -> (Bits8 -> Bits8 -> Bits8) -> Bits8 -> Bits8 -> Bits8
 pad8 n f x y = prim__lshrB8 (f (prim__shlB8 x pad) (prim__shlB8 y pad)) pad
@@ -71,7 +71,7 @@ pow x y = if y > 0
           else 1
 
 %assert_total
-intToBits' : {n : Nat} -> Int -> machineTy (log2Bytes n)
+intToBits' : Int -> machineTy (log2Bytes n)
 intToBits' {n=n} x with (log2Bytes n)
     | O = let pad = (prim__intToB8 (cast (8-n))) in
           prim__lshrB8 (prim__shlB8 (prim__intToB8 x) pad) pad
@@ -83,14 +83,14 @@ intToBits' {n=n} x with (log2Bytes n)
                     prim__lshrB64 (prim__shlB64 (prim__intToB64 x) pad) pad
 
 public
-intToBits : {n : Nat} -> Int -> Bits n
+intToBits : Int -> Bits n
 intToBits n = MkBits (intToBits' n)
 
 instance Cast Int (Bits n) where
     cast = intToBits
 
-unsafeBitsToInt' : {n : Nat} -> machineTy (log2Bytes n) -> Int
-unsafeBitsToInt' {n=n} x with (log2Bytes n)
+unsafeBitsToInt' : machineTy n -> Int
+unsafeBitsToInt' {n=n} x with n
     | O = prim__B32ToInt (prim__zextB8_32 x)
     | S O = prim__B32ToInt (prim__zextB16_32 x)
     | S (S O) = prim__B32ToInt x
@@ -100,7 +100,7 @@ public
 unsafeBitsToInt : Bits n -> Int
 unsafeBitsToInt (MkBits x) = unsafeBitsToInt' x
 
-bitsShl' : {n: Nat} -> machineTy (log2Bytes n) -> machineTy (log2Bytes n) -> machineTy (log2Bytes n)
+bitsShl' : machineTy (log2Bytes n) -> machineTy (log2Bytes n) -> machineTy (log2Bytes n)
 bitsShl' {n=n} x c with (log2Bytes n)
     | O = pad8' n prim__shlB8 x c
     | S O = pad16' n prim__shlB16 x c
@@ -111,8 +111,8 @@ public
 bitsShl : Bits n -> Bits n -> Bits n
 bitsShl (MkBits x) (MkBits y) = MkBits (bitsShl' x y)
 
-bitsLShr' : {n: Nat} -> machineTy (log2Bytes n) -> machineTy (log2Bytes n) -> machineTy (log2Bytes n)
-bitsLShr' {n=n} x c with (log2Bytes n)
+bitsLShr' : machineTy n -> machineTy n -> machineTy n
+bitsLShr' {n=n} x c with n
     | O = prim__lshrB8 x c
     | S O = prim__lshrB16 x c
     | S (S O) = prim__lshrB32 x c
@@ -133,8 +133,8 @@ public
 bitsAShr : Bits n -> Bits n -> Bits n
 bitsAShr (MkBits x) (MkBits y) = MkBits (bitsAShr' x y)
 
-bitsAnd' : {n: Nat} -> machineTy (log2Bytes n) -> machineTy (log2Bytes n) -> machineTy (log2Bytes n)
-bitsAnd' {n=n} x y with (log2Bytes n)
+bitsAnd' : machineTy n -> machineTy n -> machineTy n
+bitsAnd' {n=n} x y with n
     | O = prim__andB8 x y
     | S O = prim__andB16 x y
     | S (S O) = prim__andB32 x y
@@ -144,8 +144,8 @@ public
 bitsAnd : Bits n -> Bits n -> Bits n
 bitsAnd (MkBits x) (MkBits y) = MkBits (bitsAnd' x y)
 
-bitsOr' : {n: Nat} -> machineTy (log2Bytes n) -> machineTy (log2Bytes n) -> machineTy (log2Bytes n)
-bitsOr' {n=n} x y with (log2Bytes n)
+bitsOr' : machineTy n -> machineTy n -> machineTy n
+bitsOr' {n=n} x y with n
     | O = prim__orB8 x y
     | S O = prim__orB16 x y
     | S (S O) = prim__orB32 x y
@@ -155,8 +155,8 @@ public
 bitsOr : Bits n -> Bits n -> Bits n
 bitsOr (MkBits x) (MkBits y) = MkBits (bitsOr' x y)
 
-bitsXOr' : {n: Nat} -> machineTy (log2Bytes n) -> machineTy (log2Bytes n) -> machineTy (log2Bytes n)
-bitsXOr' {n=n} x y with (log2Bytes n)
+bitsXOr' : machineTy n -> machineTy n -> machineTy n
+bitsXOr' {n=n} x y with n
     | O = prim__xorB8 x y
     | S O = prim__xorB16 x y
     | S (S O) = prim__xorB32 x y
@@ -166,7 +166,7 @@ public
 bitsXOr : Bits n -> Bits n -> Bits n
 bitsXOr (MkBits x) (MkBits y) = MkBits (bitsXOr' x y)
 
-bitsAdd' : {n : Nat} -> machineTy (log2Bytes n) -> machineTy (log2Bytes n) -> machineTy (log2Bytes n)
+bitsAdd' : machineTy (log2Bytes n) -> machineTy (log2Bytes n) -> machineTy (log2Bytes n)
 bitsAdd' {n=n} x y with (log2Bytes n)
     | O = pad8 n prim__addB8 x y
     | S O = pad16 n prim__addB16 x y
@@ -177,7 +177,7 @@ public
 bitsAdd : Bits n -> Bits n -> Bits n
 bitsAdd (MkBits x) (MkBits y) = MkBits (bitsAdd' x y)
 
-bitsSub' : {n : Nat} -> machineTy (log2Bytes n) -> machineTy (log2Bytes n) -> machineTy (log2Bytes n)
+bitsSub' : machineTy (log2Bytes n) -> machineTy (log2Bytes n) -> machineTy (log2Bytes n)
 bitsSub' {n=n} x y with (log2Bytes n)
     | O = pad8 n prim__subB8 x y
     | S O = pad16 n prim__subB16 x y
@@ -188,7 +188,7 @@ public
 bitsSub : Bits n -> Bits n -> Bits n
 bitsSub (MkBits x) (MkBits y) = MkBits (bitsSub' x y)
 
-bitsMul' : {n : Nat} -> machineTy (log2Bytes n) -> machineTy (log2Bytes n) -> machineTy (log2Bytes n)
+bitsMul' : machineTy (log2Bytes n) -> machineTy (log2Bytes n) -> machineTy (log2Bytes n)
 bitsMul' {n=n} x y with (log2Bytes n)
     | O = pad8 n prim__mulB8 x y
     | S O = pad16 n prim__mulB16 x y
@@ -200,7 +200,7 @@ bitsMul : Bits n -> Bits n -> Bits n
 bitsMul (MkBits x) (MkBits y) = MkBits (bitsMul' x y)
 
 partial
-bitsSDiv' : {n : Nat} -> machineTy (log2Bytes n) -> machineTy (log2Bytes n) -> machineTy (log2Bytes n)
+bitsSDiv' : machineTy (log2Bytes n) -> machineTy (log2Bytes n) -> machineTy (log2Bytes n)
 bitsSDiv' {n=n} x y with (log2Bytes n)
     | O = prim__sdivB8 x y
     | S O = prim__sdivB16 x y
@@ -212,7 +212,7 @@ bitsSDiv : Bits n -> Bits n -> Bits n
 bitsSDiv (MkBits x) (MkBits y) = MkBits (bitsSDiv' x y)
 
 partial
-bitsUDiv' : {n : Nat} -> machineTy (log2Bytes n) -> machineTy (log2Bytes n) -> machineTy (log2Bytes n)
+bitsUDiv' : machineTy (log2Bytes n) -> machineTy (log2Bytes n) -> machineTy (log2Bytes n)
 bitsUDiv' {n=n} x y with (log2Bytes n)
     | O = prim__udivB8 x y
     | S O = prim__udivB16 x y
@@ -224,7 +224,7 @@ bitsUDiv : Bits n -> Bits n -> Bits n
 bitsUDiv (MkBits x) (MkBits y) = MkBits (bitsUDiv' x y)
 
 partial
-bitsSRem' : {n : Nat} -> machineTy (log2Bytes n) -> machineTy (log2Bytes n) -> machineTy (log2Bytes n)
+bitsSRem' : machineTy (log2Bytes n) -> machineTy (log2Bytes n) -> machineTy (log2Bytes n)
 bitsSRem' {n=n} x y with (log2Bytes n)
     | O = prim__sremB8 x y
     | S O = prim__sremB16 x y
@@ -236,7 +236,7 @@ bitsSRem : Bits n -> Bits n -> Bits n
 bitsSRem (MkBits x) (MkBits y) = MkBits (bitsSRem' x y)
 
 partial
-bitsURem' : {n : Nat} -> machineTy (log2Bytes n) -> machineTy (log2Bytes n) -> machineTy (log2Bytes n)
+bitsURem' : machineTy (log2Bytes n) -> machineTy (log2Bytes n) -> machineTy (log2Bytes n)
 bitsURem' {n=n} x y with (log2Bytes n)
     | O = prim__uremB8 x y
     | S O = prim__uremB16 x y
@@ -248,59 +248,59 @@ bitsURem : Bits n -> Bits n -> Bits n
 bitsURem (MkBits x) (MkBits y) = MkBits (bitsURem' x y)
 
 -- TODO: Proofy comparisons via postulates
-bitsLt' : (x : machineTy (log2Bytes n)) -> (y : machineTy (log2Bytes n)) -> Int
-bitsLt' {n=n} x y with (log2Bytes n)
+bitsLt' : machineTy n -> machineTy n -> Int
+bitsLt' {n=n} x y with n
     | O = prim__ltB8 x y
     | S O = prim__ltB16 x y
     | S (S O) = prim__ltB32 x y
     | S (S (S _)) = prim__ltB64 x y
 
 public
-bitsLt : (x : Bits n) -> (y : Bits n) -> Bool
+bitsLt : Bits n -> Bits n -> Bool
 bitsLt (MkBits x) (MkBits y) = bitsLt' x y /= 0
 
-bitsLte' : (x : machineTy (log2Bytes n)) -> (y : machineTy (log2Bytes n)) -> Int
-bitsLte' {n=n} x y with (log2Bytes n)
+bitsLte' : machineTy n -> machineTy n -> Int
+bitsLte' {n=n} x y with n
     | O = prim__lteB8 x y
     | S O = prim__lteB16 x y
     | S (S O) = prim__lteB32 x y
     | S (S (S _)) = prim__lteB64 x y
 
 public
-bitsLte : (x : Bits n) -> (y : Bits n) -> Bool
+bitsLte : Bits n -> Bits n -> Bool
 bitsLte (MkBits x) (MkBits y) = bitsLte' x y /= 0
 
-bitsEq' : (x : machineTy (log2Bytes n)) -> (y : machineTy (log2Bytes n)) -> Int
-bitsEq' {n=n} x y with (log2Bytes n)
+bitsEq' : machineTy n -> machineTy n -> Int
+bitsEq' {n=n} x y with n
     | O = prim__eqB8 x y
     | S O = prim__eqB16 x y
     | S (S O) = prim__eqB32 x y
     | S (S (S _)) = prim__eqB64 x y
 
 public
-bitsEq : (x : Bits n) -> (y : Bits n) -> Bool
+bitsEq : Bits n -> Bits n -> Bool
 bitsEq (MkBits x) (MkBits y) = bitsEq' x y /= 0
 
-bitsGte' : (x : machineTy (log2Bytes n)) -> (y : machineTy (log2Bytes n)) -> Int
-bitsGte' {n=n} x y with (log2Bytes n)
+bitsGte' : machineTy n -> machineTy n -> Int
+bitsGte' {n=n} x y with n
     | O = prim__gteB8 x y
     | S O = prim__gteB16 x y
     | S (S O) = prim__gteB32 x y
     | S (S (S _)) = prim__gteB64 x y
 
 public
-bitsGte : (x : Bits n) -> (y : Bits n) -> Bool
+bitsGte : Bits n -> Bits n -> Bool
 bitsGte (MkBits x) (MkBits y) = bitsGte' x y /= 0
 
-bitsGt' : (x : machineTy (log2Bytes n)) -> (y : machineTy (log2Bytes n)) -> Int
-bitsGt' {n=n} x y with (log2Bytes n)
+bitsGt' : machineTy n -> machineTy n -> Int
+bitsGt' {n=n} x y with n
     | O = prim__gtB8 x y
     | S O = prim__gtB16 x y
     | S (S O) = prim__gtB32 x y
     | S (S (S _)) = prim__gtB64 x y
 
 public
-bitsGt : (x : Bits n) -> (y : Bits n) -> Bool
+bitsGt : Bits n -> Bits n -> Bool
 bitsGt (MkBits x) (MkBits y) = bitsGt' x y /= 0
 
 instance Eq (Bits n) where
