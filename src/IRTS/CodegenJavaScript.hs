@@ -321,6 +321,8 @@ translateExpression _ (SOp op vars)
   , (lhs:rhs:_) <- vars = translateBinaryOp "==" lhs rhs
   | LStrLt      <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp "<" lhs rhs
+  | LStrLen     <- op
+  , (arg:_)     <- vars = translateVariableName arg ++ ".length"
 
   | LStrInt     <- op
   , (arg:_)     <- vars = "parseInt(" ++ translateVariableName arg ++ ")"
