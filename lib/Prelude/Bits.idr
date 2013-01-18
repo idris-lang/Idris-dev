@@ -347,6 +347,25 @@ public partial
 zext : Bits n -> Bits (n+m)
 zext (MkBits x) = MkBits (zext' x)
 
+-- TODO: Prove
+%assert_total
+sext' : machineTy (log2Bytes n) -> machineTy (log2Bytes (n+m))
+sext' {n=n} {m=m} x with (log2Bytes n, log2Bytes (n+m))
+    | (O, O) = believe_me x
+    | (O, S O) = believe_me (prim__sextB8_16 (believe_me x))
+    | (O, S (S O)) = believe_me (prim__sextB8_32 (believe_me x))
+    | (O, S (S (S _))) = believe_me (prim__sextB8_64 (believe_me x))
+    | (S O, S O) = believe_me x
+    | (S O, S (S O)) = believe_me (prim__sextB16_32 (believe_me x))
+    | (S O, S (S (S _))) = believe_me (prim__sextB16_64 (believe_me x))
+    | (S (S O), S (S O)) = believe_me x
+    | (S (S O), S (S (S _))) = believe_me (prim__sextB32_64 (believe_me x))
+    | (S (S (S _)), S (S (S _))) = believe_me x
+
+public partial
+sext : Bits n -> Bits (n+m)
+sext (MkBits x) = MkBits (sext' x)
+
 public
 bitSet : Fin n -> Bits n -> Bool
 bitSet n x = bitsAnd (intToBits 1 `bitsShl` intToBits (cast (finToNat n))) x /= intToBits 0
