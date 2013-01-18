@@ -366,6 +366,25 @@ public partial
 sext : Bits n -> Bits (n+m)
 sext (MkBits x) = MkBits (sext' x)
 
+-- TODO: Prove
+%assert_total
+trunc' : machineTy (log2Bytes (n+m)) -> machineTy (log2Bytes n)
+trunc' {n=n} {m=m} x with (log2Bytes n, log2Bytes (n+m))
+    | (O, O) = believe_me x
+    | (O, S O) = believe_me (prim__truncB16_8 (believe_me x))
+    | (O, S (S O)) = believe_me (prim__truncB32_8 (believe_me x))
+    | (O, S (S (S _))) = believe_me (prim__truncB64_8 (believe_me x))
+    | (S O, S O) = believe_me x
+    | (S O, S (S O)) = believe_me (prim__truncB32_16 (believe_me x))
+    | (S O, S (S (S _))) = believe_me (prim__truncB64_16 (believe_me x))
+    | (S (S O), S (S O)) = believe_me x
+    | (S (S O), S (S (S _))) = believe_me (prim__truncB64_32 (believe_me x))
+    | (S (S (S _)), S (S (S _))) = believe_me x
+
+public partial
+truncate : Bits (n+m) -> Bits n
+truncate (MkBits x) = MkBits (trunc' x)
+
 public
 bitSet : Fin n -> Bits n -> Bool
 bitSet n x = bitsAnd (intToBits 1 `bitsShl` intToBits (cast (finToNat n))) x /= intToBits 0
