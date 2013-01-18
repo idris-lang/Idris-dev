@@ -328,6 +328,25 @@ public
 complement : Bits n -> Bits n
 complement (MkBits x) = MkBits (complement' x)
 
+-- TODO: Prove
+%assert_total
+zext' : machineTy (log2Bytes n) -> machineTy (log2Bytes (n+m))
+zext' {n=n} {m=m} x with (log2Bytes n, log2Bytes (n+m))
+    | (O, O) = believe_me x
+    | (O, S O) = believe_me (prim__zextB8_16 (believe_me x))
+    | (O, S (S O)) = believe_me (prim__zextB8_32 (believe_me x))
+    | (O, S (S (S _))) = believe_me (prim__zextB8_64 (believe_me x))
+    | (S O, S O) = believe_me x
+    | (S O, S (S O)) = believe_me (prim__zextB16_32 (believe_me x))
+    | (S O, S (S (S _))) = believe_me (prim__zextB16_64 (believe_me x))
+    | (S (S O), S (S O)) = believe_me x
+    | (S (S O), S (S (S _))) = believe_me (prim__zextB32_64 (believe_me x))
+    | (S (S (S _)), S (S (S _))) = believe_me x
+
+public partial
+zext : Bits n -> Bits (n+m)
+zext (MkBits x) = MkBits (zext' x)
+
 public
 bitSet : Fin n -> Bits n -> Bool
 bitSet n x = bitsAnd (intToBits 1 `bitsShl` intToBits (cast (finToNat n))) x /= intToBits 0
