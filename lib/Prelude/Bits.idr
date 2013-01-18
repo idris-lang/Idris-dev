@@ -122,12 +122,12 @@ public
 bitsLShr : Bits n -> Bits n -> Bits n
 bitsLShr (MkBits x) (MkBits y) = MkBits (bitsLShr' x y)
 
-bitsAShr' : {n: Nat} -> machineTy (log2Bytes n) -> machineTy (log2Bytes n) -> machineTy (log2Bytes n)
+bitsAShr' : machineTy (log2Bytes n) -> machineTy (log2Bytes n) -> machineTy (log2Bytes n)
 bitsAShr' {n=n} x c with (log2Bytes n)
-    | O = prim__ashrB8 x c
-    | S O = prim__ashrB16 x c
-    | S (S O) = prim__ashrB32 x c
-    | S (S (S _)) = prim__ashrB64 x c
+    | O = pad8' n prim__ashrB8 x c
+    | S O = pad16' n prim__ashrB16 x c
+    | S (S O) = pad32' n prim__ashrB32 x c
+    | S (S (S _)) = pad64' n prim__ashrB64 x c
 
 public
 bitsAShr : Bits n -> Bits n -> Bits n
