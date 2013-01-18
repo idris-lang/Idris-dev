@@ -142,6 +142,11 @@ translateIdentifier =
         replaceBadChars '='  = "_eq"
         replaceBadChars '|'  = "_pipe"
         replaceBadChars '&'  = "_amp"
+        replaceBadChars '/'  = "_SL"
+        replaceBadChars '\\' = "_BSL"
+        replaceBadChars '%'  = "_per"
+        replaceBadChars '?'  = "_que"
+        replaceBadChars '~'  = "_til"
         replaceBadChars '\'' = "_apo"
         replaceBadChars c
           | isDigit c = "_" ++ [c] ++ "_"
