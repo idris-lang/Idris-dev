@@ -342,6 +342,11 @@ translateExpression _ (SOp op vars)
   , (arg:_)     <- vars = translateVariableName arg
   | LFloatInt   <- op
   , (arg:_)     <- vars = translateVariableName arg
+  | LChInt      <- op
+  , (arg:_)     <- vars = translateVariableName arg ++ ".charCodeAt(0)"
+  | LIntCh      <- op
+  , (arg:_)     <- vars =
+    "String.fromCharCode(" ++ translateVariableName arg ++ ")"
 
   | LFExp       <- op
   , (arg:_)     <- vars = "Math.exp(" ++ translateVariableName arg ++ ")"
