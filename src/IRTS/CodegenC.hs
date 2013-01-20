@@ -316,7 +316,7 @@ doOp v LB8AShr [x, y] = v ++ "idris_b8AShr(vm, " ++ creg x ++ "," ++ creg y ++ "
 doOp v LB8And [x, y] = v ++ "idris_b8And(vm, " ++ creg x ++ "," ++ creg y ++ ")"
 doOp v LB8Or [x, y] = v ++ "idris_b8Or(vm, " ++ creg x ++ "," ++ creg y ++ ")"
 doOp v LB8Xor [x, y] = v ++ "idris_b8Xor(vm, " ++ creg x ++ "," ++ creg y ++ ")"
-doOp v LB8Compl [x, y] = v ++ "idris_b8Compl(vm, " ++ creg x ++ "," ++ creg y ++ ")"
+doOp v LB8Compl [x] = v ++ "idris_b8Compl(vm, " ++ creg x ++ ")"
 
 doOp v LB8Plus [x, y] = v ++ "idris_b8Plus(vm, " ++ creg x ++ "," ++ creg y ++ ")"
 doOp v LB8Minus [x, y] = v ++ "idris_b8Minus(vm, " ++ creg x ++ "," ++ creg y ++ ")"
@@ -345,7 +345,7 @@ doOp v LB16AShr [x, y] = v ++ "idris_b16AShr(vm, " ++ creg x ++ "," ++ creg y ++
 doOp v LB16And [x, y] = v ++ "idris_b16And(vm, " ++ creg x ++ "," ++ creg y ++ ")"
 doOp v LB16Or [x, y] = v ++ "idris_b16Or(vm, " ++ creg x ++ "," ++ creg y ++ ")"
 doOp v LB16Xor [x, y] = v ++ "idris_b16Xor(vm, " ++ creg x ++ "," ++ creg y ++ ")"
-doOp v LB16Compl [x, y] = v ++ "idris_b16Compl(vm, " ++ creg x ++ "," ++ creg y ++ ")"
+doOp v LB16Compl [x] = v ++ "idris_b16Compl(vm, " ++ creg x ++ ")"
 
 doOp v LB16Plus [x, y] =
   v ++ "idris_b16Plus(vm, " ++ creg x ++ "," ++ creg y ++ ")"
@@ -380,7 +380,7 @@ doOp v LB32AShr [x, y] = v ++ "idris_b32AShr(vm, " ++ creg x ++ "," ++ creg y ++
 doOp v LB32And [x, y] = v ++ "idris_b32And(vm, " ++ creg x ++ "," ++ creg y ++ ")"
 doOp v LB32Or [x, y] = v ++ "idris_b32Or(vm, " ++ creg x ++ "," ++ creg y ++ ")"
 doOp v LB32Xor [x, y] = v ++ "idris_b32Xor(vm, " ++ creg x ++ "," ++ creg y ++ ")"
-doOp v LB32Compl [x, y] = v ++ "idris_b32Compl(vm, " ++ creg x ++ "," ++ creg y ++ ")"
+doOp v LB32Compl [x] = v ++ "idris_b32Compl(vm, " ++ creg x ++ ")"
 
 doOp v LB32Plus [x, y] =
   v ++ "idris_b32Plus(vm, " ++ creg x ++ "," ++ creg y ++ ")"
@@ -414,7 +414,7 @@ doOp v LB64AShr [x, y] = v ++ "idris_b64AShr(vm, " ++ creg x ++ "," ++ creg y ++
 doOp v LB64And [x, y] = v ++ "idris_b64And(vm, " ++ creg x ++ "," ++ creg y ++ ")"
 doOp v LB64Or [x, y] = v ++ "idris_b64Or(vm, " ++ creg x ++ "," ++ creg y ++ ")"
 doOp v LB64Xor [x, y] = v ++ "idris_b64Xor(vm, " ++ creg x ++ "," ++ creg y ++ ")"
-doOp v LB64Compl [x, y] = v ++ "idris_b64Compl(vm, " ++ creg x ++ "," ++ creg y ++ ")"
+doOp v LB64Compl [x] = v ++ "idris_b64Compl(vm, " ++ creg x ++ ")"
 
 doOp v LB64Plus [x, y] =
   v ++ "idris_b64Plus(vm, " ++ creg x ++ "," ++ creg y ++ ")"
