@@ -298,12 +298,16 @@ instance Ord (Bits n) where
              then EQ
              else GT
 
-complement' : machineTy n -> machineTy n
-complement' {n=n} x with n
-    | O = prim__complB8 x
-    | S O = prim__complB16 x
-    | S (S O) = prim__complB32 x
-    | S (S (S _)) = prim__complB64 x
+complement' : machineTy (log2Bytes n) -> machineTy (log2Bytes n)
+complement' {n=n} x with (log2Bytes n)
+    | O = let pad = prim__intToB8 (8 - cast n) in
+          prim__complB8 (x `prim__shlB8` pad) `prim__lshrB8` pad
+    | S O = let pad = prim__intToB16 (16 - cast n) in
+            prim__complB16 (x `prim__shlB16` pad) `prim__lshrB16` pad
+    | S (S O) = let pad = prim__intToB32 (32 - cast n) in
+                prim__complB32 (x `prim__shlB32` pad) `prim__lshrB32` pad
+    | S (S (S _)) = let pad = prim__intToB64 (64 - cast n) in
+                    prim__complB64 (x `prim__shlB64` pad) `prim__lshrB64` pad
 
 public
 complement : Bits n -> Bits n
@@ -328,39 +332,47 @@ public partial
 zeroExtend : Bits n -> Bits (n+m)
 zeroExtend (MkBits x) = MkBits (zext' x)
 
+-- Fill in the high bits of a sign-extended bitstring
+fixupSE : (m : Nat) -> machineTy (log2Bytes (n+m)) -> machineTy (log2Bytes (n+m))
+fixupSE m x = x `or'` complement' (zext' {m=m} (complement' (intToBits' 0)))
+
 -- TODO: Prove
 %assert_total
 sext' : machineTy (log2Bytes n) -> machineTy (log2Bytes (n+m))
 sext' {n=n} {m=m} x with (log2Bytes n, log2Bytes (n+m))
-    | (O, O) = believe_me x
-    | (O, S O) = believe_me (prim__sextB8_16 (believe_me x))
-    | (O, S (S O)) = believe_me (prim__sextB8_32 (believe_me x))
-    | (O, S (S (S _))) = believe_me (prim__sextB8_64 (believe_me x))
-    | (S O, S O) = believe_me x
-    | (S O, S (S O)) = believe_me (prim__sextB16_32 (believe_me x))
-    | (S O, S (S (S _))) = believe_me (prim__sextB16_64 (believe_me x))
-    | (S (S O), S (S O)) = believe_me x
-    | (S (S O), S (S (S _))) = believe_me (prim__sextB32_64 (believe_me x))
-    | (S (S (S _)), S (S (S _))) = believe_me x
+    | (O, O) = fixupSE m (believe_me x)
+    | (O, S O) = fixupSE m (believe_me (prim__sextB8_16 (believe_me x)))
+    | (O, S (S O)) = fixupSE m (believe_me (prim__sextB8_32 (believe_me x)))
+    | (O, S (S (S _))) = fixupSE m (believe_me (prim__sextB8_64 (believe_me x)))
+    | (S O, S O) = fixupSE m (believe_me x)
+    | (S O, S (S O)) = fixupSE m (believe_me (prim__sextB16_32 (believe_me x)))
+    | (S O, S (S (S _))) = fixupSE m (believe_me (prim__sextB16_64 (believe_me x)))
+    | (S (S O), S (S O)) = fixupSE m (believe_me x)
+    | (S (S O), S (S (S _))) = fixupSE m (believe_me (prim__sextB32_64 (believe_me x)))
+    | (S (S (S _)), S (S (S _))) = fixupSE m (believe_me x)
 
 public partial
 signExtend : Bits n -> Bits (n+m)
 signExtend (MkBits x) = MkBits (sext' x)
 
+-- Zero out the high bits of a truncated bitstring
+fixupTR : machineTy (log2Bytes n) -> machineTy (log2Bytes n)
+fixupTR x = x `and'` complement' (intToBits' 0)
+
 -- TODO: Prove
 %assert_total
 trunc' : machineTy (log2Bytes (n+m)) -> machineTy (log2Bytes n)
 trunc' {n=n} {m=m} x with (log2Bytes n, log2Bytes (n+m))
-    | (O, O) = believe_me x
+    | (O, O) = fixupTR (believe_me x)
     | (O, S O) = believe_me (prim__truncB16_8 (believe_me x))
     | (O, S (S O)) = believe_me (prim__truncB32_8 (believe_me x))
     | (O, S (S (S _))) = believe_me (prim__truncB64_8 (believe_me x))
-    | (S O, S O) = believe_me x
+    | (S O, S O) = fixupTR (believe_me x)
     | (S O, S (S O)) = believe_me (prim__truncB32_16 (believe_me x))
     | (S O, S (S (S _))) = believe_me (prim__truncB64_16 (believe_me x))
-    | (S (S O), S (S O)) = believe_me x
+    | (S (S O), S (S O)) = fixupTR (believe_me x)
     | (S (S O), S (S (S _))) = believe_me (prim__truncB64_32 (believe_me x))
-    | (S (S (S _)), S (S (S _))) = believe_me x
+    | (S (S (S _)), S (S (S _))) = fixupTR (believe_me x)
 
 public partial
 truncate : Bits (n+m) -> Bits n
