@@ -15,25 +15,13 @@ modBin f (MkMod2 x) (MkMod2 y) = MkMod2 (f x y)
 modComp : (Bits n -> Bits n -> a) -> Mod2 n -> Mod2 n -> a
 modComp f (MkMod2 x) (MkMod2 y) = f x y
 
-public
-modAdd : Mod2 n -> Mod2 n -> Mod2 n
-modAdd = modBin bitsAdd
-
-public
-modSub : Mod2 n -> Mod2 n -> Mod2 n
-modSub = modBin bitsSub
-
-public
-modMul : Mod2 n -> Mod2 n -> Mod2 n
-modMul = modBin bitsMul
+public partial
+div : Mod2 n -> Mod2 n -> Mod2 n
+div = modBin udiv
 
 public partial
-modDiv : Mod2 n -> Mod2 n -> Mod2 n
-modDiv = modBin bitsUDiv
-
-public partial
-modRem : Mod2 n -> Mod2 n -> Mod2 n
-modRem = modBin bitsURem
+rem : Mod2 n -> Mod2 n -> Mod2 n
+rem = modBin urem
 
 %assert_total
 public
@@ -59,9 +47,9 @@ instance Ord (Mod2 n) where
     compare = modComp compare
 
 instance Num (Mod2 n) where
-    (+) = modAdd
-    (-) = modSub
-    (*) = modMul
+    (+) = modBin plus
+    (-) = modBin minus
+    (*) = modBin times
     abs = id
     fromInteger = intToMod
 
@@ -78,5 +66,5 @@ modToStr x = pack (reverse (helper x))
     where
       %assert_total
       helper : Mod2 n -> List Char
-      helper x = strIndex "0123456789" (unsafeBitsToInt (modToBits (x `modRem` 10)))
-                 :: (if x < 10 then [] else helper (x `modDiv` 10))
+      helper x = strIndex "0123456789" (bitsToInt (modToBits (x `rem` 10)))
+                 :: (if x < 10 then [] else helper (x `div` 10))
