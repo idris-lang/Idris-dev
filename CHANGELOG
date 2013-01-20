@@ -22,7 +22,7 @@ User visible changes:
 * Added System.Concurrency modules
 * Added 'postulate' declarations
 * Allow type annotations on 'let' tactic
-* EXPERIMENTAL JavaScript generation, with --javascript option
+* EXPERIMENTAL JavaScript generation, with '--target javascript' option
 
 Internal changes:
 

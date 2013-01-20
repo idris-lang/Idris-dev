@@ -1,5 +1,10 @@
 {-# LANGUAGE PatternGuards #-}
 
+{-
+  BigInteger Javascript code taken from:
+    https://github.com/peterolson/BigInteger.js
+-}
+
 module IRTS.CodegenJavaScript (codegenJavaScript) where
 
 import Idris.AbsSyntax
@@ -46,7 +51,15 @@ codegenJavaScript definitions filename outputType =
 idrRuntime :: String
 idrRuntime =
   createModule Nothing idrNamespace $ concat
-    [ "__IDR__.IntType = { type: 'IntType' };"
+    [ "__IDR__.Type = function(type) { this.type = type; };"
+    , "__IDR__.Int = new __IDR__.Type('Int');"
+    , "__IDR__.Char = new __IDR__.Type('Char');"
+    , "__IDR__.String = new __IDR__.Type('String');"
+    , "__IDR__.Integer = new __IDR__.Type('Integer');"
+    , "__IDR__.Float = new __IDR__.Type('Float');"
+    , "__IDR__.Forgot = new __IDR__.Type('Forgot');" 
+
+    , "__IDR__.bigInt=function(){var e=1e7,t=7,n={positive:!1,negative:!0},r=function(e,t){var n=e.value,r=t.value,i=n.length>r.length?n.length:r.length;for(var s=0;s<i;s++)n[s]=n[s]||0,r[s]=r[s]||0;for(var s=i-1;s>=0;s--){if(n[s]!==0||r[s]!==0)break;n.pop(),r.pop()}n.length||(n=[0],r=[0]),e.value=n,t.value=r},i=function(e,s){if(typeof e=='object')return e;e+='';var u=n.positive,a=[];e[0]==='-'&&(u=n.negative,e=e.slice(1));var e=e.split('e');if(e.length>2)throw new Error('Invalid integer');if(e[1]){var f=e[1];f[0]==='+'&&(f=f.slice(1)),f=i(f);if(f.lesser(0))throw new Error('Cannot include negative exponent part for integers');while(f.notEquals(0))e[0]+='0',f=f.prev()}e=e[0],e==='-0'&&(e='0');var l=/^([1-9][0-9]*)$|^0$/.test(e);if(!l)throw new Error('Invalid integer');while(e.length){var c=e.length>t?e.length-t:0;a.push(+e.slice(c)),e=e.slice(0,c)}var h=o(a,u);return s&&r(s,h),h},s=function(e,t){var e=o(e,n.positive),t=o(t,n.positive);if(e.equals(0))throw new Error('Cannot divide by 0');var r=0;do{var i=1,s=o(e.value,n.positive),u=s.times(10);while(u.lesser(t))s=u,i*=10,u=u.times(10);while(s.lesserOrEquals(t))t=t.minus(s),r+=i}while(e.lesserOrEquals(t));return{remainder:t.value,result:r}},o=function(f,l){var c={value:f,sign:l},h={value:f,sign:l,negate:function(e){var t=e||c;return o(t.value,!t.sign)},abs:function(e){var t=e||c;return o(t.value,n.positive)},add:function(t,s){var u,a=c,f;s?(a=i(t))&&(f=i(s)):f=i(t,a),u=a.sign;if(a.sign!==f.sign)return a=o(a.value,n.positive),f=o(f.value,n.positive),u===n.positive?h.subtract(a,f):h.subtract(f,a);r(a,f);var l=a.value,p=f.value,d=[],v=0;for(var m=0;m<l.length||v>0;m++){var g=l[m]+p[m]+v;v=g>e?1:0,g-=v*e,d.push(g)}return o(d,u)},plus:function(e,t){return h.add(e,t)},subtract:function(t,r){var s=c,u;r?(s=i(t))&&(u=i(r)):u=i(t,s);if(s.sign!==u.sign)return h.add(s,h.negate(u));if(s.sign===n.negative)return h.subtract(h.negate(u),h.negate(s));if(h.compare(s,u)===-1)return h.negate(h.subtract(u,s));var a=s.value,f=u.value,l=[],p=0;for(var d=0;d<a.length;d++){a[d]-=p,p=a[d]<f[d]?1:0;var v=p*e+a[d]-f[d];l.push(v)}return o(l,n.positive)},minus:function(e,t){return h.subtract(e,t)},multiply:function(t,n){var r,s=c,u;n?(s=i(t))&&(u=i(n)):u=i(t,s),r=s.sign!==u.sign;var a=s.value,f=u.value,l=[];for(var h=0;h<a.length;h++){l[h]=[];var p=h;while(p--)l[h].push(0)}var d=0;for(var h=0;h<a.length;h++){var v=a[h];for(var p=0;p<f.length||d>0;p++){var m=f[p],g=m?v*m+d:d;d=g>e?Math.floor(g/e):0,g-=d*e,l[h].push(g)}}var y=-1;for(var h=0;h<l.length;h++){var b=l[h].length;b>y&&(y=b)}var w=[],d=0;for(var h=0;h<y||d>0;h++){var E=d;for(var p=0;p<l.length;p++)E+=l[p][h]||0;d=E>e?Math.floor(E/e):0,E-=d*e,w.push(E)}return o(w,r)},times:function(e,t){return h.multiply(e,t)},divmod:function(e,t){var r,u=c,a;t?(u=i(e))&&(a=i(t)):a=i(e,u),r=u.sign!==a.sign;if(o(u.value,u.sign).equals(0))return{quotient:o([0],n.positive),remainder:o([0],n.positive)};if(a.equals(0))throw new Error('Cannot divide by zero');var f=u.value,l=a.value,h=[],p=[];for(var d=f.length-1;d>=0;d--){var e=[f[d]].concat(p),v=s(l,e);h.push(v.result),p=v.remainder}return h.reverse(),{quotient:o(h,r),remainder:o(p,u.sign)}},divide:function(e,t){return h.divmod(e,t).quotient},over:function(e,t){return h.divide(e,t)},mod:function(e,t){return h.divmod(e,t).remainder},pow:function(e,t){var n=c,r;t?(n=i(e))&&(r=i(t)):r=i(e,n);var s=n,f=r;if(f.lesser(0))return u;if(f.equals(0))return a;var l=o(s.value,s.sign);if(f.mod(2).equals(0)){var h=l.pow(f.over(2));return h.times(h)}return l.times(l.pow(f.minus(1)))},next:function(e){var t=e||c;return h.add(t,1)},prev:function(e){var t=e||c;return h.subtract(t,1)},compare:function(e,t){var s=c,o;t?(s=i(e))&&(o=i(t,s)):o=i(e,s),r(s,o);if(s.value.length===1&&o.value.length===1&&s.value[0]===0&&o.value[0]===0)return 0;if(o.sign!==s.sign)return s.sign===n.positive?1:-1;var u=s.sign===n.positive?1:-1,a=s.value,f=o.value;for(var l=a.length-1;l>=0;l--){if(a[l]>f[l])return 1*u;if(f[l]>a[l])return-1*u}return 0},compareAbs:function(e,t){var r=c,s;return t?(r=i(e))&&(s=i(t,r)):s=i(e,r),r.sign=s.sign=n.positive,h.compare(r,s)},equals:function(e,t){return h.compare(e,t)===0},notEquals:function(e,t){return!h.equals(e,t)},lesser:function(e,t){return h.compare(e,t)<0},greater:function(e,t){return h.compare(e,t)>0},greaterOrEquals:function(e,t){return h.compare(e,t)>=0},lesserOrEquals:function(e,t){return h.compare(e,t)<=0},isPositive:function(e){var t=e||c;return t.sign===n.positive},isNegative:function(e){var t=e||c;return t.sign===n.negative},isEven:function(e){var t=e||c;return t.value[0]%2===0},isOdd:function(e){var t=e||c;return t.value[0]%2===1},toString:function(r){var i=r||c,s='',o=i.value.length;while(o--)s+=(e.toString()+i.value[o]).slice(-t);while(s[0]==='0')s=s.slice(1);s.length||(s='0');var u=i.sign===n.positive?'':'-';return u+s},toJSNumber:function(e){return+h.toString(e)},valueOf:function(e){return h.toJSNumber(e)}};return h},u=o([0],n.positive),a=o([1],n.positive),f=o([1],n.negative),l=function(e){return typeof e=='undefined'?u:i(e)};return l.zero=u,l.one=a,l.minusOne=f,l}();typeof module!='undefined'&&(module.exports=__IDR__.bigInt);"
 
     , "__IDR__.Tailcall = function(f) { this.f = f };"
 
@@ -108,32 +121,40 @@ translateIdentifier =
   concatMap replaceBadChars
   where replaceBadChars :: Char -> String
         replaceBadChars ' '  = "_"
-        replaceBadChars '@'  = "__at__"
-        replaceBadChars '['  = "__OSB__"
-        replaceBadChars ']'  = "__CSB__"
-        replaceBadChars '('  = "__OP__"
-        replaceBadChars ')'  = "__CP__"
-        replaceBadChars '{'  = "__OB__"
-        replaceBadChars '}'  = "__CB__"
-        replaceBadChars '!'  = "__bang__"
-        replaceBadChars '#'  = "__hash__"
-        replaceBadChars '.'  = "__dot__"
-        replaceBadChars ','  = "__comma__"
-        replaceBadChars ':'  = "__colon__"
-        replaceBadChars '+'  = "__plus__"
-        replaceBadChars '-'  = "__minus__"
-        replaceBadChars '<'  = "__lt__"
-        replaceBadChars '>'  = "__gt__"
-        replaceBadChars '='  = "__eq__"
-        replaceBadChars '|'  = "__pipe__"
-        replaceBadChars '\'' = "__apo__"
+        replaceBadChars '_'  = "__"
+        replaceBadChars '@'  = "_at"
+        replaceBadChars '['  = "_OSB"
+        replaceBadChars ']'  = "_CSB"
+        replaceBadChars '('  = "_OP"
+        replaceBadChars ')'  = "_CP"
+        replaceBadChars '{'  = "_OB"
+        replaceBadChars '}'  = "_CB"
+        replaceBadChars '!'  = "_bang"
+        replaceBadChars '#'  = "_hash"
+        replaceBadChars '.'  = "_dot"
+        replaceBadChars ','  = "_comma"
+        replaceBadChars ':'  = "_colon"
+        replaceBadChars '+'  = "_plus"
+        replaceBadChars '-'  = "_minus"
+        replaceBadChars '*'  = "_times"
+        replaceBadChars '<'  = "_lt"
+        replaceBadChars '>'  = "_gt"
+        replaceBadChars '='  = "_eq"
+        replaceBadChars '|'  = "_pipe"
+        replaceBadChars '&'  = "_amp"
+        replaceBadChars '/'  = "_SL"
+        replaceBadChars '\\' = "_BSL"
+        replaceBadChars '%'  = "_per"
+        replaceBadChars '?'  = "_que"
+        replaceBadChars '~'  = "_til"
+        replaceBadChars '\'' = "_apo"
         replaceBadChars c
-          | isDigit c = "__" ++ [c] ++ "__"
+          | isDigit c = "_" ++ [c] ++ "_"
           | otherwise = [c]
 
 translateNamespace :: Name -> [String]
 translateNamespace (UN _)    = [idrNamespace]
-translateNamespace (NS _ ns) = map translateIdentifier ns
+translateNamespace (NS _ ns) = idrNamespace : map translateIdentifier ns
 translateNamespace (MN _ _)  = [idrNamespace]
 
 translateName :: Name -> String
@@ -147,11 +168,16 @@ translateQualifiedName name =
 
 translateConstant :: Const -> String
 translateConstant (I i)   = show i
-translateConstant (BI i)  = show i
+translateConstant (BI i)  = "__IDR__.bigInt('" ++ show i ++ "')"
 translateConstant (Fl f)  = show f
 translateConstant (Ch c)  = show c
 translateConstant (Str s) = show s
-translateConstant IType   = "__IDR__.IntType"
+translateConstant IType   = "__IDR__.Int"
+translateConstant ChType  = "__IDR__.Char"
+translateConstant StrType = "__IDR__.String"
+translateConstant BIType  = "__IDR__.Integer"
+translateConstant FlType  = "__IDR__.Float"
+translateConstant Forgot  = "__IDR__.Forgot"
 translateConstant c       =
   "(function(){throw 'Unimplemented Const: " ++ show c ++ "';})()"
 
@@ -210,12 +236,10 @@ translateExpression modname (SApp False name vars) =
   createTailcall $ translateFunctionCall name vars
 
 translateExpression modname (SApp True name vars) =
-     "(function(){\n"
-  ++ "return new __IDR__.Tailcall("
+     "new __IDR__.Tailcall("
   ++ "function(){\n"
   ++ "return " ++ translateFunctionCall name vars
   ++ ";\n});"
-  ++ "\n})()"
 
 translateExpression _ (SOp op vars)
   | LPlus       <- op
@@ -238,6 +262,39 @@ translateExpression _ (SOp op vars)
   , (lhs:rhs:_) <- vars = translateBinaryOp ">" lhs rhs
   | LGe         <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp ">=" lhs rhs
+  | LAnd        <- op
+  , (lhs:rhs:_) <- vars = translateBinaryOp "&" lhs rhs
+  | LOr         <- op
+  , (lhs:rhs:_) <- vars = translateBinaryOp "|" lhs rhs
+  | LXOr        <- op
+  , (lhs:rhs:_) <- vars = translateBinaryOp "^" lhs rhs
+  | LSHL        <- op
+  , (lhs:rhs:_) <- vars = translateBinaryOp "<<" rhs lhs
+  | LSHR        <- op
+  , (lhs:rhs:_) <- vars = translateBinaryOp ">>" rhs lhs
+  | LCompl      <- op
+  , (arg:_)     <- vars = '~' : translateVariableName arg
+
+  | LBPlus      <- op
+  , (lhs:rhs:_) <- vars = translateBinaryOp ".add(" lhs rhs  ++ ")"
+  | LBMinus     <- op
+  , (lhs:rhs:_) <- vars = translateBinaryOp ".minus(" lhs rhs ++ ")"
+  | LBTimes     <- op
+  , (lhs:rhs:_) <- vars = translateBinaryOp ".times(" lhs rhs ++ ")"
+  | LBDiv       <- op
+  , (lhs:rhs:_) <- vars = translateBinaryOp ".divide(" lhs rhs ++ ")"
+  | LBMod       <- op
+  , (lhs:rhs:_) <- vars = translateBinaryOp ".mod(" lhs rhs ++ ")"
+  | LBEq        <- op
+  , (lhs:rhs:_) <- vars = translateBinaryOp ".equals(" lhs rhs ++ ")"
+  | LBLt        <- op
+  , (lhs:rhs:_) <- vars = translateBinaryOp ".lesser(" lhs rhs ++ ")"
+  | LBLe        <- op
+  , (lhs:rhs:_) <- vars = translateBinaryOp ".lesserOrEquals(" lhs rhs ++ ")"
+  | LBGt        <- op
+  , (lhs:rhs:_) <- vars = translateBinaryOp ".greater(" lhs rhs ++ ")"
+  | LBGe        <- op
+  , (lhs:rhs:_) <- vars = translateBinaryOp ".greaterOrEquals(" lhs rhs ++ ")"
 
   | LFPlus      <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp "+" lhs rhs
@@ -258,35 +315,78 @@ translateExpression _ (SOp op vars)
   | LFGe        <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp ">=" lhs rhs
 
-  | LBPlus      <- op
-  , (lhs:rhs:_) <- vars = translateBinaryOp "+" lhs rhs
-  | LBMinus     <- op
-  , (lhs:rhs:_) <- vars = translateBinaryOp "-" lhs rhs
-  | LBTimes     <- op
-  , (lhs:rhs:_) <- vars = translateBinaryOp "*" lhs rhs
-  | LBDiv       <- op
-  , (lhs:rhs:_) <- vars = translateBinaryOp "/" lhs rhs
-  | LBMod       <- op
-  , (lhs:rhs:_) <- vars = translateBinaryOp "%" lhs rhs
-  | LBEq        <- op
-  , (lhs:rhs:_) <- vars = translateBinaryOp "==" lhs rhs
-  | LBLt        <- op
-  , (lhs:rhs:_) <- vars = translateBinaryOp "<" lhs rhs
-  | LBLe        <- op
-  , (lhs:rhs:_) <- vars = translateBinaryOp "<=" lhs rhs
-  | LBGt        <- op
-  , (lhs:rhs:_) <- vars = translateBinaryOp ">" lhs rhs
-  | LBGe        <- op
-  , (lhs:rhs:_) <- vars = translateBinaryOp ">=" lhs rhs
-
   | LStrConcat  <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp "+" lhs rhs
   | LStrEq      <- op
-  , (lhs:rhs:_) <- vars = translateBinaryOp "=" lhs rhs
+  , (lhs:rhs:_) <- vars = translateBinaryOp "==" lhs rhs
+  | LStrLt      <- op
+  , (lhs:rhs:_) <- vars = translateBinaryOp "<" lhs rhs
+  | LStrLen     <- op
+  , (arg:_)     <- vars = translateVariableName arg ++ ".length"
 
+  | LStrInt     <- op
+  , (arg:_)     <- vars = "parseInt(" ++ translateVariableName arg ++ ")"
   | LIntStr     <- op
-  , (arg:_)     <- vars = "String(" ++ translateVariableName arg ++ ");"
-  
+  , (arg:_)     <- vars = "String(" ++ translateVariableName arg ++ ")"
+  | LIntBig     <- op
+  , (arg:_)     <- vars = "__IDR__.bigint(" ++ translateVariableName arg ++ ")"
+  | LBigInt     <- op
+  , (arg:_)     <- vars = translateVariableName arg ++ ".valueOf()"
+  | LBigStr     <- op
+  , (arg:_)     <- vars = translateVariableName arg ++ ".toString()"
+  | LStrBig     <- op
+  , (arg:_)     <- vars = "__IDR__.bigint(" ++ translateVariableName arg ++ ")"
+  | LFloatStr   <- op
+  , (arg:_)     <- vars = "String(" ++ translateVariableName arg ++ ")"
+  | LStrFloat   <- op
+  , (arg:_)     <- vars = "parseFloat(" ++ translateVariableName arg ++ ")"
+  | LIntFloat   <- op
+  , (arg:_)     <- vars = translateVariableName arg
+  | LFloatInt   <- op
+  , (arg:_)     <- vars = translateVariableName arg
+  | LChInt      <- op
+  , (arg:_)     <- vars = translateVariableName arg ++ ".charCodeAt(0)"
+  | LIntCh      <- op
+  , (arg:_)     <- vars =
+    "String.fromCharCode(" ++ translateVariableName arg ++ ")"
+
+  | LFExp       <- op
+  , (arg:_)     <- vars = "Math.exp(" ++ translateVariableName arg ++ ")"
+  | LFLog       <- op
+  , (arg:_)     <- vars = "Math.log(" ++ translateVariableName arg ++ ")"
+  | LFSin       <- op
+  , (arg:_)     <- vars = "Math.sin(" ++ translateVariableName arg ++ ")"
+  | LFCos       <- op
+  , (arg:_)     <- vars = "Math.cos(" ++ translateVariableName arg ++ ")"
+  | LFTan       <- op
+  , (arg:_)     <- vars = "Math.tan(" ++ translateVariableName arg ++ ")"
+  | LFASin      <- op
+  , (arg:_)     <- vars = "Math.asin(" ++ translateVariableName arg ++ ")"
+  | LFACos      <- op
+  , (arg:_)     <- vars = "Math.acos(" ++ translateVariableName arg ++ ")"
+  | LFATan      <- op
+  , (arg:_)     <- vars = "Math.atan(" ++ translateVariableName arg ++ ")"
+  | LFSqrt      <- op
+  , (arg:_)     <- vars = "Math.sqrt(" ++ translateVariableName arg ++ ")"
+  | LFFloor     <- op
+  , (arg:_)     <- vars = "Math.floor(" ++ translateVariableName arg ++ ")"
+  | LFCeil      <- op
+  , (arg:_)     <- vars = "Math.ceil(" ++ translateVariableName arg ++ ")"
+
+  | LStrCons    <- op
+  , (lhs:rhs:_) <- vars = translateBinaryOp "+" lhs rhs
+  | LStrHead    <- op
+  , (arg:_)     <- vars = translateVariableName arg ++ "[0]"
+  | LStrRev     <- op
+  , (arg:_)     <- vars = let v = translateVariableName arg in
+                              v ++ "split('').reverse().join('')"
+  | LStrIndex   <- op
+  , (lhs:rhs:_) <- vars = let l = translateVariableName lhs
+                              r = translateVariableName rhs in
+                              l ++ "[" ++ r ++ "]"
+  | LStrTail    <- op
+  , (arg:_)     <- vars = let v = translateVariableName arg in
+                              v ++ ".substr(1," ++ v ++ ".length-1)"
   where
     translateBinaryOp :: String -> LVar -> LVar -> String
     translateBinaryOp f lhs rhs =
@@ -346,6 +446,20 @@ translateCase :: String -> String -> SAlt -> String
 translateCase modname _ (SDefaultCase e) =
   createIfBlock "true" (translateExpression modname e)
 
+translateCase modname var (SConstCase ty e)
+  | ChType   <- ty = matchHelper "Char"
+  | StrType  <- ty = matchHelper "String"
+  | IType    <- ty = matchHelper "Int"
+  | BIType   <- ty = matchHelper "Integer"
+  | FlType   <- ty = matchHelper "Float"
+  | Forgot   <- ty = matchHelper "Forgot"
+  where
+    matchHelper tyName = translateTypeMatch modname var tyName e
+
+translateCase modname var (SConstCase cst@(BI _) e) =
+  let cond = var ++ ".equals(" ++ translateConstant cst ++ ")" in
+      createIfBlock cond (translateExpression modname e)
+
 translateCase modname var (SConstCase cst e) =
   let cond = var ++ " == " ++ translateConstant cst in
       createIfBlock cond (translateExpression modname e)
@@ -361,6 +475,14 @@ translateCase modname var (SConCase a i name vars e) =
         ++ "){\nreturn " ++ b ++ "\n})" ++ args
       cond = intercalate " && " [isCon, isI] in
       createIfBlock cond $ f (translateExpression modname e)
+
+translateTypeMatch :: String -> String -> String -> SExp -> String
+translateTypeMatch modname var ty exp =
+  let e = translateExpression modname exp in
+      createIfBlock (var
+                  ++ " instanceof __IDR__.Type && "
+                  ++ var ++ ".type == '"++ ty ++"'") e
+
 
 createIfBlock cond e =
      "if (" ++ cond ++") {\n"
