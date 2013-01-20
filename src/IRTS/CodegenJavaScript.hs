@@ -402,11 +402,24 @@ translateExpression _ (SError msg) =
 translateExpression _ (SForeign _ _ "putStr" [(FString, var)]) =
   "__IDR__.print(" ++ translateVariableName var ++ ");"
 
-translateExpression _ (SForeign _ _ fun args) =
-     fun
-  ++ "("
-  ++ intercalate "," (map (translateVariableName . snd) args)
-  ++ ");"
+translateExpression _ (SForeign _ _ fun args)
+  | "." `isPrefixOf` fun
+  , "=" `isSuffixOf` fun
+  , (a:b:[]) <- args =
+    translateVariableName (snd a) ++ fun ++ translateVariableName (snd b)
+  | "." `isPrefixOf` fun
+  , (a:[]) <- args = translateVariableName (snd a) ++ fun
+  | "." `isPrefixOf` fun
+  , (a:[(FUnit, _)]) <- args = translateVariableName (snd a) ++ fun ++ "()"
+  | "." `isPrefixOf` fun
+  , (a:as) <- args = translateVariableName (snd a) ++ fun
+             ++ "("
+             ++ intercalate "," (map (translateVariableName . snd) as)
+             ++ ");"
+  | otherwise = fun
+             ++ "("
+             ++ intercalate "," (map (translateVariableName . snd) args)
+             ++ ");"
 
 translateExpression modname (SChkCase var cases) =
      "(function(e){\n"
