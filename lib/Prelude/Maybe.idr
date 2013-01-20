@@ -2,6 +2,7 @@ module Prelude.Maybe
 
 import Builtins
 import Prelude.Algebra
+import Prelude.Cast
 
 %access public
 %default total
@@ -58,3 +59,11 @@ instance (Semigroup a) => Semigroup (Maybe a) where
 
 instance (Monoid a) => Monoid (Maybe a) where
   neutral = Nothing
+
+
+instance (Monoid a, Eq a) => Cast a (Maybe a) where
+  cast x = if x == neutral then Nothing else Just x
+
+instance (Monoid a) => Cast (Maybe a) a where
+  cast Nothing = neutral
+  cast (Just x) = x
