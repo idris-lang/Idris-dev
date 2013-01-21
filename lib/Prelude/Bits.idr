@@ -65,12 +65,6 @@ pad64' n f x y = prim__lshrB64 (f (prim__shlB64 x pad) y) pad
       pad = (prim__intToB64 (cast (64-n)))
 
 %assert_total
-pow : Int -> Int -> Int
-pow x y = if y > 0
-          then x * (pow x (y - 1))
-          else 1
-
-%assert_total
 intToBits' : Int -> machineTy (log2Bytes n)
 intToBits' {n=n} x with (log2Bytes n)
     | O = let pad = (prim__intToB8 (cast (8-n))) in
