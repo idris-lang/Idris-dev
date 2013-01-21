@@ -57,7 +57,7 @@ VAL idris_b64(VM *vm, VAL a) {
 }
 
 VAL idris_castB32Int(VM *vm, VAL a) {
-    return MKINT(a->info.bits32);
+    return MKINT((i_int)a->info.bits32);
 }
 
 VAL idris_b8Plus(VM *vm, VAL a, VAL b) {
@@ -110,23 +110,23 @@ VAL idris_b8SRem(VM *vm, VAL a, VAL b) {
 }
 
 VAL idris_b8Lt(VM *vm, VAL a, VAL b) {
-    return MKINT(a->info.bits8 < b->info.bits8);
+    return MKINT((i_int) (a->info.bits8 < b->info.bits8));
 }
 
 VAL idris_b8Gt(VM *vm, VAL a, VAL b) {
-    return MKINT(a->info.bits8 > b->info.bits8);
+    return MKINT((i_int) (a->info.bits8 > b->info.bits8));
 }
 
 VAL idris_b8Eq(VM *vm, VAL a, VAL b) {
-    return MKINT(a->info.bits8 == b->info.bits8);
+    return MKINT((i_int) (a->info.bits8 == b->info.bits8));
 }
 
 VAL idris_b8Lte(VM *vm, VAL a, VAL b) {
-    return MKINT(a->info.bits8 <= b->info.bits8);
+    return MKINT((i_int) (a->info.bits8 <= b->info.bits8));
 }
 
 VAL idris_b8Gte(VM *vm, VAL a, VAL b) {
-    return MKINT(a->info.bits8 >= b->info.bits8);
+    return MKINT((i_int) (a->info.bits8 >= b->info.bits8));
 }
 
 VAL idris_b8Compl(VM *vm, VAL a) {
@@ -230,23 +230,23 @@ VAL idris_b16SRem(VM *vm, VAL a, VAL b) {
 }
 
 VAL idris_b16Lt(VM *vm, VAL a, VAL b) {
-    return MKINT(a->info.bits16 < b->info.bits16);
+    return MKINT((i_int) (a->info.bits16 < b->info.bits16));
 }
 
 VAL idris_b16Gt(VM *vm, VAL a, VAL b) {
-    return MKINT(a->info.bits16 > b->info.bits16);
+    return MKINT((i_int) (a->info.bits16 > b->info.bits16));
 }
 
 VAL idris_b16Eq(VM *vm, VAL a, VAL b) {
-    return MKINT(a->info.bits16 == b->info.bits16);
+    return MKINT((i_int) (a->info.bits16 == b->info.bits16));
 }
 
 VAL idris_b16Lte(VM *vm, VAL a, VAL b) {
-    return MKINT(a->info.bits16 <= b->info.bits16);
+    return MKINT((i_int) (a->info.bits16 <= b->info.bits16));
 }
 
 VAL idris_b16Gte(VM *vm, VAL a, VAL b) {
-    return MKINT(a->info.bits16 >= b->info.bits16);
+    return MKINT((i_int) (a->info.bits16 >= b->info.bits16));
 }
 
 VAL idris_b16Compl(VM *vm, VAL a) {
@@ -350,23 +350,23 @@ VAL idris_b32SRem(VM *vm, VAL a, VAL b) {
 }
 
 VAL idris_b32Lt(VM *vm, VAL a, VAL b) {
-    return MKINT(a->info.bits32 < b->info.bits32);
+    return MKINT((i_int) (a->info.bits32 < b->info.bits32));
 }
 
 VAL idris_b32Gt(VM *vm, VAL a, VAL b) {
-    return MKINT(a->info.bits32 > b->info.bits32);
+    return MKINT((i_int) (a->info.bits32 > b->info.bits32));
 }
 
 VAL idris_b32Eq(VM *vm, VAL a, VAL b) {
-    return MKINT(a->info.bits32 == b->info.bits32);
+    return MKINT((i_int) (a->info.bits32 == b->info.bits32));
 }
 
 VAL idris_b32Lte(VM *vm, VAL a, VAL b) {
-    return MKINT(a->info.bits32 <= b->info.bits32);
+    return MKINT((i_int) (a->info.bits32 <= b->info.bits32));
 }
 
 VAL idris_b32Gte(VM *vm, VAL a, VAL b) {
-    return MKINT(a->info.bits32 >= b->info.bits32);
+    return MKINT((i_int) (a->info.bits32 >= b->info.bits32));
 }
 
 VAL idris_b32Compl(VM *vm, VAL a) {
@@ -470,23 +470,23 @@ VAL idris_b64SRem(VM *vm, VAL a, VAL b) {
 }
 
 VAL idris_b64Lt(VM *vm, VAL a, VAL b) {
-    return MKINT(a->info.bits64 < b->info.bits64);
+    return MKINT((i_int) (a->info.bits64 < b->info.bits64));
 }
 
 VAL idris_b64Gt(VM *vm, VAL a, VAL b) {
-    return MKINT(a->info.bits64 > b->info.bits64);
+    return MKINT((i_int) (a->info.bits64 > b->info.bits64));
 }
 
 VAL idris_b64Eq(VM *vm, VAL a, VAL b) {
-    return MKINT(a->info.bits64 == b->info.bits64);
+    return MKINT((i_int) (a->info.bits64 == b->info.bits64));
 }
 
 VAL idris_b64Lte(VM *vm, VAL a, VAL b) {
-    return MKINT(a->info.bits64 <= b->info.bits64);
+    return MKINT((i_int) (a->info.bits64 <= b->info.bits64));
 }
 
 VAL idris_b64Gte(VM *vm, VAL a, VAL b) {
-    return MKINT(a->info.bits64 >= b->info.bits64);
+    return MKINT((i_int) (a->info.bits64 >= b->info.bits64));
 }
 
 VAL idris_b64Compl(VM *vm, VAL a) {
