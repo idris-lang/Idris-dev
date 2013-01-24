@@ -323,7 +323,7 @@ process fn (Prove n')
 process fn (HNF t)  = do (tm, ty) <- elabVal toplevel False t
                          ctxt <- getContext
                          ist <- get
-                         let tm' = simplify ctxt True [] tm
+                         let tm' = hnf ctxt [] tm
                          iputStrLn (show (delab ist tm'))
 process fn TTShell  = do ist <- get
                          let shst = initState (tt_ctxt ist)
@@ -420,6 +420,7 @@ parseTarget :: String -> Target
 parseTarget "C" = ViaC
 parseTarget "Java" = ViaJava
 parseTarget "bytecode" = Bytecode
+parseTarget "javascript" = ToJavaScript
 parseTarget _ = error "unknown target" -- FIXME: partial function
 
 parseArgs :: [String] -> [Opt]
@@ -478,6 +479,7 @@ help =
     ([":showproof"], "<name>", "Show proof"),
     ([":proofs"], "", "Show available proofs"),
     ([":c",":compile"], "<filename>", "Compile to an executable <filename>"),
+    ([":js", ":javascript"], "<filename>", "Compile to JavaScript <filename>"),
     ([":exec",":execute"], "", "Compile to an executable and run"),
     ([":?",":h",":help"], "", "Display this help text"),
     ([":set"], "<option>", "Set an option (errorcontext, showimplicits)"),

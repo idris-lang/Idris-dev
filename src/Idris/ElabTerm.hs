@@ -112,7 +112,8 @@ elab ist info pattern tcgen fn tm
     elab' ina (PResolveTC fc) 
         | pattern = do c <- unique_hole (MN 0 "c")
                        instanceArg c
-        | otherwise = try (resolveTC 2 fn ist)
+        | otherwise = do g <- goal
+                         try (resolveTC 2 fn ist)
                           (do c <- unique_hole (MN 0 "c")
                               instanceArg c)
     elab' ina (PRefl fc t)   = elab' ina (PApp fc (PRef fc eqCon) [pimp (MN 0 "a") Placeholder,
@@ -147,9 +148,7 @@ elab ist info pattern tcgen fn tm
              ctxt <- get_context
              let (tc, _) = unApply ty
              let as' = pruneByType tc ctxt as
-             let as'' = as' -- pruneAlt as'
-             try (tryAll (zip (map (elab' ina) as'') (map showHd as'')))
-                 (tryAll (zip (map (elab' ina) as') (map showHd as')))
+             tryAll (zip (map (elab' ina) as') (map showHd as'))
         where showHd (PApp _ h _) = show h
               showHd x = show x
     elab' ina (PAlternative False as) 
@@ -292,16 +291,17 @@ elab ist info pattern tcgen fn tm
 --             when True
             tryWhen True
                 (do ns <- apply (Var f) (map isph args)
-                    let (ns', eargs) 
-                         = unzip $
-                             sortBy (\(_,x) (_,y) -> compare (priority x) (priority y))
+                    ptm <- get_term
+                    let (ns', eargs) = unzip $ 
+                             sortBy (\(_,x) (_,y) -> 
+                                            compare (priority x) (priority y))
                                     (zip ns args)
-                    try 
-                        (elabArgs (ina || not isinf, guarded)
-                             [] False ns' (map (\x -> (lazyarg x, getTm x)) eargs))
-                        (elabArgs (ina || not isinf, guarded)
-                             [] False (reverse ns') 
-                                      (map (\x -> (lazyarg x, getTm x)) (reverse eargs)))
+                    tryWhen True 
+                      (elabArgs (ina || not isinf, guarded)
+                           [] False ns' (map (\x -> (lazyarg x, getTm x)) eargs))
+                      (elabArgs (ina || not isinf, guarded)
+                           [] False (reverse ns') 
+                                    (map (\x -> (lazyarg x, getTm x)) (reverse eargs)))
                     mkSpecialised ist fc f (map getTm args') tm
                     solve)
                 (do apply_elab f (map (toElab (ina || not isinf, guarded)) args)
@@ -316,6 +316,10 @@ elab ist info pattern tcgen fn tm
                                 resolveTC 7 fn ist) (ivs' \\ ivs) 
       where tcArg (n, PConstraint _ _ Placeholder _) = True
             tcArg _ = False
+
+            tacTm (PTactics _) = True
+            tacTm (PProof _) = True
+            tacTm _ = False
 
     elab' ina@(_, a) (PApp fc f [arg])
           = erun fc $ 
@@ -400,10 +404,10 @@ elab ist info pattern tcgen fn tm
                      failed' <- -- trace (show (n, t, hs, tm)) $ 
                                 case n `elem` hs of
                                    True ->
-                                      if r
-                                         then try (do focus n; elabE ina t; return failed)
-                                                  (return ((n,(lazy, t)):failed))
-                                         else do focus n; elabE ina t; return failed
+--                                       if r
+--                                          then try (do focus n; elabE ina t; return failed)
+--                                                   (return ((n,(lazy, t)):failed))
+                                         do focus n; elabE ina t; return failed
                                    False -> return failed
                      elabArgs ina failed r ns args
 
@@ -454,17 +458,17 @@ pruneByType (P _ n _) c as
 pruneByType t _ as = as
 
 trivial :: IState -> ElabD ()
-trivial ist = try (do elab ist toplevel False False (MN 0 "tac") 
+trivial ist = try' (do elab ist toplevel False False (MN 0 "tac") 
                                     (PRefl (FC "prf" 0) Placeholder)
-                      return ())
-                  (do env <- get_env
-                      tryAll (map fst env)
-                      return ())
+                       return ())
+                   (do env <- get_env
+                       tryAll (map fst env)
+                       return ()) True
       where
         tryAll []     = fail "No trivial solution"
-        tryAll (x:xs) = try (elab ist toplevel False False
+        tryAll (x:xs) = try' (elab ist toplevel False False
                                     (MN 0 "tac") (PRef (FC "prf" 0) x))
-                            (tryAll xs)
+                             (tryAll xs) True
 
 findInstances :: IState -> Term -> [Name]
 findInstances ist t 
@@ -476,18 +480,19 @@ findInstances ist t
 
 resolveTC :: Int -> Name -> IState -> ElabD ()
 resolveTC 0 fn ist = fail $ "Can't resolve type class"
-resolveTC 1 fn ist = try (trivial ist) (resolveTC 0 fn ist)
+resolveTC 1 fn ist = try' (trivial ist) (resolveTC 0 fn ist) True
 resolveTC depth fn ist 
-         = try (trivial ist)
-               (do t <- goal
-                   let insts = findInstances ist t
-                   let (tc, ttypes) = unApply t
-                   scopeOnly <- needsDefault t tc ttypes
-                   tm <- get_term
+      = do hnf_compute
+           try' (trivial ist)
+                (do t <- goal
+                    let insts = findInstances ist t
+                    let (tc, ttypes) = unApply t
+                    scopeOnly <- needsDefault t tc ttypes
+                    tm <- get_term
 --                    traceWhen (depth > 6) ("GOAL: " ++ show t ++ "\nTERM: " ++ show tm) $
 --                        (tryAll (map elabTC (map fst (ctxtAlist (tt_ctxt ist)))))
-                   let depth' = if scopeOnly then 2 else depth
-                   blunderbuss t depth' insts)
+                    let depth' = if scopeOnly then 2 else depth
+                    blunderbuss t depth' insts) True
   where
     elabTC n | n /= fn && tcname n = (resolve n depth, show n)
              | otherwise = (fail "Can't resolve", show n)
@@ -506,8 +511,8 @@ resolveTC depth fn ist
 
     blunderbuss t d [] = lift $ tfail $ CantResolve t
     blunderbuss t d (n:ns) 
-        | n /= fn && tcname n = try (resolve n d)
-                                    (blunderbuss t d ns)
+        | n /= fn && tcname n = try' (resolve n d)
+                                     (blunderbuss t d ns) True
         | otherwise = blunderbuss t d ns
 
     resolve n depth
@@ -564,8 +569,8 @@ runTac autoSolve ist tac = do env <- get_env
     runT (Intro xs) = mapM_ (\x -> do attack; intro (Just x)) xs
     runT Intros = do g <- goal
                      attack; intro (bname g)
-                     try (runT Intros)
-                         (return ())
+                     try' (runT Intros)
+                          (return ()) True
       where
         bname (Bind n _ _) = Just n
         bname _ = Nothing
@@ -629,9 +634,51 @@ runTac autoSolve ist tac = do env <- get_env
     runT Trivial = do trivial ist; when autoSolve solveAll
     runT (Focus n) = focus n
     runT Solve = solve
-    runT (Try l r) = do try (runT l) (runT r)
+    runT (Try l r) = do try' (runT l) (runT r) True
     runT (TSeq l r) = do runT l; runT r
+    runT (ReflectTac tm) = do attack -- let x : Tactic = tm in ...
+                              valn <- unique_hole (MN 0 "tacval")
+                              claim valn (Var tacticTy)
+                              tacn <- unique_hole (MN 0 "tacn")
+                              letbind tacn (Var tacticTy) (Var valn)
+                              focus valn
+                              elab ist toplevel False False (MN 0 "tac") tm
+                              (tm', ty') <- get_type_val (Var tacn)
+                              ctxt <- get_context
+                              env <- get_env
+                              let tactic = normalise ctxt env tm'
+                              runReflected tactic
+--                               p <- get_term
+--                               trace (show p ++ "\n\n") $ 
+                              return ()
+        where tacticTy = tacm "Tactic"
+    runT (GoalType n tac) = do g <- goal
+                               case unApply g of
+                                    (P _ n' _, _) -> 
+                                       if nsroot n' == UN n
+                                          then runT tac
+                                          else fail "Wrong goal type"
+                                    _ -> fail "Wrong goal type"
     runT x = fail $ "Not implemented " ++ show x
+
+    runReflected t = do t' <- reify t
+                        runTac autoSolve ist t'
+    tacm n = NS (UN n) ["Reflection", "Language"]
+
+    reify :: Term -> ElabD PTactic
+    reify (P _ n _) | n == tacm "Trivial" = return Trivial
+    reify (P _ n _) | n == tacm "Solve" = return Solve
+    reify f@(App _ _) 
+          | (P _ f _, args) <- unApply f = reifyAp f args
+    reify t = fail ("Unknown tactic " ++ show t)
+
+    reifyAp t [l, r] | t == tacm "Try" = liftM2 Try (reify l) (reify r)
+    reifyAp t [Constant (Str x)] 
+                     | t == tacm "Refine" = return $ Refine (UN x) []
+    reifyAp t [l, r] | t == tacm "Seq" = liftM2 TSeq (reify l) (reify r)
+    reifyAp t [Constant (Str n), x] 
+                     | t == tacm "GoalType" = liftM (GoalType n) (reify x)
+    reifyAp f args = fail ("Unknown tactic " ++ show (f, args)) -- shouldn't happen
 
 solveAll = try (do solve; solveAll) (return ())
 

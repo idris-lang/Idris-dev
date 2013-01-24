@@ -338,9 +338,9 @@ primitives =
    Prim (UN "prim__intToStr") (ty [IType] StrType) 1 (c_intToStr)
      (1, LIntStr) total,
    Prim (UN "prim__charToInt") (ty [ChType] IType) 1 (c_charToInt)
-     (1, LNoOp) total,
+     (1, LChInt) total,
    Prim (UN "prim__intToChar") (ty [IType] ChType) 1 (c_intToChar)
-     (1, LNoOp) total,
+     (1, LIntCh) total,
    Prim (UN "prim__intToBigInt") (ty [IType] BIType) 1 (c_intToBigInt)
      (1, LIntBig) total,
    Prim (UN "prim__bigIntToInt") (ty [BIType] IType) 1 (c_bigIntToInt)

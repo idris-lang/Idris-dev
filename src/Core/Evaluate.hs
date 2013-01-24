@@ -19,29 +19,14 @@ import Data.Binary hiding (get, put)
 import Core.TT
 import Core.CaseTree
 
-data EvalState = ES { limited :: [(Name, Int)],
-                      steps :: Int -- number of applications/let reductions
-                    }
-
--- Evaluation fails if we hit a boredom threshold - in which case, just return
--- the original (capture the failure in a Maybe)
+data EvalState = ES { limited :: [(Name, Int)] }
 
 type Eval a = State EvalState a
 
 data EvalOpt = Spec | HNF | Simplify Bool | AtREPL
   deriving (Show, Eq)
 
-initEval = ES [] 0
-
-step :: Int -> Eval ()
-step max = do e <- get
-              put (e { steps = steps e + 1 })
-              if steps e > max then fail "Threshold exceeded"
-                               else return () 
-
-getSteps :: Eval Int
-getSteps = do e <- get
-              return (steps e)
+initEval = ES []
 
 -- VALUES (as HOAS) ---------------------------------------------------------
 
@@ -77,18 +62,15 @@ instance Show (a -> b) where
 -- i.e. it's an intermediate environment that we have while type checking or
 -- while building a proof.
 
-threshold = 1000 -- boredom threshold for evaluation, to prevent infinite typechecking
-                 -- in fact it's a maximum recursion depth
-
 -- Normalise fully type checked terms (so, assume all names/let bindings resolved)
 normaliseC :: Context -> Env -> TT Name -> TT Name
 normaliseC ctxt env t 
-   = evalState (do val <- eval False ctxt threshold [] env t []
+   = evalState (do val <- eval False ctxt [] env t []
                    quote 0 val) initEval
 
 normaliseAll :: Context -> Env -> TT Name -> TT Name
 normaliseAll ctxt env t 
-   = evalState (do val <- eval False ctxt threshold [] env t [AtREPL]
+   = evalState (do val <- eval False ctxt [] env t [AtREPL]
                    quote 0 val) initEval
 
 normalise :: Context -> Env -> TT Name -> TT Name
@@ -96,12 +78,12 @@ normalise = normaliseTrace False
 
 normaliseTrace :: Bool -> Context -> Env -> TT Name -> TT Name
 normaliseTrace tr ctxt env t 
-   = evalState (do val <- eval tr ctxt threshold [] (map finalEntry env) (finalise t) []
+   = evalState (do val <- eval tr ctxt [] (map finalEntry env) (finalise t) []
                    quote 0 val) initEval
 
 specialise :: Context -> Env -> [(Name, Int)] -> TT Name -> TT Name
 specialise ctxt env limits t 
-   = evalState (do val <- eval False ctxt threshold limits (map finalEntry env) (finalise t) []
+   = evalState (do val <- eval False ctxt limits (map finalEntry env) (finalise t) []
                    quote 0 val) (initEval { limited = limits })
 
 -- Like normalise, but we only reduce functions that are marked as okay to 
@@ -109,7 +91,7 @@ specialise ctxt env limits t
 
 simplify :: Context -> Bool -> Env -> TT Name -> TT Name
 simplify ctxt runtime env t 
-   = evalState (do val <- eval False ctxt threshold [(UN "lazy", 0),
+   = evalState (do val <- eval False ctxt [(UN "lazy", 0),
                                                      (UN "par", 0),
                                                      (UN "fork", 0)] 
                                  (map finalEntry env) (finalise t) 
@@ -118,7 +100,9 @@ simplify ctxt runtime env t
 
 hnf :: Context -> Env -> TT Name -> TT Name
 hnf ctxt env t 
-   = evalState (do val <- eval False ctxt threshold [] (map finalEntry env) (finalise t) [HNF]
+   = evalState (do val <- eval False ctxt [] 
+                                 (map finalEntry env) 
+                                 (finalise t) [HNF]
                    quote 0 val) initEval
 
 
@@ -146,31 +130,27 @@ usable s n ns = case lookup n ns of
                   _ -> if s then (True, (n, 0) : filter (\ (n', _) -> n/=n') ns)
                             else (True, (n, 100) : filter (\ (n', _) -> n/=n') ns)
 
-reduction :: Eval ()
-reduction = do ES ns s <- get
-               put (ES ns (s+1))
-
 -- Evaluate in a context of locally named things (i.e. not de Bruijn indexed,
 -- such as we might have during construction of a proof)
 
-eval :: Bool -> Context -> Int -> [(Name, Int)] -> Env -> TT Name -> 
+eval :: Bool -> Context -> [(Name, Int)] -> Env -> TT Name -> 
         [EvalOpt] -> Eval Value
-eval traceon ctxt maxred ntimes genv tm opts = ev ntimes [] True [] tm where
+eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
     spec = Spec `elem` opts
     simpl = Simplify True `elem` opts
     atRepl = AtREPL `elem` opts
+    hnf = HNF `elem` opts
 
     canSimplify inl inr n stk 
        =    (Simplify False `elem` opts && (not inl || elem n stk))
          || (Simplify True `elem` opts && (not inr || elem n stk))
 
     ev ntimes stk top env (P _ n ty)
-        | Just (Let t v) <- lookup n genv = do when (not atRepl) $ step maxred
-                                               ev ntimes stk top env v 
+        | Just (Let t v) <- lookup n genv = ev ntimes stk top env v 
     ev ntimes_in stk top env (P Ref n ty) 
+      | not top && hnf = liftM (VP Ref n) (ev ntimes stk top env ty)
       | (True, ntimes) <- usable simpl n ntimes_in
          = do let val = lookupDefAcc Nothing n atRepl ctxt 
-              when (not atRepl) $ step maxred
               case val of
                 [(Function _ tm, Public)] -> 
                        ev ntimes (n:stk) True env tm
@@ -191,13 +171,11 @@ eval traceon ctxt maxred ntimes genv tm opts = ev ntimes [] True [] tm where
     ev ntimes stk top env (Bind n (Let t v) sc)
 --         | not simpl || vinstances 0 sc < 2
            = do v' <- ev ntimes stk top env v --(finalise v)
-                when (not atRepl) $ step maxred
                 sc' <- ev ntimes stk top (v' : env) sc
                 wknV (-1) sc'
 {-        | otherwise -- put this back when the Bind works properly
            = do t' <- ev ntimes stk top env t
                 v' <- ev ntimes stk top env v --(finalise v)
-                when (not atRepl) $ step maxred
                 -- use Tmp as a placeholder, then make it a variable reference
                 -- again when evaluation finished
                 sc' <- ev ntimes stk top (v' : env) sc
@@ -205,13 +183,11 @@ eval traceon ctxt maxred ntimes genv tm opts = ev ntimes [] True [] tm where
     ev ntimes stk top env (Bind n (NLet t v) sc)
            = do t' <- ev ntimes stk top env (finalise t)
                 v' <- ev ntimes stk top env (finalise v)
-                when (not atRepl) $ step maxred
                 sc' <- ev ntimes stk top (v' : env) sc
                 return $ VBind n (Let t' v') (\x -> return sc')
     ev ntimes stk top env (Bind n b sc) 
            = do b' <- vbind env b
-                when (not atRepl) $ step maxred
-                return $ VBind n b' (\x -> ev ntimes stk top (x:env) sc)
+                return $ VBind n b' (\x -> ev ntimes stk False (x:env) sc)
        where vbind env t 
                  | simpl 
                      = fmapMB (\tm -> ev ((MN 0 "STOP", 0) : ntimes) 
@@ -222,9 +198,8 @@ eval traceon ctxt maxred ntimes genv tm opts = ev ntimes [] True [] tm where
 --         | laz == UN "lazy"
 --            = trace (showEnvDbg genv a) $ ev ntimes stk top env a
     ev ntimes stk top env (App f a) 
-           = do f' <- ev ntimes stk top env f
+           = do f' <- ev ntimes stk False env f
                 a' <- ev ntimes stk False env a
-                when (not atRepl) $ step maxred
                 evApply ntimes stk top env [a'] f'
     ev ntimes stk top env (Constant c) = return $ VConstant c
     ev ntimes stk top env Erased    = return VErased
@@ -232,18 +207,18 @@ eval traceon ctxt maxred ntimes genv tm opts = ev ntimes [] True [] tm where
     
     evApply ntimes stk top env args (VApp f a) = 
             evApply ntimes stk top env (a:args) f
-    evApply ntimes stk top env args f = do when (not atRepl) $ step maxred
-                                           apply ntimes stk top env f args
+    evApply ntimes stk top env args f = apply ntimes stk top env f args
 
-    apply ntimes stk top env f as 
-        | length stk > threshold = return $ unload env f as
     apply ntimes stk top env (VBind n (Lam t) sc) (a:as) 
         = do a' <- sc a
              app <- apply ntimes stk top env a' as 
              wknV (-1) app
 --     apply ntimes stk False env f args
 --         | spec = specApply ntimes stk env f args 
-    apply ntimes_in stk top env f@(VP Ref n ty)        args
+    apply ntimes_in stk top env f@(VP Ref n ty) args
+      | not top && hnf = case args of
+                            [] -> return f
+                            _ -> return $ unload env f args
       | (True, ntimes) <- usable simpl n ntimes_in
         = traceWhen traceon (show stk) $
           do let val = lookupDefAcc Nothing n atRepl ctxt
@@ -284,7 +259,8 @@ eval traceon ctxt maxred ntimes genv tm opts = ev ntimes [] True [] tm where
         | length ns <= length args 
              = do let args' = take (length ns) args
                   let rest  = drop (length ns) args
-                  t <- evTree ntimes stk top env (zipWith (\n t -> (n, t)) ns args') tree
+                  t <- evTree ntimes stk top env 
+                              (zipWith (\n t -> (n, t)) ns args') tree
                   return (t, rest)
         | otherwise = return (Nothing, args)
 
@@ -293,7 +269,8 @@ eval traceon ctxt maxred ntimes genv tm opts = ev ntimes [] True [] tm where
     evTree ntimes stk top env amap (UnmatchedCase str) = return Nothing
     evTree ntimes stk top env amap (STerm tm) 
         = do let etm = pToVs (map fst amap) tm
-             etm' <- ev ntimes stk top (map snd amap ++ env) etm
+             etm' <- ev ntimes stk (not (conHeaded tm)) 
+                                   (map snd amap ++ env) etm
              return $ Just etm'
     evTree ntimes stk top env amap (Case n alts)
         = case lookup n amap of
@@ -305,6 +282,10 @@ eval traceon ctxt maxred ntimes genv tm opts = ev ntimes [] True [] tm where
                                         Just (altmap, sc) -> evTree ntimes stk top env altmap sc
                                         _ -> return Nothing
             _ -> return Nothing
+
+    conHeaded tm@(App _ _) 
+        | (P (DCon _ _) _ _, args) <- unApply tm = True
+    conHeaded t = False
 
     chooseAlt' ntimes  stk env _ (f, args) alts amap
         = do f' <- apply ntimes stk True env f args
@@ -542,7 +523,7 @@ convEq :: Context -> TT Name -> TT Name -> StateT UCs TC Bool
 convEq ctxt = ceq [] where
     ceq :: [(Name, Name)] -> TT Name -> TT Name -> StateT UCs TC Bool
     ceq ps (P xt x _) (P yt y _) 
-        | (xt == yt && x ==y ) || (x, y) `elem` ps || (y,x) `elem` ps = return True
+        | x == y || (x, y) `elem` ps || (y,x) `elem` ps = return True
         | otherwise = sameDefs ps x y
     ceq ps (V x)      (V y)      = return (x == y)
     ceq ps (Bind _ xb xs) (Bind _ yb ys) 
@@ -685,7 +666,7 @@ initContext = MkContext [] 0 emptyContext
 ctxtAlist :: Context -> [(Name, Def)]
 ctxtAlist ctxt = map (\(n, (d, a, t)) -> (n, d)) $ toAlist (definitions ctxt)
 
-veval ctxt env t = evalState (eval False ctxt threshold [] env t []) initEval
+veval ctxt env t = evalState (eval False ctxt [] env t []) initEval
 
 addToCtxt :: Name -> Term -> Type -> Context -> Context
 addToCtxt n tm ty uctxt 

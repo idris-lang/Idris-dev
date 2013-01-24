@@ -1,0 +1,3 @@
+#!/bin/bash
+idris $@ reg009.lidr --check
+rm -f reg009 *.ibc

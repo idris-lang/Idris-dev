@@ -1,4 +1,4 @@
-{-# LANGUAGE PatternGuards #-}
+{-# LANGUAGE PatternGuards, TypeSynonymInstances #-}
 
 module IRTS.Compiler where
 
@@ -9,6 +9,7 @@ import IRTS.CodegenCommon
 import IRTS.CodegenC
 import IRTS.CodegenJava
 import IRTS.DumpBC
+import IRTS.CodegenJavaScript
 import IRTS.Inliner
 
 import Idris.AbsSyntax
@@ -70,6 +71,7 @@ compile target f tm
                                    (concatMap mkLib libs) NONE
                          ViaJava -> liftIO $ codegenJava c f outty
                          Bytecode -> liftIO $ dumpBC c f
+                         ToJavaScript -> liftIO $ codegenJavaScript c f outty
             Error e -> fail $ show e 
   where checkMVs = do i <- get
                       case idris_metavars i \\ primDefs of

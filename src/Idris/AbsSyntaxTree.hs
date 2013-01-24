@@ -140,7 +140,7 @@ type Idris = StateT IState (InputT IO)
 
 -- Commands in the REPL
 
-data Target = ViaC | ViaJava | Bytecode
+data Target = ViaC | ViaJava | Bytecode | ToJavaScript
     deriving (Show, Eq)
 
 data Command = Quit
@@ -472,6 +472,8 @@ data PTactic' t = Intro [Name] | Intros | Focus Name
                 | ProofState | ProofTerm | Undo
                 | Try (PTactic' t) (PTactic' t)
                 | TSeq (PTactic' t) (PTactic' t)
+                | ReflectTac t -- see Language.Reflection module
+                | GoalType String (PTactic' t)
                 | Qed | Abandon
     deriving (Show, Eq, Functor)
 {-! 

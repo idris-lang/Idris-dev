@@ -1,4 +1,4 @@
-{-# LANGUAGE PatternGuards, DeriveFunctor #-}
+{-# LANGUAGE PatternGuards, DeriveFunctor, TypeSynonymInstances #-}
 
 module Core.CaseTree(CaseDef(..), SC, SC'(..), CaseAlt, CaseAlt'(..), 
                      Phase(..), CaseTree,

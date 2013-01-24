@@ -1355,6 +1355,8 @@ instance (Binary t) => Binary (PTactic' t) where
                                  put x1
                                  put x2
                 Qed -> putWord8 15
+                ReflectTac x1 -> do putWord8 16
+                                    put x1
         get
           = do i <- getWord8
                case i of
@@ -1386,6 +1388,8 @@ instance (Binary t) => Binary (PTactic' t) where
                             x2 <- get
                             return (TSeq x1 x2)
                    15 -> return Qed
+                   16 -> do x1 <- get
+                            return (ReflectTac x1)
                    _ -> error "Corrupted binary data for PTactic'"
 
 

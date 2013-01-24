@@ -55,12 +55,10 @@ lexWS = do i <- getInput
 
     simpleSpace = skipMany1 (satisfy isSpace)
     oneLineComment = do try (do string ("--")
-                                skipMany simpleSpace
                                 satisfy (\x -> x /= '|' && x /= '^'))
                         skipMany (satisfy (/= '\n'))
                         return ()
     multiLineComment = do try (do string "{-"
-                                  skipMany simpleSpace
                                   satisfy (\x -> x /= '|' && x /= '^'))
                           inCommentMulti
 
@@ -136,7 +134,6 @@ mkName (n, ns) = NS (UN n) (reverse (parseNS ns))
 pDocComment :: Char -> CParser a String
 pDocComment c 
    = try (do string ("--")
-             option ' ' (lchar ' ')
              char c
              skipMany simpleSpace
              i <- getInput
@@ -145,7 +142,6 @@ pDocComment c
              whiteSpace
              return doc)
  <|> try (do string ("{-")
-             option ' ' (lchar ' ')
              char c
              skipMany simpleSpace
              i <- getInput

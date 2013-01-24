@@ -37,7 +37,7 @@ data PrimFn = LPlus | LMinus | LTimes | LDiv | LMod
             | LBEq | LBLt | LBLe | LBGt | LBGe
             | LStrConcat | LStrLt | LStrEq | LStrLen
             | LIntFloat | LFloatInt | LIntStr | LStrInt | LFloatStr | LStrFloat
-            | LIntBig | LBigInt | LStrBig | LBigStr
+            | LIntBig | LBigInt | LStrBig | LBigStr | LChInt | LIntCh
             | LPrintNum | LPrintStr | LReadStr
 
             | LB8Lt | LB8Lte | LB8Eq | LB8Gt | LB8Gte

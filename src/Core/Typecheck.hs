@@ -28,11 +28,12 @@ convertsC ctxt env x y
 
 converts :: Context -> Env -> Term -> Term -> TC ()
 converts ctxt env x y 
-     = if x == y then return () else
-          if (finalise (normalise ctxt env x) == 
-              finalise (normalise ctxt env y))
-                then return ()
-                else tfail (CantConvert
+     = case convEq' ctxt x y of 
+          OK _ -> return ()
+          _ -> case convEq' ctxt (finalise (normalise ctxt env x)) 
+                                 (finalise (normalise ctxt env y)) of
+                OK _ -> return ()
+                _ -> tfail (CantConvert
                            (finalise (normalise ctxt env x))
                            (finalise (normalise ctxt env y)) (errEnv env))
 
@@ -67,7 +68,7 @@ check' holes ctxt env top = chk env top where
            let fty' = case uniqueBinders (map fst env) (finalise fty) of
                         ty@(Bind x (Pi s) t) -> ty
                         _ -> uniqueBinders (map fst env) 
-                                 $ normalise ctxt env fty
+                                 $ hnf ctxt env fty
            case fty' of
              Bind x (Pi s) t ->
 --                trace ("Converting " ++ show aty ++ " and " ++ show s ++

@@ -54,6 +54,7 @@ data Tactic = Attack
             | StartUnify Name
             | EndUnify
             | Compute
+            | HNF_Compute
             | EvalIn Raw
             | CheckIn Raw
             | Intro (Maybe Name)
@@ -387,7 +388,7 @@ introTy ty mn ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' =
                   Nothing -> x
        let t' = case t of
                     x@(Bind y (Pi s) _) -> x
-                    _ -> normalise ctxt env t
+                    _ -> hnf ctxt env t
        (tyv, tyt) <- lift $ check ctxt env ty
 --        ns <- lift $ unify ctxt env tyv t'
        case t' of
@@ -407,7 +408,7 @@ intro mn ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' =
                   Nothing -> x
        let t' = case t of
                     x@(Bind y (Pi s) _) -> x
-                    _ -> normalise ctxt env t
+                    _ -> hnf ctxt env t
        case t' of
            Bind y (Pi s) t -> -- trace ("in type " ++ show t') $
                let t' = instantiate (P Bound n s) (pToV y t) in 
@@ -477,7 +478,7 @@ patbind :: Name -> RunTactic
 patbind n ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' =
     do let t' = case t of
                     x@(Bind y (PVTy s) t) -> x
-                    _ -> normalise ctxt env t
+                    _ -> hnf ctxt env t
        case t' of
            Bind y (PVTy s) t -> let t' = instantiate (P Bound n s) (pToV y t) in
                                     return $ Bind n (PVar s) (Bind x (Hole t') (P Bound x t'))
@@ -487,6 +488,12 @@ patbind n ctxt env _ = fail "Can't pattern bind here"
 compute :: RunTactic
 compute ctxt env (Bind x (Hole ty) sc) =
     do return $ Bind x (Hole (normalise ctxt env ty)) sc
+        
+hnf_compute :: RunTactic
+hnf_compute ctxt env (Bind x (Hole ty) sc) = 
+    do let ty' = hnf ctxt env ty in
+--          trace ("HNF " ++ show (ty, ty')) $ 
+           return $ Bind x (Hole ty') sc
         
 check_in :: Raw -> RunTactic
 check_in t ctxt env tm = 
@@ -603,6 +610,7 @@ process t h = tactic (Just h) (mktac t)
          mktac Solve             = solve
          mktac (StartUnify n)    = start_unify n
          mktac Compute           = compute
+         mktac HNF_Compute       = hnf_compute
          mktac (Intro n)         = intro n
          mktac (IntroTy ty n)    = introTy ty n
          mktac (Forall n t)      = forall n t

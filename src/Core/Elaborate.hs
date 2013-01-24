@@ -155,8 +155,16 @@ get_inj = do ES p _ _ <- get
              return (injective (fst p))
 
 checkInjective :: (Term, Term, Term) -> Elab' aux ()
-checkInjective (tm, l, r) = if isInjective tm then return ()
+checkInjective (tm, l, r) = do ctxt <- get_context
+                               if isInj ctxt tm then return ()
                                 else lift $ tfail (NotInjective tm l r) 
+  where isInj ctxt (P _ n _) 
+            | isConName Nothing n ctxt = True
+        isInj ctxt (App f a) = isInj ctxt f
+        isInj ctxt (Constant _) = True
+        isInj ctxt (TType _) = True
+        isInj ctxt (Bind _ (Pi _) sc) = True
+        isInj ctxt _ = False
 
 -- get instance argument names
 get_instances :: Elab' aux [Name]
@@ -235,6 +243,9 @@ regret = processTactic' Regret
 
 compute :: Elab' aux ()
 compute = processTactic' Compute
+
+hnf_compute :: Elab' aux ()
+hnf_compute = processTactic' HNF_Compute
 
 eval_in :: Raw -> Elab' aux ()
 eval_in t = processTactic' (EvalIn t)
@@ -366,7 +377,8 @@ apply fn imps =
                              map fst (filter (not.snd) (zip args (map fst imps)))
        let (n, hs) = -- trace ("AVOID UNIFY: " ++ show (fn, dont) ++ "\n" ++ show ptm) $ 
                       unified p
-       let unify = dropGiven dont hs
+       let unify = -- trace ("Not done " ++ show hs) $ 
+                    dropGiven dont hs
        put (ES (p { dontunify = dont, unified = (n, unify) }, a) s prev)
        ptm <- get_term
        end_unify
@@ -398,7 +410,7 @@ apply_elab n args =
     do ty <- get_type (Var n)
        ctxt <- get_context
        env <- get_env
-       claims <- doClaims (normalise ctxt env ty) args []
+       claims <- doClaims (hnf ctxt env ty) args []
        prep_fill n (map fst claims)
        let eclaims = sortBy (\ (_, x) (_,y) -> priOrder x y) claims
        elabClaims [] False claims
@@ -476,11 +488,15 @@ arg n tyhole = do ty <- unique_hole tyhole
 
 -- Try a tactic, if it fails, try another
 try :: Elab' aux a -> Elab' aux a -> Elab' aux a
-try t1 t2 = do s <- get
+try t1 t2 = try' t1 t2 False
+
+try' :: Elab' aux a -> Elab' aux a -> Bool -> Elab' aux a
+try' t1 t2 proofSearch
+          = do s <- get
                case runStateT t1 s of
                     OK (v, s') -> do put s'
                                      return v
-                    Error e1 -> if recoverableErr e1 then
+                    Error e1 -> if proofSearch || recoverableErr e1 then
                                    do case runStateT t2 s of
                                          OK (v, s') -> do put s'; return v
                                          Error e2 -> if score e1 >= score e2 
