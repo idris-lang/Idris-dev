@@ -4,14 +4,21 @@ import Prelude.Strings
 
 %default total
 
-log2ceil : Nat -> Nat
-log2ceil n = let x = log2 n in
-             if x == log2 (n-1)
-             then x+1
-             else x
+divCeil : Nat -> Nat -> Nat
+divCeil x y = case x `mod` y of
+                O   => x `div` y
+                S _ => S (x `div` y)
 
-log2Bytes : Nat -> Nat
-log2Bytes bits = (log2ceil (bits `div` 8))
+nextPow2 : Nat -> Nat
+nextPow2 O = O
+nextPow2 x = if x == (2 `power` l2x)
+             then l2x
+             else S l2x
+    where
+      l2x = log2 x
+
+nextBytes : Nat -> Nat
+nextBytes bits = (nextPow2 (bits `divCeil` 8))
 
 machineTy : Nat -> Type
 machineTy O = Bits8
@@ -21,7 +28,7 @@ machineTy (S (S (S _))) = Bits64
 
 public
 data Bits : Nat -> Type where
-    MkBits : machineTy (log2Bytes n) -> Bits n
+    MkBits : machineTy (nextBytes n) -> Bits n
 
 pad8 : Nat -> (Bits8 -> Bits8 -> Bits8) -> Bits8 -> Bits8 -> Bits8
 pad8 n f x y = prim__lshrB8 (f (prim__shlB8 x pad) (prim__shlB8 y pad)) pad
@@ -65,8 +72,8 @@ pad64' n f x y = prim__lshrB64 (f (prim__shlB64 x pad) y) pad
       pad = (prim__intToB64 (cast (64-n)))
 
 %assert_total
-intToBits' : Int -> machineTy (log2Bytes n)
-intToBits' {n=n} x with (log2Bytes n)
+intToBits' : Int -> machineTy (nextBytes n)
+intToBits' {n=n} x with (nextBytes n)
     | O = let pad = (prim__intToB8 (cast (8-n))) in
           prim__lshrB8 (prim__shlB8 (prim__intToB8 x) pad) pad
     | S O = let pad = (prim__intToB16 (cast (16-n))) in
@@ -94,8 +101,8 @@ public
 bitsToInt : Bits n -> Int
 bitsToInt (MkBits x) = bitsToInt' x
 
-shiftLeft' : machineTy (log2Bytes n) -> machineTy (log2Bytes n) -> machineTy (log2Bytes n)
-shiftLeft' {n=n} x c with (log2Bytes n)
+shiftLeft' : machineTy (nextBytes n) -> machineTy (nextBytes n) -> machineTy (nextBytes n)
+shiftLeft' {n=n} x c with (nextBytes n)
     | O = pad8' n prim__shlB8 x c
     | S O = pad16' n prim__shlB16 x c
     | S (S O) = pad32' n prim__shlB32 x c
@@ -116,8 +123,8 @@ public
 shiftRightLogical : Bits n -> Bits n -> Bits n
 shiftRightLogical (MkBits x) (MkBits y) = MkBits (shiftRightLogical' x y)
 
-shiftRightArithmetic' : machineTy (log2Bytes n) -> machineTy (log2Bytes n) -> machineTy (log2Bytes n)
-shiftRightArithmetic' {n=n} x c with (log2Bytes n)
+shiftRightArithmetic' : machineTy (nextBytes n) -> machineTy (nextBytes n) -> machineTy (nextBytes n)
+shiftRightArithmetic' {n=n} x c with (nextBytes n)
     | O = pad8' n prim__ashrB8 x c
     | S O = pad16' n prim__ashrB16 x c
     | S (S O) = pad32' n prim__ashrB32 x c
@@ -160,8 +167,8 @@ public
 xor : Bits n -> Bits n -> Bits n
 xor (MkBits x) (MkBits y) = MkBits (xor' x y)
 
-plus' : machineTy (log2Bytes n) -> machineTy (log2Bytes n) -> machineTy (log2Bytes n)
-plus' {n=n} x y with (log2Bytes n)
+plus' : machineTy (nextBytes n) -> machineTy (nextBytes n) -> machineTy (nextBytes n)
+plus' {n=n} x y with (nextBytes n)
     | O = pad8 n prim__addB8 x y
     | S O = pad16 n prim__addB16 x y
     | S (S O) = pad32 n prim__addB32 x y
@@ -171,8 +178,8 @@ public
 plus : Bits n -> Bits n -> Bits n
 plus (MkBits x) (MkBits y) = MkBits (plus' x y)
 
-minus' : machineTy (log2Bytes n) -> machineTy (log2Bytes n) -> machineTy (log2Bytes n)
-minus' {n=n} x y with (log2Bytes n)
+minus' : machineTy (nextBytes n) -> machineTy (nextBytes n) -> machineTy (nextBytes n)
+minus' {n=n} x y with (nextBytes n)
     | O = pad8 n prim__subB8 x y
     | S O = pad16 n prim__subB16 x y
     | S (S O) = pad32 n prim__subB32 x y
@@ -182,8 +189,8 @@ public
 minus : Bits n -> Bits n -> Bits n
 minus (MkBits x) (MkBits y) = MkBits (minus' x y)
 
-times' : machineTy (log2Bytes n) -> machineTy (log2Bytes n) -> machineTy (log2Bytes n)
-times' {n=n} x y with (log2Bytes n)
+times' : machineTy (nextBytes n) -> machineTy (nextBytes n) -> machineTy (nextBytes n)
+times' {n=n} x y with (nextBytes n)
     | O = pad8 n prim__mulB8 x y
     | S O = pad16 n prim__mulB16 x y
     | S (S O) = pad32 n prim__mulB32 x y
@@ -194,8 +201,8 @@ times : Bits n -> Bits n -> Bits n
 times (MkBits x) (MkBits y) = MkBits (times' x y)
 
 partial
-sdiv' : machineTy (log2Bytes n) -> machineTy (log2Bytes n) -> machineTy (log2Bytes n)
-sdiv' {n=n} x y with (log2Bytes n)
+sdiv' : machineTy (nextBytes n) -> machineTy (nextBytes n) -> machineTy (nextBytes n)
+sdiv' {n=n} x y with (nextBytes n)
     | O = prim__sdivB8 x y
     | S O = prim__sdivB16 x y
     | S (S O) = prim__sdivB32 x y
@@ -206,8 +213,8 @@ sdiv : Bits n -> Bits n -> Bits n
 sdiv (MkBits x) (MkBits y) = MkBits (sdiv' x y)
 
 partial
-udiv' : machineTy (log2Bytes n) -> machineTy (log2Bytes n) -> machineTy (log2Bytes n)
-udiv' {n=n} x y with (log2Bytes n)
+udiv' : machineTy (nextBytes n) -> machineTy (nextBytes n) -> machineTy (nextBytes n)
+udiv' {n=n} x y with (nextBytes n)
     | O = prim__udivB8 x y
     | S O = prim__udivB16 x y
     | S (S O) = prim__udivB32 x y
@@ -218,8 +225,8 @@ udiv : Bits n -> Bits n -> Bits n
 udiv (MkBits x) (MkBits y) = MkBits (udiv' x y)
 
 partial
-srem' : machineTy (log2Bytes n) -> machineTy (log2Bytes n) -> machineTy (log2Bytes n)
-srem' {n=n} x y with (log2Bytes n)
+srem' : machineTy (nextBytes n) -> machineTy (nextBytes n) -> machineTy (nextBytes n)
+srem' {n=n} x y with (nextBytes n)
     | O = prim__sremB8 x y
     | S O = prim__sremB16 x y
     | S (S O) = prim__sremB32 x y
@@ -230,8 +237,8 @@ srem : Bits n -> Bits n -> Bits n
 srem (MkBits x) (MkBits y) = MkBits (srem' x y)
 
 partial
-urem' : machineTy (log2Bytes n) -> machineTy (log2Bytes n) -> machineTy (log2Bytes n)
-urem' {n=n} x y with (log2Bytes n)
+urem' : machineTy (nextBytes n) -> machineTy (nextBytes n) -> machineTy (nextBytes n)
+urem' {n=n} x y with (nextBytes n)
     | O = prim__uremB8 x y
     | S O = prim__uremB16 x y
     | S (S O) = prim__uremB32 x y
@@ -292,8 +299,8 @@ instance Ord (Bits n) where
              then EQ
              else GT
 
-complement' : machineTy (log2Bytes n) -> machineTy (log2Bytes n)
-complement' {n=n} x with (log2Bytes n)
+complement' : machineTy (nextBytes n) -> machineTy (nextBytes n)
+complement' {n=n} x with (nextBytes n)
     | O = let pad = prim__intToB8 (8 - cast n) in
           prim__complB8 (x `prim__shlB8` pad) `prim__lshrB8` pad
     | S O = let pad = prim__intToB16 (16 - cast n) in
@@ -309,8 +316,8 @@ complement (MkBits x) = MkBits (complement' x)
 
 -- TODO: Prove
 %assert_total
-zext' : machineTy (log2Bytes n) -> machineTy (log2Bytes (n+m))
-zext' {n=n} {m=m} x with (log2Bytes n, log2Bytes (n+m))
+zext' : machineTy (nextBytes n) -> machineTy (nextBytes (n+m))
+zext' {n=n} {m=m} x with (nextBytes n, nextBytes (n+m))
     | (O, O) = believe_me x
     | (O, S O) = believe_me (prim__zextB8_16 (believe_me x))
     | (O, S (S O)) = believe_me (prim__zextB8_32 (believe_me x))
@@ -327,13 +334,13 @@ zeroExtend : Bits n -> Bits (n+m)
 zeroExtend (MkBits x) = MkBits (zext' x)
 
 -- Fill in the high bits of a sign-extended bitstring
-fixupSE : (m : Nat) -> machineTy (log2Bytes (n+m)) -> machineTy (log2Bytes (n+m))
+fixupSE : (m : Nat) -> machineTy (nextBytes (n+m)) -> machineTy (nextBytes (n+m))
 fixupSE m x = x `or'` complement' (zext' {m=m} (complement' (intToBits' 0)))
 
 -- TODO: Prove
 %assert_total
-sext' : machineTy (log2Bytes n) -> machineTy (log2Bytes (n+m))
-sext' {n=n} {m=m} x with (log2Bytes n, log2Bytes (n+m))
+sext' : machineTy (nextBytes n) -> machineTy (nextBytes (n+m))
+sext' {n=n} {m=m} x with (nextBytes n, nextBytes (n+m))
     | (O, O) = fixupSE m (believe_me x)
     | (O, S O) = fixupSE m (believe_me (prim__sextB8_16 (believe_me x)))
     | (O, S (S O)) = fixupSE m (believe_me (prim__sextB8_32 (believe_me x)))
@@ -350,13 +357,13 @@ signExtend : Bits n -> Bits (n+m)
 signExtend (MkBits x) = MkBits (sext' x)
 
 -- Zero out the high bits of a truncated bitstring
-fixupTR : machineTy (log2Bytes n) -> machineTy (log2Bytes n)
+fixupTR : machineTy (nextBytes n) -> machineTy (nextBytes n)
 fixupTR x = x `and'` complement' (intToBits' 0)
 
 -- TODO: Prove
 %assert_total
-trunc' : machineTy (log2Bytes (n+m)) -> machineTy (log2Bytes n)
-trunc' {n=n} {m=m} x with (log2Bytes n, log2Bytes (n+m))
+trunc' : machineTy (nextBytes (n+m)) -> machineTy (nextBytes n)
+trunc' {n=n} {m=m} x with (nextBytes n, nextBytes (n+m))
     | (O, O) = fixupTR (believe_me x)
     | (O, S O) = believe_me (prim__truncB16_8 (believe_me x))
     | (O, S (S O)) = believe_me (prim__truncB32_8 (believe_me x))
