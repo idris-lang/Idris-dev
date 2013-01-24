@@ -285,9 +285,9 @@ instance Ord (Bits n) where
     (MkBits x) >= (MkBits y) = boolOp gte x y
     (MkBits x) > (MkBits y) = boolOp gt x y
     compare (MkBits x) (MkBits y) =
-        if (x `lt` y) /= 0
+        if boolOp lt x y
         then LT
-        else if (x `eq` y) /= 0
+        else if boolOp eq x y
              then EQ
              else GT
 
