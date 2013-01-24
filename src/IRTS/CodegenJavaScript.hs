@@ -19,9 +19,52 @@ import Util.System
 import Control.Arrow
 import Data.Char
 import Data.List
+import qualified Data.Map as Map
 import System.IO
 
 type NamespaceName = String
+type Decl = ([String], SDecl)
+
+data ModuleTree = Module { moduleName :: String
+                     , functions  :: [SDecl]
+                     , subModules :: Map.Map String ModuleTree
+                     }
+            | EmptyModule
+
+insertDecl :: ModuleTree -> Decl -> ModuleTree
+insertDecl EmptyModule ([modname], decl) =
+  Module modname [decl] Map.empty
+
+insertDecl EmptyModule (m:s:ms, decl) =
+  Module m [] (Map.singleton s (insertDecl EmptyModule (s:ms, decl)))
+
+insertDecl mod ([modname], decl)
+  | moduleName mod == modname =
+    mod { functions = decl : functions mod }
+
+insertDecl mod (_:m:ms, decl)
+  |  Nothing <- Map.lookup m (subModules mod) =
+       mod {
+         subModules =
+           Map.insert m (insertDecl EmptyModule (m:ms, decl)) (subModules mod)
+       }
+  | Just s <- Map.lookup m (subModules mod) =
+    mod {
+      subModules =
+        Map.insert m (insertDecl s (m:ms, decl)) (subModules mod)
+    }
+
+instance Show ModuleTree where
+  show EmptyModule = ""
+  show (Module name fs subs) =
+    createModule Nothing name body
+    where
+      functions  = concatMap (translateDeclaration name) fs
+      submodules = Map.foldWithKey (translateSubModule name) "" subs
+      body       = functions ++ submodules
+
+      translateSubModule toplevel name mod js =
+        js ++ show mod ++ toplevel ++ "." ++ name ++ "=" ++ name ++ ";"
 
 idrNamespace :: NamespaceName
 idrNamespace = "__IDR__"
@@ -34,6 +77,7 @@ codegenJavaScript
 codegenJavaScript definitions filename outputType =
   writeFile filename output
   where
+    modules = foldl' insertDecl EmptyModule def
     def = map (first translateNamespace) definitions
 
     mainLoop :: String
@@ -44,7 +88,7 @@ codegenJavaScript definitions filename outputType =
 
     output :: String
     output = concat [ idrRuntime
-                    , concatMap (translateModule Nothing) def
+                    , show modules
                     , mainLoop
                     ]
 
