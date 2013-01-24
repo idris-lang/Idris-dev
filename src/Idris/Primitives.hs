@@ -168,7 +168,7 @@ primitives =
      (2, LB16Or) total,
    Prim (UN "prim__xorB16") (ty [B16Type, B16Type] B16Type) 2 (b16Bin xor)
      (2, LB16Xor) total,
-   Prim (UN "prim__complB16") (ty [B16Type] B16Type) 1 (b8Un complement)
+   Prim (UN "prim__complB16") (ty [B16Type] B16Type) 1 (b16Un complement)
      (1, LB16Compl) total,
    Prim (UN "prim__zextB16_32") (ty [B16Type] B32Type) 1 zext16_32
      (1, LB16Z32) total,
