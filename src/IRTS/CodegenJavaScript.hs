@@ -421,8 +421,7 @@ translateExpression modname (SCase var cases) =
 translateExpression _ (SCon i name vars) =
   concat [ "new __IDR__.Con("
          , show i
-         , ","
-         , '\'' : translateQualifiedName name ++ "\',["
+         , ",["
          , intercalate "," $ map translateVariableName vars
          , "])"
          ]

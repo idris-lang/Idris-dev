@@ -22,9 +22,8 @@ var __IDR__;
   __IDR__.Tailcall = function(f) { this.f = f };
 
   /** @constructor */
-  __IDR__.Con = function(i,name,vars) {
+  __IDR__.Con = function(i,vars) {
     this.i = i;
-    this.name = name;
     this.vars =  vars;
   };
 
