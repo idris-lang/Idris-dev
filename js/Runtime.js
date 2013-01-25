@@ -37,10 +37,18 @@ __IDRRT__.tailcall = function(f) {
   }
 };
 
-__IDRRT__.print = function(s){
-  var m = s.match(/(.*)\n$/);
-  console.log(m ? m[1] : s);
-};
+__IDRRT__.print = (function(){
+  if (require) {
+    var util = require('util');
+    return function(s) {
+      util.print(s);
+    };
+  } else {
+    return function(s) {
+      console.log(s);
+    };
+  }
+})();
 
 /*
    BigInteger Javascript code taken from:
