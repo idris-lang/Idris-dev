@@ -1,25 +1,27 @@
+var __IDRRT__ = {};
+
 /** @constructor */
-__IDR__.Type = function(type) {
+__IDRRT__.Type = function(type) {
   this.type = type;
 };
 
-__IDR__.Int = new __IDR__.Type('Int');
-__IDR__.Char = new __IDR__.Type('Char');
-__IDR__.String = new __IDR__.Type('String');
-__IDR__.Integer = new __IDR__.Type('Integer');
-__IDR__.Float = new __IDR__.Type('Float');
-__IDR__.Forgot = new __IDR__.Type('Forgot');
+__IDRRT__.Int = new __IDRRT__.Type('Int');
+__IDRRT__.Char = new __IDRRT__.Type('Char');
+__IDRRT__.String = new __IDRRT__.Type('String');
+__IDRRT__.Integer = new __IDRRT__.Type('Integer');
+__IDRRT__.Float = new __IDRRT__.Type('Float');
+__IDRRT__.Forgot = new __IDRRT__.Type('Forgot');
 
 /** @constructor */
-__IDR__.Tailcall = function(f) { this.f = f };
+__IDRRT__.Tailcall = function(f) { this.f = f };
 
 /** @constructor */
-__IDR__.Con = function(i,vars) {
+__IDRRT__.Con = function(i,vars) {
   this.i = i;
   this.vars =  vars;
 };
 
-__IDR__.tailcall = function(f) {
+__IDRRT__.tailcall = function(f) {
   var __f = f;
   var ret;
   while (__f) {
@@ -27,7 +29,7 @@ __IDR__.tailcall = function(f) {
     __f = null;
     ret = f();
 
-    if (ret instanceof __IDR__.Tailcall) {
+    if (ret instanceof __IDRRT__.Tailcall) {
       __f = ret.f;
     } else {
       return ret;
@@ -35,7 +37,7 @@ __IDR__.tailcall = function(f) {
   }
 };
 
-__IDR__.print = function(s){
+__IDRRT__.print = function(s){
   var m = s.match(/(.*)\n$/);
   console.log(m ? m[1] : s);
 };
@@ -44,7 +46,7 @@ __IDR__.print = function(s){
    BigInteger Javascript code taken from:
    https://github.com/peterolson
 */
-__IDR__.bigInt = (function () {
+__IDRRT__.bigInt = (function () {
   var base = 10000000, logBase = 7;
   var sign = {
     positive: false,
@@ -385,3 +387,5 @@ __IDR__.bigInt = (function () {
   fnReturn.minusOne = MINUS_ONE;
   return fnReturn;
 })();
+
+var __IDR__ = {};
