@@ -17,51 +17,7 @@ import Data.List
 import qualified Data.Map as Map
 import System.IO
 
-type NamespaceName = String
-type Decl = ([String], SDecl)
-
-data ModuleTree = Module { moduleName :: String
-                     , functions  :: [SDecl]
-                     , subModules :: Map.Map String ModuleTree
-                     }
-            | EmptyModule
-
-insertDecl :: ModuleTree -> Decl -> ModuleTree
-insertDecl EmptyModule ([modname], decl) =
-  Module modname [decl] Map.empty
-
-insertDecl EmptyModule (m:s:ms, decl) =
-  Module m [] (Map.singleton s (insertDecl EmptyModule (s:ms, decl)))
-
-insertDecl mod ([modname], decl)
-  | moduleName mod == modname =
-    mod { functions = decl : functions mod }
-
-insertDecl mod (_:m:ms, decl)
-  |  Nothing <- Map.lookup m (subModules mod) =
-       mod {
-         subModules =
-           Map.insert m (insertDecl EmptyModule (m:ms, decl)) (subModules mod)
-       }
-  | Just s <- Map.lookup m (subModules mod) =
-    mod {
-      subModules =
-        Map.insert m (insertDecl s (m:ms, decl)) (subModules mod)
-    }
-
-instance Show ModuleTree where
-  show EmptyModule = ""
-  show (Module name fs subs) =
-    createModule Nothing name body
-    where
-      functions  = concatMap (translateDeclaration name) fs
-      submodules = Map.foldWithKey (translateSubModule name) "" subs
-      body       = functions ++ submodules
-
-      translateSubModule toplevel name mod js =
-        js ++ show mod ++ toplevel ++ "." ++ name ++ "=" ++ name ++ ";"
-
-idrNamespace :: NamespaceName
+idrNamespace :: String
 idrNamespace = "__IDR__"
 
 codegenJavaScript
@@ -72,10 +28,11 @@ codegenJavaScript
 codegenJavaScript definitions filename outputType = do
   path <- getDataDir
   idrRuntime <- readFile (path ++ "/js/Runtime.js")
-  writeFile filename (idrRuntime ++ output)
+  writeFile filename (modules ++ idrRuntime ++ functions ++ mainLoop)
   where
-    modules = foldl' insertDecl EmptyModule def
     def = map (first translateNamespace) definitions
+ 
+    functions = concatMap translateDeclaration def
 
     mainLoop :: String
     mainLoop = intercalate "\n" [ "\nfunction main() {"
@@ -83,36 +40,14 @@ codegenJavaScript definitions filename outputType = do
                                 , "}\n\nmain();\n"
                                 ]
 
-    output :: String
-    output = show modules ++ mainLoop
+    modules =
+      concatMap allocMod mods
+      where
+        allocMod m = intercalate "." m ++ " = {};\n"
+        sortMods a b = compare (length a) (length b)
 
-createModule :: Maybe String -> NamespaceName -> String -> String
-createModule toplevel modname body =
-  concat [header modname, body, footer modname]
-  where
-    header :: NamespaceName -> String
-    header modname =
-      concatMap (++ "\n")
-        [ "\nvar " ++ modname ++ ";"
-        , "(function(" ++ modname ++ "){"
-        ]
-
-    footer :: NamespaceName -> String
-    footer modname =
-      let m = maybe "" (++ ".") toplevel ++ modname in
-         "\n})("
-      ++ m
-      ++ " || ("
-      ++ m
-      ++ " = {})"
-      ++ ");\n"
-
-translateModule :: Maybe String -> ([String], SDecl) -> String
-translateModule toplevel ([modname], decl) =
-  let body = translateDeclaration modname decl in
-      createModule toplevel modname body
-translateModule toplevel (n:ns, decl) =
-  createModule toplevel n $ translateModule (Just n) (ns, decl)
+        mods =
+          drop 1 $ sortBy sortMods $ nub $ concatMap (inits . fst) def
 
 translateIdentifier :: String -> String
 translateIdentifier =
@@ -160,10 +95,6 @@ translateName (UN name)   = translateIdentifier name
 translateName (NS name _) = translateName name
 translateName (MN i name) = translateIdentifier name ++ show i
 
-translateQualifiedName :: Name -> String
-translateQualifiedName name =
-  intercalate "." (translateNamespace name) ++ "." ++ translateName name
-
 translateConstant :: Const -> String
 translateConstant (I i)   = show i
 translateConstant (BI i)  = "__IDR__.bigInt('" ++ show i ++ "')"
@@ -184,18 +115,16 @@ translateParameterlist =
   where translateParameter (MN i name) = name ++ show i
         translateParameter (UN name) = name
 
-translateDeclaration :: NamespaceName -> SDecl -> String
-translateDeclaration modname (SFun name params stackSize body) =
-     modname
-  ++ "."
-  ++ translateName name
+translateDeclaration :: ([String], SDecl) -> String
+translateDeclaration (path, SFun name params stackSize body) =
+     intercalate "." (path ++ [translateName name])
   ++ " = function("
   ++ intercalate "," p
   ++ "){\n"
   ++ concatMap assignVar (zip [0..] p)
   ++ concatMap allocVar [numP..(numP+stackSize-1)]
   ++ "return "
-  ++ translateExpression modname body
+  ++ translateExpression body
   ++ ";\n};\n"
   where 
     numP :: Int
@@ -214,32 +143,32 @@ translateVariableName :: LVar -> String
 translateVariableName (Loc i) =
   "__var_" ++ show i
 
-translateExpression :: NamespaceName -> SExp -> String
-translateExpression modname (SLet name value body) =
+translateExpression :: SExp -> String
+translateExpression (SLet name value body) =
      "(function("
   ++ translateVariableName name
   ++ "){\nreturn "
-  ++ translateExpression modname body
+  ++ translateExpression body
   ++ ";\n})("
-  ++ translateExpression modname value
+  ++ translateExpression value
   ++ ")"
 
-translateExpression _ (SConst cst) =
+translateExpression (SConst cst) =
   translateConstant cst
 
-translateExpression _ (SV var) =
+translateExpression (SV var) =
   translateVariableName var
 
-translateExpression modname (SApp False name vars) =
+translateExpression (SApp False name vars) =
   createTailcall $ translateFunctionCall name vars
 
-translateExpression modname (SApp True name vars) =
+translateExpression (SApp True name vars) =
      "new __IDR__.Tailcall("
   ++ "function(){\n"
   ++ "return " ++ translateFunctionCall name vars
   ++ ";\n});"
 
-translateExpression _ (SOp op vars)
+translateExpression (SOp op vars)
   | LPlus       <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp "+" lhs rhs
   | LMinus      <- op
@@ -392,33 +321,33 @@ translateExpression _ (SOp op vars)
       ++ f
       ++ translateVariableName rhs
 
-translateExpression _ (SError msg) =
+translateExpression (SError msg) =
   "(function(){throw \'" ++ msg ++ "\';})();"
 
-translateExpression _ (SForeign _ _ "putStr" [(FString, var)]) =
+translateExpression (SForeign _ _ "putStr" [(FString, var)]) =
   "__IDR__.print(" ++ translateVariableName var ++ ");"
 
-translateExpression _ (SForeign _ _ fun args) =
+translateExpression (SForeign _ _ fun args) =
      fun
   ++ "("
   ++ intercalate "," (map (translateVariableName . snd) args)
   ++ ");"
 
-translateExpression modname (SChkCase var cases) =
+translateExpression (SChkCase var cases) =
      "(function(e){\n"
-  ++ intercalate " else " (map (translateCase modname "e") cases)
+  ++ intercalate " else " (map (translateCase "e") cases)
   ++ "\n})("
   ++ translateVariableName var
   ++ ")"
 
-translateExpression modname (SCase var cases) = 
+translateExpression (SCase var cases) = 
      "(function(e){\n"
-  ++ intercalate " else " (map (translateCase modname "e") cases)
+  ++ intercalate " else " (map (translateCase "e") cases)
   ++ "\n})("
   ++ translateVariableName var
   ++ ")"
 
-translateExpression _ (SCon i name vars) =
+translateExpression (SCon i name vars) =
   concat [ "new __IDR__.Con("
          , show i
          , ",["
@@ -426,24 +355,24 @@ translateExpression _ (SCon i name vars) =
          , "])"
          ]
 
-translateExpression modname (SUpdate var e) =
-  translateVariableName var ++ " = " ++ translateExpression modname e
+translateExpression (SUpdate var e) =
+  translateVariableName var ++ " = " ++ translateExpression e
 
-translateExpression modname (SProj var i) =
+translateExpression (SProj var i) =
   translateVariableName var ++ ".vars[" ++ show i ++"]"
 
-translateExpression _ SNothing = "null"
+translateExpression SNothing = "null"
 
-translateExpression _ e =
+translateExpression e =
      "(function(){throw 'Not yet implemented: "
   ++ filter (/= '\'') (show e)
   ++ "';})()"
 
-translateCase :: String -> String -> SAlt -> String
-translateCase modname _ (SDefaultCase e) =
-  createIfBlock "true" (translateExpression modname e)
+translateCase :: String -> SAlt -> String
+translateCase _ (SDefaultCase e) =
+  createIfBlock "true" (translateExpression e)
 
-translateCase modname var (SConstCase ty e)
+translateCase var (SConstCase ty e)
   | ChType   <- ty = matchHelper "Char"
   | StrType  <- ty = matchHelper "String"
   | IType    <- ty = matchHelper "Int"
@@ -451,17 +380,17 @@ translateCase modname var (SConstCase ty e)
   | FlType   <- ty = matchHelper "Float"
   | Forgot   <- ty = matchHelper "Forgot"
   where
-    matchHelper tyName = translateTypeMatch modname var tyName e
+    matchHelper tyName = translateTypeMatch var tyName e
 
-translateCase modname var (SConstCase cst@(BI _) e) =
+translateCase var (SConstCase cst@(BI _) e) =
   let cond = var ++ ".equals(" ++ translateConstant cst ++ ")" in
-      createIfBlock cond (translateExpression modname e)
+      createIfBlock cond (translateExpression e)
 
-translateCase modname var (SConstCase cst e) =
+translateCase var (SConstCase cst e) =
   let cond = var ++ " == " ++ translateConstant cst in
-      createIfBlock cond (translateExpression modname e)
+      createIfBlock cond (translateExpression e)
 
-translateCase modname var (SConCase a i name vars e) =
+translateCase var (SConCase a i name vars e) =
   let isCon = var ++ " instanceof __IDR__.Con"
       isI = show i ++ " == " ++ var ++ ".i"
       params = intercalate "," $ map (("__var_" ++) . show) [a..(a+length vars)]
@@ -471,11 +400,11 @@ translateCase modname var (SConCase a i name vars e) =
         ++ params 
         ++ "){\nreturn " ++ b ++ "\n})" ++ args
       cond = intercalate " && " [isCon, isI] in
-      createIfBlock cond $ f (translateExpression modname e)
+      createIfBlock cond $ f (translateExpression e)
 
-translateTypeMatch :: String -> String -> String -> SExp -> String
-translateTypeMatch modname var ty exp =
-  let e = translateExpression modname exp in
+translateTypeMatch :: String -> String -> SExp -> String
+translateTypeMatch var ty exp =
+  let e = translateExpression exp in
       createIfBlock (var
                   ++ " instanceof __IDR__.Type && "
                   ++ var ++ ".type == '"++ ty ++"'") e
