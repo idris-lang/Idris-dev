@@ -1,6 +1,6 @@
 module main
 
-data Bit : Nat -> Set where
+data Bit : Nat -> Type where
      b0 : Bit 0
      b1 : Bit 1
 
@@ -10,7 +10,7 @@ instance Show (Bit n) where
 
 infixl 5 #
 
-data Binary : (width : Nat) -> (value : Nat) -> Set where
+data Binary : (width : Nat) -> (value : Nat) -> Type where
      zero : Binary O O
      (#)  : Binary w v -> Bit bit -> Binary (S w) (bit + 2 * v)
 
