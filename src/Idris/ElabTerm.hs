@@ -315,64 +315,58 @@ elab ist info pattern tcgen fn tm
                         Just xs@(_:_) -> NS n xs
                         _ -> n
 
+    -- if f is local, just do a simple_app
     elab' (ina, g) tm@(PApp fc (PRef _ f) args') 
        = do let args = {- case lookupCtxt f (inblock info) of
                           Just ps -> (map (pexp . (PRef fc)) ps ++ args')
                           _ ->-} args'
 --             newtm <- mkSpecialised ist fc f (map getTm args') tm
-            ivs <- get_instances
-            ps <- get_probs
-            -- HACK: we shouldn't resolve type classes if we're defining an instance
-            -- function or default definition.
-            let isinf = f == inferCon || tcname f
-            -- if f is a type class, we need to know its arguments so that
-            -- we can unify with them
-            case lookupCtxt Nothing f (idris_classes ist) of
-                [] -> return ()
-                _ -> mapM_ setInjective (map getTm args')
-            ctxt <- get_context
-            let guarded = isConName Nothing f ctxt
---             when True
-            (ns, committed) <- tryWhen False
-                (do ns <- apply (Var f) (map isph args)
-                    return (ns, True))
-                (do apply_elab f (map (toElab (ina || not isinf, guarded)) args)
-                    mkSpecialised ist fc f (map getTm args') tm
-                    solve
-                    return ([], False))
-            when committed $
-                 do ptm <- get_term
+            env <- get_env
+            if (f `elem` map fst env && length args' == 1)
+               then -- simple app, as below
+                    do simple_app (elabE (ina, g) (PRef fc f)) 
+                                  (elabE (True, g) (getTm (head args')))
+                       solve
+               else 
+                 do ivs <- get_instances
+                    ps <- get_probs
+                    -- HACK: we shouldn't resolve type classes if we're defining an instance
+                    -- function or default definition.
+                    let isinf = f == inferCon || tcname f
+                    -- if f is a type class, we need to know its arguments so that
+                    -- we can unify with them
+                    case lookupCtxt Nothing f (idris_classes ist) of
+                        [] -> return ()
+                        _ -> mapM_ setInjective (map getTm args')
+                    ctxt <- get_context
+                    let guarded = isConName Nothing f ctxt
+                    ns <- apply (Var f) (map isph args)
+                    ptm <- get_term
                     g <- goal
                     let (ns', eargs) = unzip $ 
                              sortBy (\(_,x) (_,y) -> 
                                             compare (priority x) (priority y))
                                     (zip ns args)
-                    tryWhen False 
-                      (elabArgs (ina || not isinf, guarded)
-                           [] False ns' (map (\x -> (lazyarg x, getTm x)) eargs))
-                      (elabArgs (ina || not isinf, guarded)
-                           [] False (reverse ns') 
-                                    (map (\x -> (lazyarg x, getTm x)) (reverse eargs)))
+                    elabArgs (ina || not isinf, guarded)
+                           [] False ns' (map (\x -> (lazyarg x, getTm x)) eargs)
                     mkSpecialised ist fc f (map getTm args') tm
                     solve
-            ptm <- get_term
---             elog (show ptm)
-            ivs' <- get_instances
-            ps' <- get_probs
+                    ptm <- get_term
+                    ivs' <- get_instances
+                    ps' <- get_probs
             -- Attempt to resolve any type classes which have 'complete' types,
             -- i.e. no holes in them
-            when (not pattern || (ina && not tcgen)) $
-                mapM_ (\n -> do focus n
-                                g <- goal
-                                env <- get_env
-                                hs <- get_holes
-                                if all (\n -> not (n `elem` hs)) (freeNames g)
-                                -- let insts = filter tcname $ map fst (ctxtAlist (tt_ctxt ist))
-                                 then try (resolveTC 7 fn ist)
-                                          (movelast n)
-                                 else movelast n) 
-                      (ivs' \\ ivs)
---                       ivs'
+                    when (not pattern || (ina && not tcgen)) $
+                        mapM_ (\n -> do focus n
+                                        g <- goal
+                                        env <- get_env
+                                        hs <- get_holes
+                                        if all (\n -> not (n `elem` hs)) (freeNames g)
+                                        -- let insts = filter tcname $ map fst (ctxtAlist (tt_ctxt ist))
+                                         then try (resolveTC 7 fn ist)
+                                                  (movelast n)
+                                         else movelast n) 
+                              (ivs' \\ ivs)
       where tcArg (n, PConstraint _ _ Placeholder _) = True
             tcArg _ = False
 
@@ -386,8 +380,7 @@ elab ist info pattern tcgen fn tm
 
     elab' ina@(_, a) (PApp fc f [arg])
           = erun fc $ 
-             do ptm <- get_term
-                simple_app (elabE ina f) (elabE (True, a) (getTm arg))
+             do simple_app (elabE ina f) (elabE (True, a) (getTm arg))
                 solve
     elab' ina Placeholder = do (h : hs) <- get_holes
                                movelast h
