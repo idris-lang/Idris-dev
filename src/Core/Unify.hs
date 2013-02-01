@@ -183,7 +183,7 @@ unify ctxt env topx topy injtc holes =
                      unArgs vs xs ys
 
             metavarApp tm = let (f, args) = unApply tm in
-                                all metavar (f : args)
+                                all (\x -> metavar x || notFn x) (f : args)
             metavar t = case t of
                              P _ x _ -> x `elem` holes || holeIn env x
                              _ -> False

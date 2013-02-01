@@ -38,6 +38,10 @@ abstract
 believe_me : a -> b -- compiled specially as id, use with care!
 believe_me x = prim__believe_me _ _ x
 
+public -- reduces at compile time, use with extreme care!
+really_believe_me : a -> b 
+really_believe_me x = prim__believe_me _ _ x
+
 namespace Builtins {
 
 id : a -> a

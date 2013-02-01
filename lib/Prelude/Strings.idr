@@ -25,8 +25,8 @@ strTail' x p = prim__strTail x
 %assert_total
 strM : (x : String) -> StrM x
 strM x with (choose (not (x == "")))
-  strM x | (Left p)  = believe_me $ StrCons (strHead' x p) (strTail' x p)
-  strM x | (Right p) = believe_me StrNil
+  strM x | (Left p)  = really_believe_me $ StrCons (strHead' x p) (strTail' x p)
+  strM x | (Right p) = really_believe_me StrNil
 
 -- annoyingly, we need these assert_totals because StrCons doesn't have
 -- a recursive argument, therefore the termination checker doesn't believe
