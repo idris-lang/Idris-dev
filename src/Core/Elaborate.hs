@@ -15,6 +15,7 @@ import Core.ProofState
 import Core.TT
 import Core.Evaluate
 import Core.Typecheck
+import Core.Unify
 
 import Control.Monad.State
 import Data.Char
@@ -118,6 +119,10 @@ get_holes :: Elab' aux [Name]
 get_holes = do ES p _ _ <- get
                return (holes (fst p))
 
+get_probs :: Elab' aux Fails
+get_probs = do ES p _ _ <- get
+               return (problems (fst p))
+
 -- get the current goal type
 goal :: Elab' aux Type
 goal = do ES p _ _ <- get
@@ -149,10 +154,6 @@ get_type_val tm = do ctxt <- get_context
 get_deferred :: Elab' aux [Name]
 get_deferred = do ES p _ _ <- get
                   return (deferred (fst p))
-
-get_inj :: Elab' aux [(Term, Term, Term)]
-get_inj = do ES p _ _ <- get
-             return (injective (fst p))
 
 checkInjective :: (Term, Term, Term) -> Elab' aux ()
 checkInjective (tm, l, r) = do ctxt <- get_context
@@ -296,6 +297,9 @@ deferType n ty ns = processTactic' (DeferType n ty ns)
 instanceArg :: Name -> Elab' aux ()
 instanceArg n = processTactic' (Instance n)
 
+setinj :: Name -> Elab' aux ()
+setinj n = processTactic' (SetInjective n)
+
 proofstate :: Elab' aux ()
 proofstate = processTactic' ProofState
 
@@ -375,12 +379,14 @@ apply fn imps =
                           if null imps then [] -- do all we can 
                              else
                              map fst (filter (not.snd) (zip args (map fst imps)))
-       let (n, hs) = -- trace ("AVOID UNIFY: " ++ show (fn, dont) ++ "\n" ++ show ptm) $ 
+       let (n, hunis) = -- trace ("AVOID UNIFY: " ++ show (fn, dont) ++ "\n" ++ show ptm) $ 
                       unified p
        let unify = -- trace ("Not done " ++ show hs) $ 
-                    dropGiven dont hs
+                    dropGiven dont hunis hs
        put (ES (p { dontunify = dont, unified = (n, unify) }, a) s prev)
        ptm <- get_term
+       g <- goal
+--        trace ("Goal " ++ show g ++ "\n" ++ show (fn,  imps, unify) ++ "\n" ++ show ptm) $ 
        end_unify
        ptm <- get_term
        return (map (updateUnify unify) args)
@@ -461,15 +467,20 @@ simple_app fun arg =
        claim a RType
        claim b RType
        claim f (RBind (MN 0 "aX") (Pi (Var a)) (Var b))
+       tm <- get_term
        start_unify s
        claim s (Var a)
        prep_fill f [s]
        -- try elaborating in both orders, since we might learn something useful
        -- either way
-       try (do focus s; arg
-               focus f; fun)
-           (do focus f; fun
-               focus s; arg)
+--        try (do focus s; arg
+--                focus f; fun)
+--            (do focus f; fun
+--                focus s; arg)
+       focus f; fun
+       focus s; arg
+       tm <- get_term
+       ps <- get_probs
        complete_fill
        hs <- get_holes
        -- We don't need a and b in the hole queue any more since they were just for
@@ -493,7 +504,8 @@ try t1 t2 = try' t1 t2 False
 try' :: Elab' aux a -> Elab' aux a -> Bool -> Elab' aux a
 try' t1 t2 proofSearch
           = do s <- get
-               case runStateT t1 s of
+               ps <- get_probs
+               case prunStateT ps t1 s of
                     OK (v, s') -> do put s'
                                      return v
                     Error e1 -> if proofSearch || recoverableErr e1 then
@@ -525,18 +537,30 @@ tryAll xs = tryAll' [] (cantResolve, 0) (map fst xs)
     tryAll' [res] _   [] = res
     tryAll' (_:_) _   [] = cantResolve
     tryAll' [] (f, _) [] = f
-    tryAll' cs f (x:xs) = do s <- get
-                             case runStateT x s of
-                                    OK (v, s') -> tryAll' ((do put s'
-                                                               return v):cs)  f xs
-                                    Error err -> do put s
-                                                    if (score err) < 100
-                                                      then
-                                                        tryAll' cs (better err f) xs
-                                                      else
-                                                        tryAll' [] (better err f) xs -- give up
+    tryAll' cs f (x:xs) 
+       = do s <- get
+            ps <- get_probs
+            case prunStateT ps x s of
+                OK (v, s') -> tryAll' ((do put s'
+                                           return v):cs)  f xs
+                Error err -> do put s
+                                if (score err) < 100
+                                    then tryAll' cs (better err f) xs
+                                    else tryAll' [] (better err f) xs -- give up
+
 
     better err (f, i) = let s = score err in
                             if (s >= i) then (lift (tfail err), s)
                                         else (f, i)
 
+prunStateT ps x s 
+      = case runStateT x s of
+             OK (v, s'@(ES (p, _) _ _)) -> 
+                 if (length (problems p) > length ps)
+                    then case reverse (problems p) of
+                            ((_,_,_,e):_) -> Error e
+                    else OK (v, s')
+             Error e -> Error e
+
+dumpprobs [] = ""
+dumpprobs ((_,_,_,e):es) = show e ++ "\n" ++ dumpprobs es

@@ -8,14 +8,14 @@ parity : (n:Nat) -> Parity n
 parity O     = even {n=O}
 parity (S O) = odd {n=O}
 parity (S (S k)) with (parity k)
-  parity (S (S (j + j)))     | even ?= even {n=S j}
-  parity (S (S (S (j + j)))) | odd  ?= odd {n=S j}
+  parity (S (S (j + j)))     | (even {n = j}) ?= even {n=S j}
+  parity (S (S (S (j + j)))) | (odd {n = j})  ?= odd {n=S j}
 
 natToBin : Nat -> List Bool
 natToBin O = Nil
 natToBin k with (parity k)
-   natToBin (j + j)     | even = False :: natToBin j
-   natToBin (S (j + j)) | odd  = True  :: natToBin j
+   natToBin (j + j)     | even {n = j} = False :: natToBin j
+   natToBin (S (j + j)) | odd {n = j}  = True  :: natToBin j
 
 main : IO ()
 main = do print (natToBin 42)

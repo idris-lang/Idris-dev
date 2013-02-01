@@ -129,10 +129,10 @@ total or : Vect Bool m -> Bool
 or = foldr (||) False
 
 total any : (a -> Bool) -> Vect a m -> Bool
-any p = or . map p
+any p = Vect.or . map p
 
 total all : (a -> Bool) -> Vect a m -> Bool
-all p = and . map p
+all p = Vect.and . map p
 
 --------------------------------------------------------------------------------
 -- Transformations

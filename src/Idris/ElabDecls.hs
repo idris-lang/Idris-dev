@@ -514,6 +514,7 @@ elabClause info tcgen (cnum, PClause fc fname lhs_in withs rhs_in whereblock)
         let lhs_tm = orderPats (getInferTerm lhs')
         let lhs_ty = getInferType lhs'
         logLvl 3 ("Elaborated: " ++ show lhs_tm)
+        logLvl 3 ("Elaborated type: " ++ show lhs_ty)
         (clhs, clhsty) <- recheckC fc [] lhs_tm
         logLvl 5 ("Checked " ++ show clhs)
         -- Elaborate where block
@@ -673,7 +674,7 @@ elabClause info tcgen (_, PWith fc fname lhs_in withs wval_in withblock)
                     (map (pexp . (PRef fc) . fst) bargs_pre ++ 
                         pexp wval :
                     (map (pexp . (PRef fc) . fst) bargs_post))
-        logLvl 1 ("New RHS " ++ show rhs)
+        logLvl 5 ("New RHS " ++ showImp True rhs)
         ctxt <- getContext -- New context with block added
         i <- get
         ((rhs', defer, is), _) <-
@@ -686,6 +687,7 @@ elabClause info tcgen (_, PWith fc fname lhs_in withs wval_in withblock)
         def' <- checkDef fc defer
         addDeferred def'
         mapM_ (elabCaseBlock info) is
+        logLvl 5 ("Checked RHS " ++ show rhs')
         (crhs, crhsty) <- recheckC fc [] rhs'
         return $ Right (clhs, crhs)
   where
@@ -765,6 +767,8 @@ elabClass info syn doc fc constraints tn ps ds
                       (filter clause ds)
          let (methods, imethods) 
               = unzip (map (\ ( x,y,z) -> (x, y)) ims)
+         let defaults = map (\ (x, (y, z)) -> (x,y)) defs
+         addClass tn (CI cn (map nodoc imethods) defaults (map fst ps) []) 
          -- build instance constructor type
          -- decorate names of functions to ensure they can't be referred
          -- to elsewhere in the class declaration
@@ -786,8 +790,6 @@ elabClass info syn doc fc constraints tn ps ds
          -- add the default definitions
          mapM_ (elabDecl EAll info) (concat (map (snd.snd) defs))
          i <- get
-         let defaults = map (\ (x, (y, z)) -> (x,y)) defs
-         addClass tn (CI cn (map nodoc imethods) defaults (map fst ps) []) 
          addIBC (IBCClass tn)
   where
     nodoc (n, (_, o, t)) = (n, (o, t))
@@ -800,7 +802,7 @@ elabClass info syn doc fc constraints tn ps ds
 
     impbind [] x = x
     impbind ((n, ty): ns) x = PPi impl n ty (impbind ns x) 
-    conbind (ty : ns) x = PPi constraint (MN 0 "c") ty (conbind ns x)
+    conbind (ty : ns) x = PPi constraint (MN 0 "class") ty (conbind ns x)
     conbind [] x = x
 
     getMName (PTy _ _ _ _ n _) = nsroot n
@@ -888,7 +890,7 @@ elabClass info syn doc fc constraints tn ps ds
 
     insertConstraint c (PPi p@(Imp _ _ _) n ty sc)
                           = PPi p n ty (insertConstraint c sc)
-    insertConstraint c sc = PPi constraint (MN 0 "c") c sc
+    insertConstraint c sc = PPi constraint (MN 0 "class") c sc
 
     -- make arguments explicit and don't bind class parameters
     toExp ns e (PPi (Imp l s _) n ty sc)
@@ -1010,7 +1012,7 @@ elabInstance info syn fc cs n ps t expn ds
 
     mkTyDecl (n, op, t, _) = PTy "" syn fc op n t
 
-    conbind (ty : ns) x = PPi constraint (MN 0 "c") ty (conbind ns x)
+    conbind (ty : ns) x = PPi constraint (MN 0 "class") ty (conbind ns x)
     conbind [] x = x
 
     coninsert cs (PPi p@(Imp _ _ _) n t sc) = PPi p n t (coninsert cs sc)

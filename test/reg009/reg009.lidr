@@ -7,7 +7,7 @@
 >              (as : Vect alpha n) -> 
 >              so (isAnyBy p (n ** as)) ->
 >              (m : Nat ** (Vect (a : alpha ** so (p a)) m, so (m > O)))
-> filterTagP p (a :: as) q with (p a)
+> filterTagP {n = S m} p (a :: as) q with (p a)
 >   | True  = (_
 >              ** 
 >              ((a ** believe_me oh) 

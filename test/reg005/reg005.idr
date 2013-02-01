@@ -18,7 +18,7 @@ eq x y = if x == y then Just ?eqCharOK else Nothing
 rle : (xs : Vect Char n) -> RLE xs
 rle [] = REnd
 rle (x :: xs) with (rle xs)
-   rle (x :: [])            | REnd = RChar O x REnd 
+   rle (x :: Vect.Nil)             | REnd = RChar O x REnd
    rle (x :: rep (S n) yvar ++ ys) | RChar n yvar rs with (eq x yvar)
      rle (x :: rep (S n) x ++ ys) | RChar n x rs | Just p 
            = RChar (S n) x rs
