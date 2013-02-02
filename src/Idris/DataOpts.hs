@@ -48,8 +48,8 @@ forceArgs n t = do i <- getIState
 
     guarded :: Term -> [Int]
     guarded t@(App f a)
-        | (P (TCon _ _) _ _, args) <- unApply t
-            = mapMaybe isF args ++ concatMap guarded args
+--         | (P (TCon _ _) _ _, args) <- unApply t
+--             = mapMaybe isF args ++ concatMap guarded args
         | (P (DCon _ _) _ _, args) <- unApply t
             = mapMaybe isF args ++ concatMap guarded args
     guarded t = mapMaybe isF [t]
