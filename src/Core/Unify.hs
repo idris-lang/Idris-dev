@@ -163,7 +163,7 @@ unify ctxt env topx topy injtc holes =
                     unArgs uf argsx argsy
                  else unifyTmpFail appx appy
       where hnormalise [] _ _ t = t
-            hnormalise ns ctxt env t = normalise ctxt env t
+            hnormalise ns ctxt env t = hnf ctxt env t
             checkHeads (P (DCon _ _) x _) (P (DCon _ _) y _)
                 | x /= y = unifyFail appx appy
             checkHeads (P (TCon _ _) x _) (P (TCon _ _) y _)

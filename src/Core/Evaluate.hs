@@ -224,7 +224,7 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
           do let val = lookupDefAcc Nothing n atRepl ctxt
              case val of
                 [(CaseOp inl inr _ _ _ ns tree _ _, acc)]
-                     | acc == Public || simpl -> -- unoptimised version
+                     | acc == Public -> -- unoptimised version
                   if canSimplify inl inr n stk
                      then return $ unload env (VP Ref n ty) args
                      else do c <- evCase ntimes (n:stk) top env ns args tree
