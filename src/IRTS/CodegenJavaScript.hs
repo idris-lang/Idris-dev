@@ -53,36 +53,9 @@ translateIdentifier :: String -> String
 translateIdentifier =
   replaceReserved . concatMap replaceBadChars
   where replaceBadChars :: Char -> String
-        replaceBadChars ' '  = "_"
-        replaceBadChars '_'  = "__"
-        replaceBadChars '@'  = "_at"
-        replaceBadChars '['  = "_OSB"
-        replaceBadChars ']'  = "_CSB"
-        replaceBadChars '('  = "_OP"
-        replaceBadChars ')'  = "_CP"
-        replaceBadChars '{'  = "_OB"
-        replaceBadChars '}'  = "_CB"
-        replaceBadChars '!'  = "_bang"
-        replaceBadChars '#'  = "_hash"
-        replaceBadChars '.'  = "_dot"
-        replaceBadChars ','  = "_comma"
-        replaceBadChars ':'  = "_colon"
-        replaceBadChars '+'  = "_plus"
-        replaceBadChars '-'  = "_minus"
-        replaceBadChars '*'  = "_times"
-        replaceBadChars '<'  = "_lt"
-        replaceBadChars '>'  = "_gt"
-        replaceBadChars '='  = "_eq"
-        replaceBadChars '|'  = "_pipe"
-        replaceBadChars '&'  = "_amp"
-        replaceBadChars '/'  = "_SL"
-        replaceBadChars '\\' = "_BSL"
-        replaceBadChars '%'  = "_per"
-        replaceBadChars '?'  = "_que"
-        replaceBadChars '~'  = "_til"
-        replaceBadChars '\'' = "_apo"
         replaceBadChars c
           | isDigit c = "_" ++ [c] ++ "_"
+          | not (isLetter c && isAscii c) = '_' : show (ord c)
           | otherwise = [c]
         replaceReserved s
           | s `elem` reserved = '_' : s
