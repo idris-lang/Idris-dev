@@ -54,6 +54,8 @@ translateIdentifier =
   replaceReserved . concatMap replaceBadChars
   where replaceBadChars :: Char -> String
         replaceBadChars c
+          | ' ' <- c = "_"
+          | '_' <- c = "__"
           | isDigit c = "_" ++ [c] ++ "_"
           | not (isLetter c && isAscii c) = '_' : show (ord c)
           | otherwise = [c]
