@@ -51,7 +51,7 @@ codegenJavaScript definitions filename outputType = do
 
 translateIdentifier :: String -> String
 translateIdentifier =
-  concatMap replaceBadChars
+  replaceReserved . concatMap replaceBadChars
   where replaceBadChars :: Char -> String
         replaceBadChars ' '  = "_"
         replaceBadChars '_'  = "__"
@@ -84,6 +84,53 @@ translateIdentifier =
         replaceBadChars c
           | isDigit c = "_" ++ [c] ++ "_"
           | otherwise = [c]
+        replaceReserved s
+          | s `elem` reserved = '_' : s
+          | otherwise         = s
+        reserved = [ "break"
+                   , "case"
+                   , "catch"
+                   , "continue"
+                   , "debugger"
+                   , "default"
+                   , "delete"
+                   , "do"
+                   , "else"
+                   , "finally"
+                   , "for"
+                   , "function"
+                   , "if"
+                   , "in"
+                   , "instanceof"
+                   , "new"
+                   , "return"
+                   , "switch"
+                   , "this"
+                   , "throw"
+                   , "try"
+                   , "typeof"
+                   , "var"
+                   , "void"
+                   , "while"
+                   , "with"
+                   
+                   , "class"
+                   , "enum"
+                   , "export"
+                   , "extends"
+                   , "import"
+                   , "super"
+                   
+                   , "implements"
+                   , "interface"
+                   , "let"
+                   , "package"
+                   , "private"
+                   , "protected"
+                   , "public"
+                   , "static"
+                   , "yield"
+                   ]
 
 translateNamespace :: Name -> [String]
 translateNamespace (UN _)    = [idrNamespace]
@@ -112,8 +159,8 @@ translateConstant c       =
 
 translateParameterlist =
   map translateParameter
-  where translateParameter (MN i name) = name ++ show i
-        translateParameter (UN name) = name
+  where translateParameter (MN i name) = translateIdentifier name ++ show i
+        translateParameter (UN name) = translateIdentifier name
 
 translateDeclaration :: ([String], SDecl) -> String
 translateDeclaration (path, SFun name params stackSize body) =
