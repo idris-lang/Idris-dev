@@ -356,7 +356,7 @@ elab ist info pattern tcgen fn tm
                     ps' <- get_probs
             -- Attempt to resolve any type classes which have 'complete' types,
             -- i.e. no holes in them
-                    when (not pattern || (ina && not tcgen)) $
+                    when (not pattern || (ina && not tcgen && not guarded)) $
                         mapM_ (\n -> do focus n
                                         g <- goal
                                         env <- get_env
@@ -612,7 +612,7 @@ resolveTC depth fn ist
                 args <- apply (Var n) imps
                 ps' <- get_probs
                 when (length ps < length ps') $ fail "Can't apply type class"
-                --                 traceWhen (all boundVar ttypes) ("Progress: " ++ show t ++ " with " ++ show n) $
+--                 traceWhen (all boundVar ttypes) ("Progress: " ++ show t ++ " with " ++ show n) $
                 mapM_ (\ (_,n) -> do focus n
                                      t' <- goal
                                      let (tc', ttype) = unApply t'

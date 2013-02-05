@@ -110,8 +110,8 @@ expandAlts i all@(ConCase n _ _ _ : alts) def
     | (TyDecl c@(DCon _ arity) ty : _) <- lookupDef Nothing n (tt_ctxt i)
          = do let tyn = getTy n (tt_ctxt i)
               case lookupCtxt Nothing tyn (idris_datatypes i) of
-                  (TI ns _ : _) -> do let ps = map mkPat ns
-                                      return $ addAlts ps (altsFor all) all
+                  (TI ns _ _: _) -> do let ps = map mkPat ns
+                                       return $ addAlts ps (altsFor all) all
                   _ -> return all
   where
     altsFor [] = []
@@ -225,7 +225,7 @@ genAll i args = case filter (/=Placeholder) $ concatMap otherPats (nub args) of
                  let p = PApp fc (PRef fc n) (zipWith upd xs' xs)
                  let tyn = getTy n (tt_ctxt i)
                  case lookupCtxt Nothing tyn (idris_datatypes i) of
-                         (TI ns _ : _) -> p : map (mkPat fc) (ns \\ [n])
+                         (TI ns _ _ : _) -> p : map (mkPat fc) (ns \\ [n])
                          _ -> [p]
     ops fc n arg o = return Placeholder
 
@@ -300,7 +300,7 @@ calcProd i fc n pats = do patsprod <- mapM prodRec pats
      cotype ty 
         | (P _ t _, _) <- unApply (getRetTy ty)
             = case lookupCtxt Nothing t (idris_datatypes i) of
-                   [TI _ True] -> True
+                   [TI _ True _] -> True
                    _ -> False
         | otherwise = False
 

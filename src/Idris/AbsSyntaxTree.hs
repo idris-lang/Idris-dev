@@ -579,7 +579,9 @@ deriving instance Binary OptInfo
 !-}
 
 
-data TypeInfo = TI { con_names :: [Name], codata :: Bool }
+data TypeInfo = TI { con_names :: [Name], 
+                     codata :: Bool,
+                     param_pos :: [Int] }
     deriving Show
 {-!
 deriving instance Binary TypeInfo

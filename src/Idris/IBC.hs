@@ -21,7 +21,7 @@ import System.Directory
 import Paths_idris
 
 ibcVersion :: Word8
-ibcVersion = 24
+ibcVersion = 25
 
 data IBCFile = IBCFile { ver :: Word8,
                          sourcefile :: FilePath,
@@ -1522,11 +1522,13 @@ instance Binary OptInfo where
                return (Optimise x1 x2 x3)
 
 instance Binary TypeInfo where
-        put (TI x1 x2) = do put x1
-                            put x2
+        put (TI x1 x2 x3) = do put x1
+                               put x2
+                               put x3
         get = do x1 <- get
                  x2 <- get
-                 return (TI x1 x2)
+                 x3 <- get
+                 return (TI x1 x2 x3)
 
 instance Binary SynContext where
         put x

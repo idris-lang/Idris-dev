@@ -240,6 +240,8 @@ process fn (DebugInfo n)
         when (not (null oi)) $ iputStrLn (show oi)
         let si = lookupCtxt Nothing n (idris_statics i)
         when (not (null si)) $ iputStrLn (show si)
+        let di = lookupCtxt Nothing n (idris_datatypes i)
+        when (not (null di)) $ iputStrLn (show di)
         let d = lookupDef Nothing n (tt_ctxt i)
         when (not (null d)) $ liftIO $
            do print (head d)

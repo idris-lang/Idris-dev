@@ -67,7 +67,7 @@ elabType info syn doc fc opts n ty' = {- let ty' = piBind (params info) ty_in
          let (t, _) = unApply (getRetTy nty')
          let corec = case t of
                         P _ rcty _ -> case lookupCtxt Nothing rcty (idris_datatypes i) of
-                                        [TI _ True] -> True
+                                        [TI _ True _] -> True
                                         _ -> False
                         _ -> False
          let opts' = if corec then (Coinductive : opts) else opts
@@ -141,7 +141,10 @@ elabData info syn doc fc codata (PDatadecl n t_in dcons)
          cons <- mapM (elabCon info syn n codata) dcons
          ttag <- getName
          i <- get
-         put (i { idris_datatypes = addDef n (TI (map fst cons) codata)
+         let as = map (const Nothing) (getArgTys cty) 
+         let params = findParams (zip as (repeat True)) (map snd cons)
+         logLvl 2 $ "Parameters : " ++ show params
+         put (i { idris_datatypes = addDef n (TI (map fst cons) codata params)
                                              (idris_datatypes i) })
          addIBC (IBCDef n)
          addIBC (IBCData n)
@@ -150,6 +153,29 @@ elabData info syn doc fc codata (PDatadecl n t_in dcons)
          collapseCons n cons
          updateContext (addDatatype (Data n ttag cty cons))
          mapM_ (checkPositive n) cons
+  where findParams :: [(Maybe Name, Bool)] -> [Type] -> [Int]
+        findParams ps [] = mapMaybe (\ ((x, y), n) ->
+                                          if y then Just n else Nothing)
+                                    (zip ps [0..])
+        findParams ps (t : ts) = findParams (updateParams ps t) ts
+
+        updateParams ps (Bind n (Pi t) sc) 
+            = updateParams ps (instantiate (P Bound n t) sc)
+        updateParams ps tm@(App f a)
+            | (P _ fn _, args) <- unApply tm
+               = if fn == n
+                    then updateParamsA ps args
+                    else updateParams (updateParams ps f) a
+            | otherwise = updateParams (updateParams ps f) a
+        updateParams ps _ = ps
+
+        updateParamsA ((Nothing, b) : ns) (P _ n' _ : args)
+             = (Just n', b) : updateParamsA ns args
+        updateParamsA ((Just p, b) : ns) (P _ n' _ : args)
+             = (Just n', b && p == n') : updateParamsA ns args
+        updateParamsA ((mn, _) : ns) (_ : args)
+             = (mn, False) : updateParamsA ns args
+        updateParamsA ps args = ps
 
 elabRecord :: ElabInfo -> SyntaxInfo -> String -> FC -> Name -> 
               PTerm -> String -> Name -> PTerm -> Idris ()
@@ -911,6 +937,7 @@ elabInstance info syn fc cs n ps t expn ds
          (n, ci) <- case lookupCtxtName (namespace info) n (idris_classes i) of
                        [c] -> return c
                        _ -> fail $ show fc ++ ":" ++ show n ++ " is not a type class"
+         let constraint = PApp fc (PRef fc n) (map pexp ps)
          let iname = case expn of
                          Nothing -> UN ('@':show n ++ "$" ++ show ps)
                          Just nm -> nm
@@ -957,6 +984,10 @@ elabInstance info syn fc cs n ps t expn ds
          iLOG (show idecls)
          mapM (elabDecl EAll info) idecls
          addIBC (IBCInstance intInst n iname)
+--          -- for each constraint, build a top level function to chase it
+--          logLvl 5 $ "Building functions"
+--          fns <- mapM (cfun (instanceName ci) constraint syn idecls) cs
+--          mapM_ (elabDecl EAll info) (concat fns)
   where
     intInst = case ps of
                 [PConstant IType] -> True
@@ -1047,6 +1078,31 @@ elabInstance info syn fc cs n ps t expn ds
     clauseFor m iname ns (PClauses _ _ m' _) 
        = decorate ns iname m == decorate ns iname m'
     clauseFor m iname ns _ = False
+
+{- This won't work yet. Can it ever, in this form?
+
+    cfun cn c syn all con
+        = do let cfn = UN ('@':'@':show cn ++ "#" ++ show con)
+             let mnames = take (length all) $ map (\x -> MN x "meth") [0..]
+             let capp = PApp fc (PRef fc cn) (map (pexp . PRef fc) mnames)
+             let lhs = PApp fc (PRef fc cfn) [pconst capp]
+             let rhs = PResolveTC (FC "HACK" 0)
+             let ty = PPi constraint (MN 0 "pc") c con
+             iLOG (showImp True ty)
+             iLOG (showImp True lhs ++ " = " ++ showImp True rhs)
+             i <- get
+             let conn = case con of
+                            PRef _ n -> n
+                            PApp _ (PRef _ n) _ -> n
+             let conn' = case lookupCtxtName Nothing conn (idris_classes i) of
+                                [(n, _)] -> n
+                                _ -> conn
+             addInstance False conn' cfn
+             addIBC (IBCInstance False conn' cfn)
+             iputStrLn ("Added " ++ show (conn, cfn, ty) ++ "\n" ++ show (lhs, rhs))
+             return [PTy "" syn fc [] cfn ty,
+                     PClauses fc [Inlinable,TCGen] cfn [PClause fc cfn lhs [] rhs []]]
+-}
 
 decorateid decorate (PTy doc s f o n t) = PTy doc s f o (decorate n) t
 decorateid decorate (PClauses f o n cs) 
