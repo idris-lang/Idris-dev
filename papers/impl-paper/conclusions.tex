@@ -7,6 +7,8 @@ years as tools for verifying software correctness, and several experimental
 languages are being developed, in particular Agda \cite{norell2007thesis}, Epigram
 \cite{McBride2004a,Levitation2010} and Trellys \cite{Kimmell2012}.
 
+[Talk about~\cite{Asperti}, ~\cite{OutsideIn}, ~\cite{Sozeau2008}]
+
 An earlier implementation of \Idris{} was built on the \Ivor{} proof engine 
 \cite{Brady2006b}. This implementation differed in one important way --- unlike
 the present implementation, there was limited separation between the type theory
@@ -61,16 +63,17 @@ in under 1000 lines of Haskell code. It is important that this kernel remains sm
 the correctness of the underlying type system, and keeping the implementation small
 reduces the possibility of errors.
 
-The approach we have taken to implementing the high level language, implementing
-a tactic language as an embedded DSL, allows us to
-build programs on top of a small and unchanging kernel, rather than extending 
-the core language to deal with implicit syntax, unification and type classes.
-High level \Idris{} features are implemented by describing the corresponding
-sequence of tactics to build an equivalent program in \TT{}, via a development
-calculus of incomplete terms, \TTdev{}. A significant advantage we have found with
-this approach is that higher level features can easily be implemented in terms
-of existing elaborator components. For example, once we have implemented elaboration
-for data types and functions, it is easy to add several features:
+The approach we have taken to implementing the high level language,
+implementing an elaboration monad with tactics for program construction, allows
+us to build programs on top of a small and unchanging kernel, rather than
+extending the core language to deal with implicit syntax, unification and type
+classes.  High level \Idris{} features are implemented by describing the
+corresponding sequence of tactics to build an equivalent program in \TT{}, via
+a development calculus of incomplete terms, \TTdev{}. A significant advantage
+we have found with this approach is that higher level features can easily be
+implemented in terms of existing elaborator components. For example, once we
+have implemented elaboration for data types and functions, it is easy to add
+several features:
 
 \begin{itemize}
 \item \textbf{Type classes}: A dictionary is merely a record containing the
@@ -89,13 +92,13 @@ implement these high level features.
 Other high level features such as dependent records, tuples and monad comprehensions
 can be added equally easily --- and indeed have been added in the full implementation.  
 Furthermore, 
-since we have used a tactic-based EDSL to elaborate \Idris{} to \TT{}, it is
-possible to expose the tactic language to the programmer. This opens up the
-possibility of implementing domain specific decision procedures, or implementing
-user defined tactics in a style similar to Coq's \texttt{Ltac} language \cite{Delahaye2000}.
-Although \TT{} is primarily intended as a core language for \Idris{}, 
-its rich type system also allows it to capture a number of high level languages, especially
-when augmented with primitive operators. 
+since we have taken a tactic-based approach to elaborating \Idris{} to \TT{},
+it is possible to expose tactics to the programmer. This opens up
+the possibility of implementing domain specific decision procedures, or
+implementing user defined tactics in a style similar to Coq's \texttt{Ltac}
+language \cite{Delahaye2000}.  Although \TT{} is primarily intended as a core
+language for \Idris{}, its rich type system also allows it to capture a number
+of high level languages, especially when augmented with primitive operators. 
 
 We have not discussed the performance of the elaboration
 algorithm, or described how \Idris{} compiles to executable code. In practice,
@@ -118,19 +121,10 @@ theory.
 However, a programming language implementation is not an end in itself. 
 Programming languages exist to support research and practice in many different
 domains. In future work, therefore, I plan to apply domain specific
-language based techniques to realistic problems
-in important safety critical domains such as security and network protocol
-design and implementation. In order to be successful, this will require a language which
-is expressive enough to describe protocol specifications at a high level, and robust 
-enough to guarantee correct implementation of those protocols. \Idris{}, I believe,
-is the right tool for this work.
+language based techniques to realistic problems in important safety critical
+domains such as security and network protocol design and implementation. In
+order to be successful, this will require a language which is expressive enough
+to describe protocol specifications at a high level, and robust enough to
+guarantee correct implementation of those protocols. \Idris{}, I believe, is
+the right tool for this work.
 
-
-
-%\subsection{Further Work}
-
-%[Would the EDSL approach work in other languages? Adding components of DTP
-%to imperative languages, say, using \TT{} as a verified core.
-%\Idris{} implementation as the beginning of a project to explore practical
-%DTP --- systems, protocols, security especially. And just having full
-%dependent types for lightweight correctness guarantees.]

@@ -192,7 +192,7 @@ literature. In \Idris{}, vectors are declared as follows:
 
 \begin{SaveVerbatim}{vect}
 
-data Vect : Set -> Nat -> Set where
+data Vect : Type -> Nat -> Type where
    Nil  : Vect a O
    (::) : a -> Vect a k -> Vect a (S k)
 
@@ -209,7 +209,7 @@ This declares a family of types, which requires a different form of declaration
 from the simple type declarations above. It resembles a Haskell GADT
 declaration: it explicitly states the type
 of the type constructor \tTC{Vect} --- it takes a type and a \tTC{Nat} as an
-argument, where \tTC{Set} stands for the type of types. We say that \tTC{Vect}
+argument, where \tTC{Type} stands for the type of types. We say that \tTC{Vect}
 is \emph{parameterised} by a type, and \emph{indexed} over \tTC{Nat}. Each
 constructor targets a different part of the family of types. \tDC{Nil} can only
 be used to construct vectors with zero length, and \tDC{::} to construct
@@ -239,7 +239,7 @@ They are declared as follows in the library:
 
 \begin{SaveVerbatim}{findecl}
 
-data Fin : Nat -> Set where
+data Fin : Nat -> Type where
    fO : Fin (S k)
    fS : Fin k -> Fin (S k)
 
@@ -316,19 +316,18 @@ their types, to be inferred by the machine. These types could also be given expl
 
 \begin{SaveVerbatim}{vindeximpty}
 
-index : {a:Set} -> {n:Nat} -> Fin n -> Vect a n -> a
+index : {a:Type} -> {n:Nat} -> Fin n -> Vect a n -> a
 
 \end{SaveVerbatim}
 \useverb{vindeximpty}
 
 \noindent
-Implicit arguments, given in braces \texttt{\{\}} in the type declaration, are not given in
-applications of \texttt{index}; their values can be inferred from the types of
-the \texttt{Fin n} and \texttt{Vect a n} arguments. Any name which appears as a parameter
-or index in a type declaration, but which is otherwise free, will be automatically
-bound as an implicit argument. Indeed, binding arguments in this way is the essence
-of dependent types.
-Implicit arguments can still be given explicitly in applications, using the syntax
+Implicit arguments, given in braces \texttt{\{\}} in the type declaration, are
+not given in applications of \texttt{index}; their values can be inferred from
+the types of the \texttt{Fin n} and \texttt{Vect a n} arguments. Any name which
+appears as a parameter or index in a type declaration, but which is otherwise
+free, will be automatically bound as an implicit argument.  Implicit arguments
+can still be given explicitly in applications, using the syntax
 \texttt{\{a=value\}} and \texttt{\{n=value\}}, for example:
 
 \begin{SaveVerbatim}{vindexexp}
@@ -577,7 +576,7 @@ plus one:
 
 \begin{SaveVerbatim}{parity}
 
-data Parity : Nat -> Set where
+data Parity : Nat -> Type where
    even : Parity (n + n)
    odd  : Parity (S (n + n))
 

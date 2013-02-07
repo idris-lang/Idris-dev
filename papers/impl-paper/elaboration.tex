@@ -41,33 +41,42 @@ similar to a $\LET$ binding, but without any computational force,
 i.e. there are no reduction rules for guess bindings. 
 Using binders to represent holes is useful in a dependently typed setting since
 one value may determine another. Attaching a guess to a binder ensures that
-instantiating one such value also instantiates all of its dependencies. The
-typing rules for binders ensure that no $?$ bindings leak into types.
+instantiating one such variable also instantiates all of its dependencies. 
+%The
+%typing rules for binders ensure that no $?$ bindings leak into types.
 
 \FFIG{
-\AR{
+\begin{array}{c}
 \vb ::= \ldots 
  \:\mid\: \hole{\vx}{\vt} \:\:(\mbox{hole binding}) \:\:
  \:\mid\: \guess{\vx}{\vt}{\vt} \:\:(\mbox{guess})
 \medskip\\
+\mathsf{HoleVar}\:
+\Rule{(\hole{\vx}{\vS})\in\Gamma}
+{\Gamma\vdash\vx\Hab\vS}
+\hg
+\mathsf{GuessVar}\:
+\Rule{(\guess{\vx}{\vS}{\vs})\in\Gamma}
+{\Gamma\vdash\vx\Hab\vS}
+\\
+\mathsf{Hole}\:
 \Rule{
 \Gamma;\hole{\vx}{\vS}\proves\ve\Hab\vT
 }
 {
 \Gamma\proves\hole{\vx}{\vS}\SC\ve\Hab\vT
 }
-\hspace*{0.1cm}\vx\not\in\vT
-\hspace*{0.1in}\mathsf{Hole}
+%\hspace*{0.1cm}\vx\not\in\vT
 \hg
+\mathsf{Guess}\:
 \Rule{
 \Gamma;\guess{\vx}{\vS}{\ve_1}\proves\ve_2\Hab\vT
 }
 {
 \Gamma\proves\guess{\vx}{\vS}{\ve_1}\SC\ve_2\Hab\vT
 }
-\hspace*{0.1cm}\vx\not\in\vT
-\hspace*{0.1in}\mathsf{Guess}
-}
+%\hspace*{0.1cm}\vx\not\in\vT
+\end{array}
 }
 {\TTdev{} extensions}
 {ttdev}
@@ -77,12 +86,13 @@ typing rules for binders ensure that no $?$ bindings leak into types.
 
 \label{sect:prfstate}
 
-A proof state is a tuple, $(\vC, \Delta, \ve, \vQ)$, containing:
+A proof state is a tuple, $(\vC, \Delta, \ve, \vP, \vQ)$, containing:
 
 \begin{itemize}
 \item A global context, $\vC$, containing pattern matching definitions and their types
 \item A local context, $\Delta$, containing pattern bindings
 \item A proof term, $\ve$, in \TTdev{}
+\item Unsolved unification problems, $\vP$
 \item A hole queue, $\vQ$
 %\item \remph{Deferred} definitions, $\vD$, for introducing global metavariables
 \end{itemize}
@@ -91,29 +101,36 @@ The \remph{hole queue} is a priority queue of names of hole and guess binders
 $\langle\vx_1,\vx_2,\ldots,\vx_n\rangle$
 in the proof term ---
 ensuring that each bound name is unique. Holes refer to \remph{sub goals}
-in the proof.
-When this queue is empty, the proof term is complete.
+in the proof. As a proof develops, unification problems arising from unsolved
+holes may be introduced, and may be solved when those holes are instantiated.
+When the hole queue is empty, and there are no remaining unification 
+problems, the proof term is complete.
+
 Creating a \TT{} expression from an \Idris{} expression involves creating
 a new proof state, with an empty proof term, and using the high level definition
 to direct the building of a final proof state, with a complete proof term.
 
 In the implementation, the proof state is captured in an elaboration monad,
-\texttt{Elab}, which includes various operations for querying and updating
-the proof state, manipulating terms, generating fresh names, etc. However, we will
-describe \Idris{} elaboration in terms of meta-operations on the proof state,
-in order to capture the essence of the elaboration process without being distracted
-by implementation details. These meta-operations include: 
+\texttt{Elab}, which is simply a state monad with exceptions.  This monad
+supports various operations for querying and updating the proof state,
+manipulating terms, generating fresh names, etc. However, we will describe
+\Idris{} elaboration in terms of meta-operations on the proof state, in order
+to capture the essence of the elaboration process without being distracted by
+implementation details. These meta-operations include: 
 
 \begin{itemize}
 \item \demph{Queries} which retrieve values from the proof state, without modifying
 the state. For example, we can:
 \begin{itemize}
-\item Get the type of the current sub goal ($\MO{Type}$)
-\item Retrieve the local context $\Gamma$ at the current sub goal ($\MO{Context}$)
-\item Type check ($\MO{Check}$) or normalise ($\MO{Normalise}$) a term relative to $\Gamma$
+\item Get the type of the current sub goal ($\MO{Type}$).
+\item Retrieve the local context $\Gamma$ at the current sub goal.
+($\MO{Context}$)
+\item Type check ($\MO{Check}$) or normalise ($\MO{Normalise}$) a term relative
+to $\Gamma$.
 \end{itemize}
-\item \demph{Unification}, which unifies two terms (potentially solving sub goals) 
-relative to $\Gamma$
+\item \demph{Unification}, which unifies two terms (potentially solving sub
+goals) relative to $\Gamma$. This may introduce new unification problems
+to the proof state.
 \item \demph{Tactics} which update the proof term. Tactics operate on the sub term
 at the binder specified by the head of the hole queue $\vQ$.
 \item \demph{Focussing} on a specific sub goal, which brings a different sub goal to the
@@ -122,18 +139,19 @@ head of the hole queue.
 %$\vC$ which solves the sub goal.
 \end{itemize}
 
-Elaboration of an \Idris{} expression involves creating a new proof state, running
-a series of tactics to build a complete proof term, then retrieving and \remph{rechecking}
-the final proof term, which must be a \TT{} program (i.e. does not contain any of the
-\TTdev{} extensions). We call a sub-term which contains no hole or guess bindings 
-\demph{pure}. Although a pure term does not contain hole or guess bindings, it may
-nevertheless \remph{refer} to hole- or guess-bound variables.
+Elaboration of an \Idris{} expression involves creating a new proof state,
+running a series of tactics to build a complete proof term, then retrieving and
+\remph{rechecking} the final proof term, which must be a \TT{} program (i.e.
+does not contain any of the \TTdev{} extensions). We call a sub-term which
+contains no hole or guess bindings \demph{pure}. Although a pure term does not
+contain hole or guess bindings, it may nevertheless \remph{refer} to hole- or
+guess-bound variables.
 
-The proof state is initialised with the $\MO{NewProof}$ operation. Given a global
-context $\vC$, $\MO{NewProof}\:\vt$ sets up the proof state as:
+The proof state is initialised with the $\MO{NewProof}$ operation. Given a
+global context $\vC$, $\MO{NewProof}\:\vt$ sets up the proof state as:
 
 \DM{
-(\vC, \cdot, \hole{\vx}{\vt}\SC\vx, \langle\vx\rangle)
+(\vC, \cdot, \hole{\vx}{\vt}\SC\vx, \langle\rangle, \langle\vx\rangle)
 }
 
 The local context is initially empty, and the initial hole queue is the $\vx$ standing for
@@ -143,7 +161,7 @@ $\MO{NewTerm}\:\vt$ discards the proof term and hole queue, and
 updates the proof state to:
 
 \DM{
-(\vC, \Delta, \hole{\vx}{\vt}\SC\vx, \langle\vx\rangle)
+(\vC, \Delta, \hole{\vx}{\vt}\SC\vx, \langle\rangle, \langle\vx\rangle)
 }
 
 
@@ -201,6 +219,7 @@ are given explicitly, the application must be expanded.
 \newcommand{\Check}{\MO{Check}_\Gamma}
 \newcommand{\Eval}{\MO{Normalise}_\Gamma}
 \newcommand{\Unify}{\MO{Unify}_\Gamma}
+\newcommand{\PrimUnify}{\MO{PrimUnify}_\Gamma}
 
 \subsection{Tactics}
 
@@ -211,6 +230,9 @@ may have side-effects including failure, or updating the proof state. We have th
 primitive meta-operations:
 
 \begin{itemize}
+\item $\MO{Get}$ and $\MO{Put}$ which allow direct access to the proof state.
+% Focus and Unfocus don't need to be primitive, we could show in terms of
+% Get and Put
 \item $\MO{Focus}\:\vn$, which moves $\vn$ to the head of the hole queue.
 \item $\MO{Unfocus}$, which moves the current hole to the back of the hole queue.
 \item $\Check\:\ve$, which type checks an expression $\ve$ relative to a context
@@ -220,12 +242,38 @@ if the expression is not well-typed.
 \item $\Eval\:\ve$, which evaluates a well-typed expression $\ve$ relative to a context 
 $\Gamma$, returning its normal form.
 \item 
-$\Unify\:\ve_1\:\ve_2$, 
-which unifies $\ve_1$ and $\ve_2$ by finding the values with which holes must be instantiated
-for $\ve_1$ and $\ve_2$ to be convertible relative to $\Gamma$
-(i.e. for $\Gamma\proves\ve_1\converts\ve_2$ to hold). $\MO{Unify}$ will fail
-if it cannot find such values. If successful, $\MO{Unify}$ will update the proof state.
+$\PrimUnify\:\ve_1\:\ve_2$, 
+which attempts to unify $\ve_1$ and $\ve_2$ by finding the values with which
+holes must be instantiated for $\ve_1$ and $\ve_2$ to be convertible relative
+to $\Gamma$ (i.e. for $\Gamma\proves\ve_1\converts\ve_2$ to hold).
 \end{itemize}
+
+Unification is crucial to the success of elaboration --- it is unification
+which finds values of implicit arguments, in particular. We do not require
+unification to succeed immediately, in general, as instantiating a hole may 
+affect the solution to other unification problems. Instead, 
+$\MO{PrimUnify}$ may give one of the following results:
+
+\begin{itemize}
+\item $\MO{Success}$, if there is a solution for $\ve_1$ and $\ve_2$. 
+\item $\MO{Failure}$, if no solution is found due to a failure to unify
+sub-terms in normal form.
+\item $\MO{Blocked}$, otherwise, in which case further elaboration may lead
+to further refinement of the problem.
+\end{itemize}
+
+$\MO{Unify}$ attempts to solve the given unification problem using
+$\MO{PrimUnify}$, then attempts to further refine existing problems in the proof
+state. This operation is given in Figure \ref{unifyps}. 
+
+\FFIG{
+\mbox{\textbf{[UNIFY ALGORITHM GOES HERE] }}
+%Show how it uses a PrimUnify
+%operation to update
+%the proof state with new problems, and solve the old ones
+}
+{The $\MO{Unify}$ meta-operation}
+{unifyps}
 
 \demph{Tactics} are meta-operations which operate on the sub-term given
 by the hole at the head of the hole queue in the proof state. They take the following form:
@@ -278,7 +326,7 @@ solve other holes by unifying the expected type of $\vx$ with the type of $\vv$:
    \MoRet{\RW{do}\:\AR{
    \vT' \leftarrow \Check\:\vv\\
    \Unify\:\vT\:\vT'\\
-   \RW{return}\:\guess{\vx}{\vT}{\vv'}\SC\ve}
+   \RW{return}\:\guess{\vx}{\vT}{\vv}\SC\ve}
    } \\
 }
 }
@@ -288,7 +336,7 @@ For example, consider the following proof term:
 
 \DM{
 \AR{
-\hole{\vA}{\Set}\SC\hole{\vk}{\Nat}\SC
+\hole{\vA}{\Type}\SC\hole{\vk}{\Nat}\SC
 \hole{\vx}{\vA}\SC\hole{\vxs}{\Vect\:\vA\:\vk}\SC
 \\
 \hole{\vys}{\Vect\:\vA\:(\suc\:\vk)}\SC\vys
@@ -335,7 +383,7 @@ computational force. Once a term is complete in a guess binding, it may be subst
 scope of the binding safely.
 In each of these tactics, if any step fails, or the term in focus does not take
 the correct form (e.g. is not a guess in the case of $\MO{Solve}$ or not a hole
-in the case of $\MO{Claim}$ and $\MO{Fill}$, the entire tactic fails. We can
+in the case of $\MO{Claim}$ and $\MO{Fill}$) the entire tactic fails. We can
 handle failure using the $\MO{Try}$ tactic combinator:
 
 \DM{
@@ -367,14 +415,14 @@ binding requires that the goal normalises to a function type:
 }
 
 \noindent
-Creating a $\forall$ binding requires that the goal is a $\TC{Set}$:
+Creating a $\forall$ binding requires that the goal is a $\TC{Type}$:
 
 \DM{
 \PA{\A\A}{
-\MO{Pi}_\Gamma & (\vn\Hab\vS) & (\hole{\vx}{\Set}\SC\vx) &
+\MO{Pi}_\Gamma & (\vn\Hab\vS) & (\hole{\vx}{\Type}\SC\vx) &
  \MoRet{\RW{do}\:\AR{
-   \Set\:\leftarrow\:\Check\:\vS\\
-   \RW{return}\:\all{\vn}{\vS}\SC\hole{\vx}{\Set}\SC\vx
+   \Type\:\leftarrow\:\Check\:\vS\\
+   \RW{return}\:\all{\vn}{\vS}\SC\hole{\vx}{\Type}\SC\vx
    }
    }
 }
@@ -387,7 +435,7 @@ Creating a $\LET$ binding requires a type and a value.
 \PA{\A\A}{
 \MO{Let}_\Gamma & (\vn\Hab\vS\defq\vv) & (\hole{\vx}{\vT}\SC\vx) &
  \MoRet{\RW{do}\:\AR{
-   \Set\:\leftarrow\:\Check\:\vS\\
+   \Type\:\leftarrow\:\Check\:\vS\\
    \vS'\:\leftarrow\:\Check\:\vv\\
    \Unify\:\vS\:\vS'\\
    \RW{return}\:\LET\:\vn\Hab\vS\defq\vv\SC\hole{\vx}{\vT}\SC\vx
@@ -420,7 +468,7 @@ with the pattern variable directly:
 \PA{\A\A}{
 \MO{Pat}_\Gamma & \vn & (\hole{\vx}{\vT}\SC\ve) &
   \MoRet{\RW{do}\:\AR{
-    \MO{PatBind}\:(\vx\Hab\vT)\\
+    \MO{PatBind}\:(\vn\Hab\vT)\\
     \RW{return}\:\ve[\vn/\vx]
   }}
 }
@@ -445,8 +493,8 @@ For example, consider the following simple
 
 \DM{
 \AR{
-\FN{id}\Hab\all{\vA}{\Set}\SC\all{\va}{\vA}\SC\vA \\
-\FN{id}\:=\:\lam{\vA}{\Set}\SC\lam{\va}{\vA}\SC\va  
+\FN{id}\Hab\all{\vA}{\Type}\SC\all{\va}{\vA}\SC\vA \\
+\FN{id}\:=\:\lam{\vA}{\Type}\SC\lam{\va}{\vA}\SC\va  
 }
 }
 
@@ -459,7 +507,7 @@ Note that the types on each $\MO{Lambda}$ are solved by unification:
 \AR{
 \MO{MkId}\:\mq\:\RW{do}\:
  \AR{
-   \MO{NewProof}\:\all{\vA}{\Set}\SC\all{\va}{\vA}\SC\vA \\
+   \MO{NewProof}\:\all{\vA}{\Type}\SC\all{\va}{\vA}\SC\vA \\
    \MO{RunTac}\;\MO{Attack} \\
    \MO{RunTac}\;(\MO{Lambda}\;\vA) \\
    \MO{RunTac}\;\MO{Attack} \\
@@ -494,8 +542,8 @@ a Coq proof script.
 \AR{
 \MO{MkIdType}\:\mq\:\RW{do}\;
  \AR{
-   \MO{NewProof}\:\Set\\
-   \MO{Attack} ; \MO{Pi}\:(\vA\Hab\Set) ;
+   \MO{NewProof}\:\Type\\
+   \MO{Attack} ; \MO{Pi}\:(\vA\Hab\Type) ;
    \MO{Attack} ; \MO{Pi}\:(\va\Hab\vA) \\
    \MO{Fill}\;\vA \\
    \MO{Solve} ; \MO{Solve} ; \MO{Solve} \\
@@ -741,7 +789,7 @@ scope of the binding.
 \ttinterp{\piexp{\vx}{\vt}\ve}\:\mq\:
 \RW{do}\:
 \AR{
-\MO{Attack};\;\MO{Claim}\:(\vX\Hab\Set)\\
+\MO{Attack};\;\MO{Claim}\:(\vX\Hab\Type)\\
 \MO{Pi}\:(\vx\Hab\vX)\\
 \MO{Focus}\:\vX\\
 \ttinterp{\vt};\;
@@ -767,7 +815,7 @@ $\vV$ and $\vX$.
 \ttinterp{\ilet{\vx}{\vv}\:{\ve}}\:\mq\:\RW{do}\:
 \AR{
 \MO{Attack};\;
-\MO{Claim}\:(\vX\Hab\Set);\; 
+\MO{Claim}\:(\vX\Hab\Type);\; 
 \MO{Claim}\:(\vV\Hab\vX)\\
 \MO{Let}\:(\vx\Hab\vX\defq\vV)\\
 \MO{Focus}\:\vV\\
@@ -872,7 +920,7 @@ the function or argument which helps with unification:
 \DM{
 \ttinterp{\ve\:\va}\:\mq\:\RW{do}\:
 \AR{
-\MO{Claim}\:(\vA\Hab\Set);\;\MO{Claim}\:(\vB\Hab\Set)\\
+\MO{Claim}\:(\vA\Hab\Type);\;\MO{Claim}\:(\vB\Hab\Type)\\
 \MO{Claim}\:(\vf\Hab\vA\to\vB);\;\MO{Claim}\:(\vs\Hab\vA)\\
 \MO{Try}\:
 \AR{
@@ -907,7 +955,7 @@ as a \TT{} declaration:
 
 \DM{
 \MO{Elab}\:(\vx\Hab\vt)\:\mq
-\:\edo{\MO{NewProof}\:\Set\\
+\:\edo{\MO{NewProof}\:\Type\\
        \ttinterp{\vt}\\
        \vt'\gets\MO{Term}\\
        \MO{TTDecl}\:(\vx\Hab\vt')
@@ -928,7 +976,7 @@ adds a \TT{} data declaration.
 \DM{
 \AR{
 \MO{Elab}\:(\idata\;\ihab{\vx}{\vt}\;\iwhere\;\tc)\\
-\hg\hg\mq\:\edo{\MO{NewProof}\:\Set\\
+\hg\hg\mq\:\edo{\MO{NewProof}\:\Type\\
                 \ttinterp{\vt}\\
                 \vt'\gets\MO{Term}\\
                 \MO{TTDecl}\:(\vx\Hab\vt')\\
@@ -937,7 +985,7 @@ adds a \TT{} data declaration.
 }
 \AR{
 \MO{ElabCon}\:(\vx\Hab\vt)\\
-\hg\hg\mq\: \edo{\MO{NewProof}\:\Set\\
+\hg\hg\mq\: \edo{\MO{NewProof}\:\Type\\
                  \ttinterp{\vt}\\
                  \vt'\gets\MO{Term}\\
                  \RW{return}\:(\vx\Hab\vt')
@@ -962,7 +1010,7 @@ This can be achieved without any change to the elaborator by defining
 a type $\TC{Infer}$:
 
 \DM{
-\Data\hg\TC{Infer}\Hab\Set\hg\Where\hg\DC{MkInfer}\Hab\all{\va}{\Set}\SC\va\to\TC{Infer}
+\Data\hg\TC{Infer}\Hab\Type\hg\Where\hg\DC{MkInfer}\Hab\all{\va}{\Type}\SC\va\to\TC{Infer}
 }
 
 Now elaboration of the left hand side proceeds by elaborating $\DC{MkInfer}\:\_\:(\vx\:\ttt)$ and
@@ -1123,7 +1171,7 @@ declaration is translated to:
 
 \begin{SaveVerbatim}{showdata}
 
-data Show : Set -> Set where
+data Show : Type -> Type where
     instanceShow : (show : a -> String) -> Show a
 
 show : Show a -> a -> String
@@ -1182,7 +1230,7 @@ This translates to:
 
 \begin{SaveVerbatim}{orddata}
 
-data Ord : Set -> Set where
+data Ord : Type -> Type where
     instanceOrd : Eq a => (compare : a -> a -> Ordering) -> 
                           (max : a -> a -> a) ->  Ord a 
 
@@ -1223,7 +1271,7 @@ In general, \texttt{class} declarations are elaborated as follows:
 \mq\:\RW{do}\:\AR{
 (\vec{\VV{meth}}\Hab\ttt)\gets\td\\
 \MO{Elab}\:
-\AR{(\RW{data}\:\TC{C}\Hab(\ta\Hab\ttt)\to\Set\:\iwhere\\
+\AR{(\RW{data}\:\TC{C}\Hab(\ta\Hab\ttt)\to\Type\:\iwhere\\
 \hg\DC{InstanceC}\Hab\piconst{\tc}\td\to\TC{C}\:\ta)}
 }
 }
@@ -1418,7 +1466,7 @@ We can inspect the type of \texttt{append\_rec} at the \Idris{} prompt:
 \begin{SaveVerbatim}{appendrec}
 
 *vec> :t append_rec
-append_rec : (a : Set) -> (m : Nat) -> (n : Nat) -> a -> 
+append_rec : (a : Type) -> (m : Nat) -> (n : Nat) -> a -> 
              Vect a n -> Vect a m -> Vect a (n + m)
 
 \end{SaveVerbatim}

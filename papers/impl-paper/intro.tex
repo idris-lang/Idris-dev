@@ -39,12 +39,12 @@ How can we achieve both of these goals?
 
 This paper describes a method for elaborating a high level dependently typed
 functional programming language to a low level core language based on dependent
-type theory.  The method involves building an Embedded Domain Specific Language
-(EDSL) for constructing programs in the core language, using \emph{tactics}
-directed by high level program syntax.  
-As we shall see, this method allows higher level language constructs to be
-constructed in a straightforward manner, without compromising the simplicity
-of the underlying type theory.
+type theory.  The method involves building an elaboration monad which captures
+the state of incomplete programs and a collection of \emph{tactics} for
+refining programs, directed by high level program syntax.  As we shall see,
+this method allows higher level language constructs to be constructed in a
+straightforward manner, without compromising the simplicity of the underlying
+type theory.
 
 \subsection{Contributions}
 
@@ -55,18 +55,18 @@ unification algorithm \cite{Miller1992} and an evaluator. However, it is less
 well understood how to combine these components effectively into a practical
 programming language. 
 
-The primary contribution of this paper is
-an EDSL based method for translating programs in a
-high level dependently typed programming language to a small core type theory,
-\TT{}, based on UTT \cite{luo1994}. The paper describes the structure of the
-EDSL including proof and system state, and introduces a collection of \remph{tactics}
-for manipulating incomplete programs.
-Secondly, the paper gives a detailed description of the core type theory used
-by \Idris{}, including a full description of the typing rules. Finally, through
-describing the EDSL and the specific tactics, the paper shows how to extend
-\Idris{} with higher level features.
-While we apply these ideas to \Idris{} specifically, the method for term construction
-is equally applicable to other typed programming languages.
+The primary contribution of this paper is a tactic based method for translating
+programs in a high level dependently typed programming language to a small core
+type theory, \TT{}, based on UTT \cite{luo1994}. The paper describes the
+structure of an elaboration monad capturing proof and system state, and
+introduces a collection of \remph{tactics} for manipulating incomplete
+programs.  Secondly, the paper gives a detailed description of the core type
+theory used by \Idris{}, including a full description of the typing rules.
+Finally, through describing the specific tactics, the paper shows how to extend
+\Idris{} with higher level features.  While we apply these ideas to \Idris{}
+specifically, the method for term construction is equally applicable to other
+typed programming languages, and indeed the tactics themselves are applicable
+to any high level language which can be explained in terms of \TT{}.
 
 The paper is structured as follows: Section \ref{sect:hll} gives an overview of
 programming in \Idris{}, introducing the high level constructs which will be

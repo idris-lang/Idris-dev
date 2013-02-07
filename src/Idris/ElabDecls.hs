@@ -153,29 +153,35 @@ elabData info syn doc fc codata (PDatadecl n t_in dcons)
          collapseCons n cons
          updateContext (addDatatype (Data n ttag cty cons))
          mapM_ (checkPositive n) cons
-  where findParams :: [(Maybe Name, Bool)] -> [Type] -> [Int]
+  where 
+        -- parameters are names which are unchanged across the structure,
+        -- which appear exactly once in the return type of a constructor
+        findParams :: [(Maybe Name, Bool)] -> [Type] -> [Int]
         findParams ps [] = mapMaybe (\ ((x, y), n) ->
                                           if y then Just n else Nothing)
                                     (zip ps [0..])
         findParams ps (t : ts) = findParams (updateParams ps t) ts
 
         updateParams ps (Bind n (Pi t) sc) 
-            = updateParams ps (instantiate (P Bound n t) sc)
+            = updateParams (updateParams ps (instantiate (P Bound n t) sc)) t
         updateParams ps tm@(App f a)
             | (P _ fn _, args) <- unApply tm
                = if fn == n
-                    then updateParamsA ps args
+                    then updateParamsA ps args (tail args)
                     else updateParams (updateParams ps f) a
             | otherwise = updateParams (updateParams ps f) a
         updateParams ps _ = ps
 
-        updateParamsA ((Nothing, b) : ns) (P _ n' _ : args)
-             = (Just n', b) : updateParamsA ns args
-        updateParamsA ((Just p, b) : ns) (P _ n' _ : args)
-             = (Just n', b && p == n') : updateParamsA ns args
-        updateParamsA ((mn, _) : ns) (_ : args)
-             = (mn, False) : updateParamsA ns args
-        updateParamsA ps args = ps
+        updateParamsA ((mn, _) : ns) (p@(P _ n' _) : args) all
+             | n' `elem` concatMap freeNames all
+                  = (mn, False) : updateParamsA ns args (p : all)
+        updateParamsA ((Nothing, b) : ns) (p@(P _ n' _) : args) all
+             = (Just n', b) : updateParamsA ns args (p : all)
+        updateParamsA ((Just p, b) : ns) (tm@(P _ n' _) : args) all
+             = (Just n', b && p == n') : updateParamsA ns args (tm : all)
+        updateParamsA ((mn, _) : ns) (p : args) all
+             = (mn, False) : updateParamsA ns args (p : all)
+        updateParamsA ps args all = ps
 
 elabRecord :: ElabInfo -> SyntaxInfo -> String -> FC -> Name -> 
               PTerm -> String -> Name -> PTerm -> Idris ()
