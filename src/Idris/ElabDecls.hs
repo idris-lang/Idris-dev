@@ -538,8 +538,17 @@ elabClause info tcgen (cnum, PClause fc fname lhs_in withs rhs_in whereblock)
         -- Build the LHS as an "Infer", and pull out its type and
         -- pattern bindings
         i <- get
-        let lhs = addImplPat i lhs_in
+        -- get the parameters first, to pass through to any where block
+        let fn_ty = case lookupTy Nothing fname (tt_ctxt i) of
+                         [t] -> t
+                         _ -> error "Can't happen (elabClause function type)"
+        let fn_is = case lookupCtxt Nothing fname (idris_implicits i) of
+                         [t] -> t
+                         _ -> [] 
+        let params = getParamsInType i [] fn_is fn_ty
+        let lhs = addImplPat i (propagateParams params lhs_in)
         logLvl 5 ("LHS: " ++ show fc ++ " " ++ showImp True lhs)
+        logLvl 4 ("Fixed parameters: " ++ show params ++ " from " ++ show (fn_ty, fn_is))
         ((lhs', dlhs, []), _) <- 
             tclift $ elaborate ctxt (MN 0 "patLHS") infP []
                      (erun fc (buildTC i info True tcgen fname (infTerm lhs)))
@@ -630,6 +639,40 @@ elabClause info tcgen (cnum, PClause fc fname lhs_in withs rhs_in whereblock)
                                      --      Nothing -> n
                                      --      _ -> MN i (show n)) . l
                     }
+
+    getParamsInType i env (PExp _ _ _ _ : is) (Bind n (Pi t) sc) 
+        = getParamsInType i env is (instantiate (P Bound n t) sc)
+    getParamsInType i env (_ : is) (Bind n (Pi t) sc) 
+        = getParamsInType i (n : env) is (instantiate (P Bound n t) sc)
+    getParamsInType i env is tm@(App f a)
+        | (P _ tn _, args) <- unApply tm 
+           = case lookupCtxt Nothing tn (idris_datatypes i) of
+                [t] -> nub $ paramNames args env (param_pos t) ++
+                             getParamsInType i env is f ++ 
+                             getParamsInType i env is a
+                [] -> nub $ getParamsInType i env is f ++ 
+                            getParamsInType i env is a
+        | otherwise = nub $ getParamsInType i env is f ++ 
+                            getParamsInType i env is a
+    getParamsInType i _ _ _ = []
+
+    paramNames args env [] = []
+    paramNames args env (p : ps) 
+       | length args > p = case args!!p of
+                              P _ n _ -> if n `elem` env
+                                            then n : paramNames args env ps
+                                            else paramNames args env ps
+                              _ -> paramNames args env ps
+       | otherwise = paramNames args env ps
+
+    propagateParams :: [Name] -> PTerm -> PTerm
+    propagateParams ps (PApp _ (PRef fc n) args)
+         = PApp fc (PRef fc n) (map addP args)
+       where addP imp@(PImp _ _ _ Placeholder _)
+                  | pname imp `elem` ps = imp { getTm = PRef fc (pname imp) }
+             addP t = t
+    propagateParams ps (PRef fc n)
+         = PApp fc (PRef fc n) (map (\x -> pimp x (PRef fc x)) ps)
 
 elabClause info tcgen (_, PWith fc fname lhs_in withs wval_in withblock) 
    = do ctxt <- getContext
@@ -852,7 +895,7 @@ elabClass info syn doc fc constraints tn ps ds
             Just (syn, o, ty) -> do let ty' = insertConstraint c ty
                                     let ds = map (decorateid defaultdec)
                                                  [PTy "" syn fc [] n ty', 
-                                                  PClauses fc (TCGen:o ++ opts) n cs]
+                                                  PClauses fc (Inlinable:TCGen:o ++ opts) n cs]
                                     iLOG (show ds)
                                     return (n, ((defaultdec n, ds!!1), ds))
             _ -> fail $ show n ++ " is not a method"
@@ -981,7 +1024,7 @@ elabInstance info syn fc cs n ps t expn ds
          logLvl 3 $ "Instance is " ++ show ps ++ " implicits " ++ 
                                       show (concat (nub wparams))
          let lhs = case concat (nub wparams) of
-                        [] -> PRef fc iname
+                        _ -> PRef fc iname
                         as -> PApp fc (PRef fc iname) as
          let rhs = PApp fc (PRef fc (instanceName ci))
                            (map (pexp . mkMethApp) mtys)

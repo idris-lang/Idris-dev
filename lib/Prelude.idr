@@ -328,7 +328,7 @@ readFile fn = do h <- openFile fn Read
                  c <- readFile' h ""
                  closeFile h
                  return c
-  where 
+  where
     partial
     readFile' : File -> String -> IO String
     readFile' h contents = 

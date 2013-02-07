@@ -8,11 +8,9 @@ data Fin : Nat -> Type where
     fS : Fin k -> Fin (S k)
 
 instance Eq (Fin n) where
-   (==) = eq where
-     eq : Fin m -> Fin m -> Bool
-     eq fO fO = True
-     eq (fS k) (fS k') = eq k k'
-     eq _ _ = False
+    (==) fO fO = True
+    (==) (fS k) (fS k') = k == k'
+    (==) _ _ = False
 
 weaken : Fin n -> Fin (S n)
 weaken fO     = fO

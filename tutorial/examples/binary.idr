@@ -6,11 +6,9 @@ data Binary : Nat -> Type where
     bI : Binary n -> Binary (S (n + n))
 
 instance Show (Binary n) where
-    show = show' where
-      show' : Binary n' -> String
-      show' (bO x) = show x ++ "0"
-      show' (bI x) = show x ++ "1"
-      show' bEnd = ""
+    show (bO x) = show x ++ "0"
+    show (bI x) = show x ++ "1"
+    show bEnd = ""
 
 data Parity : Nat -> Type where
    even : Parity (n + n)
