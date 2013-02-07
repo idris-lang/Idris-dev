@@ -166,23 +166,14 @@ Indentation is significant --- functions in the \texttt{where} block must be ind
 further than the outer function.
 
 \textbf{Remark (scope):} 
-Any names which are visible in the outer scope are also visible in the \texttt{where}
-clause (unless they have been redefined, such as \texttt{xs} here).
-\emph{However}, names which appear in the type are \emph{not} automatically
-in scope. In particular,
-in the above example, the \texttt{a} in the top level type and the \texttt{a} in the
-auxiliary definition \texttt{revAcc} are \emph{not} the same. If this is the required
-behaviour, the \texttt{a} can be brought into scope as follows:
-
-\begin{SaveVerbatim}{revwhereb}
-
-reverse : List a -> List a
-reverse {a} xs = revAcc [] xs where
-  revAcc : List a -> List a -> List a
-  ...
-
-\end{SaveVerbatim}
-\useverb{revwhereb}
+Any names which are visible in the outer scope are also visible in the
+\texttt{where} clause (unless they are redefined in the \texttt{where} clause,
+such as \texttt{xs} here). A name which appears only in the type will be in
+scope in the \texttt{where} clause if it is a \remph{parameter} to one of the
+types, i.e. it is fixed across the entire structure.  In particular, this means
+that the \texttt{a} in the definition of \texttt{reverse} above is the
+\remph{same} \texttt{a} as in the definition of \texttt{revAcc}, as \texttt{a}
+is a parameter of \texttt{List}.
 
 \subsubsection{Dependent Types}
 
@@ -210,9 +201,11 @@ from the simple type declarations above. It resembles a Haskell GADT
 declaration: it explicitly states the type
 of the type constructor \tTC{Vect} --- it takes a type and a \tTC{Nat} as an
 argument, where \tTC{Type} stands for the type of types. We say that \tTC{Vect}
-is \emph{parameterised} by a type, and \emph{indexed} over \tTC{Nat}. Each
-constructor targets a different part of the family of types. \tDC{Nil} can only
-be used to construct vectors with zero length, and \tDC{::} to construct
+is \emph{parameterised} by a type, and \emph{indexed} over \tTC{Nat}. 
+The distinction between parameters and indices is that a parameter is fixed
+across an entire structure, whereas an index may vary.
+Each constructor targets a different part of the family of types. \tDC{Nil} can
+only be used to construct vectors with zero length, and \tDC{::} to construct
 vectors with non-zero length. The type of \tDC{::} states explicitly that an element
 of type \texttt{a} and a tail of type \texttt{Vect a k} (i.e., a vector of length \texttt{k})
 combine to make a vector of length \texttt{S k}.
@@ -425,7 +418,7 @@ to a \texttt{String}:
 
 instance Show a => Show (Vect a n) where
     show xs = "[" ++ show' xs ++ "]" where
-        show' : Vect a n' -> String
+        show' : Vect a n -> String
         show' Nil        = ""
         show' (x :: Nil) = show x
         show' (x :: xs)  = show x ++ ", " ++ show' xs
@@ -433,15 +426,16 @@ instance Show a => Show (Vect a n) where
 \end{SaveVerbatim}
 \useverb{showvec}
 
-\noindent
-\textbf{Remark: } The type of the auxiliary function \texttt{show'} is
-important. The type variables \texttt{a} and \texttt{n} which are part of the
-instance declaration for \texttt{Show (Vect a n)} are fixed across the entire
-instance declaration. As a result, \texttt{a} need not be constrained
-again. Furthermore, it means that if \texttt{n} is used again in the type, it refers
-to the (fixed) length of the outermost list \texttt{xs}. Therefore,
-there is a different name for the length \texttt{n'} in \texttt{show'}.
+%\noindent
+%\textbf{Remark: } The type of the auxiliary function \texttt{show'} is
+%important. The type variables \texttt{a} and \texttt{n} which are part of the
+%instance declaration for \texttt{Show (Vect a n)} are fixed across the entire
+%instance declaration. As a result, \texttt{a} need not be constrained
+%again. Furthermore, it means that if \texttt{n} is used again in the type, it refers
+%to the (fixed) length of the outermost list \texttt{xs}. Therefore,
+%there is a different name for the length \texttt{n'} in \texttt{show'}.
 
+\noindent
 Like Haskell type classes, default definitions can be given in the class declaration.
 Otherwise, all methods must be given in an instance. For example, there is an
 \texttt{Eq} class:

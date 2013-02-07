@@ -210,24 +210,12 @@ Indentation is significant --- functions in the \texttt{where} block must be ind
 further than the outer function.
 
 \textbf{Scope:} 
-Any names which are visible in the outer scope are also visible in the \texttt{where}
-clause (unless they have been redefined, such as \texttt{xs} here).
-\emph{However}, names which appear in the type are \emph{not} in scope. In particular,
-in the above example, the \texttt{a} in the top level type and the \texttt{a} in the
-auxiliary definifion \texttt{revAcc} are \emph{not} the same. If this is the required
-behaviour, the \texttt{a} can be brought into scope as follows:
+Any names which are visible in the outer scope are also visible in the
+\texttt{where} clause (unless they have been redefined, such as \texttt{xs}
+here). A name which appears only in the type will be in scope in the
+\texttt{where} clause if it is a \remph{parameter} to one of the types,
+i.e. it is fixed across the entire structure. 
 
-\begin{SaveVerbatim}{revwhereb}
-
-reverse : List a -> List a
-reverse {a} xs = revAcc [] xs where
-  revAcc : List a -> List a -> List a
-  ...
-
-\end{SaveVerbatim}
-\useverb{revwhereb}
-
-\noindent
 As well as functions, \texttt{where} blocks can include local data
 declarations, such as the following where \texttt{MyLT} is not accessible outside
 the definition of \texttt{foo}:

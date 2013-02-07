@@ -63,7 +63,7 @@ to a \texttt{String}:
 
 instance Show a => Show (Vect a n) where
     show xs = "[" ++ show' xs ++ "]" where
-        show' : Vect a n' -> String
+        show' : Vect a n -> String
         show' Nil        = ""
         show' (x :: Nil) = show x
         show' (x :: xs)  = show x ++ ", " ++ show' xs
@@ -71,14 +71,14 @@ instance Show a => Show (Vect a n) where
 \end{SaveVerbatim}
 \useverb{showvec}
 
-\noindent
-\textbf{Remark: } The type of the auxiliary function \texttt{show'} is
-important. The type variables \texttt{a} and \texttt{n} which are part of the
-instance declaration for \texttt{Show (Vect a n)} are fixed across the entire
-instance declaration. As a result, we do not have to constrain \texttt{a}
-again. Furthermore, it means that if we use \texttt{n} in the type, it refers
-to the (fixed) length of the outermost list \texttt{xs}. Therefore,
-we use a different name for the length \texttt{n'} in \texttt{show'}.
+%\noindent
+%\textbf{Remark: } The type of the auxiliary function \texttt{show'} is
+%important. The type variables \texttt{a} and \texttt{n} which are part of the
+%instance declaration for \texttt{Show (Vect a n)} are fixed across the entire
+%instance declaration. As a result, we do not have to constrain \texttt{a}
+%again. Furthermore, it means that if we use \texttt{n} in the type, it refers
+%to the (fixed) length of the outermost list \texttt{xs}. Therefore,
+%we use a different name for the length \texttt{n'} in \texttt{show'}.
 
 \subsection{Default Definitions}
 
