@@ -1108,9 +1108,50 @@ natToBin' (S (j + j)) odd  = True  :: natToBin j
 \useverb{natToBinwp}
 
 \noindent
-Elaboration of \texttt{with} builds the type declaration and auxiliary function
-automatically:
+Additionally, the elaborator abstracts over the term being analysed in the type
+of the generated auxiliary definition\footnote{This is sometimes referred to
+as ``magic \texttt{with}''.} and reorders the arguments as required.
+For example:
 
+\begin{SaveVerbatim}{magicwith}
+
+f : Nat -> Bool
+
+ftest : (n : Nat) -> so (f n) -> Nat
+ftest n x with (f n)
+     | True  = ...
+     | False = ...
+
+\end{SaveVerbatim}
+\useverb{magicwith}
+
+\noindent
+Here, we may require the knowledge that \texttt{f n} is \texttt{True} or
+\texttt{False} in the appropriate case. The elaborator abstracts over
+\texttt{f n} in the auxiliary definition, specialising the type of
+\texttt{x} in each case:
+
+\begin{SaveVerbatim}{magicwithaux}
+
+ftest : (n : Nat) -> so (f n) -> Nat
+ftest n x = ftest' n (f n) x
+
+ftest' : (n : Nat) -> (p : Bool) -> so p -> Nat
+ftest' n True  x = ... 
+ftest' n False x = ... 
+
+\end{SaveVerbatim}
+\useverb{magicwithaux}
+
+\noindent
+Elaboration of \texttt{with} builds the type declaration and auxiliary function
+automatically. It checks the left hand side, resulting in a set of patterns
+$\tp$, then splits these patterns into those necessary to type
+$\vW$, and the rest ($\tp_w$ and $\tp_n$ respectively) using
+$\MO{SplitContext}$. Then, it builds a new declaration, abstracting over
+the matched expression $\ve$ in the types of $\tp_n$.
+$\MO{Abstract}\:\ve\:\vw\:\vp$ simply replaces any occurrence of $\vw$ in
+$\vp$ with the name $\ve$.
 
 \DM{
 \AR{
@@ -1123,17 +1164,18 @@ automatically:
 \MO{NewTerm}\:\TC{Infer};\;
 \ttinterp{\DC{MkInfer}\:\_\:\ve}\\
 \DC{MkInfer}\:\vW\:\vw'\gets\MO{Term}\\
-\MO{TTDecl}\:(\vx'\Hab\tp\to\vW\to\vT)\\
-\tc'\gets\vec{\MO{MatchWith}}\:\tp\:(\vx\:\ttt)\:\vec{\VV{pclause}}\\
+(\tp_w,\tp_n)\:\gets\:\MO{SplitContext}\:\vW\:\tp\\
+\MO{TTDecl}\:(\vx'\Hab\tp_{w}\to(\ve\Hab\vW)\to\vec{\MO{Abstract}}\:\ve\:\vw'\:\tp_{n}\to\vT)\\
+\tc'\gets\vec{\MO{MatchWith}}\:\tp\:\ttt\:\vec{\VV{pclause}}\\
 \vec{\MO{Elab}}\:\tc'\\
-\RW{return}\:(\RW{var}\:\tp\SC\VV{lhs}\:=\:\vx'\:\tp\:\vw')
+\RW{return}\:(\RW{var}\:\tp\SC\VV{lhs}\:=\:\vx'\:\tp_{w}\:\vw'\:\tp_{n})
 }
 \medskip\\
-\MO{MatchWith}\:\tp\:(\vx\:\ttt)\:(\vx\:\tw\:\mid\:\ve\:\VV{rhs})\:\mq\\
+\MO{MatchWith}\:\tp_w\:\tp_n\:\ttt\:(\vx\:\tw\:\mid\:\ve\:\VV{rhs})\:\mq\\
 \hg\hg\edo{
 \tp'\gets\vec{\MO{Match}}\:\tw\:\ttt\\
-\MO{CheckComplete}\:\tp\:\tp'\\
-\RW{return}\:(\vx'\:\tp'\:\ve\:\VV{rhs})
+(\tp'_w,\tp'_n)\:\gets\:\MO{SplitPats}\:\tp_w\:\tp_n\:\tp'\\
+\RW{return}\:(\vx'\:\tp'_w\:\ve\:\tp'_{n}\:\VV{rhs})
 }
 }
 }
@@ -1154,10 +1196,8 @@ The right hand side, $\VV{rhs}$, may either return a value directly, containing
 remains unchanged.
 $\MO{Match}\:\vw\:\vt$ returns a list of pattern bindings containing
 the variables in $\vt$ and their matches in $\vw$.
-If the \texttt{with} block is well-formed, then
-the resulting set of patterns $\tp'$ contains exactly the same pattern variables
-as $\tp$, which is verified by $\MO{CheckComplete}$.
-
+The resulting matches are split, using $\MO{SplitPats}$, into matches for those
+variables necessary to type $\vW$ and the rest, as before.
 
 \subsubsection{Elaborating Class and Instance Declarations}
 
