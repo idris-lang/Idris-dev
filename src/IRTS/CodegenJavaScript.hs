@@ -349,11 +349,50 @@ translateExpression (SError msg) =
 translateExpression (SForeign _ _ "putStr" [(FString, var)]) =
   "__IDRRT__.print(" ++ translateVariableName var ++ ");"
 
-translateExpression (SForeign _ _ fun args) =
-     fun
-  ++ "("
-  ++ intercalate "," (map (translateVariableName . snd) args)
-  ++ ");"
+translateExpression (SForeign _ _ fun args)
+  | "." `isPrefixOf` fun, "[]=" `isSuffixOf` fun
+  , (obj:idx:val:[]) <- args =
+    concat [object obj, field, index idx, assign val]
+
+  | "." `isPrefixOf` fun, "[]" `isSuffixOf` fun
+  , (obj:idx:[]) <- args =
+    concat [object obj, field, index idx]
+
+  | "." `isPrefixOf` fun, "=" `isSuffixOf` fun
+  , (obj:val:[]) <- args =
+    concat [object obj, field, assign val]
+
+  | "." `isPrefixOf` fun
+  , (obj:[]) <- args =
+    object obj ++ field
+
+  | "." `isPrefixOf` fun
+  , (obj:[(FUnit, _)]) <- args =
+    concat [object obj, method, "()"]
+    
+  | "." `isPrefixOf` fun
+  , (obj:as) <- args =
+    concat [object obj, method, arguments as]
+
+  | "[]=" == fun
+  , (idx:val:[]) <- args =
+    concat [array, index idx, assign val]
+
+  | "[]" == fun
+  , (idx:[]) <- args =
+    array ++ index idx
+
+  | otherwise = fun ++ arguments args
+  where
+    name         = filter (`notElem` "[]=") fun
+    method       = name
+    field        = name
+    array        = name
+    object o     = translateVariableName (snd o)
+    index  i     = "[" ++ translateVariableName (snd i) ++ "]"
+    assign v     = '=' : translateVariableName (snd v)
+    arguments as =
+      '(' : intercalate "," (map (translateVariableName . snd) as) ++ ")"
 
 translateExpression (SChkCase var cases) =
      "(function(e){\n"
