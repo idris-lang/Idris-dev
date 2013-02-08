@@ -1023,9 +1023,7 @@ elabInstance info syn fc cs n ps t expn ds
          logLvl 3 $ "Method types " ++ showSep "\n" (map (showDeclImp True . mkTyDecl) mtys)
          logLvl 3 $ "Instance is " ++ show ps ++ " implicits " ++ 
                                       show (concat (nub wparams))
-         let lhs = case concat (nub wparams) of
-                        _ -> PRef fc iname
-                        as -> PApp fc (PRef fc iname) as
+         let lhs = PRef fc iname
          let rhs = PApp fc (PRef fc (instanceName ci))
                            (map (pexp . mkMethApp) mtys)
          let idecls = [PClauses fc [Inlinable, TCGen] iname 
