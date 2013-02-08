@@ -355,9 +355,10 @@ m_add' x y = m_app (m_app (Just (+)) x) y
 \useverb{maddb} 
 
 \noindent
-Rather than having to insert \texttt{m\_app} everywhere there is an application, we can
-use \remph{idiom brackets} to do the job for us. To do this, we use the \texttt{Applicative} 
-class, which captures the notion of application for a data type:
+Rather than having to insert \texttt{m\_app} everywhere there is an
+application, we can use \remph{idiom brackets} to do the job for us. To do
+this, we use the \texttt{Applicative} class, which captures the notion of
+application for a data type:
 
 \begin{SaveVerbatim}{applicative}
 
@@ -371,8 +372,8 @@ class Applicative (f : Type -> Type) where
 \useverb{applicative} 
 
 \noindent
-\texttt{Maybe} is made an instance of \texttt{Applicative} as follows, where \texttt{<\$>}
-is defined in the same way as \texttt{m\_app} above:
+\texttt{Maybe} is made an instance of \texttt{Applicative} as follows, where
+\texttt{<\$>} is defined in the same way as \texttt{m\_app} above:
 
 \begin{SaveVerbatim}{maybeapp}
 
@@ -443,15 +444,21 @@ fetch x = MkEval (\e => fetchVal e) where
 \useverb{fetch} 
   
 \noindent
-When defining an evaluator for the language, we will be applying functions in the
-context of an \texttt{Eval}, so it is natural to make \texttt{Eval} an instance
-of \texttt{Applicative}:
+When defining an evaluator for the language, we will be applying functions in
+the context of an \texttt{Eval}, so it is natural to make \texttt{Eval} an
+instance of \texttt{Applicative}.
+Before \texttt{Eval} can be an instance of
+\texttt{Applicative} it is necessary to make \texttt{Eval} an instance of
+\texttt{Functor}:
 
 \begin{SaveVerbatim}{}
 
+instance Functor Eval where
+    fmap f (MkEval g) = MkEval (\e => fmap f (g e))
+
 instance Applicative Eval where
     pure x = MkEval (\e => Just x)
-  
+
     (<$>) (MkEval f) (MkEval g) = MkEval (\x => app (f x) (g x)) where
         app : Maybe (a -> b) -> Maybe a -> Maybe b
         app (Just fx) (Just gx) = Just (fx gx)
