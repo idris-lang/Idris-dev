@@ -51,39 +51,61 @@ codegenJavaScript definitions filename outputType = do
 
 translateIdentifier :: String -> String
 translateIdentifier =
-  concatMap replaceBadChars
+  replaceReserved . concatMap replaceBadChars
   where replaceBadChars :: Char -> String
-        replaceBadChars ' '  = "_"
-        replaceBadChars '_'  = "__"
-        replaceBadChars '@'  = "_at"
-        replaceBadChars '['  = "_OSB"
-        replaceBadChars ']'  = "_CSB"
-        replaceBadChars '('  = "_OP"
-        replaceBadChars ')'  = "_CP"
-        replaceBadChars '{'  = "_OB"
-        replaceBadChars '}'  = "_CB"
-        replaceBadChars '!'  = "_bang"
-        replaceBadChars '#'  = "_hash"
-        replaceBadChars '.'  = "_dot"
-        replaceBadChars ','  = "_comma"
-        replaceBadChars ':'  = "_colon"
-        replaceBadChars '+'  = "_plus"
-        replaceBadChars '-'  = "_minus"
-        replaceBadChars '*'  = "_times"
-        replaceBadChars '<'  = "_lt"
-        replaceBadChars '>'  = "_gt"
-        replaceBadChars '='  = "_eq"
-        replaceBadChars '|'  = "_pipe"
-        replaceBadChars '&'  = "_amp"
-        replaceBadChars '/'  = "_SL"
-        replaceBadChars '\\' = "_BSL"
-        replaceBadChars '%'  = "_per"
-        replaceBadChars '?'  = "_que"
-        replaceBadChars '~'  = "_til"
-        replaceBadChars '\'' = "_apo"
         replaceBadChars c
+          | ' ' <- c = "_"
+          | '_' <- c = "__"
           | isDigit c = "_" ++ [c] ++ "_"
+          | not (isLetter c && isAscii c) = '_' : show (ord c)
           | otherwise = [c]
+        replaceReserved s
+          | s `elem` reserved = '_' : s
+          | otherwise         = s
+        reserved = [ "break"
+                   , "case"
+                   , "catch"
+                   , "continue"
+                   , "debugger"
+                   , "default"
+                   , "delete"
+                   , "do"
+                   , "else"
+                   , "finally"
+                   , "for"
+                   , "function"
+                   , "if"
+                   , "in"
+                   , "instanceof"
+                   , "new"
+                   , "return"
+                   , "switch"
+                   , "this"
+                   , "throw"
+                   , "try"
+                   , "typeof"
+                   , "var"
+                   , "void"
+                   , "while"
+                   , "with"
+                   
+                   , "class"
+                   , "enum"
+                   , "export"
+                   , "extends"
+                   , "import"
+                   , "super"
+                   
+                   , "implements"
+                   , "interface"
+                   , "let"
+                   , "package"
+                   , "private"
+                   , "protected"
+                   , "public"
+                   , "static"
+                   , "yield"
+                   ]
 
 translateNamespace :: Name -> [String]
 translateNamespace (UN _)    = [idrNamespace]
@@ -112,8 +134,8 @@ translateConstant c       =
 
 translateParameterlist =
   map translateParameter
-  where translateParameter (MN i name) = name ++ show i
-        translateParameter (UN name) = name
+  where translateParameter (MN i name) = translateIdentifier name ++ show i
+        translateParameter (UN name) = translateIdentifier name
 
 translateDeclaration :: ([String], SDecl) -> String
 translateDeclaration (path, SFun name params stackSize body) =
@@ -327,11 +349,50 @@ translateExpression (SError msg) =
 translateExpression (SForeign _ _ "putStr" [(FString, var)]) =
   "__IDRRT__.print(" ++ translateVariableName var ++ ");"
 
-translateExpression (SForeign _ _ fun args) =
-     fun
-  ++ "("
-  ++ intercalate "," (map (translateVariableName . snd) args)
-  ++ ");"
+translateExpression (SForeign _ _ fun args)
+  | "." `isPrefixOf` fun, "[]=" `isSuffixOf` fun
+  , (obj:idx:val:[]) <- args =
+    concat [object obj, field, index idx, assign val]
+
+  | "." `isPrefixOf` fun, "[]" `isSuffixOf` fun
+  , (obj:idx:[]) <- args =
+    concat [object obj, field, index idx]
+
+  | "." `isPrefixOf` fun, "=" `isSuffixOf` fun
+  , (obj:val:[]) <- args =
+    concat [object obj, field, assign val]
+
+  | "." `isPrefixOf` fun
+  , (obj:[]) <- args =
+    object obj ++ field
+
+  | "." `isPrefixOf` fun
+  , (obj:[(FUnit, _)]) <- args =
+    concat [object obj, method, "()"]
+    
+  | "." `isPrefixOf` fun
+  , (obj:as) <- args =
+    concat [object obj, method, arguments as]
+
+  | "[]=" == fun
+  , (idx:val:[]) <- args =
+    concat [array, index idx, assign val]
+
+  | "[]" == fun
+  , (idx:[]) <- args =
+    array ++ index idx
+
+  | otherwise = fun ++ arguments args
+  where
+    name         = filter (`notElem` "[]=") fun
+    method       = name
+    field        = name
+    array        = name
+    object o     = translateVariableName (snd o)
+    index  i     = "[" ++ translateVariableName (snd i) ++ "]"
+    assign v     = '=' : translateVariableName (snd v)
+    arguments as =
+      '(' : intercalate "," (map (translateVariableName . snd) as) ++ ")"
 
 translateExpression (SChkCase var cases) =
      "(function(e){\n"

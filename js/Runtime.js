@@ -1,3 +1,4 @@
+var require;
 var __IDRRT__ = {};
 
 /** @constructor */
