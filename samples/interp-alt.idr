@@ -2,18 +2,18 @@ module main
 
 data Ty = TyInt | TyBool| TyFun Ty Ty
 
-interpTy : Ty -> Set
+interpTy : Ty -> Type
 interpTy TyInt       = Int
 interpTy TyBool      = Bool
 interpTy (TyFun s t) = interpTy s -> interpTy t
 
 using (G : Vect Ty n)
 
-  data Env : Vect Ty n -> Set where
+  data Env : Vect Ty n -> Type where
       Nil  : Env Nil
       (::) : interpTy a -> Env G -> Env (a :: G)
 
---   data HasType : (i : Fin n) -> Vect Ty n -> Ty -> Set where
+--   data HasType : (i : Fin n) -> Vect Ty n -> Ty -> Type where
 --       stop : HasType fO (t :: G) t
 --       pop  : HasType k G t -> HasType (fS k) (u :: G) t
 
@@ -21,7 +21,7 @@ using (G : Vect Ty n)
   lookup fO     (x :: xs) = x
   lookup (fS i) (x :: xs) = lookup i xs
 
-  data Expr : Vect Ty n -> Ty -> Set where
+  data Expr : Vect Ty n -> Ty -> Type where
       Var : (i : Fin n) -> Expr G (lookup i G)
       Val : (x : Int) -> Expr G TyInt
       Lam : Expr (a :: G) t -> Expr G (TyFun a t)
