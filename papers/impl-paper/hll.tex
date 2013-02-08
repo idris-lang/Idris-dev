@@ -40,9 +40,9 @@ main = putStrLn ("The answer is " ++ show x)
 Like Haskell, the main function
 is called \texttt{main}, and input and output is managed with an \texttt{IO}
 monad. Unlike Haskell, however, a single colon indicates \texttt{:} a type
-declaration, emphasising the importance of types, 
-and \remph{all} functions must have a top level type
-declaration. This is due to type inference being, in general, 
+signature, emphasising the importance of types, 
+and \remph{all} top level functions must have a type
+signature. This is due to type inference being, in general, 
 undecidable for languages with
 dependent types.
 
@@ -191,14 +191,16 @@ data Vect : Type -> Nat -> Type where
 \useverb{vect}
 
 \noindent
-Note that this uses the same constructor names as for \tTC{List}. Ad-hoc
-name overloading such as this is accepted by \Idris{}, provided that the names
-are declared in different namespaces (in practice, normally in different modules).
-Ambiguous constructor names are resolved by type. 
+Note that this uses the same constructor names as for \tTC{List}. Ad-hoc name
+overloading such as this is accepted by \Idris{}, provided that the names are
+declared in different namespaces (in practice, normally in different modules)
+so that the names are different internally. Namespace resolution can be made
+explicitly (e.g. \texttt{List.Nil} or \texttt{Vect.Nil}) or more commonly
+by type.
 
-This declares a family of types, which requires a different form of declaration
-from the simple type declarations above. It resembles a Haskell GADT
-declaration: it explicitly states the type
+The above declaration creates a family of types, and requires a different form
+of declaration from the simple type declarations above. It resembles a Haskell
+GADT declaration: it explicitly states the type
 of the type constructor \tTC{Vect} --- it takes a type and a \tTC{Nat} as an
 argument, where \tTC{Type} stands for the type of types. We say that \tTC{Vect}
 is \emph{parameterised} by a type, and \emph{indexed} over \tTC{Nat}. 
@@ -219,13 +221,13 @@ library, appends two \tTC{Vect}s:
 \begin{SaveVerbatim}{vapp}
 
 (++) : Vect A n -> Vect A m -> Vect A (n + m)
-(++) Nil       ys = ys
-(++) (x :: xs) ys = x :: xs ++ ys
+Nil       ++ ys = ys
+(x :: xs) ++ ys = x :: xs ++ ys
 
 \end{SaveVerbatim}
 \useverb{vapp}
 
-\subsubsection{The Finite Sets}
+\subsubsection*{Example: The Finite Sets}
 
 Finite sets, as the name suggests, are sets with a finite number of elements.
 They are declared as follows in the library:
@@ -273,11 +275,10 @@ need for a run-time bounds check. The type checker guarantees that the location
 is no larger than the length of the vector.
 
 Note also that there is no case for \texttt{Nil} here. It would be impossible
-to apply such a case ---
-since there is no element of \texttt{Fin O}, and the location is a
-\texttt{Fin n}, then \texttt{n} can not be \tDC{O}.  As a result, attempting to
-look up an element in an empty vector would give a compile time type error,
-since it would force \texttt{n} to be \tDC{O}.
+to apply such a case --- since there is no element of \texttt{Fin O}, and the
+location is a \texttt{Fin n}, then \texttt{n} can not be \tDC{O}.  As a result,
+attempting to look up an element in an empty vector would give a compile time
+type error.
 
 \subsubsection{Implicit Arguments}
 
@@ -315,10 +316,10 @@ index : {a:Type} -> {n:Nat} -> Fin n -> Vect a n -> a
 \useverb{vindeximpty}
 
 \noindent
-Implicit arguments, given in braces \texttt{\{\}} in the type declaration, are
+Implicit arguments, given in braces \texttt{\{\}} in the type signature, are
 not given in applications of \texttt{index}; their values can be inferred from
 the types of the \texttt{Fin n} and \texttt{Vect a n} arguments. Any name which
-appears as a parameter or index in a type declaration, but which is otherwise
+appears as a parameter or index in a type signature, but which is otherwise
 free, will be automatically bound as an implicit argument.  Implicit arguments
 can still be given explicitly in applications, using the syntax
 \texttt{\{a=value\}} and \texttt{\{n=value\}}, for example:
@@ -344,6 +345,41 @@ index : (i:Fin n) -> (xs:Vect a n) -> a
 \noindent
 This can be useful for improving the readability of type signatures, particularly
 where the name suggests the argument's purpose.
+
+\subsubsection{Totality Checking}
+
+Internally, \Idris{} programs are checked for \emph{totality} --- that they
+produce an answer in finite time for all possible inputs --- but they are not
+\emph{required} to be total by default. Totality checking serves two
+purposes: firstly, if a program terminates for all inputs 
+then its type gives a strong
+guarantee about the properties specified by its type; secondly, we can
+optimise total programs more aggressively~\cite{Brady2003}. 
+
+Totality checking can be enforced by using the \texttt{total} keyword. For
+example, recall the \texttt{vAdd} function:
+
+\begin{SaveVerbatim}{vadd}
+
+total vAdd : Num a => Vect a n -> Vect a n -> Vect a n
+vAdd []        []        = []
+vAdd (x :: xs) (y :: ys) = x + y :: vAdd xs ys
+
+\end{SaveVerbatim}
+\useverb{vadd}
+
+\noindent
+The elaborator can verify that this is total by checking that it covers all
+possible patterns --- in this case, both arguments must be of the same form
+as the type requires that the input vectors are the same length --- and that
+recursive calls are on structurally smaller values. The totality checker is
+implemented independently of the type checker and elaborator presented in the
+remainder of this paper. While we could consider building totality proofs
+by translating functions to eliminators~\cite{McBride2004a} we have taken
+the more pragmatic approach of allowing more flexibility for the programmer
+at the expense of simplicity of totality checking. \Idris{} also supports
+coinductive definitions with a corresponding productivity checker, although
+futher details are beyond the scope of this paper.
 
 \subsection{Type Classes}
 
@@ -476,41 +512,41 @@ class Eq a => Ord a where
 
 \subsection{Matching on intermediate values}
 
-\subsubsection{\texttt{let} bindings}
+%\subsubsection{\texttt{let} bindings}
+%
+%Intermediate values can be calculated using \texttt{let} bindings:
+%
+%\begin{SaveVerbatim}{letb}
+%
+%mirror : List a -> List a
+%mirror xs = let xs' = rev xs in
+%                app xs xs'
+%
+%\end{SaveVerbatim}
+%\useverb{letb} 
+%
+%\noindent
+%Pattern matching is also supported in \texttt{let} bindings. For example, extracting
+%fields from a record can be achieved as follows, as well as by pattern matching at the top level:
+%
+%\begin{SaveVerbatim}{letp}
+%
+%data Person = MkPerson String Int
+%
+%showPerson : Person -> String
+%showPerson p = let MkPerson name age = p in
+%                   name ++ " is " ++ show age ++ " years old"
+%
+%\end{SaveVerbatim}
+%\useverb{letp} 
 
-Intermediate values can be calculated using \texttt{let} bindings:
-
-\begin{SaveVerbatim}{letb}
-
-mirror : List a -> List a
-mirror xs = let xs' = rev xs in
-                app xs xs'
-
-\end{SaveVerbatim}
-\useverb{letb} 
-
-\noindent
-Pattern matching is also supported in \texttt{let} bindings. For example, extracting
-fields from a record can be achieved as follows, as well as by pattern matching at the top level:
-
-\begin{SaveVerbatim}{letp}
-
-data Person = MkPerson String Int
-
-showPerson : Person -> String
-showPerson p = let MkPerson name age = p in
-                   name ++ " is " ++ show age ++ " years old"
-
-\end{SaveVerbatim}
-\useverb{letp} 
 \subsubsection{\texttt{case} expressions}
 
-Another way of inspecting intermediate values of \emph{simple} types
-is to use a \texttt{case} expression.
-For example, \texttt{list\_lookup}
-looks up an index in a list, returning \texttt{Nothing} if the index is out
-of bounds. This can be used this to write \texttt{lookup\_default}, which
-looks up an index and returns a default value if the index is out of bounds:
+Intermediate values of \emph{non-dependent} types can be inspected using a
+\texttt{case} expression.  For example, \texttt{list\_lookup} looks up an index
+in a list, returning \texttt{Nothing} if the index is out of bounds. This can
+be used this to write \texttt{lookup\_default}, which looks up an index and
+returns a default value if the index is out of bounds:
 
 \begin{SaveVerbatim}{listlookup}
 
@@ -522,17 +558,10 @@ lookup_default i xs def = case list_lookup i xs of
 \end{SaveVerbatim}
 \useverb{listlookup} 
 
-The \texttt{case} construct is intended for simple analysis
-of intermediate expressions to avoid the need to write auxiliary functions, and is
-also used internally to implement pattern matching \texttt{let} and lambda bindings. 
-It will \emph{only} work if:
-
-\begin{itemize}
-\item Each branch \emph{matches} a value of the same type, and \emph{returns} a
-value of the same type.
-\item The type of the result is ``known''. i.e. the type of the expression can be
-determined \emph{without} type checking the \texttt{case}-expression itself. 
-\end{itemize}
+The \texttt{case} construct is intended for simple analysis of intermediate
+expressions to avoid the need to write auxiliary functions.  It will
+\emph{only} work if each branch \emph{matches} a value of the same type, and
+\emph{returns} a value of the same type.
 
 \subsubsection{The \texttt{with} rule}
 

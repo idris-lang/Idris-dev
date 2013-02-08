@@ -312,7 +312,8 @@ index $\vk$ is given \remph{explicitly}.
 
 \label{sect:patdefs}
 
-\subsubsection{Syntax}
+%\subsubsection{Syntax}
+
 
 A pattern matching definition for a function named $\FN{f}$ takes the following form,
 consisting of a type declaration followed by one or more pattern clauses:
@@ -347,144 +348,148 @@ clause is defined by the following rule:
 }
 }
 
-A valid pattern matching definition effectively extends \TT{} with a new constant,
-with the given type (extending the initial typing rules given in Section \ref{sect:typerules})
-and reduction behaviour (extending the initial reduction rules given in Section
-\ref{sect:evaluation}). 
+A valid pattern matching definition effectively extends \TT{} with a new
+constant, with the given type (extending the initial typing rules given in
+Section \ref{sect:typerules}) and reduction behaviour (extending the initial
+reduction rules given in Section \ref{sect:evaluation}). 
+Patterns are separated into the accessible patterns (variables and constructor
+forms which may be inspected) and inaccessible patterns, following
+Agda~\cite{norell2007thesis} then implemented by compilation into case
+trees~\cite{Augustsson1985}.
 
-\subsubsection{Semantics}
-
-Matching on an expression proceeds by comparing the expression to
-each match clause in order, resulting in either:
-
-\begin{itemize}
-\item \demph{Success}, with pattern variables mapping to expressions
-\item \demph{Failure}, with matching continuing by proceeding to the next match clause
-\item Matching being \demph{blocked}, for example by attempting to match a variable
-against a constructor pattern. In this case, no reduction occurs, because instantiating
-the variable may provide enough information for the clause to match.
-\end{itemize}
-
-% Pat(x args) => x (Pat' args)
-% Pat (x) => x
-% Pat _ => _
-
-In order to implement pattern matching, we must separate the \remph{accessible} and
-\remph{inaccessible} patterns. A pattern is \demph{accessible} (that is, it is possible
-to match against it) if it is constructor headed, or a variable. Inaccessible patterns
-are converted to ``match anything'' patterns. Clauses are converted to matchable pattern
-clauses with the $\MO{Clause}$ operation, given in Figure \ref{mkclause}.
-We extend the vector notation to meta-operations: the notation $\vec{\MO{Pat}}$ lifts the
-$\MO{Pat}$ operation across a list of arguments.
-
-\FFIG{
-\AR{
-\PA{\A}{
-& \MO{Clause} & (\pat{\tx}{\tU}\SC\FN{f}\:\tts\:=\:\ve)
- & \MoRet{\FN{f}\:(\vec{\MO{Pat}}\:\tts)\:=\:\ve}
-}
-\medskip\\
-\PA{\A}{
-& \MO{Pat} & (\vx\:\tts) & \MoRet{\vx\:(\vec{\MO{Pat}}\:\tts) 
-  \hg\mbox{(if $\MO{Con}\:\vx$ and $\MO{Arity}\:\vx = \MO{Length}\:\tts$)}} \\
-& \MO{Pat} & \vx & \MoRet{\vx} \hg\mbox(if $\vx$ is a pattern variable)\\
-& \MO{Pat} & \cdot & \MoRet{\_} \hg\mbox(in all other cases)\\
-}
-}
-}
-{Building matchable pattern clauses}
-{mkclause}
-
-
-% Match (c args, c args') => Match' (args, args')
-% Match (c args, x)       => Blocked
-% Match (x, t)            => Success (x => t)
-% Match (_, t)            => Success ()  
-
-\newcommand{\Blocked}{\mathsf{Blocked}}
-\newcommand{\Success}{\mathsf{Success}}
-\newcommand{\Failure}{\mathsf{Failure}}
-
-Pattern matching is invoked by the evaluator on encountering a function with
-a pattern matching definition applied to some arguments. If successful, pattern
-matching returns a new expression, which can then be reduced further.
-Figure \ref{pmatch} gives the semantics of pattern matching a collection of 
-matchable clauses
-$\tc$ against an expression $\ve$. $\MO{Match}$ attempts to match each clause in
-turn against $\ve$. If matching a clause returns $\Success$ or $\Blocked$, then
-matching terminates. If matching a clause returns $\Failure$, then matching proceeds
-with the next clause. The algorithm uses the following meta-operations:
-
-\begin{itemize}
-\item $\MO{Con}\:\vx$, which returns true if $\vx$ is a constructor name
-\item $\MO{Arity}\:\vx$, which, if $\vx$ is a constructor name, returns the number of arguments
-$\vx$ requires.
-\item $\MO{Length}\:\tts$, which returns the length of the vector $\tts$
-\end{itemize}
-
-
-\FFIG{
-\AR{
-\PA{\A\A}{
-& \MO{MatchArg} & (\vx\:\tts) & (\vx\:\tts')
-    & \MoRet{\vec{\MO{MatchArg}}\:\tts\:\tts'\hg\mbox{(if $\MO{Con}\:\vx$)}}\\
-& \MO{MatchArg} & (\vx\:\tts) & \vx & \MoRet{\Blocked} \\
-& \MO{MatchArg} & \vx & \vt & \MoRet{\Success\:(\vx\mapsto\vt)} \\
-& \MO{MatchArg} & \_ & \vt & \MoRet{\Success\:()} \\
-& \MO{MatchArg} & \cdot & \cdot & \MoRet{\Failure} 
-}
-\medskip\\
-\PA{\A\A}{
-& \MO{MatchClause} & (\vf\:\tp = \ve) & (\vf\:\tts) &
- \MoRet{
- \AR{
- \Success\:\ve[\tx/\tv]\hg\mbox{(if $\vec{\MO{MatchArg}}\:\tp\:\tts \mq \Success\:(\tx,\tv)$)}\\
- \Blocked\;\;\;\hg\hg\mbox{(if $\vec{\MO{MatchArg}}\:\tp\:\tts \mq \Blocked$)}\\
- \Failure\;\;\;\;\;\hg\hg\mbox{(if $\vec{\MO{MatchArg}}\:\tp\:\tts \mq \Failure$)}\\
- }
- } \\
-& \MO{MatchClause} & (\vf\:\tp = \ve) & \cdot & \MoRet{\Failure} \\
-}
-\medskip\\
-\PA{\A\A}{
-& \MO{Match} & (\vc ; \tc) & \ve &
- \MoRet{
- \AR{
- \Success\;\vx\;\;\hg\mbox{(if $\MO{MatchClause}\:\vc\:\ve \mq \Success\:\vx)$} \\
- \Blocked\hg\;\;\;\;\mbox{(if $\MO{MatchClause}\:\vc\:\ve \mq \Blocked)$} \\
- \MO{Match}\:\tc\:\ve\hg\mbox{(otherwise)}
- }
- } \\
-& \MO{Match} & \cdot & \ve & \MoRet{\Failure}
-}
-}
-}
-{Pattern matching semantics}
-{pmatch}
-
-By convention, we write the application of a meta-operation $\MO{Op}$ 
-across a vector $\tx$ as $\vec{\MO{Op}}\:\tx$.
-In practice, for efficiency, pattern matching is implemented by compiling the match clauses to
-a tree of case expressions~\cite{Augustsson1985}. 
+% \subsubsection{Semantics}
+% 
+% Matching on an expression proceeds by comparing the expression to
+% each match clause in order, resulting in either:
+% 
+% \begin{itemize}
+% \item \demph{Success}, with pattern variables mapping to expressions
+% \item \demph{Failure}, with matching continuing by proceeding to the next match clause
+% \item Matching being \demph{blocked}, for example by attempting to match a variable
+% against a constructor pattern. In this case, no reduction occurs, because instantiating
+% the variable may provide enough information for the clause to match.
+% \end{itemize}
+% 
+% % Pat(x args) => x (Pat' args)
+% % Pat (x) => x
+% % Pat _ => _
+% 
+% In order to implement pattern matching, we must separate the \remph{accessible} and
+% \remph{inaccessible} patterns. A pattern is \demph{accessible} (that is, it is possible
+% to match against it) if it is constructor headed, or a variable. Inaccessible patterns
+% are converted to ``match anything'' patterns. Clauses are converted to matchable pattern
+% clauses with the $\MO{Clause}$ operation, given in Figure \ref{mkclause}.
+% We extend the vector notation to meta-operations: the notation $\vec{\MO{Pat}}$ lifts the
+% $\MO{Pat}$ operation across a list of arguments.
+% 
+% \FFIG{
+% \AR{
+% \PA{\A}{
+% & \MO{Clause} & (\pat{\tx}{\tU}\SC\FN{f}\:\tts\:=\:\ve)
+%  & \MoRet{\FN{f}\:(\vec{\MO{Pat}}\:\tts)\:=\:\ve}
+% }
+% \medskip\\
+% \PA{\A}{
+% & \MO{Pat} & (\vx\:\tts) & \MoRet{\vx\:(\vec{\MO{Pat}}\:\tts) 
+%   \hg\mbox{(if $\MO{Con}\:\vx$ and $\MO{Arity}\:\vx = \MO{Length}\:\tts$)}} \\
+% & \MO{Pat} & \vx & \MoRet{\vx} \hg\mbox(if $\vx$ is a pattern variable)\\
+% & \MO{Pat} & \cdot & \MoRet{\_} \hg\mbox(in all other cases)\\
+% }
+% }
+% }
+% {Building matchable pattern clauses}
+% {mkclause}
+% 
+% 
+% % Match (c args, c args') => Match' (args, args')
+% % Match (c args, x)       => Blocked
+% % Match (x, t)            => Success (x => t)
+% % Match (_, t)            => Success ()  
+% 
+% \newcommand{\Blocked}{\mathsf{Blocked}}
+% \newcommand{\Success}{\mathsf{Success}}
+% \newcommand{\Failure}{\mathsf{Failure}}
+% 
+% Pattern matching is invoked by the evaluator on encountering a function with
+% a pattern matching definition applied to some arguments. If successful, pattern
+% matching returns a new expression, which can then be reduced further.
+% Figure \ref{pmatch} gives the semantics of pattern matching a collection of 
+% matchable clauses
+% $\tc$ against an expression $\ve$. $\MO{Match}$ attempts to match each clause in
+% turn against $\ve$. If matching a clause returns $\Success$ or $\Blocked$, then
+% matching terminates. If matching a clause returns $\Failure$, then matching proceeds
+% with the next clause. The algorithm uses the following meta-operations:
+% 
+% \begin{itemize}
+% \item $\MO{Con}\:\vx$, which returns true if $\vx$ is a constructor name
+% \item $\MO{Arity}\:\vx$, which, if $\vx$ is a constructor name, returns the number of arguments
+% $\vx$ requires.
+% \item $\MO{Length}\:\tts$, which returns the length of the vector $\tts$
+% \end{itemize}
+% 
+% 
+% \FFIG{
+% \AR{
+% \PA{\A\A}{
+% & \MO{MatchArg} & (\vx\:\tts) & (\vx\:\tts')
+%     & \MoRet{\vec{\MO{MatchArg}}\:\tts\:\tts'\hg\mbox{(if $\MO{Con}\:\vx$)}}\\
+% & \MO{MatchArg} & (\vx\:\tts) & \vx & \MoRet{\Blocked} \\
+% & \MO{MatchArg} & \vx & \vt & \MoRet{\Success\:(\vx\mapsto\vt)} \\
+% & \MO{MatchArg} & \_ & \vt & \MoRet{\Success\:()} \\
+% & \MO{MatchArg} & \cdot & \cdot & \MoRet{\Failure} 
+% }
+% \medskip\\
+% \PA{\A\A}{
+% & \MO{MatchClause} & (\vf\:\tp = \ve) & (\vf\:\tts) &
+%  \MoRet{
+%  \AR{
+%  \Success\:\ve[\tx/\tv]\hg\mbox{(if $\vec{\MO{MatchArg}}\:\tp\:\tts \mq \Success\:(\tx,\tv)$)}\\
+%  \Blocked\;\;\;\hg\hg\mbox{(if $\vec{\MO{MatchArg}}\:\tp\:\tts \mq \Blocked$)}\\
+%  \Failure\;\;\;\;\;\hg\hg\mbox{(if $\vec{\MO{MatchArg}}\:\tp\:\tts \mq \Failure$)}\\
+%  }
+%  } \\
+% & \MO{MatchClause} & (\vf\:\tp = \ve) & \cdot & \MoRet{\Failure} \\
+% }
+% \medskip\\
+% \PA{\A\A}{
+% & \MO{Match} & (\vc ; \tc) & \ve &
+%  \MoRet{
+%  \AR{
+%  \Success\;\vx\;\;\hg\mbox{(if $\MO{MatchClause}\:\vc\:\ve \mq \Success\:\vx)$} \\
+%  \Blocked\hg\;\;\;\;\mbox{(if $\MO{MatchClause}\:\vc\:\ve \mq \Blocked)$} \\
+%  \MO{Match}\:\tc\:\ve\hg\mbox{(otherwise)}
+%  }
+%  } \\
+% & \MO{Match} & \cdot & \ve & \MoRet{\Failure}
+% }
+% }
+% }
+% {Pattern matching semantics}
+% {pmatch}
+% 
+% By convention, we write the application of a meta-operation $\MO{Op}$ 
+% across a vector $\tx$ as $\vec{\MO{Op}}\:\tx$.
+% In practice, for efficiency, pattern matching is implemented by compiling the match clauses to
+% a tree of case expressions~\cite{Augustsson1985}. 
 
 \subsection{Totality checking}
 
-In order to ensure termination of type checking
-we must distinguish terms for which evaluation definitely terminates, and
-those which may diverge. \TT{} takes a simple but pragmatic and
-effective approach to termination
-checking: any functions which do not satisfy a syntactic constraint on recursive
-calls are marked as \emph{partial}. Additionally, any function which calls a partial
+In order to ensure termination of type checking we must distinguish terms for
+which evaluation definitely terminates, and those which may diverge. \TT{}
+takes a simple but pragmatic and effective approach to termination checking:
+any functions which do not satisfy a syntactic constraint on recursive calls
+are marked as \emph{partial}. Additionally, any function which calls a partial
 function or uses a data type which is not strictly positive is also marked as
 partial. The syntactic constraint we use is that a recursive call in a pattern
-clause must have an argument which is structurally smaller than an input argument
-in the same position. \TT{} also marks functions which do not cover all possible
-inputs as partial. This totality checking is independent of the rest of the type
-theory, and can be extended.
+clause must have an argument which is structurally smaller than an input
+argument in the same position. \TT{} also marks functions which do not cover
+all possible inputs as partial. This totality checking is independent of the
+rest of the type theory, and can be extended.
 
-This approach, separating the termination requirement from the type theory, means that
-an \Idris{} programmer makes the decision about the importance of totality for each
-function rather than having the totality requirement imposed by the type theory.
+This approach, separating the termination requirement from the type theory,
+means that an \Idris{} programmer makes the decision about the importance of
+totality for each function rather than having the totality requirement imposed
+by the type theory.
 
 \subsection{From \Idris{} to \TT{}}
 
@@ -574,7 +579,7 @@ switching to \TT{} notation from the ASCII \Idris{} syntax.
 {Pairwise addition of vectors in \TT{}}
 {ttvadd}
 
-\subsubsection{An observation}
+\subsubsection{An Observation: Programming vs Theorem Proving}
 
 \Idris{} programs may contain several high level constructs not present in \TT{}, such
 as implicit arguments, type classes, \texttt{where} clauses, pattern matching \texttt{let}

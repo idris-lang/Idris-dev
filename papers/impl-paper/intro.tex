@@ -120,10 +120,10 @@ vAdd (x :: xs) (y :: ys) = x + y :: vAdd xs ys
 This illustrates some basic features of \Idris{}:
 
 \begin{itemize}
-\item A single colon is used for type declarations, and a double colon for the
+\item A single colon is used for type signatures, and a double colon for the
 cons operator.
-\item Functions are defined by pattern matching, with a top level type declaration.
-Names which are free in the type declaration (\texttt{a} and \texttt{n}) here
+\item Functions are defined by pattern matching, with a top level type signature.
+Names which are free in the type signature (\texttt{a} and \texttt{n}) here
 are implicitly bound.
 \item The type system ensures that both input vectors are the same length (\texttt{n})
 and have the same element type (\texttt{a}), and that the element type and length
@@ -136,7 +136,7 @@ of the vector \texttt{a} must be numeric and therefore supports the \texttt{+} o
 \Idris{} programs elaborate into a small core language, \TT{}, which is a $\lambda$-calculus
 with dependent types, augmented with algebraic data types and pattern matching.
 \TT{} programs are fully explicitly typed, including the names \texttt{a} and \texttt{n}
-in the type declaration, and the names bound in each pattern match clause.
+in the type signature, and the names bound in each pattern match clause.
 Type classes are also made explicit.
 The \TT{} translation of \texttt{vAdd} is:
 
