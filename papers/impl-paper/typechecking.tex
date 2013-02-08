@@ -243,6 +243,7 @@ be implemented in the usual way~\cite{loh2010tutorial}.
 {Cumulativity}
 {cumul}
 
+
 \subsection{Inductive Families}
 
 \label{sect:inductivefams}
@@ -471,6 +472,40 @@ trees~\cite{Augustsson1985}.
 % across a vector $\tx$ as $\vec{\MO{Op}}\:\tx$.
 % In practice, for efficiency, pattern matching is implemented by compiling the match clauses to
 % a tree of case expressions~\cite{Augustsson1985}. 
+
+\subsection{Metatheory}
+
+\FFIG{
+\AR{
+\mbox{\textbf{TODO}}\\
+\mbox{Church-Rosser}
+\\
+\mbox{Subject Reduction}
+\\
+\mbox{Strengthening}
+\\
+\mbox{Cut}
+\\
+}
+}
+{Metatheoretic properties of \TT{}}
+{metatheory}
+
+\TT{} respects the usual metatheoretic properties, as shown in Figure
+\ref{metatheory}.  Specifically: the \demph{Church-Rosser} property
+(i.e. that distinct reduction sequences lead to the same normal form); 
+\demph{subject
+reduction} (i.e. that computation preserves type); the \demph{cut} property
+(i.e. that $\RW{let}$-bound terms may be substituted into their scope); and
+\demph{strengthening} (i.e. that introducing new definitions into scope does
+not affect typechecking).
+
+One property which is noticeably absent is \demph{strong normalisation}.
+Although desirable to preserve termination and decidability of type checking,
+we allow diverging terms for pragmatic reasons as \Idris{} is primarily a
+programming language rather than a theorem prover. Nevertheless, we do
+\emph{check} for totality in order to be sure which terms are safe to
+evaluate at compile time.
 
 \subsection{Totality checking}
 

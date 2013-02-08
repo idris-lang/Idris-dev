@@ -586,6 +586,10 @@ the goal type.
 
 \FFIG{
 \begin{array}{lll}
+\mbox{\textbf{Tactic}} & \mbox{\textbf{Resulting Proof Term}} &  
+\mbox{\textbf{Queue}}
+\medskip
+\\
 \mbox{Initial state} 
 & \hole{\vx}{\all{\vA}{\Type}\SC\all{\va}{\vA}\SC\vA}\SC\vx
 & \langle\vx\rangle \\
@@ -701,7 +705,7 @@ the goal type.
 Figure \ref{mkidrefine} shows how each step of this sequence of tactics affects
 the proof state and hole queue. In each step, the underlined fragment of the
 term is the fragment in focus. One might observe that the 
-$\MO{Attack}$/$\MO{Solve}$ pairs may be unnecessary in this case, as the term
+$\MO{Attack}$/$\MO{Solve}$ pairs are unnecessary in this case, as the term
 is already in a form suitable for introduction. However, we retain these for
 uniform treatment of introductions.
 
