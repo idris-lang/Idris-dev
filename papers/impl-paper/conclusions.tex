@@ -4,21 +4,32 @@
 
 Dependently typed programming languages have becoming more prominent in recent
 years as tools for verifying software correctness, and several experimental
-languages are being developed, in particular Agda \cite{norell2007thesis}, Epigram
-\cite{McBride2004a,Levitation2010} and Trellys \cite{Kimmell2012}.
+languages are being developed, in particular Agda \cite{norell2007thesis},
+Epigram \cite{McBride2004a,Levitation2010} and Trellys \cite{Kimmell2012}.
+The problem of refining high level syntax to a core type theory also applies
+to theorem provers based on dependent types such as Coq~\cite{Bertot2004}
+and Matita~\cite{Asperti2011}.
 
-[Talk about~\cite{Asperti}, ~\cite{OutsideIn}, ~\cite{Sozeau2008}]
-
-An earlier implementation of \Idris{} was built on the \Ivor{} proof engine 
+An earlier implementation of \Idris{} was built on the \Ivor{} proof engine
 \cite{Brady2006b}. This implementation differed in one important way --- unlike
-the present implementation, there was limited separation between the type theory
-and the high level language. The type theory itself supported implicit syntax and
-unification, with high level constructs such as the \texttt{with} rule implemented
-directly. Two important disadvantages were found with this approach, however: 
-firstly, the type checker is much more complicated when combined with
-unification, making it harder to maintain; secondly, adding new high level features
-requires the type checker to support those features directly. In contrast, elaboration
-by tactics gives a clean separation between the low level and high level languages.
+the present implementation, there was limited separation between the type
+theory and the high level language. The type theory itself supported implicit
+syntax and unification, with high level constructs such as the \texttt{with}
+rule implemented directly. Two important disadvantages were found with this
+approach, however: firstly, the type checker is much more complicated when
+combined with unification, making it harder to maintain; secondly, adding new
+high level features requires the type checker to support those features
+directly. In contrast, elaboration by tactics gives a clean separation between
+the low level and high level languages.
+
+Matita uses a bi-directional refinement algorithm~\cite{Asperti}. This is a
+type directed approach, maintaining a set of yet to be solved unification
+problems and relying on a small kernel, similar to the approach we now take
+with \Idris{}, However, their approach uses refinement rules rather than
+actics. This leads to good error messages though it is not clear how
+easy it would be to extend to additional high level language features, unlike
+the tactic based approach.
+Similarly, the new GHC type checker~\cite{Vytiniotis2011} \ldots \textbf{TODO}
 
 The Agda implementation is based on a type theory with
 implicit syntax and pattern matching --- Norell gives an algorithm for type checking
