@@ -190,7 +190,7 @@ be implemented in the usual way~\cite{loh2010tutorial}.
 {\Gamma\vdash\vx\Hab\vS}
 \hg
 \mathsf{Val}\:
-\Rule{(\LET\:\vx\Hab\vS\defq\vs)\in\Gamma}
+\Rule{(\LET\:\vx\defq\vs\Hab\vS)\in\Gamma}
 {\Gamma\vdash\vx\Hab\vS}
 \\
 \mathsf{App}\:
@@ -476,29 +476,49 @@ trees~\cite{Augustsson1985}.
 \subsection{Metatheory}
 
 \FFIG{
-\AR{
-\mbox{\textbf{TODO}}\\
-\mbox{Church-Rosser}
+\begin{array}{ll}
+\mbox{\textbf{Church-Rosser}} &
+\begin{array}{ll}
+\mbox{If}\hg\Gamma\proves\vs\converts\vt \\
+\mbox{then there is a common reduct $\vr$ such that}\:\\
+\Gamma\proves\vs\reducesto\vr\hg\Gamma\proves\vt\reducesto\vr
+\end{array}
+\medskip
 \\
-\mbox{Subject Reduction}
+\mbox{\textbf{Subject Reduction}} &
+\begin{array}{ll}
+\mbox{If} & \Gamma\proves\vs\Hab\vS\hg\Gamma\proves\vs\reduces\vt\\
+\mbox{then}& \Gamma\proves\vt\Hab\vS
+\end{array}
+\medskip
 \\
-\mbox{Strengthening}
+\mbox{\textbf{Cut}} &
+\begin{array}{ll}
+\mbox{If} & \Gamma_0,\LET\:\vx\defq\vs\Hab\vS,\Gamma_1\proves\vt\Hab\vT\\
+\mbox{then} & \Gamma_0, \Gamma_1[\vs/\vx]\proves\vt[\vs/\vx]\Hab\vT[\vs/\vx]
+\end{array}
+\medskip
 \\
-\mbox{Cut}
+\mbox{\textbf{Strengthening}} &
+\begin{array}{ll}
+\mbox{If} & \Gamma_0,\mathcal{B}(\vx, \vT),\Gamma_1\proves\vs\Hab\vS
+\hg\vx\not\in\Gamma_1,\vs,\vS\\
+\mbox{then} & \Gamma_0,\Gamma_1\proves\vs\Hab\vS\\
+(\mbox{where} & \mathcal{B}(\vx, \vT) \proves \vx\Hab\vT)
+\end{array}
 \\
-}
+\end{array}
 }
 {Metatheoretic properties of \TT{}}
 {metatheory}
 
-\TT{} respects the usual metatheoretic properties, as shown in Figure
-\ref{metatheory}.  Specifically: the \demph{Church-Rosser} property
-(i.e. that distinct reduction sequences lead to the same normal form); 
-\demph{subject
-reduction} (i.e. that computation preserves type); the \demph{cut} property
-(i.e. that $\RW{let}$-bound terms may be substituted into their scope); and
-\demph{strengthening} (i.e. that introducing new definitions into scope does
-not affect typechecking).
+We assume that \TT{} respects the usual metatheoretic properties, as shown in
+Figure \ref{metatheory}.  Specifically: the \demph{Church-Rosser} property
+(i.e. that distinct reduction sequences lead to the same normal form);
+\demph{subject reduction} (i.e. that computation preserves type); the
+\demph{cut} property (i.e. that $\RW{let}$-bound terms may be substituted into
+their scope); and \demph{strengthening} (i.e. that removing unused definitions
+from scope does not affect typechecking).
 
 One property which is noticeably absent is \demph{strong normalisation}.
 Although desirable to preserve termination and decidability of type checking,
