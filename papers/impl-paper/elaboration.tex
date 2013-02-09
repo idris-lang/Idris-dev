@@ -130,6 +130,11 @@ either indicates success, or reports an error $\MO{Err}$:
 \RW{data}\:\MO{Result}\:\vt\:=\:\MO{Success}\:\vt\:\mid\:\MO{Failure}\:\MO{Err}
 }
 
+\noindent
+If any operation fails during a proof (e.g. a subterm fails to type check)
+then the entire proof fails (i.e. returns $\MO{Failure}\:\ve$ with some error
+message $\ve$) unless otherwise handled.
+
 The \texttt{Elab} monad supports various operations for querying and updating
 the proof state, manipulating terms, generating fresh names, etc. However, we
 will describe \Idris{} elaboration in terms of meta-operations on the proof
@@ -225,8 +230,9 @@ $\ve$, typically arising from unification.
 \end{itemize}
 
 \noindent
-Additionally, we have $\MO{Focus}$, $\MO{Unfocus}$ and $\MO{NewHole}$
-operations which manipulate
+Additionally, we have $\MO{Focus}$, $\MO{Unfocus}$, $\MO{NewHole}$
+and $\MO{NextHole}$
+operations which manipulate and inspect
 the hole queue. $\MO{Focus}\:\vn$ moves a hole to the head of the hole queue:
 
 \DM{
@@ -249,12 +255,19 @@ end of the hole queue:
 
 \noindent
 $\MO{NewHole}$ declares that a new hole has been created and is to be solved
-next:
+next, and $\MO{NextHole}$ returns the next hole to be solved:
 
 \DM{
+\AR{
 \MO{NewHole}\:=\:\RW{do}\:\AR{
 (\vC,\Delta,\vP,\vQ)\gets\MO{Get}\\
 \MO{Put}\:(\vC,\Delta,\vP,\vn;\vQ)\\
+}
+\\
+\MO{NextHole}\:=\:\RW{do}\:\AR{
+(\vC,\Delta,\vP,\vn;\vQ)\gets\MO{Get}\\
+\MO{Return}\:\vn
+}
 }
 }
 
@@ -279,7 +292,7 @@ well-typed, with a type convertible to the type of $\vt$.
 Tactics may also have the side effect of updating the proof state,
 therefore we will describe tactics in a pseudo-code with $\RW{do}$ notation.
 
-Tactics are executed by a higher level meta-operation $\MO{RunTac}$, 
+Tactics are executed by a higher level meta-operation $\MO{Tactic}$, 
 given in Figure \ref{runtac} which
 locates the appropriate sub-term, applies the tactic with the context
 local to this sub-term, and
@@ -290,7 +303,43 @@ tactic.
 % added to the \remph{head} of the hole queue.
 
 \FFIG{
-\mbox{\textbf{RunTac definition goes here}}
+\AR{
+\MO{Tactic}\:\VV{tac}\:=\:\RW{do}\:\AR{
+\ve\Gets\MO{Term}\\
+\vh\Gets\MO{NextHole}\\
+\ve'\Gets\MO{Tactic'}\:\langle\rangle\:\ve\:\VV{tac}\:\vh\\
+\MO{SetTerm}\:\ve'
+}
+\medskip
+\\
+\PA{\A\A\A}{
+\RW{where} \\
+& \MO{Tactic'} & \Gamma & (\hole{\vx}{\vT}\SC\ve)
+& \MoRet{\VV{tac}_\Gamma\:(\hole{\vx}{\vT}\SC\ve)\hg\mbox{if}\:\vx=\vh} \\
+& \MO{Tactic'} & \Gamma & (\guess{\vx}{\vT}{\vv}\SC\ve)
+& \MoRet{\VV{tac}_\Gamma\:(\guess{\vx}{\vT}{\vv}\SC\ve)\hg\mbox{if}\:\vx=\vh} \\
+& \MO{Tactic'} & \Gamma & (\lam{\vx}{\vT}\SC\ve)
+& \MoRet{
+\RW{do}\: \AR{\vT'\Gets\:\MO{Tactic'}\:\Gamma\:\vT\\
+\lam{\vx}{\vT'}\SC \MO{Tactic'}\:(\Gamma;\lam{\vx}{\vT'})\:\ve}
+}
+\\
+& \MO{Tactic'} & \Gamma & (\all{\vx}{\vT}\SC\ve)
+& \MoRet{
+\RW{do}\: \AR{\vT'\Gets\:\MO{Tactic'}\:\Gamma\:\vT\\
+\all{\vx}{\vT'}\SC \MO{Tactic'}\:(\Gamma;\all{\vx}{\vT'})\:\ve}
+}
+\\
+& \MO{Tactic'} & \Gamma & (\LET\:\vx\defq\vt\Hab\vT\SC\ve)
+& \MoRet{\RW{do}\:\AR{\vt'\Gets\:\MO{Tactic'}\:\Gamma\:\vt\\
+\vT'\Gets\:\MO{Tactic'}\:\Gamma\:\vT\\
+\LET\:\vx\defq\vt'\Hab\vT'\SC
+\MO{Tactic'}\:(\Gamma;\LET\:\vx\defq\vt'\Hab\vT')\:\ve}} \\
+& \MO{Tactic'} & \Gamma & (\vf\:\va) & 
+\MoRet{\MO{Return}\:(\MO{Tactic'}\:\Gamma\:\vf)\: (\MO{Tactic'}\:\Gamma\:\va)}\\
+& \MO{Tactic'} & \Gamma & \vt & \MoRet{\MO{Return}\:\vt}
+}
+}
 }
 {Applying tactics to the proof state}
 {runtac}
@@ -446,8 +495,10 @@ handle failure using the $\MO{Try}$ tactic combinator:
 \DM{
 \PA{\A\A\A}{
 \MO{Try}_\Gamma & \VV{t1} & \VV{t2} & \vt &
-   \MoRet{\AR{\VV{t1}_\Gamma\:\vt\hg\mbox{(if $\VV{t1}$ succeeds)} \\
-              \VV{t2}_\Gamma\:\vt\hg\mbox{(otherwise)}}}
+   \MoRet{\RW{case}\:\AR{\VV{t1}_\Gamma\:\vt\:\RW{of}\\
+             \MO{Success}\:\vt'\cq\MO{Success}\:\vt'\\
+             \MO{Failure}\:\_\cq\VV{t2}_\Gamma\:\vt\\
+          }}
 }
 }
 
@@ -577,7 +628,7 @@ building the right hand side.
 
 \subsubsection{Example}
 
-To illustrate how tactics are applied, using $\MO{RunTac}$, to build a
+To illustrate how tactics are applied, using $\MO{Tactic}$, to build a
 complete term by refining a proof state, let us consider the following
 \TT{} definition for the identify function:
 
@@ -591,7 +642,7 @@ complete term by refining a proof state, let us consider the following
 We can build $\FN{id}$ either as a complete term, or by applying a sequence of
 tactics.  To achieve this, we create a proof state initialised with the type of
 $\FN{id}$ and apply a series of $\MO{Lambda}$ and $\MO{Fill}$ operations using
-$\MO{RunTac}$.  Note that the types on each $\MO{Lambda}$ are taken from
+$\MO{Tactic}$.  Note that the types on each $\MO{Lambda}$ are taken from
 the goal type.
 
 \DM{
@@ -599,14 +650,14 @@ the goal type.
 \MO{MkId}\:\mq\:\RW{do}\:
  \AR{
    \MO{NewProof}\:\all{\vA}{\Type}\SC\all{\va}{\vA}\SC\vA \\
-   \MO{RunTac}\;\MO{Attack} \\
-   \MO{RunTac}\;(\MO{Lambda}\;\vA) \\
-   \MO{RunTac}\;\MO{Attack} \\
-   \MO{RunTac}\;(\MO{Lambda}\;\va) \\
-   \MO{RunTac}\;(\MO{Fill}\;\va)\\ 
-   \MO{RunTac}\;\MO{Solve}\\
-   \MO{RunTac}\;\MO{Solve}\\
-   \MO{RunTac}\;\MO{Solve}\\
+   \MO{Tactic}\;\MO{Attack} \\
+   \MO{Tactic}\;(\MO{Lambda}\;\vA) \\
+   \MO{Tactic}\;\MO{Attack} \\
+   \MO{Tactic}\;(\MO{Lambda}\;\va) \\
+   \MO{Tactic}\;(\MO{Fill}\;\va)\\ 
+   \MO{Tactic}\;\MO{Solve}\\
+   \MO{Tactic}\;\MO{Solve}\\
+   \MO{Tactic}\;\MO{Solve}\\
    \MO{Term}
  }
 }
@@ -737,9 +788,9 @@ $\MO{Attack}$/$\MO{Solve}$ pairs are unnecessary in this case, as the term
 is already in a form suitable for introduction. However, we retain these for
 uniform treatment of introductions.
 
-To aid readability, we will elide $\MO{RunTac}$, and use a semi-colon to indicate
+To aid readability, we will elide $\MO{Tactic}$, and use a semi-colon to indicate
 sequencing --- in the implementation we use wrapper functions for each tactic to
-apply $\MO{RunTac}$.
+apply $\MO{Tactic}$.
 Using this convention, we can build $\FN{id}$'s type and definition as shown
 in Figure \ref{idelab}. Note that $\MO{Term}$ retrieves the proof term from the current proof
 state. Both $\MO{MkIdType}$ and $\MO{MkId}$ finish by returning a completed \TT{} term.
