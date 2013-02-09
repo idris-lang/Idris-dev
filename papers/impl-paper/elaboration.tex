@@ -100,6 +100,10 @@ A proof state is a tuple, $(\vC, \Delta, \ve, \vP, \vQ)$, containing:
 \item A local context, $\Delta$, containing pattern bindings
 \item A proof term, $\ve$, in \TTdev{}
 \item Unsolved unification problems, $\vP$
+\begin{itemize}
+\item These take the form $(\Gamma,\ve_1,\ve_2)$, i.e. the context in which
+the problem is run, and the expressions to be unified.
+\end{itemize}
 \item A hole queue, $\vQ$
 %\item \remph{Deferred} definitions, $\vD$, for introducing global metavariables
 \end{itemize}
@@ -314,14 +318,38 @@ sub-terms in normal form.
 \end{itemize}
 
 $\MO{Unify}$ attempts to solve the given unification problem using
-$\MO{PrimUnify}$, then attempts to further refine existing problems in the proof
-state. This operation is given in Figure \ref{unifyps}. 
+$\MO{PrimUnify}$,
+then attempts to further refine existing problems in the proof
+state. This operation is given in Figure \ref{unifyps}. After attempting to
+solve the problem with $\MO{PrimUnify}$ and updating the proof term with
+any solutions found, it updates the existing problems (with $\MO{SubstProblems}$
+which applies $\MO{Subst}$ across the terms in the problems), then attempts to
+resolve the existing problems with $\MO{ReUnify}$.
 
 \FFIG{
-\mbox{\textbf{[UNIFY ALGORITHM GOES HERE] }}
+%\mbox{\textbf{[UNIFY ALGORITHM GOES HERE] }}
 %Show how it uses a PrimUnify
 %operation to update
 %the proof state with new problems, and solve the old ones
+\AR{
+\Unify\:\ve_1\:\ve_2\:=\:\RW{do}\:
+\AR{
+(\tx=\te,\tp)\gets\PrimUnify\:\ve_1\:\ve_2\\
+\vec{\MO{Subst}}\:\tx\:\te\\
+\MO{SubstProblems}\:(\tx=\te)\\
+(\vC,\Delta,\VV{term},\tP,\vQ)\gets\MO{Get}\\
+\vec{\MO{ReUnify}}\:\tP
+}
+\medskip
+\\
+\AR{
+\MO{ReUnify}\:(\Gamma,\ve_1,\ve_2)\:=\:\RW{do}\:\AR{
+(\tx=\te,\tp)\Gets\PrimUnify\:\ve_1\:\ve_2\\
+\vec{\MO{Subst}}\:\tx\:\te\\
+\MO{Return}\:\tp
+}
+}
+}
 }
 {The $\MO{Unify}$ meta-operation}
 {unifyps}
