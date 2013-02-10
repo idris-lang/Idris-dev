@@ -6,9 +6,28 @@ Dependently typed programming languages have becoming more prominent in recent
 years as tools for verifying software correctness, and several experimental
 languages are being developed, in particular Agda \cite{norell2007thesis},
 Epigram \cite{McBride2004a,Levitation2010} and Trellys \cite{Kimmell2012}.
-The problem of refining high level syntax to a core type theory also applies
-to theorem provers based on dependent types such as Coq~\cite{Bertot2004}
-and Matita~\cite{Asperti2011}.
+Furthermore, recent extensions to Haskell~\cite{Haskell98}, implemented in the
+Glasgow Haskell Compiler, are bringing more of the power of dependent types to
+Haskell. The problem of refining high level syntax to a core type theory also
+applies to theorem provers based on dependent types such as
+Coq~\cite{Bertot2004} and Matita~\cite{Asperti2011}.
+
+Checking advanced type system features in Haskell involves a type system
+parameterised over an underlying constraint system $X$ which captures
+constraints such as type classes, constrained data types and type families.
+Types are checked using an inference algorithm
+\textsc{OutsideIn(X)}~\cite{Vytiniotis2011}, which is stratified into an
+inference engine independent of the constraint
+system, and a constraint solver for $X$. An additional difficulty faced by
+Haskell, and hence any extensions, is the desire to support type \emph{inference}, in
+which principal types may be inferred for top level functions. We have avoided
+such difficulties since, in general, type
+inference is undecidable for full dependent types. Indeed, it is not clear
+that type inference is even desirable in many cases, as programmers
+can use dependent types to state their intentions (hence a program
+specification) more precisely. However in future work we
+may consider adapting the \textsc{OutsideIn} approach to provide limited type
+inference.
 
 An earlier implementation of \Idris{} was built on the \Ivor{} proof engine
 \cite{Brady2006b}. This implementation differed in one important way --- unlike
@@ -29,7 +48,6 @@ with \Idris{}, However, their approach uses refinement rules rather than
 actics. This leads to good error messages though it is not clear how
 easy it would be to extend to additional high level language features, unlike
 the tactic based approach.
-Similarly, the new GHC type checker~\cite{Vytiniotis2011} \ldots \textbf{TODO}
 
 The Agda implementation is based on a type theory with
 implicit syntax and pattern matching --- Norell gives an algorithm for type checking
@@ -51,7 +69,7 @@ optimisation opportunities \cite{Brady2003}. However, it requires the
 implementation of extra machinery for constructor manipulation
 \cite{McBride2006} and so we have avoided it in the present implementation.
 
-%Comparison with GHC's type system and type checker. \cite{Vytiniotis2011}
+
 
 %[Observation: separate elaboration and type checking, sort of like in GHC which
 %type checks the high level language and produces a type correct core language.
