@@ -902,9 +902,9 @@ are given explicitly, the application must be expanded.
 
 \subsection{Elaborating Expressions}
 
-\newcommand{\piimp}[2]{\mbox{\texttt{\{ $#1$ : $#2$ \} -> }}}
+\newcommand{\piimp}[2]{\mbox{\texttt{\{$#1$ : $#2$\} -> }}}
 %\mathtt{\{}#1\mathtt{:}#2\mbox{\texttt{\} -> }}}
-\newcommand{\piexp}[2]{\mbox{\texttt{( $#1$ : $#2$ ) -> }}}
+\newcommand{\piexp}[2]{\mbox{\texttt{($#1$ : $#2$) -> }}}
 %\newcommand{\piexp}[2]{\mathtt{(}#1\mathtt{:}#2\mbox{\texttt{) -> }}}
 \newcommand{\piconst}[1]{\mbox{\texttt{$#1$ => }}}
 \newcommand{\icase}{\mathtt{case}}
@@ -992,8 +992,9 @@ are given explicitly, the application must be expanded.
 {\IdrisM{} declarations}
 {idrismd}
 
-We define a language \IdrisM{}, with expression syntax given in Figure \ref{idrism}
-and declaration syntax given in Figure \ref{idrismd}.
+We will use a subset of full \Idris{}, which we call \IdrisM{}, to explain
+elaboration of expressions. \IdrisM{} expression syntax is given in Figure
+\ref{idrism} and declaration syntax given in Figure \ref{idrismd}.
 \IdrisM{} is a subset of \Idris{} without syntactic sugar --- that is, without
 tuple syntax, \texttt{do}-notation or infix operators --- and with implicit
 arguments in types bound explicitly 

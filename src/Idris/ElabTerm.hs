@@ -343,12 +343,8 @@ elab ist info pattern tcgen fn tm
                     ns <- apply (Var f) (map isph args)
                     ptm <- get_term
                     g <- goal
-                    let (ns', eargs) = unzip $ 
-                             sortBy (\(_,x) (_,y) -> 
-                                            compare (priority x) (priority y))
-                                    (zip ns args)
                     elabArgs (ina || not isinf, guarded)
-                           [] False ns' (map (\x -> (lazyarg x, getTm x)) eargs)
+                           [] False ns (map (\x -> (lazyarg x, getTm x)) args)
                     mkSpecialised ist fc f (map getTm args') tm
                     solve
                     ptm <- get_term
