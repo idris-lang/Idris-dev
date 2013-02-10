@@ -49,18 +49,18 @@ instantiating one such variable also instantiates all of its dependencies.
 \FFIG{
 \begin{array}{c}
 \vb ::= \ldots 
- \:\mid\: \hole{\vx}{\vt} \:\:(\mbox{hole binding}) \:\:
- \:\mid\: \guess{\vx}{\vt}{\vt} \:\:(\mbox{guess})
+ \;\mid\; \hole{\vx}{\vt} \;\;(\mbox{hole binding}) \;\;
+ \;\mid\; \guess{\vx}{\vt}{\vt} \;\;(\mbox{guess})
 \medskip\\
-\mathsf{HoleVar}\:
+\mathsf{HoleVar}\;
 \Rule{(\hole{\vx}{\vS})\in\Gamma}
 {\Gamma\vdash\vx\Hab\vS}
 \hg
-\mathsf{GuessVar}\:
+\mathsf{GuessVar}\;
 \Rule{(\guess{\vx}{\vS}{\vs})\in\Gamma}
 {\Gamma\vdash\vx\Hab\vS}
 \\
-\mathsf{Hole}\:
+\mathsf{Hole}\;
 \Rule{
 \Gamma;\hole{\vx}{\vS}\proves\ve\Hab\vT
 }
@@ -69,7 +69,7 @@ instantiating one such variable also instantiates all of its dependencies.
 }
 %\hspace*{0.1cm}\vx\not\in\vT
 \hg
-\mathsf{Guess}\:
+\mathsf{Guess}\;
 \Rule{
 \Gamma;\guess{\vx}{\vS}{\ve_1}\proves\ve_2\Hab\vT
 }
@@ -127,12 +127,12 @@ Exceptions are captured by the option type $\MO{Result}$ which
 either indicates success, or reports an error $\MO{Err}$:
 
 \DM{
-\RW{data}\:\MO{Result}\:\vt\:=\:\MO{Success}\:\vt\:\mid\:\MO{Failure}\:\MO{Err}
+\RW{data}\;\MO{Result}\;\vt\;=\;\MO{Success}\;\vt\;\mid\;\MO{Failure}\;\MO{Err}
 }
 
 \noindent
 If any operation fails during a proof (e.g. a subterm fails to type check)
-then the entire proof fails (i.e. returns $\MO{Failure}\:\ve$ with some error
+then the entire proof fails (i.e. returns $\MO{Failure}\;\ve$ with some error
 message $\ve$) unless otherwise handled.
 
 The \texttt{Elab} monad supports various operations for querying and updating
@@ -172,7 +172,7 @@ contain hole or guess bindings, it may nevertheless \remph{refer} to hole- or
 guess-bound variables.
 
 The proof state is initialised with the $\MO{NewProof}$ operation. Given a
-global context $\vC$, $\MO{NewProof}\:\vt$ sets up the proof state as:
+global context $\vC$, $\MO{NewProof}\;\vt$ sets up the proof state as:
 
 \DM{
 (\vC, \cdot, \hole{\vx}{\vt}\SC\vx, \langle\rangle, \langle\vx\rangle)
@@ -181,7 +181,7 @@ global context $\vC$, $\MO{NewProof}\:\vt$ sets up the proof state as:
 The local context is initially empty, and the initial hole queue is the $\vx$ standing for
 the entire expression. The proof term is reset with the $\MO{NewTerm}$ operation.
 In an existing proof state $(\vC, \Delta, \ve, \vQ)$,
-$\MO{NewTerm}\:\vt$ discards the proof term and hole queue, and
+$\MO{NewTerm}\;\vt$ discards the proof term and hole queue, and
 updates the proof state to:
 
 \DM{
@@ -211,21 +211,21 @@ may fail. We have the following primitive meta-operations:
 \item $\MO{Get}$ and $\MO{Put}$ which allow direct access to the proof state.
 % Focus and Unfocus don't need to be primitive, we could show in terms of
 % Get and Put
-%\item $\MO{Focus}\:\vn$, which moves $\vn$ to the head of the hole queue.
+%\item $\MO{Focus}\;\vn$, which moves $\vn$ to the head of the hole queue.
 %\item $\MO{Unfocus}$, which moves the current hole to the back of the hole queue.
-\item $\Check\:\ve$, which type checks an expression $\ve$ relative to a context
+\item $\Check\;\ve$, which type checks an expression $\ve$ relative to a context
 $\Gamma$, returning its type.
 $\MO{Check}$ will fail
 if the expression is not well-typed.
-\item $\Eval\:\ve$, which evaluates a well-typed expression $\ve$ relative to a context 
+\item $\Eval\;\ve$, which evaluates a well-typed expression $\ve$ relative to a context 
 $\Gamma$, returning its normal form. $\MO{Normalise}$ reduces under binders,
 but does not reduce definitions which are not total.
 \item 
-$\PrimUnify\:\ve_1\:\ve_2$, 
+$\PrimUnify\;\ve_1\;\ve_2$, 
 which attempts to unify $\ve_1$ and $\ve_2$ by finding the values with which
 holes must be instantiated for $\ve_1$ and $\ve_2$ to be convertible relative
 to $\Gamma$ (i.e. for $\Gamma\proves\ve_1\converts\ve_2$ to hold).
-\item $\Subst\:\vx\:\ve$, which instantiates a hole $\vx$ directly with a term
+\item $\Subst\;\vx\;\ve$, which instantiates a hole $\vx$ directly with a term
 $\ve$, typically arising from unification.
 \end{itemize}
 
@@ -233,12 +233,12 @@ $\ve$, typically arising from unification.
 Additionally, we have $\MO{Focus}$, $\MO{Unfocus}$, $\MO{NewHole}$
 and $\MO{NextHole}$
 operations which manipulate and inspect
-the hole queue. $\MO{Focus}\:\vn$ moves a hole to the head of the hole queue:
+the hole queue. $\MO{Focus}\;\vn$ moves a hole to the head of the hole queue:
 
 \DM{
-\MO{Focus}\:\vn\:=\:\RW{do}\:\AR{
+\MO{Focus}\;\vn\;=\;\RW{do}\;\AR{
 (\vC,\Delta,\vP,\vQ;\vn;\vQ')\gets\MO{Get}\\
-\MO{Put}\:(\vC,\Delta,\vP,\vn;\vQ;\vQ')\\
+\MO{Put}\;(\vC,\Delta,\vP,\vn;\vQ;\vQ')\\
 }
 }
 
@@ -247,9 +247,9 @@ Correspondingly, $\MO{Unfocus}$ moves the currently in focus hole to the
 end of the hole queue:
 
 \DM{
-\MO{Unfocus}\:=\:\RW{do}\:\AR{
+\MO{Unfocus}\;=\;\RW{do}\;\AR{
 (\vC,\Delta,\vP,\vn;\vQ)\gets\MO{Get}\\
-\MO{Put}\:(\vC,\Delta,\vP,\vQ;\vn)\\
+\MO{Put}\;(\vC,\Delta,\vP,\vQ;\vn)\\
 }
 }
 
@@ -259,14 +259,14 @@ next, and $\MO{NextHole}$ returns the next hole to be solved:
 
 \DM{
 \AR{
-\MO{NewHole}\:=\:\RW{do}\:\AR{
+\MO{NewHole}\;=\;\RW{do}\;\AR{
 (\vC,\Delta,\vP,\vQ)\gets\MO{Get}\\
-\MO{Put}\:(\vC,\Delta,\vP,\vn;\vQ)\\
+\MO{Put}\;(\vC,\Delta,\vP,\vn;\vQ)\\
 }
 \\
-\MO{NextHole}\:=\:\RW{do}\:\AR{
+\MO{NextHole}\;=\;\RW{do}\;\AR{
 (\vC,\Delta,\vP,\vn;\vQ)\gets\MO{Get}\\
-\MO{Return}\:\vn
+\MO{Return}\;\vn
 }
 }
 }
@@ -278,7 +278,7 @@ form:
 
 \DM{
 \PA{\A\A}{
-\MO{Tactic}_\Gamma & \:\vec{\VV{args}} & \:\vt & \MoRet{\vt'}
+\MO{Tactic}_\Gamma & \;\vec{\VV{args}} & \;\vt & \MoRet{\vt'}
 }
 }
 
@@ -304,40 +304,40 @@ tactic.
 
 \FFIG{
 \AR{
-\MO{Tactic}\:\VV{tac}\:=\:\RW{do}\:\AR{
+\MO{Tactic}\;\VV{tac}\;=\;\RW{do}\;\AR{
 \ve\Gets\MO{Term}\\
 \vh\Gets\MO{NextHole}\\
-\ve'\Gets\MO{Tactic'}\:\langle\rangle\:\ve\:\VV{tac}\:\vh\\
-\MO{SetTerm}\:\ve'
+\ve'\Gets\MO{Tactic'}\;\langle\rangle\;\ve\;\VV{tac}\;\vh\\
+\MO{SetTerm}\;\ve'
 }
 \medskip
 \\
 \PA{\A\A\A}{
 \RW{where} \\
 & \MO{Tactic'} & \Gamma & (\hole{\vx}{\vT}\SC\ve)
-& \MoRet{\VV{tac}_\Gamma\:(\hole{\vx}{\vT}\SC\ve)\hg\mbox{if}\:\vx=\vh} \\
+& \MoRet{\VV{tac}_\Gamma\;(\hole{\vx}{\vT}\SC\ve)\hg\mbox{if}\;\vx=\vh} \\
 & \MO{Tactic'} & \Gamma & (\guess{\vx}{\vT}{\vv}\SC\ve)
-& \MoRet{\VV{tac}_\Gamma\:(\guess{\vx}{\vT}{\vv}\SC\ve)\hg\mbox{if}\:\vx=\vh} \\
+& \MoRet{\VV{tac}_\Gamma\;(\guess{\vx}{\vT}{\vv}\SC\ve)\hg\mbox{if}\;\vx=\vh} \\
 & \MO{Tactic'} & \Gamma & (\lam{\vx}{\vT}\SC\ve)
 & \MoRet{
-\RW{do}\: \AR{\vT'\Gets\:\MO{Tactic'}\:\Gamma\:\vT\\
-\lam{\vx}{\vT'}\SC \MO{Tactic'}\:(\Gamma;\lam{\vx}{\vT'})\:\ve}
+\RW{do}\; \AR{\vT'\Gets\;\MO{Tactic'}\;\Gamma\;\vT\\
+\lam{\vx}{\vT'}\SC \MO{Tactic'}\;(\Gamma;\lam{\vx}{\vT'})\;\ve}
 }
 \\
 & \MO{Tactic'} & \Gamma & (\all{\vx}{\vT}\SC\ve)
 & \MoRet{
-\RW{do}\: \AR{\vT'\Gets\:\MO{Tactic'}\:\Gamma\:\vT\\
-\all{\vx}{\vT'}\SC \MO{Tactic'}\:(\Gamma;\all{\vx}{\vT'})\:\ve}
+\RW{do}\; \AR{\vT'\Gets\;\MO{Tactic'}\;\Gamma\;\vT\\
+\all{\vx}{\vT'}\SC \MO{Tactic'}\;(\Gamma;\all{\vx}{\vT'})\;\ve}
 }
 \\
-& \MO{Tactic'} & \Gamma & (\LET\:\vx\defq\vt\Hab\vT\SC\ve)
-& \MoRet{\RW{do}\:\AR{\vt'\Gets\:\MO{Tactic'}\:\Gamma\:\vt\\
-\vT'\Gets\:\MO{Tactic'}\:\Gamma\:\vT\\
-\LET\:\vx\defq\vt'\Hab\vT'\SC
-\MO{Tactic'}\:(\Gamma;\LET\:\vx\defq\vt'\Hab\vT')\:\ve}} \\
-& \MO{Tactic'} & \Gamma & (\vf\:\va) & 
-\MoRet{\MO{Return}\:(\MO{Tactic'}\:\Gamma\:\vf)\: (\MO{Tactic'}\:\Gamma\:\va)}\\
-& \MO{Tactic'} & \Gamma & \vt & \MoRet{\MO{Return}\:\vt}
+& \MO{Tactic'} & \Gamma & (\LET\;\vx\defq\vt\Hab\vT\SC\ve)
+& \MoRet{\RW{do}\;\AR{\vt'\Gets\;\MO{Tactic'}\;\Gamma\;\vt\\
+\vT'\Gets\;\MO{Tactic'}\;\Gamma\;\vT\\
+\LET\;\vx\defq\vt'\Hab\vT'\SC
+\MO{Tactic'}\;(\Gamma;\LET\;\vx\defq\vt'\Hab\vT')\;\ve}} \\
+& \MO{Tactic'} & \Gamma & (\vf\;\va) & 
+\MoRet{\MO{Return}\;(\MO{Tactic'}\;\Gamma\;\vf)\; (\MO{Tactic'}\;\Gamma\;\va)}\\
+& \MO{Tactic'} & \Gamma & \vt & \MoRet{\MO{Return}\;\vt}
 }
 }
 }
@@ -359,10 +359,10 @@ affect the solution to other unification problems. Instead,
 $\MO{PrimUnify}$ may give one of the following results:
 
 \begin{itemize}
-\item $\MO{Success}\:(\tx=\te, \tp)$, containing the solved holes mapping
+\item $\MO{Success}\;(\tx=\te, \tp)$, containing the solved holes mapping
 $\vx$ to $\ve$, and a possibly empty set of blocked unification problems $\tp$.
 If $\tp$ is empty, there is a solution for $\ve_1$ and $\ve_2$. 
-\item $\MO{Failure}\:\ve$, if no solution is found due to a failure to unify
+\item $\MO{Failure}\;\ve$, if no solution is found due to a failure to unify
 sub-terms in normal form.
 \end{itemize}
 
@@ -381,21 +381,21 @@ resolve the existing problems with $\MO{ReUnify}$.
 %operation to update
 %the proof state with new problems, and solve the old ones
 \AR{
-\Unify\:\ve_1\:\ve_2\:=\:\RW{do}\:
+\Unify\;\ve_1\;\ve_2\;=\;\RW{do}\;
 \AR{
-(\tx=\te,\tp)\gets\PrimUnify\:\ve_1\:\ve_2\\
-\vec{\MO{Subst}}\:\tx\:\te\\
-\MO{SubstProblems}\:(\tx=\te)\\
+(\tx=\te,\tp)\gets\PrimUnify\;\ve_1\;\ve_2\\
+\vec{\MO{Subst}}\;\tx\;\te\\
+\MO{SubstProblems}\;(\tx=\te)\\
 (\vC,\Delta,\VV{term},\tP,\vQ)\gets\MO{Get}\\
-\vec{\MO{ReUnify}}\:\tP
+\vec{\MO{ReUnify}}\;\tP
 }
 \medskip
 \\
 \AR{
-\MO{ReUnify}\:(\Gamma,\ve_1,\ve_2)\:=\:\RW{do}\:\AR{
-(\tx=\te,\tp)\Gets\PrimUnify\:\ve_1\:\ve_2\\
-\vec{\MO{Subst}}\:\tx\:\te\\
-\MO{Return}\:\tp
+\MO{ReUnify}\;(\Gamma,\ve_1,\ve_2)\;=\;\RW{do}\;\AR{
+(\tx=\te,\tp)\Gets\PrimUnify\;\ve_1\;\ve_2\\
+\vec{\MO{Subst}}\;\tx\;\te\\
+\MO{Return}\;\tp
 }
 }
 }
@@ -413,7 +413,7 @@ keeping $\vx$ at the head:
 \DM{
 \PA{\A\A}{
 \MO{Claim}_\Gamma & (\vy \Hab\vS) & (\hole{\vx}{\vT}\SC\ve) & 
-   \MoRet{\RW{return}\:\hole{\vx}{\vT}\SC\hole{\vy}{\vS}\SC\ve} \\
+   \MoRet{\RW{return}\;\hole{\vx}{\vT}\SC\hole{\vy}{\vS}\SC\ve} \\
 }
 }
 
@@ -429,10 +429,10 @@ solve other holes by unifying the expected type of $\vx$ with the type of $\vv$:
 \DM{
 \PA{\A\A}{
 \MO{Fill}_\Gamma & \vv & (\hole{\vx}{\vT}\SC\ve) & 
-   \MoRet{\RW{do}\:\AR{
-   \vT' \leftarrow \Check\:\vv\\
-   \Unify\:\vT\:\vT'\\
-   \RW{return}\:\guess{\vx}{\vT}{\vv}\SC\ve}
+   \MoRet{\RW{do}\;\AR{
+   \vT' \leftarrow \Check\;\vv\\
+   \Unify\;\vT\;\vT'\\
+   \RW{return}\;\guess{\vx}{\vT}{\vv}\SC\ve}
    } \\
 }
 }
@@ -443,9 +443,9 @@ For example, consider the following proof term:
 \DM{
 \AR{
 \hole{\vA}{\Type}\SC\hole{\vk}{\Nat}\SC
-\hole{\vx}{\vA}\SC\hole{\vxs}{\Vect\:\vA\:\vk}\SC
+\hole{\vx}{\vA}\SC\hole{\vxs}{\Vect\;\vA\;\vk}\SC
 \\
-\hole{\vys}{\Vect\:\vA\:(\suc\:\vk)}\SC\vys
+\hole{\vys}{\Vect\;\vA\;(\suc\;\vk)}\SC\vys
 }
 }
 
@@ -455,9 +455,9 @@ attempts to
 $\MO{Fill}$ it with an $\TC{Int}$ value $42$, we have:
 
 \begin{itemize}
-\item $\Check\:42\:\mq\:\TC{Int}$
+\item $\Check\;42\;\mq\;\TC{Int}$
 \item Unifying $\TC{Int}$ with $\vA$ (the type of $\vx$) is only possible if
-$\vA\:=\:\TC{Int}$, so solve $\vA$.
+$\vA\;=\;\TC{Int}$, so solve $\vA$.
 \end{itemize}
 
 \noindent
@@ -466,9 +466,9 @@ Therefore the resulting proof term is:
 \DM{
 \AR{
 \hole{\vk}{\Nat}\SC
-\guess{\vx}{\TC{Int}}{42}\SC\hole{\vxs}{\Vect\:\TC{Int}\:\vk}\SC
+\guess{\vx}{\TC{Int}}{42}\SC\hole{\vxs}{\Vect\;\TC{Int}\;\vk}\SC
 \\
-\hole{\vys}{\Vect\:\TC{Int}\:(\suc\:\vk)}\SC\vys
+\hole{\vys}{\Vect\;\TC{Int}\;(\suc\;\vk)}\SC\vys
 }
 }
 
@@ -479,7 +479,7 @@ the guess is substituted into its scope:
 \DM{
 \PA{\A}{
 \MO{Solve}_\Gamma & (\guess{\vx}{\vT}{\vv}\SC\ve) &
-   \MoRet{\RW{return}\:\ve[\vv/\vx]\hg\mbox{(if $\MO{Pure}\:\vv$)}}
+   \MoRet{\RW{return}\;\ve[\vv/\vx]\hg\mbox{(if $\MO{Pure}\;\vv$)}}
 }
 }
 
@@ -495,9 +495,9 @@ handle failure using the $\MO{Try}$ tactic combinator:
 \DM{
 \PA{\A\A\A}{
 \MO{Try}_\Gamma & \VV{t1} & \VV{t2} & \vt &
-   \MoRet{\RW{case}\:\AR{\VV{t1}_\Gamma\:\vt\:\RW{of}\\
-             \MO{Success}\:\vt'\cq\MO{Success}\:\vt'\\
-             \MO{Failure}\:\_\cq\VV{t2}_\Gamma\:\vt\\
+   \MoRet{\RW{case}\;\AR{\VV{t1}_\Gamma\;\vt\;\RW{of}\\
+             \MO{Success}\;\vt'\cq\MO{Success}\;\vt'\\
+             \MO{Failure}\;\_\cq\VV{t2}_\Gamma\;\vt\\
           }}
 }
 }
@@ -514,9 +514,9 @@ binding requires that the goal normalises to a function type:
 \DM{
 \PA{\A\A}{
 \MO{Lambda}_\Gamma & \vn & (\hole{\vx}{\vT}\SC\vx) &
- \MoRet{\RW{do}\:\AR{
-   \all{\vy}{\vS}\SC\vT'\:\leftarrow\:\Eval\:\vT \\
-   \RW{return}\:\lam{\vn}{\vS}\SC\hole{\vx}{\vT'[\vn/\vy]}\SC\vx
+ \MoRet{\RW{do}\;\AR{
+   \all{\vy}{\vS}\SC\vT'\;\leftarrow\;\Eval\;\vT \\
+   \RW{return}\;\lam{\vn}{\vS}\SC\hole{\vx}{\vT'[\vn/\vy]}\SC\vx
    }
    }
 }
@@ -528,9 +528,9 @@ Creating a $\forall$ binding requires that the goal is a $\TC{Type}$:
 \DM{
 \PA{\A\A}{
 \MO{Pi}_\Gamma & (\vn\Hab\vS) & (\hole{\vx}{\Type}\SC\vx) &
- \MoRet{\RW{do}\:\AR{
-   \Type\:\leftarrow\:\Check\:\vS\\
-   \RW{return}\:\all{\vn}{\vS}\SC\hole{\vx}{\Type}\SC\vx
+ \MoRet{\RW{do}\;\AR{
+   \Type\;\leftarrow\;\Check\;\vS\\
+   \RW{return}\;\all{\vn}{\vS}\SC\hole{\vx}{\Type}\SC\vx
    }
    }
 }
@@ -542,11 +542,11 @@ Creating a $\LET$ binding requires a type and a value.
 \DM{
 \PA{\A\A}{
 \MO{Let}_\Gamma & (\vn\Hab\vS\defq\vv) & (\hole{\vx}{\vT}\SC\vx) &
- \MoRet{\RW{do}\:\AR{
-   \Type\:\leftarrow\:\Check\:\vS\\
-   \vS'\:\leftarrow\:\Check\:\vv\\
-   \Unify\:\vS\:\vS'\\
-   \RW{return}\:\LET\:\vn\Hab\vS\defq\vv\SC\hole{\vx}{\vT}\SC\vx
+ \MoRet{\RW{do}\;\AR{
+   \Type\;\leftarrow\;\Check\;\vS\\
+   \vS'\;\leftarrow\;\Check\;\vv\\
+   \Unify\;\vS\;\vS'\\
+   \RW{return}\;\LET\;\vn\Hab\vS\defq\vv\SC\hole{\vx}{\vT}\SC\vx
    }
    }
 }
@@ -563,7 +563,7 @@ head of the queue:
 \DM{
 \PA{\A}{
 \MO{Attack}_\Gamma & (\hole{\vx}{\vT}\SC\ve) &
- \MoRet{\RW{do}\:\AR{
+ \MoRet{\RW{do}\;\AR{
  \MO{NewHole}\;\vx'\\
  \RW{return}\;\guess{\vx}{\vT}{(\hole{\vx'}{\vT}\SC\vx')}\SC\ve}}
 }
@@ -573,17 +573,17 @@ head of the queue:
 For example, consider the following proof term:
 
 \DM{
-\hole{\vx}{\va\to\vb}\SC\vx\:\ve
+\hole{\vx}{\va\to\vb}\SC\vx\;\ve
 }
 
 \noindent
 If we try to instantiate $\vx$ with a $\lambda$-binding $\vn$ immediately,
 without applying $\MO{Attack}$ first, the $\lambda$ will scope over the
-entirety of $\vx\:\ve$, and the resulting term is not well-typed:
+entirety of $\vx\;\ve$, and the resulting term is not well-typed:
 
 \DM{
 \AR{
-\lam{\vn}{\va}\SC\hole{\vx}{\vb}\SC\vx\:\ve
+\lam{\vn}{\va}\SC\hole{\vx}{\vb}\SC\vx\;\ve
 }
 }
 
@@ -593,10 +593,10 @@ a $\lambda$ binding $\vn$, we get:
 
 \DM{
 \begin{array}{ll}
-\guess{\vx}{\va\to\vb}{\hole{\vx'}{\va\to\vb}\SC\vx'}\SC\vx\:\ve
+\guess{\vx}{\va\to\vb}{\hole{\vx'}{\va\to\vb}\SC\vx'}\SC\vx\;\ve
 & \hg\mbox{(after $\MO{Attack}$)}\\
-\guess{\vx}{\va\to\vb}{\lam{\vn}{\va}\SC\hole{\vx'}{\vb}\SC\vx'}\SC\vx\:\ve
-& \hg\mbox{(after $\MO{Lambda}\:\vn$)}
+\guess{\vx}{\va\to\vb}{\lam{\vn}{\va}\SC\hole{\vx'}{\vb}\SC\vx'}\SC\vx\;\ve
+& \hg\mbox{(after $\MO{Lambda}\;\vn$)}
 \end{array}
 }
 
@@ -614,9 +614,9 @@ with the pattern variable directly:
 \DM{
 \PA{\A\A}{
 \MO{Pat}_\Gamma & \vn & (\hole{\vx}{\vT}\SC\ve) &
-  \MoRet{\RW{do}\:\AR{
-    \MO{PatBind}\:(\vn\Hab\vT)\\
-    \RW{return}\:\ve[\vn/\vx]
+  \MoRet{\RW{do}\;\AR{
+    \MO{PatBind}\;(\vn\Hab\vT)\\
+    \RW{return}\;\ve[\vn/\vx]
   }}
 }
 }
@@ -635,7 +635,7 @@ complete term by refining a proof state, let us consider the following
 \DM{
 \AR{
 \FN{id}\Hab\all{\vA}{\Type}\SC\all{\va}{\vA}\SC\vA \\
-\FN{id}\:=\:\lam{\vA}{\Type}\SC\lam{\va}{\vA}\SC\va  
+\FN{id}\;=\;\lam{\vA}{\Type}\SC\lam{\va}{\vA}\SC\va  
 }
 }
 
@@ -647,9 +647,9 @@ the goal type.
 
 \DM{
 \AR{
-\MO{MkId}\:\mq\:\RW{do}\:
+\MO{MkId}\;\mq\;\RW{do}\;
  \AR{
-   \MO{NewProof}\:\all{\vA}{\Type}\SC\all{\va}{\vA}\SC\vA \\
+   \MO{NewProof}\;\all{\vA}{\Type}\SC\all{\va}{\vA}\SC\vA \\
    \MO{Tactic}\;\MO{Attack} \\
    \MO{Tactic}\;(\MO{Lambda}\;\vA) \\
    \MO{Tactic}\;\MO{Attack} \\
@@ -683,7 +683,7 @@ the goal type.
 &
 \langle\vh_0,\vx\rangle\\
 %
-\MO{Lambda}\:\vA &
+\MO{Lambda}\;\vA &
 \guess{\vx}{\all{\vA}{\Type}\SC\all{\va}{\vA}\SC\vA}{
 \underline{
 \lam{\vA}{\Type}\SC\hole{\vh_0}{\all{\va}{\vA}\SC\vA}\SC\vh_0
@@ -706,7 +706,7 @@ the goal type.
 &
 \langle\vh_1,\vh_0,\vx\rangle\\
 %
-\MO{Lambda}\:\va &
+\MO{Lambda}\;\va &
 \guess{\vx}{\all{\vA}{\Type}\SC\all{\va}{\vA}\SC\vA}{
 \lam{\vA}{\Type}\SC
 \guess{\vh_0}{\all{\va}{\vA}\SC\vA}
@@ -721,7 +721,7 @@ the goal type.
 &
 \langle\vh_1,\vh_0,\vx\rangle\\
 %
-\MO{Fill}\:\va &
+\MO{Fill}\;\va &
 \guess{\vx}{\all{\vA}{\Type}\SC\all{\va}{\vA}\SC\vA}{
 \lam{\vA}{\Type}\SC
 \\
@@ -807,19 +807,19 @@ a Coq proof script.
 
 \FFIG{
 \AR{
-\MO{MkIdType}\:\mq\:\RW{do}\;
+\MO{MkIdType}\;\mq\;\RW{do}\;
  \AR{
-   \MO{NewProof}\:\Type\\
-   \MO{Attack} ; \MO{Pi}\:(\vA\Hab\Type) ;
-   \MO{Attack} ; \MO{Pi}\:(\va\Hab\vA) \\
+   \MO{NewProof}\;\Type\\
+   \MO{Attack} ; \MO{Pi}\;(\vA\Hab\Type) ;
+   \MO{Attack} ; \MO{Pi}\;(\va\Hab\vA) \\
    \MO{Fill}\;\vA \\
    \MO{Solve} ; \MO{Solve} ; \MO{Solve} \\
    \MO{Term}
  }
  \medskip\\
-\MO{MkId}\:\mq\:\RW{do}\;
+\MO{MkId}\;\mq\;\RW{do}\;
  \AR{
-   \vt\:\leftarrow\:\MO{MkIdType}; \MO{NewProof}\:\vt\\
+   \vt\;\leftarrow\;\MO{MkIdType}; \MO{NewProof}\;\vt\\
    \MO{Attack} ; \MO{Lambda}\;\vA ; 
    \MO{Attack} ; \MO{Lambda}\;\va \\
    \MO{Fill}\;\va \\
@@ -928,11 +928,11 @@ are given explicitly, the application must be expanded.
 \begin{array}{rll@{\hg}rll}
 \ve ::= & \vc & (\mbox{constant}) &
 \mid & \vx & (\mbox{variable}) \\
-\mid & \ilam{\vx}\:\ve & (\mbox{lambda abstraction}) &
-\mid & \ve\:\ta & (\mbox{function application}) \\
-\mid & \ilet{\vx}{\ve}\:\ve & (\mbox{let binding}) &
+\mid & \ilam{\vx}\;\ve & (\mbox{lambda abstraction}) &
+\mid & \ve\;\ta & (\mbox{function application}) \\
+\mid & \ilet{\vx}{\ve}\;\ve & (\mbox{let binding}) &
 \mid & \piexp{\vx}{\vt}\vt & (\mbox{explicit function space}) \\
-%\mid & \icase\:\ve\:\iof\:\vec{\VV{alt}} & (\mbox{case expression}) &
+%\mid & \icase\;\ve\;\iof\;\vec{\VV{alt}} & (\mbox{case expression}) &
 %\mid & \mvar{\vx} & (\mbox{metavariable}) \\
 \mid & \_ & (\mbox{placeholder})
 \end{array}
@@ -971,9 +971,9 @@ are given explicitly, the application must be expanded.
 \begin{array}{ll}
 \begin{array}{rll}
 \VV{pclause} ::= & 
-\vx\:\ttt\:[\ibar\;\te]\mbox{\texttt{ = }}\ve \hg[\iwhere\;\td]\\ 
+\vx\;\ttt\;[\ibar\;\te]\mbox{\texttt{ = }}\ve \hg[\iwhere\;\td]\\ 
 \mid & \AR{
-\vx\:\ttt\:[\ibar\;\te]\;\iwith\;\ve\\
+\vx\;\ttt\;[\ibar\;\te]\;\iwith\;\ve\\
 \hg\vec{\VV{pclause}}
 }
 \end{array}
@@ -984,7 +984,7 @@ are given explicitly, the application must be expanded.
 \medskip\\
 \VV{cdecl} ::= & \iclass\;[\VV{constr}]\;\vx\;(\ihab{\tx}{\ttt})\;\iwhere\;\td
 \\
-\VV{idecl} ::= & \iinstance\:[\VV{constr}]\;\vx\;\ttt\;\iwhere\;\td
+\VV{idecl} ::= & \iinstance\;[\VV{constr}]\;\vx\;\ttt\;\iwhere\;\td
 \end{array}
 \end{array}
 }
@@ -997,8 +997,8 @@ and declaration syntax given in Figure \ref{idrismd}.
 \IdrisM{} is a subset of \Idris{} without syntactic sugar --- that is, without
 tuple syntax, \texttt{do}-notation or infix operators --- and with implicit
 arguments in types bound explicitly 
-(e.g. $\piimp{\va}{\_}\piimp{\vn}{\_}\TC{Vect}\:\va\:\vn$
-instead of simply $\Vect\:\va\:\vn$).
+(e.g. $\piimp{\va}{\_}\piimp{\vn}{\_}\TC{Vect}\;\va\;\vn$
+instead of simply $\Vect\;\va\;\vn$).
 Note that we separate implicit and type constraint bindings, to ensure that they
 only appear in top level declarations.
 It is in general straightforward to
@@ -1032,7 +1032,7 @@ has already been set up, which means that elaboration can always be
 are building.
 
 In all cases except the elaboration of variables and constantes, 
-$\ttpinterp{\vx}\:=\:\ttinterp{\vx}$.
+$\ttpinterp{\vx}\;=\;\ttinterp{\vx}$.
 
 \subsubsection{Elaborating variables and constants}
 
@@ -1042,8 +1042,8 @@ the \MO{Fill} tactic:
 
 \DM{
 \AR{
-\ttinterp{\vx}\:\mq\:\RW{do}\:\MO{Fill}\:\vx;\:\MO{Solve}\\
-\ttinterp{\vc}\:\mq\:\RW{do}\:\MO{Fill}\:\vc;\:\MO{Solve}\\
+\ttinterp{\vx}\;\mq\;\RW{do}\;\MO{Fill}\;\vx;\;\MO{Solve}\\
+\ttinterp{\vc}\;\mq\;\RW{do}\;\MO{Fill}\;\vc;\;\MO{Solve}\\
 }
 }
 
@@ -1059,9 +1059,9 @@ context, we assume that attempting to elaborate a variable which does not type
 check means that the variable is a pattern variable:
 
 \DM{
-\ttpinterp{\vx}\:\mq\:
-\MO{Try}\:\AR{(\RW{do}\:\MO{Fill}\:\vx;\:\MO{Solve})\\
-(\MO{Pat}\:\vx)
+\ttpinterp{\vx}\;\mq\;
+\MO{Try}\;\AR{(\RW{do}\;\MO{Fill}\;\vx;\;\MO{Solve})\\
+(\MO{Pat}\;\vx)
 }
 }
 
@@ -1070,13 +1070,14 @@ solve by unification. In this case, we simply move on to the next hole in the qu
 the current hole to the end of the queue with $\MO{Unfocus}$:
 
 \DM{
-\ttinterp{\_}\:\mq\:\MO{Unfocus}
+\ttinterp{\_}\;\mq\;\MO{Unfocus}
 }
 
-On encountering a placeholder, our assumption is that unification will eventually solve
-the hole. At the end of elaboration, any holes remaining unsolved on the left hand side
-become pattern variables. If there are any unsolved on the right hand side, elaboration
-fails.
+On encountering a placeholder, our assumption is that unification will
+eventually solve the hole. At the end of elaboration, any holes remaining
+unsolved on the left hand side become pattern variables. If there are any
+unsolved on the right hand side, elaboration is incomplete and an error will
+be reported when the resulting term is type checked.
 
 \subsubsection{Elaborating bindings}
 
@@ -1085,10 +1086,10 @@ $\MO{Lambda}$ tactic, which will fail if the goal is not a function type. We
 then elaborate the scope and $\MO{Solve}$, which discharges the $\MO{Attack}$:
 
 \DM{
-\ttinterp{\ilam{\vx}\ve}\:\mq\:
-\RW{do}\:
+\ttinterp{\ilam{\vx}\ve}\;\mq\;
+\RW{do}\;
 \AR{
-\MO{Attack};\;\MO{Lambda}\:\vx\\
+\MO{Attack};\;\MO{Lambda}\;\vx\\
 \ttinterp{\ve}\\
 \MO{Solve}
 }
@@ -1108,12 +1109,12 @@ scope of the binding.
 
 \DM{
 \AR{
-\ttinterp{\piexp{\vx}{\vt}\ve}\:\mq\:
-\RW{do}\:
+\ttinterp{\piexp{\vx}{\vt}\ve}\;\mq\;
+\RW{do}\;
 \AR{
-\MO{Attack};\;\MO{Claim}\:(\vX\Hab\Type)\\
-\MO{Pi}\:(\vx\Hab\vX)\\
-\MO{Focus}\:\vX\\
+\MO{Attack};\;\MO{Claim}\;(\vX\Hab\Type)\\
+\MO{Pi}\;(\vx\Hab\vX)\\
+\MO{Focus}\;\vX\\
 \ttinterp{\vt};\;
 \ttinterp{\ve}\\
 \MO{Solve}
@@ -1134,13 +1135,13 @@ if elaborating the scope is successful, unification will solve the claimed varia
 $\vV$ and $\vX$.
 
 \DM{
-\ttinterp{\ilet{\vx}{\vv}\:{\ve}}\:\mq\:\RW{do}\:
+\ttinterp{\ilet{\vx}{\vv}\;{\ve}}\;\mq\;\RW{do}\;
 \AR{
 \MO{Attack};\;
-\MO{Claim}\:(\vX\Hab\Type);\; 
-\MO{Claim}\:(\vV\Hab\vX)\\
-\MO{Let}\:(\vx\Hab\vX\defq\vV)\\
-\MO{Focus}\:\vV\\
+\MO{Claim}\;(\vX\Hab\Type);\; 
+\MO{Claim}\;(\vV\Hab\vX)\\
+\MO{Let}\;(\vx\Hab\vX\defq\vV)\\
+\MO{Focus}\;\vV\\
 \ttinterp{\vv};\;
 \ttinterp{\ve}
 }
@@ -1158,7 +1159,7 @@ In the first case, the elaborator must expand the application to include implici
 For example \texttt{vAdd xs ys} is expanded to
 \texttt{vAdd \{a=\_\} \{n=\_\} \{\{\_\}\} xs ys}, adding the implicit arguments
 \texttt{a} and \texttt{n} and a type class instance argument. The meta-operation
-$\MO{Expand}\:\vx\:\ta$, given a global function name $\vx$ and the
+$\MO{Expand}\;\vx\;\ta$, given a global function name $\vx$ and the
 arguments supplied by the programmer $\ta$, returns a new argument list
 $\ta'$ with implicit and type class arguments added. Each value in
 $\ta'$ is paired with an explicit name for the argument.
@@ -1172,17 +1173,17 @@ forms:
 
 \DM{
 \AR{
-\MO{Unify}_\Gamma\;\vf\:\TC{Int}\\
-\MO{Unify}_\Gamma\;(\vf\:\vx)\:\TC{Int}\\
-\MO{Unify}_\Gamma\;(\vf\:\vx)\:(\vg\:\vx)\\
+\MO{Unify}_\Gamma\;\vf\;\TC{Int}\\
+\MO{Unify}_\Gamma\;(\vf\;\vx)\;\TC{Int}\\
+\MO{Unify}_\Gamma\;(\vf\;\vx)\;(\vg\;\vx)\\
 }
 }
 
 The first problem has a solution: $\vf=\TC{Int}$. The second and third problems
 have no solution without further information. In the second case, we cannot
 conclude anything about $\vf$ or $\vx$ just from knowing that
-$\vf\:\vx\:=\:\TC{Int}$.  In the third case, although we have $\vx\:=\:\vx$ in
-argument position, we cannot conclude that $\vf\:=\:\vg$ in general as a
+$\vf\;\vx\;=\;\TC{Int}$.  In the third case, although we have $\vx\;=\;\vx$ in
+argument position, we cannot conclude that $\vf\;=\;\vg$ in general as a
 result.
 
 Once $\vf$ or $\vg$ is solved in some other way, perhaps by being given
@@ -1198,16 +1199,16 @@ Finally, any type class instance arguments are resolved with the
 built-in $\MO{Instance}$ tactic.
 
 \DM{
-\ttinterp{\vx\:\ta}\:\mq\:
+\ttinterp{\vx\;\ta}\;\mq\;
 \AR{
-\RW{do}\:
+\RW{do}\;
 \AR{
-(\tn,\tv)\:\gets\:\MO{Expand}\:\vx\:\ta\\
-\vec{\MO{Claim}}\:(\tn\Hab\tT)\\
-\MO{Fill}\:\vx\:\tn\\
-\vec{\MO{Focus}}\:\tn;\:\ttinterp{\tv}\hg\mbox{(for non-placeholder $\vv$)}\\
+(\tn,\tv)\;\gets\;\MO{Expand}\;\vx\;\ta\\
+\vec{\MO{Claim}}\;(\tn\Hab\tT)\\
+\MO{Fill}\;\vx\;\tn\\
+\vec{\MO{Focus}}\;\tn;\;\ttinterp{\tv}\hg\mbox{(for non-placeholder $\vv$)}\\
 \MO{Solve} \\
-\vec{\MO{Instance}}\:\tn\hg\mbox{(for type class constraint argument $\vn$)}
+\vec{\MO{Instance}}\;\tn\hg\mbox{(for type class constraint argument $\vn$)}
 }
 }
 }
@@ -1224,12 +1225,12 @@ applied. Since elaboration is type directed, however, there must be an
 appropriate type for the function. 
 
 \DM{
-\ttinterp{\ve\:\va}\:\mq\:\RW{do}\:
+\ttinterp{\ve\;\va}\;\mq\;\RW{do}\;
 \AR{
-\MO{Claim}\:(\vA\Hab\Type);\;\MO{Claim}\:(\vB\Hab\Type)\\
-\MO{Claim}\:(\vf\Hab\vA\to\vB);\;\MO{Claim}\:(\vs\Hab\vA)\\
-\MO{Focus}\:\vf;\;\ttinterp{\ve}\\
-\MO{Focus}\:\vs;\;\ttinterp{\va}\\
+\MO{Claim}\;(\vA\Hab\Type);\;\MO{Claim}\;(\vB\Hab\Type)\\
+\MO{Claim}\;(\vf\Hab\vA\to\vB);\;\MO{Claim}\;(\vs\Hab\vA)\\
+\MO{Focus}\;\vf;\;\ttinterp{\ve}\\
+\MO{Focus}\;\vs;\;\ttinterp{\va}\\
 }
 }
 
@@ -1244,7 +1245,7 @@ relative to the system state (see Section \ref{sect:sysstate}) and has access to
 current proof state. $\MO{Elab}$ uses $\ttinterp{\cdot}$ to help translate
 \IdrisM{} type, function and class declarations into \TT{} declarations.
 
-\newcommand{\edo}[1]{\RW{do}\:\AR{#1}}
+\newcommand{\edo}[1]{\RW{do}\;\AR{#1}}
 
 \subsubsection{Elaborating Type Declarations}
 
@@ -1253,11 +1254,11 @@ translating the \IdrisM{} type to a \TT{} type, then adding the resulting type
 as a \TT{} declaration:
 
 \DM{
-\MO{Elab}\:(\vx\Hab\vt)\:\mq
-\:\edo{\MO{NewProof}\:\Type\\
+\MO{Elab}\;(\vx\Hab\vt)\;\mq
+\;\edo{\MO{NewProof}\;\Type\\
        \ttinterp{\vt}\\
        \vt'\gets\MO{Term}\\
-       \MO{TTDecl}\:(\vx\Hab\vt')
+       \MO{TTDecl}\;(\vx\Hab\vt')
 }}
 
 The final $\MO{TTDecl}$ takes the result of elaboration, type checks it,
@@ -1274,20 +1275,20 @@ adds a \TT{} data declaration.
 
 \DM{
 \AR{
-\MO{Elab}\:(\idata\;\ihab{\vx}{\vt}\;\iwhere\;\tc)\\
-\hg\hg\mq\:\edo{\MO{NewProof}\:\Type\\
+\MO{Elab}\;(\idata\;\ihab{\vx}{\vt}\;\iwhere\;\tc)\\
+\hg\hg\mq\;\edo{\MO{NewProof}\;\Type\\
                 \ttinterp{\vt}\\
                 \vt'\gets\MO{Term}\\
-                \MO{TTDecl}\:(\vx\Hab\vt')\\
-                \tc'\gets\vec{\MO{ElabCon}}\:\tc\\
-                \MO{TTDecl}\:(\Data\:\vx\Hab\vt'\:\Where\:\tc')
+                \MO{TTDecl}\;(\vx\Hab\vt')\\
+                \tc'\gets\vec{\MO{ElabCon}}\;\tc\\
+                \MO{TTDecl}\;(\Data\;\vx\Hab\vt'\;\Where\;\tc')
 }
 \AR{
-\MO{ElabCon}\:(\vx\Hab\vt)\\
-\hg\hg\mq\: \edo{\MO{NewProof}\:\Type\\
+\MO{ElabCon}\;(\vx\Hab\vt)\\
+\hg\hg\mq\; \edo{\MO{NewProof}\;\Type\\
                  \ttinterp{\vt}\\
                  \vt'\gets\MO{Term}\\
-                 \RW{return}\:(\vx\Hab\vt')
+                 \RW{return}\;(\vx\Hab\vt')
 }
 }}}
 
@@ -1300,7 +1301,7 @@ to the global context, such as definitions in $\iwhere$ clauses.
 First, let us consider the simplest case, with no $\iwhere$ clause:
 
 \DM{
-\MO{ElabClause}\:(\vx\:\ttt\:=\:\ve)\:\mq\:?
+\MO{ElabClause}\;(\vx\;\ttt\;=\;\ve)\;\mq\;?
 }
 
 How does the left hand side get elaborated, given that elaboration is type directed, and
@@ -1312,21 +1313,21 @@ a type $\TC{Infer}$:
 \Data\hg\TC{Infer}\Hab\Type\hg\Where\hg\DC{MkInfer}\Hab\all{\va}{\Type}\SC\va\to\TC{Infer}
 }
 
-Now elaboration of the left hand side proceeds by elaborating $\DC{MkInfer}\:\_\:(\vx\:\ttt)$ and
+Now elaboration of the left hand side proceeds by elaborating $\DC{MkInfer}\;\_\;(\vx\;\ttt)$ and
 extracting the value and unified type when complete.
 
 \DM{
 \AR{
-\MO{ElabClause}\:(\vx\:\ttt\:=\:\ve)\:\mq\:\\
+\MO{ElabClause}\;(\vx\;\ttt\;=\;\ve)\;\mq\;\\
 \hg\hg\edo{
-\MO{NewProof}\:\TC{Infer};\;
-\ttpinterp{\DC{MkInfer}\:\_\:(\vx\:\ttt)}\\
-\DC{MkInfer}\:\vT\:\VV{lhs}\gets\MO{Term}\\
+\MO{NewProof}\;\TC{Infer};\;
+\ttpinterp{\DC{MkInfer}\;\_\;(\vx\;\ttt)}\\
+\DC{MkInfer}\;\vT\;\VV{lhs}\gets\MO{Term}\\
 \tp\gets\MO{Patterns}\\
-\MO{NewTerm}\:\vT;\;
+\MO{NewTerm}\;\vT;\;
 \ttinterp{\ve}\\
 \VV{rhs}\gets\MO{Term}\\
-\RW{return}\:(\RW{var}\:\tp\SC\VV{lhs}\:=\:\VV{rhs})
+\RW{return}\;(\RW{var}\;\tp\SC\VV{lhs}\;=\;\VV{rhs})
 }
 }
 }
@@ -1340,10 +1341,10 @@ the clauses and adding the resulting collection to \TT{}.
 
 \DM{
 \AR{
-\MO{Elab}\:\vec{\VV{pclause}}\:\mq\:
+\MO{Elab}\;\vec{\VV{pclause}}\;\mq\;
 \edo{
-\tc\gets\vec{\MO{ElabClause}}\:\vec{\VV{pclause}}\\
-\vec{\MO{TTDecl}}\:\tc
+\tc\gets\vec{\MO{ElabClause}}\;\vec{\VV{pclause}}\\
+\vec{\MO{TTDecl}}\;\tc
 }
 }
 }
@@ -1355,18 +1356,18 @@ which are then recursively elaborated before the right hand side.
 
 \DM{
 \AR{
-\MO{ElabClause}\:(\vx\:\ttt\:=\:\ve\:\iwhere\:\td)\:\mq\:\\
+\MO{ElabClause}\;(\vx\;\ttt\;=\;\ve\;\iwhere\;\td)\;\mq\;\\
 \hg\hg\edo{
-\MO{NewProof}\:\TC{Infer};\;
-\ttpinterp{\DC{MkInfer}\:\_\:(\vx\:\ttt)}\\
-\DC{MkInfer}\:\vT\:\VV{lhs}\gets\MO{Term}\\
+\MO{NewProof}\;\TC{Infer};\;
+\ttpinterp{\DC{MkInfer}\;\_\;(\vx\;\ttt)}\\
+\DC{MkInfer}\;\vT\;\VV{lhs}\gets\MO{Term}\\
 \tp\gets\MO{Patterns}\\
-(\td', \ve') \gets\MO{Lift}\:\tp\:\td\:\ve\\
-\vec{\MO{Elab}}\:\td'\\
-\MO{NewTerm}\:\vT;\;
+(\td', \ve') \gets\MO{Lift}\;\tp\;\td\;\ve\\
+\vec{\MO{Elab}}\;\td'\\
+\MO{NewTerm}\;\vT;\;
 \ttinterp{\ve'}\\
 \VV{rhs}\gets\MO{Term}\\
-\RW{return}\:(\RW{var}\:\tp\SC\VV{lhs}\:=\:\VV{rhs})
+\RW{return}\;(\RW{var}\;\tp\SC\VV{lhs}\;=\;\VV{rhs})
 }
 }
 }
@@ -1449,32 +1450,32 @@ $\tp$, then splits these patterns into those necessary to type
 $\vW$, and the rest ($\tp_w$ and $\tp_n$ respectively) using
 $\MO{SplitContext}$. Then, it builds a new declaration, abstracting over
 the matched expression $\ve$ in the types of $\tp_n$.
-$\MO{Abstract}\:\ve\:\vw\:\vp$ simply replaces any occurrence of $\vw$ in
+$\MO{Abstract}\;\ve\;\vw\;\vp$ simply replaces any occurrence of $\vw$ in
 $\vp$ with the name $\ve$.
 
 \DM{
 \AR{
-\MO{ElabClause}\:(\vx\:\ttt\:\iwith\:\ve\:\vec{\VV{pclause}})\:\mq\\
+\MO{ElabClause}\;(\vx\;\ttt\;\iwith\;\ve\;\vec{\VV{pclause}})\;\mq\\
 \hg\hg\edo{
-\MO{NewProof}\:\TC{Infer};\;
-\ttinterp{\DC{MkInfer}\:\_\:(\vx\:\ttt)}\\
-\DC{MkInfer}\:\vT\:\VV{lhs}\gets\MO{Term}\\
+\MO{NewProof}\;\TC{Infer};\;
+\ttinterp{\DC{MkInfer}\;\_\;(\vx\;\ttt)}\\
+\DC{MkInfer}\;\vT\;\VV{lhs}\gets\MO{Term}\\
 \tp\gets\MO{Patterns}\\
-\MO{NewTerm}\:\TC{Infer};\;
-\ttinterp{\DC{MkInfer}\:\_\:\ve}\\
-\DC{MkInfer}\:\vW\:\vw'\gets\MO{Term}\\
-(\tp_w,\tp_n)\:\gets\:\MO{SplitContext}\:\vW\:\tp\\
-\MO{TTDecl}\:(\vx'\Hab\tp_{w}\to(\ve\Hab\vW)\to\vec{\MO{Abstract}}\:\ve\:\vw'\:\tp_{n}\to\vT)\\
-\tc'\gets\vec{\MO{MatchWith}}\:\tp\:\ttt\:\vec{\VV{pclause}}\\
-\vec{\MO{Elab}}\:\tc'\\
-\RW{return}\:(\RW{var}\:\tp\SC\VV{lhs}\:=\:\vx'\:\tp_{w}\:\vw'\:\tp_{n})
+\MO{NewTerm}\;\TC{Infer};\;
+\ttinterp{\DC{MkInfer}\;\_\;\ve}\\
+\DC{MkInfer}\;\vW\;\vw'\gets\MO{Term}\\
+(\tp_w,\tp_n)\;\gets\;\MO{SplitContext}\;\vW\;\tp\\
+\MO{TTDecl}\;(\vx'\Hab\tp_{w}\to(\ve\Hab\vW)\to\vec{\MO{Abstract}}\;\ve\;\vw'\;\tp_{n}\to\vT)\\
+\tc'\gets\vec{\MO{MatchWith}}\;\tp\;\ttt\;\vec{\VV{pclause}}\\
+\vec{\MO{Elab}}\;\tc'\\
+\RW{return}\;(\RW{var}\;\tp\SC\VV{lhs}\;=\;\vx'\;\tp_{w}\;\vw'\;\tp_{n})
 }
 \medskip\\
-\MO{MatchWith}\:\tp_w\:\tp_n\:\ttt\:(\vx\:\tw\:\mid\:\ve\:\VV{rhs})\:\mq\\
+\MO{MatchWith}\;\tp_w\;\tp_n\;\ttt\;(\vx\;\tw\;\mid\;\ve\;\VV{rhs})\;\mq\\
 \hg\hg\edo{
-\tp'\gets\vec{\MO{Match}}\:\tw\:\ttt\\
-(\tp'_w,\tp'_n)\:\gets\:\MO{SplitPats}\:\tp_w\:\tp_n\:\tp'\\
-\RW{return}\:(\vx'\:\tp'_w\:\ve\:\tp'_{n}\:\VV{rhs})
+\tp'\gets\vec{\MO{Match}}\;\tw\;\ttt\\
+(\tp'_w,\tp'_n)\;\gets\;\MO{SplitPats}\;\tp_w\;\tp_n\;\tp'\\
+\RW{return}\;(\vx'\;\tp'_w\;\ve\;\tp'_{n}\;\VV{rhs})
 }
 }
 }
@@ -1493,7 +1494,7 @@ $\ve$ which is the same type as the scrutinee of the \texttt{with}, $\vW$.
 The right hand side, $\VV{rhs}$, may either return a value directly, containing 
 \texttt{where} clauses, or be a nested \texttt{with} block. In any case, it
 remains unchanged.
-$\MO{Match}\:\vw\:\vt$ returns a list of pattern bindings containing
+$\MO{Match}\;\vw\;\vt$ returns a list of pattern bindings containing
 the variables in $\vt$ and their matches in $\vw$.
 The resulting matches are split, using $\MO{SplitPats}$, into matches for those
 variables necessary to type $\vW$ and the rest, as before.
@@ -1604,28 +1605,28 @@ In general, \texttt{class} declarations are elaborated as follows:
 
 \DM{
 \AR{
-\MO{Elab}\:(\iclass\;\piconst{\tc}\TC{C}\:(\ta\Hab\ttt)\:\iwhere\:\td)
+\MO{Elab}\;(\iclass\;\piconst{\tc}\TC{C}\;(\ta\Hab\ttt)\;\iwhere\;\td)
 \\
 \hg\hg
-\mq\:\RW{do}\:\AR{
+\mq\;\RW{do}\;\AR{
 (\vec{\VV{meth}}\Hab\ttt)\gets\td\\
-\MO{Elab}\:
-\AR{(\RW{data}\:\TC{C}\Hab(\ta\Hab\ttt)\to\Type\:\iwhere\\
-\hg\DC{InstanceC}\Hab\piconst{\tc}\td\to\TC{C}\:\ta)}\\
-\vec{\MO{ElabMeth}}\:(\vec{\VV{meth}}\Hab\ttt)\\
-\vec{\MO{ElabParent}}\:\tc
+\MO{Elab}\;
+\AR{(\RW{data}\;\TC{C}\Hab(\ta\Hab\ttt)\to\Type\;\iwhere\\
+\hg\DC{InstanceC}\Hab\piconst{\tc}\td\to\TC{C}\;\ta)}\\
+\vec{\MO{ElabMeth}}\;(\vec{\VV{meth}}\Hab\ttt)\\
+\vec{\MO{ElabParent}}\;\tc
 }
 \medskip\\
-\MO{ElabMeth}\:(\vf\Hab\vt)\\
-\hg\hg\mq\:\RW{do}\:\AR{
-\MO{Elab}\:(\vf\Hab\TC{C}\:\ta\to\vt)\\
-\MO{Elab}\:(\vf\:(\DC{InstanceC}\:\vec{\VV{meth}})\:=\:\vec{\VV{meth}[\vf]})
+\MO{ElabMeth}\;(\vf\Hab\vt)\\
+\hg\hg\mq\;\RW{do}\;\AR{
+\MO{Elab}\;(\vf\Hab\TC{C}\;\ta\to\vt)\\
+\MO{Elab}\;(\vf\;(\DC{InstanceC}\;\vec{\VV{meth}})\;=\;\vec{\VV{meth}[\vf]})
 }
 \medskip\\
-\MO{ElabParent}\:\vc\\
-\hg\hg\mq\:\RW{do}\:\AR{
-\MO{Elab}\:(\VV{cC}\Hab\TC{C}\:\ta\to\vc)\\
-\MO{Elab}\:(\VV{cC}\:(\DC{InstanceC}\:\carg{\vc'}\:\vec{\VV{meth}})\:=\:\vc')
+\MO{ElabParent}\;\vc\\
+\hg\hg\mq\;\RW{do}\;\AR{
+\MO{Elab}\;(\VV{cC}\Hab\TC{C}\;\ta\to\vc)\\
+\MO{Elab}\;(\VV{cC}\;(\DC{InstanceC}\;\carg{\vc'}\;\vec{\VV{meth}})\;=\;\vc')
 }
 }
 }
@@ -1634,17 +1635,17 @@ In general, \texttt{class} declarations are elaborated as follows:
 Then \texttt{instance} declarations are elaborated as follows. One complication
 is that the function definitions in an \texttt{instance} declaration do not
 have explicit types, so we must retrieve the method types from the system state
-and substitute $\TC{C}\:\ttt$, using $\MO{ExpandTypes}$:
+and substitute $\TC{C}\;\ttt$, using $\MO{ExpandTypes}$:
 
 \DM{
 \AR{
-\MO{Elab}\:(\iinstance\;\piconst{\tc}\TC{C}\:\ttt\:\iwhere\:\td)\\
-\hg\hg\mq\:\RW{do}\:\AR{
-(\vec{\VV{meth}}, \vec{\VV{ty}})\gets\MO{ExpandTypes}\:\td\\
-\vec{\VV{ty'}}\:=\:\vec{\VV{ty}}[\ttt/\ta]\\
-\MO{Elab}\:(\FN{instanceC}\Hab\piconst{\tc}\TC{C}\:\ttt)\\
-\MO{Elab}\:\AR{
-(\FN{instanceC}\:=\:\DC{InstanceC}\;\vec{\VV{meth'}}\;\iwhere
+\MO{Elab}\;(\iinstance\;\piconst{\tc}\TC{C}\;\ttt\;\iwhere\;\td)\\
+\hg\hg\mq\;\RW{do}\;\AR{
+(\vec{\VV{meth}}, \vec{\VV{ty}})\gets\MO{ExpandTypes}\;\td\\
+\vec{\VV{ty'}}\;=\;\vec{\VV{ty}}[\ttt/\ta]\\
+\MO{Elab}\;(\FN{instanceC}\Hab\piconst{\tc}\TC{C}\;\ttt)\\
+\MO{Elab}\;\AR{
+(\FN{instanceC}\;=\;\DC{InstanceC}\;\vec{\VV{meth'}}\;\iwhere
 \\
 \hg\vec{\VV{meth'}}\Hab\vec{\VV{ty'}}\\
 \hg\td
@@ -1678,15 +1679,15 @@ basic primitive for proof search, and is defined as follows:
 
 \DM{
 \AR{
-\MO{Trivial}\:\mq\:
-\RW{do}\:\AR{
+\MO{Trivial}\;\mq\;
+\RW{do}\;\AR{
       (\tv\Hab\ttt)\gets\MO{Context}\\
-      \MO{TryAll}\:\tv
+      \MO{TryAll}\;\tv
     }
 \medskip\\
-\MO{TryAll}\:(\vv_1,\vv_2\ldots)\:\mq\:\MO{Try}\:(\MO{Fill}\:\vv_1)\:(\MO{TryAll}\:\vv_2\ldots)
+\MO{TryAll}\;(\vv_1,\vv_2\ldots)\;\mq\;\MO{Try}\;(\MO{Fill}\;\vv_1)\;(\MO{TryAll}\;\vv_2\ldots)
 \\
-\MO{TryAll}\:\langle\rangle\:\mq\:\MO{Fail}
+\MO{TryAll}\;\langle\rangle\;\mq\;\MO{Fail}
 }
 }
 
@@ -1707,11 +1708,11 @@ applying every type class instance, and attempting to resolve the instance's par
 recursively. Given an instance $\vI$ with parameters $\ta$:
 
 \DM{
-\MO{TryInstance}\:(\vI\:\ta)\:\mq\:\RW{do}\;
+\MO{TryInstance}\;(\vI\;\ta)\;\mq\;\RW{do}\;
 \AR{
-\vec{\MO{Claim}}\:(\tx\Hab\ta)\\
-\ttinterp{\vI\:\tx}\\
-\vec{\MO{Focus}}\:\tx;\;\vec{\MO{Instance}}
+\vec{\MO{Claim}}\;(\tx\Hab\ta)\\
+\ttinterp{\vI\;\tx}\\
+\vec{\MO{Focus}}\;\tx;\;\vec{\MO{Instance}}
 }
 }
 
@@ -1719,13 +1720,13 @@ We define $\MO{Instance}$ as follows, using $\MO{AllInstances}$ to retrieve
 all possible type class instances in the form required by $\MO{TryInstance}$:
 
 \DM{
-\MO{Instance}\:\mq\:
-\MO{Try}\:
+\MO{Instance}\;\mq\;
+\MO{Try}\;
 \AR{
 \MO{Trivial}\\
-(\RW{do}\:\AR{
+(\RW{do}\;\AR{
 \ti\gets\MO{AllInstances}\\
-\vec{\MO{TryInstance}}\:\ti
+\vec{\MO{TryInstance}}\;\ti
 )
 }
 }
@@ -1769,9 +1770,9 @@ and $\icase$ expressions:
 \begin{array}{rll@{\hg}rll}
 \ve ::= & \ldots \\
 \mid & \mvar{\vx} & (\mbox{metavariable}) &
-\mid & \icase\:\ve\:\iof\:\vec{\VV{alt}} & (\mbox{case expression}) \\
+\mid & \icase\;\ve\;\iof\;\vec{\VV{alt}} & (\mbox{case expression}) \\
 \medskip\\
-\VV{alt} ::= & \ve\:\fatarrow\:\ve & (\mbox{case alternative})\\
+\VV{alt} ::= & \ve\;\fatarrow\;\ve & (\mbox{case alternative})\\
 \end{array}
 }
 }
@@ -1824,12 +1825,12 @@ Elaborating a metavariable involves adding a new top level definition which is a
 to all of the variables in local scope.
 
 \DM{
-\ttinterp{\mvar{\vx}}\:\mq\:
+\ttinterp{\mvar{\vx}}\;\mq\;
 \edo{
 (\tv\Hab\ttt)\gets\MO{Context}\\
 \vT\gets\MO{Type}\\
-\MO{TTDecl}\:(\vx\Hab(\tv\Hab\ttt)\to\vT)\\
-\ttinterp{\vx\:\tv}
+\MO{TTDecl}\;(\vx\Hab(\tv\Hab\ttt)\to\vT)\\
+\ttinterp{\vx\;\tv}
 }
 }
 
@@ -1867,14 +1868,14 @@ and elaborate it:
 
 \DM{
 \AR{
-\ttinterp{\icase\:\ve\:\iof\:\vec{\VV{alt}}}\:\mq\:
+\ttinterp{\icase\;\ve\;\iof\;\vec{\VV{alt}}}\;\mq\;
 \edo{
-\ttinterp{\ilet{\VV{scrutinee}}{\ve}\:\mvar{\VV{xcase}}}\\
+\ttinterp{\ilet{\VV{scrutinee}}{\ve}\;\mvar{\VV{xcase}}}\\
 (\tv\Hab\ttt)\gets\MO{Context}\\
-\vec{\MO{MkCase}}\:\tv\:\VV{alt}\\
+\vec{\MO{MkCase}}\;\tv\;\VV{alt}\\
 }
 \medskip\\
-\MO{MkCase}\:\tv\:(\vl\:\fatarrow\:\vr)\:\mq\:\MO{Elab}\:(\VV{xcase}\:\tv\:\vl\:=\:\vr)
+\MO{MkCase}\;\tv\;(\vl\;\fatarrow\;\vr)\;\mq\;\MO{Elab}\;(\VV{xcase}\;\tv\;\vl\;=\;\vr)
 }
 }
 

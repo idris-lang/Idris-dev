@@ -54,8 +54,8 @@ implicit syntax and pattern matching --- Norell gives an algorithm for type chec
 a dependently typed language with pattern matching and metavariables 
 \cite{norell2007thesis}. Unlike the present \Idris{} implementation, metavariables
 and implicit arguments are part of the type theory. This has the advantage that
-implicit arguments can be used more freely, at the expense of complicating the type
-system.
+implicit arguments can be used more freely (for example, in higher order
+function arguments) at the expense of complicating the type system.
 
 Epigram \cite{McBride2004a} and Oleg \cite{McBride1999} 
 have provided much of the inspiration for the \Idris{} elaborator. Indeed,
@@ -132,8 +132,8 @@ of high level languages, especially when augmented with primitive operators.
 We have not discussed the performance of the elaboration
 algorithm, or described how \Idris{} compiles to executable code. In practice,
 we have found performance to be acceptable --- for example, the \Idris{}
-library (25 files, 3532 lines of code in total at the time of writing)
-elaborates in around 10 seconds\footnote{On a MacBook Pro, 2.8GHz Intel Core 2
+library (31 files, 3718 lines of code in total at the time of writing)
+elaborates in around 12 seconds\footnote{On a MacBook Pro, 2.8GHz Intel Core 2
 Duo, 4Gb RAM}. Profiling suggests that the main bottleneck is locating holes
 in a proof term, which can be improved by choosing a better representation
 for proof terms, perhaps based on a zipper \cite{Huet1997}. Compilation is made
