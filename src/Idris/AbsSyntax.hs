@@ -148,10 +148,10 @@ setSO s = do i <- getIState
              putIState $ (i { compiled_so = s })
 
 getIState :: Idris IState
-getIState = lift get
+getIState = get
 
 putIState :: IState -> Idris ()
-putIState = lift . put
+putIState = put
 
 getName :: Idris Int
 getName = do i <- getIState;

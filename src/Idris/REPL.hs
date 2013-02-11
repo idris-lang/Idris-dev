@@ -50,23 +50,23 @@ import Data.List
 import Data.Char
 import Data.Version
 
-repl :: IState -> [FilePath] -> Idris ()
+repl :: IState -> [FilePath] -> InputT Idris ()
 repl orig mods
    = H.catch
       (do let prompt = mkPrompt mods
           x <- getInputLine (prompt ++ "> ")
           case x of
-              Nothing -> do iputStrLn "Bye bye"
+              Nothing -> do lift $ iputStrLn "Bye bye"
                             return ()
               Just input -> H.catch 
-                              (do ms <- processInput input orig mods
+                              (do ms <- lift $ processInput input orig mods
                                   case ms of
                                       Just mods -> repl orig mods
                                       Nothing -> return ())
                               ctrlC)
       ctrlC
-   where ctrlC :: SomeException -> Idris ()
-         ctrlC e = do iputStrLn (show e)
+   where ctrlC :: SomeException -> InputT Idris ()
+         ctrlC e = do lift $ iputStrLn (show e)
                       repl orig mods
 
 mkPrompt [] = "Idris"
@@ -496,7 +496,7 @@ haskelineSettings = setComplete idrisCompletion defaultSettings
 
 -- invoke as if from command line
 idris :: [Opt] -> IO IState
-idris opts = execStateT (runInputT haskelineSettings $ idrisMain opts) idrisInit
+idris opts = execStateT (idrisMain opts) idrisInit
 
 --runInputT haskelineSettings $ execStateT (idrisMain opts) idrisInit
 
@@ -553,7 +553,7 @@ idrisMain opts =
        when ok $ case newoutput of
                     [] -> return ()
                     (o:_) -> process "" (NewCompile o)  
-       when runrepl $ repl ist inputs
+       when runrepl $ runInputT haskelineSettings $ repl ist inputs
        ok <- noErrors
        when (not ok) $ liftIO (exitWith (ExitFailure 1))
   where
