@@ -16,6 +16,7 @@ import Idris.Primitives
 import Idris.Coverage
 import Idris.UnusedArgs
 import Idris.Docs
+import Idris.Completion
 
 import Paths_idris
 import Util.System
@@ -489,11 +490,11 @@ help =
     ([":q",":quit"], "", "Exit the Idris system")
   ]
 
-idrisCompletion :: CompletionFunc (StateT IState IO)
-idrisCompletion (before, after) = return (before, [])
 
 haskelineSettings :: Settings (StateT IState IO)
-haskelineSettings = setComplete idrisCompletion defaultSettings
+haskelineSettings = setComplete (idrisCompletion commands) defaultSettings
+    where cmds (cs, _, _) = cs
+          commands = concatMap cmds help
 
 -- invoke as if from command line
 idris :: [Opt] -> IO IState
