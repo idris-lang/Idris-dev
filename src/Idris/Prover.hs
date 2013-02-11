@@ -38,13 +38,18 @@ showProof lit n ps
   where bird = if lit then "> " else ""
         break = "\n" ++ bird
 
-proverSettings :: Settings Idris
-proverSettings = setComplete proverCompletion defaultSettings
+proverSettings :: ElabState [PDecl] -> Settings Idris
+proverSettings e = setComplete (proverCompletion assumptionNames) defaultSettings
+    where assumptionNames = case envAtFocus (proof e) of
+                              OK env -> names env
+          names [] = []
+          names ((MN _ _, _) : bs) = names bs
+          names ((n, _) : bs) = show n : names bs
 
 prove :: Context -> Bool -> Name -> Type -> Idris ()
 prove ctxt lit n ty 
     = do let ps = initElaborator n ctxt ty
-         (tm, prf) <- runInputT proverSettings $ ploop True ("-" ++ show n) [] (ES (ps, []) "" Nothing)
+         (tm, prf) <- ploop True ("-" ++ show n) [] (ES (ps, []) "" Nothing)
          iLOG $ "Adding " ++ show tm
          iputStrLn $ showProof lit n prf
          i <- getIState
@@ -112,18 +117,18 @@ lifte :: ElabState [PDecl] -> ElabD a -> Idris a
 lifte st e = do (v, _) <- elabStep st e
                 return v
 
-ploop :: Bool -> String -> [String] -> ElabState [PDecl] -> InputT Idris (Term, [String])
+ploop :: Bool -> String -> [String] -> ElabState [PDecl] -> Idris (Term, [String])
 ploop d prompt prf e 
-    = do i <- lift getIState
+    = do i <- getIState
          when d $ liftIO $ dumpState i (proof e)
-         x <- getInputLine (prompt ++ "> ")
+         x <- runInputT (proverSettings e) $ getInputLine (prompt ++ "> ")
          (cmd, step) <- case x of
             Nothing -> fail "Abandoned"
             Just input -> do return (parseTac i input, input)
          case cmd of
             Right Abandon -> fail "Abandoned"
             _ -> return ()
-         (d, st, done, prf') <- lift $ idrisCatch
+         (d, st, done, prf') <- idrisCatch
            (case cmd of
               Left err -> do iputStrLn (show err)
                              return (False, e, False, prf)
@@ -144,7 +149,7 @@ ploop d prompt prf e
                               return (True, st, False, prf ++ [step]))
            (\err -> do iputStrLn (show err)
                        return (False, e, False, prf))
-         if done then do (tm, _) <- lift $ elabStep st get_term
+         if done then do (tm, _) <- elabStep st get_term
                          return (tm, prf')
                  else ploop d prompt prf' st
 

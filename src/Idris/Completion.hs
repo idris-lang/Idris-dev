@@ -49,24 +49,22 @@ commands = map fst cmdArgs
 -- | A specification of the arguments that tactics can take
 data TacticArg = NameTArg -- ^ Names: n1, n2, n3, ... n
                | ExprTArg
-               | TacticTArg
-               | CommasTArg TacticArg
-               | AltTArg TacticArg TacticArg
+               | AltsTArg
 
 -- | A list of available tactics and their argument requirements
 tacticArgs :: [(String, Maybe TacticArg)]
-tacticArgs = [ ("intro", Just $ CommasTArg NameTArg)
+tacticArgs = [ ("intro", Nothing)
              , ("intros", Nothing)
-             , ("refine", Just NameTArg)
-             , ("rewrite", Just NameTArg)
+             , ("refine", Just ExprTArg)
+             , ("rewrite", Just ExprTArg)
              , ("let", Nothing) -- FIXME syntax for let
-             , ("focus", Just NameTArg)
+             , ("focus", Just ExprTArg)
              , ("exact", Just ExprTArg)
              , ("reflect", Just ExprTArg)
-             , ("try", Just $ AltTArg TacticTArg TacticTArg)
+             , ("try", Just AltsTArg)
              ] ++ map (\x -> (x, Nothing)) [
-              "compute", "trivial", "solve", "attack", "state",
-              "term", "undo", "qed", "abandon", ":q"
+              "intro", "intros", "compute", "trivial", "solve", "attack",
+              "state", "term", "undo", "qed", "abandon", ":q"
              ]
 tactics = map fst tacticArgs
 
@@ -100,12 +98,12 @@ completeWith ns n = if uniqueExists
     where prefixMatches = filter (isPrefixOf n) ns
           uniqueExists = n `elem` prefixMatches
 
-completeName :: String -> Idris [Completion]
-completeName n = do ns <- names
-                    return $ completeWith ns n
+completeName :: [String] -> String -> Idris [Completion]
+completeName extra n = do ns <- names
+                          return $ completeWith (extra ++ ns) n
 
-completeExpr :: CompletionFunc Idris
-completeExpr = completeWord Nothing " \t" completeName
+completeExpr :: [String] -> CompletionFunc Idris
+completeExpr extra = completeWord Nothing " \t" (completeName extra)
 
 completeOption :: CompletionFunc Idris
 completeOption = completeWord Nothing " \t" completeOpt
@@ -118,24 +116,28 @@ isWhitespace = (flip elem) " \t\n"
 completeCmd :: String -> CompletionFunc Idris
 completeCmd cmd (prev, next) = fromMaybe completeCmdName $ fmap completeArg $ lookup cmd cmdArgs
     where completeArg FileArg = completeFilename (prev, next)
-          completeArg NameArg = completeExpr (prev, next) -- FIXME only complete one name
+          completeArg NameArg = completeExpr [] (prev, next) -- FIXME only complete one name
           completeArg OptionArg = completeOption (prev, next)
           completeArg ModuleArg = noCompletion (prev, next) -- FIXME do later
-          completeArg ExprArg = completeExpr (prev, next)
+          completeArg ExprArg = completeExpr [] (prev, next)
           completeCmdName = return $ ("", completeWith commands cmd)
 
 replCompletion :: CompletionFunc Idris
 replCompletion (prev, next) = case firstWord of
                                 ':':cmdName -> completeCmd (':':cmdName) (prev, next)
-                                _           -> completeExpr (prev, next)
+                                _           -> completeExpr [] (prev, next)
     where firstWord = fst $ break isWhitespace $ dropWhile isWhitespace $ reverse prev
 
 
-completeTactic :: String -> CompletionFunc Idris
-completeTactic tac (prev, next) = return $ completeTacName tac
+completeTactic :: [String] -> String -> CompletionFunc Idris
+completeTactic as tac (prev, next) = fromMaybe completeTacName $ fmap completeArg $ lookup tac tacticArgs
     where completeTacName = return $ ("", completeWith tactics tac)
+          completeArg Nothing           = noCompletion (prev, next)
+          completeArg (Just NameTArg)   = noCompletion (prev, next) -- this is for binding new names!
+          completeArg (Just ExprTArg)   = completeExpr as (prev, next)
+          completeArg (Just AltsTArg)   = noCompletion (prev, next) -- TODO
 
 
-proverCompletion :: CompletionFunc Idris
-proverCompletion (prev, next) = completeTactic firstWord (prev, next)
+proverCompletion :: [String] -> CompletionFunc Idris
+proverCompletion assumptions (prev, next) = completeTactic assumptions firstWord (prev, next)
     where firstWord = fst $ break isWhitespace $ dropWhile isWhitespace $ reverse prev
