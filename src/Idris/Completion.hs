@@ -1,4 +1,4 @@
-module Idris.Completion (idrisCompletion) where
+module Idris.Completion (replCompletion) where
 
 import Core.Evaluate (ctxtAlist)
 import Core.TT
@@ -98,8 +98,8 @@ completeCmd cmd (prev, next) = fromMaybe completeCmdName (fmap completeArg $ loo
           completeArg ExprArg = completeExpr (prev, next)
           completeCmdName = return $ ("", completeWith commands cmd)
 
-idrisCompletion :: CompletionFunc (StateT IState IO)
-idrisCompletion (prev, next) = case firstWord of
-                                 ':':cmdName -> completeCmd (':':cmdName) (prev, next)
-                                 _ -> completeExpr (prev, next)
-    where (firstWord, remainder) = break isWhitespace $ dropWhile isWhitespace $ reverse prev
+replCompletion :: CompletionFunc (StateT IState IO)
+replCompletion (prev, next) = case firstWord of
+                                ':':cmdName -> completeCmd (':':cmdName) (prev, next)
+                                _           -> completeExpr (prev, next)
+    where firstWord = fst $ break isWhitespace $ dropWhile isWhitespace $ reverse prev

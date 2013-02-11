@@ -491,14 +491,12 @@ help =
   ]
 
 
-haskelineSettings :: Settings (StateT IState IO)
-haskelineSettings = setComplete idrisCompletion defaultSettings
+replSettings :: Settings (StateT IState IO)
+replSettings = setComplete replCompletion defaultSettings
 
 -- invoke as if from command line
 idris :: [Opt] -> IO IState
 idris opts = execStateT (idrisMain opts) idrisInit
-
---runInputT haskelineSettings $ execStateT (idrisMain opts) idrisInit
 
 idrisMain :: [Opt] -> Idris ()
 idrisMain opts =
@@ -553,7 +551,7 @@ idrisMain opts =
        when ok $ case newoutput of
                     [] -> return ()
                     (o:_) -> process "" (NewCompile o)  
-       when runrepl $ runInputT haskelineSettings $ repl ist inputs
+       when runrepl $ runInputT replSettings $ repl ist inputs
        ok <- noErrors
        when (not ok) $ liftIO (exitWith (ExitFailure 1))
   where
