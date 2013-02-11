@@ -491,7 +491,7 @@ help =
   ]
 
 
-replSettings :: Settings (StateT IState IO)
+replSettings :: Settings Idris
 replSettings = setComplete replCompletion defaultSettings
 
 -- invoke as if from command line

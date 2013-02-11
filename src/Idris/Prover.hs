@@ -13,6 +13,7 @@ import Idris.ElabTerm
 import Idris.Parser
 import Idris.Error
 import Idris.DataOpts
+import Idris.Completion
 
 import System.Console.Haskeline
 import Control.Monad.State
@@ -37,7 +38,8 @@ showProof lit n ps
   where bird = if lit then "> " else ""
         break = "\n" ++ bird
 
-proverSettings = defaultSettings -- TODO: Prover settings
+proverSettings :: Settings Idris
+proverSettings = setComplete proverCompletion defaultSettings
 
 prove :: Context -> Bool -> Name -> Type -> Idris ()
 prove ctxt lit n ty 
