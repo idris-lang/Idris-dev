@@ -492,9 +492,7 @@ help =
 
 
 haskelineSettings :: Settings (StateT IState IO)
-haskelineSettings = setComplete (idrisCompletion commands) defaultSettings
-    where cmds (cs, _, _) = cs
-          commands = concatMap cmds help
+haskelineSettings = setComplete idrisCompletion defaultSettings
 
 -- invoke as if from command line
 idris :: [Opt] -> IO IState

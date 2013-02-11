@@ -12,6 +12,39 @@ import Data.Maybe
 
 import System.Console.Haskeline
 
+-- TODO: add specific classes of identifiers to complete, fx metavariables
+-- | A specification of the arguments that REPL commands can take
+data CmdArg = ExprArg -- ^ The command takes an expression
+            | NameArg -- ^ The command takes a name
+            | FileArg -- ^ The command takes a file
+            | ModuleArg -- ^ The command takes a module name
+            | OptionArg -- ^ The command takes an option
+
+-- | Information about how to complete the various commands
+cmdArgs :: [(String, CmdArg)]
+cmdArgs = [ (":t", ExprArg)
+          , (":miss", NameArg)
+          , (":missing", NameArg)
+          , (":i", NameArg)
+          , (":info", NameArg)
+          , (":total", NameArg)
+          , (":l", FileArg)
+          , (":load", FileArg)
+          , (":m", ModuleArg) -- NOTE: Argumentless form is a different command
+          , (":p", NameArg)
+          , (":prove", NameArg)
+          , (":a", NameArg)
+          , (":addproof", NameArg)
+          , (":rmproof", NameArg)
+          , (":showproof", NameArg)
+          , (":c", FileArg)
+          , (":compile", FileArg)
+          , (":js", FileArg)
+          , (":javascript", FileArg)
+          , (":set", OptionArg)
+          , (":unset", OptionArg)
+          ]
+commands = map fst cmdArgs
 
 -- | Convert a name into a string usable for completion. Filters out names
 -- that users probably don't want to see.
@@ -29,6 +62,11 @@ names = do i <- get
            let ctxt = tt_ctxt i
            return $ nub $ mapMaybe (nameString . fst) $ ctxtAlist ctxt
 
+
+modules :: StateT IState IO [String]
+modules = do i <- get
+             return $ map show $ imported i
+
 completeWith :: [String] -> String -> [Completion]
 completeWith ns n = if uniqueExists
                     then [simpleCompletion n]
@@ -41,15 +79,27 @@ completeName n = do ns <- names
                     return $ completeWith ns n
 
 completeExpr :: CompletionFunc (StateT IState IO)
-completeExpr = completeWord Nothing [' ', '\t'] completeName
+completeExpr = completeWord Nothing " \t" completeName
 
-idrisCompletion :: [String] -> CompletionFunc (StateT IState IO)
-idrisCompletion commands (before, after) = complete (reverse $ dropWhile (\x -> x == ' ') before)
-    where complete :: String -> StateT IState IO (String, [Completion])
-          complete []        = noCompletions
-          complete (':':cmd) = return $ ("", completeWith commands (':':cmd))
-          complete _         = completeExpr (before, after)
+completeOption :: CompletionFunc (StateT IState IO)
+completeOption = completeWord Nothing " \t" completeOpt
+    where completeOpt = return . (completeWith ["errorcontext", "showimplicits"])
 
-          noCompletions = return (before, [])
+isWhitespace :: Char -> Bool
+isWhitespace = (flip elem) " \t\n"
 
+-- | Get the completion function for a particular command
+completeCmd :: String -> CompletionFunc (StateT IState IO)
+completeCmd cmd (prev, next) = fromMaybe completeCmdName (fmap completeArg $ lookup cmd cmdArgs)
+    where completeArg FileArg = completeFilename (prev, next)
+          completeArg NameArg = completeExpr (prev, next) -- FIXME only complete one name
+          completeArg OptionArg = completeOption (prev, next)
+          completeArg ModuleArg = noCompletion (prev, next) -- FIXME do later
+          completeArg ExprArg = completeExpr (prev, next)
+          completeCmdName = return $ ("", completeWith commands cmd)
 
+idrisCompletion :: CompletionFunc (StateT IState IO)
+idrisCompletion (prev, next) = case firstWord of
+                                 ':':cmdName -> completeCmd (':':cmdName) (prev, next)
+                                 _ -> completeExpr (prev, next)
+    where (firstWord, remainder) = break isWhitespace $ dropWhile isWhitespace $ reverse prev
