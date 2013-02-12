@@ -63,12 +63,13 @@ fixErrorMsg msg fixes = msg ++ ", possible fixes:\n" ++ (concat $ intersperse "\
 loadModule :: FilePath -> Idris String
 loadModule f 
    = idrisCatch (do i <- getIState
+                    let file = takeWhile (/= ' ') f      
                     ibcsd <- valIBCSubDir i
                     ids <- allImportDirs i
-                    fp <- liftIO $ findImport ids ibcsd f
-                    if f `elem` imported i
-                       then iLOG $ "Already read " ++ f
-                       else do putIState (i { imported = f : imported i })
+                    fp <- liftIO $ findImport ids ibcsd file
+                    if file `elem` imported i
+                       then iLOG $ "Already read " ++ file
+                       else do putIState (i { imported = file : imported i })
                                case fp of
                                    IDR fn  -> loadSource False fn
                                    LIDR fn -> loadSource True  fn
@@ -78,7 +79,7 @@ loadModule f
                                                           case src of
                                                             IDR sfn -> loadSource False sfn
                                                             LIDR sfn -> loadSource True sfn)
-                    let (dir, fh) = splitFileName f
+                    let (dir, fh) = splitFileName file
                     return (dropExtension fh))
                 (\e -> do let msg = show e
                           setErrLine (getErrLine msg)
