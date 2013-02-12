@@ -39,6 +39,27 @@ build :: IState -> ElabInfo -> Bool -> Name -> PTerm ->
          ElabD (Term, [(Name, Type)], [PDecl])
 build ist info pattern fn tm 
     = do elab ist info pattern False fn tm
+         ivs <- get_instances
+         hs <- get_holes
+         ptm <- get_term
+         -- Resolve remaining type classes. Two passes - first to get the
+         -- default Num instances, second to clean up the rest
+         when (not pattern) $
+              mapM_ (\n -> when (n `elem` hs) $ 
+                             do focus n
+                                try (resolveTC 7 fn ist)
+                                    (movelast n)) ivs
+         ivs <- get_instances
+         hs <- get_holes
+         when (not pattern) $
+              mapM_ (\n -> when (n `elem` hs) $ 
+                             do focus n
+                                resolveTC 7 fn ist) ivs
+         probs <- get_probs
+         tm <- get_term
+         case probs of
+            [] -> return ()
+            ((_,_,_,e):es) -> lift (Error e)
          is <- getAux
          tt <- get_term
          let (tm, ds) = runState (collectDeferred tt) []
@@ -54,6 +75,11 @@ buildTC :: IState -> ElabInfo -> Bool -> Bool -> Name -> PTerm ->
          ElabD (Term, [(Name, Type)], [PDecl])
 buildTC ist info pattern tcgen fn tm 
     = do elab ist info pattern tcgen fn tm
+         probs <- get_probs
+         tm <- get_term
+         case probs of
+            [] -> return ()
+            ((_,_,_,e):es) -> lift (Error e)
          is <- getAux
          tt <- get_term
          let (tm, ds) = runState (collectDeferred tt) []
@@ -72,8 +98,6 @@ elab ist info pattern tcgen fn tm
               (do update_term orderPats
 --                   tm <- get_term
                   mkPat)
-         inj <- get_inj
-         mapM_ checkInjective inj
   where
     isph arg = case getTm arg of
         Placeholder -> (True, priority arg)
@@ -110,11 +134,11 @@ elab ist info pattern tcgen fn tm
     elab' ina (PResolveTC (FC "HACK" _)) -- for chasing parent classes
        = resolveTC 5 fn ist
     elab' ina (PResolveTC fc) 
-        | pattern = do c <- unique_hole (MN 0 "c")
-                       instanceArg c
+        | True = do c <- unique_hole (MN 0 "class")
+                    instanceArg c
         | otherwise = do g <- goal
                          try (resolveTC 2 fn ist)
-                          (do c <- unique_hole (MN 0 "c")
+                          (do c <- unique_hole (MN 0 "class")
                               instanceArg c)
     elab' ina (PRefl fc t)   = elab' ina (PApp fc (PRef fc eqCon) [pimp (MN 0 "a") Placeholder,
                                                            pimp (MN 0 "x") t])
@@ -122,15 +146,23 @@ elab ist info pattern tcgen fn tm
                                                           pimp (MN 0 "b") Placeholder,
                                                           pexp l, pexp r])
     elab' ina@(_, a) (PPair fc l r) 
-                             = try (elabE (True, a) (PApp fc (PRef fc pairTy)
-                                            [pexp l,pexp r]))
-                                   (elabE (True, a) (PApp fc (PRef fc pairCon)
+        = do hnf_compute 
+             g <- goal
+             case g of
+                TType _ -> elabE (True, a) (PApp fc (PRef fc pairTy)
+                                            [pexp l,pexp r])
+                _ -> elabE (True, a) (PApp fc (PRef fc pairCon)
                                             [pimp (MN 0 "A") Placeholder,
                                              pimp (MN 0 "B") Placeholder,
-                                             pexp l, pexp r]))
+                                             pexp l, pexp r])
     elab' ina (PDPair fc l@(PRef _ n) t r)
             = case t of 
-                Placeholder -> try asType asValue
+                Placeholder -> 
+                   do hnf_compute
+                      g <- goal
+                      case g of
+                         TType _ -> asType
+                         _ -> asValue
                 _ -> asType
          where asType = elab' ina (PApp fc (PRef fc sigmaTy)
                                         [pexp t,
@@ -144,10 +176,14 @@ elab ist info pattern tcgen fn tm
                                              pimp (MN 0 "P") Placeholder,
                                              pexp l, pexp r])
     elab' ina (PAlternative True as) 
-        = do ty <- goal
+        = do hnf_compute
+             ty <- goal
              ctxt <- get_context
              let (tc, _) = unApply ty
              let as' = pruneByType tc ctxt as
+--              case as' of
+--                 [a] -> elab' ina a
+--                 as -> lift $ tfail $ CantResolveAlts (map showHd as)
              tryAll (zip (map (elab' ina) as') (map showHd as'))
         where showHd (PApp _ h _) = show h
               showHd x = show x
@@ -181,6 +217,7 @@ elab ist info pattern tcgen fn tm
           = do -- n' <- unique_hole n
                -- let sc' = mapPT (repN n n') sc
                ptm <- get_term
+               g <- goal
                attack; intro (Just n); 
                -- trace ("------ intro " ++ show n ++ " ---- \n" ++ show ptm) 
                elabE (True, a) sc; solve
@@ -231,6 +268,7 @@ elab ist info pattern tcgen fn tm
                focus valn
                elabE (True, a) val
                elabE (True, a) sc
+               ptm <- get_term
                solve
     elab' ina tm@(PApp fc (PInferRef _ f) args) = do
          rty <- goal
@@ -277,43 +315,58 @@ elab ist info pattern tcgen fn tm
                         Just xs@(_:_) -> NS n xs
                         _ -> n
 
+    -- if f is local, just do a simple_app
     elab' (ina, g) tm@(PApp fc (PRef _ f) args') 
        = do let args = {- case lookupCtxt f (inblock info) of
                           Just ps -> (map (pexp . (PRef fc)) ps ++ args')
                           _ ->-} args'
 --             newtm <- mkSpecialised ist fc f (map getTm args') tm
-            ivs <- get_instances
-            -- HACK: we shouldn't resolve type classes if we're defining an instance
-            -- function or default definition.
-            let isinf = f == inferCon || tcname f
-            ctxt <- get_context
-            let guarded = isConName Nothing f ctxt
---             when True
-            tryWhen True
-                (do ns <- apply (Var f) (map isph args)
+            env <- get_env
+            if (f `elem` map fst env && length args' == 1)
+               then -- simple app, as below
+                    do simple_app (elabE (ina, g) (PRef fc f)) 
+                                  (elabE (True, g) (getTm (head args')))
+                       solve
+               else 
+                 do ivs <- get_instances
+                    ps <- get_probs
+                    -- HACK: we shouldn't resolve type classes if we're defining an instance
+                    -- function or default definition.
+                    let isinf = f == inferCon || tcname f
+                    -- if f is a type class, we need to know its arguments so that
+                    -- we can unify with them
+                    case lookupCtxt Nothing f (idris_classes ist) of
+                        [] -> return ()
+                        _ -> mapM_ setInjective (map getTm args')
+                    ctxt <- get_context
+                    let guarded = isConName Nothing f ctxt
+                    ns <- apply (Var f) (map isph args)
                     ptm <- get_term
+                    g <- goal
                     let (ns', eargs) = unzip $ 
                              sortBy (\(_,x) (_,y) -> 
                                             compare (priority x) (priority y))
                                     (zip ns args)
-                    tryWhen True 
-                      (elabArgs (ina || not isinf, guarded)
-                           [] False ns' (map (\x -> (lazyarg x, getTm x)) eargs))
-                      (elabArgs (ina || not isinf, guarded)
-                           [] False (reverse ns') 
-                                    (map (\x -> (lazyarg x, getTm x)) (reverse eargs)))
+                    elabArgs (ina || not isinf, guarded)
+                           [] False ns' (map (\x -> (lazyarg x, getTm x)) eargs)
                     mkSpecialised ist fc f (map getTm args') tm
-                    solve)
-                (do apply_elab f (map (toElab (ina || not isinf, guarded)) args)
-                    mkSpecialised ist fc f (map getTm args') tm
-                    solve)
---             ptm <- get_term
---             elog (show ptm)
-            ivs' <- get_instances
-            when (not pattern || (ina && not tcgen)) $
-                mapM_ (\n -> do focus n
-                                -- let insts = filter tcname $ map fst (ctxtAlist (tt_ctxt ist))
-                                resolveTC 7 fn ist) (ivs' \\ ivs) 
+                    solve
+                    ptm <- get_term
+                    ivs' <- get_instances
+                    ps' <- get_probs
+            -- Attempt to resolve any type classes which have 'complete' types,
+            -- i.e. no holes in them
+                    when (not pattern || (ina && not tcgen && not guarded)) $
+                        mapM_ (\n -> do focus n
+                                        g <- goal
+                                        env <- get_env
+                                        hs <- get_holes
+                                        if all (\n -> not (n `elem` hs)) (freeNames g)
+                                        -- let insts = filter tcname $ map fst (ctxtAlist (tt_ctxt ist))
+                                         then try (resolveTC 7 fn ist)
+                                                  (movelast n)
+                                         else movelast n) 
+                              (ivs' \\ ivs)
       where tcArg (n, PConstraint _ _ Placeholder _) = True
             tcArg _ = False
 
@@ -321,10 +374,13 @@ elab ist info pattern tcgen fn tm
             tacTm (PProof _) = True
             tacTm _ = False
 
+            setInjective (PRef _ n) = setinj n
+            setInjective (PApp _ (PRef _ n) _) = setinj n
+            setInjective _ = return ()
+
     elab' ina@(_, a) (PApp fc f [arg])
           = erun fc $ 
-             do ptm <- get_term
-                simple_app (elabE ina f) (elabE (True, a) (getTm arg))
+             do simple_app (elabE ina f) (elabE (True, a) (getTm arg))
                 solve
     elab' ina Placeholder = do (h : hs) <- get_holes
                                movelast h
@@ -436,22 +492,29 @@ pruneAlt xs = map prune xs
 
 -- Rule out alternatives that don't return the same type as the head of the goal
 -- (If there are none left as a result, do nothing)
-
 pruneByType :: Term -> Context -> [PTerm] -> [PTerm]
 pruneByType (P _ n _) c as 
-    = let as' = filter (headIs n) as in
-          case as' of
-            [] -> as
-            _ -> as'
+-- if the goal type is polymorphic, keep e
+   | [] <- lookupTy Nothing n c = as
+   | otherwise 
+       = let asV = filter (headIs True n) as 
+             as' = filter (headIs False n) as in
+             case as' of
+               [] -> case asV of
+                        [] -> as
+                        _ -> asV
+               _ -> as'
   where
-    headIs f (PApp _ (PRef _ f') _) = typeHead f f'
-    headIs f (PApp _ f' _) = headIs f f'
-    headIs f (PPi _ _ _ sc) = headIs f sc
-    headIs _ _ = True -- keep if it's not an application
+    headIs var f (PApp _ (PRef _ f') _) = typeHead var f f'
+    headIs var f (PApp _ f' _) = headIs var f f'
+    headIs var f (PPi _ _ _ sc) = headIs var f sc
+    headIs _ _ _ = True -- keep if it's not an application
 
-    typeHead f f' = case lookupTy Nothing f' c of
+    typeHead var f f' 
+        = case lookupTy Nothing f' c of
                        [ty] -> case unApply (getRetTy ty) of
                                     (P _ ftyn _, _) -> ftyn == f
+                                    (V _, _) -> var -- keep, variable
                                     _ -> False
                        _ -> False
 
@@ -462,13 +525,20 @@ trivial ist = try' (do elab ist toplevel False False (MN 0 "tac")
                                     (PRefl (FC "prf" 0) Placeholder)
                        return ())
                    (do env <- get_env
-                       tryAll (map fst env)
+                       g <- goal
+                       tryAll env
                        return ()) True
       where
         tryAll []     = fail "No trivial solution"
-        tryAll (x:xs) = try' (elab ist toplevel False False
+        tryAll ((x, b):xs) 
+           = do -- if type of x has any holes in it, move on
+                hs <- get_holes
+                g <- goal
+                if all (\n -> not (n `elem` hs)) (freeNames (binderTy b))
+                   then try' (elab ist toplevel False False
                                     (MN 0 "tac") (PRef (FC "prf" 0) x))
                              (tryAll xs) True
+                   else tryAll xs
 
 findInstances :: IState -> Term -> [Name]
 findInstances ist t 
@@ -483,7 +553,11 @@ resolveTC 0 fn ist = fail $ "Can't resolve type class"
 resolveTC 1 fn ist = try' (trivial ist) (resolveTC 0 fn ist) True
 resolveTC depth fn ist 
       = do hnf_compute
-           try' (trivial ist)
+           g <- goal
+           ptm <- get_term
+           hs <- get_holes 
+           if True -- all (\n -> not (n `elem` hs)) (freeNames g)
+            then try' (trivial ist)
                 (do t <- goal
                     let insts = findInstances ist t
                     let (tc, ttypes) = unApply t
@@ -491,17 +565,23 @@ resolveTC depth fn ist
                     tm <- get_term
 --                    traceWhen (depth > 6) ("GOAL: " ++ show t ++ "\nTERM: " ++ show tm) $
 --                        (tryAll (map elabTC (map fst (ctxtAlist (tt_ctxt ist)))))
+--                     if scopeOnly then fail "Can't resolve" else
                     let depth' = if scopeOnly then 2 else depth
                     blunderbuss t depth' insts) True
+            else do try' (trivial ist)
+                         (do g <- goal
+                             fail $ "Can't resolve " ++ show g) True
+--             tm <- get_term
+--                     fail $ "Can't resolve yet in " ++ show tm
   where
     elabTC n | n /= fn && tcname n = (resolve n depth, show n)
              | otherwise = (fail "Can't resolve", show n)
 
---     needsDefault t num@(P _ (NS (UN "Num") ["builtins"]) _) [P Bound a _]
---         = do focus a
---              fill (RConstant IType) -- default Int
---              solve
---              return False
+    needsDefault t num@(P _ (NS (UN "Num") ["Builtins"]) _) [P Bound a _]
+        = do focus a
+             fill (RConstant IType) -- default Int
+             solve
+             return False
     needsDefault t f as
           | all boundVar as = return True -- fail $ "Can't resolve " ++ show t
     needsDefault t f a = return False -- trace (show t) $ return ()
@@ -509,7 +589,9 @@ resolveTC depth fn ist
     boundVar (P Bound _ _) = True
     boundVar _ = False
 
-    blunderbuss t d [] = lift $ tfail $ CantResolve t
+    blunderbuss t d [] = do -- c <- get_env
+                            -- ps <- get_probs
+                            lift $ tfail $ CantResolve t
     blunderbuss t d (n:ns) 
         | n /= fn && tcname n = try' (resolve n d)
                                      (blunderbuss t d ns) True
@@ -526,8 +608,11 @@ resolveTC depth fn ist
                 let imps = case lookupCtxtName Nothing n (idris_implicits ist) of
                                 [] -> []
                                 [args] -> map isImp (snd args) -- won't be overloaded!
+                ps <- get_probs
                 args <- apply (Var n) imps
-                --                 traceWhen (all boundVar ttypes) ("Progress: " ++ show t ++ " with " ++ show n) $
+                ps' <- get_probs
+                when (length ps < length ps') $ fail "Can't apply type class"
+--                 traceWhen (all boundVar ttypes) ("Progress: " ++ show t ++ " with " ++ show n) $
                 mapM_ (\ (_,n) -> do focus n
                                      t' <- goal
                                      let (tc', ttype) = unApply t'
@@ -535,6 +620,7 @@ resolveTC depth fn ist
                                      resolveTC depth' fn ist) 
                       (filter (\ (x, y) -> not x) (zip (map fst imps) args))
                 -- if there's any arguments left, we've failed to resolve
+                hs <- get_holes
                 solve
        where isImp (PImp p _ _ _ _) = (True, p)
              isImp arg = (False, priority arg)

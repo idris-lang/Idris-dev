@@ -28,7 +28,7 @@ type of types, and may be extended with other primitives.
 
 The function space $\all{\vx}{\vS}\SC\vT$ may also be written as $(\vx\Hab\vS)\to\vT$,
 or $\vS\to\vT$ if $\vx$ is not free in $\vT$, to make the notation more consistent with
-the high level language. Universe levels on sets ($\Type_i$) may be left implicit and
+the high level language. Universe levels on types ($\Type_i$) may be left implicit and
 inferred by the machine~\cite{pollack1990implicit}.
 
 \FFIG{
@@ -37,9 +37,9 @@ inferred by the machine~\cite{pollack1990implicit}.
 \hg\vb ::= & \lam{\vx}{\vt} & (\mbox{abstraction}) \\
 
  \mid  & \vx & (\mbox{variable}) &
- \mid & \LET\:\vx\defq\vt\Hab\vt & (\mbox{let binding}) \\
+ \mid & \LET\;\vx\defq\vt\Hab\vt & (\mbox{let binding}) \\
 
- \mid   & \vb\SC\:\vt & (\mbox{binding}) &
+ \mid   & \vb\SC\;\vt & (\mbox{binding}) &
  \mid & \all{\vx}{\vt} & (\mbox{function space}) \\
 
  \mid   & \vt\;\vt & (\mbox{application}) &
@@ -73,8 +73,14 @@ $\LET$ binding:
 \DM{
 \Axiom{\proves\RW{valid}}
 \hg
-\Rule{\Gamma\proves\RW{valid}}
-{\Gamma;\vb\proves\RW{valid}}
+\Rule{\Gamma\proves\vS\Hab\Type_i}
+{\Gamma;\lam{\vx}{\vS}\proves\RW{valid}}
+\hg
+\Rule{\Gamma\proves\vS\Hab\Type_i}
+{\Gamma;\all{\vx}{\vS}\proves\RW{valid}}
+\hg
+\Rule{\Gamma\proves\vS\Hab\Type_i\hg\Gamma\proves\vs\Hab\vS}
+{\Gamma;\LET\;\vx\;\defq\;\vs\Hab\vS\proves\RW{valid}}
 }
 
 \subsubsection{Evaluation}
@@ -97,8 +103,8 @@ The following contextual closure rule reduces a $\LET$ binding by creating
 a $\delta$-reducible expression:
 
 \DM{
-\Rule{\Gamma;\LET\:\vx\defq\vs\proves\vt\leadsto\vu}
-{\Gamma\proves\LET\:\vx\defq\vs\Hab\vS\SC\vt\leadsto\vu}
+\Rule{\Gamma;\LET\;\vx\defq\vs\Hab\vS\proves\vt\leadsto\vu}
+{\Gamma\proves\LET\;\vx\defq\vs\Hab\vS\SC\vt\leadsto\vu}
 }
 
 \demph{Reduction} ($\reduces$) is the structural closure of contraction, and evaluation
@@ -116,11 +122,11 @@ reduction rules.
 \begin{array}{lc}
 \beta\mathrm{-contraction} &
 \Axiom{
-\Gamma\proves(\lam{\vx}{\vS}\SC\vt)\:\vs\leadsto\LET\:\vx\defq\vs\Hab\vS\SC\vt
+\Gamma\proves(\lam{\vx}{\vS}\SC\vt)\;\vs\leadsto\LET\;\vx\defq\vs\Hab\vS\SC\vt
 } \\
 \delta\mathrm{-contraction} &
 \Axiom{
-\Gamma;\LET\:\vx\defq\vs\Hab\vS;\Gamma'
+\Gamma;\LET\;\vx\defq\vs\Hab\vS;\Gamma'
 \proves
 \vx\leadsto\vs
 }
@@ -147,71 +153,71 @@ are no cycles. Otherwise, the typing rules are standard and type inference can
 be implemented in the usual way~\cite{loh2010tutorial}.
 
 \FFIG{\begin{array}{c}
-\mathsf{Type}\:
+\mathsf{Type}\;
 \Rule{\Gamma\proves\RW{valid}}
 {\Gamma\vdash\Type_n\Hab\Type_{n+1}}
 \\
-\mathsf{Const}_1\:
+\mathsf{Const}_1\;
 \Rule{\Gamma\proves\RW{valid}}
 {\Gamma\vdash\vi\Hab\TC{Int}}
 \hg
-\mathsf{Const}_2\:
+\mathsf{Const}_2\;
 \Rule{\Gamma\proves\RW{valid}}
 {\Gamma\vdash\VV{str}\Hab\TC{String}}
 \\
-\mathsf{Const}_3\:
+\mathsf{Const}_3\;
 \Rule{\Gamma\proves\RW{valid}}
 {\Gamma\vdash\TC{Int}\Hab\Type_0}
 \hg
-\mathsf{Const}_4\:
+\mathsf{Const}_4\;
 \Rule{\Gamma\proves\RW{valid}}
 {\Gamma\vdash\TC{String}\Hab\Type_0}
 \\
-%\mathsf{Pat}_1\:
+%\mathsf{Pat}_1\;
 %\Rule{(\pat{\vx}{\vS})\in\Gamma}
 %{\Gamma\vdash\vx\Hab\vS}
 %\hg
-%\mathsf{Pat}_2\:
+%\mathsf{Pat}_2\;
 %\Rule{(\pty{\vx}{\vS})\in\Gamma}
 %{\Gamma\vdash\vx\Hab\vS}
 \\
-\mathsf{Var}_1\:
+\mathsf{Var}_1\;
 \Rule{(\lam{\vx}{\vS})\in\Gamma}
 {\Gamma\vdash\vx\Hab\vS}
 \hg
-\mathsf{Var}_2\:
+\mathsf{Var}_2\;
 \Rule{(\all{\vx}{\vS})\in\Gamma}
 {\Gamma\vdash\vx\Hab\vS}
 \hg
-\mathsf{Val}\:
-\Rule{(\LET\:\vx\Hab\vS\defq\vs)\in\Gamma}
+\mathsf{Val}\;
+\Rule{(\LET\;\vx\defq\vs\Hab\vS)\in\Gamma}
 {\Gamma\vdash\vx\Hab\vS}
 \\
-\mathsf{App}\:
+\mathsf{App}\;
 \Rule{\Gamma\vdash\vf\Hab\fbind{\vx}{\vS}{\vT}\hg\Gamma\vdash\vs\Hab\vS}
-{\Gamma\vdash\vf\:\vs\Hab\vT[\vs/\vx]} % \LET\:\vx\Hab\vS\:\defq\:\vs\:\IN\:\vT}
+{\Gamma\vdash\vf\;\vs\Hab\vT[\vs/\vx]} % \LET\;\vx\Hab\vS\;\defq\;\vs\;\IN\;\vT}
 \\
-\mathsf{Lam}\:
+\mathsf{Lam}\;
 \Rule{\Gamma;\lam{\vx}{\vS}\vdash\ve\Hab\vT\hg\Gamma\proves\fbind{\vx}{\vS}{\vT}\Hab\Type_n}
 {\Gamma\vdash\lam{\vx}{\vS}.\ve\Hab\fbind{\vx}{\vS}{\vT}}
 \\
-\mathsf{Forall}\:
+\mathsf{Forall}\;
 \Rule{\Gamma;\all{\vx}{\vS}\vdash\vT\Hab\Type_m\hg\Gamma\vdash\vS\Hab\Type_n}
 {\Gamma\vdash\fbind{\vx}{\vS}{\vT}\Hab\Type_p}
-\:(\exists\vp.\vm\le\vp,\:\vn\le\vp)
+\;(\exists\vp.\vm\le\vp,\;\vn\le\vp)
 \\
-\mathsf{Let}\:
+\mathsf{Let}\;
 \Rule{\begin{array}{c}\Gamma\proves\ve_1\Hab\vS\hg
-      \Gamma;\LET\:\vx\defq\ve_1\Hab\vS\proves\ve_2\Hab\vT\\
+      \Gamma;\LET\;\vx\defq\ve_1\Hab\vS\proves\ve_2\Hab\vT\\
       \Gamma\proves\vS\Hab\Type_n\hg
-      \Gamma;\LET\:\vx\defq\ve_1\Hab\vS\proves\vT\Hab\Type_n\end{array}
+      \Gamma;\LET\;\vx\defq\ve_1\Hab\vS\proves\vT\Hab\Type_n\end{array}
       }
-{\Gamma\vdash\LET\:\vx\defq\ve_1\Hab\vS\SC\:\ve_2\Hab
+{\Gamma\vdash\LET\;\vx\defq\ve_1\Hab\vS\SC\;\ve_2\Hab
    \vT[\ve_1/\vx]}   
-%\Let\:\vx\Hab\vS\defq\ve_1\:\IN\:\vT}
+%\Let\;\vx\Hab\vS\defq\ve_1\;\IN\;\vT}
 \\
 
-\mathsf{Conv}\:
+\mathsf{Conv}\;
 \Rule{\Gamma\proves\vx\Hab\vA\hg\Gamma\proves\vA'\Hab\Type_n\hg
       \Gamma\proves\vA\cumul\vA'}
      {\Gamma\proves\vx\Hab\vA'}
@@ -237,6 +243,7 @@ be implemented in the usual way~\cite{loh2010tutorial}.
 {Cumulativity}
 {cumul}
 
+
 \subsection{Inductive Families}
 
 \label{sect:inductivefams}
@@ -251,21 +258,21 @@ sequence of zero or more $\vx$ (i.e., $\vx_1,\vx_2,\ldots,\vx_n$):
 
 \DM{
 \AR{
-\Data\hg\TC{T}\:(\tx\Hab\ttt)\Hab\vt\hg\Where\hg
-\DC{c}_1\Hab\vt\:\mid\:\ldots\:\mid\:\DC{c}_n\Hab\vt
+\Data\hg\TC{T}\;(\tx\Hab\ttt)\Hab\vt\hg\Where\hg
+\DC{c}_1\Hab\vt\;\mid\;\ldots\;\mid\;\DC{c}_n\Hab\vt
 }
 }
 
-Constructors may take recursive arguments in the family
-$\TC{T}$. Furthermore these arguments may themselves be indexed by another type ---
-if such indices do not involve $\TC{T}$ then the constructor is
-\demph{strictly positive}, which ensures that recursive arguments of the
+Constructors may take recursive arguments in the family $\TC{T}$, which may be
+higher order. Higher order recursive arguments may be computed from any type
+which does not involve $\TC{T}$ itself. This restriction is known as
+\demph{strict positivity} and ensures that recursive arguments of the
 constructor are structurally smaller than the value itself.
 
 For example, the \Idris{} data type \tTC{Nat} would be declared in \TT{} as follows:
 
 \DM{
-\Data\hg\Nat\Hab\Type\hg\Where\hg\Z\Hab\Nat\:\mid\:\suc\Hab\fbind{\vk}{\Nat}{\Nat}
+\Data\hg\Nat\Hab\Type\hg\Where\hg\Z\Hab\Nat\;\mid\;\suc\Hab\fbind{\vk}{\Nat}{\Nat}
 }
 
 A data type may have zero or more parameters (which are invariant
@@ -274,10 +281,11 @@ example, the \TT{} equivalent of \tTC{List} is parameterised over its element ty
 
 \DM{
 \AR{
-\Data\hg\List\:(\va\Hab\Type)\Hab\Type\hg\Where
+\Data\hg\List\:(\va\Hab\Type)\Hab\Type\hg\Where\\
+\hg\hg
 \ARd{
-& \nil\Hab\List\:\va\\
-\mid & (\cons)\Hab\fbind{\vx}{\va}{\fbind{\vxs}{\List\:\va}{\List\:\va}}
+& \nil\Hab\List\;\va\\
+\mid & (\cons)\Hab\fbind{\vx}{\va}{\fbind{\vxs}{\List\;\va}{\List\;\va}}
 }
 }
 }
@@ -292,11 +300,11 @@ index $\vk$ is given \remph{explicitly}.
 
 \DM{
 \AR{
-\Data\hg\Vect\:(\va\Hab\Type)\Hab\Nat\to\Type\hg\Where \\
+\Data\hg\Vect\;(\va\Hab\Type)\Hab\Nat\to\Type\hg\Where \\
 \hg\hg\ARd{
-& \nil\Hab\Vect\:\va\:\Z\\
+& \nil\Hab\Vect\;\va\;\Z\\
 \mid & (\cons)\Hab\fbind{\vk}{\Nat}{
-\fbind{\vx}{\va}{\fbind{\vxs}{\Vect\:\va\:\vk}{\Vect\:\va\:(\suc\:\vk)}}
+\fbind{\vx}{\va}{\fbind{\vxs}{\Vect\;\va\;\vk}{\Vect\;\va\;(\suc\;\vk)}}
 }
 }
 }
@@ -306,7 +314,8 @@ index $\vk$ is given \remph{explicitly}.
 
 \label{sect:patdefs}
 
-\subsubsection{Syntax}
+%\subsubsection{Syntax}
+
 
 A pattern matching definition for a function named $\FN{f}$ takes the following form,
 consisting of a type declaration followed by one or more pattern clauses:
@@ -314,9 +323,9 @@ consisting of a type declaration followed by one or more pattern clauses:
 \DM{
 \AR{
 \FN{f}\Hab\vt\\
-\pat{\tx_1}{\ttt_1}\SC\FN{f}\:\ttt_1\:=\:\vt_1\\
+\pat{\tx_1}{\ttt_1}\SC\FN{f}\;\ttt_1\;=\;\vt_1\\
 \ldots\\
-\pat{\tx_n}{\ttt_n}\SC\FN{f}\:\ttt_n\:=\:\vt_n\\
+\pat{\tx_n}{\ttt_n}\SC\FN{f}\;\ttt_n\;=\;\vt_n\\
 }
 }
 
@@ -333,152 +342,210 @@ clause is defined by the following rule:
 
 \DM{
 \Rule{
-\Gamma;\lam{\tx}{\tU}\proves\FN{f}\:\tts\Hab\vS\hg
+\Gamma;\lam{\tx}{\tU}\proves\FN{f}\;\tts\Hab\vS\hg
 \Gamma;\lam{\tx}{\tU}\proves\ve\Hab\vT\hg
 \Gamma\proves\vS\converts\vT}
 {
-\Gamma\proves\pat{\tx}{\tU}\SC\FN{f}\:\tts\:=\:\ve\:\RW{valid}
+\Gamma\proves\pat{\tx}{\tU}\SC\FN{f}\;\tts\;=\;\ve\;\RW{valid}
 }
 }
 
-A valid pattern matching definition effectively extends \TT{} with a new constant,
-with the given type (extending the initial typing rules given in Section \ref{sect:typerules})
-and reduction behaviour (extending the initial reduction rules given in Section
-\ref{sect:evaluation}). 
+A valid pattern matching definition effectively extends \TT{} with a new
+constant, with the given type (extending the initial typing rules given in
+Section \ref{sect:typerules}) and reduction behaviour (extending the initial
+reduction rules given in Section \ref{sect:evaluation}). 
+Patterns are separated into the accessible patterns (variables and constructor
+forms which may be inspected) and inaccessible patterns, following
+Agda~\cite{norell2007thesis} then implemented by compilation into case
+trees~\cite{Augustsson1985}.
 
-\subsubsection{Semantics}
+% \subsubsection{Semantics}
+% 
+% Matching on an expression proceeds by comparing the expression to
+% each match clause in order, resulting in either:
+% 
+% \begin{itemize}
+% \item \demph{Success}, with pattern variables mapping to expressions
+% \item \demph{Failure}, with matching continuing by proceeding to the next match clause
+% \item Matching being \demph{blocked}, for example by attempting to match a variable
+% against a constructor pattern. In this case, no reduction occurs, because instantiating
+% the variable may provide enough information for the clause to match.
+% \end{itemize}
+% 
+% % Pat(x args) => x (Pat' args)
+% % Pat (x) => x
+% % Pat _ => _
+% 
+% In order to implement pattern matching, we must separate the \remph{accessible} and
+% \remph{inaccessible} patterns. A pattern is \demph{accessible} (that is, it is possible
+% to match against it) if it is constructor headed, or a variable. Inaccessible patterns
+% are converted to ``match anything'' patterns. Clauses are converted to matchable pattern
+% clauses with the $\MO{Clause}$ operation, given in Figure \ref{mkclause}.
+% We extend the vector notation to meta-operations: the notation $\vec{\MO{Pat}}$ lifts the
+% $\MO{Pat}$ operation across a list of arguments.
+% 
+% \FFIG{
+% \AR{
+% \PA{\A}{
+% & \MO{Clause} & (\pat{\tx}{\tU}\SC\FN{f}\;\tts\;=\;\ve)
+%  & \MoRet{\FN{f}\;(\vec{\MO{Pat}}\;\tts)\;=\;\ve}
+% }
+% \medskip\\
+% \PA{\A}{
+% & \MO{Pat} & (\vx\;\tts) & \MoRet{\vx\;(\vec{\MO{Pat}}\;\tts) 
+%   \hg\mbox{(if $\MO{Con}\;\vx$ and $\MO{Arity}\;\vx = \MO{Length}\;\tts$)}} \\
+% & \MO{Pat} & \vx & \MoRet{\vx} \hg\mbox(if $\vx$ is a pattern variable)\\
+% & \MO{Pat} & \cdot & \MoRet{\_} \hg\mbox(in all other cases)\\
+% }
+% }
+% }
+% {Building matchable pattern clauses}
+% {mkclause}
+% 
+% 
+% % Match (c args, c args') => Match' (args, args')
+% % Match (c args, x)       => Blocked
+% % Match (x, t)            => Success (x => t)
+% % Match (_, t)            => Success ()  
+% 
+% \newcommand{\Blocked}{\mathsf{Blocked}}
+% \newcommand{\Success}{\mathsf{Success}}
+% \newcommand{\Failure}{\mathsf{Failure}}
+% 
+% Pattern matching is invoked by the evaluator on encountering a function with
+% a pattern matching definition applied to some arguments. If successful, pattern
+% matching returns a new expression, which can then be reduced further.
+% Figure \ref{pmatch} gives the semantics of pattern matching a collection of 
+% matchable clauses
+% $\tc$ against an expression $\ve$. $\MO{Match}$ attempts to match each clause in
+% turn against $\ve$. If matching a clause returns $\Success$ or $\Blocked$, then
+% matching terminates. If matching a clause returns $\Failure$, then matching proceeds
+% with the next clause. The algorithm uses the following meta-operations:
+% 
+% \begin{itemize}
+% \item $\MO{Con}\;\vx$, which returns true if $\vx$ is a constructor name
+% \item $\MO{Arity}\;\vx$, which, if $\vx$ is a constructor name, returns the number of arguments
+% $\vx$ requires.
+% \item $\MO{Length}\;\tts$, which returns the length of the vector $\tts$
+% \end{itemize}
+% 
+% 
+% \FFIG{
+% \AR{
+% \PA{\A\A}{
+% & \MO{MatchArg} & (\vx\;\tts) & (\vx\;\tts')
+%     & \MoRet{\vec{\MO{MatchArg}}\;\tts\;\tts'\hg\mbox{(if $\MO{Con}\;\vx$)}}\\
+% & \MO{MatchArg} & (\vx\;\tts) & \vx & \MoRet{\Blocked} \\
+% & \MO{MatchArg} & \vx & \vt & \MoRet{\Success\;(\vx\mapsto\vt)} \\
+% & \MO{MatchArg} & \_ & \vt & \MoRet{\Success\;()} \\
+% & \MO{MatchArg} & \cdot & \cdot & \MoRet{\Failure} 
+% }
+% \medskip\\
+% \PA{\A\A}{
+% & \MO{MatchClause} & (\vf\;\tp = \ve) & (\vf\;\tts) &
+%  \MoRet{
+%  \AR{
+%  \Success\;\ve[\tx/\tv]\hg\mbox{(if $\vec{\MO{MatchArg}}\;\tp\;\tts \mq \Success\;(\tx,\tv)$)}\\
+%  \Blocked\;\;\;\hg\hg\mbox{(if $\vec{\MO{MatchArg}}\;\tp\;\tts \mq \Blocked$)}\\
+%  \Failure\;\;\;\;\;\hg\hg\mbox{(if $\vec{\MO{MatchArg}}\;\tp\;\tts \mq \Failure$)}\\
+%  }
+%  } \\
+% & \MO{MatchClause} & (\vf\;\tp = \ve) & \cdot & \MoRet{\Failure} \\
+% }
+% \medskip\\
+% \PA{\A\A}{
+% & \MO{Match} & (\vc ; \tc) & \ve &
+%  \MoRet{
+%  \AR{
+%  \Success\;\vx\;\;\hg\mbox{(if $\MO{MatchClause}\;\vc\;\ve \mq \Success\;\vx)$} \\
+%  \Blocked\hg\;\;\;\;\mbox{(if $\MO{MatchClause}\;\vc\;\ve \mq \Blocked)$} \\
+%  \MO{Match}\;\tc\;\ve\hg\mbox{(otherwise)}
+%  }
+%  } \\
+% & \MO{Match} & \cdot & \ve & \MoRet{\Failure}
+% }
+% }
+% }
+% {Pattern matching semantics}
+% {pmatch}
+% 
+% By convention, we write the application of a meta-operation $\MO{Op}$ 
+% across a vector $\tx$ as $\vec{\MO{Op}}\;\tx$.
+% In practice, for efficiency, pattern matching is implemented by compiling the match clauses to
+% a tree of case expressions~\cite{Augustsson1985}. 
 
-Matching on an expression proceeds by comparing the expression to
-each match clause in order, resulting in either:
-
-\begin{itemize}
-\item \demph{Success}, with pattern variables mapping to expressions
-\item \demph{Failure}, with matching continuing by proceeding to the next match clause
-\item Matching being \demph{blocked}, for example by attempting to match a variable
-against a constructor pattern. In this case, no reduction occurs, because instantiating
-the variable may provide enough information for the clause to match.
-\end{itemize}
-
-% Pat(x args) => x (Pat' args)
-% Pat (x) => x
-% Pat _ => _
-
-In order to implement pattern matching, we must separate the \remph{accessible} and
-\remph{inaccessible} patterns. A pattern is \demph{accessible} (that is, it is possible
-to match against it) if it is constructor headed, or a variable. Inaccessible patterns
-are converted to ``match anything'' patterns. Clauses are converted to matchable pattern
-clauses with the $\MO{Clause}$ operation, given in Figure \ref{mkclause}.
-We extend the vector notation to meta-operations: the notation $\vec{\MO{Pat}}$ lifts the
-$\MO{Pat}$ operation across a list of arguments.
+\subsection{Metatheory}
 
 \FFIG{
-\AR{
-\PA{\A}{
-& \MO{Clause} & (\pat{\tx}{\tU}\SC\FN{f}\:\tts\:=\:\ve)
- & \MoRet{\FN{f}\:(\vec{\MO{Pat}}\:\tts)\:=\:\ve}
+\begin{array}{ll}
+\mbox{\textbf{Church-Rosser}} &
+\begin{array}{ll}
+\mbox{If}\hg\Gamma\proves\vs\converts\vt \\
+\mbox{then there is a common reduct $\vr$ such that}\;\\
+\Gamma\proves\vs\reducesto\vr\hg\Gamma\proves\vt\reducesto\vr
+\end{array}
+\medskip
+\\
+\mbox{\textbf{Subject Reduction}} &
+\begin{array}{ll}
+\mbox{If} & \Gamma\proves\vs\Hab\vS\hg\Gamma\proves\vs\reduces\vt\\
+\mbox{then}& \Gamma\proves\vt\Hab\vS
+\end{array}
+\medskip
+\\
+\mbox{\textbf{Cut}} &
+\begin{array}{ll}
+\mbox{If} & \Gamma_0,\LET\;\vx\defq\vs\Hab\vS,\Gamma_1\proves\vt\Hab\vT\\
+\mbox{then} & \Gamma_0, \Gamma_1[\vs/\vx]\proves\vt[\vs/\vx]\Hab\vT[\vs/\vx]
+\end{array}
+\medskip
+\\
+\mbox{\textbf{Strengthening}} &
+\begin{array}{ll}
+\mbox{If} & \Gamma_0,\mathcal{B}(\vx, \vT),\Gamma_1\proves\vs\Hab\vS
+\hg\vx\not\in\Gamma_1,\vs,\vS\\
+\mbox{then} & \Gamma_0,\Gamma_1\proves\vs\Hab\vS\\
+(\mbox{where} & \mathcal{B}(\vx, \vT) \proves \vx\Hab\vT)
+\end{array}
+\\
+\end{array}
 }
-\medskip\\
-\PA{\A}{
-& \MO{Pat} & (\vx\:\tts) & \MoRet{\vx\:(\vec{\MO{Pat}}\:\tts) 
-  \hg\mbox{(if $\MO{Con}\:\vx$ and $\MO{Arity}\:\vx = \MO{Length}\:\tts$)}} \\
-& \MO{Pat} & \vx & \MoRet{\vx} \hg\mbox(if $\vx$ is a pattern variable)\\
-& \MO{Pat} & \cdot & \MoRet{\_} \hg\mbox(in all other cases)\\
-}
-}
-}
-{Building matchable pattern clauses}
-{mkclause}
+{Metatheoretic properties of \TT{}}
+{metatheory}
 
+We assume that \TT{} respects the usual metatheoretic properties, as shown in
+Figure \ref{metatheory}.  Specifically: the \demph{Church-Rosser} property
+(i.e. that distinct reduction sequences lead to the same normal form);
+\demph{subject reduction} (i.e. that computation preserves type); the
+\demph{cut} property (i.e. that $\RW{let}$-bound terms may be substituted into
+their scope); and \demph{strengthening} (i.e. that removing unused definitions
+from scope does not affect typechecking).
 
-% Match (c args, c args') => Match' (args, args')
-% Match (c args, x)       => Blocked
-% Match (x, t)            => Success (x => t)
-% Match (_, t)            => Success ()  
-
-\newcommand{\Blocked}{\mathsf{Blocked}}
-\newcommand{\Success}{\mathsf{Success}}
-\newcommand{\Failure}{\mathsf{Failure}}
-
-Pattern matching is invoked by the evaluator on encountering a function with
-a pattern matching definition applied to some arguments. If successful, pattern
-matching returns a new expression, which can then be reduced further.
-Figure \ref{pmatch} gives the semantics of pattern matching a collection of 
-matchable clauses
-$\tc$ against an expression $\ve$. $\MO{Match}$ attempts to match each clause in
-turn against $\ve$. If matching a clause returns $\Success$ or $\Blocked$, then
-matching terminates. If matching a clause returns $\Failure$, then matching proceeds
-with the next clause. The algorithm uses the following meta-operations:
-
-\begin{itemize}
-\item $\MO{Con}\:\vx$, which returns true if $\vx$ is a constructor name
-\item $\MO{Arity}\:\vx$, which, if $\vx$ is a constructor name, returns the number of arguments
-$\vx$ requires.
-\item $\MO{Length}\:\tts$, which returns the length of the vector $\tts$
-\end{itemize}
-
-
-\FFIG{
-\AR{
-\PA{\A\A}{
-& \MO{MatchArg} & (\vx\:\tts) & (\vx\:\tts')
-    & \MoRet{\vec{\MO{MatchArg}}\:\tts\:\tts'\hg\mbox{(if $\MO{Con}\:\vx$)}}\\
-& \MO{MatchArg} & (\vx\:\tts) & \vx & \MoRet{\Blocked} \\
-& \MO{MatchArg} & \vx & \vt & \MoRet{\Success\:(\vx\mapsto\vt)} \\
-& \MO{MatchArg} & \_ & \vt & \MoRet{\Success\:()} \\
-& \MO{MatchArg} & \cdot & \cdot & \MoRet{\Failure} 
-}
-\medskip\\
-\PA{\A\A}{
-& \MO{MatchClause} & (\vf\:\tp = \ve) & (\vf\:\tts) &
- \MoRet{
- \AR{
- \Success\:\ve[\tx/\tv]\hg\mbox{(if $\vec{\MO{MatchArg}}\:\tp\:\tts \mq \Success\:(\tx,\tv)$)}\\
- \Blocked\;\;\;\hg\hg\mbox{(if $\vec{\MO{MatchArg}}\:\tp\:\tts \mq \Blocked$)}\\
- \Failure\;\;\;\;\;\hg\hg\mbox{(if $\vec{\MO{MatchArg}}\:\tp\:\tts \mq \Failure$)}\\
- }
- } \\
-& \MO{MatchClause} & (\vf\:\tp = \ve) & \cdot & \MoRet{\Failure} \\
-}
-\medskip\\
-\PA{\A\A}{
-& \MO{Match} & (\vc ; \tc) & \ve &
- \MoRet{
- \AR{
- \Success\;\vx\;\;\hg\mbox{(if $\MO{MatchClause}\:\vc\:\ve \mq \Success\:\vx)$} \\
- \Blocked\hg\;\;\;\;\mbox{(if $\MO{MatchClause}\:\vc\:\ve \mq \Blocked)$} \\
- \MO{Match}\:\tc\:\ve\hg\mbox{(otherwise)}
- }
- } \\
-& \MO{Match} & \cdot & \ve & \MoRet{\Failure}
-}
-}
-}
-{Pattern matching semantics}
-{pmatch}
-
-By convention, we write the application of a meta-operation $\MO{Op}$ 
-across a vector $\tx$ as $\vec{\MO{Op}}\:\tx$.
-In practice, for efficiency, pattern matching is implemented by compiling the match clauses to
-a tree of case expressions~\cite{Augustsson1985}. 
+One property which is noticeably absent is \demph{strong normalisation}.
+Although desirable to preserve termination and decidability of type checking,
+we allow diverging terms for pragmatic reasons as \Idris{} is primarily a
+programming language rather than a theorem prover. Nevertheless, we do
+\emph{check} for totality in order to be sure which terms are safe to
+evaluate at compile time.
 
 \subsection{Totality checking}
 
-In order to ensure termination of type checking
-we must distinguish terms for which evaluation definitely terminates, and
-those which may diverge. \TT{} takes a simple but pragmatic and
-effective approach to termination
-checking: any functions which do not satisfy a syntactic constraint on recursive
-calls are marked as \emph{partial}. Additionally, any function which calls a partial
+In order to ensure termination of type checking we must distinguish terms for
+which evaluation definitely terminates, and those which may diverge. \TT{}
+takes a simple but pragmatic and effective approach to termination checking:
+any functions which do not satisfy a syntactic constraint on recursive calls
+are marked as \emph{partial}. Additionally, any function which calls a partial
 function or uses a data type which is not strictly positive is also marked as
 partial. The syntactic constraint we use is that a recursive call in a pattern
-clause must have an argument which is structurally smaller than an input argument
-in the same position. \TT{} also marks functions which do not cover all possible
-inputs as partial. This totality checking is independent of the rest of the type
-theory, and can be extended.
+clause must have an argument which is structurally smaller than an input
+argument in the same position. \TT{} also marks functions which do not cover
+all possible inputs as partial. This totality checking is independent of the
+rest of the type theory, and can be extended.
 
-This approach, separating the termination requirement from the type theory, means that
-an \Idris{} programmer makes the decision about the importance of totality for each
-function rather than having the totality requirement imposed by the type theory.
+This approach, separating the termination requirement from the type theory,
+means that an \Idris{} programmer makes the decision about the importance of
+totality for each function rather than having the totality requirement imposed
+by the type theory.
 
 \subsection{From \Idris{} to \TT{}}
 
@@ -526,7 +593,7 @@ algorithm:
 
 \begin{SaveVerbatim}{vAddImpSolve}
 
-vAdd : (a : Set) -> (n : Nat) -> Num a -> Vect a n -> Vect a n -> Vect a n
+vAdd : (a : Type) -> (n : Nat) -> Num a -> Vect a n -> Vect a n -> Vect a n
 vAdd a O     c (Nil a)         (Nil a)         = Nil a
 vAdd a (S k) c ((::) a k x xs) ((::) a k y ys) 
                 = (::) a k ((+) c x y) (vAdd a k c xs ys)
@@ -540,35 +607,29 @@ switching to \TT{} notation from the ASCII \Idris{} syntax.
 
 \FFIG{
 \AR{
-\begin{array}{ll}
-\FN{vAdd} & \Hab(\va\Hab\Set)\to(\vn\Hab\Nat)\to\TC{Num}\:\va\to
-  \Vect\:\va\:\vn\to\Vect\:\va\:\vn\to\Vect\:\va\:\vn\\
-\end{array}
-\\
-\begin{array}{lccccccc}
-\multicolumn{5}{l}{
-\RW{var}\:\va\Hab\Set,\:\vc\Hab\TC{Num}\;\va\SC}\\
-\hg\FN{vAdd} & \va & \Z & \vc & (\DC{Nil}\;\va) & (\DC{Nil}\;\va) & \Ret{\DC{Nil}\;\va} \\
-\multicolumn{5}{l}{
-\RW{var}\:\AR{
-\va\Hab\Set,\:\vk\Hab\Nat,\;\vc\Hab\TC{Num}\;\va,\\
+\FN{vAdd} \Hab(\va\Hab\Type)\to(\vn\Hab\Nat)\to\TC{Num}\;\va\to
+  \Vect\;\va\;\vn\to\Vect\;\va\;\vn\to\Vect\;\va\;\vn\\
+\RW{var}\;\va\Hab\Type,\;\vc\Hab\TC{Num}\;\va\SC\\
+\hg\FN{vAdd} \; \va \; \Z \; \vc \; (\DC{Nil}\;\va) \; (\DC{Nil}\;\va) \; 
+\cq\;\DC{Nil}\;\va \\
+\RW{var}\;\AR{
+\va\Hab\Type,\;\vk\Hab\Nat,\;\vc\Hab\TC{Num}\;\va,\\
 \vx\Hab\va,\;\vxs\Hab\Vect\;\va\;\vk,\;
 \vy\Hab\va,\;\vys\Hab\Vect\;\va\;\vk
 \SC
+\\
+\FN{vAdd} \; \va \; (\suc\;\vk) \; \vc 
+  \; ((\DC{::})\;\va\;\vk\;\vx\;\vxs) 
+  \; ((\DC{::})\;\va\;\vk\;\vy\;\vys) 
+   \\
+   \hg\hg\cq\:((\DC{::})\;\va\;\vk\;((+)\;\vc\;\vx\;\vy)\; (\FN{vAdd}\;\va\;\vk\;\vc\;\vxs\;\vys))
 }
-}\\
-\hg\FN{vAdd} & \va & (\suc\;\vk) & \vc 
-  & ((\DC{::})\;\va\;\vk\;\vx\;\vxs) 
-  & ((\DC{::})\;\va\;\vk\;\vy\;\vys) 
-   & \\
-   & & \MRet{5}{((\DC{::})\;\va\;\vk\;((+)\;\vc\;\vx\;\vy)\; (\FN{vAdd}\;\va\;\vk\;\vc\;\vxs\;\vys))}
-\end{array}
 }
 }
 {Pairwise addition of vectors in \TT{}}
 {ttvadd}
 
-\subsubsection{An observation}
+\subsubsection{An Observation: Programming vs Theorem Proving}
 
 \Idris{} programs may contain several high level constructs not present in \TT{}, such
 as implicit arguments, type classes, \texttt{where} clauses, pattern matching \texttt{let}
@@ -580,18 +641,20 @@ programming and theorem proving with dependent types, and appropriate mechanisms
 constructing programs and theorems:
 
 \begin{itemize}
-\item \remph{Pattern matching} is a convenient abstraction for humans to write programs,
-in that it allows a programmer to express exactly the computational behaviour of a function.
-\item \remph{Tactics}, such as those used in the Coq theorem prover~\cite{Bertot2004},
-are a convenient abstraction for building proofs and programs by \remph{refinement}.
+\item \remph{Pattern matching} is a convenient abstraction for humans to write
+programs, in that it allows a programmer to express exactly the computational
+behaviour of a function.
+\item \remph{Tactics}, such as those used in the Coq theorem
+prover~\cite{Bertot2004}, are a convenient abstraction for building proofs and
+programs by \remph{refinement}.
 \end{itemize}
 
-The idea behind the \Idris{} elaborator, therefore, is to use the high level program
-to direct \demph{tactics} to build \TT{} programs by refinement. The
-elaborator is implemented as an Embedded Domain Specific Language (EDSL) in Haskell. 
-The remainder
-of this paper describes the EDSL and demonstrates how it is used to implement
-all of the high level features of \Idris{}.
+The idea behind the \Idris{} elaborator, therefore, is to use the high level
+program to direct \demph{tactics} to build \TT{} programs by refinement.  The
+elaborator is implemented as a Haskell monad capturing proof state, with a
+collection of tactics for updating and refining the proof state.  The remainder
+of this paper describes this elaborator and demonstrates how it is used to
+implement the high level features of \Idris{}.
 
 
 

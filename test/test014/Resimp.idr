@@ -109,6 +109,8 @@ using (i: Fin n, gam : Vect Ty n, gam' : Vect Ty n, gam'' : Vect Ty n)
        (>>=)  : Res gam gam'  (R a) -> (a -> Res gam' gam'' (R t)) -> 
                 Res gam gam'' (R t)
 
+  ioret : a -> IO a
+  ioret = return
 
   interp : Env gam -> {static} Res gam gam' t -> 
            (Env gam' -> interpTy t -> IO u) -> IO u

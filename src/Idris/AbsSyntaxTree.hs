@@ -136,7 +136,7 @@ idrisInit = IState initContext [] [] emptyContext emptyContext emptyContext
 
 -- The monad for the main REPL - reading and processing files and updating 
 -- global state (hence the IO inner monad).
-type Idris = StateT IState (InputT IO)
+type Idris = StateT IState IO
 
 -- Commands in the REPL
 
@@ -524,6 +524,7 @@ type PDo = PDo' PTerm
 -- The priority gives a hint as to elaboration order. Best to elaborate
 -- things early which will help give a more concrete type to other
 -- variables, e.g. a before (interpTy a).
+-- TODO: priority no longer serves any purpose, drop it!
 
 data PArg' t = PImp { priority :: Int, 
                       lazyarg :: Bool, pname :: Name, getTm :: t,
@@ -579,7 +580,9 @@ deriving instance Binary OptInfo
 !-}
 
 
-data TypeInfo = TI { con_names :: [Name], codata :: Bool }
+data TypeInfo = TI { con_names :: [Name], 
+                     codata :: Bool,
+                     param_pos :: [Int] }
     deriving Show
 {-!
 deriving instance Binary TypeInfo

@@ -482,7 +482,7 @@ data Datatype n = Data { d_typename :: n,
   deriving (Show, Functor, Eq)
 
 instance Eq n => Eq (TT n) where
-    (==) (P xt x _)     (P yt y _)     = xt == yt && x == y
+    (==) (P xt x _)     (P yt y _)     = x == y
     (==) (V x)          (V y)          = x == y
     (==) (Bind _ xb xs) (Bind _ yb ys) = xb == yb && xs == ys
     (==) (App fx ax)    (App fy ay)    = fx == fy && ax == ay
@@ -794,13 +794,17 @@ showEnv' env t dbg = se 10 env t where
 
 -- Check whether a term has any holes in it - impure if so
 
-pureTerm :: TT n -> Bool
+pureTerm :: TT Name -> Bool
 pureTerm (App f a) = pureTerm f && pureTerm a
-pureTerm (Bind n b sc) = pureBinder b && pureTerm sc where
+pureTerm (Bind n b sc) = notClassName n && pureBinder b && pureTerm sc where
     pureBinder (Hole _) = False
     pureBinder (Guess _ _) = False
     pureBinder (Let t v) = pureTerm t && pureTerm v
     pureBinder t = pureTerm (binderTy t)
+
+    notClassName (MN _ "class") = False
+    notClassName _ = True
+
 pureTerm _ = True
 
 -- weaken a term by adding i to each de Bruijn index (i.e. lift it over i bindings)

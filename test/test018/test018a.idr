@@ -13,8 +13,8 @@ ping main proc
 
 pong : Process String ()
 pong = do -- lift (putStrLn "Waiting for message")
-          (sender, msg) <- recvWithSender
-          lift $ putStrLn ("Received " ++ msg) 
+          (sender, m) <- recvWithSender
+          lift $ putStrLn ("Received " ++ m) 
           send sender ("Hello back!")
 
 mainProc : Process String ()

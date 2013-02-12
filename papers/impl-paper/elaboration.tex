@@ -1,4 +1,5 @@
 \newcommand{\ttinterp}[1]{\mathcal{E}\interp{#1}}
+\newcommand{\ttpinterp}[1]{\mathcal{P}\interp{#1}}
 \newcommand{\uninterp}[1]{\mathcal{T}\interp{#1}}
 
 \section{Elaborating \Idris{}}
@@ -41,33 +42,42 @@ similar to a $\LET$ binding, but without any computational force,
 i.e. there are no reduction rules for guess bindings. 
 Using binders to represent holes is useful in a dependently typed setting since
 one value may determine another. Attaching a guess to a binder ensures that
-instantiating one such value also instantiates all of its dependencies. The
-typing rules for binders ensure that no $?$ bindings leak into types.
+instantiating one such variable also instantiates all of its dependencies. 
+%The
+%typing rules for binders ensure that no $?$ bindings leak into types.
 
 \FFIG{
-\AR{
+\begin{array}{c}
 \vb ::= \ldots 
- \:\mid\: \hole{\vx}{\vt} \:\:(\mbox{hole binding}) \:\:
- \:\mid\: \guess{\vx}{\vt}{\vt} \:\:(\mbox{guess})
+ \;\mid\; \hole{\vx}{\vt} \;\;(\mbox{hole binding}) \;\;
+ \;\mid\; \guess{\vx}{\vt}{\vt} \;\;(\mbox{guess})
 \medskip\\
+\mathsf{HoleVar}\;
+\Rule{(\hole{\vx}{\vS})\in\Gamma}
+{\Gamma\vdash\vx\Hab\vS}
+\hg
+\mathsf{GuessVar}\;
+\Rule{(\guess{\vx}{\vS}{\vs})\in\Gamma}
+{\Gamma\vdash\vx\Hab\vS}
+\\
+\mathsf{Hole}\;
 \Rule{
 \Gamma;\hole{\vx}{\vS}\proves\ve\Hab\vT
 }
 {
 \Gamma\proves\hole{\vx}{\vS}\SC\ve\Hab\vT
 }
-\hspace*{0.1cm}\vx\not\in\vT
-\hspace*{0.1in}\mathsf{Hole}
+%\hspace*{0.1cm}\vx\not\in\vT
 \hg
+\mathsf{Guess}\;
 \Rule{
 \Gamma;\guess{\vx}{\vS}{\ve_1}\proves\ve_2\Hab\vT
 }
 {
 \Gamma\proves\guess{\vx}{\vS}{\ve_1}\SC\ve_2\Hab\vT
 }
-\hspace*{0.1cm}\vx\not\in\vT
-\hspace*{0.1in}\mathsf{Guess}
-}
+%\hspace*{0.1cm}\vx\not\in\vT
+\end{array}
 }
 {\TTdev{} extensions}
 {ttdev}
@@ -77,12 +87,23 @@ typing rules for binders ensure that no $?$ bindings leak into types.
 
 \label{sect:prfstate}
 
-A proof state is a tuple, $(\vC, \Delta, \ve, \vQ)$, containing:
+We will build expressions in \TT{} from high level \Idris{} expressions by
+creating a top level hole binding with the appropriate type, and refining it
+according to the structure of the \Idris{} expression. Noting the Curry-Howard
+correspondence between programs and proofs, and the relationship between our
+method for elaboration and tactic
+based theorem proving, we refer to a development as a \emph{proof}.
+A proof state is a tuple, $(\vC, \Delta, \ve, \vP, \vQ)$, containing:
 
 \begin{itemize}
 \item A global context, $\vC$, containing pattern matching definitions and their types
 \item A local context, $\Delta$, containing pattern bindings
 \item A proof term, $\ve$, in \TTdev{}
+\item Unsolved unification problems, $\vP$
+\begin{itemize}
+\item These take the form $(\Gamma,\ve_1,\ve_2)$, i.e. the context in which
+the problem is run, and the expressions to be unified.
+\end{itemize}
 \item A hole queue, $\vQ$
 %\item \remph{Deferred} definitions, $\vD$, for introducing global metavariables
 \end{itemize}
@@ -91,29 +112,49 @@ The \remph{hole queue} is a priority queue of names of hole and guess binders
 $\langle\vx_1,\vx_2,\ldots,\vx_n\rangle$
 in the proof term ---
 ensuring that each bound name is unique. Holes refer to \remph{sub goals}
-in the proof.
-When this queue is empty, the proof term is complete.
+in the proof. As a proof develops, unification problems arising from unsolved
+holes may be introduced, and may be solved when those holes are instantiated.
+When the hole queue is empty, and there are no remaining unification 
+problems, the proof term is complete.
+
 Creating a \TT{} expression from an \Idris{} expression involves creating
 a new proof state, with an empty proof term, and using the high level definition
 to direct the building of a final proof state, with a complete proof term.
 
 In the implementation, the proof state is captured in an elaboration monad,
-\texttt{Elab}, which includes various operations for querying and updating
-the proof state, manipulating terms, generating fresh names, etc. However, we will
-describe \Idris{} elaboration in terms of meta-operations on the proof state,
-in order to capture the essence of the elaboration process without being distracted
-by implementation details. These meta-operations include: 
+\texttt{Elab}, which is simply a state monad with exceptions. 
+Exceptions are captured by the option type $\MO{Result}$ which
+either indicates success, or reports an error $\MO{Err}$:
+
+\DM{
+\RW{data}\;\MO{Result}\;\vt\;=\;\MO{Success}\;\vt\;\mid\;\MO{Failure}\;\MO{Err}
+}
+
+\noindent
+If any operation fails during a proof (e.g. a subterm fails to type check)
+then the entire proof fails (i.e. returns $\MO{Failure}\;\ve$ with some error
+message $\ve$) unless otherwise handled.
+
+The \texttt{Elab} monad supports various operations for querying and updating
+the proof state, manipulating terms, generating fresh names, etc. However, we
+will describe \Idris{} elaboration in terms of meta-operations on the proof
+state, in order to capture the essence of the elaboration process without being
+distracted by implementation details. These meta-operations include: 
 
 \begin{itemize}
 \item \demph{Queries} which retrieve values from the proof state, without modifying
 the state. For example, we can:
 \begin{itemize}
-\item Get the type of the current sub goal ($\MO{Type}$)
-\item Retrieve the local context $\Gamma$ at the current sub goal ($\MO{Context}$)
-\item Type check ($\MO{Check}$) or normalise ($\MO{Normalise}$) a term relative to $\Gamma$
+\item Get the type of the current sub goal ($\MO{Type}$).
+\item Get the current proof term ($\MO{Term}$).
+\item Retrieve the local context $\Gamma$ at the current sub goal
+($\MO{Context}$).
+\item Type check ($\MO{Check}$) or normalise ($\MO{Normalise}$) a term relative
+to $\Gamma$.
 \end{itemize}
-\item \demph{Unification}, which unifies two terms (potentially solving sub goals) 
-relative to $\Gamma$
+\item \demph{Unification}, which unifies two terms (potentially solving sub
+goals) relative to $\Gamma$. This may introduce new unification problems
+to the proof state.
 \item \demph{Tactics} which update the proof term. Tactics operate on the sub term
 at the binder specified by the head of the hole queue $\vQ$.
 \item \demph{Focussing} on a specific sub goal, which brings a different sub goal to the
@@ -122,49 +163,710 @@ head of the hole queue.
 %$\vC$ which solves the sub goal.
 \end{itemize}
 
-Elaboration of an \Idris{} expression involves creating a new proof state, running
-a series of tactics to build a complete proof term, then retrieving and \remph{rechecking}
-the final proof term, which must be a \TT{} program (i.e. does not contain any of the
-\TTdev{} extensions). We call a sub-term which contains no hole or guess bindings 
-\demph{pure}. Although a pure term does not contain hole or guess bindings, it may
-nevertheless \remph{refer} to hole- or guess-bound variables.
+Elaboration of an \Idris{} expression involves creating a new proof state,
+running a series of tactics to build a complete proof term, then retrieving and
+\remph{rechecking} the final proof term, which must be a \TT{} program (i.e.
+does not contain any of the \TTdev{} extensions). We call a sub-term which
+contains no hole or guess bindings \demph{pure}. Although a pure term does not
+contain hole or guess bindings, it may nevertheless \remph{refer} to hole- or
+guess-bound variables.
 
-The proof state is initialised with the $\MO{NewProof}$ operation. Given a global
-context $\vC$, $\MO{NewProof}\:\vt$ sets up the proof state as:
+The proof state is initialised with the $\MO{NewProof}$ operation. Given a
+global context $\vC$, $\MO{NewProof}\;\vt$ sets up the proof state as:
 
 \DM{
-(\vC, \cdot, \hole{\vx}{\vt}\SC\vx, \langle\vx\rangle)
+(\vC, \cdot, \hole{\vx}{\vt}\SC\vx, \langle\rangle, \langle\vx\rangle)
 }
 
 The local context is initially empty, and the initial hole queue is the $\vx$ standing for
 the entire expression. The proof term is reset with the $\MO{NewTerm}$ operation.
 In an existing proof state $(\vC, \Delta, \ve, \vQ)$,
-$\MO{NewTerm}\:\vt$ discards the proof term and hole queue, and
+$\MO{NewTerm}\;\vt$ discards the proof term and hole queue, and
 updates the proof state to:
 
 \DM{
-(\vC, \Delta, \hole{\vx}{\vt}\SC\vx, \langle\vx\rangle)
+(\vC, \Delta, \hole{\vx}{\vt}\SC\vx, \langle\rangle, \langle\vx\rangle)
 }
 
-
-This allows the elaborator to use pattern bindings from the left
+Resetting the term and queue but retaining pattern bindings
+allows the elaborator to use pattern bindings from the left
 hand side of a pattern matching definition in the term on the right hand side.
+
+
+\newcommand{\Check}{\MO{Check}_\Gamma}
+\newcommand{\Eval}{\MO{Normalise}_\Gamma}
+\newcommand{\Unify}{\MO{Unify}_\Gamma}
+\newcommand{\PrimUnify}{\MO{PrimUnify}_\Gamma}
+\newcommand{\Subst}{\MO{Subst}}
+
+\subsection{Tactics}
+
+% Meta-operations Check, Normalise, Unify 
+In order to build \TT{} expressions from \Idris{} programs, we define a collection
+of meta-operations for querying and modifying the proof state. Meta-operations
+may have side-effects including failure, or updating the proof state, and
+may fail. We have the following primitive meta-operations:
+
+\begin{itemize}
+\item $\MO{Get}$ and $\MO{Put}$ which allow direct access to the proof state.
+% Focus and Unfocus don't need to be primitive, we could show in terms of
+% Get and Put
+%\item $\MO{Focus}\;\vn$, which moves $\vn$ to the head of the hole queue.
+%\item $\MO{Unfocus}$, which moves the current hole to the back of the hole queue.
+\item $\Check\;\ve$, which type checks an expression $\ve$ relative to a context
+$\Gamma$, returning its type.
+$\MO{Check}$ will fail
+if the expression is not well-typed.
+\item $\Eval\;\ve$, which evaluates a well-typed expression $\ve$ relative to a context 
+$\Gamma$, returning its normal form. $\MO{Normalise}$ reduces under binders,
+but does not reduce definitions which are not total.
+\item 
+$\PrimUnify\;\ve_1\;\ve_2$, 
+which attempts to unify $\ve_1$ and $\ve_2$ by finding the values with which
+holes must be instantiated for $\ve_1$ and $\ve_2$ to be convertible relative
+to $\Gamma$ (i.e. for $\Gamma\proves\ve_1\converts\ve_2$ to hold).
+\item $\Subst\;\vx\;\ve$, which instantiates a hole $\vx$ directly with a term
+$\ve$, typically arising from unification.
+\end{itemize}
+
+\noindent
+Additionally, we have $\MO{Focus}$, $\MO{Unfocus}$, $\MO{NewHole}$
+and $\MO{NextHole}$
+operations which manipulate and inspect
+the hole queue. $\MO{Focus}\;\vn$ moves a hole to the head of the hole queue:
+
+\DM{
+\MO{Focus}\;\vn\;=\;\RW{do}\;\AR{
+(\vC,\Delta,\vP,\vQ;\vn;\vQ')\gets\MO{Get}\\
+\MO{Put}\;(\vC,\Delta,\vP,\vn;\vQ;\vQ')\\
+}
+}
+
+\noindent
+Correspondingly, $\MO{Unfocus}$ moves the currently in focus hole to the
+end of the hole queue:
+
+\DM{
+\MO{Unfocus}\;=\;\RW{do}\;\AR{
+(\vC,\Delta,\vP,\vn;\vQ)\gets\MO{Get}\\
+\MO{Put}\;(\vC,\Delta,\vP,\vQ;\vn)\\
+}
+}
+
+\noindent
+$\MO{NewHole}$ declares that a new hole has been created and is to be solved
+next, and $\MO{NextHole}$ returns the next hole to be solved:
+
+\DM{
+\AR{
+\MO{NewHole}\;=\;\RW{do}\;\AR{
+(\vC,\Delta,\vP,\vQ)\gets\MO{Get}\\
+\MO{Put}\;(\vC,\Delta,\vP,\vn;\vQ)\\
+}
+\\
+\MO{NextHole}\;=\;\RW{do}\;\AR{
+(\vC,\Delta,\vP,\vn;\vQ)\gets\MO{Get}\\
+\MO{Return}\;\vn
+}
+}
+}
+
+\noindent
+\demph{Tactics} are meta-operations which operate on the sub-term given by the
+hole at the head of the hole queue in the proof state. They take the following
+form:
+
+\DM{
+\PA{\A\A}{
+\MO{Tactic}_\Gamma & \;\vec{\VV{args}} & \;\vt & \MoRet{\vt'}
+}
+}
+
+A tactic takes a sequence of zero or more arguments $\vec{\VV{args}}$ followed
+by the sub-term $\vt$ on which it is operating. It runs relative to a context
+$\Gamma$ which contains all the bindings and pattern bindings in scope at that
+point in the term. The sub-term $\vt$ will either be a hole binding
+$\hole{\vx}{\vT}\SC\ve$ or a guess binding $\guess{\vx}{\vT}{\vv}\SC\ve$. The
+tactic returns a new term $\vt'$ which can take any form, provided it is
+well-typed, with a type convertible to the type of $\vt$. 
+Tactics may also have the side effect of updating the proof state,
+therefore we will describe tactics in a pseudo-code with $\RW{do}$ notation.
+
+Tactics are executed by a higher level meta-operation $\MO{Tactic}$, 
+given in Figure \ref{runtac} which
+locates the appropriate sub-term, applies the tactic with the context
+local to this sub-term, and
+replaces the sub-term with the term returned by the
+tactic. 
+% It then updates the hole queue in the proof state, and updates holes which have
+% been solved by unification. If the tactic creates new holes, these are automatically
+% added to the \remph{head} of the hole queue.
+
+\FFIG{
+\AR{
+\MO{Tactic}\;\VV{tac}\;=\;\RW{do}\;\AR{
+\ve\Gets\MO{Term}\\
+\vh\Gets\MO{NextHole}\\
+\ve'\Gets\MO{Tactic'}\;\langle\rangle\;\ve\;\VV{tac}\;\vh\\
+\MO{SetTerm}\;\ve'
+}
+\medskip
+\\
+\PA{\A\A\A}{
+\RW{where} \\
+& \MO{Tactic'} & \Gamma & (\hole{\vx}{\vT}\SC\ve)
+& \MoRet{\VV{tac}_\Gamma\;(\hole{\vx}{\vT}\SC\ve)\hg\mbox{if}\;\vx=\vh} \\
+& \MO{Tactic'} & \Gamma & (\guess{\vx}{\vT}{\vv}\SC\ve)
+& \MoRet{\VV{tac}_\Gamma\;(\guess{\vx}{\vT}{\vv}\SC\ve)\hg\mbox{if}\;\vx=\vh} \\
+& \MO{Tactic'} & \Gamma & (\lam{\vx}{\vT}\SC\ve)
+& \MoRet{
+\RW{do}\; \AR{\vT'\Gets\;\MO{Tactic'}\;\Gamma\;\vT\\
+\lam{\vx}{\vT'}\SC \MO{Tactic'}\;(\Gamma;\lam{\vx}{\vT'})\;\ve}
+}
+\\
+& \MO{Tactic'} & \Gamma & (\all{\vx}{\vT}\SC\ve)
+& \MoRet{
+\RW{do}\; \AR{\vT'\Gets\;\MO{Tactic'}\;\Gamma\;\vT\\
+\all{\vx}{\vT'}\SC \MO{Tactic'}\;(\Gamma;\all{\vx}{\vT'})\;\ve}
+}
+\\
+& \MO{Tactic'} & \Gamma & (\LET\;\vx\defq\vt\Hab\vT\SC\ve)
+& \MoRet{\RW{do}\;\AR{\vt'\Gets\;\MO{Tactic'}\;\Gamma\;\vt\\
+\vT'\Gets\;\MO{Tactic'}\;\Gamma\;\vT\\
+\LET\;\vx\defq\vt'\Hab\vT'\SC
+\MO{Tactic'}\;(\Gamma;\LET\;\vx\defq\vt'\Hab\vT')\;\ve}} \\
+& \MO{Tactic'} & \Gamma & (\vf\;\va) & 
+\MoRet{\MO{Return}\;(\MO{Tactic'}\;\Gamma\;\vf)\; (\MO{Tactic'}\;\Gamma\;\va)}\\
+& \MO{Tactic'} & \Gamma & \vt & \MoRet{\MO{Return}\;\vt}
+}
+}
+}
+{Applying tactics to the proof state}
+{runtac}
+
+In the remainder of this section, we will define a set of primitive tactics:
+$\MO{Claim}$, $\MO{Fill}$ and $\MO{Solve}$ which are used to create and destroy
+holes; and $\MO{Lambda}$, $\MO{Pi}$, $\MO{Let}$ and $\MO{Attack}$ which are
+used to create binders. First, however, we must explain how unification is
+applied during elaboration.
+
+\subsubsection{Unification}
+
+Unification is crucial to the success of elaboration --- it is unification
+which finds values of implicit arguments, in particular. We do not require
+unification to succeed immediately, in general, as instantiating a hole may 
+affect the solution to other unification problems. Instead, 
+$\MO{PrimUnify}$ may give one of the following results:
+
+\begin{itemize}
+\item $\MO{Success}\;(\tx=\te, \tp)$, containing the solved holes mapping
+$\vx$ to $\ve$, and a possibly empty set of blocked unification problems $\tp$.
+If $\tp$ is empty, there is a solution for $\ve_1$ and $\ve_2$. 
+\item $\MO{Failure}\;\ve$, if no solution is found due to a failure to unify
+sub-terms in normal form.
+\end{itemize}
+
+$\MO{Unify}$ attempts to solve the given unification problem using
+$\MO{PrimUnify}$,
+then attempts to further refine existing problems in the proof
+state. This operation is given in Figure \ref{unifyps}. After attempting to
+solve the problem with $\MO{PrimUnify}$ and updating the proof term with
+any solutions found, it updates the existing problems (with $\MO{SubstProblems}$
+which applies $\MO{Subst}$ across the terms in the problems), then attempts to
+resolve the existing problems with $\MO{ReUnify}$.
+
+\FFIG{
+%\mbox{\textbf{[UNIFY ALGORITHM GOES HERE] }}
+%Show how it uses a PrimUnify
+%operation to update
+%the proof state with new problems, and solve the old ones
+\AR{
+\Unify\;\ve_1\;\ve_2\;=\;\RW{do}\;
+\AR{
+(\tx=\te,\tp)\gets\PrimUnify\;\ve_1\;\ve_2\\
+\vec{\MO{Subst}}\;\tx\;\te\\
+\MO{SubstProblems}\;(\tx=\te)\\
+(\vC,\Delta,\VV{term},\tP,\vQ)\gets\MO{Get}\\
+\vec{\MO{ReUnify}}\;\tP
+}
+\medskip
+\\
+\AR{
+\MO{ReUnify}\;(\Gamma,\ve_1,\ve_2)\;=\;\RW{do}\;\AR{
+(\tx=\te,\tp)\Gets\PrimUnify\;\ve_1\;\ve_2\\
+\vec{\MO{Subst}}\;\tx\;\te\\
+\MO{Return}\;\tp
+}
+}
+}
+}
+{The $\MO{Unify}$ meta-operation}
+{unifyps}
+
+
+\subsubsection{Creating and destroying holes}
+
+The $\MO{Claim}$ tactic, given a name and a type, adds a new hole binding in
+the scope of the current goal $\vx$, adding the new binding to the hole queue, but
+keeping $\vx$ at the head:
+
+\DM{
+\PA{\A\A}{
+\MO{Claim}_\Gamma & (\vy \Hab\vS) & (\hole{\vx}{\vT}\SC\ve) & 
+   \MoRet{\RW{return}\;\hole{\vx}{\vT}\SC\hole{\vy}{\vS}\SC\ve} \\
+}
+}
+
+An obvious difficulty is in ensuring that names are unique throughout a proof term.
+The implementation ensures that any hole created by the $\MO{Claim}$ tactic
+has a unique name by checking against existing names in scope and modifying
+the name if necessary. In this paper, we will assume that all created names are fresh.
+
+The $\MO{Fill}$ tactic, given a value $\vv$, attempts to solve the current goal
+with $\vv$, creating a guess binding in its place. $\MO{Fill}$ attempts to
+solve other holes by unifying the expected type of $\vx$ with the type of $\vv$:
+
+\DM{
+\PA{\A\A}{
+\MO{Fill}_\Gamma & \vv & (\hole{\vx}{\vT}\SC\ve) & 
+   \MoRet{\RW{do}\;\AR{
+   \vT' \leftarrow \Check\;\vv\\
+   \Unify\;\vT\;\vT'\\
+   \RW{return}\;\guess{\vx}{\vT}{\vv}\SC\ve}
+   } \\
+}
+}
+
+\noindent
+For example, consider the following proof term:
+
+\DM{
+\AR{
+\hole{\vA}{\Type}\SC\hole{\vk}{\Nat}\SC
+\hole{\vx}{\vA}\SC\hole{\vxs}{\Vect\;\vA\;\vk}\SC
+\\
+\hole{\vys}{\Vect\;\vA\;(\suc\;\vk)}\SC\vys
+}
+}
+
+\noindent
+If $\vx$ is in focus (i.e., at the head of the hole queue) and the elaborator
+attempts to
+$\MO{Fill}$ it with an $\TC{Int}$ value $42$, we have:
+
+\begin{itemize}
+\item $\Check\;42\;\mq\;\TC{Int}$
+\item Unifying $\TC{Int}$ with $\vA$ (the type of $\vx$) is only possible if
+$\vA\;=\;\TC{Int}$, so solve $\vA$.
+\end{itemize}
+
+\noindent
+Therefore the resulting proof term is:
+
+\DM{
+\AR{
+\hole{\vk}{\Nat}\SC
+\guess{\vx}{\TC{Int}}{42}\SC\hole{\vxs}{\Vect\;\TC{Int}\;\vk}\SC
+\\
+\hole{\vys}{\Vect\;\TC{Int}\;(\suc\;\vk)}\SC\vys
+}
+}
+
+The $\MO{Solve}$ tactic operates on a guess binding. If the guess is \remph{pure}, i.e., it
+is a \TT{} term containing no hole or guess bindings, then the value attached to
+the guess is substituted into its scope:
+
+\DM{
+\PA{\A}{
+\MO{Solve}_\Gamma & (\guess{\vx}{\vT}{\vv}\SC\ve) &
+   \MoRet{\RW{return}\;\ve[\vv/\vx]\hg\mbox{(if $\MO{Pure}\;\vv$)}}
+}
+}
+
+The two step process, with $\MO{Fill}$ followed by $\MO{Solve}$, allows the elaborator
+to work safely with incomplete terms, since an incomplete guess binding has no 
+computational force. Once a term is complete in a guess binding, it may be substituted into the 
+scope of the binding safely.
+In each of these tactics, if any step fails, or the term in focus does not take
+the correct form (e.g. is not a guess in the case of $\MO{Solve}$ or not a hole
+in the case of $\MO{Claim}$ and $\MO{Fill}$) the entire tactic fails. We can
+handle failure using the $\MO{Try}$ tactic combinator:
+
+\DM{
+\PA{\A\A\A}{
+\MO{Try}_\Gamma & \VV{t1} & \VV{t2} & \vt &
+   \MoRet{\RW{case}\;\AR{\VV{t1}_\Gamma\;\vt\;\RW{of}\\
+             \MO{Success}\;\vt'\cq\MO{Success}\;\vt'\\
+             \MO{Failure}\;\_\cq\VV{t2}_\Gamma\;\vt\\
+          }}
+}
+}
+
+We have a primitive tactic $\MO{Fail}$, which may be invoked by
+any tactic which encounters a failure condition (for example, an unsolvable unification
+problem) and is handled by $\MO{Try}$.
+
+\subsubsection{Creating binders}
+
+We also define primitive tactics for constructing binders. Creating a $\lambda$
+binding requires that the goal normalises to a function type:
+
+\DM{
+\PA{\A\A}{
+\MO{Lambda}_\Gamma & \vn & (\hole{\vx}{\vT}\SC\vx) &
+ \MoRet{\RW{do}\;\AR{
+   \all{\vy}{\vS}\SC\vT'\;\leftarrow\;\Eval\;\vT \\
+   \RW{return}\;\lam{\vn}{\vS}\SC\hole{\vx}{\vT'[\vn/\vy]}\SC\vx
+   }
+   }
+}
+}
+
+\noindent
+Creating a $\forall$ binding requires that the goal is a $\TC{Type}$:
+
+\DM{
+\PA{\A\A}{
+\MO{Pi}_\Gamma & (\vn\Hab\vS) & (\hole{\vx}{\Type}\SC\vx) &
+ \MoRet{\RW{do}\;\AR{
+   \Type\;\leftarrow\;\Check\;\vS\\
+   \RW{return}\;\all{\vn}{\vS}\SC\hole{\vx}{\Type}\SC\vx
+   }
+   }
+}
+}
+
+\noindent
+Creating a $\LET$ binding requires a type and a value.
+
+\DM{
+\PA{\A\A}{
+\MO{Let}_\Gamma & (\vn\Hab\vS\defq\vv) & (\hole{\vx}{\vT}\SC\vx) &
+ \MoRet{\RW{do}\;\AR{
+   \Type\;\leftarrow\;\Check\;\vS\\
+   \vS'\;\leftarrow\;\Check\;\vv\\
+   \Unify\;\vS\;\vS'\\
+   \RW{return}\;\LET\;\vn\Hab\vS\defq\vv\SC\hole{\vx}{\vT}\SC\vx
+   }
+   }
+}
+}
+
+Each of these tactics require the term in focus to be of the form $\hole{\vx}{\vT}\SC\vx$.
+This is important, because if the scope of the binding were an arbitrary expression $\ve$,
+the binder would be scoped across this \emph{whole} expression rather than the subexpression
+$\vx$ as intended.
+The $\MO{Attack}$ tactic ensures that a hole
+is in the appropriate form, creating a new hole $\vx'$ which is placed at the
+head of the queue:
+
+\DM{
+\PA{\A}{
+\MO{Attack}_\Gamma & (\hole{\vx}{\vT}\SC\ve) &
+ \MoRet{\RW{do}\;\AR{
+ \MO{NewHole}\;\vx'\\
+ \RW{return}\;\guess{\vx}{\vT}{(\hole{\vx'}{\vT}\SC\vx')}\SC\ve}}
+}
+}
+
+\noindent
+For example, consider the following proof term:
+
+\DM{
+\hole{\vx}{\va\to\vb}\SC\vx\;\ve
+}
+
+\noindent
+If we try to instantiate $\vx$ with a $\lambda$-binding $\vn$ immediately,
+without applying $\MO{Attack}$ first, the $\lambda$ will scope over the
+entirety of $\vx\;\ve$, and the resulting term is not well-typed:
+
+\DM{
+\AR{
+\lam{\vn}{\va}\SC\hole{\vx}{\vb}\SC\vx\;\ve
+}
+}
+
+\noindent
+If, on the other hand, we $\MO{Attack}$ the hole then instantiate it with
+a $\lambda$ binding $\vn$, we get:
+
+\DM{
+\begin{array}{ll}
+\guess{\vx}{\va\to\vb}{\hole{\vx'}{\va\to\vb}\SC\vx'}\SC\vx\;\ve
+& \hg\mbox{(after $\MO{Attack}$)}\\
+\guess{\vx}{\va\to\vb}{\lam{\vn}{\va}\SC\hole{\vx'}{\vb}\SC\vx'}\SC\vx\;\ve
+& \hg\mbox{(after $\MO{Lambda}\;\vn$)}
+\end{array}
+}
+
+\noindent
+Now, once $\vx'$ has been instantiated, the guess for $\vx$ can safely be
+closed with $\MO{Solve}$.
+
+\subsubsection{Pattern Binders}
+
+Finally, we can convert a hole binding to a pattern binding by giving the 
+pattern variable a name. This solves a hole
+by adding the pattern binding to the proof state, and updating the proof term
+with the pattern variable directly:
+
+\DM{
+\PA{\A\A}{
+\MO{Pat}_\Gamma & \vn & (\hole{\vx}{\vT}\SC\ve) &
+  \MoRet{\RW{do}\;\AR{
+    \MO{PatBind}\;(\vn\Hab\vT)\\
+    \RW{return}\;\ve[\vn/\vx]
+  }}
+}
+}
+
+The $\MO{PatBind}$ operation simply updates the proof state with the given pattern
+binding. Once we have created bindings from the left hand side of a pattern
+matching definition, for example, we can retain these bindings for use when
+building the right hand side.
+
+\subsubsection{Example}
+
+To illustrate how tactics are applied, using $\MO{Tactic}$, to build a
+complete term by refining a proof state, let us consider the following
+\TT{} definition for the identify function:
+
+\DM{
+\AR{
+\FN{id}\Hab\all{\vA}{\Type}\SC\all{\va}{\vA}\SC\vA \\
+\FN{id}\;=\;\lam{\vA}{\Type}\SC\lam{\va}{\vA}\SC\va  
+}
+}
+
+We can build $\FN{id}$ either as a complete term, or by applying a sequence of
+tactics.  To achieve this, we create a proof state initialised with the type of
+$\FN{id}$ and apply a series of $\MO{Lambda}$ and $\MO{Fill}$ operations using
+$\MO{Tactic}$.  Note that the types on each $\MO{Lambda}$ are taken from
+the goal type.
+
+\DM{
+\AR{
+\MO{MkId}\;\mq\;\RW{do}\;
+ \AR{
+   \MO{NewProof}\;\all{\vA}{\Type}\SC\all{\va}{\vA}\SC\vA \\
+   \MO{Tactic}\;\MO{Attack} \\
+   \MO{Tactic}\;(\MO{Lambda}\;\vA) \\
+   \MO{Tactic}\;\MO{Attack} \\
+   \MO{Tactic}\;(\MO{Lambda}\;\va) \\
+   \MO{Tactic}\;(\MO{Fill}\;\va)\\ 
+   \MO{Tactic}\;\MO{Solve}\\
+   \MO{Tactic}\;\MO{Solve}\\
+   \MO{Tactic}\;\MO{Solve}\\
+   \MO{Term}
+ }
+}
+}
+
+\FFIG{
+\begin{array}{lll}
+\mbox{\textbf{Tactic}} & \mbox{\textbf{Resulting Proof Term}} &  
+\mbox{\textbf{Queue}}
+\medskip
+\\
+\mbox{Initial state} 
+& \hole{\vx}{\all{\vA}{\Type}\SC\all{\va}{\vA}\SC\vA}\SC\vx
+& \langle\vx\rangle \\
+%
+\MO{Attack} &
+\underline{
+\guess{\vx}{\all{\vA}{\Type}\SC\all{\va}{\vA}\SC\vA}{
+\hole{\vh_0}{\all{\vA}{\Type}\SC\all{\va}{\vA}\SC\vA}\SC\vh_0
+}
+\SC\vx
+}
+&
+\langle\vh_0,\vx\rangle\\
+%
+\MO{Lambda}\;\vA &
+\guess{\vx}{\all{\vA}{\Type}\SC\all{\va}{\vA}\SC\vA}{
+\underline{
+\lam{\vA}{\Type}\SC\hole{\vh_0}{\all{\va}{\vA}\SC\vA}\SC\vh_0
+}
+}
+\SC\vx
+&
+\langle\vh_0,\vx\rangle\\
+%
+\MO{Attack} &
+\guess{\vx}{\all{\vA}{\Type}\SC\all{\va}{\vA}\SC\vA}{
+\lam{\vA}{\Type}\SC
+\underline{
+\guess{\vh_0}{\all{\va}{\vA}\SC\vA}
+{\hole{\vh_1}{\all{\va}{\vA}\SC\vA}\SC\vh_1}
+\SC\vh_0
+}
+}
+\SC\vx
+&
+\langle\vh_1,\vh_0,\vx\rangle\\
+%
+\MO{Lambda}\;\va &
+\guess{\vx}{\all{\vA}{\Type}\SC\all{\va}{\vA}\SC\vA}{
+\lam{\vA}{\Type}\SC
+\guess{\vh_0}{\all{\va}{\vA}\SC\vA}
+{
+\underline{
+\lam{\va}{\vA}\SC\hole{\vh_1}{\vA}\SC\vh_1
+}
+}
+\SC\vh_0
+}
+\SC\vx
+&
+\langle\vh_1,\vh_0,\vx\rangle\\
+%
+\MO{Fill}\;\va &
+\guess{\vx}{\all{\vA}{\Type}\SC\all{\va}{\vA}\SC\vA}{
+\lam{\vA}{\Type}\SC
+\\
+&
+\hg\hg\hg\hg\hg\hg\hg\guess{\vh_0}{\all{\va}{\vA}\SC\vA}
+{
+\lam{\va}{\vA}\SC
+\underline{
+\guess{\vh_1}{\vA}{\va}\SC\vh_1
+}
+}
+\SC\vh_0
+}
+\SC\vx
+&
+\langle\vh_1,\vh_0,\vx\rangle\\
+%
+\MO{Solve} &
+\guess{\vx}{\all{\vA}{\Type}\SC\all{\va}{\vA}\SC\vA}{
+\lam{\vA}{\Type}\SC
+\guess{\vh_0}{\all{\va}{\vA}\SC\vA}
+{
+\lam{\va}{\vA}\SC
+\underline{
+\va
+}
+}
+\SC\vh_0
+}
+\SC\vx
+&
+\langle\vh_0,\vx\rangle\\
+%
+\MO{Solve} &
+\guess{\vx}{\all{\vA}{\Type}\SC\all{\va}{\vA}\SC\vA}{
+\lam{\vA}{\Type}\SC
+\underline{
+\lam{\va}{\vA}\SC
+\va
+}
+}
+\SC\vx
+&
+\langle\vx\rangle\\
+%
+\MO{Solve} &
+\underline{
+\lam{\vA}{\Type}\SC
+\lam{\va}{\vA}\SC
+\va
+}
+&
+\langle\rangle\\
+
+\end{array}
+}
+{Proof state development for $\MO{MkId}$}
+{mkidrefine}
+
+Figure \ref{mkidrefine} shows how each step of this sequence of tactics affects
+the proof state and hole queue. In each step, the underlined fragment of the
+term is the fragment in focus. One might observe that the 
+$\MO{Attack}$/$\MO{Solve}$ pairs are unnecessary in this case, as the term
+is already in a form suitable for introduction. However, we retain these for
+uniform treatment of introductions.
+
+To aid readability, we will elide $\MO{Tactic}$, and use a semi-colon to indicate
+sequencing --- in the implementation we use wrapper functions for each tactic to
+apply $\MO{Tactic}$.
+Using this convention, we can build $\FN{id}$'s type and definition as shown
+in Figure \ref{idelab}. Note that $\MO{Term}$ retrieves the proof term from the current proof
+state. Both $\MO{MkIdType}$ and $\MO{MkId}$ finish by returning a completed \TT{} term.
+Note in particular that each tactic which introduces a guess ($\MO{Fill}$ 
+and $\MO{Solve}$ is closed with a $\MO{Solve}$).
+
+Setting up elaboration in this way, with a proof state captured in a monad,
+and a primitive collection of tactics,
+makes it easy to derive more complex tactics for elaborating higher level language constructs,
+in much the same way as the \texttt{Ltac} language in Coq. As a result, the
+description of elaboration of
+a language construct (or a program such as $\FN{id}$) bears a strong resemblance to
+a Coq proof script.
+
+\FFIG{
+\AR{
+\MO{MkIdType}\;\mq\;\RW{do}\;
+ \AR{
+   \MO{NewProof}\;\Type\\
+   \MO{Attack} ; \MO{Pi}\;(\vA\Hab\Type) ;
+   \MO{Attack} ; \MO{Pi}\;(\va\Hab\vA) \\
+   \MO{Fill}\;\vA \\
+   \MO{Solve} ; \MO{Solve} ; \MO{Solve} \\
+   \MO{Term}
+ }
+ \medskip\\
+\MO{MkId}\;\mq\;\RW{do}\;
+ \AR{
+   \vt\;\leftarrow\;\MO{MkIdType}; \MO{NewProof}\;\vt\\
+   \MO{Attack} ; \MO{Lambda}\;\vA ; 
+   \MO{Attack} ; \MO{Lambda}\;\va \\
+   \MO{Fill}\;\va \\
+   \MO{Solve} ; \MO{Solve} ; \MO{Solve}\\
+   \MO{Term}
+ }
+}
+}
+{Building $\FN{id}$ with tactics}
+{idelab}
+
+%--- give unify in full, esp. as it solves sub goals? Maybe...
+
+% Unify' G x t             = Success (x, t) if ?x : t in G
+% Unify' G t x             = Success (x, t) if ?x : t in G
+% Unify' G (b x. e) (b' x'. e')   = Unify' G b b'; Unify' G;b e e'[x/x']
+% Unify' G ((\x.e) x) e'   = Unify' G e e' 
+% Unify' G e ((\x.e') x)   = Unify' G e e' 
+% Unify' G (f es) (f' es') = vs <- Unify' G f f'; Injective f
+                             
+% Unify' G x y             = Success () if G |- x == y
+% Unify' G . .             = Failure
+
+% Unify' G (\x : t . e) (\x : t' . e') = Unify' G t t'; Unify' G e e'
+% ...
+
+
+%\DM{
+%}
 
 \subsection{System State}
 
 \label{sect:sysstate}
 
+To elaborate \Idris{} programs we will build expressions from high level
+declarations of functions, data types and classes, and add the resulting
+definitions to a global system state.
 The system state is a tuple, $(\vC,\vA,\vI)$, containing:
 
 \begin{itemize}
 \item A global context, $\vC$, containing pattern matching definitions and their types
 \item Implicit arguments, $\vA$, recording which arguments are implicit for each global name
-\item Type class instances, $\vI$, containing dictionaries for type classes
+\item Type class information, $\vI$, containing method signatures and dictionaries for type classes
 \end{itemize}
 
-In the implementation, the system state is captured in a monad, \texttt{Idris}, 
-which also wraps the current proof state. This monad 
-includes additional information such as syntax overloadings,
+In the implementation, the system state is captured in a monad, \texttt{Idris}.
+This monad includes additional information such as syntax overloadings,
 command line options, and optimisations, which do not concern us here. Elaboration
 of expressions requires access to the system state in particular in order to expand
 implicit arguments and resolve type classes. 
@@ -198,348 +900,11 @@ For \tFN{vAdd}, the state records that \texttt{a} and \texttt{n} are implicit,
 the elaborator encounters an application of \tFN{vAdd}, it knows that unless these arguments
 are given explicitly, the application must be expanded.
 
-\newcommand{\Check}{\MO{Check}_\Gamma}
-\newcommand{\Eval}{\MO{Normalise}_\Gamma}
-\newcommand{\Unify}{\MO{Unify}_\Gamma}
-
-\subsection{Tactics}
-
-% Meta-operations Check, Normalise, Unify 
-In order to build \TT{} expressions from \Idris{} programs, we define a collection
-of meta-operations for querying and modifying the proof state. Meta-operations
-may have side-effects including failure, or updating the proof state. We have the following
-primitive meta-operations:
-
-\begin{itemize}
-\item $\MO{Focus}\:\vn$, which moves $\vn$ to the head of the hole queue.
-\item $\MO{Unfocus}$, which moves the current hole to the back of the hole queue.
-\item $\Check\:\ve$, which type checks an expression $\ve$ relative to a context
-$\Gamma$, returning its type.
-$\MO{Check}$ will fail
-if the expression is not well-typed.
-\item $\Eval\:\ve$, which evaluates a well-typed expression $\ve$ relative to a context 
-$\Gamma$, returning its normal form.
-\item 
-$\Unify\:\ve_1\:\ve_2$, 
-which unifies $\ve_1$ and $\ve_2$ by finding the values with which holes must be instantiated
-for $\ve_1$ and $\ve_2$ to be convertible relative to $\Gamma$
-(i.e. for $\Gamma\proves\ve_1\converts\ve_2$ to hold). $\MO{Unify}$ will fail
-if it cannot find such values. If successful, $\MO{Unify}$ will update the proof state.
-\end{itemize}
-
-\demph{Tactics} are meta-operations which operate on the sub-term given
-by the hole at the head of the hole queue in the proof state. They take the following form:
-
-\DM{
-\PA{\A\A}{
-\MO{Tactic}_\Gamma & \:\vec{\VV{args}} & \:\vt & \MoRet{\vt'}
-}
-}
-
-A tactic takes a sequence of zero or more arguments $\vec{\VV{args}}$ followed
-by the sub-term $\vt$ on which it is operating. It runs relative to a context
-$\Gamma$ which contains all the bindings and pattern bindings in scope at that
-point in the term. The sub-term $\vt$ will either be a hole binding
-$\hole{\vx}{\vT}\SC\ve$ or a guess binding $\guess{\vx}{\vT}{\vv}\SC\ve$. The
-tactic returns a new term $\vt'$ which can take any form, provided it is
-well-typed, with a type convertible to the type of $\vt$. 
-Tactics may also have the side effect of updating the proof state,
-therefore we will describe tactics in a pseudo-code with $\RW{do}$ notation.
-
-We define a set of primitive tactics: $\MO{Claim}$, $\MO{Fill}$ and $\MO{Solve}$
-which are used to create and destroy holes; and $\MO{Lambda}$, $\MO{Pi}$, $\MO{Let}$
-and $\MO{Attack}$ which are used to create binders.
-
-\subsubsection{Creating and destroying holes}
-
-The $\MO{Claim}$ tactic, given a name and a type, adds a new hole binding in
-the scope of the current goal $\vx$, adding the new binding to the hole queue, but
-keeping $\vx$ at the head:
-
-\DM{
-\PA{\A\A}{
-\MO{Claim}_\Gamma & (\vy \Hab\vS) & (\hole{\vx}{\vT}\SC\ve) & 
-   \MoRet{\RW{return}\:\hole{\vx}{\vT}\SC\hole{\vy}{\vS}\SC\ve} \\
-}
-}
-
-An obvious difficulty is in ensuring that names are unique throughout a proof term.
-The implementation ensures that any hole created by the $\MO{Claim}$ tactic
-has a unique name by checking against existing names in scope and modifying
-the name if necessary. In this paper, we will assume that all created names are fresh.
-
-The $\MO{Fill}$ tactic, given a value $\vv$, attempts to solve the current goal
-with $\vv$, creating a guess binding in its place. $\MO{Fill}$ attempts to
-solve other holes by unifying the expected type of $\vx$ with the type of $\vv$:
-
-\DM{
-\PA{\A\A}{
-\MO{Fill}_\Gamma & \vv & (\hole{\vx}{\vT}\SC\ve) & 
-   \MoRet{\RW{do}\:\AR{
-   \vT' \leftarrow \Check\:\vv\\
-   \Unify\:\vT\:\vT'\\
-   \RW{return}\:\guess{\vx}{\vT}{\vv'}\SC\ve}
-   } \\
-}
-}
-
-\noindent
-For example, consider the following proof term:
-
-\DM{
-\AR{
-\hole{\vA}{\Set}\SC\hole{\vk}{\Nat}\SC
-\hole{\vx}{\vA}\SC\hole{\vxs}{\Vect\:\vA\:\vk}\SC
-\\
-\hole{\vys}{\Vect\:\vA\:(\suc\:\vk)}\SC\vys
-}
-}
-
-\noindent
-If $\vx$ is in focus (i.e., at the head of the hole queue) and the elaborator
-attempts to
-$\MO{Fill}$ it with an $\TC{Int}$ value $42$, we have:
-
-\begin{itemize}
-\item $\Check\:42\:\mq\:\TC{Int}$
-\item Unifying $\TC{Int}$ with $\vA$ (the type of $\vx$) is only possible if
-$\vA\:=\:\TC{Int}$, so solve $\vA$.
-\end{itemize}
-
-\noindent
-Therefore the resulting proof term is:
-
-\DM{
-\AR{
-\hole{\vk}{\Nat}\SC
-\guess{\vx}{\TC{Int}}{42}\SC\hole{\vxs}{\Vect\:\TC{Int}\:\vk}\SC
-\\
-\hole{\vys}{\Vect\:\TC{Int}\:(\suc\:\vk)}\SC\vys
-}
-}
-
-The $\MO{Solve}$ tactic operates on a guess binding. If the guess is \remph{pure}, i.e., it
-is a \TT{} term containing no hole or guess bindings, then the value attached to
-the guess is substituted into its scope:
-
-\DM{
-\PA{\A}{
-\MO{Solve}_\Gamma & (\guess{\vx}{\vT}{\vv}\SC\ve) &
-   \MoRet{\RW{return}\:\ve[\vv/\vx]\hg\mbox{(if $\MO{Pure}\:\vv$)}}
-}
-}
-
-The two step process, with $\MO{Fill}$ followed by $\MO{Solve}$, allows the elaborator
-to work safely with incomplete terms, since an incomplete guess binding has no 
-computational force. Once a term is complete in a guess binding, it may be substituted into the 
-scope of the binding safely.
-In each of these tactics, if any step fails, or the term in focus does not take
-the correct form (e.g. is not a guess in the case of $\MO{Solve}$ or not a hole
-in the case of $\MO{Claim}$ and $\MO{Fill}$, the entire tactic fails. We can
-handle failure using the $\MO{Try}$ tactic combinator:
-
-\DM{
-\PA{\A\A\A}{
-\MO{Try}_\Gamma & \VV{t1} & \VV{t2} & \vt &
-   \MoRet{\AR{\VV{t1}_\Gamma\:\vt\hg\mbox{(if $\VV{t1}$ succeeds)} \\
-              \VV{t2}_\Gamma\:\vt\hg\mbox{(otherwise)}}}
-}
-}
-
-We have a primitive tactic $\MO{Fail}$, which may be invoked by
-any tactic which encounters a failure condition (for example, an unsolvable unification
-problem) and is handled by $\MO{Try}$.
-
-\subsubsection{Creating binders}
-
-We also define primitive tactics for constructing binders. Creating a $\lambda$
-binding requires that the goal normalises to a function type:
-
-\DM{
-\PA{\A\A}{
-\MO{Lambda}_\Gamma & \vn & (\hole{\vx}{\vT}\SC\vx) &
- \MoRet{\RW{do}\:\AR{
-   \all{\vy}{\vS}\SC\vT'\:\leftarrow\:\Eval\:\vT \\
-   \RW{return}\:\lam{\vn}{\vS}\SC\hole{\vx}{\vT'[\vn/\vy]}\SC\vx
-   }
-   }
-}
-}
-
-\noindent
-Creating a $\forall$ binding requires that the goal is a $\TC{Set}$:
-
-\DM{
-\PA{\A\A}{
-\MO{Pi}_\Gamma & (\vn\Hab\vS) & (\hole{\vx}{\Set}\SC\vx) &
- \MoRet{\RW{do}\:\AR{
-   \Set\:\leftarrow\:\Check\:\vS\\
-   \RW{return}\:\all{\vn}{\vS}\SC\hole{\vx}{\Set}\SC\vx
-   }
-   }
-}
-}
-
-\noindent
-Creating a $\LET$ binding requires a type and a value.
-
-\DM{
-\PA{\A\A}{
-\MO{Let}_\Gamma & (\vn\Hab\vS\defq\vv) & (\hole{\vx}{\vT}\SC\vx) &
- \MoRet{\RW{do}\:\AR{
-   \Set\:\leftarrow\:\Check\:\vS\\
-   \vS'\:\leftarrow\:\Check\:\vv\\
-   \Unify\:\vS\:\vS'\\
-   \RW{return}\:\LET\:\vn\Hab\vS\defq\vv\SC\hole{\vx}{\vT}\SC\vx
-   }
-   }
-}
-}
-
-Each of these tactics require the term in focus to be of the form $\hole{\vx}{\vT}\SC\vx$.
-This is important, because if the scope of the binding were an arbitrary expression $\ve$,
-the binder would be scoped across this \emph{whole} expression rather than the subexpression
-$\vx$ as intended.
-The $\MO{attack}$ tactic ensures that a hole
-is in the appropriate form, creating a new hole $\vh$ which is placed at the head
-of the queue:
-
-\DM{
-\PA{\A}{
-\MO{Attack}_\Gamma & (\hole{\vx}{\vT}\SC\ve) &
- \MoRet{\RW{return}\:\guess{\vx}{\vT}{(\hole{\vh}{\vT}\SC\vh)}\SC\ve}
-}
-}
-
-Finally, we can convert a hole binding to a pattern binding by giving the 
-pattern variable a name. This solves a hole
-by adding the pattern binding to the proof state, and updating the proof term
-with the pattern variable directly:
-
-\DM{
-\PA{\A\A}{
-\MO{Pat}_\Gamma & \vn & (\hole{\vx}{\vT}\SC\ve) &
-  \MoRet{\RW{do}\:\AR{
-    \MO{PatBind}\:(\vx\Hab\vT)\\
-    \RW{return}\:\ve[\vn/\vx]
-  }}
-}
-}
-
-The $\MO{PatBind}$ operation simply updates the proof state with the given pattern
-binding. Once we have created bindings from the left hand side of a pattern
-matching definition, for example, we can retain these bindings for use when
-building the right hand side.
-
-\subsubsection{Example}
-
-Tactics are executed by a higher level meta-operation $\MO{RunTac}$, which
-locates the appropriate sub-term, applies the tactic with the context
-local to this sub-term, and
-replaces the sub-term with the term returned by the
-tactic. It then updates the hole queue in the proof state, and updates holes which have
-been solved by unification. If the tactic creates new holes, these are automatically
-added to the \remph{head} of the hole queue.
-For example, consider the following simple
-\TT{} definition for the identify function:
-
-\DM{
-\AR{
-\FN{id}\Hab\all{\vA}{\Set}\SC\all{\va}{\vA}\SC\vA \\
-\FN{id}\:=\:\lam{\vA}{\Set}\SC\lam{\va}{\vA}\SC\va  
-}
-}
-
-We can build $\FN{id}$ either as a complete term, or by applying a sequence of tactics.
-To achieve this, we create a proof state initialised with the type of $\FN{id}$ and
-apply a series of $\MO{Lambda}$ and $\MO{Fill}$ operations using $\MO{RunTac}$.
-Note that the types on each $\MO{Lambda}$ are solved by unification:
-
-\DM{
-\AR{
-\MO{MkId}\:\mq\:\RW{do}\:
- \AR{
-   \MO{NewProof}\:\all{\vA}{\Set}\SC\all{\va}{\vA}\SC\vA \\
-   \MO{RunTac}\;\MO{Attack} \\
-   \MO{RunTac}\;(\MO{Lambda}\;\vA) \\
-   \MO{RunTac}\;\MO{Attack} \\
-   \MO{RunTac}\;(\MO{Lambda}\;\va) \\
-   \MO{RunTac}\;(\MO{Fill}\;\va)\\ 
-   \MO{RunTac}\;\MO{Solve}\\
-   \MO{RunTac}\;\MO{Solve}\\
-   \MO{RunTac}\;\MO{Solve}\\
-   \MO{Term}
- }
-}
-}
-
-To aid readability, we will elide $\MO{RunTac}$, and use a semi-colon to indicate
-sequencing --- in the implementation we use wrapper functions for each tactic to
-apply $\MO{RunTac}$.
-Using this convention, we can build $\FN{id}$'s type and definition as shown
-in Figure \ref{idelab}. Note that $\MO{Term}$ retrieves the proof term from the current proof
-state. Both $\MO{MkIdType}$ and $\MO{MkId}$ finish by returning a completed \TT{} term.
-Note in particular that each $\MO{Attack}$ and each $\MO{Fill}$, which create new guesses,
-are closed with a $\MO{Solve}$.
-
-Setting up elaboration in this way, with a proof state captured in a monad,
-and a primitive collection of tactics,
-makes it easy to derive more complex tactics for elaborating higher level language constructs,
-in much the same way as the \texttt{Ltac} language in Coq. As a result, the
-description of elaboration of
-a language construct (or a program such as $\FN{id}$) bears a strong resemblance to
-a Coq proof script.
-
-\FFIG{
-\AR{
-\MO{MkIdType}\:\mq\:\RW{do}\;
- \AR{
-   \MO{NewProof}\:\Set\\
-   \MO{Attack} ; \MO{Pi}\:(\vA\Hab\Set) ;
-   \MO{Attack} ; \MO{Pi}\:(\va\Hab\vA) \\
-   \MO{Fill}\;\vA \\
-   \MO{Solve} ; \MO{Solve} ; \MO{Solve} \\
-   \MO{Term}
- }
- \medskip\\
-\MO{MkId}\:\mq\:\RW{do}\;
- \AR{
-   \vt\:\leftarrow\:\MO{MkIdType}; \MO{NewProof}\:\vt\\
-   \MO{Attack} ; \MO{Lambda}\;\vA ; 
-   \MO{Attack} ; \MO{Lambda}\;\va \\
-   \MO{Fill}\;\va \\
-   \MO{Solve} ; \MO{Solve} ; \MO{Solve}\\
-   \MO{Term}
- }
-}
-}
-{Building $\FN{id}$ with tactics}
-{idelab}
-
-%--- give unify in full, esp. as it solves sub goals? Maybe...
-
-% Unify' G x t             = Success (x, t) if ?x : t in G
-% Unify' G t x             = Success (x, t) if ?x : t in G
-% Unify' G (b x. e) (b' x'. e')   = Unify' G b b'; Unify' G;b e e'[x/x']
-% Unify' G ((\x.e) x) e'   = Unify' G e e' 
-% Unify' G e ((\x.e') x)   = Unify' G e e' 
-% Unify' G (f es) (f' es') = vs <- Unify' G f f'; Injective f
-                             
-% Unify' G x y             = Success () if G |- x == y
-% Unify' G . .             = Failure
-
-% Unify' G (\x : t . e) (\x : t' . e') = Unify' G t t'; Unify' G e e'
-% ...
-
-
-%\DM{
-%}
-
 \subsection{Elaborating Expressions}
 
-\newcommand{\piimp}[2]{\mbox{\texttt{\{ $#1$ : $#2$ \} -> }}}
+\newcommand{\piimp}[2]{\mbox{\texttt{\{$#1$ : $#2$\} -> }}}
 %\mathtt{\{}#1\mathtt{:}#2\mbox{\texttt{\} -> }}}
-\newcommand{\piexp}[2]{\mbox{\texttt{( $#1$ : $#2$ ) -> }}}
+\newcommand{\piexp}[2]{\mbox{\texttt{($#1$ : $#2$) -> }}}
 %\newcommand{\piexp}[2]{\mathtt{(}#1\mathtt{:}#2\mbox{\texttt{) -> }}}
 \newcommand{\piconst}[1]{\mbox{\texttt{$#1$ => }}}
 \newcommand{\icase}{\mathtt{case}}
@@ -563,11 +928,11 @@ a Coq proof script.
 \begin{array}{rll@{\hg}rll}
 \ve ::= & \vc & (\mbox{constant}) &
 \mid & \vx & (\mbox{variable}) \\
-\mid & \vt & (\mbox{type}) &
-\mid & \ve\:\ta & (\mbox{function application}) \\
-\mid & \ilam{\vx}\:\ve & (\mbox{lambda abstraction}) &
-\mid & \ilet{\vx}{\ve}\:\ve & (\mbox{let binding}) \\
-%\mid & \icase\:\ve\:\iof\:\vec{\VV{alt}} & (\mbox{case expression}) &
+\mid & \ilam{\vx}\;\ve & (\mbox{lambda abstraction}) &
+\mid & \ve\;\ta & (\mbox{function application}) \\
+\mid & \ilet{\vx}{\ve}\;\ve & (\mbox{let binding}) &
+\mid & \piexp{\vx}{\vt}\vt & (\mbox{explicit function space}) \\
+%\mid & \icase\;\ve\;\iof\;\vec{\VV{alt}} & (\mbox{case expression}) &
 %\mid & \mvar{\vx} & (\mbox{metavariable}) \\
 \mid & \_ & (\mbox{placeholder})
 \end{array}
@@ -576,11 +941,6 @@ a Coq proof script.
 \va :: = & \ve & (\mbox{normal argument}) \\
 \mid & \iarg{\vx}{\ve} & (\mbox{implicit argument with value}) \\
 \mid & \carg{\ve} & (\mbox{explicit class instance}) 
-\end{array}
-\medskip\\
-\begin{array}{rll}
-\vt ::= & \ve & (\mbox{expression}) \\
-\mid & \piexp{\vx}{\vt}\vt & (\mbox{explicit function space}) \\
 \end{array}
 \medskip\\
 \begin{array}{rll}
@@ -611,9 +971,9 @@ a Coq proof script.
 \begin{array}{ll}
 \begin{array}{rll}
 \VV{pclause} ::= & 
-\vx\:\ttt\:[\ibar\;\te]\mbox{\texttt{ = }}\ve \hg[\iwhere\;\td]\\ 
+\vx\;\ttt\;[\ibar\;\te]\mbox{\texttt{ = }}\ve \hg[\iwhere\;\td]\\ 
 \mid & \AR{
-\vx\:\ttt\:[\ibar\;\te]\;\iwith\;\ve\\
+\vx\;\ttt\;[\ibar\;\te]\;\iwith\;\ve\\
 \hg\vec{\VV{pclause}}
 }
 \end{array}
@@ -624,7 +984,7 @@ a Coq proof script.
 \medskip\\
 \VV{cdecl} ::= & \iclass\;[\VV{constr}]\;\vx\;(\ihab{\tx}{\ttt})\;\iwhere\;\td
 \\
-\VV{idecl} ::= & \iinstance\:[\VV{constr}]\;\vx\;\ttt\;\iwhere\;\td
+\VV{idecl} ::= & \iinstance\;[\VV{constr}]\;\vx\;\ttt\;\iwhere\;\td
 \end{array}
 \end{array}
 }
@@ -632,13 +992,14 @@ a Coq proof script.
 {\IdrisM{} declarations}
 {idrismd}
 
-We define a language \IdrisM{}, with expression syntax given in Figure \ref{idrism}
-and declaration syntax given in Figure \ref{idrismd}.
+We will use a subset of full \Idris{}, which we call \IdrisM{}, to explain
+elaboration of expressions. \IdrisM{} expression syntax is given in Figure
+\ref{idrism} and declaration syntax given in Figure \ref{idrismd}.
 \IdrisM{} is a subset of \Idris{} without syntactic sugar --- that is, without
 tuple syntax, \texttt{do}-notation or infix operators --- and with implicit
 arguments in types bound explicitly 
-(e.g. $\piimp{\va}{\_}\piimp{\vn}{\_}\TC{Vect}\:\va\:\vn$
-instead of simply $\Vect\:\va\:\vn$).
+(e.g. $\piimp{\va}{\_}\piimp{\vn}{\_}\TC{Vect}\;\va\;\vn$
+instead of simply $\Vect\;\va\;\vn$).
 Note that we separate implicit and type constraint bindings, to ensure that they
 only appear in top level declarations.
 It is in general straightforward to
@@ -659,13 +1020,20 @@ than one at a time.
 %Implicit and type class arguments? Expanded at the application site (we need to know
 %it's the global name after all and we do that by type).
 
-To elaborate expressions, we define a meta-operation $\ttinterp{\cdot}$ which
-runs relative to a proof state (see Section \ref{sect:prfstate}).  Its effect is
+To elaborate expressions, we define meta-operations $\ttinterp{\cdot}$ and
+$\ttpinterp{\cdot}$, which run relative to a proof state (see Section
+\ref{sect:prfstate}). $\ttpinterp{\cdot}$ elaborates \remph{patterns}, i.e.
+expressions on the left hand side of a pattern matching definition, whereas
+$\ttinterp{\cdot}$ elaborates expressions on the right hand side.
+Their effect is
 to update the proof state so that the hole in focus contains a representation
 of the given expression, by applying tactics. We assume that the proof state
 has already been set up, which means that elaboration can always be
 \remph{type-directed} since the proof state contains the type of the expression we
 are building.
+
+In all cases except the elaboration of variables and constantes, 
+$\ttpinterp{\vx}\;=\;\ttinterp{\vx}$.
 
 \subsubsection{Elaborating variables and constants}
 
@@ -675,24 +1043,27 @@ the \MO{Fill} tactic:
 
 \DM{
 \AR{
-\ttinterp{\vx}\:\mq\:\RW{do}\:\MO{Fill}\:\vx;\:\MO{Solve}\\
-\ttinterp{\vc}\:\mq\:\RW{do}\:\MO{Fill}\:\vc;\:\MO{Solve}\\
+\ttinterp{\vx}\;\mq\;\RW{do}\;\MO{Fill}\;\vx;\;\MO{Solve}\\
+\ttinterp{\vc}\;\mq\;\RW{do}\;\MO{Fill}\;\vc;\;\MO{Solve}\\
 }
 }
 
-We need not concern ourselves with type checking variables or constants here --- $\MO{Fill}$
-will handle this, type checking $\vx$ or $\vc$ and unifying the result with the
-hole type. If there are any errors, elaboration will fail.
+Since $\MO{Fill}$ creates a guess binding, we use $\MO{Solve}$ to instantiate
+the guess.  We need not concern ourselves with type checking variables or
+constants here --- $\MO{Fill}$ will handle this, type checking $\vx$ or $\vc$
+and unifying the result with the hole type. If there are any errors,
+elaboration will fail.
 
-If we are building the left hand side of a pattern clause, however, there is a problem,
-as it is the left hand side which \remph{defines} variables. In this context, we assume
-that attempting to elaborate a variable which does not type check means that the variable
-is a pattern variable:
+If we are building the left hand side of a pattern clause, however, there is a
+problem, as it is the left hand side which \remph{defines} variables. In this
+context, we assume that attempting to elaborate a variable which does not type
+check means that the variable is a pattern variable:
 
 \DM{
-\ttinterp{\vx}\:\mq\:
-\MO{Try}\:\AR{(\RW{do}\:\MO{Fill}\:\vx;\:\MO{Solve})\\
-(\MO{Pat}\:\vx)\hg\hg\mbox{(If elaborating a left hand side)}}
+\ttpinterp{\vx}\;\mq\;
+\MO{Try}\;\AR{(\RW{do}\;\MO{Fill}\;\vx;\;\MO{Solve})\\
+(\MO{Pat}\;\vx)
+}
 }
 
 We also need to elaborate \remph{placeholders}, which are subexpressions we expect to
@@ -700,25 +1071,26 @@ solve by unification. In this case, we simply move on to the next hole in the qu
 the current hole to the end of the queue with $\MO{Unfocus}$:
 
 \DM{
-\ttinterp{\_}\:\mq\:\MO{Unfocus}
+\ttinterp{\_}\;\mq\;\MO{Unfocus}
 }
 
-On encountering a placeholder, our assumption is that unification will eventually solve
-the hole. At the end of elaboration, any holes remaining unsolved on the left hand side
-become pattern variables. If there are any unsolved on the right hand side, elaboration
-fails.
+On encountering a placeholder, our assumption is that unification will
+eventually solve the hole. At the end of elaboration, any holes remaining
+unsolved on the left hand side become pattern variables. If there are any
+unsolved on the right hand side, elaboration is incomplete and an error will
+be reported when the resulting term is type checked.
 
 \subsubsection{Elaborating bindings}
 
-To elaborate a $\lambda$-binding, we $\MO{Attack}$ the hole, which must be a function type,
-apply the $\MO{Lambda}$ tactic, elaborate the scope, then $\MO{Solve}$, which discharges
-the $\MO{Attack}$:
+To elaborate a $\lambda$-binding, we $\MO{Attack}$ the hole, then apply the
+$\MO{Lambda}$ tactic, which will fail if the goal is not a function type. We
+then elaborate the scope and $\MO{Solve}$, which discharges the $\MO{Attack}$:
 
 \DM{
-\ttinterp{\ilam{\vx}\ve}\:\mq\:
-\RW{do}\:
+\ttinterp{\ilam{\vx}\ve}\;\mq\;
+\RW{do}\;
 \AR{
-\MO{Attack};\;\MO{Lambda}\:\vx\\
+\MO{Attack};\;\MO{Lambda}\;\vx\\
 \ttinterp{\ve}\\
 \MO{Solve}
 }
@@ -738,12 +1110,12 @@ scope of the binding.
 
 \DM{
 \AR{
-\ttinterp{\piexp{\vx}{\vt}\ve}\:\mq\:
-\RW{do}\:
+\ttinterp{\piexp{\vx}{\vt}\ve}\;\mq\;
+\RW{do}\;
 \AR{
-\MO{Attack};\;\MO{Claim}\:(\vX\Hab\Set)\\
-\MO{Pi}\:(\vx\Hab\vX)\\
-\MO{Focus}\:\vX\\
+\MO{Attack};\;\MO{Claim}\;(\vX\Hab\Type)\\
+\MO{Pi}\;(\vx\Hab\vX)\\
+\MO{Focus}\;\vX\\
 \ttinterp{\vt};\;
 \ttinterp{\ve}\\
 \MO{Solve}
@@ -764,13 +1136,13 @@ if elaborating the scope is successful, unification will solve the claimed varia
 $\vV$ and $\vX$.
 
 \DM{
-\ttinterp{\ilet{\vx}{\vv}\:{\ve}}\:\mq\:\RW{do}\:
+\ttinterp{\ilet{\vx}{\vv}\;{\ve}}\;\mq\;\RW{do}\;
 \AR{
 \MO{Attack};\;
-\MO{Claim}\:(\vX\Hab\Set);\; 
-\MO{Claim}\:(\vV\Hab\vX)\\
-\MO{Let}\:(\vx\Hab\vX\defq\vV)\\
-\MO{Focus}\:\vV\\
+\MO{Claim}\;(\vX\Hab\Type);\; 
+\MO{Claim}\;(\vV\Hab\vX)\\
+\MO{Let}\;(\vx\Hab\vX\defq\vV)\\
+\MO{Focus}\;\vV\\
 \ttinterp{\vv};\;
 \ttinterp{\ve}
 }
@@ -788,7 +1160,7 @@ In the first case, the elaborator must expand the application to include implici
 For example \texttt{vAdd xs ys} is expanded to
 \texttt{vAdd \{a=\_\} \{n=\_\} \{\{\_\}\} xs ys}, adding the implicit arguments
 \texttt{a} and \texttt{n} and a type class instance argument. The meta-operation
-$\MO{Expand}\:\vx\:\ta$, given a global function name $\vx$ and the
+$\MO{Expand}\;\vx\;\ta$, given a global function name $\vx$ and the
 arguments supplied by the programmer $\ta$, returns a new argument list
 $\ta'$ with implicit and type class arguments added. Each value in
 $\ta'$ is paired with an explicit name for the argument.
@@ -802,57 +1174,42 @@ forms:
 
 \DM{
 \AR{
-\MO{Unify}_\Gamma\;\vf\:\TC{Int}\\
-\MO{Unify}_\Gamma\;(\vf\:\vx)\:\TC{Int}\\
-\MO{Unify}_\Gamma\;(\vf\:\vx)\:(\vg\:\vx)\\
+\MO{Unify}_\Gamma\;\vf\;\TC{Int}\\
+\MO{Unify}_\Gamma\;(\vf\;\vx)\;\TC{Int}\\
+\MO{Unify}_\Gamma\;(\vf\;\vx)\;(\vg\;\vx)\\
 }
 }
 
-The first problem has a solution: $\vf=\TC{Int}$. The second and third problems have
-no solution without further information. In the second case, we cannot conclude 
-anything about $\vf$ or $\vx$ just from knowing that $\vf\:\vx\:=\:\TC{Int}$.
-In the third case, although we have $\vx\:=\:\vx$ in argument position, we cannot
-conclude that $\vf\:=\:\vg$ unless we know that the function which solves $\vf$ or
-$\vg$ is injective.
+The first problem has a solution: $\vf=\TC{Int}$. The second and third problems
+have no solution without further information. In the second case, we cannot
+conclude anything about $\vf$ or $\vx$ just from knowing that
+$\vf\;\vx\;=\;\TC{Int}$.  In the third case, although we have $\vx\;=\;\vx$ in
+argument position, we cannot conclude that $\vf\;=\;\vg$ in general as a
+result.
 
-Once $\vf$ or $\vg$ is solved in some other way, perhaps by being given explicitly
-in another argument, these unification problems can make progress. Otherwise, unification
-fails. As a result, the order in which functions and arguments are
-elaborated matters. Sometimes, we may learn more by elaborating a function first
-and the arguments later, sometimes it may be the other way around. 
-
-One option when unification fails is to store the problem (i.e. the expressions to be
-unified with their local context) and refine it with further information when it becomes 
-available. In practice, we have found a simpler approach to be effective: try
-elaborating the function first, then arguments. If that fails, try elaborating the
-arguments first.
-
-Elaborating a global function application makes a $\MO{Claim}$ for each argument
-in turn. Then the function is elaborated, applied to each of the claimed arguments.
-Finally, each argument which has been given explicitly is elaborated. If this fails,
-elaboration tries again in the opposite order. Finally, any type
-class instance arguments are resolved with the built-in $\MO{Instance}$ tactic.
+Once $\vf$ or $\vg$ is solved in some other way, perhaps by being given
+explicitly in another argument, these unification problems can make progress.
+Otherwise, unification blocks.  In such a case, the elaborator stores the
+problem (i.e. the expressions to be unified with their local context) and
+refines it with further information when it becomes available. 
+Elaborating a global function application makes a $\MO{Claim}$ for each
+argument in turn. Then the function is elaborated, applied to each of the
+claimed arguments. Each argument which has been given explicitly is
+elaborated. 
+Finally, any type class instance arguments are resolved with the
+built-in $\MO{Instance}$ tactic.
 
 \DM{
-\ttinterp{\vx\:\ta}\:\mq\:
+\ttinterp{\vx\;\ta}\;\mq\;
 \AR{
-\RW{do}\:
+\RW{do}\;
 \AR{
-(\tn,\tv)\:\gets\:\MO{Expand}\:\vx\:\ta\\
-\vec{\MO{Claim}}\:(\tn\Hab\tT)\\
-\MO{Try}\:\AR{
-(\RW{do}\:\AR{
-\MO{Fill}\:\vx\:\tn\\
-\vec{\MO{Focus}}\:\tn;\:\ttinterp{\tv}\hg\mbox{(for non-placeholder $\vv$)}\\
-\MO{Solve})
-}\\
-(\RW{do}\:\AR{
-\vec{\MO{Focus}}\:\tn;\:\ttinterp{\tv}\hg\mbox{(for non-placeholder $\vv$)}\\
-\MO{Fill}\:\vx\:\tn\\
-\MO{Solve})
-}}
-\\
-\vec{\MO{Instance}}\:\tn\hg\mbox{(for type class constraint argument $\vn$)}
+(\tn,\tv)\;\gets\;\MO{Expand}\;\vx\;\ta\\
+\vec{\MO{Claim}}\;(\tn\Hab\tT)\\
+\MO{Fill}\;\vx\;\tn\\
+\vec{\MO{Focus}}\;\tn;\;\ttinterp{\tv}\hg\mbox{(for non-placeholder $\vv$)}\\
+\MO{Solve} \\
+\vec{\MO{Instance}}\;\tn\hg\mbox{(for type class constraint argument $\vn$)}
 }
 }
 }
@@ -862,27 +1219,19 @@ a type class instance which would solve the goal directly. First, it examines th
 context, then recursively searches the global context. $\MO{Instance}$ is covered
 in detail in Section \ref{sect:instance}.
 
-To elaborate a simple function application, of an arbitrary expression to an arbitrary
-argument, we need not worry about implicit arguments or class constraints. Instead,
-the function and argument are elaborated, and the results applied. Since elaboration
-is type directed, however, there must be an appropriate type for the function.
-As before, elaboration tries two orders, as it may learn something from elaborating
-the function or argument which helps with unification:
+To elaborate a simple function application, of an arbitrary expression to an
+arbitrary argument, we need not worry about implicit arguments or class
+constraints. Instead, the function and argument are elaborated, and the results
+applied. Since elaboration is type directed, however, there must be an
+appropriate type for the function. 
 
 \DM{
-\ttinterp{\ve\:\va}\:\mq\:\RW{do}\:
+\ttinterp{\ve\;\va}\;\mq\;\RW{do}\;
 \AR{
-\MO{Claim}\:(\vA\Hab\Set);\;\MO{Claim}\:(\vB\Hab\Set)\\
-\MO{Claim}\:(\vf\Hab\vA\to\vB);\;\MO{Claim}\:(\vs\Hab\vA)\\
-\MO{Try}\:
-\AR{
-(\RW{do}\:\AR{
-\MO{Focus}\:\vf;\;\ttinterp{\ve}\\
-\MO{Focus}\:\vs;\;\ttinterp{\va})}\\
-(\RW{do}\:\AR{
-\MO{Focus}\:\vs;\;\ttinterp{\va}\\
-\MO{Focus}\:\vf;\;\ttinterp{\ve})}\\
-}
+\MO{Claim}\;(\vA\Hab\Type);\;\MO{Claim}\;(\vB\Hab\Type)\\
+\MO{Claim}\;(\vf\Hab\vA\to\vB);\;\MO{Claim}\;(\vs\Hab\vA)\\
+\MO{Focus}\;\vf;\;\ttinterp{\ve}\\
+\MO{Focus}\;\vs;\;\ttinterp{\va}\\
 }
 }
 
@@ -897,7 +1246,7 @@ relative to the system state (see Section \ref{sect:sysstate}) and has access to
 current proof state. $\MO{Elab}$ uses $\ttinterp{\cdot}$ to help translate
 \IdrisM{} type, function and class declarations into \TT{} declarations.
 
-\newcommand{\edo}[1]{\RW{do}\:\AR{#1}}
+\newcommand{\edo}[1]{\RW{do}\;\AR{#1}}
 
 \subsubsection{Elaborating Type Declarations}
 
@@ -906,11 +1255,11 @@ translating the \IdrisM{} type to a \TT{} type, then adding the resulting type
 as a \TT{} declaration:
 
 \DM{
-\MO{Elab}\:(\vx\Hab\vt)\:\mq
-\:\edo{\MO{NewProof}\:\Set\\
+\MO{Elab}\;(\vx\Hab\vt)\;\mq
+\;\edo{\MO{NewProof}\;\Type\\
        \ttinterp{\vt}\\
        \vt'\gets\MO{Term}\\
-       \MO{TTDecl}\:(\vx\Hab\vt')
+       \MO{TTDecl}\;(\vx\Hab\vt')
 }}
 
 The final $\MO{TTDecl}$ takes the result of elaboration, type checks it,
@@ -927,20 +1276,20 @@ adds a \TT{} data declaration.
 
 \DM{
 \AR{
-\MO{Elab}\:(\idata\;\ihab{\vx}{\vt}\;\iwhere\;\tc)\\
-\hg\hg\mq\:\edo{\MO{NewProof}\:\Set\\
+\MO{Elab}\;(\idata\;\ihab{\vx}{\vt}\;\iwhere\;\tc)\\
+\hg\hg\mq\;\edo{\MO{NewProof}\;\Type\\
                 \ttinterp{\vt}\\
                 \vt'\gets\MO{Term}\\
-                \MO{TTDecl}\:(\vx\Hab\vt')\\
-                \tc'\gets\vec{\MO{ElabCon}}\:\tc\\
-                \MO{TTDecl}\:(\Data\:\vx\Hab\vt'\:\Where\:\tc')
+                \MO{TTDecl}\;(\vx\Hab\vt')\\
+                \tc'\gets\vec{\MO{ElabCon}}\;\tc\\
+                \MO{TTDecl}\;(\Data\;\vx\Hab\vt'\;\Where\;\tc')
 }
 \AR{
-\MO{ElabCon}\:(\vx\Hab\vt)\\
-\hg\hg\mq\: \edo{\MO{NewProof}\:\Set\\
+\MO{ElabCon}\;(\vx\Hab\vt)\\
+\hg\hg\mq\; \edo{\MO{NewProof}\;\Type\\
                  \ttinterp{\vt}\\
                  \vt'\gets\MO{Term}\\
-                 \RW{return}\:(\vx\Hab\vt')
+                 \RW{return}\;(\vx\Hab\vt')
 }
 }}}
 
@@ -953,7 +1302,7 @@ to the global context, such as definitions in $\iwhere$ clauses.
 First, let us consider the simplest case, with no $\iwhere$ clause:
 
 \DM{
-\MO{ElabClause}\:(\vx\:\ttt\:=\:\ve)\:\mq\:?
+\MO{ElabClause}\;(\vx\;\ttt\;=\;\ve)\;\mq\;?
 }
 
 How does the left hand side get elaborated, given that elaboration is type directed, and
@@ -962,24 +1311,24 @@ This can be achieved without any change to the elaborator by defining
 a type $\TC{Infer}$:
 
 \DM{
-\Data\hg\TC{Infer}\Hab\Set\hg\Where\hg\DC{MkInfer}\Hab\all{\va}{\Set}\SC\va\to\TC{Infer}
+\Data\hg\TC{Infer}\Hab\Type\hg\Where\hg\DC{MkInfer}\Hab\all{\va}{\Type}\SC\va\to\TC{Infer}
 }
 
-Now elaboration of the left hand side proceeds by elaborating $\DC{MkInfer}\:\_\:(\vx\:\ttt)$ and
+Now elaboration of the left hand side proceeds by elaborating $\DC{MkInfer}\;\_\;(\vx\;\ttt)$ and
 extracting the value and unified type when complete.
 
 \DM{
 \AR{
-\MO{ElabClause}\:(\vx\:\ttt\:=\:\ve)\:\mq\:\\
+\MO{ElabClause}\;(\vx\;\ttt\;=\;\ve)\;\mq\;\\
 \hg\hg\edo{
-\MO{NewProof}\:\TC{Infer};\;
-\ttinterp{\DC{MkInfer}\:\_\:(\vx\:\ttt)}\\
-\DC{MkInfer}\:\vT\:\VV{lhs}\gets\MO{Term}\\
+\MO{NewProof}\;\TC{Infer};\;
+\ttpinterp{\DC{MkInfer}\;\_\;(\vx\;\ttt)}\\
+\DC{MkInfer}\;\vT\;\VV{lhs}\gets\MO{Term}\\
 \tp\gets\MO{Patterns}\\
-\MO{NewTerm}\:\vT;\;
+\MO{NewTerm}\;\vT;\;
 \ttinterp{\ve}\\
 \VV{rhs}\gets\MO{Term}\\
-\RW{return}\:(\RW{var}\:\tp\SC\VV{lhs}\:=\:\VV{rhs})
+\RW{return}\;(\RW{var}\;\tp\SC\VV{lhs}\;=\;\VV{rhs})
 }
 }
 }
@@ -993,10 +1342,10 @@ the clauses and adding the resulting collection to \TT{}.
 
 \DM{
 \AR{
-\MO{Elab}\:\vec{\VV{pclause}}\:\mq\:
+\MO{Elab}\;\vec{\VV{pclause}}\;\mq\;
 \edo{
-\tc\gets\vec{\MO{ElabClause}}\:\vec{\VV{pclause}}\\
-\vec{\MO{TTDecl}}\:\tc
+\tc\gets\vec{\MO{ElabClause}}\;\vec{\VV{pclause}}\\
+\vec{\MO{TTDecl}}\;\tc
 }
 }
 }
@@ -1008,18 +1357,18 @@ which are then recursively elaborated before the right hand side.
 
 \DM{
 \AR{
-\MO{ElabClause}\:(\vx\:\ttt\:=\:\ve\:\iwhere\:\td)\:\mq\:\\
+\MO{ElabClause}\;(\vx\;\ttt\;=\;\ve\;\iwhere\;\td)\;\mq\;\\
 \hg\hg\edo{
-\MO{NewProof}\:\TC{Infer};\;
-\ttinterp{\DC{MkInfer}\:\_\:(\vx\:\ttt)}\\
-\DC{MkInfer}\:\vT\:\VV{lhs}\gets\MO{Term}\\
+\MO{NewProof}\;\TC{Infer};\;
+\ttpinterp{\DC{MkInfer}\;\_\;(\vx\;\ttt)}\\
+\DC{MkInfer}\;\vT\;\VV{lhs}\gets\MO{Term}\\
 \tp\gets\MO{Patterns}\\
-(\td', \ve') \gets\MO{Lift}\:\tp\:\td\:\ve\\
-\vec{\MO{Elab}}\:\td'\\
-\MO{NewTerm}\:\vT;\;
+(\td', \ve') \gets\MO{Lift}\;\tp\;\td\;\ve\\
+\vec{\MO{Elab}}\;\td'\\
+\MO{NewTerm}\;\vT;\;
 \ttinterp{\ve'}\\
 \VV{rhs}\gets\MO{Term}\\
-\RW{return}\:(\RW{var}\:\tp\SC\VV{lhs}\:=\:\VV{rhs})
+\RW{return}\;(\RW{var}\;\tp\SC\VV{lhs}\;=\;\VV{rhs})
 }
 }
 }
@@ -1060,32 +1409,74 @@ natToBin' (S (j + j)) odd  = True  :: natToBin j
 \useverb{natToBinwp}
 
 \noindent
-Elaboration of \texttt{with} builds the type declaration and auxiliary function
-automatically:
+Additionally, the elaborator abstracts over the term being analysed in the type
+of the generated auxiliary definition\footnote{This is sometimes referred to
+as ``magic \texttt{with}''.} and reorders the arguments as required.
+For example:
 
+\begin{SaveVerbatim}{magicwith}
+
+f : Nat -> Bool
+
+ftest : (n : Nat) -> so (f n) -> Nat
+ftest n x with (f n)
+     | True  = ...
+     | False = ...
+
+\end{SaveVerbatim}
+\useverb{magicwith}
+
+\noindent
+Here, we may require the knowledge that \texttt{f n} is \texttt{True} or
+\texttt{False} in the appropriate case. The elaborator abstracts over
+\texttt{f n} in the auxiliary definition, specialising the type of
+\texttt{x} in each case:
+
+\begin{SaveVerbatim}{magicwithaux}
+
+ftest : (n : Nat) -> so (f n) -> Nat
+ftest n x = ftest' n (f n) x
+
+ftest' : (n : Nat) -> (p : Bool) -> so p -> Nat
+ftest' n True  x = ... 
+ftest' n False x = ... 
+
+\end{SaveVerbatim}
+\useverb{magicwithaux}
+
+\noindent
+Elaboration of \texttt{with} builds the type declaration and auxiliary function
+automatically. It checks the left hand side, resulting in a set of patterns
+$\tp$, then splits these patterns into those necessary to type
+$\vW$, and the rest ($\tp_w$ and $\tp_n$ respectively) using
+$\MO{SplitContext}$. Then, it builds a new declaration, abstracting over
+the matched expression $\ve$ in the types of $\tp_n$.
+$\MO{Abstract}\;\ve\;\vw\;\vp$ simply replaces any occurrence of $\vw$ in
+$\vp$ with the name $\ve$.
 
 \DM{
 \AR{
-\MO{ElabClause}\:(\vx\:\ttt\:\iwith\:\ve\:\vec{\VV{pclause}})\:\mq\\
+\MO{ElabClause}\;(\vx\;\ttt\;\iwith\;\ve\;\vec{\VV{pclause}})\;\mq\\
 \hg\hg\edo{
-\MO{NewProof}\:\TC{Infer};\;
-\ttinterp{\DC{MkInfer}\:\_\:(\vx\:\ttt)}\\
-\DC{MkInfer}\:\vT\:\VV{lhs}\gets\MO{Term}\\
+\MO{NewProof}\;\TC{Infer};\;
+\ttinterp{\DC{MkInfer}\;\_\;(\vx\;\ttt)}\\
+\DC{MkInfer}\;\vT\;\VV{lhs}\gets\MO{Term}\\
 \tp\gets\MO{Patterns}\\
-\MO{NewTerm}\:\TC{Infer};\;
-\ttinterp{\DC{MkInfer}\:\_\:\ve}\\
-\DC{MkInfer}\:\vW\:\vw'\gets\MO{Term}\\
-\MO{TTDecl}\:(\vx'\Hab\tp\to\vW\to\vT)\\
-\tc'\gets\vec{\MO{MatchWith}}\:\tp\:(\vx\:\ttt)\:\vec{\VV{pclause}}\\
-\vec{\MO{Elab}}\:\tc'\\
-\RW{return}\:(\RW{var}\:\tp\SC\VV{lhs}\:=\:\vx'\:\tp\:\vw')
+\MO{NewTerm}\;\TC{Infer};\;
+\ttinterp{\DC{MkInfer}\;\_\;\ve}\\
+\DC{MkInfer}\;\vW\;\vw'\gets\MO{Term}\\
+(\tp_w,\tp_n)\;\gets\;\MO{SplitContext}\;\vW\;\tp\\
+\MO{TTDecl}\;(\vx'\Hab\tp_{w}\to(\ve\Hab\vW)\to\vec{\MO{Abstract}}\;\ve\;\vw'\;\tp_{n}\to\vT)\\
+\tc'\gets\vec{\MO{MatchWith}}\;\tp\;\ttt\;\vec{\VV{pclause}}\\
+\vec{\MO{Elab}}\;\tc'\\
+\RW{return}\;(\RW{var}\;\tp\SC\VV{lhs}\;=\;\vx'\;\tp_{w}\;\vw'\;\tp_{n})
 }
 \medskip\\
-\MO{MatchWith}\:\tp\:(\vx\:\ttt)\:(\vx\:\tw\:\mid\:\ve\:\VV{rhs})\:\mq\\
+\MO{MatchWith}\;\tp_w\;\tp_n\;\ttt\;(\vx\;\tw\;\mid\;\ve\;\VV{rhs})\;\mq\\
 \hg\hg\edo{
-\tp'\gets\vec{\MO{Match}}\:\tw\:\ttt\\
-\MO{CheckComplete}\:\tp\:\tp'\\
-\RW{return}\:(\vx'\:\tp'\:\ve\:\VV{rhs})
+\tp'\gets\vec{\MO{Match}}\;\tw\;\ttt\\
+(\tp'_w,\tp'_n)\;\gets\;\MO{SplitPats}\;\tp_w\;\tp_n\;\tp'\\
+\RW{return}\;(\vx'\;\tp'_w\;\ve\;\tp'_{n}\;\VV{rhs})
 }
 }
 }
@@ -1104,26 +1495,24 @@ $\ve$ which is the same type as the scrutinee of the \texttt{with}, $\vW$.
 The right hand side, $\VV{rhs}$, may either return a value directly, containing 
 \texttt{where} clauses, or be a nested \texttt{with} block. In any case, it
 remains unchanged.
-$\MO{Match}\:\vw\:\vt$ returns a list of pattern bindings containing
+$\MO{Match}\;\vw\;\vt$ returns a list of pattern bindings containing
 the variables in $\vt$ and their matches in $\vw$.
-If the \texttt{with} block is well-formed, then
-the resulting set of patterns $\tp'$ contains exactly the same pattern variables
-as $\tp$, which is verified by $\MO{CheckComplete}$.
-
+The resulting matches are split, using $\MO{SplitPats}$, into matches for those
+variables necessary to type $\vW$ and the rest, as before.
 
 \subsubsection{Elaborating Class and Instance Declarations}
 
-Type classes are implemented as dictionaries of functions for each instance. Therefore,
-a type class declaration elaborates to a record type containing all of the functions
-in the class, and an instance is simply an instance of the record. The methods
-are translated to top level functions which extract the relevant function from the 
-dictionary.  
-For example, for the \texttt{Show} type class, the \texttt{class}
-declaration is translated to:
+Type classes are implemented as dictionaries of functions for each instance,
+following the implementation of first class type classes in Coq~\cite{Sozeau2008}.
+Therefore, a type class declaration elaborates to a record type containing all
+of the functions in the class, and an instance is simply an instance of the
+record. The methods are translated to top level functions which extract the
+relevant function from the dictionary.  For example, for the \texttt{Show} type
+class, the \texttt{class} declaration is translated to:
 
 \begin{SaveVerbatim}{showdata}
 
-data Show : Set -> Set where
+data Show : Type -> Type where
     instanceShow : (show : a -> String) -> Show a
 
 show : Show a -> a -> String
@@ -1137,7 +1526,7 @@ An instance for a type \texttt{a} is then a value of type \texttt{Show a}; for e
 
 \begin{SaveVerbatim}{shownatf}
 
-showNat : Show Nat;
+showNat : Show Nat
 showNat = instanceShow show' where
     show' : Nat -> String
     show' O = "O"
@@ -1182,7 +1571,7 @@ This translates to:
 
 \begin{SaveVerbatim}{orddata}
 
-data Ord : Set -> Set where
+data Ord : Type -> Type where
     instanceOrd : Eq a => (compare : a -> a -> Ordering) -> 
                           (max : a -> a -> a) ->  Ord a 
 
@@ -1217,51 +1606,47 @@ In general, \texttt{class} declarations are elaborated as follows:
 
 \DM{
 \AR{
-\MO{Elab}\:(\iclass\;\piconst{\tc}\TC{C}\:(\ta\Hab\ttt)\:\iwhere\:\td)
+\MO{Elab}\;(\iclass\;\piconst{\tc}\TC{C}\;(\ta\Hab\ttt)\;\iwhere\;\td)
 \\
 \hg\hg
-\mq\:\RW{do}\:\AR{
+\mq\;\RW{do}\;\AR{
 (\vec{\VV{meth}}\Hab\ttt)\gets\td\\
-\MO{Elab}\:
-\AR{(\RW{data}\:\TC{C}\Hab(\ta\Hab\ttt)\to\Set\:\iwhere\\
-\hg\DC{InstanceC}\Hab\piconst{\tc}\td\to\TC{C}\:\ta)}
-}
-}
-}
-
-\DM{
-\AR{
-\AR{
-\vec{\MO{ElabMeth}}\:\vec{\VV{meth}}\:\td\\
-\vec{\MO{ElabParent}}\:\tc
+\MO{Elab}\;
+\AR{(\RW{data}\;\TC{C}\Hab(\ta\Hab\ttt)\to\Type\;\iwhere\\
+\hg\DC{InstanceC}\Hab\piconst{\tc}\td\to\TC{C}\;\ta)}\\
+\vec{\MO{ElabMeth}}\;(\vec{\VV{meth}}\Hab\ttt)\\
+\vec{\MO{ElabParent}}\;\tc
 }
 \medskip\\
-\MO{ElabMeth}\:(\vf\Hab\vt)\\
-\hg\hg\mq\:\RW{do}\:\AR{
-\MO{Elab}\:(\vf\Hab\TC{C}\:\ta\to\vt)\\
-\MO{Elab}\:(\vf\:(\DC{InstanceC}\:\vec{\VV{meth}})\:=\:\vec{\VV{meth}[\vf]})
+\MO{ElabMeth}\;(\vf\Hab\vt)\\
+\hg\hg\mq\;\RW{do}\;\AR{
+\MO{Elab}\;(\vf\Hab\TC{C}\;\ta\to\vt)\\
+\MO{Elab}\;(\vf\;(\DC{InstanceC}\;\vec{\VV{meth}})\;=\;\vec{\VV{meth}[\vf]})
 }
 \medskip\\
-\MO{ElabParent}\:\vc\\
-\hg\hg\mq\:\RW{do}\:\AR{
-\MO{Elab}\:(\VV{cC}\Hab\TC{C}\:\ta\to\vc)\\
-\MO{Elab}\:(\VV{cC}\:(\DC{InstanceC}\:\carg{\vc'}\:\vec{\VV{meth}})\:=\:\vc')
+\MO{ElabParent}\;\vc\\
+\hg\hg\mq\;\RW{do}\;\AR{
+\MO{Elab}\;(\VV{cC}\Hab\TC{C}\;\ta\to\vc)\\
+\MO{Elab}\;(\VV{cC}\;(\DC{InstanceC}\;\carg{\vc'}\;\vec{\VV{meth}})\;=\;\vc')
 }
 }
 }
 
 \noindent
-Then \texttt{instance} declarations are elaborated as follows:
+Then \texttt{instance} declarations are elaborated as follows. One complication
+is that the function definitions in an \texttt{instance} declaration do not
+have explicit types, so we must retrieve the method types from the system state
+and substitute $\TC{C}\;\ttt$, using $\MO{ExpandTypes}$:
 
 \DM{
 \AR{
-\MO{Elab}\:(\iinstance\;\piconst{\tc}\TC{C}\:\ttt\:\iwhere\:\td)\\
-\hg\hg\mq\:\RW{do}\:\AR{
-(\vec{\VV{meth}}, \vec{\VV{ty}})\gets\td\\
-\vec{\VV{ty'}}\:=\:\vec{\VV{ty}}[\ttt/\ta]\\
-\MO{Elab}\:(\FN{instanceC}\Hab\piconst{\tc}\TC{C}\:\ttt)\\
-\MO{Elab}\:\AR{
-(\FN{instanceC}\:=\:\DC{InstanceC}\;\vec{\VV{meth'}}\;\iwhere
+\MO{Elab}\;(\iinstance\;\piconst{\tc}\TC{C}\;\ttt\;\iwhere\;\td)\\
+\hg\hg\mq\;\RW{do}\;\AR{
+(\vec{\VV{meth}}, \vec{\VV{ty}})\gets\MO{ExpandTypes}\;\td\\
+\vec{\VV{ty'}}\;=\;\vec{\VV{ty}}[\ttt/\ta]\\
+\MO{Elab}\;(\FN{instanceC}\Hab\piconst{\tc}\TC{C}\;\ttt)\\
+\MO{Elab}\;\AR{
+(\FN{instanceC}\;=\;\DC{InstanceC}\;\vec{\VV{meth'}}\;\iwhere
 \\
 \hg\vec{\VV{meth'}}\Hab\vec{\VV{ty'}}\\
 \hg\td
@@ -1295,15 +1680,15 @@ basic primitive for proof search, and is defined as follows:
 
 \DM{
 \AR{
-\MO{Trivial}\:\mq\:
-\RW{do}\:\AR{
+\MO{Trivial}\;\mq\;
+\RW{do}\;\AR{
       (\tv\Hab\ttt)\gets\MO{Context}\\
-      \MO{TryAll}\:\tv
+      \MO{TryAll}\;\tv
     }
 \medskip\\
-\MO{TryAll}\:(\vv_1,\vv_2\ldots)\:\mq\:\MO{Try}\:(\MO{Fill}\:\vv_1)\:(\MO{TryAll}\:\vv_2\ldots)
+\MO{TryAll}\;(\vv_1,\vv_2\ldots)\;\mq\;\MO{Try}\;(\MO{Fill}\;\vv_1)\;(\MO{TryAll}\;\vv_2\ldots)
 \\
-\MO{TryAll}\:\langle\rangle\:\mq\:\MO{Fail}
+\MO{TryAll}\;\langle\rangle\;\mq\;\MO{Fail}
 }
 }
 
@@ -1324,11 +1709,11 @@ applying every type class instance, and attempting to resolve the instance's par
 recursively. Given an instance $\vI$ with parameters $\ta$:
 
 \DM{
-\MO{TryInstance}\:(\vI\:\ta)\:\mq\:\RW{do}\;
+\MO{TryInstance}\;(\vI\;\ta)\;\mq\;\RW{do}\;
 \AR{
-\vec{\MO{Claim}}\:(\tx\Hab\ta)\\
-\ttinterp{\vI\:\tx}\\
-\vec{\MO{Focus}}\:\tx;\;\vec{\MO{Instance}}
+\vec{\MO{Claim}}\;(\tx\Hab\ta)\\
+\ttinterp{\vI\;\tx}\\
+\vec{\MO{Focus}}\;\tx;\;\vec{\MO{Instance}}
 }
 }
 
@@ -1336,13 +1721,13 @@ We define $\MO{Instance}$ as follows, using $\MO{AllInstances}$ to retrieve
 all possible type class instances in the form required by $\MO{TryInstance}$:
 
 \DM{
-\MO{Instance}\:\mq\:
-\MO{Try}\:
+\MO{Instance}\;\mq\;
+\MO{Try}\;
 \AR{
 \MO{Trivial}\\
-(\RW{do}\:\AR{
+(\RW{do}\;\AR{
 \ti\gets\MO{AllInstances}\\
-\vec{\MO{TryInstance}}\:\ti
+\vec{\MO{TryInstance}}\;\ti
 )
 }
 }
@@ -1386,9 +1771,9 @@ and $\icase$ expressions:
 \begin{array}{rll@{\hg}rll}
 \ve ::= & \ldots \\
 \mid & \mvar{\vx} & (\mbox{metavariable}) &
-\mid & \icase\:\ve\:\iof\:\vec{\VV{alt}} & (\mbox{case expression}) \\
+\mid & \icase\;\ve\;\iof\;\vec{\VV{alt}} & (\mbox{case expression}) \\
 \medskip\\
-\VV{alt} ::= & \ve\:\fatarrow\:\ve & (\mbox{case alternative})\\
+\VV{alt} ::= & \ve\;\fatarrow\;\ve & (\mbox{case alternative})\\
 \end{array}
 }
 }
@@ -1418,7 +1803,7 @@ We can inspect the type of \texttt{append\_rec} at the \Idris{} prompt:
 \begin{SaveVerbatim}{appendrec}
 
 *vec> :t append_rec
-append_rec : (a : Set) -> (m : Nat) -> (n : Nat) -> a -> 
+append_rec : (a : Type) -> (m : Nat) -> (n : Nat) -> a -> 
              Vect a n -> Vect a m -> Vect a (n + m)
 
 \end{SaveVerbatim}
@@ -1441,12 +1826,12 @@ Elaborating a metavariable involves adding a new top level definition which is a
 to all of the variables in local scope.
 
 \DM{
-\ttinterp{\mvar{\vx}}\:\mq\:
+\ttinterp{\mvar{\vx}}\;\mq\;
 \edo{
 (\tv\Hab\ttt)\gets\MO{Context}\\
 \vT\gets\MO{Type}\\
-\MO{TTDecl}\:(\vx\Hab(\tv\Hab\ttt)\to\vT)\\
-\ttinterp{\vx\:\tv}
+\MO{TTDecl}\;(\vx\Hab(\tv\Hab\ttt)\to\vT)\\
+\ttinterp{\vx\;\tv}
 }
 }
 
@@ -1484,14 +1869,14 @@ and elaborate it:
 
 \DM{
 \AR{
-\ttinterp{\icase\:\ve\:\iof\:\vec{\VV{alt}}}\:\mq\:
+\ttinterp{\icase\;\ve\;\iof\;\vec{\VV{alt}}}\;\mq\;
 \edo{
-\ttinterp{\ilet{\VV{scrutinee}}{\ve}\:\mvar{\VV{xcase}}}\\
+\ttinterp{\ilet{\VV{scrutinee}}{\ve}\;\mvar{\VV{xcase}}}\\
 (\tv\Hab\ttt)\gets\MO{Context}\\
-\vec{\MO{MkCase}}\:\tv\:\VV{alt}\\
+\vec{\MO{MkCase}}\;\tv\;\VV{alt}\\
 }
 \medskip\\
-\MO{MkCase}\:\tv\:(\vl\:\fatarrow\:\vr)\:\mq\:\MO{Elab}\:(\VV{xcase}\:\tv\:\vl\:=\:\vr)
+\MO{MkCase}\;\tv\;(\vl\;\fatarrow\;\vr)\;\mq\;\MO{Elab}\;(\VV{xcase}\;\tv\;\vl\;=\;\vr)
 }
 }
 

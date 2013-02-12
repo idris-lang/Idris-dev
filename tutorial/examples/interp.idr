@@ -44,6 +44,9 @@ using (G : Vect Ty n)
 
   eAdd : Expr G (TyFun TyInt (TyFun TyInt TyInt))
   eAdd = Lam (Lam (Op (+) (Var stop) (Var (pop stop))))
+
+  eEq : Expr G (TyFun TyInt (TyFun TyInt TyBool))
+  eEq = Lam (Lam (Op (==) (Var stop) (Var (pop stop))))
   
   eDouble : Expr G (TyFun TyInt TyInt)
   eDouble = Lam (App (App eAdd (Var stop)) (Var stop))

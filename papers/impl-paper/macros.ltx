@@ -261,7 +261,7 @@
 \newcommand{\MHRet}[2]{\multicolumn{#1}{l}{\hq #2}}
 \newcommand{\IRet}[1]{\multicolumn{2}{l}{\iq #1}}
 \newcommand{\IMRet}[2]{\multicolumn{#1}{l}{\iq #2}}
-\newcommand{\MoRet}[1]{\multicolumn{2}{l}{\mq #1}}
+\newcommand{\MoRet}[1]{\multicolumn{2}{l}{= #1}}
 \newcommand{\MMoRet}[2]{\multicolumn{#1}{l}{\mq #2}}
 \newcommand{\Data}{\RW{data}}
 \newcommand{\Codata}{\RW{codata}}
@@ -391,7 +391,7 @@ Program & Version & Instructions & Thunks & Memory Accesses & Cells \\
 
 %%%%%%%%%%%% TYPE
 
-\newcommand{\Type}{\mbox{\texttt{Set}}} %\star}
+\newcommand{\Type}{\mbox{\texttt{Type}}} %\star}
 
 
 %%%%%%%%%%%%% ARROWS
@@ -430,7 +430,7 @@ Program & Version & Instructions & Thunks & Memory Accesses & Cells \\
 \newcommand{\pq}{\pad{\:}{=}}
 \newcommand{\dq}{\pad{\:}{:=}}
 \newcommand{\iq}{\pad{\:}{\leadsto}}
-\newcommand{\mq}{\Longrightarrow}
+\newcommand{\mq}{=} %\Longrightarrow}
 \newcommand{\retq}{\Rightarrow}
 \newcommand{\hq}{\pad{\:}{=}}
 \newcommand{\defq}{\mapsto}
@@ -559,7 +559,7 @@ Program & Version & Instructions & Thunks & Memory Accesses & Cells \\
 \newcommand{\VectRebuild}{\FN{vectRebuild}}
 
 \newcommand{\Prop}{\TC{Prop}}
-\newcommand{\Set}{\TC{Set}}
+\newcommand{\Set}{\TC{Type}}
 \newcommand{\CoqType}{\TC{Type}}
 
 \newcommand{\List}{\TC{List}}

@@ -20,7 +20,7 @@ import Data.Typeable
 iucheck :: Idris ()
 iucheck = do tit <- typeInType
              when (not tit) $
-                do ist <- get
+                do ist <- getIState
                    idrisCatch (tclift $ ucheck (idris_constraints ist))
                               (\e -> do let msg = show e
                                         setErrLine (getErrLine msg)
@@ -46,13 +46,13 @@ ifail :: String -> Idris ()
 ifail str = throwIO (IErr str)
 
 ierror :: Err -> Idris ()
-ierror err = do i <- get
+ierror err = do i <- getIState
                 throwIO (IErr $ pshow i err)
 
 tclift :: TC a -> Idris a
 tclift tc = case tc of
                OK v -> return v
-               Error err -> do i <- get
+               Error err -> do i <- getIState
                                case err of
                                   At (FC f l) e -> setErrLine l
                                   _ -> return ()

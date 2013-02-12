@@ -20,10 +20,8 @@ data Binary : (width : Nat) -> (value : Nat) -> Type where
      (#)  : Binary w v -> Bit bit -> Binary (S w) (bit + 2 * v)
 
 instance Show (Binary w k) where
-     show = show' where
-        show' : Binary w' k' -> String
-        show' zero = ""
-        show' (bin # bit) = show bin ++ show bit
+     show zero = ""
+     show (bin # bit) = show bin ++ show bit
 
 pad : Binary w n -> Binary (S w) n
 pad zero = zero # b0 

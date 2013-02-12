@@ -24,16 +24,17 @@ instance Arrow Homomorphism where
 
 instance Monad m => Arrow (Kleislimorphism m) where
   arrow f = Kleisli (return . f)
-  first (Kleisli f) = Kleisli $ \(a, b) => do x <- f a
-                                              return (x, b)
+  first (Kleisli f) =  Kleisli $ \(a, b) => do x <- f a
+                                               return (x, b)
 
   second (Kleisli f) = Kleisli $ \(a, b) => do x <- f b
                                                return (a, x)
 
-  (Kleisli f) *** (Kleisli g) = Kleisli $ \(a, b) => do x <- f a
+  (Kleisli f) *** (Kleisli g) = Kleisli $ \(a, b) => do x <- f a 
                                                         y <- g b
                                                         return (x, y)
 
-  (Kleisli f) &&& (Kleisli g) = Kleisli $ \a => do x <- f a
+  (Kleisli f) &&& (Kleisli g) = Kleisli $ \a => do x <- f a 
                                                    y <- g a
                                                    return (x, y)
+

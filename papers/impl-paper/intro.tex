@@ -39,12 +39,12 @@ How can we achieve both of these goals?
 
 This paper describes a method for elaborating a high level dependently typed
 functional programming language to a low level core language based on dependent
-type theory.  The method involves building an Embedded Domain Specific Language
-(EDSL) for constructing programs in the core language, using \emph{tactics}
-directed by high level program syntax.  
-As we shall see, this method allows higher level language constructs to be
-constructed in a straightforward manner, without compromising the simplicity
-of the underlying type theory.
+type theory.  The method involves building an elaboration monad which captures
+the state of incomplete programs and a collection of \emph{tactics} for
+refining programs, directed by high level program syntax.  As we shall see,
+this method allows higher level language constructs to be constructed in a
+straightforward manner, without compromising the simplicity of the underlying
+type theory.
 
 \subsection{Contributions}
 
@@ -55,18 +55,18 @@ unification algorithm \cite{Miller1992} and an evaluator. However, it is less
 well understood how to combine these components effectively into a practical
 programming language. 
 
-The primary contribution of this paper is
-an EDSL based method for translating programs in a
-high level dependently typed programming language to a small core type theory,
-\TT{}, based on UTT \cite{luo1994}. The paper describes the structure of the
-EDSL including proof and system state, and introduces a collection of \remph{tactics}
-for manipulating incomplete programs.
-Secondly, the paper gives a detailed description of the core type theory used
-by \Idris{}, including a full description of the typing rules. Finally, through
-describing the EDSL and the specific tactics, the paper shows how to extend
-\Idris{} with higher level features.
-While we apply these ideas to \Idris{} specifically, the method for term construction
-is equally applicable to other typed programming languages.
+The primary contribution of this paper is a tactic based method for translating
+programs in a high level dependently typed programming language to a small core
+type theory, \TT{}, based on UTT \cite{luo1994}. The paper describes the
+structure of an elaboration monad capturing proof and system state, and
+introduces a collection of \remph{tactics} for manipulating incomplete
+programs.  Secondly, the paper gives a detailed description of the core type
+theory used by \Idris{}, including a full description of the typing rules.
+Finally, through describing the specific tactics, the paper shows how to extend
+\Idris{} with higher level features.  While we apply these ideas to \Idris{}
+specifically, the method for term construction is equally applicable to other
+typed programming languages, and indeed the tactics themselves are applicable
+to any high level language which can be explained in terms of \TT{}.
 
 The paper is structured as follows: Section \ref{sect:hll} gives an overview of
 programming in \Idris{}, introducing the high level constructs which will be
@@ -120,10 +120,10 @@ vAdd (x :: xs) (y :: ys) = x + y :: vAdd xs ys
 This illustrates some basic features of \Idris{}:
 
 \begin{itemize}
-\item A single colon is used for type declarations, and a double colon for the
+\item A single colon is used for type signatures, and a double colon for the
 cons operator.
-\item Functions are defined by pattern matching, with a top level type declaration.
-Names which are free in the type declaration (\texttt{a} and \texttt{n}) here
+\item Functions are defined by pattern matching, with a top level type signature.
+Names which are free in the type signature (\texttt{a} and \texttt{n}) here
 are implicitly bound.
 \item The type system ensures that both input vectors are the same length (\texttt{n})
 and have the same element type (\texttt{a}), and that the element type and length
@@ -136,35 +136,29 @@ of the vector \texttt{a} must be numeric and therefore supports the \texttt{+} o
 \Idris{} programs elaborate into a small core language, \TT{}, which is a $\lambda$-calculus
 with dependent types, augmented with algebraic data types and pattern matching.
 \TT{} programs are fully explicitly typed, including the names \texttt{a} and \texttt{n}
-in the type declaration, and the names bound in each pattern match clause.
+in the type signature, and the names bound in each pattern match clause.
 Type classes are also made explicit.
 The \TT{} translation of \texttt{vAdd} is:
 
 \DM{
 \AR{
-\begin{array}{ll}
-\FN{vAdd} & \Hab(\va\Hab\Set)\to(\vn\Hab\Nat)\to\TC{Num}\:\va\to
-  \Vect\:\va\:\vn\to\Vect\:\va\:\vn\to\Vect\:\va\:\vn\\
-\end{array}
-\\
-\begin{array}{lccccccc}
-\multicolumn{5}{l}{
-\RW{var}\:\va\Hab\Set,\:\vc\Hab\TC{Num}\;\va\SC}\\
-\hg\FN{vAdd} & \va & \Z & \vc & (\DC{Nil}\;\va) & (\DC{Nil}\;\va) & \Ret{\DC{Nil}\;\va} \\
-\multicolumn{5}{l}{
-\RW{var}\:\AR{
-\va\Hab\Set,\:\vk\Hab\Nat,\;\vc\Hab\TC{Num}\;\va,\\
+\FN{vAdd} \Hab(\va\Hab\Type)\to(\vn\Hab\Nat)\to\TC{Num}\;\va\to
+  \Vect\;\va\;\vn\to\Vect\;\va\;\vn\to\Vect\;\va\;\vn\\
+\RW{var}\;\va\Hab\Type,\;\vc\Hab\TC{Num}\;\va\SC\\
+\hg\FN{vAdd} \; \va \; \Z \; \vc \; (\DC{Nil}\;\va) \; (\DC{Nil}\;\va) \; 
+\cq\;\DC{Nil}\;\va \\
+\RW{var}\;\AR{
+\va\Hab\Type,\;\vk\Hab\Nat,\;\vc\Hab\TC{Num}\;\va,\\
 \vx\Hab\va,\;\vxs\Hab\Vect\;\va\;\vk,\;
 \vy\Hab\va,\;\vys\Hab\Vect\;\va\;\vk
 \SC
+\\
+\FN{vAdd} \; \va \; (\suc\;\vk) \; \vc 
+  \; ((\DC{::})\;\va\;\vk\;\vx\;\vxs) 
+  \; ((\DC{::})\;\va\;\vk\;\vy\;\vys) 
+   \\
+   \hg\hg\cq\:((\DC{::})\;\va\;\vk\;((+)\;\vc\;\vx\;\vy)\; (\FN{vAdd}\;\va\;\vk\;\vc\;\vxs\;\vys))
 }
-}\\
-\hg\FN{vAdd} & \va & (\suc\;\vk) & \vc 
-  & ((\DC{::})\;\va\;\vk\;\vx\;\vxs) 
-  & ((\DC{::})\;\va\;\vk\;\vy\;\vys) 
-   & \\
-   & & \MRet{5}{((\DC{::})\;\va\;\vk\;((+)\;\vc\;\vx\;\vy)\; (\FN{vAdd}\;\va\;\vk\;\vc\;\vxs\;\vys))}
-\end{array}
 }
 }
 
