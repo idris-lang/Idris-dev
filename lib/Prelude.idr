@@ -6,7 +6,6 @@ import IO
 import Prelude.Cast
 import Prelude.Nat
 import Prelude.Fin
-import Prelude.Modular
 import Prelude.List
 import Prelude.Maybe
 import Prelude.Monad
@@ -31,12 +30,6 @@ instance Show Nat where
 
 instance Show Int where 
     show = prim__intToStr
-
-instance Show (Bits n) where
-    show = bitsToStr
-
-instance Show (Mod2 n) where
-    show = modToStr
 
 instance Show Integer where 
     show = prim__bigIntToStr

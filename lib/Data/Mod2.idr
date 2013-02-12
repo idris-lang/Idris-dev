@@ -1,6 +1,6 @@
-module Prelude.Modular
+module Data.Mod2
 
-import Prelude.Bits
+import Data.Bits
 
 %default total
 
@@ -51,8 +51,6 @@ instance Cast (Mod2 n) (Bits n) where
 instance Cast (Bits n) (Mod2 n) where
     cast x = MkMod2 x
 
--- TODO: Other bases
-public
 modToStr : Mod2 n -> String
 modToStr x = pack (reverse (helper x))
     where
@@ -60,3 +58,7 @@ modToStr x = pack (reverse (helper x))
       helper : Mod2 n -> List Char
       helper x = strIndex "0123456789" (bitsToInt (cast (x `rem` 10)))
                  :: (if x < 10 then [] else helper (x `div` 10))
+
+
+instance Show (Mod2 n) where
+    show = modToStr
