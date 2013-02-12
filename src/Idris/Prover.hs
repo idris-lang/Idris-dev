@@ -13,8 +13,10 @@ import Idris.ElabTerm
 import Idris.Parser
 import Idris.Error
 import Idris.DataOpts
+import Idris.Completion
 
 import System.Console.Haskeline
+import System.Console.Haskeline.History
 import Control.Monad.State
 
 import Util.Pretty
@@ -37,10 +39,18 @@ showProof lit n ps
   where bird = if lit then "> " else ""
         break = "\n" ++ bird
 
+proverSettings :: ElabState [PDecl] -> Settings Idris
+proverSettings e = setComplete (proverCompletion assumptionNames) defaultSettings
+    where assumptionNames = case envAtFocus (proof e) of
+                              OK env -> names env
+          names [] = []
+          names ((MN _ _, _) : bs) = names bs
+          names ((n, _) : bs) = show n : names bs
+
 prove :: Context -> Bool -> Name -> Type -> Idris ()
 prove ctxt lit n ty 
     = do let ps = initElaborator n ctxt ty
-         (tm, prf) <- ploop True ("-" ++ show n) [] (ES (ps, []) "" Nothing)
+         (tm, prf) <- ploop True ("-" ++ show n) [] (ES (ps, []) "" Nothing) Nothing
          iLOG $ "Adding " ++ show tm
          iputStrLn $ showProof lit n prf
          i <- getIState
@@ -108,18 +118,25 @@ lifte :: ElabState [PDecl] -> ElabD a -> Idris a
 lifte st e = do (v, _) <- elabStep st e
                 return v
 
-ploop :: Bool -> String -> [String] -> ElabState [PDecl] -> Idris (Term, [String])
-ploop d prompt prf e 
+ploop :: Bool -> String -> [String] -> ElabState [PDecl] -> Maybe History -> Idris (Term, [String])
+ploop d prompt prf e h
     = do i <- getIState
          when d $ liftIO $ dumpState i (proof e)
-         x <- getInputLine (prompt ++ "> ")
+         (x, h') <- runInputT (proverSettings e) $
+                    -- Manually track the history so that we can use the proof state
+                    do _ <- case h of
+                              Just history -> putHistory history
+                              Nothing -> return ()
+                       l <- getInputLine (prompt ++ "> ")
+                       h' <- getHistory
+                       return (l, Just h')
          (cmd, step) <- case x of
             Nothing -> fail "Abandoned"
             Just input -> do return (parseTac i input, input)
          case cmd of
             Right Abandon -> fail "Abandoned"
             _ -> return ()
-         (d, st, done, prf') <- idrisCatch 
+         (d, st, done, prf') <- idrisCatch
            (case cmd of
               Left err -> do iputStrLn (show err)
                              return (False, e, False, prf)
@@ -140,7 +157,7 @@ ploop d prompt prf e
                               return (True, st, False, prf ++ [step]))
            (\err -> do iputStrLn (show err)
                        return (False, e, False, prf))
-         if done then do (tm, _) <- elabStep st get_term 
+         if done then do (tm, _) <- elabStep st get_term
                          return (tm, prf')
-                 else ploop d prompt prf' st
+                 else ploop d prompt prf' st h'
 
