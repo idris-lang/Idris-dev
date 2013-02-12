@@ -26,57 +26,57 @@ import Util.Pretty
 
 
 getContext :: Idris Context
-getContext = do i <- get; return (tt_ctxt i)
+getContext = do i <- getIState; return (tt_ctxt i)
 
 getObjectFiles :: Idris [FilePath]
-getObjectFiles = do i <- get; return (idris_objs i)
+getObjectFiles = do i <- getIState; return (idris_objs i)
 
 addObjectFile :: FilePath -> Idris ()
-addObjectFile f = do i <- get; put (i { idris_objs = f : idris_objs i })
+addObjectFile f = do i <- getIState; putIState $ i { idris_objs = f : idris_objs i }
 
 getLibs :: Idris [String]
-getLibs = do i <- get; return (idris_libs i)
+getLibs = do i <- getIState; return (idris_libs i)
 
 addLib :: String -> Idris ()
-addLib f = do i <- get; put (i { idris_libs = f : idris_libs i })
+addLib f = do i <- getIState; putIState $ i { idris_libs = f : idris_libs i }
 
 addHdr :: String -> Idris ()
-addHdr f = do i <- get; put (i { idris_hdrs = f : idris_hdrs i })
+addHdr f = do i <- getIState; putIState $ i { idris_hdrs = f : idris_hdrs i }
 
 totcheck :: (FC, Name) -> Idris ()
-totcheck n = do i <- get; put (i { idris_totcheck = idris_totcheck i ++ [n] })
+totcheck n = do i <- getIState; putIState $ i { idris_totcheck = idris_totcheck i ++ [n] }
 
 setFlags :: Name -> [FnOpt] -> Idris ()
-setFlags n fs = do i <- get; put (i { idris_flags = addDef n fs (idris_flags i) }) 
+setFlags n fs = do i <- getIState; putIState $ i { idris_flags = addDef n fs (idris_flags i) }
 
 setAccessibility :: Name -> Accessibility -> Idris ()
 setAccessibility n a 
-         = do i <- get
+         = do i <- getIState
               let ctxt = setAccess n a (tt_ctxt i)
-              put (i { tt_ctxt = ctxt })
+              putIState $ i { tt_ctxt = ctxt }
 
 setTotality :: Name -> Totality -> Idris ()
 setTotality n a 
-         = do i <- get
+         = do i <- getIState
               let ctxt = setTotal n a (tt_ctxt i)
-              put (i { tt_ctxt = ctxt })
+              putIState $ i { tt_ctxt = ctxt }
 
 getTotality :: Name -> Idris Totality
 getTotality n  
-         = do i <- get
+         = do i <- getIState
               case lookupTotal n (tt_ctxt i) of
                 [t] -> return t
                 _ -> return (Total [])
 
 addToCG :: Name -> CGInfo -> Idris ()
 addToCG n cg 
-   = do i <- get
-        put (i { idris_callgraph = addDef n cg (idris_callgraph i) })
+   = do i <- getIState
+        putIState $ i { idris_callgraph = addDef n cg (idris_callgraph i) }
 
 addDocStr :: Name -> String -> Idris ()
 addDocStr n doc 
-   = do i <- get
-        put (i { idris_docstrings = addDef n doc (idris_docstrings i) })
+   = do i <- getIState
+        putIState $ i { idris_docstrings = addDef n doc (idris_docstrings i) }
 
 addToCalledG :: Name -> [Name] -> Idris ()
 addToCalledG n ns = return () -- TODO
@@ -87,13 +87,13 @@ addToCalledG n ns = return () -- TODO
 
 addInstance :: Bool -> Name -> Name -> Idris ()
 addInstance int n i 
-    = do ist <- get
+    = do ist <- getIState
          case lookupCtxt Nothing n (idris_classes ist) of
                 [CI a b c d ins] ->
                      do let cs = addDef n (CI a b c d (addI i ins)) (idris_classes ist)
-                        put (ist { idris_classes = cs })
+                        putIState $ ist { idris_classes = cs }
                 _ -> do let cs = addDef n (CI (MN 0 "none") [] [] [] [i]) (idris_classes ist)
-                        put (ist { idris_classes = cs })
+                        putIState $ ist { idris_classes = cs }
   where addI i ins | int = i : ins
                    | chaser n = ins ++ [i]
                    | otherwise = insI i ins
@@ -107,56 +107,56 @@ addInstance int n i
 
 addClass :: Name -> ClassInfo -> Idris ()
 addClass n i 
-   = do ist <- get
+   = do ist <- getIState
         let i' = case lookupCtxt Nothing n (idris_classes ist) of
                       [c] -> c { class_instances = class_instances i }
                       _ -> i
-        put (ist { idris_classes = addDef n i' (idris_classes ist) }) 
+        putIState $ ist { idris_classes = addDef n i' (idris_classes ist) }
 
 addIBC :: IBCWrite -> Idris ()
 addIBC ibc@(IBCDef n) 
-           = do i <- get
+           = do i <- getIState
                 when (notDef (ibc_write i)) $
-                  put (i { ibc_write = ibc : ibc_write i })
+                  putIState $ i { ibc_write = ibc : ibc_write i }
    where notDef [] = True
          notDef (IBCDef n': is) | n == n' = False
          notDef (_ : is) = notDef is
-addIBC ibc = do i <- get; put (i { ibc_write = ibc : ibc_write i }) 
+addIBC ibc = do i <- getIState; putIState $ i { ibc_write = ibc : ibc_write i }
 
 clearIBC :: Idris ()
-clearIBC = do i <- get; put (i { ibc_write = [] })
+clearIBC = do i <- getIState; putIState $ i { ibc_write = [] }
 
 getHdrs :: Idris [String]
-getHdrs = do i <- get; return (idris_hdrs i)
+getHdrs = do i <- getIState; return (idris_hdrs i)
 
 setErrLine :: Int -> Idris ()
-setErrLine x = do i <- get;
+setErrLine x = do i <- getIState;
                   case (errLine i) of
-                      Nothing -> put (i { errLine = Just x })
+                      Nothing -> putIState $ i { errLine = Just x }
                       Just _ -> return ()
 
 clearErr :: Idris ()
-clearErr = do i <- get
-              put (i { errLine = Nothing })
+clearErr = do i <- getIState
+              putIState $ i { errLine = Nothing }
 
 getSO :: Idris (Maybe String)
-getSO = do i <- get
+getSO = do i <- getIState
            return (compiled_so i)
 
 setSO :: Maybe String -> Idris ()
-setSO s = do i <- get
-             put (i { compiled_so = s })
+setSO s = do i <- getIState
+             putIState $ (i { compiled_so = s })
 
 getIState :: Idris IState
-getIState = get
+getIState = lift get
 
 putIState :: IState -> Idris ()
-putIState = put
+putIState = lift . put
 
 getName :: Idris Int
-getName = do i <- get;
+getName = do i <- getIState;
              let idx = idris_name i;
-             put (i { idris_name = idx + 1 })
+             putIState $ (i { idris_name = idx + 1 })
              return idx
 
 checkUndefined :: FC -> Name -> Idris ()
@@ -175,24 +175,24 @@ isUndefined fc n
              _ -> return True
 
 setContext :: Context -> Idris ()
-setContext ctxt = do i <- get; put (i { tt_ctxt = ctxt } )
+setContext ctxt = do i <- getIState; putIState $ (i { tt_ctxt = ctxt } )
 
 updateContext :: (Context -> Context) -> Idris ()
-updateContext f = do i <- get; put (i { tt_ctxt = f (tt_ctxt i) } )
+updateContext f = do i <- getIState; putIState $ (i { tt_ctxt = f (tt_ctxt i) } )
 
 addConstraints :: FC -> (Int, [UConstraint]) -> Idris ()
 addConstraints fc (v, cs)
-    = do i <- get
+    = do i <- getIState
          let ctxt = tt_ctxt i
          let ctxt' = ctxt { uconstraints = cs ++ uconstraints ctxt,
                             next_tvar = v }
          let ics = zip cs (repeat fc) ++ idris_constraints i
-         put (i { tt_ctxt = ctxt', idris_constraints = ics })
+         putIState $ i { tt_ctxt = ctxt', idris_constraints = ics }
 
 addDeferred :: [(Name, Type)] -> Idris ()
 addDeferred ns = do mapM_ (\(n, t) -> updateContext (addTyDecl n (tidyNames [] t))) ns
-                    i <- get
-                    put (i { idris_metavars = map fst ns ++ idris_metavars i })
+                    i <- getIState
+                    putIState $ i { idris_metavars = map fst ns ++ idris_metavars i }
   where tidyNames used (Bind (MN i x) b sc)
             = let n' = uniqueName (UN x) used in
                   Bind n' b $ tidyNames (n':used) sc
@@ -202,8 +202,8 @@ addDeferred ns = do mapM_ (\(n, t) -> updateContext (addTyDecl n (tidyNames [] t
         tidyNames used b = b
 
 solveDeferred :: Name -> Idris ()
-solveDeferred n = do i <- get
-                     put (i { idris_metavars = idris_metavars i \\ [n] })
+solveDeferred n = do i <- getIState
+                     putIState $ i { idris_metavars = idris_metavars i \\ [n] }
 
 iputStrLn :: String -> Idris ()
 iputStrLn = liftIO . putStrLn
@@ -212,164 +212,164 @@ iWarn :: FC -> String -> Idris ()
 iWarn fc err = liftIO $ putStrLn (show fc ++ ":" ++ err)
 
 setLogLevel :: Int -> Idris ()
-setLogLevel l = do i <- get
+setLogLevel l = do i <- getIState
                    let opts = idris_options i
                    let opt' = opts { opt_logLevel = l }
-                   put (i { idris_options = opt' } )
+                   putIState $ i { idris_options = opt' }
 
 setCmdLine :: [Opt] -> Idris ()
-setCmdLine opts = do i <- get
+setCmdLine opts = do i <- getIState
                      let iopts = idris_options i
-                     put (i { idris_options = iopts { opt_cmdline = opts } })
+                     putIState $ i { idris_options = iopts { opt_cmdline = opts } }
 
 getDumpDefun :: Idris (Maybe FilePath)
-getDumpDefun = do i <- get
+getDumpDefun = do i <- getIState
                   return $ findC (opt_cmdline (idris_options i))
     where findC [] = Nothing
           findC (DumpDefun x : _) = Just x
           findC (_ : xs) = findC xs
 
 getDumpCases :: Idris (Maybe FilePath)
-getDumpCases = do i <- get
+getDumpCases = do i <- getIState
                   return $ findC (opt_cmdline (idris_options i))
     where findC [] = Nothing
           findC (DumpCases x : _) = Just x
           findC (_ : xs) = findC xs
 
 logLevel :: Idris Int
-logLevel = do i <- get
+logLevel = do i <- getIState
               return (opt_logLevel (idris_options i))
 
 setErrContext :: Bool -> Idris ()
-setErrContext t = do i <- get
+setErrContext t = do i <- getIState
                      let opts = idris_options i
                      let opt' = opts { opt_errContext = t }
-                     put (i { idris_options = opt' })
+                     putIState $ i { idris_options = opt' }
 
 errContext :: Idris Bool
-errContext = do i <- get
+errContext = do i <- getIState
                 return (opt_errContext (idris_options i))
 
 useREPL :: Idris Bool
-useREPL = do i <- get
+useREPL = do i <- getIState
              return (opt_repl (idris_options i))
 
 setREPL :: Bool -> Idris ()
-setREPL t = do i <- get
+setREPL t = do i <- getIState
                let opts = idris_options i
                let opt' = opts { opt_repl = t }
-               put (i { idris_options = opt' })
+               putIState $ i { idris_options = opt' }
 
 setTarget :: Target -> Idris ()
-setTarget t = do i <- get
+setTarget t = do i <- getIState
                  let opts = idris_options i
                  let opt' = opts { opt_target = t }
-                 put (i { idris_options = opt' })
+                 putIState $ i { idris_options = opt' }
 
 target :: Idris Target
-target = do i <- get
+target = do i <- getIState
             return (opt_target (idris_options i))
 
 setOutputTy :: OutputType -> Idris ()
-setOutputTy t = do i <- get
+setOutputTy t = do i <- getIState
                    let opts = idris_options i
                    let opt' = opts { opt_outputTy = t }
-                   put (i { idris_options = opt' })
+                   putIState $ i { idris_options = opt' }
 
 outputTy :: Idris OutputType
-outputTy = do i <- get
+outputTy = do i <- getIState
               return $ opt_outputTy $ idris_options i
 
 verbose :: Idris Bool
-verbose = do i <- get
+verbose = do i <- getIState
              return (opt_verbose (idris_options i))
 
 setVerbose :: Bool -> Idris ()
-setVerbose t = do i <- get
+setVerbose t = do i <- getIState
                   let opts = idris_options i
                   let opt' = opts { opt_verbose = t }
-                  put (i { idris_options = opt' })
+                  putIState $ i { idris_options = opt' }
 
 typeInType :: Idris Bool
-typeInType = do i <- get
+typeInType = do i <- getIState
                 return (opt_typeintype (idris_options i))
 
 setTypeInType :: Bool -> Idris ()
-setTypeInType t = do i <- get
+setTypeInType t = do i <- getIState
                      let opts = idris_options i
                      let opt' = opts { opt_typeintype = t }
-                     put (i { idris_options = opt' })
+                     putIState $ i { idris_options = opt' }
 
 coverage :: Idris Bool
-coverage = do i <- get
+coverage = do i <- getIState
               return (opt_coverage (idris_options i))
 
 setCoverage :: Bool -> Idris ()
-setCoverage t = do i <- get
+setCoverage t = do i <- getIState
                    let opts = idris_options i
                    let opt' = opts { opt_coverage = t }
-                   put (i { idris_options = opt' })
+                   putIState $ i { idris_options = opt' }
 
 setIBCSubDir :: FilePath -> Idris ()
-setIBCSubDir fp = do i <- get
+setIBCSubDir fp = do i <- getIState
                      let opts = idris_options i
                      let opt' = opts { opt_ibcsubdir = fp }
-                     put (i { idris_options = opt' })
+                     putIState $ i { idris_options = opt' }
 
 valIBCSubDir :: IState -> Idris FilePath
 valIBCSubDir i = return (opt_ibcsubdir (idris_options i))
 
 addImportDir :: FilePath -> Idris ()
-addImportDir fp = do i <- get
+addImportDir fp = do i <- getIState
                      let opts = idris_options i
                      let opt' = opts { opt_importdirs = fp : opt_importdirs opts }
-                     put (i { idris_options = opt' })
+                     putIState $ i { idris_options = opt' }
 
 setImportDirs :: [FilePath] -> Idris ()
-setImportDirs fps = do i <- get
+setImportDirs fps = do i <- getIState
                        let opts = idris_options i
                        let opt' = opts { opt_importdirs = fps }
-                       put (i { idris_options = opt' })
+                       putIState $ i { idris_options = opt' }
 
 allImportDirs :: IState -> Idris [FilePath]
 allImportDirs i = do let optdirs = opt_importdirs (idris_options i)
                      return ("." : optdirs)
 
 impShow :: Idris Bool
-impShow = do i <- get
+impShow = do i <- getIState
              return (opt_showimp (idris_options i))
 
 setImpShow :: Bool -> Idris ()
-setImpShow t = do i <- get
+setImpShow t = do i <- getIState
                   let opts = idris_options i
                   let opt' = opts { opt_showimp = t }
-                  put (i { idris_options = opt' })
+                  putIState $ i { idris_options = opt' }
 
 logLvl :: Int -> String -> Idris ()
-logLvl l str = do i <- get
+logLvl l str = do i <- getIState
                   let lvl = opt_logLevel (idris_options i)
                   when (lvl >= l)
                       $ do liftIO (putStrLn str)
-                           put (i { idris_log = idris_log i ++ str ++ "\n" } )
+                           putIState $ i { idris_log = idris_log i ++ str ++ "\n" }
 
 cmdOptType :: Opt -> Idris Bool
-cmdOptType x = do i <- get
+cmdOptType x = do i <- getIState
                   return $ x `elem` opt_cmdline (idris_options i)
 
 iLOG :: String -> Idris ()
 iLOG = logLvl 1
 
 noErrors :: Idris Bool
-noErrors = do i <- get
+noErrors = do i <- getIState
               case errLine i of
                 Nothing -> return True
                 _       -> return False
 
 setTypeCase :: Bool -> Idris ()
-setTypeCase t = do i <- get
+setTypeCase t = do i <- getIState
                    let opts = idris_options i
                    let opt' = opts { opt_typecase = t }
-                   put (i { idris_options = opt' })
+                   putIState $ i { idris_options = opt' }
 
 
 -- For inferring types of things
@@ -634,8 +634,8 @@ addStatics n tm ptm =
        let statics' = nub $ map fst statics ++ 
                               filter (\x -> not (elem x dnames)) stnames
        let stpos = staticList statics' tm
-       i <- get
-       put (i { idris_statics = addDef n stpos (idris_statics i) })
+       i <- getIState
+       putIState $ i { idris_statics = addDef n stpos (idris_statics i) }
        addIBC (IBCStatic n)
   where
     initStatics (Bind n (Pi ty) sc) (PPi p _ _ s)
@@ -659,14 +659,14 @@ implicit syn n ptm = implicit' syn [] n ptm
 
 implicit' :: SyntaxInfo -> [Name] -> Name -> PTerm -> Idris PTerm
 implicit' syn ignore n ptm 
-    = do i <- get
+    = do i <- getIState
          let (tm', impdata) = implicitise syn ignore i ptm
 --          let (tm'', spos) = findStatics i tm'
-         put (i { idris_implicits = addDef n impdata (idris_implicits i) })
+         putIState $ i { idris_implicits = addDef n impdata (idris_implicits i) }
          addIBC (IBCImp n)
          logLvl 5 ("Implicit " ++ show n ++ " " ++ show impdata)
 --          i <- get
---          put (i { idris_statics = addDef n spos (idris_statics i) })
+--          putIState $ i { idris_statics = addDef n spos (idris_statics i) }
          return tm'
 
 implicitise :: SyntaxInfo -> [Name] -> IState -> PTerm -> (PTerm, [PArg])

@@ -73,7 +73,7 @@ compile target f tm
                          Bytecode -> liftIO $ dumpBC c f
                          ToJavaScript -> liftIO $ codegenJavaScript c f outty
             Error e -> fail $ show e 
-  where checkMVs = do i <- get
+  where checkMVs = do i <- getIState
                       case idris_metavars i \\ primDefs of
                             [] -> return ()
                             ms -> fail $ "There are undefined metavariables: " ++ show ms
@@ -91,7 +91,7 @@ irMain tm = do i <- ir tm
 
 allNames :: [Name] -> Name -> Idris [Name]
 allNames ns n | n `elem` ns = return []
-allNames ns n = do i <- get
+allNames ns n = do i <- getIState
                    case lookupCtxt Nothing n (idris_callgraph i) of
                       [ns'] -> do more <- mapM (allNames (n:ns)) (map fst (calls ns')) 
                                   return (nub (n : concat more))
@@ -193,7 +193,7 @@ instance ToIR (TT Name) where
           | (P (DCon t a) n _, args) <- unApply tm
               = irCon env t a n args
           | (P _ n _, args) <- unApply tm
-              = do i <- get
+              = do i <- getIState
                    args' <- mapM (ir' env) args
                    case getPrim i n args' of
                         Just tm -> return tm

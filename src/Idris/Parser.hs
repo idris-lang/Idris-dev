@@ -110,7 +110,7 @@ loadSource lidr f
                     v <- verbose
                     when v $ iputStrLn $ "Type checking " ++ f
                     elabDecls toplevel ds
-                    i <- get
+                    i <- getIState
                     -- simplify every definition do give the totality checker
                     -- a better chance
                     mapM_ (\n -> do logLvl 5 $ "Simplifying " ++ show n
@@ -118,7 +118,7 @@ loadSource lidr f
                              (map snd (idris_totcheck i))
                     -- build size change graph from simplified definitions
                     iLOG "Totality checking"
-                    i <- get
+                    i <- getIState
                     mapM_ buildSCG (idris_totcheck i)
                     mapM_ checkDeclTotality (idris_totcheck i)
                     iLOG ("Finished " ++ f)
@@ -162,7 +162,7 @@ parseTac i = runParser (do t <- pTactic defaultSyntax
 
 parseImports :: FilePath -> String -> Idris ([String], [String], String, SourcePos)
 parseImports fname input 
-    = do i <- get
+    = do i <- getIState
          case runParser (do whiteSpace
                             mname <- pHeader
                             ps    <- many pImport
@@ -170,7 +170,7 @@ parseImports fname input
                             pos   <- getPosition
                             return ((mname, ps, rest, pos), i)) i fname input of
               Left err     -> fail (show err)
-              Right (x, i) -> do put i
+              Right (x, i) -> do putIState i
                                  return x
 
 pHeader :: IParser [String]
@@ -275,7 +275,7 @@ pImport = do reserved "import"; f <- identifier; option ';' (lchar ';')
 parseProg :: SyntaxInfo -> FilePath -> String -> SourcePos -> 
              Idris [PDecl]
 parseProg syn fname input pos
-    = do i <- get
+    = do i <- getIState
          case runParser (do setPosition pos
                             whiteSpace
                             ps <- many (pDecl syn)
@@ -284,7 +284,7 @@ parseProg syn fname input pos
                             return (concat ps, i')) i fname input of
             Left err     -> do iputStrLn (show err)
                                return []
-            Right (x, i) -> do put i
+            Right (x, i) -> do putIState i
                                return (collect x)
 
 -- Collect PClauses with the same function name

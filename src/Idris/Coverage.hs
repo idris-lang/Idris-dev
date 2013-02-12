@@ -33,23 +33,23 @@ genMissing fn args sc
 -- covering...)
 
 mkPatTm :: PTerm -> Idris Term
-mkPatTm t = do i <- get
+mkPatTm t = do i <- getIState
                let timp = addImpl' True [] [] i t
                evalStateT (toTT timp) 0
   where
-    toTT (PRef _ n) = do i <- lift $ get
+    toTT (PRef _ n) = do i <- lift getIState
                          case lookupDef Nothing n (tt_ctxt i) of
                               [TyDecl nt _] -> return $ P nt n Erased
                               _ -> return $ P Ref n Erased
     toTT (PApp _ t args) = do t' <- toTT t
                               args' <- mapM (toTT . getTm) args
                               return $ mkApp t' args'
-    toTT _ = do v <- get 
+    toTT _ = do v <- get
                 put (v + 1)
                 return (P Bound (MN v "imp") Erased) 
 
 mkPTerm :: Name -> [TT Name] -> Idris PTerm
-mkPTerm f args = do i <- get
+mkPTerm f args = do i <- getIState
                     let fapp = mkApp (P Bound f Erased) (map eraseName args)
                     return $ delab i fapp
   where eraseName (App f a) = App (eraseName f) (eraseName a)
@@ -90,7 +90,7 @@ dropDefault (c : cs) = c : dropDefault cs
 dropDefault [] = [] 
 
 expandTree :: SC -> Idris SC
-expandTree (Case n alts) = do i <- get
+expandTree (Case n alts) = do i <- getIState
                               as <- expandAlts i (dropDefault alts) 
                                                  (getDefault alts)
                               alts' <- mapM expandTreeA as
@@ -307,7 +307,7 @@ calcProd i fc n pats = do patsprod <- mapM prodRec pats
 calcTotality :: [Name] -> FC -> Name -> [([Name], Term, Term)]
                 -> Idris Totality
 calcTotality path fc n pats 
-    = do i <- get
+    = do i <- getIState
          let opts = case lookupCtxt Nothing n (idris_flags i) of
                             [fs] -> fs
                             _ -> []
@@ -370,7 +370,7 @@ checkTotality path fc n
     totalityError t = tclift $ tfail (At fc (Msg (show n ++ " is " ++ show t)))
 
     warnPartial n t
-       = do i <- get
+       = do i <- getIState
             case lookupDef Nothing n (tt_ctxt i) of
                [x] -> do
                   iputStrLn $ show fc ++ ":Warning - " ++ show n ++ " is " ++ show t 
@@ -399,7 +399,7 @@ checkDeclTotality (fc, n)
 
 buildSCG :: (FC, Name) -> Idris ()
 buildSCG (_, n) = do
-   ist <- get
+   ist <- getIState
    case lookupCtxt Nothing n (idris_callgraph ist) of
        [cg] -> case lookupDef Nothing n (tt_ctxt ist) of
            [CaseOp _ _ _ _ _ args sc _ _] -> 
@@ -495,7 +495,7 @@ buildSCG' ist sc args = -- trace ("Building SCG for " ++ show sc) $
 
 checkSizeChange :: Name -> Idris Totality
 checkSizeChange n = do
-   ist <- get
+   ist <- getIState
    case lookupCtxt Nothing n (idris_callgraph ist) of
        [cg] -> do let ms = mkMultiPaths ist [] (scg cg)
                   logLvl 6 ("Multipath for " ++ show n ++ ":\n" ++
