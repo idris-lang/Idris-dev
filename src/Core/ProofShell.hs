@@ -11,6 +11,8 @@ import Core.Elaborate
 import Control.Monad.State
 import System.Console.Haskeline
 
+import Idris.AbsSyntaxTree (Idris)
+
 import Util.Pretty
 
 data ShellState = ShellState 
@@ -55,7 +57,7 @@ processCommand (Tac e)  state
                                 err -> (state, show err)
     | otherwise = (state, "No proof in progress")
 
-runShell :: ShellState -> InputT IO ShellState
+runShell :: ShellState -> Idris ShellState
 runShell st = do (prompt, parser) <- 
                            maybe (return ("TT# ", parseCommand)) 
                                  (\st -> do outputStrLn . render . pretty $ st

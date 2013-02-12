@@ -22,7 +22,7 @@ import Util.Pretty
 prover :: Bool -> Name -> Idris ()
 prover lit x =
            do ctxt <- getContext
-              i <- get
+              i <- getIState
               case lookupTy Nothing x ctxt of
                   [t] -> if elem x (idris_metavars i)
                                then prove ctxt lit x t
@@ -39,13 +39,13 @@ showProof lit n ps
 
 prove :: Context -> Bool -> Name -> Type -> Idris ()
 prove ctxt lit n ty 
-    = do let ps = initElaborator n ctxt ty 
+    = do let ps = initElaborator n ctxt ty
          (tm, prf) <- ploop True ("-" ++ show n) [] (ES (ps, []) "" Nothing)
          iLOG $ "Adding " ++ show tm
          iputStrLn $ showProof lit n prf
-         i <- get
+         i <- getIState
          let proofs = proof_list i
-         put (i { proof_list = (n, prf) : proofs })
+         putIState (i { proof_list = (n, prf) : proofs })
          let tree = simpleCase False True CompileTime (FC "proof" 0) [([], P Ref n ty, tm)]
          logLvl 3 (show tree)
          (ptm, pty) <- recheckC (FC "proof" 0) [] tm
@@ -58,7 +58,7 @@ prove ctxt lit n ty
 elabStep :: ElabState [PDecl] -> ElabD a -> Idris (a, ElabState [PDecl])
 elabStep st e = do case runStateT e st of
                      OK (a, st') -> return (a, st')
-                     Error a -> do i <- get
+                     Error a -> do i <- getIState
                                    fail (pshow i a)
 
 dumpState :: IState -> ProofState -> IO ()
@@ -110,9 +110,9 @@ lifte st e = do (v, _) <- elabStep st e
 
 ploop :: Bool -> String -> [String] -> ElabState [PDecl] -> Idris (Term, [String])
 ploop d prompt prf e 
-    = do i <- get
+    = do i <- getIState
          when d $ liftIO $ dumpState i (proof e)
-         x <- lift $ getInputLine (prompt ++ "> ")
+         x <- getInputLine (prompt ++ "> ")
          (cmd, step) <- case x of
             Nothing -> fail "Abandoned"
             Just input -> do return (parseTac i input, input)

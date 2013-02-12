@@ -39,7 +39,7 @@ import Paths_idris
 
 main = do xs <- getArgs
           let opts = parseArgs xs
-          runInputT defaultSettings $ execStateT (runIdris opts) idrisInit
+          execStateT (runInputT haskelineSettings $ runIdris opts) idrisInit
 
 runIdris :: [Opt] -> Idris ()
 runIdris opts = do
