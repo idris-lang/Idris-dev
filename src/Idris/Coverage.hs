@@ -403,7 +403,7 @@ buildSCG (_, n) = do
    case lookupCtxt Nothing n (idris_callgraph ist) of
        [cg] -> case lookupDef Nothing n (tt_ctxt ist) of
            [CaseOp _ _ _ _ _ args sc _ _] -> 
-               do logLvl 5 $ "Building SCG for " ++ show n ++ " from\n" 
+               do logLvl 3 $ "Building SCG for " ++ show n ++ " from\n" 
                                 ++ show sc
                   let newscg = buildSCG' ist sc args
                   logLvl 5 $ show newscg
@@ -498,8 +498,9 @@ checkSizeChange n = do
    ist <- get
    case lookupCtxt Nothing n (idris_callgraph ist) of
        [cg] -> do let ms = mkMultiPaths ist [] (scg cg)
-                  logLvl 6 ("Multipath for " ++ show n ++ ":\n" ++
+                  logLvl 5 ("Multipath for " ++ show n ++ ":\n" ++
                             "from " ++ show (scg cg) ++ "\n" ++
+                            show (length ms) ++ "\n" ++ 
                             showSep "\n" (map show ms))
                   logLvl 6 (show cg)
                   -- every multipath must have an infinitely descending 
@@ -507,7 +508,8 @@ checkSizeChange n = do
                   -- also need to checks functions called are all total 
                   -- (Unchecked is okay as we'll spot problems here)
                   let tot = map (checkMP ist (length (argsdef cg))) ms
-                  logLvl 3 $ "Paths for " ++ show n ++ " yield " ++ (show tot)
+                  logLvl 4 $ "Generated " ++ show (length tot) ++ " paths"
+                  logLvl 6 $ "Paths for " ++ show n ++ " yield " ++ (show tot)
                   return (noPartial tot)
        [] -> do logLvl 5 $ "No paths for " ++ show n
                 return Unchecked
