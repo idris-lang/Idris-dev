@@ -58,20 +58,22 @@ processCommand (Tac e)  state
     | otherwise = (state, "No proof in progress")
 
 runShell :: ShellState -> Idris ShellState
-runShell st = do (prompt, parser) <- 
-                           maybe (return ("TT# ", parseCommand)) 
-                                 (\st -> do outputStrLn . render . pretty $ st
-                                            return (show (thname st) ++ "# ", parseTactic)) 
-                                 (prf st)
-                 x <- getInputLine prompt
-                 cmd <- case x of
-                    Nothing -> return $ Right Quit
-                    Just input -> return (parser input)
-                 case cmd of
-                    Left err -> do outputStrLn (show err)
-                                   runShell st
-                    Right cmd -> do let (st', r) = processCommand cmd st
-                                    outputStrLn r
-                                    if (not (exitNow st')) then runShell st'
-                                                           else return st'
+runShell st = runInputT defaultSettings $ runShell' st
+    where
+      runShell' st = do (prompt, parser) <- 
+                            maybe (return ("TT# ", parseCommand)) 
+                                      (\st -> do outputStrLn . render . pretty $ st
+                                                 return (show (thname st) ++ "# ", parseTactic)) 
+                                      (prf st)
+                        x <- getInputLine prompt
+                        cmd <- case x of
+                                 Nothing -> return $ Right Quit
+                                 Just input -> return (parser input)
+                        case cmd of
+                          Left err -> do outputStrLn (show err)
+                                         runShell' st
+                          Right cmd -> do let (st', r) = processCommand cmd st
+                                          outputStrLn r
+                                          if (not (exitNow st')) then runShell' st'
+                                            else return st'
 
