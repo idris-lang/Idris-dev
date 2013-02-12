@@ -63,12 +63,13 @@ fixErrorMsg msg fixes = msg ++ ", possible fixes:\n" ++ (concat $ intersperse "\
 loadModule :: FilePath -> Idris String
 loadModule f 
    = idrisCatch (do i <- getIState
+                    let file = takeWhile (/= ' ') f      
                     ibcsd <- valIBCSubDir i
                     ids <- allImportDirs i
-                    fp <- liftIO $ findImport ids ibcsd f
-                    if f `elem` imported i
-                       then iLOG $ "Already read " ++ f
-                       else do putIState (i { imported = f : imported i })
+                    fp <- liftIO $ findImport ids ibcsd file
+                    if file `elem` imported i
+                       then iLOG $ "Already read " ++ file
+                       else do putIState (i { imported = file : imported i })
                                case fp of
                                    IDR fn  -> loadSource False fn
                                    LIDR fn -> loadSource True  fn
@@ -78,7 +79,7 @@ loadModule f
                                                           case src of
                                                             IDR sfn -> loadSource False sfn
                                                             LIDR sfn -> loadSource True sfn)
-                    let (dir, fh) = splitFileName f
+                    let (dir, fh) = splitFileName file
                     return (dropExtension fh))
                 (\e -> do let msg = show e
                           setErrLine (getErrLine msg)
@@ -110,7 +111,7 @@ loadSource lidr f
                     v <- verbose
                     when v $ iputStrLn $ "Type checking " ++ f
                     elabDecls toplevel ds
-                    i <- get
+                    i <- getIState
                     -- simplify every definition do give the totality checker
                     -- a better chance
                     mapM_ (\n -> do logLvl 5 $ "Simplifying " ++ show n
@@ -118,7 +119,7 @@ loadSource lidr f
                              (map snd (idris_totcheck i))
                     -- build size change graph from simplified definitions
                     iLOG "Totality checking"
-                    i <- get
+                    i <- getIState
                     mapM_ buildSCG (idris_totcheck i)
                     mapM_ checkDeclTotality (idris_totcheck i)
                     iLOG ("Finished " ++ f)
@@ -162,7 +163,7 @@ parseTac i = runParser (do t <- pTactic defaultSyntax
 
 parseImports :: FilePath -> String -> Idris ([String], [String], String, SourcePos)
 parseImports fname input 
-    = do i <- get
+    = do i <- getIState
          case runParser (do whiteSpace
                             mname <- pHeader
                             ps    <- many pImport
@@ -170,7 +171,7 @@ parseImports fname input
                             pos   <- getPosition
                             return ((mname, ps, rest, pos), i)) i fname input of
               Left err     -> fail (show err)
-              Right (x, i) -> do put i
+              Right (x, i) -> do putIState i
                                  return x
 
 pHeader :: IParser [String]
@@ -275,7 +276,7 @@ pImport = do reserved "import"; f <- identifier; option ';' (lchar ';')
 parseProg :: SyntaxInfo -> FilePath -> String -> SourcePos -> 
              Idris [PDecl]
 parseProg syn fname input pos
-    = do i <- get
+    = do i <- getIState
          case runParser (do setPosition pos
                             whiteSpace
                             ps <- many (pDecl syn)
@@ -284,7 +285,7 @@ parseProg syn fname input pos
                             return (concat ps, i')) i fname input of
             Left err     -> do iputStrLn (show err)
                                return []
-            Right (x, i) -> do put i
+            Right (x, i) -> do putIState i
                                return (collect x)
 
 -- Collect PClauses with the same function name

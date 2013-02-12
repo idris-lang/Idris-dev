@@ -11,6 +11,8 @@ import Core.Elaborate
 import Control.Monad.State
 import System.Console.Haskeline
 
+import Idris.AbsSyntaxTree (Idris)
+
 import Util.Pretty
 
 data ShellState = ShellState 
@@ -55,21 +57,23 @@ processCommand (Tac e)  state
                                 err -> (state, show err)
     | otherwise = (state, "No proof in progress")
 
-runShell :: ShellState -> InputT IO ShellState
-runShell st = do (prompt, parser) <- 
-                           maybe (return ("TT# ", parseCommand)) 
-                                 (\st -> do outputStrLn . render . pretty $ st
-                                            return (show (thname st) ++ "# ", parseTactic)) 
-                                 (prf st)
-                 x <- getInputLine prompt
-                 cmd <- case x of
-                    Nothing -> return $ Right Quit
-                    Just input -> return (parser input)
-                 case cmd of
-                    Left err -> do outputStrLn (show err)
-                                   runShell st
-                    Right cmd -> do let (st', r) = processCommand cmd st
-                                    outputStrLn r
-                                    if (not (exitNow st')) then runShell st'
-                                                           else return st'
+runShell :: ShellState -> Idris ShellState
+runShell st = runInputT defaultSettings $ runShell' st
+    where
+      runShell' st = do (prompt, parser) <- 
+                            maybe (return ("TT# ", parseCommand)) 
+                                      (\st -> do outputStrLn . render . pretty $ st
+                                                 return (show (thname st) ++ "# ", parseTactic)) 
+                                      (prf st)
+                        x <- getInputLine prompt
+                        cmd <- case x of
+                                 Nothing -> return $ Right Quit
+                                 Just input -> return (parser input)
+                        case cmd of
+                          Left err -> do outputStrLn (show err)
+                                         runShell' st
+                          Right cmd -> do let (st', r) = processCommand cmd st
+                                          outputStrLn r
+                                          if (not (exitNow st')) then runShell' st'
+                                            else return st'
 
