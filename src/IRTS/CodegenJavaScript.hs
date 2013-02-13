@@ -1,6 +1,6 @@
 {-# LANGUAGE PatternGuards #-}
 
-module IRTS.CodegenJavaScript (codegenJavaScript) where
+module IRTS.CodegenJavaScript (codegenJavaScript, JSTarget(..)) where
 
 import Idris.AbsSyntax
 import IRTS.Bytecode
@@ -20,14 +20,20 @@ import System.IO
 idrNamespace :: String
 idrNamespace = "__IDR__"
 
+data JSTarget = Node | JavaScript
+
 codegenJavaScript
-  :: [(Name, SDecl)]
+  :: JSTarget
+  -> [(Name, SDecl)]
   -> FilePath
   -> OutputType
   -> IO ()
-codegenJavaScript definitions filename outputType = do
+codegenJavaScript target definitions filename outputType = do
+  let runtime = case target of
+                     Node       -> "-node"
+                     JavaScript -> ""
   path <- getDataDir
-  idrRuntime <- readFile (path ++ "/js/Runtime.js")
+  idrRuntime <- readFile $ concat [path, "/js/Runtime", runtime, ".js"]
   writeFile filename (idrRuntime ++ modules ++ functions ++ mainLoop)
   where
     def = map (first translateNamespace) definitions

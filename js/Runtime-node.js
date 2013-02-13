@@ -37,9 +37,12 @@ __IDRRT__.tailcall = function(f) {
   }
 };
 
-__IDRRT__.print = function(s) {
-  console.log(s);
-};
+__IDRRT__.print = (function() {
+  var util = require('util');
+  return function(s) {
+    util.print(s);
+  };
+})();
 
 /*
    BigInteger Javascript code taken from:

@@ -423,7 +423,8 @@ parseTarget :: String -> Target
 parseTarget "C" = ViaC
 parseTarget "Java" = ViaJava
 parseTarget "bytecode" = Bytecode
-parseTarget "javascript" = ToJavaScript
+parseTarget "javascript" = ViaJavaScript
+parseTarget "node" = ViaNode
 parseTarget _ = error "unknown target" -- FIXME: partial function
 
 parseArgs :: [String] -> [Opt]

@@ -8,6 +8,7 @@ Internal changes:
 * Change unification so that it keeps track of failed constraints in case
   later information helps to resolve them
 * Distinguishing parameters and indices in data types
+* Split 'javascript' target into 'javascript' and 'node'
 
 New in 0.9.6:
 -------------
