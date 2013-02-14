@@ -77,12 +77,12 @@ which arguments are implicit or constraint arguments:
 \end{array}
 \medskip\\
 \begin{array}{ll}
-\MO{UnelabTyDecl}\:\vi\:(\all{\vx}{\vT}\SC\ve)
-\mq & \piimp{\vx}{\uninterp{\vT}}(\MO{UnelabTyDecl}\:(\vi+1)\:\ve) \\
+\MO{UnelabTyDecl}\:\vi\:(\all{\vy}{\vT}\SC\ve)
+\mq & \piimp{\vy}{\uninterp{\vT}}(\MO{UnelabTyDecl}\:(\vi+1)\:\ve) \\
  & \hg\mbox{(if the $i$th argument to $\vx$ is an implicit argument)} \\
  & \piconst{\uninterp{\vT}}(\MO{UnelabTyDecl}\:(\vi+1)\:\ve) \\
  & \hg\mbox{(if the $i$th argument to $\vx$ is a constraint argument)} \\
- & \piexp{\vx}{\uninterp{\vT}}(\MO{UnelabTyDecl}\:(\vi+1)\:\ve) \\
+ & \piexp{\vy}{\uninterp{\vT}}(\MO{UnelabTyDecl}\:(\vi+1)\:\ve) \\
  & \hg\mbox{(otherwise)} \\
 \end{array}
 }

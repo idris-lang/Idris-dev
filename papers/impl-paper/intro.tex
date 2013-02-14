@@ -4,7 +4,7 @@ Dependently typed programming languages, such as Agda \cite{norell2007thesis}
 and Coq \cite{Bertot2004}, have emerged in recent years as a promising approach
 to ensuring the correctness of software. Type checking ensures a program has
 the intended meaning; \emph{dependent} types, where types may be predicated
-on values, allow a programmer to give a program a \emph{precise} type and 
+on values, allow a programmer to give a program a more precise type and 
 hence have increased confidence of its correctness.
 The \Idris{} language
 \cite{Brady2011a} aims to take this idea further, by providing support for
@@ -121,7 +121,7 @@ This illustrates some basic features of \Idris{}:
 
 \begin{itemize}
 \item A single colon is used for type signatures, and a double colon for the
-cons operator.
+cons operator, emphasising the importance of types.
 \item Functions are defined by pattern matching, with a top level type signature.
 Names which are free in the type signature (\texttt{a} and \texttt{n}) here
 are implicitly bound.

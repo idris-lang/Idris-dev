@@ -5,7 +5,8 @@
 \Idris{} is
 a pure functional programming language with dependent types. It is
 eagerly evaluated by default, and compiled via the Epic supercombinator
-library \cite{brady2011epic}.
+library~\cite{brady2011epic}, with irrelevant values and proof terms
+automatically erased~\cite{Brady2003,Brady2005}.
 In this section, I will give a brief introduction to programming in \Idris{},
 covering the most important features. A full tutorial is available elsewhere
 \cite{idristutorial}. 
@@ -38,14 +39,10 @@ main = putStrLn ("The answer is " ++ show x)
 \useverb{constprims}
 
 \noindent
-Like Haskell, the main function
-is called \texttt{main}, and input and output is managed with an \texttt{IO}
-monad. Unlike Haskell, however, a single colon indicates \texttt{:} a type
-signature, emphasising the importance of types, 
-and \remph{all} top level functions must have a type
-signature. This is due to type inference being, in general, 
-undecidable for languages with
-dependent types.
+Like Haskell, the main function is called \texttt{main}, and input and output
+is managed with an \texttt{IO} monad. Unlike Haskell, however, \remph{all} top
+level functions must have a type signature. This is due to type inference
+being, in general, undecidable for languages with dependent types.
 
 A module declaration also opens a \remph{namespace}. The fully qualified names
 declared in this module are \texttt{Main.x} and \texttt{Main.main}.
@@ -171,7 +168,7 @@ Any names which are visible in the outer scope are also visible in the
 \texttt{where} clause (unless they are redefined in the \texttt{where} clause,
 such as \texttt{xs} here). A name which appears only in the type will be in
 scope in the \texttt{where} clause if it is a \remph{parameter} to one of the
-types, i.e. it is fixed across the entire structure.  In particular, this means
+types, i.e. it is fixed across the entire data structure.  In particular, this means
 that the \texttt{a} in the definition of \texttt{reverse} above is the
 \remph{same} \texttt{a} as in the definition of \texttt{revAcc}, as \texttt{a}
 is a parameter of \texttt{List}.
@@ -206,7 +203,7 @@ of the type constructor \tTC{Vect} --- it takes a type and a \tTC{Nat} as an
 argument, where \tTC{Type} stands for the type of types. We say that \tTC{Vect}
 is \emph{parameterised} by a type, and \emph{indexed} over \tTC{Nat}. 
 The distinction between parameters and indices is that a parameter is fixed
-across an entire structure, whereas an index may vary.
+across an entire data structure, whereas an index may vary.
 Each constructor targets a different part of the family of types. \tDC{Nil} can
 only be used to construct vectors with zero length, and \tDC{::} to construct
 vectors with non-zero length. The type of \tDC{::} states explicitly that an element
@@ -247,7 +244,7 @@ This declares
 \tDC{fO} as the zeroth element of a finite set with \texttt{S k} elements; 
 \texttt{fS n} as the
 \texttt{n+1}th element of a finite set with \texttt{S k} elements. 
-\tTC{Fin} is indexed by a \tTC{Nat}, which
+\tTC{Fin} is indexed by \tTC{Nat}, which
 represents the number of elements in the set. 
 Neither constructor targets \texttt{Fin O}, because we cannot construct an
 element of an empty set.
@@ -412,7 +409,7 @@ class Show a where
 \useverb{showclass}
 
 \noindent
-This generates a function of the following type (which we call a \emph{method} of the 
+This declares a function of the following type (which we call a \emph{method} of the 
 \texttt{Show} class):
 
 \begin{SaveVerbatim}{showty}

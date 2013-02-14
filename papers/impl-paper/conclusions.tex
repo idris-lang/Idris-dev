@@ -126,8 +126,10 @@ it is possible to expose tactics to the programmer. This opens up
 the possibility of implementing domain specific decision procedures, or
 implementing user defined tactics in a style similar to Coq's \texttt{Ltac}
 language \cite{Delahaye2000}.  Although \TT{} is primarily intended as a core
-language for \Idris{}, its rich type system also allows it to capture a number
-of high level languages, especially when augmented with primitive operators. 
+language for \Idris{}, its rich type system also means that it could be used
+as a core language for other high level languages, especially when augmented
+with primitive operators, and used to express additional properties of those
+languages.  
 
 We have not discussed the performance of the elaboration
 algorithm, or described how \Idris{} compiles to executable code. In practice,

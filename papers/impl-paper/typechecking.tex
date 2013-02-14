@@ -20,9 +20,9 @@ its semantics.
 The syntax of \TT{} expressions is given in Figure \ref{ttsyn}. This defines:
 
 \begin{itemize}
-\item \demph{Terms}, $\vt$, which are variables, bindings, applications or constants.
-\item \demph{Bindings}, $\vb$, which are lambda abstractions, let bindings, or function spaces.
-\item \demph{Constants}, $\vc$, which are integer or string literals, or $\Type_i$, the
+\item \demph{Terms}, $\vt$, which can be variables, bindings, applications or constants.
+\item \demph{Bindings}, $\vb$, which can be lambda abstractions, let bindings, or function spaces.
+\item \demph{Constants}, $\vc$, which can be integer or string literals, or $\Type_i$, the
 type of types, and may be extended with other primitives. 
 \end{itemize}
 
@@ -33,8 +33,8 @@ inferred by the machine~\cite{pollack1990implicit}.
 
 \FFIG{
 \begin{array}{rll@{\hg}rll}
-\vt ::= & \vc & (\mbox{constant}) &
-\hg\vb ::= & \lam{\vx}{\vt} & (\mbox{abstraction}) \\
+\mbox{Terms,}\;\vt ::= & \vc & (\mbox{constant}) &
+\;\mbox{Binders,}\;\vb ::= & \lam{\vx}{\vt} & (\mbox{abstraction}) \\
 
  \mid  & \vx & (\mbox{variable}) &
  \mid & \LET\;\vx\defq\vt\Hab\vt & (\mbox{let binding}) \\
@@ -47,7 +47,7 @@ inferred by the machine~\cite{pollack1990implicit}.
 % & & &
 % \mid & \pty{\vx}{\vt} & (\mbox{pattern type}) \\
 \medskip\\
- \vc ::= & \Type_i & (\mbox{type universes}) \\
+\mbox{Constants,}\;\vc ::= & \Type_i & (\mbox{type universes}) \\
    \mid & \vi & (\mbox{integer literal}) \\
    \mid & \VV{str} & (\mbox{string literal}) \\
 \end{array}
@@ -93,8 +93,9 @@ by one of the following schemes:
 
 \begin{itemize}
 \item $\beta$-contraction, which substitutes a value applied to a $\lambda$-binding for
-the bound variable. We define $\beta$-contraction simply by replacing the $\lambda$-binding
-with a $\LET$ binding.
+the bound variable. 
+%We define $\beta$-contraction simply by replacing the $\lambda$-binding
+%with a $\LET$ binding.
 \item $\delta$-contraction, which replaces a $\LET$ bound variable with its value.
 \end{itemize}
 
@@ -122,7 +123,9 @@ reduction rules.
 \begin{array}{lc}
 \beta\mathrm{-contraction} &
 \Axiom{
-\Gamma\proves(\lam{\vx}{\vS}\SC\vt)\;\vs\leadsto\LET\;\vx\defq\vs\Hab\vS\SC\vt
+\Gamma\proves(\lam{\vx}{\vS}\SC\vt)\;\vs\leadsto
+\vt[\vs/\vx]
+%\LET\;\vx\defq\vs\Hab\vS\SC\vt
 } \\
 \delta\mathrm{-contraction} &
 \Axiom{
@@ -141,10 +144,11 @@ reduction rules.
 
 \label{sect:typerules}
 
-The type inference rules for \TT{} expressions are given in Figure \ref{typerules}.
-These rules use the \demph{cumulativity} relation, defined in 
-Figure \ref{cumul}. The type of types, $\Type_i$ is parameterised by a universe level,
-to prevent Girard's paradox~\cite{coquand1986analysis}. Cumulativity allows programs at
+The type inference rules for \TT{} expressions are given in Figure
+\ref{typerules}.  These rules use the \demph{cumulativity} relation, defined in
+Figure \ref{cumul}. The type of types, $\Type_i$ is parameterised by a universe
+level, to prevent Girard's paradox~\cite{coquand1986analysis}.  There is an
+infinite hierarchy of predicative universes.  Cumulativity allows programs at
 lower universe levels to inhabit higher universe levels. In practice, universe levels
 can be left implicit (and will be left implicit in the rest of this paper) ---
 the type checker generates a graph of constraints between universe levels (such
@@ -513,7 +517,7 @@ trees~\cite{Augustsson1985}.
 {Metatheoretic properties of \TT{}}
 {metatheory}
 
-We assume that \TT{} respects the usual metatheoretic properties, as shown in
+We conjecture that \TT{} respects the usual metatheoretic properties, as shown in
 Figure \ref{metatheory}.  Specifically: the \demph{Church-Rosser} property
 (i.e. that distinct reduction sequences lead to the same normal form);
 \demph{subject reduction} (i.e. that computation preserves type); the
@@ -536,9 +540,10 @@ takes a simple but pragmatic and effective approach to termination checking:
 any functions which do not satisfy a syntactic constraint on recursive calls
 are marked as \emph{partial}. Additionally, any function which calls a partial
 function or uses a data type which is not strictly positive is also marked as
-partial. The syntactic constraint we use is that a recursive call in a pattern
-clause must have an argument which is structurally smaller than an input
-argument in the same position. \TT{} also marks functions which do not cover
+partial. We use the size change principle~\cite{Lee2001} to determine whether
+(possibly mutually defined) recursive functions are guaranteed to
+terminate.
+\TT{} also marks functions which do not cover
 all possible inputs as partial. This totality checking is independent of the
 rest of the type theory, and can be extended.
 
@@ -601,11 +606,12 @@ vAdd a (S k) c ((::) a k x xs) ((::) a k y ys)
 \end{SaveVerbatim}
 \useverb{vAddImpSolve} 
 
-Finally, to build the \TT{} definition, we need to find the type of each pattern variable
-and state it explicitly. This leads to the \TT{} definition in Figure \ref{ttvadd}, 
-switching to \TT{} notation from the ASCII \Idris{} syntax.
+Finally, to build the \TT{} definition, we need to find the type of each
+pattern variable and state it explicitly. This leads to the following
+\TT{} definition, switching to \TT{} notation from the ASCII \Idris{}
+syntax:
 
-\FFIG{
+\DM{
 \AR{
 \FN{vAdd} \Hab(\va\Hab\Type)\to(\vn\Hab\Nat)\to\TC{Num}\;\va\to
   \Vect\;\va\;\vn\to\Vect\;\va\;\vn\to\Vect\;\va\;\vn\\
@@ -626,8 +632,6 @@ switching to \TT{} notation from the ASCII \Idris{} syntax.
 }
 }
 }
-{Pairwise addition of vectors in \TT{}}
-{ttvadd}
 
 \subsubsection{An Observation: Programming vs Theorem Proving}
 
