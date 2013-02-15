@@ -2,7 +2,7 @@
 
 \label{sect:related}
 
-Dependently typed programming languages have becoming more prominent in recent
+Dependently typed programming languages have become more prominent in recent
 years as tools for verifying software correctness, and several experimental
 languages are being developed, in particular Agda \cite{norell2007thesis},
 Epigram \cite{McBride2004a,Levitation2010} and Trellys \cite{Kimmell2012}.
@@ -39,7 +39,9 @@ approach, however: firstly, the type checker is much more complicated when
 combined with unification, making it harder to maintain; secondly, adding new
 high level features requires the type checker to support those features
 directly. In contrast, elaboration by tactics gives a clean separation between
-the low level and high level languages.
+the low level and high level languages, and results in programs in a core
+type theory which is separately checkable, perhaps even by an independently
+written checker which implements the \TT{} rules directly.
 
 Matita uses a bi-directional refinement algorithm~\cite{Asperti}. This is a
 type directed approach, maintaining a set of yet to be solved unification
@@ -141,9 +143,9 @@ in a proof term, which can be improved by choosing a better representation
 for proof terms, perhaps based on a zipper \cite{Huet1997}. Compilation is made
 straightforward by the Epic library \cite{brady2011epic}, with I/O and foreign
 functions handled using command-response interaction trees \cite{Hancock2000}.
-Although we have not yet run detailed benchmarks of the performance of compiled
-code, we believe that rich type information and guaranteed termination will
-allow aggressive optimisations~\cite{Brady2003,Brady2005}. We will investigate
+Although I have not yet run detailed benchmarks of the performance of compiled
+code, I believe that rich type information and guaranteed termination will
+allow aggressive optimisations~\cite{Brady2003,Brady2005}. I will investigate
 this in future work.
 
 The objective of this implementation of \Idris{} is to provide a platform

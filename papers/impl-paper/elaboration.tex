@@ -815,7 +815,7 @@ Using this convention, we can build $\FN{id}$'s type and definition as shown
 in Figure \ref{idelab}. Note that $\MO{Term}$ retrieves the proof term from the current proof
 state. Both $\MO{MkIdType}$ and $\MO{MkId}$ finish by returning a completed \TT{} term.
 Note in particular that each tactic which introduces a guess ($\MO{Fill}$ 
-and $\MO{Solve}$ is closed with a $\MO{Solve}$).
+and $\MO{Attack}$) is closed with a $\MO{Solve}$.
 
 Setting up elaboration in this way, with a proof state captured in a monad,
 and a primitive collection of tactics, makes it easy to derive more complex
@@ -944,7 +944,7 @@ are given explicitly, the application must be expanded.
 \FFIG{
 \AR{
 \begin{array}{rll@{\hg}rll}
-\ve ::= & \vc & (\mbox{constant}) &
+\ve, \vt ::= & \vc & (\mbox{constant}) &
 \mid & \vx & (\mbox{variable}) \\
 \mid & \ilam{\vx}\;\ve & (\mbox{lambda abstraction}) &
 \mid & \ve\;\ta & (\mbox{function application}) \\
