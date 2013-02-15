@@ -45,7 +45,7 @@ Matita uses a bi-directional refinement algorithm~\cite{Asperti}. This is a
 type directed approach, maintaining a set of yet to be solved unification
 problems and relying on a small kernel, similar to the approach we now take
 with \Idris{}, However, their approach uses refinement rules rather than
-actics. This leads to good error messages though it is not clear how
+tactics. This leads to good error messages though it is not clear how
 easy it would be to extend to additional high level language features, unlike
 the tactic based approach.
 
@@ -141,6 +141,10 @@ in a proof term, which can be improved by choosing a better representation
 for proof terms, perhaps based on a zipper \cite{Huet1997}. Compilation is made
 straightforward by the Epic library \cite{brady2011epic}, with I/O and foreign
 functions handled using command-response interaction trees \cite{Hancock2000}.
+Although we have not yet run detailed benchmarks of the performance of compiled
+code, we believe that rich type information and guaranteed termination will
+allow aggressive optimisations~\cite{Brady2003,Brady2005}. We will investigate
+this in future work.
 
 The objective of this implementation of \Idris{} is to provide a platform
 for experimenting with realistic, general purpose programming with dependent

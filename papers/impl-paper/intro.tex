@@ -38,10 +38,10 @@ well-defined core language with well-understood meta-theory \cite{Altenkirch2010
 How can we achieve both of these goals?
 
 This paper describes a method for elaborating a high level dependently typed
-functional programming language to a low level core language based on dependent
+functional programming language to a low level core based on dependent
 type theory.  The method involves building an elaboration monad which captures
 the state of incomplete programs and a collection of \emph{tactics} for
-refining programs, directed by high level program syntax.  As we shall see,
+refining programs, directed by high level syntax.  As we shall see,
 this method allows higher level language constructs to be constructed in a
 straightforward manner, without compromising the simplicity of the underlying
 type theory.
@@ -103,9 +103,9 @@ in $\MO{SmallCaps}$.
 
 \subsection{Elaboration Example}
 
-\Idris{} is a Haskell-like pure functional programming language with dependent types.
-A simple example program is the following, which adds corresponding elements of
-vectors of the same length:
+\Idris{} is a Haskell-like pure functional programming language with dependent
+types.  A simple example program is the following, which adds corresponding
+elements of vectors of the same length:
 
 \begin{SaveVerbatim}{vadd}
 
