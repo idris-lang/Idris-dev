@@ -247,6 +247,9 @@ getChar = mkForeign (FFun "getchar" [] FChar)
 abstract 
 data File = FHandle Ptr
 
+partial stdin : File
+stdin = FHandle prim__stdin
+
 do_fopen : String -> String -> IO Ptr
 do_fopen f m = mkForeign (FFun "fileOpen" [FString, FString] FPtr) f m
 

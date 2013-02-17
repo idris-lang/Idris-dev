@@ -522,10 +522,11 @@ mkMultiPaths ist path cg
     = concat (map extend cg)
   where extend (nextf, args) 
            | (nextf, args) `elem` path = [ reverse ((nextf, args) : path) ]
-           | otherwise 
+           | [Unchecked] <- lookupTotal nextf (tt_ctxt ist) 
                = case lookupCtxt Nothing nextf (idris_callgraph ist) of
                     [ncg] -> mkMultiPaths ist ((nextf, args) : path) (scg ncg) 
                     _ -> [ reverse ((nextf, args) : path) ]
+           | otherwise = [ reverse ((nextf, args) : path) ]
 
 --     do (nextf, args) <- cg
 --          if ((nextf, args) `elem` path)
@@ -571,7 +572,7 @@ checkMP ist i mp = if i > 0
                         Total []
                    else Partial (Mutual (map (fst . fst) path ++ [f]))
         | [Unchecked] <- lookupTotal f (tt_ctxt ist) =
-            let argspos = zip nextargs [0..] in
+            let argspos = collapseNothing (zip nextargs [0..]) in
                 collapse' Unchecked $ 
                   do (a, pos) <- argspos
                      case a of
@@ -595,9 +596,16 @@ checkMP ist i mp = if i > 0
                               _ -> trace ("Shouldn't happen " ++ show e) $ 
                                       return (Partial Itself)
                             else return Unchecked
-        | [Total _] <- lookupTotal f (tt_ctxt ist) = Unchecked
+        | [Total a] <- lookupTotal f (tt_ctxt ist) = Total a
         | [Partial _] <- lookupTotal f (tt_ctxt ist) = Partial (Other [f])
         | otherwise = Unchecked
+
+collapseNothing ((Nothing, _) : xs) 
+   = filter (\ (x, _) -> case x of
+                              Nothing -> False
+                              _ -> True) xs
+collapseNothing (x : xs) = x : collapseNothing xs
+collapseNothing [] = []
 
 noPartial (Partial p : xs) = Partial p
 noPartial (_ : xs)         = noPartial xs
