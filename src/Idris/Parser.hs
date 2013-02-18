@@ -432,8 +432,8 @@ pFunDecl' syn = try (do doc <- option "" (pDocComment '|')
                         opts' <- pFnOpts opts
                         n_in <- pfName
                         let n = expandNS syn n_in
-                        ty <- pTSig (impOK syn)
                         fc <- pfc
+                        ty <- pTSig (impOK syn)
                         pTerminator 
 --                         ty' <- implicit syn n ty
                         addAcc n acc
@@ -1120,8 +1120,8 @@ toTable fs = map (map toBin)
          assoc (Infixr _) = AssocRight
          assoc (InfixN _) = AssocNone
 
-binary name f = Infix (do reservedOp name
-                          fc <- pfc; 
+binary name f = Infix (do fc <- pfc
+                          reservedOp name
                           doc <- option "" (pDocComment '^')
                           return (f fc)) 
 prefix name f = Prefix (do reservedOp name
