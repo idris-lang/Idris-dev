@@ -164,7 +164,9 @@ genClauses fc n xs given
                         (p : _) -> p
                         _ -> repeat (pexp Placeholder)
         let tryclauses = mkClauses parg all_args
-        let new = mnub i $ filter (noMatch i) tryclauses 
+        logLvl 2 $ show (length tryclauses) ++ " initially to check"
+        let new = mnub i $ filter (noMatch i) tryclauses
+        logLvl 1 $ show (length new) ++ " clauses to check for impossibility"
         logLvl 7 $ "New clauses: \n" ++ showSep "\n" (map (showImp True) new)
 --           ++ " from:\n" ++ showSep "\n" (map (showImp True) tryclauses) 
         return new
@@ -202,13 +204,18 @@ genClauses fc n xs given
                                 as' <- mkArg as
                                 return (a':as')
 
+fnub xs = fnub' [] xs where
+  fnub' acc (x : xs) | x `elem` acc = fnub' acc xs
+                     | otherwise = fnub' (x : acc) xs
+  fnub' acc [] = acc
+
 -- FIXME: Just look for which one is the deepest, then generate all 
 -- possibilities up to that depth.
 
 genAll :: IState -> [PTerm] -> [PTerm]
 genAll i args = case filter (/=Placeholder) $ concatMap otherPats (nub args) of
                     [] -> [Placeholder]
-                    xs -> xs
+                    xs -> nub xs
   where 
     conForm (PApp _ (PRef fc n) _) = isConName Nothing n (tt_ctxt i)
     conForm (PRef fc n) = isConName Nothing n (tt_ctxt i)
