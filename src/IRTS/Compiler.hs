@@ -65,13 +65,19 @@ compile target f tm
             Just f -> liftIO $ writeFile f (dumpDefuns defuns)
         iLOG "Building output"
         case checked of
-            OK c -> case target of
-                         ViaC -> liftIO $ codegenC c f outty hdrs 
-                                   (concatMap mkObj objs)
-                                   (concatMap mkLib libs) NONE
-                         ViaJava -> liftIO $ codegenJava c f outty
-                         Bytecode -> liftIO $ dumpBC c f
-                         ToJavaScript -> liftIO $ codegenJavaScript c f outty
+            OK c -> liftIO $ case target of
+                                  ViaC ->
+                                    codegenC c f outty hdrs
+                                      (concatMap mkObj objs)
+                                      (concatMap mkLib libs) NONE
+                                  ViaJava ->
+                                    codegenJava c f outty
+                                  ViaJavaScript ->
+                                    codegenJavaScript JavaScript c f outty
+                                  ViaNode ->      
+                                    codegenJavaScript Node c f outty
+
+                                  Bytecode -> dumpBC c f
             Error e -> fail $ show e 
   where checkMVs = do i <- getIState
                       case idris_metavars i \\ primDefs of

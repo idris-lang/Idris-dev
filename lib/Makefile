@@ -11,6 +11,6 @@ clean: .PHONY
 	$(IDRIS) --clean base.ipkg
 
 linecount: .PHONY
-	wc -l *.idr Network/*.idr Language/*.idr Prelude/*.idr Control/Monad/*.idr
+	wc -l *.idr Network/*.idr Language/*.idr Prelude/*.idr Data/*.idr Control/Monad/*.idr Control/*.idr
 
 .PHONY:
