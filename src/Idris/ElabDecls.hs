@@ -92,7 +92,7 @@ elabPostulate info syn doc fc opts n ty
             [] -> tclift $ tfail $ (At fc (NoTypeDecl n)) -- can't happen!
             [ty] -> return ty
          ist <- getIState
-         let (ap, _) = unApply (getRetTy fty)
+         let (ap, _) = unApply (getRetTy (normalise ctxt [] fty))
          logLvl 5 $ "Checking collapsibility of " ++ show (ap, fty)
          let postOK = case ap of
                             P _ tn _ -> case lookupCtxt Nothing tn

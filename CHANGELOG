@@ -3,6 +3,8 @@ New in 0.9.7:
 
 User visible changes:
 
+* Primitives for 8,16,32 and 64 bit integers
+
 Internal changes:
 
 * Change unification so that it keeps track of failed constraints in case
