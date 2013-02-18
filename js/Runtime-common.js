@@ -1,4 +1,3 @@
-var require;
 var __IDRRT__ = {};
 
 /** @constructor */
@@ -37,19 +36,6 @@ __IDRRT__.tailcall = function(f) {
     }
   }
 };
-
-__IDRRT__.print = (function(){
-  if (require) {
-    var util = require('util');
-    return function(s) {
-      util.print(s);
-    };
-  } else {
-    return function(s) {
-      console.log(s);
-    };
-  }
-})();
 
 /*
    BigInteger Javascript code taken from:
