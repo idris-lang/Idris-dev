@@ -233,6 +233,12 @@ div left (S right) = div' left left right
       else
         S (div' left (centre - (S right)) right)
 
+%assert_total
+log2 : Nat -> Nat
+log2 O = O
+log2 (S O) = O
+log2 n = S (log2 (n `div` 2))
+
 --------------------------------------------------------------------------------
 -- Properties
 --------------------------------------------------------------------------------

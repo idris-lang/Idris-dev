@@ -40,10 +40,23 @@ data PrimFn = LPlus | LMinus | LTimes | LDiv | LMod
             | LIntBig | LBigInt | LStrBig | LBigStr | LChInt | LIntCh
             | LPrintNum | LPrintStr | LReadStr
 
-            | LW8 | LW16
-            
-            | LW8Plus | LW8Minus | LW8Times
-            | LW16Plus | LW16Minus | LW16Times
+            | LB8Lt | LB8Lte | LB8Eq | LB8Gt | LB8Gte
+            | LB8Plus | LB8Minus | LB8Times | LB8UDiv | LB8SDiv | LB8URem | LB8SRem
+            | LB8Shl | LB8LShr | LB8AShr | LB8And | LB8Or | LB8Xor | LB8Compl
+            | LB8Z16 | LB8Z32 | LB8Z64 | LB8S16 | LB8S32 | LB8S64 -- Zero/Sign extension
+            | LB16Lt | LB16Lte | LB16Eq | LB16Gt | LB16Gte
+            | LB16Plus | LB16Minus | LB16Times | LB16UDiv | LB16SDiv | LB16URem | LB16SRem
+            | LB16Shl | LB16LShr | LB16AShr | LB16And | LB16Or | LB16Xor | LB16Compl
+            | LB16Z32 | LB16Z64 | LB16S32 | LB16S64 | LB16T8 -- and Truncation
+            | LB32Lt | LB32Lte | LB32Eq | LB32Gt | LB32Gte
+            | LB32Plus | LB32Minus | LB32Times | LB32UDiv | LB32SDiv | LB32URem | LB32SRem
+            | LB32Shl | LB32LShr | LB32AShr | LB32And | LB32Or | LB32Xor | LB32Compl
+            | LB32Z64 | LB32S64 | LB32T8 | LB32T16
+            | LB64Lt | LB64Lte | LB64Eq | LB64Gt | LB64Gte
+            | LB64Plus | LB64Minus | LB64Times | LB64UDiv | LB64SDiv | LB64URem | LB64SRem
+            | LB64Shl | LB64LShr | LB64AShr | LB64And | LB64Or | LB64Xor | LB64Compl
+            | LB64T8 | LB64T16 | LB64T32
+            | LIntB8 | LIntB16 | LIntB32 | LIntB64 | LB32Int
 
             | LFExp | LFLog | LFSin | LFCos | LFTan | LFASin | LFACos | LFATan
             | LFSqrt | LFFloor | LFCeil

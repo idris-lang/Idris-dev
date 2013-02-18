@@ -341,8 +341,10 @@ instance ToIR SC where
         matchableTy ChType = True
         matchableTy StrType = True
 
-        matchableTy W8Type  = True
-        matchableTy W16Type = True
+        matchableTy B8Type  = True
+        matchableTy B16Type = True
+        matchableTy B32Type = True
+        matchableTy B64Type = True
 
         matchableTy _ = False
 

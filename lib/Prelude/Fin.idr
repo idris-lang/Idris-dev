@@ -12,6 +12,20 @@ instance Eq (Fin n) where
     (==) (fS k) (fS k') = k == k'
     (==) _ _ = False
 
+finToNat : Fin n -> Nat -> Nat
+finToNat fO a = a
+finToNat (fS x) a = finToNat x (S a)
+
+instance Cast (Fin n) Nat where
+    cast x = finToNat x O
+
+finToInt : Fin n -> Int -> Int
+finToInt fO a = a
+finToInt (fS x) a = finToInt x (a + 1)
+
+instance Cast (Fin n) Int where
+    cast x = finToInt x 0
+
 weaken : Fin n -> Fin (S n)
 weaken fO     = fO
 weaken (fS k) = fS (weaken k)
