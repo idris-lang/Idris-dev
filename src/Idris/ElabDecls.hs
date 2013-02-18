@@ -557,7 +557,7 @@ elabClause info tcgen (cnum, PClause fc fname lhs_in withs rhs_in whereblock)
         logLvl 3 ("Elaborated: " ++ show lhs_tm)
         logLvl 3 ("Elaborated type: " ++ show lhs_ty)
         (clhs, clhsty) <- recheckC fc [] lhs_tm
-        logLvl 5 ("Checked " ++ show clhs)
+        logLvl 5 ("Checked " ++ show clhs ++ "\n" ++ show clhsty)
         -- Elaborate where block
         ist <- getIState
         windex <- getName

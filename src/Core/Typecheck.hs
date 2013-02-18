@@ -29,10 +29,10 @@ convertsC ctxt env x y
 converts :: Context -> Env -> Term -> Term -> TC ()
 converts ctxt env x y 
      = case convEq' ctxt x y of 
-          OK _ -> return ()
+          OK True -> return ()
           _ -> case convEq' ctxt (finalise (normalise ctxt env x)) 
                                  (finalise (normalise ctxt env y)) of
-                OK _ -> return ()
+                OK True -> return ()
                 _ -> tfail (CantConvert
                            (finalise (normalise ctxt env x))
                            (finalise (normalise ctxt env y)) (errEnv env))
