@@ -31,10 +31,15 @@ codegenJavaScript
 codegenJavaScript target definitions filename outputType = do
   let runtime = case target of
                      Node       -> "-node"
-                     JavaScript -> ""
+                     JavaScript -> "-browser"
   path <- getDataDir
-  idrRuntime <- readFile $ concat [path, "/js/Runtime", runtime, ".js"]
-  writeFile filename (idrRuntime ++ modules ++ functions ++ mainLoop)
+  idrRuntime <- readFile $ path ++ "/js/Runtime-common.js"
+  tgtRuntime <- readFile $ concat [path, "/js/Runtime", runtime, ".js"]
+  writeFile filename (idrRuntime
+                   ++ tgtRuntime
+                   ++ modules 
+                   ++ functions
+                   ++ mainLoop)
   where
     def = map (first translateNamespace) definitions
  
