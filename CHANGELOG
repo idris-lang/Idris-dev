@@ -9,6 +9,7 @@ Internal changes:
   later information helps to resolve them
 * Distinguishing parameters and indices in data types
 * Faster termination/coverage checking
+* Split 'javascript' target into 'javascript' and 'node'
 
 New in 0.9.6:
 -------------
