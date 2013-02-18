@@ -8,6 +8,7 @@
 
 #include "idris_rts.h"
 #include "idris_gc.h"
+#include "idris_bitstring.h"
 
 VM* init_vm(int stack_size, size_t heap_size, 
             int max_threads, // not implemented yet
@@ -443,6 +444,18 @@ VAL copyTo(VM* vm, VAL x) {
         break;
     case PTR:
         cl = MKPTRc(vm, x->info.ptr);
+        break;
+    case BITS8:
+        cl = idris_b8CopyForGC(vm, x);
+        break;
+    case BITS16:
+        cl = idris_b16CopyForGC(vm, x);
+        break;
+    case BITS32:
+        cl = idris_b32CopyForGC(vm, x);
+        break;
+    case BITS64:
+        cl = idris_b64CopyForGC(vm, x);
         break;
     default:
         assert(0); // We're in trouble if this happens...

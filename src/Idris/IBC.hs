@@ -353,16 +353,22 @@ instance Binary Const where
                             put x1
                 Str x1 -> do putWord8 4
                              put x1
-                IType -> putWord8 5
-                BIType -> putWord8 6
-                FlType -> putWord8 7
-                ChType -> putWord8 8
-                StrType -> putWord8 9
-                PtrType -> putWord8 10
-                Forgot -> putWord8 11
+                B8 x1 -> putWord8 5 >> put x1
+                B16 x1 -> putWord8 6 >> put x1
+                B32 x1 -> putWord8 7 >> put x1
+                B64 x1 -> putWord8 8 >> put x1
 
-                W8Type  -> putWord8 12
-                W16Type -> putWord8 13
+                IType -> putWord8 9
+                BIType -> putWord8 10
+                FlType -> putWord8 11
+                ChType -> putWord8 12
+                StrType -> putWord8 13
+                PtrType -> putWord8 14
+                Forgot -> putWord8 15
+                B8Type  -> putWord8 16
+                B16Type -> putWord8 17
+                B32Type -> putWord8 18
+                B64Type -> putWord8 19
         get
           = do i <- getWord8
                case i of
@@ -376,16 +382,23 @@ instance Binary Const where
                            return (Ch x1)
                    4 -> do x1 <- get
                            return (Str x1)
-                   5 -> return IType
-                   6 -> return BIType
-                   7 -> return FlType
-                   8 -> return ChType
-                   9 -> return StrType
-                   10 -> return PtrType
-                   11 -> return Forgot
+                   5 -> fmap B8 get
+                   6 -> fmap B16 get
+                   7 -> fmap B32 get
+                   8 -> fmap B64 get
 
-                   12 -> return W8Type
-                   13 -> return W16Type
+                   9 -> return IType
+                   10 -> return BIType
+                   11 -> return FlType
+                   12 -> return ChType
+                   13 -> return StrType
+                   14 -> return PtrType
+                   15 -> return Forgot
+
+                   16 -> return B8Type
+                   17 -> return B16Type
+                   18 -> return B32Type
+                   19 -> return B64Type
 
                    _ -> error "Corrupted binary data for Const"
 

@@ -1085,8 +1085,10 @@ pConstant = do reserved "Integer";return BIType
         <|> do reserved "Float";  return FlType
         <|> do reserved "String"; return StrType
         <|> do reserved "Ptr";    return PtrType
-        <|> do reserved "Word8";  return W8Type
-        <|> do reserved "Word16"; return W16Type
+        <|> do reserved "Bits8";  return B8Type
+        <|> do reserved "Bits16"; return B16Type
+        <|> do reserved "Bits32"; return B32Type
+        <|> do reserved "Bits64"; return B64Type
         <|> try (do f <- float;   return $ Fl f)
 --         <|> try (do i <- natural; lchar 'L'; return $ BI i)
         <|> try (do i <- natural; return $ I (fromInteger i))

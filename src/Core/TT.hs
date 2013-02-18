@@ -260,8 +260,8 @@ addAlist ((n, tm) : ds) ctxt = addDef n tm (addAlist ds ctxt)
 data Const = I Int | BI Integer | Fl Double | Ch Char | Str String 
            | IType | BIType     | FlType    | ChType  | StrType
 
-           | W8 Word8 | W16 Word16
-           | W8Type   | W16Type   
+           | B8 Word8 | B16 Word16 | B32 Word32 | B64 Word64
+           | B8Type   | B16Type | B32Type | B64Type
 
            | PtrType | VoidType | Forgot
   deriving (Eq, Ord)
@@ -286,8 +286,10 @@ instance Pretty Const where
   pretty PtrType = text "Ptr"
   pretty VoidType = text "Void"
   pretty Forgot = text "Forgot"
-  pretty W8Type = text "Word8"
-  pretty W16Type = text "Word16"
+  pretty B8Type = text "Bits8"
+  pretty B16Type = text "Bits16"
+  pretty B32Type = text "Bits32"
+  pretty B64Type = text "Bits64"
 
 data Raw = Var Name
          | RBind Name (Binder Raw) Raw
@@ -689,16 +691,20 @@ instance Show Const where
     show (Fl f) = show f
     show (Ch c) = show c
     show (Str s) = show s
-    show (W8 x) = show x
-    show (W16 x) = show x
+    show (B8 x) = show x
+    show (B16 x) = show x
+    show (B32 x) = show x
+    show (B64 x) = show x
     show IType = "Int"
     show BIType = "Integer"
     show FlType = "Float"
     show ChType = "Char"
     show StrType = "String"
     show PtrType = "Ptr"
-    show W8Type = "Word8"
-    show W16Type = "Word16"
+    show B8Type = "Bits8"
+    show B16Type = "Bits16"
+    show B32Type = "Bits32"
+    show B64Type = "Bits64"
     show VoidType = "Void"
 
 showEnv env t = showEnv' env t False
