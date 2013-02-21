@@ -75,6 +75,10 @@ f $ a = f a
 cong : {f : t -> u} -> (a = b) -> f a = f b
 cong refl = refl
 
+data Dec : Type -> Type where
+    Yes : {A : Type} -> A          -> Dec A
+    No  : {A : Type} -> (A -> _|_) -> Dec A
+
 data Bool = False | True
 
 boolElim : Bool -> |(t : a) -> |(f : a) -> a 
@@ -82,10 +86,6 @@ boolElim True  t e = t
 boolElim False t e = e
 
 data so : Bool -> Type where oh : so True
-
-data Equality : {A : Type} -> (x : A) -> (y : A) -> Type where
-    Unequal : {A : Type} -> {x : A} -> {y : A} -> (x = y -> _|_) -> Equality x y
-    Equal : {A : Type} -> {x : A} -> {y : A} -> (x = y) -> Equality x y
 
 syntax if [test] then [t] else [e] = boolElim test t e
 syntax [test] "?" [t] ":" [e] = if test then t else e
