@@ -39,6 +39,10 @@ toMaybe : Bool -> a -> Maybe a
 toMaybe True  j = Just j
 toMaybe False j = Nothing
 
+justInjective : {x : t} -> {y : t} -> (Just x = Just y) -> x = y
+justInjective refl = refl
+
+
 --------------------------------------------------------------------------------
 -- Class instances
 --------------------------------------------------------------------------------

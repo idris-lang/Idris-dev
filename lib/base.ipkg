@@ -13,6 +13,8 @@ modules = Builtins, Prelude, IO, System,
 
           System.Concurrency.Raw, System.Concurrency.Process,
 
+          Decidable.Equality,
+
           Language.Reflection,
 
           Data.Morphisms, Data.Bits, Data.Mod2,

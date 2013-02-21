@@ -40,3 +40,6 @@ strengthen f = Left f
 last : Fin (S n)
 last {n=O} = fO
 last {n=S _} = fS last
+
+total fSinjective : {f : Fin n} -> {f' : Fin n} -> (fS f = fS f') -> f = f'
+fSinjective refl = refl
