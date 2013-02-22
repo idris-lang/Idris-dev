@@ -21,9 +21,6 @@ class DecEq t where
 --- Unit
 --------------------------------------------------------------------------------
 
-instance Eq () where
-  () == () = True
-
 instance DecEq () where
   decEq () () = Yes refl
 
