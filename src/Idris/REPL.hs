@@ -50,7 +50,10 @@ import Data.List
 import Data.Char
 import Data.Version
 
-repl :: IState -> [FilePath] -> InputT Idris ()
+-- | Run the REPL
+repl :: IState -- ^ The initial state
+     -> [FilePath] -- ^ The loaded modules
+     -> InputT Idris ()
 repl orig mods
    = H.catch
       (do let prompt = mkPrompt mods
@@ -69,10 +72,12 @@ repl orig mods
          ctrlC e = do lift $ iputStrLn (show e)
                       repl orig mods
 
+-- | The prompt consists of the currently loaded modules, or "Idris" if there are none
 mkPrompt [] = "Idris"
 mkPrompt [x] = "*" ++ dropExtension x
 mkPrompt (x:xs) = "*" ++ dropExtension x ++ " " ++ mkPrompt xs
 
+-- | Determine whether a file uses literate syntax
 lit f = case splitExtension f of
             (_, ".lidr") -> True
             _ -> False

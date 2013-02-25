@@ -29,8 +29,10 @@ data Option = TTypeInTType
             | CheckConv
   deriving Eq
 
-data FC = FC { fc_fname :: String,
-               fc_line :: Int }
+-- | Source location. These are typically produced by the parser 'Idris.Parser.pfc'
+data FC = FC { fc_fname :: String, -- ^ Filename
+               fc_line :: Int -- ^ Line number
+             }
     deriving Eq
 {-! 
 deriving instance Binary FC 
@@ -163,14 +165,12 @@ traceWhen False _  a = a
 
 -- RAW TERMS ----------------------------------------------------------------
 
--- Names are hierarchies of strings, describing scope (so no danger of
+-- | Names are hierarchies of strings, describing scope (so no danger of
 -- duplicate names, but need to be careful on lookup).
--- Also MN for machine chosen names
-
-data Name = UN String
-          | NS Name [String] -- root, namespaces 
-          | MN Int String
-          | NErased -- name of somethng which is never used in scope
+data Name = UN String -- ^ User-provided name
+          | NS Name [String] -- ^ Root, namespaces 
+          | MN Int String -- ^ Machine chosen names
+          | NErased -- ^ Name of somethng which is never used in scope
   deriving (Eq, Ord)
 {-! 
 deriving instance Binary Name 
@@ -193,9 +193,8 @@ instance Show Name where
     show (MN i s) = "{" ++ s ++ show i ++ "}"
     show NErased = "_"
 
--- Contexts allow us to map names to things. A root name maps to a collection
+-- |Contexts allow us to map names to things. A root name maps to a collection
 -- of things in different namespaces with that name.
-
 type Ctxt a = Map.Map Name (Map.Map Name a)
 emptyContext = Map.empty
 
@@ -217,14 +216,17 @@ addDef n v ctxt = case Map.lookup (nsroot n) ctxt of
                         Just xs -> Map.insert (nsroot n) 
                                         (Map.insert n v xs) ctxt
 
-{- lookup a name in the context, given an optional namespace.
+{-| Look up a name in the context, given an optional namespace.
    The name (n) may itself have a (partial) namespace given.
 
    Rules for resolution:
+
     - if an explicit namespace is given, return the names which match it. If none
       match, return all names.
+
     - if the name has has explicit namespace given, return the names which match it
       and ignore the given namespace.
+
     - otherwise, return all names.
 
 -}
@@ -381,8 +383,9 @@ type RProgram = [(Name, RDef)]
 
 -- WELL TYPED TERMS ---------------------------------------------------------
 
-data UExp = UVar Int -- universe variable
-          | UVal Int -- explicit universe level
+-- | Universe expressions for universe checking
+data UExp = UVar Int -- ^ universe variable
+          | UVal Int -- ^ explicit universe level
   deriving (Eq, Ord)
 
 instance Sized UExp where
@@ -402,8 +405,9 @@ instance Show UExp where
     show (UVal x) = show x
 --     show (UMax l r) = "max(" ++ show l ++ ", " ++ show r ++")"
 
-data UConstraint = ULT UExp UExp
-                 | ULE UExp UExp
+-- | Universe constraints
+data UConstraint = ULT UExp UExp -- ^ Strictly less than
+                 | ULE UExp UExp -- ^ Less than or equal to
   deriving Eq
 
 instance Show UConstraint where
@@ -495,7 +499,7 @@ instance Eq n => Eq (TT n) where
     (==) _              Erased         = True
     (==) _              _              = False
 
--- A few handy operations on well typed terms:
+-- * A few handy operations on well typed terms:
 
 isInjective :: TT n -> Bool
 isInjective (P (DCon _ _) _ _) = True
@@ -506,7 +510,7 @@ isInjective (Bind _ (Pi _) sc) = True
 isInjective (App f a)          = isInjective f
 isInjective _                  = False
 
--- Count the number of instances of a de Bruijn index in a term
+-- | Count the number of instances of a de Bruijn index in a term
 vinstances :: Int -> TT n -> Int
 vinstances i (V x) | i == x = 1
 vinstances i (App f a) = vinstances i f + vinstances i a
@@ -544,7 +548,7 @@ pToV' n i (App f a) = App (pToV' n i f) (pToV' n i a)
 pToV' n i (Proj t idx) = Proj (pToV' n i t) idx
 pToV' n i t = t
 
--- Convert several names. First in the list comes out as V 0
+-- | Convert several names. First in the list comes out as V 0
 pToVs :: Eq n => [n] -> TT n -> TT n
 pToVs ns tm = pToVs' ns tm 0 where
     pToVs' []     tm i = tm
@@ -593,8 +597,7 @@ noOccurrence n t = no' 0 t
     no' i (Proj x _) = no' i x
     no' i _ = True
 
--- Returns all names used free in the term
-
+-- | Returns all names used free in the term
 freeNames :: Eq n => TT n -> [n]
 freeNames (P _ n _) = [n]
 freeNames (Bind n (Let t v) sc) = nub $ freeNames v ++ (freeNames sc \\ [n])
@@ -604,14 +607,12 @@ freeNames (App f a) = nub $ freeNames f ++ freeNames a
 freeNames (Proj x i) = nub $ freeNames x
 freeNames _ = []
 
--- Return the arity of a (normalised) type
-
+-- | Return the arity of a (normalised) type
 arity :: TT n -> Int
 arity (Bind n (Pi t) sc) = 1 + arity sc
 arity _ = 0
 
--- deconstruct an application; returns the function and a list of arguments
-
+-- | Deconstruct an application; returns the function and a list of arguments
 unApply :: TT n -> (TT n, [TT n])
 unApply t = ua [] t where
     ua args (App f a) = ua (a:args) f
@@ -794,8 +795,7 @@ showEnv' env t dbg = se 10 env t where
     bracket outer inner str | inner > outer = "(" ++ str ++ ")"
                             | otherwise = str
 
--- Check whether a term has any holes in it - impure if so
-
+-- | Check whether a term has any holes in it - impure if so
 pureTerm :: TT Name -> Bool
 pureTerm (App f a) = pureTerm f && pureTerm a
 pureTerm (Bind n b sc) = notClassName n && pureBinder b && pureTerm sc where
@@ -809,8 +809,7 @@ pureTerm (Bind n b sc) = notClassName n && pureBinder b && pureTerm sc where
 
 pureTerm _ = True
 
--- weaken a term by adding i to each de Bruijn index (i.e. lift it over i bindings)
-
+-- | Weaken a term by adding i to each de Bruijn index (i.e. lift it over i bindings)
 weakenTm :: Int -> TT n -> TT n
 weakenTm i t = wk i 0 t
   where wk i min (V x) | x >= min = V (i + x)
@@ -819,7 +818,7 @@ weakenTm i t = wk i 0 t
         wk i m t = t
         wkb i m t           = fmap (wk i m) t
 
--- weaken an environment so that all the de Bruijn indices are correct according
+-- | Weaken an environment so that all the de Bruijn indices are correct according
 -- to the latest bound variable
 
 weakenEnv :: EnvTT n -> EnvTT n
