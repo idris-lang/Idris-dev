@@ -1,3 +1,4 @@
+-- | Support for command-line completion at the REPL and in the prover
 module Idris.Completion (replCompletion, proverCompletion) where
 
 import Core.Evaluate (ctxtAlist)
@@ -122,6 +123,7 @@ completeCmd cmd (prev, next) = fromMaybe completeCmdName $ fmap completeArg $ lo
           completeArg ExprArg = completeExpr [] (prev, next)
           completeCmdName = return $ ("", completeWith commands cmd)
 
+-- | Complete REPL commands and defined identifiers
 replCompletion :: CompletionFunc Idris
 replCompletion (prev, next) = case firstWord of
                                 ':':cmdName -> completeCmd (':':cmdName) (prev, next)
@@ -137,7 +139,8 @@ completeTactic as tac (prev, next) = fromMaybe completeTacName $ fmap completeAr
           completeArg (Just ExprTArg)   = completeExpr as (prev, next)
           completeArg (Just AltsTArg)   = noCompletion (prev, next) -- TODO
 
-
-proverCompletion :: [String] -> CompletionFunc Idris
+-- | Complete tactics and their arguments
+proverCompletion :: [String] -- ^ The names of current local assumptions
+                 -> CompletionFunc Idris
 proverCompletion assumptions (prev, next) = completeTactic assumptions firstWord (prev, next)
     where firstWord = fst $ break isWhitespace $ dropWhile isWhitespace $ reverse prev
