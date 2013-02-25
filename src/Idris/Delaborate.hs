@@ -108,6 +108,7 @@ pshow i (Inaccessible n) = show n ++ " is not an accessible pattern variable"
 pshow i (NonCollapsiblePostulate n) 
     = "The return type of postulate " ++ show n ++ " is not collapsible"
 pshow i (AlreadyDefined n) = show n ++ " is already defined"
+pshow i (ProofSearchFail e) = pshow i e
 pshow i (At f e) = show f ++ ":" ++ pshow i e
 
 showSc i [] = ""

@@ -120,7 +120,9 @@ elab ist info pattern tcgen fn tm
     elabE ina t = {- do g <- goal
                  tm <- get_term
                  trace ("Elaborating " ++ show t ++ " : " ++ show g ++ "\n\tin " ++ show tm) 
-                    $ -} elab' ina t
+                    $ -} 
+                  do t' <- insertCoerce ina t
+                     elab' ina t'
 
     local f = do e <- get_env
                  return (f `elem` map fst e)
@@ -191,9 +193,10 @@ elab ist info pattern tcgen fn tm
         = trySeq as
         where -- if none work, take the error from the first
               trySeq (x : xs) = let e1 = elab' ina x in
-                                    try e1 (trySeq' e1 xs)
-              trySeq' deferr [] = deferr
-              trySeq' deferr (x : xs) = try (elab' ina x) (trySeq' deferr xs)
+                                    try' e1 (trySeq' e1 xs) True
+              trySeq' deferr [] = proofFail deferr
+              trySeq' deferr (x : xs) 
+                  = try' (elab' ina x) (trySeq' deferr xs) True
     elab' ina (PPatvar fc n) | pattern = patvar n
     elab' (ina, guarded) (PRef fc n) | pattern && not (inparamBlock n)
                          = do ctxt <- get_context
@@ -348,7 +351,7 @@ elab ist info pattern tcgen fn tm
                                             compare (priority x) (priority y))
                                     (zip ns args)
                     elabArgs (ina || not isinf, guarded)
-                           [] False ns' (map (\x -> (lazyarg x, getTm x)) eargs)
+                           [] fc False ns' (map (\x -> (lazyarg x, getTm x)) eargs)
                     mkSpecialised ist fc f (map getTm args') tm
                     solve
                     ptm <- get_term
@@ -442,14 +445,29 @@ elab ist info pattern tcgen fn tm
              shadowed new (PRef _ n) | n `elem` new = Placeholder
              shadowed new t = t
 
-    elabArgs ina failed retry [] _
+    insertCoerce ina t =
+        do ty <- goal
+           -- Check for possible coercions to get to the goal
+           -- and add them as 'alternatives'
+           let cs = getCoercionsTo ist ty
+           let t' = case (t, cs) of
+                         (PCoerced tm, _) -> tm
+                         (_, []) -> t
+                         (_, cs) -> PAlternative False 
+                                       (t : map (mkCoerce t) cs)
+           return t'
+       where 
+         mkCoerce t n = let fc = FC "Coercion" 0 in -- line never appears!
+                            addImpl ist (PApp fc (PRef fc n) [pexp (PCoerced t)])
+
+    elabArgs ina failed fc retry [] _
 --         | retry = let (ns, ts) = unzip (reverse failed) in
 --                       elabArgs ina [] False ns ts
         | otherwise = return ()
-    elabArgs ina failed r (n:ns) ((_, Placeholder) : args) 
-        = elabArgs ina failed r ns args
-    elabArgs ina failed r (n:ns) ((lazy, t) : args)
-        | lazy && not pattern 
+    elabArgs ina failed fc r (n:ns) ((_, Placeholder) : args) 
+        = elabArgs ina failed fc r ns args
+    elabArgs ina failed fc r (n:ns) ((lazy, t) : args)
+        | lazy && not pattern
           = do elabArg n (PApp bi (PRef bi (UN "lazy"))
                                [pimp (UN "a") Placeholder,
                                 pexp t]); 
@@ -457,15 +475,17 @@ elab ist info pattern tcgen fn tm
       where elabArg n t 
                 = do hs <- get_holes
                      tm <- get_term
+                     t' <- insertCoerce ina t
                      failed' <- -- trace (show (n, t, hs, tm)) $ 
+                                -- traceWhen (not (null cs)) (show ty ++ "\n" ++ showImp True t) $
                                 case n `elem` hs of
                                    True ->
 --                                       if r
 --                                          then try (do focus n; elabE ina t; return failed)
 --                                                   (return ((n,(lazy, t)):failed))
-                                         do focus n; elabE ina t; return failed
+                                         do focus n; elabE ina t'; return failed
                                    False -> return failed
-                     elabArgs ina failed r ns args
+                     elabArgs ina failed fc r ns args
 
 -- For every alternative, look at the function at the head. Automatically resolve
 -- any nested alternatives where that function is also at the head

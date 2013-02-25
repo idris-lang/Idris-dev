@@ -78,6 +78,8 @@ elabType info syn doc fc opts n ty' = {- let ty' = piBind (params info) ty_in
          addDocStr n doc
          addIBC (IBCDoc n)
          addIBC (IBCFlags n opts')
+         when (Implicit `elem` opts) $ do addCoercion n
+                                          addIBC (IBCCoercion n)
          when corec $ do setAccessibility n Frozen
                          addIBC (IBCAccess n Frozen)
 
@@ -1281,10 +1283,10 @@ checkInferred fc inf user =
         logLvl 10 $ "Checking match"
         i <- getIState
         tclift $ case matchClause' True i user inf of 
-            Right vs -> return ()
-            Left (x, y) -> tfail $ At fc 
-                                    (Msg $ "The type-checked term and given term do not match: "
-                                           ++ show x ++ " and " ++ show y)
+            _ -> return ()
+--             Left (x, y) -> tfail $ At fc 
+--                                     (Msg $ "The type-checked term and given term do not match: "
+--                                            ++ show x ++ " and " ++ show y)
         logLvl 10 $ "Checked match"
 --                           ++ "\n" ++ showImp True inf ++ "\n" ++ showImp True user)
 

@@ -68,10 +68,29 @@ getTotality n
                 [t] -> return t
                 _ -> return (Total [])
 
+-- Get coercions which might return the required type
+getCoercionsTo :: IState -> Type -> [Name]
+getCoercionsTo i ty =
+    let cs = idris_coercions i
+        (fn,_) = unApply (getRetTy ty) in
+        findCoercions fn cs
+    where findCoercions t [] = []
+          findCoercions t (n : ns) =
+             let ps = case lookupTy Nothing n (tt_ctxt i) of
+                         [ty] -> case unApply (getRetTy ty) of
+                                   (t', _) -> 
+                                      if t == t' then [n] else []
+                         _ -> [] in
+                 ps ++ findCoercions t ns
+
 addToCG :: Name -> CGInfo -> Idris ()
 addToCG n cg 
    = do i <- getIState
         putIState $ i { idris_callgraph = addDef n cg (idris_callgraph i) }
+
+addCoercion :: Name -> Idris ()
+addCoercion n = do i <- getIState
+                   putIState $ i { idris_coercions = n : idris_coercions i }
 
 addDocStr :: Name -> String -> Idris ()
 addDocStr n doc 

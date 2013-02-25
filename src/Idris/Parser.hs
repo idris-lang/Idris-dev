@@ -706,6 +706,7 @@ pFnOpts opts
       <|> do lchar '%'; reserved "specialise"; 
              lchar '['; ns <- sepBy pfName (lchar ','); lchar ']'
              pFnOpts (Specialise ns : opts)
+      <|> do reserved "implicit"; pFnOpts (Implicit : opts)
       <|> return opts
 
 addAcc :: Name -> Maybe Accessibility -> IParser ()

@@ -66,6 +66,7 @@ data IState = IState {
     idris_options :: IOption,
     idris_name :: Int,
     idris_metavars :: [Name],
+    idris_coercions :: [Name],
     syntax_rules :: [Syntax],
     syntax_keywords :: [String],
     imported :: [FilePath],
@@ -125,13 +126,14 @@ data IBCWrite = IBCFix FixDecl
               | IBCFlags Name [FnOpt]
               | IBCCG Name
               | IBCDoc Name
+              | IBCCoercion Name
               | IBCDef Name -- i.e. main context
   deriving Show
 
 idrisInit = IState initContext [] [] emptyContext emptyContext emptyContext
                    emptyContext emptyContext emptyContext emptyContext 
                    emptyContext emptyContext emptyContext emptyContext
-                   [] "" defaultOpts 6 [] [] [] [] [] [] [] []
+                   [] "" defaultOpts 6 [] [] [] [] [] [] [] [] []
                    [] Nothing Nothing [] [] [] Hidden False [] Nothing
 
 -- The monad for the main REPL - reading and processing files and updating 
@@ -281,6 +283,7 @@ tacimpl t = TacImp False Dynamic t ""
 
 data FnOpt = Inlinable | TotalFn | PartialFn
            | Coinductive | AssertTotal | TCGen
+           | Implicit -- implicit coercion
            | CExport String    -- export, with a C name
            | Specialise [Name] -- specialise it, freeze these names
     deriving (Show, Eq)
@@ -443,6 +446,7 @@ data PTerm = PQuote Raw
            | PTactics [PTactic] -- as PProof, but no auto solving
            | PElabError Err -- error to report on elaboration
            | PImpossible -- special case for declaring when an LHS can't typecheck
+           | PCoerced PTerm -- to mark a coerced argument, so as not to coerce twice
     deriving Eq
 {-! 
 deriving instance Binary PTerm 
@@ -984,6 +988,7 @@ showImp impl tm = se 10 tm where
     se p Placeholder = "_"
     se p (PDoBlock _) = "do block show not implemented"
     se p (PElabError s) = show s
+    se p (PCoerced t) = se p t
 --     se p x = "Not implemented"
 
     sArg (PImp _ _ n tm _) = siArg (n, tm)

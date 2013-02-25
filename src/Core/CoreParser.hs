@@ -34,7 +34,7 @@ idrisDef = haskellDef {
                     "infix", "infixl", "infixr", 
                     "where", "with", "syntax", "proof", "postulate",
                     "using", "namespace", "class", "instance",
-                    "public", "private", "abstract", 
+                    "public", "private", "abstract", "implicit",
                     "Int", "Integer", "Float", "Char", "String", "Ptr",
                     "Bits8", "Bits16", "Bits32", "Bits64"]
            } 
