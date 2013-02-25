@@ -4,13 +4,15 @@
 " highlighter to support idris.
 "
 " author: raichoo (raichoo@googlemail.com)
-" date: Nov 13 2012
+" date: Feb 25 2013
 
 syn match idrisModule "\<\(module\|namespace\)\>"
 syn match idrisImport "\<import\>"
-syn match idrisStructure "\<\(class\|\(co\)\?data\|instance\|where\|record\)\>"
+syn match idrisStructure "\<\(class\|\(co\)\?data\|instance\|where\|record\|dsl\)\>"
 syn match idrisVisibility "\<\(public\|abstract\|private\)\>"
-syn match idrisStatement "\<\(do\|case\|of\|let\|in\|with\|total\|partial\|dsl\|auto\|using\|parameters\|mutual\|impossible\|postulate\)\>"
+syn match idrisBlock "\<\(parameters\|mutual\|postulate\|using\)\>"
+syn match idrisAnnotation "\<\(total\|partial\|auto\|impossible\|static\|implicit\)\>"
+syn match idrisStatement "\<\(do\|case\|of\|let\|in\|with\)\>"
 syn match idrisSyntax "\(pattern \+\|term \+\)\?syntax"
 syn match idrisConditional "\<\(if\|then\|else\)\>"
 syn match idrisTactic contained "\<\(intros\?\|rewrite\|exact\|refine\|trivial\|let\|focus\|try\|compute\|solve\|attack\)\>"
@@ -38,6 +40,8 @@ highlight def link idrisImport Structure
 highlight def link idrisModule Structure
 highlight def link idrisStructure Structure
 highlight def link idrisStatement Statement
+highlight def link idrisBlock Statement
+highlight def link idrisAnnotation Statement
 highlight def link idrisSyntax Statement
 highlight def link idrisVisibility Statement
 highlight def link idrisConditional Conditional
