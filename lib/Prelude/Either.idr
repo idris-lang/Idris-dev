@@ -61,3 +61,16 @@ fromEither (Right r) = r
 maybeToEither : e -> Maybe a -> Either e a
 maybeToEither def (Just j) = Right j
 maybeToEither def Nothing  = Left  def
+
+
+--------------------------------------------------------------------------------
+-- Injectivity of constructors
+--------------------------------------------------------------------------------
+
+total leftInjective : {b : Type} -> {x : a} -> {y : a}
+                    -> (Left {b = b} x = Left {b = b} y) -> (x = y)
+leftInjective refl = refl
+
+total rightInjective : {a : Type} -> {x : b} -> {y : b}
+                     -> (Right {a = a} x = Right {a = a} y) -> (x = y)
+rightInjective refl = refl
