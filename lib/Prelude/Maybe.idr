@@ -51,6 +51,12 @@ maybe_bind : Maybe a -> (a -> Maybe b) -> Maybe b
 maybe_bind Nothing  k = Nothing
 maybe_bind (Just x) k = k x
 
+instance (Eq a) => Eq (Maybe a) where
+  Nothing  == Nothing  = True
+  Nothing  == (Just _) = False
+  (Just _) == Nothing  = False
+  (Just a) == (Just b) = a == b
+
 -- | Lift a semigroup into 'Maybe' forming a 'Monoid' according to
 -- <http://en.wikipedia.org/wiki/Monoid>: \"Any semigroup S may be
 -- turned into a monoid simply by adjoining an element e not in S
