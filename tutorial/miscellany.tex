@@ -72,6 +72,38 @@ head (x :: xs) = x
 \end{SaveVerbatim}
 \useverb{defimp} 
 
+\subsection{Implicit conversions}
+
+\Idris{} supports the creation of \emph{implicit conversions}, which allow
+automatic conversion of values from one type to another when required to make
+a term type correct. This is intended to increase convenience and reduce
+verbosity. A contrived but simple example is the following:
+
+\begin{SaveVerbatim}{implicit}
+
+implicit intString : Int -> String
+intString = show
+  
+test : Int -> String
+test x = "Number " ++ x
+
+\end{SaveVerbatim}
+\useverb{implicit}
+
+\noindent
+In general, we cannot append an \texttt{Int} to a \texttt{String}, but the
+implicit conversion function \texttt{intString} can convert \texttt{x} to a
+\texttt{String}, so the definition of \texttt{test} is type correct. An
+implicit conversion is implemented just like any other function, but given
+the \texttt{implicit} modifier, and restricted to one explicit argument.
+
+Only one implicit conversion will be applied at a time. That is, implicit
+conversions cannot be chained.
+Implicit conversions of simple types, as above, are however discouraged! More
+commonly, an implicit conversion would be used to reduce verbosity in an
+embedded domain specific language, or to hide details of a proof. Such examples
+are beyond the scope of this tutorial.
+
 \subsection{Literate programming}
 
 Like Haskell, \Idris{} supports \emph{literate} programming. If a file has an
