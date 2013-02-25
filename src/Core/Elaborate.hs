@@ -45,10 +45,9 @@ proof (ES (p, _) _ _) = p
 proofFail :: Elab' aux a -> Elab' aux a
 proofFail e = do s <- get
                  case runStateT e s of
-                      OK (a, s') -> trace ("OK ACTUALLY") $
-                                     do put s'
-                                        return a
-                      Error err -> trace "BAD" $ lift $ Error (ProofSearchFail err)
+                      OK (a, s') -> do put s'
+                                       return a
+                      Error err -> lift $ Error (ProofSearchFail err)
 
 saveState :: Elab' aux ()
 saveState = do e@(ES p s _) <- get
@@ -65,6 +64,8 @@ erun f elab = do s <- get
                  case runStateT elab s of
                     OK (a, s')     -> do put s'
                                          return a
+                    Error (ProofSearchFail (At f e))
+                                   -> lift $ Error (ProofSearchFail (At f e))
                     Error (At f e) -> lift $ Error (At f e)
                     Error e        -> lift $ Error (At f e)
 
@@ -528,7 +529,7 @@ try' t1 t2 proofSearch
   where recoverableErr err@(CantUnify r _ _ _ _ _) 
              = -- traceWhen r (show err) $
                r || proofSearch
-        recoverableErr (ProofSearchFail _) = trace "FAILED" $ False
+        recoverableErr (ProofSearchFail _) = False
         recoverableErr _ = True
 
 tryWhen :: Bool -> Elab' aux a -> Elab' aux a -> Elab' aux a

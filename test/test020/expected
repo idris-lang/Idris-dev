@@ -1,0 +1,6 @@
+test020a.idr:16:Can't unify Vect a n with List a
+
+Specifically:
+	Can't unify Vect a n with List a
+[3, 2, 1]
+Number 42

@@ -453,8 +453,8 @@ elab ist info pattern tcgen fn tm
            let t' = case (t, cs) of
                          (PCoerced tm, _) -> tm
                          (_, []) -> t
-                         (_, cs) -> PAlternative False 
-                                       (t : map (mkCoerce t) cs)
+                         (_, cs) -> PAlternative False [t ,
+                                       PAlternative True (map (mkCoerce t) cs)]
            return t'
        where 
          mkCoerce t n = let fc = FC "Coercion" 0 in -- line never appears!

@@ -18,5 +18,7 @@ Tests:
 016: codata
 017: mutually recursive totality checking
 018: Message passing concurrency (raw form)
+019: magic with
+020: implicit conversions
 
 regxxx: various regression tests
