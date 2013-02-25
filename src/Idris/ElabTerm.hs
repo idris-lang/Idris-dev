@@ -483,7 +483,7 @@ elab ist info pattern tcgen fn tm
 --                                       if r
 --                                          then try (do focus n; elabE ina t; return failed)
 --                                                   (return ((n,(lazy, t)):failed))
-                                         do focus n; elabE ina t'; return failed
+                                         do focus n; elab' ina t'; return failed
                                    False -> return failed
                      elabArgs ina failed fc r ns args
 
