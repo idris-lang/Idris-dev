@@ -418,8 +418,8 @@ depatt ns tm = dp [] tm
     applyMaps ms (App f a) = App (applyMaps ms f) (applyMaps ms a)
     applyMaps ms t = t
 
-prune :: Bool -> -- ^ Convert single branches to projections (only useful at runtime)
-         SC -> SC
+prune :: Bool -- ^ Convert single branches to projections (only useful at runtime)
+      -> SC -> SC
 prune proj (Case n alts) 
     = let alts' = filter notErased (map pruneAlt alts) in
           case alts' of

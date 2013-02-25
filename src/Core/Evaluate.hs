@@ -655,14 +655,18 @@ deriving instance Binary Totality
 deriving instance Binary PReason
 !-}
 
+-- | Contexts used for global definitions and for proof state. They contain
+-- universe constraints and existing definitions.
 data Context = MkContext { 
                   uconstraints :: [UConstraint],
                   next_tvar    :: Int,
                   definitions  :: Ctxt (Def, Accessibility, Totality) 
                 }
 
+-- | The initial empty context
 initContext = MkContext [] 0 emptyContext
 
+-- | Get the definitions from a context
 ctxtAlist :: Context -> [(Name, Def)]
 ctxtAlist ctxt = map (\(n, (d, a, t)) -> (n, d)) $ toAlist (definitions ctxt)
 

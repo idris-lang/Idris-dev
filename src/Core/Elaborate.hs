@@ -379,7 +379,7 @@ apply :: Raw -> [(Bool, Int)] -> Elab' aux [Name]
 apply fn imps = 
     do args <- prepare_apply fn (map fst imps)
        fill (raw_apply fn (map Var args))
-       -- *Don't* solve the arguments we're specifying by hand.
+       -- _Don't_ solve the arguments we're specifying by hand.
        -- (remove from unified list before calling end_unify)
        -- HMMM: Actually, if we get it wrong, the typechecker will complain!
        -- so do nothing

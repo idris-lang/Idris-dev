@@ -46,10 +46,12 @@ defaultOpts = IOption 0 False False True False False True True ViaC Executable "
 -- This will include all the functions and data declarations, plus fixity declarations
 -- and syntax macros.
 
+-- | The global state used in the Idris monad
 data IState = IState {
-    tt_ctxt :: Context,
+    tt_ctxt :: Context, -- ^ All the currently defined names and their terms
     idris_constraints :: [(UConstraint, FC)],
-    idris_infixes :: [FixDecl],
+      -- ^ A list of universe constraints and their corresponding source locations
+    idris_infixes :: [FixDecl], -- ^ Currently defined infix operators
     idris_implicits :: Ctxt [PArg],
     idris_statics :: Ctxt [Bool],
     idris_classes :: Ctxt ClassInfo,
@@ -65,11 +67,11 @@ data IState = IState {
     idris_log :: String,
     idris_options :: IOption,
     idris_name :: Int,
-    idris_metavars :: [Name],
+    idris_metavars :: [Name], -- ^ The currently defined but not proven metavariables
     idris_coercions :: [Name],
     syntax_rules :: [Syntax],
     syntax_keywords :: [String],
-    imported :: [FilePath],
+    imported :: [FilePath], -- ^ The imported modules
     idris_scprims :: [(Name, (Int, PrimFn))],
     idris_objs :: [FilePath],
     idris_libs :: [String],
@@ -136,7 +138,7 @@ idrisInit = IState initContext [] [] emptyContext emptyContext emptyContext
                    [] "" defaultOpts 6 [] [] [] [] [] [] [] [] []
                    [] Nothing Nothing [] [] [] Hidden False [] Nothing
 
--- The monad for the main REPL - reading and processing files and updating 
+-- | The monad for the main REPL - reading and processing files and updating 
 -- global state (hence the IO inner monad).
 type Idris = StateT IState IO
 
@@ -149,6 +151,7 @@ data Target = ViaC
             | Bytecode
     deriving (Show, Eq)
 
+-- | REPL commands
 data Command = Quit
              | Help
              | Eval PTerm
@@ -296,32 +299,37 @@ type FnOpts = [FnOpt]
 inlinable :: FnOpts -> Bool
 inlinable = elem Inlinable
 
-data PDecl' t 
-   = PFix     FC Fixity [String] -- fixity declaration
-   | PTy      String SyntaxInfo FC FnOpts Name t   -- type declaration
-   | PPostulate String SyntaxInfo FC FnOpts Name t
-   | PClauses FC FnOpts Name [PClause' t]   -- pattern clause
-   | PCAF     FC Name t -- top level constant
-   | PData    String SyntaxInfo FC Bool -- codata
-                            (PData' t)  -- data declaration
-   | PParams  FC [(Name, t)] [PDecl' t] -- params block
-   | PNamespace String [PDecl' t] -- new namespace
-   | PRecord  String SyntaxInfo FC Name t String Name t     -- record declaration
+-- | Top-level declarations such as compiler directives, definitions,
+-- datatypes and typeclasses.
+data PDecl' t
+   = PFix     FC Fixity [String] -- ^ Fixity declaration
+   | PTy      String SyntaxInfo FC FnOpts Name t   -- ^ Type declaration
+   | PPostulate String SyntaxInfo FC FnOpts Name t -- ^ Postulate
+   | PClauses FC FnOpts Name [PClause' t]   -- ^ Pattern clause
+   | PCAF     FC Name t -- ^ Top level constant
+   | PData    String SyntaxInfo FC Bool (PData' t)  -- ^ Data declaration. The Bool argument is True for codata.
+   | PParams  FC [(Name, t)] [PDecl' t] -- ^ Params block
+   | PNamespace String [PDecl' t] -- ^ New namespace
+   | PRecord  String SyntaxInfo FC Name t String Name t  -- ^ Record declaration
    | PClass   String SyntaxInfo FC 
               [t] -- constraints
               Name
               [(Name, t)] -- parameters
               [PDecl' t] -- declarations
+              -- ^ Type class: arguments are documentation, syntax info, source location, constraints,
+              -- class name, parameters, method declarations
    | PInstance SyntaxInfo FC [t] -- constraints
                              Name -- class
                              [t] -- parameters
                              t -- full instance type
                              (Maybe Name) -- explicit name
                              [PDecl' t]
-   | PDSL     Name (DSL' t)
-   | PSyntax  FC Syntax
-   | PMutual  FC [PDecl' t]
-   | PDirective (Idris ())
+               -- ^ Instance declaration: arguments are syntax info, source location, constraints,
+               -- class name, parameters, full instance type, optional explicit name, and definitions
+   | PDSL     Name (DSL' t) -- ^ DSL declaration
+   | PSyntax  FC Syntax -- ^ Syntax definition
+   | PMutual  FC [PDecl' t] -- ^ Mutual block
+   | PDirective (Idris ()) -- ^ Compiler directive. The parser inserts the corresponding action in the Idris monad.
   deriving Functor
 {-!
 deriving instance Binary PDecl'
@@ -336,10 +344,14 @@ data PClause' t = PClause  FC Name t [t] t [PDecl' t]
 deriving instance Binary PClause'
 !-}
 
-data PData' t  = PDatadecl { d_name :: Name,
-                             d_tcon :: t,
-                             d_cons :: [(String, Name, t, FC)] }
+-- | Data declaration
+data PData' t  = PDatadecl { d_name :: Name, -- ^ The name of the datatype
+                             d_tcon :: t, -- ^ Type constructor
+                             d_cons :: [(String, Name, t, FC)] -- ^ Constructors
+                           }
+                 -- ^ Data declaration
                | PLaterdecl { d_name :: Name, d_tcon :: t }
+                 -- ^ "Placeholder" for data whose constructors are defined later
     deriving Functor
 {-!
 deriving instance Binary PData'
@@ -414,16 +426,15 @@ updateNs ns t = mapPT updateRef t
 --                                      (map (updateDNs ns) ds)
 -- updateDNs ns c = c
 
--- High level language terms
-
+-- | High level language terms
 data PTerm = PQuote Raw
            | PRef FC Name
-           | PInferRef FC Name -- a name to be defined later
+           | PInferRef FC Name -- ^ A name to be defined later
            | PPatvar FC Name
            | PLam Name PTerm PTerm
            | PPi  Plicity Name PTerm PTerm
-           | PLet Name PTerm PTerm PTerm 
-           | PTyped PTerm PTerm -- term with explicit type
+           | PLet Name PTerm PTerm PTerm
+           | PTyped PTerm PTerm -- ^ Term with explicit type
            | PApp FC PTerm [PArg]
            | PCase FC PTerm [(PTerm, PTerm)]
            | PTrue FC
@@ -434,7 +445,7 @@ data PTerm = PQuote Raw
            | PPair FC PTerm PTerm
            | PDPair FC PTerm PTerm PTerm
            | PAlternative Bool [PTerm] -- True if only one may work
-           | PHidden PTerm -- irrelevant or hidden pattern
+           | PHidden PTerm -- ^ Irrelevant or hidden pattern
            | PType
            | PConstant Const
            | Placeholder
@@ -442,11 +453,11 @@ data PTerm = PQuote Raw
            | PIdiom FC PTerm
            | PReturn FC
            | PMetavar Name
-           | PProof [PTactic]
-           | PTactics [PTactic] -- as PProof, but no auto solving
-           | PElabError Err -- error to report on elaboration
-           | PImpossible -- special case for declaring when an LHS can't typecheck
-           | PCoerced PTerm -- to mark a coerced argument, so as not to coerce twice
+           | PProof [PTactic] -- ^ Proof script
+           | PTactics [PTactic] -- ^ As PProof, but no auto solving
+           | PElabError Err -- ^ Error to report on elaboration
+           | PImpossible -- ^ Special case for declaring when an LHS can't typecheck
+           | PCoerced PTerm -- ^ To mark a coerced argument, so as not to coerce twice
     deriving Eq
 {-! 
 deriving instance Binary PTerm 
