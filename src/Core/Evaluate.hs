@@ -29,7 +29,7 @@ data EvalOpt = Spec | HNF | Simplify Bool | AtREPL
 initEval = ES []
 
 -- VALUES (as HOAS) ---------------------------------------------------------
-
+-- | A HOAS representation of values
 data Value = VP NameType Name Value
            | VV Int
            | VBind Name (Binder Value) (Value -> Eval Value)
@@ -62,7 +62,7 @@ instance Show (a -> b) where
 -- i.e. it's an intermediate environment that we have while type checking or
 -- while building a proof.
 
--- Normalise fully type checked terms (so, assume all names/let bindings resolved)
+-- | Normalise fully type checked terms (so, assume all names/let bindings resolved)
 normaliseC :: Context -> Env -> TT Name -> TT Name
 normaliseC ctxt env t 
    = evalState (do val <- eval False ctxt [] env t []
@@ -86,9 +86,8 @@ specialise ctxt env limits t
    = evalState (do val <- eval False ctxt limits (map finalEntry env) (finalise t) []
                    quote 0 val) (initEval { limited = limits })
 
--- Like normalise, but we only reduce functions that are marked as okay to 
+-- | Like normalise, but we only reduce functions that are marked as okay to 
 -- inline (and probably shouldn't reduce lets?)
-
 simplify :: Context -> Bool -> Env -> TT Name -> TT Name
 simplify ctxt runtime env t 
    = evalState (do val <- eval False ctxt [(UN "lazy", 0),
@@ -98,6 +97,7 @@ simplify ctxt runtime env t
                                  [Simplify runtime]
                    quote 0 val) initEval
 
+-- | Reduce a term to head normal form
 hnf :: Context -> Env -> TT Name -> TT Name
 hnf ctxt env t 
    = evalState (do val <- eval False ctxt [] 
@@ -130,9 +130,8 @@ usable s n ns = case lookup n ns of
                   _ -> if s then (True, (n, 0) : filter (\ (n', _) -> n/=n') ns)
                             else (True, (n, 100) : filter (\ (n', _) -> n/=n') ns)
 
--- Evaluate in a context of locally named things (i.e. not de Bruijn indexed,
+-- | Evaluate in a context of locally named things (i.e. not de Bruijn indexed,
 -- such as we might have during construction of a proof)
-
 eval :: Bool -> Context -> [(Name, Int)] -> Env -> TT Name -> 
         [EvalOpt] -> Eval Value
 eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
@@ -576,7 +575,7 @@ spec ctxt statics genv tm = error "spec undefined"
 
 -- CONTEXTS -----------------------------------------------------------------
 
-{- A definition is either a simple function (just an expression with a type),
+{-| A definition is either a simple function (just an expression with a type),
    a constant, which could be a data or type constructor, an axiom or as an
    yet undefined function, or an Operator.
    An Operator is a function which explains how to reduce. 
@@ -620,12 +619,14 @@ instance Binary (a -> b) where
 data Accessibility = Public | Frozen | Hidden
     deriving (Show, Eq)
 
-data Totality = Total [Int] -- well-founded arguments
-              | Productive
+-- | The result of totality checking
+data Totality = Total [Int] -- ^ well-founded arguments
+              | Productive -- ^ productive
               | Partial PReason
               | Unchecked
     deriving Eq
 
+-- | Reasons why a function may not be total
 data PReason = Other [Name] | Itself | NotCovering | NotPositive | UseUndef Name
              | BelieveMe | Mutual [Name] | NotProductive
     deriving (Show, Eq)

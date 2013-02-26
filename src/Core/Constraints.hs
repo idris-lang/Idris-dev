@@ -1,3 +1,4 @@
+-- | Check universe constraints.
 module Core.Constraints(ucheck) where
 
 import Core.TT
@@ -13,6 +14,7 @@ import qualified Data.Map as M
 
 import Debug.Trace
 
+-- | Check that a list of universe constraints can be satisfied.
 ucheck :: [(UConstraint, FC)] -> TC ()
 ucheck cs = acyclic rels (map fst (M.toList rels))
   where lhs (ULT l _) = l
