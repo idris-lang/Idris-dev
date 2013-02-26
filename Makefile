@@ -23,5 +23,9 @@ relib: .PHONY
 linecount : .PHONY
 	wc -l src/Idris/*.hs src/Core/*.hs src/IRTS/*.hs src/Pkg/*.hs
 
+#Note: this doesn't yet link to Hackage properly
+doc: .PHONY
+	$(CABAL) haddock --executables --hyperlink-source --html --hoogle --html-location="http://hackage.haskell.org/packages/archive/\$$pkg/latest/doc/html" --haddock-options="--title Idris"
+
 .PHONY:
 
