@@ -508,6 +508,7 @@ patbind n ctxt env _ = fail "Can't pattern bind here"
 compute :: RunTactic
 compute ctxt env (Bind x (Hole ty) sc) =
     do return $ Bind x (Hole (normalise ctxt env ty)) sc
+compute ctxt env t = return t
         
 hnf_compute :: RunTactic
 hnf_compute ctxt env (Bind x (Hole ty) sc) = 

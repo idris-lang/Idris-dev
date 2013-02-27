@@ -449,7 +449,9 @@ elab ist info pattern tcgen fn tm
         do ty <- goal
            -- Check for possible coercions to get to the goal
            -- and add them as 'alternatives'
-           let cs = getCoercionsTo ist ty
+           env <- get_env
+           let ty' = normalise (tt_ctxt ist) env ty
+           let cs = getCoercionsTo ist ty'
            let t' = case (t, cs) of
                          (PCoerced tm, _) -> tm
                          (_, []) -> t
