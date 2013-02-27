@@ -1,5 +1,23 @@
 {-# LANGUAGE MultiParamTypeClasses, FunctionalDependencies, DeriveFunctor #-}
 
+{-| TT is the core language of Idris. The language has:
+
+   * Full dependent types
+
+   * A hierarchy of universes, with cumulativity: Type : Type1, Type1 : Type2, ...
+
+   * Pattern matching letrec binding
+
+   * (primitive types defined externally)
+
+   Some technical stuff:
+
+   * Typechecker is kept as simple as possible - no unification, just a checker for incomplete terms.
+
+   * We have a simple collection of tactics which we use to elaborate source
+     programs with implicit syntax into fully explicit terms.
+-}
+
 module Core.TT where
 
 import Control.Monad.State
@@ -11,19 +29,6 @@ import qualified Data.Binary as B
 import Data.Binary hiding (get, put)
 
 import Util.Pretty hiding (Str)
-
-{- The language has:
-   * Full dependent types
-   * A hierarchy of universes, with cumulativity: Type : Type1, Type1 : Type2, ...
-   * Pattern matching letrec binding
-   * (primitive types defined externally)
-
-   Some technical stuff:
-   * Typechecker is kept as simple as possible 
-        - no unification, just a checker for incomplete terms.
-   * We have a simple collection of tactics which we use to elaborate source
-     programs with implicit syntax into fully explicit terms.
--}
 
 data Option = TTypeInTType
             | CheckConv
@@ -318,10 +323,11 @@ instance Pretty Raw where
 deriving instance Binary Raw 
 !-}
 
-data Binder b = Lam   { binderTy  :: b }
+-- | All binding forms are represented in a unform fashion.
+data Binder b = Lam   { binderTy  :: b {-^ type annotation for bound variable-}}
               | Pi    { binderTy  :: b }
               | Let   { binderTy  :: b,
-                        binderVal :: b }
+                        binderVal :: b {-^ value for bound variable-}}
               | NLet  { binderTy  :: b,
                         binderVal :: b }
               | Hole  { binderTy  :: b}
@@ -435,15 +441,16 @@ instance Eq NameType where
     TCon _ a == TCon _ b = (a == b) -- ignore tag
     _        == _        = False
 
-data TT n = P NameType n (TT n) -- embed type
-          | V Int 
-          | Bind n (Binder (TT n)) (TT n)
-          | App (TT n) (TT n) -- function, function type, arg
-          | Constant Const
-          | Proj (TT n) Int -- argument projection; runtime only
-          | Erased
-          | Impossible -- special case for totality checking
-          | TType UExp
+-- | Terms in the core language
+data TT n = P NameType n (TT n) -- ^ named references
+          | V Int -- ^ a resolved de Bruijn-indexed variable
+          | Bind n (Binder (TT n)) (TT n) -- ^ a binding
+          | App (TT n) (TT n) -- ^ function, function type, arg
+          | Constant Const -- ^ constant
+          | Proj (TT n) Int -- ^ argument projection; runtime only
+          | Erased -- ^ an erased term
+          | Impossible -- ^ special case for totality checking
+          | TType UExp -- ^ the type of types at some level
   deriving (Ord, Functor)
 {-! 
 deriving instance Binary TT 
@@ -501,6 +508,9 @@ instance Eq n => Eq (TT n) where
 
 -- * A few handy operations on well typed terms:
 
+-- | A term is injective iff it is a data constructor, type constructor,
+-- constant, the type Type, pi-binding, or an application of an injective
+-- term.
 isInjective :: TT n -> Bool
 isInjective (P (DCon _ _) _ _) = True
 isInjective (P (TCon _ _) _ _) = True
