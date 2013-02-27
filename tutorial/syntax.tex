@@ -48,10 +48,13 @@ also be used to include reserved words in syntax rules, such as \texttt{"let"} o
 \end{itemize}
 
 \noindent
-The limitations on the form of a syntax rule are that it must include at least one
-symbol or keyword, and there must be no repeated variables standing for non-terminals.
-Rules can use previously defined rules, but may not be recursive.
-The following syntax extensions would therefore be valid:
+The limitations on the form of a syntax rule are that it must include at least
+one symbol or keyword, and there must be no repeated variables standing for
+non-terminals. Any expression can be used, but if there are two non-terminals
+in a row in a rule, only simple expressions may be used (that is, variables,
+constants, or bracketed expressions). Rules can use previously defined rules,
+but may not be recursive.  The following syntax extensions would therefore be
+valid:
 
 \begin{SaveVerbatim}{syntaxex}
 
@@ -100,10 +103,10 @@ exampe, a \texttt{for} loop binds a variable on each iteration:
 
 \begin{SaveVerbatim}{forloop}
 
-syntax for {x} "in" [xs] [body] = forLoop xs (\x => body)
+syntax for {x} "in" [xs] ":" [body] = forLoop xs (\x => body)
   
 main : IO ()
-main = do for x in [1..10] do
+main = do for x in [1..10]:
               putStrLn ("Number " ++ show x)
           putStrLn "Done!"
 

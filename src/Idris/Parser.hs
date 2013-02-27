@@ -401,12 +401,13 @@ pSyntaxRule syn
     name _ = Nothing
 
     -- Can't parse two full expressions (i.e. expressions with application) in a row
-    -- so change the first to a simple expression
+    -- so change them both to a simple expression
 
     mkSimple (Expr e : es) = SimpleExpr e : mkSimple' es
     mkSimple xs = mkSimple' xs
 
-    mkSimple' (Expr e : Expr e1 : es) = SimpleExpr e : mkSimple' (Expr e1 : es)
+    mkSimple' (Expr e : Expr e1 : es) = SimpleExpr e : SimpleExpr e1 :
+                                           mkSimple es
     mkSimple' (e : es) = e : mkSimple' es
     mkSimple' [] = []
 
