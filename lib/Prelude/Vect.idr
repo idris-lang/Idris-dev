@@ -89,8 +89,7 @@ zipWith f []      []      = []
 zipWith f (x::xs) (y::ys) = f x y :: zipWith f xs ys
 
 zip : Vect a n -> Vect b n -> Vect (a, b) n
-zip []        []        = []
-zip (x :: xs) (y :: ys) = (x, y) :: (zip xs ys)
+zip = zipWith (\x => \y => (x,y))
 
 unzip : Vect (a, b) n -> (Vect a n, Vect b n)
 unzip []           = ([], [])
