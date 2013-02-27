@@ -216,6 +216,12 @@ sum = foldl (+) 0
 prod : Num a => List a -> a
 prod = foldl (*) 1
 
+curry : ((a, b) -> c) -> a -> b -> c
+curry f a b = f (a, b)
+
+uncurry : (a -> b -> c) -> (a, b) -> c
+uncurry f (a, b) = f a b
+
 ---- some basic io
 
 partial
