@@ -42,6 +42,12 @@ toMaybe False j = Nothing
 justInjective : {x : t} -> {y : t} -> (Just x = Just y) -> x = y
 justInjective refl = refl
 
+lowerMaybe : Monoid a => Maybe a -> a
+lowerMaybe Nothing = neutral
+lowerMaybe (Just x) = x
+
+raiseToMaybe : (Monoid a, Eq a) => a -> Maybe a
+raiseToMaybe x = if x == neutral then Nothing else Just x
 
 --------------------------------------------------------------------------------
 -- Class instances
@@ -58,22 +64,20 @@ instance (Eq a) => Eq (Maybe a) where
   (Just a) == (Just b) = a == b
 
 -- | Lift a semigroup into 'Maybe' forming a 'Monoid' according to
--- <http://en.wikipedia.org/wiki/Monoid>: \"Any semigroup S may be
--- turned into a monoid simply by adjoining an element e not in S
--- and defining i+i = i and i+s = s = s+i for all s ∈ S.\"
+-- <http://en.wikipedia.org/wiki/Monoid>: "Any semigroup S may be
+-- turned into a monoid simply by adjoining an element i not in S
+-- and defining i+i = i and i+s = s = s+i for all s ∈ S."
 
 instance (Semigroup a) => Semigroup (Maybe a) where
   Nothing <+> m = m
   m <+> Nothing = m
   (Just m1) <+> (Just m2) = Just (m1 <+> m2)
 
-instance (Monoid a) => Monoid (Maybe a) where
+instance (Semigroup a) => Monoid (Maybe a) where
   neutral = Nothing
 
-
 instance (Monoid a, Eq a) => Cast a (Maybe a) where
-  cast x = if x == neutral then Nothing else Just x
+  cast = raiseToMaybe
 
 instance (Monoid a) => Cast (Maybe a) a where
-  cast Nothing = neutral
-  cast (Just x) = x
+  cast = lowerMaybe
