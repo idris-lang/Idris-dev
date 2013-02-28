@@ -10,7 +10,7 @@ determined by whether the vector was empty or not:
 \begin{SaveVerbatim}{appdep}
 
 (++) : Vect a n -> Vect a m -> Vect a (n + m)
-(++) {n=O}   []        [] = []
+(++) {n=O}   []        ys = ys
 (++) {n=S k} (x :: xs) ys = x :: xs ++ ys
 
 \end{SaveVerbatim}
