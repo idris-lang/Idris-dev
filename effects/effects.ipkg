@@ -1,0 +1,6 @@
+package effects
+
+opts    = "-i ../lib"
+modules = Effects, 
+          Effect.Exception, Effect.File, Effect.State,
+          Effect.Random, Effect.StdIO, Effect.Select

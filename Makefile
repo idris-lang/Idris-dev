@@ -18,7 +18,8 @@ test : .PHONY
 
 relib: .PHONY
 	make -C lib IDRIS=../dist/build/idris/idris clean
-	make -C lib IDRIS=../dist/build/idris/idris
+	make -C effects IDRIS=../dist/build/idris/idris clean
+	$(CABAL) install
 
 linecount : .PHONY
 	wc -l src/Idris/*.hs src/Core/*.hs src/IRTS/*.hs src/Pkg/*.hs

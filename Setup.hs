@@ -25,7 +25,8 @@ idrisCmd local = ".." </>  buildDir local </>  "idris" </>  "idris"
 #endif
 
 cleanStdLib verbosity
-    = make verbosity [ "-C", "lib", "clean" ]
+    = do make verbosity [ "-C", "lib", "clean", "IDRIS=idris" ]
+         make verbosity [ "-C", "effects", "clean", "IDRIS=idris" ]
 
 installStdLib pkg local verbosity copy
     = do let dirs = L.absoluteInstallDirs pkg local copy
@@ -34,6 +35,11 @@ installStdLib pkg local verbosity copy
          putStrLn $ "Installing libraries in " ++ idir
          make verbosity
                [ "-C", "lib", "install"
+               , "TARGET=" ++ idir
+               , "IDRIS=" ++ icmd
+               ]
+         make verbosity
+               [ "-C", "effects", "install"
                , "TARGET=" ++ idir
                , "IDRIS=" ++ icmd
                ]
@@ -62,6 +68,10 @@ checkStdLib local verbosity
          putStrLn $ "Building libraries..."
          make verbosity
                [ "-C", "lib", "check"
+               , "IDRIS=" ++ icmd
+               ]
+         make verbosity
+               [ "-C", "effects", "check"
                , "IDRIS=" ++ icmd
                ]
          make verbosity
