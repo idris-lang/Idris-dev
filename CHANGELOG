@@ -4,6 +4,7 @@ New in 0.9.7:
 User visible changes:
 
 * 'implicit' keyword, for implicit type conversion
+* Added Effects package
 * Primitives for 8,16,32 and 64 bit integers
 
 Internal changes:
