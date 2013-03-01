@@ -36,6 +36,11 @@ index fO     (x::xs) = x
 index (fS k) (x::xs) = index k xs
 index fO     [] impossible
 
+deleteAt : Fin (S n) -> Vect a (S n) -> Vect a n
+deleteAt           fO     (x::xs) = xs
+deleteAt {n = S m} (fS k) (x::xs) = x :: deleteAt k xs
+deleteAt           _      [] impossible
+
 --------------------------------------------------------------------------------
 -- Subvectors
 --------------------------------------------------------------------------------
@@ -79,9 +84,12 @@ replicate (S k) x = x :: replicate k x
 -- Zips and unzips
 --------------------------------------------------------------------------------
 
+zipWith : (a -> b -> c) -> Vect a n -> Vect b n -> Vect c n
+zipWith f []      []      = []
+zipWith f (x::xs) (y::ys) = f x y :: zipWith f xs ys
+
 zip : Vect a n -> Vect b n -> Vect (a, b) n
-zip []        []        = []
-zip (x :: xs) (y :: ys) = (x, y) :: (zip xs ys)
+zip = zipWith (\x => \y => (x,y))
 
 unzip : Vect (a, b) n -> (Vect a n, Vect b n)
 unzip []           = ([], [])
@@ -121,6 +129,10 @@ foldr f e (x::xs) = f x (foldr f e xs)
 --------------------------------------------------------------------------------
 -- Special folds
 --------------------------------------------------------------------------------
+
+concat : Vect (Vect a n) m -> Vect a (m * n)
+concat []      = []
+concat (v::vs) = v ++ concat vs
 
 total and : Vect Bool m -> Bool
 and = foldr (&&) True
