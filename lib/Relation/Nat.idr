@@ -32,6 +32,21 @@ NotLT m n = (Relation.Nat.LT m n) -> _|_
 NotGT : Rel Nat
 NotGT m n = (Relation.Nat.GT m n) -> _|_
 
+-- alternative definition of LTEQ
+
+data LTEQ' : Rel Nat where
+  OrdBase' : LTEQ' n n
+  OrdStep' : LTEQ' m n -> LTEQ' m (S n)
+
+GTEQ' : Rel Nat
+GTEQ' m n = LTEQ' n m
+
+LT' : Rel Nat
+LT' m n = LTEQ' m (S n)
+
+GT' : Rel Nat
+GT' m n = LT' n m
+
 -- functions
 
 isGreaterEqualOrLess : (m, n : Nat) -> Either (GTEQ m n) (Relation.Nat.LT m n)
