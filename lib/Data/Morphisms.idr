@@ -4,8 +4,8 @@ import Builtins
 
 %access public
 
-data Homomorphism : Type -> Type -> Type where
-  Homo : (a -> b) -> Homomorphism a b
+data Morphism : Type -> Type -> Type where
+  Mor : (a -> b) -> Morphism a b
 
 data Endomorphism : Type -> Type where
   Endo : (a -> a) -> Endomorphism a
@@ -16,22 +16,22 @@ data Kleislimorphism : (Type -> Type) -> Type -> Type -> Type where
 applyKleisli : Monad m => (Kleislimorphism m a b) -> a -> m b
 applyKleisli (Kleisli f) a = f a
 
-applyHomo : Homomorphism a b -> a -> b
-applyHomo (Homo f) a = f a
+applyMor : Morphism a b -> a -> b
+applyMor (Mor f) a = f a
 
 applyEndo : Endomorphism a -> a -> a
 applyEndo (Endo f) a = f a
 
-instance Functor (Homomorphism r) where
-  fmap f (Homo a) = Homo (f . a)
+instance Functor (Morphism r) where
+  fmap f (Mor a) = Mor (f . a)
 
-instance Applicative (Homomorphism r) where
-  pure a                = Homo $ const a
-  (Homo f) <$> (Homo a) = Homo $ \r => f r $ a r
+instance Applicative (Morphism r) where
+  pure a                = Mor $ const a
+  (Mor f) <$> (Mor a) = Mor $ \r => f r $ a r
 
-instance Monad (Homomorphism r) where
-  return a       = Homo $ const a
-  (Homo h) >>= f = Homo $ \r => applyHomo (f $ h r) r
+instance Monad (Morphism r) where
+  return a       = Mor $ const a
+  (Mor h) >>= f = Mor $ \r => applyMor (f $ h r) r
 
 instance Semigroup (Endomorphism a) where
   (Endo f) <+> (Endo g) = Endo $ g . f
@@ -42,4 +42,4 @@ instance Monoid (Endomorphism a) where
 infixr 1 ~>
 
 (~>) : Type -> Type -> Type
-a ~> b = Homomorphism a b
+a ~> b = Morphism a b

@@ -15,12 +15,12 @@ class Category arr => Arrow (arr : Type -> Type -> Type) where
   (***)  : arr a b -> arr a' b' -> arr (a, a') (b, b')
   (&&&)  : arr a b -> arr a b' -> arr a (b, b')
 
-instance Arrow Homomorphism where
-  arrow  f              = Homo f
-  first  (Homo f)       = Homo $ \(a, b) => (f a, b)
-  second (Homo f)       = Homo $ \(a, b) => (a, f b)
-  (Homo f) *** (Homo g) = Homo $ \(a, b) => (f a, g b)
-  (Homo f) &&& (Homo g) = Homo $ \a => (f a, g a)
+instance Arrow Morphism where
+  arrow  f            = Mor f
+  first  (Mor f)      = Mor $ \(a, b) => (f a, b)
+  second (Mor f)      = Mor $ \(a, b) => (a, f b)
+  (Mor f) *** (Mor g) = Mor $ \(a, b) => (f a, g b)
+  (Mor f) &&& (Mor g) = Mor $ \a => (f a, g a)
 
 instance Monad m => Arrow (Kleislimorphism m) where
   arrow f = Kleisli (return . f)
@@ -30,11 +30,11 @@ instance Monad m => Arrow (Kleislimorphism m) where
   second (Kleisli f) = Kleisli $ \(a, b) => do x <- f b
                                                return (a, x)
 
-  (Kleisli f) *** (Kleisli g) = Kleisli $ \(a, b) => do x <- f a 
+  (Kleisli f) *** (Kleisli g) = Kleisli $ \(a, b) => do x <- f a
                                                         y <- g b
                                                         return (x, y)
 
-  (Kleisli f) &&& (Kleisli g) = Kleisli $ \a => do x <- f a 
+  (Kleisli f) &&& (Kleisli g) = Kleisli $ \a => do x <- f a
                                                    y <- g a
                                                    return (x, y)
 
