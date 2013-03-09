@@ -231,7 +231,7 @@ VAL idris_bigEq(VM* vm, VAL x, VAL y) {
     if (ISINT(x) && ISINT(y)) {
         return MKINT((i_int)(GETINT(x) == GETINT(y)));
     } else {
-        return bigEq(vm, x, y);
+        return bigEq(vm, GETBIG(vm, x), GETBIG(vm, y));
     }
 }
 
@@ -239,7 +239,7 @@ VAL idris_bigLt(VM* vm, VAL x, VAL y) {
     if (ISINT(x) && ISINT(y)) {
         return MKINT((i_int)(GETINT(x) < GETINT(y)));
     } else {
-        return bigLt(vm, x, y);
+        return bigLt(vm, GETBIG(vm, x), GETBIG(vm, y));
     }
 }
 
@@ -247,7 +247,7 @@ VAL idris_bigLe(VM* vm, VAL x, VAL y) {
     if (ISINT(x) && ISINT(y)) {
         return MKINT((i_int)(GETINT(x) <= GETINT(y)));
     } else {
-        return bigLe(vm, x, y);
+        return bigLe(vm, GETBIG(vm, x), GETBIG(vm, y));
     }
 }
 
@@ -255,7 +255,7 @@ VAL idris_bigGt(VM* vm, VAL x, VAL y) {
     if (ISINT(x) && ISINT(y)) {
         return MKINT((i_int)(GETINT(x) > GETINT(y)));
     } else {
-        return bigGt(vm, x, y);
+        return bigGt(vm, GETBIG(vm, x), GETBIG(vm, y));
     }
 }
 
@@ -263,7 +263,7 @@ VAL idris_bigGe(VM* vm, VAL x, VAL y) {
     if (ISINT(x) && ISINT(y)) {
         return MKINT((i_int)(GETINT(x) >= GETINT(y)));
     } else {
-        return bigGe(vm, x, y);
+        return bigGe(vm, GETBIG(vm, x), GETBIG(vm, y));
     }
 }
 
