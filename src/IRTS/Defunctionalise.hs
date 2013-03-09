@@ -212,10 +212,13 @@ mkEval xs = (MN 0 "EVAL", DFun (MN 0 "EVAL") [MN 0 "arg"]
 
 mkApply :: [(Name, Int, EvalApply DAlt)] -> (Name, DDecl)
 mkApply xs = (MN 0 "APPLY", DFun (MN 0 "APPLY") [MN 0 "fn", MN 0 "arg"]
-                             (mkBigCase (MN 0 "APPLY")
-                                        256 (DApp False (MN 0 "EVAL")
-                                            [DV (Glob (MN 0 "fn"))])
-                                 (mapMaybe applyCase xs)))
+                             (case mapMaybe applyCase xs of
+                                [] -> DNothing
+                                cases ->
+                                    mkBigCase (MN 0 "APPLY") 256
+                                              (DApp False (MN 0 "EVAL")
+                                               [DV (Glob (MN 0 "fn"))])
+                                              cases))
   where
     applyCase (n, t, ApplyCase x) = Just x
     applyCase _ = Nothing
