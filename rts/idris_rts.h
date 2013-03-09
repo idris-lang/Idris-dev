@@ -168,6 +168,15 @@ void SLIDE(VM* vm, int args);
 void* allocate(VM* vm, size_t size, int outerlock);
 // void* allocCon(VM* vm, int arity, int outerlock);
 
+// When allocating from C, call 'idris_requireAlloc' with a size to
+// guarantee that no garbage collection will happen (and hence nothing
+// will move) until at least size bytes have been allocated.
+// idris_doneAlloc *must* be called when allocation from C is done (as it
+// may take a lock if other threads are running).
+
+void idris_requireAlloc(VM* vm, size_t size);
+void idris_doneAlloc(VM* vm);
+
 #define allocCon(cl, vm, t, a, o) \
   cl = allocate(vm, sizeof(Closure) + sizeof(VAL)*a, o); \
   SETTY(cl, CON); \
@@ -221,6 +230,25 @@ VAL idris_getArg(VM* vm, int i);
 // Just reports an error and exits.
 
 void stackOverflow();
+
+// Some FFI help (functions and macros below are all which C code should
+// use)
+
+// When allocating from C, call 'idris_requireAlloc' with a size to
+// guarantee that no garbage collection will happen (and hence nothing
+// will move) until at least size bytes have been allocated.
+// idris_doneAlloc *must* be called when allocation from C is done (as it
+// may take a lock if other threads are running).
+
+void idris_requireAlloc(VM* vm, size_t size);
+void idris_doneAlloc(VM* vm);
+
+// I think these names are nicer for an API...
+
+#define idris_constructor allocCon
+#define idris_setConArg SETARG
+#define idris_getConArg GETARG
+#define idris_mkInt(x) MKINT((intptr_t)(x))
 
 #include "idris_gmp.h"
 

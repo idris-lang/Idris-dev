@@ -77,6 +77,24 @@ void terminate(VM* vm) {
     free(vm);
 }
 
+void idris_requireAlloc(VM* vm, size_t size) {
+    if (!(vm -> heap_next + size < vm -> heap_end)) {
+        idris_gc(vm);
+    }
+
+    int lock = vm->processes > 0;
+    if (lock) { // not message passing
+       pthread_mutex_lock(&vm->alloc_lock); 
+    }
+}
+
+void idris_doneAlloc(VM* vm) {
+    int lock = vm->processes > 0;
+    if (lock) { // not message passing
+       pthread_mutex_unlock(&vm->alloc_lock); 
+    }
+}
+
 void* allocate(VM* vm, size_t size, int outerlock) {
 //    return malloc(size);
     int lock = vm->processes > 0 && !outerlock;
