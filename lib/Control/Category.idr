@@ -8,9 +8,9 @@ class Category (cat : Type -> Type -> Type) where
   id  : cat a a
   (.) : cat b c -> cat a b -> cat a c
 
-instance Category Homomorphism where
-  id                  = Homo Builtins.id
-  (Homo f) . (Homo g) = Homo (f . g)
+instance Category Morphism where
+  id                = Mor Builtins.id
+  (Mor f) . (Mor g) = Mor (f . g)
 
 instance Monad m => Category (Kleislimorphism m) where
   id                        = Kleisli (return . id)
