@@ -1,5 +1,5 @@
 Name:           idris
-Version:        0.9.6.1
+Version:        0.9.7
 License:        BSD3
 License-file:   LICENSE
 Author:         Edwin Brady
@@ -56,8 +56,9 @@ Extra-source-files:    lib/Makefile  lib/*.idr lib/Prelude/*.idr
                        lib/System/Concurrency/*.idr
                        lib/Data/*.idr lib/Debug/*.idr
                        lib/Decidable/*.idr
-                       effects/*.idr effects/Effect/*.idr
                        tutorial/examples/*.idr lib/base.ipkg
+                       effects/Makefile effects/*.idr effects/Effect/*.idr
+                       effects/effects.ipkg
                        config.mk
                        rts/*.c rts/*.h rts/Makefile
                        js/*.js
