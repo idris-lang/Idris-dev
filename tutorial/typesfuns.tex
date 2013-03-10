@@ -333,10 +333,10 @@ not hold, \Idris{} will not accept the definition. For example:
 \begin{SaveVerbatim}{vapperrmsg}
 
 $ idris vbroken.idr --check
-vbroken.idr:3:Can't unify Vect a (S (plus k k)) with Vect a (S (plus k m))
+vbroken.idr:3:Can't unify Vect a n with Vect a m
 
 Specifically:
-	 Can't unify k with m
+	 Can't unify n with m
 
 \end{SaveVerbatim}
 \begin{SaveVerbatim}{bleh}
@@ -346,10 +346,10 @@ $
 
 \noindent
 This error message suggests that there is a length mismatch between two vectors
---- we needed a vector of length \texttt{(S (k + m))}, but provided a vector
-of length \texttt{(S (k + k))}.
-Note that the terms in the error message have been \emph{normalised}, so in
-particular \texttt{n + m} has been reduced to \texttt{plus n m}.
+--- we needed a vector of length \texttt{m}, but provided a vector
+of length \texttt{n}.
+%Note that the terms in the error message have been \emph{normalised}, so in
+%particular \texttt{n + m} has been reduced to \texttt{plus n m}.
 
 \subsubsection{The Finite Sets}
 
