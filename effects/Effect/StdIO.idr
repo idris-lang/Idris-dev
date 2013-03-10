@@ -50,9 +50,10 @@ putStrLn s = putStr (s ++ "\n")
 getStr : Handler StdIO e => Eff e [STDIO] String
 getStr = GetStr
 
-mkStrFn : Eff IOStream xs a -> Env IOStream xs -> 
+mkStrFn : Env IOStream xs -> 
+          Eff IOStream xs a -> 
           List String -> (a, List String)
-mkStrFn {a} p env input = case mkStrFn' of
+mkStrFn {a} env p input = case mkStrFn' of
                                MkStream f => f input
   where mkStrFn' : IOStream a
         mkStrFn' = runWith injStream env p
