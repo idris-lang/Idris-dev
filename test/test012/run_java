@@ -1,0 +1,3 @@
+#!/bin/bash
+idris $@ test012a.idr -o test012a.java --target Java
+rm -f test012a.java *.class
