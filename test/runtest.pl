@@ -3,12 +3,16 @@
 my $exitstatus = 0;
 
 sub runtest {
-    my ($test, $update) = @_;
+    my ($test, $update, $usejava) = @_;
 
     chdir($test);
 
     print "Running $test...";
-    $got = `sh ./run @idrOpts`;
+    if ($usejava == 1) {
+      $got = `sh ./run_java @idrOpts`;
+    } else {
+      $got = `sh ./run @idrOpts`;
+    }
     $exp = `cat expected`;
 
     open(OUT,">output");
@@ -69,18 +73,24 @@ if ($#ARGV>=0) {
 $update=0;
 $diff=0;
 $show=0;
+$usejava = 0;
 @idrOpts=();
 
 while ($opt=shift(@opts)) {
     if ($opt eq "-u") { $update = 1; }
     if ($opt eq "-d") { $diff = 1; }
     if ($opt eq "-s") { $show = 1; }
+    if ($opt eq "--java") { $usejava = 1; }
 }
 
 foreach $test (@tests) {
 
+  if ($usejava == 1 && !(-e "$test/run_java")) {
+    next;
+  }
+
     if ($diff == 0 && $show == 0) {
-	runtest($test,$update);
+	runtest($test,$update, $usejava);
     }
     else {
 	chdir($test);
@@ -97,6 +107,6 @@ foreach $test (@tests) {
 	}
 	chdir("..");
     }
-    
+
 }
 exit $exitstatus;
