@@ -281,6 +281,7 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
                                         Just (altmap, sc) -> evTree ntimes stk top env altmap sc
                                         _ -> return Nothing
             _ -> return Nothing
+    evTree ntimes stk top env amap ImpossibleCase = return Nothing
 
     conHeaded tm@(App _ _) 
         | (P (DCon _ _) _ _, args) <- unApply tm = True
