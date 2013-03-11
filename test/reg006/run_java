@@ -1,0 +1,3 @@
+#!/bin/bash
+idris $@ reg006.idr -o reg006.java --target Java
+rm -f reg006.java *.class

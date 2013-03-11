@@ -10,21 +10,21 @@ Stability:      Beta
 Category:       Compilers/Interpreters, Dependent Types
 Synopsis:       Functional Programming Language with Dependent Types
 Description:    Idris is a general purpose language with full dependent types.
-                It is compiled, with eager evaluation. 
+                It is compiled, with eager evaluation.
                 Dependent types allow types to be predicated on values,
                 meaning that some aspects of a program's behaviour can be
-                specified precisely in the type. The language is closely 
+                specified precisely in the type. The language is closely
 		related to Epigram and Agda. There is a tutorial at <http://www.idris-lang.org/documentation>.
                 Features include:
                 .
                 * Full dependent types with dependent pattern matching
-                .                
-                * where clauses, with rule, simple case expressions, 
+                .
+                * where clauses, with rule, simple case expressions,
                   pattern matching let and lambda bindings
                 .
                 * Type classes, monad comprehensions
                 .
-                * do notation, idiom brackets, syntactic conveniences for lists, 
+                * do notation, idiom brackets, syntactic conveniences for lists,
                   tuples, dependent pairs
                 .
                 * Totality checking
@@ -50,7 +50,7 @@ Data-files:            rts/libidris_rts.a rts/idris_rts.h rts/idris_gc.h
                        js/Runtime-common.js
                        js/Runtime-node.js
                        js/Runtime-browser.js
-Extra-source-files:    lib/Makefile  lib/*.idr lib/Prelude/*.idr 
+Extra-source-files:    lib/Makefile  lib/*.idr lib/Prelude/*.idr
                        lib/Network/*.idr lib/Control/*.idr
                        lib/Control/Monad/*.idr lib/Language/*.idr
                        lib/System/Concurrency/*.idr
@@ -65,14 +65,14 @@ Extra-source-files:    lib/Makefile  lib/*.idr lib/Prelude/*.idr
 
 source-repository head
   type:     git
-  location: git://github.com/edwinb/Idris-dev.git 
+  location: git://github.com/edwinb/Idris-dev.git
 
 
 Executable     idris
                Main-is: Main.hs
                hs-source-dirs: src
-               Other-modules: Core.TT, Core.Evaluate, Core.Typecheck, 
-                              Core.ProofShell, Core.ProofState, Core.CoreParser, 
+               Other-modules: Core.TT, Core.Evaluate, Core.Typecheck,
+                              Core.ProofShell, Core.ProofState, Core.CoreParser,
                               Core.ShellParser, Core.Unify, Core.Elaborate,
                               Core.CaseTree, Core.Constraints,
 
@@ -82,7 +82,7 @@ Executable     idris
                               Idris.Delaborate, Idris.Primitives, Idris.Imports,
                               Idris.Compiler, Idris.Prover, Idris.ElabTerm,
                               Idris.Coverage, Idris.IBC, Idris.Unlit,
-                              Idris.DataOpts, Idris.Transforms, Idris.DSL, 
+                              Idris.DataOpts, Idris.Transforms, Idris.DSL,
                               Idris.UnusedArgs, Idris.Docs, Idris.Completion,
 
                               Util.Pretty, Util.System,
@@ -96,11 +96,12 @@ Executable     idris
 
                               Paths_idris
 
-               Build-depends:   base>=4 && <5, parsec>=3, mtl, Cabal, 
+               Build-depends:   base>=4 && <5, parsec>=3, mtl, Cabal,
                                 haskeline>=0.7, split, directory,
-                                containers, process, transformers, filepath, 
-                                directory, binary, bytestring, pretty
-                                
+                                containers, process, transformers, filepath,
+                                directory, binary, bytestring, pretty,
+                                language-java>=0.2.2
+
                Extensions:      MultiParamTypeClasses, FunctionalDependencies,
                                 FlexibleInstances, TemplateHaskell
                ghc-prof-options: -auto-all -caf-all
