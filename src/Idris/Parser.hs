@@ -213,6 +213,7 @@ openBlock = do lchar '{'
 closeBlock :: IParser ()
 closeBlock = do ist <- getState
                 bs <- case brace_stack ist of
+                        []  -> eof >> return []
                         Nothing : xs -> (lchar '}' >> return xs) <|> (eof >> return [])
                         Just lvl : xs -> (do i   <- indent
                                              inp <- getInput
