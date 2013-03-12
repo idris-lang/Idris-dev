@@ -3,6 +3,7 @@ module Idris.Completion (replCompletion, proverCompletion) where
 
 import Core.Evaluate (ctxtAlist)
 import Core.TT
+import Core.CoreParser (opChars)
 
 import Idris.AbsSyntaxTree
 
@@ -104,7 +105,7 @@ completeName extra n = do ns <- names
                           return $ completeWith (extra ++ ns) n
 
 completeExpr :: [String] -> CompletionFunc Idris
-completeExpr extra = completeWord Nothing " \t" (completeName extra)
+completeExpr extra = completeWord Nothing (" \t(){}:" ++ opChars) (completeName extra)
 
 completeOption :: CompletionFunc Idris
 completeOption = completeWord Nothing " \t" completeOpt
