@@ -103,7 +103,7 @@ completeWith ns n = if uniqueExists
                     then [simpleCompletion n]
                     else map simpleCompletion prefixMatches
     where prefixMatches = filter (isPrefixOf n) ns
-          uniqueExists = n `elem` prefixMatches
+          uniqueExists = [n] == prefixMatches
 
 completeName :: [String] -> String -> Idris [Completion]
 completeName extra n = do ns <- names
