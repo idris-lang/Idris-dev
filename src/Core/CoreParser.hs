@@ -1,7 +1,7 @@
 {-# LANGUAGE MultiParamTypeClasses, FlexibleInstances #-}
 
 module Core.CoreParser(parseTerm, parseFile, parseDef, pTerm, iName, 
-                       idrisLexer, maybeWithNS, pDocComment) where
+                       idrisLexer, maybeWithNS, pDocComment, opChars) where
 
 import Core.TT
 
@@ -39,8 +39,11 @@ idrisDef = haskellDef {
                     "Bits8", "Bits16", "Bits32", "Bits64"]
            } 
 
-iOpStart = oneOf ":!#$%&*+./<=>?@\\^|-~"
-iOpLetter = oneOf ":!#$%&*+./<=>?@\\^|-~"
+-- | The characters allowed in operator names
+opChars = ":!#$%&*+./<=>?@\\^|-~"
+
+iOpStart = oneOf opChars
+iOpLetter = oneOf opChars
 --          <|> letter
 
 idrisLexer :: TokenParser a
