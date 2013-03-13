@@ -914,6 +914,39 @@ aiFn inpat expat ist fc f as
          | n == n' = Just (t, reverse acc ++ gs)
     find n (g : gs) acc = find n gs (g : acc)
 
+-- replace non-linear occurrences with _
+stripLinear :: IState -> PTerm -> PTerm
+stripLinear i tm = evalState (sl tm) [] where 
+    sl :: PTerm -> State [Name] PTerm
+    sl (PRef fc f) 
+         | (_:_) <- lookupTy Nothing f (tt_ctxt i)
+              = return $ PRef fc f
+         | otherwise = do ns <- get
+                          trace (show (f, ns)) $ if (f `elem` ns)
+                             then return Placeholder
+                             else do put (f : ns)
+                                     return (PRef fc f)
+    sl (PPatvar fc f) 
+                     = do ns <- get
+                          if (f `elem` ns)
+                             then return Placeholder
+                             else do put (f : ns)
+                                     return (PRef fc f)
+    sl (PApp fc fn args) = do fn' <- sl fn
+                              args' <- mapM slA args
+                              return $ PApp fc fn' args'
+       where slA (PImp p l n t d) = do t' <- sl t
+                                       return $ PImp p l n t' d
+             slA (PExp p l t d) = do t' <- sl t
+                                     return $ PExp p l t' d
+             slA (PConstraint p l t d) 
+                                = do t' <- sl t
+                                     return $ PConstraint p l t' d
+             slA (PTacImplicit p l n sc t d) 
+                                = do t' <- sl t
+                                     return $ PTacImplicit p l n sc t' d
+    sl x = return x
+
 mkPApp fc a f [] = f
 mkPApp fc a f as = let rest = drop a as in
                        appRest fc (PApp fc f (take a as)) rest

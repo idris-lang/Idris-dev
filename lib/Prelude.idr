@@ -268,7 +268,6 @@ data Mode = Read | Write | ReadWrite
 partial
 openFile : String -> Mode -> IO File
 openFile f m = fopen f (modeStr m) where 
-  modeStr : Mode -> String
   modeStr Read  = "r"
   modeStr Write = "w"
   modeStr ReadWrite = "r+"
