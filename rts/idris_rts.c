@@ -10,6 +10,7 @@
 #include "idris_gc.h"
 #include "idris_bitstring.h"
 
+
 VM* init_vm(int stack_size, size_t heap_size, 
             int max_threads, // not implemented yet
             int argc, char* argv[]) {
@@ -26,14 +27,12 @@ VM* init_vm(int stack_size, size_t heap_size,
     vm->floatstack = floatstack;
     vm->floatstack_ptr = floatstack;
     vm->stack_max = valstack + stack_size;
-    vm->heap = malloc(heap_size);
-    vm->oldheap = NULL;
-    vm->heap_next = vm->heap;
-    vm->heap_end = vm->heap + heap_size;
-    vm->heap_size = heap_size;
+
+    alloc_heap(&(vm->heap), heap_size);
+
     vm->collections = 0;
     vm->allocations = 0;
-    vm->heap_growth = heap_size;
+
     vm->ret = NULL;
     vm->reg1 = NULL;
 
@@ -68,9 +67,11 @@ void terminate(VM* vm) {
     free(vm->valstack);
     free(vm->intstack);
     free(vm->floatstack);
-    free(vm->heap);
+
+    free_heap(&(vm->heap));
+
     free(vm->argv);
-    if (vm->oldheap != NULL) { free(vm->oldheap); }
+
     pthread_mutex_destroy(&(vm -> inbox_lock));
     pthread_mutex_destroy(&(vm -> inbox_block));
     pthread_cond_destroy(&(vm -> inbox_waiting));
@@ -78,7 +79,7 @@ void terminate(VM* vm) {
 }
 
 void idris_requireAlloc(VM* vm, size_t size) {
-    if (!(vm -> heap_next + size < vm -> heap_end)) {
+    if (!(vm->heap.next + size < vm->heap.end)) {
         idris_gc(vm);
     }
 
@@ -106,11 +107,11 @@ void* allocate(VM* vm, size_t size, int outerlock) {
     if ((size & 7)!=0) {
 	size = 8 + ((size >> 3) << 3);
     }
-    if (vm -> heap_next + size < vm -> heap_end) {
+    if (vm -> heap.next + size < vm -> heap.end) {
         vm->allocations += size + sizeof(size_t);
-        void* ptr = (void*)(vm->heap_next + sizeof(size_t));
-        *((size_t*)(vm->heap_next)) = size + sizeof(size_t);
-        vm -> heap_next += size + sizeof(size_t);
+        void* ptr = (void*)(vm->heap.next + sizeof(size_t));
+        *((size_t*)(vm->heap.next)) = size + sizeof(size_t);
+        vm -> heap.next += size + sizeof(size_t);
         memset(ptr, 0, size);
         if (lock) { // not message passing
            pthread_mutex_unlock(&vm->alloc_lock); 
@@ -208,7 +209,7 @@ void dumpStack(VM* vm) {
     for (root = vm->valstack; root < vm->valstack_top; ++root, ++i) {
         printf("%d: ", i);
         dumpVal(*root);
-        if (*root >= (VAL)(vm->heap) && *root < (VAL)(vm->heap_end)) { printf("OK"); }
+        if (*root >= (VAL)(vm->heap.heap) && *root < (VAL)(vm->heap.end)) { printf("OK"); }
         printf("\n");
     }
     printf("RET: ");
@@ -406,7 +407,7 @@ void* runThread(void* arg) {
 }
 
 void* vmThread(VM* callvm, func f, VAL arg) {
-    VM* vm = init_vm(callvm->stack_max - callvm->valstack, callvm->heap_size, 
+    VM* vm = init_vm(callvm->stack_max - callvm->valstack, callvm->heap.size, 
                      callvm->max_threads,
                      0, NULL);
     vm->processes=1; // since it can send and receive messages

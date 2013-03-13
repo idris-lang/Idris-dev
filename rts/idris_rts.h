@@ -9,6 +9,8 @@
 #include <pthread.h>
 #include <stdint.h>
 
+#include "idris_heap.h"
+
 // Closures
 
 typedef enum {
@@ -47,12 +49,10 @@ typedef struct {
     VAL* valstack_base;
     int* intstack_ptr;
     double* floatstack_ptr;
-    char* heap;
-    char* oldheap;
-    char* heap_next;
-    char* heap_end;
     VAL* stack_max;
-   
+    
+    Heap heap;
+
     pthread_mutex_t inbox_lock;
     pthread_mutex_t inbox_block;
     pthread_mutex_t alloc_lock;
@@ -70,8 +70,6 @@ typedef struct {
     int argc;
     VAL* argv; // command line arguments
 
-    size_t heap_size;
-    size_t heap_growth;
     int allocations;
     int collections;
     VAL ret;
