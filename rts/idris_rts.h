@@ -9,6 +9,7 @@
 #include <pthread.h>
 #include <stdint.h>
 
+#define IDRIS_DEBUG
 #include "idris_heap.h"
 
 // Closures

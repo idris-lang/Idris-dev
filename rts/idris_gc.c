@@ -80,6 +80,7 @@ void cheney(VM *vm) {
 }
 
 void idris_gc(VM* vm) {
+    HEAP_CHECK(vm)
     // printf("Collecting\n");
 
     char* newheap = malloc(vm->heap.size);
@@ -118,6 +119,7 @@ void idris_gc(VM* vm) {
     vm->heap.old = oldheap;
     
     // gcInfo(vm, 0);
+    HEAP_CHECK(vm)
 }
 
 void idris_gcInfo(VM* vm, int doGC) {

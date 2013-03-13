@@ -14,7 +14,17 @@ typedef struct {
     // TODO heap usage
 } Heap;
 
+
 void alloc_heap(Heap * heap, size_t heap_size);
 void free_heap(Heap * heap);
 
-#endif
+
+#ifdef IDRIS_DEBUG
+void heap_check_all(Heap * heap);
+// Should be used _between_ gc's.
+#define HEAP_CHECK(vm) heap_check_all(&(vm->heap));
+#else
+#define HEAP_CHECK(vm) 
+#endif // IDRIS_DEBUG
+
+#endif // _IDRIS_HEAP_H
