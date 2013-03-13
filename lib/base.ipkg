@@ -17,6 +17,8 @@ modules = Builtins, Prelude, IO, System,
 
           Uninhabited,
 
+          Providers,
+
           Language.Reflection,
 
           Data.Morphisms, Data.Bits, Data.Mod2, Data.Z, Data.Sign,
