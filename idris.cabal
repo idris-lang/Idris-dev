@@ -42,7 +42,10 @@ Description:    Idris is a general purpose language with full dependent types.
                 * Hugs style interactive environment
 
 Cabal-Version:  >= 1.6
+
+
 Build-type:     Custom
+
 
 Data-files:            rts/libidris_rts.a rts/idris_rts.h rts/idris_gc.h
                        rts/idris_stdfgn.h rts/idris_main.c rts/idris_gmp.h
@@ -62,10 +65,15 @@ Extra-source-files:    lib/Makefile  lib/*.idr lib/Prelude/*.idr
                        config.mk
                        rts/*.c rts/*.h rts/Makefile
                        js/*.js
+		       java/org/idris/rts/*.java
 
 source-repository head
   type:     git
   location: git://github.com/edwinb/Idris-dev.git
+
+Flag NoJava
+  Description: Do not build the Java RTS
+  Default:     False
 
 
 Executable     idris

@@ -1,17 +1,17 @@
 include config.mk
 
 install: .PHONY
-	$(CABAL) install
+	$(CABAL) install $(CABALFLAGS)
 
 pinstall: .PHONY
-	$(CABAL) configure --enable-executable-profiling
-	$(CABAL) install   --enable-executable-profiling
+	$(CABAL) configure --enable-executable-profiling $(CABALFLAGS)
+	$(CABAL) install   --enable-executable-profiling $(CABALFLAGS)
 
 build: .PHONY
-	$(CABAL) build
+	$(CABAL) build $(CABALFLAGS)
 
 configure: .PHONY
-	$(CABAL) configure
+	$(CABAL) configure $(CABALFLAGS)
 
 test : .PHONY
 	make -C test
@@ -19,7 +19,7 @@ test : .PHONY
 relib: .PHONY
 	make -C lib IDRIS=../dist/build/idris/idris clean
 	make -C effects IDRIS=../dist/build/idris/idris clean
-	$(CABAL) install
+	$(CABAL) install $(CABALFLAGS)
 
 linecount : .PHONY
 	wc -l src/Idris/*.hs src/Core/*.hs src/IRTS/*.hs src/Pkg/*.hs

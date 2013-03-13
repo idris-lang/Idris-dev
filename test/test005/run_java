@@ -1,6 +1,8 @@
 #!/bin/bash
 idris $@ test005.idr -o test005.java --target Java
-export CLASSPATH=../../java/idris.jar:$CLASSPATH
+for RTS in ../../java/target/idris-*.jar; do
+    export CLASSPATH=$RTS:$CLASSPATH
+done;
 javac test005.java
 java test005
 rm -f test005.java *.class
