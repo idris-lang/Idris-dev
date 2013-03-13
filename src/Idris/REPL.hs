@@ -23,6 +23,7 @@ import Paths_idris
 import Util.System
 
 import Core.Evaluate
+import Core.Execute (execute)
 import Core.ProofShell
 import Core.TT
 import Core.Constraints
@@ -180,17 +181,17 @@ process fn (Eval t)
                       imp <- impShow
                       iputStrLn (showImp imp (delab ist tm') ++ " : " ++ 
                                  showImp imp (delab ist ty'))
-process fn (ExecVal t) 
-                    = do (tm, ty) <- elabVal toplevel False t 
---                                         (PApp fc (PRef fc (NS (UN "print") ["Prelude"]))
---                                                           [pexp t])
-                         (tmpn, tmph) <- liftIO tempfile
-                         liftIO $ hClose tmph
-                         t <- target
-                         compile t tmpn tm
-                         liftIO $ system tmpn
-                         return ()
-    where fc = FC "(input)" 0 
+process fn (ExecVal t)
+                  = do ctxt <- getContext
+                       ist <- getIState
+                       (tm, ty) <- elabVal toplevel False t
+                       let tm' = normaliseAll ctxt [] tm
+                       let ty' = normaliseAll ctxt [] ty
+                       res <- execute tm'
+                       imp <- impShow
+                       iputStrLn (showImp imp (delab ist res) ++ " : " ++
+                                  showImp imp (delab ist ty'))
+                       return ()
 process fn (Check (PRef _ n))
                   = do ctxt <- getContext
                        ist <- getIState

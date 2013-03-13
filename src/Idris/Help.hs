@@ -8,7 +8,7 @@ data CmdArg = ExprArg -- ^ The command takes an expression
             | MetaVarArg -- ^ The command takes a metavariable
             | NoArg -- ^ No completion yet
 
-
+-- TODO: Merge the second and fourth elements of the following tuples
 help :: [([String], String, String, CmdArg)]
 help =
   [ (["<expr>"], "", "Evaluate an expression", NoArg),
@@ -26,6 +26,7 @@ help =
     ([":rmproof"], "<name>", "Remove proof from proof stack", NameArg),
     ([":showproof"], "<name>", "Show proof", NameArg),
     ([":proofs"], "", "Show available proofs", NoArg),
+    ([":x"], "<expr>", "Execute IO actions resulting from an expression using the interpreter", ExprArg),
     ([":c",":compile"], "<filename>", "Compile to an executable <filename>", FileArg),
     ([":js", ":javascript"], "<filename>", "Compile to JavaScript <filename>", FileArg),
     ([":exec",":execute"], "", "Compile to an executable and run", NoArg),
