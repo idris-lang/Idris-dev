@@ -330,12 +330,22 @@ data PDecl' t
    | PSyntax  FC Syntax -- ^ Syntax definition
    | PMutual  FC [PDecl' t] -- ^ Mutual block
    | PDirective (Idris ()) -- ^ Compiler directive. The parser inserts the corresponding action in the Idris monad.
+   | PProvider SyntaxInfo FC Name t t -- ^ Type provider. The first t is the type, the second is the term
   deriving Functor
 {-!
 deriving instance Binary PDecl'
 !-}
 
-data PClause' t = PClause  FC Name t [t] t [PDecl' t]
+-- | One clause of a top-level definition. Term arguments to constructors are:
+--
+-- 1. The whole application (missing for PClauseR and PWithR because they're within a "with" clause)
+--
+-- 2. The list of patterns
+--
+-- 3. The right-hand side
+--
+-- 4. The where block (PDecl' t)
+data PClause' t = PClause  FC Name t [t] t [PDecl' t] -- ^ A normal top-level definition.
                 | PWith    FC Name t [t] t [PDecl' t]
                 | PClauseR FC        [t] t [PDecl' t]
                 | PWithR   FC        [t] t [PDecl' t]

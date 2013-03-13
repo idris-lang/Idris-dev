@@ -341,6 +341,7 @@ pDecl syn = do notEndBlock
     <|> pInstance syn
     <|> do d <- pDSL syn; return [d]
     <|> pDirective syn
+    <|> pProvider syn
     <|> try (do reserved "import"; fp <- identifier
                 fail "imports must be at the top of file") 
 
@@ -1485,27 +1486,14 @@ pDirective syn = try (do lchar '%'; reserved "lib"; lib <- strlit;
                                                 putIState (i { default_total = tot }))])
              <|> try (do lchar '%'; reserved "logging"; i <- natural;
                          return [PDirective (setLogLevel (fromInteger i))])
-             <|> try (do lchar '%'; reserved "provide";
-                         lchar '('; n <- pfName; t <- pTSig syn; lchar ')'
-                         fc <- pfc
-                         -- pack into provider
-                         let expected = providerTy fc t
-                         reserved "with"
-                         e <- pExpr syn
-                         return [PDirective (do logLvl 1 $ "** Providing " ++
-                                                           show n ++ " : " ++ show expected ++
-                                                           " as " ++ show e
-                                                i <- getIState
-                                                (e', et) <- elabVal toplevel False e
-                                                ctxt <- getContext
-                                                ist <- get
-                                                let e'' = normaliseAll ctxt [] e'
-                                                let et' = normaliseAll ctxt [] et
-                                                logLvl 1 $ "** Elaborated: " ++ show e' ++ " :as: " ++ show et
-                                                logLvl 1 $ "** Evaluated: " ++ show e'' ++ " :as: " ++ show et'
-                                                
 
-                                                )])
+pProvider :: SyntaxInfo -> IParser [PDecl]
+pProvider syn = do lchar '%'; reserved "provide";
+                   lchar '('; n <- pfName; t <- pTSig syn; lchar ')'
+                   fc <- pfc
+                   reserved "with"
+                   e <- pExpr syn
+                   return  [PProvider syn fc n t e]
 
 pTactic :: SyntaxInfo -> IParser PTactic
 pTactic syn = do reserved "intro"; ns <- sepBy pName (lchar ',')
