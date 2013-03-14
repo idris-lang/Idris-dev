@@ -2,6 +2,7 @@
 #define _IDRIS_OPTS_H
 
 #include <stddef.h>
+#include <stdio.h>
 
 typedef struct {
     size_t init_heap_size;
@@ -9,7 +10,7 @@ typedef struct {
     int    show_summary;
 } RTSOpts;
 
-void print_usage();
+void print_usage(FILE * s);
 
 // Parse rts options and shift arguments such that rts options becomes invisible
 // for main program.

@@ -16,8 +16,8 @@ char usage[] =
     "  -K    Sets the maximum stack size. Egs: -K8M\n"          \
     "\n";
 
-void print_usage() {
-    fprintf(stderr, usage);
+void print_usage(FILE * s) {
+    fprintf(s, usage);
 }
 
 int read_size(char * str) {
@@ -39,14 +39,14 @@ int read_size(char * str) {
                     "RTS Opts: Unable to recognize size suffix `%c'.\n" \
                     "          Possible suffixes are K or M or G.\n",
                     mult);
-            print_usage();
+            print_usage(stderr);
             exit(EXIT_FAILURE);
         }
         return size;
     }
 
     fprintf(stderr, "RTS Opts: Unable to parse size. Egs: 1K, 10M, 2G.\n");
-    print_usage();
+    print_usage(stderr);
     exit(EXIT_FAILURE);
 }
 
@@ -67,14 +67,14 @@ int parse_args(RTSOpts * opts, int argc, char *argv[])
 
         if (argv[i][0] != '-') {
             fprintf(stderr, "RTS options should start with '-'.\n");
-            print_usage();
+            print_usage(stderr);
             exit(EXIT_FAILURE);
         }
 
         switch (argv[i][1])
         {
         case '?':
-            print_usage();
+            print_usage(stdout);
             exit(EXIT_SUCCESS);
             break;
 
@@ -92,7 +92,7 @@ int parse_args(RTSOpts * opts, int argc, char *argv[])
 
         default:
             printf("RTS opts: Wrong argument: %s\n", argv[i]);
-            print_usage();
+            print_usage(stderr);
             exit(EXIT_FAILURE);
         }
     }
