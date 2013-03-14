@@ -106,12 +106,19 @@ void* allocate(VM* vm, size_t size, int outerlock) {
     if ((size & 7)!=0) {
 	size = 8 + ((size >> 3) << 3);
     }
-    if (vm -> heap_next + size < vm -> heap_end) {
-        vm->allocations += size + sizeof(size_t);
+    
+    size_t chunk_size = size + sizeof(size_t);
+
+    if (vm -> heap_next + chunk_size < vm -> heap_end) {
+        vm->allocations += chunk_size;
         void* ptr = (void*)(vm->heap_next + sizeof(size_t));
-        *((size_t*)(vm->heap_next)) = size + sizeof(size_t);
-        vm -> heap_next += size + sizeof(size_t);
+        *((size_t*)(vm->heap_next)) = chunk_size;
+        vm -> heap_next += chunk_size;
+
+        assert(vm->heap_next <= vm->heap_end);
+
         memset(ptr, 0, size);
+
         if (lock) { // not message passing
            pthread_mutex_unlock(&vm->alloc_lock); 
         }
