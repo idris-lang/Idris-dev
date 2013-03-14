@@ -1,9 +1,21 @@
+#include "idris_opts.h"
+
+// The default options should give satisfactory results under many circumstances.
+RTSOpts opts = { 
+    .init_heap_size = 4096000,
+    .max_stack_size = 4096000,
+    .show_summary   = 0
+};
+
 int main(int argc, char* argv[]) {
-    VM* vm = init_vm(4096000, 4096000, 1, argc, argv); // 1024000);
+    parse_shift_args(&opts, &argc, &argv);
+    
+    VM* vm = init_vm(opts.max_stack_size, opts.init_heap_size, 1, argc, argv);
     _idris__123_runMain0_125_(vm, NULL);
-    //_idris_main(vm, NULL);
-#ifdef IDRIS_TRACE
-    idris_gcInfo(vm, 1);
-#endif
+
+    if (opts.show_summary) {
+        idris_gcInfo(vm, 1);
+    }
+
     terminate(vm);
 }
