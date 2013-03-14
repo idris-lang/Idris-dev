@@ -20,7 +20,7 @@ rle [] = REnd
 rle (x :: xs) with (rle xs)
    rle (x :: Vect.Nil)             | REnd = RChar O x REnd
    rle (x :: rep (S n) yvar ++ ys) | RChar n yvar rs with (eq x yvar)
-     rle (x :: rep (S n) x ++ ys) | RChar n x rs | Just p 
+     rle (x :: rep (S n) x ++ ys) | RChar n x rs | Just refl
            = RChar (S n) x rs
      rle (x :: rep (S n) y ++ ys) | RChar n y rs | Nothing 
            = RChar O x (RChar n y rs)
@@ -28,7 +28,7 @@ rle (x :: xs) with (rle xs)
 compress : Vect Char n -> String
 compress xs with (rle xs)
   compress Nil                 | REnd         = ""
-  compress (rep (S n) x ++ xs) | RChar n x rs 
+  compress (rep (S n) x ++ xs) | RChar _ _ rs 
          = let ni : Int = cast (S n) in
                show ni ++ show x ++ compress xs
 

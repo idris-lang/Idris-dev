@@ -29,3 +29,8 @@ update : (x -> x) -> Eff m [STATE x] ()
 update f = do val <- get
               put (f val) 
 
+updateM : (x -> y) -> EffM m [STATE x] [STATE y] ()
+updateM f = do val <- get
+               putM (f val) 
+
+

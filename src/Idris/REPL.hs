@@ -16,6 +16,7 @@ import Idris.Primitives
 import Idris.Coverage
 import Idris.UnusedArgs
 import Idris.Docs
+import Idris.Help
 import Idris.Completion
 
 import Paths_idris
@@ -418,8 +419,9 @@ showTotalN i n = case lookupTotal n (tt_ctxt i) of
 displayHelp = let vstr = showVersion version in
               "\nIdris version " ++ vstr ++ "\n" ++
               "--------------" ++ map (\x -> '-') vstr ++ "\n\n" ++
+              concatMap cmdInfo helphead ++
               concatMap cmdInfo help
-  where cmdInfo (cmds, args, text) = "   " ++ col 16 12 (showSep " " cmds) args text 
+  where cmdInfo (cmds, args, text, _) = "   " ++ col 16 12 (showSep " " cmds) args text 
         col c1 c2 l m r = 
             l ++ take (c1 - length l) (repeat ' ') ++ 
             m ++ take (c2 - length m) (repeat ' ') ++ r ++ "\n"
@@ -469,31 +471,9 @@ parseArgs ("--dumpcases":n:ns)  = DumpCases n : (parseArgs ns)
 parseArgs ("--target":n:ns)     = UseTarget (parseTarget n) : (parseArgs ns)
 parseArgs (n:ns)                = Filename n : (parseArgs ns)
 
-help =
-  [ (["Command"], "Arguments", "Purpose"),
-    ([""], "", ""),
-    (["<expr>"], "", "Evaluate an expression"),
-    ([":t"], "<expr>", "Check the type of an expression"),
-    ([":miss", ":missing"], "<name>", "Show missing clauses"),
-    ([":i", ":info"], "<name>", "Display information about a type class"),
-    ([":total"], "<name>", "Check the totality of a name"),
-    ([":r",":reload"], "", "Reload current file"),
-    ([":l",":load"], "<filename>", "Load a new file"),
-    ([":m",":module"], "<module>", "Import an extra module"),
-    ([":e",":edit"], "", "Edit current file using $EDITOR or $VISUAL"),
-    ([":m",":metavars"], "", "Show remaining proof obligations (metavariables)"),
-    ([":p",":prove"], "<name>", "Prove a metavariable"),
-    ([":a",":addproof"], "<name>", "Add proof to source file"),
-    ([":rmproof"], "<name>", "Remove proof from proof stack"),
-    ([":showproof"], "<name>", "Show proof"),
-    ([":proofs"], "", "Show available proofs"),
-    ([":c",":compile"], "<filename>", "Compile to an executable <filename>"),
-    ([":js", ":javascript"], "<filename>", "Compile to JavaScript <filename>"),
-    ([":exec",":execute"], "", "Compile to an executable and run"),
-    ([":?",":h",":help"], "", "Display this help text"),
-    ([":set"], "<option>", "Set an option (errorcontext, showimplicits)"),
-    ([":unset"], "<option>", "Unset an option"),
-    ([":q",":quit"], "", "Exit the Idris system")
+helphead =
+  [ (["Command"], "Arguments", "Purpose", ""),
+    ([""], "", "", "")
   ]
 
 

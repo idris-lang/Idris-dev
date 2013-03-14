@@ -1,0 +1,2 @@
+#!/bin/bash
+idris $@ reg010.idr --check

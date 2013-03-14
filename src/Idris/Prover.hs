@@ -20,6 +20,7 @@ import System.Console.Haskeline.History
 import Control.Monad.State
 
 import Util.Pretty
+import Debug.Trace
 
 prover :: Bool -> Name -> Idris ()
 prover lit x =
@@ -159,6 +160,7 @@ ploop d prompt prf e h
                               return (False, e, True, prf)
               Right tac -> do (_, e) <- elabStep e saveState
                               (_, st) <- elabStep e (runTac True i tac)
+--                               trace (show (problems (proof st))) $ 
                               return (True, st, False, prf ++ [step]))
            (\err -> do iputStrLn (show err)
                        return (False, e, False, prf))
