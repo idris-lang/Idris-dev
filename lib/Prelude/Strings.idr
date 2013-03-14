@@ -36,7 +36,7 @@ strM x with (choose (not (x == "")))
 unpack : String -> List Char
 unpack s with (strM s)
   unpack ""             | StrNil = []
-  unpack (strCons x xs) | (StrCons _ xs) = x :: unpack xs
+  unpack (strCons x xs) | (StrCons x xs) = x :: unpack xs
 
 pack : List Char -> String
 pack [] = ""

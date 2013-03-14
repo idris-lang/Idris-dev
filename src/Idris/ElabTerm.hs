@@ -198,19 +198,23 @@ elab ist info pattern tcgen fn tm
               trySeq' deferr (x : xs) 
                   = try' (elab' ina x) (trySeq' deferr xs) True
     elab' ina (PPatvar fc n) | pattern = patvar n
+--         = do env <- get_env
+--              case lookup n env of
+--                 Just (PVar _) -> elab' ina Placeholder
+--                 _ -> patvar n
     elab' (ina, guarded) (PRef fc n) | pattern && not (inparamBlock n)
-                         = do ctxt <- get_context
-                              let iscon = isConName Nothing n ctxt
-                              let defined = case lookupTy Nothing n ctxt of
-                                                [] -> False
-                                                _ -> True
-                            -- this is to stop us resolve type classes recursively
-                              -- trace (show (n, guarded)) $
-                              if (tcname n && ina) then erun fc $ patvar n
-                                else if (defined && not guarded)
-                                        then do apply (Var n) []; solve
-                                        else try (do apply (Var n) []; solve)
-                                                 (patvar n)
+        = do ctxt <- get_context
+             env <- get_env
+             let defined = case lookupTy Nothing n ctxt of
+                               [] -> False
+                               _ -> True
+           -- this is to stop us resolve type classes recursively
+             -- trace (show (n, guarded)) $
+             if (tcname n && ina) then erun fc $ patvar n
+               else if (defined && not guarded)
+                       then do apply (Var n) []; solve
+                       else try (do apply (Var n) []; solve)
+                                (patvar n)
       where inparamBlock n = case lookupCtxtName Nothing n (inblock info) of
                                 [] -> False
                                 _ -> True
