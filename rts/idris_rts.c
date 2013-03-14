@@ -110,13 +110,13 @@ void* allocate(VM* vm, size_t size, int outerlock) {
     
     size_t chunk_size = size + sizeof(size_t);
 
-    if (vm -> heap_next + chunk_size < vm -> heap_end) {
+    if (vm->heap.next + chunk_size < vm->heap.end) {
         vm->allocations += chunk_size;
-        void* ptr = (void*)(vm->heap_next + sizeof(size_t));
-        *((size_t*)(vm->heap_next)) = chunk_size;
-        vm -> heap_next += chunk_size;
+        void* ptr = (void*)(vm->heap.next + sizeof(size_t));
+        *((size_t*)(vm->heap.next)) = chunk_size;
+        vm->heap.next += chunk_size;
 
-        assert(vm->heap_next <= vm->heap_end);
+        assert(vm->heap.next <= vm->heap.end);
 
         memset(ptr, 0, size);
 
