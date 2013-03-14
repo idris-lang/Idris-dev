@@ -537,7 +537,8 @@ pruneByType (P _ n _) c as
 
     typeHead var f f' 
         = case lookupTy Nothing f' c of
-                       [ty] -> case unApply (getRetTy ty) of
+                       [ty] -> let ty' = normalise c [] ty in
+                                   case unApply (getRetTy ty') of
                                     (P _ ftyn _, _) -> ftyn == f
                                     (V _, _) -> var -- keep, variable
                                     _ -> False
