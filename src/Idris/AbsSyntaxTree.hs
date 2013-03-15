@@ -10,6 +10,7 @@ import Core.Typecheck
 import IRTS.Lang
 import IRTS.CodegenCommon
 import Util.Pretty
+import Util.DynamicLinker
 
 import Paths_idris
 
@@ -78,19 +79,20 @@ data IState = IState {
     idris_hdrs :: [String],
     proof_list :: [(Name, [String])],
     errLine :: Maybe Int,
-    lastParse :: Maybe Name, 
+    lastParse :: Maybe Name,
     indent_stack :: [Int],
     brace_stack :: [Maybe Int],
     hide_list :: [(Name, Maybe Accessibility)],
     default_access :: Accessibility,
     default_total :: Bool,
     ibc_write :: [IBCWrite],
-    compiled_so :: Maybe String
+    compiled_so :: Maybe String,
+    idris_dynamic_libs :: [DynamicLib]
    }
 
 data SizeChange = Smaller | Same | Bigger | Unknown
     deriving (Show, Eq)
-{-! 
+{-!
 deriving instance Binary SizeChange
 !-}
 
@@ -136,7 +138,7 @@ idrisInit = IState initContext [] [] emptyContext emptyContext emptyContext
                    emptyContext emptyContext emptyContext emptyContext 
                    emptyContext emptyContext emptyContext emptyContext
                    [] "" defaultOpts 6 [] [] [] [] [] [] [] [] []
-                   [] Nothing Nothing [] [] [] Hidden False [] Nothing
+                   [] Nothing Nothing [] [] [] Hidden False [] Nothing []
 
 -- | The monad for the main REPL - reading and processing files and updating 
 -- global state (hence the IO inner monad).
@@ -180,6 +182,8 @@ data Command = Quit
              | Defn Name
              | Info Name
              | Missing Name
+             | DynamicLink FilePath
+             | ListDynamic
              | Pattelab PTerm
              | DebugInfo Name
              | Search PTerm

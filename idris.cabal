@@ -85,7 +85,7 @@ Executable     idris
                               Idris.DataOpts, Idris.Transforms, Idris.DSL,
                               Idris.UnusedArgs, Idris.Docs, Idris.Completion,
 
-                              Util.Pretty, Util.System,
+                              Util.Pretty, Util.System, Util.DynamicLinker,
                               Pkg.Package, Pkg.PParser,
 
                               IRTS.Lang, IRTS.LParser, IRTS.Bytecode, IRTS.Simplified,

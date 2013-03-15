@@ -8,9 +8,8 @@ import Core.Evaluate
 
 import Debug.Trace
 
-import Foreign.LibFFI
-import Foreign.Ptr (nullPtr)
-import System.Posix.DynamicLinker
+import Util.DynamicLinker
+
 
 -- | Attempt to perform a side effect. Return either Just the next step in
 -- evaluation (after performing the side effect through IO), or Nothing if no
@@ -29,6 +28,8 @@ execute tm = do stepped <- step tm
                 case stepped of
                   Nothing -> return tm
                   Just tm' -> execute tm'
+
+
 
 data FTy = FInt | FFloat | FChar | FString | FPtr | FUnit deriving Show
 

@@ -21,6 +21,7 @@ import Idris.Completion
 
 import Paths_idris
 import Util.System
+import Util.DynamicLinker
 
 import Core.Evaluate
 import Core.Execute (execute)
@@ -51,6 +52,8 @@ import Data.Maybe
 import Data.List
 import Data.Char
 import Data.Version
+
+import Debug.Trace
 
 -- | Run the REPL
 repl :: IState -- ^ The initial state
@@ -376,7 +379,20 @@ process fn (Missing n) = do i <- getIState
                                           iputStrLn (showSep "\n" (map (showImp True) tms))
                                 [] -> iputStrLn $ show n ++ " undefined"
                                 _ -> iputStrLn $ "Ambiguous name"
-process fn Metavars 
+process fn (DynamicLink l) = do i <- getIState
+                                let lib = trim l
+                                handle <- lift $ tryLoadLib lib
+                                case handle of
+                                  Nothing -> iputStrLn $ "Could not load dynamic lib \"" ++ l ++ "\""
+                                  Just x -> do let libs = idris_dynamic_libs i
+                                               putIState $ i { idris_dynamic_libs = x:libs }
+    where trim = reverse . dropWhile isSpace . reverse . dropWhile isSpace
+process fn ListDynamic = do i <- getIState
+                            iputStrLn "Dynamic libraries:"
+                            showLibs $ idris_dynamic_libs i
+    where showLibs []                = return ()
+          showLibs ((Lib name _):ls) = do iputStrLn $ "\t" ++ name; showLibs ls
+process fn Metavars
                  = do ist <- getIState
                       let mvs = idris_metavars ist \\ primDefs
                       case mvs of
