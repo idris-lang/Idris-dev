@@ -8,10 +8,9 @@ typedef struct {
     char*  heap;   // Point to bottom of heap
     char*  end;    // Point to top of heap
     size_t size;   // Size of _next_ heap. Size of current heap is /end - heap/.
-    size_t growth; // Quantity of heap growth in bytes. TODO: should it be constant?
+    size_t growth; // Quantity of heap growth in bytes. 
 
     char* old;
-    // TODO heap usage
 } Heap;
 
 

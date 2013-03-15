@@ -9,8 +9,8 @@
 #include <pthread.h>
 #include <stdint.h>
 
-#define IDRIS_DEBUG
 #include "idris_heap.h"
+#include "idris_stats.h"
 
 // Closures
 
@@ -67,12 +67,12 @@ typedef struct {
 
     int processes; // Number of child processes
     int max_threads; // maximum number of threads to run in parallel
+    
+    Stats stats;
 
     int argc;
     VAL* argv; // command line arguments
 
-    int allocations;
-    int collections;
     VAL ret;
     VAL reg1;
 } VM;
@@ -82,7 +82,7 @@ VM* init_vm(int stack_size, size_t heap_size,
             int max_threads, 
             int argc, char* argv[]);
 // Clean up a VM once it's no longer needed
-void terminate(VM* vm);
+Stats terminate(VM* vm);
 
 // Functions all take a pointer to their VM, and previous stack base, 
 // and return nothing.

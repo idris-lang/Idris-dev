@@ -81,6 +81,7 @@ void cheney(VM *vm) {
 
 void idris_gc(VM* vm) {
     HEAP_CHECK(vm)
+    STATS_ENTER_GC(vm->stats, vm->heap.size)
     // printf("Collecting\n");
 
     char* newheap = malloc(vm->heap.size);
@@ -91,8 +92,6 @@ void idris_gc(VM* vm) {
     vm->heap.heap = newheap;
     vm->heap.next = newheap;
     vm->heap.end  = newheap + vm->heap.size;
-
-    vm->collections++;
 
     VAL* root;
 
@@ -118,16 +117,14 @@ void idris_gc(VM* vm) {
     } 
     vm->heap.old = oldheap;
     
-    // gcInfo(vm, 0);
+    STATS_LEAVE_GC(vm->stats, vm->heap.size, vm->heap.next - vm->heap.heap)
     HEAP_CHECK(vm)
 }
 
 void idris_gcInfo(VM* vm, int doGC) {
-    printf("\nStack: %p %p\n", vm->valstack, vm->valstack_top); 
-    printf("Total allocations: %d\n", vm->allocations);
-    printf("GCs: %d\n", vm->collections);
-    printf("Final heap size %d\n", (int)(vm->heap.size));
-    printf("Final heap use %d\n", (int)(vm->heap.next - vm->heap.heap));
+    printf("Stack: <BOT %p> <TOP %p>\n", vm->valstack, vm->valstack_top); 
+    printf("Final heap size         %d\n", (int)(vm->heap.size));
+    printf("Final heap use          %d\n", (int)(vm->heap.next - vm->heap.heap));
     if (doGC) { idris_gc(vm); }
     printf("Final heap use after GC %d\n", (int)(vm->heap.next - vm->heap.heap));
 }

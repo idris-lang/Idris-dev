@@ -14,11 +14,15 @@
 VM* init_vm(int stack_size, size_t heap_size, 
             int max_threads, // not implemented yet
             int argc, char* argv[]) {
-    VAL* valstack = malloc(stack_size*sizeof(VAL));
-    int* intstack = malloc(stack_size*sizeof(int));
-    double* floatstack = malloc(stack_size*sizeof(double));
 
     VM* vm = malloc(sizeof(VM));
+    STATS_INIT_STATS(vm->stats)
+    STATS_ENTER_INIT(vm->stats)
+
+    VAL* valstack = malloc(stack_size * sizeof(VAL));
+    int* intstack = malloc(stack_size * sizeof(int));
+    double* floatstack = malloc(stack_size*sizeof(double));
+
     vm->valstack = valstack;
     vm->valstack_top = valstack;
     vm->valstack_base = valstack;
@@ -29,9 +33,6 @@ VM* init_vm(int stack_size, size_t heap_size,
     vm->stack_max = valstack + stack_size;
 
     alloc_heap(&(vm->heap), heap_size);
-
-    vm->collections = 0;
-    vm->allocations = 0;
 
     vm->ret = NULL;
     vm->reg1 = NULL;
@@ -59,23 +60,28 @@ VM* init_vm(int stack_size, size_t heap_size,
         vm->argv[i] = MKSTR(vm, argv[i]);
     }
 
+    STATS_LEAVE_INIT(vm->stats)
     return vm;
 }
 
-void terminate(VM* vm) {
+Stats terminate(VM* vm) {
+    Stats stats = vm->stats;
+    STATS_ENTER_EXIT(stats)
+
     free(vm->inbox);
     free(vm->valstack);
     free(vm->intstack);
     free(vm->floatstack);
-
     free_heap(&(vm->heap));
-
     free(vm->argv);
 
     pthread_mutex_destroy(&(vm -> inbox_lock));
     pthread_mutex_destroy(&(vm -> inbox_block));
     pthread_cond_destroy(&(vm -> inbox_waiting));
     free(vm);
+
+    STATS_LEAVE_EXIT(stats)
+    return stats;
 }
 
 void idris_requireAlloc(VM* vm, size_t size) {
@@ -111,7 +117,7 @@ void* allocate(VM* vm, size_t size, int outerlock) {
     size_t chunk_size = size + sizeof(size_t);
 
     if (vm->heap.next + chunk_size < vm->heap.end) {
-        vm->allocations += chunk_size;
+        STATS_ALLOC(vm->stats, chunk_size)
         void* ptr = (void*)(vm->heap.next + sizeof(size_t));
         *((size_t*)(vm->heap.next)) = chunk_size;
         vm->heap.next += chunk_size;
@@ -409,7 +415,9 @@ void* runThread(void* arg) {
     callvm->processes--;
 
     free(td);
-    terminate(vm);
+
+    Stats stats = terminate(vm);
+    //    aggregate_stats(&(td->vm->stats), &stats);
     return NULL;
 }
 
@@ -501,12 +509,12 @@ void idris_sendMessage(VM* sender, VM* dest, VAL msg) {
     // So: we try to copy, if a collection happens, we do the copy again
     // under the assumption there's enough space this time.
 
-    int gcs = dest->collections;
+    int gcs = dest->stats.collections;
     pthread_mutex_lock(&dest->alloc_lock); 
     VAL dmsg = copyTo(dest, msg);
     pthread_mutex_unlock(&dest->alloc_lock); 
 
-    if (dest->collections>gcs) {
+    if (dest->stats.collections > gcs) {
         // a collection will have invalidated the copy
         pthread_mutex_lock(&dest->alloc_lock); 
         dmsg = copyTo(dest, msg); // try again now there's room...
