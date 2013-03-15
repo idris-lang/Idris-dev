@@ -30,6 +30,8 @@ help =
     ([":c",":compile"], "<filename>", "Compile to an executable <filename>", FileArg),
     ([":js", ":javascript"], "<filename>", "Compile to JavaScript <filename>", FileArg),
     ([":exec",":execute"], "", "Compile to an executable and run", NoArg),
+    ([":dynamic"], "<filename>", "Dynamically load a C library (similar to %dynamic)", FileArg),
+    ([":dynamic"], "", "List dynamically loaded C libraries", NoArg),
     ([":?",":h",":help"], "", "Display this help text", NoArg),
     ([":set"], "<option>", "Set an option (errorcontext, showimplicits)", OptionArg),
     ([":unset"], "<option>", "Unset an option", OptionArg),
