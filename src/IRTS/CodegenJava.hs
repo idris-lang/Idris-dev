@@ -300,6 +300,9 @@ mkIdentifier (UN name) =
     cleanReserved "fputStr" = "_fputStr"
     cleanReserved "fileEOF" = "_fileEOF"
     cleanReserved "isNull" = "_isNull"
+    cleanReserved "idris_K" = "_idris_K"
+    cleanReserved "idris_flipK" = "_idris_flipK"
+    cleanReserved "idris_assignStack" = "_idris_assignStack"
 
     cleanReserved x = x
 
@@ -376,19 +379,29 @@ mkDecl ((NS n (ns:nss)), decl) =
   <$> mkIdentifier (UN ns)
   <*> mkClassBody [(NS n nss, decl)]
 mkDecl (_, SFun name params stackSize body) =
-  (\ name params cont ->
+  (\ name params paramNames methodBody ->
      MemberDecl $ MethodDecl [Public, Static]
                              []
                              (Just . RefType $ ClassRefType objectType)
                              name
                              params
                              []
-                             (MethodBody . Just $ Block [ BlockStmt . Return . Just . MethodInv $
-                                                                    PrimaryMethodCall cont [] (Ident "call") []])
+                             (MethodBody . Just $ Block 
+                                           [ LocalVars [Final]
+                                                       objectArrayType
+                                                       [ VarDecl (VarDeclArray . VarId $ Ident "context")
+                                                                 (Just . InitArray . ArrayInit $
+                                                                       paramNames 
+                                                                       ++ replicate stackSize (InitExp . Lit $ Null))
+                                                       ]
+                                           , BlockStmt . Return $ Just methodBody
+                                           ]
+                             )
   )
   <$> mkIdentifier name
   <*> mapM mkFormalParam params
-  <*> mkClosure params stackSize body
+  <*> mapM (\ p -> (InitExp . ExpName) <$> mkName p) params
+  <*> mkExp body
 
 
 mkClosure :: [Name] -> Int -> SExp -> Either String Exp
@@ -424,99 +437,28 @@ mkStackInit params stackSize =
                   ++ (replicate (stackSize) (InitExp $ Lit Null)))
   <$> mapM mkName params
 
-mkAnonymousLetBinding :: LVar -> SExp -> SExp -> Either String Exp
-mkAnonymousLetBinding var oldExp newExp =
-  (\ bindingMethod newExp ->
-     MethodInv $ PrimaryMethodCall 
-                 ( MethodInv $ PrimaryMethodCall ( InstanceCreation []
-                                                                    objectType
-                                                                    []
-                                                                    (Just $ ClassBody [MemberDecl $ bindingMethod])
-                                                 )
-                                                 []
-                                                 (Ident "apply")
-                                                 [ contextArray
-                                                 , newExp]
-                 )
-                 []
-                 (Ident "call")
-                 []
-  )                                 
-  <$> mkLetBindingMethod var oldExp
+mkK :: Exp -> Exp -> Exp
+mkK result drop = 
+  MethodInv $ MethodCall (J.Name [Ident "idris_K"]) [ result, drop ]
+
+mkFlipK :: Exp -> Exp -> Exp
+mkFlipK drop result = 
+  MethodInv $ MethodCall (J.Name [Ident "idris_flipK"]) [ drop, result ]
+
+mkLet :: LVar -> SExp -> SExp -> Either String Exp
+mkLet (Loc pos) oldExp newExp =
+  (\ oldExp newExp ->
+     mkFlipK ( Assign ( ArrayLhs $ ArrayIndex (ExpName $ J.Name [Ident "context"])
+                                              (Lit $ Int (toInteger pos)))
+                      EqualA
+                      newExp
+             )
+             oldExp
+  )
+  <$> mkExp oldExp
   <*> mkExp newExp
 
 
-mkContextParam :: FormalParam
-mkContextParam = 
-  FormalParam [Final] (objectArrayType) False (VarId (Ident "context"))
-
-mkLetBindingMethod :: LVar -> SExp -> Either String MemberDecl
-mkLetBindingMethod  (Loc i) oldExp = 
-  (\ param bindingStack oldCont -> 
-     MethodDecl [Final, Public]
-                []
-                (Just . RefType $ ClassRefType idrisClosureType)
-                (Ident "apply")
-                [mkContextParam, param]
-                []
-                (MethodBody . Just . Block $
-                            bindingStack ++ [BlockStmt . Return $ Just oldCont]
-                )
-  )
-  <$> mkFormalParam (UN "param")
-  <*> mkBindingStack True i [UN "param"]
-  <*> mkBindingClosure oldExp
-
-mkBindingClosure :: SExp -> Either String Exp
-mkBindingClosure oldExp =
-  (\ oldCall -> 
-     InstanceCreation [] 
-                      idrisClosureType
-                      [ ExpName $ J.Name [Ident "new_context"] ]
-                      (Just $ ClassBody [oldCall])
-  )
-  <$> mkClosureCall oldExp
-
-
-mkBindingStack :: Bool -> Int -> [Name] -> Either String [BlockStmt]
-mkBindingStack checked parentStackStart params =
-  (\ paramNames ->
-    ( LocalVars [Final]
-                objectArrayType
-                [ VarDecl (VarDeclArray . VarId $ Ident "new_context")
-                          (Just . InitExp $ mkContextCopy checked parentStackStart params)
-                ])
-    : ( map (\ (param, pos) ->
-               BlockStmt . ExpStmt $
-                         Assign (ArrayLhs $ ArrayIndex (ExpName $ J.Name [Ident "new_context"])
-                                                       (Lit $ Int (toInteger pos)))
-                                EqualA
-                                (ExpName param)) $ zip paramNames [parentStackStart..]
-      )
-  ) 
-  <$> mapM mkName params
-
-mkContextCopy :: Bool -> Int -> [Name] -> Exp
-mkContextCopy True parentStackStart params =
-  MethodInv $ PrimaryMethodCall (ExpName $ J.Name [Ident "context"])
-                                []
-                                (Ident "clone")
-                                []
-mkContextCopy False parentStackStart params =
-  MethodInv $ TypeMethodCall (J.Name [Ident "Arrays"])
-                             []
-                             (Ident "copyOf")
-                             [ ExpName $ J.Name [Ident "context"]
-                             , MethodInv
-                             $ TypeMethodCall (J.Name [Ident "Math"])
-                                 []
-                                 (Ident "max")
-                                 [ FieldAccess $ PrimaryFieldAccess (ExpName $ J.Name [Ident "context"])
-                                                                    (Ident "length")
-                                 , Lit . Int $ toInteger (parentStackStart + length params)
-                                 ]
-                             ]
-                         
 reverseNameSpace :: J.Name -> J.Name
 reverseNameSpace (J.Name ids) =
   J.Name ((tail ids) ++ [head ids])
@@ -577,7 +519,16 @@ mkConsCase checked
 
 
 mkCaseBinding :: Bool -> LVar -> Int -> [Name] -> SExp -> Either String Exp
-mkCaseBinding checked var parentStackStart params branchExpression =
+mkCaseBinding True  var parentStackStart params branchExpression =
+  (\ branchExpression -> mkFlipK (MethodInv $ MethodCall (J.Name [Ident "idris_assignStack"])
+                                                         ( (ExpName $ J.Name [Ident "context"])
+                                                         : (Lit $ Int (toInteger parentStackStart))
+                                                         : (mkCaseBindingDeconstruction var params)
+                                                         ))
+                                 (branchExpression)
+  )
+  <$> mkExp branchExpression
+mkCaseBinding False var parentStackStart params branchExpression =
   (\ bindingMethod ->
      MethodInv $ PrimaryMethodCall 
                ( MethodInv $ PrimaryMethodCall (InstanceCreation []
@@ -595,12 +546,14 @@ mkCaseBinding checked var parentStackStart params branchExpression =
                (Ident "call")
                []
   )
-  <$> mkCaseBindingMethod checked parentStackStart params branchExpression
+  <$> mkCaseBindingMethod parentStackStart params branchExpression
 
+mkCaseBindingDeconstruction :: LVar -> [Name] -> [Exp]
+mkCaseBindingDeconstruction var members =
+  map (mkProjection var) ([0..(length members - 1)])
 
-
-mkCaseBindingMethod :: Bool -> Int -> [Name] -> SExp -> Either String MemberDecl
-mkCaseBindingMethod checked parentStackStart params branchExpression =
+mkCaseBindingMethod :: Int -> [Name] -> SExp -> Either String MemberDecl
+mkCaseBindingMethod parentStackStart params branchExpression =
   (\ formalParams caseBindingStack branchExpression -> 
      MethodDecl [Final, Public]
                 []
@@ -612,12 +565,62 @@ mkCaseBindingMethod checked parentStackStart params branchExpression =
                               caseBindingStack ++
                               [BlockStmt . Return $ Just branchExpression]))
   <$> mapM mkFormalParam params
-  <*> mkBindingStack checked parentStackStart params
+  <*> mkBindingStack False parentStackStart params
   <*> mkBindingClosure branchExpression
 
-mkCaseBindingDeconstruction :: LVar -> [Name] -> [Exp]
-mkCaseBindingDeconstruction var members =
-  map (mkProjection var) ([0..(length members - 1)])
+mkContextParam :: FormalParam
+mkContextParam = 
+  FormalParam [Final] (objectArrayType) False (VarId (Ident "context"))
+
+mkBindingClosure :: SExp -> Either String Exp
+mkBindingClosure oldExp =
+  (\ oldCall -> 
+     InstanceCreation [] 
+                      idrisClosureType
+                      [ ExpName $ J.Name [Ident "new_context"] ]
+                      (Just $ ClassBody [oldCall])
+  )
+  <$> mkClosureCall oldExp
+
+
+mkBindingStack :: Bool -> Int -> [Name] -> Either String [BlockStmt]
+mkBindingStack checked parentStackStart params =
+  (\ paramNames ->
+    ( LocalVars [Final]
+                objectArrayType
+                [ VarDecl (VarDeclArray . VarId $ Ident "new_context")
+                          (Just . InitExp $ mkContextCopy checked parentStackStart params)
+                ])
+    : ( map (\ (param, pos) ->
+               BlockStmt . ExpStmt $
+                         Assign (ArrayLhs $ ArrayIndex (ExpName $ J.Name [Ident "new_context"])
+                                                       (Lit $ Int (toInteger pos)))
+                                EqualA
+                                (ExpName param)) $ zip paramNames [parentStackStart..]
+      )
+  ) 
+  <$> mapM mkName params
+
+mkContextCopy :: Bool -> Int -> [Name] -> Exp
+mkContextCopy True parentStackStart params =
+  MethodInv $ PrimaryMethodCall (ExpName $ J.Name [Ident "context"])
+                                []
+                                (Ident "clone")
+                                []
+mkContextCopy False parentStackStart params =
+  MethodInv $ TypeMethodCall (J.Name [Ident "Arrays"])
+                             []
+                             (Ident "copyOf")
+                             [ ExpName $ J.Name [Ident "context"]
+                             , MethodInv
+                             $ TypeMethodCall (J.Name [Ident "Math"])
+                                 []
+                                 (Ident "max")
+                                 [ FieldAccess $ PrimaryFieldAccess (ExpName $ J.Name [Ident "context"])
+                                                                    (Ident "length")
+                                 , Lit . Int $ toInteger (parentStackStart + length params)
+                                 ]
+                             ]
 
 mkProjection :: LVar -> Int -> Exp
 mkProjection var memberNr =
@@ -1036,7 +1039,7 @@ mkExp (SApp True name args) =
   )
   <$> mkMethodClosure name args
 mkExp (SLet var new old) =
-  mkAnonymousLetBinding var old new
+  mkLet var old new
 mkExp (SUpdate (Loc i) exp) =
   (\ rhs -> Assign (ArrayLhs $ ArrayIndex (contextArray) (Lit $ Int (toInteger i)))
                    EqualA
