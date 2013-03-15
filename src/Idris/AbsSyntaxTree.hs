@@ -124,6 +124,7 @@ data IBCWrite = IBCFix FixDecl
               | IBCImport FilePath
               | IBCObj FilePath
               | IBCLib String
+              | IBCDyLib String
               | IBCHeader String
               | IBCAccess Name Accessibility
               | IBCTotal Name Totality

@@ -9,6 +9,7 @@ import Core.Elaborate hiding (Tactic(..))
 import Core.Typecheck
 import Idris.AbsSyntaxTree
 import IRTS.CodegenCommon
+import Util.DynamicLinker
 
 import Paths_idris
 
@@ -39,6 +40,14 @@ getLibs = do i <- getIState; return (idris_libs i)
 
 addLib :: String -> Idris ()
 addLib f = do i <- getIState; putIState $ i { idris_libs = f : idris_libs i }
+
+addDyLib :: String -> Idris ()
+addDyLib lib = do i <- getIState
+                  handle <- lift $ tryLoadLib lib
+                  case handle of
+                    Nothing -> fail $ "Could not load dynamic lib \"" ++ lib ++ "\""
+                    Just x -> do let libs = idris_dynamic_libs i
+                                 putIState $ i { idris_dynamic_libs = x:libs }
 
 addHdr :: String -> Idris ()
 addHdr f = do i <- getIState; putIState $ i { idris_hdrs = f : idris_hdrs i }
@@ -352,7 +361,7 @@ setImportDirs fps = do i <- getIState
 
 allImportDirs :: IState -> Idris [FilePath]
 allImportDirs i = do let optdirs = opt_importdirs (idris_options i)
-                     return ("." : optdirs)
+                     return ("." : reverse optdirs)
 
 impShow :: Idris Bool
 impShow = do i <- getIState

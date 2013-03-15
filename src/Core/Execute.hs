@@ -31,7 +31,7 @@ execute tm = do stepped <- step tm
 
 
 
-data FTy = FInt | FFloat | FChar | FString | FPtr | FUnit deriving Show
+data FTy = FInt | FFloat | FChar | FString | FPtr | FUnit deriving (Show, Read)
 
 data Foreign = FFun String [FTy] FTy deriving Show
 

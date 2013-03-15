@@ -1489,14 +1489,8 @@ pDirective syn = try (do lchar '%'; reserved "lib"; lib <- strlit;
              <|> try (do lchar '%'; reserved "logging"; i <- natural;
                          return [PDirective (setLogLevel (fromInteger i))])
              <|> try (do lchar '%'; reserved "dynamic"; lib <- strlit;
-                         return [PDirective (do i <- getIState
-                                                handle <- lift $ tryLoadLib lib
-                                                case handle of
-                                                  Nothing ->
-                                                      fail $ "Could not load dynamic lib \"" ++ lib ++ "\""
-                                                  Just x ->
-                                                      do let libs = idris_dynamic_libs i
-                                                         putIState $ i { idris_dynamic_libs = x:libs })])
+                         return [PDirective (do addIBC (IBCDyLib lib)
+                                                addDyLib lib)])
 
 pProvider :: SyntaxInfo -> IParser [PDecl]
 pProvider syn = do lchar '%'; reserved "provide";
