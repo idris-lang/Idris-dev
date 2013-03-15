@@ -10,6 +10,10 @@ import Debug.Trace
 
 import Util.DynamicLinker
 
+import Control.Monad.Trans
+import Control.Monad
+import Data.Maybe
+
 
 -- | Attempt to perform a side effect. Return either Just the next step in
 -- evaluation (after performing the side effect through IO), or Nothing if no
@@ -41,8 +45,7 @@ call (FFun name argTypes retType) args = undefined
 foreignFromTT :: TT Name -> Maybe Foreign
 foreignFromTT t = case (unApply t) of
                     (_, [(Constant (Str name)), args, ret]) ->
-                        do trace (show $ unList args) $ return ()
-                           argTy <- unList args
+                        do argTy <- unList args
                            argFTy <- sequence $ map getFTy argTy
                            retFTy <- getFTy ret
                            return $ FFun name argFTy retFTy
@@ -67,9 +70,29 @@ unList tm = case unApply tm of
                      return $ x:rest
               (f, args) -> Nothing
 
+toConst :: TT Name -> Maybe Const
+toConst (Constant c) = Just c
+toConst _ = Nothing
+
 stepForeign :: [TT Name] -> Idris (TT Name)
-stepForeign (ty:fn:args) = do iputStrLn $ "FOREIGN CALL " ++ show (ty:fn:args)
-                              iputStrLn $ show $ foreignFromTT fn
+stepForeign (ty:fn:args) = do iputStrLn $ show $ foreignFromTT fn
+                              iputStrLn $ show $ sequence $ map toConst args
                               iputStrLn ""
                               return $ mkApp (P Bound (UN "mkForeign") Erased) args
 stepForeign _ = fail "Tried to call foreign function that wasn't mkForeign"
+
+mapMaybeM :: Monad m => (a -> m (Maybe b)) -> [a] -> m [b]
+mapMaybeM f [] = return []
+mapMaybeM f (x:xs) = do rest <- mapMaybeM f xs
+                        x' <- f x
+                        case x' of
+                          Just x'' -> return (x'':rest)
+                          Nothing -> return rest
+
+findForeign :: String -> Idris (Maybe ForeignFun)
+findForeign fn = do i <- getIState
+                    let libs = idris_dynamic_libs i
+                    fns <- mapMaybeM (lift . tryLoadFn fn) libs
+                    case fns of
+                      [f] -> return (Just f)
+                      _ -> return Nothing
