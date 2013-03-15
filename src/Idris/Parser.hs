@@ -14,6 +14,8 @@ import Idris.Unlit
 import Idris.Providers
 import Paths_idris
 
+import Util.DynamicLinker
+
 import Core.CoreParser
 import Core.TT
 import Core.Evaluate
@@ -1486,6 +1488,15 @@ pDirective syn = try (do lchar '%'; reserved "lib"; lib <- strlit;
                                                 putIState (i { default_total = tot }))])
              <|> try (do lchar '%'; reserved "logging"; i <- natural;
                          return [PDirective (setLogLevel (fromInteger i))])
+             <|> try (do lchar '%'; reserved "dynamic"; lib <- strlit;
+                         return [PDirective (do i <- getIState
+                                                handle <- lift $ tryLoadLib lib
+                                                case handle of
+                                                  Nothing ->
+                                                      fail $ "Could not load dynamic lib \"" ++ lib ++ "\""
+                                                  Just x ->
+                                                      do let libs = idris_dynamic_libs i
+                                                         putIState $ i { idris_dynamic_libs = x:libs })])
 
 pProvider :: SyntaxInfo -> IParser [PDecl]
 pProvider syn = do lchar '%'; reserved "provide";
