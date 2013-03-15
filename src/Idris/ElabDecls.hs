@@ -548,7 +548,7 @@ elabClause info tcgen (cnum, PClause fc fname lhs_in withs rhs_in whereblock)
                          [t] -> t
                          _ -> [] 
         let params = getParamsInType i [] fn_is fn_ty
-        let lhs = addImplPat i (propagateParams params lhs_in)
+        let lhs = stripLinear i $ addImplPat i (propagateParams params lhs_in)
         logLvl 5 ("LHS: " ++ show fc ++ " " ++ showImp True lhs)
         logLvl 4 ("Fixed parameters: " ++ show params ++ " from " ++ show (fn_ty, fn_is))
         ((lhs', dlhs, []), _) <- 
