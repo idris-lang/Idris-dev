@@ -156,9 +156,11 @@ unify' :: Context -> Env -> TT Name -> TT Name -> StateT TState TC [(Name, TT Na
 unify' ctxt env topx topy = 
    do ps <- get
       (u, fails) <- lift $ unify ctxt env topx topy (injective ps) (holes ps)
---       trace ("Unified " ++ show (topx, topy) ++ show (injective ps) ++ 
+--       trace ("Unified " ++ show (topx, topy) ++ " in " ++ show env ++ 
 --              " " ++ show u ++ "\n" ++ qshow fails ++ "\nCurrent problems:\n"
---              ++ qshow (problems ps) ++ "\n" ++ show (holes ps)) $
+--              ++ qshow (problems ps) ++ "\n" ++ show (holes ps) ++ "\n"
+-- --              ++ show (pterm ps) 
+--              ++ "\n----------") $
       case fails of
 --            [] -> return u
            err -> 
@@ -396,9 +398,9 @@ solve ctxt env (Bind x (Guess ty val) sc)
                                            instances = instances ps \\ [x] })
                        return $ {- Bind x (Let ty val) sc -} 
                                    instantiate val (pToV x sc)
-   | otherwise    = do ps <- get
-                       lift $ tfail $ IncompleteTerm val
-solve _ _ h = do ps <- get
+   | otherwise    = lift $ tfail $ IncompleteTerm val
+solve _ _ h@(Bind x t sc) 
+            = do ps <- get
                  fail $ "Not a guess " ++ show h ++ "\n" ++ show (holes ps, pterm ps)
 
 introTy :: Raw -> Maybe Name -> RunTactic

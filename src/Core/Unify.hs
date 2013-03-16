@@ -158,7 +158,9 @@ unify ctxt env topx topy injtc holes =
                let (heady, argsy) = unApply appy
                if (length argsx == length argsy && 
                    ((headx == heady) || (argsx == argsy) ||
-                    (notFn headx && notFn heady))) then
+                    (and (zipWith sameStruct (headx:argsx) (heady:argsy)))))
+                      then
+--                     (notFn headx && notFn heady))) then
                  do uf <- un' True bnames headx heady
                     unArgs uf argsx argsy
                  else unifyTmpFail appx appy
@@ -183,10 +185,25 @@ unify ctxt env topx topy injtc holes =
                      unArgs vs xs ys
 
             metavarApp tm = let (f, args) = unApply tm in
-                                all (\x -> metavar x || notFn x) (f : args)
+                                all (\x -> metavar x || inenv x) (f : args)
+            metavarApp' tm = let (f, args) = unApply tm in
+                                 all (\x -> pat x || metavar x) (f : args)
+
+            sameStruct (App f x) (App g y) = sameStruct f g && sameStruct x y
+            sameStruct (P _ x _) (P _ y _) = True
+            sameStruct (V i) (V j) = i == j
+            sameStruct (Constant x) (Constant y) = True
+            sameStruct (Bind n t sc) (P _ _ _) = True
+            sameStruct (P _ _ _) (Bind n t sc) = True
+            sameStruct (Bind n t sc) (Bind n' t' sc') = sameStruct sc sc'
+            sameStruct _ _ = False
+
             metavar t = case t of
                              P _ x _ -> x `elem` holes || holeIn env x
                              _ -> False
+            pat t = case t of
+                         P _ x _ -> x `elem` holes || patIn env x
+                         _ -> False
             inenv t = case t of
                            P _ x _ -> x `elem` (map fst env) 
                            _ -> False
@@ -197,6 +214,10 @@ unify ctxt env topx topy injtc holes =
         | n == n' = un' False bnames x y
     un' fn bnames (Bind n (Lam t) (App x (P Bound n' _))) y
         | n == n' = un' False bnames x y
+    un' fn bnames x (Bind n (Lam t) (App y (V 0)))
+        = un' False bnames x y
+    un' fn bnames (Bind n (Lam t) (App x (V 0))) y
+        = un' False bnames x y
 --     un' fn bnames (Bind x (PVar _) sx) (Bind y (PVar _) sy) 
 --         = un' False ((x,y):bnames) sx sy
 --     un' fn bnames (Bind x (PVTy _) sx) (Bind y (PVTy _) sy) 
@@ -298,5 +319,12 @@ errEnv = map (\(x, b) -> (x, binderTy b))
 holeIn :: Env -> Name -> Bool
 holeIn env n = case lookup n env of
                     Just (Hole _) -> True
+                    Just (Guess _ _) -> True
+                    _ -> False
+
+patIn :: Env -> Name -> Bool
+patIn env n = case lookup n env of
+                    Just (PVar _) -> True
+                    Just (PVTy _) -> True
                     _ -> False
 
