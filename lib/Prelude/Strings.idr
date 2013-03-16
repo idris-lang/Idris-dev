@@ -115,3 +115,6 @@ unwords' ws = (foldr1 addSpace ws)
 unwords : List String -> String
 unwords = pack . unwords' . map unpack
 
+length : String -> Nat
+length = fromInteger . prim_lenString
+
