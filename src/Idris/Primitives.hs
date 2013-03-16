@@ -332,6 +332,8 @@ primitives =
     (2, LStrEq) total,
    Prim (UN "prim__ltString") (ty [StrType, StrType] IType) 2 (bsBin (<))
     (2, LStrLt) total,
+   Prim (UN "prim_lenString") (ty [StrType] IType) 1 (p_strLen)
+    (1, LStrLen) total,
     -- Conversions
    Prim (UN "prim__strToInt") (ty [StrType] IType) 1 (c_strToInt)
      (1, LStrInt) total,
@@ -622,6 +624,7 @@ p_floatSqrt = p_fPrim sqrt
 p_floatFloor = p_fPrim (fromInteger . floor)
 p_floatCeil = p_fPrim (fromInteger . ceiling)
 
+p_strLen [VConstant (Str xs)] = Just $ VConstant (I (length xs))
 p_strHead [VConstant (Str (x:xs))] = Just $ VConstant (Ch x)
 p_strHead _ = Nothing
 p_strTail [VConstant (Str (x:xs))] = Just $ VConstant (Str xs)
