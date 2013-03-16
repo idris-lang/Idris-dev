@@ -122,6 +122,13 @@ elab ist info pattern tcgen fn tm
                  trace ("Elaborating " ++ show t ++ " : " ++ show g ++ "\n\tin " ++ show tm) 
                     $ -} 
                   do t' <- insertCoerce ina t
+                     g <- goal
+                     tm <- get_term
+                     ps <- get_probs
+--                      trace ("Elaborating " ++ show t' ++ " in " ++ show g
+--                             ++ "\n" ++ show tm 
+--                             ++ "\nproblems " ++ show ps
+--                             ++ "\n-----------\n") $
                      elab' ina t'
 
     local f = do e <- get_env
@@ -421,6 +428,8 @@ elab ist info pattern tcgen fn tm
              -- fail $ "Not implemented " ++ show c ++ "\n" ++ show args
              -- elaborate case
              updateAux (newdef : )
+             -- if we haven't got the type yet, hopefully we'll get it later!
+             movelast tyn
              solve
         where mkCaseName (NS n ns) = NS (mkCaseName n) ns
               mkCaseName (UN x) = UN (x ++ "_case")
