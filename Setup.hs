@@ -15,6 +15,8 @@ import System.FilePath ((</>), splitDirectories)
 import System.Directory
 import qualified System.FilePath.Posix as Px
 import System.Process
+import qualified Data.Text as T
+import qualified Data.Text.IO as TIO
 
 
 -- After Idris is built, we need to check and install the prelude and other libs
@@ -40,6 +42,8 @@ cleanJavaLib verbosity
        when dirty $ mvn verbosity [ "-f", "java/pom.xml", "clean" ]
        pomExists <- doesFileExist ("java" </> "pom.xml")
        when pomExists $ removeFile ("java" </> "pom.xml")
+       execPomExists <- doesFileExist ("java" </> "executable_pom.xml")
+       when pomExists $ removeFile ("java" </> "executable_pom.xml")
 
 installStdLib pkg local verbosity copy
     = do let dirs = L.absoluteInstallDirs pkg local copy
@@ -64,7 +68,18 @@ installStdLib pkg local verbosity copy
                , "IDRIS=" ++ icmd
                ]
 
-installJavaLib verbosity = mvn verbosity [ "-f", "java/pom.xml", "install" ]
+installJavaLib pkg local verbosity copy version = do
+  let rtsFile = "idris-" ++ display version ++ ".jar"
+  mvn verbosity [ "install:install-file"
+                , "-Dfile=" ++ ("java" </> "target" </> rtsFile)
+                , "-DgroupId=org.idris-lang"
+                , "-DartifactId=idris"
+                , "-Dversion=" ++ display version
+                , "-Dpackaging=jar"
+                , "-DgeneratePom=True"
+                ]
+  let dir = datadir $ L.absoluteInstallDirs pkg local copy
+  copyFile ("java" </> "executable_pom.xml") (dir </> "executable_pom.xml")
 
 -- This is a hack. I don't know how to tell cabal that a data file needs
 -- installing but shouldn't be in the distribution. And it won't make the
@@ -94,7 +109,7 @@ checkStdLib local verbosity
                , "IDRIS=" ++ icmd
                ]
 
-checkJavaLib verbosity = mvn verbosity [ "-f", "java/pom.xml", "package" ]
+checkJavaLib verbosity = mvn verbosity [ "-f", "java" </> "pom.xml", "package" ]
 
 noJavaFlag flags = 
   case lookup (FlagName "nojava") (S.configConfigurationsFlags flags) of
@@ -102,12 +117,14 @@ noJavaFlag flags =
     Just False -> False
     Nothing -> False
 
-preparePom version
-    = do pomTemplate <- readFile ("java" </> "pom_template.xml")
-         writeFile ("java" </> "pom.xml") (unlines . map insertVersion $ lines pomTemplate)
+preparePoms version
+    = do pomTemplate <- TIO.readFile ("java" </> "pom_template.xml")
+         TIO.writeFile ("java" </> "pom.xml") (insertVersion pomTemplate)
+         execPomTemplate <- TIO.readFile ("java" </> "executable_pom_template.xml")
+         TIO.writeFile ("java" </> "executable_pom.xml") (insertVersion execPomTemplate)
     where
-      insertVersion "  <version></version>" = "  <version>" ++ display version ++ "</version>"
-      insertVersion other = other
+      insertVersion template = 
+        T.replace (T.pack "$RTS-VERSION$") (T.pack $ display version) template
 
 -- Install libraries during both copy and install
 -- See http://hackage.haskell.org/trac/hackage/ticket/718
@@ -121,11 +138,17 @@ main = do
               let verb = (S.fromFlag $ S.installVerbosity flags)
               installStdLib pkg lbi verb
                                     NoCopyDest
-              unless (noJavaFlag $ configFlags lbi) (installJavaLib verb)
+              unless (noJavaFlag $ configFlags lbi) 
+                     (installJavaLib pkg 
+                                     lbi 
+                                     verb 
+                                     NoCopyDest 
+                                     (pkgVersion . package $ localPkgDescr lbi)
+                     )
         , postConf  = \ _ flags _ lbi -> do
               removeLibIdris lbi (S.fromFlag $ S.configVerbosity flags)
               unless (noJavaFlag $ configFlags lbi) 
-                     (preparePom . pkgVersion . package $ localPkgDescr lbi)
+                     (preparePoms . pkgVersion . package $ localPkgDescr lbi)
         , postClean = \ _ flags _ _ -> do
               let verb = S.fromFlag $ S.cleanVerbosity flags
               cleanStdLib verb

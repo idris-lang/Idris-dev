@@ -2,9 +2,9 @@
   xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
-  <groupId>org.idris.rts</groupId>
+  <groupId>org.idris-lang</groupId>
   <artifactId>idris</artifactId>
-  <version></version>
+  <version>$RTS-VERSION$</version>
   <packaging>jar</packaging>
 
   <name>Runtime System for the Idris Java Backend</name>

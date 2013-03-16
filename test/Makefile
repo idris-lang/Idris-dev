@@ -2,7 +2,7 @@ test:
 	perl ./runtest.pl all
 
 test_java:
-	perl ./runtest.pl all --java
+	perl ./runtest.pl all --target Java
 
 update:
 	perl ./runtest.pl all -u

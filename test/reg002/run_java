@@ -1,8 +1,0 @@
-#!/bin/bash
-idris $@ reg002.idr -o reg002.java --target Java
-for RTS in ../../java/target/idris-*.jar; do
-  export CLASSPATH=$RTS:$CLASSPATH
-done;
-javac reg002.java
-java reg002
-rm -f reg002.java *.class

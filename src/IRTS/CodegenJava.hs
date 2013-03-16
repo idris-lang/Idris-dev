@@ -15,6 +15,9 @@ import qualified Control.Monad.Trans as T
 import           Control.Monad.Trans.State
 import           Data.Char
 import           Data.Maybe (fromJust)
+import           Data.List (isPrefixOf, intercalate)
+import qualified Data.Text as T
+import qualified Data.Text.IO as TIO
 import           Language.Java.Parser
 import           Language.Java.Pretty
 import           Language.Java.Syntax hiding (Name)
@@ -34,10 +37,67 @@ codegenJava :: [(Name, SExp)] -> -- initialization of globals
                FilePath -> -- output file name
                OutputType ->
                IO ()
-codegenJava globalInit defs out exec =
-  either (error)
-         (writeFile out . flatIndent . prettyPrint)
-         ( evalStateT (mkCompilationUnit globalInit defs out) (mkCodeGenEnv globalInit) )
+codegenJava globalInit defs out exec = do
+  withTempdir (takeBaseName out) $ \ tmpDir -> do
+    let srcdir = tmpDir </> "src" </> "main" </> "java"
+    createDirectoryIfMissing True srcdir
+    let (Ident clsName) = 
+          either error id (evalStateT (mkClassName out) (mkCodeGenEnv globalInit))
+    let outjava = srcdir </> clsName <.> "java"
+    let jout = either error
+                      (flatIndent . prettyPrint)
+                      (evalStateT (mkCompilationUnit globalInit defs out) (mkCodeGenEnv globalInit))
+    writeFile outjava jout
+    if (exec == Raw)
+       then copyFile outjava (takeDirectory out </> clsName <.> "java")
+       else do
+         execPom <- getExecutablePom
+         execPomTemplate <- TIO.readFile execPom
+         let execPom = T.replace (T.pack "$MAIN-CLASS$")
+                                 (T.pack clsName)
+                                 (T.replace (T.pack "$ARTIFACT-NAME$") 
+                                            (T.pack $ takeBaseName out) 
+                                            execPomTemplate)
+         TIO.writeFile (tmpDir </> "pom.xml") execPom
+         mvnCmd <- getMvn
+         let args = ["-f", (tmpDir </> "pom.xml")]
+         (exit, _, err) <- readProcessWithExitCode mvnCmd (args ++ ["compile"]) ""
+         when (exit /= ExitSuccess) $ error ("FAILURE: " ++ mvnCmd ++ " compile\n" ++ err)
+         if (exec == Object)
+            then do
+              classFiles <- 
+                map (\ clsFile -> tmpDir </> "target" </> "classes" </> clsFile)
+                . filter ((".class" ==) . takeExtension) 
+                <$> getDirectoryContents (tmpDir </> "target" </> "classes")
+              mapM_ (\ clsFile -> copyFile clsFile (takeDirectory out </> takeFileName clsFile)) 
+                    classFiles
+             else do
+               (exit, _, err) <- readProcessWithExitCode mvnCmd (args ++ ["package"]) ""
+               when (exit /= ExitSuccess) (error ("FAILURE: " ++ mvnCmd ++ " package\n" ++ err))
+               copyFile (tmpDir </> "target" </> (takeBaseName out) <.> "jar") out
+               handle <- openBinaryFile out ReadMode
+               contents <- TIO.hGetContents handle
+               hClose handle
+               handle <- openBinaryFile out WriteMode
+               TIO.hPutStr handle (T.append (T.pack jarHeader) contents)
+               hFlush handle
+               hClose handle
+               perms <- getPermissions out
+               setPermissions out (setOwnerExecutable True perms)
+         readProcess mvnCmd (args ++ ["clean"]) ""
+         removeFile (tmpDir </> "pom.xml")
+
+jarHeader :: String
+jarHeader = 
+  "#!/bin/sh\n"
+  ++ "MYSELF=`which \"$0\" 2>/dev/null`\n"
+  ++ "[ $? -gt 0 -a -f \"$0\" ] && MYSELF=\"./$0\"\n"
+  ++ "java=java\n"
+  ++ "if test -n \"$JAVA_HOME\"; then\n"
+  ++ "  java=\"$JAVA_HOME/bin/java\"\n"
+  ++ "fi\n"
+  ++ "exec \"$java\" $java_args -jar $MYSELF \"$@\""
+  ++ "exit 1\n"
 
 mkCodeGenEnv :: [(Name, SExp)] -> CodeGenerationEnv
 mkCodeGenEnv globalInit = 
