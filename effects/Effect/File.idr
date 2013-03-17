@@ -40,7 +40,7 @@ instance Handler FileIO (IOExcept String) where
     handle (FH h) EOF             k = do e <- ioe_lift (feof h)
                                          k (FH h) e
 
-FILE_IO : Type -> EFF
+FILE_IO : Type -> EFFECT
 FILE_IO t = MkEff t FileIO 
 
 open : Handler FileIO e =>

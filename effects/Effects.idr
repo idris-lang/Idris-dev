@@ -10,8 +10,8 @@ import Control.Catchable
 Effect : Type
 Effect = Type -> Type -> Type -> Type
 
-data EFF : Type where
-     MkEff : Type -> Effect -> EFF
+data EFFECT : Type where
+     MkEff : Type -> Effect -> EFFECT
 
 class Handler (e : Effect) (m : Type -> Type) where
      handle : res -> (eff : e res res' t) -> (res' -> t -> m a) -> m a
@@ -28,12 +28,12 @@ using (xs : List a, ys : List a)
   subListId {xs = Nil} = SubNil
   subListId {xs = x :: xs} = Keep subListId
 
-data Env  : (m : Type -> Type) -> List EFF -> Type where
+data Env  : (m : Type -> Type) -> List EFFECT -> Type where
      Nil  : Env m Nil
      (::) : Handler eff m => a -> Env m xs -> Env m (MkEff a eff :: xs)
 
 data EffElem : (Type -> Type -> Type -> Type) -> Type ->
-               List EFF -> Type where
+               List EFFECT -> Type where
      Here : EffElem x a (MkEff a x :: xs)
      There : EffElem x a xs -> EffElem x a (y :: xs)
 
@@ -73,8 +73,8 @@ findSubList (S n)
          ((Try (Refine "Keep" `Seq` Solve)
                (Refine "Drop" `Seq` Solve)) `Seq` findSubList n))
 
-updateResTy : (xs : List EFF) -> EffElem e a xs -> e a b t -> 
-              List EFF
+updateResTy : (xs : List EFFECT) -> EffElem e a xs -> e a b t -> 
+              List EFFECT
 updateResTy {b} (MkEff a e :: xs) Here n = (MkEff b e) :: xs
 updateResTy (x :: xs) (There p) n = x :: updateResTy xs p n
 
@@ -83,7 +83,7 @@ infix 5 :::, :-, :=
 data LRes : lbl -> Type -> Type where
      (:=) : (x : lbl) -> res -> LRes x res
 
-(:::) : lbl -> EFF -> EFF 
+(:::) : lbl -> EFFECT -> EFFECT 
 (:::) {lbl} x (MkEff r eff) = MkEff (LRes x r) eff
 
 private
@@ -97,7 +97,7 @@ relabel {x = MkEff a eff} l [v] = [l := v]
 -- the language of Effects
 
 data EffM : (m : Type -> Type) ->
-            List EFF -> List EFF -> Type -> Type where
+            List EFFECT -> List EFFECT -> Type -> Type where
      value   : a -> EffM m xs xs a
      ebind   : EffM m xs xs' a -> (a -> EffM m xs' xs'' b) -> EffM m xs xs'' b
      effect  : {a, b: _} -> {e : Effect} ->
@@ -114,7 +114,7 @@ data EffM : (m : Type -> Type) ->
                EffM m xs xs' a
      (:-)    : (l : ty) -> EffM m [x] [y] t -> EffM m [l ::: x] [l ::: y] t
 
---   Eff : List (EFF m) -> Type -> Type
+--   Eff : List (EFFECT m) -> Type -> Type
 
 implicit
 lift' : {default tactics { reflect findSubList 10; solve; }
@@ -192,7 +192,7 @@ runPure env prog = eff env prog (\env, r => r)
 runWith : (a -> m a) -> Env m xs -> EffM m xs xs' a -> m a
 runWith inj env prog = eff env prog (\env, r => inj r)
 
-Eff : (Type -> Type) -> List EFF -> Type -> Type
+Eff : (Type -> Type) -> List EFFECT -> Type -> Type
 Eff m xs t = EffM m xs xs t
 
 -- some higher order things
