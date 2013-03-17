@@ -18,7 +18,6 @@ import System.Process
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
 
-
 -- After Idris is built, we need to check and install the prelude and other libs
 
 make verbosity = P.runProgramInvocation verbosity . P.simpleProgramInvocation "make"
@@ -70,6 +69,7 @@ installStdLib pkg local verbosity copy
 
 installJavaLib pkg local verbosity copy version = do
   let rtsFile = "idris-" ++ display version ++ ".jar"
+  putStrLn $ "Installing java libraries" 
   mvn verbosity [ "install:install-file"
                 , "-Dfile=" ++ ("java" </> "target" </> rtsFile)
                 , "-DgroupId=org.idris-lang"
@@ -111,8 +111,8 @@ checkStdLib local verbosity
 
 checkJavaLib verbosity = mvn verbosity [ "-f", "java" </> "pom.xml", "package" ]
 
-noJavaFlag flags = 
-  case lookup (FlagName "nojava") (S.configConfigurationsFlags flags) of
+javaFlag flags = 
+  case lookup (FlagName "java") (S.configConfigurationsFlags flags) of
     Just True -> True
     Just False -> False
     Nothing -> False
@@ -138,17 +138,17 @@ main = do
               let verb = (S.fromFlag $ S.installVerbosity flags)
               installStdLib pkg lbi verb
                                     NoCopyDest
-              unless (noJavaFlag $ configFlags lbi) 
-                     (installJavaLib pkg 
-                                     lbi 
-                                     verb 
-                                     NoCopyDest 
-                                     (pkgVersion . package $ localPkgDescr lbi)
-                     )
+              when (javaFlag $ configFlags lbi) 
+                   (installJavaLib pkg 
+                                   lbi 
+                                   verb 
+                                   NoCopyDest 
+                                   (pkgVersion . package $ localPkgDescr lbi)
+                   )
         , postConf  = \ _ flags _ lbi -> do
               removeLibIdris lbi (S.fromFlag $ S.configVerbosity flags)
-              unless (noJavaFlag $ configFlags lbi) 
-                     (preparePoms . pkgVersion . package $ localPkgDescr lbi)
+              when (javaFlag $ configFlags lbi) 
+                   (preparePoms . pkgVersion . package $ localPkgDescr lbi)
         , postClean = \ _ flags _ _ -> do
               let verb = S.fromFlag $ S.cleanVerbosity flags
               cleanStdLib verb
@@ -156,5 +156,5 @@ main = do
         , postBuild = \ _ flags _ lbi -> do
               let verb = S.fromFlag $ S.buildVerbosity flags
               checkStdLib lbi verb
-              unless (noJavaFlag $ configFlags lbi) (checkJavaLib verb)
+              when (javaFlag $ configFlags lbi) (checkJavaLib verb)
         }
