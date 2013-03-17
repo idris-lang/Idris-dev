@@ -67,7 +67,7 @@ typedef struct {
     Stats stats;
 
     int argc;
-    VAL* argv; // command line arguments
+    char** argv; // command line arguments
 
     VAL ret;
     VAL reg1;
