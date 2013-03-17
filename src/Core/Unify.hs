@@ -95,6 +95,10 @@ unify ctxt env topx topy dont holes =
                 = unifyFail topx topy
     un' fn names topx@(P (TCon _ _) x _) topy@(P (DCon _ _) y _)
                 = unifyFail topx topy
+    un' fn names topx@(Constant _) topy@(P (TCon _ _) y _)
+                = unifyFail topx topy
+    un' fn names topx@(P (TCon _ _) x _) topy@(Constant _)
+                = unifyFail topx topy
     un' fn bnames tx@(P _ x _) ty@(P _ y _)  
         | (x,y) `elem` bnames || x == y = do sc 1; return []
         | injective tx && not (holeIn env y || y `elem` holes)
@@ -310,8 +314,14 @@ unify ctxt env topx topy dont holes =
     recoverable (P (TCon _ _) x _) (P (TCon _ _) y _)
         | x == y = True
         | otherwise = False
+    recoverable (Constant _) (P (DCon _ _) y _) = False
+    recoverable (P (DCon _ _) x _) (Constant _) = False
+    recoverable (Constant _) (P (TCon _ _) y _) = False
+    recoverable (P (TCon _ _) x _) (Constant _) = False
     recoverable (P (DCon _ _) x _) (P (TCon _ _) y _) = False
     recoverable (P (TCon _ _) x _) (P (DCon _ _) y _) = False
+    recoverable p@(Constant _) (App f a) = recoverable p f
+    recoverable (App f a) p@(Constant _) = recoverable f p
     recoverable p@(P _ n _) (App f a) = recoverable p f
 --     recoverable (App f a) p@(P _ _ _) = recoverable f p
     recoverable (App f a) (App f' a')

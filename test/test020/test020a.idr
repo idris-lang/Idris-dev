@@ -16,4 +16,3 @@ foo xs = reverse xs
 main : IO ()
 main = print (foo [1,2,3])
 
-
