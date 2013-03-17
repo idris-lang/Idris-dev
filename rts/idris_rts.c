@@ -20,16 +20,10 @@ VM* init_vm(int stack_size, size_t heap_size,
     STATS_ENTER_INIT(vm->stats)
 
     VAL* valstack = malloc(stack_size * sizeof(VAL));
-    int* intstack = malloc(stack_size * sizeof(int));
-    double* floatstack = malloc(stack_size*sizeof(double));
 
     vm->valstack = valstack;
     vm->valstack_top = valstack;
     vm->valstack_base = valstack;
-    vm->intstack = intstack;
-    vm->intstack_ptr = intstack;
-    vm->floatstack = floatstack;
-    vm->floatstack_ptr = floatstack;
     vm->stack_max = valstack + stack_size;
 
     alloc_heap(&(vm->heap), heap_size);
@@ -70,8 +64,6 @@ Stats terminate(VM* vm) {
 
     free(vm->inbox);
     free(vm->valstack);
-    free(vm->intstack);
-    free(vm->floatstack);
     free_heap(&(vm->heap));
     free(vm->argv);
 

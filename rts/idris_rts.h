@@ -44,12 +44,8 @@ typedef struct Closure {
 
 typedef struct {
     VAL* valstack;
-    int* intstack;
-    double* floatstack;
     VAL* valstack_top;
     VAL* valstack_base;
-    int* intstack_ptr;
-    double* floatstack_ptr;
     VAL* stack_max;
     
     Heap heap;
