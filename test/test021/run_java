@@ -1,9 +1,0 @@
-#!/bin/bash
-idris -p effects $@ test021.idr -o test021.java --target Java
-idris -p effects $@ test021a.idr -o test021a.java --target Java
-export CLASSPATH=../../java/idris.jar:$CLASSPATH
-javac test021.java
-java test021
-javac test021a.java
-java test021a
-rm -f test021.java test021a.java *.class

@@ -1,5 +1,0 @@
-#!/bin/bash
-idris $@ test010.idr -o test010.java --target Java
-idris $@ test010a.idr -o test010a.java --target Java
-idris $@ test010b.idr -o test010b.java --target Java
-rm -f test010.java *.class

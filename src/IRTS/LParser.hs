@@ -61,7 +61,7 @@ fovm tgt outty f
          case checked of
            OK c -> case tgt of
                      ViaC -> codegenC c "a.out" outty ["math.h"] "" "" TRACE
-                     ViaJava -> codegenJava c "a.out" outty
+                     ViaJava -> codegenJava [] c "a.out" outty
            Error e -> fail $ show e 
 
 parseFOVM :: FilePath -> IO [(Name, LDecl)]
