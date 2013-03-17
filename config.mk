@@ -1,6 +1,6 @@
 GMP_INCLUDE_DIR :=
 CC              :=gcc
 CABAL           :=cabal
-CABALFLAGS	:=-f Java
+CABALFLAGS	:=
 ## Enable Java RTS:
 #CABALFLAGS    :=-f Java
