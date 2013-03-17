@@ -71,8 +71,8 @@ source-repository head
   type:     git
   location: git://github.com/edwinb/Idris-dev.git
 
-Flag NoJava
-  Description: Do not build the Java RTS
+Flag Java
+  Description: Build the Java RTS
   Default:     False
 
 

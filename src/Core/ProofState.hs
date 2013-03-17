@@ -155,9 +155,12 @@ qshow fs = show (map (\ (x, y, _, _) -> (x, y)) fs)
 unify' :: Context -> Env -> TT Name -> TT Name -> StateT TState TC [(Name, TT Name)]
 unify' ctxt env topx topy = 
    do ps <- get
-      (u, fails) <- lift $ unify ctxt env topx topy (injective ps) (holes ps)
---       trace ("Unified " ++ show (topx, topy) ++ " in " ++ show env ++ 
---              " " ++ show u ++ "\n" ++ qshow fails ++ "\nCurrent problems:\n"
+      let dont = dontunify ps
+      (u, fails) <- -- trace ("Trying " ++ show (topx, topy)) $ 
+                    lift $ unify ctxt env topx topy dont (holes ps)
+--       trace ("Unified " ++ show (topx, topy) ++ " without " ++ show dont ++
+-- --              " in " ++ show env ++ 
+--              "\n" ++ show u ++ "\n" ++ qshow fails ++ "\nCurrent problems:\n"
 --              ++ qshow (problems ps) ++ "\n" ++ show (holes ps) ++ "\n"
 -- --              ++ show (pterm ps) 
 --              ++ "\n----------") $

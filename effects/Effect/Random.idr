@@ -11,7 +11,7 @@ using (m : Type -> Type)
               = let seed' = 1664525 * seed + 1013904223 in
                     k seed' seed'
                     
-RND : EFF
+RND : EFFECT
 RND = MkEff Int Random
 
 rndInt : Int -> Int -> Eff m [RND] Int

@@ -38,7 +38,7 @@ instance Handler StdIO IOStream where
 
 --- The Effect and associated functions
 
-STDIO : EFF
+STDIO : EFFECT
 STDIO = MkEff () StdIO
 
 putStr : Handler StdIO e => String -> Eff e [STDIO] ()

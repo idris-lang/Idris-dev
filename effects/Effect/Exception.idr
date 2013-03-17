@@ -17,7 +17,7 @@ instance Show a => Handler (Exception a) IO where
 instance Handler (Exception a) (IOExcept a) where
      handle _ (Raise e) k = ioM (return (Left e))
 
-EXCEPTION : Type -> EFF 
+EXCEPTION : Type -> EFFECT
 EXCEPTION t = MkEff () (Exception t) 
 
 raise : a -> Eff m [EXCEPTION a] b

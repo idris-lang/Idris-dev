@@ -29,7 +29,7 @@ data UResult a = UOK a
 
 unify :: Context -> Env -> TT Name -> TT Name -> [Name] -> [Name] ->
          TC ([(Name, TT Name)], Fails)
-unify ctxt env topx topy injtc holes =
+unify ctxt env topx topy dont holes =
 --      trace ("Unifying " ++ show (topx, topy)) $
              -- don't bother if topx and topy are different at the head
       case runStateT (un False [] topx topy) (UI 0 []) of
@@ -54,8 +54,9 @@ unify ctxt env topx topy injtc holes =
 
     injective (P (DCon _ _) _ _) = True
     injective (P (TCon _ _) _ _) = True
-    injective (P _ n _)          = n `elem` injtc
-    injective (App f a)          = injective f
+    injective (App f (P _ _ _))  = injective f 
+    injective (App f (Constant _))  = injective f 
+    injective (App f a)          = injective f && injective a
     injective _                  = False
 
     notP (P _ _ _) = False
@@ -97,9 +98,9 @@ unify ctxt env topx topy injtc holes =
     un' fn bnames tx@(P _ x _) ty@(P _ y _)  
         | (x,y) `elem` bnames || x == y = do sc 1; return []
         | injective tx && not (holeIn env y || y `elem` holes)
-             = unifyFail tx ty
+             = unifyTmpFail tx ty
         | injective ty && not (holeIn env x || x `elem` holes)
-             = unifyFail tx ty
+             = unifyTmpFail tx ty
     un' fn bnames xtm@(P _ x _) tm
         | holeIn env x || x `elem` holes
                        = do UI s f <- get
@@ -128,8 +129,8 @@ unify ctxt env topx topy injtc holes =
         | fst (bnames!!i) == x || snd (bnames!!i) == x = do sc 1; return []
 
     un' fn bnames appx@(App fx ax) appy@(App fy ay)
-      |    injective fx && metavarApp appy 
-        || injective fy && metavarApp appx 
+      |    injective fx && metavarApp appy
+        || injective fy && metavarApp appx
         || injective fx && injective fy  
         || fx == fy
          = do let (headx, _) = unApply fx
@@ -165,7 +166,7 @@ unify ctxt env topx topy injtc holes =
                     unArgs uf argsx argsy
                  else unifyTmpFail appx appy
       where hnormalise [] _ _ t = t
-            hnormalise ns ctxt env t = hnf ctxt env t
+            hnormalise ns ctxt env t = normalise ctxt env t
             checkHeads (P (DCon _ _) x _) (P (DCon _ _) y _)
                 | x /= y = unifyFail appx appy
             checkHeads (P (TCon _ _) x _) (P (TCon _ _) y _)
@@ -186,6 +187,8 @@ unify ctxt env topx topy injtc holes =
 
             metavarApp tm = let (f, args) = unApply tm in
                                 all (\x -> metavar x || inenv x) (f : args)
+            metavarArgs tm = let (f, args) = unApply tm in
+                                 all (\x -> metavar x || inenv x) args
             metavarApp' tm = let (f, args) = unApply tm in
                                  all (\x -> pat x || metavar x) (f : args)
 
@@ -199,7 +202,8 @@ unify ctxt env topx topy injtc holes =
             sameStruct _ _ = False
 
             metavar t = case t of
-                             P _ x _ -> x `elem` holes || holeIn env x
+                             P _ x _ -> (x `elem` holes || holeIn env x) &&
+                                        not (x `elem` dont)
                              _ -> False
             pat t = case t of
                          P _ x _ -> x `elem` holes || patIn env x

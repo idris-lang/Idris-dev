@@ -471,8 +471,8 @@ apply_elab n args =
 
 simple_app :: Elab' aux () -> Elab' aux () -> Elab' aux ()
 simple_app fun arg =
-    do a <- unique_hole (MN 0 "a")
-       b <- unique_hole (MN 0 "b")
+    do a <- unique_hole (MN 0 "argTy")
+       b <- unique_hole (MN 0 "retTy")
        f <- unique_hole (MN 0 "f")
        s <- unique_hole (MN 0 "s")
        claim a RType
