@@ -57,6 +57,7 @@ build ist info pattern fn tm
                                 resolveTC 7 fn ist) ivs
          probs <- get_probs
          tm <- get_term
+         ctxt <- get_context
          case probs of
             [] -> return ()
             ((_,_,_,e):es) -> lift (Error e)
@@ -125,8 +126,10 @@ elab ist info pattern tcgen fn tm
                      g <- goal
                      tm <- get_term
                      ps <- get_probs
+                     hs <- get_holes
 --                      trace ("Elaborating " ++ show t' ++ " in " ++ show g
---                             ++ "\n" ++ show tm 
+-- --                             ++ "\n" ++ show tm 
+--                             ++ "\nholes " ++ show hs
 --                             ++ "\nproblems " ++ show ps
 --                             ++ "\n-----------\n") $
                      elab' ina t'
@@ -205,13 +208,8 @@ elab ist info pattern tcgen fn tm
               trySeq' deferr (x : xs) 
                   = try' (elab' ina x) (trySeq' deferr xs) True
     elab' ina (PPatvar fc n) | pattern = patvar n
---         = do env <- get_env
---              case lookup n env of
---                 Just (PVar _) -> elab' ina Placeholder
---                 _ -> patvar n
     elab' (ina, guarded) (PRef fc n) | pattern && not (inparamBlock n)
         = do ctxt <- get_context
-             env <- get_env
              let defined = case lookupTy Nothing n ctxt of
                                [] -> False
                                _ -> True

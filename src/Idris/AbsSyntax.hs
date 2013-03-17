@@ -352,7 +352,7 @@ setImportDirs fps = do i <- getIState
 
 allImportDirs :: IState -> Idris [FilePath]
 allImportDirs i = do let optdirs = opt_importdirs (idris_options i)
-                     return ("." : optdirs)
+                     return ("." : reverse optdirs)
 
 impShow :: Idris Bool
 impShow = do i <- getIState
