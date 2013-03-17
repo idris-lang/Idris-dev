@@ -195,4 +195,20 @@ public class ForeignPrimitives {
     public static int isNull(Object o) {
 	return (o == null ? 1 : 0);
     }
+
+    public final static Object idris_K(final Object result, final Object drop) {
+	return result;
+    }
+
+    public final static Object idris_flipK(final Object drop, final Object result) {
+	return result;
+    }
+
+    public final static Object idris_assignStack(final Object [] context, final int start, final Object ... vars) {
+	int i = start;
+	for (Object var : vars) {
+	    context[i] = var;
+	}
+	return context;
+    }
 }
