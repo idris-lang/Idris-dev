@@ -101,9 +101,7 @@ void idris_gc(VM* vm) {
     for(root = vm->inbox_ptr; root < vm->inbox_write; ++root) {
         *root = copy(vm, *root);
     }
-    for(root = vm->argv; root < vm->argv + vm->argc; ++root) {
-        *root = copy(vm, *root);
-    }
+    
     vm->ret = copy(vm, vm->ret);
     vm->reg1 = copy(vm, vm->reg1);
 

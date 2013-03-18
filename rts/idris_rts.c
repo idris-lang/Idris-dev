@@ -20,16 +20,10 @@ VM* init_vm(int stack_size, size_t heap_size,
     STATS_ENTER_INIT(vm->stats)
 
     VAL* valstack = malloc(stack_size * sizeof(VAL));
-    int* intstack = malloc(stack_size * sizeof(int));
-    double* floatstack = malloc(stack_size*sizeof(double));
 
     vm->valstack = valstack;
     vm->valstack_top = valstack;
     vm->valstack_base = valstack;
-    vm->intstack = intstack;
-    vm->intstack_ptr = intstack;
-    vm->floatstack = floatstack;
-    vm->floatstack_ptr = floatstack;
     vm->stack_max = valstack + stack_size;
 
     alloc_heap(&(vm->heap), heap_size);
@@ -51,14 +45,8 @@ VM* init_vm(int stack_size, size_t heap_size,
     vm->max_threads = max_threads;
     vm->processes = 0;
 
-    int i;
-    // Assumption: there's enough space for this in the initial heap.
-    vm->argv = malloc(argc*sizeof(VAL));
+    vm->argv = argv;
     vm->argc = argc;
-
-    for(i = 0; i < argc; ++i) {
-        vm->argv[i] = MKSTR(vm, argv[i]);
-    }
 
     STATS_LEAVE_INIT(vm->stats)
     return vm;
@@ -70,10 +58,7 @@ Stats terminate(VM* vm) {
 
     free(vm->inbox);
     free(vm->valstack);
-    free(vm->intstack);
-    free(vm->floatstack);
     free_heap(&(vm->heap));
-    free(vm->argv);
 
     pthread_mutex_destroy(&(vm -> inbox_lock));
     pthread_mutex_destroy(&(vm -> inbox_block));
@@ -592,11 +577,10 @@ int idris_numArgs(VM* vm) {
 }
 
 VAL idris_getArg(VM* vm, int i) {
-    return vm->argv[i];
+    return MKSTR(vm, vm->argv[i]);
 }
 
 void stackOverflow() {
   fprintf(stderr, "Stack overflow");
   exit(-1);
 }
-
