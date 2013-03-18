@@ -71,7 +71,7 @@ compile target f tm
                                       (concatMap mkObj objs)
                                       (concatMap mkLib libs) NONE
                                   ViaJava ->
-                                    codegenJava [] c f outty
+                                    codegenJava [] c f hdrs libs outty
                                   ViaJavaScript ->
                                     codegenJavaScript JavaScript c f outty
                                   ViaNode ->      
