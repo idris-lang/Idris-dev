@@ -10,10 +10,14 @@ import Debug.Trace
 
 import Util.DynamicLinker
 
+import Control.Applicative hiding (Const)
 import Control.Monad.Trans
 import Control.Monad
 import Data.Maybe
 
+import Foreign.LibFFI
+import Foreign.C.String
+import Foreign.Marshal.Alloc (free)
 
 -- | Attempt to perform a side effect. Return either Just the next step in
 -- evaluation (after performing the side effect through IO), or Nothing if no
@@ -21,8 +25,7 @@ import Data.Maybe
 step :: TT Name -> Idris (Maybe (TT Name))
 step tm = step' (unApply tm)
     where step' (P _ (UN "unsafePerformIO") _, [_, arg] ) = return $ Just arg
-          step' (P _ (UN "mkForeign") _, args) = do newTerm <- stepForeign args
-                                                    return Nothing
+          step' (P _ (UN "mkForeign") _, args) = stepForeign args
           step' _ = return Nothing
 
 -- | Perform side effects until no more can be performed, then return the
@@ -39,8 +42,37 @@ data FTy = FInt | FFloat | FChar | FString | FPtr | FUnit deriving (Show, Read)
 
 data Foreign = FFun String [FTy] FTy deriving Show
 
-call :: Foreign -> [TT Name] -> Idris (TT Name)
-call (FFun name argTypes retType) args = undefined
+call :: Foreign -> [TT Name] -> Idris (Maybe (TT Name))
+call (FFun name argTypes retType) args = do fn <- findForeign name
+                                            case fn of
+                                              Nothing -> return Nothing
+                                              Just f -> do res <- call' f args retType
+                                                           return . Just $ res
+    where call' :: ForeignFun -> [TT Name] -> FTy -> Idris (TT Name)
+          call' (Fun _ h) args FInt = do res <- lift $ callFFI h retCInt (prepArgs args)
+                                         return (Constant (I (fromIntegral res)))
+          call' (Fun _ h) args FFloat = do res <- lift $ callFFI h retCDouble (prepArgs args)
+                                           return (Constant (Fl (realToFrac res)))
+          call' (Fun _ h) args FChar = do res <- lift $ callFFI h retCChar (prepArgs args)
+                                          return (Constant (Ch (castCCharToChar res)))
+          call' (Fun _ h) args FString = do res <- lift $ callFFI h retCString (prepArgs args)
+                                            hStr <- lift $ peekCString res
+--                                            lift $ free res
+                                            return (Constant (Str hStr))
+-- awaiting Const constructor for pointers
+--          call' (Fun _ h) args FPtr = do res <- lift $ callFFI h retPtr (prepArgs args)
+--                                          return (Constant (Ch (castCCharToChar res)))
+          call' (Fun _ h) args FUnit = do res <- lift $ callFFI h retVoid (prepArgs args)
+                                          return (P Ref unitCon (P Ref unitTy (TType (UVal 0)))) -- FIXME check universe level
+
+
+          prepArgs = map prepArg
+          prepArg (Constant (I i)) = argCInt (fromIntegral i)
+          prepArg (Constant (Fl f)) = argCDouble (realToFrac f)
+          prepArg (Constant (Ch c)) = argCChar (castCharToCChar c) -- FIXME - castCharToCChar only safe for first 256 chars
+          prepArg (Constant (Str s)) = argString s
+
+
 
 foreignFromTT :: TT Name -> Maybe Foreign
 foreignFromTT t = case (unApply t) of
@@ -74,11 +106,12 @@ toConst :: TT Name -> Maybe Const
 toConst (Constant c) = Just c
 toConst _ = Nothing
 
-stepForeign :: [TT Name] -> Idris (TT Name)
-stepForeign (ty:fn:args) = do iputStrLn $ show $ foreignFromTT fn
-                              iputStrLn $ show $ sequence $ map toConst args
-                              iputStrLn ""
-                              return $ mkApp (P Bound (UN "mkForeign") Erased) args
+stepForeign :: [TT Name] -> Idris (Maybe (TT Name))
+stepForeign (ty:fn:args) = do let ffun = foreignFromTT fn
+                              f' <- case (call <$> ffun) of
+                                      Just f -> f args
+                                      Nothing -> return Nothing
+                              return f'
 stepForeign _ = fail "Tried to call foreign function that wasn't mkForeign"
 
 mapMaybeM :: Monad m => (a -> m (Maybe b)) -> [a] -> m [b]
@@ -95,4 +128,9 @@ findForeign fn = do i <- getIState
                     fns <- mapMaybeM (lift . tryLoadFn fn) libs
                     case fns of
                       [f] -> return (Just f)
-                      _ -> return Nothing
+                      [] -> do iputStrLn $ "Symbol \"" ++ fn ++ "\" not found"
+                               return Nothing
+                      fs -> do iputStrLn $ "Symbol \"" ++ fn ++ "\" is ambiguous. Found " ++
+                                           show (length fs) ++ " occurrences."
+                               return Nothing
+
