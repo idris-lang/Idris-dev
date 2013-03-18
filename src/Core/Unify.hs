@@ -133,8 +133,8 @@ unify ctxt env topx topy dont holes =
         | fst (bnames!!i) == x || snd (bnames!!i) == x = do sc 1; return []
 
     un' fn bnames appx@(App fx ax) appy@(App fy ay)
-      |    injective fx && metavarApp appy
-        || injective fy && metavarApp appx
+      |    injective fx && sameArgStruct appx appy && metavarApp appy
+        || injective fy && sameArgStruct appx appy && metavarApp appx
         || injective fx && injective fy  
         || fx == fy
          = do let (headx, _) = unApply fx
@@ -196,10 +196,21 @@ unify ctxt env topx topy dont holes =
             metavarApp' tm = let (f, args) = unApply tm in
                                  all (\x -> pat x || metavar x) (f : args)
 
-            sameStruct (App f x) (App g y) = sameStruct f g && sameStruct x y
+            sameArgStruct appx appy = let (_, ax) = unApply appx
+                                          (_, ay) = unApply appy in
+                                          and (zipWith sameStruct ax ay)
+
+            sameStruct fapp@(App f x) gapp@(App g y) 
+                = let (f',a') = unApply fapp
+                      (g',b') = unApply gapp in
+                      (f' == g' && length a' == length b' &&
+                          (injective f' || injective g'))
+                        || (sameStruct f g && sameStruct x y)
             sameStruct (P _ x _) (P _ y _) = True
             sameStruct (V i) (V j) = i == j
             sameStruct (Constant x) (Constant y) = True
+            sameStruct (P _ _ _) (Constant y) = True
+            sameStruct (Constant x) (P _ _ _) = True
             sameStruct (Bind n t sc) (P _ _ _) = True
             sameStruct (P _ _ _) (Bind n t sc) = True
             sameStruct (Bind n t sc) (Bind n' t' sc') = sameStruct sc sc'

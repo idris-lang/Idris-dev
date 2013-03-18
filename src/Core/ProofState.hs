@@ -157,7 +157,7 @@ unify' ctxt env topx topy =
    do ps <- get
       let dont = dontunify ps
       (u, fails) <- -- trace ("Trying " ++ show (topx, topy)) $ 
-                    lift $ unify ctxt env topx topy dont (holes ps)
+                     lift $ unify ctxt env topx topy dont (holes ps)
 --       trace ("Unified " ++ show (topx, topy) ++ " without " ++ show dont ++
 -- --              " in " ++ show env ++ 
 --              "\n" ++ show u ++ "\n" ++ qshow fails ++ "\nCurrent problems:\n"
