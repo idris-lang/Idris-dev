@@ -9,8 +9,23 @@ void print_stats(const Stats * stats) {
     clock_t total   = clock() - stats->start_time;
     clock_t mut     = total - stats->init_time - stats->gc_time - stats->exit_time;
     double  mut_sec = (double)mut   / CLOCKS_PER_SEC;
-    int avg_chunk   = (int)((double)stats->allocations / (double)stats->alloc_count);
-    int alloc_rate  = (int)((double)(stats->allocations) / mut_sec);
+
+    int avg_chunk = 0;
+    if (stats->alloc_count > 0) {
+        avg_chunk = (int)((double)stats->allocations / (double)stats->alloc_count);
+    }
+
+    int alloc_rate = 0;
+    if (mut > 0) {
+        alloc_rate  = (int)((double)(stats->allocations) / mut_sec);
+    }
+    
+    double gc_percent = 0.0d;
+    double productivity = 0.0d;
+    if (total > 0) {
+        gc_percent = 100 * (double)stats->gc_time / (double)total;
+        productivity = 100 * ((double)mut / (double)total);
+    }
 
     setlocale(LC_NUMERIC, "");
     printf("\n");
@@ -28,11 +43,11 @@ void print_stats(const Stats * stats) {
     printf("EXIT  time: %8.3fs\n",   (double)stats->exit_time / CLOCKS_PER_SEC);
     printf("TOTAL time: %8.3fs\n\n", (double)total            / CLOCKS_PER_SEC);
 
-    printf("%%GC   time: %.2f%%\n\n", 100 * (double)stats->gc_time / (double)total);
+    printf("%%GC   time: %.2f%%\n\n", gc_percent);
 
     printf("Alloc rate %'d bytes per MUT sec\n\n", alloc_rate);
 
-    printf("Productivity %.2f%%\n", 100 * ((double)mut / (double)total));
+    printf("Productivity %.2f%%\n", productivity);
 }
 
 void aggregate_stats(Stats * stats1, const Stats * stats2) {
