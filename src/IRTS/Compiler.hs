@@ -264,21 +264,24 @@ instance ToIR (TT Name) where
       doForeign :: [Name] -> [TT Name] -> Idris LExp
       doForeign env (_ : fgn : args)
          | (_, (Constant (Str fgnName) : fgnArgTys : ret : [])) <- unApply fgn
-              = let tys = getFTypes fgnArgTys
+              = let maybeTys = getFTypes fgnArgTys
                     rty = mkIty' ret in
-                    do args' <- mapM (ir' env) args
-                       -- wrap it in a prim__IO
-                       -- return $ con_ 0 @@ impossible @@ 
-                       return $ -- LLazyExp $
-                           LForeign LANG_C rty fgnName (zip tys args')
+                case maybeTys of
+                  Nothing -> fail $ "Foreign type specification is not a constant list: " ++ show (fgn:args)
+                  Just tys -> do
+                    args' <- mapM (ir' env) args
+                    -- wrap it in a prim__IO
+                    -- return $ con_ 0 @@ impossible @@
+                    return $ -- LLazyExp $
+                      LForeign LANG_C rty fgnName (zip tys args')
          | otherwise = fail "Badly formed foreign function call"
 
-getFTypes :: TT Name -> [FType]
+getFTypes :: TT Name -> Maybe [FType]
 getFTypes tm = case unApply tm of
-                 (nil, []) -> []
+                 (nil, []) -> Just []
                  (cons, [ty, xs]) -> 
-                    let rest = getFTypes xs in
-                        mkIty' ty : rest
+                     fmap (mkIty' ty :) (getFTypes xs)
+                 _ -> Nothing
 
 mkIty' (P _ (UN ty) _) = mkIty ty
 mkIty' _ = FAny
