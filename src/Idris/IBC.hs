@@ -1257,6 +1257,10 @@ instance Binary PTerm where
                 PInferRef x1 x2 -> do putWord8 29
                                       put x1
                                       put x2
+                PRewrite x1 x2 x3 -> do putWord8 30
+                                        put x1
+                                        put x2
+                                        put x3
         get
           = do i <- getWord8
                case i of
@@ -1341,6 +1345,10 @@ instance Binary PTerm where
                    29 -> do x1 <- get
                             x2 <- get
                             return (PInferRef x1 x2)
+                   30 -> do x1 <- get
+                            x2 <- get
+                            x3 <- get
+                            return (PRewrite x1 x2 x3)
                    _ -> error "Corrupted binary data for PTerm"
  
 instance (Binary t) => Binary (PTactic' t) where

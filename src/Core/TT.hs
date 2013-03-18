@@ -69,6 +69,7 @@ data Err = Msg String
          | NonCollapsiblePostulate Name
          | AlreadyDefined Name
          | ProofSearchFail Err
+         | NoRewriting Term
          | At FC Err
   deriving Eq
 
@@ -82,6 +83,7 @@ instance Sized Err where
   size (NoTypeDecl name) = size name
   size (NotInjective l c r) = size l + size c + size r
   size (CantResolve trm) = size trm
+  size (NoRewriting trm) = size trm
   size (CantResolveAlts _) = 1
   size (IncompleteTerm trm) = size trm
   size UniverseError = 1
