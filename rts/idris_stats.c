@@ -20,8 +20,8 @@ void print_stats(const Stats * stats) {
         alloc_rate  = (int)((double)(stats->allocations) / mut_sec);
     }
     
-    double gc_percent = 0.0d;
-    double productivity = 0.0d;
+    double gc_percent = 0.0;
+    double productivity = 0.0;
     if (total > 0) {
         gc_percent = 100 * (double)stats->gc_time / (double)total;
         productivity = 100 * ((double)mut / (double)total);
