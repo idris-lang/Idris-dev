@@ -33,10 +33,8 @@ interpFTy (FAny t) = t
 interpFTy FUnit    = ()
 
 ForeignTy : (xs:List FTy) -> (t:FTy) -> Type
-ForeignTy xs t = mkForeign' (reverse xs) (IO (interpFTy t)) where 
-   mkForeign' : List FTy -> Type -> Type
-   mkForeign' Nil ty       = ty
-   mkForeign' (s :: ss) ty = mkForeign' ss (interpFTy s -> ty)
+ForeignTy Nil     rt = IO (interpFTy rt)
+ForeignTy (t::ts) rt = interpFTy t -> ForeignTy ts rt
 
 
 data Foreign : Type -> Type where
