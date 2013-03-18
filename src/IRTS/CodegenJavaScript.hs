@@ -386,20 +386,20 @@ translateExpression (SForeign _ _ fun args)
     concat [object obj, method, arguments as]
 
   | "[]=" == fun
-  , (idx:val:[]) <- args =
-    concat [array, index idx, assign val]
+  , (arr:idx:val:[]) <- args =
+    concat [array arr, index idx, assign val]
 
   | "[]" == fun
-  , (idx:[]) <- args =
-    array ++ index idx
+  , (arr:idx:[]) <- args =
+    array arr ++ index idx
 
   | otherwise = fun ++ arguments args
   where
     name         = filter (`notElem` "[]=") fun
     method       = name
     field        = name
-    array        = name
     object o     = translateVariableName (snd o)
+    array        = object
     index  i     = "[" ++ translateVariableName (snd i) ++ "]"
     assign v     = '=' : translateVariableName (snd v)
     arguments as =
