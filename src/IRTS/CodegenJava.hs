@@ -368,6 +368,7 @@ mkIdentifier (UN name) =
     cleanReserved "volatile" = "_volatile"
     cleanReserved "transient" = "_transient"
     cleanReserved "native" = "_native"
+    cleanReserved "const" = "_const"
 
     cleanReserved "import" = "_import"
     cleanReserved "package" = "_package"
@@ -440,9 +441,6 @@ idrisClosureType = ClassType [(Ident "Closure", [])]
 
 idrisTailCallClosureType :: ClassType
 idrisTailCallClosureType = ClassType [(Ident "TailCallClosure", [])]
-
---idrisFunctionType :: ClassType
---idrisFunctionType = ClassType [(Ident "IdrisFunction", [])]
 
 idrisObjectType :: ClassType
 idrisObjectType = ClassType [(Ident "IdrisObject", [])]
