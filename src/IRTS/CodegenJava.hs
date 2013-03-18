@@ -15,7 +15,7 @@ import qualified Control.Monad.Trans as T
 import           Control.Monad.Trans.State
 import           Data.Char
 import           Data.Maybe (fromJust)
-import           Data.List (isPrefixOf, intercalate)
+import           Data.List (isPrefixOf, isSuffixOf, intercalate)
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
 import           Language.Java.Parser
@@ -35,9 +35,11 @@ type CodeGeneration = StateT (CodeGenerationEnv) (Either String)
 codegenJava :: [(Name, SExp)] -> -- initialization of globals
                [(Name, SDecl)] ->
                FilePath -> -- output file name
+               [String] -> -- headers
+               [String] -> -- libs
                OutputType ->
                IO ()
-codegenJava globalInit defs out exec = do
+codegenJava globalInit defs out hdrs libs exec = do
   withTempdir (takeBaseName out) $ \ tmpDir -> do
     let srcdir = tmpDir </> "src" </> "main" </> "java"
     createDirectoryIfMissing True srcdir
@@ -46,7 +48,7 @@ codegenJava globalInit defs out exec = do
     let outjava = srcdir </> clsName <.> "java"
     let jout = either error
                       (flatIndent . prettyPrint)
-                      (evalStateT (mkCompilationUnit globalInit defs out) (mkCodeGenEnv globalInit))
+                      (evalStateT (mkCompilationUnit globalInit defs hdrs out) (mkCodeGenEnv globalInit))
     writeFile outjava jout
     if (exec == Raw)
        then copyFile outjava (takeDirectory out </> clsName <.> "java")
@@ -57,12 +59,16 @@ codegenJava globalInit defs out exec = do
                                  (T.pack clsName)
                                  (T.replace (T.pack "$ARTIFACT-NAME$") 
                                             (T.pack $ takeBaseName out) 
-                                            execPomTemplate)
+                                            (T.replace (T.pack "$DEPENDENCIES$")
+                                                       (mkPomDependencies libs)
+                                                       execPomTemplate
+                                            )
+                                 )
          TIO.writeFile (tmpDir </> "pom.xml") execPom
          mvnCmd <- getMvn
          let args = ["-f", (tmpDir </> "pom.xml")]
-         (exit, _, err) <- readProcessWithExitCode mvnCmd (args ++ ["compile"]) ""
-         when (exit /= ExitSuccess) $ error ("FAILURE: " ++ mvnCmd ++ " compile\n" ++ err)
+         (exit, mvout, err) <- readProcessWithExitCode mvnCmd (args ++ ["compile"]) ""
+         when (exit /= ExitSuccess) $ error ("FAILURE: " ++ mvnCmd ++ " compile\n" ++ err ++ mvout)
          if (exec == Object)
             then do
               classFiles <- 
@@ -72,8 +78,8 @@ codegenJava globalInit defs out exec = do
               mapM_ (\ clsFile -> copyFile clsFile (takeDirectory out </> takeFileName clsFile)) 
                     classFiles
              else do
-               (exit, _, err) <- readProcessWithExitCode mvnCmd (args ++ ["package"]) ""
-               when (exit /= ExitSuccess) (error ("FAILURE: " ++ mvnCmd ++ " package\n" ++ err))
+               (exit, mvout, err) <- readProcessWithExitCode mvnCmd (args ++ ["package"]) ""
+               when (exit /= ExitSuccess) (error ("FAILURE: " ++ mvnCmd ++ " package\n" ++ err ++ mvout))
                copyFile (tmpDir </> "target" </> (takeBaseName out) <.> "jar") out
                handle <- openBinaryFile out ReadMode
                contents <- TIO.hGetContents handle
@@ -99,21 +105,40 @@ jarHeader =
   ++ "exec \"$java\" $java_args -jar $MYSELF \"$@\""
   ++ "exit 1\n"
 
+mkPomDependencies :: [String] -> T.Text
+mkPomDependencies deps =
+  T.concat $ map (T.concat . map (T.append (T.pack "    ")) . mkDependency . T.pack) deps
+  where
+    mkDependency s = 
+      case T.splitOn (T.pack ":") s of
+        [g, a, v] ->
+          [ T.pack $ "<dependency>\n"
+          , T.append (T.pack "  ") $ mkGroupId g
+          , T.append (T.pack "  ") $ mkArtifactId a
+          , T.append (T.pack "  ") $ mkVersion v
+          , T.pack $ "</dependency>\n"
+          ]
+        _     -> []
+    mkGroupId g    = T.append (T.pack $ "<groupId>")    (T.append g $ T.pack "</groupId>\n")
+    mkArtifactId a = T.append (T.pack $ "<artifactId>") (T.append a $ T.pack "</artifactId>\n")
+    mkVersion v    = T.append (T.pack $ "<version>")    (T.append v $ T.pack "</version>\n")
+
 mkCodeGenEnv :: [(Name, SExp)] -> CodeGenerationEnv
 mkCodeGenEnv globalInit = 
   CodeGenerationEnv $ zipWith (\ (name, _) pos -> (name, pos)) globalInit [0..]
 
-mkCompilationUnit :: [(Name, SExp)] -> [(Name, SDecl)] -> FilePath -> CodeGeneration CompilationUnit
-mkCompilationUnit globalInit defs out =
-  CompilationUnit Nothing [ ImportDecl False idrisRts True
-                          , ImportDecl True idrisForeign True
-                          , ImportDecl False bigInteger False
-                          , ImportDecl False stringBuffer False
-                          , ImportDecl False runtimeException False
-                          , ImportDecl False scanner False
-                          , ImportDecl False arrays False
-                          ] <$>
-                  mkTypeDecl globalInit defs out
+mkCompilationUnit :: [(Name, SExp)] -> [(Name, SDecl)] -> [String] -> FilePath -> CodeGeneration CompilationUnit
+mkCompilationUnit globalInit defs hdrs out =
+  CompilationUnit Nothing ( [ ImportDecl False idrisRts True
+                            , ImportDecl True idrisForeign True
+                            , ImportDecl False bigInteger False
+                            , ImportDecl False stringBuffer False
+                            , ImportDecl False runtimeException False
+                            , ImportDecl False scanner False
+                            , ImportDecl False arrays False
+                            ] ++ otherHdrs
+                          )
+                          <$> mkTypeDecl globalInit defs out
   where
     idrisRts = J.Name $ map Ident ["org", "idris", "rts"]
     idrisForeign = J.Name $ map Ident ["org", "idris", "rts", "ForeignPrimitives"]
@@ -122,6 +147,12 @@ mkCompilationUnit globalInit defs out =
     runtimeException = J.Name $ map Ident ["java", "lang", "RuntimeException"]
     scanner = J.Name $ map Ident ["java", "util", "Scanner"]
     arrays = J.Name $ map Ident ["java", "util", "Arrays"]
+    otherHdrs = map ( (\ name -> ImportDecl False name False)
+                      . J.Name 
+                      . map (Ident . T.unpack) 
+                      . T.splitOn (T.pack ".") 
+                      . T.pack) 
+                $ filter (not . isSuffixOf ".h") hdrs
 
 flatIndent :: String -> String
 flatIndent (' ' : ' ' : xs) = flatIndent xs
@@ -337,6 +368,7 @@ mkIdentifier (UN name) =
     cleanReserved "volatile" = "_volatile"
     cleanReserved "transient" = "_transient"
     cleanReserved "native" = "_native"
+    cleanReserved "const" = "_const"
 
     cleanReserved "import" = "_import"
     cleanReserved "package" = "_package"
@@ -409,9 +441,6 @@ idrisClosureType = ClassType [(Ident "Closure", [])]
 
 idrisTailCallClosureType :: ClassType
 idrisTailCallClosureType = ClassType [(Ident "TailCallClosure", [])]
-
---idrisFunctionType :: ClassType
---idrisFunctionType = ClassType [(Ident "IdrisFunction", [])]
 
 idrisObjectType :: ClassType
 idrisObjectType = ClassType [(Ident "IdrisObject", [])]

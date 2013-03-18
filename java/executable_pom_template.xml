@@ -17,6 +17,7 @@
     	<artifactId>idris</artifactId>
     	<version>$RTS-VERSION$</version>
     </dependency>
+$DEPENDENCIES$
   </dependencies>
 
 
