@@ -17,6 +17,7 @@ import Paths_idris
 import Core.TT
 import Core.Elaborate hiding (Tactic(..))
 import Core.Evaluate
+import Core.Execute
 import Core.Typecheck
 import Core.CaseTree
 
@@ -191,18 +192,21 @@ elabData info syn doc fc codata (PDatadecl n t_in dcons)
 elabProvider :: ElabInfo -> SyntaxInfo -> FC -> Name -> PTerm -> PTerm -> Idris ()
 elabProvider info syn fc n ty tm
     = do let expected = providerTy fc ty
+         let using = unProv fc tm
          logLvl 1 $ "** Providing " ++
                     show n ++ " : " ++ show expected ++
-                    " as " ++ show tm
+                    " as " ++ show using
          i <- getIState
-         (e', et) <- elabVal toplevel False tm
+         (e', et) <- elabVal toplevel False using
          ctxt <- getContext
          let e'' = normaliseAll ctxt [] e'
+         logLvl 1 $ "Term is " ++ show e''
          let et' = normaliseAll ctxt [] et
          elabType info syn "" fc [] n ty
-         elabClauses info fc [] n [PClause fc n (PRef fc $ n) [] (unProv fc tm) []]
+         rhs <- execute e''
+         elabClauses info fc [] n [PClause fc n (PRef fc $ n) [] (delab i rhs) []]
          logLvl 1 $ "** Elaborated: " ++ show e' ++ " :as: " ++ show et
-         logLvl 1 $ "** Evaluated: " ++ show e'' ++ " :as: " ++ show et'
+         logLvl 1 $ "** Evaluated: " ++ show rhs ++ " :as: " ++ show et'
 
 elabRecord :: ElabInfo -> SyntaxInfo -> String -> FC -> Name -> 
               PTerm -> String -> Name -> PTerm -> Idris ()
