@@ -189,6 +189,9 @@ runEnv env prog = eff env prog (\env, r => pure (env, r))
 runPure : Env id xs -> EffM id xs xs' a -> a
 runPure env prog = eff env prog (\env, r => r)
 
+runPureEnv : Env id xs -> EffM id xs xs' a -> (Env id xs', a)
+runPureEnv env prog = eff env prog (\env, r => (env, r))
+
 runWith : (a -> m a) -> Env m xs -> EffM m xs xs' a -> m a
 runWith inj env prog = eff env prog (\env, r => inj r)
 
