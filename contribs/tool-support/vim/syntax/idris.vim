@@ -4,7 +4,7 @@
 " highlighter to support idris.
 "
 " author: raichoo (raichoo@googlemail.com)
-" date: Mar 19 2013
+" date: Mar 20 2013
 
 syn match idrisModule "\<\(module\|namespace\)\>"
 syn match idrisImport "\<import\>"
@@ -28,7 +28,7 @@ syn match idrisLink "%\(lib\|link\|include\)"
 syn match idrisDirective "%\(access\|default\|assert_total\)"
 syn match idrisDSL "\(lambda\|variable\|\index_first\|index_next\)"
 syn region idrisString start=+"+ skip=+\\\\\|\\"+ end=+"+
-syn region idrisBlockComment start="{-" end="-}"
+syn region idrisBlockComment start="{-" end="-}" contains=idrisBlockComment
 syn region idrisProofBlock start="\(default\s\+\)\?\(proof\|tactics\) *{" end="}" contains=idrisTactic
 
 syn match idrisBadLeadingWhiteSpace "^\s*\t\+"
