@@ -279,6 +279,12 @@ setREPL t = do i <- getIState
                let opt' = opts { opt_repl = t }
                putIState $ i { idris_options = opt' }
 
+setQuiet :: Bool -> Idris ()
+setQuiet q = do i <- getIState
+                let opts = idris_options i
+                let opt' = opts { opt_quiet = q }
+                putIState $ i { idris_options = opt' }
+
 setTarget :: Target -> Idris ()
 setTarget t = do i <- getIState
                  let opts = idris_options i

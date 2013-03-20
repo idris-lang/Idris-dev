@@ -78,6 +78,7 @@ usagemsg = "Idris version " ++ ver ++ "\n" ++
            "--------------" ++ map (\x -> '-') ver ++ "\n" ++
            "Usage: idris [input file] [options]\n" ++
            "Options:\n" ++
+           "\t--quiet           Quiet mode (for editors)\n" ++
            "\t--check           Type check only\n" ++
            "\t-o [file]         Specify output filename\n" ++
            "\t-i [dir]          Add directory to the list of import paths\n" ++

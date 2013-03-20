@@ -57,10 +57,13 @@ repl :: IState -- ^ The initial state
      -> InputT Idris ()
 repl orig mods
    = H.catch
-      (do let prompt = mkPrompt mods
-          x <- getInputLine (prompt ++ "> ")
+      (do let quiet = opt_quiet (idris_options orig)
+          let prompt = if quiet
+                          then ""
+                          else mkPrompt mods ++ "> "
+          x <- getInputLine prompt
           case x of
-              Nothing -> do lift $ iputStrLn "Bye bye"
+              Nothing -> do lift $ when (not quiet) (iputStrLn "Bye bye")
                             return ()
               Just input -> H.catch 
                               (do ms <- lift $ processInput input orig mods
@@ -86,6 +89,8 @@ lit f = case splitExtension f of
 processInput :: String -> IState -> [FilePath] -> Idris (Maybe [FilePath])
 processInput cmd orig inputs
     = do i <- getIState
+         let opts = idris_options i
+         let quiet = opt_quiet opts
          let fn = case inputs of
                         (f:_) -> f
                         _ -> ""
@@ -110,7 +115,7 @@ processInput cmd orig inputs
                              return (Just inputs)
             Right Proofs -> do proofs orig
                                return (Just inputs)
-            Right Quit -> do iputStrLn "Bye bye"
+            Right Quit -> do when (not quiet) (iputStrLn "Bye bye")
                              return Nothing
             Right cmd  -> do idrisCatch (process fn cmd)
                                         (\e -> iputStrLn (show e))
@@ -436,6 +441,7 @@ parseTarget _ = error "unknown target" -- FIXME: partial function
 
 parseArgs :: [String] -> [Opt]
 parseArgs [] = []
+parseArgs ("--quiet":ns)        = Quiet : (parseArgs ns)
 parseArgs ("--log":lvl:ns)      = OLogging (read lvl) : (parseArgs ns)
 parseArgs ("--noprelude":ns)    = NoPrelude : (parseArgs ns)
 parseArgs ("--check":ns)        = NoREPL : (parseArgs ns)
@@ -487,6 +493,7 @@ idris opts = execStateT (idrisMain opts) idrisInit
 idrisMain :: [Opt] -> Idris ()
 idrisMain opts =
     do let inputs = opt getFile opts
+       let quiet = Quiet `elem` opts
        let runrepl = not (NoREPL `elem` opts)
        let output = opt getOutput opts
        let newoutput = opt getNewOutput opts
@@ -504,6 +511,7 @@ idrisMain opts =
        when (DefaultTotal `elem` opts) $ do i <- getIState
                                             putIState (i { default_total = True })
        setREPL runrepl
+       setQuiet quiet
        setVerbose runrepl
        setCmdLine opts
        setOutputTy outty
@@ -527,7 +535,7 @@ idrisMain opts =
        elabPrims
        when (not (NoPrelude `elem` opts)) $ do x <- loadModule "Prelude"
                                                return ()
-       when runrepl $ iputStrLn banner
+       when (runrepl && not quiet) $ iputStrLn banner
        ist <- getIState
        mods <- mapM loadModule inputs
        ok <- noErrors
