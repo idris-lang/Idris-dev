@@ -100,8 +100,7 @@ data EffM : (m : Type -> Type) ->
             List EFFECT -> List EFFECT -> Type -> Type where
      value   : a -> EffM m xs xs a
      ebind   : EffM m xs xs' a -> (a -> EffM m xs' xs'' b) -> EffM m xs xs'' b
-     effect  : {a, b: _} -> {e : Effect} ->
-               (prf : EffElem e a xs) -> 
+     effect  : (prf : EffElem e a xs) -> 
                (eff : e a b t) -> 
                EffM m xs (updateResTy xs prf eff) t
      lift    : (prf : SubList ys xs) ->
