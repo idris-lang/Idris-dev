@@ -373,12 +373,19 @@ declared (PFix _ _ _) = []
 declared (PTy _ _ _ _ n t) = [n]
 declared (PPostulate _ _ _ _ n t) = [n]
 declared (PClauses _ _ n _) = [] -- not a declaration
-declared (PRecord _ _ _ n _ _ c _) = [n, c]
+declared (PCAF _ n _) = [n]
 declared (PData _ _ _ _ (PDatadecl n _ ts)) = n : map fstt ts
    where fstt (_, a, _, _) = a
+declared (PData _ _ _ _ (PLaterdecl n _)) = [n]
 declared (PParams _ _ ds) = concatMap declared ds
-declared (PMutual _ ds) = concatMap declared ds
 declared (PNamespace _ ds) = concatMap declared ds
+declared (PRecord _ _ _ n _ _ c _) = [n, c]
+declared (PClass _ _ _ _ n _ ms) = n : concatMap declared ms
+declared (PInstance _ _ _ _ _ _ _ _) = []
+declared (PDSL n _) = [n]
+declared (PSyntax _ _) = []
+declared (PMutual _ ds) = concatMap declared ds
+declared (PDirective _) = []
 
 -- get the names declared, not counting nested parameter blocks
 tldeclared :: PDecl -> [Name]
@@ -392,20 +399,27 @@ tldeclared (PData _ _ _ _ (PDatadecl n _ ts)) = n : map fstt ts
 tldeclared (PParams _ _ ds) = [] 
 tldeclared (PMutual _ ds) = concatMap tldeclared ds
 tldeclared (PNamespace _ ds) = concatMap tldeclared ds
--- declared (PImport _) = []
+
 
 defined :: PDecl -> [Name]
 defined (PFix _ _ _) = []
 defined (PTy _ _ _ _ n t) = []
 defined (PPostulate _ _ _ _ n t) = []
 defined (PClauses _ _ n _) = [n] -- not a declaration
-defined (PRecord _ _ _ n _ _ c _) = [n, c]
+defined (PCAF _ n _) = [n]
 defined (PData _ _ _ _ (PDatadecl n _ ts)) = n : map fstt ts
    where fstt (_, a, _, _) = a
+defined (PData _ _ _ _ (PLaterdecl n _)) = []
 defined (PParams _ _ ds) = concatMap defined ds
-defined (PMutual _ ds) = concatMap defined ds
 defined (PNamespace _ ds) = concatMap defined ds
--- declared (PImport _) = []
+defined (PRecord _ _ _ n _ _ c _) = [n, c]
+defined (PClass _ _ _ _ n _ ms) = n : concatMap defined ms
+defined (PInstance _ _ _ _ _ _ _ _) = []
+defined (PDSL n _) = [n]
+defined (PSyntax _ _) = []
+defined (PMutual _ ds) = concatMap defined ds
+defined (PDirective _) = []
+--defined _ = []
 
 updateN :: [(Name, Name)] -> Name -> Name
 updateN ns n | Just n' <- lookup n ns = n'
