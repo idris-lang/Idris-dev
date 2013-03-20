@@ -23,23 +23,24 @@ import Data.Either
 
 import Debug.Trace
 
-data IOption = IOption { opt_logLevel :: Int,
-                         opt_typecase :: Bool,
+data IOption = IOption { opt_logLevel   :: Int,
+                         opt_typecase   :: Bool,
                          opt_typeintype :: Bool,
-                         opt_coverage :: Bool,
-                         opt_showimp  :: Bool,
+                         opt_coverage   :: Bool,
+                         opt_showimp    :: Bool,
                          opt_errContext :: Bool,
-                         opt_repl     :: Bool,
-                         opt_verbose  :: Bool,
-                         opt_target   :: Target,
-                         opt_outputTy :: OutputType,
-                         opt_ibcsubdir :: FilePath,
+                         opt_repl       :: Bool,
+                         opt_verbose    :: Bool,
+                         opt_quiet      :: Bool,
+                         opt_target     :: Target,
+                         opt_outputTy   :: OutputType,
+                         opt_ibcsubdir  :: FilePath,
                          opt_importdirs :: [FilePath],
-                         opt_cmdline :: [Opt] -- remember whole command line
+                         opt_cmdline    :: [Opt] -- remember whole command line
                        }
     deriving (Show, Eq)
 
-defaultOpts = IOption 0 False False True False False True True ViaC Executable "" [] []
+defaultOpts = IOption 0 False False True False False True True False ViaC Executable "" [] []
 
 -- TODO: Add 'module data' to IState, which can be saved out and reloaded quickly (i.e
 -- without typechecking).
@@ -190,6 +191,7 @@ data Command = Quit
 data Opt = Filename String
          | Ver
          | Usage
+         | Quiet
          | ShowLibs
          | ShowLibdir
          | ShowIncs
