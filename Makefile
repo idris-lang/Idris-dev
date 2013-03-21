@@ -1,32 +1,33 @@
-include config.mk
+.PHONY: build configure doc install linecount nodefault pinstall relib test
 
-install: .PHONY
+include config.mk
+-include custom.mk
+
+install:
 	$(CABAL) install $(CABALFLAGS)
 
-pinstall: .PHONY
-	$(CABAL) configure --enable-executable-profiling $(CABALFLAGS)
-	$(CABAL) install   --enable-executable-profiling $(CABALFLAGS)
+pinstall: CABALFLAGS += --enable-executable-profiling
+pinstall: dist/setup-config
+	$(CABAL) install $(CABALFLAGS)
 
-build: .PHONY
+build: dist/setup-config
 	$(CABAL) build $(CABALFLAGS)
 
-configure: .PHONY
-	$(CABAL) configure $(CABALFLAGS)
-
-test : .PHONY
+test:
 	make -C test
 
-relib: .PHONY
+relib:
 	make -C lib IDRIS=../dist/build/idris/idris clean
 	make -C effects IDRIS=../dist/build/idris/idris clean
 	$(CABAL) install $(CABALFLAGS)
 
-linecount : .PHONY
+linecount:
 	wc -l src/Idris/*.hs src/Core/*.hs src/IRTS/*.hs src/Pkg/*.hs
 
 #Note: this doesn't yet link to Hackage properly
-doc: .PHONY
+doc: dist/setup-config
 	$(CABAL) haddock --executables --hyperlink-source --html --hoogle --html-location="http://hackage.haskell.org/packages/archive/\$$pkg/latest/doc/html" --haddock-options="--title Idris"
 
-.PHONY:
 
+dist/setup-config:
+	$(CABAL) configure $(CABALFLAGS)
