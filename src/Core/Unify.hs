@@ -29,7 +29,7 @@ data UResult a = UOK a
 
 unify :: Context -> Env -> TT Name -> TT Name -> [Name] -> [Name] ->
          TC ([(Name, TT Name)], Fails)
-unify ctxt env topx topy injtc holes =
+unify ctxt env topx topy dont holes =
 --      trace ("Unifying " ++ show (topx, topy)) $
              -- don't bother if topx and topy are different at the head
       case runStateT (un False [] topx topy) (UI 0 []) of
@@ -54,8 +54,9 @@ unify ctxt env topx topy injtc holes =
 
     injective (P (DCon _ _) _ _) = True
     injective (P (TCon _ _) _ _) = True
-    injective (P _ n _)          = n `elem` injtc
-    injective (App f a)          = injective f
+    injective (App f (P _ _ _))  = injective f 
+    injective (App f (Constant _))  = injective f 
+    injective (App f a)          = injective f && injective a
     injective _                  = False
 
     notP (P _ _ _) = False
@@ -94,12 +95,16 @@ unify ctxt env topx topy injtc holes =
                 = unifyFail topx topy
     un' fn names topx@(P (TCon _ _) x _) topy@(P (DCon _ _) y _)
                 = unifyFail topx topy
+    un' fn names topx@(Constant _) topy@(P (TCon _ _) y _)
+                = unifyFail topx topy
+    un' fn names topx@(P (TCon _ _) x _) topy@(Constant _)
+                = unifyFail topx topy
     un' fn bnames tx@(P _ x _) ty@(P _ y _)  
         | (x,y) `elem` bnames || x == y = do sc 1; return []
         | injective tx && not (holeIn env y || y `elem` holes)
-             = unifyFail tx ty
+             = unifyTmpFail tx ty
         | injective ty && not (holeIn env x || x `elem` holes)
-             = unifyFail tx ty
+             = unifyTmpFail tx ty
     un' fn bnames xtm@(P _ x _) tm
         | holeIn env x || x `elem` holes
                        = do UI s f <- get
@@ -128,8 +133,8 @@ unify ctxt env topx topy injtc holes =
         | fst (bnames!!i) == x || snd (bnames!!i) == x = do sc 1; return []
 
     un' fn bnames appx@(App fx ax) appy@(App fy ay)
-      |    injective fx && metavarApp appy 
-        || injective fy && metavarApp appx 
+      |    injective fx && sameArgStruct appx appy && metavarApp appy
+        || injective fy && sameArgStruct appx appy && metavarApp appx
         || injective fx && injective fy  
         || fx == fy
          = do let (headx, _) = unApply fx
@@ -158,12 +163,14 @@ unify ctxt env topx topy injtc holes =
                let (heady, argsy) = unApply appy
                if (length argsx == length argsy && 
                    ((headx == heady) || (argsx == argsy) ||
-                    (notFn headx && notFn heady))) then
+                    (and (zipWith sameStruct (headx:argsx) (heady:argsy)))))
+                      then
+--                     (notFn headx && notFn heady))) then
                  do uf <- un' True bnames headx heady
                     unArgs uf argsx argsy
                  else unifyTmpFail appx appy
       where hnormalise [] _ _ t = t
-            hnormalise ns ctxt env t = hnf ctxt env t
+            hnormalise ns ctxt env t = normalise ctxt env t
             checkHeads (P (DCon _ _) x _) (P (DCon _ _) y _)
                 | x /= y = unifyFail appx appy
             checkHeads (P (TCon _ _) x _) (P (TCon _ _) y _)
@@ -183,10 +190,39 @@ unify ctxt env topx topy injtc holes =
                      unArgs vs xs ys
 
             metavarApp tm = let (f, args) = unApply tm in
-                                all (\x -> metavar x || notFn x) (f : args)
+                                all (\x -> metavar x || inenv x) (f : args)
+            metavarArgs tm = let (f, args) = unApply tm in
+                                 all (\x -> metavar x || inenv x) args
+            metavarApp' tm = let (f, args) = unApply tm in
+                                 all (\x -> pat x || metavar x) (f : args)
+
+            sameArgStruct appx appy = let (_, ax) = unApply appx
+                                          (_, ay) = unApply appy in
+                                          and (zipWith sameStruct ax ay)
+
+            sameStruct fapp@(App f x) gapp@(App g y) 
+                = let (f',a') = unApply fapp
+                      (g',b') = unApply gapp in
+                      (f' == g' && length a' == length b' &&
+                          (injective f' || injective g'))
+                        || (sameStruct f g && sameStruct x y)
+            sameStruct (P _ x _) (P _ y _) = True
+            sameStruct (V i) (V j) = i == j
+            sameStruct (Constant x) (Constant y) = True
+            sameStruct (P _ _ _) (Constant y) = True
+            sameStruct (Constant x) (P _ _ _) = True
+            sameStruct (Bind n t sc) (P _ _ _) = True
+            sameStruct (P _ _ _) (Bind n t sc) = True
+            sameStruct (Bind n t sc) (Bind n' t' sc') = sameStruct sc sc'
+            sameStruct _ _ = False
+
             metavar t = case t of
-                             P _ x _ -> x `elem` holes || holeIn env x
+                             P _ x _ -> (x `elem` holes || holeIn env x) &&
+                                        not (x `elem` dont)
                              _ -> False
+            pat t = case t of
+                         P _ x _ -> x `elem` holes || patIn env x
+                         _ -> False
             inenv t = case t of
                            P _ x _ -> x `elem` (map fst env) 
                            _ -> False
@@ -197,6 +233,10 @@ unify ctxt env topx topy injtc holes =
         | n == n' = un' False bnames x y
     un' fn bnames (Bind n (Lam t) (App x (P Bound n' _))) y
         | n == n' = un' False bnames x y
+    un' fn bnames x (Bind n (Lam t) (App y (V 0)))
+        = un' False bnames x y
+    un' fn bnames (Bind n (Lam t) (App x (V 0))) y
+        = un' False bnames x y
 --     un' fn bnames (Bind x (PVar _) sx) (Bind y (PVar _) sy) 
 --         = un' False ((x,y):bnames) sx sy
 --     un' fn bnames (Bind x (PVTy _) sx) (Bind y (PVTy _) sy) 
@@ -285,8 +325,14 @@ unify ctxt env topx topy injtc holes =
     recoverable (P (TCon _ _) x _) (P (TCon _ _) y _)
         | x == y = True
         | otherwise = False
+    recoverable (Constant _) (P (DCon _ _) y _) = False
+    recoverable (P (DCon _ _) x _) (Constant _) = False
+    recoverable (Constant _) (P (TCon _ _) y _) = False
+    recoverable (P (TCon _ _) x _) (Constant _) = False
     recoverable (P (DCon _ _) x _) (P (TCon _ _) y _) = False
     recoverable (P (TCon _ _) x _) (P (DCon _ _) y _) = False
+    recoverable p@(Constant _) (App f a) = recoverable p f
+    recoverable (App f a) p@(Constant _) = recoverable f p
     recoverable p@(P _ n _) (App f a) = recoverable p f
 --     recoverable (App f a) p@(P _ _ _) = recoverable f p
     recoverable (App f a) (App f' a')
@@ -298,5 +344,12 @@ errEnv = map (\(x, b) -> (x, binderTy b))
 holeIn :: Env -> Name -> Bool
 holeIn env n = case lookup n env of
                     Just (Hole _) -> True
+                    Just (Guess _ _) -> True
+                    _ -> False
+
+patIn :: Env -> Name -> Bool
+patIn env n = case lookup n env of
+                    Just (PVar _) -> True
+                    Just (PVTy _) -> True
                     _ -> False
 

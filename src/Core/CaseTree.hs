@@ -167,9 +167,15 @@ data Phase = CompileTime | RunTime
 
 simpleCase :: Bool -> Bool -> Phase -> FC -> [([Name], Term, Term)] -> 
               TC CaseDef
-simpleCase tc cover phase fc [] 
+simpleCase tc cover phase fc cs
+      = sc' tc cover phase fc (filter (\(_, _, r) -> 
+                                          case r of
+                                            Impossible -> False
+                                            _ -> True) cs) 
+          where
+ sc' tc cover phase fc [] 
                  = return $ CaseDef [] (UnmatchedCase "No pattern clauses") []
-simpleCase tc cover phase fc cs 
+ sc' tc cover phase fc cs 
       = let proj       = phase == RunTime
             pats       = map (\ (avs, l, r) -> 
                                    (avs, toPats tc l, (l, r))) cs

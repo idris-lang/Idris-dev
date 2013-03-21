@@ -11,8 +11,13 @@ import           Util.System
 import           Control.Applicative
 import           Control.Arrow
 import           Control.Monad
+import qualified Control.Monad.Trans as T
+import           Control.Monad.Trans.State
 import           Data.Char
 import           Data.Maybe (fromJust)
+import           Data.List (isPrefixOf, intercalate)
+import qualified Data.Text as T
+import qualified Data.Text.IO as TIO
 import           Language.Java.Parser
 import           Language.Java.Pretty
 import           Language.Java.Syntax hiding (Name)
@@ -23,19 +28,83 @@ import           System.FilePath
 import           System.IO
 import           System.Process
 
-codegenJava :: [(Name, SDecl)] ->
+data CodeGenerationEnv = CodeGenerationEnv { globalVariablePositions :: [(Name, Integer)] }
+
+type CodeGeneration = StateT (CodeGenerationEnv) (Either String)
+
+codegenJava :: [(Name, SExp)] -> -- initialization of globals
+               [(Name, SDecl)] ->
                FilePath -> -- output file name
                OutputType ->
                IO ()
-codegenJava defs out exec =
-  either (error)
-         (writeFile out . flatIndent . prettyPrint)
-         (mkCompilationUnit defs out)
+codegenJava globalInit defs out exec = do
+  withTempdir (takeBaseName out) $ \ tmpDir -> do
+    let srcdir = tmpDir </> "src" </> "main" </> "java"
+    createDirectoryIfMissing True srcdir
+    let (Ident clsName) = 
+          either error id (evalStateT (mkClassName out) (mkCodeGenEnv globalInit))
+    let outjava = srcdir </> clsName <.> "java"
+    let jout = either error
+                      (flatIndent . prettyPrint)
+                      (evalStateT (mkCompilationUnit globalInit defs out) (mkCodeGenEnv globalInit))
+    writeFile outjava jout
+    if (exec == Raw)
+       then copyFile outjava (takeDirectory out </> clsName <.> "java")
+       else do
+         execPom <- getExecutablePom
+         execPomTemplate <- TIO.readFile execPom
+         let execPom = T.replace (T.pack "$MAIN-CLASS$")
+                                 (T.pack clsName)
+                                 (T.replace (T.pack "$ARTIFACT-NAME$") 
+                                            (T.pack $ takeBaseName out) 
+                                            execPomTemplate)
+         TIO.writeFile (tmpDir </> "pom.xml") execPom
+         mvnCmd <- getMvn
+         let args = ["-f", (tmpDir </> "pom.xml")]
+         (exit, _, err) <- readProcessWithExitCode mvnCmd (args ++ ["compile"]) ""
+         when (exit /= ExitSuccess) $ error ("FAILURE: " ++ mvnCmd ++ " compile\n" ++ err)
+         if (exec == Object)
+            then do
+              classFiles <- 
+                map (\ clsFile -> tmpDir </> "target" </> "classes" </> clsFile)
+                . filter ((".class" ==) . takeExtension) 
+                <$> getDirectoryContents (tmpDir </> "target" </> "classes")
+              mapM_ (\ clsFile -> copyFile clsFile (takeDirectory out </> takeFileName clsFile)) 
+                    classFiles
+             else do
+               (exit, _, err) <- readProcessWithExitCode mvnCmd (args ++ ["package"]) ""
+               when (exit /= ExitSuccess) (error ("FAILURE: " ++ mvnCmd ++ " package\n" ++ err))
+               copyFile (tmpDir </> "target" </> (takeBaseName out) <.> "jar") out
+               handle <- openBinaryFile out ReadMode
+               contents <- TIO.hGetContents handle
+               hClose handle
+               handle <- openBinaryFile out WriteMode
+               TIO.hPutStr handle (T.append (T.pack jarHeader) contents)
+               hFlush handle
+               hClose handle
+               perms <- getPermissions out
+               setPermissions out (setOwnerExecutable True perms)
+         readProcess mvnCmd (args ++ ["clean"]) ""
+         removeFile (tmpDir </> "pom.xml")
 
-mkCompilationUnit :: [(Name, SDecl)] ->
-                     FilePath ->
-                     Either String CompilationUnit
-mkCompilationUnit defs out =
+jarHeader :: String
+jarHeader = 
+  "#!/bin/sh\n"
+  ++ "MYSELF=`which \"$0\" 2>/dev/null`\n"
+  ++ "[ $? -gt 0 -a -f \"$0\" ] && MYSELF=\"./$0\"\n"
+  ++ "java=java\n"
+  ++ "if test -n \"$JAVA_HOME\"; then\n"
+  ++ "  java=\"$JAVA_HOME/bin/java\"\n"
+  ++ "fi\n"
+  ++ "exec \"$java\" $java_args -jar $MYSELF \"$@\""
+  ++ "exit 1\n"
+
+mkCodeGenEnv :: [(Name, SExp)] -> CodeGenerationEnv
+mkCodeGenEnv globalInit = 
+  CodeGenerationEnv $ zipWith (\ (name, _) pos -> (name, pos)) globalInit [0..]
+
+mkCompilationUnit :: [(Name, SExp)] -> [(Name, SDecl)] -> FilePath -> CodeGeneration CompilationUnit
+mkCompilationUnit globalInit defs out =
   CompilationUnit Nothing [ ImportDecl False idrisRts True
                           , ImportDecl True idrisForeign True
                           , ImportDecl False bigInteger False
@@ -44,7 +113,7 @@ mkCompilationUnit defs out =
                           , ImportDecl False scanner False
                           , ImportDecl False arrays False
                           ] <$>
-                  mkTypeDecl defs out
+                  mkTypeDecl globalInit defs out
   where
     idrisRts = J.Name $ map Ident ["org", "idris", "rts"]
     idrisForeign = J.Name $ map Ident ["org", "idris", "rts", "ForeignPrimitives"]
@@ -75,10 +144,8 @@ prefixCallNamespacesCase name (SDefaultCase e) = SDefaultCase (prefixCallNamespa
 prefixCallNamespacesDecl :: Ident -> SDecl -> SDecl
 prefixCallNamespacesDecl name (SFun fname args i e) = SFun fname args i (prefixCallNamespaces name e)
 
-mkTypeDecl :: [(Name, SDecl)] ->
-              FilePath ->
-              Either String [TypeDecl]
-mkTypeDecl defs out =
+mkTypeDecl :: [(Name, SExp)] -> [(Name, SDecl)] -> FilePath -> CodeGeneration [TypeDecl]
+mkTypeDecl globalInit defs out =
   (\ name body -> [ClassTypeDecl $ ClassDecl [ Public
                                              ,  Annotation $ SingleElementAnnotation 
                                                              (J.Name [Ident "SuppressWarnings"])
@@ -91,18 +158,33 @@ mkTypeDecl defs out =
                                              body])
   <$> mkClassName out
   <*> ( mkClassName out 
-        >>= (\ ident -> mkClassBody (map (second (prefixCallNamespacesDecl ident)) defs))
+        >>= (\ ident -> mkClassBody globalInit (map (second (prefixCallNamespacesDecl ident)) defs))
       )
 
-mkClassName :: FilePath -> Either String Ident
+mkClassName :: FilePath -> CodeGeneration Ident
 mkClassName path =
-  left (\ err -> "Parser error in \"" ++ path ++ "\": " ++ (show err))
-       (parser ident . takeBaseName $ takeFileName path)
+  T.lift $ left (\ err -> "Parser error in \"" ++ path ++ "\": " ++ (show err))
+                (parser ident . takeBaseName $ takeFileName path)
 
-mkClassBody :: [(Name, SDecl)] ->
-               Either String ClassBody
-mkClassBody defs = (ClassBody . addMainMethod . mergeInnerClasses)
-                   <$> mapM mkDecl defs
+mkClassBody :: [(Name, SExp)] -> [(Name, SDecl)] -> CodeGeneration ClassBody
+mkClassBody globalInit defs = 
+  (\ globals defs -> ClassBody . (globals++) . addMainMethod . mergeInnerClasses $ defs)
+  <$> mkGlobalContext globalInit
+  <*> mapM mkDecl defs
+
+mkGlobalContext :: [(Name, SExp)] -> CodeGeneration [Decl]
+mkGlobalContext [] = return []
+mkGlobalContext initExps = 
+  (\ exps -> [ MemberDecl $ FieldDecl [Private, Static, Final] 
+                                      objectArrayType 
+                                      [VarDecl (VarId $ Ident "globalContext") 
+                                               (Just . InitArray $ ArrayInit exps)               
+                                      ]
+             ]
+  )
+  <$> mapM (\ (_, exp) -> InitExp <$> mkExp exp) initExps
+
+  
 
 addMainMethod :: [Decl] -> [Decl]
 addMainMethod decls
@@ -160,17 +242,17 @@ mergeInnerClasses = foldl mergeInner []
     mergeInner [] decl' = [decl']
 
 
-mkIdentifier :: Name -> Either String Ident
+mkIdentifier :: Name -> CodeGeneration Ident
 mkIdentifier (NS name _) = mkIdentifier name
 mkIdentifier (MN i name) = (\ (Ident x) -> Ident $ x ++ ('_' : show i))
                            <$> mkIdentifier (UN name)
 mkIdentifier (UN name) =
-  left (\ err -> "Parser error in \"" ++ name ++ "\": " ++ (show err))
-       ( parser ident
-         . cleanReserved
-         . cleanNonLetter
-         . cleanStart
-         $ cleanWs False name)
+  T.lift $ left (\ err -> "Parser error in \"" ++ name ++ "\": " ++ (show err))
+                ( parser ident
+                . cleanReserved
+                . cleanNonLetter
+                . cleanStart
+                $ cleanWs False name)
   where
     cleanStart (x:xs)
       | isNumber x = '_' : (x:xs)
@@ -207,6 +289,7 @@ mkIdentifier (UN name) =
 
 
     cleanReserved "param" = "_param"
+    cleanReserved "globalContext" = "_globalContext"
     cleanReserved "context" = "_context"
     cleanReserved "newcontext" = "_newcontext"
 
@@ -300,10 +383,13 @@ mkIdentifier (UN name) =
     cleanReserved "fputStr" = "_fputStr"
     cleanReserved "fileEOF" = "_fileEOF"
     cleanReserved "isNull" = "_isNull"
+    cleanReserved "idris_K" = "_idris_K"
+    cleanReserved "idris_flipK" = "_idris_flipK"
+    cleanReserved "idris_assignStack" = "_idris_assignStack"
 
     cleanReserved x = x
 
-mkName :: Name -> Either String J.Name
+mkName :: Name -> CodeGeneration J.Name
 mkName (NS name nss) = (\ n ns -> J.Name (n:ns))
                        <$> mkIdentifier name
                        <*> mapM (mkIdentifier . UN) nss
@@ -330,8 +416,9 @@ idrisTailCallClosureType = ClassType [(Ident "TailCallClosure", [])]
 idrisObjectType :: ClassType
 idrisObjectType = ClassType [(Ident "IdrisObject", [])]
 
-contextArray :: Exp
-contextArray = ExpName $ J.Name [Ident "context"]
+contextArray :: LVar -> Exp
+contextArray (Loc _) = ExpName $ J.Name [Ident "context"]
+contextArray (Glob _) = ExpName $ J.Name [Ident "globalContext"]
 
 charType :: ClassType
 charType = ClassType [(Ident "Character", [])]
@@ -369,29 +456,38 @@ runtimeExceptionType = ClassType [(Ident "RuntimeException", [])]
 comparableType :: ClassType
 comparableType = ClassType [(Ident "Comparable", [])]
 
-mkDecl :: (Name, SDecl) ->
-          Either String Decl
+mkDecl :: (Name, SDecl) -> CodeGeneration Decl
 mkDecl ((NS n (ns:nss)), decl) =
   (\ name body -> MemberDecl $ MemberClassDecl $ ClassDecl [Public, Static] name [] Nothing [] body)
   <$> mkIdentifier (UN ns)
-  <*> mkClassBody [(NS n nss, decl)]
+  <*> mkClassBody [] [(NS n nss, decl)]
 mkDecl (_, SFun name params stackSize body) =
-  (\ name params cont ->
+  (\ name params paramNames methodBody ->
      MemberDecl $ MethodDecl [Public, Static]
                              []
                              (Just . RefType $ ClassRefType objectType)
                              name
                              params
                              []
-                             (MethodBody . Just $ Block [ BlockStmt . Return . Just . MethodInv $
-                                                                    PrimaryMethodCall cont [] (Ident "call") []])
+                             (MethodBody . Just $ Block 
+                                           [ LocalVars [Final]
+                                                       objectArrayType
+                                                       [ VarDecl (VarDeclArray . VarId $ Ident "context")
+                                                                 (Just . InitArray . ArrayInit $
+                                                                       paramNames 
+                                                                       ++ replicate stackSize (InitExp . Lit $ Null))
+                                                       ]
+                                           , BlockStmt . Return $ Just methodBody
+                                           ]
+                             )
   )
   <$> mkIdentifier name
   <*> mapM mkFormalParam params
-  <*> mkClosure params stackSize body
+  <*> mapM (\ p -> (InitExp . ExpName) <$> mkName p) params
+  <*> mkExp body
 
 
-mkClosure :: [Name] -> Int -> SExp -> Either String Exp
+mkClosure :: [Name] -> Int -> SExp -> CodeGeneration Exp
 mkClosure params stackSize body =
   (\ paramArray body -> 
      InstanceCreation [] 
@@ -402,72 +498,168 @@ mkClosure params stackSize body =
   <$> mkStackInit params stackSize
   <*> mkClosureCall body
 
-mkFormalParam :: Name -> Either String FormalParam
+mkFormalParam :: Name -> CodeGeneration FormalParam
 mkFormalParam name =
   (\ name -> FormalParam [Final] (RefType . ClassRefType $ objectType) False (VarId name))
   <$> mkIdentifier name
 
-mkClosureCall :: SExp -> Either String Decl
+mkClosureCall :: SExp -> CodeGeneration Decl
 mkClosureCall body =
   (\ body -> MemberDecl $ MethodDecl [Public] [] (Just . RefType $ ClassRefType objectType) (Ident "call") [] [] body)
   <$> mkMethodBody body
 
-mkMethodBody :: SExp -> Either String MethodBody
+mkMethodBody :: SExp -> CodeGeneration MethodBody
 mkMethodBody exp =
   (\ exp -> MethodBody . Just . Block $ [BlockStmt . Return . Just $ exp])
   <$> mkExp exp
 
-mkStackInit :: [Name] -> Int -> Either String Exp
+mkStackInit :: [Name] -> Int -> CodeGeneration Exp
 mkStackInit params stackSize =
   (\ localVars -> ArrayCreateInit objectArrayType 0 . ArrayInit $
                   (map (InitExp . ExpName) localVars)
                   ++ (replicate (stackSize) (InitExp $ Lit Null)))
   <$> mapM mkName params
 
-mkAnonymousLetBinding :: LVar -> SExp -> SExp -> Either String Exp
-mkAnonymousLetBinding var oldExp newExp =
-  (\ bindingMethod newExp ->
-     MethodInv $ PrimaryMethodCall 
-                 ( MethodInv $ PrimaryMethodCall ( InstanceCreation []
-                                                                    objectType
-                                                                    []
-                                                                    (Just $ ClassBody [MemberDecl $ bindingMethod])
-                                                 )
-                                                 []
-                                                 (Ident "apply")
-                                                 [ contextArray
-                                                 , newExp]
-                 )
-                 []
-                 (Ident "call")
-                 []
-  )                                 
-  <$> mkLetBindingMethod var oldExp
-  <*> mkExp newExp
+mkK :: Exp -> Exp -> Exp
+mkK result drop = 
+  MethodInv $ MethodCall (J.Name [Ident "idris_K"]) [ result, drop ]
 
+mkFlipK :: Exp -> Exp -> Exp
+mkFlipK drop result = 
+  MethodInv $ MethodCall (J.Name [Ident "idris_flipK"]) [ drop, result ]
+
+mkLet :: LVar -> SExp -> SExp -> CodeGeneration Exp
+mkLet (Loc pos) oldExp newExp =
+  (\ oldExp newExp ->
+     mkFlipK ( Assign ( ArrayLhs $ ArrayIndex (ExpName $ J.Name [Ident "context"])
+                                              (Lit $ Int (toInteger pos)))
+                      EqualA
+                      newExp
+             )
+             oldExp
+  )
+  <$> mkExp oldExp
+  <*> mkExp newExp
+mkLet (Glob _) _ _ = T.lift $ Left "Cannot let bind to global variable"
+
+reverseNameSpace :: J.Name -> J.Name
+reverseNameSpace (J.Name ids) =
+  J.Name ((tail ids) ++ [head ids])
+
+mkCase :: Bool -> LVar -> [SAlt] -> CodeGeneration Exp
+mkCase checked var ((SConCase parentStackPos consIndex _ params branchExpression):cases) =
+  mkConsCase checked
+             var
+             parentStackPos 
+             consIndex 
+             params 
+             branchExpression
+             (SCase var cases)
+mkCase checked var (c@(SConstCase constant branchExpression):cases) =
+  (\ constant branchExpression alternative var-> 
+     Cond ( MethodInv $ PrimaryMethodCall (constant)
+                                          []
+                                          (Ident "equals")
+                                          [var]
+          )
+          branchExpression
+          alternative
+  )
+  <$> mkExp (SConst constant)
+  <*> mkExp branchExpression
+  <*> mkCase checked var cases
+  <*> mkVarAccess Nothing var
+mkCase checked var (SDefaultCase exp:cases) = mkExp exp
+mkCase checked  _ [] = mkExp (SError "Non-exhaustive pattern")
+
+mkConsCase :: Bool -> LVar -> Int -> Int -> [Name] -> SExp -> SExp -> CodeGeneration Exp
+mkConsCase checked
+           toDeconstruct
+           parentStackStart 
+           consIndex 
+           params 
+           branchExpression 
+           alternative =
+  (\ caseBinding alternative var varCasted-> 
+     Cond (BinOp (InstanceOf (var) 
+                             (ClassRefType idrisObjectType)
+                 )
+                 CAnd
+                 ( BinOp
+                   ( MethodInv $ PrimaryMethodCall (varCasted)
+                                                   []
+                                                   (Ident "getConstructorId")
+                                                   []
+                   )
+                   Equal
+                   (Lit $ Int (toInteger consIndex))
+                 )
+          )
+          (caseBinding)
+          alternative
+  )
+  <$> mkCaseBinding checked toDeconstruct parentStackStart params branchExpression
+  <*> mkExp alternative
+  <*> mkVarAccess (Nothing) toDeconstruct
+  <*> mkVarAccess (Just idrisObjectType) toDeconstruct
+
+
+mkCaseBinding :: Bool -> LVar -> Int -> [Name] -> SExp -> CodeGeneration Exp
+mkCaseBinding True  var parentStackStart params branchExpression =
+  (\ branchExpression deconstruction -> 
+     mkFlipK (MethodInv $ MethodCall (J.Name [Ident "idris_assignStack"])
+             ( (ExpName $ J.Name [Ident "context"])
+               : (Lit $ Int (toInteger parentStackStart))
+               : deconstruction
+             ))
+             (branchExpression)
+  )
+  <$> mkExp branchExpression
+  <*> mkCaseBindingDeconstruction var params
+mkCaseBinding False var parentStackStart params branchExpression =
+  (\ bindingMethod deconstruction ->
+     MethodInv $ PrimaryMethodCall 
+               ( MethodInv $ PrimaryMethodCall (InstanceCreation []
+                                                                 (ClassType [(Ident "Object", [])])
+                                                                 []
+                                                                 (Just $ ClassBody [MemberDecl $ bindingMethod])
+                                               )
+                                               []
+                                               (Ident "apply")
+                                               ( contextArray (Loc undefined) : deconstruction )
+               )
+               []
+               (Ident "call")
+               []
+  )
+  <$> mkCaseBindingMethod parentStackStart params branchExpression
+  <*> mkCaseBindingDeconstruction var params
+
+mkCaseBindingDeconstruction :: LVar -> [Name] -> CodeGeneration [Exp]
+mkCaseBindingDeconstruction var members =
+  mapM (mkProjection var) ([0..(length members - 1)])
+
+mkCaseBindingMethod :: Int -> [Name] -> SExp -> CodeGeneration MemberDecl
+mkCaseBindingMethod parentStackStart params branchExpression =
+  (\ formalParams caseBindingStack branchExpression -> 
+     MethodDecl [Final, Public]
+                []
+                (Just . RefType $ ClassRefType idrisClosureType)
+                (Ident "apply")
+                (mkContextParam:formalParams)
+                []
+                (MethodBody . Just . Block $
+                              caseBindingStack ++
+                              [BlockStmt . Return $ Just branchExpression]))
+  <$> mapM mkFormalParam params
+  <*> mkBindingStack False parentStackStart params
+  <*> mkBindingClosure branchExpression
 
 mkContextParam :: FormalParam
 mkContextParam = 
   FormalParam [Final] (objectArrayType) False (VarId (Ident "context"))
 
-mkLetBindingMethod :: LVar -> SExp -> Either String MemberDecl
-mkLetBindingMethod  (Loc i) oldExp = 
-  (\ param bindingStack oldCont -> 
-     MethodDecl [Final, Public]
-                []
-                (Just . RefType $ ClassRefType idrisClosureType)
-                (Ident "apply")
-                [mkContextParam, param]
-                []
-                (MethodBody . Just . Block $
-                            bindingStack ++ [BlockStmt . Return $ Just oldCont]
-                )
-  )
-  <$> mkFormalParam (UN "param")
-  <*> mkBindingStack True i [UN "param"]
-  <*> mkBindingClosure oldExp
-
-mkBindingClosure :: SExp -> Either String Exp
+mkBindingClosure :: SExp -> CodeGeneration Exp
 mkBindingClosure oldExp =
   (\ oldCall -> 
      InstanceCreation [] 
@@ -478,7 +670,7 @@ mkBindingClosure oldExp =
   <$> mkClosureCall oldExp
 
 
-mkBindingStack :: Bool -> Int -> [Name] -> Either String [BlockStmt]
+mkBindingStack :: Bool -> Int -> [Name] -> CodeGeneration [BlockStmt]
 mkBindingStack checked parentStackStart params =
   (\ paramNames ->
     ( LocalVars [Final]
@@ -516,118 +708,18 @@ mkContextCopy False parentStackStart params =
                                  , Lit . Int $ toInteger (parentStackStart + length params)
                                  ]
                              ]
-                         
-reverseNameSpace :: J.Name -> J.Name
-reverseNameSpace (J.Name ids) =
-  J.Name ((tail ids) ++ [head ids])
 
-mkCase :: Bool -> LVar -> [SAlt] -> Either String Exp
-mkCase checked var ((SConCase parentStackPos consIndex _ params branchExpression):cases) =
-  mkConsCase checked
-             var
-             parentStackPos 
-             consIndex 
-             params 
-             branchExpression
-             (SCase var cases)
-mkCase checked var (c@(SConstCase constant branchExpression):cases) =
-  (\ constant branchExpression alternative -> 
-     Cond ( MethodInv $ PrimaryMethodCall (constant)
-                                          []
-                                          (Ident "equals")
-                                          [mkVarAccess Nothing var]
-          )
-          branchExpression
-          alternative
-  )
-  <$> mkExp (SConst constant)
-  <*> mkExp branchExpression
-  <*> mkCase checked var cases
-mkCase checked var (SDefaultCase exp:cases) = mkExp exp
-mkCase checked  _ [] = mkExp (SError "Non-exhaustive pattern")
-
-mkConsCase :: Bool -> LVar -> Int -> Int -> [Name] -> SExp -> SExp -> Either String Exp
-mkConsCase checked
-           toDeconstruct
-           parentStackStart 
-           consIndex 
-           params 
-           branchExpression 
-           alternative =
-  (\ caseBinding alternative-> 
-     Cond (BinOp (InstanceOf (mkVarAccess Nothing toDeconstruct) 
-                             (ClassRefType idrisObjectType)
-                 )
-                 CAnd
-                 ( BinOp
-                   ( MethodInv $ PrimaryMethodCall (mkVarAccess (Just idrisObjectType) toDeconstruct)
-                                                   []
-                                                   (Ident "getConstructorId")
-                                                   []
-                   )
-                   Equal
-                   (Lit $ Int (toInteger consIndex))
-                 )
-          )
-          (caseBinding)
-          alternative
-  )
-  <$> mkCaseBinding checked toDeconstruct parentStackStart params branchExpression
-  <*> mkExp alternative
-
-
-mkCaseBinding :: Bool -> LVar -> Int -> [Name] -> SExp -> Either String Exp
-mkCaseBinding checked var parentStackStart params branchExpression =
-  (\ bindingMethod ->
-     MethodInv $ PrimaryMethodCall 
-               ( MethodInv $ PrimaryMethodCall (InstanceCreation []
-                                                                 (ClassType [(Ident "Object", [])])
-                                                                 []
-                                                                 (Just $ ClassBody [MemberDecl $ bindingMethod])
-                                               )
-                                               []
-                                               (Ident "apply")
-                                               ( contextArray
-                                                 : (mkCaseBindingDeconstruction var params) 
-                                               )
-               )
-               []
-               (Ident "call")
-               []
-  )
-  <$> mkCaseBindingMethod checked parentStackStart params branchExpression
-
-
-
-mkCaseBindingMethod :: Bool -> Int -> [Name] -> SExp -> Either String MemberDecl
-mkCaseBindingMethod checked parentStackStart params branchExpression =
-  (\ formalParams caseBindingStack branchExpression -> 
-     MethodDecl [Final, Public]
-                []
-                (Just . RefType $ ClassRefType idrisClosureType)
-                (Ident "apply")
-                (mkContextParam:formalParams)
-                []
-                (MethodBody . Just . Block $
-                              caseBindingStack ++
-                              [BlockStmt . Return $ Just branchExpression]))
-  <$> mapM mkFormalParam params
-  <*> mkBindingStack checked parentStackStart params
-  <*> mkBindingClosure branchExpression
-
-mkCaseBindingDeconstruction :: LVar -> [Name] -> [Exp]
-mkCaseBindingDeconstruction var members =
-  map (mkProjection var) ([0..(length members - 1)])
-
-mkProjection :: LVar -> Int -> Exp
+mkProjection :: LVar -> Int -> CodeGeneration Exp
 mkProjection var memberNr =
-  ArrayAccess $ ArrayIndex ( MethodInv $ PrimaryMethodCall
-                                           (mkVarAccess (Just idrisObjectType) var)
-                                           []
-                                           (Ident "getData")
-                                           []
-                           )
-                           (Lit $ Int (toInteger memberNr))
+  (\ var -> ArrayAccess $ ArrayIndex ( MethodInv $ PrimaryMethodCall
+                                                   (var)
+                                                   []
+                                                   (Ident "getData")
+                                                   []
+                                     )
+                                     (Lit $ Int (toInteger memberNr))
+  )
+  <$> mkVarAccess (Just idrisObjectType) var
 
 type ClassName = String
 
@@ -642,22 +734,22 @@ mkClass :: ClassType -> Exp
 mkClass classType =
   ClassLit . Just . RefType .ClassRefType $ classType
 
-mkBinOpExp :: ClassType -> Op -> [LVar] -> Exp
-mkBinOpExp castTo op (var:vars) = 
-  foldl (\ exp -> BinOp exp op . mkVarAccess (Just castTo)) 
-        (mkVarAccess (Just castTo) var) 
+mkBinOpExp :: ClassType -> Op -> [LVar] -> CodeGeneration Exp
+mkBinOpExp castTo op (var:vars) = do
+  start <- mkVarAccess (Just castTo) var
+  foldM (\ exp var -> BinOp exp op <$> mkVarAccess (Just castTo) var) start vars
+
+mkBinOpExpTrans :: (Exp -> Exp) -> (Exp -> Exp) -> ClassType -> Op -> [LVar] -> CodeGeneration Exp
+mkBinOpExpTrans opTransformation resultTransformation castTo op (var:vars) = do
+  start <- (mkVarAccess (Just castTo) var) 
+  foldM (\ exp var -> resultTransformation 
+                        . BinOp (opTransformation exp) op 
+                        . opTransformation 
+                        <$> mkVarAccess (Just castTo) var) 
+        start
         vars
 
-mkBinOpExpTrans :: (Exp -> Exp) -> (Exp -> Exp) -> ClassType -> Op -> [LVar] -> Exp
-mkBinOpExpTrans opTransformation resultTransformation castTo op (var:vars) =
-    foldl (\ exp -> resultTransformation 
-                    . BinOp (opTransformation exp) op 
-                    . opTransformation 
-                    . mkVarAccess (Just castTo)) 
-        (mkVarAccess (Just castTo) var)
-        vars
-
-mkBinOpExpConv :: String -> PrimType -> ClassType -> Op -> [LVar] -> Exp
+mkBinOpExpConv :: String -> PrimType -> ClassType -> Op -> [LVar] -> CodeGeneration Exp
 mkBinOpExpConv fromMethodName toType fromType@(ClassType [(cls@(Ident _), [])]) op args =
   mkBinOpExpTrans (\ exp -> MethodInv $ TypeMethodCall (J.Name [cls]) 
                                                        [] 
@@ -673,59 +765,70 @@ mkBinOpExpConv fromMethodName toType fromType@(ClassType [(cls@(Ident _), [])]) 
                   op 
                   args
 
-mkLogicalBinOpExp :: ClassType -> Op -> [LVar] -> Exp
-mkLogicalBinOpExp castTo op (var:vars) =
-  foldl (\ exp -> mkBoolToNumber castTo . BinOp exp op . mkVarAccess (Just castTo)) 
-        (mkVarAccess (Just castTo) var) 
+mkLogicalBinOpExp :: ClassType -> Op -> [LVar] -> CodeGeneration Exp
+mkLogicalBinOpExp castTo op (var:vars) = do
+  start <- mkVarAccess (Just castTo) var
+  foldM (\ exp var -> mkBoolToNumber castTo . BinOp exp op <$> mkVarAccess (Just castTo) var) 
+        start
         vars
 
-mkMethodOpChain1 :: (Exp -> Exp) -> ClassType -> String -> [LVar] -> Exp
+mkMethodOpChain1 :: (Exp -> Exp) -> ClassType -> String -> [LVar] -> CodeGeneration Exp
 mkMethodOpChain1 = mkMethodOpChain id
 
-mkMethodOpChain :: (Exp -> Exp) -> (Exp -> Exp) -> ClassType -> String -> [LVar] -> Exp
-mkMethodOpChain initialTransformation resultTransformation castTo method (arg:args) =
-  foldl (\ exp arg' -> 
-           resultTransformation . MethodInv $ PrimaryMethodCall exp
-                                                                []
-                                                                (Ident method)
-                                                                [mkVarAccess (Just $ castTo) arg']
+mkMethodOpChain :: (Exp -> Exp) -> (Exp -> Exp) -> ClassType -> String -> [LVar] -> CodeGeneration Exp
+mkMethodOpChain initialTransformation resultTransformation castTo method (arg:args) = do
+  start <- initialTransformation <$> mkVarAccess (Just $ castTo) arg
+  foldM (\ exp arg' -> 
+           resultTransformation 
+           . MethodInv 
+           . PrimaryMethodCall exp [] (Ident method)
+           . (:[])
+           <$> mkVarAccess (Just $ castTo) arg'
         )
-        (initialTransformation (mkVarAccess (Just $ castTo) arg))
+        start
         args
 
 mkBoolToNumber :: ClassType -> Exp -> Exp
 mkBoolToNumber (ClassType [(Ident name, [])]) boolExp =
   Cond boolExp (mkPrimitive name (Int 1)) (mkPrimitive name (Int 0))
 
-mkZeroExt :: String -> Int -> ClassType -> ClassType -> LVar -> Exp
-mkZeroExt toMethod bits fromType toType@(ClassType [(toTypeName, [])]) var = 
-  MethodInv $ TypeMethodCall (J.Name [toTypeName])
-                             []
-                             (Ident "valueOf")
-                             [ Cond ( BinOp (mkVarAccess (Just $ fromType) var)
-                                            LThan
-                                            (Lit $ Int 0)
-                                    )
-                                    ( BinOp (Lit $ Int (2^bits))
-                                            Add
-                                            (mkSignedExt' toMethod fromType var)
-                                    )
-                               (mkSignedExt' toMethod fromType var)
-                             ]
-  
-mkSignedExt :: String -> ClassType -> ClassType -> LVar -> Exp
-mkSignedExt toMethod fromType (ClassType [(toTypeName, [])]) var =
-  MethodInv $ TypeMethodCall (J.Name [toTypeName])
-                             []
-                             (Ident "valueOf")
-                             [ mkSignedExt' toMethod fromType var ]
-
-mkSignedExt' :: String -> ClassType -> LVar -> Exp
-mkSignedExt' toMethod fromType var =
-  MethodInv $ PrimaryMethodCall (mkVarAccess (Just $ fromType) var)
-                                [] 
-                                (Ident toMethod)
+mkZeroExt :: String -> Int -> ClassType -> ClassType -> LVar -> CodeGeneration Exp
+mkZeroExt toMethod bits fromType toType@(ClassType [(toTypeName, [])]) var = do
+  (\ var sext -> 
+     MethodInv $ TypeMethodCall (J.Name [toTypeName])
                                 []
+                                (Ident "valueOf")
+                                [ Cond ( BinOp (var)
+                                               LThan
+                                               (Lit $ Int 0)
+                                       )
+                                       ( BinOp (Lit $ Int (2^bits))
+                                               Add
+                                               (sext)
+                                       )
+                                       sext
+                                ]
+   )
+  <$> mkVarAccess (Just $ fromType) var
+  <*> mkSignedExt' toMethod fromType var
+  
+mkSignedExt :: String -> ClassType -> ClassType -> LVar -> CodeGeneration Exp
+mkSignedExt toMethod fromType (ClassType [(toTypeName, [])]) var =
+  (\ sext -> MethodInv $ TypeMethodCall (J.Name [toTypeName])
+                                        []
+                                        (Ident "valueOf")
+                                        [ sext ]
+  )
+  <$> mkSignedExt' toMethod fromType var
+
+mkSignedExt' :: String -> ClassType -> LVar -> CodeGeneration Exp
+mkSignedExt' toMethod fromType var =
+  (\ var -> MethodInv $ PrimaryMethodCall (var)
+                                          [] 
+                                          (Ident toMethod)
+                                          []
+  )
+  <$> mkVarAccess (Just $ fromType) var
 
 data SPartialOrder
   = SLt
@@ -747,26 +850,39 @@ mkPartialOrder SGe x =
         (BinOp (Lit $ Int 0) Equal x)
 mkPartialOrder SGt x = (BinOp (Lit $ Int 1) Equal x)
 
-mkVarAccess :: Maybe ClassType -> LVar -> Exp
-mkVarAccess Nothing (Loc i) = 
-  ArrayAccess $ ArrayIndex contextArray (Lit $ Int (toInteger i))
+varPos :: LVar -> CodeGeneration Integer
+varPos (Loc i) = return (toInteger i)
+varPos (Glob name) = do
+  positions <- globalVariablePositions <$> get
+  case lookup name positions of
+    (Just pos) -> return pos
+    Nothing -> T.lift . Left $ "Invalid global variable id: " ++ show name
+
+mkVarAccess :: Maybe ClassType -> LVar -> CodeGeneration Exp
+mkVarAccess Nothing var = 
+  (\ pos -> ArrayAccess $ ArrayIndex (contextArray var) (Lit $ Int pos)) 
+  <$> varPos var
 mkVarAccess (Just castTo) var = 
-  Cast (RefType . ClassRefType $ castTo) (mkVarAccess Nothing var)
+  Cast (RefType . ClassRefType $ castTo) <$> (mkVarAccess Nothing var)
 
-mkPrimitiveCast :: ClassType -> ClassType -> LVar -> Exp
+mkPrimitiveCast :: ClassType -> ClassType -> LVar -> CodeGeneration Exp
 mkPrimitiveCast fromType (ClassType [(toType, [])]) var =
-  MethodInv $ TypeMethodCall (J.Name [toType])
-                             []
-                             (Ident "valueOf")
-                             [mkVarAccess (Just fromType) var]
+  (\ var -> 
+     MethodInv $ TypeMethodCall (J.Name [toType])
+                                []
+                                (Ident "valueOf")
+                                [var]
+  )
+  <$> mkVarAccess (Just fromType) var
 
-mkToString :: ClassType -> LVar -> Exp
+mkToString :: ClassType -> LVar -> CodeGeneration Exp
 mkToString castTo var =
-  MethodInv $ PrimaryMethodCall (mkVarAccess (Just castTo) var)
-                                []
-                                (Ident "toString")
-                                []
-
+  (\ var -> MethodInv $ PrimaryMethodCall (var)
+                                          []
+                                          (Ident "toString")
+                                          []
+  )
+  <$> mkVarAccess (Just castTo) var
 data Std = In | Out | Err
 
 instance Show Std where
@@ -784,49 +900,57 @@ mkSystemOutPrint value =
                                 (Ident "print")
                                 [value]
 
-mkMathFun :: String -> LVar -> Exp
+mkMathFun :: String -> LVar -> CodeGeneration Exp
 mkMathFun funName var =
-  MethodInv $ TypeMethodCall (J.Name [Ident "Double"])
-                             []
-                             (Ident "valueOf")
-                             [ MethodInv $ TypeMethodCall (J.Name [Ident "Math"])
-                                                          []
-                                                          (Ident funName)
-                                                          [mkVarAccess (Just doubleType) var]
-                             ]
+  (\ var -> MethodInv $ TypeMethodCall (J.Name [Ident "Double"])
+                                       []
+                                       (Ident "valueOf")
+                                       [ MethodInv $ TypeMethodCall (J.Name [Ident "Math"])
+                                                                    []
+                                                                    (Ident funName)
+                                                                    [var]
+                                       ]
+  )
+  <$> mkVarAccess (Just doubleType) var
 
-mkStringAtIndex :: LVar -> Exp -> Exp
+mkStringAtIndex :: LVar -> Exp -> CodeGeneration Exp
 mkStringAtIndex var indexExp =
-  MethodInv $ TypeMethodCall (J.Name [Ident "Integer"]) 
-                                     []
-                                     (Ident "valueOf")
-                                     [ MethodInv $ PrimaryMethodCall (mkVarAccess (Just stringType) var)
-                                                                     []
-                                                                     (Ident "charAt")
-                                                                     [indexExp]
-                                     ]
+  (\ var -> MethodInv $ TypeMethodCall (J.Name [Ident "Integer"]) 
+                                       []
+                                       (Ident "valueOf")
+                                       [ MethodInv $ PrimaryMethodCall (var)
+                                                                       []
+                                                                       (Ident "charAt")
+                                                                       [indexExp]
+                                       ]
+  )
+  <$> mkVarAccess (Just stringType) var
 
 mkForeignType :: FType -> Maybe ClassType
-mkForeignType FInt = return $ integerType
-mkForeignType FChar = return $ integerType
-mkForeignType FString = return $ stringType
-mkForeignType FPtr = return $ objectType
-mkForeignType FDouble = return $ doubleType
-mkForeignType FAny = return $ objectType
+mkForeignType FInt = return integerType
+mkForeignType FChar = return integerType
+mkForeignType FString = return stringType
+mkForeignType FPtr = return objectType
+mkForeignType FDouble = return doubleType
+mkForeignType FAny = return objectType
 mkForeignType FUnit = Nothing
 
-mkForeignVarAccess :: FType -> LVar -> Exp
+mkForeignVarAccess :: FType -> LVar -> CodeGeneration Exp
 mkForeignVarAccess FInt var = 
-  MethodInv $ PrimaryMethodCall (mkVarAccess (Just integerType) var)
-                                []
-                                (Ident "intValue")
-                                []
-mkForeignVarAccess FChar var = Cast (PrimType CharT) (mkForeignVarAccess FInt var)
+  (\ var -> MethodInv $ PrimaryMethodCall (var)
+                                          []
+                                          (Ident "intValue")
+                                          []
+  )
+  <$> mkVarAccess (Just integerType) var
+mkForeignVarAccess FChar var = Cast (PrimType CharT) <$> mkForeignVarAccess FInt var
 mkForeignVarAccess FDouble var = 
-  MethodInv $ PrimaryMethodCall (mkVarAccess (Just doubleType) var)
-                                []
-                                (Ident "doubleValue")
-                                []
+  (\ var -> MethodInv $ PrimaryMethodCall (var)
+                                          []
+                                          (Ident "doubleValue")
+                                          []
+  )
+  <$> mkVarAccess (Just doubleType) var
 mkForeignVarAccess otherType var = mkVarAccess (mkForeignType otherType) var 
  
 mkFromForeignType :: FType -> Exp -> Exp
@@ -843,7 +967,7 @@ mkFromForeignType FDouble from =
                              [from]
 mkFromForeignType _ from = from
 
-mkForeignInvoke :: FType -> String -> [(FType, LVar)] -> Either String Exp
+mkForeignInvoke :: FType -> String -> [(FType, LVar)] -> CodeGeneration Exp
 mkForeignInvoke fType method args =
   (\ foreignInvokeMeth -> 
      MethodInv $ PrimaryMethodCall (InstanceCreation [] 
@@ -858,7 +982,7 @@ mkForeignInvoke fType method args =
   <$> mkForeignInvokeMethod fType method args
 
 
-mkForeignInvokeMethod :: FType -> String -> [(FType, LVar)] -> Either String MemberDecl 
+mkForeignInvokeMethod :: FType -> String -> [(FType, LVar)] -> CodeGeneration MemberDecl 
 mkForeignInvokeMethod fType method args =
   (\ tryBlock -> 
     MethodDecl [Public, Final]
@@ -867,111 +991,124 @@ mkForeignInvokeMethod fType method args =
                (Ident "foreignInvoke")
                []
                []
-               (MethodBody . Just $ Block [ BlockStmt $ 
-                                                      Try tryBlock
-                                                          [ Catch (FormalParam [] 
-                                                                               (RefType $ ClassRefType exceptionType)
-                                                                               False
-                                                                               (VarId $ Ident "ex")
-                                                                  )
-                                                                  (Block [ BlockStmt . Throw $
-                                                                                     InstanceCreation []
-                                                                                                      runtimeExceptionType
-                                                                                                      [ExpName $ J.Name [Ident "ex"]]
-                                                                                                      Nothing
-                                                                         ]
-                                                                  )
-                                                          ]
-                                                          Nothing
-                                          ]
+               (MethodBody . Just $ Block 
+                             [ BlockStmt 
+                               $ Try tryBlock
+                                   [ Catch (FormalParam [] 
+                                                        (RefType $ ClassRefType exceptionType)
+                                                        False
+                                                        (VarId $ Ident "ex")
+                                           )
+                                           (Block [ BlockStmt 
+                                                    . Throw
+                                                    $ InstanceCreation []
+                                                                       runtimeExceptionType
+                                                                       [ExpName $ J.Name [Ident "ex"]]
+                                                                       Nothing
+                                                  ]
+                                           )
+                                   ]
+                                   Nothing
+                             ]
                )
- )
+  )
  <$> mkForeignInvokeTryBlock fType method args
 
 
-mkForeignInvokeTryBlock :: FType -> String -> [(FType, LVar)] -> Either String Block
+mkForeignInvokeTryBlock :: FType -> String -> [(FType, LVar)] -> CodeGeneration Block
 mkForeignInvokeTryBlock FUnit method args =
-  (\ method -> Block [ BlockStmt . ExpStmt . MethodInv $ 
-                                 MethodCall method
-                                            (map (uncurry mkForeignVarAccess) args)
-                     , BlockStmt $ Return (Just $ Lit Null)
-                     ]
+  (\ method args -> Block [ BlockStmt . ExpStmt . MethodInv $ MethodCall method args
+                          , BlockStmt $ Return (Just $ Lit Null)
+                          ]
   )
-  <$> ( left (\ err -> "Error parsing name \"" ++ method ++ "\" :" ++ (show err))
-             (parser name method)
+  <$> ( T.lift $ left (\ err -> "Error parsing name \"" ++ method ++ "\" :" ++ (show err))
+                 (parser name method)
       )
+  <*> mapM (uncurry mkForeignVarAccess) args
 mkForeignInvokeTryBlock fType method args =
-  (\ method -> Block [ BlockStmt . Return 
+  (\ method args -> Block [ BlockStmt . Return 
                                  . Just 
                                  . mkFromForeignType fType
-                                 . MethodInv $ 
-                                   MethodCall method
-                                                (map (uncurry mkForeignVarAccess) args)
-                     ]
+                                 . MethodInv 
+                                 $ MethodCall method args
+                          ]
   )
-  <$> ( left (\ err -> "Error parsing name \"" ++ method ++ "\" :" ++ (show err))
-             (parser name method)
+  <$> ( T.lift $ left (\ err -> "Error parsing name \"" ++ method ++ "\" :" ++ (show err))
+                      (parser name method)
       )
+  <*> mapM (uncurry mkForeignVarAccess) args
 
-mkMethodClosure :: Name -> [LVar] -> Either String Exp
+mkMethodClosure :: Name -> [LVar] -> CodeGeneration Exp
 mkMethodClosure name args =
   (\ name args -> 
      InstanceCreation []
                       idrisClosureType
                       [ (ExpName $ J.Name [Ident "context"]) ]
-                      ( Just $ ClassBody 
-                               [ MemberDecl $ 
-                                            MethodDecl [Public, Final]
-                                                       []
-                                                       (Just . RefType $ ClassRefType objectType)
-                                                       (Ident "call")
-                                                       []
-                                                       []
-                                                       ( MethodBody . Just $ 
-                                                                    Block [ BlockStmt . Return . Just . MethodInv $ 
-                                                                                      MethodCall (reverseNameSpace name) 
-                                                                                                 args
-                                                                          ]
-                                                       )
-                               ]
-                        )
+                      ( Just 
+                        $ ClassBody 
+                            [ MemberDecl 
+                              $ MethodDecl [Public, Final]
+                                           []
+                                           (Just . RefType $ ClassRefType objectType)
+                                           (Ident "call")
+                                           []
+                                           []
+                                           ( MethodBody 
+                                             . Just 
+                                             $ Block [ BlockStmt 
+                                                       . Return 
+                                                       . Just 
+                                                       . MethodInv 
+                                                       $ MethodCall (reverseNameSpace name) 
+                                                                    args
+                                                     ]
+                                           )
+                            ]
+                      )
   )
   <$> mkName name
   <*> mapM (mkExp . SV) args
 
-mkThread :: LVar -> Either String Exp
+mkThread :: LVar -> CodeGeneration Exp
 mkThread arg =
-  (\ eval -> MethodInv $ 
-         PrimaryMethodCall (InstanceCreation [] 
-                                             (ClassType [(Ident "Thread", [])]) 
-                                             [ eval  ] 
-                                             ( Just $ ClassBody
-                                                      [ MemberDecl $ MethodDecl 
-                                                                     [Public, Final]
-                                                                     []
-                                                                     (Just . RefType $ ClassRefType objectType)
-                                                                     (Ident "_start")
-                                                                     []
-                                                                     []
-                                                                     ( MethodBody . Just $ Block
-                                                                                  [ BlockStmt . ExpStmt . MethodInv $ MethodCall
-                                                                                              (J.Name [Ident "start"])
-                                                                                              []
-                                                                                  , BlockStmt . Return . Just $ This
+  (\ eval -> 
+     MethodInv  
+     $ PrimaryMethodCall (InstanceCreation [] 
+                                           (ClassType [(Ident "Thread", [])]) 
+                                           [ eval ] 
+                                           ( Just 
+                                             $ ClassBody [ MemberDecl 
+                                                           $ MethodDecl [Public, Final]
+                                                                        []
+                                                                        (Just . RefType $ ClassRefType objectType)
+                                                                        (Ident "_start")
+                                                                        []
+                                                                        []
+                                                                        ( MethodBody 
+                                                                          . Just 
+                                                                          $ Block [ BlockStmt 
+                                                                                    . ExpStmt 
+                                                                                    . MethodInv 
+                                                                                     $ MethodCall (J.Name [Ident "start"])
+                                                                                                  []
+                                                                                  , BlockStmt 
+                                                                                    . Return 
+                                                                                    . Just 
+                                                                                    $ This
                                                                                   ]
-                                                                     )
-                                                      ]
-                                             )
-                           )
-                           []
-                           (Ident "_start")
-                           []
+                                                                        )
+                                                         ]
+                                           )
+                         )
+                         []
+                         (Ident "_start")
+                         []
   )
   <$> mkThreadBinding arg
 
-mkThreadBinding :: LVar -> Either String Exp
+mkThreadBinding :: LVar -> CodeGeneration Exp
 mkThreadBinding var =
-  (\ bindingMethod ->
+  (\ bindingMethod var ->
      MethodInv $ PrimaryMethodCall ( InstanceCreation []
                                                       objectType
                                                       []
@@ -979,12 +1116,13 @@ mkThreadBinding var =
                                    )
                                    []
                                    (Ident "apply")
-                                   [ mkVarAccess Nothing var  ]
-  )                                 
+                                   [ var ]
+  )
   <$> mkThreadBindingMethod
+  <*> mkVarAccess Nothing var
 
 
-mkThreadBindingMethod :: Either String MemberDecl
+mkThreadBindingMethod :: CodeGeneration MemberDecl
 mkThreadBindingMethod = 
   (\ compute -> 
      MethodDecl [Final, Public]
@@ -1011,9 +1149,8 @@ mkThreadBindingStack =
             ]
  
 
-mkExp :: SExp -> Either String Exp
-mkExp (SV var) =
-  return $ mkVarAccess Nothing var
+mkExp :: SExp -> CodeGeneration Exp
+mkExp (SV var) = mkVarAccess Nothing var
 mkExp (SApp False name args) =
   (\ methClosure ->
      MethodInv $ PrimaryMethodCall ( InstanceCreation []
@@ -1036,12 +1173,14 @@ mkExp (SApp True name args) =
   )
   <$> mkMethodClosure name args
 mkExp (SLet var new old) =
-  mkAnonymousLetBinding var old new
-mkExp (SUpdate (Loc i) exp) =
-  (\ rhs -> Assign (ArrayLhs $ ArrayIndex (contextArray) (Lit $ Int (toInteger i)))
-                   EqualA
-                   rhs)
+  mkLet var old new
+mkExp (SUpdate var exp) =
+  (\ rhs varPos -> Assign (ArrayLhs $ ArrayIndex (contextArray var) (Lit $ Int varPos))
+                          EqualA
+                          rhs
+  )
   <$> mkExp exp
+  <*> varPos var
 mkExp (SCon conId name args) =
   (\ args -> InstanceCreation []
                               idrisObjectType
@@ -1050,7 +1189,7 @@ mkExp (SCon conId name args) =
   <$> mapM (mkExp .SV) args
 mkExp (SCase var alts) = mkCase False var alts
 mkExp (SChkCase var alts) = mkCase True var alts
-mkExp (SProj var i) = return $ mkProjection var i
+mkExp (SProj var i) = mkProjection var i
 mkExp (SConst (I x)) = return $ mkPrimitive "Integer" (Int (toInteger x))
 mkExp (SConst (BI x)) =
   return $ InstanceCreation [] 
@@ -1077,226 +1216,235 @@ mkExp (SConst (PtrType)) = return $ mkClass objectType
 mkExp (SConst (VoidType)) = return $ mkClass voidType
 mkExp (SConst (Forgot)) = return $ mkClass objectType
 mkExp (SForeign _ fType meth args) = mkForeignInvoke fType meth args
-mkExp (SOp LPlus args) = return $ mkBinOpExp integerType Add args
-mkExp (SOp LMinus args) = return $ mkBinOpExp integerType Sub args
-mkExp (SOp LTimes args) = return $ mkBinOpExp integerType Mult args
-mkExp (SOp LDiv args) = return $ mkBinOpExp integerType Div args
-mkExp (SOp LMod args) = return $ mkBinOpExp integerType Rem args
-mkExp (SOp LAnd args) = return $ mkBinOpExp integerType And args
-mkExp (SOp LOr args) = return $ mkBinOpExp integerType Or args
-mkExp (SOp LXOr args) = return $ mkBinOpExp integerType Xor args
+mkExp (SOp LPlus args) = mkBinOpExp integerType Add args
+mkExp (SOp LMinus args) = mkBinOpExp integerType Sub args
+mkExp (SOp LTimes args) = mkBinOpExp integerType Mult args
+mkExp (SOp LDiv args) = mkBinOpExp integerType Div args
+mkExp (SOp LMod args) = mkBinOpExp integerType Rem args
+mkExp (SOp LAnd args) = mkBinOpExp integerType And args
+mkExp (SOp LOr args) = mkBinOpExp integerType Or args
+mkExp (SOp LXOr args) = mkBinOpExp integerType Xor args
 mkExp (SOp LCompl [var]) = 
-  return $ PreBitCompl (mkVarAccess (Just $ integerType) var)
-mkExp (SOp LSHL args) = return $ mkBinOpExp integerType LShift args
-mkExp (SOp LSHR args) = return $ mkBinOpExp integerType RShift args
+  PreBitCompl <$> mkVarAccess (Just $ integerType) var
+mkExp (SOp LSHL args) = mkBinOpExp integerType LShift args
+mkExp (SOp LSHR args) = mkBinOpExp integerType RShift args
 mkExp (SOp LEq args) = 
-  return $ mkMethodOpChain1 (mkBoolToNumber integerType) objectType "equals" args
-mkExp (SOp LLt args) = return $ mkLogicalBinOpExp integerType LThan args
-mkExp (SOp LLe args) = return $ mkLogicalBinOpExp integerType LThanE args
-mkExp (SOp LGt args) = return $ mkLogicalBinOpExp integerType GThan args
-mkExp (SOp LGe args) = return $ mkLogicalBinOpExp integerType GThanE args
-mkExp (SOp LFPlus args) = return $ mkBinOpExp doubleType Add args
-mkExp (SOp LFMinus args) = return $ mkBinOpExp doubleType Sub args
-mkExp (SOp LFTimes args) = return $ mkBinOpExp doubleType Mult args
-mkExp (SOp LFDiv args) = return $ mkBinOpExp doubleType Div args
+  mkMethodOpChain1 (mkBoolToNumber integerType) objectType "equals" args
+mkExp (SOp LLt args) = mkLogicalBinOpExp integerType LThan args
+mkExp (SOp LLe args) = mkLogicalBinOpExp integerType LThanE args
+mkExp (SOp LGt args) = mkLogicalBinOpExp integerType GThan args
+mkExp (SOp LGe args) = mkLogicalBinOpExp integerType GThanE args
+mkExp (SOp LFPlus args) = mkBinOpExp doubleType Add args
+mkExp (SOp LFMinus args) = mkBinOpExp doubleType Sub args
+mkExp (SOp LFTimes args) = mkBinOpExp doubleType Mult args
+mkExp (SOp LFDiv args) = mkBinOpExp doubleType Div args
 mkExp (SOp LFEq args) = 
-  return $ mkMethodOpChain1 (mkBoolToNumber doubleType) doubleType "equals" args
-mkExp (SOp LFLt args) = return $ mkLogicalBinOpExp integerType LThan args
-mkExp (SOp LFLe args) = return $ mkLogicalBinOpExp integerType LThanE args
-mkExp (SOp LFGt args) = return $ mkLogicalBinOpExp integerType GThan args
-mkExp (SOp LFGe args) = return $ mkLogicalBinOpExp integerType GThanE args
-mkExp (SOp LBPlus args) = return $ mkMethodOpChain1 id bigIntegerType "add" args
-mkExp (SOp LBMinus args) = return $ mkMethodOpChain1 id bigIntegerType "subtract" args
-mkExp (SOp LBTimes args) = return $ mkMethodOpChain1 id bigIntegerType "multiply" args
-mkExp (SOp LBDiv args) = return $ mkMethodOpChain1 id bigIntegerType "divide" args
-mkExp (SOp LBMod args) = return $ mkMethodOpChain1 id bigIntegerType "mod" args
+  mkMethodOpChain1 (mkBoolToNumber doubleType) doubleType "equals" args
+mkExp (SOp LFLt args) = mkLogicalBinOpExp integerType LThan args
+mkExp (SOp LFLe args) = mkLogicalBinOpExp integerType LThanE args
+mkExp (SOp LFGt args) = mkLogicalBinOpExp integerType GThan args
+mkExp (SOp LFGe args) = mkLogicalBinOpExp integerType GThanE args
+mkExp (SOp LBPlus args) = mkMethodOpChain1 id bigIntegerType "add" args
+mkExp (SOp LBMinus args) = mkMethodOpChain1 id bigIntegerType "subtract" args
+mkExp (SOp LBTimes args) = mkMethodOpChain1 id bigIntegerType "multiply" args
+mkExp (SOp LBDiv args) = mkMethodOpChain1 id bigIntegerType "divide" args
+mkExp (SOp LBMod args) = mkMethodOpChain1 id bigIntegerType "mod" args
 mkExp (SOp LBEq args) = 
-  return $ mkMethodOpChain1 (mkBoolToNumber bigIntegerType) bigIntegerType "equals" args
+  mkMethodOpChain1 (mkBoolToNumber bigIntegerType) bigIntegerType "equals" args
 mkExp (SOp LBLt args) = 
-  return $ mkMethodOpChain1 ( mkBoolToNumber bigIntegerType 
-                            . mkPartialOrder SLt
-                            ) 
-                            bigIntegerType 
-                            "compare" 
-                            args
+  mkMethodOpChain1 ( mkBoolToNumber bigIntegerType 
+                     . mkPartialOrder SLt
+                   ) 
+                   bigIntegerType 
+                   "compare" 
+                   args
 mkExp (SOp LBLe args) = 
-  return $ mkMethodOpChain1 ( mkBoolToNumber bigIntegerType 
-                            . mkPartialOrder SLe
-                            ) 
-                            bigIntegerType 
-                            "compare" 
-                            args
+  mkMethodOpChain1 ( mkBoolToNumber bigIntegerType 
+                   . mkPartialOrder SLe
+                   ) 
+                   bigIntegerType 
+                   "compare" 
+                   args
 mkExp (SOp LBGt args) = 
-  return $ mkMethodOpChain1 ( mkBoolToNumber bigIntegerType 
-                            . mkPartialOrder SGt
-                            ) 
-                            bigIntegerType 
-                            "compare" 
-                            args
+  mkMethodOpChain1 ( mkBoolToNumber bigIntegerType 
+                   . mkPartialOrder SGt
+                   ) 
+                   bigIntegerType 
+                   "compare" 
+                   args
 mkExp (SOp LBGe args) = 
-  return $ mkMethodOpChain1 ( mkBoolToNumber bigIntegerType 
-                            . mkPartialOrder SGe
-                            ) 
-                            bigIntegerType 
-                            "compare" 
-                            args
+  mkMethodOpChain1 ( mkBoolToNumber bigIntegerType 
+                   . mkPartialOrder SGe
+                   ) 
+                   bigIntegerType 
+                   "compare" 
+                   args
 mkExp (SOp LStrConcat args) =
-  return $ mkMethodOpChain (\ exp -> 
-                              InstanceCreation [] 
-                                               (ClassType [(Ident "StringBuilder", [])])
-                                               [exp]
-                                               Nothing
-                           )
-                           (\ exp -> MethodInv $ PrimaryMethodCall exp [] (Ident "toString") [])
-                           stringType 
-                           "append"
-                           args
+  mkMethodOpChain (\ exp -> InstanceCreation [] 
+                                             (ClassType [(Ident "StringBuilder", [])])
+                                             [exp]
+                                             Nothing
+                  )
+                  (\ exp -> MethodInv $ PrimaryMethodCall exp [] (Ident "toString") [])
+                  stringType 
+                  "append"
+                  args
 mkExp (SOp LStrLt args@[_, _]) =
-  return $ mkMethodOpChain1 ( mkBoolToNumber integerType
-                            . mkPartialOrder SLt
-                            )
-                            stringType
-                            "compare"
-                            args
+  mkMethodOpChain1 ( mkBoolToNumber integerType
+                   . mkPartialOrder SLt
+                   )
+                   stringType
+                   "compare"
+                   args
 mkExp (SOp LStrEq args@[_, _]) =
-  return $ mkMethodOpChain1 ( mkBoolToNumber integerType)
-                            stringType
-                            "equals"
-                            args
+  mkMethodOpChain1 ( mkBoolToNumber integerType)
+                   stringType
+                   "equals"
+                   args
 mkExp (SOp LStrLen [arg]) = 
-  return . MethodInv $ PrimaryMethodCall (mkVarAccess (Just stringType) arg) [] (Ident "length") []
+  (\ var -> MethodInv $ PrimaryMethodCall var [] (Ident "length") [])
+  <$> mkVarAccess (Just stringType) arg
 mkExp (SOp LIntFloat [arg]) =
-  return $ mkPrimitiveCast integerType doubleType arg
+  mkPrimitiveCast integerType doubleType arg
 mkExp (SOp LFloatInt [arg]) =
-  return $ mkPrimitiveCast doubleType integerType arg
+  mkPrimitiveCast doubleType integerType arg
 mkExp (SOp LIntStr [arg]) =
-  return $ mkToString integerType arg
+  mkToString integerType arg
 mkExp (SOp LStrInt [arg]) =
-  return $ mkPrimitiveCast stringType integerType arg
+  mkPrimitiveCast stringType integerType arg
 mkExp (SOp LFloatStr [arg]) =
-  return $ mkToString doubleType arg
+  mkToString doubleType arg
 mkExp (SOp LStrFloat [arg]) =
-  return $ mkPrimitiveCast doubleType stringType arg
+  mkPrimitiveCast doubleType stringType arg
 mkExp (SOp LIntBig [arg]) =
-  return $ mkPrimitiveCast integerType bigIntegerType arg
+  mkPrimitiveCast integerType bigIntegerType arg
 mkExp (SOp LBigInt [arg]) =
-  return $ mkPrimitiveCast bigIntegerType integerType arg
+  mkPrimitiveCast bigIntegerType integerType arg
 mkExp (SOp LStrBig [arg]) =
-  return $ InstanceCreation [] bigIntegerType [mkVarAccess (Just stringType) arg] Nothing
+  (\ var -> InstanceCreation [] bigIntegerType [var] Nothing)
+  <$> mkVarAccess (Just stringType) arg
 mkExp (SOp LBigStr [arg]) =
-  return $ mkToString bigIntegerType arg
+  mkToString bigIntegerType arg
 mkExp (SOp LChInt [arg]) =
-  return $ mkVarAccess (Just integerType) arg
+  mkVarAccess (Just integerType) arg
 mkExp (SOp LIntCh [arg]) =
-  return $ mkVarAccess (Just integerType) arg
+  mkVarAccess (Just integerType) arg
 mkExp (SOp LPrintNum [arg]) =
-  return $ mkSystemOutPrint (mkVarAccess Nothing arg)
+  mkSystemOutPrint <$> (mkVarAccess Nothing arg)
 mkExp (SOp LPrintStr [arg]) =
-  return $ mkSystemOutPrint (mkVarAccess (Just stringType) arg)
+  mkSystemOutPrint <$> (mkVarAccess (Just stringType) arg)
 mkExp (SOp LReadStr [arg]) = mkExp (SForeign LANG_C FString "idris_readStr" [(FPtr, arg)])
-mkExp (SOp LB8Lt args) = return $ mkLogicalBinOpExp byteType LThan args
-mkExp (SOp LB8Lte args) = return $ mkLogicalBinOpExp byteType LThanE args
+mkExp (SOp LB8Lt args) = mkLogicalBinOpExp byteType LThan args
+mkExp (SOp LB8Lte args) = mkLogicalBinOpExp byteType LThanE args
 mkExp (SOp LB8Eq args) = 
-  return $ mkMethodOpChain1 (mkBoolToNumber byteType) byteType "equals" args
-mkExp (SOp LB8Gt args) = return $ mkLogicalBinOpExp byteType GThan args
-mkExp (SOp LB8Gte args) = return $ mkLogicalBinOpExp byteType GThanE args
-mkExp (SOp LB8Plus args) = return $ mkBinOpExp byteType Add args
-mkExp (SOp LB8Minus args) = return $ mkBinOpExp byteType Sub args
-mkExp (SOp LB8Times args) = return $ mkBinOpExp byteType Mult args
-mkExp (SOp LB8UDiv args) = return $ mkBinOpExpConv "shortValue" ShortT byteType Div args
-mkExp (SOp LB8SDiv args) = return $ mkBinOpExp byteType Div args
-mkExp (SOp LB8URem args) = return $ mkBinOpExpConv "shortValue" ShortT byteType Rem args
-mkExp (SOp LB8SRem args) = return $ mkBinOpExp byteType Rem args
-mkExp (SOp LB8Shl args) = return $ mkBinOpExp byteType LShift args
-mkExp (SOp LB8LShr args) = return $ mkBinOpExp byteType RRShift args
-mkExp (SOp LB8AShr args) = return $ mkBinOpExp byteType RShift args
-mkExp (SOp LB8And args) = return $ mkBinOpExp byteType And args
-mkExp (SOp LB8Or args) = return $ mkBinOpExp byteType Or args
-mkExp (SOp LB8Xor args) = return $ mkBinOpExp byteType Xor args
+  mkMethodOpChain1 (mkBoolToNumber byteType) byteType "equals" args
+mkExp (SOp LB8Gt args) = mkLogicalBinOpExp byteType GThan args
+mkExp (SOp LB8Gte args) = mkLogicalBinOpExp byteType GThanE args
+mkExp (SOp LB8Plus args) = mkBinOpExp byteType Add args
+mkExp (SOp LB8Minus args) = mkBinOpExp byteType Sub args
+mkExp (SOp LB8Times args) = mkBinOpExp byteType Mult args
+mkExp (SOp LB8UDiv args) = mkBinOpExpConv "shortValue" ShortT byteType Div args
+mkExp (SOp LB8SDiv args) = mkBinOpExp byteType Div args
+mkExp (SOp LB8URem args) = mkBinOpExpConv "shortValue" ShortT byteType Rem args
+mkExp (SOp LB8SRem args) = mkBinOpExp byteType Rem args
+mkExp (SOp LB8Shl args) = mkBinOpExp byteType LShift args
+mkExp (SOp LB8LShr args) = mkBinOpExp byteType RRShift args
+mkExp (SOp LB8AShr args) = mkBinOpExp byteType RShift args
+mkExp (SOp LB8And args) = mkBinOpExp byteType And args
+mkExp (SOp LB8Or args) = mkBinOpExp byteType Or args
+mkExp (SOp LB8Xor args) = mkBinOpExp byteType Xor args
 mkExp (SOp LB8Compl [var]) = 
-  return $ PreBitCompl (mkVarAccess (Just $ byteType) var)
-mkExp (SOp LB8Z16 [var]) = return $ mkZeroExt "shortValue" 8 byteType shortType var
-mkExp (SOp LB8Z32 [var]) = return $ mkZeroExt "intValue" 8 byteType integerType var
-mkExp (SOp LB8Z64 [var]) = return $ mkZeroExt "longValue" 8 byteType longType var
-mkExp (SOp LB8S16 [var]) = return $ mkSignedExt "shortValue" byteType shortType var
-mkExp (SOp LB8S32 [var]) = return $ mkSignedExt "intValue" byteType integerType var
-mkExp (SOp LB8S64 [var]) = return $ mkSignedExt "longValue" byteType longType var
-mkExp (SOp LB16Lt args) = return $ mkLogicalBinOpExp shortType LThan args
-mkExp (SOp LB16Lte args) = return $ mkLogicalBinOpExp shortType LThanE args
+  PreBitCompl <$> mkVarAccess (Just $ byteType) var
+mkExp (SOp LB8Z16 [var]) = mkZeroExt "shortValue" 8 byteType shortType var
+mkExp (SOp LB8Z32 [var]) = mkZeroExt "intValue" 8 byteType integerType var
+mkExp (SOp LB8Z64 [var]) = mkZeroExt "longValue" 8 byteType longType var
+mkExp (SOp LB8S16 [var]) = mkSignedExt "shortValue" byteType shortType var
+mkExp (SOp LB8S32 [var]) = mkSignedExt "intValue" byteType integerType var
+mkExp (SOp LB8S64 [var]) = mkSignedExt "longValue" byteType longType var
+mkExp (SOp LB16Lt args) = mkLogicalBinOpExp shortType LThan args
+mkExp (SOp LB16Lte args) = mkLogicalBinOpExp shortType LThanE args
 mkExp (SOp LB16Eq args) = 
-  return $ mkMethodOpChain1 (mkBoolToNumber shortType) shortType "equals" args
-mkExp (SOp LB16Gt args) = return $ mkLogicalBinOpExp shortType GThan args
-mkExp (SOp LB16Gte args) = return $ mkLogicalBinOpExp shortType GThanE args
-mkExp (SOp LB16Plus args) = return $ mkBinOpExp shortType Add args
-mkExp (SOp LB16Minus args) = return $ mkBinOpExp shortType Sub args
-mkExp (SOp LB16Times args) = return $ mkBinOpExp shortType Mult args
-mkExp (SOp LB16UDiv args) = return $ mkBinOpExpConv "intValue" IntT shortType Div args
-mkExp (SOp LB16SDiv args) = return $ mkBinOpExp shortType Div args
-mkExp (SOp LB16URem args) = return $ mkBinOpExpConv "intValue" IntT shortType Rem args
-mkExp (SOp LB16SRem args) = return $ mkBinOpExp shortType Rem args
-mkExp (SOp LB16Shl args) = return $ mkBinOpExp shortType LShift args
-mkExp (SOp LB16LShr args) = return $ mkBinOpExp shortType RRShift args
-mkExp (SOp LB16AShr args) = return $ mkBinOpExp shortType RShift args
-mkExp (SOp LB16And args) = return $ mkBinOpExp shortType And args
-mkExp (SOp LB16Or args) = return $ mkBinOpExp shortType Or args
-mkExp (SOp LB16Xor args) = return $ mkBinOpExp shortType Xor args
+  mkMethodOpChain1 (mkBoolToNumber shortType) shortType "equals" args
+mkExp (SOp LB16Gt args) = mkLogicalBinOpExp shortType GThan args
+mkExp (SOp LB16Gte args) = mkLogicalBinOpExp shortType GThanE args
+mkExp (SOp LB16Plus args) = mkBinOpExp shortType Add args
+mkExp (SOp LB16Minus args) = mkBinOpExp shortType Sub args
+mkExp (SOp LB16Times args) = mkBinOpExp shortType Mult args
+mkExp (SOp LB16UDiv args) = mkBinOpExpConv "intValue" IntT shortType Div args
+mkExp (SOp LB16SDiv args) = mkBinOpExp shortType Div args
+mkExp (SOp LB16URem args) = mkBinOpExpConv "intValue" IntT shortType Rem args
+mkExp (SOp LB16SRem args) = mkBinOpExp shortType Rem args
+mkExp (SOp LB16Shl args) = mkBinOpExp shortType LShift args
+mkExp (SOp LB16LShr args) = mkBinOpExp shortType RRShift args
+mkExp (SOp LB16AShr args) = mkBinOpExp shortType RShift args
+mkExp (SOp LB16And args) = mkBinOpExp shortType And args
+mkExp (SOp LB16Or args) = mkBinOpExp shortType Or args
+mkExp (SOp LB16Xor args) = mkBinOpExp shortType Xor args
 mkExp (SOp LB16Compl [var]) = 
-  return $ PreBitCompl (mkVarAccess (Just $ shortType) var)
-mkExp (SOp LB16Z32 [var]) = return $ mkZeroExt "intValue" 16 shortType integerType var
-mkExp (SOp LB16Z64 [var]) = return $ mkZeroExt "longValue" 16 shortType longType var
-mkExp (SOp LB16S32 [var]) = return $ mkSignedExt "intValue" shortType integerType var
-mkExp (SOp LB16S64 [var]) = return $ mkSignedExt "longValue" shortType longType var
+  PreBitCompl <$> mkVarAccess (Just $ shortType) var
+mkExp (SOp LB16Z32 [var]) = mkZeroExt "intValue" 16 shortType integerType var
+mkExp (SOp LB16Z64 [var]) = mkZeroExt "longValue" 16 shortType longType var
+mkExp (SOp LB16S32 [var]) = mkSignedExt "intValue" shortType integerType var
+mkExp (SOp LB16S64 [var]) = mkSignedExt "longValue" shortType longType var
 mkExp (SOp LB16T8 [var]) = 
-  return . MethodInv $ 
-         TypeMethodCall (J.Name [Ident "Byte"])
-                        []
-                        (Ident "valueOf")
-                        [ MethodInv $ PrimaryMethodCall (mkVarAccess (Just $ shortType) var) [] (Ident "byteValue") [] ]
-mkExp (SOp LB32Lt args) = return $ mkLogicalBinOpExp integerType LThan args
-mkExp (SOp LB32Lte args) = return $ mkLogicalBinOpExp integerType LThanE args
+  (\ var -> MethodInv $ 
+            TypeMethodCall (J.Name [Ident "Byte"])
+                           []
+                           (Ident "valueOf")
+                           [ MethodInv 
+                             $ PrimaryMethodCall var [] (Ident "byteValue") [] ]
+  )
+  <$> mkVarAccess (Just $ shortType) var
+mkExp (SOp LB32Lt args) = mkLogicalBinOpExp integerType LThan args
+mkExp (SOp LB32Lte args) = mkLogicalBinOpExp integerType LThanE args
 mkExp (SOp LB32Eq args) = 
-  return $ mkMethodOpChain1 (mkBoolToNumber integerType) integerType "equals" args
-mkExp (SOp LB32Gt args) = return $ mkLogicalBinOpExp integerType GThan args
-mkExp (SOp LB32Gte args) = return $ mkLogicalBinOpExp integerType GThanE args
-mkExp (SOp LB32Plus args) = return $ mkBinOpExp integerType Add args
-mkExp (SOp LB32Minus args) = return $ mkBinOpExp integerType Sub args
-mkExp (SOp LB32Times args) = return $ mkBinOpExp integerType Mult args
-mkExp (SOp LB32UDiv args) = return $ mkBinOpExpConv "longValue" LongT integerType Div args
-mkExp (SOp LB32SDiv args) = return $ mkBinOpExp integerType Div args
-mkExp (SOp LB32URem args) = return $ mkBinOpExpConv "longValue" LongT integerType Rem args
-mkExp (SOp LB32SRem args) = return $ mkBinOpExp integerType Rem args
-mkExp (SOp LB32Shl args) = return $ mkBinOpExp integerType LShift args
-mkExp (SOp LB32LShr args) = return $ mkBinOpExp integerType RRShift args
-mkExp (SOp LB32AShr args) = return $ mkBinOpExp integerType RShift args
-mkExp (SOp LB32And args) = return $ mkBinOpExp integerType And args
-mkExp (SOp LB32Or args) = return $ mkBinOpExp integerType Or args
-mkExp (SOp LB32Xor args) = return $ mkBinOpExp integerType Xor args
+  mkMethodOpChain1 (mkBoolToNumber integerType) integerType "equals" args
+mkExp (SOp LB32Gt args) = mkLogicalBinOpExp integerType GThan args
+mkExp (SOp LB32Gte args) = mkLogicalBinOpExp integerType GThanE args
+mkExp (SOp LB32Plus args) = mkBinOpExp integerType Add args
+mkExp (SOp LB32Minus args) = mkBinOpExp integerType Sub args
+mkExp (SOp LB32Times args) = mkBinOpExp integerType Mult args
+mkExp (SOp LB32UDiv args) = mkBinOpExpConv "longValue" LongT integerType Div args
+mkExp (SOp LB32SDiv args) = mkBinOpExp integerType Div args
+mkExp (SOp LB32URem args) = mkBinOpExpConv "longValue" LongT integerType Rem args
+mkExp (SOp LB32SRem args) = mkBinOpExp integerType Rem args
+mkExp (SOp LB32Shl args) = mkBinOpExp integerType LShift args
+mkExp (SOp LB32LShr args) = mkBinOpExp integerType RRShift args
+mkExp (SOp LB32AShr args) = mkBinOpExp integerType RShift args
+mkExp (SOp LB32And args) = mkBinOpExp integerType And args
+mkExp (SOp LB32Or args) = mkBinOpExp integerType Or args
+mkExp (SOp LB32Xor args) = mkBinOpExp integerType Xor args
 mkExp (SOp LB32Compl [var]) = 
-  return $ PreBitCompl (mkVarAccess (Just $ integerType) var)
-mkExp (SOp LB32Z64 [var]) = return $ mkZeroExt "longValue" 32 integerType longType var
-mkExp (SOp LB32S64 [var]) = return $ mkSignedExt "longValue" integerType longType var
+  PreBitCompl <$> mkVarAccess (Just $ integerType) var
+mkExp (SOp LB32Z64 [var]) = mkZeroExt "longValue" 32 integerType longType var
+mkExp (SOp LB32S64 [var]) = mkSignedExt "longValue" integerType longType var
 mkExp (SOp LB32T8 [var]) = 
-  return . MethodInv $ 
-         TypeMethodCall (J.Name [Ident "Byte"])
-                        []
-                        (Ident "valueOf")
-                        [ MethodInv $ PrimaryMethodCall (mkVarAccess (Just $ integerType) var) [] (Ident "byteValue") [] ]
+  (\ var -> MethodInv
+            $ TypeMethodCall (J.Name [Ident "Byte"])
+                             []
+                             (Ident "valueOf")
+                             [ MethodInv $ PrimaryMethodCall var [] (Ident "byteValue") [] ]
+  )
+  <$> mkVarAccess (Just $ integerType) var
 mkExp (SOp LB32T16 [var]) = 
-  return . MethodInv $ 
-         TypeMethodCall (J.Name [Ident "Short"])
-                        []
-                        (Ident "valueOf")
-                        [ MethodInv $ PrimaryMethodCall (mkVarAccess (Just $ integerType) var) [] (Ident "shortValue") [] ]
-mkExp (SOp LB64Lt args) = return $ mkLogicalBinOpExp longType LThan args
-mkExp (SOp LB64Lte args) = return $ mkLogicalBinOpExp longType LThanE args
+  (\ var -> MethodInv
+            $ TypeMethodCall (J.Name [Ident "Short"])
+                             []
+                             (Ident "valueOf")
+                             [ MethodInv $ PrimaryMethodCall var [] (Ident "shortValue") [] ]
+  )
+  <$> mkVarAccess (Just $ integerType) var
+mkExp (SOp LB64Lt args) = mkLogicalBinOpExp longType LThan args
+mkExp (SOp LB64Lte args) = mkLogicalBinOpExp longType LThanE args
 mkExp (SOp LB64Eq args) = 
-  return $ mkMethodOpChain1 (mkBoolToNumber longType) longType "equals" args
-mkExp (SOp LB64Gt args) = return $ mkLogicalBinOpExp longType GThan args
-mkExp (SOp LB64Gte args) = return $ mkLogicalBinOpExp longType GThanE args
-mkExp (SOp LB64Plus args) = return $ mkBinOpExp longType Add args
-mkExp (SOp LB64Minus args) = return $ mkBinOpExp longType Sub args
-mkExp (SOp LB64Times args) = return $ mkBinOpExp longType Mult args
-mkExp (SOp LB64UDiv (arg:args)) = 
+  mkMethodOpChain1 (mkBoolToNumber longType) longType "equals" args
+mkExp (SOp LB64Gt args) = mkLogicalBinOpExp longType GThan args
+mkExp (SOp LB64Gte args) = mkLogicalBinOpExp longType GThanE args
+mkExp (SOp LB64Plus args) = mkBinOpExp longType Add args
+mkExp (SOp LB64Minus args) = mkBinOpExp longType Sub args
+mkExp (SOp LB64Times args) = mkBinOpExp longType Mult args
+mkExp (SOp LB64UDiv (arg:args)) = do
+  (arg:args) <- mapM (mkVarAccess (Just longType)) (arg:args)
   return $ foldl (\ exp arg ->
                     MethodInv $ PrimaryMethodCall
                               ( MethodInv $ PrimaryMethodCall
@@ -1310,17 +1458,18 @@ mkExp (SOp LB64UDiv (arg:args)) =
                                             [ MethodInv $ TypeMethodCall (J.Name [Ident "BigInteger"])
                                                                          []
                                                                          (Ident "valueOf")
-                                                                         [ (mkVarAccess (Just longType) arg) ]
+                                                                         [ arg ]
                                             ]
                               )
                               []
                               (Ident "longValue")
                               []
                  )                                
-           (mkVarAccess (Just longType) arg)
+           arg
            args
-mkExp (SOp LB64SDiv args) = return $ mkBinOpExp longType Div args
-mkExp (SOp LB64URem (arg:args)) =
+mkExp (SOp LB64SDiv args) = mkBinOpExp longType Div args
+mkExp (SOp LB64URem (arg:args)) = do
+  (arg:args) <- mapM (mkVarAccess (Just longType)) (arg:args)
   return $ foldl (\ exp arg ->
                     MethodInv $ PrimaryMethodCall
                               ( MethodInv $ PrimaryMethodCall
@@ -1334,69 +1483,79 @@ mkExp (SOp LB64URem (arg:args)) =
                                             [ MethodInv $ TypeMethodCall (J.Name [Ident "BigInteger"])
                                                                          []
                                                                          (Ident "valueOf")
-                                                                         [ (mkVarAccess (Just longType) arg) ]
+                                                                         [ arg ]
                                             ]
                               )
                               []
                               (Ident "longValue")
                               []
                  )                                
-           (mkVarAccess (Just longType) arg)
+           arg
            args
-mkExp (SOp LB64SRem args) = return $ mkBinOpExp longType Rem args
-mkExp (SOp LB64Shl args) = return $ mkBinOpExp longType LShift args
-mkExp (SOp LB64LShr args) = return $ mkBinOpExp longType RRShift args
-mkExp (SOp LB64AShr args) = return $ mkBinOpExp longType RShift args
-mkExp (SOp LB64And args) = return $ mkBinOpExp longType And args
-mkExp (SOp LB64Or args) = return $ mkBinOpExp longType Or args
-mkExp (SOp LB64Xor args) = return $ mkBinOpExp longType Xor args
+mkExp (SOp LB64SRem args) = mkBinOpExp longType Rem args
+mkExp (SOp LB64Shl args) = mkBinOpExp longType LShift args
+mkExp (SOp LB64LShr args) = mkBinOpExp longType RRShift args
+mkExp (SOp LB64AShr args) = mkBinOpExp longType RShift args
+mkExp (SOp LB64And args) = mkBinOpExp longType And args
+mkExp (SOp LB64Or args) = mkBinOpExp longType Or args
+mkExp (SOp LB64Xor args) = mkBinOpExp longType Xor args
 mkExp (SOp LB64Compl [var]) = 
-  return $ PreBitCompl (mkVarAccess (Just $ longType) var)
+  PreBitCompl <$> mkVarAccess (Just $ longType) var
 mkExp (SOp LB64T8 [var]) = 
-  return . MethodInv $ 
-         TypeMethodCall (J.Name [Ident "Byte"])
-                        []
-                        (Ident "valueOf")
-                        [ MethodInv $ PrimaryMethodCall (mkVarAccess (Just $ longType) var) [] (Ident "byteValue") [] ]
+  (\ var -> MethodInv
+            $ TypeMethodCall (J.Name [Ident "Byte"])
+                             []
+                             (Ident "valueOf")
+                             [ MethodInv 
+                               $ PrimaryMethodCall var [] (Ident "byteValue") [] 
+                             ]
+  )
+  <$> mkVarAccess (Just $ longType) var                             
 mkExp (SOp LB64T16 [var]) = 
-  return . MethodInv $ 
-         TypeMethodCall (J.Name [Ident "Short"])
-                        []
-                        (Ident "valueOf")
-                        [ MethodInv $ PrimaryMethodCall (mkVarAccess (Just $ longType) var) [] (Ident "shortValue") [] ]
+  (\ var -> MethodInv
+            $ TypeMethodCall (J.Name [Ident "Short"])
+                             []
+                             (Ident "valueOf")
+                             [ MethodInv $ PrimaryMethodCall var [] (Ident "shortValue") [] ]
+  )
+  <$> mkVarAccess (Just $ longType) var
 mkExp (SOp LB64T32 [var]) = 
-  return . MethodInv $ 
-         TypeMethodCall (J.Name [Ident "Integer"])
-                        []
-                        (Ident "valueOf")
-                        [ MethodInv $ PrimaryMethodCall (mkVarAccess (Just $ longType) var) [] (Ident "intValue") [] ]
+  (\ var -> MethodInv
+            $ TypeMethodCall (J.Name [Ident "Integer"])
+                             []
+                             (Ident "valueOf")
+                             [ MethodInv $ PrimaryMethodCall var [] (Ident "intValue") [] ]
+  )
+  <$> mkVarAccess (Just $ longType) var
 mkExp (SOp LIntB8 [arg]) = mkExp (SOp LB32T8 [arg])
 mkExp (SOp LIntB16 [arg]) = mkExp (SOp LB32T16 [arg])
 mkExp (SOp LIntB32 [arg]) = mkExp (SV arg)
 mkExp (SOp LIntB64 [arg]) = mkExp (SOp LB32S64 [arg])
 mkExp (SOp LB32Int [arg]) = mkExp (SV arg)
-mkExp (SOp LFExp [arg]) = return $ mkMathFun "exp" arg
-mkExp (SOp LFLog [arg]) = return $ mkMathFun "log" arg
-mkExp (SOp LFSin [arg]) = return $ mkMathFun "sin" arg
-mkExp (SOp LFCos [arg]) = return $ mkMathFun "cos" arg
-mkExp (SOp LFTan [arg]) = return $ mkMathFun "tan" arg
-mkExp (SOp LFASin [arg]) = return $ mkMathFun "asin" arg
-mkExp (SOp LFACos [arg]) = return $ mkMathFun "acos" arg
-mkExp (SOp LFATan [arg]) = return $ mkMathFun "atan" arg
-mkExp (SOp LFSqrt [arg]) = return $ mkMathFun "sqrt" arg
-mkExp (SOp LFFloor [arg]) = return $ mkMathFun "floor" arg
-mkExp (SOp LFCeil [arg]) = return $ mkMathFun "ceil" arg
-mkExp (SOp LStrHead [arg]) = return $ mkStringAtIndex arg (Lit $ Int 0)
+mkExp (SOp LFExp [arg]) = mkMathFun "exp" arg
+mkExp (SOp LFLog [arg]) = mkMathFun "log" arg
+mkExp (SOp LFSin [arg]) = mkMathFun "sin" arg
+mkExp (SOp LFCos [arg]) = mkMathFun "cos" arg
+mkExp (SOp LFTan [arg]) = mkMathFun "tan" arg
+mkExp (SOp LFASin [arg]) = mkMathFun "asin" arg
+mkExp (SOp LFACos [arg]) = mkMathFun "acos" arg
+mkExp (SOp LFATan [arg]) = mkMathFun "atan" arg
+mkExp (SOp LFSqrt [arg]) = mkMathFun "sqrt" arg
+mkExp (SOp LFFloor [arg]) = mkMathFun "floor" arg
+mkExp (SOp LFCeil [arg]) = mkMathFun "ceil" arg
+mkExp (SOp LStrHead [arg]) = mkStringAtIndex arg (Lit $ Int 0)
 mkExp (SOp LStrTail [arg]) = 
-  return . MethodInv $ PrimaryMethodCall (mkVarAccess (Just stringType) arg)
+  (\ var -> MethodInv $ PrimaryMethodCall (var)
                                          []
                                          (Ident "substring")
                                          [Lit $ Int 1]
+  ) 
+  <$> mkVarAccess (Just stringType) arg
 mkExp (SOp LStrCons [c, cs]) =
-  return . MethodInv $ 
+  (\ cVar csVar -> MethodInv $ 
          PrimaryMethodCall ( MethodInv $ PrimaryMethodCall (InstanceCreation [] 
                                                                              (ClassType [(Ident "StringBuilder", [])])
-                                                                             [mkVarAccess (Just stringType) cs]
+                                                                             [csVar]
                                                                              Nothing
                                                            )
                                                            []
@@ -1404,7 +1563,7 @@ mkExp (SOp LStrCons [c, cs]) =
                                                            [ Lit $ Int 0, 
                                                              Cast (PrimType CharT) 
                                                                   (MethodInv $ PrimaryMethodCall 
-                                                                               (mkVarAccess (Just integerType) c)
+                                                                               (cVar)
                                                                                []
                                                                                (Ident "intValue")
                                                                                []
@@ -1414,12 +1573,15 @@ mkExp (SOp LStrCons [c, cs]) =
                            []
                            (Ident "toString")
                            []
-mkExp (SOp LStrIndex [str, i]) = return $ mkStringAtIndex str (mkVarAccess (Just integerType) i)
+ )
+ <$> mkVarAccess (Just integerType) c
+ <*> mkVarAccess (Just stringType) cs
+mkExp (SOp LStrIndex [str, i]) = mkVarAccess (Just integerType) i >>= mkStringAtIndex str 
 mkExp (SOp LStrRev [str]) = 
-  return . MethodInv $ 
+  (\ var -> MethodInv $ 
          PrimaryMethodCall ( MethodInv $ PrimaryMethodCall (InstanceCreation []
                                                                             (ClassType [(Ident "StringBuffer", [])])
-                                                                            [mkVarAccess (Just stringType) str]
+                                                                            [var]
                                                                             Nothing
                                                            )
                                                            []
@@ -1429,13 +1591,15 @@ mkExp (SOp LStrRev [str]) =
                            []
                            (Ident "toString")
                            []
+  )
+  <$> mkVarAccess (Just stringType) str
 mkExp (SOp LStdIn []) = return $ mkSystemStd In
 mkExp (SOp LStdOut []) = return $ mkSystemStd Out
 mkExp (SOp LStdErr []) = return $ mkSystemStd Err
 mkExp (SOp LFork [arg]) = mkThread arg
 mkExp (SOp LPar [arg]) = mkExp (SV arg)
 mkExp (SOp LVMPtr []) = 
-  return . MethodInv $ TypeMethodCall (J.Name [Ident "Thread"]) [] (Ident "currentThread") []
+  return $ MethodInv $ TypeMethodCall (J.Name [Ident "Thread"]) [] (Ident "currentThread") []
 mkExp (SOp LNoOp args) = mkExp . SV $ last args
 mkExp (SNothing) = return $ Lit Null
 mkExp (SError err) =

@@ -471,8 +471,8 @@ apply_elab n args =
 
 simple_app :: Elab' aux () -> Elab' aux () -> Elab' aux ()
 simple_app fun arg =
-    do a <- unique_hole (MN 0 "a")
-       b <- unique_hole (MN 0 "b")
+    do a <- unique_hole (MN 0 "argTy")
+       b <- unique_hole (MN 0 "retTy")
        f <- unique_hole (MN 0 "f")
        s <- unique_hole (MN 0 "s")
        claim a RType
@@ -516,9 +516,9 @@ try' :: Elab' aux a -> Elab' aux a -> Bool -> Elab' aux a
 try' t1 t2 proofSearch
           = do s <- get
                ps <- get_probs
-               case prunStateT ps t1 s of
-                    OK (v, s') -> do put s'
-                                     return v
+               case prunStateT 999999 False ps t1 s of
+                    OK ((v, _), s') -> do put s'
+                                          return v
                     Error e1 -> if recoverableErr e1 then
                                    do case runStateT t2 s of
                                          OK (v, s') -> do put s'; return v
@@ -539,42 +539,51 @@ tryWhen False a b = a
 
 -- Try a selection of tactics. Exactly one must work, all others must fail
 tryAll :: [(Elab' aux a, String)] -> Elab' aux a
-tryAll xs = tryAll' [] (cantResolve, 0) (map fst xs)
+tryAll xs = tryAll' [] 999999 (cantResolve, 0) (map fst xs)
   where
     cantResolve :: Elab' aux a
     cantResolve = lift $ tfail $ CantResolveAlts (map snd xs) 
 
     tryAll' :: [Elab' aux a] -> -- successes
+               Int -> -- most problems
                (Elab' aux a, Int) -> -- smallest failure
                [Elab' aux a] -> -- still to try
                Elab' aux a
-    tryAll' [res] _   [] = res
-    tryAll' (_:_) _   [] = cantResolve
-    tryAll' [] (f, _) [] = f
-    tryAll' cs f (x:xs) 
+    tryAll' [res] pmax _   [] = res
+    tryAll' (_:_) pmax _   [] = cantResolve
+    tryAll' [] pmax (f, _) [] = f
+    tryAll' cs pmax f (x:xs) 
        = do s <- get
             ps <- get_probs
-            case prunStateT ps x s of
-                OK (v, s') -> tryAll' ((do put s'
-                                           return v):cs)  f xs
+            case prunStateT pmax True ps x s of
+                OK ((v, newps), s') -> 
+                    do let cs' = if (newps < pmax) 
+                                    then [do put s'; return v]
+                                    else (do put s'; return v) : cs
+                       tryAll' cs' newps f xs
                 Error err -> do put s
                                 if (score err) < 100
-                                    then tryAll' cs (better err f) xs
-                                    else tryAll' [] (better err f) xs -- give up
+                                    then tryAll' cs pmax (better err f) xs
+                                    else tryAll' [] pmax (better err f) xs -- give up
 
 
     better err (f, i) = let s = score err in
                             if (s >= i) then (lift (tfail err), s)
                                         else (f, i)
 
-prunStateT ps x s 
+prunStateT pmax zok ps x s 
       = case runStateT x s of
              OK (v, s'@(ES (p, _) _ _)) -> 
-                 if (length (problems p) > length ps)
+                 let newps = length (problems p) - length ps 
+                     newpmax = if newps < 0 then 0 else newps in
+                 if (newpmax > pmax || (not zok && newps > 0)) -- length ps == 0 && newpmax > 0))
                     then case reverse (problems p) of
                             ((_,_,_,e):_) -> Error e
-                    else OK (v, s')
+                    else OK ((v, newpmax), s')
              Error e -> Error e
+
+qshow :: Fails -> String
+qshow fs = show (map (\ (x, y, _, _) -> (x, y)) fs) 
 
 dumpprobs [] = ""
 dumpprobs ((_,_,_,e):es) = show e ++ "\n" ++ dumpprobs es

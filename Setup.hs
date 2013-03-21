@@ -1,24 +1,32 @@
 {-# LANGUAGE CPP #-}
+import Control.Monad
+import Data.IORef
+
 import Distribution.Simple
 import Distribution.Simple.InstallDirs as I
 import Distribution.Simple.LocalBuildInfo as L
 import qualified Distribution.Simple.Setup as S
 import qualified Distribution.Simple.Program as P
 import Distribution.PackageDescription
+import Distribution.Text
 
 import System.Exit
 import System.FilePath ((</>), splitDirectories)
+import System.Directory
 import qualified System.FilePath.Posix as Px
 import System.Process
+import qualified Data.Text as T
+import qualified Data.Text.IO as TIO
 
 -- After Idris is built, we need to check and install the prelude and other libs
 
 make verbosity = P.runProgramInvocation verbosity . P.simpleProgramInvocation "make"
+mvn verbosity = P.runProgramInvocation verbosity . P.simpleProgramInvocation "mvn"
 
 #ifdef mingw32_HOST_OS
 -- make on mingw32 exepects unix style separators
 (<//>) = (Px.</>)
-idrisCmd local = Px.joinPath $ splitDirectories $ 
+idrisCmd local = Px.joinPath $ splitDirectories $
                  ".." <//> buildDir local <//> "idris" <//> "idris"
 #else
 idrisCmd local = ".." </>  buildDir local </>  "idris" </>  "idris"
@@ -27,6 +35,14 @@ idrisCmd local = ".." </>  buildDir local </>  "idris" </>  "idris"
 cleanStdLib verbosity
     = do make verbosity [ "-C", "lib", "clean", "IDRIS=idris" ]
          make verbosity [ "-C", "effects", "clean", "IDRIS=idris" ]
+
+cleanJavaLib verbosity 
+  = do dirty <- doesDirectoryExist ("java" </> "target")
+       when dirty $ mvn verbosity [ "-f", "java/pom.xml", "clean" ]
+       pomExists <- doesFileExist ("java" </> "pom.xml")
+       when pomExists $ removeFile ("java" </> "pom.xml")
+       execPomExists <- doesFileExist ("java" </> "executable_pom.xml")
+       when pomExists $ removeFile ("java" </> "executable_pom.xml")
 
 installStdLib pkg local verbosity copy
     = do let dirs = L.absoluteInstallDirs pkg local copy
@@ -50,6 +66,20 @@ installStdLib pkg local verbosity copy
                , "TARGET=" ++ idirRts
                , "IDRIS=" ++ icmd
                ]
+
+installJavaLib pkg local verbosity copy version = do
+  let rtsFile = "idris-" ++ display version ++ ".jar"
+  putStrLn $ "Installing java libraries" 
+  mvn verbosity [ "install:install-file"
+                , "-Dfile=" ++ ("java" </> "target" </> rtsFile)
+                , "-DgroupId=org.idris-lang"
+                , "-DartifactId=idris"
+                , "-Dversion=" ++ display version
+                , "-Dpackaging=jar"
+                , "-DgeneratePom=True"
+                ]
+  let dir = datadir $ L.absoluteInstallDirs pkg local copy
+  copyFile ("java" </> "executable_pom.xml") (dir </> "executable_pom.xml")
 
 -- This is a hack. I don't know how to tell cabal that a data file needs
 -- installing but shouldn't be in the distribution. And it won't make the
@@ -79,19 +109,52 @@ checkStdLib local verbosity
                , "IDRIS=" ++ icmd
                ]
 
+checkJavaLib verbosity = mvn verbosity [ "-f", "java" </> "pom.xml", "package" ]
+
+javaFlag flags = 
+  case lookup (FlagName "java") (S.configConfigurationsFlags flags) of
+    Just True -> True
+    Just False -> False
+    Nothing -> False
+
+preparePoms version
+    = do pomTemplate <- TIO.readFile ("java" </> "pom_template.xml")
+         TIO.writeFile ("java" </> "pom.xml") (insertVersion pomTemplate)
+         execPomTemplate <- TIO.readFile ("java" </> "executable_pom_template.xml")
+         TIO.writeFile ("java" </> "executable_pom.xml") (insertVersion execPomTemplate)
+    where
+      insertVersion template = 
+        T.replace (T.pack "$RTS-VERSION$") (T.pack $ display version) template
+
 -- Install libraries during both copy and install
 -- See http://hackage.haskell.org/trac/hackage/ticket/718
-main = defaultMainWithHooks $ simpleUserHooks
+main = do
+  defaultMainWithHooks $ simpleUserHooks
         { postCopy = \ _ flags pkg lbi -> do
-              installStdLib pkg lbi (S.fromFlag $ S.copyVerbosity flags)
+              let verb = S.fromFlag $ S.copyVerbosity flags
+              installStdLib pkg lbi verb
                                     (S.fromFlag $ S.copyDest flags)
         , postInst = \ _ flags pkg lbi -> do
-              installStdLib pkg lbi (S.fromFlag $ S.installVerbosity flags)
+              let verb = (S.fromFlag $ S.installVerbosity flags)
+              installStdLib pkg lbi verb
                                     NoCopyDest
+              when (javaFlag $ configFlags lbi) 
+                   (installJavaLib pkg 
+                                   lbi 
+                                   verb 
+                                   NoCopyDest 
+                                   (pkgVersion . package $ localPkgDescr lbi)
+                   )
         , postConf  = \ _ flags _ lbi -> do
               removeLibIdris lbi (S.fromFlag $ S.configVerbosity flags)
+              when (javaFlag $ configFlags lbi) 
+                   (preparePoms . pkgVersion . package $ localPkgDescr lbi)
         , postClean = \ _ flags _ _ -> do
-              cleanStdLib (S.fromFlag $ S.cleanVerbosity flags)
+              let verb = S.fromFlag $ S.cleanVerbosity flags
+              cleanStdLib verb
+              cleanJavaLib verb
         , postBuild = \ _ flags _ lbi -> do
-              checkStdLib lbi (S.fromFlag $ S.buildVerbosity flags)
+              let verb = S.fromFlag $ S.buildVerbosity flags
+              checkStdLib lbi verb
+              when (javaFlag $ configFlags lbi) (checkJavaLib verb)
         }

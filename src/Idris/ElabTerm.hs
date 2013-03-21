@@ -57,6 +57,7 @@ build ist info pattern fn tm
                                 resolveTC 7 fn ist) ivs
          probs <- get_probs
          tm <- get_term
+         ctxt <- get_context
          case probs of
             [] -> return ()
             ((_,_,_,e):es) -> lift (Error e)
@@ -122,6 +123,15 @@ elab ist info pattern tcgen fn tm
                  trace ("Elaborating " ++ show t ++ " : " ++ show g ++ "\n\tin " ++ show tm) 
                     $ -} 
                   do t' <- insertCoerce ina t
+                     g <- goal
+                     tm <- get_term
+                     ps <- get_probs
+                     hs <- get_holes
+--                      trace ("Elaborating " ++ show t' ++ " in " ++ show g
+-- --                             ++ "\n" ++ show tm 
+--                             ++ "\nholes " ++ show hs
+--                             ++ "\nproblems " ++ show ps
+--                             ++ "\n-----------\n") $
                      elab' ina t'
 
     local f = do e <- get_env
@@ -198,13 +208,8 @@ elab ist info pattern tcgen fn tm
               trySeq' deferr (x : xs) 
                   = try' (elab' ina x) (trySeq' deferr xs) True
     elab' ina (PPatvar fc n) | pattern = patvar n
---         = do env <- get_env
---              case lookup n env of
---                 Just (PVar _) -> elab' ina Placeholder
---                 _ -> patvar n
     elab' (ina, guarded) (PRef fc n) | pattern && not (inparamBlock n)
         = do ctxt <- get_context
-             env <- get_env
              let defined = case lookupTy Nothing n ctxt of
                                [] -> False
                                _ -> True
@@ -421,6 +426,8 @@ elab ist info pattern tcgen fn tm
              -- fail $ "Not implemented " ++ show c ++ "\n" ++ show args
              -- elaborate case
              updateAux (newdef : )
+             -- if we haven't got the type yet, hopefully we'll get it later!
+             movelast tyn
              solve
         where mkCaseName (NS n ns) = NS (mkCaseName n) ns
               mkCaseName (UN x) = UN (x ++ "_case")
@@ -537,7 +544,8 @@ pruneByType (P _ n _) c as
 
     typeHead var f f' 
         = case lookupTy Nothing f' c of
-                       [ty] -> case unApply (getRetTy ty) of
+                       [ty] -> let ty' = normalise c [] ty in
+                                   case unApply (getRetTy ty') of
                                     (P _ ftyn _, _) -> ftyn == f
                                     (V _, _) -> var -- keep, variable
                                     _ -> False

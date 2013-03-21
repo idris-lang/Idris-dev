@@ -940,7 +940,7 @@ stripLinear i tm = evalState (sl tm) [] where
                           if (f `elem` ns)
                              then return Placeholder
                              else do put (f : ns)
-                                     return (PRef fc f)
+                                     return (PPatvar fc f)
     sl (PApp fc fn args) = do fn' <- sl fn
                               args' <- mapM slA args
                               return $ PApp fc fn' args'

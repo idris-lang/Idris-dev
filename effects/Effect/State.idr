@@ -13,7 +13,7 @@ using (m : Type -> Type)
      handle st Get     k = k st st
      handle st (Put n) k = k n ()
 
-STATE : Type -> EFF
+STATE : Type -> EFFECT
 STATE t = MkEff t State
 
 get : Eff m [STATE x] x
@@ -28,4 +28,9 @@ putM val = Put val
 update : (x -> x) -> Eff m [STATE x] ()
 update f = do val <- get
               put (f val) 
+
+updateM : (x -> y) -> EffM m [STATE x] [STATE y] ()
+updateM f = do val <- get
+               putM (f val) 
+
 

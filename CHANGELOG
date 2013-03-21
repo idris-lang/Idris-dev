@@ -1,3 +1,17 @@
+New in 0.9.8:
+-------------
+
+User visible changes:
+
+* Renamed EFF to EFFECT in Effect package
+* Experimental Java backend
+* Tab completion in REPL
+
+Internal changes:
+
+* Improved name disambiguation
+* Various unification and totality checking bug fixes
+
 New in 0.9.7:
 -------------
 
