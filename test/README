@@ -21,5 +21,6 @@ Tests:
 019: magic with
 020: implicit conversions
 021: effects
+022: dynamic C library loading and interpreter IO
 
 regxxx: various regression tests
