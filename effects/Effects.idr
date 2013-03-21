@@ -100,8 +100,7 @@ data EffM : (m : Type -> Type) ->
             List EFFECT -> List EFFECT -> Type -> Type where
      value   : a -> EffM m xs xs a
      ebind   : EffM m xs xs' a -> (a -> EffM m xs' xs'' b) -> EffM m xs xs'' b
-     effect  : {a, b: _} -> {e : Effect} ->
-               (prf : EffElem e a xs) -> 
+     effect  : (prf : EffElem e a xs) -> 
                (eff : e a b t) -> 
                EffM m xs (updateResTy xs prf eff) t
      lift    : (prf : SubList ys xs) ->
@@ -188,6 +187,9 @@ runEnv env prog = eff env prog (\env, r => pure (env, r))
 
 runPure : Env id xs -> EffM id xs xs' a -> a
 runPure env prog = eff env prog (\env, r => r)
+
+runPureEnv : Env id xs -> EffM id xs xs' a -> (Env id xs', a)
+runPureEnv env prog = eff env prog (\env, r => (env, r))
 
 runWith : (a -> m a) -> Env m xs -> EffM m xs xs' a -> m a
 runWith inj env prog = eff env prog (\env, r => inj r)

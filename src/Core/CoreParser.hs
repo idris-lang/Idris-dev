@@ -31,7 +31,7 @@ idrisDef = haskellDef {
                  = ["let", "in", "data", "codata", "record", "Type", 
                     "do", "dsl", "import", "impossible", 
                     "case", "of", "total", "partial", "mutual",
-                    "infix", "infixl", "infixr", 
+                    "infix", "infixl", "infixr", "rewrite",
                     "where", "with", "syntax", "proof", "postulate",
                     "using", "namespace", "class", "instance",
                     "public", "private", "abstract", "implicit",

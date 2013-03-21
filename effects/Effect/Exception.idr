@@ -17,6 +17,9 @@ instance Show a => Handler (Exception a) IO where
 instance Handler (Exception a) (IOExcept a) where
      handle _ (Raise e) k = ioM (return (Left e))
 
+instance Handler (Exception a) (Either a) where
+     handle _ (Raise e) k = Left e
+
 EXCEPTION : Type -> EFFECT
 EXCEPTION t = MkEff () (Exception t) 
 

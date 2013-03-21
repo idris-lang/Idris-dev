@@ -444,8 +444,7 @@ intro n ctxt env _ = fail "Can't introduce here."
 forall :: Name -> Raw -> RunTactic
 forall n ty ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' =
     do (tyv, tyt) <- lift $ check ctxt env ty
-       lift $ isType ctxt env tyt
-       lift $ isType ctxt env t
+       unify' ctxt env tyt (TType (UVar 0)) 
        return $ Bind n (Pi tyv) (Bind x (Hole t) (P Bound x t))
 forall n ty ctxt env _ = fail "Can't pi bind here"
 

@@ -28,5 +28,7 @@
 >                  (ab : (alpha, beta)) ->
 >                  modifyFun f ab (fst ab) = snd ab
 > modifyFunLemma f (a,b) = 
->   replace {P = \ z => boolElim (a == a) b (f a) = boolElim z b (f a)} 
->           (soTrue (reflexive_eqeq a)) refl
+>   rewrite soTrue (reflexive_eqeq a) in refl
+
+   replace {P = \ z => boolElim (a == a) b (f a) = boolElim z b (f a)} 
+           (soTrue (reflexive_eqeq a)) refl

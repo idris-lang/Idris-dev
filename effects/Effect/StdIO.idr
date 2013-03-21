@@ -19,9 +19,6 @@ instance Handler StdIO (IOExcept a) where
 
 data IOStream a = MkStream (List String -> (a, List String))
   
-injStream : a -> IOStream a
-injStream v = MkStream (\x => (v, []))
-  
 instance Handler StdIO IOStream where
     handle () (PutStr s) k
        = MkStream (\x => case k () () of
@@ -55,5 +52,9 @@ mkStrFn : Env IOStream xs ->
           List String -> (a, List String)
 mkStrFn {a} env p input = case mkStrFn' of
                                MkStream f => f input
-  where mkStrFn' : IOStream a
+  where injStream : a -> IOStream a
+        injStream v = MkStream (\x => (v, []))
+        mkStrFn' : IOStream a
         mkStrFn' = runWith injStream env p
+
+  

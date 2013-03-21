@@ -3,6 +3,7 @@ New in 0.9.8:
 
 User visible changes:
 
+* Added "rewrite ... in ..." construct
 * Renamed EFF to EFFECT in Effect package
 * Experimental Java backend
 * Tab completion in REPL

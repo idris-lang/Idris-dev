@@ -24,23 +24,24 @@ import Data.Either
 
 import Debug.Trace
 
-data IOption = IOption { opt_logLevel :: Int,
-                         opt_typecase :: Bool,
+data IOption = IOption { opt_logLevel   :: Int,
+                         opt_typecase   :: Bool,
                          opt_typeintype :: Bool,
-                         opt_coverage :: Bool,
-                         opt_showimp  :: Bool,
+                         opt_coverage   :: Bool,
+                         opt_showimp    :: Bool,
                          opt_errContext :: Bool,
-                         opt_repl     :: Bool,
-                         opt_verbose  :: Bool,
-                         opt_target   :: Target,
-                         opt_outputTy :: OutputType,
-                         opt_ibcsubdir :: FilePath,
+                         opt_repl       :: Bool,
+                         opt_verbose    :: Bool,
+                         opt_quiet      :: Bool,
+                         opt_target     :: Target,
+                         opt_outputTy   :: OutputType,
+                         opt_ibcsubdir  :: FilePath,
                          opt_importdirs :: [FilePath],
-                         opt_cmdline :: [Opt] -- remember whole command line
+                         opt_cmdline    :: [Opt] -- remember whole command line
                        }
     deriving (Show, Eq)
 
-defaultOpts = IOption 0 False False True False False True True ViaC Executable "" [] []
+defaultOpts = IOption 0 False False True False False True True False ViaC Executable "" [] []
 
 -- TODO: Add 'module data' to IState, which can be saved out and reloaded quickly (i.e
 -- without typechecking).
@@ -195,6 +196,7 @@ data Command = Quit
 data Opt = Filename String
          | Ver
          | Usage
+         | Quiet
          | ShowLibs
          | ShowLibdir
          | ShowIncs
@@ -386,12 +388,19 @@ declared (PFix _ _ _) = []
 declared (PTy _ _ _ _ n t) = [n]
 declared (PPostulate _ _ _ _ n t) = [n]
 declared (PClauses _ _ n _) = [] -- not a declaration
-declared (PRecord _ _ _ n _ _ c _) = [n, c]
+declared (PCAF _ n _) = [n]
 declared (PData _ _ _ _ (PDatadecl n _ ts)) = n : map fstt ts
    where fstt (_, a, _, _) = a
+declared (PData _ _ _ _ (PLaterdecl n _)) = [n]
 declared (PParams _ _ ds) = concatMap declared ds
-declared (PMutual _ ds) = concatMap declared ds
 declared (PNamespace _ ds) = concatMap declared ds
+declared (PRecord _ _ _ n _ _ c _) = [n, c]
+declared (PClass _ _ _ _ n _ ms) = n : concatMap declared ms
+declared (PInstance _ _ _ _ _ _ _ _) = []
+declared (PDSL n _) = [n]
+declared (PSyntax _ _) = []
+declared (PMutual _ ds) = concatMap declared ds
+declared (PDirective _) = []
 
 -- get the names declared, not counting nested parameter blocks
 tldeclared :: PDecl -> [Name]
@@ -405,20 +414,27 @@ tldeclared (PData _ _ _ _ (PDatadecl n _ ts)) = n : map fstt ts
 tldeclared (PParams _ _ ds) = [] 
 tldeclared (PMutual _ ds) = concatMap tldeclared ds
 tldeclared (PNamespace _ ds) = concatMap tldeclared ds
--- declared (PImport _) = []
+
 
 defined :: PDecl -> [Name]
 defined (PFix _ _ _) = []
 defined (PTy _ _ _ _ n t) = []
 defined (PPostulate _ _ _ _ n t) = []
 defined (PClauses _ _ n _) = [n] -- not a declaration
-defined (PRecord _ _ _ n _ _ c _) = [n, c]
+defined (PCAF _ n _) = [n]
 defined (PData _ _ _ _ (PDatadecl n _ ts)) = n : map fstt ts
    where fstt (_, a, _, _) = a
+defined (PData _ _ _ _ (PLaterdecl n _)) = []
 defined (PParams _ _ ds) = concatMap defined ds
-defined (PMutual _ ds) = concatMap defined ds
 defined (PNamespace _ ds) = concatMap defined ds
--- declared (PImport _) = []
+defined (PRecord _ _ _ n _ _ c _) = [n, c]
+defined (PClass _ _ _ _ n _ ms) = n : concatMap defined ms
+defined (PInstance _ _ _ _ _ _ _ _) = []
+defined (PDSL n _) = [n]
+defined (PSyntax _ _) = []
+defined (PMutual _ ds) = concatMap defined ds
+defined (PDirective _) = []
+--defined _ = []
 
 updateN :: [(Name, Name)] -> Name -> Name
 updateN ns n | Just n' <- lookup n ns = n'
@@ -457,6 +473,7 @@ data PTerm = PQuote Raw
            | PRefl FC PTerm
            | PResolveTC FC
            | PEq FC PTerm PTerm
+           | PRewrite FC PTerm PTerm
            | PPair FC PTerm PTerm
            | PDPair FC PTerm PTerm PTerm
            | PAlternative Bool [PTerm] -- True if only one may work
@@ -483,6 +500,7 @@ mapPT f t = f (mpt t) where
   mpt (PLam n t s) = PLam n (mapPT f t) (mapPT f s)
   mpt (PPi p n t s) = PPi p n (mapPT f t) (mapPT f s)
   mpt (PLet n ty v s) = PLet n (mapPT f ty) (mapPT f v) (mapPT f s)
+  mpt (PRewrite fc t s) = PRewrite fc (mapPT f t) (mapPT f s)
   mpt (PApp fc t as) = PApp fc (mapPT f t) (map (fmap (mapPT f)) as)
   mpt (PCase fc c os) = PCase fc (mapPT f c) (map (pmap (mapPT f)) os)
   mpt (PEq fc l r) = PEq fc (mapPT f l) (mapPT f r)
@@ -893,6 +911,12 @@ prettyImp impl = prettySe 10
           prettySe 10 l <+> text "=" $$ nest nestingSize (prettySe 10 r)
         else
           prettySe 10 l <+> text "=" <+> prettySe 10 r
+    prettySe p (PRewrite _ l r) =
+      bracket p 2 $
+        if size r > breakingSize then
+          text "rewrite" <+> prettySe 10 l <+> text "in" $$ nest nestingSize (prettySe 10 r)
+        else
+          text "rewrite" <+> prettySe 10 l <+> text "in" <+> prettySe 10 r
     prettySe p (PTyped l r) =
       lparen <> prettySe 10 l <+> colon <+> prettySe 10 r <> rparen
     prettySe p (PPair _ l r) =
@@ -1000,6 +1024,7 @@ showImp impl tm = se 10 tm where
     se p (PTrue _) = "()"
     se p (PFalse _) = "_|_"
     se p (PEq _ l r) = bracket p 2 $ se 10 l ++ " = " ++ se 10 r
+    se p (PRewrite _ l r) = bracket p 2 $ "rewrite " ++ se 10 l ++ " in " ++ se 10 r
     se p (PTyped l r) = "(" ++ se 10 l ++ " : " ++ se 10 r ++ ")"
     se p (PPair _ l r) = "(" ++ se 10 l ++ ", " ++ se 10 r ++ ")"
     se p (PDPair _ l t r) = "(" ++ se 10 l ++ " ** " ++ se 10 r ++ ")"
@@ -1045,6 +1070,7 @@ instance Sized PTerm where
   size (PRefl fc _) = 1
   size (PResolveTC fc) = 1
   size (PEq fc left right) = 1 + size left + size right
+  size (PRewrite fc left right) = 1 + size left + size right
   size (PPair fc left right) = 1 + size left + size right
   size (PDPair fs left ty right) = 1 + size left + size ty + size right
   size (PAlternative a alts) = 1 + size alts
@@ -1077,6 +1103,7 @@ allNamesIn tm = nub $ ni [] tm
     ni env (PPi _ n ty sc) = ni env ty ++ ni (n:env) sc
     ni env (PHidden tm)    = ni env tm
     ni env (PEq _ l r)     = ni env l ++ ni env r
+    ni env (PRewrite _ l r) = ni env l ++ ni env r
     ni env (PTyped l r)    = ni env l ++ ni env r
     ni env (PPair _ l r)   = ni env l ++ ni env r
     ni env (PDPair _ (PRef _ n) t r)  = ni env t ++ ni (n:env) r
@@ -1099,6 +1126,7 @@ namesIn uvars ist tm = nub $ ni [] tm
     ni env (PLam n ty sc)  = ni env ty ++ ni (n:env) sc
     ni env (PPi _ n ty sc) = ni env ty ++ ni (n:env) sc
     ni env (PEq _ l r)     = ni env l ++ ni env r
+    ni env (PRewrite _ l r) = ni env l ++ ni env r
     ni env (PTyped l r)    = ni env l ++ ni env r
     ni env (PPair _ l r)   = ni env l ++ ni env r
     ni env (PDPair _ (PRef _ n) t r) = ni env t ++ ni (n:env) r
@@ -1122,6 +1150,7 @@ usedNamesIn vars ist tm = nub $ ni [] tm
     ni env (PLam n ty sc)  = ni env ty ++ ni (n:env) sc
     ni env (PPi _ n ty sc) = ni env ty ++ ni (n:env) sc
     ni env (PEq _ l r)     = ni env l ++ ni env r
+    ni env (PRewrite _ l r) = ni env l ++ ni env r
     ni env (PTyped l r)    = ni env l ++ ni env r
     ni env (PPair _ l r)   = ni env l ++ ni env r
     ni env (PDPair _ (PRef _ n) t r) = ni env t ++ ni (n:env) r

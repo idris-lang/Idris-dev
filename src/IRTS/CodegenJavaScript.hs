@@ -385,11 +385,11 @@ translateExpression (SForeign _ _ fun args)
   , (obj:as) <- args =
     concat [object obj, method, arguments as]
 
-  | "[]=" == fun
+  | "[]=" `isSuffixOf` fun
   , (idx:val:[]) <- args =
     concat [array, index idx, assign val]
 
-  | "[]" == fun
+  | "[]" `isSuffixOf` fun
   , (idx:[]) <- args =
     array ++ index idx
 

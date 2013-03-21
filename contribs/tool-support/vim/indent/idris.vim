@@ -3,7 +3,7 @@
 " Based on haskell indentation by motemen <motemen@gmail.com>
 " 
 " author: raichoo (raichoo@googlemail.com)
-" date: Nov 2 2012
+" date: Mar 19 2013
 "
 " Modify g:idris_indent_if and g:idris_indent_case to
 " change indentation for `if'(default 3) and `case'(default 5).
@@ -34,6 +34,12 @@ if !exists('g:idris_indent_let')
   " let x : Nat = O in
   " >>>>x
   let g:idris_indent_let = 4
+endif
+
+if !exists('g:idris_indent_rewrite')
+  " rewrite prf in expr
+  " >>>>x
+  let g:idris_indent_rewrite = 8
 endif
 
 if !exists('g:idris_indent_where')
@@ -69,6 +75,10 @@ function! GetIdrisIndent()
 
   if prevline =~ '\<let\>\s\+.\+\<in\>\s*$'
     return match(prevline, 'let') + g:idris_indent_let
+  endif
+
+  if prevline =~ '\<rewrite\>\s\+.\+\<in\>\s*$'
+    return match(prevline, 'rewrite') + g:idris_indent_rewrite
   endif
 
   if prevline !~ '\<else\>'
