@@ -26,6 +26,10 @@ step :: TT Name -> Idris (Maybe (TT Name))
 step tm = step' (unApply tm)
     where step' (P _ (UN "unsafePerformIO") _, [_, arg] ) = step arg -- Only step if arg can be stepped
           step' (P _ (UN "mkForeign") _, args) = stepForeign args
+          step' (P _ (UN "prim__IO") _, [_, arg]) = step arg
+          step' (P _ (UN "prim__readString") _, [(P _ (UN "prim__stdin") _)]) =
+              do line <- lift $ getLine
+                 return . Just . Constant . Str $ line
           step' _ = return Nothing
 
 -- | Perform side effects until no more can be performed, then return the
