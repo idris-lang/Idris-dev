@@ -22,6 +22,9 @@ import Foreign.Marshal.Alloc (free)
 -- | Attempt to perform a side effect. Return either Just the next step in
 -- evaluation (after performing the side effect through IO), or Nothing if no
 -- IO was performed.
+--
+-- This function is exceedingly generous about what it will accept in order to
+-- enable convenient testing at the REPL.
 step :: TT Name -> Idris (Maybe (TT Name))
 step tm = step' (unApply tm)
     where step' (P _ (UN "unsafePerformIO") _, [_, arg] ) = step arg -- Only step if arg can be stepped
