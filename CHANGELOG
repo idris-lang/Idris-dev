@@ -7,6 +7,8 @@ User visible changes:
 * Renamed EFF to EFFECT in Effect package
 * Experimental Java backend
 * Tab completion in REPL
+* Dynamic loading of C libraries in the interpreter
+* Testing IO actions at the REPL with :x command
 
 Internal changes:
 
