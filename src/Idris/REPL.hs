@@ -458,41 +458,42 @@ parseTarget _ = error "unknown target" -- FIXME: partial function
 
 parseArgs :: [String] -> [Opt]
 parseArgs [] = []
-parseArgs ("--quiet":ns)        = Quiet : (parseArgs ns)
-parseArgs ("--log":lvl:ns)      = OLogging (read lvl) : (parseArgs ns)
-parseArgs ("--noprelude":ns)    = NoPrelude : (parseArgs ns)
-parseArgs ("--check":ns)        = NoREPL : (parseArgs ns)
-parseArgs ("-o":n:ns)           = NoREPL : Output n : (parseArgs ns)
-parseArgs ("-no":n:ns)          = NoREPL : NewOutput n : (parseArgs ns)
-parseArgs ("--typecase":ns)     = TypeCase : (parseArgs ns)
-parseArgs ("--typeintype":ns)   = TypeInType : (parseArgs ns)
-parseArgs ("--total":ns)        = DefaultTotal : (parseArgs ns)
-parseArgs ("--partial":ns)      = DefaultPartial : (parseArgs ns)
-parseArgs ("--warnpartial":ns)  = WarnPartial : (parseArgs ns)
-parseArgs ("--nocoverage":ns)   = NoCoverage : (parseArgs ns)
-parseArgs ("--errorcontext":ns) = ErrContext : (parseArgs ns)
-parseArgs ("--help":ns)         = Usage : (parseArgs ns)
-parseArgs ("--link":ns)         = ShowLibs : (parseArgs ns)
-parseArgs ("--libdir":ns)       = ShowLibdir : (parseArgs ns)
-parseArgs ("--include":ns)      = ShowIncs : (parseArgs ns)
-parseArgs ("--version":ns)      = Ver : (parseArgs ns)
-parseArgs ("--verbose":ns)      = Verbose : (parseArgs ns)
-parseArgs ("--ibcsubdir":n:ns)  = IBCSubDir n : (parseArgs ns)
-parseArgs ("-i":n:ns)           = ImportDir n : (parseArgs ns)
-parseArgs ("--warn":ns)         = WarnOnly : (parseArgs ns)
-parseArgs ("--package":n:ns)    = Pkg n : (parseArgs ns)
-parseArgs ("-p":n:ns)           = Pkg n : (parseArgs ns)
-parseArgs ("--build":n:ns)      = PkgBuild n : (parseArgs ns)
-parseArgs ("--install":n:ns)    = PkgInstall n : (parseArgs ns)
-parseArgs ("--clean":n:ns)      = PkgClean n : (parseArgs ns)
-parseArgs ("--bytecode":n:ns)   = NoREPL : BCAsm n : (parseArgs ns)
-parseArgs ("--fovm":n:ns)       = NoREPL : FOVM n : (parseArgs ns)
-parseArgs ("-S":ns)             = OutputTy Raw : (parseArgs ns)
-parseArgs ("-c":ns)             = OutputTy Object : (parseArgs ns)
-parseArgs ("--dumpdefuns":n:ns) = DumpDefun n : (parseArgs ns)
-parseArgs ("--dumpcases":n:ns)  = DumpCases n : (parseArgs ns)
-parseArgs ("--target":n:ns)     = UseTarget (parseTarget n) : (parseArgs ns)
-parseArgs (n:ns)                = Filename n : (parseArgs ns)
+parseArgs ("--quiet":ns)         = Quiet : (parseArgs ns)
+parseArgs ("--log":lvl:ns)       = OLogging (read lvl) : (parseArgs ns)
+parseArgs ("--noprelude":ns)     = NoPrelude : (parseArgs ns)
+parseArgs ("--check":ns)         = NoREPL : (parseArgs ns)
+parseArgs ("-o":n:ns)            = NoREPL : Output n : (parseArgs ns)
+parseArgs ("-no":n:ns)           = NoREPL : NewOutput n : (parseArgs ns)
+parseArgs ("--typecase":ns)      = TypeCase : (parseArgs ns)
+parseArgs ("--typeintype":ns)    = TypeInType : (parseArgs ns)
+parseArgs ("--total":ns)         = DefaultTotal : (parseArgs ns)
+parseArgs ("--partial":ns)       = DefaultPartial : (parseArgs ns)
+parseArgs ("--warnpartial":ns)   = WarnPartial : (parseArgs ns)
+parseArgs ("--nocoverage":ns)    = NoCoverage : (parseArgs ns)
+parseArgs ("--errorcontext":ns)  = ErrContext : (parseArgs ns)
+parseArgs ("--help":ns)          = Usage : (parseArgs ns)
+parseArgs ("--link":ns)          = ShowLibs : (parseArgs ns)
+parseArgs ("--libdir":ns)        = ShowLibdir : (parseArgs ns)
+parseArgs ("--include":ns)       = ShowIncs : (parseArgs ns)
+parseArgs ("--version":ns)       = Ver : (parseArgs ns)
+parseArgs ("--verbose":ns)       = Verbose : (parseArgs ns)
+parseArgs ("--ibcsubdir":n:ns)   = IBCSubDir n : (parseArgs ns)
+parseArgs ("-i":n:ns)            = ImportDir n : (parseArgs ns)
+parseArgs ("--warn":ns)          = WarnOnly : (parseArgs ns)
+parseArgs ("--package":n:ns)     = Pkg n : (parseArgs ns)
+parseArgs ("-p":n:ns)            = Pkg n : (parseArgs ns)
+parseArgs ("--build":n:ns)       = PkgBuild n : (parseArgs ns)
+parseArgs ("--install":n:ns)     = PkgInstall n : (parseArgs ns)
+parseArgs ("--clean":n:ns)       = PkgClean n : (parseArgs ns)
+parseArgs ("--bytecode":n:ns)    = NoREPL : BCAsm n : (parseArgs ns)
+parseArgs ("--fovm":n:ns)        = NoREPL : FOVM n : (parseArgs ns)
+parseArgs ("-S":ns)              = OutputTy Raw : (parseArgs ns)
+parseArgs ("-c":ns)              = OutputTy Object : (parseArgs ns)
+parseArgs ("--dumpdefuns":n:ns)  = DumpDefun n : (parseArgs ns)
+parseArgs ("--dumpcases":n:ns)   = DumpCases n : (parseArgs ns)
+parseArgs ("--target":n:ns)      = UseTarget (parseTarget n) : (parseArgs ns)
+parseArgs ("-XTypeProviders":ns) = Extension TypeProviders : (parseArgs ns)
+parseArgs (n:ns)                 = Filename n : (parseArgs ns)
 
 helphead =
   [ (["Command"], "Arguments", "Purpose", ""),
@@ -527,6 +528,7 @@ idrisMain opts =
                    xs -> last xs
        when (DefaultTotal `elem` opts) $ do i <- getIState
                                             putIState (i { default_total = True })
+       mapM_ addLangExt (opt getLanguageExt opts)
        setREPL runrepl
        setQuiet quiet
        setVerbose runrepl
@@ -625,6 +627,10 @@ getTarget _ = Nothing
 getOutputTy :: Opt -> Maybe OutputType
 getOutputTy (OutputTy t) = Just t
 getOutputTy _ = Nothing
+
+getLanguageExt :: Opt -> Maybe LanguageExt
+getLanguageExt (Extension e) = Just e
+getLanguageExt _ = Nothing
 
 opt :: (Opt -> Maybe a) -> [Opt] -> [a]
 opt = mapMaybe 

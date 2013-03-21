@@ -43,6 +43,8 @@ data IOption = IOption { opt_logLevel   :: Int,
 
 defaultOpts = IOption 0 False False True False False True True False ViaC Executable "" [] []
 
+data LanguageExt = TypeProviders deriving (Show, Eq, Read, Ord)
+
 -- TODO: Add 'module data' to IState, which can be saved out and reloaded quickly (i.e
 -- without typechecking).
 -- This will include all the functions and data declarations, plus fixity declarations
@@ -88,7 +90,8 @@ data IState = IState {
     default_total :: Bool,
     ibc_write :: [IBCWrite],
     compiled_so :: Maybe String,
-    idris_dynamic_libs :: [DynamicLib]
+    idris_dynamic_libs :: [DynamicLib],
+    idris_language_extensions :: [LanguageExt]
    }
 
 data SizeChange = Smaller | Same | Bigger | Unknown
@@ -140,7 +143,7 @@ idrisInit = IState initContext [] [] emptyContext emptyContext emptyContext
                    emptyContext emptyContext emptyContext emptyContext 
                    emptyContext emptyContext emptyContext emptyContext
                    [] "" defaultOpts 6 [] [] [] [] [] [] [] [] []
-                   [] Nothing Nothing [] [] [] Hidden False [] Nothing []
+                   [] Nothing Nothing [] [] [] Hidden False [] Nothing [] []
 
 -- | The monad for the main REPL - reading and processing files and updating 
 -- global state (hence the IO inner monad).
@@ -227,6 +230,7 @@ data Opt = Filename String
          | FOVM String
          | UseTarget Target
          | OutputTy OutputType
+         | Extension LanguageExt
     deriving (Show, Eq)
 
 -- Parsed declarations

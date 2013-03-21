@@ -1500,6 +1500,8 @@ pDirective syn = try (do lchar '%'; reserved "lib"; lib <- strlit;
              <|> try (do lchar '%'; reserved "dynamic"; lib <- strlit;
                          return [PDirective (do addIBC (IBCDyLib lib)
                                                 addDyLib lib)])
+             <|> try (do lchar '%'; reserved "language"; ext <- reserved "TypeProviders";
+                         return [PDirective (addLangExt TypeProviders)])
 
 pProvider :: SyntaxInfo -> IParser [PDecl]
 pProvider syn = do lchar '%'; reserved "provide";

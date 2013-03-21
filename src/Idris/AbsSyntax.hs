@@ -52,6 +52,9 @@ addDyLib lib = do i <- getIState
 addHdr :: String -> Idris ()
 addHdr f = do i <- getIState; putIState $ i { idris_hdrs = f : idris_hdrs i }
 
+addLangExt :: LanguageExt -> Idris ()
+addLangExt TypeProviders = do i <- getIState ; putIState $ i { idris_language_extensions = [TypeProviders] }
+
 totcheck :: (FC, Name) -> Idris ()
 totcheck n = do i <- getIState; putIState $ i { idris_totcheck = idris_totcheck i ++ [n] }
 
