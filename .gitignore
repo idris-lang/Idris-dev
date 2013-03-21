@@ -5,6 +5,7 @@ cabal-dev/
 *.a
 *.swp
 *~
+custom.mk
 test/output
 test/test???/output
 test/reg???/output
