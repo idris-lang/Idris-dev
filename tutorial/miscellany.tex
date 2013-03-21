@@ -228,8 +228,24 @@ This is made possible through the following directives:
 \texttt{-lx} option to \texttt{gcc}.
 \item \texttt{\%include "x.h"} --- use the header file \texttt{x.h}.
 \item \texttt{\%link "x.o"} --- link with the object file \texttt{x.o}.
+\item \texttt{\%dynamic "x.so"} --- dynamically link the interpreter with the shared object \texttt{x.so}.
 \end{itemize}
 
+\subsubsection*{Testing foreign function calls}
+Normally, the Idris interpreter (used for typechecking and at the REPL) will
+not perform IO actions.  Additionally, as it neither generates C code nor
+compiles to machine code, the \texttt{\%lib}, \texttt{\%include} and
+\texttt{\%link} directives have no effect. IO actions and FFI calls can be
+tested using the special REPL command \texttt{:x EXPR}, and C libraries can be
+dynamically loaded in the interpreter by using the \texttt{:dynamic} command
+or the \texttt{\%dynamic} directive. For example:
+
+\begin{SaveVerbatim}{xdynamic}
+Idris> :dynamic libm.so
+Idris> :x unsafePerformIO ((mkForeign (FFun "sin" [FFloat] FFloat)) 1.6)
+0.9995736030415051 : Float
+\end{SaveVerbatim}
+\useverb{xdynamic}
 \subsection{Cumulativity}
 
 Since values can appear in types and \emph{vice versa}, it is natural that types themselves

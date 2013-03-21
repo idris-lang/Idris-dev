@@ -79,7 +79,7 @@ Flag Java
 Executable     idris
                Main-is: Main.hs
                hs-source-dirs: src
-               Other-modules: Core.TT, Core.Evaluate, Core.Typecheck,
+               Other-modules: Core.TT, Core.Evaluate, Core.Execute, Core.Typecheck,
                               Core.ProofShell, Core.ProofState, Core.CoreParser,
                               Core.ShellParser, Core.Unify, Core.Elaborate,
                               Core.CaseTree, Core.Constraints,
@@ -93,7 +93,7 @@ Executable     idris
                               Idris.DataOpts, Idris.Transforms, Idris.DSL,
                               Idris.UnusedArgs, Idris.Docs, Idris.Completion,
 
-                              Util.Pretty, Util.System,
+                              Util.Pretty, Util.System, Util.DynamicLinker,
                               Pkg.Package, Pkg.PParser,
 
                               IRTS.Lang, IRTS.LParser, IRTS.Bytecode, IRTS.Simplified,
@@ -108,7 +108,7 @@ Executable     idris
                                 haskeline>=0.7, split, directory,
                                 containers, process, transformers, filepath,
                                 directory, binary, bytestring, text, pretty,
-                                language-java>=0.2.2
+                                language-java>=0.2.2, libffi, unix
 
                Extensions:      MultiParamTypeClasses, FunctionalDependencies,
                                 FlexibleInstances, TemplateHaskell
