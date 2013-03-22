@@ -1,0 +1,3 @@
+#!/bin/bash
+echo ":x x" | idris --quiet  test022.idr
+rm -f test021 test021a *.ibc

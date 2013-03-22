@@ -11,7 +11,10 @@ import Idris.ElabTerm
 import Idris.Coverage
 import Idris.IBC
 import Idris.Unlit
+import Idris.Providers
 import Paths_idris
+
+import Util.DynamicLinker
 
 import Core.CoreParser
 import Core.TT
@@ -339,7 +342,8 @@ pDecl syn = do notEndBlock
     <|> pClass syn
     <|> pInstance syn
     <|> do d <- pDSL syn; return [d]
-    <|> pDirective
+    <|> pDirective syn
+    <|> pProvider syn
     <|> try (do reserved "import"; fp <- identifier
                 fail "imports must be at the top of file") 
 
@@ -1465,34 +1469,47 @@ pWhereblock n syn
          closeBlock
          return (concat ds, map (\x -> (x, decoration syn x)) dns)
 
-pDirective :: IParser [PDecl]
-pDirective = try (do lchar '%'; reserved "lib"; lib <- strlit;
-                     return [PDirective (do addLib lib
-                                            addIBC (IBCLib lib))])
-         <|> try (do lchar '%'; reserved "link"; obj <- strlit;
-                     return [PDirective (do datadir <- liftIO getDataDir
-                                            o <- liftIO $ findInPath [".", datadir] obj
-                                            addIBC (IBCObj o)
-                                            addObjectFile o)])
-         <|> try (do lchar '%'; reserved "include"; hdr <- strlit;
-                     return [PDirective (do addHdr hdr
-                                            addIBC (IBCHeader hdr))])
-         <|> try (do lchar '%'; reserved "hide"; n <- iName []
-                     return [PDirective (do setAccessibility n Hidden
-                                            addIBC (IBCAccess n Hidden))])
-         <|> try (do lchar '%'; reserved "freeze"; n <- iName []
-                     return [PDirective (do setAccessibility n Frozen
-                                            addIBC (IBCAccess n Frozen))])
-         <|> try (do lchar '%'; reserved "access"; acc <- pAccessibility'
-                     return [PDirective (do i <- getIState
-                                            putIState (i { default_access = acc }))])
-         <|> try (do lchar '%'; reserved "default"; tot <- pTotality
-                     i <- getState
-                     setState (i { default_total = tot } )
-                     return [PDirective (do i <- getIState
-                                            putIState (i { default_total = tot }))])
-         <|> try (do lchar '%'; reserved "logging"; i <- natural;
-                     return [PDirective (setLogLevel (fromInteger i))])
+pDirective :: SyntaxInfo -> IParser [PDecl]
+pDirective syn = try (do lchar '%'; reserved "lib"; lib <- strlit;
+                         return [PDirective (do addLib lib
+                                                addIBC (IBCLib lib))])
+             <|> try (do lchar '%'; reserved "link"; obj <- strlit;
+                         return [PDirective (do datadir <- liftIO getDataDir
+                                                o <- liftIO $ findInPath [".", datadir] obj
+                                                addIBC (IBCObj o)
+                                                addObjectFile o)])
+             <|> try (do lchar '%'; reserved "include"; hdr <- strlit;
+                         return [PDirective (do addHdr hdr
+                                                addIBC (IBCHeader hdr))])
+             <|> try (do lchar '%'; reserved "hide"; n <- iName []
+                         return [PDirective (do setAccessibility n Hidden
+                                                addIBC (IBCAccess n Hidden))])
+             <|> try (do lchar '%'; reserved "freeze"; n <- iName []
+                         return [PDirective (do setAccessibility n Frozen
+                                                addIBC (IBCAccess n Frozen))])
+             <|> try (do lchar '%'; reserved "access"; acc <- pAccessibility'
+                         return [PDirective (do i <- getIState
+                                                putIState (i { default_access = acc }))])
+             <|> try (do lchar '%'; reserved "default"; tot <- pTotality
+                         i <- getState
+                         setState (i { default_total = tot } )
+                         return [PDirective (do i <- getIState
+                                                putIState (i { default_total = tot }))])
+             <|> try (do lchar '%'; reserved "logging"; i <- natural;
+                         return [PDirective (setLogLevel (fromInteger i))])
+             <|> try (do lchar '%'; reserved "dynamic"; lib <- strlit;
+                         return [PDirective (do addIBC (IBCDyLib lib)
+                                                addDyLib lib)])
+             <|> try (do lchar '%'; reserved "language"; ext <- reserved "TypeProviders";
+                         return [PDirective (addLangExt TypeProviders)])
+
+pProvider :: SyntaxInfo -> IParser [PDecl]
+pProvider syn = do lchar '%'; reserved "provide";
+                   lchar '('; n <- pfName; t <- pTSig syn; lchar ')'
+                   fc <- pfc
+                   reserved "with"
+                   e <- pExpr syn
+                   return  [PProvider syn fc n t e]
 
 pTactic :: SyntaxInfo -> IParser PTactic
 pTactic syn = do reserved "intro"; ns <- sepBy pName (lchar ',')

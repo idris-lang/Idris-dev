@@ -21,7 +21,7 @@ import System.Directory
 import Paths_idris
 
 ibcVersion :: Word8
-ibcVersion = 27
+ibcVersion = 28
 
 data IBCFile = IBCFile { ver :: Word8,
                          sourcefile :: FilePath,
@@ -38,6 +38,7 @@ data IBCFile = IBCFile { ver :: Word8,
                          ibc_keywords :: [String],
                          ibc_objs :: [FilePath],
                          ibc_libs :: [String],
+                         ibc_dynamic_libs :: [String],
                          ibc_hdrs :: [String],
                          ibc_access :: [(Name, Accessibility)],
                          ibc_total :: [(Name, Totality)],
@@ -52,7 +53,7 @@ deriving instance Binary IBCFile
 !-}
 
 initIBC :: IBCFile
-initIBC = IBCFile ibcVersion "" [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] []
+initIBC = IBCFile ibcVersion "" [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] []
 
 loadIBC :: FilePath -> Idris ()
 loadIBC fp = do iLOG $ "Loading ibc " ++ fp
@@ -110,6 +111,7 @@ ibc i (IBCKeyword n) f = return f { ibc_keywords = n : ibc_keywords f }
 ibc i (IBCImport n) f = return f { ibc_imports = n : ibc_imports f }
 ibc i (IBCObj n) f = return f { ibc_objs = n : ibc_objs f }
 ibc i (IBCLib n) f = return f { ibc_libs = n : ibc_libs f }
+ibc i (IBCDyLib n) f = return f {ibc_dynamic_libs = n : ibc_dynamic_libs f }
 ibc i (IBCHeader n) f = return f { ibc_hdrs = n : ibc_hdrs f }
 ibc i (IBCDef n) f = case lookupDef Nothing n (tt_ctxt i) of
                         [v] -> return f { ibc_defs = (n,v) : ibc_defs f     }
@@ -147,6 +149,7 @@ process i fn
                pKeywords (ibc_keywords i)
                pObjs (ibc_objs i)
                pLibs (ibc_libs i)
+               pDyLibs (ibc_dynamic_libs i)
                pHdrs (ibc_hdrs i)
                pDefs (ibc_defs i)
                pAccess (ibc_access i)
@@ -241,6 +244,9 @@ pObjs os = mapM_ addObjectFile os
 
 pLibs :: [String] -> Idris ()
 pLibs ls = mapM_ addLib ls
+
+pDyLibs :: [String] -> Idris ()
+pDyLibs ls = mapM_ addDyLib ls
 
 pHdrs :: [String] -> Idris ()
 pHdrs hs = mapM_ addHdr hs
@@ -744,7 +750,7 @@ instance Binary Totality where
                    _ -> error "Corrupted binary data for Totality"
 
 instance Binary IBCFile where
-        put (IBCFile x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23)
+        put (IBCFile x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24)
           = do put x1
                put x2
                put x3
@@ -768,6 +774,7 @@ instance Binary IBCFile where
                put x21
                put x22
                put x23
+               put x24
         get
           = do x1 <- get
                if x1 == ibcVersion then 
@@ -793,7 +800,8 @@ instance Binary IBCFile where
                     x21 <- get
                     x22 <- get
                     x23 <- get
-                    return (IBCFile x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23)
+                    x24 <- get
+                    return (IBCFile x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24)
                   else return (initIBC { ver = x1 })
  
 instance Binary FnOpt where
