@@ -16,10 +16,10 @@ import Data.Maybe
 import System.Console.Haskeline
 
 
-fst4 :: (a, b, c, d) -> a
-fst4 (a, b, c, d) = a
+fst3 :: (a, b, c) -> a
+fst3 (a, b, c) = a
 
-commands = concatMap fst4 help
+commands = concatMap fst3 help
 
 -- | A specification of the arguments that tactics can take
 data TacticArg = NameTArg -- ^ Names: n1, n2, n3, ... n
@@ -98,8 +98,8 @@ isWhitespace = (flip elem) " \t\n"
 
 lookupInHelp :: String -> Maybe CmdArg
 lookupInHelp cmd = lookupInHelp' cmd help
-    where lookupInHelp' cmd ((cmds, _, _, arg):xs) | elem cmd cmds = Just arg
-                                                   | otherwise   = lookupInHelp' cmd xs
+    where lookupInHelp' cmd ((cmds, arg, _):xs) | elem cmd cmds = Just arg
+                                                | otherwise   = lookupInHelp' cmd xs
           lookupInHelp' cmd [] = Nothing
 
 -- | Get the completion function for a particular command
