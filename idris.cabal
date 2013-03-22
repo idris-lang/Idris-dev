@@ -65,7 +65,7 @@ Extra-source-files:    lib/Makefile  lib/*.idr lib/Prelude/*.idr
                        config.mk
                        rts/*.c rts/*.h rts/Makefile
                        js/*.js
-		       java/org/idris/rts/*.java
+                       java/org/idris/rts/*.java
 
 source-repository head
   type:     git
@@ -75,6 +75,9 @@ Flag Java
   Description: Build the Java RTS
   Default:     False
 
+Flag NoEffects
+  Description: Do not build the effects package
+  Default:     False
 
 Executable     idris
                Main-is: Main.hs
