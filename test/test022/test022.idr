@@ -1,6 +1,6 @@
 module Main
 
-%dynamic "libm.so"
+%dynamic "libm"
 
 x : Float
 x = unsafePerformIO (mkForeign (FFun "sin" [FFloat] FFloat) 1.6)
