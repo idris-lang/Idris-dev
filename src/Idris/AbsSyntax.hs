@@ -942,6 +942,9 @@ aiFn inpat expat ist fc f as
     find n (g : gs) acc = find n gs (g : acc)
 
 -- replace non-linear occurrences with _
+-- ASSUMPTION: This is called before adding 'alternatives' because otherwise
+-- it is hard to get right!
+
 stripLinear :: IState -> PTerm -> PTerm
 stripLinear i tm = evalState (sl tm) [] where 
     sl :: PTerm -> State [Name] PTerm
@@ -949,7 +952,7 @@ stripLinear i tm = evalState (sl tm) [] where
          | (_:_) <- lookupTy Nothing f (tt_ctxt i)
               = return $ PRef fc f
          | otherwise = do ns <- get
-                          trace (show (f, ns)) $ if (f `elem` ns)
+                          if (f `elem` ns)
                              then return Placeholder
                              else do put (f : ns)
                                      return (PRef fc f)
