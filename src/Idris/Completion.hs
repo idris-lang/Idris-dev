@@ -35,7 +35,9 @@ tacticArgs = [ ("intro", Nothing)
              , ("let", Nothing) -- FIXME syntax for let
              , ("focus", Just ExprTArg)
              , ("exact", Just ExprTArg)
+             , ("applyTactic", Just ExprTArg)
              , ("reflect", Just ExprTArg)
+             , ("fill", Just ExprTArg)
              , ("try", Just AltsTArg)
              ] ++ map (\x -> (x, Nothing)) [
               "intro", "intros", "compute", "trivial", "solve", "attack",
