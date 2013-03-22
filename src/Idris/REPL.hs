@@ -443,7 +443,7 @@ displayHelp = let vstr = showVersion version in
               "--------------" ++ map (\x -> '-') vstr ++ "\n\n" ++
               concatMap cmdInfo helphead ++
               concatMap cmdInfo help
-  where cmdInfo (cmds, args, text, _) = "   " ++ col 16 12 (showSep " " cmds) args text 
+  where cmdInfo (cmds, args, text) = "   " ++ col 16 12 (showSep " " cmds) (show args) text 
         col c1 c2 l m r = 
             l ++ take (c1 - length l) (repeat ' ') ++ 
             m ++ take (c2 - length m) (repeat ' ') ++ r ++ "\n"
@@ -496,8 +496,8 @@ parseArgs ("-XTypeProviders":ns) = Extension TypeProviders : (parseArgs ns)
 parseArgs (n:ns)                 = Filename n : (parseArgs ns)
 
 helphead =
-  [ (["Command"], "Arguments", "Purpose", ""),
-    ([""], "", "", "")
+  [ (["Command"], SpecialHeaderArg, "Purpose"),
+    ([""], NoArg, "")
   ]
 
 
