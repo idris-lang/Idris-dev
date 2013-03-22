@@ -114,3 +114,9 @@ Executable     idris
                                 FlexibleInstances, TemplateHaskell
                ghc-prof-options: -auto-all -caf-all
                ghc-options: -rtsopts
+               if os(linux)
+                  cpp-options: -DLINUX
+               if os(darwin)
+                  cpp-options: -DMACOSX
+               if os(windows)
+                  cpp-options: -DWINDOWS
