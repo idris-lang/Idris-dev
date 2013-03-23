@@ -116,14 +116,14 @@ data EffM : (m : Type -> Type) ->
 --   Eff : List (EFFECT m) -> Type -> Type
 
 implicit
-lift' : {default tactics { reflect findSubList 10; solve; }
+lift' : {default tactics { reflect findSubList 100; solve; }
            prf : SubList ys xs} ->
         EffM m ys ys' t -> EffM m xs (updateWith ys' xs prf) t
 lift' {prf} e = lift prf e
 
 implicit
 effect' : {a, b: _} -> {e : Effect} ->
-          {default tactics { reflect findEffElem 10; solve; } 
+          {default tactics { reflect findEffElem 100; solve; } 
              prf : EffElem e a xs} -> 
           (eff : e a b t) -> 
          EffM m xs (updateResTy xs prf eff) t

@@ -33,4 +33,10 @@ updateM : (x -> y) -> EffM m [STATE x] [STATE y] ()
 updateM f = do val <- get
                putM (f val) 
 
+locally : x -> Eff m [STATE x] t -> Eff m [STATE y] t
+locally newst prog = do st <- get
+                        putM newst
+                        val <- prog
+                        putM st
+                        return val
 
