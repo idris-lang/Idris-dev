@@ -547,7 +547,7 @@ pClass syn = do doc <- option "" (pDocComment '|')
                 acc <- pAccessibility
                 reserved "class"; fc <- pfc; cons <- pConstList syn; n_in <- pName
                 let n = expandNS syn n_in
-                cs <- many1 carg
+                cs <- many carg
                 reserved "where"; openBlock 
                 ds <- many $ pFunDecl syn
                 closeBlock
@@ -568,7 +568,7 @@ pInstance syn = do reserved "instance"; fc <- pfc
                                 return (Just n))
                    cs <- pConstList syn
                    cn <- pName
-                   args <- many1 (pSimpleExpr syn)
+                   args <- many (pSimpleExpr syn)
                    let sc = PApp fc (PRef fc cn) (map pexp args)
                    let t = bindList (PPi constraint) (map (\x -> (MN 0 "c", x)) cs) sc
                    reserved "where"; openBlock 
