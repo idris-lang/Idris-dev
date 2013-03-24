@@ -528,7 +528,9 @@ data PTactic' t = Intro [Name] | Intros | Focus Name
                 | ProofState | ProofTerm | Undo
                 | Try (PTactic' t) (PTactic' t)
                 | TSeq (PTactic' t) (PTactic' t)
-                | ReflectTac t -- see Language.Reflection module
+                | ApplyTactic t -- see Language.Reflection module
+                | Reflect t
+                | Fill t
                 | GoalType String (PTactic' t)
                 | Qed | Abandon
     deriving (Show, Eq, Functor)
@@ -553,6 +555,9 @@ instance Sized a => Sized (PTactic' a) where
   size Undo = 1
   size (Try l r) = 1 + size l + size r
   size (TSeq l r) = 1 + size l + size r
+  size (ApplyTactic t) = 1 + size t
+  size (Reflect t) = 1 + size t
+  size (Fill t) = 1 + size t
   size Qed = 1
   size Abandon = 1
 
