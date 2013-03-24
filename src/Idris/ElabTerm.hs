@@ -788,7 +788,7 @@ runTac autoSolve ist tac = do env <- get_env
                                ctxt <- get_context
                                env <- get_env
                                let tm'' = normalise ctxt env tm'
-                               attack -- let x : List (TTName, Binder TT) = reflectEnv in ...
+                               --  let x : List (TTName, Binder TT) = reflectEnv in ...
                                envval <- unique_hole (MN 0 "letval")
                                claim envval (RApp listTy envTupleType)
                                letn <- unique_hole (MN 0 "letvar")
@@ -800,7 +800,7 @@ runTac autoSolve ist tac = do env <- get_env
                                ctxt <- get_context
                                env <- get_env
                                let env'' = normalise ctxt env env'
-                               attack -- let z : Tactic = f x
+                               -- let z : Tactic = f x
                                restac <- unique_hole (MN 0 "letval")
                                claim restac tacticTy
                                letn <- unique_hole (MN 0 "letvar")

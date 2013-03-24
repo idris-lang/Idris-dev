@@ -59,19 +59,19 @@ rebuildEnv xs        (Drop rest) (y :: env) = y :: rebuildEnv xs rest env
 ---- The Effect EDSL itself ----
 
 -- some proof automation
-findEffElem : Nat -> Tactic -- Nat is maximum search depth
-findEffElem O = Refine "Here" `Seq` Solve 
-findEffElem (S n) = GoalType "EffElem" 
+findEffElem : Nat -> List (TTName, Binder TT) -> Tactic -- Nat is maximum search depth
+findEffElem O ctxt = Refine "Here" `Seq` Solve 
+findEffElem (S n) ctxt = GoalType "EffElem" 
           (Try (Refine "Here" `Seq` Solve)
-               (Refine "There" `Seq` (Solve `Seq` findEffElem n)))
+               (Refine "There" `Seq` (Solve `Seq` findEffElem n ctxt)))
 
-findSubList : Nat -> Tactic
-findSubList O = Refine "SubNil" `Seq` Solve
-findSubList (S n)
+findSubList : Nat -> List (TTName, Binder TT) -> Tactic
+findSubList O ctxt = Refine "SubNil" `Seq` Solve
+findSubList (S n) ctxt
    = GoalType "SubList" 
          (Try (Refine "subListId" `Seq` Solve)
          ((Try (Refine "Keep" `Seq` Solve)
-               (Refine "Drop" `Seq` Solve)) `Seq` findSubList n))
+               (Refine "Drop" `Seq` Solve)) `Seq` findSubList n ctxt))
 
 updateResTy : (xs : List EFFECT) -> EffElem e a xs -> e a b t -> 
               List EFFECT
@@ -116,14 +116,14 @@ data EffM : (m : Type -> Type) ->
 --   Eff : List (EFFECT m) -> Type -> Type
 
 implicit
-lift' : {default tactics { reflect findSubList 100; solve; }
+lift' : {default tactics { applyTactic findSubList 100; solve; }
            prf : SubList ys xs} ->
         EffM m ys ys' t -> EffM m xs (updateWith ys' xs prf) t
 lift' {prf} e = lift prf e
 
 implicit
 effect' : {a, b: _} -> {e : Effect} ->
-          {default tactics { reflect findEffElem 100; solve; } 
+          {default tactics { applyTactic findEffElem 100; solve; } 
              prf : EffElem e a xs} -> 
           (eff : e a b t) -> 
          EffM m xs (updateResTy xs prf eff) t

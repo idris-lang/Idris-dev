@@ -5,5 +5,5 @@ CABAL           :=cabal
 ## Enable Java RTS:
 #CABALFLAGS    :=-f Java
 ## Disable building of Effects
-CABALFLAGS :=-f NoEffects
+#CABALFLAGS :=-f NoEffects
 
