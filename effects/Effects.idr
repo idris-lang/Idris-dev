@@ -59,19 +59,19 @@ rebuildEnv xs        (Drop rest) (y :: env) = y :: rebuildEnv xs rest env
 ---- The Effect EDSL itself ----
 
 -- some proof automation
-findEffElem : Nat -> List (TTName, Binder TT) -> Tactic -- Nat is maximum search depth
-findEffElem O ctxt = Refine "Here" `Seq` Solve 
-findEffElem (S n) ctxt = GoalType "EffElem" 
+findEffElem : Nat -> List (TTName, Binder TT) -> TT -> Tactic -- Nat is maximum search depth
+findEffElem O ctxt goal = Refine "Here" `Seq` Solve 
+findEffElem (S n) ctxt goal = GoalType "EffElem" 
           (Try (Refine "Here" `Seq` Solve)
-               (Refine "There" `Seq` (Solve `Seq` findEffElem n ctxt)))
+               (Refine "There" `Seq` (Solve `Seq` findEffElem n ctxt goal)))
 
-findSubList : Nat -> List (TTName, Binder TT) -> Tactic
-findSubList O ctxt = Refine "SubNil" `Seq` Solve
-findSubList (S n) ctxt
+findSubList : Nat -> List (TTName, Binder TT) -> TT -> Tactic
+findSubList O ctxt goal = Refine "SubNil" `Seq` Solve
+findSubList (S n) ctxt goal
    = GoalType "SubList" 
          (Try (Refine "subListId" `Seq` Solve)
          ((Try (Refine "Keep" `Seq` Solve)
-               (Refine "Drop" `Seq` Solve)) `Seq` findSubList n ctxt))
+               (Refine "Drop" `Seq` Solve)) `Seq` findSubList n ctxt goal))
 
 updateResTy : (xs : List EFFECT) -> EffElem e a xs -> e a b t -> 
               List EFFECT
