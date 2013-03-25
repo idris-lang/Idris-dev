@@ -179,6 +179,9 @@ insertScript prf (x : xs) = x : insertScript prf xs
 
 process :: FilePath -> Command -> Idris ()
 process fn Help = iputStrLn displayHelp
+process fn (ChangeDirectory f)
+                 = do liftIO $ setCurrentDirectory f
+                      return ()
 process fn (Eval t) 
                  = do (tm, ty) <- elabVal toplevel False t
                       ctxt <- getContext

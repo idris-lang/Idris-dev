@@ -167,6 +167,7 @@ data Command = Quit
              | TotCheck Name
              | Reload
              | Load FilePath 
+             | ChangeDirectory FilePath
              | ModImport String 
              | Edit
              | Compile Target String
