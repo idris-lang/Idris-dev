@@ -65,13 +65,11 @@ firstEq ((_, (Let _ y))::(_, (Let _ x))::(_, Let _ f)::Nil) _ = Exact (App (App 
 firstEq ((y, Lam yt)::(x, Lam xt)::(_, Let _ f)::Nil) _ = Exact (App (App f (P (Bound) x xt)) (P Bound y yt))
 firstEq xs _ = Exact (TConst (I 0))
 
--- | Skip 3 arguments of the proof context and return the fourth one which
--- has to be introduced.
--- Used for the tactical dispatch example, which will push dispatch,
--- its current proof context, the goal, and the result of dispatch applied to it
--- first.
+-- | Skip 1 argument of the proof context and return the second one which
+-- has to be introduced. Used for the tactical dispatch example, which 
+-- will push dispatch, as first env agrument.
 innerTac : List (TTName, Binder TT) -> TT -> Tactic
-innerTac (_::_::_::_::(x, Lam xt)::_) _ = Exact (P Bound x xt)
+innerTac (_::(x, Lam xt)::_) _ = Exact (P Bound x xt)
 
 -- | Returns the reflected representation of innerTac
 innerTacTT : TT

@@ -773,64 +773,38 @@ runTac autoSolve ist tac = do env <- get_env
     runT Solve = solve
     runT (Try l r) = do try' (runT l) (runT r) True
     runT (TSeq l r) = do runT l; runT r
-    runT (ApplyTactic tm) = do tenv <- get_env -- store the environment before it is loaded with junk
+    runT (ApplyTactic tm) = do tenv <- get_env -- store the environment
                                tgoal <- goal -- store the goal
                                attack -- let f : List (TTName, Binder TT) -> TT -> Tactic = tm in ...
-                               valn <- unique_hole (MN 0 "tacval")
-                               claim valn (RBind (UN "__pi_arg") 
-                                             (Pi (RApp listTy envTupleType))
-                                             (RBind (UN "__pi_arg1") (Pi (Var $ reflm "TT")) tacticTy))
-                               tacn <- unique_hole (MN 0 "tacn" )
-                               letbind tacn (RBind (UN "__pi_arg") 
-                                               (Pi (RApp listTy envTupleType))
-                                               (RBind (UN "__pi_arg1") (Pi (Var $ reflm "TT")) tacticTy))
-                                            (Var valn)
-                               focus valn 
+                               script <- unique_hole (MN 0 "script")
+                               claim script scriptTy
+                               scriptvar <- unique_hole (MN 0 "scriptvar" )
+                               letbind scriptvar scriptTy (Var script)
+                               focus script
                                elab ist toplevel False False (MN 0 "tac") tm
-                               (tm', ty') <- get_type_val (Var tacn)
-                               ctxt <- get_context
-                               env <- get_env
-                               let tm'' = normalise ctxt env tm'
-                               --  let x : List (TTName, Binder TT) = reflectEnv in ...
-                               envval <- unique_hole (MN 0 "letval")
-                               claim envval (RApp listTy envTupleType)
-                               letn <- unique_hole (MN 0 "letvar")
-                               letbind letn (RApp listTy envTupleType) (Var envval)
-                               focus envval
-                               env <- get_env
-                               elab ist toplevel False False (MN 0 "tac") (PQuote (reflectEnv tenv))
-                               (env', _) <- get_type_val (Var letn)
-                               ctxt <- get_context
-                               env <- get_env
-                               let env'' = normalise ctxt env env'
-                               -- let g : TT = reflect tgoal
-                               goalval <- unique_hole (MN 0 "letval")
-                               claim goalval (Var $ reflm "TT")
-                               letg <- unique_hole (MN 0 "letvar")
-                               letbind letg (Var $ reflm "TT") (Var goalval)
-                               focus goalval
-                               env <- get_env
-                               elab ist toplevel False False (MN 0 "tac") (PQuote (reflect tgoal))
-                               (goal', _) <- get_type_val (Var letg)
-                               ctxt <- get_context
-                               env <- get_env
-                               let goal'' = hnf ctxt env goal'
-                               -- let z : Tactic = f x g
-                               restac <- unique_hole (MN 0 "letval")
+                               (script', _) <- get_type_val (Var scriptvar)
+                               -- now that we have the script apply
+                               -- it to the reflected goal and context
+                               restac <- unique_hole (MN 0 "restac")
                                claim restac tacticTy
-                               letn <- unique_hole (MN 0 "letvar")
-                               letbind letn tacticTy (Var restac)
                                focus restac
-                               elab 
-                                 ist toplevel False False (MN 0 "tac")
-                                 (PQuote (raw_apply (forget tm'') [forget env'', forget goal'']))
-                               (res, _) <- get_type_val (Var letn)
+                               fill (raw_apply (forget script') 
+                                               [reflectEnv tenv, reflect tgoal])
+                               restac' <- get_guess
+                               solve
+                               -- normalise the result in order to
+                               -- reify it
                                ctxt <- get_context
                                env <- get_env
-                               let tactic = normalise ctxt env res                            
+                               let tactic = normalise ctxt env restac'
                                runReflected tactic
         where tacticTy = Var (reflm "Tactic")
               listTy = Var (NS (UN "List") ["List", "Prelude"])
+              scriptTy = (RBind (UN "__pi_arg") 
+                                (Pi (RApp listTy envTupleType))
+                                    (RBind (UN "__pi_arg1") 
+                                           (Pi (Var $ reflm "TT")) tacticTy))
+
     runT (Reflect v) = do attack -- let x = reflect v in ...
                           tyn <- unique_hole (MN 0 "letty")
                           claim tyn RType
