@@ -358,9 +358,8 @@ exact _ _ _ _ = fail "Can't fill here."
 -- As exact, but attempts to solve other goals by unification
 
 fill :: Raw -> RunTactic
-fill guess ctxt env (Bind x (Hole ty) sc) =
+fill guess ctxt env (Bind x (Hole ty) sc) = 
     do (val, valty) <- lift $ check ctxt env guess
-       s <- get
 --        let valtyn = normalise ctxt env valty
 --        let tyn = normalise ctxt env ty
        ns <- unify' ctxt env valty ty

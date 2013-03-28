@@ -525,6 +525,12 @@ convEq ctxt = ceq [] where
     ceq ps (P xt x _) (P yt y _) 
         | x == y || (x, y) `elem` ps || (y,x) `elem` ps = return True
         | otherwise = sameDefs ps x y
+    ceq ps x (Bind n (Lam t) (App y (V 0))) = ceq ps x y
+    ceq ps (Bind n (Lam t) (App x (V 0))) y = ceq ps x y
+    ceq ps x (Bind n (Lam t) (App y (P Bound n' _)))
+        | n == n' = ceq ps x y
+    ceq ps (Bind n (Lam t) (App x (P Bound n' _))) y
+        | n == n' = ceq ps x y
     ceq ps (V x)      (V y)      = return (x == y)
     ceq ps (Bind _ xb xs) (Bind _ yb ys) 
                              = liftM2 (&&) (ceqB ps xb yb) (ceq ps xs ys)
