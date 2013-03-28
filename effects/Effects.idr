@@ -175,8 +175,12 @@ eff env (new r prog) k
 eff env (catch prog handler) k
    = catch (eff env prog k)
            (\e => eff env (handler e) k)
+-- FIXME:
+-- xs is needed explicitly because otherwise the pattern binding for
+-- 'l' appears too late. Solution seems to be to reorder patterns at the
+-- end so that everything is in scope when it needs to be.
 eff {xs = [l ::: x]} env (l :- prog) k
-   = let env' = unlabel {l} env in
+   = let env' = unlabel env in
          eff env' prog (\envk, p' => k (relabel l envk) p')
 
 run : Applicative m => Env m xs -> EffM m xs xs' a -> m a
