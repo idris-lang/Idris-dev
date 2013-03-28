@@ -81,7 +81,7 @@ check' holes ctxt env top = chk env top where
                     let apty = simplify initContext False env 
                                         (Bind x (Let aty av) t)
                     return (App fv av, apty)
-             t -> fail "Can't apply a non-function type"
+             t -> lift $ tfail $ NonFunctionType fv fty -- "Can't apply a non-function type"
     -- This rather unpleasant hack is needed because during incomplete 
     -- proofs, variables are locally bound with an explicit name. If we just 
     -- make sure bound names in function types are locally unique, machine

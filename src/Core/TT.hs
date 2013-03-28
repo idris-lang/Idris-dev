@@ -57,6 +57,8 @@ data Err = Msg String
               -- unification succeed
          | InfiniteUnify Name Term [(Name, Type)]
          | CantConvert Term Term [(Name, Type)]
+         | NonFunctionType Term Term
+         | CantIntroduce Term
          | NoSuchVariable Name
          | NoTypeDecl Name
          | NotInjective Term Term Term

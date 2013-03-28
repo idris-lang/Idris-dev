@@ -422,7 +422,7 @@ introTy ty mn ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' =
                                      let (uh, uns) = unified ps
 --                                      put (ps { unified = (uh, uns ++ ns) })
                                      return $ Bind n (Lam tyv) (Bind x (Hole t') (P Bound x t'))
-           _ -> fail "Nothing to introduce"
+           _ -> lift $ tfail $ CantIntroduce t'
 introTy ty n ctxt env _ = fail "Can't introduce here."
 
 intro :: Maybe Name -> RunTactic
@@ -437,7 +437,7 @@ intro mn ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' =
            Bind y (Pi s) t -> -- trace ("in type " ++ show t') $
                let t' = instantiate (P Bound n s) (pToV y t) in 
                    return $ Bind n (Lam s) (Bind x (Hole t') (P Bound x t'))
-           _ -> fail "Nothing to introduce"
+           _ -> lift $ tfail $ CantIntroduce t'
 intro n ctxt env _ = fail "Can't introduce here."
 
 forall :: Name -> Raw -> RunTactic
