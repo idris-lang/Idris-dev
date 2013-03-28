@@ -469,6 +469,23 @@ apply_elab n args =
     mkMN n@(UN x) = MN 1000 x
     mkMN (NS n ns) = NS (mkMN n) ns
 
+-- If the goal is not a Pi-type, invent some names and make it a pi type
+checkPiGoal :: Elab' aux ()
+checkPiGoal = do g <- goal
+                 case g of
+                    Bind _ (Pi _) _ -> return ()
+                    _ -> do a <- unique_hole (MN 0 "argTy")
+                            b <- unique_hole (MN 0 "retTy")
+                            f <- unique_hole (MN 0 "f")
+                            claim a RType
+                            claim b RType
+                            claim f (RBind (MN 0 "aX") (Pi (Var a)) (Var b))
+                            movelast a
+                            movelast b
+                            fill (Var f)
+                            solve
+                            focus f
+
 simple_app :: Elab' aux () -> Elab' aux () -> Elab' aux ()
 simple_app fun arg =
     do a <- unique_hole (MN 0 "argTy")

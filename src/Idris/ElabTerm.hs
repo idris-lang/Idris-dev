@@ -230,6 +230,7 @@ elab ist info pattern tcgen fn tm
                -- let sc' = mapPT (repN n n') sc
                ptm <- get_term
                g <- goal
+               checkPiGoal
                attack; intro (Just n); 
                -- trace ("------ intro " ++ show n ++ " ---- \n" ++ show ptm) 
                elabE (True, a) sc; solve
@@ -239,6 +240,7 @@ elab ist info pattern tcgen fn tm
           = do hsin <- get_holes
                ptmin <- get_term
                tyn <- unique_hole (MN 0 "lamty")
+               checkPiGoal
                claim tyn RType
                attack
                ptm <- get_term
