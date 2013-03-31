@@ -73,6 +73,7 @@ data Err = Msg String
          | ProofSearchFail Err
          | NoRewriting Term
          | At FC Err
+         | ProviderError String
   deriving Eq
 
 instance Sized Err where
@@ -91,6 +92,7 @@ instance Sized Err where
   size UniverseError = 1
   size ProgramLineComment = 1
   size (At fc err) = size fc + size err
+  size (ProviderError msg) = length msg
   size _ = 1
 
 score :: Err -> Int
@@ -106,6 +108,7 @@ instance Show Err where
     show (CantUnify _ l r e sc i) = "CantUnify " ++ show l ++ " " ++ show r ++ " "
                                       ++ show e ++ " in " ++ show sc ++ " " ++ show i
     show (Inaccessible n) = show n ++ " is not an accessible pattern variable"
+    show (ProviderError msg) = "Type provider error: " ++ msg
     show _ = "Error"
 
 instance Pretty Err where
@@ -118,6 +121,7 @@ instance Pretty Err where
     else
       text "Cannot unify" <+> colon <+> pretty l <+> text "and" <+> pretty r $$
         nest nestingSize (text "where" <+> pretty e <+> text "with" <+> (text . show $ i))
+  pretty (ProviderError msg) = text msg
   pretty _ = text "Error"
 
 data TC a = OK a
