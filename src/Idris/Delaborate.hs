@@ -118,6 +118,7 @@ pshow i (AlreadyDefined n) = show n ++ " is already defined"
 pshow i (ProofSearchFail e) = pshow i e
 pshow i (NoRewriting tm) = "rewrite did not change type " ++ show (delab i tm)
 pshow i (At f e) = show f ++ ":" ++ pshow i e
+pshow i (ProviderError msg) = "Type provider error: " ++ msg
 
 showSc i [] = ""
 showSc i xs = "\n\nIn context:\n" ++ showSep "\n" (map showVar (reverse xs))
