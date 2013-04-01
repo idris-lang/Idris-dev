@@ -197,7 +197,7 @@ elabProvider info syn fc n ty tm
                        "\".\nYou must turn on TypeProviders extension."
            else do let expected = providerTy fc ty
                    let using = unProv fc tm
-                   logLvl 1 $ "** Providing " ++
+                   logLvl 1 $ "Providing " ++
                               show n ++ " : " ++ show expected ++
                               " as " ++ show using
                    (e', et) <- elabVal toplevel False using
@@ -207,6 +207,8 @@ elabProvider info syn fc n ty tm
                    let et' = normaliseAll ctxt [] et
                    elabType info syn "" fc [] n ty
                    rhs <- execute e''
+                   logLvl 1 $ "Normalized " ++ show n ++ "'s RHS to " ++ show rhs
+                   providerError rhs
                    elabClauses info fc [] n [PClause fc n (PRef fc $ n) [] (delab i rhs) []]
                    logLvl 1 $ "** Elaborated: " ++ show e' ++ " :as: " ++ show et
                    logLvl 1 $ "** Evaluated: " ++ show rhs ++ " :as: " ++ show et'
