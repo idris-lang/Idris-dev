@@ -44,7 +44,7 @@ cleanJavaLib verbosity
        execPomExists <- doesFileExist ("java" </> "executable_pom.xml")
        when pomExists $ removeFile ("java" </> "executable_pom.xml")
 
-installStdLib pkg local verbosity copy
+installStdLib pkg local withoutEffects verbosity copy
     = do let dirs = L.absoluteInstallDirs pkg local copy
          let idir = datadir dirs
          let icmd = idrisCmd local
@@ -54,11 +54,12 @@ installStdLib pkg local verbosity copy
                , "TARGET=" ++ idir
                , "IDRIS=" ++ icmd
                ]
-         make verbosity
-               [ "-C", "effects", "install"
-               , "TARGET=" ++ idir
-               , "IDRIS=" ++ icmd
-               ]
+         unless withoutEffects $
+           make verbosity
+                 [ "-C", "effects", "install"
+                 , "TARGET=" ++ idir
+                 , "IDRIS=" ++ icmd
+                 ]
          let idirRts = idir </> "rts"
          putStrLn $ "Installing run time system in " ++ idirRts
          make verbosity
@@ -93,17 +94,18 @@ removeLibIdris local verbosity
                , "IDRIS=" ++ icmd
                ]
 
-checkStdLib local verbosity
+checkStdLib local withoutEffects verbosity
     = do let icmd = idrisCmd local
          putStrLn $ "Building libraries..."
          make verbosity
                [ "-C", "lib", "check"
                , "IDRIS=" ++ icmd
                ]
-         make verbosity
-               [ "-C", "effects", "check"
-               , "IDRIS=" ++ icmd
-               ]
+         unless withoutEffects $
+           make verbosity
+                 [ "-C", "effects", "check"
+                 , "IDRIS=" ++ icmd
+                 ]
          make verbosity
                [ "-C", "rts", "check"
                , "IDRIS=" ++ icmd
@@ -116,6 +118,12 @@ javaFlag flags =
     Just True -> True
     Just False -> False
     Nothing -> False
+
+noEffectsFlag flags =
+   case lookup (FlagName "noeffects") (S.configConfigurationsFlags flags) of
+      Just True -> True
+      Just False -> False
+      Nothing -> False
 
 preparePoms version
     = do pomTemplate <- TIO.readFile ("java" </> "pom_template.xml")
@@ -132,11 +140,13 @@ main = do
   defaultMainWithHooks $ simpleUserHooks
         { postCopy = \ _ flags pkg lbi -> do
               let verb = S.fromFlag $ S.copyVerbosity flags
-              installStdLib pkg lbi verb
+              let withoutEffects = noEffectsFlag $ configFlags lbi
+              installStdLib pkg lbi withoutEffects verb
                                     (S.fromFlag $ S.copyDest flags)
         , postInst = \ _ flags pkg lbi -> do
               let verb = (S.fromFlag $ S.installVerbosity flags)
-              installStdLib pkg lbi verb
+              let withoutEffects = noEffectsFlag $ configFlags lbi
+              installStdLib pkg lbi withoutEffects verb
                                     NoCopyDest
               when (javaFlag $ configFlags lbi) 
                    (installJavaLib pkg 
@@ -155,6 +165,7 @@ main = do
               cleanJavaLib verb
         , postBuild = \ _ flags _ lbi -> do
               let verb = S.fromFlag $ S.buildVerbosity flags
-              checkStdLib lbi verb
+              let withoutEffects = noEffectsFlag $ configFlags lbi
+              checkStdLib lbi withoutEffects verb
               when (javaFlag $ configFlags lbi) (checkJavaLib verb)
         }

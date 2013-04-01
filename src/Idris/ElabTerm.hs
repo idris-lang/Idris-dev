@@ -13,6 +13,7 @@ import Core.Evaluate
 import Control.Monad
 import Control.Monad.State
 import Data.List
+
 import Debug.Trace
 
 -- Data to pass to recursively called elaborators; e.g. for where blocks,
@@ -774,22 +775,67 @@ runTac autoSolve ist tac = do env <- get_env
     runT Solve = solve
     runT (Try l r) = do try' (runT l) (runT r) True
     runT (TSeq l r) = do runT l; runT r
-    runT (ReflectTac tm) = do attack -- let x : Tactic = tm in ...
-                              valn <- unique_hole (MN 0 "tacval")
-                              claim valn (Var tacticTy)
-                              tacn <- unique_hole (MN 0 "tacn")
-                              letbind tacn (Var tacticTy) (Var valn)
-                              focus valn
-                              elab ist toplevel False False (MN 0 "tac") tm
-                              (tm', ty') <- get_type_val (Var tacn)
-                              ctxt <- get_context
-                              env <- get_env
-                              let tactic = normalise ctxt env tm'
-                              runReflected tactic
---                               p <- get_term
---                               trace (show p ++ "\n\n") $ 
-                              return ()
-        where tacticTy = tacm "Tactic"
+    runT (ApplyTactic tm) = do tenv <- get_env -- store the environment
+                               tgoal <- goal -- store the goal
+                               attack -- let f : List (TTName, Binder TT) -> TT -> Tactic = tm in ...
+                               script <- unique_hole (MN 0 "script")
+                               claim script scriptTy
+                               scriptvar <- unique_hole (MN 0 "scriptvar" )
+                               letbind scriptvar scriptTy (Var script)
+                               focus script
+                               elab ist toplevel False False (MN 0 "tac") tm
+                               (script', _) <- get_type_val (Var scriptvar)
+                               -- now that we have the script apply
+                               -- it to the reflected goal and context
+                               restac <- unique_hole (MN 0 "restac")
+                               claim restac tacticTy
+                               focus restac
+                               fill (raw_apply (forget script') 
+                                               [reflectEnv tenv, reflect tgoal])
+                               restac' <- get_guess
+                               solve
+                               -- normalise the result in order to
+                               -- reify it
+                               ctxt <- get_context
+                               env <- get_env
+                               let tactic = normalise ctxt env restac'
+                               runReflected tactic
+        where tacticTy = Var (reflm "Tactic")
+              listTy = Var (NS (UN "List") ["List", "Prelude"])
+              scriptTy = (RBind (UN "__pi_arg") 
+                                (Pi (RApp listTy envTupleType))
+                                    (RBind (UN "__pi_arg1") 
+                                           (Pi (Var $ reflm "TT")) tacticTy))
+
+    runT (Reflect v) = do attack -- let x = reflect v in ...
+                          tyn <- unique_hole (MN 0 "letty")
+                          claim tyn RType
+                          valn <- unique_hole (MN 0 "letval")
+                          claim valn (Var tyn)
+                          letn <- unique_hole (MN 0 "letvar")
+                          letbind letn (Var tyn) (Var valn)
+                          focus valn
+                          elab ist toplevel False False (MN 0 "tac") v
+                          (value, _) <- get_type_val (Var letn)
+                          ctxt <- get_context
+                          env <- get_env
+                          let value' = hnf ctxt env value
+                          runTac autoSolve ist (Exact $ PQuote (reflect value'))
+    runT (Fill v) = do attack -- let x = fill x in ...
+                       tyn <- unique_hole (MN 0 "letty")
+                       claim tyn RType
+                       valn <- unique_hole (MN 0 "letval")
+                       claim valn (Var tyn)
+                       letn <- unique_hole (MN 0 "letvar")
+                       letbind letn (Var tyn) (Var valn)
+                       focus valn
+                       elab ist toplevel False False (MN 0 "tac") v
+                       (value, _) <- get_type_val (Var letn)
+                       ctxt <- get_context
+                       env <- get_env
+                       let value' = normalise ctxt env value
+                       rawValue <- reifyRaw value'
+                       runTac autoSolve ist (Exact $ PQuote rawValue)
     runT (GoalType n tac) = do g <- goal
                                case unApply g of
                                     (P _ n' _, _) -> 
@@ -799,24 +845,351 @@ runTac autoSolve ist tac = do env <- get_env
                                     _ -> fail "Wrong goal type"
     runT x = fail $ "Not implemented " ++ show x
 
-    runReflected t = do t' <- reify t
+    runReflected t = do t' <- reify ist t
                         runTac autoSolve ist t'
-    tacm n = NS (UN n) ["Reflection", "Language"]
 
-    reify :: Term -> ElabD PTactic
-    reify (P _ n _) | n == tacm "Trivial" = return Trivial
-    reify (P _ n _) | n == tacm "Solve" = return Solve
-    reify f@(App _ _) 
-          | (P _ f _, args) <- unApply f = reifyAp f args
-    reify t = fail ("Unknown tactic " ++ show t)
+-- | Prefix a name with the "Reflection.Language" namespace
+reflm :: String -> Name
+reflm n = NS (UN n) ["Reflection", "Language"]
 
-    reifyAp t [l, r] | t == tacm "Try" = liftM2 Try (reify l) (reify r)
-    reifyAp t [Constant (Str x)] 
-                     | t == tacm "Refine" = return $ Refine (UN x) []
-    reifyAp t [l, r] | t == tacm "Seq" = liftM2 TSeq (reify l) (reify r)
-    reifyAp t [Constant (Str n), x] 
-                     | t == tacm "GoalType" = liftM (GoalType n) (reify x)
-    reifyAp f args = fail ("Unknown tactic " ++ show (f, args)) -- shouldn't happen
+
+-- | Reify tactics from their reflected representation
+reify :: IState -> Term -> ElabD PTactic
+reify _ (P _ n _) | n == reflm "Intros" = return Intros
+reify _ (P _ n _) | n == reflm "Trivial" = return Trivial
+reify _ (P _ n _) | n == reflm "Solve" = return Solve
+reify _ (P _ n _) | n == reflm "Compute" = return Compute
+reify ist t@(App _ _)
+          | (P _ f _, args) <- unApply t = reifyApp ist f args
+reify _ t = fail ("Unknown tactic " ++ show t)
+
+reifyApp :: IState -> Name -> [Term] -> ElabD PTactic
+reifyApp ist t [l, r] | t == reflm "Try" = liftM2 Try (reify ist l) (reify ist r)
+reifyApp _ t [x]
+           | t == reflm "Refine" = do n <- reifyTTName x
+                                      return $ Refine n []
+reifyApp ist t [l, r] | t == reflm "Seq" = liftM2 TSeq (reify ist l) (reify ist r)
+reifyApp ist t [Constant (Str n), x]
+             | t == reflm "GoalType" = liftM (GoalType n) (reify ist x)
+reifyApp _ t [Constant (Str n)]
+           | t == reflm "Intro" = return $ Intro [UN n]
+reifyApp ist t [t']   
+             | t == reflm "ApplyTactic" = liftM (ApplyTactic . delab ist) (reifyTT t')
+reifyApp ist t [t']
+             | t == reflm "Reflect" = liftM (Reflect . delab ist) (reifyTT t')
+reifyApp _ t [t']
+           | t == reflm "Fill" = liftM (Fill . PQuote) (reifyRaw t')
+reifyApp ist t [t']
+             | t == reflm "Exact" = liftM (Exact . delab ist) (reifyTT t')
+reifyApp ist t [x]
+             | t == reflm "Focus" = liftM Focus (reifyTTName x)
+reifyApp ist t [t']
+             | t == reflm "Rewrite" = liftM (Rewrite . delab ist) (reifyTT t')
+reifyApp ist t [n, t']
+             | t == reflm "LetTac" = do n'  <- reifyTTName n
+                                        t'' <- reifyTT t'
+                                        return $ LetTac n' (delab ist t')
+reifyApp ist t [n, tt', t']
+             | t == reflm "LetTacTy" = do n'   <- reifyTTName n
+                                          tt'' <- reifyTT tt'
+                                          t''  <- reifyTT t'
+                                          return $ LetTacTy n' (delab ist tt'') (delab ist t'')
+reifyApp _ f args = fail ("Unknown tactic " ++ show (f, args)) -- shouldn't happen
+
+-- | Reify terms from their reflected representation
+reifyTT :: Term -> ElabD Term
+reifyTT t@(App _ _)
+        | (P _ f _, args) <- unApply t = reifyTTApp f args
+reifyTT t@(P _ n _)
+        | n == reflm "Erased" = return $ Erased
+reifyTT t@(P _ n _)
+        | n == reflm "Impossible" = return $ Impossible
+reifyTT t = fail ("Unknown reflection term: " ++ show t)
+
+reifyTTApp :: Name -> [Term] -> ElabD Term
+reifyTTApp t [nt, n, x]
+           | t == reflm "P" = do nt' <- reifyTTNameType nt
+                                 n'  <- reifyTTName n
+                                 x'  <- reifyTT x
+                                 return $ P nt' n' x'
+reifyTTApp t [Constant (I i)]
+           | t == reflm "V" = return $ V i
+reifyTTApp t [n, b, x]
+           | t == reflm "Bind" = do n' <- reifyTTName n
+                                    b' <- reifyTTBinder reifyTT (reflm "TT") b
+                                    x' <- reifyTT x
+                                    return $ Bind n' b' x'
+reifyTTApp t [f, x]
+           | t == reflm "App" = do f' <- reifyTT f
+                                   x' <- reifyTT x
+                                   return $ App f' x'
+reifyTTApp t [c]
+           | t == reflm "TConst" = liftM Constant (reifyTTConst c)
+reifyTTApp t [t', Constant (I i)]
+           | t == reflm "Proj" = do t'' <- reifyTT t'
+                                    return $ Proj t'' i
+reifyTTApp t [tt]
+           | t == reflm "TType" = liftM TType (reifyTTUExp tt)
+reifyTTApp t args = fail ("Unknown reflection term: " ++ show (t, args))
+
+-- | Reify raw terms from their reflected representation
+reifyRaw :: Term -> ElabD Raw
+reifyRaw t@(App _ _)
+         | (P _ f _, args) <- unApply t = reifyRawApp f args
+reifyRaw t@(P _ n _)
+         | n == reflm "RType" = return $ RType
+reifyRaw t = fail ("Unknown reflection raw term: " ++ show t)
+
+reifyRawApp :: Name -> [Term] -> ElabD Raw
+reifyRawApp t [n]
+            | t == reflm "Var" = liftM Var (reifyTTName n)
+reifyRawApp t [n, b, x]
+            | t == reflm "RBind" = do n' <- reifyTTName n
+                                      b' <- reifyTTBinder reifyRaw (reflm "Raw") b
+                                      x' <- reifyRaw x
+                                      return $ RBind n' b' x'
+reifyRawApp t [f, x]
+            | t == reflm "RApp" = liftM2 RApp (reifyRaw f) (reifyRaw x)
+reifyRawApp t [t']
+            | t == reflm "RForce" = liftM RForce (reifyRaw t')
+reifyRawApp t [c]
+            | t == reflm "RConstant" = liftM RConstant (reifyTTConst c)
+reifyRawApp t args = fail ("Unknown reflection raw term: " ++ show (t, args))
+
+reifyTTName :: Term -> ElabD Name
+reifyTTName t@(App _ _)
+            | (P _ f _, args) <- unApply t = reifyTTNameApp f args
+reifyTTName t = fail ("Unknown reflection term name: " ++ show t)
+
+reifyTTNameApp :: Name -> [Term] -> ElabD Name
+reifyTTNameApp t [Constant (Str n)]
+               | t == reflm "UN" = return $ UN n
+reifyTTNameApp t [n, ns]
+               | t == reflm "NS" = do n'  <- reifyTTName n
+                                      ns' <- reifyTTNamespace ns
+                                      return $ NS n' ns'
+reifyTTNameApp t [Constant (I i), Constant (Str n)]
+               | t == reflm "MN" = return $ MN i n
+reifyTTNameApp t []
+               | t == reflm "NErased" = return NErased
+reifyTTNameApp t args = fail ("Unknown reflection term name: " ++ show (t, args))
+
+reifyTTNamespace :: Term -> ElabD [String]
+reifyTTNamespace t@(App _ _) 
+  = case unApply t of
+      (P _ f _, [Constant StrType]) 
+           | f == NS (UN "Nil") ["List", "Prelude"] -> return []
+      (P _ f _, [Constant StrType, Constant (Str n), ns])
+           | f == NS (UN "::")  ["List", "Prelude"] -> liftM (n:) (reifyTTNamespace ns)
+      _ -> fail ("Unknown reflection namespace arg: " ++ show t)
+reifyTTNamespace t = fail ("Unknown reflection namespace arg: " ++ show t)
+
+reifyTTNameType :: Term -> ElabD NameType
+reifyTTNameType t@(P _ n _) | n == reflm "Bound" = return $ Bound
+reifyTTNameType t@(P _ n _) | n == reflm "Ref" = return $ Ref
+reifyTTNameType t@(App _ _)
+  = case unApply t of
+      (P _ f _, [Constant (I tag), Constant (I num)])
+           | f == reflm "DCon" -> return $ DCon tag num
+           | f == reflm "TCon" -> return $ TCon tag num
+      _ -> fail ("Unknown reflection name type: " ++ show t)
+reifyTTNameType t = fail ("Unknown reflection name type: " ++ show t)
+
+reifyTTBinder :: (Term -> ElabD a) -> Name -> Term -> ElabD (Binder a)
+reifyTTBinder reificator binderType t@(App _ _)
+  = case unApply t of
+     (P _ f _, bt:args) | forget bt == Var binderType 
+       -> reifyTTBinderApp reificator f args
+     _ -> fail ("Mismatching binder reflection: " ++ show t)
+reifyTTBinder _ _ t = fail ("Unknown reflection binder: " ++ show t)
+
+reifyTTBinderApp :: (Term -> ElabD a) -> Name -> [Term] -> ElabD (Binder a)
+reifyTTBinderApp reif f [t]
+                      | f == reflm "Lam" = liftM Lam (reif t)
+reifyTTBinderApp reif f [t]
+                      | f == reflm "Pi" = liftM Pi (reif t)
+reifyTTBinderApp reif f [x, y]
+                      | f == reflm "Let" = liftM2 Let (reif x) (reif y)
+reifyTTBinderApp reif f [x, y]
+                      | f == reflm "NLet" = liftM2 NLet (reif x) (reif y)
+reifyTTBinderApp reif f [t]
+                      | f == reflm "Hole" = liftM Hole (reif t)
+reifyTTBinderApp reif f [t]
+                      | f == reflm "GHole" = liftM GHole (reif t)
+reifyTTBinderApp reif f [x, y]
+                      | f == reflm "Guess" = liftM2 Guess (reif x) (reif y)
+reifyTTBinderApp reif f [t]
+                      | f == reflm "PVar" = liftM PVar (reif t)
+reifyTTBinderApp reif f [t]
+                      | f == reflm "PVTy" = liftM PVTy (reif t)
+reifyTTBinderApp _ f args = fail ("Unknown reflection binder: " ++ show (f, args))
+
+reifyTTConst :: Term -> ElabD Const
+reifyTTConst (P _ n _) | n == reflm "IType"    = return $ IType
+reifyTTConst (P _ n _) | n == reflm "BIType"   = return $ BIType
+reifyTTConst (P _ n _) | n == reflm "FlType"   = return $ FlType
+reifyTTConst (P _ n _) | n == reflm "ChType"   = return $ ChType
+reifyTTConst (P _ n _) | n == reflm "StrType"  = return $ StrType
+reifyTTConst (P _ n _) | n == reflm "B8Type"   = return $ B8Type
+reifyTTConst (P _ n _) | n == reflm "B16Type"  = return $ B16Type
+reifyTTConst (P _ n _) | n == reflm "B32Type"  = return $ B32Type
+reifyTTConst (P _ n _) | n == reflm "B64Type"  = return $ B64Type
+reifyTTConst (P _ n _) | n == reflm "PtrType"  = return $ PtrType
+reifyTTConst (P _ n _) | n == reflm "VoidType" = return $ VoidType
+reifyTTConst (P _ n _) | n == reflm "Forgot"   = return $ Forgot
+reifyTTConst t@(App _ _)
+             | (P _ f _, [arg]) <- unApply t   = reifyTTConstApp f arg
+reifyTTConst t = fail ("Unknown reflection constant: " ++ show t)
+
+reifyTTConstApp :: Name -> Term -> ElabD Const
+reifyTTConstApp f (Constant c@(I _))
+                | f == reflm "I"   = return $ c
+reifyTTConstApp f (Constant c@(BI _))
+                | f == reflm "BI"  = return $ c
+reifyTTConstApp f (Constant c@(Fl _))
+                | f == reflm "Fl"  = return $ c
+reifyTTConstApp f (Constant c@(I _))
+                | f == reflm "Ch"  = return $ c
+reifyTTConstApp f (Constant c@(Str _))
+                | f == reflm "Str" = return $ c
+reifyTTConstApp f (Constant c@(B8 _))
+                | f == reflm "B8"  = return $ c
+reifyTTConstApp f (Constant c@(B16 _))
+                | f == reflm "B16" = return $ c
+reifyTTConstApp f (Constant c@(B32 _))
+                | f == reflm "B32" = return $ c
+reifyTTConstApp f (Constant c@(B64 _))
+                | f == reflm "B64" = return $ c
+reifyTTConstApp f arg = fail ("Unknown reflection constant: " ++ show (f, arg))
+
+reifyTTUExp :: Term -> ElabD UExp
+reifyTTUExp t@(App _ _)
+  = case unApply t of
+      (P _ f _, [Constant (I i)]) | f == reflm "UVar" -> return $ UVar i
+      (P _ f _, [Constant (I i)]) | f == reflm "UVal" -> return $ UVal i
+      _ -> fail ("Unknown reflection type universe expression: " ++ show t)
+reifyTTUExp t = fail ("Unknown reflection type universe expression: " ++ show t)
+
+-- | Create a reflected call to a named function/constructor
+reflCall :: String -> [Raw] -> Raw
+reflCall funName args 
+  = raw_apply (Var (reflm funName)) args
+
+-- | Lift a term into its Language.Reflection.TT representation
+reflect :: Term -> Raw
+reflect (P nt n t) 
+  = reflCall "P" [reflectNameType nt, reflectName n, reflect t]
+reflect (V n) 
+  = reflCall "V" [RConstant (I n)]
+reflect (Bind n b x)
+  = reflCall "Bind" [reflectName n, reflectBinder b, reflect x]
+reflect (App f x)
+  = reflCall "App" [reflect f, reflect x]
+reflect (Constant c)
+  = reflCall "TConst" [reflectConstant c]
+reflect (Proj t i)
+  = reflCall "Proj" [reflect t, RConstant (I i)]
+reflect (Erased) = Var (reflm "Erased")
+reflect (Impossible) = Var (reflm "Impossible")
+reflect (TType exp) = reflCall "TType" [reflectUExp exp]
+
+reflectNameType :: NameType -> Raw
+reflectNameType (Bound) = Var (reflm "Bound")
+reflectNameType (Ref) = Var (reflm "Ref")
+reflectNameType (DCon x y) 
+  = reflCall "DCon" [RConstant (I x), RConstant (I y)]
+reflectNameType (TCon x y) 
+  = reflCall "TCon" [RConstant (I x), RConstant (I y)]
+
+reflectName :: Name -> Raw
+reflectName (UN str) 
+  = reflCall "UN" [RConstant (Str str)]
+reflectName (NS n ns)
+  = reflCall "NS" [ reflectName n
+                  , foldr (\ n s -> 
+                             raw_apply ( Var $ NS (UN "::") ["List", "Prelude"] )
+                                       [ RConstant StrType, RConstant (Str n), s ])
+                             ( raw_apply ( Var $ NS (UN "Nil") ["List", "Prelude"] )
+                                         [ RConstant StrType ])
+                             ns 
+                  ] 
+reflectName (MN i n) 
+  = reflCall "MN" [RConstant (I i), RConstant (Str n)]
+reflectName (NErased) = Var (reflm "NErased")
+
+reflectBinder :: Binder Term -> Raw
+reflectBinder (Lam t)
+   = reflCall "Lam" [Var (reflm "TT"), reflect t]
+reflectBinder (Pi t)
+   = reflCall "Pi" [Var (reflm "TT"), reflect t]
+reflectBinder (Let x y)
+   = reflCall "Let" [Var (reflm "TT"), reflect x, reflect y]
+reflectBinder (NLet x y)
+   = reflCall "NLet" [Var (reflm "TT"), reflect x, reflect y]
+reflectBinder (Hole t)
+   = reflCall "Hole" [Var (reflm "TT"), reflect t]
+reflectBinder (GHole t)
+   = reflCall "GHole" [Var (reflm "TT"), reflect t]
+reflectBinder (Guess x y)
+   = reflCall "Guess" [Var (reflm "TT"), reflect x, reflect y]
+reflectBinder (PVar t)
+   = reflCall "PVar" [Var (reflm "TT"), reflect t]
+reflectBinder (PVTy t)
+   = reflCall "PVTy" [Var (reflm "TT"), reflect t]
+
+reflectConstant :: Const -> Raw
+reflectConstant c@(I  _) = reflCall "I"  [RConstant c]
+reflectConstant c@(BI _) = reflCall "BI" [RConstant c]
+reflectConstant c@(Fl _) = reflCall "Fl" [RConstant c]
+reflectConstant c@(Ch _) = reflCall "Ch" [RConstant c]
+reflectConstant c@(Str _) = reflCall "Str" [RConstant c]
+reflectConstant (IType) = Var (reflm "IType")
+reflectConstant (BIType) = Var (reflm "BIType")
+reflectConstant (FlType) = Var (reflm "FlType")
+reflectConstant (ChType) = Var (reflm "ChType")
+reflectConstant (StrType) = Var (reflm "StrType")
+reflectConstant c@(B8 _) = reflCall "B8" [RConstant c]
+reflectConstant c@(B16 _) = reflCall "B16" [RConstant c]
+reflectConstant c@(B32 _) = reflCall "B32" [RConstant c]
+reflectConstant c@(B64 _) = reflCall "B64" [RConstant c]
+reflectConstant (B8Type) = Var (reflm "B8Type")
+reflectConstant (B16Type) = Var (reflm "B16Type")
+reflectConstant (B32Type) = Var (reflm "B32Type")
+reflectConstant (B64Type) = Var (reflm "B64Type")
+reflectConstant (PtrType) = Var (reflm "PtrType")
+reflectConstant (VoidType) = Var (reflm "VoidType")
+reflectConstant (Forgot) = Var (reflm "Forgot")
+
+reflectUExp :: UExp -> Raw
+reflectUExp (UVar i) = reflCall "UVar" [RConstant (I i)]
+reflectUExp (UVal i) = reflCall "UVal" [RConstant (I i)]
+
+-- | Reflect the environment of a proof into a List (TTName, Binder TT)
+reflectEnv :: Env -> Raw
+reflectEnv = foldr consToEnvList emptyEnvList
+  where
+    consToEnvList :: (Name, Binder Term) -> Raw -> Raw
+    consToEnvList (n, b) l
+      = raw_apply (Var (NS (UN "::") ["List", "Prelude"]))
+                  [ envTupleType
+                  , raw_apply (Var pairCon) [ (Var $ reflm "TTName")
+                                            , (RApp (Var $ reflm "Binder") 
+                                                    (Var $ reflm "TT"))
+                                            , reflectName n 
+                                            , reflectBinder b
+                                            ]
+                  , l
+                  ]
+
+    emptyEnvList :: Raw
+    emptyEnvList = raw_apply (Var (NS (UN "Nil") ["List", "Prelude"])) 
+                             [envTupleType]
+
+envTupleType :: Raw
+envTupleType 
+  = raw_apply (Var pairTy) [ (Var $ reflm "TTName") 
+                           , (RApp (Var $ reflm "Binder") (Var $ reflm "TT"))
+                           ]
 
 solveAll = try (do solve; solveAll) (return ())
 

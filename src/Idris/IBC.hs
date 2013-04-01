@@ -21,7 +21,7 @@ import System.Directory
 import Paths_idris
 
 ibcVersion :: Word8
-ibcVersion = 28
+ibcVersion = 29
 
 data IBCFile = IBCFile { ver :: Word8,
                          sourcefile :: FilePath,
@@ -1390,8 +1390,12 @@ instance (Binary t) => Binary (PTactic' t) where
                                  put x1
                                  put x2
                 Qed -> putWord8 15
-                ReflectTac x1 -> do putWord8 16
-                                    put x1
+                ApplyTactic x1 -> do putWord8 16
+                                     put x1
+                Reflect x1 -> do putWord8 17
+                                 put x1
+                Fill x1 -> do putWord8 18
+                              put x1                
         get
           = do i <- getWord8
                case i of
@@ -1424,7 +1428,11 @@ instance (Binary t) => Binary (PTactic' t) where
                             return (TSeq x1 x2)
                    15 -> return Qed
                    16 -> do x1 <- get
-                            return (ReflectTac x1)
+                            return (ApplyTactic x1)
+                   17 -> do x1 <- get
+                            return (Reflect x1)
+                   18 -> do x1 <- get
+                            return (Fill x1)
                    _ -> error "Corrupted binary data for PTactic'"
 
 
