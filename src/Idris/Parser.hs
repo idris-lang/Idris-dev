@@ -801,13 +801,13 @@ pCaseOpt syn = do lhs <- pExpr (syn { inPattern = True })
                   return (lhs, rhs)
 
 modifyConst :: SyntaxInfo -> FC -> PTerm -> PTerm
-modifyConst syn fc (PConstant (I x)) 
+modifyConst syn fc (PConstant (BI x)) 
     | not (inPattern syn)
         = PAlternative False
-             [PApp fc (PRef fc (UN "fromInteger")) [pexp (PConstant (I x))],
-              PConstant (I x), PConstant (BI (toEnum x))]
+             [PApp fc (PRef fc (UN "fromInteger")) [pexp (PConstant (I (fromInteger x)))],
+              PConstant (I (fromInteger x)), PConstant (BI x)]
     | otherwise = PAlternative False
-                     [PConstant (I x), PConstant (BI (toEnum x))]
+                     [PConstant (I (fromInteger x)), PConstant (BI x)]
 modifyConst syn fc x = x
 
 pList syn = do lchar '['; fc <- pfc; xs <- sepBy (pExpr syn) (lchar ','); lchar ']'
@@ -1106,8 +1106,7 @@ pConstant = do reserved "Integer";return BIType
         <|> do reserved "Bits32"; return B32Type
         <|> do reserved "Bits64"; return B64Type
         <|> try (do f <- float;   return $ Fl f)
---         <|> try (do i <- natural; lchar 'L'; return $ BI i)
-        <|> try (do i <- natural; return $ I (fromInteger i))
+        <|> try (do i <- natural; return $ BI i)
         <|> try (do s <- strlit;  return $ Str s)
         <|> try (do c <- chlit;   return $ Ch c)
 
