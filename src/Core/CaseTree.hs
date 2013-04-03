@@ -14,11 +14,11 @@ import Debug.Trace
 data CaseDef = CaseDef [Name] SC [Term]
     deriving Show
 
-data SC' t = Case Name [CaseAlt' t] -- invariant: lowest tags first
-           | ProjCase t [CaseAlt' t] -- special case for projections
+data SC' t = Case Name [CaseAlt' t] -- ^ invariant: lowest tags first
+           | ProjCase t [CaseAlt' t] -- ^ special case for projections
            | STerm t
-           | UnmatchedCase String -- error message
-           | ImpossibleCase -- already checked to be impossible
+           | UnmatchedCase String -- ^ error message
+           | ImpossibleCase -- ^ already checked to be impossible
     deriving (Eq, Ord, Functor)
 {-! 
 deriving instance Binary SC 

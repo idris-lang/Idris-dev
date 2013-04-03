@@ -196,9 +196,10 @@ process fn (ExecVal t)
                   = do ctxt <- getContext
                        ist <- getIState
                        (tm, ty) <- elabVal toplevel False t
-                       let tm' = normaliseAll ctxt [] tm
+                       trace (show tm) $ return ()
+--                       let tm' = normaliseAll ctxt [] tm
                        let ty' = normaliseAll ctxt [] ty
-                       res <- execute tm'
+                       res <- execute tm
                        imp <- impShow
                        iputStrLn (showImp imp (delab ist res) ++ " : " ++
                                   showImp imp (delab ist ty'))
