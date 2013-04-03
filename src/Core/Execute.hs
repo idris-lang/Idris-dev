@@ -22,6 +22,8 @@ import Foreign.LibFFI
 import Foreign.C.String
 import Foreign.Marshal.Alloc (free)
 
+import System.IO
+
 -- | Attempt to perform a side effect. Return either Just the next step in
 -- evaluation (after performing the side effect through IO), or Nothing if no
 -- IO was performed.
@@ -56,23 +58,21 @@ execute tm = do ctxt <- getContext
 
 doExec :: Env -> Context -> Term -> Idris Term
 doExec env ctxt p@(P Ref n ty) =
-    do let val = trace ("looked up global ref "++show p) $ lookupDef Nothing n ctxt
+    do let val = lookupDef Nothing n ctxt
        case val of
          [Function _ tm] ->
              do val <- doExec env ctxt tm
-                trace ("got value " ++ show val) $ return val
+                return val
          [TyDecl nt ty] -> return p -- abstract def
          [Operator tp arity op] -> do ty' <- doExec env ctxt ty
                                       return (P Ref n ty')
          [CaseOp _ _ _ _ _ [] (STerm tm) _ _] -> -- nullary fun
-             trace (show n ++ " is " ++ show tm ) $ doExec env ctxt tm
-         [CaseOp _ _ _ _ _ ns sc _ _] -> trace ("non-app case op " ++ show ns ++ " =-=> " ++ show sc) $
-             return p
+             doExec env ctxt tm
+         [CaseOp _ _ _ _ _ ns sc _ _] -> return p
          thing -> trace ("got to " ++ show thing) $ undefined
-doExec env ctxt p@(P Bound n ty) = trace ("bound " ++ show p ++ " : " ++ show ty) $
-                                   case (lookupDef Nothing n ctxt) of -- bound vars must be Function
-                                     [Function ty tm] -> trace (show n ++ " = " ++ show tm ++ " : " ++ show ty) $ doExec env ctxt tm
-                                     [] -> trace ("didn't find " ++ show p) $ return p
+doExec env ctxt p@(P Bound n ty) = case (lookupDef Nothing n ctxt) of -- bound vars must be Function
+                                     [Function ty tm] -> doExec env ctxt tm
+                                     [] -> return p
                                      x -> fail ("Internal error lookup up bound var " ++ show n ++ " - found " ++ show x)
 doExec env ctxt p@(P (DCon a b) n ty) = do { ty' <- doExec env ctxt ty; return (P (DCon a b) n ty') }
 doExec env ctxt p@(P (TCon a b) n ty) = do { ty' <- doExec env ctxt ty; return (P (TCon a b) n ty') }
@@ -114,34 +114,30 @@ execApp' env ctxt (P _ (UN "prim__readString") _) [P _ (UN "prim__stdin") _] =
 execApp' env ctxt (P _ (UN "prim__concat") _)  [(Constant (Str s1)), (Constant (Str s2))] =
     return $ Constant (Str (s1 ++ s2))
 
-execApp' env ctxt f@(P _ n _) args = trace ("Applying " ++ show f ++ " to " ++ show args) $
+execApp' env ctxt f@(P _ n _) args =
     do let val = lookupDef Nothing n ctxt
        case val of
          [Function _ tm] -> fail "should already have been eval'd"
          [TyDecl nt ty] -> return $ mkApp f args
          [Operator tp arity op] -> fail $ "Can't apply operator " ++ show n ++ " which needs special-casing"
          [CaseOp _ _ _ _ _ [] (STerm tm) _ _] -> -- nullary fun
-             trace ("Nullary fun " ++ show f) $
              do rhs <- doExec env ctxt tm
                 doExec env ctxt (mkApp tm args)
-         [CaseOp _ _ _ _ _  ns sc _ _] -> trace ("Applying case op " ++ show (zip ns args) ++ " ===> " ++ show sc) $
+         [CaseOp _ _ _ _ _  ns sc _ _] ->
              do res <- execCase env ctxt ns sc args
-                trace ("Application result: " ++ show res) $ return ()
                 return $ fromMaybe (mkApp f args) res
-         thing -> trace ("got to " ++ show thing) $ return $ mkApp f args
+         thing -> return $ mkApp f args
 
-execApp' env ctxt bnd@(Bind n b body) (arg:args) = trace ("Applying binder " ++ show bnd ++ " to " ++ show arg) $
-                                                   let ctxt' = addToCtxt n arg Erased ctxt in
+execApp' env ctxt bnd@(Bind n b body) (arg:args) = let ctxt' = addToCtxt n arg Erased ctxt in
                                                    doExec ((n, b):env) ctxt' body
 
-execApp' env ctxt f args = trace ("Applying " ++ show f ++ " to " ++ show args) $ return (mkApp f args)
+execApp' env ctxt f args = return (mkApp f args)
 
 execCase :: Env -> Context -> [Name] -> SC -> [Term] -> Idris (Maybe Term)
 execCase env ctxt ns sc args =
     let arity = length ns in
     if arity <= length args
     then do let amap = (zip ns (take arity args))
-            trace ("Now we exec " ++ show sc ++ " in " ++ show amap) $ return ()
             caseRes <- execCase' env ctxt amap sc
             case caseRes of
               Just res-> Just <$> doExec env ctxt (mkApp res (drop arity args))
@@ -152,7 +148,6 @@ execCase' :: Env -> Context -> [(Name, Term)] -> SC -> Idris (Maybe Term)
 execCase' env ctxt amap (STerm tm) =
     Just <$> doExec env (foldl (\c (n, t) -> addToCtxt n t Erased c) ctxt amap) tm
 execCase' env ctxt amap (Case n alts) | Just tm <- lookup n amap =
-    trace ("Case split on " ++ show tm) $
     let (newCase, newBindings) = chooseAlt tm alts in
     execCase' env ctxt (amap ++ newBindings) newCase
 
@@ -172,8 +167,8 @@ call :: Foreign -> [Term] -> Idris (Maybe Term)
 call (FFun name argTypes retType) args = do fn <- findForeign name
                                             case fn of
                                               Nothing -> return Nothing
-                                              Just f -> call' f args retType >>=
-                                                        return . Just . App (P Ref (UN "prim__IO") Erased)
+                                              Just f -> do res <- call' f args retType
+                                                           return . Just $ App (P Ref (UN "prim__IO") Erased) res
     where call' :: ForeignFun -> [Term] -> FTy -> Idris Term
           call' (Fun _ h) args FInt = do res <- lift $ callFFI h retCInt (prepArgs args)
                                          return (Constant (I (fromIntegral res)))
@@ -204,11 +199,9 @@ foreignFromTT :: Term -> Maybe Foreign
 foreignFromTT t = case (unApply t) of
                     (_, [(Constant (Str name)), args, ret]) ->
                         do argTy <- unList args
-                           trace "fnord" $ return ()
                            argFTy <- sequence $ map getFTy argTy
-                           trace "argh" $ return ()
                            retFTy <- getFTy ret
-                           trace ("Returning ffun: " ++ show (FFun name argFTy retFTy)) $ return $ FFun name argFTy retFTy
+                           return $ FFun name argFTy retFTy
                     _ -> trace "failed to construct ffun" Nothing
 
 getFTy :: Term -> Maybe FTy
@@ -223,7 +216,7 @@ getFTy (P _ (UN t) _) = case t of
 getFTy _ = Nothing
 
 unList :: Term -> Maybe [Term]
-unList tm = trace ("unApplying " ++ show tm) $ case unApply tm of
+unList tm = case unApply tm of
               (nil, [_]) -> Just []
               (cons, ([_, x, xs])) ->
                   do rest <- unList xs
@@ -236,7 +229,6 @@ toConst _ = Nothing
 
 stepForeign :: [Term] -> Idris (Maybe Term)
 stepForeign (ty:fn:args) = do let ffun = foreignFromTT fn
-                              trace ("Foreign fun call: (" ++ show ffun ++ ")(" ++ show args ++ ")") (return ())
                               f' <- case (call <$> ffun) of
                                       Just f -> f args
                                       Nothing -> return Nothing
