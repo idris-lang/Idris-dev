@@ -1,4 +1,4 @@
-{-# LANGUAGE PatternGuards #-}
+{-# LANGUAGE PatternGuards, ScopedTypeVariables #-}
 -- | Parse the full Idris language.
 module Idris.Parser where
 
@@ -800,8 +800,17 @@ pCaseOpt syn = do lhs <- pExpr (syn { inPattern = True })
                   symbol "=>"; rhs <- pExpr syn
                   return (lhs, rhs)
 
+-- bit of a hack here. If the integer doesn't fit in an Int, treat it as a
+-- big integer, otherwise try fromInteger and the constants as alternatives.
+-- a better solution would be to fix fromInteger to work with Integer, as the
+-- name suggests, rather than Int
+
 modifyConst :: SyntaxInfo -> FC -> PTerm -> PTerm
 modifyConst syn fc (PConstant (BI x)) 
+    | not (fitsInt x) = PAlternative False 
+                           [PConstant (BI x),
+                            PApp fc (PRef fc (UN "fromInteger"))
+                                 [pexp (PConstant (I (fromInteger x)))]]
     | not (inPattern syn)
         = PAlternative False
              [PApp fc (PRef fc (UN "fromInteger")) [pexp (PConstant (I (fromInteger x)))],
@@ -809,6 +818,11 @@ modifyConst syn fc (PConstant (BI x))
     | otherwise = PAlternative False
                      [PConstant (I (fromInteger x)), PConstant (BI x)]
 modifyConst syn fc x = x
+
+fitsInt :: Integer -> Bool
+fitsInt x = let xInt :: Int = fromInteger x
+                xInteger :: Integer = toInteger xInt in
+                x == xInteger
 
 pList syn = do lchar '['; fc <- pfc; xs <- sepBy (pExpr syn) (lchar ','); lchar ']'
                return (mkList fc xs)
