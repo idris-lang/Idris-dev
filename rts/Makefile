@@ -5,7 +5,12 @@ HDRS = idris_rts.h idris_heap.h idris_gc.h idris_gmp.h idris_stdfgn.h idris_bits
 CFLAGS = -O2 -Wall -fPIC
 
 ifneq ($(GMP_INCLUDE_DIR),)
-  CFLAGS += -isystem $(GMP_INCLUDE_DIR)
+	CFLAGS += -isystem $(GMP_INCLUDE_DIR)
+endif
+
+# Build a fat lib on Mac OS X
+ifeq ($(OS),darwin)
+	CFLAGS += -arch i386 -arch x86_64
 endif
 
 LIBTARGET = libidris_rts.a
@@ -18,7 +23,7 @@ $(LIBTARGET) : $(OBJS)
 	ranlib $(LIBTARGET)
 
 $(DYLIBTARGET) : $(OBJS)
-	$(CC) $(CFLAGS) -shared -o $(DYLIBTARGET) $(OBJS)
+	$(CC) $(CFLAGS) -lgmp -shared -o $(DYLIBTARGET) $(OBJS)
 
 build: $(DYLIBTARGET)
 	mkdir -p $(DIST)/rts
