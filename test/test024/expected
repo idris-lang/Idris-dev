@@ -1,2 +1,3 @@
-Type checking ./test022.idr
-0.9995736030415051 : Float
+Type checking ./test024.idr
+() : ()
+testtest
