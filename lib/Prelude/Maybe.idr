@@ -66,7 +66,7 @@ instance (Eq a) => Eq (Maybe a) where
 -- | Lift a semigroup into 'Maybe' forming a 'Monoid' according to
 -- <http://en.wikipedia.org/wiki/Monoid>: "Any semigroup S may be
 -- turned into a monoid simply by adjoining an element i not in S
--- and defining i+i = i and i+s = s = s+i for all s ∈ S."
+-- and defining i+i = i and i+s = s = s+i for all s in S."
 
 instance (Semigroup a) => Semigroup (Maybe a) where
   Nothing <+> m = m
