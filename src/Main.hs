@@ -29,6 +29,7 @@ import Idris.Imports
 import Idris.Error
 
 import Util.System ( getLibFlags, getIdrisLibDir, getIncFlags )
+import Util.DynamicLinker
 
 import Pkg.Package
 
@@ -48,6 +49,7 @@ runIdris opts = do
        when (ShowIncs `elem` opts) $ liftIO showIncs
        when (ShowLibs `elem` opts) $ liftIO showLibs
        when (ShowLibdir `elem` opts) $ liftIO showLibdir
+       loadRTS opts
        case opt getPkgClean opts of
            [] -> return ()
            fs -> do liftIO $ mapM_ cleanPkg fs
@@ -94,3 +96,18 @@ usagemsg = "Idris version " ++ ver ++ "\n" ++
            "\t--link            Show C library directories and exit (for C linking)\n" ++
            "\t--include         Show C include directories and exit (for C linking)\n" ++
            "\t--target [target] Type the target: C, Java, bytecode, javascript, node\n"
+
+-- | Attempt to load the RTS as a shared lib in the interpreter
+loadRTS :: [Opt] -> Idris ()
+loadRTS opts = (flip idrisCatch) (\e -> iputStrLn (show e)) $
+               do rtslib <- liftIO $
+                            case listToMaybe . catMaybes . map getDynamicRTS $ opts of
+                              Just path -> return path
+                              Nothing -> getDataFileName ("rts" </> "libidris_rts")
+                  handle <- liftIO (tryLoadLib rtslib)
+                  case handle of
+                    Nothing -> return ()
+                    Just x -> do i <- getIState
+                                 let libs = idris_dynamic_libs i
+                                 putIState $ i { idris_dynamic_libs = x:libs }
+

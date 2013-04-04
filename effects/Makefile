@@ -1,13 +1,13 @@
 
 check: .PHONY
-	$(IDRIS) --build effects.ipkg
+	$(IDRIS) --dynamicrts $(RTS) --build effects.ipkg
 
 recheck: clean check
 
 install: 
-	$(IDRIS) --install effects.ipkg
+	$(IDRIS) --dynamicrts $(RTS) --install effects.ipkg
 
 clean: .PHONY
-	$(IDRIS) --clean effects.ipkg
+	$(IDRIS) --dynamicrts $(RTS) --clean effects.ipkg
 
 .PHONY:

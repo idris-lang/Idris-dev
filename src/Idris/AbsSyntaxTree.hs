@@ -232,6 +232,7 @@ data Opt = Filename String
          | UseTarget Target
          | OutputTy OutputType
          | Extension LanguageExt
+         | DynamicRTS FilePath
     deriving (Show, Eq)
 
 -- Parsed declarations

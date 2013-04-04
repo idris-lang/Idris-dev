@@ -20,6 +20,11 @@ $(LIBTARGET) : $(OBJS)
 $(DYLIBTARGET) : $(OBJS)
 	$(CC) $(CFLAGS) -shared -o $(DYLIBTARGET) $(OBJS)
 
+build: $(DYLIBTARGET)
+	mkdir -p $(DIST)/rts
+	install $(DYLIBTARGET) $(DIST)/rts
+
+
 install : .PHONY
 	mkdir -p $(TARGET)
 	install $(LIBTARGET) $(DYLIBTARGET) $(HDRS) $(TARGET)

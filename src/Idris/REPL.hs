@@ -496,6 +496,7 @@ parseArgs ("--dumpdefuns":n:ns)  = DumpDefun n : (parseArgs ns)
 parseArgs ("--dumpcases":n:ns)   = DumpCases n : (parseArgs ns)
 parseArgs ("--target":n:ns)      = UseTarget (parseTarget n) : (parseArgs ns)
 parseArgs ("-XTypeProviders":ns) = Extension TypeProviders : (parseArgs ns)
+parseArgs ("--dynamicrts":f:ns)  = DynamicRTS f : (parseArgs ns)
 parseArgs (n:ns)                 = Filename n : (parseArgs ns)
 
 helphead =
@@ -552,15 +553,6 @@ idrisMain opts =
          [] -> setIBCSubDir ""
          (d:_) -> setIBCSubDir d
        setImportDirs importdirs
-       -- attempt to load the RTS as a shared lib in the interpreter
-       idrisCatch (do rtslib <- lift (getDataFileName $ "rts" </> "libidris_rts")
-                      handle <- lift (tryLoadLib rtslib)
-                      case handle of
-                        Nothing -> return ()
-                        Just x -> do i <- getIState
-                                     let libs = idris_dynamic_libs i
-                                     putIState $ i { idris_dynamic_libs = x:libs })
-                      (\e -> iputStrLn (show e))
 
        addPkgDir "base"
        mapM_ addPkgDir pkgdirs
@@ -644,6 +636,10 @@ getOutputTy _ = Nothing
 getLanguageExt :: Opt -> Maybe LanguageExt
 getLanguageExt (Extension e) = Just e
 getLanguageExt _ = Nothing
+
+getDynamicRTS :: Opt -> Maybe FilePath
+getDynamicRTS (DynamicRTS f) = Just f
+getDynamicRTS _ = Nothing
 
 opt :: (Opt -> Maybe a) -> [Opt] -> [a]
 opt = mapMaybe 

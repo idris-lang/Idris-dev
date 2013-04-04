@@ -28,8 +28,11 @@ mvn verbosity = P.runProgramInvocation verbosity . P.simpleProgramInvocation "mv
 (<//>) = (Px.</>)
 idrisCmd local = Px.joinPath $ splitDirectories $
                  ".." <//> buildDir local <//> "idris" <//> "idris"
+rtsDir local = Px.joinPath $ splitDirectories $
+               ".." <//> buildDir local <//> "rts" <//> "libidris_rts"
 #else
 idrisCmd local = ".." </>  buildDir local </>  "idris" </>  "idris"
+rtsDir local = ".." </> buildDir local </> "rts" </> "libidris_rts"
 #endif
 
 cleanStdLib verbosity
@@ -53,11 +56,13 @@ installStdLib pkg local verbosity copy
                [ "-C", "lib", "install"
                , "TARGET=" ++ idir
                , "IDRIS=" ++ icmd
+               , "RTS=" ++ rtsDir local
                ]
          make verbosity
                [ "-C", "effects", "install"
                , "TARGET=" ++ idir
                , "IDRIS=" ++ icmd
+               , "RTS=" ++ rtsDir local
                ]
          let idirRts = idir </> "rts"
          putStrLn $ "Installing run time system in " ++ idirRts
@@ -65,6 +70,7 @@ installStdLib pkg local verbosity copy
                [ "-C", "rts", "install"
                , "TARGET=" ++ idirRts
                , "IDRIS=" ++ icmd
+               , "RTS=" ++ rtsDir local
                ]
 
 installJavaLib pkg local verbosity copy version = do
@@ -99,15 +105,24 @@ checkStdLib local verbosity
          make verbosity
                [ "-C", "lib", "check"
                , "IDRIS=" ++ icmd
+               , "RTS=" ++ rtsDir local
                ]
          make verbosity
                [ "-C", "effects", "check"
                , "IDRIS=" ++ icmd
+               , "RTS=" ++ rtsDir local
                ]
          make verbosity
                [ "-C", "rts", "check"
                , "IDRIS=" ++ icmd
                ]
+
+buildRTS dir verbosity
+    = do putStrLn "Building RTS..."
+         make verbosity
+              [ "-C", "rts", "build"
+              , "DIST=../" ++ dir
+              ]
 
 checkJavaLib verbosity = mvn verbosity [ "-f", "java" </> "pom.xml", "package" ]
 
@@ -155,6 +170,8 @@ main = do
               cleanJavaLib verb
         , postBuild = \ _ flags _ lbi -> do
               let verb = S.fromFlag $ S.buildVerbosity flags
+              let distdir = buildDir lbi
+              buildRTS distdir verb
               checkStdLib lbi verb
               when (javaFlag $ configFlags lbi) (checkJavaLib verb)
         }
