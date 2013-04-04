@@ -11,6 +11,7 @@ import Core.CaseTree
 import Debug.Trace
 
 import Util.DynamicLinker
+import Util.System
 
 import Control.Applicative hiding (Const)
 import Control.Monad.Trans
@@ -102,6 +103,7 @@ execApp env ctxt (f, args) = do newF <- doExec env ctxt f
 
 execApp' :: Env -> Context -> Term -> [Term] -> Idris Term
 execApp' env ctxt v [] = return v -- no args is just a constant! can result from function calls
+execApp' env ctxt (P _ (UN "unsafePerformIO") _) [ty, action] | (prim__IO, [ty', v]) <- unApply action = return v
 execApp' env ctxt (P _ (UN "mkForeign") _) args =
     do res <- stepForeign args
        case res of
@@ -147,28 +149,39 @@ execCase env ctxt ns sc args =
 execCase' :: Env -> Context -> [(Name, Term)] -> SC -> Idris (Maybe Term)
 execCase' env ctxt amap (STerm tm) =
     Just <$> doExec env (foldl (\c (n, t) -> addToCtxt n t Erased c) ctxt amap) tm
-execCase' env ctxt amap (Case n alts) | Just tm <- lookup n amap =
-    let (newCase, newBindings) = chooseAlt tm alts in
+execCase' env ctxt amap (Case n alts) | Just tm <- lookup n amap
+                                      , Just (newCase, newBindings) <- chooseAlt tm alts =
     execCase' env ctxt (amap ++ newBindings) newCase
+                                      | otherwise = return Nothing
 
-chooseAlt :: Term -> [CaseAlt] -> (SC, [(Name, Term)])
-chooseAlt _ (DefaultCase sc : alts) = (sc, [])
-chooseAlt (Constant c) (ConstCase c' sc : alts) | c == c' = (sc, [])
-chooseAlt tm (ConCase n i ns sc : alts) | ((P _ cn _), args) <- unApply tm, cn == n = (sc, zip ns args)
+chooseAlt :: Term -> [CaseAlt] -> Maybe (SC, [(Name, Term)])
+chooseAlt _ (DefaultCase sc : alts) = Just (sc, [])
+chooseAlt (Constant c) (ConstCase c' sc : alts) | c == c' = Just (sc, [])
+chooseAlt tm (ConCase n i ns sc : alts) | ((P _ cn _), args) <- unApply tm, cn == n = Just (sc, zip ns args)
                                         | otherwise = chooseAlt tm alts
 chooseAlt tm (_:alts) = chooseAlt tm alts
-chooseAlt _ [] = trace "bad pattern match" undefined
+chooseAlt _ [] = Nothing
 
 data FTy = FInt | FFloat | FChar | FString | FPtr | FUnit deriving (Show, Read)
+
+idrisType :: FTy -> Type
+idrisType FUnit = P Ref unitTy (TType (UVal 0))
+idrisType ft = Constant (idr ft)
+    where idr FInt = IType
+          idr FFloat = FlType
+          idr FChar = ChType
+          idr FString = StrType
+          idr FPtr = PtrType
 
 data Foreign = FFun String [FTy] FTy deriving Show
 
 call :: Foreign -> [Term] -> Idris (Maybe Term)
-call (FFun name argTypes retType) args = do fn <- findForeign name
-                                            case fn of
-                                              Nothing -> return Nothing
-                                              Just f -> do res <- call' f args retType
-                                                           return . Just $ App (P Ref (UN "prim__IO") Erased) res
+call (FFun name argTypes retType) args =
+    do fn <- findForeign name
+       case fn of
+         Nothing -> return Nothing
+         Just f -> do res <- call' f args retType
+                      return . Just $ mkApp (P Ref (UN "prim__IO") Erased) [idrisType retType, res]
     where call' :: ForeignFun -> [Term] -> FTy -> Idris Term
           call' (Fun _ h) args FInt = do res <- lift $ callFFI h retCInt (prepArgs args)
                                          return (Constant (I (fromIntegral res)))
@@ -246,7 +259,7 @@ mapMaybeM f (x:xs) = do rest <- mapMaybeM f xs
 findForeign :: String -> Idris (Maybe ForeignFun)
 findForeign fn = do i <- getIState
                     let libs = idris_dynamic_libs i
-                    fns <- mapMaybeM (lift . tryLoadFn fn) libs
+                    fns <- mapMaybeM getFn libs
                     case fns of
                       [f] -> return (Just f)
                       [] -> do iputStrLn $ "Symbol \"" ++ fn ++ "\" not found"
@@ -254,4 +267,6 @@ findForeign fn = do i <- getIState
                       fs -> do iputStrLn $ "Symbol \"" ++ fn ++ "\" is ambiguous. Found " ++
                                            show (length fs) ++ " occurrences."
                                return Nothing
+    where getFn lib = lift $ catchIO (tryLoadFn fn lib) (\_ -> return Nothing)
+
 
