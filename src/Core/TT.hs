@@ -430,7 +430,10 @@ instance Show UConstraint where
 
 type UCs = (Int, [UConstraint])
 
-data NameType = Bound | Ref | DCon Int Int | TCon Int Int
+data NameType = Bound
+              | Ref
+              | DCon Int Int -- ^ Data constructor; Ints are tag and arity
+              | TCon Int Int -- ^ Type constructor; Ints are tag and arity
   deriving (Show, Ord)
 {-! 
 deriving instance Binary NameType 
