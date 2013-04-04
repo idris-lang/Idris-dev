@@ -10,7 +10,7 @@ endif
 
 # Build a fat lib on Mac OS X
 ifeq ($(OS),darwin)
-	CFLAGS += -arch i386 -arch x86_64
+	CFLAGS += -arch $(shell ghc -e System.Info.arch | tr -d '"')
 endif
 
 LIBTARGET = libidris_rts.a
