@@ -186,6 +186,34 @@ VAL MKPTRc(VM* vm, void* ptr) {
     return cl;
 }
 
+VAL MKB8(VM* vm, uint8_t bits8) {
+    Closure* cl = allocate(vm, sizeof(Closure), 1);
+    SETTY(cl, BITS8);
+    cl -> info.bits8 = bits8;
+    return cl;
+}
+
+VAL MKB16(VM* vm, uint16_t bits16) {
+    Closure* cl = allocate(vm, sizeof(Closure), 1);
+    SETTY(cl, BITS16);
+    cl -> info.bits16 = bits16;
+    return cl;
+}
+
+VAL MKB32(VM* vm, uint32_t bits32) {
+    Closure* cl = allocate(vm, sizeof(Closure), 1);
+    SETTY(cl, BITS32);
+    cl -> info.bits32 = bits32;
+    return cl;
+}
+
+VAL MKB64(VM* vm, uint64_t bits64) {
+    Closure* cl = allocate(vm, sizeof(Closure), 1);
+    SETTY(cl, BITS64);
+    cl -> info.bits64 = bits64;
+    return cl;
+}
+
 void PROJECT(VM* vm, VAL r, int loc, int arity) {
     int i;
     for(i = 0; i < arity; ++i) {
@@ -241,6 +269,10 @@ void dumpVal(VAL v) {
         printf("val");
     }
 
+}
+
+void idris_memset(void* ptr, i_int offset, VAL c, i_int size) {
+    memset(((uint8_t*)ptr) + offset, c->info.bits8, size);
 }
 
 int idris_peek(void* ptr, i_int offset) {

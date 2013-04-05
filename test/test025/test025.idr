@@ -1,4 +1,4 @@
-module Main 
+module Main
 
 import Effects
 import Effect.Memory
@@ -18,7 +18,8 @@ testMemory : MemoryIO () () (Vect Int 4)
 testMemory = do Src :- allocate 5
                 Src :- poke 0 inpVect oh
                 Dst :- allocate 5
-                move 1 1 4 oh oh
+                Dst :- initialize (prim__intToB8 1) 2 oh
+                move 2 2 3 oh oh
                 Src :- free
                 end <- Dst :- peek 4 1 oh
                 Dst :- poke 4 (sub1 end) oh

@@ -195,6 +195,16 @@ public class ForeignPrimitives {
         return ByteBuffer.allocate(size);
     }
 
+    public static void idris_memset(Object buf, int offset, Object c, int size) {
+        ByteBuffer buffer = (ByteBuffer)buf;
+        buffer.rewind();
+        buffer.position(offset);
+        byte init[] = new byte[size];
+        Arrays.fill(init, (Byte)c);
+        buffer.put(init, offset, size);
+        buffer.rewind();
+    }
+
     public static void free(Object buf) {
         buf = null;
     }
