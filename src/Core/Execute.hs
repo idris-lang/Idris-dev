@@ -98,7 +98,8 @@ doExec env ctxt Impossible = fail "Tried to execute an impossible case"
 doExec env ctxt (TType u) = return (TType u)
 
 execApp :: Env -> Context -> (Term, [Term]) -> Idris Term
-execApp env ctxt (f, args) = do newF <- doExec env ctxt f
+execApp env ctxt (f, args) = trace ("Reducing " ++ show f) $
+                             do newF <- doExec env ctxt f
                                 newArgs <- mapM (doExec env ctxt) args
                                 execApp' env ctxt newF newArgs
 
@@ -116,6 +117,19 @@ execApp' env ctxt (P _ (UN "prim__readString") _) [P _ (UN "prim__stdin") _] =
 
 execApp' env ctxt (P _ (UN "prim__concat") _)  [(Constant (Str s1)), (Constant (Str s2))] =
     return $ Constant (Str (s1 ++ s2))
+
+execApp' env ctxt (P _ (UN "prim__eqInt") _)  [(Constant (I i1)), (Constant (I i2))] =
+    return $ if i1 == i2 then Constant (I 1) else Constant (I 0)
+
+execApp' env ctxt (P _ (UN "prim__readString") _) [ptr] | Just p <- unPtr ptr =
+    do fn <- findForeign "freadStr"
+       case fn of
+         Just (Fun _ freadStr) -> do
+                 res <- lift $ callFFI freadStr retCString [argPtr p]
+                 str <- lift $ peekCString res
+                 trace ("Found " ++ str) $ return ()
+                 return $ Constant (Str str)
+         Nothing -> fail "Could not load freadStr"
 
 execApp' env ctxt f@(P _ n _) args =
     do let val = lookupDef Nothing n ctxt

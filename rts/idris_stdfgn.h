@@ -8,7 +8,7 @@ void putStr(char* str);
 
 void* fileOpen(char* f, char* mode);
 void fileClose(void* h);
-//char* freadStr(void* h);
+char* freadStr(void* h);
 void fputStr(void*h, char* str);
 
 int isNull(void* ptr);
