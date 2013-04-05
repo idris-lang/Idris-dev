@@ -243,6 +243,19 @@ void dumpVal(VAL v) {
 
 }
 
+int idris_peek(void* ptr, i_int offset) {
+    uint8_t res = *(((uint8_t*)ptr) + offset);
+    return (int)res;
+}
+
+void idris_poke(void* ptr, i_int offset, VAL data) {
+    *(((uint8_t*)ptr) + offset) = data->info.bits8;
+}
+
+void idris_memmove(void* dest, void* src, i_int dest_offset, i_int src_offset, i_int size) {
+    memmove(dest + dest_offset, src + src_offset, size);
+}
+
 VAL idris_castIntStr(VM* vm, VAL i) {
     Closure* cl = allocate(vm, sizeof(Closure) + sizeof(char)*16, 0);
     SETTY(cl, STRING);

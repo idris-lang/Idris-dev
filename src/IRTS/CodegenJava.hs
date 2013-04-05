@@ -418,6 +418,11 @@ mkIdentifier (UN name) =
     cleanReserved "idris_K" = "_idris_K"
     cleanReserved "idris_flipK" = "_idris_flipK"
     cleanReserved "idris_assignStack" = "_idris_assignStack"
+    cleanReserved "free" = "_free"
+    cleanReserved "malloc" = "_malloc"
+    cleanReserved "idris_peek" = "_idris_peek"
+    cleanReserved "idris_poke" = "_idris_poke"
+    cleanReserved "idris_memmove" = "_idris_memmove"
 
     cleanReserved x = x
 

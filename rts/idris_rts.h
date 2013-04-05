@@ -202,6 +202,11 @@ VAL idris_castStrInt(VM* vm, VAL i);
 VAL idris_castFloatStr(VM* vm, VAL i);
 VAL idris_castStrFloat(VM* vm, VAL i);
 
+// Raw memory manipulation
+int idris_peek(void* ptr, i_int offset);
+void idris_poke(void* ptr, i_int offset, VAL data);
+void idris_memmove(void* dest, void* src, i_int dest_offset, i_int src_offset, i_int size);
+
 // String primitives
 
 VAL idris_concat(VM* vm, VAL l, VAL r);

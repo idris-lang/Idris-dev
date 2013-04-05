@@ -1,0 +1,4 @@
+#!/bin/bash
+idris -p effects $@ test025.idr -o test024
+./test025
+rm -f test025 *.ibc
