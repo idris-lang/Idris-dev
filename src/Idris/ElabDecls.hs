@@ -430,6 +430,7 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
                       else return []
            let pcover = null pmissing
            logLvl 2 $ "Optimising patterns"
+           logLvl 5 $ show optpdef
            pdef' <- applyOpts optpdef 
            logLvl 2 $ "Optimised patterns"
            logLvl 5 $ show pdef'
