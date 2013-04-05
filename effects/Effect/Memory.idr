@@ -58,6 +58,7 @@ do_peek ptr offset (S n)
        bs <- do_peek ptr (S offset) n
        Prelude.Monad.return (Prelude.Vect.(::) (prim__intToB8 b) bs)
 
+private
 do_poke : Ptr -> Nat -> Vect Bits8 size -> IO ()
 do_poke _   _      []     = return ()
 do_poke ptr offset (b::bs)
