@@ -22,6 +22,7 @@ import qualified Data.Map as M
 import Foreign.LibFFI
 import Foreign.C.String
 import Foreign.Marshal.Alloc (free)
+import Foreign.Ptr
 
 import System.IO
 
@@ -175,6 +176,22 @@ idrisType ft = Constant (idr ft)
 
 data Foreign = FFun String [FTy] FTy deriving Show
 
+-- | A representation of Ptr values, which otherwise don't work in TT
+ptrCon :: Name
+ptrCon = MN 0 "__Ptr"
+
+-- | Convert a Haskell pointer to a Ptr term in TT
+ptr :: Ptr a -> Term
+ptr p = App (P (DCon 1 0) ptrCon Erased) (Constant (I (addr p)))
+    where addr p = p `minusPtr` nullPtr
+
+-- | Convert a Ptr term in TT to a Haskell pointer
+unPtr :: Term -> Maybe (Ptr a)
+unPtr (App (P _ con _) (Constant (I addr))) | con == ptrCon = Just (unAddr addr)
+    where unAddr a = nullPtr `plusPtr` a
+unPtr _ = Nothing
+
+
 call :: Foreign -> [Term] -> Idris (Maybe Term)
 call (FFun name argTypes retType) args =
     do fn <- findForeign name
@@ -193,17 +210,20 @@ call (FFun name argTypes retType) args =
                                             hStr <- lift $ peekCString res
 --                                            lift $ free res
                                             return (Constant (Str hStr))
--- awaiting Const constructor for pointers
---          call' (Fun _ h) args FPtr = do res <- lift $ callFFI h retPtr (prepArgs args)
---                                          return (Constant (Ch (castCCharToChar res)))
+
+          call' (Fun _ h) args FPtr = do res <- lift $ callFFI h (retPtr retVoid) (prepArgs args)
+                                         return (ptr res)
           call' (Fun _ h) args FUnit = do res <- lift $ callFFI h retVoid (prepArgs args)
                                           return (P Ref unitCon (P Ref unitTy (TType (UVal 0)))) -- FIXME check universe level
+--          call' (Fun _ h) args other = fail ("Unsupported foreign return type " ++ show other)
+
 
           prepArgs = map prepArg
           prepArg (Constant (I i)) = argCInt (fromIntegral i)
           prepArg (Constant (Fl f)) = argCDouble (realToFrac f)
           prepArg (Constant (Ch c)) = argCChar (castCharToCChar c) -- FIXME - castCharToCChar only safe for first 256 chars
           prepArg (Constant (Str s)) = argString s
+          prepArg ptr | Just p <- unPtr ptr = argPtr p
           prepArg other = trace ("Could not use " ++ show other ++ " as FFI arg.") undefined
 
 
