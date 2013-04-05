@@ -1,9 +1,12 @@
 GMP_INCLUDE_DIR :=
 CC              :=gcc
 CABAL           :=cabal
-CABALFLAGS	:=
+#CABALFLAGS	:=
 ## Enable Java RTS:
 #CABALFLAGS    :=-f Java
+## Disable building of Effects
+#CABALFLAGS :=-f NoEffects
+
 
 MACHINE         := $(shell $(CC) -dumpmachine)
 ifneq (, $(findstring darwin, $(MACHINE)))
@@ -29,3 +32,4 @@ else
 	SHLIB_SUFFIX    :=.so
 endif
 endif
+

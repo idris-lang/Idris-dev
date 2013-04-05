@@ -1,4 +1,4 @@
-{-# LANGUAGE PatternGuards #-}
+{-# LANGUAGE PatternGuards, ScopedTypeVariables #-}
 -- | Parse the full Idris language.
 module Idris.Parser where
 
@@ -800,15 +800,29 @@ pCaseOpt syn = do lhs <- pExpr (syn { inPattern = True })
                   symbol "=>"; rhs <- pExpr syn
                   return (lhs, rhs)
 
+-- bit of a hack here. If the integer doesn't fit in an Int, treat it as a
+-- big integer, otherwise try fromInteger and the constants as alternatives.
+-- a better solution would be to fix fromInteger to work with Integer, as the
+-- name suggests, rather than Int
+
 modifyConst :: SyntaxInfo -> FC -> PTerm -> PTerm
-modifyConst syn fc (PConstant (I x)) 
+modifyConst syn fc (PConstant (BI x)) 
+    | not (fitsInt x) = PAlternative False 
+                           [PConstant (BI x),
+                            PApp fc (PRef fc (UN "fromInteger"))
+                                 [pexp (PConstant (I (fromInteger x)))]]
     | not (inPattern syn)
         = PAlternative False
-             [PApp fc (PRef fc (UN "fromInteger")) [pexp (PConstant (I x))],
-              PConstant (I x), PConstant (BI (toEnum x))]
+             [PApp fc (PRef fc (UN "fromInteger")) [pexp (PConstant (I (fromInteger x)))],
+              PConstant (I (fromInteger x)), PConstant (BI x)]
     | otherwise = PAlternative False
-                     [PConstant (I x), PConstant (BI (toEnum x))]
+                     [PConstant (I (fromInteger x)), PConstant (BI x)]
 modifyConst syn fc x = x
+
+fitsInt :: Integer -> Bool
+fitsInt x = let xInt :: Int = fromInteger x
+                xInteger :: Integer = toInteger xInt in
+                x == xInteger
 
 pList syn = do lchar '['; fc <- pfc; xs <- sepBy (pExpr syn) (lchar ','); lchar ']'
                return (mkList fc xs)
@@ -1106,8 +1120,7 @@ pConstant = do reserved "Integer";return BIType
         <|> do reserved "Bits32"; return B32Type
         <|> do reserved "Bits64"; return B64Type
         <|> try (do f <- float;   return $ Fl f)
---         <|> try (do i <- natural; lchar 'L'; return $ BI i)
-        <|> try (do i <- natural; return $ I (fromInteger i))
+        <|> try (do i <- natural; return $ BI i)
         <|> try (do s <- strlit;  return $ Str s)
         <|> try (do c <- chlit;   return $ Ch c)
 
@@ -1537,9 +1550,15 @@ pTactic syn = do reserved "intro"; ns <- sepBy pName (lchar ',')
           <|> do reserved "exact"; t <- pExpr syn;
                  i <- getState
                  return $ Exact (desugar syn i t)
+          <|> do reserved "applyTactic"; t <- pExpr syn;
+                 i <- getState
+                 return $ ApplyTactic (desugar syn i t)
           <|> do reserved "reflect"; t <- pExpr syn;
                  i <- getState
-                 return $ ReflectTac (desugar syn i t)
+                 return $ Reflect (desugar syn i t)
+          <|> do reserved "fill"; t <- pExpr syn;
+                 i <- getState
+                 return $ Fill (desugar syn i t)
           <|> do reserved "try"; t <- pTactic syn;
                  lchar '|';
                  t1 <- pTactic syn
