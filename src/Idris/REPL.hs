@@ -18,6 +18,7 @@ import Idris.UnusedArgs
 import Idris.Docs
 import Idris.Help
 import Idris.Completion
+import Idris.IdeSlave
 
 import Paths_idris
 import Util.System
@@ -79,6 +80,16 @@ repl orig mods
    where ctrlC :: SomeException -> InputT Idris ()
          ctrlC e = do lift $ iputStrLn (show e)
                       repl orig mods
+
+-- | Run the IdeSlave
+ideslave :: IState -> [FilePath] -> InputT Idris ()
+ideslave orig mods
+  = do x <- liftIO $ receiveMessage
+       case x of
+         Nothing -> do liftIO $ sendMessage (Just "did not understand")
+         Just y -> do liftIO $ sendMessage (Just "understood you!")
+       liftIO $ sendMessage (Just "Hello world")
+       ideslave orig mods
 
 -- | The prompt consists of the currently loaded modules, or "Idris" if there are none
 mkPrompt [] = "Idris"
@@ -471,6 +482,7 @@ parseTarget _ = error "unknown target" -- FIXME: partial function
 parseArgs :: [String] -> [Opt]
 parseArgs [] = []
 parseArgs ("--quiet":ns)         = Quiet : (parseArgs ns)
+parseArgs ("--ideslave":ns)      = IdeSlave : (parseArgs ns)
 parseArgs ("--log":lvl:ns)       = OLogging (read lvl) : (parseArgs ns)
 parseArgs ("--noprelude":ns)     = NoPrelude : (parseArgs ns)
 parseArgs ("--check":ns)         = NoREPL : (parseArgs ns)
@@ -524,6 +536,7 @@ idrisMain :: [Opt] -> Idris ()
 idrisMain opts =
     do let inputs = opt getFile opts
        let quiet = Quiet `elem` opts
+       let idesl = IdeSlave `elem` opts
        let runrepl = not (NoREPL `elem` opts)
        let output = opt getOutput opts
        let newoutput = opt getNewOutput opts
@@ -543,6 +556,7 @@ idrisMain opts =
        mapM_ addLangExt (opt getLanguageExt opts)
        setREPL runrepl
        setQuiet quiet
+       setIdeSlave idesl
        setVerbose runrepl
        setCmdLine opts
        setOutputTy outty
@@ -567,7 +581,7 @@ idrisMain opts =
        elabPrims
        when (not (NoPrelude `elem` opts)) $ do x <- loadModule "Prelude"
                                                return ()
-       when (runrepl && not quiet) $ iputStrLn banner
+       when (runrepl && not quiet && not idesl) $ iputStrLn banner
        ist <- getIState
        mods <- mapM loadModule inputs
        ok <- noErrors
@@ -577,7 +591,8 @@ idrisMain opts =
        when ok $ case newoutput of
                     [] -> return ()
                     (o:_) -> process "" (NewCompile o)  
-       when runrepl $ runInputT replSettings $ repl ist inputs
+       when (runrepl && not idesl) $ runInputT replSettings $ repl ist inputs
+       when (idesl) $ runInputT replSettings $ ideslave ist inputs
        ok <- noErrors
        when (not ok) $ liftIO (exitWith (ExitFailure 1))
   where
