@@ -15,7 +15,7 @@ syn match idrisAnnotation "\<\(total\|partial\|auto\|impossible\|static\|implici
 syn match idrisStatement "\<\(do\|case\|of\|rewrite\|let\|in\|with\)\>"
 syn match idrisSyntax "\(pattern \+\|term \+\)\?syntax"
 syn match idrisConditional "\<\(if\|then\|else\)\>"
-syn match idrisTactic contained "\<\(intros\?\|rewrite\|exact\|refine\|trivial\|let\|focus\|try\|compute\|solve\|attack\|reflect\|fill\|applyTactic\)\>"
+syn match idrisTactic contained "\<\(intros\?\|rewrite\|exact\|refine\|trivial\|let\|focus\|try\|compute\|solve\|attack\|reflect\)\>"
 syn match idrisNumber "\<[0-9]\+\>\|\<0[xX][0-9a-fA-F]\+\>\|\<0[oO][0-7]\+\>"
 syn match idrisFloat "\<[0-9]\+\.[0-9]\+\([eE][-+]\=[0-9]\+\)\=\>"
 syn match idrisDelimiter  "(\|)\|\[\|\]\|,\|;\|_\|{\|}"
