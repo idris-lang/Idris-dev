@@ -8,13 +8,7 @@ ifneq ($(GMP_INCLUDE_DIR),)
 	CFLAGS += -isystem $(GMP_INCLUDE_DIR)
 endif
 
-# Build a fat lib on Mac OS X
-ifeq ($(OS),darwin)
-	CFLAGS += -arch $(shell ghc -e System.Info.arch | tr -d '"')
-endif
-
 LIBTARGET = libidris_rts.a
-DYLIBTARGET = libidris_rts$(SHLIB_SUFFIX)
 
 check : $(LIBTARGET) $(DYLIBTARGET)
 
@@ -22,17 +16,9 @@ $(LIBTARGET) : $(OBJS)
 	ar r $(LIBTARGET) $(OBJS)
 	ranlib $(LIBTARGET)
 
-$(DYLIBTARGET) : $(OBJS)
-	$(CC) $(CFLAGS) -lgmp -shared -o $(DYLIBTARGET) $(OBJS)
-
-build: $(DYLIBTARGET)
-	mkdir -p $(DIST)/rts
-	install $(DYLIBTARGET) $(DIST)/rts
-
-
 install : .PHONY
 	mkdir -p $(TARGET)
-	install $(LIBTARGET) $(DYLIBTARGET) $(HDRS) $(TARGET)
+	install $(LIBTARGET) $(HDRS) $(TARGET)
 
 clean : .PHONY
 	rm -f $(OBJS) $(LIBTARGET) $(DYLIBTARGET)

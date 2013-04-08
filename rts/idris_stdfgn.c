@@ -25,30 +25,6 @@ int fileError(void* h) {
   return ferror(f);
 }
 
-char* freadStr(void* h) {
-  FILE* f = (FILE*)h;
-  char* str;
-  printf("foo");
-  if (f != NULL) {
-    fseek(f, 0L, SEEK_END);
-    size_t size = ftell(f);
-    rewind(f);
-    printf("bar");
-    str = malloc(size + sizeof(char));
-    if (str != NULL && fread(str, size, 1, f)) {
-      (*(str + size)) = '\0';
-      printf("asf");
-    } else {
-      printf("Failed to allocate string from file\n");
-      exit(1);
-    }
-  } else {
-    str = malloc(sizeof(char));
-    str[0] = '\0';
-  }
-  return str;
-}
-
 void fputStr(void* h, char* str) {
     FILE* f = (FILE*)h;
     fputs(str, f);

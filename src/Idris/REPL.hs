@@ -496,7 +496,6 @@ parseArgs ("--dumpdefuns":n:ns)  = DumpDefun n : (parseArgs ns)
 parseArgs ("--dumpcases":n:ns)   = DumpCases n : (parseArgs ns)
 parseArgs ("--target":n:ns)      = UseTarget (parseTarget n) : (parseArgs ns)
 parseArgs ("-XTypeProviders":ns) = Extension TypeProviders : (parseArgs ns)
-parseArgs ("--dynamicrts":f:ns)  = DynamicRTS f : (parseArgs ns)
 parseArgs (n:ns)                 = Filename n : (parseArgs ns)
 
 helphead =
@@ -637,12 +636,8 @@ getLanguageExt :: Opt -> Maybe LanguageExt
 getLanguageExt (Extension e) = Just e
 getLanguageExt _ = Nothing
 
-getDynamicRTS :: Opt -> Maybe FilePath
-getDynamicRTS (DynamicRTS f) = Just f
-getDynamicRTS _ = Nothing
-
 opt :: (Opt -> Maybe a) -> [Opt] -> [a]
-opt = mapMaybe 
+opt = mapMaybe
 
 ver = showVersion version
 
