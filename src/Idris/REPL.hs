@@ -82,7 +82,7 @@ repl orig mods
                       repl orig mods
 
 -- | Run the IdeSlave
-ideslave :: IState -> [FilePath] -> InputT Idris ()
+ideslave :: IState -> [FilePath] -> Idris ()
 ideslave orig mods
   = do x <- liftIO $ receiveMessage
        case x of
@@ -592,7 +592,7 @@ idrisMain opts =
                     [] -> return ()
                     (o:_) -> process "" (NewCompile o)  
        when (runrepl && not idesl) $ runInputT replSettings $ repl ist inputs
-       when (idesl) $ runInputT replSettings $ ideslave ist inputs
+       when (idesl) $ ideslave ist inputs
        ok <- noErrors
        when (not ok) $ liftIO (exitWith (ExitFailure 1))
   where

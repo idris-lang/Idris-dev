@@ -41,7 +41,7 @@ instance SExpable Int where
 
 instance (SExpable a) => SExpable (Maybe a) where
   toSExp Nothing  = List [SymbolAtom "Nothing"]
-  toSExp (Just a) = List ((SymbolAtom "Just") : [toSExp a])
+  toSExp (Just a) = List [SymbolAtom "Just", toSExp a]
 
 instance (SExpable a) => SExpable [a] where
   toSExp l = List (map toSExp l)
@@ -66,7 +66,7 @@ atom = do char ':'; x <- atomC; return x
 
 atomC = do string "True"; return (BoolAtom True)
     <|> do string "False"; return (BoolAtom False)
-    <|> do xs <- many (noneOf " \n\"()"); return (SymbolAtom xs)
+    <|> do xs <- many (noneOf " \n\t\r\"()"); return (SymbolAtom xs)
 
 quotedChar = noneOf "\""
          <|> try (string "\\\"" >> return '"')
