@@ -6,6 +6,13 @@
 #include <assert.h>
 #include <pthread.h>
 
+#ifdef _WIN32
+#include <windows.h>
+#include <io.h>
+#else
+#include <sys/mman.h>
+#endif
+
 #include "idris_rts.h"
 #include "idris_gc.h"
 #include "idris_bitstring.h"
@@ -286,6 +293,61 @@ void idris_poke(void* ptr, i_int offset, VAL data) {
 
 void idris_memmove(void* dest, void* src, i_int dest_offset, i_int src_offset, i_int size) {
     memmove(dest + dest_offset, src + src_offset, size);
+}
+
+i_int idris_fileLength(void* handle) {
+    long pos = ftell(handle);
+    if (fseek(handle, 0, SEEK_END)) {
+        return -1;
+    }
+    i_int length = (i_int)ftell((FILE*)handle);
+    if (fseek(handle, pos, SEEK_SET)) {
+        return -1;
+    }
+    return length;
+}
+
+void* idris_mmap(void* hnd, i_int can_write, i_int length) {
+    FILE* handle = (FILE*)hnd;
+#ifdef _WIN32
+    HANDLE file_handle = _get_osfhandle(_fileno(handle));
+    if (file_handle == NULL) {
+	return NULL;
+    }
+    DWORD page_access = (can_write ? PAGE_READWRITE : PAGE_READONLY);
+    DWORD file_access = (can_write ? FILE_MAP_WRITE : FILE_MAP_READ);
+    HANDLE mapping = CreateFileMapping(file_handle, NULL, page_access, 
+                                       (DWORD)(length>>32), 
+                                       (DWORD)(length), 
+                                       NULL);
+    if (mapping == NULL) {
+	return NULL;
+    }
+    void* result = MapViewOfFile(mapping, file_access,
+                                 (DWORD)0, 
+                                 (DWORD)0,
+                                 length);
+    CloseHandle(mapping);
+#else
+    int file_handle = fileno(handle);
+    if (file_handle == -1) {
+	return NULL;
+    }
+    int prot = (can_write ? PROT_READ|PROT_WRITE : PROT_READ);
+    void* result = mmap(NULL, length, prot, MAP_PRIVATE, file_handle, 0);
+    if (result == MAP_FAILED) {
+	return NULL;
+    }
+    return result;
+#endif
+}
+
+i_int idris_munmap(void* addr, i_int length) {
+#ifdef _WIN32
+    return (UnmapViewOfFile(addr) == 0 ? -1 : 0);
+#else
+    return (munmap(addr, length) == 0 ? 0 : -1);
+#endif
 }
 
 VAL idris_castIntStr(VM* vm, VAL i) {

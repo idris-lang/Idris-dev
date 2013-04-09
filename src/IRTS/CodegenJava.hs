@@ -308,6 +308,8 @@ mkIdentifier (UN name) =
       | x == ']' = "_RSBrace" ++ cleanNonLetter xs
       | x == '(' = "_LBrace" ++ cleanNonLetter xs
       | x == ')' = "_RBrace" ++ cleanNonLetter xs
+      | x == '{' = "_LCBrace" ++ cleanNonLetter xs
+      | x == '}' = "_RCBrace" ++ cleanNonLetter xs
       | x == '_' = "__" ++ cleanNonLetter xs
       | not (isAlphaNum x) = "_" ++ (show $ ord x) ++ xs
       | otherwise = x:cleanNonLetter xs
@@ -424,6 +426,9 @@ mkIdentifier (UN name) =
     cleanReserved "idris_peek" = "_idris_peek"
     cleanReserved "idris_poke" = "_idris_poke"
     cleanReserved "idris_memmove" = "_idris_memmove"
+    cleanReserved "idris_fileLength" = "_idirs_fileLength"
+    cleanReserved "idris_mmap" = "_idris_mmap"
+    cleanReserved "idris_munmap" = "_idris_munmap"
 
     cleanReserved x = x
 
