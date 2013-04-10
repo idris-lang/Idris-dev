@@ -82,28 +82,28 @@ mkIBC (i:is) f = do ist <- getIState
                     mkIBC is f'
 
 ibc i (IBCFix d) f = return f { ibc_fixes = d : ibc_fixes f } 
-ibc i (IBCImp n) f = case lookupCtxt Nothing n (idris_implicits i) of
+ibc i (IBCImp n) f = case lookupCtxt n (idris_implicits i) of
                         [v] -> return f { ibc_implicits = (n,v): ibc_implicits f     }
                         _ -> fail "IBC write failed"
 ibc i (IBCStatic n) f 
-                   = case lookupCtxt Nothing n (idris_statics i) of
+                   = case lookupCtxt n (idris_statics i) of
                         [v] -> return f { ibc_statics = (n,v): ibc_statics f     }
                         _ -> fail "IBC write failed"
 ibc i (IBCClass n) f 
-                   = case lookupCtxt Nothing n (idris_classes i) of
+                   = case lookupCtxt n (idris_classes i) of
                         [v] -> return f { ibc_classes = (n,v): ibc_classes f     }
                         _ -> fail "IBC write failed"
 ibc i (IBCInstance int n ins) f 
                    = return f { ibc_instances = (int,n,ins): ibc_instances f     }
 ibc i (IBCDSL n) f 
-                   = case lookupCtxt Nothing n (idris_dsls i) of
+                   = case lookupCtxt n (idris_dsls i) of
                         [v] -> return f { ibc_dsls = (n,v): ibc_dsls f     }
                         _ -> fail "IBC write failed"
 ibc i (IBCData n) f 
-                   = case lookupCtxt Nothing n (idris_datatypes i) of
+                   = case lookupCtxt n (idris_datatypes i) of
                         [v] -> return f { ibc_datatypes = (n,v): ibc_datatypes f     }
                         _ -> fail "IBC write failed"
-ibc i (IBCOpt n) f = case lookupCtxt Nothing n (idris_optimisation i) of
+ibc i (IBCOpt n) f = case lookupCtxt n (idris_optimisation i) of
                         [v] -> return f { ibc_optimise = (n,v): ibc_optimise f     }
                         _ -> fail "IBC write failed"
 ibc i (IBCSyntax n) f = return f { ibc_syntax = n : ibc_syntax f }
@@ -113,13 +113,13 @@ ibc i (IBCObj n) f = return f { ibc_objs = n : ibc_objs f }
 ibc i (IBCLib n) f = return f { ibc_libs = n : ibc_libs f }
 ibc i (IBCDyLib n) f = return f {ibc_dynamic_libs = n : ibc_dynamic_libs f }
 ibc i (IBCHeader n) f = return f { ibc_hdrs = n : ibc_hdrs f }
-ibc i (IBCDef n) f = case lookupDef Nothing n (tt_ctxt i) of
+ibc i (IBCDef n) f = case lookupDef n (tt_ctxt i) of
                         [v] -> return f { ibc_defs = (n,v) : ibc_defs f     }
                         _ -> fail "IBC write failed"
-ibc i (IBCDoc n) f = case lookupCtxt Nothing n (idris_docstrings i) of
+ibc i (IBCDoc n) f = case lookupCtxt n (idris_docstrings i) of
                         [v] -> return f { ibc_docstrings = (n,v) : ibc_docstrings f }
                         _ -> fail "IBC write failed"
-ibc i (IBCCG n) f = case lookupCtxt Nothing n (idris_callgraph i) of
+ibc i (IBCCG n) f = case lookupCtxt n (idris_callgraph i) of
                         [v] -> return f { ibc_cg = (n,v) : ibc_cg f     }
                         _ -> fail "IBC write failed"
 ibc i (IBCCoercion n) f = return f { ibc_coercions = n : ibc_coercions f }

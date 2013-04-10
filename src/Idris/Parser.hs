@@ -881,7 +881,7 @@ pApp syn = do f <- pSimpleExpr syn
               return (dslify i $ PApp fc f args)
   where
     dslify i (PApp fc (PRef _ f) [a])
-        | [d] <- lookupCtxt Nothing f (idris_dsls i)
+        | [d] <- lookupCtxt f (idris_dsls i)
             = desugar (syn { dsl_info = d }) i (getTm a)
     dslify i t = t
 
