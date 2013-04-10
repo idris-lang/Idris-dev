@@ -244,8 +244,8 @@ addDef n v ctxt = case Map.lookup (nsroot n) ctxt of
 
 -}
 
-lookupCtxtName :: Maybe [String] -> Name -> Ctxt a -> [(Name, a)]
-lookupCtxtName nspace n ctxt = case Map.lookup (nsroot n) ctxt of
+lookupCtxtName :: Name -> Ctxt a -> [(Name, a)]
+lookupCtxtName n ctxt = case Map.lookup (nsroot n) ctxt of
                                   Just xs -> filterNS (Map.toList xs)
                                   Nothing -> []
   where
@@ -258,12 +258,12 @@ lookupCtxtName nspace n ctxt = case Map.lookup (nsroot n) ctxt of
     nsmatch (NS _ _)  _         = False
     nsmatch looking   found     = True
 
-lookupCtxt :: Maybe [String] -> Name -> Ctxt a -> [a]
-lookupCtxt ns n ctxt = map snd (lookupCtxtName ns n ctxt)
+lookupCtxt :: Name -> Ctxt a -> [a]
+lookupCtxt n ctxt = map snd (lookupCtxtName n ctxt)
 
 updateDef :: Name -> (a -> a) -> Ctxt a -> Ctxt a
 updateDef n f ctxt 
-  = let ds = lookupCtxtName Nothing n ctxt in
+  = let ds = lookupCtxtName n ctxt in
         foldr (\ (n, t) c -> addDef n (f t) c) ctxt ds  
 
 toAlist :: Ctxt a -> [(Name, a)]

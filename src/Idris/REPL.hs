@@ -129,7 +129,7 @@ resolveProof :: Name -> Idris Name
 resolveProof n'
   = do i <- getIState
        ctxt <- getContext
-       n <- case lookupNames Nothing n' ctxt of
+       n <- case lookupNames n' ctxt of
                  [x] -> return x
                  [] -> return n'
                  ns -> fail $ pshow i (CantResolveAlts (map show ns))
@@ -204,13 +204,13 @@ process fn (ExecVal t)
                                   showImp imp (delab ist ty'))
                        return ()
 process fn (Check (PRef _ n))
-                  = do ctxt <- getContext
-                       ist <- getIState
-                       imp <- impShow
-                       case lookupTy Nothing n ctxt of
-                        ts@(_:_) -> mapM_ (\t -> iputStrLn $ show n ++ " : " ++
-                                                       showImp imp (delab ist t)) ts
-                        [] -> iputStrLn $ "No such variable " ++ show n
+   = do ctxt <- getContext
+        ist <- getIState
+        imp <- impShow
+        case lookupNames n ctxt of
+             ts@(_:_) -> mapM_ (\n -> iputStrLn $ show n ++ " : " ++
+                                        showImp imp (delabTy ist n)) ts
+             [] -> iputStrLn $ "No such variable " ++ show n
 process fn (Check t) = do (tm, ty) <- elabVal toplevel False t
                           ctxt <- getContext
                           ist <- getIState 
@@ -220,7 +220,7 @@ process fn (Check t) = do (tm, ty) <- elabVal toplevel False t
                                     showImp imp (delab ist ty))
 
 process fn (DocStr n) = do i <- getIState
-                           case lookupCtxtName Nothing n (idris_docstrings i) of
+                           case lookupCtxtName n (idris_docstrings i) of
                                 [] -> iputStrLn $ "No documentation for " ++ show n
                                 ns -> mapM_ showDoc ns 
     where showDoc (n, d) 
@@ -237,8 +237,8 @@ process fn Universes = do i <- getIState
                             OK _ -> iputStrLn "Universes OK"
 process fn (Defn n) = do i <- getIState
                          iputStrLn "Compiled patterns:\n"
-                         liftIO $ print (lookupDef Nothing n (tt_ctxt i))
-                         case lookupCtxt Nothing n (idris_patdefs i) of
+                         liftIO $ print (lookupDef n (tt_ctxt i))
+                         case lookupCtxt n (idris_patdefs i) of
                             [] -> return ()
                             [d] -> do iputStrLn "Original definiton:\n"
                                       mapM_ (printCase i) d
@@ -255,25 +255,25 @@ process fn (TotCheck n) = do i <- getIState
                                 _ -> return ()
 process fn (DebugInfo n) 
    = do i <- getIState
-        let oi = lookupCtxtName Nothing n (idris_optimisation i)
+        let oi = lookupCtxtName n (idris_optimisation i)
         when (not (null oi)) $ iputStrLn (show oi)
-        let si = lookupCtxt Nothing n (idris_statics i)
+        let si = lookupCtxt n (idris_statics i)
         when (not (null si)) $ iputStrLn (show si)
-        let di = lookupCtxt Nothing n (idris_datatypes i)
+        let di = lookupCtxt n (idris_datatypes i)
         when (not (null di)) $ iputStrLn (show di)
-        let d = lookupDef Nothing n (tt_ctxt i)
+        let d = lookupDef n (tt_ctxt i)
         when (not (null d)) $ liftIO $
            do print (head d)
-        let cg = lookupCtxtName Nothing n (idris_callgraph i)
+        let cg = lookupCtxtName n (idris_callgraph i)
         findUnusedArgs (map fst cg)
         i <- getIState
-        let cg' = lookupCtxtName Nothing n (idris_callgraph i)
+        let cg' = lookupCtxtName n (idris_callgraph i)
         sc <- checkSizeChange n
         iputStrLn $ "Size change: " ++ show sc
         when (not (null cg')) $ do iputStrLn "Call graph:\n"
                                    iputStrLn (show cg')
 process fn (Info n) = do i <- getIState
-                         case lookupCtxt Nothing n (idris_classes i) of
+                         case lookupCtxt n (idris_classes i) of
                               [c] -> classInfo c
                               _ -> iputStrLn "Not a class"
 process fn (Search t) = iputStrLn "Not implemented"
@@ -330,7 +330,7 @@ process fn (ShowProof n')
 process fn (Prove n')
      = do ctxt <- getContext
           ist <- getIState
-          n <- case lookupNames Nothing n' ctxt of
+          n <- case lookupNames n' ctxt of
                     [x] -> return x
                     [] -> return n'
                     ns -> fail $ pshow ist (CantResolveAlts (map show ns))
@@ -381,7 +381,7 @@ process fn (Pattelab t)
           iputStrLn $ show tm ++ "\n\n : " ++ show ty
 
 process fn (Missing n) = do i <- getIState
-                            case lookupDef Nothing n (tt_ctxt i) of
+                            case lookupDef n (tt_ctxt i) of
                                 [CaseOp _ _ _ _ _ args t _ _]
                                     -> do tms <- genMissing n args t
                                           iputStrLn (showSep "\n" (map (showImp True) tms))
@@ -431,7 +431,7 @@ dumpInstance :: Name -> Idris ()
 dumpInstance n = do i <- getIState
                     ctxt <- getContext
                     imp <- impShow
-                    case lookupTy Nothing n ctxt of
+                    case lookupTy n ctxt of
                          ts -> mapM_ (\t -> iputStrLn $ showImp imp (delab i t)) ts
 
 showTotal t@(Partial (Other ns)) i

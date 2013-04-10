@@ -171,7 +171,7 @@ checkInjective (tm, l, r) = do ctxt <- get_context
                                if isInj ctxt tm then return ()
                                 else lift $ tfail (NotInjective tm l r) 
   where isInj ctxt (P _ n _) 
-            | isConName Nothing n ctxt = True
+            | isConName n ctxt = True
         isInj ctxt (App f a) = isInj ctxt f
         isInj ctxt (Constant _) = True
         isInj ctxt (TType _) = True
@@ -210,7 +210,7 @@ unique_hole' reusable n
 uniqueNameCtxt :: Context -> Name -> [Name] -> Elab' aux Name
 uniqueNameCtxt ctxt n hs 
     | n `elem` hs = uniqueNameCtxt ctxt (nextName n) hs
-    | [_] <- lookupTy Nothing n ctxt = uniqueNameCtxt ctxt (nextName n) hs
+    | [_] <- lookupTy n ctxt = uniqueNameCtxt ctxt (nextName n) hs
     | otherwise = return n
 
 elog :: String -> Elab' aux ()
@@ -356,7 +356,7 @@ prepare_apply fn imps =
     mkClaims _ _ _ _
             | Var n <- fn
                    = do ctxt <- get_context
-                        case lookupTy Nothing n ctxt of
+                        case lookupTy n ctxt of
                                 [] -> lift $ tfail $ NoSuchVariable n  
                                 _ -> fail $ "Too many arguments for " ++ show fn
             | otherwise = fail $ "Too many arguments for " ++ show fn
