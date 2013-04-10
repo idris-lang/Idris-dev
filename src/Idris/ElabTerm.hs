@@ -211,7 +211,7 @@ elab ist info pattern tcgen fn tm
     elab' ina (PPatvar fc n) | pattern = patvar n
     elab' (ina, guarded) (PRef fc n) | pattern && not (inparamBlock n)
         = do ctxt <- get_context
-             let defined = case lookupTy Nothing n ctxt of
+             let defined = case lookupTy n ctxt of
                                [] -> False
                                _ -> True
            -- this is to stop us resolve type classes recursively
@@ -221,7 +221,7 @@ elab ist info pattern tcgen fn tm
                        then do apply (Var n) []; solve
                        else try (do apply (Var n) []; solve)
                                 (patvar n)
-      where inparamBlock n = case lookupCtxtName Nothing n (inblock info) of
+      where inparamBlock n = case lookupCtxtName n (inblock info) of
                                 [] -> False
                                 _ -> True
     elab' ina f@(PInferRef fc n) = elab' ina (PApp fc f [])
@@ -334,7 +334,7 @@ elab ist info pattern tcgen fn tm
     elab' (ina, g) tm@(PApp fc (PRef _ f) args') 
        = do let args = {- case lookupCtxt f (inblock info) of
                           Just ps -> (map (pexp . (PRef fc)) ps ++ args')
-                          _ ->-} args'
+                          _ -> -} args'
 --             newtm <- mkSpecialised ist fc f (map getTm args') tm
             env <- get_env
             if (f `elem` map fst env && length args' == 1)
@@ -350,11 +350,11 @@ elab ist info pattern tcgen fn tm
                     let isinf = f == inferCon || tcname f
                     -- if f is a type class, we need to know its arguments so that
                     -- we can unify with them
-                    case lookupCtxt Nothing f (idris_classes ist) of
+                    case lookupCtxt f (idris_classes ist) of
                         [] -> return ()
                         _ -> mapM_ setInjective (map getTm args')
                     ctxt <- get_context
-                    let guarded = isConName Nothing f ctxt
+                    let guarded = isConName f ctxt
                     ns <- apply (Var f) (map isph args)
                     ptm <- get_term
                     g <- goal
@@ -547,7 +547,7 @@ pruneAlt xs = map prune xs
 pruneByType :: Term -> Context -> [PTerm] -> [PTerm]
 pruneByType (P _ n _) c as 
 -- if the goal type is polymorphic, keep e
-   | [] <- lookupTy Nothing n c = as
+   | [] <- lookupTy n c = as
    | otherwise 
        = let asV = filter (headIs True n) as 
              as' = filter (headIs False n) as in
@@ -563,7 +563,7 @@ pruneByType (P _ n _) c as
     headIs _ _ _ = True -- keep if it's not an application
 
     typeHead var f f' 
-        = case lookupTy Nothing f' c of
+        = case lookupTy f' c of
                        [ty] -> let ty' = normalise c [] ty in
                                    case unApply (getRetTy ty') of
                                     (P _ ftyn _, _) -> ftyn == f
@@ -596,7 +596,7 @@ trivial ist = try' (do elab ist toplevel False False (MN 0 "tac")
 findInstances :: IState -> Term -> [Name]
 findInstances ist t 
     | (P _ n _, _) <- unApply t 
-        = case lookupCtxt Nothing n (idris_classes ist) of
+        = case lookupCtxt n (idris_classes ist) of
             [CI _ _ _ _ ins] -> ins
             _ -> []
     | otherwise = []
@@ -658,7 +658,7 @@ resolveTC depth fn ist
 --                 if (all boundVar ttypes) then resolveTC (depth - 1) fn insts ist 
 --                   else do
                    -- if there's a hole in the goal, don't even try
-                let imps = case lookupCtxtName Nothing n (idris_implicits ist) of
+                let imps = case lookupCtxtName n (idris_implicits ist) of
                                 [] -> []
                                 [args] -> map isImp (snd args) -- won't be overloaded!
                 ps <- get_probs
@@ -716,7 +716,7 @@ runTac autoSolve ist tac = do env <- get_env
     runT (Exact tm) = do elab ist toplevel False False (MN 0 "tac") tm
                          when autoSolve solveAll
     runT (Refine fn [])   
-        = do (fn', imps) <- case lookupCtxtName Nothing fn (idris_implicits ist) of
+        = do (fn', imps) <- case lookupCtxtName fn (idris_implicits ist) of
                                     [] -> do a <- envArgs fn
                                              return (fn, a)
                                     -- FIXME: resolve ambiguities
@@ -1200,7 +1200,7 @@ solveAll = try (do solve; solveAll) (return ())
 mkSpecialised :: IState -> FC -> Name -> [PTerm] -> PTerm -> ElabD PTerm
 mkSpecialised i fc n args def
     = do let tm' = def
-         case lookupCtxt Nothing n (idris_statics i) of
+         case lookupCtxt n (idris_statics i) of
            [] -> return tm'
            [as] -> if (not (or as)) then return tm' else
                        mkSpecDecl i n (zip args as) tm'
@@ -1227,8 +1227,8 @@ mkSpecDecl i n pargs tm'
     cg = idris_callgraph i
 
     staticFnNames tm | (P _ f _, as) <- unApply tm
-        = if not (isFnName Nothing f ctxt) then [] 
-             else case lookupCtxt Nothing f cg of
+        = if not (isFnName f ctxt) then [] 
+             else case lookupCtxt f cg of
                     [ns] -> f : f : [] --(ns \\ [f])
                     [] -> [f,f]
                     _ -> []

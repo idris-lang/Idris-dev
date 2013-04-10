@@ -9,6 +9,7 @@ User visible changes:
 * Tab completion in REPL
 * Dynamic loading of C libraries in the interpreter
 * Testing IO actions at the REPL with :x command
+* Improve rendering of :t
 * Fixed some INTERNAL ERROR messages
 
 Internal changes:

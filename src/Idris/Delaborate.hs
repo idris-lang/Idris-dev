@@ -18,8 +18,8 @@ delab i tm = delab' i tm False
 
 delabTy :: IState -> Name -> PTerm
 delabTy i n 
-    = case lookupTy Nothing n (tt_ctxt i) of
-           (ty:_) -> case lookupCtxt Nothing n (idris_implicits i) of
+    = case lookupTy n (tt_ctxt i) of
+           (ty:_) -> case lookupCtxt n (idris_implicits i) of
                          (imps:_) -> delabTy' i imps ty False
 
 delab' :: IState -> Term -> Bool -> PTerm
@@ -60,7 +60,7 @@ delabTy' ist imps tm fullname = de [] imps tm
     de env _ (TType i) = PType 
 
     dens x | fullname = x
-    dens ns@(NS n _) = case lookupCtxt Nothing n (idris_implicits ist) of
+    dens ns@(NS n _) = case lookupCtxt n (idris_implicits ist) of
                               [_] -> n -- just one thing
                               _ -> ns
     dens n = n
@@ -83,7 +83,7 @@ delabTy' ist imps tm fullname = de [] imps tm
     deFn env f args = PApp un (de env [] f) (map pexp (map (de env []) args))
 
     mkPApp n args 
-        | [imps] <- lookupCtxt Nothing n (idris_implicits ist)
+        | [imps] <- lookupCtxt n (idris_implicits ist)
             = PApp un (PRef un n) (zipWith imp (imps ++ repeat (pexp undefined)) args)
         | otherwise = PApp un (PRef un n) (map pexp args)
 
