@@ -98,10 +98,20 @@ doExec env ctxt Impossible = fail "Tried to execute an impossible case"
 doExec env ctxt (TType u) = return (TType u)
 
 execApp :: Env -> Context -> (Term, [Term]) -> Idris Term
-execApp env ctxt (f, args) = trace ("Reducing " ++ show f) $
-                             do newF <- doExec env ctxt f
+execApp env ctxt (f, args) = do newF <- doExec env ctxt f
+                                laziness <- getLaziness newF
                                 newArgs <- mapM (doExec env ctxt) args
+                                trace (show newF ++ show (zip args laziness)) $ return ()
                                 execApp' env ctxt newF newArgs
+    where getLaziness (P _ (UN "lazy") _) = return [True]
+          getLaziness (P _ n _) = do ist <- getIState
+                                     let argInfo = idris_implicits ist
+                                     case lookupCtxtName Nothing n argInfo of
+                                       [] -> return (repeat False)
+                                       [ps] -> return $ map lazyarg (snd ps)
+                                       many -> fail $ "Ambiguous " ++ show n ++ ", found " ++ show many
+          getLaziness x = return (repeat False) -- ok due to zip above
+
 
 execApp' :: Env -> Context -> Term -> [Term] -> Idris Term
 execApp' env ctxt v [] = return v -- no args is just a constant! can result from function calls
