@@ -625,6 +625,7 @@ p_floatFloor = p_fPrim (fromInteger . floor)
 p_floatCeil = p_fPrim (fromInteger . ceiling)
 
 p_strLen [VConstant (Str xs)] = Just $ VConstant (I (length xs))
+p_strLen _ = Nothing
 p_strHead [VConstant (Str (x:xs))] = Just $ VConstant (Ch x)
 p_strHead _ = Nothing
 p_strTail [VConstant (Str (x:xs))] = Just $ VConstant (Str xs)
