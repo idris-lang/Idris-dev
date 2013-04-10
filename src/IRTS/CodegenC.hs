@@ -106,6 +106,10 @@ bcc i (ASSIGNCONST l c)
     mkConst (Fl f) = "MKFLOAT(vm, " ++ show f ++ ")"
     mkConst (Ch c) = "MKINT(" ++ show (fromEnum c) ++ ")"
     mkConst (Str s) = "MKSTR(vm, " ++ show s ++ ")"
+    mkConst (B8 b) = "MKB8(vm, " ++ show b ++")"
+    mkConst (B16 b) = "MKB16(vm, " ++ show b ++ ")"
+    mkConst (B32 b) = "MKB32(vm, " ++ show b ++ ")"
+    mkConst (B64 b) = "MKB64(vm, " ++ show b ++ ")"
     mkConst _ = "MKINT(42424242)"
 bcc i (UPDATE l r) = indent i ++ creg l ++ " = " ++ creg r ++ ";\n"
 bcc i (MKCON l tag args)

@@ -86,8 +86,8 @@ collapseCons ty cons =
     checkFR fs i (_ : xs) | i `elem` fs = checkFR fs (i + 1) xs
     checkFR fs i (t : xs)
         -- must be recursive or type is not collapsible
-        = do let rt = getRetTy t
-             if (ty `elem` freeNames rt) 
+        = do let (rtf, rta) = unApply $ getRetTy t
+             if (ty `elem` freeNames rtf) 
                then checkFR fs (i+1) xs
                else return False
 
