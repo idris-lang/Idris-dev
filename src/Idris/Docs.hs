@@ -65,9 +65,9 @@ instance Show Doc where
 getDocs :: Name -> Idris Doc
 getDocs n 
    = do i <- getIState
-        case lookupCtxt Nothing n (idris_classes i) of
+        case lookupCtxt n (idris_classes i) of
              [ci] -> docClass n ci
-             _ -> case lookupCtxt Nothing n (idris_datatypes i) of
+             _ -> case lookupCtxt n (idris_datatypes i) of
                        [ti] -> docData n ti
                        _ -> do fd <- docFun n
                                return (FunDoc fd)
@@ -81,7 +81,7 @@ docData n ti
 docClass :: Name -> ClassInfo -> Idris Doc
 docClass n ci
   = do i <- getIState
-       let docstr = case lookupCtxt Nothing n (idris_docstrings i) of
+       let docstr = case lookupCtxt n (idris_docstrings i) of
                          [str] -> str
                          _ -> ""
        mdocs <- mapM docFun (map fst (class_methods ci))
@@ -90,13 +90,13 @@ docClass n ci
 docFun :: Name -> Idris FunDoc
 docFun n
   = do i <- getIState
-       let docstr = case lookupCtxt Nothing n (idris_docstrings i) of
+       let docstr = case lookupCtxt n (idris_docstrings i) of
                          [str] -> str
                          _ -> ""
-       let ty = case lookupTy Nothing n (tt_ctxt i) of
+       let ty = case lookupTy n (tt_ctxt i) of
                      (t : _) -> t
        let argnames = map fst (getArgTys ty)
-       let args = case lookupCtxt Nothing n (idris_implicits i) of
+       let args = case lookupCtxt n (idris_implicits i) of
                        [args] -> zip argnames args
                        _ -> []
        let infixes = idris_infixes i

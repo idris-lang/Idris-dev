@@ -17,7 +17,7 @@ import Debug.Trace
 forceArgs :: Name -> Type -> Idris ()
 forceArgs n t = do i <- getIState
                    let fargs = force i 0 t
-                   copt <- case lookupCtxt Nothing n (idris_optimisation i) of
+                   copt <- case lookupCtxt n (idris_optimisation i) of
                                  []     -> return $ Optimise False [] []
                                  (op:_) -> return op
                    let opts = addDef n (copt { forceable = fargs }) (idris_optimisation i)
@@ -38,7 +38,7 @@ forceArgs n t = do i <- getIState
 
     collapsibleIn i t
         | (P _ tn _, _) <- unApply t
-           = case lookupCtxt Nothing tn (idris_optimisation i) of
+           = case lookupCtxt tn (idris_optimisation i) of
                 [oi] -> collapsible oi
                 _ -> False
         | otherwise = False
@@ -68,7 +68,7 @@ collapseCons ty cons =
     setCollapsible n
        = do i <- getIState
             iLOG $ show n ++ " collapsible"
-            case lookupCtxt Nothing n (idris_optimisation i) of
+            case lookupCtxt n (idris_optimisation i) of
                (oi:_) -> do let oi' = oi { collapsible = True }
                             let opts = addDef n oi' (idris_optimisation i)
                             putIState (i { idris_optimisation = opts })
@@ -79,7 +79,7 @@ collapseCons ty cons =
 
     forceRec :: IState -> (Name, [Type]) -> Idris Bool
     forceRec i (n, ts)
-       = case lookupCtxt Nothing n (idris_optimisation i) of
+       = case lookupCtxt n (idris_optimisation i) of
             (oi:_) -> checkFR (forceable oi) 0 ts
             _ -> return False
     checkFR fs i [] = return True
@@ -161,7 +161,7 @@ instance Optimisable Raw where
         | (Var n, args) <- raw_unapply t -- MAGIC HERE
             = do args' <- mapM applyOpts args
                  i <- getIState
-                 case lookupCtxt Nothing n (idris_optimisation i) of
+                 case lookupCtxt n (idris_optimisation i) of
                     (oi:_) -> return $ applyDataOpt oi n args'
                     _ -> return (raw_apply (Var n) args')
         | otherwise = do f' <- applyOpts f
@@ -202,14 +202,14 @@ applyDataOpt oi n args
 instance Optimisable (TT Name) where
     applyOpts c@(P (DCon t arity) n _)
         = do i <- getIState
-             case lookupCtxt Nothing n (idris_optimisation i) of
+             case lookupCtxt n (idris_optimisation i) of
                  (oi:_) -> return $ applyDataOptRT oi n t arity []
                  _ -> return c
     applyOpts t@(App f a)
         | (c@(P (DCon t arity) n _), args) <- unApply t -- MAGIC HERE
             = do args' <- mapM applyOpts args
                  i <- getIState
-                 case lookupCtxt Nothing n (idris_optimisation i) of
+                 case lookupCtxt n (idris_optimisation i) of
                       (oi:_) -> do return $ applyDataOptRT oi n t arity args'
                       _ -> return (mkApp c args')
         | otherwise = do f' <- applyOpts f
@@ -224,7 +224,7 @@ instance Optimisable (TT Name) where
 
     stripCollapsed (Bind n (PVar x) t) | (P _ ty _, _) <- unApply x
            = do i <- getIState
-                case lookupCtxt Nothing ty (idris_optimisation i) of
+                case lookupCtxt ty (idris_optimisation i) of
                   [oi] -> if collapsible oi
                              then do t' <- stripCollapsed t
                                      return (Bind n (PVar x) (instantiate Erased t'))

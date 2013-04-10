@@ -1128,7 +1128,7 @@ namesIn uvars ist tm = nub $ ni [] tm
   where
     ni env (PRef _ n)        
         | not (n `elem` env) 
-            = case lookupTy Nothing n (tt_ctxt ist) of
+            = case lookupTy n (tt_ctxt ist) of
                 [] -> [n]
                 _ -> if n `elem` (map fst uvars) then [n] else []
     ni env (PApp _ f as)   = ni env f ++ concatMap (ni env) (map getTm as)
@@ -1152,7 +1152,7 @@ usedNamesIn vars ist tm = nub $ ni [] tm
   where
     ni env (PRef _ n)        
         | n `elem` vars && not (n `elem` env) 
-            = case lookupTy Nothing n (tt_ctxt ist) of
+            = case lookupTy n (tt_ctxt ist) of
                 [] -> [n]
                 _ -> []
     ni env (PApp _ f as)   = ni env f ++ concatMap (ni env) (map getTm as)
