@@ -204,13 +204,17 @@ process fn (ExecVal t)
                                   showImp imp (delab ist ty'))
                        return ()
 process fn (Check (PRef _ n))
-                  = do ctxt <- getContext
-                       ist <- getIState
-                       imp <- impShow
-                       case lookupTy Nothing n ctxt of
-                        ts@(_:_) -> mapM_ (\t -> iputStrLn $ show n ++ " : " ++
-                                                       showImp imp (delab ist t)) ts
-                        [] -> iputStrLn $ "No such variable " ++ show n
+   = do ctxt <- getContext
+        ist <- getIState
+        imp <- impShow
+        case lookupNames Nothing n ctxt of
+             ts@(_:_) -> mapM_ (\n -> iputStrLn $ show n ++ " : " ++
+                                        showImp imp (delabTy ist n)) ts
+             [] -> iputStrLn $ "No such variable " ++ show n
+--                        case lookupTy Nothing n ctxt of
+--                         ts@(_:_) -> mapM_ (\t -> iputStrLn $ show n ++ " : " ++
+--                                                        showImp imp (delabTy ist n t)) ts
+--                         [] -> iputStrLn $ "No such variable " ++ show n
 process fn (Check t) = do (tm, ty) <- elabVal toplevel False t
                           ctxt <- getContext
                           ist <- getIState 
