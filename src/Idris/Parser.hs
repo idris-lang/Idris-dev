@@ -975,7 +975,9 @@ pLet syn = try (do reserved "let"; n <- pName;
                    return (PCase fc v [(pat, sc)]))
 
 pPi syn = 
-     try (do lazy <- option False (do lchar '|'; return True)
+     try (do lazy <- if implicitAllowed syn -- laziness is top level only
+                        then option False (do lchar '|'; return True)
+                        else return False
              st <- pStatic
              lchar '('; xt <- tyDeclList syn; lchar ')'
              doc <- option "" (pDocComment '^')
