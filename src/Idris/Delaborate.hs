@@ -41,7 +41,7 @@ delab' ist tm fullname = de [] tm
     de env (TType i) = PType 
 
     dens x | fullname = x
-    dens ns@(NS n _) = case lookupCtxt Nothing n (idris_implicits ist) of
+    dens ns@(NS n _) = case lookupCtxt n (idris_implicits ist) of
                               [_] -> n -- just one thing
                               _ -> ns
     dens n = n
@@ -62,7 +62,7 @@ delab' ist tm fullname = de [] tm
     deFn env f args = PApp un (de env f) (map pexp (map (de env) args))
 
     mkPApp n args 
-        | [imps] <- lookupCtxt Nothing n (idris_implicits ist)
+        | [imps] <- lookupCtxt n (idris_implicits ist)
             = PApp un (PRef un n) (zipWith imp (imps ++ repeat (pexp undefined)) args)
         | otherwise = PApp un (PRef un n) (map pexp args)
 

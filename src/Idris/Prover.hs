@@ -26,7 +26,7 @@ prover :: Bool -> Name -> Idris ()
 prover lit x =
            do ctxt <- getContext
               i <- getIState
-              case lookupTy Nothing x ctxt of
+              case lookupTy x ctxt of
                   [t] -> if elem x (idris_metavars i)
                                then prove ctxt lit x t
                                else fail $ show x ++ " is not a metavariable"

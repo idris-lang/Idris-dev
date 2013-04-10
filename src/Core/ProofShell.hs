@@ -41,7 +41,7 @@ processCommand (Eval t) state =
                 (state, show nf ++ " : " ++ show ty)
          err -> (state, show err)
 processCommand (Print n) state =
-    case lookupDef Nothing n (ctxt state) of
+    case lookupDef n (ctxt state) of
          [tm] -> (state, show tm)
          _ -> (state, "No such name")
 processCommand (Tac e)  state 
