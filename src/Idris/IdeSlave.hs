@@ -95,14 +95,14 @@ receiveString x =
     ((num, ""):_) ->
       let msg = drop 6 x in
         if (length msg) /= (num - 1)
-           then error "bad input"
+           then error "bad input length"
            else parseSExpToCommand msg
-    _ -> error "blah"
+    _ -> error "readHex failed"
 
 parseSExpToCommand :: String -> Maybe IdeSlaveCommand
 parseSExpToCommand msg =
   case parseSExp msg of
-    Left _  -> Nothing
+    Left _  -> error "parse failure"
     Right r -> sexpToCommand r
 
 sendMessage :: SExpable a => a -> IO ()

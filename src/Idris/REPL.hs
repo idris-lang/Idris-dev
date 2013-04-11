@@ -84,20 +84,21 @@ repl orig mods
 -- | Run the IdeSlave
 ideslave :: IState -> [FilePath] -> Idris ()
 ideslave orig mods
-  = do x <- liftIO $ receiveMessage
-       case x of
-         Nothing -> do liftIO $ sendMessage (Just "did not understand")
-         Just (Interpret cmd) -> do i <- getIState
-                                    let fn = case mods of
-                                                  (f:_) -> f
-                                                  _ -> ""
-                                    case parseCmd i cmd of
-                                         Left err -> do liftIO $ sendMessage (show err)
-                                         Right cmd -> do idrisCatch (do xs <- process fn cmd
-                                                                        liftIO $ sendMessage xs)
-                                                                     (\e -> do liftIO $ sendMessage (show e))
-         Just y -> do liftIO $ sendMessage (Just "understood you!")
-       liftIO $ sendMessage (Just "Hello world")
+  = do idrisCatch (do x <- liftIO $ receiveMessage
+                      case x of
+                           Nothing -> do liftIO $ sendMessage (Just "did not understand")
+                           Just (Interpret cmd) -> do i <- getIState
+                                                      let fn = case mods of
+                                                                    (f:_) -> f
+                                                                    _ -> ""
+                                                      case parseCmd i cmd of
+                                                           Left err -> do liftIO $ sendMessage (show err)
+                                                           Right cmd -> do idrisCatch (do xs <- process fn cmd
+                                                                                          liftIO $ sendMessage xs)
+                                                                                      (\e -> do liftIO $ sendMessage (show e))
+                           Just y -> do liftIO $ sendMessage (Just "understood you!")
+                      liftIO $ sendMessage (Just "Hello world"))
+                   (\e -> do liftIO $ sendMessage (show e))
        ideslave orig mods
 
 -- | The prompt consists of the currently loaded modules, or "Idris" if there are none
