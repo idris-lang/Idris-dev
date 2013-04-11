@@ -72,7 +72,7 @@ decideNatLTE    x   (S y) with (decEq x (S y))
     | No  nGTm  = No (nGTSm nGTm)
 
 instance Rel NatLTE where
-  liftRel f = (n : Nat) -> (m : Nat) -> f (NatLTE n m)
+  liftRel P = (n : Nat) -> (m : Nat) -> P (NatLTE n m)
 
 instance Decidable NatLTE where
   decide = decideNatLTE
