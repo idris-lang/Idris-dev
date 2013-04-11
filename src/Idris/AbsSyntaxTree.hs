@@ -1016,6 +1016,7 @@ showImp impl tm = se 10 tm where
         = bracket p 2 $ "{tacimp " ++ show n ++ " : " ++ se 10 ty ++ "} -> " ++ se 10 sc
     se p e
         | Just str <- slist p e = str
+        | Just num <- snat p e  = show num
     se p (PApp _ (PRef _ f) [])
         | not impl = show f
     se p (PApp _ (PRef _ op@(UN (f:_))) args)
@@ -1072,6 +1073,18 @@ showImp impl tm = se 10 tm where
                  [x] -> "[" ++ se p x ++ "]"
                  xs  -> "[" ++ intercalate "," (map (se p) xs) ++ "]"
     slist _ _ = Nothing
+
+    -- since Prelude is always imported, S & O are unqualified iff they're the
+    -- Nat ones.
+    snat p (PRef _ o)
+      | show o == (natns++"O") || show o == "O" = Just 0
+    snat p (PApp _ s [PExp {getTm=n}])
+      | show s == (natns++"S") || show s == "S",
+        Just n' <- snat p n
+      = Just $ 1 + n'
+    snat _ _ = Nothing
+
+    natns = "Prelude.Nat."
 
     sArg (PImp _ _ n tm _) = siArg (n, tm)
     sArg (PExp _ _ tm _) = seArg tm
