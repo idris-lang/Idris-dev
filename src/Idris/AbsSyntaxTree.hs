@@ -149,6 +149,7 @@ idrisInit = IState initContext [] [] emptyContext emptyContext emptyContext
 
 -- | The monad for the main REPL - reading and processing files and updating 
 -- global state (hence the IO inner monad).
+--type Idris = WriterT [Either String (IO ())] (State IState a))
 type Idris = StateT IState IO
 
 -- Commands in the REPL

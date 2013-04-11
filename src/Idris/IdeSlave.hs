@@ -1,11 +1,11 @@
 {-# LANGUAGE FlexibleInstances, IncoherentInstances #-}
 
-module Idris.IdeSlave(receiveMessage, sendMessage) where
+module Idris.IdeSlave(receiveMessage, sendMessage, IdeSlaveCommand(..)) where
 
 import Text.Printf
 import Numeric
 import Data.List
-
+-- import qualified Data.Text as T
 import Text.Parsec
 
 data SExp = List [SExp]
@@ -74,20 +74,22 @@ quotedChar = noneOf "\""
 parseSExp :: String -> Either ParseError SExp
 parseSExp input = parse pSExp "(unknown)" input
 
-data Command = Version
+data IdeSlaveCommand = Version
+                     | Interpret String
   deriving Show
 
-sexpToCommand :: SExp -> Maybe Command
-sexpToCommand (List (x:[]))          = sexpToCommand x
-sexpToCommand (SymbolAtom "version") = Just Version
-sexpToCommand _ = Nothing
+sexpToCommand :: SExp -> Maybe IdeSlaveCommand
+sexpToCommand (List (x:[]))                                    = sexpToCommand x
+sexpToCommand (List [SymbolAtom "interpret", StringAtom cmd]) = Just (Interpret cmd)
+sexpToCommand (SymbolAtom "version")                           = Just Version
+sexpToCommand _                                                = Nothing
 
-receiveMessage :: IO (Maybe Command)
+receiveMessage :: IO (Maybe IdeSlaveCommand)
 receiveMessage
   = do x <- getLine
        return (receiveString x)
 
-receiveString :: String -> Maybe Command
+receiveString :: String -> Maybe IdeSlaveCommand
 receiveString x =
   case readHex (take 6 x) of
     ((num, ""):_) ->
@@ -97,7 +99,7 @@ receiveString x =
            else parseSExpToCommand msg
     _ -> error "blah"
 
-parseSExpToCommand :: String -> Maybe Command
+parseSExpToCommand :: String -> Maybe IdeSlaveCommand
 parseSExpToCommand msg =
   case parseSExp msg of
     Left _  -> Nothing
