@@ -61,11 +61,13 @@ data ExecState = ExecState { exec_thunks :: M.Map Int Lazy -- ^ Thunks - the res
                            , exec_next_thunk :: Int -- ^ Ensure thunk key uniqueness
                            , exec_implicits :: Ctxt [PArg] -- ^ Necessary info on laziness from idris monad
                            , exec_dynamic_libs :: [DynamicLib] -- ^ Dynamic libs from idris monad
+                           , exec_handles :: M.Map Int Handle -- ^ Opened files
+                           , exec_next_handle :: Int -- ^ Ensure opened file key uniqueness
                            }
 
 initState :: Idris ExecState
 initState = do ist <- getIState
-               return $ ExecState M.empty 0 (idris_implicits ist) (idris_dynamic_libs ist)
+               return $ ExecState M.empty 0 (idris_implicits ist) (idris_dynamic_libs ist) M.empty 0
 
 type Exec = ErrorT String (StateT ExecState IO)
 
@@ -111,6 +113,11 @@ execute tm = do est <- initState
                   Left err -> fail err
                   Right tm' -> return tm'
 
+ioWrap :: Term -> Term
+ioWrap = App (P Ref (UN "prim__IO") Erased)
+
+ioUnit :: Term
+ioUnit = ioWrap (P Ref unitCon Erased)
 
 doExec :: Env -> Context -> Term -> Exec Term
 doExec env ctxt p@(P Ref n ty) =
@@ -130,8 +137,8 @@ doExec env ctxt p@(P Bound n ty) = case (lookupDef n ctxt) of -- bound vars must
                                      [Function ty tm] -> doExec env ctxt tm
                                      [] -> return p
                                      x -> fail ("Internal error lookup up bound var " ++ show n ++ " - found " ++ show x)
-doExec env ctxt p@(P (DCon a b) n ty) = do { ty' <- doExec env ctxt ty; return (P (DCon a b) n ty') }
-doExec env ctxt p@(P (TCon a b) n ty) = do { ty' <- doExec env ctxt ty; return (P (TCon a b) n ty') }
+doExec env ctxt p@(P (DCon _ _) n _) = return p
+doExec env ctxt p@(P (TCon _ _) n _) = return p
 doExec env ctxt v@(V i) | i < length env = do let binder = env !! i
                                               case binder of
                                                 (_, (Let t v)) -> return v
@@ -155,7 +162,7 @@ execApp :: Env -> Context -> (Term, [Term]) -> Exec Term
 execApp env ctxt (f, args) = do newF <- doExec env ctxt f
                                 laziness <- getLaziness newF
                                 newArgs <- mapM (doExec env ctxt) args
-                                trace (show newF ++ show (zip args laziness)) $ return ()
+                                -- trace (show newF ++ show (zip args laziness)) $ return ()
                                 execApp' env ctxt newF newArgs
     where getLaziness (P _ (UN "lazy") _) = return [True]
           getLaziness (P _ n _) = do est <- getExecState
@@ -170,6 +177,26 @@ execApp env ctxt (f, args) = do newF <- doExec env ctxt f
 execApp' :: Env -> Context -> Term -> [Term] -> Exec Term
 execApp' env ctxt v [] = return v -- no args is just a constant! can result from function calls
 execApp' env ctxt (P _ (UN "unsafePerformIO") _) [ty, action] | (prim__IO, [ty', v]) <- unApply action = return v
+
+-- Special cases arising from not having access to the C RTS in the interpreter
+
+execApp' env ctxt (P _ (UN "mkForeign") _) [_, fn, Constant (Str arg)]
+    | Just (FFun "putStr" _ _) <- foreignFromTT fn = execIO (putStr arg) >> return ioUnit
+execApp' env ctxt (P _ (UN "mkForeign") _) [_, fn, Constant (Str f), Constant (Str mode)]
+    | Just (FFun "fileOpen" _ _) <- foreignFromTT fn = do trace ("Opening " ++ f ++ " with " ++ mode) $ return ()
+                                                          m <- case mode of
+                                                                 "r" -> return ReadMode
+                                                                 "w" -> return WriteMode
+                                                                 "a" -> return AppendMode
+                                                                 "rw" -> return ReadWriteMode
+                                                                 "wr" -> return ReadWriteMode
+                                                                 "r+" -> return ReadWriteMode
+                                                                 _ -> execFail ("Invalid mode for " ++ f ++ ": " ++ mode)
+                                                          h <- execIO $ openFile f m
+                                                          h' <- handle h
+                                                          return (ioWrap h')
+
+
 execApp' env ctxt (P _ (UN "mkForeign") _) args =
     do res <- stepForeign args
        case res of
@@ -191,15 +218,7 @@ execApp' env ctxt (P _ (UN "prim__ltInt") _) [Constant (I i1), Constant (I i2)] 
 execApp' env ctxt (P _ (UN "prim__subInt") _) [Constant (I i1), Constant (I i2)] =
     return . Constant . I $ i1 - i2
 
-execApp' env ctxt (P _ (UN "prim__readString") _) [ptr] | Just p <- unPtr ptr =
-    do fn <- findForeign "freadStr"
-       case fn of
-         Just (Fun _ freadStr) -> do
-                 res <- execIO $ callFFI freadStr retCString [argPtr p]
-                 str <- execIO $ peekCString res
-                 trace ("Found " ++ str) $ return ()
-                 return $ Constant (Str str)
-         Nothing -> fail "Could not load freadStr"
+execApp' env ctxt (P _ (UN "prim__readString") _) [ptr] = trace "readString" $ undefined
 
 execApp' env ctxt f@(P _ n _) args =
     do let val = lookupDef n ctxt
@@ -275,6 +294,22 @@ unPtr (App (P _ con _) (Constant (I addr))) | con == ptrCon = Just (unAddr addr)
     where unAddr a = nullPtr `plusPtr` a
 unPtr _ = Nothing
 
+-- | Convert a Haskell file handle to a handle term in TT (an int)
+handle :: Handle -> Exec Term
+handle h = do est <- getExecState
+              let i = exec_next_handle est
+              putExecState $ est { exec_next_handle = exec_next_handle est + 1
+                                 , exec_handles = M.insert i h (exec_handles est)
+                                 }
+              return $ Constant (I i)
+
+unHandle :: Term -> Exec Handle
+unHandle (Constant (I i)) =
+    do est <- getExecState
+       case M.lookup i (exec_handles est) of
+         Just h -> return h
+         Nothing -> execFail "Bad handle ID"
+unHandle _ = execFail "Not a handle"
 
 call :: Foreign -> [Term] -> Exec (Maybe Term)
 call (FFun name argTypes retType) args =
