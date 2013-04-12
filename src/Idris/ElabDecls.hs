@@ -147,7 +147,7 @@ elabData info syn doc fc codata (PDatadecl n t_in dcons)
          ttag <- getName
          i <- getIState
          let as = map (const Nothing) (getArgTys cty) 
-         let params = findParams (zip as (repeat True)) (map snd cons)
+         let params = findParams  (map snd cons)
          logLvl 2 $ "Parameters : " ++ show params
          putIState (i { idris_datatypes = addDef n (TI (map fst cons) codata params)
                                              (idris_datatypes i) })
@@ -161,32 +161,53 @@ elabData info syn doc fc codata (PDatadecl n t_in dcons)
   where 
         -- parameters are names which are unchanged across the structure,
         -- which appear exactly once in the return type of a constructor
-        findParams :: [(Maybe Name, Bool)] -> [Type] -> [Int]
-        findParams ps [] = mapMaybe (\ ((x, y), n) ->
-                                          if y then Just n else Nothing)
-                                    (zip ps [0..])
-        findParams ps (t : ts) = findParams (updateParams ps t) ts
 
-        updateParams ps (Bind n (Pi t) sc) 
-            = updateParams (updateParams ps (instantiate (P Bound n t) sc)) t
-        updateParams ps tm@(App f a)
-            | (P _ fn _, args) <- unApply tm
-               = if fn == n
-                    then updateParamsA ps args (tail args)
-                    else updateParams (updateParams ps f) a
-            | otherwise = updateParams (updateParams ps f) a
-        updateParams ps _ = ps
+        -- First, find all applications of the constructor, then check over
+        -- them for repeated arguments
 
-        updateParamsA ((mn, _) : ns) (p@(P _ n' _) : args) all
-             | n' `elem` concatMap freeNames all
-                  = (mn, False) : updateParamsA ns args (p : all)
-        updateParamsA ((Nothing, b) : ns) (p@(P _ n' _) : args) all
-             = (Just n', b) : updateParamsA ns args (p : all)
-        updateParamsA ((Just p, b) : ns) (tm@(P _ n' _) : args) all
-             = (Just n', b && p == n') : updateParamsA ns args (tm : all)
-        updateParamsA ((mn, _) : ns) (p : args) all
-             = (mn, False) : updateParamsA ns args (p : all)
-        updateParamsA ps args all = ps
+        findParams :: [Type] -> [Int]
+        findParams ts = let allapps = concatMap getDataApp ts in
+                            paramPos allapps
+
+        paramPos [] = []
+        paramPos (args : rest) 
+              = dropNothing $ keepSame (zip [0..] args) rest
+
+        dropNothing [] = []
+        dropNothing ((x, Nothing) : ts) = dropNothing ts
+        dropNothing ((x, _) : ts) = x : dropNothing ts
+
+        keepSame :: [(Int, Maybe Name)] -> [[Maybe Name]] -> 
+                    [(Int, Maybe Name)]
+        keepSame as [] = as
+        keepSame as (args : rest) = keepSame (update as args) rest
+          where
+            update [] _ = []
+            update _ [] = []
+            update ((n, Just x) : as) (Just x' : args)
+                | x == x' = (n, Just x) : update as args
+            update ((n, _) : as) (_ : args) = (n, Nothing) : update as args
+
+        getDataApp :: Type -> [[Maybe Name]]
+        getDataApp f@(App _ _)
+            | (P _ d _, args) <- unApply f
+                   = if (d == n) then [mParam args args] else []
+        getDataApp (Bind n (Pi t) sc)
+            = getDataApp t ++ getDataApp (instantiate (P Bound n t) sc)
+        getDataApp _ = []
+
+        -- keep the arguments which are single names, which don't appear
+        -- elsewhere 
+
+        mParam args [] = []
+        mParam args (P Bound n _ : rest)
+               | count n args == 1 
+                  = Just n : mParam args rest
+            where count n [] = 0
+                  count n (t : ts) 
+                       | n `elem` freeNames t = 1 + count n ts
+                       | otherwise = count n ts
+        mParam args (_ : rest) = Nothing : mParam args rest
 
 -- | Elaborate a type provider
 elabProvider :: ElabInfo -> SyntaxInfo -> FC -> Name -> PTerm -> PTerm -> Idris ()
