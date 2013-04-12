@@ -84,21 +84,23 @@ repl orig mods
 -- | Run the IdeSlave
 ideslave :: IState -> [FilePath] -> Idris ()
 ideslave orig mods
-  = do idrisCatch (do x <- liftIO $ receiveMessage
-                      case x of
-                           Nothing -> do liftIO $ sendMessage (Just "did not understand")
-                           Just (Interpret cmd) -> do i <- getIState
-                                                      let fn = case mods of
-                                                                    (f:_) -> f
-                                                                    _ -> ""
-                                                      case parseCmd i cmd of
-                                                           Left err -> do liftIO $ sendMessage (show err)
-                                                           Right cmd -> do idrisCatch (do xs <- process fn cmd
-                                                                                          liftIO $ sendMessage xs)
-                                                                                      (\e -> do liftIO $ sendMessage (show e))
-                           Just y -> do liftIO $ sendMessage (Just "understood you!")
-                      liftIO $ sendMessage (Just "Hello world"))
-                   (\e -> do liftIO $ sendMessage (show e))
+  = do idrisCatch
+         (do x <- liftIO $ receiveMessage
+             case x of
+                  (List [(SymbolAtom "emacs-rex"), cmd, (IntegerAtom id)]) ->
+                    case sexpToCommand cmd of
+                         Nothing -> do liftIO $ sendMessage id (Left "did not understand")
+                         Just (Interpret cmd) ->
+                           do i <- getIState
+                              let fn = case mods of
+                                            (f:_) -> f
+                                            _ -> ""
+                              case parseCmd i cmd of
+                                   Left err -> do liftIO $ sendMessage id (Left (show err))
+                                   Right cmd -> do idrisCatch (do xs <- process fn cmd
+                                                                  liftIO $ sendMessage id (Right xs))
+                                                              (\e -> do liftIO $ sendMessage id (Left (show e))))
+         (\e -> do liftIO $ sendMessage 0 (Left (show e)))
        ideslave orig mods
 
 -- | The prompt consists of the currently loaded modules, or "Idris" if there are none

@@ -1,6 +1,6 @@
 {-# LANGUAGE FlexibleInstances, IncoherentInstances #-}
 
-module Idris.IdeSlave(receiveMessage, sendMessage, IdeSlaveCommand(..)) where
+module Idris.IdeSlave(receiveMessage, sendMessage, IdeSlaveCommand(..), sexpToCommand, SExp(..)) where
 
 import Text.Printf
 import Numeric
@@ -84,38 +84,31 @@ sexpToCommand (List [SymbolAtom "interpret", StringAtom cmd]) = Just (Interpret 
 sexpToCommand (SymbolAtom "version")                           = Just Version
 sexpToCommand _                                                = Nothing
 
-receiveMessage :: IO (Maybe IdeSlaveCommand)
+receiveMessage :: IO (SExp)
 receiveMessage
   = do x <- getLine
        return (receiveString x)
 
-receiveString :: String -> Maybe IdeSlaveCommand
+receiveString :: String -> SExp
 receiveString x =
   case readHex (take 6 x) of
     ((num, ""):_) ->
       let msg = drop 6 x in
         if (length msg) /= (num - 1)
            then error "bad input length"
-           else parseSExpToCommand msg
+           else (case parseSExp msg of
+                      Left _ -> error "parse failure"
+                      Right r -> r)
     _ -> error "readHex failed"
 
-parseSExpToCommand :: String -> Maybe IdeSlaveCommand
-parseSExpToCommand msg =
-  case parseSExp msg of
-    Left _  -> error "parse failure"
-    Right r -> sexpToCommand r
-
-sendMessage :: SExpable a => a -> IO ()
-sendMessage s =
-  do let str = convertToSExpString s
-     putStrLn $ (getHexLength str) ++ str
-
-convertToSExpString :: SExpable a => a -> String
-convertToSExpString s =
-  let str = sExpToString (toSExp s) in
-    if (str !! 0) == '('
-        then str
-        else "(" ++ str ++ ")"
+sendMessage :: SExpable a => Integer -> Either a a -> IO ()
+sendMessage id s =
+  -- return value id
+  case s of
+       Left err -> putStrLn $ conv (List [SymbolAtom "abort", toSExp err])
+       Right succ -> putStrLn $ conv (List [SymbolAtom "ok", toSExp succ])
+  where conv sexp =
+          let str = sExpToString (List [SymbolAtom "return", sexp, IntegerAtom id]) in (getHexLength str) ++ str
 
 getHexLength :: String -> String
 getHexLength s = printf "%06x" (1 + (length s))
