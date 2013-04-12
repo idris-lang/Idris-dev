@@ -15,6 +15,8 @@ import Util.System
 
 import Control.Applicative hiding (Const)
 import Control.Monad.Trans
+import Control.Monad.Trans.State.Strict
+import Control.Monad.Trans.Error
 import Control.Monad
 import Data.Maybe
 import qualified Data.Map as M
@@ -53,14 +55,66 @@ import System.IO
 --                              Nothing -> return tm
 --                              Just tm' -> execute' tm'
 
+data Lazy = Delayed Term | Forced Term
+
+data ExecState = ExecState { exec_thunks :: M.Map Int Lazy -- ^ Thunks - the result of evaluating "lazy" or calling lazy funcs
+                           , exec_next_thunk :: Int -- ^ Ensure thunk key uniqueness
+                           , exec_implicits :: Ctxt [PArg] -- ^ Necessary info on laziness from idris monad
+                           , exec_dynamic_libs :: [DynamicLib] -- ^ Dynamic libs from idris monad
+                           }
+
+initState :: Idris ExecState
+initState = do ist <- getIState
+               return $ ExecState M.empty 0 (idris_implicits ist) (idris_dynamic_libs ist)
+
+type Exec = ErrorT String (StateT ExecState IO)
+
+runExec :: Exec a -> ExecState -> IO (Either String a)
+runExec ex st = fst <$> runStateT (runErrorT ex) st
+
+getExecState :: Exec ExecState
+getExecState = lift get
+
+putExecState :: ExecState -> Exec ()
+putExecState = lift . put
+
+execFail :: String -> Exec a
+execFail = throwError
+
+execIO :: IO a -> Exec a
+execIO = lift . lift
+
+thunk :: Name
+thunk = MN 0 "__execThunk"
+
+delay :: Term -> Exec Term
+delay tm = do st <- getExecState
+              let i = exec_next_thunk st
+              putExecState $ st { exec_thunks = M.insert i (Delayed tm) (exec_thunks st)
+                                , exec_next_thunk = exec_next_thunk st + 1
+                                }
+              return $ App (P Ref thunk Erased) (Constant (I i))
+
+force :: Int -> Exec Term
+force i = do st <- getExecState
+             let thunk = M.lookup i (exec_thunks st)
+             case thunk of
+               Just (Delayed tm) -> return tm -- FIXME DO THE EXEC
+               Just (Forced tm) -> return tm
+               Nothing -> execFail "Tried to exec non-existing thunk. This is a bug!"
 
 execute :: Term -> Idris Term
-execute tm = do ctxt <- getContext
-                doExec [] ctxt tm
+execute tm = do est <- initState
+                ctxt <- getContext
+                res <- lift $ runExec (doExec [] ctxt tm) est
+                case res of
+                  Left err -> fail err
+                  Right tm' -> return tm'
 
-doExec :: Env -> Context -> Term -> Idris Term
+
+doExec :: Env -> Context -> Term -> Exec Term
 doExec env ctxt p@(P Ref n ty) =
-    do let val = lookupDef Nothing n ctxt
+    do let val = lookupDef n ctxt
        case val of
          [Function _ tm] ->
              do val <- doExec env ctxt tm
@@ -72,7 +126,7 @@ doExec env ctxt p@(P Ref n ty) =
              doExec env ctxt tm
          [CaseOp _ _ _ _ _ ns sc _ _] -> return p
          thing -> trace ("got to " ++ show thing) $ undefined
-doExec env ctxt p@(P Bound n ty) = case (lookupDef Nothing n ctxt) of -- bound vars must be Function
+doExec env ctxt p@(P Bound n ty) = case (lookupDef n ctxt) of -- bound vars must be Function
                                      [Function ty tm] -> doExec env ctxt tm
                                      [] -> return p
                                      x -> fail ("Internal error lookup up bound var " ++ show n ++ " - found " ++ show x)
@@ -97,23 +151,23 @@ doExec env ctxt Erased = return Erased
 doExec env ctxt Impossible = fail "Tried to execute an impossible case"
 doExec env ctxt (TType u) = return (TType u)
 
-execApp :: Env -> Context -> (Term, [Term]) -> Idris Term
+execApp :: Env -> Context -> (Term, [Term]) -> Exec Term
 execApp env ctxt (f, args) = do newF <- doExec env ctxt f
                                 laziness <- getLaziness newF
                                 newArgs <- mapM (doExec env ctxt) args
                                 trace (show newF ++ show (zip args laziness)) $ return ()
                                 execApp' env ctxt newF newArgs
     where getLaziness (P _ (UN "lazy") _) = return [True]
-          getLaziness (P _ n _) = do ist <- getIState
-                                     let argInfo = idris_implicits ist
-                                     case lookupCtxtName Nothing n argInfo of
+          getLaziness (P _ n _) = do est <- getExecState
+                                     let argInfo = exec_implicits est
+                                     case lookupCtxtName n argInfo of
                                        [] -> return (repeat False)
                                        [ps] -> return $ map lazyarg (snd ps)
                                        many -> fail $ "Ambiguous " ++ show n ++ ", found " ++ show many
           getLaziness x = return (repeat False) -- ok due to zip above
 
 
-execApp' :: Env -> Context -> Term -> [Term] -> Idris Term
+execApp' :: Env -> Context -> Term -> [Term] -> Exec Term
 execApp' env ctxt v [] = return v -- no args is just a constant! can result from function calls
 execApp' env ctxt (P _ (UN "unsafePerformIO") _) [ty, action] | (prim__IO, [ty', v]) <- unApply action = return v
 execApp' env ctxt (P _ (UN "mkForeign") _) args =
@@ -122,7 +176,7 @@ execApp' env ctxt (P _ (UN "mkForeign") _) args =
          Nothing -> fail "Could not call foreign function"
          Just r -> return r
 execApp' env ctxt (P _ (UN "prim__readString") _) [P _ (UN "prim__stdin") _] =
-    do line <- lift getLine
+    do line <- execIO getLine
        return (Constant (Str line))
 
 execApp' env ctxt (P _ (UN "prim__concat") _)  [(Constant (Str s1)), (Constant (Str s2))] =
@@ -135,14 +189,14 @@ execApp' env ctxt (P _ (UN "prim__readString") _) [ptr] | Just p <- unPtr ptr =
     do fn <- findForeign "freadStr"
        case fn of
          Just (Fun _ freadStr) -> do
-                 res <- lift $ callFFI freadStr retCString [argPtr p]
-                 str <- lift $ peekCString res
+                 res <- execIO $ callFFI freadStr retCString [argPtr p]
+                 str <- execIO $ peekCString res
                  trace ("Found " ++ str) $ return ()
                  return $ Constant (Str str)
          Nothing -> fail "Could not load freadStr"
 
 execApp' env ctxt f@(P _ n _) args =
-    do let val = lookupDef Nothing n ctxt
+    do let val = lookupDef n ctxt
        case val of
          [Function _ tm] -> fail "should already have been eval'd"
          [TyDecl nt ty] -> return $ mkApp f args
@@ -160,7 +214,7 @@ execApp' env ctxt bnd@(Bind n b body) (arg:args) = let ctxt' = addToCtxt n arg E
 
 execApp' env ctxt f args = return (mkApp f args)
 
-execCase :: Env -> Context -> [Name] -> SC -> [Term] -> Idris (Maybe Term)
+execCase :: Env -> Context -> [Name] -> SC -> [Term] -> Exec (Maybe Term)
 execCase env ctxt ns sc args =
     let arity = length ns in
     if arity <= length args
@@ -171,7 +225,7 @@ execCase env ctxt ns sc args =
               Nothing -> return Nothing
     else return Nothing
 
-execCase' :: Env -> Context -> [(Name, Term)] -> SC -> Idris (Maybe Term)
+execCase' :: Env -> Context -> [(Name, Term)] -> SC -> Exec (Maybe Term)
 execCase' env ctxt amap (STerm tm) =
     Just <$> doExec env (foldl (\c (n, t) -> addToCtxt n t Erased c) ctxt amap) tm
 execCase' env ctxt amap (Case n alts) | Just tm <- lookup n amap
@@ -216,28 +270,28 @@ unPtr (App (P _ con _) (Constant (I addr))) | con == ptrCon = Just (unAddr addr)
 unPtr _ = Nothing
 
 
-call :: Foreign -> [Term] -> Idris (Maybe Term)
+call :: Foreign -> [Term] -> Exec (Maybe Term)
 call (FFun name argTypes retType) args =
     do fn <- findForeign name
        case fn of
          Nothing -> return Nothing
          Just f -> do res <- call' f args retType
                       return . Just $ mkApp (P Ref (UN "prim__IO") Erased) [idrisType retType, res]
-    where call' :: ForeignFun -> [Term] -> FTy -> Idris Term
-          call' (Fun _ h) args FInt = do res <- lift $ callFFI h retCInt (prepArgs args)
+    where call' :: ForeignFun -> [Term] -> FTy -> Exec Term
+          call' (Fun _ h) args FInt = do res <- execIO $ callFFI h retCInt (prepArgs args)
                                          return (Constant (I (fromIntegral res)))
-          call' (Fun _ h) args FFloat = do res <- lift $ callFFI h retCDouble (prepArgs args)
+          call' (Fun _ h) args FFloat = do res <- execIO $ callFFI h retCDouble (prepArgs args)
                                            return (Constant (Fl (realToFrac res)))
-          call' (Fun _ h) args FChar = do res <- lift $ callFFI h retCChar (prepArgs args)
+          call' (Fun _ h) args FChar = do res <- execIO $ callFFI h retCChar (prepArgs args)
                                           return (Constant (Ch (castCCharToChar res)))
-          call' (Fun _ h) args FString = do res <- lift $ callFFI h retCString (prepArgs args)
-                                            hStr <- lift $ peekCString res
+          call' (Fun _ h) args FString = do res <- execIO $ callFFI h retCString (prepArgs args)
+                                            hStr <- execIO $ peekCString res
 --                                            lift $ free res
                                             return (Constant (Str hStr))
 
-          call' (Fun _ h) args FPtr = do res <- lift $ callFFI h (retPtr retVoid) (prepArgs args)
+          call' (Fun _ h) args FPtr = do res <- execIO $ callFFI h (retPtr retVoid) (prepArgs args)
                                          return (ptr res)
-          call' (Fun _ h) args FUnit = do res <- lift $ callFFI h retVoid (prepArgs args)
+          call' (Fun _ h) args FUnit = do res <- execIO $ callFFI h retVoid (prepArgs args)
                                           return (P Ref unitCon (P Ref unitTy (TType (UVal 0)))) -- FIXME check universe level
 --          call' (Fun _ h) args other = fail ("Unsupported foreign return type " ++ show other)
 
@@ -284,7 +338,7 @@ toConst :: Term -> Maybe Const
 toConst (Constant c) = Just c
 toConst _ = Nothing
 
-stepForeign :: [Term] -> Idris (Maybe Term)
+stepForeign :: [Term] -> Exec (Maybe Term)
 stepForeign (ty:fn:args) = do let ffun = foreignFromTT fn
                               f' <- case (call <$> ffun) of
                                       Just f -> f args
@@ -300,17 +354,15 @@ mapMaybeM f (x:xs) = do rest <- mapMaybeM f xs
                           Just x'' -> return (x'':rest)
                           Nothing -> return rest
 
-findForeign :: String -> Idris (Maybe ForeignFun)
-findForeign fn = do i <- getIState
-                    let libs = idris_dynamic_libs i
+findForeign :: String -> Exec (Maybe ForeignFun)
+findForeign fn = do est <- getExecState
+                    let libs = exec_dynamic_libs est
                     fns <- mapMaybeM getFn libs
                     case fns of
                       [f] -> return (Just f)
-                      [] -> do iputStrLn $ "Symbol \"" ++ fn ++ "\" not found"
+                      [] -> do execIO . putStrLn $ "Symbol \"" ++ fn ++ "\" not found"
                                return Nothing
-                      fs -> do iputStrLn $ "Symbol \"" ++ fn ++ "\" is ambiguous. Found " ++
-                                           show (length fs) ++ " occurrences."
+                      fs -> do execIO . putStrLn $ "Symbol \"" ++ fn ++ "\" is ambiguous. Found " ++
+                                                   show (length fs) ++ " occurrences."
                                return Nothing
-    where getFn lib = lift $ catchIO (tryLoadFn fn lib) (\_ -> return Nothing)
-
-
+    where getFn lib = execIO $ catchIO (tryLoadFn fn lib) (\_ -> return Nothing)
