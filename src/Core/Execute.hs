@@ -179,11 +179,17 @@ execApp' env ctxt (P _ (UN "prim__readString") _) [P _ (UN "prim__stdin") _] =
     do line <- execIO getLine
        return (Constant (Str line))
 
-execApp' env ctxt (P _ (UN "prim__concat") _)  [(Constant (Str s1)), (Constant (Str s2))] =
+execApp' env ctxt (P _ (UN "prim__concat") _)  [Constant (Str s1), Constant (Str s2)] =
     return $ Constant (Str (s1 ++ s2))
 
-execApp' env ctxt (P _ (UN "prim__eqInt") _)  [(Constant (I i1)), (Constant (I i2))] =
+execApp' env ctxt (P _ (UN "prim__eqInt") _)  [Constant (I i1), Constant (I i2)] =
     return $ if i1 == i2 then Constant (I 1) else Constant (I 0)
+
+execApp' env ctxt (P _ (UN "prim__ltInt") _) [Constant (I i1), Constant (I i2)] =
+    return $ if i1 < i2 then Constant (I 1) else Constant (I 0)
+
+execApp' env ctxt (P _ (UN "prim__subInt") _) [Constant (I i1), Constant (I i2)] =
+    return . Constant . I $ i1 - i2
 
 execApp' env ctxt (P _ (UN "prim__readString") _) [ptr] | Just p <- unPtr ptr =
     do fn <- findForeign "freadStr"
