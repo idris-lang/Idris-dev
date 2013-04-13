@@ -103,10 +103,10 @@ receiveString x =
 
 sendMessage :: SExpable a => Integer -> Either a a -> IO ()
 sendMessage id s =
-  -- return value id
+  -- TODO: get real output here!!!
   case s of
        Left err -> putStrLn $ conv (List [SymbolAtom "abort", toSExp err])
-       Right succ -> putStrLn $ conv (List [SymbolAtom "ok", toSExp succ])
+       Right succ -> putStrLn $ conv (List [SymbolAtom "ok", List [toSExp succ, StringAtom "no output"]])
   where conv sexp =
           let str = sExpToString (List [SymbolAtom "return", sexp, IntegerAtom id]) in (getHexLength str) ++ str
 
