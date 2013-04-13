@@ -75,7 +75,7 @@ total leftNotRight : {x : a} -> {y : b} -> Left {b = b} x = Right {a = a} y -> _
 leftNotRight refl impossible
 
 instance (DecEq a, DecEq b) => DecEq (Either a b) where
-  decEq (Left x') (Left y') with (decEq x' y')
+  decEq {b = b} (Left x') (Left y') with (decEq x' y')
     | Yes p = Yes $ cong p
     | No p = No $ \h : Left x' = Left y' => p $ leftInjective {b = b} h
   decEq (Right x') (Right y') with (decEq x' y')
