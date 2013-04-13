@@ -46,6 +46,9 @@ instance (SExpable a) => SExpable (Maybe a) where
 instance (SExpable a) => SExpable [a] where
   toSExp l = List (map toSExp l)
 
+instance (SExpable a, SExpable b) => SExpable (a, b) where
+  toSExp (l, r) = List [toSExp l, toSExp r]
+
 escape :: String -> String
 escape = concatMap escapeChar
   where
@@ -74,15 +77,15 @@ quotedChar = noneOf "\""
 parseSExp :: String -> Either ParseError SExp
 parseSExp input = parse pSExp "(unknown)" input
 
-data IdeSlaveCommand = Version
+data IdeSlaveCommand = REPLCompletions String
                      | Interpret String
   deriving Show
 
 sexpToCommand :: SExp -> Maybe IdeSlaveCommand
-sexpToCommand (List (x:[]))                                    = sexpToCommand x
-sexpToCommand (List [SymbolAtom "interpret", StringAtom cmd]) = Just (Interpret cmd)
-sexpToCommand (SymbolAtom "version")                           = Just Version
-sexpToCommand _                                                = Nothing
+sexpToCommand (List (x:[]))                                             = sexpToCommand x
+sexpToCommand (List [SymbolAtom "interpret", StringAtom cmd])           = Just (Interpret cmd)
+sexpToCommand (List [SymbolAtom "repl-completions", StringAtom prefix]) = Just (REPLCompletions prefix)
+sexpToCommand _                                                         = Nothing
 
 receiveMessage :: IO (SExp)
 receiveMessage
@@ -106,7 +109,7 @@ sendMessage id s =
   -- TODO: get real output here!!!
   case s of
        Left err -> putStrLn $ conv (List [SymbolAtom "abort", toSExp err])
-       Right succ -> putStrLn $ conv (List [SymbolAtom "ok", List [toSExp succ, StringAtom "no output"]])
+       Right succ -> putStrLn $ conv (List [SymbolAtom "ok", toSExp succ])
   where conv sexp =
           let str = sExpToString (List [SymbolAtom "return", sexp, IntegerAtom id]) in (getHexLength str) ++ str
 

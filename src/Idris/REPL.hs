@@ -89,7 +89,6 @@ ideslave orig mods
              case x of
                   (List [(SymbolAtom "emacs-rex"), cmd, (IntegerAtom id)]) ->
                     case sexpToCommand cmd of
-                         Nothing -> do liftIO $ sendMessage id (Left "did not understand")
                          Just (Interpret cmd) ->
                            do i <- getIState
                               let fn = case mods of
@@ -98,8 +97,11 @@ ideslave orig mods
                               case parseCmd i cmd of
                                    Left err -> do liftIO $ sendMessage id (Left (show err))
                                    Right cmd -> do idrisCatch (do xs <- process fn cmd
-                                                                  liftIO $ sendMessage id (Right xs))
-                                                              (\e -> do liftIO $ sendMessage id (Left (show e))))
+                                                                  liftIO $ sendMessage id (Right (xs, "no output")))
+                                                              (\e -> do liftIO $ sendMessage id (Left (show e)))
+                         Just (REPLCompletions str) -> do (unused, compls) <- replCompletion (reverse str, "")
+                                                          liftIO $ sendMessage id (Right (map replacement compls, reverse unused))
+                         Nothing -> do liftIO $ sendMessage id (Left "did not understand"))
          (\e -> do liftIO $ sendMessage 0 (Left (show e)))
        ideslave orig mods
 
