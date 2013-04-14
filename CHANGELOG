@@ -14,6 +14,7 @@ User visible changes:
 
 Internal changes:
 
+* Fix non-linear pattern checking
 * Improved name disambiguation
 * More flexible unification and elaboration of lambdas
 * Various unification and totality checking bug fixes
