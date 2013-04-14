@@ -13,7 +13,7 @@ modules = Builtins, Prelude, IO, System,
 
           System.Concurrency.Raw, System.Concurrency.Process,
 
-          Decidable.Equality,
+          Decidable.Equality, Decidable.Decidable, Decidable.Order,
 
           Uninhabited,
 
