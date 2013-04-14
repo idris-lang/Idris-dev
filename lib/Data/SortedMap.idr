@@ -1,4 +1,4 @@
-module Data.Map
+module Data.SortedMap
 
 -- TODO: write merge and split
 
@@ -189,25 +189,25 @@ treeToList (Leaf k v) = [(k, v)]
 treeToList (Branch2 t1 _ t2) = treeToList t1 ++ treeToList t2
 treeToList (Branch3 t1 _ t2 _ t3) = treeToList t1 ++ treeToList t2 ++ treeToList t3
 
-data Map : Type -> Type -> Type where
-  Empty : Map k v
-  M : (n:Nat) -> Tree n k v -> Map k v
+data SortedMap : Type -> Type -> Type where
+  Empty : SortedMap k v
+  M : (n:Nat) -> Tree n k v -> SortedMap k v
 
-empty : Map k v
+empty : SortedMap k v
 empty = Empty
 
-lookup : Ord k => k -> Map k v -> Maybe v
+lookup : Ord k => k -> SortedMap k v -> Maybe v
 lookup _ Empty = Nothing
 lookup k (M _ t) = treeLookup k t
 
-insert : Ord k => k -> v -> Map k v -> Map k v
+insert : Ord k => k -> v -> SortedMap k v -> SortedMap k v
 insert k v Empty = M O (Leaf k v)
 insert k v (M _ t) =
   case treeInsert k v t of
     Left t' => (M _ t')
     Right t' => (M _ t')
 
-delete : Ord k => k -> Map k v -> Map k v
+delete : Ord k => k -> SortedMap k v -> SortedMap k v
 delete _ Empty = Empty
 delete k (M O t) =
   case treeDelete k t of
@@ -218,10 +218,10 @@ delete k (M (S _) t) =
     Left t' => (M _ t')
     Right t' => (M _ t')
 
-fromList : Ord k => List (k, v) -> Map k v
+fromList : Ord k => List (k, v) -> SortedMap k v
 fromList l = foldl (flip (uncurry insert)) empty l
 
-toList : Ord k => Map k v -> List (k, v)
+toList : Ord k => SortedMap k v -> List (k, v)
 toList Empty = []
 toList (M _ t) = treeToList t
 
@@ -230,6 +230,6 @@ instance Functor (Tree n k) where
   fmap f (Branch2 t1 k t2) = Branch2 (fmap f t1) k (fmap f t2)
   fmap f (Branch3 t1 k1 t2 k2 t3) = Branch3 (fmap f t1) k1 (fmap f t2) k2 (fmap f t3)
 
-instance Functor (Map k) where
+instance Functor (SortedMap k) where
   fmap _ Empty = Empty
   fmap f (M _ t) = M _ (fmap f t)
