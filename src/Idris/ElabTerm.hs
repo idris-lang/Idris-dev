@@ -695,10 +695,12 @@ collectDeferred (App f a) = liftM2 App (collectDeferred f) (collectDeferred a)
 collectDeferred t = return t
 
 -- Running tactics directly
+-- if a tactic adds unification problems, return an error
 
 runTac :: Bool -> IState -> PTactic -> ElabD ()
-runTac autoSolve ist tac = do env <- get_env
-                              runT (fmap (addImplBound ist (map fst env)) tac) 
+runTac autoSolve ist tac 
+    = do env <- get_env
+         no_errors $ runT (fmap (addImplBound ist (map fst env)) tac) 
   where
     runT (Intro []) = do g <- goal
                          attack; intro (bname g)

@@ -13,9 +13,7 @@ modules = Builtins, Prelude, IO, System,
 
           System.Concurrency.Raw, System.Concurrency.Process,
 
-          Decidable.Decidable,
-          Decidable.Equality,
-          Decidable.Order,
+          Decidable.Equality, Decidable.Decidable, Decidable.Order,
 
           Uninhabited,
 
@@ -24,6 +22,7 @@ modules = Builtins, Prelude, IO, System,
           Language.Reflection,
 
           Data.Morphisms, Data.Bits, Data.Mod2, Data.Z, Data.Sign,
+          Data.SortedMap, Data.SortedSet,
 
           Control.Monad.Identity, Control.Monad.State, Control.Category,
           Control.Arrow,

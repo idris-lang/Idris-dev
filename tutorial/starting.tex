@@ -74,12 +74,12 @@ interactive environment.
 Entering \texttt{idris} at the shell prompt starts up the interactive
 environment. You should see something like the following:
 
-\begin{SaveVerbatim}{prompt1}
+\begin{SaveVerbatim}[commandchars=^\{\}]{prompt1}
 
 $ idris
      ____    __     _                                          
     /  _/___/ /____(_)____                                     
-    / // __  / ___/ / ___/     Version 0.9.7
+    / // __  / ___/ / ___/     Version ^version{}
   _/ // /_/ / /  / (__  )      http://www.idris-lang.org/      
  /___/\__,_/_/  /_/____/       Type :? for help      
 
@@ -98,8 +98,8 @@ as shown in Figure \ref{cmds}. Figure \ref{run1} shows an example run in which
 \texttt{hello.idr} is loaded, the type of \texttt{main} is checked and then
 the program is compiled to the executable \texttt{hello}.
 
-\begin{SaveVerbatim}{cmds}
-Idris version 0.9.7
+\begin{SaveVerbatim}[commandchars=\\\{\}]{cmds}
+Idris version \version{}
 -------------------
 
    Command         Arguments   Purpose
@@ -129,12 +129,12 @@ Idris version 0.9.7
 \codefigs{cmds}{Interactive environment commands}
 
 
-\begin{SaveVerbatim}{run1}
+\begin{SaveVerbatim}[commandchars=^\{\}]{run1}
 
 $ idris hello.idr
      ____    __     _                                          
     /  _/___/ /____(_)____                                     
-    / // __  / ___/ / ___/     Version 0.9.7
+    / // __  / ___/ / ___/     Version ^version{}
   _/ // /_/ / /  / (__  )      http://www.idris-lang.org/      
  /___/\__,_/_/  /_/____/       Type :? for help        
 
