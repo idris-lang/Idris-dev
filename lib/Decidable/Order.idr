@@ -11,17 +11,12 @@ import Decidable.Equality
 -- Preorders and Posets
 --------------------------------------------------------------------------------
 
-using (t : Type)
-  data Preorder : (t -> t -> Type) -> Type where
-    transRefl : ((a : t) -> (b : t) -> (c : t) -> po a b -> po b c -> po a c) ->
-                ((a : t) -> po a a) ->
-                Preorder po
+class Preorder t (po : t -> t -> Type) where
+  total transitive : (a : t) -> (b : t) -> (c : t) -> po a b -> po b c -> po a c
+  total reflexive : (a : t) -> po a a
 
-
-  data Poset : (t -> t -> Type) -> Type where
-    preorderAntisym : Preorder {t = t} po -> 
-                      ((a : t) -> (b : t) -> po a b -> po b a -> a = b) -> 
-                      Poset po
+class (Preorder t po) => Poset t (po : t -> t -> Type) where
+  total antisymmetric : (a : t) -> (b : t) -> po a b -> po b a -> a = b
 
 --------------------------------------------------------------------------------
 -- Natural numbers
@@ -41,16 +36,17 @@ NatLTEIsTransitive m n (S o)  mLTEn (nLTESm nLTEo)
 total NatLTEIsReflexive : (n : Nat) -> NatLTE n n
 NatLTEIsReflexive _ = nEqn
 
-NatLTEIsPreorder : Preorder NatLTE
-NatLTEIsPreorder = transRefl NatLTEIsTransitive NatLTEIsReflexive
+instance Preorder Nat NatLTE where
+  transitive = NatLTEIsTransitive
+  reflexive  = NatLTEIsReflexive
 
 total NatLTEIsAntisymmetric : (m : Nat) -> (n : Nat) -> po m n -> po n m -> m = n
 NatLTEIsAntisymmetric n n nEqn nEqn = refl
 NatLTEIsAntisymmetric n m nEqn (nLTESm _) impossible
 NatLTEIsAntisymmetric n m (nLTESm _) nEqn impossible
 
-NatLTEIsPoset : Poset NatLTE
-NatLTEIsPoset = preorderAntisym NatLTEIsPreorder NatLTEIsAntisymmetric
+instance Poset Nat NatLTE where
+  antisymmetric = NatLTEIsAntisymmetric
 
 total zeroNeverGreater : {n : Nat} -> NatLTE (S n) O -> _|_
 zeroNeverGreater {n} (nLTESm _) impossible
@@ -77,3 +73,5 @@ instance Rel NatLTE where
 instance Decidable NatLTE where
   decide = decideNatLTE
 
+lte : (m : Nat) -> (n : Nat) -> Dec (NatLTE m n)
+lte m n = decide {p = NatLTE} m n
