@@ -108,7 +108,7 @@ sendMessage :: SExpable a => Integer -> Either a a -> IO ()
 sendMessage id s =
   -- TODO: get real output here!!!
   case s of
-       Left err -> putStrLn $ conv (List [SymbolAtom "abort", toSExp err])
+       Left err -> putStrLn $ conv (List [SymbolAtom "error", toSExp err])
        Right succ -> putStrLn $ conv (List [SymbolAtom "ok", toSExp succ])
   where conv sexp =
           let str = sExpToString (List [SymbolAtom "return", sexp, IntegerAtom id]) in (getHexLength str) ++ str

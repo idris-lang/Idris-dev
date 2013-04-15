@@ -87,7 +87,7 @@ ideslave orig mods
   = do idrisCatch
          (do x <- liftIO $ receiveMessage
              case x of
-                  (List [(SymbolAtom "emacs-rex"), cmd, (IntegerAtom id)]) ->
+                  (List [(SymbolAtom "idris"), cmd, (IntegerAtom id)]) ->
                     case sexpToCommand cmd of
                          Just (Interpret cmd) ->
                            do i <- getIState
