@@ -733,7 +733,7 @@ elabClause info tcgen (_, PWith fc fname lhs_in withs wval_in withblock)
         -- Build the LHS as an "Infer", and pull out its type and
         -- pattern bindings
         i <- getIState
-        let lhs = addImpl i lhs_in
+        let lhs = addImplPat i lhs_in 
         logLvl 5 ("LHS: " ++ showImp True lhs)
         ((lhs', dlhs, []), _) <- 
             tclift $ elaborate ctxt (MN 0 "patLHS") infP []
@@ -831,18 +831,18 @@ elabClause info tcgen (_, PWith fc fname lhs_in withs wval_in withblock)
 
     mkAux wname toplhs ns ns' (PClause fc n tm_in (w:ws) rhs wheres)
         = do i <- getIState
-             let tm = addImpl i tm_in
+             let tm = addImplPat i tm_in
              logLvl 2 ("Matching " ++ showImp True tm ++ " against " ++ 
                                       showImp True toplhs)
              case matchClause i toplhs tm of
-                Left _ -> fail $ show fc ++ "with clause does not match top level"
+                Left f -> fail $ show fc ++ ":with clause does not match top level"
                 Right mvars -> 
                     do logLvl 3 ("Match vars : " ++ show mvars)
                        lhs <- updateLHS n wname mvars ns ns' (fullApp tm) w
                        return $ PClause fc wname lhs ws rhs wheres
     mkAux wname toplhs ns ns' (PWith fc n tm_in (w:ws) wval withs)
         = do i <- getIState
-             let tm = addImpl i tm_in
+             let tm = addImplPat i tm_in
              logLvl 2 ("Matching " ++ showImp True tm ++ " against " ++ 
                                       showImp True toplhs)
              withs' <- mapM (mkAuxC wname toplhs ns ns') withs

@@ -1074,6 +1074,8 @@ matchClause' names i x y = checkRpts $ match (fullApp x) (fullApp y) where
 --     match (PRef _ n) (PRef _ n') | n == n' = return []
 --                                  | otherwise = Nothing
     match (PRef f n) (PApp _ x []) = match (PRef f n) x
+    match (PPatvar f n) xr = match (PRef f n) xr
+    match xr (PPatvar f n) = match xr (PRef f n)
     match (PApp _ x []) (PRef f n) = match x (PRef f n)
     match (PRef _ n) tm@(PRef _ n')
         | n == n' && not names && 
