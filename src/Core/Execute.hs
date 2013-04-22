@@ -28,34 +28,8 @@ import Foreign.Ptr
 
 import System.IO
 
--- | Attempt to perform a side effect. Return either Just the next step in
--- evaluation (after performing the side effect through IO), or Nothing if no
--- IO was performed.
---
--- This function is exceedingly generous about what it will accept in order to
--- enable convenient testing at the REPL.
--- step :: TT Name -> Idris (Maybe (TT Name))
--- step tm = step' (unApply tm)
---     where step' (P _ (UN "unsafePerformIO") _, [_, arg] ) = step arg -- Only step if arg can be stepped
---           step' (P _ (UN "mkForeign") _, args) = stepForeign args
---           step' (P _ (UN "prim__IO") _, [_, arg]) = return (Just arg)
---           step' (P _ (UN "prim__readString") _, [(P _ (UN "prim__stdin") _)]) =
---               do line <- lift $ getLine
---                  return . Just . Constant . Str $ line
---           step' _ = return Nothing
 
--- | Perform side effects until no more can be performed, then return the
--- resulting term (possibly the argument).
--- execute :: TT Name -> Idris (TT Name)
--- execute tm = case unApply tm of
---                (P _ (UN "unsafePerformIO") _, [_, arg] ) -> execute' arg
---                _ -> return tm
---     where execute' tm = do stepped <- step tm
---                            case stepped of
---                              Nothing -> return tm
---                              Just tm' -> execute' tm'
-
-data Lazy = Delayed Env Context Term | Forced Term
+data Lazy = Delayed ExecEnv Context Term | Forced ExecVal
 
 data ExecState = ExecState { exec_thunks :: M.Map Int Lazy -- ^ Thunks - the result of evaluating "lazy" or calling lazy funcs
                            , exec_next_thunk :: Int -- ^ Ensure thunk key uniqueness
@@ -64,6 +38,51 @@ data ExecState = ExecState { exec_thunks :: M.Map Int Lazy -- ^ Thunks - the res
                            , exec_handles :: M.Map Int Handle -- ^ Opened files
                            , exec_next_handle :: Int -- ^ Ensure opened file key uniqueness
                            }
+
+data ExecVal = EP NameType Name ExecVal
+             | EV Int
+             | EBind Name (Binder ExecVal) (ExecVal -> Exec ExecVal)
+             | EApp ExecVal ExecVal
+             | EType UExp
+             | EErased
+             | EConstant Const
+--             | ETmp Int
+             | EThunk Int
+             | EHandle Int
+               deriving Show
+
+toTT :: ExecVal -> Exec Term
+toTT (EP nt n ty) = (P nt n) <$> (toTT ty)
+toTT (EV i) = return $ V i
+toTT (EBind n b body) = do body' <- body $ EP Bound n EErased
+                           b' <- fixBinder b
+                           Bind n b' <$> toTT body'
+    where fixBinder (Lam t)       = Lam   <$> toTT t
+          fixBinder (Pi t)        = Pi    <$> toTT t
+          fixBinder (Let t1 t2)   = Let   <$> toTT t1 <*> toTT t2
+          fixBinder (NLet t1 t2)  = NLet  <$> toTT t1 <*> toTT t2
+          fixBinder (Hole t)      = Hole  <$> toTT t
+          fixBinder (GHole t)     = GHole <$> toTT t
+          fixBinder (Guess t1 t2) = Guess <$> toTT t1 <*> toTT t2
+          fixBinder (PVar t)      = PVar  <$> toTT t
+          fixBinder (PVTy t)      = PVTy  <$> toTT t
+toTT (EApp e1 e2) = do e1' <- toTT e1
+                       e2' <- toTT e2
+                       return $ App e1' e2'
+toTT (EType u) = return $ TType u
+toTT EErased = return Erased
+toTT (EConstant c) = return (Constant c)
+toTT (EThunk _) = return Erased
+toTT (EHandle _) = return Erased
+
+unApplyV :: ExecVal -> (ExecVal, [ExecVal])
+unApplyV tm = ua [] tm
+    where ua args (EApp f a) = ua (a:args) f
+          ua args t = (t, args)
+
+mkEApp :: ExecVal -> [ExecVal] -> ExecVal
+mkEApp f [] = f
+mkEApp f (a:args) = mkEApp (EApp f a) args
 
 initState :: Idris ExecState
 initState = do ist <- getIState
@@ -86,143 +105,121 @@ execFail = throwError
 execIO :: IO a -> Exec a
 execIO = lift . lift
 
-thunk :: Name
-thunk = MN 0 "__execThunk"
-
-delay :: Env -> Context -> Term -> Exec Term
+delay :: ExecEnv -> Context -> Term -> Exec ExecVal
 delay env ctxt tm =
     do st <- getExecState
        let i = exec_next_thunk st
        putExecState $ st { exec_thunks = M.insert i (Delayed env ctxt tm) (exec_thunks st)
                          , exec_next_thunk = exec_next_thunk st + 1
                          }
-       return $ App (P (DCon 1 0) thunk Erased) (Constant (I i))
+       return $ EThunk i
 
-force :: Int -> Exec Term
+force :: Int -> Exec ExecVal
 force i = do st <- getExecState
              case M.lookup i (exec_thunks st) of
                Just (Delayed env ctxt tm) -> do tm' <- doExec env ctxt tm
                                                 case tm' of
-                                                  App (P _ thnk _) (Constant (I i)) | thnk == thunk ->
-                                                         do res <- force i
-                                                            update res i
-                                                            return res
+                                                  EThunk i ->
+                                                      do res <- force i
+                                                         update res i
+                                                         return res
                                                   _ -> do update tm' i
                                                           return tm'
                Just (Forced tm) -> return tm
                Nothing -> execFail "Tried to exec non-existing thunk. This is a bug!"
-    where update :: Term -> Int -> Exec ()
+    where update :: ExecVal -> Int -> Exec ()
           update tm i = do est <- getExecState
                            putExecState $ est { exec_thunks = M.insert i (Forced tm) (exec_thunks est) }
 
-unLazy :: Env -> Context -> Term -> Exec Term
-unLazy env ctxt tm = trace ("unLazy " ++ take 100 (show (unApply tm))) $
-                     do res <- unLazy' (unApply tm)
-                        trace ("unLazy res is " ++ take 100 (show res)) $ return res
-    where unLazy' (P _ thnk _, (Constant (I i)):rest) | thnk == thunk = do tm <- force i
-                                                                           doExec env ctxt (mkApp tm rest)
-          unLazy' (tm, xs) = return $ mkApp tm xs
-
+tryForce :: ExecVal -> Exec ExecVal
+tryForce (EThunk i) = force i
+tryForce tm = return tm
 
 execute :: Term -> Idris Term
 execute tm = do est <- initState
                 ctxt <- getContext
-                res <- lift $ runExec (doExec [] ctxt tm) est
+                res <- lift $ runExec (doExec [] ctxt tm >>= toTT) est
                 case res of
                   Left err -> fail err
                   Right tm' -> return tm'
 
-ioWrap :: Term -> Term
-ioWrap tm = mkApp (P Ref (UN "prim__IO") Erased) [Erased, tm]
+ioWrap :: ExecVal -> ExecVal
+ioWrap tm = mkEApp (EP Ref (UN "prim__IO") EErased) [EErased, tm]
 
-ioUnit :: Term
-ioUnit = ioWrap (P Ref unitCon Erased)
+ioUnit :: ExecVal
+ioUnit = ioWrap (EP Ref unitCon EErased)
 
-doExec :: Env -> Context -> Term -> Exec Term
+type ExecEnv = [(Name, Binder ExecVal)]
+
+doExec :: ExecEnv -> Context -> Term -> Exec ExecVal
 doExec env ctxt p@(P Ref n ty) =
     do let val = lookupDef n ctxt
        case val of
-         [Function _ tm] ->
-             do val <- doExec env ctxt tm
-                return val
-         [TyDecl nt ty] -> return p -- abstract def
-         [Operator tp arity op] -> do ty' <- doExec env ctxt ty
-                                      return (P Ref n ty')
+         [Function _ tm] -> doExec env ctxt tm
+         [TyDecl _ _] -> return (EP Ref n EErased) -- abstract def
+         [Operator tp arity op] -> return (EP Ref n EErased) -- will be special-cased later
          [CaseOp _ _ _ _ _ [] (STerm tm) _ _] -> -- nullary fun
              doExec env ctxt tm
-         [CaseOp _ _ _ _ _ ns sc _ _] -> return p
+         [CaseOp _ _ _ _ _ ns sc _ _] -> return (EP Ref n EErased)
          thing -> trace (take 200 $ "got to " ++ show thing ++ " lookup up " ++ show n) $ undefined
 doExec env ctxt p@(P Bound n ty) =
-    case (lookupDef n ctxt) of -- bound vars must be Function
-      [Function ty tm] -> doExec env ctxt tm
-      [] -> return p
-      x -> fail ("Internal error lookup up bound var " ++ show n ++ " - found " ++ show x)
-doExec env ctxt p@(P (DCon _ _) n _) = return p
-doExec env ctxt p@(P (TCon _ _) n _) = return p
+  case lookup n env of
+    Nothing -> execFail "not found"
+    Just (Let _ tm) -> return tm
+    Just b -> execFail $ "Unknown binder " ++ show b
+doExec env ctxt (P (DCon a b) n _) = return (EP (DCon a b) n EErased)
+doExec env ctxt (P (TCon a b) n _) = return (EP (TCon a b) n EErased)
 doExec env ctxt v@(V i) | i < length env = do let binder = env !! i
                                               case binder of
                                                 (_, (Let t v)) -> return v
                                                 (_, (NLet t v)) -> return v
-                                                (n, b) -> doExec env ctxt (P Bound n (binderTy b))
-                        | otherwise      = return $ V i
+                                                (n, b) -> doExec env ctxt (P Bound n Erased)
+                        | otherwise      = execFail "env too small"
 doExec env ctxt (Bind n (Let t v) body) = do v' <- doExec env ctxt v
-                                             let ctxt' = addToCtxt n v' t ctxt
-                                             doExec ((n, Let t v'):env) ctxt' body
+                                             doExec ((n, Let EErased v'):env) ctxt body
 doExec env ctxt (Bind n (NLet t v) body) = trace "NLet" $ undefined
-doExec env ctxt tm@(Bind n b body) = return tm -- don't eval under lambda!
+doExec env ctxt tm@(Bind n b body) = return $
+                                     EBind n (fmap (\_->EErased) b)
+                                           (\arg -> doExec ((n, Let EErased arg):env) ctxt body)
 doExec env ctxt a@(App _ _) = execApp env ctxt (unApply a)
-doExec env ctxt (Constant c) = return (Constant c)
+doExec env ctxt (Constant c) = return (EConstant c)
 doExec env ctxt (Proj tm i) = let (x, xs) = unApply tm in
-                              return ((x:xs) !! i)
-doExec env ctxt Erased = return Erased
+                              doExec env ctxt ((x:xs) !! i)
+doExec env ctxt Erased = return EErased
 doExec env ctxt Impossible = fail "Tried to execute an impossible case"
-doExec env ctxt (TType u) = return (TType u)
+doExec env ctxt (TType u) = return (EType u)
 
-execApp :: Env -> Context -> (Term, [Term]) -> Exec Term
-execApp env ctxt ((P _ n _), (Constant (I i)):args) | n == thunk = do x <- force i
-                                                                      doExec env ctxt (mkApp x args)
+execApp :: ExecEnv -> Context -> (Term, [Term]) -> Exec ExecVal
 execApp env ctxt (f, args) = do newF <- doExec env ctxt f
                                 laziness <- (getLaziness newF) >>= return . (++ repeat False)
                                 newArgs <- mapM argExec (zip args laziness)
-                                trace ((take 40 (show newF)) ++ " " ++  show (map (take 100 . show) (zip args laziness))) $ return ()
+                                trace (take 1000 (show newF) ++ " " ++ take 2000 (show newArgs)) $ return ()
                                 execApp' env ctxt newF newArgs
-    where getLaziness (P _ (UN "io_bind") _) = return [False, False, False, True]
-          getLaziness (P _ (UN "lazy") _) = return [True]
-          getLaziness (P _ n _) = do est <- getExecState
-                                     let argInfo = exec_implicits est
-                                     trace ("Looking for laziness of " ++ show n ++ ", found " ++ (take 1000 . show $ lookupCtxtName n argInfo)) $ return ()
-                                     case lookupCtxtName n argInfo of
-                                       [] -> return (repeat False)
-                                       [ps] -> return $ map lazyarg (snd ps)
-                                       many -> execFail $ "Ambiguous " ++ show n ++ ", found " ++ (take 200 $ show many)
-          getLaziness x = return (repeat False) -- ok due to zip above
-          argExec :: (Term, Bool) -> Exec Term
+    where getLaziness (EP _ (UN "lazy") _) = return [True]
+          getLaziness (EP _ n _) = do est <- getExecState
+                                      let argInfo = exec_implicits est
+                                      case lookupCtxtName n argInfo of
+                                        [] -> return (repeat False)
+                                        [ps] -> return $ map lazyarg (snd ps)
+                                        many -> execFail $ "Ambiguous " ++ show n ++ ", found " ++ (take 200 $ show many)
+          getLaziness _ = return (repeat False) -- ok due to zip above
+          argExec :: (Term, Bool) -> Exec ExecVal
           argExec (tm, False) = doExec env ctxt tm
           argExec (tm, True) = delay env ctxt tm
 
 
-execApp' :: Env -> Context -> Term -> [Term] -> Exec Term
+execApp' :: ExecEnv -> Context -> ExecVal -> [ExecVal] -> Exec ExecVal
 execApp' env ctxt v [] = return v -- no args is just a constant! can result from function calls
-execApp' env ctxt (P _ (UN "io_bind") _) (_:_:x:k:rest) =
-    trace ("x="++(take 150 (show x)) ++ " and\nk=" ++ (take 150 (show k))) $
-    do x' <- doExec env ctxt x
-       trace ("Arg x in io_bind from " ++ (take 150 (show x)) ++ "\n   to ==> " ++ take 150 (show x')) $ return ()
-       case unApply x' of
-         (P _ (UN "prim__IO") _, [_, x'']) ->
-             trace ("Calling " ++ take 100 (show k)) $
-             doExec env ctxt (mkApp k (x'':rest))
-         _ -> execFail $ "Did not get an IO object out of " ++ take 100 (show x)
-execApp' env ctxt (P _ (UN "unsafePerformIO") _) (ty:action:rest) | (prim__IO, [ty', v]) <- unApply action =
-    doExec env ctxt (mkApp v rest)
+execApp' env ctxt (EP _ (UN "unsafePerformIO") _) (ty:action:rest) | (prim__IO, [ty', v]) <- unApplyV action =
+    execApp' env ctxt v rest
 
 -- Special cases arising from not having access to the C RTS in the interpreter
 
-execApp' env ctxt (P _ (UN "mkForeign") _) (_:fn:Constant (Str arg):rest)
+execApp' env ctxt (EP _ (UN "mkForeign") _) (_:fn:EConstant (Str arg):rest)
     | Just (FFun "putStr" _ _) <- foreignFromTT fn = do execIO (putStr arg)
-                                                        doExec env ctxt (mkApp ioUnit rest)
-execApp' env ctxt (P _ (UN "mkForeign") _) (_:fn:Constant (Str f):Constant (Str mode):rest)
-    | Just (FFun "fileOpen" _ _) <- foreignFromTT fn = do trace ("Opening " ++ f ++ " with " ++ mode) $ return ()
-                                                          m <- case mode of
+                                                        execApp' env ctxt ioUnit rest
+execApp' env ctxt (EP _ (UN "mkForeign") _) (_:fn:EConstant (Str f):EConstant (Str mode):rest)
+    | Just (FFun "fileOpen" _ _) <- foreignFromTT fn = do m <- case mode of
                                                                  "r" -> return ReadMode
                                                                  "w" -> return WriteMode
                                                                  "a" -> return AppendMode
@@ -232,101 +229,105 @@ execApp' env ctxt (P _ (UN "mkForeign") _) (_:fn:Constant (Str f):Constant (Str 
                                                                  _ -> execFail ("Invalid mode for " ++ f ++ ": " ++ mode)
                                                           h <- execIO $ openFile f m
                                                           h' <- handle h
-                                                          trace ("Got " ++ (take 100 (show h') ++ " and " ++ (take 100 (show rest)))) (return ())
-                                                          doExec env ctxt (mkApp (ioWrap h') rest)
+                                                          execApp' env ctxt (ioWrap h') rest
 
-execApp' env ctxt (P _ (UN "mkForeign") _) (_:fn:fh:rest)
-    | Just (FFun "fileEOF" _ _) <- foreignFromTT fn = trace ("feof") $
-                                                      do h <- unHandle fh
+execApp' env ctxt (EP _ (UN "mkForeign") _) (_:fn:fh:rest)
+    | Just (FFun "fileEOF" _ _) <- foreignFromTT fn = do h <- unHandle fh
                                                          eofp <- execIO $ hIsEOF h
-                                                         let res = ioWrap (Constant (I $ if eofp then 1 else 0))
-                                                         doExec env ctxt (mkApp res rest)
+                                                         let res = ioWrap (EConstant (I $ if eofp then 1 else 0))
+                                                         trace ("feof was " ++ show eofp) $ return ()
+                                                         execApp' env ctxt res rest
 
 
-execApp' env ctxt f@(P _ (UN "mkForeign") _) args@(ty:fn:xs) | Just (FFun _ argTs retT) <- foreignFromTT fn
-                                                             , length xs >= length argTs =
+execApp' env ctxt f@(EP _ (UN "mkForeign") _) args@(ty:fn:xs) | Just (FFun _ argTs retT) <- foreignFromTT fn
+                                                              , length xs >= length argTs =
     do res <- stepForeign (ty:fn:take (length argTs) xs)
        case res of
          Nothing -> fail "Could not call foreign function"
-         Just r -> return (mkApp r (drop (length argTs) xs))
-                                                             | otherwise = return (mkApp f args)
+         Just r -> return (mkEApp r (drop (length argTs) xs))
+                                                             | otherwise = return (mkEApp f args)
 
-execApp' env ctxt (P _ (UN "prim__concat") _)  [Constant (Str s1), Constant (Str s2)] =
-    return $ Constant (Str (s1 ++ s2))
-
-execApp' env ctxt (P _ (UN "prim__eqInt") _)  [Constant (I i1), Constant (I i2)] =
-    return $ if i1 == i2 then Constant (I 1) else Constant (I 0)
-
-execApp' env ctxt (P _ (UN "prim__ltInt") _) [Constant (I i1), Constant (I i2)] =
-    return $ if i1 < i2 then Constant (I 1) else Constant (I 0)
-
-execApp' env ctxt (P _ (UN "prim__subInt") _) [Constant (I i1), Constant (I i2)] =
-    return . Constant . I $ i1 - i2
-
-execApp' env ctxt (P _ (UN "prim__readString") _) [P _ (UN "prim__stdin") _] =
-    do line <- execIO getLine
-       return (Constant (Str line))
-
-execApp' env ctxt (P _ (UN "prim__readString") _) [ptr] =
-    trace ("prim__readStr of file") $
-    do h <- unHandle ptr
-       
-       contents <- execIO $ hGetLine h
-       return $ ioWrap (Constant (Str contents))
-
-execApp' env ctxt f@(P _ n _) args =
+execApp' env ctxt f@(EP _ n _) args =
     do let val = lookupDef n ctxt
        case val of
          [Function _ tm] -> fail "should already have been eval'd"
-         [TyDecl nt ty] -> return $ mkApp f args
-         [Operator tp arity op] -> fail $ "Can't apply operator " ++ show n ++ " which needs special-casing"
+         [TyDecl nt ty] -> return $ mkEApp f args
+         [Operator tp arity op] ->
+             case getOp n (take arity args) of
+               Just res -> do r <- res
+                              execApp' env ctxt r (drop arity args)
+               Nothing -> return (mkEApp f args)
          [CaseOp _ _ _ _ _ [] (STerm tm) _ _] -> -- nullary fun
              do rhs <- doExec env ctxt tm
-                doExec env ctxt (mkApp tm args)
+                execApp' env ctxt rhs args
          [CaseOp _ _ _ _ _  ns sc _ _] ->
              do res <- execCase env ctxt ns sc args
-                return $ fromMaybe (mkApp f args) res
-         thing -> return $ mkApp f args
+                return $ fromMaybe (mkEApp f args) res
+         thing -> return $ mkEApp f args
+    where getOp :: Name -> [ExecVal] -> Maybe (Exec ExecVal)
+          getOp (UN "prim__concat") [EConstant (Str s1), EConstant (Str s2)] =
+              Just . return . EConstant . Str $ s1 ++ s2
+          getOp (UN "prim__eqInt") [EConstant (I i1), EConstant (I i2)] =
+              Just . return . EConstant . I $ if i1 == i2 then 1 else 0
+          getOp (UN "prim__ltInt") [EConstant (I i1), EConstant (I i2)] =
+              Just . return . EConstant . I $ if i1 < i2 then 1 else 0
+          getOp (UN "prim__subInt") [EConstant (I i1), EConstant (I i2)] =
+              Just .  return . EConstant . I $ i1 - i2
+          getOp (UN "prim__readString") [EP _ (UN "prim__stdin") _] =
+              Just $ do line <- execIO getLine
+                        return (EConstant (Str line))
+          getOp (UN "prim__readString") [ptr] =
+              Just $ do h <- unHandle ptr
+                        contents <- execIO $ hGetLine h
+                        return $ ioWrap (EConstant (Str contents))
+          getOp _ _ = Nothing
+execApp' env ctxt bnd@(EBind n b body) (arg:args) = do ret <- body arg
+                                                       execApp' env ctxt ret args
 
-execApp' env ctxt bnd@(Bind n b body) (arg:args) = let ctxt' = addToCtxt n arg Erased ctxt in
-                                                   doExec ((n, b):env) ctxt' body
+execApp' env ctxt f args = return (mkEApp f args)
 
-execApp' env ctxt f args = return (mkApp f args)
 
-execCase :: Env -> Context -> [Name] -> SC -> [Term] -> Exec (Maybe Term)
-execCase env ctxt ns sc args = trace ("Case execution, args are " ++ take 100 (show (zip ns args))) $
+-- | Overall wrapper for case tree execution. If there are enough arguments, it takes them,
+-- evaluates them, then begins the checks for matching cases.
+execCase :: ExecEnv -> Context -> [Name] -> SC -> [ExecVal] -> Exec (Maybe ExecVal)
+execCase env ctxt ns sc args =
     let arity = length ns in
     if arity <= length args
-    then do args' <- mapM (unLazy env ctxt) (take arity args)
-            trace ("Unlazied args are " ++ take 100 (show args')) $ return ()
-            let amap = zip ns args'
+    then do -- args' <- mapM tryForce (take arity args)
+            let amap = zip ns args
             caseRes <- execCase' env ctxt amap sc
             case caseRes of
-              Just res-> Just <$> doExec env ctxt (mkApp res (drop arity args))
+              Just res -> Just <$> execApp' (map (\(n, tm) -> (n, Let EErased tm)) amap ++ env) ctxt res (drop arity args)
               Nothing -> return Nothing
     else return Nothing
 
-execCase' :: Env -> Context -> [(Name, Term)] -> SC -> Exec (Maybe Term)
+-- | Take bindings and a case tree and examines them, executing the matching case if possible.
+execCase' :: ExecEnv -> Context -> [(Name, ExecVal)] -> SC -> Exec (Maybe ExecVal)
+execCase' env ctxt amap (UnmatchedCase _) = trace "Unmatched" $ return Nothing
 execCase' env ctxt amap (STerm tm) =
-    Just <$> doExec env (foldl (\c (n, t) -> addToCtxt n t Erased c) ctxt amap) tm
-execCase' env ctxt amap (Case n alts) | Just tm <- lookup n amap
-                                      , Just (newCase, newBindings) <- chooseAlt tm alts =
-    execCase' env ctxt (amap ++ newBindings) newCase
-                                      | otherwise = return Nothing
+    Just <$> doExec (map (\(n, v) -> (n, Let EErased v)) amap ++ env) ctxt tm
+execCase' env ctxt amap (Case n alts) | Just tm <- lookup n amap =
+    do tm' <- tryForce tm
+       case chooseAlt tm alts of
+         Just (newCase, newBindings) ->
+             let amap' = newBindings ++ (filter (\(x,_) -> not (elem x (map fst newBindings))) amap) in
+             execCase' env ctxt amap' newCase
+         Nothing -> return Nothing
 
-chooseAlt :: Term -> [CaseAlt] -> Maybe (SC, [(Name, Term)])
+chooseAlt :: ExecVal -> [CaseAlt] -> Maybe (SC, [(Name, ExecVal)])
 chooseAlt _ (DefaultCase sc : alts) = Just (sc, [])
-chooseAlt (Constant c) (ConstCase c' sc : alts) | c == c' = Just (sc, [])
-chooseAlt tm (ConCase n i ns sc : alts) | ((P _ cn _), args) <- unApply tm, cn == n = Just (sc, zip ns args)
+chooseAlt (EConstant c) (ConstCase c' sc : alts) | c == c' = Just (sc, [])
+chooseAlt tm (ConCase n i ns sc : alts) | ((EP _ cn _), args) <- unApplyV tm
+                                        , cn == n = Just (sc, zip ns args)
                                         | otherwise = chooseAlt tm alts
 chooseAlt tm (_:alts) = chooseAlt tm alts
 chooseAlt _ [] = Nothing
 
 data FTy = FInt | FFloat | FChar | FString | FPtr | FUnit deriving (Show, Read)
 
-idrisType :: FTy -> Type
-idrisType FUnit = P Ref unitTy (TType (UVal 0))
-idrisType ft = Constant (idr ft)
+idrisType :: FTy -> ExecVal
+idrisType FUnit = EP Ref unitTy EErased
+idrisType ft = EConstant (idr ft)
     where idr FInt = IType
           idr FFloat = FlType
           idr FChar = ChType
@@ -340,13 +341,13 @@ ptrCon :: Name
 ptrCon = MN 0 "__Ptr"
 
 -- | Convert a Haskell pointer to a Ptr term in TT
-ptr :: Ptr a -> Term
-ptr p = App (P (DCon 1 0) ptrCon Erased) (Constant (I (addr p)))
+ptr :: Ptr a -> ExecVal
+ptr p = EApp (EP (DCon 1 0) ptrCon EErased) (EConstant (I (addr p)))
     where addr p = p `minusPtr` nullPtr
 
 -- | Convert a Ptr term in TT to a Haskell pointer
-unPtr :: Term -> Maybe (Ptr a)
-unPtr (App (P _ con _) (Constant (I addr))) | con == ptrCon = Just (unAddr addr)
+unPtr :: ExecVal -> Maybe (Ptr a)
+unPtr (EApp (EP _ con _) (EConstant (I addr))) | con == ptrCon = Just (unAddr addr)
     where unAddr a = nullPtr `plusPtr` a
 unPtr _ = Nothing
 
@@ -354,76 +355,77 @@ handleCon :: Name
 handleCon = MN 0 "__Handle"
 
 -- | Convert a Haskell file handle to a handle term in TT (an int)
-handle :: Handle -> Exec Term
+handle :: Handle -> Exec ExecVal
 handle h = do est <- getExecState
               let i = exec_next_handle est
               putExecState $ est { exec_next_handle = exec_next_handle est + 1
                                  , exec_handles = M.insert i h (exec_handles est)
                                  }
-              return $ App (P (DCon 1 0) handleCon Erased) (Constant (I i))
+              return $ EHandle i
 
-unHandle :: Term -> Exec Handle
-unHandle (App (P _ hc _) (Constant (I i))) | hc == handleCon =
+unHandle :: ExecVal -> Exec Handle
+unHandle (EHandle i) =
     do est <- getExecState
        case M.lookup i (exec_handles est) of
          Just h -> return h
          Nothing -> execFail "Bad handle ID"
 unHandle _ = execFail "Not a handle"
 
-call :: Foreign -> [Term] -> Exec (Maybe Term)
+call :: Foreign -> [ExecVal] -> Exec (Maybe ExecVal)
 call (FFun name argTypes retType) args =
     do fn <- findForeign name
        case fn of
          Nothing -> return Nothing
          Just f -> do res <- call' f args retType
-                      return . Just $ mkApp (P Ref (UN "prim__IO") Erased) [idrisType retType, res]
-    where call' :: ForeignFun -> [Term] -> FTy -> Exec Term
+                      return . Just $ mkEApp (EP Ref (UN "prim__IO") EErased) [idrisType retType, res]
+    where call' :: ForeignFun -> [ExecVal] -> FTy -> Exec ExecVal
           call' (Fun _ h) args FInt = do res <- execIO $ callFFI h retCInt (prepArgs args)
-                                         return (Constant (I (fromIntegral res)))
+                                         return (EConstant (I (fromIntegral res)))
           call' (Fun _ h) args FFloat = do res <- execIO $ callFFI h retCDouble (prepArgs args)
-                                           return (Constant (Fl (realToFrac res)))
+                                           return (EConstant (Fl (realToFrac res)))
           call' (Fun _ h) args FChar = do res <- execIO $ callFFI h retCChar (prepArgs args)
-                                          return (Constant (Ch (castCCharToChar res)))
+                                          return (EConstant (Ch (castCCharToChar res)))
           call' (Fun _ h) args FString = do res <- execIO $ callFFI h retCString (prepArgs args)
                                             hStr <- execIO $ peekCString res
 --                                            lift $ free res
-                                            return (Constant (Str hStr))
+                                            return (EConstant (Str hStr))
 
           call' (Fun _ h) args FPtr = do res <- execIO $ callFFI h (retPtr retVoid) (prepArgs args)
                                          return (ptr res)
           call' (Fun _ h) args FUnit = do res <- execIO $ callFFI h retVoid (prepArgs args)
-                                          return (P Ref unitCon (P Ref unitTy (TType (UVal 0)))) -- FIXME check universe level
+                                          return (EP Ref unitCon EErased)
 --          call' (Fun _ h) args other = fail ("Unsupported foreign return type " ++ show other)
 
 
           prepArgs = map prepArg
-          prepArg (Constant (I i)) = argCInt (fromIntegral i)
-          prepArg (Constant (Fl f)) = argCDouble (realToFrac f)
-          prepArg (Constant (Ch c)) = argCChar (castCharToCChar c) -- FIXME - castCharToCChar only safe for first 256 chars
-          prepArg (Constant (Str s)) = argString s
+          prepArg (EConstant (I i)) = argCInt (fromIntegral i)
+          prepArg (EConstant (Fl f)) = argCDouble (realToFrac f)
+          prepArg (EConstant (Ch c)) = argCChar (castCharToCChar c) -- FIXME - castCharToCChar only safe for first 256 chars
+          prepArg (EConstant (Str s)) = argString s
           prepArg ptr | Just p <- unPtr ptr = argPtr p
           prepArg other = trace ("Could not use " ++ take 100 (show other) ++ " as FFI arg.") undefined
 
 
 
-foreignFromTT :: Term -> Maybe Foreign
-foreignFromTT t = case (unApply t) of
-                    (_, [(Constant (Str name)), args, ret]) ->
-                        do argTy <- unList args
+foreignFromTT :: ExecVal -> Maybe Foreign
+foreignFromTT t = case (unApplyV t) of
+                    (_, [(EConstant (Str name)), args, ret]) ->
+                        do argTy <- unEList args
                            argFTy <- sequence $ map getFTy argTy
                            retFTy <- getFTy ret
                            return $ FFun name argFTy retFTy
                     _ -> trace "failed to construct ffun" Nothing
 
-getFTy :: Term -> Maybe FTy
-getFTy (P _ (UN t) _) = case t of
-                          "FInt"    -> Just FInt
-                          "FFloat"  -> Just FFloat
-                          "FChar"   -> Just FChar
-                          "FString" -> Just FString
-                          "FPtr"    -> Just FPtr
-                          "FUnit"   -> Just FUnit
-                          _         -> Nothing
+getFTy :: ExecVal -> Maybe FTy
+getFTy (EP _ (UN t) _) =
+    case t of
+      "FInt"    -> Just FInt
+      "FFloat"  -> Just FFloat
+      "FChar"   -> Just FChar
+      "FString" -> Just FString
+      "FPtr"    -> Just FPtr
+      "FUnit"   -> Just FUnit
+      _         -> Nothing
 getFTy _ = Nothing
 
 unList :: Term -> Maybe [Term]
@@ -434,11 +436,20 @@ unList tm = case unApply tm of
                      return $ x:rest
               (f, args) -> Nothing
 
+unEList :: ExecVal -> Maybe [ExecVal]
+unEList tm = case unApplyV tm of
+               (nil, [_]) -> Just []
+               (cons, ([_, x, xs])) ->
+                   do rest <- unEList xs
+                      return $ x:rest
+               (f, args) -> Nothing
+
+
 toConst :: Term -> Maybe Const
 toConst (Constant c) = Just c
 toConst _ = Nothing
 
-stepForeign :: [Term] -> Exec (Maybe Term)
+stepForeign :: [ExecVal] -> Exec (Maybe ExecVal)
 stepForeign (ty:fn:args) = do let ffun = foreignFromTT fn
                               f' <- case (call <$> ffun) of
                                       Just f -> f args
