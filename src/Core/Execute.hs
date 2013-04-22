@@ -149,7 +149,6 @@ execute :: Term -> Idris Term
 execute tm = do est <- initState
                 ctxt <- getContext
                 res <- lift $ flip runExec est $ do res <- doExec [] ctxt tm
-                                                    trace ("Result: " ++ show res) $ return ()
                                                     toTT res
                 case res of
                   Left err -> fail err
@@ -225,9 +224,7 @@ execApp' env ctxt (EP _ (UN "unsafePerformIO") _) (ty:action:rest) | (prim__IO, 
     execApp' env ctxt v rest
 
 execApp' env ctxt (EP _ (UN "io_bind") _) args@(_:_:v:k:rest) | (prim__IO, [_, v']) <- unApplyV v =
-    trace ("io_bind " ++ take 1000 (show args)) $
     do res <- execApp' env ctxt k [v'] >>= tryForce
-       trace ("io_bind result was " ++ take 1000 (show res)) $ return ()
        execApp' env ctxt res rest
 
 -- Special cases arising from not having access to the C RTS in the interpreter
@@ -299,7 +296,7 @@ execApp' env ctxt f@(EP _ n _) args =
           getOp (UN "prim__readString") [ptr] =
               Just $ do h <- unHandle ptr
                         contents <- execIO $ hGetLine h
-                        return $ ioWrap (EConstant (Str contents))
+                        return (EConstant (Str contents))
           getOp _ _ = Nothing
 execApp' env ctxt bnd@(EBind n b body) (arg:args) = do ret <- body arg
                                                        let (f', as) = unApplyV ret
