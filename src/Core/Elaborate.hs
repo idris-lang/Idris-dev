@@ -525,6 +525,19 @@ arg n tyhole = do ty <- unique_hole tyhole
                   claim ty RType
                   forall n (Var ty)
 
+-- try a tactic, if it adds any unification problem, return an error
+no_errors :: Elab' aux () -> Elab' aux ()
+no_errors tac 
+   = do ps <- get_probs
+        tac
+        ps' <- get_probs
+        if (length ps' > length ps) then
+           case reverse ps' of
+                ((x,y,env,err) : _) ->
+                   let env' = map (\(x, b) -> (x, binderTy b)) env in
+                              lift $ tfail $ CantUnify False x y err env' 0
+           else return ()
+
 -- Try a tactic, if it fails, try another
 try :: Elab' aux a -> Elab' aux a -> Elab' aux a
 try t1 t2 = try' t1 t2 False

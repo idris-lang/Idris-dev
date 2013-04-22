@@ -162,7 +162,7 @@ unify' ctxt env topx topy =
 -- --              " in " ++ show env ++ 
 --              "\n" ++ show u ++ "\n" ++ qshow fails ++ "\nCurrent problems:\n"
 --              ++ qshow (problems ps) ++ "\n" ++ show (holes ps) ++ "\n"
--- --              ++ show (pterm ps) 
+--              ++ show (pterm ps) 
 --              ++ "\n----------") $
       case fails of
 --            [] -> return u

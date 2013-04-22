@@ -189,12 +189,12 @@ ceiling x = prim__floatCeil x
 
 ---- Ranges
 
-%assert_total
+partial abstract
 count : (Ord a, Num a) => a -> a -> a -> List a
 count a inc b = if a <= b then a :: count (a + inc) inc b
                           else []
   
-partial
+partial abstract
 countFrom : (Ord a, Num a) => a -> a -> List a
 countFrom a inc = a :: lazy (countFrom (a + inc) inc)
   

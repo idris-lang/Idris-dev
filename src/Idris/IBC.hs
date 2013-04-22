@@ -18,6 +18,8 @@ import Control.Monad.State hiding (get, put)
 import System.FilePath
 import System.Directory
 
+import Debug.Trace
+
 import Paths_idris
 
 ibcVersion :: Word8
@@ -48,6 +50,7 @@ data IBCFile = IBCFile { ver :: Word8,
                          ibc_docstrings :: [(Name, String)],
                          ibc_coercions :: [Name]
                        }
+   deriving Show
 {-! 
 deriving instance Binary IBCFile 
 !-}
@@ -327,16 +330,21 @@ instance Binary FC where
  
 instance Binary Name where
         put x
-          = case x of
-                UN x1 -> do putWord8 0
-                            put x1
-                NS x1 x2 -> do putWord8 1
+          = {-# SCC "putName" #-}
+            case x of
+                UN x1 -> {-# SCC "putUN" #-}
+                         do putWord8 0
+                            {-# SCC "putNString" #-} put x1
+                NS x1 x2 -> {-# SCC "putNS" #-}
+                            do putWord8 1
                                put x1
                                put x2
-                MN x1 x2 -> do putWord8 2
+                MN x1 x2 -> {-# SCC "putMN" #-}
+                            do putWord8 2
                                put x1
                                put x2
-                NErased -> putWord8 3
+                NErased -> {-# SCC "putNErased" #-}
+                         putWord8 3
         get
           = do i <- getWord8
                case i of
@@ -528,9 +536,10 @@ instance Binary NameType where
                    _ -> error "Corrupted binary data for NameType"
 
 
-instance (Binary n) => Binary (TT n) where
+instance {-(Binary n) =>-} Binary (TT Name) where
         put x
-          = case x of
+          = {-# SCC "putTT" #-} 
+            case x of
                 P x1 x2 x3 -> do putWord8 0
                                  put x1
                                  put x2
@@ -613,7 +622,8 @@ instance Binary SC where
  
 instance Binary CaseAlt where
         put x
-          = case x of
+          = {-# SCC "putCaseAlt" #-} 
+            case x of
                 ConCase x1 x2 x3 x4 -> do putWord8 0
                                           put x1
                                           put x2
@@ -642,17 +652,16 @@ instance Binary CaseAlt where
  
 instance Binary Def where
         put x
-          = case x of
+          = {-# SCC "putDef" #-} 
+            case x of
                 Function x1 x2 -> do putWord8 0
                                      put x1
                                      put x2
                 TyDecl x1 x2 -> do putWord8 1
                                    put x1
                                    put x2
-                Operator x1 x2 x3 -> do putWord8 2
-                                        put x1
-                                        put x2
-                                        put x3
+                -- all primitives just get added at the start, don't write
+                Operator x1 x2 x3 -> do return ()
                 CaseOp x1 x2 x3 x3a x4 x5 x6 x7 x8 -> 
                                                do putWord8 3
                                                   put x1
@@ -750,8 +759,9 @@ instance Binary Totality where
                    _ -> error "Corrupted binary data for Totality"
 
 instance Binary IBCFile where
-        put (IBCFile x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24)
-          = do put x1
+        put x@(IBCFile x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24)
+         = {-# SCC "putIBCFile" #-} 
+            do put x1
                put x2
                put x3
                put x4

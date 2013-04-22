@@ -613,7 +613,6 @@ pNoExtExpr syn =
      <|> pRewriteTerm syn
      <|> pPi syn 
      <|> pDoBlock syn
-     <|> pComprehension syn
     
 pExtensions :: SyntaxInfo -> [Syntax] -> IParser PTerm
 pExtensions syn rules = choice (map (try . pExt syn) (filter valid rules))
@@ -763,6 +762,7 @@ pSimpleExpr syn =
                     fc <- pfc
                     return (PInferRef fc x))
         <|> try (pList syn)
+        <|> try (pComprehension syn)
         <|> try (pAlt syn)
         <|> try (pIdiom syn)
         <|> try (do lchar '('

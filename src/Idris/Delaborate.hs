@@ -21,6 +21,7 @@ delabTy i n
     = case lookupTy n (tt_ctxt i) of
            (ty:_) -> case lookupCtxt n (idris_implicits i) of
                          (imps:_) -> delabTy' i imps ty False
+                         _ -> delabTy' i [] ty False
 
 delab' :: IState -> Term -> Bool -> PTerm
 delab' i t f = delabTy' i [] t f

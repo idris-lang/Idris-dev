@@ -979,7 +979,7 @@ prettyImp impl = prettySe 10
 showImp :: Bool -> PTerm -> String
 showImp impl tm = se 10 tm where
     se p (PQuote r) = "![" ++ show r ++ "]"
-    se p (PPatvar fc n) = show n
+    se p (PPatvar fc n) = if impl then show n ++ "[p]" else show n
     se p (PInferRef fc n) = "!" ++ show n -- ++ "[" ++ show fc ++ "]"
     se p (PRef fc n) = if impl then show n -- ++ "[" ++ show fc ++ "]"
                                else showbasic n
@@ -1014,6 +1014,9 @@ showImp impl tm = se 10 tm where
         = bracket p 2 $ se 10 ty ++ " => " ++ se 10 sc
     se p (PPi (TacImp _ _ s _) n ty sc)
         = bracket p 2 $ "{tacimp " ++ show n ++ " : " ++ se 10 ty ++ "} -> " ++ se 10 sc
+    se p e
+        | Just str <- slist p e = str
+        | Just num <- snat p e  = show num
     se p (PApp _ (PRef _ f) [])
         | not impl = show f
     se p (PApp _ (PRef _ op@(UN (f:_))) args)
@@ -1051,6 +1054,37 @@ showImp impl tm = se 10 tm where
     se p (PElabError s) = show s
     se p (PCoerced t) = se p t
 --     se p x = "Not implemented"
+
+    slist' p (PApp _ (PRef _ nil) _)
+      | nsroot nil == UN "Nil" = Just []
+    slist' p (PApp _ (PRef _ cons) args)
+      | nsroot cons == UN "::",
+        (PExp {getTm=tl}):(PExp {getTm=hd}):imps <- reverse args,
+        all isImp imps,
+        Just tl' <- slist' p tl
+      = Just (hd:tl')
+      where
+        isImp (PImp {}) = True
+        isImp _         = False
+    slist' _ _ = Nothing
+
+    slist p e | Just es <- slist' p e = Just $
+      case es of []  -> "[]"
+                 [x] -> "[" ++ se p x ++ "]"
+                 xs  -> "[" ++ intercalate "," (map (se p) xs) ++ "]"
+    slist _ _ = Nothing
+
+    -- since Prelude is always imported, S & O are unqualified iff they're the
+    -- Nat ones.
+    snat p (PRef _ o)
+      | show o == (natns++"O") || show o == "O" = Just 0
+    snat p (PApp _ s [PExp {getTm=n}])
+      | show s == (natns++"S") || show s == "S",
+        Just n' <- snat p n
+      = Just $ 1 + n'
+    snat _ _ = Nothing
+
+    natns = "Prelude.Nat."
 
     sArg (PImp _ _ n tm _) = siArg (n, tm)
     sArg (PExp _ _ tm _) = seArg tm
