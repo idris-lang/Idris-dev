@@ -49,7 +49,17 @@ data ExecVal = EP NameType Name ExecVal
 --             | ETmp Int
              | EThunk Int
              | EHandle Int
-               deriving Show
+
+instance Show ExecVal where
+  show (EP _ n _) = show n
+  show (EV i) = "!!V" ++ show i ++ "!!"
+  show (EBind n b body) = "EBind " ++ show b ++ " <<fn>> "
+  show (EApp e1 e2) = show e1 ++ " (" ++ show e2 ++ ")"
+  show (EType _) = "Type"
+  show EErased = "[__]"
+  show (EConstant c) = show c
+  show (EThunk i) = "<<thunk " ++ show i ++ ">>"
+  show (EHandle i) = "<<handle " ++ show i ++ ">>"
 
 toTT :: ExecVal -> Exec Term
 toTT (EP nt n ty) = (P nt n) <$> (toTT ty)
@@ -138,13 +148,15 @@ tryForce tm = return tm
 execute :: Term -> Idris Term
 execute tm = do est <- initState
                 ctxt <- getContext
-                res <- lift $ runExec (doExec [] ctxt tm >>= toTT) est
+                res <- lift $ flip runExec est $ do res <- doExec [] ctxt tm
+                                                    trace ("Result: " ++ show res) $ return ()
+                                                    toTT res
                 case res of
                   Left err -> fail err
                   Right tm' -> return tm'
 
 ioWrap :: ExecVal -> ExecVal
-ioWrap tm = mkEApp (EP Ref (UN "prim__IO") EErased) [EErased, tm]
+ioWrap tm = mkEApp (EP (DCon 0 2) (UN "prim__IO") EErased) [EErased, tm]
 
 ioUnit :: ExecVal
 ioUnit = ioWrap (EP Ref unitCon EErased)
@@ -193,7 +205,6 @@ execApp :: ExecEnv -> Context -> (Term, [Term]) -> Exec ExecVal
 execApp env ctxt (f, args) = do newF <- doExec env ctxt f
                                 laziness <- (getLaziness newF) >>= return . (++ repeat False)
                                 newArgs <- mapM argExec (zip args laziness)
-                                trace (take 1000 (show newF) ++ " " ++ take 2000 (show newArgs)) $ return ()
                                 execApp' env ctxt newF newArgs
     where getLaziness (EP _ (UN "lazy") _) = return [True]
           getLaziness (EP _ n _) = do est <- getExecState
@@ -210,11 +221,16 @@ execApp env ctxt (f, args) = do newF <- doExec env ctxt f
 
 execApp' :: ExecEnv -> Context -> ExecVal -> [ExecVal] -> Exec ExecVal
 execApp' env ctxt v [] = return v -- no args is just a constant! can result from function calls
-execApp' env ctxt (EP _ (UN "unsafePerformIO") _) (ty:action:rest) | (prim__IO, [ty', v]) <- unApplyV action =
+execApp' env ctxt (EP _ (UN "unsafePerformIO") _) (ty:action:rest) | (prim__IO, [_, v]) <- unApplyV action =
     execApp' env ctxt v rest
 
--- Special cases arising from not having access to the C RTS in the interpreter
+execApp' env ctxt (EP _ (UN "io_bind") _) args@(_:_:v:k:rest) | (prim__IO, [_, v']) <- unApplyV v =
+    trace ("io_bind " ++ take 1000 (show args)) $
+    do res <- execApp' env ctxt k [v'] >>= tryForce
+       trace ("io_bind result was " ++ take 1000 (show res)) $ return ()
+       execApp' env ctxt res rest
 
+-- Special cases arising from not having access to the C RTS in the interpreter
 execApp' env ctxt (EP _ (UN "mkForeign") _) (_:fn:EConstant (Str arg):rest)
     | Just (FFun "putStr" _ _) <- foreignFromTT fn = do execIO (putStr arg)
                                                         execApp' env ctxt ioUnit rest
@@ -235,8 +251,12 @@ execApp' env ctxt (EP _ (UN "mkForeign") _) (_:fn:fh:rest)
     | Just (FFun "fileEOF" _ _) <- foreignFromTT fn = do h <- unHandle fh
                                                          eofp <- execIO $ hIsEOF h
                                                          let res = ioWrap (EConstant (I $ if eofp then 1 else 0))
-                                                         trace ("feof was " ++ show eofp) $ return ()
                                                          execApp' env ctxt res rest
+
+execApp' env ctxt (EP _ (UN "mkForeign") _) (_:fn:fh:rest)
+    | Just (FFun "fileClose" _ _) <- foreignFromTT fn = do h <- unHandle fh
+                                                           execIO $ hClose h
+                                                           execApp' env ctxt ioUnit rest
 
 
 execApp' env ctxt f@(EP _ (UN "mkForeign") _) args@(ty:fn:xs) | Just (FFun _ argTs retT) <- foreignFromTT fn
@@ -282,8 +302,10 @@ execApp' env ctxt f@(EP _ n _) args =
                         return $ ioWrap (EConstant (Str contents))
           getOp _ _ = Nothing
 execApp' env ctxt bnd@(EBind n b body) (arg:args) = do ret <- body arg
-                                                       execApp' env ctxt ret args
-
+                                                       let (f', as) = unApplyV ret
+                                                       execApp' env ctxt f' (as ++ args)
+execApp' env ctxt (EThunk i) args = do f <- force i
+                                       execApp' env ctxt f args
 execApp' env ctxt f args = return (mkEApp f args)
 
 
@@ -303,7 +325,7 @@ execCase env ctxt ns sc args =
 
 -- | Take bindings and a case tree and examines them, executing the matching case if possible.
 execCase' :: ExecEnv -> Context -> [(Name, ExecVal)] -> SC -> Exec (Maybe ExecVal)
-execCase' env ctxt amap (UnmatchedCase _) = trace "Unmatched" $ return Nothing
+execCase' env ctxt amap (UnmatchedCase _) = return Nothing
 execCase' env ctxt amap (STerm tm) =
     Just <$> doExec (map (\(n, v) -> (n, Let EErased v)) amap ++ env) ctxt tm
 execCase' env ctxt amap (Case n alts) | Just tm <- lookup n amap =
@@ -342,7 +364,7 @@ ptrCon = MN 0 "__Ptr"
 
 -- | Convert a Haskell pointer to a Ptr term in TT
 ptr :: Ptr a -> ExecVal
-ptr p = EApp (EP (DCon 1 0) ptrCon EErased) (EConstant (I (addr p)))
+ptr p = EApp (EP (DCon 0 1) ptrCon EErased) (EConstant (I (addr p)))
     where addr p = p `minusPtr` nullPtr
 
 -- | Convert a Ptr term in TT to a Haskell pointer
@@ -377,7 +399,7 @@ call (FFun name argTypes retType) args =
        case fn of
          Nothing -> return Nothing
          Just f -> do res <- call' f args retType
-                      return . Just $ mkEApp (EP Ref (UN "prim__IO") EErased) [idrisType retType, res]
+                      return . Just . ioWrap $ res
     where call' :: ForeignFun -> [ExecVal] -> FTy -> Exec ExecVal
           call' (Fun _ h) args FInt = do res <- execIO $ callFFI h retCInt (prepArgs args)
                                          return (EConstant (I (fromIntegral res)))
