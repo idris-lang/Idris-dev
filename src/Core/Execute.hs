@@ -1,4 +1,4 @@
-{-# LANGUAGE PatternGuards #-}
+{-# LANGUAGE PatternGuards, ExistentialQuantification #-}
 module Core.Execute (execute) where
 
 import Idris.AbsSyntax
@@ -35,8 +35,6 @@ data ExecState = ExecState { exec_thunks :: M.Map Int Lazy -- ^ Thunks - the res
                            , exec_next_thunk :: Int -- ^ Ensure thunk key uniqueness
                            , exec_implicits :: Ctxt [PArg] -- ^ Necessary info on laziness from idris monad
                            , exec_dynamic_libs :: [DynamicLib] -- ^ Dynamic libs from idris monad
-                           , exec_handles :: M.Map Int Handle -- ^ Opened files
-                           , exec_next_handle :: Int -- ^ Ensure opened file key uniqueness
                            }
 
 data ExecVal = EP NameType Name ExecVal
@@ -46,20 +44,21 @@ data ExecVal = EP NameType Name ExecVal
              | EType UExp
              | EErased
              | EConstant Const
---             | ETmp Int
+             | forall a. EPtr (Ptr a)
              | EThunk Int
-             | EHandle Int
+             | EHandle Handle
 
 instance Show ExecVal where
-  show (EP _ n _) = show n
-  show (EV i) = "!!V" ++ show i ++ "!!"
+  show (EP _ n _)       = show n
+  show (EV i)           = "!!V" ++ show i ++ "!!"
   show (EBind n b body) = "EBind " ++ show b ++ " <<fn>> "
-  show (EApp e1 e2) = show e1 ++ " (" ++ show e2 ++ ")"
-  show (EType _) = "Type"
-  show EErased = "[__]"
-  show (EConstant c) = show c
-  show (EThunk i) = "<<thunk " ++ show i ++ ">>"
-  show (EHandle i) = "<<handle " ++ show i ++ ">>"
+  show (EApp e1 e2)     = show e1 ++ " (" ++ show e2 ++ ")"
+  show (EType _)        = "Type"
+  show EErased          = "[__]"
+  show (EConstant c)    = show c
+  show (EPtr p)         = "<<ptr " ++ show p ++ ">>"
+  show (EThunk i)       = "<<thunk " ++ show i ++ ">>"
+  show (EHandle h)      = "<<handle " ++ show h ++ ">>"
 
 toTT :: ExecVal -> Exec Term
 toTT (EP nt n ty) = (P nt n) <$> (toTT ty)
@@ -96,7 +95,7 @@ mkEApp f (a:args) = mkEApp (EApp f a) args
 
 initState :: Idris ExecState
 initState = do ist <- getIState
-               return $ ExecState M.empty 0 (idris_implicits ist) (idris_dynamic_libs ist) M.empty 0
+               return $ ExecState M.empty 0 (idris_implicits ist) (idris_dynamic_libs ist)
 
 type Exec = ErrorT String (StateT ExecState IO)
 
@@ -241,18 +240,15 @@ execApp' env ctxt (EP _ (UN "mkForeign") _) (_:fn:EConstant (Str f):EConstant (S
                                                                  "r+" -> return ReadWriteMode
                                                                  _ -> execFail ("Invalid mode for " ++ f ++ ": " ++ mode)
                                                           h <- execIO $ openFile f m
-                                                          h' <- handle h
-                                                          execApp' env ctxt (ioWrap h') rest
+                                                          execApp' env ctxt (ioWrap (EHandle h)) rest
 
-execApp' env ctxt (EP _ (UN "mkForeign") _) (_:fn:fh:rest)
-    | Just (FFun "fileEOF" _ _) <- foreignFromTT fn = do h <- unHandle fh
-                                                         eofp <- execIO $ hIsEOF h
+execApp' env ctxt (EP _ (UN "mkForeign") _) (_:fn:(EHandle h):rest)
+    | Just (FFun "fileEOF" _ _) <- foreignFromTT fn = do eofp <- execIO $ hIsEOF h
                                                          let res = ioWrap (EConstant (I $ if eofp then 1 else 0))
                                                          execApp' env ctxt res rest
 
-execApp' env ctxt (EP _ (UN "mkForeign") _) (_:fn:fh:rest)
-    | Just (FFun "fileClose" _ _) <- foreignFromTT fn = do h <- unHandle fh
-                                                           execIO $ hClose h
+execApp' env ctxt (EP _ (UN "mkForeign") _) (_:fn:(EHandle h):rest)
+    | Just (FFun "fileClose" _ _) <- foreignFromTT fn = do execIO $ hClose h
                                                            execApp' env ctxt ioUnit rest
 
 
@@ -293,9 +289,8 @@ execApp' env ctxt f@(EP _ n _) args =
           getOp (UN "prim__readString") [EP _ (UN "prim__stdin") _] =
               Just $ do line <- execIO getLine
                         return (EConstant (Str line))
-          getOp (UN "prim__readString") [ptr] =
-              Just $ do h <- unHandle ptr
-                        contents <- execIO $ hGetLine h
+          getOp (UN "prim__readString") [EHandle h] =
+              Just $ do contents <- execIO $ hGetLine h
                         return (EConstant (Str contents))
           getOp _ _ = Nothing
 execApp' env ctxt bnd@(EBind n b body) (arg:args) = do ret <- body arg
@@ -355,40 +350,6 @@ idrisType ft = EConstant (idr ft)
 
 data Foreign = FFun String [FTy] FTy deriving Show
 
--- | A representation of Ptr values, which otherwise don't work in TT
-ptrCon :: Name
-ptrCon = MN 0 "__Ptr"
-
--- | Convert a Haskell pointer to a Ptr term in TT
-ptr :: Ptr a -> ExecVal
-ptr p = EApp (EP (DCon 0 1) ptrCon EErased) (EConstant (I (addr p)))
-    where addr p = p `minusPtr` nullPtr
-
--- | Convert a Ptr term in TT to a Haskell pointer
-unPtr :: ExecVal -> Maybe (Ptr a)
-unPtr (EApp (EP _ con _) (EConstant (I addr))) | con == ptrCon = Just (unAddr addr)
-    where unAddr a = nullPtr `plusPtr` a
-unPtr _ = Nothing
-
-handleCon :: Name
-handleCon = MN 0 "__Handle"
-
--- | Convert a Haskell file handle to a handle term in TT (an int)
-handle :: Handle -> Exec ExecVal
-handle h = do est <- getExecState
-              let i = exec_next_handle est
-              putExecState $ est { exec_next_handle = exec_next_handle est + 1
-                                 , exec_handles = M.insert i h (exec_handles est)
-                                 }
-              return $ EHandle i
-
-unHandle :: ExecVal -> Exec Handle
-unHandle (EHandle i) =
-    do est <- getExecState
-       case M.lookup i (exec_handles est) of
-         Just h -> return h
-         Nothing -> execFail "Bad handle ID"
-unHandle _ = execFail "Not a handle"
 
 call :: Foreign -> [ExecVal] -> Exec (Maybe ExecVal)
 call (FFun name argTypes retType) args =
@@ -410,7 +371,7 @@ call (FFun name argTypes retType) args =
                                             return (EConstant (Str hStr))
 
           call' (Fun _ h) args FPtr = do res <- execIO $ callFFI h (retPtr retVoid) (prepArgs args)
-                                         return (ptr res)
+                                         return (EPtr res)
           call' (Fun _ h) args FUnit = do res <- execIO $ callFFI h retVoid (prepArgs args)
                                           return (EP Ref unitCon EErased)
 --          call' (Fun _ h) args other = fail ("Unsupported foreign return type " ++ show other)
@@ -421,7 +382,7 @@ call (FFun name argTypes retType) args =
           prepArg (EConstant (Fl f)) = argCDouble (realToFrac f)
           prepArg (EConstant (Ch c)) = argCChar (castCharToCChar c) -- FIXME - castCharToCChar only safe for first 256 chars
           prepArg (EConstant (Str s)) = argString s
-          prepArg ptr | Just p <- unPtr ptr = argPtr p
+          prepArg (EPtr p) = argPtr p
           prepArg other = trace ("Could not use " ++ take 100 (show other) ++ " as FFI arg.") undefined
 
 
