@@ -205,7 +205,7 @@ doExec env ctxt (TType u) = return (EType u)
 
 execApp :: ExecEnv -> Context -> (Term, [Term]) -> Exec ExecVal
 execApp env ctxt (f, args) = do newF <- doExec env ctxt f
-                                laziness <- (getLaziness newF) >>= return . (++ repeat False)
+                                laziness <- (++ repeat False) <$> (getLaziness newF)
                                 newArgs <- mapM argExec (zip args laziness)
                                 execApp' env ctxt newF newArgs
     where getLaziness (EP _ (UN "lazy") _) = return [True]
@@ -321,6 +321,8 @@ execApp' env ctxt f@(EP _ n _) args =
               primRes Str (reverse s)
           getOp (UN "prim__strTail") [EConstant (Str (c:s))] =
               primRes Str s
+          getOp (UN "prim__subFloat") [EConstant (Fl i1), EConstant (Fl i2)] =
+              primRes Fl (i1 - i2)
           getOp (UN "prim__subInt") [EConstant (I i1), EConstant (I i2)] =
               primRes I (i1 - i2)
           getOp n args = trace ("No prim " ++ show n ++ " for " ++ take 1000 (show args)) Nothing
