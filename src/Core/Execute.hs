@@ -208,7 +208,7 @@ execApp env ctxt (f, args) = do newF <- doExec env ctxt f
                                 laziness <- (++ repeat False) <$> (getLaziness newF)
                                 newArgs <- mapM argExec (zip args laziness)
                                 execApp' env ctxt newF newArgs
-    where getLaziness (EP _ (UN "lazy") _) = return [True]
+    where getLaziness (EP _ (UN "lazy") _) = return [False, True]
           getLaziness (EP _ n _) = do est <- getExecState
                                       let argInfo = exec_implicits est
                                       case lookupCtxtName n argInfo of
