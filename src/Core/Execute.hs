@@ -29,7 +29,7 @@ import Foreign.Ptr
 import System.IO
 
 
-data Lazy = Delayed ExecEnv Context Term | Forced ExecVal
+data Lazy = Delayed ExecEnv Context Term | Forced ExecVal deriving Show
 
 data ExecState = ExecState { exec_thunks :: M.Map Int Lazy -- ^ Thunks - the result of evaluating "lazy" or calling lazy funcs
                            , exec_next_thunk :: Int -- ^ Ensure thunk key uniqueness
@@ -81,7 +81,7 @@ toTT (EApp e1 e2) = do e1' <- toTT e1
 toTT (EType u) = return $ TType u
 toTT EErased = return Erased
 toTT (EConstant c) = return (Constant c)
-toTT (EThunk _) = return Erased
+toTT (EThunk i) = (force i) >>= toTT
 toTT (EHandle _) = return Erased
 
 unApplyV :: ExecVal -> (ExecVal, [ExecVal])
@@ -143,6 +143,10 @@ force i = do st <- getExecState
 tryForce :: ExecVal -> Exec ExecVal
 tryForce (EThunk i) = force i
 tryForce tm = return tm
+
+debugThunks :: Exec ()
+debugThunks = do st <- getExecState
+                 execIO $ putStrLn (take 4000 (show (exec_thunks st)))
 
 execute :: Term -> Idris Term
 execute tm = do est <- initState
@@ -266,10 +270,13 @@ execApp' env ctxt f@(EP _ n _) args =
          [Function _ tm] -> fail "should already have been eval'd"
          [TyDecl nt ty] -> return $ mkEApp f args
          [Operator tp arity op] ->
-             case getOp n (take arity args) of
-               Just res -> do r <- res
-                              execApp' env ctxt r (drop arity args)
-               Nothing -> return (mkEApp f args)
+             if length args >= arity
+               then do args' <- mapM tryForce $ take arity args
+                       case getOp n args' of
+                         Just res -> do r <- res
+                                        execApp' env ctxt r (drop arity args)
+                         Nothing -> return (mkEApp f args)
+               else return (mkEApp f args)
          [CaseOp _ _ _ _ _ [] (STerm tm) _ _] -> -- nullary fun
              do rhs <- doExec env ctxt tm
                 execApp' env ctxt rhs args
@@ -278,21 +285,52 @@ execApp' env ctxt f@(EP _ n _) args =
                 return $ fromMaybe (mkEApp f args) res
          thing -> return $ mkEApp f args
     where getOp :: Name -> [ExecVal] -> Maybe (Exec ExecVal)
+          getOp (UN "prim__addInt") [EConstant (I i1), EConstant (I i2)] =
+              primRes I (i1 + i2)
+          getOp (UN "prim__charToInt") [EConstant (Ch c)] =
+              primRes I (fromEnum c)
           getOp (UN "prim__concat") [EConstant (Str s1), EConstant (Str s2)] =
-              Just . return . EConstant . Str $ s1 ++ s2
+              primRes Str (s1 ++ s2)
+          getOp (UN "prim__eqChar") [EConstant (Ch c1), EConstant (Ch c2)] =
+              primResBool (c1 == c2)
           getOp (UN "prim__eqInt") [EConstant (I i1), EConstant (I i2)] =
-              Just . return . EConstant . I $ if i1 == i2 then 1 else 0
+              primResBool (i1 == i2)
+          getOp (UN "prim__eqString") [EConstant (Str s1), EConstant (Str s2)] =
+              primResBool (s1 == s2)
+          getOp (UN "prim__intToFloat") [EConstant (I i)] =
+              primRes Fl (fromRational (toRational i))
           getOp (UN "prim__ltInt") [EConstant (I i1), EConstant (I i2)] =
-              Just . return . EConstant . I $ if i1 < i2 then 1 else 0
-          getOp (UN "prim__subInt") [EConstant (I i1), EConstant (I i2)] =
-              Just .  return . EConstant . I $ i1 - i2
+              primResBool (i1 < i2)
+          getOp (UN "prim__mulBigInt") [EConstant (BI i1), EConstant (BI i2)] =
+              primRes BI (i1 * i2)
+          getOp (UN "prim__mulFloat") [EConstant (Fl i1), EConstant (Fl i2)] =
+              primRes Fl (i1 * i2)
+          getOp (UN "prim__mulInt") [EConstant (I i1), EConstant (I i2)] =
+              primRes I (i1 * i2)
           getOp (UN "prim__readString") [EP _ (UN "prim__stdin") _] =
               Just $ do line <- execIO getLine
                         return (EConstant (Str line))
           getOp (UN "prim__readString") [EHandle h] =
               Just $ do contents <- execIO $ hGetLine h
                         return (EConstant (Str contents))
-          getOp _ _ = Nothing
+          getOp (UN "prim__strCons") [EConstant (Ch c), EConstant (Str s)] =
+              primRes Str (c:s)
+          getOp (UN "prim__strHead") [EConstant (Str (c:s))] =
+              primRes Ch c
+          getOp (UN "prim__strRev") [EConstant (Str s)] =
+              primRes Str (reverse s)
+          getOp (UN "prim__strTail") [EConstant (Str (c:s))] =
+              primRes Str s
+          getOp (UN "prim__subInt") [EConstant (I i1), EConstant (I i2)] =
+              primRes I (i1 - i2)
+          getOp n args = trace ("No prim " ++ show n ++ " for " ++ take 1000 (show args)) Nothing
+
+          primRes :: (a -> Const) -> a -> Maybe (Exec ExecVal)
+          primRes constr = Just . return . EConstant . constr
+
+          primResBool :: Bool -> Maybe (Exec ExecVal)
+          primResBool b = primRes I (if b then 1 else 0)
+
 execApp' env ctxt bnd@(EBind n b body) (arg:args) = do ret <- body arg
                                                        let (f', as) = unApplyV ret
                                                        execApp' env ctxt f' (as ++ args)
@@ -301,14 +339,18 @@ execApp' env ctxt (EThunk i) args = do f <- force i
 execApp' env ctxt f args = return (mkEApp f args)
 
 
+
+
+
 -- | Overall wrapper for case tree execution. If there are enough arguments, it takes them,
 -- evaluates them, then begins the checks for matching cases.
 execCase :: ExecEnv -> Context -> [Name] -> SC -> [ExecVal] -> Exec (Maybe ExecVal)
 execCase env ctxt ns sc args =
     let arity = length ns in
     if arity <= length args
-    then do -- args' <- mapM tryForce (take arity args)
-            let amap = zip ns args
+    then do let amap = zip ns args
+--            debugThunks
+--            trace ("Case exec in " ++ take 1000 (show amap) ++ "\nwith " ++ show sc++"\n") $ return ()
             caseRes <- execCase' env ctxt amap sc
             case caseRes of
               Just res -> Just <$> execApp' (map (\(n, tm) -> (n, Let EErased tm)) amap ++ env) ctxt res (drop arity args)
@@ -336,6 +378,9 @@ chooseAlt tm (ConCase n i ns sc : alts) | ((EP _ cn _), args) <- unApplyV tm
                                         | otherwise = chooseAlt tm alts
 chooseAlt tm (_:alts) = chooseAlt tm alts
 chooseAlt _ [] = Nothing
+
+
+
 
 data FTy = FInt | FFloat | FChar | FString | FPtr | FUnit deriving (Show, Read)
 
