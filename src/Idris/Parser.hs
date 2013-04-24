@@ -30,6 +30,7 @@ import qualified Text.Parsec.Token as PTok
 import Data.List
 import Data.List.Split(splitOn)
 import Control.Monad.State
+import Control.Monad.Error
 import Debug.Trace
 import Data.Maybe
 import System.FilePath
@@ -1512,9 +1513,12 @@ pDirective syn = try (do lchar '%'; reserved "lib"; lib <- strlit;
                                                 putIState (i { default_total = tot }))])
              <|> try (do lchar '%'; reserved "logging"; i <- natural;
                          return [PDirective (setLogLevel (fromInteger i))])
-             <|> try (do lchar '%'; reserved "dynamic"; lib <- strlit;
-                         return [PDirective (do addIBC (IBCDyLib lib)
-                                                addDyLib lib)])
+             <|> try (do lchar '%'; reserved "dynamic"; libs <- sepBy1 strlit (lchar ',');
+                         return [PDirective (do added <- addDyLib libs
+                                                case added of
+                                                  Left lib -> addIBC (IBCDyLib (lib_name lib))
+                                                  Right msg ->
+                                                      fail $ msg)])
              <|> try (do lchar '%'; reserved "language"; ext <- reserved "TypeProviders";
                          return [PDirective (addLangExt TypeProviders)])
 

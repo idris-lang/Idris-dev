@@ -249,7 +249,11 @@ pLibs :: [String] -> Idris ()
 pLibs ls = mapM_ addLib ls
 
 pDyLibs :: [String] -> Idris ()
-pDyLibs ls = mapM_ addDyLib ls
+pDyLibs ls = do res <- mapM (addDyLib . return) ls
+                mapM_ checkLoad res
+                return ()
+    where checkLoad (Left _) = return ()
+          checkLoad (Right err) = fail err
 
 pHdrs :: [String] -> Idris ()
 pHdrs hs = mapM_ addHdr hs

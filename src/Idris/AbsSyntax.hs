@@ -24,7 +24,7 @@ import Data.Either
 import Debug.Trace
 
 import Util.Pretty
-
+import Util.System
 
 getContext :: Idris Context
 getContext = do i <- getIState; return (tt_ctxt i)
@@ -41,13 +41,15 @@ getLibs = do i <- getIState; return (idris_libs i)
 addLib :: String -> Idris ()
 addLib f = do i <- getIState; putIState $ i { idris_libs = f : idris_libs i }
 
-addDyLib :: String -> Idris ()
-addDyLib lib = do i <- getIState
-                  handle <- lift $ tryLoadLib lib
-                  case handle of
-                    Nothing -> fail $ "Could not load dynamic lib \"" ++ lib ++ "\""
-                    Just x -> do let libs = idris_dynamic_libs i
-                                 putIState $ i { idris_dynamic_libs = x:libs }
+addDyLib :: [String] -> Idris (Either DynamicLib String)
+addDyLib libs = do i <- getIState
+                   handle <- lift $ mapM (\l -> catchIO (tryLoadLib l) (\_ -> return Nothing)) libs
+                   case msum handle of
+                     Nothing -> return (Right $ "Could not load dynamic alternatives \"" ++
+                                                concat (intersperse "," libs) ++ "\"")
+                     Just x -> do let ls = idris_dynamic_libs i
+                                  putIState $ i { idris_dynamic_libs = x:ls }
+                                  return (Left x)
 
 addHdr :: String -> Idris ()
 addHdr f = do i <- getIState; putIState $ i { idris_hdrs = f : idris_hdrs i }
