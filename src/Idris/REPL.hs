@@ -101,6 +101,9 @@ ideslave orig mods
                                                               (\e -> do liftIO $ sendMessage id (Left (show e)))
                          Just (REPLCompletions str) -> do (unused, compls) <- replCompletion (reverse str, "")
                                                           liftIO $ sendMessage id (Right (map replacement compls, reverse unused))
+                         Just (LoadFile filename) -> do clearErr
+                                                        mod <- loadModule filename
+                                                        liftIO $ sendMessage id (Right ":good")
                          Nothing -> do liftIO $ sendMessage id (Left "did not understand"))
          (\e -> do liftIO $ sendMessage 0 (Left (show e)))
        ideslave orig mods

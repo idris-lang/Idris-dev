@@ -31,7 +31,8 @@ instance SExpable Bool where
   toSExp False = BoolAtom False
 
 instance SExpable String where
-  toSExp s = StringAtom s
+  toSExp (':' : xs) = SymbolAtom xs
+  toSExp s          = StringAtom s
 
 instance SExpable Integer where
   toSExp n = IntegerAtom n
@@ -79,12 +80,14 @@ parseSExp input = parse pSExp "(unknown)" input
 
 data IdeSlaveCommand = REPLCompletions String
                      | Interpret String
+                     | LoadFile String
   deriving Show
 
 sexpToCommand :: SExp -> Maybe IdeSlaveCommand
 sexpToCommand (List (x:[]))                                             = sexpToCommand x
 sexpToCommand (List [SymbolAtom "interpret", StringAtom cmd])           = Just (Interpret cmd)
 sexpToCommand (List [SymbolAtom "repl-completions", StringAtom prefix]) = Just (REPLCompletions prefix)
+sexpToCommand (List [SymbolAtom "load-file", StringAtom filename])      = Just (LoadFile filename)
 sexpToCommand _                                                         = Nothing
 
 receiveMessage :: IO (SExp)
