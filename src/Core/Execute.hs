@@ -81,7 +81,7 @@ toTT (EApp e1 e2) = do e1' <- toTT e1
 toTT (EType u) = return $ TType u
 toTT EErased = return Erased
 toTT (EConstant c) = return (Constant c)
-toTT (EThunk i) = (force i) >>= toTT
+toTT (EThunk i) = return (P (DCon 0 0) (MN i "THUNK") Erased) --(force i) >>= toTT
 toTT (EHandle _) = return Erased
 
 unApplyV :: ExecVal -> (ExecVal, [ExecVal])
@@ -163,7 +163,7 @@ ioWrap tm = mkEApp (EP (DCon 0 2) (UN "prim__IO") EErased) [EErased, tm]
 ioUnit :: ExecVal
 ioUnit = ioWrap (EP Ref unitCon EErased)
 
-type ExecEnv = [(Name, Binder ExecVal)]
+type ExecEnv = [(Name, ExecVal)]
 
 doExec :: ExecEnv -> Context -> Term -> Exec ExecVal
 doExec env ctxt p@(P Ref n ty) =
@@ -179,22 +179,17 @@ doExec env ctxt p@(P Ref n ty) =
 doExec env ctxt p@(P Bound n ty) =
   case lookup n env of
     Nothing -> execFail "not found"
-    Just (Let _ tm) -> return tm
-    Just b -> execFail $ "Unknown binder " ++ show b
+    Just tm -> return tm
 doExec env ctxt (P (DCon a b) n _) = return (EP (DCon a b) n EErased)
 doExec env ctxt (P (TCon a b) n _) = return (EP (TCon a b) n EErased)
-doExec env ctxt v@(V i) | i < length env = do let binder = env !! i
-                                              case binder of
-                                                (_, (Let t v)) -> return v
-                                                (_, (NLet t v)) -> return v
-                                                (n, b) -> doExec env ctxt (P Bound n Erased)
+doExec env ctxt v@(V i) | i < length env = return (snd (env !! i))
                         | otherwise      = execFail "env too small"
 doExec env ctxt (Bind n (Let t v) body) = do v' <- doExec env ctxt v
-                                             doExec ((n, Let EErased v'):env) ctxt body
+                                             doExec ((n, v'):env) ctxt body
 doExec env ctxt (Bind n (NLet t v) body) = trace "NLet" $ undefined
 doExec env ctxt tm@(Bind n b body) = return $
                                      EBind n (fmap (\_->EErased) b)
-                                           (\arg -> doExec ((n, Let EErased arg):env) ctxt body)
+                                           (\arg -> doExec ((n, arg):env) ctxt body)
 doExec env ctxt a@(App _ _) = execApp env ctxt (unApply a)
 doExec env ctxt (Constant c) = return (EConstant c)
 doExec env ctxt (Proj tm i) = let (x, xs) = unApply tm in
@@ -227,8 +222,12 @@ execApp' env ctxt (EP _ (UN "unsafePerformIO") _) (ty:action:rest) | (prim__IO, 
     execApp' env ctxt v rest
 
 execApp' env ctxt (EP _ (UN "io_bind") _) args@(_:_:v:k:rest) | (prim__IO, [_, v']) <- unApplyV v =
-    do res <- execApp' env ctxt k [v'] >>= tryForce
+    do v'' <- tryForce v'
+       res <- execApp' env ctxt k [v''] >>= tryForce
        execApp' env ctxt res rest
+execApp' env ctxt con@(EP _ (UN "io_return") _) args@(tp:v:rest) =
+    do v' <- tryForce v
+       execApp' env ctxt (mkEApp con [tp, v']) rest
 
 -- Special cases arising from not having access to the C RTS in the interpreter
 execApp' env ctxt (EP _ (UN "mkForeign") _) (_:fn:EConstant (Str arg):rest)
@@ -299,6 +298,8 @@ execApp' env ctxt f@(EP _ n _) args =
               primResBool (s1 == s2)
           getOp (UN "prim__intToFloat") [EConstant (I i)] =
               primRes Fl (fromRational (toRational i))
+          getOp (UN "prim__intToStr") [EConstant (I i)] =
+              primRes Str (show i)
           getOp (UN "prim__ltInt") [EConstant (I i1), EConstant (I i2)] =
               primResBool (i1 < i2)
           getOp (UN "prim__mulBigInt") [EConstant (BI i1), EConstant (BI i2)] =
@@ -352,10 +353,11 @@ execCase env ctxt ns sc args =
     if arity <= length args
     then do let amap = zip ns args
 --            debugThunks
+--            trace ("Environment: " ++ show env) $ return ()
 --            trace ("Case exec in " ++ take 1000 (show amap) ++ "\nwith " ++ show sc++"\n") $ return ()
             caseRes <- execCase' env ctxt amap sc
             case caseRes of
-              Just res -> Just <$> execApp' (map (\(n, tm) -> (n, Let EErased tm)) amap ++ env) ctxt res (drop arity args)
+              Just res -> Just <$> execApp' (map (\(n, tm) -> (n, tm)) amap ++ env) ctxt res (drop arity args)
               Nothing -> return Nothing
     else return Nothing
 
@@ -363,7 +365,7 @@ execCase env ctxt ns sc args =
 execCase' :: ExecEnv -> Context -> [(Name, ExecVal)] -> SC -> Exec (Maybe ExecVal)
 execCase' env ctxt amap (UnmatchedCase _) = return Nothing
 execCase' env ctxt amap (STerm tm) =
-    Just <$> doExec (map (\(n, v) -> (n, Let EErased v)) amap ++ env) ctxt tm
+    Just <$> doExec (map (\(n, v) -> (n, v)) amap ++ env) ctxt tm
 execCase' env ctxt amap (Case n alts) | Just tm <- lookup n amap =
     do tm' <- tryForce tm
        case chooseAlt tm' alts of
