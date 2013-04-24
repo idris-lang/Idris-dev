@@ -274,7 +274,7 @@ pfc = do s <- getPosition
 pImport :: IParser String
 pImport = do reserved "import"; f <- identifier; option ';' (lchar ';')
              return (toPath f)
-  where toPath n = foldl1 (</>) $ splitOn "." n
+  where toPath n = foldl1' (</>) $ splitOn "." n
 
 -- | A program is a list of declarations, possibly with associated
 -- documentation strings.
