@@ -51,7 +51,7 @@ data ExecVal = EP NameType Name ExecVal
 instance Show ExecVal where
   show (EP _ n _)       = show n
   show (EV i)           = "!!V" ++ show i ++ "!!"
-  show (EBind n b body) = "EBind " ++ show b ++ " <<fn>> "
+  show (EBind n b body) = "EBind " ++ show b ++ " <<fn>>"
   show (EApp e1 e2)     = show e1 ++ " (" ++ show e2 ++ ")"
   show (EType _)        = "Type"
   show EErased          = "[__]"
@@ -339,6 +339,7 @@ execApp' env ctxt bnd@(EBind n b body) (arg:args) = do ret <- body arg
                                                        execApp' env ctxt f' (as ++ args)
 execApp' env ctxt (EThunk i) args = do f <- force i
                                        execApp' env ctxt f args
+execApp' env ctxt app@(EApp _ _) args2 | (f, args1) <- unApplyV app = execApp' env ctxt f (args1 ++ args2)
 execApp' env ctxt f args = return (mkEApp f args)
 
 
@@ -352,9 +353,6 @@ execCase env ctxt ns sc args =
     let arity = length ns in
     if arity <= length args
     then do let amap = zip ns args
---            debugThunks
---            trace ("Environment: " ++ show env) $ return ()
---            trace ("Case exec in " ++ take 1000 (show amap) ++ "\nwith " ++ show sc++"\n") $ return ()
             caseRes <- execCase' env ctxt amap sc
             case caseRes of
               Just res -> Just <$> execApp' (map (\(n, tm) -> (n, tm)) amap ++ env) ctxt res (drop arity args)
