@@ -28,8 +28,11 @@ mvn verbosity = P.runProgramInvocation verbosity . P.simpleProgramInvocation "mv
 (<//>) = (Px.</>)
 idrisCmd local = Px.joinPath $ splitDirectories $
                  ".." <//> buildDir local <//> "idris" <//> "idris"
+rtsDir local = Px.joinPath $ splitDirectories $
+               ".." <//> buildDir local <//> "rts" <//> "libidris_rts"
 #else
 idrisCmd local = ".." </>  buildDir local </>  "idris" </>  "idris"
+rtsDir local = ".." </> buildDir local </> "rts" </> "libidris_rts"
 #endif
 
 cleanStdLib verbosity
@@ -103,9 +106,9 @@ checkStdLib local withoutEffects verbosity
                ]
          unless withoutEffects $
            make verbosity
-                 [ "-C", "effects", "check"
-                 , "IDRIS=" ++ icmd
-                 ]
+               [ "-C", "effects", "check"
+               , "IDRIS=" ++ icmd
+               ]
          make verbosity
                [ "-C", "rts", "check"
                , "IDRIS=" ++ icmd

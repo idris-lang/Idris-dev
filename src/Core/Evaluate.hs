@@ -9,7 +9,7 @@ module Core.Evaluate(normalise, normaliseTrace, normaliseC, normaliseAll,
                 addDatatype, addCasedef, simplifyCasedef, addOperator,
                 lookupNames, lookupTy, lookupP, lookupDef, lookupVal, 
                 lookupTotal, lookupTyEnv, isConName, isFnName,
-                Value(..)) where
+                Value(..), Quote(..), evalState, initEval) where
 
 import Debug.Trace
 import Control.Monad.State
@@ -669,7 +669,7 @@ data Context = MkContext {
                   uconstraints :: [UConstraint],
                   next_tvar    :: Int,
                   definitions  :: Ctxt (Def, Accessibility, Totality) 
-                }
+                } deriving Show
 
 -- | The initial empty context
 initContext = MkContext [] 0 emptyContext

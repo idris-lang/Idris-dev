@@ -47,7 +47,7 @@ codegenC defs out exec incs objs libs dbg
              incFlags <- getIncFlags
              let gcc = comp ++ " " ++
                        gccDbg dbg ++
-                       " -I. " ++ objs ++ " -x c " ++ 
+                       " -I. " ++ objs ++ " -x c " ++
                        (if (exec == Executable) then "" else " -c ") ++
                        " " ++ tmpn ++
                        " " ++ libFlags ++
