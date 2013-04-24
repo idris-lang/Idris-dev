@@ -12,3 +12,8 @@ using (t : Type)
 
   class (Rel p) => Decidable (p : t) where
     total decide : liftRel Dec
+
+using (P : Type, p : P)
+  data Given : Dec P -> Type where
+    always : Given (Yes p)
+
