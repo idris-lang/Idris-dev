@@ -887,10 +887,10 @@ prettyImp impl = prettySe 10
         bracket p 1 $
           prettySe 1 f <+>
             if impl then
-              foldl fS empty as
+              foldl' fS empty as
               -- foldr (<+>) empty $ map prettyArgS as
             else
-              foldl fSe empty args
+              foldl' fSe empty args
               -- foldr (<+>) empty $ map prettyArgSe args
       where
         fS l r =
