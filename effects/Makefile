@@ -4,7 +4,7 @@ check: .PHONY
 
 recheck: clean check
 
-install: 
+install:
 	$(IDRIS) --install effects.ipkg
 
 clean: .PHONY

@@ -196,9 +196,9 @@ process fn (ExecVal t)
                   = do ctxt <- getContext
                        ist <- getIState
                        (tm, ty) <- elabVal toplevel False t
-                       let tm' = normaliseAll ctxt [] tm
+--                       let tm' = normaliseAll ctxt [] tm
                        let ty' = normaliseAll ctxt [] ty
-                       res <- execute tm'
+                       res <- execute tm
                        imp <- impShow
                        iputStrLn (showImp imp (delab ist res) ++ " : " ++
                                   showImp imp (delab ist ty'))
@@ -561,6 +561,7 @@ idrisMain opts =
          [] -> setIBCSubDir ""
          (d:_) -> setIBCSubDir d
        setImportDirs importdirs
+
        addPkgDir "base"
        mapM_ addPkgDir pkgdirs
        elabPrims
@@ -645,7 +646,7 @@ getLanguageExt (Extension e) = Just e
 getLanguageExt _ = Nothing
 
 opt :: (Opt -> Maybe a) -> [Opt] -> [a]
-opt = mapMaybe 
+opt = mapMaybe
 
 ver = showVersion version
 

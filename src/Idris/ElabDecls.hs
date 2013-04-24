@@ -223,11 +223,11 @@ elabProvider info syn fc n ty tm
                               " as " ++ show using
                    (e', et) <- elabVal toplevel False using
                    ctxt <- getContext
-                   let e'' = normaliseAll ctxt [] e'
-                   logLvl 1 $ "Term is " ++ show e''
+                   let str = show e' in
+                     logLvl 1 $ "Term is " ++ if length str > 200 then (take 200 str) ++ "..." else str
                    let et' = normaliseAll ctxt [] et
                    elabType info syn "" fc [] n ty
-                   rhs <- execute e''
+                   rhs <- execute e'
                    logLvl 1 $ "Normalized " ++ show n ++ "'s RHS to " ++ show rhs
                    providerError rhs
                    elabClauses info fc [] n [PClause fc n (PRef fc $ n) [] (delab i rhs) []]
