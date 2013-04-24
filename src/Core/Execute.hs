@@ -366,7 +366,7 @@ execCase' env ctxt amap (STerm tm) =
     Just <$> doExec (map (\(n, v) -> (n, Let EErased v)) amap ++ env) ctxt tm
 execCase' env ctxt amap (Case n alts) | Just tm <- lookup n amap =
     do tm' <- tryForce tm
-       case chooseAlt tm alts of
+       case chooseAlt tm' alts of
          Just (newCase, newBindings) ->
              let amap' = newBindings ++ (filter (\(x,_) -> not (elem x (map fst newBindings))) amap) in
              execCase' env ctxt amap' newCase
