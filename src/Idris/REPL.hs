@@ -299,8 +299,17 @@ process fn (RmProof n')
                                  let ms = idris_metavars i
                                  putIState $ i { idris_metavars = n : ms }
 
-process fn (AddProof prf)
-  = do let fb = fn ++ "~"
+process fn' (AddProof prf)
+  = do fn <- do
+         ex <- liftIO $ doesFileExist fn'
+         let fnExt = fn' <.> "idr"
+         exExt <- liftIO $ doesFileExist fnExt
+         if ex
+            then return fn'
+            else if exExt
+                    then return fnExt
+                    else fail $ "Neither \""++fn'++"\" nor \""++fnExt++"\" exist"
+       let fb = fn ++ "~"
        liftIO $ copyFile fn fb -- make a backup in case something goes wrong!
        prog <- liftIO $ readFile fb
        i <- getIState
