@@ -48,7 +48,6 @@ codegenC defs out exec incs objs libs dbg
              let gcc = comp ++ " " ++
                        gccDbg dbg ++
                        " -I. " ++ objs ++ " -x c " ++
-                       "-static " ++ -- prevent linking to .so of rts
                        (if (exec == Executable) then "" else " -c ") ++
                        " " ++ tmpn ++
                        " " ++ libFlags ++
