@@ -979,7 +979,7 @@ prettyImp impl = prettySe 10
 showImp :: Bool -> PTerm -> String
 showImp impl tm = se 10 tm where
     se p (PQuote r) = "![" ++ show r ++ "]"
-    se p (PPatvar fc n) = show n
+    se p (PPatvar fc n) = if impl then show n ++ "[p]" else show n
     se p (PInferRef fc n) = "!" ++ show n -- ++ "[" ++ show fc ++ "]"
     se p (PRef fc n) = if impl then show n -- ++ "[" ++ show fc ++ "]"
                                else showbasic n

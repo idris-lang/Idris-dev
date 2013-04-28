@@ -1,3 +1,4 @@
+{-# LANGUAGE PatternGuards #-}
 module Idris.Providers where
 
 import Core.TT
@@ -19,16 +20,9 @@ unProv fc tm = PApp fc (PRef fc $ NS (UN "unProv") ["Providers"]) [PExp 0 False 
 
 -- | Handle an error, if the type provider returned an error. Otherwise do nothing.
 providerError :: TT Name -> Idris ()
-providerError tm = case unApply tm of
-                     (P _ (NS (UN "unProv") ["Providers"]) _, [_, tm']) ->
-                         case unApply tm' of
-                           (P _ (NS (UN "Error") ["Providers"]) _, [_, err]) ->
-                               do str <- execute err
-                                  case (unApply str) of
-                                    (Constant (Str msg), []) ->
-                                        ierror . ProviderError $ msg
-                                    (P _ (UN "prim__IO") _, [_, (Constant (Str msg))]) ->
-                                        ierror . ProviderError $ msg
-                                    _ -> fail "Error in type provider."
-                           _ -> return ()
-                     _ -> return ()
+providerError tm | (P _ unProv_case _, _:_:tm':_) <- unApply tm
+                 , (P _ (NS (UN "Error") ["Providers"]) _, [_, err]) <- unApply tm' =
+                     case err of
+                       Constant (Str msg) -> ierror . ProviderError $ msg
+                       _ -> fail "Error in type provider"
+                 | otherwise = return ()

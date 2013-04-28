@@ -196,9 +196,9 @@ process fn (ExecVal t)
                   = do ctxt <- getContext
                        ist <- getIState
                        (tm, ty) <- elabVal toplevel False t
-                       let tm' = normaliseAll ctxt [] tm
+--                       let tm' = normaliseAll ctxt [] tm
                        let ty' = normaliseAll ctxt [] ty
-                       res <- execute tm'
+                       res <- execute tm
                        imp <- impShow
                        iputStrLn (showImp imp (delab ist res) ++ " : " ++
                                   showImp imp (delab ist ty'))
@@ -299,8 +299,17 @@ process fn (RmProof n')
                                  let ms = idris_metavars i
                                  putIState $ i { idris_metavars = n : ms }
 
-process fn (AddProof prf)
-  = do let fb = fn ++ "~"
+process fn' (AddProof prf)
+  = do fn <- do
+         ex <- liftIO $ doesFileExist fn'
+         let fnExt = fn' <.> "idr"
+         exExt <- liftIO $ doesFileExist fnExt
+         if ex
+            then return fn'
+            else if exExt
+                    then return fnExt
+                    else fail $ "Neither \""++fn'++"\" nor \""++fnExt++"\" exist"
+       let fb = fn ++ "~"
        liftIO $ copyFile fn fb -- make a backup in case something goes wrong!
        prog <- liftIO $ readFile fb
        i <- getIState
@@ -552,6 +561,7 @@ idrisMain opts =
          [] -> setIBCSubDir ""
          (d:_) -> setIBCSubDir d
        setImportDirs importdirs
+
        addPkgDir "base"
        mapM_ addPkgDir pkgdirs
        elabPrims
@@ -636,7 +646,7 @@ getLanguageExt (Extension e) = Just e
 getLanguageExt _ = Nothing
 
 opt :: (Opt -> Maybe a) -> [Opt] -> [a]
-opt = mapMaybe 
+opt = mapMaybe
 
 ver = showVersion version
 

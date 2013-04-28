@@ -178,6 +178,15 @@ atan x = prim__floatATan x
 atan2 : Float -> Float -> Float
 atan2 y x = atan (y/x)
 
+sinh : Float -> Float
+sinh x = (exp x - exp (-x)) / 2
+
+cosh : Float -> Float
+cosh x = (exp x + exp (-x)) / 2
+
+tanh : Float -> Float
+tanh x = sinh x / cosh x
+
 sqrt : Float -> Float
 sqrt x = prim__floatSqrt x
 
