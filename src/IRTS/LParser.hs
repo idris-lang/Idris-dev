@@ -164,7 +164,7 @@ pLExp' = try (do lchar '%'; pCast)
      
 pLang = do reserved "C"; return LANG_C
 
-pType = do reserved "Int"; return FInt
+pType = do reserved "Int"; return (FInt ITNative)
     <|> do reserved "Float"; return FDouble
     <|> do reserved "String"; return FString
     <|> do reserved "Unit"; return FUnit

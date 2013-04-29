@@ -284,14 +284,20 @@ getFTypes tm = case unApply tm of
                  _ -> Nothing
 
 mkIty' (P _ (UN ty) _) = mkIty ty
+mkIty' (App (P _ (UN "FInt") _) (P _ (UN intTy) _)) = mkIntIty intTy
 mkIty' _ = FAny
 
-mkIty "FInt"    = FInt
 mkIty "FFloat"  = FDouble
 mkIty "FChar"   = FChar
 mkIty "FString" = FString
 mkIty "FPtr"    = FPtr
 mkIty "FUnit"   = FUnit
+
+mkIntIty "ITNative" = FInt ITNative
+mkIntIty "IT8"  = FInt IT8
+mkIntIty "IT16" = FInt IT16
+mkIntIty "IT32" = FInt IT32
+mkIntIty "IT64" = FInt IT64
 
 zname = NS (UN "O") ["Nat","Prelude"] 
 sname = NS (UN "S") ["Nat","Prelude"] 

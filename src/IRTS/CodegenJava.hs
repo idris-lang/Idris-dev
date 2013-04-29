@@ -976,7 +976,7 @@ mkStringAtIndex var indexExp =
   <$> mkVarAccess (Just stringType) var
 
 mkForeignType :: FType -> Maybe ClassType
-mkForeignType FInt = return integerType
+mkForeignType (FInt ty) = return (intTyToClass ty)
 mkForeignType FChar = return integerType
 mkForeignType FString = return stringType
 mkForeignType FPtr = return objectType
@@ -985,14 +985,14 @@ mkForeignType FAny = return objectType
 mkForeignType FUnit = Nothing
 
 mkForeignVarAccess :: FType -> LVar -> CodeGeneration Exp
-mkForeignVarAccess FInt var = 
-  (\ var -> MethodInv $ PrimaryMethodCall (var)
+mkForeignVarAccess (FInt ty) var = 
+  (\ var -> MethodInv $ PrimaryMethodCall var
                                           []
-                                          (Ident "intValue")
+                                          (Ident (intTyToMethod ty))
                                           []
   )
   <$> mkVarAccess (Just integerType) var
-mkForeignVarAccess FChar var = Cast (PrimType CharT) <$> mkForeignVarAccess FInt var
+mkForeignVarAccess FChar var = Cast (PrimType CharT) <$> mkForeignVarAccess (FInt IT32) var
 mkForeignVarAccess FDouble var = 
   (\ var -> MethodInv $ PrimaryMethodCall (var)
                                           []
@@ -1003,12 +1003,12 @@ mkForeignVarAccess FDouble var =
 mkForeignVarAccess otherType var = mkVarAccess (mkForeignType otherType) var 
  
 mkFromForeignType :: FType -> Exp -> Exp
-mkFromForeignType FInt from = 
-  MethodInv $ TypeMethodCall (J.Name [Ident "Integer"])
+mkFromForeignType (FInt ty) from = 
+  MethodInv $ TypeMethodCall (J.Name [intTyToIdent ty])
                              []
                              (Ident "valueOf")
                              [from]
-mkFromForeignType FChar from = mkFromForeignType FInt from
+mkFromForeignType FChar from = mkFromForeignType (FInt IT32) from
 mkFromForeignType FDouble from =   
   MethodInv $ TypeMethodCall (J.Name [Ident "Double"])
                              []

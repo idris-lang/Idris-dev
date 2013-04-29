@@ -21,10 +21,15 @@ io_return x = prim__IO x
 run__IO : IO () -> IO ()
 run__IO v = io_bind v (\v' => io_return v')
 
-data FTy = FInt | FFloat | FChar | FString | FPtr | FAny Type | FUnit
+data IntTy = ITNative | IT8 | IT16 | IT32 | IT64
+data FTy = FInt IntTy | FFloat | FChar | FString | FPtr | FAny Type | FUnit
 
 interpFTy : FTy -> Type
-interpFTy FInt     = Int
+interpFTy (FInt ITNative) = Int
+interpFTy (FInt IT8)  = Bits8
+interpFTy (FInt IT16) = Bits16
+interpFTy (FInt IT32) = Bits32
+interpFTy (FInt IT64) = Bits64
 interpFTy FFloat   = Float
 interpFTy FChar    = Char
 interpFTy FString  = String

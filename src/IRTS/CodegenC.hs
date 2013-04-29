@@ -106,6 +106,10 @@ bcc i (ASSIGNCONST l c)
     mkConst (Fl f) = "MKFLOAT(vm, " ++ show f ++ ")"
     mkConst (Ch c) = "MKINT(" ++ show (fromEnum c) ++ ")"
     mkConst (Str s) = "MKSTR(vm, " ++ show s ++ ")"
+    mkConst (B8  x) = "idris_b8const(vm, "  ++ show x ++ ")"
+    mkConst (B16 x) = "idris_b16const(vm, " ++ show x ++ ")"
+    mkConst (B32 x) = "idris_b32const(vm, " ++ show x ++ ")"
+    mkConst (B64 x) = "idris_b64const(vm, " ++ show x ++ ")"
     mkConst _ = "MKINT(42424242)"
 bcc i (UPDATE l r) = indent i ++ creg l ++ " = " ++ creg r ++ ";\n"
 bcc i (MKCON l tag args)
@@ -223,7 +227,10 @@ bcc i (NULL r) = indent i ++ creg r ++ " = NULL;\n" -- clear, so it'll be GCed
 bcc i (ERROR str) = indent i ++ "fprintf(stderr, " ++ show str ++ "); assert(0); exit(-1);"
 -- bcc i _ = indent i ++ "// not done yet\n"
 
-c_irts FInt l x = l ++ "MKINT((i_int)(" ++ x ++ "))"
+
+
+c_irts (FInt ITNative) l x = l ++ "MKINT((i_int)(" ++ x ++ "))"
+c_irts (FInt ty) l x = l ++ "idris_b" ++ show (intTyWidth ty) ++ "const(vm, " ++ x ++ ")"
 c_irts FChar l x = l ++ "MKINT((i_int)(" ++ x ++ "))"
 c_irts FString l x = l ++ "MKSTR(vm, " ++ x ++ ")"
 c_irts FUnit l x = x
@@ -231,7 +238,8 @@ c_irts FPtr l x = l ++ "MKPTR(vm, " ++ x ++ ")"
 c_irts FDouble l x = l ++ "MKFLOAT(vm, " ++ x ++ ")"
 c_irts FAny l x = l ++ x
 
-irts_c FInt x = "GETINT(" ++ x ++ ")"
+irts_c (FInt ITNative) x = "GETINT(" ++ x ++ ")"
+irts_c (FInt ty) x = "(" ++ x ++ "->info.bits" ++ show (intTyWidth ty) ++ ")"
 irts_c FChar x = "GETINT(" ++ x ++ ")"
 irts_c FString x = "GETSTR(" ++ x ++ ")"
 irts_c FUnit x = x
