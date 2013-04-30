@@ -26,13 +26,15 @@ sExpToString (List l)         = "(" ++ intercalate " " (map sExpToString l) ++ "
 class SExpable a where
   toSExp :: a -> SExp
 
+instance SExpable SExp where
+  toSExp a = a
+
 instance SExpable Bool where
   toSExp True  = BoolAtom True
   toSExp False = BoolAtom False
 
 instance SExpable String where
-  toSExp (':' : xs) = SymbolAtom xs
-  toSExp s          = StringAtom s
+  toSExp s = StringAtom s
 
 instance SExpable Integer where
   toSExp n = IntegerAtom n

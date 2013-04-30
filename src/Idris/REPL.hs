@@ -103,7 +103,7 @@ ideslave orig mods
                                                           liftIO $ sendMessage id (Right (map replacement compls, reverse unused))
                          Just (LoadFile filename) -> do clearErr
                                                         mod <- loadModule filename
-                                                        liftIO $ sendMessage id (Right ":good")
+                                                        liftIO $ sendMessage id (Right (SymbolAtom ":good"))
                          Nothing -> do liftIO $ sendMessage id (Left "did not understand"))
          (\e -> do liftIO $ sendMessage 0 (Left (show e)))
        ideslave orig mods
