@@ -19,7 +19,7 @@ modules = Builtins, Prelude, IO, System,
 
           Providers,
 
-          Language.Reflection,
+          Language.Reflection, Language.Reflection.Utils,
 
           Data.Morphisms, Data.Bits, Data.Mod2, Data.Z, Data.Sign,
           Data.SortedMap, Data.SortedSet, Data.BoundedList,
