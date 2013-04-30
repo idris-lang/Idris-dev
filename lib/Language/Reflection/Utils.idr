@@ -5,13 +5,13 @@ module Language.Reflection.Utils
 --------------------------------------------------------
 
 seq : List Tactic -> Tactic
-seq [] = GoalType "This is an impossible case" Trivial
-seq [t] = t
+seq []      = GoalType "This is an impossible case" Trivial
+seq [t]     = t
 seq (t::ts) = t `Seq` seq ts
 
 try : List Tactic -> Tactic
-try [] = GoalType "This is an impossible case" Trivial
-try [t] = t
+try []      = GoalType "This is an impossible case" Trivial
+try [t]     = t
 try (t::ts) = t `Try` seq ts
 
 
@@ -27,43 +27,43 @@ mkPair a b = (a, b)
 --------------------------------------------------------
 
 getUName : TTName -> Maybe String
-getUName (UN n) = Just n
+getUName (UN n)    = Just n
 getUName (NS n ns) = getUName n
-getUName _ = Nothing
+getUName _         = Nothing
 
 unApply : TT -> (TT, List TT)
 unApply t = unA t []
   where unA : TT -> List TT -> (TT, List TT)
         unA (App fn arg) args = unA fn (arg::args)
-        unA tm args = (tm, args)
+        unA tm           args = (tm, args)
 
 mkApp : TT -> List TT -> TT
 mkApp tm []      = tm
 mkApp tm (a::as) = mkApp (App tm a) as
 
 binderTy : (Eq t) => Binder t -> t
-binderTy (Lam t) = t
-binderTy (Pi t) = t
-binderTy (Let t1 t2) = t1
-binderTy (NLet t1 t2) = t1
-binderTy (Hole t) = t
-binderTy (GHole t) = t
+binderTy (Lam t)       = t
+binderTy (Pi t)        = t
+binderTy (Let t1 t2)   = t1
+binderTy (NLet t1 t2)  = t1
+binderTy (Hole t)      = t
+binderTy (GHole t)     = t
 binderTy (Guess t1 t2) = t1
-binderTy (PVar t) = t
-binderTy (PVTy t) = t
+binderTy (PVar t)      = t
+binderTy (PVTy t)      = t
 
 instance Show TTName where
-  show (UN str) = "(UN " ++ str ++ ")"
-  show (NS n ns) = "(NS " ++ show n ++ " " ++ show ns ++ ")"
+  show (UN str)   = "(UN " ++ str ++ ")"
+  show (NS n ns)  = "(NS " ++ show n ++ " " ++ show ns ++ ")"
   show (MN i str) = "(MN " ++ show i ++ " " ++ show str ++ ")"
-  show NErased = "NErased"
+  show NErased    = "NErased"
 
 instance Eq TTName where
-  (UN str1) == (UN str2) = str1 == str2
-  (NS n ns) == (NS n' ns') = n == n' && ns == ns'
-  (MN i str) == (MN i' str') = i == i' && str == str'
-  NErased == NErased = True
-  x == y = False
+  (UN str1)  == (UN str2)     = str1 == str2
+  (NS n ns)  == (NS n' ns')   = n == n' && ns == ns'
+  (MN i str) == (MN i' str')  = i == i' && str == str'
+  NErased    == NErased       = True
+  x          == y             = False
 
 instance Show TTUExp where
   show (UVar i) = "(UVar " ++ show i ++ ")"
@@ -72,7 +72,7 @@ instance Show TTUExp where
 instance Eq TTUExp where
   (UVar i) == (UVar j) = i == j
   (UVal i) == (UVal j) = i == j
-  x == y = False
+  x        == y        = False
 
 instance Show Const where
   show (I i)      = "(I " ++ show i ++ ")"
@@ -173,13 +173,13 @@ instance Show TT where
 instance Eq TT where
   a == b = equalp a b
     where %assert_total equalp : TT -> TT -> Bool
-          equalp (P nt n t) (P nt' n' t') = nt == nt' && n == n' && t == t'
-          equalp (V i) (V i') = i == i'
-          equalp (Bind n b t) (Bind n' b' t') = n == n' && b == b' && t == t'
-          equalp (App t1 t2) (App t1' t2') = t1 == t1' && t2 == t2'
-          equalp (TConst c) (TConst c') = c == c'
-          equalp (Proj tm i) (Proj tm' i') = tm == tm' && i == i'
-          equalp Erased Erased = True
-          equalp Impossible Impossible = True
-          equalp (TType u) (TType u') = u == u'
-          equalp x y = False
+          equalp (P nt n t)   (P nt' n' t')    = nt == nt' && n == n' && t == t'
+          equalp (V i)        (V i')           = i == i'
+          equalp (Bind n b t) (Bind n' b' t')  = n == n' && b == b' && t == t'
+          equalp (App t1 t2)  (App t1' t2')    = t1 == t1' && t2 == t2'
+          equalp (TConst c)   (TConst c')      = c == c'
+          equalp (Proj tm i)  (Proj tm' i')    = tm == tm' && i == i'
+          equalp Erased       Erased           = True
+          equalp Impossible   Impossible       = True
+          equalp (TType u)    (TType u')       = u == u'
+          equalp x            y                = False
