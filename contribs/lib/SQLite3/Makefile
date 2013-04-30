@@ -3,7 +3,7 @@
 
 .PHONY: all
 
-sqltest : testunit.idr sqlite3.idr sqlite3api.o
+sqltest : testunit.idr Sqlite3.idr sqlite3api.o
 	idris testunit.idr -o sqltest
 
 sqlite3api.o : sqlite3api.c 

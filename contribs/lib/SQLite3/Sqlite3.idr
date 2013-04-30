@@ -30,15 +30,31 @@ data TBPointer = MkTBPointer Ptr
 -- Statement pointer
 data StmtPtr = MkStmtPtr Ptr
 
-Table : Set
+Table : Type
 Table = List (List DBVal)
 
 -- ForMap used in to_list_v1
-forM : Monad m => List a -> (a -> m b) -> m (List b)
-forM f xs = mapM xs f
+forM : Applicative f => List a -> (a -> f b) -> f (List b)
+forM xs f = (sequence (map f xs))
 
 -- Neater error handling done using DB
 data DB a = MkDB (IO (Either String a))
+
+instance Functor DB where
+  fmap f (MkDB action) = MkDB (do res <- action
+                                  case res of
+                                    Left x => return (Left x)
+                                    Right x => return (Right (f x)))
+
+instance Applicative DB where
+  pure = MkDB . return . Right
+  (MkDB f) <$> (MkDB x) = MkDB (do f' <- f -- FIXME make pretty
+                                   case f' of
+                                     Left err => return (Left err)
+                                     Right op => do x' <- x
+                                                    case x' of
+                                                      Left err => return (Left err)
+                                                      Right v => return (Right (op v)))
 
 instance Monad DB where
     (MkDB l) >>= k = MkDB (do c <- l
@@ -299,20 +315,16 @@ get_data (MkDBPointer pointer) row col = do
 -----------------------------------------------------------------------------
 
 toList_v1 :  DBPointer -> DB Table
-toList_v1 db =  do
-    		   nbR <- liftIO (num_row_v2 db)
-    		   nmC <- liftIO (num_col_v2 db)
-    		   res <- forM [0..(nbR-1)] (\ i =>
-    					 forM [0..(nmC-1)] (\ j =>
-    						   liftIO(get_data db i j)
-    						         
-    				  )
-    		   )
-    		   return res	
-    					
-    					
+toList_v1 db = do nbR <- liftIO (num_row_v2 db)
+                  nmC <- liftIO (num_col_v2 db)
+
+                  res <- liftIO $ forM [0..(nbR-1)] (\ i =>
+                                    forM [0..(nmC-1)] (\ j => get_data db i j)
+                                  )
+                  return (the (List (List DBVal)) res)
+
 strcat : String -> String-> String
-strcat str1 str2 = (str1 ++ str2)		
+strcat str1 str2 = (str1 ++ str2)
 
 -----------------------------------------------------------------------------
 -- | This version of toList retunrs result from get_table

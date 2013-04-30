@@ -33,38 +33,40 @@ data Cond = Equals Value Value
             |MkLTE Value Value
             |MkNULL Value
 
-           
-data Clause = MkCond Cond
-             | AND Clause Clause
-             | OR Clause Clause
-             | Empty
-             | MkSQL SQL
-
-data condClause = SET Clause
-                  |WHERE condClause Clause
-             
 data SelVar = Cols (List String)
-              |ALL
+            | ALL
 
 data ColType = CInt String -- parsed as string "int"
-               |Varchar String
-               
-data Constr = NOTNULL
-             | UNIQUE Constr
-             | None
-             | PRIMARYKEY
-             | FOREIGNKEY
-             | CHECK
-             | DEFAULT
+             | Varchar String
 
 
-data SQL  = SELECT SelVar SQL Clause
-            | TBL (List String) 
+
+mutual
+  data Clause = MkCond Cond
+              | AND Clause Clause
+              | OR Clause Clause
+              | Empty
+              | MkSQL SQL
+
+  data condClause = SET Clause
+                  | WHERE condClause Clause
+
+  data Constr = NOTNULL
+              | UNIQUE Constr
+              | None
+              | PRIMARYKEY
+              | FOREIGNKEY
+              | CHECK
+              | DEFAULT
+
+
+  data SQL  = SELECT SelVar SQL Clause
+            | TBL (List String)
             | INSERT SQL (List Value)
             | INSERTC SQL (List Value) (List Value)
             | UPDATE SQL condClause
             | CREATE SQL (List (Value, ColType , Constr))
-            
+
 -- remember to remove these funcs later
 -- foldr1 : (a -> a -> a) -> List a -> a	
 -- foldr1 f [x] = x
