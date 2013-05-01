@@ -1364,7 +1364,8 @@ pClause syn
                    cargs <- many (pConstraintArg syn)
                    iargs <- many (pImplicitArg (syn { inPattern = True } ))
                    fc <- pfc
-                   args <- many (pArgExpr syn)
+                   args <- many (try (pImplicitArg (syn { inPattern = True } ))
+                                 <|> (fmap pexp (pArgExpr syn)))
                    wargs <- many (pWExpr syn)
                    rhs <- pRHS syn n
                    ist <- getState
@@ -1376,7 +1377,7 @@ pClause syn
                                              do pTerminator
                                                 return ([], [])]
                    let capp = PApp fc (PRef fc n) 
-                                (iargs ++ cargs ++ map pexp args)
+                                (iargs ++ cargs ++ args)
                    ist <- getState
                    setState (ist { lastParse = Just n })
                    return $ PClause fc n capp wargs rhs wheres)
@@ -1402,10 +1403,11 @@ pClause syn
                    cargs <- many (pConstraintArg syn)
                    iargs <- many (pImplicitArg (syn { inPattern = True } ))
                    fc <- pfc
-                   args <- many (pArgExpr syn)
+                   args <- many (try (pImplicitArg (syn { inPattern = True } )) 
+                                 <|> (fmap pexp (pArgExpr syn)))
                    wargs <- many (pWExpr syn)
                    let capp = PApp fc (PRef fc n) 
-                                (iargs ++ cargs ++ map pexp args)
+                                (iargs ++ cargs ++ args)
                    ist <- getState
                    setState (ist { lastParse = Just n })
                    reserved "with"
