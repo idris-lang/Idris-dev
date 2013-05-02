@@ -284,7 +284,7 @@ getFTypes tm = case unApply tm of
                  _ -> Nothing
 
 mkIty' (P _ (UN ty) _) = mkIty ty
-mkIty' (App (P _ (UN "FInt") _) (P _ (UN intTy) _)) = mkIntIty intTy
+mkIty' (App (P _ (UN "FIntT") _) (P _ (UN intTy) _)) = mkIntIty intTy
 mkIty' _ = FAny
 
 mkIty "FFloat"  = FDouble
