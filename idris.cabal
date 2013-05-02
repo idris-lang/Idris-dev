@@ -58,6 +58,7 @@ Extra-source-files:    lib/Makefile  lib/*.idr lib/Prelude/*.idr
                        lib/Control/Monad/*.idr lib/Language/*.idr
                        lib/System/Concurrency/*.idr
                        lib/Data/*.idr lib/Debug/*.idr
+                       lib/Data/Vect/*.idr
                        lib/Decidable/*.idr
                        tutorial/examples/*.idr lib/base.ipkg
                        effects/Makefile effects/*.idr effects/Effect/*.idr
