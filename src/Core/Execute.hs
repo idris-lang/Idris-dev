@@ -254,6 +254,9 @@ execApp' env ctxt (EP _ (UN "mkForeign") _) (_:fn:(EHandle h):rest)
     | Just (FFun "fileClose" _ _) <- foreignFromTT fn = do execIO $ hClose h
                                                            execApp' env ctxt ioUnit rest
 
+execApp' env ctxt (EP _ (UN "mkForeign") _) (_:fn:(EPtr p):rest)
+    | Just (FFun "isNull" _ _) <- foreignFromTT fn = let res = if p == nullPtr then 1 else 0 in
+                                                     execApp' env ctxt (EConstant (I res)) rest
 
 execApp' env ctxt f@(EP _ (UN "mkForeign") _) args@(ty:fn:xs) | Just (FFun _ argTs retT) <- foreignFromTT fn
                                                               , length xs >= length argTs =
@@ -300,6 +303,8 @@ execApp' env ctxt f@(EP _ n _) args =
               primRes Fl (fromRational (toRational i))
           getOp (UN "prim__intToStr") [EConstant (I i)] =
               primRes Str (show i)
+          getOp (UN "prim_lenString") [EConstant (Str s)] =
+              primRes I (length s)
           getOp (UN "prim__ltInt") [EConstant (I i1), EConstant (I i2)] =
               primResBool (i1 < i2)
           getOp (UN "prim__mulBigInt") [EConstant (BI i1), EConstant (BI i2)] =
