@@ -35,7 +35,7 @@ data DynamicLib = Lib { lib_name :: String
 tryLoadLib :: String -> IO (Maybe DynamicLib)
 tryLoadLib lib = do exactName <- doesFileExist lib
                     let filename = if exactName then lib else lib ++ "." ++ hostDynamicLibExt
-                    handle <- dlopen filename [RTLD_NOW]
+                    handle <- dlopen filename [RTLD_NOW, RTLD_GLOBAL]
                     if undl handle == nullPtr
                       then return Nothing
                       else return . Just $ Lib lib handle
