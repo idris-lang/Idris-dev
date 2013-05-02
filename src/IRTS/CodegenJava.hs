@@ -468,7 +468,27 @@ integerType :: ClassType
 integerType = ClassType [(Ident "Integer", [])]
 
 longType :: ClassType
-longType = ClassType [(Ident "Integer", [])]
+longType = ClassType [(Ident "Long", [])]
+
+intTyToIdent IT8  = Ident "Byte"
+intTyToIdent IT16 = Ident "Short"
+intTyToIdent IT32 = Ident "Int"
+intTyToIdent IT64 = Ident "Long"
+
+intTyToClass :: IntTy -> ClassType
+intTyToClass ty = ClassType [(intTyToIdent ty, [])]
+
+intTyToMethod :: IntTy -> String
+intTyToMethod IT8  = "byteValue"
+intTyToMethod IT16 = "shortValue"
+intTyToMethod IT32 = "intValue"
+intTyToMethod IT64 = "longValue"
+
+intTyToPrimTy :: IntTy -> PrimType
+intTyToPrimTy IT8  = ByteT
+intTyToPrimTy IT16 = ShortT
+intTyToPrimTy IT32 = IntT
+intTyToPrimTy IT64 = LongT
 
 bigIntegerType :: ClassType
 bigIntegerType = ClassType [(Ident "BigInteger", [])]
@@ -962,7 +982,7 @@ mkStringAtIndex var indexExp =
   <$> mkVarAccess (Just stringType) var
 
 mkForeignType :: FType -> Maybe ClassType
-mkForeignType FInt = return integerType
+mkForeignType (FInt ty) = return (intTyToClass ty)
 mkForeignType FChar = return integerType
 mkForeignType FString = return stringType
 mkForeignType FPtr = return objectType
@@ -971,14 +991,14 @@ mkForeignType FAny = return objectType
 mkForeignType FUnit = Nothing
 
 mkForeignVarAccess :: FType -> LVar -> CodeGeneration Exp
-mkForeignVarAccess FInt var = 
-  (\ var -> MethodInv $ PrimaryMethodCall (var)
+mkForeignVarAccess (FInt ty) var = 
+  (\ var -> MethodInv $ PrimaryMethodCall var
                                           []
-                                          (Ident "intValue")
+                                          (Ident (intTyToMethod ty))
                                           []
   )
   <$> mkVarAccess (Just integerType) var
-mkForeignVarAccess FChar var = Cast (PrimType CharT) <$> mkForeignVarAccess FInt var
+mkForeignVarAccess FChar var = Cast (PrimType CharT) <$> mkForeignVarAccess (FInt IT32) var
 mkForeignVarAccess FDouble var = 
   (\ var -> MethodInv $ PrimaryMethodCall (var)
                                           []
@@ -989,12 +1009,12 @@ mkForeignVarAccess FDouble var =
 mkForeignVarAccess otherType var = mkVarAccess (mkForeignType otherType) var 
  
 mkFromForeignType :: FType -> Exp -> Exp
-mkFromForeignType FInt from = 
-  MethodInv $ TypeMethodCall (J.Name [Ident "Integer"])
+mkFromForeignType (FInt ty) from = 
+  MethodInv $ TypeMethodCall (J.Name [intTyToIdent ty])
                              []
                              (Ident "valueOf")
                              [from]
-mkFromForeignType FChar from = mkFromForeignType FInt from
+mkFromForeignType FChar from = mkFromForeignType (FInt IT32) from
 mkFromForeignType FDouble from =   
   MethodInv $ TypeMethodCall (J.Name [Ident "Double"])
                              []
@@ -1251,24 +1271,22 @@ mkExp (SConst (PtrType)) = return $ mkClass objectType
 mkExp (SConst (VoidType)) = return $ mkClass voidType
 mkExp (SConst (Forgot)) = return $ mkClass objectType
 mkExp (SForeign _ fType meth args) = mkForeignInvoke fType meth args
-mkExp (SOp LPlus args) = mkBinOpExp integerType Add args
-mkExp (SOp LMinus args) = mkBinOpExp integerType Sub args
-mkExp (SOp LTimes args) = mkBinOpExp integerType Mult args
-mkExp (SOp LDiv args) = mkBinOpExp integerType Div args
-mkExp (SOp LMod args) = mkBinOpExp integerType Rem args
-mkExp (SOp LAnd args) = mkBinOpExp integerType And args
-mkExp (SOp LOr args) = mkBinOpExp integerType Or args
-mkExp (SOp LXOr args) = mkBinOpExp integerType Xor args
-mkExp (SOp LCompl [var]) = 
-  PreBitCompl <$> mkVarAccess (Just $ integerType) var
-mkExp (SOp LSHL args) = mkBinOpExp integerType LShift args
-mkExp (SOp LSHR args) = mkBinOpExp integerType RShift args
-mkExp (SOp LEq args) = 
-  mkMethodOpChain1 (mkBoolToNumber integerType) objectType "equals" args
-mkExp (SOp LLt args) = mkLogicalBinOpExp integerType LThan args
-mkExp (SOp LLe args) = mkLogicalBinOpExp integerType LThanE args
-mkExp (SOp LGt args) = mkLogicalBinOpExp integerType GThan args
-mkExp (SOp LGe args) = mkLogicalBinOpExp integerType GThanE args
+mkExp (SOp (LPlus ITNative) args) = mkExp (SOp (LPlus IT32) args)
+mkExp (SOp (LMinus ITNative) args) = mkExp (SOp (LMinus IT32) args)
+mkExp (SOp (LTimes ITNative) args) = mkExp (SOp (LTimes IT32) args)
+mkExp (SOp (LSDiv ITNative) args) = mkExp (SOp (LSDiv IT32) args)
+mkExp (SOp (LSRem ITNative) args) = mkExp (SOp (LSRem IT32) args)
+mkExp (SOp (LAnd ITNative) args) = mkExp (SOp (LAnd IT32) args)
+mkExp (SOp (LOr ITNative) args) = mkExp (SOp (LOr IT32) args)
+mkExp (SOp (LXOr ITNative) args) = mkExp (SOp (LXOr IT32) args)
+mkExp (SOp (LCompl ITNative) args) = mkExp (SOp (LCompl IT32) args)
+mkExp (SOp (LSHL ITNative) args) = mkExp (SOp (LSHL IT32) args)
+mkExp (SOp (LASHR ITNative) args) = mkExp (SOp (LASHR IT32) args)
+mkExp (SOp (LEq ITNative) args) = mkExp (SOp (LEq IT32) args)
+mkExp (SOp (LLt ITNative) args) = mkExp (SOp (LLt IT32) args)
+mkExp (SOp (LLe ITNative) args) = mkExp (SOp (LLe IT32) args)
+mkExp (SOp (LGt ITNative) args) = mkExp (SOp (LGt IT32) args)
+mkExp (SOp (LGe ITNative) args) = mkExp (SOp (LGe IT32) args)
 mkExp (SOp LFPlus args) = mkBinOpExp doubleType Add args
 mkExp (SOp LFMinus args) = mkBinOpExp doubleType Sub args
 mkExp (SOp LFTimes args) = mkBinOpExp doubleType Mult args
@@ -1369,203 +1387,46 @@ mkExp (SOp LPrintNum [arg]) =
 mkExp (SOp LPrintStr [arg]) =
   mkSystemOutPrint <$> (mkVarAccess (Just stringType) arg)
 mkExp (SOp LReadStr [arg]) = mkExp (SForeign LANG_C FString "idris_readStr" [(FPtr, arg)])
-mkExp (SOp LB8Lt args) = mkLogicalBinOpExp byteType LThan args
-mkExp (SOp LB8Lte args) = mkLogicalBinOpExp byteType LThanE args
-mkExp (SOp LB8Eq args) = 
-  mkMethodOpChain1 (mkBoolToNumber byteType) byteType "equals" args
-mkExp (SOp LB8Gt args) = mkLogicalBinOpExp byteType GThan args
-mkExp (SOp LB8Gte args) = mkLogicalBinOpExp byteType GThanE args
-mkExp (SOp LB8Plus args) = mkBinOpExp byteType Add args
-mkExp (SOp LB8Minus args) = mkBinOpExp byteType Sub args
-mkExp (SOp LB8Times args) = mkBinOpExp byteType Mult args
-mkExp (SOp LB8UDiv args) = mkBinOpExpConv "shortValue" ShortT byteType Div args
-mkExp (SOp LB8SDiv args) = mkBinOpExp byteType Div args
-mkExp (SOp LB8URem args) = mkBinOpExpConv "shortValue" ShortT byteType Rem args
-mkExp (SOp LB8SRem args) = mkBinOpExp byteType Rem args
-mkExp (SOp LB8Shl args) = mkBinOpExp byteType LShift args
-mkExp (SOp LB8LShr args) = mkBinOpExp byteType RRShift args
-mkExp (SOp LB8AShr args) = mkBinOpExp byteType RShift args
-mkExp (SOp LB8And args) = mkBinOpExp byteType And args
-mkExp (SOp LB8Or args) = mkBinOpExp byteType Or args
-mkExp (SOp LB8Xor args) = mkBinOpExp byteType Xor args
-mkExp (SOp LB8Compl [var]) = 
-  PreBitCompl <$> mkVarAccess (Just $ byteType) var
-mkExp (SOp LB8Z16 [var]) = mkZeroExt "shortValue" 8 byteType shortType var
-mkExp (SOp LB8Z32 [var]) = mkZeroExt "intValue" 8 byteType integerType var
-mkExp (SOp LB8Z64 [var]) = mkZeroExt "longValue" 8 byteType longType var
-mkExp (SOp LB8S16 [var]) = mkSignedExt "shortValue" byteType shortType var
-mkExp (SOp LB8S32 [var]) = mkSignedExt "intValue" byteType integerType var
-mkExp (SOp LB8S64 [var]) = mkSignedExt "longValue" byteType longType var
-mkExp (SOp LB16Lt args) = mkLogicalBinOpExp shortType LThan args
-mkExp (SOp LB16Lte args) = mkLogicalBinOpExp shortType LThanE args
-mkExp (SOp LB16Eq args) = 
-  mkMethodOpChain1 (mkBoolToNumber shortType) shortType "equals" args
-mkExp (SOp LB16Gt args) = mkLogicalBinOpExp shortType GThan args
-mkExp (SOp LB16Gte args) = mkLogicalBinOpExp shortType GThanE args
-mkExp (SOp LB16Plus args) = mkBinOpExp shortType Add args
-mkExp (SOp LB16Minus args) = mkBinOpExp shortType Sub args
-mkExp (SOp LB16Times args) = mkBinOpExp shortType Mult args
-mkExp (SOp LB16UDiv args) = mkBinOpExpConv "intValue" IntT shortType Div args
-mkExp (SOp LB16SDiv args) = mkBinOpExp shortType Div args
-mkExp (SOp LB16URem args) = mkBinOpExpConv "intValue" IntT shortType Rem args
-mkExp (SOp LB16SRem args) = mkBinOpExp shortType Rem args
-mkExp (SOp LB16Shl args) = mkBinOpExp shortType LShift args
-mkExp (SOp LB16LShr args) = mkBinOpExp shortType RRShift args
-mkExp (SOp LB16AShr args) = mkBinOpExp shortType RShift args
-mkExp (SOp LB16And args) = mkBinOpExp shortType And args
-mkExp (SOp LB16Or args) = mkBinOpExp shortType Or args
-mkExp (SOp LB16Xor args) = mkBinOpExp shortType Xor args
-mkExp (SOp LB16Compl [var]) = 
-  PreBitCompl <$> mkVarAccess (Just $ shortType) var
-mkExp (SOp LB16Z32 [var]) = mkZeroExt "intValue" 16 shortType integerType var
-mkExp (SOp LB16Z64 [var]) = mkZeroExt "longValue" 16 shortType longType var
-mkExp (SOp LB16S32 [var]) = mkSignedExt "intValue" shortType integerType var
-mkExp (SOp LB16S64 [var]) = mkSignedExt "longValue" shortType longType var
-mkExp (SOp LB16T8 [var]) = 
-  (\ var -> MethodInv $ 
-            TypeMethodCall (J.Name [Ident "Byte"])
+mkExp (SOp (LLt ty) args) = mkLogicalBinOpExp (intTyToClass ty) LThan args
+mkExp (SOp (LLe ty) args) = mkLogicalBinOpExp (intTyToClass ty) LThanE args
+mkExp (SOp (LEq ty) args) = 
+  mkMethodOpChain1 (mkBoolToNumber (intTyToClass ty)) (intTyToClass ty) "equals" args
+mkExp (SOp (LGt ty) args) = mkLogicalBinOpExp (intTyToClass ty) GThan args
+mkExp (SOp (LGe ty) args) = mkLogicalBinOpExp (intTyToClass ty) GThanE args
+mkExp (SOp (LPlus ty) args) = mkBinOpExp (intTyToClass ty) Add args
+mkExp (SOp (LMinus ty) args) = mkBinOpExp (intTyToClass ty) Sub args
+mkExp (SOp (LTimes ty) args) = mkBinOpExp (intTyToClass ty) Mult args
+mkExp (SOp (LUDiv ty) args) = mkBinOpExpConv (intTyToMethod ty) (intTyToPrimTy ty) (intTyToClass ty) Div args
+mkExp (SOp (LSDiv ty) args) = mkBinOpExp (intTyToClass ty) Div args
+mkExp (SOp (LURem ty) args) = mkBinOpExpConv (intTyToMethod ty) (intTyToPrimTy ty) (intTyToClass ty) Rem args
+mkExp (SOp (LSRem ty) args) = mkBinOpExp (intTyToClass ty) Rem args
+mkExp (SOp (LSHL ty) args) = mkBinOpExp (intTyToClass ty) LShift args
+mkExp (SOp (LLSHR ty) args) = mkBinOpExp (intTyToClass ty) RRShift args
+mkExp (SOp (LASHR ty) args) = mkBinOpExp (intTyToClass ty) RShift args
+mkExp (SOp (LAnd ty) args) = mkBinOpExp (intTyToClass ty) And args
+mkExp (SOp (LOr ty) args) = mkBinOpExp (intTyToClass ty) Or args
+mkExp (SOp (LXOr ty) args) = mkBinOpExp (intTyToClass ty) Xor args
+mkExp (SOp (LCompl ty) [var]) = PreBitCompl <$> mkVarAccess (Just $ intTyToClass ty) var
+mkExp (SOp (LZExt from to) [var])
+    | intTyWidth from < intTyWidth to
+        = mkZeroExt (intTyToMethod to) (intTyWidth from) (intTyToClass from) (intTyToClass to) var
+mkExp (SOp (LSExt from to) [var])
+    | intTyWidth from < intTyWidth to
+        = mkSignedExt (intTyToMethod to) (intTyToClass from) (intTyToClass to) var
+mkExp (SOp (LTrunc from to) [var])
+    | intTyWidth from > intTyWidth to
+        = (\ var -> MethodInv $ 
+            TypeMethodCall (J.Name [intTyToIdent to])
                            []
                            (Ident "valueOf")
                            [ MethodInv 
-                             $ PrimaryMethodCall var [] (Ident "byteValue") [] ]
+                             $ PrimaryMethodCall var [] (Ident (intTyToMethod to)) [] ]
   )
-  <$> mkVarAccess (Just $ shortType) var
-mkExp (SOp LB32Lt args) = mkLogicalBinOpExp integerType LThan args
-mkExp (SOp LB32Lte args) = mkLogicalBinOpExp integerType LThanE args
-mkExp (SOp LB32Eq args) = 
-  mkMethodOpChain1 (mkBoolToNumber integerType) integerType "equals" args
-mkExp (SOp LB32Gt args) = mkLogicalBinOpExp integerType GThan args
-mkExp (SOp LB32Gte args) = mkLogicalBinOpExp integerType GThanE args
-mkExp (SOp LB32Plus args) = mkBinOpExp integerType Add args
-mkExp (SOp LB32Minus args) = mkBinOpExp integerType Sub args
-mkExp (SOp LB32Times args) = mkBinOpExp integerType Mult args
-mkExp (SOp LB32UDiv args) = mkBinOpExpConv "longValue" LongT integerType Div args
-mkExp (SOp LB32SDiv args) = mkBinOpExp integerType Div args
-mkExp (SOp LB32URem args) = mkBinOpExpConv "longValue" LongT integerType Rem args
-mkExp (SOp LB32SRem args) = mkBinOpExp integerType Rem args
-mkExp (SOp LB32Shl args) = mkBinOpExp integerType LShift args
-mkExp (SOp LB32LShr args) = mkBinOpExp integerType RRShift args
-mkExp (SOp LB32AShr args) = mkBinOpExp integerType RShift args
-mkExp (SOp LB32And args) = mkBinOpExp integerType And args
-mkExp (SOp LB32Or args) = mkBinOpExp integerType Or args
-mkExp (SOp LB32Xor args) = mkBinOpExp integerType Xor args
-mkExp (SOp LB32Compl [var]) = 
-  PreBitCompl <$> mkVarAccess (Just $ integerType) var
-mkExp (SOp LB32Z64 [var]) = mkZeroExt "longValue" 32 integerType longType var
-mkExp (SOp LB32S64 [var]) = mkSignedExt "longValue" integerType longType var
-mkExp (SOp LB32T8 [var]) = 
-  (\ var -> MethodInv
-            $ TypeMethodCall (J.Name [Ident "Byte"])
-                             []
-                             (Ident "valueOf")
-                             [ MethodInv $ PrimaryMethodCall var [] (Ident "byteValue") [] ]
-  )
-  <$> mkVarAccess (Just $ integerType) var
-mkExp (SOp LB32T16 [var]) = 
-  (\ var -> MethodInv
-            $ TypeMethodCall (J.Name [Ident "Short"])
-                             []
-                             (Ident "valueOf")
-                             [ MethodInv $ PrimaryMethodCall var [] (Ident "shortValue") [] ]
-  )
-  <$> mkVarAccess (Just $ integerType) var
-mkExp (SOp LB64Lt args) = mkLogicalBinOpExp longType LThan args
-mkExp (SOp LB64Lte args) = mkLogicalBinOpExp longType LThanE args
-mkExp (SOp LB64Eq args) = 
-  mkMethodOpChain1 (mkBoolToNumber longType) longType "equals" args
-mkExp (SOp LB64Gt args) = mkLogicalBinOpExp longType GThan args
-mkExp (SOp LB64Gte args) = mkLogicalBinOpExp longType GThanE args
-mkExp (SOp LB64Plus args) = mkBinOpExp longType Add args
-mkExp (SOp LB64Minus args) = mkBinOpExp longType Sub args
-mkExp (SOp LB64Times args) = mkBinOpExp longType Mult args
-mkExp (SOp LB64UDiv (arg:args)) = do
-  (arg:args) <- mapM (mkVarAccess (Just longType)) (arg:args)
-  return $ foldl' (\ exp arg ->
-                    MethodInv $ PrimaryMethodCall
-                              ( MethodInv $ PrimaryMethodCall
-                                            ( MethodInv $ TypeMethodCall (J.Name [Ident "BigInteger"])
-                                                                         []
-                                                                         (Ident "valueOf")
-                                                                         [ exp ]
-                                            )
-                                            []
-                                            (Ident "divide")
-                                            [ MethodInv $ TypeMethodCall (J.Name [Ident "BigInteger"])
-                                                                         []
-                                                                         (Ident "valueOf")
-                                                                         [ arg ]
-                                            ]
-                              )
-                              []
-                              (Ident "longValue")
-                              []
-                 )                                
-           arg
-           args
-mkExp (SOp LB64SDiv args) = mkBinOpExp longType Div args
-mkExp (SOp LB64URem (arg:args)) = do
-  (arg:args) <- mapM (mkVarAccess (Just longType)) (arg:args)
-  return $ foldl' (\ exp arg ->
-                    MethodInv $ PrimaryMethodCall
-                              ( MethodInv $ PrimaryMethodCall
-                                            ( MethodInv $ TypeMethodCall (J.Name [Ident "BigInteger"])
-                                                                         []
-                                                                         (Ident "valueOf")
-                                                                         [ exp ]
-                                            )
-                                            []
-                                            (Ident "remainder")
-                                            [ MethodInv $ TypeMethodCall (J.Name [Ident "BigInteger"])
-                                                                         []
-                                                                         (Ident "valueOf")
-                                                                         [ arg ]
-                                            ]
-                              )
-                              []
-                              (Ident "longValue")
-                              []
-                 )                                
-           arg
-           args
-mkExp (SOp LB64SRem args) = mkBinOpExp longType Rem args
-mkExp (SOp LB64Shl args) = mkBinOpExp longType LShift args
-mkExp (SOp LB64LShr args) = mkBinOpExp longType RRShift args
-mkExp (SOp LB64AShr args) = mkBinOpExp longType RShift args
-mkExp (SOp LB64And args) = mkBinOpExp longType And args
-mkExp (SOp LB64Or args) = mkBinOpExp longType Or args
-mkExp (SOp LB64Xor args) = mkBinOpExp longType Xor args
-mkExp (SOp LB64Compl [var]) = 
-  PreBitCompl <$> mkVarAccess (Just $ longType) var
-mkExp (SOp LB64T8 [var]) = 
-  (\ var -> MethodInv
-            $ TypeMethodCall (J.Name [Ident "Byte"])
-                             []
-                             (Ident "valueOf")
-                             [ MethodInv 
-                               $ PrimaryMethodCall var [] (Ident "byteValue") [] 
-                             ]
-  )
-  <$> mkVarAccess (Just $ longType) var                             
-mkExp (SOp LB64T16 [var]) = 
-  (\ var -> MethodInv
-            $ TypeMethodCall (J.Name [Ident "Short"])
-                             []
-                             (Ident "valueOf")
-                             [ MethodInv $ PrimaryMethodCall var [] (Ident "shortValue") [] ]
-  )
-  <$> mkVarAccess (Just $ longType) var
-mkExp (SOp LB64T32 [var]) = 
-  (\ var -> MethodInv
-            $ TypeMethodCall (J.Name [Ident "Integer"])
-                             []
-                             (Ident "valueOf")
-                             [ MethodInv $ PrimaryMethodCall var [] (Ident "intValue") [] ]
-  )
-  <$> mkVarAccess (Just $ longType) var
-mkExp (SOp LIntB8 [arg]) = mkExp (SOp LB32T8 [arg])
-mkExp (SOp LIntB16 [arg]) = mkExp (SOp LB32T16 [arg])
+  <$> mkVarAccess (Just $ intTyToClass from) var
+mkExp (SOp LIntB8 [arg]) = mkExp (SOp (LTrunc IT32 IT8) [arg])
+mkExp (SOp LIntB16 [arg]) = mkExp (SOp (LTrunc IT32 IT16) [arg])
 mkExp (SOp LIntB32 [arg]) = mkExp (SV arg)
-mkExp (SOp LIntB64 [arg]) = mkExp (SOp LB32S64 [arg])
+mkExp (SOp LIntB64 [arg]) = mkExp (SOp (LSExt IT32 IT64) [arg])
 mkExp (SOp LB32Int [arg]) = mkExp (SV arg)
 mkExp (SOp LFExp [arg]) = mkMathFun "exp" arg
 mkExp (SOp LFLog [arg]) = mkMathFun "log" arg
