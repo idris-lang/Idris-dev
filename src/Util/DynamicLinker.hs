@@ -5,6 +5,7 @@ module Util.DynamicLinker where
 
 import Foreign.LibFFI
 import Foreign.Ptr (nullPtr, FunPtr, nullFunPtr,castPtrToFunPtr)
+import System.Directory
 #ifndef WINDOWS
 import System.Posix.DynamicLinker
 #else
@@ -32,7 +33,9 @@ data DynamicLib = Lib { lib_name :: String
 
 #ifndef WINDOWS
 tryLoadLib :: String -> IO (Maybe DynamicLib)
-tryLoadLib lib = do handle <- dlopen (lib ++ "." ++ hostDynamicLibExt) [RTLD_NOW]
+tryLoadLib lib = do exactName <- doesFileExist lib
+                    let filename = if exactName then lib else lib ++ "." ++ hostDynamicLibExt
+                    handle <- dlopen filename [RTLD_NOW]
                     if undl handle == nullPtr
                       then return Nothing
                       else return . Just $ Lib lib handle
@@ -45,7 +48,9 @@ tryLoadFn fn (Lib _ h) = do cFn <- dlsym h fn
                                else return . Just $ Fun fn cFn
 #else
 tryLoadLib :: String -> IO (Maybe DynamicLib)
-tryLoadLib lib = do handle <- loadLibrary (lib ++ "." ++ hostDynamicLibExt)
+tryLoadLib lib = do exactName <- doesFileExist lib
+                    let filename = if exactName then lib else lib ++ "." ++ hostDynamicLibExt
+                    handle <- loadLibrary filename
                     if handle == nullPtr
                         then return Nothing
                         else return . Just $ Lib lib handle
