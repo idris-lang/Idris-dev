@@ -178,6 +178,15 @@ atan x = prim__floatATan x
 atan2 : Float -> Float -> Float
 atan2 y x = atan (y/x)
 
+sinh : Float -> Float
+sinh x = (exp x - exp (-x)) / 2
+
+cosh : Float -> Float
+cosh x = (exp x + exp (-x)) / 2
+
+tanh : Float -> Float
+tanh x = sinh x / cosh x
+
 sqrt : Float -> Float
 sqrt x = prim__floatSqrt x
 
@@ -189,12 +198,12 @@ ceiling x = prim__floatCeil x
 
 ---- Ranges
 
-%assert_total
+partial abstract
 count : (Ord a, Num a) => a -> a -> a -> List a
 count a inc b = if a <= b then a :: count (a + inc) inc b
                           else []
   
-partial
+partial abstract
 countFrom : (Ord a, Num a) => a -> a -> List a
 countFrom a inc = a :: lazy (countFrom (a + inc) inc)
   

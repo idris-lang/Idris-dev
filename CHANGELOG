@@ -9,10 +9,12 @@ User visible changes:
 * Tab completion in REPL
 * Dynamic loading of C libraries in the interpreter
 * Testing IO actions at the REPL with :x command
+* Improve rendering of :t
 * Fixed some INTERNAL ERROR messages
 
 Internal changes:
 
+* Fix non-linear pattern checking
 * Improved name disambiguation
 * More flexible unification and elaboration of lambdas
 * Various unification and totality checking bug fixes

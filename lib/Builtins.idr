@@ -44,6 +44,9 @@ really_believe_me x = prim__believe_me _ _ x
 
 namespace Builtins {
 
+Not : Type -> Type
+Not a = a -> _|_
+
 id : a -> a
 id x = x
 

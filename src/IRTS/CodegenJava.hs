@@ -15,7 +15,7 @@ import qualified Control.Monad.Trans as T
 import           Control.Monad.Trans.State
 import           Data.Char
 import           Data.Maybe (fromJust)
-import           Data.List (isPrefixOf, isSuffixOf, intercalate)
+import           Data.List (isPrefixOf, isSuffixOf, intercalate, foldl')
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
 import           Language.Java.Parser
@@ -255,7 +255,7 @@ mkMainMethod =
                           )
 
 mergeInnerClasses :: [Decl] -> [Decl]
-mergeInnerClasses = foldl mergeInner []
+mergeInnerClasses = foldl' mergeInner []
   where
     mergeInner ((decl@(MemberDecl (MemberClassDecl (ClassDecl priv name targs ext imp (ClassBody body))))):decls)
                decl'@(MemberDecl (MemberClassDecl (ClassDecl _ name' _ ext' imp' (ClassBody body'))))
@@ -418,6 +418,12 @@ mkIdentifier (UN name) =
     cleanReserved "idris_K" = "_idris_K"
     cleanReserved "idris_flipK" = "_idris_flipK"
     cleanReserved "idris_assignStack" = "_idris_assignStack"
+    cleanReserved "free" = "_free"
+    cleanReserved "malloc" = "_malloc"
+    cleanReserved "idris_memset" = "_idris_memset"
+    cleanReserved "idris_peek" = "_idris_peek"
+    cleanReserved "idris_poke" = "_idris_poke"
+    cleanReserved "idris_memmove" = "_idris_memmove"
 
     cleanReserved x = x
 
@@ -1253,10 +1259,10 @@ mkExp (SConst BIType) = return $ mkClass bigIntegerType
 mkExp (SConst FlType) = return $ mkClass doubleType
 mkExp (SConst ChType) = return $ mkClass charType
 mkExp (SConst StrType) = return $ mkClass stringType
-mkExp (SConst (B8 x)) = return $ mkPrimitive "Byte" (Int (toInteger x))
-mkExp (SConst (B16 x)) = return $ mkPrimitive "Short" (Int (toInteger x))
+mkExp (SConst (B8 x)) = return $ mkPrimitive "Byte" (String (show x))
+mkExp (SConst (B16 x)) = return $ mkPrimitive "Short" (String (show x))
 mkExp (SConst (B32 x)) = return $ mkPrimitive "Integer" (Int (toInteger x))
-mkExp (SConst (B64 x)) = return $ mkPrimitive "Long" (Int (toInteger x))
+mkExp (SConst (B64 x)) = return $ mkPrimitive "Long" (String (show x))
 mkExp (SConst (B8Type))= return $ mkClass byteType
 mkExp (SConst (B16Type)) = return $ mkClass shortType
 mkExp (SConst (B32Type)) = return $ mkClass integerType

@@ -38,7 +38,7 @@ mkPatTm t = do i <- getIState
                evalStateT (toTT timp) 0
   where
     toTT (PRef _ n) = do i <- lift getIState
-                         case lookupDef Nothing n (tt_ctxt i) of
+                         case lookupDef n (tt_ctxt i) of
                               [TyDecl nt _] -> return $ P nt n Erased
                               _ -> return $ P Ref n Erased
     toTT (PApp _ t args) = do t' <- toTT t
@@ -107,9 +107,9 @@ expandAlts :: IState -> [CaseAlt] -> SC -> Idris [CaseAlt]
 expandAlts i all@(ConstCase c _ : alts) def
     = return $ all ++ [DefaultCase def]
 expandAlts i all@(ConCase n _ _ _ : alts) def
-    | (TyDecl c@(DCon _ arity) ty : _) <- lookupDef Nothing n (tt_ctxt i)
+    | (TyDecl c@(DCon _ arity) ty : _) <- lookupDef n (tt_ctxt i)
          = do let tyn = getTy n (tt_ctxt i)
-              case lookupCtxt Nothing tyn (idris_datatypes i) of
+              case lookupCtxt tyn (idris_datatypes i) of
                   (TI ns _ _: _) -> do let ps = map mkPat ns
                                        return $ addAlts ps (altsFor all) all
                   _ -> return all
@@ -127,13 +127,13 @@ expandAlts i all@(ConCase n _ _ _ : alts) def
     argList i = take i (map (\x -> (MN x "ign")) [0..])
 
     getTy n ctxt 
-      = case lookupTy Nothing n ctxt of
+      = case lookupTy n ctxt of
             (t : _) -> case unApply (getRetTy t) of
                         (P _ tyn _, _) -> tyn
                         x -> error $ "Can't happen getTy 1 " ++ show (n, x)
             _ -> error "Can't happen getTy 2"
 
-    mkPat x = case lookupCtxt Nothing x (idris_implicits i) of
+    mkPat x = case lookupCtxt x (idris_implicits i) of
                     (pargs : _)
                        -> (x, length pargs)  
                     _ -> error "Can't happen - genAll"
@@ -160,7 +160,7 @@ genClauses fc n xs given
         logLvl 10 $ show argss ++ "\n" ++ show all_args
         logLvl 10 $ "Original: \n" ++ 
              showSep "\n" (map (\t -> showImp True (delab' i t True)) xs)
-        let parg = case lookupCtxt Nothing n (idris_implicits i) of
+        let parg = case lookupCtxt n (idris_implicits i) of
                         (p : _) -> p
                         _ -> repeat (pexp Placeholder)
         let tryclauses = mkClauses parg all_args
@@ -217,8 +217,8 @@ genAll i args = case filter (/=Placeholder) $ concatMap otherPats (nub args) of
                     [] -> [Placeholder]
                     xs -> nub xs
   where 
-    conForm (PApp _ (PRef fc n) _) = isConName Nothing n (tt_ctxt i)
-    conForm (PRef fc n) = isConName Nothing n (tt_ctxt i)
+    conForm (PApp _ (PRef fc n) _) = isConName n (tt_ctxt i)
+    conForm (PRef fc n) = isConName n (tt_ctxt i)
     conForm _ = False
 
     otherPats :: PTerm -> [PTerm]
@@ -227,22 +227,22 @@ genAll i args = case filter (/=Placeholder) $ concatMap otherPats (nub args) of
     otherPats arg = return Placeholder 
 
     ops fc n xs o
-        | (TyDecl c@(DCon _ arity) ty : _) <- lookupDef Nothing n (tt_ctxt i)
+        | (TyDecl c@(DCon _ arity) ty : _) <- lookupDef n (tt_ctxt i)
             = do xs' <- mapM otherPats (map getTm xs)
                  let p = PApp fc (PRef fc n) (zipWith upd xs' xs)
                  let tyn = getTy n (tt_ctxt i)
-                 case lookupCtxt Nothing tyn (idris_datatypes i) of
+                 case lookupCtxt tyn (idris_datatypes i) of
                          (TI ns _ _ : _) -> p : map (mkPat fc) (ns \\ [n])
                          _ -> [p]
     ops fc n arg o = return Placeholder
 
-    getTy n ctxt = case lookupTy Nothing n ctxt of
+    getTy n ctxt = case lookupTy n ctxt of
                           (t : _) -> case unApply (getRetTy t) of
                                         (P _ tyn _, _) -> tyn
                                         x -> error $ "Can't happen getTy 1 " ++ show (n, x)
                           _ -> error "Can't happen getTy 2"
 
-    mkPat fc x = case lookupCtxt Nothing x (idris_implicits i) of
+    mkPat fc x = case lookupCtxt x (idris_implicits i) of
                       (pargs : _)
                          -> PApp fc (PRef fc x) (map (upd Placeholder) pargs)  
                       _ -> error "Can't happen - genAll"
@@ -306,7 +306,7 @@ calcProd i fc n pats = do patsprod <- mapM prodRec pats
     
      cotype ty 
         | (P _ t _, _) <- unApply (getRetTy ty)
-            = case lookupCtxt Nothing t (idris_datatypes i) of
+            = case lookupCtxt t (idris_datatypes i) of
                    [TI _ True _] -> True
                    _ -> False
         | otherwise = False
@@ -315,7 +315,7 @@ calcTotality :: [Name] -> FC -> Name -> [([Name], Term, Term)]
                 -> Idris Totality
 calcTotality path fc n pats 
     = do i <- getIState
-         let opts = case lookupCtxt Nothing n (idris_flags i) of
+         let opts = case lookupCtxt n (idris_flags i) of
                             [fs] -> fs
                             _ -> []
          case mapMaybe (checkLHS i) (map (\ (_, l, r) -> l) pats) of
@@ -339,12 +339,12 @@ checkTotality path fc n
         updateContext (simplifyCasedef n)
         ctxt <- getContext
         i <- getIState
-        let opts = case lookupCtxt Nothing n (idris_flags i) of
+        let opts = case lookupCtxt n (idris_flags i) of
                             [fs] -> fs
                             _ -> []
         t' <- case t of 
                 Unchecked -> 
-                    case lookupDef Nothing n ctxt of
+                    case lookupDef n ctxt of
                         [CaseOp _ _ _ _ pats _ _ _ _] -> 
                             do t' <- if AssertTotal `elem` opts
                                         then return $ Total []
@@ -378,7 +378,7 @@ checkTotality path fc n
 
     warnPartial n t
        = do i <- getIState
-            case lookupDef Nothing n (tt_ctxt i) of
+            case lookupDef n (tt_ctxt i) of
                [x] -> do
                   iputStrLn $ show fc ++ ":Warning - " ++ show n ++ " is " ++ show t 
 --                                ++ "\n" ++ show x
@@ -407,8 +407,8 @@ checkDeclTotality (fc, n)
 buildSCG :: (FC, Name) -> Idris ()
 buildSCG (_, n) = do
    ist <- getIState
-   case lookupCtxt Nothing n (idris_callgraph ist) of
-       [cg] -> case lookupDef Nothing n (tt_ctxt ist) of
+   case lookupCtxt n (idris_callgraph ist) of
+       [cg] -> case lookupDef n (tt_ctxt ist) of
            [CaseOp _ _ _ _ _ args sc _ _] -> 
                do logLvl 3 $ "Building SCG for " ++ show n ++ " from\n" 
                                 ++ show sc
@@ -442,7 +442,7 @@ buildSCG' ist sc args = -- trace ("Building SCG for " ++ show sc) $
       -- how the arguments relate - either Smaller or Unknown
       argRels :: Name -> [(Name, SizeChange)]
       argRels n = let ctxt = tt_ctxt ist
-                      [ty] = lookupTy Nothing n ctxt -- must exist!
+                      [ty] = lookupTy n ctxt -- must exist!
                       P _ nty _ = fst (unApply (getRetTy ty))
                       args = map snd (getArgTys ty) in
                       map (getRel nty) (map (fst . unApply . getRetTy) args)
@@ -503,7 +503,7 @@ buildSCG' ist sc args = -- trace ("Building SCG for " ++ show sc) $
 checkSizeChange :: Name -> Idris Totality
 checkSizeChange n = do
    ist <- getIState
-   case lookupCtxt Nothing n (idris_callgraph ist) of
+   case lookupCtxt n (idris_callgraph ist) of
        [cg] -> do let ms = mkMultiPaths ist [] (scg cg)
                   logLvl 5 ("Multipath for " ++ show n ++ ":\n" ++
                             "from " ++ show (scg cg) ++ "\n" ++
@@ -530,7 +530,7 @@ mkMultiPaths ist path cg
   where extend (nextf, args) 
            | (nextf, args) `elem` path = [ reverse ((nextf, args) : path) ]
            | [Unchecked] <- lookupTotal nextf (tt_ctxt ist) 
-               = case lookupCtxt Nothing nextf (idris_callgraph ist) of
+               = case lookupCtxt nextf (idris_callgraph ist) of
                     [ncg] -> mkMultiPaths ist ((nextf, args) : path) (scg ncg) 
                     _ -> [ reverse ((nextf, args) : path) ]
            | otherwise = [ reverse ((nextf, args) : path) ]
@@ -538,7 +538,7 @@ mkMultiPaths ist path cg
 --     do (nextf, args) <- cg
 --          if ((nextf, args) `elem` path)
 --             then return (reverse ((nextf, args) : path))
---             else case lookupCtxt Nothing nextf (idris_callgraph ist) of
+--             else case lookupCtxt nextf (idris_callgraph ist) of
 --                     [ncg] -> mkMultiPaths ist ((nextf, args) : path) (scg ncg) 
 --                     _ -> return (reverse ((nextf, args) : path))
 
@@ -562,12 +562,12 @@ checkMP ist i mp = if i > 0
 --             = Partial BelieveMe
     -- if we get to a constructor, it's fine as long as it's strictly positive
     tryPath desc path ((f, _) :es) arg
-        | [TyDecl (DCon _ _) _] <- lookupDef Nothing f (tt_ctxt ist)
+        | [TyDecl (DCon _ _) _] <- lookupDef f (tt_ctxt ist)
             = case lookupTotal f (tt_ctxt ist) of
                    [Total _] -> Unchecked -- okay so far
                    [Partial _] -> Partial (Other [f])
                    x -> error (show x)
-        | [TyDecl (TCon _ _) _] <- lookupDef Nothing f (tt_ctxt ist)
+        | [TyDecl (TCon _ _) _] <- lookupDef f (tt_ctxt ist)
             = Total []
     tryPath desc path (e@(f, args) : es) arg
         | e `elem` es && allNothing args = Partial (Mutual [f])

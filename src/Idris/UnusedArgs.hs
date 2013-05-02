@@ -15,7 +15,7 @@ findUnusedArgs ns = mapM_ traceUnused ns
 traceUnused :: Name -> Idris ()
 traceUnused n 
    = do i <- getIState
-        case lookupCtxt Nothing n (idris_callgraph i) of 
+        case lookupCtxt n (idris_callgraph i) of 
           [CGInfo args calls scg usedns _] ->
                 do let argpos = zip args [0..]
                    let fargs = concatMap (getFargpos calls) argpos
@@ -39,7 +39,7 @@ used path g j
    | otherwise 
        = do logLvl 5 $ (show ((g, j) : path)) 
             i <- getIState
-            case lookupCtxt Nothing g (idris_callgraph i) of
+            case lookupCtxt g (idris_callgraph i) of
                [CGInfo args calls scg usedns unused] ->
                   if (j >= length args) 
                     then -- overapplied, assume used

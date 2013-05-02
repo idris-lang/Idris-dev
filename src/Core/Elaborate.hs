@@ -171,7 +171,7 @@ checkInjective (tm, l, r) = do ctxt <- get_context
                                if isInj ctxt tm then return ()
                                 else lift $ tfail (NotInjective tm l r) 
   where isInj ctxt (P _ n _) 
-            | isConName Nothing n ctxt = True
+            | isConName n ctxt = True
         isInj ctxt (App f a) = isInj ctxt f
         isInj ctxt (Constant _) = True
         isInj ctxt (TType _) = True
@@ -210,7 +210,7 @@ unique_hole' reusable n
 uniqueNameCtxt :: Context -> Name -> [Name] -> Elab' aux Name
 uniqueNameCtxt ctxt n hs 
     | n `elem` hs = uniqueNameCtxt ctxt (nextName n) hs
-    | [_] <- lookupTy Nothing n ctxt = uniqueNameCtxt ctxt (nextName n) hs
+    | [_] <- lookupTy n ctxt = uniqueNameCtxt ctxt (nextName n) hs
     | otherwise = return n
 
 elog :: String -> Elab' aux ()
@@ -356,7 +356,7 @@ prepare_apply fn imps =
     mkClaims _ _ _ _
             | Var n <- fn
                    = do ctxt <- get_context
-                        case lookupTy Nothing n ctxt of
+                        case lookupTy n ctxt of
                                 [] -> lift $ tfail $ NoSuchVariable n  
                                 _ -> fail $ "Too many arguments for " ++ show fn
             | otherwise = fail $ "Too many arguments for " ++ show fn
@@ -524,6 +524,19 @@ arg :: Name -> Name -> Elab' aux ()
 arg n tyhole = do ty <- unique_hole tyhole
                   claim ty RType
                   forall n (Var ty)
+
+-- try a tactic, if it adds any unification problem, return an error
+no_errors :: Elab' aux () -> Elab' aux ()
+no_errors tac 
+   = do ps <- get_probs
+        tac
+        ps' <- get_probs
+        if (length ps' > length ps) then
+           case reverse ps' of
+                ((x,y,env,err) : _) ->
+                   let env' = map (\(x, b) -> (x, binderTy b)) env in
+                              lift $ tfail $ CantUnify False x y err env' 0
+           else return ()
 
 -- Try a tactic, if it fails, try another
 try :: Elab' aux a -> Elab' aux a -> Elab' aux a

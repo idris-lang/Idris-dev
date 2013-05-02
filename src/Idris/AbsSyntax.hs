@@ -24,7 +24,7 @@ import Data.Either
 import Debug.Trace
 
 import Util.Pretty
-
+import Util.System
 
 getContext :: Idris Context
 getContext = do i <- getIState; return (tt_ctxt i)
@@ -41,13 +41,15 @@ getLibs = do i <- getIState; return (idris_libs i)
 addLib :: String -> Idris ()
 addLib f = do i <- getIState; putIState $ i { idris_libs = f : idris_libs i }
 
-addDyLib :: String -> Idris ()
-addDyLib lib = do i <- getIState
-                  handle <- lift $ tryLoadLib lib
-                  case handle of
-                    Nothing -> fail $ "Could not load dynamic lib \"" ++ lib ++ "\""
-                    Just x -> do let libs = idris_dynamic_libs i
-                                 putIState $ i { idris_dynamic_libs = x:libs }
+addDyLib :: [String] -> Idris (Either DynamicLib String)
+addDyLib libs = do i <- getIState
+                   handle <- lift $ mapM (\l -> catchIO (tryLoadLib l) (\_ -> return Nothing)) libs
+                   case msum handle of
+                     Nothing -> return (Right $ "Could not load dynamic alternatives \"" ++
+                                                concat (intersperse "," libs) ++ "\"")
+                     Just x -> do let ls = idris_dynamic_libs i
+                                  putIState $ i { idris_dynamic_libs = x:ls }
+                                  return (Left x)
 
 addHdr :: String -> Idris ()
 addHdr f = do i <- getIState; putIState $ i { idris_hdrs = f : idris_hdrs i }
@@ -88,7 +90,7 @@ getCoercionsTo i ty =
         findCoercions fn cs
     where findCoercions t [] = []
           findCoercions t (n : ns) =
-             let ps = case lookupTy Nothing n (tt_ctxt i) of
+             let ps = case lookupTy n (tt_ctxt i) of
                          [ty] -> case unApply (getRetTy ty) of
                                    (t', _) -> 
                                       if t == t' then [n] else []
@@ -119,7 +121,7 @@ addToCalledG n ns = return () -- TODO
 addInstance :: Bool -> Name -> Name -> Idris ()
 addInstance int n i 
     = do ist <- getIState
-         case lookupCtxt Nothing n (idris_classes ist) of
+         case lookupCtxt n (idris_classes ist) of
                 [CI a b c d ins] ->
                      do let cs = addDef n (CI a b c d (addI i ins)) (idris_classes ist)
                         putIState $ ist { idris_classes = cs }
@@ -139,7 +141,7 @@ addInstance int n i
 addClass :: Name -> ClassInfo -> Idris ()
 addClass n i 
    = do ist <- getIState
-        let i' = case lookupCtxt Nothing n (idris_classes ist) of
+        let i' = case lookupCtxt n (idris_classes ist) of
                       [c] -> c { class_instances = class_instances i }
                       _ -> i
         putIState $ ist { idris_classes = addDef n i' (idris_classes ist) }
@@ -193,7 +195,7 @@ getName = do i <- getIState;
 checkUndefined :: FC -> Name -> Idris ()
 checkUndefined fc n 
     = do i <- getContext
-         case lookupTy Nothing n i of
+         case lookupTy n i of
              (_:_)  -> fail $ show fc ++ ":" ++ 
                        show n ++ " already defined"
              _ -> return ()
@@ -201,7 +203,7 @@ checkUndefined fc n
 isUndefined :: FC -> Name -> Idris Bool
 isUndefined fc n 
     = do i <- getContext
-         case lookupTy Nothing n i of
+         case lookupTy n i of
              (_:_)  -> return False
              _ -> return True
 
@@ -641,7 +643,7 @@ getPriority :: IState -> PTerm -> Int
 getPriority i tm = 1 -- pri tm 
   where
     pri (PRef _ n) =
-        case lookupP Nothing n (tt_ctxt i) of
+        case lookupP n (tt_ctxt i) of
             ((P (DCon _ _) _ _):_) -> 1
             ((P (TCon _ _) _ _):_) -> 1
             ((P Ref _ _):_) -> 1
@@ -882,9 +884,9 @@ addImpl' inpat env infns ist ptm = ai (zip env (repeat Nothing)) ptm
 
 aiFn :: Bool -> Bool -> IState -> FC -> Name -> [PArg] -> Either Err PTerm
 aiFn inpat True ist fc f []
-  = case lookupDef Nothing f (tt_ctxt ist) of
+  = case lookupDef f (tt_ctxt ist) of
         [] -> Right $ PPatvar fc f
-        alts -> let ialts = lookupCtxt Nothing f (idris_implicits ist) in
+        alts -> let ialts = lookupCtxt f (idris_implicits ist) in
                     -- trace (show f ++ " " ++ show (fc, any (all imp) ialts, ialts, any constructor alts)) $ 
                     if (not (vname f) || tcname f 
                            || any constructor alts || any allImp ialts)
@@ -904,7 +906,7 @@ aiFn inpat expat ist fc f as
     | f `elem` primNames = Right $ PApp fc (PRef fc f) as
 aiFn inpat expat ist fc f as
           -- This is where namespaces get resolved by adding PAlternative
-        = case lookupCtxtName Nothing f (idris_implicits ist) of
+        = case lookupCtxtName f (idris_implicits ist) of
             [(f',ns)] -> Right $ mkPApp fc (length ns) (PRef fc f') (insertImpl ns as)
             [] -> if f `elem` idris_metavars ist
                     then Right $ PApp fc (PRef fc f) as
@@ -949,7 +951,7 @@ stripLinear :: IState -> PTerm -> PTerm
 stripLinear i tm = evalState (sl tm) [] where 
     sl :: PTerm -> State [Name] PTerm
     sl (PRef fc f) 
-         | (_:_) <- lookupTy Nothing f (tt_ctxt i)
+         | (_:_) <- lookupTy f (tt_ctxt i)
               = return $ PRef fc f
          | otherwise = do ns <- get
                           if (f `elem` ns)
@@ -1074,14 +1076,16 @@ matchClause' names i x y = checkRpts $ match (fullApp x) (fullApp y) where
 --     match (PRef _ n) (PRef _ n') | n == n' = return []
 --                                  | otherwise = Nothing
     match (PRef f n) (PApp _ x []) = match (PRef f n) x
+    match (PPatvar f n) xr = match (PRef f n) xr
+    match xr (PPatvar f n) = match xr (PRef f n)
     match (PApp _ x []) (PRef f n) = match x (PRef f n)
     match (PRef _ n) tm@(PRef _ n')
         | n == n' && not names && 
-          (not (isConName Nothing n (tt_ctxt i)) || tm == Placeholder)
+          (not (isConName n (tt_ctxt i)) || tm == Placeholder)
             = return [(n, tm)]
         | n == n' = return []
     match (PRef _ n) tm 
-        | not names && (not (isConName Nothing n (tt_ctxt i)) || tm == Placeholder)
+        | not names && (not (isConName n (tt_ctxt i)) || tm == Placeholder)
             = return [(n, tm)]
     match (PEq _ l r) (PEq _ l' r') = do ml <- match' l l'
                                          mr <- match' r r'

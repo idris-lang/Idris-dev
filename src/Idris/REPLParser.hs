@@ -66,7 +66,7 @@ pCmd = try (do cmd ["q", "quit"]; eof; return Quit)
    <|> do t <- pFullExpr defaultSyntax; return (Eval t)
    <|> do eof; return NOP
 
- where toPath n = foldl1 (</>) $ splitOn "." n
+ where toPath n = foldl1' (</>) $ splitOn "." n
 
 pOption :: IParser Opt
 pOption = do discard (symbol "errorcontext"); return ErrContext

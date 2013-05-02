@@ -1,5 +1,5 @@
 Name:           idris
-Version:        0.9.7
+Version:        0.9.8
 License:        BSD3
 License-file:   LICENSE
 Author:         Edwin Brady
@@ -58,6 +58,7 @@ Extra-source-files:    lib/Makefile  lib/*.idr lib/Prelude/*.idr
                        lib/Control/Monad/*.idr lib/Language/*.idr
                        lib/System/Concurrency/*.idr
                        lib/Data/*.idr lib/Debug/*.idr
+                       lib/Data/Vect/*.idr
                        lib/Decidable/*.idr
                        tutorial/examples/*.idr lib/base.ipkg
                        effects/Makefile effects/*.idr effects/Effect/*.idr
@@ -111,7 +112,7 @@ Executable     idris
                                 haskeline>=0.7, split, directory,
                                 containers, process, transformers, filepath,
                                 directory, binary, bytestring, text, pretty,
-                                language-java>=0.2.2, libffi, unix
+                                language-java>=0.2.2, libffi
 
                Extensions:      MultiParamTypeClasses, FunctionalDependencies,
                                 FlexibleInstances, TemplateHaskell
@@ -119,7 +120,10 @@ Executable     idris
                ghc-options: -rtsopts
                if os(linux)
                   cpp-options: -DLINUX
+                  build-depends: unix
                if os(darwin)
                   cpp-options: -DMACOSX
+                  build-depends: unix
                if os(windows)
                   cpp-options: -DWINDOWS
+                  build-depends: Win32

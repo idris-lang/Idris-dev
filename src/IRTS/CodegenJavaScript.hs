@@ -139,6 +139,7 @@ translateConstant ChType  = "__IDRRT__.Char"
 translateConstant StrType = "__IDRRT__.String"
 translateConstant BIType  = "__IDRRT__.Integer"
 translateConstant FlType  = "__IDRRT__.Float"
+translateConstant PtrType = "__IDRRT__.Ptr"
 translateConstant Forgot  = "__IDRRT__.Forgot"
 translateConstant c       =
   "(function(){throw 'Unimplemented Const: " ++ show c ++ "';})()"
@@ -450,7 +451,7 @@ translateCase var (SConstCase ty e)
   | IType    <- ty = matchHelper "Int"
   | BIType   <- ty = matchHelper "Integer"
   | FlType   <- ty = matchHelper "Float"
-  | PtrType  <- ty = matchHelper "Pointer"
+  | PtrType  <- ty = matchHelper "Ptr"
   | Forgot   <- ty = matchHelper "Forgot"
   where
     matchHelper tyName = translateTypeMatch var tyName e

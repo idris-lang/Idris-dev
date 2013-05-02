@@ -2,15 +2,15 @@ include ../config.mk
 
 OBJS = idris_rts.o idris_heap.o idris_gc.o idris_gmp.o idris_stdfgn.o idris_bitstring.o idris_opts.o idris_stats.o
 HDRS = idris_rts.h idris_heap.h idris_gc.h idris_gmp.h idris_stdfgn.h idris_bitstring.h idris_opts.h idris_stats.h
-CFLAGS = -O2 -Wall 
+CFLAGS = -O2 -Wall -fPIC
 
 ifneq ($(GMP_INCLUDE_DIR),)
-  CFLAGS += -isystem $(GMP_INCLUDE_DIR)
+	CFLAGS += -isystem $(GMP_INCLUDE_DIR)
 endif
 
 LIBTARGET = libidris_rts.a
 
-check : $(LIBTARGET)
+check : $(LIBTARGET) $(DYLIBTARGET)
 
 $(LIBTARGET) : $(OBJS)
 	ar r $(LIBTARGET) $(OBJS)
@@ -21,7 +21,7 @@ install : .PHONY
 	install $(LIBTARGET) $(HDRS) $(TARGET)
 
 clean : .PHONY
-	rm -f $(OBJS) $(LIBTARGET)
+	rm -f $(OBJS) $(LIBTARGET) $(DYLIBTARGET)
 
 idris_rts.o: idris_rts.h
 

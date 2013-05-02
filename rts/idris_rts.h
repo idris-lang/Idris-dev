@@ -148,6 +148,10 @@ typedef intptr_t i_int;
 VAL MKFLOAT(VM* vm, double val);
 VAL MKSTR(VM* vm, char* str);
 VAL MKPTR(VM* vm, void* ptr);
+VAL MKB8(VM* vm, uint8_t b);
+VAL MKB16(VM* vm, uint16_t b);
+VAL MKB32(VM* vm, uint32_t b);
+VAL MKB64(VM* vm, uint64_t b);
 
 // following versions don't take a lock when allocating
 VAL MKFLOATc(VM* vm, double val);
@@ -202,6 +206,12 @@ VAL idris_castIntStr(VM* vm, VAL i);
 VAL idris_castStrInt(VM* vm, VAL i);
 VAL idris_castFloatStr(VM* vm, VAL i);
 VAL idris_castStrFloat(VM* vm, VAL i);
+
+// Raw memory manipulation
+void idris_memset(void* ptr, i_int offset, VAL c, i_int size);
+int idris_peek(void* ptr, i_int offset);
+void idris_poke(void* ptr, i_int offset, VAL data);
+void idris_memmove(void* dest, void* src, i_int dest_offset, i_int src_offset, i_int size);
 
 // String primitives
 

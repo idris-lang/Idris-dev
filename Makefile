@@ -17,8 +17,8 @@ test:
 	make -C test
 
 relib:
-	make -C lib IDRIS=../dist/build/idris/idris clean
-	make -C effects IDRIS=../dist/build/idris/idris clean
+	make -C lib IDRIS=../dist/build/idris/idris RTS=../dist/build/rts/libidris_rts clean
+	make -C effects IDRIS=../dist/build/idris/idris RTS=../dist/build/rts/libidris_rts DIST=../dist/build clean
 	$(CABAL) install $(CABALFLAGS)
 
 linecount:
