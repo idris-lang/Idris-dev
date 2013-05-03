@@ -4,7 +4,7 @@
 " highlighter to support idris.
 "
 " author: raichoo (raichoo@googlemail.com)
-" date: Mar 20 2013
+" date: May 3 2013
 
 syn match idrisModule "\<\(module\|namespace\)\>"
 syn match idrisImport "\<import\>"
@@ -30,12 +30,6 @@ syn match idrisDSL "\(lambda\|variable\|\index_first\|index_next\)"
 syn region idrisString start=+"+ skip=+\\\\\|\\"+ end=+"+
 syn region idrisBlockComment start="{-" end="-}" contains=idrisBlockComment
 syn region idrisProofBlock start="\(default\s\+\)\?\(proof\|tactics\) *{" end="}" contains=idrisTactic
-
-syn match idrisBadLeadingWhiteSpace "^\s*\t\+"
-syn match idrisBadTrailingWhiteSpace "\s\+$"
-
-highlight idrisBadLeadingWhiteSpace ctermbg=red
-highlight idrisBadTrailingWhiteSpace ctermbg=red
 
 highlight def link idrisImport Structure
 highlight def link idrisModule Structure
