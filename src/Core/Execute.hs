@@ -257,14 +257,16 @@ execApp' env ctxt (EP _ (UN "mkForeign") _) (_:fn:(EHandle h):rest)
                                                            execApp' env ctxt ioUnit rest
 
 execApp' env ctxt (EP _ (UN "mkForeign") _) (_:fn:(EPtr p):rest)
-    | Just (FFun "isNull" _ _) <- foreignFromTT fn = let res = if p == nullPtr then 1 else 0 in
-                                                     execApp' env ctxt (EConstant (I res)) rest
+    | Just (FFun "isNull" _ _) <- foreignFromTT fn = let res = ioWrap . EConstant . I $
+                                                               if p == nullPtr then 1 else 0
+                                                     in execApp' env ctxt res rest
 
-execApp' env ctxt f@(EP _ (UN "mkForeign") _) args@(ty:fn:xs) | Just (FFun _ argTs retT) <- foreignFromTT fn
+execApp' env ctxt f@(EP _ (UN "mkForeign") _) args@(ty:fn:xs) | Just (FFun f argTs retT) <- foreignFromTT fn
                                                               , length xs >= length argTs =
     do res <- stepForeign (ty:fn:take (length argTs) xs)
        case res of
-         Nothing -> fail "Could not call foreign function"
+         Nothing -> fail $ "Could not call foreign function \"" ++ f ++
+                           "\" with args " ++ show (take (length argTs) xs)
          Just r -> return (mkEApp r (drop (length argTs) xs))
                                                              | otherwise = return (mkEApp f args)
 
