@@ -167,6 +167,7 @@ ioUnit = ioWrap (EP Ref unitCon EErased)
 type ExecEnv = [(Name, ExecVal)]
 
 doExec :: ExecEnv -> Context -> Term -> Exec ExecVal
+doExec env ctxt p@(P Ref n ty) | Just v <- lookup n env = return v
 doExec env ctxt p@(P Ref n ty) =
     do let val = lookupDef n ctxt
        case val of
@@ -392,6 +393,7 @@ execCase env ctxt ns sc args =
     let arity = length ns in
     if arity <= length args
     then do let amap = zip ns args
+--            trace ("Case " ++ show sc ++ "\n   in " ++ show amap ++"\n   in env " ++ show env ++ "\n\n" ) $ return ()
             caseRes <- execCase' env ctxt amap sc
             case caseRes of
               Just res -> Just <$> execApp' (map (\(n, tm) -> (n, tm)) amap ++ env) ctxt res (drop arity args)
