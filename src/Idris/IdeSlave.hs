@@ -2,6 +2,11 @@
 
 module Idris.IdeSlave(receiveMessage, sendMessage, IdeSlaveCommand(..), sexpToCommand, SExp(..)) where
 
+import Idris.AbsSyntaxTree
+import Idris.AbsSyntax
+
+import Control.Monad.Trans ( liftIO, lift )
+
 import Text.Printf
 import Numeric
 import Data.List
@@ -92,10 +97,14 @@ sexpToCommand (List [SymbolAtom "repl-completions", StringAtom prefix]) = Just (
 sexpToCommand (List [SymbolAtom "load-file", StringAtom filename])      = Just (LoadFile filename)
 sexpToCommand _                                                         = Nothing
 
-receiveMessage :: IO (SExp)
-receiveMessage
-  = do x <- getLine
-       return (receiveString x)
+receiveMessage :: Idris (SExp)
+receiveMessage = do x <- liftIO $ getLine
+                    case receiveString x of
+                      (List [cmd, (IntegerAtom id)]) ->
+                         do i <- getIState
+                            putIState $ (i { ideslave_counter = id } )
+                            return cmd
+
 
 receiveString :: String -> SExp
 receiveString x =
@@ -109,14 +118,15 @@ receiveString x =
                       Right r -> r)
     _ -> error "readHex failed"
 
-sendMessage :: SExpable a => Integer -> Either a a -> IO ()
-sendMessage id s =
-  -- TODO: get real output here!!!
-  case s of
-       Left err -> putStrLn $ conv (List [SymbolAtom "error", toSExp err])
-       Right succ -> putStrLn $ conv (List [SymbolAtom "ok", toSExp succ])
-  where conv sexp =
-          let str = sExpToString (List [SymbolAtom "return", sexp, IntegerAtom id]) in (getHexLength str) ++ str
+sendMessage :: SExpable a => Either a a -> Idris ()
+sendMessage s =
+  do i <- getIState
+     let msg = case s of
+           Left err -> List [SymbolAtom "error", toSExp err]
+           Right succ -> List [SymbolAtom "ok", toSExp succ]
+     liftIO $ putStrLn (conv (ideslave_counter i) msg)
+       where conv id sexp =
+               let str = sExpToString (List [SymbolAtom "return", sexp, IntegerAtom id]) in (getHexLength str) ++ str
 
 getHexLength :: String -> String
 getHexLength s = printf "%06x" (1 + (length s))

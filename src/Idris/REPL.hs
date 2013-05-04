@@ -85,27 +85,27 @@ repl orig mods
 ideslave :: IState -> [FilePath] -> Idris ()
 ideslave orig mods
   = do idrisCatch
-         (do x <- liftIO $ receiveMessage
-             case x of
-                  (List [(SymbolAtom "idris"), cmd, (IntegerAtom id)]) ->
-                    case sexpToCommand cmd of
-                         Just (Interpret cmd) ->
-                           do i <- getIState
-                              let fn = case mods of
-                                            (f:_) -> f
-                                            _ -> ""
-                              case parseCmd i cmd of
-                                   Left err -> do liftIO $ sendMessage id (Left (show err))
-                                   Right cmd -> do idrisCatch (do xs <- process fn cmd
-                                                                  liftIO $ sendMessage id (Right (xs, "no output")))
-                                                              (\e -> do liftIO $ sendMessage id (Left (show e)))
-                         Just (REPLCompletions str) -> do (unused, compls) <- replCompletion (reverse str, "")
-                                                          liftIO $ sendMessage id (Right (map replacement compls, reverse unused))
-                         Just (LoadFile filename) -> do clearErr
-                                                        mod <- loadModule filename
-                                                        liftIO $ sendMessage id (Right (SymbolAtom ":good"))
-                         Nothing -> do liftIO $ sendMessage id (Left "did not understand"))
-         (\e -> do liftIO $ sendMessage 0 (Left (show e)))
+         (do sexp <- receiveMessage
+             case sexpToCommand sexp of
+               Just (Interpret cmd) ->
+                 do i <- getIState
+                    let fn = case mods of
+                                  (f:_) -> f
+                                  _ -> ""
+                    case parseCmd i cmd of
+                         Left err -> do sendMessage (Left (show err))
+                         Right cmd -> do idrisCatch
+                                           (do xs <- process fn cmd
+                                               sendMessage (Right (xs, "no output")))
+                                           (\e -> do sendMessage (Left (show e)))
+               Just (REPLCompletions str) ->
+                 do (unused, compls) <- replCompletion (reverse str, "")
+                    sendMessage (Right (map replacement compls, reverse unused))
+               Just (LoadFile filename) -> do clearErr
+                                              mod <- loadModule filename
+                                              sendMessage (Right (SymbolAtom "good"))
+               Nothing -> do sendMessage (Left "did not understand"))
+         (\e -> do sendMessage (Left (show e)))
        ideslave orig mods
 
 -- | The prompt consists of the currently loaded modules, or "Idris" if there are none

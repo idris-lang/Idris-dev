@@ -93,7 +93,8 @@ data IState = IState {
     ibc_write :: [IBCWrite],
     compiled_so :: Maybe String,
     idris_dynamic_libs :: [DynamicLib],
-    idris_language_extensions :: [LanguageExt]
+    idris_language_extensions :: [LanguageExt],
+    ideslave_counter :: Integer
    }
 
 data SizeChange = Smaller | Same | Bigger | Unknown
@@ -145,7 +146,7 @@ idrisInit = IState initContext [] [] emptyContext emptyContext emptyContext
                    emptyContext emptyContext emptyContext emptyContext 
                    emptyContext emptyContext emptyContext emptyContext
                    [] "" defaultOpts 6 [] [] [] [] [] [] [] [] []
-                   [] Nothing Nothing [] [] [] Hidden False [] Nothing [] []
+                   [] Nothing Nothing [] [] [] Hidden False [] Nothing [] [] 0
 
 -- | The monad for the main REPL - reading and processing files and updating 
 -- global state (hence the IO inner monad).
