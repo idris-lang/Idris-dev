@@ -85,7 +85,10 @@ repl orig mods
 ideslave :: IState -> [FilePath] -> Idris ()
 ideslave orig mods
   = do idrisCatch
-         (do sexp <- receiveMessage
+         (do l <- liftIO $ getLine
+             let (sexp, id) = receiveMessage l
+             i <- getIState
+             putIState $ i { idris_outputmode = (IdeSlave id) }
              case sexpToCommand sexp of
                Just (Interpret cmd) ->
                  do i <- getIState
@@ -93,19 +96,19 @@ ideslave orig mods
                                   (f:_) -> f
                                   _ -> ""
                     case parseCmd i cmd of
-                         Left err -> do sendMessage (Left (show err))
+                         Left err -> do liftIO $ putStrLn $ sendMessage id (Left (show err))
                          Right cmd -> do idrisCatch
                                            (do xs <- process fn cmd
-                                               sendMessage (Right (xs, "no output")))
-                                           (\e -> do sendMessage (Left (show e)))
+                                               liftIO $ putStrLn $ sendMessage id (Right (xs, "no output")))
+                                           (\e -> do liftIO $ putStrLn $ sendMessage id (Left (show e)))
                Just (REPLCompletions str) ->
                  do (unused, compls) <- replCompletion (reverse str, "")
-                    sendMessage (Right (map replacement compls, reverse unused))
+                    liftIO $ putStrLn $ sendMessage id (Right (map replacement compls, reverse unused))
                Just (LoadFile filename) -> do clearErr
                                               mod <- loadModule filename
-                                              sendMessage (Right (SymbolAtom "good"))
-               Nothing -> do sendMessage (Left "did not understand"))
-         (\e -> do sendMessage (Left (show e)))
+                                              liftIO $ putStrLn $ sendMessage id (Right (SymbolAtom "good"))
+               Nothing -> do liftIO $ putStrLn $ sendMessage id (Left "did not understand"))
+         (\e -> do liftIO $ putStrLn $ sendMessage 0 (Left (show e)))
        ideslave orig mods
 
 -- | The prompt consists of the currently loaded modules, or "Idris" if there are none
@@ -498,7 +501,7 @@ parseTarget _ = error "unknown target" -- FIXME: partial function
 parseArgs :: [String] -> [Opt]
 parseArgs [] = []
 parseArgs ("--quiet":ns)         = Quiet : (parseArgs ns)
-parseArgs ("--ideslave":ns)      = IdeSlave : (parseArgs ns)
+parseArgs ("--ideslave":ns)      = Ideslave : (parseArgs ns)
 parseArgs ("--log":lvl:ns)       = OLogging (read lvl) : (parseArgs ns)
 parseArgs ("--noprelude":ns)     = NoPrelude : (parseArgs ns)
 parseArgs ("--check":ns)         = NoREPL : (parseArgs ns)
@@ -552,7 +555,7 @@ idrisMain :: [Opt] -> Idris ()
 idrisMain opts =
     do let inputs = opt getFile opts
        let quiet = Quiet `elem` opts
-       let idesl = IdeSlave `elem` opts
+       let idesl = Ideslave `elem` opts
        let runrepl = not (NoREPL `elem` opts)
        let output = opt getOutput opts
        let newoutput = opt getNewOutput opts

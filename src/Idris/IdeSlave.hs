@@ -1,11 +1,6 @@
 {-# LANGUAGE FlexibleInstances, IncoherentInstances #-}
 
-module Idris.IdeSlave(receiveMessage, sendMessage, IdeSlaveCommand(..), sexpToCommand, SExp(..)) where
-
-import Idris.AbsSyntaxTree
-import Idris.AbsSyntax
-
-import Control.Monad.Trans ( liftIO, lift )
+module Idris.IdeSlave(receiveMessage, sendMessage, IdeSlaveCommand(..), sexpToCommand, toSExp, sExpToString, SExp(..)) where
 
 import Text.Printf
 import Numeric
@@ -33,6 +28,9 @@ class SExpable a where
 
 instance SExpable SExp where
   toSExp a = a
+
+instance SExpable () where
+  toSExp a = List [ StringAtom "Unit" ]
 
 instance SExpable Bool where
   toSExp True  = BoolAtom True
@@ -97,14 +95,10 @@ sexpToCommand (List [SymbolAtom "repl-completions", StringAtom prefix]) = Just (
 sexpToCommand (List [SymbolAtom "load-file", StringAtom filename])      = Just (LoadFile filename)
 sexpToCommand _                                                         = Nothing
 
-receiveMessage :: Idris (SExp)
-receiveMessage = do x <- liftIO $ getLine
-                    case receiveString x of
-                      (List [cmd, (IntegerAtom id)]) ->
-                         do i <- getIState
-                            putIState $ (i { ideslave_counter = id } )
-                            return cmd
-
+receiveMessage :: String -> (SExp, Integer)
+receiveMessage x = case receiveString x of
+                        (List [cmd, (IntegerAtom id)]) ->
+                          (cmd, id)
 
 receiveString :: String -> SExp
 receiveString x =
@@ -118,15 +112,14 @@ receiveString x =
                       Right r -> r)
     _ -> error "readHex failed"
 
-sendMessage :: SExpable a => Either a a -> Idris ()
-sendMessage s =
-  do i <- getIState
-     let msg = case s of
-           Left err -> List [SymbolAtom "error", toSExp err]
-           Right succ -> List [SymbolAtom "ok", toSExp succ]
-     liftIO $ putStrLn (conv (ideslave_counter i) msg)
-       where conv id sexp =
-               let str = sExpToString (List [SymbolAtom "return", sexp, IntegerAtom id]) in (getHexLength str) ++ str
+sendMessage :: SExpable a => Integer -> Either a a -> String
+sendMessage id s =
+  let sexp = case s of
+        Left err -> List [SymbolAtom "error", toSExp err]
+        Right succ -> List [SymbolAtom "ok", toSExp succ]
+  in conv id sexp
+  where conv id sexp =
+          let str = sExpToString (List [SymbolAtom "return", sexp, IntegerAtom id]) in (getHexLength str) ++ str
 
 getHexLength :: String -> String
 getHexLength s = printf "%06x" (1 + (length s))

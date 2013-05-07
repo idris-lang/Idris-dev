@@ -46,6 +46,9 @@ defaultOpts = IOption 0 False False True False False True True False False ViaC 
 
 data LanguageExt = TypeProviders deriving (Show, Eq, Read, Ord)
 
+-- | The output mode in use
+data OutputMode = RawOutput | IdeSlave Integer deriving Show
+
 -- TODO: Add 'module data' to IState, which can be saved out and reloaded quickly (i.e
 -- without typechecking).
 -- This will include all the functions and data declarations, plus fixity declarations
@@ -94,7 +97,7 @@ data IState = IState {
     compiled_so :: Maybe String,
     idris_dynamic_libs :: [DynamicLib],
     idris_language_extensions :: [LanguageExt],
-    ideslave_counter :: Integer
+    idris_outputmode :: OutputMode
    }
 
 data SizeChange = Smaller | Same | Bigger | Unknown
@@ -146,7 +149,7 @@ idrisInit = IState initContext [] [] emptyContext emptyContext emptyContext
                    emptyContext emptyContext emptyContext emptyContext 
                    emptyContext emptyContext emptyContext emptyContext
                    [] "" defaultOpts 6 [] [] [] [] [] [] [] [] []
-                   [] Nothing Nothing [] [] [] Hidden False [] Nothing [] [] 0
+                   [] Nothing Nothing [] [] [] Hidden False [] Nothing [] [] RawOutput
 
 -- | The monad for the main REPL - reading and processing files and updating 
 -- global state (hence the IO inner monad).
@@ -205,7 +208,7 @@ data Opt = Filename String
          | Ver
          | Usage
          | Quiet
-         | IdeSlave
+         | Ideslave
          | ShowLibs
          | ShowLibdir
          | ShowIncs

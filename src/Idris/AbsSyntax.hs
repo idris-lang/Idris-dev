@@ -8,6 +8,7 @@ import Core.Evaluate
 import Core.Elaborate hiding (Tactic(..))
 import Core.Typecheck
 import Idris.AbsSyntaxTree
+import Idris.IdeSlave
 import IRTS.CodegenCommon
 import Util.DynamicLinker
 
@@ -25,6 +26,8 @@ import Debug.Trace
 
 import Util.Pretty
 import Util.System
+
+import Text.Printf (printf)
 
 getContext :: Idris Context
 getContext = do i <- getIState; return (tt_ctxt i)
@@ -239,7 +242,17 @@ solveDeferred n = do i <- getIState
                      putIState $ i { idris_metavars = idris_metavars i \\ [n] }
 
 iputStrLn :: String -> Idris ()
-iputStrLn = liftIO . putStrLn
+iputStrLn s = do i <- getIState
+                 case idris_outputmode i of
+                   RawOutput -> liftIO $ putStrLn s
+                   IdeSlave n -> liftIO $ putStrLn (conv n (toSExp s))
+  where conv id sexp
+          = let sex = List [SymbolAtom "write-string", sexp, IntegerAtom id] in
+                let str = sExpToString sex in
+                    (getHexLength str) ++ str
+
+getHexLength :: String -> String
+getHexLength s = printf "%06x" (1 + (length s))
 
 iWarn :: FC -> String -> Idris ()
 iWarn fc err = liftIO $ putStrLn (show fc ++ ":" ++ err)
