@@ -77,11 +77,12 @@ atomC = do string "True"; return (BoolAtom True)
     <|> do string "False"; return (BoolAtom False)
     <|> do xs <- many (noneOf " \n\t\r\"()"); return (SymbolAtom xs)
 
-quotedChar = noneOf "\""
+quotedChar = try (string "\\\\" >> return '\\')
          <|> try (string "\\\"" >> return '"')
+         <|> noneOf "\""
 
 parseSExp :: String -> Either ParseError SExp
-parseSExp input = parse pSExp "(unknown)" input
+parseSExp = parse pSExp "(unknown)"
 
 data IdeSlaveCommand = REPLCompletions String
                      | Interpret String
