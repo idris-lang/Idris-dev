@@ -16,6 +16,7 @@ import           Control.Monad.Trans.State
 import           Data.Char
 import           Data.Maybe (fromJust)
 import           Data.List (isPrefixOf, isSuffixOf, intercalate, foldl')
+import           Data.Int
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
 import           Language.Java.Parser
@@ -470,10 +471,19 @@ integerType = ClassType [(Ident "Integer", [])]
 longType :: ClassType
 longType = ClassType [(Ident "Long", [])]
 
+nextIntTy :: IntTy -> IntTy
+nextIntTy IT8 = IT16
+nextIntTy IT16 = IT32
+nextIntTy IT32 = IT64
+nextIntTy IT64 = IT64
+nextIntTy ITNative = IT64
+
+intTyToIdent :: IntTy -> Ident
 intTyToIdent IT8  = Ident "Byte"
 intTyToIdent IT16 = Ident "Short"
-intTyToIdent IT32 = Ident "Int"
+intTyToIdent IT32 = Ident "Integer"
 intTyToIdent IT64 = Ident "Long"
+intTyToIdent ITNative = Ident "Integer"
 
 intTyToClass :: IntTy -> ClassType
 intTyToClass ty = ClassType [(intTyToIdent ty, [])]
@@ -483,12 +493,14 @@ intTyToMethod IT8  = "byteValue"
 intTyToMethod IT16 = "shortValue"
 intTyToMethod IT32 = "intValue"
 intTyToMethod IT64 = "longValue"
+intTyToMethod ITNative = "intValue"
 
 intTyToPrimTy :: IntTy -> PrimType
 intTyToPrimTy IT8  = ByteT
 intTyToPrimTy IT16 = ShortT
 intTyToPrimTy IT32 = IntT
 intTyToPrimTy IT64 = LongT
+intTyToPrimTy ITNative = IntT
 
 bigIntegerType :: ClassType
 bigIntegerType = ClassType [(Ident "BigInteger", [])]
@@ -997,7 +1009,7 @@ mkForeignVarAccess (FInt ty) var =
                                           (Ident (intTyToMethod ty))
                                           []
   )
-  <$> mkVarAccess (Just integerType) var
+  <$> mkVarAccess (Just $ intTyToClass ty) var
 mkForeignVarAccess FChar var = Cast (PrimType CharT) <$> mkForeignVarAccess (FInt IT32) var
 mkForeignVarAccess FDouble var = 
   (\ var -> MethodInv $ PrimaryMethodCall (var)
@@ -1245,7 +1257,9 @@ mkExp (SCon conId name args) =
 mkExp (SCase var alts) = mkCase False var alts
 mkExp (SChkCase var alts) = mkCase True var alts
 mkExp (SProj var i) = mkProjection var i
-mkExp (SConst (I x)) = return $ mkPrimitive "Integer" (Int (toInteger x))
+mkExp (SConst (I x)) = 
+  let x' :: Int32; x' = fromInteger (toInteger x) in
+  return $ mkPrimitive "Integer" (Int (fromInteger (toInteger x')))
 mkExp (SConst (BI x)) =
   return $ InstanceCreation [] 
                             (ClassType [(Ident "BigInteger", [])])
@@ -1309,28 +1323,28 @@ mkExp (SOp LBLt args) =
                      . mkPartialOrder SLt
                    ) 
                    bigIntegerType 
-                   "compare" 
+                   "compareTo" 
                    args
 mkExp (SOp LBLe args) = 
   mkMethodOpChain1 ( mkBoolToNumber bigIntegerType 
                    . mkPartialOrder SLe
                    ) 
                    bigIntegerType 
-                   "compare" 
+                   "compareTo" 
                    args
 mkExp (SOp LBGt args) = 
   mkMethodOpChain1 ( mkBoolToNumber bigIntegerType 
                    . mkPartialOrder SGt
                    ) 
                    bigIntegerType 
-                   "compare" 
+                   "compareTo" 
                    args
 mkExp (SOp LBGe args) = 
   mkMethodOpChain1 ( mkBoolToNumber bigIntegerType 
                    . mkPartialOrder SGe
                    ) 
                    bigIntegerType 
-                   "compare" 
+                   "compareTo" 
                    args
 mkExp (SOp LStrConcat args) =
   mkMethodOpChain (\ exp -> InstanceCreation [] 
@@ -1347,7 +1361,7 @@ mkExp (SOp LStrLt args@[_, _]) =
                    . mkPartialOrder SLt
                    )
                    stringType
-                   "compare"
+                   "compareTo"
                    args
 mkExp (SOp LStrEq args@[_, _]) =
   mkMethodOpChain1 ( mkBoolToNumber integerType)
@@ -1396,9 +1410,67 @@ mkExp (SOp (LGe ty) args) = mkLogicalBinOpExp (intTyToClass ty) GThanE args
 mkExp (SOp (LPlus ty) args) = mkBinOpExp (intTyToClass ty) Add args
 mkExp (SOp (LMinus ty) args) = mkBinOpExp (intTyToClass ty) Sub args
 mkExp (SOp (LTimes ty) args) = mkBinOpExp (intTyToClass ty) Mult args
-mkExp (SOp (LUDiv ty) args) = mkBinOpExpConv (intTyToMethod ty) (intTyToPrimTy ty) (intTyToClass ty) Div args
+mkExp (SOp (LUDiv IT64) (arg:args)) = do
+  (arg:args) <- mapM (mkVarAccess (Just longType)) (arg:args)
+  return $ foldl (\ exp arg ->
+                    MethodInv $ PrimaryMethodCall
+                              ( MethodInv $ PrimaryMethodCall
+                                            ( MethodInv $ TypeMethodCall (J.Name [Ident "BigInteger"])
+                                                                         []
+                                                                         (Ident "valueOf")
+                                                                         [ exp ]
+                                            )
+                                            []
+                                            (Ident "divide")
+                                            [ MethodInv $ TypeMethodCall (J.Name [Ident "BigInteger"])
+                                                                         []
+                                                                         (Ident "valueOf")
+                                                                         [ arg ]
+                                            ]
+                              )
+                              []
+                              (Ident "longValue")
+                              []
+                 )                                
+           arg
+           args
+mkExp (SOp (LUDiv ty) args) = 
+  mkBinOpExpConv (intTyToMethod $ nextIntTy ty) 
+                 (intTyToPrimTy $ nextIntTy ty) 
+                 (intTyToClass ty) 
+                 Div 
+                 args
 mkExp (SOp (LSDiv ty) args) = mkBinOpExp (intTyToClass ty) Div args
-mkExp (SOp (LURem ty) args) = mkBinOpExpConv (intTyToMethod ty) (intTyToPrimTy ty) (intTyToClass ty) Rem args
+mkExp (SOp (LURem IT64) (arg:args)) = do
+  (arg:args) <- mapM (mkVarAccess (Just longType)) (arg:args)
+  return $ foldl (\ exp arg ->
+                    MethodInv $ PrimaryMethodCall
+                              ( MethodInv $ PrimaryMethodCall
+                                            ( MethodInv $ TypeMethodCall (J.Name [Ident "BigInteger"])
+                                                                         []
+                                                                         (Ident "valueOf")
+                                                                         [ exp ]
+                                            )
+                                            []
+                                            (Ident "remainder")
+                                            [ MethodInv $ TypeMethodCall (J.Name [Ident "BigInteger"])
+                                                                         []
+                                                                         (Ident "valueOf")
+                                                                         [ arg ]
+                                            ]
+                              )
+                              []
+                              (Ident "longValue")
+                              []
+                 )                                
+           arg
+           args
+mkExp (SOp (LURem ty) args) =
+  mkBinOpExpConv (intTyToMethod $ nextIntTy ty) 
+                 (intTyToPrimTy $ nextIntTy ty) 
+                 (intTyToClass ty)
+                 Rem
+                 args
 mkExp (SOp (LSRem ty) args) = mkBinOpExp (intTyToClass ty) Rem args
 mkExp (SOp (LSHL ty) args) = mkBinOpExp (intTyToClass ty) LShift args
 mkExp (SOp (LLSHR ty) args) = mkBinOpExp (intTyToClass ty) RRShift args
