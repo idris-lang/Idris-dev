@@ -148,6 +148,10 @@ instance Monad List where
 %include "math.h"
 %lib "m"
 
+pow : (Num a) => a -> Nat -> a
+pow x O = 1
+pow x (S n) = x * (pow x n)
+
 exp : Float -> Float
 exp x = prim__floatExp x
 
