@@ -48,7 +48,7 @@ do_malloc size with (fromInteger (cast size) == size)
 private
 do_memset : Ptr -> Nat -> Bits8 -> Nat -> IO ()
 do_memset ptr offset c size
-  = mkForeign (FFun "idris_memset" [FPtr, FInt, FAny Bits8, FInt] FUnit)
+  = mkForeign (FFun "idris_memset" [FPtr, FInt, FChar, FInt] FUnit)
               ptr (cast offset) c (cast size)
 
 private
@@ -73,7 +73,7 @@ private
 do_poke : Ptr -> Nat -> Vect Bits8 size -> IO ()
 do_poke _   _      []     = return ()
 do_poke ptr offset (b::bs)
-  = do mkForeign (FFun "idris_poke" [FPtr, FInt, FAny Bits8] FUnit) ptr (cast offset) b
+  = do mkForeign (FFun "idris_poke" [FPtr, FInt, FChar] FUnit) ptr (cast offset) b
        do_poke ptr (S offset) bs
 
 instance Handler RawMemory (IOExcept String) where

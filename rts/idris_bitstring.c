@@ -60,6 +60,34 @@ VAL idris_castB32Int(VM *vm, VAL a) {
     return MKINT((i_int)a->info.bits32);
 }
 
+VAL idris_b8const(VM *vm, uint8_t a) {
+    VAL cl = allocate(vm, sizeof(Closure), 0);
+    SETTY(cl, BITS8);
+    cl->info.bits8 = a;
+    return cl;
+}
+
+VAL idris_b16const(VM *vm, uint16_t a) {
+    VAL cl = allocate(vm, sizeof(Closure), 0);
+    SETTY(cl, BITS16);
+    cl->info.bits16 = a;
+    return cl;
+}
+
+VAL idris_b32const(VM *vm, uint32_t a) {
+    VAL cl = allocate(vm, sizeof(Closure), 0);
+    SETTY(cl, BITS32);
+    cl->info.bits32 = a;
+    return cl;
+}
+
+VAL idris_b64const(VM *vm, uint64_t a) {
+    VAL cl = allocate(vm, sizeof(Closure), 0);
+    SETTY(cl, BITS64);
+    cl->info.bits64 = a;
+    return cl;
+}
+
 VAL idris_b8Plus(VM *vm, VAL a, VAL b) {
     VAL cl = allocate(vm, sizeof(Closure), 0);
     SETTY(cl, BITS8);
