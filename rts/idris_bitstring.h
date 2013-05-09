@@ -11,6 +11,10 @@ VAL idris_b16(VM *vm, VAL a);
 VAL idris_b32(VM *vm, VAL a);
 VAL idris_b64(VM *vm, VAL a);
 VAL idris_castB32Int(VM *vm, VAL a);
+VAL idris_b8const(VM *vm, uint8_t a);
+VAL idris_b16const(VM *vm, uint16_t a);
+VAL idris_b32const(VM *vm, uint32_t a);
+VAL idris_b64const(VM *vm, uint64_t a);
 
 VAL idris_b8Plus(VM *vm, VAL a, VAL b);
 VAL idris_b8Minus(VM *vm, VAL a, VAL b);
