@@ -457,7 +457,7 @@ foreignFromTT t = case (unApplyV t) of
                     _ -> trace "failed to construct ffun" Nothing
 
 getFTy :: ExecVal -> Maybe FType
-getFTy (EApp (EP _ (UN "FInt") _) (EP _ (UN intTy) _)) =
+getFTy (EApp (EP _ (UN "FIntT") _) (EP _ (UN intTy) _)) =
     case intTy of
       "ITNative" -> Just $ FInt ITNative
       "IT8" -> Just $ FInt IT8
