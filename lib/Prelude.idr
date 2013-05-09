@@ -29,10 +29,10 @@ instance Show Nat where
     show (S k) = "s" ++ show k
 
 instance Show Int where 
-    show = prim__intToStr
+    show = prim__toStrInt
 
 instance Show Integer where 
-    show = prim__bigIntToStr
+    show = prim__toStrBigInt
 
 instance Show Float where 
     show = prim__floatToStr

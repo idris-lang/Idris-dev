@@ -209,7 +209,7 @@ VAL idris_castStrFloat(VM* vm, VAL i);
 
 // Raw memory manipulation
 void idris_memset(void* ptr, i_int offset, uint8_t c, i_int size);
-int idris_peek(void* ptr, i_int offset);
+uint8_t idris_peek(void* ptr, i_int offset);
 void idris_poke(void* ptr, i_int offset, uint8_t data);
 void idris_memmove(void* dest, void* src, i_int dest_offset, i_int src_offset, i_int size);
 

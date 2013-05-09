@@ -236,25 +236,25 @@ translateExpression (SOp op vars)
   | (LCompl _)  <- op
   , (arg:_)     <- vars = '~' : translateVariableName arg
 
-  | LBPlus      <- op
+  | (LPlus ITBig) <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp ".add(" lhs rhs  ++ ")"
-  | LBMinus     <- op
+  | (LMinus ITBig) <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp ".minus(" lhs rhs ++ ")"
-  | LBTimes     <- op
+  | (LTimes ITBig) <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp ".times(" lhs rhs ++ ")"
-  | LBDiv       <- op
+  | (LSDiv ITBig) <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp ".divide(" lhs rhs ++ ")"
-  | LBMod       <- op
+  | (LSRem ITBig) <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp ".mod(" lhs rhs ++ ")"
-  | LBEq        <- op
+  | (LEq ITBig) <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp ".equals(" lhs rhs ++ ")"
-  | LBLt        <- op
+  | (LLt ITBig) <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp ".lesser(" lhs rhs ++ ")"
-  | LBLe        <- op
+  | (LLe ITBig) <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp ".lesserOrEquals(" lhs rhs ++ ")"
-  | LBGt        <- op
+  | (LGt ITBig) <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp ".greater(" lhs rhs ++ ")"
-  | LBGe        <- op
+  | (LGe ITBig) <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp ".greaterOrEquals(" lhs rhs ++ ")"
 
   | LFPlus      <- op
@@ -285,29 +285,29 @@ translateExpression (SOp op vars)
   | LStrLen     <- op
   , (arg:_)     <- vars = translateVariableName arg ++ ".length"
 
-  | LStrInt     <- op
+  | (LStrInt ITNative) <- op
   , (arg:_)     <- vars = "parseInt(" ++ translateVariableName arg ++ ")"
-  | LIntStr     <- op
+  | (LIntStr ITNative) <- op
   , (arg:_)     <- vars = "String(" ++ translateVariableName arg ++ ")"
-  | LIntBig     <- op
+  | (LSExt ITNative ITBig) <- op
   , (arg:_)     <- vars = "__IDRRT__.bigInt(" ++ translateVariableName arg ++ ")"
-  | LBigInt     <- op
+  | (LTrunc ITBig ITNative) <- op
   , (arg:_)     <- vars = translateVariableName arg ++ ".valueOf()"
-  | LBigStr     <- op
+  | (LIntStr ITBig) <- op
   , (arg:_)     <- vars = translateVariableName arg ++ ".toString()"
-  | LStrBig     <- op
+  | (LStrInt ITBig) <- op
   , (arg:_)     <- vars = "__IDRRT__.bigInt(" ++ translateVariableName arg ++ ")"
   | LFloatStr   <- op
   , (arg:_)     <- vars = "String(" ++ translateVariableName arg ++ ")"
   | LStrFloat   <- op
   , (arg:_)     <- vars = "parseFloat(" ++ translateVariableName arg ++ ")"
-  | LIntFloat   <- op
+  | (LIntFloat ITNative) <- op
   , (arg:_)     <- vars = translateVariableName arg
-  | LFloatInt   <- op
+  | (LFloatInt ITNative) <- op
   , (arg:_)     <- vars = translateVariableName arg
-  | LChInt      <- op
+  | (LChInt ITNative) <- op
   , (arg:_)     <- vars = translateVariableName arg ++ ".charCodeAt(0)"
-  | LIntCh      <- op
+  | (LIntCh ITNative) <- op
   , (arg:_)     <- vars =
     "String.fromCharCode(" ++ translateVariableName arg ++ ")"
 

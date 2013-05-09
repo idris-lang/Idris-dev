@@ -1,4 +1,4 @@
-{-# LANGUAGE RankNTypes, ScopedTypeVariables #-}
+{-# LANGUAGE RankNTypes, ScopedTypeVariables, PatternGuards #-}
 
 module Idris.Primitives(elabPrims) where
 
@@ -34,39 +34,7 @@ partial = Partial NotCovering
 
 primitives =
    -- operators
-  [Prim (UN "prim__addInt") (ty [IType, IType] IType) 2 (iBin (+))
-    (2, LPlus ITNative) total,
-   Prim (UN "prim__subInt") (ty [IType, IType] IType) 2 (iBin (-))
-     (2, LMinus ITNative) total,
-   Prim (UN "prim__mulInt") (ty [IType, IType] IType) 2 (iBin (*))
-     (2, LTimes ITNative) total,
-   Prim (UN "prim__divInt") (ty [IType, IType] IType) 2 (iBin div)
-     (2, LSDiv ITNative) partial,
-   Prim (UN "prim__modInt") (ty [IType, IType] IType) 2 (iBin mod)
-     (2, LSRem ITNative) partial,
-   Prim (UN "prim__andInt") (ty [IType, IType] IType) 2 (iBin (.&.))
-     (2, LAnd ITNative) partial,
-   Prim (UN "prim__orInt") (ty [IType, IType] IType) 2 (iBin (.|.))
-     (2, LOr ITNative) partial,
-   Prim (UN "prim__xorInt") (ty [IType, IType] IType) 2 (iBin xor)
-     (2, LXOr ITNative) partial,
-   Prim (UN "prim__shLInt") (ty [IType, IType] IType) 2 (iBin shiftL)
-     (2, LSHL ITNative) partial,
-   Prim (UN "prim__shRInt") (ty [IType, IType] IType) 2 (iBin shiftR)
-     (2, LASHR ITNative) partial,
-   Prim (UN "prim__complInt") (ty [IType] IType) 1 (iUn complement)
-     (1, LCompl ITNative) partial,
-   Prim (UN "prim__eqInt")  (ty [IType, IType] IType) 2 (biBin (==))
-     (2, LEq ITNative) total,
-   Prim (UN "prim__ltInt")  (ty [IType, IType] IType) 2 (biBin (<))
-     (2, LLt ITNative) total,
-   Prim (UN "prim__lteInt") (ty [IType, IType] IType) 2 (biBin (<=))
-     (2, LLe ITNative) total,
-   Prim (UN "prim__gtInt")  (ty [IType, IType] IType) 2 (biBin (>))
-     (2, LGt ITNative) total,
-   Prim (UN "prim__gteInt") (ty [IType, IType] IType) 2 (biBin (>=))
-     (2, LGe ITNative) total,
-   Prim (UN "prim__eqChar")  (ty [ChType, ChType] IType) 2 (bcBin (==))
+  [Prim (UN "prim__eqChar")  (ty [ChType, ChType] IType) 2 (bcBin (==))
      (2, LEq ITNative) total,
    Prim (UN "prim__ltChar")  (ty [ChType, ChType] IType) 2 (bcBin (<))
      (2, LLt ITNative) total,
@@ -80,55 +48,59 @@ primitives =
    iCoerce IT8 IT16 "zext" zext LZExt,
    iCoerce IT8 IT32 "zext" zext LZExt,
    iCoerce IT8 IT64 "zext" zext LZExt,
+   iCoerce IT8 ITBig "zext" zext LZExt,
+   iCoerce IT8 ITNative "zext" zext LZExt,
    iCoerce IT16 IT32 "zext" zext LZExt,
    iCoerce IT16 IT64 "zext" zext LZExt,
+   iCoerce IT16 ITBig "zext" zext LZExt,
+   iCoerce IT16 ITNative "zext" zext LZExt,
    iCoerce IT32 IT64 "zext" zext LZExt,
+   iCoerce IT32 ITBig "zext" zext LZExt,
+   iCoerce IT32 ITNative "zext" zext LZExt,
+   iCoerce IT64 ITBig "zext" zext LZExt,
+   iCoerce ITNative ITBig "zext" zext LZExt,
+   iCoerce ITNative IT64 "zext" zext LZExt,
+   iCoerce ITNative IT32 "zext" zext LZExt,
+   iCoerce ITNative IT16 "zext" zext LZExt,
 
    iCoerce IT8 IT16 "sext" sext LSExt,
    iCoerce IT8 IT32 "sext" sext LSExt,
    iCoerce IT8 IT64 "sext" sext LSExt,
+   iCoerce IT8 ITBig "sext" sext LSExt,
+   iCoerce IT8 ITNative "sext" sext LSExt,
    iCoerce IT16 IT32 "sext" sext LSExt,
    iCoerce IT16 IT64 "sext" sext LSExt,
+   iCoerce IT16 ITBig "sext" sext LSExt,
+   iCoerce IT16 ITNative "sext" sext LSExt,
    iCoerce IT32 IT64 "sext" sext LSExt,
+   iCoerce IT32 ITBig "sext" sext LSExt,
+   iCoerce IT32 ITNative "sext" sext LSExt,
+   iCoerce IT64 ITBig "sext" sext LSExt,
+   iCoerce ITNative ITBig "sext" sext LSExt,
+   iCoerce ITNative ITBig "sext" sext LSExt,
+   iCoerce ITNative IT64 "sext" sext LSExt,
+   iCoerce ITNative IT32 "sext" sext LSExt,
+   iCoerce ITNative IT16 "sext" sext LSExt,
 
    iCoerce IT16 IT8 "trunc" trunc LTrunc,
    iCoerce IT32 IT8 "trunc" trunc LTrunc,
    iCoerce IT64 IT8 "trunc" trunc LTrunc,
+   iCoerce ITBig IT8 "trunc" trunc LTrunc,
+   iCoerce ITNative IT8 "trunc" trunc LTrunc,
    iCoerce IT32 IT16 "trunc" trunc LTrunc,
    iCoerce IT64 IT16 "trunc" trunc LTrunc,
+   iCoerce ITBig IT16 "trunc" trunc LTrunc,
+   iCoerce ITNative IT16 "trunc" trunc LTrunc,
    iCoerce IT64 IT32 "trunc" trunc LTrunc,
+   iCoerce ITBig IT32 "trunc" trunc LTrunc,
+   iCoerce ITNative IT32 "trunc" trunc LTrunc,
+   iCoerce ITBig IT64 "trunc" trunc LTrunc,
+   iCoerce IT16 ITNative "trunc" trunc LTrunc,
+   iCoerce IT32 ITNative "trunc" trunc LTrunc,
+   iCoerce IT64 ITNative "trunc" trunc LTrunc,
+   iCoerce ITBig ITNative "trunc" trunc LTrunc,
+   iCoerce ITNative IT64 "trunc" trunc LTrunc,
 
-   Prim (UN "prim__intToB8") (ty [IType] B8Type) 1 intToBits8
-    (1, LIntB8) total,
-   Prim (UN "prim__intToB16") (ty [IType] B16Type) 1 intToBits16
-    (1, LIntB16) total,
-   Prim (UN "prim__intToB32") (ty [IType] B32Type) 1 intToBits32
-    (1, LIntB32) total,
-   Prim (UN "prim__intToB64") (ty [IType] B64Type) 1 intToBits64
-    (1, LIntB64) total,
-   Prim (UN "prim__B32ToInt") (ty [B32Type] IType) 1 bits32ToInt
-    (1, LB32Int) total,
-
-   Prim (UN "prim__addBigInt") (ty [BIType, BIType] BIType) 2 (bBin (+))
-    (2, LBPlus) total,
-   Prim (UN "prim__subBigInt") (ty [BIType, BIType] BIType) 2 (bBin (-))
-     (2, LBMinus) total,
-   Prim (UN "prim__mulBigInt") (ty [BIType, BIType] BIType) 2 (bBin (*))
-     (2, LBTimes) total,
-   Prim (UN "prim__divBigInt") (ty [BIType, BIType] BIType) 2 (bBin div)
-     (2, LBDiv) partial,
-   Prim (UN "prim__modBigInt") (ty [BIType, BIType] BIType) 2 (bBin mod)
-     (2, LBMod) partial,
-   Prim (UN "prim__eqBigInt")  (ty [BIType, BIType] IType) 2 (bbBin (==))
-     (2, LBEq) total,
-   Prim (UN "prim__ltBigInt")  (ty [BIType, BIType] IType) 2 (bbBin (<))
-     (2, LBLt) total,
-   Prim (UN "prim__lteBigInt")  (ty [BIType, BIType] IType) 2 (bbBin (<=))
-     (2, LBLe) total,
-   Prim (UN "prim__gtBigInt")  (ty [BIType, BIType] IType) 2 (bbBin (>))
-     (2, LBGt) total,
-   Prim (UN "prim__gtBigInt")  (ty [BIType, BIType] IType) 2 (bbBin (>=))
-     (2, LBGe) total,
    Prim (UN "prim__addFloat") (ty [FlType, FlType] FlType) 2 (fBin (+))
      (2, LFPlus) total,
    Prim (UN "prim__subFloat") (ty [FlType, FlType] FlType) 2 (fBin (-))
@@ -156,30 +128,14 @@ primitives =
    Prim (UN "prim_lenString") (ty [StrType] IType) 1 (p_strLen)
     (1, LStrLen) total,
     -- Conversions
-   Prim (UN "prim__strToInt") (ty [StrType] IType) 1 (c_strToInt)
-     (1, LStrInt) total,
-   Prim (UN "prim__intToStr") (ty [IType] StrType) 1 (c_intToStr)
-     (1, LIntStr) total,
    Prim (UN "prim__charToInt") (ty [ChType] IType) 1 (c_charToInt)
-     (1, LChInt) total,
+     (1, LChInt ITNative) total,
    Prim (UN "prim__intToChar") (ty [IType] ChType) 1 (c_intToChar)
-     (1, LIntCh) total,
-   Prim (UN "prim__intToBigInt") (ty [IType] BIType) 1 (c_intToBigInt)
-     (1, LIntBig) total,
-   Prim (UN "prim__bigIntToInt") (ty [BIType] IType) 1 (c_bigIntToInt)
-     (1, LBigInt) total,
-   Prim (UN "prim__strToBigInt") (ty [StrType] BIType) 1 (c_strToBigInt)
-     (1, LStrBig) total,
-   Prim (UN "prim__bigIntToStr") (ty [BIType] StrType) 1 (c_bigIntToStr)
-     (1, LBigStr) total,
+     (1, LIntCh ITNative) total,
    Prim (UN "prim__strToFloat") (ty [StrType] FlType) 1 (c_strToFloat)
      (1, LStrFloat) total,
    Prim (UN "prim__floatToStr") (ty [FlType] StrType) 1 (c_floatToStr)
      (1, LFloatStr) total,
-   Prim (UN "prim__intToFloat") (ty [IType] FlType) 1 (c_intToFloat)
-     (1, LIntFloat) total,
-   Prim (UN "prim__floatToInt") (ty [FlType] IType) 1 (c_floatToInt)
-     (1, LFloatInt) total,
 
    Prim (UN "prim__floatExp") (ty [FlType] FlType) 1 (p_floatExp)
      (1, LFExp) total, 
@@ -223,7 +179,7 @@ primitives =
     (0, LStdIn) partial,
    Prim (UN "prim__believe_me") believeTy 3 (p_believeMe)
     (3, LNoOp) partial -- ahem
-  ] ++ concatMap intOps [IT8, IT16, IT32, IT64]
+  ] ++ concatMap intOps [IT8, IT16, IT32, IT64, ITBig, ITNative]
 
 intOps ity =
     [ iCmp ity "lt" (bCmp ity (<)) LLt total
@@ -245,13 +201,26 @@ intOps ity =
     , iBinOp ity "or" (bitBin ity (.|.)) LOr total
     , iBinOp ity "xor" (bitBin ity (xor)) LXOr total
     , iUnOp ity "compl" (bUn ity complement) LCompl total
+    , Prim (UN $ "prim__toStr" ++ intTyName ity) (ty [intTyToConst ity] StrType) 1 intToStr
+               (1, LIntStr ity) total
+    , Prim (UN $ "prim__fromStr" ++ intTyName ity) (ty [StrType] (intTyToConst ity)) 1 (strToInt ity)
+               (1, LStrInt ity) total
+    , Prim (UN $ "prim__toFloat" ++ intTyName ity) (ty [intTyToConst ity] FlType) 1 intToFloat
+               (1, LIntFloat ity) total
+    , Prim (UN $ "prim__fromFloat" ++ intTyName ity) (ty [FlType] (intTyToConst ity)) 1 (floatToInt ity)
+               (1, LFloatInt ity) total
     ]
 
-iCmp ity op impl irop totality = Prim (UN $ "prim__" ++ op ++ "B" ++ show (intTyWidth ity)) (ty (replicate 2 $ intTyToConst ity) IType) 2 impl (2, irop ity) totality
-iBinOp ity op impl irop totality = Prim (UN $ "prim__" ++ op ++ "B" ++ show (intTyWidth ity)) (ty (replicate 2 $ intTyToConst ity) (intTyToConst ity)) 2 impl (2, irop ity) totality
-iUnOp ity op impl irop totality = Prim (UN $ "prim__" ++ op ++ "B" ++ show (intTyWidth ity)) (ty [intTyToConst ity] (intTyToConst ity)) 1 impl (1, irop ity) totality
+intTyName :: IntTy -> String
+intTyName ITNative = "Int"
+intTyName ITBig = "BigInt"
+intTyName sized = "B" ++ show (intTyWidth sized)
+
+iCmp ity op impl irop totality = Prim (UN $ "prim__" ++ op ++ intTyName ity) (ty (replicate 2 $ intTyToConst ity) IType) 2 impl (2, irop ity) totality
+iBinOp ity op impl irop totality = Prim (UN $ "prim__" ++ op ++ intTyName ity) (ty (replicate 2 $ intTyToConst ity) (intTyToConst ity)) 2 impl (2, irop ity) totality
+iUnOp ity op impl irop totality = Prim (UN $ "prim__" ++ op ++ intTyName ity) (ty [intTyToConst ity] (intTyToConst ity)) 1 impl (1, irop ity) totality
 iCoerce from to op impl irop =
-    Prim (UN $ "prim__" ++ op ++ "B" ++ show (intTyWidth from) ++ "_" ++ show (intTyWidth to))
+    Prim (UN $ "prim__" ++ op ++ intTyName from ++ "_" ++ intTyName to)
              (ty [intTyToConst from] (intTyToConst to)) 1 (impl from to) (1, irop from to) total
 
 p_believeMe [_,_,x] = Just x
@@ -329,6 +298,8 @@ bUn IT8  op [VConstant (B8  x)] = Just $ VConstant (B8  (op x))
 bUn IT16 op [VConstant (B16 x)] = Just $ VConstant (B16 (op x))
 bUn IT32 op [VConstant (B32 x)] = Just $ VConstant (B32 (op x))
 bUn IT64 op [VConstant (B64 x)] = Just $ VConstant (B64 (op x))
+bUn ITBig op [VConstant (BI x)] = Just $ VConstant (BI (op x))
+bUn ITNative op [VConstant (I x)] = Just $ VConstant (I (op x))
 bUn _ _ _ = Nothing
 
 bitBin :: IntTy -> (forall a. (Bits a, Integral a) => a -> a -> a) -> [Value] -> Maybe Value
@@ -336,6 +307,8 @@ bitBin IT8  op [VConstant (B8  x), VConstant (B8  y)] = Just $ VConstant (B8  (o
 bitBin IT16 op [VConstant (B16 x), VConstant (B16 y)] = Just $ VConstant (B16 (op x y))
 bitBin IT32 op [VConstant (B32 x), VConstant (B32 y)] = Just $ VConstant (B32 (op x y))
 bitBin IT64 op [VConstant (B64 x), VConstant (B64 y)] = Just $ VConstant (B64 (op x y))
+bitBin ITBig op [VConstant (BI x), VConstant (BI y)] = Just $ VConstant (BI (op x y))
+bitBin ITNative op [VConstant (I x), VConstant (I y)] = Just $ VConstant (I (op x y))
 bitBin _ _ _ = Nothing
 
 bCmp :: IntTy -> (forall a. Ord a => a -> a -> Bool) -> [Value] -> Maybe Value
@@ -343,72 +316,70 @@ bCmp IT8  op [VConstant (B8  x), VConstant (B8  y)] = Just $ VConstant (I (if (o
 bCmp IT16 op [VConstant (B16 x), VConstant (B16 y)] = Just $ VConstant (I (if (op x y) then 1 else 0))
 bCmp IT32 op [VConstant (B32 x), VConstant (B32 y)] = Just $ VConstant (I (if (op x y) then 1 else 0))
 bCmp IT64 op [VConstant (B64 x), VConstant (B64 y)] = Just $ VConstant (I (if (op x y) then 1 else 0))
+bCmp ITBig op [VConstant (BI x), VConstant (BI y)] = Just $ VConstant (I (if (op x y) then 1 else 0))
+bCmp ITNative op [VConstant (I x), VConstant (I y)] = Just $ VConstant (I (if (op x y) then 1 else 0))
 bCmp _ _ _ = Nothing
 
-toB IT8  x = VConstant (B8 (fromIntegral x))
-toB IT16 x = VConstant (B16 (fromIntegral x))
-toB IT32 x = VConstant (B32 (fromIntegral x))
-toB IT64 x = VConstant (B64 (fromIntegral x))
+toInt IT8  x = VConstant (B8 (fromIntegral x))
+toInt IT16 x = VConstant (B16 (fromIntegral x))
+toInt IT32 x = VConstant (B32 (fromIntegral x))
+toInt IT64 x = VConstant (B64 (fromIntegral x))
+toInt ITBig x = VConstant (BI (fromIntegral x))
+toInt ITNative x = VConstant (I (fromIntegral x))
 
-zext IT8  IT16 [VConstant (B8  x)] = Just $ VConstant (B16 (fromIntegral x))
-zext IT8  IT32 [VConstant (B8  x)] = Just $ VConstant (B32 (fromIntegral x))
-zext IT8  IT64 [VConstant (B8  x)] = Just $ VConstant (B64 (fromIntegral x))
-zext IT16 IT32 [VConstant (B16 x)] = Just $ VConstant (B32 (fromIntegral x))
-zext IT16 IT64 [VConstant (B16 x)] = Just $ VConstant (B64 (fromIntegral x))
-zext IT32 IT64 [VConstant (B32 x)] = Just $ VConstant (B64 (fromIntegral x))
+intToInt IT8 out [VConstant (B8 x)] = Just $ toInt out x
+intToInt IT16 out [VConstant (B16 x)] = Just $ toInt out x
+intToInt IT32 out [VConstant (B32 x)] = Just $ toInt out x
+intToInt IT64 out [VConstant (B64 x)] = Just $ toInt out x
+intToInt ITBig out [VConstant (BI x)] = Just $ toInt out x
+intToInt ITNative out [VConstant (I x)] = Just $ toInt out x
+intToInt _ _ _ = Nothing
+
+zext from ITBig val = intToInt from ITBig val
+zext ITBig _ _ = Nothing
+zext from to val
+    | intTyWidth from < intTyWidth to = intToInt from to val
 zext _ _ _ = Nothing
 
-sext IT8  IT16 [VConstant (B8  x)] = Just $ VConstant (B16 (fromIntegral (fromIntegral x :: Int8)))
-sext IT8  IT32 [VConstant (B8  x)] = Just $ VConstant (B32 (fromIntegral (fromIntegral x :: Int8)))
-sext IT8  IT64 [VConstant (B8  x)] = Just $ VConstant (B64 (fromIntegral (fromIntegral x :: Int8)))
-sext IT16 IT32 [VConstant (B16 x)] = Just $ VConstant (B32 (fromIntegral (fromIntegral x :: Int16)))
-sext IT16 IT64 [VConstant (B16 x)] = Just $ VConstant (B64 (fromIntegral (fromIntegral x :: Int16)))
-sext IT32 IT64 [VConstant (B32 x)] = Just $ VConstant (B64 (fromIntegral (fromIntegral x :: Int32)))
-sext _ _ _ = Nothing
+sext IT8  out [VConstant (B8  x)] = Just $ toInt out (fromIntegral x :: Int8)
+sext IT16 out [VConstant (B16 x)] = Just $ toInt out (fromIntegral x :: Int16)
+sext IT32 out [VConstant (B32 x)] = Just $ toInt out (fromIntegral x :: Int32)
+sext IT64 out [VConstant (B64 x)] = Just $ toInt out (fromIntegral x :: Int64)
+sext ITBig _ _ = Nothing
+sext from to val = intToInt from to val
 
-trunc IT16 IT8  [VConstant (B16 x)] = Just $ VConstant (B8  (fromIntegral x))
-trunc IT32 IT8  [VConstant (B32 x)] = Just $ VConstant (B8  (fromIntegral x))
-trunc IT64 IT8  [VConstant (B64 x)] = Just $ VConstant (B8  (fromIntegral x))
-trunc IT32 IT16 [VConstant (B32 x)] = Just $ VConstant (B16 (fromIntegral x))
-trunc IT64 IT16 [VConstant (B64 x)] = Just $ VConstant (B16 (fromIntegral x))
-trunc IT64 IT32 [VConstant (B64 x)] = Just $ VConstant (B32 (fromIntegral x))
+trunc ITBig to val = intToInt ITBig to val
+trunc _ ITBig _ = Nothing
+trunc from to val | intTyWidth from > intTyWidth to = intToInt from to val
 trunc _ _ _ = Nothing
 
-intToBits8  [VConstant (I x)] = Just $ toB IT8 x
-intToBits8 _ = Nothing
-intToBits16 [VConstant (I x)] = Just $ toB IT16 x
-intToBits16 _ = Nothing
-intToBits32  [VConstant (I x)] = Just $ toB IT32 x
-intToBits32 _ = Nothing
-intToBits64 [VConstant (I x)] = Just $ toB IT64 x
-intToBits64 _ = Nothing
+getInt :: [Value] -> Maybe Integer
+getInt [VConstant (B8 x)] = Just . toInteger $ x
+getInt [VConstant (B16 x)] = Just . toInteger $ x
+getInt [VConstant (B32 x)] = Just . toInteger $ x
+getInt [VConstant (B64 x)] = Just . toInteger $ x
+getInt [VConstant (I x)] = Just . toInteger $ x
+getInt [VConstant (BI x)] = Just x
+getInt _ = Nothing
 
-bits32ToInt [VConstant (B32 x)] = Just $ VConstant (I (fromIntegral x))
-bits32ToInt _ = Nothing
+intToStr val | Just i <- getInt val = Just $ VConstant (Str (show i))
+intToStr _ = Nothing
 
-c_intToStr [VConstant (I x)] = Just $ VConstant (Str (show x))
-c_intToStr _ = Nothing
-c_strToInt [VConstant (Str x)] = case reads x of
-                                    [(n,"")] -> Just $ VConstant (I n)
-                                    _ -> Just $ VConstant (I 0)
-c_strToInt _ = Nothing
+strToInt ity [VConstant (Str x)] = case reads x of
+                                     [(n,"")] -> Just $ toInt ity (n :: Integer)
+                                     _ -> Just $ VConstant (I 0)
+strToInt _ _ = Nothing
+
+intToFloat val | Just i <- getInt val = Just $ VConstant (Fl (fromIntegral i))
+intToFloat _ = Nothing
+
+floatToInt ity [VConstant (Fl x)] = Just $ toInt ity (truncate x :: Integer)
+floatToInt _ _ = Nothing
 
 c_intToChar [VConstant (I x)] = Just $ VConstant (Ch (toEnum x))
 c_intToChar _ = Nothing
 c_charToInt [VConstant (Ch x)] = Just $ VConstant (I (fromEnum x))
 c_charToInt _ = Nothing
-
-c_intToBigInt [VConstant (I x)] = Just $ VConstant (BI (fromIntegral x))
-c_intToBigInt _ = Nothing
-c_bigIntToInt [VConstant (BI x)] = Just $ VConstant (I (fromInteger x))
-c_bigIntToInt _ = Nothing
-
-c_bigIntToStr [VConstant (BI x)] = Just $ VConstant (Str (show x))
-c_bigIntToStr _ = Nothing
-c_strToBigInt [VConstant (Str x)] = case reads x of
-                                        [(n,"")] -> Just $ VConstant (BI n)
-                                        _ -> Just $ VConstant (BI 0)
-c_strToBigInt _ = Nothing
 
 c_floatToStr [VConstant (Fl x)] = Just $ VConstant (Str (show x))
 c_floatToStr _ = Nothing
@@ -416,12 +387,6 @@ c_strToFloat [VConstant (Str x)] = case reads x of
                                         [(n,"")] -> Just $ VConstant (Fl n)
                                         _ -> Just $ VConstant (Fl 0)
 c_strToFloat _ = Nothing
-
-c_floatToInt [VConstant (Fl x)] = Just $ VConstant (I (truncate x))
-c_floatToInt _ = Nothing
-
-c_intToFloat [VConstant (I x)] = Just $ VConstant (Fl (fromIntegral x))
-c_intToFloat _ = Nothing
 
 p_fPrim f [VConstant (Fl x)] = Just $ VConstant (Fl (f x))
 p_fPrim f _ = Nothing

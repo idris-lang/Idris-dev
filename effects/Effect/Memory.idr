@@ -65,9 +65,9 @@ private
 do_peek : Ptr -> Nat -> (size : Nat) -> IO (Vect Bits8 size)
 do_peek _   _       O = return (Prelude.Vect.Nil)
 do_peek ptr offset (S n)
-  = do b <- mkForeign (FFun "idris_peek" [FPtr, FInt] FInt) ptr (cast offset)
+  = do b <- mkForeign (FFun "idris_peek" [FPtr, FInt] FChar) ptr (cast offset)
        bs <- do_peek ptr (S offset) n
-       Prelude.Monad.return (Prelude.Vect.(::) (prim__intToB8 b) bs)
+       Prelude.Monad.return (Prelude.Vect.(::) b bs)
 
 private
 do_poke : Ptr -> Nat -> Vect Bits8 size -> IO ()
