@@ -203,37 +203,37 @@ translateExpression (SApp True name vars) =
   ++ ";\n});"
 
 translateExpression (SOp op vars)
-  | (LPlus _)   <- op
+  | LPlus       <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp "+" lhs rhs
-  | (LMinus _)  <- op
+  | LMinus      <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp "-" lhs rhs
-  | (LTimes _)  <- op
+  | LTimes      <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp "*" lhs rhs
-  | (LSDiv _)   <- op
+  | LDiv        <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp "/" lhs rhs
-  | (LSRem _)   <- op
+  | LMod        <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp "%" lhs rhs
-  | (LEq _)     <- op
+  | LEq         <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp "==" lhs rhs
-  | (LLt _)     <- op
+  | LLt         <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp "<" lhs rhs
-  | (LLe _)     <- op
+  | LLe         <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp "<=" lhs rhs
-  | (LGt _)     <- op 
+  | LGt         <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp ">" lhs rhs
-  | (LGe _)     <- op
+  | LGe         <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp ">=" lhs rhs
-  | (LAnd _)    <- op
+  | LAnd        <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp "&" lhs rhs
-  | (LOr _)     <- op
+  | LOr         <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp "|" lhs rhs
-  | (LXOr _)    <- op
+  | LXOr        <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp "^" lhs rhs
-  | (LSHL _)    <- op
+  | LSHL        <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp "<<" rhs lhs
-  | (LASHR _)   <- op
+  | LSHR        <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp ">>" rhs lhs
-  | (LCompl _)  <- op
+  | LCompl      <- op
   , (arg:_)     <- vars = '~' : translateVariableName arg
 
   | LBPlus      <- op

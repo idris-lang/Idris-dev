@@ -251,11 +251,11 @@ getLine = return (prim__readString prim__stdin)
 
 partial
 putChar : Char -> IO ()
-putChar c = mkForeign (FFun "putchar" [FInt] FUnit) (cast c)
+putChar c = mkForeign (FFun "putchar" [FChar] FUnit) c
 
 partial
 getChar : IO Char
-getChar = fmap cast $ mkForeign (FFun "getchar" [] FInt)
+getChar = mkForeign (FFun "getchar" [] FChar)
 
 ---- some basic file handling
 
@@ -323,7 +323,7 @@ ferror (FHandle h) = do err <- do_ferror h
 
 partial
 nullPtr : Ptr -> IO Bool
-nullPtr p = do ok <- mkForeign (FFun "isNull" [FPtr] FInt) p
+nullPtr p = do ok <- mkForeign (FFun "isNull" [FPtr] FInt) p 
                return (ok /= 0);
 
 partial

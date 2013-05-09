@@ -3,9 +3,6 @@ module Core.Execute (execute) where
 
 import Idris.AbsSyntax
 import Idris.AbsSyntaxTree
-import IRTS.Lang( IntTy(..)
-                , intTyToConst
-                , FType(..))
 
 import Core.TT
 import Core.Evaluate
@@ -428,16 +425,18 @@ chooseAlt _ [] = Nothing
 
 
 
-idrisType :: FType -> ExecVal
+data FTy = FInt | FFloat | FChar | FString | FPtr | FUnit deriving (Show, Read)
+
+idrisType :: FTy -> ExecVal
 idrisType FUnit = EP Ref unitTy EErased
 idrisType ft = EConstant (idr ft)
-    where idr (FInt ty) = intTyToConst ty
-          idr FDouble = FlType
+    where idr FInt = IType
+          idr FFloat = FlType
           idr FChar = ChType
           idr FString = StrType
           idr FPtr = PtrType
 
-data Foreign = FFun String [FType] FType deriving Show
+data Foreign = FFun String [FTy] FTy deriving Show
 
 
 call :: Foreign -> [ExecVal] -> Exec (Maybe ExecVal)
@@ -447,19 +446,11 @@ call (FFun name argTypes retType) args =
          Nothing -> return Nothing
          Just f -> do res <- call' f args retType
                       return . Just . ioWrap $ res
-    where call' :: ForeignFun -> [ExecVal] -> FType -> Exec ExecVal
-          call' (Fun _ h) args (FInt ITNative) = do res <- execIO $ callFFI h retCInt (prepArgs args)
-                                                    return (EConstant (I (fromIntegral res)))
-          call' (Fun _ h) args (FInt IT8) = do res <- execIO $ callFFI h retCChar (prepArgs args)
-                                               return (EConstant (B8 (fromIntegral res)))
-          call' (Fun _ h) args (FInt IT16) = do res <- execIO $ callFFI h retCWchar (prepArgs args)
-                                                return (EConstant (B16 (fromIntegral res)))
-          call' (Fun _ h) args (FInt IT32) = do res <- execIO $ callFFI h retCInt (prepArgs args)
-                                                return (EConstant (B32 (fromIntegral res)))
-          call' (Fun _ h) args (FInt IT64) = do res <- execIO $ callFFI h retCLong (prepArgs args)
-                                                return (EConstant (B64 (fromIntegral res)))
-          call' (Fun _ h) args FDouble = do res <- execIO $ callFFI h retCDouble (prepArgs args)
-                                            return (EConstant (Fl (realToFrac res)))
+    where call' :: ForeignFun -> [ExecVal] -> FTy -> Exec ExecVal
+          call' (Fun _ h) args FInt = do res <- execIO $ callFFI h retCInt (prepArgs args)
+                                         return (EConstant (I (fromIntegral res)))
+          call' (Fun _ h) args FFloat = do res <- execIO $ callFFI h retCDouble (prepArgs args)
+                                           return (EConstant (Fl (realToFrac res)))
           call' (Fun _ h) args FChar = do res <- execIO $ callFFI h retCChar (prepArgs args)
                                           return (EConstant (Ch (castCCharToChar res)))
           call' (Fun _ h) args FString = do res <- execIO $ callFFI h retCString (prepArgs args)
@@ -476,10 +467,6 @@ call (FFun name argTypes retType) args =
 
           prepArgs = map prepArg
           prepArg (EConstant (I i)) = argCInt (fromIntegral i)
-          prepArg (EConstant (B8 i)) = argCChar (fromIntegral i)
-          prepArg (EConstant (B16 i)) = argCWchar (fromIntegral i)
-          prepArg (EConstant (B32 i)) = argCInt (fromIntegral i)
-          prepArg (EConstant (B64 i)) = argCLong (fromIntegral i)
           prepArg (EConstant (Fl f)) = argCDouble (realToFrac f)
           prepArg (EConstant (Ch c)) = argCChar (castCharToCChar c) -- FIXME - castCharToCChar only safe for first 256 chars
           prepArg (EConstant (Str s)) = argString s
@@ -497,18 +484,11 @@ foreignFromTT t = case (unApplyV t) of
                            return $ FFun name argFTy retFTy
                     _ -> trace "failed to construct ffun" Nothing
 
-getFTy :: ExecVal -> Maybe FType
-getFTy (EApp (EP _ (UN "FInt") _) (EP _ (UN intTy) _)) =
-    case intTy of
-      "ITNative" -> Just $ FInt ITNative
-      "IT8" -> Just $ FInt IT8
-      "IT16" -> Just $ FInt IT16
-      "IT32" -> Just $ FInt IT32
-      "IT64" -> Just $ FInt IT64
-      _ -> Nothing
+getFTy :: ExecVal -> Maybe FTy
 getFTy (EP _ (UN t) _) =
     case t of
-      "FFloat"  -> Just FDouble
+      "FInt"    -> Just FInt
+      "FFloat"  -> Just FFloat
       "FChar"   -> Just FChar
       "FString" -> Just FString
       "FPtr"    -> Just FPtr
