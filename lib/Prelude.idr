@@ -29,10 +29,10 @@ instance Show Nat where
     show (S k) = "s" ++ show k
 
 instance Show Int where 
-    show = prim__intToStr
+    show = prim__toStrInt
 
 instance Show Integer where 
-    show = prim__bigIntToStr
+    show = prim__toStrBigInt
 
 instance Show Float where 
     show = prim__floatToStr
@@ -148,6 +148,10 @@ instance Monad List where
 %include "math.h"
 %lib "m"
 
+pow : (Num a) => a -> Nat -> a
+pow x O = 1
+pow x (S n) = x * (pow x n)
+
 exp : Float -> Float
 exp x = prim__floatExp x
 
@@ -251,11 +255,11 @@ getLine = return (prim__readString prim__stdin)
 
 partial
 putChar : Char -> IO ()
-putChar c = mkForeign (FFun "putchar" [FChar] FUnit) c
+putChar c = mkForeign (FFun "putchar" [FInt] FUnit) (cast c)
 
 partial
 getChar : IO Char
-getChar = mkForeign (FFun "getchar" [] FChar)
+getChar = fmap cast $ mkForeign (FFun "getchar" [] FInt)
 
 ---- some basic file handling
 
@@ -323,7 +327,7 @@ ferror (FHandle h) = do err <- do_ferror h
 
 partial
 nullPtr : Ptr -> IO Bool
-nullPtr p = do ok <- mkForeign (FFun "isNull" [FPtr] FInt) p 
+nullPtr p = do ok <- mkForeign (FFun "isNull" [FPtr] FInt) p
                return (ok /= 0);
 
 partial
