@@ -14,7 +14,7 @@ build: dist/setup-config
 	$(CABAL) build $(CABALFLAGS)
 
 test:
-	make -C test
+	make -C test IDRIS=../dist/build/idris
 
 relib:
 	make -C lib IDRIS=../dist/build/idris/idris RTS=../dist/build/rts/libidris_rts clean
