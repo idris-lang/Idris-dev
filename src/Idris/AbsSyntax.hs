@@ -312,12 +312,6 @@ setQuiet q = do i <- getIState
                 let opt' = opts { opt_quiet = q }
                 putIState $ i { idris_options = opt' }
 
-setIdeSlave :: Bool -> Idris ()
-setIdeSlave s = do i <- getIState
-                   let opts = idris_options i
-                   let opt' = opts { opt_ideslave = s }
-                   putIState $ i { idris_options = opt' }
-
 setTarget :: Target -> Idris ()
 setTarget t = do i <- getIState
                  let opts = idris_options i
@@ -337,6 +331,11 @@ setOutputTy t = do i <- getIState
 outputTy :: Idris OutputType
 outputTy = do i <- getIState
               return $ opt_outputTy $ idris_options i
+
+setIdeSlave :: Bool -> Idris ()
+setIdeSlave True  = do i <- getIState
+                       putIState $ i { idris_outputmode = (IdeSlave 0) }
+setIdeSlave False = return ()
 
 verbose :: Idris Bool
 verbose = do i <- getIState

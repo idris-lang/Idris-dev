@@ -33,7 +33,6 @@ data IOption = IOption { opt_logLevel   :: Int,
                          opt_repl       :: Bool,
                          opt_verbose    :: Bool,
                          opt_quiet      :: Bool,
-                         opt_ideslave   :: Bool,
                          opt_target     :: Target,
                          opt_outputTy   :: OutputType,
                          opt_ibcsubdir  :: FilePath,
@@ -42,7 +41,7 @@ data IOption = IOption { opt_logLevel   :: Int,
                        }
     deriving (Show, Eq)
 
-defaultOpts = IOption 0 False False True False False True True False False ViaC Executable "" [] []
+defaultOpts = IOption 0 False False True False False True True False ViaC Executable "" [] []
 
 data LanguageExt = TypeProviders deriving (Show, Eq, Read, Ord)
 
