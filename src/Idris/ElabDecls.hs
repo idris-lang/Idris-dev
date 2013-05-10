@@ -443,11 +443,17 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
                       then do missing <- genClauses fc n (map getLHS pdef) cs
                               -- missing <- genMissing n scargs sc  
                               missing' <- filterM (checkPossible info fc True n) missing
+                              let clhs = map getLHS pdef
                               logLvl 2 $ "Must be unreachable:\n" ++ 
                                           showSep "\n" (map (showImp True) missing') ++
                                          "\nAgainst: " ++
                                           showSep "\n" (map (\t -> showImp True (delab ist t)) (map getLHS pdef))
-                              return missing'
+                              -- filter out anything in missing' which is
+                              -- matched by any of clhs. This might happen since
+                              -- unification may force a variable to take a 
+                              -- particular form, rather than force a case
+                              -- to be impossible.
+                              return (filter (noMatch ist clhs) missing')
                       else return []
            let pcover = null pmissing
            logLvl 2 $ "Optimising patterns"
@@ -480,7 +486,8 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
            logLvl 3 $ "Optimised: " ++ show tree'
            ctxt <- getContext
            ist <- getIState
-           putIState (ist { idris_patdefs = addDef n pdef' (idris_patdefs ist) })
+           putIState (ist { idris_patdefs = addDef n (pdef', pmissing) 
+                                                (idris_patdefs ist) })
            case lookupTy n ctxt of
                [ty] -> do updateContext (addCasedef n (inlinable opts)
                                                        tcase knowncovering 
@@ -508,6 +515,10 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
                [] -> return ()
            return ()
   where
+    noMatch i cs tm = all (\x -> case matchClause i (delab' i x True) tm of
+                                      Right _ -> False
+                                      Left miss -> True) cs 
+
     checkUndefined n ctxt = case lookupDef n ctxt of
                                  [] -> return ()
                                  [TyDecl _ _] -> return ()

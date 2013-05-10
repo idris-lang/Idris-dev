@@ -240,8 +240,8 @@ process fn (Defn n) = do i <- getIState
                          liftIO $ print (lookupDef n (tt_ctxt i))
                          case lookupCtxt n (idris_patdefs i) of
                             [] -> return ()
-                            [d] -> do iputStrLn "Original definiton:\n"
-                                      mapM_ (printCase i) d
+                            [(d, _)] -> do iputStrLn "Original definiton:\n"
+                                           mapM_ (printCase i) d
                          case lookupTotal n (tt_ctxt i) of
                             [t] -> iputStrLn (showTotal t i)
                             _ -> return ()
@@ -389,13 +389,13 @@ process fn (Pattelab t)
      = do (tm, ty) <- elabVal toplevel True t
           iputStrLn $ show tm ++ "\n\n : " ++ show ty
 
-process fn (Missing n) = do i <- getIState
-                            case lookupDef n (tt_ctxt i) of
-                                [CaseOp _ _ _ _ _ args t _ _]
-                                    -> do tms <- genMissing n args t
-                                          iputStrLn (showSep "\n" (map (showImp True) tms))
-                                [] -> iputStrLn $ show n ++ " undefined"
-                                _ -> iputStrLn $ "Ambiguous name"
+process fn (Missing n) 
+    = do i <- getIState
+         case lookupCtxt n (idris_patdefs i) of
+                  [] -> return ()
+                  [(_, tms)] -> 
+                       iputStrLn (showSep "\n" (map (showImp True) tms))
+                  _ -> iputStrLn $ "Ambiguous name"
 process fn (DynamicLink l) = do i <- getIState
                                 let lib = trim l
                                 handle <- lift $ tryLoadLib lib

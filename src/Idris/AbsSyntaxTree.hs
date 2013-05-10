@@ -62,7 +62,8 @@ data IState = IState {
     idris_dsls :: Ctxt DSL,
     idris_optimisation :: Ctxt OptInfo, 
     idris_datatypes :: Ctxt TypeInfo,
-    idris_patdefs :: Ctxt [([Name], Term, Term)], -- not exported
+    idris_patdefs :: Ctxt ([([Name], Term, Term)], [PTerm]), -- not exported
+      -- ^ list of lhs/rhs, and a list of missing clauses
     idris_flags :: Ctxt [FnOpt],
     idris_callgraph :: Ctxt CGInfo, -- name, args used in each pos
     idris_calledgraph :: Ctxt [Name],
