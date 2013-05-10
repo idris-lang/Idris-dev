@@ -1,4 +1,5 @@
 language: haskell
 script:
+  - cabal configure && cabal build
   - cd test
   - ./runtest.pl all
