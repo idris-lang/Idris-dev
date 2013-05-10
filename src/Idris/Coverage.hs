@@ -162,12 +162,6 @@ checkPositive n (cn, ty)
             = n /= n' && posArg sc
     posArg t = True
 
--- Totality checking - check for structural recursion 
--- (no mutual definitions yet)
-
-data LexOrder = LexXX | LexEQ | LexLT
-    deriving (Show, Eq, Ord)
-
 calcProd :: IState -> FC -> Name -> [([Name], Term, Term)] -> Idris Totality
 calcProd i fc n pats = do patsprod <- mapM prodRec pats
                           if (and patsprod) 
@@ -175,15 +169,16 @@ calcProd i fc n pats = do patsprod <- mapM prodRec pats
                              else return (Partial NotProductive)
    where
      -- every application of n must be in an argument of a coinductive 
-     -- constructor
+     -- constructor, in every function reachable from here in the
+     -- call graph.
 
      prodRec :: ([Name], Term, Term) -> Idris Bool
      prodRec (_, _, tm) = prod False tm 
 
      prod ok ap@(App _ _)
         | (P _ (UN "lazy") _, [_, arg]) <- unApply ap = prod ok arg
-        | (P _ f ty, args) <- unApply ap
-            = let co = cotype ty in
+        | (P nt f ty, args) <- unApply ap
+            = let co = cotype nt ty in
                   if f == n 
                      then do argsprod <- mapM (prod co) args
                              return (and (ok : argsprod) )
@@ -194,12 +189,12 @@ calcProd i fc n pats = do patsprod <- mapM prodRec pats
      prod ok (Bind _ b sc) = prod ok sc
      prod ok t = return True 
     
-     cotype ty 
+     cotype (DCon _ _) ty 
         | (P _ t _, _) <- unApply (getRetTy ty)
             = case lookupCtxt t (idris_datatypes i) of
                    [TI _ True _] -> True
                    _ -> False
-        | otherwise = False
+     cotype _ _ = False
 
 calcTotality :: [Name] -> FC -> Name -> [([Name], Term, Term)]
                 -> Idris Totality

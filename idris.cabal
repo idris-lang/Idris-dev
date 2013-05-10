@@ -56,6 +56,7 @@ Data-files:            rts/libidris_rts.a rts/idris_rts.h rts/idris_gc.h
 Extra-source-files:    lib/Makefile  lib/*.idr lib/Prelude/*.idr
                        lib/Network/*.idr lib/Control/*.idr
                        lib/Control/Monad/*.idr lib/Language/*.idr
+                       lib/Language/Reflection/*.idr
                        lib/System/Concurrency/*.idr
                        lib/Data/*.idr lib/Debug/*.idr
                        lib/Data/Vect/*.idr
