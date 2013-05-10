@@ -1,0 +1,3 @@
+reg018a.idr:16:conat.minusCoNat is not productive
+reg018b.idr:8:A.showB is possibly not total due to recursive path A.showB
+reg018c.idr:19:CodataTest.inf is not productive

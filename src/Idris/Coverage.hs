@@ -163,38 +163,55 @@ checkPositive n (cn, ty)
     posArg t = True
 
 calcProd :: IState -> FC -> Name -> [([Name], Term, Term)] -> Idris Totality
-calcProd i fc n pats = do patsprod <- mapM prodRec pats
-                          if (and patsprod) 
-                             then return Productive
-                             else return (Partial NotProductive)
+calcProd i fc topn pats 
+    = cp topn pats []
    where
      -- every application of n must be in an argument of a coinductive 
      -- constructor, in every function reachable from here in the
      -- call graph.
+     cp n pats done = do patsprod <- mapM (prodRec n done) pats
+                         if (and patsprod) 
+                            then return Productive
+                            else return (Partial NotProductive)
 
-     prodRec :: ([Name], Term, Term) -> Idris Bool
-     prodRec (_, _, tm) = prod False tm 
+     prodRec :: Name -> [Name] -> ([Name], Term, Term) -> Idris Bool
+     prodRec n done _ | n `elem` done = return True
+     prodRec n done (_, _, tm) = prod n done False tm 
 
-     prod ok ap@(App _ _)
-        | (P _ (UN "lazy") _, [_, arg]) <- unApply ap = prod ok arg
-        | (P nt f ty, args) <- unApply ap
-            = let co = cotype nt ty in
-                  if f == n 
-                     then do argsprod <- mapM (prod co) args
-                             return (and (ok : argsprod) )
-                     else do argsprod <- mapM (prod co) args
-                             return (and argsprod)
-     prod ok (App f a) = liftM2 (&&) (prod False f) (prod False a)
-     prod ok (Bind _ (Let t v) sc) = liftM2 (&&) (prod False v) (prod False v)
-     prod ok (Bind _ b sc) = prod ok sc
-     prod ok t = return True 
-    
-     cotype (DCon _ _) ty 
+     prod :: Name -> [Name] -> Bool -> Term -> Idris Bool
+     prod n done ok ap@(App _ _)
+        | (P _ (UN "lazy") _, [_, arg]) <- unApply ap = prod n done ok arg
+        | (P nt f _, args) <- unApply ap
+            = do recOK <- checkProdRec (n:done) f
+                 let ctxt = tt_ctxt i
+                 let [ty] = lookupTy f ctxt -- must exist!
+                 let co = cotype nt f ty in
+                     if (not recOK) then return False else
+                       if f == topn 
+                         then do argsprod <- mapM (prod n done co) args
+                                 return (and (ok : argsprod) )
+                         else do argsprod <- mapM (prod n done co) args
+                                 return (and argsprod)
+     prod n done ok (App f a) = liftM2 (&&) (prod n done False f) 
+                                            (prod n done False a)
+     prod n done ok (Bind _ (Let t v) sc) 
+         = liftM2 (&&) (prod n done False v) (prod n done False v)
+     prod n done ok (Bind _ b sc) = prod n done ok sc
+     prod n done ok t = return True 
+   
+     checkProdRec :: [Name] -> Name -> Idris Bool
+     checkProdRec done f 
+        = case lookupCtxt f (idris_patdefs i) of
+               [(def, _)] -> do ok <- mapM (prodRec f done) def
+                                return (and ok)
+               _ -> return True -- defined elsewhere, can't call topn
+
+     cotype (DCon _ _) n ty 
         | (P _ t _, _) <- unApply (getRetTy ty)
             = case lookupCtxt t (idris_datatypes i) of
                    [TI _ True _] -> True
                    _ -> False
-     cotype _ _ = False
+     cotype nt n ty = False
 
 calcTotality :: [Name] -> FC -> Name -> [([Name], Term, Term)]
                 -> Idris Totality
