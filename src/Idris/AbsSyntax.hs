@@ -245,14 +245,7 @@ iputStrLn :: String -> Idris ()
 iputStrLn s = do i <- getIState
                  case idris_outputmode i of
                    RawOutput -> liftIO $ putStrLn s
-                   IdeSlave n -> liftIO $ putStrLn (conv n (toSExp s))
-  where conv id sexp
-          = let sex = List [SymbolAtom "write-string", sexp, IntegerAtom id] in
-                let str = sExpToString sex in
-                    (getHexLength str) ++ str
-
-getHexLength :: String -> String
-getHexLength s = printf "%06x" (1 + (length s))
+                   IdeSlave n -> liftIO $ putStrLn $ convSExp "write-string" s n
 
 iWarn :: FC -> String -> Idris ()
 iWarn fc err = liftIO $ putStrLn (show fc ++ ":" ++ err)

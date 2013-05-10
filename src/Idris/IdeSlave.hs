@@ -1,6 +1,6 @@
 {-# LANGUAGE FlexibleInstances, IncoherentInstances #-}
 
-module Idris.IdeSlave(receiveMessage, sendMessage, IdeSlaveCommand(..), sexpToCommand, toSExp, sExpToString, SExp(..)) where
+module Idris.IdeSlave(receiveMessage, sendMessage, convSExp, IdeSlaveCommand(..), sexpToCommand, SExp(..)) where
 
 import Text.Printf
 import Numeric
@@ -113,14 +113,18 @@ receiveString x =
                       Right r -> r)
     _ -> error "readHex failed"
 
+convSExp :: SExpable a => String -> a -> Integer -> String
+convSExp pre s id =
+  let sex = List [SymbolAtom pre, toSExp s, IntegerAtom id] in
+      let str = sExpToString sex in
+          (getHexLength str) ++ str
+
 sendMessage :: SExpable a => Integer -> Either a a -> String
 sendMessage id s =
   let sexp = case s of
         Left err -> List [SymbolAtom "error", toSExp err]
         Right succ -> List [SymbolAtom "ok", toSExp succ]
-  in conv id sexp
-  where conv id sexp =
-          let str = sExpToString (List [SymbolAtom "return", sexp, IntegerAtom id]) in (getHexLength str) ++ str
+  in convSExp "return" sexp id
 
 getHexLength :: String -> String
 getHexLength s = printf "%06x" (1 + (length s))

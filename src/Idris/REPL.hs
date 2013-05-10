@@ -82,8 +82,17 @@ repl orig mods
                       repl orig mods
 
 -- | Run the IdeSlave
-ideslave :: IState -> [FilePath] -> Idris ()
-ideslave orig mods
+ideslaveStart :: [FilePath] -> Idris ()
+ideslaveStart mods
+  = do i <- getIState
+       case idris_outputmode i of
+         IdeSlave n ->
+           when (mods /= []) (do liftIO $ putStrLn $ convSExp "set-prompt" (mkPrompt mods) n)
+       ideslave mods
+
+
+ideslave :: [FilePath] -> Idris ()
+ideslave mods
   = do idrisCatch
          (do l <- liftIO $ getLine
              let (sexp, id) = receiveMessage l
@@ -106,10 +115,12 @@ ideslave orig mods
                     liftIO $ putStrLn $ sendMessage id (Right (map replacement compls, reverse unused))
                Just (LoadFile filename) -> do clearErr
                                               mod <- loadModule filename
+                                              liftIO $ putStrLn $ convSExp "set-prompt" (mkPrompt [filename]) id
                                               liftIO $ putStrLn $ sendMessage id (Right (SymbolAtom "good"))
+                                              ideslave [filename]
                Nothing -> do liftIO $ putStrLn $ sendMessage id (Left "did not understand"))
          (\e -> do liftIO $ putStrLn $ sendMessage 0 (Left (show e)))
-       ideslave orig mods
+       ideslave mods
 
 -- | The prompt consists of the currently loaded modules, or "Idris" if there are none
 mkPrompt [] = "Idris"
@@ -611,7 +622,7 @@ idrisMain opts =
                     [] -> return ()
                     (o:_) -> process "" (NewCompile o)  
        when (runrepl && not idesl) $ runInputT replSettings $ repl ist inputs
-       when (idesl) $ ideslave ist inputs
+       when (idesl) $ ideslaveStart inputs
        ok <- noErrors
        when (not ok) $ liftIO (exitWith (ExitFailure 1))
   where
