@@ -329,15 +329,20 @@ buildSCG' ist sc args = -- trace ("Building SCG for " ++ show sc) $
       argRels n = let ctxt = tt_ctxt ist
                       [ty] = lookupTy n ctxt -- must exist!
                       P _ nty _ = fst (unApply (getRetTy ty))
+                      co = case lookupCtxt nty (idris_datatypes ist) of
+                              [TI _ x _] -> x
+                              _ -> False
                       args = map snd (getArgTys ty) in
-                      map (getRel nty) (map (fst . unApply . getRetTy) args)
+                      map (getRel co nty) (map (fst . unApply . getRetTy) args)
         where
-          getRel ty (P _ n' _) | n' == ty = (n, Smaller)
-          getRel ty t = (n, Unknown)
+          getRel True _ _ = (n, Unknown) -- coinductive
+          getRel _ ty (P _ n' _) | n' == ty = (n, Smaller)
+          getRel _ ty t = (n, Unknown)
 
       scgAlt x vars szs (ConCase n _ args sc)
            -- all args smaller than top variable of x in sc
-           -- (as long as they are in the same type family)
+           -- (as long as they are in the same type family, and it's
+           -- not coinductive)
          | Just tvar <- lookup x vars
               = let arel = argRels n
                     szs' = zipWith (\arg (_,t) -> (arg, (x, t))) args arel 
