@@ -66,7 +66,7 @@ Extra-source-files:    lib/Makefile  lib/*.idr lib/Prelude/*.idr
                        config.mk
                        rts/*.c rts/*.h rts/Makefile
                        js/*.js
-                       java/org/idris/rts/*.java
+                       java/src/main/java/org/idris/rts/*.java
 
 source-repository head
   type:     git
@@ -96,6 +96,7 @@ Executable     idris
                               Idris.Coverage, Idris.IBC, Idris.Unlit,
                               Idris.DataOpts, Idris.Transforms, Idris.DSL,
                               Idris.UnusedArgs, Idris.Docs, Idris.Completion,
+                              Idris.Providers,
 
                               Util.Pretty, Util.System, Util.DynamicLinker,
                               Pkg.Package, Pkg.PParser,
