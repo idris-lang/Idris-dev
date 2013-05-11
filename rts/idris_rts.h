@@ -125,6 +125,7 @@ typedef intptr_t i_int;
 #define ISINT(x) ((((i_int)x)&1) == 1)
 
 #define INTOP(op,x,y) MKINT((i_int)((((i_int)x)>>1) op (((i_int)y)>>1)))
+#define UINTOP(op,x,y) MKINT((i_int)((((uintptr_t)x)>>1) op (((uintptr_t)y)>>1)))
 #define FLOATOP(op,x,y) MKFLOAT(vm, ((GETFLOAT(x)) op (GETFLOAT(y))))
 #define FLOATBOP(op,x,y) MKINT((i_int)(((GETFLOAT(x)) op (GETFLOAT(y)))))
 #define ADD(x,y) (void*)(((i_int)x)+(((i_int)y)-1))
@@ -207,9 +208,9 @@ VAL idris_castFloatStr(VM* vm, VAL i);
 VAL idris_castStrFloat(VM* vm, VAL i);
 
 // Raw memory manipulation
-void idris_memset(void* ptr, i_int offset, VAL c, i_int size);
+void idris_memset(void* ptr, i_int offset, uint8_t c, i_int size);
 int idris_peek(void* ptr, i_int offset);
-void idris_poke(void* ptr, i_int offset, VAL data);
+void idris_poke(void* ptr, i_int offset, uint8_t data);
 void idris_memmove(void* dest, void* src, i_int dest_offset, i_int src_offset, i_int size);
 
 // String primitives
