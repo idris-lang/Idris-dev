@@ -69,6 +69,13 @@ using (i: Fin n, gam : Vect Ty n, gam' : Vect Ty n, gam'' : Vect Ty n)
   envUpdate (pop k) val (x :: xs) = x :: envUpdate k val xs
   envUpdate stop    _   Nil impossible
 
+  total
+  envUpdateVal : (p:HasType gam i a) -> (val:b) -> 
+              Env gam -> Env (update gam p (Val b))
+  envUpdateVal stop    val (x :: xs) = val :: xs
+  envUpdateVal (pop k) val (x :: xs) = x :: envUpdateVal k val xs
+  envUpdateVal stop    _   Nil impossible
+
   envTail : Env (a :: gam) -> Env gam
   envTail (x :: xs) = xs
 
@@ -121,7 +128,7 @@ using (i: Fin n, gam : Vect Ty n, gam' : Vect Ty n, gam'' : Vect Ty n)
                    (\env', scope' => k (envTail env') scope')
   interp env (Update method x) k
       = do x' <- getUpdater (method (envLookup x env))
-           k (envUpdate x x' env) (return ())
+           k (envUpdateVal x x' env) (return ()) 
   interp env (Use method x) k
       = do x' <- getReader (method (envLookup x env))
            k env (return x')

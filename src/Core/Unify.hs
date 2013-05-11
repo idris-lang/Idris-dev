@@ -56,7 +56,7 @@ unify ctxt env topx topy dont holes =
     injective (P (TCon _ _) _ _) = True
     injective (App f (P _ _ _))  = injective f 
     injective (App f (Constant _))  = injective f 
-    injective (App f a)          = injective f && injective a
+    injective (App f a)          = injective f -- && injective a
     injective _                  = False
 
     notP (P _ _ _) = False
@@ -133,10 +133,9 @@ unify ctxt env topx topy dont holes =
         | fst (bnames!!i) == x || snd (bnames!!i) == x = do sc 1; return []
 
     un' fn bnames appx@(App fx ax) appy@(App fy ay)
-      |    injective fx && sameArgStruct appx appy && metavarApp appy
-        || injective fy && sameArgStruct appx appy && metavarApp appx
-        || injective fx && injective fy  
-        || fx == fy
+      |    (injective fx && sameArgStruct appx appy && metavarApp appy)
+        || (injective fy && sameArgStruct appx appy && metavarApp appx)
+        || (injective fx && injective fy)
          = do let (headx, _) = unApply fx
               let (heady, _) = unApply fy
               -- fail quickly if the heads are disjoint
@@ -158,17 +157,19 @@ unify ctxt env topx topy dont holes =
                     hf <- un' False bnames fx' fy'
                     sc 1
                     combine bnames hf ha)
-       | otherwise 
-          = do let (headx, argsx) = unApply appx
+       | otherwise = 
+            do let (headx, argsx) = unApply appx
                let (heady, argsy) = unApply appy
+               -- traceWhen (headx == heady) (show (appx, appy)) $
                if (length argsx == length argsy && 
-                   ((headx == heady) || (argsx == argsy) ||
+                   ((headx == heady && inenv headx) || (argsx == argsy) ||
                     (and (zipWith sameStruct (headx:argsx) (heady:argsy)))))
                       then
 --                     (notFn headx && notFn heady))) then
                  do uf <- un' True bnames headx heady
                     unArgs uf argsx argsy
-                 else unifyTmpFail appx appy
+                 else -- trace ("TMPFAIL " ++ show (appx, appy, injective appx, injective appy)) $ 
+                        unifyTmpFail appx appy
       where hnormalise [] _ _ t = t
             hnormalise ns ctxt env t = normalise ctxt env t
             checkHeads (P (DCon _ _) x _) (P (DCon _ _) y _)

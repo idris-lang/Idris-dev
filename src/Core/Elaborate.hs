@@ -391,10 +391,13 @@ apply fn imps =
                              else
                              map fst (filter (not.snd) (zip args (map fst imps)))
        let (n, hunis) = -- trace ("AVOID UNIFY: " ++ show (fn, dont) ++ "\n" ++ show ptm) $ 
-                      unified p
+                        unified p
        let unify = -- trace ("Not done " ++ show hs) $ 
-                    dropGiven dont hunis hs
-       put (ES (p { dontunify = dont, unified = (n, unify) }, a) s prev)
+                   dropGiven dont hunis hs
+       let notunify = -- trace ("Not done " ++ show hs) $ 
+                       keepGiven dont hunis hs
+       put (ES (p { dontunify = dont, unified = (n, unify),
+                    notunified = notunify ++ notunified p }, a) s prev)
        ptm <- get_term
        g <- goal
 --        trace ("Goal " ++ show g ++ "\n" ++ show (fn,  imps, unify) ++ "\n" ++ show ptm) $ 

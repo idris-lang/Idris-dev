@@ -703,10 +703,10 @@ addCtxtDef n d c = let ctxt = definitions c
                        ctxt' = addDef n (d, Public, Unchecked) ctxt in
                        c { definitions = ctxt' }
 
-addTyDecl :: Name -> Type -> Context -> Context
-addTyDecl n ty uctxt 
+addTyDecl :: Name -> NameType -> Type -> Context -> Context
+addTyDecl n nt ty uctxt 
     = let ctxt = definitions uctxt
-          ctxt' = addDef n (TyDecl Ref ty, Public, Unchecked) ctxt in
+          ctxt' = addDef n (TyDecl nt ty, Public, Unchecked) ctxt in
           uctxt { definitions = ctxt' }
 
 addDatatype :: Datatype Name -> Context -> Context

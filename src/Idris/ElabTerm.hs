@@ -96,9 +96,10 @@ elab :: IState -> ElabInfo -> Bool -> Bool -> Name -> PTerm ->
         ElabD ()
 elab ist info pattern tcgen fn tm 
     = do elabE (False, False) tm -- (in argument, guarded)
+         end_unify
          when pattern -- convert remaining holes to pattern vars
               (do update_term orderPats
---                   tm <- get_term
+                  tm <- get_term
                   mkPat)
   where
     isph arg = case getTm arg of

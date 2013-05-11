@@ -121,11 +121,11 @@ elabData info syn doc fc codata (PLaterdecl n t_in)
          ((t', defer, is), log) <- tclift $ elaborate ctxt n (TType (UVal 0)) []
                                             (erun fc (build i info False n t))
          def' <- checkDef fc defer
-         addDeferred def'
+         addDeferredTyCon def'
          mapM_ (elabCaseBlock info) is
          (cty, _)  <- recheckC fc [] t'
          logLvl 2 $ "---> " ++ show cty
-         updateContext (addTyDecl n cty) -- temporary, to check cons
+         updateContext (addTyDecl n (TCon 0 0) cty) -- temporary, to check cons
 
 elabData info syn doc fc codata (PDatadecl n t_in dcons)
     = do iLOG (show fc)
@@ -137,12 +137,12 @@ elabData info syn doc fc codata (PDatadecl n t_in dcons)
          ((t', defer, is), log) <- tclift $ elaborate ctxt n (TType (UVal 0)) []
                                             (erun fc (build i info False n t))
          def' <- checkDef fc defer
-         addDeferred def'
+         addDeferredTyCon def'
          mapM_ (elabCaseBlock info) is
          (cty, _)  <- recheckC fc [] t'
          logLvl 2 $ "---> " ++ show cty
          -- temporary, to check cons
-         when undef $ updateContext (addTyDecl n cty) 
+         when undef $ updateContext (addTyDecl n (TCon 0 0) cty) 
          cons <- mapM (elabCon info syn n codata) dcons
          ttag <- getName
          i <- getIState
@@ -585,6 +585,7 @@ checkPossible info fc tcgen fname lhs_in
                   case recheck ctxt [] (forget lhs_tm) lhs_tm of
                        OK _ -> return True
                        _ -> return False
+
 --                   b <- inferredDiff fc (delab' i lhs_tm True) lhs
 --                   return (not b) -- then return (Just lhs_tm) else return Nothing
 --                   trace (show (delab' i lhs_tm True) ++ "\n" ++ show lhs) $ return (not b)
