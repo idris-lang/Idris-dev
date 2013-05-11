@@ -32,16 +32,16 @@ natToBits' : machineTy n -> Nat -> machineTy n
 natToBits' a O = a
 natToBits' {n=n} a x with n
  natToBits' a (S x') | O = natToBits' (prim__addB8 a (prim__intToB8 1)) x'
- natToBits' a (S x') | S O = natToBits' (prim__addB16 a (prim__intToB16 1)) x'
- natToBits' a (S x') | S (S O) = natToBits' (prim__addB32 a (prim__intToB32 1)) x'
- natToBits' a (S x') | S (S (S _)) = natToBits' (prim__addB64 a (prim__intToB64 1)) x'
+ natToBits' a (S x') | S O = natToBits' {n = S O} (prim__addB16 a (prim__intToB16 1)) x'
+ natToBits' a (S x') | S (S O) = natToBits' {n=S (S O)} (prim__addB32 a (prim__intToB32 1)) x'
+ natToBits' a (S x') | S (S (S k)) = natToBits' {n = S (S (S k))} (prim__addB64 a (prim__intToB64 1)) x'
 
 natToBits : Nat -> machineTy n
 natToBits {n=n} x with n
-    | O = natToBits' (prim__intToB8 0) x
-    | S O = natToBits' (prim__intToB16 0) x
-    | S (S O) = natToBits' (prim__intToB32 0) x
-    | S (S (S _)) = natToBits' (prim__intToB64 0) x
+    | O = natToBits' {n=O} (prim__intToB8 0) x
+    | S O = natToBits' {n=S O} (prim__intToB16 0) x
+    | S (S O) = natToBits' {n=S (S O)} (prim__intToB32 0) x
+    | S (S (S k)) = natToBits' {n=S (S (S k))} (prim__intToB64 0) x
 
 getPad : Nat -> machineTy n
 getPad n = natToBits ((bitsUsed (nextBytes n)) - n)
@@ -111,7 +111,8 @@ shiftRightLogical' {n=n} x c with n
 
 public
 shiftRightLogical : Bits n -> Bits n -> Bits n
-shiftRightLogical (MkBits x) (MkBits y) = MkBits (shiftRightLogical' x y)
+shiftRightLogical {n} (MkBits x) (MkBits y) 
+    = MkBits {n} (shiftRightLogical' {n=nextBytes n} x y)
 
 shiftRightArithmetic' : machineTy (nextBytes n) -> machineTy (nextBytes n) -> machineTy (nextBytes n)
 shiftRightArithmetic' {n=n} x c with (nextBytes n)
@@ -133,7 +134,7 @@ and' {n=n} x y with n
 
 public
 and : Bits n -> Bits n -> Bits n
-and (MkBits x) (MkBits y) = MkBits (and' x y)
+and {n} (MkBits x) (MkBits y) = MkBits (and' {n=nextBytes n} x y)
 
 or' : machineTy n -> machineTy n -> machineTy n
 or' {n=n} x y with n
@@ -144,7 +145,7 @@ or' {n=n} x y with n
 
 public
 or : Bits n -> Bits n -> Bits n
-or (MkBits x) (MkBits y) = MkBits (or' x y)
+or {n} (MkBits x) (MkBits y) = MkBits (or' {n=nextBytes n} x y)
 
 xor' : machineTy n -> machineTy n -> machineTy n
 xor' {n=n} x y with n
@@ -153,6 +154,7 @@ xor' {n=n} x y with n
     | S (S O) = prim__xorB32 x y
     | S (S (S _)) = prim__xorB64 x y
 
+{-
 public
 xor : Bits n -> Bits n -> Bits n
 xor (MkBits x) (MkBits y) = MkBits (xor' x y)
@@ -437,3 +439,5 @@ bitsToStr x = pack (helper last x)
 
 instance Show (Bits n) where
     show = bitsToStr
+
+-}
