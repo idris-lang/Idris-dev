@@ -1,6 +1,6 @@
 {-# LANGUAGE FlexibleInstances, IncoherentInstances #-}
 
-module Idris.IdeSlave(receiveMessage, sendMessage, convSExp, IdeSlaveCommand(..), sexpToCommand, SExp(..)) where
+module Idris.IdeSlave(parseMessage, convSExp, IdeSlaveCommand(..), sexpToCommand, toSExp, SExp(..)) where
 
 import Text.Printf
 import Numeric
@@ -55,6 +55,9 @@ instance (SExpable a) => SExpable [a] where
 instance (SExpable a, SExpable b) => SExpable (a, b) where
   toSExp (l, r) = List [toSExp l, toSExp r]
 
+instance (SExpable a, SExpable b, SExpable c) => SExpable (a, b, c) where
+  toSExp (l, m, n) = List [toSExp l, toSExp m, toSExp n]
+
 escape :: String -> String
 escape = concatMap escapeChar
   where
@@ -96,10 +99,10 @@ sexpToCommand (List [SymbolAtom "repl-completions", StringAtom prefix]) = Just (
 sexpToCommand (List [SymbolAtom "load-file", StringAtom filename])      = Just (LoadFile filename)
 sexpToCommand _                                                         = Nothing
 
-receiveMessage :: String -> (SExp, Integer)
-receiveMessage x = case receiveString x of
-                        (List [cmd, (IntegerAtom id)]) ->
-                          (cmd, id)
+parseMessage :: String -> (SExp, Integer)
+parseMessage x = case receiveString x of
+                      (List [cmd, (IntegerAtom id)]) ->
+                        (cmd, id)
 
 receiveString :: String -> SExp
 receiveString x =
@@ -118,13 +121,6 @@ convSExp pre s id =
   let sex = List [SymbolAtom pre, toSExp s, IntegerAtom id] in
       let str = sExpToString sex in
           (getHexLength str) ++ str
-
-sendMessage :: SExpable a => Integer -> Either a a -> String
-sendMessage id s =
-  let sexp = case s of
-        Left err -> List [SymbolAtom "error", toSExp err]
-        Right succ -> List [SymbolAtom "ok", toSExp succ]
-  in convSExp "return" sexp id
 
 getHexLength :: String -> String
 getHexLength s = printf "%06x" (1 + (length s))
