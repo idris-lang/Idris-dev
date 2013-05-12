@@ -252,6 +252,9 @@ bitOp v op ty args = v ++ "idris_b" ++ show (intTyWidth ty) ++ op ++ "(vm, " ++ 
 bitCoerce v op input output arg
     = v ++ "idris_b" ++ show (intTyWidth input) ++ op ++ show (intTyWidth output) ++ "(vm, " ++ creg arg ++ ")"
 
+signedTy :: IntTy -> String
+signedTy t = "int" ++ show (intTyWidth t) ++ "_t"
+
 doOp v (LPlus ITNative) [l, r] = v ++ "ADD(" ++ creg l ++ ", " ++ creg r ++ ")"
 doOp v (LMinus ITNative) [l, r] = v ++ "INTOP(-," ++ creg l ++ ", " ++ creg r ++ ")"
 doOp v (LTimes ITNative) [l, r] = v ++ "MULT(" ++ creg l ++ ", " ++ creg r ++ ")"
@@ -335,14 +338,19 @@ doOp v (LSDiv ty) [x, y] = bitOp v "SDiv" ty [x, y]
 doOp v (LURem ty) [x, y] = bitOp v "URem" ty [x, y]
 doOp v (LSRem ty) [x, y] = bitOp v "SRem" ty [x, y]
 
+doOp v (LSExt from ITBig) [x] = v ++ "MKBIGSI(vm, (" ++ signedTy from ++ ")" ++ creg x ++ "->info.bits" ++ show (intTyWidth from) ++ ")"
+doOp v (LSExt ITNative to) [x] = v ++ "idris_b" ++ show (intTyWidth to) ++ "const(vm, GETINT(" ++ creg x ++ "))"
+doOp v (LSExt from ITNative) [x] = v ++ "MKINT((i_int)((" ++ signedTy from ++ ")" ++ creg x ++ "->info.bits" ++ show (intTyWidth from) ++ "))"
 doOp v (LSExt from to) [x]
     | intTyWidth from < intTyWidth to = bitCoerce v "S" from to x
-doOp v (LZExt ITNative to) [x] = v ++ "idris_b" ++ show (intTyWidth to) ++ "(vm, " ++ creg x ++ ")"
-doOp v (LZExt IT32 ITNative) [x] = v ++ "idris_castB32Int(vm, " ++ creg x ++ ")"
+doOp v (LZExt ITNative to) [x] = v ++ "idris_b" ++ show (intTyWidth to) ++ "const(vm, (uintptr_t)GETINT(" ++ creg x ++ ")"
+doOp v (LZExt from ITNative) [x] = v ++ "MKINT((i_int)" ++ creg x ++ "->info.bits" ++ show (intTyWidth from) ++ ")"
+doOp v (LZExt from ITBig) [x] = v ++ "MKBIGUI(vm, " ++ creg x ++ "->info.bits" ++ show (intTyWidth from) ++ ")"
 doOp v (LZExt from to) [x]
     | intTyWidth from < intTyWidth to = bitCoerce v "Z" from to x
-doOp v (LTrunc ITNative to) [x] = v ++ "idris_b" ++ show (intTyWidth to) ++ "(vm, " ++ creg x ++ ")"
-doOp v (LTrunc IT32 ITNative) [x] = v ++ "idris_castB32Int(vm, " ++ creg x ++ ")"
+doOp v (LTrunc ITNative to) [x] = v ++ "idris_b" ++ show (intTyWidth to) ++ "const(vm, GETINT(" ++ creg x ++ "))"
+doOp v (LTrunc from ITNative) [x] = v ++ "MKINT((i_int)" ++ creg x ++ "->info.bits" ++ show (intTyWidth from) ++ ")"
+doOp v (LTrunc ITBig to) [x] = v ++ "idris_b" ++ show (intTyWidth to) ++ "const(vm, mpz_get_ui(GETMPZ(" ++ creg x ++ "))"
 doOp v (LTrunc from to) [x]
     | intTyWidth from > intTyWidth to = bitCoerce v "T" from to x
 
