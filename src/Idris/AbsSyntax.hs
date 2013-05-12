@@ -27,8 +27,6 @@ import Debug.Trace
 import Util.Pretty
 import Util.System
 
-import Text.Printf (printf)
-
 getContext :: Idris Context
 getContext = do i <- getIState; return (tt_ctxt i)
 
@@ -252,7 +250,7 @@ iResult s = do i <- getIState
                                    "" -> return ()
                                    s  -> liftIO $ putStrLn s
                  IdeSlave n ->
-                   let good = List [SymbolAtom "ok", toSExp s] in
+                   let good = SexpList [SymbolAtom "ok", toSExp s] in
                        liftIO $ putStrLn $ convSExp "return" good n
 
 iFail :: String -> Idris ()
@@ -262,7 +260,7 @@ iFail s = do i <- getIState
                                  "" -> return ()
                                  s  -> liftIO $ putStrLn s
                IdeSlave n ->
-                 let good = List [SymbolAtom "error", toSExp s] in
+                 let good = SexpList [SymbolAtom "error", toSExp s] in
                      liftIO $ putStrLn $ convSExp "return" good n
 
 iputStrLn :: String -> Idris ()

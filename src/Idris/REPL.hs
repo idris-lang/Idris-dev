@@ -110,7 +110,7 @@ ideslave orig mods
                                         (\e -> do iFail $ show e)
                Just (REPLCompletions str) ->
                  do (unused, compls) <- replCompletion (reverse str, "")
-                    let good = List [SymbolAtom "ok", toSExp (map replacement compls, reverse unused)]
+                    let good = SexpList [SymbolAtom "ok", toSExp (map replacement compls, reverse unused)]
                     liftIO $ putStrLn $ convSExp "return" good id
                Just (LoadFile filename) ->
                  do clearErr

@@ -8,7 +8,7 @@ import Data.List
 -- import qualified Data.Text as T
 import Text.Parsec
 
-data SExp = List [SExp]
+data SExp = SexpList [SExp]
           | StringAtom String
           | BoolAtom Bool
           | IntegerAtom Integer
@@ -21,16 +21,13 @@ sExpToString (BoolAtom True)  = ":True"
 sExpToString (BoolAtom False) = ":False"
 sExpToString (IntegerAtom i)  = printf "%d" i
 sExpToString (SymbolAtom s)   = ":" ++ s
-sExpToString (List l)         = "(" ++ intercalate " " (map sExpToString l) ++ ")"
+sExpToString (SexpList l)     = "(" ++ intercalate " " (map sExpToString l) ++ ")"
 
 class SExpable a where
   toSExp :: a -> SExp
 
 instance SExpable SExp where
   toSExp a = a
-
-instance SExpable () where
-  toSExp a = List [ StringAtom "Unit" ]
 
 instance SExpable Bool where
   toSExp True  = BoolAtom True
@@ -46,17 +43,17 @@ instance SExpable Int where
   toSExp n = IntegerAtom (toInteger n)
 
 instance (SExpable a) => SExpable (Maybe a) where
-  toSExp Nothing  = List [SymbolAtom "Nothing"]
-  toSExp (Just a) = List [SymbolAtom "Just", toSExp a]
+  toSExp Nothing  = SexpList [SymbolAtom "Nothing"]
+  toSExp (Just a) = SexpList [SymbolAtom "Just", toSExp a]
 
 instance (SExpable a) => SExpable [a] where
-  toSExp l = List (map toSExp l)
+  toSExp l = SexpList (map toSExp l)
 
 instance (SExpable a, SExpable b) => SExpable (a, b) where
-  toSExp (l, r) = List [toSExp l, toSExp r]
+  toSExp (l, r) = SexpList [toSExp l, toSExp r]
 
 instance (SExpable a, SExpable b, SExpable c) => SExpable (a, b, c) where
-  toSExp (l, m, n) = List [toSExp l, toSExp m, toSExp n]
+  toSExp (l, m, n) = SexpList [toSExp l, toSExp m, toSExp n]
 
 escape :: String -> String
 escape = concatMap escapeChar
@@ -66,7 +63,7 @@ escape = concatMap escapeChar
     escapeChar c    = [c]
 
 pSExp = do xs <- between (char '(') (char ')') (pSExp `sepBy` (char ' '))
-           return (List xs)
+           return (SexpList xs)
     <|> atom
 
 atom = do char ':'; x <- atomC; return x
@@ -93,15 +90,15 @@ data IdeSlaveCommand = REPLCompletions String
   deriving Show
 
 sexpToCommand :: SExp -> Maybe IdeSlaveCommand
-sexpToCommand (List (x:[]))                                             = sexpToCommand x
-sexpToCommand (List [SymbolAtom "interpret", StringAtom cmd])           = Just (Interpret cmd)
-sexpToCommand (List [SymbolAtom "repl-completions", StringAtom prefix]) = Just (REPLCompletions prefix)
-sexpToCommand (List [SymbolAtom "load-file", StringAtom filename])      = Just (LoadFile filename)
+sexpToCommand (SexpList (x:[]))                                             = sexpToCommand x
+sexpToCommand (SexpList [SymbolAtom "interpret", StringAtom cmd])           = Just (Interpret cmd)
+sexpToCommand (SexpList [SymbolAtom "repl-completions", StringAtom prefix]) = Just (REPLCompletions prefix)
+sexpToCommand (SexpList [SymbolAtom "load-file", StringAtom filename])      = Just (LoadFile filename)
 sexpToCommand _                                                         = Nothing
 
 parseMessage :: String -> (SExp, Integer)
 parseMessage x = case receiveString x of
-                      (List [cmd, (IntegerAtom id)]) ->
+                      (SexpList [cmd, (IntegerAtom id)]) ->
                         (cmd, id)
 
 receiveString :: String -> SExp
@@ -118,7 +115,7 @@ receiveString x =
 
 convSExp :: SExpable a => String -> a -> Integer -> String
 convSExp pre s id =
-  let sex = List [SymbolAtom pre, toSExp s, IntegerAtom id] in
+  let sex = SexpList [SymbolAtom pre, toSExp s, IntegerAtom id] in
       let str = sExpToString sex in
           (getHexLength str) ++ str
 
