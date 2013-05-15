@@ -91,7 +91,7 @@ ideslaveStart orig mods
   = do i <- getIState
        case idris_outputmode i of
          IdeSlave n ->
-           when (mods /= []) (do liftIO $ putStrLn $ convSExp "set-prompt" (mkPrompt mods) n)
+           when (mods /= []) (do isetPrompt (mkPrompt mods))
        ideslave orig mods
 
 
@@ -122,7 +122,7 @@ ideslave orig mods
                                       idris_outputmode = (IdeSlave id) })
                     loadModule filename
                     iucheck
-                    liftIO $ putStrLn $ convSExp "set-prompt" (mkPrompt [filename]) id
+                    isetPrompt (mkPrompt [filename])
                     -- report success! or failure!
                     ideslave orig [filename]
                Nothing -> do iFail "did not understand")

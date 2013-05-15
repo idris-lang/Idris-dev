@@ -138,8 +138,9 @@ ploop d prompt prf e h
                              l <- getInputLine (prompt ++ "> ")
                              h' <- getHistory
                              return (l, Just h')
-             IdeSlave n -> -- setprompt -- waitforinput
-               return (Just "trivial", h)
+             IdeSlave n -> -- waitforinput
+               do isetPrompt prompt
+                  return (Just "trivial", h)
          (cmd, step) <- case x of
             Nothing -> fail "Abandoned"
             Just input -> do return (parseTac i input, input)

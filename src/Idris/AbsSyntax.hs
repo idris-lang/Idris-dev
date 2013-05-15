@@ -286,6 +286,11 @@ iputGoal s = do i <- getIState
                   RawOutput -> liftIO $ putStrLn s
                   IdeSlave n -> liftIO $ putStrLn $ convSExp "write-goal" s n
 
+isetPrompt :: String -> Idris ()
+isetPrompt p = do i <- getIState
+                  case idris_outputmode i of
+                    IdeSlave n -> liftIO $ putStrLn $ convSExp "set-prompt" p n
+
 iWarn :: FC -> String -> Idris ()
 iWarn fc err = do i <- getIState
                   case idris_outputmode i of
