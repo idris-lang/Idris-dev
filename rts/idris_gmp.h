@@ -5,6 +5,8 @@ VAL MKBIGI(int val);
 VAL MKBIGC(VM* vm, char* bigint);
 VAL MKBIGM(VM* vm, void* bigint);
 VAL MKBIGMc(VM* vm, void* bigint);
+VAL MKBIGUI(VM* vm, unsigned long val);
+VAL MKBIGSI(VM* vm, signed long val);
 
 VAL idris_bigPlus(VM*, VAL x, VAL y);
 VAL idris_bigMinus(VM*, VAL x, VAL y);

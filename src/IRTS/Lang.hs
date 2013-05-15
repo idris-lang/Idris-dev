@@ -3,6 +3,7 @@ module IRTS.Lang where
 import Core.TT
 import Control.Monad.State hiding(lift)
 import Data.List
+import Foreign.Storable (sizeOf)
 import Debug.Trace
 
 data LVar = Loc Int | Glob Name
@@ -28,35 +29,37 @@ data LExp = LV LVar
 -- Primitive operators. Backends are not *required* to implement all
 -- of these, but should report an error if they are unable
 
-data PrimFn = LPlus | LMinus | LTimes | LDiv | LMod 
-            | LAnd | LOr | LXOr | LCompl | LSHL| LSHR
-            | LEq | LLt | LLe | LGt | LGe
+data IntTy = ITNative | IT8 | IT16 | IT32 | IT64 | ITBig
+  deriving (Show, Eq)
+
+intTyWidth :: IntTy -> Int
+intTyWidth IT8 = 8
+intTyWidth IT16 = 16
+intTyWidth IT32 = 32
+intTyWidth IT64 = 64
+intTyWidth ITNative = 8 * sizeOf (0 :: Int)
+intTyWidth ITBig = error "IRTS.Lang.intTyWidth: Big integers have variable width"
+
+intTyToConst :: IntTy -> Const
+intTyToConst IT8 = B8Type
+intTyToConst IT16 = B16Type
+intTyToConst IT32 = B32Type
+intTyToConst IT64 = B64Type
+intTyToConst ITBig = BIType
+intTyToConst ITNative = IType
+
+data PrimFn = LPlus IntTy | LMinus IntTy | LTimes IntTy
+            | LUDiv IntTy | LSDiv IntTy | LURem IntTy | LSRem IntTy
+            | LAnd IntTy | LOr IntTy | LXOr IntTy | LCompl IntTy
+            | LSHL IntTy | LLSHR IntTy | LASHR IntTy
+            | LEq IntTy | LLt IntTy | LLe IntTy | LGt IntTy | LGe IntTy
+            | LSExt IntTy IntTy | LZExt IntTy IntTy | LTrunc IntTy IntTy
             | LFPlus | LFMinus | LFTimes | LFDiv 
             | LFEq | LFLt | LFLe | LFGt | LFGe
-            | LBPlus | LBMinus | LBDec | LBTimes | LBDiv | LBMod 
-            | LBEq | LBLt | LBLe | LBGt | LBGe
             | LStrConcat | LStrLt | LStrEq | LStrLen
-            | LIntFloat | LFloatInt | LIntStr | LStrInt | LFloatStr | LStrFloat
-            | LIntBig | LBigInt | LStrBig | LBigStr | LChInt | LIntCh
+            | LIntFloat IntTy | LFloatInt IntTy | LIntStr IntTy | LStrInt IntTy
+            | LFloatStr | LStrFloat | LChInt IntTy | LIntCh IntTy
             | LPrintNum | LPrintStr | LReadStr
-
-            | LB8Lt | LB8Lte | LB8Eq | LB8Gt | LB8Gte
-            | LB8Plus | LB8Minus | LB8Times | LB8UDiv | LB8SDiv | LB8URem | LB8SRem
-            | LB8Shl | LB8LShr | LB8AShr | LB8And | LB8Or | LB8Xor | LB8Compl
-            | LB8Z16 | LB8Z32 | LB8Z64 | LB8S16 | LB8S32 | LB8S64 -- Zero/Sign extension
-            | LB16Lt | LB16Lte | LB16Eq | LB16Gt | LB16Gte
-            | LB16Plus | LB16Minus | LB16Times | LB16UDiv | LB16SDiv | LB16URem | LB16SRem
-            | LB16Shl | LB16LShr | LB16AShr | LB16And | LB16Or | LB16Xor | LB16Compl
-            | LB16Z32 | LB16Z64 | LB16S32 | LB16S64 | LB16T8 -- and Truncation
-            | LB32Lt | LB32Lte | LB32Eq | LB32Gt | LB32Gte
-            | LB32Plus | LB32Minus | LB32Times | LB32UDiv | LB32SDiv | LB32URem | LB32SRem
-            | LB32Shl | LB32LShr | LB32AShr | LB32And | LB32Or | LB32Xor | LB32Compl
-            | LB32Z64 | LB32S64 | LB32T8 | LB32T16
-            | LB64Lt | LB64Lte | LB64Eq | LB64Gt | LB64Gte
-            | LB64Plus | LB64Minus | LB64Times | LB64UDiv | LB64SDiv | LB64URem | LB64SRem
-            | LB64Shl | LB64LShr | LB64AShr | LB64And | LB64Or | LB64Xor | LB64Compl
-            | LB64T8 | LB64T16 | LB64T32
-            | LIntB8 | LIntB16 | LIntB32 | LIntB64 | LB32Int
 
             | LFExp | LFLog | LFSin | LFCos | LFTan | LFASin | LFACos | LFATan
             | LFSqrt | LFFloor | LFCeil
@@ -76,7 +79,7 @@ data PrimFn = LPlus | LMinus | LTimes | LDiv | LMod
 data FLang = LANG_C
   deriving (Show, Eq)
 
-data FType = FInt | FChar | FString | FUnit | FPtr | FDouble | FAny
+data FType = FInt IntTy | FChar | FString | FUnit | FPtr | FDouble | FAny
   deriving (Show, Eq)
 
 data LAlt = LConCase Int Name [Name] LExp

@@ -31,17 +31,17 @@ bitsUsed n = 8 * (2 `power` n)
 natToBits' : machineTy n -> Nat -> machineTy n
 natToBits' a O = a
 natToBits' {n=n} a x with n
- natToBits' a (S x') | O = natToBits' (prim__addB8 a (prim__intToB8 1)) x'
- natToBits' a (S x') | S O = natToBits' {n = S O} (prim__addB16 a (prim__intToB16 1)) x'
- natToBits' a (S x') | S (S O) = natToBits' {n=S (S O)} (prim__addB32 a (prim__intToB32 1)) x'
- natToBits' a (S x') | S (S (S k)) = natToBits' {n = S (S (S k))} (prim__addB64 a (prim__intToB64 1)) x'
+ natToBits' a (S x') | O = natToBits' (prim__addB8 a (prim__truncInt_B8 1)) x'
+ natToBits' a (S x') | S O = natToBits' (prim__addB16 a (prim__truncInt_B16 1)) x'
+ natToBits' a (S x') | S (S O) = natToBits' (prim__addB32 a (prim__truncInt_B32 1)) x'
+ natToBits' a (S x') | S (S (S _)) = natToBits' (prim__addB64 a (prim__truncInt_B64 1)) x'
 
 natToBits : Nat -> machineTy n
 natToBits {n=n} x with n
-    | O = natToBits' {n=O} (prim__intToB8 0) x
-    | S O = natToBits' {n=S O} (prim__intToB16 0) x
-    | S (S O) = natToBits' {n=S (S O)} (prim__intToB32 0) x
-    | S (S (S k)) = natToBits' {n=S (S (S k))} (prim__intToB64 0) x
+    | O = natToBits' (prim__truncInt_B8 0) x
+    | S O = natToBits' (prim__truncInt_B16 0) x
+    | S (S O) = natToBits' (prim__truncInt_B32 0) x
+    | S (S (S _)) = natToBits' (prim__truncInt_B64 0) x
 
 getPad : Nat -> machineTy n
 getPad n = natToBits ((bitsUsed (nextBytes n)) - n)
@@ -154,7 +154,6 @@ xor' {n=n} x y with n
     | S (S O) = prim__xorB32 x y
     | S (S (S _)) = prim__xorB64 x y
 
-{-
 public
 xor : Bits n -> Bits n -> Bits n
 xor (MkBits x) (MkBits y) = MkBits (xor' x y)
@@ -310,14 +309,14 @@ complement (MkBits x) = MkBits (complement' x)
 zext' : machineTy (nextBytes n) -> machineTy (nextBytes (n+m))
 zext' {n=n} {m=m} x with (nextBytes n, nextBytes (n+m))
     | (O, O) = believe_me x
-    | (O, S O) = believe_me (prim__zextB8_16 (believe_me x))
-    | (O, S (S O)) = believe_me (prim__zextB8_32 (believe_me x))
-    | (O, S (S (S _))) = believe_me (prim__zextB8_64 (believe_me x))
+    | (O, S O) = believe_me (prim__zextB8_B16 (believe_me x))
+    | (O, S (S O)) = believe_me (prim__zextB8_B32 (believe_me x))
+    | (O, S (S (S _))) = believe_me (prim__zextB8_B64 (believe_me x))
     | (S O, S O) = believe_me x
-    | (S O, S (S O)) = believe_me (prim__zextB16_32 (believe_me x))
-    | (S O, S (S (S _))) = believe_me (prim__zextB16_64 (believe_me x))
+    | (S O, S (S O)) = believe_me (prim__zextB16_B32 (believe_me x))
+    | (S O, S (S (S _))) = believe_me (prim__zextB16_B64 (believe_me x))
     | (S (S O), S (S O)) = believe_me x
-    | (S (S O), S (S (S _))) = believe_me (prim__zextB32_64 (believe_me x))
+    | (S (S O), S (S (S _))) = believe_me (prim__zextB32_B64 (believe_me x))
     | (S (S (S _)), S (S (S _))) = believe_me x
 
 public
@@ -328,13 +327,13 @@ zeroExtend (MkBits x) = MkBits (zext' x)
 intToBits' : Int -> machineTy (nextBytes n)
 intToBits' {n=n} x with (nextBytes n)
     | O = let pad = getPad {n=0} n in
-          prim__lshrB8 (prim__shlB8 (prim__intToB8 x) pad) pad
+          prim__lshrB8 (prim__shlB8 (prim__truncInt_B8 x) pad) pad
     | S O = let pad = getPad {n=1} n in
-            prim__lshrB16 (prim__shlB16 (prim__intToB16 x) pad) pad
+            prim__lshrB16 (prim__shlB16 (prim__truncInt_B16 x) pad) pad
     | S (S O) = let pad = getPad {n=2} n in
-                prim__lshrB32 (prim__shlB32 (prim__intToB32 x) pad) pad
+                prim__lshrB32 (prim__shlB32 (prim__truncInt_B32 x) pad) pad
     | S (S (S _)) = let pad = getPad {n=3} n in
-                    prim__lshrB64 (prim__shlB64 (prim__intToB64 x) pad) pad
+                    prim__lshrB64 (prim__shlB64 (prim__truncInt_B64 x) pad) pad
 
 public
 intToBits : Int -> Bits n
@@ -345,10 +344,10 @@ instance Cast Int (Bits n) where
 
 bitsToInt' : machineTy n -> Int
 bitsToInt' {n=n} x with n
-    | O = prim__B32ToInt (prim__zextB8_32 x)
-    | S O = prim__B32ToInt (prim__zextB16_32 x)
-    | S (S O) = prim__B32ToInt x
-    | S (S (S _)) = prim__B32ToInt (prim__truncB64_32 x)
+    | O = prim__zextB8_Int x
+    | S O = prim__zextB16_Int x
+    | S (S O) = prim__zextB32_Int x
+    | S (S (S _)) = prim__truncB64_Int x
 
 public
 bitsToInt : Bits n -> Int
@@ -367,27 +366,27 @@ sext' {n=n} {m=m} x with (nextBytes n, nextBytes (n+m))
     | (O, O) = let pad = getPad {n=0} n in
                believe_me (prim__ashrB8 (prim__shlB8 (believe_me x) pad) pad)
     | (O, S O) = let pad = getPad {n=0} n in
-                 believe_me (prim__ashrB16 (prim__sextB8_16 (prim__shlB8 (believe_me x) pad))
-                                           (prim__zextB8_16 pad))
+                 believe_me (prim__ashrB16 (prim__sextB8_B16 (prim__shlB8 (believe_me x) pad))
+                                           (prim__zextB8_B16 pad))
     | (O, S (S O)) = let pad = getPad {n=0} n in
-                     believe_me (prim__ashrB32 (prim__sextB8_32 (prim__shlB8 (believe_me x) pad))
-                                               (prim__zextB8_32 pad))
+                     believe_me (prim__ashrB32 (prim__sextB8_B32 (prim__shlB8 (believe_me x) pad))
+                                               (prim__zextB8_B32 pad))
     | (O, S (S (S _))) = let pad = getPad {n=0} n in
-                         believe_me (prim__ashrB64 (prim__sextB8_64 (prim__shlB8 (believe_me x) pad))
-                                                   (prim__zextB8_64 pad))
+                         believe_me (prim__ashrB64 (prim__sextB8_B64 (prim__shlB8 (believe_me x) pad))
+                                                   (prim__zextB8_B64 pad))
     | (S O, S O) = let pad = getPad {n=1} n in
                    believe_me (prim__ashrB16 (prim__shlB16 (believe_me x) pad) pad)
     | (S O, S (S O)) = let pad = getPad {n=1} n in
-                       believe_me (prim__ashrB32 (prim__sextB16_32 (prim__shlB16 (believe_me x) pad))
-                                                 (prim__zextB16_32 pad))
+                       believe_me (prim__ashrB32 (prim__sextB16_B32 (prim__shlB16 (believe_me x) pad))
+                                                 (prim__zextB16_B32 pad))
     | (S O, S (S (S _))) = let pad = getPad {n=1} n in
-                           believe_me (prim__ashrB64 (prim__sextB16_64 (prim__shlB16 (believe_me x) pad))
-                                                     (prim__zextB16_64 pad))
+                           believe_me (prim__ashrB64 (prim__sextB16_B64 (prim__shlB16 (believe_me x) pad))
+                                                     (prim__zextB16_B64 pad))
     | (S (S O), S (S O)) = let pad = getPad {n=2} n in
                            believe_me (prim__ashrB32 (prim__shlB32 (believe_me x) pad) pad)
     | (S (S O), S (S (S _))) = let pad = getPad {n=2} n in
-                               believe_me (prim__ashrB64 (prim__sextB32_64 (prim__shlB32 (believe_me x) pad))
-                                                         (prim__zextB32_64 pad))
+                               believe_me (prim__ashrB64 (prim__sextB32_B64 (prim__shlB32 (believe_me x) pad))
+                                                         (prim__zextB32_B64 pad))
     | (S (S (S _)), S (S (S _))) = let pad = getPad {n=3} n in
                                    believe_me (prim__ashrB64 (prim__shlB64 (believe_me x) pad) pad)
 
@@ -399,14 +398,14 @@ signExtend {m=m} (MkBits x) = MkBits (zeroUnused (sext' x))
 trunc' : machineTy (nextBytes (n+m)) -> machineTy (nextBytes n)
 trunc' {n=n} {m=m} x with (nextBytes n, nextBytes (n+m))
     | (O, O) = believe_me x
-    | (O, S O) = believe_me (prim__truncB16_8 (believe_me x))
-    | (O, S (S O)) = believe_me (prim__truncB32_8 (believe_me x))
-    | (O, S (S (S _))) = believe_me (prim__truncB64_8 (believe_me x))
+    | (O, S O) = believe_me (prim__truncB16_B8 (believe_me x))
+    | (O, S (S O)) = believe_me (prim__truncB32_B8 (believe_me x))
+    | (O, S (S (S _))) = believe_me (prim__truncB64_B8 (believe_me x))
     | (S O, S O) = believe_me x
-    | (S O, S (S O)) = believe_me (prim__truncB32_16 (believe_me x))
-    | (S O, S (S (S _))) = believe_me (prim__truncB64_16 (believe_me x))
+    | (S O, S (S O)) = believe_me (prim__truncB32_B16 (believe_me x))
+    | (S O, S (S (S _))) = believe_me (prim__truncB64_B16 (believe_me x))
     | (S (S O), S (S O)) = believe_me x
-    | (S (S O), S (S (S _))) = believe_me (prim__truncB64_32 (believe_me x))
+    | (S (S O), S (S (S _))) = believe_me (prim__truncB64_B32 (believe_me x))
     | (S (S (S _)), S (S (S _))) = believe_me x
 
 public
@@ -440,4 +439,3 @@ bitsToStr x = pack (helper last x)
 instance Show (Bits n) where
     show = bitsToStr
 
--}

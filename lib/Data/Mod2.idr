@@ -4,7 +4,6 @@ import Data.Bits
 
 %default total
 
-{-
 -- Integers modulo 2^n
 public
 data Mod2 : Nat -> Type where
@@ -63,4 +62,3 @@ modToStr x = pack (reverse (helper x))
 
 instance Show (Mod2 n) where
     show = modToStr
--}

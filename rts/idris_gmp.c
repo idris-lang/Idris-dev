@@ -52,6 +52,34 @@ VAL MKBIGMc(VM* vm, void* big) {
     return cl;
 }
 
+VAL MKBIGUI(VM* vm, unsigned long val) {
+    mpz_t* bigint;
+    VAL cl = allocate(vm, sizeof(ClosureType) + sizeof(void*) + 
+                          sizeof(mpz_t), 0);
+    bigint = (mpz_t*)(((char*)cl) + sizeof(ClosureType) + sizeof(void*));
+
+    mpz_init_set_ui(*bigint, val);
+
+    SETTY(cl, BIGINT);
+    cl -> info.ptr = (void*)bigint;
+
+    return cl;
+}
+
+VAL MKBIGSI(VM* vm, signed long val) {
+    mpz_t* bigint;
+    VAL cl = allocate(vm, sizeof(ClosureType) + sizeof(void*) + 
+                          sizeof(mpz_t), 0);
+    bigint = (mpz_t*)(((char*)cl) + sizeof(ClosureType) + sizeof(void*));
+
+    mpz_init_set_si(*bigint, val);
+
+    SETTY(cl, BIGINT);
+    cl -> info.ptr = (void*)bigint;
+
+    return cl;
+}
+
 VAL GETBIG(VM * vm, VAL x) {
     if (ISINT(x)) {
         mpz_t* bigint;
