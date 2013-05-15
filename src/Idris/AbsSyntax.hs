@@ -270,10 +270,11 @@ iputStrLn s = do i <- getIState
                    IdeSlave n ->
                      case span (/=':') s of
                        (fn, ':':rest) -> case span isDigit rest of
-                         ([], ':':msg) -> iWarn (FC fn 0) msg
-                         ([], msg) -> iWarn (FC fn 0) msg
+                         ([], ':':msg) -> write
+                         ([], msg) -> write
                          (num, ':':msg) -> iWarn (FC fn (read num)) msg
-                       _  -> liftIO $ putStrLn $ convSExp "write-string" s n
+                       _  -> write
+                     where write = liftIO $ putStrLn $ convSExp "write-string" s n
 
 iWarn :: FC -> String -> Idris ()
 iWarn fc err = do i <- getIState

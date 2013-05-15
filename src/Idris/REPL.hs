@@ -329,7 +329,7 @@ process fn (DocStr n) = do i <- getIState
 process fn Universes = do i <- getIState
                           let cs = idris_constraints i
 --                        iputStrLn $ showSep "\n" (map show cs)
-                          liftIO $ print (map fst cs)
+                          iputStrLn $ show (map fst cs)
                           let n = length cs
                           iputStrLn $ "(" ++ show n ++ " constraints)"
                           case ucheck cs of
@@ -337,7 +337,7 @@ process fn Universes = do i <- getIState
                             OK _ -> iResult "Universes OK"
 process fn (Defn n) = do i <- getIState
                          iputStrLn "Compiled patterns:\n"
-                         liftIO $ print (lookupDef n (tt_ctxt i))
+                         iputStrLn $ show (lookupDef n (tt_ctxt i))
                          case lookupCtxt n (idris_patdefs i) of
                             [] -> return ()
                             [(d, _)] -> do iputStrLn "Original definiton:\n"
@@ -362,8 +362,7 @@ process fn (DebugInfo n)
         let di = lookupCtxt n (idris_datatypes i)
         when (not (null di)) $ iputStrLn (show di)
         let d = lookupDef n (tt_ctxt i)
-        when (not (null d)) $ liftIO $
-           do print (head d)
+        when (not (null d)) $ iputStrLn (show (head d))
         let cg = lookupCtxtName n (idris_callgraph i)
         findUnusedArgs (map fst cg)
         i <- getIState
