@@ -77,13 +77,13 @@ elabStep st e = do case runStateT e st of
                      Error a -> do i <- getIState
                                    fail (pshow i a)
 
-dumpState :: IState -> ProofState -> IO ()
+dumpState :: IState -> ProofState -> Idris ()
 dumpState ist (PS nm [] _ _ tm _ _ _ _ _ _ _ _ _ _ _ _ _ _) =
-  putStrLn . render $ pretty nm <> colon <+> text "No more goals."
+  iputGoal . render $ pretty nm <> colon <+> text "No more goals."
 dumpState ist ps@(PS nm (h:hs) _ _ tm _ _ _ _ _ _ problems i _ _ ctxy _ _ _) = do
   let OK ty  = goalAtFocus ps
   let OK env = envAtFocus ps
-  putStrLn . render $
+  iputGoal . render $
     prettyOtherGoals hs $$
     prettyAssumptions env $$
     prettyGoal ty
@@ -127,15 +127,19 @@ lifte st e = do (v, _) <- elabStep st e
 ploop :: Bool -> String -> [String] -> ElabState [PDecl] -> Maybe History -> Idris (Term, [String])
 ploop d prompt prf e h
     = do i <- getIState
-         when d $ liftIO $ dumpState i (proof e)
-         (x, h') <- runInputT (proverSettings e) $
-                    -- Manually track the history so that we can use the proof state
-                    do _ <- case h of
-                              Just history -> putHistory history
-                              Nothing -> return ()
-                       l <- getInputLine (prompt ++ "> ")
-                       h' <- getHistory
-                       return (l, Just h')
+         when d $ dumpState i (proof e)
+         (x, h') <-
+           case idris_outputmode i of
+             RawOutput -> runInputT (proverSettings e) $
+                          -- Manually track the history so that we can use the proof state
+                          do _ <- case h of
+                               Just history -> putHistory history
+                               Nothing -> return ()
+                             l <- getInputLine (prompt ++ "> ")
+                             h' <- getHistory
+                             return (l, Just h')
+             IdeSlave n -> -- setprompt -- waitforinput
+               return (Just "trivial", h)
          (cmd, step) <- case x of
             Nothing -> fail "Abandoned"
             Just input -> do return (parseTac i input, input)

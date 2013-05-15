@@ -279,6 +279,13 @@ iputStrLn s = do i <- getIState
                        _  -> write
                      where write = liftIO $ putStrLn $ convSExp "write-string" s n
 
+-- this needs some typing magic and more structured output towards emacs
+iputGoal :: String -> Idris ()
+iputGoal s = do i <- getIState
+                case idris_outputmode i of
+                  RawOutput -> liftIO $ putStrLn s
+                  IdeSlave n -> liftIO $ putStrLn $ convSExp "write-goal" s n
+
 iWarn :: FC -> String -> Idris ()
 iWarn fc err = do i <- getIState
                   case idris_outputmode i of
