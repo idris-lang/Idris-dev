@@ -49,6 +49,7 @@ elabType info syn doc fc opts n ty' = {- let ty' = piBind (params info) ty_in
          ctxt <- getContext
          i <- getIState
          logLvl 3 $ show n ++ " pre-type " ++ showImp True ty'
+         ty' <- addUsingConstraints syn fc ty'
          ty' <- implicit syn n ty'
          let ty = addImpl i ty'
          logLvl 2 $ show n ++ " type " ++ showImp True ty
@@ -922,7 +923,8 @@ elabClass info syn doc fc constraints tn ps ds
          elabData info (syn { no_imp = no_imp syn ++ mnames }) doc fc False ddecl
          -- for each constraint, build a top level function to chase it
          logLvl 5 $ "Building functions"
-         let usyn = syn { using = ps ++ using syn }
+         let usyn = syn { using = map (\ (x,y) -> UImplicit x y) ps 
+                                      ++ using syn }
          fns <- mapM (cfun cn constraint usyn (map fst imethods)) constraints
          mapM_ (elabDecl EAll info) (concat fns)
          -- for each method, build a top level function

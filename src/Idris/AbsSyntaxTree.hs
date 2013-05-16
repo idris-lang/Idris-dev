@@ -723,7 +723,14 @@ initDSL = DSL (PRef f (UN ">>="))
               Nothing
   where f = FC "(builtin)" 0
 
-data SyntaxInfo = Syn { using :: [(Name, PTerm)],
+data Using = UImplicit Name PTerm
+           | UConstraint Name [Name]
+    deriving (Show, Eq)
+{-!
+deriving instance Binary Using
+!-}
+
+data SyntaxInfo = Syn { using :: [Using],
                         syn_params :: [(Name, PTerm)],
                         syn_namespace :: [String],
                         no_imp :: [Name],

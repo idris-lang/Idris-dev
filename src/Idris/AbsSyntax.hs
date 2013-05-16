@@ -733,6 +733,45 @@ addStatics n tm ptm =
 
 -- Dealing with implicit arguments
 
+-- Add constraint bindings from using block
+
+addUsingConstraints :: SyntaxInfo -> FC -> PTerm -> Idris PTerm
+addUsingConstraints syn fc t 
+   = do ist <- get
+        let ns = namesIn [] ist t
+        let cs = getConstraints t -- check declared constraints
+        let addconsts = uconsts \\ cs
+        -- if all names in the arguments of addconsts appear in ns,
+        -- add the constraint implicitly
+        return (doAdd addconsts ns t)
+   where uconsts = filter uconst (using syn)
+         uconst (UConstraint _ _) = True
+         uconst _ = False
+
+         doAdd [] _ t = t
+         -- if all of args in ns, then add it
+         doAdd (UConstraint c args : cs) ns t
+             | all (\n -> elem n ns) args 
+                   = PPi (Constraint False Dynamic "") (MN 0 "cu")
+                         (mkConst c args) (doAdd cs ns t)
+             | otherwise = doAdd cs ns t
+
+         mkConst c args = PApp fc (PRef fc c) 
+                             (map (\n -> PExp 0 False (PRef fc n) "") args)
+
+         getConstraints (PPi (Constraint _ _ _) _ c sc)
+             = getcapp c ++ getConstraints sc
+         getConstraints (PPi _ _ c sc) = getConstraints sc
+         getConstraints _ = []
+
+         getcapp (PApp _ (PRef _ c) args) 
+             = do ns <- mapM getName args
+                  return (UConstraint c ns)
+         getcapp _ = []
+
+         getName (PExp _ _ (PRef _ n) _) = return n
+         getName _ = []
+
 -- Add implicit Pi bindings for any names in the term which appear in an
 -- argument position.
 
@@ -762,8 +801,12 @@ implicitise syn ignore ist tm
             then (tm, reverse declimps) 
             else implicitise syn ignore ist (pibind uvars ns tm)
   where
-    uvars = using syn
+    uvars = map ipair (filter uimplicit (using syn))
     pvars = syn_params syn
+
+    ipair (UImplicit x y) = (x, y)
+    uimplicit (UImplicit _ _) = True
+    uimplicit _ = False
 
     dropAll (x:xs) ys | x `elem` ys = dropAll xs ys
                       | otherwise   = x : dropAll xs ys
