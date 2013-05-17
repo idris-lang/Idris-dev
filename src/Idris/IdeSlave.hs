@@ -94,7 +94,7 @@ sexpToCommand (SexpList (x:[]))                                             = se
 sexpToCommand (SexpList [SymbolAtom "interpret", StringAtom cmd])           = Just (Interpret cmd)
 sexpToCommand (SexpList [SymbolAtom "repl-completions", StringAtom prefix]) = Just (REPLCompletions prefix)
 sexpToCommand (SexpList [SymbolAtom "load-file", StringAtom filename])      = Just (LoadFile filename)
-sexpToCommand _                                                         = Nothing
+sexpToCommand _                                                             = Nothing
 
 parseMessage :: String -> (SExp, Integer)
 parseMessage x = case receiveString x of
