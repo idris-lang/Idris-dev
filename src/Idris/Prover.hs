@@ -14,6 +14,7 @@ import Idris.Parser
 import Idris.Error
 import Idris.DataOpts
 import Idris.Completion
+import Idris.IdeSlave
 
 import System.Console.Haskeline
 import System.Console.Haskeline.History
@@ -41,12 +42,15 @@ showProof lit n ps
         break = "\n" ++ bird
 
 proverSettings :: ElabState [PDecl] -> Settings Idris
-proverSettings e = setComplete (proverCompletion assumptionNames) defaultSettings
-    where assumptionNames = case envAtFocus (proof e) of
-                              OK env -> names env
-          names [] = []
-          names ((MN _ _, _) : bs) = names bs
-          names ((n, _) : bs) = show n : names bs
+proverSettings e = setComplete (proverCompletion (assumptionNames e)) defaultSettings
+
+assumptionNames :: ElabState [PDecl] -> [String]
+assumptionNames e
+  = case envAtFocus (proof e) of
+         OK env -> names env
+  where names [] = []
+        names ((MN _ _, _) : bs) = names bs
+        names ((n, _) : bs) = show n : names bs
 
 prove :: Context -> Bool -> Name -> Type -> Idris ()
 prove ctxt lit n ty 
@@ -124,6 +128,21 @@ lifte :: ElabState [PDecl] -> ElabD a -> Idris a
 lifte st e = do (v, _) <- elabStep st e
                 return v
 
+receiveInput :: ElabState [PDecl] -> Idris (Maybe String)
+receiveInput e =
+  do i <- getIState
+     l <- liftIO $ getLine
+     let (sexp, id) = parseMessage l
+     putIState $ i { idris_outputmode = (IdeSlave id) }
+     case sexpToCommand sexp of
+       Just (REPLCompletions prefix) ->
+         do (unused, compls) <- proverCompletion (assumptionNames e) (reverse prefix, "")
+            let good = SexpList [SymbolAtom "ok", toSExp (map replacement compls, reverse unused)]
+            liftIO $ putStrLn $ convSExp "return" good id
+            receiveInput e
+       Just (Interpret cmd) -> return (Just cmd)
+       Nothing -> return Nothing
+
 ploop :: Bool -> String -> [String] -> ElabState [PDecl] -> Maybe History -> Idris (Term, [String])
 ploop d prompt prf e h
     = do i <- getIState
@@ -138,36 +157,38 @@ ploop d prompt prf e h
                              l <- getInputLine (prompt ++ "> ")
                              h' <- getHistory
                              return (l, Just h')
-             IdeSlave n -> -- waitforinput
+             IdeSlave n ->
                do isetPrompt prompt
-                  return (Just "trivial", h)
+                  i <- receiveInput e
+                  return (i, h)
          (cmd, step) <- case x of
-            Nothing -> fail "Abandoned"
+            Nothing -> do iFail ""; fail "Abandoned"
             Just input -> do return (parseTac i input, input)
          case cmd of
-            Right Abandon -> fail "Abandoned"
+            Right Abandon -> do iFail ""; fail "Abandoned"
             _ -> return ()
          (d, st, done, prf') <- idrisCatch
            (case cmd of
-              Left err -> do iputStrLn (show err)
+              Left err -> do iFail (show err)
                              return (False, e, False, prf)
-              Right Undo -> 
-                           do (_, st) <- elabStep e loadState
-                              return (True, st, False, init prf)
-              Right ProofState ->
-                              return (True, e, False, prf)
-              Right ProofTerm -> 
-                           do tm <- lifte e get_term
-                              iputStrLn $ "TT: " ++ show tm ++ "\n"
-                              return (False, e, False, prf)
+              Right Undo -> do (_, st) <- elabStep e loadState
+                               iResult ""
+                               return (True, st, False, init prf)
+              Right ProofState -> do iResult ""
+                                     return (True, e, False, prf)
+              Right ProofTerm -> do tm <- lifte e get_term
+                                    iResult $ "TT: " ++ show tm ++ "\n"
+                                    return (False, e, False, prf)
               Right Qed -> do hs <- lifte e get_holes
                               when (not (null hs)) $ fail "Incomplete proof"
+                              iResult "Proof completed!"
                               return (False, e, True, prf)
               Right tac -> do (_, e) <- elabStep e saveState
                               (_, st) <- elabStep e (runTac True i tac)
---                               trace (show (problems (proof st))) $ 
+--                               trace (show (problems (proof st))) $
+                              iResult ""
                               return (True, st, False, prf ++ [step]))
-           (\err -> do iputStrLn (show err)
+           (\err -> do iFail (show err)
                        return (False, e, False, prf))
          if done then do (tm, _) <- elabStep st get_term
                          return (tm, prf')
