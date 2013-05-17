@@ -109,6 +109,10 @@ ideslave orig mods
                                  _ -> ""
                     case parseCmd i cmd of
                          Left err -> iFail $ show err
+                         Right (Prove n') -> idrisCatch
+                                               (do process fn (Prove n')
+                                                   isetPrompt (mkPrompt mods))
+                                               (\e -> do iFail $ show e)
                          Right cmd -> idrisCatch
                                         (do ideslaveProcess fn cmd)
                                         (\e -> do iFail $ show e)
@@ -149,7 +153,6 @@ ideslaveProcess fn (Search t) = process fn (Search t)
 ideslaveProcess fn (Spec t) = process fn (Spec t)
 -- RmProof and AddProof not supported!
 ideslaveProcess fn (ShowProof n') = process fn (ShowProof n')
-ideslaveProcess fn (Prove n') = process fn (Prove n')
 ideslaveProcess fn (HNF t) = process fn (HNF t)
 --ideslaveProcess fn TTShell = process fn TTShell -- need some prove mode!
 
