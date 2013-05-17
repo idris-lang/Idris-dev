@@ -808,22 +808,21 @@ pCaseOpt syn = do lhs <- pExpr (syn { inPattern = True })
 
 modifyConst :: SyntaxInfo -> FC -> PTerm -> PTerm
 modifyConst syn fc (PConstant (BI x)) 
-    | not (fitsInt x) = PAlternative False 
-                           [PConstant (BI x),
-                            PApp fc (PRef fc (UN "fromInteger"))
-                                 [pexp (PConstant (I (fromInteger x)))]]
     | not (inPattern syn)
         = PAlternative False
-             [PApp fc (PRef fc (UN "fromInteger")) [pexp (PConstant (I (fromInteger x)))],
-              PConstant (I (fromInteger x)), PConstant (BI x)]
-    | otherwise = PAlternative False
-                     [PConstant (I (fromInteger x)), PConstant (BI x)]
+             (PApp fc (PRef fc (UN "fromInteger")) [pexp (PConstant (BI (fromInteger x)))]
+             : consts)
+    | otherwise = PAlternative False consts
+    where
+      consts = [ PConstant (BI x)
+               , PConstant (I (fromInteger x))
+               , PConstant (B8 (fromInteger x))
+               , PConstant (B16 (fromInteger x))
+               , PConstant (B32 (fromInteger x))
+               , PConstant (B64 (fromInteger x))
+               ]
 modifyConst syn fc x = x
 
-fitsInt :: Integer -> Bool
-fitsInt x = let xInt :: Int = fromInteger x
-                xInteger :: Integer = toInteger xInt in
-                x == xInteger
 
 pList syn = do lchar '['; fc <- pfc; xs <- sepBy (pExpr syn) (lchar ','); lchar ']'
                return (mkList fc xs)
@@ -1149,7 +1148,7 @@ pStatic = do lchar '['
 
 table fixes 
    = [[prefix "-" (\fc x -> PApp fc (PRef fc (UN "-")) 
-        [pexp (PApp fc (PRef fc (UN "fromInteger")) [pexp (PConstant (I 0))]), pexp x])]] 
+        [pexp (PApp fc (PRef fc (UN "fromInteger")) [pexp (PConstant (BI 0))]), pexp x])]]
        ++ toTable (reverse fixes) ++
       [[backtick],
        [binary "="  PEq AssocLeft],

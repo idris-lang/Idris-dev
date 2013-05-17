@@ -116,5 +116,4 @@ unwords : List String -> String
 unwords = pack . unwords' . map unpack
 
 length : String -> Nat
-length = fromInteger . prim_lenString
-
+length = fromInteger . prim__zextInt_BigInt . prim_lenString

@@ -232,26 +232,23 @@ class Num a where
     (*) : a -> a -> a
 
     abs : a -> a
-    fromInteger : Int -> a
-
-
-
-instance Num Int where 
-    (+) = prim__addInt
-    (-) = prim__subInt
-    (*) = prim__mulInt
-
-    fromInteger = id
-    abs x = if x<0 then -x else x
-
+    fromInteger : Integer -> a
 
 instance Num Integer where 
     (+) = prim__addBigInt
     (-) = prim__subBigInt
     (*) = prim__mulBigInt
 
-    abs x = if x<0 then -x else x
-    fromInteger = prim__sextInt_BigInt
+    abs x = if x < 0 then -x else x
+    fromInteger = id
+
+instance Num Int where 
+    (+) = prim__addInt
+    (-) = prim__subInt
+    (*) = prim__mulInt
+
+    fromInteger = prim__truncBigInt_Int
+    abs x = if x < (prim__truncBigInt_Int 0) then -x else x
 
 
 instance Num Float where 
@@ -259,16 +256,16 @@ instance Num Float where
     (-) = prim__subFloat
     (*) = prim__mulFloat
 
-    abs x = if x<0 then -x else x
-    fromInteger = prim__toFloatInt
+    abs x = if x < (prim__toFloatBigInt 0) then -x else x
+    fromInteger = prim__toFloatBigInt
 
 partial
-div : Int -> Int -> Int
-div = prim__sdivInt
+div : Integer -> Integer -> Integer
+div = prim__sdivBigInt
 
 partial
-mod : Int -> Int -> Int
-mod = prim__sremInt
+mod : Integer -> Integer -> Integer
+mod = prim__sremBigInt
 
 
 (/) : Float -> Float -> Float

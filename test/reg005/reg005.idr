@@ -29,7 +29,7 @@ compress : Vect Char n -> String
 compress xs with (rle xs)
   compress Nil                 | REnd         = ""
   compress (rep (S n) x ++ xs) | RChar _ _ rs 
-         = let ni : Int = cast (S n) in
+         = let ni : Integer = cast (S n) in
                show ni ++ show x ++ compress xs
 
 compressString : String -> String

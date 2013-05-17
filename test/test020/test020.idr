@@ -1,7 +1,7 @@
 module Main
 
 implicit 
-natInt : Nat -> Int
+natInt : Nat -> Integer
 natInt x = cast x
 
 implicit 
@@ -12,10 +12,10 @@ forget (x :: xs) = x :: forget xs
 foo : Vect a n -> List a
 foo xs = reverse xs
 
-implicit intString : Int -> String
+implicit intString : Integer -> String
 intString = show
 
-test : Int -> String
+test : Integer -> String
 test x = "Number " ++ x
 
 main : IO ()
