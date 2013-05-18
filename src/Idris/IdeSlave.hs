@@ -8,6 +8,8 @@ import Data.List
 -- import qualified Data.Text as T
 import Text.Parsec
 
+import Core.TT
+
 data SExp = SexpList [SExp]
           | StringAtom String
           | BoolAtom Bool
@@ -41,6 +43,14 @@ instance SExpable Integer where
 
 instance SExpable Int where
   toSExp n = IntegerAtom (toInteger n)
+
+
+instance SExpable Name where
+  toSExp (UN s)    = SexpList [SymbolAtom "UN", StringAtom s]
+  toSExp (NS s ns) = SexpList [SymbolAtom "NS", toSExp s, toSExp ns]
+  toSExp (MN n s)  = SexpList [SymbolAtom "MN", toSExp n, toSExp s]
+  toSExp NErased   = SexpList [SymbolAtom "NErased"]
+
 
 instance (SExpable a) => SExpable (Maybe a) where
   toSExp Nothing  = SexpList [SymbolAtom "Nothing"]

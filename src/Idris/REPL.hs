@@ -109,10 +109,15 @@ ideslave orig mods
                                  _ -> ""
                     case parseCmd i cmd of
                          Left err -> iFail $ show err
-                         Right (Prove n') -> idrisCatch
-                                               (do process fn (Prove n')
-                                                   isetPrompt (mkPrompt mods))
-                                               (\e -> do iFail $ show e)
+                         Right (Prove n') -> do iResult ""
+                                                liftIO $ putStrLn $ convSExp "proof-mode" (True, n') id
+                                                idrisCatch
+                                                  (do process fn (Prove n'))
+                                                  (\e -> do iFail $ show e)
+                                                i <- getIState
+                                                case (idris_outputmode i) of
+                                                  IdeSlave id -> liftIO $ putStrLn $ convSExp "proof-mode" (False, n') id
+                                                isetPrompt (mkPrompt mods)
                          Right cmd -> idrisCatch
                                         (do ideslaveProcess fn cmd)
                                         (\e -> do iFail $ show e)
