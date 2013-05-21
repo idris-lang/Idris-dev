@@ -53,18 +53,23 @@ assumptionNames e
         names ((n, _) : bs) = show n : names bs
 
 prove :: Context -> Bool -> Name -> Type -> Idris ()
-prove ctxt lit n ty 
+prove ctxt lit n ty
     = do let ps = initElaborator n ctxt ty
+         i <- getIState
+         case (idris_outputmode i) of
+              IdeSlave id -> liftIO $ putStrLn $ convSExp "start-proof-mode" n id
          (tm, prf) <- ploop True ("-" ++ show n) [] (ES (ps, []) "" Nothing) Nothing
          iLOG $ "Adding " ++ show tm
          iputStrLn $ showProof lit n prf
          i <- getIState
+         case (idris_outputmode i) of
+              IdeSlave id -> liftIO $ putStrLn $ convSExp "end-proof-mode" n id
          let proofs = proof_list i
          putIState (i { proof_list = (n, prf) : proofs })
          let tree = simpleCase False True CompileTime (FC "proof" 0) [([], P Ref n ty, tm)]
          logLvl 3 (show tree)
          (ptm, pty) <- recheckC (FC "proof" 0) [] tm
-         logLvl 5 ("Proof type: " ++ show pty ++ "\n" ++ 
+         logLvl 5 ("Proof type: " ++ show pty ++ "\n" ++
                    "Expected type:" ++ show ty)
          case converts ctxt [] ty pty of
               OK _ -> return ()
@@ -72,7 +77,7 @@ prove ctxt lit n ty
          ptm' <- applyOpts ptm
          updateContext (addCasedef n True False True False
                                  [Right (P Ref n ty, ptm)]
-                                 [([], P Ref n ty, ptm)] 
+                                 [([], P Ref n ty, ptm)]
                                  [([], P Ref n ty, ptm')] ty)
          solveDeferred n
 elabStep :: ElabState [PDecl] -> ElabD a -> Idris (a, ElabState [PDecl])
