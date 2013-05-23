@@ -59,7 +59,11 @@ nameString _            = Nothing
 names :: Idris [String]
 names = do i <- get
            let ctxt = tt_ctxt i
-           return $ nub $ mapMaybe (nameString . fst) $ ctxtAlist ctxt
+           return . nub $
+             mapMaybe (nameString . fst) (ctxtAlist ctxt) ++
+             -- Explicitly add primitive types, as these are special-cased in the parser
+             ["Int", "Integer", "Float", "Char", "String", "Type",
+              "Ptr", "Bits8", "Bits16", "Bits32", "Bits64"]
 
 metavars :: Idris [String]
 metavars = do i <- get
