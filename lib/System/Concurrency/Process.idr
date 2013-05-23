@@ -23,7 +23,6 @@ instance Applicative (Process msg) where
      (lift f) <$> (lift a) = lift (f <$> a)
 
 instance Monad (Process msg) where
-     return = lift . return
      (lift io) >>= k = lift (do x <- io
                                 case k x of
                                      lift v => v)

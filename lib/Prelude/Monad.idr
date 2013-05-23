@@ -11,8 +11,10 @@ import Prelude.Applicative
 infixl 5 >>=
 
 class Applicative m => Monad (m : Type -> Type) where 
-    return : a -> m a
     (>>=)  : m a -> (a -> m b) -> m b
 
 flatten : Monad m => m (m a) -> m a
 flatten a = a >>= id
+
+return : Monad m => a -> m a
+return = pure
