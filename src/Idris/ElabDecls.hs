@@ -224,7 +224,7 @@ elabProvider info syn fc n ty tm
          -- First elaborate the expected type (and check that it's a type)
          (ty', typ) <- elabVal toplevel False ty
          unless (isTType typ) $
-           (fail $ "Expected a type, got " ++ show ty' ++ " : " ++ show typ)
+           fail ("Expected a type, got " ++ show ty' ++ " : " ++ show typ)
 
          -- Elaborate the provider term to TT and check that the type matches
          (e, et) <- elabVal toplevel False tm
@@ -244,7 +244,7 @@ elabProvider info syn fc n ty tm
          tm <- getProvided rhs'
 
          -- Finally add a top-level definition of the provided term
-         elabClauses info fc [] n [PClause fc n (PRef fc $ n) [] (delab i tm) []]
+         elabClauses info fc [] n [PClause fc n (PRef fc n) [] (delab i tm) []]
          logLvl 1 $ "Elaborated provider " ++ show n ++ " as: " ++ show tm
 
     where isTType :: TT Name -> Bool
