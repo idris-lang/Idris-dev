@@ -215,45 +215,47 @@ elabProvider :: ElabInfo -> SyntaxInfo -> FC -> Name -> PTerm -> PTerm -> Idris 
 elabProvider info syn fc n ty tm
     = do i <- getIState
          -- Ensure that the experimental extension is enabled
-         if not (TypeProviders `elem` idris_language_extensions i)
-           then fail $ "Failed to define type provider \"" ++ show n ++
-                       "\".\nYou must turn on the TypeProviders extension."
-           else do ctxt <- getContext
+         unless (TypeProviders `elem` idris_language_extensions i) $
+           fail $ "Failed to define type provider \"" ++ show n ++
+                  "\".\nYou must turn on the TypeProviders extension."
 
-                   -- First elaborate the expected type (and check that it's a type)
-                   (ty', typ) <- elabVal toplevel False ty
-                   unless (isTType typ) $
-                     (fail $ "Expected a type, got " ++ show ty' ++ " : " ++ show typ)
+         ctxt <- getContext
 
-                   -- Elaborate the provider term to TT and check that the type matches
-                   (e, et) <- elabVal toplevel False tm
-                   unless (isProviderOf ty' et) $
-                     fail $ "Expected provider type IO (Provider (" ++
-                            show ty' ++ "))" ++ ", got " ++ show et ++ " instead."
+         -- First elaborate the expected type (and check that it's a type)
+         (ty', typ) <- elabVal toplevel False ty
+         unless (isTType typ) $
+           (fail $ "Expected a type, got " ++ show ty' ++ " : " ++ show typ)
 
-                   -- Create the top-level type declaration
-                   elabType info syn "" fc [] n ty
+         -- Elaborate the provider term to TT and check that the type matches
+         (e, et) <- elabVal toplevel False tm
+         unless (isProviderOf ty' et) $
+           fail $ "Expected provider type IO (Provider (" ++
+                  show ty' ++ "))" ++ ", got " ++ show et ++ " instead."
 
-                   -- Execute the type provider and normalise the result
-                   rhs <- execute e
-                   let rhs' = normalise ctxt [] rhs
-                   logLvl 1 $ "Normalised " ++ show n ++ "'s RHS to " ++ show rhs
+         -- Create the top-level type declaration
+         elabType info syn "" fc [] n ty
 
-                   -- Extract the provided term from the type provider
-                   tm <- getProvided rhs'
+         -- Execute the type provider and normalise the result
+         rhs <- execute e
+         let rhs' = normalise ctxt [] rhs
+         logLvl 1 $ "Normalised " ++ show n ++ "'s RHS to " ++ show rhs
 
-                   -- Finally add a top-level definition of the provided term
-                   elabClauses info fc [] n [PClause fc n (PRef fc $ n) [] (delab i tm) []]
-                   logLvl 1 $ "Elaborated provider " ++ show n ++ " as: " ++ show tm
+         -- Extract the provided term from the type provider
+         tm <- getProvided rhs'
+
+         -- Finally add a top-level definition of the provided term
+         elabClauses info fc [] n [PClause fc n (PRef fc $ n) [] (delab i tm) []]
+         logLvl 1 $ "Elaborated provider " ++ show n ++ " as: " ++ show tm
 
     where isTType :: TT Name -> Bool
           isTType (TType _) = True
           isTType _ = False
 
           isProviderOf :: TT Name -> TT Name -> Bool
-          isProviderOf tp prov | (P _ (UN "IO") _, [prov']) <- unApply prov
-                               , (P _ (NS (UN "Provider") ["Providers"]) _, [tp']) <- unApply prov'
-                               , tp == tp' = True
+          isProviderOf tp prov
+            | (P _ (UN "IO") _, [prov']) <- unApply prov
+            , (P _ (NS (UN "Provider") ["Providers"]) _, [tp']) <- unApply prov'
+            , tp == tp' = True
           isProviderOf _ _ = False
 
 
