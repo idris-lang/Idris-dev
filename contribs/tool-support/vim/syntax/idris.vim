@@ -4,7 +4,7 @@
 " highlighter to support idris.
 "
 " author: raichoo (raichoo@googlemail.com)
-" date: May 3 2013
+" date: May 24 2013
 
 syn match idrisModule "\<\(module\|namespace\)\>"
 syn match idrisImport "\<import\>"
@@ -27,6 +27,8 @@ syn match idrisMetaVar "?[a-z][A-Za-z0-9_]\+"
 syn match idrisLink "%\(lib\|link\|include\)"
 syn match idrisDirective "%\(access\|default\|assert_total\)"
 syn match idrisDSL "\(lambda\|variable\|\index_first\|index_next\)"
+syn match idrisChar "'[^'\\]'\|'\\.'\|'\\u[0-9a-fA-F]\{4}'"
+syn match idrisBacktick "`[A-Za-z][A-Za-z0-9_]*`"
 syn region idrisString start=+"+ skip=+\\\\\|\\"+ end=+"+
 syn region idrisBlockComment start="{-" end="-}" contains=idrisBlockComment
 syn region idrisProofBlock start="\(default\s\+\)\?\(proof\|tactics\) *{" end="}" contains=idrisTactic
@@ -55,3 +57,5 @@ highlight def link idrisLineComment Comment
 highlight def link idrisBlockComment Comment
 highlight idrisMetaVar ctermfg=red
 highlight def link idrisString String
+highlight def link idrisChar String
+highlight def link idrisBacktick Operator
