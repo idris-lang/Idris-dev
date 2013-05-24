@@ -360,7 +360,7 @@ execApp' env ctxt f@(EP _ n _) args =
                         return (EConstant (Str line))
           getOp (UN "prim__readString") [EHandle h] =
               Just $ do contents <- execIO $ hGetLine h
-                        return (EConstant (Str contents))
+                        return (EConstant (Str (contents ++ "\n")))
           getOp (UN "prim__shLInt") [EConstant (I i1), EConstant (I i2)] =
               primRes I (shiftL i1 i2)
           getOp (UN "prim__shRInt") [EConstant (I i1), EConstant (I i2)] =
