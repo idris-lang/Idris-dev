@@ -44,7 +44,7 @@ highlight def link idrisSyntax Statement
 highlight def link idrisVisibility Statement
 highlight def link idrisConditional Conditional
 highlight def link idrisProofBlock Macro
-highlight idrisTactic ctermfg=cyan
+highlight def link idrisTactic Identifier
 highlight def link idrisLink Statement
 highlight def link idrisDirective Statement
 highlight def link idrisNumber Number
@@ -55,7 +55,7 @@ highlight def link idrisOperators Operator
 highlight def link idrisType Include
 highlight def link idrisLineComment Comment
 highlight def link idrisBlockComment Comment
-highlight idrisMetaVar ctermfg=red
+highlight def link idrisMetaVar Identifier
 highlight def link idrisString String
 highlight def link idrisChar String
 highlight def link idrisBacktick Operator
