@@ -274,6 +274,11 @@ execApp' env ctxt f@(EP _ (UN "mkForeign") _) args@(ty:fn:xs) | Just (FFun f arg
          Just r -> return (mkEApp r (drop (length argTs) xs))
                                                              | otherwise = return (mkEApp f args)
 
+execApp' env ctxt c@(EP (DCon _ arity) n _) args =
+    do args' <- mapM tryForce (take arity args)
+       let restArgs = drop arity args
+       execApp' env ctxt (mkEApp c args') restArgs
+
 execApp' env ctxt f@(EP _ n _) args =
     do let val = lookupDef n ctxt
        case val of
