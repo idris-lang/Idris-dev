@@ -1,5 +1,5 @@
 {-# LANGUAGE PatternGuards #-}
-module Idris.Providers where
+module Idris.Providers (providerTy, getProvided) where
 
 import Core.TT
 import Core.Evaluate
@@ -14,15 +14,15 @@ import Debug.Trace
 providerTy :: FC -> PTerm -> PTerm
 providerTy fc tm = PApp fc (PRef fc $ UN "Provider") [PExp 0 False tm ""]
 
--- | Wrap the RHS of a type provider definition
-unProv :: FC -> PTerm -> PTerm
-unProv fc tm = PApp fc (PRef fc $ NS (UN "unProv") ["Providers"]) [PExp 0 False tm ""]
-
--- | Handle an error, if the type provider returned an error. Otherwise do nothing.
-providerError :: TT Name -> Idris ()
-providerError tm | (P _ unProv_case _, _:_:tm':_) <- unApply tm
-                 , (P _ (NS (UN "Error") ["Providers"]) _, [_, err]) <- unApply tm' =
+-- | Handle an error, if the type provider returned an error. Otherwise return the provided term.
+getProvided :: TT Name -> Idris (TT Name)
+getProvided tm | (P _ (UN "io_return") _, [tp, result]) <- unApply tm
+               , (P _ (NS (UN "Error") ["Providers"]) _, [_, err]) <- unApply result =
                      case err of
                        Constant (Str msg) -> ierror . ProviderError $ msg
-                       _ -> fail "Error in type provider"
-                 | otherwise = return ()
+                       _ -> fail "Internal error in type provider, non-normalised error"
+               | (P _ (UN "io_return") _, [tp, result]) <- unApply tm
+               , (P _ (NS (UN "Provide") ["Providers"]) _, [_, res]) <- unApply result =
+                     return res
+               | otherwise = fail $ "Internal type provider error: result was not " ++
+                                    "IO (Provider a), or perhaps missing normalisation."
