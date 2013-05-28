@@ -285,13 +285,17 @@ getFTypes tm = case unApply tm of
 
 mkIty' (P _ (UN ty) _) = mkIty ty
 mkIty' (App (P _ (UN "FIntT") _) (P _ (UN intTy) _)) = mkIntIty intTy
+mkIty' (App (App (P _ (UN "FFunction") _) _) (App (P _ (UN "FAny") _) (App (P _ (UN "IO") _) _))) = FFunctionIO
+mkIty' (App (App (P _ (UN "FFunction") _) _) _) = FFunction
 mkIty' _ = FAny
 
-mkIty "FFloat"  = FDouble
-mkIty "FChar"   = FChar
-mkIty "FString" = FString
-mkIty "FPtr"    = FPtr
-mkIty "FUnit"   = FUnit
+mkIty "FFloat"      = FDouble
+mkIty "FChar"       = FChar
+mkIty "FString"     = FString
+mkIty "FPtr"        = FPtr
+mkIty "FUnit"       = FUnit
+mkIty "FFunction"   = FFunction
+mkIty "FFunctionIO" = FFunctionIO
 
 mkIntIty "ITNative" = FInt ITNative
 mkIntIty "IT8"  = FInt IT8

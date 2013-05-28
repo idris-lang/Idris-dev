@@ -404,7 +404,14 @@ translateExpression (SForeign _ _ fun args)
     index  i     = "[" ++ translateVariableName (snd i) ++ "]"
     assign v     = '=' : translateVariableName (snd v)
     arguments as =
-      '(' : intercalate "," (map (translateVariableName . snd) as) ++ ")"
+      '(' : intercalate "," (map generateWrapper as) ++ ")"
+
+    generateWrapper (ffunc, name)
+      | FFunction   <- ffunc = "__IDRRT__.ffiWrap(" ++ translateVariableName name ++ ")"
+      | FFunctionIO <- ffunc = "__IDRRT__.ffiWrap(" ++ translateVariableName name ++ ")"
+
+    generateWrapper (_, name) =
+      translateVariableName name
 
 translateExpression (SChkCase var cases) =
      "(function(e){\n"
