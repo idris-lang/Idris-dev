@@ -200,7 +200,7 @@ translateExpression (SApp True name vars) =
      "new __IDRRT__.Tailcall("
   ++ "function(){\n"
   ++ "return " ++ translateFunctionCall name vars
-  ++ ";\n});"
+  ++ ";\n})"
 
 translateExpression (SOp op vars)
   | (LPlus _)   <- op
@@ -356,10 +356,10 @@ translateExpression (SOp op vars)
       ++ translateVariableName rhs
 
 translateExpression (SError msg) =
-  "(function(){throw \'" ++ msg ++ "\';})();"
+  "(function(){throw \'" ++ msg ++ "\';})()"
 
 translateExpression (SForeign _ _ "putStr" [(FString, var)]) =
-  "__IDRRT__.print(" ++ translateVariableName var ++ ");"
+  "__IDRRT__.print(" ++ translateVariableName var ++ ")"
 
 translateExpression (SForeign _ _ fun args)
   | "." `isPrefixOf` fun, "[]=" `isSuffixOf` fun

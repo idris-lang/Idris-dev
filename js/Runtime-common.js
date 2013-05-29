@@ -10,7 +10,7 @@ __IDRRT__.Char = new __IDRRT__.Type('Char');
 __IDRRT__.String = new __IDRRT__.Type('String');
 __IDRRT__.Integer = new __IDRRT__.Type('Integer');
 __IDRRT__.Float = new __IDRRT__.Type('Float');
-__IDRRT__.Ptr = new __IDRRT__.Type('Pointer')
+__IDRRT__.Ptr = new __IDRRT__.Type('Pointer');
 __IDRRT__.Forgot = new __IDRRT__.Type('Forgot');
 
 
