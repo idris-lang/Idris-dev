@@ -368,7 +368,15 @@ translateExpression (SForeign _ _ fun args)
 
   | "[]" `isSuffixOf` fun
   , (obj:idx:[]) <- args =
-    concat [object obj, index idx]
+    object obj ++ index idx
+
+  | "[" `isPrefixOf` fun && "]=" `isSuffixOf` fun
+  , (obj:val:[]) <- args =
+    concat [object obj, '[' : name ++ "]", assign val]
+
+  | "[" `isPrefixOf` fun && "]" `isSuffixOf` fun
+  , (obj:[]) <- args =
+    object obj ++ '[' : name ++ "]"
 
   | "." `isPrefixOf` fun, "=" `isSuffixOf` fun
   , (obj:val:[]) <- args =
