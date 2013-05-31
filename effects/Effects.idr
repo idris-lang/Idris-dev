@@ -48,6 +48,8 @@ updateWith : (ys' : List a) -> (xs : List a) ->
 updateWith (y :: ys) (x :: xs) (Keep rest) = y :: updateWith ys xs rest
 updateWith ys        (x :: xs) (Drop rest) = x :: updateWith ys xs rest
 updateWith []        []        SubNil      = []
+updateWith (y :: ys) []        SubNil      = y :: ys
+updateWith []        (x :: xs) (Keep rest) = []
 
 -- put things back, replacing old with new in the sub-environment
 rebuildEnv : Env m ys' -> (prf : SubList ys xs) -> 
@@ -55,6 +57,7 @@ rebuildEnv : Env m ys' -> (prf : SubList ys xs) ->
 rebuildEnv []        SubNil      env = env
 rebuildEnv (x :: xs) (Keep rest) (y :: env) = x :: rebuildEnv xs rest env
 rebuildEnv xs        (Drop rest) (y :: env) = y :: rebuildEnv xs rest env
+rebuildEnv (x :: xs) SubNil      [] = x :: xs 
 
 ---- The Effect EDSL itself ----
 
@@ -210,4 +213,3 @@ mapE f (x :: xs) = [| f x :: mapE f xs |]
 when : Applicative m => Bool -> Eff m xs () -> Eff m xs ()
 when True  e = e
 when False e = pure ()
-

@@ -311,15 +311,85 @@ buildSCG (_, n) = do
    ist <- getIState
    case lookupCtxt n (idris_callgraph ist) of
        [cg] -> case lookupDef n (tt_ctxt ist) of
-           [CaseOp _ _ _ _ _ args sc _ _] -> 
-               do logLvl 3 $ "Building SCG for " ++ show n ++ " from\n" 
-                                ++ show sc
-                  let newscg = buildSCG' ist sc args
+           [CaseOp _ _ _ pats _ args sc _ _] -> 
+               do logLvl 2 $ "Building SCG for " ++ show n ++ " from\n" 
+                                ++ show pats ++ "\n" ++ show sc
+                  let newscg = buildSCG' ist (rights pats) args
                   logLvl 5 $ show newscg
                   addToCG n ( cg { scg = newscg } )
        [] -> logLvl 5 $ "Could not build SCG for " ++ show n ++ "\n"
        x -> error $ "buildSCG: " ++ show (n, x)
 
+buildSCG' :: IState -> [(Term, Term)] -> [Name] -> [SCGEntry]
+buildSCG' ist pats args = nub $ concatMap scgPat pats where
+  scgPat (lhs, rhs) = let (f, pargs) = unApply (dePat lhs) in
+                          findCalls (dePat rhs) (patvars lhs) pargs
+
+  findCalls ap@(App f a) pvs pargs
+     | (P _ (UN "lazy") _, [_, arg]) <- unApply ap
+        = findCalls arg pvs pargs
+     | (P _ n _, args) <- unApply ap
+        = mkChange n args pargs ++ 
+              concatMap (\x -> findCalls x pvs pargs) args
+  findCalls (App f a) pvs pargs 
+        = findCalls f pvs pargs ++ findCalls a pvs pargs
+  findCalls (Bind n (Let t v) e) pvs pargs
+        = findCalls v pvs pargs ++ findCalls e (n : pvs) pargs
+  findCalls (Bind n _ e) pvs pargs
+        = findCalls e (n : pvs) pargs
+  findCalls (P _ f _ ) pvs pargs 
+      | not (f `elem` pvs) = [(f, [])]
+  findCalls _ _ _ = []
+
+  mkChange n args pargs = [(n, sizes args)]
+    where
+      sizes [] = []
+      sizes (a : as) = checkSize a pargs 0 : sizes as
+
+      -- find which argument in pargs <a> is smaller than, if any
+      checkSize a (p : ps) i
+          | a == p = Just (i, Same)
+          | smaller Nothing a (p, Nothing) = Just (i, Smaller)
+          | otherwise = checkSize a ps (i + 1)
+      checkSize a [] i = Nothing
+
+      -- the smaller thing we find must be the same type as <a>, and
+      -- not be coinductive - so carry the type of the constructor we've
+      -- gone under.
+
+      smaller (Just tyn) a (t, Just tyt) 
+         | a == t = isInductive (fst (unApply (getRetTy tyn))) 
+                                (fst (unApply (getRetTy tyt)))
+      smaller ty a (ap@(App f s), _)
+          | (P (DCon _ _) n _, args) <- unApply ap 
+               = let tyn = getType n in
+                     any (smaller (ty `mplus` Just tyn) a) 
+                         (zip args (map toJust (getArgTys tyn)))
+      -- check higher order recursive arguments
+      smaller ty (App f s) a = smaller ty f a 
+      smaller _ _ _ = False
+
+      toJust (n, t) = Just t
+
+      getType n = case lookupTy n (tt_ctxt ist) of
+                       [ty] -> ty -- must exist
+
+      isInductive (P _ nty _) (P _ nty' _) =
+          let co = case lookupCtxt nty (idris_datatypes ist) of
+                        [TI _ x _] -> x
+                        _ -> False in
+              nty == nty' && not co
+      isInductive _ _ = False
+
+--       getTypeFam t | (P _ n _, _) <- unApply t
+
+  dePat (Bind x (PVar ty) sc) = dePat (instantiate (P Bound x ty) sc)
+  dePat t = t
+
+  patvars (Bind x (PVar _) sc) = x : patvars sc
+  patvars _ = []
+
+{-
 buildSCG' :: IState -> SC -> [Name] -> [SCGEntry] 
 buildSCG' ist sc args = -- trace ("Building SCG for " ++ show sc) $
                            nub $ scg sc (zip args args) 
@@ -406,6 +476,7 @@ buildSCG' ist sc args = -- trace ("Building SCG for " ++ show sc) $
       getArgPos i n [] = Nothing
       getArgPos i n (x : xs) | n == x = Just i
                              | otherwise = getArgPos (i + 1) n xs
+-}
 
 checkSizeChange :: Name -> Idris Totality
 checkSizeChange n = do

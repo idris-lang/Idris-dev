@@ -351,10 +351,13 @@ argsToAlt rs@((r, m) : rest)
          return (newArgs, addRs rs)
   where 
     getNewVars [] = return []
-    getNewVars ((PV n) : ns) = do v <- getVar
+    getNewVars ((PV n) : ns) = do v <- getVar "e"
                                   nsv <- getNewVars ns
                                   return (v : nsv)
-    getNewVars (_ : ns) = do v <- getVar
+    getNewVars (PAny : ns) = do v <- getVar "i"
+                                nsv <- getNewVars ns
+                                return (v : nsv)
+    getNewVars (_ : ns) = do v <- getVar "e"
                              nsv <- getNewVars ns
                              return (v : nsv)
     addRs [] = []
@@ -363,8 +366,8 @@ argsToAlt rs@((r, m) : rest)
     uniq i (UN n) = MN i n
     uniq i n = n
 
-getVar :: State CS Name
-getVar = do (t, v) <- get; put (t, v+1); return (MN v "e")
+getVar :: String -> State CS Name
+getVar b = do (t, v) <- get; put (t, v+1); return (MN v b)
 
 groupCons :: [Clause] -> State CS [Group]
 groupCons cs = gc [] cs
@@ -393,10 +396,12 @@ varRule (v : vs) alts err =
     do let alts' = map (repVar v) alts
        match vs alts' err
   where
-    repVar v (PV p : ps , (lhs, res)) = (ps, (lhs, subst p (P Bound v Erased) res))
+    repVar v (PV p : ps , (lhs, res)) 
+           = (ps, (lhs, subst p (P Bound v Erased) res))
     repVar v (PAny : ps , res) = (ps, res)
 
 -- fix: case e of S k -> f (S k)  ==> case e of S k -> f e
+
 depatt :: [Name] -> SC -> SC
 depatt ns tm = dp [] tm
   where
@@ -419,8 +424,9 @@ depatt ns tm = dp [] tm
             | and ((length args == length args') :
                      (n == cn) : zipWith same args args') = P Ref x Erased
             | otherwise = applyMap ms nt cn pty args'
-          same n (P _ n' _) = n == n'
+          same n (P _ n' _) = n == n' 
           same _ _ = False
+
     applyMaps ms (App f a) = App (applyMaps ms f) (applyMaps ms a)
     applyMaps ms t = t
 
