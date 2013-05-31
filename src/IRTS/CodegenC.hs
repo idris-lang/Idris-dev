@@ -323,7 +323,7 @@ doOp v (LGe ty) [x, y] = bitOp v "Gte" ty [x, y]
 doOp v (LGt ty) [x, y] = bitOp v "Gt" ty [x, y]
 
 doOp v (LSHL ty) [x, y] = bitOp v "Shl" ty [x, y]
-doOp v (LLSHR ty) [x, y] = bitOp v "Shr" ty [x, y]
+doOp v (LLSHR ty) [x, y] = bitOp v "LShr" ty [x, y]
 doOp v (LASHR ty) [x, y] = bitOp v "AShr" ty [x, y]
 doOp v (LAnd ty) [x, y] = bitOp v "And" ty [x, y]
 doOp v (LOr ty) [x, y] = bitOp v "Or" ty [x, y]
