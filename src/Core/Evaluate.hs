@@ -91,8 +91,9 @@ specialise ctxt env limits t
 simplify :: Context -> Bool -> Env -> TT Name -> TT Name
 simplify ctxt runtime env t 
    = evalState (do val <- eval False ctxt [(UN "lazy", 0),
-                                                     (UN "par", 0),
-                                                     (UN "fork", 0)] 
+                                           (UN "assert_smaller", 0),
+                                           (UN "par", 0),
+                                           (UN "fork", 0)] 
                                  (map finalEntry env) (finalise t) 
                                  [Simplify runtime]
                    quote 0 val) initEval
@@ -751,11 +752,12 @@ simplifyCasedef n uctxt
               [(CaseOp inl inr ty [] ps args sc args' sc', acc, tot)] ->
                  ctxt -- nothing to simplify (or already done...)
               [(CaseOp inl inr ty ps_in ps args sc args' sc', acc, tot)] ->
-                 let pdef = map debind $ map simpl ps_in in
+                 let ps_in' = map simpl ps_in
+                     pdef = map debind ps_in' in
                      case simpleCase False True CompileTime (FC "" 0) pdef of
                        OK (CaseDef args sc _) ->
                           addDef n (CaseOp inl inr 
-                                           ty ps_in ps args sc args' sc',
+                                           ty ps_in' ps args sc args' sc',
                                     acc, tot) ctxt 
               _ -> ctxt in
          uctxt { definitions = ctxt' }

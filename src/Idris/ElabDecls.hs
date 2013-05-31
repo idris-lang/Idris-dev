@@ -458,6 +458,7 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
                          else stripCollapsed pats
 
            logLvl 5 $ "Patterns:\n" ++ show pats
+           logLvl 3 $ "SIMPLIFIED: \n" ++ show pdef
 
            let optpdef = map debind $ map (simpl True (tt_ctxt ist)) optpats
            tree@(CaseDef scargs sc _) <- tclift $ 
@@ -938,6 +939,9 @@ elabClass info syn doc fc constraints tn ps ds
          -- build instance constructor type
          -- decorate names of functions to ensure they can't be referred
          -- to elsewhere in the class declaration
+         -- TODO: Remove mdec to make it a dependent record, which would
+         -- allow dependent type classes, but building instances will
+         -- then need some attention.
          let cty = impbind ps $ conbind constraints 
                       $ pibind (map (\ (n, ty) -> (mdec n, ty)) methods) 
                                constraint
