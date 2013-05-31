@@ -402,7 +402,7 @@ translateExpression (SForeign _ _ fun args)
     array        = name
     object o     = translateVariableName (snd o)
     index  i     = "[" ++ translateVariableName (snd i) ++ "]"
-    assign v     = '=' : translateVariableName (snd v)
+    assign v     = '=' : generateWrapper v
     arguments as =
       '(' : intercalate "," (map generateWrapper as) ++ ")"
 
