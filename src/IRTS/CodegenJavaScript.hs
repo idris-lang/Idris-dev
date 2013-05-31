@@ -362,13 +362,13 @@ translateExpression (SForeign _ _ "putStr" [(FString, var)]) =
   "__IDRRT__.print(" ++ translateVariableName var ++ ")"
 
 translateExpression (SForeign _ _ fun args)
-  | "." `isPrefixOf` fun, "[]=" `isSuffixOf` fun
+  | "[]=" `isSuffixOf` fun
   , (obj:idx:val:[]) <- args =
-    concat [object obj, field, index idx, assign val]
+    concat [object obj, index idx, assign val]
 
-  | "." `isPrefixOf` fun, "[]" `isSuffixOf` fun
+  | "[]" `isSuffixOf` fun
   , (obj:idx:[]) <- args =
-    concat [object obj, field, index idx]
+    concat [object obj, index idx]
 
   | "." `isPrefixOf` fun, "=" `isSuffixOf` fun
   , (obj:val:[]) <- args =
