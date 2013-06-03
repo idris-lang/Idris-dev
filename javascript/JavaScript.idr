@@ -2,6 +2,23 @@ module JavaScript
 
 %access public
 
+-- TODO: Get rid of this hack, and find a better way.
+private
+isUndefined : Ptr -> IO Bool
+isUndefined p = do
+  res <- mkForeign (
+    FFun "(function(arg) { return arg === undefined;})" [FPtr] FString) p
+  if res == "false"
+     then (return False)
+     else (return True)
+
+--------------------------------------------------------------------------------
+-- Events
+--------------------------------------------------------------------------------
+abstract
+data Event : Type where
+  MkEvent : Ptr -> Event
+
 --------------------------------------------------------------------------------
 -- Elements
 --------------------------------------------------------------------------------
@@ -21,23 +38,20 @@ setOnClick (MkElem e) f =
                         , FFunction (FAny Event) (FAny (IO Bool))
                         ] FUnit) e f
 --------------------------------------------------------------------------------
--- Events
---------------------------------------------------------------------------------
-abstract
-data Event : Type where
-  MkEvent : Ptr -> Event
-
---------------------------------------------------------------------------------
 -- Nodelists
 --------------------------------------------------------------------------------
 abstract
 data NodeList : Type where
   MkNodeList : Ptr -> NodeList
 
-elemAt : NodeList -> Nat -> IO Element
+elemAt : NodeList -> Nat -> IO (Maybe Element)
 elemAt (MkNodeList p) i = do
-  i <- mkForeign (FFun ".item" [FPtr, FInt] FPtr) p (cast i)
-  return (MkElem i)
+  e <- mkForeign (FFun ".item" [FPtr, FInt] FPtr) p (cast i)
+  d <- isUndefined e
+  if d
+     then return $ Just (MkElem e)
+     else return Nothing
+
 --------------------------------------------------------------------------------
 -- Intervals
 --------------------------------------------------------------------------------
