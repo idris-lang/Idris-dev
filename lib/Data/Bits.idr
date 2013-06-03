@@ -31,17 +31,18 @@ bitsUsed n = 8 * (2 `power` n)
 natToBits' : machineTy n -> Nat -> machineTy n
 natToBits' a O = a
 natToBits' {n=n} a x with n
- natToBits' a (S x') | O = natToBits' (prim__addB8 a (prim__truncInt_B8 1)) x'
- natToBits' a (S x') | S O = natToBits' (prim__addB16 a (prim__truncInt_B16 1)) x'
- natToBits' a (S x') | S (S O) = natToBits' (prim__addB32 a (prim__truncInt_B32 1)) x'
- natToBits' a (S x') | S (S (S _)) = natToBits' (prim__addB64 a (prim__truncInt_B64 1)) x'
+ -- it seems I have to manually recover the value of n here, instead of being able to reference it  
+ natToBits' a (S x') | O           = natToBits' {n=0} (prim__addB8  a (prim__truncInt_B8  1)) x'
+ natToBits' a (S x') | S O         = natToBits' {n=1} (prim__addB16 a (prim__truncInt_B16 1)) x'
+ natToBits' a (S x') | S (S O)     = natToBits' {n=2} (prim__addB32 a (prim__truncInt_B32 1)) x'
+ natToBits' a (S x') | S (S (S _)) = natToBits' {n=3} (prim__addB64 a (prim__truncInt_B64 1)) x'
 
 natToBits : Nat -> machineTy n
 natToBits {n=n} x with n
-    | O = natToBits' (prim__truncInt_B8 0) x
-    | S O = natToBits' (prim__truncInt_B16 0) x
-    | S (S O) = natToBits' (prim__truncInt_B32 0) x
-    | S (S (S _)) = natToBits' (prim__truncInt_B64 0) x
+    | O           = natToBits' {n=0} (prim__truncInt_B8  0) x
+    | S O         = natToBits' {n=1} (prim__truncInt_B16 0) x
+    | S (S O)     = natToBits' {n=2} (prim__truncInt_B32 0) x
+    | S (S (S _)) = natToBits' {n=3} (prim__truncInt_B64 0) x
 
 getPad : Nat -> machineTy n
 getPad n = natToBits ((bitsUsed (nextBytes n)) - n)
@@ -156,7 +157,7 @@ xor' {n=n} x y with n
 
 public
 xor : Bits n -> Bits n -> Bits n
-xor (MkBits x) (MkBits y) = MkBits (xor' x y)
+xor {n} (MkBits x) (MkBits y) = MkBits {n} (xor' {n=nextBytes n} x y)
 
 plus' : machineTy (nextBytes n) -> machineTy (nextBytes n) -> machineTy (nextBytes n)
 plus' {n=n} x y with (nextBytes n)
@@ -240,36 +241,36 @@ urem : Bits n -> Bits n -> Bits n
 urem (MkBits x) (MkBits y) = MkBits (urem' x y)
 
 -- TODO: Proofy comparisons via postulates
-lt : machineTy n -> machineTy n -> Int
-lt {n=n} x y with n
+lt : machineTy (nextBytes n) -> machineTy (nextBytes n) -> Int
+lt {n=n} x y with (nextBytes n)
     | O = prim__ltB8 x y
     | S O = prim__ltB16 x y
     | S (S O) = prim__ltB32 x y
     | S (S (S _)) = prim__ltB64 x y
 
-lte : machineTy n -> machineTy n -> Int
-lte {n=n} x y with n
+lte : machineTy (nextBytes n) -> machineTy (nextBytes n) -> Int
+lte {n=n} x y with (nextBytes n)
     | O = prim__lteB8 x y
     | S O = prim__lteB16 x y
     | S (S O) = prim__lteB32 x y
     | S (S (S _)) = prim__lteB64 x y
 
-eq : machineTy n -> machineTy n -> Int
-eq {n=n} x y with n
+eq : machineTy (nextBytes n) -> machineTy (nextBytes n) -> Int
+eq {n=n} x y with (nextBytes n)
     | O = prim__eqB8 x y
     | S O = prim__eqB16 x y
     | S (S O) = prim__eqB32 x y
     | S (S (S _)) = prim__eqB64 x y
 
-gte : machineTy n -> machineTy n -> Int
-gte {n=n} x y with n
+gte : machineTy (nextBytes n) -> machineTy (nextBytes n) -> Int
+gte {n=n} x y with (nextBytes n)
     | O = prim__gteB8 x y
     | S O = prim__gteB16 x y
     | S (S O) = prim__gteB32 x y
     | S (S (S _)) = prim__gteB64 x y
 
-gt : machineTy n -> machineTy n -> Int
-gt {n=n} x y with n
+gt : machineTy (nextBytes n) -> machineTy (nextBytes n) -> Int
+gt {n=n} x y with (nextBytes n)
     | O = prim__gtB8 x y
     | S O = prim__gtB16 x y
     | S (S O) = prim__gtB32 x y
@@ -342,8 +343,8 @@ intToBits n = MkBits (intToBits' n)
 instance Cast Int (Bits n) where
     cast = intToBits
 
-bitsToInt' : machineTy n -> Int
-bitsToInt' {n=n} x with n
+bitsToInt' : machineTy (nextBytes n) -> Int
+bitsToInt' {n=n} x with (nextBytes n)
     | O = prim__zextB8_Int x
     | S O = prim__zextB16_Int x
     | S (S O) = prim__zextB32_Int x
@@ -354,11 +355,11 @@ bitsToInt : Bits n -> Int
 bitsToInt (MkBits x) = bitsToInt' x
 
 -- Zero out the high bits of a truncated bitstring
-zeroUnused : machineTy (nextBytes n) -> machineTy (nextBytes n)
-zeroUnused x = x `and'` complement' (intToBits' 0)
+--zeroUnused : machineTy (nextBytes n) -> machineTy (nextBytes n)
+--zeroUnused {n} x = x `and'` complement' (intToBits' {n=n} 0)
 
-instance Cast Nat (Bits n) where
-    cast x = MkBits (zeroUnused (natToBits n))
+--instance Cast Nat (Bits n) where
+--    cast x = MkBits (zeroUnused (natToBits n))
 
 -- TODO: Prove
 sext' : machineTy (nextBytes n) -> machineTy (nextBytes (n+m))
@@ -390,9 +391,9 @@ sext' {n=n} {m=m} x with (nextBytes n, nextBytes (n+m))
     | (S (S (S _)), S (S (S _))) = let pad = getPad {n=3} n in
                                    believe_me (prim__ashrB64 (prim__shlB64 (believe_me x) pad) pad)
 
-public
-signExtend : Bits n -> Bits (n+m)
-signExtend {m=m} (MkBits x) = MkBits (zeroUnused (sext' x))
+--public
+--signExtend : Bits n -> Bits (n+m)
+--signExtend {m=m} (MkBits x) = MkBits (zeroUnused (sext' x))
 
 -- TODO: Prove
 trunc' : machineTy (nextBytes (n+m)) -> machineTy (nextBytes n)
@@ -408,9 +409,9 @@ trunc' {n=n} {m=m} x with (nextBytes n, nextBytes (n+m))
     | (S (S O), S (S (S _))) = believe_me (prim__truncB64_B32 (believe_me x))
     | (S (S (S _)), S (S (S _))) = believe_me x
 
-public
-truncate : Bits (n+m) -> Bits n
-truncate (MkBits x) = MkBits (zeroUnused (trunc' x))
+--public
+--truncate : Bits (n+m) -> Bits n
+--truncate (MkBits x) = MkBits (zeroUnused (trunc' x))
 
 public
 bitAt : Fin n -> Bits n
