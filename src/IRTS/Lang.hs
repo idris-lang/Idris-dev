@@ -79,7 +79,15 @@ data PrimFn = LPlus IntTy | LMinus IntTy | LTimes IntTy
 data FLang = LANG_C
   deriving (Show, Eq)
 
-data FType = FInt IntTy | FChar | FString | FUnit | FPtr | FDouble | FAny
+data FType = FInt IntTy
+           | FFunction
+           | FFunctionIO
+           | FChar
+           | FString
+           | FUnit
+           | FPtr
+           | FDouble
+           | FAny
   deriving (Show, Eq)
 
 data LAlt = LConCase Int Name [Name] LExp

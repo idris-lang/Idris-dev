@@ -200,7 +200,7 @@ translateExpression (SApp True name vars) =
      "new __IDRRT__.Tailcall("
   ++ "function(){\n"
   ++ "return " ++ translateFunctionCall name vars
-  ++ ";\n});"
+  ++ ";\n})"
 
 translateExpression (SOp op vars)
   | (LPlus _)   <- op
@@ -356,19 +356,27 @@ translateExpression (SOp op vars)
       ++ translateVariableName rhs
 
 translateExpression (SError msg) =
-  "(function(){throw \'" ++ msg ++ "\';})();"
+  "(function(){throw \'" ++ msg ++ "\';})()"
 
 translateExpression (SForeign _ _ "putStr" [(FString, var)]) =
-  "__IDRRT__.print(" ++ translateVariableName var ++ ");"
+  "__IDRRT__.print(" ++ translateVariableName var ++ ")"
 
 translateExpression (SForeign _ _ fun args)
-  | "." `isPrefixOf` fun, "[]=" `isSuffixOf` fun
+  | "[]=" `isSuffixOf` fun
   , (obj:idx:val:[]) <- args =
-    concat [object obj, field, index idx, assign val]
+    concat [object obj, index idx, assign val]
 
-  | "." `isPrefixOf` fun, "[]" `isSuffixOf` fun
+  | "[]" `isSuffixOf` fun
   , (obj:idx:[]) <- args =
-    concat [object obj, field, index idx]
+    object obj ++ index idx
+
+  | "[" `isPrefixOf` fun && "]=" `isSuffixOf` fun
+  , (obj:val:[]) <- args =
+    concat [object obj, '[' : name ++ "]", assign val]
+
+  | "[" `isPrefixOf` fun && "]" `isSuffixOf` fun
+  , (obj:[]) <- args =
+    object obj ++ '[' : name ++ "]"
 
   | "." `isPrefixOf` fun, "=" `isSuffixOf` fun
   , (obj:val:[]) <- args =
@@ -402,9 +410,16 @@ translateExpression (SForeign _ _ fun args)
     array        = name
     object o     = translateVariableName (snd o)
     index  i     = "[" ++ translateVariableName (snd i) ++ "]"
-    assign v     = '=' : translateVariableName (snd v)
+    assign v     = '=' : generateWrapper v
     arguments as =
-      '(' : intercalate "," (map (translateVariableName . snd) as) ++ ")"
+      '(' : intercalate "," (map generateWrapper as) ++ ")"
+
+    generateWrapper (ffunc, name)
+      | FFunction   <- ffunc = "__IDRRT__.ffiWrap(" ++ translateVariableName name ++ ")"
+      | FFunctionIO <- ffunc = "__IDRRT__.ffiWrap(" ++ translateVariableName name ++ ")"
+
+    generateWrapper (_, name) =
+      translateVariableName name
 
 translateExpression (SChkCase var cases) =
      "(function(e){\n"
