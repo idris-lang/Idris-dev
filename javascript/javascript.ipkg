@@ -1,5 +1,5 @@
 package javascript
 
 opts    = "-i ../lib"
-modules = JavaScript
+modules = JavaScript, JavaScript.JSON
 
