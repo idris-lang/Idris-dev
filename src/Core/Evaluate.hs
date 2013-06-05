@@ -19,20 +19,22 @@ import Data.Binary hiding (get, put)
 import Core.TT
 import Core.CaseTree
 
-data EvalState = ES { limited :: [(Name, Int)] }
+data EvalState = ES { limited :: [(Name, Int)],
+                      nexthole :: Int }
 
 type Eval a = State EvalState a
 
 data EvalOpt = Spec | HNF | Simplify Bool | AtREPL
   deriving (Show, Eq)
 
-initEval = ES []
+initEval = ES [] 0
 
 -- VALUES (as HOAS) ---------------------------------------------------------
 -- | A HOAS representation of values
 data Value = VP NameType Name Value
            | VV Int
            | VBind Name (Binder Value) (Value -> Eval Value)
+           | VBLet Int Name Value Value Value
            | VApp Value Value
            | VType UExp
            | VErased
@@ -166,20 +168,24 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
                                     (Just v, _)  -> return v
                 _ -> liftM (VP Ref n) (ev ntimes stk top env ty)
     ev ntimes stk top env (P nt n ty)   = liftM (VP nt n) (ev ntimes stk top env ty)
-    ev ntimes stk top env (V i) | i < length env = return $ env !! i
+    ev ntimes stk top env (V i) 
+                     | i < length env && i >= 0 = return $ env !! i
                      | otherwise      = return $ VV i 
     ev ntimes stk top env (Bind n (Let t v) sc)
---         | not simpl || vinstances 0 sc < 2
+        | not simpl -- || vinstances 0 sc < 2
            = do v' <- ev ntimes stk top env v --(finalise v)
                 sc' <- ev ntimes stk top (v' : env) sc
                 wknV (-1) sc'
-{-        | otherwise -- put this back when the Bind works properly
+        | otherwise -- put this back when the Bind works properly
            = do t' <- ev ntimes stk top env t
                 v' <- ev ntimes stk top env v --(finalise v)
                 -- use Tmp as a placeholder, then make it a variable reference
                 -- again when evaluation finished
-                sc' <- ev ntimes stk top (v' : env) sc
-                return $ VBind n (Let t' v') (\x -> return sc') -}
+                hs <- get
+                let vd = nexthole hs
+                put (hs { nexthole = vd + 1 })
+                sc' <- ev ntimes stk top (VP Bound (MN vd "vlet") VErased : env) sc
+                return $ VBLet vd n t' v' sc'
     ev ntimes stk top env (Bind n (NLet t v) sc)
            = do t' <- ev ntimes stk top env (finalise t)
                 v' <- ev ntimes stk top env (finalise v)
@@ -331,15 +337,14 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
     getValArgs' (VApp f a) as = getValArgs' f (a:as)
     getValArgs' f as = (f, as)
 
-tmpToV i (VTmp 0) = return $ VV i
-tmpToV i (VP nt n v) = liftM (VP nt n) (tmpToV i v)
-                          
-tmpToV i (VBind n b sc) = do b' <- fmapMB (tmpToV i) b
-                             let sc' = \x -> do x' <- sc x
-                                                tmpToV (i + 1) x'
-                             return (VBind n b' sc')
-tmpToV i (VApp f a) = liftM2 VApp (tmpToV i f) (tmpToV i a)
-tmpToV i x = return x
+-- tmpToV i vd (VLetHole j) | vd == j = return $ VV i
+-- tmpToV i vd (VP nt n v) = liftM (VP nt n) (tmpToV i vd v)
+-- tmpToV i vd (VBind n b sc) = do b' <- fmapMB (tmpToV i vd) b
+--                                 let sc' = \x -> do x' <- sc x
+--                                                    tmpToV (i + 1) vd x'
+--                                 return (VBind n b' sc')
+-- tmpToV i vd (VApp f a) = liftM2 VApp (tmpToV i vd f) (tmpToV i vd a)
+-- tmpToV i vd x = return x
 
 class Quote a where
     quote :: Int -> a -> Eval (TT Name)
@@ -351,6 +356,12 @@ instance Quote Value where
                                 b' <- quoteB b
                                 liftM (Bind n b') (quote (i+1) sc')
        where quoteB t = fmapMB (quote i) t
+    quote i (VBLet vd n t v sc) 
+                           = do sc' <- quote i sc
+                                t' <- quote i t
+                                v' <- quote i v
+                                let sc'' = pToV (MN vd "vlet") (addBinder sc')
+                                return (Bind n (Let t' v') sc'')
     quote i (VApp f a)     = liftM2 App (quote i f) (quote i a)
     quote i (VType u)       = return $ TType u
     quote i VErased        = return $ Erased

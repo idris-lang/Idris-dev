@@ -362,7 +362,7 @@ process fn (DebugInfo n)
         let di = lookupCtxt n (idris_datatypes i)
         when (not (null di)) $ iputStrLn (show di)
         let d = lookupDef n (tt_ctxt i)
-        when (not (null d)) $ iputStrLn (show (head d))
+        when (not (null d)) $ iputStrLn $ "Definition: " ++ (show (head d))
         let cg = lookupCtxtName n (idris_callgraph i)
         findUnusedArgs (map fst cg)
         i <- getIState

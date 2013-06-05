@@ -231,7 +231,7 @@ instance ToIR (TT Name) where
 --       ir' env (P _ (NS (UN "O") ["Nat", "Prelude"]) _)
 --                         = return $ LConst (BI 0)
       ir' env (P _ n _) = return $ LV (Glob n)
-      ir' env (V i)     | i < length env = return $ LV (Glob (env!!i))
+      ir' env (V i)     | i >= 0 && i < length env = return $ LV (Glob (env!!i))
                         | otherwise = error $ "IR fail " ++ show i ++ " " ++ show tm
       ir' env (Bind n (Lam _) sc)
           = do let n' = uniqueName n env
