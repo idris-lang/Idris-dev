@@ -33,7 +33,9 @@ initEval = ES [] 0
 -- | A HOAS representation of values
 data Value = VP NameType Name Value
            | VV Int
-           | VBind Name (Binder Value) (Value -> Eval Value)
+             -- True for Bool indicates safe to reduce
+           | VBind Bool Name (Binder Value) (Value -> Eval Value)
+             -- For frozen let bindings when simplifying
            | VBLet Int Name Value Value Value
            | VApp Value Value
            | VType UExp
@@ -190,10 +192,11 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
            = do t' <- ev ntimes stk top env (finalise t)
                 v' <- ev ntimes stk top env (finalise v)
                 sc' <- ev ntimes stk top (v' : env) sc
-                return $ VBind n (Let t' v') (\x -> return sc')
+                return $ VBind True n (Let t' v') (\x -> return sc')
     ev ntimes stk top env (Bind n b sc) 
            = do b' <- vbind env b
-                return $ VBind n b' (\x -> ev ntimes stk False (x:env) sc)
+                return $ VBind (not simpl || vinstances 0 sc < 2)
+                               n b' (\x -> ev ntimes stk False (x:env) sc)
        where vbind env t 
                  | simpl 
                      = fmapMB (\tm -> ev ((MN 0 "STOP", 0) : ntimes) 
@@ -215,10 +218,10 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
             evApply ntimes stk top env (a:args) f
     evApply ntimes stk top env args f = apply ntimes stk top env f args
 
-    apply ntimes stk top env (VBind n (Lam t) sc) (a:as) 
-        = do a' <- sc a
-             app <- apply ntimes stk top env a' as 
-             wknV (-1) app
+    apply ntimes stk top env (VBind True n (Lam t) sc) (a:as) 
+         = do a' <- sc a
+              app <- apply ntimes stk top env a' as 
+              wknV (-1) app
 --     apply ntimes stk False env f args
 --         | spec = specApply ntimes stk env f args 
     apply ntimes_in stk top env f@(VP Ref n ty) args
@@ -352,9 +355,9 @@ class Quote a where
 instance Quote Value where
     quote i (VP nt n v)    = liftM (P nt n) (quote i v)
     quote i (VV x)         = return $ V x
-    quote i (VBind n b sc) = do sc' <- sc (VTmp i)
-                                b' <- quoteB b
-                                liftM (Bind n b') (quote (i+1) sc')
+    quote i (VBind _ n b sc) = do sc' <- sc (VTmp i)
+                                  b' <- quoteB b
+                                  liftM (Bind n b') (quote (i+1) sc')
        where quoteB t = fmapMB (quote i) t
     quote i (VBLet vd n t v sc) 
                            = do sc' <- quote i sc
@@ -387,9 +390,9 @@ instance Quote HNF where
 
 wknV :: Int -> Value -> Eval Value
 wknV i (VV x)         = return $ VV (x + i)
-wknV i (VBind n b sc) = do b' <- fmapMB (wknV i) b
-                           return $ VBind n b' (\x -> do x' <- sc x
-                                                         wknV i x')
+wknV i (VBind red n b sc) = do b' <- fmapMB (wknV i) b
+                               return $ VBind red n b' (\x -> do x' <- sc x
+                                                                 wknV i x')
 wknV i (VApp f a)     = liftM2 VApp (wknV i f) (wknV i a)
 wknV i t              = return t
 
