@@ -27,8 +27,6 @@ instance Monad f => Applicative (StateT s f) where
                                       return (g b, t))
 
 instance Monad m => Monad (StateT s m) where
-    return x = ST (\st => return (x, st))
-
     (ST f) >>= k = ST (\st => do (v, st') <- f st
                                  let ST kv = k v
                                  kv st')
