@@ -16,7 +16,6 @@ instance Applicative (IOExcept e) where
                                    return (f' <$> a'))
 
 instance Monad (IOExcept e) where
-     return = pure
      (ioM x) >>= k = ioM (do x' <- x;
                              case x' of
                                   Right a => let (ioM ka) = k a in
