@@ -64,6 +64,9 @@ Extra-source-files:    lib/Makefile  lib/*.idr lib/Prelude/*.idr
                        tutorial/examples/*.idr lib/base.ipkg
                        effects/Makefile effects/*.idr effects/Effect/*.idr
                        effects/effects.ipkg
+                       javascript/Makefile
+                       javascript/*.idr
+                       javascript/javascript.ipkg
                        config.mk
                        rts/*.c rts/*.h rts/Makefile
                        js/*.js
