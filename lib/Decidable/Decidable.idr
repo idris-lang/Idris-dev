@@ -6,6 +6,11 @@ module Decidable.Decidable
 -- Typeclass for decidable n-ary Relations
 --------------------------------------------------------------------------------
 
+{-
+This can't work yet! The class parameters must appear in the method type
+signatures otherwise when defining the instances class resolution doesn't
+have any clues...
+
 using (t : Type)
   class Rel (p : t) where
     total liftRel : (Type -> Type) -> Type
@@ -16,4 +21,4 @@ using (t : Type)
 using (P : Type, p : P)
   data Given : Dec P -> Type where
     always : Given (Yes p)
-
+-}
