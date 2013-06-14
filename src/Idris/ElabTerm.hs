@@ -446,6 +446,8 @@ elab ist info pattern tcgen fn tm
                              (caseBlock fc cname' (reverse args) opts)
              -- fail $ "Not implemented " ++ show c ++ "\n" ++ show args
              -- elaborate case
+             env <- get_env
+             g <- goal
              updateAux (newdef : )
              -- if we haven't got the type yet, hopefully we'll get it later!
              movelast tyn

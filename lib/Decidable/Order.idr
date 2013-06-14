@@ -40,10 +40,12 @@ instance Preorder Nat NatLTE where
   transitive = NatLTEIsTransitive
   reflexive  = NatLTEIsReflexive
 
-total NatLTEIsAntisymmetric : (m : Nat) -> (n : Nat) -> po m n -> po n m -> m = n
+total NatLTEIsAntisymmetric : (m : Nat) -> (n : Nat) -> 
+                              NatLTE m n -> NatLTE n m -> m = n
 NatLTEIsAntisymmetric n n nEqn nEqn = refl
 NatLTEIsAntisymmetric n m nEqn (nLTESm _) impossible
 NatLTEIsAntisymmetric n m (nLTESm _) nEqn impossible
+NatLTEIsAntisymmetric n m (nLTESm _) (nLTESm _) impossible
 
 instance Poset Nat NatLTE where
   antisymmetric = NatLTEIsAntisymmetric

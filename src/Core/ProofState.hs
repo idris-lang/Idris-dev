@@ -161,10 +161,10 @@ unify' ctxt env topx topy =
       (u, fails) <- -- trace ("Trying " ++ show (topx, topy)) $ 
                      lift $ unify ctxt env topx topy dont (holes ps)
 --       trace ("Unified " ++ show (topx, topy) ++ " without " ++ show dont ++
--- --              " in " ++ show env ++ 
+--              " in " ++ show env ++ 
 --              "\n" ++ show u ++ "\n" ++ qshow fails ++ "\nCurrent problems:\n"
 --              ++ qshow (problems ps) ++ "\n" ++ show (holes ps) ++ "\n"
---              ++ show (pterm ps) 
+-- --              ++ show (pterm ps) 
 --              ++ "\n----------") $
       case fails of
 --            [] -> return u

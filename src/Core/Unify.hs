@@ -54,8 +54,8 @@ unify ctxt env topx topy dont holes =
 
     injective (P (DCon _ _) _ _) = True
     injective (P (TCon _ _) _ _) = True
-    injective (App f (P _ _ _))  = injective f 
-    injective (App f (Constant _))  = injective f 
+--     injective (App f (P _ _ _))  = injective f 
+--     injective (App f (Constant _))  = injective f 
     injective (App f a)          = injective f -- && injective a
     injective _                  = False
 
@@ -133,9 +133,11 @@ unify ctxt env topx topy dont holes =
         | fst (bnames!!i) == x || snd (bnames!!i) == x = do sc 1; return []
 
     un' fn bnames appx@(App fx ax) appy@(App fy ay)
-      |    (injective fx && sameArgStruct appx appy && metavarApp appy)
-        || (injective fy && sameArgStruct appx appy && metavarApp appx)
-        || (injective fx && injective fy)
+         | (injective fx && injective fy)
+        || (injective fx && rigid appx && metavarApp appy)
+        || (injective fy && rigid appy && metavarApp appx)
+        || (injective fx && metavarApp fy && ax == ay)
+        || (injective fy && metavarApp fx && ax == ay)
          = do let (headx, _) = unApply fx
               let (heady, _) = unApply fy
               -- fail quickly if the heads are disjoint
@@ -157,7 +159,7 @@ unify ctxt env topx topy dont holes =
                     hf <- un' False bnames fx' fy'
                     sc 1
                     combine bnames hf ha)
-       | otherwise = 
+       | otherwise = -- trace (show (appx, appy, injective fx, metavarApp appy, sameArgStruct appx appy)) $
             do let (headx, argsx) = unApply appx
                let (heady, argsy) = unApply appy
                -- traceWhen (headx == heady) (show (appx, appy)) $
@@ -191,15 +193,17 @@ unify ctxt env topx topy dont holes =
                      unArgs vs xs ys
 
             metavarApp tm = let (f, args) = unApply tm in
-                                all (\x -> metavar x || inenv x) (f : args)
+                                all (\x -> metavar x) (f : args)
             metavarArgs tm = let (f, args) = unApply tm in
                                  all (\x -> metavar x || inenv x) args
             metavarApp' tm = let (f, args) = unApply tm in
                                  all (\x -> pat x || metavar x) (f : args)
 
-            sameArgStruct appx appy = let (_, ax) = unApply appx
-                                          (_, ay) = unApply appy in
-                                          and (zipWith sameStruct ax ay)
+            sameArgStruct appx appy 
+                = let (_, ax) = unApply appx
+                      (_, ay) = unApply appy in
+                      length ax == length ay &&
+                        and (zipWith sameStruct ax ay)
 
             sameStruct fapp@(App f x) gapp@(App g y) 
                 = let (f',a') = unApply fapp
@@ -216,6 +220,13 @@ unify ctxt env topx topy dont holes =
             sameStruct (P _ _ _) (Bind n t sc) = True
             sameStruct (Bind n t sc) (Bind n' t' sc') = sameStruct sc sc'
             sameStruct _ _ = False
+
+            rigid (P (DCon _ _) _ _) = True
+            rigid (P (TCon _ _) _ _) = True
+            rigid t@(P Ref _ _)      = inenv t
+            rigid (Constant _)       = True
+            rigid (App f a)          = rigid f && rigid a
+            rigid t                  = not (metavar t)
 
             metavar t = case t of
                              P _ x _ -> (x `elem` holes || holeIn env x) &&

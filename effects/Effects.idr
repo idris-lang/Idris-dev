@@ -164,6 +164,9 @@ execEff (val :: env) Here eff' k
 execEff (val :: env) (There p) eff k 
     = execEff env p eff (\env', v => k (val :: env') v)
 
+-- Q: Instead of m b, implement as StateT (Env m xs') m b, so that state
+-- updates can be propagated even through failing computations?
+
 eff : Env m xs -> EffM m xs xs' a -> (Env m xs' -> a -> m b) -> m b
 eff env (value x) k = k env x
 eff env (prog `ebind` c) k 
