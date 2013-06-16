@@ -209,9 +209,9 @@ public class ForeignPrimitives {
         buf = null;
     }
 
-    public static Integer idris_peek(Object buf, int offset) {
+    public static byte idris_peek(Object buf, int offset) {
         ByteBuffer buffer = (ByteBuffer)buf;
-        return Integer.valueOf(buffer.get(offset));
+        return buffer.get(offset);
     }
 
     public static void idris_poke(Object buf, int offset, Object data) {
