@@ -308,6 +308,30 @@ VAL idris_castBigInt(VM* vm, VAL i) {
     }
 }
 
+VAL idris_castBigFloat(VM* vm, VAL i) {
+    if (ISINT(i)) {
+        return MKFLOAT(vm, GETINT(i));
+    } else {
+        return MKFLOAT(vm, mpz_get_d(GETMPZ(i)));
+    }
+}
+
+VAL idris_castFloatBig(VM* vm, VAL f) {
+    double val = GETFLOAT(f);
+
+    mpz_t* bigint;
+    VAL cl = allocate(vm, sizeof(ClosureType) + sizeof(void*) + 
+                      sizeof(mpz_t), 0);
+    bigint = (mpz_t*)(((char*)cl) + sizeof(ClosureType) + sizeof(void*));
+
+    mpz_init_set_d(*bigint, val);
+
+    SETTY(cl, BIGINT);
+    cl -> info.ptr = (void*)bigint;
+
+    return cl;
+}
+
 VAL idris_castStrBig(VM* vm, VAL i) {
     return MKBIGC(vm, GETSTR(i));
 }

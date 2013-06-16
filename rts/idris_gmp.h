@@ -24,6 +24,8 @@ VAL idris_bigGe(VM*, VAL x, VAL y);
 
 VAL idris_castIntBig(VM* vm, VAL i);
 VAL idris_castBigInt(VM* vm, VAL i);
+VAL idris_castFloatBig(VM* vm, VAL i);
+VAL idris_castBigFloat(VM* vm, VAL i);
 VAL idris_castStrBig(VM* vm, VAL i);
 VAL idris_castBigStr(VM* vm, VAL i);
 
