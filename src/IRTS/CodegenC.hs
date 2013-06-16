@@ -285,6 +285,8 @@ doOp v LFLe [l, r] = v ++ "FLOATBOP(<=," ++ creg l ++ ", " ++ creg r ++ ")"
 doOp v LFGt [l, r] = v ++ "FLOATBOP(>," ++ creg l ++ ", " ++ creg r ++ ")"
 doOp v LFGe [l, r] = v ++ "FLOATBOP(>=," ++ creg l ++ ", " ++ creg r ++ ")"
 
+doOp v (LIntFloat ITBig) [x] = v ++ "idris_castBigFloat(vm, " ++ creg x ++ ")"
+doOp v (LFloatInt ITBig) [x] = v ++ "idris_castFloatBig(vm, " ++ creg x ++ ")"
 doOp v (LPlus ITBig) [l, r] = v ++ "idris_bigPlus(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
 doOp v (LMinus ITBig) [l, r] = v ++ "idris_bigMinus(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
 doOp v (LTimes ITBig) [l, r] = v ++ "idris_bigTimes(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
