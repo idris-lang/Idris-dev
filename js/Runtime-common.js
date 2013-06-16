@@ -10,10 +10,19 @@ __IDRRT__.Char = new __IDRRT__.Type('Char');
 __IDRRT__.String = new __IDRRT__.Type('String');
 __IDRRT__.Integer = new __IDRRT__.Type('Integer');
 __IDRRT__.Float = new __IDRRT__.Type('Float');
+__IDRRT__.Ptr = new __IDRRT__.Type('Pointer');
 __IDRRT__.Forgot = new __IDRRT__.Type('Forgot');
+
 
 /** @constructor */
 __IDRRT__.Tailcall = function(f) { this.f = f };
+__IDRRT__.ffiWrap = function(fid) {
+  return function(arg) {
+    return __IDRRT__.tailcall(function(){
+      return __IDR__.APPLY0(fid, arg);
+    });
+  };
+};
 
 /** @constructor */
 __IDRRT__.Con = function(i,vars) {

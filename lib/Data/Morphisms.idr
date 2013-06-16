@@ -30,7 +30,6 @@ instance Applicative (Morphism r) where
   (Mor f) <$> (Mor a) = Mor $ \r => f r $ a r
 
 instance Monad (Morphism r) where
-  return a       = Mor $ const a
   (Mor h) >>= f = Mor $ \r => applyMor (f $ h r) r
 
 instance Semigroup (Endomorphism a) where

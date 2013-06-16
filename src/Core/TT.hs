@@ -57,6 +57,8 @@ data Err = Msg String
               -- unification succeed
          | InfiniteUnify Name Term [(Name, Type)]
          | CantConvert Term Term [(Name, Type)]
+         | NonFunctionType Term Term
+         | CantIntroduce Term
          | NoSuchVariable Name
          | NoTypeDecl Name
          | NotInjective Term Term Term
@@ -71,6 +73,7 @@ data Err = Msg String
          | ProofSearchFail Err
          | NoRewriting Term
          | At FC Err
+         | ProviderError String
   deriving Eq
 
 instance Sized Err where
@@ -89,6 +92,7 @@ instance Sized Err where
   size UniverseError = 1
   size ProgramLineComment = 1
   size (At fc err) = size fc + size err
+  size (ProviderError msg) = length msg
   size _ = 1
 
 score :: Err -> Int
@@ -104,6 +108,7 @@ instance Show Err where
     show (CantUnify _ l r e sc i) = "CantUnify " ++ show l ++ " " ++ show r ++ " "
                                       ++ show e ++ " in " ++ show sc ++ " " ++ show i
     show (Inaccessible n) = show n ++ " is not an accessible pattern variable"
+    show (ProviderError msg) = "Type provider error: " ++ msg
     show _ = "Error"
 
 instance Pretty Err where
@@ -116,6 +121,7 @@ instance Pretty Err where
     else
       text "Cannot unify" <+> colon <+> pretty l <+> text "and" <+> pretty r $$
         nest nestingSize (text "where" <+> pretty e <+> text "with" <+> (text . show $ i))
+  pretty (ProviderError msg) = text msg
   pretty _ = text "Error"
 
 data TC a = OK a
@@ -238,8 +244,8 @@ addDef n v ctxt = case Map.lookup (nsroot n) ctxt of
 
 -}
 
-lookupCtxtName :: Maybe [String] -> Name -> Ctxt a -> [(Name, a)]
-lookupCtxtName nspace n ctxt = case Map.lookup (nsroot n) ctxt of
+lookupCtxtName :: Name -> Ctxt a -> [(Name, a)]
+lookupCtxtName n ctxt = case Map.lookup (nsroot n) ctxt of
                                   Just xs -> filterNS (Map.toList xs)
                                   Nothing -> []
   where
@@ -252,12 +258,12 @@ lookupCtxtName nspace n ctxt = case Map.lookup (nsroot n) ctxt of
     nsmatch (NS _ _)  _         = False
     nsmatch looking   found     = True
 
-lookupCtxt :: Maybe [String] -> Name -> Ctxt a -> [a]
-lookupCtxt ns n ctxt = map snd (lookupCtxtName ns n ctxt)
+lookupCtxt :: Name -> Ctxt a -> [a]
+lookupCtxt n ctxt = map snd (lookupCtxtName n ctxt)
 
 updateDef :: Name -> (a -> a) -> Ctxt a -> Ctxt a
 updateDef n f ctxt 
-  = let ds = lookupCtxtName Nothing n ctxt in
+  = let ds = lookupCtxtName n ctxt in
         foldr (\ (n, t) c -> addDef n (f t) c) ctxt ds  
 
 toAlist :: Ctxt a -> [(Name, a)]
@@ -424,7 +430,10 @@ instance Show UConstraint where
 
 type UCs = (Int, [UConstraint])
 
-data NameType = Bound | Ref | DCon Int Int | TCon Int Int
+data NameType = Bound
+              | Ref
+              | DCon Int Int -- ^ Data constructor; Ints are tag and arity
+              | TCon Int Int -- ^ Type constructor; Ints are tag and arity
   deriving (Show, Ord)
 {-! 
 deriving instance Binary NameType 
@@ -559,6 +568,17 @@ pToV' n i (Bind x b sc)
 pToV' n i (App f a) = App (pToV' n i f) (pToV' n i a)
 pToV' n i (Proj t idx) = Proj (pToV' n i t) idx
 pToV' n i t = t
+
+-- increase de Bruijn indices, as if a binder has been added
+addBinder :: TT n -> TT n
+addBinder t = ab 0 t
+  where
+     ab top (V i) | i >= top = V (i + 1)
+                  | otherwise = V i
+     ab top (Bind x b sc) = Bind x (fmap (ab top) b) (ab (top + 1) sc)
+     ab top (App f a) = App (ab top f) (ab top a)
+     ab top (Proj t idx) = Proj (ab top t) idx
+     ab top t = t
 
 -- | Convert several names. First in the list comes out as V 0
 pToVs :: Eq n => [n] -> TT n -> TT n
@@ -778,7 +798,8 @@ prettyEnv env t = prettyEnv' env t False
 showEnv' env t dbg = se 10 env t where
     se p env (P nt n t) = show n 
                             ++ if dbg then "{" ++ show nt ++ " : " ++ se 10 env t ++ "}" else ""
-    se p env (V i) | i < length env = (show $ fst $ env!!i) ++
+    se p env (V i) | i < length env && i >= 0
+                                    = (show $ fst $ env!!i) ++
                                       if dbg then "{" ++ show i ++ "}" else ""
                    | otherwise = "!!V " ++ show i ++ "!!"
     se p env (Bind n b@(Pi t) sc)  

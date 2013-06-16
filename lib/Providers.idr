@@ -1,8 +1,5 @@
 module Providers
 
 public
-data Provider a = Provide (IO a) | Error (IO String)
+data Provider a = Provide a | Error String
 
-partial public
-unProv : Provider a -> a
-unProv (Provide x) = unsafePerformIO x

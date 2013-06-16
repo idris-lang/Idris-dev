@@ -191,6 +191,48 @@ public class ForeignPrimitives {
         return (o == null ? 1 : 0);
     }
 
+    public static Object malloc(int size) {
+        return ByteBuffer.allocate(size);
+    }
+
+    public static void idris_memset(Object buf, int offset, Object c, int size) {
+        ByteBuffer buffer = (ByteBuffer)buf;
+        buffer.rewind();
+        buffer.position(offset);
+        byte init[] = new byte[size];
+        Arrays.fill(init, (Byte)c);
+        buffer.put(init, offset, size);
+        buffer.rewind();
+    }
+
+    public static void free(Object buf) {
+        buf = null;
+    }
+
+    public static Integer idris_peek(Object buf, int offset) {
+        ByteBuffer buffer = (ByteBuffer)buf;
+        return Integer.valueOf(buffer.get(offset));
+    }
+
+    public static void idris_poke(Object buf, int offset, Object data) {
+        ByteBuffer buffer = (ByteBuffer)buf;
+        buffer.put(offset, (Byte)data);
+    }
+
+    public static void idris_memmove(Object dstBuf, Object srcBuf, int dstOffset, int srcOffset, int size) {
+        ByteBuffer dst = (ByteBuffer)dstBuf;
+        ByteBuffer src = (ByteBuffer)srcBuf;
+        byte [] srcData = new byte[size];
+        src.rewind();
+        src.position(srcOffset);
+        src.get(srcData, 0, size);
+        src.rewind();
+        dst.rewind();
+        dst.position(dstOffset);
+        dst.put(srcData, 0, size);
+        dst.rewind();
+    }
+
     public final static Object idris_K(final Object result, final Object drop) {
         return result;
     }

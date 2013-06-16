@@ -1,0 +1,3 @@
+#!/bin/bash
+idris --quiet test023.idr -o test023
+rm -f test023 *.ibc

@@ -60,32 +60,43 @@ intEq x y = case x == y of
 
 -- | A tactic script to run intEq on two let-bound or introduced
 -- arguments of the current (otherwise empty) proof context
-firstEq : List (TTName, Binder TT) -> Tactic
-firstEq ((_, (Let _ y))::(_, (Let _ x))::(_, Let _ f)::Nil) = Exact (App (App f x) y)
-firstEq ((y, Lam yt)::(x, Lam xt)::(_, Let _ f)::Nil) = Exact (App (App f (P (Bound) x xt)) (P Bound y yt))
-firstEq xs = Exact (TConst (I 0))
+firstEq : List (TTName, Binder TT) -> TT -> Tactic
+firstEq ((_, (Let _ y))::(_, (Let _ x))::(_, Let _ f)::Nil) _ = Exact (App (App f x) y)
+firstEq ((y, Lam yt)::(x, Lam xt)::(_, Let _ f)::Nil) _ = Exact (App (App f (P (Bound) x xt)) (P Bound y yt))
+firstEq xs _ = Exact (TConst (I 0))
 
--- | Skip 3 arguments of the proof context and return the fourth one which
--- has to be introduced.
--- Used for the tactical dispatch example, which will push dispatch,
--- its current proof context and the result of dispatch applied to it
--- first.
-innerTac : List (TTName, Binder TT) -> Tactic
-innerTac (_::_::_::(x, Lam xt)::_) = Exact (P Bound x xt)
+-- | Skip 1 argument of the proof context and return the second one which
+-- has to be introduced. Used for the tactical dispatch example, which 
+-- will push dispatch, as first env agrument.
+innerTac : List (TTName, Binder TT) -> TT -> Tactic
+innerTac (_::(x, Lam xt)::_) _ = Exact (P Bound x xt)
 
 -- | Returns the reflected representation of innerTac
 innerTacTT : TT
 innerTacTT = ?innerTacTTPrf
 
 -- | Dispatch to the reflected rep. of innerTac
-dispatch : List (TTName, Binder TT) -> Tactic
-dispatch xs = ApplyTactic (innerTacTT)
+dispatch : List (TTName, Binder TT) -> TT -> Tactic
+dispatch xs _ = ApplyTactic (innerTacTT)
 
 -- | Call dispatch which will then dispatch to innerTac.
 tacticalDispatch : Int -> Int
 tacticalDispatch = ?tacticalDispatchPrf
 
+-- | A tactic to get the representation of its goal
+studyGoalTac : List (TTName, Binder TT) -> TT -> Tactic
+studyGoalTac _ goal = Reflect goal
+
+-- | Returns the representation of its goal, TT
+-- (so this is reflect on the type TT)
+studyGoal : TT
+studyGoal = ?studyGoalPrf
+
 ---------- Proofs ----------
+
+ReflectionExamples.studyGoalPrf = proof {
+  applyTactic studyGoalTac;
+}
 
 ReflectionExamples.envTuplePrf = proof {
   let x = tupleType;

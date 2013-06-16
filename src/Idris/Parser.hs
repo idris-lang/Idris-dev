@@ -1,4 +1,4 @@
-{-# LANGUAGE PatternGuards #-}
+{-# LANGUAGE PatternGuards, ScopedTypeVariables #-}
 -- | Parse the full Idris language.
 module Idris.Parser where
 
@@ -30,6 +30,7 @@ import qualified Text.Parsec.Token as PTok
 import Data.List
 import Data.List.Split(splitOn)
 import Control.Monad.State
+import Control.Monad.Error
 import Debug.Trace
 import Data.Maybe
 import System.FilePath
@@ -273,7 +274,7 @@ pfc = do s <- getPosition
 pImport :: IParser String
 pImport = do reserved "import"; f <- identifier; option ';' (lchar ';')
              return (toPath f)
-  where toPath n = foldl1 (</>) $ splitOn "." n
+  where toPath n = foldl1' (</>) $ splitOn "." n
 
 -- | A program is a list of declarations, possibly with associated
 -- documentation strings.
@@ -470,7 +471,7 @@ pPostulate syn = do doc <- option "" (pDocComment '|')
 
 pUsing :: SyntaxInfo -> IParser [PDecl]
 pUsing syn = 
-    do reserved "using"; lchar '('; ns <- tyDeclList syn; lchar ')'
+    do reserved "using"; lchar '('; ns <- usingDeclList syn; lchar ')'
        openBlock
        let uvars = using syn
        ds <- many1 (pDecl (syn { using = uvars ++ ns }))
@@ -613,7 +614,6 @@ pNoExtExpr syn =
      <|> pRewriteTerm syn
      <|> pPi syn 
      <|> pDoBlock syn
-     <|> pComprehension syn
     
 pExtensions :: SyntaxInfo -> [Syntax] -> IParser PTerm
 pExtensions syn rules = choice (map (try . pExt syn) (filter valid rules))
@@ -763,6 +763,7 @@ pSimpleExpr syn =
                     fc <- pfc
                     return (PInferRef fc x))
         <|> try (pList syn)
+        <|> try (pComprehension syn)
         <|> try (pAlt syn)
         <|> try (pIdiom syn)
         <|> try (do lchar '('
@@ -800,15 +801,29 @@ pCaseOpt syn = do lhs <- pExpr (syn { inPattern = True })
                   symbol "=>"; rhs <- pExpr syn
                   return (lhs, rhs)
 
+-- bit of a hack here. If the integer doesn't fit in an Int, treat it as a
+-- big integer, otherwise try fromInteger and the constants as alternatives.
+-- a better solution would be to fix fromInteger to work with Integer, as the
+-- name suggests, rather than Int
+
 modifyConst :: SyntaxInfo -> FC -> PTerm -> PTerm
-modifyConst syn fc (PConstant (I x)) 
+modifyConst syn fc (PConstant (BI x)) 
+    | not (fitsInt x) = PAlternative False 
+                           [PConstant (BI x),
+                            PApp fc (PRef fc (UN "fromInteger"))
+                                 [pexp (PConstant (I (fromInteger x)))]]
     | not (inPattern syn)
         = PAlternative False
-             [PApp fc (PRef fc (UN "fromInteger")) [pexp (PConstant (I x))],
-              PConstant (I x), PConstant (BI (toEnum x))]
+             [PApp fc (PRef fc (UN "fromInteger")) [pexp (PConstant (I (fromInteger x)))],
+              PConstant (I (fromInteger x)), PConstant (BI x)]
     | otherwise = PAlternative False
-                     [PConstant (I x), PConstant (BI (toEnum x))]
+                     [PConstant (I (fromInteger x)), PConstant (BI x)]
 modifyConst syn fc x = x
+
+fitsInt :: Integer -> Bool
+fitsInt x = let xInt :: Int = fromInteger x
+                xInteger :: Integer = toInteger xInt in
+                x == xInteger
 
 pList syn = do lchar '['; fc <- pfc; xs <- sepBy (pExpr syn) (lchar ','); lchar ']'
                return (mkList fc xs)
@@ -867,7 +882,7 @@ pApp syn = do f <- pSimpleExpr syn
               return (dslify i $ PApp fc f args)
   where
     dslify i (PApp fc (PRef _ f) [a])
-        | [d] <- lookupCtxt Nothing f (idris_dsls i)
+        | [d] <- lookupCtxt f (idris_dsls i)
             = desugar (syn { dsl_info = d }) i (getTm a)
     dslify i t = t
 
@@ -961,7 +976,9 @@ pLet syn = try (do reserved "let"; n <- pName;
                    return (PCase fc v [(pat, sc)]))
 
 pPi syn = 
-     try (do lazy <- option False (do lchar '|'; return True)
+     try (do lazy <- if implicitAllowed syn -- laziness is top level only
+                        then option False (do lchar '|'; return True)
+                        else return False
              st <- pStatic
              lchar '('; xt <- tyDeclList syn; lchar ')'
              doc <- option "" (pDocComment '^')
@@ -1014,6 +1031,19 @@ pConstList syn = try (do lchar '('
                          reservedOp "=>"
                          return [t])
              <|> return []
+
+usingDeclList syn 
+               = try (sepBy1 (usingDecl syn) (lchar ','))
+             <|> do ns <- sepBy1 pName (lchar ',')
+                    t <- pTSig (noImp syn)
+                    return (map (\x -> UImplicit x t) ns)
+
+usingDecl syn = try (do x <- pfName
+                        t <- pTSig (noImp syn)
+                        return (UImplicit x t))
+            <|> do c <- pfName
+                   xs <- many1 pfName
+                   return (UConstraint c xs)
 
 tyDeclList syn = try (sepBy1 (do x <- pfName
                                  t <- pTSig (noImp syn)
@@ -1106,8 +1136,7 @@ pConstant = do reserved "Integer";return BIType
         <|> do reserved "Bits32"; return B32Type
         <|> do reserved "Bits64"; return B64Type
         <|> try (do f <- float;   return $ Fl f)
---         <|> try (do i <- natural; lchar 'L'; return $ BI i)
-        <|> try (do i <- natural; return $ I (fromInteger i))
+        <|> try (do i <- natural; return $ BI i)
         <|> try (do s <- strlit;  return $ Str s)
         <|> try (do c <- chlit;   return $ Ch c)
 
@@ -1348,7 +1377,8 @@ pClause syn
                    cargs <- many (pConstraintArg syn)
                    iargs <- many (pImplicitArg (syn { inPattern = True } ))
                    fc <- pfc
-                   args <- many (pArgExpr syn)
+                   args <- many (try (pImplicitArg (syn { inPattern = True } ))
+                                 <|> (fmap pexp (pArgExpr syn)))
                    wargs <- many (pWExpr syn)
                    rhs <- pRHS syn n
                    ist <- getState
@@ -1360,7 +1390,7 @@ pClause syn
                                              do pTerminator
                                                 return ([], [])]
                    let capp = PApp fc (PRef fc n) 
-                                (iargs ++ cargs ++ map pexp args)
+                                (iargs ++ cargs ++ args)
                    ist <- getState
                    setState (ist { lastParse = Just n })
                    return $ PClause fc n capp wargs rhs wheres)
@@ -1386,10 +1416,11 @@ pClause syn
                    cargs <- many (pConstraintArg syn)
                    iargs <- many (pImplicitArg (syn { inPattern = True } ))
                    fc <- pfc
-                   args <- many (pArgExpr syn)
+                   args <- many (try (pImplicitArg (syn { inPattern = True } )) 
+                                 <|> (fmap pexp (pArgExpr syn)))
                    wargs <- many (pWExpr syn)
                    let capp = PApp fc (PRef fc n) 
-                                (iargs ++ cargs ++ map pexp args)
+                                (iargs ++ cargs ++ args)
                    ist <- getState
                    setState (ist { lastParse = Just n })
                    reserved "with"
@@ -1497,9 +1528,12 @@ pDirective syn = try (do lchar '%'; reserved "lib"; lib <- strlit;
                                                 putIState (i { default_total = tot }))])
              <|> try (do lchar '%'; reserved "logging"; i <- natural;
                          return [PDirective (setLogLevel (fromInteger i))])
-             <|> try (do lchar '%'; reserved "dynamic"; lib <- strlit;
-                         return [PDirective (do addIBC (IBCDyLib lib)
-                                                addDyLib lib)])
+             <|> try (do lchar '%'; reserved "dynamic"; libs <- sepBy1 strlit (lchar ',');
+                         return [PDirective (do added <- addDyLib libs
+                                                case added of
+                                                  Left lib -> addIBC (IBCDyLib (lib_name lib))
+                                                  Right msg ->
+                                                      fail $ msg)])
              <|> try (do lchar '%'; reserved "language"; ext <- reserved "TypeProviders";
                          return [PDirective (addLangExt TypeProviders)])
 

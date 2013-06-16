@@ -22,5 +22,10 @@ Tests:
 020: implicit conversions
 021: effects
 022: dynamic C library loading and interpreter IO
+023: trivial (non-I/O) type providers
+024: interpreter I/O
+025: memory effects
+026: simple file-I/O-based type provider
+027: class constraints in using block
 
 regxxx: various regression tests

@@ -4,15 +4,20 @@ New in 0.9.8:
 User visible changes:
 
 * Added "rewrite ... in ..." construct
+* Allow type class constraints in 'using' clauses
 * Renamed EFF to EFFECT in Effect package
 * Experimental Java backend
 * Tab completion in REPL
 * Dynamic loading of C libraries in the interpreter
 * Testing IO actions at the REPL with :x command
+* Improve rendering of :t
+* Fixed some INTERNAL ERROR messages
 
 Internal changes:
 
+* Fix non-linear pattern checking
 * Improved name disambiguation
+* More flexible unification and elaboration of lambdas
 * Various unification and totality checking bug fixes
 
 New in 0.9.7:

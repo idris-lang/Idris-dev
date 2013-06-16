@@ -41,9 +41,26 @@ data IOption = IOption { opt_logLevel   :: Int,
                        }
     deriving (Show, Eq)
 
-defaultOpts = IOption 0 False False True False False True True False ViaC Executable "" [] []
+defaultOpts = IOption { opt_logLevel   = 0
+                      , opt_typecase   = False
+                      , opt_typeintype = False
+                      , opt_coverage   = True
+                      , opt_showimp    = False
+                      , opt_errContext = False
+                      , opt_repl       = True
+                      , opt_verbose    = True
+                      , opt_quiet      = False
+                      , opt_target     = ViaC
+                      , opt_outputTy   = Executable
+                      , opt_ibcsubdir  = ""
+                      , opt_importdirs = []
+                      , opt_cmdline    = []
+                      }
 
 data LanguageExt = TypeProviders deriving (Show, Eq, Read, Ord)
+
+-- | The output mode in use
+data OutputMode = RawOutput | IdeSlave Integer deriving Show
 
 -- TODO: Add 'module data' to IState, which can be saved out and reloaded quickly (i.e
 -- without typechecking).
@@ -62,7 +79,8 @@ data IState = IState {
     idris_dsls :: Ctxt DSL,
     idris_optimisation :: Ctxt OptInfo, 
     idris_datatypes :: Ctxt TypeInfo,
-    idris_patdefs :: Ctxt [([Name], Term, Term)], -- not exported
+    idris_patdefs :: Ctxt ([([Name], Term, Term)], [PTerm]), -- not exported
+      -- ^ list of lhs/rhs, and a list of missing clauses
     idris_flags :: Ctxt [FnOpt],
     idris_callgraph :: Ctxt CGInfo, -- name, args used in each pos
     idris_calledgraph :: Ctxt [Name],
@@ -91,7 +109,8 @@ data IState = IState {
     ibc_write :: [IBCWrite],
     compiled_so :: Maybe String,
     idris_dynamic_libs :: [DynamicLib],
-    idris_language_extensions :: [LanguageExt]
+    idris_language_extensions :: [LanguageExt],
+    idris_outputmode :: OutputMode
    }
 
 data SizeChange = Smaller | Same | Bigger | Unknown
@@ -143,10 +162,11 @@ idrisInit = IState initContext [] [] emptyContext emptyContext emptyContext
                    emptyContext emptyContext emptyContext emptyContext 
                    emptyContext emptyContext emptyContext emptyContext
                    [] "" defaultOpts 6 [] [] [] [] [] [] [] [] []
-                   [] Nothing Nothing [] [] [] Hidden False [] Nothing [] []
+                   [] Nothing Nothing [] [] [] Hidden False [] Nothing [] [] RawOutput
 
 -- | The monad for the main REPL - reading and processing files and updating 
 -- global state (hence the IO inner monad).
+--type Idris = WriterT [Either String (IO ())] (State IState a))
 type Idris = StateT IState IO
 
 -- Commands in the REPL
@@ -167,6 +187,7 @@ data Command = Quit
              | TotCheck Name
              | Reload
              | Load FilePath 
+             | ChangeDirectory FilePath
              | ModImport String 
              | Edit
              | Compile Target String
@@ -200,6 +221,7 @@ data Opt = Filename String
          | Ver
          | Usage
          | Quiet
+         | Ideslave
          | ShowLibs
          | ShowLibdir
          | ShowIncs
@@ -701,7 +723,14 @@ initDSL = DSL (PRef f (UN ">>="))
               Nothing
   where f = FC "(builtin)" 0
 
-data SyntaxInfo = Syn { using :: [(Name, PTerm)],
+data Using = UImplicit Name PTerm
+           | UConstraint Name [Name]
+    deriving (Show, Eq)
+{-!
+deriving instance Binary Using
+!-}
+
+data SyntaxInfo = Syn { using :: [Using],
                         syn_params :: [(Name, PTerm)],
                         syn_namespace :: [String],
                         no_imp :: [Name],
@@ -886,10 +915,10 @@ prettyImp impl = prettySe 10
         bracket p 1 $
           prettySe 1 f <+>
             if impl then
-              foldl fS empty as
+              foldl' fS empty as
               -- foldr (<+>) empty $ map prettyArgS as
             else
-              foldl fSe empty args
+              foldl' fSe empty args
               -- foldr (<+>) empty $ map prettyArgSe args
       where
         fS l r =
@@ -978,7 +1007,7 @@ prettyImp impl = prettySe 10
 showImp :: Bool -> PTerm -> String
 showImp impl tm = se 10 tm where
     se p (PQuote r) = "![" ++ show r ++ "]"
-    se p (PPatvar fc n) = show n
+    se p (PPatvar fc n) = if impl then show n ++ "[p]" else show n
     se p (PInferRef fc n) = "!" ++ show n -- ++ "[" ++ show fc ++ "]"
     se p (PRef fc n) = if impl then show n -- ++ "[" ++ show fc ++ "]"
                                else showbasic n
@@ -1013,6 +1042,9 @@ showImp impl tm = se 10 tm where
         = bracket p 2 $ se 10 ty ++ " => " ++ se 10 sc
     se p (PPi (TacImp _ _ s _) n ty sc)
         = bracket p 2 $ "{tacimp " ++ show n ++ " : " ++ se 10 ty ++ "} -> " ++ se 10 sc
+    se p e
+        | Just str <- slist p e = str
+        | Just num <- snat p e  = show num
     se p (PApp _ (PRef _ f) [])
         | not impl = show f
     se p (PApp _ (PRef _ op@(UN (f:_))) args)
@@ -1050,6 +1082,37 @@ showImp impl tm = se 10 tm where
     se p (PElabError s) = show s
     se p (PCoerced t) = se p t
 --     se p x = "Not implemented"
+
+    slist' p (PApp _ (PRef _ nil) _)
+      | nsroot nil == UN "Nil" = Just []
+    slist' p (PApp _ (PRef _ cons) args)
+      | nsroot cons == UN "::",
+        (PExp {getTm=tl}):(PExp {getTm=hd}):imps <- reverse args,
+        all isImp imps,
+        Just tl' <- slist' p tl
+      = Just (hd:tl')
+      where
+        isImp (PImp {}) = True
+        isImp _         = False
+    slist' _ _ = Nothing
+
+    slist p e | Just es <- slist' p e = Just $
+      case es of []  -> "[]"
+                 [x] -> "[" ++ se p x ++ "]"
+                 xs  -> "[" ++ intercalate "," (map (se p) xs) ++ "]"
+    slist _ _ = Nothing
+
+    -- since Prelude is always imported, S & O are unqualified iff they're the
+    -- Nat ones.
+    snat p (PRef _ o)
+      | show o == (natns++"O") || show o == "O" = Just 0
+    snat p (PApp _ s [PExp {getTm=n}])
+      | show s == (natns++"S") || show s == "S",
+        Just n' <- snat p n
+      = Just $ 1 + n'
+    snat _ _ = Nothing
+
+    natns = "Prelude.Nat."
 
     sArg (PImp _ _ n tm _) = siArg (n, tm)
     sArg (PExp _ _ tm _) = seArg tm
@@ -1127,7 +1190,7 @@ namesIn uvars ist tm = nub $ ni [] tm
   where
     ni env (PRef _ n)        
         | not (n `elem` env) 
-            = case lookupTy Nothing n (tt_ctxt ist) of
+            = case lookupTy n (tt_ctxt ist) of
                 [] -> [n]
                 _ -> if n `elem` (map fst uvars) then [n] else []
     ni env (PApp _ f as)   = ni env f ++ concatMap (ni env) (map getTm as)
@@ -1151,7 +1214,7 @@ usedNamesIn vars ist tm = nub $ ni [] tm
   where
     ni env (PRef _ n)        
         | n `elem` vars && not (n `elem` env) 
-            = case lookupTy Nothing n (tt_ctxt ist) of
+            = case lookupTy n (tt_ctxt ist) of
                 [] -> [n]
                 _ -> []
     ni env (PApp _ f as)   = ni env f ++ concatMap (ni env) (map getTm as)

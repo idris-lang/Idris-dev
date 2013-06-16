@@ -52,6 +52,34 @@ VAL MKBIGMc(VM* vm, void* big) {
     return cl;
 }
 
+VAL MKBIGUI(VM* vm, unsigned long val) {
+    mpz_t* bigint;
+    VAL cl = allocate(vm, sizeof(ClosureType) + sizeof(void*) + 
+                          sizeof(mpz_t), 0);
+    bigint = (mpz_t*)(((char*)cl) + sizeof(ClosureType) + sizeof(void*));
+
+    mpz_init_set_ui(*bigint, val);
+
+    SETTY(cl, BIGINT);
+    cl -> info.ptr = (void*)bigint;
+
+    return cl;
+}
+
+VAL MKBIGSI(VM* vm, signed long val) {
+    mpz_t* bigint;
+    VAL cl = allocate(vm, sizeof(ClosureType) + sizeof(void*) + 
+                          sizeof(mpz_t), 0);
+    bigint = (mpz_t*)(((char*)cl) + sizeof(ClosureType) + sizeof(void*));
+
+    mpz_init_set_si(*bigint, val);
+
+    SETTY(cl, BIGINT);
+    cl -> info.ptr = (void*)bigint;
+
+    return cl;
+}
+
 VAL GETBIG(VM * vm, VAL x) {
     if (ISINT(x)) {
         mpz_t* bigint;
@@ -278,6 +306,30 @@ VAL idris_castBigInt(VM* vm, VAL i) {
     } else {
         return MKINT((i_int)(mpz_get_ui(GETMPZ(i))));
     }
+}
+
+VAL idris_castBigFloat(VM* vm, VAL i) {
+    if (ISINT(i)) {
+        return MKFLOAT(vm, GETINT(i));
+    } else {
+        return MKFLOAT(vm, mpz_get_d(GETMPZ(i)));
+    }
+}
+
+VAL idris_castFloatBig(VM* vm, VAL f) {
+    double val = GETFLOAT(f);
+
+    mpz_t* bigint;
+    VAL cl = allocate(vm, sizeof(ClosureType) + sizeof(void*) + 
+                      sizeof(mpz_t), 0);
+    bigint = (mpz_t*)(((char*)cl) + sizeof(ClosureType) + sizeof(void*));
+
+    mpz_init_set_d(*bigint, val);
+
+    SETTY(cl, BIGINT);
+    cl -> info.ptr = (void*)bigint;
+
+    return cl;
 }
 
 VAL idris_castStrBig(VM* vm, VAL i) {

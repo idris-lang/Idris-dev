@@ -26,4 +26,3 @@ main = do (a, b) <- ioVals
           case lookup x testlist of
                  Just v => putStrLn (show v)
                  Nothing => putStrLn "Not there!"
-

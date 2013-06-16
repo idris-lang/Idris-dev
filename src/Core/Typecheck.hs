@@ -60,7 +60,7 @@ check' :: Bool -> Context -> Env -> Raw -> StateT UCs TC (Term, Type)
 check' holes ctxt env top = chk env top where
   chk env (Var n)
       | Just (i, ty) <- lookupTyEnv n env = return (P Bound n ty, ty)
-      | (P nt n' ty : _) <- lookupP Nothing n ctxt = return (P nt n' ty, ty)
+      | (P nt n' ty : _) <- lookupP n ctxt = return (P nt n' ty, ty)
       | otherwise = do lift $ tfail $ NoSuchVariable n
   chk env (RApp f a)
       = do (fv, fty) <- chk env f
@@ -81,7 +81,7 @@ check' holes ctxt env top = chk env top where
                     let apty = simplify initContext False env 
                                         (Bind x (Let aty av) t)
                     return (App fv av, apty)
-             t -> fail "Can't apply a non-function type"
+             t -> lift $ tfail $ NonFunctionType fv fty -- "Can't apply a non-function type"
     -- This rather unpleasant hack is needed because during incomplete 
     -- proofs, variables are locally bound with an explicit name. If we just 
     -- make sure bound names in function types are locally unique, machine
@@ -227,7 +227,7 @@ checkProgram ctxt [] = return ctxt
 checkProgram ctxt ((n, RConst t) : xs) 
    = do (t', tt') <- trace (show n) $ check ctxt [] t
         isType ctxt [] tt'
-        checkProgram (addTyDecl n t' ctxt) xs
+        checkProgram (addTyDecl n Ref t' ctxt) xs
 checkProgram ctxt ((n, RFunction (RawFun ty val)) : xs)
    = do (ty', tyt') <- trace (show n) $ check ctxt [] ty
         (val', valt') <- check ctxt [] val

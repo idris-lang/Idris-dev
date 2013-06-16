@@ -29,6 +29,7 @@ import Idris.Imports
 import Idris.Error
 
 import Util.System ( getLibFlags, getIdrisLibDir, getIncFlags )
+import Util.DynamicLinker
 
 import Pkg.Package
 
@@ -90,7 +91,10 @@ usagemsg = "Idris version " ++ ver ++ "\n" ++
            "\t--log [level]     Type debugging log level\n" ++
            "\t-S                Do no further compilation of code generator output\n" ++
            "\t-c                Compile to object files rather than an executable\n" ++
+           "\t--ideslave        Ideslave mode (for editors; in/ouput wrapped in s-expressions)\n" ++
            "\t--libdir          Show library install directory and exit\n" ++
            "\t--link            Show C library directories and exit (for C linking)\n" ++
            "\t--include         Show C include directories and exit (for C linking)\n" ++
            "\t--target [target] Type the target: C, Java, bytecode, javascript, node\n"
+
+

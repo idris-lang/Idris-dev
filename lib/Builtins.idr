@@ -44,6 +44,9 @@ really_believe_me x = prim__believe_me _ _ x
 
 namespace Builtins {
 
+Not : Type -> Type
+Not a = a -> _|_
+
 id : a -> a
 id x = x
 
@@ -248,7 +251,7 @@ instance Num Integer where
     (*) = prim__mulBigInt
 
     abs x = if x<0 then -x else x
-    fromInteger = prim__intToBigInt
+    fromInteger = prim__sextInt_BigInt
 
 
 instance Num Float where 
@@ -257,15 +260,15 @@ instance Num Float where
     (*) = prim__mulFloat
 
     abs x = if x<0 then -x else x
-    fromInteger = prim__intToFloat 
+    fromInteger = prim__toFloatInt
 
 partial
 div : Int -> Int -> Int
-div = prim__divInt
+div = prim__sdivInt
 
 partial
 mod : Int -> Int -> Int
-mod = prim__modInt
+mod = prim__sremInt
 
 
 (/) : Float -> Float -> Float

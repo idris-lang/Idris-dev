@@ -257,11 +257,11 @@ even (S k) = odd k where
   odd O = False 
   odd (S k) = even k 
 
-test : Num a => List a 
-test = [c 1, c 2, d 3] 
-  where c x = 42 + x 
-        d y = c (y + 1 + z y) 
-           where z w = y + w 
+test : List Nat
+test = [c (S 1), c O, d (S O)]
+  where c x = 42 + x
+        d y = c (y + 1 + z y)
+              where z w = y + w
 
 \end{SaveVerbatim}
 \useverb{whereinfer}

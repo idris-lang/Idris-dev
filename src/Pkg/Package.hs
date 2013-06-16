@@ -69,9 +69,10 @@ installPkg pkgdesc
 
 buildMods :: [Opt] -> [Name] -> IO ()
 buildMods opts ns = do let f = map (toPath . show) ns
+--                        putStrLn $ "MODULE: " ++ show f
                        idris (map Filename f ++ opts) 
                        return ()
-    where toPath n = foldl1 (</>) $ splitOn "." n
+    where toPath n = foldl1' (</>) $ splitOn "." n
 
 testLib :: Bool -> String -> String -> IO Bool
 testLib warn p f 
@@ -93,7 +94,7 @@ rmIBC :: Name -> IO ()
 rmIBC m = rmFile $ toIBCFile m 
              
 toIBCFile (UN n) = n ++ ".ibc"
-toIBCFile (NS n ns) = foldl1 (</>) (reverse (toIBCFile n : ns))
+toIBCFile (NS n ns) = foldl1' (</>) (reverse (toIBCFile n : ns))
 
 installIBC :: String -> Name -> IO ()
 installIBC p m = do let f = toIBCFile m
@@ -105,7 +106,7 @@ installIBC p m = do let f = toIBCFile m
                     copyFile f (destdir </> takeFileName f)
                     return ()
     where getDest (UN n) = ""
-          getDest (NS n ns) = foldl1 (</>) (reverse (getDest n : ns))
+          getDest (NS n ns) = foldl1' (</>) (reverse (getDest n : ns))
 
 installObj :: String -> String -> IO ()
 installObj p o = do d <- getDataDir

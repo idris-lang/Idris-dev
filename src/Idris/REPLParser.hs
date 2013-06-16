@@ -45,6 +45,7 @@ pCmd = try (do cmd ["q", "quit"]; eof; return Quit)
    <|> try (do cmd ["showproof"]; n <- pName; eof; return (ShowProof n))
    <|> try (do cmd ["log"]; i <- natural; eof; return (LogLvl (fromIntegral i)))
    <|> try (do cmd ["l", "load"]; f <- getInput; return (Load f))
+   <|> try (do cmd ["cd"]; f <- getInput; return (ChangeDirectory f))
    <|> try (do cmd ["spec"]; t <- pFullExpr defaultSyntax; return (Spec t))
    <|> try (do cmd ["hnf"]; t <- pFullExpr defaultSyntax; return (HNF t))
    <|> try (do cmd ["doc"]; n <- pfName; eof; return (DocStr n))
@@ -65,7 +66,7 @@ pCmd = try (do cmd ["q", "quit"]; eof; return Quit)
    <|> do t <- pFullExpr defaultSyntax; return (Eval t)
    <|> do eof; return NOP
 
- where toPath n = foldl1 (</>) $ splitOn "." n
+ where toPath n = foldl1' (</>) $ splitOn "." n
 
 pOption :: IParser Opt
 pOption = do discard (symbol "errorcontext"); return ErrContext

@@ -28,6 +28,7 @@ help =
     ([":total"], NameArg, "Check the totality of a name"),
     ([":r",":reload"], NoArg, "Reload current file"),
     ([":l",":load"], FileArg, "Load a new file"),
+    ([":cd"], FileArg, "Change working directory"),
     ([":m",":module"], ModuleArg, "Import an extra module"), -- NOTE: dragons
     ([":e",":edit"], NoArg, "Edit current file using $EDITOR or $VISUAL"),
     ([":m",":metavars"], MetaVarArg, "Show remaining proof obligations (metavariables)"),

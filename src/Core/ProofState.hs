@@ -5,7 +5,8 @@
    evaluation/checking inside the proof system, etc. --}
 
 module Core.ProofState(ProofState(..), newProof, envAtFocus, goalAtFocus,
-                  Tactic(..), Goal(..), processTactic, dropGiven) where
+                  Tactic(..), Goal(..), processTactic, 
+                  dropGiven, keepGiven) where
 
 import Core.Typecheck
 import Core.Evaluate
@@ -27,6 +28,7 @@ data ProofState = PS { thname   :: Name,
                        ptype    :: Type,   -- original goal
                        dontunify :: [Name], -- explicitly given by programmer, leave it
                        unified  :: (Name, [(Name, Term)]),
+                       notunified :: [(Name, Term)],
                        solved   :: Maybe (Name, Term),
                        problems :: Fails,
                        injective :: [Name], 
@@ -78,8 +80,8 @@ data Tactic = Attack
 -- Some utilites on proof and tactic states
 
 instance Show ProofState where
-    show (PS nm [] _ _ tm _ _ _ _ _ _ _ _ _ _ _ _) = show nm ++ ": no more goals"
-    show (PS nm (h:hs) _ _ tm _ _ _ _ _ _ i _ _ ctxt _ _) 
+    show (PS nm [] _ _ tm _ _ _ _ _ _ _ _ _ _ _ _ _) = show nm ++ ": no more goals"
+    show (PS nm (h:hs) _ _ tm _ _ _ _ _ _ _ i _ _ ctxt _ _) 
           = let OK g = goal (Just h) tm
                 wkenv = premises g in
                 "Other goals: " ++ show hs ++ "\n" ++
@@ -102,12 +104,12 @@ instance Show ProofState where
                showG ps b = showEnv ps (binderTy b)
 
 instance Pretty ProofState where
-  pretty (PS nm [] _ _ trm _ _ _ _ _ _ _ _ _ _ _ _) =
+  pretty (PS nm [] _ _ trm _ _ _ _ _ _ _ _ _ _ _ _ _) =
     if size nm > breakingSize then
       pretty nm <> colon $$ nest nestingSize (text " no more goals.")
     else
       pretty nm <> colon <+> text " no more goals."
-  pretty p@(PS nm (h:hs) _ _ tm _ _ _ _ _ _ i _ _ ctxt _ _) =
+  pretty p@(PS nm (h:hs) _ _ tm _ _ _ _ _ _ _ i _ _ ctxt _ _) =
     let OK g  = goal (Just h) tm in
     let wkEnv = premises g in
       text "Other goals" <+> colon <+> pretty hs $$
@@ -159,7 +161,7 @@ unify' ctxt env topx topy =
       (u, fails) <- -- trace ("Trying " ++ show (topx, topy)) $ 
                      lift $ unify ctxt env topx topy dont (holes ps)
 --       trace ("Unified " ++ show (topx, topy) ++ " without " ++ show dont ++
--- --              " in " ++ show env ++ 
+--              " in " ++ show env ++ 
 --              "\n" ++ show u ++ "\n" ++ qshow fails ++ "\nCurrent problems:\n"
 --              ++ qshow (problems ps) ++ "\n" ++ show (holes ps) ++ "\n"
 -- --              ++ show (pterm ps) 
@@ -194,7 +196,7 @@ newProof :: Name -> Context -> Type -> ProofState
 newProof n ctxt ty = let h = holeName 0 
                          ty' = vToP ty in
                          PS n [h] [] 1 (Bind h (Hole ty') 
-                            (P Bound h ty')) ty [] (h, []) 
+                            (P Bound h ty')) ty [] (h, []) []
                             Nothing [] []
                             [] []
                             Nothing ctxt "" False
@@ -358,9 +360,8 @@ exact _ _ _ _ = fail "Can't fill here."
 -- As exact, but attempts to solve other goals by unification
 
 fill :: Raw -> RunTactic
-fill guess ctxt env (Bind x (Hole ty) sc) =
+fill guess ctxt env (Bind x (Hole ty) sc) = 
     do (val, valty) <- lift $ check ctxt env guess
-       s <- get
 --        let valtyn = normalise ctxt env valty
 --        let tyn = normalise ctxt env ty
        ns <- unify' ctxt env valty ty
@@ -388,10 +389,19 @@ complete_fill ctxt env (Bind x (Guess ty val) sc) =
        return $ Bind x (Guess ty val) sc
 complete_fill ctxt env t = fail $ "Can't complete fill at " ++ show t
 
+-- When solving something in the 'dont unify' set, we should check
+-- that the guess we are solving it with unifies with the thing unification
+-- found for it, if anything.
+
 solve :: RunTactic
 solve ctxt env (Bind x (Guess ty val) sc)
    | True         = do ps <- get
                        let (uh, uns) = unified ps
+                       case lookup x (notunified ps) of
+                           Just tm -> do -- trace ("AVOIDED " ++ show (x, tm, val)) $ 
+                                         -- return []
+                                         unify' ctxt env tm val
+                           _ -> return []
                        action (\ps -> ps { holes = holes ps \\ [x],
                                            solved = Just (x, val),
 --                                            problems = solveInProblems 
@@ -423,7 +433,7 @@ introTy ty mn ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' =
                                      let (uh, uns) = unified ps
 --                                      put (ps { unified = (uh, uns ++ ns) })
                                      return $ Bind n (Lam tyv) (Bind x (Hole t') (P Bound x t'))
-           _ -> fail "Nothing to introduce"
+           _ -> lift $ tfail $ CantIntroduce t'
 introTy ty n ctxt env _ = fail "Can't introduce here."
 
 intro :: Maybe Name -> RunTactic
@@ -438,7 +448,7 @@ intro mn ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' =
            Bind y (Pi s) t -> -- trace ("in type " ++ show t') $
                let t' = instantiate (P Bound n s) (pToV y t) in 
                    return $ Bind n (Lam s) (Bind x (Hole t') (P Bound x t'))
-           _ -> fail "Nothing to introduce"
+           _ -> lift $ tfail $ CantIntroduce t'
 intro n ctxt env _ = fail "Can't introduce here."
 
 forall :: Name -> Raw -> RunTactic
@@ -566,6 +576,15 @@ dropGiven du (u@(n, _) : us) hs
 -- dropGiven du (u@(_, P a n ty) : us) | n `elem` du = dropGiven du us
 dropGiven du (u : us) hs = u : dropGiven du us hs
 
+keepGiven du [] hs = []
+keepGiven du ((n, P Bound t ty) : us) hs
+   | n `elem` du && not (t `elem` du)
+     && n `elem` hs && t `elem` hs
+            = keepGiven du us hs
+keepGiven du (u@(n, _) : us) hs 
+   | n `elem` du = u : keepGiven du us hs
+keepGiven du (u : us) hs = keepGiven du us hs
+
 updateSolved xs x = -- trace ("Updating " ++ show xs ++ " in " ++ show x) $ 
                       updateSolved' xs x
 updateSolved' xs (Bind n (Hole ty) t)
@@ -619,7 +638,7 @@ processTactic EndUnify ps
           ns' = map (\ (n, t) -> (n, updateSolved ns t)) ns 
           (ns'', probs') = updateProblems (context ps) ns' (problems ps)
                                           (injective ps) (holes ps)
-          tm' = -- trace ("Updating " ++ show ns' ++ "\n" ++ show ns'') $ --  ++ " in " ++ show (pterm ps)) $
+          tm' = -- trace ("Updating " ++ show ns_in ++ "\n" ++ show ns'') $ --  ++ " in " ++ show (pterm ps)) $
                   updateSolved ns'' (pterm ps) in
           return (ps { pterm = tm', 
                        unified = (h, []),

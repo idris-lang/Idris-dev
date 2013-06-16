@@ -28,13 +28,17 @@ mvn verbosity = P.runProgramInvocation verbosity . P.simpleProgramInvocation "mv
 (<//>) = (Px.</>)
 idrisCmd local = Px.joinPath $ splitDirectories $
                  ".." <//> buildDir local <//> "idris" <//> "idris"
+rtsDir local = Px.joinPath $ splitDirectories $
+               ".." <//> buildDir local <//> "rts" <//> "libidris_rts"
 #else
 idrisCmd local = ".." </>  buildDir local </>  "idris" </>  "idris"
+rtsDir local = ".." </> buildDir local </> "rts" </> "libidris_rts"
 #endif
 
 cleanStdLib verbosity
     = do make verbosity [ "-C", "lib", "clean", "IDRIS=idris" ]
          make verbosity [ "-C", "effects", "clean", "IDRIS=idris" ]
+         make verbosity [ "-C", "javascript", "clean", "IDRIS=idris" ]
 
 cleanJavaLib verbosity 
   = do dirty <- doesDirectoryExist ("java" </> "target")
@@ -60,6 +64,11 @@ installStdLib pkg local withoutEffects verbosity copy
                  , "TARGET=" ++ idir
                  , "IDRIS=" ++ icmd
                  ]
+         make verbosity
+               [ "-C", "javascript", "install"
+               , "TARGET=" ++ idir
+               , "IDRIS=" ++ icmd
+               ]
          let idirRts = idir </> "rts"
          putStrLn $ "Installing run time system in " ++ idirRts
          make verbosity
@@ -103,9 +112,13 @@ checkStdLib local withoutEffects verbosity
                ]
          unless withoutEffects $
            make verbosity
-                 [ "-C", "effects", "check"
-                 , "IDRIS=" ++ icmd
-                 ]
+               [ "-C", "effects", "check"
+               , "IDRIS=" ++ icmd
+               ]
+         make verbosity
+               [ "-C", "javascript", "check"
+               , "IDRIS=" ++ icmd
+               ]
          make verbosity
                [ "-C", "rts", "check"
                , "IDRIS=" ++ icmd

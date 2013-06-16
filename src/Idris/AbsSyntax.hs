@@ -8,6 +8,7 @@ import Core.Evaluate
 import Core.Elaborate hiding (Tactic(..))
 import Core.Typecheck
 import Idris.AbsSyntaxTree
+import Idris.IdeSlave
 import IRTS.CodegenCommon
 import Util.DynamicLinker
 
@@ -24,7 +25,7 @@ import Data.Either
 import Debug.Trace
 
 import Util.Pretty
-
+import Util.System
 
 getContext :: Idris Context
 getContext = do i <- getIState; return (tt_ctxt i)
@@ -41,13 +42,15 @@ getLibs = do i <- getIState; return (idris_libs i)
 addLib :: String -> Idris ()
 addLib f = do i <- getIState; putIState $ i { idris_libs = f : idris_libs i }
 
-addDyLib :: String -> Idris ()
-addDyLib lib = do i <- getIState
-                  handle <- lift $ tryLoadLib lib
-                  case handle of
-                    Nothing -> fail $ "Could not load dynamic lib \"" ++ lib ++ "\""
-                    Just x -> do let libs = idris_dynamic_libs i
-                                 putIState $ i { idris_dynamic_libs = x:libs }
+addDyLib :: [String] -> Idris (Either DynamicLib String)
+addDyLib libs = do i <- getIState
+                   handle <- lift $ mapM (\l -> catchIO (tryLoadLib l) (\_ -> return Nothing)) libs
+                   case msum handle of
+                     Nothing -> return (Right $ "Could not load dynamic alternatives \"" ++
+                                                concat (intersperse "," libs) ++ "\"")
+                     Just x -> do let ls = idris_dynamic_libs i
+                                  putIState $ i { idris_dynamic_libs = x:ls }
+                                  return (Left x)
 
 addHdr :: String -> Idris ()
 addHdr f = do i <- getIState; putIState $ i { idris_hdrs = f : idris_hdrs i }
@@ -88,7 +91,7 @@ getCoercionsTo i ty =
         findCoercions fn cs
     where findCoercions t [] = []
           findCoercions t (n : ns) =
-             let ps = case lookupTy Nothing n (tt_ctxt i) of
+             let ps = case lookupTy n (tt_ctxt i) of
                          [ty] -> case unApply (getRetTy ty) of
                                    (t', _) -> 
                                       if t == t' then [n] else []
@@ -119,7 +122,7 @@ addToCalledG n ns = return () -- TODO
 addInstance :: Bool -> Name -> Name -> Idris ()
 addInstance int n i 
     = do ist <- getIState
-         case lookupCtxt Nothing n (idris_classes ist) of
+         case lookupCtxt n (idris_classes ist) of
                 [CI a b c d ins] ->
                      do let cs = addDef n (CI a b c d (addI i ins)) (idris_classes ist)
                         putIState $ ist { idris_classes = cs }
@@ -139,7 +142,7 @@ addInstance int n i
 addClass :: Name -> ClassInfo -> Idris ()
 addClass n i 
    = do ist <- getIState
-        let i' = case lookupCtxt Nothing n (idris_classes ist) of
+        let i' = case lookupCtxt n (idris_classes ist) of
                       [c] -> c { class_instances = class_instances i }
                       _ -> i
         putIState $ ist { idris_classes = addDef n i' (idris_classes ist) }
@@ -193,7 +196,7 @@ getName = do i <- getIState;
 checkUndefined :: FC -> Name -> Idris ()
 checkUndefined fc n 
     = do i <- getContext
-         case lookupTy Nothing n i of
+         case lookupTy n i of
              (_:_)  -> fail $ show fc ++ ":" ++ 
                        show n ++ " already defined"
              _ -> return ()
@@ -201,7 +204,7 @@ checkUndefined fc n
 isUndefined :: FC -> Name -> Idris Bool
 isUndefined fc n 
     = do i <- getContext
-         case lookupTy Nothing n i of
+         case lookupTy n i of
              (_:_)  -> return False
              _ -> return True
 
@@ -220,10 +223,14 @@ addConstraints fc (v, cs)
          let ics = zip cs (repeat fc) ++ idris_constraints i
          putIState $ i { tt_ctxt = ctxt', idris_constraints = ics }
 
-addDeferred :: [(Name, Type)] -> Idris ()
-addDeferred ns = do mapM_ (\(n, t) -> updateContext (addTyDecl n (tidyNames [] t))) ns
-                    i <- getIState
-                    putIState $ i { idris_metavars = map fst ns ++ idris_metavars i }
+addDeferred = addDeferred' Ref
+addDeferredTyCon = addDeferred' (TCon 0 0)
+
+addDeferred' :: NameType -> [(Name, Type)] -> Idris ()
+addDeferred' nt ns 
+  = do mapM_ (\(n, t) -> updateContext (addTyDecl n nt (tidyNames [] t))) ns
+       i <- getIState
+       putIState $ i { idris_metavars = map fst ns ++ idris_metavars i }
   where tidyNames used (Bind (MN i x) b sc)
             = let n' = uniqueName (UN x) used in
                   Bind n' b $ tidyNames (n':used) sc
@@ -236,11 +243,44 @@ solveDeferred :: Name -> Idris ()
 solveDeferred n = do i <- getIState
                      putIState $ i { idris_metavars = idris_metavars i \\ [n] }
 
+iResult :: String -> Idris ()
+iResult s = do i <- getIState
+               case idris_outputmode i of
+                 RawOutput -> case s of
+                                   "" -> return ()
+                                   s  -> liftIO $ putStrLn s
+                 IdeSlave n ->
+                   let good = SexpList [SymbolAtom "ok", toSExp s] in
+                       liftIO $ putStrLn $ convSExp "return" good n
+
+iFail :: String -> Idris ()
+iFail s = do i <- getIState
+             case idris_outputmode i of
+               RawOutput -> case s of
+                                 "" -> return ()
+                                 s  -> liftIO $ putStrLn s
+               IdeSlave n ->
+                 let good = SexpList [SymbolAtom "error", toSExp s] in
+                     liftIO $ putStrLn $ convSExp "return" good n
+
 iputStrLn :: String -> Idris ()
-iputStrLn = liftIO . putStrLn
+iputStrLn s = do i <- getIState
+                 case idris_outputmode i of
+                   RawOutput -> liftIO $ putStrLn s
+                   IdeSlave n ->
+                     case span (/=':') s of
+                       (fn, ':':rest) -> case span isDigit rest of
+                         ([], ':':msg) -> write
+                         ([], msg) -> write
+                         (num, ':':msg) -> iWarn (FC fn (read num)) msg
+                       _  -> write
+                     where write = liftIO $ putStrLn $ convSExp "write-string" s n
 
 iWarn :: FC -> String -> Idris ()
-iWarn fc err = liftIO $ putStrLn (show fc ++ ":" ++ err)
+iWarn fc err = do i <- getIState
+                  case idris_outputmode i of
+                    RawOutput -> liftIO $ putStrLn (show fc ++ ":" ++ err)
+                    IdeSlave n -> liftIO $ putStrLn $ convSExp "warning" (fc_fname fc, fc_line fc, err) n
 
 setLogLevel :: Int -> Idris ()
 setLogLevel l = do i <- getIState
@@ -316,6 +356,11 @@ setOutputTy t = do i <- getIState
 outputTy :: Idris OutputType
 outputTy = do i <- getIState
               return $ opt_outputTy $ idris_options i
+
+setIdeSlave :: Bool -> Idris ()
+setIdeSlave True  = do i <- getIState
+                       putIState $ i { idris_outputmode = (IdeSlave 0) }
+setIdeSlave False = return ()
 
 verbose :: Idris Bool
 verbose = do i <- getIState
@@ -641,7 +686,7 @@ getPriority :: IState -> PTerm -> Int
 getPriority i tm = 1 -- pri tm 
   where
     pri (PRef _ n) =
-        case lookupP Nothing n (tt_ctxt i) of
+        case lookupP n (tt_ctxt i) of
             ((P (DCon _ _) _ _):_) -> 1
             ((P (TCon _ _) _ _):_) -> 1
             ((P Ref _ _):_) -> 1
@@ -688,6 +733,45 @@ addStatics n tm ptm =
 
 -- Dealing with implicit arguments
 
+-- Add constraint bindings from using block
+
+addUsingConstraints :: SyntaxInfo -> FC -> PTerm -> Idris PTerm
+addUsingConstraints syn fc t 
+   = do ist <- get
+        let ns = namesIn [] ist t
+        let cs = getConstraints t -- check declared constraints
+        let addconsts = uconsts \\ cs
+        -- if all names in the arguments of addconsts appear in ns,
+        -- add the constraint implicitly
+        return (doAdd addconsts ns t)
+   where uconsts = filter uconst (using syn)
+         uconst (UConstraint _ _) = True
+         uconst _ = False
+
+         doAdd [] _ t = t
+         -- if all of args in ns, then add it
+         doAdd (UConstraint c args : cs) ns t
+             | all (\n -> elem n ns) args 
+                   = PPi (Constraint False Dynamic "") (MN 0 "cu")
+                         (mkConst c args) (doAdd cs ns t)
+             | otherwise = doAdd cs ns t
+
+         mkConst c args = PApp fc (PRef fc c) 
+                             (map (\n -> PExp 0 False (PRef fc n) "") args)
+
+         getConstraints (PPi (Constraint _ _ _) _ c sc)
+             = getcapp c ++ getConstraints sc
+         getConstraints (PPi _ _ c sc) = getConstraints sc
+         getConstraints _ = []
+
+         getcapp (PApp _ (PRef _ c) args) 
+             = do ns <- mapM getName args
+                  return (UConstraint c ns)
+         getcapp _ = []
+
+         getName (PExp _ _ (PRef _ n) _) = return n
+         getName _ = []
+
 -- Add implicit Pi bindings for any names in the term which appear in an
 -- argument position.
 
@@ -717,8 +801,12 @@ implicitise syn ignore ist tm
             then (tm, reverse declimps) 
             else implicitise syn ignore ist (pibind uvars ns tm)
   where
-    uvars = using syn
+    uvars = map ipair (filter uimplicit (using syn))
     pvars = syn_params syn
+
+    ipair (UImplicit x y) = (x, y)
+    uimplicit (UImplicit _ _) = True
+    uimplicit _ = False
 
     dropAll (x:xs) ys | x `elem` ys = dropAll xs ys
                       | otherwise   = x : dropAll xs ys
@@ -882,9 +970,9 @@ addImpl' inpat env infns ist ptm = ai (zip env (repeat Nothing)) ptm
 
 aiFn :: Bool -> Bool -> IState -> FC -> Name -> [PArg] -> Either Err PTerm
 aiFn inpat True ist fc f []
-  = case lookupDef Nothing f (tt_ctxt ist) of
+  = case lookupDef f (tt_ctxt ist) of
         [] -> Right $ PPatvar fc f
-        alts -> let ialts = lookupCtxt Nothing f (idris_implicits ist) in
+        alts -> let ialts = lookupCtxt f (idris_implicits ist) in
                     -- trace (show f ++ " " ++ show (fc, any (all imp) ialts, ialts, any constructor alts)) $ 
                     if (not (vname f) || tcname f 
                            || any constructor alts || any allImp ialts)
@@ -904,7 +992,7 @@ aiFn inpat expat ist fc f as
     | f `elem` primNames = Right $ PApp fc (PRef fc f) as
 aiFn inpat expat ist fc f as
           -- This is where namespaces get resolved by adding PAlternative
-        = case lookupCtxtName Nothing f (idris_implicits ist) of
+        = case lookupCtxtName f (idris_implicits ist) of
             [(f',ns)] -> Right $ mkPApp fc (length ns) (PRef fc f') (insertImpl ns as)
             [] -> if f `elem` idris_metavars ist
                     then Right $ PApp fc (PRef fc f) as
@@ -949,7 +1037,7 @@ stripLinear :: IState -> PTerm -> PTerm
 stripLinear i tm = evalState (sl tm) [] where 
     sl :: PTerm -> State [Name] PTerm
     sl (PRef fc f) 
-         | (_:_) <- lookupTy Nothing f (tt_ctxt i)
+         | (_:_) <- lookupTy f (tt_ctxt i)
               = return $ PRef fc f
          | otherwise = do ns <- get
                           if (f `elem` ns)
@@ -1074,14 +1162,16 @@ matchClause' names i x y = checkRpts $ match (fullApp x) (fullApp y) where
 --     match (PRef _ n) (PRef _ n') | n == n' = return []
 --                                  | otherwise = Nothing
     match (PRef f n) (PApp _ x []) = match (PRef f n) x
+    match (PPatvar f n) xr = match (PRef f n) xr
+    match xr (PPatvar f n) = match xr (PRef f n)
     match (PApp _ x []) (PRef f n) = match x (PRef f n)
     match (PRef _ n) tm@(PRef _ n')
         | n == n' && not names && 
-          (not (isConName Nothing n (tt_ctxt i)) || tm == Placeholder)
+          (not (isConName n (tt_ctxt i)) || tm == Placeholder)
             = return [(n, tm)]
         | n == n' = return []
     match (PRef _ n) tm 
-        | not names && (not (isConName Nothing n (tt_ctxt i)) || tm == Placeholder)
+        | not names && (not (isConName n (tt_ctxt i)) || tm == Placeholder)
             = return [(n, tm)]
     match (PEq _ l r) (PEq _ l' r') = do ml <- match' l l'
                                          mr <- match' r r'

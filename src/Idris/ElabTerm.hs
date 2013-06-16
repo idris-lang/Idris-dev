@@ -96,9 +96,10 @@ elab :: IState -> ElabInfo -> Bool -> Bool -> Name -> PTerm ->
         ElabD ()
 elab ist info pattern tcgen fn tm 
     = do elabE (False, False) tm -- (in argument, guarded)
+         end_unify
          when pattern -- convert remaining holes to pattern vars
               (do update_term orderPats
---                   tm <- get_term
+                  tm <- get_term
                   mkPat)
   where
     isph arg = case getTm arg of
@@ -211,7 +212,7 @@ elab ist info pattern tcgen fn tm
     elab' ina (PPatvar fc n) | pattern = patvar n
     elab' (ina, guarded) (PRef fc n) | pattern && not (inparamBlock n)
         = do ctxt <- get_context
-             let defined = case lookupTy Nothing n ctxt of
+             let defined = case lookupTy n ctxt of
                                [] -> False
                                _ -> True
            -- this is to stop us resolve type classes recursively
@@ -221,7 +222,7 @@ elab ist info pattern tcgen fn tm
                        then do apply (Var n) []; solve
                        else try (do apply (Var n) []; solve)
                                 (patvar n)
-      where inparamBlock n = case lookupCtxtName Nothing n (inblock info) of
+      where inparamBlock n = case lookupCtxtName n (inblock info) of
                                 [] -> False
                                 _ -> True
     elab' ina f@(PInferRef fc n) = elab' ina (PApp fc f [])
@@ -231,6 +232,7 @@ elab ist info pattern tcgen fn tm
                -- let sc' = mapPT (repN n n') sc
                ptm <- get_term
                g <- goal
+               checkPiGoal
                attack; intro (Just n); 
                -- trace ("------ intro " ++ show n ++ " ---- \n" ++ show ptm) 
                elabE (True, a) sc; solve
@@ -240,6 +242,7 @@ elab ist info pattern tcgen fn tm
           = do hsin <- get_holes
                ptmin <- get_term
                tyn <- unique_hole (MN 0 "lamty")
+               checkPiGoal
                claim tyn RType
                attack
                ptm <- get_term
@@ -332,7 +335,7 @@ elab ist info pattern tcgen fn tm
     elab' (ina, g) tm@(PApp fc (PRef _ f) args') 
        = do let args = {- case lookupCtxt f (inblock info) of
                           Just ps -> (map (pexp . (PRef fc)) ps ++ args')
-                          _ ->-} args'
+                          _ -> -} args'
 --             newtm <- mkSpecialised ist fc f (map getTm args') tm
             env <- get_env
             if (f `elem` map fst env && length args' == 1)
@@ -348,11 +351,11 @@ elab ist info pattern tcgen fn tm
                     let isinf = f == inferCon || tcname f
                     -- if f is a type class, we need to know its arguments so that
                     -- we can unify with them
-                    case lookupCtxt Nothing f (idris_classes ist) of
+                    case lookupCtxt f (idris_classes ist) of
                         [] -> return ()
                         _ -> mapM_ setInjective (map getTm args')
                     ctxt <- get_context
-                    let guarded = isConName Nothing f ctxt
+                    let guarded = isConName f ctxt
                     ns <- apply (Var f) (map isph args)
                     ptm <- get_term
                     g <- goal
@@ -443,6 +446,8 @@ elab ist info pattern tcgen fn tm
                              (caseBlock fc cname' (reverse args) opts)
              -- fail $ "Not implemented " ++ show c ++ "\n" ++ show args
              -- elaborate case
+             env <- get_env
+             g <- goal
              updateAux (newdef : )
              -- if we haven't got the type yet, hopefully we'll get it later!
              movelast tyn
@@ -545,7 +550,7 @@ pruneAlt xs = map prune xs
 pruneByType :: Term -> Context -> [PTerm] -> [PTerm]
 pruneByType (P _ n _) c as 
 -- if the goal type is polymorphic, keep e
-   | [] <- lookupTy Nothing n c = as
+   | [] <- lookupTy n c = as
    | otherwise 
        = let asV = filter (headIs True n) as 
              as' = filter (headIs False n) as in
@@ -561,7 +566,7 @@ pruneByType (P _ n _) c as
     headIs _ _ _ = True -- keep if it's not an application
 
     typeHead var f f' 
-        = case lookupTy Nothing f' c of
+        = case lookupTy f' c of
                        [ty] -> let ty' = normalise c [] ty in
                                    case unApply (getRetTy ty') of
                                     (P _ ftyn _, _) -> ftyn == f
@@ -594,7 +599,7 @@ trivial ist = try' (do elab ist toplevel False False (MN 0 "tac")
 findInstances :: IState -> Term -> [Name]
 findInstances ist t 
     | (P _ n _, _) <- unApply t 
-        = case lookupCtxt Nothing n (idris_classes ist) of
+        = case lookupCtxt n (idris_classes ist) of
             [CI _ _ _ _ ins] -> ins
             _ -> []
     | otherwise = []
@@ -610,9 +615,11 @@ resolveTC depth fn ist
            if True -- all (\n -> not (n `elem` hs)) (freeNames g)
             then try' (trivial ist)
                 (do t <- goal
-                    let insts = findInstances ist t
                     let (tc, ttypes) = unApply t
                     scopeOnly <- needsDefault t tc ttypes
+                    let insts_in = findInstances ist t
+                    let insts = if scopeOnly then filter chaser insts_in
+                                   else insts_in
                     tm <- get_term
 --                    traceWhen (depth > 6) ("GOAL: " ++ show t ++ "\nTERM: " ++ show tm) $
 --                        (tryAll (map elabTC (map fst (ctxtAlist (tt_ctxt ist)))))
@@ -627,6 +634,12 @@ resolveTC depth fn ist
   where
     elabTC n | n /= fn && tcname n = (resolve n depth, show n)
              | otherwise = (fail "Can't resolve", show n)
+
+    -- HACK! Rather than giving a special name, better to have some kind
+    -- of flag in ClassInfo structure
+    chaser (UN ('@':'@':_)) = True
+    chaser (NS n _) = chaser n
+    chaser _ = False
 
     needsDefault t num@(P _ (NS (UN "Num") ["Builtins"]) _) [P Bound a _]
         = do focus a
@@ -656,7 +669,7 @@ resolveTC depth fn ist
 --                 if (all boundVar ttypes) then resolveTC (depth - 1) fn insts ist 
 --                   else do
                    -- if there's a hole in the goal, don't even try
-                let imps = case lookupCtxtName Nothing n (idris_implicits ist) of
+                let imps = case lookupCtxtName n (idris_implicits ist) of
                                 [] -> []
                                 [args] -> map isImp (snd args) -- won't be overloaded!
                 ps <- get_probs
@@ -693,10 +706,12 @@ collectDeferred (App f a) = liftM2 App (collectDeferred f) (collectDeferred a)
 collectDeferred t = return t
 
 -- Running tactics directly
+-- if a tactic adds unification problems, return an error
 
 runTac :: Bool -> IState -> PTactic -> ElabD ()
-runTac autoSolve ist tac = do env <- get_env
-                              runT (fmap (addImplBound ist (map fst env)) tac) 
+runTac autoSolve ist tac 
+    = do env <- get_env
+         no_errors $ runT (fmap (addImplBound ist (map fst env)) tac) 
   where
     runT (Intro []) = do g <- goal
                          attack; intro (bname g)
@@ -714,7 +729,7 @@ runTac autoSolve ist tac = do env <- get_env
     runT (Exact tm) = do elab ist toplevel False False (MN 0 "tac") tm
                          when autoSolve solveAll
     runT (Refine fn [])   
-        = do (fn', imps) <- case lookupCtxtName Nothing fn (idris_implicits ist) of
+        = do (fn', imps) <- case lookupCtxtName fn (idris_implicits ist) of
                                     [] -> do a <- envArgs fn
                                              return (fn, a)
                                     -- FIXME: resolve ambiguities
@@ -773,47 +788,38 @@ runTac autoSolve ist tac = do env <- get_env
     runT Solve = solve
     runT (Try l r) = do try' (runT l) (runT r) True
     runT (TSeq l r) = do runT l; runT r
-    runT (ApplyTactic tm) = do tenv <- get_env -- store the environment before it is loaded with junk
-                               attack -- let f : List (TTName, Binder TT) -> Tactic = tm in ...
-                               valn <- unique_hole (MN 0 "tacval")
-                               claim valn (RBind (UN "__pi_arg") 
-                                          (Pi (RApp listTy envTupleType)) tacticTy)
-                               tacn <- unique_hole (MN 0 "tacn")
-                               letbind tacn (RBind (UN "__pi_arg") 
-                                            (Pi (RApp listTy envTupleType)) tacticTy) 
-                                            (Var valn)
-                               focus valn 
+    runT (ApplyTactic tm) = do tenv <- get_env -- store the environment
+                               tgoal <- goal -- store the goal
+                               attack -- let f : List (TTName, Binder TT) -> TT -> Tactic = tm in ...
+                               script <- unique_hole (MN 0 "script")
+                               claim script scriptTy
+                               scriptvar <- unique_hole (MN 0 "scriptvar" )
+                               letbind scriptvar scriptTy (Var script)
+                               focus script
                                elab ist toplevel False False (MN 0 "tac") tm
-                               (tm', ty') <- get_type_val (Var tacn)
-                               ctxt <- get_context
-                               env <- get_env
-                               let tm'' = normalise ctxt env tm'
-                               attack -- let x : List (TTName, Binder TT) = reflectEnv in ...
-                               envval <- unique_hole (MN 0 "letval")
-                               claim envval (RApp listTy envTupleType)
-                               letn <- unique_hole (MN 0 "letvar")
-                               letbind letn (RApp listTy envTupleType) (Var envval)
-                               focus envval
-                               env <- get_env
-                               elab ist toplevel False False (MN 0 "tac") (PQuote (reflectEnv tenv))
-                               (env', _) <- get_type_val (Var letn)
-                               ctxt <- get_context
-                               env <- get_env
-                               let env'' = normalise ctxt env env'
-                               attack -- let z : Tactic = f x
-                               restac <- unique_hole (MN 0 "letval")
+                               (script', _) <- get_type_val (Var scriptvar)
+                               -- now that we have the script apply
+                               -- it to the reflected goal and context
+                               restac <- unique_hole (MN 0 "restac")
                                claim restac tacticTy
-                               letn <- unique_hole (MN 0 "letvar")
-                               letbind letn tacticTy (Var restac)
                                focus restac
-                               elab ist toplevel False False (MN 0 "tac") (PQuote (RApp (forget tm'') (forget env'')))
-                               (res, _) <- get_type_val (Var letn)
+                               fill (raw_apply (forget script') 
+                                               [reflectEnv tenv, reflect tgoal])
+                               restac' <- get_guess
+                               solve
+                               -- normalise the result in order to
+                               -- reify it
                                ctxt <- get_context
                                env <- get_env
-                               let tactic = normalise ctxt env res                            
+                               let tactic = normalise ctxt env restac'
                                runReflected tactic
         where tacticTy = Var (reflm "Tactic")
               listTy = Var (NS (UN "List") ["List", "Prelude"])
+              scriptTy = (RBind (UN "__pi_arg") 
+                                (Pi (RApp listTy envTupleType))
+                                    (RBind (UN "__pi_arg1") 
+                                           (Pi (Var $ reflm "TT")) tacticTy))
+
     runT (Reflect v) = do attack -- let x = reflect v in ...
                           tyn <- unique_hole (MN 0 "letty")
                           claim tyn RType
@@ -1207,7 +1213,7 @@ solveAll = try (do solve; solveAll) (return ())
 mkSpecialised :: IState -> FC -> Name -> [PTerm] -> PTerm -> ElabD PTerm
 mkSpecialised i fc n args def
     = do let tm' = def
-         case lookupCtxt Nothing n (idris_statics i) of
+         case lookupCtxt n (idris_statics i) of
            [] -> return tm'
            [as] -> if (not (or as)) then return tm' else
                        mkSpecDecl i n (zip args as) tm'
@@ -1234,8 +1240,8 @@ mkSpecDecl i n pargs tm'
     cg = idris_callgraph i
 
     staticFnNames tm | (P _ f _, as) <- unApply tm
-        = if not (isFnName Nothing f ctxt) then [] 
-             else case lookupCtxt Nothing f cg of
+        = if not (isFnName f ctxt) then [] 
+             else case lookupCtxt f cg of
                     [ns] -> f : f : [] --(ns \\ [f])
                     [] -> [f,f]
                     _ -> []

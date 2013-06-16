@@ -171,7 +171,7 @@ checkInjective (tm, l, r) = do ctxt <- get_context
                                if isInj ctxt tm then return ()
                                 else lift $ tfail (NotInjective tm l r) 
   where isInj ctxt (P _ n _) 
-            | isConName Nothing n ctxt = True
+            | isConName n ctxt = True
         isInj ctxt (App f a) = isInj ctxt f
         isInj ctxt (Constant _) = True
         isInj ctxt (TType _) = True
@@ -210,7 +210,7 @@ unique_hole' reusable n
 uniqueNameCtxt :: Context -> Name -> [Name] -> Elab' aux Name
 uniqueNameCtxt ctxt n hs 
     | n `elem` hs = uniqueNameCtxt ctxt (nextName n) hs
-    | [_] <- lookupTy Nothing n ctxt = uniqueNameCtxt ctxt (nextName n) hs
+    | [_] <- lookupTy n ctxt = uniqueNameCtxt ctxt (nextName n) hs
     | otherwise = return n
 
 elog :: String -> Elab' aux ()
@@ -356,7 +356,7 @@ prepare_apply fn imps =
     mkClaims _ _ _ _
             | Var n <- fn
                    = do ctxt <- get_context
-                        case lookupTy Nothing n ctxt of
+                        case lookupTy n ctxt of
                                 [] -> lift $ tfail $ NoSuchVariable n  
                                 _ -> fail $ "Too many arguments for " ++ show fn
             | otherwise = fail $ "Too many arguments for " ++ show fn
@@ -391,10 +391,13 @@ apply fn imps =
                              else
                              map fst (filter (not.snd) (zip args (map fst imps)))
        let (n, hunis) = -- trace ("AVOID UNIFY: " ++ show (fn, dont) ++ "\n" ++ show ptm) $ 
-                      unified p
+                        unified p
        let unify = -- trace ("Not done " ++ show hs) $ 
-                    dropGiven dont hunis hs
-       put (ES (p { dontunify = dont, unified = (n, unify) }, a) s prev)
+                   dropGiven dont hunis hs
+       let notunify = -- trace ("Not done " ++ show hs) $ 
+                       keepGiven dont hunis hs
+       put (ES (p { dontunify = dont, unified = (n, unify),
+                    notunified = notunify ++ notunified p }, a) s prev)
        ptm <- get_term
        g <- goal
 --        trace ("Goal " ++ show g ++ "\n" ++ show (fn,  imps, unify) ++ "\n" ++ show ptm) $ 
@@ -469,6 +472,23 @@ apply_elab n args =
     mkMN n@(UN x) = MN 1000 x
     mkMN (NS n ns) = NS (mkMN n) ns
 
+-- If the goal is not a Pi-type, invent some names and make it a pi type
+checkPiGoal :: Elab' aux ()
+checkPiGoal = do g <- goal
+                 case g of
+                    Bind _ (Pi _) _ -> return ()
+                    _ -> do a <- unique_hole (MN 0 "argTy")
+                            b <- unique_hole (MN 0 "retTy")
+                            f <- unique_hole (MN 0 "f")
+                            claim a RType
+                            claim b RType
+                            claim f (RBind (MN 0 "aX") (Pi (Var a)) (Var b))
+                            movelast a
+                            movelast b
+                            fill (Var f)
+                            solve
+                            focus f
+
 simple_app :: Elab' aux () -> Elab' aux () -> Elab' aux ()
 simple_app fun arg =
     do a <- unique_hole (MN 0 "argTy")
@@ -507,6 +527,19 @@ arg :: Name -> Name -> Elab' aux ()
 arg n tyhole = do ty <- unique_hole tyhole
                   claim ty RType
                   forall n (Var ty)
+
+-- try a tactic, if it adds any unification problem, return an error
+no_errors :: Elab' aux () -> Elab' aux ()
+no_errors tac 
+   = do ps <- get_probs
+        tac
+        ps' <- get_probs
+        if (length ps' > length ps) then
+           case reverse ps' of
+                ((x,y,env,err) : _) ->
+                   let env' = map (\(x, b) -> (x, binderTy b)) env in
+                              lift $ tfail $ CantUnify False x y err env' 0
+           else return ()
 
 -- Try a tactic, if it fails, try another
 try :: Elab' aux a -> Elab' aux a -> Elab' aux a

@@ -1,5 +1,7 @@
 #!/usr/bin/perl
 
+use Cwd;
+
 my $exitstatus = 0;
 
 sub runtest {
@@ -78,6 +80,10 @@ while ($opt=shift(@opts)) {
     elsif ($opt eq "-s") { $show = 1; }
     else { push(@idrOpts, $opt); }
 }
+
+my $idris = $ENV{IDRIS};
+my $path = $ENV{PATH};
+$ENV{PATH}=cwd() . "/" . $idris . ":" . $path;
 
 foreach $test (@tests) {
 

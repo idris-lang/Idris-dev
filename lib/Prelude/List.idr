@@ -399,6 +399,7 @@ span p (x::xs) =
 break : (a -> Bool) -> List a -> (List a, List a)
 break p = span (not . p)
 
+%assert_total
 split : (a -> Bool) -> List a -> List (List a)
 split p [] = []
 split p xs =
