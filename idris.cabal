@@ -1,5 +1,5 @@
 Name:           idris
-Version:        0.9.8
+Version:        0.9.8.1
 License:        BSD3
 License-file:   LICENSE
 Author:         Edwin Brady
@@ -56,16 +56,21 @@ Data-files:            rts/libidris_rts.a rts/idris_rts.h rts/idris_gc.h
 Extra-source-files:    lib/Makefile  lib/*.idr lib/Prelude/*.idr
                        lib/Network/*.idr lib/Control/*.idr
                        lib/Control/Monad/*.idr lib/Language/*.idr
+                       lib/Language/Reflection/*.idr
                        lib/System/Concurrency/*.idr
                        lib/Data/*.idr lib/Debug/*.idr
+                       lib/Data/Vect/*.idr
                        lib/Decidable/*.idr
                        tutorial/examples/*.idr lib/base.ipkg
                        effects/Makefile effects/*.idr effects/Effect/*.idr
                        effects/effects.ipkg
+                       javascript/Makefile
+                       javascript/*.idr
+                       javascript/javascript.ipkg
                        config.mk
                        rts/*.c rts/*.h rts/Makefile
                        js/*.js
-                       java/org/idris/rts/*.java
+                       java/src/main/java/org/idris/rts/*.java
 
 source-repository head
   type:     git
@@ -88,13 +93,14 @@ Executable     idris
                               Core.CaseTree, Core.Constraints,
 
                               Idris.AbsSyntax, Idris.AbsSyntaxTree,
-                              Idris.Parser, Idris.Help, Idris.REPL,
+                              Idris.Parser, Idris.Help, Idris.IdeSlave, Idris.REPL,
                               Idris.REPLParser, Idris.ElabDecls, Idris.Error,
                               Idris.Delaborate, Idris.Primitives, Idris.Imports,
                               Idris.Compiler, Idris.Prover, Idris.ElabTerm,
                               Idris.Coverage, Idris.IBC, Idris.Unlit,
                               Idris.DataOpts, Idris.Transforms, Idris.DSL,
                               Idris.UnusedArgs, Idris.Docs, Idris.Completion,
+                              Idris.Providers,
 
                               Util.Pretty, Util.System, Util.DynamicLinker,
                               Pkg.Package, Pkg.PParser,

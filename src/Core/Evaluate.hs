@@ -19,20 +19,24 @@ import Data.Binary hiding (get, put)
 import Core.TT
 import Core.CaseTree
 
-data EvalState = ES { limited :: [(Name, Int)] }
+data EvalState = ES { limited :: [(Name, Int)],
+                      nexthole :: Int }
 
 type Eval a = State EvalState a
 
 data EvalOpt = Spec | HNF | Simplify Bool | AtREPL
   deriving (Show, Eq)
 
-initEval = ES []
+initEval = ES [] 0
 
 -- VALUES (as HOAS) ---------------------------------------------------------
 -- | A HOAS representation of values
 data Value = VP NameType Name Value
            | VV Int
-           | VBind Name (Binder Value) (Value -> Eval Value)
+             -- True for Bool indicates safe to reduce
+           | VBind Bool Name (Binder Value) (Value -> Eval Value)
+             -- For frozen let bindings when simplifying
+           | VBLet Int Name Value Value Value
            | VApp Value Value
            | VType UExp
            | VErased
@@ -91,8 +95,9 @@ specialise ctxt env limits t
 simplify :: Context -> Bool -> Env -> TT Name -> TT Name
 simplify ctxt runtime env t 
    = evalState (do val <- eval False ctxt [(UN "lazy", 0),
-                                                     (UN "par", 0),
-                                                     (UN "fork", 0)] 
+                                           (UN "assert_smaller", 0),
+                                           (UN "par", 0),
+                                           (UN "fork", 0)] 
                                  (map finalEntry env) (finalise t) 
                                  [Simplify runtime]
                    quote 0 val) initEval
@@ -165,28 +170,33 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
                                     (Just v, _)  -> return v
                 _ -> liftM (VP Ref n) (ev ntimes stk top env ty)
     ev ntimes stk top env (P nt n ty)   = liftM (VP nt n) (ev ntimes stk top env ty)
-    ev ntimes stk top env (V i) | i < length env = return $ env !! i
+    ev ntimes stk top env (V i) 
+                     | i < length env && i >= 0 = return $ env !! i
                      | otherwise      = return $ VV i 
     ev ntimes stk top env (Bind n (Let t v) sc)
---         | not simpl || vinstances 0 sc < 2
+        | not simpl -- || vinstances 0 sc < 2
            = do v' <- ev ntimes stk top env v --(finalise v)
                 sc' <- ev ntimes stk top (v' : env) sc
                 wknV (-1) sc'
-{-        | otherwise -- put this back when the Bind works properly
+        | otherwise -- put this back when the Bind works properly
            = do t' <- ev ntimes stk top env t
                 v' <- ev ntimes stk top env v --(finalise v)
                 -- use Tmp as a placeholder, then make it a variable reference
                 -- again when evaluation finished
-                sc' <- ev ntimes stk top (v' : env) sc
-                return $ VBind n (Let t' v') (\x -> return sc') -}
+                hs <- get
+                let vd = nexthole hs
+                put (hs { nexthole = vd + 1 })
+                sc' <- ev ntimes stk top (VP Bound (MN vd "vlet") VErased : env) sc
+                return $ VBLet vd n t' v' sc'
     ev ntimes stk top env (Bind n (NLet t v) sc)
            = do t' <- ev ntimes stk top env (finalise t)
                 v' <- ev ntimes stk top env (finalise v)
                 sc' <- ev ntimes stk top (v' : env) sc
-                return $ VBind n (Let t' v') (\x -> return sc')
+                return $ VBind True n (Let t' v') (\x -> return sc')
     ev ntimes stk top env (Bind n b sc) 
            = do b' <- vbind env b
-                return $ VBind n b' (\x -> ev ntimes stk False (x:env) sc)
+                return $ VBind (not simpl || vinstances 0 sc < 2)
+                               n b' (\x -> ev ntimes stk False (x:env) sc)
        where vbind env t 
                  | simpl 
                      = fmapMB (\tm -> ev ((MN 0 "STOP", 0) : ntimes) 
@@ -208,10 +218,10 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
             evApply ntimes stk top env (a:args) f
     evApply ntimes stk top env args f = apply ntimes stk top env f args
 
-    apply ntimes stk top env (VBind n (Lam t) sc) (a:as) 
-        = do a' <- sc a
-             app <- apply ntimes stk top env a' as 
-             wknV (-1) app
+    apply ntimes stk top env (VBind True n (Lam t) sc) (a:as) 
+         = do a' <- sc a
+              app <- apply ntimes stk top env a' as 
+              wknV (-1) app
 --     apply ntimes stk False env f args
 --         | spec = specApply ntimes stk env f args 
     apply ntimes_in stk top env f@(VP Ref n ty) args
@@ -330,15 +340,14 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
     getValArgs' (VApp f a) as = getValArgs' f (a:as)
     getValArgs' f as = (f, as)
 
-tmpToV i (VTmp 0) = return $ VV i
-tmpToV i (VP nt n v) = liftM (VP nt n) (tmpToV i v)
-                          
-tmpToV i (VBind n b sc) = do b' <- fmapMB (tmpToV i) b
-                             let sc' = \x -> do x' <- sc x
-                                                tmpToV (i + 1) x'
-                             return (VBind n b' sc')
-tmpToV i (VApp f a) = liftM2 VApp (tmpToV i f) (tmpToV i a)
-tmpToV i x = return x
+-- tmpToV i vd (VLetHole j) | vd == j = return $ VV i
+-- tmpToV i vd (VP nt n v) = liftM (VP nt n) (tmpToV i vd v)
+-- tmpToV i vd (VBind n b sc) = do b' <- fmapMB (tmpToV i vd) b
+--                                 let sc' = \x -> do x' <- sc x
+--                                                    tmpToV (i + 1) vd x'
+--                                 return (VBind n b' sc')
+-- tmpToV i vd (VApp f a) = liftM2 VApp (tmpToV i vd f) (tmpToV i vd a)
+-- tmpToV i vd x = return x
 
 class Quote a where
     quote :: Int -> a -> Eval (TT Name)
@@ -346,10 +355,16 @@ class Quote a where
 instance Quote Value where
     quote i (VP nt n v)    = liftM (P nt n) (quote i v)
     quote i (VV x)         = return $ V x
-    quote i (VBind n b sc) = do sc' <- sc (VTmp i)
-                                b' <- quoteB b
-                                liftM (Bind n b') (quote (i+1) sc')
+    quote i (VBind _ n b sc) = do sc' <- sc (VTmp i)
+                                  b' <- quoteB b
+                                  liftM (Bind n b') (quote (i+1) sc')
        where quoteB t = fmapMB (quote i) t
+    quote i (VBLet vd n t v sc) 
+                           = do sc' <- quote i sc
+                                t' <- quote i t
+                                v' <- quote i v
+                                let sc'' = pToV (MN vd "vlet") (addBinder sc')
+                                return (Bind n (Let t' v') sc'')
     quote i (VApp f a)     = liftM2 App (quote i f) (quote i a)
     quote i (VType u)       = return $ TType u
     quote i VErased        = return $ Erased
@@ -375,9 +390,9 @@ instance Quote HNF where
 
 wknV :: Int -> Value -> Eval Value
 wknV i (VV x)         = return $ VV (x + i)
-wknV i (VBind n b sc) = do b' <- fmapMB (wknV i) b
-                           return $ VBind n b' (\x -> do x' <- sc x
-                                                         wknV i x')
+wknV i (VBind red n b sc) = do b' <- fmapMB (wknV i) b
+                               return $ VBind red n b' (\x -> do x' <- sc x
+                                                                 wknV i x')
 wknV i (VApp f a)     = liftM2 VApp (wknV i f) (wknV i a)
 wknV i t              = return t
 
@@ -703,10 +718,10 @@ addCtxtDef n d c = let ctxt = definitions c
                        ctxt' = addDef n (d, Public, Unchecked) ctxt in
                        c { definitions = ctxt' }
 
-addTyDecl :: Name -> Type -> Context -> Context
-addTyDecl n ty uctxt 
+addTyDecl :: Name -> NameType -> Type -> Context -> Context
+addTyDecl n nt ty uctxt 
     = let ctxt = definitions uctxt
-          ctxt' = addDef n (TyDecl Ref ty, Public, Unchecked) ctxt in
+          ctxt' = addDef n (TyDecl nt ty, Public, Unchecked) ctxt in
           uctxt { definitions = ctxt' }
 
 addDatatype :: Datatype Name -> Context -> Context
@@ -751,11 +766,12 @@ simplifyCasedef n uctxt
               [(CaseOp inl inr ty [] ps args sc args' sc', acc, tot)] ->
                  ctxt -- nothing to simplify (or already done...)
               [(CaseOp inl inr ty ps_in ps args sc args' sc', acc, tot)] ->
-                 let pdef = map debind $ map simpl ps_in in
+                 let ps_in' = map simpl ps_in
+                     pdef = map debind ps_in' in
                      case simpleCase False True CompileTime (FC "" 0) pdef of
                        OK (CaseDef args sc _) ->
                           addDef n (CaseOp inl inr 
-                                           ty ps_in ps args sc args' sc',
+                                           ty ps_in' ps args sc args' sc',
                                     acc, tot) ctxt 
               _ -> ctxt in
          uctxt { definitions = ctxt' }

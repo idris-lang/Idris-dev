@@ -569,6 +569,17 @@ pToV' n i (App f a) = App (pToV' n i f) (pToV' n i a)
 pToV' n i (Proj t idx) = Proj (pToV' n i t) idx
 pToV' n i t = t
 
+-- increase de Bruijn indices, as if a binder has been added
+addBinder :: TT n -> TT n
+addBinder t = ab 0 t
+  where
+     ab top (V i) | i >= top = V (i + 1)
+                  | otherwise = V i
+     ab top (Bind x b sc) = Bind x (fmap (ab top) b) (ab (top + 1) sc)
+     ab top (App f a) = App (ab top f) (ab top a)
+     ab top (Proj t idx) = Proj (ab top t) idx
+     ab top t = t
+
 -- | Convert several names. First in the list comes out as V 0
 pToVs :: Eq n => [n] -> TT n -> TT n
 pToVs ns tm = pToVs' ns tm 0 where
@@ -787,7 +798,8 @@ prettyEnv env t = prettyEnv' env t False
 showEnv' env t dbg = se 10 env t where
     se p env (P nt n t) = show n 
                             ++ if dbg then "{" ++ show nt ++ " : " ++ se 10 env t ++ "}" else ""
-    se p env (V i) | i < length env = (show $ fst $ env!!i) ++
+    se p env (V i) | i < length env && i >= 0
+                                    = (show $ fst $ env!!i) ++
                                       if dbg then "{" ++ show i ++ "}" else ""
                    | otherwise = "!!V " ++ show i ++ "!!"
     se p env (Bind n b@(Pi t) sc)  

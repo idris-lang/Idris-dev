@@ -48,6 +48,8 @@ updateWith : (ys' : List a) -> (xs : List a) ->
 updateWith (y :: ys) (x :: xs) (Keep rest) = y :: updateWith ys xs rest
 updateWith ys        (x :: xs) (Drop rest) = x :: updateWith ys xs rest
 updateWith []        []        SubNil      = []
+updateWith (y :: ys) []        SubNil      = y :: ys
+updateWith []        (x :: xs) (Keep rest) = []
 
 -- put things back, replacing old with new in the sub-environment
 rebuildEnv : Env m ys' -> (prf : SubList ys xs) -> 
@@ -55,6 +57,7 @@ rebuildEnv : Env m ys' -> (prf : SubList ys xs) ->
 rebuildEnv []        SubNil      env = env
 rebuildEnv (x :: xs) (Keep rest) (y :: env) = x :: rebuildEnv xs rest env
 rebuildEnv xs        (Drop rest) (y :: env) = y :: rebuildEnv xs rest env
+rebuildEnv (x :: xs) SubNil      [] = x :: xs 
 
 ---- The Effect EDSL itself ----
 
@@ -161,6 +164,9 @@ execEff (val :: env) Here eff' k
 execEff (val :: env) (There p) eff k 
     = execEff env p eff (\env', v => k (val :: env') v)
 
+-- Q: Instead of m b, implement as StateT (Env m xs') m b, so that state
+-- updates can be propagated even through failing computations?
+
 eff : Env m xs -> EffM m xs xs' a -> (Env m xs' -> a -> m b) -> m b
 eff env (value x) k = k env x
 eff env (prog `ebind` c) k 
@@ -210,4 +216,3 @@ mapE f (x :: xs) = [| f x :: mapE f xs |]
 when : Applicative m => Bool -> Eff m xs () -> Eff m xs ()
 when True  e = e
 when False e = pure ()
-

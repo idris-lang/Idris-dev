@@ -3,6 +3,9 @@ module Core.Execute (execute) where
 
 import Idris.AbsSyntax
 import Idris.AbsSyntaxTree
+import IRTS.Lang( IntTy(..)
+                , intTyToConst
+                , FType(..))
 
 import Core.TT
 import Core.Evaluate
@@ -19,6 +22,7 @@ import Control.Monad.Trans.State.Strict
 import Control.Monad.Trans.Error
 import Control.Monad
 import Data.Maybe
+import Data.Bits
 import qualified Data.Map as M
 
 import Foreign.LibFFI
@@ -166,6 +170,7 @@ ioUnit = ioWrap (EP Ref unitCon EErased)
 type ExecEnv = [(Name, ExecVal)]
 
 doExec :: ExecEnv -> Context -> Term -> Exec ExecVal
+doExec env ctxt p@(P Ref n ty) | Just v <- lookup n env = return v
 doExec env ctxt p@(P Ref n ty) =
     do let val = lookupDef n ctxt
        case val of
@@ -175,6 +180,7 @@ doExec env ctxt p@(P Ref n ty) =
          [CaseOp _ _ _ _ _ [] (STerm tm) _ _] -> -- nullary fun
              doExec env ctxt tm
          [CaseOp _ _ _ _ _ ns sc _ _] -> return (EP Ref n EErased)
+         [] -> execFail $ "Could not find " ++ show n ++ " in definitions."
          thing -> trace (take 200 $ "got to " ++ show thing ++ " lookup up " ++ show n) $ undefined
 doExec env ctxt p@(P Bound n ty) =
   case lookup n env of
@@ -254,12 +260,17 @@ execApp' env ctxt (EP _ (UN "mkForeign") _) (_:fn:(EHandle h):rest)
     | Just (FFun "fileClose" _ _) <- foreignFromTT fn = do execIO $ hClose h
                                                            execApp' env ctxt ioUnit rest
 
+execApp' env ctxt (EP _ (UN "mkForeign") _) (_:fn:(EPtr p):rest)
+    | Just (FFun "isNull" _ _) <- foreignFromTT fn = let res = ioWrap . EConstant . I $
+                                                               if p == nullPtr then 1 else 0
+                                                     in execApp' env ctxt res rest
 
-execApp' env ctxt f@(EP _ (UN "mkForeign") _) args@(ty:fn:xs) | Just (FFun _ argTs retT) <- foreignFromTT fn
+execApp' env ctxt f@(EP _ (UN "mkForeign") _) args@(ty:fn:xs) | Just (FFun f argTs retT) <- foreignFromTT fn
                                                               , length xs >= length argTs =
     do res <- stepForeign (ty:fn:take (length argTs) xs)
        case res of
-         Nothing -> fail "Could not call foreign function"
+         Nothing -> fail $ "Could not call foreign function \"" ++ f ++
+                           "\" with args " ++ show (take (length argTs) xs)
          Just r -> return (mkEApp r (drop (length argTs) xs))
                                                              | otherwise = return (mkEApp f args)
 
@@ -286,34 +297,64 @@ execApp' env ctxt f@(EP _ n _) args =
     where getOp :: Name -> [ExecVal] -> Maybe (Exec ExecVal)
           getOp (UN "prim__addInt") [EConstant (I i1), EConstant (I i2)] =
               primRes I (i1 + i2)
+          getOp (UN "prim__andInt") [EConstant (I i1), EConstant (I i2)] =
+              primRes I (i1 .&. i2)
           getOp (UN "prim__charToInt") [EConstant (Ch c)] =
               primRes I (fromEnum c)
+          getOp (UN "prim__complInt") [EConstant (I i)] =
+              primRes I (complement i)
           getOp (UN "prim__concat") [EConstant (Str s1), EConstant (Str s2)] =
               primRes Str (s1 ++ s2)
+          getOp (UN "prim__divInt") [EConstant (I i1), EConstant (I i2)] =
+              primRes I (i1 `div` i2)
           getOp (UN "prim__eqChar") [EConstant (Ch c1), EConstant (Ch c2)] =
               primResBool (c1 == c2)
           getOp (UN "prim__eqInt") [EConstant (I i1), EConstant (I i2)] =
               primResBool (i1 == i2)
           getOp (UN "prim__eqString") [EConstant (Str s1), EConstant (Str s2)] =
               primResBool (s1 == s2)
+          getOp (UN "prim__gtChar") [EConstant (Ch i1), EConstant (Ch i2)] =
+              primResBool (i1 > i2)
+          getOp (UN "prim__gteChar") [EConstant (Ch i1), EConstant (Ch i2)] =
+              primResBool (i1 >= i2)
+          getOp (UN "prim__gtInt") [EConstant (I i1), EConstant (I i2)] =
+              primResBool (i1 > i2)
+          getOp (UN "prim__gteInt") [EConstant (I i1), EConstant (I i2)] =
+              primResBool (i1 >= i2)
           getOp (UN "prim__intToFloat") [EConstant (I i)] =
               primRes Fl (fromRational (toRational i))
           getOp (UN "prim__intToStr") [EConstant (I i)] =
               primRes Str (show i)
+          getOp (UN "prim_lenString") [EConstant (Str s)] =
+              primRes I (length s)
+          getOp (UN "prim__ltChar") [EConstant (Ch i1), EConstant (Ch i2)] =
+              primResBool (i1 < i2)
+          getOp (UN "prim__lteChar") [EConstant (Ch i1), EConstant (Ch i2)] =
+              primResBool (i1 <= i2)
+          getOp (UN "prim__lteInt") [EConstant (I i1), EConstant (I i2)] =
+              primResBool (i1 <= i2)
           getOp (UN "prim__ltInt") [EConstant (I i1), EConstant (I i2)] =
               primResBool (i1 < i2)
+          getOp (UN "prim__modInt") [EConstant (I i1), EConstant (I i2)] =
+              primRes I (i1 `mod` i2)
           getOp (UN "prim__mulBigInt") [EConstant (BI i1), EConstant (BI i2)] =
               primRes BI (i1 * i2)
           getOp (UN "prim__mulFloat") [EConstant (Fl i1), EConstant (Fl i2)] =
               primRes Fl (i1 * i2)
           getOp (UN "prim__mulInt") [EConstant (I i1), EConstant (I i2)] =
               primRes I (i1 * i2)
+          getOp (UN "prim__orInt") [EConstant (I i1), EConstant (I i2)] =
+              primRes I (i1 .|. i2)
           getOp (UN "prim__readString") [EP _ (UN "prim__stdin") _] =
               Just $ do line <- execIO getLine
                         return (EConstant (Str line))
           getOp (UN "prim__readString") [EHandle h] =
               Just $ do contents <- execIO $ hGetLine h
                         return (EConstant (Str contents))
+          getOp (UN "prim__shLInt") [EConstant (I i1), EConstant (I i2)] =
+              primRes I (shiftL i1 i2)
+          getOp (UN "prim__shRInt") [EConstant (I i1), EConstant (I i2)] =
+              primRes I (shiftR i1 i2)
           getOp (UN "prim__strCons") [EConstant (Ch c), EConstant (Str s)] =
               primRes Str (c:s)
           getOp (UN "prim__strHead") [EConstant (Str (c:s))] =
@@ -326,6 +367,8 @@ execApp' env ctxt f@(EP _ n _) args =
               primRes Fl (i1 - i2)
           getOp (UN "prim__subInt") [EConstant (I i1), EConstant (I i2)] =
               primRes I (i1 - i2)
+          getOp (UN "prim__xorInt") [EConstant (I i1), EConstant (I i2)] =
+              primRes I (i1 `xor` i2)
           getOp n args = trace ("No prim " ++ show n ++ " for " ++ take 1000 (show args)) Nothing
 
           primRes :: (a -> Const) -> a -> Maybe (Exec ExecVal)
@@ -353,6 +396,7 @@ execCase env ctxt ns sc args =
     let arity = length ns in
     if arity <= length args
     then do let amap = zip ns args
+--            trace ("Case " ++ show sc ++ "\n   in " ++ show amap ++"\n   in env " ++ show env ++ "\n\n" ) $ return ()
             caseRes <- execCase' env ctxt amap sc
             case caseRes of
               Just res -> Just <$> execApp' (map (\(n, tm) -> (n, tm)) amap ++ env) ctxt res (drop arity args)
@@ -384,18 +428,16 @@ chooseAlt _ [] = Nothing
 
 
 
-data FTy = FInt | FFloat | FChar | FString | FPtr | FUnit deriving (Show, Read)
-
-idrisType :: FTy -> ExecVal
+idrisType :: FType -> ExecVal
 idrisType FUnit = EP Ref unitTy EErased
 idrisType ft = EConstant (idr ft)
-    where idr FInt = IType
-          idr FFloat = FlType
+    where idr (FInt ty) = intTyToConst ty
+          idr FDouble = FlType
           idr FChar = ChType
           idr FString = StrType
           idr FPtr = PtrType
 
-data Foreign = FFun String [FTy] FTy deriving Show
+data Foreign = FFun String [FType] FType deriving Show
 
 
 call :: Foreign -> [ExecVal] -> Exec (Maybe ExecVal)
@@ -405,11 +447,19 @@ call (FFun name argTypes retType) args =
          Nothing -> return Nothing
          Just f -> do res <- call' f args retType
                       return . Just . ioWrap $ res
-    where call' :: ForeignFun -> [ExecVal] -> FTy -> Exec ExecVal
-          call' (Fun _ h) args FInt = do res <- execIO $ callFFI h retCInt (prepArgs args)
-                                         return (EConstant (I (fromIntegral res)))
-          call' (Fun _ h) args FFloat = do res <- execIO $ callFFI h retCDouble (prepArgs args)
-                                           return (EConstant (Fl (realToFrac res)))
+    where call' :: ForeignFun -> [ExecVal] -> FType -> Exec ExecVal
+          call' (Fun _ h) args (FInt ITNative) = do res <- execIO $ callFFI h retCInt (prepArgs args)
+                                                    return (EConstant (I (fromIntegral res)))
+          call' (Fun _ h) args (FInt IT8) = do res <- execIO $ callFFI h retCChar (prepArgs args)
+                                               return (EConstant (B8 (fromIntegral res)))
+          call' (Fun _ h) args (FInt IT16) = do res <- execIO $ callFFI h retCWchar (prepArgs args)
+                                                return (EConstant (B16 (fromIntegral res)))
+          call' (Fun _ h) args (FInt IT32) = do res <- execIO $ callFFI h retCInt (prepArgs args)
+                                                return (EConstant (B32 (fromIntegral res)))
+          call' (Fun _ h) args (FInt IT64) = do res <- execIO $ callFFI h retCLong (prepArgs args)
+                                                return (EConstant (B64 (fromIntegral res)))
+          call' (Fun _ h) args FDouble = do res <- execIO $ callFFI h retCDouble (prepArgs args)
+                                            return (EConstant (Fl (realToFrac res)))
           call' (Fun _ h) args FChar = do res <- execIO $ callFFI h retCChar (prepArgs args)
                                           return (EConstant (Ch (castCCharToChar res)))
           call' (Fun _ h) args FString = do res <- execIO $ callFFI h retCString (prepArgs args)
@@ -426,6 +476,10 @@ call (FFun name argTypes retType) args =
 
           prepArgs = map prepArg
           prepArg (EConstant (I i)) = argCInt (fromIntegral i)
+          prepArg (EConstant (B8 i)) = argCChar (fromIntegral i)
+          prepArg (EConstant (B16 i)) = argCWchar (fromIntegral i)
+          prepArg (EConstant (B32 i)) = argCInt (fromIntegral i)
+          prepArg (EConstant (B64 i)) = argCLong (fromIntegral i)
           prepArg (EConstant (Fl f)) = argCDouble (realToFrac f)
           prepArg (EConstant (Ch c)) = argCChar (castCharToCChar c) -- FIXME - castCharToCChar only safe for first 256 chars
           prepArg (EConstant (Str s)) = argString s
@@ -443,11 +497,18 @@ foreignFromTT t = case (unApplyV t) of
                            return $ FFun name argFTy retFTy
                     _ -> trace "failed to construct ffun" Nothing
 
-getFTy :: ExecVal -> Maybe FTy
+getFTy :: ExecVal -> Maybe FType
+getFTy (EApp (EP _ (UN "FIntT") _) (EP _ (UN intTy) _)) =
+    case intTy of
+      "ITNative" -> Just $ FInt ITNative
+      "IT8" -> Just $ FInt IT8
+      "IT16" -> Just $ FInt IT16
+      "IT32" -> Just $ FInt IT32
+      "IT64" -> Just $ FInt IT64
+      _ -> Nothing
 getFTy (EP _ (UN t) _) =
     case t of
-      "FInt"    -> Just FInt
-      "FFloat"  -> Just FFloat
+      "FFloat"  -> Just FDouble
       "FChar"   -> Just FChar
       "FString" -> Just FString
       "FPtr"    -> Just FPtr

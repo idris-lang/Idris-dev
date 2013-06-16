@@ -1,5 +1,10 @@
 module Decidable.Order
 
+%access public
+
+{-
+Doesn't work yet, see note in Decidable.idr
+
 import Decidable.Decidable
 import Decidable.Equality
 
@@ -40,10 +45,12 @@ instance Preorder Nat NatLTE where
   transitive = NatLTEIsTransitive
   reflexive  = NatLTEIsReflexive
 
-total NatLTEIsAntisymmetric : (m : Nat) -> (n : Nat) -> po m n -> po n m -> m = n
+total NatLTEIsAntisymmetric : (m : Nat) -> (n : Nat) -> 
+                              NatLTE m n -> NatLTE n m -> m = n
 NatLTEIsAntisymmetric n n nEqn nEqn = refl
 NatLTEIsAntisymmetric n m nEqn (nLTESm _) impossible
 NatLTEIsAntisymmetric n m (nLTESm _) nEqn impossible
+NatLTEIsAntisymmetric n m (nLTESm _) (nLTESm _) impossible
 
 instance Poset Nat NatLTE where
   antisymmetric = NatLTEIsAntisymmetric
@@ -75,3 +82,6 @@ instance Decidable NatLTE where
 
 lte : (m : Nat) -> (n : Nat) -> Dec (NatLTE m n)
 lte m n = decide {p = NatLTE} m n
+
+-}
+

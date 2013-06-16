@@ -97,7 +97,7 @@ data HasType : (i : Fin n) -> Vect Ty n -> Ty -> Type where
 \noindent
 We can treat \remph{stop} as a proof that the most recently defined variable is well-typed,
 and \remph{pop n} as a proof that, if the \texttt{n}th most recently defined variable is
-well-typed, so is the \texttt{n+1}th. In practice, this means we use \texttt{pop} to
+well-typed, so is the \texttt{n+1}th. In practice, this means we use \texttt{stop} to
 refer to the most recently defined variable, \texttt{pop stop} to refer to the next, and so on,
 via the \texttt{Var} constructor:
 
@@ -397,7 +397,7 @@ unitTestFac = oh
 \useverb{unitTestFac} 
 
 \noindent
-For the program the compile, the test case must pass. If we change \texttt{24} to \texttt{25},
+For the program to compile, the test case must pass. If we change \texttt{24} to \texttt{25},
 say, we will get an error message like the following:
 
 \begin{SaveVerbatim}{unitTestErr}

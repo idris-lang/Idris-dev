@@ -227,7 +227,7 @@ checkProgram ctxt [] = return ctxt
 checkProgram ctxt ((n, RConst t) : xs) 
    = do (t', tt') <- trace (show n) $ check ctxt [] t
         isType ctxt [] tt'
-        checkProgram (addTyDecl n t' ctxt) xs
+        checkProgram (addTyDecl n Ref t' ctxt) xs
 checkProgram ctxt ((n, RFunction (RawFun ty val)) : xs)
    = do (ty', tyt') <- trace (show n) $ check ctxt [] ty
         (val', valt') <- check ctxt [] val

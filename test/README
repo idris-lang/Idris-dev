@@ -26,5 +26,6 @@ Tests:
 024: interpreter I/O
 025: memory effects
 026: simple file-I/O-based type provider
+027: class constraints in using block
 
 regxxx: various regression tests

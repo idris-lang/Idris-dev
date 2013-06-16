@@ -466,7 +466,7 @@ idrisMakeTokenParser languageDef
 
     number base baseDigit
         = do{ digits <- many1 baseDigit
-            ; let n = foldl (\x d -> base*x + toInteger (digitToInt d)) 0 digits
+            ; let n = foldl' (\x d -> base*x + toInteger (digitToInt d)) 0 digits
             ; seq n (return n)
             }
 

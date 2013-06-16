@@ -1096,6 +1096,15 @@ instance (Binary t) => Binary (PDecl' t) where
                             return (PPostulate x1 x2 x3 x4 x5 x6)
                    _ -> error "Corrupted binary data for PDecl'"
 
+instance Binary Using where
+        put (UImplicit x1 x2) = do putWord8 0; put x1; put x2
+        put (UConstraint x1 x2) = do putWord8 1; put x1; put x2
+
+        get = do i <- getWord8
+                 case i of
+                    0 -> do x1 <- get; x2 <- get; return (UImplicit x1 x2)
+                    1 -> do x1 <- get; x2 <- get; return (UConstraint x1 x2)
+
 instance Binary SyntaxInfo where
         put (Syn x1 x2 x3 x4 x5 x6 x7 x8)
           = do put x1

@@ -49,6 +49,7 @@ elabType info syn doc fc opts n ty' = {- let ty' = piBind (params info) ty_in
          ctxt <- getContext
          i <- getIState
          logLvl 3 $ show n ++ " pre-type " ++ showImp True ty'
+         ty' <- addUsingConstraints syn fc ty'
          ty' <- implicit syn n ty'
          let ty = addImpl i ty'
          logLvl 2 $ show n ++ " type " ++ showImp True ty
@@ -121,11 +122,11 @@ elabData info syn doc fc codata (PLaterdecl n t_in)
          ((t', defer, is), log) <- tclift $ elaborate ctxt n (TType (UVal 0)) []
                                             (erun fc (build i info False n t))
          def' <- checkDef fc defer
-         addDeferred def'
+         addDeferredTyCon def'
          mapM_ (elabCaseBlock info) is
          (cty, _)  <- recheckC fc [] t'
          logLvl 2 $ "---> " ++ show cty
-         updateContext (addTyDecl n cty) -- temporary, to check cons
+         updateContext (addTyDecl n (TCon 0 0) cty) -- temporary, to check cons
 
 elabData info syn doc fc codata (PDatadecl n t_in dcons)
     = do iLOG (show fc)
@@ -137,12 +138,12 @@ elabData info syn doc fc codata (PDatadecl n t_in dcons)
          ((t', defer, is), log) <- tclift $ elaborate ctxt n (TType (UVal 0)) []
                                             (erun fc (build i info False n t))
          def' <- checkDef fc defer
-         addDeferred def'
+         addDeferredTyCon def'
          mapM_ (elabCaseBlock info) is
          (cty, _)  <- recheckC fc [] t'
          logLvl 2 $ "---> " ++ show cty
          -- temporary, to check cons
-         when undef $ updateContext (addTyDecl n cty) 
+         when undef $ updateContext (addTyDecl n (TCon 0 0) cty) 
          cons <- mapM (elabCon info syn n codata) dcons
          ttag <- getName
          i <- getIState
@@ -213,26 +214,50 @@ elabData info syn doc fc codata (PDatadecl n t_in dcons)
 elabProvider :: ElabInfo -> SyntaxInfo -> FC -> Name -> PTerm -> PTerm -> Idris ()
 elabProvider info syn fc n ty tm
     = do i <- getIState
-         if not (TypeProviders `elem` idris_language_extensions i)
-           then fail $ "Failed to define type provider \"" ++ show n ++
-                       "\".\nYou must turn on TypeProviders extension."
-           else do let expected = providerTy fc ty
-                   let using = unProv fc tm
-                   logLvl 1 $ "Providing " ++
-                              show n ++ " : " ++ show expected ++
-                              " as " ++ show using
-                   (e', et) <- elabVal toplevel False using
-                   ctxt <- getContext
-                   let str = show e' in
-                     logLvl 1 $ "Term is " ++ if length str > 200 then (take 200 str) ++ "..." else str
-                   let et' = normaliseAll ctxt [] et
-                   elabType info syn "" fc [] n ty
-                   rhs <- execute e'
-                   logLvl 1 $ "Normalized " ++ show n ++ "'s RHS to " ++ show rhs
-                   providerError rhs
-                   elabClauses info fc [] n [PClause fc n (PRef fc $ n) [] (delab i rhs) []]
-                   logLvl 1 $ "** Elaborated: " ++ show e' ++ " :as: " ++ show et
-                   logLvl 1 $ "** Evaluated: " ++ show rhs ++ " :as: " ++ show et'
+         -- Ensure that the experimental extension is enabled
+         unless (TypeProviders `elem` idris_language_extensions i) $
+           fail $ "Failed to define type provider \"" ++ show n ++
+                  "\".\nYou must turn on the TypeProviders extension."
+
+         ctxt <- getContext
+
+         -- First elaborate the expected type (and check that it's a type)
+         (ty', typ) <- elabVal toplevel False ty
+         unless (isTType typ) $
+           fail ("Expected a type, got " ++ show ty' ++ " : " ++ show typ)
+
+         -- Elaborate the provider term to TT and check that the type matches
+         (e, et) <- elabVal toplevel False tm
+         unless (isProviderOf ty' et) $
+           fail $ "Expected provider type IO (Provider (" ++
+                  show ty' ++ "))" ++ ", got " ++ show et ++ " instead."
+
+         -- Create the top-level type declaration
+         elabType info syn "" fc [] n ty
+
+         -- Execute the type provider and normalise the result
+         rhs <- execute e
+         let rhs' = normalise ctxt [] rhs
+         logLvl 1 $ "Normalised " ++ show n ++ "'s RHS to " ++ show rhs
+
+         -- Extract the provided term from the type provider
+         tm <- getProvided rhs'
+
+         -- Finally add a top-level definition of the provided term
+         elabClauses info fc [] n [PClause fc n (PRef fc n) [] (delab i tm) []]
+         logLvl 1 $ "Elaborated provider " ++ show n ++ " as: " ++ show tm
+
+    where isTType :: TT Name -> Bool
+          isTType (TType _) = True
+          isTType _ = False
+
+          isProviderOf :: TT Name -> TT Name -> Bool
+          isProviderOf tp prov
+            | (P _ (UN "IO") _, [prov']) <- unApply prov
+            , (P _ (NS (UN "Provider") ["Providers"]) _, [tp']) <- unApply prov'
+            , tp == tp' = True
+          isProviderOf _ _ = False
+
 
 elabRecord :: ElabInfo -> SyntaxInfo -> String -> FC -> Name -> 
               PTerm -> String -> Name -> PTerm -> Idris ()
@@ -433,6 +458,7 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
                          else stripCollapsed pats
 
            logLvl 5 $ "Patterns:\n" ++ show pats
+           logLvl 3 $ "SIMPLIFIED: \n" ++ show pdef
 
            let optpdef = map debind $ map (simpl True (tt_ctxt ist)) optpats
            tree@(CaseDef scargs sc _) <- tclift $ 
@@ -443,11 +469,17 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
                       then do missing <- genClauses fc n (map getLHS pdef) cs
                               -- missing <- genMissing n scargs sc  
                               missing' <- filterM (checkPossible info fc True n) missing
+                              let clhs = map getLHS pdef
                               logLvl 2 $ "Must be unreachable:\n" ++ 
                                           showSep "\n" (map (showImp True) missing') ++
                                          "\nAgainst: " ++
                                           showSep "\n" (map (\t -> showImp True (delab ist t)) (map getLHS pdef))
-                              return missing'
+                              -- filter out anything in missing' which is
+                              -- matched by any of clhs. This might happen since
+                              -- unification may force a variable to take a 
+                              -- particular form, rather than force a case
+                              -- to be impossible.
+                              return (filter (noMatch ist clhs) missing')
                       else return []
            let pcover = null pmissing
            logLvl 2 $ "Optimising patterns"
@@ -480,7 +512,8 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
            logLvl 3 $ "Optimised: " ++ show tree'
            ctxt <- getContext
            ist <- getIState
-           putIState (ist { idris_patdefs = addDef n pdef' (idris_patdefs ist) })
+           putIState (ist { idris_patdefs = addDef n (pdef', pmissing) 
+                                                (idris_patdefs ist) })
            case lookupTy n ctxt of
                [ty] -> do updateContext (addCasedef n (inlinable opts)
                                                        tcase knowncovering 
@@ -508,6 +541,10 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
                [] -> return ()
            return ()
   where
+    noMatch i cs tm = all (\x -> case matchClause i (delab' i x True) tm of
+                                      Right _ -> False
+                                      Left miss -> True) cs 
+
     checkUndefined n ctxt = case lookupDef n ctxt of
                                  [] -> return ()
                                  [TyDecl _ _] -> return ()
@@ -574,6 +611,7 @@ checkPossible info fc tcgen fname lhs_in
                   case recheck ctxt [] (forget lhs_tm) lhs_tm of
                        OK _ -> return True
                        _ -> return False
+
 --                   b <- inferredDiff fc (delab' i lhs_tm True) lhs
 --                   return (not b) -- then return (Just lhs_tm) else return Nothing
 --                   trace (show (delab' i lhs_tm True) ++ "\n" ++ show lhs) $ return (not b)
@@ -901,6 +939,9 @@ elabClass info syn doc fc constraints tn ps ds
          -- build instance constructor type
          -- decorate names of functions to ensure they can't be referred
          -- to elsewhere in the class declaration
+         -- TODO: Remove mdec to make it a dependent record, which would
+         -- allow dependent type classes, but building instances will
+         -- then need some attention.
          let cty = impbind ps $ conbind constraints 
                       $ pibind (map (\ (n, ty) -> (mdec n, ty)) methods) 
                                constraint
@@ -910,7 +951,8 @@ elabClass info syn doc fc constraints tn ps ds
          elabData info (syn { no_imp = no_imp syn ++ mnames }) doc fc False ddecl
          -- for each constraint, build a top level function to chase it
          logLvl 5 $ "Building functions"
-         let usyn = syn { using = ps ++ using syn }
+         let usyn = syn { using = map (\ (x,y) -> UImplicit x y) ps 
+                                      ++ using syn }
          fns <- mapM (cfun cn constraint usyn (map fst imethods)) constraints
          mapM_ (elabDecl EAll info) (concat fns)
          -- for each method, build a top level function

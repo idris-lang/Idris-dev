@@ -274,7 +274,7 @@ pfc = do s <- getPosition
 pImport :: IParser String
 pImport = do reserved "import"; f <- identifier; option ';' (lchar ';')
              return (toPath f)
-  where toPath n = foldl1 (</>) $ splitOn "." n
+  where toPath n = foldl1' (</>) $ splitOn "." n
 
 -- | A program is a list of declarations, possibly with associated
 -- documentation strings.
@@ -471,7 +471,7 @@ pPostulate syn = do doc <- option "" (pDocComment '|')
 
 pUsing :: SyntaxInfo -> IParser [PDecl]
 pUsing syn = 
-    do reserved "using"; lchar '('; ns <- tyDeclList syn; lchar ')'
+    do reserved "using"; lchar '('; ns <- usingDeclList syn; lchar ')'
        openBlock
        let uvars = using syn
        ds <- many1 (pDecl (syn { using = uvars ++ ns }))
@@ -1031,6 +1031,19 @@ pConstList syn = try (do lchar '('
                          reservedOp "=>"
                          return [t])
              <|> return []
+
+usingDeclList syn 
+               = try (sepBy1 (usingDecl syn) (lchar ','))
+             <|> do ns <- sepBy1 pName (lchar ',')
+                    t <- pTSig (noImp syn)
+                    return (map (\x -> UImplicit x t) ns)
+
+usingDecl syn = try (do x <- pfName
+                        t <- pTSig (noImp syn)
+                        return (UImplicit x t))
+            <|> do c <- pfName
+                   xs <- many1 pfName
+                   return (UConstraint c xs)
 
 tyDeclList syn = try (sepBy1 (do x <- pfName
                                  t <- pTSig (noImp syn)

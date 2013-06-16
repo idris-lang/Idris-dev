@@ -232,4 +232,4 @@ instance Functor (Tree n k) where
 
 instance Functor (SortedMap k) where
   fmap _ Empty = Empty
-  fmap f (M _ t) = M _ (fmap f t)
+  fmap f (M n t) = M _ (fmap f t)

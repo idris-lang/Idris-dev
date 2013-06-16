@@ -8,6 +8,7 @@ import Core.Evaluate
 import Core.Elaborate hiding (Tactic(..))
 import Core.Typecheck
 import Idris.AbsSyntaxTree
+import Idris.IdeSlave
 import IRTS.CodegenCommon
 import Util.DynamicLinker
 
@@ -222,10 +223,14 @@ addConstraints fc (v, cs)
          let ics = zip cs (repeat fc) ++ idris_constraints i
          putIState $ i { tt_ctxt = ctxt', idris_constraints = ics }
 
-addDeferred :: [(Name, Type)] -> Idris ()
-addDeferred ns = do mapM_ (\(n, t) -> updateContext (addTyDecl n (tidyNames [] t))) ns
-                    i <- getIState
-                    putIState $ i { idris_metavars = map fst ns ++ idris_metavars i }
+addDeferred = addDeferred' Ref
+addDeferredTyCon = addDeferred' (TCon 0 0)
+
+addDeferred' :: NameType -> [(Name, Type)] -> Idris ()
+addDeferred' nt ns 
+  = do mapM_ (\(n, t) -> updateContext (addTyDecl n nt (tidyNames [] t))) ns
+       i <- getIState
+       putIState $ i { idris_metavars = map fst ns ++ idris_metavars i }
   where tidyNames used (Bind (MN i x) b sc)
             = let n' = uniqueName (UN x) used in
                   Bind n' b $ tidyNames (n':used) sc
@@ -238,11 +243,44 @@ solveDeferred :: Name -> Idris ()
 solveDeferred n = do i <- getIState
                      putIState $ i { idris_metavars = idris_metavars i \\ [n] }
 
+iResult :: String -> Idris ()
+iResult s = do i <- getIState
+               case idris_outputmode i of
+                 RawOutput -> case s of
+                                   "" -> return ()
+                                   s  -> liftIO $ putStrLn s
+                 IdeSlave n ->
+                   let good = SexpList [SymbolAtom "ok", toSExp s] in
+                       liftIO $ putStrLn $ convSExp "return" good n
+
+iFail :: String -> Idris ()
+iFail s = do i <- getIState
+             case idris_outputmode i of
+               RawOutput -> case s of
+                                 "" -> return ()
+                                 s  -> liftIO $ putStrLn s
+               IdeSlave n ->
+                 let good = SexpList [SymbolAtom "error", toSExp s] in
+                     liftIO $ putStrLn $ convSExp "return" good n
+
 iputStrLn :: String -> Idris ()
-iputStrLn = liftIO . putStrLn
+iputStrLn s = do i <- getIState
+                 case idris_outputmode i of
+                   RawOutput -> liftIO $ putStrLn s
+                   IdeSlave n ->
+                     case span (/=':') s of
+                       (fn, ':':rest) -> case span isDigit rest of
+                         ([], ':':msg) -> write
+                         ([], msg) -> write
+                         (num, ':':msg) -> iWarn (FC fn (read num)) msg
+                       _  -> write
+                     where write = liftIO $ putStrLn $ convSExp "write-string" s n
 
 iWarn :: FC -> String -> Idris ()
-iWarn fc err = liftIO $ putStrLn (show fc ++ ":" ++ err)
+iWarn fc err = do i <- getIState
+                  case idris_outputmode i of
+                    RawOutput -> liftIO $ putStrLn (show fc ++ ":" ++ err)
+                    IdeSlave n -> liftIO $ putStrLn $ convSExp "warning" (fc_fname fc, fc_line fc, err) n
 
 setLogLevel :: Int -> Idris ()
 setLogLevel l = do i <- getIState
@@ -318,6 +356,11 @@ setOutputTy t = do i <- getIState
 outputTy :: Idris OutputType
 outputTy = do i <- getIState
               return $ opt_outputTy $ idris_options i
+
+setIdeSlave :: Bool -> Idris ()
+setIdeSlave True  = do i <- getIState
+                       putIState $ i { idris_outputmode = (IdeSlave 0) }
+setIdeSlave False = return ()
 
 verbose :: Idris Bool
 verbose = do i <- getIState
@@ -690,6 +733,45 @@ addStatics n tm ptm =
 
 -- Dealing with implicit arguments
 
+-- Add constraint bindings from using block
+
+addUsingConstraints :: SyntaxInfo -> FC -> PTerm -> Idris PTerm
+addUsingConstraints syn fc t 
+   = do ist <- get
+        let ns = namesIn [] ist t
+        let cs = getConstraints t -- check declared constraints
+        let addconsts = uconsts \\ cs
+        -- if all names in the arguments of addconsts appear in ns,
+        -- add the constraint implicitly
+        return (doAdd addconsts ns t)
+   where uconsts = filter uconst (using syn)
+         uconst (UConstraint _ _) = True
+         uconst _ = False
+
+         doAdd [] _ t = t
+         -- if all of args in ns, then add it
+         doAdd (UConstraint c args : cs) ns t
+             | all (\n -> elem n ns) args 
+                   = PPi (Constraint False Dynamic "") (MN 0 "cu")
+                         (mkConst c args) (doAdd cs ns t)
+             | otherwise = doAdd cs ns t
+
+         mkConst c args = PApp fc (PRef fc c) 
+                             (map (\n -> PExp 0 False (PRef fc n) "") args)
+
+         getConstraints (PPi (Constraint _ _ _) _ c sc)
+             = getcapp c ++ getConstraints sc
+         getConstraints (PPi _ _ c sc) = getConstraints sc
+         getConstraints _ = []
+
+         getcapp (PApp _ (PRef _ c) args) 
+             = do ns <- mapM getName args
+                  return (UConstraint c ns)
+         getcapp _ = []
+
+         getName (PExp _ _ (PRef _ n) _) = return n
+         getName _ = []
+
 -- Add implicit Pi bindings for any names in the term which appear in an
 -- argument position.
 
@@ -719,8 +801,12 @@ implicitise syn ignore ist tm
             then (tm, reverse declimps) 
             else implicitise syn ignore ist (pibind uvars ns tm)
   where
-    uvars = using syn
+    uvars = map ipair (filter uimplicit (using syn))
     pvars = syn_params syn
+
+    ipair (UImplicit x y) = (x, y)
+    uimplicit (UImplicit _ _) = True
+    uimplicit _ = False
 
     dropAll (x:xs) ys | x `elem` ys = dropAll xs ys
                       | otherwise   = x : dropAll xs ys

@@ -41,8 +41,6 @@ instance Applicative CGI where
 instance Monad CGI where {
     (>>=) (MkCGI f) k = MkCGI (\s => do v <- f s
                                         getAction (k (fst v)) (snd v))
-
-    return v = MkCGI (\s => return (v, s))
 }
 
 setInfo : CGIInfo -> CGI ()
@@ -121,7 +119,7 @@ abstract
 runCGI : CGI a -> IO a
 runCGI prog = do 
     clen_in <- getEnv "CONTENT_LENGTH"
-    let clen = prim__strToInt clen_in
+    let clen = prim__fromStrInt clen_in
     content <- getContent clen
     query   <- getEnv "QUERY_STRING"
     cookie  <- getEnv "HTTP_COOKIE"

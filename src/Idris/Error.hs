@@ -45,7 +45,7 @@ instance Exception IdrisErr
 ifail :: String -> Idris ()
 ifail str = throwIO (IErr str)
 
-ierror :: Err -> Idris ()
+ierror :: Err -> Idris a
 ierror err = do i <- getIState
                 throwIO (IErr $ pshow i err)
 

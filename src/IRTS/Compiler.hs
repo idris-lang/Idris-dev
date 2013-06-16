@@ -169,6 +169,8 @@ instance ToIR (TT Name) where
           | (P _ (UN "lazy") _, [_, arg]) <- unApply tm
               = do arg' <- ir' env arg
                    return $ LLazyExp arg'
+          | (P _ (UN "assert_smaller") _, [_, _, _, arg]) <- unApply tm
+              = ir' env arg
           | (P _ (UN "par") _, [_, arg]) <- unApply tm
               = do arg' <- ir' env arg
                    return $ LOp LPar [LLazyExp arg']
@@ -229,7 +231,7 @@ instance ToIR (TT Name) where
 --       ir' env (P _ (NS (UN "O") ["Nat", "Prelude"]) _)
 --                         = return $ LConst (BI 0)
       ir' env (P _ n _) = return $ LV (Glob n)
-      ir' env (V i)     | i < length env = return $ LV (Glob (env!!i))
+      ir' env (V i)     | i >= 0 && i < length env = return $ LV (Glob (env!!i))
                         | otherwise = error $ "IR fail " ++ show i ++ " " ++ show tm
       ir' env (Bind n (Lam _) sc)
           = do let n' = uniqueName n env
@@ -284,14 +286,24 @@ getFTypes tm = case unApply tm of
                  _ -> Nothing
 
 mkIty' (P _ (UN ty) _) = mkIty ty
+mkIty' (App (P _ (UN "FIntT") _) (P _ (UN intTy) _)) = mkIntIty intTy
+mkIty' (App (App (P _ (UN "FFunction") _) _) (App (P _ (UN "FAny") _) (App (P _ (UN "IO") _) _))) = FFunctionIO
+mkIty' (App (App (P _ (UN "FFunction") _) _) _) = FFunction
 mkIty' _ = FAny
 
-mkIty "FInt"    = FInt
-mkIty "FFloat"  = FDouble
-mkIty "FChar"   = FChar
-mkIty "FString" = FString
-mkIty "FPtr"    = FPtr
-mkIty "FUnit"   = FUnit
+mkIty "FFloat"      = FDouble
+mkIty "FChar"       = FChar
+mkIty "FString"     = FString
+mkIty "FPtr"        = FPtr
+mkIty "FUnit"       = FUnit
+mkIty "FFunction"   = FFunction
+mkIty "FFunctionIO" = FFunctionIO
+
+mkIntIty "ITNative" = FInt ITNative
+mkIntIty "IT8"  = FInt IT8
+mkIntIty "IT16" = FInt IT16
+mkIntIty "IT32" = FInt IT32
+mkIntIty "IT64" = FInt IT64
 
 zname = NS (UN "O") ["Nat","Prelude"] 
 sname = NS (UN "S") ["Nat","Prelude"] 

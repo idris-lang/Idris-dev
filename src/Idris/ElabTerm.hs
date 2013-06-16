@@ -96,9 +96,10 @@ elab :: IState -> ElabInfo -> Bool -> Bool -> Name -> PTerm ->
         ElabD ()
 elab ist info pattern tcgen fn tm 
     = do elabE (False, False) tm -- (in argument, guarded)
+         end_unify
          when pattern -- convert remaining holes to pattern vars
               (do update_term orderPats
---                   tm <- get_term
+                  tm <- get_term
                   mkPat)
   where
     isph arg = case getTm arg of
@@ -445,6 +446,8 @@ elab ist info pattern tcgen fn tm
                              (caseBlock fc cname' (reverse args) opts)
              -- fail $ "Not implemented " ++ show c ++ "\n" ++ show args
              -- elaborate case
+             env <- get_env
+             g <- goal
              updateAux (newdef : )
              -- if we haven't got the type yet, hopefully we'll get it later!
              movelast tyn
@@ -612,9 +615,11 @@ resolveTC depth fn ist
            if True -- all (\n -> not (n `elem` hs)) (freeNames g)
             then try' (trivial ist)
                 (do t <- goal
-                    let insts = findInstances ist t
                     let (tc, ttypes) = unApply t
                     scopeOnly <- needsDefault t tc ttypes
+                    let insts_in = findInstances ist t
+                    let insts = if scopeOnly then filter chaser insts_in
+                                   else insts_in
                     tm <- get_term
 --                    traceWhen (depth > 6) ("GOAL: " ++ show t ++ "\nTERM: " ++ show tm) $
 --                        (tryAll (map elabTC (map fst (ctxtAlist (tt_ctxt ist)))))
@@ -629,6 +634,12 @@ resolveTC depth fn ist
   where
     elabTC n | n /= fn && tcname n = (resolve n depth, show n)
              | otherwise = (fail "Can't resolve", show n)
+
+    -- HACK! Rather than giving a special name, better to have some kind
+    -- of flag in ClassInfo structure
+    chaser (UN ('@':'@':_)) = True
+    chaser (NS n _) = chaser n
+    chaser _ = False
 
     needsDefault t num@(P _ (NS (UN "Num") ["Builtins"]) _) [P Bound a _]
         = do focus a
