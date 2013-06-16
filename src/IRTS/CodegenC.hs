@@ -354,17 +354,17 @@ doOp v (LTrunc ITBig to) [x] = v ++ "idris_b" ++ show (intTyWidth to) ++ "const(
 doOp v (LTrunc from to) [x]
     | intTyWidth from > intTyWidth to = bitCoerce v "T" from to x
 
-doOp v LFExp [x] = v ++ "MKFLOAT(exp(GETFLOAT(" ++ creg x ++ ")))"
-doOp v LFLog [x] = v ++ "MKFLOAT(log(GETFLOAT(" ++ creg x ++ ")))"
-doOp v LFSin [x] = v ++ "MKFLOAT(sin(GETFLOAT(" ++ creg x ++ ")))"
-doOp v LFCos [x] = v ++ "MKFLOAT(cos(GETFLOAT(" ++ creg x ++ ")))"
-doOp v LFTan [x] = v ++ "MKFLOAT(tan(GETFLOAT(" ++ creg x ++ ")))"
-doOp v LFASin [x] = v ++ "MKFLOAT(asin(GETFLOAT(" ++ creg x ++ ")))"
-doOp v LFACos [x] = v ++ "MKFLOAT(acos(GETFLOAT(" ++ creg x ++ ")))"
-doOp v LFATan [x] = v ++ "MKFLOAT(atan(GETFLOAT(" ++ creg x ++ ")))"
-doOp v LFSqrt [x] = v ++ "MKFLOAT(floor(GETFLOAT(" ++ creg x ++ ")))"
-doOp v LFFloor [x] = v ++ "MKFLOAT(ceil(GETFLOAT(" ++ creg x ++ ")))"
-doOp v LFCeil [x] = v ++ "MKFLOAT(sqrt(GETFLOAT(" ++ creg x ++ ")))"
+doOp v LFExp [x] = v ++ flUnOp "exp" (creg x)
+doOp v LFLog [x] = v ++ flUnOp "log" (creg x)
+doOp v LFSin [x] = v ++ flUnOp "sin" (creg x)
+doOp v LFCos [x] = v ++ flUnOp "cos" (creg x)
+doOp v LFTan [x] = v ++ flUnOp "tan" (creg x)
+doOp v LFASin [x] = v ++ flUnOp "asin" (creg x)
+doOp v LFACos [x] = v ++ flUnOp "acos" (creg x)
+doOp v LFATan [x] = v ++ flUnOp "atan" (creg x)
+doOp v LFSqrt [x] = v ++ flUnOp "sqrt" (creg x)
+doOp v LFFloor [x] = v ++ flUnOp "floor" (creg x)
+doOp v LFCeil [x] = v ++ flUnOp "ceil" (creg x)
 
 doOp v LStrHead [x] = v ++ "idris_strHead(vm, " ++ creg x ++ ")"
 doOp v LStrTail [x] = v ++ "idris_strTail(vm, " ++ creg x ++ ")"
@@ -383,3 +383,6 @@ doOp v (LChInt ITNative) args = v ++ creg (last args)
 doOp v (LIntCh ITNative) args = v ++ creg (last args)
 doOp v LNoOp args = v ++ creg (last args)
 doOp _ op _ = "FAIL /* " ++ show op ++ " */"
+
+flUnOp :: String -> String -> String
+flUnOp name val = "MKFLOAT(vm, " ++ name ++ "(GETFLOAT(" ++ val ++ ")))"
