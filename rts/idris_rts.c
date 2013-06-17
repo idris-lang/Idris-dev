@@ -333,7 +333,7 @@ void* idris_mmap(void* hnd, i_int can_write, i_int length) {
 	return NULL;
     }
     int prot = (can_write ? PROT_READ|PROT_WRITE : PROT_READ);
-    void* result = mmap(NULL, length, prot, MAP_PRIVATE, file_handle, 0);
+    void* result = mmap(NULL, length, prot, MAP_SHARED, file_handle, 0);
     if (result == MAP_FAILED) {
 	return NULL;
     }

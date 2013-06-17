@@ -1,12 +1,9 @@
 module Decidable.Order
 
-%access public
-
-{-
-Doesn't work yet, see note in Decidable.idr
-
 import Decidable.Decidable
 import Decidable.Equality
+
+%access public
 
 --------------------------------------------------------------------------------
 -- Utility Lemmas
@@ -59,29 +56,45 @@ total zeroNeverGreater : {n : Nat} -> NatLTE (S n) O -> _|_
 zeroNeverGreater {n} (nLTESm _) impossible
 zeroNeverGreater {n}  nEqn      impossible
 
+total zeroAlwaysSmaler : (n : Nat) -> NatLTE O n
+zeroAlwaysSmaler    O  = nEqn
+zeroAlwaysSmaler (S n) = nLTESm (zeroAlwaysSmaler n)
+
 total
 nGTSm : {n : Nat} -> {m : Nat} -> (NatLTE n m -> _|_) -> NatLTE n (S m) -> _|_
 nGTSm         disprf (nLTESm nLTEm) = FalseElim (disprf nLTEm)
 nGTSm {n} {m} disprf (nEqn) impossible
 
 total
-decideNatLTE : (n : Nat) -> (m : Nat) -> Dec (NatLTE n m)
-decideNatLTE    O      O  = Yes nEqn
-decideNatLTE (S x)     O  = No  zeroNeverGreater
-decideNatLTE    x   (S y) with (decEq x (S y))
-  | Yes eq      = rewrite eq in Yes nEqn
-  | No _ with (decideNatLTE x y)
-    | Yes nLTEm = Yes (nLTESm nLTEm)
-    | No  nGTm  = No (nGTSm nGTm)
+shiftNatLTE : {n : Nat} -> {m : Nat} -> NatLTE n m -> NatLTE (S n) (S m)
+shiftNatLTE nEqn = nEqn
+shiftNatLTE (nLTESm nLTEpm) = nLTESm (shiftNatLTE nLTEpm)
 
-instance Rel NatLTE where
-  liftRel P = (n : Nat) -> (m : Nat) -> P (NatLTE n m)
+total
+natLTE : (n : Nat) -> (m : Nat) -> Dec (NatLTE n m)
+natLTE    O      O  = Yes nEqn
+natLTE (S x)     O  = No  zeroNeverGreater
+natLTE    O   (S y) = Yes (zeroAlwaysSmaler (S y))
+natLTE (S x)  (S y) with (natLTE x y)
+  | Yes prf   = Yes (shiftNatLTE prf)
+  | No disprf = No  (\ sxLTESy => nGTSm disprf (NatLTEIsTransitive x (S x) (S y) (nLTESm nEqn) sxLTESy))
 
-instance Decidable NatLTE where
-  decide = decideNatLTE
+total 
+natLTECompleteness : {n : Nat} -> {m : Nat} -> NatLTE n m -> Given (natLTE n m)
+natLTECompleteness {n} {m} nlte with (natLTE n m)
+  | Yes prf    = always
+  | No  disprf = FalseElim $ disprf nlte
 
-lte : (m : Nat) -> (n : Nat) -> Dec (NatLTE m n)
-lte m n = decide {p = NatLTE} m n
+total
+natLTESoundness : {n : Nat} -> {m : Nat} -> (NatLTE n m -> _|_) -> Given (natLTE n m) -> _|_
+natLTESoundness disprf always impossible
 
--}
+onNatLTE : PredicateFunctor
+onNatLTE p = (n : Nat) -> (m : Nat) -> p (NatLTE n m)
+
+instance Decidable onNatLTE where
+  decide = natLTE
+
+--lte : (m : Nat) -> (n : Nat) -> Dec (NatLTE m n)
+--lte m n = decide {p = NatLTE} m n
 

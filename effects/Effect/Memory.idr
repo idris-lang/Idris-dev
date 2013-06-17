@@ -24,27 +24,27 @@ data RawMemory : Effect where
      Initialize : AllowsWrite mode =>
                   Bits8 ->
                   (size : Nat) ->
-                  Given (lte (i + size) n) ->
+                  Given (natLTE (i + size) n) ->
                   RawMemory (MemoryChunk t mode n i) (MemoryChunk t mode n (i + size)) ()
      Peek       : AllowsRead mode =>
                   (offset : Nat) ->
                   (size : Nat) ->
-                  Given (lte (offset + size) i) ->
+                  Given (natLTE (offset + size) i) ->
                   RawMemory (MemoryChunk t mode n i) (MemoryChunk t mode n i) (Vect Bits8 size)
      Poke       : AllowsWrite mode =>
                   (offset : Nat) ->
                   (Vect Bits8 size) ->
-                  Given (lte offset i) ->
-                  Given (lte (offset + size) n) ->
+                  Given (natLTE offset i) ->
+                  Given (natLTE (offset + size) n) ->
                   RawMemory (MemoryChunk t mode n i) (MemoryChunk t mode n (max i (offset + size))) ()
      Move       : (AllowsWrite mode, AllowsRead mode') =>
                   (src : MemoryChunk t' mode' src_size src_init) ->
                   (dst_offset : Nat) ->
                   (src_offset : Nat) ->
                   (size : Nat) ->
-                  Given (lte dst_offset dst_init) ->
-                  Given (lte (dst_offset + size) dst_size) ->
-                  Given (lte (src_offset + size) src_init) ->
+                  Given (natLTE dst_offset dst_init) ->
+                  Given (natLTE (dst_offset + size) dst_size) ->
+                  Given (natLTE (src_offset + size) src_init) ->
                   RawMemory (MemoryChunk t mode dst_size dst_init)
                             (MemoryChunk t mode dst_size (max dst_init (dst_offset + size))) ()
      GetRawPtr  : RawMemory (MemoryChunk t mode n i) (MemoryChunk t mode n i) (MemoryChunk t mode n i)
@@ -62,7 +62,7 @@ private
 do_mmap : File -> Mode -> Nat -> IOExcept String Ptr
 do_mmap (FHandle ptr) mode size with (fromInteger (cast size) == size)
   | True  = do res  <- ioe_lift $ mkForeign (FFun "idris_mmap" [FPtr, FInt, FInt] FPtr)
-                                            ptr (case mode of Read => 1; _ => 0) (cast size)
+                                            ptr (case mode of Read => 0; _ => 1) (cast size)
                fail <- ioe_lift $ nullPtr ptr
                if fail then ioe_fail "Cannot map file"
                else return res             
@@ -157,7 +157,7 @@ initialize : (Handler RawMemory m, AllowsWrite mode) =>
              {n : Nat} ->
              Bits8 ->
              (size : Nat) ->
-             Given (lte (i + size) n) ->
+             Given (natLTE (i + size) n) ->
              EffM m [RAW_MEMORY (MemoryChunk t mode n i)]
                     [RAW_MEMORY (MemoryChunk t mode n (i + size))] ()
 initialize c size prf = Initialize c size prf
@@ -170,7 +170,7 @@ peek : (Handler RawMemory m, AllowsRead mode) =>
        {i : Nat} ->
        (offset : Nat) ->
        (size : Nat) ->
-       Given (lte (offset + size) i) ->
+       Given (natLTE (offset + size) i) ->
        Eff m [RAW_MEMORY (MemoryChunk t mode n i)] (Vect Bits8 size)
 peek offset size prf = Peek offset size prf
 
@@ -179,11 +179,11 @@ poke : (Handler RawMemory m, AllowsWrite mode) =>
        {i : Nat} ->
        (offset : Nat) ->
        Vect Bits8 size ->
-       Given (lte offset i) ->
-       Given (lte (offset + size) n) ->
+       Given (natLTE offset i) ->
+       Given (natLTE (offset + size) n) ->
        EffM m [RAW_MEMORY (MemoryChunk t mode n i)]
               [RAW_MEMORY (MemoryChunk t mode n (max i (offset + size)))] ()
-poke offset content prf prf_init = Poke offset content prf prf_init
+poke offset content prf_init prf = Poke offset content prf_init prf
 
 private
 getRawPtr : (Handler RawMemory m) =>
@@ -199,9 +199,9 @@ move' : (Handler RawMemory m, AllowsWrite mode, AllowsRead mode') =>
         (dst_offset : Nat) ->
         (src_offset : Nat) ->
         (size : Nat) ->
-        Given (lte dst_offset dst_init) ->
-        Given (lte (dst_offset + size) dst_size) ->
-        Given (lte (src_offset + size) src_init) ->
+        Given (natLTE dst_offset dst_init) ->
+        Given (natLTE (dst_offset + size) dst_size) ->
+        Given (natLTE (src_offset + size) src_init) ->
         EffM m [RAW_MEMORY (MemoryChunk t mode dst_size dst_init)]
                [RAW_MEMORY (MemoryChunk t mode dst_size (max dst_init (dst_offset + size)))] ()
 move' src_ptr dst_offset src_offset size dst_bounds_init dst_bounds src_bounds
@@ -217,9 +217,9 @@ move : (Handler RawMemory m, AllowsWrite mode, AllowsRead mode') =>
        (dst_offset : Nat) ->
        (src_offset : Nat) ->
        (size : Nat) ->
-       Given (lte dst_offset dst_init) ->
-       Given (lte (dst_offset + size) dst_size) ->
-       Given (lte (src_offset + size) src_init) ->
+       Given (natLTE dst_offset dst_init) ->
+       Given (natLTE (dst_offset + size) dst_size) ->
+       Given (natLTE (src_offset + size) src_init) ->
        EffM m [ Dst ::: RAW_MEMORY (MemoryChunk t mode dst_size dst_init)
               , Src ::: RAW_MEMORY (MemoryChunk t' mode' src_size src_init)]
               [ Dst ::: RAW_MEMORY (MemoryChunk t mode dst_size (max dst_init (dst_offset + size)))

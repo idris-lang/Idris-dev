@@ -255,7 +255,7 @@ public class ForeignPrimitives {
 	    return null;
 	}
 	FileChannel fileChannel = (FileChannel)channel;
-	MapMode mode = (can_write != 0 ? MapMode.PRIVATE : MapMode.READ_ONLY);
+	MapMode mode = (can_write != 0 ? MapMode.READ_WRITE : MapMode.READ_ONLY);
 	try {
 	    return fileChannel.map(mode, 0, length);
 	} catch (Exception e) {
