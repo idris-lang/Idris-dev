@@ -42,7 +42,8 @@ data PrimFn = LPlus ArithTy | LMinus ArithTy | LTimes ArithTy
             | LFExp | LFLog | LFSin | LFCos | LFTan | LFASin | LFACos | LFATan
             | LFSqrt | LFFloor | LFCeil
 
-            | LMkVec NativeTy Int
+           -- construction          element extraction     element insertion
+            | LMkVec NativeTy Int | LIdxVec NativeTy Int | LUpdateVec NativeTy Int
 
             | LStrHead | LStrTail | LStrCons | LStrIndex | LStrRev
             | LStdIn | LStdOut | LStdErr
