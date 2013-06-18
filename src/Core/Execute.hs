@@ -3,9 +3,7 @@ module Core.Execute (execute) where
 
 import Idris.AbsSyntax
 import Idris.AbsSyntaxTree
-import IRTS.Lang( IntTy(..)
-                , intTyToConst
-                , FType(..))
+import IRTS.Lang(FType(..))
 
 import Idris.Primitives(Prim(..), primitives)
 
@@ -387,8 +385,7 @@ chooseAlt _ [] = Nothing
 idrisType :: FType -> ExecVal
 idrisType FUnit = EP Ref unitTy EErased
 idrisType ft = EConstant (idr ft)
-    where idr (FInt ty) = intTyToConst ty
-          idr FDouble = FlType
+    where idr (FArith ty) = AType ty
           idr FChar = ChType
           idr FString = StrType
           idr FPtr = PtrType
@@ -404,18 +401,24 @@ call (FFun name argTypes retType) args =
          Just f -> do res <- call' f args retType
                       return . Just . ioWrap $ res
     where call' :: ForeignFun -> [ExecVal] -> FType -> Exec ExecVal
-          call' (Fun _ h) args (FInt ITNative) = do res <- execIO $ callFFI h retCInt (prepArgs args)
-                                                    return (EConstant (I (fromIntegral res)))
-          call' (Fun _ h) args (FInt IT8) = do res <- execIO $ callFFI h retCChar (prepArgs args)
-                                               return (EConstant (B8 (fromIntegral res)))
-          call' (Fun _ h) args (FInt IT16) = do res <- execIO $ callFFI h retCWchar (prepArgs args)
-                                                return (EConstant (B16 (fromIntegral res)))
-          call' (Fun _ h) args (FInt IT32) = do res <- execIO $ callFFI h retCInt (prepArgs args)
-                                                return (EConstant (B32 (fromIntegral res)))
-          call' (Fun _ h) args (FInt IT64) = do res <- execIO $ callFFI h retCLong (prepArgs args)
-                                                return (EConstant (B64 (fromIntegral res)))
-          call' (Fun _ h) args FDouble = do res <- execIO $ callFFI h retCDouble (prepArgs args)
-                                            return (EConstant (Fl (realToFrac res)))
+          call' (Fun _ h) args (FArith (ATInt ITNative)) = do
+            res <- execIO $ callFFI h retCInt (prepArgs args)
+            return (EConstant (I (fromIntegral res)))
+          call' (Fun _ h) args (FArith (ATInt (ITFixed IT8))) = do
+            res <- execIO $ callFFI h retCChar (prepArgs args)
+            return (EConstant (B8 (fromIntegral res)))
+          call' (Fun _ h) args (FArith (ATInt (ITFixed IT16))) = do
+            res <- execIO $ callFFI h retCWchar (prepArgs args)
+            return (EConstant (B16 (fromIntegral res)))
+          call' (Fun _ h) args (FArith (ATInt (ITFixed IT32))) = do
+            res <- execIO $ callFFI h retCInt (prepArgs args)
+            return (EConstant (B32 (fromIntegral res)))
+          call' (Fun _ h) args (FArith (ATInt (ITFixed IT64))) = do
+            res <- execIO $ callFFI h retCLong (prepArgs args)
+            return (EConstant (B64 (fromIntegral res)))
+          call' (Fun _ h) args (FArith ATFloat) = do
+            res <- execIO $ callFFI h retCDouble (prepArgs args)
+            return (EConstant (Fl (realToFrac res)))
           call' (Fun _ h) args FChar = do res <- execIO $ callFFI h retCChar (prepArgs args)
                                           return (EConstant (Ch (castCCharToChar res)))
           call' (Fun _ h) args FString = do res <- execIO $ callFFI h retCString (prepArgs args)
@@ -456,15 +459,15 @@ foreignFromTT t = case (unApplyV t) of
 getFTy :: ExecVal -> Maybe FType
 getFTy (EApp (EP _ (UN "FIntT") _) (EP _ (UN intTy) _)) =
     case intTy of
-      "ITNative" -> Just $ FInt ITNative
-      "IT8" -> Just $ FInt IT8
-      "IT16" -> Just $ FInt IT16
-      "IT32" -> Just $ FInt IT32
-      "IT64" -> Just $ FInt IT64
+      "ITNative" -> Just (FArith (ATInt ITNative))
+      "IT8" -> Just (FArith (ATInt (ITFixed IT8)))
+      "IT16" -> Just (FArith (ATInt (ITFixed IT16)))
+      "IT32" -> Just (FArith (ATInt (ITFixed IT32)))
+      "IT64" -> Just (FArith (ATInt (ITFixed IT64)))
       _ -> Nothing
 getFTy (EP _ (UN t) _) =
     case t of
-      "FFloat"  -> Just FDouble
+      "FFloat"  -> Just (FArith ATFloat)
       "FChar"   -> Just FChar
       "FString" -> Just FString
       "FPtr"    -> Just FPtr

@@ -1139,16 +1139,16 @@ pIdiom syn
          return (PIdiom fc e)
 
 pConstant :: IParser Const
-pConstant = do reserved "Integer";return BIType
-        <|> do reserved "Int";    return IType
+pConstant = do reserved "Integer";return (AType (ATInt ITBig))
+        <|> do reserved "Int";    return (AType (ATInt ITNative))
         <|> do reserved "Char";   return ChType
-        <|> do reserved "Float";  return FlType
+        <|> do reserved "Float";  return (AType ATFloat)
         <|> do reserved "String"; return StrType
         <|> do reserved "Ptr";    return PtrType
-        <|> do reserved "Bits8";  return B8Type
-        <|> do reserved "Bits16"; return B16Type
-        <|> do reserved "Bits32"; return B32Type
-        <|> do reserved "Bits64"; return B64Type
+        <|> do reserved "Bits8";  return (AType (ATInt (ITFixed IT8)))
+        <|> do reserved "Bits16"; return (AType (ATInt (ITFixed IT16)))
+        <|> do reserved "Bits32"; return (AType (ATInt (ITFixed IT32)))
+        <|> do reserved "Bits64"; return (AType (ATInt (ITFixed IT64)))
         <|> try (do f <- float;   return $ Fl f)
         <|> try (do i <- natural; return $ BI i)
         <|> try (do s <- strlit;  return $ Str s)

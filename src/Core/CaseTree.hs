@@ -228,17 +228,18 @@ toPat tc tms = evalState (mapM (\x -> toPat' x []) tms) []
     toPat' (P (TCon t a) n _) args | tc 
                                    = do args' <- mapM (\x -> toPat' x []) args
                                         return $ PCon n t args'
-    toPat' (Constant IType)   [] | tc = return $ PCon (UN "Int")    1 [] 
-    toPat' (Constant FlType)  [] | tc = return $ PCon (UN "Float")  2 [] 
+    toPat' (Constant (AType (ATInt ITNative))) []
+        | tc = return $ PCon (UN "Int")    1 [] 
+    toPat' (Constant (AType ATFloat))  [] | tc = return $ PCon (UN "Float")  2 [] 
     toPat' (Constant ChType)  [] | tc = return $ PCon (UN "Char")   3 [] 
     toPat' (Constant StrType) [] | tc = return $ PCon (UN "String") 4 [] 
     toPat' (Constant PtrType) [] | tc = return $ PCon (UN "Ptr")    5 [] 
-    toPat' (Constant BIType)  [] | tc = return $ PCon (UN "Integer") 6 []
-    toPat' (Constant B8Type)  [] | tc = return $ PCon (UN "Bits8")  7 []
-    toPat' (Constant B16Type) [] | tc = return $ PCon (UN "Bits16") 8 []
-    toPat' (Constant B32Type) [] | tc = return $ PCon (UN "Bits32") 9 []
-    toPat' (Constant B64Type) [] | tc = return $ PCon (UN "Bits64") 10 []
-
+    toPat' (Constant (AType (ATInt ITBig))) []
+        | tc = return $ PCon (UN "Integer") 6 []
+    toPat' (Constant (AType (ATInt (ITFixed n)))) []
+        | tc = return $ PCon (UN (fixedN n)) (7 + fromEnum n) [] -- 7-10 inclusive
+    toPat' (Constant (AType (ATInt (ITVec ity count)))) []
+        | tc = return $ PCon (UN (fixedN ity)) ((fromEnum ity + 1) * 1000 + count) [] -- 1000-5000 inclusive
     toPat' (P Bound n _)      []   = do ns <- get
                                         if n `elem` ns 
                                           then return PAny 
@@ -247,6 +248,11 @@ toPat tc tms = evalState (mapM (\x -> toPat' x []) tms) []
     toPat' (App f a)  args = toPat' f (a : args)
     toPat' (Constant x) [] = return $ PConst x 
     toPat' _            _  = return PAny
+
+    fixedN IT8 = "Bits8"
+    fixedN IT16 = "Bits16"
+    fixedN IT32 = "Bits32"
+    fixedN IT64 = "Bits64"
 
 
 data Partition = Cons [Clause]

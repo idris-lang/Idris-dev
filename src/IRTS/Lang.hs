@@ -3,7 +3,6 @@ module IRTS.Lang where
 import Core.TT
 import Control.Monad.State hiding(lift)
 import Data.List
-import Foreign.Storable (sizeOf)
 import Debug.Trace
 
 data LVar = Loc Int | Glob Name
@@ -29,33 +28,12 @@ data LExp = LV LVar
 -- Primitive operators. Backends are not *required* to implement all
 -- of these, but should report an error if they are unable
 
-data IntTy = ITNative | IT8 | IT16 | IT32 | IT64 | ITBig
-  deriving (Show, Eq)
-
-intTyWidth :: IntTy -> Int
-intTyWidth IT8 = 8
-intTyWidth IT16 = 16
-intTyWidth IT32 = 32
-intTyWidth IT64 = 64
-intTyWidth ITNative = 8 * sizeOf (0 :: Int)
-intTyWidth ITBig = error "IRTS.Lang.intTyWidth: Big integers have variable width"
-
-intTyToConst :: IntTy -> Const
-intTyToConst IT8 = B8Type
-intTyToConst IT16 = B16Type
-intTyToConst IT32 = B32Type
-intTyToConst IT64 = B64Type
-intTyToConst ITBig = BIType
-intTyToConst ITNative = IType
-
-data PrimFn = LPlus IntTy | LMinus IntTy | LTimes IntTy
-            | LUDiv IntTy | LSDiv IntTy | LURem IntTy | LSRem IntTy
+data PrimFn = LPlus ArithTy | LMinus ArithTy | LTimes ArithTy
+            | LUDiv IntTy | LSDiv ArithTy | LURem IntTy | LSRem ArithTy
             | LAnd IntTy | LOr IntTy | LXOr IntTy | LCompl IntTy
             | LSHL IntTy | LLSHR IntTy | LASHR IntTy
-            | LEq IntTy | LLt IntTy | LLe IntTy | LGt IntTy | LGe IntTy
+            | LEq ArithTy | LLt ArithTy | LLe ArithTy | LGt ArithTy | LGe ArithTy
             | LSExt IntTy IntTy | LZExt IntTy IntTy | LTrunc IntTy IntTy
-            | LFPlus | LFMinus | LFTimes | LFDiv 
-            | LFEq | LFLt | LFLe | LFGt | LFGe
             | LStrConcat | LStrLt | LStrEq | LStrLen
             | LIntFloat IntTy | LFloatInt IntTy | LIntStr IntTy | LStrInt IntTy
             | LFloatStr | LStrFloat | LChInt IntTy | LIntCh IntTy
@@ -63,6 +41,8 @@ data PrimFn = LPlus IntTy | LMinus IntTy | LTimes IntTy
 
             | LFExp | LFLog | LFSin | LFCos | LFTan | LFASin | LFACos | LFATan
             | LFSqrt | LFFloor | LFCeil
+
+            | LMkVec NativeTy Int
 
             | LStrHead | LStrTail | LStrCons | LStrIndex | LStrRev
             | LStdIn | LStdOut | LStdErr
@@ -79,14 +59,13 @@ data PrimFn = LPlus IntTy | LMinus IntTy | LTimes IntTy
 data FLang = LANG_C
   deriving (Show, Eq)
 
-data FType = FInt IntTy
+data FType = FArith ArithTy
            | FFunction
            | FFunctionIO
            | FChar
            | FString
            | FUnit
            | FPtr
-           | FDouble
            | FAny
   deriving (Show, Eq)
 

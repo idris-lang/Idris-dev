@@ -364,7 +364,7 @@ instance Binary Name where
                    3 -> return NErased
                    _ -> error "Corrupted binary data for Name"
 
- 
+
 instance Binary Const where
         put x
           = case x of
@@ -383,17 +383,18 @@ instance Binary Const where
                 B32 x1 -> putWord8 7 >> put x1
                 B64 x1 -> putWord8 8 >> put x1
 
-                IType -> putWord8 9
-                BIType -> putWord8 10
-                FlType -> putWord8 11
+                (AType (ATInt ITNative)) -> putWord8 9
+                (AType (ATInt ITBig)) -> putWord8 10
+                (AType ATFloat) -> putWord8 11
                 ChType -> putWord8 12
                 StrType -> putWord8 13
                 PtrType -> putWord8 14
                 Forgot -> putWord8 15
-                B8Type  -> putWord8 16
-                B16Type -> putWord8 17
-                B32Type -> putWord8 18
-                B64Type -> putWord8 19
+                (AType (ATInt (ITFixed ity))) -> put (16 + fromEnum ity) -- 16-19 inclusive
+                (AType (ATInt (ITVec ity count))) -> do
+                        putWord8 20
+                        putWord8 (fromIntegral . fromEnum $ ity)
+                        putWord8 (fromIntegral count)
         get
           = do i <- getWord8
                case i of
@@ -412,18 +413,23 @@ instance Binary Const where
                    7 -> fmap B32 get
                    8 -> fmap B64 get
 
-                   9 -> return IType
-                   10 -> return BIType
-                   11 -> return FlType
+                   9 -> return (AType (ATInt ITNative))
+                   10 -> return (AType (ATInt ITBig))
+                   11 -> return (AType ATFloat)
                    12 -> return ChType
                    13 -> return StrType
                    14 -> return PtrType
                    15 -> return Forgot
 
-                   16 -> return B8Type
-                   17 -> return B16Type
-                   18 -> return B32Type
-                   19 -> return B64Type
+                   16 -> return (AType (ATInt (ITFixed IT8)))
+                   17 -> return (AType (ATInt (ITFixed IT16)))
+                   18 -> return (AType (ATInt (ITFixed IT32)))
+                   19 -> return (AType (ATInt (ITFixed IT64)))
+
+                   20 -> do
+                        e <- getWord8
+                        c <- getWord8
+                        return (AType (ATInt (ITVec (toEnum . fromIntegral $ e) (fromIntegral c))))
 
                    _ -> error "Corrupted binary data for Const"
 

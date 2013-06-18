@@ -472,17 +472,17 @@ longType :: ClassType
 longType = ClassType [(Ident "Long", [])]
 
 nextIntTy :: IntTy -> IntTy
-nextIntTy IT8 = IT16
-nextIntTy IT16 = IT32
-nextIntTy IT32 = IT64
-nextIntTy IT64 = IT64
-nextIntTy ITNative = IT64
+nextIntTy (ITFixed IT8) = (ITFixed IT16)
+nextIntTy (ITFixed IT16) = (ITFixed IT32)
+nextIntTy (ITFixed IT32) = (ITFixed IT64)
+nextIntTy (ITFixed IT64) = (ITFixed IT64)
+nextIntTy ITNative = (ITFixed IT64)
 
 intTyToIdent :: IntTy -> Ident
-intTyToIdent IT8  = Ident "Byte"
-intTyToIdent IT16 = Ident "Short"
-intTyToIdent IT32 = Ident "Integer"
-intTyToIdent IT64 = Ident "Long"
+intTyToIdent (ITFixed IT8)  = Ident "Byte"
+intTyToIdent (ITFixed IT16) = Ident "Short"
+intTyToIdent (ITFixed IT32) = Ident "Integer"
+intTyToIdent (ITFixed IT64) = Ident "Long"
 intTyToIdent ITNative = Ident "Integer"
 intTyToIdent ITBig = Ident "BigInteger"
 
@@ -490,17 +490,17 @@ intTyToClass :: IntTy -> ClassType
 intTyToClass ty = ClassType [(intTyToIdent ty, [])]
 
 intTyToMethod :: IntTy -> String
-intTyToMethod IT8  = "byteValue"
-intTyToMethod IT16 = "shortValue"
-intTyToMethod IT32 = "intValue"
-intTyToMethod IT64 = "longValue"
+intTyToMethod (ITFixed IT8)  = "byteValue"
+intTyToMethod (ITFixed IT16) = "shortValue"
+intTyToMethod (ITFixed IT32) = "intValue"
+intTyToMethod (ITFixed IT64) = "longValue"
 intTyToMethod ITNative = "intValue"
 
 intTyToPrimTy :: IntTy -> PrimType
-intTyToPrimTy IT8  = ByteT
-intTyToPrimTy IT16 = ShortT
-intTyToPrimTy IT32 = IntT
-intTyToPrimTy IT64 = LongT
+intTyToPrimTy (ITFixed IT8)  = ByteT
+intTyToPrimTy (ITFixed IT16) = ShortT
+intTyToPrimTy (ITFixed IT32) = IntT
+intTyToPrimTy (ITFixed IT64) = LongT
 intTyToPrimTy ITNative = IntT
 
 bigIntegerType :: ClassType
@@ -995,24 +995,24 @@ mkStringAtIndex var indexExp =
   <$> mkVarAccess (Just stringType) var
 
 mkForeignType :: FType -> Maybe ClassType
-mkForeignType (FInt ty) = return (intTyToClass ty)
+mkForeignType (FArith (ATInt ity)) = return (intTyToClass ity)
+mkForeignType (FArith ATFloat) = return doubleType
 mkForeignType FChar = return integerType
 mkForeignType FString = return stringType
 mkForeignType FPtr = return objectType
-mkForeignType FDouble = return doubleType
 mkForeignType FAny = return objectType
 mkForeignType FUnit = Nothing
 
 mkForeignVarAccess :: FType -> LVar -> CodeGeneration Exp
-mkForeignVarAccess (FInt ty) var = 
+mkForeignVarAccess (FArith (ATInt ty)) var = 
   (\ var -> MethodInv $ PrimaryMethodCall var
                                           []
                                           (Ident (intTyToMethod ty))
                                           []
   )
   <$> mkVarAccess (Just $ intTyToClass ty) var
-mkForeignVarAccess FChar var = Cast (PrimType CharT) <$> mkForeignVarAccess (FInt IT32) var
-mkForeignVarAccess FDouble var = 
+mkForeignVarAccess FChar var = Cast (PrimType CharT) <$> mkForeignVarAccess (FArith (ATInt (ITFixed IT32))) var
+mkForeignVarAccess (FArith ATFloat) var = 
   (\ var -> MethodInv $ PrimaryMethodCall (var)
                                           []
                                           (Ident "doubleValue")
@@ -1022,13 +1022,13 @@ mkForeignVarAccess FDouble var =
 mkForeignVarAccess otherType var = mkVarAccess (mkForeignType otherType) var 
  
 mkFromForeignType :: FType -> Exp -> Exp
-mkFromForeignType (FInt ty) from = 
+mkFromForeignType (FArith (ATInt ty)) from = 
   MethodInv $ TypeMethodCall (J.Name [intTyToIdent ty])
                              []
                              (Ident "valueOf")
                              [from]
-mkFromForeignType FChar from = mkFromForeignType (FInt IT32) from
-mkFromForeignType FDouble from =   
+mkFromForeignType FChar from = mkFromForeignType (FArith (ATInt (ITFixed IT32))) from
+mkFromForeignType (FArith ATFloat) from =   
   MethodInv $ TypeMethodCall (J.Name [Ident "Double"])
                              []
                              (Ident "valueOf")
@@ -1269,78 +1269,78 @@ mkExp (SConst (BI x)) =
 mkExp (SConst (Fl x)) = return $ mkPrimitive "Double" (Double x)
 mkExp (SConst (Ch x)) = return $ mkPrimitive "Integer" (Char x)
 mkExp (SConst (Str x)) = return $ Lit $ String x
-mkExp (SConst IType) = return $ mkClass integerType
-mkExp (SConst BIType) = return $ mkClass bigIntegerType
-mkExp (SConst FlType) = return $ mkClass doubleType
+mkExp (SConst (AType (ATInt ITNative))) = return $ mkClass integerType
+mkExp (SConst (AType (ATInt ITBig))) = return $ mkClass bigIntegerType
+mkExp (SConst (AType ATFloat)) = return $ mkClass doubleType
 mkExp (SConst ChType) = return $ mkClass charType
 mkExp (SConst StrType) = return $ mkClass stringType
 mkExp (SConst (B8 x)) = return $ mkPrimitive "Byte" (String (show x))
 mkExp (SConst (B16 x)) = return $ mkPrimitive "Short" (String (show x))
 mkExp (SConst (B32 x)) = return $ mkPrimitive "Integer" (Int (toInteger x))
 mkExp (SConst (B64 x)) = return $ mkPrimitive "Long" (String (show x))
-mkExp (SConst (B8Type))= return $ mkClass byteType
-mkExp (SConst (B16Type)) = return $ mkClass shortType
-mkExp (SConst (B32Type)) = return $ mkClass integerType
-mkExp (SConst (B64Type)) = return $ mkClass longType
+mkExp (SConst (AType (ATInt (ITFixed IT8)))) = return $ mkClass byteType
+mkExp (SConst (AType (ATInt (ITFixed IT16)))) = return $ mkClass shortType
+mkExp (SConst (AType (ATInt (ITFixed IT32)))) = return $ mkClass integerType
+mkExp (SConst (AType (ATInt (ITFixed IT64)))) = return $ mkClass longType
 mkExp (SConst (PtrType)) = return $ mkClass objectType
 mkExp (SConst (VoidType)) = return $ mkClass voidType
 mkExp (SConst (Forgot)) = return $ mkClass objectType
 mkExp (SForeign _ fType meth args) = mkForeignInvoke fType meth args
-mkExp (SOp (LPlus ITNative) args) = mkExp (SOp (LPlus IT32) args)
-mkExp (SOp (LMinus ITNative) args) = mkExp (SOp (LMinus IT32) args)
-mkExp (SOp (LTimes ITNative) args) = mkExp (SOp (LTimes IT32) args)
-mkExp (SOp (LSDiv ITNative) args) = mkExp (SOp (LSDiv IT32) args)
-mkExp (SOp (LSRem ITNative) args) = mkExp (SOp (LSRem IT32) args)
-mkExp (SOp (LAnd ITNative) args) = mkExp (SOp (LAnd IT32) args)
-mkExp (SOp (LOr ITNative) args) = mkExp (SOp (LOr IT32) args)
-mkExp (SOp (LXOr ITNative) args) = mkExp (SOp (LXOr IT32) args)
-mkExp (SOp (LCompl ITNative) args) = mkExp (SOp (LCompl IT32) args)
-mkExp (SOp (LSHL ITNative) args) = mkExp (SOp (LSHL IT32) args)
-mkExp (SOp (LASHR ITNative) args) = mkExp (SOp (LASHR IT32) args)
-mkExp (SOp (LEq ITNative) args) = mkExp (SOp (LEq IT32) args)
-mkExp (SOp (LLt ITNative) args) = mkExp (SOp (LLt IT32) args)
-mkExp (SOp (LLe ITNative) args) = mkExp (SOp (LLe IT32) args)
-mkExp (SOp (LGt ITNative) args) = mkExp (SOp (LGt IT32) args)
-mkExp (SOp (LGe ITNative) args) = mkExp (SOp (LGe IT32) args)
-mkExp (SOp LFPlus args) = mkBinOpExp doubleType Add args
-mkExp (SOp LFMinus args) = mkBinOpExp doubleType Sub args
-mkExp (SOp LFTimes args) = mkBinOpExp doubleType Mult args
-mkExp (SOp LFDiv args) = mkBinOpExp doubleType Div args
-mkExp (SOp LFEq args) = 
+mkExp (SOp (LPlus (ATInt ITNative)) args) = mkExp (SOp (LPlus (ATInt (ITFixed IT32))) args)
+mkExp (SOp (LMinus (ATInt ITNative)) args) = mkExp (SOp (LMinus (ATInt (ITFixed IT32))) args)
+mkExp (SOp (LTimes (ATInt ITNative)) args) = mkExp (SOp (LTimes (ATInt (ITFixed IT32))) args)
+mkExp (SOp (LSDiv (ATInt ITNative)) args) = mkExp (SOp (LSDiv (ATInt (ITFixed IT32))) args)
+mkExp (SOp (LSRem (ATInt ITNative)) args) = mkExp (SOp (LSRem (ATInt (ITFixed IT32))) args)
+mkExp (SOp (LAnd ITNative) args) = mkExp (SOp (LAnd (ITFixed IT32)) args)
+mkExp (SOp (LOr ITNative) args) = mkExp (SOp (LOr (ITFixed IT32)) args)
+mkExp (SOp (LXOr ITNative) args) = mkExp (SOp (LXOr (ITFixed IT32)) args)
+mkExp (SOp (LCompl ITNative) args) = mkExp (SOp (LCompl (ITFixed IT32)) args)
+mkExp (SOp (LSHL ITNative) args) = mkExp (SOp (LSHL (ITFixed IT32)) args)
+mkExp (SOp (LASHR ITNative) args) = mkExp (SOp (LASHR (ITFixed IT32)) args)
+mkExp (SOp (LEq (ATInt ITNative)) args) = mkExp (SOp (LEq (ATInt (ITFixed IT32))) args)
+mkExp (SOp (LLt (ATInt ITNative)) args) = mkExp (SOp (LLt (ATInt (ITFixed IT32))) args)
+mkExp (SOp (LLe (ATInt ITNative)) args) = mkExp (SOp (LLe (ATInt (ITFixed IT32))) args)
+mkExp (SOp (LGt (ATInt ITNative)) args) = mkExp (SOp (LGt (ATInt (ITFixed IT32))) args)
+mkExp (SOp (LGe (ATInt ITNative)) args) = mkExp (SOp (LGe (ATInt (ITFixed IT32))) args)
+mkExp (SOp (LPlus ATFloat) args) = mkBinOpExp doubleType Add args
+mkExp (SOp (LMinus ATFloat) args) = mkBinOpExp doubleType Sub args
+mkExp (SOp (LTimes ATFloat) args) = mkBinOpExp doubleType Mult args
+mkExp (SOp (LSDiv ATFloat) args) = mkBinOpExp doubleType Div args
+mkExp (SOp (LEq ATFloat) args) = 
   mkMethodOpChain1 (mkBoolToNumber doubleType) doubleType "equals" args
-mkExp (SOp LFLt args) = mkLogicalBinOpExp integerType LThan args
-mkExp (SOp LFLe args) = mkLogicalBinOpExp integerType LThanE args
-mkExp (SOp LFGt args) = mkLogicalBinOpExp integerType GThan args
-mkExp (SOp LFGe args) = mkLogicalBinOpExp integerType GThanE args
-mkExp (SOp (LPlus ITBig) args) = mkMethodOpChain1 id bigIntegerType "add" args
-mkExp (SOp (LMinus ITBig) args) = mkMethodOpChain1 id bigIntegerType "subtract" args
-mkExp (SOp (LTimes ITBig) args) = mkMethodOpChain1 id bigIntegerType "multiply" args
-mkExp (SOp (LSDiv ITBig) args) = mkMethodOpChain1 id bigIntegerType "divide" args
-mkExp (SOp (LSRem ITBig) args) = mkMethodOpChain1 id bigIntegerType "mod" args
-mkExp (SOp (LEq ITBig) args) = 
+mkExp (SOp (LLt ATFloat) args) = mkLogicalBinOpExp integerType LThan args
+mkExp (SOp (LLe ATFloat) args) = mkLogicalBinOpExp integerType LThanE args
+mkExp (SOp (LGt ATFloat) args) = mkLogicalBinOpExp integerType GThan args
+mkExp (SOp (LGe ATFloat) args) = mkLogicalBinOpExp integerType GThanE args
+mkExp (SOp (LPlus (ATInt ITBig)) args) = mkMethodOpChain1 id bigIntegerType "add" args
+mkExp (SOp (LMinus (ATInt ITBig)) args) = mkMethodOpChain1 id bigIntegerType "subtract" args
+mkExp (SOp (LTimes (ATInt ITBig)) args) = mkMethodOpChain1 id bigIntegerType "multiply" args
+mkExp (SOp (LSDiv (ATInt ITBig)) args) = mkMethodOpChain1 id bigIntegerType "divide" args
+mkExp (SOp (LSRem (ATInt ITBig)) args) = mkMethodOpChain1 id bigIntegerType "mod" args
+mkExp (SOp (LEq (ATInt ITBig)) args) = 
   mkMethodOpChain1 (mkBoolToNumber bigIntegerType) bigIntegerType "equals" args
-mkExp (SOp (LLt ITBig) args) =
+mkExp (SOp (LLt (ATInt ITBig)) args) =
   mkMethodOpChain1 ( mkBoolToNumber bigIntegerType 
                      . mkPartialOrder SLt
                    ) 
                    bigIntegerType 
                    "compareTo" 
                    args
-mkExp (SOp (LLe ITBig) args) =
+mkExp (SOp (LLe (ATInt ITBig)) args) =
   mkMethodOpChain1 ( mkBoolToNumber bigIntegerType 
                    . mkPartialOrder SLe
                    ) 
                    bigIntegerType 
                    "compareTo" 
                    args
-mkExp (SOp (LGt ITBig) args) =
+mkExp (SOp (LGt (ATInt ITBig)) args) =
   mkMethodOpChain1 ( mkBoolToNumber bigIntegerType 
                    . mkPartialOrder SGt
                    ) 
                    bigIntegerType 
                    "compareTo" 
                    args
-mkExp (SOp (LGe ITBig) args) =
+mkExp (SOp (LGe (ATInt ITBig)) args) =
   mkMethodOpChain1 ( mkBoolToNumber bigIntegerType 
                    . mkPartialOrder SGe
                    ) 
@@ -1397,16 +1397,16 @@ mkExp (SOp LPrintNum [arg]) =
 mkExp (SOp LPrintStr [arg]) =
   mkSystemOutPrint <$> (mkVarAccess (Just stringType) arg)
 mkExp (SOp LReadStr [arg]) = mkExp (SForeign LANG_C FString "idris_readStr" [(FPtr, arg)])
-mkExp (SOp (LLt ty) args) = mkLogicalBinOpExp (intTyToClass ty) LThan args
-mkExp (SOp (LLe ty) args) = mkLogicalBinOpExp (intTyToClass ty) LThanE args
-mkExp (SOp (LEq ty) args) = 
+mkExp (SOp (LLt (ATInt ty)) args) = mkLogicalBinOpExp (intTyToClass ty) LThan args
+mkExp (SOp (LLe (ATInt ty)) args) = mkLogicalBinOpExp (intTyToClass ty) LThanE args
+mkExp (SOp (LEq (ATInt ty)) args) = 
   mkMethodOpChain1 (mkBoolToNumber (intTyToClass ty)) (intTyToClass ty) "equals" args
-mkExp (SOp (LGt ty) args) = mkLogicalBinOpExp (intTyToClass ty) GThan args
-mkExp (SOp (LGe ty) args) = mkLogicalBinOpExp (intTyToClass ty) GThanE args
-mkExp (SOp (LPlus ty) args) = mkBinOpExp (intTyToClass ty) Add args
-mkExp (SOp (LMinus ty) args) = mkBinOpExp (intTyToClass ty) Sub args
-mkExp (SOp (LTimes ty) args) = mkBinOpExp (intTyToClass ty) Mult args
-mkExp (SOp (LUDiv IT64) (arg:args)) = do
+mkExp (SOp (LGt (ATInt ty)) args) = mkLogicalBinOpExp (intTyToClass ty) GThan args
+mkExp (SOp (LGe (ATInt ty)) args) = mkLogicalBinOpExp (intTyToClass ty) GThanE args
+mkExp (SOp (LPlus (ATInt ty)) args) = mkBinOpExp (intTyToClass ty) Add args
+mkExp (SOp (LMinus (ATInt ty)) args) = mkBinOpExp (intTyToClass ty) Sub args
+mkExp (SOp (LTimes (ATInt ty)) args) = mkBinOpExp (intTyToClass ty) Mult args
+mkExp (SOp (LUDiv (ITFixed IT64)) (arg:args)) = do
   (arg:args) <- mapM (mkVarAccess (Just longType)) (arg:args)
   return $ foldl (\ exp arg ->
                     MethodInv $ PrimaryMethodCall
@@ -1436,8 +1436,8 @@ mkExp (SOp (LUDiv ty) args) =
                  (intTyToClass ty) 
                  Div 
                  args
-mkExp (SOp (LSDiv ty) args) = mkBinOpExp (intTyToClass ty) Div args
-mkExp (SOp (LURem IT64) (arg:args)) = do
+mkExp (SOp (LSDiv (ATInt ty)) args) = mkBinOpExp (intTyToClass ty) Div args
+mkExp (SOp (LURem (ITFixed IT64)) (arg:args)) = do
   (arg:args) <- mapM (mkVarAccess (Just longType)) (arg:args)
   return $ foldl (\ exp arg ->
                     MethodInv $ PrimaryMethodCall
@@ -1467,7 +1467,7 @@ mkExp (SOp (LURem ty) args) =
                  (intTyToClass ty)
                  Rem
                  args
-mkExp (SOp (LSRem ty) args) = mkBinOpExp (intTyToClass ty) Rem args
+mkExp (SOp (LSRem (ATInt ty)) args) = mkBinOpExp (intTyToClass ty) Rem args
 mkExp (SOp (LSHL ty) args) = mkBinOpExp (intTyToClass ty) LShift args
 mkExp (SOp (LLSHR ty) args) = mkBinOpExp (intTyToClass ty) RRShift args
 mkExp (SOp (LASHR ty) args) = mkBinOpExp (intTyToClass ty) RShift args

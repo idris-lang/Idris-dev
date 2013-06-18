@@ -5,6 +5,7 @@ import IRTS.CodegenCommon
 import IRTS.Lang
 import IRTS.Simplified
 import qualified Core.TT as TT
+import Core.TT (ArithTy(..), IntTy(..), NativeTy(..), nativeTyWidth)
 
 import Util.System
 import Paths_idris
@@ -54,10 +55,6 @@ codegenLLVM defs file outty = withContext $ \context -> do
   case result of
     Right _ -> return ()
     Left msg -> ierror msg
-
-itWidth :: IntTy -> Word32
-itWidth ITNative = 32
-itWidth x = fromIntegral $ intTyWidth x
 
 outputModule :: FilePath -> OutputType -> M.Module -> IO ()
 outputModule file Raw    m = M.writeBitcodeToFile file m
@@ -556,7 +553,7 @@ cgChainCase :: Operand -> Maybe SExp -> [SAlt] -> Codegen (Maybe Operand)
 cgChainCase caseValPtr defExp alts = do
   let (caseTy, comparator) =
           case head alts of
-            SConstCase (TT.BI _) _ -> (FInt ITBig, "__gmpz_cmp")
+            SConstCase (TT.BI _) _ -> (FArith (ATInt ITBig), "__gmpz_cmp")
             SConstCase (TT.Str _) _ -> (FString, "strcmp")
   caseVal <- unbox caseTy caseValPtr
   defBlockName <- getName "default"
@@ -689,12 +686,12 @@ cgConst' (TT.Str s) = C.Array (IntegerType 8) (map (C.Int 8 . fromIntegral . fro
 cgConst' x = ierror $ "Unsupported constant: " ++ show x
 
 cgConst :: TT.Const -> Codegen Operand
-cgConst c@(TT.I _) = box (FInt ITNative) (ConstantOperand $ cgConst' c)
-cgConst c@(TT.B8  _) = box (FInt IT8) (ConstantOperand $ cgConst' c)
-cgConst c@(TT.B16 _) = box (FInt IT16) (ConstantOperand $ cgConst' c)
-cgConst c@(TT.B32 _) = box (FInt IT32) (ConstantOperand $ cgConst' c)
-cgConst c@(TT.B64 _) = box (FInt IT64) (ConstantOperand $ cgConst' c)
-cgConst c@(TT.Fl _) = box FDouble (ConstantOperand $ cgConst' c)
+cgConst c@(TT.I _) = box (FArith (ATInt ITNative)) (ConstantOperand $ cgConst' c)
+cgConst c@(TT.B8  _) = box (FArith (ATInt (ITFixed IT8))) (ConstantOperand $ cgConst' c)
+cgConst c@(TT.B16 _) = box (FArith (ATInt (ITFixed IT16))) (ConstantOperand $ cgConst' c)
+cgConst c@(TT.B32 _) = box (FArith (ATInt (ITFixed IT32))) (ConstantOperand $ cgConst' c)
+cgConst c@(TT.B64 _) = box (FArith (ATInt (ITFixed IT64))) (ConstantOperand $ cgConst' c)
+cgConst c@(TT.Fl _) = box (FArith ATFloat) (ConstantOperand $ cgConst' c)
 cgConst c@(TT.Ch _) = box FChar (ConstantOperand $ cgConst' c)
 cgConst c@(TT.Str s) = do
   str <- addGlobal' (ArrayType (1 + fromIntegral (length s)) (IntegerType 8)) (cgConst' c)
@@ -706,7 +703,7 @@ cgConst c@(TT.BI i) = do
                                           , ConstantOperand $ C.GetElementPtr True str [ C.Int 32 0, C.Int 32 0]
                                           , ConstantOperand $ C.Int 32 10
                                           ]
-  box (FInt ITBig) mpz
+  box (FArith (ATInt ITBig)) mpz
 cgConst x = return $ ConstantOperand nullValue
 
 numDigits :: Integer -> Integer -> Integer
@@ -752,72 +749,80 @@ ffunDecl name rty argtys =
     }
 
 ftyToTy :: FType -> Type
-ftyToTy (FInt ITNative) = IntegerType 32
-ftyToTy (FInt ITBig) = PointerType mpzTy (AddrSpace 0)
-ftyToTy (FInt ty) = IntegerType (itWidth ty)
+ftyToTy (FArith (ATInt ITNative)) = IntegerType 32
+ftyToTy (FArith (ATInt ITBig)) = PointerType mpzTy (AddrSpace 0)
+ftyToTy (FArith (ATInt (ITFixed ty))) = IntegerType (fromIntegral $ nativeTyWidth ty)
 ftyToTy FChar = IntegerType 32
 ftyToTy FString = PointerType (IntegerType 8) (AddrSpace 0)
 ftyToTy FUnit = VoidType
 ftyToTy FPtr = PointerType (IntegerType 8) (AddrSpace 0)
-ftyToTy FDouble = FloatingPointType 64 IEEE
+ftyToTy (FArith ATFloat) = FloatingPointType 64 IEEE
 ftyToTy FAny = valueType
+
+-- Only use when known not to be ITBig
+itWidth :: IntTy -> Word32
+itWidth ITNative = 32
+itWidth (ITFixed x) = fromIntegral $ nativeTyWidth x
 
 cgOp :: PrimFn -> [Operand] -> Codegen Operand
 cgOp (LTrunc ITBig ity) [x] = do
-  nx <- unbox (FInt ITBig) x
+  nx <- unbox (FArith (ATInt ITBig)) x
   val <- inst $ simpleCall "mpz_get_ull" [nx]
   v <- case ity of
-         IT64 -> return val
-         _ -> inst $ Trunc val (IntegerType $ itWidth ity) []
-  box (FInt ity) v
+         (ITFixed IT64) -> return val
+         _ -> inst $ Trunc val (ftyToTy (FArith (ATInt ity))) []
+  box (FArith (ATInt ity)) v
 cgOp (LZExt from ITBig) [x] = do
-  nx <- unbox (FInt from) x
+  nx <- unbox (FArith (ATInt from)) x
   nx' <- case from of
-           IT64 -> return nx
+           (ITFixed IT64) -> return nx
            _ -> inst $ ZExt nx (IntegerType 64) []
   mpz <- alloc mpzTy
   inst' $ simpleCall "mpz_init_set_ull" [mpz, nx']
-  box (FInt ITBig) mpz
+  box (FArith (ATInt ITBig)) mpz
 cgOp (LSExt from ITBig) [x] = do
-  nx <- unbox (FInt from) x
+  nx <- unbox (FArith (ATInt from)) x
   nx' <- case from of
-           IT64 -> return nx
+           (ITFixed IT64) -> return nx
            _ -> inst $ SExt nx (IntegerType 64) []
   mpz <- alloc mpzTy
   inst' $ simpleCall "mpz_init_set_sll" [mpz, nx']
-  box (FInt ITBig) mpz
+  box (FArith (ATInt ITBig)) mpz
 
-cgOp (LLt    ITBig) [x,y] = mpzCmp IPred.SLT x y
-cgOp (LLe    ITBig) [x,y] = mpzCmp IPred.SLE x y
-cgOp (LEq    ITBig) [x,y] = mpzCmp IPred.EQ  x y
-cgOp (LGe    ITBig) [x,y] = mpzCmp IPred.SGE x y
-cgOp (LGt    ITBig) [x,y] = mpzCmp IPred.SGT x y
-cgOp (LPlus  ITBig) [x,y] = mpzBin "add" x y
-cgOp (LMinus ITBig) [x,y] = mpzBin "sub" x y
-cgOp (LTimes ITBig) [x,y] = mpzBin "mul" x y
-cgOp (LSDiv  ITBig) [x,y] = mpzBin "fdiv_q" x y
-cgOp (LSRem  ITBig) [x,y] = mpzBin "fdiv_r" x y
+cgOp (LLt    (ATInt ITBig)) [x,y] = mpzCmp IPred.SLT x y
+cgOp (LLe    (ATInt ITBig)) [x,y] = mpzCmp IPred.SLE x y
+cgOp (LEq    (ATInt ITBig)) [x,y] = mpzCmp IPred.EQ  x y
+cgOp (LGe    (ATInt ITBig)) [x,y] = mpzCmp IPred.SGE x y
+cgOp (LGt    (ATInt ITBig)) [x,y] = mpzCmp IPred.SGT x y
+cgOp (LPlus  (ATInt ITBig)) [x,y] = mpzBin "add" x y
+cgOp (LMinus (ATInt ITBig)) [x,y] = mpzBin "sub" x y
+cgOp (LTimes (ATInt ITBig)) [x,y] = mpzBin "mul" x y
+cgOp (LSDiv  (ATInt ITBig)) [x,y] = mpzBin "fdiv_q" x y
+cgOp (LSRem  (ATInt ITBig)) [x,y] = mpzBin "fdiv_r" x y
 cgOp (LAnd   ITBig) [x,y] = mpzBin "and" x y
 cgOp (LOr    ITBig) [x,y] = mpzBin "ior" x y
 cgOp (LXOr   ITBig) [x,y] = mpzBin "xor" x y
 cgOp (LCompl ITBig) [x]   = mpzUn "com" x
 
-cgOp (LTrunc from to) [x] | itWidth from > itWidth to = iCoerce Trunc from to x
-cgOp (LZExt from to) [x] | itWidth from < itWidth to = iCoerce ZExt from to x
-cgOp (LSExt from to) [x] | itWidth from < itWidth to = iCoerce SExt from to x
+cgOp (LTrunc (ITFixed from) (ITFixed to)) [x]
+    | nativeTyWidth from > nativeTyWidth to = iCoerce Trunc from to x
+cgOp (LZExt (ITFixed from) (ITFixed to)) [x]
+    | nativeTyWidth from < nativeTyWidth to = iCoerce ZExt from to x
+cgOp (LSExt (ITFixed from) (ITFixed to)) [x]
+    | nativeTyWidth from < nativeTyWidth to = iCoerce SExt from to x
 
-cgOp (LLt    ity) [x,y] = iCmp ity IPred.SLT x y
-cgOp (LLe    ity) [x,y] = iCmp ity IPred.SLE x y
-cgOp (LEq    ity) [x,y] = iCmp ity IPred.EQ  x y
-cgOp (LGe    ity) [x,y] = iCmp ity IPred.SGE x y
-cgOp (LGt    ity) [x,y] = iCmp ity IPred.SGT x y
-cgOp (LPlus  ity) [x,y] = ibin ity x y (Add False False)
-cgOp (LMinus ity) [x,y] = ibin ity x y (Sub False False)
-cgOp (LTimes ity) [x,y] = ibin ity x y (Mul False False)
+cgOp (LLt    (ATInt ity)) [x,y] = iCmp ity IPred.SLT x y
+cgOp (LLe    (ATInt ity)) [x,y] = iCmp ity IPred.SLE x y
+cgOp (LEq    (ATInt ity)) [x,y] = iCmp ity IPred.EQ  x y
+cgOp (LGe    (ATInt ity)) [x,y] = iCmp ity IPred.SGE x y
+cgOp (LGt    (ATInt ity)) [x,y] = iCmp ity IPred.SGT x y
+cgOp (LPlus  (ATInt ity)) [x,y] = ibin ity x y (Add False False)
+cgOp (LMinus (ATInt ity)) [x,y] = ibin ity x y (Sub False False)
+cgOp (LTimes (ATInt ity)) [x,y] = ibin ity x y (Mul False False)
+cgOp (LSDiv  (ATInt ity)) [x,y] = ibin ity x y (SDiv False)
+cgOp (LSRem  (ATInt ity)) [x,y] = ibin ity x y SRem
 cgOp (LUDiv  ity) [x,y] = ibin ity x y (UDiv False)
 cgOp (LURem  ity) [x,y] = ibin ity x y URem
-cgOp (LSDiv  ity) [x,y] = ibin ity x y (SDiv False)
-cgOp (LSRem  ity) [x,y] = ibin ity x y SRem
 cgOp (LAnd   ity) [x,y] = ibin ity x y And
 cgOp (LOr    ity) [x,y] = ibin ity x y Or
 cgOp (LXOr   ity) [x,y] = ibin ity x y Xor
@@ -832,7 +837,7 @@ cgOp LStrEq [x,y] = do
   cmp <- inst $ simpleCall "strcmp" [x', y']
   flag <- inst $ ICmp IPred.EQ cmp (ConstantOperand (C.Int 32 0)) []
   val <- inst $ ZExt flag (IntegerType 32) []
-  box (FInt IT32) val
+  box (FArith (ATInt (ITFixed IT32))) val
 
 cgOp LStrLt [x,y] = do
   nx <- unbox FString x
@@ -840,10 +845,10 @@ cgOp LStrLt [x,y] = do
   cmp <- inst $ simpleCall "strcmp" [nx, ny]
   flag <- inst $ ICmp IPred.ULT cmp (ConstantOperand (C.Int 32 0)) []
   val <- inst $ ZExt flag (IntegerType 32) []
-  box (FInt IT32) val
+  box (FArith (ATInt (ITFixed IT32))) val
 
 cgOp (LIntStr ITBig) [x] = do
-  x' <- unbox (FInt ITBig) x
+  x' <- unbox (FArith (ATInt ITBig)) x
   ustr <- inst $ simpleCall "__gmpz_get_str"
           [ ConstantOperand (C.Null (PointerType (IntegerType 8) (AddrSpace 0)))
           , ConstantOperand (C.Int 32 10)
@@ -851,7 +856,7 @@ cgOp (LIntStr ITBig) [x] = do
           ]
   box FString ustr
 cgOp (LIntStr ity) [x] = do
-  x' <- unbox (FInt ity) x
+  x' <- unbox (FArith (ATInt ity)) x
   x'' <- if itWidth ity < 64
          then inst $ SExt x' (IntegerType 64) []
          else return x'
@@ -860,7 +865,7 @@ cgOp (LStrInt ITBig) [s] = do
   ns <- unbox FString s
   mpz <- alloc mpzTy
   inst $ simpleCall "__gmpz_init_set_str" [mpz, ns, ConstantOperand $ C.Int 32 10]
-  box (FInt ITBig) mpz
+  box (FArith (ATInt ITBig)) mpz
 cgOp (LStrInt ity) [s] = do
   ns <- unbox FString s
   nx <- inst $ simpleCall "strtoll"
@@ -869,9 +874,9 @@ cgOp (LStrInt ity) [s] = do
         , ConstantOperand $ C.Int 32 10
         ]
   nx' <- case ity of
-           IT64 -> return nx
+           (ITFixed IT64) -> return nx
            _ -> inst $ Trunc nx (IntegerType (itWidth ity)) []
-  box (FInt ity) nx'
+  box (FArith (ATInt ity)) nx'
 
 cgOp LStrConcat [x,y] = cgStrCat x y
 
@@ -890,7 +895,7 @@ cgOp LStrHead [c] = do
 
 cgOp LStrIndex [s, i] = do
   ns <- unbox FString s
-  ni <- unbox (FInt IT32) i
+  ni <- unbox (FArith (ATInt (ITFixed IT32))) i
   p <- inst $ GetElementPtr True ns [ni] []
   c <- inst $ Load False p Nothing 0 []
   c' <- inst $ ZExt c (IntegerType 32) []
@@ -909,7 +914,7 @@ cgOp LStrLen [s] = do
             32 -> return len
             x | x > 32 -> inst $ Trunc len (IntegerType $ fromInteger x) []
               | x < 32 -> inst $ ZExt len (IntegerType $ fromInteger x) []
-  box (FInt IT32) len'
+  box (FArith (ATInt (ITFixed IT32))) len'
 
 cgOp LReadStr [p] = do
   np <- unbox FPtr p
@@ -930,11 +935,11 @@ cgOp LStdErr  [] = do
 cgOp prim args = ierror $ "Unimplemented primitive: [" ++ show prim ++ "]("
                   ++ intersperse ',' (take (length args) ['a'..]) ++ ")"
 
-iCoerce :: (Operand -> Type -> InstructionMetadata -> Instruction) -> IntTy -> IntTy -> Operand -> Codegen Operand
+iCoerce :: (Operand -> Type -> InstructionMetadata -> Instruction) -> NativeTy -> NativeTy -> Operand -> Codegen Operand
 iCoerce operator from to x = do
-  x' <- unbox (FInt from) x
-  x'' <- inst $ operator x' (IntegerType $ itWidth to) []
-  box (FInt to) x''
+  x' <- unbox (FArith (ATInt (ITFixed from))) x
+  x'' <- inst $ operator x' (ftyToTy (FArith (ATInt (ITFixed from)))) []
+  box (FArith (ATInt (ITFixed to))) x''
 
 cgStrCat :: Operand -> Operand -> Codegen Operand
 cgStrCat x y = do
@@ -960,50 +965,50 @@ cgStrCat x y = do
 ibin :: IntTy -> Operand -> Operand
      -> (Operand -> Operand -> InstructionMetadata -> Instruction) -> Codegen Operand
 ibin ity x y instCon = do
-  nx <- unbox (FInt ity) x
-  ny <- unbox (FInt ity) y
+  nx <- unbox (FArith (ATInt ity)) x
+  ny <- unbox (FArith (ATInt ity)) y
   nr <- inst $ instCon nx ny []
-  box (FInt ity) nr
+  box (FArith (ATInt ity)) nr
 
 iun :: IntTy -> Operand -> (Operand -> InstructionMetadata -> Instruction) -> Codegen Operand
 iun ity x instCon = do
-  nx <- unbox (FInt ity) x
+  nx <- unbox (FArith (ATInt ity)) x
   nr <- inst $ instCon nx []
-  box (FInt ity) nr
+  box (FArith (ATInt ity)) nr
 
 iCmp :: IntTy -> IPred.IntegerPredicate -> Operand -> Operand -> Codegen Operand
 iCmp ity pred x y = do
-  nx <- unbox (FInt ity) x
-  ny <- unbox (FInt ity) y
+  nx <- unbox (FArith (ATInt ity)) x
+  ny <- unbox (FArith (ATInt ity)) y
   nr <- inst $ ICmp pred nx ny []
   nr' <- inst $ ZExt nr (IntegerType 32) []
-  box (FInt IT32) nr'
+  box (FArith (ATInt (ITFixed IT32))) nr'
 
 mpzBin :: String -> Operand -> Operand -> Codegen Operand
 mpzBin name x y = do
-  nx <- unbox (FInt ITBig) x
-  ny <- unbox (FInt ITBig) y
+  nx <- unbox (FArith (ATInt ITBig)) x
+  ny <- unbox (FArith (ATInt ITBig)) y
   nz <- alloc mpzTy
   inst' $ simpleCall "__gmpz_init" [nz]
   inst' $ simpleCall ("__gmpz_" ++ name) [nz, nx, ny]
-  box (FInt ITBig) nz
+  box (FArith (ATInt ITBig)) nz
 
 mpzUn :: String -> Operand -> Codegen Operand
 mpzUn name x = do
-  nx <- unbox (FInt ITBig) x
+  nx <- unbox (FArith (ATInt ITBig)) x
   nz <- alloc mpzTy
   inst' $ simpleCall "__gmpz_init" [nz]
   inst' $ simpleCall ("__gmpz_" ++ name) [nz, nx]
-  box (FInt ITBig) nz
+  box (FArith (ATInt ITBig)) nz
 
 mpzCmp :: IPred.IntegerPredicate -> Operand -> Operand -> Codegen Operand
 mpzCmp pred x y = do
-  nx <- unbox (FInt ITBig) x
-  ny <- unbox (FInt ITBig) y
+  nx <- unbox (FArith (ATInt ITBig)) x
+  ny <- unbox (FArith (ATInt ITBig)) y
   cmp <- inst $ simpleCall "__gmpz_cmp" [nx, ny]
   result <- inst $ ICmp pred cmp (ConstantOperand (C.Int 32 0)) []
   i <- inst $ ZExt result (IntegerType 32) []
-  box (FInt IT32) i
+  box (FArith (ATInt (ITFixed IT32))) i
 
 simpleCall :: String -> [Operand] -> Instruction
 simpleCall name args =
