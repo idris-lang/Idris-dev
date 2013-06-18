@@ -92,39 +92,39 @@ pLDecl = do reserved "data"
 
 pLExp = buildExpressionParser optable pLExp' 
 
-optable = [[binary "*" (\x y -> LOp (LTimes ITNative) [x,y]) AssocLeft,
-            binary "/" (\x y -> LOp (LSDiv ITNative) [x,y]) AssocLeft,
-            binary "*." (\x y -> LOp LFTimes [x,y]) AssocLeft,
-            binary "/." (\x y -> LOp LFDiv [x,y]) AssocLeft,
-            binary "*:" (\x y -> LOp (LTimes ITBig) [x,y]) AssocLeft,
-            binary "/:" (\x y -> LOp (LSDiv ITBig) [x,y]) AssocLeft
+optable = [[binary "*" (\x y -> LOp (LTimes (ATInt ITNative)) [x,y]) AssocLeft,
+            binary "/" (\x y -> LOp (LSDiv (ATInt ITNative)) [x,y]) AssocLeft,
+            binary "*." (\x y -> LOp (LTimes ATFloat) [x,y]) AssocLeft,
+            binary "/." (\x y -> LOp (LSDiv ATFloat) [x,y]) AssocLeft,
+            binary "*:" (\x y -> LOp (LTimes (ATInt ITBig)) [x,y]) AssocLeft,
+            binary "/:" (\x y -> LOp (LSDiv (ATInt ITBig)) [x,y]) AssocLeft
             ],
            [
-            binary "+" (\x y -> LOp (LPlus ITNative) [x,y]) AssocLeft,
-            binary "-" (\x y -> LOp (LMinus ITNative) [x,y]) AssocLeft,
+            binary "+" (\x y -> LOp (LPlus (ATInt ITNative)) [x,y]) AssocLeft,
+            binary "-" (\x y -> LOp (LMinus (ATInt ITNative)) [x,y]) AssocLeft,
             binary "++" (\x y -> LOp LStrConcat [x,y]) AssocLeft,
-            binary "+." (\x y -> LOp LFPlus [x,y]) AssocLeft,
-            binary "-." (\x y -> LOp LFMinus [x,y]) AssocLeft,
-            binary "+:" (\x y -> LOp (LPlus ITBig) [x,y]) AssocLeft,
-            binary "-:" (\x y -> LOp (LMinus ITBig) [x,y]) AssocLeft
+            binary "+." (\x y -> LOp (LPlus ATFloat) [x,y]) AssocLeft,
+            binary "-." (\x y -> LOp (LMinus ATFloat) [x,y]) AssocLeft,
+            binary "+:" (\x y -> LOp (LPlus (ATInt ITBig)) [x,y]) AssocLeft,
+            binary "-:" (\x y -> LOp (LMinus (ATInt ITBig)) [x,y]) AssocLeft
             ],
            [
-            binary "==" (\x y -> LOp (LEq ITNative) [x, y]) AssocNone,
-            binary "==." (\x y -> LOp LFEq [x, y]) AssocNone,
-            binary "<" (\x y -> LOp (LLt ITNative) [x, y]) AssocNone,
-            binary "<." (\x y -> LOp LFLt [x, y]) AssocNone,
-            binary ">" (\x y -> LOp (LGt ITNative) [x, y]) AssocNone,
-            binary ">." (\x y -> LOp LFGt [x, y]) AssocNone,
-            binary "<=" (\x y -> LOp (LLe ITNative) [x, y]) AssocNone,
-            binary "<=." (\x y -> LOp LFLe [x, y]) AssocNone,
-            binary ">=" (\x y -> LOp (LGe ITNative) [x, y]) AssocNone,
-            binary ">=." (\x y -> LOp LFGe [x, y]) AssocNone,
+            binary "==" (\x y -> LOp (LEq (ATInt ITNative)) [x, y]) AssocNone,
+            binary "==." (\x y -> LOp (LEq ATFloat) [x, y]) AssocNone,
+            binary "<" (\x y -> LOp (LLt (ATInt ITNative)) [x, y]) AssocNone,
+            binary "<." (\x y -> LOp (LLt ATFloat) [x, y]) AssocNone,
+            binary ">" (\x y -> LOp (LGt (ATInt ITNative)) [x, y]) AssocNone,
+            binary ">." (\x y -> LOp (LGt ATFloat) [x, y]) AssocNone,
+            binary "<=" (\x y -> LOp (LLe (ATInt ITNative)) [x, y]) AssocNone,
+            binary "<=." (\x y -> LOp (LLe ATFloat) [x, y]) AssocNone,
+            binary ">=" (\x y -> LOp (LGe (ATInt ITNative)) [x, y]) AssocNone,
+            binary ">=." (\x y -> LOp (LGe ATFloat) [x, y]) AssocNone,
 
-            binary "==:" (\x y -> LOp (LEq ITBig) [x, y]) AssocNone,
-            binary "<:" (\x y -> LOp (LLt ITBig) [x, y]) AssocNone,
-            binary ">:" (\x y -> LOp (LGt ITBig) [x, y]) AssocNone,
-            binary "<=:" (\x y -> LOp (LLe ITBig) [x, y]) AssocNone,
-            binary ">=:" (\x y -> LOp (LGe ITBig) [x, y]) AssocNone
+            binary "==:" (\x y -> LOp (LEq (ATInt ITBig)) [x, y]) AssocNone,
+            binary "<:" (\x y -> LOp (LLt (ATInt ITBig)) [x, y]) AssocNone,
+            binary ">:" (\x y -> LOp (LGt (ATInt ITBig)) [x, y]) AssocNone,
+            binary "<=:" (\x y -> LOp (LLe (ATInt ITBig)) [x, y]) AssocNone,
+            binary ">=:" (\x y -> LOp (LGe (ATInt ITBig)) [x, y]) AssocNone
           ]]
 
 binary name f assoc = Infix (do reservedOp name; return f) assoc
@@ -164,8 +164,8 @@ pLExp' = try (do lchar '%'; pCast)
      
 pLang = do reserved "C"; return LANG_C
 
-pType = do reserved "Int"; return (FInt ITNative)
-    <|> do reserved "Float"; return FDouble
+pType = do reserved "Int"; return (FArith (ATInt ITNative))
+    <|> do reserved "Float"; return (FArith ATFloat)
     <|> do reserved "String"; return FString
     <|> do reserved "Unit"; return FUnit
     <|> do reserved "Ptr"; return FPtr

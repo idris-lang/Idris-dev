@@ -25,8 +25,11 @@ import Debug.Trace
 import qualified Data.Map as Map
 import Data.Char
 import Data.List
+import Data.Vector.Unboxed (Vector)
+import qualified Data.Vector.Unboxed as V
 import qualified Data.Binary as B
 import Data.Binary hiding (get, put)
+import Foreign.Storable (sizeOf)
 
 import Util.Pretty hiding (Str)
 
@@ -274,12 +277,46 @@ addAlist :: Show a => [(Name, a)] -> Ctxt a -> Ctxt a
 addAlist [] ctxt = ctxt
 addAlist ((n, tm) : ds) ctxt = addDef n tm (addAlist ds ctxt)
 
+data NativeTy = IT8 | IT16 | IT32 | IT64
+    deriving (Show, Eq, Ord, Enum)
+
+instance Pretty NativeTy where
+    pretty IT8  = text "Bits8"
+    pretty IT16 = text "Bits16"
+    pretty IT32 = text "Bits32"
+    pretty IT64 = text "Bits64"
+
+data IntTy = ITFixed NativeTy | ITNative | ITBig
+           | ITVec NativeTy Int
+    deriving (Show, Eq, Ord)
+
+data ArithTy = ATInt IntTy | ATFloat -- TODO: Float vectors
+    deriving (Show, Eq, Ord)
+
+instance Pretty ArithTy where
+    pretty (ATInt ITNative) = text "Int"
+    pretty (ATInt ITBig) = text "BigInt"
+    pretty (ATInt (ITFixed n)) = pretty n
+    pretty (ATInt (ITVec e c)) = pretty e <> text "x" <> (text . show $ c)
+    pretty ATFloat = text "Float"
+
+nativeTyWidth :: NativeTy -> Int
+nativeTyWidth IT8 = 8
+nativeTyWidth IT16 = 16
+nativeTyWidth IT32 = 32
+nativeTyWidth IT64 = 64
+
+{-# DEPRECATED intTyWidth "Non-total function, use nativeTyWidth and appropriate casing" #-}
+intTyWidth :: IntTy -> Int
+intTyWidth (ITFixed n) = nativeTyWidth n
+intTyWidth ITNative = 8 * sizeOf (0 :: Int)
+intTyWidth ITBig = error "IRTS.Lang.intTyWidth: Big integers have variable width"
+
 data Const = I Int | BI Integer | Fl Double | Ch Char | Str String 
-           | IType | BIType     | FlType    | ChType  | StrType
-
            | B8 Word8 | B16 Word16 | B32 Word32 | B64 Word64
-           | B8Type   | B16Type | B32Type | B64Type
-
+           | B8V (Vector Word8) | B16V (Vector Word16)
+           | B32V (Vector Word32) | B64V (Vector Word64)
+           | AType ArithTy | ChType | StrType
            | PtrType | VoidType | Forgot
   deriving (Eq, Ord)
 {-! 
@@ -295,18 +332,12 @@ instance Pretty Const where
   pretty (Fl f) = text . show $ f
   pretty (Ch c) = text . show $ c
   pretty (Str s) = text s
-  pretty IType = text "Int"
-  pretty BIType = text "BigInt"
-  pretty FlType = text "Float"
+  pretty (AType a) = pretty a
   pretty ChType = text "Char"
   pretty StrType = text "String"
   pretty PtrType = text "Ptr"
   pretty VoidType = text "Void"
   pretty Forgot = text "Forgot"
-  pretty B8Type = text "Bits8"
-  pretty B16Type = text "Bits16"
-  pretty B32Type = text "Bits32"
-  pretty B64Type = text "Bits64"
   pretty (B8 w) = text . show $ w
   pretty (B16 w) = text . show $ w
   pretty (B32 w) = text . show $ w
@@ -728,6 +759,11 @@ type WkEnv = WkEnvTT Name
 instance (Eq n, Show n) => Show (TT n) where
     show t = showEnv [] t
 
+itBitsName IT8 = "Bits8"
+itBitsName IT16 = "Bits16"
+itBitsName IT32 = "Bits32"
+itBitsName IT64 = "Bits64"
+
 instance Show Const where
     show (I i) = show i
     show (BI i) = show i ++ "L"
@@ -738,16 +774,18 @@ instance Show Const where
     show (B16 x) = show x
     show (B32 x) = show x
     show (B64 x) = show x
-    show IType = "Int"
-    show BIType = "Integer"
-    show FlType = "Float"
+    show (B8V x) = "<" ++ intercalate "," (map show (V.toList x)) ++ ">"
+    show (B16V x) = "<" ++ intercalate "," (map show (V.toList x)) ++ ">"
+    show (B32V x) = "<" ++ intercalate "," (map show (V.toList x)) ++ ">"
+    show (B64V x) = "<" ++ intercalate "," (map show (V.toList x)) ++ ">"
+    show (AType ATFloat) = "Float"
+    show (AType (ATInt ITBig)) = "Integer"
+    show (AType (ATInt ITNative)) = "Int"
+    show (AType (ATInt (ITFixed it))) = itBitsName it
+    show (AType (ATInt (ITVec it c))) = itBitsName it ++ "x" ++ show c
     show ChType = "Char"
     show StrType = "String"
     show PtrType = "Ptr"
-    show B8Type = "Bits8"
-    show B16Type = "Bits16"
-    show B32Type = "Bits32"
-    show B64Type = "Bits64"
     show VoidType = "Void"
 
 showEnv env t = showEnv' env t False
