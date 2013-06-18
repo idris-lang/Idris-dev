@@ -251,28 +251,6 @@ iCoerce from to op impl irop =
     Prim (UN $ "prim__" ++ op ++ intTyName from ++ "_" ++ intTyName to)
              (ty [AType . ATInt $ from] (AType . ATInt $ to)) 1 (impl from to) (1, irop from to) total
 
-iUn :: (Int -> Int) -> [Const] -> Maybe Const
-iUn op [I x] = Just $ I (op x)
-iUn _ _ = Nothing
-
-iBin :: (Int -> Int -> Int) -> [Const] -> Maybe Const
-iBin op [I x, I y] = Just $ I (op x y)
-iBin _ _ = Nothing
-
-bBin :: (Integer -> Integer -> Integer) -> [Const] -> Maybe Const
-bBin op [BI x, BI y] = Just $ BI (op x y)
-bBin _ _ = Nothing
-
-bBini :: (Integer -> Integer -> Int) -> [Const] -> Maybe Const
-bBini op [BI x, BI y] = Just $ I (op x y)
-bBini _ _ = Nothing
-
-biBin :: (Int -> Int -> Bool) -> [Const] -> Maybe Const
-biBin op = iBin (\x y -> if (op x y) then 1 else 0)
-
-bbBin :: (Integer -> Integer -> Bool) -> [Const] -> Maybe Const
-bbBin op = bBini (\x y -> if (op x y) then 1 else 0)
-
 fBin :: (Double -> Double -> Double) -> [Const] -> Maybe Const
 fBin op [Fl x, Fl y] = Just $ Fl (op x y)
 fBin _ _ = Nothing
