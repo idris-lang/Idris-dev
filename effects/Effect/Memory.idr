@@ -24,27 +24,27 @@ data RawMemory : Effect where
      Initialize : AllowsWrite mode =>
                   Bits8 ->
                   (size : Nat) ->
-                  Given (natLTE (i + size) n) ->
+                  (NatLTE (i + size) n) ->
                   RawMemory (MemoryChunk t mode n i) (MemoryChunk t mode n (i + size)) ()
      Peek       : AllowsRead mode =>
                   (offset : Nat) ->
                   (size : Nat) ->
-                  Given (natLTE (offset + size) i) ->
+                  (NatLTE (offset + size) i) ->
                   RawMemory (MemoryChunk t mode n i) (MemoryChunk t mode n i) (Vect Bits8 size)
      Poke       : AllowsWrite mode =>
                   (offset : Nat) ->
                   (Vect Bits8 size) ->
-                  Given (natLTE offset i) ->
-                  Given (natLTE (offset + size) n) ->
+                  (NatLTE offset i) ->
+                  (NatLTE (offset + size) n) ->
                   RawMemory (MemoryChunk t mode n i) (MemoryChunk t mode n (max i (offset + size))) ()
      Move       : (AllowsWrite mode, AllowsRead mode') =>
                   (src : MemoryChunk t' mode' src_size src_init) ->
                   (dst_offset : Nat) ->
                   (src_offset : Nat) ->
                   (size : Nat) ->
-                  Given (natLTE dst_offset dst_init) ->
-                  Given (natLTE (dst_offset + size) dst_size) ->
-                  Given (natLTE (src_offset + size) src_init) ->
+                  (NatLTE dst_offset dst_init) ->
+                  (NatLTE (dst_offset + size) dst_size) ->
+                  (NatLTE (src_offset + size) src_init) ->
                   RawMemory (MemoryChunk t mode dst_size dst_init)
                             (MemoryChunk t mode dst_size (max dst_init (dst_offset + size))) ()
      GetRawPtr  : RawMemory (MemoryChunk t mode n i) (MemoryChunk t mode n i) (MemoryChunk t mode n i)
@@ -157,10 +157,11 @@ initialize : (Handler RawMemory m, AllowsWrite mode) =>
              {n : Nat} ->
              Bits8 ->
              (size : Nat) ->
-             Given (natLTE (i + size) n) ->
+             { default tactics { applyTactic natLTETactic; solve;  } 
+               prf : (NatLTE (i + size) n) } ->
              EffM m [RAW_MEMORY (MemoryChunk t mode n i)]
                     [RAW_MEMORY (MemoryChunk t mode n (i + size))] ()
-initialize c size prf = Initialize c size prf
+initialize c size {prf = p} = Initialize c size p
 
 free : (Handler RawMemory m) =>
        EffM m [RAW_MEMORY (MemoryChunk t mode n i)] [RAW_MEMORY ()] ()
@@ -170,20 +171,23 @@ peek : (Handler RawMemory m, AllowsRead mode) =>
        {i : Nat} ->
        (offset : Nat) ->
        (size : Nat) ->
-       Given (natLTE (offset + size) i) ->
+       { default tactics { applyTactic natLTETactic; solve; }
+         prf : (NatLTE (offset + size) i) } ->
        Eff m [RAW_MEMORY (MemoryChunk t mode n i)] (Vect Bits8 size)
-peek offset size prf = Peek offset size prf
+peek offset size {prf = p} = Peek offset size p
 
 poke : (Handler RawMemory m, AllowsWrite mode) =>
        {n : Nat} ->
        {i : Nat} ->
        (offset : Nat) ->
        Vect Bits8 size ->
-       Given (natLTE offset i) ->
-       Given (natLTE (offset + size) n) ->
+       { default tactics { applyTactic natLTETactic; solve; }
+         prf_init : (NatLTE offset i) } ->
+       { default tactics { applyTactic natLTETactic; solve; }
+         prf : (NatLTE (offset + size) n) } ->
        EffM m [RAW_MEMORY (MemoryChunk t mode n i)]
               [RAW_MEMORY (MemoryChunk t mode n (max i (offset + size)))] ()
-poke offset content prf_init prf = Poke offset content prf_init prf
+poke offset content {prf_init = p_init} {prf = p} = Poke offset content p_init p
 
 private
 getRawPtr : (Handler RawMemory m) =>
@@ -199,12 +203,18 @@ move' : (Handler RawMemory m, AllowsWrite mode, AllowsRead mode') =>
         (dst_offset : Nat) ->
         (src_offset : Nat) ->
         (size : Nat) ->
-        Given (natLTE dst_offset dst_init) ->
-        Given (natLTE (dst_offset + size) dst_size) ->
-        Given (natLTE (src_offset + size) src_init) ->
+        ( dst_bounds_init : (NatLTE dst_offset dst_init) ) ->
+        ( dst_bounds : (NatLTE (dst_offset + size) dst_size) ) ->
+        ( src_bounds : (NatLTE (src_offset + size) src_init) ) ->
         EffM m [RAW_MEMORY (MemoryChunk t mode dst_size dst_init)]
                [RAW_MEMORY (MemoryChunk t mode dst_size (max dst_init (dst_offset + size)))] ()
-move' src_ptr dst_offset src_offset size dst_bounds_init dst_bounds src_bounds
+move' src_ptr 
+      dst_offset
+      src_offset
+      size
+      dst_bounds_init
+      dst_bounds
+      src_bounds
   = Move src_ptr dst_offset src_offset size dst_bounds_init dst_bounds src_bounds
 
 data MoveDescriptor = Dst | Src
@@ -217,14 +227,22 @@ move : (Handler RawMemory m, AllowsWrite mode, AllowsRead mode') =>
        (dst_offset : Nat) ->
        (src_offset : Nat) ->
        (size : Nat) ->
-       Given (natLTE dst_offset dst_init) ->
-       Given (natLTE (dst_offset + size) dst_size) ->
-       Given (natLTE (src_offset + size) src_init) ->
+       { default tactics { applyTactic natLTETactic; solve; }
+         dst_bounds_init : (NatLTE dst_offset dst_init) } ->
+       { default tactics { applyTactic natLTETactic; solve; }
+         dst_bounds : (NatLTE (dst_offset + size) dst_size) } ->
+       { default tactics { applyTactic natLTETactic; solve; }
+         src_bounds : (NatLTE (src_offset + size) src_init) } ->
        EffM m [ Dst ::: RAW_MEMORY (MemoryChunk t mode dst_size dst_init)
               , Src ::: RAW_MEMORY (MemoryChunk t' mode' src_size src_init)]
               [ Dst ::: RAW_MEMORY (MemoryChunk t mode dst_size (max dst_init (dst_offset + size)))
               , Src ::: RAW_MEMORY (MemoryChunk t' mode' src_size src_init)] ()
-move dst_offset src_offset size dst_bounds_init dst_bounds src_bounds
+move dst_offset 
+     src_offset
+     size
+     {dst_bounds_init = p_dst_bounds_init}
+     {dst_bounds = p_dst_bounds}
+     {src_bounds = p_src_bounds}
   = do src_ptr <- Src :- getRawPtr
-       Dst :- move' src_ptr dst_offset src_offset size dst_bounds_init dst_bounds src_bounds
+       Dst :- move' src_ptr dst_offset src_offset size p_dst_bounds_init p_dst_bounds p_src_bounds
        return ()
