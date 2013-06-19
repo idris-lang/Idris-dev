@@ -1,6 +1,4 @@
 #!/bin/bash
 idris -p effects $@ test025.idr -o test025
-echo "gallo" > testFile
 ./test025
-cat testFile
-rm -f test025 testFile *.ibc
+rm -f test025 *.ibc
