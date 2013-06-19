@@ -13,10 +13,14 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
+import java.nio.MappedByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.OpenOption;
 import java.nio.file.StandardOpenOption;
+import java.nio.channels.Channel;
 import java.nio.channels.Channels;
+import java.nio.channels.FileChannel;
+import static java.nio.channels.FileChannel.MapMode;
 import java.nio.channels.SeekableByteChannel;
 import java.nio.channels.ReadableByteChannel;
 import java.util.concurrent.BlockingQueue;
@@ -209,9 +213,9 @@ public class ForeignPrimitives {
         buf = null;
     }
 
-    public static Integer idris_peek(Object buf, int offset) {
+    public static byte idris_peek(Object buf, int offset) {
         ByteBuffer buffer = (ByteBuffer)buf;
-        return Integer.valueOf(buffer.get(offset));
+        return buffer.get(offset);
     }
 
     public static void idris_poke(Object buf, int offset, Object data) {
@@ -231,6 +235,38 @@ public class ForeignPrimitives {
         dst.position(dstOffset);
         dst.put(srcData, 0, size);
         dst.rewind();
+    }
+
+    public static Integer idris_fileLength(Object handle) {
+	try {
+	    return handle instanceof InputStream
+		    ? Integer.valueOf((int)((InputStream)handle).available())
+		    : Integer.valueOf((int)((SeekableByteChannel)handle).size());
+	} catch (IOException any) {
+	    return -1;
+	}
+    }
+
+    public static Object idris_mmap(Object handle, Integer can_write, int length) {
+	Channel channel = handle instanceof InputStream
+                ? Channels.newChannel((InputStream) handle)
+                : (Channel) handle;
+	if (!(channel instanceof FileChannel)) {
+	    return null;
+	}
+	FileChannel fileChannel = (FileChannel)channel;
+	MapMode mode = (can_write != 0 ? MapMode.READ_WRITE : MapMode.READ_ONLY);
+	try {
+	    return fileChannel.map(mode, 0, length);
+	} catch (Exception e) {
+	    return null;
+	}
+    }
+
+    public static Integer idris_munmap(Object buf, int length) {
+	((MappedByteBuffer)buf).force();
+	buf = null;
+	return 0;
     }
 
     public final static Object idris_K(final Object result, final Object drop) {

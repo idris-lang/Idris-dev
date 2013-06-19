@@ -309,6 +309,8 @@ mkIdentifier (UN name) =
       | x == ']' = "_RSBrace" ++ cleanNonLetter xs
       | x == '(' = "_LBrace" ++ cleanNonLetter xs
       | x == ')' = "_RBrace" ++ cleanNonLetter xs
+      | x == '{' = "_LCBrace" ++ cleanNonLetter xs
+      | x == '}' = "_RCBrace" ++ cleanNonLetter xs
       | x == '_' = "__" ++ cleanNonLetter xs
       | not (isAlphaNum x) = "_" ++ (show $ ord x) ++ xs
       | otherwise = x:cleanNonLetter xs
@@ -425,6 +427,9 @@ mkIdentifier (UN name) =
     cleanReserved "idris_peek" = "_idris_peek"
     cleanReserved "idris_poke" = "_idris_poke"
     cleanReserved "idris_memmove" = "_idris_memmove"
+    cleanReserved "idris_fileLength" = "_idirs_fileLength"
+    cleanReserved "idris_mmap" = "_idris_mmap"
+    cleanReserved "idris_munmap" = "_idris_munmap"
 
     cleanReserved x = x
 
@@ -1375,10 +1380,7 @@ mkExp (SOp LStrLen [arg]) =
 mkExp (SOp (LIntFloat ity) [arg]) =
   mkPrimitiveCast (intTyToClass ity) doubleType arg
 mkExp (SOp (LFloatInt ity) [arg]) =
-  mkPrimitiveCast doubleType (intTyToClass ity) arg
-mkExp (SOp (LIntStr ITBig) [arg]) =
-  (\ var -> InstanceCreation [] bigIntegerType [var] Nothing)
-  <$> mkVarAccess (Just stringType) arg
+  mkSignedExt (intTyToMethod ity) doubleType (intTyToClass ity) arg
 mkExp (SOp (LIntStr ity) [arg]) =
   mkToString (intTyToClass ity) arg
 mkExp (SOp (LStrInt ity) [arg]) =
@@ -1486,14 +1488,7 @@ mkExp (SOp (LSExt from to) [var])
         = mkSignedExt (intTyToMethod to) (intTyToClass from) (intTyToClass to) var
 mkExp (SOp (LTrunc from to) [var])
     | intTyWidth from > intTyWidth to
-        = (\ var -> MethodInv $ 
-            TypeMethodCall (J.Name [intTyToIdent to])
-                           []
-                           (Ident "valueOf")
-                           [ MethodInv 
-                             $ PrimaryMethodCall var [] (Ident (intTyToMethod to)) [] ]
-  )
-  <$> mkVarAccess (Just $ intTyToClass from) var
+        = mkSignedExt (intTyToMethod to) (intTyToClass from) (intTyToClass to) var
 mkExp (SOp LFExp [arg]) = mkMathFun "exp" arg
 mkExp (SOp LFLog [arg]) = mkMathFun "log" arg
 mkExp (SOp LFSin [arg]) = mkMathFun "sin" arg

@@ -1,16 +1,10 @@
 module Decidable.Order
 
-%access public
-
-{-
-Doesn't work yet, see note in Decidable.idr
-
 import Decidable.Decidable
 import Decidable.Equality
+import Language.Reflection
 
---------------------------------------------------------------------------------
--- Utility Lemmas
---------------------------------------------------------------------------------
+%access public
 
 --------------------------------------------------------------------------------
 -- Preorders and Posets
@@ -24,7 +18,7 @@ class (Preorder t po) => Poset t (po : t -> t -> Type) where
   total antisymmetric : (a : t) -> (b : t) -> po a b -> po b a -> a = b
 
 --------------------------------------------------------------------------------
--- Natural numbers
+-- Less or equal on natural numbers
 --------------------------------------------------------------------------------
 
 data NatLTE : Nat -> Nat -> Type where
@@ -55,9 +49,17 @@ NatLTEIsAntisymmetric n m (nLTESm _) (nLTESm _) impossible
 instance Poset Nat NatLTE where
   antisymmetric = NatLTEIsAntisymmetric
 
+--------------------------------------------------------------------------------
+-- Lemmas
+--------------------------------------------------------------------------------
+  
 total zeroNeverGreater : {n : Nat} -> NatLTE (S n) O -> _|_
 zeroNeverGreater {n} (nLTESm _) impossible
 zeroNeverGreater {n}  nEqn      impossible
+
+total zeroAlwaysSmaler : {m : Nat} -> NatLTE O m
+zeroAlwaysSmaler {m =    O } = nEqn
+zeroAlwaysSmaler {m = (S n)} = nLTESm zeroAlwaysSmaler
 
 total
 nGTSm : {n : Nat} -> {m : Nat} -> (NatLTE n m -> _|_) -> NatLTE n (S m) -> _|_
@@ -65,23 +67,68 @@ nGTSm         disprf (nLTESm nLTEm) = FalseElim (disprf nLTEm)
 nGTSm {n} {m} disprf (nEqn) impossible
 
 total
-decideNatLTE : (n : Nat) -> (m : Nat) -> Dec (NatLTE n m)
-decideNatLTE    O      O  = Yes nEqn
-decideNatLTE (S x)     O  = No  zeroNeverGreater
-decideNatLTE    x   (S y) with (decEq x (S y))
-  | Yes eq      = rewrite eq in Yes nEqn
-  | No _ with (decideNatLTE x y)
-    | Yes nLTEm = Yes (nLTESm nLTEm)
-    | No  nGTm  = No (nGTSm nGTm)
+shiftNatLTE : {n : Nat} -> {m : Nat} -> NatLTE n m -> NatLTE (S n) (S m)
+shiftNatLTE nEqn = nEqn
+shiftNatLTE (nLTESm nLTEpm) = nLTESm (shiftNatLTE nLTEpm)
 
-instance Rel NatLTE where
-  liftRel P = (n : Nat) -> (m : Nat) -> P (NatLTE n m)
+total minusLTE : {n : Nat} -> (m : Nat) -> NatLTE (minus n m) n
+minusLTE {n =   x }    O  = rewrite minusZeroRight x in nEqn
+minusLTE {n =   O }    _  = nEqn
+minusLTE {n = S n'} (S m') = nLTESm $ minusLTE m'
 
-instance Decidable NatLTE where
-  decide = decideNatLTE
+--------------------------------------------------------------------------------
+-- Deciding less or equal
+--------------------------------------------------------------------------------
 
-lte : (m : Nat) -> (n : Nat) -> Dec (NatLTE m n)
-lte m n = decide {p = NatLTE} m n
+total
+natLTE : (n : Nat) -> (m : Nat) -> Dec (NatLTE n m)
+natLTE    O      O  = Yes nEqn
+natLTE (S x)     O  = No  zeroNeverGreater
+natLTE    O   (S y) = Yes (zeroAlwaysSmaler {m = S y})
+natLTE (S x)  (S y) with (natLTE x y)
+  | Yes prf   = Yes (shiftNatLTE prf)
+  | No disprf = No  (\ sxLTESy => nGTSm disprf (NatLTEIsTransitive x (S x) (S y) (nLTESm nEqn) sxLTESy))
 
--}
+total 
+natLTECompleteness : {n : Nat} -> {m : Nat} -> NatLTE n m -> Given (natLTE n m)
+natLTECompleteness {n} {m} nlte with (natLTE n m)
+  | Yes prf    = always
+  | No  disprf = FalseElim $ disprf nlte
+
+total
+natLTESoundness : {n : Nat} -> {m : Nat} -> (NatLTE n m -> _|_) -> Given (natLTE n m) -> _|_
+natLTESoundness disprf always impossible
+
+onNatLTE : PredicateFunctor
+onNatLTE p = (n : Nat) -> (m : Nat) -> p (NatLTE n m)
+
+instance Decidable onNatLTE where
+  decide = natLTE
+
+--------------------------------------------------------------------------------
+-- Tactic to auto proof less or equal
+--------------------------------------------------------------------------------
+
+natLTETacticTT : TT
+natLTETacticTT = ?natLTETacticTTPrf
+
+natLTETactic : List (TTName, Binder TT) -> TT -> Tactic
+natLTETactic ctxt goal =
+  GoalType "NatLTE"
+   (Try (Refine "nEqn" `Seq` Solve)
+        (Try (Refine "zeroAlwaysSmaler" `Seq` Solve)
+             (Try (Refine "minusLTE" `Seq` Solve)
+                  (Try (Refine "shiftNatLTE" `Seq` Recurse)
+                       (Refine "nLTESm" `Seq` Recurse)))))
+   where
+     Recurse : Tactic
+     Recurse = Solve `Seq` (ApplyTactic natLTETacticTT `Seq` Solve)
+
+--------------------------------------------------------------------------------
+-- Proofs
+--------------------------------------------------------------------------------
+
+natLTETacticTTPrf = proof {
+  reflect natLTETactic;
+}
 

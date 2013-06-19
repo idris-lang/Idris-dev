@@ -257,7 +257,6 @@ getChar = fmap cast $ mkForeign (FFun "getchar" [] FInt)
 
 ---- some basic file handling
 
-abstract 
 data File = FHandle Ptr
 
 partial stdin : File
@@ -310,6 +309,14 @@ do_feof h = mkForeign (FFun "fileEOF" [FPtr] FInt) h
 feof : File -> IO Bool
 feof (FHandle h) = do eof <- do_feof h
                       return (not (eof == 0))
+
+partial
+do_fileLength : Ptr -> IO Int
+do_fileLength h = mkForeign (FFun "idris_fileLength" [FPtr] FInt) h
+
+fileLength : File -> IO Nat
+fileLength (FHandle ptr) = do l <- do_fileLength ptr
+                              return (fromInteger l)
 
 partial
 do_ferror : Ptr -> IO Int
