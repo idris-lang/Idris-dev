@@ -325,33 +325,33 @@ zeroExtend : Bits n -> Bits (n+m)
 zeroExtend (MkBits x) = MkBits (zext' x)
 
 %assert_total
-intToBits' : Int -> machineTy (nextBytes n)
+intToBits' : Integer -> machineTy (nextBytes n)
 intToBits' {n=n} x with (nextBytes n)
     | O = let pad = getPad {n=0} n in
-          prim__lshrB8 (prim__shlB8 (prim__truncInt_B8 x) pad) pad
+          prim__lshrB8 (prim__shlB8 (prim__truncBigInt_B8 x) pad) pad
     | S O = let pad = getPad {n=1} n in
-            prim__lshrB16 (prim__shlB16 (prim__truncInt_B16 x) pad) pad
+            prim__lshrB16 (prim__shlB16 (prim__truncBigInt_B16 x) pad) pad
     | S (S O) = let pad = getPad {n=2} n in
-                prim__lshrB32 (prim__shlB32 (prim__truncInt_B32 x) pad) pad
+                prim__lshrB32 (prim__shlB32 (prim__truncBigInt_B32 x) pad) pad
     | S (S (S _)) = let pad = getPad {n=3} n in
-                    prim__lshrB64 (prim__shlB64 (prim__truncInt_B64 x) pad) pad
+                    prim__lshrB64 (prim__shlB64 (prim__truncBigInt_B64 x) pad) pad
 
 public
-intToBits : Int -> Bits n
+intToBits : Integer -> Bits n
 intToBits n = MkBits (intToBits' n)
 
-instance Cast Int (Bits n) where
+instance Cast Integer (Bits n) where
     cast = intToBits
 
-bitsToInt' : machineTy (nextBytes n) -> Int
+bitsToInt' : machineTy (nextBytes n) -> Integer
 bitsToInt' {n=n} x with (nextBytes n)
-    | O = prim__zextB8_Int x
-    | S O = prim__zextB16_Int x
-    | S (S O) = prim__zextB32_Int x
-    | S (S (S _)) = prim__truncB64_Int x
+    | O = prim__zextB8_BigInt x
+    | S O = prim__zextB16_BigInt x
+    | S (S O) = prim__zextB32_BigInt x
+    | S (S (S _)) = prim__zextB64_BigInt x
 
 public
-bitsToInt : Bits n -> Int
+bitsToInt : Bits n -> Integer
 bitsToInt (MkBits x) = bitsToInt' x
 
 -- Zero out the high bits of a truncated bitstring

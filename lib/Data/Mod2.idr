@@ -25,7 +25,7 @@ rem = modBin urem
 
 %assert_total
 public
-intToMod : {n : Nat} -> Int -> Mod2 n
+intToMod : {n : Nat} -> Integer -> Mod2 n
 intToMod {n=n} x = MkMod2 (intToBits x)
 
 instance Eq (Mod2 n) where
@@ -56,7 +56,7 @@ modToStr x = pack (reverse (helper x))
     where
       %assert_total
       helper : Mod2 n -> List Char
-      helper x = strIndex "0123456789" (bitsToInt (cast (x `rem` 10)))
+      helper x = strIndex "0123456789" (prim__truncBigInt_Int (bitsToInt (cast (x `rem` 10))))
                  :: (if x < 10 then [] else helper (x `div` 10))
 
 

@@ -46,7 +46,7 @@ data NodeList : Type where
 
 elemAt : NodeList -> Nat -> IO (Maybe Element)
 elemAt (MkNodeList p) i = do
-  e <- mkForeign (FFun ".item" [FPtr, FInt] FPtr) p (cast i)
+  e <- mkForeign (FFun ".item" [FPtr, FInt] FPtr) p (prim__truncBigInt_Int (cast i))
   d <- isUndefined e
   if d
      then return $ Just (MkElem e)
