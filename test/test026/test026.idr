@@ -13,7 +13,7 @@ strToType _ = Nat
 -- If the file contains "Int", provide Int as a type, otherwise provide Nat
 fromFile : String -> IO (Provider Type)
 fromFile fname = do str <- readFile fname
-                    return (Provide (strToType str))
+                    return (Provide (strToType (trim str)))
 
 %provide (T1 : Type) with fromFile "theType"
 %provide (T2 : Type) with fromFile "theOtherType"

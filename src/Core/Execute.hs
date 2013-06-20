@@ -274,6 +274,16 @@ execApp' env ctxt f@(EP _ (UN "mkForeign") _) args@(ty:fn:xs) | Just (FFun f arg
          Just r -> return (mkEApp r (drop (length argTs) xs))
                                                              | otherwise = return (mkEApp f args)
 
+execApp' env ctxt c@(EP (DCon _ arity) n _) args =
+    do args' <- mapM tryForce (take arity args)
+       let restArgs = drop arity args
+       execApp' env ctxt (mkEApp c args') restArgs
+
+execApp' env ctxt c@(EP (TCon _ arity) n _) args =
+    do args' <- mapM tryForce (take arity args)
+       let restArgs = drop arity args
+       execApp' env ctxt (mkEApp c args') restArgs
+
 execApp' env ctxt f@(EP _ n _) args =
     do let val = lookupDef n ctxt
        case val of
@@ -350,7 +360,7 @@ execApp' env ctxt f@(EP _ n _) args =
                         return (EConstant (Str line))
           getOp (UN "prim__readString") [EHandle h] =
               Just $ do contents <- execIO $ hGetLine h
-                        return (EConstant (Str contents))
+                        return (EConstant (Str (contents ++ "\n")))
           getOp (UN "prim__shLInt") [EConstant (I i1), EConstant (I i2)] =
               primRes I (shiftL i1 i2)
           getOp (UN "prim__shRInt") [EConstant (I i1), EConstant (I i2)] =
