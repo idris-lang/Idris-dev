@@ -1375,10 +1375,7 @@ mkExp (SOp LStrLen [arg]) =
 mkExp (SOp (LIntFloat ity) [arg]) =
   mkPrimitiveCast (intTyToClass ity) doubleType arg
 mkExp (SOp (LFloatInt ity) [arg]) =
-  mkPrimitiveCast doubleType (intTyToClass ity) arg
-mkExp (SOp (LIntStr ITBig) [arg]) =
-  (\ var -> InstanceCreation [] bigIntegerType [var] Nothing)
-  <$> mkVarAccess (Just stringType) arg
+  mkSignedExt (intTyToMethod ity) doubleType (intTyToClass ity) arg
 mkExp (SOp (LIntStr ity) [arg]) =
   mkToString (intTyToClass ity) arg
 mkExp (SOp (LStrInt ity) [arg]) =
@@ -1486,14 +1483,7 @@ mkExp (SOp (LSExt from to) [var])
         = mkSignedExt (intTyToMethod to) (intTyToClass from) (intTyToClass to) var
 mkExp (SOp (LTrunc from to) [var])
     | intTyWidth from > intTyWidth to
-        = (\ var -> MethodInv $ 
-            TypeMethodCall (J.Name [intTyToIdent to])
-                           []
-                           (Ident "valueOf")
-                           [ MethodInv 
-                             $ PrimaryMethodCall var [] (Ident (intTyToMethod to)) [] ]
-  )
-  <$> mkVarAccess (Just $ intTyToClass from) var
+        = mkSignedExt (intTyToMethod to) (intTyToClass from) (intTyToClass to) var
 mkExp (SOp LFExp [arg]) = mkMathFun "exp" arg
 mkExp (SOp LFLog [arg]) = mkMathFun "log" arg
 mkExp (SOp LFSin [arg]) = mkMathFun "sin" arg
