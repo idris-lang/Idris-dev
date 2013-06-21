@@ -390,6 +390,28 @@ execApp' env ctxt f@(EP _ n _) args =
               primResBool (i1 > i2)
           getOp (UN "prim__gteInt") [EConstant (I i1), EConstant (I i2)] =
               primResBool (i1 >= i2)
+          getOp (UN "prim__floatACos") [EConstant (Fl f)] =
+              primRes Fl (acos f)
+          getOp (UN "prim__floatASin") [EConstant (Fl f)] =
+              primRes Fl (asin f)
+          getOp (UN "prim__floatATan") [EConstant (Fl f)] =
+              primRes Fl (atan f)
+          getOp (UN "prim__floatCeil") [EConstant (Fl f)] =
+              primRes Fl (fromIntegral (ceiling f))
+          getOp (UN "prim__floatCos") [EConstant (Fl f)] =
+              primRes Fl (cos f)
+          getOp (UN "prim__floatExp") [EConstant (Fl f)] =
+              primRes Fl (exp f)
+          getOp (UN "prim__floatFloor") [EConstant (Fl f)] =
+              primRes Fl (fromIntegral (floor f))
+          getOp (UN "prim__floatLog") [EConstant (Fl f)] =
+              primRes Fl (log f)
+          getOp (UN "prim__floatSin") [EConstant (Fl f)] =
+              primRes Fl (sin f)
+          getOp (UN "prim__floatSqrt") [EConstant (Fl f)] =
+              primRes Fl (sqrt f)
+          getOp (UN "prim__floatTan") [EConstant (Fl f)] =
+              primRes Fl (tan f)
           getOp (UN "prim__intToFloat") [EConstant (I i)] =
               primRes Fl (fromRational (toRational i))
           getOp (UN "prim__intToStr") [EConstant (I i)] =
