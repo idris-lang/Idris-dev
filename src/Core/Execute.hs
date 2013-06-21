@@ -331,16 +331,53 @@ execApp' env ctxt f@(EP _ n _) args =
               primRes BI (i1 .&. i2)
           getOp (UN "prim__andInt") [EConstant (I i1), EConstant (I i2)] =
               primRes I (i1 .&. i2)
+          getOp (UN "prim__ashrB16") [EConstant (B16 i1), EConstant (B16 i2)] =
+              primRes B16 (shiftR i1 (fromIntegral i2))
+          getOp (UN "prim__ashrB32") [EConstant (B32 i1), EConstant (B32 i2)] =
+              primRes B32 (shiftR i1 (fromIntegral i2))
+          getOp (UN "prim__ashrB64") [EConstant (B64 i1), EConstant (B64 i2)] =
+              primRes B64 (shiftR i1 (fromIntegral i2))
+          getOp (UN "prim__ashrB8") [EConstant (B8 i1), EConstant (B8 i2)] =
+              primRes B8 (shiftR i1 (fromIntegral i2))
+          getOp (UN "prim__ashrBigInt") [EConstant (BI i1), EConstant (BI i2)] =
+              primRes BI (shiftR i1 (fromIntegral i2))
+          getOp (UN "prim__ashrInt") [EConstant (I i1), EConstant (I i2)] =
+              primRes I (shiftR i1 i2)
+          getOp (UN "prim__believe_me") [_, _, arg] = Just (return arg)
           getOp (UN "prim__charToInt") [EConstant (Ch c)] =
               primRes I (fromEnum c)
+          getOp (UN "prim__complB16") [EConstant (B16 i)] =
+              primRes B16 (complement i)
+          getOp (UN "prim__complB32") [EConstant (B32 i)] =
+              primRes B32 (complement i)
+          getOp (UN "prim__complB64") [EConstant (B64 i)] =
+              primRes B64 (complement i)
+          getOp (UN "prim__complB8") [EConstant (B8 i)] =
+              primRes B8 (complement i)
+          getOp (UN "prim__complBigInt") [EConstant (BI i)] =
+              primRes BI (complement i)
           getOp (UN "prim__complInt") [EConstant (I i)] =
               primRes I (complement i)
           getOp (UN "prim__concat") [EConstant (Str s1), EConstant (Str s2)] =
               primRes Str (s1 ++ s2)
+          getOp (UN "prim__divFloat") [EConstant (Fl f1), EConstant (Fl f2)] =
+              primRes Fl (f1 / f2)
           getOp (UN "prim__divInt") [EConstant (I i1), EConstant (I i2)] =
               primRes I (i1 `div` i2)
+          getOp (UN "prim__eqB16") [EConstant (B16 i1), EConstant (B16 i2)] =
+              primResBool (i1 == i2)
+          getOp (UN "prim__eqB32") [EConstant (B32 i1), EConstant (B32 i2)] =
+              primResBool (i1 == i2)
+          getOp (UN "prim__eqB64") [EConstant (B64 i1), EConstant (B64 i2)] =
+              primResBool (i1 == i2)
+          getOp (UN "prim__eqB8") [EConstant (B8 i1), EConstant (B8 i2)] =
+              primResBool (i1 == i2)
+          getOp (UN "prim__eqBigInt") [EConstant (BI i1), EConstant (BI i2)] =
+              primResBool (i1 == i2)
           getOp (UN "prim__eqChar") [EConstant (Ch c1), EConstant (Ch c2)] =
               primResBool (c1 == c2)
+          getOp (UN "prim__eqFloat") [EConstant (Fl i1), EConstant (Fl i2)] =
+              primResBool (i1 == i2)
           getOp (UN "prim__eqInt") [EConstant (I i1), EConstant (I i2)] =
               primResBool (i1 == i2)
           getOp (UN "prim__eqString") [EConstant (Str s1), EConstant (Str s2)] =
