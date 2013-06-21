@@ -11,6 +11,7 @@ import Idris.Imports
 import Idris.Error
 
 import Data.Binary
+import Data.Vector.Binary
 import Data.List
 import Data.ByteString.Lazy as B hiding (length, elem)
 import Control.Monad
@@ -395,6 +396,11 @@ instance Binary Const where
                         putWord8 20
                         putWord8 (fromIntegral . fromEnum $ ity)
                         putWord8 (fromIntegral count)
+
+                B8V  x1 -> putWord8 21 >> put x1
+                B16V x1 -> putWord8 22 >> put x1
+                B32V x1 -> putWord8 23 >> put x1
+                B64V x1 -> putWord8 24 >> put x1
         get
           = do i <- getWord8
                case i of
@@ -430,6 +436,11 @@ instance Binary Const where
                         e <- getWord8
                         c <- getWord8
                         return (AType (ATInt (ITVec (toEnum . fromIntegral $ e) (fromIntegral c))))
+
+                   21 -> fmap B8V get
+                   22 -> fmap B16V get
+                   23 -> fmap B32V get
+                   24 -> fmap B64V get
 
                    _ -> error "Corrupted binary data for Const"
 
