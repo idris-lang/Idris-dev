@@ -3,7 +3,7 @@
 In this section we discuss a variety of additional features:
 auto implicit and default 
 arguments, literate programming, interfacing with external libraries through the
-foreign function interface, and the universe hierarchy.
+foreign function interface, type providers, and the universe hierarchy.
 
 \subsection{Auto implicit arguments}
 
@@ -241,11 +241,96 @@ dynamically loaded in the interpreter by using the \texttt{:dynamic} command
 or the \texttt{\%dynamic} directive. For example:
 
 \begin{SaveVerbatim}{xdynamic}
+
 Idris> :dynamic libm.so
 Idris> :x unsafePerformIO ((mkForeign (FFun "sin" [FFloat] FFloat)) 1.6)
 0.9995736030415051 : Float
+
 \end{SaveVerbatim}
 \useverb{xdynamic}
+
+\subsection{Type Providers}
+Idris type providers, inspired by F\#'s type providers, are a means of making
+our types be ``about'' something in the world outside of Idris. For example,
+given a type that represents a database schema and a query that is checked
+against it, a type provider could read the schema of a real database during
+type checking.
+
+Idris type providers use the ordinary execution semantics of Idris to run an
+IO action and extract the result. This result is then saved as a constant in
+the compiled code. It can be a type, in which case it is used like any other
+type, or it can be a value, in which case it can be used as any other value,
+including as an index in types.
+
+Type providers are still an experimental extension. To enable the extension,
+use the \texttt{\%language} directive:
+\begin{SaveVerbatim}{languageProv}
+
+%language TypeProviders
+
+\end{SaveVerbatim}
+
+\useverb{languageProv}
+
+
+A provider \texttt{p} for some type \texttt{t} is simply an expression of type
+\texttt{IO (Provider t)}. The \texttt{\%provide} directive causes the type
+checker to execute the action and bind the result to a name.  This is perhaps
+best illustrated with a simple example. The type provider \texttt{fromFile}
+reads a text file. If the file consists of the string \texttt{"Int"}, then the
+type \texttt{Int} will be provided. Otherwise, it will provide the type
+\texttt{Nat}.
+
+\begin{SaveVerbatim}{fromFile}
+
+strToType : String -> Type
+strToType "Int" = Int
+strToType _ = Nat
+
+fromFile : String -> IO (Provider Type)
+fromFile fname = do str <- readFile fname
+                    return (Provide (strToType (trim str)))
+
+\end{SaveVerbatim}
+\useverb{fromFile}
+
+We then use the \texttt{\%provide} directive:
+
+\begin{SaveVerbatim}{fromFileUse}
+
+%provide (T1 : Type) with fromFile "theType"
+
+foo : T1
+foo = 2
+
+\end{SaveVerbatim}
+\useverb{fromFileUse}
+
+\noindent
+If the file named \texttt{theType} consists of the word \texttt{Int}, then
+\texttt{foo} will be an \texttt{Int}. Otherwise, it will be a \texttt{Nat}.
+When Idris encounters the directive, it first checks that the provider
+expression \texttt{fromFile "theType"} has type \texttt{IO (Provider
+  Type)}. Next, it executes the provider. If the result is \texttt{Provide t},
+then \texttt{T1} is defined as \texttt{t}. Otherwise, the result is an error.
+
+Our datatype \texttt{Provider t} has the following definition:
+
+\begin{SaveVerbatim}{providerdef}
+
+data Provider a = Error String
+                | Provide a
+
+\end{SaveVerbatim}
+\useverb{providerdef}
+
+\noindent
+We have already seen the \texttt{Provide} constructor. The \texttt{Error}
+constructor allows type providers to return useful error messages.  The
+example in this section was purposefully simple. More complex type provider
+implementations, including a statically-checked SQLite binding, are available
+in an external collection.\footnote{\url{https://github.com/david-christiansen/idris-type-providers}}
+
 \subsection{Cumulativity}
 
 Since values can appear in types and \emph{vice versa}, it is natural that types themselves
