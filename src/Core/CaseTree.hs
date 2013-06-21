@@ -238,8 +238,6 @@ toPat tc tms = evalState (mapM (\x -> toPat' x []) tms) []
         | tc = return $ PCon (UN "Integer") 6 []
     toPat' (Constant (AType (ATInt (ITFixed n)))) []
         | tc = return $ PCon (UN (fixedN n)) (7 + fromEnum n) [] -- 7-10 inclusive
-    toPat' (Constant (AType (ATInt (ITVec ity count)))) []
-        | tc = return $ PCon (UN (fixedN ity)) ((fromEnum ity + 1) * 1000 + count) [] -- 1000-5000 inclusive
     toPat' (P Bound n _)      []   = do ns <- get
                                         if n `elem` ns 
                                           then return PAny 
