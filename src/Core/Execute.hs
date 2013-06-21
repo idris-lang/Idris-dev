@@ -305,6 +305,18 @@ execApp' env ctxt f@(EP _ n _) args =
                 return $ fromMaybe (mkEApp f args) res
          thing -> return $ mkEApp f args
     where getOp :: Name -> [ExecVal] -> Maybe (Exec ExecVal)
+          getOp (UN "prim__addB16") [EConstant (B16 i1), EConstant (B16 i2)] =
+              primRes B16 (i1 + i2)
+          getOp (UN "prim__addB32") [EConstant (B32 i1), EConstant (B32 i2)] =
+              primRes B32 (i1 + i2)
+          getOp (UN "prim__addB64") [EConstant (B64 i1), EConstant (B64 i2)] =
+              primRes B64 (i1 + i2)
+          getOp (UN "prim__addB8") [EConstant (B8 i1), EConstant (B8 i2)] =
+              primRes B8 (i1 + i2)
+          getOp (UN "prim__addBigInt") [EConstant (BI i1), EConstant (BI i2)] =
+              primRes BI (i1 + i2)
+          getOp (UN "prim__addFloat") [EConstant (Fl f1), EConstant (Fl f2)] =
+              primRes Fl (f1 + f2)
           getOp (UN "prim__addInt") [EConstant (I i1), EConstant (I i2)] =
               primRes I (i1 + i2)
           getOp (UN "prim__andInt") [EConstant (I i1), EConstant (I i2)] =
