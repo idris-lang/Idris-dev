@@ -390,7 +390,7 @@ instance Binary Const where
                 StrType -> putWord8 13
                 PtrType -> putWord8 14
                 Forgot -> putWord8 15
-                (AType (ATInt (ITFixed ity))) -> put (16 + fromEnum ity) -- 16-19 inclusive
+                (AType (ATInt (ITFixed ity))) -> putWord8 (fromIntegral (16 + fromEnum ity)) -- 16-19 inclusive
                 (AType (ATInt (ITVec ity count))) -> do
                         putWord8 20
                         putWord8 (fromIntegral . fromEnum $ ity)
