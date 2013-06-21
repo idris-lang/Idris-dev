@@ -2,9 +2,9 @@ module Sqlite3
 import Sqlexpr
 
 
-%lib "sqlite3"
-%link "sqlite3api.o"
-%include "sqlite3api.h"
+%lib C "sqlite3"
+%link C "sqlite3api.o"
+%include C "sqlite3api.h"
 
 -----------------------------------------------------------------------------
 -- |
