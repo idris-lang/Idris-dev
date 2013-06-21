@@ -224,11 +224,11 @@ Often this will require extra libraries to be linked in, or extra header and obj
 This is made possible through the following directives:
 
 \begin{itemize}
-\item \texttt{\%lib target "x"} --- include the \texttt{libx} library. If the target is \texttt{C} equivalent to passing the
+\item \texttt{\%lib target "x"} --- include the \texttt{libx} library. If the target is \texttt{C} this is equivalent to passing the
 \texttt{-lx} option to \texttt{gcc}. If the target is Java the library will be interpreted as a 
-"groupId:artifactId:packaging:version" coordinate for maven.
-\item \texttt{\%include target "x"} --- use the header file or import \texttt{x} for the given backend target.
-\item \texttt{\%link target "x.o"} --- link with the object file \texttt{x.o} when using the given backend target.
+"groupId:artifactId:packaging:version" dependency coordinate for maven.
+\item \texttt{\%include target "x"} --- use the header file or import \texttt{x} for the given back end target.
+\item \texttt{\%link target "x.o"} --- link with the object file \texttt{x.o} when using the given back end target.
 \item \texttt{\%dynamic "x.so"} --- dynamically link the interpreter with the shared object \texttt{x.so}.
 \end{itemize}
 
