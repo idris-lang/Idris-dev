@@ -32,6 +32,10 @@ import Foreign.Ptr
 
 import System.IO
 
+readMay :: (Read a) => String -> Maybe a
+readMay s = case reads s of
+              [(x, "")] -> Just x
+              _         -> Nothing
 
 data Lazy = Delayed ExecEnv Context Term | Forced ExecVal deriving Show
 
@@ -412,6 +416,32 @@ execApp' env ctxt f@(EP _ n _) args =
               primRes Fl (sqrt f)
           getOp (UN "prim__floatTan") [EConstant (Fl f)] =
               primRes Fl (tan f)
+          getOp (UN "prim__floatToStr") [EConstant (Fl f)] =
+              primRes Str (show f)
+          getOp (UN "prim__fromFloatB16") [EConstant (Fl f)] =
+              primRes B16 (fromIntegral (fromEnum f))
+          getOp (UN "prim__fromFloatB32") [EConstant (Fl f)] =
+              primRes B32 (fromIntegral (fromEnum f))
+          getOp (UN "prim__fromFloatB64") [EConstant (Fl f)] =
+              primRes B64 (fromIntegral (fromEnum f))
+          getOp (UN "prim__fromFloatB8") [EConstant (Fl f)] =
+              primRes B8 (fromIntegral (fromEnum f))
+          getOp (UN "prim__fromFloatBigInt") [EConstant (Fl f)] =
+              primRes BI (fromIntegral (fromEnum f))
+          getOp (UN "prim__fromFloatInt") [EConstant (Fl f)] =
+              primRes I (fromEnum f)
+          getOp (UN "prim__fromStrB16") [EConstant (Str s)] =
+              primRes B16 (fromMaybe 0 $ readMay s)
+          getOp (UN "prim__fromStrB32") [EConstant (Str s)] =
+              primRes B32 (fromMaybe 0 $ readMay s)
+          getOp (UN "prim__fromStrB64") [EConstant (Str s)] =
+              primRes B64 (fromMaybe 0 $ readMay s)
+          getOp (UN "prim__fromStrB8") [EConstant (Str s)] =
+              primRes B8 (fromMaybe 0 $ readMay s)
+          getOp (UN "prim__fromStrBigInt") [EConstant (Str s)] =
+              primRes BI (fromMaybe 0 $ readMay s)
+          getOp (UN "prim__fromStrInt") [EConstant (Str s)] =
+              primRes I (fromMaybe 0 $ readMay s)
           getOp (UN "prim__intToFloat") [EConstant (I i)] =
               primRes Fl (fromRational (toRational i))
           getOp (UN "prim__intToStr") [EConstant (I i)] =
