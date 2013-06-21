@@ -14,4 +14,9 @@ test/test???/output
 test/reg???/output
 test/test???/*.exe
 test/reg???/*.exe
-
+tutorial/*.aux
+tutorial/*.bbl
+tutorial/*.blg
+tutorial/*.log
+tutorial/*.out
+tutorial/*.toc
