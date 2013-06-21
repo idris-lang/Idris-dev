@@ -319,6 +319,16 @@ execApp' env ctxt f@(EP _ n _) args =
               primRes Fl (f1 + f2)
           getOp (UN "prim__addInt") [EConstant (I i1), EConstant (I i2)] =
               primRes I (i1 + i2)
+          getOp (UN "prim__andB16") [EConstant (B16 i1), EConstant (B16 i2)] =
+              primRes B16 (i1 .&. i2)
+          getOp (UN "prim__andB32") [EConstant (B32 i1), EConstant (B32 i2)] =
+              primRes B32 (i1 .&. i2)
+          getOp (UN "prim__andB64") [EConstant (B64 i1), EConstant (B64 i2)] =
+              primRes B64 (i1 .&. i2)
+          getOp (UN "prim__andB8") [EConstant (B8 i1), EConstant (B8 i2)] =
+              primRes B8 (i1 .&. i2)
+          getOp (UN "prim__andBigInt") [EConstant (BI i1), EConstant (BI i2)] =
+              primRes BI (i1 .&. i2)
           getOp (UN "prim__andInt") [EConstant (I i1), EConstant (I i2)] =
               primRes I (i1 .&. i2)
           getOp (UN "prim__charToInt") [EConstant (Ch c)] =
