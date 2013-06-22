@@ -30,17 +30,20 @@ import Util.System
 getContext :: Idris Context
 getContext = do i <- getIState; return (tt_ctxt i)
 
-getObjectFiles :: Idris [FilePath]
-getObjectFiles = do i <- getIState; return (idris_objs i)
+forTarget :: Target -> [(Target, a)] -> [a]
+forTarget tgt xs = [x | (tgt', x) <- xs, tgt == tgt']
 
-addObjectFile :: FilePath -> Idris ()
-addObjectFile f = do i <- getIState; putIState $ i { idris_objs = f : idris_objs i }
+getObjectFiles :: Target -> Idris [FilePath]
+getObjectFiles tgt = do i <- getIState; return (forTarget tgt $ idris_objs i)
 
-getLibs :: Idris [String]
-getLibs = do i <- getIState; return (idris_libs i)
+addObjectFile :: Target -> FilePath -> Idris ()
+addObjectFile tgt f = do i <- getIState; putIState $ i { idris_objs = (tgt, f) : idris_objs i }
 
-addLib :: String -> Idris ()
-addLib f = do i <- getIState; putIState $ i { idris_libs = f : idris_libs i }
+getLibs :: Target -> Idris [String]
+getLibs tgt = do i <- getIState; return (forTarget tgt $ idris_libs i)
+
+addLib :: Target -> String -> Idris ()
+addLib tgt f = do i <- getIState; putIState $ i { idris_libs = (tgt, f) : idris_libs i }
 
 addDyLib :: [String] -> Idris (Either DynamicLib String)
 addDyLib libs = do i <- getIState
@@ -52,8 +55,8 @@ addDyLib libs = do i <- getIState
                                   putIState $ i { idris_dynamic_libs = x:ls }
                                   return (Left x)
 
-addHdr :: String -> Idris ()
-addHdr f = do i <- getIState; putIState $ i { idris_hdrs = f : idris_hdrs i }
+addHdr :: Target -> String -> Idris ()
+addHdr tgt f = do i <- getIState; putIState $ i { idris_hdrs = (tgt, f) : idris_hdrs i }
 
 addLangExt :: LanguageExt -> Idris ()
 addLangExt TypeProviders = do i <- getIState ; putIState $ i { idris_language_extensions = [TypeProviders] }
@@ -160,8 +163,8 @@ addIBC ibc = do i <- getIState; putIState $ i { ibc_write = ibc : ibc_write i }
 clearIBC :: Idris ()
 clearIBC = do i <- getIState; putIState $ i { ibc_write = [] }
 
-getHdrs :: Idris [String]
-getHdrs = do i <- getIState; return (idris_hdrs i)
+getHdrs :: Target -> Idris [String]
+getHdrs tgt = do i <- getIState; return (forTarget tgt $ idris_hdrs i)
 
 setErrLine :: Int -> Idris ()
 setErrLine x = do i <- getIState;

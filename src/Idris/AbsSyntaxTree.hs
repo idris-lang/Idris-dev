@@ -95,9 +95,9 @@ data IState = IState {
     syntax_keywords :: [String],
     imported :: [FilePath], -- ^ The imported modules
     idris_scprims :: [(Name, (Int, PrimFn))],
-    idris_objs :: [FilePath],
-    idris_libs :: [String],
-    idris_hdrs :: [String],
+    idris_objs :: [(Target, FilePath)],
+    idris_libs :: [(Target, String)],
+    idris_hdrs :: [(Target, String)],
     proof_list :: [(Name, [String])],
     errLine :: Maybe Int,
     lastParse :: Maybe Name,
@@ -145,10 +145,10 @@ data IBCWrite = IBCFix FixDecl
               | IBCSyntax Syntax
               | IBCKeyword String
               | IBCImport FilePath
-              | IBCObj FilePath
-              | IBCLib String
+              | IBCObj Target FilePath
+              | IBCLib Target String
               | IBCDyLib String
-              | IBCHeader String
+              | IBCHeader Target String
               | IBCAccess Name Accessibility
               | IBCTotal Name Totality
               | IBCFlags Name [FnOpt]
