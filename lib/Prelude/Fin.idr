@@ -19,11 +19,11 @@ finToNat (fS x) a = finToNat x (S a)
 instance Cast (Fin n) Nat where
     cast x = finToNat x O
 
-finToInt : Fin n -> Int -> Int
+finToInt : Fin n -> Integer -> Integer
 finToInt fO a = a
 finToInt (fS x) a = finToInt x (a + 1)
 
-instance Cast (Fin n) Int where
+instance Cast (Fin n) Integer where
     cast x = finToInt x 0
 
 weaken : Fin n -> Fin (S n)

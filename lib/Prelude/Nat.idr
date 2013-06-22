@@ -107,7 +107,7 @@ instance Eq Nat where
   (S l) == (S r) = l == r
   _ == _         = False
 
-instance Cast Nat Int where
+instance Cast Nat Integer where
   cast O     = 0
   cast (S k) = 1 + cast k
 
@@ -127,13 +127,16 @@ instance Num Nat where
   fromInteger x = fromInteger' x
     where
       %assert_total
-      fromInteger' : Int -> Nat
+      fromInteger' : Integer -> Nat
       fromInteger' 0 = O
       fromInteger' n =
         if (n > 0) then
           S (fromInteger' (n - 1))
         else
           O
+
+instance Cast Integer Nat where
+  cast = fromInteger
 
 record Multiplicative : Type where
   getMultiplicative : Nat -> Multiplicative

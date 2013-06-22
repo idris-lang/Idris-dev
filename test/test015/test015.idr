@@ -67,7 +67,7 @@ adc (numx # bx) (numy # by) carry
 readNum : IO Nat
 readNum = do putStr "Enter a number:"
              i <- getLine
-             let n : Int = cast i
+             let n : Integer = cast i
              return (fromInteger n)
 
 main : IO ()
