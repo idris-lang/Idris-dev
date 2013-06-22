@@ -23,7 +23,7 @@ import Debug.Trace
 import Paths_idris
 
 ibcVersion :: Word8
-ibcVersion = 29
+ibcVersion = 30
 
 data IBCFile = IBCFile { ver :: Word8,
                          sourcefile :: FilePath,
@@ -38,10 +38,10 @@ data IBCFile = IBCFile { ver :: Word8,
                          ibc_optimise :: [(Name, OptInfo)],
                          ibc_syntax :: [Syntax],
                          ibc_keywords :: [String],
-                         ibc_objs :: [FilePath],
-                         ibc_libs :: [String],
+                         ibc_objs :: [(Target, FilePath)],
+                         ibc_libs :: [(Target, String)],
                          ibc_dynamic_libs :: [String],
-                         ibc_hdrs :: [String],
+                         ibc_hdrs :: [(Target, String)],
                          ibc_access :: [(Name, Accessibility)],
                          ibc_total :: [(Name, Totality)],
                          ibc_flags :: [(Name, [FnOpt])],
@@ -112,10 +112,10 @@ ibc i (IBCOpt n) f = case lookupCtxt n (idris_optimisation i) of
 ibc i (IBCSyntax n) f = return f { ibc_syntax = n : ibc_syntax f }
 ibc i (IBCKeyword n) f = return f { ibc_keywords = n : ibc_keywords f }
 ibc i (IBCImport n) f = return f { ibc_imports = n : ibc_imports f }
-ibc i (IBCObj n) f = return f { ibc_objs = n : ibc_objs f }
-ibc i (IBCLib n) f = return f { ibc_libs = n : ibc_libs f }
+ibc i (IBCObj tgt n) f = return f { ibc_objs = (tgt, n) : ibc_objs f }
+ibc i (IBCLib tgt n) f = return f { ibc_libs = (tgt, n) : ibc_libs f }
 ibc i (IBCDyLib n) f = return f {ibc_dynamic_libs = n : ibc_dynamic_libs f }
-ibc i (IBCHeader n) f = return f { ibc_hdrs = n : ibc_hdrs f }
+ibc i (IBCHeader tgt n) f = return f { ibc_hdrs = (tgt, n) : ibc_hdrs f }
 ibc i (IBCDef n) f = case lookupDef n (tt_ctxt i) of
                         [v] -> return f { ibc_defs = (n,v) : ibc_defs f     }
                         _ -> fail "IBC write failed"
@@ -242,11 +242,11 @@ pKeywords :: [String] -> Idris ()
 pKeywords k = do i <- getIState
                  putIState (i { syntax_keywords = k ++ syntax_keywords i })
 
-pObjs :: [FilePath] -> Idris ()
-pObjs os = mapM_ addObjectFile os
+pObjs :: [(Target, FilePath)] -> Idris ()
+pObjs os = mapM_ (uncurry addObjectFile) os
 
-pLibs :: [String] -> Idris ()
-pLibs ls = mapM_ addLib ls
+pLibs :: [(Target, String)] -> Idris ()
+pLibs ls = mapM_ (uncurry addLib) ls
 
 pDyLibs :: [String] -> Idris ()
 pDyLibs ls = do res <- mapM (addDyLib . return) ls
@@ -255,8 +255,8 @@ pDyLibs ls = do res <- mapM (addDyLib . return) ls
     where checkLoad (Left _) = return ()
           checkLoad (Right err) = fail err
 
-pHdrs :: [String] -> Idris ()
-pHdrs hs = mapM_ addHdr hs
+pHdrs :: [(Target, String)] -> Idris ()
+pHdrs hs = mapM_ (uncurry addHdr) hs
 
 pDefs :: [(Name, Def)] -> Idris ()
 pDefs ds = mapM_ (\ (n, d) -> 
@@ -1676,3 +1676,22 @@ instance Binary SSymbol where
                    4 -> do x1 <- get
                            return (Binding x1)
                    _ -> error "Corrupted binary data for SSymbol"
+
+instance Binary Target where
+        put x
+          = case x of
+                ViaC -> putWord8 0
+                ViaJava -> putWord8 1
+                ViaNode -> putWord8 2
+                ViaJavaScript -> putWord8 3
+                Bytecode -> putWord8 4
+        get
+          = do i <- getWord8
+               case i of
+                  0 -> return ViaC
+                  1 -> return ViaJava
+                  2 -> return ViaNode
+                  3 -> return ViaJavaScript
+                  4 -> return Bytecode
+                  _ -> error  "Corrupted binary data for Target"
+

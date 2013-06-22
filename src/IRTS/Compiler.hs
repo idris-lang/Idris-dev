@@ -38,9 +38,9 @@ compile target f tm
         defsIn <- mkDecls tm (concat used)
         findUnusedArgs (concat used)
         maindef <- irMain tm
-        objs <- getObjectFiles
-        libs <- getLibs
-        hdrs <- getHdrs
+        objs <- getObjectFiles target
+        libs <- getLibs target
+        hdrs <- getHdrs target
         let defs = defsIn ++ [(MN 0 "runMain", maindef)]
         -- iputStrLn $ showSep "\n" (map show defs)
         let (nexttag, tagged) = addTags 65536 (liftAll defs)

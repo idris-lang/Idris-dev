@@ -139,8 +139,8 @@ instance Monad List where
 
 ---- some mathematical operations
 
-%include "math.h"
-%lib "m"
+%include C "math.h"
+%lib C "m"
 
 pow : (Num a) => a -> Nat -> a
 pow x O = 1

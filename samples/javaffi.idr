@@ -1,7 +1,7 @@
 module Main
 
-%include "com.google.common.math.IntMath"
-%lib "com.google.guava:guava:14.0"
+%include Java "com.google.common.math.IntMath"
+%lib Java "com.google.guava:guava:14.0"
 
 binom : Int -> Int -> IO Int
 binom n k = mkForeign (FFun "IntMath.binomial" [FInt, FInt] FInt) n k
