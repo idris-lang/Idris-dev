@@ -183,11 +183,11 @@ intOps ity = intCmps ity ++ intArith ity ++ intConv ity
 
 intCmps :: IntTy -> [Prim]
 intCmps ity =
-    [ iCmp ity "lt" (bCmp ity (<)) (LLt . ATInt) total
-    , iCmp ity "lte" (bCmp ity (<=)) (LLe . ATInt) total
-    , iCmp ity "eq" (bCmp ity (==)) (LEq . ATInt) total
-    , iCmp ity "gte" (bCmp ity (>=)) (LGe . ATInt) total
-    , iCmp ity "gt" (bCmp ity (>)) (LGt . ATInt) total
+    [ iCmp ity "lt" False (bCmp ity (<)) (LLt . ATInt) total
+    , iCmp ity "lte" False (bCmp ity (<=)) (LLe . ATInt) total
+    , iCmp ity "eq" False (bCmp ity (==)) (LEq . ATInt) total
+    , iCmp ity "gte" False (bCmp ity (>=)) (LGe . ATInt) total
+    , iCmp ity "gt" False (bCmp ity (>)) (LGt . ATInt) total
     ]
 
 intArith :: IntTy -> [Prim]
@@ -220,6 +220,15 @@ intConv ity =
                (1, LFloatInt ity) total
     ]
 
+vecCmps :: IntTy -> [Prim]
+vecCmps ity =
+    [ iCmp ity "lt" True (bCmp ity (<)) (LLt . ATInt) total
+    , iCmp ity "lte" True (bCmp ity (<=)) (LLe . ATInt) total
+    , iCmp ity "eq" True (bCmp ity (==)) (LEq . ATInt) total
+    , iCmp ity "gte" True (bCmp ity (>=)) (LGe . ATInt) total
+    , iCmp ity "gt" True (bCmp ity (>)) (LGt . ATInt) total
+    ]
+
 vecOps :: IntTy -> [Prim]
 vecOps ity@(ITVec elem count) =
     [ Prim (UN $ "prim__mk" ++ intTyName ity)
@@ -232,7 +241,7 @@ vecOps ity@(ITVec elem count) =
                (ty [AType . ATInt $ ity, AType (ATInt (ITFixed IT32)), AType . ATInt . ITFixed $ elem]
                        (AType . ATInt $ ity))
                3 (mkVecUpdate elem count) (3, LUpdateVec elem count) partial -- TODO: Ensure this reduces
-    ] ++ intArith ity
+    ] ++ intArith ity ++ vecCmps ity
 
 mkVecCon :: NativeTy -> Int -> [Const] -> Maybe Const
 mkVecCon ity count args
@@ -269,11 +278,13 @@ intTyName ITBig = "BigInt"
 intTyName (ITFixed sized) = "B" ++ show (nativeTyWidth sized)
 intTyName (ITVec ity count) = "B" ++ show (nativeTyWidth ity) ++ "x" ++ show count
 
-iCmp, iBinOp, iUnOp :: IntTy -> String -> ([Const] -> Maybe Const) -> (IntTy -> PrimFn) -> Totality -> Prim
-iCmp ity op impl irop totality
+iCmp  :: IntTy -> String -> Bool -> ([Const] -> Maybe Const) -> (IntTy -> PrimFn) -> Totality -> Prim
+iCmp ity op self impl irop totality
     = Prim (UN $ "prim__" ++ op ++ intTyName ity)
-      (ty (replicate 2 . AType . ATInt $ ity) (AType (ATInt ITNative)))
+      (ty (replicate 2 . AType . ATInt $ ity) (AType (ATInt (if self then ity else ITNative))))
       2 impl (2, irop ity) totality
+
+iBinOp, iUnOp :: IntTy -> String -> ([Const] -> Maybe Const) -> (IntTy -> PrimFn) -> Totality -> Prim
 iBinOp ity op impl irop totality
     = Prim (UN $ "prim__" ++ op ++ intTyName ity)
       (ty (replicate 2  . AType . ATInt $ ity) (AType . ATInt $ ity))
@@ -417,6 +428,14 @@ bCmp (ITFixed IT32)     op [B32 x, B32 y] = Just $ I (if (op x y) then 1 else 0)
 bCmp (ITFixed IT64)     op [B64 x, B64 y] = Just $ I (if (op x y) then 1 else 0)
 bCmp ITBig    op [BI x, BI y]   = Just $ I (if (op x y) then 1 else 0)
 bCmp ITNative op [I x, I y]     = Just $ I (if (op x y) then 1 else 0)
+bCmp (ITVec IT8 _)  op [B8V  x, B8V  y]
+    = Just . B8V . V.map (\b -> if b then -1 else 0) $ V.zipWith op x y
+bCmp (ITVec IT16 _) op [B16V x, B16V y]
+    = Just . B16V . V.map (\b -> if b then -1 else 0) $ V.zipWith op x y
+bCmp (ITVec IT32 _) op [B32V x, B32V y]
+    = Just . B32V . V.map (\b -> if b then -1 else 0) $ V.zipWith op x y
+bCmp (ITVec IT64 _) op [B64V x, B64V y]
+    = Just . B64V . V.map (\b -> if b then -1 else 0) $ V.zipWith op x y
 bCmp _        _  _              = Nothing
 
 toInt :: Integral a => IntTy -> a -> Const
