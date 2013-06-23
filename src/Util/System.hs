@@ -43,7 +43,11 @@ getCC = do env <- environment "IDRIS_CC"
 getMvn :: IO String
 getMvn = do env <- environment "IDRIS_MVN"
             case env of
+#ifdef mingw32_HOST_OS
+              Nothing  -> return "mvn.bat"
+#else
               Nothing  -> return "mvn"
+#endif
               Just mvn -> return mvn
 
 tempfile :: IO (FilePath, Handle)
