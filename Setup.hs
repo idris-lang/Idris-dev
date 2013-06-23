@@ -21,7 +21,12 @@ import qualified Data.Text.IO as TIO
 -- After Idris is built, we need to check and install the prelude and other libs
 
 make verbosity = P.runProgramInvocation verbosity . P.simpleProgramInvocation "make"
-mvn verbosity = P.runProgramInvocation verbosity . P.simpleProgramInvocation "mvn"
+mvn verbosity = P.runProgramInvocation verbosity . P.simpleProgramInvocation 
+#ifdef mingw32_HOST_OS
+                "mvn.bat"
+#else
+                "mvn"
+#endif
 
 #ifdef mingw32_HOST_OS
 -- make on mingw32 exepects unix style separators
