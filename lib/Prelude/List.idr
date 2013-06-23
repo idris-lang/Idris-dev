@@ -3,6 +3,7 @@ module Prelude.List
 import Builtins
 
 import Prelude.Algebra
+import Prelude.Foldable
 import Prelude.Functor
 import Prelude.Maybe
 import Prelude.Nat
@@ -217,40 +218,17 @@ mapMaybe f (x::xs) =
 -- Folds
 --------------------------------------------------------------------------------
 
-foldl : (a -> b -> a) -> a -> List b -> a
-foldl f e []      = e
-foldl f e (x::xs) = foldl f (f e x) xs
-
-foldr : (a -> b -> b) -> b -> List a -> b
-foldr f e []      = e
-foldr f e (x::xs) = f x (foldr f e xs)
+instance Foldable List where
+  foldr f e []      = e
+  foldr f e (x::xs) = f x (foldr f e xs)
 
 --------------------------------------------------------------------------------
 -- Special folds
 --------------------------------------------------------------------------------
 
-mconcat : Monoid a => List a -> a
-mconcat = foldr (<+>) neutral
-
-concat : List (List a) -> List a
-concat []      = []
-concat (x::xs) = x ++ concat xs
-
 concatMap : (a -> List b) -> List a -> List b
 concatMap f []      = []
 concatMap f (x::xs) = f x ++ concatMap f xs
-
-and : List Bool -> Bool
-and = foldr (&&) True
-
-or : List Bool -> Bool
-or = foldr (||) False
-
-any : (a -> Bool) -> List a -> Bool
-any p = or . map p
-
-all : (a -> Bool) -> List a -> Bool
-all p = and . map p
 
 --------------------------------------------------------------------------------
 -- Transformations
