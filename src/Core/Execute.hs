@@ -518,14 +518,33 @@ execApp' env ctxt f@(EP _ n _) args =
               primResBool (x <= y)
           getOp (UN "prim__lteInt") [EConstant (I x), EConstant (I y)] =
               primResBool (x <= y)
+          -- DONE TO HERE
           getOp (UN "prim__modInt") [EConstant (I i1), EConstant (I i2)] =
               primRes I (i1 `mod` i2)
+          getOp (UN "prim__mulB16") [EConstant (B16 i1), EConstant (B16 i2)] =
+              primRes B16 (i1 * i2)
+          getOp (UN "prim__mulB32") [EConstant (B32 i1), EConstant (B32 i2)] =
+              primRes B32 (i1 * i2)
+          getOp (UN "prim__mulB64") [EConstant (B64 i1), EConstant (B64 i2)] =
+              primRes B64 (i1 * i2)
+          getOp (UN "prim__mulB8") [EConstant (B8 i1), EConstant (B8 i2)] =
+              primRes B8 (i1 * i2)
           getOp (UN "prim__mulBigInt") [EConstant (BI i1), EConstant (BI i2)] =
               primRes BI (i1 * i2)
           getOp (UN "prim__mulFloat") [EConstant (Fl i1), EConstant (Fl i2)] =
               primRes Fl (i1 * i2)
           getOp (UN "prim__mulInt") [EConstant (I i1), EConstant (I i2)] =
               primRes I (i1 * i2)
+          getOp (UN "prim__orB16") [EConstant (B16 i1), EConstant (B16 i2)] =
+              primRes B16 (i1 .|. i2)
+          getOp (UN "prim__orB32") [EConstant (B32 i1), EConstant (B32 i2)] =
+              primRes B32 (i1 .|. i2)
+          getOp (UN "prim__orB64") [EConstant (B64 i1), EConstant (B64 i2)] =
+              primRes B64 (i1 .|. i2)
+          getOp (UN "prim__orB8") [EConstant (B8 i1), EConstant (B8 i2)] =
+              primRes B8 (i1 .|. i2)
+          getOp (UN "prim__orBigInt") [EConstant (BI i1), EConstant (BI i2)] =
+              primRes BI (i1 .|. i2)
           getOp (UN "prim__orInt") [EConstant (I i1), EConstant (I i2)] =
               primRes I (i1 .|. i2)
           getOp (UN "prim__readString") [EP _ (UN "prim__stdin") _] =
@@ -534,22 +553,105 @@ execApp' env ctxt f@(EP _ n _) args =
           getOp (UN "prim__readString") [EHandle h] =
               Just $ do contents <- execIO $ hGetLine h
                         return (EConstant (Str (contents ++ "\n")))
-          getOp (UN "prim__shLInt") [EConstant (I i1), EConstant (I i2)] =
+          getOp (UN "prim__sdivB16") [EConstant (B16 i1), EConstant (B16 i2)] =
+              primRes B16 (i1 `div` i2)
+          getOp (UN "prim__sdivB32") [EConstant (B32 i1), EConstant (B32 i2)] =
+              primRes B32 (i1 `div` i2)
+          getOp (UN "prim__sdivB64") [EConstant (B64 i1), EConstant (B64 i2)] =
+              primRes B64 (i1 `div` i2)
+          getOp (UN "prim__sdivB8") [EConstant (B8 i1), EConstant (B8 i2)] =
+              primRes B8 (i1 `div` i2)
+          getOp (UN "prim__sdivBigInt") [EConstant (BI i1), EConstant (BI i2)] =
+              primRes BI (i1 `div` i2)
+          getOp (UN "prim__sdivInt") [EConstant (I i1), EConstant (I i2)] =
+              primRes I (i1 `div` i2)
+
+          getOp (UN "prim__sextB16_B32") [EConstant (B16 i)] =
+              primRes B32 (fromIntegral i)
+          getOp (UN "prim__sextB16_B64") [EConstant (B16 i)] =
+              primRes B64 (fromIntegral i)
+          getOp (UN "prim__sextB16_BigInt") [EConstant (B16 i)] =
+              primRes BI (fromIntegral i)
+          getOp (UN "prim__sextB16_Int") [EConstant (B16 i)] =
+              primRes I (fromIntegral i)
+          getOp (UN "prim__sextB32_B64") [EConstant (B32 i)] =
+              primRes B64 (fromIntegral i)
+          getOp (UN "prim__sextB32_BigInt") [EConstant (B32 i)] =
+              primRes BI (fromIntegral i)
+          getOp (UN "prim__sextB32_Int") [EConstant (B32 i)] =
+              primRes I (fromIntegral i)
+          getOp (UN "prim__sextB64_BigInt") [EConstant (B64 i)] =
+              primRes BI (fromIntegral i)
+          getOp (UN "prim__sextB8_B16") [EConstant (B8 i)] =
+              primRes B16 (fromIntegral i)
+          getOp (UN "prim__sextB8_B32") [EConstant (B8 i)] =
+              primRes B32 (fromIntegral i)
+          getOp (UN "prim__sextB8_B64") [EConstant (B8 i)] =
+              primRes B64 (fromIntegral i)
+          getOp (UN "prim__sextB8_BigInt") [EConstant (B8 i)] =
+              primRes BI (fromIntegral i)
+          getOp (UN "prim__sextB8_Int") [EConstant (B8 i)] =
+              primRes I (fromIntegral i)
+          getOp (UN "prim__sextInt_B16") [EConstant (I i)] =
+              primRes B16 (fromIntegral i)
+          getOp (UN "prim__sextInt_B32") [EConstant (I i)] =
+              primRes B32 (fromIntegral i)
+          getOp (UN "prim__sextInt_B64") [EConstant (I i)] =
+              primRes B64 (fromIntegral i)
+          getOp (UN "prim__sextInt_BigInt") [EConstant (I i)] =
+              primRes BI (fromIntegral i)
+          getOp (UN "prim__shlB16") [EConstant (B16 i1), EConstant (B16 i2)] =
+              primRes B16 (shiftL i1 (fromIntegral i2))
+          getOp (UN "prim__shlB32") [EConstant (B32 i1), EConstant (B32 i2)] =
+              primRes B32 (shiftL i1 (fromIntegral i2))
+          getOp (UN "prim__shlB64") [EConstant (B64 i1), EConstant (B64 i2)] =
+              primRes B64 (shiftL i1 (fromIntegral i2))
+          getOp (UN "prim__shlB8") [EConstant (B8 i1), EConstant (B8 i2)] =
+              primRes B8 (shiftL i1 (fromIntegral i2))
+          getOp (UN "prim__shlBigInt") [EConstant (BI i1), EConstant (BI i2)] =
+              primRes BI (shiftL i1 (fromIntegral i2))
+          getOp (UN "prim__shlInt") [EConstant (I i1), EConstant (I i2)] =
               primRes I (shiftL i1 i2)
-          getOp (UN "prim__shRInt") [EConstant (I i1), EConstant (I i2)] =
-              primRes I (shiftR i1 i2)
+          getOp (UN "prim__sremB16") [EConstant (B16 i1), EConstant (B16 i2)] =
+              primRes B16 (rem i1 i2)
+          getOp (UN "prim__sremB32") [EConstant (B32 i1), EConstant (B32 i2)] =
+              primRes B32 (rem i1 i2)
+          getOp (UN "prim__sremB64") [EConstant (B64 i1), EConstant (B64 i2)] =
+              primRes B64 (rem i1 i2)
+          getOp (UN "prim__sremB8") [EConstant (B8 i1), EConstant (B8 i2)] =
+              primRes B8 (rem i1 i2)
+          getOp (UN "prim__sremBigInt") [EConstant (BI i1), EConstant (BI i2)] =
+              primRes BI (rem i1 i2)
+          getOp (UN "prim__sremInt") [EConstant (I i1), EConstant (I i2)] =
+              primRes I (rem i1 i2)
+          -- No definition for prim__stdin because the IO operations special-case it instead
           getOp (UN "prim__strCons") [EConstant (Ch c), EConstant (Str s)] =
               primRes Str (c:s)
           getOp (UN "prim__strHead") [EConstant (Str (c:s))] =
               primRes Ch c
+          getOp (UN "prim__strIndex") [EConstant (Str s), EConstant (I i)]
+              | i >= 0  && i < length s = primRes Ch (s !! i)
           getOp (UN "prim__strRev") [EConstant (Str s)] =
               primRes Str (reverse s)
           getOp (UN "prim__strTail") [EConstant (Str (c:s))] =
               primRes Str s
+          getOp (UN "prim__strToFloat") [EConstant (Str s)] =
+              primRes Fl (fromMaybe 0.0 $ readMay s)
+          getOp (UN "prim__subB16") [EConstant (B16 i1), EConstant (B16 i2)] =
+              primRes B16 (i1 - i2)
+          getOp (UN "prim__subB32") [EConstant (B32 i1), EConstant (B32 i2)] =
+              primRes B32 (i1 - i2)
+          getOp (UN "prim__subB64") [EConstant (B64 i1), EConstant (B64 i2)] =
+              primRes B64 (i1 - i2)
+          getOp (UN "prim__subB8") [EConstant (B8 i1), EConstant (B8 i2)] =
+              primRes B8 (i1 - i2)
+          getOp (UN "prim__subBigInt") [EConstant (BI i1), EConstant (BI i2)] =
+              primRes BI (i1 - i2)
           getOp (UN "prim__subFloat") [EConstant (Fl i1), EConstant (Fl i2)] =
               primRes Fl (i1 - i2)
           getOp (UN "prim__subInt") [EConstant (I i1), EConstant (I i2)] =
               primRes I (i1 - i2)
+          -- DONE TO HERE
           getOp (UN "prim__xorInt") [EConstant (I i1), EConstant (I i2)] =
               primRes I (i1 `xor` i2)
           getOp n args = trace ("No prim " ++ show n ++ " for " ++ take 1000 (show args)) Nothing
