@@ -331,26 +331,30 @@ cgExpr (SChkCase inspect alts) = do
   case mval of
     Nothing -> return Nothing
     Just val ->
-        do ptr <- inst $ BitCast val (PointerType (IntegerType 8) (AddrSpace 0)) []
+        do endBBN <- getName "endChkCase"
+           notNullBBN <- getName "notNull"
+           originBlock <- gets currentBlockName
+           isNull <- inst $ ICmp IPred.EQ val (ConstantOperand nullValue) []
+           terminate $ CondBr isNull endBBN notNullBBN []
+           newBlock notNullBBN
+           ptr <- inst $ BitCast val (PointerType (IntegerType 8) (AddrSpace 0)) []
            flag <- inst $ Load False ptr Nothing 0 []
            isVal <- inst $ ICmp IPred.EQ flag (ConstantOperand (C.Int 8 (-1))) []
            conBBN <- getName "constructor"
-           valBBN <- getName "value"
-           originBlock <- gets currentBlockName
-           terminate $ CondBr isVal valBBN conBBN []
+           terminate $ CondBr isVal endBBN conBBN []
            newBlock conBBN
            result <- cgCase val alts
            caseExitBlock <- gets currentBlockName
            case result of
              Nothing -> do
                terminate $ Unreachable []
-               newBlock valBBN
+               newBlock endBBN
                return $ Just val
-             Just r -> do
-               terminate $ Br valBBN []
-               newBlock valBBN
+             Just caseVal -> do
+               terminate $ Br endBBN []
+               newBlock endBBN
                Just <$> (inst $ Phi (PointerType valueType (AddrSpace 0))
-                              [(val, originBlock), (r, caseExitBlock)] [])
+                              [(val, originBlock), (val, notNullBBN), (caseVal, caseExitBlock)] [])
 cgExpr (SProj conVar idx) = do
   val <- var conVar
   case val of
