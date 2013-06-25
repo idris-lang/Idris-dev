@@ -39,7 +39,7 @@ codegenLLVM :: [(TT.Name, SDecl)] ->
                IO ()
 codegenLLVM defs file outty = withContext $ \context -> do
   let ast = codegen arch (map snd defs)
-  result <- traceShow ast $ M.withModuleFromAST context ast (M.writeBitcodeToFile file)
+  result <- M.withModuleFromAST context ast (M.writeBitcodeToFile file)
   case result of
     Right _ -> return ()
     Left msg -> ierror msg
@@ -59,10 +59,11 @@ codegen tgt defs =
              Just $ StructureType False
                       [ IntegerType 32
                       , IntegerType 32
-                      , PointerType (IntegerType 8) (AddrSpace 0) -- Not actually i8, but we don't care
+                      , PointerType intPtr (AddrSpace 0)
                       ])
          , GlobalDefinition $ globalVariableDefaults
             { G.name = Name "__idris_intFmtStr"
+            , G.linkage = L.Internal
             , G.isConstant = True
             , G.hasUnnamedAddr = True
             , G.type' = ArrayType 5 (IntegerType 8)
