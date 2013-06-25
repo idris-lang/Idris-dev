@@ -388,6 +388,10 @@ cgExpr (SOp fn args) = do
     Nothing -> return Nothing
 cgExpr SNothing = return . Just . ConstantOperand $ nullValue
 cgExpr (SError msg) = do -- TODO: Print message
+  str <- addGlobal' (ArrayType (2 + fromIntegral (length msg)) (IntegerType 8))
+         (cgConst' (TT.Str (msg ++ "\n")))
+  inst' $ simpleCall "putStr" [ConstantOperand $ C.GetElementPtr True str [ C.Int 32 0
+                                                                          , C.Int 32 0]]
   inst' $ Call { isTailCall = True
                , callingConvention = CC.C
                , returnAttributes = []
