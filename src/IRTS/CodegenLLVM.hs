@@ -47,55 +47,65 @@ codegenLLVM defs file outty = withContext $ \context -> do
 ierror :: String -> a
 ierror msg = error $ "INTERNAL ERROR: IRTS.CodegenLLVM: " ++ msg
 
-codegen :: String -> [SDecl] -> Module
-codegen tgt defs =
-    Module "idris" Nothing Nothing
-        ([ TypeDefinition (Name "valTy") (
-             Just $ StructureType False
-                      [ IntegerType 32
-                      , ArrayType 0 (PointerType valueType (AddrSpace 0))
-                      ])
-         , TypeDefinition (Name "mpz") (
-             Just $ StructureType False
-                      [ IntegerType 32
-                      , IntegerType 32
-                      , PointerType intPtr (AddrSpace 0)
-                      ])
-         , GlobalDefinition $ globalVariableDefaults
-            { G.name = Name "__idris_intFmtStr"
-            , G.linkage = L.Internal
-            , G.isConstant = True
-            , G.hasUnnamedAddr = True
-            , G.type' = ArrayType 5 (IntegerType 8)
-            , G.initializer = Just $ C.Array (IntegerType 8) (map (C.Int 8 . fromIntegral . fromEnum) "%lld" ++ [C.Int 8 0])
-            }
-         , rtsFun "intStr" ptrI8 [IntegerType 64]
-                  [ BasicBlock (UnName 0)
-                    [ UnName 1 := simpleCall "GC_malloc_atomic"
-                                 [ConstantOperand (C.Int (fromInteger $ tgtWordSize tgt) 12)]
-                    , UnName 2 := simpleCall "snprintf"
-                                 [ LocalReference (UnName 1)
-                                 , ConstantOperand (C.Int (fromInteger $ tgtWordSize tgt) 12)
-                                 , ConstantOperand $ C.GetElementPtr True (C.GlobalReference . Name $ "__idris_intFmtStr") [C.Int 32 0, C.Int 32 0]
-                                 , LocalReference (UnName 0)
-                                 ]
-                    ]
-                    (Do $ Ret (Just (LocalReference (UnName 1))) [])
-                  ]
-         , exfun "llvm.trap" VoidType [] False
-         , exfun "snprintf" (IntegerType 32) [ptrI8, intPtr, ptrI8] True
-         , exfun "strcmp" (IntegerType 32) [ptrI8, ptrI8] False
-         , exfun "strlen" intPtr [ptrI8] False
-         , exfun "memcpy" ptrI8 [ptrI8, ptrI8, intPtr] False
-         , exfun "GC_malloc" ptrI8 [intPtr] False
-         , exfun "GC_malloc_atomic" ptrI8 [intPtr] False
-         , exfun "__gmpz_init" VoidType [pmpz] False
-         ]
-         ++ map mpzBinFun ["add", "sub", "mul", "fdiv_q", "fdiv_r", "and", "ior", "xor"]
-         ++ globals
-         ++ gendefs)
+mainDef :: Global
+mainDef =
+    functionDefaults
+    { G.returnType = IntegerType 32
+    , G.parameters =
+        ([ Parameter (IntegerType 32) (Name "argc") []
+         , Parameter (PointerType (PointerType (IntegerType 8) (AddrSpace 0)) (AddrSpace 0)) (Name "argv") []
+         ], False)
+    , G.name = Name "main"
+    , G.basicBlocks =
+        [ BasicBlock (UnName 0)
+          [ UnName 1 := idrCall "{runMain0}" [] ]
+          (Do $ Ret (Just (ConstantOperand (C.Int 32 0))) [])
+        ]}
+
+initDefs :: String -> [Definition]
+initDefs tgt =
+    [ TypeDefinition (Name "valTy")
+      (Just $ StructureType False
+                [ IntegerType 32
+                , ArrayType 0 (PointerType valueType (AddrSpace 0))
+                ])
+    , TypeDefinition (Name "mpz")
+        (Just $ StructureType False
+                  [ IntegerType 32
+                  , IntegerType 32
+                  , PointerType intPtr (AddrSpace 0)
+                  ])
+    , GlobalDefinition $ globalVariableDefaults
+      { G.name = Name "__idris_intFmtStr"
+      , G.linkage = L.Internal
+      , G.isConstant = True
+      , G.hasUnnamedAddr = True
+      , G.type' = ArrayType 5 (IntegerType 8)
+      , G.initializer = Just $ C.Array (IntegerType 8) (map (C.Int 8 . fromIntegral . fromEnum) "%lld" ++ [C.Int 8 0])
+      }
+    , rtsFun "intStr" ptrI8 [IntegerType 64]
+        [ BasicBlock (UnName 0)
+          [ UnName 1 := simpleCall "GC_malloc_atomic" [ConstantOperand (C.Int (fromInteger $ tgtWordSize tgt) 12)]
+          , UnName 2 := simpleCall "snprintf"
+                       [ LocalReference (UnName 1)
+                       , ConstantOperand (C.Int (fromInteger $ tgtWordSize tgt) 12)
+                       , ConstantOperand $ C.GetElementPtr True (C.GlobalReference . Name $ "__idris_intFmtStr") [C.Int 32 0, C.Int 32 0]
+                       , LocalReference (UnName 0)
+                       ]
+          ]
+          (Do $ Ret (Just (LocalReference (UnName 1))) [])
+        ]
+    , exfun "llvm.trap" VoidType [] False
+    , exfun "snprintf" (IntegerType 32) [ptrI8, intPtr, ptrI8] True
+    , exfun "strcmp" (IntegerType 32) [ptrI8, ptrI8] False
+    , exfun "strlen" intPtr [ptrI8] False
+    , exfun "memcpy" ptrI8 [ptrI8, ptrI8, intPtr] False
+    , exfun "GC_malloc" ptrI8 [intPtr] False
+    , exfun "GC_malloc_atomic" ptrI8 [intPtr] False
+    , exfun "__gmpz_init" VoidType [pmpz] False
+    , GlobalDefinition mainDef
+    ] ++ map mpzBinFun ["add", "sub", "mul", "fdiv_q", "fdiv_r", "and", "ior", "xor"]
     where
-      ((gendefs, globals), _) = (runState . runWriterT) (mapM cgDef defs) 0
       intPtr = IntegerType (fromInteger $ tgtWordSize tgt)
       ptrI8 = PointerType (IntegerType 8) (AddrSpace 0)
       pmpz = PointerType mpzTy (AddrSpace 0)
@@ -119,6 +129,11 @@ codegen tgt defs =
                                , G.name = Name name
                                , G.parameters = (flip map argtys $ \ty -> Parameter ty (UnName 0) [], vari)
                                }
+
+codegen :: String -> [SDecl] -> Module
+codegen tgt defs = Module "idris" Nothing Nothing (initDefs tgt ++ globals ++ gendefs)
+    where
+      ((gendefs, globals), _) = (runState . runWriterT) (mapM cgDef defs) 0
 
 valueType :: Type
 valueType = NamedTypeReference (Name "valTy")
@@ -716,7 +731,7 @@ cgOp (LIntStr ity) [x] = do
   x'' <- if ity == ITNative || intTyWidth ity < 64
          then inst $ SExt x' (IntegerType 64) []
          else return x'
-  box FString =<< inst (rtsCall "intStr" [x''])
+  box FString =<< inst (idrCall "__idris_intStr" [x''])
 
 cgOp LStrConcat [x,y] = cgStrCat x y
 cgOp prim args = ierror $ "Unimplemented primitive: [" ++ show prim ++ "]("
@@ -771,12 +786,12 @@ simpleCall name args =
          , metadata = []
          }
 
-rtsCall :: String -> [Operand] -> Instruction
-rtsCall name args =
+idrCall :: String -> [Operand] -> Instruction
+idrCall name args =
     Call { isTailCall = False
          , callingConvention = CC.Fast
          , returnAttributes = []
-         , function = Right . ConstantOperand . C.GlobalReference . Name $ "__idris_" ++ name
+         , function = Right . ConstantOperand . C.GlobalReference . Name $ name
          , arguments = map (\x -> (x, [])) args
          , functionAttributes = []
          , metadata = []
