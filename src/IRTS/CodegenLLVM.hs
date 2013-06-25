@@ -339,6 +339,7 @@ cgExpr (SChkCase inspect alts) = do
            terminate $ CondBr isVal valBBN conBBN []
            newBlock conBBN
            result <- cgCase val alts
+           caseExitBlock <- gets currentBlockName
            case result of
              Nothing -> do
                terminate $ Unreachable []
@@ -348,7 +349,7 @@ cgExpr (SChkCase inspect alts) = do
                terminate $ Br valBBN []
                newBlock valBBN
                Just <$> (inst $ Phi (PointerType valueType (AddrSpace 0))
-                              [(val, originBlock), (r, conBBN)] [])
+                              [(val, originBlock), (r, caseExitBlock)] [])
 cgExpr (SProj conVar idx) = do
   val <- var conVar
   case val of
