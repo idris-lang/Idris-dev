@@ -22,16 +22,20 @@ data Prim = Prim { p_name  :: Name,
                    p_total :: Totality
                  }
 
+ty :: [Const] -> Const -> Type
 ty []     x = Constant x
 ty (t:ts) x = Bind (MN 0 "T") (Pi (Constant t)) (ty ts x)
 
+believeTy :: Type
 believeTy = Bind (UN "a") (Pi (TType (UVar (-2))))
             (Bind (UN "b") (Pi (TType (UVar (-2))))
             (Bind (UN "x") (Pi (V 1)) (V 1)))
 
+total, partial :: Totality
 total = Total []
-partial = Partial NotCovering 
+partial = Partial NotCovering
 
+primitives :: [Prim]
 primitives =
    -- operators
   [Prim (UN "prim__eqChar")  (ty [ChType, ChType] IType) 2 (bcBin (==))
@@ -138,7 +142,7 @@ primitives =
      (1, LFloatStr) total,
 
    Prim (UN "prim__floatExp") (ty [FlType] FlType) 1 (p_floatExp)
-     (1, LFExp) total, 
+     (1, LFExp) total,
    Prim (UN "prim__floatLog") (ty [FlType] FlType) 1 (p_floatLog)
      (1, LFLog) total,
    Prim (UN "prim__floatSin") (ty [FlType] FlType) 1 (p_floatSin)
@@ -181,6 +185,7 @@ primitives =
     (3, LNoOp) partial -- ahem
   ] ++ concatMap intOps [IT8, IT16, IT32, IT64, ITBig, ITNative]
 
+intOps :: IntTy -> [Prim]
 intOps ity =
     [ iCmp ity "lt" (bCmp ity (<)) LLt total
     , iCmp ity "lte" (bCmp ity (<=)) LLe total
@@ -216,50 +221,67 @@ intTyName ITNative = "Int"
 intTyName ITBig = "BigInt"
 intTyName sized = "B" ++ show (intTyWidth sized)
 
+iCmp, iBinOp, iUnOp :: IntTy -> String -> ([Value] -> Maybe Value) -> (IntTy -> PrimFn) -> Totality -> Prim
 iCmp ity op impl irop totality = Prim (UN $ "prim__" ++ op ++ intTyName ity) (ty (replicate 2 $ intTyToConst ity) IType) 2 impl (2, irop ity) totality
 iBinOp ity op impl irop totality = Prim (UN $ "prim__" ++ op ++ intTyName ity) (ty (replicate 2 $ intTyToConst ity) (intTyToConst ity)) 2 impl (2, irop ity) totality
 iUnOp ity op impl irop totality = Prim (UN $ "prim__" ++ op ++ intTyName ity) (ty [intTyToConst ity] (intTyToConst ity)) 1 impl (1, irop ity) totality
+
+iCoerce :: IntTy -> IntTy -> String -> (IntTy -> IntTy -> [Value] -> Maybe Value) -> (IntTy -> IntTy -> PrimFn) -> Prim
 iCoerce from to op impl irop =
     Prim (UN $ "prim__" ++ op ++ intTyName from ++ "_" ++ intTyName to)
              (ty [intTyToConst from] (intTyToConst to)) 1 (impl from to) (1, irop from to) total
 
+p_believeMe :: [a] -> Maybe a
 p_believeMe [_,_,x] = Just x
 p_believeMe _ = Nothing
 
+iUn :: (Int -> Int) -> [Value] -> Maybe Value
 iUn op [VConstant (I x)] = Just $ VConstant (I (op x))
 iUn _ _ = Nothing
 
+iBin :: (Int -> Int -> Int) -> [Value] -> Maybe Value
 iBin op [VConstant (I x), VConstant (I y)] = Just $ VConstant (I (op x y))
 iBin _ _ = Nothing
 
+bBin :: (Integer -> Integer -> Integer) -> [Value] -> Maybe Value
 bBin op [VConstant (BI x), VConstant (BI y)] = Just $ VConstant (BI (op x y))
 bBin _ _ = Nothing
 
+bBini :: (Integer -> Integer -> Int) -> [Value] -> Maybe Value
 bBini op [VConstant (BI x), VConstant (BI y)] = Just $ VConstant (I (op x y))
 bBini _ _ = Nothing
 
+biBin :: (Int -> Int -> Bool) -> [Value] -> Maybe Value
 biBin op = iBin (\x y -> if (op x y) then 1 else 0)
+
+bbBin :: (Integer -> Integer -> Bool) -> [Value] -> Maybe Value
 bbBin op = bBini (\x y -> if (op x y) then 1 else 0)
 
+fBin :: (Double -> Double -> Double) -> [Value] -> Maybe Value
 fBin op [VConstant (Fl x), VConstant (Fl y)] = Just $ VConstant (Fl (op x y))
 fBin _ _ = Nothing
 
+bfBin :: (Double -> Double -> Bool) -> [Value] -> Maybe Value
 bfBin op [VConstant (Fl x), VConstant (Fl y)] = let i = (if op x y then 1 else 0) in
                                                 Just $ VConstant (I i)
 bfBin _ _ = Nothing
 
+bcBin :: (Char -> Char -> Bool) -> [Value] -> Maybe Value
 bcBin op [VConstant (Ch x), VConstant (Ch y)] = let i = (if op x y then 1 else 0) in
                                                 Just $ VConstant (I i)
 bcBin _ _ = Nothing
 
-bsBin op [VConstant (Str x), VConstant (Str y)] 
+bsBin :: (String -> String -> Bool) -> [Value] -> Maybe Value
+bsBin op [VConstant (Str x), VConstant (Str y)]
     = let i = (if op x y then 1 else 0) in
           Just $ VConstant (I i)
 bsBin _ _ = Nothing
 
+sBin :: (String -> String -> String) -> [Value] -> Maybe Value
 sBin op [VConstant (Str x), VConstant (Str y)] = Just $ VConstant (Str (op x y))
 sBin _ _ = Nothing
 
+bsrem :: IntTy -> [Value] -> Maybe Value
 bsrem IT8 [VConstant (B8 x), VConstant (B8 y)]
     = Just $ VConstant (B8 (fromIntegral (fromIntegral x `rem` fromIntegral y :: Int8)))
 bsrem IT16 [VConstant (B16 x), VConstant (B16 y)]
@@ -271,6 +293,7 @@ bsrem IT64 [VConstant (B64 x), VConstant (B64 y)]
 bsrem ITNative [VConstant (I x), VConstant (I y)] = Just $ VConstant (I (x `rem` y))
 bsrem _ _ = Nothing
 
+bsdiv :: IntTy -> [Value] -> Maybe Value
 bsdiv IT8 [VConstant (B8 x), VConstant (B8 y)]
     = Just $ VConstant (B8 (fromIntegral (fromIntegral x `div` fromIntegral y :: Int8)))
 bsdiv IT16 [VConstant (B16 x), VConstant (B16 y)]
@@ -282,6 +305,7 @@ bsdiv IT64 [VConstant (B64 x), VConstant (B64 y)]
 bsdiv ITNative [VConstant (I x), VConstant (I y)] = Just $ VConstant (I (x `div` y))
 bsdiv _ _ = Nothing
 
+bashr :: IntTy -> [Value] -> Maybe Value
 bashr IT8 [VConstant (B8 x), VConstant (B8 y)]
     = Just $ VConstant (B8 (fromIntegral (fromIntegral x `shiftR` fromIntegral y :: Int8)))
 bashr IT16 [VConstant (B16 x), VConstant (B16 y)]
@@ -320,6 +344,7 @@ bCmp ITBig op [VConstant (BI x), VConstant (BI y)] = Just $ VConstant (I (if (op
 bCmp ITNative op [VConstant (I x), VConstant (I y)] = Just $ VConstant (I (if (op x y) then 1 else 0))
 bCmp _ _ _ = Nothing
 
+toInt :: Integral a => IntTy -> a -> Value
 toInt IT8  x = VConstant (B8 (fromIntegral x))
 toInt IT16 x = VConstant (B16 (fromIntegral x))
 toInt IT32 x = VConstant (B32 (fromIntegral x))
@@ -327,6 +352,7 @@ toInt IT64 x = VConstant (B64 (fromIntegral x))
 toInt ITBig x = VConstant (BI (fromIntegral x))
 toInt ITNative x = VConstant (I (fromIntegral x))
 
+intToInt :: IntTy -> IntTy -> [Value] -> Maybe Value
 intToInt IT8 out [VConstant (B8 x)] = Just $ toInt out x
 intToInt IT16 out [VConstant (B16 x)] = Just $ toInt out x
 intToInt IT32 out [VConstant (B32 x)] = Just $ toInt out x
@@ -335,12 +361,14 @@ intToInt ITBig out [VConstant (BI x)] = Just $ toInt out x
 intToInt ITNative out [VConstant (I x)] = Just $ toInt out x
 intToInt _ _ _ = Nothing
 
+zext :: IntTy -> IntTy -> [Value] -> Maybe Value
 zext from ITBig val = intToInt from ITBig val
 zext ITBig _ _ = Nothing
 zext from to val
     | intTyWidth from < intTyWidth to = intToInt from to val
 zext _ _ _ = Nothing
 
+sext :: IntTy -> IntTy -> [Value] -> Maybe Value
 sext IT8  out [VConstant (B8  x)] = Just $ toInt out (fromIntegral x :: Int8)
 sext IT16 out [VConstant (B16 x)] = Just $ toInt out (fromIntegral x :: Int16)
 sext IT32 out [VConstant (B32 x)] = Just $ toInt out (fromIntegral x :: Int32)
@@ -348,6 +376,7 @@ sext IT64 out [VConstant (B64 x)] = Just $ toInt out (fromIntegral x :: Int64)
 sext ITBig _ _ = Nothing
 sext from to val = intToInt from to val
 
+trunc :: IntTy -> IntTy -> [Value] -> Maybe Value
 trunc ITBig to val = intToInt ITBig to val
 trunc _ ITBig _ = Nothing
 trunc from to val | intTyWidth from > intTyWidth to = intToInt from to val
@@ -362,25 +391,31 @@ getInt [VConstant (I x)] = Just . toInteger $ x
 getInt [VConstant (BI x)] = Just x
 getInt _ = Nothing
 
+intToStr :: [Value] -> Maybe Value
 intToStr val | Just i <- getInt val = Just $ VConstant (Str (show i))
 intToStr _ = Nothing
 
+strToInt :: IntTy -> [Value] -> Maybe Value
 strToInt ity [VConstant (Str x)] = case reads x of
                                      [(n,"")] -> Just $ toInt ity (n :: Integer)
                                      _ -> Just $ VConstant (I 0)
 strToInt _ _ = Nothing
 
+intToFloat :: [Value] -> Maybe Value
 intToFloat val | Just i <- getInt val = Just $ VConstant (Fl (fromIntegral i))
 intToFloat _ = Nothing
 
+floatToInt :: IntTy -> [Value] -> Maybe Value
 floatToInt ity [VConstant (Fl x)] = Just $ toInt ity (truncate x :: Integer)
 floatToInt _ _ = Nothing
 
+c_intToChar :: [Value] -> Maybe Value
 c_intToChar [VConstant (I x)] = Just $ VConstant (Ch (toEnum x))
 c_intToChar _ = Nothing
 c_charToInt [VConstant (Ch x)] = Just $ VConstant (I (fromEnum x))
 c_charToInt _ = Nothing
 
+c_floatToStr :: [Value] -> Maybe Value
 c_floatToStr [VConstant (Fl x)] = Just $ VConstant (Str (show x))
 c_floatToStr _ = Nothing
 c_strToFloat [VConstant (Str x)] = case reads x of
@@ -388,9 +423,11 @@ c_strToFloat [VConstant (Str x)] = case reads x of
                                         _ -> Just $ VConstant (Fl 0)
 c_strToFloat _ = Nothing
 
+p_fPrim :: (Double -> Double) -> [Value] -> Maybe Value
 p_fPrim f [VConstant (Fl x)] = Just $ VConstant (Fl (f x))
 p_fPrim f _ = Nothing
 
+p_floatExp, p_floatLog, p_floatSin, p_floatCos, p_floatTan, p_floatASin, p_floatACos, p_floatATan, p_floatSqrt, p_floatFloor, p_floatCeil :: [Value] -> Maybe Value
 p_floatExp = p_fPrim exp
 p_floatLog = p_fPrim log
 p_floatSin = p_fPrim sin
@@ -403,13 +440,14 @@ p_floatSqrt = p_fPrim sqrt
 p_floatFloor = p_fPrim (fromInteger . floor)
 p_floatCeil = p_fPrim (fromInteger . ceiling)
 
+p_strLen, p_strHead, p_strTail, p_strIndex, p_strCons, p_strRev :: [Value] -> Maybe Value
 p_strLen [VConstant (Str xs)] = Just $ VConstant (I (length xs))
 p_strLen _ = Nothing
 p_strHead [VConstant (Str (x:xs))] = Just $ VConstant (Ch x)
 p_strHead _ = Nothing
 p_strTail [VConstant (Str (x:xs))] = Just $ VConstant (Str xs)
 p_strTail _ = Nothing
-p_strIndex [VConstant (Str xs), VConstant (I i)] 
+p_strIndex [VConstant (Str xs), VConstant (I i)]
    | i < length xs = Just $ VConstant (Ch (xs!!i))
 p_strIndex _ = Nothing
 p_strCons [VConstant (Ch x), VConstant (Str xs)] = Just $ VConstant (Str (x:xs))
@@ -417,17 +455,18 @@ p_strCons _ = Nothing
 p_strRev [VConstant (Str xs)] = Just $ VConstant (Str (reverse xs))
 p_strRev _ = Nothing
 
+p_cantreduce :: a -> Maybe b
 p_cantreduce _ = Nothing
 
 elabPrim :: Prim -> Idris ()
-elabPrim (Prim n ty i def sc tot) 
+elabPrim (Prim n ty i def sc tot)
     = do updateContext (addOperator n ty i def)
          setTotality n tot
          i <- getIState
          putIState i { idris_scprims = (n, sc) : idris_scprims i }
 
 elabPrims :: Idris ()
-elabPrims = do mapM_ (elabDecl EAll toplevel) 
+elabPrims = do mapM_ (elabDecl EAll toplevel)
                      (map (PData "" defaultSyntax (FC "builtin" 0) False)
                          [inferDecl, unitDecl, falseDecl, pairDecl, eqDecl])
                mapM_ elabPrim primitives
