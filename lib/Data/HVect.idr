@@ -2,6 +2,9 @@ module Data.HVect
 
 import Data.Vect
 
+%access public
+%default total
+
 using (k : Nat, ts : Vect Type k)
   data HVect : Vect Type k -> Type where
     Nil : HVect []
