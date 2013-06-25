@@ -57,13 +57,16 @@ lexWS = do i <- getInput
   where
 
     simpleSpace = skipMany1 (satisfy isSpace)
-    oneLineComment = do try (do string ("--")
-                                satisfy (\x -> x /= '|' && x /= '^'))
-                        skipMany (satisfy (/= '\n'))
-                        return ()
-    multiLineComment = do try (do string "{-"
-                                  satisfy (\x -> x /= '|' && x /= '^'))
-                          inCommentMulti
+    oneLineComment =
+      try (void $ string "--\n") <|>
+      do try (do string "--"
+                 satisfy (\x -> x /= '|' && x /= '^'))
+         skipMany (satisfy (/= '\n'))
+    multiLineComment =
+      try (void $ string "{--}") <|>
+      do try (do string "{-"
+                 satisfy (\x -> x /= '|' && x /= '^'))
+         inCommentMulti
 
     inCommentMulti
         =   do{ try (string "-}") ; return () }
