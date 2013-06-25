@@ -123,7 +123,7 @@ length (x::xs) = 1 + length xs
 
 partial
 repeat : a -> List a
-repeat x = x :: repeat x
+repeat x = x :: lazy (repeat x)
 
 %assert_total
 replicate : Nat -> a -> List a
