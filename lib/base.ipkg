@@ -25,7 +25,7 @@ modules = Builtins, Prelude, IO, System,
           Data.Bits, Data.Mod2, 
           Data.Z, Data.Sign,
           Data.SortedMap, Data.SortedSet, Data.BoundedList,
-          Data.HVect, Data.Vect.Quantifiers,
+          Data.Vect, Data.HVect, Data.Vect.Quantifiers,
 
           Control.Monad.Identity, Control.Monad.State, Control.Category,
           Control.Arrow,

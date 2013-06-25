@@ -1,5 +1,7 @@
 module Data.HVect
 
+import Data.Vect
+
 using (k : Nat, ts : Vect Type k)
   data HVect : Vect Type k -> Type where
     Nil : HVect []
@@ -43,4 +45,16 @@ using (k : Nat, ts : Vect Type k)
 
   instance (Shows k ts) => Show (HVect ts) where
     show xs = show (shows xs)
+
+  get : {default tactics { applyTactic findElem 100; solve; } p : Elem t ts} -> HVect ts -> t
+  get {p = Here} (x::xs) = x
+  get {p = There p'} (x::xs) = get {p = p'} xs
+
+  put : {default tactics { applyTactic findElem 100; solve; } p : Elem t ts} -> t -> HVect ts -> HVect ts
+  put {p = Here} y (x::xs) = y :: xs
+  put {p = There p'} y (x::xs) = x :: put {p = p'} y xs
+
+  update : {default tactics { applyTactic findElem 100; solve; } p : Elem t ts} -> (t -> u) -> HVect ts -> HVect (replaceByElem ts p u)
+  update {p = Here} f (x::xs) = f x :: xs
+  update {p = There p'} f (x::xs) = x :: update {p = p'} f xs
 
