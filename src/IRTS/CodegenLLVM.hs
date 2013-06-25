@@ -316,7 +316,7 @@ cgExpr (SCon tag name args) = do
       tagPtr <- inst $ GetElementPtr True con [ConstantOperand (C.Int 32 0), ConstantOperand (C.Int 32 0)] []
       inst' $ Store False tagPtr (ConstantOperand (C.Int 32 (fromIntegral tag))) Nothing 0 []
       forM_ (zip argVals [0..]) $ \(arg, i) -> do
-        ptr <- inst $ GetElementPtr True arg [ ConstantOperand (C.Int 32 0)
+        ptr <- inst $ GetElementPtr True con [ ConstantOperand (C.Int 32 0)
                                              , ConstantOperand (C.Int 32 1)
                                              , ConstantOperand (C.Int 32 i)] []
         inst' $ Store False ptr arg Nothing 0 []
