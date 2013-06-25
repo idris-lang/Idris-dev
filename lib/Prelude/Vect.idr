@@ -41,6 +41,10 @@ deleteAt           fO     (x::xs) = xs
 deleteAt {n = S m} (fS k) (x::xs) = x :: deleteAt k xs
 deleteAt           _      [] impossible
 
+replaceAt : Fin n -> t -> Vect t n -> Vect t n
+replaceAt fO y (x::xs) = y::xs
+replaceAt (fS k) y (x::xs) = x :: replaceAt k y xs
+
 --------------------------------------------------------------------------------
 -- Subvectors
 --------------------------------------------------------------------------------
