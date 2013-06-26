@@ -87,7 +87,7 @@ mainDef =
     , G.name = Name "main"
     , G.basicBlocks =
         [ BasicBlock (UnName 0)
-          [ UnName 1 := idrCall "{runMain0}" [] ]
+          [ UnName 1 := idrCall "{runMain0}" [] ] -- TODO: Set GMP memory functions
           (Do $ Ret (Just (ConstantOperand (C.Int 32 0))) [])
         ]}
 
@@ -516,26 +516,17 @@ cgConCase con defExp alts = do
 
 cgChainCase :: Operand -> Maybe SExp -> [SAlt] -> Codegen (Maybe Operand)
 cgChainCase caseValPtr defExp alts = do
-  (caseTy, comparator, caseVal) <-
-      case head alts of
-        SConstCase (TT.BI _) _ -> do
-                       realPtr <- inst $ BitCast caseValPtr (PointerType (primTy mpzTy) (AddrSpace 0)) []
-                       valPtr <- inst $ GetElementPtr True realPtr [ ConstantOperand (C.Int 32 0)
-                                                                   , ConstantOperand (C.Int 32 1)] []
-                       return (mpzTy, "__gmpz_cmp", valPtr)
-        SConstCase (TT.Str _) _ -> do
-                       let caseTy = PointerType (IntegerType 8) (AddrSpace 0)
-                       realPtr <- inst $ BitCast caseValPtr (PointerType (primTy caseTy) (AddrSpace 0)) []
-                       valPtr <- inst $ GetElementPtr True realPtr [ ConstantOperand (C.Int 32 0)
-                                                                   , ConstantOperand (C.Int 32 1)] []
-                       strPtr <- inst $ Load False valPtr Nothing 0 []
-                       return (caseTy, "strcmp", strPtr)
+  let (caseTy, comparator) =
+          case head alts of
+            SConstCase (TT.BI _) _ -> (FInt ITBig, "__gmpz_cmp")
+            SConstCase (TT.Str _) _ -> (FString, "strcmp")
+  caseVal <- unbox caseTy caseValPtr
   defBlockName <- getName "default"
   exitBlockName <- getName "caseExit"
   namedAlts <- mapM (\a -> do n <- nameAlt defBlockName a; return (n, a)) alts
   initEnv <- gets lexenv
   results <- forM namedAlts $ \(name, SConstCase c e) ->
-             do const <- cgConst c
+             do const <- unbox caseTy =<< cgConst c
                 cmp <- inst $ simpleCall comparator [const, caseVal]
                 cmpResult <- inst $ ICmp IPred.EQ cmp (ConstantOperand (C.Int 32 0)) []
                 elseName <- getName "else"
