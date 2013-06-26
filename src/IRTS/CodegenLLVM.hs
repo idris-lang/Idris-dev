@@ -6,6 +6,9 @@ import IRTS.Lang
 import IRTS.Simplified
 import qualified Core.TT as TT
 
+import Util.System
+import Paths_idris
+
 import LLVM.General.Context
 import LLVM.General.Diagnostic
 import LLVM.General.AST
@@ -31,6 +34,11 @@ import Control.Monad.Writer
 import Control.Monad.State
 
 import System.Info (arch)
+import System.IO
+import System.Directory (removeFile)
+import System.FilePath ((</>))
+import System.Process (rawSystem)
+import System.Exit (ExitCode(..))
 import Debug.Trace
 
 codegenLLVM :: [(TT.Name, SDecl)] ->
@@ -39,10 +47,31 @@ codegenLLVM :: [(TT.Name, SDecl)] ->
                IO ()
 codegenLLVM defs file outty = withContext $ \context -> do
   let ast = codegen arch (map snd defs)
-  result <- M.withModuleFromAST context ast (M.writeBitcodeToFile file)
+  result <- M.withModuleFromAST context ast (outputModule file outty)
   case result of
     Right _ -> return ()
     Left msg -> ierror msg
+
+outputModule :: FilePath -> OutputType -> M.Module -> IO ()
+outputModule file Raw    m = M.writeBitcodeToFile file m
+outputModule file Object m = withTmpFile $ \bc -> do
+  outputModule bc Raw m
+  exit <- rawSystem "llc" ["-filetype=obj", "--disable-fp-elim", "-o", file, bc]
+  when (exit /= ExitSuccess) $ ierror "FAILURE: Object generation"
+outputModule file Executable m = withTmpFile $ \obj -> do
+  outputModule obj Object m
+  cc <- getCC
+  defs <- (</> "llvm" </> "libidris_rts.a") <$> getDataDir
+  exit <- rawSystem cc [obj, defs, "-lm", "-lgmp", "-lgc", "-o", file]
+  when (exit /= ExitSuccess) $ ierror "FAILURE: Linking"
+
+withTmpFile :: (FilePath -> IO a) -> IO a
+withTmpFile f = do
+  (path, handle) <- tempfile
+  hClose handle
+  result <- f path
+  removeFile path
+  return result
 
 ierror :: String -> a
 ierror msg = error $ "INTERNAL ERROR: IRTS.CodegenLLVM: " ++ msg
