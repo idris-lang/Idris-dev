@@ -196,7 +196,7 @@ cgDef (SFun name argNames _ expr) = do
                  (CGS 0 nextGlobal (Name "begin") [] (map (Just . LocalReference . Name . show) argNames) S.empty)
       entryTerm = case bbs of
                     [] -> Do $ Ret Nothing []
-                    (BasicBlock n _ _):_ -> Do $ Br n []
+                    BasicBlock n _ _:_ -> Do $ Br n []
   tell globals
   put nextGlobal'
   return . GlobalDefinition $ functionDefaults
@@ -208,10 +208,10 @@ cgDef (SFun name argNames _ expr) = do
                                    Parameter (PointerType valueType (AddrSpace 0)) (Name (show argName)) []
                               , False)
              , G.basicBlocks =
-                 [ BasicBlock (Name "entry")
-                                  (map (\(n, t) -> n := Alloca t Nothing 0 []) allocas)
-                                  entryTerm
-                 ] ++ bbs
+                 BasicBlock (Name "entry")
+                                 (map (\(n, t) -> n := Alloca t Nothing 0 []) allocas)
+                                 entryTerm
+                 : bbs
              }
 
 type CGW = ([(Name, Type)], [BasicBlock], [Definition])
@@ -301,12 +301,10 @@ replaceElt 0 val (x:xs) = val:xs
 replaceElt n val (x:xs) = x : replaceElt (n-1) val xs
 
 alloc' :: Operand -> Codegen Operand
-alloc' size = do
-  inst $ simpleCall "GC_malloc" [size]
+alloc' size = inst $ simpleCall "GC_malloc" [size]
 
 allocAtomic :: Operand -> Codegen Operand
-allocAtomic size = do
-  inst $ simpleCall "GC_malloc_atomic" [size]
+allocAtomic size = inst $ simpleCall "GC_malloc_atomic" [size]
 
 alloc :: Type -> Codegen Operand
 alloc ty = do
@@ -335,15 +333,15 @@ cgExpr (SApp tailcall fname args) = do
     Nothing -> return Nothing
     Just argVals -> do
       fn <- var (Glob fname)
-      Just <$> (inst $
-                Call { isTailCall = tailcall
-                     , callingConvention = CC.Fast
-                     , returnAttributes = []
-                     , function = Right . ConstantOperand . C.GlobalReference . Name $ show fname
-                     , arguments = map (\v -> (v, [])) argVals
-                     , functionAttributes = []
-                     , metadata = []
-                     })
+      Just <$> inst
+           Call { isTailCall = tailcall
+                , callingConvention = CC.Fast
+                , returnAttributes = []
+                , function = Right . ConstantOperand . C.GlobalReference . Name $ show fname
+                , arguments = map (\v -> (v, [])) argVals
+                , functionAttributes = []
+                , metadata = []
+                }
 cgExpr (SLet _ varExpr bodyExpr) = do
   val <- cgExpr varExpr
   binds [val] $ cgExpr bodyExpr
@@ -364,7 +362,7 @@ cgExpr (SCon tag name args) = do
                                              , ConstantOperand (C.Int 32 1)
                                              , ConstantOperand (C.Int 32 i)] []
         inst' $ Store False ptr arg Nothing 0 []
-      Just <$> (inst $ BitCast con (PointerType valueType (AddrSpace 0)) [])
+      Just <$> inst (BitCast con (PointerType valueType (AddrSpace 0)) [])
 cgExpr (SCase inspect alts) = do
   val <- var inspect
   case val of
@@ -397,7 +395,7 @@ cgExpr (SChkCase inspect alts) = do
              Just caseVal -> do
                terminate $ Br endBBN []
                newBlock endBBN
-               Just <$> (inst $ Phi (PointerType valueType (AddrSpace 0))
+               Just <$> inst (Phi (PointerType valueType (AddrSpace 0))
                               [(val, originBlock), (val, notNullBBN), (caseVal, caseExitBlock)] [])
 cgExpr (SProj conVar idx) = do
   val <- var conVar
@@ -409,7 +407,7 @@ cgExpr (SProj conVar idx) = do
                   , ConstantOperand (C.Int 32 1)
                   , ConstantOperand (C.Int 32 (fromIntegral idx))
                   ] []
-           Just <$> (inst $ Load False ptr Nothing 0 [])
+           Just <$> inst (Load False ptr Nothing 0 [])
 cgExpr (SConst c) = Just <$> cgConst c
 cgExpr (SForeign LANG_C rty fname args) = do
   func <- ensureCDecl fname rty (map fst args)
@@ -422,14 +420,14 @@ cgExpr (SForeign LANG_C rty fname args) = do
     Nothing -> return Nothing
     Just argVals' -> do
       argUVals <- mapM (uncurry unbox) argVals'
-      result <- inst $ Call { isTailCall = False
-                            , callingConvention = CC.C
-                            , returnAttributes = []
-                            , function = Right func
-                            , arguments = map (\v -> (v, [])) argUVals
-                            , functionAttributes = []
-                            , metadata = []
-                            }
+      result <- inst Call { isTailCall = False
+                          , callingConvention = CC.C
+                          , returnAttributes = []
+                          , function = Right func
+                          , arguments = map (\v -> (v, [])) argUVals
+                          , functionAttributes = []
+                          , metadata = []
+                          }
       Just <$> box rty result
 cgExpr (SOp fn args) = do
   argVals <- mapM var args
@@ -442,14 +440,14 @@ cgExpr (SError msg) = do -- TODO: Print message
          (cgConst' (TT.Str (msg ++ "\n")))
   inst' $ simpleCall "putStr" [ConstantOperand $ C.GetElementPtr True str [ C.Int 32 0
                                                                           , C.Int 32 0]]
-  inst' $ Call { isTailCall = True
-               , callingConvention = CC.C
-               , returnAttributes = []
-               , function = Right . ConstantOperand . C.GlobalReference . Name $ "llvm.trap"
-               , arguments = []
-               , functionAttributes = [A.NoReturn]
-               , metadata = []
-               }
+  inst' Call { isTailCall = True
+             , callingConvention = CC.C
+             , returnAttributes = []
+             , function = Right . ConstantOperand . C.GlobalReference . Name $ "llvm.trap"
+             , arguments = []
+             , functionAttributes = [A.NoReturn]
+             , metadata = []
+             }
   return Nothing
 
 cgCase :: Operand -> [SAlt] -> Codegen (Maybe Operand)
@@ -464,10 +462,10 @@ cgCase val alts =
       constAlts = filter isConstCase alts
       conAlts = filter isConCase alts
                 
-      isConstCase (SConstCase _ _) = True
+      isConstCase (SConstCase {}) = True
       isConstCase _ = False
 
-      isConCase (SConCase _ _ _ _ _) = True
+      isConCase (SConCase {}) = True
       isConCase _ = False
 
       isDefCase (SDefaultCase _) = True
@@ -510,7 +508,7 @@ cgConCase con defExp alts = do
   initEnv <- gets lexenv
   defResult <- cgDefaultAlt exitBlockName defBlockName defExp
   results <- forM namedAlts $ \(name, SConCase _ _ _ argns exp) ->
-             cgAlt initEnv exitBlockName name (Just (con, (map show argns))) exp
+             cgAlt initEnv exitBlockName name (Just (con, map show argns)) exp
   finishCase initEnv exitBlockName (defResult:results)
 
 cgChainCase :: Operand -> Maybe SExp -> [SAlt] -> Codegen (Maybe Operand)
@@ -564,7 +562,7 @@ finishCase initEnv exitBlockName results = do
     xs -> do
       newBlock exitBlockName
       mergeEnvs $ map (\(_, altBlock, altEnv) -> (altBlock, altEnv)) xs
-      Just <$> (inst $ Phi (PointerType valueType (AddrSpace 0))
+      Just <$> inst (Phi (PointerType valueType (AddrSpace 0))
                 (map (\(altVal, altBlock, _) -> (altVal, altBlock)) xs) [])
 
 
@@ -594,7 +592,7 @@ cgAlt initEnv exitBlockName name destr exp = do
                       do ptr <- inst $ GetElementPtr True con [ ConstantOperand (C.Int 32 0)
                                                               , ConstantOperand (C.Int 32 1)
                                                               , ConstantOperand (C.Int 32 i)] []
-                         Just <$> (ninst argName $ Load False ptr Nothing 0 [])
+                         Just <$> ninst argName (Load False ptr Nothing 0 [])
   altVal <- binds locals $ cgExpr exp
   altEnv <- gets lexenv
   altBlock <- gets currentBlockName
@@ -619,7 +617,7 @@ mergeEnvs es = do
                   | all (== v) (map fst vs) -> return v
                   | otherwise ->
                       let valid = map (\(a, b) -> (fromJust a, b)) . filter (isJust . fst) $ vs in
-                      Just <$> (inst $ Phi (PointerType valueType (AddrSpace 0)) valid [])
+                      Just <$> inst (Phi (PointerType valueType (AddrSpace 0)) valid [])
   modify $ \s -> s { lexenv = env }
 
 nameAlt :: Name -> SAlt -> Codegen Name
@@ -764,7 +762,7 @@ cgOp (LIntStr ity) [x] = do
 
 cgOp LStrConcat [x,y] = cgStrCat x y
 cgOp prim args = ierror $ "Unimplemented primitive: [" ++ show prim ++ "]("
-                  ++ (intersperse ',' $ take (length args) ['a'..]) ++ ")"
+                  ++ intersperse ',' (take (length args) ['a'..]) ++ ")"
 
 cgStrCat :: Operand -> Operand -> Codegen Operand
 cgStrCat x y = do
