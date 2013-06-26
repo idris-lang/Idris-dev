@@ -1394,6 +1394,23 @@ pClause syn
                    setState (ist { lastParse = Just n })
                    return $ PClause fc n capp wargs rhs wheres)
        <|> try (do pushIndent
+                   n_in <- pfName; let n = expandNS syn n_in
+                   reserved "of"; reserved "type"
+                   fc <- pfc
+                   ty <- pSimpleExpr syn
+                   rhs <- pRHS syn n
+                   ist <- getState
+                   let ctxt = tt_ctxt ist
+                   let wsyn = syn { syn_namespace = [] }
+                   (wheres, nmap) <- choice [do x <- pWhereblock n wsyn
+                                                popIndent
+                                                return x, 
+                                             do pTerminator
+                                                return ([], [])]
+                   ist <- getState
+                   setState (ist { lastParse = Just n })
+                   return $ PTyClause fc n ty rhs wheres)
+       <|> try (do pushIndent
                    wargs <- many1 (pWExpr syn)
                    ist <- getState
                    n <- case lastParse ist of
@@ -1440,7 +1457,7 @@ pClause syn
                    let withs = concat ds
                    closeBlock
                    return $ PWithR fc wargs wval withs)
-
+     
        <|> do pushIndent
               l <- pArgExpr syn
               op <- operator
@@ -1561,6 +1578,9 @@ pTactic syn = do reserved "intro"; ns <- sepBy pName (lchar ',')
           <|> do reserved "refine"; n <- pName
                  i <- getState
                  return $ Refine n []
+          <|> do reserved "mrefine"; n <- pName
+                 i <- getState
+                 return $ MatchRefine n
           <|> do reserved "rewrite"; t <- pExpr syn;
                  i <- getState
                  return $ Rewrite (desugar syn i t)

@@ -728,6 +728,18 @@ runTac autoSolve ist tac
         bname _ = Nothing
     runT (Exact tm) = do elab ist toplevel False False (MN 0 "tac") tm
                          when autoSolve solveAll
+    runT (MatchRefine fn)   
+        = do (fn', imps) <- case lookupCtxtName fn (idris_implicits ist) of
+                                    [] -> do a <- envArgs fn
+                                             return (fn, a)
+                                    [(n, args)] -> return $ (n, map (const True) args)
+             ns <- match_apply (Var fn') (map (\x -> (x, 0)) imps)
+             when autoSolve solveAll
+       where envArgs n = do e <- get_env
+                            case lookup n e of
+                               Just t -> return $ map (const False)
+                                                      (getArgTys (binderTy t))
+                               _ -> return []
     runT (Refine fn [])   
         = do (fn', imps) <- case lookupCtxtName fn (idris_implicits ist) of
                                     [] -> do a <- envArgs fn

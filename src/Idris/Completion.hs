@@ -31,6 +31,7 @@ tacticArgs :: [(String, Maybe TacticArg)]
 tacticArgs = [ ("intro", Nothing)
              , ("intros", Nothing)
              , ("refine", Just ExprTArg)
+             , ("mrefine", Just ExprTArg)
              , ("rewrite", Just ExprTArg)
              , ("let", Nothing) -- FIXME syntax for let
              , ("focus", Just ExprTArg)

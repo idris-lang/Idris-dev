@@ -382,6 +382,7 @@ data PClause' t = PClause  FC Name t [t] t [PDecl' t] -- ^ A normal top-level de
                 | PWith    FC Name t [t] t [PDecl' t]
                 | PClauseR FC        [t] t [PDecl' t]
                 | PWithR   FC        [t] t [PDecl' t]
+                | PTyClause FC Name t t [PDecl' t]
     deriving Functor
 {-!
 deriving instance Binary PClause'
@@ -543,6 +544,7 @@ mapPT f t = f (mpt t) where
 
 data PTactic' t = Intro [Name] | Intros | Focus Name
                 | Refine Name [Bool] | Rewrite t 
+                | MatchRefine Name 
                 | LetTac Name t | LetTacTy Name t t
                 | Exact t | Compute | Trivial
                 | Solve

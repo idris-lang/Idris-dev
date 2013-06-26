@@ -235,6 +235,9 @@ exact t = processTactic' (Exact t)
 fill :: Raw -> Elab' aux ()
 fill t = processTactic' (Fill t)
 
+match_fill :: Raw -> Elab' aux ()
+match_fill t = processTactic' (MatchFill t)
+
 prep_fill :: Name -> [Name] -> Elab' aux ()
 prep_fill n ns = processTactic' (PrepFill n ns)
 
@@ -375,10 +378,14 @@ prepare_apply fn imps =
     rebind hs (App f a) = App (rebind hs f) (rebind hs a)
     rebind hs t = t
 
-apply :: Raw -> [(Bool, Int)] -> Elab' aux [Name]
-apply fn imps = 
+apply, match_apply :: Raw -> [(Bool, Int)] -> Elab' aux [Name]
+apply = apply' fill
+match_apply = apply' match_fill
+
+apply' :: (Raw -> Elab' aux ()) -> Raw -> [(Bool, Int)] -> Elab' aux [Name]
+apply' fillt fn imps = 
     do args <- prepare_apply fn (map fst imps)
-       fill (raw_apply fn (map Var args))
+       fillt (raw_apply fn (map Var args))
        -- _Don't_ solve the arguments we're specifying by hand.
        -- (remove from unified list before calling end_unify)
        -- HMMM: Actually, if we get it wrong, the typechecker will complain!

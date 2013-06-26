@@ -1,6 +1,6 @@
 {-# LANGUAGE PatternGuards #-}
 
-module Core.Unify(unify, Fails) where
+module Core.Unify(match_unify, unify, Fails) where
 
 import Core.TT
 import Core.Evaluate
@@ -27,6 +27,66 @@ data UResult a = UOK a
                | UPartOK a
                | UFail Err
 
+-- Solve metavariables by matching terms against each other
+-- Not really unification, of course!
+
+match_unify :: Context -> Env -> TT Name -> TT Name -> [Name] -> [Name] ->
+               TC [(Name, TT Name)]
+match_unify ctxt env topx topy dont holes =
+--    trace ("Matching " ++ show (topx, topy)) $
+      case runStateT (un [] topx topy) (UI 0 []) of
+        OK (v, UI _ fails) -> return (filter notTrivial v)
+        Error e -> tfail e
+  where
+    un names (P _ x _) tm
+        | holeIn env x || x `elem` holes
+            = do sc 1; checkCycle (x, tm)
+    un names tm (P _ y _)
+        | holeIn env y || y `elem` holes
+            = do sc 1; checkCycle (y, tm)
+    un names x y
+        | OK True <- convEq' ctxt x y = do sc 1; return []
+    un bnames (V i) (P _ x _)
+        | fst (bnames!!i) == x || snd (bnames!!i) == x = do sc 1; return []
+    un bnames (P _ x _) (V i)
+        | fst (bnames!!i) == x || snd (bnames!!i) == x = do sc 1; return []
+    un names (App fx ax) (App fy ay)
+        = do hf <- un names fx fy 
+             ha <- un names ax ay
+             combine names hf ha
+
+
+    -- TODO: there's an annoying amount of repetition between this and the
+    -- main unification function. Consider lifting it out.
+
+    sc i = do UI s f <- get
+              put (UI (s+i) f)
+
+    unifyFail x y = do UI s f <- get
+                       let r = recoverable x y
+                       let err = CantUnify r
+                                   topx topy (CantUnify r x y (Msg "") [] s) (errEnv env) s
+                       put (UI s ((x, y, env, err) : f))
+                       lift $ tfail err
+    combine bnames as [] = return as
+    combine bnames as ((n, t) : bs)
+        = case lookup n as of 
+            Nothing -> combine bnames (as ++ [(n,t)]) bs
+            Just t' -> do ns <- un bnames t t'
+                          -- make sure there's n mapping from n in ns
+                          let ns' = filter (\ (x, _) -> x/=n) ns
+                          sc 1
+                          combine bnames as (ns' ++ bs)
+
+    checkCycle p@(x, P _ _ _) = return [p] 
+    checkCycle (x, tm) 
+        | not (x `elem` freeNames tm) = return [(x, tm)]
+        | otherwise = lift $ tfail (InfiniteUnify x tm (errEnv env)) 
+
+notTrivial (x, P _ x' _) = x /= x'
+notTrivial _ = True
+
+
 unify :: Context -> Env -> TT Name -> TT Name -> [Name] -> [Name] ->
          TC ([(Name, TT Name)], Fails)
 unify ctxt env topx topy dont holes =
@@ -45,9 +105,6 @@ unify ctxt env topx topy dont holes =
 --         Error e@(CantUnify False _ _ _ _ _)  -> tfail e
         	       Error e -> tfail e
   where
-    notTrivial (x, P _ x' _) = x /= x'
-    notTrivial _ = True
-
     headDiff (P (DCon _ _) x _) (P (DCon _ _) y _) = x /= y
     headDiff (P (TCon _ _) x _) (P (TCon _ _) y _) = x /= y
     headDiff _ _ = False
@@ -311,6 +368,7 @@ unify ctxt env topx topy dont holes =
         | not (x `elem` freeNames tm) = return [(x, tm)]
         | otherwise = lift $ tfail (InfiniteUnify x tm (errEnv env)) 
 
+
     combineArgs bnames args = ca [] args where
        ca acc [] = return acc
        ca acc (x : xs) = do x' <- combine bnames acc x
@@ -326,30 +384,30 @@ unify ctxt env topx topy dont holes =
                           sc 1
                           combine bnames as (ns' ++ bs)
 
-    -- If there are any clashes of constructors, deem it unrecoverable, otherwise some
-    -- more work may help.
-    -- FIXME: Depending on how overloading gets used, this may cause problems. Better
-    -- rethink overloading properly...
+-- If there are any clashes of constructors, deem it unrecoverable, otherwise some
+-- more work may help.
+-- FIXME: Depending on how overloading gets used, this may cause problems. Better
+-- rethink overloading properly...
 
-    recoverable (P (DCon _ _) x _) (P (DCon _ _) y _)
-        | x == y = True
-        | otherwise = False
-    recoverable (P (TCon _ _) x _) (P (TCon _ _) y _)
-        | x == y = True
-        | otherwise = False
-    recoverable (Constant _) (P (DCon _ _) y _) = False
-    recoverable (P (DCon _ _) x _) (Constant _) = False
-    recoverable (Constant _) (P (TCon _ _) y _) = False
-    recoverable (P (TCon _ _) x _) (Constant _) = False
-    recoverable (P (DCon _ _) x _) (P (TCon _ _) y _) = False
-    recoverable (P (TCon _ _) x _) (P (DCon _ _) y _) = False
-    recoverable p@(Constant _) (App f a) = recoverable p f
-    recoverable (App f a) p@(Constant _) = recoverable f p
-    recoverable p@(P _ n _) (App f a) = recoverable p f
+recoverable (P (DCon _ _) x _) (P (DCon _ _) y _)
+    | x == y = True
+    | otherwise = False
+recoverable (P (TCon _ _) x _) (P (TCon _ _) y _)
+    | x == y = True
+    | otherwise = False
+recoverable (Constant _) (P (DCon _ _) y _) = False
+recoverable (P (DCon _ _) x _) (Constant _) = False
+recoverable (Constant _) (P (TCon _ _) y _) = False
+recoverable (P (TCon _ _) x _) (Constant _) = False
+recoverable (P (DCon _ _) x _) (P (TCon _ _) y _) = False
+recoverable (P (TCon _ _) x _) (P (DCon _ _) y _) = False
+recoverable p@(Constant _) (App f a) = recoverable p f
+recoverable (App f a) p@(Constant _) = recoverable f p
+recoverable p@(P _ n _) (App f a) = recoverable p f
 --     recoverable (App f a) p@(P _ _ _) = recoverable f p
-    recoverable (App f a) (App f' a')
-        = recoverable f f' -- && recoverable a a'
-    recoverable _ _ = True
+recoverable (App f a) (App f' a')
+    = recoverable f f' -- && recoverable a a'
+recoverable _ _ = True
 
 errEnv = map (\(x, b) -> (x, binderTy b))
 

@@ -49,6 +49,7 @@ data Tactic = Attack
             | Reorder Name
             | Exact Raw
             | Fill Raw
+            | MatchFill Raw
             | PrepFill Name [Name]
             | CompleteFill
             | Regret
@@ -154,7 +155,18 @@ holeName i = MN i "hole"
 qshow :: Fails -> String
 qshow fs = show (map (\ (x, y, _, _) -> (x, y)) fs) 
 
-unify' :: Context -> Env -> TT Name -> TT Name -> StateT TState TC [(Name, TT Name)]
+match_unify' :: Context -> Env -> TT Name -> TT Name -> 
+                StateT TState TC [(Name, TT Name)]
+match_unify' ctxt env topx topy = 
+   do ps <- get
+      let dont = dontunify ps
+      u <- lift $ match_unify ctxt env topx topy dont (holes ps)
+      let (h, ns) = unified ps
+      put (ps { unified = (h, u ++ ns) })
+      return u
+
+unify' :: Context -> Env -> TT Name -> TT Name -> 
+          StateT TState TC [(Name, TT Name)]
 unify' ctxt env topx topy = 
    do ps <- get
       let dont = dontunify ps
@@ -371,6 +383,21 @@ fill guess ctxt env (Bind x (Hole ty) sc) =
 --        addLog (show (uh, uns ++ ns))
        return $ Bind x (Guess ty val) sc
 fill _ _ _ _ = fail "Can't fill here."
+
+-- As fill, but attempts to solve other goals by matching
+
+match_fill :: Raw -> RunTactic
+match_fill guess ctxt env (Bind x (Hole ty) sc) = 
+    do (val, valty) <- lift $ check ctxt env guess
+--        let valtyn = normalise ctxt env valty
+--        let tyn = normalise ctxt env ty
+       ns <- match_unify' ctxt env valty ty
+       ps <- get
+       let (uh, uns) = unified ps
+--        put (ps { unified = (uh, uns ++ ns) })
+--        addLog (show (uh, uns ++ ns))
+       return $ Bind x (Guess ty val) sc
+match_fill _ _ _ _ = fail "Can't fill here."
 
 prep_fill :: Name -> [Name] -> RunTactic
 prep_fill f as ctxt env (Bind x (Hole ty) sc) =
@@ -680,6 +707,7 @@ process t h = tactic (Just h) (mktac t)
          mktac (Claim n r)       = claim n r
          mktac (Exact r)         = exact r
          mktac (Fill r)          = fill r
+         mktac (MatchFill r)     = match_fill r
          mktac (PrepFill n ns)   = prep_fill n ns
          mktac CompleteFill      = complete_fill
          mktac Regret            = regret
