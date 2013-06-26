@@ -132,6 +132,8 @@ initDefs tgt =
     , exfun "GC_malloc" ptrI8 [intPtr] False
     , exfun "GC_malloc_atomic" ptrI8 [intPtr] False
     , exfun "__gmpz_init" VoidType [pmpz] False
+    , exfun "__gmpz_init_set_str" (IntegerType 32) [pmpz, ptrI8, IntegerType 32] False
+    , exfun "__gmpz_get_str" ptrI8 [ptrI8, IntegerType 32, pmpz] False
     , GlobalDefinition mainDef
     ] ++ map mpzBinFun ["add", "sub", "mul", "fdiv_q", "fdiv_r", "and", "ior", "xor"]
     where
@@ -668,8 +670,10 @@ cgConst c@(TT.Str s) = do
 cgConst c@(TT.BI i) = do
   str <- addGlobal' (ArrayType (1 + fromInteger (numDigits 10 i)) (IntegerType 8)) (cgConst' c)
   mpz <- alloc mpzTy
-  inst $ simpleCall "__gmpz_init_set_str" [mpz, ConstantOperand $ C.GetElementPtr True str [ C.Int 32 0
-                                                                                           , C.Int 32 0]]
+  inst $ simpleCall "__gmpz_init_set_str" [mpz
+                                          , ConstantOperand $ C.GetElementPtr True str [ C.Int 32 0, C.Int 32 0]
+                                          , ConstantOperand $ C.Int 32 10
+                                          ]
   box (FInt ITBig) mpz
 cgConst x = return $ ConstantOperand nullValue
 
@@ -751,7 +755,9 @@ cgOp (LIntStr ITBig) [x] = do
   x' <- unbox (FInt ITBig) x
   ustr <- inst $ simpleCall "__gmpz_get_str"
           [ ConstantOperand (C.Null (PointerType (IntegerType 8) (AddrSpace 0)))
-          , ConstantOperand (C.Int 32 10), x']
+          , ConstantOperand (C.Int 32 10)
+          , x'
+          ]
   box FString ustr
 cgOp (LIntStr ity) [x] = do
   x' <- unbox (FInt ity) x
