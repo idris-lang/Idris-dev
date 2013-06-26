@@ -134,6 +134,7 @@ initDefs tgt =
     , exfun "__gmpz_init" VoidType [pmpz] False
     , exfun "__gmpz_init_set_str" (IntegerType 32) [pmpz, ptrI8, IntegerType 32] False
     , exfun "__gmpz_get_str" ptrI8 [ptrI8, IntegerType 32, pmpz] False
+    , exfun "__gmpz_cmp" (IntegerType 32) [pmpz, pmpz] False
     , GlobalDefinition mainDef
     ] ++ map mpzBinFun ["add", "sub", "mul", "fdiv_q", "fdiv_r", "and", "ior", "xor"]
     where
@@ -731,14 +732,19 @@ ftyToTy FDouble = FloatingPointType 64 IEEE
 ftyToTy FAny = valueType
 
 cgOp :: PrimFn -> [Operand] -> Codegen Operand
-cgOp (LPlus  ITBig) [x,y] = mpzBin "__gmpz_add" x y
-cgOp (LMinus ITBig) [x,y] = mpzBin "__gmpz_sub" x y
-cgOp (LTimes ITBig) [x,y] = mpzBin "__gmpz_mul" x y
-cgOp (LSDiv  ITBig) [x,y] = mpzBin "__gmpz_fdiv_q" x y
-cgOp (LSRem  ITBig) [x,y] = mpzBin "__gmpz_fdiv_r" x y
-cgOp (LAnd   ITBig) [x,y] = mpzBin "__gmpz_and" x y
-cgOp (LOr    ITBig) [x,y] = mpzBin "__gmpz_ior" x y
-cgOp (LXOr   ITBig) [x,y] = mpzBin "__gmpz_xor" x y
+cgOp (LLt    ITBig) [x,y] = mpzCmp IPred.SLT x y
+cgOp (LLe    ITBig) [x,y] = mpzCmp IPred.SLE x y
+cgOp (LEq    ITBig) [x,y] = mpzCmp IPred.EQ  x y
+cgOp (LGe    ITBig) [x,y] = mpzCmp IPred.SGE x y
+cgOp (LGt    ITBig) [x,y] = mpzCmp IPred.SGT x y
+cgOp (LPlus  ITBig) [x,y] = mpzBin "add" x y
+cgOp (LMinus ITBig) [x,y] = mpzBin "sub" x y
+cgOp (LTimes ITBig) [x,y] = mpzBin "mul" x y
+cgOp (LSDiv  ITBig) [x,y] = mpzBin "fdiv_q" x y
+cgOp (LSRem  ITBig) [x,y] = mpzBin "fdiv_r" x y
+cgOp (LAnd   ITBig) [x,y] = mpzBin "and" x y
+cgOp (LOr    ITBig) [x,y] = mpzBin "ior" x y
+cgOp (LXOr   ITBig) [x,y] = mpzBin "xor" x y
 
 cgOp (LPlus  ity) [x,y] = ibin ity x y (Add False False)
 cgOp (LMinus ity) [x,y] = ibin ity x y (Sub False False)
@@ -805,8 +811,17 @@ mpzBin name x y = do
   ny <- unbox (FInt ITBig) y
   nz <- alloc mpzTy
   inst' $ simpleCall "__gmpz_init" [nz]
-  inst' $ simpleCall name [nz, nx, ny]
+  inst' $ simpleCall ("__gmpz_" ++ name) [nz, nx, ny]
   box (FInt ITBig) nz
+
+mpzCmp :: IPred.IntegerPredicate -> Operand -> Operand -> Codegen Operand
+mpzCmp pred x y = do
+  nx <- unbox (FInt ITBig) x
+  ny <- unbox (FInt ITBig) y
+  cmp <- inst $ simpleCall "__gmpz_cmp" [nx, ny]
+  result <- inst $ ICmp pred cmp (ConstantOperand (C.Int 32 0)) []
+  i <- inst $ ZExt result (IntegerType 32) []
+  box (FInt IT32) i
 
 simpleCall :: String -> [Operand] -> Instruction
 simpleCall name args =
