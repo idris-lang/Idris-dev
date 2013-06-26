@@ -336,15 +336,7 @@ cgExpr (SApp tailcall fname args) = do
     Nothing -> return Nothing
     Just argVals -> do
       fn <- var (Glob fname)
-      Just <$> inst
-           Call { isTailCall = tailcall
-                , callingConvention = CC.Fast
-                , returnAttributes = []
-                , function = Right . ConstantOperand . C.GlobalReference . Name $ show fname
-                , arguments = map (\v -> (v, [])) argVals
-                , functionAttributes = []
-                , metadata = []
-                }
+      Just <$> inst ((idrCall (show fname) argVals) { isTailCall = tailcall })
 cgExpr (SLet _ varExpr bodyExpr) = do
   val <- cgExpr varExpr
   binds [val] $ cgExpr bodyExpr
