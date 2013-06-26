@@ -746,6 +746,11 @@ cgOp (LAnd   ITBig) [x,y] = mpzBin "and" x y
 cgOp (LOr    ITBig) [x,y] = mpzBin "ior" x y
 cgOp (LXOr   ITBig) [x,y] = mpzBin "xor" x y
 
+cgOp (LLt    ity) [x,y] = iCmp ity IPred.SLT x y
+cgOp (LLe    ity) [x,y] = iCmp ity IPred.SLE x y
+cgOp (LEq    ity) [x,y] = iCmp ity IPred.EQ  x y
+cgOp (LGe    ity) [x,y] = iCmp ity IPred.SGE x y
+cgOp (LGt    ity) [x,y] = iCmp ity IPred.SGT x y
 cgOp (LPlus  ity) [x,y] = ibin ity x y (Add False False)
 cgOp (LMinus ity) [x,y] = ibin ity x y (Sub False False)
 cgOp (LTimes ity) [x,y] = ibin ity x y (Mul False False)
@@ -804,6 +809,14 @@ ibin ity x y instCon = do
   ny <- unbox (FInt ity) y
   nr <- inst $ instCon nx ny []
   box (FInt ity) nr
+
+iCmp :: IntTy -> IPred.IntegerPredicate -> Operand -> Operand -> Codegen Operand
+iCmp ity pred x y = do
+  nx <- unbox (FInt ity) x
+  ny <- unbox (FInt ity) y
+  nr <- inst $ ICmp pred nx ny []
+  nr' <- inst $ ZExt nr (IntegerType . fromIntegral $ intTyWidth ity) []
+  box (FInt ity) nr'
 
 mpzBin :: String -> Operand -> Operand -> Codegen Operand
 mpzBin name x y = do
