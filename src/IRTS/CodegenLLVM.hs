@@ -742,10 +742,9 @@ cgOp (LAnd   ITBig) [x,y] = mpzBin "and" x y
 cgOp (LOr    ITBig) [x,y] = mpzBin "ior" x y
 cgOp (LXOr   ITBig) [x,y] = mpzBin "xor" x y
 
-cgOp (LTrunc from to) [x] | itWidth from > itWidth to = do
-  x' <- unbox (FInt from) x
-  tx <- inst $ Trunc x' (IntegerType $ itWidth to) []
-  box (FInt to) tx
+cgOp (LTrunc from to) [x] | itWidth from > itWidth to = iCoerce Trunc from to x
+cgOp (LZExt from to) [x] | itWidth from < itWidth to = iCoerce ZExt from to x
+cgOp (LSExt from to) [x] | itWidth from < itWidth to = iCoerce SExt from to x
 
 cgOp (LLt    ity) [x,y] = iCmp ity IPred.SLT x y
 cgOp (LLe    ity) [x,y] = iCmp ity IPred.SLE x y
@@ -789,6 +788,12 @@ cgOp (LIntStr ity) [x] = do
 cgOp LStrConcat [x,y] = cgStrCat x y
 cgOp prim args = ierror $ "Unimplemented primitive: [" ++ show prim ++ "]("
                   ++ intersperse ',' (take (length args) ['a'..]) ++ ")"
+
+iCoerce :: (Operand -> Type -> InstructionMetadata -> Instruction) -> IntTy -> IntTy -> Operand -> Codegen Operand
+iCoerce operator from to x = do
+  x' <- unbox (FInt from) x
+  x'' <- inst $ operator x' (IntegerType $ itWidth to) []
+  box (FInt to) x''
 
 cgStrCat :: Operand -> Operand -> Codegen Operand
 cgStrCat x y = do
