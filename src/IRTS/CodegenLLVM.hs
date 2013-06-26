@@ -140,6 +140,9 @@ initDefs tgt =
     , exfun "__gmpz_get_str" ptrI8 [ptrI8, IntegerType 32, pmpz] False
     , exfun "__gmpz_cmp" (IntegerType 32) [pmpz, pmpz] False
     , exfun "mpz_get_ull" (IntegerType 64) [pmpz] False
+    , exfun "mpz_init_set_ull" VoidType [pmpz, IntegerType 64] False
+    , exfun "mpz_init_set_sll" VoidType [pmpz, IntegerType 64] False
+    , exfun "__idris_strCons" (IntegerType 8) [IntegerType 8, PointerType (IntegerType 8) (AddrSpace 0)] False
     , GlobalDefinition mainDef
     ] ++ map mpzBinFun ["add", "sub", "mul", "fdiv_q", "fdiv_r", "and", "ior", "xor"]
     where
@@ -732,6 +735,22 @@ cgOp (LTrunc ITBig ity) [x] = do
          IT64 -> return val
          _ -> inst $ Trunc val (IntegerType $ itWidth ity) []
   box (FInt ity) v
+cgOp (LZExt from ITBig) [x] = do
+  nx <- unbox (FInt from) x
+  nx' <- case from of
+           IT64 -> return nx
+           _ -> inst $ Trunc nx (IntegerType $ itWidth from) []
+  mpz <- alloc mpzTy
+  inst' $ simpleCall "mpz_init_set_ull" [mpz, nx']
+  box (FInt ITBig) mpz
+cgOp (LSExt from ITBig) [x] = do
+  nx <- unbox (FInt from) x
+  nx' <- case from of
+           IT64 -> return nx
+           _ -> inst $ Trunc nx (IntegerType $ itWidth from) []
+  mpz <- alloc mpzTy
+  inst' $ simpleCall "mpz_init_set_sll" [mpz, nx']
+  box (FInt ITBig) mpz
 
 cgOp (LLt    ITBig) [x,y] = mpzCmp IPred.SLT x y
 cgOp (LLe    ITBig) [x,y] = mpzCmp IPred.SLE x y
@@ -791,6 +810,13 @@ cgOp (LIntStr ity) [x] = do
   box FString =<< inst (idrCall "__idris_intStr" [x''])
 
 cgOp LStrConcat [x,y] = cgStrCat x y
+
+cgOp LStrCons [c,s] = do
+  nc <- unbox FChar c
+  ns <- unbox FString s
+  r <- inst $ simpleCall "__idris_strCons" [nc, ns]
+  box FString r
+
 cgOp prim args = ierror $ "Unimplemented primitive: [" ++ show prim ++ "]("
                   ++ intersperse ',' (take (length args) ['a'..]) ++ ")"
 
