@@ -200,7 +200,7 @@ cgDef (SFun name argNames _ expr) = do
                      case r of
                        Nothing -> terminate $ Unreachable []
                        Just r' -> terminate $ Ret (Just r') [])
-                 (CGR arch (Name . show $ name))
+                 (CGR arch (show name))
                  (CGS 0 nextGlobal (Name "begin") [] (map (Just . LocalReference . Name . show) argNames) S.empty)
       entryTerm = case bbs of
                     [] -> Do $ Ret Nothing []
@@ -235,9 +235,12 @@ data CGS = CGS { nextName :: Word
                }
 
 data CGR = CGR { target :: String
-               , funcName :: Name }
+               , funcName :: String }
 
 type Codegen = RWS CGR CGW CGS
+
+getFuncName :: Codegen String
+getFuncName = asks funcName
 
 getGlobalUnName :: Codegen Name
 getGlobalUnName = do
@@ -532,7 +535,8 @@ cgChainCase caseValPtr defExp alts = do
                 newBlock elseName
                 return result
   modify $ \s -> s { lexenv = initEnv }
-  defaultVal <- cgExpr (fromMaybe (SError "Inexhaustive case failure") defExp)
+  fname <- getFuncName
+  defaultVal <- cgExpr (fromMaybe (SError $ "Inexhaustive case failure in " ++ fname) defExp)
   defaultBlock <- gets currentBlockName
   defaultEnv <- gets lexenv
   defResult <- case defaultVal of
@@ -560,7 +564,8 @@ finishCase initEnv exitBlockName results = do
 cgDefaultAlt :: Name -> Name -> Maybe SExp -> Codegen (Maybe (Operand, Name, Env))
 cgDefaultAlt exitName name exp = do
   newBlock name
-  val <- cgExpr (fromMaybe (SError "Inexhaustive case failure") exp)
+  fname <- getFuncName
+  val <- cgExpr (fromMaybe (SError $ "Inexhaustive case failure in " ++ fname) exp)
   env <- gets lexenv
   block <- gets currentBlockName
   case val of
