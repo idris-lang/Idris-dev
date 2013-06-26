@@ -52,6 +52,10 @@ codegenLLVM defs file outty = withContext $ \context -> do
     Right _ -> return ()
     Left msg -> ierror msg
 
+itWidth :: IntTy -> Word32
+itWidth ITNative = 32
+itWidth x = fromIntegral $ intTyWidth x
+
 outputModule :: FilePath -> OutputType -> M.Module -> IO ()
 outputModule file Raw    m = M.writeBitcodeToFile file m
 outputModule file Object m = withTmpFile $ \bc -> do
@@ -135,6 +139,7 @@ initDefs tgt =
     , exfun "__gmpz_init_set_str" (IntegerType 32) [pmpz, ptrI8, IntegerType 32] False
     , exfun "__gmpz_get_str" ptrI8 [ptrI8, IntegerType 32, pmpz] False
     , exfun "__gmpz_cmp" (IntegerType 32) [pmpz, pmpz] False
+    , exfun "mpz_get_ull" (IntegerType 64) [pmpz] False
     , GlobalDefinition mainDef
     ] ++ map mpzBinFun ["add", "sub", "mul", "fdiv_q", "fdiv_r", "and", "ior", "xor"]
     where
@@ -318,15 +323,15 @@ alloc ty = do
 sizeOf :: Type -> Codegen Operand
 sizeOf ty = ConstantOperand . C.PtrToInt
             (C.GetElementPtr True (C.Null (PointerType ty (AddrSpace 0))) [C.Int 32 1])
-            . IntegerType . fromIntegral <$> wordSize
+            . IntegerType . fromIntegral <$> getWordSize
 
 tgtWordSize :: String -> Integer
 tgtWordSize tgt = case tgt of
                     "x86_64" -> 64
                     "i386" -> 32
 
-wordSize :: Codegen Integer
-wordSize = tgtWordSize <$> asks target
+getWordSize :: Codegen Integer
+getWordSize = tgtWordSize <$> asks target
 
 cgExpr :: SExp -> Codegen (Maybe Operand)
 cgExpr (SV v) = var v
@@ -706,7 +711,7 @@ ffunDecl name rty argtys =
 ftyToTy :: FType -> Type
 ftyToTy (FInt ITNative) = IntegerType 32
 ftyToTy (FInt ITBig) = PointerType mpzTy (AddrSpace 0)
-ftyToTy (FInt ty) = IntegerType (fromIntegral (intTyWidth ty))
+ftyToTy (FInt ty) = IntegerType (fromIntegral (itWidth ty))
 ftyToTy FChar = IntegerType 32
 ftyToTy FString = PointerType (IntegerType 8) (AddrSpace 0)
 ftyToTy FUnit = VoidType
@@ -715,6 +720,14 @@ ftyToTy FDouble = FloatingPointType 64 IEEE
 ftyToTy FAny = valueType
 
 cgOp :: PrimFn -> [Operand] -> Codegen Operand
+cgOp (LTrunc ITBig ity) [x] = do
+  nx <- unbox (FInt ITBig) x
+  val <- inst $ simpleCall "mpz_get_ull" [nx]
+  v <- case ity of
+         IT64 -> return val
+         _ -> inst $ Trunc val (IntegerType . fromIntegral $ itWidth ity) []
+  box (FInt ity) v
+
 cgOp (LLt    ITBig) [x,y] = mpzCmp IPred.SLT x y
 cgOp (LLe    ITBig) [x,y] = mpzCmp IPred.SLE x y
 cgOp (LEq    ITBig) [x,y] = mpzCmp IPred.EQ  x y
@@ -763,7 +776,7 @@ cgOp (LIntStr ITBig) [x] = do
   box FString ustr
 cgOp (LIntStr ity) [x] = do
   x' <- unbox (FInt ity) x
-  x'' <- if ity == ITNative || intTyWidth ity < 64
+  x'' <- if itWidth ity < 64
          then inst $ SExt x' (IntegerType 64) []
          else return x'
   box FString =<< inst (idrCall "__idris_intStr" [x''])
@@ -779,7 +792,7 @@ cgStrCat x y = do
   xlen <- inst $ simpleCall "strlen" [x']
   ylen <- inst $ simpleCall "strlen" [y']
   zlen <- inst $ Add False True xlen ylen []
-  ws <- fromIntegral <$> wordSize
+  ws <- fromIntegral <$> getWordSize
   total <- inst $ Add False True zlen (ConstantOperand (C.Int ws 1)) []
   mem <- allocAtomic total
   inst $ simpleCall "memcpy" [mem, x', xlen]
@@ -806,8 +819,8 @@ iCmp ity pred x y = do
   nx <- unbox (FInt ity) x
   ny <- unbox (FInt ity) y
   nr <- inst $ ICmp pred nx ny []
-  nr' <- inst $ ZExt nr (IntegerType . fromIntegral $ intTyWidth ity) []
-  box (FInt ity) nr'
+  nr' <- inst $ ZExt nr (IntegerType 32) []
+  box (FInt IT32) nr'
 
 mpzBin :: String -> Operand -> Operand -> Codegen Operand
 mpzBin name x y = do
