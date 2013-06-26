@@ -711,7 +711,7 @@ ffunDecl name rty argtys =
 ftyToTy :: FType -> Type
 ftyToTy (FInt ITNative) = IntegerType 32
 ftyToTy (FInt ITBig) = PointerType mpzTy (AddrSpace 0)
-ftyToTy (FInt ty) = IntegerType (fromIntegral (itWidth ty))
+ftyToTy (FInt ty) = IntegerType (itWidth ty)
 ftyToTy FChar = IntegerType 32
 ftyToTy FString = PointerType (IntegerType 8) (AddrSpace 0)
 ftyToTy FUnit = VoidType
@@ -725,7 +725,7 @@ cgOp (LTrunc ITBig ity) [x] = do
   val <- inst $ simpleCall "mpz_get_ull" [nx]
   v <- case ity of
          IT64 -> return val
-         _ -> inst $ Trunc val (IntegerType . fromIntegral $ itWidth ity) []
+         _ -> inst $ Trunc val (IntegerType $ itWidth ity) []
   box (FInt ity) v
 
 cgOp (LLt    ITBig) [x,y] = mpzCmp IPred.SLT x y
@@ -741,6 +741,11 @@ cgOp (LSRem  ITBig) [x,y] = mpzBin "fdiv_r" x y
 cgOp (LAnd   ITBig) [x,y] = mpzBin "and" x y
 cgOp (LOr    ITBig) [x,y] = mpzBin "ior" x y
 cgOp (LXOr   ITBig) [x,y] = mpzBin "xor" x y
+
+cgOp (LTrunc from to) [x] | itWidth from > itWidth to = do
+  x' <- unbox (FInt from) x
+  tx <- inst $ Trunc x' (IntegerType $ itWidth to) []
+  box (FInt to) tx
 
 cgOp (LLt    ity) [x,y] = iCmp ity IPred.SLT x y
 cgOp (LLe    ity) [x,y] = iCmp ity IPred.SLE x y
