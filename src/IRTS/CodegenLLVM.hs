@@ -118,10 +118,10 @@ initDefs tgt =
       }
     , rtsFun "intStr" ptrI8 [IntegerType 64]
         [ BasicBlock (UnName 0)
-          [ UnName 1 := simpleCall "GC_malloc_atomic" [ConstantOperand (C.Int (fromInteger $ tgtWordSize tgt) 12)]
+          [ UnName 1 := simpleCall "GC_malloc_atomic" [ConstantOperand (C.Int (fromInteger $ tgtWordSize tgt) 21)]
           , UnName 2 := simpleCall "snprintf"
                        [ LocalReference (UnName 1)
-                       , ConstantOperand (C.Int (fromInteger $ tgtWordSize tgt) 12)
+                       , ConstantOperand (C.Int (fromInteger $ tgtWordSize tgt) 21)
                        , ConstantOperand $ C.GetElementPtr True (C.GlobalReference . Name $ "__idris_intFmtStr") [C.Int 32 0, C.Int 32 0]
                        , LocalReference (UnName 0)
                        ]

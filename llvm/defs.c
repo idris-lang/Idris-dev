@@ -47,7 +47,7 @@ unsigned long long mpz_get_ull(mpz_t n)
 
 char *__idris_strCons(char c, char *s) {
   size_t len = strlen(s);
-  char *result = GC_malloc_atomic(len);
+  char *result = GC_malloc_atomic(len+2);
   result[0] = c;
   memcpy(result+1, s, len);
   result[len+1] = 0;
