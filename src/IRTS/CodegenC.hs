@@ -352,7 +352,7 @@ doOp v (LZExt from to) [x]
     | intTyWidth from < intTyWidth to = bitCoerce v "Z" from to x
 doOp v (LTrunc ITNative to) [x] = v ++ "idris_b" ++ show (intTyWidth to) ++ "const(vm, GETINT(" ++ creg x ++ "))"
 doOp v (LTrunc from ITNative) [x] = v ++ "MKINT((i_int)" ++ creg x ++ "->info.bits" ++ show (intTyWidth from) ++ ")"
-doOp v (LTrunc ITBig to) [x] = v ++ "idris_b" ++ show (intTyWidth to) ++ "const(vm, mpz_get_ui(GETMPZ(" ++ creg x ++ "))"
+doOp v (LTrunc ITBig to) [x] = v ++ "idris_b" ++ show (intTyWidth to) ++ "const(vm, ISINT(" ++ creg x ++ ") ? GETINT(" ++ creg x ++ ") : mpz_get_ui(GETMPZ(" ++ creg x ++ ")))"
 doOp v (LTrunc from to) [x]
     | intTyWidth from > intTyWidth to = bitCoerce v "T" from to x
 

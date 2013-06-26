@@ -174,7 +174,7 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
                      | i < length env && i >= 0 = return $ env !! i
                      | otherwise      = return $ VV i 
     ev ntimes stk top env (Bind n (Let t v) sc)
-        | not simpl -- || vinstances 0 sc < 2
+        | not simpl -- - || vinstances 0 sc < 2
            = do v' <- ev ntimes stk top env v --(finalise v)
                 sc' <- ev ntimes stk top (v' : env) sc
                 wknV (-1) sc'
