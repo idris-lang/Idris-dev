@@ -182,7 +182,7 @@ nullValue :: C.Constant
 nullValue = C.Null (PointerType valueType (AddrSpace 0))
 
 primTy :: Type -> Type
-primTy inner = StructureType False [IntegerType 8, inner]
+primTy inner = StructureType False [IntegerType 32, inner]
 
 mpzTy :: Type
 mpzTy = NamedTypeReference (Name "mpz")
@@ -385,9 +385,9 @@ cgExpr (SChkCase inspect alts) = do
            isNull <- inst $ ICmp IPred.EQ val (ConstantOperand nullValue) []
            terminate $ CondBr isNull endBBN notNullBBN []
            newBlock notNullBBN
-           ptr <- inst $ BitCast val (PointerType (IntegerType 8) (AddrSpace 0)) []
+           ptr <- inst $ BitCast val (PointerType (IntegerType 32) (AddrSpace 0)) []
            flag <- inst $ Load False ptr Nothing 0 []
-           isVal <- inst $ ICmp IPred.EQ flag (ConstantOperand (C.Int 8 (-1))) []
+           isVal <- inst $ ICmp IPred.EQ flag (ConstantOperand (C.Int 32 (-1))) []
            conBBN <- getName "constructor"
            terminate $ CondBr isVal endBBN conBBN []
            newBlock conBBN
@@ -630,7 +630,7 @@ box fty fval = do
   val <- alloc (primTy (ftyToTy fty))
   tagptr <- inst $ GetElementPtr True val [ConstantOperand (C.Int 32 0), ConstantOperand (C.Int 32 0)] []
   valptr <- inst $ GetElementPtr True val [ConstantOperand (C.Int 32 0), ConstantOperand (C.Int 32 1)] []
-  inst' $ Store False tagptr (ConstantOperand (C.Int 8 (-1))) Nothing 0 []
+  inst' $ Store False tagptr (ConstantOperand (C.Int 32 (-1))) Nothing 0 []
   inst' $ Store False valptr fval Nothing 0 []
   inst $ BitCast val (PointerType valueType (AddrSpace 0)) []
 
