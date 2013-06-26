@@ -753,6 +753,14 @@ cgOp (LAnd   ity) [x,y] = ibin ity x y And
 cgOp (LOr    ity) [x,y] = ibin ity x y Or
 cgOp (LXOr   ity) [x,y] = ibin ity x y Xor
 
+cgOp LStrEq [x,y] = do
+  x' <- unbox FString x
+  y' <- unbox FString y
+  cmp <- inst $ simpleCall "strcmp" [x', y']
+  flag <- inst $ ICmp IPred.EQ cmp (ConstantOperand (C.Int 32 0)) []
+  val <- inst $ ZExt flag (IntegerType 32) []
+  box (FInt IT32) val
+
 cgOp (LIntStr ITBig) [x] = do
   x' <- unbox (FInt ITBig) x
   ustr <- inst $ simpleCall "__gmpz_get_str"
