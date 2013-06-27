@@ -7,6 +7,8 @@ import IRTS.Lang( IntTy(..)
                 , intTyToConst
                 , FType(..))
 
+import Idris.Primitives(Prim(..), primitives)
+
 import Core.TT
 import Core.Evaluate
 import Core.CaseTree

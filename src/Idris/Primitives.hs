@@ -1,9 +1,7 @@
 {-# LANGUAGE RankNTypes, ScopedTypeVariables, PatternGuards #-}
 
-module Idris.Primitives(elabPrims) where
+module Idris.Primitives(primitives, Prim(..)) where
 
-import Idris.ElabDecls
-import Idris.ElabTerm
 import Idris.AbsSyntax
 
 import IRTS.Lang
@@ -458,21 +456,5 @@ p_strRev _ = Nothing
 p_cantreduce :: a -> Maybe b
 p_cantreduce _ = Nothing
 
-valuePrim :: ([Const] -> Maybe Const) -> [Value] -> Maybe Value
-valuePrim prim vals = fmap VConstant (mapM getConst vals >>= prim)
-    where getConst (VConstant c) = Just c
-          getConst _             = Nothing
 
-elabPrim :: Prim -> Idris ()
-elabPrim (Prim n ty i def sc tot)
-    = do updateContext (addOperator n ty i (valuePrim def))
-         setTotality n tot
-         i <- getIState
-         putIState i { idris_scprims = (n, sc) : idris_scprims i }
-
-elabPrims :: Idris ()
-elabPrims = do mapM_ (elabDecl EAll toplevel)
-                     (map (PData "" defaultSyntax (FC "builtin" 0) False)
-                         [inferDecl, unitDecl, falseDecl, pairDecl, eqDecl])
-               mapM_ elabPrim primitives
 

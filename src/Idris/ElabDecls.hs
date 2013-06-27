@@ -12,6 +12,7 @@ import Idris.ElabTerm
 import Idris.Coverage
 import Idris.DataOpts
 import Idris.Providers
+import Idris.Primitives
 import Paths_idris
 
 import Core.TT
@@ -209,6 +210,27 @@ elabData info syn doc fc codata (PDatadecl n t_in dcons)
                        | n `elem` freeNames t = 1 + count n ts
                        | otherwise = count n ts
         mParam args (_ : rest) = Nothing : mParam args rest
+
+-- | Elaborate primitives
+
+elabPrims :: Idris ()
+elabPrims = do mapM_ (elabDecl EAll toplevel)
+                     (map (PData "" defaultSyntax (FC "builtin" 0) False)
+                         [inferDecl, unitDecl, falseDecl, pairDecl, eqDecl])
+               mapM_ elabPrim primitives
+    where elabPrim :: Prim -> Idris ()
+          elabPrim (Prim n ty i def sc tot)
+              = do updateContext (addOperator n ty i (valuePrim def))
+                   setTotality n tot
+                   i <- getIState
+                   putIState i { idris_scprims = (n, sc) : idris_scprims i }
+
+          valuePrim :: ([Const] -> Maybe Const) -> [Value] -> Maybe Value
+          valuePrim prim vals = fmap VConstant (mapM getConst vals >>= prim)
+
+          getConst (VConstant c) = Just c
+          getConst _             = Nothing
+
 
 -- | Elaborate a type provider
 elabProvider :: ElabInfo -> SyntaxInfo -> FC -> Name -> PTerm -> PTerm -> Idris ()
