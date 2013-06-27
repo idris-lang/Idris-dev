@@ -772,6 +772,7 @@ cgOp (LSRem  ITBig) [x,y] = mpzBin "fdiv_r" x y
 cgOp (LAnd   ITBig) [x,y] = mpzBin "and" x y
 cgOp (LOr    ITBig) [x,y] = mpzBin "ior" x y
 cgOp (LXOr   ITBig) [x,y] = mpzBin "xor" x y
+cgOp (LCompl ITBig) [x]   = mpzUn "com" x
 
 cgOp (LTrunc from to) [x] | itWidth from > itWidth to = iCoerce Trunc from to x
 cgOp (LZExt from to) [x] | itWidth from < itWidth to = iCoerce ZExt from to x
@@ -785,19 +786,31 @@ cgOp (LGt    ity) [x,y] = iCmp ity IPred.SGT x y
 cgOp (LPlus  ity) [x,y] = ibin ity x y (Add False False)
 cgOp (LMinus ity) [x,y] = ibin ity x y (Sub False False)
 cgOp (LTimes ity) [x,y] = ibin ity x y (Mul False False)
-cgOp (LUDiv  ity) [x,y] = ibin ity x y (UDiv True)
+cgOp (LUDiv  ity) [x,y] = ibin ity x y (UDiv False)
 cgOp (LURem  ity) [x,y] = ibin ity x y URem
-cgOp (LSDiv  ity) [x,y] = ibin ity x y (SDiv True)
+cgOp (LSDiv  ity) [x,y] = ibin ity x y (SDiv False)
 cgOp (LSRem  ity) [x,y] = ibin ity x y SRem
 cgOp (LAnd   ity) [x,y] = ibin ity x y And
 cgOp (LOr    ity) [x,y] = ibin ity x y Or
 cgOp (LXOr   ity) [x,y] = ibin ity x y Xor
+cgOp (LCompl ity) [x]   = iun ity x (Xor (ConstantOperand (C.Int (itWidth ity) (-1))))
+cgOp (LSHL   ity) [x,y] = ibin ity x y (Shl False False)
+cgOp (LLSHR  ity) [x,y] = ibin ity x y (LShr False)
+cgOp (LASHR  ity) [x,y] = ibin ity x y (AShr False)
 
 cgOp LStrEq [x,y] = do
   x' <- unbox FString x
   y' <- unbox FString y
   cmp <- inst $ simpleCall "strcmp" [x', y']
   flag <- inst $ ICmp IPred.EQ cmp (ConstantOperand (C.Int 32 0)) []
+  val <- inst $ ZExt flag (IntegerType 32) []
+  box (FInt IT32) val
+
+cgOp LStrLt [x,y] = do
+  nx <- unbox FString x
+  ny <- unbox FString y
+  cmp <- inst $ simpleCall "strcmp" [nx, ny]
+  flag <- inst $ ICmp IPred.ULT cmp (ConstantOperand (C.Int 32 0)) []
   val <- inst $ ZExt flag (IntegerType 32) []
   box (FInt IT32) val
 
@@ -847,10 +860,28 @@ cgOp LStrHead [c] = do
   c' <- inst $ ZExt c (IntegerType 32) []
   box FChar c'
 
+cgOp LStrIndex [s, i] = do
+  ns <- unbox FString s
+  ni <- unbox (FInt IT32) i
+  p <- inst $ GetElementPtr True ns [ni] []
+  c <- inst $ Load False p Nothing 0 []
+  c' <- inst $ ZExt c (IntegerType 32) []
+  box FChar c'
+
 cgOp LStrTail [c] = do
   s <- unbox FString c
   c <- inst $ GetElementPtr True s [ConstantOperand $ C.Int 32 1] []
   box FString c
+
+cgOp LStrLen [s] = do
+  ns <- unbox FString s
+  len <- inst $ simpleCall "strlen" [ns]
+  ws <- getWordSize
+  len' <- case ws of
+            32 -> return len
+            x | x > 32 -> inst $ Trunc len (IntegerType $ fromInteger x) []
+              | x < 32 -> inst $ ZExt len (IntegerType $ fromInteger x) []
+  box (FInt IT32) len'
 
 cgOp LReadStr [p] = do
   np <- unbox FPtr p
@@ -906,6 +937,12 @@ ibin ity x y instCon = do
   nr <- inst $ instCon nx ny []
   box (FInt ity) nr
 
+iun :: IntTy -> Operand -> (Operand -> InstructionMetadata -> Instruction) -> Codegen Operand
+iun ity x instCon = do
+  nx <- unbox (FInt ity) x
+  nr <- inst $ instCon nx []
+  box (FInt ity) nr
+
 iCmp :: IntTy -> IPred.IntegerPredicate -> Operand -> Operand -> Codegen Operand
 iCmp ity pred x y = do
   nx <- unbox (FInt ity) x
@@ -921,6 +958,14 @@ mpzBin name x y = do
   nz <- alloc mpzTy
   inst' $ simpleCall "__gmpz_init" [nz]
   inst' $ simpleCall ("__gmpz_" ++ name) [nz, nx, ny]
+  box (FInt ITBig) nz
+
+mpzUn :: String -> Operand -> Codegen Operand
+mpzUn name x = do
+  nx <- unbox (FInt ITBig) x
+  nz <- alloc mpzTy
+  inst' $ simpleCall "__gmpz_init" [nz]
+  inst' $ simpleCall ("__gmpz_" ++ name) [nz, nx]
   box (FInt ITBig) nz
 
 mpzCmp :: IPred.IntegerPredicate -> Operand -> Operand -> Codegen Operand
