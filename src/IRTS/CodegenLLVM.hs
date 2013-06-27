@@ -144,6 +144,7 @@ initDefs tgt =
     , exfun "mpz_init_set_sll" VoidType [pmpz, IntegerType 64] False
     , exfun "__idris_strCons" ptrI8 [IntegerType 8, ptrI8] False
     , exfun "__idris_readStr" ptrI8 [ptrI8] False -- Actually pointer to FILE, but it's opaque anyway
+    , exfun "strtoll" (IntegerType 64) [ptrI8, PointerType ptrI8 (AddrSpace 0), IntegerType 32] False
     , exVar "stdin" ptrI8
     , exVar "stdout" ptrI8
     , exVar "stderr" ptrI8
@@ -814,6 +815,22 @@ cgOp (LIntStr ity) [x] = do
          then inst $ SExt x' (IntegerType 64) []
          else return x'
   box FString =<< inst (idrCall "__idris_intStr" [x''])
+cgOp (LStrInt ITBig) [s] = do
+  ns <- unbox FString s
+  mpz <- alloc mpzTy
+  inst $ simpleCall "__gmpz_init_set_str" [mpz, ns, ConstantOperand $ C.Int 32 10]
+  box (FInt ITBig) mpz
+cgOp (LStrInt ity) [s] = do
+  ns <- unbox FString s
+  nx <- inst $ simpleCall "strtoll"
+        [ns
+        , ConstantOperand $ C.Null (PointerType (PointerType (IntegerType 8) (AddrSpace 0)) (AddrSpace 0))
+        , ConstantOperand $ C.Int 32 10
+        ]
+  nx' <- case ity of
+           IT64 -> return nx
+           _ -> inst $ Trunc nx (IntegerType (itWidth ity)) []
+  box (FInt ity) nx'
 
 cgOp LStrConcat [x,y] = cgStrCat x y
 
