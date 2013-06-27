@@ -24,9 +24,9 @@ void mpz_init_set_sll(mpz_t n, long long sll)
 
 void mpz_set_sll(mpz_t n, long long sll)
 {
-    mpz_set_si(n, (int)(sll >> 32));     /* n = (int)sll >> 32 */
-    mpz_mul_2exp(n, n, 32 );             /* n <<= 32 */
-    mpz_add_ui(n, n, (unsigned int)sll); /* n += (unsigned int)sll */
+  mpz_set_si(n, (int)(sll >> 32));     /* n = (int)sll >> 32 */
+  mpz_mul_2exp(n, n, 32 );             /* n <<= 32 */
+  mpz_add_ui(n, n, (unsigned int)sll); /* n += (unsigned int)sll */
 }
 
 unsigned long long mpz_get_ull(mpz_t n)
@@ -91,13 +91,13 @@ char *__idris_readStr(FILE* h) {
 }
 
 void* fileOpen(char* name, char* mode) {
-    FILE* f = fopen(name, mode);
-    return (void*)f;
+  FILE* f = fopen(name, mode);
+  return (void*)f;
 }
 
 void fileClose(void* h) {
-    FILE* f = (FILE*)h;
-    fclose(f);
+  FILE* f = (FILE*)h;
+  fclose(f);
 }
 
 int fileEOF(void* h) {
@@ -111,27 +111,26 @@ int fileError(void* h) {
 }
 
 void fputStr(void* h, char* str) {
-    FILE* f = (FILE*)h;
-    fputs(str, f);
+  FILE* f = (FILE*)h;
+  fputs(str, f);
 }
 
 int isNull(void* ptr) {
-    return ptr==NULL;
+  return ptr==NULL;
 }
 
 void idris_memset(void* ptr, size_t offset, uint8_t c, size_t size) {
-    memset(((uint8_t*)ptr) + offset, c, size);
+  memset(((uint8_t*)ptr) + offset, c, size);
 }
 
 uint8_t idris_peek(void* ptr, size_t offset) {
-    return *(((uint8_t*)ptr) + offset);
+  return *(((uint8_t*)ptr) + offset);
 }
 
 void idris_poke(void* ptr, size_t offset, uint8_t data) {
-    *(((uint8_t*)ptr) + offset) = data;
+  *(((uint8_t*)ptr) + offset) = data;
 }
 
 void idris_memmove(void* dest, void* src, size_t dest_offset, size_t src_offset, size_t size) {
-    memmove(dest + dest_offset, src + src_offset, size);
+  memmove(dest + dest_offset, src + src_offset, size);
 }
-
