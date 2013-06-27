@@ -936,3 +936,13 @@ idrCall name args =
          , functionAttributes = []
          , metadata = []
          }
+
+assert :: Operand -> String -> Codegen ()
+assert condition message = do
+  passed <- getName "assertPassed"
+  failed <- getName "assertFailed"
+  terminate $ CondBr condition passed failed []
+  newBlock failed
+  cgExpr (SError message)
+  terminate $ Unreachable []
+  newBlock passed
