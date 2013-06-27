@@ -39,10 +39,13 @@ parseCols {n=S k} row l cs = helper last l
   where
     step : {b : Board (S k)} -> LegalBoard b -> Fin (S k) -> Parser (S k)
     step {b=b} l x = do
-      tok <- parseToken (index x cs)
-      case legalVal b (x, row) tok of
-        Yes prf => return (_ ** Step prf l)
-        No _ => Left ("Illegal cell " ++ index x cs)
+      tok <- parseToken {n=S k} (index x cs)
+      case tok of
+        Nothing => return (_ ** l)
+        Just val =>
+           case legalVal b (x, row) val of
+             Yes prf => return (_ ** Step prf l)
+             No _ => Left ("Illegal cell " ++ index x cs)
 
     helper : {b : Board (S k)} -> Fin (S k) -> LegalBoard b -> Parser (S k)
     helper fO l = step l fO

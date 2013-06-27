@@ -219,7 +219,7 @@ tryValue {b=b} l c _ v =
 nullBoardFull : (b : Board O) -> FullBoard b
 nullBoardFull (MkBoard Nil) = Nil
 
--- TODO: Prove complete by induction on illegal values wrt. some base state, e.g. every value is illegal for 123\21_\312
+-- TODO: Prove complete by induction on illegal values wrt. some base state, e.g. every value is illegal for 123\21_\3_2
 fillBoard : (b : Board n) -> LegalBoard b -> Maybe (b' : Board n ** CompleteBoard b')
 fillBoard {n=O} b l = Just (b ** (l, nullBoardFull b))
 fillBoard {n=(S n)} b l with (emptyCell b)
