@@ -142,7 +142,7 @@ initDefs tgt =
     , exfun "mpz_get_ull" (IntegerType 64) [pmpz] False
     , exfun "mpz_init_set_ull" VoidType [pmpz, IntegerType 64] False
     , exfun "mpz_init_set_sll" VoidType [pmpz, IntegerType 64] False
-    , exfun "__idris_strCons" (IntegerType 8) [IntegerType 8, PointerType (IntegerType 8) (AddrSpace 0)] False
+    , exfun "__idris_strCons" ptrI8 [IntegerType 8, ptrI8] False
     , GlobalDefinition mainDef
     ] ++ map mpzBinFun ["add", "sub", "mul", "fdiv_q", "fdiv_r", "and", "ior", "xor"]
     where
@@ -814,8 +814,20 @@ cgOp LStrConcat [x,y] = cgStrCat x y
 cgOp LStrCons [c,s] = do
   nc <- unbox FChar c
   ns <- unbox FString s
-  r <- inst $ simpleCall "__idris_strCons" [nc, ns]
+  nc' <- inst $ Trunc nc (IntegerType 8) []
+  r <- inst $ simpleCall "__idris_strCons" [nc', ns]
   box FString r
+
+cgOp LStrHead [c] = do
+  s <- unbox FString c
+  c <- inst $ Load False s Nothing 0 []
+  c' <- inst $ ZExt c (IntegerType 32) []
+  box FChar c'
+
+cgOp LStrTail [c] = do
+  s <- unbox FString c
+  c <- inst $ GetElementPtr True s [ConstantOperand $ C.Int 32 1] []
+  box FString c
 
 cgOp prim args = ierror $ "Unimplemented primitive: [" ++ show prim ++ "]("
                   ++ intersperse ',' (take (length args) ['a'..]) ++ ")"
