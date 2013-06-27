@@ -2,6 +2,7 @@
 #include <gmp.h>
 #include <gc.h>
 #include <string.h>
+#include <inttypes.h>
 
 void putStr(const char *str) {
   fputs(str, stdout);
@@ -53,3 +54,84 @@ char *__idris_strCons(char c, char *s) {
   result[len+1] = 0;
   return result;
 }
+
+#define BUFSIZE 256
+char *__idris_readStr(FILE* h) {
+// Modified from 'safe-fgets.c' in the gdb distribution.
+// (see http://www.gnu.org/software/gdb/current/)
+  char *line_ptr;
+  char* line_buf = (char *) GC_malloc (BUFSIZE);
+  int line_buf_size = BUFSIZE;
+
+  /* points to last byte */
+  line_ptr = line_buf + line_buf_size - 1;
+
+  /* so we can see if fgets put a 0 there */
+  *line_ptr = 1;
+  if (fgets (line_buf, line_buf_size, h) == 0)
+    return "";
+
+  /* we filled the buffer? */
+  while (line_ptr[0] == 0 && line_ptr[-1] != '\n')
+  {
+    /* Make the buffer bigger and read more of the line */
+    line_buf_size += BUFSIZE;
+    line_buf = (char *) GC_realloc (line_buf, line_buf_size);
+
+    /* points to last byte again */
+    line_ptr = line_buf + line_buf_size - 1;
+    /* so we can see if fgets put a 0 there */
+    *line_ptr = 1;
+
+    if (fgets (line_buf + line_buf_size - BUFSIZE - 1, BUFSIZE + 1, h) == 0)
+      return "";
+  }
+
+  return line_buf;
+}
+
+void* fileOpen(char* name, char* mode) {
+    FILE* f = fopen(name, mode);
+    return (void*)f;
+}
+
+void fileClose(void* h) {
+    FILE* f = (FILE*)h;
+    fclose(f);
+}
+
+int fileEOF(void* h) {
+  FILE* f = (FILE*)h;
+  return feof(f);
+}
+
+int fileError(void* h) {
+  FILE* f = (FILE*)h;
+  return ferror(f);
+}
+
+void fputStr(void* h, char* str) {
+    FILE* f = (FILE*)h;
+    fputs(str, f);
+}
+
+int isNull(void* ptr) {
+    return ptr==NULL;
+}
+
+void idris_memset(void* ptr, size_t offset, uint8_t c, size_t size) {
+    memset(((uint8_t*)ptr) + offset, c, size);
+}
+
+uint8_t idris_peek(void* ptr, size_t offset) {
+    return *(((uint8_t*)ptr) + offset);
+}
+
+void idris_poke(void* ptr, size_t offset, uint8_t data) {
+    *(((uint8_t*)ptr) + offset) = data;
+}
+
+void idris_memmove(void* dest, void* src, size_t dest_offset, size_t src_offset, size_t size) {
+    memmove(dest + dest_offset, src + src_offset, size);
+}
+

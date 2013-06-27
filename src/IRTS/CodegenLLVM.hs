@@ -143,6 +143,10 @@ initDefs tgt =
     , exfun "mpz_init_set_ull" VoidType [pmpz, IntegerType 64] False
     , exfun "mpz_init_set_sll" VoidType [pmpz, IntegerType 64] False
     , exfun "__idris_strCons" ptrI8 [IntegerType 8, ptrI8] False
+    , exfun "__idris_readStr" ptrI8 [ptrI8] False -- Actually pointer to FILE, but it's opaque anyway
+    , exVar "stdin" ptrI8
+    , exVar "stdout" ptrI8
+    , exVar "stderr" ptrI8
     , GlobalDefinition mainDef
     ] ++ map mpzBinFun ["add", "sub", "mul", "fdiv_q", "fdiv_r", "and", "ior", "xor"]
     where
@@ -169,6 +173,8 @@ initDefs tgt =
                                , G.name = Name name
                                , G.parameters = (flip map argtys $ \ty -> Parameter ty (UnName 0) [], vari)
                                }
+      exVar :: String -> Type -> Definition
+      exVar name ty = GlobalDefinition $ globalVariableDefaults { G.name = Name name, G.type' = ty }
 
 codegen :: String -> [SDecl] -> Module
 codegen tgt defs = Module "idris" Nothing Nothing (initDefs tgt ++ globals ++ gendefs)
@@ -828,6 +834,22 @@ cgOp LStrTail [c] = do
   s <- unbox FString c
   c <- inst $ GetElementPtr True s [ConstantOperand $ C.Int 32 1] []
   box FString c
+
+cgOp LReadStr [p] = do
+  np <- unbox FPtr p
+  s <- inst $ simpleCall "__idris_readStr" [np]
+  box FString s
+
+cgOp LStdIn  [] = do
+  ptr <- inst $ Load False (ConstantOperand . C.GlobalReference . Name $ "stdin") Nothing 0 []
+  box FPtr ptr
+cgOp LStdOut  [] = do
+  ptr <- inst $ Load False (ConstantOperand . C.GlobalReference . Name $ "stdout") Nothing 0 []
+  box FPtr ptr
+cgOp LStdErr  [] = do
+  ptr <- inst $ Load False (ConstantOperand . C.GlobalReference . Name $ "stderr") Nothing 0 []
+  box FPtr ptr
+
 
 cgOp prim args = ierror $ "Unimplemented primitive: [" ++ show prim ++ "]("
                   ++ intersperse ',' (take (length args) ['a'..]) ++ ")"
