@@ -24,11 +24,6 @@ ty :: [Const] -> Const -> Type
 ty []     x = Constant x
 ty (t:ts) x = Bind (MN 0 "T") (Pi (Constant t)) (ty ts x)
 
-believeTy :: Type
-believeTy = Bind (UN "a") (Pi (TType (UVar (-2))))
-            (Bind (UN "b") (Pi (TType (UVar (-2))))
-            (Bind (UN "x") (Pi (V 1)) (V 1)))
-
 total, partial :: Totality
 total = Total []
 partial = Partial NotCovering
@@ -178,9 +173,7 @@ primitives =
      (0, LVMPtr) total,
    -- Streams
    Prim (UN "prim__stdin") (ty [] PtrType) 0 (p_cantreduce)
-    (0, LStdIn) partial,
-   Prim (UN "prim__believe_me") believeTy 3 (p_believeMe)
-    (3, LNoOp) partial -- ahem
+    (0, LStdIn) partial
   ] ++ concatMap intOps [IT8, IT16, IT32, IT64, ITBig, ITNative]
 
 intOps :: IntTy -> [Prim]
@@ -228,10 +221,6 @@ iCoerce :: IntTy -> IntTy -> String -> (IntTy -> IntTy -> [Const] -> Maybe Const
 iCoerce from to op impl irop =
     Prim (UN $ "prim__" ++ op ++ intTyName from ++ "_" ++ intTyName to)
              (ty [intTyToConst from] (intTyToConst to)) 1 (impl from to) (1, irop from to) total
-
-p_believeMe :: [a] -> Maybe a
-p_believeMe [_,_,x] = Just x
-p_believeMe _ = Nothing
 
 iUn :: (Int -> Int) -> [Const] -> Maybe Const
 iUn op [I x] = Just $ I (op x)

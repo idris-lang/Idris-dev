@@ -320,6 +320,7 @@ execApp' env ctxt f args = return (mkEApp f args)
 
 -- | Look up primitive operations in the global table and transform them into ExecVal functions
 getOp :: Name -> [ExecVal] -> Maybe (Exec ExecVal)
+getOp (UN "prim__believe_me") [_, _, x] = Just (return x)
 getOp (UN "prim__readString") [EP _ (UN "prim__stdin") _] =
               Just $ do line <- execIO getLine
                         return (EConstant (Str line))
