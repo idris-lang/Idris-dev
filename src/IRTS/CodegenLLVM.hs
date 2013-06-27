@@ -739,7 +739,7 @@ cgOp (LZExt from ITBig) [x] = do
   nx <- unbox (FInt from) x
   nx' <- case from of
            IT64 -> return nx
-           _ -> inst $ Trunc nx (IntegerType $ itWidth from) []
+           _ -> inst $ ZExt nx (IntegerType 64) []
   mpz <- alloc mpzTy
   inst' $ simpleCall "mpz_init_set_ull" [mpz, nx']
   box (FInt ITBig) mpz
@@ -747,7 +747,7 @@ cgOp (LSExt from ITBig) [x] = do
   nx <- unbox (FInt from) x
   nx' <- case from of
            IT64 -> return nx
-           _ -> inst $ Trunc nx (IntegerType $ itWidth from) []
+           _ -> inst $ SExt nx (IntegerType 64) []
   mpz <- alloc mpzTy
   inst' $ simpleCall "mpz_init_set_sll" [mpz, nx']
   box (FInt ITBig) mpz
