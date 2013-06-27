@@ -134,11 +134,12 @@ process :: IBCFile -> FilePath -> Idris ()
 process i fn
    | ver i /= ibcVersion = do iLOG "ibc out of date"
                               fail "Incorrect ibc version"
-   | otherwise =  
+   | otherwise =
             do srcok <- liftIO $ doesFileExist (sourcefile i)
                when srcok $ liftIO $ timestampOlder (sourcefile i) fn
                v <- verbose
-               when (v && srcok) $ iputStrLn $ "Skipping " ++ sourcefile i
+               quiet <- getQuiet
+               when (v && srcok && not quiet) $ iputStrLn $ "Skipping " ++ sourcefile i
                pImports (ibc_imports i)
                pImps (ibc_implicits i)
                pFixes (ibc_fixes i)

@@ -91,6 +91,8 @@ usagemsg = "Idris version " ++ ver ++ "\n" ++
            "\t--log [level]     Type debugging log level\n" ++
            "\t-S                Do no further compilation of code generator output\n" ++
            "\t-c                Compile to object files rather than an executable\n" ++
+           "\t--exec [expr]     Execute the expression expr in the interpreter, defaulting to\n" ++
+           "\t                  Main.main if none provided, and exit.\n" ++
            "\t--ideslave        Ideslave mode (for editors; in/ouput wrapped in s-expressions)\n" ++
            "\t--libdir          Show library install directory and exit\n" ++
            "\t--link            Show C library directories and exit (for C linking)\n" ++
