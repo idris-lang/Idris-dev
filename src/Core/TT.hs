@@ -307,6 +307,10 @@ instance Pretty Const where
   pretty B16Type = text "Bits16"
   pretty B32Type = text "Bits32"
   pretty B64Type = text "Bits64"
+  pretty (B8 w) = text . show $ w
+  pretty (B16 w) = text . show $ w
+  pretty (B32 w) = text . show $ w
+  pretty (B64 w) = text . show $ w
 
 data Raw = Var Name
          | RBind Name (Binder Raw) Raw
