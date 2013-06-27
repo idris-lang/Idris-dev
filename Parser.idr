@@ -39,12 +39,13 @@ parseCols {n=S k} row l cs = helper last l
   where
     step : {b : Board (S k)} -> LegalBoard b -> Fin (S k) -> Parser (S k)
     step {b=b} l x = do
+      let here = (x, row) -- TODO: Determine why naming this makes idris smarter
       tok <- parseToken {n=S k} (index x cs)
       case tok of
         Nothing => return (_ ** l)
-        Just val =>
-           case legalVal b (x, row) val of
-             Yes prf => return (_ ** Step prf l)
+        Just t =>
+           case legalVal b here t of
+             Yes prf => Right (_ ** Step prf l)
              No _ => Left ("Illegal cell " ++ index x cs)
 
     helper : {b : Board (S k)} -> Fin (S k) -> LegalBoard b -> Parser (S k)
