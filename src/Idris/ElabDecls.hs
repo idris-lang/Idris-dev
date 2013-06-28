@@ -12,6 +12,8 @@ import Idris.ElabTerm
 import Idris.Coverage
 import Idris.DataOpts
 import Idris.Providers
+import Idris.Primitives
+import IRTS.Lang
 import Paths_idris
 
 import Core.TT
@@ -209,6 +211,43 @@ elabData info syn doc fc codata (PDatadecl n t_in dcons)
                        | n `elem` freeNames t = 1 + count n ts
                        | otherwise = count n ts
         mParam args (_ : rest) = Nothing : mParam args rest
+
+-- | Elaborate primitives
+
+elabPrims :: Idris ()
+elabPrims = do mapM_ (elabDecl EAll toplevel)
+                     (map (PData "" defaultSyntax (FC "builtin" 0) False)
+                         [inferDecl, unitDecl, falseDecl, pairDecl, eqDecl])
+               mapM_ elabPrim primitives
+               -- Special case prim__believe_me because it doesn't work on just constants
+               elabBelieveMe
+    where elabPrim :: Prim -> Idris ()
+          elabPrim (Prim n ty i def sc tot)
+              = do updateContext (addOperator n ty i (valuePrim def))
+                   setTotality n tot
+                   i <- getIState
+                   putIState i { idris_scprims = (n, sc) : idris_scprims i }
+
+          valuePrim :: ([Const] -> Maybe Const) -> [Value] -> Maybe Value
+          valuePrim prim vals = fmap VConstant (mapM getConst vals >>= prim)
+
+          getConst (VConstant c) = Just c
+          getConst _             = Nothing
+
+
+          p_believeMe [_,_,x] = Just x
+          p_believeMe _ = Nothing
+          believeTy = Bind (UN "a") (Pi (TType (UVar (-2))))
+                       (Bind (UN "b") (Pi (TType (UVar (-2))))
+                         (Bind (UN "x") (Pi (V 1)) (V 1)))
+          elabBelieveMe = do let prim__believe_me = (UN "prim__believe_me")
+                             updateContext (addOperator prim__believe_me believeTy 3 p_believeMe)
+                             setTotality prim__believe_me (Partial NotCovering)
+                             i <- getIState
+                             putIState i {
+                               idris_scprims = (prim__believe_me, (3, LNoOp)) : idris_scprims i
+                             }
+
 
 -- | Elaborate a type provider
 elabProvider :: ElabInfo -> SyntaxInfo -> FC -> Name -> PTerm -> PTerm -> Idris ()
