@@ -91,7 +91,8 @@ mainDef =
     , G.name = Name "main"
     , G.basicBlocks =
         [ BasicBlock (UnName 0)
-          [ UnName 1 := idrCall "{runMain0}" [] ] -- TODO: Set GMP memory functions
+          [ UnName 1 := simpleCall "GC_init" []
+          , UnName 2 := idrCall "{runMain0}" [] ] -- TODO: Set GMP memory functions
           (Do $ Ret (Just (ConstantOperand (C.Int 32 0))) [])
         ]}
 
@@ -133,6 +134,7 @@ initDefs tgt =
     , exfun "strcmp" (IntegerType 32) [ptrI8, ptrI8] False
     , exfun "strlen" intPtr [ptrI8] False
     , exfun "memcpy" ptrI8 [ptrI8, ptrI8, intPtr] False
+    , exfun "GC_init" VoidType [] False
     , exfun "GC_malloc" ptrI8 [intPtr] False
     , exfun "GC_malloc_atomic" ptrI8 [intPtr] False
     , exfun "__gmpz_init" VoidType [pmpz] False
