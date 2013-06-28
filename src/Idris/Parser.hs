@@ -607,6 +607,7 @@ pSimpleExtExpr syn = do i <- getState
 
 pNoExtExpr syn =
          try (pApp syn) 
+     <|> try (pMatchApp syn)
      <|> pRecordType syn
      <|> try (pSimpleExpr syn)
      <|> pLambda syn
@@ -872,6 +873,15 @@ pHSimpleExpr syn
                   e <- pSimpleExpr syn
                   return $ PHidden e
            <|> pSimpleExpr syn
+
+pMatchApp syn = do ty <- pSimpleExpr syn
+                   symbol "<=="
+                   fc <- pfc
+                   f <- pfName
+                   return (PLet (MN 0 "match")
+                                ty
+                                (PMatchApp fc f)
+                                (PRef fc (MN 0 "match")))
 
 pApp syn = do f <- pSimpleExpr syn
               fc <- pfc
@@ -1394,10 +1404,10 @@ pClause syn
                    setState (ist { lastParse = Just n })
                    return $ PClause fc n capp wargs rhs wheres)
        <|> try (do pushIndent
-                   n_in <- pfName; let n = expandNS syn n_in
-                   reserved "of"; reserved "type"
-                   fc <- pfc
                    ty <- pSimpleExpr syn
+                   symbol "<=="
+                   fc <- pfc
+                   n_in <- pfName; let n = expandNS syn n_in
                    rhs <- pRHS syn n
                    ist <- getState
                    let ctxt = tt_ctxt ist
@@ -1407,9 +1417,13 @@ pClause syn
                                                 return x, 
                                              do pTerminator
                                                 return ([], [])]
+                   let capp = PLet (MN 0 "match")
+                                   ty
+                                   (PMatchApp fc n)
+                                   (PRef fc (MN 0 "match"))
                    ist <- getState
                    setState (ist { lastParse = Just n })
-                   return $ PTyClause fc n ty rhs wheres)
+                   return $ PClause fc n capp [] rhs wheres)
        <|> try (do pushIndent
                    wargs <- many1 (pWExpr syn)
                    ist <- getState

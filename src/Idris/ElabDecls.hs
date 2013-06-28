@@ -648,7 +648,8 @@ elabClause info tcgen (cnum, PClause fc fname lhs_in withs rhs_in whereblock)
         let lhs_ty = getInferType lhs'
         logLvl 3 ("Elaborated: " ++ show lhs_tm)
         logLvl 3 ("Elaborated type: " ++ show lhs_ty)
-        (clhs, clhsty) <- recheckC fc [] lhs_tm
+        (clhs_c, clhsty) <- recheckC fc [] lhs_tm
+        let clhs = normalise ctxt [] clhs_c
         logLvl 5 ("Checked " ++ show clhs ++ "\n" ++ show clhsty)
         -- Elaborate where block
         ist <- getIState
@@ -765,6 +766,7 @@ elabClause info tcgen (cnum, PClause fc fname lhs_in withs rhs_in whereblock)
              addP t = t
     propagateParams ps (PRef fc n)
          = PApp fc (PRef fc n) (map (\x -> pimp x (PRef fc x)) ps)
+    propagateParams ps x = x
 
 elabClause info tcgen (_, PWith fc fname lhs_in withs wval_in withblock) 
    = do ctxt <- getContext

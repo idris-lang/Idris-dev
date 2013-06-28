@@ -35,8 +35,15 @@ match_unify :: Context -> Env -> TT Name -> TT Name -> [Name] -> [Name] ->
 match_unify ctxt env topx topy dont holes =
 --    trace ("Matching " ++ show (topx, topy)) $
       case runStateT (un [] topx topy) (UI 0 []) of
-        OK (v, UI _ fails) -> return (filter notTrivial v)
-        Error e -> tfail e
+        OK (v, UI _ []) -> return (filter notTrivial v)
+        res -> 
+               let topxn = normalise ctxt env topx
+                   topyn = normalise ctxt env topy in
+                     case runStateT (un [] topxn topyn)
+        	  	        (UI 0 []) of
+                       OK (v, UI _ fails) -> 
+                            return (filter notTrivial v)
+                       Error e -> tfail e
   where
     un names (P _ x _) tm
         | holeIn env x || x `elem` holes
@@ -44,8 +51,6 @@ match_unify ctxt env topx topy dont holes =
     un names tm (P _ y _)
         | holeIn env y || y `elem` holes
             = do sc 1; checkCycle (y, tm)
-    un names x y
-        | OK True <- convEq' ctxt x y = do sc 1; return []
     un bnames (V i) (P _ x _)
         | fst (bnames!!i) == x || snd (bnames!!i) == x = do sc 1; return []
     un bnames (P _ x _) (V i)
@@ -54,6 +59,15 @@ match_unify ctxt env topx topy dont holes =
         = do hf <- un names fx fy 
              ha <- un names ax ay
              combine names hf ha
+    un names x y
+        | OK True <- convEq' ctxt x y = do sc 1; return []
+        | otherwise = do UI s f <- get
+                         let r = recoverable x y
+                         let err = CantUnify r
+                                     topx topy (CantUnify r x y (Msg "") [] s) (errEnv env) s
+                         if (not r) then lift $ tfail err
+                           else do put (UI s ((x, y, env, err) : f))
+                                   lift $ tfail err
 
 
     -- TODO: there's an annoying amount of repetition between this and the

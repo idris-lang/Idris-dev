@@ -48,7 +48,7 @@ pattern syntax bitpair [x] [y] = (_ ** (_ ** (x, y, _)))
 term    syntax bitpair [x] [y] = (_ ** (_ ** (x, y, refl)))
 
 addBit : Bit x -> Bit y -> Bit c -> 
-          (bx ** (by ** (Bit bx, Bit by, c + x + y = by + 2 * bx)))
+          (bX ** (bY ** (Bit bX, Bit bY, c + x + y = bY + 2 * bX)))
 addBit b0 b0 b0 = bitpair b0 b0
 addBit b0 b0 b1 = bitpair b0 b1 
 addBit b0 b1 b0 = bitpair b0 b1
@@ -60,8 +60,8 @@ addBit b1 b1 b1 = bitpair b1 b1
 
 adc : Binary w x -> Binary w y -> Bit c -> Binary (S w) (c + x + y) 
 adc zero        zero        carry ?= zero # carry
-adc (numx # bx) (numy # by) carry
-   ?= let (bitpair carry0 lsb) = addBit bx by carry in 
+adc (numx # bX) (numy # bY) carry
+   ?= let (bitpair carry0 lsb) = addBit bX bY carry in 
           adc numx numy carry0 # lsb
 
 readNum : IO Nat
@@ -108,7 +108,7 @@ Main.ntbEven = proof {
 Main.adc_lemma_2 = proof {
     intro c,w,v,bit0,num0;
     intro b0,v1,bit1,num1,b1;
-    intro bc,x,x1,bx,bx1;
+    intro bc,x,x1,bX,bX1;
     rewrite sym (plusZeroRightNeutral x);
     rewrite sym (plusZeroRightNeutral v1);
     rewrite sym (plusZeroRightNeutral (plus (plus x v) v1));

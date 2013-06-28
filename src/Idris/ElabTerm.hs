@@ -331,6 +331,11 @@ elab ist info pattern tcgen fn tm
                         Just xs@(_:_) -> NS n xs
                         _ -> n
 
+    elab' (ina, g) (PMatchApp fc fn)
+       = do let (fn', imps) = case lookupCtxtName fn (idris_implicits ist) of
+                                   [(n, args)] -> (n, map (const True) args)
+            ns <- match_apply (Var fn') (map (\x -> (x,0)) imps)
+            solve
     -- if f is local, just do a simple_app
     elab' (ina, g) tm@(PApp fc (PRef _ f) args') 
        = do let args = {- case lookupCtxt f (inblock info) of

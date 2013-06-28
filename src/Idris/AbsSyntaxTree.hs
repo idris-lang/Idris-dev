@@ -382,7 +382,6 @@ data PClause' t = PClause  FC Name t [t] t [PDecl' t] -- ^ A normal top-level de
                 | PWith    FC Name t [t] t [PDecl' t]
                 | PClauseR FC        [t] t [PDecl' t]
                 | PWithR   FC        [t] t [PDecl' t]
-                | PTyClause FC Name t t [PDecl' t]
     deriving Functor
 {-!
 deriving instance Binary PClause'
@@ -494,6 +493,7 @@ data PTerm = PQuote Raw
            | PLet Name PTerm PTerm PTerm
            | PTyped PTerm PTerm -- ^ Term with explicit type
            | PApp FC PTerm [PArg]
+           | PMatchApp FC Name -- ^ Make an application by type matching
            | PCase FC PTerm [(PTerm, PTerm)]
            | PTrue FC
            | PFalse FC
@@ -1047,6 +1047,7 @@ showImp impl tm = se 10 tm where
     se p e
         | Just str <- slist p e = str
         | Just num <- snat p e  = show num
+    se p (PMatchApp _ f) = "match " ++ show f
     se p (PApp _ (PRef _ f) [])
         | not impl = show f
     se p (PApp _ (PRef _ op@(UN (f:_))) args)
