@@ -24,10 +24,6 @@ import Prelude.Chars
 class Show a where 
     show : a -> String
 
-instance Show Nat where 
-    show O = "O"
-    show (S k) = "s" ++ show k
-
 instance Show Int where 
     show = prim__toStrInt
 
@@ -42,6 +38,9 @@ instance Show Char where
 
 instance Show String where 
     show = id
+
+instance Show Nat where 
+    show n = show (the Integer (cast n))
 
 instance Show Bool where 
     show True = "True"
