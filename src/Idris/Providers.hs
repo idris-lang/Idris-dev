@@ -3,7 +3,6 @@ module Idris.Providers (providerTy, getProvided) where
 
 import Core.TT
 import Core.Evaluate
-import Core.Execute
 import Idris.AbsSyntax
 import Idris.AbsSyntaxTree
 import Idris.Error
