@@ -33,7 +33,7 @@ import Control.Monad.RWS
 import Control.Monad.Writer
 import Control.Monad.State
 
-import System.Info (arch)
+import qualified System.Info as SI (arch, os)
 import System.IO
 import System.Directory (removeFile)
 import System.FilePath ((</>))
@@ -41,12 +41,15 @@ import System.Process (rawSystem)
 import System.Exit (ExitCode(..))
 import Debug.Trace
 
+data Target = Target { arch :: String, os :: String }
+
 codegenLLVM :: [(TT.Name, SDecl)] ->
                FilePath -> -- output file name
                OutputType ->
                IO ()
 codegenLLVM defs file outty = withContext $ \context -> do
-  let ast = codegen arch (map snd defs)
+  let target = Target { arch = SI.arch, os = SI.os }
+  let ast = codegen target (map snd defs)
   result <- M.withModuleFromAST context ast (outputModule file outty)
   case result of
     Right _ -> return ()
@@ -101,7 +104,7 @@ mainDef =
           (Do $ Ret (Just (ConstantOperand (C.Int 32 0))) [])
         ]}
 
-initDefs :: String -> [Definition]
+initDefs :: Target -> [Definition]
 initDefs tgt =
     [ TypeDefinition (Name "valTy")
       (Just $ StructureType False
@@ -160,9 +163,9 @@ initDefs tgt =
     , exfun "__idris_gmpRealloc" ptrI8 [ptrI8, intPtr, intPtr] False
     , exfun "__idris_gmpFree" VoidType [ptrI8, intPtr] False
     , exfun "strtoll" (IntegerType 64) [ptrI8, PointerType ptrI8 (AddrSpace 0), IntegerType 32] False
-    , exVar "stdin" ptrI8
-    , exVar "stdout" ptrI8
-    , exVar "stderr" ptrI8
+    , exVar (stdinName tgt) ptrI8
+    , exVar (stdoutName tgt) ptrI8
+    , exVar (stderrName tgt) ptrI8
     , GlobalDefinition mainDef
     ] ++ map mpzBinFun ["add", "sub", "mul", "fdiv_q", "fdiv_r", "and", "ior", "xor"]
     where
@@ -192,10 +195,20 @@ initDefs tgt =
       exVar :: String -> Type -> Definition
       exVar name ty = GlobalDefinition $ globalVariableDefaults { G.name = Name name, G.type' = ty }
 
-codegen :: String -> [SDecl] -> Module
+      stdinName :: Target -> String
+      stdinName (Target { os = "darwin" }) = "__stdinp"
+      stdinName _ = "stdin"
+      stdoutName :: Target -> String
+      stdoutName (Target { os = "darwin" }) = "__stdoutp"
+      stdoutName _ = "stdout"
+      stderrName :: Target -> String
+      stderrName (Target { os = "darwin" }) = "__stderrp"
+      stderrName _ = "stderr"
+
+codegen :: Target -> [SDecl] -> Module
 codegen tgt defs = Module "idris" Nothing Nothing (initDefs tgt ++ globals ++ gendefs)
     where
-      ((gendefs, globals), _) = (runState . runWriterT) (mapM cgDef defs) 0
+      (gendefs, _, globals) = runRWS (mapM cgDef defs) tgt 0
 
 valueType :: Type
 valueType = NamedTypeReference (Name "valTy")
@@ -215,17 +228,18 @@ conType nargs = StructureType False
                 , ArrayType nargs (PointerType valueType (AddrSpace 0))
                 ]
 
-type Modgen = WriterT [Definition] (State Word)
+type Modgen = RWS Target [Definition] Word
 
 cgDef :: SDecl -> Modgen Definition
 cgDef (SFun name argNames _ expr) = do
   nextGlobal <- get
+  tgt <- ask
   let (_, CGS { nextGlobalName = nextGlobal' }, (allocas, bbs, globals)) =
           runRWS (do r <- cgExpr expr
                      case r of
                        Nothing -> terminate $ Unreachable []
                        Just r' -> terminate $ Ret (Just r') [])
-                 (CGR arch (show name))
+                 (CGR tgt (show name))
                  (CGS 0 nextGlobal (Name "begin") [] (map (Just . LocalReference . Name . show) argNames) S.empty)
       entryTerm = case bbs of
                     [] -> Do $ Ret Nothing []
@@ -259,7 +273,7 @@ data CGS = CGS { nextName :: Word
                , foreignSyms :: Set String
                }
 
-data CGR = CGR { target :: String
+data CGR = CGR { target :: Target
                , funcName :: String }
 
 type Codegen = RWS CGR CGW CGS
@@ -353,10 +367,9 @@ sizeOf ty = ConstantOperand . C.PtrToInt
             (C.GetElementPtr True (C.Null (PointerType ty (AddrSpace 0))) [C.Int 32 1])
             . IntegerType . fromIntegral <$> getWordSize
 
-tgtWordSize :: String -> Integer
-tgtWordSize tgt = case tgt of
-                    "x86_64" -> 64
-                    "i386" -> 32
+tgtWordSize :: Target -> Integer
+tgtWordSize (Target { arch = "i386" })   = 32
+tgtWordSize (Target { arch = "x86_64" }) = 64
 
 getWordSize :: Codegen Integer
 getWordSize = tgtWordSize <$> asks target
