@@ -1,3 +1,19 @@
+New in 0.9.9:
+-------------
+
+* Apply functions by return type, rather than with arguments:
+  "t <== f" means "apply f with arguments such that it returns a value
+  of type t"
+* Added Data.HVect module
+* Fix fromInteger to take an Integer, rather than an Int
+* Integer literals for Fin
+
+Internal changes
+
+* Add annotation for unification traces
+* Add 'mrefine' tactic for refining by matching against a type
+* Type class resolution fixes
+
 New in 0.9.8:
 -------------
 
