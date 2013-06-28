@@ -95,7 +95,9 @@ buildTC ist info pattern tcgen fn tm
 elab :: IState -> ElabInfo -> Bool -> Bool -> Name -> PTerm -> 
         ElabD ()
 elab ist info pattern tcgen fn tm 
-    = do elabE (False, False) tm -- (in argument, guarded)
+    = do let loglvl = opt_logLevel (idris_options ist)
+         when (loglvl > 5) $ unifyLog True
+         elabE (False, False) tm -- (in argument, guarded)
          end_unify
          when pattern -- convert remaining holes to pattern vars
               (do update_term orderPats
@@ -464,6 +466,9 @@ elab ist info pattern tcgen fn tm
               mkN n = case namespace info of
                         Just xs@(_:_) -> NS n xs
                         _ -> n
+    elab' ina (PUnifyLog t) = do unifyLog True
+                                 elab' ina t
+                                 unifyLog False
     elab' ina x = fail $ "Something's gone wrong. Did you miss a semi-colon somewhere?"
 
     caseBlock :: FC -> Name -> [(Name, Binder Term)] -> 

@@ -91,6 +91,10 @@ getAux :: Elab' aux aux
 getAux = do ES (ps, a) _ _ <- get
             return a
 
+unifyLog :: Bool -> Elab' aux ()
+unifyLog log = do ES (ps, a) l p <- get
+                  put (ES (ps { unifylog = log }, a) l p)
+
 processTactic' t = do ES (p, a) logs prev <- get
                       (p', log) <- lift $ processTactic t p
                       put (ES (p', a) (logs ++ log) prev)

@@ -37,6 +37,7 @@ data ProofState = PS { thname   :: Name,
                        previous :: Maybe ProofState, -- for undo
                        context  :: Context,
                        plog     :: String,
+                       unifylog :: Bool,
                        done     :: Bool
                      }
                    
@@ -81,8 +82,9 @@ data Tactic = Attack
 -- Some utilites on proof and tactic states
 
 instance Show ProofState where
-    show (PS nm [] _ _ tm _ _ _ _ _ _ _ _ _ _ _ _ _) = show nm ++ ": no more goals"
-    show (PS nm (h:hs) _ _ tm _ _ _ _ _ _ _ i _ _ ctxt _ _) 
+    show (PS nm [] _ _ tm _ _ _ _ _ _ _ _ _ _ _ _ _ _) 
+          = show nm ++ ": no more goals"
+    show (PS nm (h:hs) _ _ tm _ _ _ _ _ _ _ i _ _ ctxt _ _ _) 
           = let OK g = goal (Just h) tm
                 wkenv = premises g in
                 "Other goals: " ++ show hs ++ "\n" ++
@@ -105,12 +107,12 @@ instance Show ProofState where
                showG ps b = showEnv ps (binderTy b)
 
 instance Pretty ProofState where
-  pretty (PS nm [] _ _ trm _ _ _ _ _ _ _ _ _ _ _ _ _) =
+  pretty (PS nm [] _ _ trm _ _ _ _ _ _ _ _ _ _ _ _ _ _) =
     if size nm > breakingSize then
       pretty nm <> colon $$ nest nestingSize (text " no more goals.")
     else
       pretty nm <> colon <+> text " no more goals."
-  pretty p@(PS nm (h:hs) _ _ tm _ _ _ _ _ _ _ i _ _ ctxt _ _) =
+  pretty p@(PS nm (h:hs) _ _ tm _ _ _ _ _ _ _ i _ _ ctxt _ _ _) =
     let OK g  = goal (Just h) tm in
     let wkEnv = premises g in
       text "Other goals" <+> colon <+> pretty hs $$
@@ -172,13 +174,14 @@ unify' ctxt env topx topy =
       let dont = dontunify ps
       (u, fails) <- -- trace ("Trying " ++ show (topx, topy)) $ 
                      lift $ unify ctxt env topx topy dont (holes ps)
---       trace ("Unified " ++ show (topx, topy) ++ " without " ++ show dont ++
---              " in " ++ show env ++ 
---              "\n" ++ show u ++ "\n" ++ qshow fails ++ "\nCurrent problems:\n"
---              ++ qshow (problems ps) ++ "\n" ++ show (holes ps) ++ "\n"
--- --              ++ show (pterm ps) 
---              ++ "\n----------") $
-      case fails of
+      traceWhen (unifylog ps)
+            ("Unified " ++ show (topx, topy) ++ " without " ++ show dont ++
+             " in " ++ show env ++ 
+             "\n" ++ show u ++ "\n" ++ qshow fails ++ "\nCurrent problems:\n"
+             ++ qshow (problems ps) ++ "\n" ++ show (holes ps) ++ "\n"
+--              ++ show (pterm ps) 
+             ++ "\n----------") $
+       case fails of
 --            [] -> return u
            err -> 
                do ps <- get
@@ -211,7 +214,7 @@ newProof n ctxt ty = let h = holeName 0
                             (P Bound h ty')) ty [] (h, []) []
                             Nothing [] []
                             [] []
-                            Nothing ctxt "" False
+                            Nothing ctxt "" False False
 
 type TState = ProofState -- [TacticAction])
 type RunTactic = Context -> Env -> Term -> StateT TState TC Term

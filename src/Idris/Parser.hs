@@ -608,6 +608,7 @@ pSimpleExtExpr syn = do i <- getState
 pNoExtExpr syn =
          try (pApp syn) 
      <|> try (pMatchApp syn)
+     <|> try (pUnifyLog syn)
      <|> pRecordType syn
      <|> try (pSimpleExpr syn)
      <|> pLambda syn
@@ -882,6 +883,10 @@ pMatchApp syn = do ty <- pSimpleExpr syn
                                 ty
                                 (PMatchApp fc f)
                                 (PRef fc (MN 0 "match")))
+
+pUnifyLog syn = do lchar '%'; reserved "unifyLog";
+                   tm <- pSimpleExpr syn
+                   return (PUnifyLog tm)
 
 pApp syn = do f <- pSimpleExpr syn
               fc <- pfc

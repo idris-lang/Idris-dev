@@ -517,6 +517,7 @@ data PTerm = PQuote Raw
            | PElabError Err -- ^ Error to report on elaboration
            | PImpossible -- ^ Special case for declaring when an LHS can't typecheck
            | PCoerced PTerm -- ^ To mark a coerced argument, so as not to coerce twice
+           | PUnifyLog PTerm -- ^ dump a trace of unifications when building term
     deriving Eq
 {-! 
 deriving instance Binary PTerm 
@@ -539,6 +540,7 @@ mapPT f t = f (mpt t) where
   mpt (PDoBlock ds) = PDoBlock (map (fmap (mapPT f)) ds)
   mpt (PProof ts) = PProof (map (fmap (mapPT f)) ts)
   mpt (PTactics ts) = PTactics (map (fmap (mapPT f)) ts)
+  mpt (PUnifyLog tm) = PUnifyLog (mapPT f tm)
   mpt x = x
 
 
@@ -1084,6 +1086,7 @@ showImp impl tm = se 10 tm where
     se p (PDoBlock _) = "do block show not implemented"
     se p (PElabError s) = show s
     se p (PCoerced t) = se p t
+    se p (PUnifyLog t) = "%unifyLog " ++ se p t
 --     se p x = "Not implemented"
 
     slist' p (PApp _ (PRef _ nil) _)
@@ -1150,6 +1153,7 @@ instance Sized PTerm where
   size (PDPair fs left ty right) = 1 + size left + size ty + size right
   size (PAlternative a alts) = 1 + size alts
   size (PHidden hidden) = size hidden
+  size (PUnifyLog tm) = size tm
   size PType = 1
   size (PConstant const) = 1 + size const
   size Placeholder = 1
@@ -1184,6 +1188,7 @@ allNamesIn tm = nub $ ni [] tm
     ni env (PDPair _ (PRef _ n) t r)  = ni env t ++ ni (n:env) r
     ni env (PDPair _ l t r)  = ni env l ++ ni env t ++ ni env r
     ni env (PAlternative a ls) = concatMap (ni env) ls
+    ni env (PUnifyLog tm)    = ni env tm
     ni env _               = []
 
 -- Return names which are free in the given term.
@@ -1208,6 +1213,7 @@ namesIn uvars ist tm = nub $ ni [] tm
     ni env (PDPair _ l t r) = ni env l ++ ni env t ++ ni env r
     ni env (PAlternative a as) = concatMap (ni env) as
     ni env (PHidden tm)    = ni env tm
+    ni env (PUnifyLog tm)    = ni env tm
     ni env _               = []
 
 -- Return which of the given names are used in the given term.
@@ -1232,4 +1238,5 @@ usedNamesIn vars ist tm = nub $ ni [] tm
     ni env (PDPair _ l t r) = ni env l ++ ni env t ++ ni env r
     ni env (PAlternative a as) = concatMap (ni env) as
     ni env (PHidden tm)    = ni env tm
+    ni env (PUnifyLog tm)    = ni env tm
     ni env _               = []

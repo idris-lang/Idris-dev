@@ -569,6 +569,7 @@ expandParams dec ps ns infs tm = en tm
     en (PDPair f l t r) = PDPair f (en l) (en t) (en r)
     en (PAlternative a as) = PAlternative a (map en as)
     en (PHidden t) = PHidden (en t)
+    en (PUnifyLog t) = PUnifyLog (en t)
     en (PDoBlock ds) = PDoBlock (map (fmap en) ds)
     en (PProof ts)   = PProof (map (fmap en) ts)
     en (PTactics ts) = PTactics (map (fmap en) ts)
@@ -883,6 +884,7 @@ implicitise syn ignore ist tm = -- trace ("INCOMING " ++ showImp True tm) $
         = do imps False env ty
              imps False (n:env) sc
     imps top env (PHidden tm)    = imps False env tm
+    imps top env (PUnifyLog tm)  = imps False env tm
     imps top env _               = return ()
 
     pibind using []     sc = sc
@@ -966,6 +968,7 @@ addImpl' inpat env infns ist ptm = ai (zip env (repeat Nothing)) ptm
     ai env (PHidden tm) = PHidden (ai env tm)
     ai env (PProof ts) = PProof (map (fmap (ai env)) ts)
     ai env (PTactics ts) = PTactics (map (fmap (ai env)) ts)
+    ai env (PUnifyLog tm) = PUnifyLog (ai env tm)
     ai env tm = tm
 
     handleErr (Left err) = PElabError err
@@ -1228,6 +1231,8 @@ matchClause' names i x y = checkRpts $ match (fullApp x) (fullApp y) where
                                                   ms <- match' s s'
                                                   return (mt ++ mty ++ ms)
     match (PHidden x) (PHidden y) = match' x y
+    match (PUnifyLog x) y = match' x y
+    match x (PUnifyLog y) = match' x y
     match Placeholder _ = return []
     match _ Placeholder = return []
     match (PResolveTC _) _ = return []
@@ -1273,6 +1278,7 @@ substMatchShadow n shs tm t = sm shs t where
     sm xs (PDPair f x t y) = PDPair f (sm xs x) (sm xs t) (sm xs y)
     sm xs (PAlternative a as) = PAlternative a (map (sm xs) as)
     sm xs (PHidden x) = PHidden (sm xs x)
+    sm xs (PUnifyLog x) = PUnifyLog (sm xs x)
     sm xs x = x
 
 shadow :: Name -> Name -> PTerm -> PTerm
@@ -1289,6 +1295,7 @@ shadow n n' t = sm t where
     sm (PDPair f x t y) = PDPair f (sm x) (sm t) (sm y)
     sm (PAlternative a as) = PAlternative a (map sm as)
     sm (PHidden x) = PHidden (sm x)
+    sm (PUnifyLog x) = PUnifyLog (sm x)
     sm x = x
 
 
