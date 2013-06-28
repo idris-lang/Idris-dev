@@ -43,3 +43,26 @@ last {n=S _} = fS last
 
 total fSinjective : {f : Fin n} -> {f' : Fin n} -> (fS f = fS f') -> f = f'
 fSinjective refl = refl
+
+
+-- Construct a Fin from an integer literal which must fit in the given Fin
+
+natToFin : Nat -> (n : Nat) -> Maybe (Fin n)
+natToFin O     (S j) = Just fO
+natToFin (S k) (S j) with (natToFin k j)
+                          | Just k' = Just (fS k')
+                          | Nothing = Nothing
+natToFin _ _ = Nothing
+
+integerToFin : Integer -> (n : Nat) -> Maybe (Fin n)
+integerToFin x = natToFin (cast x)
+
+data IsJust : Maybe a -> Type where
+     ItIsJust : IsJust {a} (Just x) 
+
+fromInteger : (x : Integer) -> 
+        {default (ItIsJust _ _) 
+             prf : (IsJust (integerToFin x n))} -> Fin n
+fromInteger {n} x {prf} with (integerToFin x n)
+  fromInteger {n} x {prf = ItIsJust} | Just y = y
+
