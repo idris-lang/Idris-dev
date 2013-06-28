@@ -253,6 +253,7 @@ data Opt = Filename String
          | UseTarget Target
          | OutputTy OutputType
          | Extension LanguageExt
+         | InterpretScript String
     deriving (Show, Eq)
 
 -- Parsed declarations

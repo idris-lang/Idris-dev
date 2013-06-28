@@ -340,6 +340,11 @@ setQuiet q = do i <- getIState
                 let opt' = opts { opt_quiet = q }
                 putIState $ i { idris_options = opt' }
 
+getQuiet :: Idris Bool
+getQuiet = do i <- getIState
+              let opts = idris_options i
+              return (opt_quiet opts)
+
 setTarget :: Target -> Idris ()
 setTarget t = do i <- getIState
                  let opts = idris_options i

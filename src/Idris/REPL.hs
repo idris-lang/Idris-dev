@@ -605,6 +605,8 @@ parseArgs ("-c":ns)              = OutputTy Object : (parseArgs ns)
 parseArgs ("--dumpdefuns":n:ns)  = DumpDefun n : (parseArgs ns)
 parseArgs ("--dumpcases":n:ns)   = DumpCases n : (parseArgs ns)
 parseArgs ("--target":n:ns)      = UseTarget (parseTarget n) : (parseArgs ns)
+parseArgs ["--exec"]             = InterpretScript "Main.main" : []
+parseArgs ("--exec":expr:ns)     = InterpretScript expr : parseArgs ns
 parseArgs ("-XTypeProviders":ns) = Extension TypeProviders : (parseArgs ns)
 parseArgs (n:ns)                 = Filename n : (parseArgs ns)
 
@@ -640,11 +642,16 @@ idrisMain opts =
        let tgt = case opt getTarget opts of
                    [] -> ViaC
                    xs -> last xs
+       script <- case opt getExecScript opts of
+                   []     -> return Nothing
+                   x:y:xs -> do iputStrLn "More than one interpreter expression found."
+                                liftIO $ exitWith (ExitFailure 1)
+                   [expr] -> return (Just expr)
        when (DefaultTotal `elem` opts) $ do i <- getIState
                                             putIState (i { default_total = True })
        mapM_ addLangExt (opt getLanguageExt opts)
        setREPL runrepl
-       setQuiet quiet
+       setQuiet (quiet || isJust script)
        setIdeSlave idesl
        setVerbose runrepl
        setCmdLine opts
@@ -670,16 +677,19 @@ idrisMain opts =
        elabPrims
        when (not (NoPrelude `elem` opts)) $ do x <- loadModule "Prelude"
                                                return ()
-       when (runrepl && not quiet && not idesl) $ iputStrLn banner
+       when (runrepl && not quiet && not idesl && not (isJust script)) $ iputStrLn banner
        ist <- getIState
        mods <- mapM loadModule inputs
        ok <- noErrors
        when ok $ case output of
                     [] -> return ()
-                    (o:_) -> process "" (Compile tgt o)  
+                    (o:_) -> process "" (Compile tgt o)
        when ok $ case newoutput of
                     [] -> return ()
-                    (o:_) -> process "" (NewCompile o)  
+                    (o:_) -> process "" (NewCompile o)
+       case script of
+         Nothing -> return ()
+         Just expr -> execScript expr
        when (runrepl && not idesl) $ runInputT replSettings $ repl ist inputs
        when (idesl) $ ideslaveStart ist inputs
        ok <- noErrors
@@ -695,6 +705,16 @@ idrisMain opts =
     addPkgDir :: String -> Idris ()
     addPkgDir p = do ddir <- liftIO $ getDataDir 
                      addImportDir (ddir </> p)
+
+execScript :: String -> Idris ()
+execScript expr = do i <- getIState
+                     case parseExpr i expr of
+                       Left err -> do iputStrLn $ show err
+                                      liftIO $ exitWith (ExitFailure 1)
+                       Right term -> do ctxt <- getContext
+                                        (tm, _) <- elabVal toplevel False term
+                                        res <- execute tm
+                                        liftIO $ exitWith ExitSuccess
 
 getFile :: Opt -> Maybe String
 getFile (Filename str) = Just str
@@ -740,6 +760,10 @@ getPkgClean _ = Nothing
 getTarget :: Opt -> Maybe Target
 getTarget (UseTarget x) = Just x
 getTarget _ = Nothing
+
+getExecScript :: Opt -> Maybe String
+getExecScript (InterpretScript expr) = Just expr
+getExecScript _ = Nothing
 
 getOutputTy :: Opt -> Maybe OutputType
 getOutputTy (OutputTy t) = Just t
