@@ -15,22 +15,15 @@ import System.FilePath ((</>), addTrailingPathSeparator, normalise)
 import System.Environment
 import System.IO
 import System.IO.Error
-#if MIN_VERSION_base(4,0,0)
 import Control.Exception as CE
-#endif
 
 import Paths_idris
 
-#if MIN_VERSION_base(4,0,0)
 catchIO :: IO a -> (IOError -> IO a) -> IO a
 catchIO = CE.catch
 
 throwIO :: IOError -> IO a
 throwIO = CE.throw
-#else
-catchIO = catch
-throwIO = throw
-#endif
 
 
 
