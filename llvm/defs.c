@@ -134,3 +134,15 @@ void idris_poke(void* ptr, size_t offset, uint8_t data) {
 void idris_memmove(void* dest, void* src, size_t dest_offset, size_t src_offset, size_t size) {
   memmove(dest + dest_offset, src + src_offset, size);
 }
+
+void *__idris_gmpMalloc(size_t size) {
+  return GC_malloc(size);
+}
+
+void *__idris_gmpRealloc(void *ptr, size_t oldSize, size_t size) {
+  return GC_realloc(ptr, size);
+}
+
+void __idris_gmpFree(void *ptr, size_t oldSize) {
+  GC_free(ptr);
+}

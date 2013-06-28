@@ -91,8 +91,13 @@ mainDef =
     , G.name = Name "main"
     , G.basicBlocks =
         [ BasicBlock (UnName 0)
-          [ UnName 1 := simpleCall "GC_init" []
-          , UnName 2 := idrCall "{runMain0}" [] ] -- TODO: Set GMP memory functions
+          [ Do $ simpleCall "GC_init" [] -- Initialize Boehm GC
+          , Do $ simpleCall "__gmp_set_memory_functions"
+                     [ ConstantOperand . C.GlobalReference . Name $ "__idris_gmpMalloc"
+                     , ConstantOperand . C.GlobalReference . Name $ "__idris_gmpRealloc"
+                     , ConstantOperand . C.GlobalReference . Name $ "__idris_gmpFree"
+                     ]
+          , UnName 1 := idrCall "{runMain0}" [] ]
           (Do $ Ret (Just (ConstantOperand (C.Int 32 0))) [])
         ]}
 
@@ -137,6 +142,11 @@ initDefs tgt =
     , exfun "GC_init" VoidType [] False
     , exfun "GC_malloc" ptrI8 [intPtr] False
     , exfun "GC_malloc_atomic" ptrI8 [intPtr] False
+    , exfun "__gmp_set_memory_functions" VoidType
+                [ PointerType (FunctionType ptrI8 [intPtr] False) (AddrSpace 0)
+                , PointerType (FunctionType ptrI8 [ptrI8, intPtr, intPtr] False) (AddrSpace 0)
+                , PointerType (FunctionType VoidType [ptrI8, intPtr] False) (AddrSpace 0)
+                ] False
     , exfun "__gmpz_init" VoidType [pmpz] False
     , exfun "__gmpz_init_set_str" (IntegerType 32) [pmpz, ptrI8, IntegerType 32] False
     , exfun "__gmpz_get_str" ptrI8 [ptrI8, IntegerType 32, pmpz] False
@@ -146,6 +156,9 @@ initDefs tgt =
     , exfun "mpz_init_set_sll" VoidType [pmpz, IntegerType 64] False
     , exfun "__idris_strCons" ptrI8 [IntegerType 8, ptrI8] False
     , exfun "__idris_readStr" ptrI8 [ptrI8] False -- Actually pointer to FILE, but it's opaque anyway
+    , exfun "__idris_gmpMalloc" ptrI8 [intPtr] False
+    , exfun "__idris_gmpRealloc" ptrI8 [ptrI8, intPtr, intPtr] False
+    , exfun "__idris_gmpFree" VoidType [ptrI8, intPtr] False
     , exfun "strtoll" (IntegerType 64) [ptrI8, PointerType ptrI8 (AddrSpace 0), IntegerType 32] False
     , exVar "stdin" ptrI8
     , exVar "stdout" ptrI8

@@ -1,6 +1,6 @@
 include ../config.mk
 
-CFLAGS=-c -O2 -Wall -Wextra -fPIC
+CFLAGS=-c -O2 -Wall -Wextra -fPIC -Wno-unused-parameter
 SOURCES=defs.c
 OBJECTS=$(SOURCES:.c=.o)
 LIB=libidris_rts.a
