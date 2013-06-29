@@ -1,3 +1,9 @@
 language: haskell
 script:
-  - cabal configure && cabal install && make test
+  - cabal sdist
+  - cd ../..
+  - tar -xvf edwinb/Idris-dev/dist/idris*.tar.gz
+  - cd idris*
+  - cabal configure
+  - cabal install
+  - make test
