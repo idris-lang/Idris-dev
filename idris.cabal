@@ -47,8 +47,8 @@ Cabal-Version:  >= 1.6
 Build-type:     Custom
 
 
-Data-files:            rts/libidris_rts.a rts/idris_rts.h rts/idris_gc.h
-                       rts/idris_stdfgn.h rts/idris_main.c rts/idris_gmp.h
+Data-files:            rts/idris_rts.h rts/idris_gc.h rts/idris_stdfgn.h
+                       rts/idris_main.c rts/idris_gmp.h
                        rts/libtest.c
                        js/Runtime-common.js
                        js/Runtime-node.js
