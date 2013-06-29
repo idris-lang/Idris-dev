@@ -70,6 +70,7 @@ Extra-source-files:    lib/Makefile  lib/*.idr lib/Prelude/*.idr
                        javascript/javascript.ipkg
                        config.mk
                        rts/*.c rts/*.h rts/Makefile
+                       llvm/*.c llvm/Makefile
                        js/*.js
                        java/src/main/java/org/idris/rts/*.java
                        java/*.xml
