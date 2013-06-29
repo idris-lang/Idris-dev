@@ -71,6 +71,7 @@ Extra-source-files:    lib/Makefile  lib/*.idr lib/Prelude/*.idr
                        rts/*.c rts/*.h rts/Makefile
                        js/*.js
                        java/src/main/java/org/idris/rts/*.java
+                       java/*.xml
 
 source-repository head
   type:     git
