@@ -10,6 +10,7 @@ import IRTS.CodegenC
 import IRTS.CodegenJava
 import IRTS.DumpBC
 import IRTS.CodegenJavaScript
+import IRTS.CodegenLLVM
 import IRTS.Inliner
 
 import Idris.AbsSyntax
@@ -74,8 +75,9 @@ compile target f tm
                                     codegenJava [] c f hdrs libs outty
                                   ViaJavaScript ->
                                     codegenJavaScript JavaScript c f outty
-                                  ViaNode ->      
+                                  ViaNode ->
                                     codegenJavaScript Node c f outty
+                                  ViaLLVM -> codegenLLVM c f outty
 
                                   Bytecode -> dumpBC c f
             Error e -> fail $ show e 

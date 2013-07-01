@@ -566,6 +566,7 @@ parseTarget "Java" = ViaJava
 parseTarget "bytecode" = Bytecode
 parseTarget "javascript" = ViaJavaScript
 parseTarget "node" = ViaNode
+parseTarget "llvm" = ViaLLVM
 parseTarget _ = error "unknown target" -- FIXME: partial function
 
 parseArgs :: [String] -> [Opt]
