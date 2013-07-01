@@ -99,4 +99,58 @@ instance DecEq (Fin n) where
     | Yes p = Yes $ cong p
     | No p = No $ \h => p $ fSinjective {f = f} {f' = f'} h
 
+--------------------------------------------------------------------------------
+-- Tuple
+--------------------------------------------------------------------------------
+
+lemma_both_neq : {x : a, y : b, x' : c, y' : d} -> (x = x' -> _|_) -> (y = y' -> _|_) -> ((x, y) = (x', y') -> _|_)
+lemma_both_neq p_x_not_x' p_y_not_y' refl = p_x_not_x' refl
+
+lemma_snd_neq : {x : a, y : b, y' : d} -> (x = x) -> (y = y' -> _|_) -> ((x, y) = (x, y') -> _|_)
+lemma_snd_neq refl p refl = p refl
+
+lemma_fst_neq_snd_eq : {x : a, x' : b, y : c, y' : d} -> 
+                       (x = x' -> _|_) -> 
+                       (y = y') -> 
+                       ((x, y) = (x', y) -> _|_)
+lemma_fst_neq_snd_eq p_x_not_x' refl refl = p_x_not_x' refl
+
+instance (DecEq a, DecEq b) => DecEq (a, b) where
+  decEq (a, b) (a', b') with (decEq a a')
+    decEq (a, b) (a, b') | (Yes refl) with (decEq b b')
+      decEq (a, b) (a, b) | (Yes refl) | (Yes refl) = Yes refl
+      decEq (a, b) (a, b') | (Yes refl) | (No p) = No (\eq => lemma_snd_neq refl p eq)
+    decEq (a, b) (a', b') | (No p) with (decEq b b')
+      decEq (a, b) (a', b) | (No p) | (Yes refl) =  No (\eq => lemma_fst_neq_snd_eq p refl eq)
+      decEq (a, b) (a', b') | (No p) | (No p') = No (\eq => lemma_both_neq p p' eq)
+
+
+--------------------------------------------------------------------------------
+-- List
+--------------------------------------------------------------------------------
+
+lemma_val_not_nil : {x : t, xs : List t} -> ((x :: xs) = Prelude.List.Nil {a = t} -> _|_)
+lemma_val_not_nil refl impossible
+
+lemma_x_eq_xs_neq : {x : t, xs : List t, y : t, ys : List t} -> (x = y) -> (xs = ys -> _|_) -> ((x :: xs) = (y :: ys) -> _|_)
+lemma_x_eq_xs_neq refl p refl = p refl 
+
+lemma_x_neq_xs_eq : {x : t, xs : List t, y : t, ys : List t} -> (x = y -> _|_) -> (xs = ys) -> ((x :: xs) = (y :: ys) -> _|_)
+lemma_x_neq_xs_eq p refl refl = p refl
+
+lemma_x_neq_xs_neq : {x : t, xs : List t, y : t, ys : List t} -> (x = y -> _|_) -> (xs = ys -> _|_) -> ((x :: xs) = (y :: ys) -> _|_)
+lemma_x_neq_xs_neq p p' refl = p refl
+
+instance DecEq a => DecEq (List a) where
+  decEq [] [] = Yes refl
+  decEq (x :: xs) [] = No lemma_val_not_nil
+  decEq [] (x :: xs) = No (negEqSym lemma_val_not_nil)
+  decEq (x :: xs) (y :: ys) with (decEq x y)
+    decEq (x :: xs) (x :: ys) | Yes refl with (decEq xs ys)
+      decEq (x :: xs) (x :: xs) | (Yes refl) | (Yes refl) = Yes refl -- maybe another yes refl
+      decEq (x :: xs) (x :: ys) | (Yes refl) | (No p) = No (\eq => lemma_x_eq_xs_neq refl p eq)
+    decEq (x :: xs) (y :: ys) | No p with (decEq xs ys)
+      decEq (x :: xs) (y :: xs) | (No p) | (Yes refl) = No (\eq => lemma_x_neq_xs_eq p refl eq)
+      decEq (x :: xs) (y :: ys) | (No p) | (No p') = No (\eq => lemma_x_neq_xs_neq p p' eq)
+
 
