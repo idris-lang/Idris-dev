@@ -175,6 +175,7 @@ Extra-source-files:    lib/Makefile  lib/*.idr lib/Prelude/*.idr
                        test/test013/expected
                        test/test014/run
                        test/test014/*.idr
+                       test/test014/test
                        test/test014/expected
                        test/test015/run
                        test/test015/*.idr
@@ -196,6 +197,7 @@ Extra-source-files:    lib/Makefile  lib/*.idr lib/Prelude/*.idr
                        test/test020/expected
                        test/test021/run
                        test/test021/*.idr
+                       test/test021/testFile
                        test/test021/expected
                        test/test022/run
                        test/test022/*.idr
@@ -205,12 +207,16 @@ Extra-source-files:    lib/Makefile  lib/*.idr lib/Prelude/*.idr
                        test/test023/expected
                        test/test024/run
                        test/test024/*.idr
+                       test/test024/input
                        test/test024/expected
                        test/test025/run
                        test/test025/*.idr
                        test/test025/expected
                        test/test026/run
                        test/test026/*.idr
+                       test/test026/input
+                       test/test026/theType
+                       test/test026/theOtherType
                        test/test026/expected
                        test/test027/run
                        test/test027/*.idr
