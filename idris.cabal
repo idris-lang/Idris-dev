@@ -65,12 +65,14 @@ Extra-source-files:    lib/Makefile  lib/*.idr lib/Prelude/*.idr
                        effects/Makefile effects/*.idr effects/Effect/*.idr
                        effects/effects.ipkg
                        javascript/Makefile
+                       javascript/JavaScript/*.idr
                        javascript/*.idr
                        javascript/javascript.ipkg
                        config.mk
                        rts/*.c rts/*.h rts/Makefile
                        js/*.js
                        java/src/main/java/org/idris/rts/*.java
+                       java/*.xml
 
 source-repository head
   type:     git
