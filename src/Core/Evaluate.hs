@@ -178,7 +178,7 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
            = do v' <- ev ntimes stk top env v --(finalise v)
                 sc' <- ev ntimes stk top (v' : env) sc
                 wknV (-1) sc'
-        | otherwise -- put this back when the Bind works properly
+        | otherwise 
            = do t' <- ev ntimes stk top env t
                 v' <- ev ntimes stk top env v --(finalise v)
                 -- use Tmp as a placeholder, then make it a variable reference

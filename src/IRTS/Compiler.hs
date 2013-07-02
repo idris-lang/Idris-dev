@@ -291,13 +291,20 @@ mkIty' (App (App (P _ (UN "FFunction") _) _) (App (P _ (UN "FAny") _) (App (P _ 
 mkIty' (App (App (P _ (UN "FFunction") _) _) _) = FFunction
 mkIty' _ = FAny
 
+-- would be better if these FInt types were evaluated at compile time
+-- TODO: add %eval directive for such things
+
 mkIty "FFloat"      = FDouble
-mkIty "FChar"       = FChar
+mkIty "FInt"        = mkIntIty "ITNative"
+mkIty "FChar"       = mkIntIty "IT8"
+mkIty "FShort"      = mkIntIty "IT16"
+mkIty "FLong"       = mkIntIty "IT64"
 mkIty "FString"     = FString
 mkIty "FPtr"        = FPtr
 mkIty "FUnit"       = FUnit
 mkIty "FFunction"   = FFunction
 mkIty "FFunctionIO" = FFunctionIO
+mkIty x             = error $ "Unknown type " ++ x
 
 mkIntIty "ITNative" = FInt ITNative
 mkIntIty "IT8"  = FInt IT8
