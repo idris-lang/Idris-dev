@@ -64,6 +64,7 @@ type CS = ([Term], Int)
 
 instance TermSize SC where
     termsize n (Case n' as) = termsize n as
+    termsize n (ProjCase n' as) = termsize n as
     termsize n (STerm t) = termsize n t
     termsize n _ = 1
 

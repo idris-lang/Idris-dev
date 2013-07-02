@@ -486,7 +486,11 @@ instance TermSize (TT Name) where
     termsize n (Bind n' (Let t v) sc) 
        = let rn = if n == n' then MN 0 "noname" else n in
              termsize rn v + termsize rn sc
+    termsize n (Bind n' b sc) 
+       = let rn = if n == n' then MN 0 "noname" else n in
+             termsize rn sc
     termsize n (App f a) = termsize n f + termsize n a
+    termsize n (Proj t i) = termsize n t
     termsize n _ = 1
 
 instance Sized a => Sized (TT a) where
