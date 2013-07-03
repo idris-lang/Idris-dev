@@ -29,6 +29,7 @@ import Data.Maybe
 import Data.Word
 import Data.Set (Set)
 import qualified Data.Set as S
+import qualified Data.Vector.Unboxed as V
 import Control.Applicative
 import Control.Monad.RWS
 import Control.Monad.Writer
@@ -679,6 +680,11 @@ cgConst' (TT.B8  i) = C.Int 8  (fromIntegral i)
 cgConst' (TT.B16 i) = C.Int 16 (fromIntegral i)
 cgConst' (TT.B32 i) = C.Int 32 (fromIntegral i)
 cgConst' (TT.B64 i) = C.Int 64 (fromIntegral i)
+cgConst' (TT.B8V  v) = C.Vector (map ((C.Int  8) . fromIntegral) . V.toList $ v)
+cgConst' (TT.B16V v) = C.Vector (map ((C.Int 16) . fromIntegral) . V.toList $ v)
+cgConst' (TT.B32V v) = C.Vector (map ((C.Int 32) . fromIntegral) . V.toList $ v)
+cgConst' (TT.B64V v) = C.Vector (map ((C.Int 64) . fromIntegral) . V.toList $ v)
+
 cgConst' (TT.BI i) = C.Array (IntegerType 8) (map (C.Int 8 . fromIntegral . fromEnum) (show i) ++ [C.Int 8 0])
 cgConst' (TT.Fl f) = C.Float (F.Double f)
 cgConst' (TT.Ch c) = C.Int 32 . fromIntegral . fromEnum $ c
@@ -691,6 +697,10 @@ cgConst c@(TT.B8  _) = box (FArith (ATInt (ITFixed IT8))) (ConstantOperand $ cgC
 cgConst c@(TT.B16 _) = box (FArith (ATInt (ITFixed IT16))) (ConstantOperand $ cgConst' c)
 cgConst c@(TT.B32 _) = box (FArith (ATInt (ITFixed IT32))) (ConstantOperand $ cgConst' c)
 cgConst c@(TT.B64 _) = box (FArith (ATInt (ITFixed IT64))) (ConstantOperand $ cgConst' c)
+cgConst c@(TT.B8V  v) = box (FArith (ATInt (ITVec IT8  (V.length v)))) (ConstantOperand $ cgConst' c)
+cgConst c@(TT.B16V v) = box (FArith (ATInt (ITVec IT16 (V.length v)))) (ConstantOperand $ cgConst' c)
+cgConst c@(TT.B32V v) = box (FArith (ATInt (ITVec IT32 (V.length v)))) (ConstantOperand $ cgConst' c)
+cgConst c@(TT.B64V v) = box (FArith (ATInt (ITVec IT64 (V.length v)))) (ConstantOperand $ cgConst' c)
 cgConst c@(TT.Fl _) = box (FArith ATFloat) (ConstantOperand $ cgConst' c)
 cgConst c@(TT.Ch _) = box FChar (ConstantOperand $ cgConst' c)
 cgConst c@(TT.Str s) = do
@@ -752,6 +762,8 @@ ftyToTy :: FType -> Type
 ftyToTy (FArith (ATInt ITNative)) = IntegerType 32
 ftyToTy (FArith (ATInt ITBig)) = PointerType mpzTy (AddrSpace 0)
 ftyToTy (FArith (ATInt (ITFixed ty))) = IntegerType (fromIntegral $ nativeTyWidth ty)
+ftyToTy (FArith (ATInt (ITVec e c)))
+    = VectorType (fromIntegral c) (IntegerType (fromIntegral $ nativeTyWidth e))
 ftyToTy FChar = IntegerType 32
 ftyToTy FString = PointerType (IntegerType 8) (AddrSpace 0)
 ftyToTy FUnit = VoidType
@@ -830,6 +842,27 @@ cgOp (LCompl ity) [x]   = iun ity x (Xor (ConstantOperand (C.Int (itWidth ity) (
 cgOp (LSHL   ity) [x,y] = ibin ity x y (Shl False False)
 cgOp (LLSHR  ity) [x,y] = ibin ity x y (LShr False)
 cgOp (LASHR  ity) [x,y] = ibin ity x y (AShr False)
+
+cgOp (LMkVec ety c) xs | c == length xs = do
+  nxs <- mapM (unbox (FArith (ATInt (ITFixed ety)))) xs
+  vec <- foldM (\v (e, i) -> inst $ InsertElement v e (ConstantOperand (C.Int 32 i)) [])
+               (ConstantOperand $ C.Vector (replicate c (C.Undef (IntegerType . fromIntegral $ nativeTyWidth ety))))
+               (zip nxs [0..])
+  box (FArith (ATInt (ITVec ety c))) vec
+
+cgOp (LIdxVec ety c) [v,i] = do
+  nv <- unbox (FArith (ATInt (ITVec ety c))) v
+  ni <- unbox (FArith (ATInt (ITFixed IT32))) i
+  elt <- inst $ ExtractElement nv ni []
+  box (FArith (ATInt (ITFixed ety))) elt
+
+cgOp (LUpdateVec ety c) [v,i,e] = do
+  let fty = FArith (ATInt (ITVec ety c))
+  nv <- unbox fty v
+  ni <- unbox (FArith (ATInt (ITFixed IT32))) i
+  ne <- unbox (FArith (ATInt (ITFixed ety))) e
+  nv' <- inst $ InsertElement nv ne ni []
+  box fty nv'
 
 cgOp LStrEq [x,y] = do
   x' <- unbox FString x
@@ -981,8 +1014,12 @@ iCmp ity pred x y = do
   nx <- unbox (FArith (ATInt ity)) x
   ny <- unbox (FArith (ATInt ity)) y
   nr <- inst $ ICmp pred nx ny []
-  nr' <- inst $ ZExt nr (IntegerType 32) []
-  box (FArith (ATInt (ITFixed IT32))) nr'
+  nr' <- inst $ SExt nr (ftyToTy $ cmpResultTy ity) []
+  box (cmpResultTy ity) nr'
+
+cmpResultTy :: IntTy -> FType
+cmpResultTy v@(ITVec _ _) = FArith (ATInt v)
+cmpResultTy _ = FArith (ATInt (ITFixed IT32))
 
 mpzBin :: String -> Operand -> Operand -> Codegen Operand
 mpzBin name x y = do
