@@ -472,7 +472,7 @@ translateCase var (SConstCase ty e)
     matchHelper tyName = translateTypeMatch var tyName e
 
 translateCase var (SConstCase cst@(BI _) e) =
-  let cond = var ++ ".equals(" ++ translateConstant cst ++ ")" in
+  let cond = "__IDRRT__.bigInt(" ++ var ++ ").equals(" ++ translateConstant cst ++ ")" in
       createIfBlock cond (translateExpression e)
 
 translateCase var (SConstCase cst e) =
