@@ -1,10 +1,4 @@
 #!/bin/bash
-if [[ $@ == "--target node" ]]; then
-  idris reg004.idr --target node -o reg004.js
-  node reg004.js
-  rm -f reg004.js *.ibc
-else
-  idris reg004.idr -o reg004
-  ./reg004
-  rm -f reg004 *.ibc
-fi
+idris reg004.idr -o reg004
+./reg004
+rm -f reg004 *.ibc
