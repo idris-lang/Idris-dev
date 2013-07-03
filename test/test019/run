@@ -1,4 +1,10 @@
 #!/bin/bash
-idris $@ test019.lidr -o test019
-./test019
-rm -f test019 *.ibc
+if [[ $@ == "--target node" ]]; then
+  idris --target node test019.lidr -o test019.js
+  node test019.js
+  rm -f test019.js *.ibc
+else
+  idris $@ test019.lidr -o test019
+  ./test019
+  rm -f test019 *.ibc
+fi

@@ -1,4 +1,10 @@
 #!/bin/bash
-idris $@ reg017.idr -o reg017
-./reg017
-rm -f reg017 *.ibc
+if [[ $@ == "--target node" ]]; then
+  idris reg017.idr --target node -o reg017.js
+  node reg017.js
+  rm -f reg017.js *.ibc
+else
+  idris $@ reg017.idr -o reg017
+  ./reg017
+  rm -f reg017 *.ibc
+fi
