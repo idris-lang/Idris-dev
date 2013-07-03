@@ -340,7 +340,7 @@ translateExpression (SOp op vars)
   , (arg:_)     <- vars = translateVariableName arg ++ "[0]"
   | LStrRev     <- op
   , (arg:_)     <- vars = let v = translateVariableName arg in
-                              v ++ "split('').reverse().join('')"
+                              v ++ ".split('').reverse().join('')"
   | LStrIndex   <- op
   , (lhs:rhs:_) <- vars = let l = translateVariableName lhs
                               r = translateVariableName rhs in
