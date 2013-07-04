@@ -125,9 +125,9 @@ partial
 repeat : a -> List a
 repeat x = x :: lazy (repeat x)
 
-%assert_total
 replicate : Nat -> a -> List a
-replicate n x = take n (repeat x)
+replicate O x     = []
+replicate (S n) x = x :: replicate n x
 
 --------------------------------------------------------------------------------
 -- Instances

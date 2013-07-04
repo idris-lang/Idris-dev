@@ -16,11 +16,12 @@ import Data.Char
 import Data.List
 import qualified Data.Map as Map
 import System.IO
+import System.Directory
 
 idrNamespace :: String
 idrNamespace = "__IDR__"
 
-data JSTarget = Node | JavaScript
+data JSTarget = Node | JavaScript deriving Eq
 
 codegenJavaScript
   :: JSTarget
@@ -29,17 +30,25 @@ codegenJavaScript
   -> OutputType
   -> IO ()
 codegenJavaScript target definitions filename outputType = do
-  let runtime = case target of
-                     Node       -> "-node"
-                     JavaScript -> "-browser"
+  let (header, runtime) = case target of
+                               Node ->
+                                 ("#!/usr/bin/env node\n", "-node")
+                               JavaScript ->
+                                 ("", "-browser")
   path <- getDataDir
   idrRuntime <- readFile $ path ++ "/js/Runtime-common.js"
   tgtRuntime <- readFile $ concat [path, "/js/Runtime", runtime, ".js"]
-  writeFile filename (idrRuntime
+  writeFile filename ( header
+                   ++ idrRuntime
                    ++ tgtRuntime
                    ++ modules 
                    ++ functions
                    ++ mainLoop)
+
+  setPermissions filename (emptyPermissions { readable   = True
+                                            , executable = target == Node
+                                            , writable   = True
+                                            })
   where
     def = map (first translateNamespace) definitions
  
@@ -340,7 +349,7 @@ translateExpression (SOp op vars)
   , (arg:_)     <- vars = translateVariableName arg ++ "[0]"
   | LStrRev     <- op
   , (arg:_)     <- vars = let v = translateVariableName arg in
-                              v ++ "split('').reverse().join('')"
+                              v ++ ".split('').reverse().join('')"
   | LStrIndex   <- op
   , (lhs:rhs:_) <- vars = let l = translateVariableName lhs
                               r = translateVariableName rhs in
@@ -472,7 +481,7 @@ translateCase var (SConstCase ty e)
     matchHelper tyName = translateTypeMatch var tyName e
 
 translateCase var (SConstCase cst@(BI _) e) =
-  let cond = var ++ ".equals(" ++ translateConstant cst ++ ")" in
+  let cond = "__IDRRT__.bigInt(" ++ var ++ ").equals(" ++ translateConstant cst ++ ")" in
       createIfBlock cond (translateExpression e)
 
 translateCase var (SConstCase cst e) =
