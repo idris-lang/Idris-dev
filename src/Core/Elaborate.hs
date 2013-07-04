@@ -484,16 +484,17 @@ apply_elab n args =
     mkMN (NS n ns) = NS (mkMN n) ns
 
 -- If the goal is not a Pi-type, invent some names and make it a pi type
-checkPiGoal :: Elab' aux ()
-checkPiGoal = do g <- goal
+checkPiGoal :: Name -> Elab' aux ()
+checkPiGoal n 
+            = do g <- goal
                  case g of
                     Bind _ (Pi _) _ -> return ()
-                    _ -> do a <- unique_hole (MN 0 "argTy")
-                            b <- unique_hole (MN 0 "retTy")
-                            f <- unique_hole (MN 0 "f")
+                    _ -> do a <- unique_hole (MN 0 "pargTy")
+                            b <- unique_hole (MN 0 "pretTy")
+                            f <- unique_hole (MN 0 "pf")
                             claim a RType
                             claim b RType
-                            claim f (RBind (MN 0 "aX") (Pi (Var a)) (Var b))
+                            claim f (RBind n (Pi (Var a)) (Var b))
                             movelast a
                             movelast b
                             fill (Var f)
