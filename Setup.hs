@@ -53,6 +53,8 @@ cleanJavaLib verbosity
        execPomExists <- doesFileExist ("java" </> "executable_pom.xml")
        when pomExists $ removeFile ("java" </> "executable_pom.xml")
 
+cleanLLVMLib verbosity = make verbosity ["-C", "llvm", "clean"]
+
 installStdLib pkg local withoutEffects verbosity copy
     = do let dirs = L.absoluteInstallDirs pkg local copy
          let idir = datadir dirs
@@ -81,6 +83,10 @@ installStdLib pkg local withoutEffects verbosity copy
                , "TARGET=" ++ idirRts
                , "IDRIS=" ++ icmd
                ]
+
+installLLVMLib verbosity pkg local copy =
+    let idir = datadir $ L.absoluteInstallDirs pkg local copy in
+    make verbosity ["-C", "llvm", "install", "TARGET=" ++ idir </> "llvm"]
 
 installJavaLib pkg local verbosity copy version = do
   let rtsFile = "idris-" ++ display version ++ ".jar"
@@ -161,11 +167,13 @@ main = do
               let withoutEffects = noEffectsFlag $ configFlags lbi
               installStdLib pkg lbi withoutEffects verb
                                     (S.fromFlag $ S.copyDest flags)
+              installLLVMLib verb pkg lbi (S.fromFlag $ S.copyDest flags)
         , postInst = \ _ flags pkg lbi -> do
               let verb = (S.fromFlag $ S.installVerbosity flags)
               let withoutEffects = noEffectsFlag $ configFlags lbi
               installStdLib pkg lbi withoutEffects verb
                                     NoCopyDest
+              installLLVMLib verb pkg lbi NoCopyDest
               when (javaFlag $ configFlags lbi) 
                    (installJavaLib pkg 
                                    lbi 
@@ -180,6 +188,7 @@ main = do
         , postClean = \ _ flags _ _ -> do
               let verb = S.fromFlag $ S.cleanVerbosity flags
               cleanStdLib verb
+              cleanLLVMLib verb
               cleanJavaLib verb
         , postBuild = \ _ flags _ lbi -> do
               let verb = S.fromFlag $ S.buildVerbosity flags

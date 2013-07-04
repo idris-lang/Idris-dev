@@ -175,6 +175,7 @@ data Target = ViaC
             | ViaJava
             | ViaNode
             | ViaJavaScript
+            | ViaLLVM
             | Bytecode
     deriving (Show, Eq)
 
