@@ -235,7 +235,7 @@ getStdOut = ConstantOperand . C.GlobalReference . Name . stdoutName <$> asks tar
 getStdErr = ConstantOperand . C.GlobalReference . Name . stderrName <$> asks target
 
 codegen :: Target -> [SDecl] -> Module
-codegen tgt defs = Module "idris" (Just . dataLayout $ tgt) Nothing (initDefs tgt ++ globals ++ gendefs)
+codegen tgt defs = Module "idris" (Just . dataLayout $ tgt) (Just . triple $ tgt) (initDefs tgt ++ globals ++ gendefs)
     where
       (gendefs, _, globals) = runRWS (mapM cgDef defs) tgt 0
 
