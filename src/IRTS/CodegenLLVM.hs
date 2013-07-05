@@ -855,6 +855,8 @@ cgOp (LSHL   ity) [x,y] = ibin ity x y (Shl False False)
 cgOp (LLSHR  ity) [x,y] = ibin ity x y (LShr False)
 cgOp (LASHR  ity) [x,y] = ibin ity x y (AShr False)
 
+cgOp LNoOp xs = return $ last xs
+
 cgOp LStrEq [x,y] = do
   x' <- unbox FString x
   y' <- unbox FString y
