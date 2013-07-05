@@ -52,17 +52,16 @@ import Debug.Trace
 data Target = Target { triple :: String, dataLayout :: DataLayout }
 
 codegenLLVM :: [(TT.Name, SDecl)] ->
+               String -> -- target triple
+               String -> -- target CPU
                FilePath -> -- output file name
                OutputType ->
                IO ()
-codegenLLVM defs file outty = withContext $ \context -> do
-  triple <- getDefaultTargetTriple
-  cpu <- getHostCPUName
-  features <- getHostCPUFeatures
+codegenLLVM defs triple cpu file outty = withContext $ \context -> do
   initializeAllTargets
   (target, _) <- failInIO $ lookupTarget Nothing triple
   withTargetOptions $ \options ->
-      withTargetMachine target triple cpu features options R.Default CM.Default CGO.Default $ \tm ->
+      withTargetMachine target triple cpu S.empty options R.Default CM.Default CGO.Default $ \tm ->
           do layout <- getTargetMachineDataLayout tm
              let ast = codegen (Target triple layout) (map snd defs)
              result <- runErrorT .  M.withModuleFromAST context ast $ \m ->
@@ -160,10 +159,12 @@ initDefs tgt =
           (Do $ Ret (Just (LocalReference (UnName 1))) [])
         ]
     , exfun "llvm.trap" VoidType [] False
+    -- , exfun "llvm.llvm.memcpy.p0i8.p0i8.i32" VoidType [ptrI8, ptrI8, IntegerType 32, IntegerType 32, IntegerType 1] False
+    -- , exfun "llvm.llvm.memcpy.p0i8.p0i8.i64" VoidType [ptrI8, ptrI8, IntegerType 64, IntegerType 32, IntegerType 1] False
+    , exfun "memcpy" ptrI8 [ptrI8, ptrI8, intPtr] False
     , exfun "snprintf" (IntegerType 32) [ptrI8, intPtr, ptrI8] True
     , exfun "strcmp" (IntegerType 32) [ptrI8, ptrI8] False
     , exfun "strlen" intPtr [ptrI8] False
-    , exfun "memcpy" ptrI8 [ptrI8, ptrI8, intPtr] False
     , exfun "GC_init" VoidType [] False
     , exfun "GC_malloc" ptrI8 [intPtr] False
     , exfun "GC_malloc_atomic" ptrI8 [intPtr] False

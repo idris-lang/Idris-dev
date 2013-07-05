@@ -33,10 +33,12 @@ data IOption = IOption { opt_logLevel   :: Int,
                          opt_repl       :: Bool,
                          opt_verbose    :: Bool,
                          opt_quiet      :: Bool,
-                         opt_target     :: Target,
+                         opt_codegen    :: Codegen,
                          opt_outputTy   :: OutputType,
                          opt_ibcsubdir  :: FilePath,
                          opt_importdirs :: [FilePath],
+                         opt_triple     :: String,
+                         opt_cpu        :: String,
                          opt_cmdline    :: [Opt] -- remember whole command line
                        }
     deriving (Show, Eq)
@@ -50,10 +52,12 @@ defaultOpts = IOption { opt_logLevel   = 0
                       , opt_repl       = True
                       , opt_verbose    = True
                       , opt_quiet      = False
-                      , opt_target     = ViaC
+                      , opt_codegen    = ViaC
                       , opt_outputTy   = Executable
                       , opt_ibcsubdir  = ""
                       , opt_importdirs = []
+                      , opt_triple     = ""
+                      , opt_cpu        = ""
                       , opt_cmdline    = []
                       }
 
@@ -95,9 +99,9 @@ data IState = IState {
     syntax_keywords :: [String],
     imported :: [FilePath], -- ^ The imported modules
     idris_scprims :: [(Name, (Int, PrimFn))],
-    idris_objs :: [(Target, FilePath)],
-    idris_libs :: [(Target, String)],
-    idris_hdrs :: [(Target, String)],
+    idris_objs :: [(Codegen, FilePath)],
+    idris_libs :: [(Codegen, String)],
+    idris_hdrs :: [(Codegen, String)],
     proof_list :: [(Name, [String])],
     errLine :: Maybe Int,
     lastParse :: Maybe Name,
@@ -145,10 +149,10 @@ data IBCWrite = IBCFix FixDecl
               | IBCSyntax Syntax
               | IBCKeyword String
               | IBCImport FilePath
-              | IBCObj Target FilePath
-              | IBCLib Target String
+              | IBCObj Codegen FilePath
+              | IBCLib Codegen String
               | IBCDyLib String
-              | IBCHeader Target String
+              | IBCHeader Codegen String
               | IBCAccess Name Accessibility
               | IBCTotal Name Totality
               | IBCFlags Name [FnOpt]
@@ -171,12 +175,12 @@ type Idris = StateT IState IO
 
 -- Commands in the REPL
 
-data Target = ViaC
-            | ViaJava
-            | ViaNode
-            | ViaJavaScript
-            | ViaLLVM
-            | Bytecode
+data Codegen = ViaC
+             | ViaJava
+             | ViaNode
+             | ViaJavaScript
+             | ViaLLVM
+             | Bytecode
     deriving (Show, Eq)
 
 -- | REPL commands
@@ -191,7 +195,7 @@ data Command = Quit
              | ChangeDirectory FilePath
              | ModImport String 
              | Edit
-             | Compile Target String
+             | Compile Codegen String
              | Execute
              | ExecVal PTerm
              | NewCompile String
@@ -251,10 +255,13 @@ data Opt = Filename String
          | DumpDefun String
          | DumpCases String
          | FOVM String
-         | UseTarget Target
+         | UseCodegen Codegen
          | OutputTy OutputType
          | Extension LanguageExt
          | InterpretScript String
+         | TargetTriple String
+         | TargetCPU String
+         | OptLevel Int
     deriving (Show, Eq)
 
 -- Parsed declarations

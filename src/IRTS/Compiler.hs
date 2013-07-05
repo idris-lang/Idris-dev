@@ -30,8 +30,8 @@ import System.FilePath ((</>), addTrailingPathSeparator)
 
 import Paths_idris
 
-compile :: Target -> FilePath -> Term -> Idris ()
-compile target f tm 
+compile :: Codegen -> FilePath -> Term -> Idris ()
+compile codegen f tm
    = do checkMVs
         let tmnames = namesUsed (STerm tm)
         usedIn <- mapM (allNames []) tmnames
@@ -39,9 +39,9 @@ compile target f tm
         defsIn <- mkDecls tm (concat used)
         findUnusedArgs (concat used)
         maindef <- irMain tm
-        objs <- getObjectFiles target
-        libs <- getLibs target
-        hdrs <- getHdrs target
+        objs <- getObjectFiles codegen
+        libs <- getLibs codegen
+        hdrs <- getHdrs codegen
         let defs = defsIn ++ [(MN 0 "runMain", maindef)]
         -- iputStrLn $ showSep "\n" (map show defs)
         let (nexttag, tagged) = addTags 65536 (liftAll defs)
@@ -64,9 +64,11 @@ compile target f tm
         case dumpDefun of
             Nothing -> return ()
             Just f -> liftIO $ writeFile f (dumpDefuns defuns)
+        triple <- targetTriple
+        cpu <- targetCPU
         iLOG "Building output"
         case checked of
-            OK c -> liftIO $ case target of
+            OK c -> liftIO $ case codegen of
                                   ViaC ->
                                     codegenC c f outty hdrs
                                       (concatMap mkObj objs)
@@ -77,7 +79,7 @@ compile target f tm
                                     codegenJavaScript JavaScript c f outty
                                   ViaNode ->
                                     codegenJavaScript Node c f outty
-                                  ViaLLVM -> codegenLLVM c f outty
+                                  ViaLLVM -> codegenLLVM c triple cpu f outty
 
                                   Bytecode -> dumpBC c f
             Error e -> fail $ show e 
