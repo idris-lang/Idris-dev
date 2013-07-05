@@ -15,6 +15,7 @@ import LLVM.General.AST
 import LLVM.General.AST.AddrSpace
 import LLVM.General.Target
 import LLVM.General.AST.DataLayout
+import LLVM.General.PassManager
 import qualified LLVM.General.Module as M
 import qualified LLVM.General.AST.IntegerPredicate as IPred
 import qualified LLVM.General.AST.Linkage as L
@@ -64,7 +65,14 @@ codegenLLVM defs file outty = withContext $ \context -> do
       withTargetMachine target triple cpu features options R.Default CM.Default CGO.Default $ \tm ->
           do layout <- getTargetMachineDataLayout tm
              let ast = codegen (Target triple layout) (map snd defs)
-             result <- runErrorT $ M.withModuleFromAST context ast (outputModule tm file outty)
+             result <- runErrorT .  M.withModuleFromAST context ast $ \m ->
+                       do let opts = defaultCuratedPassSetSpec
+                                     { optLevel = Just 3
+                                     , simplifyLibCalls = Just True
+                                     , useInlinerWithThreshold = Just 225
+                                     }
+                          withPassManager opts $ \pm -> runPassManager pm m
+                          outputModule tm file outty m
              case result of
                Right _ -> return ()
                Left msg -> ierror msg
