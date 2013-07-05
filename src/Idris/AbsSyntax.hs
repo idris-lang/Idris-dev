@@ -390,6 +390,16 @@ targetCPU :: Idris String
 targetCPU = do i <- getIState
                return (opt_cpu (idris_options i))
 
+setOptLevel :: Int -> Idris ()
+setOptLevel t = do i <- getIState
+                   let opts = idris_options i
+                       opt' = opts { opt_optLevel = t }
+                   putIState $ i { idris_options = opt' }
+
+optLevel :: Idris Int
+optLevel = do i <- getIState
+              return (opt_optLevel (idris_options i))
+
 verbose :: Idris Bool
 verbose = do i <- getIState
              return (opt_verbose (idris_options i))

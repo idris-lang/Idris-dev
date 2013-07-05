@@ -54,10 +54,11 @@ data Target = Target { triple :: String, dataLayout :: DataLayout }
 codegenLLVM :: [(TT.Name, SDecl)] ->
                String -> -- target triple
                String -> -- target CPU
+               Int -> -- Optimization degree
                FilePath -> -- output file name
                OutputType ->
                IO ()
-codegenLLVM defs triple cpu file outty = withContext $ \context -> do
+codegenLLVM defs triple cpu optimize file outty = withContext $ \context -> do
   initializeAllTargets
   (target, _) <- failInIO $ lookupTarget Nothing triple
   withTargetOptions $ \options ->
@@ -66,11 +67,11 @@ codegenLLVM defs triple cpu file outty = withContext $ \context -> do
              let ast = codegen (Target triple layout) (map snd defs)
              result <- runErrorT .  M.withModuleFromAST context ast $ \m ->
                        do let opts = defaultCuratedPassSetSpec
-                                     { optLevel = Just 3
+                                     { optLevel = Just optimize
                                      , simplifyLibCalls = Just True
                                      , useInlinerWithThreshold = Just 225
                                      }
-                          withPassManager opts $ \pm -> runPassManager pm m
+                          when (optimize /= 0) $ withPassManager opts $ void . flip runPassManager m
                           outputModule tm file outty m
              case result of
                Right _ -> return ()

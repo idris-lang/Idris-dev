@@ -39,6 +39,7 @@ data IOption = IOption { opt_logLevel   :: Int,
                          opt_importdirs :: [FilePath],
                          opt_triple     :: String,
                          opt_cpu        :: String,
+                         opt_optLevel   :: Int,
                          opt_cmdline    :: [Opt] -- remember whole command line
                        }
     deriving (Show, Eq)
@@ -58,6 +59,7 @@ defaultOpts = IOption { opt_logLevel   = 0
                       , opt_importdirs = []
                       , opt_triple     = ""
                       , opt_cpu        = ""
+                      , opt_optLevel   = 2
                       , opt_cmdline    = []
                       }
 

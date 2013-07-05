@@ -66,6 +66,7 @@ compile codegen f tm
             Just f -> liftIO $ writeFile f (dumpDefuns defuns)
         triple <- targetTriple
         cpu <- targetCPU
+        optimize <- optLevel
         iLOG "Building output"
         case checked of
             OK c -> liftIO $ case codegen of
@@ -79,7 +80,7 @@ compile codegen f tm
                                     codegenJavaScript JavaScript c f outty
                                   ViaNode ->
                                     codegenJavaScript Node c f outty
-                                  ViaLLVM -> codegenLLVM c triple cpu f outty
+                                  ViaLLVM -> codegenLLVM c triple cpu optimize f outty
 
                                   Bytecode -> dumpBC c f
             Error e -> fail $ show e 

@@ -646,6 +646,9 @@ idrisMain opts =
        let bcs = opt getBC opts
        let vm = opt getFOVM opts
        let pkgdirs = opt getPkgDir opts
+       let optimize = case opt getOptLevel opts of
+                        [] -> 2
+                        xs -> last xs
        trpl <- case opt getTriple opts of
                  [] -> liftIO $ getDefaultTargetTriple
                  xs -> return (last xs)
@@ -675,6 +678,7 @@ idrisMain opts =
        setCodegen cgn
        setTargetTriple trpl
        setTargetCPU tcpu
+       setOptLevel optimize
        when (Verbose `elem` opts) $ setVerbose True
        mapM_ makeOption opts
        -- if we have the --fovm flag, drop into the first order VM testing
@@ -798,6 +802,10 @@ getTriple _ = Nothing
 getCPU :: Opt -> Maybe String
 getCPU (TargetCPU x) = Just x
 getCPU _ = Nothing
+
+getOptLevel :: Opt -> Maybe Int
+getOptLevel (OptLevel x) = Just x
+getOptLevel _ = Nothing
 
 opt :: (Opt -> Maybe a) -> [Opt] -> [a]
 opt = mapMaybe
