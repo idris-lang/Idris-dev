@@ -1539,25 +1539,26 @@ pWhereblock n syn
          closeBlock
          return (concat ds, map (\x -> (x, decoration syn x)) dns)
 
-pTarget :: IParser Target
-pTarget = try (do reserved "C"; return ViaC)
-      <|> try (do reserved "Java"; return ViaJava)
-      <|> try (do reserved "JavaScript"; return ViaJavaScript)
-      <|> try (do reserved "Node"; return ViaNode)
-      <|> try (do reserved "Bytecode"; return Bytecode)
+pCodegen :: IParser Codegen
+pCodegen = try (do reserved "C"; return ViaC)
+       <|> try (do reserved "Java"; return ViaJava)
+       <|> try (do reserved "JavaScript"; return ViaJavaScript)
+       <|> try (do reserved "Node"; return ViaNode)
+       <|> try (do reserved "LLVM"; return ViaLLVM)
+       <|> try (do reserved "Bytecode"; return Bytecode)
 
 pDirective :: SyntaxInfo -> IParser [PDecl]
-pDirective syn = try (do lchar '%'; reserved "lib"; tgt <- pTarget; lib <- strlit;
-                         return [PDirective (do addLib tgt lib
-                                                addIBC (IBCLib tgt lib))])
-             <|> try (do lchar '%'; reserved "link"; tgt <- pTarget; obj <- strlit;
+pDirective syn = try (do lchar '%'; reserved "lib"; cgn <- pCodegen; lib <- strlit;
+                         return [PDirective (do addLib cgn lib
+                                                addIBC (IBCLib cgn lib))])
+             <|> try (do lchar '%'; reserved "link"; cgn <- pCodegen; obj <- strlit;
                          return [PDirective (do datadir <- liftIO getDataDir
                                                 o <- liftIO $ findInPath [".", datadir] obj
-                                                addIBC (IBCObj tgt o)
-                                                addObjectFile tgt o)])
-             <|> try (do lchar '%'; reserved "include"; tgt <- pTarget; hdr <- strlit;
-                         return [PDirective (do addHdr tgt hdr
-                                                addIBC (IBCHeader tgt hdr))])
+                                                addIBC (IBCObj cgn o)
+                                                addObjectFile cgn o)])
+             <|> try (do lchar '%'; reserved "include"; cgn <- pCodegen; hdr <- strlit;
+                         return [PDirective (do addHdr cgn hdr
+                                                addIBC (IBCHeader cgn hdr))])
              <|> try (do lchar '%'; reserved "hide"; n <- iName []
                          return [PDirective (do setAccessibility n Hidden
                                                 addIBC (IBCAccess n Hidden))])

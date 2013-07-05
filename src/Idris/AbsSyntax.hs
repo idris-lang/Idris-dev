@@ -30,19 +30,19 @@ import Util.System
 getContext :: Idris Context
 getContext = do i <- getIState; return (tt_ctxt i)
 
-forTarget :: Target -> [(Target, a)] -> [a]
-forTarget tgt xs = [x | (tgt', x) <- xs, tgt == tgt']
+forCodegen :: Codegen -> [(Codegen, a)] -> [a]
+forCodegen tgt xs = [x | (tgt', x) <- xs, tgt == tgt']
 
-getObjectFiles :: Target -> Idris [FilePath]
-getObjectFiles tgt = do i <- getIState; return (forTarget tgt $ idris_objs i)
+getObjectFiles :: Codegen -> Idris [FilePath]
+getObjectFiles tgt = do i <- getIState; return (forCodegen tgt $ idris_objs i)
 
-addObjectFile :: Target -> FilePath -> Idris ()
+addObjectFile :: Codegen -> FilePath -> Idris ()
 addObjectFile tgt f = do i <- getIState; putIState $ i { idris_objs = (tgt, f) : idris_objs i }
 
-getLibs :: Target -> Idris [String]
-getLibs tgt = do i <- getIState; return (forTarget tgt $ idris_libs i)
+getLibs :: Codegen -> Idris [String]
+getLibs tgt = do i <- getIState; return (forCodegen tgt $ idris_libs i)
 
-addLib :: Target -> String -> Idris ()
+addLib :: Codegen -> String -> Idris ()
 addLib tgt f = do i <- getIState; putIState $ i { idris_libs = (tgt, f) : idris_libs i }
 
 addDyLib :: [String] -> Idris (Either DynamicLib String)
@@ -55,7 +55,7 @@ addDyLib libs = do i <- getIState
                                   putIState $ i { idris_dynamic_libs = x:ls }
                                   return (Left x)
 
-addHdr :: Target -> String -> Idris ()
+addHdr :: Codegen -> String -> Idris ()
 addHdr tgt f = do i <- getIState; putIState $ i { idris_hdrs = (tgt, f) : idris_hdrs i }
 
 addLangExt :: LanguageExt -> Idris ()
@@ -163,8 +163,8 @@ addIBC ibc = do i <- getIState; putIState $ i { ibc_write = ibc : ibc_write i }
 clearIBC :: Idris ()
 clearIBC = do i <- getIState; putIState $ i { ibc_write = [] }
 
-getHdrs :: Target -> Idris [String]
-getHdrs tgt = do i <- getIState; return (forTarget tgt $ idris_hdrs i)
+getHdrs :: Codegen -> Idris [String]
+getHdrs tgt = do i <- getIState; return (forCodegen tgt $ idris_hdrs i)
 
 setErrLine :: Int -> Idris ()
 setErrLine x = do i <- getIState;
@@ -345,15 +345,15 @@ getQuiet = do i <- getIState
               let opts = idris_options i
               return (opt_quiet opts)
 
-setTarget :: Target -> Idris ()
-setTarget t = do i <- getIState
-                 let opts = idris_options i
-                 let opt' = opts { opt_target = t }
-                 putIState $ i { idris_options = opt' }
+setCodegen :: Codegen -> Idris ()
+setCodegen t = do i <- getIState
+                  let opts = idris_options i
+                  let opt' = opts { opt_codegen = t }
+                  putIState $ i { idris_options = opt' }
 
-target :: Idris Target
-target = do i <- getIState
-            return (opt_target (idris_options i))
+codegen :: Idris Codegen
+codegen = do i <- getIState
+             return (opt_codegen (idris_options i))
 
 setOutputTy :: OutputType -> Idris ()
 setOutputTy t = do i <- getIState
@@ -369,6 +369,36 @@ setIdeSlave :: Bool -> Idris ()
 setIdeSlave True  = do i <- getIState
                        putIState $ i { idris_outputmode = (IdeSlave 0) }
 setIdeSlave False = return ()
+
+setTargetTriple :: String -> Idris ()
+setTargetTriple t = do i <- getIState
+                       let opts = idris_options i
+                           opt' = opts { opt_triple = t }
+                       putIState $ i { idris_options = opt' }
+
+targetTriple :: Idris String
+targetTriple = do i <- getIState
+                  return (opt_triple (idris_options i))
+
+setTargetCPU :: String -> Idris ()
+setTargetCPU t = do i <- getIState
+                    let opts = idris_options i
+                        opt' = opts { opt_cpu = t }
+                    putIState $ i { idris_options = opt' }
+
+targetCPU :: Idris String
+targetCPU = do i <- getIState
+               return (opt_cpu (idris_options i))
+
+setOptLevel :: Int -> Idris ()
+setOptLevel t = do i <- getIState
+                   let opts = idris_options i
+                       opt' = opts { opt_optLevel = t }
+                   putIState $ i { idris_options = opt' }
+
+optLevel :: Idris Int
+optLevel = do i <- getIState
+              return (opt_optLevel (idris_options i))
 
 verbose :: Idris Bool
 verbose = do i <- getIState

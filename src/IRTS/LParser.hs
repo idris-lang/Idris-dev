@@ -49,8 +49,8 @@ strlit    = PTok.stringLiteral lexer
 chlit     = PTok.charLiteral lexer
 lchar = lexeme.char
 
-fovm :: Target -> OutputType -> FilePath -> IO ()
-fovm tgt outty f
+fovm :: Codegen -> OutputType -> FilePath -> IO ()
+fovm cgn outty f
     = do defs <- parseFOVM f
          let (nexttag, tagged) = addTags 0 (liftAll defs)
              ctxtIn = addAlist tagged emptyContext
@@ -59,7 +59,7 @@ fovm tgt outty f
          let checked = checkDefs defuns (toAlist defuns)
 --       print checked
          case checked of
-           OK c -> case tgt of
+           OK c -> case cgn of
                      ViaC -> codegenC c "a.out" outty ["math.h"] "" "" TRACE
                      ViaJava -> codegenJava [] c "a.out" [] [] outty
            Error e -> fail $ show e 

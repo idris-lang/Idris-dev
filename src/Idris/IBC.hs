@@ -39,10 +39,10 @@ data IBCFile = IBCFile { ver :: Word8,
                          ibc_optimise :: [(Name, OptInfo)],
                          ibc_syntax :: [Syntax],
                          ibc_keywords :: [String],
-                         ibc_objs :: [(Target, FilePath)],
-                         ibc_libs :: [(Target, String)],
+                         ibc_objs :: [(Codegen, FilePath)],
+                         ibc_libs :: [(Codegen, String)],
                          ibc_dynamic_libs :: [String],
-                         ibc_hdrs :: [(Target, String)],
+                         ibc_hdrs :: [(Codegen, String)],
                          ibc_access :: [(Name, Accessibility)],
                          ibc_total :: [(Name, Totality)],
                          ibc_flags :: [(Name, [FnOpt])],
@@ -244,10 +244,10 @@ pKeywords :: [String] -> Idris ()
 pKeywords k = do i <- getIState
                  putIState (i { syntax_keywords = k ++ syntax_keywords i })
 
-pObjs :: [(Target, FilePath)] -> Idris ()
+pObjs :: [(Codegen, FilePath)] -> Idris ()
 pObjs os = mapM_ (uncurry addObjectFile) os
 
-pLibs :: [(Target, String)] -> Idris ()
+pLibs :: [(Codegen, String)] -> Idris ()
 pLibs ls = mapM_ (uncurry addLib) ls
 
 pDyLibs :: [String] -> Idris ()
@@ -257,7 +257,7 @@ pDyLibs ls = do res <- mapM (addDyLib . return) ls
     where checkLoad (Left _) = return ()
           checkLoad (Right err) = fail err
 
-pHdrs :: [(Target, String)] -> Idris ()
+pHdrs :: [(Codegen, String)] -> Idris ()
 pHdrs hs = mapM_ (uncurry addHdr) hs
 
 pDefs :: [(Name, Def)] -> Idris ()
@@ -1695,7 +1695,7 @@ instance Binary SSymbol where
                            return (Binding x1)
                    _ -> error "Corrupted binary data for SSymbol"
 
-instance Binary Target where
+instance Binary Codegen where
         put x
           = case x of
                 ViaC -> putWord8 0
@@ -1711,5 +1711,5 @@ instance Binary Target where
                   2 -> return ViaNode
                   3 -> return ViaJavaScript
                   4 -> return Bytecode
-                  _ -> error  "Corrupted binary data for Target"
+                  _ -> error  "Corrupted binary data for Codegen"
 
