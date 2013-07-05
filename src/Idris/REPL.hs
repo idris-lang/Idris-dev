@@ -39,6 +39,8 @@ import IRTS.CodegenCommon
 -- import RTS.PreC
 -- import RTS.CodegenC
 
+import LLVM.General.Target
+
 import System.Console.Haskeline as H
 import System.FilePath
 import System.Exit
@@ -155,8 +157,8 @@ ideslaveProcess fn Execute = do process fn Execute
                                 iResult ""
 ideslaveProcess fn (NewCompile f) = do process fn (NewCompile f)
                                        iResult ""
-ideslaveProcess fn (Compile target f) = do process fn (Compile target f)
-                                           iResult ""
+ideslaveProcess fn (Compile codegen f) = do process fn (Compile codegen f)
+                                            iResult ""
 ideslaveProcess fn (LogLvl i) = do process fn (LogLvl i)
                                    iResult ""
 ideslaveProcess fn (Pattelab t) = process fn (Pattelab t)
@@ -465,7 +467,7 @@ process fn Execute = do (m, _) <- elabVal toplevel False
 --                                      (PRef (FC "main" 0) (NS (UN "main") ["main"]))
                         (tmpn, tmph) <- liftIO tempfile
                         liftIO $ hClose tmph
-                        t <- target
+                        t <- codegen
                         compile t tmpn m
                         liftIO $ system tmpn
                         return ()
@@ -476,11 +478,11 @@ process fn (NewCompile f)
                           [pexp $ PRef fc (NS (UN "main") ["Main"])])
           compileEpic f m
   where fc = FC "main" 0
-process fn (Compile target f)
+process fn (Compile codegen f)
       = do (m, _) <- elabVal toplevel False
                        (PApp fc (PRef fc (UN "run__IO"))
                        [pexp $ PRef fc (NS (UN "main") ["Main"])])
-           compile target f m
+           compile codegen f m
   where fc = FC "main" 0
 process fn (LogLvl i) = setLogLevel i
 -- Elaborate as if LHS of a pattern (debug command)
@@ -560,14 +562,14 @@ displayHelp = let vstr = showVersion version in
             l ++ take (c1 - length l) (repeat ' ') ++ 
             m ++ take (c2 - length m) (repeat ' ') ++ r ++ "\n"
 
-parseTarget :: String -> Target
-parseTarget "C" = ViaC
-parseTarget "Java" = ViaJava
-parseTarget "bytecode" = Bytecode
-parseTarget "javascript" = ViaJavaScript
-parseTarget "node" = ViaNode
-parseTarget "llvm" = ViaLLVM
-parseTarget _ = error "unknown target" -- FIXME: partial function
+parseCodegen :: String -> Codegen
+parseCodegen "C" = ViaC
+parseCodegen "Java" = ViaJava
+parseCodegen "bytecode" = Bytecode
+parseCodegen "javascript" = ViaJavaScript
+parseCodegen "node" = ViaNode
+parseCodegen "llvm" = ViaLLVM
+parseCodegen _ = error "unknown codegen" -- FIXME: partial function
 
 parseArgs :: [String] -> [Opt]
 parseArgs [] = []
@@ -605,10 +607,17 @@ parseArgs ("-S":ns)              = OutputTy Raw : (parseArgs ns)
 parseArgs ("-c":ns)              = OutputTy Object : (parseArgs ns)
 parseArgs ("--dumpdefuns":n:ns)  = DumpDefun n : (parseArgs ns)
 parseArgs ("--dumpcases":n:ns)   = DumpCases n : (parseArgs ns)
-parseArgs ("--target":n:ns)      = UseTarget (parseTarget n) : (parseArgs ns)
+parseArgs ("--codegen":n:ns)     = UseCodegen (parseCodegen n) : (parseArgs ns)
 parseArgs ["--exec"]             = InterpretScript "Main.main" : []
 parseArgs ("--exec":expr:ns)     = InterpretScript expr : parseArgs ns
 parseArgs ("-XTypeProviders":ns) = Extension TypeProviders : (parseArgs ns)
+parseArgs ("-O3":ns)             = OptLevel 3 : parseArgs ns
+parseArgs ("-O2":ns)             = OptLevel 2 : parseArgs ns
+parseArgs ("-O1":ns)             = OptLevel 1 : parseArgs ns
+parseArgs ("-O0":ns)             = OptLevel 0 : parseArgs ns
+parseArgs ("-O":n:ns)            = OptLevel (read n) : parseArgs ns
+parseArgs ("--target":n:ns)      = TargetTriple n : parseArgs ns
+parseArgs ("--cpu":n:ns)         = TargetCPU n : parseArgs ns
 parseArgs (n:ns)                 = Filename n : (parseArgs ns)
 
 helphead =
@@ -637,10 +646,19 @@ idrisMain opts =
        let bcs = opt getBC opts
        let vm = opt getFOVM opts
        let pkgdirs = opt getPkgDir opts
+       let optimize = case opt getOptLevel opts of
+                        [] -> 2
+                        xs -> last xs
+       trpl <- case opt getTriple opts of
+                 [] -> liftIO $ getDefaultTargetTriple
+                 xs -> return (last xs)
+       tcpu <- case opt getCPU opts of
+                 [] -> liftIO $ getHostCPUName
+                 xs -> return (last xs)
        let outty = case opt getOutputTy opts of
                      [] -> Executable
                      xs -> last xs
-       let tgt = case opt getTarget opts of
+       let cgn = case opt getCodegen opts of
                    [] -> ViaC
                    xs -> last xs
        script <- case opt getExecScript opts of
@@ -657,13 +675,16 @@ idrisMain opts =
        setVerbose runrepl
        setCmdLine opts
        setOutputTy outty
-       setTarget tgt
+       setCodegen cgn
+       setTargetTriple trpl
+       setTargetCPU tcpu
+       setOptLevel optimize
        when (Verbose `elem` opts) $ setVerbose True
        mapM_ makeOption opts
        -- if we have the --fovm flag, drop into the first order VM testing
        case vm of
          [] -> return ()
-         xs -> liftIO $ mapM_ (fovm tgt outty) xs 
+         xs -> liftIO $ mapM_ (fovm cgn outty) xs 
        -- if we have the --bytecode flag, drop into the bytecode assembler
        case bcs of
          [] -> return ()
@@ -684,7 +705,7 @@ idrisMain opts =
        ok <- noErrors
        when ok $ case output of
                     [] -> return ()
-                    (o:_) -> process "" (Compile tgt o)
+                    (o:_) -> process "" (Compile cgn o)
        when ok $ case newoutput of
                     [] -> return ()
                     (o:_) -> process "" (NewCompile o)
@@ -758,9 +779,9 @@ getPkgClean :: Opt -> Maybe String
 getPkgClean (PkgClean str) = Just str
 getPkgClean _ = Nothing
 
-getTarget :: Opt -> Maybe Target
-getTarget (UseTarget x) = Just x
-getTarget _ = Nothing
+getCodegen :: Opt -> Maybe Codegen
+getCodegen (UseCodegen x) = Just x
+getCodegen _ = Nothing
 
 getExecScript :: Opt -> Maybe String
 getExecScript (InterpretScript expr) = Just expr
@@ -773,6 +794,18 @@ getOutputTy _ = Nothing
 getLanguageExt :: Opt -> Maybe LanguageExt
 getLanguageExt (Extension e) = Just e
 getLanguageExt _ = Nothing
+
+getTriple :: Opt -> Maybe String
+getTriple (TargetTriple x) = Just x
+getTriple _ = Nothing
+
+getCPU :: Opt -> Maybe String
+getCPU (TargetCPU x) = Just x
+getCPU _ = Nothing
+
+getOptLevel :: Opt -> Maybe Int
+getOptLevel (OptLevel x) = Just x
+getOptLevel _ = Nothing
 
 opt :: (Opt -> Maybe a) -> [Opt] -> [a]
 opt = mapMaybe

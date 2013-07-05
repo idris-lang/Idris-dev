@@ -13,6 +13,9 @@ import LLVM.General.Context
 import LLVM.General.Diagnostic
 import LLVM.General.AST
 import LLVM.General.AST.AddrSpace
+import LLVM.General.Target
+import LLVM.General.AST.DataLayout
+import LLVM.General.PassManager
 import qualified LLVM.General.Module as M
 import qualified LLVM.General.AST.IntegerPredicate as IPred
 import qualified LLVM.General.AST.Linkage as L
@@ -22,16 +25,21 @@ import qualified LLVM.General.AST.Attribute as A
 import qualified LLVM.General.AST.Global as G
 import qualified LLVM.General.AST.Constant as C
 import qualified LLVM.General.AST.Float as F
+import qualified LLVM.General.Relocation as R
+import qualified LLVM.General.CodeModel as CM
+import qualified LLVM.General.CodeGenOpt as CGO
 
 import Data.List
 import Data.Maybe
 import Data.Word
 import Data.Set (Set)
 import qualified Data.Set as S
+import qualified Data.Map as M
 import Control.Applicative
 import Control.Monad.RWS
 import Control.Monad.Writer
 import Control.Monad.State
+import Control.Monad.Error
 
 import qualified System.Info as SI (arch, os)
 import System.IO
@@ -41,32 +49,46 @@ import System.Process (rawSystem)
 import System.Exit (ExitCode(..))
 import Debug.Trace
 
-data Target = Target { arch :: String, os :: String }
+data Target = Target { triple :: String, dataLayout :: DataLayout }
 
 codegenLLVM :: [(TT.Name, SDecl)] ->
+               String -> -- target triple
+               String -> -- target CPU
+               Int -> -- Optimization degree
                FilePath -> -- output file name
                OutputType ->
                IO ()
-codegenLLVM defs file outty = withContext $ \context -> do
-  let target = Target { arch = SI.arch, os = SI.os }
-  let ast = codegen target (map snd defs)
-  result <- M.withModuleFromAST context ast (outputModule file outty)
-  case result of
-    Right _ -> return ()
-    Left msg -> ierror msg
+codegenLLVM defs triple cpu optimize file outty = withContext $ \context -> do
+  initializeAllTargets
+  (target, _) <- failInIO $ lookupTarget Nothing triple
+  withTargetOptions $ \options ->
+      withTargetMachine target triple cpu S.empty options R.Default CM.Default CGO.Default $ \tm ->
+          do layout <- getTargetMachineDataLayout tm
+             let ast = codegen (Target triple layout) (map snd defs)
+             result <- runErrorT .  M.withModuleFromAST context ast $ \m ->
+                       do let opts = defaultCuratedPassSetSpec
+                                     { optLevel = Just optimize
+                                     , simplifyLibCalls = Just True
+                                     , useInlinerWithThreshold = Just 225
+                                     }
+                          when (optimize /= 0) $ withPassManager opts $ void . flip runPassManager m
+                          outputModule tm file outty m
+             case result of
+               Right _ -> return ()
+               Left msg -> ierror msg
+
+failInIO :: ErrorT String IO a -> IO a
+failInIO = either fail return <=< runErrorT
 
 itWidth :: IntTy -> Word32
 itWidth ITNative = 32
 itWidth x = fromIntegral $ intTyWidth x
 
-outputModule :: FilePath -> OutputType -> M.Module -> IO ()
-outputModule file Raw    m = M.writeBitcodeToFile file m
-outputModule file Object m = withTmpFile $ \bc -> do
-  outputModule bc Raw m
-  exit <- rawSystem "llc" ["-filetype=obj", "--disable-fp-elim", "-o", file, bc]
-  when (exit /= ExitSuccess) $ ierror "FAILURE: Object generation"
-outputModule file Executable m = withTmpFile $ \obj -> do
-  outputModule obj Object m
+outputModule :: TargetMachine -> FilePath -> OutputType -> M.Module -> IO ()
+outputModule _ file Raw    m = failInIO $ M.writeBitcodeToFile file m
+outputModule tm file Object m = failInIO $ M.writeObjectToFile tm file m
+outputModule tm file Executable m = withTmpFile $ \obj -> do
+  outputModule tm obj Object m
   cc <- getCC
   defs <- (</> "llvm" </> "libidris_rts.a") <$> getDataDir
   exit <- rawSystem cc [obj, defs, "-lm", "-lgmp", "-lgc", "-o", file]
@@ -127,10 +149,10 @@ initDefs tgt =
       }
     , rtsFun "intStr" ptrI8 [IntegerType 64]
         [ BasicBlock (UnName 0)
-          [ UnName 1 := simpleCall "GC_malloc_atomic" [ConstantOperand (C.Int (fromInteger $ tgtWordSize tgt) 21)]
+          [ UnName 1 := simpleCall "GC_malloc_atomic" [ConstantOperand (C.Int (tgtWordSize tgt) 21)]
           , UnName 2 := simpleCall "snprintf"
                        [ LocalReference (UnName 1)
-                       , ConstantOperand (C.Int (fromInteger $ tgtWordSize tgt) 21)
+                       , ConstantOperand (C.Int (tgtWordSize tgt) 21)
                        , ConstantOperand $ C.GetElementPtr True (C.GlobalReference . Name $ "__idris_intFmtStr") [C.Int 32 0, C.Int 32 0]
                        , LocalReference (UnName 0)
                        ]
@@ -138,10 +160,12 @@ initDefs tgt =
           (Do $ Ret (Just (LocalReference (UnName 1))) [])
         ]
     , exfun "llvm.trap" VoidType [] False
+    -- , exfun "llvm.llvm.memcpy.p0i8.p0i8.i32" VoidType [ptrI8, ptrI8, IntegerType 32, IntegerType 32, IntegerType 1] False
+    -- , exfun "llvm.llvm.memcpy.p0i8.p0i8.i64" VoidType [ptrI8, ptrI8, IntegerType 64, IntegerType 32, IntegerType 1] False
+    , exfun "memcpy" ptrI8 [ptrI8, ptrI8, intPtr] False
     , exfun "snprintf" (IntegerType 32) [ptrI8, intPtr, ptrI8] True
     , exfun "strcmp" (IntegerType 32) [ptrI8, ptrI8] False
     , exfun "strlen" intPtr [ptrI8] False
-    , exfun "memcpy" ptrI8 [ptrI8, ptrI8, intPtr] False
     , exfun "GC_init" VoidType [] False
     , exfun "GC_malloc" ptrI8 [intPtr] False
     , exfun "GC_malloc_atomic" ptrI8 [intPtr] False
@@ -169,7 +193,7 @@ initDefs tgt =
     , GlobalDefinition mainDef
     ] ++ map mpzBinFun ["add", "sub", "mul", "fdiv_q", "fdiv_r", "and", "ior", "xor"]
     where
-      intPtr = IntegerType (fromInteger $ tgtWordSize tgt)
+      intPtr = IntegerType (tgtWordSize tgt)
       ptrI8 = PointerType (IntegerType 8) (AddrSpace 0)
       pmpz = PointerType mpzTy (AddrSpace 0)
 
@@ -195,18 +219,24 @@ initDefs tgt =
       exVar :: String -> Type -> Definition
       exVar name ty = GlobalDefinition $ globalVariableDefaults { G.name = Name name, G.type' = ty }
 
-      stdinName :: Target -> String
-      stdinName (Target { os = "darwin" }) = "__stdinp"
-      stdinName _ = "stdin"
-      stdoutName :: Target -> String
-      stdoutName (Target { os = "darwin" }) = "__stdoutp"
-      stdoutName _ = "stdout"
-      stderrName :: Target -> String
-      stderrName (Target { os = "darwin" }) = "__stderrp"
-      stderrName _ = "stderr"
+isApple :: Target -> Bool
+isApple (Target { triple = t }) = isJust . stripPrefix "-apple" $ dropWhile (/= '-') t
+
+stdinName, stdoutName, stderrName :: Target -> String
+stdinName t | isApple t = "__stdinp"
+stdinName _ = "stdin"
+stdoutName t | isApple t = "__stdoutp"
+stdoutName _ = "stdout"
+stderrName t | isApple t = "__stderrp"
+stderrName _ = "stderr"
+
+getStdIn, getStdOut, getStdErr :: Codegen Operand
+getStdIn  = ConstantOperand . C.GlobalReference . Name . stdinName <$> asks target
+getStdOut = ConstantOperand . C.GlobalReference . Name . stdoutName <$> asks target
+getStdErr = ConstantOperand . C.GlobalReference . Name . stderrName <$> asks target
 
 codegen :: Target -> [SDecl] -> Module
-codegen tgt defs = Module "idris" Nothing Nothing (initDefs tgt ++ globals ++ gendefs)
+codegen tgt defs = Module "idris" (Just . dataLayout $ tgt) (Just . triple $ tgt) (initDefs tgt ++ globals ++ gendefs)
     where
       (gendefs, _, globals) = runRWS (mapM cgDef defs) tgt 0
 
@@ -365,13 +395,13 @@ alloc ty = do
 sizeOf :: Type -> Codegen Operand
 sizeOf ty = ConstantOperand . C.PtrToInt
             (C.GetElementPtr True (C.Null (PointerType ty (AddrSpace 0))) [C.Int 32 1])
-            . IntegerType . fromIntegral <$> getWordSize
+            . IntegerType <$> getWordSize
 
-tgtWordSize :: Target -> Integer
-tgtWordSize (Target { arch = "i386" })   = 32
-tgtWordSize (Target { arch = "x86_64" }) = 64
+tgtWordSize :: Target -> Word32
+tgtWordSize (Target { dataLayout = DataLayout { pointerLayouts = l } }) =
+    fst . fromJust $ M.lookup (AddrSpace 0) l
 
-getWordSize :: Codegen Integer
+getWordSize :: Codegen Word32
 getWordSize = tgtWordSize <$> asks target
 
 cgExpr :: SExp -> Codegen (Maybe Operand)
@@ -826,6 +856,8 @@ cgOp (LSHL   ity) [x,y] = ibin ity x y (Shl False False)
 cgOp (LLSHR  ity) [x,y] = ibin ity x y (LShr False)
 cgOp (LASHR  ity) [x,y] = ibin ity x y (AShr False)
 
+cgOp LNoOp xs = return $ last xs
+
 cgOp LStrEq [x,y] = do
   x' <- unbox FString x
   y' <- unbox FString y
@@ -907,8 +939,8 @@ cgOp LStrLen [s] = do
   ws <- getWordSize
   len' <- case ws of
             32 -> return len
-            x | x > 32 -> inst $ Trunc len (IntegerType $ fromInteger x) []
-              | x < 32 -> inst $ ZExt len (IntegerType $ fromInteger x) []
+            x | x > 32 -> inst $ Trunc len (IntegerType 32) []
+              | x < 32 -> inst $ ZExt len (IntegerType 32) []
   box (FInt IT32) len'
 
 cgOp LReadStr [p] = do
@@ -917,15 +949,17 @@ cgOp LReadStr [p] = do
   box FString s
 
 cgOp LStdIn  [] = do
-  ptr <- inst $ Load False (ConstantOperand . C.GlobalReference . Name $ "stdin") Nothing 0 []
+  stdin <- getStdIn
+  ptr <- inst $ Load False stdin Nothing 0 []
   box FPtr ptr
 cgOp LStdOut  [] = do
-  ptr <- inst $ Load False (ConstantOperand . C.GlobalReference . Name $ "stdout") Nothing 0 []
+  stdout <- getStdOut
+  ptr <- inst $ Load False stdout Nothing 0 []
   box FPtr ptr
 cgOp LStdErr  [] = do
-  ptr <- inst $ Load False (ConstantOperand . C.GlobalReference . Name $ "stderr") Nothing 0 []
+  stdErr <- getStdErr
+  ptr <- inst $ Load False stdErr Nothing 0 []
   box FPtr ptr
-
 
 cgOp prim args = ierror $ "Unimplemented primitive: [" ++ show prim ++ "]("
                   ++ intersperse ',' (take (length args) ['a'..]) ++ ")"
@@ -943,7 +977,7 @@ cgStrCat x y = do
   xlen <- inst $ simpleCall "strlen" [x']
   ylen <- inst $ simpleCall "strlen" [y']
   zlen <- inst $ Add False True xlen ylen []
-  ws <- fromIntegral <$> getWordSize
+  ws <- getWordSize
   total <- inst $ Add False True zlen (ConstantOperand (C.Int ws 1)) []
   mem <- allocAtomic total
   inst $ simpleCall "memcpy" [mem, x', xlen]
