@@ -148,7 +148,77 @@ translateParameterlist =
   where translateParameter (MN i name) = translateIdentifier name ++ show i
         translateParameter (UN name) = translateIdentifier name
 
-translateDeclaration :: ([String], SDecl) -> String
+translateDeclaration :: (String, SDecl) -> String
+translateDeclaration (path@"__IDR__", SFun name@(UN op) _ _ _)
+  | "prim__addBigInt"  <- op =
+      translateBinaryPrim $ \op0 op1 -> op0 ++ ".add(" ++ op1 ++ ")"
+  | "prim__subBigInt"  <- op =
+      translateBinaryPrim $ \op0 op1 -> op0 ++ ".minus(" ++ op1 ++ ")"
+  | "prim__divBigInt"  <- op =
+      translateBinaryPrim $ \op0 op1 -> op0 ++ ".divide(" ++ op1 ++ ")"
+  | "prim__sremBigInt" <- op =
+      translateBinaryPrim $ \op0 op1 -> op0 ++ ".mod(" ++ op1 ++ ")"
+  | "prim__mulBigInt"  <- op =
+      translateBinaryPrim $ \op0 op1 -> op0 ++ ".times(" ++ op1 ++ ")"
+  | "prim__ltBigInt"   <- op =
+      translateBinaryPrim $ \op0 op1 -> op0 ++ ".lesser(" ++ op1 ++ ")"
+  | "prim__lteBigInt"  <- op =
+      translateBinaryPrim $ \op0 op1 -> op0 ++ ".lesserOrEquals(" ++ op1 ++ ")"
+  | "prim__gtBigInt"   <- op =
+      translateBinaryPrim $ \op0 op1 -> op0 ++ ".greater(" ++ op1 ++ ")"
+  | "prim__gteBigInt"  <- op =
+      translateBinaryPrim $ \op0 op1 -> op0 ++ ".greaterOrEquals(" ++ op1 ++ ")"
+  | "prim__eqBigInt"   <- op =
+      translateBinaryPrim $ \op0 op1 -> op0 ++ ".equals(" ++ op1 ++ ")"
+
+  | "prim__addInt" <- op = translateBinaryPrim $ \op0 op1 -> op0 ++ "+"  ++ op1
+  | "prim__subInt" <- op = translateBinaryPrim $ \op0 op1 -> op0 ++ "-"  ++ op1
+  | "prim__divInt" <- op = translateBinaryPrim $ \op0 op1 -> op0 ++ "/"  ++ op1
+  | "prim__mulInt" <- op = translateBinaryPrim $ \op0 op1 -> op0 ++ "*"  ++ op1
+  | "prim__ltInt"  <- op = translateBinaryPrim $ \op0 op1 -> op0 ++ "<"  ++ op1
+  | "prim__lteInt" <- op = translateBinaryPrim $ \op0 op1 -> op0 ++ "<=" ++ op1
+  | "prim__gtInt"  <- op = translateBinaryPrim $ \op0 op1 -> op0 ++ ">"  ++ op1
+  | "prim__gteInt" <- op = translateBinaryPrim $ \op0 op1 -> op0 ++ ">=" ++ op1
+  | "prim__eqInt"  <- op = translateBinaryPrim $ \op0 op1 -> op0 ++ "==" ++ op1
+
+  | "prim__addFloat" <- op = translateBinaryPrim $ \op0 op1 -> op0 ++ "+"  ++ op1
+  | "prim__subFloat" <- op = translateBinaryPrim $ \op0 op1 -> op0 ++ "-"  ++ op1
+  | "prim__divFloat" <- op = translateBinaryPrim $ \op0 op1 -> op0 ++ "/"  ++ op1
+  | "prim__mulFloat" <- op = translateBinaryPrim $ \op0 op1 -> op0 ++ "*"  ++ op1
+  | "prim__ltFloat"  <- op = translateBinaryPrim $ \op0 op1 -> op0 ++ "<"  ++ op1
+  | "prim__lteFloat" <- op = translateBinaryPrim $ \op0 op1 -> op0 ++ "<=" ++ op1
+  | "prim__gtFloat"  <- op = translateBinaryPrim $ \op0 op1 -> op0 ++ ">"  ++ op1
+  | "prim__gteFloat" <- op = translateBinaryPrim $ \op0 op1 -> op0 ++ ">=" ++ op1
+  | "prim__eqFloat"  <- op = translateBinaryPrim $ \op0 op1 -> op0 ++ "==" ++ op1
+
+  | "prim__ltChar"  <- op = translateBinaryPrim $ \op0 op1 -> op0 ++ "<"  ++ op1
+  | "prim__lteChar" <- op = translateBinaryPrim $ \op0 op1 -> op0 ++ "<=" ++ op1
+  | "prim__gtChar"  <- op = translateBinaryPrim $ \op0 op1 -> op0 ++ ">"  ++ op1
+  | "prim__gteChar" <- op = translateBinaryPrim $ \op0 op1 -> op0 ++ ">=" ++ op1
+  | "prim__eqChar"  <- op = translateBinaryPrim $ \op0 op1 -> op0 ++ "==" ++ op1
+
+  | "prim__concat"    <- op = translateBinaryPrim $ \op0 op1 -> op0 ++ "+"  ++ op1
+  | "prim__ltString"  <- op = translateBinaryPrim $ \op0 op1 -> op0 ++ "<"  ++ op1
+  | "prim__eqString"  <- op = translateBinaryPrim $ \op0 op1 -> op0 ++ "==" ++ op1
+  | "prim__lenString" <- op = translateUnaryPrim  $ \op0 -> op0 ++ ".length"
+
+  where translateBinaryPrim :: (String -> String -> String) -> String
+        translateBinaryPrim op =
+            "var " ++ path ++ translateName name
+         ++ " = function(op0, op1){return "
+         ++ op (primArg 0) (primArg 1)
+         ++ ";};\n"
+
+        translateUnaryPrim :: (String -> String) -> String
+        translateUnaryPrim op =
+            "var " ++ path ++ translateName name
+         ++ " = function(op0){return "
+         ++ op (primArg 0)
+         ++ ";};\n"
+
+        primArg :: Int -> String
+        primArg n = idrNamespace ++ "EVAL0(op" ++ show n ++ ")"
+
 translateDeclaration (path, SFun name params stackSize body) =
      "var " ++ concat (path ++ [translateName name])
   ++ " = function("
