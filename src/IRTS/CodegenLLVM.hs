@@ -32,6 +32,7 @@ import Control.Applicative
 import Control.Monad.RWS
 import Control.Monad.Writer
 import Control.Monad.State
+import Control.Monad.Error
 
 import qualified System.Info as SI (arch, os)
 import System.IO
@@ -50,7 +51,7 @@ codegenLLVM :: [(TT.Name, SDecl)] ->
 codegenLLVM defs file outty = withContext $ \context -> do
   let target = Target { arch = SI.arch, os = SI.os }
   let ast = codegen target (map snd defs)
-  result <- M.withModuleFromAST context ast (outputModule file outty)
+  result <- runErrorT $ M.withModuleFromAST context ast (outputModule file outty)
   case result of
     Right _ -> return ()
     Left msg -> ierror msg
@@ -60,7 +61,7 @@ itWidth ITNative = 32
 itWidth x = fromIntegral $ intTyWidth x
 
 outputModule :: FilePath -> OutputType -> M.Module -> IO ()
-outputModule file Raw    m = M.writeBitcodeToFile file m
+outputModule file Raw    m = either fail return <=< runErrorT $ M.writeBitcodeToFile file m
 outputModule file Object m = withTmpFile $ \bc -> do
   outputModule bc Raw m
   exit <- rawSystem "llc" ["-filetype=obj", "--disable-fp-elim", "-o", file, bc]
