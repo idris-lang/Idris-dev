@@ -36,7 +36,8 @@ idrisDef = haskellDef {
                     "using", "namespace", "class", "instance",
                     "public", "private", "abstract", "implicit",
                     "Int", "Integer", "Float", "Char", "String", "Ptr",
-                    "Bits8", "Bits16", "Bits32", "Bits64"]
+                    "Bits8", "Bits16", "Bits32", "Bits64",
+                    "Bits8x16", "Bits16x8", "Bits32x4", "Bits64x2"]
            } 
 
 -- | The characters allowed in operator names

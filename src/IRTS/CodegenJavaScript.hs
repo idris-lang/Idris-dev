@@ -143,11 +143,11 @@ translateConstant (BI i)  = "__IDRRT__.bigInt('" ++ show i ++ "')"
 translateConstant (Fl f)  = show f
 translateConstant (Ch c)  = show c
 translateConstant (Str s) = show s
-translateConstant IType   = "__IDRRT__.Int"
+translateConstant (AType (ATInt ITNative)) = "__IDRRT__.Int"
 translateConstant ChType  = "__IDRRT__.Char"
 translateConstant StrType = "__IDRRT__.String"
-translateConstant BIType  = "__IDRRT__.Integer"
-translateConstant FlType  = "__IDRRT__.Float"
+translateConstant (AType (ATInt ITBig)) = "__IDRRT__.Integer"
+translateConstant (AType ATFloat)  = "__IDRRT__.Float"
 translateConstant PtrType = "__IDRRT__.Ptr"
 translateConstant Forgot  = "__IDRRT__.Forgot"
 translateConstant c       =
@@ -245,44 +245,44 @@ translateExpression (SOp op vars)
   | (LCompl _)  <- op
   , (arg:_)     <- vars = '~' : translateVariableName arg
 
-  | (LPlus ITBig) <- op
+  | (LPlus (ATInt ITBig)) <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp ".add(" lhs rhs  ++ ")"
-  | (LMinus ITBig) <- op
+  | (LMinus (ATInt ITBig)) <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp ".minus(" lhs rhs ++ ")"
-  | (LTimes ITBig) <- op
+  | (LTimes (ATInt ITBig)) <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp ".times(" lhs rhs ++ ")"
-  | (LSDiv ITBig) <- op
+  | (LSDiv (ATInt ITBig)) <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp ".divide(" lhs rhs ++ ")"
-  | (LSRem ITBig) <- op
+  | (LSRem (ATInt ITBig)) <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp ".mod(" lhs rhs ++ ")"
-  | (LEq ITBig) <- op
+  | (LEq (ATInt ITBig)) <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp ".equals(" lhs rhs ++ ")"
-  | (LLt ITBig) <- op
+  | (LLt (ATInt ITBig)) <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp ".lesser(" lhs rhs ++ ")"
-  | (LLe ITBig) <- op
+  | (LLe (ATInt ITBig)) <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp ".lesserOrEquals(" lhs rhs ++ ")"
-  | (LGt ITBig) <- op
+  | (LGt (ATInt ITBig)) <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp ".greater(" lhs rhs ++ ")"
-  | (LGe ITBig) <- op
+  | (LGe (ATInt ITBig)) <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp ".greaterOrEquals(" lhs rhs ++ ")"
 
-  | LFPlus      <- op
+  | (LPlus ATFloat)  <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp "+" lhs rhs
-  | LFMinus     <- op
+  | (LMinus ATFloat) <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp "-" lhs rhs
-  | LFTimes     <- op
+  | (LTimes ATFloat) <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp "*" lhs rhs
-  | LFDiv       <- op
+  | (LSDiv ATFloat)  <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp "/" lhs rhs
-  | LFEq        <- op
+  | (LEq ATFloat) <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp "==" lhs rhs
-  | LFLt        <- op
+  | (LLt ATFloat) <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp "<" lhs rhs
-  | LFLe        <- op
+  | (LLe ATFloat) <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp "<=" lhs rhs
-  | LFGt        <- op
+  | (LGt ATFloat) <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp ">" lhs rhs
-  | LFGe        <- op
+  | (LGe ATFloat) <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp ">=" lhs rhs
 
   | LStrConcat  <- op
@@ -470,13 +470,13 @@ translateCase _ (SDefaultCase e) =
   createIfBlock "true" (translateExpression e)
 
 translateCase var (SConstCase ty e)
-  | ChType   <- ty = matchHelper "Char"
-  | StrType  <- ty = matchHelper "String"
-  | IType    <- ty = matchHelper "Int"
-  | BIType   <- ty = matchHelper "Integer"
-  | FlType   <- ty = matchHelper "Float"
-  | PtrType  <- ty = matchHelper "Ptr"
-  | Forgot   <- ty = matchHelper "Forgot"
+  | ChType  <- ty = matchHelper "Char"
+  | StrType <- ty = matchHelper "String"
+  | PtrType <- ty = matchHelper "Ptr"
+  | Forgot  <- ty = matchHelper "Forgot"
+  | (AType ATFloat) <- ty = matchHelper "Float"
+  | (AType (ATInt ITBig)) <- ty = matchHelper "Integer"
+  | (AType (ATInt ITNative)) <- ty = matchHelper "Int"
   where
     matchHelper tyName = translateTypeMatch var tyName e
 

@@ -1174,7 +1174,7 @@ elabInstance info syn fc cs n ps t expn ds
 --          mapM_ (elabDecl EAll info) (concat fns)
   where
     intInst = case ps of
-                [PConstant IType] -> True
+                [PConstant (AType (ATInt ITNative))] -> True
                 _ -> False
 
     checkNotOverlapping i t n
