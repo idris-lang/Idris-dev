@@ -5,6 +5,7 @@ module Core.Typecheck where
 
 import Control.Monad.State
 import Debug.Trace
+import qualified Data.Vector.Unboxed as V (length)
 
 import Core.TT
 import Core.Evaluate
@@ -98,15 +99,19 @@ check' holes ctxt env top = chk env top where
                      return (TType (UVar v), TType (UVar (v+1)))
   chk env (RConstant Forgot) = return (Erased, Erased)
   chk env (RConstant c) = return (Constant c, constType c)
-    where constType (I _)   = Constant IType
-          constType (BI _)  = Constant BIType
-          constType (Fl _)  = Constant FlType
+    where constType (I _)   = Constant (AType (ATInt ITNative))
+          constType (BI _)  = Constant (AType (ATInt ITBig))
+          constType (Fl _)  = Constant (AType ATFloat)
           constType (Ch _)  = Constant ChType
           constType (Str _) = Constant StrType
-          constType (B8 _)  = Constant B8Type
-          constType (B16 _) = Constant B16Type
-          constType (B32 _) = Constant B32Type
-          constType (B64 _) = Constant B64Type
+          constType (B8 _)  = Constant (AType (ATInt (ITFixed IT8)))
+          constType (B16 _) = Constant (AType (ATInt (ITFixed IT16)))
+          constType (B32 _) = Constant (AType (ATInt (ITFixed IT32)))
+          constType (B64 _) = Constant (AType (ATInt (ITFixed IT64)))
+          constType (B8V  a) = Constant (AType (ATInt (ITVec IT8  (V.length a))))
+          constType (B16V a) = Constant (AType (ATInt (ITVec IT16 (V.length a))))
+          constType (B32V a) = Constant (AType (ATInt (ITVec IT32 (V.length a))))
+          constType (B64V a) = Constant (AType (ATInt (ITVec IT64 (V.length a))))
           constType Forgot  = Erased
           constType _       = TType (UVal 0)
   chk env (RForce t) = do (_, ty) <- chk env t

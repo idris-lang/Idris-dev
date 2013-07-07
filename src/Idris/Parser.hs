@@ -1139,16 +1139,20 @@ pIdiom syn
          return (PIdiom fc e)
 
 pConstant :: IParser Const
-pConstant = do reserved "Integer";return BIType
-        <|> do reserved "Int";    return IType
+pConstant = do reserved "Integer";return (AType (ATInt ITBig))
+        <|> do reserved "Int";    return (AType (ATInt ITNative))
         <|> do reserved "Char";   return ChType
-        <|> do reserved "Float";  return FlType
+        <|> do reserved "Float";  return (AType ATFloat)
         <|> do reserved "String"; return StrType
         <|> do reserved "Ptr";    return PtrType
-        <|> do reserved "Bits8";  return B8Type
-        <|> do reserved "Bits16"; return B16Type
-        <|> do reserved "Bits32"; return B32Type
-        <|> do reserved "Bits64"; return B64Type
+        <|> do reserved "Bits8";  return (AType (ATInt (ITFixed IT8)))
+        <|> do reserved "Bits16"; return (AType (ATInt (ITFixed IT16)))
+        <|> do reserved "Bits32"; return (AType (ATInt (ITFixed IT32)))
+        <|> do reserved "Bits64"; return (AType (ATInt (ITFixed IT64)))
+        <|> do reserved "Bits8x16"; return (AType (ATInt (ITVec IT8 16)))
+        <|> do reserved "Bits16x8"; return (AType (ATInt (ITVec IT16 8)))
+        <|> do reserved "Bits32x4"; return (AType (ATInt (ITVec IT32 4)))
+        <|> do reserved "Bits64x2"; return (AType (ATInt (ITVec IT64 2)))
         <|> try (do f <- float;   return $ Fl f)
         <|> try (do i <- natural; return $ BI i)
         <|> try (do s <- strlit;  return $ Str s)
@@ -1535,25 +1539,26 @@ pWhereblock n syn
          closeBlock
          return (concat ds, map (\x -> (x, decoration syn x)) dns)
 
-pTarget :: IParser Target
-pTarget = try (do reserved "C"; return ViaC)
-      <|> try (do reserved "Java"; return ViaJava)
-      <|> try (do reserved "JavaScript"; return ViaJavaScript)
-      <|> try (do reserved "Node"; return ViaNode)
-      <|> try (do reserved "Bytecode"; return Bytecode)
+pCodegen :: IParser Codegen
+pCodegen = try (do reserved "C"; return ViaC)
+       <|> try (do reserved "Java"; return ViaJava)
+       <|> try (do reserved "JavaScript"; return ViaJavaScript)
+       <|> try (do reserved "Node"; return ViaNode)
+       <|> try (do reserved "LLVM"; return ViaLLVM)
+       <|> try (do reserved "Bytecode"; return Bytecode)
 
 pDirective :: SyntaxInfo -> IParser [PDecl]
-pDirective syn = try (do lchar '%'; reserved "lib"; tgt <- pTarget; lib <- strlit;
-                         return [PDirective (do addLib tgt lib
-                                                addIBC (IBCLib tgt lib))])
-             <|> try (do lchar '%'; reserved "link"; tgt <- pTarget; obj <- strlit;
+pDirective syn = try (do lchar '%'; reserved "lib"; cgn <- pCodegen; lib <- strlit;
+                         return [PDirective (do addLib cgn lib
+                                                addIBC (IBCLib cgn lib))])
+             <|> try (do lchar '%'; reserved "link"; cgn <- pCodegen; obj <- strlit;
                          return [PDirective (do datadir <- liftIO getDataDir
                                                 o <- liftIO $ findInPath [".", datadir] obj
-                                                addIBC (IBCObj tgt o)
-                                                addObjectFile tgt o)])
-             <|> try (do lchar '%'; reserved "include"; tgt <- pTarget; hdr <- strlit;
-                         return [PDirective (do addHdr tgt hdr
-                                                addIBC (IBCHeader tgt hdr))])
+                                                addIBC (IBCObj cgn o)
+                                                addObjectFile cgn o)])
+             <|> try (do lchar '%'; reserved "include"; cgn <- pCodegen; hdr <- strlit;
+                         return [PDirective (do addHdr cgn hdr
+                                                addIBC (IBCHeader cgn hdr))])
              <|> try (do lchar '%'; reserved "hide"; n <- iName []
                          return [PDirective (do setAccessibility n Hidden
                                                 addIBC (IBCAccess n Hidden))])

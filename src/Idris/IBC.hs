@@ -11,6 +11,7 @@ import Idris.Imports
 import Idris.Error
 
 import Data.Binary
+import Data.Vector.Binary
 import Data.List
 import Data.ByteString.Lazy as B hiding (length, elem)
 import Control.Monad
@@ -38,10 +39,10 @@ data IBCFile = IBCFile { ver :: Word8,
                          ibc_optimise :: [(Name, OptInfo)],
                          ibc_syntax :: [Syntax],
                          ibc_keywords :: [String],
-                         ibc_objs :: [(Target, FilePath)],
-                         ibc_libs :: [(Target, String)],
+                         ibc_objs :: [(Codegen, FilePath)],
+                         ibc_libs :: [(Codegen, String)],
                          ibc_dynamic_libs :: [String],
-                         ibc_hdrs :: [(Target, String)],
+                         ibc_hdrs :: [(Codegen, String)],
                          ibc_access :: [(Name, Accessibility)],
                          ibc_total :: [(Name, Totality)],
                          ibc_flags :: [(Name, [FnOpt])],
@@ -243,10 +244,10 @@ pKeywords :: [String] -> Idris ()
 pKeywords k = do i <- getIState
                  putIState (i { syntax_keywords = k ++ syntax_keywords i })
 
-pObjs :: [(Target, FilePath)] -> Idris ()
+pObjs :: [(Codegen, FilePath)] -> Idris ()
 pObjs os = mapM_ (uncurry addObjectFile) os
 
-pLibs :: [(Target, String)] -> Idris ()
+pLibs :: [(Codegen, String)] -> Idris ()
 pLibs ls = mapM_ (uncurry addLib) ls
 
 pDyLibs :: [String] -> Idris ()
@@ -256,7 +257,7 @@ pDyLibs ls = do res <- mapM (addDyLib . return) ls
     where checkLoad (Left _) = return ()
           checkLoad (Right err) = fail err
 
-pHdrs :: [(Target, String)] -> Idris ()
+pHdrs :: [(Codegen, String)] -> Idris ()
 pHdrs hs = mapM_ (uncurry addHdr) hs
 
 pDefs :: [(Name, Def)] -> Idris ()
@@ -364,7 +365,7 @@ instance Binary Name where
                    3 -> return NErased
                    _ -> error "Corrupted binary data for Name"
 
- 
+
 instance Binary Const where
         put x
           = case x of
@@ -383,17 +384,23 @@ instance Binary Const where
                 B32 x1 -> putWord8 7 >> put x1
                 B64 x1 -> putWord8 8 >> put x1
 
-                IType -> putWord8 9
-                BIType -> putWord8 10
-                FlType -> putWord8 11
+                (AType (ATInt ITNative)) -> putWord8 9
+                (AType (ATInt ITBig)) -> putWord8 10
+                (AType ATFloat) -> putWord8 11
                 ChType -> putWord8 12
                 StrType -> putWord8 13
                 PtrType -> putWord8 14
                 Forgot -> putWord8 15
-                B8Type  -> putWord8 16
-                B16Type -> putWord8 17
-                B32Type -> putWord8 18
-                B64Type -> putWord8 19
+                (AType (ATInt (ITFixed ity))) -> putWord8 (fromIntegral (16 + fromEnum ity)) -- 16-19 inclusive
+                (AType (ATInt (ITVec ity count))) -> do
+                        putWord8 20
+                        putWord8 (fromIntegral . fromEnum $ ity)
+                        putWord8 (fromIntegral count)
+
+                B8V  x1 -> putWord8 21 >> put x1
+                B16V x1 -> putWord8 22 >> put x1
+                B32V x1 -> putWord8 23 >> put x1
+                B64V x1 -> putWord8 24 >> put x1
         get
           = do i <- getWord8
                case i of
@@ -412,18 +419,28 @@ instance Binary Const where
                    7 -> fmap B32 get
                    8 -> fmap B64 get
 
-                   9 -> return IType
-                   10 -> return BIType
-                   11 -> return FlType
+                   9 -> return (AType (ATInt ITNative))
+                   10 -> return (AType (ATInt ITBig))
+                   11 -> return (AType ATFloat)
                    12 -> return ChType
                    13 -> return StrType
                    14 -> return PtrType
                    15 -> return Forgot
 
-                   16 -> return B8Type
-                   17 -> return B16Type
-                   18 -> return B32Type
-                   19 -> return B64Type
+                   16 -> return (AType (ATInt (ITFixed IT8)))
+                   17 -> return (AType (ATInt (ITFixed IT16)))
+                   18 -> return (AType (ATInt (ITFixed IT32)))
+                   19 -> return (AType (ATInt (ITFixed IT64)))
+
+                   20 -> do
+                        e <- getWord8
+                        c <- getWord8
+                        return (AType (ATInt (ITVec (toEnum . fromIntegral $ e) (fromIntegral c))))
+
+                   21 -> fmap B8V get
+                   22 -> fmap B16V get
+                   23 -> fmap B32V get
+                   24 -> fmap B64V get
 
                    _ -> error "Corrupted binary data for Const"
 
@@ -1678,7 +1695,7 @@ instance Binary SSymbol where
                            return (Binding x1)
                    _ -> error "Corrupted binary data for SSymbol"
 
-instance Binary Target where
+instance Binary Codegen where
         put x
           = case x of
                 ViaC -> putWord8 0
@@ -1694,5 +1711,5 @@ instance Binary Target where
                   2 -> return ViaNode
                   3 -> return ViaJavaScript
                   4 -> return Bytecode
-                  _ -> error  "Corrupted binary data for Target"
+                  _ -> error  "Corrupted binary data for Codegen"
 

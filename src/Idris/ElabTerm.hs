@@ -653,7 +653,7 @@ resolveTC depth fn ist
 
     needsDefault t num@(P _ (NS (UN "Num") ["Builtins"]) _) [P Bound a _]
         = do focus a
-             fill (RConstant IType) -- default Int
+             fill (RConstant (AType (ATInt ITNative))) -- default Int
              solve
              return False
     needsDefault t f as
@@ -1060,15 +1060,15 @@ reifyTTBinderApp reif f [t]
 reifyTTBinderApp _ f args = fail ("Unknown reflection binder: " ++ show (f, args))
 
 reifyTTConst :: Term -> ElabD Const
-reifyTTConst (P _ n _) | n == reflm "IType"    = return $ IType
-reifyTTConst (P _ n _) | n == reflm "BIType"   = return $ BIType
-reifyTTConst (P _ n _) | n == reflm "FlType"   = return $ FlType
+reifyTTConst (P _ n _) | n == reflm "IType"    = return (AType (ATInt ITNative))
+reifyTTConst (P _ n _) | n == reflm "BIType"   = return (AType (ATInt ITBig))
+reifyTTConst (P _ n _) | n == reflm "FlType"   = return (AType ATFloat)
 reifyTTConst (P _ n _) | n == reflm "ChType"   = return $ ChType
 reifyTTConst (P _ n _) | n == reflm "StrType"  = return $ StrType
-reifyTTConst (P _ n _) | n == reflm "B8Type"   = return $ B8Type
-reifyTTConst (P _ n _) | n == reflm "B16Type"  = return $ B16Type
-reifyTTConst (P _ n _) | n == reflm "B32Type"  = return $ B32Type
-reifyTTConst (P _ n _) | n == reflm "B64Type"  = return $ B64Type
+reifyTTConst (P _ n _) | n == reflm "B8Type"   = return (AType (ATInt (ITFixed IT8)))
+reifyTTConst (P _ n _) | n == reflm "B16Type"  = return (AType (ATInt (ITFixed IT16)))
+reifyTTConst (P _ n _) | n == reflm "B32Type"  = return (AType (ATInt (ITFixed IT32)))
+reifyTTConst (P _ n _) | n == reflm "B64Type"  = return (AType (ATInt (ITFixed IT64)))
 reifyTTConst (P _ n _) | n == reflm "PtrType"  = return $ PtrType
 reifyTTConst (P _ n _) | n == reflm "VoidType" = return $ VoidType
 reifyTTConst (P _ n _) | n == reflm "Forgot"   = return $ Forgot
@@ -1178,19 +1178,19 @@ reflectConstant c@(BI _) = reflCall "BI" [RConstant c]
 reflectConstant c@(Fl _) = reflCall "Fl" [RConstant c]
 reflectConstant c@(Ch _) = reflCall "Ch" [RConstant c]
 reflectConstant c@(Str _) = reflCall "Str" [RConstant c]
-reflectConstant (IType) = Var (reflm "IType")
-reflectConstant (BIType) = Var (reflm "BIType")
-reflectConstant (FlType) = Var (reflm "FlType")
+reflectConstant (AType (ATInt ITNative)) = Var (reflm "IType")
+reflectConstant (AType (ATInt ITBig)) = Var (reflm "BIType")
+reflectConstant (AType ATFloat) = Var (reflm "FlType")
 reflectConstant (ChType) = Var (reflm "ChType")
 reflectConstant (StrType) = Var (reflm "StrType")
 reflectConstant c@(B8 _) = reflCall "B8" [RConstant c]
 reflectConstant c@(B16 _) = reflCall "B16" [RConstant c]
 reflectConstant c@(B32 _) = reflCall "B32" [RConstant c]
 reflectConstant c@(B64 _) = reflCall "B64" [RConstant c]
-reflectConstant (B8Type) = Var (reflm "B8Type")
-reflectConstant (B16Type) = Var (reflm "B16Type")
-reflectConstant (B32Type) = Var (reflm "B32Type")
-reflectConstant (B64Type) = Var (reflm "B64Type")
+reflectConstant (AType (ATInt (ITFixed IT8)))  = Var (reflm "B8Type")
+reflectConstant (AType (ATInt (ITFixed IT16))) = Var (reflm "B16Type")
+reflectConstant (AType (ATInt (ITFixed IT32))) = Var (reflm "B32Type")
+reflectConstant (AType (ATInt (ITFixed IT64))) = Var (reflm "B64Type")
 reflectConstant (PtrType) = Var (reflm "PtrType")
 reflectConstant (VoidType) = Var (reflm "VoidType")
 reflectConstant (Forgot) = Var (reflm "Forgot")

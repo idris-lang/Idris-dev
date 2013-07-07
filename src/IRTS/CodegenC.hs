@@ -229,39 +229,41 @@ bcc i (ERROR str) = indent i ++ "fprintf(stderr, " ++ show str ++ "); assert(0);
 
 
 
-c_irts (FInt ITNative) l x = l ++ "MKINT((i_int)(" ++ x ++ "))"
-c_irts (FInt ty) l x = l ++ "idris_b" ++ show (intTyWidth ty) ++ "const(vm, " ++ x ++ ")"
+c_irts (FArith (ATInt ITNative)) l x = l ++ "MKINT((i_int)(" ++ x ++ "))"
+c_irts (FArith (ATInt (ITFixed ity))) l x
+    = l ++ "idris_b" ++ show (nativeTyWidth ity) ++ "const(vm, " ++ x ++ ")"
 c_irts FChar l x = l ++ "MKINT((i_int)(" ++ x ++ "))"
 c_irts FString l x = l ++ "MKSTR(vm, " ++ x ++ ")"
 c_irts FUnit l x = x
 c_irts FPtr l x = l ++ "MKPTR(vm, " ++ x ++ ")"
-c_irts FDouble l x = l ++ "MKFLOAT(vm, " ++ x ++ ")"
+c_irts (FArith ATFloat) l x = l ++ "MKFLOAT(vm, " ++ x ++ ")"
 c_irts FAny l x = l ++ x
 
-irts_c (FInt ITNative) x = "GETINT(" ++ x ++ ")"
-irts_c (FInt ty) x = "(" ++ x ++ "->info.bits" ++ show (intTyWidth ty) ++ ")"
+irts_c (FArith (ATInt ITNative)) x = "GETINT(" ++ x ++ ")"
+irts_c (FArith (ATInt (ITFixed ity))) x
+    = "(" ++ x ++ "->info.bits" ++ show (nativeTyWidth ity) ++ ")"
 irts_c FChar x = "GETINT(" ++ x ++ ")"
 irts_c FString x = "GETSTR(" ++ x ++ ")"
 irts_c FUnit x = x
 irts_c FPtr x = "GETPTR(" ++ x ++ ")"
-irts_c FDouble x = "GETFLOAT(" ++ x ++ ")"
+irts_c (FArith ATFloat) x = "GETFLOAT(" ++ x ++ ")"
 irts_c FAny x = x
 
-bitOp v op ty args = v ++ "idris_b" ++ show (intTyWidth ty) ++ op ++ "(vm, " ++ intercalate ", " (map creg args) ++ ")"
+bitOp v op ty args = v ++ "idris_b" ++ show (nativeTyWidth ty) ++ op ++ "(vm, " ++ intercalate ", " (map creg args) ++ ")"
 
 bitCoerce v op input output arg
-    = v ++ "idris_b" ++ show (intTyWidth input) ++ op ++ show (intTyWidth output) ++ "(vm, " ++ creg arg ++ ")"
+    = v ++ "idris_b" ++ show (nativeTyWidth input) ++ op ++ show (nativeTyWidth output) ++ "(vm, " ++ creg arg ++ ")"
 
-signedTy :: IntTy -> String
-signedTy t = "int" ++ show (intTyWidth t) ++ "_t"
+signedTy :: NativeTy -> String
+signedTy t = "int" ++ show (nativeTyWidth t) ++ "_t"
 
-doOp v (LPlus ITNative) [l, r] = v ++ "ADD(" ++ creg l ++ ", " ++ creg r ++ ")"
-doOp v (LMinus ITNative) [l, r] = v ++ "INTOP(-," ++ creg l ++ ", " ++ creg r ++ ")"
-doOp v (LTimes ITNative) [l, r] = v ++ "MULT(" ++ creg l ++ ", " ++ creg r ++ ")"
+doOp v (LPlus (ATInt ITNative)) [l, r] = v ++ "ADD(" ++ creg l ++ ", " ++ creg r ++ ")"
+doOp v (LMinus (ATInt ITNative)) [l, r] = v ++ "INTOP(-," ++ creg l ++ ", " ++ creg r ++ ")"
+doOp v (LTimes (ATInt ITNative)) [l, r] = v ++ "MULT(" ++ creg l ++ ", " ++ creg r ++ ")"
 doOp v (LUDiv ITNative) [l, r] = v ++ "UINTOP(/," ++ creg l ++ ", " ++ creg r ++ ")"
-doOp v (LSDiv ITNative) [l, r] = v ++ "INTOP(/," ++ creg l ++ ", " ++ creg r ++ ")"
+doOp v (LSDiv (ATInt ITNative)) [l, r] = v ++ "INTOP(/," ++ creg l ++ ", " ++ creg r ++ ")"
 doOp v (LURem ITNative) [l, r] = v ++ "UINTOP(%," ++ creg l ++ ", " ++ creg r ++ ")"
-doOp v (LSRem ITNative) [l, r] = v ++ "INTOP(%," ++ creg l ++ ", " ++ creg r ++ ")"
+doOp v (LSRem (ATInt ITNative)) [l, r] = v ++ "INTOP(%," ++ creg l ++ ", " ++ creg r ++ ")"
 doOp v (LAnd ITNative) [l, r] = v ++ "INTOP(&," ++ creg l ++ ", " ++ creg r ++ ")"
 doOp v (LOr ITNative) [l, r] = v ++ "INTOP(|," ++ creg l ++ ", " ++ creg r ++ ")"
 doOp v (LXOr ITNative) [l, r] = v ++ "INTOP(^," ++ creg l ++ ", " ++ creg r ++ ")"
@@ -269,34 +271,34 @@ doOp v (LSHL ITNative) [l, r] = v ++ "INTOP(<<," ++ creg l ++ ", " ++ creg r ++ 
 doOp v (LLSHR ITNative) [l, r] = v ++ "UINTOP(>>," ++ creg l ++ ", " ++ creg r ++ ")"
 doOp v (LASHR ITNative) [l, r] = v ++ "INTOP(>>," ++ creg l ++ ", " ++ creg r ++ ")"
 doOp v (LCompl ITNative) [x] = v ++ "INTOP(~," ++ creg x ++ ")"
-doOp v (LEq ITNative) [l, r] = v ++ "INTOP(==," ++ creg l ++ ", " ++ creg r ++ ")"
-doOp v (LLt ITNative) [l, r] = v ++ "INTOP(<," ++ creg l ++ ", " ++ creg r ++ ")"
-doOp v (LLe ITNative) [l, r] = v ++ "INTOP(<=," ++ creg l ++ ", " ++ creg r ++ ")"
-doOp v (LGt ITNative) [l, r] = v ++ "INTOP(>," ++ creg l ++ ", " ++ creg r ++ ")"
-doOp v (LGe ITNative) [l, r] = v ++ "INTOP(>=," ++ creg l ++ ", " ++ creg r ++ ")"
+doOp v (LEq (ATInt ITNative)) [l, r] = v ++ "INTOP(==," ++ creg l ++ ", " ++ creg r ++ ")"
+doOp v (LLt (ATInt ITNative)) [l, r] = v ++ "INTOP(<," ++ creg l ++ ", " ++ creg r ++ ")"
+doOp v (LLe (ATInt ITNative)) [l, r] = v ++ "INTOP(<=," ++ creg l ++ ", " ++ creg r ++ ")"
+doOp v (LGt (ATInt ITNative)) [l, r] = v ++ "INTOP(>," ++ creg l ++ ", " ++ creg r ++ ")"
+doOp v (LGe (ATInt ITNative)) [l, r] = v ++ "INTOP(>=," ++ creg l ++ ", " ++ creg r ++ ")"
 
-doOp v LFPlus [l, r] = v ++ "FLOATOP(+," ++ creg l ++ ", " ++ creg r ++ ")"
-doOp v LFMinus [l, r] = v ++ "FLOATOP(-," ++ creg l ++ ", " ++ creg r ++ ")"
-doOp v LFTimes [l, r] = v ++ "FLOATOP(*," ++ creg l ++ ", " ++ creg r ++ ")"
-doOp v LFDiv [l, r] = v ++ "FLOATOP(/," ++ creg l ++ ", " ++ creg r ++ ")"
-doOp v LFEq [l, r] = v ++ "FLOATBOP(==," ++ creg l ++ ", " ++ creg r ++ ")"
-doOp v LFLt [l, r] = v ++ "FLOATBOP(<," ++ creg l ++ ", " ++ creg r ++ ")"
-doOp v LFLe [l, r] = v ++ "FLOATBOP(<=," ++ creg l ++ ", " ++ creg r ++ ")"
-doOp v LFGt [l, r] = v ++ "FLOATBOP(>," ++ creg l ++ ", " ++ creg r ++ ")"
-doOp v LFGe [l, r] = v ++ "FLOATBOP(>=," ++ creg l ++ ", " ++ creg r ++ ")"
+doOp v (LPlus ATFloat) [l, r] = v ++ "FLOATOP(+," ++ creg l ++ ", " ++ creg r ++ ")"
+doOp v (LMinus ATFloat) [l, r] = v ++ "FLOATOP(-," ++ creg l ++ ", " ++ creg r ++ ")"
+doOp v (LTimes ATFloat) [l, r] = v ++ "FLOATOP(*," ++ creg l ++ ", " ++ creg r ++ ")"
+doOp v (LSDiv ATFloat) [l, r] = v ++ "FLOATOP(/," ++ creg l ++ ", " ++ creg r ++ ")"
+doOp v (LEq ATFloat) [l, r] = v ++ "FLOATBOP(==," ++ creg l ++ ", " ++ creg r ++ ")"
+doOp v (LLt ATFloat) [l, r] = v ++ "FLOATBOP(<," ++ creg l ++ ", " ++ creg r ++ ")"
+doOp v (LLe ATFloat) [l, r] = v ++ "FLOATBOP(<=," ++ creg l ++ ", " ++ creg r ++ ")"
+doOp v (LGt ATFloat) [l, r] = v ++ "FLOATBOP(>," ++ creg l ++ ", " ++ creg r ++ ")"
+doOp v (LGe ATFloat) [l, r] = v ++ "FLOATBOP(>=," ++ creg l ++ ", " ++ creg r ++ ")"
 
 doOp v (LIntFloat ITBig) [x] = v ++ "idris_castBigFloat(vm, " ++ creg x ++ ")"
 doOp v (LFloatInt ITBig) [x] = v ++ "idris_castFloatBig(vm, " ++ creg x ++ ")"
-doOp v (LPlus ITBig) [l, r] = v ++ "idris_bigPlus(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
-doOp v (LMinus ITBig) [l, r] = v ++ "idris_bigMinus(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
-doOp v (LTimes ITBig) [l, r] = v ++ "idris_bigTimes(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
-doOp v (LSDiv ITBig) [l, r] = v ++ "idris_bigDivide(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
-doOp v (LSRem ITBig) [l, r] = v ++ "idris_bigMod(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
-doOp v (LEq ITBig) [l, r] = v ++ "idris_bigEq(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
-doOp v (LLt ITBig) [l, r] = v ++ "idris_bigLt(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
-doOp v (LLe ITBig) [l, r] = v ++ "idris_bigLe(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
-doOp v (LGt ITBig) [l, r] = v ++ "idris_bigGt(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
-doOp v (LGe ITBig) [l, r] = v ++ "idris_bigGe(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
+doOp v (LPlus (ATInt ITBig)) [l, r] = v ++ "idris_bigPlus(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
+doOp v (LMinus (ATInt ITBig)) [l, r] = v ++ "idris_bigMinus(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
+doOp v (LTimes (ATInt ITBig)) [l, r] = v ++ "idris_bigTimes(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
+doOp v (LSDiv (ATInt ITBig)) [l, r] = v ++ "idris_bigDivide(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
+doOp v (LSRem (ATInt ITBig)) [l, r] = v ++ "idris_bigMod(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
+doOp v (LEq (ATInt ITBig)) [l, r] = v ++ "idris_bigEq(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
+doOp v (LLt (ATInt ITBig)) [l, r] = v ++ "idris_bigLt(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
+doOp v (LLe (ATInt ITBig)) [l, r] = v ++ "idris_bigLe(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
+doOp v (LGt (ATInt ITBig)) [l, r] = v ++ "idris_bigGt(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
+doOp v (LGe (ATInt ITBig)) [l, r] = v ++ "idris_bigGe(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
 
 doOp v LStrConcat [l,r] = v ++ "idris_concat(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
 doOp v LStrLt [l,r] = v ++ "idris_strlt(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
@@ -318,43 +320,52 @@ doOp v LReadStr [x] = v ++ "idris_readStr(vm, GETPTR(" ++ creg x ++ "))"
 doOp _ LPrintNum [x] = "printf(\"%ld\\n\", GETINT(" ++ creg x ++ "))"
 doOp _ LPrintStr [x] = "fputs(GETSTR(" ++ creg x ++ "), stdout)"
 
-doOp v (LLt ty) [x, y] = bitOp v "Lt" ty [x, y]
-doOp v (LLe ty) [x, y] = bitOp v "Lte" ty [x, y]
-doOp v (LEq ty) [x, y] = bitOp v "Eq" ty [x, y]
-doOp v (LGe ty) [x, y] = bitOp v "Gte" ty [x, y]
-doOp v (LGt ty) [x, y] = bitOp v "Gt" ty [x, y]
+doOp v (LLt (ATInt (ITFixed ty))) [x, y] = bitOp v "Lt" ty [x, y]
+doOp v (LLe (ATInt (ITFixed ty))) [x, y] = bitOp v "Lte" ty [x, y]
+doOp v (LEq (ATInt (ITFixed ty))) [x, y] = bitOp v "Eq" ty [x, y]
+doOp v (LGe (ATInt (ITFixed ty))) [x, y] = bitOp v "Gte" ty [x, y]
+doOp v (LGt (ATInt (ITFixed ty))) [x, y] = bitOp v "Gt" ty [x, y]
 
-doOp v (LSHL ty) [x, y] = bitOp v "Shl" ty [x, y]
-doOp v (LLSHR ty) [x, y] = bitOp v "LShr" ty [x, y]
-doOp v (LASHR ty) [x, y] = bitOp v "AShr" ty [x, y]
-doOp v (LAnd ty) [x, y] = bitOp v "And" ty [x, y]
-doOp v (LOr ty) [x, y] = bitOp v "Or" ty [x, y]
-doOp v (LXOr ty) [x, y] = bitOp v "Xor" ty [x, y]
-doOp v (LCompl ty) [x] = bitOp v "Compl" ty [x]
+doOp v (LSHL (ITFixed ty)) [x, y] = bitOp v "Shl" ty [x, y]
+doOp v (LLSHR (ITFixed ty)) [x, y] = bitOp v "LShr" ty [x, y]
+doOp v (LASHR (ITFixed ty)) [x, y] = bitOp v "AShr" ty [x, y]
+doOp v (LAnd (ITFixed ty)) [x, y] = bitOp v "And" ty [x, y]
+doOp v (LOr (ITFixed ty)) [x, y] = bitOp v "Or" ty [x, y]
+doOp v (LXOr (ITFixed ty)) [x, y] = bitOp v "Xor" ty [x, y]
+doOp v (LCompl (ITFixed ty)) [x] = bitOp v "Compl" ty [x]
 
-doOp v (LPlus ty) [x, y] = bitOp v "Plus" ty [x, y]
-doOp v (LMinus ty) [x, y] = bitOp v "Minus" ty [x, y]
-doOp v (LTimes ty) [x, y] = bitOp v "Times" ty [x, y]
-doOp v (LUDiv ty) [x, y] = bitOp v "UDiv" ty [x, y]
-doOp v (LSDiv ty) [x, y] = bitOp v "SDiv" ty [x, y]
-doOp v (LURem ty) [x, y] = bitOp v "URem" ty [x, y]
-doOp v (LSRem ty) [x, y] = bitOp v "SRem" ty [x, y]
+doOp v (LPlus (ATInt (ITFixed ty))) [x, y] = bitOp v "Plus" ty [x, y]
+doOp v (LMinus (ATInt (ITFixed ty))) [x, y] = bitOp v "Minus" ty [x, y]
+doOp v (LTimes (ATInt (ITFixed ty))) [x, y] = bitOp v "Times" ty [x, y]
+doOp v (LUDiv (ITFixed ty)) [x, y] = bitOp v "UDiv" ty [x, y]
+doOp v (LSDiv (ATInt (ITFixed ty))) [x, y] = bitOp v "SDiv" ty [x, y]
+doOp v (LURem (ITFixed ty)) [x, y] = bitOp v "URem" ty [x, y]
+doOp v (LSRem (ATInt (ITFixed ty))) [x, y] = bitOp v "SRem" ty [x, y]
 
-doOp v (LSExt from ITBig) [x] = v ++ "MKBIGSI(vm, (" ++ signedTy from ++ ")" ++ creg x ++ "->info.bits" ++ show (intTyWidth from) ++ ")"
-doOp v (LSExt ITNative to) [x] = v ++ "idris_b" ++ show (intTyWidth to) ++ "const(vm, GETINT(" ++ creg x ++ "))"
-doOp v (LSExt from ITNative) [x] = v ++ "MKINT((i_int)((" ++ signedTy from ++ ")" ++ creg x ++ "->info.bits" ++ show (intTyWidth from) ++ "))"
-doOp v (LSExt from to) [x]
-    | intTyWidth from < intTyWidth to = bitCoerce v "S" from to x
-doOp v (LZExt ITNative to) [x] = v ++ "idris_b" ++ show (intTyWidth to) ++ "const(vm, (uintptr_t)GETINT(" ++ creg x ++ ")"
-doOp v (LZExt from ITNative) [x] = v ++ "MKINT((i_int)" ++ creg x ++ "->info.bits" ++ show (intTyWidth from) ++ ")"
-doOp v (LZExt from ITBig) [x] = v ++ "MKBIGUI(vm, " ++ creg x ++ "->info.bits" ++ show (intTyWidth from) ++ ")"
-doOp v (LZExt from to) [x]
-    | intTyWidth from < intTyWidth to = bitCoerce v "Z" from to x
-doOp v (LTrunc ITNative to) [x] = v ++ "idris_b" ++ show (intTyWidth to) ++ "const(vm, GETINT(" ++ creg x ++ "))"
-doOp v (LTrunc from ITNative) [x] = v ++ "MKINT((i_int)" ++ creg x ++ "->info.bits" ++ show (intTyWidth from) ++ ")"
-doOp v (LTrunc ITBig to) [x] = v ++ "idris_b" ++ show (intTyWidth to) ++ "const(vm, ISINT(" ++ creg x ++ ") ? GETINT(" ++ creg x ++ ") : mpz_get_ui(GETMPZ(" ++ creg x ++ ")))"
-doOp v (LTrunc from to) [x]
-    | intTyWidth from > intTyWidth to = bitCoerce v "T" from to x
+doOp v (LSExt (ITFixed from) ITBig) [x]
+    = v ++ "MKBIGSI(vm, (" ++ signedTy from ++ ")" ++ creg x ++ "->info.bits" ++ show (nativeTyWidth from) ++ ")"
+doOp v (LSExt ITNative (ITFixed to)) [x]
+    = v ++ "idris_b" ++ show (nativeTyWidth to) ++ "const(vm, GETINT(" ++ creg x ++ "))"
+doOp v (LSExt (ITFixed from) ITNative) [x]
+    = v ++ "MKINT((i_int)((" ++ signedTy from ++ ")" ++ creg x ++ "->info.bits" ++ show (nativeTyWidth from) ++ "))"
+doOp v (LSExt (ITFixed from) (ITFixed to)) [x]
+    | nativeTyWidth from < nativeTyWidth to = bitCoerce v "S" from to x
+doOp v (LZExt ITNative (ITFixed to)) [x]
+    = v ++ "idris_b" ++ show (nativeTyWidth to) ++ "const(vm, (uintptr_t)GETINT(" ++ creg x ++ ")"
+doOp v (LZExt (ITFixed from) ITNative) [x]
+    = v ++ "MKINT((i_int)" ++ creg x ++ "->info.bits" ++ show (nativeTyWidth from) ++ ")"
+doOp v (LZExt (ITFixed from) ITBig) [x]
+    = v ++ "MKBIGUI(vm, " ++ creg x ++ "->info.bits" ++ show (nativeTyWidth from) ++ ")"
+doOp v (LZExt (ITFixed from) (ITFixed to)) [x]
+    | nativeTyWidth from < nativeTyWidth to = bitCoerce v "Z" from to x
+doOp v (LTrunc ITNative (ITFixed to)) [x]
+    = v ++ "idris_b" ++ show (nativeTyWidth to) ++ "const(vm, GETINT(" ++ creg x ++ "))"
+doOp v (LTrunc (ITFixed from) ITNative) [x]
+    = v ++ "MKINT((i_int)" ++ creg x ++ "->info.bits" ++ show (nativeTyWidth from) ++ ")"
+doOp v (LTrunc ITBig (ITFixed to)) [x]
+    = v ++ "idris_b" ++ show (nativeTyWidth to) ++ "const(vm, ISINT(" ++ creg x ++ ") ? GETINT(" ++ creg x ++ ") : mpz_get_ui(GETMPZ(" ++ creg x ++ ")))"
+doOp v (LTrunc (ITFixed from) (ITFixed to)) [x]
+    | nativeTyWidth from > nativeTyWidth to = bitCoerce v "T" from to x
 
 doOp v LFExp [x] = v ++ flUnOp "exp" (creg x)
 doOp v LFLog [x] = v ++ flUnOp "log" (creg x)

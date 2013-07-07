@@ -30,8 +30,8 @@ import System.FilePath ((</>), addTrailingPathSeparator)
 
 import Paths_idris
 
-compile :: Target -> FilePath -> Term -> Idris ()
-compile target f tm 
+compile :: Codegen -> FilePath -> Term -> Idris ()
+compile codegen f tm
    = do checkMVs
         let tmnames = namesUsed (STerm tm)
         usedIn <- mapM (allNames []) tmnames
@@ -39,9 +39,9 @@ compile target f tm
         defsIn <- mkDecls tm (concat used)
         findUnusedArgs (concat used)
         maindef <- irMain tm
-        objs <- getObjectFiles target
-        libs <- getLibs target
-        hdrs <- getHdrs target
+        objs <- getObjectFiles codegen
+        libs <- getLibs codegen
+        hdrs <- getHdrs codegen
         let defs = defsIn ++ [(MN 0 "runMain", maindef)]
         -- iputStrLn $ showSep "\n" (map show defs)
         let (nexttag, tagged) = addTags 65536 (liftAll defs)
@@ -64,9 +64,12 @@ compile target f tm
         case dumpDefun of
             Nothing -> return ()
             Just f -> liftIO $ writeFile f (dumpDefuns defuns)
+        triple <- targetTriple
+        cpu <- targetCPU
+        optimize <- optLevel
         iLOG "Building output"
         case checked of
-            OK c -> liftIO $ case target of
+            OK c -> liftIO $ case codegen of
                                   ViaC ->
                                     codegenC c f outty hdrs
                                       (concatMap mkObj objs)
@@ -77,7 +80,7 @@ compile target f tm
                                     codegenJavaScript JavaScript c f outty
                                   ViaNode ->
                                     codegenJavaScript Node c f outty
-                                  ViaLLVM -> codegenLLVM c f outty
+                                  ViaLLVM -> codegenLLVM c triple cpu optimize f outty
 
                                   Bytecode -> dumpBC c f
             Error e -> fail $ show e 
@@ -296,7 +299,7 @@ mkIty' _ = FAny
 -- would be better if these FInt types were evaluated at compile time
 -- TODO: add %eval directive for such things
 
-mkIty "FFloat"      = FDouble
+mkIty "FFloat"      = FArith ATFloat
 mkIty "FInt"        = mkIntIty "ITNative"
 mkIty "FChar"       = mkIntIty "IT8"
 mkIty "FShort"      = mkIntIty "IT16"
@@ -308,11 +311,11 @@ mkIty "FFunction"   = FFunction
 mkIty "FFunctionIO" = FFunctionIO
 mkIty x             = error $ "Unknown type " ++ x
 
-mkIntIty "ITNative" = FInt ITNative
-mkIntIty "IT8"  = FInt IT8
-mkIntIty "IT16" = FInt IT16
-mkIntIty "IT32" = FInt IT32
-mkIntIty "IT64" = FInt IT64
+mkIntIty "ITNative" = FArith (ATInt ITNative)
+mkIntIty "IT8"  = FArith (ATInt (ITFixed IT8))
+mkIntIty "IT16" = FArith (ATInt (ITFixed IT16))
+mkIntIty "IT32" = FArith (ATInt (ITFixed IT32))
+mkIntIty "IT64" = FArith (ATInt (ITFixed IT64))
 
 zname = NS (UN "O") ["Nat","Prelude"] 
 sname = NS (UN "S") ["Nat","Prelude"] 
@@ -366,15 +369,15 @@ instance ToIR SC where
         matchable (Str _) = True
         matchable _ = False
 
-        matchableTy IType = True
-        matchableTy BIType = True
+        matchableTy (AType (ATInt ITNative)) = True
+        matchableTy (AType (ATInt ITBig)) = True
         matchableTy ChType = True
         matchableTy StrType = True
 
-        matchableTy B8Type  = True
-        matchableTy B16Type = True
-        matchableTy B32Type = True
-        matchableTy B64Type = True
+        matchableTy (AType (ATInt (ITFixed IT8)))  = True
+        matchableTy (AType (ATInt (ITFixed IT16))) = True
+        matchableTy (AType (ATInt (ITFixed IT32))) = True
+        matchableTy (AType (ATInt (ITFixed IT64))) = True
 
         matchableTy _ = False
 

@@ -329,11 +329,16 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
 
     findConst c [] = Nothing
     findConst c (ConstCase c' v : xs) | c == c' = Just v
-    findConst IType   (ConCase n 1 [] v : xs) = Just v 
-    findConst FlType  (ConCase n 2 [] v : xs) = Just v 
+    findConst (AType (ATInt ITNative)) (ConCase n 1 [] v : xs) = Just v
+    findConst (AType ATFloat) (ConCase n 2 [] v : xs) = Just v
     findConst ChType  (ConCase n 3 [] v : xs) = Just v 
     findConst StrType (ConCase n 4 [] v : xs) = Just v 
-    findConst PtrType (ConCase n 5 [] v : xs) = Just v 
+    findConst PtrType (ConCase n 5 [] v : xs) = Just v
+    findConst (AType (ATInt ITBig)) (ConCase n 6 [] v : xs) = Just v 
+    findConst (AType (ATInt (ITFixed ity))) (ConCase n tag [] v : xs)
+        | tag == 7 + fromEnum ity = Just v
+    findConst (AType (ATInt (ITVec ity count))) (ConCase n tag [] v : xs)
+        | tag == (fromEnum ity + 1) * 1000 + count = Just v
     findConst c (_ : xs) = findConst c xs
 
     getValArgs tm = getValArgs' tm []
@@ -517,16 +522,16 @@ eval_hnf ctxt statics genv tm = ev [] tm where
 
     findConst c [] = Nothing
     findConst c (ConstCase c' v : xs) | c == c' = Just v
-    findConst IType   (ConCase n 1 [] v : xs) = Just v 
-    findConst FlType  (ConCase n 2 [] v : xs) = Just v 
+    findConst (AType (ATInt ITNative)) (ConCase n 1 [] v : xs) = Just v
+    findConst (AType ATFloat) (ConCase n 2 [] v : xs) = Just v
     findConst ChType  (ConCase n 3 [] v : xs) = Just v 
     findConst StrType (ConCase n 4 [] v : xs) = Just v 
     findConst PtrType (ConCase n 5 [] v : xs) = Just v 
-    findConst BIType  (ConCase n 6 [] v : xs) = Just v
-    findConst B8Type  (ConCase n 7 [] v : xs) = Just v
-    findConst B16Type (ConCase n 8 [] v : xs) = Just v
-    findConst B32Type (ConCase n 9 [] v : xs) = Just v
-    findConst B64Type (ConCase n 10 [] v : xs) = Just v
+    findConst (AType (ATInt ITBig)) (ConCase n 6 [] v : xs) = Just v 
+    findConst (AType (ATInt (ITFixed ity))) (ConCase n tag [] v : xs)
+        | tag == 7 + fromEnum ity = Just v
+    findConst (AType (ATInt (ITVec ity count))) (ConCase n tag [] v : xs)
+        | tag == (fromEnum ity + 1) * 1000 + count = Just v
     findConst c (_ : xs) = findConst c xs
 
     getValArgs (HApp t env args) = (t, env, args)
