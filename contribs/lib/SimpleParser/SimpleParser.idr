@@ -14,10 +14,9 @@ import Builtins
 %access public
 
 
-{-
-The monad of parsers
---------------------
--}
+--------------------------------------------------------------------------------
+-- The monad of parsers
+--------------------------------------------------------------------------------
 
 data Parser a = P (String -> Either String (a, String))
 
@@ -25,23 +24,17 @@ parse : Parser a -> String -> Either String (a, String)
 parse (P p) inp = p inp
 
 instance Functor Parser where
-  -- fmap : (a -> b) -> f a -> f b
-  -- fmap : (a -> b) -> Parser a -> Parser b
-  -- Given a function (a -> b), and a parser a, make a parser b
   fmap f p = P (\inp => case parse p inp of
                           Left err        => Left err
-                          -- Apply f to the v that we got from parsing
                           Right (v, rest) => Right ((f v), rest))
 
 instance Applicative Parser where
   pure v  = P (\inp => Right (v, inp))
-  -- Parse to get the function, then parse to get the first argument
   a <$> b = P (\inp => do (f, rest) <- parse a inp
                           (x, rest') <- parse b rest
                           pure ((f x), rest'))
 
 instance Monad Parser where
-  -- m a -> (a -> m b) -> m b
   p >>= f = P (\inp => case parse p inp of
                          Left err       => Left err
                          Right (v,rest) => parse (f v) rest)
@@ -53,10 +46,9 @@ instance Alternative Parser where
                          Right (v,out) => Right (v,out))
 
 
-{-
-Basic parsers
--------------
--}
+--------------------------------------------------------------------------------
+-- Basic parsers
+--------------------------------------------------------------------------------
 
 failure : String -> Parser a
 failure msg = P (\inp => Left msg)
@@ -67,9 +59,9 @@ item = P (\inp => case unpack inp of
                     (x::xs) => Right (x, pack xs))
 
 
---{-
---Derived primitives
----}
+--------------------------------------------------------------------------------
+-- Derived primitives
+--------------------------------------------------------------------------------
 
 sat : (Char -> Bool) -> Parser Char
 sat p = item >>= (\x => if p x then pure x else failure "failed")
@@ -132,9 +124,11 @@ int = neg <|> nat
 space : Parser ()
 space = do many (sat isSpace)
            pure ()
---{-
---Ignoring spacing
----}
+
+
+--------------------------------------------------------------------------------
+-- Ignoring spacing
+--------------------------------------------------------------------------------
 
 token : Parser a -> Parser a
 token p = do space
@@ -157,12 +151,10 @@ symbol xs = token (string xs)
 strToken : Parser String
 strToken = fmap pack (token (many1 alphanum))
 
---apply                           : Parser a -> String -> List (a,String)
---apply p                     = parse (space >>= (\_ => p))
 
---{-
+--------------------------------------------------------------------------------
 -- Expressions
----}
+--------------------------------------------------------------------------------
 
 expr   : Parser Int
 factor : Parser Int
