@@ -64,7 +64,9 @@ item = P (\inp => case unpack inp of
 --------------------------------------------------------------------------------
 
 sat : (Char -> Bool) -> Parser Char
-sat p = item >>= (\x => if p x then pure x else failure "failed")
+sat p = do x <- item
+           guard (p x)
+           pure x
 
 oneof : List Char -> Parser Char
 oneof xs = sat (\x => elem x xs)
@@ -88,7 +90,7 @@ char : Char -> Parser Char
 char x = sat (== x)
 
 string : String -> Parser String
-string s = [| pack (traverse char (unpack s)) |]
+string s = fmap pack (traverse char (unpack s))
 
 many1 : Parser a -> Parser (List a)
 many : Parser a -> Parser (List a)
@@ -131,10 +133,7 @@ space = do many (sat isSpace)
 --------------------------------------------------------------------------------
 
 token : Parser a -> Parser a
-token p = do space
-             v <- p
-             space
-             pure v
+token p = space $> p <$ space
 
 identifier : Parser String
 identifier = token ident
