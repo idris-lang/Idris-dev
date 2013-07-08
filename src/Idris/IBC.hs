@@ -24,7 +24,7 @@ import Debug.Trace
 import Paths_idris
 
 ibcVersion :: Word8
-ibcVersion = 30
+ibcVersion = 31
 
 data IBCFile = IBCFile { ver :: Word8,
                          sourcefile :: FilePath,
@@ -387,7 +387,7 @@ instance Binary Const where
                 (AType (ATInt ITNative)) -> putWord8 9
                 (AType (ATInt ITBig)) -> putWord8 10
                 (AType ATFloat) -> putWord8 11
-                ChType -> putWord8 12
+                (AType (ATInt ITChar)) -> putWord8 12
                 StrType -> putWord8 13
                 PtrType -> putWord8 14
                 Forgot -> putWord8 15
@@ -422,7 +422,7 @@ instance Binary Const where
                    9 -> return (AType (ATInt ITNative))
                    10 -> return (AType (ATInt ITBig))
                    11 -> return (AType ATFloat)
-                   12 -> return ChType
+                   12 -> return (AType (ATInt ITChar))
                    13 -> return StrType
                    14 -> return PtrType
                    15 -> return Forgot

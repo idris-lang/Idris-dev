@@ -286,7 +286,7 @@ instance Pretty NativeTy where
     pretty IT32 = text "Bits32"
     pretty IT64 = text "Bits64"
 
-data IntTy = ITFixed NativeTy | ITNative | ITBig
+data IntTy = ITFixed NativeTy | ITNative | ITBig | ITChar
            | ITVec NativeTy Int
     deriving (Show, Eq, Ord)
 
@@ -296,6 +296,7 @@ data ArithTy = ATInt IntTy | ATFloat -- TODO: Float vectors
 instance Pretty ArithTy where
     pretty (ATInt ITNative) = text "Int"
     pretty (ATInt ITBig) = text "BigInt"
+    pretty (ATInt ITChar) = text "Char"
     pretty (ATInt (ITFixed n)) = pretty n
     pretty (ATInt (ITVec e c)) = pretty e <> text "x" <> (text . show $ c)
     pretty ATFloat = text "Float"
@@ -310,13 +311,14 @@ nativeTyWidth IT64 = 64
 intTyWidth :: IntTy -> Int
 intTyWidth (ITFixed n) = nativeTyWidth n
 intTyWidth ITNative = 8 * sizeOf (0 :: Int)
+intTyWidth ITChar = error "IRTS.Lang.intTyWidth: Characters have platform and backend dependent width"
 intTyWidth ITBig = error "IRTS.Lang.intTyWidth: Big integers have variable width"
 
 data Const = I Int | BI Integer | Fl Double | Ch Char | Str String 
            | B8 Word8 | B16 Word16 | B32 Word32 | B64 Word64
            | B8V (Vector Word8) | B16V (Vector Word16)
            | B32V (Vector Word32) | B64V (Vector Word64)
-           | AType ArithTy | ChType | StrType
+           | AType ArithTy | StrType
            | PtrType | VoidType | Forgot
   deriving (Eq, Ord)
 {-! 
@@ -333,7 +335,6 @@ instance Pretty Const where
   pretty (Ch c) = text . show $ c
   pretty (Str s) = text s
   pretty (AType a) = pretty a
-  pretty ChType = text "Char"
   pretty StrType = text "String"
   pretty PtrType = text "Ptr"
   pretty VoidType = text "Void"
@@ -781,9 +782,9 @@ instance Show Const where
     show (AType ATFloat) = "Float"
     show (AType (ATInt ITBig)) = "Integer"
     show (AType (ATInt ITNative)) = "Int"
+    show (AType (ATInt ITChar)) = "Char"
     show (AType (ATInt (ITFixed it))) = itBitsName it
     show (AType (ATInt (ITVec it c))) = itBitsName it ++ "x" ++ show c
-    show ChType = "Char"
     show StrType = "String"
     show PtrType = "Ptr"
     show VoidType = "Void"

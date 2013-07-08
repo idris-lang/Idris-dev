@@ -1141,7 +1141,7 @@ pIdiom syn
 pConstant :: IParser Const
 pConstant = do reserved "Integer";return (AType (ATInt ITBig))
         <|> do reserved "Int";    return (AType (ATInt ITNative))
-        <|> do reserved "Char";   return ChType
+        <|> do reserved "Char";   return (AType (ATInt ITChar))
         <|> do reserved "Float";  return (AType ATFloat)
         <|> do reserved "String"; return StrType
         <|> do reserved "Ptr";    return PtrType
