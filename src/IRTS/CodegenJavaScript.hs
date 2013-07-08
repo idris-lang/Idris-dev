@@ -20,6 +20,7 @@ import System.Directory
 
 idrNamespace :: String
 idrNamespace = "__IDR__"
+idrRTNamespace = "__IDRRT__"
 
 data JSTarget = Node | JavaScript deriving Eq
 
@@ -129,16 +130,16 @@ translateName (MN i name) = translateIdentifier name ++ show i
 
 translateConstant :: Const -> String
 translateConstant (I i)   = show i
-translateConstant (BI i)  = "__IDRRT__bigInt('" ++ show i ++ "')"
+translateConstant (BI i)  = idrRTNamespace ++ "bigInt('" ++ show i ++ "')"
 translateConstant (Fl f)  = show f
 translateConstant (Ch c)  = show c
 translateConstant (Str s) = show s
-translateConstant (AType (ATInt ITNative)) = "__IDRRT__Int"
-translateConstant StrType = "__IDRRT__String"
-translateConstant (AType (ATInt ITBig)) = "__IDRRT__Integer"
-translateConstant (AType ATFloat)  = "__IDRRT__Float"
-translateConstant PtrType = "__IDRRT__Ptr"
-translateConstant Forgot  = "__IDRRT__Forgot"
+translateConstant (AType (ATInt ITNative)) = idrRTNamespace ++ "Int"
+translateConstant StrType = idrRTNamespace ++ "String"
+translateConstant (AType (ATInt ITBig)) = idrRTNamespace ++ "Integer"
+translateConstant (AType ATFloat)  = idrRTNamespace ++ "Float"
+translateConstant PtrType = idrRTNamespace ++ "Ptr"
+translateConstant Forgot  = idrRTNamespace ++ "Forgot"
 translateConstant c       =
   "(function(){throw 'Unimplemented Const: " ++ show c ++ "';})()"
 
@@ -195,7 +196,7 @@ translateExpression (SApp False name vars) =
   createTailcall $ translateFunctionCall name vars
 
 translateExpression (SApp True name vars) =
-     "new __IDRRT__Tailcall("
+     "new " ++ idrRTNamespace ++ "Tailcall("
   ++ "function(){\n"
   ++ "return " ++ translateFunctionCall name vars
   ++ ";\n})"
@@ -290,13 +291,13 @@ translateExpression (SOp op vars)
   | (LIntStr ITNative) <- op
   , (arg:_)     <- vars = "String(" ++ translateVariableName arg ++ ")"
   | (LSExt ITNative ITBig) <- op
-  , (arg:_)     <- vars = "__IDRRT__bigInt(" ++ translateVariableName arg ++ ")"
+  , (arg:_)     <- vars = idrRTNamespace ++ "bigInt(" ++ translateVariableName arg ++ ")"
   | (LTrunc ITBig ITNative) <- op
   , (arg:_)     <- vars = translateVariableName arg ++ ".valueOf()"
   | (LIntStr ITBig) <- op
   , (arg:_)     <- vars = translateVariableName arg ++ ".toString()"
   | (LStrInt ITBig) <- op
-  , (arg:_)     <- vars = "__IDRRT__bigInt(" ++ translateVariableName arg ++ ")"
+  , (arg:_)     <- vars = idrRTNamespace ++ "bigInt(" ++ translateVariableName arg ++ ")"
   | LFloatStr   <- op
   , (arg:_)     <- vars = "String(" ++ translateVariableName arg ++ ")"
   | LStrFloat   <- op
@@ -359,7 +360,7 @@ translateExpression (SError msg) =
   "(function(){throw \'" ++ msg ++ "\';})()"
 
 translateExpression (SForeign _ _ "putStr" [(FString, var)]) =
-  "__IDRRT__print(" ++ translateVariableName var ++ ")"
+  idrRTNamespace ++ "print(" ++ translateVariableName var ++ ")"
 
 translateExpression (SForeign _ _ fun args)
   | "[]=" `isSuffixOf` fun
@@ -415,8 +416,8 @@ translateExpression (SForeign _ _ fun args)
       '(' : intercalate "," (map generateWrapper as) ++ ")"
 
     generateWrapper (ffunc, name)
-      | FFunction   <- ffunc = "__IDRRT__ffiWrap(" ++ translateVariableName name ++ ")"
-      | FFunctionIO <- ffunc = "__IDRRT__ffiWrap(" ++ translateVariableName name ++ ")"
+      | FFunction   <- ffunc = idrRTNamespace ++ "ffiWrap(" ++ translateVariableName name ++ ")"
+      | FFunctionIO <- ffunc = idrRTNamespace ++ "ffiWrap(" ++ translateVariableName name ++ ")"
 
     generateWrapper (_, name) =
       translateVariableName name
@@ -436,7 +437,7 @@ translateExpression (SCase var cases) =
   ++ ")"
 
 translateExpression (SCon i name vars) =
-  concat [ "new __IDRRT__Con("
+  concat [ "new " ++ idrRTNamespace ++ "Con("
          , show i
          , ",["
          , intercalate "," $ map translateVariableName vars
@@ -472,7 +473,7 @@ translateCase var (SConstCase ty e)
     matchHelper tyName = translateTypeMatch var tyName e
 
 translateCase var (SConstCase cst@(BI _) e) =
-  let cond = "__IDRRT__bigInt(" ++ var ++ ").equals(" ++ translateConstant cst ++ ")" in
+  let cond = idrRTNamespace ++ "bigInt(" ++ var ++ ").equals(" ++ translateConstant cst ++ ")" in
       createIfBlock cond (translateExpression e)
 
 translateCase var (SConstCase cst e) =
@@ -480,7 +481,7 @@ translateCase var (SConstCase cst e) =
       createIfBlock cond (translateExpression e)
 
 translateCase var (SConCase a i name vars e) =
-  let isCon = var ++ " instanceof __IDRRT__Con"
+  let isCon = var ++ " instanceof " ++ idrRTNamespace ++ "Con"
       isI = show i ++ " == " ++ var ++ ".i"
       params = intercalate "," $ map (("__var_" ++) . show) [a..(a+length vars)]
       args = ".apply(this," ++ var ++ ".vars)"
@@ -495,7 +496,7 @@ translateTypeMatch :: String -> String -> SExp -> String
 translateTypeMatch var ty exp =
   let e = translateExpression exp in
       createIfBlock (var
-                  ++ " instanceof __IDRRT__Type && "
+                  ++ " instanceof " ++ idrRTNamespace ++ "Type && "
                   ++ var ++ ".type == '"++ ty ++"'") e
 
 
@@ -505,7 +506,7 @@ createIfBlock cond e =
   ++ ";\n}"
 
 createTailcall call =
-  "__IDRRT__tailcall(function(){return " ++ call ++ "})"
+  idrRTNamespace ++ "tailcall(function(){return " ++ call ++ "})"
 
 translateFunctionCall name vars =
      concat (translateNamespace name)
