@@ -202,38 +202,6 @@ translateExpression (SApp True name vars) =
 
 translateExpression (SOp op vars)
   | LNoOp       <- op = translateVariableName (last vars) ++ "/* NOOP */"
-  | (LPlus _)   <- op
-  , (lhs:rhs:_) <- vars = translateBinaryOp "+" lhs rhs
-  | (LMinus _)  <- op
-  , (lhs:rhs:_) <- vars = translateBinaryOp "-" lhs rhs
-  | (LTimes _)  <- op
-  , (lhs:rhs:_) <- vars = translateBinaryOp "*" lhs rhs
-  | (LSDiv _)   <- op
-  , (lhs:rhs:_) <- vars = translateBinaryOp "/" lhs rhs
-  | (LSRem _)   <- op
-  , (lhs:rhs:_) <- vars = translateBinaryOp "%" lhs rhs
-  | (LEq _)     <- op
-  , (lhs:rhs:_) <- vars = translateBinaryOp "==" lhs rhs
-  | (LLt _)     <- op
-  , (lhs:rhs:_) <- vars = translateBinaryOp "<" lhs rhs
-  | (LLe _)     <- op
-  , (lhs:rhs:_) <- vars = translateBinaryOp "<=" lhs rhs
-  | (LGt _)     <- op 
-  , (lhs:rhs:_) <- vars = translateBinaryOp ">" lhs rhs
-  | (LGe _)     <- op
-  , (lhs:rhs:_) <- vars = translateBinaryOp ">=" lhs rhs
-  | (LAnd _)    <- op
-  , (lhs:rhs:_) <- vars = translateBinaryOp "&" lhs rhs
-  | (LOr _)     <- op
-  , (lhs:rhs:_) <- vars = translateBinaryOp "|" lhs rhs
-  | (LXOr _)    <- op
-  , (lhs:rhs:_) <- vars = translateBinaryOp "^" lhs rhs
-  | (LSHL _)    <- op
-  , (lhs:rhs:_) <- vars = translateBinaryOp "<<" rhs lhs
-  | (LASHR _)   <- op
-  , (lhs:rhs:_) <- vars = translateBinaryOp ">>" rhs lhs
-  | (LCompl _)  <- op
-  , (arg:_)     <- vars = '~' : translateVariableName arg
 
   | (LPlus (ATInt ITBig)) <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp ".add(" lhs rhs  ++ ")"
@@ -274,6 +242,39 @@ translateExpression (SOp op vars)
   , (lhs:rhs:_) <- vars = translateBinaryOp ">" lhs rhs
   | (LGe ATFloat) <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp ">=" lhs rhs
+
+  | (LPlus _)   <- op
+  , (lhs:rhs:_) <- vars = translateBinaryOp "+" lhs rhs
+  | (LMinus _)  <- op
+  , (lhs:rhs:_) <- vars = translateBinaryOp "-" lhs rhs
+  | (LTimes _)  <- op
+  , (lhs:rhs:_) <- vars = translateBinaryOp "*" lhs rhs
+  | (LSDiv _)   <- op
+  , (lhs:rhs:_) <- vars = translateBinaryOp "/" lhs rhs
+  | (LSRem _)   <- op
+  , (lhs:rhs:_) <- vars = translateBinaryOp "%" lhs rhs
+  | (LEq _)     <- op
+  , (lhs:rhs:_) <- vars = translateBinaryOp "==" lhs rhs
+  | (LLt _)     <- op
+  , (lhs:rhs:_) <- vars = translateBinaryOp "<" lhs rhs
+  | (LLe _)     <- op
+  , (lhs:rhs:_) <- vars = translateBinaryOp "<=" lhs rhs
+  | (LGt _)     <- op
+  , (lhs:rhs:_) <- vars = translateBinaryOp ">" lhs rhs
+  | (LGe _)     <- op
+  , (lhs:rhs:_) <- vars = translateBinaryOp ">=" lhs rhs
+  | (LAnd _)    <- op
+  , (lhs:rhs:_) <- vars = translateBinaryOp "&" lhs rhs
+  | (LOr _)     <- op
+  , (lhs:rhs:_) <- vars = translateBinaryOp "|" lhs rhs
+  | (LXOr _)    <- op
+  , (lhs:rhs:_) <- vars = translateBinaryOp "^" lhs rhs
+  | (LSHL _)    <- op
+  , (lhs:rhs:_) <- vars = translateBinaryOp "<<" rhs lhs
+  | (LASHR _)   <- op
+  , (lhs:rhs:_) <- vars = translateBinaryOp ">>" rhs lhs
+  | (LCompl _)  <- op
+  , (arg:_)     <- vars = '~' : translateVariableName arg
 
   | LStrConcat  <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp "+" lhs rhs
