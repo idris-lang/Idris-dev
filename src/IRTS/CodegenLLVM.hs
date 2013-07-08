@@ -732,7 +732,7 @@ cgConst c@(TT.B16V v) = box (FArith (ATInt (ITVec IT16 (V.length v)))) (Constant
 cgConst c@(TT.B32V v) = box (FArith (ATInt (ITVec IT32 (V.length v)))) (ConstantOperand $ cgConst' c)
 cgConst c@(TT.B64V v) = box (FArith (ATInt (ITVec IT64 (V.length v)))) (ConstantOperand $ cgConst' c)
 cgConst c@(TT.Fl _) = box (FArith ATFloat) (ConstantOperand $ cgConst' c)
-cgConst c@(TT.Ch _) = box FChar (ConstantOperand $ cgConst' c)
+cgConst c@(TT.Ch _) = box (FArith (ATInt ITChar)) (ConstantOperand $ cgConst' c)
 cgConst c@(TT.Str s) = do
   str <- addGlobal' (ArrayType (1 + fromIntegral (length s)) (IntegerType 8)) (cgConst' c)
   box FString (ConstantOperand $ C.GetElementPtr True str [C.Int 32 0, C.Int 32 0])
@@ -947,7 +947,7 @@ cgOp (LStrInt ity) [s] = do
 cgOp LStrConcat [x,y] = cgStrCat x y
 
 cgOp LStrCons [c,s] = do
-  nc <- unbox FChar c
+  nc <- unbox (FArith (ATInt ITChar)) c
   ns <- unbox FString s
   nc' <- inst $ Trunc nc (IntegerType 8) []
   r <- inst $ simpleCall "__idris_strCons" [nc', ns]
@@ -957,7 +957,7 @@ cgOp LStrHead [c] = do
   s <- unbox FString c
   c <- inst $ Load False s Nothing 0 []
   c' <- inst $ ZExt c (IntegerType 32) []
-  box FChar c'
+  box (FArith (ATInt ITChar)) c'
 
 cgOp LStrIndex [s, i] = do
   ns <- unbox FString s
@@ -965,7 +965,7 @@ cgOp LStrIndex [s, i] = do
   p <- inst $ GetElementPtr True ns [ni] []
   c <- inst $ Load False p Nothing 0 []
   c' <- inst $ ZExt c (IntegerType 32) []
-  box FChar c'
+  box (FArith (ATInt ITChar)) c'
 
 cgOp LStrTail [c] = do
   s <- unbox FString c

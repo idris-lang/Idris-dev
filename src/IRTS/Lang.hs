@@ -66,7 +66,6 @@ data FLang = LANG_C | LANG_JAVA FCallType
 data FType = FArith ArithTy
            | FFunction
            | FFunctionIO
-           | FChar
            | FString
            | FUnit
            | FPtr

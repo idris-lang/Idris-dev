@@ -233,7 +233,6 @@ c_irts (FArith (ATInt ITNative)) l x = l ++ "MKINT((i_int)(" ++ x ++ "))"
 c_irts (FArith (ATInt ITChar))  l x = c_irts (FArith (ATInt ITNative)) l x
 c_irts (FArith (ATInt (ITFixed ity))) l x
     = l ++ "idris_b" ++ show (nativeTyWidth ity) ++ "const(vm, " ++ x ++ ")"
-c_irts FChar l x = l ++ "MKINT((i_int)(" ++ x ++ "))"
 c_irts FString l x = l ++ "MKSTR(vm, " ++ x ++ ")"
 c_irts FUnit l x = x
 c_irts FPtr l x = l ++ "MKPTR(vm, " ++ x ++ ")"
@@ -244,7 +243,6 @@ irts_c (FArith (ATInt ITNative)) x = "GETINT(" ++ x ++ ")"
 irts_c (FArith (ATInt ITChar)) x = irts_c (FArith (ATInt ITNative)) x
 irts_c (FArith (ATInt (ITFixed ity))) x
     = "(" ++ x ++ "->info.bits" ++ show (nativeTyWidth ity) ++ ")"
-irts_c FChar x = "GETINT(" ++ x ++ ")"
 irts_c FString x = "GETSTR(" ++ x ++ ")"
 irts_c FUnit x = x
 irts_c FPtr x = "GETPTR(" ++ x ++ ")"
