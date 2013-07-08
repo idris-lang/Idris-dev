@@ -161,6 +161,7 @@ initDefs tgt =
     -- , exfun "llvm.llvm.memcpy.p0i8.p0i8.i32" VoidType [ptrI8, ptrI8, IntegerType 32, IntegerType 32, IntegerType 1] False
     -- , exfun "llvm.llvm.memcpy.p0i8.p0i8.i64" VoidType [ptrI8, ptrI8, IntegerType 64, IntegerType 32, IntegerType 1] False
     , exfun "memcpy" ptrI8 [ptrI8, ptrI8, intPtr] False
+    , exfun "llvm.invariant.start" (PointerType (StructureType False []) (AddrSpace 0)) [IntegerType 64, ptrI8] False
     , exfun "snprintf" (IntegerType 32) [ptrI8, intPtr, ptrI8] True
     , exfun "strcmp" (IntegerType 32) [ptrI8, ptrI8] False
     , exfun "strlen" intPtr [ptrI8] False
@@ -423,7 +424,8 @@ cgExpr (SCon tag name args) = do
   case sequence argSlots of
     Nothing -> return Nothing
     Just argVals -> do
-      con <- alloc . conType . fromIntegral . length $ argVals
+      let ty = conType . fromIntegral . length $ argVals
+      con <- alloc ty
       tagPtr <- inst $ GetElementPtr True con [ConstantOperand (C.Int 32 0), ConstantOperand (C.Int 32 0)] []
       inst' $ Store False tagPtr (ConstantOperand (C.Int 32 (fromIntegral tag))) Nothing 0 []
       forM_ (zip argVals [0..]) $ \(arg, i) -> do
@@ -431,6 +433,8 @@ cgExpr (SCon tag name args) = do
                                              , ConstantOperand (C.Int 32 1)
                                              , ConstantOperand (C.Int 32 i)] []
         inst' $ Store False ptr arg Nothing 0 []
+      ptrI8 <- inst $ BitCast con (PointerType (IntegerType 8) (AddrSpace 0)) []
+      inst' $ simpleCall "llvm.invariant.start" [ConstantOperand $ C.Int 64 (-1), ptrI8]
       Just <$> inst (BitCast con (PointerType valueType (AddrSpace 0)) [])
 cgExpr (SCase inspect alts) = do
   val <- var inspect
@@ -690,11 +694,14 @@ nameAlt _ (SConstCase const _) = getName (show const)
 box :: FType -> Operand -> Codegen Operand
 box FUnit _ = return $ ConstantOperand nullValue
 box fty fval = do
-  val <- alloc (primTy (ftyToTy fty))
+  let ty = primTy (ftyToTy fty)
+  val <- alloc ty
   tagptr <- inst $ GetElementPtr True val [ConstantOperand (C.Int 32 0), ConstantOperand (C.Int 32 0)] []
   valptr <- inst $ GetElementPtr True val [ConstantOperand (C.Int 32 0), ConstantOperand (C.Int 32 1)] []
   inst' $ Store False tagptr (ConstantOperand (C.Int 32 (-1))) Nothing 0 []
   inst' $ Store False valptr fval Nothing 0 []
+  ptrI8 <- inst $ BitCast val (PointerType (IntegerType 8) (AddrSpace 0)) []
+  inst' $ simpleCall "llvm.invariant.start" [ConstantOperand $ C.Int 64 (-1), ptrI8]
   inst $ BitCast val (PointerType valueType (AddrSpace 0)) []
 
 unbox :: FType -> Operand -> Codegen Operand
