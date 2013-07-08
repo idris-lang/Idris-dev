@@ -396,6 +396,9 @@ sizeOf ty = ConstantOperand . C.PtrToInt
             (C.GetElementPtr True (C.Null (PointerType ty (AddrSpace 0))) [C.Int 32 1])
             . IntegerType <$> getWordSize
 
+loadInv :: Operand -> Instruction
+loadInv ptr = Load False ptr Nothing 0 [("invariant.load", MetadataNode [])]
+
 tgtWordSize :: Target -> Word32
 tgtWordSize (Target { dataLayout = DataLayout { pointerLayouts = l } }) =
     fst . fromJust $ M.lookup (AddrSpace 0) l
@@ -453,7 +456,7 @@ cgExpr (SChkCase inspect alts) = do
            terminate $ CondBr isNull endBBN notNullBBN []
            newBlock notNullBBN
            ptr <- inst $ BitCast val (PointerType (IntegerType 32) (AddrSpace 0)) []
-           flag <- inst $ Load False ptr Nothing 0 []
+           flag <- inst $ loadInv ptr
            isVal <- inst $ ICmp IPred.EQ flag (ConstantOperand (C.Int 32 (-1))) []
            conBBN <- getName "constructor"
            terminate $ CondBr isVal endBBN conBBN []
@@ -480,7 +483,7 @@ cgExpr (SProj conVar idx) = do
                   , ConstantOperand (C.Int 32 1)
                   , ConstantOperand (C.Int 32 (fromIntegral idx))
                   ] []
-           Just <$> inst (Load False ptr Nothing 0 [])
+           Just <$> inst (loadInv ptr)
 cgExpr (SConst c) = Just <$> cgConst c
 cgExpr (SForeign LANG_C rty fname args) = do
   func <- ensureCDecl fname rty (map fst args)
@@ -559,7 +562,7 @@ cgPrimCase caseValPtr defExp alts = do
                  SConstCase (TT.Ch _)  _ -> IntegerType 32
   realPtr <- inst $ BitCast caseValPtr (PointerType (primTy caseTy) (AddrSpace 0)) []
   valPtr <- inst $ GetElementPtr True realPtr [ConstantOperand (C.Int 32 0), ConstantOperand (C.Int 32 1)] []
-  caseVal <- inst $ Load False valPtr Nothing 0 []
+  caseVal <- inst $ loadInv valPtr
   defBlockName <- getName "default"
   exitBlockName <- getName "caseExit"
   namedAlts <- mapM (\a -> do n <- nameAlt defBlockName a; return (n, a)) alts
@@ -572,7 +575,7 @@ cgPrimCase caseValPtr defExp alts = do
 cgConCase :: Operand -> Maybe SExp -> [SAlt] -> Codegen (Maybe Operand)
 cgConCase con defExp alts = do
   tagPtr <- inst $ GetElementPtr True con [ConstantOperand (C.Int 32 0), ConstantOperand (C.Int 32 0)] []
-  tag <- inst $ Load False tagPtr Nothing 0 []
+  tag <- inst $ loadInv tagPtr
   defBlockName <- getName "default"
   exitBlockName <- getName "caseExit"
   namedAlts <- mapM (\a -> do n <- nameAlt defBlockName a; return (n, a)) alts
@@ -658,7 +661,7 @@ cgAlt initEnv exitBlockName name destr exp = do
                       do ptr <- inst $ GetElementPtr True con [ ConstantOperand (C.Int 32 0)
                                                               , ConstantOperand (C.Int 32 1)
                                                               , ConstantOperand (C.Int 32 i)] []
-                         Just <$> ninst argName (Load False ptr Nothing 0 [])
+                         Just <$> ninst argName (loadInv ptr)
   altVal <- binds locals $ cgExpr exp
   altEnv <- gets lexenv
   altBlock <- gets currentBlockName
@@ -709,7 +712,7 @@ unbox FUnit x = return x
 unbox fty bval = do
   val <- inst $ BitCast bval (PointerType (primTy (ftyToTy fty)) (AddrSpace 0)) []
   fvalptr <- inst $ GetElementPtr True val [ConstantOperand (C.Int 32 0), ConstantOperand (C.Int 32 1)] []
-  inst $ Load False fvalptr Nothing 0 []
+  inst $ loadInv fvalptr
 
 cgConst' :: TT.Const -> C.Constant
 cgConst' (TT.I i) = C.Int 32 (fromIntegral i)
@@ -961,7 +964,7 @@ cgOp LStrCons [c,s] = do
 
 cgOp LStrHead [c] = do
   s <- unbox FString c
-  c <- inst $ Load False s Nothing 0 []
+  c <- inst $ loadInv s
   c' <- inst $ ZExt c (IntegerType 32) []
   box FChar c'
 
@@ -969,7 +972,7 @@ cgOp LStrIndex [s, i] = do
   ns <- unbox FString s
   ni <- unbox (FArith (ATInt (ITFixed IT32))) i
   p <- inst $ GetElementPtr True ns [ni] []
-  c <- inst $ Load False p Nothing 0 []
+  c <- inst $ loadInv p
   c' <- inst $ ZExt c (IntegerType 32) []
   box FChar c'
 
@@ -995,15 +998,15 @@ cgOp LReadStr [p] = do
 
 cgOp LStdIn  [] = do
   stdin <- getStdIn
-  ptr <- inst $ Load False stdin Nothing 0 []
+  ptr <- inst $ loadInv stdin
   box FPtr ptr
 cgOp LStdOut  [] = do
   stdout <- getStdOut
-  ptr <- inst $ Load False stdout Nothing 0 []
+  ptr <- inst $ loadInv stdout
   box FPtr ptr
 cgOp LStdErr  [] = do
   stdErr <- getStdErr
-  ptr <- inst $ Load False stdErr Nothing 0 []
+  ptr <- inst $ loadInv stdErr
   box FPtr ptr
 
 cgOp prim args = ierror $ "Unimplemented primitive: [" ++ show prim ++ "]("
