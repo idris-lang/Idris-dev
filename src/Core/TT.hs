@@ -60,6 +60,7 @@ data Err = Msg String
               -- unification succeed
          | InfiniteUnify Name Term [(Name, Type)]
          | CantConvert Term Term [(Name, Type)]
+         | CantInferType String
          | NonFunctionType Term Term
          | CantIntroduce Term
          | NoSuchVariable Name
@@ -103,6 +104,7 @@ score (CantUnify _ _ _ m _ s) = s + score m
 score (CantResolve _) = 20
 score (NoSuchVariable _) = 1000
 score (ProofSearchFail _) = 10000
+score (InternalMsg _) = -1
 score _ = 0
 
 instance Show Err where

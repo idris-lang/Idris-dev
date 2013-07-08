@@ -112,6 +112,8 @@ pshow i (CantConvert x y env)
           "Can't convert " ++ showImp imps (delab i x) ++ " with " 
                  ++ showImp imps (delab i y) ++
                  if (opt_errContext (idris_options i)) then showSc i env else ""
+pshow i (CantInferType t)
+    = "Can't infer type for " ++ t
 pshow i (NonFunctionType f ty)
     = let imps = opt_showimp (idris_options i) in
           showImp imps (delab i f) ++ " does not have a function type ("

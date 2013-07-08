@@ -1,5 +1,5 @@
 {-
-  Simple monadic parser module, based heavily on that by 
+  Simple monadic parser module, based heavily on that by
   Graham Hutton.
 -}
 
@@ -13,119 +13,94 @@ import Builtins
 
 %access public
 
-infixr 5 |||
 
-{-
-The monad of parsers
---------------------
--}
+--------------------------------------------------------------------------------
+-- The monad of parsers
+--------------------------------------------------------------------------------
 
-data Parser a                 =  P (String -> Either String (a, String))
+data Parser a = P (String -> Either String (a, String))
 
-parse                         : Parser a -> String -> Either String (a, String)
-parse (P p) inp               =  p inp
+parse : Parser a -> String -> Either String (a, String)
+parse (P p) inp = p inp
 
-instance Functor Parser where 
-    -- fmap : (a -> b) -> f a -> f b
-    -- fmap : (a -> b) -> Parser a -> Parser b
-    -- Given a function (a -> b), and a parser a, make a parser b
-    fmap f p = P (\inp => case parse p inp of
-                                  (Left err) => Left err
-                                  -- Apply f to the v that we got from parsing
-                                  (Right (v, rest)) => Right ((f v), rest))
-    
+instance Functor Parser where
+  fmap f p = P (\inp => case parse p inp of
+                          Left err        => Left err
+                          Right (v, rest) => Right ((f v), rest))
 
-instance Applicative Parser where 
-    pure v      = P (\inp => Right (v, inp)) 
-    -- Parse to get the function, then parse to get the first argument
-    a <$> b = P (\inp => do (f, rest) <- parse a inp
-                            (x, rest') <- parse b rest
-                            pure ((f x), rest'))
+instance Applicative Parser where
+  pure v  = P (\inp => Right (v, inp))
+  a <$> b = P (\inp => do (f, rest) <- parse a inp
+                          (x, rest') <- parse b rest
+                          pure ((f x), rest'))
 
 instance Monad Parser where
---    pure v                  =  P (\inp => Right (v,inp))
-    -- m a -> (a -> m b) -> m b
-    p >>= f                   =  P (\inp => case parse p inp of
-                                               (Left err)       => Left err
-                                               (Right (v,rest)) => parse (f v) rest)
-                                               
---mplus : Monad m => m a -> m a -> m a
-mplus : Parser a -> Parser a -> Parser a
-mplus p q                  =  P (\inp => case parse p inp of
-                                       Left msg      => parse q inp
-                                       Right (v,out) => Right(v,out))
+  p >>= f = P (\inp => case parse p inp of
+                         Left err       => Left err
+                         Right (v,rest) => parse (f v) rest)
+
+instance Alternative Parser where
+  empty   = P (const (Left "empty"))
+  p <|> q = P (\inp => case parse p inp of
+                         Left msg      => parse q inp
+                         Right (v,out) => Right (v,out))
 
 
-{-
-Basic parsers
--------------
--}
+--------------------------------------------------------------------------------
+-- Basic parsers
+--------------------------------------------------------------------------------
 
-failure                       : String -> Parser a
-failure msg                   = P (\inp => Left msg)
+failure : String -> Parser a
+failure msg = P (\inp => Left msg)
 
-item                          : Parser Char
-item                          =  P (\inp => case unpack inp of
-                                               []      => Left "Error! Parsing empty list."
-                                               (x::xs) => Right (x, pack xs))
-                                               
-
-{-
-Choice
---------
----}
-
-(|||)                         : Parser a -> Parser a -> Parser a
-p ||| q                       =  p `mplus` q
+item : Parser Char
+item = P (\inp => case unpack inp of
+                    []      => Left "Error! Parsing empty list."
+                    (x::xs) => Right (x, pack xs))
 
 
---{-
---Derived primitives
----}
+--------------------------------------------------------------------------------
+-- Derived primitives
+--------------------------------------------------------------------------------
 
-sat                           : (Char -> Bool) -> Parser Char
-sat p                         = item >>= (\x => if p x then pure x else failure "failed")                 
-                                    
-oneof                         : List Char -> Parser Char
-oneof xs                      = sat (\x => elem x xs) 
+sat : (Char -> Bool) -> Parser Char
+sat p = do x <- item
+           guard (p x)
+           pure x
 
-digit                         : Parser Char
-digit                         =  sat isDigit
+oneof : List Char -> Parser Char
+oneof xs = sat (\x => elem x xs)
 
-lower                         : Parser Char
-lower                         =  sat isLower
+digit : Parser Char
+digit = sat isDigit
 
-upper                         : Parser Char
-upper                         =  sat isUpper
+lower : Parser Char
+lower = sat isLower
 
-letter                        : Parser Char
-letter                        =  sat isAlpha
+upper : Parser Char
+upper = sat isUpper
 
-alphanum                      : Parser Char
-alphanum                      =  sat isAlphaNum
+letter : Parser Char
+letter = sat isAlpha
 
-char                          : Char -> Parser Char
-char x                        =  sat (== x)
+alphanum : Parser Char
+alphanum = sat isAlphaNum
 
-helper                        : List Char -> Parser (List Char)
-string                        : String -> Parser String
-string s                      = do result <- helper (unpack s)
-                                   pure (pack result)
-                                  
-helper []                     =  pure Prelude.List.Nil
-helper (x::xs)                =  do char x
-                                    string (cast xs) 
-                                    pure (x :: xs)
+char : Char -> Parser Char
+char x = sat (== x)
 
-many                          : Parser a -> Parser (List a)
-many1                         : Parser a -> Parser (List a)
-many1 p                       = do v <- p
-                                   vs <- many p
-                                   pure $ Prelude.List.(::) v vs
+string : String -> Parser String
+string s = fmap pack (traverse char (unpack s))
 
+many1 : Parser a -> Parser (List a)
+many : Parser a -> Parser (List a)
+
+many1 p = [| p :: many p |]
+
+many p = many1 p <|> pure []
 
 bool : Parser Bool
-bool = parseTrue ||| parseFalse
+bool = parseTrue <|> parseFalse
   where parseTrue : Parser Bool
         parseTrue  = do oneof ['T', 't']
                         string "rue"
@@ -134,90 +109,65 @@ bool = parseTrue ||| parseFalse
                         string "alse"
                         pure False
 
+ident : Parser String
+ident = fmap pack [| letter :: many1 alphanum |]
 
+nat : Parser Int
+nat = do xs <- many digit
+         pure (cast (cast xs))
 
-                          
-many p                        =  many1 p `mplus` pure Prelude.List.Nil
-
-
-
-ident                         : Parser String
-ident                         =  do x  <- letter
-                                    xs <- many1 alphanum
-                                    pure (pack(x::xs))
-
-nat                           : Parser Int
-nat                           =  do xs <- many digit
-                                    pure (cast (cast xs))
-
-
-int                           : Parser Int
-int                           =  neg ||| nat
+int : Parser Int
+int = neg <|> nat
   where neg : Parser Int
         neg = do char '-'
                  n <- nat
                  pure (-n)
 
-space                         : Parser ()
-space                         =  do many (sat isSpace)
-                                    pure ()
---{-
---Ignoring spacing
----}
+space : Parser ()
+space = do many (sat isSpace)
+           pure ()
 
-token                         : Parser a -> Parser a
-token p                       =  do space
-                                    v <- p
-                                    space
-                                    pure v
 
-identifier                    : Parser String
-identifier                    =  token ident
+--------------------------------------------------------------------------------
+-- Ignoring spacing
+--------------------------------------------------------------------------------
 
-natural                       : Parser Int
-natural                       =  token nat
+token : Parser a -> Parser a
+token p = space $> p <$ space
 
-integer                       : Parser Int
-integer                       =  token int
+identifier : Parser String
+identifier = token ident
 
-symbol                        : String -> Parser String
-symbol xs                     =  token (string xs)
+natural : Parser Int
+natural = token nat
+
+integer : Parser Int
+integer = token int
+
+symbol : String -> Parser String
+symbol xs = token (string xs)
 
 strToken : Parser String
 strToken = fmap pack (token (many1 alphanum))
 
---apply                           : Parser a -> String -> List (a,String)
---apply p                     = parse (space >>= (\_ => p))
 
---{-
+--------------------------------------------------------------------------------
 -- Expressions
----}
+--------------------------------------------------------------------------------
 
-factor                        : Parser Int
-term                          : Parser Int
-expr                          : Parser Int
-expr                          =  do t <- term
-                                    do symbol "+"               
-                                       e <- expr
-                                       pure $ t + e
-                                  `mplus` pure t  
-                                                     
+expr   : Parser Int
+factor : Parser Int
+term   : Parser Int
 
-factor                        =  do symbol "("
-                                    do e <- expr
-                                       symbol ")"
-                                       pure e
-                                  `mplus` natural
+expr = do t <- term
+          fmap (t+) (symbol "+" $> expr) <|> pure t
 
-term                          =  do f <- factor
-                                    do symbol "*"
-                                       t <- term
-                                       pure (f * t)
-                                  `mplus` pure f
+factor = (symbol "(" $> expr <$ symbol ")") <|> natural
 
+term = do f <- factor
+          fmap (f*) (symbol "*" $> term) <|> pure f
 
-
-eval                          : String -> Maybe Int
-eval xs                       =  case (parse expr xs) of
-                                     Right (n,rest) => if rest == "" then Just n else Nothing
-                                     Left msg  => Nothing
+eval : String -> Maybe Int
+eval xs = case (parse expr xs) of
+            Right (n,rest) => if rest == "" then Just n else Nothing
+            Left msg       => Nothing

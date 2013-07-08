@@ -501,8 +501,8 @@ checkPiGoal n
                             solve
                             focus f
 
-simple_app :: Elab' aux () -> Elab' aux () -> Elab' aux ()
-simple_app fun arg =
+simple_app :: Elab' aux () -> Elab' aux () -> String -> Elab' aux ()
+simple_app fun arg appstr =
     do a <- unique_hole (MN 0 "argTy")
        b <- unique_hole (MN 0 "retTy")
        f <- unique_hole (MN 0 "f")
@@ -514,24 +514,21 @@ simple_app fun arg =
        start_unify s
        claim s (Var a)
        prep_fill f [s]
-       -- try elaborating in both orders, since we might learn something useful
-       -- either way
---        try (do focus s; arg
---                focus f; fun)
---            (do focus f; fun
---                focus s; arg)
        focus f; fun
        focus s; arg
        tm <- get_term
        ps <- get_probs
        complete_fill
        hs <- get_holes
-       -- We don't need a and b in the hole queue any more since they were just for
-       -- checking f, so discard them if they are still there. If they haven't been solved,
-       -- regret will fail
-       when (a `elem` hs) $ do focus a; regret 
-       when (b `elem` hs) $ do focus b; regret 
+       env <- get_env
+       -- We don't need a and b in the hole queue any more since they were 
+       -- just for checking f, so discard them if they are still there. 
+       -- If they haven't been solved, regret will fail
+       when (a `elem` hs) $ do focus a; regretWith (CantInferType appstr)
+       when (b `elem` hs) $ do focus b; regretWith (CantInferType appstr)
        end_unify
+  where regretWith err = try regret
+                             (lift $ tfail err)
 
 -- Abstract over an argument of unknown type, giving a name for the hole
 -- which we'll fill with the argument type too.

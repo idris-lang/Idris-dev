@@ -363,7 +363,8 @@ regret ctxt env (Bind x (Hole t) sc) | noOccurrence x sc =
     do action (\ps -> let hs = holes ps in
                           ps { holes = hs \\ [x] })
        return sc
-regret ctxt env (Bind x (Hole t) _) = fail $ show x ++ " : " ++ show t ++ " is not solved"
+regret ctxt env (Bind x (Hole t) _) 
+    = fail $ show x ++ " : " ++ show t ++ " is not solved..."
 
 exact :: Raw -> RunTactic
 exact guess ctxt env (Bind x (Hole ty) sc) = 
