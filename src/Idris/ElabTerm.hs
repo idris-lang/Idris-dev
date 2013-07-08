@@ -349,6 +349,7 @@ elab ist info pattern tcgen fn tm
                then -- simple app, as below
                     do simple_app (elabE (ina, g) (PRef fc f)) 
                                   (elabE (True, g) (getTm (head args')))
+                                  (show tm)
                        solve
                else 
                  do ivs <- get_instances
@@ -401,9 +402,10 @@ elab ist info pattern tcgen fn tm
             setInjective (PApp _ (PRef _ n) _) = setinj n
             setInjective _ = return ()
 
-    elab' ina@(_, a) (PApp fc f [arg])
+    elab' ina@(_, a) tm@(PApp fc f [arg])
           = erun fc $ 
              do simple_app (elabE ina f) (elabE (True, a) (getTm arg))
+                           (show tm)
                 solve
     elab' ina Placeholder = do (h : hs) <- get_holes
                                movelast h
