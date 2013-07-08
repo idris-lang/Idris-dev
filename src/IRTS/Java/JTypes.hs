@@ -142,6 +142,7 @@ intTyToJType :: IntTy -> J.Type
 intTyToJType (ITFixed nt) = nativeTyToJType nt
 intTyToJType (ITNative)   = integerType
 intTyToJType (ITBig)      = bigIntegerType
+intTyToJType (ITChar)     = charType
 intTyToJType (ITVec nt _) = array $ nativeTyToJType nt
 
 arithTyToJType :: ArithTy -> J.Type
@@ -183,7 +184,7 @@ constType :: Const -> J.Type
 constType (I    _) = arithTyToJType (ATInt ITNative)
 constType (BI   _) = arithTyToJType (ATInt ITBig   )
 constType (Fl   _) = arithTyToJType (ATFloat       )
-constType (Ch   _) = charType
+constType (Ch   _) = arithTyToJType (ATInt ITChar  )
 constType (Str  _) = stringType
 constType (B8   _) = arithTyToJType (ATInt $ ITFixed IT8 )
 constType (B16  _) = arithTyToJType (ATInt $ ITFixed IT16)
@@ -223,6 +224,7 @@ opName x
     suffixFor (ITFixed nt) = show nt
     suffixFor (ITNative) = show IT32
     suffixFor (ITBig) = show ITBig
+    suffixFor (ITChar) = show ITChar
     suffixFor (ITVec nt _) = "ITVec" ++ (show $ nativeTyWidth nt)
 
 sourceTypes :: PrimFn -> [J.Type]

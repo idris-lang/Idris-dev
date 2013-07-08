@@ -3,19 +3,20 @@ package org.idris.rts;
 import java.util.concurrent.Callable;
 
 public abstract class Closure implements Callable<Object>, Runnable {
-    protected final Object [] context;
-
-    protected Closure(final Object ... context) {
-	this.context = context;
-    }
-
-    @Override
-    public void run() {
-	call();
-    }
-
     @Override
     public abstract Object call();
+    
+    public static Object unwrapTailCall(Object o) {
+        while (o instanceof Closure) {
+            o = ((Closure)o).call();
+        }
+        return o;
+    }
+    
+    @Override
+    public void run() {
+	unwrapTailCall(call());
+    }
     
     public Thread fork() {
         Thread childProcess = new Thread(this);

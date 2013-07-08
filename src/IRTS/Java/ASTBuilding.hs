@@ -113,12 +113,12 @@ extendWithNull :: [Exp] -> Int -> [Exp]
 extendWithNull exps additionalZeros =
   exps ++ (replicate additionalZeros (Lit $ Null))
 
-closure :: [Exp] -> Exp -> Exp
-closure params body =
+closure :: Exp -> Exp
+closure body =
   InstanceCreation
     []
     (toClassType idrisClosureType)
-    params
+    []
     (Just $ ClassBody
        [ simpleMethod
            [Public, Final] (Just objectType) "call" []

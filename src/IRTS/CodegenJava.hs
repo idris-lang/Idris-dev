@@ -1,7 +1,7 @@
 {-# LANGUAGE PatternGuards #-}
 module IRTS.CodegenJava (codegenJava) where
 
-import           Core.TT
+import           Core.TT                   hiding (mkApp)
 import           IRTS.BCImp
 import           IRTS.CodegenCommon
 import           IRTS.Java.ASTBuilding
@@ -313,12 +313,7 @@ mkExp :: SExp -> BlockResultTransformation -> CodeGeneration [BlockStmt]
 mkExp (SV var) cont = Nothing <>@! var >>= cont []
 
 -- Applications
-mkExp (SApp True name args) cont  =
-  ((\ name args -> call name args) <$> mangleFull name <*> mapM (Nothing <>@!) args) >>= cont []
-  --mkTailCallClosure name args >>= cont []
-mkExp (SApp False name args) cont =
-  ((\ name args -> call name args) <$> mangleFull name <*> mapM (Nothing <>@!) args) >>= cont []
-  --((\ closure -> (closure ~> "call") []) <$> mkTailCallClosure name args) >>= cont []
+mkExp (SApp pushTail name args) cont = mkApp pushTail name args >>= cont []
 
 -- Bindings
 mkExp (SLet    var newExp inExp) cont = mkLet var newExp inExp cont
@@ -373,16 +368,18 @@ varPos (Glob name) = do
 -----------------------------------------------------------------------
 -- Application (wrap method calls in tail call closures)
 
-mkTailCallClosure :: Name -> [LVar] -> CodeGeneration Exp
-mkTailCallClosure name args =
-  (\ methClosure ->
-    InstanceCreation [] (toClassType idrisTailCallClosureType) [methClosure] Nothing
+mkApp :: Bool -> Name -> [LVar] -> CodeGeneration Exp
+mkApp False name args =
+  (\ methodName params ->
+    (idrisClosureType ~> "unwrapTailCall") [call methodName params]
   )
-  <$> mkMethodCallClosure name args
+  <$> mangleFull name
+  <*> mapM (Nothing <>@!) args
+mkApp True name args = mkMethodCallClosure name args
 
 mkMethodCallClosure :: Name -> [LVar] -> CodeGeneration Exp
 mkMethodCallClosure name args =
-  (\ name args -> closure [localContext] (call name args))
+  (\ name args -> closure (call name args))
   <$> mangleFull name
   <*> mapM (Nothing <>@!) args
 
@@ -531,7 +528,6 @@ mkConstant c@(B16V     x) = mkConstantArray (constType c) B16 x
 mkConstant c@(B32V     x) = mkConstantArray (constType c) B32 x
 mkConstant c@(B64V     x) = mkConstantArray (constType c) B64 x
 mkConstant c@(AType    x) = ClassLit (Just $ box (constType c))
-mkConstant c@(ChType    ) = ClassLit (Just $ box integerType)
 mkConstant c@(StrType   ) = ClassLit (Just $ stringType)
 mkConstant c@(PtrType   ) = ClassLit (Just $ objectType)
 mkConstant c@(VoidType  ) = ClassLit (Just $ voidType)
@@ -596,7 +592,7 @@ mkPrimitiveFunction op args =
 
 mkThread :: LVar -> CodeGeneration Exp
 mkThread arg =
-  (\ closure -> (closure ~> "fork") []) <$> mkTailCallClosure (MN 0 "EVAL") [arg]
+  (\ closure -> (closure ~> "fork") []) <$> mkMethodCallClosure (MN 0 "EVAL") [arg]
 
 -----------------------------------------------------------------------
 -- Exceptions
