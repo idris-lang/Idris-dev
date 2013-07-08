@@ -9,9 +9,17 @@ public abstract class Closure implements Callable<Object>, Runnable {
 	this.context = context;
     }
 
+    @Override
     public void run() {
 	call();
     }
 
+    @Override
     public abstract Object call();
+    
+    public Thread fork() {
+        Thread childProcess = new Thread(this);
+        childProcess.start();
+        return childProcess;
+    }
 }
