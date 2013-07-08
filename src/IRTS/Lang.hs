@@ -63,7 +63,6 @@ data FLang = LANG_C
 data FType = FArith ArithTy
            | FFunction
            | FFunctionIO
-           | FChar
            | FString
            | FUnit
            | FPtr

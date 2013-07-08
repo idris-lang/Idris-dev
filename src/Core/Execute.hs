@@ -469,7 +469,6 @@ getFTy (EApp (EP _ (UN "FIntT") _) (EP _ (UN intTy) _)) =
 getFTy (EP _ (UN t) _) =
     case t of
       "FFloat"  -> Just (FArith ATFloat)
-      "FChar"   -> Just FChar
       "FString" -> Just FString
       "FPtr"    -> Just FPtr
       "FUnit"   -> Just FUnit
