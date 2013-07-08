@@ -9,7 +9,6 @@ test_js:
 	@perl ./runtest.pl reg002 --codegen node
 	@perl ./runtest.pl reg003 --codegen node
 	@perl ./runtest.pl reg004 --codegen node
-	@perl ./runtest.pl reg004 --codegen node
 	@perl ./runtest.pl reg005 --codegen node
 	@perl ./runtest.pl reg006 --codegen node
 	@perl ./runtest.pl reg007 --codegen node
