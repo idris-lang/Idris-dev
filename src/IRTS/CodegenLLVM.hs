@@ -794,7 +794,7 @@ ftyToTy (FArith (ATInt ITBig)) = PointerType mpzTy (AddrSpace 0)
 ftyToTy (FArith (ATInt (ITFixed ty))) = IntegerType (fromIntegral $ nativeTyWidth ty)
 ftyToTy (FArith (ATInt (ITVec e c)))
     = VectorType (fromIntegral c) (IntegerType (fromIntegral $ nativeTyWidth e))
-ftyToTy FChar = IntegerType 32
+ftyToTy (FArith (ATInt ITChar)) = IntegerType 32
 ftyToTy FString = PointerType (IntegerType 8) (AddrSpace 0)
 ftyToTy FUnit = VoidType
 ftyToTy FPtr = PointerType (IntegerType 8) (AddrSpace 0)
@@ -804,6 +804,7 @@ ftyToTy FAny = valueType
 -- Only use when known not to be ITBig
 itWidth :: IntTy -> Word32
 itWidth ITNative = 32
+itWidth ITChar = 32
 itWidth (ITFixed x) = fromIntegral $ nativeTyWidth x
 
 cgOp :: PrimFn -> [Operand] -> Codegen Operand

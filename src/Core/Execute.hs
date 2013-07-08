@@ -386,7 +386,6 @@ idrisType :: FType -> ExecVal
 idrisType FUnit = EP Ref unitTy EErased
 idrisType ft = EConstant (idr ft)
     where idr (FArith ty) = AType ty
-          idr FChar = ChType
           idr FString = StrType
           idr FPtr = PtrType
 
@@ -419,8 +418,9 @@ call (FFun name argTypes retType) args =
           call' (Fun _ h) args (FArith ATFloat) = do
             res <- execIO $ callFFI h retCDouble (prepArgs args)
             return (EConstant (Fl (realToFrac res)))
-          call' (Fun _ h) args FChar = do res <- execIO $ callFFI h retCChar (prepArgs args)
-                                          return (EConstant (Ch (castCCharToChar res)))
+          call' (Fun _ h) args (FArith (ATInt ITChar)) = do
+            res <- execIO $ callFFI h retCChar (prepArgs args)
+            return (EConstant (Ch (castCCharToChar res)))
           call' (Fun _ h) args FString = do res <- execIO $ callFFI h retCString (prepArgs args)
                                             hStr <- execIO $ peekCString res
 --                                            lift $ free res
@@ -460,6 +460,7 @@ getFTy :: ExecVal -> Maybe FType
 getFTy (EApp (EP _ (UN "FIntT") _) (EP _ (UN intTy) _)) =
     case intTy of
       "ITNative" -> Just (FArith (ATInt ITNative))
+      "ITChar" -> Just (FArith (ATInt ITChar))
       "IT8" -> Just (FArith (ATInt (ITFixed IT8)))
       "IT16" -> Just (FArith (ATInt (ITFixed IT16)))
       "IT32" -> Just (FArith (ATInt (ITFixed IT32)))
