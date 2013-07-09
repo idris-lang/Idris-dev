@@ -9,7 +9,10 @@ before_script:
   - cd ../..
   - tar -xf edwinb/Idris-dev/dist/idris*.tar.gz
   - cd idris*
+  - sed -i -e "s/#CABALFLAGS\(\s\+\):=-f Java/CABALFAGS\1:=-f Java/g" config.mk 
 script:
   - cabal configure
   - cabal install
   - make test
+  - make test_java
+
