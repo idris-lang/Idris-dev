@@ -10,7 +10,10 @@ import java.math.BigInteger;
 public class PrimFn {
     public static byte LPlus(byte x, byte y) {
         return (byte)(x + y);
-    }    
+    }
+    public static char LPlus(char x, char y) {
+        return (char)(x + y);
+    }
     public static short LPlus(short x, short y) {
         return (short)(x + y);
     }
@@ -57,7 +60,10 @@ public class PrimFn {
     
     public static byte LMinus(byte x, byte y) {
         return (byte)(x - y);
-    }    
+    }
+    public static char LMinus(char x, char y) {
+        return (char)(x - y);
+    }
     public static short LMinus(short x, short y) {
         return (short)(x - y);
     }
@@ -104,7 +110,10 @@ public class PrimFn {
     
     public static byte LTimes(byte x, byte y) {
         return (byte)(x * y);
-    }    
+    }
+    public static char LTimes(char x, char y) {
+        return (char)(x * y);
+    }
     public static short LTimes(short x, short y) {
         return (short)(x * y);
     }
@@ -151,7 +160,10 @@ public class PrimFn {
     
     public static byte LUDiv(byte x, byte y) {
         return (byte)(((short)x) / ((short)y));
-    }    
+    }  
+    public static char LUDiv(char x, char y) {
+        return (char)(((long)x) / ((long)y));
+    } 
     public static short LUDiv(short x, short y) {
         return (short)(((int)x) / ((int)y));
     }
@@ -192,7 +204,10 @@ public class PrimFn {
     
     public static byte LSDiv(byte x, byte y) {
         return (byte)(x / y);
-    }    
+    }
+    public static char LSDiv(char x, char y) {
+        return (char)(x / y);
+    }
     public static short LSDiv(short x, short y) {
         return (short)(x / y);
     }
@@ -240,6 +255,9 @@ public class PrimFn {
     public static byte LURem(byte x, byte y) {
         return (byte)(((short)x) % ((short)y));
     }    
+    public static char LURem(char x, char y) {
+        return (char)(((long)x) % ((long)y));
+    }   
     public static short LURem(short x, short y) {
         return (short)(((int)x) % ((int)y));
     }
@@ -280,7 +298,10 @@ public class PrimFn {
     
     public static byte LSRem(byte x, byte y) {
         return (byte)(x % y);
-    }    
+    }
+    public static char LSRem(char x, char y) {
+        return (char)(x % y);
+    }  
     public static short LSRem(short x, short y) {
         return (short)(x % y);
     }
@@ -328,7 +349,10 @@ public class PrimFn {
     
     public static byte LAnd(byte x, byte y) {
         return (byte)(x & y);
-    }    
+    }
+    public static char LAnd(char x, char y) {
+        return (char)(x & y);
+    }
     public static short LAnd(short x, short y) {
         return (short)(x & y);
     }
@@ -372,7 +396,10 @@ public class PrimFn {
     
     public static byte LOr(byte x, byte y) {
         return (byte)(x | y);
-    }    
+    }
+    public static char LOr(char x, char y) {
+        return (char)(x | y);
+    }
     public static short LOr(short x, short y) {
         return (short)(x | y);
     }
@@ -416,7 +443,10 @@ public class PrimFn {
     
     public static byte LXOr(byte x, byte y) {
         return (byte)(x ^ y);
-    }    
+    }
+    public static char LXOr(char x, char y) {
+        return (char)(x ^ y);
+    }
     public static short LXOr(short x, short y) {
         return (short)(x ^ y);
     }
@@ -460,7 +490,10 @@ public class PrimFn {
     
     public static byte LCompl(byte x) {
         return (byte)~x;
-    }    
+    }
+    public static char LCompl(char x) {
+        return (char)~x;
+    }
     public static short LCompl(short x) {
         return (short)(~x);
     }
@@ -504,7 +537,10 @@ public class PrimFn {
     
     public static byte LSHL(byte x, byte y) {
         return (byte)(x << y);
-    }    
+    }
+    public static char LSHL(char x, char y) {
+        return (char)(x << y);
+    }
     public static short LSHL(short x, short y) {
         return (short)(x << y);
     }
@@ -549,6 +585,9 @@ public class PrimFn {
     public static byte LLSHR(byte x, byte y) {
         return (byte)(x >>> y);
     }    
+    public static char LLSHR(char x, char y) {
+        return (char)(x >>> y);
+    }    
     public static short LLSHR(short x, short y) {
         return (short)(x >>> y);
     }
@@ -589,7 +628,10 @@ public class PrimFn {
     
     public static byte LASHR(byte x, byte y) {
         return (byte)(x >> y);
-    }    
+    }
+    public static char LASHR(char x, char y) {
+        return (char)(x >> y);
+    }
     public static short LASHR(short x, short y) {
         return (short)(x >> y);
     }
@@ -633,7 +675,10 @@ public class PrimFn {
     
     public static int LEq(byte x, byte y) {
         return (x == y ? 1 : 0);
-    }    
+    }
+    public static int LEq(char x, char y) {
+        return (x == y ? 1 : 0);
+    }
     public static int LEq(short x, short y) {
         return (x == y ? 1 : 0);
     }
@@ -680,7 +725,10 @@ public class PrimFn {
     
     public static int LLt(byte x, byte y) {
         return (x < y ? 1 : 0);
-    }    
+    }
+    public static int LLt(char x, char y) {
+        return (x < y ? 1 : 0);
+    } 
     public static int LLt(short x, short y) {
         return (x < y ? 1 : 0);
     }
@@ -727,7 +775,10 @@ public class PrimFn {
     
     public static int LLe(byte x, byte y) {
         return (x <= y ? 1 : 0);
-    }    
+    }
+    public static int LLe(char x, char y) {
+        return (x <= y ? 1 : 0);
+    }
     public static int LLe(short x, short y) {
         return (x <= y ? 1 : 0);
     }
@@ -775,6 +826,9 @@ public class PrimFn {
     public static int LGt(byte x, byte y) {
         return (x > y ? 1 : 0);
     }    
+    public static int LGt(char x, char y) {
+        return (x > y ? 1 : 0);
+    }  
     public static int LGt(short x, short y) {
         return (x > y ? 1 : 0);
     }
@@ -821,7 +875,10 @@ public class PrimFn {
     
     public static int LGe(byte x, byte y) {
         return (x >= y ? 1 : 0);
-    }    
+    }
+    public static int LGe(char x, char y) {
+        return (x >= y ? 1 : 0);
+    }
     public static int LGe(short x, short y) {
         return (x >= y ? 1 : 0);
     }
@@ -901,6 +958,19 @@ public class PrimFn {
         return res;
     }
     
+    public static short LSExtIT16(char x) {
+        return (short)x;
+    }
+    public static int LSExtIT32(char x) {
+        return (int)x;
+    }
+    public static long LSExtIT64(char x) {
+        return (long)x;
+    }
+    public static BigInteger LSExtITBig(char x) {
+        return BigInteger.valueOf(x);
+    }
+    
     public static int LSExtIT32(short x) {
         return (int)x;
     }
@@ -955,6 +1025,9 @@ public class PrimFn {
     public static BigInteger LZExtITBig(byte x) {
         return BigInteger.valueOf(x < 0 ? x + (2 << 7) : x);
     }
+    public static char LZExtITChar(byte x) {
+        return (char)(x < 0 ? x + (2 << 7) : x);
+    }
     public static short[] LZExtITVec16(byte[] x) {
         short[] res = new short[x.length];
         for (int i = 0; i < res.length; ++i) {
@@ -976,7 +1049,7 @@ public class PrimFn {
         }
         return res;
     }
-    
+     
     public static int LZExtIT32(short x) {
         return (int)(x < 0 ? x + (2 << 15) : x);
     }
@@ -985,6 +1058,9 @@ public class PrimFn {
     }
     public static BigInteger LZExtITBig(short x) {
         return BigInteger.valueOf(x < 0 ? x + (2 << 15) : x);
+    }
+    public static char LZExtITChar(short x) {
+        return (char)(x < 0 ? x + (2 << 15) : x);
     }
     public static int[] LZExtITVec32(short[] x) {
         int[] res = new int[x.length];
@@ -1007,6 +1083,9 @@ public class PrimFn {
     public static BigInteger LZExtITBig(int x) {
         return BigInteger.valueOf(x < 0 ? ((long)x) + (2 << 31) : x);
     }
+    public static char LZExtITChar(int x) {
+        return (char)(x < 0 ? ((long)x) + (2 << 31) : x);
+    }
     public static long[] LZExtITVec64(int[] x) {
         long[] res = new long[x.length];
         for (int i = 0; i < res.length; ++i) {
@@ -1018,6 +1097,9 @@ public class PrimFn {
     public static BigInteger LZExtITBig(long x) {
         return (x < 0 ? BigInteger.valueOf(x).add(BigInteger.valueOf(2).shiftLeft(61)) : BigInteger.valueOf(x));
     }
+    public static char LZExtITChar(long x) {
+        return (char)((x < 0 ? BigInteger.valueOf(x).add(BigInteger.valueOf(2).shiftLeft(61)) : BigInteger.valueOf(x)).intValue());
+    }
     
     public static byte LTruncIT8(short x) {
         return (byte)x;
@@ -1028,6 +1110,9 @@ public class PrimFn {
             res[i] = (byte)x[i];
         }
         return res;
+    }
+    public static char LTruncITChar(short x) {
+        return (char)x;
     }
     
     public static byte LTruncIT8(int x) {
@@ -1049,6 +1134,9 @@ public class PrimFn {
             res[i] = (short)x[i];
         }
         return res;
+    }
+    public static char LTruncITChar(int x) {
+        return (char)x;
     }
     
     public static byte LTruncIT8(long x) {
@@ -1081,6 +1169,9 @@ public class PrimFn {
         }
         return res;
     }
+    public static char LTruncITChar(long x) {
+        return (char)x;
+    }
     
     public static byte LTruncIT8(BigInteger x) {
         return x.byteValue();
@@ -1093,6 +1184,25 @@ public class PrimFn {
     }
     public static long LTruncIT64(BigInteger x) {
         return x.longValue();
+    }
+    public static char LTruncITChar(BigInteger x) {
+        return (char)x.intValue();
+    }
+    
+    public static byte LTruncIT8(char x) {
+        return (byte)x;
+    }
+    public static short LTruncIT16(char x) {
+        return (short)x;
+    }
+    public static int LTruncIT32(char x) {
+        return (int)x;
+    }
+    public static long LTruncIT64(char x) {
+        return (int)x;
+    }
+    public static BigInteger LTruncITBig(char x) {
+        return BigInteger.valueOf(x);
     }
     
     
@@ -1196,6 +1306,9 @@ public class PrimFn {
     public static double LIntFloat(byte x) {
         return (double)x;
     }
+    public static double LIntFloat(char x) {
+        return (double)x;
+    }
     public static double LIntFloat(short x) {
         return (double)x;
     }
@@ -1224,9 +1337,15 @@ public class PrimFn {
     public static BigInteger LFloatIntITBig(double x) {
         return BigInteger.valueOf((long)x);
     }
+    public static char LFloatIntITChar(double x) {
+        return (char)x;
+    }
     
     public static String LIntStr(byte x) {
         return Byte.toString(x);
+    }
+    public static String LIntStr(char x) {
+        return Character.toString(x);
     }
     public static String LIntStr(short x) {
         return Short.toString(x);
@@ -1255,6 +1374,9 @@ public class PrimFn {
     public static BigInteger LStrIntITBig(String x) {
         return new BigInteger(x);
     }
+    public static char LStrIntITChar(String x) {
+        return x.charAt(0);
+    }
     
     public static String LFloatStr(double x) {
         return Double.toString(x);
@@ -1265,6 +1387,9 @@ public class PrimFn {
     
     public static char LIntCh(byte x) {
         return (char)x;
+    }
+    public static char LIntCh(char x) {
+        return x;
     }
     public static char LIntCh(short x) {
         return (char)x;
