@@ -262,7 +262,8 @@ Executable     idris
 
                               IRTS.Lang, IRTS.LParser, IRTS.Bytecode, IRTS.Simplified,
                               IRTS.CodegenC, IRTS.Defunctionalise, IRTS.Inliner,
-                              IRTS.Compiler, IRTS.CodegenJava, IRTS.BCImp,
+                              IRTS.Compiler, IRTS.CodegenJava, IRTS.Java.ASTBuilding,
+                              IRTS.Java.JTypes, IRTS.Java.Mangling, IRTS.BCImp,
                               IRTS.CodegenJavaScript, IRTS.CodegenLLVM,
                               IRTS.CodegenCommon, IRTS.DumpBC
 
