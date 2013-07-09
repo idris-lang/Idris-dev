@@ -1608,6 +1608,9 @@ pTactic syn = do reserved "intro"; ns <- sepBy pName (lchar ',')
           <|> do reserved "rewrite"; t <- pExpr syn;
                  i <- getState
                  return $ Rewrite (desugar syn i t)
+          <|> do reserved "equiv"; t <- pExpr syn;
+                 i <- getState
+                 return $ Equiv (desugar syn i t)
           <|> try (do reserved "let"; n <- pName; lchar ':'; 
                       ty <- pExpr' syn; lchar '='; t <- pExpr syn;
                       i <- getState

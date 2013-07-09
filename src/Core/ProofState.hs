@@ -66,6 +66,7 @@ data Tactic = Attack
             | Forall Name Raw
             | LetBind Name Raw Raw
             | Rewrite Raw
+            | Equiv Raw
             | PatVar Name
             | PatBind Name
             | Focus Name
@@ -539,6 +540,13 @@ rewrite tm ctxt env (Bind x (Hole t) xp@(P _ x' _)) | x == x' =
     rname = MN 0 "replaced"
 rewrite _ _ _ _ = fail "Can't rewrite here"
 
+equiv :: Raw -> RunTactic
+equiv tm ctxt env (Bind x (Hole t) sc) =
+    do (tmv, tmt) <- lift $ check ctxt env tm
+       lift $ converts ctxt env tmv t
+       return $ Bind x (Hole tmv) sc
+equiv tm ctxt env _ = fail "Can't equiv here"
+
 patbind :: Name -> RunTactic
 patbind n ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' =
     do let t' = case t of
@@ -724,6 +732,7 @@ process t h = tactic (Just h) (mktac t)
          mktac (Forall n t)      = forall n t
          mktac (LetBind n t v)   = letbind n t v
          mktac (Rewrite t)       = rewrite t
+         mktac (Equiv t)         = equiv t
          mktac (PatVar n)        = patvar n
          mktac (PatBind n)       = patbind n
          mktac (CheckIn r)       = check_in r

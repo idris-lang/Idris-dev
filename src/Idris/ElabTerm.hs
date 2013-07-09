@@ -769,6 +769,18 @@ runTac autoSolve ist tac
                                _ -> return []
     runT (Refine fn imps) = do ns <- apply (Var fn) (map (\x -> (x,0)) imps)
                                when autoSolve solveAll
+    runT (Equiv tm) -- let bind tm, then 
+              = do attack
+                   tyn <- unique_hole (MN 0 "ety")
+                   claim tyn RType
+                   valn <- unique_hole (MN 0 "eqval")
+                   claim valn (Var tyn)
+                   letn <- unique_hole (MN 0 "equiv_val")
+                   letbind letn (Var tyn) (Var valn)
+                   focus tyn
+                   elab ist toplevel False False (MN 0 "tac") tm
+                   focus valn
+                   when autoSolve solveAll
     runT (Rewrite tm) -- to elaborate tm, let bind it, then rewrite by that
               = do attack; -- (h:_) <- get_holes
                    tyn <- unique_hole (MN 0 "rty")
