@@ -15,6 +15,7 @@ import           Util.System
 import           Control.Applicative       hiding (Const)
 import           Control.Arrow
 import           Control.Monad
+import           Control.Monad.Error
 import qualified Control.Monad.Trans       as T
 import           Control.Monad.Trans.State
 import           Data.Int
@@ -34,10 +35,8 @@ import           System.FilePath
 import           System.IO
 import           System.Process
 
-data CodeGenerationEnv = CodeGenerationEnv { globalVariablePositions :: [(Name, Int)] }
-
-type CodeGeneration = StateT (CodeGenerationEnv) (Either String)
-type BlockResultTransformation = [BlockStmt] -> Exp -> CodeGeneration [BlockStmt]
+-----------------------------------------------------------------------
+-- Main function
 
 codegenJava :: [(Name, SExp)] -> -- initialization of globals
                [(Name, SDecl)] ->
@@ -54,7 +53,7 @@ codegenJava globalInit defs out hdrs libs exec = do
     let outjava = srcdir </> clsName <.> "java"
     let jout = either error
                       (prettyPrint)-- flatIndent . prettyPrint)
-                      (evalStateT (mkCompilationUnit globalInit defs hdrs out) (mkCodeGenEnv globalInit))
+                      (evalStateT (mkCompilationUnit globalInit defs hdrs out) mkCodeGenEnv)
     writeFile outjava jout
     if (exec == Raw)
        then copyFile outjava (takeDirectory out </> clsName <.> "java")
@@ -135,14 +134,132 @@ mkPomDependencies deps =
 -----------------------------------------------------------------------
 -- Code generation environment
 
-mkCodeGenEnv :: [(Name, SExp)] -> CodeGenerationEnv
-mkCodeGenEnv globalInit =
-  CodeGenerationEnv $ zipWith (\ (name, _) pos -> (name, pos)) globalInit [0..]
+data CodeGenerationEnv
+  = CodeGenerationEnv
+  { globalVariables :: [(Name, ArrayIndex)]
+  , localVariables  :: [[(Int, Ident)]]
+  , localVarCounter :: Int
+  }
+
+type CodeGeneration = StateT (CodeGenerationEnv) (Either String)
+
+mkCodeGenEnv :: CodeGenerationEnv
+mkCodeGenEnv = CodeGenerationEnv [] [] 0
+
+varPos :: LVar -> CodeGeneration (Either ArrayIndex Ident)
+varPos (Loc i) = do
+  vars <- (concat . localVariables) <$> get
+  case lookup i vars of
+    (Just varName) -> return (Right varName)
+    Nothing -> throwError $ "Invalid local variable id: " ++ show i
+varPos (Glob name) = do
+  vars <- globalVariables <$> get
+  case lookup name vars of
+    (Just varIdx) -> return (Left varIdx)
+    Nothing -> throwError $ "Invalid global variable id: " ++ show name
+
+pushScope :: CodeGeneration ()
+pushScope =
+  modify (\ env -> env { localVariables = []:(localVariables env) })
+
+popScope :: CodeGeneration ()
+popScope = do
+  env <- get
+  let lVars = tail $ localVariables env
+  let vC = if null lVars then 0 else localVarCounter env
+  put $ env { localVariables = tail (localVariables env)
+            , localVarCounter = vC }
+
+setVariable :: LVar -> CodeGeneration (Either ArrayIndex Ident)
+setVariable (Loc i) = do
+  env <- get
+  let lVars = localVariables env
+  let getter = localVar $ localVarCounter env
+  let lVars' = ((i, getter) : head lVars) : tail lVars
+  put $ env { localVariables = lVars'
+            , localVarCounter = 1 + localVarCounter env}
+  return (Right getter)
+setVariable (Glob n) = do
+  env <- get
+  let gVars = globalVariables env
+  let getter = globalContext @! length gVars
+  let gVars' = (n, getter):gVars
+  put (env { globalVariables = gVars' })
+  return (Left getter)
+
+pushParams :: [Ident] -> CodeGeneration ()
+pushParams paramNames =
+  let varMap = zipWith (flip (,)) paramNames [0..] in
+  modify (\ env -> env { localVariables = varMap:(localVariables env)
+                       , localVarCounter = (length varMap) + (localVarCounter env) })
 
 flatIndent :: String -> String
 flatIndent (' ' : ' ' : xs) = flatIndent xs
 flatIndent (x:xs) = x:flatIndent xs
 flatIndent [] = []
+
+-----------------------------------------------------------------------
+-- Maintaining control structures over code blocks
+
+data BlockPostprocessor
+  = BlockPostprocessor
+  { ppInnerBlock :: [BlockStmt] -> Exp -> CodeGeneration [BlockStmt]
+  , ppOuterBlock :: [BlockStmt] -> CodeGeneration [BlockStmt]
+  }
+
+ppExp :: BlockPostprocessor -> Exp -> CodeGeneration [BlockStmt]
+ppExp pp exp = ((ppInnerBlock pp) [] exp) >>= ppOuterBlock pp
+
+addReturn :: BlockPostprocessor
+addReturn =
+  BlockPostprocessor
+  { ppInnerBlock = (\ block exp -> return $ block ++ [jReturn exp])
+  , ppOuterBlock = return
+  }
+
+ignoreResult :: BlockPostprocessor
+ignoreResult =
+  BlockPostprocessor
+  { ppInnerBlock = (\ block exp -> return block)
+  , ppOuterBlock = return
+  }
+
+ignoreOuter :: BlockPostprocessor -> BlockPostprocessor
+ignoreOuter pp = pp { ppOuterBlock = return }
+
+throwRuntimeException :: BlockPostprocessor -> BlockPostprocessor
+throwRuntimeException pp =
+  pp
+  { ppInnerBlock =
+       (\ blk exp -> return $
+         blk ++ [ BlockStmt $ Throw
+                    ( InstanceCreation
+                      []
+                      (toClassType runtimeExceptionType)
+                      [exp]
+                      Nothing
+                    )
+                ]
+       )
+  }
+
+
+rethrowAsRuntimeException :: BlockPostprocessor -> BlockPostprocessor
+rethrowAsRuntimeException pp =
+  pp
+  { ppOuterBlock =
+      (\ blk -> do
+          ex <- ppInnerBlock (throwRuntimeException pp) [] (ExpName $ J.Name [Ident "ex"])
+          ppOuterBlock pp
+            $ [ BlockStmt $ Try
+                  (Block blk)
+                  [Catch (FormalParam [] exceptionType False (VarId (Ident "ex"))) $
+                    Block ex
+                  ]
+                  Nothing
+              ]
+      )
+  }
 
 -----------------------------------------------------------------------
 -- File structure
@@ -206,20 +323,21 @@ mkClassBody globalInit defs =
 
 mkGlobalContext :: [(Name, SExp)] -> CodeGeneration [Decl]
 mkGlobalContext [] = return []
-mkGlobalContext initExps =
-  (\ exps -> [ MemberDecl $ FieldDecl [Private, Static, Final]
+mkGlobalContext initExps = do
+  pushScope
+  varInit <-
+    mapM (\ (name, exp) -> do
+           pos <- setVariable (Glob name)
+           mkUpdate ignoreResult (Glob name) exp
+         ) initExps
+  popScope
+  return [ MemberDecl $ FieldDecl [Private, Static, Final]
                                       (array objectType)
                                       [ VarDecl (VarId $ globalContextID). Just . InitExp
                                         $ ArrayCreate objectType [jInt $ length initExps] 0
                                       ]
-             , InitDecl True (Block $ concat exps)
-             ]
-  )
-  <$> mapM
-        (\ (name, exp) ->
-          mkUpdate (Glob name) exp (\ b e -> return $ addToBlock b e)
-        )
-        initExps
+         , InitDecl True (Block $ concat varInit)
+         ]
 
 addMainMethod :: [Decl] -> [Decl]
 addMainMethod decls
@@ -280,23 +398,16 @@ mkDecl ((NS n (ns:nss)), decl) =
     MemberDecl $ MemberClassDecl $ ClassDecl [Public, Static] name [] Nothing [] body)
   <$> mangle (UN ns)
   <*> mkClassBody [] [(NS n nss, decl)]
-mkDecl (_, SFun name params stackSize body) =
-  (\ (Ident name) params paramNames methodBody ->
-    simpleMethod
-      [Public, Static]
-      (Just objectType)
-      name
-      params
-      ( Block $ ( declareFinalObjectArray
-                    localContextID
-                    (Just (arrayInitExps $ extendWithNull paramNames stackSize))
-                ) : methodBody
-      )
-  )
-  <$> mangle name
-  <*> mapM mkFormalParam params
-  <*> mapM (\ p -> (ExpName) <$> mangleFull p) params
-  <*> mkExp body (\ block res -> return $ block ++ [jReturn res])
+mkDecl (_, SFun name params stackSize body) = do
+  (Ident methodName) <- mangle name
+  methodParams <- mapM mkFormalParam params
+  paramNames <- mapM mangle params
+  pushParams paramNames
+  methodBody <- mkExp addReturn body
+  popScope
+  return $
+    simpleMethod [Public, Static] (Just objectType) methodName methodParams
+      (Block methodBody)
 
 mkFormalParam :: Name -> CodeGeneration FormalParam
 mkFormalParam name =
@@ -308,62 +419,65 @@ mkFormalParam name =
 
 -- | Compile a simple expression and use the given continuation to postprocess
 -- the resulting value.
-mkExp :: SExp -> BlockResultTransformation -> CodeGeneration [BlockStmt]
+mkExp :: BlockPostprocessor -> SExp -> CodeGeneration [BlockStmt]
 -- Variables
-mkExp (SV var) cont = Nothing <>@! var >>= cont []
+mkExp pp (SV var) =
+  (Nothing <>@! var) >>= ppExp pp
 
 -- Applications
-mkExp (SApp pushTail name args) cont = mkApp pushTail name args >>= cont []
+mkExp pp (SApp pushTail name args) =
+  mkApp pushTail name args >>= ppExp pp
 
 -- Bindings
-mkExp (SLet    var newExp inExp) cont = mkLet var newExp inExp cont
-mkExp (SUpdate var newExp) cont = mkUpdate var newExp cont
+mkExp pp (SLet    var newExp inExp) =
+  mkLet pp var newExp inExp
+mkExp pp (SUpdate var newExp) =
+  mkUpdate pp var newExp
 
 -- Objects
-mkExp (SCon conId _ args) cont = (mkIdrisObject conId args) >>= cont []
+mkExp pp (SCon conId _ args) =
+  mkIdrisObject conId args >>= ppExp pp
 
 -- Case expressions
-mkExp (SCase var alts) cont = mkCase True var alts cont
-mkExp (SChkCase var alts) cont = mkCase False var alts cont
+mkExp pp (SCase    var alts) = mkCase pp True var alts
+mkExp pp (SChkCase var alts) = mkCase pp False var alts
 
 -- Projections
-mkExp (SProj var i) cont = (mkProjection var i) >>= cont []
+mkExp pp (SProj var i) =
+  mkProjection var i >>= ppExp pp
 
 -- Constants
-mkExp (SConst c) cont = cont [] $ mkConstant c
+mkExp pp (SConst c) =
+  ppExp pp $ mkConstant c
 
 -- Foreign function calls
-mkExp (SForeign lang resTy text params) cont =
-  (mkForeign lang resTy text params) >>= cont []
+mkExp pp (SForeign lang resTy text params) =
+  mkForeign pp lang resTy text params
 
 -- Primitive functions
-mkExp (SOp LFork [arg]) cont = (mkThread arg) >>= cont []
-mkExp (SOp LPar [arg]) cont = (Nothing <>@! arg) >>= cont []
-mkExp (SOp LNoOp args) cont = (Nothing <>@! (last args)) >>= cont []
-mkExp (SOp op args) cont = (mkPrimitiveFunction op args) >>= cont []
+mkExp pp (SOp LFork [arg]) =
+  (mkThread arg) >>= ppExp pp
+mkExp pp (SOp LPar [arg]) =
+  (Nothing <>@! arg) >>= ppExp pp
+mkExp pp (SOp LNoOp args) =
+  (Nothing <>@! (last args)) >>= ppExp pp
+mkExp pp (SOp op args) =
+  (mkPrimitiveFunction op args) >>= ppExp pp
 
 -- Empty expressions
-mkExp (SNothing) cont = cont [] $ Lit Null
+mkExp pp (SNothing) = ppExp pp $ Lit Null
 
 -- Errors
-mkExp (SError err) cont = mkException err
+mkExp pp (SError err) = ppExp (throwRuntimeException pp) (jString err)
 
 -----------------------------------------------------------------------
 -- Variable access
 
 (<>@!) :: Maybe J.Type -> LVar -> CodeGeneration Exp
 (<>@!) Nothing var =
-  (ArrayAccess . ((contextArray var) @!)) <$> varPos var
+  either ArrayAccess (\ n -> ExpName $ J.Name [n]) <$> varPos var
 (<>@!) (Just castTo) var =
   (castTo <>) <$> (Nothing <>@! var)
-
-varPos :: LVar -> CodeGeneration Int
-varPos (Loc i) = return i
-varPos (Glob name) = do
-  positions <- globalVariablePositions <$> get
-  case lookup name positions of
-    (Just pos) -> return pos
-    Nothing -> T.lift . Left $ "Invalid global variable id: " ++ show name
 
 -----------------------------------------------------------------------
 -- Application (wrap method calls in tail call closures)
@@ -386,17 +500,29 @@ mkMethodCallClosure name args =
 -----------------------------------------------------------------------
 -- Updates (change context array) and Let bindings (Update, execute)
 
-mkUpdate :: LVar -> SExp -> BlockResultTransformation -> CodeGeneration [BlockStmt]
-mkUpdate var exp cont = do
-  pos <- varPos var
-  mkExp exp (\ blk rhs -> cont blk $ ((contextArray var) @! pos) @:= rhs )
+mkUpdate :: BlockPostprocessor -> LVar -> SExp -> CodeGeneration [BlockStmt]
+mkUpdate pp var exp =
+  mkExp
+    ( pp
+      { ppInnerBlock =
+           (\ blk rhs -> do
+               pos <- setVariable var
+               vExp <- Nothing <>@! var
+               ppInnerBlock pp (blk ++ [pos @:= rhs]) vExp
+           )
+      }
+    ) exp
 
-mkLet :: LVar -> SExp -> SExp -> BlockResultTransformation -> CodeGeneration [BlockStmt]
-mkLet var@(Loc pos) newExp inExp cont = do
-  inBlk <- mkExp inExp cont
-  upd <- mkUpdate var newExp (\ blk exp -> return $ addToBlock blk exp)
-  return $ upd ++ inBlk
-mkLet (Glob _) _ _ _ = T.lift $ Left "Cannot let bind to global variable"
+mkLet :: BlockPostprocessor -> LVar -> SExp -> SExp -> CodeGeneration [BlockStmt]
+mkLet pp var@(Loc pos) newExp inExp =
+  mkUpdate (pp { ppInnerBlock =
+                    (\ blk _ -> do
+                        inBlk <- mkExp pp inExp
+                        return (blk ++ inBlk)
+                    )
+               }
+           ) var newExp
+mkLet _ (Glob _) _ _ = T.lift $ Left "Cannot let bind to global variable"
 
 -----------------------------------------------------------------------
 -- Object creation
@@ -411,30 +537,36 @@ mkIdrisObject conId args =
 -----------------------------------------------------------------------
 -- Case expressions
 
-mkCase :: Bool -> LVar -> [SAlt] -> BlockResultTransformation -> CodeGeneration [BlockStmt]
-
-mkCase checked var cases cont
+mkCase :: BlockPostprocessor -> Bool -> LVar -> [SAlt] -> CodeGeneration [BlockStmt]
+mkCase pp checked var cases
+  | isDefaultOnlyCase cases = mkDefaultMatch pp cases
   | isConstCase cases = do
-    defaultStmts <- mkDefaultMatch cases cont
-    ifte <- mkConstMatch var defaultStmts cases cont
-    return [BlockStmt ifte]
-mkCase checked var cases cont =
-  (\ switchExp blocks defaultStmts ->
-    [BlockStmt $ Switch switchExp (blocks ++ [SwitchBlock Default defaultStmts])]
-  )
-  <$> mkGetConstructorId checked var
-  <*> mkConsMatch var cases cont
-  <*> mkDefaultMatch cases cont
+    ifte <- mkConstMatch (ignoreOuter pp) (\ pp -> mkDefaultMatch pp cases) var cases
+    ppOuterBlock pp [BlockStmt ifte]
+  | otherwise = do
+    switchExp <- mkGetConstructorId checked var
+    matchBlocks <- mkConsMatch (ignoreOuter pp) (\ pp -> mkDefaultMatch pp cases) var cases
+    ppOuterBlock pp [BlockStmt $ Switch switchExp matchBlocks]
 
 isConstCase :: [SAlt] -> Bool
 isConstCase ((SConstCase _ _):_) = True
 isConstCase ((SDefaultCase _):cases) = isConstCase cases
 isConstCase _ = False
 
-mkDefaultMatch :: [SAlt] -> BlockResultTransformation -> CodeGeneration [BlockStmt]
-mkDefaultMatch (x@(SDefaultCase branchExpression):_) cont = mkExp branchExpression cont
-mkDefaultMatch (x:xs) cont = mkDefaultMatch xs cont
-mkDefaultMatch [] cont = mkException "Non-exhaustive pattern"
+isDefaultOnlyCase :: [SAlt] -> Bool
+isDefaultOnlyCase [SDefaultCase _] = True
+isDefaultOnlyCase [] = True
+isDefaultOnlyCase _ = False
+
+mkDefaultMatch :: BlockPostprocessor -> [SAlt] -> CodeGeneration [BlockStmt]
+mkDefaultMatch pp (x@(SDefaultCase branchExpression):_) =
+  do pushScope
+     stmt <- mkExp pp branchExpression
+     popScope
+     return stmt
+mkDefaultMatch pp (x:xs) = mkDefaultMatch pp xs
+mkDefaultMatch pp [] =
+  ppExp (throwRuntimeException pp) (jString "Non-exhaustive pattern")
 
 mkMatchConstExp :: LVar -> Const -> CodeGeneration Exp
 mkMatchConstExp var c
@@ -454,14 +586,23 @@ mkMatchConstExp var c
     cty = constType c
     jc = mkConstant c
 
-mkConstMatch :: LVar -> [BlockStmt] -> [SAlt] -> BlockResultTransformation -> CodeGeneration Stmt
-mkConstMatch var defaultStmts ((SConstCase constant branchExpression):cases) cont =
-  (\ exp block others -> IfThenElse exp (StmtBlock $ Block block) others)
-  <$> mkMatchConstExp var constant
-  <*> mkExp branchExpression cont
-  <*> mkConstMatch var defaultStmts cases cont
-mkConstMatch var defaultStmts (c:cases) cont = mkConstMatch var defaultStmts cases cont
-mkConstMatch var defaultStmts [] cont = return $ StmtBlock (Block defaultStmts)
+mkConstMatch :: BlockPostprocessor ->
+                (BlockPostprocessor -> CodeGeneration [BlockStmt]) ->
+                LVar ->
+                [SAlt] ->
+                CodeGeneration Stmt
+mkConstMatch pp getDefaultStmts var ((SConstCase constant branchExpression):cases) = do
+  matchExp <- mkMatchConstExp var constant
+  pushScope
+  branchBlock <- mkExp pp branchExpression
+  popScope
+  otherBranches <- mkConstMatch pp getDefaultStmts var cases
+  return
+    $ IfThenElse matchExp (StmtBlock $ Block branchBlock) otherBranches
+mkConstMatch pp getDefaultStmts var (c:cases) = mkConstMatch pp getDefaultStmts var cases
+mkConstMatch pp getDefaultStmts _ [] = do
+  defaultBlock <- getDefaultStmts pp
+  return $ StmtBlock (Block defaultBlock)
 
 mkGetConstructorId :: Bool -> LVar -> CodeGeneration Exp
 mkGetConstructorId True var =
@@ -474,26 +615,34 @@ mkGetConstructorId False var =
   <$> (Nothing <>@! var)
   <*> mkGetConstructorId True var
 
-mkConsMatch :: LVar -> [SAlt] -> BlockResultTransformation -> CodeGeneration [SwitchBlock]
-mkConsMatch var ((SConCase parentStackPos consIndex _ params branchExpression):cases) cont =
-  (\ block others -> (SwitchBlock (SwitchCase $ jInt consIndex) block):others)
-  <$> mkCaseBinding var parentStackPos params branchExpression cont
-  <*> mkConsMatch var cases cont
-mkConsMatch var (_:cases) cont = mkConsMatch var cases cont
-mkConsMatch _ [] _ = return []
+mkConsMatch :: BlockPostprocessor ->
+               (BlockPostprocessor -> CodeGeneration [BlockStmt]) ->
+               LVar ->
+               [SAlt] ->
+               CodeGeneration [SwitchBlock]
+mkConsMatch pp getDefaultStmts var ((SConCase parentStackPos consIndex _ params branchExpression):cases) = do
+  pushScope
+  caseBranch <- mkCaseBinding pp var parentStackPos params branchExpression
+  popScope
+  otherBranches <- mkConsMatch pp getDefaultStmts var cases
+  return $
+    (SwitchBlock (SwitchCase $ jInt consIndex) caseBranch):otherBranches
+mkConsMatch pp getDefaultStmts var (c:cases)  = mkConsMatch pp getDefaultStmts var cases
+mkConsMatch pp getDefaultStmts _ [] = do
+  defaultBlock <- getDefaultStmts pp
+  return $
+    [SwitchBlock Default defaultBlock]
 
-mkCaseBinding :: LVar -> Int -> [Name] -> SExp -> BlockResultTransformation -> CodeGeneration [BlockStmt]
-mkCaseBinding var stackStart [] branchExpression cont = mkExp branchExpression cont
-mkCaseBinding var stackStart (params) branchExpression cont = do
-  deconstruction <- mkCaseBindingDeconstruction var stackStart params
-  branchBlk <- mkExp branchExpression cont
-  return $ deconstruction ++ branchBlk
-
-mkCaseBindingDeconstruction :: LVar -> Int -> [Name] -> CodeGeneration [BlockStmt]
-mkCaseBindingDeconstruction var stackStart members =
-  mapM (\ pos -> BlockStmt . ExpStmt .
-         ((contextArray var @! (stackStart + pos)) @:=)  <$> mkProjection var pos
-       ) ([0..(length members - 1)])
+mkCaseBinding :: BlockPostprocessor -> LVar -> Int -> [Name] -> SExp -> CodeGeneration [BlockStmt]
+mkCaseBinding pp var stackStart params branchExpression =
+  mkExp pp (toLetIn var stackStart params branchExpression)
+  where
+    toLetIn :: LVar -> Int -> [Name] -> SExp -> SExp
+    toLetIn var stackStart members start =
+      foldr
+        (\ pos inExp -> SLet (Loc (stackStart + pos)) (SProj var pos) inExp)
+        start
+        [0.. (length members - 1)]
 
 -----------------------------------------------------------------------
 -- Projection (retrieve the n-th field of an object)
@@ -536,51 +685,31 @@ mkConstant c@(Forgot    ) = ClassLit (Just $ objectType)
 -----------------------------------------------------------------------
 -- Foreign function calls
 
-mkForeignWrappedMethod :: FCallType -> FType -> String -> [(FType, LVar)] -> CodeGeneration Decl
-mkForeignWrappedMethod callType resTy text params
-  | callType <- FStatic      =
-    (\ method args ->
-      wrapperMethod $ wrapReturn resTy (call method args)
-    )
-    <$> liftParsed (parser name text)
-    <*> foreignVarAccess params
-  | callType <- FObject      =
-    (\ method (tgt:args) ->
-      wrapperMethod $ wrapReturn resTy ((tgt ~> (show $ pretty method)) args)
-    )
-    <$> liftParsed (parser ident text)
-    <*> foreignVarAccess params
-  | callType <- FConstructor =
-    (\ clsTy args ->
-      wrapperMethod $ wrapReturn resTy (InstanceCreation [] clsTy args Nothing)
-    )
-    <$> liftParsed (parser classType text)
-    <*> foreignVarAccess params
+mkForeign :: BlockPostprocessor -> FLang -> FType -> String -> [(FType, LVar)] -> CodeGeneration [BlockStmt]
+mkForeign pp (LANG_C) resTy text params = mkForeign pp (LANG_JAVA FStatic) resTy text params
+mkForeign pp (LANG_JAVA callType) resTy text params
+  | callType <- FStatic      = do
+    method <- liftParsed (parser name text)
+    args <- foreignVarAccess params
+    wrapReturn resTy (call method args)
+  | callType <- FObject      = do
+    method <- liftParsed (parser ident text)
+    (tgt:args) <- foreignVarAccess params
+    wrapReturn resTy ((tgt ~> (show $ pretty method)) args)
+  | callType <- FConstructor = do
+    clsTy <- liftParsed (parser classType text)
+    args <- foreignVarAccess params
+    wrapReturn resTy (InstanceCreation [] clsTy args Nothing)
   where
-    wrapperMethod =
-      MemberDecl . MethodDecl
-        [Protected, Final] [] (Just objectType) (Ident $ "wrappedInvoke") [] [toRefType exceptionType]
-          . MethodBody . Just . Block
-
-
-    wrapReturn FUnit exp = [ BlockStmt $ ExpStmt exp, jReturn (Lit Null) ]
-    wrapReturn _     exp = [ jReturn exp ]
-
     foreignVarAccess args =
       mapM (\ (fty, var) -> (foreignType fty <>@! var)) args
 
-mkForeign :: FLang -> FType -> String -> [(FType, LVar)] -> CodeGeneration Exp
-mkForeign (LANG_JAVA callType) resTy text params =
-  (\ wrappedMethod ->
-    ((InstanceCreation
-       []
-       (toClassType foreignWrapperType)
-       []
-       (Just $ ClassBody [wrappedMethod])
-     ) ~> "invoke") []
-  )
-  <$> mkForeignWrappedMethod callType resTy text params
-mkForeign (LANG_C) resTy text params = mkForeign (LANG_JAVA FStatic) resTy text params
+    pp' = rethrowAsRuntimeException pp
+
+    wrapReturn FUnit exp =
+      ((ppInnerBlock pp') [BlockStmt $ ExpStmt exp] (Lit Null)) >>= ppOuterBlock pp'
+    wrapReturn _     exp =
+      ((ppInnerBlock pp') [] exp) >>= ppOuterBlock pp'
 
 -----------------------------------------------------------------------
 -- Primitive functions
@@ -594,18 +723,4 @@ mkThread :: LVar -> CodeGeneration Exp
 mkThread arg =
   (\ closure -> (closure ~> "fork") []) <$> mkMethodCallClosure (MN 0 "EVAL") [arg]
 
------------------------------------------------------------------------
--- Exceptions
-
-mkException :: String -> CodeGeneration [BlockStmt]
-mkException err =
-  return $
-  [ BlockStmt $ Throw
-      ( InstanceCreation
-          []
-          (toClassType runtimeExceptionType)
-          [Lit $ String err]
-          Nothing
-      )
-  ]
 

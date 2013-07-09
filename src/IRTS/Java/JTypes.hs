@@ -203,7 +203,6 @@ foreignType :: FType -> Maybe J.Type
 foreignType (FArith      at) = Just $ arithTyToJType at
 foreignType (FFunction     ) = Just $ callableType
 foreignType (FFunctionIO   ) = Just $ callableType
-foreignType (FChar         ) = Just $ charType
 foreignType (FString       ) = Just $ stringType
 foreignType (FUnit         ) = Nothing
 foreignType (FPtr          ) = Just $ objectType

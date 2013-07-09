@@ -55,12 +55,18 @@ instance Callable J.Name where
 (<>) :: Type -> Exp -> Exp
 (<>) = Cast
 
+localVar :: Int -> Ident
+localVar i = Ident $ "loc" ++ show i
+
 (@!) :: Exp -> Int -> ArrayIndex
 (@!) target pos =
   ArrayIndex target (Lit $ Int (toInteger pos))
 
-(@:=) :: ArrayIndex -> Exp -> Exp
-(@:=) lhs rhs = Assign (ArrayLhs lhs) EqualA rhs
+(@:=) :: Either ArrayIndex Ident -> Exp -> BlockStmt
+(@:=) (Right lhs) rhs =
+  LocalVars [Final] objectType [VarDecl (VarId lhs) (Just $ InitExp rhs)]
+(@:=) (Left lhs) rhs =
+  BlockStmt . ExpStmt $ Assign (ArrayLhs lhs) EqualA rhs
 
 (~&&~) :: Exp -> Exp -> Exp
 (~&&~) e1 e2 = BinOp e1 CAnd e2
