@@ -287,6 +287,9 @@ letbind n t v = processTactic' (LetBind n t v)
 rewrite :: Raw -> Elab' aux ()
 rewrite tm = processTactic' (Rewrite tm)
 
+equiv :: Raw -> Elab' aux ()
+equiv tm = processTactic' (Equiv tm)
+
 patvar :: Name -> Elab' aux ()
 patvar n = do env <- get_env
               if (n `elem` map fst env) then do apply (Var n) []; solve
