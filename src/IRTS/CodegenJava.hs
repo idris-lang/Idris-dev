@@ -269,28 +269,18 @@ mkCompilationUnit globalInit defs hdrs out = do
   clsName <- mkClassName out
   CompilationUnit Nothing ( [ ImportDecl False idrisRts True
                             , ImportDecl True idrisForeign True
-                            , ImportDecl False idrisForeignWrapper False
                             , ImportDecl False idrisPrimFn False
                             , ImportDecl False bigInteger False
-                            , ImportDecl False stringBuffer False
                             , ImportDecl False runtimeException False
-                            , ImportDecl False scanner False
-                            , ImportDecl False arrays False
-                            , ImportDecl False callable False
                             ] ++ otherHdrs
                           )
                           <$> mkTypeDecl clsName globalInit defs
   where
     idrisRts = J.Name $ map Ident ["org", "idris", "rts"]
     idrisForeign = J.Name $ map Ident ["org", "idris", "rts", "ForeignPrimitives"]
-    idrisForeignWrapper = J.Name $ map Ident ["org", "idris", "rts", "ForeignWrapper"]
     idrisPrimFn = J.Name $ map Ident ["org", "idris", "rts", "PrimFn"]
     bigInteger = J.Name $ map Ident ["java", "math", "BigInteger"]
-    stringBuffer = J.Name $ map Ident ["java", "lang", "StringBuffer"]
     runtimeException = J.Name $ map Ident ["java", "lang", "RuntimeException"]
-    scanner = J.Name $ map Ident ["java", "util", "Scanner"]
-    arrays = J.Name $ map Ident ["java", "util", "Arrays"]
-    callable = J.Name $ map Ident ["java", "util", "concurrent", "Callable"]
     otherHdrs = map ( (\ name -> ImportDecl False name False)
                       . J.Name
                       . map (Ident . T.unpack)
