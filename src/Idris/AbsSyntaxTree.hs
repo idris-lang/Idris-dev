@@ -375,7 +375,10 @@ data PDecl' t
    | PMutual  FC [PDecl' t] -- ^ Mutual block
    | PDirective (Idris ()) -- ^ Compiler directive. The parser inserts the corresponding action in the Idris monad.
    | PProvider SyntaxInfo FC Name t t -- ^ Type provider. The first t is the type, the second is the term
-  deriving Functor
+   | PReflection FC Name -- type to reflect to
+                    t -- type of variables
+                    [PClause' t] -- ^ Pattern clauses
+ deriving Functor
 {-!
 deriving instance Binary PDecl'
 !-}
@@ -511,7 +514,7 @@ data PTerm = PQuote Raw
            | PRefl FC PTerm
            | PResolveTC FC
            | PEq FC PTerm PTerm
-           | PRewrite FC PTerm PTerm
+           | PRewrite FC PTerm PTerm (Maybe PTerm)
            | PPair FC PTerm PTerm
            | PDPair FC PTerm PTerm PTerm
            | PAlternative Bool [PTerm] -- True if only one may work
@@ -539,7 +542,8 @@ mapPT f t = f (mpt t) where
   mpt (PLam n t s) = PLam n (mapPT f t) (mapPT f s)
   mpt (PPi p n t s) = PPi p n (mapPT f t) (mapPT f s)
   mpt (PLet n ty v s) = PLet n (mapPT f ty) (mapPT f v) (mapPT f s)
-  mpt (PRewrite fc t s) = PRewrite fc (mapPT f t) (mapPT f s)
+  mpt (PRewrite fc t s g) = PRewrite fc (mapPT f t) (mapPT f s) 
+                                 (fmap (mapPT f) g)
   mpt (PApp fc t as) = PApp fc (mapPT f t) (map (fmap (mapPT f)) as)
   mpt (PCase fc c os) = PCase fc (mapPT f c) (map (pmap (mapPT f)) os)
   mpt (PEq fc l r) = PEq fc (mapPT f l) (mapPT f r)
@@ -965,7 +969,7 @@ prettyImp impl = prettySe 10
           prettySe 10 l <+> text "=" $$ nest nestingSize (prettySe 10 r)
         else
           prettySe 10 l <+> text "=" <+> prettySe 10 r
-    prettySe p (PRewrite _ l r) =
+    prettySe p (PRewrite _ l r _) =
       bracket p 2 $
         if size r > breakingSize then
           text "rewrite" <+> prettySe 10 l <+> text "in" $$ nest nestingSize (prettySe 10 r)
@@ -1082,7 +1086,7 @@ showImp impl tm = se 10 tm where
     se p (PTrue _) = "()"
     se p (PFalse _) = "_|_"
     se p (PEq _ l r) = bracket p 2 $ se 10 l ++ " = " ++ se 10 r
-    se p (PRewrite _ l r) = bracket p 2 $ "rewrite " ++ se 10 l ++ " in " ++ se 10 r
+    se p (PRewrite _ l r _) = bracket p 2 $ "rewrite " ++ se 10 l ++ " in " ++ se 10 r
     se p (PTyped l r) = "(" ++ se 10 l ++ " : " ++ se 10 r ++ ")"
     se p (PPair _ l r) = "(" ++ se 10 l ++ ", " ++ se 10 r ++ ")"
     se p (PDPair _ l t r) = "(" ++ se 10 l ++ " ** " ++ se 10 r ++ ")"
@@ -1160,7 +1164,7 @@ instance Sized PTerm where
   size (PRefl fc _) = 1
   size (PResolveTC fc) = 1
   size (PEq fc left right) = 1 + size left + size right
-  size (PRewrite fc left right) = 1 + size left + size right
+  size (PRewrite fc left right _) = 1 + size left + size right
   size (PPair fc left right) = 1 + size left + size right
   size (PDPair fs left ty right) = 1 + size left + size ty + size right
   size (PAlternative a alts) = 1 + size alts
@@ -1194,7 +1198,7 @@ allNamesIn tm = nub $ ni [] tm
     ni env (PPi _ n ty sc) = ni env ty ++ ni (n:env) sc
     ni env (PHidden tm)    = ni env tm
     ni env (PEq _ l r)     = ni env l ++ ni env r
-    ni env (PRewrite _ l r) = ni env l ++ ni env r
+    ni env (PRewrite _ l r _) = ni env l ++ ni env r
     ni env (PTyped l r)    = ni env l ++ ni env r
     ni env (PPair _ l r)   = ni env l ++ ni env r
     ni env (PDPair _ (PRef _ n) t r)  = ni env t ++ ni (n:env) r
@@ -1218,7 +1222,7 @@ namesIn uvars ist tm = nub $ ni [] tm
     ni env (PLam n ty sc)  = ni env ty ++ ni (n:env) sc
     ni env (PPi _ n ty sc) = ni env ty ++ ni (n:env) sc
     ni env (PEq _ l r)     = ni env l ++ ni env r
-    ni env (PRewrite _ l r) = ni env l ++ ni env r
+    ni env (PRewrite _ l r _) = ni env l ++ ni env r
     ni env (PTyped l r)    = ni env l ++ ni env r
     ni env (PPair _ l r)   = ni env l ++ ni env r
     ni env (PDPair _ (PRef _ n) t r) = ni env t ++ ni (n:env) r
@@ -1243,7 +1247,7 @@ usedNamesIn vars ist tm = nub $ ni [] tm
     ni env (PLam n ty sc)  = ni env ty ++ ni (n:env) sc
     ni env (PPi _ n ty sc) = ni env ty ++ ni (n:env) sc
     ni env (PEq _ l r)     = ni env l ++ ni env r
-    ni env (PRewrite _ l r) = ni env l ++ ni env r
+    ni env (PRewrite _ l r _) = ni env l ++ ni env r
     ni env (PTyped l r)    = ni env l ++ ni env r
     ni env (PPair _ l r)   = ni env l ++ ni env r
     ni env (PDPair _ (PRef _ n) t r) = ni env t ++ ni (n:env) r

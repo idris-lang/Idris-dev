@@ -1,5 +1,7 @@
 module Language.Reflection
 
+import Prelude.Vect
+
 %access public
 
 data TTName = UN String

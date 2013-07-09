@@ -598,7 +598,7 @@ expandParams dec ps ns infs tm = en tm
                      PLet n' (en ty) (en v) (en (shadow n n' s))
        | otherwise = PLet n (en ty) (en v) (en s)
     en (PEq f l r) = PEq f (en l) (en r)
-    en (PRewrite f l r) = PRewrite f (en l) (en r)
+    en (PRewrite f l r g) = PRewrite f (en l) (en r) (fmap en g)
     en (PTyped l r) = PTyped (en l) (en r)
     en (PPair f l r) = PPair f (en l) (en r)
     en (PDPair f l t r) = PDPair f (en l) (en t) (en r)
@@ -735,7 +735,7 @@ getPriority i tm = 1 -- pri tm
     pri (PFalse _) = 0
     pri (PRefl _ _) = 1
     pri (PEq _ l r) = max 1 (max (pri l) (pri r))
-    pri (PRewrite _ l r) = max 1 (max (pri l) (pri r))
+    pri (PRewrite _ l r _) = max 1 (max (pri l) (pri r))
     pri (PApp _ f as) = max 1 (max (pri f) (foldr max 0 (map (pri.getTm) as))) 
     pri (PCase _ f as) = max 1 (max (pri f) (foldr max 0 (map (pri.snd) as))) 
     pri (PTyped l r) = pri l
@@ -892,7 +892,7 @@ implicitise syn ignore ist tm = -- trace ("INCOMING " ++ showImp True tm) $
         = do (decls, ns) <- get
              let isn = namesIn uvars ist l ++ namesIn uvars ist r
              put (decls, nub (ns ++ (isn `dropAll` (env ++ map fst (getImps decls)))))
-    imps top env (PRewrite _ l r)
+    imps top env (PRewrite _ l r _)
         = do (decls, ns) <- get
              let isn = namesIn uvars ist l ++ namesIn uvars ist r
              put (decls, nub (ns ++ (isn `dropAll` (env ++ map fst (getImps decls)))))
@@ -956,9 +956,10 @@ addImpl' inpat env infns ist ptm = ai (zip env (repeat Nothing)) ptm
     ai env (PEq fc l r)   = let l' = ai env l
                                 r' = ai env r in
                                 PEq fc l' r'
-    ai env (PRewrite fc l r)   = let l' = ai env l
-                                     r' = ai env r in
-                                     PRewrite fc l' r'
+    ai env (PRewrite fc l r g)   = let l' = ai env l
+                                       r' = ai env r
+                                       g' = fmap (ai env) g in
+                                       PRewrite fc l' r' g'
     ai env (PTyped l r) = let l' = ai env l
                               r' = ai env r in
                               PTyped l' r'
@@ -1220,7 +1221,7 @@ matchClause' names i x y = checkRpts $ match (fullApp x) (fullApp y) where
     match (PEq _ l r) (PEq _ l' r') = do ml <- match' l l'
                                          mr <- match' r r'
                                          return (ml ++ mr)
-    match (PRewrite _ l r) (PRewrite _ l' r') 
+    match (PRewrite _ l r _) (PRewrite _ l' r' _) 
                                     = do ml <- match' l l'
                                          mr <- match' r r'
                                          return (ml ++ mr)
@@ -1307,7 +1308,8 @@ substMatchShadow n shs tm t = sm shs t where
     sm xs (PApp f x as) = PApp f (sm xs x) (map (fmap (sm xs)) as)
     sm xs (PCase f x as) = PCase f (sm xs x) (map (pmap (sm xs)) as)
     sm xs (PEq f x y) = PEq f (sm xs x) (sm xs y)
-    sm xs (PRewrite f x y) = PRewrite f (sm xs x) (sm xs y)
+    sm xs (PRewrite f x y tm) = PRewrite f (sm xs x) (sm xs y)
+                                           (fmap (sm xs) tm)
     sm xs (PTyped x y) = PTyped (sm xs x) (sm xs y)
     sm xs (PPair f x y) = PPair f (sm xs x) (sm xs y)
     sm xs (PDPair f x t y) = PDPair f (sm xs x) (sm xs t) (sm xs y)
@@ -1324,7 +1326,7 @@ shadow n n' t = sm t where
     sm (PApp f x as) = PApp f (sm x) (map (fmap sm) as)
     sm (PCase f x as) = PCase f (sm x) (map (pmap sm) as)
     sm (PEq f x y) = PEq f (sm x) (sm y)
-    sm (PRewrite f x y) = PRewrite f (sm x) (sm y)
+    sm (PRewrite f x y tm) = PRewrite f (sm x) (sm y) (fmap sm tm)
     sm (PTyped x y) = PTyped (sm x) (sm y)
     sm (PPair f x y) = PPair f (sm x) (sm y)
     sm (PDPair f x t y) = PDPair f (sm x) (sm t) (sm y)

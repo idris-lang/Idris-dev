@@ -974,9 +974,13 @@ pRewriteTerm syn =
                 do reserved "rewrite"
                    fc <- pfc
                    prf <- pExpr syn
+                   giving <- option Nothing
+                                (do symbol "==>"; tm <- pExpr' syn
+                                    return (Just tm))
                    reserved "in";  sc <- pExpr syn
                    return (PRewrite fc 
-                             (PApp fc (PRef fc (UN "sym")) [pexp prf]) sc)
+                             (PApp fc (PRef fc (UN "sym")) [pexp prf]) sc
+                               giving)
 
 pLet syn = try (do reserved "let"; n <- pName; 
                    ty <- option Placeholder (do lchar ':'; pExpr' syn)

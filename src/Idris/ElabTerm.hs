@@ -420,7 +420,7 @@ elab ist info pattern tcgen fn tm
         | not pattern = do mapM_ (runTac False ist) ts
         | otherwise = elab' ina Placeholder
     elab' ina (PElabError e) = fail (pshow ist e)
-    elab' ina (PRewrite fc r sc) 
+    elab' ina (PRewrite fc r sc newg) 
         = do attack
              tyn <- unique_hole (MN 0 "rty")
              claim tyn RType
@@ -435,8 +435,24 @@ elab ist info pattern tcgen fn tm
              rewrite (Var letn)
              g' <- goal
              when (g == g') $ lift $ tfail (NoRewriting g)
-             elab' ina sc
+             case newg of
+                 Nothing -> elab' ina sc
+                 Just t -> doEquiv t sc
              solve
+        where doEquiv t sc =
+                do attack
+                   tyn <- unique_hole (MN 0 "ety")
+                   claim tyn RType
+                   valn <- unique_hole (MN 0 "eqval")
+                   claim valn (Var tyn)
+                   letn <- unique_hole (MN 0 "equiv_val")
+                   letbind letn (Var tyn) (Var valn)
+                   focus tyn
+                   elab' ina t
+                   focus valn
+                   elab' ina sc
+                   elab' ina (PRef fc letn)
+                   solve
     elab' ina@(_, a) c@(PCase fc scr opts)
         = do attack
              tyn <- unique_hole (MN 0 "scty")
