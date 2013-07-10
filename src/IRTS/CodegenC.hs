@@ -344,6 +344,8 @@ doOp v (LSRem (ATInt (ITFixed ty))) [x, y] = bitOp v "SRem" ty [x, y]
 
 doOp v (LSExt (ITFixed from) ITBig) [x]
     = v ++ "MKBIGSI(vm, (" ++ signedTy from ++ ")" ++ creg x ++ "->info.bits" ++ show (nativeTyWidth from) ++ ")"
+doOp v (LZExt ITNative ITBig) [x]
+    = v ++ "MKBIGSI(vm, GETINT(" ++ creg x ++ "))"
 doOp v (LSExt ITNative (ITFixed to)) [x]
     = v ++ "idris_b" ++ show (nativeTyWidth to) ++ "const(vm, GETINT(" ++ creg x ++ "))"
 doOp v (LSExt (ITFixed from) ITNative) [x]
@@ -356,6 +358,8 @@ doOp v (LZExt (ITFixed from) ITNative) [x]
     = v ++ "MKINT((i_int)" ++ creg x ++ "->info.bits" ++ show (nativeTyWidth from) ++ ")"
 doOp v (LZExt (ITFixed from) ITBig) [x]
     = v ++ "MKBIGUI(vm, " ++ creg x ++ "->info.bits" ++ show (nativeTyWidth from) ++ ")"
+doOp v (LZExt ITNative ITBig) [x]
+    = v ++ "MKBIGUI(vm, (uintptr_t)GETINT(" ++ creg x ++ "))"
 doOp v (LZExt (ITFixed from) (ITFixed to)) [x]
     | nativeTyWidth from < nativeTyWidth to = bitCoerce v "Z" from to x
 doOp v (LTrunc ITNative (ITFixed to)) [x]

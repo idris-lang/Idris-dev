@@ -846,6 +846,20 @@ cgOp (LOr    ITBig) [x,y] = mpzBin "ior" x y
 cgOp (LXOr   ITBig) [x,y] = mpzBin "xor" x y
 cgOp (LCompl ITBig) [x]   = mpzUn "com" x
 
+cgOp (LTrunc ITNative (ITFixed to)) [x]
+    | 32 >= nativeTyWidth to = iCoerce Trunc IT32 to x
+cgOp (LZExt ITNative (ITFixed to)) [x]
+    | 32 <= nativeTyWidth to = iCoerce ZExt IT32 to x
+cgOp (LSExt ITNative (ITFixed to)) [x]
+    | 32 <= nativeTyWidth to = iCoerce SExt IT32 to x
+
+cgOp (LTrunc (ITFixed from) ITNative) [x]
+    | nativeTyWidth from >= 32 = iCoerce Trunc from IT32 x
+cgOp (LZExt (ITFixed from) ITNative) [x]
+    | nativeTyWidth from <= 32 = iCoerce ZExt from IT32 x
+cgOp (LSExt (ITFixed from) ITNative) [x]
+    | nativeTyWidth from <= 32 = iCoerce SExt from IT32 x
+
 cgOp (LTrunc (ITFixed from) (ITFixed to)) [x]
     | nativeTyWidth from > nativeTyWidth to = iCoerce Trunc from to x
 cgOp (LZExt (ITFixed from) (ITFixed to)) [x]
