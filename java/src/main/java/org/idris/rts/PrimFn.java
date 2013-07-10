@@ -1078,18 +1078,18 @@ public class PrimFn {
     }
     
     public static long LZExtIT64(int x) {
-        return (long)(x < 0 ? ((long)x) + (2 << 31) : x);
+        return (long)(x < 0 ? ((long)x) + (2l << 31) : x);
     }
     public static BigInteger LZExtITBig(int x) {
-        return BigInteger.valueOf(x < 0 ? ((long)x) + (2 << 31) : x);
+        return BigInteger.valueOf(x < 0 ? ((long)x) + (2l << 31) : x);
     }
     public static char LZExtITChar(int x) {
-        return (char)(x < 0 ? ((long)x) + (2 << 31) : x);
+        return (char)(x < 0 ? ((long)x) + (2l << 31) : x);
     }
     public static long[] LZExtITVec64(int[] x) {
         long[] res = new long[x.length];
         for (int i = 0; i < res.length; ++i) {
-            res[i] = (long)(((long)x[i]) < 0 ? x[i] + (2 << 31) : x[i]);
+            res[i] = (long)(((long)x[i]) < 0 ? x[i] + (2l << 31) : x[i]);
         }
         return res;
     }
