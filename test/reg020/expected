@@ -1,0 +1,7 @@
+length of: '' is: 0
+length of: 'hello world!' is: 12
+length of: ' ' is: 1
+length of: '	' is: 1
+length of: '
+' is: 1
+length of all matches sum of all lengths: True
