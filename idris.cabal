@@ -135,6 +135,9 @@ Extra-source-files:    lib/Makefile  lib/*.idr lib/Prelude/*.idr
                        test/reg019/run
                        test/reg019/*.idr
                        test/reg019/expected
+                       test/reg020/run
+                       test/reg020/*.idr
+                       test/reg020/expected
                        test/test001/run
                        test/test001/*.idr
                        test/test001/expected

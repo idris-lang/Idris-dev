@@ -25,6 +25,7 @@ test_js:
 	@perl ./runtest.pl reg017 --codegen node
 	@perl ./runtest.pl reg018 --codegen node
 	@perl ./runtest.pl reg019 --codegen node
+	@perl ./runtest.pl reg020 --codegen node
 	@perl ./runtest.pl test001 --codegen node
 	@perl ./runtest.pl test002 --codegen node
 	@perl ./runtest.pl test003 --codegen node
