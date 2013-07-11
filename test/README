@@ -29,3 +29,5 @@ Tests:
 027: class constraints in using block
 
 regxxx: various regression tests
+reg020: working strlen
+
