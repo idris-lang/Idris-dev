@@ -301,7 +301,8 @@ mkIty' _ = FAny
 
 mkIty "FFloat"      = FArith ATFloat
 mkIty "FInt"        = mkIntIty "ITNative"
-mkIty "FChar"       = mkIntIty "IT8"
+mkIty "FChar"       = mkIntIty "ITChar"
+mkIty "FByte"       = mkIntIty "IT8"
 mkIty "FShort"      = mkIntIty "IT16"
 mkIty "FLong"       = mkIntIty "IT64"
 mkIty "FString"     = FString
@@ -312,6 +313,7 @@ mkIty "FFunctionIO" = FFunctionIO
 mkIty x             = error $ "Unknown type " ++ x
 
 mkIntIty "ITNative" = FArith (ATInt ITNative)
+mkIntIty "ITChar" = FArith (ATInt ITChar)
 mkIntIty "IT8"  = FArith (ATInt (ITFixed IT8))
 mkIntIty "IT16" = FArith (ATInt (ITFixed IT16))
 mkIntIty "IT32" = FArith (ATInt (ITFixed IT32))
@@ -371,7 +373,7 @@ instance ToIR SC where
 
         matchableTy (AType (ATInt ITNative)) = True
         matchableTy (AType (ATInt ITBig)) = True
-        matchableTy ChType = True
+        matchableTy (AType (ATInt ITChar)) = True
         matchableTy StrType = True
 
         matchableTy (AType (ATInt (ITFixed IT8)))  = True

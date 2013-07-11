@@ -144,7 +144,6 @@ translateConstant (Fl f)  = show f
 translateConstant (Ch c)  = show c
 translateConstant (Str s) = show s
 translateConstant (AType (ATInt ITNative)) = "__IDRRT__.Int"
-translateConstant ChType  = "__IDRRT__.Char"
 translateConstant StrType = "__IDRRT__.String"
 translateConstant (AType (ATInt ITBig)) = "__IDRRT__.Integer"
 translateConstant (AType ATFloat)  = "__IDRRT__.Float"
@@ -470,13 +469,13 @@ translateCase _ (SDefaultCase e) =
   createIfBlock "true" (translateExpression e)
 
 translateCase var (SConstCase ty e)
-  | ChType  <- ty = matchHelper "Char"
   | StrType <- ty = matchHelper "String"
   | PtrType <- ty = matchHelper "Ptr"
   | Forgot  <- ty = matchHelper "Forgot"
   | (AType ATFloat) <- ty = matchHelper "Float"
   | (AType (ATInt ITBig)) <- ty = matchHelper "Integer"
   | (AType (ATInt ITNative)) <- ty = matchHelper "Int"
+  | (AType (ATInt ITChar))  <- ty = matchHelper "Char"
   where
     matchHelper tyName = translateTypeMatch var tyName e
 

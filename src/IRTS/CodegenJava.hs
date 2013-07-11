@@ -477,6 +477,7 @@ nextIntTy (ITFixed IT16) = (ITFixed IT32)
 nextIntTy (ITFixed IT32) = (ITFixed IT64)
 nextIntTy (ITFixed IT64) = (ITFixed IT64)
 nextIntTy ITNative = (ITFixed IT64)
+nextIntTy ITChar = (ITFixed IT64)
 
 intTyToIdent :: IntTy -> Ident
 intTyToIdent (ITFixed IT8)  = Ident "Byte"
@@ -485,6 +486,7 @@ intTyToIdent (ITFixed IT32) = Ident "Integer"
 intTyToIdent (ITFixed IT64) = Ident "Long"
 intTyToIdent ITNative = Ident "Integer"
 intTyToIdent ITBig = Ident "BigInteger"
+intTyToIdent ITChar = Ident "Integer"
 
 intTyToClass :: IntTy -> ClassType
 intTyToClass ty = ClassType [(intTyToIdent ty, [])]
@@ -495,6 +497,7 @@ intTyToMethod (ITFixed IT16) = "shortValue"
 intTyToMethod (ITFixed IT32) = "intValue"
 intTyToMethod (ITFixed IT64) = "longValue"
 intTyToMethod ITNative = "intValue"
+intTyToMethod ITChar = "intValue"
 
 intTyToPrimTy :: IntTy -> PrimType
 intTyToPrimTy (ITFixed IT8)  = ByteT
@@ -502,6 +505,7 @@ intTyToPrimTy (ITFixed IT16) = ShortT
 intTyToPrimTy (ITFixed IT32) = IntT
 intTyToPrimTy (ITFixed IT64) = LongT
 intTyToPrimTy ITNative = IntT
+intTyToPrimTy ITChar = IntT
 
 bigIntegerType :: ClassType
 bigIntegerType = ClassType [(Ident "BigInteger", [])]
@@ -997,7 +1001,6 @@ mkStringAtIndex var indexExp =
 mkForeignType :: FType -> Maybe ClassType
 mkForeignType (FArith (ATInt ity)) = return (intTyToClass ity)
 mkForeignType (FArith ATFloat) = return doubleType
-mkForeignType FChar = return integerType
 mkForeignType FString = return stringType
 mkForeignType FPtr = return objectType
 mkForeignType FAny = return objectType
@@ -1011,7 +1014,7 @@ mkForeignVarAccess (FArith (ATInt ty)) var =
                                           []
   )
   <$> mkVarAccess (Just $ intTyToClass ty) var
-mkForeignVarAccess FChar var = Cast (PrimType CharT) <$> mkForeignVarAccess (FArith (ATInt (ITFixed IT32))) var
+-- mkForeignVarAccess (FArith (ATInt ITChar)) var = Cast (PrimType CharT) <$> mkForeignVarAccess (FArith (ATInt (ITFixed IT32))) var
 mkForeignVarAccess (FArith ATFloat) var = 
   (\ var -> MethodInv $ PrimaryMethodCall (var)
                                           []
@@ -1022,12 +1025,12 @@ mkForeignVarAccess (FArith ATFloat) var =
 mkForeignVarAccess otherType var = mkVarAccess (mkForeignType otherType) var 
  
 mkFromForeignType :: FType -> Exp -> Exp
-mkFromForeignType (FArith (ATInt ty)) from = 
+{-mkFromForeignType (FArith (ATInt ty)) from = 
   MethodInv $ TypeMethodCall (J.Name [intTyToIdent ty])
                              []
                              (Ident "valueOf")
-                             [from]
-mkFromForeignType FChar from = mkFromForeignType (FArith (ATInt (ITFixed IT32))) from
+                             [from] -}
+mkFromForeignType (FArith (ATInt ITChar)) from = mkFromForeignType (FArith (ATInt (ITFixed IT32))) from
 mkFromForeignType (FArith ATFloat) from =   
   MethodInv $ TypeMethodCall (J.Name [Ident "Double"])
                              []
@@ -1272,7 +1275,7 @@ mkExp (SConst (Str x)) = return $ Lit $ String x
 mkExp (SConst (AType (ATInt ITNative))) = return $ mkClass integerType
 mkExp (SConst (AType (ATInt ITBig))) = return $ mkClass bigIntegerType
 mkExp (SConst (AType ATFloat)) = return $ mkClass doubleType
-mkExp (SConst ChType) = return $ mkClass charType
+mkExp (SConst (AType (ATInt ITChar))) = return $ mkClass charType
 mkExp (SConst StrType) = return $ mkClass stringType
 mkExp (SConst (B8 x)) = return $ mkPrimitive "Byte" (String (show x))
 mkExp (SConst (B16 x)) = return $ mkPrimitive "Short" (String (show x))

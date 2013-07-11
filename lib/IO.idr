@@ -21,7 +21,7 @@ io_return x = prim__IO x
 run__IO : IO () -> IO ()
 run__IO v = io_bind v (\v' => io_return v')
 
-data IntTy = ITNative | IT8 | IT16 | IT32 | IT64
+data IntTy = ITChar | ITNative | IT8 | IT16 | IT32 | IT64
 data FTy = FIntT IntTy
          | FFunction FTy FTy
          | FFloat
@@ -34,7 +34,10 @@ FInt : FTy
 FInt = FIntT ITNative
 
 FChar : FTy
-FChar = FIntT IT8
+FChar = FIntT ITChar
+
+FByte : FTy
+FByte = FIntT IT8
 
 FShort : FTy
 FShort = FIntT IT16
@@ -44,6 +47,7 @@ FLong = FIntT IT64
 
 interpFTy : FTy -> Type
 interpFTy (FIntT ITNative) = Int
+interpFTy (FIntT ITChar)   = Char
 interpFTy (FIntT IT8)      = Bits8
 interpFTy (FIntT IT16)     = Bits16
 interpFTy (FIntT IT32)     = Bits32

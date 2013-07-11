@@ -230,9 +230,9 @@ bcc i (ERROR str) = indent i ++ "fprintf(stderr, " ++ show str ++ "); assert(0);
 
 
 c_irts (FArith (ATInt ITNative)) l x = l ++ "MKINT((i_int)(" ++ x ++ "))"
+c_irts (FArith (ATInt ITChar))  l x = c_irts (FArith (ATInt ITNative)) l x
 c_irts (FArith (ATInt (ITFixed ity))) l x
     = l ++ "idris_b" ++ show (nativeTyWidth ity) ++ "const(vm, " ++ x ++ ")"
-c_irts FChar l x = l ++ "MKINT((i_int)(" ++ x ++ "))"
 c_irts FString l x = l ++ "MKSTR(vm, " ++ x ++ ")"
 c_irts FUnit l x = x
 c_irts FPtr l x = l ++ "MKPTR(vm, " ++ x ++ ")"
@@ -240,9 +240,9 @@ c_irts (FArith ATFloat) l x = l ++ "MKFLOAT(vm, " ++ x ++ ")"
 c_irts FAny l x = l ++ x
 
 irts_c (FArith (ATInt ITNative)) x = "GETINT(" ++ x ++ ")"
+irts_c (FArith (ATInt ITChar)) x = irts_c (FArith (ATInt ITNative)) x
 irts_c (FArith (ATInt (ITFixed ity))) x
     = "(" ++ x ++ "->info.bits" ++ show (nativeTyWidth ity) ++ ")"
-irts_c FChar x = "GETINT(" ++ x ++ ")"
 irts_c FString x = "GETSTR(" ++ x ++ ")"
 irts_c FUnit x = x
 irts_c FPtr x = "GETPTR(" ++ x ++ ")"
@@ -276,6 +276,26 @@ doOp v (LLt (ATInt ITNative)) [l, r] = v ++ "INTOP(<," ++ creg l ++ ", " ++ creg
 doOp v (LLe (ATInt ITNative)) [l, r] = v ++ "INTOP(<=," ++ creg l ++ ", " ++ creg r ++ ")"
 doOp v (LGt (ATInt ITNative)) [l, r] = v ++ "INTOP(>," ++ creg l ++ ", " ++ creg r ++ ")"
 doOp v (LGe (ATInt ITNative)) [l, r] = v ++ "INTOP(>=," ++ creg l ++ ", " ++ creg r ++ ")"
+
+doOp v (LPlus (ATInt ITChar)) [l, r] = doOp v (LPlus (ATInt ITNative)) [l, r] 
+doOp v (LMinus (ATInt ITChar)) [l, r] = doOp v (LMinus (ATInt ITNative)) [l, r] 
+doOp v (LTimes (ATInt ITChar)) [l, r] = doOp v (LTimes (ATInt ITNative)) [l, r]
+doOp v (LUDiv ITChar) [l, r] = doOp v (LUDiv ITNative) [l, r] 
+doOp v (LSDiv (ATInt ITChar)) [l, r] = doOp v (LSDiv (ATInt ITNative)) [l, r] 
+doOp v (LURem ITChar) [l, r] = doOp v (LURem ITNative) [l, r] 
+doOp v (LSRem (ATInt ITChar)) [l, r] = doOp v (LSRem (ATInt ITNative)) [l, r] 
+doOp v (LAnd ITChar) [l, r] = doOp v (LAnd ITNative) [l, r]  
+doOp v (LOr ITChar) [l, r] = doOp v (LOr ITNative) [l, r] 
+doOp v (LXOr ITChar) [l, r] = doOp v (LXOr ITNative) [l, r] 
+doOp v (LSHL ITChar) [l, r] = doOp v (LSHL ITNative) [l, r] 
+doOp v (LLSHR ITChar) [l, r] = doOp v (LLSHR ITNative) [l, r] 
+doOp v (LASHR ITChar) [l, r] = doOp v (LASHR ITNative) [l, r] 
+doOp v (LCompl ITChar) [x] = doOp v (LCompl ITNative) [x] 
+doOp v (LEq (ATInt ITChar)) [l, r] = doOp v (LEq (ATInt ITNative)) [l, r] 
+doOp v (LLt (ATInt ITChar)) [l, r] = doOp v (LLt (ATInt ITNative)) [l, r] 
+doOp v (LLe (ATInt ITChar)) [l, r] = doOp v (LLe (ATInt ITNative)) [l, r] 
+doOp v (LGt (ATInt ITChar)) [l, r] = doOp v (LGt (ATInt ITNative)) [l, r]
+doOp v (LGe (ATInt ITChar)) [l, r] = doOp v (LGe (ATInt ITNative)) [l, r]
 
 doOp v (LPlus ATFloat) [l, r] = v ++ "FLOATOP(+," ++ creg l ++ ", " ++ creg r ++ ")"
 doOp v (LMinus ATFloat) [l, r] = v ++ "FLOATOP(-," ++ creg l ++ ", " ++ creg r ++ ")"
@@ -346,22 +366,34 @@ doOp v (LSExt (ITFixed from) ITBig) [x]
     = v ++ "MKBIGSI(vm, (" ++ signedTy from ++ ")" ++ creg x ++ "->info.bits" ++ show (nativeTyWidth from) ++ ")"
 doOp v (LSExt ITNative (ITFixed to)) [x]
     = v ++ "idris_b" ++ show (nativeTyWidth to) ++ "const(vm, GETINT(" ++ creg x ++ "))"
+doOp v (LSExt ITChar (ITFixed to)) [x]
+    = doOp v (LSExt ITNative (ITFixed to)) [x]
 doOp v (LSExt (ITFixed from) ITNative) [x]
     = v ++ "MKINT((i_int)((" ++ signedTy from ++ ")" ++ creg x ++ "->info.bits" ++ show (nativeTyWidth from) ++ "))"
+doOp v (LSExt (ITFixed from) ITChar) [x]
+    = doOp v (LSExt (ITFixed from) ITNative) [x]
 doOp v (LSExt (ITFixed from) (ITFixed to)) [x]
     | nativeTyWidth from < nativeTyWidth to = bitCoerce v "S" from to x
 doOp v (LZExt ITNative (ITFixed to)) [x]
     = v ++ "idris_b" ++ show (nativeTyWidth to) ++ "const(vm, (uintptr_t)GETINT(" ++ creg x ++ ")"
+doOp v (LZExt ITChar (ITFixed to)) [x]
+    = doOp v (LZExt ITNative (ITFixed to)) [x]
 doOp v (LZExt (ITFixed from) ITNative) [x]
     = v ++ "MKINT((i_int)" ++ creg x ++ "->info.bits" ++ show (nativeTyWidth from) ++ ")"
+doOp v (LZExt (ITFixed from) ITChar) [x]
+    = doOp v (LZExt (ITFixed from) ITNative) [x]
 doOp v (LZExt (ITFixed from) ITBig) [x]
     = v ++ "MKBIGUI(vm, " ++ creg x ++ "->info.bits" ++ show (nativeTyWidth from) ++ ")"
 doOp v (LZExt (ITFixed from) (ITFixed to)) [x]
     | nativeTyWidth from < nativeTyWidth to = bitCoerce v "Z" from to x
 doOp v (LTrunc ITNative (ITFixed to)) [x]
     = v ++ "idris_b" ++ show (nativeTyWidth to) ++ "const(vm, GETINT(" ++ creg x ++ "))"
+doOp v (LTrunc ITChar (ITFixed to)) [x]
+    = doOp v (LTrunc ITNative (ITFixed to)) [x]
 doOp v (LTrunc (ITFixed from) ITNative) [x]
     = v ++ "MKINT((i_int)" ++ creg x ++ "->info.bits" ++ show (nativeTyWidth from) ++ ")"
+doOp v (LTrunc (ITFixed from) ITChar) [x]
+    = doOp v (LTrunc (ITFixed from) ITNative) [x]
 doOp v (LTrunc ITBig (ITFixed to)) [x]
     = v ++ "idris_b" ++ show (nativeTyWidth to) ++ "const(vm, ISINT(" ++ creg x ++ ") ? GETINT(" ++ creg x ++ ") : mpz_get_ui(GETMPZ(" ++ creg x ++ ")))"
 doOp v (LTrunc (ITFixed from) (ITFixed to)) [x]
@@ -393,7 +425,9 @@ doOp v LFork [x] = v ++ "MKPTR(vm, vmThread(vm, " ++ cname (MN 0 "EVAL") ++ ", "
 doOp v LPar [x] = v ++ creg x -- "MKPTR(vm, vmThread(vm, " ++ cname (MN 0 "EVAL") ++ ", " ++ creg x ++ "))"
 doOp v LVMPtr [] = v ++ "MKPTR(vm, vm)"
 doOp v (LChInt ITNative) args = v ++ creg (last args)
+doOp v (LChInt ITChar) args = doOp v (LChInt ITNative) args
 doOp v (LIntCh ITNative) args = v ++ creg (last args)
+doOp v (LIntCh ITChar) args = doOp v (LIntCh ITNative) args
 doOp v LNoOp args = v ++ creg (last args)
 doOp _ op _ = "FAIL /* " ++ show op ++ " */"
 
