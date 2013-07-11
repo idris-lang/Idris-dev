@@ -16,6 +16,9 @@ build: dist/setup-config
 test:
 	make -C test IDRIS=../dist/build/idris
 
+test_java:
+	make -C test IDRIS=../dist/build/idris test_java
+
 relib:
 	make -C lib IDRIS=../dist/build/idris/idris RTS=../dist/build/rts/libidris_rts clean
 	make -C effects IDRIS=../dist/build/idris/idris RTS=../dist/build/rts/libidris_rts DIST=../dist/build clean
