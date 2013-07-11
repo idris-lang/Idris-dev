@@ -1,9 +1,9 @@
 module IRTS.Lang where
 
-import Core.TT
-import Control.Monad.State hiding(lift)
-import Data.List
-import Debug.Trace
+import           Control.Monad.State hiding (lift)
+import           Core.TT
+import           Data.List
+import           Debug.Trace
 
 data LVar = Loc Int | Glob Name
   deriving (Show, Eq)
@@ -48,16 +48,19 @@ data PrimFn = LPlus ArithTy | LMinus ArithTy | LTimes ArithTy
             | LStrHead | LStrTail | LStrCons | LStrIndex | LStrRev
             | LStdIn | LStdOut | LStdErr
 
-            | LFork  
+            | LFork
             | LPar -- evaluate argument anywhere, possibly on another
                    -- core or another machine. 'id' is a valid implementation
-            | LVMPtr 
+            | LVMPtr
             | LNoOp
   deriving (Show, Eq)
 
 -- Supported target languages for foreign calls
 
-data FLang = LANG_C
+data FCallType = FStatic | FObject | FConstructor
+  deriving (Show, Eq)
+
+data FLang = LANG_C | LANG_JAVA FCallType
   deriving (Show, Eq)
 
 data FType = FArith ArithTy
@@ -86,9 +89,9 @@ data LOpt = Inline | NoInline
 addTags :: Int -> [(Name, LDecl)] -> (Int, [(Name, LDecl)])
 addTags i ds = tag i ds []
   where tag i ((n, LConstructor n' (-1) a) : as) acc
-            = tag (i + 1) as ((n, LConstructor n' i a) : acc) 
+            = tag (i + 1) as ((n, LConstructor n' i a) : acc)
         tag i ((n, LConstructor n' t a) : as) acc
-            = tag i as ((n, LConstructor n' t a) : acc) 
+            = tag i as ((n, LConstructor n' t a) : acc)
         tag i (x : as) acc = tag i as (x : acc)
         tag i [] acc  = (i, reverse acc)
 
@@ -102,7 +105,7 @@ liftAll :: [(Name, LDecl)] -> [(Name, LDecl)]
 liftAll xs = concatMap (\ (x, d) -> lambdaLift x d) xs
 
 lambdaLift :: Name -> LDecl -> [(Name, LDecl)]
-lambdaLift n (LFun _ _ args e) 
+lambdaLift n (LFun _ _ args e)
       = let (e', (LS _ _ decls)) = runState (lift args e) (LS n 0 []) in
             (n, LFun [] n args e') : decls
 lambdaLift n x = [(n, x)]
@@ -128,7 +131,7 @@ lift env (LApp tc f args) = do f' <- lift env f
 lift env (LLazyApp n args) = do args' <- mapM (lift env) args
                                 return (LLazyApp n args')
 lift env (LLazyExp (LConst c)) = return (LConst c)
--- lift env (LLazyExp (LApp tc (LV (Glob f)) args)) 
+-- lift env (LLazyExp (LApp tc (LV (Glob f)) args))
 --                       = lift env (LLazyApp f args)
 lift env (LLazyExp e) = do e' <- lift env e
                            let usedArgs = nub $ usedIn env e'
@@ -136,7 +139,7 @@ lift env (LLazyExp e) = do e' <- lift env e
                            addFn fn (LFun [NoInline] fn usedArgs e')
                            return (LLazyApp fn (map (LV . Glob) usedArgs))
 lift env (LForce e) = do e' <- lift env e
-                         return (LForce e') 
+                         return (LForce e')
 lift env (LLet n v e) = do v' <- lift env v
                            e' <- lift (env ++ [n]) e
                            return (LLet n v' e')
@@ -176,8 +179,8 @@ usedArg env n | n `elem` env = [n]
               | otherwise = []
 
 usedIn :: [Name] -> LExp -> [Name]
-usedIn env (LV (Glob n)) = usedArg env n 
-usedIn env (LApp _ e args) = usedIn env e ++ concatMap (usedIn env) args 
+usedIn env (LV (Glob n)) = usedArg env n
+usedIn env (LApp _ e args) = usedIn env e ++ concatMap (usedIn env) args
 usedIn env (LLazyApp n args) = concatMap (usedIn env) args ++ usedArg env n
 usedIn env (LLazyExp e) = usedIn env e
 usedIn env (LForce e) = usedIn env e
@@ -201,7 +204,7 @@ instance Show LExp where
                                      showSep ", " (map (show' env) args) ++")"
      show' env (LApp _ e args) = show' env e ++ "(" ++
                                    showSep ", " (map (show' env) args) ++")"
-     show' env (LLazyExp e) = "%lazy(" ++ show' env e ++ ")" 
+     show' env (LLazyExp e) = "%lazy(" ++ show' env e ++ ")"
      show' env (LForce e) = "%force(" ++ show' env e ++ ")"
      show' env (LLet n v e) = "let " ++ show n ++ " = " ++ show' env v ++ " in " ++
                                show' (env ++ [show n]) e
@@ -218,7 +221,7 @@ instance Show LExp where
      show' env (LError str) = "error " ++ show str
      show' env LNothing = "____"
 
-     showAlt env (LConCase _ n args e) 
+     showAlt env (LConCase _ n args e)
           = show n ++ "(" ++ showSep ", " (map show args) ++ ") => "
              ++ show' env e
      showAlt env (LConstCase c e) = show c ++ " => " ++ show' env e

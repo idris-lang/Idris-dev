@@ -241,7 +241,7 @@ public class ForeignPrimitives {
         return result;
     }
 
-    public final static Object idris_assignStack(final Object[] context, final int start, final Object... vars) {
+    public final static Object[] idris_assignStack(final Object[] context, final int start, final Object... vars) {
         int i = start;
         for (Object var : vars) {
             context[i] = var;
@@ -249,23 +249,7 @@ public class ForeignPrimitives {
         return context;
     }
 
-    public final static Object invokeOn(final Object obj, final String methodName, Object... args) throws NoSuchMethodException, IllegalAccessException, InvocationTargetException {
-        Class cls = (obj instanceof Class ? (Class)obj : obj.getClass());
-        Class argClasses[] = new Class[args.length];
-        int i = 0;
-        for (Object arg : args) {
-            argClasses[i] = arg.getClass();
-        }
-        return cls.getMethod(methodName, argClasses).invoke(obj, args);
-    }
-    
-    public final static Object newObject(final Object cls, Object... args) throws NoSuchMethodException, IllegalAccessException, InvocationTargetException, InstantiationException {
-        Class clazz = (cls instanceof Class ? (Class)cls : cls.getClass());
-        Class argClasses[] = new Class[args.length];
-        int i = 0;
-        for (Object arg : args) {
-            argClasses[i] = arg.getClass();
-        }
-        return clazz.getConstructor(argClasses).newInstance(args);
+    public final static Object idris_throwException(RuntimeException ex) {
+        throw ex;
     }
 }
