@@ -1093,7 +1093,7 @@ reifyTTConst :: Term -> ElabD Const
 reifyTTConst (P _ n _) | n == reflm "IType"    = return (AType (ATInt ITNative))
 reifyTTConst (P _ n _) | n == reflm "BIType"   = return (AType (ATInt ITBig))
 reifyTTConst (P _ n _) | n == reflm "FlType"   = return (AType ATFloat)
-reifyTTConst (P _ n _) | n == reflm "ChType"   = return $ ChType
+reifyTTConst (P _ n _) | n == reflm "ChType"   = return (AType (ATInt ITChar))
 reifyTTConst (P _ n _) | n == reflm "StrType"  = return $ StrType
 reifyTTConst (P _ n _) | n == reflm "B8Type"   = return (AType (ATInt (ITFixed IT8)))
 reifyTTConst (P _ n _) | n == reflm "B16Type"  = return (AType (ATInt (ITFixed IT16)))
@@ -1211,7 +1211,7 @@ reflectConstant c@(Str _) = reflCall "Str" [RConstant c]
 reflectConstant (AType (ATInt ITNative)) = Var (reflm "IType")
 reflectConstant (AType (ATInt ITBig)) = Var (reflm "BIType")
 reflectConstant (AType ATFloat) = Var (reflm "FlType")
-reflectConstant (ChType) = Var (reflm "ChType")
+reflectConstant (AType (ATInt ITChar)) = Var (reflm "ChType")
 reflectConstant (StrType) = Var (reflm "StrType")
 reflectConstant c@(B8 _) = reflCall "B8" [RConstant c]
 reflectConstant c@(B16 _) = reflCall "B16" [RConstant c]

@@ -48,7 +48,7 @@ do_malloc size with (fromInteger (cast size) == size)
 private
 do_memset : Ptr -> Nat -> Bits8 -> Nat -> IO ()
 do_memset ptr offset c size
-  = mkForeign (FFun "idris_memset" [FPtr, FInt, FChar, FInt] FUnit)
+  = mkForeign (FFun "idris_memset" [FPtr, FInt, FByte, FInt] FUnit)
               ptr (fromInteger $ cast offset) c (fromInteger $ cast size)
 
 private
@@ -65,7 +65,7 @@ private
 do_peek : Ptr -> Nat -> (size : Nat) -> IO (Vect Bits8 size)
 do_peek _   _       O = return (Prelude.Vect.Nil)
 do_peek ptr offset (S n)
-  = do b <- mkForeign (FFun "idris_peek" [FPtr, FInt] FChar) ptr (fromInteger $ cast offset)
+  = do b <- mkForeign (FFun "idris_peek" [FPtr, FInt] FByte) ptr (fromInteger $ cast offset)
        bs <- do_peek ptr (S offset) n
        Prelude.Monad.return (Prelude.Vect.(::) b bs)
 
@@ -73,7 +73,7 @@ private
 do_poke : Ptr -> Nat -> Vect Bits8 size -> IO ()
 do_poke _   _      []     = return ()
 do_poke ptr offset (b::bs)
-  = do mkForeign (FFun "idris_poke" [FPtr, FInt, FChar] FUnit) ptr (fromInteger $ cast offset) b
+  = do mkForeign (FFun "idris_poke" [FPtr, FInt, FByte] FUnit) ptr (fromInteger $ cast offset) b
        do_poke ptr (S offset) bs
 
 instance Handler RawMemory (IOExcept String) where
