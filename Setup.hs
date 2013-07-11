@@ -168,6 +168,13 @@ main = do
               installStdLib pkg lbi withoutEffects verb
                                     (S.fromFlag $ S.copyDest flags)
               installLLVMLib verb pkg lbi (S.fromFlag $ S.copyDest flags)
+              when (javaFlag $ configFlags lbi) 
+                   (installJavaLib pkg 
+                                   lbi 
+                                   verb 
+                                   (S.fromFlag $ S.copyDest flags)
+                                   (pkgVersion . package $ localPkgDescr lbi)
+                   )
         , postInst = \ _ flags pkg lbi -> do
               let verb = (S.fromFlag $ S.installVerbosity flags)
               let withoutEffects = noEffectsFlag $ configFlags lbi
