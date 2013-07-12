@@ -118,10 +118,10 @@ translateIdentifier =
                    , "yield"
                    ]
 
-translateNamespace :: Name -> [String]
-translateNamespace (UN _)    = [idrNamespace]
-translateNamespace (NS _ ns) = idrNamespace : map translateIdentifier ns
-translateNamespace (MN _ _)  = [idrNamespace]
+translateNamespace :: Name -> String
+translateNamespace (UN _)    = idrNamespace
+translateNamespace (NS _ ns) = idrNamespace ++ concatMap translateIdentifier ns
+translateNamespace (MN _ _)  = idrNamespace
 
 translateName :: Name -> String
 translateName (UN name)   = translateIdentifier name
@@ -150,7 +150,7 @@ translateParameterlist =
 
 translateDeclaration :: (String, SDecl) -> String
 translateDeclaration (path, SFun name params stackSize body) =
-     "var " ++ concat (path ++ [translateName name])
+     "var " ++ path ++ translateName name
   ++ " = function("
   ++ intercalate "," p
   ++ "){\n"
@@ -509,7 +509,7 @@ createTailcall call =
   idrRTNamespace ++ "tailcall(function(){return " ++ call ++ "})"
 
 translateFunctionCall name vars =
-     concat (translateNamespace name)
+     translateNamespace name
   ++ translateName name
   ++ "("
   ++ intercalate "," (map translateVariableName vars)
