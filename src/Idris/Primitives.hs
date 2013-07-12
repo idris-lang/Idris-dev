@@ -344,6 +344,8 @@ mkVecUpdate ity count [vec, B32 i, newElem] = updateVec vec newElem
       updateVec (B16V v) (B16 e) = Just . B16V $ V.unsafeUpdate v (V.singleton (fromIntegral i, e))
       updateVec (B32V v) (B32 e) = Just . B32V $ V.unsafeUpdate v (V.singleton (fromIntegral i, e))
       updateVec (B64V v) (B64 e) = Just . B64V $ V.unsafeUpdate v (V.singleton (fromIntegral i, e))
+      updateVec _ _ = Nothing
+mkVecUpdate _ _ _ = Nothing
 
 aTyName :: ArithTy -> String
 aTyName (ATInt t) = intTyName t
@@ -532,20 +534,22 @@ toInt ITNative x = I (fromIntegral x)
 toInt ITChar x = Ch (chr $ fromIntegral x)
 
 intToInt :: IntTy -> IntTy -> [Const] -> Maybe Const
-intToInt (ITFixed IT8)      out [B8 x]  = Just $ toInt out x
+intToInt (ITFixed IT8)      out [B8  x] = Just $ toInt out x
 intToInt (ITFixed IT16)     out [B16 x] = Just $ toInt out x
 intToInt (ITFixed IT32)     out [B32 x] = Just $ toInt out x
 intToInt (ITFixed IT64)     out [B64 x] = Just $ toInt out x
-intToInt ITBig    out [BI x]  = Just $ toInt out x
-intToInt ITNative out [I x]   = Just $ toInt out x
-intToInt ITChar   out [Ch x]   = Just $ toInt out (ord x)
+intToInt ITBig              out [BI  x] = Just $ toInt out x
+intToInt ITNative           out [I   x] = Just $ toInt out x
+intToInt ITChar             out [Ch  x] = Just $ toInt out (ord x)
 intToInt _ _ _ = Nothing
 
 zext :: IntTy -> IntTy -> [Const] -> Maybe Const
 zext from ITBig val = intToInt from ITBig val
 zext ITBig _ _ = Nothing
-zext from to val
-    | intTyWidth from < intTyWidth to = intToInt from to val
+zext f@(ITFixed from) t@(ITFixed to) val
+    | nativeTyWidth from < nativeTyWidth to = intToInt f t val
+zext ITNative to [I x] = Just $ toInt to (fromIntegral x :: Word)
+zext from ITNative val = intToInt from ITNative val
 zext _ _ _ = Nothing
 
 sext :: IntTy -> IntTy -> [Const] -> Maybe Const
@@ -559,7 +563,9 @@ sext from to  val     = intToInt from to val
 trunc :: IntTy -> IntTy -> [Const] -> Maybe Const
 trunc ITBig to val = intToInt ITBig to val
 trunc _ ITBig _ = Nothing
-trunc from to val | intTyWidth from > intTyWidth to = intToInt from to val
+trunc f@(ITFixed from) t@(ITFixed to) val | nativeTyWidth from > nativeTyWidth to = intToInt f t val
+trunc ITNative to [I x] = Just $ toInt to x
+trunc from ITNative val = intToInt from ITNative val
 trunc _ _ _ = Nothing
 
 intToStr :: [Const] -> Maybe Const
