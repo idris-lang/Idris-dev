@@ -1,4 +1,4 @@
-{-# LANGUAGE PatternGuards, TypeSynonymInstances #-}
+{-# LANGUAGE PatternGuards, TypeSynonymInstances, CPP #-}
 
 module IRTS.Compiler where
 
@@ -10,7 +10,11 @@ import IRTS.CodegenC
 import IRTS.CodegenJava
 import IRTS.DumpBC
 import IRTS.CodegenJavaScript
+#ifdef IDRIS_LLVM
 import IRTS.CodegenLLVM
+#else
+import Util.LLVMStubs
+#endif
 import IRTS.Inliner
 
 import Idris.AbsSyntax

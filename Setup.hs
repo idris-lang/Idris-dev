@@ -143,6 +143,12 @@ javaFlag flags =
     Just False -> False
     Nothing -> False
 
+llvmFlag flags = 
+  case lookup (FlagName "LLVM") (S.configConfigurationsFlags flags) of
+    Just True -> True
+    Just False -> False
+    Nothing -> False
+
 noEffectsFlag flags =
    case lookup (FlagName "noeffects") (S.configConfigurationsFlags flags) of
       Just True -> True
@@ -167,7 +173,8 @@ main = do
               let withoutEffects = noEffectsFlag $ configFlags lbi
               installStdLib pkg lbi withoutEffects verb
                                     (S.fromFlag $ S.copyDest flags)
-              installLLVMLib verb pkg lbi (S.fromFlag $ S.copyDest flags)
+              when (llvmFlag $ configFlags lbi)  
+                   (installLLVMLib verb pkg lbi (S.fromFlag $ S.copyDest flags))
               when (javaFlag $ configFlags lbi) 
                    (installJavaLib pkg 
                                    lbi 
@@ -180,7 +187,8 @@ main = do
               let withoutEffects = noEffectsFlag $ configFlags lbi
               installStdLib pkg lbi withoutEffects verb
                                     NoCopyDest
-              installLLVMLib verb pkg lbi NoCopyDest
+              when (llvmFlag $ configFlags lbi)  
+                   (installLLVMLib verb pkg lbi NoCopyDest)
               when (javaFlag $ configFlags lbi) 
                    (installJavaLib pkg 
                                    lbi 
