@@ -203,7 +203,10 @@ translateExpression (SApp True name vars) =
   ++ ";\n})"
 
 translateExpression (SOp op vars)
-  | LNoOp       <- op = translateVariableName (last vars) ++ "/* NOOP */"
+  | LNoOp <- op = translateVariableName (last vars)
+
+  | (LZExt _ ITBig) <- op =
+      idrRTNamespace ++ "bigInt(" ++ translateVariableName (last vars) ++ ")"
 
   | (LPlus (ATInt ITBig)) <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp ".add(" lhs rhs  ++ ")"
