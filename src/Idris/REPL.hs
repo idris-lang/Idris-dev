@@ -1,5 +1,5 @@
 {-# LANGUAGE MultiParamTypeClasses, FlexibleInstances, DeriveFunctor,
-             PatternGuards #-}
+             PatternGuards, CPP #-}
 
 module Idris.REPL where
 
@@ -38,9 +38,11 @@ import IRTS.CodegenCommon
 -- import RTS.Bytecode
 -- import RTS.PreC
 -- import RTS.CodegenC
-
+#ifdef IDRIS_LLVM
 import LLVM.General.Target
-
+#else
+import Util.LLVMStubs
+#endif
 import System.Console.Haskeline as H
 import System.FilePath
 import System.Exit
