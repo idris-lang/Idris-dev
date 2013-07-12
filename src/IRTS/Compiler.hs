@@ -310,6 +310,10 @@ mkIty "FPtr"        = FPtr
 mkIty "FUnit"       = FUnit
 mkIty "FFunction"   = FFunction
 mkIty "FFunctionIO" = FFunctionIO
+mkIty "FBits8x16"   = FArith (ATInt (ITVec IT8 16))
+mkIty "FBits16x8"   = FArith (ATInt (ITVec IT16 8))
+mkIty "FBits32x4"   = FArith (ATInt (ITVec IT32 4))
+mkIty "FBits64x2"   = FArith (ATInt (ITVec IT64 2))
 mkIty x             = error $ "Unknown type " ++ x
 
 mkIntIty "ITNative" = FArith (ATInt ITNative)

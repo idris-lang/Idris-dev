@@ -12,6 +12,7 @@ import Data.Bits
 import Data.Word
 import Data.Int
 import Data.Char
+import Data.Vector.Unboxed (Vector)
 import qualified Data.Vector.Unboxed as V
 
 data Prim = Prim { p_name  :: Name,
@@ -169,7 +170,11 @@ primitives =
    Prim (UN "prim__stdin") (ty [] PtrType) 0 (p_cantreduce)
     (0, LStdIn) partial
   ] ++ concatMap intOps [ITFixed IT8, ITFixed IT16, ITFixed IT32, ITFixed IT64, ITBig, ITNative, ITChar]
-    ++ concatMap vecOps [ITVec IT8 16, ITVec IT16 8, ITVec IT32 4, ITVec IT64 2]
+    ++ concatMap vecOps vecTypes
+    ++ vecBitcasts vecTypes
+
+vecTypes :: [IntTy]
+vecTypes = [ITVec IT8 16, ITVec IT16 8, ITVec IT32 4, ITVec IT64 2]
 
 intOps :: IntTy -> [Prim]
 intOps ity = intCmps ity ++ intArith ity ++ intConv ity
@@ -236,6 +241,81 @@ vecOps ity@(ITVec elem count) =
                3 (mkVecUpdate elem count) (3, LUpdateVec elem count) partial -- TODO: Ensure this reduces
     ] ++ intArith ity ++ vecCmps ity
 
+bitcastPrim :: ArithTy -> ArithTy -> (ArithTy -> [Const] -> Maybe Const) -> PrimFn -> Prim
+bitcastPrim from to impl prim =
+    Prim (UN $ "prim__bitcast" ++ aTyName from ++ "_" ++ aTyName to) (ty [AType from] (AType to)) 1 (impl to)
+         (1, prim) total
+
+vecBitcasts :: [IntTy] -> [Prim]
+vecBitcasts tys = [bitcastPrim from to bitcastVec (LBitCast from to)
+                       | from <- map ATInt vecTypes, to <- map ATInt vecTypes, from /= to]
+
+mapHalf :: (V.Unbox a, V.Unbox b) => ((a, a) -> b) -> Vector a -> Vector b
+mapHalf f xs = V.generate (V.length xs `div` 2) (\i -> f (xs V.! (i*2), xs V.! (i*2+1)))
+
+mapDouble :: (V.Unbox a, V.Unbox b) => (Bool -> a -> b) -> Vector a -> Vector b
+mapDouble f xs = V.generate (V.length xs * 2) (\i -> f (i `rem` 2 == 0) (xs V.! (i `div` 2)))
+
+concatWord8 :: (Word8, Word8) -> Word16
+concatWord8 (high, low) = fromIntegral high .|. (fromIntegral low `shiftL` 8)
+
+concatWord16 :: (Word16, Word16) -> Word32
+concatWord16 (high, low) = fromIntegral high .|. (fromIntegral low `shiftL` 16)
+
+concatWord32 :: (Word32, Word32) -> Word64
+concatWord32 (high, low) = fromIntegral high .|. (fromIntegral low `shiftL` 32)
+
+truncWord16 :: Bool -> Word16 -> Word8
+truncWord16 True x = fromIntegral (x `shiftR` 8)
+truncWord16 False x = fromIntegral x
+
+truncWord32 :: Bool -> Word32 -> Word16
+truncWord32 True x = fromIntegral (x `shiftR` 16)
+truncWord32 False x = fromIntegral x
+
+truncWord64 :: Bool -> Word64 -> Word32
+truncWord64 True x = fromIntegral (x `shiftR` 32)
+truncWord64 False x = fromIntegral x
+
+bitcastVec :: ArithTy -> [Const] -> Maybe Const
+bitcastVec (ATInt (ITVec IT8  n)) [x@(B8V v)]
+    | V.length v == n = Just x
+bitcastVec (ATInt (ITVec IT16 n))   [B8V v]
+    | V.length v == n*2 = Just . B16V . mapHalf concatWord8 $ v
+bitcastVec (ATInt (ITVec IT32 n))   [B8V v]
+    | V.length v == n*4 = Just . B32V . mapHalf concatWord16 . mapHalf concatWord8 $ v
+bitcastVec (ATInt (ITVec IT64 n))   [B8V v]
+    | V.length v == n*8 = Just . B64V . mapHalf concatWord32 . mapHalf concatWord16 . mapHalf concatWord8 $ v
+
+bitcastVec (ATInt (ITVec IT8  n))   [B16V v]
+    | V.length v * 2 == n = Just . B8V . mapDouble truncWord16 $ v
+bitcastVec (ATInt (ITVec IT16 n)) [x@(B16V v)]
+    | V.length v == n = Just x
+bitcastVec (ATInt (ITVec IT32 n))   [B16V v]
+    | V.length v == n*2 = Just . B32V . mapHalf concatWord16 $ v
+bitcastVec (ATInt (ITVec IT64 n))   [B16V v]
+    | V.length v == n*4 = Just . B64V . mapHalf concatWord32 . mapHalf concatWord16 $ v
+
+bitcastVec (ATInt (ITVec IT8  n))   [B32V v]
+    | V.length v * 4 == n = Just . B8V . mapDouble truncWord16 . mapDouble truncWord32 $ v
+bitcastVec (ATInt (ITVec IT16 n))   [B32V v]
+    | V.length v * 2 == n = Just . B16V . mapDouble truncWord32 $ v
+bitcastVec (ATInt (ITVec IT32 n)) [x@(B32V v)]
+    | V.length v == n = Just x
+bitcastVec (ATInt (ITVec IT64 n))   [B32V v]
+    | V.length v == n*2 = Just . B64V . mapHalf concatWord32 $ v
+
+bitcastVec (ATInt (ITVec IT8  n))   [B64V v]
+    | V.length v * 8 == n = Just . B8V . mapDouble truncWord16 . mapDouble truncWord32 . mapDouble truncWord64 $ v
+bitcastVec (ATInt (ITVec IT16 n))   [B64V v]
+    | V.length v * 4 == n = Just . B16V . mapDouble truncWord32 . mapDouble truncWord64 $ v
+bitcastVec (ATInt (ITVec IT32 n))   [B64V v]
+    | V.length v == n*2 = Just . B32V . mapDouble truncWord64 $ v
+bitcastVec (ATInt (ITVec IT64 n)) [x@(B64V v)]
+    | V.length v == n = Just x
+
+bitcastVec _ _ = Nothing
+
 mkVecCon :: NativeTy -> Int -> [Const] -> Maybe Const
 mkVecCon ity count args
     | length ints == count = Just (mkVec ity count ints)
@@ -264,6 +344,10 @@ mkVecUpdate ity count [vec, B32 i, newElem] = updateVec vec newElem
       updateVec (B16V v) (B16 e) = Just . B16V $ V.unsafeUpdate v (V.singleton (fromIntegral i, e))
       updateVec (B32V v) (B32 e) = Just . B32V $ V.unsafeUpdate v (V.singleton (fromIntegral i, e))
       updateVec (B64V v) (B64 e) = Just . B64V $ V.unsafeUpdate v (V.singleton (fromIntegral i, e))
+
+aTyName :: ArithTy -> String
+aTyName (ATInt t) = intTyName t
+aTyName ATFloat = "Float"
 
 intTyName :: IntTy -> String
 intTyName ITNative = "Int"
@@ -553,6 +637,3 @@ p_strRev _ = Nothing
 
 p_cantreduce :: a -> Maybe b
 p_cantreduce _ = Nothing
-
-
-

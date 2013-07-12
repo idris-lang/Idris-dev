@@ -38,6 +38,7 @@ data PrimFn = LPlus ArithTy | LMinus ArithTy | LTimes ArithTy
             | LIntFloat IntTy | LFloatInt IntTy | LIntStr IntTy | LStrInt IntTy
             | LFloatStr | LStrFloat | LChInt IntTy | LIntCh IntTy
             | LPrintNum | LPrintStr | LReadStr
+            | LBitCast ArithTy ArithTy -- Only for values of equal width
 
             | LFExp | LFLog | LFSin | LFCos | LFTan | LFASin | LFACos | LFATan
             | LFSqrt | LFFloor | LFCeil
