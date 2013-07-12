@@ -138,6 +138,7 @@ translateConstant (AType (ATInt ITNative)) = idrRTNamespace ++ "Int"
 translateConstant StrType = idrRTNamespace ++ "String"
 translateConstant (AType (ATInt ITBig)) = idrRTNamespace ++ "Integer"
 translateConstant (AType ATFloat)  = idrRTNamespace ++ "Float"
+translateConstant (AType (ATInt ITChar)) = idrRTNamespace ++ "Char"
 translateConstant PtrType = idrRTNamespace ++ "Ptr"
 translateConstant Forgot  = idrRTNamespace ++ "Forgot"
 translateConstant c       =
