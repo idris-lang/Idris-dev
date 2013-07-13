@@ -340,6 +340,18 @@ curry f a b = f (a, b)
 uncurry : (a -> b -> c) -> (a, b) -> c
 uncurry f (a, b) = f a b
 
+uniformB8x16 : Bits8 -> Bits8x16
+uniformB8x16 x = prim__mkB8x16 x x x x x x x x x x x x x x x x
+
+uniformB16x8 : Bits16 -> Bits16x8
+uniformB16x8 x = prim__mkB16x8 x x x x x x x x
+
+uniformB32x4 : Bits32 -> Bits32x4
+uniformB32x4 x = prim__mkB32x4 x x x x
+
+uniformB64x2 : Bits64 -> Bits64x2
+uniformB64x2 x = prim__mkB64x2 x x
+
 ---- some basic io
 
 partial
