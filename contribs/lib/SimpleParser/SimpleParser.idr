@@ -24,7 +24,7 @@ parse : Parser a -> String -> Either String (a, String)
 parse (P p) inp = p inp
 
 instance Functor Parser where
-  fmap f p = P (\inp => case parse p inp of
+  map f p = P (\inp => case parse p inp of
                           Left err        => Left err
                           Right (v, rest) => Right ((f v), rest))
 
@@ -90,7 +90,7 @@ char : Char -> Parser Char
 char x = sat (== x)
 
 string : String -> Parser String
-string s = fmap pack (traverse char (unpack s))
+string s = map pack (traverse char (unpack s))
 
 many1 : Parser a -> Parser (List a)
 many : Parser a -> Parser (List a)
@@ -110,7 +110,7 @@ bool = parseTrue <|> parseFalse
                         pure False
 
 ident : Parser String
-ident = fmap pack [| letter :: many1 alphanum |]
+ident = map pack [| letter :: many1 alphanum |]
 
 nat : Parser Int
 nat = do xs <- many digit
@@ -148,7 +148,7 @@ symbol : String -> Parser String
 symbol xs = token (string xs)
 
 strToken : Parser String
-strToken = fmap pack (token (many1 alphanum))
+strToken = map pack (token (many1 alphanum))
 
 
 --------------------------------------------------------------------------------
@@ -160,12 +160,12 @@ factor : Parser Int
 term   : Parser Int
 
 expr = do t <- term
-          fmap (t+) (symbol "+" $> expr) <|> pure t
+          map (t+) (symbol "+" $> expr) <|> pure t
 
 factor = (symbol "(" $> expr <$ symbol ")") <|> natural
 
 term = do f <- factor
-          fmap (f*) (symbol "*" $> term) <|> pure f
+          map (f*) (symbol "*" $> term) <|> pure f
 
 eval : String -> Maybe Int
 eval xs = case (parse expr xs) of

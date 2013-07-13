@@ -88,15 +88,15 @@ data Binder a = Lam a
 
 
 instance Functor Binder where
-  fmap f (Lam x) = Lam (f x)
-  fmap f (Pi x) = Pi (f x)
-  fmap f (Let x y) = Let (f x) (f y)
-  fmap f (NLet x y) = NLet (f x) (f y)
-  fmap f (Hole x) = Hole (f x)
-  fmap f (GHole x) = GHole (f x)
-  fmap f (Guess x y) = Guess (f x) (f y)
-  fmap f (PVar x) = PVar (f x)
-  fmap f (PVTy x) = PVTy (f x)
+  map f (Lam x) = Lam (f x)
+  map f (Pi x) = Pi (f x)
+  map f (Let x y) = Let (f x) (f y)
+  map f (NLet x y) = NLet (f x) (f y)
+  map f (Hole x) = Hole (f x)
+  map f (GHole x) = GHole (f x)
+  map f (Guess x y) = Guess (f x) (f y)
+  map f (PVar x) = PVar (f x)
+  map f (PVTy x) = PVTy (f x)
 
 total
 traverse : (Applicative f) =>  (a -> f b) -> Binder a -> f (Binder b)

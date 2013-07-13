@@ -8,7 +8,7 @@ public record Identity : Type -> Type where
     Id : (runIdentity : a) -> Identity a
 
 instance Functor Identity where
-    fmap fn (Id a) = Id (fn a)
+    map fn (Id a) = Id (fn a)
 
 instance Applicative Identity where
     pure x = Id x

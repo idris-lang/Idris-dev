@@ -8,7 +8,7 @@ data IOExcept : Type -> Type -> Type where
      ioM : IO (Either err a) -> IOExcept err a
 
 instance Functor (IOExcept e) where
-     fmap f (ioM fn) = ioM (fmap (fmap f) fn)
+     map f (ioM fn) = ioM (map (map f) fn)
 
 instance Applicative (IOExcept e) where
      pure x = ioM (pure (pure x))
