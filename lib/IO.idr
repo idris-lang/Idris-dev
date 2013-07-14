@@ -45,6 +45,18 @@ FShort = FIntT IT16
 FLong : FTy
 FLong = FIntT IT64
 
+FBits8 : FTy
+FBits8 = FIntT IT8
+
+FBits16 : FTy
+FBits16 = FIntT IT16
+
+FBits32 : FTy
+FBits32 = FIntT IT32
+
+FBits64 : FTy
+FBits64 = FIntT IT64
+
 FBits8x16 : FTy
 FBits8x16 = FIntT IT8x16
 
