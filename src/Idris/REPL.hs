@@ -128,7 +128,12 @@ ideslave orig mods
                     loadModule filename
                     iucheck
                     isetPrompt (mkPrompt [filename])
-                    -- report success! or failure!
+
+                    -- Report either success or failure
+                    i <- getIState
+                    case (errLine i) of
+                      Nothing -> iResult $ "loaded " ++ filename
+                      Just x -> iFail $ "didn't load " ++ filename
                     ideslave orig [filename]
                Nothing -> do iFail "did not understand")
          (\e -> do iFail $ show e)
