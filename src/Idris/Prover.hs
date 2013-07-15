@@ -55,15 +55,12 @@ assumptionNames e
 prove :: Context -> Bool -> Name -> Type -> Idris ()
 prove ctxt lit n ty
     = do let ps = initElaborator n ctxt ty
-         i <- getIState
-         case (idris_outputmode i) of
-              IdeSlave id -> liftIO $ putStrLn $ convSExp "start-proof-mode" n id
+         ideslavePutSExp "start-proof-mode" n
          (tm, prf) <- ploop True ("-" ++ show n) [] (ES (ps, []) "" Nothing) Nothing
          iLOG $ "Adding " ++ show tm
          iputStrLn $ showProof lit n prf
          i <- getIState
-         case (idris_outputmode i) of
-              IdeSlave id -> liftIO $ putStrLn $ convSExp "end-proof-mode" n id
+         ideslavePutSExp "end-proof-mode" n
          let proofs = proof_list i
          putIState (i { proof_list = (n, prf) : proofs })
          let tree = simpleCase False True CompileTime (FC "proof" 0) [([], P Ref n ty, tm)]
@@ -143,7 +140,7 @@ receiveInput e =
        Just (REPLCompletions prefix) ->
          do (unused, compls) <- proverCompletion (assumptionNames e) (reverse prefix, "")
             let good = SexpList [SymbolAtom "ok", toSExp (map replacement compls, reverse unused)]
-            liftIO $ putStrLn $ convSExp "return" good id
+            ideslavePutSExp "return" good
             receiveInput e
        Just (Interpret cmd) -> return (Just cmd)
        Nothing -> return Nothing
@@ -195,6 +192,7 @@ ploop d prompt prf e h
                               return (True, st, False, prf ++ [step]))
            (\err -> do iFail (show err)
                        return (False, e, False, prf))
+         ideslavePutSExp "write-proof-state" (prf', length prf')
          if done then do (tm, _) <- elabStep st get_term
                          return (tm, prf')
                  else ploop d prompt prf' st h'

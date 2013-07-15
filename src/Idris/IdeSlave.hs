@@ -1,6 +1,6 @@
 {-# LANGUAGE FlexibleInstances, IncoherentInstances #-}
 
-module Idris.IdeSlave(parseMessage, convSExp, IdeSlaveCommand(..), sexpToCommand, toSExp, SExp(..)) where
+module Idris.IdeSlave(parseMessage, convSExp, IdeSlaveCommand(..), sexpToCommand, toSExp, SExp(..), SExpable) where
 
 import Text.Printf
 import Numeric
@@ -46,10 +46,7 @@ instance SExpable Int where
 
 
 instance SExpable Name where
-  toSExp (UN s)    = SexpList [SymbolAtom "UN", StringAtom s]
-  toSExp (NS s ns) = SexpList [SymbolAtom "NS", toSExp s, toSExp ns]
-  toSExp (MN n s)  = SexpList [SymbolAtom "MN", toSExp n, toSExp s]
-  toSExp NErased   = SexpList [SymbolAtom "NErased"]
+  toSExp s = StringAtom (show s)
 
 
 instance (SExpable a) => SExpable (Maybe a) where
