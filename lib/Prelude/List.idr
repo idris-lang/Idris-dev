@@ -3,6 +3,7 @@ module Prelude.List
 import Builtins
 
 import Prelude.Algebra
+import Prelude.Functor
 import Prelude.Maybe
 import Prelude.Nat
 
@@ -163,6 +164,10 @@ instance Monoid (List a) where
 -- instance VerifiedSemigroup (List a) where
 --  semigroupOpIsAssociative = appendAssociative
 
+instance Functor List where
+  map f []      = []
+  map f (x::xs) = f x :: map f xs
+
 --------------------------------------------------------------------------------
 -- Zips and unzips
 --------------------------------------------------------------------------------
@@ -200,10 +205,6 @@ unzip3 ((l, c, r)::xs) with (unzip3 xs)
 --------------------------------------------------------------------------------
 -- Maps
 --------------------------------------------------------------------------------
-
-map : (a -> b) -> List a -> List b
-map f []      = []
-map f (x::xs) = f x :: map f xs
 
 mapMaybe : (a -> Maybe b) -> List a -> List b
 mapMaybe f []      = []
