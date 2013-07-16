@@ -1,36 +1,34 @@
-var __IDRRT__ = {};
-
 /** @constructor */
-__IDRRT__.Type = function(type) {
+var __IDRRT__Type = function(type) {
   this.type = type;
 };
 
-__IDRRT__.Int = new __IDRRT__.Type('Int');
-__IDRRT__.Char = new __IDRRT__.Type('Char');
-__IDRRT__.String = new __IDRRT__.Type('String');
-__IDRRT__.Integer = new __IDRRT__.Type('Integer');
-__IDRRT__.Float = new __IDRRT__.Type('Float');
-__IDRRT__.Ptr = new __IDRRT__.Type('Pointer');
-__IDRRT__.Forgot = new __IDRRT__.Type('Forgot');
+var __IDRRT__Int = new __IDRRT__Type('Int');
+var __IDRRT__Char = new __IDRRT__Type('Char');
+var __IDRRT__String = new __IDRRT__Type('String');
+var __IDRRT__Integer = new __IDRRT__Type('Integer');
+var __IDRRT__Float = new __IDRRT__Type('Float');
+var __IDRRT__Ptr = new __IDRRT__Type('Pointer');
+var __IDRRT__Forgot = new __IDRRT__Type('Forgot');
 
 
 /** @constructor */
-__IDRRT__.Tailcall = function(f) { this.f = f };
-__IDRRT__.ffiWrap = function(fid) {
+var __IDRRT__Tailcall = function(f) { this.f = f };
+var __IDRRT__ffiWrap = function(fid) {
   return function(arg) {
-    return __IDRRT__.tailcall(function(){
-      return __IDR__.APPLY0(fid, arg);
+    return __IDRRT__tailcall(function(){
+      return __IDR__APPLY0(fid, arg);
     });
   };
 };
 
 /** @constructor */
-__IDRRT__.Con = function(i,vars) {
+var __IDRRT__Con = function(i,vars) {
   this.i = i;
   this.vars =  vars;
 };
 
-__IDRRT__.tailcall = function(f) {
+var __IDRRT__tailcall = function(f) {
   var __f = f;
   var ret;
   while (__f) {
@@ -38,7 +36,7 @@ __IDRRT__.tailcall = function(f) {
     __f = null;
     ret = f();
 
-    if (ret instanceof __IDRRT__.Tailcall) {
+    if (ret instanceof __IDRRT__Tailcall) {
       __f = ret.f;
     } else {
       return ret;
@@ -50,7 +48,7 @@ __IDRRT__.tailcall = function(f) {
    BigInteger Javascript code taken from:
    https://github.com/peterolson
 */
-__IDRRT__.bigInt = (function () {
+var __IDRRT__bigInt = (function () {
   var base = 10000000, logBase = 7;
   var sign = {
     positive: false,
@@ -391,5 +389,3 @@ __IDRRT__.bigInt = (function () {
   fnReturn.minusOne = MINUS_ONE;
   return fnReturn;
 })();
-
-var __IDR__ = {};
