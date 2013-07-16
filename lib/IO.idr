@@ -21,7 +21,7 @@ io_return x = prim__IO x
 run__IO : IO () -> IO ()
 run__IO v = io_bind v (\v' => io_return v')
 
-data IntTy = ITChar | ITNative | IT8 | IT16 | IT32 | IT64
+data IntTy = ITChar | ITNative | IT8 | IT16 | IT32 | IT64 | IT8x16 | IT16x8 | IT32x4 | IT64x2
 data FTy = FIntT IntTy
          | FFunction FTy FTy
          | FFloat
@@ -45,6 +45,30 @@ FShort = FIntT IT16
 FLong : FTy
 FLong = FIntT IT64
 
+FBits8 : FTy
+FBits8 = FIntT IT8
+
+FBits16 : FTy
+FBits16 = FIntT IT16
+
+FBits32 : FTy
+FBits32 = FIntT IT32
+
+FBits64 : FTy
+FBits64 = FIntT IT64
+
+FBits8x16 : FTy
+FBits8x16 = FIntT IT8x16
+
+FBits16x8 : FTy
+FBits16x8 = FIntT IT16x8
+
+FBits32x4 : FTy
+FBits32x4 = FIntT IT32x4
+
+FBits64x2 : FTy
+FBits64x2 = FIntT IT64x2
+
 interpFTy : FTy -> Type
 interpFTy (FIntT ITNative) = Int
 interpFTy (FIntT ITChar)   = Char
@@ -56,6 +80,10 @@ interpFTy (FAny t)         = t
 interpFTy FFloat           = Float
 interpFTy FString          = String
 interpFTy FPtr             = Ptr
+interpFTy (FIntT IT8x16)   = Bits8x16
+interpFTy (FIntT IT16x8)   = Bits16x8
+interpFTy (FIntT IT32x4)   = Bits32x4
+interpFTy (FIntT IT64x2)   = Bits64x2
 interpFTy FUnit            = ()
 
 interpFTy (FFunction a b) = interpFTy a -> interpFTy b

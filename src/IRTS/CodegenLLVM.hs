@@ -921,6 +921,11 @@ cgOp (LUpdateVec ety c) [v,i,e] = do
   nv' <- inst $ InsertElement nv ne ni []
   box fty nv'
 
+cgOp (LBitCast from to) [x] = do
+  nx <- unbox (FArith from) x
+  nx' <- inst $ BitCast nx (ftyToTy (FArith to)) []
+  box (FArith to) nx'
+
 cgOp LStrEq [x,y] = do
   x' <- unbox FString x
   y' <- unbox FString y
