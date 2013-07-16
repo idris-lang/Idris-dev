@@ -46,6 +46,118 @@ instance Show Bool where
     show True = "True"
     show False = "False"
 
+instance Show Bits8 where
+  show = prim__toStrB8
+
+instance Show Bits16 where
+  show = prim__toStrB16
+
+instance Show Bits32 where
+  show = prim__toStrB32
+
+instance Show Bits64 where
+  show = prim__toStrB64
+
+%assert_total
+viewB8x16 : Bits8x16 -> (Bits8, Bits8, Bits8, Bits8, Bits8, Bits8, Bits8, Bits8, Bits8, Bits8, Bits8, Bits8, Bits8, Bits8, Bits8, Bits8)
+viewB8x16 x = ( prim__indexB8x16 x (prim__truncBigInt_B32 0)
+              , prim__indexB8x16 x (prim__truncBigInt_B32 1)
+              , prim__indexB8x16 x (prim__truncBigInt_B32 2)
+              , prim__indexB8x16 x (prim__truncBigInt_B32 3)
+              , prim__indexB8x16 x (prim__truncBigInt_B32 4)
+              , prim__indexB8x16 x (prim__truncBigInt_B32 5)
+              , prim__indexB8x16 x (prim__truncBigInt_B32 6)
+              , prim__indexB8x16 x (prim__truncBigInt_B32 7)
+              , prim__indexB8x16 x (prim__truncBigInt_B32 8)
+              , prim__indexB8x16 x (prim__truncBigInt_B32 9)
+              , prim__indexB8x16 x (prim__truncBigInt_B32 10)
+              , prim__indexB8x16 x (prim__truncBigInt_B32 11)
+              , prim__indexB8x16 x (prim__truncBigInt_B32 12)
+              , prim__indexB8x16 x (prim__truncBigInt_B32 13)
+              , prim__indexB8x16 x (prim__truncBigInt_B32 14)
+              , prim__indexB8x16 x (prim__truncBigInt_B32 15)
+              )
+
+instance Show Bits8x16 where
+  show x =
+    case viewB8x16 x of
+      (a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p) =>
+        "<" ++ prim__toStrB8 a
+        ++ ", " ++ prim__toStrB8 b
+        ++ ", " ++ prim__toStrB8 c
+        ++ ", " ++ prim__toStrB8 d
+        ++ ", " ++ prim__toStrB8 e
+        ++ ", " ++ prim__toStrB8 f
+        ++ ", " ++ prim__toStrB8 g
+        ++ ", " ++ prim__toStrB8 h
+        ++ ", " ++ prim__toStrB8 i
+        ++ ", " ++ prim__toStrB8 j
+        ++ ", " ++ prim__toStrB8 k
+        ++ ", " ++ prim__toStrB8 l
+        ++ ", " ++ prim__toStrB8 m
+        ++ ", " ++ prim__toStrB8 n
+        ++ ", " ++ prim__toStrB8 o
+        ++ ", " ++ prim__toStrB8 p
+        ++ ">"
+
+%assert_total
+viewB16x8 : Bits16x8 -> (Bits16, Bits16, Bits16, Bits16, Bits16, Bits16, Bits16, Bits16)
+viewB16x8 x = ( prim__indexB16x8 x (prim__truncBigInt_B32 0)
+              , prim__indexB16x8 x (prim__truncBigInt_B32 1)
+              , prim__indexB16x8 x (prim__truncBigInt_B32 2)
+              , prim__indexB16x8 x (prim__truncBigInt_B32 3)
+              , prim__indexB16x8 x (prim__truncBigInt_B32 4)
+              , prim__indexB16x8 x (prim__truncBigInt_B32 5)
+              , prim__indexB16x8 x (prim__truncBigInt_B32 6)
+              , prim__indexB16x8 x (prim__truncBigInt_B32 7)
+              )
+
+instance Show Bits16x8 where
+  show x =
+    case viewB16x8 x of
+      (a, b, c, d, e, f, g, h) =>
+        "<" ++ prim__toStrB16 a
+        ++ ", " ++ prim__toStrB16 b
+        ++ ", " ++ prim__toStrB16 c
+        ++ ", " ++ prim__toStrB16 d
+        ++ ", " ++ prim__toStrB16 e
+        ++ ", " ++ prim__toStrB16 f
+        ++ ", " ++ prim__toStrB16 g
+        ++ ", " ++ prim__toStrB16 h
+        ++ ">"
+
+%assert_total
+viewB32x4 : Bits32x4 -> (Bits32, Bits32, Bits32, Bits32)
+viewB32x4 x = ( prim__indexB32x4 x (prim__truncBigInt_B32 0)
+              , prim__indexB32x4 x (prim__truncBigInt_B32 1)
+              , prim__indexB32x4 x (prim__truncBigInt_B32 2)
+              , prim__indexB32x4 x (prim__truncBigInt_B32 3)
+              )
+
+instance Show Bits32x4 where
+  show x =
+    case viewB32x4 x of
+      (a, b, c, d) =>
+        "<" ++ prim__toStrB32 a
+        ++ ", " ++ prim__toStrB32 b
+        ++ ", " ++ prim__toStrB32 c
+        ++ ", " ++ prim__toStrB32 d
+        ++ ">"
+
+%assert_total
+viewB64x2 : Bits64x2 -> (Bits64, Bits64)
+viewB64x2 x = ( prim__indexB64x2 x (prim__truncBigInt_B32 0)
+              , prim__indexB64x2 x (prim__truncBigInt_B32 1)
+              )
+
+instance Show Bits64x2 where
+  show x =
+    case viewB64x2 x of
+      (a, b) =>
+        "<" ++ prim__toStrB64 a
+        ++ ", " ++ prim__toStrB64 b
+        ++ ">"
+
 instance (Show a, Show b) => Show (a, b) where 
     show (x, y) = "(" ++ show x ++ ", " ++ show y ++ ")"
 
@@ -227,6 +339,18 @@ curry f a b = f (a, b)
 
 uncurry : (a -> b -> c) -> (a, b) -> c
 uncurry f (a, b) = f a b
+
+uniformB8x16 : Bits8 -> Bits8x16
+uniformB8x16 x = prim__mkB8x16 x x x x x x x x x x x x x x x x
+
+uniformB16x8 : Bits16 -> Bits16x8
+uniformB16x8 x = prim__mkB16x8 x x x x x x x x
+
+uniformB32x4 : Bits32 -> Bits32x4
+uniformB32x4 x = prim__mkB32x4 x x x x
+
+uniformB64x2 : Bits64 -> Bits64x2
+uniformB64x2 x = prim__mkB64x2 x x
 
 ---- some basic io
 
