@@ -13,11 +13,11 @@ class Functor f => Applicative (f : Type -> Type) where
 
 infixl 2 <$
 (<$) : Applicative f => f a -> f b -> f a
-a <$ b = fmap const a <$> b
+a <$ b = map const a <$> b
 
 infixl 2 $>
 ($>) : Applicative f => f a -> f b -> f b
-a $> b = fmap (const id) a <$> b
+a $> b = map (const id) a <$> b
 
 infixl 3 <|>
 class Applicative f => Alternative (f : Type -> Type) where
@@ -32,7 +32,7 @@ when a f = if a then f else pure ()
 
 sequence : Applicative f => List (f a) -> f (List a)
 sequence []        = pure []
-sequence (x :: xs) = fmap (::) x <$> sequence xs
+sequence (x :: xs) = map (::) x <$> sequence xs
 
 sequence_ : Applicative f => List (f a) -> f ()
 sequence_ [] = pure ()

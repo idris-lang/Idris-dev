@@ -226,10 +226,10 @@ toList Empty = []
 toList (M _ t) = treeToList t
 
 instance Functor (Tree n k) where
-  fmap f (Leaf k v) = Leaf k (f v)
-  fmap f (Branch2 t1 k t2) = Branch2 (fmap f t1) k (fmap f t2)
-  fmap f (Branch3 t1 k1 t2 k2 t3) = Branch3 (fmap f t1) k1 (fmap f t2) k2 (fmap f t3)
+  map f (Leaf k v) = Leaf k (f v)
+  map f (Branch2 t1 k t2) = Branch2 (map f t1) k (map f t2)
+  map f (Branch3 t1 k1 t2 k2 t3) = Branch3 (map f t1) k1 (map f t2) k2 (map f t3)
 
 instance Functor (SortedMap k) where
-  fmap _ Empty = Empty
-  fmap f (M n t) = M _ (fmap f t)
+  map _ Empty = Empty
+  map f (M n t) = M _ (map f t)

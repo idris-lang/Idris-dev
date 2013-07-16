@@ -181,18 +181,15 @@ instance Show a => Show (Maybe a) where
 ---- Functor instances
 
 instance Functor IO where
-    fmap f io = io_bind io (io_return . f)
+    map f io = io_bind io (io_return . f)
 
 instance Functor Maybe where 
-    fmap f (Just x) = Just (f x)
-    fmap f Nothing  = Nothing
+    map f (Just x) = Just (f x)
+    map f Nothing  = Nothing
 
 instance Functor (Either e) where
-    fmap f (Left l) = Left l
-    fmap f (Right r) = Right (f r)
-
-instance Functor List where 
-    fmap = map
+    map f (Left l) = Left l
+    map f (Right r) = Right (f r)
 
 ---- Applicative instances
 
@@ -376,7 +373,7 @@ putChar c = mkForeign (FFun "putchar" [FInt] FUnit) (cast c)
 
 partial
 getChar : IO Char
-getChar = fmap cast $ mkForeign (FFun "getchar" [] FInt)
+getChar = map cast $ mkForeign (FFun "getchar" [] FInt)
 
 ---- some basic file handling
 
