@@ -1,12 +1,14 @@
 {-# LANGUAGE FlexibleInstances, IncoherentInstances #-}
 
-module Idris.IdeSlave(parseMessage, convSExp, IdeSlaveCommand(..), sexpToCommand, toSExp, SExp(..)) where
+module Idris.IdeSlave(parseMessage, convSExp, IdeSlaveCommand(..), sexpToCommand, toSExp, SExp(..), SExpable) where
 
 import Text.Printf
 import Numeric
 import Data.List
 -- import qualified Data.Text as T
 import Text.Parsec
+
+import Core.TT
 
 data SExp = SexpList [SExp]
           | StringAtom String
@@ -41,6 +43,11 @@ instance SExpable Integer where
 
 instance SExpable Int where
   toSExp n = IntegerAtom (toInteger n)
+
+
+instance SExpable Name where
+  toSExp s = StringAtom (show s)
+
 
 instance (SExpable a) => SExpable (Maybe a) where
   toSExp Nothing  = SexpList [SymbolAtom "Nothing"]
@@ -94,7 +101,7 @@ sexpToCommand (SexpList (x:[]))                                             = se
 sexpToCommand (SexpList [SymbolAtom "interpret", StringAtom cmd])           = Just (Interpret cmd)
 sexpToCommand (SexpList [SymbolAtom "repl-completions", StringAtom prefix]) = Just (REPLCompletions prefix)
 sexpToCommand (SexpList [SymbolAtom "load-file", StringAtom filename])      = Just (LoadFile filename)
-sexpToCommand _                                                         = Nothing
+sexpToCommand _                                                             = Nothing
 
 parseMessage :: String -> (SExp, Integer)
 parseMessage x = case receiveString x of

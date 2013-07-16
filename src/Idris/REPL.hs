@@ -91,7 +91,7 @@ ideslaveStart orig mods
   = do i <- getIState
        case idris_outputmode i of
          IdeSlave n ->
-           when (mods /= []) (do liftIO $ putStrLn $ convSExp "set-prompt" (mkPrompt mods) n)
+           when (mods /= []) (do isetPrompt (mkPrompt mods))
        ideslave orig mods
 
 
@@ -109,6 +109,11 @@ ideslave orig mods
                                  _ -> ""
                     case parseCmd i cmd of
                          Left err -> iFail $ show err
+                         Right (Prove n') -> do iResult ""
+                                                idrisCatch
+                                                  (do process fn (Prove n'))
+                                                  (\e -> do iFail $ show e)
+                                                isetPrompt (mkPrompt mods)
                          Right cmd -> idrisCatch
                                         (do ideslaveProcess fn cmd)
                                         (\e -> do iFail $ show e)
@@ -122,8 +127,13 @@ ideslave orig mods
                                       idris_outputmode = (IdeSlave id) })
                     loadModule filename
                     iucheck
-                    liftIO $ putStrLn $ convSExp "set-prompt" (mkPrompt [filename]) id
-                    -- report success! or failure!
+                    isetPrompt (mkPrompt [filename])
+
+                    -- Report either success or failure
+                    i <- getIState
+                    case (errLine i) of
+                      Nothing -> iResult $ "loaded " ++ filename
+                      Just x -> iFail $ "didn't load " ++ filename
                     ideslave orig [filename]
                Nothing -> do iFail "did not understand")
          (\e -> do iFail $ show e)
@@ -149,7 +159,6 @@ ideslaveProcess fn (Search t) = process fn (Search t)
 ideslaveProcess fn (Spec t) = process fn (Spec t)
 -- RmProof and AddProof not supported!
 ideslaveProcess fn (ShowProof n') = process fn (ShowProof n')
-ideslaveProcess fn (Prove n') = process fn (Prove n')
 ideslaveProcess fn (HNF t) = process fn (HNF t)
 --ideslaveProcess fn TTShell = process fn TTShell -- need some prove mode!
 
