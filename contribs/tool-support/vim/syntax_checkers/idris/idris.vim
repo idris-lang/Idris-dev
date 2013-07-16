@@ -31,7 +31,9 @@ function! SyntaxCheckers_idris_idris_GetLocList()
         \ 'filetype': 'idris',
         \ 'subchecker': 'idris' })
 
-    let errorformat = '"%f" (line %l\, column %c\):'
+    let errorformat =
+        \ '"%f" (line %l\, column %c\):,' .
+        \ '%f\:%l\:%m'
 
     return SyntasticMake({
         \ 'makeprg': makeprg,
