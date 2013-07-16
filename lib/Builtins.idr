@@ -259,6 +259,82 @@ instance Num Float where
     abs x = if x < (prim__toFloatBigInt 0) then -x else x
     fromInteger = prim__toFloatBigInt
 
+instance Num Bits8 where
+  (+) = prim__addB8
+  (-) = prim__subB8
+  (*) = prim__mulB8
+  abs = id
+  fromInteger = prim__truncBigInt_B8
+
+instance Num Bits16 where
+  (+) = prim__addB16
+  (-) = prim__subB16
+  (*) = prim__mulB16
+  abs = id
+  fromInteger = prim__truncBigInt_B16
+
+instance Num Bits32 where
+  (+) = prim__addB32
+  (-) = prim__subB32
+  (*) = prim__mulB32
+  abs = id
+  fromInteger = prim__truncBigInt_B32
+
+instance Num Bits64 where
+  (+) = prim__addB64
+  (-) = prim__subB64
+  (*) = prim__mulB64
+  abs = id
+  fromInteger = prim__truncBigInt_B64
+
+instance Eq Bits8 where
+  x == y = intToBool (prim__eqB8 x y)
+
+instance Eq Bits16 where
+  x == y = intToBool (prim__eqB16 x y)
+
+instance Eq Bits32 where
+  x == y = intToBool (prim__eqB32 x y)
+
+instance Eq Bits64 where
+  x == y = intToBool (prim__eqB64 x y)
+
+instance Ord Bits8 where
+  (<) = boolOp prim__ltB8
+  (>) = boolOp prim__gtB8
+  (<=) = boolOp prim__lteB8
+  (>=) = boolOp prim__gteB8
+  compare l r = if l < r then LT
+                else if l > r then GT
+                     else EQ
+
+instance Ord Bits16 where
+  (<) = boolOp prim__ltB16
+  (>) = boolOp prim__gtB16
+  (<=) = boolOp prim__lteB16
+  (>=) = boolOp prim__gteB16
+  compare l r = if l < r then LT
+                else if l > r then GT
+                     else EQ
+
+instance Ord Bits32 where
+  (<) = boolOp prim__ltB32
+  (>) = boolOp prim__gtB32
+  (<=) = boolOp prim__lteB32
+  (>=) = boolOp prim__gteB32
+  compare l r = if l < r then LT
+                else if l > r then GT
+                     else EQ
+
+instance Ord Bits64 where
+  (<) = boolOp prim__ltB64
+  (>) = boolOp prim__gtB64
+  (<=) = boolOp prim__lteB64
+  (>=) = boolOp prim__gteB64
+  compare l r = if l < r then LT
+                else if l > r then GT
+                     else EQ
+
 partial
 div : Integer -> Integer -> Integer
 div = prim__sdivBigInt
