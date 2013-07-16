@@ -1,3 +1,3 @@
-__IDRRT__.print = function(s) {
+var __IDRRT__print = function(s) {
   console.log(s);
 };

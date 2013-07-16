@@ -41,8 +41,8 @@ forM xs f = (sequence (map f xs))
 data DB a = MkDB (IO (Either String a))
 
 instance Functor DB where
-  fmap f (MkDB action) = MkDB (do res <- action
-                                  return (fmap f res))
+  map f (MkDB action) = MkDB (do res <- action
+                                 return (map f res))
 
 
 instance Applicative DB where
@@ -50,7 +50,7 @@ instance Applicative DB where
   (MkDB f) <$> (MkDB x) = MkDB (do f' <- f
                                    case f' of
                                      Left err => return (Left err)
-                                     Right op => x >>= (return . fmap op))
+                                     Right op => x >>= (return . map op))
 
 
 instance Monad DB where
