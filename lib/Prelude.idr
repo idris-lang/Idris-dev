@@ -22,7 +22,7 @@ import Prelude.Chars
 -- Show and instances
 
 class Show a where 
-    show : a -> String
+    partial show : a -> String
 
 instance Show Int where 
     show = prim__toStrInt
