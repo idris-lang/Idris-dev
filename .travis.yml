@@ -10,8 +10,8 @@ before_script:
   - tar -xf edwinb/Idris-dev/dist/idris*.tar.gz
   - cd idris*
 script:
-  - cabal configure -f Java
-  - cabal install -f Java
+  - cabal configure
+  - cabal install
   - make test
   - make test_java
 
