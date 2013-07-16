@@ -27,4 +27,4 @@ codegenLLVM :: [(TT.Name, SDecl)] ->
                OutputType ->
                IO ()
 
-codegenLLVM _ _ _ _ _ _ = print "Error: This Idris was compiled without the LLVM backend."
+codegenLLVM _ _ _ _ _ _ = fail "This Idris was compiled without the LLVM backend."
