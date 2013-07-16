@@ -14,6 +14,7 @@ import Idris.Parser
 import Idris.Error
 import Idris.DataOpts
 import Idris.Completion
+import Idris.IdeSlave
 
 import System.Console.Haskeline
 import System.Console.Haskeline.History
@@ -41,26 +42,31 @@ showProof lit n ps
         break = "\n" ++ bird
 
 proverSettings :: ElabState [PDecl] -> Settings Idris
-proverSettings e = setComplete (proverCompletion assumptionNames) defaultSettings
-    where assumptionNames = case envAtFocus (proof e) of
-                              OK env -> names env
-          names [] = []
-          names ((MN _ _, _) : bs) = names bs
-          names ((n, _) : bs) = show n : names bs
+proverSettings e = setComplete (proverCompletion (assumptionNames e)) defaultSettings
+
+assumptionNames :: ElabState [PDecl] -> [String]
+assumptionNames e
+  = case envAtFocus (proof e) of
+         OK env -> names env
+  where names [] = []
+        names ((MN _ _, _) : bs) = names bs
+        names ((n, _) : bs) = show n : names bs
 
 prove :: Context -> Bool -> Name -> Type -> Idris ()
-prove ctxt lit n ty 
+prove ctxt lit n ty
     = do let ps = initElaborator n ctxt ty
+         ideslavePutSExp "start-proof-mode" n
          (tm, prf) <- ploop True ("-" ++ show n) [] (ES (ps, []) "" Nothing) Nothing
          iLOG $ "Adding " ++ show tm
          iputStrLn $ showProof lit n prf
          i <- getIState
+         ideslavePutSExp "end-proof-mode" n
          let proofs = proof_list i
          putIState (i { proof_list = (n, prf) : proofs })
          let tree = simpleCase False True CompileTime (FC "proof" 0) [([], P Ref n ty, tm)]
          logLvl 3 (show tree)
          (ptm, pty) <- recheckC (FC "proof" 0) [] tm
-         logLvl 5 ("Proof type: " ++ show pty ++ "\n" ++ 
+         logLvl 5 ("Proof type: " ++ show pty ++ "\n" ++
                    "Expected type:" ++ show ty)
          case converts ctxt [] ty pty of
               OK _ -> return ()
@@ -68,7 +74,7 @@ prove ctxt lit n ty
          ptm' <- applyOpts ptm
          updateContext (addCasedef n True False True False
                                  [Right (P Ref n ty, ptm)]
-                                 [([], P Ref n ty, ptm)] 
+                                 [([], P Ref n ty, ptm)]
                                  [([], P Ref n ty, ptm')] ty)
          solveDeferred n
 elabStep :: ElabState [PDecl] -> ElabD a -> Idris (a, ElabState [PDecl])
@@ -77,13 +83,13 @@ elabStep st e = do case runStateT e st of
                      Error a -> do i <- getIState
                                    fail (pshow i a)
 
-dumpState :: IState -> ProofState -> IO ()
+dumpState :: IState -> ProofState -> Idris ()
 dumpState ist (PS nm [] _ _ tm _ _ _ _ _ _ _ _ _ _ _ _ _ _) =
-  putStrLn . render $ pretty nm <> colon <+> text "No more goals."
+  iputGoal . render $ pretty nm <> colon <+> text "No more goals."
 dumpState ist ps@(PS nm (h:hs) _ _ tm _ _ _ _ _ _ problems i _ _ ctxy _ _ _) = do
   let OK ty  = goalAtFocus ps
   let OK env = envAtFocus ps
-  putStrLn . render $
+  iputGoal . render $
     prettyOtherGoals hs $$
     prettyAssumptions env $$
     prettyGoal ty
@@ -124,46 +130,69 @@ lifte :: ElabState [PDecl] -> ElabD a -> Idris a
 lifte st e = do (v, _) <- elabStep st e
                 return v
 
+receiveInput :: ElabState [PDecl] -> Idris (Maybe String)
+receiveInput e =
+  do i <- getIState
+     l <- liftIO $ getLine
+     let (sexp, id) = parseMessage l
+     putIState $ i { idris_outputmode = (IdeSlave id) }
+     case sexpToCommand sexp of
+       Just (REPLCompletions prefix) ->
+         do (unused, compls) <- proverCompletion (assumptionNames e) (reverse prefix, "")
+            let good = SexpList [SymbolAtom "ok", toSExp (map replacement compls, reverse unused)]
+            ideslavePutSExp "return" good
+            receiveInput e
+       Just (Interpret cmd) -> return (Just cmd)
+       Nothing -> return Nothing
+
 ploop :: Bool -> String -> [String] -> ElabState [PDecl] -> Maybe History -> Idris (Term, [String])
 ploop d prompt prf e h
     = do i <- getIState
-         when d $ liftIO $ dumpState i (proof e)
-         (x, h') <- runInputT (proverSettings e) $
-                    -- Manually track the history so that we can use the proof state
-                    do _ <- case h of
-                              Just history -> putHistory history
-                              Nothing -> return ()
-                       l <- getInputLine (prompt ++ "> ")
-                       h' <- getHistory
-                       return (l, Just h')
+         when d $ dumpState i (proof e)
+         (x, h') <-
+           case idris_outputmode i of
+             RawOutput -> runInputT (proverSettings e) $
+                          -- Manually track the history so that we can use the proof state
+                          do _ <- case h of
+                               Just history -> putHistory history
+                               Nothing -> return ()
+                             l <- getInputLine (prompt ++ "> ")
+                             h' <- getHistory
+                             return (l, Just h')
+             IdeSlave n ->
+               do isetPrompt prompt
+                  i <- receiveInput e
+                  return (i, h)
          (cmd, step) <- case x of
-            Nothing -> fail "Abandoned"
+            Nothing -> do iFail ""; fail "Abandoned"
             Just input -> do return (parseTac i input, input)
          case cmd of
-            Right Abandon -> fail "Abandoned"
+            Right Abandon -> do iFail ""; fail "Abandoned"
             _ -> return ()
          (d, st, done, prf') <- idrisCatch
            (case cmd of
-              Left err -> do iputStrLn (show err)
+              Left err -> do iFail (show err)
                              return (False, e, False, prf)
-              Right Undo -> 
-                           do (_, st) <- elabStep e loadState
-                              return (True, st, False, init prf)
-              Right ProofState ->
-                              return (True, e, False, prf)
-              Right ProofTerm -> 
-                           do tm <- lifte e get_term
-                              iputStrLn $ "TT: " ++ show tm ++ "\n"
-                              return (False, e, False, prf)
+              Right Undo -> do (_, st) <- elabStep e loadState
+                               iResult ""
+                               return (True, st, False, init prf)
+              Right ProofState -> do iResult ""
+                                     return (True, e, False, prf)
+              Right ProofTerm -> do tm <- lifte e get_term
+                                    iResult $ "TT: " ++ show tm ++ "\n"
+                                    return (False, e, False, prf)
               Right Qed -> do hs <- lifte e get_holes
                               when (not (null hs)) $ fail "Incomplete proof"
+                              iResult "Proof completed!"
                               return (False, e, True, prf)
               Right tac -> do (_, e) <- elabStep e saveState
                               (_, st) <- elabStep e (runTac True i tac)
---                               trace (show (problems (proof st))) $ 
+--                               trace (show (problems (proof st))) $
+                              iResult ""
                               return (True, st, False, prf ++ [step]))
-           (\err -> do iputStrLn (show err)
+           (\err -> do iFail (show err)
                        return (False, e, False, prf))
+         ideslavePutSExp "write-proof-state" (prf', length prf')
          if done then do (tm, _) <- elabStep st get_term
                          return (tm, prf')
                  else ploop d prompt prf' st h'

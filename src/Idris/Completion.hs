@@ -28,8 +28,7 @@ data TacticArg = NameTArg -- ^ Names: n1, n2, n3, ... n
 
 -- | A list of available tactics and their argument requirements
 tacticArgs :: [(String, Maybe TacticArg)]
-tacticArgs = [ ("intro", Nothing)
-             , ("intros", Nothing)
+tacticArgs = [ ("intro", Nothing) -- FIXME syntax for intro (fresh name)
              , ("refine", Just ExprTArg)
              , ("mrefine", Just ExprTArg)
              , ("rewrite", Just ExprTArg)
@@ -41,7 +40,7 @@ tacticArgs = [ ("intro", Nothing)
              , ("fill", Just ExprTArg)
              , ("try", Just AltsTArg)
              ] ++ map (\x -> (x, Nothing)) [
-              "intro", "intros", "compute", "trivial", "solve", "attack",
+              "intros", "compute", "trivial", "solve", "attack",
               "state", "term", "undo", "qed", "abandon", ":q"
              ]
 tactics = map fst tacticArgs

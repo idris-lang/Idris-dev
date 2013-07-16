@@ -264,7 +264,7 @@ iFail s = do i <- getIState
                                  s  -> liftIO $ putStrLn s
                IdeSlave n ->
                  let good = SexpList [SymbolAtom "error", toSExp s] in
-                     liftIO $ putStrLn $ convSExp "return" good n
+                     liftIO . putStrLn $ convSExp "return" good n
 
 iputStrLn :: String -> Idris ()
 iputStrLn s = do i <- getIState
@@ -277,13 +277,31 @@ iputStrLn s = do i <- getIState
                          ([], msg) -> write
                          (num, ':':msg) -> iWarn (FC fn (read num)) msg
                        _  -> write
-                     where write = liftIO $ putStrLn $ convSExp "write-string" s n
+                     where write = liftIO . putStrLn $ convSExp "write-string" s n
+
+ideslavePutSExp :: SExpable a => String -> a -> Idris ()
+ideslavePutSExp cmd info = do i <- getIState
+                              case idris_outputmode i of
+                                   IdeSlave n -> liftIO . putStrLn $ convSExp cmd info n
+                                   _ -> return ()
+
+-- this needs some typing magic and more structured output towards emacs
+iputGoal :: String -> Idris ()
+iputGoal s = do i <- getIState
+                case idris_outputmode i of
+                  RawOutput -> liftIO $ putStrLn s
+                  IdeSlave n -> liftIO . putStrLn $ convSExp "write-goal" s n
+
+isetPrompt :: String -> Idris ()
+isetPrompt p = do i <- getIState
+                  case idris_outputmode i of
+                    IdeSlave n -> liftIO . putStrLn $ convSExp "set-prompt" p n
 
 iWarn :: FC -> String -> Idris ()
 iWarn fc err = do i <- getIState
                   case idris_outputmode i of
                     RawOutput -> liftIO $ putStrLn (show fc ++ ":" ++ err)
-                    IdeSlave n -> liftIO $ putStrLn $ convSExp "warning" (fc_fname fc, fc_line fc, err) n
+                    IdeSlave n -> liftIO . putStrLn $ convSExp "warning" (fc_fname fc, fc_line fc, err) n
 
 setLogLevel :: Int -> Idris ()
 setLogLevel l = do i <- getIState
