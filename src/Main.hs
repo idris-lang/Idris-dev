@@ -91,12 +91,16 @@ usagemsg = "Idris version " ++ ver ++ "\n" ++
            "\t--log [level]     Type debugging log level\n" ++
            "\t-S                Do no further compilation of code generator output\n" ++
            "\t-c                Compile to object files rather than an executable\n" ++
-           "\t--exec [expr]     Execute the expression expr in the interpreter, defaulting to\n" ++
-           "\t                  Main.main if none provided, and exit.\n" ++
-           "\t--ideslave        Ideslave mode (for editors; in/ouput wrapped in s-expressions)\n" ++
+           "\t--exec [expr]     Execute the expression expr in the interpreter,\n" ++
+           "\t                  defaulting to Main.main if none provided, and exit.\n" ++
+           "\t--ideslave        Ideslave mode (for editors; in/ouput wrapped in \n" ++
+           "\t                  s-expressions)\n" ++
            "\t--libdir          Show library install directory and exit\n" ++
            "\t--link            Show C library directories and exit (for C linking)\n" ++
            "\t--include         Show C include directories and exit (for C linking)\n" ++
-           "\t--target [target] Type the target: C, Java, bytecode, javascript, node\n"
+           "\t--codegen [cg]    Select code generator: C, Java, bytecode, javascript,\n" ++
+           "\t                  node or llvm\n" ++
+           "\t--target [triple] Select target triple (for LLVM codegen)\n" ++
+           "\t--cpu [cpu]       Select target architecture (for LLVM codegen)\n"
 
 
