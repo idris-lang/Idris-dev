@@ -33,7 +33,8 @@ function! SyntaxCheckers_idris_idris_GetLocList()
 
     let errorformat =
         \ '"%f" (line %l\, column %c\):,' .
-        \ '%f\:%l\:%m'
+        \ '%f\:%l\:%m,' .
+        \ 'user error (%f\:%l\:%m\)'
 
     return SyntasticMake({
         \ 'makeprg': makeprg,
