@@ -1323,7 +1323,7 @@ substMatchShadow n shs tm t = sm shs t where
                    PPi p x' (sm (x':xs) (substMatch x (PRef (FC "" 0) x') t)) 
                             (sm (x':xs) (substMatch x (PRef (FC "" 0) x') sc))
          | otherwise = PPi p x (sm xs t) (sm (x : xs) sc)
-    sm xs (PApp f x as) = PApp f (sm xs x) (map (fmap (sm xs)) as)
+    sm xs (PApp f x as) = fullApp $ PApp f (sm xs x) (map (fmap (sm xs)) as)
     sm xs (PCase f x as) = PCase f (sm xs x) (map (pmap (sm xs)) as)
     sm xs (PEq f x y) = PEq f (sm xs x) (sm xs y)
     sm xs (PRewrite f x y tm) = PRewrite f (sm xs x) (sm xs y)
@@ -1335,6 +1335,9 @@ substMatchShadow n shs tm t = sm shs t where
     sm xs (PHidden x) = PHidden (sm xs x)
     sm xs (PUnifyLog x) = PUnifyLog (sm xs x)
     sm xs x = x
+
+    fullApp (PApp _ (PApp fc f args) xs) = fullApp (PApp fc f (args ++ xs))
+    fullApp x = x
 
 shadow :: Name -> Name -> PTerm -> PTerm
 shadow n n' t = sm t where
