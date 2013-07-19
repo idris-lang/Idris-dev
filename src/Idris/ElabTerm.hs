@@ -672,7 +672,7 @@ resolveTC depth fn ist
 
     needsDefault t num@(P _ (NS (UN "Num") ["Builtins"]) _) [P Bound a _]
         = do focus a
-             fill (RConstant (AType (ATInt ITNative))) -- default Int
+             fill (RConstant (AType (ATInt ITBig))) -- default Integer
              solve
              return False
     needsDefault t f as

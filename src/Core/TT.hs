@@ -769,7 +769,7 @@ itBitsName IT64 = "Bits64"
 
 instance Show Const where
     show (I i) = show i
-    show (BI i) = show i ++ "L"
+    show (BI i) = show i
     show (Fl f) = show f
     show (Ch c) = show c
     show (Str s) = show s
