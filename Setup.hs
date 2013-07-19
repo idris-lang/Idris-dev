@@ -21,12 +21,6 @@ import qualified Data.Text.IO as TIO
 -- After Idris is built, we need to check and install the prelude and other libs
 
 make verbosity = P.runProgramInvocation verbosity . P.simpleProgramInvocation "make"
-mvn verbosity = P.runProgramInvocation verbosity . P.simpleProgramInvocation 
-#ifdef mingw32_HOST_OS
-                "mvn.bat"
-#else
-                "mvn"
-#endif
 
 #ifdef mingw32_HOST_OS
 -- make on mingw32 exepects unix style separators
@@ -45,13 +39,9 @@ cleanStdLib verbosity
          make verbosity [ "-C", "effects", "clean", "IDRIS=idris" ]
          make verbosity [ "-C", "javascript", "clean", "IDRIS=idris" ]
 
-cleanJavaLib verbosity 
-  = do dirty <- doesDirectoryExist ("java" </> "target")
-       when dirty $ mvn verbosity [ "-f", "java/pom.xml", "clean" ]
-       pomExists <- doesFileExist ("java" </> "pom.xml")
-       when pomExists $ removeFile ("java" </> "pom.xml")
-       execPomExists <- doesFileExist ("java" </> "executable_pom.xml")
-       when pomExists $ removeFile ("java" </> "executable_pom.xml")
+cleanJavaPom verbosity 
+  = do execPomExists <- doesFileExist ("java" </> "executable_pom.xml")
+       when execPomExists $ removeFile ("java" </> "executable_pom.xml")
 
 cleanLLVMLib verbosity = make verbosity ["-C", "llvm", "clean"]
 
@@ -88,17 +78,8 @@ installLLVMLib verbosity pkg local copy =
     let idir = datadir $ L.absoluteInstallDirs pkg local copy in
     make verbosity ["-C", "llvm", "install", "TARGET=" ++ idir </> "llvm"]
 
-installJavaLib pkg local verbosity copy version = do
-  let rtsFile = "idris-" ++ display version ++ ".jar"
-  putStrLn $ "Installing java libraries" 
-  mvn verbosity [ "install:install-file"
-                , "-Dfile=" ++ ("java" </> "target" </> rtsFile)
-                , "-DgroupId=org.idris-lang"
-                , "-DartifactId=idris"
-                , "-Dversion=" ++ display version
-                , "-Dpackaging=jar"
-                , "-DgeneratePom=True"
-                ]
+installJavaPom pkg local verbosity copy version = do
+  putStrLn $ "Installing java pom template" 
   let dir = datadir $ L.absoluteInstallDirs pkg local copy
   copyFile ("java" </> "executable_pom.xml") (dir </> "executable_pom.xml")
 
@@ -135,14 +116,6 @@ checkStdLib local withoutEffects verbosity
                , "IDRIS=" ++ icmd
                ]
 
-checkJavaLib verbosity = mvn verbosity [ "-f", "java" </> "pom.xml", "package" ]
-
-javaFlag flags = 
-  case lookup (FlagName "java") (S.configConfigurationsFlags flags) of
-    Just True -> True
-    Just False -> False
-    Nothing -> False
-
 llvmFlag flags = 
   case lookup (FlagName "LLVM") (S.configConfigurationsFlags flags) of
     Just True -> True
@@ -156,9 +129,7 @@ noEffectsFlag flags =
       Nothing -> False
 
 preparePoms version
-    = do pomTemplate <- TIO.readFile ("java" </> "pom_template.xml")
-         TIO.writeFile ("java" </> "pom.xml") (insertVersion pomTemplate)
-         execPomTemplate <- TIO.readFile ("java" </> "executable_pom_template.xml")
+    = do execPomTemplate <- TIO.readFile ("java" </> "executable_pom_template.xml")
          TIO.writeFile ("java" </> "executable_pom.xml") (insertVersion execPomTemplate)
     where
       insertVersion template = 
@@ -173,41 +144,31 @@ main = do
               let withoutEffects = noEffectsFlag $ configFlags lbi
               installStdLib pkg lbi withoutEffects verb
                                     (S.fromFlag $ S.copyDest flags)
-              when (llvmFlag $ configFlags lbi)  
-                   (installLLVMLib verb pkg lbi (S.fromFlag $ S.copyDest flags))
-              when (javaFlag $ configFlags lbi) 
-                   (installJavaLib pkg 
-                                   lbi 
-                                   verb 
+              installJavaPom pkg lbi verb 
                                    (S.fromFlag $ S.copyDest flags)
                                    (pkgVersion . package $ localPkgDescr lbi)
-                   )
-        , postInst = \ _ flags pkg lbi -> do
+              when (llvmFlag $ configFlags lbi)  
+                   (installLLVMLib verb pkg lbi (S.fromFlag $ S.copyDest flags))
+       , postInst = \ _ flags pkg lbi -> do
               let verb = (S.fromFlag $ S.installVerbosity flags)
               let withoutEffects = noEffectsFlag $ configFlags lbi
               installStdLib pkg lbi withoutEffects verb
                                     NoCopyDest
-              when (llvmFlag $ configFlags lbi)  
-                   (installLLVMLib verb pkg lbi NoCopyDest)
-              when (javaFlag $ configFlags lbi) 
-                   (installJavaLib pkg 
-                                   lbi 
-                                   verb 
+              installJavaPom pkg lbi verb 
                                    NoCopyDest 
                                    (pkgVersion . package $ localPkgDescr lbi)
-                   )
+              when (llvmFlag $ configFlags lbi)  
+                   (installLLVMLib verb pkg lbi NoCopyDest)
         , postConf  = \ _ flags _ lbi -> do
               removeLibIdris lbi (S.fromFlag $ S.configVerbosity flags)
-              when (javaFlag $ configFlags lbi) 
-                   (preparePoms . pkgVersion . package $ localPkgDescr lbi)
+              preparePoms . pkgVersion . package $ localPkgDescr lbi
         , postClean = \ _ flags _ _ -> do
               let verb = S.fromFlag $ S.cleanVerbosity flags
               cleanStdLib verb
               cleanLLVMLib verb
-              cleanJavaLib verb
+              cleanJavaPom verb
         , postBuild = \ _ flags _ lbi -> do
               let verb = S.fromFlag $ S.buildVerbosity flags
               let withoutEffects = noEffectsFlag $ configFlags lbi
               checkStdLib lbi withoutEffects verb
-              when (javaFlag $ configFlags lbi) (checkJavaLib verb)
         }

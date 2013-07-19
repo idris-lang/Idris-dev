@@ -268,8 +268,7 @@ mkCompilationUnit :: [(Name, SExp)] -> [(Name, SDecl)] -> [String] -> FilePath -
 mkCompilationUnit globalInit defs hdrs out = do
   clsName <- mkClassName out
   CompilationUnit Nothing ( [ ImportDecl False idrisRts True
-                            , ImportDecl True idrisForeign True
-                            , ImportDecl False idrisPrimFn False
+                            , ImportDecl True idrisPrelude True
                             , ImportDecl False bigInteger False
                             , ImportDecl False runtimeException False
                             ] ++ otherHdrs
@@ -277,8 +276,7 @@ mkCompilationUnit globalInit defs hdrs out = do
                           <$> mkTypeDecl clsName globalInit defs
   where
     idrisRts = J.Name $ map Ident ["org", "idris", "rts"]
-    idrisForeign = J.Name $ map Ident ["org", "idris", "rts", "ForeignPrimitives"]
-    idrisPrimFn = J.Name $ map Ident ["org", "idris", "rts", "PrimFn"]
+    idrisPrelude = J.Name $ map Ident ["org", "idris", "rts", "Prelude"]
     bigInteger = J.Name $ map Ident ["java", "math", "BigInteger"]
     runtimeException = J.Name $ map Ident ["java", "lang", "RuntimeException"]
     otherHdrs = map ( (\ name -> ImportDecl False name False)
