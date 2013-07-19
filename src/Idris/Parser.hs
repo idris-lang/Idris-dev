@@ -1380,17 +1380,20 @@ pArgExpr syn = let syn' = syn { inPattern = True } in
 
 pRHS :: SyntaxInfo -> Name -> IParser PTerm
 pRHS syn n = do lchar '='; pExpr syn
-         <|> do symbol "?="; rhs <- pExpr syn;
-                return (addLet rhs)
+         <|> do symbol "?="; 
+                name <- option n' (do symbol "{"; n <- pfName; symbol "}";
+                                      return n)
+                rhs <- pExpr syn
+                return (addLet name rhs)
          <|> do reserved "impossible"; return PImpossible
   where mkN (UN x)   = UN (x++"_lemma_1")
         mkN (NS x n) = NS (mkN x) n
         n' = mkN n
 
-        addLet (PLet n ty val rhs) = PLet n ty val (addLet rhs)
-        addLet (PCase fc t cs) = PCase fc t (map addLetC cs)
-          where addLetC (l, r) = (l, addLet r)
-        addLet rhs = (PLet (UN "value") Placeholder rhs (PMetavar n')) 
+        addLet nm (PLet n ty val rhs) = PLet n ty val (addLet nm rhs)
+        addLet nm (PCase fc t cs) = PCase fc t (map addLetC cs)
+          where addLetC (l, r) = (l, addLet nm r)
+        addLet nm rhs = (PLet (UN "value") Placeholder rhs (PMetavar nm)) 
 
 pClause :: SyntaxInfo -> IParser PClause
 pClause syn
