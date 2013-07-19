@@ -50,8 +50,12 @@ genClauses fc n xs given
         logLvl 10 $ show argss ++ "\n" ++ show all_args
         logLvl 10 $ "Original: \n" ++ 
              showSep "\n" (map (\t -> showImp True (delab' i t True)) xs)
+        -- add an infinite supply of explicit arguments to update the possible
+        -- cases for (the return type may be variadic, or function type, sp
+        -- there may be more case splitting that the idris_implicits record
+        -- suggests)
         let parg = case lookupCtxt n (idris_implicits i) of
-                        (p : _) -> p
+                        (p : _) -> p ++ repeat (PExp 0 False Placeholder "")
                         _ -> repeat (pexp Placeholder)
         let tryclauses = mkClauses parg all_args
         logLvl 2 $ show (length tryclauses) ++ " initially to check"
