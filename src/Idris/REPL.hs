@@ -323,13 +323,16 @@ process fn (Check (PRef _ n))
                                          showImp imp (delabTy ist n)) ts
                             iResult ""
              [] -> iFail $ "No such variable " ++ show n
-process fn (Check t) = do (tm, ty) <- elabVal toplevel False t
-                          ctxt <- getContext
-                          ist <- getIState
-                          imp <- impShow
-                          let ty' = normaliseC ctxt [] ty
-                          iResult (showImp imp (delab ist tm) ++ " : " ++
-                                   showImp imp (delab ist ty))
+process fn (Check t)
+   = do (tm, ty) <- elabVal toplevel False t
+        ctxt <- getContext
+        ist <- getIState
+        imp <- impShow
+        let ty' = normaliseC ctxt [] ty
+        case tm of
+             TType _ -> iResult ("Type : Type 1")
+             _ -> iResult (showImp imp (delab ist tm) ++ " : " ++
+                          showImp imp (delab ist ty))
 
 process fn (DocStr n) = do i <- getIState
                            case lookupCtxtName n (idris_docstrings i) of
