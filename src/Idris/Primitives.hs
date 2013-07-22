@@ -121,7 +121,7 @@ primitives =
     (1, LStrLen) total,
     -- Conversions
    Prim (UN "prim__charToInt") (ty [(AType (ATInt ITChar))] (AType (ATInt ITNative))) 1 (c_charToInt)
-     (1, LChInt ITChar) total,
+     (1, LChInt ITNative) total,
    Prim (UN "prim__intToChar") (ty [(AType (ATInt ITNative))] (AType (ATInt ITChar))) 1 (c_intToChar)
      (1, LIntCh ITNative) total,
    Prim (UN "prim__strToFloat") (ty [StrType] (AType ATFloat)) 1 (c_strToFloat)

@@ -816,6 +816,13 @@ itWidth :: IntTy -> Word32
 itWidth ITNative = 32
 itWidth ITChar = 32
 itWidth (ITFixed x) = fromIntegral $ nativeTyWidth x
+itWidth x = ierror $ "itWidth: " ++ show x
+
+itConst :: IntTy -> Integer -> C.Constant
+itConst (ITFixed n) x = C.Int (fromIntegral $ nativeTyWidth n) x
+itConst ITNative x = itConst (ITFixed IT32) x
+itConst ITChar x = itConst (ITFixed IT32) x
+itConst (ITVec elts size) x = C.Vector (replicate size (itConst (ITFixed elts) x))
 
 cgOp :: PrimFn -> [Operand] -> Codegen Operand
 cgOp (LTrunc ITBig ity) [x] = do
@@ -841,6 +848,10 @@ cgOp (LSExt from ITBig) [x] = do
   mpz <- alloc mpzTy
   inst' $ simpleCall "mpz_init_set_sll" [mpz, nx']
   box (FArith (ATInt ITBig)) mpz
+
+-- ITChar, ITNative, and IT32 all share representation
+cgOp (LChInt ITNative) [x] = return x
+cgOp (LIntCh ITNative) [x] = return x
 
 cgOp (LLt    (ATInt ITBig)) [x,y] = mpzCmp IPred.SLT x y
 cgOp (LLe    (ATInt ITBig)) [x,y] = mpzCmp IPred.SLE x y
@@ -893,7 +904,7 @@ cgOp (LURem  ity) [x,y] = ibin ity x y URem
 cgOp (LAnd   ity) [x,y] = ibin ity x y And
 cgOp (LOr    ity) [x,y] = ibin ity x y Or
 cgOp (LXOr   ity) [x,y] = ibin ity x y Xor
-cgOp (LCompl ity) [x]   = iun ity x (Xor (ConstantOperand (C.Int (itWidth ity) (-1))))
+cgOp (LCompl ity) [x]   = iun ity x (Xor . ConstantOperand $ itConst ity (-1))
 cgOp (LSHL   ity) [x,y] = ibin ity x y (Shl False False)
 cgOp (LLSHR  ity) [x,y] = ibin ity x y (LShr False)
 cgOp (LASHR  ity) [x,y] = ibin ity x y (AShr False)
@@ -1029,13 +1040,14 @@ cgOp LStdErr  [] = do
   ptr <- inst $ loadInv stdErr
   box FPtr ptr
 
-cgOp prim args = ierror $ "Unimplemented primitive: [" ++ show prim ++ "]("
+cgOp prim args = ierror $ "Unimplemented primitive: <" ++ show prim ++ ">("
                   ++ intersperse ',' (take (length args) ['a'..]) ++ ")"
 
 iCoerce :: (Operand -> Type -> InstructionMetadata -> Instruction) -> NativeTy -> NativeTy -> Operand -> Codegen Operand
+iCoerce _ from to x | from == to = return x
 iCoerce operator from to x = do
   x' <- unbox (FArith (ATInt (ITFixed from))) x
-  x'' <- inst $ operator x' (ftyToTy (FArith (ATInt (ITFixed from)))) []
+  x'' <- inst $ operator x' (ftyToTy (FArith (ATInt (ITFixed to)))) []
   box (FArith (ATInt (ITFixed to))) x''
 
 cgStrCat :: Operand -> Operand -> Codegen Operand
