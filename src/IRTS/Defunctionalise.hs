@@ -218,7 +218,8 @@ mkApply xs = (MN 0 "APPLY", DFun (MN 0 "APPLY") [MN 0 "fn", MN 0 "arg"]
                                     mkBigCase (MN 0 "APPLY") 256
                                               (DApp False (MN 0 "EVAL")
                                                [DV (Glob (MN 0 "fn"))])
-                                              cases))
+                                              (cases ++
+                                    [DDefaultCase DNothing])))
   where
     applyCase (n, t, ApplyCase x) = Just x
     applyCase _ = Nothing
