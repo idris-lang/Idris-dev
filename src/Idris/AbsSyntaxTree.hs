@@ -332,7 +332,7 @@ data FnOpt = Inlinable | TotalFn | PartialFn
            | Coinductive | AssertTotal | TCGen
            | Implicit -- implicit coercion
            | CExport String    -- export, with a C name
-           | Specialise [Name] -- specialise it, freeze these names
+           | Specialise [(Name, Maybe Int)] -- specialise it, freeze these names
     deriving (Show, Eq)
 {-!
 deriving instance Binary FnOpt

@@ -13,6 +13,7 @@ import Idris.Coverage
 import Idris.DataOpts
 import Idris.Providers
 import Idris.Primitives
+import Idris.PartialEval
 import IRTS.Lang
 import Paths_idris
 
@@ -482,12 +483,13 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
                          putIState (ist { idris_optimisation = opts })
                          addIBC (IBCOpt n)
            ist <- getIState
-           let pats = pats_in
+           let pats = doTransforms ist pats_in 
+
   --          logLvl 3 (showSep "\n" (map (\ (l,r) -> 
   --                                         show l ++ " = " ++ 
   --                                         show r) pats))
            let tcase = opt_typecase (idris_options ist)
-           let pdef = map debind $ map (simpl False (tt_ctxt ist)) pats
+           let pdef = map debind $ map (simpl (tt_ctxt ist)) pats
            
            numArgs <- tclift $ sameLength pdef
 
@@ -496,10 +498,13 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
                                                     (take numArgs (repeat Erased)), Erased)]
                          else stripCollapsed pats
 
-           logLvl 5 $ "Patterns:\n" ++ show pats
+           logLvl 5 $ "Patterns:\n" ++ show pats_in
+           case specNames opts of
+                Just _ -> logLvl 5 $ "Partially evaluated:\n" ++ show pats
+                _ -> return ()
            logLvl 3 $ "SIMPLIFIED: \n" ++ show pdef
 
-           let optpdef = map debind $ map (simpl True (tt_ctxt ist)) optpats
+           let optpdef = map debind $ map (simpl (tt_ctxt ist)) optpats
            tree@(CaseDef scargs sc _) <- tclift $ 
                    simpleCase tcase False CompileTime fc pdef
            cov <- coverage
@@ -600,10 +605,12 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
     
     getLHS (_, l, _) = l
 
---     simpl rt ctxt (Right (x, y)) = Right (normalise ctxt [] x,
---                                           simplify ctxt rt [] y)
-    simpl rt ctxt (Right (x, y)) = Right (normalise ctxt [] x, y)
-    simpl rt ctxt t = t
+    simpl ctxt (Right (x, y)) = Right (normalise ctxt [] x, y)
+    simpl ctxt t = t
+
+    specNames [] = Nothing
+    specNames (Specialise ns : _) = Just ns
+    specNames (_ : xs) = specNames xs
 
     sameLength ((_, x, _) : xs) 
         = do l <- sameLength xs
@@ -611,6 +618,13 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
              if (null xs || l == length as) then return (length as)
                 else tfail (At fc (Msg "Clauses have differing numbers of arguments "))
     sameLength [] = return 0
+
+    -- apply all transformations (just specialisation for now, add 
+    -- user defined transformation rules later)
+    doTransforms ist pats = 
+           case specNames opts of
+                            Nothing -> pats
+                            Just ns -> partial_eval (tt_ctxt ist) ns pats
 
 elabVal :: ElabInfo -> Bool -> PTerm -> Idris (Term, Type)
 elabVal info aspat tm_in

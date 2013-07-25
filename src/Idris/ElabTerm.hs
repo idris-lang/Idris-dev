@@ -470,7 +470,6 @@ elab ist info pattern tcgen fn tm
              elab' ina (PMetavar cname')
              let newdef = PClauses fc [] cname' 
                              (caseBlock fc cname' (reverse args) opts)
-             -- fail $ "Not implemented " ++ show c ++ "\n" ++ show args
              -- elaborate case
              env <- get_env
              g <- goal

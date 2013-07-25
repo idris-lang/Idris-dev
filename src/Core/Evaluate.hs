@@ -87,7 +87,9 @@ normaliseTrace tr ctxt env t
 
 specialise :: Context -> Env -> [(Name, Int)] -> TT Name -> TT Name
 specialise ctxt env limits t 
-   = evalState (do val <- eval False ctxt limits (map finalEntry env) (finalise t) []
+   = evalState (do val <- eval False ctxt [] 
+                                 (map finalEntry env) (finalise t) 
+                                 [Spec]
                    quote 0 val) (initEval { limited = limits })
 
 -- | Like normalise, but we only reduce functions that are marked as okay to 
@@ -125,18 +127,38 @@ unbindEnv :: EnvTT n -> TT n -> TT n
 unbindEnv [] tm = tm
 unbindEnv (_:bs) (Bind n b sc) = unbindEnv bs sc
 
-usable :: Bool -> Name -> [(Name, Int)] -> (Bool, [(Name, Int)])
-usable _ _ ns@((MN 0 "STOP", _) : _) = (False, ns)
-usable True (UN "io_bind") ns = (False, ns)
-usable s n [] = (True, [])
-usable s n ns = case lookup n ns of
-                  Just 0 -> (False, ns)
-                  Just i -> (True, (n, abs (i-1)) : filter (\ (n', _) -> n/=n') ns)
-                  _ -> if s then (True, (n, 0) : filter (\ (n', _) -> n/=n') ns)
-                            else (True, (n, 100) : filter (\ (n', _) -> n/=n') ns)
+usable :: Bool -> Bool -> Name -> [(Name, Int)] -> Eval (Bool, [(Name, Int)])
+usable _ _ _ ns@((MN 0 "STOP", _) : _) = return (False, ns)
+usable True _ (UN "io_bind") ns = return (False, ns)
+usable simpl False n [] = return (True, [])
+usable simpl True n ns
+  = do ES ls num <- get
+       case lookup n ls of
+            Just 0 -> return (False, ns)
+            Just i -> return (True, ns)
+            _ -> return (True, ns)
+usable simpl False n ns 
+  = case lookup n ns of
+         Just 0 -> return (False, ns)
+         Just i -> return $ (True, (n, abs (i-1)) : filter (\ (n', _) -> n/=n') ns)
+         _ -> if simpl then return $ (True, (n, 0) : filter (\ (n', _) -> n/=n') ns)
+                       else return $ (True, (n, 100) : filter (\ (n', _) -> n/=n') ns)
+
+
+deduct :: Name -> Eval ()
+deduct n = do ES ls num <- get
+              case lookup n ls of
+                  Just i -> do put $ ES ((n, (i-1)) :
+                                           filter (\ (n', _) -> n/=n') ls) num
+                  _ -> return ()
 
 -- | Evaluate in a context of locally named things (i.e. not de Bruijn indexed,
 -- such as we might have during construction of a proof)
+
+-- The (Name, Int) pair in the arguments is the maximum depth of unfolding of
+-- a name. The corresponding pair in the state is the maximum number of
+-- unfoldings overall.
+
 eval :: Bool -> Context -> [(Name, Int)] -> Env -> TT Name -> 
         [EvalOpt] -> Eval Value
 eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
@@ -153,23 +175,27 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
         | Just (Let t v) <- lookup n genv = ev ntimes stk top env v 
     ev ntimes_in stk top env (P Ref n ty) 
       | not top && hnf = liftM (VP Ref n) (ev ntimes stk top env ty)
-      | (True, ntimes) <- usable simpl n ntimes_in
-         = do let val = lookupDefAcc n atRepl ctxt 
-              case val of
-                [(Function _ tm, Public)] -> 
-                       ev ntimes (n:stk) True env tm
-                [(TyDecl nt ty, _)] -> do vty <- ev ntimes stk True env ty
-                                          return $ VP nt n vty
-                [(CaseOp inl inr _ _ _ [] tree _ _, acc)] 
-                     | acc == Public || simpl -> -- unoptimised version
-                   if canSimplify inl inr n stk
-                        then liftM (VP Ref n) (ev ntimes stk top env ty)
-                        else do c <- evCase ntimes (n:stk) top env [] [] tree 
-                                case c of
-                                    (Nothing, _) -> liftM (VP Ref n) (ev ntimes stk top env ty)
-                                    (Just v, _)  -> return v
-                _ -> liftM (VP Ref n) (ev ntimes stk top env ty)
-    ev ntimes stk top env (P nt n ty)   = liftM (VP nt n) (ev ntimes stk top env ty)
+      | otherwise 
+         = do (u, ntimes) <- usable simpl spec n ntimes_in
+              if u then
+               do let val = lookupDefAcc n atRepl ctxt 
+                  case val of
+                    [(Function _ tm, Public)] -> 
+                           ev ntimes (n:stk) True env tm
+                    [(TyDecl nt ty, _)] -> do vty <- ev ntimes stk True env ty
+                                              return $ VP nt n vty
+                    [(CaseOp inl inr _ _ _ [] tree _ _, acc)] 
+                         | acc == Public || simpl -> -- unoptimised version
+                       if canSimplify inl inr n stk
+                            then liftM (VP Ref n) (ev ntimes stk top env ty)
+                            else do c <- evCase ntimes n (n:stk) top env [] [] tree 
+                                    case c of
+                                        (Nothing, _) -> liftM (VP Ref n) (ev ntimes stk top env ty)
+                                        (Just v, _)  -> return v
+                    _ -> liftM (VP Ref n) (ev ntimes stk top env ty)
+               else liftM (VP Ref n) (ev ntimes stk top env ty)
+    ev ntimes stk top env (P nt n ty) 
+         = liftM (VP nt n) (ev ntimes stk top env ty)
     ev ntimes stk top env (V i) 
                      | i < length env && i >= 0 = return $ env !! i
                      | otherwise      = return $ VV i 
@@ -228,27 +254,31 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
       | not top && hnf = case args of
                             [] -> return f
                             _ -> return $ unload env f args
-      | (True, ntimes) <- usable simpl n ntimes_in
-        = traceWhen traceon (show stk) $
-          do let val = lookupDefAcc n atRepl ctxt
-             case val of
-                [(CaseOp inl inr _ _ _ ns tree _ _, acc)]
-                     | acc == Public -> -- unoptimised version
-                  if canSimplify inl inr n stk
-                     then return $ unload env (VP Ref n ty) args
-                     else do c <- evCase ntimes (n:stk) top env ns args tree
-                             case c of
-                                (Nothing, _) -> return $ unload env (VP Ref n ty) args
-                                (Just v, rest) -> evApply ntimes stk top env rest v
-                [(Operator _ i op, _)]  ->
-                  if (i <= length args)
-                     then case op (take i args) of
-                        Nothing -> return $ unload env (VP Ref n ty) args
-                        Just v  -> evApply ntimes stk top env (drop i args) v
-                     else return $ unload env (VP Ref n ty) args
-                _ -> case args of
-                        [] -> return f
-                        _ -> return $ unload env f args
+      | otherwise 
+         = do (u, ntimes) <- usable simpl spec n ntimes_in
+              if u then 
+                 do let val = lookupDefAcc n atRepl ctxt
+                    case val of
+                      [(CaseOp inl inr _ _ _ ns tree _ _, acc)]
+                           | acc == Public -> -- unoptimised version
+                        if canSimplify inl inr n stk
+                           then return $ unload env (VP Ref n ty) args
+                           else do c <- evCase ntimes n (n:stk) top env ns args tree
+                                   case c of
+                                      (Nothing, _) -> return $ unload env (VP Ref n ty) args
+                                      (Just v, rest) -> evApply ntimes stk top env rest v
+                      [(Operator _ i op, _)]  ->
+                        if (i <= length args)
+                           then case op (take i args) of
+                              Nothing -> return $ unload env (VP Ref n ty) args
+                              Just v  -> evApply ntimes stk top env (drop i args) v
+                           else return $ unload env (VP Ref n ty) args
+                      _ -> case args of
+                              [] -> return f
+                              _ -> return $ unload env f args
+                 else case args of
+                           (a : as) -> return $ unload env f (a:as)
+                           [] -> return f
     apply ntimes stk top env f (a:as) = return $ unload env f (a:as)
     apply ntimes stk top env f []     = return f
 
@@ -264,10 +294,11 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
     unload env f [] = f
     unload env f (a:as) = unload env (VApp f a) as
 
-    evCase ntimes stk top env ns args tree
+    evCase ntimes n stk top env ns args tree
         | length ns <= length args 
              = do let args' = take (length ns) args
                   let rest  = drop (length ns) args
+                  when spec $ deduct n -- successful, so deduct usages
                   t <- evTree ntimes stk top env 
                               (zipWith (\n t -> (n, t)) ns args') tree
                   return (t, rest)

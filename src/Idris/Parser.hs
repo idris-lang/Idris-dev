@@ -711,12 +711,17 @@ pFnOpts opts
       <|> do reserved "partial"; pFnOpts (PartialFn : (opts \\ [TotalFn]))
       <|> try (do lchar '%'; reserved "export"; c <- strlit; 
                   pFnOpts (CExport c : opts))
-      <|> do lchar '%'; reserved "assert_total"; pFnOpts (AssertTotal : opts)
+      <|> try (do lchar '%'; reserved "assert_total"; 
+                  pFnOpts (AssertTotal : opts))
       <|> do lchar '%'; reserved "specialise"; 
-             lchar '['; ns <- sepBy pfName (lchar ','); lchar ']'
+             lchar '['; ns <- sepBy nameTimes (lchar ','); lchar ']'
              pFnOpts (Specialise ns : opts)
       <|> do reserved "implicit"; pFnOpts (Implicit : opts)
       <|> return opts
+  where nameTimes = do n <- pfName
+                       t <- option Nothing (do reds <- natural
+                                               return (Just (fromInteger reds)))
+                       return (n, t)
 
 addAcc :: Name -> Maybe Accessibility -> IParser ()
 addAcc n a = do i <- getState
