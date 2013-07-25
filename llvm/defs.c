@@ -146,3 +146,15 @@ void *__idris_gmpRealloc(void *ptr, size_t oldSize, size_t size) {
 void __idris_gmpFree(void *ptr, size_t oldSize) {
   GC_free(ptr);
 }
+
+char *__idris_strRev(const char *s) {
+  int x = strlen(s);
+  int y = 0;
+  char *t = GC_malloc(x+1);
+
+  t[x] = '\0';
+  while(x>0) {
+    t[y++] = s[--x];
+  }
+  return t;
+}

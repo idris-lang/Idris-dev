@@ -188,6 +188,7 @@ initDefs tgt =
     , exfun "__idris_gmpMalloc" ptrI8 [intPtr] False
     , exfun "__idris_gmpRealloc" ptrI8 [ptrI8, intPtr, intPtr] False
     , exfun "__idris_gmpFree" VoidType [ptrI8, intPtr] False
+    , exfun "__idris_strRev" ptrI8 [ptrI8] False
     , exfun "strtoll" (IntegerType 64) [ptrI8, PointerType ptrI8 (AddrSpace 0), IntegerType 32] False
     , exVar (stdinName tgt) ptrI8
     , exVar (stdoutName tgt) ptrI8
@@ -1026,6 +1027,10 @@ cgOp LStrLen [s] = do
             x | x > 32 -> inst $ Trunc len (IntegerType 32) []
               | x < 32 -> inst $ ZExt len (IntegerType 32) []
   box (FArith (ATInt (ITFixed IT32))) len'
+
+cgOp LStrRev [s] = do
+  ns <- unbox FString s
+  box FString =<< inst (simpleCall "__idris_strRev" [ns])
 
 cgOp LReadStr [p] = do
   np <- unbox FPtr p
