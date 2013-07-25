@@ -404,6 +404,7 @@ sBin op [Str x, Str y] = Just $ Str (op x y)
 sBin _ _ = Nothing
 
 bsrem :: IntTy -> [Const] -> Maybe Const
+bsrem ITBig [BI x, BI y] = Just . BI $ x `rem` y
 bsrem (ITFixed IT8) [B8 x, B8 y]
     = Just $ B8 (fromIntegral (fromIntegral x `rem` fromIntegral y :: Int8))
 bsrem (ITFixed IT16) [B16 x, B16 y]
@@ -429,6 +430,7 @@ bsrem (ITVec IT64 _) [B64V x, B64V y]
 bsrem _ _ = Nothing
 
 bsdiv :: IntTy -> [Const] -> Maybe Const
+bsdiv ITBig [BI x, BI y] = Just . BI $ x `div` y
 bsdiv (ITFixed IT8) [B8 x, B8 y]
     = Just $ B8 (fromIntegral (fromIntegral x `div` fromIntegral y :: Int8))
 bsdiv (ITFixed IT16) [B16 x, B16 y]
@@ -454,6 +456,7 @@ bsdiv (ITVec IT64 _) [B64V x, B64V y]
 bsdiv _ _ = Nothing
 
 bashr :: IntTy -> [Const] -> Maybe Const
+bashr ITBig [BI x, BI y] = Just $ BI (x `shiftR` fromIntegral y)
 bashr (ITFixed IT8) [B8 x, B8 y]
     = Just $ B8 (fromIntegral (fromIntegral x `shiftR` fromIntegral y :: Int8))
 bashr (ITFixed IT16) [B16 x, B16 y]
