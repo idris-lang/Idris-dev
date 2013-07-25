@@ -895,11 +895,11 @@ cgOp (LZExt (ITFixed from) (ITFixed to)) [x]
 cgOp (LSExt (ITFixed from) (ITFixed to)) [x]
     | nativeTyWidth from < nativeTyWidth to = iCoerce SExt from to x
 
-cgOp (LLt    (ATInt ity)) [x,y] = iCmp ity IPred.SLT x y
-cgOp (LLe    (ATInt ity)) [x,y] = iCmp ity IPred.SLE x y
+cgOp (LLt    (ATInt ity)) [x,y] = iCmp ity IPred.ULT x y
+cgOp (LLe    (ATInt ity)) [x,y] = iCmp ity IPred.ULE x y
 cgOp (LEq    (ATInt ity)) [x,y] = iCmp ity IPred.EQ  x y
-cgOp (LGe    (ATInt ity)) [x,y] = iCmp ity IPred.SGE x y
-cgOp (LGt    (ATInt ity)) [x,y] = iCmp ity IPred.SGT x y
+cgOp (LGe    (ATInt ity)) [x,y] = iCmp ity IPred.UGE x y
+cgOp (LGt    (ATInt ity)) [x,y] = iCmp ity IPred.UGT x y
 cgOp (LPlus  (ATInt ity)) [x,y] = ibin ity x y (Add False False)
 cgOp (LMinus (ATInt ity)) [x,y] = ibin ity x y (Sub False False)
 cgOp (LTimes (ATInt ity)) [x,y] = ibin ity x y (Mul False False)
