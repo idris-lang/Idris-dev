@@ -21,6 +21,11 @@ hostDynamicLibExt = "so"
 hostDynamicLibExt = "dylib"
 #elif WINDOWS
 hostDynamicLibExt = "dll"
+#else
+hostDynamicLibExt = error $ unwords
+  [ "Undefined file extension for dynamic libraries"
+  , "in Idris' Util.DynamicLinker."
+  ]
 #endif
 
 data ForeignFun = forall a. Fun { fun_name :: String
