@@ -176,7 +176,10 @@ initDefs tgt =
     , exfun "__gmpz_init" VoidType [pmpz] False
     , exfun "__gmpz_init_set_str" (IntegerType 32) [pmpz, ptrI8, IntegerType 32] False
     , exfun "__gmpz_get_str" ptrI8 [ptrI8, IntegerType 32, pmpz] False
+    , exfun "__gmpz_get_ui" intPtr [pmpz] False
     , exfun "__gmpz_cmp" (IntegerType 32) [pmpz, pmpz] False
+    , exfun "__gmpz_fdiv_q_2exp" VoidType [pmpz, pmpz, intPtr] False
+    , exfun "__gmpz_mul_2exp" VoidType [pmpz, pmpz, intPtr] False
     , exfun "mpz_get_ull" (IntegerType 64) [pmpz] False
     , exfun "mpz_init_set_ull" VoidType [pmpz, IntegerType 64] False
     , exfun "mpz_init_set_sll" VoidType [pmpz, IntegerType 64] False
@@ -867,6 +870,8 @@ cgOp (LAnd   ITBig) [x,y] = mpzBin "and" x y
 cgOp (LOr    ITBig) [x,y] = mpzBin "ior" x y
 cgOp (LXOr   ITBig) [x,y] = mpzBin "xor" x y
 cgOp (LCompl ITBig) [x]   = mpzUn "com" x
+cgOp (LSHL   ITBig) [x,y] = mpzBit "mul_2exp" x y
+cgOp (LASHR  ITBig) [x,y] = mpzBit "fdiv_q_2exp" x y
 
 cgOp (LTrunc ITNative (ITFixed to)) [x]
     | 32 >= nativeTyWidth to = iCoerce Trunc IT32 to x
@@ -1104,6 +1109,16 @@ mpzBin name x y = do
   nz <- alloc mpzTy
   inst' $ simpleCall "__gmpz_init" [nz]
   inst' $ simpleCall ("__gmpz_" ++ name) [nz, nx, ny]
+  box (FArith (ATInt ITBig)) nz
+
+mpzBit :: String -> Operand -> Operand -> Codegen Operand
+mpzBit name x y = do
+  nx <- unbox (FArith (ATInt ITBig)) x
+  ny <- unbox (FArith (ATInt ITBig)) y
+  bitcnt <- inst $ simpleCall "__gmpz_get_ui" [ny]
+  nz <- alloc mpzTy
+  inst' $ simpleCall "__gmpz_init" [nz]
+  inst' $ simpleCall ("__gmpz_" ++ name) [nz, nx, bitcnt]
   box (FArith (ATInt ITBig)) nz
 
 mpzUn :: String -> Operand -> Codegen Operand
