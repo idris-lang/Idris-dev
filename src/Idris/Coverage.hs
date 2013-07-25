@@ -46,7 +46,8 @@ genClauses fc n xs given
         let lhss = map (getLHS i) xs
         let argss = transpose lhss
         let all_args = map (genAll i) argss
-        logLvl 7 $ "COVERAGE of " ++ show n
+        logLvl 5 $ "COVERAGE of " ++ show n
+        logLvl 5 $ show (map length argss) ++ "\n" ++ show (map length all_args)
         logLvl 10 $ show argss ++ "\n" ++ show all_args
         logLvl 10 $ "Original: \n" ++ 
              showSep "\n" (map (\t -> showImp True (delab' i t True)) xs)
@@ -61,7 +62,7 @@ genClauses fc n xs given
         logLvl 2 $ show (length tryclauses) ++ " initially to check"
         let new = mnub i $ filter (noMatch i) tryclauses
         logLvl 1 $ show (length new) ++ " clauses to check for impossibility"
-        logLvl 7 $ "New clauses: \n" ++ showSep "\n" (map (showImp True) new)
+        logLvl 5 $ "New clauses: \n" ++ showSep "\n" (map (showImp True) new)
 --           ++ " from:\n" ++ showSep "\n" (map (showImp True) tryclauses) 
         return new
 --         return (map (\t -> PClause n t [] PImpossible []) new)
@@ -98,22 +99,27 @@ genClauses fc n xs given
                                 as' <- mkArg as
                                 return (a':as')
 
-fnub xs = fnub' [] xs where
-  fnub' acc (x : xs) | x `elem` acc = fnub' acc xs
-                     | otherwise = fnub' (x : acc) xs
-  fnub' acc [] = acc
+fnub xs = fnub' [] xs
+
+fnub' acc (x : xs) | x `elem` acc = fnub' acc xs
+                   | otherwise = fnub' (x : acc) xs
+fnub' acc [] = acc
 
 -- FIXME: Just look for which one is the deepest, then generate all 
 -- possibilities up to that depth.
 
 genAll :: IState -> [PTerm] -> [PTerm]
-genAll i args = case filter (/=Placeholder) $ concatMap otherPats (nub args) of
-                    [] -> [Placeholder]
-                    xs -> nub xs
+genAll i args 
+   = case filter (/=Placeholder) $ nubMap otherPats [] (fnub args) of
+          [] -> [Placeholder]
+          xs -> xs
   where 
     conForm (PApp _ (PRef fc n) _) = isConName n (tt_ctxt i)
     conForm (PRef fc n) = isConName n (tt_ctxt i)
     conForm _ = False
+
+    nubMap f acc [] = acc
+    nubMap f acc (x : xs) = nubMap f (fnub' acc (f x)) xs
 
     otherPats :: PTerm -> [PTerm]
     otherPats o@(PRef fc n) = ops fc n [] o

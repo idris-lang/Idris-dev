@@ -1420,7 +1420,7 @@ elabDecl' _ _ _ = return () -- skipped this time
 
 elabCaseBlock info d@(PClauses f o n ps) 
         = do addIBC (IBCDef n)
---              iputStrLn $ "CASE BLOCK: " ++ show (n, d)
+             logLvl 6 $ "CASE BLOCK: " ++ show (n, d)
              elabDecl' EAll info d 
 
 -- elabDecl' info (PImport i) = loadModule i
