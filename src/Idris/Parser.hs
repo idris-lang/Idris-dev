@@ -344,7 +344,8 @@ pDecl syn = do notEndBlock
     <|> pInstance syn
     <|> do d <- pDSL syn; return [d]
     <|> pDirective syn
-    <|> pProvider syn
+    <|> try (pProvider syn)
+    <|> pTransform syn
     <|> try (do reserved "import"; fp <- identifier
                 fail "imports must be at the top of file") 
 
@@ -1603,6 +1604,18 @@ pProvider syn = do lchar '%'; reserved "provide";
                    reserved "with"
                    e <- pExpr syn
                    return  [PProvider syn fc n t e]
+
+pTransform :: SyntaxInfo -> IParser [PDecl]
+pTransform syn = do lchar '%'; reserved "transform";
+                    -- leave it unchecked, until we work out what this should
+                    -- actually mean...
+--                     safety <- option True (do reserved "unsafe"
+--                                               return False)
+                    lhs <- pExpr syn
+                    fc <- pfc
+                    symbol "==>"
+                    rhs <- pExpr syn
+                    return [PTransform fc False lhs rhs]
 
 pTactic :: SyntaxInfo -> IParser PTactic
 pTactic syn = do reserved "intro"; ns <- sepBy pName (lchar ',')

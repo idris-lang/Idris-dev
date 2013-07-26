@@ -61,6 +61,10 @@ addHdr tgt f = do i <- getIState; putIState $ i { idris_hdrs = (tgt, f) : idris_
 addLangExt :: LanguageExt -> Idris ()
 addLangExt TypeProviders = do i <- getIState ; putIState $ i { idris_language_extensions = [TypeProviders] }
 
+addTrans :: (Term, Term) -> Idris ()
+addTrans t = do i <- getIState 
+                putIState $ i { idris_transforms = t : idris_transforms i }
+
 totcheck :: (FC, Name) -> Idris ()
 totcheck n = do i <- getIState; putIState $ i { idris_totcheck = idris_totcheck i ++ [n] }
 

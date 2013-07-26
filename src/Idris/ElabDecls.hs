@@ -298,6 +298,39 @@ elabProvider info syn fc n ty tm
             , tp == tp' = True
           isProviderOf _ _ = False
 
+-- | Elaborate a type provider
+elabTransform :: ElabInfo -> FC -> Bool -> PTerm -> PTerm -> Idris ()
+elabTransform info fc safe lhs_in rhs_in
+    = do ctxt <- getContext
+         i <- getIState
+         let lhs = addImplPat i lhs_in
+         ((lhs', dlhs, []), _) <-
+              tclift $ elaborate ctxt (MN 0 "transLHS") infP []
+                       (erun fc (buildTC i info True False (UN "transform")
+                                   (infTerm lhs)))
+         let lhs_tm = orderPats (getInferTerm lhs')
+         let lhs_ty = getInferType lhs'
+         let newargs = pvars i lhs_tm
+
+         (clhs_tm, clhs_ty) <- recheckC fc [] lhs_tm
+         logLvl 3 ("Transform LHS " ++ show clhs_tm)
+         let rhs = addImplBound i (map fst newargs) rhs_in
+         ((rhs', defer), _) <-
+              tclift $ elaborate ctxt (MN 0 "transRHS") clhs_ty []
+                       (do pbinds lhs_tm
+                           erun fc (build i info False (UN "transform") rhs)
+                           erun fc $ psolve lhs_tm
+                           tt <- get_term
+                           let (tm, ds) = runState (collectDeferred tt) []
+                           return (tm, ds))
+         (crhs_tm, crhs_ty) <- recheckC fc [] rhs'
+         logLvl 3 ("Transform RHS " ++ show crhs_tm)
+         when safe $ case converts ctxt [] clhs_tm crhs_tm of
+              OK _ -> return ()
+              Error e -> ierror (At fc (CantUnify False clhs_tm crhs_tm e [] 0))
+         addTrans (clhs_tm, crhs_tm)
+         addIBC (IBCTrans (clhs_tm, crhs_tm))
+
 
 elabRecord :: ElabInfo -> SyntaxInfo -> String -> FC -> Name -> 
               PTerm -> String -> Name -> PTerm -> Idris ()
@@ -1416,6 +1449,8 @@ elabDecl' what info (PProvider syn fc n tp tm)
   | what /= EDefns
     = do iLOG $ "Elaborating type provider " ++ show n
          elabProvider info syn fc n tp tm
+elabDecl' what info (PTransform fc safety old new)
+    = elabTransform info fc safety old new 
 elabDecl' _ _ _ = return () -- skipped this time 
 
 elabCaseBlock info d@(PClauses f o n ps) 

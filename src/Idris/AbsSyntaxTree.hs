@@ -97,6 +97,7 @@ data IState = IState {
     idris_name :: Int,
     idris_metavars :: [Name], -- ^ The currently defined but not proven metavariables
     idris_coercions :: [Name],
+    idris_transforms :: [(Term, Term)],
     syntax_rules :: [Syntax],
     syntax_keywords :: [String],
     imported :: [FilePath], -- ^ The imported modules
@@ -158,6 +159,7 @@ data IBCWrite = IBCFix FixDecl
               | IBCAccess Name Accessibility
               | IBCTotal Name Totality
               | IBCFlags Name [FnOpt]
+              | IBCTrans (Term, Term)
               | IBCCG Name
               | IBCDoc Name
               | IBCCoercion Name
@@ -167,7 +169,7 @@ data IBCWrite = IBCFix FixDecl
 idrisInit = IState initContext [] [] emptyContext emptyContext emptyContext
                    emptyContext emptyContext emptyContext emptyContext 
                    emptyContext emptyContext emptyContext emptyContext
-                   [] "" defaultOpts 6 [] [] [] [] [] [] [] [] []
+                   [] "" defaultOpts 6 [] [] [] [] [] [] [] [] [] []
                    [] Nothing Nothing [] [] [] Hidden False [] Nothing [] [] RawOutput
 
 -- | The monad for the main REPL - reading and processing files and updating 
@@ -375,6 +377,8 @@ data PDecl' t
    | PMutual  FC [PDecl' t] -- ^ Mutual block
    | PDirective (Idris ()) -- ^ Compiler directive. The parser inserts the corresponding action in the Idris monad.
    | PProvider SyntaxInfo FC Name t t -- ^ Type provider. The first t is the type, the second is the term
+   | PTransform FC Bool t t -- ^ Source-to-source transformation rule. If
+                            -- bool is True, lhs and rhs must be convertible
    | PReflection FC Name -- type to reflect to
                     t -- type of variables
                     [PClause' t] -- ^ Pattern clauses
