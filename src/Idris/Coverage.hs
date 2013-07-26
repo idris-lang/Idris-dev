@@ -60,7 +60,7 @@ genClauses fc n xs given
                         _ -> repeat (pexp Placeholder)
         let tryclauses = mkClauses parg all_args
         logLvl 2 $ show (length tryclauses) ++ " initially to check"
-        let new = mnub i $ filter (noMatch i) tryclauses
+        let new = filter (noMatch i) (mnub i tryclauses)
         logLvl 1 $ show (length new) ++ " clauses to check for impossibility"
         logLvl 5 $ "New clauses: \n" ++ showSep "\n" (map (showImp True) new)
 --           ++ " from:\n" ++ showSep "\n" (map (showImp True) tryclauses) 
@@ -75,10 +75,15 @@ genClauses fc n xs given
 
         mnub i [] = []
         mnub i (x : xs) = 
-            if (any (\t -> case matchClause i x t of
-                                Right _ -> True
-                                Left _ -> False) xs) then mnub i xs 
-                                                     else x : mnub i xs
+            let xs' = filter (\t -> case matchClause i x t of
+                                         Right _ -> False
+                                         Left _ -> True) xs in
+                x : mnub i xs
+
+--             if (any (\t -> case matchClause i x t of
+--                                 Right _ -> True
+--                                 Left _ -> False) xs) then mnub i xs 
+--                                                      else x : mnub i xs
 
         noMatch i tm = all (\x -> case matchClause i (delab' i x True) tm of
                                           Right _ -> False
