@@ -46,7 +46,7 @@ using (i: Fin n, gam : Vect Ty n, gam' : Vect Ty n, gam'' : Vect Ty n)
   interpTy (a :-> b) = a -> interpTy b
 
   data HasType : Vect Ty n -> Fin n -> Ty -> Type where
-       stop : HasType (a :: gam) fO a
+       stop : HasType (a :: gam) fZ a
        pop  : HasType gam i b -> HasType (a :: gam) (fS i) b
 
   data Env : Vect Ty n -> Type where

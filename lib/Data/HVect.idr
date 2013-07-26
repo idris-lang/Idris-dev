@@ -11,20 +11,20 @@ using (k : Nat, ts : Vect Type k)
     (::) : t -> HVect ts -> HVect (t::ts)
 
   index : (i : Fin k) -> HVect ts -> index i ts
-  index fO (x::xs) = x
+  index fZ (x::xs) = x
   index (fS j) (x::xs) = index j xs
 
   deleteAt : {us : Vect Type (S l)} -> (i : Fin (S l)) -> HVect us -> HVect (deleteAt i us)
-  deleteAt fO (x::xs) = xs
+  deleteAt fZ (x::xs) = xs
   deleteAt {l = S m} (fS j) (x::xs) = x :: deleteAt j xs
   deleteAt _ [] impossible
 
   replaceAt : (i : Fin k) -> t -> HVect ts -> HVect (replaceAt i t ts)
-  replaceAt fO y (x::xs) = y::xs
+  replaceAt fZ y (x::xs) = y::xs
   replaceAt (fS j) y (x::xs) = x :: replaceAt j y xs
 
   updateAt : (i : Fin k) -> (index i ts -> t) -> HVect ts -> HVect (replaceAt i t ts)
-  updateAt fO f (x::xs) = f x :: xs
+  updateAt fZ f (x::xs) = f x :: xs
   updateAt (fS j) f (x::xs) = x :: updateAt j f xs
 
   (++) : {us : Vect Type l} -> HVect ts -> HVect us -> HVect (ts ++ us)

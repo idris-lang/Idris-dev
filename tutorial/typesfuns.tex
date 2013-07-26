@@ -384,7 +384,7 @@ by a bounded index given as a \tTC{Fin n}, is defined in the prelude:
 \begin{SaveVerbatim}{vindex}
 
 index : Fin n -> Vect a n -> a
-index fO     (x :: xs) = x
+index fZ     (x :: xs) = x
 index (fS k) (x :: xs) = index k xs
 
 \end{SaveVerbatim}
@@ -438,7 +438,7 @@ can still be given explicitly in applications, using \texttt{\{a=value\}} and
 
 \begin{SaveVerbatim}{vindexexp}
 
-index {a=Int} {n=2} fO (2 :: 3 :: Nil)
+index {a=Int} {n=2} fZ (2 :: 3 :: Nil)
 
 \end{SaveVerbatim}
 \useverb{vindexexp}

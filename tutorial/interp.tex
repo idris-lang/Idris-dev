@@ -64,7 +64,7 @@ constructor in turn.
 \begin{SaveVerbatim}{exprty}
 
 data HasType : (i : Fin n) -> Vect Ty n -> Ty -> Type where
-    stop : HasType fO (t :: G) t
+    stop : HasType fZ (t :: G) t
     pop  : HasType k G t -> HasType (fS k) (u :: G) t
 
 data Expr : Vect Ty n -> Ty -> Type where
@@ -88,7 +88,7 @@ Variables are represented by a proof of their membership in the context,
 \begin{SaveVerbatim}{hastype}
 
 data HasType : (i : Fin n) -> Vect Ty n -> Ty -> Type where
-    stop : HasType fO (t :: G) t
+    stop : HasType fZ (t :: G) t
     pop  : HasType k G t -> HasType (fS k) (u :: G) t
 
 \end{SaveVerbatim}
