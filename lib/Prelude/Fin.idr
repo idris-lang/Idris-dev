@@ -17,7 +17,7 @@ finToNat fO a = a
 finToNat (fS x) a = finToNat x (S a)
 
 instance Cast (Fin n) Nat where
-    cast x = finToNat x O
+    cast x = finToNat x Z
 
 finToInt : Fin n -> Integer -> Integer
 finToInt fO a = a
@@ -38,7 +38,7 @@ strengthen {n = S k} (fS i) with (strengthen i)
 strengthen f = Left f
 
 last : Fin (S n)
-last {n=O} = fO
+last {n=Z} = fO
 last {n=S _} = fS last
 
 total fSinjective : {f : Fin n} -> {f' : Fin n} -> (fS f = fS f') -> f = f'
@@ -48,7 +48,7 @@ fSinjective refl = refl
 -- Construct a Fin from an integer literal which must fit in the given Fin
 
 natToFin : Nat -> (n : Nat) -> Maybe (Fin n)
-natToFin O     (S j) = Just fO
+natToFin Z     (S j) = Just fO
 natToFin (S k) (S j) with (natToFin k j)
                           | Just k' = Just (fS k')
                           | Nothing = Nothing

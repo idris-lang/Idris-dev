@@ -21,9 +21,9 @@ testMemory = do Src :- allocate 5
                 Dst :- initialize (prim__truncInt_B8 1) 2 oh
                 move 2 2 3 oh oh
                 Src :- free
-                end <- Dst :- peek 4 (S O) oh
+                end <- Dst :- peek 4 (S Z) oh
                 Dst :- poke 4 (sub1 end) oh
-                res <- Dst :- peek 1 (S(S(S(S O)))) oh
+                res <- Dst :- peek 1 (S(S(S(S Z)))) oh
                 Dst :- free
                 return (map (prim__zextB8_Int) res)
 

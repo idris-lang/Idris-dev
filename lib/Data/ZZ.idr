@@ -24,17 +24,17 @@ instance Show ZZ where
   show (NegS n) = "-" ++ show (S n)
 
 negZ : ZZ -> ZZ
-negZ (Pos O) = Pos O
+negZ (Pos Z) = Pos Z
 negZ (Pos (S n)) = NegS n
 negZ (NegS n) = Pos (S n)
 
 negNat : Nat -> ZZ
-negNat O = Pos O
+negNat Z = Pos Z
 negNat (S n) = NegS n
 
 minusNatZ : Nat -> Nat -> ZZ
-minusNatZ n O = Pos n
-minusNatZ O (S m) = NegS m
+minusNatZ n Z = Pos n
+minusNatZ Z (S m) = NegS m
 minusNatZ (S n) (S m) = minusNatZ n m
 
 plusZ : ZZ -> ZZ -> ZZ
@@ -101,9 +101,9 @@ natMultZMult : (n : Nat) -> (m : Nat) -> (x : Nat)
 natMultZMult n m x h = cong h
 
 doubleNegElim : (z : ZZ) -> negZ (negZ z) = z
-doubleNegElim (Pos O) = refl
+doubleNegElim (Pos Z) = refl
 doubleNegElim (Pos (S n)) = refl
-doubleNegElim (NegS O) = refl
+doubleNegElim (NegS Z) = refl
 doubleNegElim (NegS (S n)) = refl
 
 -- Injectivity

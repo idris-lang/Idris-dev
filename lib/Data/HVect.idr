@@ -40,7 +40,7 @@ using (k : Nat, ts : Vect Type k)
   class Shows (k : Nat) (ts : Vect Type k) where
     shows : HVect ts -> Vect String k
 
-  instance Shows O [] where
+  instance Shows Z [] where
     shows [] = []
 
   instance (Show t, Shows k ts) => Shows (S k) (t::ts) where

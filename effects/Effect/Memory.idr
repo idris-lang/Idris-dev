@@ -63,7 +63,7 @@ do_memmove dest src dest_offset src_offset size
 
 private
 do_peek : Ptr -> Nat -> (size : Nat) -> IO (Vect Bits8 size)
-do_peek _   _       O = return (Prelude.Vect.Nil)
+do_peek _   _       Z = return (Prelude.Vect.Nil)
 do_peek ptr offset (S n)
   = do b <- mkForeign (FFun "idris_peek" [FPtr, FInt] FByte) ptr (fromInteger $ cast offset)
        bs <- do_peek ptr (S offset) n

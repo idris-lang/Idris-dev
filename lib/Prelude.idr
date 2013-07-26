@@ -251,7 +251,7 @@ instance Monad List where
 %lib C "m"
 
 pow : (Num a) => a -> Nat -> a
-pow x O = 1
+pow x Z = 1
 pow x (S n) = x * (pow x n)
 
 exp : Float -> Float

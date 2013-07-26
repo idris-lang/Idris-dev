@@ -1,7 +1,7 @@
 > module Main
 
 > ifTrue        :   so True -> Nat
-> ifTrue oh     =   S O
+> ifTrue oh     =   S Z
 
 > ifFalse       :   so False -> Nat
 > ifFalse oh impossible

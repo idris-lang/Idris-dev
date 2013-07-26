@@ -42,11 +42,11 @@ to a successor:
 
 \begin{SaveVerbatim}{natdisjoint}
 
-disjoint : (n : Nat) -> O = S n -> _|_
+disjoint : (n : Nat) -> Z = S n -> _|_
 disjoint n p = replace {P = disjointTy} p ()
   where
     disjointTy : Nat -> Type
-    disjointTy O = ()
+    disjointTy Z = ()
     disjointTy (S k) = _|_
 
 \end{SaveVerbatim}
@@ -76,7 +76,7 @@ we want to prove the following theorem about the reduction behaviour of \texttt{
 
 \begin{SaveVerbatim}{plusred}
 
-plusReduces : (n:Nat) -> plus O n = n
+plusReduces : (n:Nat) -> plus Z n = n
 
 \end{SaveVerbatim}
 \useverb{plusred}
@@ -90,7 +90,7 @@ of interest.
 
 We won't go into details here, but the Curry-Howard
 correspondence~\cite{howard} explains this relationship.
-The proof itself is trivial, because \texttt{plus O n} normalises to \texttt{n} 
+The proof itself is trivial, because \texttt{plus Z n} normalises to \texttt{n}
 by the definition of \texttt{plus}:
 
 \begin{SaveVerbatim}{plusredp}
@@ -107,9 +107,9 @@ on the first argument to \texttt{plus}, namely \texttt{n}.
 
 \begin{SaveVerbatim}{plusRedO}
 
-plusReducesO : (n:Nat) -> n = plus n O
-plusReducesO O = refl
-plusReducesO (S k) = cong (plusReducesO k)
+plusReducesZ : (n:Nat) -> n = plus n Z
+plusReducesZ Z = refl
+plusReducesZ (S k) = cong (plusReducesZ k)
 
 \end{SaveVerbatim}
 \useverb{plusRedO}
@@ -131,7 +131,7 @@ We can do the same for the reduction behaviour of plus on successors:
 \begin{SaveVerbatim}{plusRedS}
 
 plusReducesS : (n:Nat) -> (m:Nat) -> S (plus n m) = plus n (S m)
-plusReducesS O m = refl
+plusReducesS Z m = refl
 plusReducesS (S k) m = cong (plusReducesS k m)
 
 \end{SaveVerbatim}
@@ -148,16 +148,16 @@ therefore provides an interactive proof mode.
 Instead of writing the proof in one go, we can use \Idris{}'s interactive
 proof mode. To do this, we write the general \emph{structure} of the proof,
 and use the interactive mode to complete the details. We'll be constructing
-the proof by \emph{induction}, so we write the cases for \texttt{O} and
+the proof by \emph{induction}, so we write the cases for \texttt{Z} and
 \texttt{S}, with a recursive call in the \texttt{S} case giving the inductive
 hypothesis, and insert \emph{metavariables} for the rest of the definition:
 
 \begin{SaveVerbatim}{prOstruct}
 
-plusReducesO' : (n:Nat) -> n = plus n O
-plusReducesO' O     = ?plusredO_O
-plusReducesO' (S k) = let ih = plusReducesO' k in
-                      ?plusredO_S
+plusReducesZ' : (n:Nat) -> n = plus n Z
+plusReducesZ' Z     = ?plusredZ_Z
+plusReducesZ' (S k) = let ih = plusReducesZ' k in
+                      ?plusredZ_S
 
 \end{SaveVerbatim}
 \useverb{prOstruct}
@@ -173,17 +173,17 @@ precisely, which functions exist but have no definitions), then the
 
 *theorems> :m 
 Global metavariables:
-        [plusredO_S,plusredO_O]
+        [plusredZ_S,plusredZ_Z]
 
 \end{SaveVerbatim}
 
 \begin{SaveVerbatim}{metatypes}
 
-*theorems> :t plusredO_O 
-plusredO_O : O = plus O O
+*theorems> :t plusredZ_Z
+plusredZ_Z : Z = plus Z Z
 
-*theorems> :t plusredO_S 
-plusredO_S : (k : Nat) -> (k = plus k O) -> S k = S (plus k O)
+*theorems> :t plusredZ_S
+plusredZ_S : (k : Nat) -> (k = plus k Z) -> S k = S (plus k Z)
 
 \end{SaveVerbatim}
 \useverb{showmetas}
@@ -196,10 +196,10 @@ the missing definitions.
 
 \begin{SaveVerbatim}{proveO}
 
-*theorems> :p plusredO_O
+*theorems> :p plusredZ_Z
 
----------------------------------- (plusredO_O) --------
-{hole0} : O = plus O O
+---------------------------------- (plusredZ_Z) --------
+{hole0} : Z = plus Z Z
 
 \end{SaveVerbatim}
 \useverb{proveO}
@@ -213,24 +213,24 @@ we can normalise the goal with the \texttt{compute} tactic:
 
 \begin{SaveVerbatim}{compute}
 
--plusredO_O> compute 
+-plusredZ_Z> compute
 
----------------------------------- (plusredO_O) --------
-{hole0} : O = O
+---------------------------------- (plusredZ_Z) --------
+{hole0} : Z = Z
 
 \end{SaveVerbatim}
 \useverb{compute}
 
 \noindent
-Now we have to prove that \texttt{O} equals \texttt{O}, which is easy to prove by
+Now we have to prove that \texttt{Z} equals \texttt{Z}, which is easy to prove by
 \texttt{refl}. To apply a function, such as \texttt{refl}, we use \texttt{refine} 
 which introduces subgoals for each of the function's explicit arguments (\texttt{refl}
 has none):
 
 \begin{SaveVerbatim}{refrefl}
 
--plusredO_O> refine refl 
-plusredO_O: no more goals
+-plusredZ_Z> refine refl
+plusredZ_Z: no more goals
 
 \end{SaveVerbatim}
 \useverb{refrefl}
@@ -244,8 +244,8 @@ This also outputs a trace of the proof:
 
 \begin{SaveVerbatim}{prOprooftrace}
 
--plusredO_O> qed 
-plusredO_O = proof {
+-plusredZ_Z> qed
+plusredZ_Z = proof {
     compute;
     refine refl;
 }
@@ -257,7 +257,7 @@ plusredO_O = proof {
 
 *theorems> :m 
 Global metavariables:
-        [plusredO_S]
+        [plusredZ_S]
 
 \end{SaveVerbatim}
 \useverb{showmetasO} 
@@ -269,10 +269,10 @@ Let us now prove the other required lemma, \texttt{plusredO\_S}:
 
 \begin{SaveVerbatim}{plusredOSprf}
 
-*theorems> :p plusredO_S 
+*theorems> :p plusredZ_S
 
----------------------------------- (plusredO_S) --------
-{hole0} : (k : Nat) -> (k = plus k O) -> S k = S (plus k O)
+---------------------------------- (plusredZ_S) --------
+{hole0} : (k : Nat) -> (k = plus k Z) -> S k = S (plus k Z)
 
 \end{SaveVerbatim}
 \useverb{plusredOSprf}
@@ -286,28 +286,28 @@ twice (or \texttt{intros}, which introduces all arguments as premisses). This gi
 \begin{SaveVerbatim}{prSintros}
 
   k : Nat
-  ih : k = plus k O
----------------------------------- (plusredO_S) --------
-{hole2} : S k = S (plus k O)
+  ih : k = plus k Z
+---------------------------------- (plusredZ_S) --------
+{hole2} : S k = S (plus k Z)
 
 \end{SaveVerbatim}
 \useverb{prSintros}
 
 \noindent
-We know, from the type of \texttt{ih}, that \texttt{k = plus k O}, so we would like to
-use this knowledge to replace \texttt{plus k O} in the goal with \texttt{k}. We can
+We know, from the type of \texttt{ih}, that \texttt{k = plus k Z}, so we would like to
+use this knowledge to replace \texttt{plus k Z} in the goal with \texttt{k}. We can
 achieve this with the \texttt{rewrite} tactic:
 
 \begin{SaveVerbatim}{}
 
--plusredO_S> rewrite ih 
+-plusredZ_S> rewrite ih
 
   k : Nat
-  ih : k = plus k O
----------------------------------- (plusredO_S) --------
+  ih : k = plus k Z
+---------------------------------- (plusredZ_S) --------
 {hole3} : S k = S k
 
--plusredO_S>  
+-plusredZ_S>
 
 \end{SaveVerbatim}
 \useverb{}
@@ -318,10 +318,10 @@ the goal using that proof. Here, it results in an equality which is trivially pr
 
 \begin{SaveVerbatim}{prOStrace}
 
--plusredO_S> trivial 
-plusredO_S: no more goals
--plusredO_S> qed 
-plusredO_S = proof {
+-plusredZ_S> trivial
+plusredZ_S: no more goals
+-plusredZ_S> qed
+plusredZ_S = proof {
     intros;
     rewrite ih;
     trivial;

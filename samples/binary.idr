@@ -11,7 +11,7 @@ instance Show (Bit n) where
 infixl 5 #
 
 data Binary : (width : Nat) -> (value : Nat) -> Type where
-     zero : Binary O O
+     zero : Binary Z Z
      (#)  : Binary w v -> Bit bit -> Binary (S w) (bit + 2 * v)
 
 instance Show (Binary w k) where
@@ -83,7 +83,7 @@ main.adc_lemma_2 = proof {
     rewrite sym (plusAssociative x v v1);
     rewrite sym (plusCommutative (plus (plus x v) v1) v1);
     rewrite plusZeroRightNeutral (plus (plus x v) v1);
-    rewrite sym (plusAssociative (plus x v) v1 (plus (plus (plus x v) v1) O));
+    rewrite sym (plusAssociative (plus x v) v1 (plus (plus (plus x v) v1) Z));
     trivial;
 }
 

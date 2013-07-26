@@ -4,8 +4,8 @@ import Parity
 import System
 
 data Bit : Nat -> Type where
-     b0 : Bit O
-     b1 : Bit (S O) 
+     b0 : Bit Z
+     b1 : Bit (S Z)
 
 instance Show (Bit n) where
      show = show' where
@@ -16,7 +16,7 @@ instance Show (Bit n) where
 infixl 5 #
 
 data Binary : (width : Nat) -> (value : Nat) -> Type where
-     zero : Binary O O
+     zero : Binary Z Z
      (#)  : Binary w v -> Bit bit -> Binary (S w) (bit + 2 * v)
 
 instance Show (Binary w k) where
@@ -29,9 +29,9 @@ pad (num # x) = pad num # x
 
 natToBin : (width : Nat) -> (n : Nat) ->
            Maybe (Binary width n)
-natToBin O (S k) = Nothing
-natToBin O O = Just zero
-natToBin (S k) O = do x <- natToBin k O
+natToBin Z (S k) = Nothing
+natToBin Z Z = Just zero
+natToBin (S k) Z = do x <- natToBin k Z
                       Just (pad x)
 natToBin (S w) (S k) with (parity k)
   natToBin (S w) (S (plus j j)) | even = do jbin <- natToBin w j

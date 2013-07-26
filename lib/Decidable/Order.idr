@@ -55,7 +55,7 @@ NatLTEIsAntisymmetric n m (nLTESm _) (nLTESm _) impossible
 instance Poset Nat NatLTE where
   antisymmetric = NatLTEIsAntisymmetric
 
-total zeroNeverGreater : {n : Nat} -> NatLTE (S n) O -> _|_
+total zeroNeverGreater : {n : Nat} -> NatLTE (S n) Z -> _|_
 zeroNeverGreater {n} (nLTESm _) impossible
 zeroNeverGreater {n}  nEqn      impossible
 
@@ -66,8 +66,8 @@ nGTSm {n} {m} disprf (nEqn) impossible
 
 total
 decideNatLTE : (n : Nat) -> (m : Nat) -> Dec (NatLTE n m)
-decideNatLTE    O      O  = Yes nEqn
-decideNatLTE (S x)     O  = No  zeroNeverGreater
+decideNatLTE    Z      Z  = Yes nEqn
+decideNatLTE (S x)     Z  = No  zeroNeverGreater
 decideNatLTE    x   (S y) with (decEq x (S y))
   | Yes eq      = rewrite eq in Yes nEqn
   | No _ with (decideNatLTE x y)

@@ -10,7 +10,7 @@ import Prelude.Nat
 infixr 7 :: 
 
 data Vect : Type -> Nat -> Type where
-  Nil  : Vect a O
+  Nil  : Vect a Z
   (::) : a -> Vect a n -> Vect a (S n)
 
 --------------------------------------------------------------------------------
@@ -81,7 +81,7 @@ fromList (x::xs) = x :: fromList xs
 (++) (x::xs) ys = x :: xs ++ ys
 
 replicate : (n : Nat) -> a -> Vect a n
-replicate O     x = []
+replicate Z     x = []
 replicate (S k) x = x :: replicate k x
 
 --------------------------------------------------------------------------------
@@ -322,7 +322,7 @@ range =
   reverse range_
  where
   range_ : Vect (Fin n) n
-  range_ {n=O} = Nil
+  range_ {n=Z} = Nil
   range_ {n=(S _)} = last :: map weaken range_
 
 --------------------------------------------------------------------------------

@@ -3,7 +3,7 @@ module RBTree
 data Colour = Red | Black
 
 data RBTree : Type -> Type -> Nat -> Colour -> Type where
-  Leaf : RBTree k v O Black
+  Leaf : RBTree k v Z Black
   RedBranch : k -> v -> RBTree k v n Black -> RBTree k v n Black -> RBTree k v n Red
   BlackBranch : k -> v -> RBTree k v n x -> RBTree k v n y -> RBTree k v (S n) Black
  

@@ -5,14 +5,14 @@ data Parity : Nat -> Type where
    odd  : Parity (S (n + n))
 
 parity : (n:Nat) -> Parity n
-parity O     = even {n=O}
-parity (S O) = odd {n=O}
+parity Z     = even {n=Z}
+parity (S Z) = odd {n=Z}
 parity (S (S k)) with (parity k)
   parity (S (S (j + j)))     | (even {n = j}) ?= even {n=S j}
   parity (S (S (S (j + j)))) | (odd {n = j})  ?= odd {n=S j}
 
 natToBin : Nat -> List Bool
-natToBin O = Nil
+natToBin Z = Nil
 natToBin k with (parity k)
    natToBin (j + j)     | even {n = j} = False :: natToBin j
    natToBin (S (j + j)) | odd {n = j}  = True  :: natToBin j

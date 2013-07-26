@@ -10,7 +10,7 @@ determined by whether the vector was empty or not:
 \begin{SaveVerbatim}{appdep}
 
 (++) : Vect a n -> Vect a m -> Vect a (n + m)
-(++) {n=O}   []        ys = ys
+(++) {n=Z}   []        ys = ys
 (++) {n=S k} (x :: xs) ys = x :: xs ++ ys
 
 \end{SaveVerbatim}
@@ -83,7 +83,7 @@ to write a function which converts a natural number to a list of binary digits
 \begin{SaveVerbatim}{natToBin}
 
 natToBin : Nat -> List Bool
-natToBin O = Nil
+natToBin Z = Nil
 natToBin k with (parity k)
    natToBin (j + j)     | even = False :: natToBin j
    natToBin (S (j + j)) | odd  = True  :: natToBin j

@@ -39,7 +39,7 @@ instance Transform CaseAlt where
 
 natTrans = [TermTrans zero, TermTrans suc, CaseTrans natcase]
 
-zname = NS (UN "O") ["Nat","Prelude"] 
+zname = NS (UN "Z") ["Nat","Prelude"]
 sname = NS (UN "S") ["Nat","Prelude"] 
 
 zero :: TT Name -> TT Name
