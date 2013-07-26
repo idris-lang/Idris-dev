@@ -136,7 +136,7 @@ usable simpl True n ns
        case lookup n ls of
             Just 0 -> return (False, ns)
             Just i -> return (True, ns)
-            _ -> return (True, ns)
+            _ -> return (False, ns)
 usable simpl False n ns 
   = case lookup n ns of
          Just 0 -> return (False, ns)
