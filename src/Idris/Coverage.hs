@@ -106,16 +106,29 @@ genClauses fc n xs given
 
 fnub xs = fnub' [] xs
 
-fnub' acc (x : xs) | x `elem` acc = fnub' acc xs
+fnub' acc (x : xs) | x `qelem` acc = fnub' acc (filter (not.(quickEq x)) xs)
                    | otherwise = fnub' (x : acc) xs
 fnub' acc [] = acc
+
+-- quick check for constructor equality
+quickEq :: PTerm -> PTerm -> Bool
+quickEq (PRef _ n) (PRef _ n') = n == n'
+quickEq (PApp _ t as) (PApp _ t' as') 
+    | length as == length as'
+       = quickEq t t' && and (zipWith quickEq (map getTm as) (map getTm as'))
+quickEq Placeholder Placeholder = True
+quickEq _ _ = False
+
+qelem x [] = False
+qelem x (y : ys) | x `quickEq` y = True
+                 | otherwise = qelem x ys
 
 -- FIXME: Just look for which one is the deepest, then generate all 
 -- possibilities up to that depth.
 
 genAll :: IState -> [PTerm] -> [PTerm]
 genAll i args 
-   = case filter (/=Placeholder) $ nubMap otherPats [] (fnub args) of
+   = case filter (/=Placeholder) $ fnub (concatMap otherPats (fnub args)) of
           [] -> [Placeholder]
           xs -> xs
   where 
@@ -131,15 +144,27 @@ genAll i args
     otherPats o@(PApp _ (PRef fc n) xs) = ops fc n xs o
     otherPats arg = return Placeholder 
 
-    ops fc n xs o
+    ops fc n xs_in o
         | (TyDecl c@(DCon _ arity) ty : _) <- lookupDef n (tt_ctxt i)
-            = do xs' <- mapM otherPats (map getTm xs)
+            = do let force = getForceable i n -- no need to generate forceable positions
+                 let xs = dropForce force xs_in 0 
+                 xs' <- mapM otherPats (map getTm xs)
                  let p = PApp fc (PRef fc n) (zipWith upd xs' xs)
                  let tyn = getTy n (tt_ctxt i)
                  case lookupCtxt tyn (idris_datatypes i) of
                          (TI ns _ _ : _) -> p : map (mkPat fc) (ns \\ [n])
                          _ -> [p]
     ops fc n arg o = return Placeholder
+
+    getForceable i n = case lookupCtxt n (idris_optimisation i) of
+                            [Optimise _ fs _] -> fs
+                            _ -> []
+
+    dropForce force (x : xs) i | i `elem` force 
+        = upd Placeholder x : dropForce force xs (i + 1)
+    dropForce force (x : xs) i = x : dropForce force xs (i + 1)
+    dropForce _ [] _ = []
+
 
     getTy n ctxt = case lookupTy n ctxt of
                           (t : _) -> case unApply (getRetTy t) of

@@ -17,6 +17,7 @@ Internal changes
 * Add annotation for unification traces
 * Add 'mrefine' tactic for refining by matching against a type
 * Type class resolution fixes
+* Much faster coverage checking
 
 New in 0.9.8:
 -------------
