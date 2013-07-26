@@ -78,7 +78,7 @@ genClauses fc n xs given
             let xs' = filter (\t -> case matchClause i x t of
                                          Right _ -> False
                                          Left _ -> True) xs in
-                x : mnub i xs
+                x : mnub i xs'
 
 --             if (any (\t -> case matchClause i x t of
 --                                 Right _ -> True
