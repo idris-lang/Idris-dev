@@ -285,8 +285,12 @@ elab ist info pattern tcgen fn tm
                            elabE (True, a) ty
                focus valn
                elabE (True, a) val
+               env <- get_env
                elabE (True, a) sc
-               ptm <- get_term
+               -- HACK: If the name leaks into its type, it may leak out of
+               -- scope outside, so substitute in the outer scope.
+               expandLet n (case lookup n env of
+                                 Just (Let t v) -> v)
                solve
     elab' ina tm@(PApp fc (PInferRef _ f) args) = do
          rty <- goal

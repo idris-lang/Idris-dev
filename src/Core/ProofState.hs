@@ -58,6 +58,7 @@ data Tactic = Attack
             | StartUnify Name
             | EndUnify
             | Compute
+            | Simplify
             | HNF_Compute
             | EvalIn Raw
             | CheckIn Raw
@@ -65,6 +66,7 @@ data Tactic = Attack
             | IntroTy Raw (Maybe Name)
             | Forall Name Raw
             | LetBind Name Raw Raw
+            | ExpandLet Name Term
             | Rewrite Raw
             | Equiv Raw
             | PatVar Name
@@ -504,6 +506,10 @@ letbind n ty val ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' =
        return $ Bind n (Let tyv valv) (Bind x (Hole t) (P Bound x t))
 letbind n ty val ctxt env _ = fail "Can't let bind here"
 
+expandLet :: Name -> Term -> RunTactic
+expandLet n v ctxt env tm = 
+       return $ subst n v tm
+
 rewrite :: Raw -> RunTactic
 rewrite tm ctxt env (Bind x (Hole t) xp@(P _ x' _)) | x == x' =
     do (tmv, tmt) <- lift $ check ctxt env tm
@@ -570,6 +576,12 @@ hnf_compute ctxt env (Bind x (Hole ty) sc) =
            return $ Bind x (Hole ty') sc
 hnf_compute ctxt env t = return t
 
+-- reduce let bindings only
+simplify :: RunTactic
+simplify ctxt env (Bind x (Hole ty) sc) =
+    do return $ Bind x (Hole (specialise ctxt env [] ty)) sc
+simplify ctxt env t = return t
+        
 check_in :: Raw -> RunTactic
 check_in t ctxt env tm = 
     do (val, valty) <- lift $ check ctxt env t
@@ -726,11 +738,13 @@ process t h = tactic (Just h) (mktac t)
          mktac Solve             = solve
          mktac (StartUnify n)    = start_unify n
          mktac Compute           = compute
+         mktac Simplify          = Core.ProofState.simplify
          mktac HNF_Compute       = hnf_compute
          mktac (Intro n)         = intro n
          mktac (IntroTy ty n)    = introTy ty n
          mktac (Forall n t)      = forall n t
          mktac (LetBind n t v)   = letbind n t v
+         mktac (ExpandLet n b)   = expandLet n b
          mktac (Rewrite t)       = rewrite t
          mktac (Equiv t)         = equiv t
          mktac (PatVar n)        = patvar n

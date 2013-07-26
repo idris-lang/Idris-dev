@@ -263,6 +263,9 @@ regret = processTactic' Regret
 compute :: Elab' aux ()
 compute = processTactic' Compute
 
+simplify :: Elab' aux ()
+simplify = processTactic' Simplify
+
 hnf_compute :: Elab' aux ()
 hnf_compute = processTactic' HNF_Compute
 
@@ -283,6 +286,9 @@ forall n t = processTactic' (Forall n t)
 
 letbind :: Name -> Raw -> Raw -> Elab' aux ()
 letbind n t v = processTactic' (LetBind n t v)
+
+expandLet :: Name -> Term -> Elab' aux ()
+expandLet n v = processTactic' (ExpandLet n v)
 
 rewrite :: Raw -> Elab' aux ()
 rewrite tm = processTactic' (Rewrite tm)
@@ -392,6 +398,8 @@ match_apply = apply' match_fill
 apply' :: (Raw -> Elab' aux ()) -> Raw -> [(Bool, Int)] -> Elab' aux [Name]
 apply' fillt fn imps = 
     do args <- prepare_apply fn (map fst imps)
+       env <- get_env
+       g <- goal
        fillt (raw_apply fn (map Var args))
        -- _Don't_ solve the arguments we're specifying by hand.
        -- (remove from unified list before calling end_unify)
