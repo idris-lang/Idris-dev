@@ -120,7 +120,7 @@ llvmFlag flags =
   case lookup (FlagName "LLVM") (S.configConfigurationsFlags flags) of
     Just True -> True
     Just False -> False
-    Nothing -> False
+    Nothing -> True
 
 noEffectsFlag flags =
    case lookup (FlagName "noeffects") (S.configConfigurationsFlags flags) of
