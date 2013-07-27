@@ -43,10 +43,10 @@ could be defined as:
 \begin{SaveVerbatim}{shownat}
 
 instance Show Nat where
-    show O = "O"
+    show Z = "Z"
     show (S k) = "s" ++ show k
 
-Idris> show (S (S (S O))) 
+Idris> show (S (S (S Z)))
 "sssO" : String
 
 \end{SaveVerbatim}
@@ -101,10 +101,10 @@ For example, for an instance of \texttt{Eq} for \texttt{Nat}:
 \begin{SaveVerbatim}{eqnat}
 
 instance Eq Nat where
-    O     == O     = True
+    Z     == Z     = True
     (S x) == (S y) = x == y
-    O     == (S y) = False
-    (S x) == O     = False
+    Z     == (S y) = False
+    (S x) == Z     = False
 
     x /= y = not (x == y)
 
@@ -498,9 +498,9 @@ be \remph{named} as follows:
 \begin{SaveVerbatim}{myord}
 
 instance [myord] Ord Nat where
-   compare O (S n)     = GT
-   compare (S n) O     = LT
-   compare O O         = EQ
+   compare Z (S n)     = GT
+   compare (S n) Z     = LT
+   compare Z Z         = EQ
    compare (S x) (S y) = compare @{myord} x y
 
 \end{SaveVerbatim}

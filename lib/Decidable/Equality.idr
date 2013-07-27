@@ -41,13 +41,13 @@ instance DecEq Bool where
 -- Nat
 --------------------------------------------------------------------------------
 
-total OnotS : O = S n -> _|_
+total OnotS : Z = S n -> _|_
 OnotS refl impossible
 
 instance DecEq Nat where
-  decEq O     O     = Yes refl
-  decEq O     (S _) = No OnotS
-  decEq (S _) O     = No (negEqSym OnotS)
+  decEq Z     Z     = Yes refl
+  decEq Z     (S _) = No OnotS
+  decEq (S _) Z     = No (negEqSym OnotS)
   decEq (S n) (S m) with (decEq n m)
     | Yes p = Yes $ cong p
     | No p = No $ \h : (S n = S m) => p $ succInjective n m h
@@ -88,13 +88,13 @@ instance (DecEq a, DecEq b) => DecEq (Either a b) where
 -- Fin
 --------------------------------------------------------------------------------
 
-total fONotfS : {f : Fin n} -> fO {k = n} = fS f -> _|_
-fONotfS refl impossible
+total fZNotfS : {f : Fin n} -> fZ {k = n} = fS f -> _|_
+fZNotfS refl impossible
 
 instance DecEq (Fin n) where
-  decEq fO fO = Yes refl
-  decEq fO (fS f) = No fONotfS
-  decEq (fS f) fO = No $ negEqSym fONotfS
+  decEq fZ fZ = Yes refl
+  decEq fZ (fS f) = No fZNotfS
+  decEq (fS f) fZ = No $ negEqSym fZNotfS
   decEq (fS f) (fS f') with (decEq f f')
     | Yes p = Yes $ cong p
     | No p = No $ \h => p $ fSinjective {f = f} {f' = f'} h

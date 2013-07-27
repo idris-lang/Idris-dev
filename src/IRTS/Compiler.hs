@@ -237,7 +237,7 @@ instance ToIR (TT Name) where
         where mkUnused u i [] = []
               mkUnused u i (x : xs) | i `elem` u = LNothing : mkUnused u (i + 1) xs
                                     | otherwise = x : mkUnused u (i + 1) xs
---       ir' env (P _ (NS (UN "O") ["Nat", "Prelude"]) _)
+--       ir' env (P _ (NS (UN "Z") ["Nat", "Prelude"]) _)
 --                         = return $ LConst (BI 0)
       ir' env (P _ n _) = return $ LV (Glob n)
       ir' env (V i)     | i >= 0 && i < length env = return $ LV (Glob (env!!i))
@@ -331,7 +331,7 @@ mkIntIty "IT16" = FArith (ATInt (ITFixed IT16))
 mkIntIty "IT32" = FArith (ATInt (ITFixed IT32))
 mkIntIty "IT64" = FArith (ATInt (ITFixed IT64))
 
-zname = NS (UN "O") ["Nat","Prelude"] 
+zname = NS (UN "Z") ["Nat","Prelude"]
 sname = NS (UN "S") ["Nat","Prelude"] 
 
 instance ToIR ([Name], SC) where
@@ -351,7 +351,7 @@ instance ToIR SC where
                                return $ LCase (LV (Glob n)) alts'
         ir' ImpossibleCase = return LNothing
 
-        -- special cases for O and S
+        -- special cases for Z and S
         -- Needs rethink: projections make this fail
 --         mkIRAlt n (ConCase z _ [] rhs) | z == zname
 --              = mkIRAlt n (ConstCase (BI 0) rhs)

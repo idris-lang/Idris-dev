@@ -1128,10 +1128,10 @@ showImp impl tm = se 10 tm where
                  xs  -> "[" ++ intercalate "," (map (se p) xs) ++ "]"
     slist _ _ = Nothing
 
-    -- since Prelude is always imported, S & O are unqualified iff they're the
+    -- since Prelude is always imported, S & Z are unqualified iff they're the
     -- Nat ones.
     snat p (PRef _ o)
-      | show o == (natns++"O") || show o == "O" = Just 0
+      | show o == (natns++"Z") || show o == "Z" = Just 0
     snat p (PApp _ s [PExp {getTm=n}])
       | show s == (natns++"S") || show s == "S",
         Just n' <- snat p n

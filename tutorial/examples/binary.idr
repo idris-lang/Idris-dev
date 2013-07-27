@@ -1,7 +1,7 @@
 module Main
 
 data Binary : Nat -> Type where
-    bEnd : Binary O
+    bEnd : Binary Z
     bO : Binary n -> Binary (n + n)
     bI : Binary n -> Binary (S (n + n))
 
@@ -15,21 +15,21 @@ data Parity : Nat -> Type where
    odd  : Parity (S (n + n))
 
 parity : (n:Nat) -> Parity n
-parity O     = even {n=O}
-parity (S O) = odd {n=O}
+parity Z     = even {n=Z}
+parity (S Z) = odd {n=Z}
 parity (S (S k)) with (parity k)
     parity (S (S (j + j)))     | even ?= even {n=S j}
     parity (S (S (S (j + j)))) | odd  ?= odd {n=S j}
 
 natToBin : (n:Nat) -> Binary n
-natToBin O = bEnd
+natToBin Z = bEnd
 natToBin (S k) with (parity k)
    natToBin (S (j + j))     | even  = bI (natToBin j)
    natToBin (S (S (j + j))) | odd  ?= bO (natToBin (S j))
 
 intToNat : Int -> Nat
-intToNat 0 = O
-intToNat x = if (x>0) then (S (intToNat (x-1))) else O
+intToNat 0 = Z
+intToNat x = if (x>0) then (S (intToNat (x-1))) else Z
 
 main : IO ()
 main = do putStr "Enter a number: "

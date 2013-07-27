@@ -1,7 +1,7 @@
 module Main
 
 rep : (n : Nat) -> Char -> Vect Char n
-rep O     x = []
+rep Z     x = []
 rep (S k) x = x :: rep k x
 
 data RLE : Vect Char n -> Type where
@@ -18,12 +18,12 @@ eq x y = if x == y then Just ?eqCharOK else Nothing
 rle : (xs : Vect Char n) -> RLE xs
 rle [] = REnd
 rle (x :: xs) with (rle xs)
-   rle (x :: Vect.Nil)             | REnd = RChar O x REnd
+   rle (x :: Vect.Nil)             | REnd = RChar Z x REnd
    rle (x :: rep (S n) yvar ++ ys) | RChar n yvar rs with (eq x yvar)
      rle (x :: rep (S n) x ++ ys) | RChar n x rs | Just refl
            = RChar (S n) x rs
      rle (x :: rep (S n) y ++ ys) | RChar n y rs | Nothing 
-           = RChar O x (RChar n y rs)
+           = RChar Z x (RChar n y rs)
 
 compress : Vect Char n -> String
 compress xs with (rle xs)

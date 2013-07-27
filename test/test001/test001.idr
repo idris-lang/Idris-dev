@@ -14,7 +14,7 @@ using (G : Vect Ty n)
       (::) : interpTy a -> Env G -> Env (a :: G)
 
   data HasType : (i : Fin n) -> Vect Ty n -> Ty -> Type where
-      stop : HasType fO (t :: G) t
+      stop : HasType fZ (t :: G) t
       pop  : HasType k G t -> HasType (fS k) (u :: G) t
 
   lookup : HasType i G t -> Env G -> interpTy t
@@ -57,7 +57,7 @@ using (G : Vect Ty n)
   eAdd = expr (\x, y => Op (+) x y)
   
 --   eDouble : Expr G (TyFun TyInt TyInt)
---   eDouble = Lam (App (App (Lam (Lam (Op' (+) (Var fO) (Var (fS fO))))) (Var fO)) (Var fO))
+--   eDouble = Lam (App (App (Lam (Lam (Op' (+) (Var fZ) (Var (fS fZ))))) (Var fZ)) (Var fZ))
   
   eDouble : Expr G (TyFun TyInt TyInt)
   eDouble = expr (\x => App (App eAdd x) (Var stop))

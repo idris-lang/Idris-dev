@@ -14,7 +14,7 @@ using (G : Vect Ty n)
       (::) : interpTy a -> Env G -> Env (a :: G)
 
   data HasType : (i : Fin n) -> Vect Ty n -> Ty -> Type where
-      stop : HasType fO (t :: G) t
+      stop : HasType fZ (t :: G) t
       pop  : HasType k G t -> HasType (fS k) (u :: G) t
 
   lookup : HasType i G t -> Env G -> interpTy t

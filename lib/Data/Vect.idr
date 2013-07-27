@@ -14,7 +14,7 @@ data Elem : a -> Vect a k -> Type where
   There : {xs : Vect a k} -> Elem x xs -> Elem x (y::xs)
 
 findElem : Nat -> List (TTName, Binder TT) -> TT -> Tactic
-findElem O ctxt goal = Refine "Here" `Seq` Solve
+findElem Z ctxt goal = Refine "Here" `Seq` Solve
 findElem (S n) ctxt goal = GoalType "Elem" (Try (Refine "Here" `Seq` Solve) (Refine "There" `Seq` (Solve `Seq` findElem n ctxt goal)))
 
 replaceElem : (xs : Vect t k) -> Elem x xs -> (y : t) -> (ys : Vect t k ** Elem y ys)

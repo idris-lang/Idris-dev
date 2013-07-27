@@ -85,12 +85,12 @@ init' (x::xs) =
 --------------------------------------------------------------------------------
 
 take : Nat -> List a -> List a
-take O     xs      = []
+take Z     xs      = []
 take (S n) []      = []
 take (S n) (x::xs) = x :: take n xs
 
 drop : Nat -> List a -> List a
-drop O     xs      = xs
+drop Z     xs      = xs
 drop (S n) []      = []
 drop (S n) (x::xs) = drop n xs
 
@@ -127,7 +127,7 @@ repeat : a -> List a
 repeat x = x :: lazy (repeat x)
 
 replicate : Nat -> a -> List a
-replicate O x     = []
+replicate Z x     = []
 replicate (S n) x = x :: replicate n x
 
 --------------------------------------------------------------------------------
@@ -325,7 +325,7 @@ find p (x::xs) =
     find p xs
 
 findIndex : (a -> Bool) -> List a -> Maybe Nat
-findIndex = findIndex' O
+findIndex = findIndex' Z
   where
 --     findIndex' : Nat -> (a -> Bool) -> List a -> Maybe Nat
     findIndex' cnt p []      = Nothing
@@ -336,7 +336,7 @@ findIndex = findIndex' O
         findIndex' (S cnt) p xs
 
 findIndices : (a -> Bool) -> List a -> List Nat
-findIndices = findIndices' O
+findIndices = findIndices' Z
   where
 --     findIndices' : Nat -> (a -> Bool) -> List a -> List Nat
     findIndices' cnt p []      = []
