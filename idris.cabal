@@ -295,6 +295,6 @@ Executable     idris
                if flag(LLVM)
                   other-modules: IRTS.CodegenLLVM
                   cpp-options: -DIDRIS_LLVM
-                  build-depends: llvm-general>=3.3.4.1 && <3.3.4.5
+                  build-depends: llvm-general==3.3.5.*
                else
                   other-modules: Util.LLVMStubs
