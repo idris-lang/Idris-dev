@@ -21,9 +21,9 @@ data RawMemory : Effect where
      Peek       : (offset : Nat) ->
                   (size : Nat) ->
                   so (offset + size <= i) ->
-                  RawMemory (MemoryChunk n i) (MemoryChunk n i) (Vect Bits8 size)
+                  RawMemory (MemoryChunk n i) (MemoryChunk n i) (Vect size Bits8)
      Poke       :  (offset : Nat) ->
-                  (Vect Bits8 size) ->
+                  (Vect size Bits8) ->
                   so (offset <= i && offset + size <= n) ->
                   RawMemory (MemoryChunk n i) (MemoryChunk n (max i (offset + size))) ()
      Move       : (src : MemoryChunk src_size src_init) ->
@@ -62,7 +62,7 @@ do_memmove dest src dest_offset src_offset size
               dest src (fromInteger $ cast dest_offset) (fromInteger $ cast src_offset) (fromInteger $ cast size)
 
 private
-do_peek : Ptr -> Nat -> (size : Nat) -> IO (Vect Bits8 size)
+do_peek : Ptr -> Nat -> (size : Nat) -> IO (Vect size Bits8)
 do_peek _   _       Z = return (Prelude.Vect.Nil)
 do_peek ptr offset (S n)
   = do b <- mkForeign (FFun "idris_peek" [FPtr, FInt] FByte) ptr (fromInteger $ cast offset)
@@ -70,7 +70,7 @@ do_peek ptr offset (S n)
        Prelude.Monad.return (Prelude.Vect.(::) b bs)
 
 private
-do_poke : Ptr -> Nat -> Vect Bits8 size -> IO ()
+do_poke : Ptr -> Nat -> Vect size Bits8 -> IO ()
 do_poke _   _      []     = return ()
 do_poke ptr offset (b::bs)
   = do mkForeign (FFun "idris_poke" [FPtr, FInt, FByte] FUnit) ptr (fromInteger $ cast offset) b
@@ -117,13 +117,13 @@ peek : {i : Nat} ->
        (offset : Nat) ->
        (size : Nat) ->
        so (offset + size <= i) ->
-       Eff m [RAW_MEMORY (MemoryChunk n i)] (Vect Bits8 size)
+       Eff m [RAW_MEMORY (MemoryChunk n i)] (Vect size Bits8)
 peek offset size prf = Peek offset size prf
 
 poke : {n : Nat} ->
        {i : Nat} ->
        (offset : Nat) ->
-       Vect Bits8 size ->
+       Vect size Bits8 ->
        so (offset <= i && offset + size <= n) ->
        EffM m [RAW_MEMORY (MemoryChunk n i)] [RAW_MEMORY (MemoryChunk n (max i (offset + size)))] ()
 poke offset content prf = Poke offset content prf

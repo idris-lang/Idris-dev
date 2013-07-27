@@ -11,6 +11,8 @@ New in 0.9.9:
 * Added Data.HVect module
 * Fix fromInteger to take an Integer, rather than an Int
 * Integer literals for Fin
+* Renamed O to Z, and fO to fZ
+* Swapped Vect arguments, now Vect : Nat -> Type -> Type
 
 Internal changes
 

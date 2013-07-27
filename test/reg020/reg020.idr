@@ -15,7 +15,7 @@ tabOnly =  "\t"
 linebreakOnly : String
 linebreakOnly = "\n"
 
-all : Vect String 5
+all : Vect 5 String
 all =
   [ emptyString
   , helloWorld

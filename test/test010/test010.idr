@@ -5,7 +5,7 @@ data MyNat = MyO | MyS MyNat
 data Bad = MkBad (Bad -> Int) Int
          | MkBad' Int
 
-vapp : Vect a n -> Vect a m -> Vect a (n + m)
+vapp : Vect n a -> Vect m a -> Vect (n + m) a
 vapp []        ys = ys
 vapp (x :: xs) ys = x :: vapp xs ys
 

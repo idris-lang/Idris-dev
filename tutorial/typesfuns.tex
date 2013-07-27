@@ -273,13 +273,14 @@ test = [c (S 1), c Z, d (S Z)]
 
 A standard example of a dependent type is the type of ``lists with length'',
 conventionally called vectors in the dependent type literature. In \Idris{},
-we declare vectors as follows:
+we declare vectors as follows\footnote{Note that prior to \Idris{} 0.9.9,
+the order of the arguments to \texttt{Vect} was reversed.}:
 
 \begin{SaveVerbatim}{vect}
 
-data Vect : Type -> Nat -> Type where
-   Nil  : Vect a Z
-   (::) : a -> Vect a k -> Vect a (S k)
+data Vect : Nat -> Type -> Type where
+   Nil  : Vect Z a
+   (::) : a -> Vect k a -> Vect (S k) a
 
 \end{SaveVerbatim}
 \useverb{vect}
@@ -292,13 +293,13 @@ Ambiguous constructor names can normally be resolved from context.
 
 This declares a family of types, and so the form of the declaration is rather
 different from the simple type declarations above. We explicitly state the type
-of the type constructor \tTC{Vect} --- it takes a type and a \tTC{Nat} as an
+of the type constructor \tTC{Vect} --- it takes a \tTC{Nat} and a type as an
 argument, where \tTC{Type} stands for the type of types. We say that \tTC{Vect}
-is \emph{parameterised} by a type, and \emph{indexed} over \tTC{Nat}. Each
+is \emph{indexed} over \tTC{Nat} and \emph{parameterised} by \tTC{Type}. Each
 constructor targets a different part of the family of types. \tDC{Nil} can only
 be used to construct vectors with zero length, and \tDC{::} to construct
 vectors with non-zero length. In the type of \tDC{::}, we state explicitly that an element
-of type \texttt{a} and a tail of type \texttt{Vect a k} (i.e., a vector of length \texttt{k})
+of type \texttt{a} and a tail of type \texttt{Vect k a} (i.e., a vector of length \texttt{k})
 combine to make a vector of length \texttt{S k}.
 
 We can define functions on dependent types such as \tTC{Vect} in the same way
@@ -309,7 +310,7 @@ library, appends two \tTC{Vect}s:
 
 \begin{SaveVerbatim}{vapp}
 
-(++) : Vect A n -> Vect A m -> Vect A (n + m)
+(++) : Vect n a -> Vect m a -> Vect (n + m) a
 (++) Nil       ys = ys
 (++) (x :: xs) ys = x :: xs ++ ys
 
@@ -323,7 +324,7 @@ not hold, \Idris{} will not accept the definition. For example:
 
 \begin{SaveVerbatim}{vapperr}
 
-(++) : Vect a n -> Vect a m -> Vect a (n + m)
+(++) : Vect n a -> Vect m a -> Vect (n + m) a
 (++) Nil       ys = ys
 (++) (x :: xs) ys = x :: xs ++ xs -- BROKEN
 
@@ -333,10 +334,10 @@ not hold, \Idris{} will not accept the definition. For example:
 \begin{SaveVerbatim}{vapperrmsg}
 
 $ idris vbroken.idr --check
-vbroken.idr:3:Can't unify Vect a n with Vect a m
+vbroken.idr:3:Can't unify Vect n a with Vect m a
 
 Specifically:
-	 Can't unify n with m
+	Can't unify n with m
 
 \end{SaveVerbatim}
 \begin{SaveVerbatim}{bleh}
@@ -383,7 +384,7 @@ by a bounded index given as a \tTC{Fin n}, is defined in the prelude:
 
 \begin{SaveVerbatim}{vindex}
 
-index : Fin n -> Vect a n -> a
+index : Fin n -> Vect n a -> a
 index fZ     (x :: xs) = x
 index (fS k) (x :: xs) = index k xs
 
@@ -408,7 +409,7 @@ Let us take a closer look at the type of \texttt{index}:
 
 \begin{SaveVerbatim}{vindexty}
 
-index : Fin n -> Vect a n -> a
+index : Fin n -> Vect n a -> a
 
 \end{SaveVerbatim}
 \useverb{vindexty}
@@ -421,7 +422,7 @@ arguments to \texttt{index}. We could also write the type of \texttt{index} as:
 
 \begin{SaveVerbatim}{vindeximpty}
 
-index : {a:Type} -> {n:Nat} -> Fin n -> Vect a n -> a
+index : {a:Type} -> {n:Nat} -> Fin n -> Vect n a -> a
 
 \end{SaveVerbatim}
 \useverb{vindeximpty}
@@ -429,7 +430,7 @@ index : {a:Type} -> {n:Nat} -> Fin n -> Vect a n -> a
 \noindent
 Implicit arguments, given in braces \texttt{\{\}} in the type declaration, are
 not given in applications of \texttt{index}; their values can be inferred from
-the types of the \texttt{Fin n} and \texttt{Vect a n} arguments. Any name 
+the types of the \texttt{Fin n} and \texttt{Vect n a} arguments. Any name 
 with a \remph{lower case initial letter} which
 appears as a parameter or index in a type declaration, but which is otherwise
 free, will be automatically bound as an implicit argument.  Implicit arguments
@@ -449,7 +450,7 @@ declared the type of \texttt{index} as:
 
 \begin{SaveVerbatim}{vindexn}
 
-index : (i:Fin n) -> (xs:Vect a n) -> a
+index : (i:Fin n) -> (xs:Vect n a) -> a
 
 \end{SaveVerbatim}
 \useverb{vindexn}
@@ -469,9 +470,9 @@ definition, which defines a predicate on vectors:
 
 \begin{SaveVerbatim}{elem}
 
-data Elem : a -> Vect a n -> Type where
-   here :  {x:a} ->   {xs:Vect a n} -> Elem x (x :: xs)
-   there : {x,y:a} -> {xs:Vect a n} -> Elem x xs -> Elem x (y :: xs)
+data Elem : a -> Vect n a -> Type where
+   here :  {x:a} ->   {xs:Vect n a} -> Elem x (x :: xs)
+   there : {x,y:a} -> {xs:Vect n a} -> Elem x xs -> Elem x (y :: xs)
 
 \end{SaveVerbatim}
 \useverb{elem}
@@ -484,7 +485,7 @@ or \texttt{there}, in the tail of the vector. For example:
 
 \begin{SaveVerbatim}{testelem}
 
-testVec : Vect Int 4
+testVec : Vect 4 Int
 testVec = 3 :: 4 :: 5 :: 6 :: Nil
 
 inVect : Elem 5 testVec
@@ -500,8 +501,8 @@ ordering of any implicit arguments which can appear within the block:
 
 \begin{SaveVerbatim}{elemusing}
 
-using (x:a, y:a, xs:Vect a n)
-  data Elem : a -> Vect a n -> Type where
+using (x:a, y:a, xs:Vect n a)
+  data Elem : a -> Vect n a -> Type where
      here  : Elem x (x :: xs)
      there : Elem x xs -> Elem x (y :: xs)
 
@@ -662,9 +663,9 @@ We have already seen the \texttt{List} and \texttt{Vect} data types:
 
 data List a = Nil | (::) a (List a)
 
-data Vect : Type -> Nat -> Type where
-   Nil  : Vect a Z
-   (::) : a -> Vect a k -> Vect a (S k)
+data Vect : Nat -> Type -> Type where
+   Nil  : Vect Z a
+   (::) : a -> Vect k a -> Vect (S k) a
 
 \end{SaveVerbatim}
 \useverb{listvec}
@@ -692,7 +693,7 @@ map : (a -> b) -> List a -> List b
 map f []        = []
 map f (x :: xs) = f x :: map f xs
 
-map : (a -> b) -> Vect a n -> Vect b n
+map : (a -> b) -> Vect n a -> Vect n b
 map f []        = []
 map f (x :: xs) = f x :: map f xs
 
@@ -704,7 +705,7 @@ For example, to double every element in a vector of integers:
 
 \begin{SaveVerbatim}{dvect}
 
-intVec : Vect Int 5
+intVec : Vect 5 Int
 intVec = [1, 2, 3, 4, 5]
 
 double : Int -> Int
@@ -860,7 +861,7 @@ constructs a value of this type. For example, we can pair a number with a
 
 \begin{SaveVerbatim}{dvec}
 
-vec : (n : Nat ** Vect Int n)
+vec : (n : Nat ** Vect n Int)
 vec = (2 ** [3, 4])
 
 \end{SaveVerbatim}
@@ -874,7 +875,7 @@ written as:
 
 \begin{SaveVerbatim}{dvec1}
 
-vec : (n : Nat ** Vect Int n)
+vec : (n : Nat ** Vect n Int)
 vec = (_ ** [3, 4])
 
 \end{SaveVerbatim}
@@ -886,7 +887,7 @@ again, it can be inferred:
 
 \begin{SaveVerbatim}{dvec2}
 
-vec : (n ** Vect Int n)
+vec : (n ** Vect n Int)
 vec = (_ ** [3, 4])
 
 \end{SaveVerbatim}
@@ -900,7 +901,7 @@ length of the resulting vector will be:
 
 \begin{SaveVerbatim}{vfilter}
 
-filter : (a -> Bool) -> Vect a n -> (p ** Vect a p)
+filter : (a -> Bool) -> Vect n a -> (p ** Vect p a)
 
 \end{SaveVerbatim}
 \useverb{vfilter}
@@ -1154,7 +1155,7 @@ the record as a whole. For example:
 \begin{SaveVerbatim}{deprec}
 
 record Class : Type where
-    ClassInfo : (students : Vect Person n) ->
+    ClassInfo : (students : Vect n Person) ->
                 (className : String) ->
                 Class
 

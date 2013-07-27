@@ -1,7 +1,7 @@
 module Main
 
 total
-pull : Fin (S n) -> Vect a (S n) -> (a, Vect a n)
+pull : Fin (S n) -> Vect (S n) a -> (a, Vect n a)
 pull {n=Z}   _      (x :: xs) = (x, xs)
 -- pull {n=S q} fZ     (Vect.(::) {n=S _} x xs) = (x, xs)
 pull {n=S _} (fS n) (x :: xs) =

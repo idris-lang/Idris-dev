@@ -9,7 +9,7 @@ determined by whether the vector was empty or not:
 
 \begin{SaveVerbatim}{appdep}
 
-(++) : Vect a n -> Vect a m -> Vect a (n + m)
+(++) : Vect n a -> Vect m a -> Vect (n + m) a
 (++) {n=Z}   []        ys = ys
 (++) {n=S k} (x :: xs) ys = x :: xs ++ ys
 
@@ -34,7 +34,7 @@ a vector filter function, defined as follows:
 
 \begin{SaveVerbatim}{vfilterdef}
 
-filter : (a -> Bool) -> Vect a n -> (p ** Vect a p)
+filter : (a -> Bool) -> Vect n a -> (p ** Vect p a)
 filter p [] = ( _ ** [] )
 filter p (x :: xs) with (filter p xs)
   | ( _ ** xs' ) = if (p x) then ( _ ** x :: xs' ) else ( _ ** xs' )

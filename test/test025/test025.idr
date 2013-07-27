@@ -8,13 +8,13 @@ MemoryIO : Type -> Type -> Type -> Type
 MemoryIO td ts r = Eff (IOExcept String) [ Dst ::: RAW_MEMORY td
                                          , Src ::: RAW_MEMORY ts ] r
 
-inpVect : Vect Bits8 5
+inpVect : Vect 5 Bits8
 inpVect = map prim__truncInt_B8 [0, 1, 2, 3, 5]
 
-sub1 : Vect Bits8 n -> Vect Bits8 n
+sub1 : Vect n Bits8 -> Vect n Bits8
 sub1 xs = map (prim__truncInt_B8 . (\ x => x - 1) . prim__zextB8_Int) xs
 
-testMemory : MemoryIO () () (Vect Int 4)
+testMemory : MemoryIO () () (Vect 4 Int)
 testMemory = do Src :- allocate 5
                 Src :- poke 0 inpVect oh
                 Dst :- allocate 5

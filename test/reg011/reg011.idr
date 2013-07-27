@@ -1,6 +1,6 @@
 vfoldl : (P : Nat -> Type) -> 
          ((x : Nat) -> P x -> a -> P (S x)) -> P Z
-       -> Vect a m -> P m
+       -> Vect m a -> P m
 -- vfoldl P cons nil []        
 --     = nil
 vfoldl P cons nil (x :: xs) 

@@ -9,39 +9,39 @@ import Prelude.Nat
 
 infixr 7 :: 
 
-data Vect : Type -> Nat -> Type where
-  Nil  : Vect a Z
-  (::) : a -> Vect a n -> Vect a (S n)
+data Vect : Nat -> Type -> Type where
+  Nil  : Vect Z a
+  (::) : a -> Vect n a -> Vect (S n) a
 
 --------------------------------------------------------------------------------
 -- Indexing into vectors
 --------------------------------------------------------------------------------
 
-tail : Vect a (S n) -> Vect a n
+tail : Vect (S n) a -> Vect n a
 tail (x::xs) = xs
 
-head : Vect a (S n) -> a
+head : Vect (S n) a -> a
 head (x::xs) = x
 
-last : Vect a (S n) -> a
+last : Vect (S n) a -> a
 last (x::[])    = x
 last (x::y::ys) = last $ y::ys
 
-init : Vect a (S n) -> Vect a n
+init : Vect (S n) a -> Vect n a
 init (x::[])    = []
 init (x::y::ys) = x :: init (y::ys)
 
-index : Fin n -> Vect a n -> a
+index : Fin n -> Vect n a -> a
 index fZ     (x::xs) = x
 index (fS k) (x::xs) = index k xs
 index fZ     [] impossible
 
-deleteAt : Fin (S n) -> Vect a (S n) -> Vect a n
+deleteAt : Fin (S n) -> Vect (S n) a -> Vect n a
 deleteAt           fZ     (x::xs) = xs
 deleteAt {n = S m} (fS k) (x::xs) = x :: deleteAt k xs
 deleteAt           _      [] impossible
 
-replaceAt : Fin n -> t -> Vect t n -> Vect t n
+replaceAt : Fin n -> t -> Vect n t -> Vect n t
 replaceAt fZ y (x::xs) = y::xs
 replaceAt (fS k) y (x::xs) = x :: replaceAt k y xs
 
@@ -49,13 +49,13 @@ replaceAt (fS k) y (x::xs) = x :: replaceAt k y xs
 -- Subvectors
 --------------------------------------------------------------------------------
 
-take : Fin n -> Vect a n -> (p ** Vect a p)
+take : Fin n -> Vect n a -> (p ** Vect p a)
 take fZ     xs      = (_ ** [])
 take (fS k) []      impossible
 take (fS k) (x::xs) with (take k xs)
   | (_ ** tail) = (_ ** x::tail)
 
-drop : Fin n -> Vect a n -> (p ** Vect a p)
+drop : Fin n -> Vect n a -> (p ** Vect p a)
 drop fZ     xs      = (_ ** xs)
 drop (fS k) []      impossible
 drop (fS k) (x::xs) = drop k xs
@@ -64,11 +64,11 @@ drop (fS k) (x::xs) = drop k xs
 -- Conversions to and from list
 --------------------------------------------------------------------------------
 
-toList : Vect a n -> List a
+toList : Vect n a -> List a
 toList []      = []
 toList (x::xs) = x :: toList xs
 
-fromList : (l : List a) -> Vect a (length l)
+fromList : (l : List a) -> Vect (length l) a
 fromList []      = []
 fromList (x::xs) = x :: fromList xs
 
@@ -76,11 +76,11 @@ fromList (x::xs) = x :: fromList xs
 -- Building (bigger) vectors
 --------------------------------------------------------------------------------
 
-(++) : Vect a m -> Vect a n -> Vect a (m + n)
+(++) : Vect m a -> Vect n a -> Vect (m + n) a
 (++) []      ys = ys
 (++) (x::xs) ys = x :: xs ++ ys
 
-replicate : (n : Nat) -> a -> Vect a n
+replicate : (n : Nat) -> a -> Vect n a
 replicate Z     x = []
 replicate (S k) x = x :: replicate k x
 
@@ -88,14 +88,14 @@ replicate (S k) x = x :: replicate k x
 -- Zips and unzips
 --------------------------------------------------------------------------------
 
-zipWith : (a -> b -> c) -> Vect a n -> Vect b n -> Vect c n
+zipWith : (a -> b -> c) -> Vect n a -> Vect n b -> Vect n c
 zipWith f []      []      = []
 zipWith f (x::xs) (y::ys) = f x y :: zipWith f xs ys
 
-zip : Vect a n -> Vect b n -> Vect (a, b) n
+zip : Vect n a -> Vect n b -> Vect n (a, b)
 zip = zipWith (\x => \y => (x,y))
 
-unzip : Vect (a, b) n -> (Vect a n, Vect b n)
+unzip : Vect n (a, b) -> (Vect n a, Vect n b)
 unzip []           = ([], [])
 unzip ((l, r)::xs) with (unzip xs)
   | (lefts, rights) = (l::lefts, r::rights)
@@ -104,12 +104,12 @@ unzip ((l, r)::xs) with (unzip xs)
 -- Maps
 --------------------------------------------------------------------------------
 
-map : (a -> b) -> Vect a n -> Vect b n
+map : (a -> b) -> Vect n a -> Vect n b
 map f []        = []
 map f (x::xs) = f x :: map f xs
 
 -- XXX: causes Idris to enter an infinite loop when type checking in the REPL
---mapMaybe : (a -> Maybe b) -> Vect a n -> (p ** Vect b p)
+--mapMaybe : (a -> Maybe b) -> Vect n a -> (p ** Vect b p)
 --mapMaybe f []      = (_ ** [])
 --mapMaybe f (x::xs) = mapMaybe' (f x) 
 -- XXX: working around the type restrictions on case statements
@@ -122,11 +122,11 @@ map f (x::xs) = f x :: map f xs
 -- Folds
 --------------------------------------------------------------------------------
 
-total foldl : (a -> b -> a) -> a -> Vect b m -> a
+total foldl : (a -> b -> a) -> a -> Vect m b -> a
 foldl f e []      = e
 foldl f e (x::xs) = foldl f (f e x) xs
 
-total foldr : (a -> b -> b) -> b -> Vect a m -> b
+total foldr : (a -> b -> b) -> b -> Vect m a -> b
 foldr f e []      = e
 foldr f e (x::xs) = f x (foldr f e xs)
 
@@ -134,39 +134,39 @@ foldr f e (x::xs) = f x (foldr f e xs)
 -- Special folds
 --------------------------------------------------------------------------------
 
-concat : Vect (Vect a n) m -> Vect a (m * n)
+concat : Vect m (Vect n a) -> Vect (m * n) a
 concat []      = []
 concat (v::vs) = v ++ concat vs
 
-total and : Vect Bool m -> Bool
+total and : Vect m Bool -> Bool
 and = foldr (&&) True
 
-total or : Vect Bool m -> Bool
+total or : Vect m Bool -> Bool
 or = foldr (||) False
 
-total any : (a -> Bool) -> Vect a m -> Bool
-any p = Vect.or . map p
+total any : (a -> Bool) -> Vect m a -> Bool
+any p = Vect.or . Vect.map p
 
-total all : (a -> Bool) -> Vect a m -> Bool
-all p = Vect.and . map p
+total all : (a -> Bool) -> Vect m a -> Bool
+all p = Vect.and . Vect.map p
 
 --------------------------------------------------------------------------------
 -- Transformations
 --------------------------------------------------------------------------------
 
-total reverse : Vect a n -> Vect a n
+total reverse : Vect n a -> Vect n a
 reverse = reverse' []
   where
-    total reverse' : Vect a m -> Vect a n -> Vect a (m + n)
+    total reverse' : Vect m a -> Vect n a -> Vect (m + n) a
     reverse' acc []      ?= acc
     reverse' acc (x::xs) ?= reverse' (x::acc) xs
 
-total intersperse' : a -> Vect a m -> (p ** Vect a p)
+total intersperse' : a -> Vect m a -> (p ** Vect p a)
 intersperse' sep []      = (_ ** [])
 intersperse' sep (y::ys) with (intersperse' sep ys)
   | (_ ** tail) = (_ ** sep::y::tail)
 
-total intersperse : a -> Vect a m -> (p ** Vect a p)
+total intersperse : a -> Vect m a -> (p ** Vect p a)
 intersperse sep []      = (_ ** [])
 intersperse sep (x::xs) with (intersperse' sep xs)
   | (_ ** tail) = (_ ** x::tail)
@@ -175,56 +175,56 @@ intersperse sep (x::xs) with (intersperse' sep xs)
 -- Membership tests
 --------------------------------------------------------------------------------
 
-elemBy : (a -> a -> Bool) -> a -> Vect a n -> Bool
+elemBy : (a -> a -> Bool) -> a -> Vect n a -> Bool
 elemBy p e []      = False
 elemBy p e (x::xs) with (p e x)
   | True  = True
   | False = elemBy p e xs
 
-elem : Eq a => a -> Vect a n -> Bool
+elem : Eq a => a -> Vect n a -> Bool
 elem = elemBy (==)
 
-lookupBy : (a -> a -> Bool) -> a -> Vect (a, b) n -> Maybe b
+lookupBy : (a -> a -> Bool) -> a -> Vect n (a, b) -> Maybe b
 lookupBy p e []           = Nothing
 lookupBy p e ((l, r)::xs) with (p e l)
   | True  = Just r
   | False = lookupBy p e xs
 
-lookup : Eq a => a -> Vect (a, b) n -> Maybe b
+lookup : Eq a => a -> Vect n (a, b) -> Maybe b
 lookup = lookupBy (==)
 
-hasAnyBy : (a -> a -> Bool) -> Vect a m -> Vect a n -> Bool
+hasAnyBy : (a -> a -> Bool) -> Vect m a -> Vect n a -> Bool
 hasAnyBy p elems []      = False
 hasAnyBy p elems (x::xs) with (elemBy p x elems)
   | True  = True
   | False = hasAnyBy p elems xs
 
-hasAny : Eq a => Vect a m -> Vect a n -> Bool
+hasAny : Eq a => Vect m a -> Vect n a -> Bool
 hasAny = hasAnyBy (==)
 
 --------------------------------------------------------------------------------
 -- Searching with a predicate
 --------------------------------------------------------------------------------
 
-find : (a -> Bool) -> Vect a n -> Maybe a
+find : (a -> Bool) -> Vect n a -> Maybe a
 find p []      = Nothing
 find p (x::xs) with (p x)
   | True  = Just x
   | False = find p xs
 
-findIndex : (a -> Bool) -> Vect a n -> Maybe Nat
+findIndex : (a -> Bool) -> Vect n a -> Maybe Nat
 findIndex = findIndex' 0
   where
-    findIndex' : Nat -> (a -> Bool) -> Vect a n -> Maybe Nat
+    findIndex' : Nat -> (a -> Bool) -> Vect n a -> Maybe Nat
     findIndex' cnt p []      = Nothing
     findIndex' cnt p (x::xs) with (p x)
       | True  = Just cnt
       | False = findIndex' (S cnt) p xs
 
-total findIndices : (a -> Bool) -> Vect a m -> (p ** Vect Nat p)
+total findIndices : (a -> Bool) -> Vect m a -> (p ** Vect p Nat)
 findIndices = findIndices' 0
   where
-    total findIndices' : Nat -> (a -> Bool) -> Vect a m -> (p ** Vect Nat p)
+    total findIndices' : Nat -> (a -> Bool) -> Vect m a -> (p ** Vect p Nat)
     findIndices' cnt p []      = (_ ** [])
     findIndices' cnt p (x::xs) with (findIndices' (S cnt) p xs)
       | (_ ** tail) =
@@ -233,23 +233,23 @@ findIndices = findIndices' 0
        else
         (_ ** tail)
 
-elemIndexBy : (a -> a -> Bool) -> a -> Vect a m -> Maybe Nat
+elemIndexBy : (a -> a -> Bool) -> a -> Vect m a -> Maybe Nat
 elemIndexBy p e = findIndex $ p e
 
-elemIndex : Eq a => a -> Vect a m -> Maybe Nat
+elemIndex : Eq a => a -> Vect m a -> Maybe Nat
 elemIndex = elemIndexBy (==)
 
-total elemIndicesBy : (a -> a -> Bool) -> a -> Vect a m -> (p ** Vect Nat p)
+total elemIndicesBy : (a -> a -> Bool) -> a -> Vect m a -> (p ** Vect p Nat)
 elemIndicesBy p e = findIndices $ p e
 
-total elemIndices : Eq a => a -> Vect a m -> (p ** Vect Nat p)
+total elemIndices : Eq a => a -> Vect m a -> (p ** Vect p Nat)
 elemIndices = elemIndicesBy (==)
 
 --------------------------------------------------------------------------------
 -- Filters
 --------------------------------------------------------------------------------
 
-total filter : (a -> Bool) -> Vect a n -> (p ** Vect a p)
+total filter : (a -> Bool) -> Vect n a -> (p ** Vect p a)
 filter p [] = ( _ ** [] )
 filter p (x::xs) with (filter p xs)
   | (_ ** tail) =
@@ -258,17 +258,17 @@ filter p (x::xs) with (filter p xs)
     else
       (_ ** tail)
 
-nubBy : (a -> a -> Bool) -> Vect a n -> (p ** Vect a p)
+nubBy : (a -> a -> Bool) -> Vect n a -> (p ** Vect p a)
 nubBy = nubBy' []
   where
-    nubBy' : Vect a m -> (a -> a -> Bool) -> Vect a n -> (p ** Vect a p)
+    nubBy' : Vect m a -> (a -> a -> Bool) -> Vect n a -> (p ** Vect p a)
     nubBy' acc p []      = (_ ** [])
     nubBy' acc p (x::xs) with (elemBy p x acc)
       | True  = nubBy' acc p xs
       | False with (nubBy' (x::acc) p xs)
         | (_ ** tail) = (_ ** x::tail)
 
-nub : Eq a => Vect a n -> (p ** Vect a p)
+nub : Eq a => Vect n a -> (p ** Vect p a)
 nub = nubBy (==)
 
 --------------------------------------------------------------------------------
@@ -279,31 +279,31 @@ nub = nubBy (==)
 -- Predicates
 --------------------------------------------------------------------------------
 
-isPrefixOfBy : (a -> a -> Bool) -> Vect a m -> Vect a n -> Bool
+isPrefixOfBy : (a -> a -> Bool) -> Vect m a -> Vect n a -> Bool
 isPrefixOfBy p [] right        = True
 isPrefixOfBy p left []         = False
 isPrefixOfBy p (x::xs) (y::ys) with (p x y)
   | True  = isPrefixOfBy p xs ys
   | False = False
 
-isPrefixOf : Eq a => Vect a m -> Vect a n -> Bool
+isPrefixOf : Eq a => Vect m a -> Vect n a -> Bool
 isPrefixOf = isPrefixOfBy (==)
 
-isSuffixOfBy : (a -> a -> Bool) -> Vect a m -> Vect a n -> Bool
+isSuffixOfBy : (a -> a -> Bool) -> Vect m a -> Vect n a -> Bool
 isSuffixOfBy p left right = isPrefixOfBy p (reverse left) (reverse right)
 
-isSuffixOf : Eq a => Vect a m -> Vect a n -> Bool
+isSuffixOf : Eq a => Vect m a -> Vect n a -> Bool
 isSuffixOf = isSuffixOfBy (==)
 
 --------------------------------------------------------------------------------
 -- Conversions
 --------------------------------------------------------------------------------
 
-total maybeToVect : Maybe a -> (p ** Vect a p)
+total maybeToVect : Maybe a -> (p ** Vect p a)
 maybeToVect Nothing  = (_ ** [])
 maybeToVect (Just j) = (_ ** [j])
 
-total vectToMaybe : Vect a n -> Maybe a
+total vectToMaybe : Vect n a -> Maybe a
 vectToMaybe []      = Nothing
 vectToMaybe (x::xs) = Just x
 
@@ -311,17 +311,17 @@ vectToMaybe (x::xs) = Just x
 -- Misc
 --------------------------------------------------------------------------------
 
-catMaybes : Vect (Maybe a) n -> (p ** Vect a p)
+catMaybes : Vect n (Maybe a) -> (p ** Vect p a)
 catMaybes []             = (_ ** [])
 catMaybes (Nothing::xs)  = catMaybes xs
 catMaybes ((Just j)::xs) with (catMaybes xs)
   | (_ ** tail) = (_ ** j::tail)
 
-range : Vect (Fin n) n
+range : Vect n (Fin n)
 range =
   reverse range_
  where
-  range_ : Vect (Fin n) n
+  range_ : Vect n (Fin n)
   range_ {n=Z} = Nil
   range_ {n=(S _)} = last :: map weaken range_
 

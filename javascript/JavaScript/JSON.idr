@@ -3,7 +3,7 @@ module JSON
 import Data.SortedMap
 
 data JSONType : Type where
-  JSONArray  : (n : Nat) -> Vect JSONType n -> JSONType
+  JSONArray  : (n : Nat) -> Vect n JSONType -> JSONType
   JSONString : JSONType
   JSONNumber : JSONType
   JSONBool   : JSONType
@@ -11,9 +11,9 @@ data JSONType : Type where
   JSONNull   : JSONType
 
 mutual
-  using (ts : Vect JSONType n, fs : SortedMap String JSONType)
+  using (ts : Vect n JSONType, fs : SortedMap String JSONType)
     namespace JArray
-      data JArray : (n : Nat) -> Vect JSONType n -> Type where
+      data JArray : (n : Nat) -> Vect n JSONType -> Type where
         Nil  : JArray 0 []
         (::) : JSON t -> JArray n ts -> JArray (S n) (t :: ts)
 

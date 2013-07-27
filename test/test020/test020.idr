@@ -5,11 +5,11 @@ natInt : Nat -> Integer
 natInt x = cast x
 
 implicit 
-forget : Vect a n -> List a
+forget : Vect n a -> List a
 forget [] = []
 forget (x :: xs) = x :: forget xs
 
-foo : Vect a n -> List a
+foo : Vect n a -> List a
 foo xs = reverse xs
 
 implicit intString : Integer -> String

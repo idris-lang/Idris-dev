@@ -8,7 +8,7 @@ codata InfStream a = (::) a (InfStream a)
 --   natFromStream : Nat -> InfStream Nat
 --   natFromStream n = (::) n (natFromStream (S n))
 
-take : (n: Nat) -> InfStream a -> Vect a n
+take : (n: Nat) -> InfStream a -> Vect n a
 take Z _ = []
 take (S n) (x :: xs) = x :: take n xs
 

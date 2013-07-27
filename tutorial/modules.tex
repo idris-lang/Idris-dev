@@ -207,11 +207,11 @@ constructors. They may also be dependent types with implicit arguments:
 
 \begin{SaveVerbatim}{paramdata}
 
-parameters (xs : Vect a x, y : Nat)
+parameters (xs : Vect x a, y : Nat)
     data Vects : Type -> Type where
          MkVects : Vect a y -> Vects a
   
-    append : Vects a -> Vect a (x + y)
+    append : Vects a -> Vect (x + y) a
     append (MkVects ys) = xs ++ ys
 
 \end{SaveVerbatim}

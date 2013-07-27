@@ -24,7 +24,7 @@ types are a \emph{first class} language construct and can be manipulated like
 any other value. The standard
 example is the type of lists of a given length\footnote{Typically, and perhaps
 confusingly, referred to in the dependently typed programming literature as
-``vectors''}, \texttt{Vect a n}, where \texttt{a} is the element type and
+``vectors''}, \texttt{Vect n a}, where \texttt{a} is the element type and
 \texttt{n} is the length of the list and can be an arbitrary
 term.
 
@@ -37,7 +37,7 @@ to the  \texttt{app} function, which concatenates vectors:
 
 \begin{SaveVerbatim}{appendv}
 
-app : Vect a n -> Vect a m -> Vect a (n + m)
+app : Vect n a -> Vect m a -> Vect (n + m) a
 
 \end{SaveVerbatim}
 \useverb{appendv}

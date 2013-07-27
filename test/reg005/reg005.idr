@@ -1,12 +1,12 @@
 module Main
 
-rep : (n : Nat) -> Char -> Vect Char n
+rep : (n : Nat) -> Char -> Vect n Char
 rep Z     x = []
 rep (S k) x = x :: rep k x
 
-data RLE : Vect Char n -> Type where
+data RLE : Vect n Char -> Type where
      REnd  : RLE []
-     RChar : {xs : Vect Char k} ->
+     RChar : {xs : Vect k Char} ->
              (n : Nat) -> (x : Char) -> RLE xs -> 
              RLE (rep (S n) x ++ xs)
 
@@ -15,7 +15,7 @@ eq x y = if x == y then Just ?eqCharOK else Nothing
 
 ------------
 
-rle : (xs : Vect Char n) -> RLE xs
+rle : (xs : Vect n Char) -> RLE xs
 rle [] = REnd
 rle (x :: xs) with (rle xs)
    rle (x :: Vect.Nil)             | REnd = RChar Z x REnd
@@ -25,7 +25,7 @@ rle (x :: xs) with (rle xs)
      rle (x :: rep (S n) y ++ ys) | RChar n y rs | Nothing 
            = RChar Z x (RChar n y rs)
 
-compress : Vect Char n -> String
+compress : Vect n Char -> String
 compress xs with (rle xs)
   compress Nil                 | REnd         = ""
   compress (rep (S n) x ++ xs) | RChar _ _ rs 

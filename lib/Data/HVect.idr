@@ -5,8 +5,8 @@ import Data.Vect
 %access public
 %default total
 
-using (k : Nat, ts : Vect Type k)
-  data HVect : Vect Type k -> Type where
+using (k : Nat, ts : Vect k Type)
+  data HVect : Vect k Type -> Type where
     Nil : HVect []
     (::) : t -> HVect ts -> HVect (t::ts)
 
@@ -14,7 +14,7 @@ using (k : Nat, ts : Vect Type k)
   index fZ (x::xs) = x
   index (fS j) (x::xs) = index j xs
 
-  deleteAt : {us : Vect Type (S l)} -> (i : Fin (S l)) -> HVect us -> HVect (deleteAt i us)
+  deleteAt : {us : Vect (S l) Type} -> (i : Fin (S l)) -> HVect us -> HVect (deleteAt i us)
   deleteAt fZ (x::xs) = xs
   deleteAt {l = S m} (fS j) (x::xs) = x :: deleteAt j xs
   deleteAt _ [] impossible
@@ -27,7 +27,7 @@ using (k : Nat, ts : Vect Type k)
   updateAt fZ f (x::xs) = f x :: xs
   updateAt (fS j) f (x::xs) = x :: updateAt j f xs
 
-  (++) : {us : Vect Type l} -> HVect ts -> HVect us -> HVect (ts ++ us)
+  (++) : {us : Vect l Type} -> HVect ts -> HVect us -> HVect (ts ++ us)
   (++) [] ys = ys
   (++) (x::xs) ys = x :: (xs ++ ys)
 
@@ -37,8 +37,8 @@ using (k : Nat, ts : Vect Type k)
   instance (Eq t, Eq (HVect ts)) => Eq (HVect (t::ts)) where
     (x::xs) == (y::ys) = x == y && xs == ys
 
-  class Shows (k : Nat) (ts : Vect Type k) where
-    shows : HVect ts -> Vect String k
+  class Shows (k : Nat) (ts : Vect k Type) where
+    shows : HVect ts -> Vect k String
 
   instance Shows Z [] where
     shows [] = []

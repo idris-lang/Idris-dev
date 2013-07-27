@@ -167,9 +167,9 @@ instance Show a => Show (List a) where
         show' acc [x]       = acc ++ show x
         show' acc (x :: xs) = show' (acc ++ show x ++ ", ") xs
 
-instance Show a => Show (Vect a n) where 
+instance Show a => Show (Vect n a) where 
     show xs = "[" ++ show' xs ++ "]" where 
-        show' : Vect a n -> String
+        show' : Vect n a -> String
         show' []        = ""
         show' [x]       = show x
         show' (x :: xs) = show x ++ ", " ++ show' xs

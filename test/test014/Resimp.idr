@@ -32,7 +32,7 @@ ioc = MkCreator
   
 infixr 5 :->
 
-using (i: Fin n, gam : Vect Ty n, gam' : Vect Ty n, gam'' : Vect Ty n)
+using (i: Fin n, gam : Vect n Ty, gam' : Vect n Ty, gam'' : Vect n Ty)
 
   data Ty = R Type
           | Val Type
@@ -45,11 +45,11 @@ using (i: Fin n, gam : Vect Ty n, gam' : Vect Ty n, gam'' : Vect Ty n)
   interpTy (Choice x y) = Either x y
   interpTy (a :-> b) = a -> interpTy b
 
-  data HasType : Vect Ty n -> Fin n -> Ty -> Type where
+  data HasType : Vect n Ty -> Fin n -> Ty -> Type where
        stop : HasType (a :: gam) fZ a
        pop  : HasType gam i b -> HasType (a :: gam) (fS i) b
 
-  data Env : Vect Ty n -> Type where
+  data Env : Vect n Ty -> Type where
        Nil : Env Nil
        (::) : interpTy a -> Env gam -> Env (a :: gam)
 
@@ -57,7 +57,7 @@ using (i: Fin n, gam : Vect Ty n, gam' : Vect Ty n, gam'' : Vect Ty n)
   envLookup stop    (x :: xs) = x
   envLookup (pop k) (x :: xs) = envLookup k xs
 
-  update : (gam : Vect Ty n) -> HasType gam i b -> Ty -> Vect Ty n
+  update : (gam : Vect n Ty) -> HasType gam i b -> Ty -> Vect n Ty
   update (x :: xs) stop    y = y :: xs
   update (x :: xs) (pop k) y = x :: update xs k y
   update Nil       stop    _ impossible
@@ -79,7 +79,7 @@ using (i: Fin n, gam : Vect Ty n, gam' : Vect Ty n, gam'' : Vect Ty n)
   envTail : Env (a :: gam) -> Env gam
   envTail (x :: xs) = xs
 
-  data Args  : Vect Ty n -> List Type -> Type where
+  data Args  : Vect n Ty -> List Type -> Type where
        ANil  : Args gam []
        ACons : HasType gam i a -> 
                Args gam as -> Args gam (interpTy a :: as)
@@ -88,7 +88,7 @@ using (i: Fin n, gam : Vect Ty n, gam' : Vect Ty n, gam'' : Vect Ty n)
   funTy list.Nil t = t
   funTy (a :: as) t = a :-> funTy as t
 
-  data Res : Vect Ty n -> Vect Ty n -> Ty -> Type where
+  data Res : Vect n Ty -> Vect n Ty -> Ty -> Type where
 
 {-- Resource creation and usage. 'Let' creates a resource - the type
     at the end means that the resource must have been consumed by the time
@@ -164,5 +164,5 @@ dsl res
    index_first = stop
    index_next = pop
 
-syntax RES [x] = {gam:Vect Ty n} -> Res gam gam (R x)
+syntax RES [x] = {gam:Vect n Ty} -> Res gam gam (R x)
 

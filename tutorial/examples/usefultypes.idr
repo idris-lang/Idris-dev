@@ -1,11 +1,11 @@
 
-intVec : Vect Int 5
+intVec : Vect 5 Int
 intVec = [1, 2, 3, 4, 5]
 
 double : Int -> Int
 double x = x * 2
 
-vec : (n ** Vect Int n)
+vec : (n ** Vect n Int)
 vec = (_ ** [3, 4])
 
 list_lookup : Nat -> List a -> Maybe a

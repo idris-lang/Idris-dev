@@ -2,8 +2,8 @@ module Main
 
 record Foo : Nat -> Type where
     MkFoo : (name : String) ->
-            (things : Vect a n) ->
-            (more_things : Vect b m) ->
+            (things : Vect n a) ->
+            (more_things : Vect m b) ->
             Foo n
 
 record Person : Type where

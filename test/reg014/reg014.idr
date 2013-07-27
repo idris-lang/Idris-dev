@@ -1,7 +1,7 @@
 module reg014
 
 Matrix : Type -> Nat -> Nat -> Type
-Matrix a n m = Vect (Vect a m) n
+Matrix a n m = Vect n (Vect m a)
 
 transpose : Matrix a (S n) (S m) -> Matrix a (S m) (S n)
 transpose ((x:: []) :: []) = [[x]]

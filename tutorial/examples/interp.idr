@@ -7,13 +7,13 @@ interpTy TyInt       = Int
 interpTy TyBool      = Bool
 interpTy (TyFun s t) = interpTy s -> interpTy t
 
-using (G : Vect Ty n) 
+using (G : Vect n Ty) 
 
-  data Env : Vect Ty n -> Type where
+  data Env : Vect n Ty -> Type where
       Nil  : Env Nil
       (::) : interpTy a -> Env G -> Env (a :: G)
 
-  data HasType : (i : Fin n) -> Vect Ty n -> Ty -> Type where
+  data HasType : (i : Fin n) -> Vect n Ty -> Ty -> Type where
       stop : HasType fZ (t :: G) t
       pop  : HasType k G t -> HasType (fS k) (u :: G) t
 
@@ -21,7 +21,7 @@ using (G : Vect Ty n)
   lookup stop    (x :: xs) = x
   lookup (pop k) (x :: xs) = lookup k xs
 
-  data Expr : Vect Ty n -> Ty -> Type where
+  data Expr : Vect n Ty -> Ty -> Type where
       Var : HasType i G t -> Expr G t
       Val : (x : Int) -> Expr G TyInt
       Lam : Expr (a :: G) t -> Expr G (TyFun a t)

@@ -342,7 +342,7 @@ have types. For example:
 *universe> :t Nat
 Nat : Type
 *universe> :t Vect
-Vect : Type -> Nat -> Type
+Vect : Nat -> Type -> Type
 
 \end{SaveVerbatim}
 \useverb{typetypes} 
@@ -353,13 +353,13 @@ But what about the type of \texttt{Type}? If we ask \Idris{} it reports
 \begin{SaveVerbatim}{setset}
 
 *universe> :t Type
-Type : Type
+Type : Type 1
 
 \end{SaveVerbatim}
 \useverb{setset} 
 
 \noindent
-It \emph{appears} that \texttt{Type} is its own type. This would lead to an inconsitency
+If \texttt{Type} were its own type, it would lead to an inconsitency
 due to Girard's paradox~\cite{girard-thesis}, so internally there is a \emph{hierarchy}
 of types (or \emph{universes}):
 
