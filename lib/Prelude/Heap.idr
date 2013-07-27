@@ -27,7 +27,7 @@ isEmpty Empty = True
 isEmpty _     = False
 
 total size : MaxiphobicHeap a -> Nat
-size Empty          = O
+size Empty          = Z
 size (Node s l e r) = s
 
 isValidHeap : Ord a => MaxiphobicHeap a -> Bool
@@ -148,7 +148,7 @@ absurdBoolDischarge p = replace {P = disjointTy} p ()
     disjointTy False  = ()
     disjointTy True   = _|_
 
-total isEmptySizeZero : (h : MaxiphobicHeap a) -> (isEmpty h = True) -> size h = O
+total isEmptySizeZero : (h : MaxiphobicHeap a) -> (isEmpty h = True) -> size h = Z
 isEmptySizeZero Empty          p = refl
 isEmptySizeZero (Node s l e r) p = ?isEmptySizeZeroNodeAbsurd
 

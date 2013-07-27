@@ -33,7 +33,7 @@ mutual
       JSObject : JObject fs -> JSON (JSONObject fs)
 
 index : (i : Fin n) -> JSON (JSONArray n ts) -> JSON (index i ts)
-index fO     (JSArray (x :: xs)) = x
+index fZ     (JSArray (x :: xs)) = x
 index (fS i) (JSArray (x :: xs)) = index i (JSArray xs)
 
 infixl 8 ++

@@ -14,11 +14,11 @@ using (G : Vect Ty n)
       (::) : interpTy a -> Env G -> Env (a :: G)
 
 --   data HasType : (i : Fin n) -> Vect Ty n -> Ty -> Type where
---       stop : HasType fO (t :: G) t
+--       stop : HasType fZ (t :: G) t
 --       pop  : HasType k G t -> HasType (fS k) (u :: G) t
 
   lookup : (i:Fin n) -> Env G -> interpTy (lookup i G)
-  lookup fO     (x :: xs) = x
+  lookup fZ     (x :: xs) = x
   lookup (fS i) (x :: xs) = lookup i xs
 
   data Expr : Vect Ty n -> Ty -> Type where
@@ -41,32 +41,32 @@ using (G : Vect Ty n)
   interp env (Bind v f)  = interp env (f (interp env v))
  
   eId : Expr G (TyFun TyInt TyInt)
-  eId = Lam (Var fO)
+  eId = Lam (Var fZ)
 
   eTEST : Expr G (TyFun TyInt (TyFun TyInt TyInt))
-  eTEST = Lam (Lam (Var (fS fO)))
+  eTEST = Lam (Lam (Var (fS fZ)))
 
   eAdd : Expr G (TyFun TyInt (TyFun TyInt TyInt))
-  eAdd = Lam (Lam (Op prim__addInt (Var fO) (Var (fS fO))))
+  eAdd = Lam (Lam (Op prim__addInt (Var fZ) (Var (fS fZ))))
   
 --   eDouble : Expr G (TyFun TyInt TyInt)
---   eDouble = Lam (App (App (Lam (Lam (Op' (+) (Var fO) (Var (fS fO))))) (Var fO)) (Var fO))
+--   eDouble = Lam (App (App (Lam (Lam (Op' (+) (Var fZ) (Var (fS fZ))))) (Var fZ)) (Var fZ))
   
   eDouble : Expr G (TyFun TyInt TyInt)
-  eDouble = Lam (App (App eAdd (Var fO)) (Var fO))
+  eDouble = Lam (App (App eAdd (Var fZ)) (Var fZ))
  
   app : |(f : Expr G (TyFun a t)) -> Expr G a -> Expr G t
   app = \f, a => App f a
 
   eFac : Expr G (TyFun TyInt TyInt)
-  eFac = Lam (If (Op (==) (Var fO) (Val 0))
-                 (Val 1) (Op (*) (app eFac (Op (-) (Var fO) (Val 1))) (Var fO)))
+  eFac = Lam (If (Op (==) (Var fZ) (Val 0))
+                 (Val 1) (Op (*) (app eFac (Op (-) (Var fZ) (Val 1))) (Var fZ)))
 
   -- Exercise elaborator: Complicated way of doing \x y => x*4 + y*2
   
   eProg : Expr G (TyFun TyInt (TyFun TyInt TyInt))
-  eProg = Lam (Lam (Bind (App eDouble (Var (fS fO)))
-              (\x => Bind (App eDouble (Var fO))
+  eProg = Lam (Lam (Bind (App eDouble (Var (fS fZ)))
+              (\x => Bind (App eDouble (Var fZ))
               (\y => Bind (App eDouble (Val x))
               (\z => App (App eAdd (Val y)) (Val z))))))
 

@@ -3,7 +3,7 @@ module Data.SortedMap
 -- TODO: write merge and split
 
 data Tree : Nat -> Type -> Type -> Type where
-  Leaf : k -> v -> Tree O k v
+  Leaf : k -> v -> Tree Z k v
   Branch2 : Tree n k v -> k -> Tree n k v -> Tree (S n) k v
   Branch3 : Tree n k v -> k -> Tree n k v -> k -> Tree n k v -> Tree (S n) k v
 
@@ -123,7 +123,7 @@ treeInsert k v t =
     Right (a, b, c) => Right (Branch2 a b c)
 
 delType : Nat -> Type -> Type -> Type
-delType O k v = ()
+delType Z k v = ()
 delType (S n) k v = Tree n k v
 
 treeDelete : Ord k => k -> Tree n k v -> Either (Tree n k v) (delType n k v)
@@ -132,7 +132,7 @@ treeDelete k (Leaf k' v) =
     Right ()
   else
     Left (Leaf k' v)
-treeDelete {n=S O} k (Branch2 t1 k' t2) =
+treeDelete {n=S Z} k (Branch2 t1 k' t2) =
   if k <= k' then
     case treeDelete k t1 of
       Left t1' => Left (Branch2 t1' k' t2)
@@ -141,7 +141,7 @@ treeDelete {n=S O} k (Branch2 t1 k' t2) =
     case treeDelete k t2 of
       Left t2' => Left (Branch2 t1 k' t2')
       Right () => Right t1
-treeDelete {n=S O} k (Branch3 t1 k1 t2 k2 t3) =
+treeDelete {n=S Z} k (Branch3 t1 k1 t2 k2 t3) =
   if k <= k1 then
     case treeDelete k t1 of
       Left t1' => Left (Branch3 t1' k1 t2 k2 t3)
@@ -201,7 +201,7 @@ lookup _ Empty = Nothing
 lookup k (M _ t) = treeLookup k t
 
 insert : Ord k => k -> v -> SortedMap k v -> SortedMap k v
-insert k v Empty = M O (Leaf k v)
+insert k v Empty = M Z (Leaf k v)
 insert k v (M _ t) =
   case treeInsert k v t of
     Left t' => (M _ t')
@@ -209,7 +209,7 @@ insert k v (M _ t) =
 
 delete : Ord k => k -> SortedMap k v -> SortedMap k v
 delete _ Empty = Empty
-delete k (M O t) =
+delete k (M Z t) =
   case treeDelete k t of
     Left t' => (M _ t')
     Right () => Empty

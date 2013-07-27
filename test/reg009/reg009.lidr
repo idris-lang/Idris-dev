@@ -6,7 +6,7 @@
 > filterTagP : (p  : alpha -> Bool) -> 
 >              (as : Vect alpha n) -> 
 >              so (isAnyBy p (n ** as)) ->
->              (m : Nat ** (Vect (a : alpha ** so (p a)) m, so (m > O)))
+>              (m : Nat ** (Vect (a : alpha ** so (p a)) m, so (m > Z)))
 > filterTagP {n = S m} p (a :: as) q with (p a)
 >   | True  = (_
 >              ** 

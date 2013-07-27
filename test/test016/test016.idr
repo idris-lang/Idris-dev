@@ -8,7 +8,7 @@ countFrom : Int -> Stream Int
 countFrom x = x :: countFrom (x + 1)
 
 take : Nat -> Stream a -> List a
-take O _ = []
+take Z _ = []
 take (S n) (x :: xs) = x :: take n xs
 take n [] = []
 

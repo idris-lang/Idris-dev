@@ -5,8 +5,8 @@ module scg
 data Ord = Zero | Suc Ord | Sup (Nat -> Ord)
 
 natElim : (n : Nat) -> (P : Nat -> Type) ->
-          (P O) -> ((n : Nat) -> (P n) -> (P (S n))) -> (P n)
-natElim O     P mO mS = mO
+          (P Z) -> ((n : Nat) -> (P n) -> (P (S n))) -> (P n)
+natElim Z     P mO mS = mO
 natElim (S k) P mO mS = mS k (natElim k P mO mS)
 
 ordElim : (x : Ord) ->
@@ -23,10 +23,10 @@ ordElim (Sup f) P mZ mSuc mSup =
 myplus' : Nat -> Nat -> Nat
 myplus : Nat -> Nat -> Nat
 
-myplus O y     = y
+myplus Z y     = y
 myplus (S k) y = S (myplus' k y)
 
-myplus' O y     = y
+myplus' Z y     = y
 myplus' (S k) y = S (myplus y k)
 
 mnubBy : (a -> a -> Bool) -> List a -> List a
@@ -46,23 +46,23 @@ vtrans [] _         = []
 vtrans (x :: xs) ys = x :: vtrans ys ys
 
 even : Nat -> Bool
-even O = True
+even Z = True
 even (S k) = odd k
   where
     odd : Nat -> Bool
-    odd O = False
+    odd Z = False
     odd (S k) = even k
 
 ack : Nat -> Nat -> Nat
-ack O     n     = S n
-ack (S m) O     = ack m (S O)
+ack Z     n     = S n
+ack (S m) Z     = ack m (S Z)
 ack (S m) (S n) = ack m (ack (S m) n) 
 
 data Bin = eps | c0 Bin | c1 Bin
 
 foo : Bin -> Nat
-foo eps = O
-foo (c0 eps) = O
+foo eps = Z
+foo (c0 eps) = Z
 foo (c0 (c1 x)) = S (foo (c1 x))
 foo (c0 (c0 x)) = foo (c0 x)
 foo (c1 x) = S (foo x)
@@ -70,19 +70,19 @@ foo (c1 x) = S (foo x)
 bar : Nat -> Nat -> Nat
 bar x y = mp x y where
   mp : Nat -> Nat -> Nat
-  mp O y = y
+  mp Z y = y
   mp (S k) y = S (bar k y)
 
 total mfib : Nat -> Nat
-mfib O         = O
-mfib (S O)     = S O
+mfib Z         = Z
+mfib (S Z)     = S Z
 mfib (S (S n)) = mfib (S n) + mfib n
 
 maxCommutative : (left : Nat) -> (right : Nat) ->
   maximum left right = maximum right left
-maxCommutative O        O         = refl
-maxCommutative (S left) O         = refl
-maxCommutative O        (S right) = refl
+maxCommutative Z        Z         = refl
+maxCommutative (S left) Z         = refl
+maxCommutative Z        (S right) = refl
 maxCommutative (S left) (S right) =
     let inductiveHypothesis = maxCommutative left right in
         ?maxCommutativeStepCase

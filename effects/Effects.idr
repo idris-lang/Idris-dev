@@ -63,13 +63,13 @@ rebuildEnv (x :: xs) SubNil      [] = x :: xs
 
 -- some proof automation
 findEffElem : Nat -> List (TTName, Binder TT) -> TT -> Tactic -- Nat is maximum search depth
-findEffElem O ctxt goal = Refine "Here" `Seq` Solve 
+findEffElem Z ctxt goal = Refine "Here" `Seq` Solve
 findEffElem (S n) ctxt goal = GoalType "EffElem" 
           (Try (Refine "Here" `Seq` Solve)
                (Refine "There" `Seq` (Solve `Seq` findEffElem n ctxt goal)))
 
 findSubList : Nat -> List (TTName, Binder TT) -> TT -> Tactic
-findSubList O ctxt goal = Refine "SubNil" `Seq` Solve
+findSubList Z ctxt goal = Refine "SubNil" `Seq` Solve
 findSubList (S n) ctxt goal
    = GoalType "SubList" 
          (Try (Refine "subListId" `Seq` Solve)

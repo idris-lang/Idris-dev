@@ -10,7 +10,7 @@ import Prelude.Nat
 infixr 7 :: 
 
 data Vect : Type -> Nat -> Type where
-  Nil  : Vect a O
+  Nil  : Vect a Z
   (::) : a -> Vect a n -> Vect a (S n)
 
 --------------------------------------------------------------------------------
@@ -32,17 +32,17 @@ init (x::[])    = []
 init (x::y::ys) = x :: init (y::ys)
 
 index : Fin n -> Vect a n -> a
-index fO     (x::xs) = x
+index fZ     (x::xs) = x
 index (fS k) (x::xs) = index k xs
-index fO     [] impossible
+index fZ     [] impossible
 
 deleteAt : Fin (S n) -> Vect a (S n) -> Vect a n
-deleteAt           fO     (x::xs) = xs
+deleteAt           fZ     (x::xs) = xs
 deleteAt {n = S m} (fS k) (x::xs) = x :: deleteAt k xs
 deleteAt           _      [] impossible
 
 replaceAt : Fin n -> t -> Vect t n -> Vect t n
-replaceAt fO y (x::xs) = y::xs
+replaceAt fZ y (x::xs) = y::xs
 replaceAt (fS k) y (x::xs) = x :: replaceAt k y xs
 
 --------------------------------------------------------------------------------
@@ -50,13 +50,13 @@ replaceAt (fS k) y (x::xs) = x :: replaceAt k y xs
 --------------------------------------------------------------------------------
 
 take : Fin n -> Vect a n -> (p ** Vect a p)
-take fO     xs      = (_ ** [])
+take fZ     xs      = (_ ** [])
 take (fS k) []      impossible
 take (fS k) (x::xs) with (take k xs)
   | (_ ** tail) = (_ ** x::tail)
 
 drop : Fin n -> Vect a n -> (p ** Vect a p)
-drop fO     xs      = (_ ** xs)
+drop fZ     xs      = (_ ** xs)
 drop (fS k) []      impossible
 drop (fS k) (x::xs) = drop k xs
 
@@ -81,7 +81,7 @@ fromList (x::xs) = x :: fromList xs
 (++) (x::xs) ys = x :: xs ++ ys
 
 replicate : (n : Nat) -> a -> Vect a n
-replicate O     x = []
+replicate Z     x = []
 replicate (S k) x = x :: replicate k x
 
 --------------------------------------------------------------------------------
@@ -322,7 +322,7 @@ range =
   reverse range_
  where
   range_ : Vect (Fin n) n
-  range_ {n=O} = Nil
+  range_ {n=Z} = Nil
   range_ {n=(S _)} = last :: map weaken range_
 
 --------------------------------------------------------------------------------

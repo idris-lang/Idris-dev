@@ -81,7 +81,7 @@ syntax. Natural numbers and lists, for example, can be declared as follows:
 
 \begin{SaveVerbatim}{natlist}
 
-data Nat    = O   | S Nat           -- Natural numbers
+data Nat    = Z   | S Nat           -- Natural numbers
                                     -- (zero and successor)
 data List a = Nil | (::) a (List a) -- Polymorphic lists
 
@@ -90,7 +90,7 @@ data List a = Nil | (::) a (List a) -- Polymorphic lists
 
 \noindent
 The above declarations are taken from the standard library. Unary natural
-numbers can be either zero (\texttt{O} - that's a capital letter 'o', not the digit), or
+numbers can be either zero (\texttt{Z}), or
 the successor of another natural number (\texttt{S k}). 
 Lists can either be empty (\texttt{Nil})
 or a value added to the front of another list (\texttt{x :: xs}).
@@ -132,12 +132,12 @@ defined as follows, again taken from the standard library:
 
 -- Unary addition
 plus : Nat -> Nat -> Nat
-plus O     y = y
+plus Z     y = y
 plus (S k) y = S (plus k y)
 
 -- Unary multiplication
 mult : Nat -> Nat -> Nat
-mult O     y = O
+mult Z     y = Z
 mult (S k) y = plus y (mult k y)
 
 \end{SaveVerbatim}
@@ -148,7 +148,7 @@ The standard arithmetic operators \texttt{+} and \texttt{*} are also overloaded
 for use by \texttt{Nat}, and are implemented
 using the above functions.  Unlike Haskell, there is no restriction on whether
 types and function names must begin with a capital letter or not. Function
-names (\tFN{plus} and \tFN{mult} above), data constructors (\tDC{O}, \tDC{S},
+names (\tFN{plus} and \tFN{mult} above), data constructors (\tDC{Z}, \tDC{S},
 \tDC{Nil} and \tDC{::}) and type constructors (\tTC{Nat} and \tTC{List}) are
 all part of the same namespace.
 
@@ -156,10 +156,10 @@ We can test these functions at the \Idris{} prompt:
 
 \begin{SaveVerbatim}{fntest}
 
-Idris> plus (S (S O)) (S (S O))
-S (S (S (S O))) : Nat
-Idris> mult (S (S (S O))) (plus (S (S O)) (S (S O)))
-S (S (S (S (S (S (S (S (S (S (S (S O))))))))))) : Nat
+Idris> plus (S (S Z)) (S (S Z))
+S (S (S (S Z))) : Nat
+Idris> mult (S (S (S Z))) (plus (S (S Z)) (S (S Z)))
+S (S (S (S (S (S (S (S (S (S (S (S Z))))))))))) : Nat
 
 \end{SaveVerbatim}
 \useverb{fntest}
@@ -171,9 +171,9 @@ meaning that we can also test the functions as follows:
 \begin{SaveVerbatim}{fntest}
 
 Idris> plus 2 2 
-S (S (S (S O))) : Nat
+S (S (S (S Z))) : Nat
 Idris> mult 3 (plus 2 2)
-S (S (S (S (S (S (S (S (S (S (S (S O))))))))))) : Nat
+S (S (S (S (S (S (S (S (S (S (S (S Z))))))))))) : Nat
 
 \end{SaveVerbatim}
 \useverb{fntest}
@@ -252,13 +252,13 @@ So, for example, the following definitions are legal:
 \begin{SaveVerbatim}{whereinfer}
 
 even : Nat -> Bool 
-even O = True 
+even Z = True
 even (S k) = odd k where 
-  odd O = False 
+  odd Z = False
   odd (S k) = even k 
 
 test : List Nat
-test = [c (S 1), c O, d (S O)]
+test = [c (S 1), c Z, d (S Z)]
   where c x = 42 + x
         d y = c (y + 1 + z y)
               where z w = y + w
@@ -278,7 +278,7 @@ we declare vectors as follows:
 \begin{SaveVerbatim}{vect}
 
 data Vect : Type -> Nat -> Type where
-   Nil  : Vect a O
+   Nil  : Vect a Z
    (::) : a -> Vect a k -> Vect a (S k)
 
 \end{SaveVerbatim}
@@ -366,12 +366,12 @@ data Fin : Nat -> Type where
 \useverb{findecl}
 
 \noindent
-\tDC{fO} is the zeroth element of a finite set with \texttt{S k} elements; 
+\tDC{fO} is the zeroth element of a finite set with \texttt{S k} elements;
 \texttt{fS n} is the
 \texttt{n+1}th element of a finite set with \texttt{S k} elements. 
 \tTC{Fin} is indexed by a \tTC{Nat}, which
 represents the number of elements in the set. Obviously we can't construct an
-element of an empty set, so neither constructor targets \texttt{Fin O}.
+element of an empty set, so neither constructor targets \texttt{Fin Z}.
 
 A useful application of the \tTC{Fin} family is to represent bounded
 natural numbers. Since the first \tTC{n} natural numbers form a finite
@@ -384,7 +384,7 @@ by a bounded index given as a \tTC{Fin n}, is defined in the prelude:
 \begin{SaveVerbatim}{vindex}
 
 index : Fin n -> Vect a n -> a
-index fO     (x :: xs) = x
+index fZ     (x :: xs) = x
 index (fS k) (x :: xs) = index k xs
 
 \end{SaveVerbatim}
@@ -397,10 +397,10 @@ need for a run-time bounds check. The type checker guarantees that the location
 is no larger than the length of the vector.
 
 Note also that there is no case for \texttt{Nil} here. This is because it is
-impossible. Since there is no element of \texttt{Fin O}, and the location is a
-\texttt{Fin n}, then \texttt{n} can not be \tDC{O}.  As a result, attempting to
+impossible. Since there is no element of \texttt{Fin Z}, and the location is a
+\texttt{Fin n}, then \texttt{n} can not be \tDC{Z}.  As a result, attempting to
 look up an element in an empty vector would give a compile time type error,
-since it would force \texttt{n} to be \tDC{O}.
+since it would force \texttt{n} to be \tDC{Z}.
 
 \subsubsection{Implicit Arguments}
 
@@ -438,7 +438,7 @@ can still be given explicitly in applications, using \texttt{\{a=value\}} and
 
 \begin{SaveVerbatim}{vindexexp}
 
-index {a=Int} {n=2} fO (2 :: 3 :: Nil)
+index {a=Int} {n=2} fZ (2 :: 3 :: Nil)
 
 \end{SaveVerbatim}
 \useverb{vindexexp}
@@ -520,11 +520,11 @@ data types and functions to be defined simultaneously:
 
 mutual
   even : Nat -> Bool
-  even O = True
+  even Z = True
   even (S k) = odd k
 
   odd : Nat -> Bool
-  odd O = False
+  odd Z = False
   odd (S k) = even k
 
 \end{SaveVerbatim}
@@ -663,7 +663,7 @@ We have already seen the \texttt{List} and \texttt{Vect} data types:
 data List a = Nil | (::) a (List a)
 
 data Vect : Type -> Nat -> Type where
-   Nil  : Vect a O
+   Nil  : Vect a Z
    (::) : a -> Vect a k -> Vect a (S k)
 
 \end{SaveVerbatim}
@@ -787,7 +787,7 @@ bounds error:
 
 list_lookup : Nat -> List a -> Maybe a
 list_lookup _     Nil       = Nothing
-list_lookup O     (x :: xs) = Just x
+list_lookup Z     (x :: xs) = Just x
 list_lookup (S k) (x :: xs) = list_lookup k xs
 
 \end{SaveVerbatim}

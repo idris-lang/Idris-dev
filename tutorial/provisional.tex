@@ -22,8 +22,8 @@ We'd like to implement this as follows:
 \begin{SaveVerbatim}{parfail}
 
 parity : (n:Nat) -> Parity n
-parity O     = even {n=O}
-parity (S O) = odd {n=O}
+parity Z     = even {n=Z}
+parity (S Z) = odd {n=Z}
 parity (S (S k)) with (parity k)
   parity (S (S (j + j)))     | even = even {n=S j}
   parity (S (S (S (j + j)))) | odd  = odd {n=S j}
@@ -77,8 +77,8 @@ except that they introduce the right hand side with a \texttt{?=} rathar than
 \begin{SaveVerbatim}{paritypro}
 
 parity : (n:Nat) -> Parity n
-parity O     = even {n=O}
-parity (S O) = odd {n=O}
+parity Z     = even {n=Z}
+parity (S Z) = odd {n=Z}
 parity (S (S k)) with (parity k)
   parity (S (S (j + j)))     | even ?= even {n=S j}
   parity (S (S (S (j + j)))) | odd  ?= odd {n=S j}
@@ -231,7 +231,7 @@ case \texttt{Nat}):
 \begin{SaveVerbatim}{bindef}
 
 data Binary : Nat -> Type where
-   bEnd : Binary O
+   bEnd : Binary Z
    bO : Binary n -> Binary (n + n)
    bI : Binary n -> Binary (S (n + n))
 
@@ -263,7 +263,7 @@ provisional definition in the odd case:
 \begin{SaveVerbatim}{ntbdef}
 
 natToBin : (n:Nat) -> Binary n
-natToBin O = bEnd
+natToBin Z = bEnd
 natToBin (S k) with (parity k)
    natToBin (S (j + j))     | even  = bI (natToBin j)
    natToBin (S (S (j + j))) | odd  ?= bO (natToBin (S j))
