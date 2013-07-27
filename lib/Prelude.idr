@@ -216,6 +216,11 @@ instance Applicative List where
 
     fs <$> vs = concatMap (\f => map f vs) fs
 
+instance Applicative (Vect k) where
+    pure = replicate _
+
+    fs <$> vs = zipWith ($) fs vs
+
 ---- Alternative instances
 
 instance Alternative Maybe where
@@ -244,6 +249,9 @@ instance Monad (Either e) where
 
 instance Monad List where 
     m >>= f = concatMap f m
+
+instance Monad (Vect n) where
+    m >>= f = diag (map f m)
 
 ---- some mathematical operations
 
