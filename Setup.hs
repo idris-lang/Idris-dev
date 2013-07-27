@@ -78,6 +78,8 @@ installLLVMLib verbosity pkg local copy =
     let idir = datadir $ L.absoluteInstallDirs pkg local copy in
     make verbosity ["-C", "llvm", "install", "TARGET=" ++ idir </> "llvm"]
 
+buildLLVMLib verbosity = make verbosity ["-C", "llvm", "all"]
+
 installJavaPom pkg local verbosity copy version = do
   putStrLn $ "Installing java pom template" 
   let dir = datadir $ L.absoluteInstallDirs pkg local copy
@@ -169,6 +171,7 @@ main = do
               cleanJavaPom verb
         , postBuild = \ _ flags _ lbi -> do
               let verb = S.fromFlag $ S.buildVerbosity flags
+              when (llvmFlag $ configFlags lbi) (buildLLVMLib verb)
               let withoutEffects = noEffectsFlag $ configFlags lbi
               checkStdLib lbi withoutEffects verb
         }
