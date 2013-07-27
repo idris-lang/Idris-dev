@@ -14,7 +14,10 @@ import LLVM.General.Context
 import LLVM.General.Diagnostic
 import LLVM.General.AST
 import LLVM.General.AST.AddrSpace
-import LLVM.General.Target hiding (Target)
+import LLVM.General.Target ( TargetMachine
+                           , withTargetOptions, withTargetMachine, getTargetMachineDataLayout
+                           , initializeAllTargets, lookupTarget
+                           )
 import LLVM.General.AST.DataLayout
 import LLVM.General.PassManager
 import qualified LLVM.General.Module as M
