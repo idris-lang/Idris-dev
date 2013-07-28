@@ -104,9 +104,9 @@ unzip ((l, r)::xs) with (unzip xs)
 -- Maps
 --------------------------------------------------------------------------------
 
-map : (a -> b) -> Vect n a -> Vect n b
-map f []        = []
-map f (x::xs) = f x :: map f xs
+instance Functor (Vect n) where
+  map f []        = []
+  map f (x::xs) = f x :: map f xs
 
 -- XXX: causes Idris to enter an infinite loop when type checking in the REPL
 --mapMaybe : (a -> Maybe b) -> Vect n a -> (p ** Vect b p)
@@ -145,10 +145,10 @@ total or : Vect m Bool -> Bool
 or = foldr (||) False
 
 total any : (a -> Bool) -> Vect m a -> Bool
-any p = Vect.or . Vect.map p
+any p = Vect.or . map p
 
 total all : (a -> Bool) -> Vect m a -> Bool
-all p = Vect.and . Vect.map p
+all p = Vect.and . map p
 
 --------------------------------------------------------------------------------
 -- Transformations
@@ -316,6 +316,10 @@ catMaybes []             = (_ ** [])
 catMaybes (Nothing::xs)  = catMaybes xs
 catMaybes ((Just j)::xs) with (catMaybes xs)
   | (_ ** tail) = (_ ** j::tail)
+
+diag : Vect n (Vect n a) -> Vect n a
+diag [] = []
+diag ((x::xs)::xss) = x :: diag (map tail xss)
 
 range : Vect n (Fin n)
 range =
