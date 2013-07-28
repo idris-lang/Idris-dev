@@ -7,6 +7,7 @@ import Core.Evaluate
 
 import Control.Monad
 import Control.Monad.State
+import Data.List
 import Debug.Trace
 
 -- Unification is applied inside the theorem prover. We're looking for holes
@@ -124,8 +125,7 @@ unify ctxt env topx topy dont holes =
                      case runStateT (un False [] topxn topyn)
         	  	        (UI 0 []) of
                        OK (v, UI _ fails) -> 
-                            return (filter notTrivial v, 
-                                    reverse fails)
+                            return (filter notTrivial v, reverse fails)
 --         Error e@(CantUnify False _ _ _ _ _)  -> tfail e
         	       Error e -> tfail e
   where
@@ -213,7 +213,38 @@ unify ctxt env topx topy dont holes =
     un' fn bnames (P _ x _) (V i)
         | fst (bnames!!i) == x || snd (bnames!!i) == x = do sc 1; return []
 
-    un' fn bnames appx@(App fx ax) appy@(App fy ay)
+    un' fn bnames appx@(App _ _) appy@(App _ _) 
+        = unApp fn bnames appx appy
+--         = uplus (unApp fn bnames appx appy)
+--                 (unifyTmpFail appx appy) -- take the whole lot
+
+    un' fn bnames x (Bind n (Lam t) (App y (P Bound n' _)))
+        | n == n' = un' False bnames x y
+    un' fn bnames (Bind n (Lam t) (App x (P Bound n' _))) y
+        | n == n' = un' False bnames x y
+    un' fn bnames x (Bind n (Lam t) (App y (V 0)))
+        = un' False bnames x y
+    un' fn bnames (Bind n (Lam t) (App x (V 0))) y
+        = un' False bnames x y
+--     un' fn bnames (Bind x (PVar _) sx) (Bind y (PVar _) sy) 
+--         = un' False ((x,y):bnames) sx sy
+--     un' fn bnames (Bind x (PVTy _) sx) (Bind y (PVTy _) sy) 
+--         = un' False ((x,y):bnames) sx sy
+    un' fn bnames (Bind x bx sx) (Bind y by sy) 
+        = do h1 <- uB bnames bx by
+             h2 <- un' False ((x,y):bnames) sx sy
+             combine bnames h1 h2
+    un' fn bnames x y 
+        | OK True <- convEq' ctxt x y = do sc 1; return []
+        | otherwise = do UI s f <- get
+                         let r = recoverable x y
+                         let err = CantUnify r
+                                     topx topy (CantUnify r x y (Msg "") [] s) (errEnv env) s
+                         if (not r) then lift $ tfail err
+                           else do put (UI s ((x, y, env, err) : f))
+                                   return [] -- lift $ tfail err
+
+    unApp fn bnames appx@(App fx ax) appy@(App fy ay) 
          | (injective fx && injective fy)
         || (injective fx && rigid appx && metavarApp appy)
         || (injective fy && rigid appy && metavarApp appx)
@@ -244,15 +275,17 @@ unify ctxt env topx topy dont holes =
             do let (headx, argsx) = unApply appx
                let (heady, argsy) = unApply appy
                -- traceWhen (headx == heady) (show (appx, appy)) $
-               if (length argsx == length argsy && 
-                   ((headx == heady && inenv headx) || (argsx == argsy) ||
-                    (and (zipWith sameStruct (headx:argsx) (heady:argsy)))))
-                      then
---                     (notFn headx && notFn heady))) then
-                 do uf <- un' True bnames headx heady
-                    unArgs uf argsx argsy
-                 else -- trace ("TMPFAIL " ++ show (appx, appy, injective appx, injective appy)) $ 
-                        unifyTmpFail appx appy
+               uplus (
+                 if (length argsx == length argsy && 
+                    ((headx == heady && inenv headx) || (argsx == argsy) ||
+                     (and (zipWith sameStruct (headx:argsx) (heady:argsy)))))
+                       then
+--                      (notFn headx && notFn heady))) then
+                   do uf <- un' True bnames headx heady
+                      unArgs uf argsx argsy
+                   else -- trace ("TMPFAIL " ++ show (appx, appy, injective appx, injective appy)) $ 
+                        unifyTmpFail appx appy)
+                    (unifyTmpFail appx appy) -- whole application fails
       where hnormalise [] _ _ t = t
             hnormalise ns ctxt env t = normalise ctxt env t
             checkHeads (P (DCon _ _) x _) (P (DCon _ _) y _)
@@ -275,10 +308,13 @@ unify ctxt env topx topy dont holes =
 
             metavarApp tm = let (f, args) = unApply tm in
                                 all (\x -> metavar x) (f : args)
+                                   && nub args == args
             metavarArgs tm = let (f, args) = unApply tm in
                                  all (\x -> metavar x || inenv x) args
+                                   && nub args == args
             metavarApp' tm = let (f, args) = unApply tm in
                                  all (\x -> pat x || metavar x) (f : args)
+                                   && nub args == args
 
             sameArgStruct appx appy 
                 = let (_, ax) = unApply appx
@@ -322,38 +358,13 @@ unify ctxt env topx topy dont holes =
 
             notFn t = injective t || metavar t || inenv t 
 
-    un' fn bnames x (Bind n (Lam t) (App y (P Bound n' _)))
-        | n == n' = un' False bnames x y
-    un' fn bnames (Bind n (Lam t) (App x (P Bound n' _))) y
-        | n == n' = un' False bnames x y
-    un' fn bnames x (Bind n (Lam t) (App y (V 0)))
-        = un' False bnames x y
-    un' fn bnames (Bind n (Lam t) (App x (V 0))) y
-        = un' False bnames x y
---     un' fn bnames (Bind x (PVar _) sx) (Bind y (PVar _) sy) 
---         = un' False ((x,y):bnames) sx sy
---     un' fn bnames (Bind x (PVTy _) sx) (Bind y (PVTy _) sy) 
---         = un' False ((x,y):bnames) sx sy
-    un' fn bnames (Bind x bx sx) (Bind y by sy) 
-        = do h1 <- uB bnames bx by
-             h2 <- un' False ((x,y):bnames) sx sy
-             combine bnames h1 h2
-    un' fn bnames x y 
-        | OK True <- convEq' ctxt x y = do sc 1; return []
-        | otherwise = do UI s f <- get
-                         let r = recoverable x y
-                         let err = CantUnify r
-                                     topx topy (CantUnify r x y (Msg "") [] s) (errEnv env) s
-                         if (not r) then lift $ tfail err
-                           else do put (UI s ((x, y, env, err) : f))
-                                   return [] -- lift $ tfail err
 
     unifyTmpFail x y 
                   = do UI s f <- get
                        let r = recoverable x y
                        let err = CantUnify r
                                    topx topy (CantUnify r x y (Msg "") [] s) (errEnv env) s
-                       put (UI s ((x, y, env, err) : f))
+                       put (UI s ((topx, topy, env, err) : f))
                        return []
 
     -- shortcut failure, if we *know* nothing can fix it
@@ -361,7 +372,7 @@ unify ctxt env topx topy dont holes =
                        let r = recoverable x y
                        let err = CantUnify r
                                    topx topy (CantUnify r x y (Msg "") [] s) (errEnv env) s
-                       put (UI s ((x, y, env, err) : f))
+                       put (UI s ((topx, topy, env, err) : f))
                        lift $ tfail err
 
 

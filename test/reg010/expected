@@ -1,4 +1,4 @@
 reg010.idr:5:Can't unify P x with P y
 
 Specifically:
-	Can't unify x with y
+	Can't unify P x with P y
