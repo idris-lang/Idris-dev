@@ -1,6 +1,7 @@
 module Prelude.Vect
 
 import Prelude.Fin
+import Prelude.Functor
 import Prelude.List
 import Prelude.Nat
 
