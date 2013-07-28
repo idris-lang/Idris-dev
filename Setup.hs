@@ -119,7 +119,7 @@ checkStdLib local withoutEffects verbosity
                ]
 
 llvmFlag flags = 
-  case lookup (FlagName "LLVM") (S.configConfigurationsFlags flags) of
+  case lookup (FlagName "llvm") (S.configConfigurationsFlags flags) of
     Just True -> True
     Just False -> False
     Nothing -> True
