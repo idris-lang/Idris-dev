@@ -322,12 +322,8 @@ diag [] = []
 diag ((x::xs)::xss) = x :: diag (map tail xss)
 
 range : Vect n (Fin n)
-range =
-  reverse range_
- where
-  range_ : Vect n (Fin n)
-  range_ {n=Z} = Nil
-  range_ {n=(S _)} = last :: map weaken range_
+range {n=Z} = []
+range {n=S _} = fZ :: map fS range
 
 --------------------------------------------------------------------------------
 -- Proofs
