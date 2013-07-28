@@ -48,10 +48,10 @@ match_unify ctxt env topx topy dont holes =
   where
     un names (P _ x _) tm
         | holeIn env x || x `elem` holes
-            = do sc 1; checkCycle (x, tm)
+            = do sc 1; checkCycle names (x, tm)
     un names tm (P _ y _)
         | holeIn env y || y `elem` holes
-            = do sc 1; checkCycle (y, tm)
+            = do sc 1; checkCycle names (y, tm)
     un bnames (V i) (P _ x _)
         | fst (bnames!!i) == x || snd (bnames!!i) == x = do sc 1; return []
     un bnames (P _ x _) (V i)
@@ -93,10 +93,18 @@ match_unify ctxt env topx topy dont holes =
                           sc 1
                           combine bnames as (ns' ++ bs)
 
-    checkCycle p@(x, P _ _ _) = return [p] 
-    checkCycle (x, tm) 
-        | not (x `elem` freeNames tm) = return [(x, tm)]
+    checkCycle ns p@(x, P _ _ _) = return [p] 
+    checkCycle ns (x, tm) 
+        | not (x `elem` freeNames tm) = checkScope ns (x, tm)
         | otherwise = lift $ tfail (InfiniteUnify x tm (errEnv env)) 
+
+    checkScope ns (x, tm) =
+          case boundVs (envPos x 0 env) tm of
+               [] -> return [(x, tm)]
+               (i:_) -> lift $ tfail (UnifyScope x (fst (ns!!i)) 
+                                     (inst ns tm) (errEnv env))
+      where inst [] tm = tm
+            inst ((n, _) : ns) tm = inst ns (substV (P Bound n Erased) tm)
 
 notTrivial (x, P _ x' _) = x /= x'
 notTrivial _ = True
@@ -195,7 +203,7 @@ unify ctxt env topx topy dont holes =
 --                                 put (UI s ((tm, topx, topy) : i) f)
                                  then unifyTmpFail xtm tm 
                                  else do sc 1
-                                         checkCycle (x, tm)
+                                         checkCycle bnames (x, tm)
         | not (injective xtm) && injective tm = unifyFail xtm tm
     un' fn bnames tm ytm@(P _ y _)
         | holeIn env y || y `elem` holes
@@ -206,7 +214,7 @@ unify ctxt env topx topy dont holes =
 --                                 put (UI s ((tm, topx, topy) : i) f)
                                  then unifyTmpFail tm ytm
                                  else do sc 1
-                                         checkCycle (y, tm)
+                                         checkCycle bnames (y, tm)
         | not (injective ytm) && injective tm = unifyFail ytm tm
     un' fn bnames (V i) (P _ x _)
         | fst (bnames!!i) == x || snd (bnames!!i) == x = do sc 1; return []
@@ -398,11 +406,18 @@ unify ctxt env topx topy dont holes =
                        put (UI s ((binderTy x, binderTy y, env, err) : f))
                        return [] -- lift $ tfail err
 
-    checkCycle p@(x, P _ _ _) = return [p] 
-    checkCycle (x, tm) 
-        | not (x `elem` freeNames tm) = return [(x, tm)]
+    checkCycle ns p@(x, P _ _ _) = return [p] 
+    checkCycle ns (x, tm) 
+        | not (x `elem` freeNames tm) = checkScope ns (x, tm)
         | otherwise = lift $ tfail (InfiniteUnify x tm (errEnv env)) 
 
+    checkScope ns (x, tm) =
+          case boundVs (envPos x 0 env) tm of
+               [] -> return [(x, tm)]
+               (i:_) -> lift $ tfail (UnifyScope x (fst (ns!!i)) 
+                                     (inst ns tm) (errEnv env))
+      where inst [] tm = tm
+            inst ((n, _) : ns) tm = inst ns (substV (P Bound n Erased) tm)
 
     combineArgs bnames args = ca [] args where
        ca acc [] = return acc
@@ -418,6 +433,20 @@ unify ctxt env topx topy dont holes =
                           let ns' = filter (\ (x, _) -> x/=n) ns
                           sc 1
                           combine bnames as (ns' ++ bs)
+
+boundVs :: Int -> Term -> [Int]
+boundVs i (V j) | j <= i = []
+                | otherwise = [j]
+boundVs i (Bind n b sc) = boundVs (i + 1) sc
+boundVs i (App f x) = let fs = boundVs i f 
+                          xs = boundVs i x in
+                          nub (fs ++ xs)
+boundVs i _ = []
+
+envPos x i [] = 0
+envPos x i ((y, _) : ys) | x == y = i
+                         | otherwise = envPos x (i + 1) ys
+
 
 -- If there are any clashes of constructors, deem it unrecoverable, otherwise some
 -- more work may help.

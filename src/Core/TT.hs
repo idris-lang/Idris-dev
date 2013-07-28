@@ -60,6 +60,7 @@ data Err = Msg String
               -- unification succeed
          | InfiniteUnify Name Term [(Name, Type)]
          | CantConvert Term Term [(Name, Type)]
+         | UnifyScope Name Name Term [(Name, Type)]
          | CantInferType String
          | NonFunctionType Term Term
          | CantIntroduce Term
@@ -86,6 +87,7 @@ instance Sized Err where
   size (CantUnify _ left right err _ score) = size left + size right + size err
   size (InfiniteUnify _ right _) = size right
   size (CantConvert left right _) = size left + size right
+  size (UnifyScope _ _ right _) = size right
   size (NoSuchVariable name) = size name
   size (NoTypeDecl name) = size name
   size (NotInjective l c r) = size l + size c + size r
@@ -589,6 +591,15 @@ instantiate e = subst 0 where
     subst i (App f a) = App (subst i f) (subst i a)
     subst i (Proj x idx) = Proj (subst i x) idx 
     subst i t = t
+
+substV :: TT n -> TT n -> TT n
+substV x tm = dropV 0 (instantiate x tm) where
+    dropV i (V x) | x > i = V (x - 1)
+                  | otherwise = V x
+    dropV i (Bind x b sc) = Bind x (fmap (dropV i) b) (dropV (i+1) sc)
+    dropV i (App f a) = App (dropV i f) (dropV i a)
+    dropV i (Proj x idx) = Proj (dropV i x) idx
+    dropV i t = t
 
 explicitNames :: TT n -> TT n
 explicitNames (Bind x b sc) = let b' = fmap explicitNames b in

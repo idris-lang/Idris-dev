@@ -112,6 +112,12 @@ pshow i (CantConvert x y env)
           "Can't convert " ++ showImp imps (delab i x) ++ " with " 
                  ++ showImp imps (delab i y) ++
                  if (opt_errContext (idris_options i)) then showSc i env else ""
+pshow i (UnifyScope n out tm env) 
+    = let imps = opt_showimp (idris_options i) in
+          "Can't unify " ++ show n ++ " with " 
+                 ++ showImp imps (delab i tm) ++ " as " ++ show out ++
+                 " is not in scope" ++
+                 if (opt_errContext (idris_options i)) then showSc i env else ""
 pshow i (CantInferType t)
     = "Can't infer type for " ++ t
 pshow i (NonFunctionType f ty)
