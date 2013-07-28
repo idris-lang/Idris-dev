@@ -109,7 +109,7 @@ elements of vectors of the same length:
 
 \begin{SaveVerbatim}{vadd}
 
-vAdd : Num a => Vect a n -> Vect a n -> Vect a n
+vAdd : Num a => Vect n a -> Vect n -> Vect n a
 vAdd []        []        = []
 vAdd (x :: xs) (y :: ys) = x + y :: vAdd xs ys
 
@@ -143,14 +143,14 @@ The \TT{} translation of \texttt{vAdd} is:
 \DM{
 \AR{
 \FN{vAdd} \Hab(\va\Hab\Type)\to(\vn\Hab\Nat)\to\TC{Num}\;\va\to
-  \Vect\;\va\;\vn\to\Vect\;\va\;\vn\to\Vect\;\va\;\vn\\
+  \Vect\;\vn\;\va\to\Vect\;\vn\;\va\to\Vect\;\vn\;\va\\
 \RW{var}\;\va\Hab\Type,\;\vc\Hab\TC{Num}\;\va\SC\\
 \hg\FN{vAdd} \; \va \; \Z \; \vc \; (\DC{Nil}\;\va) \; (\DC{Nil}\;\va) \; 
 \cq\;\DC{Nil}\;\va \\
 \RW{var}\;\AR{
 \va\Hab\Type,\;\vk\Hab\Nat,\;\vc\Hab\TC{Num}\;\va,\\
-\vx\Hab\va,\;\vxs\Hab\Vect\;\va\;\vk,\;
-\vy\Hab\va,\;\vys\Hab\Vect\;\va\;\vk
+\vx\Hab\va,\;\vxs\Hab\Vect\;\vk\;\va,\;
+\vy\Hab\va,\;\vys\Hab\Vect\;\vk\;\va
 \SC
 \\
 \FN{vAdd} \; \va \; (\suc\;\vk) \; \vc 

@@ -457,10 +457,10 @@ For example, consider the following proof term:
 
 \DM{
 \AR{
-\hole{\vA}{\Type}\SC\hole{\vk}{\Nat}\SC
-\hole{\vx}{\vA}\SC\hole{\vxs}{\Vect\;\vA\;\vk}\SC
+\hole{\va}{\Type}\SC\hole{\vk}{\Nat}\SC
+\hole{\vx}{\va}\SC\hole{\vxs}{\Vect\;\vk\;\va}\SC
 \\
-\hole{\vys}{\Vect\;\vA\;(\suc\;\vk)}\SC\vys
+\hole{\vys}{\Vect\;(\suc\;\vk)\;\va}\SC\vys
 }
 }
 
@@ -481,9 +481,9 @@ Therefore the resulting proof term is:
 \DM{
 \AR{
 \hole{\vk}{\Nat}\SC
-\guess{\vx}{\TC{Int}}{42}\SC\hole{\vxs}{\Vect\;\TC{Int}\;\vk}\SC
+\guess{\vx}{\TC{Int}}{42}\SC\hole{\vxs}{\Vect\;\vk\;\TC{Int}}\SC
 \\
-\hole{\vys}{\Vect\;\TC{Int}\;(\suc\;\vk)}\SC\vys
+\hole{\vys}{\Vect\;(\suc\;\vk)\;\TC{Int}}\SC\vys
 }
 }
 
@@ -895,7 +895,7 @@ of \texttt{vAdd}:
 
 \begin{SaveVerbatim}{vAddImpT}
 
-vAdd : Num a => Vect a n -> Vect a n -> Vect a n
+vAdd : Num a => Vect n a -> Vect n a -> Vect n a
 
 \end{SaveVerbatim}
 \useverb{vAddImpT} 
@@ -907,7 +907,7 @@ type declaration:
 \begin{SaveVerbatim}{vAddImpT}
 
 vAdd : (a : _) -> (n : _) -> (c : Num a) -> 
-       (xs : Vect a n) -> (ys : Vect a n) -> Vect a n
+       (xs : Vect n a) -> (ys : Vect n a) -> Vect n a
 
 \end{SaveVerbatim}
 \useverb{vAddImpT} 
@@ -1016,8 +1016,8 @@ elaboration of expressions. \IdrisM{} expression syntax is given in Figure
 \IdrisM{} is a subset of \Idris{} without syntactic sugar --- that is, without
 \texttt{do}-notation or infix operators --- and with implicit
 arguments in types bound explicitly 
-(e.g. $\piimp{\va}{\_}\piimp{\vn}{\_}\TC{Vect}\;\va\;\vn$
-instead of simply $\Vect\;\va\;\vn$).
+(e.g. $\piimp{\va}{\_}\piimp{\vn}{\_}\TC{Vect}\;\vn\;\va$
+instead of simply $\Vect\;\vn\;\va$).
 Note that we separate implicit and type constraint bindings, to ensure that they
 only appear in top level declarations.
 It is in general straightforward to
@@ -1816,7 +1816,7 @@ the vector append function, containing a metavariable \texttt{append\_rec}:
 
 \begin{SaveVerbatim}{vappmv}
 
-(++) : Vect a n -> Vect a m -> Vect a (n + m)
+(++) : Vect n a -> Vect m a -> Vect (n + m) a
 Nil       ++ ys = ys
 (x :: xs) ++ ys = x :: ?append_rec
 
@@ -1832,7 +1832,7 @@ We can inspect the type of \texttt{append\_rec} at the \Idris{} prompt:
 
 *vec> :t append_rec
 append_rec : (a : Type) -> (m : Nat) -> (n : Nat) -> a -> 
-             Vect a n -> Vect a m -> Vect a (n + m)
+             Vect n a -> Vect m a -> Vect (n + m) a
 
 \end{SaveVerbatim}
 \useverb{appendrec} 
