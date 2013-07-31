@@ -4,10 +4,12 @@ New in 0.9.9:
 * Apply functions by return type, rather than with arguments:
   "t <== f" means "apply f with arguments such that it returns a value
   of type t"
+* Allow the result type of a rewrite to be specified
 * Allow names to be attached to provisional definitions
   lhs ?= {name} rhs -- generates a lemma called 'name' which makes the
   types of the lhs and rhs match. {name} is optional - a unique name is
   generated if it is absent.
+* Experimental LLVM backend
 * Added Data.HVect module
 * Fix fromInteger to take an Integer, rather than an Int
 * Integer literals for Fin
