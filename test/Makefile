@@ -1,5 +1,9 @@
-test:
-	perl ./runtest.pl all
+TESTS = $(sort $(patsubst %/,%.test,$(wildcard */)))
+
+test: $(TESTS)
+
+%.test:
+	@perl ./runtest.pl $(patsubst %.test,%,$@)
 
 test_java:
 	perl ./runtest.pl all --codegen Java
@@ -63,3 +67,5 @@ diff:
 distclean:
 	rm -f *~
 	rm -f */output
+
+.phony: test test_java test_js update diff distclean $(TESTS)

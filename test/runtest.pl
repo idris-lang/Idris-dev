@@ -9,7 +9,7 @@ sub runtest {
 
     chdir($test);
 
-    print "Running $test...";
+    print "Running $test...\n";
     $got = `sh ./run @idrOpts`;
     $exp = `cat expected`;
 
@@ -33,14 +33,14 @@ sub runtest {
     }
 
     if ($got eq $exp) {
-	print "success\n";
+	print "Ran $test...success\n";
     } else {
 	if ($update == 0) {
 	    $exitstatus = 1;
-	    print "FAILURE\n";
+	    print "Ran $test...FAILURE\n";
 	} else {
 	    system("cp output expected");
-	    print "UPDATED\n";
+	    print "Ran $test...UPDATED\n";
 	}
     }
     chdir("..");
