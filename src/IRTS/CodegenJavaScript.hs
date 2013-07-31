@@ -2,7 +2,7 @@
 
 module IRTS.CodegenJavaScript (codegenJavaScript, JSTarget(..)) where
 
-import Idris.AbsSyntax
+import Idris.AbsSyntax hiding (TypeCase)
 import IRTS.Bytecode
 import IRTS.Lang
 import IRTS.Simplified
@@ -14,15 +14,186 @@ import Util.System
 import Control.Arrow
 import Data.Char
 import Data.List
-import qualified Data.Map as Map
 import System.IO
 import System.Directory
 
 idrNamespace :: String
-idrNamespace = "__IDR__"
+idrNamespace   = "__IDR__"
 idrRTNamespace = "__IDRRT__"
 
 data JSTarget = Node | JavaScript deriving Eq
+
+data JSType = JSIntTy
+            | JSStringTy
+            | JSIntegerTy
+            | JSFloatTy
+            | JSCharTy
+            | JSPtrTy
+            | JSForgotTy
+            deriving Eq
+
+data JSNum = JSInt Int
+           | JSFloat Double
+           | JSInteger Integer
+
+data JS = JSRaw String
+        | JSFunction [String] JS
+        | JSType JSType
+        | JSSeq [JS]
+        | JSReturn JS
+        | JSApp JS [JS]
+        | JSNew String [JS]
+        | JSError String
+        | JSOp String JS JS
+        | JSProj JS String
+        | JSVar LVar
+        | JSNull
+        | JSThis
+        | JSTrue
+        | JSArray [JS]
+        | JSObject [(String, JS)]
+        | JSString String
+        | JSNum JSNum
+        | JSAssign JS JS
+        | JSAlloc String (Maybe JS)
+        | JSIndex JS JS
+        | JSCond [(JS, JS)]
+
+compileJS :: JS -> String
+compileJS (JSRaw code) =
+  code
+
+compileJS (JSFunction args body) =
+     "function("
+   ++ intercalate "," args
+   ++ "){\n"
+   ++ compileJS body
+   ++ "\n}"
+
+compileJS (JSType ty)
+  | JSIntTy     <- ty = idrRTNamespace ++ "Int"
+  | JSStringTy  <- ty = idrRTNamespace ++ "String"
+  | JSIntegerTy <- ty = idrRTNamespace ++ "Integer"
+  | JSFloatTy   <- ty = idrRTNamespace ++ "Float"
+  | JSCharTy    <- ty = idrRTNamespace ++ "Char"
+  | JSPtrTy     <- ty = idrRTNamespace ++ "Ptr"
+  | JSForgotTy  <- ty = idrRTNamespace ++ "Forgot"
+
+compileJS (JSSeq seq) =
+  intercalate ";\n" (map compileJS seq)
+
+compileJS (JSReturn val) =
+  "return " ++ compileJS val
+
+compileJS (JSApp lhs rhs)
+  | JSFunction {} <- lhs =
+    concat ["(", compileJS lhs, ")(", args, ")"]
+  | otherwise =
+    concat [compileJS lhs, "(", args, ")"]
+  where args :: String
+        args = intercalate "," $ map compileJS rhs
+
+compileJS (JSNew name args) =
+  "new " ++ name ++ "(" ++ intercalate "," (map compileJS args) ++ ")"
+
+compileJS (JSError exc) =
+  "(function(){throw '" ++ exc ++ "';})()"
+
+compileJS (JSOp op lhs rhs) =
+  compileJS lhs ++ " " ++ op ++ " " ++ compileJS rhs
+
+compileJS (JSProj obj field)
+  | JSFunction {} <- obj =
+    concat ["(", compileJS obj, ").", field]
+  | otherwise =
+    compileJS obj ++ '.' : field
+
+compileJS (JSVar var) =
+  translateVariableName var
+
+compileJS JSNull =
+  "null"
+
+compileJS JSThis =
+  "this"
+
+compileJS JSTrue =
+  "true"
+
+compileJS (JSArray elems) =
+  "[" ++ intercalate "," (map compileJS elems) ++ "]"
+
+compileJS (JSObject fields) =
+  "{" ++ intercalate ",\n" (map compileField fields) ++ "}"
+  where
+    compileField :: (String, JS) -> String
+    compileField (name, val) = '\'' : name ++ "' : "  ++ compileJS val
+
+compileJS (JSString str) =
+  show str
+
+compileJS (JSNum num)
+  | JSInt i     <- num = show i
+  | JSFloat f   <- num = show f
+  | JSInteger i <- num = show i
+
+compileJS (JSAssign lhs rhs) =
+  compileJS lhs ++ "=" ++ compileJS rhs
+
+compileJS (JSAlloc name val) =
+  "var " ++ name ++ maybe "" ((" = " ++) . compileJS) val
+
+compileJS (JSIndex lhs rhs) =
+  compileJS lhs ++ "[" ++ compileJS rhs ++ "]"
+
+compileJS (JSCond branches) =
+  intercalate " else " $ map createIfBlock branches
+  where
+    createIfBlock (cond, e) =
+         "if (" ++ compileJS cond ++") {\n"
+      ++ "return " ++ compileJS e
+      ++ ";\n}"
+
+jsTailcall :: JS -> JS
+jsTailcall call =
+  jsCall (idrRTNamespace ++ "tailcall") [
+    JSFunction [] (JSReturn call)
+  ]
+
+jsCall :: String -> [JS] -> JS
+jsCall fun = JSApp (JSRaw fun)
+
+jsMeth :: JS -> String -> [JS] -> JS
+jsMeth obj meth =
+  JSApp (JSProj obj meth)
+
+jsInstanceOf :: JS -> JS -> JS
+jsInstanceOf = JSOp "instanceof"
+
+jsEq :: JS -> JS -> JS
+jsEq = JSOp "=="
+
+jsAnd :: JS -> JS -> JS
+jsAnd = JSOp "&&"
+
+jsType :: JS
+jsType = JSRaw $ idrRTNamespace ++ "Type"
+
+jsCon :: JS
+jsCon = JSRaw $ idrRTNamespace ++ "Con"
+
+jsTag :: JS -> JS
+jsTag obj = (JSProj obj "tag")
+
+jsTypeTag :: JS -> JS
+jsTypeTag obj = (JSProj obj "type")
+
+jsBigInt :: JS -> JS
+jsBigInt val =
+  JSApp (JSRaw $ idrRTNamespace ++ "bigInt") [val]
+
+jsVar :: Int -> String
+jsVar = ("__var_" ++) . show
 
 codegenJavaScript
   :: JSTarget
@@ -39,26 +210,29 @@ codegenJavaScript target definitions filename outputType = do
   path <- getDataDir
   idrRuntime <- readFile $ path ++ "/js/Runtime-common.js"
   tgtRuntime <- readFile $ concat [path, "/js/Runtime", runtime, ".js"]
-  writeFile filename ( header
-                   ++ idrRuntime
-                   ++ tgtRuntime
-                   ++ functions
-                   ++ mainLoop)
+  writeFile filename $ intercalate "\n" $ [ header
+                                          , idrRuntime
+                                          , tgtRuntime
+                                          ] ++ functions ++ [mainLoop]
 
   setPermissions filename (emptyPermissions { readable   = True
                                             , executable = target == Node
                                             , writable   = True
                                             })
   where
+    def :: [(String, SDecl)]
     def = map (first translateNamespace) definitions
- 
-    functions = concatMap translateDeclaration def
+
+    functions :: [String]
+    functions = map (compileJS . translateDeclaration) def
 
     mainLoop :: String
-    mainLoop = intercalate "\n" [ "\nfunction main() {"
-                                , createTailcall "__IDR__runMain0()"
-                                , "}\n\nmain();\n"
-                                ]
+    mainLoop = compileJS $
+      JSSeq [ JSAlloc "main" $ Just $ JSFunction [] (
+                jsTailcall $ jsCall "__IDR__runMain0" []
+              )
+            , jsCall "main" []
+            ]
 
 translateIdentifier :: String -> String
 translateIdentifier =
@@ -99,14 +273,14 @@ translateIdentifier =
                    , "void"
                    , "while"
                    , "with"
-                   
+
                    , "class"
                    , "enum"
                    , "export"
                    , "extends"
                    , "import"
                    , "super"
-                   
+
                    , "implements"
                    , "interface"
                    , "let"
@@ -128,106 +302,102 @@ translateName (UN name)   = translateIdentifier name
 translateName (NS name _) = translateName name
 translateName (MN i name) = translateIdentifier name ++ show i
 
-translateConstant :: Const -> String
-translateConstant (I i)   = show i
-translateConstant (BI i)  = idrRTNamespace ++ "bigInt('" ++ show i ++ "')"
-translateConstant (Fl f)  = show f
-translateConstant (Ch c)  = show c
-translateConstant (Str s) = show s
-translateConstant (AType (ATInt ITNative)) = idrRTNamespace ++ "Int"
-translateConstant StrType = idrRTNamespace ++ "String"
-translateConstant (AType (ATInt ITBig)) = idrRTNamespace ++ "Integer"
-translateConstant (AType ATFloat)  = idrRTNamespace ++ "Float"
-translateConstant (AType (ATInt ITChar)) = idrRTNamespace ++ "Char"
-translateConstant PtrType = idrRTNamespace ++ "Ptr"
-translateConstant Forgot  = idrRTNamespace ++ "Forgot"
-translateConstant c       =
-  "(function(){throw 'Unimplemented Const: " ++ show c ++ "';})()"
+translateConstant :: Const -> JS
+translateConstant (I i)                    = JSNum (JSInt i)
+translateConstant (Fl f)                   = JSNum (JSFloat f)
+translateConstant (Ch c)                   = JSString [c]
+translateConstant (Str s)                  = JSString s
+translateConstant (AType (ATInt ITNative)) = JSType JSIntTy
+translateConstant StrType                  = JSType JSStringTy
+translateConstant (AType (ATInt ITBig))    = JSType JSIntegerTy
+translateConstant (AType ATFloat)          = JSType JSFloatTy
+translateConstant (AType (ATInt ITChar))   = JSType JSCharTy
+translateConstant PtrType                  = JSType JSPtrTy
+translateConstant Forgot                   = JSType JSForgotTy
+translateConstant (BI i)                   = jsBigInt $ JSNum (JSInteger i)
+translateConstant c =
+  JSError $ "Unimplemented Constant: " ++ show c
 
-translateParameterlist =
-  map translateParameter
-  where translateParameter (MN i name) = translateIdentifier name ++ show i
-        translateParameter (UN name) = translateIdentifier name
-
-translateDeclaration :: (String, SDecl) -> String
+translateDeclaration :: (String, SDecl) -> JS
 translateDeclaration (path, SFun name params stackSize body) =
-     "var " ++ path ++ translateName name
-  ++ " = function("
-  ++ intercalate "," p
-  ++ "){\n"
-  ++ concatMap assignVar (zip [0..] p)
-  ++ concatMap allocVar [numP..(numP+stackSize-1)]
-  ++ "return "
-  ++ translateExpression body
-  ++ ";\n};\n"
-  where 
+  JSAlloc (path ++ translateName name) $ Just $ JSFunction p (
+    JSSeq $
+    zipWith assignVar [0..] p ++
+    map allocVar [numP .. (numP + stackSize - 1)] ++
+    [JSReturn $ translateExpression body]
+  )
+  where
     numP :: Int
     numP = length params
 
-    allocVar :: Int -> String
-    allocVar n = "var __var_" ++ show n ++ ";\n"
+    allocVar :: Int -> JS
+    allocVar n = JSAlloc (jsVar n) Nothing
 
-    assignVar :: (Int, String) -> String
-    assignVar (n, s) = "var __var_" ++ show n ++ " = " ++ s ++ ";\n"
+    assignVar :: Int -> String -> JS
+    assignVar n s = JSAlloc (jsVar n)  (Just $ JSRaw s)
 
     p :: [String]
-    p = translateParameterlist params
+    p = map translateParameter params
+      where
+        translateParameter :: Name -> String
+        translateParameter (MN i name) =
+          translateIdentifier name ++ show i
+        translateParameter (UN name) =
+          translateIdentifier name
 
 translateVariableName :: LVar -> String
 translateVariableName (Loc i) =
-  "__var_" ++ show i
+  jsVar i
 
-translateExpression :: SExp -> String
+translateExpression :: SExp -> JS
 translateExpression (SLet name value body) =
-     "(function("
-  ++ translateVariableName name
-  ++ "){\nreturn "
-  ++ translateExpression body
-  ++ ";\n})("
-  ++ translateExpression value
-  ++ ")"
+     JSApp (
+        JSFunction [translateVariableName name] (
+          JSReturn $ translateExpression body
+        )
+      ) [translateExpression value]
 
 translateExpression (SConst cst) =
   translateConstant cst
 
 translateExpression (SV var) =
-  translateVariableName var
+  JSVar var
 
-translateExpression (SApp False name vars) =
-  createTailcall $ translateFunctionCall name vars
-
-translateExpression (SApp True name vars) =
-     "new " ++ idrRTNamespace ++ "Tailcall("
-  ++ "function(){\n"
-  ++ "return " ++ translateFunctionCall name vars
-  ++ ";\n})"
+translateExpression (SApp tc name vars)
+  | False <- tc =
+    jsTailcall $ translateFunctionCall name vars
+  | True <- tc =
+    JSNew (idrRTNamespace ++ "Tailcall") [JSFunction [] (
+      JSReturn $ translateFunctionCall name vars
+    )]
+  where
+    translateFunctionCall name vars =
+      jsCall (translateNamespace name ++ translateName name) (map JSVar vars)
 
 translateExpression (SOp op vars)
-  | LNoOp <- op = translateVariableName (last vars)
+  | LNoOp <- op = JSVar (last vars)
 
-  | (LZExt _ ITBig) <- op =
-      idrRTNamespace ++ "bigInt(" ++ translateVariableName (last vars) ++ ")"
-
+  | (LZExt _ ITBig) <- op = jsBigInt $ JSVar (last vars)
   | (LPlus (ATInt ITBig)) <- op
-  , (lhs:rhs:_) <- vars = translateBinaryOp ".add(" lhs rhs  ++ ")"
+  , (lhs:rhs:_) <- vars = invokeMeth lhs "add" [rhs]
   | (LMinus (ATInt ITBig)) <- op
-  , (lhs:rhs:_) <- vars = translateBinaryOp ".minus(" lhs rhs ++ ")"
+  , (lhs:rhs:_) <- vars = invokeMeth lhs "minus" [rhs]
   | (LTimes (ATInt ITBig)) <- op
-  , (lhs:rhs:_) <- vars = translateBinaryOp ".times(" lhs rhs ++ ")"
+  , (lhs:rhs:_) <- vars = invokeMeth lhs "times" [rhs]
   | (LSDiv (ATInt ITBig)) <- op
-  , (lhs:rhs:_) <- vars = translateBinaryOp ".divide(" lhs rhs ++ ")"
+  , (lhs:rhs:_) <- vars = invokeMeth lhs "divide" [rhs]
   | (LSRem (ATInt ITBig)) <- op
-  , (lhs:rhs:_) <- vars = translateBinaryOp ".mod(" lhs rhs ++ ")"
+  , (lhs:rhs:_) <- vars = invokeMeth lhs "mod" [rhs]
   | (LEq (ATInt ITBig)) <- op
-  , (lhs:rhs:_) <- vars = translateBinaryOp ".equals(" lhs rhs ++ ")"
+  , (lhs:rhs:_) <- vars = invokeMeth lhs "equals" [rhs]
   | (LLt (ATInt ITBig)) <- op
-  , (lhs:rhs:_) <- vars = translateBinaryOp ".lesser(" lhs rhs ++ ")"
+  , (lhs:rhs:_) <- vars = invokeMeth lhs "lesser" [rhs]
   | (LLe (ATInt ITBig)) <- op
-  , (lhs:rhs:_) <- vars = translateBinaryOp ".lesserOrEquals(" lhs rhs ++ ")"
+  , (lhs:rhs:_) <- vars = invokeMeth lhs "lesserOrEquals" [rhs]
   | (LGt (ATInt ITBig)) <- op
-  , (lhs:rhs:_) <- vars = translateBinaryOp ".greater(" lhs rhs ++ ")"
+  , (lhs:rhs:_) <- vars = invokeMeth lhs "greater" [rhs]
   | (LGe (ATInt ITBig)) <- op
-  , (lhs:rhs:_) <- vars = translateBinaryOp ".greaterOrEquals(" lhs rhs ++ ")"
+  , (lhs:rhs:_) <- vars = invokeMeth lhs "greaterOrEquals" [rhs]
 
   | (LPlus ATFloat)  <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp "+" lhs rhs
@@ -279,7 +449,7 @@ translateExpression (SOp op vars)
   | (LASHR _)   <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp ">>" rhs lhs
   | (LCompl _)  <- op
-  , (arg:_)     <- vars = '~' : translateVariableName arg
+  , (arg:_)     <- vars = JSRaw $ '~' : translateVariableName arg
 
   | LStrConcat  <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp "+" lhs rhs
@@ -288,126 +458,122 @@ translateExpression (SOp op vars)
   | LStrLt      <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp "<" lhs rhs
   | LStrLen     <- op
-  , (arg:_)     <- vars = translateVariableName arg ++ ".length"
+  , (arg:_)     <- vars = JSProj (JSVar arg) "length"
 
   | (LStrInt ITNative) <- op
-  , (arg:_)     <- vars = "parseInt(" ++ translateVariableName arg ++ ")"
+  , (arg:_)     <- vars = jsCall "parseInt" [JSVar arg]
   | (LIntStr ITNative) <- op
-  , (arg:_)     <- vars = "String(" ++ translateVariableName arg ++ ")"
+  , (arg:_)     <- vars = jsCall "String" [JSVar arg]
   | (LSExt ITNative ITBig) <- op
-  , (arg:_)     <- vars = idrRTNamespace ++ "bigInt(" ++ translateVariableName arg ++ ")"
+  , (arg:_)     <- vars = jsBigInt $ JSVar arg
   | (LTrunc ITBig ITNative) <- op
-  , (arg:_)     <- vars = translateVariableName arg ++ ".valueOf()"
+  , (arg:_)     <- vars = jsMeth (JSVar arg) "valueOf" []
   | (LIntStr ITBig) <- op
-  , (arg:_)     <- vars = translateVariableName arg ++ ".toString()"
+  , (arg:_)     <- vars = jsMeth (JSVar arg) "toString" []
   | (LStrInt ITBig) <- op
-  , (arg:_)     <- vars = idrRTNamespace ++ "bigInt(" ++ translateVariableName arg ++ ")"
+  , (arg:_)     <- vars = jsBigInt $ JSVar arg
   | LFloatStr   <- op
-  , (arg:_)     <- vars = "String(" ++ translateVariableName arg ++ ")"
+  , (arg:_)     <- vars = jsCall "String" [JSVar arg]
   | LStrFloat   <- op
-  , (arg:_)     <- vars = "parseFloat(" ++ translateVariableName arg ++ ")"
+  , (arg:_)     <- vars = jsCall "parseFloat" [JSVar arg]
   | (LIntFloat ITNative) <- op
-  , (arg:_)     <- vars = translateVariableName arg
+  , (arg:_)     <- vars = JSVar arg
   | (LFloatInt ITNative) <- op
-  , (arg:_)     <- vars = translateVariableName arg
+  , (arg:_)     <- vars = JSVar arg
   | (LChInt ITNative) <- op
-  , (arg:_)     <- vars = translateVariableName arg ++ ".charCodeAt(0)"
+  , (arg:_)     <- vars = JSProj (JSVar arg) "charCodeAt(0)"
   | (LIntCh ITNative) <- op
-  , (arg:_)     <- vars =
-    "String.fromCharCode(" ++ translateVariableName arg ++ ")"
+  , (arg:_)     <- vars = jsCall "String.fromCharCode" [JSVar arg]
 
   | LFExp       <- op
-  , (arg:_)     <- vars = "Math.exp(" ++ translateVariableName arg ++ ")"
+  , (arg:_)     <- vars = jsCall "Math.exp" [JSVar arg]
   | LFLog       <- op
-  , (arg:_)     <- vars = "Math.log(" ++ translateVariableName arg ++ ")"
+  , (arg:_)     <- vars = jsCall "Math.log" [JSVar arg]
   | LFSin       <- op
-  , (arg:_)     <- vars = "Math.sin(" ++ translateVariableName arg ++ ")"
+  , (arg:_)     <- vars = jsCall "Math.sin" [JSVar arg]
   | LFCos       <- op
-  , (arg:_)     <- vars = "Math.cos(" ++ translateVariableName arg ++ ")"
+  , (arg:_)     <- vars = jsCall "Math.cos" [JSVar arg]
   | LFTan       <- op
-  , (arg:_)     <- vars = "Math.tan(" ++ translateVariableName arg ++ ")"
+  , (arg:_)     <- vars = jsCall "Math.tan" [JSVar arg]
   | LFASin      <- op
-  , (arg:_)     <- vars = "Math.asin(" ++ translateVariableName arg ++ ")"
+  , (arg:_)     <- vars = jsCall "Math.asin" [JSVar arg]
   | LFACos      <- op
-  , (arg:_)     <- vars = "Math.acos(" ++ translateVariableName arg ++ ")"
+  , (arg:_)     <- vars = jsCall "Math.acos" [JSVar arg]
   | LFATan      <- op
-  , (arg:_)     <- vars = "Math.atan(" ++ translateVariableName arg ++ ")"
+  , (arg:_)     <- vars = jsCall "Math.atan" [JSVar arg]
   | LFSqrt      <- op
-  , (arg:_)     <- vars = "Math.sqrt(" ++ translateVariableName arg ++ ")"
+  , (arg:_)     <- vars = jsCall "Math.sqrt" [JSVar arg]
   | LFFloor     <- op
-  , (arg:_)     <- vars = "Math.floor(" ++ translateVariableName arg ++ ")"
+  , (arg:_)     <- vars = jsCall "Math.floor" [JSVar arg]
   | LFCeil      <- op
-  , (arg:_)     <- vars = "Math.ceil(" ++ translateVariableName arg ++ ")"
+  , (arg:_)     <- vars = jsCall "Math.ceil" [JSVar arg]
 
   | LStrCons    <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp "+" lhs rhs
   | LStrHead    <- op
-  , (arg:_)     <- vars = translateVariableName arg ++ "[0]"
+  , (arg:_)     <- vars = JSIndex (JSVar arg) (JSRaw "0")
   | LStrRev     <- op
-  , (arg:_)     <- vars = let v = translateVariableName arg in
-                              v ++ ".split('').reverse().join('')"
+  , (arg:_)     <- vars = JSProj (JSVar arg) "split('').reverse().join('')"
   | LStrIndex   <- op
-  , (lhs:rhs:_) <- vars = let l = translateVariableName lhs
-                              r = translateVariableName rhs in
-                              l ++ "[" ++ r ++ "]"
+  , (lhs:rhs:_) <- vars = JSIndex (JSVar lhs) (JSVar rhs)
   | LStrTail    <- op
   , (arg:_)     <- vars = let v = translateVariableName arg in
-                              v ++ ".substr(1," ++ v ++ ".length-1)"
+                              JSRaw $ v ++ ".substr(1," ++ v ++ ".length-1)"
   where
-    translateBinaryOp :: String -> LVar -> LVar -> String
-    translateBinaryOp f lhs rhs =
-         translateVariableName lhs
-      ++ f
-      ++ translateVariableName rhs
+    translateBinaryOp :: String -> LVar -> LVar -> JS
+    translateBinaryOp f lhs rhs = JSOp f (JSVar lhs) (JSVar rhs)
+
+    invokeMeth :: LVar -> String -> [LVar] -> JS
+    invokeMeth obj meth args = jsMeth (JSVar obj) meth (map JSVar args)
 
 translateExpression (SError msg) =
-  "(function(){throw \'" ++ msg ++ "\';})()"
+  JSError msg
 
 translateExpression (SForeign _ _ "putStr" [(FString, var)]) =
-  idrRTNamespace ++ "print(" ++ translateVariableName var ++ ")"
+  jsCall (idrRTNamespace ++ "print") [JSVar var]
 
 translateExpression (SForeign _ _ fun args)
   | "[]=" `isSuffixOf` fun
   , (obj:idx:val:[]) <- args =
-    concat [object obj, index idx, assign val]
+    JSRaw $ concat [object obj, index idx, assign val]
 
   | "[]" `isSuffixOf` fun
   , (obj:idx:[]) <- args =
-    object obj ++ index idx
+    JSRaw $ object obj ++ index idx
 
   | "[" `isPrefixOf` fun && "]=" `isSuffixOf` fun
   , (obj:val:[]) <- args =
-    concat [object obj, '[' : name ++ "]", assign val]
+    JSRaw $ concat [object obj, '[' : name ++ "]", assign val]
 
   | "[" `isPrefixOf` fun && "]" `isSuffixOf` fun
   , (obj:[]) <- args =
-    object obj ++ '[' : name ++ "]"
+    JSRaw $ object obj ++ '[' : name ++ "]"
 
   | "." `isPrefixOf` fun, "=" `isSuffixOf` fun
   , (obj:val:[]) <- args =
-    concat [object obj, field, assign val]
+    JSRaw $ concat [object obj, field, assign val]
 
   | "." `isPrefixOf` fun
   , (obj:[]) <- args =
-    object obj ++ field
+    JSRaw $ object obj ++ field
 
   | "." `isPrefixOf` fun
   , (obj:[(FUnit, _)]) <- args =
-    concat [object obj, method, "()"]
-    
+    JSRaw $ concat [object obj, method, "()"]
+
   | "." `isPrefixOf` fun
   , (obj:as) <- args =
-    concat [object obj, method, arguments as]
+    JSRaw $ concat [object obj, method, arguments as]
 
   | "[]=" `isSuffixOf` fun
   , (idx:val:[]) <- args =
-    concat [array, index idx, assign val]
+    JSRaw $ concat [array, index idx, assign val]
 
   | "[]" `isSuffixOf` fun
   , (idx:[]) <- args =
-    array ++ index idx
+    JSRaw $ array ++ index idx
 
-  | otherwise = fun ++ arguments args
+  | otherwise = JSRaw $ fun ++ arguments args
   where
     name         = filter (`notElem` "[]=") fun
     method       = name
@@ -420,101 +586,89 @@ translateExpression (SForeign _ _ fun args)
       '(' : intercalate "," (map generateWrapper as) ++ ")"
 
     generateWrapper (ffunc, name)
-      | FFunction   <- ffunc = idrRTNamespace ++ "ffiWrap(" ++ translateVariableName name ++ ")"
-      | FFunctionIO <- ffunc = idrRTNamespace ++ "ffiWrap(" ++ translateVariableName name ++ ")"
+      | FFunction   <- ffunc =
+        idrRTNamespace ++ "ffiWrap(" ++ translateVariableName name ++ ")"
+      | FFunctionIO <- ffunc =
+        idrRTNamespace ++ "ffiWrap(" ++ translateVariableName name ++ ")"
 
     generateWrapper (_, name) =
       translateVariableName name
 
-translateExpression (SChkCase var cases) =
-     "(function(e){\n"
-  ++ intercalate " else " (map (translateCase "e") cases)
-  ++ "\n})("
-  ++ translateVariableName var
-  ++ ")"
+translateExpression patterncase
+  | (SChkCase var cases) <- patterncase = caseHelper var cases "chk"
+  | (SCase var cases)    <- patterncase = caseHelper var cases "cse"
+  where
+    caseHelper var cases param =
+      JSApp (JSFunction [param] (
+        JSCond $ map ((expandCase param) . translateCase param) cases
+      )) [JSVar var]
 
-translateExpression (SCase var cases) = 
-     "(function(e){\n"
-  ++ intercalate " else " (map (translateCase "e") cases)
-  ++ "\n})("
-  ++ translateVariableName var
-  ++ ")"
+    expandCase :: String -> (Cond, JS) -> (JS, JS)
+    expandCase _ (RawCond cond, branch) = (cond, branch)
+    expandCase _ (CaseCond DefaultCase, branch) = (JSTrue , branch)
+    expandCase var (CaseCond caseTy, branch)
+      | ConCase tag <- caseTy =
+          let checkCon = JSRaw var `jsInstanceOf` jsCon
+              checkTag = (JSRaw $ show tag) `jsEq` jsTag (JSRaw var) in
+              (checkCon `jsAnd` checkTag, branch)
+
+      | TypeCase ty <- caseTy =
+          let checkTy  = JSRaw var `jsInstanceOf` jsType
+              checkTag = jsTypeTag (JSRaw var) `jsEq` JSType ty in
+              (checkTy `jsAnd` checkTag, branch)
 
 translateExpression (SCon i name vars) =
-  concat [ "new " ++ idrRTNamespace ++ "Con("
-         , show i
-         , ",["
-         , intercalate "," $ map translateVariableName vars
-         , "])"
-         ]
+  JSNew (idrRTNamespace ++ "Con") [ JSRaw $ show i
+                                  , JSArray $ map JSVar vars
+                                  ]
 
 translateExpression (SUpdate var e) =
-  translateVariableName var ++ " = " ++ translateExpression e
+  JSAssign (JSVar var) (translateExpression e)
 
 translateExpression (SProj var i) =
-  translateVariableName var ++ ".vars[" ++ show i ++"]"
+  JSIndex (JSProj (JSVar var) "vars") (JSRaw $ show i)
 
-translateExpression SNothing = "null"
+translateExpression SNothing = JSNull
 
 translateExpression e =
-     "(function(){throw 'Not yet implemented: "
-  ++ filter (/= '\'') (show e)
-  ++ "';})()"
+  JSError $ "Not yet implemented: " ++ filter (/= '\'') (show e)
 
-translateCase :: String -> SAlt -> String
+data CaseType = ConCase Int
+              | TypeCase JSType
+              | DefaultCase
+              deriving Eq
+
+data Cond = CaseCond CaseType
+          | RawCond JS
+
+translateCase :: String -> SAlt -> (Cond, JS)
 translateCase _ (SDefaultCase e) =
-  createIfBlock "true" (translateExpression e)
+  (CaseCond DefaultCase, translateExpression e)
 
 translateCase var (SConstCase ty e)
-  | StrType <- ty = matchHelper "String"
-  | PtrType <- ty = matchHelper "Ptr"
-  | Forgot  <- ty = matchHelper "Forgot"
-  | (AType ATFloat) <- ty = matchHelper "Float"
-  | (AType (ATInt ITBig)) <- ty = matchHelper "Integer"
-  | (AType (ATInt ITNative)) <- ty = matchHelper "Int"
-  | (AType (ATInt ITChar))  <- ty = matchHelper "Char"
+  | StrType                  <- ty = matchHelper JSStringTy
+  | PtrType                  <- ty = matchHelper JSPtrTy
+  | Forgot                   <- ty = matchHelper JSForgotTy
+  | (AType ATFloat)          <- ty = matchHelper JSFloatTy
+  | (AType (ATInt ITBig))    <- ty = matchHelper JSIntegerTy
+  | (AType (ATInt ITNative)) <- ty = matchHelper JSIntTy
+  | (AType (ATInt ITChar))   <- ty = matchHelper JSCharTy
   where
-    matchHelper tyName = translateTypeMatch var tyName e
+    matchHelper :: JSType -> (Cond, JS)
+    matchHelper ty = (CaseCond $ TypeCase ty, translateExpression e)
 
 translateCase var (SConstCase cst@(BI _) e) =
-  let cond = idrRTNamespace ++ "bigInt(" ++ var ++ ").equals(" ++ translateConstant cst ++ ")" in
-      createIfBlock cond (translateExpression e)
+  let cond = jsMeth (JSRaw var) "equals" [translateConstant cst] in
+      (RawCond cond, translateExpression e)
 
 translateCase var (SConstCase cst e) =
-  let cond = var ++ " == " ++ translateConstant cst in
-      createIfBlock cond (translateExpression e)
+  let cond = JSRaw var `jsEq` translateConstant cst in
+      (RawCond cond, translateExpression e)
 
-translateCase var (SConCase a i name vars e) =
-  let isCon = var ++ " instanceof " ++ idrRTNamespace ++ "Con"
-      isI = show i ++ " == " ++ var ++ ".i"
-      params = intercalate "," $ map (("__var_" ++) . show) [a..(a+length vars)]
-      args = ".apply(this," ++ var ++ ".vars)"
-      f b =
-           "(function("
-        ++ params 
-        ++ "){\nreturn " ++ b ++ "\n})" ++ args
-      cond = intercalate " && " [isCon, isI] in
-      createIfBlock cond $ f (translateExpression e)
-
-translateTypeMatch :: String -> String -> SExp -> String
-translateTypeMatch var ty exp =
-  let e = translateExpression exp in
-      createIfBlock (var
-                  ++ " instanceof " ++ idrRTNamespace ++ "Type && "
-                  ++ var ++ ".type == '"++ ty ++"'") e
-
-
-createIfBlock cond e =
-     "if (" ++ cond ++") {\n"
-  ++ "return " ++ e
-  ++ ";\n}"
-
-createTailcall call =
-  idrRTNamespace ++ "tailcall(function(){return " ++ call ++ "})"
-
-translateFunctionCall name vars =
-     translateNamespace name
-  ++ translateName name
-  ++ "("
-  ++ intercalate "," (map translateVariableName vars)
-  ++ ")"
+translateCase var (SConCase a tag name vars e) =
+  let params = map jsVar [a .. (a + length vars)] in
+      (CaseCond $ ConCase tag,
+        jsMeth (JSFunction params (JSReturn $ translateExpression e)) "apply" [
+          JSThis, JSProj (JSRaw var) "vars"
+        ]
+      )
