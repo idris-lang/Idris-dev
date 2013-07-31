@@ -64,7 +64,7 @@ testFac = interp [] fact 4
 unitTestFac : so (interp [] fact 4 == 24)
 unitTestFac = oh
 
-main : IO ()
+main : UnsafeIO ()
 main = do putStr "Enter a number: "
           x <- getLine
           print (interp [] fact (cast x)) 

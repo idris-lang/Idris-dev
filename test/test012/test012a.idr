@@ -6,5 +6,5 @@ f x = x + 1
 foo : Nat -> Nat
 foo (f x) = x
               
-main : IO ()
+main : UnsafeIO ()
 main = putStrLn (show (foo 1))

@@ -31,7 +31,7 @@ sumOfAllLengths : Nat
 sumOfAllLengths = foldl (\ l, s => l + (Strings.length s)) (Strings.length $ head all) (tail all)
 
 
-main : IO ()
+main : UnsafeIO ()
 main = do putStrLn $ "length of: '" ++ emptyString ++ "' is: " ++ (show $ length emptyString)
           putStrLn $ "length of: '" ++ helloWorld ++ "' is: " ++ (show $ length helloWorld)
           putStrLn $ "length of: '" ++ spaceOnly ++ "' is: " ++ (show $ length spaceOnly)

@@ -22,9 +22,9 @@ add_Output str st = record { Output = Output st ++ str } st
 
 abstract
 data CGI : Type -> Type where
-    MkCGI : (CGIInfo -> IO (a, CGIInfo)) -> CGI a
+    MkCGI : (CGIInfo -> UnsafeIO (a, CGIInfo)) -> CGI a
 
-getAction : CGI a -> CGIInfo -> IO (a, CGIInfo)
+getAction : CGI a -> CGIInfo -> UnsafeIO (a, CGIInfo)
 getAction (MkCGI act) = act
 
 instance Functor CGI where
@@ -50,7 +50,7 @@ getInfo : CGI CGIInfo
 getInfo = MkCGI (\s => return (s, s))
 
 abstract
-lift : IO a -> CGI a 
+lift : UnsafeIO a -> CGI a 
 lift op = MkCGI (\st => do { x <- op
                              return (x, st) } ) 
 
@@ -105,10 +105,10 @@ getVars seps query = mapMaybe readVar (split (\x => elem x seps) query)
         | [k, v] = Just (trim k, trim v)
         | _      = Nothing
 
-getContent : Int -> IO String
+getContent : Int -> UnsafeIO String
 getContent x = getC x "" where
     %assert_total
-    getC : Int -> String -> IO String
+    getC : Int -> String -> UnsafeIO String
     getC 0 acc = return $ reverse acc
     getC n acc = if (n > 0)
                     then do x <- getChar
@@ -116,7 +116,7 @@ getContent x = getC x "" where
                     else (return "")
 
 abstract
-runCGI : CGI a -> IO a
+runCGI : CGI a -> UnsafeIO a
 runCGI prog = do 
     clen_in <- getEnv "CONTENT_LENGTH"
     let clen = prim__fromStrInt clen_in

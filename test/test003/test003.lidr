@@ -4,5 +4,5 @@ Import the literate module
 
 > import Lit
 
-> main : IO ()
+> main : UnsafeIO ()
 > main = Lit.main

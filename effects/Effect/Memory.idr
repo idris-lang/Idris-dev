@@ -46,23 +46,23 @@ do_malloc size with (fromInteger (cast size) == size)
   | False = ioe_fail "The target architecture does not support adressing enough memory"
 
 private
-do_memset : Ptr -> Nat -> Bits8 -> Nat -> IO ()
+do_memset : Ptr -> Nat -> Bits8 -> Nat -> UnsafeIO ()
 do_memset ptr offset c size
   = mkForeign (FFun "idris_memset" [FPtr, FInt, FByte, FInt] FUnit)
               ptr (fromInteger $ cast offset) c (fromInteger $ cast size)
 
 private
-do_free : Ptr -> IO ()
+do_free : Ptr -> UnsafeIO ()
 do_free ptr = mkForeign (FFun "free" [FPtr] FUnit) ptr
 
 private
-do_memmove : Ptr -> Ptr -> Nat -> Nat -> Nat -> IO ()
+do_memmove : Ptr -> Ptr -> Nat -> Nat -> Nat -> UnsafeIO ()
 do_memmove dest src dest_offset src_offset size
   = mkForeign (FFun "idris_memmove" [FPtr, FPtr, FInt, FInt, FInt] FUnit)
               dest src (fromInteger $ cast dest_offset) (fromInteger $ cast src_offset) (fromInteger $ cast size)
 
 private
-do_peek : Ptr -> Nat -> (size : Nat) -> IO (Vect size Bits8)
+do_peek : Ptr -> Nat -> (size : Nat) -> UnsafeIO (Vect size Bits8)
 do_peek _   _       Z = return (Prelude.Vect.Nil)
 do_peek ptr offset (S n)
   = do b <- mkForeign (FFun "idris_peek" [FPtr, FInt] FByte) ptr (fromInteger $ cast offset)
@@ -70,7 +70,7 @@ do_peek ptr offset (S n)
        Prelude.Monad.return (Prelude.Vect.(::) b bs)
 
 private
-do_poke : Ptr -> Nat -> Vect size Bits8 -> IO ()
+do_poke : Ptr -> Nat -> Vect size Bits8 -> UnsafeIO ()
 do_poke _   _      []     = return ()
 do_poke ptr offset (b::bs)
   = do mkForeign (FFun "idris_poke" [FPtr, FInt, FByte] FUnit) ptr (fromInteger $ cast offset) b

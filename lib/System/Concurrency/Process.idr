@@ -13,7 +13,7 @@ data ProcID msg = MkPID Ptr
 -- message which can be send, and the return type.
 
 data Process : (msgType : Type) -> Type -> Type where
-     lift : IO a -> Process msg a
+     lift : UnsafeIO a -> Process msg a
 
 instance Functor (Process msg) where
      map f (lift a) = lift (map f a)
@@ -27,7 +27,7 @@ instance Monad (Process msg) where
                                 case k x of
                                      lift v => v)
 
-run : Process msg x -> IO x
+run : Process msg x -> UnsafeIO x
 run (lift prog) = prog
 
 -- Get current process ID
@@ -50,7 +50,7 @@ msgWaiting = lift checkMsgs
 recv : Process msg msg
 recv {msg} = do (senderid, m) <- lift get
                 return m
-  where get : IO (Ptr, msg)
+  where get : UnsafeIO (Ptr, msg)
         get = getMsg
 
 -- receive a message, and return with the sender's process ID.
@@ -59,7 +59,7 @@ recvWithSender : Process msg (ProcID msg, msg)
 recvWithSender {msg} 
      = do (senderid, m) <- lift get
           return (MkPID senderid, m)
-  where get : IO (Ptr, msg)
+  where get : UnsafeIO (Ptr, msg)
         get = getMsg
 
 create : |(thread : Process msg ()) -> Process msg (ProcID msg)

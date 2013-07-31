@@ -18,7 +18,7 @@ intString = show
 test : Integer -> String
 test x = "Number " ++ x
 
-main : IO ()
+main : UnsafeIO ()
 main = do print (foo [1,2,3])
           print (test 42)
 

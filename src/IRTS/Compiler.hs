@@ -296,7 +296,7 @@ getFTypes tm = case unApply tm of
 
 mkIty' (P _ (UN ty) _) = mkIty ty
 mkIty' (App (P _ (UN "FIntT") _) (P _ (UN intTy) _)) = mkIntIty intTy
-mkIty' (App (App (P _ (UN "FFunction") _) _) (App (P _ (UN "FAny") _) (App (P _ (UN "IO") _) _))) = FFunctionIO
+mkIty' (App (App (P _ (UN "FFunction") _) _) (App (P _ (UN "FAny") _) (App (P _ (UN "UnsafeIO") _) _))) = FFunctionIO
 mkIty' (App (App (P _ (UN "FFunction") _) _) _) = FFunction
 mkIty' _ = FAny
 

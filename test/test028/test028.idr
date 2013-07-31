@@ -1,5 +1,5 @@
 {--}
 module Main
 --
-main : IO ()
+main : UnsafeIO ()
 main = print "hello, world!"

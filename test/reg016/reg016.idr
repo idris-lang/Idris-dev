@@ -1,6 +1,6 @@
 module Main
 
-main : IO ()
+main : UnsafeIO ()
 main = do print $ the Integer 4294967295
           print $ the Integer 4294967296
           print $ the Integer 4294967297

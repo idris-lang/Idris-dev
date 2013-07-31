@@ -10,7 +10,7 @@ data Exception : Type -> Type -> Type -> Type -> Type where
 instance Handler (Exception a) Maybe where
      handle _ (Raise e) k = Nothing
 
-instance Show a => Handler (Exception a) IO where
+instance Show a => Handler (Exception a) UnsafeIO where
      handle _ (Raise e) k = do print e
                                believe_me (exit 1)
 

@@ -1,5 +1,5 @@
 module Main
 
-main : IO ()
+main : UnsafeIO ()
 main = putStrLn "Hello world"
 

@@ -1,33 +1,33 @@
 module Resimp
 
--- IO operations which read a resource
+-- UnsafeIO operations which read a resource
 data Reader : Type -> Type where
-    MkReader : IO a -> Reader a
+    MkReader : UnsafeIO a -> Reader a
 
-getReader : Reader a -> IO a
+getReader : Reader a -> UnsafeIO a
 getReader (MkReader x) = x
 
-ior : IO a -> Reader a
+ior : UnsafeIO a -> Reader a
 ior = MkReader
 
--- IO operations which update a resource
+-- UnsafeIO operations which update a resource
 data Updater : Type -> Type where
-    MkUpdater : IO a -> Updater a
+    MkUpdater : UnsafeIO a -> Updater a
 
-getUpdater : Updater a -> IO a
+getUpdater : Updater a -> UnsafeIO a
 getUpdater (MkUpdater x) = x
 
-iou : IO a -> Updater a
+iou : UnsafeIO a -> Updater a
 iou = MkUpdater
 
--- IO operations which create a resource
+-- UnsafeIO operations which create a resource
 data Creator : Type -> Type where
-    MkCreator : IO a -> Creator a
+    MkCreator : UnsafeIO a -> Creator a
 
-getCreator : Creator a -> IO a
+getCreator : Creator a -> UnsafeIO a
 getCreator (MkCreator x) = x
 
-ioc : IO a -> Creator a
+ioc : UnsafeIO a -> Creator a
 ioc = MkCreator
   
 infixr 5 :->
@@ -40,7 +40,7 @@ using (i: Fin n, gam : Vect n Ty, gam' : Vect n Ty, gam'' : Vect n Ty)
           | (:->) Type Ty
 
   interpTy : Ty -> Type
-  interpTy (R t) = IO t
+  interpTy (R t) = UnsafeIO t
   interpTy (Val t) = t
   interpTy (Choice x y) = Either x y
   interpTy (a :-> b) = a -> interpTy b
@@ -105,7 +105,7 @@ using (i: Fin n, gam : Vect n Ty, gam' : Vect n Ty, gam'' : Vect n Ty)
 
 {-- Control structures --}
 
-       Lift   : |(action:IO a) -> Res gam gam (R a)
+       Lift   : |(action:UnsafeIO a) -> Res gam gam (R a)
        Check  : (p:HasType gam i (Choice (interpTy a) (interpTy b))) -> 
                 (failure:Res (update gam p a) (update gam p c) t) ->
                 (success:Res (update gam p b) (update gam p c) t) ->
@@ -116,11 +116,11 @@ using (i: Fin n, gam : Vect n Ty, gam' : Vect n Ty, gam'' : Vect n Ty)
        (>>=)  : Res gam gam'  (R a) -> (a -> Res gam' gam'' (R t)) -> 
                 Res gam gam'' (R t)
 
-  ioret : a -> IO a
+  ioret : a -> UnsafeIO a
   ioret = return
 
   interp : Env gam -> {static} Res gam gam' t -> 
-           (Env gam' -> interpTy t -> IO u) -> IO u
+           (Env gam' -> interpTy t -> UnsafeIO u) -> UnsafeIO u
 
   interp env (Let val scope) k
      = do x <- getCreator val
@@ -153,7 +153,7 @@ using (i: Fin n, gam : Vect n Ty, gam' : Vect n Ty, gam'' : Vect n Ty)
      = interp env v (\env', v' => do n <- v'
                                      interp env' (f n) k)
 
---   run : {static} Res [] [] (R t) -> IO t
+--   run : {static} Res [] [] (R t) -> UnsafeIO t
 --   run prog = interp [] prog (\env, res => res)
 
 syntax run [prog] = interp [] prog (\env, res => res)

@@ -3,20 +3,20 @@ module Main
 import System
 import System.Concurrency.Raw
 
-recvMsg : IO (Ptr, String)
+recvMsg : UnsafeIO (Ptr, String)
 recvMsg = getMsg
 
-pong : IO ()
+pong : UnsafeIO ()
 pong = do -- putStrLn "Waiting for ping"
           (sender, x) <- recvMsg
           putStrLn x
           putStrLn "Received"
           sendToThread sender "Hello to you too!"
 
-ping : Ptr -> IO ()
+ping : Ptr -> UnsafeIO ()
 ping thread = sendToThread thread (prim__vm, "Hello!")
 
-pingpong : IO ()
+pingpong : UnsafeIO ()
 pingpong 
      = do th <- fork pong
           putStrLn "Sending"
@@ -26,6 +26,6 @@ pingpong
           usleep 100000
           putStrLn "Finished"
 
-main : IO ()
+main : UnsafeIO ()
 main = do pingpong; pingpong; pingpong
 

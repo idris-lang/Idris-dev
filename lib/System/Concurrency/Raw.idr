@@ -8,12 +8,12 @@ import System
 
 -- Send a message of any type to the thread with the given thread id
 
-sendToThread : (thread_id : Ptr) -> a -> IO ()
+sendToThread : (thread_id : Ptr) -> a -> UnsafeIO ()
 sendToThread {a} dest val 
    = mkForeign (FFun "idris_sendMessage" 
         [FPtr, FPtr, FAny a] FUnit) prim__vm dest val
 
-checkMsgs : IO Bool
+checkMsgs : UnsafeIO Bool
 checkMsgs = do msgs <- mkForeign (FFun "idris_checkMessage"
                         [FPtr] FInt) prim__vm
                return (intToBool msgs)
@@ -21,7 +21,7 @@ checkMsgs = do msgs <- mkForeign (FFun "idris_checkMessage"
 -- Check inbox for messages. If there are none, blocks until a message
 -- arrives.
 
-getMsg : IO a
+getMsg : UnsafeIO a
 getMsg {a} = mkForeign (FFun "idris_recvMessage" 
                 [FPtr] (FAny a)) prim__vm
 

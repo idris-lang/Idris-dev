@@ -117,7 +117,7 @@ greater than sign \texttt{>}, for example:
 
 This is a comment. The main program is below
 
-> main : IO ()
+> main : UnsafeIO ()
 > main = putStrLn "Hello literate world!\n"
 
 \end{SaveVerbatim}
@@ -176,15 +176,15 @@ ForeignTy : (xs:List FTy) -> (t:FTy) -> Type
 
 \noindent
 A foreign function is assumed to be impure, so \texttt{ForeignTy} builds an
-\texttt{IO} type, for example:
+\texttt{UnsafeIO} type, for example:
 
 \begin{SaveVerbatim}{ftyex}
 
 Idris> ForeignTy [FInt, FString] FString
-Int -> String -> IO String : Type
+Int -> String -> UnsafeIO String : Type
 
 Idris> ForeignTy [FInt, FString] FUnit 
-Int -> String -> IO () : Type
+Int -> String -> UnsafeIO () : Type
 
 \end{SaveVerbatim}
 \useverb{ftyex}
@@ -211,7 +211,7 @@ an external function \texttt{putStr} defined in the run-time system:
 
 \begin{SaveVerbatim}{putStrex}
 
-putStr : String -> IO ()
+putStr : String -> UnsafeIO ()
 putStr x = mkForeign (FFun "putStr" [FString] FUnit) x
 \end{SaveVerbatim}
 \useverb{putStrex}
@@ -234,9 +234,9 @@ This is made possible through the following directives:
 
 \subsubsection*{Testing foreign function calls}
 Normally, the Idris interpreter (used for typechecking and at the REPL) will
-not perform IO actions.  Additionally, as it neither generates C code nor
+not perform UnsafeIO actions.  Additionally, as it neither generates C code nor
 compiles to machine code, the \texttt{\%lib}, \texttt{\%include} and
-\texttt{\%link} directives have no effect. IO actions and FFI calls can be
+\texttt{\%link} directives have no effect. UnsafeIO actions and FFI calls can be
 tested using the special REPL command \texttt{:x EXPR}, and C libraries can be
 dynamically loaded in the interpreter by using the \texttt{:dynamic} command
 or the \texttt{\%dynamic} directive. For example:
@@ -258,7 +258,7 @@ against it, a type provider could read the schema of a real database during
 type checking.
 
 Idris type providers use the ordinary execution semantics of Idris to run an
-IO action and extract the result. This result is then saved as a constant in
+UnsafeIO action and extract the result. This result is then saved as a constant in
 the compiled code. It can be a type, in which case it is used like any other
 type, or it can be a value, in which case it can be used as any other value,
 including as an index in types.
@@ -275,7 +275,7 @@ use the \texttt{\%language} directive:
 
 
 A provider \texttt{p} for some type \texttt{t} is simply an expression of type
-\texttt{IO (Provider t)}. The \texttt{\%provide} directive causes the type
+\texttt{UnsafeIO (Provider t)}. The \texttt{\%provide} directive causes the type
 checker to execute the action and bind the result to a name.  This is perhaps
 best illustrated with a simple example. The type provider \texttt{fromFile}
 reads a text file. If the file consists of the string \texttt{"Int"}, then the
@@ -288,7 +288,7 @@ strToType : String -> Type
 strToType "Int" = Int
 strToType _ = Nat
 
-fromFile : String -> IO (Provider Type)
+fromFile : String -> UnsafeIO (Provider Type)
 fromFile fname = do str <- readFile fname
                     return (Provide (strToType (trim str)))
 
@@ -311,7 +311,7 @@ foo = 2
 If the file named \texttt{theType} consists of the word \texttt{Int}, then
 \texttt{foo} will be an \texttt{Int}. Otherwise, it will be a \texttt{Nat}.
 When Idris encounters the directive, it first checks that the provider
-expression \texttt{fromFile "theType"} has type \texttt{IO (Provider
+expression \texttt{fromFile "theType"} has type \texttt{UnsafeIO (Provider
   Type)}. Next, it executes the provider. If the result is \texttt{Provide t},
 then \texttt{T1} is defined as \texttt{t}. Otherwise, the result is an error.
 

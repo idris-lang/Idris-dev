@@ -12,5 +12,5 @@ h True = r2 where
   r2 : Nat
   r2 = r
 
-main : IO ()
+main : UnsafeIO ()
 main = do print (h True); print (h False)

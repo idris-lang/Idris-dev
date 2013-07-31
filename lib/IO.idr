@@ -2,23 +2,23 @@ import Prelude.List
 
 %access public
 
-abstract data IO a = prim__IO a
+abstract data UnsafeIO a = prim__IO a
 
 abstract
-io_bind : IO a -> (a -> IO b) -> IO b
+io_bind : UnsafeIO a -> (a -> UnsafeIO b) -> UnsafeIO b
 io_bind (prim__IO v) k = k v
 
-unsafePerformIO : IO a -> a
+unsafePerformIO : UnsafeIO a -> a
 -- compiled as primitive
 
 abstract
-io_return : a -> IO a
+io_return : a -> UnsafeIO a
 io_return x = prim__IO x
 
 -- This may seem pointless, but we can use it to force an
 -- evaluation of main that Epic wouldn't otherwise do...
 
-run__IO : IO () -> IO ()
+run__IO : UnsafeIO () -> UnsafeIO ()
 run__IO v = io_bind v (\v' => io_return v')
 
 data IntTy = ITChar | ITNative | IT8 | IT16 | IT32 | IT64 | IT8x16 | IT16x8 | IT32x4 | IT64x2
@@ -89,7 +89,7 @@ interpFTy FUnit            = ()
 interpFTy (FFunction a b) = interpFTy a -> interpFTy b
 
 ForeignTy : (xs:List FTy) -> (t:FTy) -> Type
-ForeignTy Nil     rt = IO (interpFTy rt)
+ForeignTy Nil     rt = UnsafeIO (interpFTy rt)
 ForeignTy (t::ts) rt = interpFTy t -> ForeignTy ts rt
 
 
@@ -101,7 +101,7 @@ mkForeign : Foreign x -> x
 mkLazyForeign : Foreign x -> x
 -- mkForeign and mkLazyForeign compiled as primitives
 
-fork : |(thread:IO ()) -> IO Ptr
+fork : |(thread:UnsafeIO ()) -> UnsafeIO Ptr
 fork x = io_return prim__vm -- compiled specially
 
 

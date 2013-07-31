@@ -15,7 +15,7 @@ testFoo = MkFoo "name" [1,2,3] [4,5,6,7]
 person : Person
 person = MkPerson "Fred" 30
 
-main : IO ()
+main : UnsafeIO ()
 main = do let x = record { name = "foo", 
                            more_things = reverse ["a","b"] } testFoo
           print $ name x

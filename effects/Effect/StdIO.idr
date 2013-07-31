@@ -7,7 +7,7 @@ data StdIO : Effect where
      PutStr : String -> StdIO () () ()
      GetStr : StdIO () () String
 
-instance Handler StdIO IO where
+instance Handler StdIO UnsafeIO where
     handle () (PutStr s) k = do putStr s; k () ()
     handle () GetStr     k = do x <- getLine; k () x 
 
@@ -15,7 +15,7 @@ instance Handler StdIO (IOExcept a) where
     handle () (PutStr s) k = do ioe_lift (putStr s); k () ()
     handle () GetStr     k = do x <- ioe_lift getLine; k () x 
 
--- Handle effects in a pure way, for simulating IO for unit testing/proof
+-- Handle effects in a pure way, for simulating UnsafeIO for unit testing/proof
 
 data IOStream a = MkStream (List String -> (a, List String))
   

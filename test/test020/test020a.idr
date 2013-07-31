@@ -13,6 +13,6 @@ forget' (x :: xs) = forget xs
 foo : Vect n a -> List a
 foo xs = reverse xs
 
-main : IO ()
+main : UnsafeIO ()
 main = print (foo [1,2,3])
 
