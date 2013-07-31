@@ -15,6 +15,7 @@ New in 0.9.9:
 * Integer literals for Fin
 * Renamed O to Z, and fO to fZ
 * Swapped Vect arguments, now Vect : Nat -> Type -> Type
+* Added DecEq instances
 * Add 'equiv' tactic, which rewrites a goal to an equivalent (convertible) goal
 
 Internal changes
