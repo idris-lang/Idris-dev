@@ -7,7 +7,7 @@ Test some string primitives while we're at it
   
 Literate main program
 
-> main : IO ()
+> main : UnsafeIO ()
 > main = do { putStrLn (show (strHead st))
 >             putStrLn (show (strIndex st 3))
 >             putStrLn (strCons 'z' st)

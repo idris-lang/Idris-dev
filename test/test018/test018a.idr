@@ -24,12 +24,12 @@ mainProc = do mainID <- myID
               recv -- block until everything done
               return ()
 
-repeatIO : Int -> IO ()
+repeatIO : Int -> UnsafeIO ()
 repeatIO 0 = return ()
 repeatIO n = do print n
                 run mainProc 
                 repeatIO (n - 1)
 
-main : IO ()
+main : UnsafeIO ()
 main = repeatIO 100
 

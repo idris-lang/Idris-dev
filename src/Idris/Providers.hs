@@ -24,4 +24,4 @@ getProvided tm | (P _ (UN "io_return") _, [tp, result]) <- unApply tm
                , (P _ (NS (UN "Provide") ["Providers"]) _, [_, res]) <- unApply result =
                      return res
                | otherwise = fail $ "Internal type provider error: result was not " ++
-                                    "IO (Provider a), or perhaps missing normalisation."
+                                    "UnsafeIO (Provider a), or perhaps missing normalisation."

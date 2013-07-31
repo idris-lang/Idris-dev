@@ -1,6 +1,6 @@
 module Main
 
-main : IO ()
+main : UnsafeIO ()
 main = do
   print $ prim_lenString "hallo"
   print $ prim_lenString "1"

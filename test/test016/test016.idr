@@ -12,6 +12,6 @@ take Z _ = []
 take (S n) (x :: xs) = x :: take n xs
 take n [] = []
 
-main : IO ()
+main : UnsafeIO ()
 main = do print (take 10 (Main.countFrom 10))
 

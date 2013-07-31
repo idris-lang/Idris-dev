@@ -1,6 +1,6 @@
 module Main
 
-dumpFile : String -> IO ()
+dumpFile : String -> UnsafeIO ()
 dumpFile fn = do { h <- openFile fn Read
                    while (do { x <- feof h
                                return (not x) })
@@ -8,7 +8,7 @@ dumpFile fn = do { h <- openFile fn Read
                                putStr l })
                    closeFile h }
 
-main : IO ()
+main : UnsafeIO ()
 main = do { h <- openFile "testfile" Write
             fwrite h "Hello!\nWorld!\n"
             closeFile h

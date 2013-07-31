@@ -202,7 +202,7 @@ deleteMinimumEmptyAbsurd = proof {
 
 {-  XXX: poor performance when compiled, diverges when used in the REPL, but it
          does seem to work correctly!
-main : IO ()
+main : UnsafeIO ()
 main = do
   _ <- print $ main.sort [10, 3, 7, 2, 9, 1, 8, 0, 6, 4, 5]
   _ <- print $ main.sort ["orange", "apple", "pear", "lime", "durian"]

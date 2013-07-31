@@ -9,5 +9,5 @@ foo : { t : Type } ->
       Nat
 foo {t} a {prfA = p} b c {prfBC} = b
 
-main : IO ()
+main : UnsafeIO ()
 main = print $ foo 3 4 4

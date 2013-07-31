@@ -2,10 +2,10 @@ module Control.IOExcept
 
 import Prelude
 
--- An IO monad with exception handling
+-- An UnsafeIO monad with exception handling
 
 data IOExcept : Type -> Type -> Type where
-     ioM : IO (Either err a) -> IOExcept err a
+     ioM : UnsafeIO (Either err a) -> IOExcept err a
 
 instance Functor (IOExcept e) where
      map f (ioM fn) = ioM (map (map f) fn)
@@ -22,14 +22,14 @@ instance Monad (IOExcept e) where
                                                  ka
                                   Left err => return (Left err))
 
-ioe_lift : IO a -> IOExcept err a
+ioe_lift : UnsafeIO a -> IOExcept err a
 ioe_lift op = ioM (do op' <- op
                       return (Right op'))
 
 ioe_fail : err -> IOExcept err a
 ioe_fail e = ioM (return (Left e))
 
-ioe_run : IOExcept err a -> (err -> IO b) -> (a -> IO b) -> IO b
+ioe_run : IOExcept err a -> (err -> UnsafeIO b) -> (a -> UnsafeIO b) -> UnsafeIO b
 ioe_run (ioM act) err ok = do act' <- act
                               case act' of
                                    Left e => err e

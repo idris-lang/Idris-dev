@@ -269,7 +269,7 @@ elabProvider info syn fc n ty tm
          -- Elaborate the provider term to TT and check that the type matches
          (e, et) <- elabVal toplevel False tm
          unless (isProviderOf ty' et) $
-           fail $ "Expected provider type IO (Provider (" ++
+           fail $ "Expected provider type UnsafeIO (Provider (" ++
                   show ty' ++ "))" ++ ", got " ++ show et ++ " instead."
 
          -- Create the top-level type declaration
@@ -293,7 +293,7 @@ elabProvider info syn fc n ty tm
 
           isProviderOf :: TT Name -> TT Name -> Bool
           isProviderOf tp prov
-            | (P _ (UN "IO") _, [prov']) <- unApply prov
+            | (P _ (UN "UnsafeIO") _, [prov']) <- unApply prov
             , (P _ (NS (UN "Provider") ["Providers"]) _, [tp']) <- unApply prov'
             , tp == tp' = True
           isProviderOf _ _ = False

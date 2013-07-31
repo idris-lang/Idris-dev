@@ -88,7 +88,7 @@ testFac = interp [] eFac 4
 testEnv : Int -> Env [TyInt,TyInt]
 testEnv x = [x,x]
 
-main : IO ()
+main : UnsafeIO ()
 main = do { print testFac
             print test }
 

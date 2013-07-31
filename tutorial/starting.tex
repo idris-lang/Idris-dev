@@ -37,7 +37,7 @@ text:
 
 module Main
 
-main : IO ()
+main : UnsafeIO ()
 main = putStrLn "Hello world"
 
 \end{SaveVerbatim}
@@ -140,7 +140,7 @@ $ idris hello.idr
 
 Type checking ./hello.idr
 *hello> :t main 
-main : IO ()
+main : UnsafeIO ()
 *hello> :c hello 
 *hello> :q 
 Bye bye

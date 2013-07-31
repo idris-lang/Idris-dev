@@ -27,5 +27,5 @@ swap Nil            = Nil
 swap (x :: Nil)     = x :: Nil
 swap (x :: y :: xs) = (y :: x :: (swap xs))
 
-main : IO ()
+main : UnsafeIO ()
 main = print (swap [1,2,3,4,5])

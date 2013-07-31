@@ -180,7 +180,7 @@ instance Show a => Show (Maybe a) where
 
 ---- Functor instances
 
-instance Functor IO where
+instance Functor UnsafeIO where
     map f io = io_bind io (io_return . f)
 
 instance Functor Maybe where 
@@ -193,7 +193,7 @@ instance Functor (Either e) where
 
 ---- Applicative instances
 
-instance Applicative IO where
+instance Applicative UnsafeIO where
     pure = io_return
     
     am <$> bm = io_bind am (\f => io_bind bm (io_return . f))
@@ -236,7 +236,7 @@ instance Alternative List where
 
 ---- Monad instances
 
-instance Monad IO where 
+instance Monad UnsafeIO where 
     b >>= k = io_bind b k
 
 instance Monad Maybe where 
@@ -360,27 +360,27 @@ uniformB64x2 x = prim__mkB64x2 x x
 ---- some basic io
 
 partial
-putStr : String -> IO ()
+putStr : String -> UnsafeIO ()
 putStr x = mkForeign (FFun "putStr" [FString] FUnit) x
 
 partial
-putStrLn : String -> IO ()
+putStrLn : String -> UnsafeIO ()
 putStrLn x = putStr (x ++ "\n")
 
 partial
-print : Show a => a -> IO ()
+print : Show a => a -> UnsafeIO ()
 print x = putStrLn (show x)
 
 partial
-getLine : IO String
+getLine : UnsafeIO String
 getLine = return (prim__readString prim__stdin)
 
 partial
-putChar : Char -> IO ()
+putChar : Char -> UnsafeIO ()
 putChar c = mkForeign (FFun "putchar" [FInt] FUnit) (cast c)
 
 partial
-getChar : IO Char
+getChar : UnsafeIO Char
 getChar = map cast $ mkForeign (FFun "getchar" [] FInt)
 
 ---- some basic file handling
@@ -391,88 +391,88 @@ data File = FHandle Ptr
 partial stdin : File
 stdin = FHandle prim__stdin
 
-do_fopen : String -> String -> IO Ptr
+do_fopen : String -> String -> UnsafeIO Ptr
 do_fopen f m = mkForeign (FFun "fileOpen" [FString, FString] FPtr) f m
 
-fopen : String -> String -> IO File
+fopen : String -> String -> UnsafeIO File
 fopen f m = do h <- do_fopen f m
                return (FHandle h) 
 
 data Mode = Read | Write | ReadWrite
 
 partial
-openFile : String -> Mode -> IO File
+openFile : String -> Mode -> UnsafeIO File
 openFile f m = fopen f (modeStr m) where 
   modeStr Read  = "r"
   modeStr Write = "w"
   modeStr ReadWrite = "r+"
 
 partial
-do_fclose : Ptr -> IO ()
+do_fclose : Ptr -> UnsafeIO ()
 do_fclose h = mkForeign (FFun "fileClose" [FPtr] FUnit) h
 
 partial
-closeFile : File -> IO ()
+closeFile : File -> UnsafeIO ()
 closeFile (FHandle h) = do_fclose h
 
 partial
-do_fread : Ptr -> IO String
+do_fread : Ptr -> UnsafeIO String
 do_fread h = return (prim__readString h)
 
 partial
-fread : File -> IO String
+fread : File -> UnsafeIO String
 fread (FHandle h) = do_fread h
 
 partial
-do_fwrite : Ptr -> String -> IO ()
+do_fwrite : Ptr -> String -> UnsafeIO ()
 do_fwrite h s = mkForeign (FFun "fputStr" [FPtr, FString] FUnit) h s
 
 partial
-fwrite : File -> String -> IO ()
+fwrite : File -> String -> UnsafeIO ()
 fwrite (FHandle h) s = do_fwrite h s
 
 partial
-do_feof : Ptr -> IO Int
+do_feof : Ptr -> UnsafeIO Int
 do_feof h = mkForeign (FFun "fileEOF" [FPtr] FInt) h
 
-feof : File -> IO Bool
+feof : File -> UnsafeIO Bool
 feof (FHandle h) = do eof <- do_feof h
                       return (not (eof == 0))
 
 partial
-do_ferror : Ptr -> IO Int
+do_ferror : Ptr -> UnsafeIO Int
 do_ferror h = mkForeign (FFun "fileError" [FPtr] FInt) h
 
-ferror : File -> IO Bool
+ferror : File -> UnsafeIO Bool
 ferror (FHandle h) = do err <- do_ferror h
                         return (not (err == 0))
 
 partial
-nullPtr : Ptr -> IO Bool
+nullPtr : Ptr -> UnsafeIO Bool
 nullPtr p = do ok <- mkForeign (FFun "isNull" [FPtr] FInt) p
                return (ok /= 0);
 
 partial
-validFile : File -> IO Bool
+validFile : File -> UnsafeIO Bool
 validFile (FHandle h) = do x <- nullPtr h
                            return (not x)
 
 partial -- obviously
-while : |(test : IO Bool) -> |(body : IO ()) -> IO ()
+while : |(test : UnsafeIO Bool) -> |(body : UnsafeIO ()) -> UnsafeIO ()
 while t b = do v <- t
                if v then do b
                             while t b
                     else return ()
                
 partial -- no error checking!
-readFile : String -> IO String
+readFile : String -> UnsafeIO String
 readFile fn = do h <- openFile fn Read
                  c <- readFile' h ""
                  closeFile h
                  return c
   where
     partial
-    readFile' : File -> String -> IO String
+    readFile' : File -> String -> UnsafeIO String
     readFile' h contents = 
        do x <- feof h
           if not x then do l <- fread h

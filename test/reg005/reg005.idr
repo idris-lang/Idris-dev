@@ -35,7 +35,7 @@ compress xs with (rle xs)
 compressString : String -> String
 compressString xs = compress (fromList (unpack xs))
 
-main : IO ()
+main : UnsafeIO ()
 main = putStrLn (compressString "foooobaaaarbaaaz")
 
 

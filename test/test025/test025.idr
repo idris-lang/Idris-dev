@@ -27,7 +27,7 @@ testMemory = do Src :- allocate 5
                 Dst :- free
                 return (map (prim__zextB8_Int) res)
 
-main : IO ()
+main : UnsafeIO ()
 main = do ioe_run (run [Dst := (), Src := ()] testMemory)
                   (\err => print err) (\ok => print ok)
 

@@ -64,13 +64,13 @@ adc (numx # bX) (numy # bY) carry
    ?= let (bitpair carry0 lsb) = addBit bX bY carry in 
           adc numx numy carry0 # lsb
 
-readNum : IO Nat
+readNum : UnsafeIO Nat
 readNum = do putStr "Enter a number:"
              i <- getLine
              let n : Integer = cast i
              return (fromInteger n)
 
-main : IO ()
+main : UnsafeIO ()
 main = do let Just bin1 = natToBin 8 42
           print bin1
           let Just bin2 = natToBin 8 89

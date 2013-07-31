@@ -13,10 +13,10 @@ foo : (Int, String)
 foo = (4, "foo")
 
 
-ioVals : IO (String, String)
+ioVals : UnsafeIO (String, String)
 ioVals = do { return ("First", "second") } 
 
-main : IO ()
+main : UnsafeIO ()
 main = do (a, b) <- ioVals
           putStr (show a ++ " and " ++ show b ++ "? ")
           let x = "bar"

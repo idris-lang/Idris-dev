@@ -31,7 +31,7 @@ testFile = catch (do open "testFile" Read
                      putStrLn (show ls))
                  (\err => putStrLn ("Handled: " ++ show err))
 
-main : IO ()
+main : UnsafeIO ()
 main = do ioe_run (run [(), (), Count := 0] testFile)
                   (\err => print err) (\ok => return ())
 

@@ -293,7 +293,7 @@ outputs it in binary.
 
 \begin{SaveVerbatim}{binmain}
 
-main : IO ()
+main : UnsafeIO ()
 main = do putStr "Enter a number: "
           x <- getLine
           print (natToBin (fromInteger (cast x)))

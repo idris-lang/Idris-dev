@@ -1,3 +1,3 @@
 Broken
-> main : IO ();
+> main : UnsafeIO ();
 > main = putStrLn "Foo";

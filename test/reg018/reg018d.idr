@@ -8,5 +8,5 @@ pull {n=S _} (fS n) (x :: xs) =
   let (v, vs) = pull n xs in
         (v, x::vs)
 
-main : IO ()
+main : UnsafeIO ()
 main = print (pull fZ [0, 1, 2])

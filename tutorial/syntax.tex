@@ -105,7 +105,7 @@ exampe, a \texttt{for} loop binds a variable on each iteration:
 
 syntax for {x} "in" [xs] ":" [body] = forLoop xs (\x => body)
   
-main : IO ()
+main : UnsafeIO ()
 main = do for x in [1..10]:
               putStrLn ("Number " ++ show x)
           putStrLn "Done!"

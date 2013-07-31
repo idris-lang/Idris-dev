@@ -14,7 +14,7 @@ data FileIO : Effect where
      WriteLine : String -> FileIO (OpenFile Write) (OpenFile Write) ()
      EOF       :           FileIO (OpenFile Read)  (OpenFile Read) Bool
 
-instance Handler FileIO IO where
+instance Handler FileIO UnsafeIO where
     handle () (Open fname m) k = do h <- openFile fname m
                                     k (FH h) ()
     handle (FH h) Close      k = do closeFile h

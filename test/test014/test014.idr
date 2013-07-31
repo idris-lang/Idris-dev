@@ -61,6 +61,6 @@ readH fn = res (do let x = open fn Reading
                           rclose x
                        else rputStrLn "Error")
 
-main : IO ()
+main : UnsafeIO ()
 main = run (readH "test")
 

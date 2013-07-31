@@ -45,7 +45,7 @@ of indentation as the preceding declaration. Alternatively, declarations
 may be terminated with a semicolon.
 
 A library module \texttt{prelude} is automatically imported by every \Idris{} program,
-including facilities for IO, arithmetic, data structures and various common
+including facilities for UnsafeIO, arithmetic, data structures and various common
 functions. The prelude defines several arithmetic and comparison operators,
 which we can use at the prompt. Evaluating things at the prompt gives an
 answer, and the type of the answer. For example:
@@ -542,25 +542,25 @@ Computer programs are of little use if they do not interact with the user or
 the system in some way. The difficulty in a pure language such as \Idris{} ---
 that is, a language where expressions do not have side-effects --- is that I/O
 is inherently side-effecting. Therefore in \Idris{}, such interactions are
-encapsulated in the type \texttt{IO}:
+encapsulated in the type \texttt{UnsafeIO}:
 
 \begin{SaveVerbatim}{ioty}
 
-data IO a -- IO operation returning a value of type a
+data UnsafeIO a -- UnsafeIO operation returning a value of type a
 
 \end{SaveVerbatim}
 \useverb{ioty}
 
 \noindent
-We'll leave the definition of \texttt{IO} abstract, but effectively it describes what
+We'll leave the definition of \texttt{UnsafeIO} abstract, but effectively it describes what
 the I/O operations to be executed are, rather than how to execute them. The
 resulting operations are executed externally,
-by the run-time system. We've already seen one IO
+by the run-time system. We've already seen one UnsafeIO
 program:
 
 \begin{SaveVerbatim}{main}
 
-main : IO ()
+main : UnsafeIO ()
 main = putStrLn "Hello world"
 
 \end{SaveVerbatim}
@@ -573,8 +573,8 @@ outputs a string without a newline:
 
 \begin{SaveVerbatim}{putstr}
 
-putStrLn : String -> IO ()
-putStr   : String -> IO ()
+putStrLn : String -> UnsafeIO ()
+putStr   : String -> UnsafeIO ()
 
 \end{SaveVerbatim}
 
@@ -582,7 +582,7 @@ We can also read strings from user input:
 
 \begin{SaveVerbatim}{getline}
 
-getLine : IO String
+getLine : UnsafeIO String
 
 \end{SaveVerbatim}
 \useverb{getline}
@@ -596,14 +596,14 @@ writing files, including:
 data File -- abstract
 data Mode = Read | Write | ReadWrite
 
-openFile  : String -> Mode -> IO File
-closeFile : File -> IO ()
+openFile  : String -> Mode -> UnsafeIO File
+closeFile : File -> UnsafeIO ()
 
-fread  : File -> IO String
-fwrite : File -> String -> IO ()
-feof   : File -> IO Bool
+fread  : File -> UnsafeIO String
+fwrite : File -> String -> UnsafeIO ()
+feof   : File -> UnsafeIO Bool
 
-readFile : String -> IO String
+readFile : String -> UnsafeIO String
 
 \end{SaveVerbatim}
 \useverb{fileops}
@@ -613,13 +613,13 @@ readFile : String -> IO String
 \label{sect:do}
 
 I/O programs will typically need to sequence actions, feeding the output of one
-computation into the input of the next. \texttt{IO} is an abstract type, however, so we
+computation into the input of the next. \texttt{UnsafeIO} is an abstract type, however, so we
 can't access the result of a computation directly. Instead, we sequence
 operations with \texttt{do} notation:
 
 \begin{SaveVerbatim}{greet}
 
-greet : IO ()
+greet : UnsafeIO ()
 greet = do putStr "What is your name? "
            name <- getLine
            putStrLn ("Hello " ++ name)
@@ -629,17 +629,17 @@ greet = do putStr "What is your name? "
 
 \noindent
 The syntax \texttt{x <- iovalue} executes the I/O operation \texttt{iovalue}, of type 
-\texttt{IO a}, and
+\texttt{UnsafeIO a}, and
 puts the result, of type \texttt{a} into the variable \texttt{x}. 
-In this case, \texttt{getLine} returns an \texttt{IO String},
+In this case, \texttt{getLine} returns an \texttt{UnsafeIO String},
 so \texttt{name} has type \texttt{String}. Indentation is significant --- each
 statement in the do block must begin in the same column.
-The \texttt{return} operation allows us to inject a value directly into an IO
+The \texttt{return} operation allows us to inject a value directly into an UnsafeIO
 operation:
 
 \begin{SaveVerbatim}{return}
 
-return : a -> IO a
+return : a -> UnsafeIO a
 
 \end{SaveVerbatim}
 \useverb{return}
@@ -957,7 +957,7 @@ the point \texttt{(x,y)} is within the bounds of a 640x480 window:
 inBounds : Int -> Int -> Bool
 inBounds x y = x >= 0 && x < 640 && y >= 0 && y < 480
 
-drawPoint : (x : Int) -> (y : Int) -> so (inBounds x y) -> IO ()
+drawPoint : (x : Int) -> (y : Int) -> so (inBounds x y) -> UnsafeIO ()
 drawPoint x y p = unsafeDrawPoint x y
 
 \end{SaveVerbatim}

@@ -11,6 +11,6 @@
 >               |   True     =  ifTrue  x
 >               |   False    =  ifFalse x
 
-> main : IO ()
+> main : UnsafeIO ()
 > main = print (test ((S 4) ==) 5 oh)
 
