@@ -300,6 +300,8 @@ process fn (Eval t)
                       ist <- getIState
                       let tm' = normaliseAll ctxt [] tm
                       let ty' = normaliseAll ctxt [] ty
+                      -- Add value to context, call it "it"
+                      updateContext (addCtxtDef (UN "it") (Function ty' tm'))
                       logLvl 3 $ "Raw: " ++ show (tm', ty')
                       imp <- impShow
                       iResult (showImp imp (delab ist tm') ++ " : " ++
