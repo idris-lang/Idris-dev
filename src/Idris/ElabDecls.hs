@@ -675,6 +675,10 @@ elabVal info aspat tm_in
 --                        (build i info aspat (MN 0 "val") tm))
                 tclift (elaborate ctxt (MN 0 "val") infP []
                         (build i info aspat (MN 0 "val") (infTerm tm)))
+        def' <- checkDef (FC "(input)" 0) defer
+        addDeferred def'
+        mapM_ (elabCaseBlock info) is
+
         logLvl 3 ("Value: " ++ show tm')
         recheckC (FC "(input)" 0) [] tm'
         let vtm = getInferTerm tm'

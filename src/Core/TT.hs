@@ -210,6 +210,7 @@ instance Pretty Name where
 instance Show Name where
     show (UN n) = n
     show (NS n s) = showSep "." (reverse s) ++ "." ++ show n
+    show (MN _ "underscore") = "_"
     show (MN i s) = "{" ++ s ++ show i ++ "}"
     show NErased = "_"
 

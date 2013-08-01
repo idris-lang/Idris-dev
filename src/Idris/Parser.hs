@@ -1077,11 +1077,14 @@ tyDeclList syn = try (sepBy1 (do x <- pfName
                     t <- pTSig (noImp syn)
                     return (map (\x -> (x, t)) ns)
 
-tyOptDeclList syn = sepBy1 (do x <- pfName; 
+tyOptDeclList syn = sepBy1 (do x <- pNameOrPlaceholder 
                                t <- option Placeholder (do lchar ':'
                                                            pExpr syn) 
                                return (x,t))
                            (lchar ',')
+    where pNameOrPlaceholder = pfName
+                           <|> do symbol "_"
+                                  return (MN 0 "underscore")
 
 bindList b []          sc = sc
 bindList b ((n, t):bs) sc = b n t (bindList b bs sc)
