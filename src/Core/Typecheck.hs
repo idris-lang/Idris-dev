@@ -203,28 +203,15 @@ check' holes ctxt env top = chk env top where
           discharge n (NLet t v) scv sct
             = return (Bind n (NLet t v) scv, Bind n (Let t v) sct)
           discharge n (Hole t) scv sct
-            = do -- A hole can't appear in the type of its scope
-                 checkNotHoley 0 sct
-                 return (Bind n (Hole t) scv, sct)
+            = return (Bind n (Hole t) scv, sct)
           discharge n (GHole t) scv sct
-            = do -- A hole can't appear in the type of its scope
-                 checkNotHoley 0 sct
-                 return (Bind n (GHole t) scv, sct)
+            = return (Bind n (GHole t) scv, sct)
           discharge n (Guess t v) scv sct
-            = do -- A hole can't appear in the type of its scope
-                 checkNotHoley 0 sct
-                 return (Bind n (Guess t v) scv, sct)
+            = return (Bind n (Guess t v) scv, sct)
           discharge n (PVar t) scv sct
             = return (Bind n (PVar t) scv, Bind n (PVTy t) sct)
           discharge n (PVTy t) scv sct
             = return (Bind n (PVTy t) scv, sct)
-  
-          checkNotHoley i (V v) 
-              | v == i = fail "You can't put a hole where a hole don't belong"
-          checkNotHoley i (App f a) = do checkNotHoley i f
-                                         checkNotHoley i a
-          checkNotHoley i (Bind n b sc) = checkNotHoley (i+1) sc
-          checkNotHoley _ _ = return ()
 
 
 checkProgram :: Context -> RProgram -> TC Context
