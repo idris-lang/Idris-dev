@@ -12,6 +12,7 @@ import Data.Bits
 import Data.Word
 import Data.Int
 import Data.Char
+import Data.Function (on)
 import Data.Vector.Unboxed (Vector)
 import qualified Data.Vector.Unboxed as V
 
@@ -103,14 +104,14 @@ primitives =
      (2, LSDiv ATFloat) total,
    Prim (UN "prim__eqFloat")  (ty [(AType ATFloat), (AType ATFloat)] (AType (ATInt ITNative))) 2 (bfBin (==))
      (2, LEq ATFloat) total,
-   Prim (UN "prim__ltFloat")  (ty [(AType ATFloat), (AType ATFloat)] (AType (ATInt ITNative))) 2 (bfBin (<))
-     (2, LLt ATFloat) total,
-   Prim (UN "prim__lteFloat") (ty [(AType ATFloat), (AType ATFloat)] (AType (ATInt ITNative))) 2 (bfBin (<=))
-     (2, LLe ATFloat) total,
-   Prim (UN "prim__gtFloat")  (ty [(AType ATFloat), (AType ATFloat)] (AType (ATInt ITNative))) 2 (bfBin (>))
-     (2, LGt ATFloat) total,
-   Prim (UN "prim__gteFloat") (ty [(AType ATFloat), (AType ATFloat)] (AType (ATInt ITNative))) 2 (bfBin (>=))
-     (2, LGe ATFloat) total,
+   Prim (UN "prim__sltFloat")  (ty [(AType ATFloat), (AType ATFloat)] (AType (ATInt ITNative))) 2 (bfBin (<))
+     (2, LSLt ATFloat) total,
+   Prim (UN "prim__slteFloat") (ty [(AType ATFloat), (AType ATFloat)] (AType (ATInt ITNative))) 2 (bfBin (<=))
+     (2, LSLe ATFloat) total,
+   Prim (UN "prim__sgtFloat")  (ty [(AType ATFloat), (AType ATFloat)] (AType (ATInt ITNative))) 2 (bfBin (>))
+     (2, LSGt ATFloat) total,
+   Prim (UN "prim__sgteFloat") (ty [(AType ATFloat), (AType ATFloat)] (AType (ATInt ITNative))) 2 (bfBin (>=))
+     (2, LSGe ATFloat) total,
    Prim (UN "prim__concat") (ty [StrType, StrType] StrType) 2 (sBin (++))
     (2, LStrConcat) total,
    Prim (UN "prim__eqString") (ty [StrType, StrType] (AType (ATInt ITNative))) 2 (bsBin (==))
@@ -179,13 +180,23 @@ vecTypes = [ITVec IT8 16, ITVec IT16 8, ITVec IT32 4, ITVec IT64 2]
 intOps :: IntTy -> [Prim]
 intOps ity = intCmps ity ++ intArith ity ++ intConv ity
 
-intCmps :: IntTy -> [Prim]
-intCmps ity =
-    [ iCmp ity "lt" False (bCmp ity (<)) (LLt . ATInt) total
-    , iCmp ity "lte" False (bCmp ity (<=)) (LLe . ATInt) total
+intSCmps :: IntTy -> [Prim]
+intSCmps ity =
+    [ iCmp ity "slt" False (bCmp ity (sCmpOp ity (<))) (LSLt . ATInt) total
+    , iCmp ity "slte" False (bCmp ity (sCmpOp ity (<=))) (LSLe . ATInt) total
     , iCmp ity "eq" False (bCmp ity (==)) (LEq . ATInt) total
-    , iCmp ity "gte" False (bCmp ity (>=)) (LGe . ATInt) total
-    , iCmp ity "gt" False (bCmp ity (>)) (LGt . ATInt) total
+    , iCmp ity "sgte" False (bCmp ity (sCmpOp ity (>=))) (LSGe . ATInt) total
+    , iCmp ity "sgt" False (bCmp ity (sCmpOp ity (>))) (LSGt . ATInt) total
+    ]
+
+intCmps :: IntTy -> [Prim]
+intCmps ITNative = intSCmps ITNative
+intCmps ity = 
+    intSCmps ity ++
+    [ iCmp ity "lt" False (bCmp ity (cmpOp ity (<))) LLt total
+    , iCmp ity "lte" False (bCmp ity (cmpOp ity (<=))) LLe total
+    , iCmp ity "gte" False (bCmp ity (cmpOp ity (>=))) LGe total
+    , iCmp ity "gt" False (bCmp ity (cmpOp ity (>))) LGt total
     ]
 
 intArith :: IntTy -> [Prim]
@@ -220,11 +231,15 @@ intConv ity =
 
 vecCmps :: IntTy -> [Prim]
 vecCmps ity =
-    [ iCmp ity "lt" True (bCmp ity (<)) (LLt . ATInt) total
-    , iCmp ity "lte" True (bCmp ity (<=)) (LLe . ATInt) total
+    [ iCmp ity "slt" True (bCmp ity (<)) (LSLt . ATInt) total
+    , iCmp ity "slte" True (bCmp ity (<=)) (LSLe . ATInt) total
     , iCmp ity "eq" True (bCmp ity (==)) (LEq . ATInt) total
-    , iCmp ity "gte" True (bCmp ity (>=)) (LGe . ATInt) total
-    , iCmp ity "gt" True (bCmp ity (>)) (LGt . ATInt) total
+    , iCmp ity "sgte" True (bCmp ity (>=)) (LSGe . ATInt) total
+    , iCmp ity "sgt" True (bCmp ity (>)) (LSGt . ATInt) total
+    , iCmp ity "lt" True (bCmp ity (<)) LLt total
+    , iCmp ity "lte" True (bCmp ity (<=)) LLe total
+    , iCmp ity "gte" True (bCmp ity (>=)) LGe total
+    , iCmp ity "gt" True (bCmp ity (>)) LGt total
     ]
 
 vecOps :: IntTy -> [Prim]
@@ -509,14 +524,14 @@ bitBin (ITVec IT32 _) op [B32V x, B32V y] = Just . B32V $ V.zipWith op x y
 bitBin (ITVec IT64 _) op [B64V x, B64V y] = Just . B64V $ V.zipWith op x y
 bitBin _        _  _              = Nothing
 
-bCmp :: IntTy -> (forall a. Ord a => a -> a -> Bool) -> [Const] -> Maybe Const
+bCmp :: IntTy -> (forall a. (Integral a, Ord a) => a -> a -> Bool) -> [Const] -> Maybe Const
 bCmp (ITFixed IT8)      op [B8  x, B8  y] = Just $ I (if (op x y) then 1 else 0)
 bCmp (ITFixed IT16)     op [B16 x, B16 y] = Just $ I (if (op x y) then 1 else 0)
 bCmp (ITFixed IT32)     op [B32 x, B32 y] = Just $ I (if (op x y) then 1 else 0)
 bCmp (ITFixed IT64)     op [B64 x, B64 y] = Just $ I (if (op x y) then 1 else 0)
 bCmp ITBig    op [BI x, BI y]   = Just $ I (if (op x y) then 1 else 0)
 bCmp ITNative op [I x, I y]     = Just $ I (if (op x y) then 1 else 0)
-bCmp ITChar   op [Ch x, Ch y]     = Just $ I (if (op x y) then 1 else 0)
+bCmp ITChar   op [Ch x, Ch y]     = Just $ I (if (op (ord x) (ord y)) then 1 else 0)
 bCmp (ITVec IT8 _)  op [B8V  x, B8V  y]
     = Just . B8V . V.map (\b -> if b then -1 else 0) $ V.zipWith op x y
 bCmp (ITVec IT16 _) op [B16V x, B16V y]
@@ -526,6 +541,20 @@ bCmp (ITVec IT32 _) op [B32V x, B32V y]
 bCmp (ITVec IT64 _) op [B64V x, B64V y]
     = Just . B64V . V.map (\b -> if b then -1 else 0) $ V.zipWith op x y
 bCmp _        _  _              = Nothing
+
+
+cmpOp :: (Ord a, Integral a) => IntTy -> (forall b. Ord b => b -> b -> Bool) -> a -> a -> Bool
+cmpOp (ITFixed _) f = f
+cmpOp (ITNative)  f = f `on` (fromIntegral :: Integral a => a -> Word)
+cmpOp (ITChar)    f = f `on` ((fromIntegral :: Integral a => a -> Word))
+cmpOp _ f = let xor = (/=) in (\ x y -> (f x y) `xor` (x < 0) `xor` (y < 0))
+
+sCmpOp :: (Ord a, Integral a) => IntTy -> (forall b. Ord b => b -> b -> Bool) -> a -> a -> Bool
+sCmpOp (ITFixed IT8) f = f `on` (fromIntegral :: Integral a => a -> Int8)
+sCmpOp (ITFixed IT16) f = f `on` (fromIntegral :: Integral a => a -> Int16)
+sCmpOp (ITFixed IT32) f = f `on` (fromIntegral :: Integral a => a -> Int32)
+sCmpOp (ITFixed IT64) f = f `on` (fromIntegral :: Integral a => a -> Int64)
+sCmpOp _ f = f
 
 toInt :: Integral a => IntTy -> a -> Const
 toInt (ITFixed IT8)      x = B8 (fromIntegral x)
