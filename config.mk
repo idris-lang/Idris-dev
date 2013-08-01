@@ -1,6 +1,7 @@
 GMP_INCLUDE_DIR :=
 CC              :=gcc
 CABAL           :=cabal
+CFLAGS          :=-O2 -Wall $(CFLAGS)
 #CABALFLAGS	:=
 ## Disable building of Effects
 #CABALFLAGS :=-f NoEffects
