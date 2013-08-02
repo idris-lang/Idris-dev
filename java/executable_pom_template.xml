@@ -15,7 +15,7 @@
     <dependency>
       <groupId>org.idris-lang</groupId>
     	<artifactId>idris</artifactId>
-    	<version>$RTS-VERSION$</version>
+    	<version>0.9.9</version>
     </dependency>
 $DEPENDENCIES$
   </dependencies>
@@ -44,7 +44,7 @@ $DEPENDENCIES$
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-shade-plugin</artifactId>
-        <version>2.0</version>
+        <version>2.1</version>
         <executions>
           <execution>
             <phase>package</phase>
