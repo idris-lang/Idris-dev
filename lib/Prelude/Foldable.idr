@@ -15,15 +15,24 @@ foldl f z t = foldr (flip (.) . flip f) id t z
 concat : (Foldable t, Monoid a) => t a -> a
 concat = foldr (<+>) neutral
 
+concatMap : (Foldable t, Monoid m) => (a -> m) -> t a -> m
+concatMap f = foldr ((<+>) . f) neutral
+
 and : Foldable t => t Bool -> Bool
 and = foldr (&&) True
 
 or : Foldable t => t Bool -> Bool
 or = foldr (||) False
 
-any : (Foldable t, Functor t) => (a -> Bool) -> t a -> Bool
-any p = Foldable.or . fmap p
+any : Foldable t => (a -> Bool) -> t a -> Bool
+any p = foldr ((||) . p) False
 
-all : (Foldable t, Functor t) => (a -> Bool) -> t a -> Bool
-all p = Foldable.and . fmap p
+all : Foldable t => (a -> Bool) -> t a -> Bool
+all p = foldr ((&&) . p) True
+
+sum : (Foldable t, Num a) => t a -> a
+sum = foldr (+) 0
+
+product : (Foldable t, Num a) => t a -> a
+product = foldr (*) 1
 
