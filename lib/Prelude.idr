@@ -15,6 +15,7 @@ import Prelude.Either
 import Prelude.Vect
 import Prelude.Strings
 import Prelude.Chars
+import Prelude.Traversable
 
 %access public
 %default total

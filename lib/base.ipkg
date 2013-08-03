@@ -7,6 +7,7 @@ modules = Builtins, Prelude, IO, System,
           Prelude.List, Prelude.Maybe, Prelude.Monad, Prelude.Applicative,
           Prelude.Either, Prelude.Vect, Prelude.Strings, Prelude.Chars, 
           Prelude.Heap, Prelude.Complex, Prelude.Functor, Prelude.Foldable,
+          Prelude.Traversable,
 
           Network.Cgi,
           Debug.Trace,
