@@ -304,8 +304,8 @@ process fn (Eval t)
                       logLvl 3 $ "Raw: " ++ show (tm', ty')
                       logLvl 10 $ "Debug: " ++ showEnvDbg [] tm'
                       imp <- impShow
-                      iResult (showImp imp (delab ist tm') ++ " : " ++
-                               showImp imp (delab ist ty'))
+                      iResult (showImp imp True (delab ist tm') ++ " : " ++
+                               showImp imp True (delab ist ty'))
 process fn (ExecVal t)
                   = do ctxt <- getContext
                        ist <- getIState
@@ -314,15 +314,15 @@ process fn (ExecVal t)
                        let ty' = normaliseAll ctxt [] ty
                        res <- execute tm
                        imp <- impShow
-                       iResult (showImp imp (delab ist res) ++ " : " ++
-                                showImp imp (delab ist ty'))
+                       iResult (showImp imp True (delab ist res) ++ " : " ++
+                                showImp imp True (delab ist ty'))
 process fn (Check (PRef _ n))
    = do ctxt <- getContext
         ist <- getIState
         imp <- impShow
         case lookupNames n ctxt of
              ts@(_:_) -> do mapM_ (\n -> iputStrLn $ show n ++ " : " ++
-                                         showImp imp (delabTy ist n)) ts
+                                         showImp imp True (delabTy ist n)) ts
                             iResult ""
              [] -> iFail $ "No such variable " ++ show n
 process fn (Check t)
@@ -333,8 +333,8 @@ process fn (Check t)
         let ty' = normaliseC ctxt [] ty
         case tm of
              TType _ -> iResult ("Type : Type 1")
-             _ -> iResult (showImp imp (delab ist tm) ++ " : " ++
-                          showImp imp (delab ist ty))
+             _ -> iResult (showImp imp True (delab ist tm) ++ " : " ++
+                          showImp imp True (delab ist ty))
 
 process fn (DocStr n) = do i <- getIState
                            case lookupCtxtName n (idris_docstrings i) of
@@ -364,8 +364,8 @@ process fn (Defn n) = do i <- getIState
                             [t] -> iputStrLn (showTotal t i)
                             _ -> return ()
     where printCase i (_, lhs, rhs)
-             = do iputStrLn (showImp True (delab i lhs) ++ " = " ++
-                             showImp True (delab i rhs))
+             = do iputStrLn (showImp True False (delab i lhs) ++ " = " ++
+                             showImp True False (delab i rhs))
 process fn (TotCheck n) = do i <- getIState
                              case lookupTotal n (tt_ctxt i) of
                                 [t] -> iResult (showTotal t i)
@@ -505,7 +505,7 @@ process fn (Missing n)
          case lookupCtxt n (idris_patdefs i) of
                   [] -> return ()
                   [(_, tms)] ->
-                       iResult (showSep "\n" (map (showImp True) tms))
+                       iResult (showSep "\n" (map (showImp True False) tms))
                   _ -> iFail $ "Ambiguous name"
 process fn (DynamicLink l) = do i <- getIState
                                 let lib = trim l
@@ -553,7 +553,7 @@ dumpInstance n = do i <- getIState
                     ctxt <- getContext
                     imp <- impShow
                     case lookupTy n ctxt of
-                         ts -> mapM_ (\t -> iputStrLn $ showImp imp (delab i t)) ts
+                         ts -> mapM_ (\t -> iputStrLn $ showImp imp False (delab i t)) ts
 
 showTotal t@(Partial (Other ns)) i
    = show t ++ "\n\t" ++ showSep "\n\t" (map (showTotalN i) ns)

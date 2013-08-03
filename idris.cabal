@@ -278,7 +278,7 @@ Executable     idris
                                 containers, process, transformers, filepath,
                                 directory, binary, bytestring, text, pretty,
                                 language-java>=0.2.2, libffi,
-                                vector, vector-binary-instances
+                                vector, vector-binary-instances, ansi-terminal
 
                Extensions:      MultiParamTypeClasses, FunctionalDependencies,
                                 FlexibleInstances, TemplateHaskell

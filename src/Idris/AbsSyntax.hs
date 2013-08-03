@@ -1170,7 +1170,7 @@ mkPApp fc a f as = let rest = drop a as in
 -- FIXME: It's possible that this really has to happen after elaboration
 
 findStatics :: IState -> PTerm -> (PTerm, [Bool])
-findStatics ist tm = trace (showImp True tm) $
+findStatics ist tm = trace (showImp True False tm) $
                       let (ns, ss) = fs tm in
                          runState (pos ns ss tm) []
   where fs (PPi p n t sc)
@@ -1201,7 +1201,7 @@ dumpDecls [] = ""
 dumpDecls (d:ds) = dumpDecl d ++ "\n" ++ dumpDecls ds
 
 dumpDecl (PFix _ f ops) = show f ++ " " ++ showSep ", " ops 
-dumpDecl (PTy _ _ _ _ n t) = "tydecl " ++ show n ++ " : " ++ showImp True t
+dumpDecl (PTy _ _ _ _ n t) = "tydecl " ++ show n ++ " : " ++ showImp True False t
 dumpDecl (PClauses _ _ n cs) = "pat " ++ show n ++ "\t" ++ showSep "\n\t" (map (showCImp True) cs)
 dumpDecl (PData _ _ _ _ d) = showDImp True d
 dumpDecl (PParams _ ns ps) = "params {" ++ show ns ++ "\n" ++ dumpDecls ps ++ "}\n"
