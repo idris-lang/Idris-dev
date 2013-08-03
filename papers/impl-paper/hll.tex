@@ -110,7 +110,9 @@ mult (S k) y = plus y (mult k y)
 The standard arithmetic operators \texttt{+} and \texttt{*} are also overloaded
 for use by \texttt{Nat}, and are implemented
 using the above functions.  Unlike Haskell, there is no restriction on whether
-types and function names must begin with a capital letter or not. 
+types and function names must begin with a capital letter or not. Indeed, such
+a distinction would not necessarily be helpful, since function names may
+appear in pattern context if forced by some dependency. 
 %Function
 %names (\tFN{plus} and \tFN{mult} above), data constructors (\tDC{O}, \tDC{S},
 %\tDC{Nil} and \tDC{::}) and type constructors (\tTC{Nat} and \tTC{List}) are
@@ -192,9 +194,9 @@ data Vect : Nat -> Type -> Type where
 Note that this uses the same constructor names as for \tTC{List}. Ad-hoc name
 overloading such as this is accepted by \Idris{}, provided that the names are
 declared in different namespaces (in practice, normally in different modules)
-so that the names are different internally. Namespace resolution can be made
-explicitly (e.g. \texttt{List.Nil} or \texttt{Vect.Nil}) or more commonly
-by type.
+so that the names are different internally. Names can be used qualified by
+a namespace (e.g. \texttt{Vect.Nil}) or unqualified. If unqualified, it must
+be possible to distinguish between names by type.
 
 The above declaration creates a family of types, and requires a different form
 of declaration from the simple type declarations above. It resembles a Haskell
@@ -642,6 +644,8 @@ intermediate computation (\texttt{even} and \texttt{odd}) right of the
 the results affect the other patterns left of the $\mid$. Note that there is a
 function in the patterns (\texttt{+}) and repeated occurrences of \texttt{j} --- 
 this is allowed
-because another argument has determined the form of these patterns.
+because another argument has determined the form of these patterns. In general,
+non-linear patterns are allowed \emph{only} when their value is forced by
+some other argument.
 
 

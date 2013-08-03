@@ -42,7 +42,9 @@ inferred by the machine~\cite{pollack1990implicit}.
  \mid   & \vb\SC\;\vt & (\mbox{binding}) &
  \mid & \all{\vx}{\vt} & (\mbox{function space}) \\
 
- \mid   & \vt\;\vt & (\mbox{application}) &
+ \mid   & \vt\;\vt & (\mbox{application}) & \\
+ \mid   & \TC{T} & (\mbox{type constructor}) & \\
+ \mid   & \TC{D} & (\mbox{data constructor}) & 
 % \mid & \pat{\vx}{\vt} & (\mbox{pattern variable}) \\
 % & & &
 % \mid & \pty{\vx}{\vt} & (\mbox{pattern type}) \\
@@ -82,6 +84,11 @@ $\LET$ binding:
 \Rule{\Gamma\proves\vS\Hab\Type_i\hg\Gamma\proves\vs\Hab\vS}
 {\Gamma;\LET\;\vx\;\defq\;\vs\Hab\vS\proves\RW{valid}}
 }
+
+\noindent
+We record the binding form in the context, as well as the type,
+because type checking relies on evaluation. In particular, $\LET$ bound
+names may reduce.
 
 \subsubsection{Evaluation}
 
@@ -153,7 +160,10 @@ lower universe levels to inhabit higher universe levels. In practice, universe l
 can be left implicit (and will be left implicit in the rest of this paper) ---
 the type checker generates a graph of constraints between universe levels (such
 as that produced by the $\mathsf{Forall}$ typing rule) and checks that there
-are no cycles. Otherwise, the typing rules are standard and type inference can
+are no cycles. This happens as the last stage of type checking, waiting until
+we have all uses of a family to establish how many levels are needed in the
+universe hierarchy.
+Otherwise, the typing rules are standard and type inference can
 be implemented in the usual way~\cite{loh2010tutorial}.
 
 \FFIG{\begin{array}{c}
@@ -263,15 +273,26 @@ sequence of zero or more $\vx$ (i.e., $\vx_1,\vx_2,\ldots,\vx_n$):
 \DM{
 \AR{
 \Data\hg\TC{T}\;(\tx\Hab\ttt)\Hab\vt\hg\Where\hg
-\DC{c}_1\Hab\vt\;\mid\;\ldots\;\mid\;\DC{c}_n\Hab\vt
+\DC{D}_1\Hab\vt\;\mid\;\ldots\;\mid\;\DC{D}_n\Hab\vt
 }
 }
 
-Constructors may take recursive arguments in the family $\TC{T}$, which may be
-higher order. Higher order recursive arguments may be computed from any type
-which does not involve $\TC{T}$ itself. This restriction is known as
+A constructor $\TC{D}$ of a family $\TC{T}$ must return a value in the family
+$\TC{T}$.
+It may take recursive arguments in the family $\TC{T}$ which may be
+higher order. That is, recursive arguments have types of the form
+
+\DM{
+\all{\vx_1}{\vS_1}\SC\ldots\all{\vx_n}{\vS_n}\SC\TC{T}\:\ty
+}
+
+where $\TC{T}$ does not occur in any of the $\tS$ or the $\ty$
+This restriction is known as
 \demph{strict positivity} and ensures that recursive arguments of the
-constructor are structurally smaller than the value itself.
+constructor are structurally smaller than the value itself\footnote{In
+practice, this restriction can be relaxed when defining a family, but definitions
+using families which do not satisfy strict positivity will not pass totality
+checking.}.
 
 For example, the \Idris{} data type \tTC{Nat} would be declared in \TT{} as follows:
 
@@ -542,7 +563,9 @@ are marked as \emph{partial}. Additionally, any function which calls a partial
 function or uses a data type which is not strictly positive is also marked as
 partial. We use the size change principle~\cite{Lee2001} to determine whether
 (possibly mutually defined) recursive functions are guaranteed to
-terminate.
+terminate.  Higher order function arguments are assumed to be total, though
+if a higher order function is called with a partial function as an argument,
+the calling function will be marked partial.
 \TT{} also marks functions which do not cover
 all possible inputs as partial. This totality checking is independent of the
 rest of the type theory, and can be extended.
