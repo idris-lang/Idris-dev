@@ -458,7 +458,9 @@ tldeclared (PData _ _ _ _ (PDatadecl n _ ts)) = n : map fstt ts
 tldeclared (PParams _ _ ds) = [] 
 tldeclared (PMutual _ ds) = concatMap tldeclared ds
 tldeclared (PNamespace _ ds) = concatMap tldeclared ds
-
+tldeclared (PClass _ _ _ _ n _ ms) = concatMap tldeclared ms
+tldeclared (PInstance _ _ _ _ _ _ _ _) = []
+tldeclared _ = []
 
 defined :: PDecl -> [Name]
 defined (PFix _ _ _) = []

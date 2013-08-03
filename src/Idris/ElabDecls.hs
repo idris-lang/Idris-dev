@@ -1434,7 +1434,7 @@ elabDecl' what info (PNamespace n ps) = mapM_ (elabDecl' what ninfo) ps
 elabDecl' what info (PClass doc s f cs n ps ds) 
   | what /= EDefns
     = do iLOG $ "Elaborating class " ++ show n
-         elabClass info s doc f cs n ps ds
+         elabClass info (s { syn_params = [] }) doc f cs n ps ds
 elabDecl' what info (PInstance s f cs n ps t expn ds) 
   | what /= ETypes
     = do iLOG $ "Elaborating instance " ++ show n
