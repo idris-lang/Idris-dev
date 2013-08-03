@@ -211,7 +211,15 @@ openBlock = do lchar '{'
                ist <- getState
                setState (ist { brace_stack = Nothing : brace_stack ist })
          <|> do ist <- getState
-                lvl <- indent
+                lvl' <- indent
+                -- if we're not indented further, it's an empty block, so
+                -- increment lvl to ensure we get to the end
+                let lvl = case brace_stack ist of
+                               Just lvl_old : _ -> 
+                                   if lvl' <= lvl_old then lvl_old+1
+                                                      else lvl'
+                               [] -> if lvl' == 1 then 2 else lvl'
+                               _ -> lvl'
                 setState (ist { brace_stack = Just lvl : brace_stack ist })
 
 closeBlock :: IParser ()
