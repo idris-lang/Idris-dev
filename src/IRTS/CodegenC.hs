@@ -47,7 +47,8 @@ codegenC defs out exec incs objs libs dbg
              libFlags <- getLibFlags
              incFlags <- getIncFlags
              let gcc = comp ++ " " ++
-                       gccDbg dbg ++
+                       gccDbg dbg ++ " " ++
+                       gccFlags ++
                        " -I. " ++ objs ++ " -x c " ++
                        (if (exec == Executable) then "" else " -c ") ++
                        " " ++ tmpn ++
@@ -67,6 +68,10 @@ headers xs =
 
 debug TRACE = "#define IDRIS_TRACE\n\n"
 debug _ = ""
+
+-- We're using signed integers now. Make sure we get consistent semantics
+-- out of them from gcc. See e.g. http://thiemonagel.de/2010/01/signed-integer-overflow/
+gccFlags = " -fwrapv -fno-strict-overflow"
 
 gccDbg DEBUG = "-g"
 gccDbg TRACE = "-O2"
