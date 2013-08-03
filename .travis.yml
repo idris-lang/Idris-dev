@@ -6,8 +6,8 @@ before_install:
   - sudo apt-get install -qq libgc-dev llvm-3.3
 before_script:
   - cabal sdist
-  - cd ../..
-  - tar -xf edwinb/Idris-dev/dist/idris*.tar.gz
+  - cd ..
+  - tar -xf Idris-dev/dist/idris*.tar.gz
   - cd idris*
 script:
   - cabal configure

@@ -1,6 +1,6 @@
 include ../config.mk
 
-CFLAGS=-c -O2 -Wall -Wextra -fPIC -Wno-unused-parameter
+CFLAGS:=-Wextra -fPIC -Wno-unused-parameter $(CFLAGS)
 SOURCES=defs.c
 OBJECTS=$(SOURCES:.c=.o)
 LIB=libidris_rts.a
@@ -12,7 +12,7 @@ $(LIB): $(OBJECTS)
 	ranlib $@
 
 .c.o:
-	$(CC) $(CFLAGS) $< -o $@
+	$(CC) -c $(CFLAGS) $< -o $@
 
 install: $(LIB) .PHONY
 	mkdir -p $(TARGET)
