@@ -220,13 +220,13 @@ translateExpression (SOp op vars)
   , (lhs:rhs:_) <- vars = translateBinaryOp ".mod(" lhs rhs ++ ")"
   | (LEq (ATInt ITBig)) <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp ".equals(" lhs rhs ++ ")"
-  | (LLt (ATInt ITBig)) <- op
+  | (LSLt (ATInt ITBig)) <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp ".lesser(" lhs rhs ++ ")"
-  | (LLe (ATInt ITBig)) <- op
+  | (LSLe (ATInt ITBig)) <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp ".lesserOrEquals(" lhs rhs ++ ")"
-  | (LGt (ATInt ITBig)) <- op
+  | (LSGt (ATInt ITBig)) <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp ".greater(" lhs rhs ++ ")"
-  | (LGe (ATInt ITBig)) <- op
+  | (LSGe (ATInt ITBig)) <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp ".greaterOrEquals(" lhs rhs ++ ")"
 
   | (LPlus ATFloat)  <- op
@@ -239,13 +239,13 @@ translateExpression (SOp op vars)
   , (lhs:rhs:_) <- vars = translateBinaryOp "/" lhs rhs
   | (LEq ATFloat) <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp "==" lhs rhs
-  | (LLt ATFloat) <- op
+  | (LSLt ATFloat) <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp "<" lhs rhs
-  | (LLe ATFloat) <- op
+  | (LSLe ATFloat) <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp "<=" lhs rhs
-  | (LGt ATFloat) <- op
+  | (LSGt ATFloat) <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp ">" lhs rhs
-  | (LGe ATFloat) <- op
+  | (LSGe ATFloat) <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp ">=" lhs rhs
 
   | (LPlus _)   <- op
@@ -260,13 +260,13 @@ translateExpression (SOp op vars)
   , (lhs:rhs:_) <- vars = translateBinaryOp "%" lhs rhs
   | (LEq _)     <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp "==" lhs rhs
-  | (LLt _)     <- op
+  | (LSLt _)     <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp "<" lhs rhs
-  | (LLe _)     <- op
+  | (LSLe _)     <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp "<=" lhs rhs
-  | (LGt _)     <- op
+  | (LSGt _)     <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp ">" lhs rhs
-  | (LGe _)     <- op
+  | (LSGe _)     <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp ">=" lhs rhs
   | (LAnd _)    <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp "&" lhs rhs

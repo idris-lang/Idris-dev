@@ -191,25 +191,25 @@ class Eq a => Ord a where
 
 instance Ord Int where 
     compare x y = if (x == y) then EQ else
-                  if (boolOp prim__ltInt x y) then LT else
+                  if (boolOp prim__sltInt x y) then LT else
                   GT
 
 
 instance Ord Integer where 
     compare x y = if (x == y) then EQ else
-                  if (boolOp prim__ltBigInt x y) then LT else
+                  if (boolOp prim__sltBigInt x y) then LT else
                   GT
 
 
 instance Ord Float where 
     compare x y = if (x == y) then EQ else
-                  if (boolOp prim__ltFloat x y) then LT else
+                  if (boolOp prim__sltFloat x y) then LT else
                   GT
 
 
 instance Ord Char where 
     compare x y = if (x == y) then EQ else
-                  if (boolOp prim__ltChar x y) then LT else
+                  if (boolOp prim__sltChar x y) then LT else
                   GT
 
 

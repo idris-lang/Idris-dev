@@ -860,11 +860,11 @@ cgOp (LSExt from ITBig) [x] = do
 cgOp (LChInt ITNative) [x] = return x
 cgOp (LIntCh ITNative) [x] = return x
 
-cgOp (LLt    (ATInt ITBig)) [x,y] = mpzCmp IPred.SLT x y
-cgOp (LLe    (ATInt ITBig)) [x,y] = mpzCmp IPred.SLE x y
+cgOp (LSLt   (ATInt ITBig)) [x,y] = mpzCmp IPred.SLT x y
+cgOp (LSLe   (ATInt ITBig)) [x,y] = mpzCmp IPred.SLE x y
 cgOp (LEq    (ATInt ITBig)) [x,y] = mpzCmp IPred.EQ  x y
-cgOp (LGe    (ATInt ITBig)) [x,y] = mpzCmp IPred.SGE x y
-cgOp (LGt    (ATInt ITBig)) [x,y] = mpzCmp IPred.SGT x y
+cgOp (LSGe   (ATInt ITBig)) [x,y] = mpzCmp IPred.SGE x y
+cgOp (LSGt   (ATInt ITBig)) [x,y] = mpzCmp IPred.SGT x y
 cgOp (LPlus  (ATInt ITBig)) [x,y] = mpzBin "add" x y
 cgOp (LMinus (ATInt ITBig)) [x,y] = mpzBin "sub" x y
 cgOp (LTimes (ATInt ITBig)) [x,y] = mpzBin "mul" x y
@@ -898,11 +898,15 @@ cgOp (LZExt (ITFixed from) (ITFixed to)) [x]
 cgOp (LSExt (ITFixed from) (ITFixed to)) [x]
     | nativeTyWidth from < nativeTyWidth to = iCoerce SExt from to x
 
-cgOp (LLt    (ATInt ity)) [x,y] = iCmp ity IPred.ULT x y
-cgOp (LLe    (ATInt ity)) [x,y] = iCmp ity IPred.ULE x y
+cgOp (LSLt   (ATInt ity)) [x,y] = iCmp ity IPred.SLT x y
+cgOp (LSLe   (ATInt ity)) [x,y] = iCmp ity IPred.SLE x y
+cgOp (LLt    ity)         [x,y] = iCmp ity IPred.ULT x y
+cgOp (LLe    ity)         [x,y] = iCmp ity IPred.ULE x y
 cgOp (LEq    (ATInt ity)) [x,y] = iCmp ity IPred.EQ  x y
-cgOp (LGe    (ATInt ity)) [x,y] = iCmp ity IPred.UGE x y
-cgOp (LGt    (ATInt ity)) [x,y] = iCmp ity IPred.UGT x y
+cgOp (LSGe   (ATInt ity)) [x,y] = iCmp ity IPred.SGE x y
+cgOp (LSGt   (ATInt ity)) [x,y] = iCmp ity IPred.SGT x y
+cgOp (LGe    ity)         [x,y] = iCmp ity IPred.UGE x y
+cgOp (LGt    ity)         [x,y] = iCmp ity IPred.UGT x y
 cgOp (LPlus  (ATInt ity)) [x,y] = ibin ity x y (Add False False)
 cgOp (LMinus (ATInt ity)) [x,y] = ibin ity x y (Sub False False)
 cgOp (LTimes (ATInt ity)) [x,y] = ibin ity x y (Mul False False)

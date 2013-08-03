@@ -272,10 +272,14 @@ doOp v (LLSHR ITNative) [l, r] = v ++ "UINTOP(>>," ++ creg l ++ ", " ++ creg r +
 doOp v (LASHR ITNative) [l, r] = v ++ "INTOP(>>," ++ creg l ++ ", " ++ creg r ++ ")"
 doOp v (LCompl ITNative) [x] = v ++ "INTOP(~," ++ creg x ++ ")"
 doOp v (LEq (ATInt ITNative)) [l, r] = v ++ "INTOP(==," ++ creg l ++ ", " ++ creg r ++ ")"
-doOp v (LLt (ATInt ITNative)) [l, r] = v ++ "INTOP(<," ++ creg l ++ ", " ++ creg r ++ ")"
-doOp v (LLe (ATInt ITNative)) [l, r] = v ++ "INTOP(<=," ++ creg l ++ ", " ++ creg r ++ ")"
-doOp v (LGt (ATInt ITNative)) [l, r] = v ++ "INTOP(>," ++ creg l ++ ", " ++ creg r ++ ")"
-doOp v (LGe (ATInt ITNative)) [l, r] = v ++ "INTOP(>=," ++ creg l ++ ", " ++ creg r ++ ")"
+doOp v (LSLt (ATInt ITNative)) [l, r] = v ++ "INTOP(<," ++ creg l ++ ", " ++ creg r ++ ")"
+doOp v (LSLe (ATInt ITNative)) [l, r] = v ++ "INTOP(<=," ++ creg l ++ ", " ++ creg r ++ ")"
+doOp v (LSGt (ATInt ITNative)) [l, r] = v ++ "INTOP(>," ++ creg l ++ ", " ++ creg r ++ ")"
+doOp v (LSGe (ATInt ITNative)) [l, r] = v ++ "INTOP(>=," ++ creg l ++ ", " ++ creg r ++ ")"
+doOp v (LLt ITNative) [l, r] = v ++ "UINTOP(<," ++ creg l ++ ", " ++ creg r ++ ")"
+doOp v (LLe ITNative) [l, r] = v ++ "UINTOP(<=," ++ creg l ++ ", " ++ creg r ++ ")"
+doOp v (LGt ITNative) [l, r] = v ++ "UINTOP(>," ++ creg l ++ ", " ++ creg r ++ ")"
+doOp v (LGe ITNative) [l, r] = v ++ "UINTOP(>=," ++ creg l ++ ", " ++ creg r ++ ")"
 
 doOp v (LPlus (ATInt ITChar)) [l, r] = doOp v (LPlus (ATInt ITNative)) [l, r] 
 doOp v (LMinus (ATInt ITChar)) [l, r] = doOp v (LMinus (ATInt ITNative)) [l, r] 
@@ -292,20 +296,24 @@ doOp v (LLSHR ITChar) [l, r] = doOp v (LLSHR ITNative) [l, r]
 doOp v (LASHR ITChar) [l, r] = doOp v (LASHR ITNative) [l, r] 
 doOp v (LCompl ITChar) [x] = doOp v (LCompl ITNative) [x] 
 doOp v (LEq (ATInt ITChar)) [l, r] = doOp v (LEq (ATInt ITNative)) [l, r] 
-doOp v (LLt (ATInt ITChar)) [l, r] = doOp v (LLt (ATInt ITNative)) [l, r] 
-doOp v (LLe (ATInt ITChar)) [l, r] = doOp v (LLe (ATInt ITNative)) [l, r] 
-doOp v (LGt (ATInt ITChar)) [l, r] = doOp v (LGt (ATInt ITNative)) [l, r]
-doOp v (LGe (ATInt ITChar)) [l, r] = doOp v (LGe (ATInt ITNative)) [l, r]
+doOp v (LSLt (ATInt ITChar)) [l, r] = doOp v (LSLt (ATInt ITNative)) [l, r] 
+doOp v (LSLe (ATInt ITChar)) [l, r] = doOp v (LSLe (ATInt ITNative)) [l, r] 
+doOp v (LSGt (ATInt ITChar)) [l, r] = doOp v (LSGt (ATInt ITNative)) [l, r]
+doOp v (LSGe (ATInt ITChar)) [l, r] = doOp v (LSGe (ATInt ITNative)) [l, r]
+doOp v (LLt ITChar) [l, r] = doOp v (LLt ITNative) [l, r] 
+doOp v (LLe ITChar) [l, r] = doOp v (LLe ITNative) [l, r] 
+doOp v (LGt ITChar) [l, r] = doOp v (LGt ITNative) [l, r]
+doOp v (LGe ITChar) [l, r] = doOp v (LGe ITNative) [l, r]
 
 doOp v (LPlus ATFloat) [l, r] = v ++ "FLOATOP(+," ++ creg l ++ ", " ++ creg r ++ ")"
 doOp v (LMinus ATFloat) [l, r] = v ++ "FLOATOP(-," ++ creg l ++ ", " ++ creg r ++ ")"
 doOp v (LTimes ATFloat) [l, r] = v ++ "FLOATOP(*," ++ creg l ++ ", " ++ creg r ++ ")"
 doOp v (LSDiv ATFloat) [l, r] = v ++ "FLOATOP(/," ++ creg l ++ ", " ++ creg r ++ ")"
 doOp v (LEq ATFloat) [l, r] = v ++ "FLOATBOP(==," ++ creg l ++ ", " ++ creg r ++ ")"
-doOp v (LLt ATFloat) [l, r] = v ++ "FLOATBOP(<," ++ creg l ++ ", " ++ creg r ++ ")"
-doOp v (LLe ATFloat) [l, r] = v ++ "FLOATBOP(<=," ++ creg l ++ ", " ++ creg r ++ ")"
-doOp v (LGt ATFloat) [l, r] = v ++ "FLOATBOP(>," ++ creg l ++ ", " ++ creg r ++ ")"
-doOp v (LGe ATFloat) [l, r] = v ++ "FLOATBOP(>=," ++ creg l ++ ", " ++ creg r ++ ")"
+doOp v (LSLt ATFloat) [l, r] = v ++ "FLOATBOP(<," ++ creg l ++ ", " ++ creg r ++ ")"
+doOp v (LSLe ATFloat) [l, r] = v ++ "FLOATBOP(<=," ++ creg l ++ ", " ++ creg r ++ ")"
+doOp v (LSGt ATFloat) [l, r] = v ++ "FLOATBOP(>," ++ creg l ++ ", " ++ creg r ++ ")"
+doOp v (LSGe ATFloat) [l, r] = v ++ "FLOATBOP(>=," ++ creg l ++ ", " ++ creg r ++ ")"
 
 doOp v (LIntFloat ITBig) [x] = v ++ "idris_castBigFloat(vm, " ++ creg x ++ ")"
 doOp v (LFloatInt ITBig) [x] = v ++ "idris_castFloatBig(vm, " ++ creg x ++ ")"
@@ -315,10 +323,10 @@ doOp v (LTimes (ATInt ITBig)) [l, r] = v ++ "idris_bigTimes(vm, " ++ creg l ++ "
 doOp v (LSDiv (ATInt ITBig)) [l, r] = v ++ "idris_bigDivide(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
 doOp v (LSRem (ATInt ITBig)) [l, r] = v ++ "idris_bigMod(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
 doOp v (LEq (ATInt ITBig)) [l, r] = v ++ "idris_bigEq(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
-doOp v (LLt (ATInt ITBig)) [l, r] = v ++ "idris_bigLt(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
-doOp v (LLe (ATInt ITBig)) [l, r] = v ++ "idris_bigLe(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
-doOp v (LGt (ATInt ITBig)) [l, r] = v ++ "idris_bigGt(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
-doOp v (LGe (ATInt ITBig)) [l, r] = v ++ "idris_bigGe(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
+doOp v (LSLt (ATInt ITBig)) [l, r] = v ++ "idris_bigLt(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
+doOp v (LSLe (ATInt ITBig)) [l, r] = v ++ "idris_bigLe(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
+doOp v (LSGt (ATInt ITBig)) [l, r] = v ++ "idris_bigGt(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
+doOp v (LSGe (ATInt ITBig)) [l, r] = v ++ "idris_bigGe(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
 
 doOp v LStrConcat [l,r] = v ++ "idris_concat(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
 doOp v LStrLt [l,r] = v ++ "idris_strlt(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
@@ -340,11 +348,15 @@ doOp v LReadStr [x] = v ++ "idris_readStr(vm, GETPTR(" ++ creg x ++ "))"
 doOp _ LPrintNum [x] = "printf(\"%ld\\n\", GETINT(" ++ creg x ++ "))"
 doOp _ LPrintStr [x] = "fputs(GETSTR(" ++ creg x ++ "), stdout)"
 
-doOp v (LLt (ATInt (ITFixed ty))) [x, y] = bitOp v "Lt" ty [x, y]
-doOp v (LLe (ATInt (ITFixed ty))) [x, y] = bitOp v "Lte" ty [x, y]
+doOp v (LSLt (ATInt (ITFixed ty))) [x, y] = bitOp v "SLt" ty [x, y]
+doOp v (LSLe (ATInt (ITFixed ty))) [x, y] = bitOp v "SLte" ty [x, y]
 doOp v (LEq (ATInt (ITFixed ty))) [x, y] = bitOp v "Eq" ty [x, y]
-doOp v (LGe (ATInt (ITFixed ty))) [x, y] = bitOp v "Gte" ty [x, y]
-doOp v (LGt (ATInt (ITFixed ty))) [x, y] = bitOp v "Gt" ty [x, y]
+doOp v (LSGe (ATInt (ITFixed ty))) [x, y] = bitOp v "SGte" ty [x, y]
+doOp v (LSGt (ATInt (ITFixed ty))) [x, y] = bitOp v "SGt" ty [x, y]
+doOp v (LLt (ITFixed ty)) [x, y] = bitOp v "Lt" ty [x, y]
+doOp v (LLe (ITFixed ty)) [x, y] = bitOp v "Lte" ty [x, y]
+doOp v (LGe (ITFixed ty)) [x, y] = bitOp v "Gte" ty [x, y]
+doOp v (LGt (ITFixed ty)) [x, y] = bitOp v "Gt" ty [x, y]
 
 doOp v (LSHL (ITFixed ty)) [x, y] = bitOp v "Shl" ty [x, y]
 doOp v (LLSHR (ITFixed ty)) [x, y] = bitOp v "LShr" ty [x, y]
