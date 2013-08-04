@@ -63,7 +63,7 @@ prove ctxt lit n ty
          ideslavePutSExp "end-proof-mode" n
          let proofs = proof_list i
          putIState (i { proof_list = (n, prf) : proofs })
-         let tree = simpleCase False True CompileTime (FC "proof" 0) [([], P Ref n ty, tm)]
+         let tree = simpleCase False True False CompileTime (FC "proof" 0) [([], P Ref n ty, tm)]
          logLvl 3 (show tree)
          (ptm, pty) <- recheckC (FC "proof" 0) [] tm
          logLvl 5 ("Proof type: " ++ show pty ++ "\n" ++
@@ -72,7 +72,7 @@ prove ctxt lit n ty
               OK _ -> return ()
               Error e -> ierror (CantUnify False ty pty e [] 0)
          ptm' <- applyOpts ptm
-         updateContext (addCasedef n True False True False
+         updateContext (addCasedef n True False False True False
                                  [Right (P Ref n ty, ptm)]
                                  [([], P Ref n ty, ptm)]
                                  [([], P Ref n ty, ptm')] ty)

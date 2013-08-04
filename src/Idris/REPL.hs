@@ -303,6 +303,7 @@ process fn (Eval t)
                       -- Add value to context, call it "it"
                       updateContext (addCtxtDef (UN "it") (Function ty' tm'))
                       logLvl 3 $ "Raw: " ++ show (tm', ty')
+                      logLvl 10 $ "Debug: " ++ showEnvDbg [] tm'
                       imp <- impShow
                       iResult (showImp imp (delab ist tm') ++ " : " ++
                                showImp imp (delab ist ty'))

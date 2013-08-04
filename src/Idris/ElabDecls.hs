@@ -222,6 +222,8 @@ elabPrims = do mapM_ (elabDecl EAll toplevel)
                mapM_ elabPrim primitives
                -- Special case prim__believe_me because it doesn't work on just constants
                elabBelieveMe
+               -- Finally, syntactic equality
+               elabSynEq
     where elabPrim :: Prim -> Idris ()
           elabPrim (Prim n ty i def sc tot)
               = do updateContext (addOperator n ty i (valuePrim def))
@@ -241,13 +243,41 @@ elabPrims = do mapM_ (elabDecl EAll toplevel)
           believeTy = Bind (UN "a") (Pi (TType (UVar (-2))))
                        (Bind (UN "b") (Pi (TType (UVar (-2))))
                          (Bind (UN "x") (Pi (V 1)) (V 1)))
-          elabBelieveMe = do let prim__believe_me = (UN "prim__believe_me")
-                             updateContext (addOperator prim__believe_me believeTy 3 p_believeMe)
-                             setTotality prim__believe_me (Partial NotCovering)
-                             i <- getIState
-                             putIState i {
-                               idris_scprims = (prim__believe_me, (3, LNoOp)) : idris_scprims i
-                             }
+          elabBelieveMe 
+             = do let prim__believe_me = (UN "prim__believe_me")
+                  updateContext (addOperator prim__believe_me believeTy 3 p_believeMe)
+                  setTotality prim__believe_me (Partial NotCovering)
+                  i <- getIState
+                  putIState i {
+                      idris_scprims = (prim__believe_me, (3, LNoOp)) : idris_scprims i
+                    }
+
+          p_synEq [t,_,x,y]
+               | x == y = Just (VApp (VApp vnJust VErased)
+                                (VApp (VApp vnRefl t) x))
+               | otherwise = Just (VApp vnNothing VErased)
+          p_synEq args = Nothing
+
+          nMaybe = P (TCon 0 2) (NS (UN "Maybe") ["Maybe", "Prelude"]) Erased
+          vnJust = VP (DCon 1 2) (NS (UN "Just") ["Maybe", "Prelude"]) VErased
+          vnNothing = VP (DCon 0 1) (NS (UN "Nothing") ["Maybe", "Prelude"]) VErased
+          vnRefl = VP (DCon 0 2) eqCon VErased
+
+          synEqTy = Bind (UN "a") (Pi (TType (UVar (-3))))
+                     (Bind (UN "b") (Pi (TType (UVar (-3))))
+                      (Bind (UN "x") (Pi (V 1))
+                       (Bind (UN "y") (Pi (V 1))
+                         (mkApp nMaybe [mkApp (P (TCon 0 4) eqTy Erased)
+                                               [V 3, V 2, V 1, V 0]]))))
+          elabSynEq 
+             = do let synEq = UN "prim__syntactic_eq"
+
+                  updateContext (addOperator synEq synEqTy 4 p_synEq)
+                  setTotality synEq (Total [])
+                  i <- getIState
+                  putIState i {
+                     idris_scprims = (synEq, (4, LNoOp)) : idris_scprims i
+                    }
 
 
 -- | Elaborate a type provider
@@ -483,6 +513,7 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
       do ctxt <- getContext
          -- Check n actually exists, with no definition yet
          let tys = lookupTy n ctxt
+         let reflect = Reflection `elem` opts
          checkUndefined n ctxt
          unless (length tys > 1) $ do
            fty <- case tys of
@@ -539,7 +570,7 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
 
            let optpdef = map debind $ map (simpl (tt_ctxt ist)) optpats
            tree@(CaseDef scargs sc _) <- tclift $ 
-                   simpleCase tcase False CompileTime fc pdef
+                   simpleCase tcase False reflect CompileTime fc pdef
            cov <- coverage
            pmissing <-
                    if cov  
@@ -584,7 +615,8 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
                                    show (delab ist x)) xs
            let knowncovering = (pcover && cov) || AssertTotal `elem` opts
 
-           tree' <- tclift $ simpleCase tcase knowncovering RunTime fc pdef'
+           tree' <- tclift $ simpleCase tcase knowncovering reflect
+                                        RunTime fc pdef'
            logLvl 3 (show tree)
            logLvl 3 $ "Optimised: " ++ show tree'
            ctxt <- getContext
@@ -594,12 +626,13 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
            case lookupTy n ctxt of
                [ty] -> do updateContext (addCasedef n (inlinable opts)
                                                        tcase knowncovering 
+                                                       reflect
                                                        (AssertTotal `elem` opts)
                                                        pats
                                                        pdef pdef' ty)
                           addIBC (IBCDef n)
                           setTotality n tot
-                          totcheck (fc, n)
+                          when (not reflect) $ totcheck (fc, n)
                           when (tot /= Unchecked) $ addIBC (IBCTotal n tot)
                           i <- getIState
                           case lookupDef n (tt_ctxt i) of

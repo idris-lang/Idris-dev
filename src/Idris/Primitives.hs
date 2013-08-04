@@ -675,3 +675,5 @@ p_strRev _ = Nothing
 
 p_cantreduce :: a -> Maybe b
 p_cantreduce _ = Nothing
+
+

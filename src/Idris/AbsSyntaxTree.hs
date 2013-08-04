@@ -334,6 +334,7 @@ data FnOpt = Inlinable | TotalFn | PartialFn
            | Coinductive | AssertTotal | TCGen
            | Implicit -- implicit coercion
            | CExport String    -- export, with a C name
+           | Reflection -- a reflecting function, compile-time only
            | Specialise [(Name, Maybe Int)] -- specialise it, freeze these names
     deriving (Show, Eq)
 {-!
@@ -379,9 +380,6 @@ data PDecl' t
    | PProvider SyntaxInfo FC Name t t -- ^ Type provider. The first t is the type, the second is the term
    | PTransform FC Bool t t -- ^ Source-to-source transformation rule. If
                             -- bool is True, lhs and rhs must be convertible
-   | PReflection FC Name -- type to reflect to
-                    t -- type of variables
-                    [PClause' t] -- ^ Pattern clauses
  deriving Functor
 {-!
 deriving instance Binary PDecl'

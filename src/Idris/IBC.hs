@@ -856,6 +856,7 @@ instance Binary FnOpt where
                 Coinductive -> putWord8 5
                 PartialFn -> putWord8 6
                 Implicit -> putWord8 7
+                Reflection -> putWord8 8
         get
           = do i <- getWord8
                case i of
@@ -868,6 +869,7 @@ instance Binary FnOpt where
                    5 -> return Coinductive
                    6 -> return PartialFn
                    7 -> return Implicit
+                   8 -> return Reflection
                    _ -> error "Corrupted binary data for FnOpt"
 
 instance Binary Fixity where
@@ -1045,11 +1047,6 @@ instance (Binary t) => Binary (PDecl' t) where
                                          put x4
                                          put x5
                                          put x6
-                PReflection x1 x2 x3 x4 -> do putWord8 13
-                                              put x1
-                                              put x2
-                                              put x3
-                                              put x4
         get
           = do i <- getWord8
                case i of
@@ -1125,11 +1122,6 @@ instance (Binary t) => Binary (PDecl' t) where
                             x5 <- get
                             x6 <- get
                             return (PPostulate x1 x2 x3 x4 x5 x6)
-                   13 -> do x1 <- get
-                            x2 <- get
-                            x3 <- get
-                            x4 <- get
-                            return (PReflection x1 x2 x3 x4)
                    _ -> error "Corrupted binary data for PDecl'"
 
 instance Binary Using where

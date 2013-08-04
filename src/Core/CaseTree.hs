@@ -27,6 +27,7 @@ deriving instance Binary SC
 type SC = SC' Term
 
 data CaseAlt' t = ConCase Name Int [Name] (SC' t)
+                | FnCase Name [Name]      (SC' t) -- ^ reflection function
                 | ConstCase Const         (SC' t)
                 | DefaultCase             (SC' t)
     deriving (Show, Eq, Ord, Functor)
@@ -52,6 +53,9 @@ instance Show t => Show (SC' t) where
         showA i (ConCase n t args sc) 
            = show n ++ "(" ++ showSep (", ") (map show args) ++ ") => "
                 ++ show' (i+1) sc
+        showA i (FnCase n args sc) 
+           = "FN " ++ show n ++ "(" ++ showSep (", ") (map show args) ++ ") => "
+                ++ show' (i+1) sc
         showA i (ConstCase t sc) 
            = show t ++ " => " ++ show' (i+1) sc
         showA i (DefaultCase sc) 
@@ -70,6 +74,7 @@ instance TermSize SC where
 
 instance TermSize CaseAlt where
     termsize n (ConCase _ _ _ s) = termsize n s
+    termsize n (FnCase _ _ s) = termsize n s
     termsize n (ConstCase _ s) = termsize n s
     termsize n (DefaultCase s) = termsize n s
 
@@ -91,6 +96,7 @@ namesUsed sc = nub $ nu' [] sc where
     nu' ps _ = []
 
     nua ps (ConCase n i args sc) = nub (nu' (ps ++ args) sc) \\ args
+    nua ps (FnCase n args sc) = nub (nu' (ps ++ args) sc) \\ args
     nua ps (ConstCase _ sc) = nu' ps sc
     nua ps (DefaultCase sc) = nu' ps sc
 
@@ -114,6 +120,7 @@ findCalls sc topargs = nub $ nu' topargs sc where
     nu' ps _ = []
 
     nua ps (ConCase n i args sc) = nub (nu' (ps ++ args) sc) 
+    nua ps (FnCase n args sc) = nub (nu' (ps ++ args) sc) 
     nua ps (ConstCase _ sc) = nu' ps sc
     nua ps (DefaultCase sc) = nu' ps sc
 
@@ -157,6 +164,7 @@ findAllUsedArgs sc topargs = filter (\x -> x `elem` topargs) (nu' sc) where
     nu' _             = []
 
     nua (ConCase n i args sc) = nu' sc 
+    nua (FnCase n  args sc)   = nu' sc 
     nua (ConstCase _ sc)      = nu' sc
     nua (DefaultCase sc)      = nu' sc
 
@@ -166,9 +174,10 @@ data Phase = CompileTime | RunTime
 -- Generate a simple case tree
 -- Work Right to Left
 
-simpleCase :: Bool -> Bool -> Phase -> FC -> [([Name], Term, Term)] -> 
+simpleCase :: Bool -> Bool -> Bool ->
+              Phase -> FC -> [([Name], Term, Term)] -> 
               TC CaseDef
-simpleCase tc cover phase fc cs
+simpleCase tc cover reflect phase fc cs
       = sc' tc cover phase fc (filter (\(_, _, r) -> 
                                           case r of
                                             Impossible -> False
@@ -179,7 +188,7 @@ simpleCase tc cover phase fc cs
  sc' tc cover phase fc cs 
       = let proj       = phase == RunTime
             pats       = map (\ (avs, l, r) -> 
-                                   (avs, toPats tc l, (l, r))) cs
+                                   (avs, toPats reflect tc l, (l, r))) cs
             chkPats    = mapM chkAccessible pats in
             case chkPats of
                 OK pats ->
@@ -196,7 +205,7 @@ simpleCase tc cover phase fc cs
           defaultCase False = UnmatchedCase "Error"
 
           chkAccessible (avs, l, c) 
-               | phase == RunTime = return (l, c)
+               | phase == RunTime || reflect = return (l, c)
                | otherwise = do mapM_ (acc l) avs
                                 return (l, c)
 
@@ -208,19 +217,20 @@ simpleCase tc cover phase fc cs
 data Pat = PCon Name Int [Pat]
          | PConst Const
          | PV Name
+         | PReflected Name [Pat]
          | PAny
     deriving Show
 
 -- If there are repeated variables, take the *last* one (could be name shadowing
 -- in a where clause, so take the most recent).
 
-toPats :: Bool -> Term -> [Pat]
-toPats tc f = reverse (toPat tc (getArgs f)) where
+toPats :: Bool -> Bool -> Term -> [Pat]
+toPats reflect tc f = reverse (toPat reflect tc (getArgs f)) where
    getArgs (App f a) = a : getArgs f
    getArgs _ = []
 
-toPat :: Bool -> [Term] -> [Pat]
-toPat tc tms = evalState (mapM (\x -> toPat' x []) tms) []
+toPat :: Bool -> Bool -> [Term] -> [Pat]
+toPat reflect tc tms = evalState (mapM (\x -> toPat' x []) tms) []
   where
     toPat' (P (DCon t a) n _) args = do args' <- mapM (\x -> toPat' x []) args
                                         return $ PCon n t args'
@@ -245,6 +255,9 @@ toPat tc tms = evalState (mapM (\x -> toPat' x []) tms) []
                                                   return (PV n)
     toPat' (App f a)  args = toPat' f (a : args)
     toPat' (Constant x) [] = return $ PConst x 
+    toPat' (P _ n _) args | reflect
+          = do args' <- mapM (\x -> toPat' x []) args
+               return $ PReflected n args'
     toPat' _            _  = return PAny
 
     fixedN IT8 = "Bits8"
@@ -262,6 +275,7 @@ isVarPat (PAny : ps , _) = True
 isVarPat _               = False
 
 isConPat (PCon _ _ _ : ps, _) = True
+isConPat (PReflected _ _ : ps, _) = True
 isConPat (PConst _   : ps, _) = True
 isConPat _                    = False
 
@@ -319,7 +333,9 @@ mixture vs (Vars ms : ps) err = do fallthrough <- mixture vs ps err
                                    varRule vs ms fallthrough
 
 data ConType = CName Name Int -- named constructor
+             | CFn Name -- reflected function name
              | CConst Const -- constant, not implemented yet
+   deriving Eq
 
 data Group = ConGroup ConType -- Constructor
                       [([Pat], Clause)] -- arguments and rest of alternative
@@ -337,6 +353,10 @@ caseGroups (v:vs) gs err = do g <- altGroups gs
         = do g <- altGroup n i args
              rest <- altGroups cs
              return (g : rest)
+    altGroups (ConGroup (CFn n) args : cs)
+        = do g <- altFnGroup n args
+             rest <- altGroups cs
+             return (g : rest)
     altGroups (ConGroup (CConst c) args : cs) 
         = do g <- altConstGroup c args
              rest <- altGroups cs
@@ -345,6 +365,9 @@ caseGroups (v:vs) gs err = do g <- altGroups gs
     altGroup n i gs = do (newArgs, nextCs) <- argsToAlt gs
                          matchCs <- match (newArgs ++ vs) nextCs err
                          return $ ConCase n i newArgs matchCs
+    altFnGroup n gs = do (newArgs, nextCs) <- argsToAlt gs
+                         matchCs <- match (newArgs ++ vs) nextCs err
+                         return $ FnCase n newArgs matchCs
     altConstGroup n gs = do (_, nextCs) <- argsToAlt gs
                             matchCs <- match vs nextCs err
                             return $ ConstCase n matchCs
@@ -382,14 +405,16 @@ groupCons cs = gc [] cs
         do acc' <- addGroup p ps res acc
            gc acc' cs
     addGroup p ps res acc = case p of
-        PCon con i args -> return $ addg con i args (ps, res) acc
+        PCon con i args -> return $ addg (CName con i) args (ps, res) acc
         PConst cval -> return $ addConG cval (ps, res) acc
+        PReflected fn args -> return $ addg (CFn fn) args (ps, res) acc
         pat -> fail $ show pat ++ " is not a constructor or constant (can't happen)"
 
-    addg con i conargs res [] = [ConGroup (CName con i) [(conargs, res)]]
-    addg con i conargs res (g@(ConGroup (CName n j) cs):gs)
-        | i == j = ConGroup (CName n i) (cs ++ [(conargs, res)]) : gs
-        | otherwise = g : addg con i conargs res gs
+    addg c conargs res [] 
+           = [ConGroup c [(conargs, res)]]
+    addg c conargs res (g@(ConGroup c' cs):gs)
+        | c == c' = ConGroup c (cs ++ [(conargs, res)]) : gs
+        | otherwise = g : addg c conargs res gs
 
     addConG con res [] = [ConGroup (CConst con) [([], res)]]
     addConG con res (g@(ConGroup (CConst n) cs) : gs)
@@ -416,6 +441,8 @@ depatt ns tm = dp [] tm
 
     dpa ms x (ConCase n i args sc)
         = ConCase n i args (dp ((x, (n, args)) : ms) sc)
+    dpa ms x (FnCase n args sc)
+        = FnCase n args (dp ((x, (n, args)) : ms) sc)
     dpa ms x (ConstCase c sc) = ConstCase c (dp ms sc)
     dpa ms x (DefaultCase sc) = DefaultCase (dp ms sc)
 
@@ -445,6 +472,7 @@ prune proj (Case n alts)
                                                  else Case n as
             as  -> Case n as
     where pruneAlt (ConCase cn i ns sc) = ConCase cn i ns (prune proj sc)
+          pruneAlt (FnCase cn ns sc) = FnCase cn ns (prune proj sc)
           pruneAlt (ConstCase c sc) = ConstCase c (prune proj sc)
           pruneAlt (DefaultCase sc) = DefaultCase (prune proj sc)
 
@@ -467,6 +495,8 @@ prune proj (Case n alts)
 
           projRepAlt arg n i (ConCase cn t args rhs)
               = ConCase cn t args (projRep arg n i rhs)
+          projRepAlt arg n i (FnCase cn args rhs)
+              = FnCase cn args (projRep arg n i rhs)
           projRepAlt arg n i (ConstCase t rhs)
               = ConstCase t (projRep arg n i rhs)
           projRepAlt arg n i (DefaultCase rhs)

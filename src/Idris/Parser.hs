@@ -722,6 +722,8 @@ pFnOpts opts
                   pFnOpts (CExport c : opts))
       <|> try (do lchar '%'; reserved "assert_total"; 
                   pFnOpts (AssertTotal : opts))
+      <|> try (do lchar '%'; reserved "reflection"; 
+                  pFnOpts (Reflection : opts))
       <|> do lchar '%'; reserved "specialise"; 
              lchar '['; ns <- sepBy nameTimes (lchar ','); lchar ']'
              pFnOpts (Specialise ns : opts)

@@ -99,6 +99,7 @@ simplify ctxt runtime env t
    = evalState (do val <- eval False ctxt [(UN "lazy", 0),
                                            (UN "assert_smaller", 0),
                                            (UN "par", 0),
+                                           (UN "prim__syntactic_eq", 0),
                                            (UN "fork", 0)] 
                                  (map finalEntry env) (finalise t) 
                                  [Simplify runtime]
@@ -343,7 +344,17 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
     chooseAlt env _ (VConstant c, []) alts amap
         | Just v <- findConst c alts      = return $ Just (amap, v)
         | Just v <- findDefault alts      = return $ Just (amap, v)
-    chooseAlt _ _ _ _ _                     = return Nothing
+    chooseAlt env _ (VP _ n _, args) alts amap
+        | Just (ns, sc) <- findFn n alts  = return $ Just (updateAmap (zip ns args) amap, sc)
+    chooseAlt _ _ _ alts amap
+        | Just v <- findDefault alts      
+             = if (any fnCase alts)
+                  then return $ Just (amap, v)
+                  else return Nothing
+        | otherwise = return Nothing
+
+    fnCase (FnCase _ _ _) = True
+    fnCase _ = False
 
     -- Replace old variable names in the map with new matches
     -- (This is possibly unnecessary since we make unique names and don't
@@ -353,6 +364,10 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
     findTag i [] = Nothing
     findTag i (ConCase n j ns sc : xs) | i == j = Just (ns, sc)
     findTag i (_ : xs) = findTag i xs
+
+    findFn fn [] = Nothing
+    findFn fn (FnCase n ns sc : xs) | fn == n = Just (ns, sc)
+    findFn fn (_ : xs) = findFn fn xs
 
     findDefault [] = Nothing
     findDefault (DefaultCase sc : xs) = Just sc
@@ -384,6 +399,10 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
 --                                 return (VBind n b' sc')
 -- tmpToV i vd (VApp f a) = liftM2 VApp (tmpToV i vd f) (tmpToV i vd a)
 -- tmpToV i vd x = return x
+
+instance Eq Value where
+    (==) x y = getTT x == getTT y
+      where getTT v = evalState (quote 0 v) initEval
 
 class Quote a where
     quote :: Int -> a -> Eval (TT Name)
@@ -774,18 +793,18 @@ addDatatype (Data n tag ty cons) uctxt
               addCons (tag+1) cons (addDef n
                   (TyDecl (DCon tag (arity ty')) ty, Public, Unchecked) ctxt)
 
-addCasedef :: Name -> Bool -> Bool -> Bool -> Bool ->
+addCasedef :: Name -> Bool -> Bool -> Bool -> Bool -> Bool ->
               [Either Term (Term, Term)] -> 
               [([Name], Term, Term)] -> 
               [([Name], Term, Term)] ->
               Type -> Context -> Context
-addCasedef n alwaysInline tcase covering asserted ps_in ps psrt ty uctxt 
+addCasedef n alwaysInline tcase covering reflect asserted ps_in ps psrt ty uctxt 
     = let ctxt = definitions uctxt
           access = case lookupDefAcc n False uctxt of
                         [(_, acc)] -> acc
                         _ -> Public
-          ctxt' = case (simpleCase tcase covering CompileTime (FC "" 0) ps, 
-                        simpleCase tcase covering RunTime (FC "" 0) psrt) of
+          ctxt' = case (simpleCase tcase covering reflect CompileTime (FC "" 0) ps, 
+                        simpleCase tcase covering reflect RunTime (FC "" 0) psrt) of
                     (OK (CaseDef args sc _), OK (CaseDef args' sc' _)) -> 
                        let inl = alwaysInline 
                            inlc = (inl || small n args sc') && (not asserted) 
@@ -804,7 +823,7 @@ simplifyCasedef n uctxt
               [(CaseOp inl inr ty ps_in ps args sc args' sc', acc, tot)] ->
                  let ps_in' = map simpl ps_in
                      pdef = map debind ps_in' in
-                     case simpleCase False True CompileTime (FC "" 0) pdef of
+                     case simpleCase False True False CompileTime (FC "" 0) pdef of
                        OK (CaseDef args sc _) ->
                           addDef n (CaseOp inl inr 
                                            ty ps_in' ps args sc args' sc',
