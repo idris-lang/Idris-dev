@@ -98,17 +98,27 @@ instance Functor Binder where
   map f (PVar x) = PVar (f x)
   map f (PVTy x) = PVTy (f x)
 
-total
-traverse : (Applicative f) =>  (a -> f b) -> Binder a -> f (Binder b)
-traverse f (Lam x) = [| Lam (f x) |]
-traverse f (Pi x) = [| Pi (f x) |]
-traverse f (Let x y) = [| Let (f x) (f y) |]
-traverse f (NLet x y) = [| NLet (f x) (f y) |]
-traverse f (Hole x) = [| Hole (f x) |]
-traverse f (GHole x) = [| GHole (f x) |]
-traverse f (Guess x y) = [| Guess (f x) (f y) |]
-traverse f (PVar x) = [| PVar (f x) |]
-traverse f (PVTy x) = [| PVTy (f x) |]
+instance Foldable Binder where
+  foldr f z (Lam x) = f x z
+  foldr f z (Pi x) = f x z
+  foldr f z (Let x y) = f x (f y z)
+  foldr f z (NLet x y) = f x (f y z)
+  foldr f z (Hole x) = f x z
+  foldr f z (GHole x) = f x z
+  foldr f z (Guess x y) = f x (f y z)
+  foldr f z (PVar x) = f x z
+  foldr f z (PVTy x) = f x z
+
+instance Traversable Binder where
+  traverse f (Lam x) = [| Lam (f x) |]
+  traverse f (Pi x) = [| Pi (f x) |]
+  traverse f (Let x y) = [| Let (f x) (f y) |]
+  traverse f (NLet x y) = [| NLet (f x) (f y) |]
+  traverse f (Hole x) = [| Hole (f x) |]
+  traverse f (GHole x) = [| GHole (f x) |]
+  traverse f (Guess x y) = [| Guess (f x) (f y) |]
+  traverse f (PVar x) = [| PVar (f x) |]
+  traverse f (PVTy x) = [| PVTy (f x) |]
 
 
 -- | Reflection of the well typed core language
