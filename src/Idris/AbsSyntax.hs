@@ -1023,6 +1023,9 @@ addImpl' inpat env infns ist ptm = ai (zip env (repeat Nothing)) ptm
     ai env (PPi p n ty sc) = let ty' = ai env ty
                                  sc' = ai ((n, Just ty):env) sc in
                                  PPi p n ty' sc'
+    ai env (PGoal fc r n sc) = let r' = ai env r
+                                   sc' = ai ((n, Nothing):env) sc in
+                                   PGoal fc r' n sc'
     ai env (PHidden tm) = PHidden (ai env tm)
     ai env (PProof ts) = PProof (map (fmap (ai env)) ts)
     ai env (PTactics ts) = PTactics (map (fmap (ai env)) ts)

@@ -263,6 +263,9 @@ regret = processTactic' Regret
 compute :: Elab' aux ()
 compute = processTactic' Compute
 
+computeLet :: Name -> Elab' aux ()
+computeLet n = processTactic' (ComputeLet n)
+
 simplify :: Elab' aux ()
 simplify = processTactic' Simplify
 

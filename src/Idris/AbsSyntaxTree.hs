@@ -524,6 +524,7 @@ data PTerm = PQuote Raw
            | PAlternative Bool [PTerm] -- True if only one may work
            | PHidden PTerm -- ^ Irrelevant or hidden pattern
            | PType
+           | PGoal FC PTerm Name PTerm
            | PConstant Const
            | Placeholder
            | PDoBlock [PDo]
@@ -560,6 +561,7 @@ mapPT f t = f (mpt t) where
   mpt (PProof ts) = PProof (map (fmap (mapPT f)) ts)
   mpt (PTactics ts) = PTactics (map (fmap (mapPT f)) ts)
   mpt (PUnifyLog tm) = PUnifyLog (mapPT f tm)
+  mpt (PGoal fc r n sc) = PGoal fc (mapPT f r) n (mapPT f sc)
   mpt x = x
 
 

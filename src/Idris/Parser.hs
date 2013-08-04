@@ -621,6 +621,7 @@ pNoExtExpr syn =
      <|> pRecordType syn
      <|> try (pSimpleExpr syn)
      <|> pLambda syn
+     <|> pQuoteGoal syn
      <|> pLet syn
      <|> pRewriteTerm syn
      <|> pPi syn 
@@ -681,6 +682,7 @@ pExt syn (Rule ssym ptm _)
                                                 : upd ns ds
             upd ns (DoLetP fc i t : ds) = DoLetP fc (update ns i) (update ns t) 
                                                 : upd ns ds
+    update ns (PGoal fc r n sc) = PGoal fc (update ns r) n (update ns sc)
     update ns t = t
 
 pName = do i <- getState
@@ -1008,6 +1010,14 @@ pLet syn = try (do reserved "let"; n <- pName;
                    symbol "="; v <- pExpr syn
                    reserved "in"; sc <- pExpr syn
                    return (PCase fc v [(pat, sc)]))
+
+pQuoteGoal syn = do reserved "quoteGoal"; n <- pName;
+                    reserved "by"
+                    r <- pExpr syn
+                    reserved "in"
+                    fc <- pfc
+                    sc <- pExpr syn
+                    return (PGoal fc r n sc)
 
 pPi syn = 
      try (do lazy <- if implicitAllowed syn -- laziness is top level only

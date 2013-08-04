@@ -292,6 +292,22 @@ elab ist info pattern tcgen fn tm
                expandLet n (case lookup n env of
                                  Just (Let t v) -> v)
                solve
+    elab' ina@(_,a) (PGoal fc r n sc) = do
+         rty <- goal
+         attack
+         tyn <- unique_hole (MN 0 "letty")
+         claim tyn RType
+         valn <- unique_hole (MN 0 "letval")
+         claim valn (Var tyn)
+         letbind n (Var tyn) (Var valn)
+         focus valn
+         elabE (True, a) (PApp fc r [pexp (delab ist rty)])
+         computeLet n
+         env <- get_env
+         elabE (True, a) sc
+         solve
+--          elab' ina (PLet n Placeholder 
+--              (PApp fc r [pexp (delab ist rty)]) sc) 
     elab' ina tm@(PApp fc (PInferRef _ f) args) = do
          rty <- goal
          ds <- get_deferred
@@ -1277,9 +1293,9 @@ mkSpecialised :: IState -> FC -> Name -> [PTerm] -> PTerm -> ElabD PTerm
 mkSpecialised i fc n args def
     = do let tm' = def
          case lookupCtxt n (idris_statics i) of
-           [] -> return tm'
            [as] -> if (not (or as)) then return tm' else
                        mkSpecDecl i n (zip args as) tm'
+           _ -> return tm'
 
 mkSpecDecl :: IState -> Name -> [(PTerm, Bool)] -> PTerm -> ElabD PTerm
 mkSpecDecl i n pargs tm'

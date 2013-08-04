@@ -58,6 +58,7 @@ data Tactic = Attack
             | StartUnify Name
             | EndUnify
             | Compute
+            | ComputeLet Name
             | Simplify
             | HNF_Compute
             | EvalIn Raw
@@ -264,6 +265,14 @@ tactic h f = do ps <- get
     atHb c env (Guess t v) = liftM2 Guess (atH c env t) (atH c env v)
     atHb c env t           = do ty' <- atH c env (binderTy t)
                                 return $ t { binderTy = ty' }
+
+computeLet :: Context -> Name -> Term -> Term
+computeLet ctxt n tm = cl [] tm where
+   cl env (Bind n' (Let t v) sc)
+       | n' == n = Bind n' (Let t (normalise ctxt env v)) sc
+   cl env (Bind n' b sc) = Bind n' (fmap (cl env) b) (cl ((n, b):env) sc)
+   cl env (App f a) = App (cl env f) (cl env a)
+   cl env t = t
 
 attack :: RunTactic
 attack ctxt env (Bind x (Hole t) sc) 
@@ -698,6 +707,8 @@ processTactic EndUnify ps
 processTactic (Reorder n) ps 
     = do ps' <- execStateT (tactic (Just n) reorder_claims) ps
          return (ps' { previous = Just ps, plog = "" }, plog ps')
+processTactic (ComputeLet n) ps
+    = return (ps { pterm = computeLet (context ps) n (pterm ps) }, "")
 processTactic t ps   
     = case holes ps of
         [] -> fail "Nothing to fill in."

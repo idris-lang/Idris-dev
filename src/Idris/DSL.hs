@@ -40,6 +40,8 @@ expandDo dsl (PHidden t) = PHidden (expandDo dsl t)
 expandDo dsl (PReturn fc) = dsl_return dsl
 expandDo dsl (PRewrite fc r t ty)
     = PRewrite fc r (expandDo dsl t) ty
+expandDo dsl (PGoal fc r n sc)
+    = PGoal fc (expandDo dsl r) n (expandDo dsl sc)
 expandDo dsl (PDoBlock ds) = expandDo dsl $ block (dsl_bind dsl) ds 
   where
     block b [DoExp fc tm] = tm 

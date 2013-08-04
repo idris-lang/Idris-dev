@@ -1,0 +1,4 @@
+#!/bin/bash
+idris $@ test030.idr --check
+idris $@ test030a.idr --check
+rm -f *.ibc

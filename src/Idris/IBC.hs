@@ -662,6 +662,10 @@ instance Binary CaseAlt where
                                       put x2
                 DefaultCase x1 -> do putWord8 2
                                      put x1
+                FnCase x1 x2 x3 -> do putWord8 3
+                                      put x1
+                                      put x2
+                                      put x3
         get
           = do i <- getWord8
                case i of
@@ -675,6 +679,10 @@ instance Binary CaseAlt where
                            return (ConstCase x1 x2)
                    2 -> do x1 <- get
                            return (DefaultCase x1)
+                   3 -> do x1 <- get
+                           x2 <- get
+                           x3 <- get
+                           return (FnCase x1 x2 x3)
                    _ -> error "Corrupted binary data for CaseAlt"
 
  
@@ -1321,6 +1329,11 @@ instance Binary PTerm where
                                            put x2
                                            put x3
                                            put x4
+                PGoal x1 x2 x3 x4 -> do putWord8 31
+                                        put x1
+                                        put x2
+                                        put x3
+                                        put x4
         get
           = do i <- getWord8
                case i of
@@ -1410,6 +1423,11 @@ instance Binary PTerm where
                             x3 <- get
                             x4 <- get
                             return (PRewrite x1 x2 x3 x4)
+                   31 -> do x1 <- get
+                            x2 <- get
+                            x3 <- get
+                            x4 <- get
+                            return (PGoal x1 x2 x3 x4)
                    _ -> error "Corrupted binary data for PTerm"
  
 instance (Binary t) => Binary (PTactic' t) where

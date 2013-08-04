@@ -3,6 +3,8 @@ New in 0.9.10:
 
 * Add '%reflection' option for functions, for compile-time operations on
   syntax.
+* Add 'quoteGoal x by p in e' which makes x equal to p applied to the goal
+  in the scope e
 * At the REPL, "it" now refers to the previous expression
 
 New in 0.9.9:
