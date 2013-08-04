@@ -254,6 +254,12 @@ instance Monad List where
 instance Monad (Vect n) where
     m >>= f = diag (map f m)
 
+---- Traversable instances
+
+instance Traversable List where
+    traverse f [] = pure List.Nil
+    traverse f (x::xs) = [| List.(::) (f x) (traverse f xs) |]
+
 ---- some mathematical operations
 
 %include C "math.h"
