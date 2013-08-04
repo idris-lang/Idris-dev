@@ -1,0 +1,3 @@
+#!/bin/bash
+idris $@ test029.idr --check test029
+rm -f *.ibc

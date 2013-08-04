@@ -761,11 +761,15 @@ runTac autoSolve ist tac
     runT (Exact tm) = do elab ist toplevel False False (MN 0 "tac") tm
                          when autoSolve solveAll
     runT (MatchRefine fn)   
-        = do (fn', imps) <- case lookupCtxtName fn (idris_implicits ist) of
-                                    [] -> do a <- envArgs fn
-                                             return (fn, a)
-                                    [(n, args)] -> return $ (n, map (const True) args)
-             ns <- match_apply (Var fn') (map (\x -> (x, 0)) imps)
+        = do fnimps <- 
+               case lookupCtxtName fn (idris_implicits ist) of
+                    [] -> do a <- envArgs fn
+                             return [(fn, a)]
+                    ns -> return (map (\ (n, a) -> (n, map (const True) a)) ns)
+             let tacs = map (\ (fn', imps) ->
+                                 (match_apply (Var fn') (map (\x -> (x, 0)) imps),
+                                     show fn')) fnimps
+             tryAll tacs
              when autoSolve solveAll
        where envArgs n = do e <- get_env
                             case lookup n e of
@@ -773,12 +777,15 @@ runTac autoSolve ist tac
                                                       (getArgTys (binderTy t))
                                _ -> return []
     runT (Refine fn [])   
-        = do (fn', imps) <- case lookupCtxtName fn (idris_implicits ist) of
-                                    [] -> do a <- envArgs fn
-                                             return (fn, a)
-                                    -- FIXME: resolve ambiguities
-                                    [(n, args)] -> return $ (n, map isImp args)
-             ns <- apply (Var fn') (map (\x -> (x, 0)) imps)
+        = do fnimps <- 
+               case lookupCtxtName fn (idris_implicits ist) of
+                    [] -> do a <- envArgs fn
+                             return [(fn, a)]
+                    ns -> return (map (\ (n, a) -> (n, map isImp a)) ns)
+             let tacs = map (\ (fn', imps) ->
+                                 (apply (Var fn') (map (\x -> (x, 0)) imps),
+                                     show fn')) fnimps
+             tryAll tacs
              when autoSolve solveAll
        where isImp (PImp _ _ _ _ _) = True
              isImp _ = False
