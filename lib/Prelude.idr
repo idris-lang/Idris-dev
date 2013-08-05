@@ -348,12 +348,6 @@ syntax "[" [start] "," [next] "..]"
 
 ---- More utilities
 
-sum : Num a => List a -> a
-sum = foldl (+) 0
-
-prod : Num a => List a -> a
-prod = foldl (*) 1
-
 curry : ((a, b) -> c) -> a -> b -> c
 curry f a b = f (a, b)
 
