@@ -7,7 +7,7 @@
 \label{sect:elaboration}
 
 An \Idris{} program consists of a series of declarations --- data types,
-functions, type classes and instances. In this section, we describe how these
+functions, classes and instances. In this section, we describe how these
 high level declarations are translated into a \TT{} program consisting of
 inductive families and pattern matching function definitions. We will need to
 work at the \remph{declaration} level, and at the \remph{expression} level,
@@ -884,7 +884,7 @@ The system state is a tuple, $(\vC,\vA,\vI)$, containing:
 \begin{itemize}
 \item A global context, $\vC$, containing pattern matching definitions and their types
 \item Implicit arguments, $\vA$, recording which arguments are implicit for each global name
-\item Type class information, $\vI$, containing method signatures and dictionaries for type classes
+\item Class information, $\vI$, containing method signatures and dictionaries for classes
 \end{itemize}
 
 In the implementation, the system state is captured in a monad, \texttt{Idris},
@@ -892,7 +892,7 @@ which includes additional information such as syntax overloadings, command line
 options, and optimisations, which do not concern us here. 
 
 For each global name, $\vA$ records whether its arguments are explicit, implicit,
-or type class constraints.  For example, recall the declaration
+or class constraints.  For example, recall the declaration
 of \texttt{vAdd}:
 
 \begin{SaveVerbatim}{vAddImpT}
@@ -971,7 +971,7 @@ are given explicitly, the application must be expanded.
 \end{array}
 \medskip\\
 \begin{array}{rll}
-\VV{constr} ::= & \piconst{\ttt} & (\mbox{type class constraint}) \\
+\VV{constr} ::= & \piconst{\ttt} & (\mbox{class constraint}) \\
 \end{array}
 }
 }
@@ -1028,7 +1028,7 @@ direct source transformation, and implicit arguments can be identified as the na
 which are free in a type in a non-function position.
 %
 \IdrisM{} differs from \TT{} in several important respects. It has implicit
-syntax and type classes, and functions are applied to multiple arguments rather
+syntax and classes, and functions are applied to multiple arguments rather
 than one at a time. 
 
 %Extensions over \TT{}: implicit syntax, case expressions. Functions are applied to
@@ -1181,10 +1181,10 @@ There are two cases to consider when elaborating applications:
 In the first case, the elaborator must expand the application to include implicit arguments.
 For example \texttt{vAdd xs ys} is expanded to
 \texttt{vAdd \{a=\_\} \{n=\_\} \{\{\_\}\} xs ys}, adding the implicit arguments
-\texttt{a} and \texttt{n} and a type class instance argument. The meta-operation
+\texttt{a} and \texttt{n} and a class instance argument. The meta-operation
 $\MO{Expand}\;\vx\;\ta$, given a global function name $\vx$ and the
 arguments supplied by the programmer $\ta$, returns a new argument list
-$\ta'$ with implicit and type class arguments added. Each value in
+$\ta'$ with implicit and class arguments added. Each value in
 $\ta'$ is paired with an explicit name for the argument.
 
 Implicit arguments are solved by unification
@@ -1218,7 +1218,7 @@ Elaborating a global function application makes a $\MO{Claim}$ for each
 argument in turn. Then the function is elaborated, applied to each of the
 claimed arguments. Each argument which has been given explicitly is
 elaborated. 
-Finally, any type class instance arguments are resolved with the
+Finally, any class instance arguments are resolved with the
 built-in $\MO{Instance}$ tactic.
 
 \DM{
@@ -1231,7 +1231,7 @@ built-in $\MO{Instance}$ tactic.
 \MO{Fill}\;\vx\;\tn\\
 \vec{\MO{ElabArg}}\;\tn\;\tv\hg\mbox{(for non-placeholder $\vv$)}\\
 \MO{Solve} \\
-\vec{\MO{Instance}}\;\tn\hg\mbox{(for type class constraint argument $\vn$)}
+\vec{\MO{Instance}}\;\tn\hg\mbox{(for class constraint argument $\vn$)}
 }
 \medskip
 \\
@@ -1241,7 +1241,7 @@ built-in $\MO{Instance}$ tactic.
 }
 
 The $\MO{Instance}$ tactic focuses on the given hole and searches the context for
-a type class instance which would solve the goal directly. First, it examines the local
+a class instance which would solve the goal directly. First, it examines the local
 context, then recursively searches the global context. $\MO{Instance}$ is covered
 in detail in Section \ref{sect:instance}.
 
@@ -1486,7 +1486,7 @@ $\vp$ with the name $\ve$.
 \MO{ElabClause}\;(\vx\;\ttt\;\iwith\;\vw\;\vec{\VV{pclause}})\;\mq\\
 \hg\hg\edo{
 \MO{NewProof}\;\TC{Infer};\;
-\ttinterp{\DC{MkInfer}\;\_\;(\vx\;\ttt)}\\
+\ttpinterp{\DC{MkInfer}\;\_\;(\vx\;\ttt)}\\
 \DC{MkInfer}\;\vT\;\VV{lhs}\gets\MO{Term}\\
 \tp\gets\MO{Patterns}\\
 \MO{NewTerm}\;\TC{Infer};\;
@@ -1529,12 +1529,12 @@ variables necessary to type $\vW$ and the rest, as before.
 
 \subsubsection{Elaborating Class and Instance Declarations}
 
-Type classes are implemented as dictionaries of functions for each instance,
+Classes are implemented as dictionaries of functions for each instance,
 following the implementation of first class type classes in Coq~\cite{Sozeau2008}.
-Therefore, a type class declaration elaborates to a record type containing all
+Therefore, a class declaration elaborates to a record type containing all
 of the functions in the class, and an instance is simply an instance of the
 record. The methods are translated to top level functions which extract the
-relevant function from the dictionary.  For example, for the \texttt{Show} type
+relevant function from the dictionary.  For example, for the \texttt{Show}
 class, the \texttt{class} declaration is translated (in the elaborated code,
 using the surface \Idris{} syntax for readability)
 to:
@@ -1565,7 +1565,7 @@ showNat = instanceShow show' where
 \useverb{shownatf} 
 
 The call to \tFN{show} in the body of the instance uses the top level \tFN{show}
-function, with the type class instance resolved by the elaborator.
+function, with the instance resolved by the elaborator.
 Where instances have constraints, these constraints are passed on to
 the function declaration for the instance. For example, for \texttt{Show (List a)}:
 
@@ -1619,8 +1619,8 @@ max (instanceOrd compare' max') = max'
 \useverb{orddatab}
 
 \noindent
-The elaborator also adds functions to retrieve parent classes from a dictionary, to assist
-with type class resolution. In this case:
+The elaborator also adds functions to retrieve parent classes from a
+dictionary, to assist with class resolution. In this case:
 
 \begin{SaveVerbatim}{ordparent}
 
@@ -1687,8 +1687,8 @@ and substitute $\TC{C}\;\ttt$, using $\MO{ExpandTypes}$:
 Adding default definitions is straightforward: simply insert the default definition where
 there is a method missing in an \texttt{instance} declaration.
 
-\textbf{Remark:} Here, we have added a higher level language construct (type
-classes) simply by elaborating in terms of lower level language constructs
+\textbf{Remark:} Here, we have added a higher level language construct
+(classes) simply by elaborating in terms of lower level language constructs
 (data types and functions).  We achieve type class resolution by implementing a
 tactic, $\MO{Instance}$.  We can build several extensions this way because we
 have effectively built, bottom up, an Embedded Domain Specific Language for
@@ -1699,9 +1699,9 @@ constructing programs in \TT{}.
 \label{sect:instance}
 
 When elaborating applications, recall that implicit arguments are filled in by
-unification as described in Section \ref{sect:elabapps}, and type class
+unification as described in Section \ref{sect:elabapps}, and class
 constraints by an $\MO{Instance}$ tactic which searches the context for an
-instance of the required type class. 
+instance of the required class. 
 
 The $\MO{Instance}$ tactic begins by trying to find a solution in the local context,
 using the $\MO{Trivial}$ tactic, which attempts
@@ -1722,7 +1722,7 @@ basic primitive for proof search, and is defined as follows:
 }
 }
 
-For example, in the following function, the type class constraint required for
+For example, in the following function, the class constraint required for
 the $\texttt{>}$ operator is resolved by finding an instance for \texttt{Ord a}
 in the local context:
 
@@ -1735,7 +1735,7 @@ max x y = if (x > y) then x else y
 \useverb{ordlocal} 
 
 If $\MO{Trivial}$ does not find a solution, $\MO{Instance}$ begins a global search,
-applying every type class instance, and attempting to resolve the instance's parameters
+applying every class instance, and attempting to resolve the instance's parameters
 recursively. Given an instance $\vI$ with parameters $\ta$:
 
 \DM{
@@ -1748,7 +1748,7 @@ recursively. Given an instance $\vI$ with parameters $\ta$:
 }
 
 We define $\MO{Instance}$ as follows, using $\MO{AllInstances}$ to retrieve
-all possible type class instances in the form required by $\MO{TryInstance}$:
+all possible instances in the form required by $\MO{TryInstance}$:
 
 \DM{
 \MO{Instance}\;\mq\;
@@ -1763,10 +1763,11 @@ all possible type class instances in the form required by $\MO{TryInstance}$:
 }
 }
 
-In practice, for efficiency and to ensure that type class resolution terminates,
-we constrain the search by recording which instances are defined for each type class,
-and by ensuring that a recursive call of $\MO{Instance}$ is either searching for
-a different class, or a structurally smaller instance of the current class. 
+In practice, for efficiency and to ensure that resolution terminates,
+we constrain the search by recording which instances are defined for each
+class, and by ensuring that a recursive call of $\MO{Instance}$ is either
+searching for a different class, or a structurally smaller instance of the
+current class. 
 
 For example, in the following function, the constraints required by the
 \tFN{show} function are resolved by a global search which locates a \tTC{Show}
@@ -1786,7 +1787,7 @@ main = putStrLn (show [1,2,3,4])
 
 We now have a complete elaborator for \IdrisM{}, covering 
 dependent pattern matching definitions and expansion of implicit arguments
-and type classes. In order to make the language truly general purpose, however, we
+and classes. In order to make the language truly general purpose, however, we
 will need to add higher level extensions. Full \Idris{} is \IdrisM{} extended
 with \texttt{do}-notation, idiom brackets~\cite{McBride2007}, \texttt{case} expressions,
 pattern matching \texttt{let}, metavariables and tactic based theorem proving.

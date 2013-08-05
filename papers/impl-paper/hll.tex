@@ -7,9 +7,9 @@ a pure functional programming language with dependent types. It is
 eagerly evaluated by default, and compiled via the Epic supercombinator
 library~\cite{brady2011epic}, with irrelevant values and proof terms
 automatically erased~\cite{Brady2003,Brady2005}.
-In this section, I will give a brief introduction to programming in \Idris{},
-covering the most important features. A full tutorial is available elsewhere
-\cite{idristutorial}. 
+In this section, I present some small examples to illustrate
+the features of \Idris{}.
+A full tutorial is available elsewhere \cite{idristutorial}. 
 
 \subsection{Preliminaries}
 
@@ -19,8 +19,7 @@ covering the most important features. A full tutorial is available elsewhere
 text manipulation, and \tTC{Ptr} which represents foreign pointers.
 There are also several data types declared in the library, including
 \tTC{Bool}, with values \tDC{True} and \tDC{False}. All of the usual
-arithmetic and comparison operators are defined for the primitive types,
-and are overloaded using type classes.
+arithmetic and comparison operators are defined for the primitive types.
 
 An \Idris{} program consists of a module declaration, followed by an optional
 list of imports and a collection of definitions and declarations, for example:
@@ -47,108 +46,63 @@ being, in general, undecidable for languages with dependent types.
 A module declaration also opens a \remph{namespace}. The fully qualified names
 declared in this module are \texttt{Main.x} and \texttt{Main.main}.
 
-
 \subsection{Types and Functions}
 
-Data types are declared in a similar way to Haskell data types, with a similar
-syntax. Natural numbers and lists, for example, are declared as follows in the
-library:
+Data types may be declared in a similar way to Haskell data types, with a
+similar syntax. For example, Peano natural numbers and lists
+are respectively declared in the library as follows:
 
-\begin{SaveVerbatim}{natlist}
+\begin{SaveVerbatim}{natdecl}
 
-data Nat    = Z   | S Nat           -- Natural numbers
-                                    -- (zero and successor)
-data List a = Nil | (::) a (List a) -- Polymorphic lists
+data Nat    = Z   | S Nat 
+data List a = Nil | (::) a (List a)
 
 \end{SaveVerbatim}
-\useverb{natlist}
+\useverb{natdecl}
 
 \noindent
-Unary natural numbers can be either zero, or
-the successor of another natural number (\texttt{S k}). 
-Lists can either be empty (\texttt{Nil})
-or a value added to the front of another list (\texttt{x :: xs}).
-In the declaration for \tTC{List}, we used an infix operator \tDC{::}. New operators
-such as this can be added using a fixity declaration, as follows:
+A standard example of a \remph{dependent} type is the type of ``lists with
+length'', conventionally called ``vectors'' in the dependently typed
+programming literature. In \Idris{}, vectors are declared as follows:
 
-\begin{SaveVerbatim}{infixcons}
+\begin{SaveVerbatim}{vectdecl}
 
-infixr 10 :: 
+data Vect : Nat -> Type -> Type where
+   Nil  : Vect Z a
+   (::) : a -> Vect k a -> Vect (S k) a
 
 \end{SaveVerbatim}
-\useverb{infixcons}
+\useverb{vectdecl}
 
 \noindent
-This declares that \texttt{::} is a right associative operator (\texttt{infixr})
-with a precedence level of 10.
-Functions, data constructors and type constructors may all be given infix
-operators as names. They may be used in prefix form if enclosed in brackets,
-e.g. \tDC{(::)}. 
+The above declaration creates a family of types. The syntax resembles a Haskell
+GADT declaration: it explicitly states the type
+of the type constructor \tTC{Vect} --- it takes a \tTC{Nat} and a type as
+arguments, where \tTC{Type} stands for the type of types. We say that \tTC{Vect}
+is \emph{indexed} over \tTC{Nat} and \emph{parameterised} by a type. 
+The distinction between parameters and indices is that a parameter is fixed
+across an entire data structure, whereas an index may vary.
+Note that constructor names may be overloaded (such as \texttt{Nil} and
+\texttt{(::)} here) provided that they are declared in separate namespaces.
 
-\subsection{Functions}
+Functions are implemented by pattern matching. For example, the following
+function defines concatenation of vectors, expressing in the type that
+the resulting vector's length is the sum of the input lengths:
 
-Functions are implemented by pattern matching, again using a similar syntax to
-Haskell. Some natural number arithmetic functions can be
-defined as follows, again taken from the standard library:
+\begin{SaveVerbatim}{vapp}
 
-\begin{SaveVerbatim}{natfns}
-
--- Unary addition
-plus : Nat -> Nat -> Nat
-plus O     y = y
-plus (S k) y = S (plus k y)
-
--- Unary multiplication
-mult : Nat -> Nat -> Nat
-mult O     y = O
-mult (S k) y = plus y (mult k y)
+(++) : Vect n a -> Vect m a -> Vect (n + m) a
+Nil       ++ ys = ys
+(x :: xs) ++ ys = x :: xs ++ ys
 
 \end{SaveVerbatim}
-\useverb{natfns}
+\useverb{vapp}
 
 \noindent
-The standard arithmetic operators \texttt{+} and \texttt{*} are also overloaded
-for use by \texttt{Nat}, and are implemented
-using the above functions.  Unlike Haskell, there is no restriction on whether
-types and function names must begin with a capital letter or not. Indeed, such
-a distinction would not necessarily be helpful, since function names may
-appear in pattern context if forced by some dependency. 
-%Function
-%names (\tFN{plus} and \tFN{mult} above), data constructors (\tDC{O}, \tDC{S},
-%\tDC{Nil} and \tDC{::}) and type constructors (\tTC{Nat} and \tTC{List}) are
-%all part of the same namespace.
-
-\Idris{} has an interactive prompt, at which we can test these functions:
-
-\begin{SaveVerbatim}{fntest}
-
-Idris> plus (S (S O)) (S (S O))
-S (S (S (S O))) : Nat
-Idris> mult (S (S (S O))) (plus (S (S O)) (S (S O)))
-S (S (S (S (S (S (S (S (S (S (S (S O))))))))))) : Nat
-
-\end{SaveVerbatim}
-\useverb{fntest}
-
-\noindent
-Like arithmetic operations, integer literals are also overloaded using type classes, 
-meaning that we can also test the functions as follows:
-
-\begin{SaveVerbatim}{fntest}
-
-Idris> plus 2 2 
-S (S (S (S O))) : Nat
-Idris> mult 3 (plus 2 2)
-S (S (S (S (S (S (S (S (S (S (S (S O))))))))))) : Nat
-
-\end{SaveVerbatim}
-\useverb{fntest}
-
-\subsubsection{\texttt{where} clauses}
-
-Functions can also be defined \emph{locally} using \texttt{where} clauses. For example,
-to define a function which reverses a list, we can use an auxiliary function which
-accumulates the new, reversed list, and which does not need to be visible globally:
+Functions can also be defined \emph{locally} using \texttt{where} clauses. For
+example, to define a function which reverses a list, we can use an auxiliary
+function which accumulates the new, reversed list, and which does not need to
+be visible globally:
 
 \begin{SaveVerbatim}{revwhere}
 
@@ -162,102 +116,63 @@ reverse xs = revAcc [] xs where
 \useverb{revwhere}
 
 \noindent
-Indentation is significant --- functions in the \texttt{where} block must be indented
-further than the outer function.
+Internally, \Idris{} programs are checked for \emph{totality} --- that they
+produce an answer in finite time for all possible inputs --- but they are not
+\emph{required} to be total by default. Totality checking serves two
+purposes: firstly, if a program terminates for all inputs 
+then its type gives a strong guarantee about the properties specified by its
+type; secondly, we can optimise total programs more
+aggressively~\cite{Brady2003}. 
 
-\textbf{Remark (scope):} 
-Any names which are visible in the outer scope are also visible in the
-\texttt{where} clause (unless they are redefined in the \texttt{where} clause,
-such as \texttt{xs} here). A name which appears only in the type will be in
-scope in the \texttt{where} clause if it is a \remph{parameter} to one of the
-types, i.e. it is fixed across the entire data structure.  In particular, this means
-that the \texttt{a} in the definition of \texttt{reverse} above is the
-\remph{same} \texttt{a} as in the definition of \texttt{revAcc}, as \texttt{a}
-is a parameter of \texttt{List}.
+Totality checking can be enforced by using the \texttt{total} keyword.
+For example, the following definition is accepted:
 
-\subsubsection{Dependent Types}
+\begin{SaveVerbatim}{vadd}
 
-A standard example of a dependent type is the type of ``lists with length'',
-conventionally called ``vectors'' in the dependently typed programming
-literature. In \Idris{}, vectors are declared as follows:
-
-\begin{SaveVerbatim}{vect}
-
-data Vect : Nat -> Type -> Type where
-   Nil  : Vect Z a
-   (::) : a -> Vect k a -> Vect (S k) a
+total vAdd : Num a => Vect n a -> Vect n a -> Vect n a
+vAdd []        []        = []
+vAdd (x :: xs) (y :: ys) = x + y :: vAdd xs ys
 
 \end{SaveVerbatim}
-\useverb{vect}
+\useverb{vadd}
 
 \noindent
-Note that this uses the same constructor names as for \tTC{List}. Ad-hoc name
-overloading such as this is accepted by \Idris{}, provided that the names are
-declared in different namespaces (in practice, normally in different modules)
-so that the names are different internally. Names can be used qualified by
-a namespace (e.g. \texttt{Vect.Nil}) or unqualified. If unqualified, it must
-be possible to distinguish between names by type.
+The elaborator can verify that this is total by checking that it covers all
+possible patterns --- in this case, both arguments must be of the same form
+as the type requires that the input vectors are the same length --- and that
+recursive calls are on structurally smaller values. 
 
-The above declaration creates a family of types, and requires a different form
-of declaration from the simple type declarations above. It resembles a Haskell
-GADT declaration: it explicitly states the type
-of the type constructor \tTC{Vect} --- it takes a \tTC{Nat} and a type as
-arguments, where \tTC{Type} stands for the type of types. We say that \tTC{Vect}
-is \emph{indexed} over \tTC{Nat} and \emph{parameterised} by a type. 
-The distinction between parameters and indices is that a parameter is fixed
-across an entire data structure, whereas an index may vary.
-Each constructor targets a different part of the family of types. \tDC{Nil} can
-only be used to construct vectors with zero length, and \tDC{::} to construct
-vectors with non-zero length. The type of \tDC{::} states explicitly that an element
-of type \texttt{a} and a tail of type \texttt{Vect k a} (i.e., a vector of length \texttt{k})
-combine to make a vector of length \texttt{S k}.
+\Idris{} also supports coinductive definitions, though this and further
+details of totality checking are beyond the scope of this paper; the totality
+checker is implemented independently of elaboration and type checking.
 
-Functions on dependent types such as \tTC{Vect} are declared in the same way
-as on simple types such as \tTC{List} and \tTC{Nat} above, by pattern matching.
-The type of a function over \tTC{Vect} will describe what happens to the
-lengths of the vectors involved. For example, \tFN{++}, defined in the
-library, appends two \tTC{Vect}s:
+\subsection{Implicit Arguments}
 
-\begin{SaveVerbatim}{vapp}
-
-(++) : Vect n a -> Vect m a -> Vect (n + m) a
-Nil       ++ ys = ys
-(x :: xs) ++ ys = x :: xs ++ ys
-
-\end{SaveVerbatim}
-\useverb{vapp}
-
-\subsubsection*{Example: The Finite Sets}
-
-Finite sets, as the name suggests, are sets with a finite number of elements.
-They are declared as follows in the library:
+In order to understand how \Idris{} elaborates to an underlying type theory,
+it is important first to understand the notion of \remph{implicit} arguments
+in types.
+To illustrate this, consider the finite sets:
 
 \begin{SaveVerbatim}{findecl}
 
 data Fin : Nat -> Type where
-   fZ : Fin (S k)
-   fS : Fin k -> Fin (S k)
+      fZ : Fin (S k)
+      fS : Fin k -> Fin (S k)
 
 \end{SaveVerbatim}
 \useverb{findecl}
 
 \noindent
-This declares
-\tDC{fZ} as the zeroth element of a finite set with \texttt{S k} elements; 
-\texttt{fS n} as the
+As the name suggests, these are sets with a finite number of elements.
+The declaration gives
+\tDC{fZ} as the zeroth element of a finite set with \texttt{S k} elements,
+and \texttt{fS n} as the
 \texttt{n+1}th element of a finite set with \texttt{S k} elements. 
-\tTC{Fin} is indexed by \tTC{Nat}, which
-represents the number of elements in the set. 
-Neither constructor targets \texttt{Fin O}, because we cannot construct an
-element of an empty set.
 
-A useful application of the \tTC{Fin} family is to represent bounded
-natural numbers. Since the first \tTC{n} natural numbers form a finite
-set of \tTC{n} elements, we can treat \tTC{Fin n} as the set of natural
-numbers bounded by \tTC{n}. 
-
-For example, the following function which looks up an element in a \tTC{Vect},
-by a bounded index given as a \tTC{Fin n}, is defined in the library:
+\tTC{Fin} is indexed by \tTC{Nat}, which represents the number of elements in
+the set.  Neither constructor targets \texttt{Fin Z}, because the empty
+set has no elements. The following function uses an element
+of a finite set as a bounds-safe index into a vector:
 
 \begin{SaveVerbatim}{vindex}
 
@@ -269,29 +184,7 @@ index (fS k) (x :: xs) = index k xs
 \useverb{vindex}
 
 \noindent
-This function looks up a value at a given location in a vector. The location is
-bounded by the length of the vector (\texttt{n} in each case), so there is no
-need for a run-time bounds check. The type checker guarantees that the location
-is no larger than the length of the vector.
-
-Note also that there is no case for \texttt{Nil} here. It would be impossible
-to apply such a case --- since there is no element of \texttt{Fin O}, and the
-location is a \texttt{Fin n}, then \texttt{n} can not be \tDC{O}.  As a result,
-attempting to look up an element in an empty vector would give a compile time
-type error.
-
-\subsubsection{Implicit Arguments}
-
-Let us take a closer look at the type of \texttt{index}:
-
-\begin{SaveVerbatim}{vindexty}
-
-index : Fin n -> Vect n a -> a
-
-\end{SaveVerbatim}
-\useverb{vindexty}
-
-\noindent
+Let us take a closer look at its type.
 It takes two arguments, an element of the finite set of \texttt{n} elements, and a vector
 with \texttt{n} elements of type \texttt{a}. But there are also two names, 
 \texttt{n} and \texttt{a}, which are not declared explicitly. These are \emph{implicit}
@@ -331,76 +224,27 @@ index {a=Int} {n=2} fO (2 :: 3 :: Nil)
 \end{SaveVerbatim}
 \useverb{vindexexp}
 
-\noindent
-In fact, any argument, implicit or explicit, may be given a name. For example,
-the type of \texttt{index} could be declared as:
+\subsection{Classes}
 
-\begin{SaveVerbatim}{vindexn}
+\Idris{} supports overloading in two ways. Firstly, as we have already seen
+with the constructors of \texttt{List} and \texttt{Vect}, names can be
+overloaded in an ad-hoc manner and resolved according to the context in which
+they are used. This is mostly for convenience, to eliminate the need to
+decorate constructor names in similarly structured data types, and eliminate
+explicit qualification of ambiguous names where only one is well-typed --- this
+is especially useful for disambiguating record field names\footnote{Records are
+however beyond the scope of this paper}.
 
-index : (i:Fin n) -> (xs:Vect n a) -> a
+Secondly, \Idris{} implements \remph{classes}, following Haskell's type
+classes.  This allows a more principled approach to overloading --- a class
+gives a collection of overloaded operations which describe the interface for
+\remph{instances} of that class. \Idris{} classes follow Haskell~98 type
+classes, except that multiple parameters are supported, and that classes can be
+parameterised by \remph{any} value, not just types\footnote{Hence we refer to
+them as \remph{classes} rather than \remph{type classes}.}.
 
-\end{SaveVerbatim}
-\useverb{vindexn}
-
-\noindent
-This can be useful for improving the readability of type signatures, particularly
-where the name suggests the argument's purpose.
-
-\subsubsection{Totality Checking}
-
-Internally, \Idris{} programs are checked for \emph{totality} --- that they
-produce an answer in finite time for all possible inputs --- but they are not
-\emph{required} to be total by default. Totality checking serves two
-purposes: firstly, if a program terminates for all inputs 
-then its type gives a strong
-guarantee about the properties specified by its type; secondly, we can
-optimise total programs more aggressively~\cite{Brady2003}. 
-
-Totality checking can be enforced by using the \texttt{total} keyword. For
-example, recall the \texttt{vAdd} function:
-
-\begin{SaveVerbatim}{vadd}
-
-total vAdd : Num a => Vect n a -> Vect n a -> Vect n a
-vAdd []        []        = []
-vAdd (x :: xs) (y :: ys) = x + y :: vAdd xs ys
-
-\end{SaveVerbatim}
-\useverb{vadd}
-
-\noindent
-The elaborator can verify that this is total by checking that it covers all
-possible patterns --- in this case, both arguments must be of the same form
-as the type requires that the input vectors are the same length --- and that
-recursive calls are on structurally smaller values. The totality checker is
-implemented independently of the type checker and elaborator presented in the
-remainder of this paper. While we could consider building totality proofs
-by translating functions to eliminators~\cite{McBride2004a} we have taken
-the more pragmatic approach of allowing more flexibility for the programmer
-at the expense of simplicity of totality checking. \Idris{} also supports
-coinductive definitions with a corresponding productivity checker, although
-further details are beyond the scope of this paper.
-
-\subsection{Type Classes}
-
-\Idris{} supports overloading in two ways. Firstly, as we have already seen with
-the constructors of \texttt{List} and \texttt{Vect}, names
-can be overloaded in an ad-hoc manner and resolved according to the context in which
-they are used. This is mostly for convenience, to eliminate the need to decorate
-constructor names in similarly structured data types, and eliminate explicit qualification
-of ambiguous names where only one is well-typed --- this is especially useful
-for disambiguating record field names\footnote{Records are however beyond the scope
-of this paper}.
-
-Secondly, \Idris{} implements \remph{type classes}, following Haskell.  This
-allows a more principled approach to overloading --- a type class gives a
-collection of overloaded operations which describe the interface for
-\remph{instances} of that class.
-
-A simple example
-is the \texttt{Show} type class, which is defined in the library and
-provides an interface for converting values to
-\texttt{String}s:
+A simple example is the \texttt{Show} class, which is defined in the
+library and provides an interface for converting values to \texttt{String}s:
 
 \begin{SaveVerbatim}{showclass}
 
@@ -411,44 +255,23 @@ class Show a where
 \useverb{showclass}
 
 \noindent
-This declares a function of the following type (which we call a \emph{method} of the 
-\texttt{Show} class):
-
-\begin{SaveVerbatim}{showty}
-
-show : Show a => a -> String
-
-\end{SaveVerbatim}
-\useverb{showty}
-
-An instance of a class
-is defined with an \texttt{instance} declaration, which provides implementations of
-the function for a specific type. For example, the \texttt{Show} instance for \texttt{Nat}
-could be defined as:
+An instance of a class is defined with an \texttt{instance} declaration, which
+provides implementations of the function for a specific type. For example:
 
 \begin{SaveVerbatim}{shownat}
 
 instance Show Nat where
-    show O = "O"
+    show Z = "Z"
     show (S k) = "s" ++ show k
 
 \end{SaveVerbatim}
 \useverb{shownat}
 
-\begin{SaveVerbatim}{shownati}
-
-Idris> show (S (S (S O))) 
-"sssO" : String
-
-\end{SaveVerbatim}
-\useverb{shownati}
-
 \noindent
-Only one instance of a class can be given for a type --- instances may not overlap.
 Instance declarations can themselves have constraints. For example, to define a
-\texttt{Show} instance for vectors, we need to know that there is a \texttt{Show} 
-instance for the element type, because we are going to use it to convert each element
-to a \texttt{String}:
+\texttt{Show} instance for vectors, we need to know that there is a
+\texttt{Show} instance for the element type, because we are going to use it to
+convert each element to a \texttt{String}:
 
 \begin{SaveVerbatim}{showvec}
 
@@ -461,32 +284,6 @@ instance Show a => Show (Vect n a) where
 
 \end{SaveVerbatim}
 \useverb{showvec}
-
-%\noindent
-%\textbf{Remark: } The type of the auxiliary function \texttt{show'} is
-%important. The type variables \texttt{a} and \texttt{n} which are part of the
-%instance declaration for \texttt{Show (Vect a n)} are fixed across the entire
-%instance declaration. As a result, \texttt{a} need not be constrained
-%again. Furthermore, it means that if \texttt{n} is used again in the type, it refers
-%to the (fixed) length of the outermost list \texttt{xs}. Therefore,
-%there is a different name for the length \texttt{n'} in \texttt{show'}.
-
-\noindent
-Like Haskell type classes, default definitions can be given in the class declaration.
-Otherwise, all methods must be given in an instance. For example, there is an
-\texttt{Eq} class:
-
-\begin{SaveVerbatim}{eqdefault}
-
-class Eq a where
-    (==) : a -> a -> Bool
-    (/=) : a -> a -> Bool
-
-    x /= y = not (x == y)
-    y == y = not (x /= y)
-
-\end{SaveVerbatim}
-\useverb{eqdefault}
 
 \noindent
 Classes can also be extended. A logical next step from an equality relation \texttt{Eq}
