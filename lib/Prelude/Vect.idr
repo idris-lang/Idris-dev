@@ -1,6 +1,7 @@
 module Prelude.Vect
 
 import Prelude.Fin
+import Prelude.Foldable
 import Prelude.Functor
 import Prelude.List
 import Prelude.Nat
@@ -62,12 +63,8 @@ drop (fS k) []      impossible
 drop (fS k) (x::xs) = drop k xs
 
 --------------------------------------------------------------------------------
--- Conversions to and from list
+-- Conversion from list (toList is provided by Foldable)
 --------------------------------------------------------------------------------
-
-toList : Vect n a -> List a
-toList []      = []
-toList (x::xs) = x :: toList xs
 
 fromList : (l : List a) -> Vect (length l) a
 fromList []      = []
@@ -123,13 +120,9 @@ instance Functor (Vect n) where
 -- Folds
 --------------------------------------------------------------------------------
 
-total foldl : (a -> b -> a) -> a -> Vect m b -> a
-foldl f e []      = e
-foldl f e (x::xs) = foldl f (f e x) xs
-
-total foldr : (a -> b -> b) -> b -> Vect m a -> b
-foldr f e []      = e
-foldr f e (x::xs) = f x (foldr f e xs)
+instance Foldable (Vect n) where
+  foldr f e []      = e
+  foldr f e (x::xs) = f x (foldr f e xs)
 
 --------------------------------------------------------------------------------
 -- Special folds
@@ -138,18 +131,6 @@ foldr f e (x::xs) = f x (foldr f e xs)
 concat : Vect m (Vect n a) -> Vect (m * n) a
 concat []      = []
 concat (v::vs) = v ++ concat vs
-
-total and : Vect m Bool -> Bool
-and = foldr (&&) True
-
-total or : Vect m Bool -> Bool
-or = foldr (||) False
-
-total any : (a -> Bool) -> Vect m a -> Bool
-any p = Vect.or . map p
-
-total all : (a -> Bool) -> Vect m a -> Bool
-all p = Vect.and . map p
 
 --------------------------------------------------------------------------------
 -- Transformations
