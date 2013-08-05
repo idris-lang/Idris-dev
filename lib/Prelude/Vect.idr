@@ -120,9 +120,12 @@ instance Functor (Vect n) where
 -- Folds
 --------------------------------------------------------------------------------
 
+foldrImpl : (t -> acc -> acc) -> acc -> (acc -> acc) -> Vect n t -> acc
+foldrImpl f e go [] = go e
+foldrImpl f e go (x::xs) = foldrImpl f e (go . (f x)) xs
+
 instance Foldable (Vect n) where
-  foldr f e []      = e
-  foldr f e (x::xs) = f x (foldr f e xs)
+  foldr f e xs = foldrImpl f e id xs
 
 --------------------------------------------------------------------------------
 -- Special folds

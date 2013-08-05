@@ -1,0 +1,4 @@
+#!/bin/bash
+idris $@ reg022.idr -o reg022
+./reg022
+rm -f reg022 *.ibc
