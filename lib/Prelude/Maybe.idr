@@ -3,6 +3,7 @@ module Prelude.Maybe
 import Builtins
 import Prelude.Algebra
 import Prelude.Cast
+import Prelude.Foldable
 
 %access public
 %default total
@@ -81,3 +82,7 @@ instance (Monoid a, Eq a) => Cast a (Maybe a) where
 
 instance (Monoid a) => Cast (Maybe a) a where
   cast = lowerMaybe
+
+instance Foldable Maybe where
+  foldr _ z Nothing = z
+  foldr f z (Just x) = f x z

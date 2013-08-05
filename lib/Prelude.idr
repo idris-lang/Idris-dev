@@ -15,6 +15,7 @@ import Prelude.Either
 import Prelude.Vect
 import Prelude.Strings
 import Prelude.Chars
+import Prelude.Traversable
 
 %access public
 %default total
@@ -252,6 +253,20 @@ instance Monad List where
 
 instance Monad (Vect n) where
     m >>= f = diag (map f m)
+
+---- Traversable instances
+
+instance Traversable Maybe where
+    traverse f Nothing = pure Nothing
+    traverse f (Just x) = [| Just (f x) |]
+
+instance Traversable List where
+    traverse f [] = pure List.Nil
+    traverse f (x::xs) = [| List.(::) (f x) (traverse f xs) |]
+
+instance Traversable (Vect n) where
+    traverse f [] = pure Vect.Nil
+    traverse f (x::xs) = [| Vect.(::) (f x) (traverse f xs) |]
 
 ---- some mathematical operations
 
