@@ -1,3 +1,4 @@
+\RequirePackage{amsmath}
 \documentclass{jfp1}
 %\documentclass[acmtoplas]{acmtrans2m}
 
@@ -10,14 +11,13 @@
 \usepackage{epsfig}
 %\usepackage{path}
 \usepackage{url}
-%\usepackage{amsmath} 
 \usepackage{fancyvrb}
-\usepackage{todonotes}
 
 \newenvironment{template}{\sffamily}
 
 %\usepackage{graphics,epsfig}
 \usepackage{stmaryrd}
+\usepackage{amsmath} 
 
 \input{./macros.ltx}
 \input{./library.ltx}
@@ -80,11 +80,10 @@ language implementations.  In this paper, I describe the implementation of
 and as such provides high level concepts such as implicit syntax, 
 type classes and \texttt{do} notation. 
 I describe the high level language and the underlying type theory, and present
-a method for \emph{elaborating} concrete high level syntax with implicit
-arguments and type classes into a fully explicit type theory. Furthermore,
-I show how this method,
-based on a domain specific language embedded in Haskell, facilitates the
-implementation of new high level language constructs.
+a tactic based method for \emph{elaborating} concrete high level syntax with
+implicit arguments and type classes into a fully explicit type theory.
+Furthermore, I show how this method facilitates the implementation of new high
+level language constructs.
 
 %I describe the implementation of a dependently typed functional
 %programming language, \Idris{}. Much has been written about various

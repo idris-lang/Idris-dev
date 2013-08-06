@@ -31,7 +31,7 @@ the type theory needs to support
 To achieve this, we extend \TT{} with \remph{holes},
 calling the extended calculus \TTdev{}.
 Holes stand for the parts of programs which have not yet been
-instantiated; this largely follows the \Oleg{} development
+instantiated; this largely follows the Oleg development
 calculus~\cite{McBride1999}.
 
 The basic idea is to extend the syntax for binders with a \remph{hole}
@@ -193,7 +193,7 @@ allows the elaborator to use pattern bindings from the left
 hand side of a pattern matching definition in the term on the right hand side.
 
 
-\newcommand{\Check}{\MO{Check}_\Gamma}
+\renewcommand{\Check}{\MO{Check}_\Gamma}
 \newcommand{\Eval}{\MO{Normalise}_\Gamma}
 \newcommand{\Unify}{\MO{Unify}_\Gamma}
 \newcommand{\PrimUnify}{\MO{PrimUnify}_\Gamma}
@@ -1077,7 +1077,10 @@ elaboration will fail.
 If we are building the left hand side of a pattern clause, however, there is a
 problem, as it is the left hand side which \remph{defines} variables. In this
 context, we assume that attempting to elaborate a variable which does not type
-check means that the variable is a pattern variable:
+check means that the variable is a pattern variable\footnote{In Haskell,
+pattern variables are all lower case, so type checking can assume that a
+lower case name in a pattern refers to a variable. In \Idris{} however, a
+name in a pattern may refer to a function, if forced by some dependency.}:
 
 \DM{
 \ttpinterp{\vx}\;\mq\;
@@ -1498,7 +1501,10 @@ $\vp$ with the name $\ve$.
 \vec{\MO{Elab}}\;\tc'\\
 \RW{return}\;(\RW{var}\;\tp\SC\VV{lhs}\;=\;\vx'\;\tp_{w}\;\vw'\;\tp_{n})
 }
-\medskip\\
+}
+}
+\DM{
+\AR{
 \MO{MatchWith}\;\tp_w\;\tp_n\;\ttt\;(\vx\;\tw\;\mid\;\ve\;\VV{rhs})\;\mq\\
 \hg\hg\edo{
 \tp'\gets\vec{\MO{Match}}\;\tw\;\ttt\\

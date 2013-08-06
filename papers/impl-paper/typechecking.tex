@@ -94,9 +94,19 @@ names may reduce.
 
 \label{sect:evaluation}
 
-Evaluation of \TT{} is defined by contraction schemes, given in Figure
-\ref{ttcontract}. \demph{Contraction}, relative to a context $\Gamma$, is given
-by one of the following schemes:
+There are two distinct phases in which \TT{} evaluation occurs, namely
+\demph{compile-time} and \demph{run-time}. Compile-time evaluation is primarily
+to support type-checking, in which equivalence of two terms (or types) is
+determined by comparing their normal forms. It is important that terms are
+strongly normalising at compile-time, so any pattern matching definition which
+is not guaranteed to be total does not reduce. In this section we discuss
+compile-time evaluation; run-time evaluation differs in that there is no
+reduction under binders, types and duplicated values have been
+erased~\cite{Brady2003}, and non-normalising definitions may reduce. 
+
+Compile-time evaluation of \TT{} is defined by contraction schemes, given in
+Figure \ref{ttcontract}. \demph{Contraction}, relative to a context $\Gamma$,
+is given by one of the following schemes:
 
 \begin{itemize}
 \item $\beta$-contraction, which substitutes a value applied to a $\lambda$-binding for
@@ -267,12 +277,11 @@ defined collection of algebraic data types which can be parameterised over
 \remph{values} as well as types.  An inductive family is declared 
 in a similar style to a Haskell GADT declaration~\cite{pj2006gadts}
 as
-follows, using vector notation, $\tx$, to indicate a
-sequence of zero or more $\vx$ (i.e., $\vx_1,\vx_2,\ldots,\vx_n$):
+follows:
 
 \DM{
 \AR{
-\Data\hg\TC{T}\;(\tx\Hab\ttt)\Hab\vt\hg\Where\hg
+\Data\hg\TC{T}\Hab\vt\hg\Where\hg
 \DC{D}_1\Hab\vt\;\mid\;\ldots\;\mid\;\DC{D}_n\Hab\vt
 }
 }
@@ -280,7 +289,10 @@ sequence of zero or more $\vx$ (i.e., $\vx_1,\vx_2,\ldots,\vx_n$):
 A constructor $\TC{D}$ of a family $\TC{T}$ must return a value in the family
 $\TC{T}$.
 It may take recursive arguments in the family $\TC{T}$ which may be
-higher order. That is, recursive arguments have types of the form
+higher order. 
+Using vector notation, $\tx$, to indicate a
+sequence of zero or more $\vx$ (i.e., $\vx_1,\vx_2,\ldots,\vx_n$),
+recursive arguments have types of the form
 
 \DM{
 \all{\vx_1}{\vS_1}\SC\ldots\all{\vx_n}{\vS_n}\SC\TC{T}\:\ty
@@ -301,8 +313,8 @@ For example, the \Idris{} data type \tTC{Nat} would be declared in \TT{} as foll
 }
 
 A data type may have zero or more parameters (which are invariant
-across a structure) and a number of indices, given by the type. For
-example, the \TT{} equivalent of \tTC{List} is parameterised over its element type:
+across a structure) and a number of indices, given by the type. For example,
+the \TT{} equivalent of \tTC{List} is parameterised over its element type:
 
 \DM{
 \AR{
@@ -316,7 +328,7 @@ example, the \TT{} equivalent of \tTC{List} is parameterised over its element ty
 }
 
 Types can be
-parameterised over values. Using this, we can declare the type of
+parameterised or indexed over values. Using this, we can declare the type of
 vectors (lists with length), where the empty list is statically known
 to have length zero, and the non empty list is statically known to
 have a non zero length. The \TT{} equivalent of \tTC{Vect} is parameterised over its element type,
@@ -362,7 +374,7 @@ and the types of each side must be convertible. Additionally, the
 left hand side must take the form of $\FN{f}$ applied to a number of \TT{} expressions,
 and the number of arguments must be the same in each clause. The right hand
 sides may include applications of $\FN{f}$, i.e. pattern matching definitions may
-be recursive. Termination analysis is implemented separately. The validity of a pattern
+be recursive. The validity of a pattern
 clause is defined by the following rule:
 
 \DM{
@@ -375,14 +387,19 @@ clause is defined by the following rule:
 }
 }
 
+Patterns are separated into the accessible patterns (variables and constructor
+forms which may be inspected) and inaccessible patterns, following
+Agda~\cite{norell2007thesis} then implemented by compilation into case
+trees~\cite{Augustsson1985}. Non-terminating definitions are permitted, but do
+not reduce at compile-time, which means in particular that they cannot be used
+to construct proofs.
+Termination analysis is implemented separately.
+
 A valid pattern matching definition effectively extends \TT{} with a new
 constant, with the given type (extending the initial typing rules given in
 Section \ref{sect:typerules}) and reduction behaviour (extending the initial
 reduction rules given in Section \ref{sect:evaluation}). 
-Patterns are separated into the accessible patterns (variables and constructor
-forms which may be inspected) and inaccessible patterns, following
-Agda~\cite{norell2007thesis} then implemented by compilation into case
-trees~\cite{Augustsson1985}.
+
 
 % \subsubsection{Semantics}
 % 
@@ -532,26 +549,37 @@ trees~\cite{Augustsson1985}.
 \mbox{then} & \Gamma_0,\Gamma_1\proves\vs\Hab\vS\\
 (\mbox{where} & \mathcal{B}(\vx, \vT) \proves \vx\Hab\vT)
 \end{array}
+\medskip
+\\
+\mbox{\textbf{Strong normalisation}} &
+\begin{array}{ll}
+\mbox{If} & \Gamma\proves\vt\Hab\vT\\
+\mbox{then} & \vt\:\mbox{is strongly normalising}\\
+\end{array}
 \\
 \end{array}
 }
 {Metatheoretic properties of \TT{}}
 {metatheory}
 
-We conjecture that \TT{} respects the usual metatheoretic properties, as shown in
+We conjecture that \TT{} respects the usual metatheoretic properties, 
+as shown in
 Figure \ref{metatheory}.  Specifically: the \demph{Church-Rosser} property
 (i.e. that distinct reduction sequences lead to the same normal form);
 \demph{subject reduction} (i.e. that computation preserves type); the
 \demph{cut} property (i.e. that $\RW{let}$-bound terms may be substituted into
 their scope); and \demph{strengthening} (i.e. that removing unused definitions
 from scope does not affect type checking).
+\demph{Strong normalisation} holds at compile-time because pattern matching
+definitions which cannot be shown to be terminating do not have compile-time
+reduction behaviour.
 
-One property which is noticeably absent is \demph{strong normalisation}.
-Although desirable to preserve termination and decidability of type checking,
-we allow diverging terms for pragmatic reasons as \Idris{} is primarily a
-programming language rather than a theorem prover. Nevertheless, we do
-\emph{check} for totality in order to be sure which terms are safe to
-evaluate at compile time.
+%One property which is noticeably absent is \demph{strong normalisation}.
+%Although desirable to preserve termination and decidability of type checking,
+%we allow diverging terms for pragmatic reasons as \Idris{} is primarily a
+%programming language rather than a theorem prover. Nevertheless, we do
+%\emph{check} for totality in order to be sure which terms are safe to
+%evaluate at compile time.
 
 \subsection{Totality checking}
 
@@ -607,7 +635,8 @@ also treated as an implicit argument, to which we give the name \texttt{c}:
 
 \begin{SaveVerbatim}{vAddImp}
 
-vAdd : (a : _) -> (n : _) -> Num a -> Vect n a -> Vect n a -> Vect n a
+vAdd : (a : _) -> (n : _) -> 
+       Num a -> Vect n a -> Vect n a -> Vect n a
 vAdd _ _ c (Nil _)         (Nil _)         = (Nil _)
 vAdd _ _ c ((::) _ _ x xs) ((::) _ _ y ys) 
                 = (::) _ _ ((+) _ x y) (vAdd _ _ _ xs ys)
@@ -621,7 +650,8 @@ algorithm:
 
 \begin{SaveVerbatim}{vAddImpSolve}
 
-vAdd : (a : Type) -> (n : Nat) -> Num a -> Vect n a -> Vect n a -> Vect n a
+vAdd : (a : Type) -> (n : Nat) -> 
+       Num a -> Vect n a -> Vect n a -> Vect n a
 vAdd a O     c (Nil a)         (Nil a)         = Nil a
 vAdd a (S k) c ((::) a k x xs) ((::) a k y ys) 
                 = (::) a k ((+) c x y) (vAdd a k c xs ys)
