@@ -685,6 +685,12 @@ instance Binary CaseAlt where
                            return (FnCase x1 x2 x3)
                    _ -> error "Corrupted binary data for CaseAlt"
 
+instance Binary CaseInfo where
+        put x@(CaseInfo x1 x2) = do put x1
+                                    put x2
+        get = do x1 <- get
+                 x2 <- get
+                 return (CaseInfo x1 x2)
  
 instance Binary Def where
         put x
@@ -698,7 +704,7 @@ instance Binary Def where
                                    put x2
                 -- all primitives just get added at the start, don't write
                 Operator x1 x2 x3 -> do return ()
-                CaseOp x1 x2 x3 x3a x4 x5 x6 x7 x8 -> 
+                CaseOp x1 x2 x3 x3a x4 x5 x6 x7 -> 
                                                do putWord8 3
                                                   put x1
                                                   put x2
@@ -708,7 +714,6 @@ instance Binary Def where
                                                   put x5
                                                   put x6
                                                   put x7
-                                                  put x8
         get
           = do i <- getWord8
                case i of
@@ -730,8 +735,7 @@ instance Binary Def where
                            x5 <- get
                            x6 <- get
                            x7 <- get
-                           x8 <- get
-                           return (CaseOp x1 x2 x3 [] x4 x5 x6 x7 x8)
+                           return (CaseOp x1 x2 x3 [] x4 x5 x6 x7)
                    _ -> error "Corrupted binary data for Def"
 
 instance Binary Accessibility where
@@ -857,7 +861,7 @@ instance Binary FnOpt where
           = case x of
                 Inlinable -> putWord8 0
                 TotalFn -> putWord8 1
-                TCGen -> putWord8 2
+                Dictionary -> putWord8 2
                 AssertTotal -> putWord8 3
                 Specialise x -> do putWord8 4
                                    put x
@@ -870,7 +874,7 @@ instance Binary FnOpt where
                case i of
                    0 -> return Inlinable
                    1 -> return TotalFn
-                   2 -> return TCGen
+                   2 -> return Dictionary
                    3 -> return AssertTotal
                    4 -> do x <- get
                            return (Specialise x)

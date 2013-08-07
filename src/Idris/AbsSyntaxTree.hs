@@ -330,8 +330,11 @@ expl = Exp False Dynamic ""
 constraint = Constraint False Dynamic ""
 tacimpl t = TacImp False Dynamic t ""
 
-data FnOpt = Inlinable | TotalFn | PartialFn
-           | Coinductive | AssertTotal | TCGen
+data FnOpt = Inlinable -- always evaluate when simplifying
+           | TotalFn | PartialFn
+           | Coinductive | AssertTotal 
+           | Dictionary -- type class dictionary, eval only when 
+                        -- a function argument, and further evaluation resutls
            | Implicit -- implicit coercion
            | CExport String    -- export, with a C name
            | Reflection -- a reflecting function, compile-time only
@@ -345,6 +348,9 @@ type FnOpts = [FnOpt]
 
 inlinable :: FnOpts -> Bool
 inlinable = elem Inlinable
+
+dictionary :: FnOpts -> Bool
+dictionary = elem Dictionary
 
 -- | Top-level declarations such as compiler directives, definitions,
 -- datatypes and typeclasses.

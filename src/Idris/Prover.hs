@@ -72,7 +72,7 @@ prove ctxt lit n ty
               OK _ -> return ()
               Error e -> ierror (CantUnify False ty pty e [] 0)
          ptm' <- applyOpts ptm
-         updateContext (addCasedef n True False False True False
+         updateContext (addCasedef n (CaseInfo True False) False False True False
                                  [Right (P Ref n ty, ptm)]
                                  [([], P Ref n ty, ptm)]
                                  [([], P Ref n ty, ptm')] ty)
