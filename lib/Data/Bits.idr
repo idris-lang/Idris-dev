@@ -307,6 +307,7 @@ complement : Bits n -> Bits n
 complement (MkBits x) = MkBits (complement' x)
 
 -- TODO: Prove
+%assert_total -- can't verify coverage of with block
 zext' : machineTy (nextBytes n) -> machineTy (nextBytes (n+m))
 zext' {n=n} {m=m} x with (nextBytes n, nextBytes (n+m))
     | (Z, Z) = believe_me x
@@ -362,6 +363,7 @@ bitsToInt (MkBits x) = bitsToInt' x
 --    cast x = MkBits (zeroUnused (natToBits n))
 
 -- TODO: Prove
+%assert_total -- can't verify coverage of with block
 sext' : machineTy (nextBytes n) -> machineTy (nextBytes (n+m))
 sext' {n=n} {m=m} x with (nextBytes n, nextBytes (n+m))
     | (Z, Z) = let pad = getPad {n=0} n in
@@ -396,6 +398,7 @@ sext' {n=n} {m=m} x with (nextBytes n, nextBytes (n+m))
 --signExtend {m=m} (MkBits x) = MkBits (zeroUnused (sext' x))
 
 -- TODO: Prove
+%assert_total -- can't verify coverage of with block
 trunc' : machineTy (nextBytes (n+m)) -> machineTy (nextBytes n)
 trunc' {n=n} {m=m} x with (nextBytes n, nextBytes (n+m))
     | (Z, Z) = believe_me x

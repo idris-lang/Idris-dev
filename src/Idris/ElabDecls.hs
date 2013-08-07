@@ -733,12 +733,12 @@ checkPossible info fc tcgen fname lhs_in
                do let lhs_tm = orderPats (getInferTerm lhs')
                   case recheck ctxt [] (forget lhs_tm) lhs_tm of
                        OK _ -> return True
-                       _ -> return False
+                       err -> return False
 
 --                   b <- inferredDiff fc (delab' i lhs_tm True) lhs
 --                   return (not b) -- then return (Just lhs_tm) else return Nothing
 --                   trace (show (delab' i lhs_tm True) ++ "\n" ++ show lhs) $ return (not b)
-            Error _ -> return False
+            err@(Error _) -> return False
 
 elabClause :: ElabInfo -> Bool -> (Int, PClause) -> 
               Idris (Either Term (Term, Term))

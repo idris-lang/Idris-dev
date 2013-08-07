@@ -142,6 +142,14 @@ genAll i args
     otherPats :: PTerm -> [PTerm]
     otherPats o@(PRef fc n) = ops fc n [] o
     otherPats o@(PApp _ (PRef fc n) xs) = ops fc n xs o
+    otherPats o@(PPair fc l r)
+        = ops fc pairCon
+                ([pimp (UN "A") Placeholder, pimp (UN "B") Placeholder] ++
+                 [pexp l, pexp r]) o
+    otherPats o@(PDPair fc t _ v) 
+        = ops fc (UN "Ex_intro") 
+                ([pimp (UN "a") Placeholder, pimp (UN "P") Placeholder] ++
+                 [pexp t,pexp v]) o 
     otherPats arg = return Placeholder 
 
     ops fc n xs_in o
@@ -149,12 +157,20 @@ genAll i args
             = do let force = getForceable i n -- no need to generate forceable positions
                  let xs = dropForce force xs_in 0 
                  xs' <- mapM otherPats (map getTm xs)
-                 let p = PApp fc (PRef fc n) (zipWith upd xs' xs)
+                 let p = resugar (PApp fc (PRef fc n) (zipWith upd xs' xs))
                  let tyn = getTy n (tt_ctxt i)
                  case lookupCtxt tyn (idris_datatypes i) of
                          (TI ns _ _ : _) -> p : map (mkPat fc) (ns \\ [n])
                          _ -> [p]
     ops fc n arg o = return Placeholder
+
+    -- put it back to its original form
+    resugar (PApp _ (PRef fc (UN "Ex_intro")) [_,_,t,v])
+        = PDPair fc (getTm t) Placeholder (getTm v)
+    resugar (PApp _ (PRef fc n) [_,_,l,r])
+      | n == pairCon
+        = PPair fc (getTm l) (getTm r)
+    resugar t = t
 
     getForceable i n = case lookupCtxt n (idris_optimisation i) of
                             [Optimise _ fs _] -> fs
