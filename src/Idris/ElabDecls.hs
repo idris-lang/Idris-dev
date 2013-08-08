@@ -253,10 +253,12 @@ elabPrims = do mapM_ (elabDecl EAll toplevel)
                     }
 
           p_synEq [t,_,x,y]
-               | x == y = Just (VApp (VApp vnJust VErased)
-                                (VApp (VApp vnRefl t) x))
-               | otherwise = Just (VApp vnNothing VErased)
+               | x == y = Just (vApp (vApp vnJust VErased)
+                                (vApp (vApp vnRefl t) x))
+               | otherwise = Just (vApp vnNothing VErased)
           p_synEq args = Nothing
+
+          vApp f a = VApp f (a, a)
 
           nMaybe = P (TCon 0 2) (NS (UN "Maybe") ["Maybe", "Prelude"]) Erased
           vnJust = VP (DCon 1 2) (NS (UN "Just") ["Maybe", "Prelude"]) VErased
@@ -553,10 +555,17 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
   --                                         show l ++ " = " ++ 
   --                                         show r) pats))
            let tcase = opt_typecase (idris_options ist)
+
+           -- pdef is the compile-time pattern definition with basic
+           -- simplifications applied.
+           -- This will get further optimised for run-time, and, separately,
+           -- further inlined to help with totality checking.
            let pdef = map debind $ map (simpl (tt_ctxt ist)) pats
            
            numArgs <- tclift $ sameLength pdef
 
+           -- patterns after collapsing optimisation applied
+           -- (i.e. check if the function should do nothing at run time)
            optpats <- if doNothing 
                          then return $ [Right (mkApp (P Bound n Erased)
                                                     (take numArgs (repeat Erased)), Erased)]
@@ -592,6 +601,8 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
            let pcover = null pmissing
            logLvl 2 $ "Optimising patterns"
            logLvl 5 $ show optpdef
+
+           -- pdef' is the version that gets compiled for run-time
            pdef' <- applyOpts optpdef 
            logLvl 2 $ "Optimised patterns"
            logLvl 5 $ show pdef'
@@ -672,7 +683,8 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
     
     getLHS (_, l, _) = l
 
-    simpl ctxt (Right (x, y)) = Right (normalise ctxt [] x, y)
+    simpl ctxt (Right (x, y)) = Right (normalise ctxt [] x, y) 
+--                                        Core.Evaluate.simplify ctxt True [] y)
     simpl ctxt t = t
 
     specNames [] = Nothing
