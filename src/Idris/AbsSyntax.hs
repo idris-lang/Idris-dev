@@ -1029,6 +1029,7 @@ addImpl' inpat env infns ist ptm = ai (zip env (repeat Nothing)) ptm
     ai env (PHidden tm) = PHidden (ai env tm)
     ai env (PProof ts) = PProof (map (fmap (ai env)) ts)
     ai env (PTactics ts) = PTactics (map (fmap (ai env)) ts)
+    ai env (PRefl fc tm) = PRefl fc (ai env tm)
     ai env (PUnifyLog tm) = PUnifyLog (ai env tm)
     ai env tm = tm
 

@@ -102,7 +102,7 @@ pshow i (CantUnify _ x y e sc s)
     = let imps = opt_showimp (idris_options i) in
         "Can't unify " ++ showImp imps (delab i x)
           ++ " with " ++ showImp imps (delab i y) ++
---         " (" ++ show x ++ " and " ++ show y ++ ") " ++
+--          " (" ++ showEnvDbg [] x ++ " and " ++ showEnvDbg [] y ++ ") " ++
         case e of
             Msg "" -> ""
             _ -> "\n\nSpecifically:\n\t" ++ pshow i e ++ 
