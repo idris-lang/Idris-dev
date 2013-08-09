@@ -188,7 +188,6 @@ class Eq a => Ord a where
     min x y = if (x < y) then x else y
 
 
-
 instance Ord Int where 
     compare x y = if (x == y) then EQ else
                   if (boolOp prim__sltInt x y) then LT else

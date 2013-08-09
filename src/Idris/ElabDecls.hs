@@ -253,12 +253,10 @@ elabPrims = do mapM_ (elabDecl EAll toplevel)
                     }
 
           p_synEq [t,_,x,y]
-               | x == y = Just (vApp (vApp vnJust VErased)
-                                (vApp (vApp vnRefl t) x))
-               | otherwise = Just (vApp vnNothing VErased)
+               | x == y = Just (VApp (VApp vnJust VErased)
+                                (VApp (VApp vnRefl t) x))
+               | otherwise = Just (VApp vnNothing VErased)
           p_synEq args = Nothing
-
-          vApp f a = VApp f (a, a)
 
           nMaybe = P (TCon 0 2) (NS (UN "Maybe") ["Maybe", "Prelude"]) Erased
           vnJust = VP (DCon 1 2) (NS (UN "Just") ["Maybe", "Prelude"]) VErased
@@ -684,7 +682,7 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
     getLHS (_, l, _) = l
 
     simpl ctxt (Right (x, y)) = Right (normalise ctxt [] x, y) 
---                                        Core.Evaluate.simplify ctxt True [] y)
+--                                        Core.Evaluate.simplify ctxt False [] y)
     simpl ctxt t = t
 
     specNames [] = Nothing

@@ -302,8 +302,8 @@ elab ist info pattern tcgen fn tm
          letbind n (Var tyn) (Var valn)
          focus valn
          elabE (True, a) (PApp fc r [pexp (delab ist rty)])
-         computeLet n
          env <- get_env
+         computeLet n
          elabE (True, a) sc
          solve
 --          elab' ina (PLet n Placeholder 

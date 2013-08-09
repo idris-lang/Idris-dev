@@ -79,7 +79,7 @@ check' holes ctxt env top = chk env top where
                  do convertsC ctxt env aty s
                     -- let apty = normalise initContext env 
                                        -- (Bind x (Let aty av) t)
-                    let apty = simplify initContext False env 
+                    let apty = simplify initContext env 
                                         (Bind x (Let aty av) t)
                     return (App fv av, apty)
              t -> lift $ tfail $ NonFunctionType fv fty -- "Can't apply a non-function type"

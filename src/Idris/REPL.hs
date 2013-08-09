@@ -398,7 +398,7 @@ process fn (Search t) = iFail "Not implemented"
 process fn (Spec t) = do (tm, ty) <- elabVal toplevel False t
                          ctxt <- getContext
                          ist <- getIState
-                         let tm' = simplify ctxt True [] {- (idris_statics ist) -} tm
+                         let tm' = simplify ctxt [] {- (idris_statics ist) -} tm
                          iResult (show (delab ist tm'))
 
 process fn (RmProof n')

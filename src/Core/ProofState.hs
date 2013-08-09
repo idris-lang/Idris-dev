@@ -269,7 +269,8 @@ tactic h f = do ps <- get
 computeLet :: Context -> Name -> Term -> Term
 computeLet ctxt n tm = cl [] tm where
    cl env (Bind n' (Let t v) sc)
-       | n' == n = Bind n' (Let t (normalise ctxt env v)) sc
+       | n' == n = let v' = normalise ctxt env v in
+                       Bind n' (Let t v') sc
    cl env (Bind n' b sc) = Bind n' (fmap (cl env) b) (cl ((n, b):env) sc)
    cl env (App f a) = App (cl env f) (cl env a)
    cl env t = t
