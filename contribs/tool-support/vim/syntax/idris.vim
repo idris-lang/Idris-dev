@@ -4,10 +4,11 @@
 " highlighter to support idris.
 "
 " author: raichoo (raichoo@googlemail.com)
-" date: May 24 2013
+" date: Aug 10 2013
 
 syn match idrisModule "\<\(module\|namespace\)\>"
 syn match idrisImport "\<import\>"
+syn match idrisRefl "\<refl\>"
 syn match idrisStructure "\<\(class\|\(co\)\?data\|instance\|where\|record\|dsl\)\>"
 syn match idrisVisibility "\<\(public\|abstract\|private\)\>"
 syn match idrisBlock "\<\(parameters\|mutual\|postulate\|using\)\>"
@@ -44,6 +45,7 @@ highlight def link idrisSyntax Statement
 highlight def link idrisVisibility Statement
 highlight def link idrisConditional Conditional
 highlight def link idrisProofBlock Macro
+highlight def link idrisRefl Macro
 highlight def link idrisTactic Identifier
 highlight def link idrisLink Statement
 highlight def link idrisDirective Statement
