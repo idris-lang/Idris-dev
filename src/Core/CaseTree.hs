@@ -255,6 +255,10 @@ toPat reflect tc tms = evalState (mapM (\x -> toPat' x []) tms) []
                                                   return (PV n)
     toPat' (App f a)  args = toPat' f (a : args)
     toPat' (Constant x) [] = return $ PConst x 
+    toPat' (Bind n (Pi t) sc) [] | reflect && noOccurrence n sc
+          = do t' <- toPat' t []
+               sc' <- toPat' sc []
+               return $ PReflected (UN "->") (t':sc':[])
     toPat' (P _ n _) args | reflect
           = do args' <- mapM (\x -> toPat' x []) args
                return $ PReflected n args'

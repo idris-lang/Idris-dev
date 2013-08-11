@@ -345,6 +345,10 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
         | Just v <- findDefault alts      = return $ Just (amap, v)
     chooseAlt env _ (VP _ n _, args) alts amap
         | Just (ns, sc) <- findFn n alts  = return $ Just (updateAmap (zip ns args) amap, sc)
+    chooseAlt env _ (VBind _ _ (Pi s) t, []) alts amap
+        | Just (ns, sc) <- findFn (UN "->") alts
+           = do t' <- t (VV 0) -- we know it's not in scope or it's not a pattern
+                return $ Just (updateAmap (zip ns [s, t']) amap, sc)
     chooseAlt _ _ _ alts amap
         | Just v <- findDefault alts      
              = if (any fnCase alts)

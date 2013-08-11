@@ -1115,6 +1115,8 @@ showImp impl tm = se 10 tm where
     se p (PElabError s) = show s
     se p (PCoerced t) = se p t
     se p (PUnifyLog t) = "%unifyLog " ++ se p t
+    se p (PGoal f t n sc) = "quoteGoal " ++ show n ++ " by " ++ se 10 t ++
+                            " in " ++ se 10 sc
 --     se p x = "Not implemented"
 
     slist' p (PApp _ (PRef _ nil) _)
