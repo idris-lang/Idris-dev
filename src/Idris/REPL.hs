@@ -9,7 +9,6 @@ import Idris.ElabDecls
 import Idris.ElabTerm
 import Idris.Error
 import Idris.Delaborate
-import Idris.Compiler
 import Idris.Prover
 import Idris.Parser
 import Idris.Primitives
@@ -166,8 +165,6 @@ ideslaveProcess fn (HNF t) = process fn (HNF t)
 --input/output of the executed binary...
 ideslaveProcess fn Execute = do process fn Execute
                                 iResult ""
-ideslaveProcess fn (NewCompile f) = do process fn (NewCompile f)
-                                       iResult ""
 ideslaveProcess fn (Compile codegen f) = do process fn (Compile codegen f)
                                             iResult ""
 ideslaveProcess fn (LogLvl i) = do process fn (LogLvl i)
@@ -489,12 +486,6 @@ process fn Execute = do (m, _) <- elabVal toplevel False
                         liftIO $ system tmpn
                         return ()
   where fc = FC "main" 0
-process fn (NewCompile f)
-     = do (m, _) <- elabVal toplevel False
-                      (PApp fc (PRef fc (UN "run__IO"))
-                          [pexp $ PRef fc (NS (UN "main") ["Main"])])
-          compileEpic f m
-  where fc = FC "main" 0
 process fn (Compile codegen f)
       = do (m, _) <- elabVal toplevel False
                        (PApp fc (PRef fc (UN "run__IO"))
@@ -596,7 +587,6 @@ parseArgs ("--log":lvl:ns)       = OLogging (read lvl) : (parseArgs ns)
 parseArgs ("--noprelude":ns)     = NoPrelude : (parseArgs ns)
 parseArgs ("--check":ns)         = NoREPL : (parseArgs ns)
 parseArgs ("-o":n:ns)            = NoREPL : Output n : (parseArgs ns)
-parseArgs ("-no":n:ns)           = NoREPL : NewOutput n : (parseArgs ns)
 parseArgs ("--typecase":ns)      = TypeCase : (parseArgs ns)
 parseArgs ("--typeintype":ns)    = TypeInType : (parseArgs ns)
 parseArgs ("--total":ns)         = DefaultTotal : (parseArgs ns)
@@ -657,7 +647,6 @@ idrisMain opts =
        let idesl = Ideslave `elem` opts
        let runrepl = not (NoREPL `elem` opts)
        let output = opt getOutput opts
-       let newoutput = opt getNewOutput opts
        let ibcsubdir = opt getIBCSubDir opts
        let importdirs = opt getImportDir opts
        let bcs = opt getBC opts
@@ -723,9 +712,6 @@ idrisMain opts =
        when ok $ case output of
                     [] -> return ()
                     (o:_) -> process "" (Compile cgn o)
-       when ok $ case newoutput of
-                    [] -> return ()
-                    (o:_) -> process "" (NewCompile o)
        case script of
          Nothing -> return ()
          Just expr -> execScript expr
@@ -770,10 +756,6 @@ getFOVM _ = Nothing
 getOutput :: Opt -> Maybe String
 getOutput (Output str) = Just str
 getOutput _ = Nothing
-
-getNewOutput :: Opt -> Maybe String
-getNewOutput (NewOutput str) = Just str
-getNewOutput _ = Nothing
 
 getIBCSubDir :: Opt -> Maybe String
 getIBCSubDir (IBCSubDir str) = Just str

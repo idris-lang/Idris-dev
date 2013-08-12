@@ -202,7 +202,6 @@ data Command = Quit
              | Compile Codegen String
              | Execute
              | ExecVal PTerm
-             | NewCompile String
              | Metavars
              | Prove Name
              | AddProof (Maybe Name)
@@ -238,7 +237,6 @@ data Opt = Filename String
          | NoREPL
          | OLogging Int
          | Output String
-         | NewOutput String
          | TypeCase
          | TypeInType
          | DefaultTotal
