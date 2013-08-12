@@ -4,10 +4,11 @@
 " highlighter to support idris.
 "
 " author: raichoo (raichoo@googlemail.com)
-" date: May 24 2013
+" date: Aug 10 2013
 
 syn match idrisModule "\<\(module\|namespace\)\>"
 syn match idrisImport "\<import\>"
+syn match idrisRefl "\<refl\>"
 syn match idrisStructure "\<\(class\|\(co\)\?data\|instance\|where\|record\|dsl\)\>"
 syn match idrisVisibility "\<\(public\|abstract\|private\)\>"
 syn match idrisBlock "\<\(parameters\|mutual\|postulate\|using\)\>"
@@ -23,7 +24,7 @@ syn match idrisInfix "\<\(prefix\|infix\|infixl\|infixr\)\>"
 syn match idrisOperators "\([-!#$%&\*\+./<=>\?@\\^|~:]\|\<_\>\)"
 syn match idrisType "\<\([A-Z][a-zA-Z0-9_]*\|_|_\)\>"
 syn match idrisLineComment "---*\([^-!#$%&\*\+./<=>\?@\\^|~].*\)\?$"
-syn match idrisMetaVar "?[a-z][A-Za-z0-9_]\+"
+syn match idrisMetaVar "?[a-z][A-Za-z0-9_]\+'*"
 syn match idrisLink "%\(lib\|link\|include\)"
 syn match idrisDirective "%\(access\|default\|assert_total\)"
 syn match idrisDSL "\(lambda\|variable\|\index_first\|index_next\)"
@@ -44,6 +45,7 @@ highlight def link idrisSyntax Statement
 highlight def link idrisVisibility Statement
 highlight def link idrisConditional Conditional
 highlight def link idrisProofBlock Macro
+highlight def link idrisRefl Macro
 highlight def link idrisTactic Identifier
 highlight def link idrisLink Statement
 highlight def link idrisDirective Statement
