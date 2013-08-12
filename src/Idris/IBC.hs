@@ -5,7 +5,6 @@ module Idris.IBC where
 import Core.Evaluate
 import Core.TT
 import Core.CaseTree
-import Idris.Compiler
 import Idris.AbsSyntax
 import Idris.Imports
 import Idris.Error
