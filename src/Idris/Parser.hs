@@ -779,9 +779,6 @@ pSimpleExpr syn =
         <|> try (do x <- pfName
                     fc <- pfc
                     return (PRef fc x))
-        <|> try (do lchar '!'; x <- pfName
-                    fc <- pfc
-                    return (PInferRef fc x))
         <|> try (pList syn)
         <|> try (pComprehension syn)
         <|> try (pAlt syn)
