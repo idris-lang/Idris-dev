@@ -50,7 +50,7 @@ genClauses fc n xs given
         logLvl 5 $ show (map length argss) ++ "\n" ++ show (map length all_args)
         logLvl 10 $ show argss ++ "\n" ++ show all_args
         logLvl 10 $ "Original: \n" ++ 
-             showSep "\n" (map (\t -> showImp True False (delab' i t True)) xs)
+             showSep "\n" (map (\t -> showImp Nothing True False (delab' i t True)) xs)
         -- add an infinite supply of explicit arguments to update the possible
         -- cases for (the return type may be variadic, or function type, sp
         -- there may be more case splitting that the idris_implicits record
@@ -62,7 +62,7 @@ genClauses fc n xs given
         logLvl 2 $ show (length tryclauses) ++ " initially to check"
         let new = filter (noMatch i) (mnub i tryclauses)
         logLvl 1 $ show (length new) ++ " clauses to check for impossibility"
-        logLvl 5 $ "New clauses: \n" ++ showSep "\n" (map (showImp True False) new)
+        logLvl 5 $ "New clauses: \n" ++ showSep "\n" (map (showImp Nothing True False) new)
 --           ++ " from:\n" ++ showSep "\n" (map (showImp True) tryclauses) 
         return new
 --         return (map (\t -> PClause n t [] PImpossible []) new)

@@ -804,8 +804,17 @@ colouriseKwd kwd = setSGRCode [SetUnderlining SingleUnderline
 colouriseBound :: String -> String
 colouriseBound = colourise Magenta Vivid
 
+colouriseFun :: String -> String
+colouriseFun = colourise Green Vivid
+
+colouriseType :: String -> String
+colouriseType = colourise Blue Vivid
+
+colouriseData :: String -> String
+colouriseData = colourise Red Vivid
+
 instance Show PTerm where
-    show tm = showImp False False tm
+    show tm = showImp Nothing False False tm
 
 instance Pretty PTerm where
   pretty = prettyImp False
@@ -820,8 +829,8 @@ instance Show PData where
     show d = showDImp False d
 
 showDeclImp _ (PFix _ f ops) = show f ++ " " ++ showSep ", " ops
-showDeclImp t (PTy _ _ _ _ n ty) = show n ++ " : " ++ showImp t False ty
-showDeclImp t (PPostulate _ _ _ _ n ty) = show n ++ " : " ++ showImp t False ty
+showDeclImp t (PTy _ _ _ _ n ty) = show n ++ " : " ++ showImp Nothing t False ty
+showDeclImp t (PPostulate _ _ _ _ n ty) = show n ++ " : " ++ showImp Nothing t False ty
 showDeclImp _ (PClauses _ _ n c) = showSep "\n" (map show c)
 showDeclImp _ (PData _ _ _ _ d) = show d
 showDeclImp _ (PParams f ns ps) = "parameters " ++ show ns ++ "\n" ++ 
@@ -830,24 +839,24 @@ showDeclImp _ (PParams f ns ps) = "parameters " ++ show ns ++ "\n" ++
 
 showCImp :: Bool -> PClause -> String
 showCImp impl (PClause _ n l ws r w) 
-   = showImp impl False l ++ showWs ws ++ " = " ++ showImp impl False r
+   = showImp Nothing impl False l ++ showWs ws ++ " = " ++ showImp Nothing impl False r
              ++ " where " ++ show w 
   where
     showWs [] = ""
-    showWs (x : xs) = " | " ++ showImp impl False x ++ showWs xs
+    showWs (x : xs) = " | " ++ showImp Nothing impl False x ++ showWs xs
 showCImp impl (PWith _ n l ws r w) 
-   = showImp impl False l ++ showWs ws ++ " with " ++ showImp impl False r
+   = showImp Nothing impl False l ++ showWs ws ++ " with " ++ showImp Nothing impl False r
              ++ " { " ++ show w ++ " } " 
   where
     showWs [] = ""
-    showWs (x : xs) = " | " ++ showImp impl False x ++ showWs xs
+    showWs (x : xs) = " | " ++ showImp Nothing impl False x ++ showWs xs
 
 
 showDImp :: Bool -> PData -> String
 showDImp impl (PDatadecl n ty cons) 
-   = "data " ++ show n ++ " : " ++ showImp impl False ty ++ " where\n\t"
+   = "data " ++ show n ++ " : " ++ showImp Nothing impl False ty ++ " where\n\t"
      ++ showSep "\n\t| " 
-            (map (\ (_, n, t, _) -> show n ++ " : " ++ showImp impl False t) cons)
+            (map (\ (_, n, t, _) -> show n ++ " : " ++ showImp Nothing impl False t) cons)
 
 getImps :: [PArg] -> [(Name, PTerm)]
 getImps [] = []
@@ -1058,23 +1067,33 @@ prettyImp impl = prettySe 10
       | otherwise     = doc
 
 -- | Show Idris term
-showImp :: Bool  -- ^^ whether to show implicits
+showImp :: Maybe IState -- ^^ the Idris state, for information about identifiers
+        -> Bool  -- ^^ whether to show implicits
         -> Bool  -- ^^ whether to colourise
         -> PTerm -- ^^ the term to show
         -> String
-showImp impl colour tm = se 10 [] tm where
+showImp ist impl colour tm = se 10 [] tm where
     perhapsColourise :: (String -> String) -> String -> String
     perhapsColourise col str = if colour then col str else str
-
+  
     se :: Int -> [Name] -> PTerm -> String
     se p bnd (PQuote r) = "![" ++ show r ++ "]"
     se p bnd (PPatvar fc n) = if impl then show n ++ "[p]" else show n
     se p bnd (PInferRef fc n) = "!" ++ show n -- ++ "[" ++ show fc ++ "]"
-    se p bnd (PRef fc n) = if colour && n `elem` bnd then colouriseBound name else name
+    se p bnd (PRef fc n) = if colour then colourise n else showbasic n
       where name = if impl then show n else showbasic n
             showbasic n@(UN _) = show n
             showbasic (MN _ s) = s
             showbasic (NS n s) = showSep "." (reverse s) ++ "." ++ showbasic n
+            fst3 (x, _, _) = x
+            colourise n = let ctxt' = fmap tt_ctxt ist in
+                          case ctxt' of
+                            Nothing -> name
+                            Just ctxt | n `elem` bnd      -> colouriseBound name
+                                      | isDConName n ctxt -> colouriseData name
+                                      | isFnName n ctxt   -> colouriseFun name
+                                      | isTConName n ctxt -> colouriseType name
+                                      | otherwise         ->  name
     se p bnd (PLam n ty sc) = bracket p 2 $ "\\ " ++ perhapsColourise colouriseBound (show n) ++
                               (if impl then " : " ++ se 10 bnd ty else "") ++ " => " 
                               ++ se 10 (n:bnd) sc
@@ -1108,14 +1127,14 @@ showImp impl colour tm = se 10 [] tm where
           se 10 (n:bnd) sc
     se p bnd e
         | Just str <- slist p bnd e = str
-        | Just num <- snat p e  = show num
+        | Just num <- snat p e  = perhapsColourise colouriseData (show num)
     se p bnd (PMatchApp _ f) = "match " ++ show f
-    se p bnd (PApp _ (PRef _ f) [])
-        | not impl = show f
-    se p bnd (PApp _ (PRef _ op@(UN (f:_))) args)
+    se p bnd (PApp _ hd@(PRef _ f) [])
+        | not impl = se p bnd hd
+    se p bnd (PApp _ op@(PRef _ (UN (f:_))) args)
         | length (getExps args) == 2 && not impl && not (isAlpha f) 
             = let [l, r] = getExps args in
-              bracket p 1 $ se 1 bnd l ++ " " ++ show op ++ " " ++ se 0 bnd r
+              bracket p 1 $ se 1 bnd l ++ " " ++ se p bnd op ++ " " ++ se 0 bnd r
     se p bnd (PApp _ f as)
         = let args = getExps as in
               bracket p 1 $ se 1 bnd f ++ if impl then concatMap (sArg bnd) as
@@ -1124,19 +1143,24 @@ showImp impl colour tm = se 10 [] tm where
        where sc (l, r) = se 10 bnd l ++ " => " ++ se 10 bnd r
     se p bnd (PHidden tm) = "." ++ se 0 bnd tm
     se p bnd (PRefl _ t) 
-        | not impl = "refl"
-        | otherwise = "refl {" ++ se 10 bnd t ++ "}"
+        | not impl = perhapsColourise colouriseData "refl"
+        | otherwise = perhapsColourise colouriseData $ "refl {" ++ se 10 bnd t ++ "}"
     se p bnd (PResolveTC _) = "resolvetc"
-    se p bnd (PTrue _) = "()"
-    se p bnd (PFalse _) = "_|_"
-    se p bnd (PEq _ l r) = bracket p 2 $ se 10 bnd l ++ " = " ++ se 10 bnd r
+    se p bnd (PTrue _) = perhapsColourise colouriseType "()"
+    se p bnd (PFalse _) = perhapsColourise colouriseType "_|_"
+    se p bnd (PEq _ l r) = bracket p 2 $ se 10 bnd l ++ perhapsColourise colouriseType " = " ++ se 10 bnd r
     se p bnd (PRewrite _ l r _) = bracket p 2 $ "rewrite " ++ se 10 bnd l ++ " in " ++ se 10 bnd r
     se p bnd (PTyped l r) = "(" ++ se 10 bnd l ++ " : " ++ se 10 bnd r ++ ")"
     se p bnd (PPair _ l r) = "(" ++ se 10 bnd l ++ ", " ++ se 10 bnd r ++ ")"
     se p bnd (PDPair _ l t r) = "(" ++ se 10 bnd l ++ " ** " ++ se 10 bnd r ++ ")"
     se p bnd (PAlternative a as) = "(|" ++ showSep " , " (map (se 10 bnd) as) ++ "|)"
-    se p bnd PType = "Type"
-    se p bnd (PConstant c) = show c
+    se p bnd PType = perhapsColourise colouriseType "Type"
+    se p bnd (PConstant c) = perhapsColourise (cfun c) (show c)
+        where cfun (AType _) = colouriseType
+              cfun StrType   = colouriseType
+              cfun PtrType   = colouriseType
+              cfun VoidType  = colouriseType
+              cfun _         = colouriseData
     se p bnd (PProof ts) = "proof { " ++ show ts ++ "}"
     se p bnd (PTactics ts) = "tactics { " ++ show ts ++ "}"
     se p bnd (PMetavar n) = "?" ++ show n
