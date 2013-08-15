@@ -708,6 +708,8 @@ idrisMain opts =
        when (runrepl && not quiet && not idesl && not (isJust script)) $ iputStrLn banner
        ist <- getIState
        mods <- mapM loadModule inputs
+       iLOG "Universe checking"
+       iucheck
        ok <- noErrors
        when ok $ case output of
                     [] -> return ()

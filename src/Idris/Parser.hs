@@ -129,8 +129,6 @@ loadSource lidr f
                     iLOG ("Finished " ++ f)
                     ibcsd <- valIBCSubDir i
                     let ibc = ibcPathNoFallback ibcsd f
-                    iLOG "Universe checking"
-                    iucheck
                     i <- getIState
                     addHides (hide_list i)
                     ok <- noErrors
