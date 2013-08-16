@@ -242,6 +242,12 @@ Flag LLVM
   Default:      True
   manual:       True
 
+-- pkg-config is not distributed with the haskell platform 
+-- so windows users may not have it installed.
+Flag NoPkgConfig
+  Description:  Avoid use of pkg-config to detect external libraries.
+  Default: 	False
+
 Executable     idris
                Main-is: Main.hs
                hs-source-dirs: src
@@ -298,3 +304,10 @@ Executable     idris
                   build-depends: llvm-general==3.3.5.*
                else
                   other-modules: Util.LLVMStubs
+               -- External library dependencies:
+               -- Note: On Debian, bdw-gc is provided by the libgc-dev package
+               if flag(NoPkgConfig)
+                  includes: gc.h
+                  extra-libraries: gc
+               else
+                  PkgConfig-Depends: bdw-gc
