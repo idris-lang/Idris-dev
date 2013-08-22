@@ -101,6 +101,6 @@ usagemsg = "Idris version " ++ ver ++ "\n" ++
            "\t--codegen [cg]    Select code generator: C, Java, bytecode, javascript,\n" ++
            "\t                  node or llvm\n" ++
            "\t--target [triple] Select target triple (for LLVM codegen)\n" ++
-           "\t--cpu [cpu]       Select target architecture (for LLVM codegen)\n"
+           "\t--cpu [cpu]       Select target CPU (e.g. corei7 or cortex-m3) (for LLVM codegen)\n"
 
 
