@@ -354,13 +354,7 @@ translateDeclaration (path, SFun name params stackSize body)
         assignVar n s = JSAlloc (jsVar n)  (Just $ JSRaw s)
 
         p :: [String]
-        p = map translateParameter params
-          where
-            translateParameter :: Name -> String
-            translateParameter (MN i name) =
-              translateIdentifier name ++ show i
-            translateParameter (UN name) =
-              translateIdentifier name
+        p = map translateName params
 
 translateVariableName :: LVar -> String
 translateVariableName (Loc i) =
