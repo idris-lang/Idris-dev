@@ -319,31 +319,45 @@ translateConstant c =
   JSError $ "Unimplemented Constant: " ++ show c
 
 translateDeclaration :: (String, SDecl) -> JS
-translateDeclaration (path, SFun name params stackSize body) =
-  JSAlloc (path ++ translateName name) $ Just $ JSFunction p (
-    JSSeq $
-    zipWith assignVar [0..] p ++
-    map allocVar [numP .. (numP + stackSize - 1)] ++
-    [JSReturn $ translateExpression body]
-  )
+translateDeclaration (path, SFun name params stackSize body)
+  | (MN _ "APPLY") <- name =
+    JSSeq [ JSRaw $ "/* " ++ translateName name ++ " */"
+          , translate (path ++ translateName name) params stackSize body
+          ]
+  | (MN _ "EVAL")        <- name
+  , (SChkCase var cases) <- body =
+    JSSeq [ JSRaw $ "/* " ++ translateName name ++ " */"
+          , translate (path ++ translateName name) params stackSize body
+          ]
+  | otherwise =
+    translate (path ++ translateName name) params stackSize body
   where
-    numP :: Int
-    numP = length params
-
-    allocVar :: Int -> JS
-    allocVar n = JSAlloc (jsVar n) Nothing
-
-    assignVar :: Int -> String -> JS
-    assignVar n s = JSAlloc (jsVar n)  (Just $ JSRaw s)
-
-    p :: [String]
-    p = map translateParameter params
+    translate :: String -> [Name] -> Int -> SExp -> JS
+    translate name params stackSize body =
+      JSAlloc name $ Just $ JSFunction p (
+        JSSeq $
+        zipWith assignVar [0..] p ++
+        map allocVar [numP .. (numP + stackSize - 1)] ++
+        [JSReturn $ translateExpression body]
+      )
       where
-        translateParameter :: Name -> String
-        translateParameter (MN i name) =
-          translateIdentifier name ++ show i
-        translateParameter (UN name) =
-          translateIdentifier name
+        numP :: Int
+        numP = length params
+
+        allocVar :: Int -> JS
+        allocVar n = JSAlloc (jsVar n) Nothing
+
+        assignVar :: Int -> String -> JS
+        assignVar n s = JSAlloc (jsVar n)  (Just $ JSRaw s)
+
+        p :: [String]
+        p = map translateParameter params
+          where
+            translateParameter :: Name -> String
+            translateParameter (MN i name) =
+              translateIdentifier name ++ show i
+            translateParameter (UN name) =
+              translateIdentifier name
 
 translateVariableName :: LVar -> String
 translateVariableName (Loc i) =
