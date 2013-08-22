@@ -183,10 +183,10 @@ jsCon :: JS
 jsCon = JSRaw $ idrRTNamespace ++ "Con"
 
 jsTag :: JS -> JS
-jsTag obj = (JSProj obj "tag")
+jsTag obj = JSProj obj "tag"
 
 jsTypeTag :: JS -> JS
-jsTypeTag obj = (JSProj obj "type")
+jsTypeTag obj = JSProj obj "type"
 
 jsBigInt :: JS -> JS
 jsBigInt val =
@@ -614,7 +614,7 @@ translateExpression patterncase
   where
     caseHelper var cases param =
       JSApp (JSFunction [param] (
-        JSCond $ map ((expandCase param) . translateCase param) cases
+        JSCond $ map (expandCase param . translateCaseCond param) cases
       )) [JSVar var]
 
     expandCase :: String -> (Cond, JS) -> (JS, JS)
@@ -655,11 +655,11 @@ data CaseType = ConCase Int
 data Cond = CaseCond CaseType
           | RawCond JS
 
-translateCase :: String -> SAlt -> (Cond, JS)
-translateCase _ (SDefaultCase e) =
-  (CaseCond DefaultCase, translateExpression e)
+translateCaseCond :: String -> SAlt -> (Cond, JS)
+translateCaseCond _ cse@(SDefaultCase _) =
+  (CaseCond DefaultCase, translateCase Nothing cse)
 
-translateCase var (SConstCase ty e)
+translateCaseCond var cse@(SConstCase ty _)
   | StrType                  <- ty = matchHelper JSStringTy
   | PtrType                  <- ty = matchHelper JSPtrTy
   | Forgot                   <- ty = matchHelper JSForgotTy
@@ -669,20 +669,24 @@ translateCase var (SConstCase ty e)
   | (AType (ATInt ITChar))   <- ty = matchHelper JSCharTy
   where
     matchHelper :: JSType -> (Cond, JS)
-    matchHelper ty = (CaseCond $ TypeCase ty, translateExpression e)
+    matchHelper ty = (CaseCond $ TypeCase ty, translateCase Nothing cse)
 
-translateCase var (SConstCase cst@(BI _) e) =
+translateCaseCond var cse@(SConstCase cst@(BI _) _) =
   let cond = jsMeth (JSRaw var) "equals" [translateConstant cst] in
-      (RawCond cond, translateExpression e)
+      (RawCond cond, translateCase Nothing cse)
 
-translateCase var (SConstCase cst e) =
+translateCaseCond var cse@(SConstCase cst _) =
   let cond = JSRaw var `jsEq` translateConstant cst in
-      (RawCond cond, translateExpression e)
+      (RawCond cond, translateCase Nothing cse)
 
-translateCase var (SConCase a tag name vars e) =
+translateCaseCond var cse@(SConCase _ tag _ _ _) =
+  (CaseCond $ ConCase tag, translateCase (Just var) cse)
+
+translateCase :: Maybe String -> SAlt -> JS
+translateCase _          (SDefaultCase e) = translateExpression e
+translateCase _          (SConstCase _ e) = translateExpression e
+translateCase (Just var) (SConCase a _ _ vars e) =
   let params = map jsVar [a .. (a + length vars)] in
-      (CaseCond $ ConCase tag,
-        jsMeth (JSFunction params (JSReturn $ translateExpression e)) "apply" [
-          JSThis, JSProj (JSRaw var) "vars"
-        ]
-      )
+      jsMeth (JSFunction params (JSReturn $ translateExpression e)) "apply" [
+        JSThis, JSProj (JSRaw var) "vars"
+      ]
