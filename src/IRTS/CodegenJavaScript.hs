@@ -322,19 +322,22 @@ translateDeclaration :: (String, SDecl) -> JS
 translateDeclaration (path, SFun name params stackSize body)
   | (MN _ "APPLY") <- name =
     JSSeq [ JSRaw $ "/* " ++ translateName name ++ " */"
-          , translate (path ++ translateName name) params stackSize body
+          , jsDecl (path ++ translateName name) $ translate params stackSize body
           ]
   | (MN _ "EVAL")        <- name
   , (SChkCase var cases) <- body =
     JSSeq [ JSRaw $ "/* " ++ translateName name ++ " */"
-          , translate (path ++ translateName name) params stackSize body
+          , jsDecl (path ++ translateName name) $ translate params stackSize body
           ]
   | otherwise =
-    translate (path ++ translateName name) params stackSize body
+    jsDecl (path ++ translateName name) $ translate params stackSize body
   where
-    translate :: String -> [Name] -> Int -> SExp -> JS
-    translate name params stackSize body =
-      JSAlloc name $ Just $ JSFunction p (
+    jsDecl :: String -> JS -> JS
+    jsDecl name = JSAlloc name . Just
+
+    translate :: [Name] -> Int -> SExp -> JS
+    translate params stackSize body =
+      JSFunction p (
         JSSeq $
         zipWith assignVar [0..] p ++
         map allocVar [numP .. (numP + stackSize - 1)] ++
