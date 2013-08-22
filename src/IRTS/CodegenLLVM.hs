@@ -389,13 +389,19 @@ replaceElt n val (x:xs) = x : replaceElt (n-1) val xs
 alloc' :: Operand -> Codegen Operand
 alloc' size = inst $ simpleCall "GC_malloc" [size]
 
-allocAtomic :: Operand -> Codegen Operand
-allocAtomic size = inst $ simpleCall "GC_malloc_atomic" [size]
+allocAtomic' :: Operand -> Codegen Operand
+allocAtomic' size = inst $ simpleCall "GC_malloc_atomic" [size]
 
 alloc :: Type -> Codegen Operand
 alloc ty = do
   size <- sizeOf ty
   mem <- alloc' size
+  inst $ BitCast mem (PointerType ty (AddrSpace 0)) []
+
+allocAtomic :: Type -> Codegen Operand
+allocAtomic ty = do
+  size <- sizeOf ty
+  mem <- allocAtomic' size
   inst $ BitCast mem (PointerType ty (AddrSpace 0)) []
 
 sizeOf :: Type -> Codegen Operand
@@ -701,11 +707,14 @@ nameAlt d (SDefaultCase _) = return d
 nameAlt _ (SConCase _ _ name _ _) = getName (show name)
 nameAlt _ (SConstCase const _) = getName (show const)
 
+isHeapFTy :: FType -> Bool
+isHeapFTy f = elem f [FString, FPtr, FAny, FArith (ATInt ITBig)]
+
 box :: FType -> Operand -> Codegen Operand
 box FUnit _ = return $ ConstantOperand nullValue
 box fty fval = do
   let ty = primTy (ftyToTy fty)
-  val <- alloc ty
+  val <- if isHeapFTy fty then alloc ty else allocAtomic ty
   tagptr <- inst $ GetElementPtr True val [ConstantOperand (C.Int 32 0), ConstantOperand (C.Int 32 0)] []
   valptr <- inst $ GetElementPtr True val [ConstantOperand (C.Int 32 0), ConstantOperand (C.Int 32 1)] []
   inst' $ Store False tagptr (ConstantOperand (C.Int 32 (-1))) Nothing 0 []
@@ -1076,7 +1085,7 @@ cgStrCat x y = do
   zlen <- inst $ Add False True xlen ylen []
   ws <- getWordSize
   total <- inst $ Add False True zlen (ConstantOperand (C.Int ws 1)) []
-  mem <- allocAtomic total
+  mem <- allocAtomic' total
   inst $ simpleCall "memcpy" [mem, x', xlen]
   i <- inst $ PtrToInt mem (IntegerType ws) []
   offi <- inst $ Add False True i xlen []
