@@ -14,6 +14,7 @@ import Util.System
 import Control.Arrow
 import Data.Char
 import Data.List
+import Data.Maybe
 import System.IO
 import System.Directory
 
@@ -321,27 +322,50 @@ translateConstant c =
 translateDeclaration :: (String, SDecl) -> JS
 translateDeclaration (path, SFun name params stackSize body)
   | (MN _ "APPLY") <- name =
-    JSSeq [ JSRaw $ "/* " ++ translateName name ++ " */"
-          , jsDecl (path ++ translateName name) $ translate params stackSize body
-          ]
+    let fun = translateExpression body in
+        jsDecl $ jsFun fun
   | (MN _ "EVAL")        <- name
   , (SChkCase var cases) <- body =
-    JSSeq [ JSRaw $ "/* " ++ translateName name ++ " */"
-          , jsDecl (path ++ translateName name) $ translate params stackSize body
-          ]
+    let fun  = translateExpression body in
+        JSSeq [ lookupTable var cases
+              , jsDecl $ JSRaw $ concat [ "function(arg0){"
+                                        , "if (arg0 instanceof __IDRRT__Con "
+                                        , " && LOOKUPTABLE.hasOwnProperty(arg0.tag))"
+                                        , "return LOOKUPTABLE[arg0.tag](arg0);"
+                                        , "else "
+                                        , "return arg0; }"
+                                        ]
+              ]
   | otherwise =
-    jsDecl (path ++ translateName name) $ translate params stackSize body
-  where
-    jsDecl :: String -> JS -> JS
-    jsDecl name = JSAlloc name . Just
+    let fun = translateExpression body in
+        jsDecl $ jsFun fun
 
-    translate :: [Name] -> Int -> SExp -> JS
-    translate params stackSize body =
+  where
+    caseFun :: LVar -> SAlt -> JS
+    caseFun var cse =
+      jsFun (translateCase (Just (translateVariableName var)) cse)
+
+    getTag :: SAlt -> Maybe String
+    getTag (SConCase _ tag _ _ _) = Just $ show tag
+    getTag _                      = Nothing
+
+    lookupTable :: LVar -> [SAlt] -> JS
+    lookupTable var cases =
+      JSAlloc "LOOKUPTABLE" $ Just $ JSObject $ catMaybes $ map (lookupEntry var) cases
+
+    lookupEntry :: LVar -> SAlt -> Maybe (String, JS)
+    lookupEntry var alt = getTag alt >>= \tag -> Just (tag, caseFun var alt)
+
+    jsDecl :: JS -> JS
+    jsDecl = JSAlloc (path ++ translateName name) . Just
+
+    jsFun :: JS -> JS
+    jsFun body =
       JSFunction p (
         JSSeq $
         zipWith assignVar [0..] p ++
         map allocVar [numP .. (numP + stackSize - 1)] ++
-        [JSReturn $ translateExpression body]
+        [JSReturn body]
       )
       where
         numP :: Int
