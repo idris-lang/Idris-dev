@@ -21,6 +21,7 @@ import System.Directory
 idrNamespace :: String
 idrNamespace   = "__IDR__"
 idrRTNamespace = "__IDRRT__"
+idrLTNamespace = "__IDRLT__"
 
 data JSTarget = Node | JavaScript deriving Eq
 
@@ -330,8 +331,8 @@ translateDeclaration (path, SFun name params stackSize body)
         JSSeq [ lookupTable var cases
               , jsDecl $ JSRaw $ concat [ "function(arg0){"
                                         , "if (arg0 instanceof __IDRRT__Con "
-                                        , " && LOOKUPTABLE.hasOwnProperty(arg0.tag))"
-                                        , "return LOOKUPTABLE[arg0.tag](arg0);"
+                                        , " && " ++ lookupTableName ++ ".hasOwnProperty(arg0.tag))"
+                                        , "return " ++ lookupTableName ++ "[arg0.tag](arg0);"
                                         , "else "
                                         , "return arg0; }"
                                         ]
@@ -349,12 +350,19 @@ translateDeclaration (path, SFun name params stackSize body)
     getTag (SConCase _ tag _ _ _) = Just $ show tag
     getTag _                      = Nothing
 
+    lookupTableName :: String
+    lookupTableName = idrLTNamespace ++ translateName name
+
     lookupTable :: LVar -> [SAlt] -> JS
     lookupTable var cases =
-      JSAlloc "LOOKUPTABLE" $ Just $ JSObject $ catMaybes $ map (lookupEntry var) cases
-
-    lookupEntry :: LVar -> SAlt -> Maybe (String, JS)
-    lookupEntry var alt = getTag alt >>= \tag -> Just (tag, caseFun var alt)
+      JSAlloc lookupTableName $ Just (
+        JSObject $ catMaybes $ map (lookupEntry var) cases
+      )
+      where
+        lookupEntry :: LVar -> SAlt -> Maybe (String, JS)
+        lookupEntry var alt = do
+          tag <- getTag alt
+          return (tag, caseFun var alt)
 
     jsDecl :: JS -> JS
     jsDecl = JSAlloc (path ++ translateName name) . Just
