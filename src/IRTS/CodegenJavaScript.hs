@@ -334,11 +334,10 @@ translateDeclaration (path, SFun name params stackSize body)
   , (SLet var val next)   <- body
   , (SChkCase cvar cases) <- next =
     let fun = translateExpression body in
-        {-jsDecl $ jsFun fun-}
-        JSSeq [ lookupTable Nothing var cases
+        JSSeq [ lookupTable [(var, "chk")] var cases
               , jsDecl $ JSFunction ["fn0", "arg0"] (
                   JSSeq [ JSRaw "var __var_0 = fn0"
-                        , jsLet (translateVariableName var) (
+                        , JSReturn $ jsLet (translateVariableName var) (
                             translateExpression val
                           ) (JSRaw $
                                concat [ "(" ++ translateVariableName var ++ " instanceof __IDRRT__Con "
@@ -352,7 +351,7 @@ translateDeclaration (path, SFun name params stackSize body)
           
   | (MN _ "EVAL")        <- name
   , (SChkCase var cases) <- body =
-    JSSeq [ lookupTable Nothing var cases
+    JSSeq [ lookupTable [] var cases
           , jsDecl $ JSFunction ["arg0"] (JSRaw $
               concat [ "if (arg0 instanceof __IDRRT__Con "
                      , " && " ++ lookupTableName ++ ".hasOwnProperty(arg0.tag))"
@@ -367,9 +366,9 @@ translateDeclaration (path, SFun name params stackSize body)
         jsDecl $ jsFun fun
 
   where
-    caseFun :: LVar -> SAlt -> JS
-    caseFun var cse =
-      jsFun (translateCase (Just (translateVariableName var)) cse)
+    caseFun :: [(LVar, String)] -> LVar -> SAlt -> JS
+    caseFun aux var cse =
+      jsFunAux aux (translateCase (Just (translateVariableName var)) cse)
 
     getTag :: SAlt -> Maybe String
     getTag (SConCase _ tag _ _ _) = Just $ show tag
@@ -378,26 +377,29 @@ translateDeclaration (path, SFun name params stackSize body)
     lookupTableName :: String
     lookupTableName = idrLTNamespace ++ translateName name
 
-    lookupTable :: Maybe (String, String) -> LVar -> [SAlt] -> JS
-    lookupTable m var cases =
+    lookupTable :: [(LVar, String)] -> LVar -> [SAlt] -> JS
+    lookupTable aux var cases =
       JSAlloc lookupTableName $ Just (
-        JSObject $ catMaybes $ map (lookupEntry var) cases
+        JSObject $ catMaybes $ map (lookupEntry aux var) cases
       )
       where
-        lookupEntry :: LVar -> SAlt -> Maybe (String, JS)
-        lookupEntry var alt = do
+        lookupEntry :: [(LVar, String)] ->  LVar -> SAlt -> Maybe (String, JS)
+        lookupEntry aux var alt = do
           tag <- getTag alt
-          return (tag, caseFun var alt)
+          return (tag, caseFun aux var alt)
 
     jsDecl :: JS -> JS
     jsDecl = JSAlloc (path ++ translateName name) . Just
 
-    jsFun :: JS -> JS
-    jsFun body =
-      JSFunction p (
+    jsFun body = jsFunAux [] body
+
+    jsFunAux :: [(LVar, String)] -> JS -> JS
+    jsFunAux aux body =
+      JSFunction (p ++ map snd aux) (
         JSSeq $
         zipWith assignVar [0..] p ++
         map allocVar [numP .. (numP + stackSize - 1)] ++
+        map assignAux aux ++
         [JSReturn body]
       )
       where
@@ -409,6 +411,9 @@ translateDeclaration (path, SFun name params stackSize body)
 
         assignVar :: Int -> String -> JS
         assignVar n s = JSAlloc (jsVar n)  (Just $ JSRaw s)
+
+        assignAux :: (LVar, String) -> JS
+        assignAux (var, val) = JSAssign (JSRaw $ translateVariableName var) (JSRaw val)
 
         p :: [String]
         p = map translateName params
