@@ -420,46 +420,46 @@ translateExpression (SApp tc name vars)
 translateExpression (SOp op vars)
   | LNoOp <- op = JSVar (last vars)
 
-  | (LZExt _ ITBig) <- op = jsBigInt $ JSVar (last vars)
-  | (LPlus (ATInt ITBig)) <- op
-  , (lhs:rhs:_) <- vars = invokeMeth lhs "add" [rhs]
+  | (LZExt _ ITBig)        <- op = jsBigInt $ JSVar (last vars)
+  | (LPlus (ATInt ITBig))  <- op
+  , (lhs:rhs:_)            <- vars = invokeMeth lhs "add" [rhs]
   | (LMinus (ATInt ITBig)) <- op
-  , (lhs:rhs:_) <- vars = invokeMeth lhs "minus" [rhs]
+  , (lhs:rhs:_)            <- vars = invokeMeth lhs "minus" [rhs]
   | (LTimes (ATInt ITBig)) <- op
-  , (lhs:rhs:_) <- vars = invokeMeth lhs "times" [rhs]
-  | (LSDiv (ATInt ITBig)) <- op
-  , (lhs:rhs:_) <- vars = invokeMeth lhs "divide" [rhs]
-  | (LSRem (ATInt ITBig)) <- op
-  , (lhs:rhs:_) <- vars = invokeMeth lhs "mod" [rhs]
-  | (LEq (ATInt ITBig)) <- op
-  , (lhs:rhs:_) <- vars = invokeMeth lhs "equals" [rhs]
-  | (LSLt (ATInt ITBig)) <- op
-  , (lhs:rhs:_) <- vars = invokeMeth lhs "lesser" [rhs]
-  | (LSLe (ATInt ITBig)) <- op
-  , (lhs:rhs:_) <- vars = invokeMeth lhs "lesserOrEquals" [rhs]
-  | (LSGt (ATInt ITBig)) <- op
-  , (lhs:rhs:_) <- vars = invokeMeth lhs "greater" [rhs]
-  | (LSGe (ATInt ITBig)) <- op
-  , (lhs:rhs:_) <- vars = invokeMeth lhs "greaterOrEquals" [rhs]
+  , (lhs:rhs:_)            <- vars = invokeMeth lhs "times" [rhs]
+  | (LSDiv (ATInt ITBig))  <- op
+  , (lhs:rhs:_)            <- vars = invokeMeth lhs "divide" [rhs]
+  | (LSRem (ATInt ITBig))  <- op
+  , (lhs:rhs:_)            <- vars = invokeMeth lhs "mod" [rhs]
+  | (LEq (ATInt ITBig))    <- op
+  , (lhs:rhs:_)            <- vars = invokeMeth lhs "equals" [rhs]
+  | (LSLt (ATInt ITBig))   <- op
+  , (lhs:rhs:_)            <- vars = invokeMeth lhs "lesser" [rhs]
+  | (LSLe (ATInt ITBig))   <- op
+  , (lhs:rhs:_)            <- vars = invokeMeth lhs "lesserOrEquals" [rhs]
+  | (LSGt (ATInt ITBig))   <- op
+  , (lhs:rhs:_)            <- vars = invokeMeth lhs "greater" [rhs]
+  | (LSGe (ATInt ITBig))   <- op
+  , (lhs:rhs:_)            <- vars = invokeMeth lhs "greaterOrEquals" [rhs]
 
   | (LPlus ATFloat)  <- op
-  , (lhs:rhs:_) <- vars = translateBinaryOp "+" lhs rhs
+  , (lhs:rhs:_)      <- vars = translateBinaryOp "+" lhs rhs
   | (LMinus ATFloat) <- op
-  , (lhs:rhs:_) <- vars = translateBinaryOp "-" lhs rhs
+  , (lhs:rhs:_)      <- vars = translateBinaryOp "-" lhs rhs
   | (LTimes ATFloat) <- op
-  , (lhs:rhs:_) <- vars = translateBinaryOp "*" lhs rhs
+  , (lhs:rhs:_)      <- vars = translateBinaryOp "*" lhs rhs
   | (LSDiv ATFloat)  <- op
-  , (lhs:rhs:_) <- vars = translateBinaryOp "/" lhs rhs
-  | (LEq ATFloat) <- op
-  , (lhs:rhs:_) <- vars = translateBinaryOp "==" lhs rhs
-  | (LSLt ATFloat) <- op
-  , (lhs:rhs:_) <- vars = translateBinaryOp "<" lhs rhs
-  | (LSLe ATFloat) <- op
-  , (lhs:rhs:_) <- vars = translateBinaryOp "<=" lhs rhs
-  | (LSGt ATFloat) <- op
-  , (lhs:rhs:_) <- vars = translateBinaryOp ">" lhs rhs
-  | (LSGe ATFloat) <- op
-  , (lhs:rhs:_) <- vars = translateBinaryOp ">=" lhs rhs
+  , (lhs:rhs:_)      <- vars = translateBinaryOp "/" lhs rhs
+  | (LEq ATFloat)    <- op
+  , (lhs:rhs:_)      <- vars = translateBinaryOp "==" lhs rhs
+  | (LSLt ATFloat)   <- op
+  , (lhs:rhs:_)      <- vars = translateBinaryOp "<" lhs rhs
+  | (LSLe ATFloat)   <- op
+  , (lhs:rhs:_)      <- vars = translateBinaryOp "<=" lhs rhs
+  | (LSGt ATFloat)   <- op
+  , (lhs:rhs:_)      <- vars = translateBinaryOp ">" lhs rhs
+  | (LSGe ATFloat)   <- op
+  , (lhs:rhs:_)      <- vars = translateBinaryOp ">=" lhs rhs
 
   | (LPlus _)   <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp "+" lhs rhs
@@ -473,13 +473,13 @@ translateExpression (SOp op vars)
   , (lhs:rhs:_) <- vars = translateBinaryOp "%" lhs rhs
   | (LEq _)     <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp "==" lhs rhs
-  | (LSLt _)     <- op
+  | (LSLt _)    <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp "<" lhs rhs
-  | (LSLe _)     <- op
+  | (LSLe _)    <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp "<=" lhs rhs
-  | (LSGt _)     <- op
+  | (LSGt _)    <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp ">" lhs rhs
-  | (LSGe _)     <- op
+  | (LSGe _)    <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp ">=" lhs rhs
   | (LAnd _)    <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp "&" lhs rhs
@@ -503,30 +503,30 @@ translateExpression (SOp op vars)
   | LStrLen     <- op
   , (arg:_)     <- vars = JSProj (JSVar arg) "length"
 
-  | (LStrInt ITNative) <- op
-  , (arg:_)     <- vars = jsCall "parseInt" [JSVar arg]
-  | (LIntStr ITNative) <- op
-  , (arg:_)     <- vars = jsCall "String" [JSVar arg]
-  | (LSExt ITNative ITBig) <- op
-  , (arg:_)     <- vars = jsBigInt $ JSVar arg
+  | (LStrInt ITNative)      <- op
+  , (arg:_)                 <- vars = jsCall "parseInt" [JSVar arg]
+  | (LIntStr ITNative)      <- op
+  , (arg:_)                 <- vars = jsCall "String" [JSVar arg]
+  | (LSExt ITNative ITBig)  <- op
+  , (arg:_)                 <- vars = jsBigInt $ JSVar arg
   | (LTrunc ITBig ITNative) <- op
-  , (arg:_)     <- vars = jsMeth (JSVar arg) "valueOf" []
-  | (LIntStr ITBig) <- op
-  , (arg:_)     <- vars = jsMeth (JSVar arg) "toString" []
-  | (LStrInt ITBig) <- op
-  , (arg:_)     <- vars = jsBigInt $ JSVar arg
-  | LFloatStr   <- op
-  , (arg:_)     <- vars = jsCall "String" [JSVar arg]
-  | LStrFloat   <- op
-  , (arg:_)     <- vars = jsCall "parseFloat" [JSVar arg]
-  | (LIntFloat ITNative) <- op
-  , (arg:_)     <- vars = JSVar arg
-  | (LFloatInt ITNative) <- op
-  , (arg:_)     <- vars = JSVar arg
-  | (LChInt ITNative) <- op
-  , (arg:_)     <- vars = JSProj (JSVar arg) "charCodeAt(0)"
-  | (LIntCh ITNative) <- op
-  , (arg:_)     <- vars = jsCall "String.fromCharCode" [JSVar arg]
+  , (arg:_)                 <- vars = jsMeth (JSVar arg) "valueOf" []
+  | (LIntStr ITBig)         <- op
+  , (arg:_)                 <- vars = jsMeth (JSVar arg) "toString" []
+  | (LStrInt ITBig)         <- op
+  , (arg:_)                 <- vars = jsBigInt $ JSVar arg
+  | LFloatStr               <- op
+  , (arg:_)                 <- vars = jsCall "String" [JSVar arg]
+  | LStrFloat               <- op
+  , (arg:_)                 <- vars = jsCall "parseFloat" [JSVar arg]
+  | (LIntFloat ITNative)    <- op
+  , (arg:_)                 <- vars = JSVar arg
+  | (LFloatInt ITNative)    <- op
+  , (arg:_)                 <- vars = JSVar arg
+  | (LChInt ITNative)       <- op
+  , (arg:_)                 <- vars = JSProj (JSVar arg) "charCodeAt(0)"
+  | (LIntCh ITNative)       <- op
+  , (arg:_)                 <- vars = jsCall "String.fromCharCode" [JSVar arg]
 
   | LFExp       <- op
   , (arg:_)     <- vars = jsCall "Math.exp" [JSVar arg]
