@@ -14,12 +14,14 @@ import Util.System
 import Control.Arrow
 import Data.Char
 import Data.List
+import Data.Maybe
 import System.IO
 import System.Directory
 
 idrNamespace :: String
 idrNamespace   = "__IDR__"
 idrRTNamespace = "__IDRRT__"
+idrLTNamespace = "__IDRLT__"
 
 data JSTarget = Node | JavaScript deriving Eq
 
@@ -58,6 +60,7 @@ data JS = JSRaw String
         | JSAlloc String (Maybe JS)
         | JSIndex JS JS
         | JSCond [(JS, JS)]
+        | JSTernary JS JS JS
 
 compileJS :: JS -> String
 compileJS (JSRaw code) =
@@ -154,6 +157,12 @@ compileJS (JSCond branches) =
       ++ "return " ++ compileJS e
       ++ ";\n}"
 
+compileJS (JSTernary cond true false) =
+  let c = compileJS cond
+      t = compileJS true
+      f = compileJS false in
+      "(" ++ c ++ ")?(" ++ t ++ "):(" ++ f ++ ")"
+
 jsTailcall :: JS -> JS
 jsTailcall call =
   jsCall (idrRTNamespace ++ "tailcall") [
@@ -183,10 +192,10 @@ jsCon :: JS
 jsCon = JSRaw $ idrRTNamespace ++ "Con"
 
 jsTag :: JS -> JS
-jsTag obj = (JSProj obj "tag")
+jsTag obj = JSProj obj "tag"
 
 jsTypeTag :: JS -> JS
-jsTypeTag obj = (JSProj obj "type")
+jsTypeTag obj = JSProj obj "type"
 
 jsBigInt :: JS -> JS
 jsBigInt val =
@@ -194,6 +203,14 @@ jsBigInt val =
 
 jsVar :: Int -> String
 jsVar = ("__var_" ++) . show
+
+jsLet :: String -> JS -> JS -> JS
+jsLet name value body =
+  JSApp (
+    JSFunction [name] (
+      JSReturn body
+    )
+  ) [value]
 
 codegenJavaScript
   :: JSTarget
@@ -319,31 +336,98 @@ translateConstant c =
   JSError $ "Unimplemented Constant: " ++ show c
 
 translateDeclaration :: (String, SDecl) -> JS
-translateDeclaration (path, SFun name params stackSize body) =
-  JSAlloc (path ++ translateName name) $ Just $ JSFunction p (
-    JSSeq $
-    zipWith assignVar [0..] p ++
-    map allocVar [numP .. (numP + stackSize - 1)] ++
-    [JSReturn $ translateExpression body]
-  )
+translateDeclaration (path, SFun name params stackSize body)
+  | (MN _ "APPLY")        <- name
+  , (SLet var val next)   <- body
+  , (SChkCase cvar cases) <- next =
+    let lvar   = translateVariableName var
+        lookup = "[" ++ lvar ++ ".tag](fn0,arg0," ++ lvar ++ ")" in
+        JSSeq [ lookupTable [(var, "chk")] var cases
+              , jsDecl $ JSFunction ["fn0", "arg0"] (
+                  JSSeq [ JSAlloc "__var_0" (Just $ JSRaw "fn0")
+                        , JSReturn $ jsLet (translateVariableName var) (
+                            translateExpression val
+                          ) (JSTernary (
+                               (JSVar var `jsInstanceOf` jsCon) `jsAnd`
+                               (hasProp lookupTableName (translateVariableName var))
+                            ) (JSRaw $
+                                 lookupTableName ++ lookup
+                              ) JSNull
+                            )
+                        ]
+                )
+              ]
+
+  | (MN _ "EVAL")        <- name
+  , (SChkCase var cases) <- body =
+    JSSeq [ lookupTable [] var cases
+          , jsDecl $ JSFunction ["arg0"] (JSReturn $
+              JSTernary (
+                (JSRaw "arg0" `jsInstanceOf` jsCon) `jsAnd`
+                (hasProp lookupTableName "arg0")
+              ) (JSRaw $ lookupTableName ++ "[arg0.tag](arg0)") (JSRaw "arg0")
+            )
+          ]
+  | otherwise =
+    let fun = translateExpression body in
+        jsDecl $ jsFun fun
+
   where
-    numP :: Int
-    numP = length params
+    hasProp :: String -> String -> JS
+    hasProp table var =
+      jsMeth (JSRaw table) "hasOwnProperty" [JSRaw $ var ++ ".tag"]
 
-    allocVar :: Int -> JS
-    allocVar n = JSAlloc (jsVar n) Nothing
+    caseFun :: [(LVar, String)] -> LVar -> SAlt -> JS
+    caseFun aux var cse =
+      jsFunAux aux (translateCase (Just (translateVariableName var)) cse)
 
-    assignVar :: Int -> String -> JS
-    assignVar n s = JSAlloc (jsVar n)  (Just $ JSRaw s)
+    getTag :: SAlt -> Maybe String
+    getTag (SConCase _ tag _ _ _) = Just $ show tag
+    getTag _                      = Nothing
 
-    p :: [String]
-    p = map translateParameter params
+    lookupTableName :: String
+    lookupTableName = idrLTNamespace ++ translateName name
+
+    lookupTable :: [(LVar, String)] -> LVar -> [SAlt] -> JS
+    lookupTable aux var cases =
+      JSAlloc lookupTableName $ Just (
+        JSObject $ catMaybes $ map (lookupEntry aux var) cases
+      )
       where
-        translateParameter :: Name -> String
-        translateParameter (MN i name) =
-          translateIdentifier name ++ show i
-        translateParameter (UN name) =
-          translateIdentifier name
+        lookupEntry :: [(LVar, String)] ->  LVar -> SAlt -> Maybe (String, JS)
+        lookupEntry aux var alt = do
+          tag <- getTag alt
+          return (tag, caseFun aux var alt)
+
+    jsDecl :: JS -> JS
+    jsDecl = JSAlloc (path ++ translateName name) . Just
+
+    jsFun body = jsFunAux [] body
+
+    jsFunAux :: [(LVar, String)] -> JS -> JS
+    jsFunAux aux body =
+      JSFunction (p ++ map snd aux) (
+        JSSeq $
+        zipWith assignVar [0..] p ++
+        map allocVar [numP .. (numP + stackSize - 1)] ++
+        map assignAux aux ++
+        [JSReturn body]
+      )
+      where
+        numP :: Int
+        numP = length params
+
+        allocVar :: Int -> JS
+        allocVar n = JSAlloc (jsVar n) Nothing
+
+        assignVar :: Int -> String -> JS
+        assignVar n s = JSAlloc (jsVar n)  (Just $ JSRaw s)
+
+        assignAux :: (LVar, String) -> JS
+        assignAux (var, val) = JSAssign (JSRaw $ translateVariableName var) (JSRaw val)
+
+        p :: [String]
+        p = map translateName params
 
 translateVariableName :: LVar -> String
 translateVariableName (Loc i) =
@@ -351,11 +435,9 @@ translateVariableName (Loc i) =
 
 translateExpression :: SExp -> JS
 translateExpression (SLet name value body) =
-     JSApp (
-        JSFunction [translateVariableName name] (
-          JSReturn $ translateExpression body
-        )
-      ) [translateExpression value]
+  jsLet (translateVariableName name) (
+    translateExpression value
+  ) (translateExpression body)
 
 translateExpression (SConst cst) =
   translateConstant cst
@@ -377,46 +459,46 @@ translateExpression (SApp tc name vars)
 translateExpression (SOp op vars)
   | LNoOp <- op = JSVar (last vars)
 
-  | (LZExt _ ITBig) <- op = jsBigInt $ JSVar (last vars)
-  | (LPlus (ATInt ITBig)) <- op
-  , (lhs:rhs:_) <- vars = invokeMeth lhs "add" [rhs]
+  | (LZExt _ ITBig)        <- op = jsBigInt $ JSVar (last vars)
+  | (LPlus (ATInt ITBig))  <- op
+  , (lhs:rhs:_)            <- vars = invokeMeth lhs "add" [rhs]
   | (LMinus (ATInt ITBig)) <- op
-  , (lhs:rhs:_) <- vars = invokeMeth lhs "minus" [rhs]
+  , (lhs:rhs:_)            <- vars = invokeMeth lhs "minus" [rhs]
   | (LTimes (ATInt ITBig)) <- op
-  , (lhs:rhs:_) <- vars = invokeMeth lhs "times" [rhs]
-  | (LSDiv (ATInt ITBig)) <- op
-  , (lhs:rhs:_) <- vars = invokeMeth lhs "divide" [rhs]
-  | (LSRem (ATInt ITBig)) <- op
-  , (lhs:rhs:_) <- vars = invokeMeth lhs "mod" [rhs]
-  | (LEq (ATInt ITBig)) <- op
-  , (lhs:rhs:_) <- vars = invokeMeth lhs "equals" [rhs]
-  | (LSLt (ATInt ITBig)) <- op
-  , (lhs:rhs:_) <- vars = invokeMeth lhs "lesser" [rhs]
-  | (LSLe (ATInt ITBig)) <- op
-  , (lhs:rhs:_) <- vars = invokeMeth lhs "lesserOrEquals" [rhs]
-  | (LSGt (ATInt ITBig)) <- op
-  , (lhs:rhs:_) <- vars = invokeMeth lhs "greater" [rhs]
-  | (LSGe (ATInt ITBig)) <- op
-  , (lhs:rhs:_) <- vars = invokeMeth lhs "greaterOrEquals" [rhs]
+  , (lhs:rhs:_)            <- vars = invokeMeth lhs "times" [rhs]
+  | (LSDiv (ATInt ITBig))  <- op
+  , (lhs:rhs:_)            <- vars = invokeMeth lhs "divide" [rhs]
+  | (LSRem (ATInt ITBig))  <- op
+  , (lhs:rhs:_)            <- vars = invokeMeth lhs "mod" [rhs]
+  | (LEq (ATInt ITBig))    <- op
+  , (lhs:rhs:_)            <- vars = invokeMeth lhs "equals" [rhs]
+  | (LSLt (ATInt ITBig))   <- op
+  , (lhs:rhs:_)            <- vars = invokeMeth lhs "lesser" [rhs]
+  | (LSLe (ATInt ITBig))   <- op
+  , (lhs:rhs:_)            <- vars = invokeMeth lhs "lesserOrEquals" [rhs]
+  | (LSGt (ATInt ITBig))   <- op
+  , (lhs:rhs:_)            <- vars = invokeMeth lhs "greater" [rhs]
+  | (LSGe (ATInt ITBig))   <- op
+  , (lhs:rhs:_)            <- vars = invokeMeth lhs "greaterOrEquals" [rhs]
 
   | (LPlus ATFloat)  <- op
-  , (lhs:rhs:_) <- vars = translateBinaryOp "+" lhs rhs
+  , (lhs:rhs:_)      <- vars = translateBinaryOp "+" lhs rhs
   | (LMinus ATFloat) <- op
-  , (lhs:rhs:_) <- vars = translateBinaryOp "-" lhs rhs
+  , (lhs:rhs:_)      <- vars = translateBinaryOp "-" lhs rhs
   | (LTimes ATFloat) <- op
-  , (lhs:rhs:_) <- vars = translateBinaryOp "*" lhs rhs
+  , (lhs:rhs:_)      <- vars = translateBinaryOp "*" lhs rhs
   | (LSDiv ATFloat)  <- op
-  , (lhs:rhs:_) <- vars = translateBinaryOp "/" lhs rhs
-  | (LEq ATFloat) <- op
-  , (lhs:rhs:_) <- vars = translateBinaryOp "==" lhs rhs
-  | (LSLt ATFloat) <- op
-  , (lhs:rhs:_) <- vars = translateBinaryOp "<" lhs rhs
-  | (LSLe ATFloat) <- op
-  , (lhs:rhs:_) <- vars = translateBinaryOp "<=" lhs rhs
-  | (LSGt ATFloat) <- op
-  , (lhs:rhs:_) <- vars = translateBinaryOp ">" lhs rhs
-  | (LSGe ATFloat) <- op
-  , (lhs:rhs:_) <- vars = translateBinaryOp ">=" lhs rhs
+  , (lhs:rhs:_)      <- vars = translateBinaryOp "/" lhs rhs
+  | (LEq ATFloat)    <- op
+  , (lhs:rhs:_)      <- vars = translateBinaryOp "==" lhs rhs
+  | (LSLt ATFloat)   <- op
+  , (lhs:rhs:_)      <- vars = translateBinaryOp "<" lhs rhs
+  | (LSLe ATFloat)   <- op
+  , (lhs:rhs:_)      <- vars = translateBinaryOp "<=" lhs rhs
+  | (LSGt ATFloat)   <- op
+  , (lhs:rhs:_)      <- vars = translateBinaryOp ">" lhs rhs
+  | (LSGe ATFloat)   <- op
+  , (lhs:rhs:_)      <- vars = translateBinaryOp ">=" lhs rhs
 
   | (LPlus _)   <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp "+" lhs rhs
@@ -430,13 +512,13 @@ translateExpression (SOp op vars)
   , (lhs:rhs:_) <- vars = translateBinaryOp "%" lhs rhs
   | (LEq _)     <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp "==" lhs rhs
-  | (LSLt _)     <- op
+  | (LSLt _)    <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp "<" lhs rhs
-  | (LSLe _)     <- op
+  | (LSLe _)    <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp "<=" lhs rhs
-  | (LSGt _)     <- op
+  | (LSGt _)    <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp ">" lhs rhs
-  | (LSGe _)     <- op
+  | (LSGe _)    <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp ">=" lhs rhs
   | (LAnd _)    <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp "&" lhs rhs
@@ -460,30 +542,30 @@ translateExpression (SOp op vars)
   | LStrLen     <- op
   , (arg:_)     <- vars = JSProj (JSVar arg) "length"
 
-  | (LStrInt ITNative) <- op
-  , (arg:_)     <- vars = jsCall "parseInt" [JSVar arg]
-  | (LIntStr ITNative) <- op
-  , (arg:_)     <- vars = jsCall "String" [JSVar arg]
-  | (LSExt ITNative ITBig) <- op
-  , (arg:_)     <- vars = jsBigInt $ JSVar arg
+  | (LStrInt ITNative)      <- op
+  , (arg:_)                 <- vars = jsCall "parseInt" [JSVar arg]
+  | (LIntStr ITNative)      <- op
+  , (arg:_)                 <- vars = jsCall "String" [JSVar arg]
+  | (LSExt ITNative ITBig)  <- op
+  , (arg:_)                 <- vars = jsBigInt $ JSVar arg
   | (LTrunc ITBig ITNative) <- op
-  , (arg:_)     <- vars = jsMeth (JSVar arg) "valueOf" []
-  | (LIntStr ITBig) <- op
-  , (arg:_)     <- vars = jsMeth (JSVar arg) "toString" []
-  | (LStrInt ITBig) <- op
-  , (arg:_)     <- vars = jsBigInt $ JSVar arg
-  | LFloatStr   <- op
-  , (arg:_)     <- vars = jsCall "String" [JSVar arg]
-  | LStrFloat   <- op
-  , (arg:_)     <- vars = jsCall "parseFloat" [JSVar arg]
-  | (LIntFloat ITNative) <- op
-  , (arg:_)     <- vars = JSVar arg
-  | (LFloatInt ITNative) <- op
-  , (arg:_)     <- vars = JSVar arg
-  | (LChInt ITNative) <- op
-  , (arg:_)     <- vars = JSProj (JSVar arg) "charCodeAt(0)"
-  | (LIntCh ITNative) <- op
-  , (arg:_)     <- vars = jsCall "String.fromCharCode" [JSVar arg]
+  , (arg:_)                 <- vars = jsMeth (JSVar arg) "valueOf" []
+  | (LIntStr ITBig)         <- op
+  , (arg:_)                 <- vars = jsMeth (JSVar arg) "toString" []
+  | (LStrInt ITBig)         <- op
+  , (arg:_)                 <- vars = jsBigInt $ JSVar arg
+  | LFloatStr               <- op
+  , (arg:_)                 <- vars = jsCall "String" [JSVar arg]
+  | LStrFloat               <- op
+  , (arg:_)                 <- vars = jsCall "parseFloat" [JSVar arg]
+  | (LIntFloat ITNative)    <- op
+  , (arg:_)                 <- vars = JSVar arg
+  | (LFloatInt ITNative)    <- op
+  , (arg:_)                 <- vars = JSVar arg
+  | (LChInt ITNative)       <- op
+  , (arg:_)                 <- vars = JSProj (JSVar arg) "charCodeAt(0)"
+  | (LIntCh ITNative)       <- op
+  , (arg:_)                 <- vars = jsCall "String.fromCharCode" [JSVar arg]
 
   | LFExp       <- op
   , (arg:_)     <- vars = jsCall "Math.exp" [JSVar arg]
@@ -600,7 +682,7 @@ translateExpression patterncase
   where
     caseHelper var cases param =
       JSApp (JSFunction [param] (
-        JSCond $ map ((expandCase param) . translateCase param) cases
+        JSCond $ map (expandCase param . translateCaseCond param) cases
       )) [JSVar var]
 
     expandCase :: String -> (Cond, JS) -> (JS, JS)
@@ -641,11 +723,11 @@ data CaseType = ConCase Int
 data Cond = CaseCond CaseType
           | RawCond JS
 
-translateCase :: String -> SAlt -> (Cond, JS)
-translateCase _ (SDefaultCase e) =
-  (CaseCond DefaultCase, translateExpression e)
+translateCaseCond :: String -> SAlt -> (Cond, JS)
+translateCaseCond _ cse@(SDefaultCase _) =
+  (CaseCond DefaultCase, translateCase Nothing cse)
 
-translateCase var (SConstCase ty e)
+translateCaseCond var cse@(SConstCase ty _)
   | StrType                  <- ty = matchHelper JSStringTy
   | PtrType                  <- ty = matchHelper JSPtrTy
   | Forgot                   <- ty = matchHelper JSForgotTy
@@ -655,20 +737,24 @@ translateCase var (SConstCase ty e)
   | (AType (ATInt ITChar))   <- ty = matchHelper JSCharTy
   where
     matchHelper :: JSType -> (Cond, JS)
-    matchHelper ty = (CaseCond $ TypeCase ty, translateExpression e)
+    matchHelper ty = (CaseCond $ TypeCase ty, translateCase Nothing cse)
 
-translateCase var (SConstCase cst@(BI _) e) =
+translateCaseCond var cse@(SConstCase cst@(BI _) _) =
   let cond = jsMeth (JSRaw var) "equals" [translateConstant cst] in
-      (RawCond cond, translateExpression e)
+      (RawCond cond, translateCase Nothing cse)
 
-translateCase var (SConstCase cst e) =
+translateCaseCond var cse@(SConstCase cst _) =
   let cond = JSRaw var `jsEq` translateConstant cst in
-      (RawCond cond, translateExpression e)
+      (RawCond cond, translateCase Nothing cse)
 
-translateCase var (SConCase a tag name vars e) =
+translateCaseCond var cse@(SConCase _ tag _ _ _) =
+  (CaseCond $ ConCase tag, translateCase (Just var) cse)
+
+translateCase :: Maybe String -> SAlt -> JS
+translateCase _          (SDefaultCase e) = translateExpression e
+translateCase _          (SConstCase _ e) = translateExpression e
+translateCase (Just var) (SConCase a _ _ vars e) =
   let params = map jsVar [a .. (a + length vars)] in
-      (CaseCond $ ConCase tag,
-        jsMeth (JSFunction params (JSReturn $ translateExpression e)) "apply" [
-          JSThis, JSProj (JSRaw var) "vars"
-        ]
-      )
+      jsMeth (JSFunction params (JSReturn $ translateExpression e)) "apply" [
+        JSThis, JSProj (JSRaw var) "vars"
+      ]
