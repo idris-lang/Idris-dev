@@ -340,17 +340,19 @@ translateDeclaration (path, SFun name params stackSize body)
   | (MN _ "APPLY")        <- name
   , (SLet var val next)   <- body
   , (SChkCase cvar cases) <- next =
-    let fun = translateExpression body in
+    let lvar   = translateVariableName var
+        lookup = "[" ++ lvar ++ ".tag](fn0,arg0," ++ lvar ++ ")" in
         JSSeq [ lookupTable [(var, "chk")] var cases
               , jsDecl $ JSFunction ["fn0", "arg0"] (
                   JSSeq [ JSAlloc "__var_0" (Just $ JSRaw "fn0")
                         , JSReturn $ jsLet (translateVariableName var) (
                             translateExpression val
-                          ) (JSRaw $
-                               concat [ "(" ++ translateVariableName var ++ " instanceof __IDRRT__Con "
-                                      , " && " ++ lookupTableName ++ ".hasOwnProperty(" ++ translateVariableName var ++ ".tag)) ? "
-                                      , lookupTableName ++ "[" ++ translateVariableName var ++ ".tag](fn0,arg0," ++ translateVariableName var ++ ") : null;"
-                                      ]
+                          ) (JSTernary (
+                               (JSVar var `jsInstanceOf` jsCon) `jsAnd`
+                               (hasProp lookupTableName (translateVariableName var))
+                            ) (JSRaw $
+                                 lookupTableName ++ lookup
+                              ) JSNull
                             )
                         ]
                 )
