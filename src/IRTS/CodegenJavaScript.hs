@@ -197,6 +197,14 @@ jsBigInt val =
 jsVar :: Int -> String
 jsVar = ("__var_" ++) . show
 
+jsLet :: String -> JS -> JS -> JS
+jsLet name value body = 
+  JSApp (
+    JSFunction [name] (
+      JSReturn body
+    )
+  ) [value]
+
 codegenJavaScript
   :: JSTarget
   -> [(Name, SDecl)]
@@ -326,20 +334,34 @@ translateDeclaration (path, SFun name params stackSize body)
   , (SLet var val next)   <- body
   , (SChkCase cvar cases) <- next =
     let fun = translateExpression body in
-        jsDecl $ jsFun fun
-  | (MN _ "EVAL")        <- name
-  , (SChkCase var cases) <- body =
-    let fun  = translateExpression body in
-        JSSeq [ lookupTable var cases
-              , jsDecl $ JSFunction ["arg0"] (JSRaw $
-                  concat [ "if (arg0 instanceof __IDRRT__Con "
-                         , " && " ++ lookupTableName ++ ".hasOwnProperty(arg0.tag))"
-                         , "return " ++ lookupTableName ++ "[arg0.tag](arg0);"
-                         , "else "
-                         , "return arg0;"
-                         ]
+        {-jsDecl $ jsFun fun-}
+        JSSeq [ lookupTable Nothing var cases
+              , jsDecl $ JSFunction ["fn0", "arg0"] (
+                  JSSeq [ JSRaw "var __var_0 = fn0"
+                        , jsLet (translateVariableName var) (
+                            translateExpression val
+                          ) (JSRaw $
+                               concat [ "(" ++ translateVariableName var ++ " instanceof __IDRRT__Con "
+                                      , " && " ++ lookupTableName ++ ".hasOwnProperty(" ++ translateVariableName var ++ ".tag)) ? "
+                                      , lookupTableName ++ "[" ++ translateVariableName var ++ ".tag](fn0,arg0," ++ translateVariableName var ++ ") : null;"
+                                      ]
+                            )
+                        ]
                 )
               ]
+          
+  | (MN _ "EVAL")        <- name
+  , (SChkCase var cases) <- body =
+    JSSeq [ lookupTable Nothing var cases
+          , jsDecl $ JSFunction ["arg0"] (JSRaw $
+              concat [ "if (arg0 instanceof __IDRRT__Con "
+                     , " && " ++ lookupTableName ++ ".hasOwnProperty(arg0.tag))"
+                     , "return " ++ lookupTableName ++ "[arg0.tag](arg0);"
+                     , "else "
+                     , "return arg0;"
+                     ]
+            )
+          ]
   | otherwise =
     let fun = translateExpression body in
         jsDecl $ jsFun fun
@@ -356,8 +378,8 @@ translateDeclaration (path, SFun name params stackSize body)
     lookupTableName :: String
     lookupTableName = idrLTNamespace ++ translateName name
 
-    lookupTable :: LVar -> [SAlt] -> JS
-    lookupTable var cases =
+    lookupTable :: Maybe (String, String) -> LVar -> [SAlt] -> JS
+    lookupTable m var cases =
       JSAlloc lookupTableName $ Just (
         JSObject $ catMaybes $ map (lookupEntry var) cases
       )
@@ -397,11 +419,14 @@ translateVariableName (Loc i) =
 
 translateExpression :: SExp -> JS
 translateExpression (SLet name value body) =
-     JSApp (
-        JSFunction [translateVariableName name] (
-          JSReturn $ translateExpression body
-        )
-      ) [translateExpression value]
+  jsLet (translateVariableName name) (
+    translateExpression value
+  ) (translateExpression body)
+     {-JSApp (-}
+        {-JSFunction [translateVariableName name] (-}
+          {-JSReturn $ translateExpression body-}
+        {-)-}
+      {-) [translateExpression value]-}
 
 translateExpression (SConst cst) =
   translateConstant cst
