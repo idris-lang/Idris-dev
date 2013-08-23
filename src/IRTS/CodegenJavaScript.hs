@@ -322,20 +322,23 @@ translateConstant c =
 
 translateDeclaration :: (String, SDecl) -> JS
 translateDeclaration (path, SFun name params stackSize body)
-  | (MN _ "APPLY") <- name =
+  | (MN _ "APPLY")        <- name
+  , (SLet var val next)   <- body
+  , (SChkCase cvar cases) <- next =
     let fun = translateExpression body in
         jsDecl $ jsFun fun
   | (MN _ "EVAL")        <- name
   , (SChkCase var cases) <- body =
     let fun  = translateExpression body in
         JSSeq [ lookupTable var cases
-              , jsDecl $ JSRaw $ concat [ "function(arg0){"
-                                        , "if (arg0 instanceof __IDRRT__Con "
-                                        , " && " ++ lookupTableName ++ ".hasOwnProperty(arg0.tag))"
-                                        , "return " ++ lookupTableName ++ "[arg0.tag](arg0);"
-                                        , "else "
-                                        , "return arg0; }"
-                                        ]
+              , jsDecl $ JSFunction ["arg0"] (JSRaw $
+                  concat [ "if (arg0 instanceof __IDRRT__Con "
+                         , " && " ++ lookupTableName ++ ".hasOwnProperty(arg0.tag))"
+                         , "return " ++ lookupTableName ++ "[arg0.tag](arg0);"
+                         , "else "
+                         , "return arg0;"
+                         ]
+                )
               ]
   | otherwise =
     let fun = translateExpression body in
