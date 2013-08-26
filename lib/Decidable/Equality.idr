@@ -1,6 +1,6 @@
 module Decidable.Equality
 
-import Builtins
+import Prelude
 
 --------------------------------------------------------------------------------
 -- Utility lemmas

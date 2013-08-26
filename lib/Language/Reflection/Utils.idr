@@ -1,5 +1,8 @@
 module Language.Reflection.Utils
 
+import Prelude
+import Language.Reflection
+
 --------------------------------------------------------
 -- Tactic construction conveniences
 --------------------------------------------------------

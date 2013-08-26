@@ -1,6 +1,6 @@
 module Language.Reflection
 
-import Prelude.Vect
+import Prelude
 
 %access public
 

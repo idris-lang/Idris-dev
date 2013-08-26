@@ -1,5 +1,7 @@
 module Data.BoundedList
 
+import Prelude
+
 %access public
 %default total
 

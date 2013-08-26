@@ -1,5 +1,6 @@
 module Data.SortedMap
 
+import Prelude
 -- TODO: write merge and split
 
 data Tree : Nat -> Type -> Type -> Type where

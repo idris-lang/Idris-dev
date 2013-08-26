@@ -1,6 +1,6 @@
 module Data.Morphisms
 
-import Builtins
+import Prelude 
 
 %access public
 

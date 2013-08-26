@@ -18,6 +18,8 @@ import Idris.Docs
 import Idris.Help
 import Idris.Completion
 import Idris.IdeSlave
+import Idris.Chaser
+import Idris.Imports
 
 import Paths_idris
 import Util.System
@@ -213,7 +215,7 @@ processInput cmd orig inputs
             Right Reload -> 
                 do putIState (orig { idris_options = idris_options i })
                    clearErr
-                   mods <- mapM loadModule inputs  
+                   mods <- loadInputs inputs  
                    return (Just inputs)
             Right (Load f) -> 
                 do putIState (orig { idris_options = idris_options i })
@@ -264,7 +266,7 @@ edit f orig
          liftIO $ system cmd
          clearErr
          putIState (orig { idris_options = idris_options i })
-         loadModule f
+         loadInputs [f]
          iucheck
          return ()
    where getEditor env | Just ed <- lookup "EDITOR" env = ed
@@ -640,6 +642,69 @@ replSettings = setComplete replCompletion defaultSettings
 idris :: [Opt] -> IO IState
 idris opts = execStateT (idrisMain opts) idrisInit
 
+loadInputs :: [FilePath] -> Idris ()
+loadInputs inputs
+  = do ist <- getIState
+       -- if we're in --check and not outputting anything, don't bother
+       -- loading, as it gets really slow if there's lots of modules in 
+       -- a package (instead, reload all at the end to check for
+       -- consistency only)
+       opts <- getCmdLine
+
+       let loadCode = case opt getOutput opts of
+                           [] -> not (NoREPL `elem` opts) 
+                           _ -> True
+
+       -- For each ifile list, check it and build ibcs in the same clean IState
+       -- so that they don't interfere with each other when checking
+
+       let ninputs = zip [1..] inputs
+       ifiles <- mapM (\(num, input) -> 
+            do putIState ist
+               v <- verbose
+--                           when v $ iputStrLn $ "(" ++ show num ++ "/" ++ 
+--                                                show (length inputs) ++
+--                                                ") " ++ input 
+               modTree <- buildTree 
+                               (map snd (take (num-1) ninputs)) 
+                               input
+               let ifiles = getModuleFiles modTree
+               iLOG ("MODULE TREE : " ++ show modTree)
+               iLOG ("RELOAD: " ++ show ifiles)
+               when (not (all ibc ifiles) || loadCode) $ tryLoad ifiles
+               return ifiles)
+                  ninputs
+       inew <- getIState
+       -- to check everything worked consistently (in particular, will catch
+       -- if the ibc version is out of date) if we weren't loading per
+       -- module
+       case errLine inew of
+          Nothing ->
+            do putIState ist
+               when (not loadCode) $ tryLoad $ nub (concat ifiles)
+          _ -> return ()
+       putIState inew
+--        inew <- getIState
+--        case errLine inew of
+--             Nothing ->
+--             -- Then, load all the ibcs again, if there were no errors.
+--               do putIState ist
+--                  modTree <- mapM (buildTree (map snd ninputs)) inputs
+--                  let ifiless = map getModuleFiles modTree
+--                  mapM_ loadFromIFile (concat ifiless)
+--             _ -> return ()
+   where -- load all files, stop if any fail
+         tryLoad :: [IFileType] -> Idris ()
+         tryLoad [] = return ()
+         tryLoad (f : fs) = do loadFromIFile f
+                               inew <- getIState
+                               case errLine inew of
+                                    Nothing -> tryLoad fs
+                                    _ -> return () -- error, stop
+
+         ibc (IBC _ _) = True
+         ibc _ = False
+ 
 idrisMain :: [Opt] -> Idris ()
 idrisMain opts =
     do let inputs = opt getFile opts
@@ -707,9 +772,9 @@ idrisMain opts =
                                                return ()
        when (runrepl && not quiet && not idesl && not (isJust script)) $ iputStrLn banner
        ist <- getIState
-       mods <- mapM loadModule inputs
-       iLOG "Universe checking"
-       iucheck
+       
+       loadInputs inputs
+
        ok <- noErrors
        when ok $ case output of
                     [] -> return ()

@@ -667,7 +667,7 @@ resolveTC depth fn ist
                     scopeOnly <- needsDefault t tc ttypes
                     let insts_in = findInstances ist t
                     let insts = if scopeOnly then filter chaser insts_in
-                                   else insts_in
+                                    else insts_in
                     tm <- get_term
 --                    traceWhen (depth > 6) ("GOAL: " ++ show t ++ "\nTERM: " ++ show tm) $
 --                        (tryAll (map elabTC (map fst (ctxtAlist (tt_ctxt ist)))))

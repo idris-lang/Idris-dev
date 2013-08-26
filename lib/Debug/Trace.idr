@@ -1,5 +1,6 @@
 module Debug.Trace
 
+import Prelude
 import IO
 
 trace : String -> a -> a

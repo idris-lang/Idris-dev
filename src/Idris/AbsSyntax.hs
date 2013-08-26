@@ -112,7 +112,7 @@ addToCG n cg
 
 addCoercion :: Name -> Idris ()
 addCoercion n = do i <- getIState
-                   putIState $ i { idris_coercions = n : idris_coercions i }
+                   putIState $ i { idris_coercions = nub $ n : idris_coercions i }
 
 addDocStr :: Name -> String -> Idris ()
 addDocStr n doc 
@@ -317,6 +317,10 @@ setCmdLine :: [Opt] -> Idris ()
 setCmdLine opts = do i <- getIState
                      let iopts = idris_options i
                      putIState $ i { idris_options = iopts { opt_cmdline = opts } }
+
+getCmdLine :: Idris [Opt]
+getCmdLine = do i <- getIState
+                return (opt_cmdline (idris_options i))
 
 getDumpDefun :: Idris (Maybe FilePath)
 getDumpDefun = do i <- getIState

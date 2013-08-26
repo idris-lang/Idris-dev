@@ -90,6 +90,26 @@ loadModule f
                           iputStrLn msg
                           return "")
 
+loadFromIFile :: IFileType -> Idris ()
+loadFromIFile i@(IBC fn src) 
+   = do iLOG $ "Skipping " ++ getSrcFile i
+        idrisCatch (loadIBC fn)
+                (\c -> do fail $ fn ++ " failed " ++ show c)
+--                           loadFromIFile src)
+  where
+    getSrcFile (IDR fn) = fn
+    getSrcFile (LIDR fn) = fn
+    getSrcFile (IBC f src) = getSrcFile src
+
+loadFromIFile (IDR fn) = loadSource' False fn
+loadFromIFile (LIDR fn) = loadSource' True fn
+
+loadSource' lidr r 
+   = idrisCatch (loadSource lidr r)
+                (\e -> do let msg = show e
+                          setErrLine (getErrLine msg)
+                          iputStrLn msg)
+
 loadSource :: Bool -> FilePath -> Idris () 
 loadSource lidr f 
              = do iLOG ("Reading " ++ f)
@@ -100,7 +120,7 @@ loadSource lidr f
                   (mname, modules, rest, pos) <- parseImports f file
                   i <- getIState
                   putIState (i { default_access = Hidden })
-                  mapM_ loadModule modules
+--                   mapM_ loadModule modules
                   clearIBC -- start a new .ibc file
                   mapM_ (addIBC . IBCImport) modules
                   ds' <- parseProg (defaultSyntax {syn_namespace = reverse mname }) 
@@ -128,6 +148,8 @@ loadSource lidr f
                     mapM_ checkDeclTotality (idris_totcheck i)
                     iLOG ("Finished " ++ f)
                     ibcsd <- valIBCSubDir i
+                    iLOG "Universe checking"
+                    iucheck
                     let ibc = ibcPathNoFallback ibcsd f
                     i <- getIState
                     addHides (hide_list i)
@@ -173,7 +195,8 @@ parseImports fname input
                             pos   <- getPosition
                             return ((mname, ps, rest, pos), i)) i fname input of
               Left err     -> fail (show err)
-              Right (x, i) -> do putIState i
+              Right (x, i) -> do -- Discard state updates (there should be
+                                 -- none anyway) 
                                  return x
 
 pHeader :: IParser [String]
@@ -295,6 +318,9 @@ parseProg syn fname input pos
                             i' <- getState
                             return (concat ps, i')) i fname input of
             Left err     -> do iputStrLn (show err)
+                               let errl = sourceLine (errorPos err)
+                               i <- getIState
+                               putIState (i { errLine = Just errl })
                                return []
             Right (x, i) -> do putIState i
                                return (collect x)

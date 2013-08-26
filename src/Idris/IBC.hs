@@ -23,7 +23,7 @@ import Debug.Trace
 import Paths_idris
 
 ibcVersion :: Word8
-ibcVersion = 33
+ibcVersion = 34
 
 data IBCFile = IBCFile { ver :: Word8,
                          sourcefile :: FilePath,
@@ -135,13 +135,13 @@ ibc i (IBCTrans t) f = return f { ibc_transforms = t : ibc_transforms f }
 process :: IBCFile -> FilePath -> Idris ()
 process i fn
    | ver i /= ibcVersion = do iLOG "ibc out of date"
-                              fail "Incorrect ibc version"
+                              fail "Incorrect ibc version --- please rebuild"
    | otherwise =
             do srcok <- liftIO $ doesFileExist (sourcefile i)
                when srcok $ liftIO $ timestampOlder (sourcefile i) fn
                v <- verbose
                quiet <- getQuiet
-               when (v && srcok && not quiet) $ iputStrLn $ "Skipping " ++ sourcefile i
+--                when (v && srcok && not quiet) $ iputStrLn $ "Skipping " ++ sourcefile i
                pImports (ibc_imports i)
                pImps (ibc_implicits i)
                pFixes (ibc_fixes i)
@@ -208,10 +208,17 @@ pStatics ss = mapM_ (\ (n, s) ->
                     ss
 
 pClasses :: [(Name, ClassInfo)] -> Idris ()
-pClasses cs = mapM_ (\ (n, c) ->
+pClasses cs = mapM_ (\ (n, c) -> 
                         do i <- getIState
+                           -- Don't lose instances from previous IBCs, which
+                           -- could have loaded in any order
+                           let is = case lookupCtxt n (idris_classes i) of
+                                      [CI _ _ _ _ ins] -> ins
+                                      _ -> []
+                           let c' = c { class_instances =
+                                          class_instances c ++ is }
                            putIState (i { idris_classes
-                                           = addDef n c (idris_classes i) }))
+                                           = addDef n c' (idris_classes i) }))
                     cs
 
 pInstances :: [(Bool, Name, Name)] -> Idris ()

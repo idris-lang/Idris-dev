@@ -10,7 +10,7 @@ import System.Directory
 import Control.Monad.State
 
 data IFileType = IDR FilePath | LIDR FilePath | IBC FilePath IFileType 
-    deriving Eq
+    deriving (Show, Eq)
 
 srcPath :: FilePath -> FilePath
 srcPath fp = let (n, ext) = splitExtension fp in

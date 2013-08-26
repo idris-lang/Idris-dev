@@ -258,7 +258,7 @@ Executable     idris
                               Idris.Coverage, Idris.IBC, Idris.Unlit,
                               Idris.DataOpts, Idris.Transforms, Idris.DSL,
                               Idris.UnusedArgs, Idris.Docs, Idris.Completion,
-                              Idris.PartialEval, Idris.Providers,
+                              Idris.PartialEval, Idris.Providers, Idris.Chaser,
 
                               Util.Pretty, Util.System, Util.DynamicLinker,
                               Pkg.Package, Pkg.PParser,
@@ -273,7 +273,8 @@ Executable     idris
                               Paths_idris
 
                Build-depends:   base>=4 && <5, parsec>=3, mtl, Cabal,
-                                haskeline>=0.7, split, directory,
+                                haskeline>=0.7, split, directory>=1.2,
+                                time>=1.4,
                                 containers, process, transformers, filepath,
                                 directory, binary, bytestring, text, pretty,
                                 language-java>=0.2.2, libffi,
