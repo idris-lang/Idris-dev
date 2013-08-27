@@ -623,6 +623,11 @@ expandParams dec ps ns infs tm = en tm
                = let n' = mkShadow n in
                      PLet n' (en ty) (en v) (en (shadow n n' s))
        | otherwise = PLet n (en ty) (en v) (en s)
+    -- FIXME: Should only do this in a type signature! 
+    en (PDPair f (PRef f' n) t r) 
+       | n `elem` (map fst ps ++ ns) && t /= Placeholder
+           = let n' = mkShadow n in
+                 PDPair f (PRef f' n') (en t) (en (shadow n n' r))
     en (PEq f l r) = PEq f (en l) (en r)
     en (PRewrite f l r g) = PRewrite f (en l) (en r) (fmap en g)
     en (PTyped l r) = PTyped (en l) (en r)

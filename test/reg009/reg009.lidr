@@ -2,7 +2,6 @@
 > isAnyBy _ (_ ** Nil) = False
 > isAnyBy p (_ ** (a :: as)) = p a || isAnyBy p (_ ** as)
 
-
 > filterTagP : (p  : alpha -> Bool) -> 
 >              (as : Vect n alpha) -> 
 >              so (isAnyBy p (n ** as)) ->
