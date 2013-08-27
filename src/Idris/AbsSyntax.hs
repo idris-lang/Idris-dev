@@ -609,17 +609,17 @@ expandParams dec ps ns infs tm = en tm
     mkShadow (NS x s) = NS (mkShadow x) s
 
     en (PLam n t s)
-       | n `elem` map fst ps
+       | n `elem` (map fst ps ++ ns)
                = let n' = mkShadow n in
                      PLam n' (en t) (en (shadow n n' s))
        | otherwise = PLam n (en t) (en s)
     en (PPi p n t s) 
-       | n `elem` map fst ps
+       | n `elem` (map fst ps ++ ns)
                = let n' = mkShadow n in
                      PPi p n' (en t) (en (shadow n n' s))
        | otherwise = PPi p n (en t) (en s)
     en (PLet n ty v s) 
-       | n `elem` map fst ps
+       | n `elem` (map fst ps ++ ns)
                = let n' = mkShadow n in
                      PLet n' (en ty) (en v) (en (shadow n n' s))
        | otherwise = PLet n (en ty) (en v) (en s)

@@ -7,6 +7,10 @@ New in 0.9.10:
   in the scope e
 * At the REPL, "it" now refers to the previous expression
 
+Internal changes
+
+* New module/dependency tree checking
+
 New in 0.9.9:
 -------------
 

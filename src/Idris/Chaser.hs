@@ -70,7 +70,10 @@ getIModTime (LIDR i) = getModificationTime i
 
 buildTree :: [FilePath] -> -- already guaranteed built
              FilePath -> Idris [ModuleTree]
-buildTree built fp = btree [] fp where
+buildTree built fp = idrisCatch (btree [] fp)
+                        (\e -> do now <- liftIO $ getCurrentTime
+                                  return [MTree (IDR fp) True now []])
+ where
   btree done f = 
     do i <- getIState
        let file = takeWhile (/= ' ') f

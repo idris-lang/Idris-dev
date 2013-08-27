@@ -672,7 +672,8 @@ loadInputs inputs
                iLOG ("MODULE TREE : " ++ show modTree)
                iLOG ("RELOAD: " ++ show ifiles)
                when (not (all ibc ifiles) || loadCode) $ tryLoad ifiles
-               return ifiles)
+               -- return the files that need rechecking
+               return (if (all ibc ifiles) then ifiles else []))
                   ninputs
        inew <- getIState
        -- to check everything worked consistently (in particular, will catch
