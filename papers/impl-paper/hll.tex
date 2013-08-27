@@ -221,7 +221,7 @@ index : {a:Type} -> {n:Nat} -> Fin n -> Vect n a -> a
 Implicit arguments, given in braces \texttt{\{\}} in the type signature, are
 not given in applications of \texttt{index}; their values can be inferred from
 the types of the \texttt{Fin n} and \texttt{Vect n a} arguments. Any name which
-appears as a parameter or index in a type signature, but which is otherwise
+appears in a non-function position in a type signature, but which is otherwise
 free, will be automatically bound as an implicit argument.  Implicit arguments
 can still be given explicitly in applications, using the syntax
 \texttt{\{a=value\}} and \texttt{\{n=value\}}, for example:

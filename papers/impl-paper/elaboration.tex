@@ -266,8 +266,8 @@ removes a hole from the head of the queue:
 
 \DM{
 \AR{
-\MO{NewHole}\;=\;\RW{do}\;\AR{
-(\vC,\Delta,\vP,\vQ)\gets\MO{Get}\\
+\MO{NewHole}\;\vn\;=\;\RW{do}\;\AR{
+(\vC,\Delta,\ve,\vP,\vQ)\gets\MO{Get}\\
 \MO{Put}\;(\vC,\Delta,\ve,\vP,\vn;\vQ)\\
 }
 \\
@@ -312,7 +312,8 @@ given in Figure \ref{runtac} which
 locates the appropriate sub-term, applies the tactic with the context
 local to this sub-term, and
 replaces the sub-term with the term returned by the
-tactic. 
+tactic. Note that monadic lifting is left implicit in this Figure, so that
+the details of the algorithm are not obscured.
 % It then updates the hole queue in the proof state, and updates holes which have
 % been solved by unification. If the tactic creates new holes, these are automatically
 % added to the \remph{head} of the hole queue.
@@ -322,7 +323,7 @@ tactic.
 \MO{Tactic}\;\VV{tac}\;=\;\RW{do}\;\AR{
 \ve\Gets\MO{Term}\\
 \vh\Gets\MO{NextHole}\\
-\ve'\Gets\MO{Tactic'}\;\langle\rangle\;\ve\;\VV{tac}\;\vh\\
+\ve'\Gets\MO{Tactic'}\;\langle\rangle\;\ve\\
 \MO{SetTerm}\;\ve'
 }
 \medskip
@@ -331,8 +332,23 @@ tactic.
 \RW{where} \\
 & \MO{Tactic'} & \Gamma & (\hole{\vx}{\vT}\SC\ve)
 & \MoRet{\VV{tac}_\Gamma\;(\hole{\vx}{\vT}\SC\ve)\hg\mbox{if}\;\vx=\vh} \\
+& \MO{Tactic'} & \Gamma & (\hole{\vx}{\vT}\SC\ve)
+& \MoRet{
+\RW{do}\; \AR{\vT'\Gets\;\MO{Tactic'}\;\Gamma\;\vT\\
+\RW{return}\;(\hole{\vx}{\vT'}\SC \MO{Tactic'}\;(\Gamma;\hole{\vx}{\vT'})\;\ve)
+\hg\RW{otherwise}}
+}
+\\
 & \MO{Tactic'} & \Gamma & (\guess{\vx}{\vT}{\vv}\SC\ve)
 & \MoRet{\VV{tac}_\Gamma\;(\guess{\vx}{\vT}{\vv}\SC\ve)\hg\mbox{if}\;\vx=\vh} \\
+
+& \MO{Tactic'} & \Gamma & (\guess{\vx}{\vT}{\vv}\SC\ve)
+& \MoRet{\RW{do}\;\AR{\vv'\Gets\;\MO{Tactic'}\;\Gamma\;\vv\\
+\vT'\Gets\;\MO{Tactic'}\;\Gamma\;\vT\\
+\RW{return}\;(\guess{\vx}{\vT'}{\vv'}\SC
+\MO{Tactic'}\;(\Gamma;\guess{\vx}{\vT'}{\vv'}\;\ve)
+\hg\RW{otherwise}}} \\
+
 & \MO{Tactic'} & \Gamma & (\lam{\vx}{\vT}\SC\ve)
 & \MoRet{
 \RW{do}\; \AR{\vT'\Gets\;\MO{Tactic'}\;\Gamma\;\vT\\
@@ -345,11 +361,11 @@ tactic.
 \RW{return}\;(\all{\vx}{\vT'}\SC \MO{Tactic'}\;(\Gamma;\all{\vx}{\vT'})\;\ve)}
 }
 \\
-& \MO{Tactic'} & \Gamma & (\LET\;\vx\defq\vt\Hab\vT\SC\ve)
-& \MoRet{\RW{do}\;\AR{\vt'\Gets\;\MO{Tactic'}\;\Gamma\;\vt\\
+& \MO{Tactic'} & \Gamma & (\LET\;\vx\defq\vv\Hab\vT\SC\ve)
+& \MoRet{\RW{do}\;\AR{\vv'\Gets\;\MO{Tactic'}\;\Gamma\;\vv\\
 \vT'\Gets\;\MO{Tactic'}\;\Gamma\;\vT\\
-\RW{return}\;(\LET\;\vx\defq\vt'\Hab\vT'\SC
-\MO{Tactic'}\;(\Gamma;\LET\;\vx\defq\vt'\Hab\vT')\;\ve)}} \\
+\RW{return}\;(\LET\;\vx\defq\vv'\Hab\vT'\SC
+\MO{Tactic'}\;(\Gamma;\LET\;\vx\defq\vv'\Hab\vT')\;\ve)}} \\
 & \MO{Tactic'} & \Gamma & (\vf\;\va) & 
 \MoRet{\RW{return}\;(\MO{Tactic'}\;\Gamma\;\vf)\; (\MO{Tactic'}\;\Gamma\;\va)}\\
 & \MO{Tactic'} & \Gamma & \vt & \MoRet{\RW{return}\;\vt}
@@ -429,7 +445,8 @@ keeping $\vx$ at the head:
 \PA{\A\A}{
 \MO{Claim}_\Gamma & (\vy \Hab\vS) & (\hole{\vx}{\vT}\SC\ve) & 
    \MoRet{\RW{do}\;\AR{\MO{NewHole}\;\vy\\
-          \RW{return}\;\hole{\vx}{\vT}\SC\hole{\vy}{\vS}\SC\ve}} \\
+          \MO{Focus}\:\vx\\
+          \RW{return}\;\hole{\vy}{\vS}\SC\hole{\vx}{\vT}\SC\ve}} \\
 }
 }
 
@@ -692,23 +709,21 @@ the goal type.
 \medskip
 \\
 \mbox{Initial state} 
-& \hole{\vx}{\all{\vA}{\Type}\SC\all{\va}{\vA}\SC\vA}\SC\vx
+& \underline{\hole{\vx}{\all{\vA}{\Type}\SC\all{\va}{\vA}\SC\vA}\SC\vx}
 & \langle\vx\rangle \\
 %
 \MO{Attack} &
-\underline{
 \guess{\vx}{\all{\vA}{\Type}\SC\all{\va}{\vA}\SC\vA}{
-\hole{\vh_0}{\all{\vA}{\Type}\SC\all{\va}{\vA}\SC\vA}\SC\vh_0
+\underline{\hole{\vh_0}{\all{\vA}{\Type}\SC\all{\va}{\vA}\SC\vA}\SC\vh_0}
 }
 \SC\vx
-}
 &
 \langle\vh_0,\vx\rangle\\
 %
 \MO{Lambda}\;\vA &
 \guess{\vx}{\all{\vA}{\Type}\SC\all{\va}{\vA}\SC\vA}{
-\underline{
-\lam{\vA}{\Type}\SC\hole{\vh_0}{\all{\va}{\vA}\SC\vA}\SC\vh_0
+\lam{\vA}{\Type}\SC\underline{
+\hole{\vh_0}{\all{\va}{\vA}\SC\vA}\SC\vh_0
 }
 }
 \SC\vx
@@ -718,11 +733,11 @@ the goal type.
 \MO{Attack} &
 \guess{\vx}{\all{\vA}{\Type}\SC\all{\va}{\vA}\SC\vA}{
 \lam{\vA}{\Type}\SC
-\underline{
 \guess{\vh_0}{\all{\va}{\vA}\SC\vA}
-{\hole{\vh_1}{\all{\va}{\vA}\SC\vA}\SC\vh_1}
+{
+\underline{
+\hole{\vh_1}{\all{\va}{\vA}\SC\vA}\SC\vh_1}}
 \SC\vh_0
-}
 }
 \SC\vx
 &
@@ -733,8 +748,8 @@ the goal type.
 \lam{\vA}{\Type}\SC
 \guess{\vh_0}{\all{\va}{\vA}\SC\vA}
 {
-\underline{
-\lam{\va}{\vA}\SC\hole{\vh_1}{\vA}\SC\vh_1
+\lam{\va}{\vA}\SC\underline{
+\hole{\vh_1}{\vA}\SC\vh_1
 }
 }
 \SC\vh_0
@@ -746,9 +761,10 @@ the goal type.
 \MO{Fill}\;\va &
 \guess{\vx}{\all{\vA}{\Type}\SC\all{\va}{\vA}\SC\vA}{
 \lam{\vA}{\Type}\SC
-\\
-&
-\hg\hg\hg\hg\hg\hg\hg\guess{\vh_0}{\all{\va}{\vA}\SC\vA}
+%\\
+%&
+%\hg\hg\hg\hg\hg\hg\hg
+\guess{\vh_0}{\all{\va}{\vA}\SC\vA}
 {
 \lam{\va}{\vA}\SC
 \underline{
@@ -764,37 +780,35 @@ the goal type.
 \MO{Solve} &
 \guess{\vx}{\all{\vA}{\Type}\SC\all{\va}{\vA}\SC\vA}{
 \lam{\vA}{\Type}\SC
+\underline{
 \guess{\vh_0}{\all{\va}{\vA}\SC\vA}
 {
 \lam{\va}{\vA}\SC
-\underline{
 \va
 }
-}
 \SC\vh_0
+}
 }
 \SC\vx
 &
 \langle\vh_0,\vx\rangle\\
 %
 \MO{Solve} &
+\underline{
 \guess{\vx}{\all{\vA}{\Type}\SC\all{\va}{\vA}\SC\vA}{
 \lam{\vA}{\Type}\SC
-\underline{
 \lam{\va}{\vA}\SC
 \va
 }
-}
 \SC\vx
+}
 &
 \langle\vx\rangle\\
 %
 \MO{Solve} &
-\underline{
 \lam{\vA}{\Type}\SC
 \lam{\va}{\vA}\SC
 \va
-}
 &
 \langle\rangle\\
 
