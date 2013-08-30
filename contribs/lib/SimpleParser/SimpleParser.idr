@@ -155,13 +155,13 @@ strToken = map pack (token (many1 alphanum))
 --------------------------------------------------------------------------------
 
 sepBy1 : Parser a -> Parser b -> Parser (List a)
-sepBy1 p s = map (::) p <$> many (s $> p)
+sepBy1 p s = [| p :: many (s $> p) |]
 
 sepBy : Parser a -> Parser b -> Parser (List a)
-sepBy p s = sepBy1 p s <|> return Nil
+sepBy p s = sepBy1 p s <|> pure Nil
 
 manyTil : Parser a -> Parser b -> Parser (List a)
-manyTil p e = (e $> return Prelude.List.Nil) <|> (map (::) p <$> manyTil p e) 
+manyTil p e = (e $> pure Nil) <|> [| p :: manyTil p e |]
 
 --------------------------------------------------------------------------------
 -- Expressions
