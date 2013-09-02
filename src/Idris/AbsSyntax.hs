@@ -692,24 +692,36 @@ expandParamsD rhsonly ist dec ps ns (PClauses fc opts n cs)
         = let -- ps' = updateps True (namesIn ist rhs) (zip ps [0..])
               ps'' = updateps False (namesIn [] ist lhs) (zip ps [0..])
               lhs' = if rhsonly then lhs else (expandParams dec ps'' ns [] lhs)
-              n' = if n `elem` ns then dec n else n in
+              n' = if n `elem` ns then dec n else n 
+              -- names bound on the lhs should not be expanded on the rhs
+              ns' = removeBound lhs ns in
               PClause fc n' lhs'
-                            (map (expandParams dec ps'' ns []) ws)
-                            (expandParams dec ps'' ns [] rhs)
-                            (map (expandParamsD True ist dec ps'' ns) ds)
+                            (map (expandParams dec ps'' ns' []) ws)
+                            (expandParams dec ps'' ns' [] rhs)
+                            (map (expandParamsD True ist dec ps'' ns') ds)
     expandParamsC (PWith fc n lhs ws wval ds)
         = let -- ps' = updateps True (namesIn ist wval) (zip ps [0..])
               ps'' = updateps False (namesIn [] ist lhs) (zip ps [0..])
               lhs' = if rhsonly then lhs else (expandParams dec ps'' ns [] lhs)
-              n' = if n `elem` ns then dec n else n in
+              n' = if n `elem` ns then dec n else n 
+              ns' = removeBound lhs ns in
               PWith fc n' lhs'
-                          (map (expandParams dec ps'' ns []) ws)
-                          (expandParams dec ps'' ns [] wval)
-                          (map (expandParamsD rhsonly ist dec ps'' ns) ds)
+                          (map (expandParams dec ps'' ns' []) ws)
+                          (expandParams dec ps'' ns' [] wval)
+                          (map (expandParamsD rhsonly ist dec ps'' ns') ds)
     updateps yn nm [] = []
     updateps yn nm (((a, t), i):as)
         | (a `elem` nm) == yn = (a, t) : updateps yn nm as
         | otherwise = (MN i (show n ++ "_u"), t) : updateps yn nm as
+
+    removeBound lhs ns = ns \\ nub (bnames lhs)
+
+    bnames (PRef _ n) = [n]
+    bnames (PApp _ _ args) = concatMap bnames (map getTm args)
+    bnames (PPair _ l r) = bnames l ++ bnames r
+    bnames (PDPair _ l Placeholder r) = bnames l ++ bnames r
+    bnames _ = []
+
 expandParamsD rhs ist dec ps ns (PData doc syn fc co pd) 
     = PData doc syn fc co (expandPData pd)
   where
