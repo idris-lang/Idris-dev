@@ -1563,10 +1563,10 @@ to:
 \begin{SaveVerbatim}{showdata}
 
 data Show : Type -> Type where
-    instanceShow : (show : a -> String) -> Show a
+    InstanceShow : (show : a -> String) -> Show a
 
 show : Show a -> a -> String
-show (instanceShow show') = show'
+show (InstanceShow show') = show'
 
 \end{SaveVerbatim}
 \useverb{showdata} 
@@ -1577,7 +1577,7 @@ An instance for a type \texttt{a} is then a value of type \texttt{Show a}; for e
 \begin{SaveVerbatim}{shownatf}
 
 showNat : Show Nat
-showNat = instanceShow show' where
+showNat = InstanceShow show' where
     show' : Nat -> String
     show' O = "O"
     show' (S k) = "s" ++ show k
@@ -1593,7 +1593,7 @@ the function declaration for the instance. For example, for \texttt{Show (List a
 \begin{SaveVerbatim}{showlista}
 
 showList : Show a => Show (List a)
-showList = instanceShow show' where
+showList = InstanceShow show' where
     show' : List a -> String
     show' []        = "[]"
     show' (x :: xs) = show x ++ " :: " ++ show xs
@@ -1622,17 +1622,17 @@ This translates to:
 \begin{SaveVerbatim}{orddata}
 
 data Ord : Type -> Type where
-    instanceOrd : Eq a => (compare : a -> a -> Ordering) -> 
+    InstanceOrd : Eq a => (compare : a -> a -> Ordering) -> 
                           (max : a -> a -> a) ->  Ord a 
 
 \end{SaveVerbatim}
 
 \begin{SaveVerbatim}{orddatab}
 compare : Ord a -> a -> a -> Ordering
-compare (instanceOrd compare' max') = compare'
+compare (InstanceOrd compare' max') = compare'
 
-max : Ord a -> a -> a -> Ordering
-max (instanceOrd compare' max') = max'
+max : Ord a -> a -> a -> a
+max (InstanceOrd compare' max') = max'
 
 \end{SaveVerbatim}
 \useverb{orddata}
@@ -1646,7 +1646,7 @@ dictionary, to assist with class resolution. In this case:
 \begin{SaveVerbatim}{ordparent}
 
 OrdEq : Ord a -> Eq a
-OrdEq (instanceOrd {{eq}} compare' max') = eq
+OrdEq (InstanceOrd {{eq}} compare' max') = eq
 
 \end{SaveVerbatim}
 \useverb{ordparent} 
@@ -1686,7 +1686,9 @@ In general, \texttt{class} declarations are elaborated as follows:
 Then \texttt{instance} declarations are elaborated as follows. One complication
 is that the function definitions in an \texttt{instance} declaration do not
 have explicit types, so we must retrieve the method types from the system state
-and substitute $\TC{C}\;\ttt$, using $\MO{ExpandTypes}$:
+and substitute $\TC{C}\;\ttt$, using $\MO{ExpandTypes}$.
+The name $\FN{instanceC}$ is a fresh name generated for the newly
+defined instance:
 
 \DM{
 \AR{
@@ -1757,19 +1759,20 @@ max x y = if (x > y) then x else y
 
 If $\MO{Trivial}$ does not find a solution, $\MO{Instance}$ begins a global search,
 applying every class instance, and attempting to resolve the instance's parameters
-recursively. Given an instance $\FN{instanceC}$ with parameters $\ta$:
+recursively. Given an instance function $\FN{instanceC}$ with parameters
+of type $\ttt$:
 
 \DM{
-\MO{TryInstance}\;(\FN{instanceC}\;\ta)\;\mq\;\RW{do}\;
+\MO{TryInstance}\;\FN{instanceC}\;\mq\;\RW{do}\;
 \AR{
-\vec{\MO{Claim}}\;(\tx\Hab\ta)\\
+\vec{\MO{Claim}}\;(\tx\Hab\ttt)\\
 \ttinterp{\FN{instanceC};\tx}\\
 \vec{\MO{Focus}}\;\tx;\;\vec{\MO{Instance}}
 }
 }
 
 We define $\MO{Instance}$ as follows, using $\MO{AllInstances}$ to retrieve
-all possible instances in the form required by $\MO{TryInstance}$:
+all functions which define instances: 
 
 \DM{
 \MO{Instance}\;\mq\;
