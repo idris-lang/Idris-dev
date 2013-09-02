@@ -776,6 +776,8 @@ idrisMain opts =
        
        loadInputs inputs
 
+       liftIO $ hSetBuffering stdout LineBuffering
+
        ok <- noErrors
        when ok $ case output of
                     [] -> return ()
