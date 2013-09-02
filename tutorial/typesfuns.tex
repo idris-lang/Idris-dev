@@ -360,14 +360,14 @@ They are declared as follows (again, in the prelude):
 \begin{SaveVerbatim}{findecl}
 
 data Fin : Nat -> Type where
-   fO : Fin (S k)
+   fZ : Fin (S k)
    fS : Fin k -> Fin (S k)
 
 \end{SaveVerbatim}
 \useverb{findecl}
 
 \noindent
-\tDC{fO} is the zeroth element of a finite set with \texttt{S k} elements;
+\tDC{fZ} is the zeroth element of a finite set with \texttt{S k} elements;
 \texttt{fS n} is the
 \texttt{n+1}th element of a finite set with \texttt{S k} elements. 
 \tTC{Fin} is indexed by a \tTC{Nat}, which
