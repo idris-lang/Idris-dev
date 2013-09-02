@@ -181,8 +181,11 @@ instance Show a => Show (Maybe a) where
 
 ---- Functor instances
 
+instance Functor PrimIO where
+    map f io = prim_io_bind io (prim_io_return . f)
+
 instance Functor IO where
-    map f io = io_bind io (io_return . f)
+    map f io = io_bind io (\b => io_return (f b))
 
 instance Functor Maybe where 
     map f (Just x) = Just (f x)
@@ -194,10 +197,16 @@ instance Functor (Either e) where
 
 ---- Applicative instances
 
-instance Applicative IO where
-    pure = io_return
+instance Applicative PrimIO where
+    pure = prim_io_return
     
-    am <$> bm = io_bind am (\f => io_bind bm (io_return . f))
+    am <$> bm = prim_io_bind am (\f => prim_io_bind bm (prim_io_return . f))
+
+instance Applicative IO where
+    pure x = io_return x
+    f <$> a = io_bind f (\f' =>
+                io_bind a (\a' =>
+                  io_return (f' a')))
 
 instance Applicative Maybe where
     pure = Just
@@ -237,7 +246,10 @@ instance Alternative List where
 
 ---- Monad instances
 
-instance Monad IO where 
+instance Monad PrimIO where 
+    b >>= k = prim_io_bind b k
+
+instance Monad IO where
     b >>= k = io_bind b k
 
 instance Monad Maybe where 
@@ -382,7 +394,7 @@ print x = putStrLn (show x)
 
 partial
 getLine : IO String
-getLine = return (prim__readString prim__stdin)
+getLine = prim_fread prim__stdin
 
 partial
 putChar : Char -> IO ()
@@ -401,7 +413,8 @@ partial stdin : File
 stdin = FHandle prim__stdin
 
 do_fopen : String -> String -> IO Ptr
-do_fopen f m = mkForeign (FFun "fileOpen" [FString, FString] FPtr) f m
+do_fopen f m 
+   = mkForeign (FFun "fileOpen" [FString, FString] FPtr) f m
 
 fopen : String -> String -> IO File
 fopen f m = do h <- do_fopen f m
@@ -426,7 +439,10 @@ closeFile (FHandle h) = do_fclose h
 
 partial
 do_fread : Ptr -> IO String
-do_fread h = return (prim__readString h)
+do_fread h = prim_fread h
+
+-- mkForeign (FFun "idris_readStr" [FPtr, FPtr] (FAny String))
+--                        prim__vm h
 
 partial
 fread : File -> IO String
@@ -434,7 +450,8 @@ fread (FHandle h) = do_fread h
 
 partial
 do_fwrite : Ptr -> String -> IO ()
-do_fwrite h s = mkForeign (FFun "fputStr" [FPtr, FString] FUnit) h s
+do_fwrite h s 
+   = mkForeign (FFun "fputStr" [FPtr, FString] FUnit) h s
 
 partial
 fwrite : File -> String -> IO ()

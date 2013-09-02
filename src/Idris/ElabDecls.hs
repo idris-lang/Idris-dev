@@ -306,7 +306,10 @@ elabProvider info syn fc n ty tm
          elabType info syn "" fc [] n ty
 
          -- Execute the type provider and normalise the result
-         rhs <- execute e
+         -- use 'run__provider' to convert to a primitive IO action
+
+         rhs <- execute (mkApp (P Ref (UN "run__provider") Erased)
+                                          [Erased, e])
          let rhs' = normalise ctxt [] rhs
          logLvl 1 $ "Normalised " ++ show n ++ "'s RHS to " ++ show rhs
 

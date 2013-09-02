@@ -169,9 +169,9 @@ mkLDecl n _ = return (LFun [] n [] (LError ("Impossible declaration " ++ show n)
 instance ToIR (TT Name) where 
     ir tm = ir' [] tm where
       ir' env tm@(App f a)
-          | (P _ (UN "mkForeign") _, args) <- unApply tm
+          | (P _ (UN "mkForeignPrim") _, args) <- unApply tm
               = doForeign env args
-          | (P _ (UN "unsafePerformIO") _, [_, arg]) <- unApply tm
+          | (P _ (UN "unsafePerformPrimIO") _, [_, arg]) <- unApply tm
               = ir' env arg
             -- TMP HACK - until we get inlining. 
           | (P _ (UN "replace") _, [_, _, _, _, _, arg]) <- unApply tm
@@ -184,17 +184,17 @@ instance ToIR (TT Name) where
           | (P _ (UN "par") _, [_, arg]) <- unApply tm
               = do arg' <- ir' env arg
                    return $ LOp LPar [LLazyExp arg']
-          | (P _ (UN "fork") _, [arg]) <- unApply tm
+          | (P _ (UN "prim_fork") _, [arg]) <- unApply tm
               = do arg' <- ir' env arg
                    return $ LOp LFork [LLazyExp arg']
           | (P _ (UN "prim__IO") _, [v]) <- unApply tm
               = do v' <- ir' env v
                    return v'
-          | (P _ (UN "io_bind") _, [_,_,v,Bind n (Lam _) sc]) <- unApply tm
+          | (P _ (UN "prim_io_bind") _, [_,_,v,Bind n (Lam _) sc]) <- unApply tm
               = do v' <- ir' env v 
                    sc' <- ir' (n:env) sc
                    return (LLet n (LForce v') sc')
-          | (P _ (UN "io_bind") _, [_,_,v,k]) <- unApply tm
+          | (P _ (UN "prim_io_bind") _, [_,_,v,k]) <- unApply tm
               = do v' <- ir' env v 
                    k' <- ir' env k
                    return (LApp False k' [LForce v'])
@@ -281,7 +281,7 @@ instance ToIR (TT Name) where
                 case maybeTys of
                   Nothing -> fail $ "Foreign type specification is not a constant list: " ++ show (fgn:args)
                   Just tys -> do
-                    args' <- mapM (ir' env) args
+                    args' <- mapM (ir' env) (init args)
                     -- wrap it in a prim__IO
                     -- return $ con_ 0 @@ impossible @@
                     return $ -- LLazyExp $

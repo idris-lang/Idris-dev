@@ -1181,7 +1181,8 @@ $\vV$ and $\vX$.
 \MO{Let}\;(\vx\Hab\vX\defq\vV)\\
 \MO{Focus}\;\vV\\
 \ttinterp{\vv};\;
-\ttinterp{\ve}
+\ttinterp{\ve}\\
+\MO{Solve}
 }
 }
 \subsubsection{Elaborating Applications}
@@ -1659,11 +1660,11 @@ In general, \texttt{class} declarations are elaborated as follows:
 \\
 \hg\hg
 \mq\;\RW{do}\;\AR{
-(\vec{\VV{meth}}\Hab\ttt)\gets\td\\
+%(\vec{\VV{meth}}\Hab\ttt)\gets\td\\
 \MO{Elab}\;
 \AR{(\RW{data}\;\TC{C}\Hab(\ta\Hab\ttt)\to\Type\;\iwhere\\
 \hg\DC{InstanceC}\Hab\piconst{\tc}\td\to\TC{C}\;\ta)}\\
-\vec{\MO{ElabMeth}}\;(\vec{\VV{meth}}\Hab\ttt)\\
+\vec{\MO{ElabMeth}}\;\td\\ % (\vec{\VV{meth}}\Hab\ttt)\\
 \vec{\MO{ElabParent}}\;\tc
 }
 \medskip\\
@@ -1756,13 +1757,13 @@ max x y = if (x > y) then x else y
 
 If $\MO{Trivial}$ does not find a solution, $\MO{Instance}$ begins a global search,
 applying every class instance, and attempting to resolve the instance's parameters
-recursively. Given an instance $\vI$ with parameters $\ta$:
+recursively. Given an instance $\FN{instanceC}$ with parameters $\ta$:
 
 \DM{
-\MO{TryInstance}\;(\vI\;\ta)\;\mq\;\RW{do}\;
+\MO{TryInstance}\;(\FN{instanceC}\;\ta)\;\mq\;\RW{do}\;
 \AR{
 \vec{\MO{Claim}}\;(\tx\Hab\ta)\\
-\ttinterp{\vI\;\tx}\\
+\ttinterp{\FN{instanceC};\tx}\\
 \vec{\MO{Focus}}\;\tx;\;\vec{\MO{Instance}}
 }
 }

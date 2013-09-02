@@ -8,6 +8,8 @@ void putStr(char* str);
 
 void* fileOpen(char* f, char* mode);
 void fileClose(void* h);
+int fileEOF(void* h);
+int fileError(void* h);
 void fputStr(void*h, char* str);
 
 int isNull(void* ptr);

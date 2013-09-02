@@ -138,7 +138,10 @@ data CGInfo = CGInfo { argsdef :: [Name],
 deriving instance Binary CGInfo 
 !-}
 
-primDefs = [UN "unsafePerformIO", UN "mkLazyForeign", UN "mkForeign", UN "FalseElim"]
+primDefs = [UN "unsafePerformPrimIO", 
+            UN "mkLazyForeignPrim", 
+            UN "mkForeignPrim", 
+            UN "FalseElim"]
              
 -- information that needs writing for the current module's .ibc file
 data IBCWrite = IBCFix FixDecl

@@ -382,6 +382,7 @@ VAL idris_readStr(VM* vm, FILE* h) {
     }
 
     VAL str = MKSTR(vm, line_buf);
+//    printf("DBG: %s\n", line_buf);
     free(line_buf);
     return str;
 }

@@ -927,7 +927,22 @@ pUnifyLog syn = do lchar '%'; reserved "unifyLog";
                    tm <- pSimpleExpr syn
                    return (PUnifyLog tm)
 
-pApp syn = do f <- pSimpleExpr syn
+pApp syn = do f <- reserved "mkForeign"
+              fc <- pfc
+              fn <- pArg syn
+              args <- many (do notEndApp; pArg syn)
+              i <- getState
+              -- mkForeign f args ==>
+              -- liftPrimIO (\w => mkForeignPrim f args w)
+              let ap = PApp fc (PRef fc (UN "liftPrimIO"))
+                        [pexp (PLam (MN 0 "w")
+                              Placeholder
+                              (PApp fc (PRef fc (UN "mkForeignPrim"))
+                                          (fn : args ++ 
+                                             [pexp (PRef fc (MN 0 "w"))])))]
+              return (dslify i ap)
+
+       <|> do f <- pSimpleExpr syn
               fc <- pfc
               args <- many1 (do notEndApp
                                 pArg syn)
