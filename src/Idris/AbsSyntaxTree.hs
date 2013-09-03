@@ -688,6 +688,7 @@ deriving instance Binary ClassInfo
 !-}
 
 data OptInfo = Optimise { collapsible :: Bool,
+                          isnewtype :: Bool,
                           forceable :: [Int], -- argument positions
                           recursive :: [Int] }
     deriving Show

@@ -23,7 +23,7 @@ import Debug.Trace
 import Paths_idris
 
 ibcVersion :: Word8
-ibcVersion = 34
+ibcVersion = 35
 
 data IBCFile = IBCFile { ver :: Word8,
                          sourcefile :: FilePath,
@@ -1639,15 +1639,17 @@ instance Binary ClassInfo where
                return (CI x1 x2 x3 x4 [])
 
 instance Binary OptInfo where
-        put (Optimise x1 x2 x3)
+        put (Optimise x1 x2 x3 x4)
           = do put x1
                put x2
                put x3
+               put x4
         get
           = do x1 <- get
                x2 <- get
                x3 <- get
-               return (Optimise x1 x2 x3)
+               x4 <- get
+               return (Optimise x1 x2 x3 x4)
 
 instance Binary TypeInfo where
         put (TI x1 x2 x3) = do put x1

@@ -187,17 +187,17 @@ instance ToIR (TT Name) where
           | (P _ (UN "prim_fork") _, [arg]) <- unApply tm
               = do arg' <- ir' env arg
                    return $ LOp LFork [LLazyExp arg']
-          | (P _ (UN "prim__IO") _, [v]) <- unApply tm
-              = do v' <- ir' env v
-                   return v'
-          | (P _ (UN "prim_io_bind") _, [_,_,v,Bind n (Lam _) sc]) <- unApply tm
-              = do v' <- ir' env v 
-                   sc' <- ir' (n:env) sc
-                   return (LLet n (LForce v') sc')
-          | (P _ (UN "prim_io_bind") _, [_,_,v,k]) <- unApply tm
-              = do v' <- ir' env v 
-                   k' <- ir' env k
-                   return (LApp False k' [LForce v'])
+--           | (P _ (UN "prim__IO") _, [v]) <- unApply tm
+--               = do v' <- ir' env v
+--                    return v'
+--           | (P _ (UN "prim_io_bind") _, [_,_,v,Bind n (Lam _) sc]) <- unApply tm
+--               = do v' <- ir' env v 
+--                    sc' <- ir' (n:env) sc
+--                    return (LLet n (LForce v') sc')
+--           | (P _ (UN "prim_io_bind") _, [_,_,v,k]) <- unApply tm
+--               = do v' <- ir' env v 
+--                    k' <- ir' env k
+--                    return (LApp False k' [LForce v'])
           | (P _ (UN "malloc") _, [_,size,t]) <- unApply tm
               = do size' <- ir' env size
                    t' <- ir' env t

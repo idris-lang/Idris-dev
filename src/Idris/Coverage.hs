@@ -173,7 +173,7 @@ genAll i args
     resugar t = t
 
     getForceable i n = case lookupCtxt n (idris_optimisation i) of
-                            [Optimise _ fs _] -> fs
+                            [o] -> forceable o
                             _ -> []
 
     dropForce force (x : xs) i | i `elem` force 

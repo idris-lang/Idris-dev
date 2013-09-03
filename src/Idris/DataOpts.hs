@@ -18,7 +18,7 @@ forceArgs :: Name -> Type -> Idris ()
 forceArgs n t = do i <- getIState
                    let fargs = force i 0 t
                    copt <- case lookupCtxt n (idris_optimisation i) of
-                                 []     -> return $ Optimise False [] []
+                                 []     -> return $ Optimise False False [] []
                                  (op:_) -> return op
                    let opts = addDef n (copt { forceable = fargs }) (idris_optimisation i)
                    putIState (i { idris_optimisation = opts })
@@ -62,8 +62,22 @@ collapseCons ty cons =
         let cons' = map (\ (n, t) -> (n, map snd (getArgTys t))) cons
         allFR <- mapM (forceRec i) cons'
         if and allFR then detaggable (map getRetTy (map snd cons))
-                     else return () -- not collapsible as not detaggable
+           else checkNewType cons'
   where
+    -- one constructor; if one remaining argument, treat as newtype
+    checkNewType [(n, ts)] = do
+       i <- getIState
+       case lookupCtxt n (idris_optimisation i) of
+               (oi:_) -> do let remaining = length ts - length (forceable oi)
+                            if remaining == 1 then
+                               do let oi' = oi { isnewtype = True }
+                                  let opts = addDef n oi' (idris_optimisation i)
+                                  putIState (i { idris_optimisation = opts })
+                               else return ()
+               _ -> return ()
+    
+    checkNewType _ = return ()
+
     setCollapsible :: Name -> Idris ()
     setCollapsible n
        = do i <- getIState
@@ -72,7 +86,7 @@ collapseCons ty cons =
                (oi:_) -> do let oi' = oi { collapsible = True }
                             let opts = addDef n oi' (idris_optimisation i)
                             putIState (i { idris_optimisation = opts })
-               [] -> do let oi = Optimise True [] []
+               [] -> do let oi = Optimise True False [] []
                         let opts = addDef n oi (idris_optimisation i)
                         putIState (i { idris_optimisation = opts })
                         addIBC (IBCOpt n)
@@ -256,7 +270,13 @@ applyDataOptRT oi n tag arity args
     doOpts n args _ forced
         = let args' = filter keep (zip (map (\x -> x `elem` forced) [0..])
                                        args) in
-              mkApp (P (DCon tag (arity - length forced)) n Erased) (map snd args')
+              if isnewtype oi
+                then case args' of
+                          [(_, val)] -> val
+                          _ -> error "Can't happen (not isnewtype)"
+                else 
+                  mkApp (P (DCon tag (arity - length forced)) n Erased) 
+                        (map snd args')
 
     keep (forced, _) = not forced
 
