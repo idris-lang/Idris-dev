@@ -250,7 +250,7 @@ Executable     idris
                               Core.ShellParser, Core.Unify, Core.Elaborate,
                               Core.CaseTree, Core.Constraints,
 
-                              Idris.AbsSyntax, Idris.AbsSyntaxTree,
+                              Idris.AbsSyntax, Idris.AbsSyntaxTree, Idris.Colours,
                               Idris.Parser, Idris.Help, Idris.IdeSlave, Idris.REPL,
                               Idris.REPLParser, Idris.ElabDecls, Idris.Error,
                               Idris.Delaborate, Idris.Primitives, Idris.Imports,
