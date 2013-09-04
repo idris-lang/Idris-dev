@@ -1142,7 +1142,7 @@ showImp ist impl colour tm = se 10 [] tm where
     se p bnd (PCase _ scr opts) = "case " ++ se 10 bnd scr ++ " of " ++ showSep " | " (map sc opts)
        where sc (l, r) = se 10 bnd l ++ " => " ++ se 10 bnd r
     se p bnd (PHidden tm) = "." ++ se 0 bnd tm
-    se p bnd (PRefl _ t) 
+    se p bnd (PRefl _ t)
         | not impl = perhapsColourise colouriseData "refl"
         | otherwise = perhapsColourise colouriseData $ "refl {" ++ se 10 bnd t ++ "}"
     se p bnd (PResolveTC _) = "resolvetc"
