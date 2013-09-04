@@ -1068,7 +1068,10 @@ showName ist bnd impl colour n = if colour then colourise n else showbasic n
                                     | isDConName n ctxt -> colouriseData name
                                     | isFnName n ctxt   -> colouriseFun name
                                     | isTConName n ctxt -> colouriseType name
-                                    | otherwise         -> name
+                                    -- The assumption is that if a name is not bound and does not exist in the
+                                    -- global context, then we're somewhere in which implicit info has been lost
+                                    -- (like error messages). Thus, unknown vars are colourised as implicits.
+                                    | otherwise         -> colouriseImplicit name
 
 -- | Show Idris term
 showImp :: Maybe IState -- ^^ the Idris state, for information about identifiers
