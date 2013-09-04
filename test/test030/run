@@ -1,4 +1,4 @@
 #!/bin/bash
-idris $@ test030.idr --check
-idris $@ test030a.idr --check
+idris $@ test030.idr --check --nocolour
+idris $@ test030a.idr --check --nocolour
 rm -f *.ibc
