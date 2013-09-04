@@ -159,8 +159,9 @@ declArgs args inl n x = LFun (if inl then [Inline] else []) n args x
 
 mkLDecl n (Function tm _) = do e <- ir tm
                                return (declArgs [] True n e)
-mkLDecl n (CaseOp ci _ _ pats _ _ args sc) 
-       = do e <- ir (args, sc)
+mkLDecl n (CaseOp ci _ _ pats cd) 
+   = let (args, sc) = cases_runtime cd in
+         do e <- ir (args, sc)
             return (declArgs [] (case_inlinable ci) n e)
 mkLDecl n (TyDecl (DCon t a) _) = return $ LConstructor n t a
 mkLDecl n (TyDecl (TCon t a) _) = return $ LConstructor n (-1) a

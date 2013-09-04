@@ -649,7 +649,9 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
                           when (tot /= Unchecked) $ addIBC (IBCTotal n tot)
                           i <- getIState
                           case lookupDef n (tt_ctxt i) of
-                              (CaseOp _ _ _ _ scargs sc scargs' sc' : _) ->
+                              (CaseOp _ _ _ _ cd : _) ->
+                                let (scargs, sc) = cases_compiletime cd
+                                    (scargs', sc') = cases_runtime cd in
                                   do let calls = findCalls sc' scargs'
                                      let used = findUsedArgs sc' scargs'
                                      -- let scg = buildSCG i sc scargs

@@ -15,12 +15,12 @@ providerTy fc tm = PApp fc (PRef fc $ UN "Provider") [PExp 0 False tm ""]
 
 -- | Handle an error, if the type provider returned an error. Otherwise return the provided term.
 getProvided :: TT Name -> Idris (TT Name)
-getProvided tm | (P _ (UN "prim__IO") _, [tp, result]) <- unApply tm
+getProvided tm | (P _ (UN "prim_io_return") _, [tp, result]) <- unApply tm
                , (P _ (NS (UN "Error") ["Providers"]) _, [_, err]) <- unApply result =
                      case err of
                        Constant (Str msg) -> ierror . ProviderError $ msg
                        _ -> fail "Internal error in type provider, non-normalised error"
-               | (P _ (UN "prim__IO") _, [tp, result]) <- unApply tm
+               | (P _ (UN "prim_io_return") _, [tp, result]) <- unApply tm
                , (P _ (NS (UN "Provide") ["Providers"]) _, [_, res]) <- unApply result =
                      return res
                | otherwise = fail $ "Internal type provider error: result was not " ++

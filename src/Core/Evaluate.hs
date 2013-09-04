@@ -3,7 +3,7 @@
 
 module Core.Evaluate(normalise, normaliseTrace, normaliseC, normaliseAll,
                 simplify, specialise, hnf, convEq, convEq',
-                Def(..), CaseInfo(..),
+                Def(..), CaseInfo(..), CaseDefs(..),
                 Accessibility(..), Totality(..), PReason(..),
                 Context, initContext, ctxtAlist, uconstraints, next_tvar,
                 addToCtxt, setAccess, setTotal, addCtxtDef, addTyDecl, 
@@ -186,9 +186,12 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
                            ev ntimes (n:stk) True env tm
                     [(TyDecl nt ty, _)] -> do vty <- ev ntimes stk True env ty
                                               return $ VP nt n vty
-                    [(CaseOp ci _ _ _ [] tree _ _, acc)] 
-                         | acc == Public -> -- unoptimised version
-                       if blockSimplify ci n stk
+                    [(CaseOp ci _ _ _ cd, acc)] 
+                         | acc == Public &&
+                             null (fst (cases_totcheck cd)) -> -- unoptimised version
+                       let (_, tree) = if simpl then cases_totcheck cd
+                                                else cases_compiletime cd in
+                         if blockSimplify ci n stk
                             then liftM (VP Ref n) (ev ntimes stk top env ty)
                             else do c <- evCase ntimes n (n:stk) top env [] [] tree 
                                     case c of
@@ -256,9 +259,11 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
               if u then 
                  do let val = lookupDefAcc n atRepl ctxt
                     case val of
-                      [(CaseOp ci _ _ _ ns tree _ _, acc)]
+                      [(CaseOp ci _ _ _ cd, acc)]
                            | acc == Public -> -- unoptimised version
-                        if blockSimplify ci n stk
+                       let (ns, tree) = if simpl then cases_totcheck cd
+                                                 else cases_compiletime cd in
+                         if blockSimplify ci n stk
                            then return $ unload env (VP Ref n ty) args
                            else do c <- evCase ntimes n (n:stk) top env ns args tree
                                    case c of
@@ -488,9 +493,11 @@ convEq ctxt = ceq [] where
     sameDefs ps x y = case (lookupDef x ctxt, lookupDef y ctxt) of
                         ([Function _ xdef], [Function _ ydef])
                               -> ceq ((x,y):ps) xdef ydef
-                        ([CaseOp _ _ _ _ _ xdef _ _],   
-                         [CaseOp _ _ _ _ _ ydef _ _])
-                              -> caseeq ((x,y):ps) xdef ydef
+                        ([CaseOp _ _ _ _ xd],   
+                         [CaseOp _ _ _ _ yd])
+                              -> let (_, xdef) = cases_compiletime xd
+                                     (_, ydef) = cases_compiletime yd in
+                                       caseeq ((x,y):ps) xdef ydef
                         _ -> return False
 
 -- SPECIALISATION -----------------------------------------------------------
@@ -514,9 +521,16 @@ data Def = Function Type Term
          | CaseOp CaseInfo 
                   Type 
                   [Either Term (Term, Term)] -- original definition
-                  [([Name], Term, Term)] -- simplified definition
-                  [Name] SC -- Compile time case definition
-                  [Name] SC -- Run time cae definitions
+                  [([Name], Term, Term)] -- simplified for totality check definition
+                  CaseDefs
+--                   [Name] SC -- Compile time case definition
+--                   [Name] SC -- Run time cae definitions
+
+data CaseDefs = CaseDefs {
+                  cases_totcheck :: ([Name], SC),
+                  cases_compiletime :: ([Name], SC),
+                  cases_runtime :: ([Name], SC)
+                }
 
 data CaseInfo = CaseInfo {
                   case_inlinable :: Bool,
@@ -526,13 +540,21 @@ data CaseInfo = CaseInfo {
 {-! 
 deriving instance Binary Def 
 !-}
+{-! 
+deriving instance Binary CaseInfo
+!-}
+{-! 
+deriving instance Binary CaseDefs
+!-}
 
 instance Show Def where
     show (Function ty tm) = "Function: " ++ show (ty, tm)
     show (TyDecl nt ty) = "TyDecl: " ++ show nt ++ " " ++ show ty
     show (Operator ty _ _) = "Operator: " ++ show ty
-    show (CaseOp (CaseInfo inlc inlr) ty ps_in ps ns sc ns' sc') 
-        = "Case: " ++ show ty ++ " " ++ show ps ++ "\n" ++ 
+    show (CaseOp (CaseInfo inlc inlr) ty ps_in ps cd) 
+      = let (ns, sc) = cases_compiletime cd
+            (ns', sc') = cases_runtime cd in
+          "Case: " ++ show ty ++ " " ++ show ps ++ "\n" ++ 
                                         show ns ++ " " ++ show sc ++ "\n" ++
                                         show ns' ++ " " ++ show sc' ++ "\n" ++
             if inlc then "Inlinable\n" else "Not inlinable\n"
@@ -666,9 +688,10 @@ addCasedef n ci@(CaseInfo alwaysInline tcdict)
                     (OK (CaseDef args sc _), OK (CaseDef args' sc' _)) -> 
                        let inl = alwaysInline -- || tcdict
                            inlc = (inl || small n args sc') && (not asserted) 
-                           inlr = inl || small n args sc' in
+                           inlr = inl || small n args sc'
+                           cdef = CaseDefs (args, sc) (args, sc) (args', sc') in
                            addDef n (CaseOp (ci { case_inlinable = inlc })
-                                            ty ps_in ps args sc args' sc',
+                                            ty ps_in ps cdef,
                                       access, Unchecked) ctxt in
           uctxt { definitions = ctxt' }
 
@@ -676,15 +699,15 @@ simplifyCasedef :: Name -> Context -> Context
 simplifyCasedef n uctxt
    = let ctxt = definitions uctxt
          ctxt' = case lookupCtxt n ctxt of
-              [(CaseOp ci ty [] ps args sc args' sc', acc, tot)] ->
+              [(CaseOp ci ty [] ps _, acc, tot)] ->
                  ctxt -- nothing to simplify (or already done...)
-              [(CaseOp ci ty ps_in ps args sc args' sc', acc, tot)] ->
+              [(CaseOp ci ty ps_in ps cd, acc, tot)] ->
                  let ps_in' = map simpl ps_in
                      pdef = map debind ps_in' in
                      case simpleCase False True False CompileTime (FC "" 0) pdef of
                        OK (CaseDef args sc _) ->
                           addDef n (CaseOp ci 
-                                           ty ps_in' ps args sc args' sc',
+                                           ty ps_in' ps (cd { cases_totcheck = (args, sc) }),
                                     acc, tot) ctxt 
                        Error err -> error (show err)
               _ -> ctxt in
@@ -722,7 +745,7 @@ lookupTy n ctxt
                        (Function ty _) -> return ty
                        (TyDecl _ ty) -> return ty
                        (Operator ty _ _) -> return ty
-                       (CaseOp _ ty _ _ _ _ _ _) -> return ty
+                       (CaseOp _ ty _ _ _) -> return ty
 
 isConName :: Name -> Context -> Bool
 isConName n ctxt
@@ -738,7 +761,7 @@ isFnName n ctxt
                case tfst def of
                     (Function _ _) -> return True
                     (Operator _ _ _) -> return True
-                    (CaseOp _ _ _ _ _ _ _ _) -> return True
+                    (CaseOp _ _ _ _ _) -> return True
                     _ -> return False
 
 lookupP :: Name -> Context -> [Term]
@@ -747,7 +770,7 @@ lookupP n ctxt
         p <- case def of
           (Function ty tm, a, _) -> return (P Ref n ty, a)
           (TyDecl nt ty, a, _) -> return (P nt n ty, a)
-          (CaseOp _ ty _ _ _ _ _ _, a, _) -> return (P Ref n ty, a)
+          (CaseOp _ ty _ _ _, a, _) -> return (P Ref n ty, a)
           (Operator ty _ _, a, _) -> return (P Ref n ty, a)
         case snd p of
             Hidden -> []
