@@ -324,7 +324,7 @@ process fn (Check (PRef _ n))
         imp <- impShow
         c <- colourise
         case lookupNames n ctxt of
-             ts@(_:_) -> do mapM_ (\n -> iputStrLn $ show n ++ " : " ++
+             ts@(_:_) -> do mapM_ (\n -> iputStrLn $ showName (Just ist) [] False c n ++ " : " ++
                                          showImp (Just ist) imp c (delabTy ist n)) ts
                             iResult ""
              [] -> iFail $ "No such variable " ++ show n

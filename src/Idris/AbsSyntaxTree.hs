@@ -1047,6 +1047,29 @@ prettyImp impl = prettySe 10
       | inner > outer = lparen <> doc <> rparen
       | otherwise     = doc
 
+-- | Show Idris name
+showName :: Maybe IState   -- ^^ the Idris state, for information about names
+         -> [(Name, Bool)] -- ^^ the bound variables and whether they're implicit
+         -> Bool           -- ^^ whether to show implicits
+         -> Bool           -- ^^ whether to colourise
+         -> Name           -- ^^ the term to show
+         -> String
+showName ist bnd impl colour n = if colour then colourise n else showbasic n
+    where name = if impl then show n else showbasic n
+          showbasic n@(UN _) = show n
+          showbasic (MN _ s) = s
+          showbasic (NS n s) = showSep "." (reverse s) ++ "." ++ showbasic n
+          fst3 (x, _, _) = x
+          colourise n = let ctxt' = fmap tt_ctxt ist in
+                        case ctxt' of
+                          Nothing -> name
+                          Just ctxt | Just impl <- lookup n bnd -> if impl then colouriseImplicit name
+                                                                           else colouriseBound name
+                                    | isDConName n ctxt -> colouriseData name
+                                    | isFnName n ctxt   -> colouriseFun name
+                                    | isTConName n ctxt -> colouriseType name
+                                    | otherwise         -> name
+
 -- | Show Idris term
 showImp :: Maybe IState -- ^^ the Idris state, for information about identifiers
         -> Bool  -- ^^ whether to show implicits
@@ -1056,26 +1079,12 @@ showImp :: Maybe IState -- ^^ the Idris state, for information about identifiers
 showImp ist impl colour tm = se 10 [] tm where
     perhapsColourise :: (String -> String) -> String -> String
     perhapsColourise col str = if colour then col str else str
-  
+
     se :: Int -> [(Name, Bool)] -> PTerm -> String
     se p bnd (PQuote r) = "![" ++ show r ++ "]"
     se p bnd (PPatvar fc n) = if impl then show n ++ "[p]" else show n
     se p bnd (PInferRef fc n) = "!" ++ show n -- ++ "[" ++ show fc ++ "]"
-    se p bnd (PRef fc n) = if colour then colourise n else showbasic n
-      where name = if impl then show n else showbasic n
-            showbasic n@(UN _) = show n
-            showbasic (MN _ s) = s
-            showbasic (NS n s) = showSep "." (reverse s) ++ "." ++ showbasic n
-            fst3 (x, _, _) = x
-            colourise n = let ctxt' = fmap tt_ctxt ist in
-                          case ctxt' of
-                            Nothing -> name
-                            Just ctxt | Just impl <- lookup n bnd -> if impl then colouriseImplicit name
-                                                                           else colouriseBound name
-                                      | isDConName n ctxt -> colouriseData name
-                                      | isFnName n ctxt   -> colouriseFun name
-                                      | isTConName n ctxt -> colouriseType name
-                                      | otherwise         -> name
+    se p bnd (PRef fc n) = showName ist bnd impl colour n
     se p bnd (PLam n ty sc) = bracket p 2 $ "\\ " ++ perhapsColourise colouriseBound (show n) ++
                               (if impl then " : " ++ se 10 bnd ty else "") ++ " => " 
                               ++ se 10 ((n, False):bnd) sc
