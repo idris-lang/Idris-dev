@@ -9,7 +9,7 @@ module Core.Evaluate(normalise, normaliseTrace, normaliseC, normaliseAll,
                 addToCtxt, setAccess, setTotal, addCtxtDef, addTyDecl, 
                 addDatatype, addCasedef, simplifyCasedef, addOperator,
                 lookupNames, lookupTy, lookupP, lookupDef, lookupVal, 
-                lookupTotal, lookupTyEnv, isConName, isFnName,
+                lookupTotal, lookupTyEnv, isDConName, isTConName, isConName, isFnName,
                 Value(..), Quote(..), evalState, initEval) where
 
 import Debug.Trace
@@ -748,11 +748,20 @@ lookupTy n ctxt
                        (CaseOp _ ty _ _ _) -> return ty
 
 isConName :: Name -> Context -> Bool
-isConName n ctxt
+isConName n ctxt = isTConName n ctxt || isDConName n ctxt
+
+isTConName :: Name -> Context -> Bool
+isTConName n ctxt
+     = or $ do def <- lookupCtxt n (definitions ctxt)
+               case tfst def of
+                    (TyDecl (TCon _ _) _) -> return True
+                    _ -> return False
+
+isDConName :: Name -> Context -> Bool
+isDConName n ctxt
      = or $ do def <- lookupCtxt n (definitions ctxt)
                case tfst def of
                     (TyDecl (DCon _ _) _) -> return True
-                    (TyDecl (TCon _ _) _) -> return True
                     _ -> return False
 
 isFnName :: Name -> Context -> Bool
