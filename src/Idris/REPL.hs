@@ -750,10 +750,7 @@ idrisMain opts =
                    [expr] -> return (Just expr)
        when (DefaultTotal `elem` opts) $ do i <- getIState
                                             putIState (i { default_total = True })
-       case opt getColour opts of
-         [] -> return ()
-         xs -> do i <- getIState
-                  putIState (i { idris_colourRepl = last xs })
+       setColourise $ not quiet && last (True : opt getColour opts)
        mapM_ addLangExt (opt getLanguageExt opts)
        setREPL runrepl
        setQuiet (quiet || isJust script)

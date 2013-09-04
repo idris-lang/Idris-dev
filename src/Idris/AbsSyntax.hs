@@ -485,6 +485,10 @@ colourise :: Idris Bool
 colourise = do i <- getIState
                return $ idris_colourRepl i
 
+setColourise :: Bool -> Idris ()
+setColourise b = do i <- getIState
+                    putIState $ i { idris_colourRepl = b }
+
 impShow :: Idris Bool
 impShow = do i <- getIState
              return (opt_showimp (idris_options i))
