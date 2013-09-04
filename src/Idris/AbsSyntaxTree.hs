@@ -120,7 +120,8 @@ data IState = IState {
     compiled_so :: Maybe String,
     idris_dynamic_libs :: [DynamicLib],
     idris_language_extensions :: [LanguageExt],
-    idris_outputmode :: OutputMode
+    idris_outputmode :: OutputMode,
+    idris_colourRepl :: Bool
    }
 
 data SizeChange = Smaller | Same | Bigger | Unknown
@@ -177,6 +178,7 @@ idrisInit = IState initContext [] [] emptyContext emptyContext emptyContext
                    emptyContext emptyContext emptyContext emptyContext
                    [] "" defaultOpts 6 [] [] [] [] [] [] [] [] [] []
                    [] Nothing Nothing [] [] [] Hidden False [] Nothing [] [] RawOutput
+                   True
 
 -- | The monad for the main REPL - reading and processing files and updating 
 -- global state (hence the IO inner monad).
@@ -235,6 +237,7 @@ data Opt = Filename String
          | Ver
          | Usage
          | Quiet
+         | ColourREPL Bool
          | Ideslave
          | ShowLibs
          | ShowLibdir
@@ -248,8 +251,8 @@ data Opt = Filename String
          | DefaultTotal
          | DefaultPartial
          | WarnPartial
-         | NoCoverage 
-         | ErrContext 
+         | NoCoverage
+         | ErrContext
          | ShowImpl
          | Verbose
          | IBCSubDir String

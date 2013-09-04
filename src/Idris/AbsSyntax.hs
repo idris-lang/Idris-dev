@@ -481,6 +481,10 @@ allImportDirs :: IState -> Idris [FilePath]
 allImportDirs i = do let optdirs = opt_importdirs (idris_options i)
                      return ("." : reverse optdirs)
 
+colourise :: Idris Bool
+colourise = do i <- getIState
+               return $ idris_colourRepl i
+
 impShow :: Idris Bool
 impShow = do i <- getIState
              return (opt_showimp (idris_options i))
