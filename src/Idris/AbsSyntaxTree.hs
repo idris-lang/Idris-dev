@@ -804,6 +804,12 @@ colouriseKwd kwd = setSGRCode [SetUnderlining SingleUnderline
 colouriseBound :: String -> String
 colouriseBound = colourise Magenta Vivid
 
+colouriseImplicit :: String -> String
+colouriseImplicit str = let sgr = [ SetColor Foreground Vivid Magenta
+                                  , SetUnderlining SingleUnderline
+                                  ]
+                        in setSGRCode sgr ++ str ++ setSGRCode [Reset]
+
 colouriseFun :: String -> String
 colouriseFun = colourise Green Vivid
 
@@ -1076,7 +1082,7 @@ showImp ist impl colour tm = se 10 [] tm where
     perhapsColourise :: (String -> String) -> String -> String
     perhapsColourise col str = if colour then col str else str
   
-    se :: Int -> [Name] -> PTerm -> String
+    se :: Int -> [(Name, Bool)] -> PTerm -> String
     se p bnd (PQuote r) = "![" ++ show r ++ "]"
     se p bnd (PPatvar fc n) = if impl then show n ++ "[p]" else show n
     se p bnd (PInferRef fc n) = "!" ++ show n -- ++ "[" ++ show fc ++ "]"
@@ -1089,24 +1095,25 @@ showImp ist impl colour tm = se 10 [] tm where
             colourise n = let ctxt' = fmap tt_ctxt ist in
                           case ctxt' of
                             Nothing -> name
-                            Just ctxt | n `elem` bnd      -> colouriseBound name
+                            Just ctxt | Just impl <- lookup n bnd -> if impl then colouriseImplicit name
+                                                                           else colouriseBound name
                                       | isDConName n ctxt -> colouriseData name
                                       | isFnName n ctxt   -> colouriseFun name
                                       | isTConName n ctxt -> colouriseType name
-                                      | otherwise         ->  name
+                                      | otherwise         -> name
     se p bnd (PLam n ty sc) = bracket p 2 $ "\\ " ++ perhapsColourise colouriseBound (show n) ++
                               (if impl then " : " ++ se 10 bnd ty else "") ++ " => " 
-                              ++ se 10 (n:bnd) sc
+                              ++ se 10 ((n, False):bnd) sc
     se p bnd (PLet n ty v sc) = bracket p 2 $ "let " ++ perhapsColourise colouriseBound (show n) ++
                                 " = " ++ se 10 bnd v ++
-                                " in " ++ se 10 (n:bnd) sc
+                                " in " ++ se 10 ((n, False):bnd) sc
     se p bnd (PPi (Exp l s _) n ty sc)
         | n `elem` allNamesIn sc || impl
                                   = bracket p 2 $
                                     (if l then "|(" else "(") ++
                                     perhapsColourise colouriseBound (show n) ++ " : " ++ se 10 bnd ty ++
                                     ") " ++ st ++
-                                    "-> " ++ se 10 (n:bnd) sc
+                                    "-> " ++ se 10 ((n, False):bnd) sc
         | otherwise = bracket p 2 $ se 0 bnd ty ++ " " ++ st ++ "-> " ++ se 10 bnd sc
       where st = case s of
                     Static -> "[static] "
@@ -1114,8 +1121,8 @@ showImp ist impl colour tm = se 10 [] tm where
     se p bnd (PPi (Imp l s _) n ty sc)
         | impl = bracket p 2 $ (if l then "|{" else "{") ++
                                perhapsColourise colouriseBound (show n) ++ " : " ++ se 10 bnd ty ++ 
-                               "} " ++ st ++ "-> " ++ se 10 (n:bnd) sc
-        | otherwise = se 10 bnd sc
+                               "} " ++ st ++ "-> " ++ se 10 ((n, True):bnd) sc
+        | otherwise = se 10 ((n, True):bnd) sc
       where st = case s of
                     Static -> "[static] "
                     _ -> ""
@@ -1124,7 +1131,7 @@ showImp ist impl colour tm = se 10 [] tm where
     se p bnd (PPi (TacImp _ _ s _) n ty sc)
         = bracket p 2 $
           "{tacimp " ++ (perhapsColourise colouriseBound (show n)) ++ " : " ++ se 10 bnd ty ++ "} -> " ++
-          se 10 (n:bnd) sc
+          se 10 ((n, False):bnd) sc
     se p bnd e
         | Just str <- slist p bnd e = str
         | Just num <- snat p e  = perhapsColourise colouriseData (show num)
