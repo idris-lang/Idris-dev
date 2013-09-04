@@ -674,24 +674,30 @@ addDatatype (Data n tag ty cons) uctxt
 -- FIXME: Too many arguments! Refactor all these Bools.
 addCasedef :: Name -> CaseInfo -> Bool -> Bool -> Bool -> Bool ->
               [Either Term (Term, Term)] -> 
-              [([Name], Term, Term)] -> 
-              [([Name], Term, Term)] ->
+              [([Name], Term, Term)] -> -- totality
+              [([Name], Term, Term)] -> -- compile time
+              [([Name], Term, Term)] -> -- run time
               Type -> Context -> Context
 addCasedef n ci@(CaseInfo alwaysInline tcdict)
-           tcase covering reflect asserted ps_in ps psrt ty uctxt 
+           tcase covering reflect asserted ps_in ps_tot ps_ct ps_rt ty uctxt 
     = let ctxt = definitions uctxt
           access = case lookupDefAcc n False uctxt of
                         [(_, acc)] -> acc
                         _ -> Public
-          ctxt' = case (simpleCase tcase covering reflect CompileTime (FC "" 0) ps, 
-                        simpleCase tcase covering reflect RunTime (FC "" 0) psrt) of
-                    (OK (CaseDef args sc _), OK (CaseDef args' sc' _)) -> 
+          ctxt' = case (simpleCase tcase covering reflect CompileTime (FC "" 0) ps_tot,
+                        simpleCase tcase covering reflect CompileTime (FC "" 0) ps_ct, 
+                        simpleCase tcase covering reflect RunTime (FC "" 0) ps_rt) of
+                    (OK (CaseDef args_tot sc_tot _), 
+                     OK (CaseDef args_ct sc_ct _),
+                     OK (CaseDef args_rt sc_rt _)) -> 
                        let inl = alwaysInline -- || tcdict
-                           inlc = (inl || small n args sc') && (not asserted) 
-                           inlr = inl || small n args sc'
-                           cdef = CaseDefs (args, sc) (args, sc) (args', sc') in
+                           inlc = (inl || small n args_ct sc_ct) && (not asserted) 
+                           inlr = inl || small n args_rt sc_rt
+                           cdef = CaseDefs (args_tot, sc_tot) 
+                                           (args_ct, sc_ct) 
+                                           (args_rt, sc_rt) in
                            addDef n (CaseOp (ci { case_inlinable = inlc })
-                                            ty ps_in ps cdef,
+                                            ty ps_in ps_tot cdef,
                                       access, Unchecked) ctxt in
           uctxt { definitions = ctxt' }
 

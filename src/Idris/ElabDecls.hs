@@ -526,6 +526,8 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
               [ty] -> return ty
            pats_in <- mapM (elabClause info (Dictionary `elem` opts)) 
                            (zip [0..] cs)
+           logLvl 3 $ "Elaborated patterns:\n" ++ show pats_in
+
            -- if the return type of 'ty' is collapsible, the optimised version should
            -- just do nothing
            ist <- getIState
@@ -557,12 +559,25 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
   --                                         show r) pats))
            let tcase = opt_typecase (idris_options ist)
 
-           -- pdef is the compile-time pattern definition with basic
-           -- simplifications applied.
+           -- Summary of what's about to happen: Definitions go:
+
+           -- pats_in -> pats -> optpats
+           -- pdef comes from pats,
+           -- optpdef comes from optpats
+           -- Then pdef' is optpdef with forcing/collapsing applied everywhere
+
+           -- addCaseDef builds case trees from <pdef> and <pdef'>
+
+           -- pdef is the compile-time pattern definition.
            -- This will get further optimised for run-time, and, separately,
            -- further inlined to help with totality checking.
-           let pdef = map debind $ map (simpl (tt_ctxt ist)) pats
+           let pdef = map debind $ map (simple_lhs (tt_ctxt ist)) pats
            
+           logLvl 5 $ "Initial typechecked patterns:\n" ++ show pdef
+
+           -- TODO: Inlining on initial definition happens here
+           let pdef_inl = pdef
+
            numArgs <- tclift $ sameLength pdef
 
            -- patterns after collapsing optimisation applied
@@ -572,13 +587,11 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
                                                     (take numArgs (repeat Erased)), Erased)]
                          else stripCollapsed pats
 
-           logLvl 5 $ "Patterns:\n" ++ show pats_in
            case specNames opts of
                 Just _ -> logLvl 5 $ "Partially evaluated:\n" ++ show pats
                 _ -> return ()
-           logLvl 3 $ "SIMPLIFIED: \n" ++ show pdef
 
-           let optpdef = map debind $ map (simpl (tt_ctxt ist)) optpats
+           let optpdef = map debind $ map (simple_lhs (tt_ctxt ist)) optpats
            tree@(CaseDef scargs sc _) <- tclift $ 
                    simpleCase tcase False reflect CompileTime fc pdef
            cov <- coverage
@@ -600,13 +613,11 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
                               return (filter (noMatch ist clhs) missing')
                       else return []
            let pcover = null pmissing
-           logLvl 2 $ "Optimising patterns"
-           logLvl 5 $ show optpdef
 
            -- pdef' is the version that gets compiled for run-time
            pdef' <- applyOpts optpdef 
-           logLvl 2 $ "Optimised patterns"
-           logLvl 5 $ show pdef'
+           logLvl 5 $ "After data structure transofmrations:\n" ++ show pdef'
+
            ist <- getIState
   --          let wf = wellFounded ist n sc
            let tot = if pcover || AssertTotal `elem` opts
@@ -642,7 +653,7 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
                                                        reflect
                                                        (AssertTotal `elem` opts)
                                                        pats
-                                                       pdef pdef' ty)
+                                                       pdef pdef_inl pdef' ty)
                           addIBC (IBCDef n)
                           setTotality n tot
                           when (not reflect) $ totcheck (fc, n)
@@ -686,9 +697,8 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
     
     getLHS (_, l, _) = l
 
-    simpl ctxt (Right (x, y)) = Right (normalise ctxt [] x, y) 
---                                        Core.Evaluate.simplify ctxt False [] y)
-    simpl ctxt t = t
+    simple_lhs ctxt (Right (x, y)) = Right (normalise ctxt [] x, y) 
+    simple_lhs ctxt t = t
 
     specNames [] = Nothing
     specNames (Specialise ns : _) = Just ns

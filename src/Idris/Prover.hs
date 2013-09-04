@@ -75,6 +75,7 @@ prove ctxt lit n ty
          updateContext (addCasedef n (CaseInfo True False) False False True False
                                  [Right (P Ref n ty, ptm)]
                                  [([], P Ref n ty, ptm)]
+                                 [([], P Ref n ty, ptm)]
                                  [([], P Ref n ty, ptm')] ty)
          solveDeferred n
 elabStep :: ElabState [PDecl] -> ElabD a -> Idris (a, ElabState [PDecl])
