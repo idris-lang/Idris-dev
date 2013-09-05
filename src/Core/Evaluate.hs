@@ -798,7 +798,9 @@ lookupDefAcc :: Name -> Bool -> Context ->
                 [(Def, Accessibility)]
 lookupDefAcc n mkpublic ctxt
     = map mkp $ lookupCtxt n (definitions ctxt)
-  where mkp (d, a, _) = if mkpublic then (d, Public) else (d, a)
+  -- io_bind a special case for REPL prettiness
+  where mkp (d, a, _) = if mkpublic && (not (n == UN "io_bind"))
+                           then (d, Public) else (d, a)
 
 lookupTotal :: Name -> Context -> [Totality]
 lookupTotal n ctxt = map mkt $ lookupCtxt n (definitions ctxt)
