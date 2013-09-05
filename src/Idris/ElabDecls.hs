@@ -13,6 +13,7 @@ import Idris.Coverage
 import Idris.DataOpts
 import Idris.Providers
 import Idris.Primitives
+import Idris.Inliner
 import Idris.PartialEval
 import IRTS.Lang
 import Paths_idris
@@ -575,8 +576,15 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
            
            logLvl 5 $ "Initial typechecked patterns:\n" ++ show pdef
 
-           -- TODO: Inlining on initial definition happens here
-           let pdef_inl = pdef
+           -- TODO: Inlining on initial definition happens here.
+
+           -- NOTE: Need to store original definition so that proofs which
+           -- rely on its structure aren't affected by any changes to the
+           -- inliner. Just use the inlined version to generate pdef' and to
+           -- help with later inlinings.
+
+           ist <- getIState
+           let pdef_inl = inlineDef ist pdef
 
            numArgs <- tclift $ sameLength pdef
 
@@ -616,7 +624,7 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
 
            -- pdef' is the version that gets compiled for run-time
            pdef' <- applyOpts optpdef 
-           logLvl 5 $ "After data structure transofmrations:\n" ++ show pdef'
+           logLvl 5 $ "After data structure transformations:\n" ++ show pdef'
 
            ist <- getIState
   --          let wf = wellFounded ist n sc
@@ -653,7 +661,7 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
                                                        reflect
                                                        (AssertTotal `elem` opts)
                                                        pats
-                                                       pdef pdef_inl pdef' ty)
+                                                       pdef pdef pdef_inl pdef' ty)
                           addIBC (IBCDef n)
                           setTotality n tot
                           when (not reflect) $ totcheck (fc, n)

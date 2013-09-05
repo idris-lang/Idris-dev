@@ -259,6 +259,7 @@ Executable     idris
                               Idris.DataOpts, Idris.Transforms, Idris.DSL,
                               Idris.UnusedArgs, Idris.Docs, Idris.Completion,
                               Idris.PartialEval, Idris.Providers, Idris.Chaser,
+                              Idris.Inliner,
 
                               Util.Pretty, Util.System, Util.DynamicLinker,
                               Pkg.Package, Pkg.PParser,

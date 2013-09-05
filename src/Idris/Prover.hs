@@ -76,6 +76,7 @@ prove ctxt lit n ty
                                  [Right (P Ref n ty, ptm)]
                                  [([], P Ref n ty, ptm)]
                                  [([], P Ref n ty, ptm)]
+                                 [([], P Ref n ty, ptm)]
                                  [([], P Ref n ty, ptm')] ty)
          solveDeferred n
 elabStep :: ElabState [PDecl] -> ElabD a -> Idris (a, ElabState [PDecl])

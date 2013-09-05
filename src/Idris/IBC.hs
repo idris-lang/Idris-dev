@@ -692,15 +692,16 @@ instance Binary CaseAlt where
                    _ -> error "Corrupted binary data for CaseAlt"
 
 instance Binary CaseDefs where
-        put (CaseDefs x1 x2 x3)
-          = do put x1
+        put (CaseDefs x1 x2 x3 x4)
+          = do -- don't need totality checked version
                put x2
                put x3
+               put x4
         get
-          = do x1 <- get
-               x2 <- get
-               x3 <- get
-               return (CaseDefs x1 x2 x3)
+          = do x2 <- get
+               x3 <- get -- use for totality checked version
+               x4 <- get
+               return (CaseDefs x3 x2 x3 x4)
 
 instance Binary CaseInfo where
         put x@(CaseInfo x1 x2) = do put x1
