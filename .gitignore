@@ -8,6 +8,7 @@ cabal-dev/
 *.dylib
 *.swp
 *~
+.DS_Store
 custom.mk
 java/executable_pom.xml
 test/output
