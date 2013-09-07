@@ -37,19 +37,19 @@ getObjectFiles :: Codegen -> Idris [FilePath]
 getObjectFiles tgt = do i <- getIState; return (forCodegen tgt $ idris_objs i)
 
 addObjectFile :: Codegen -> FilePath -> Idris ()
-addObjectFile tgt f = do i <- getIState; putIState $ i { idris_objs = (tgt, f) : idris_objs i }
+addObjectFile tgt f = do i <- getIState; putIState $ i { idris_objs = nub $ (tgt, f) : idris_objs i }
 
 getLibs :: Codegen -> Idris [String]
 getLibs tgt = do i <- getIState; return (forCodegen tgt $ idris_libs i)
 
 addLib :: Codegen -> String -> Idris ()
-addLib tgt f = do i <- getIState; putIState $ i { idris_libs = (tgt, f) : idris_libs i }
+addLib tgt f = do i <- getIState; putIState $ i { idris_libs = nub $ (tgt, f) : idris_libs i }
 
 getFlags :: Codegen -> Idris [String]
 getFlags tgt = do i <- getIState; return (forCodegen tgt $ idris_cgflags i)
 
 addFlag :: Codegen -> String -> Idris ()
-addFlag tgt f = do i <- getIState; putIState $ i { idris_cgflags = (tgt, f) : idris_cgflags i }
+addFlag tgt f = do i <- getIState; putIState $ i { idris_cgflags = nub $ (tgt, f) : idris_cgflags i }
 
 addDyLib :: [String] -> Idris (Either DynamicLib String)
 addDyLib libs = do i <- getIState
@@ -62,7 +62,7 @@ addDyLib libs = do i <- getIState
                                   return (Left x)
 
 addHdr :: Codegen -> String -> Idris ()
-addHdr tgt f = do i <- getIState; putIState $ i { idris_hdrs = (tgt, f) : idris_hdrs i }
+addHdr tgt f = do i <- getIState; putIState $ i { idris_hdrs = nub $ (tgt, f) : idris_hdrs i }
 
 addLangExt :: LanguageExt -> Idris ()
 addLangExt TypeProviders = do i <- getIState ; putIState $ i { idris_language_extensions = [TypeProviders] }
