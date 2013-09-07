@@ -45,6 +45,7 @@ compile codegen f tm
         maindef <- irMain tm
         objs <- getObjectFiles codegen
         libs <- getLibs codegen
+        flags <- getFlags codegen
         hdrs <- getHdrs codegen
         let defs = defsIn ++ [(MN 0 "runMain", maindef)]
         -- iputStrLn $ showSep "\n" (map show defs)
@@ -77,7 +78,8 @@ compile codegen f tm
                                   ViaC ->
                                     codegenC c f outty hdrs
                                       (concatMap mkObj objs)
-                                      (concatMap mkLib libs) NONE
+                                      (concatMap mkLib libs) 
+                                      (concatMap mkFlag flags) NONE
                                   ViaJava ->
                                     codegenJava [] c f hdrs libs outty
                                   ViaJavaScript ->
@@ -97,6 +99,7 @@ compile codegen f tm
                        if ex then return f else return h
         mkObj f = f ++ " "
         mkLib l = "-l" ++ l ++ " "
+        mkFlag l = l ++ " "
 
 
 

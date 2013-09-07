@@ -1628,6 +1628,10 @@ pDirective syn = try (do lchar '%'; reserved "lib"; cgn <- pCodegen; lib <- strl
                                                 o <- liftIO $ findInPath [".", datadir] obj
                                                 addIBC (IBCObj cgn o)
                                                 addObjectFile cgn o)])
+             <|> try (do lchar '%'; reserved "flag"; cgn <- pCodegen;
+                         flag <- strlit
+                         return [PDirective (do addIBC (IBCCGFlag cgn flag)
+                                                addFlag cgn flag)])
              <|> try (do lchar '%'; reserved "include"; cgn <- pCodegen; hdr <- strlit;
                          return [PDirective (do addHdr cgn hdr
                                                 addIBC (IBCHeader cgn hdr))])

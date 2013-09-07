@@ -107,6 +107,7 @@ data IState = IState {
     idris_scprims :: [(Name, (Int, PrimFn))],
     idris_objs :: [(Codegen, FilePath)],
     idris_libs :: [(Codegen, String)],
+    idris_cgflags :: [(Codegen, String)],
     idris_hdrs :: [(Codegen, String)],
     proof_list :: [(Name, [String])],
     errLine :: Maybe Int,
@@ -161,6 +162,7 @@ data IBCWrite = IBCFix FixDecl
               | IBCImport FilePath
               | IBCObj Codegen FilePath
               | IBCLib Codegen String
+              | IBCCGFlag Codegen String
               | IBCDyLib String
               | IBCHeader Codegen String
               | IBCAccess Name Accessibility
@@ -176,7 +178,7 @@ data IBCWrite = IBCFix FixDecl
 idrisInit = IState initContext [] [] emptyContext emptyContext emptyContext
                    emptyContext emptyContext emptyContext emptyContext 
                    emptyContext emptyContext emptyContext emptyContext
-                   [] "" defaultOpts 6 [] [] [] [] [] [] [] [] [] []
+                   [] "" defaultOpts 6 [] [] [] [] [] [] [] [] [] [] []
                    [] Nothing Nothing [] [] [] Hidden False [] Nothing [] [] RawOutput
                    True
 

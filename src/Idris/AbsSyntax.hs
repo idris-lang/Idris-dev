@@ -45,6 +45,12 @@ getLibs tgt = do i <- getIState; return (forCodegen tgt $ idris_libs i)
 addLib :: Codegen -> String -> Idris ()
 addLib tgt f = do i <- getIState; putIState $ i { idris_libs = (tgt, f) : idris_libs i }
 
+getFlags :: Codegen -> Idris [String]
+getFlags tgt = do i <- getIState; return (forCodegen tgt $ idris_cgflags i)
+
+addFlag :: Codegen -> String -> Idris ()
+addFlag tgt f = do i <- getIState; putIState $ i { idris_cgflags = (tgt, f) : idris_cgflags i }
+
 addDyLib :: [String] -> Idris (Either DynamicLib String)
 addDyLib libs = do i <- getIState
                    handle <- lift $ mapM (\l -> catchIO (tryLoadLib l) (\_ -> return Nothing)) libs

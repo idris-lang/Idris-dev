@@ -556,8 +556,10 @@ instance Show Def where
       = let (ns, sc) = cases_compiletime cd
             (ns', sc') = cases_runtime cd in
           "Case: " ++ show ty ++ " " ++ show ps ++ "\n" ++ 
-                                        show ns ++ " " ++ show sc ++ "\n" ++
-                                        show ns' ++ " " ++ show sc' ++ "\n" ++
+                                        "COMPILE TIME:\n\n" ++
+                                        show ns ++ " " ++ show sc ++ "\n\n" ++
+                                        "RUN TIME:\n\n" ++
+                                        show ns' ++ " " ++ show sc' ++ "\n\n" ++
             if inlc then "Inlinable\n" else "Not inlinable\n"
 
 -- We need this for serialising Def. Fortunately, it never gets used because
@@ -806,7 +808,7 @@ lookupDefAcc :: Name -> Bool -> Context ->
 lookupDefAcc n mkpublic ctxt
     = map mkp $ lookupCtxt n (definitions ctxt)
   -- io_bind a special case for REPL prettiness
-  where mkp (d, a, _) = if mkpublic && (not (n == UN "io_bind"))
+  where mkp (d, a, _) = if mkpublic && (not (n == UN "io_bind" || n == UN "io_return"))
                            then (d, Public) else (d, a)
 
 lookupTotal :: Name -> Context -> [Totality]

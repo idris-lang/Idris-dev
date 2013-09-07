@@ -23,7 +23,7 @@ import Debug.Trace
 import Paths_idris
 
 ibcVersion :: Word8
-ibcVersion = 36
+ibcVersion = 37
 
 data IBCFile = IBCFile { ver :: Word8,
                          sourcefile :: FilePath,
@@ -40,6 +40,7 @@ data IBCFile = IBCFile { ver :: Word8,
                          ibc_keywords :: [String],
                          ibc_objs :: [(Codegen, FilePath)],
                          ibc_libs :: [(Codegen, String)],
+                         ibc_cgflags :: [(Codegen, String)],
                          ibc_dynamic_libs :: [String],
                          ibc_hdrs :: [(Codegen, String)],
                          ibc_access :: [(Name, Accessibility)],
@@ -57,7 +58,7 @@ deriving instance Binary IBCFile
 !-}
 
 initIBC :: IBCFile
-initIBC = IBCFile ibcVersion "" [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] []
+initIBC = IBCFile ibcVersion "" [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] []
 
 loadIBC :: FilePath -> Idris ()
 loadIBC fp = do iLOG $ "Loading ibc " ++ fp
@@ -115,6 +116,7 @@ ibc i (IBCKeyword n) f = return f { ibc_keywords = n : ibc_keywords f }
 ibc i (IBCImport n) f = return f { ibc_imports = n : ibc_imports f }
 ibc i (IBCObj tgt n) f = return f { ibc_objs = (tgt, n) : ibc_objs f }
 ibc i (IBCLib tgt n) f = return f { ibc_libs = (tgt, n) : ibc_libs f }
+ibc i (IBCCGFlag tgt n) f = return f { ibc_cgflags = (tgt, n) : ibc_cgflags f }
 ibc i (IBCDyLib n) f = return f {ibc_dynamic_libs = n : ibc_dynamic_libs f }
 ibc i (IBCHeader tgt n) f = return f { ibc_hdrs = (tgt, n) : ibc_hdrs f }
 ibc i (IBCDef n) f = case lookupDef n (tt_ctxt i) of
@@ -155,6 +157,7 @@ process i fn
                pKeywords (ibc_keywords i)
                pObjs (ibc_objs i)
                pLibs (ibc_libs i)
+               pCGFlags (ibc_cgflags i)
                pDyLibs (ibc_dynamic_libs i)
                pHdrs (ibc_hdrs i)
                pDefs (ibc_defs i)
@@ -258,6 +261,9 @@ pObjs os = mapM_ (uncurry addObjectFile) os
 
 pLibs :: [(Codegen, String)] -> Idris ()
 pLibs ls = mapM_ (uncurry addLib) ls
+
+pCGFlags :: [(Codegen, String)] -> Idris ()
+pCGFlags ls = mapM_ (uncurry addFlag) ls
 
 pDyLibs :: [String] -> Idris ()
 pDyLibs ls = do res <- mapM (addDyLib . return) ls
@@ -810,7 +816,7 @@ instance Binary Totality where
                    _ -> error "Corrupted binary data for Totality"
 
 instance Binary IBCFile where
-        put x@(IBCFile x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24 x25)
+        put x@(IBCFile x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24 x25 x26)
          = {-# SCC "putIBCFile" #-} 
             do put x1
                put x2
@@ -837,6 +843,7 @@ instance Binary IBCFile where
                put x23
                put x24
                put x25
+               put x26
         get
           = do x1 <- get
                if x1 == ibcVersion then 
@@ -864,7 +871,8 @@ instance Binary IBCFile where
                     x23 <- get
                     x24 <- get
                     x25 <- get
-                    return (IBCFile x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24 x25)
+                    x26 <- get
+                    return (IBCFile x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24 x25 x26)
                   else return (initIBC { ver = x1 })
  
 instance Binary FnOpt where

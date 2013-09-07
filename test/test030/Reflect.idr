@@ -131,10 +131,12 @@ using (xs : List a, ys : List a, G : List (List a))
 reflectList : (G : List (List a)) -> 
           (xs : List a) -> (G' ** Expr (G' ++ G) xs)
 reflectList G [] = ([] ** ENil)
+
 reflectList G (x :: xs) with (reflectList G xs)
      | (G' ** xs') with (isElem (List.(::) x []) (G' ++ G))
         | Just p = (G' ** App (Var p) xs')
         | Nothing = ([x] :: G' ** App (Var Stop) (weaken [[x]] xs'))
+
 reflectList G (xs ++ ys) with (reflectList G xs)
      | (G' ** xs') with (reflectList (G' ++ G) ys)
          | (G'' ** ys') = ((G'' ++ G') ** 

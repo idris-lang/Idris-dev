@@ -1,10 +1,12 @@
+{-# LANGUAGE PatternGuards #-}
+
 module Idris.Inliner where
 
 import Core.TT
 import Idris.AbsSyntax
 
 inlineDef :: IState -> [([Name], Term, Term)] -> [([Name], Term, Term)]
-inlineDef ist d = d
+inlineDef ist ds = map (\ (ns, lhs, rhs) -> (ns, lhs, inlineTerm ist rhs)) ds
 
 -- Inlining is either top level (i.e. not in a function arg) or argument level
 
@@ -15,3 +17,15 @@ inlineDef ist d = d
 --        + If successful, then continue on the result (top level)
 --        + If not, reduce the arguments (argument level) and try again 
 --      - If not, inline all the arguments (top level)
+
+inlineTerm :: IState -> Term -> Term
+inlineTerm ist tm = inl tm where
+  inl orig@(P _ n _) = inlApp n [] orig
+  inl orig@(App f a) 
+      | (P _ fn _, args) <- unApply orig = inlApp fn args orig
+  inl (Bind n (Let t v) sc) = Bind n (Let t (inl v)) (inl sc)
+  inl (Bind n b sc) = Bind n b (inl sc)
+  inl tm = tm
+
+  inlApp fn args orig = orig
+

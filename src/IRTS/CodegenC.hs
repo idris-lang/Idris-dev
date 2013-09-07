@@ -23,10 +23,11 @@ codegenC :: [(Name, SDecl)] ->
             OutputType ->   -- generate executable if True, only .o if False 
             [FilePath] -> -- include files
             String -> -- extra object files 
-            String -> -- extra compiler flags
+            String -> -- extra compiler flags (libraries)
+            String -> -- extra compiler flags (anything)
             DbgLevel ->
             IO ()
-codegenC defs out exec incs objs libs dbg
+codegenC defs out exec incs objs libs flags dbg
     = do -- print defs
          let bc = map toBC defs
          let h = concatMap toDecl (map fst bc)
@@ -55,6 +56,7 @@ codegenC defs out exec incs objs libs dbg
                        " " ++ libFlags ++
                        " " ++ incFlags ++
                        " " ++ libs ++
+                       " " ++ flags ++
                        " -o " ++ out
 --              putStrLn gcc
              exit <- system gcc
