@@ -70,6 +70,6 @@ findInPath :: [FilePath] -> FilePath -> IO FilePath
 findInPath [] fp = fail $ "Can't find file " ++ fp
 findInPath (d:ds) fp = do let p = d </> fp
                           e <- doesFileExist p
-                          if e then return p else findInPath ds p
+                          if e then return p else findInPath ds fp
 
 

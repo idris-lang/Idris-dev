@@ -69,7 +69,7 @@ loadModule f
    = idrisCatch (do i <- getIState
                     let file = takeWhile (/= ' ') f      
                     ibcsd <- valIBCSubDir i
-                    ids <- allImportDirs i
+                    ids <- allImportDirs 
                     fp <- liftIO $ findImport ids ibcsd file
                     if file `elem` imported i
                        then iLOG $ "Already read " ++ file
@@ -1624,9 +1624,9 @@ pDirective syn = try (do lchar '%'; reserved "lib"; cgn <- pCodegen; lib <- strl
                          return [PDirective (do addLib cgn lib
                                                 addIBC (IBCLib cgn lib))])
              <|> try (do lchar '%'; reserved "link"; cgn <- pCodegen; obj <- strlit;
-                         return [PDirective (do datadir <- liftIO getDataDir
-                                                o <- liftIO $ findInPath [".", datadir] obj
-                                                addIBC (IBCObj cgn o)
+                         return [PDirective (do dirs <- allImportDirs
+                                                o <- liftIO $ findInPath dirs obj
+                                                addIBC (IBCObj cgn obj) -- just name, search on loading ibc
                                                 addObjectFile cgn o)])
              <|> try (do lchar '%'; reserved "flag"; cgn <- pCodegen;
                          flag <- strlit

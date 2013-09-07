@@ -179,7 +179,7 @@ pImports :: [FilePath] -> Idris ()
 pImports fs 
   = do mapM_ (\f -> do i <- getIState
                        ibcsd <- valIBCSubDir i
-                       ids <- allImportDirs i
+                       ids <- allImportDirs
                        fp <- liftIO $ findImport ids ibcsd f
                        if (f `elem` imported i)
                         then iLOG $ "Already read " ++ f
@@ -257,7 +257,9 @@ pKeywords k = do i <- getIState
                  putIState (i { syntax_keywords = k ++ syntax_keywords i })
 
 pObjs :: [(Codegen, FilePath)] -> Idris ()
-pObjs os = mapM_ (uncurry addObjectFile) os
+pObjs os = mapM_ (\ (cg, obj) -> do dirs <- allImportDirs
+                                    o <- liftIO $ findInPath dirs obj
+                                    addObjectFile cg o) os
 
 pLibs :: [(Codegen, String)] -> Idris ()
 pLibs ls = mapM_ (uncurry addLib) ls

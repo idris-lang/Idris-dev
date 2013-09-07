@@ -47,6 +47,7 @@ compile codegen f tm
         libs <- getLibs codegen
         flags <- getFlags codegen
         hdrs <- getHdrs codegen
+        impdirs <- allImportDirs
         let defs = defsIn ++ [(MN 0 "runMain", maindef)]
         -- iputStrLn $ showSep "\n" (map show defs)
         let (nexttag, tagged) = addTags 65536 (liftAll defs)
@@ -79,7 +80,8 @@ compile codegen f tm
                                     codegenC c f outty hdrs
                                       (concatMap mkObj objs)
                                       (concatMap mkLib libs) 
-                                      (concatMap mkFlag flags) NONE
+                                      (concatMap mkFlag flags ++
+                                       concatMap incdir impdirs) NONE
                                   ViaJava ->
                                     codegenJava [] c f hdrs libs outty
                                   ViaJavaScript ->
@@ -101,6 +103,7 @@ compile codegen f tm
         mkLib l = "-l" ++ l ++ " "
         mkFlag l = l ++ " "
 
+        incdir i = "-I" ++ i ++ " "
 
 
 irMain :: TT Name -> Idris LDecl

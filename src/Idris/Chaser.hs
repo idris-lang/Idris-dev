@@ -79,7 +79,7 @@ buildTree built fp = idrisCatch (btree [] fp)
        let file = takeWhile (/= ' ') f
        iLOG $ "CHASING " ++ show file
        ibcsd <- valIBCSubDir i
-       ids <- allImportDirs i
+       ids <- allImportDirs 
        fp <- liftIO $ findImport ids ibcsd file
        mt <- liftIO $ getIModTime fp
        if (file `elem` built) 

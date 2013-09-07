@@ -483,9 +483,10 @@ setImportDirs fps = do i <- getIState
                        let opt' = opts { opt_importdirs = fps }
                        putIState $ i { idris_options = opt' }
 
-allImportDirs :: IState -> Idris [FilePath]
-allImportDirs i = do let optdirs = opt_importdirs (idris_options i)
-                     return ("." : reverse optdirs)
+allImportDirs :: Idris [FilePath]
+allImportDirs = do i <- getIState
+                   let optdirs = opt_importdirs (idris_options i)
+                   return ("." : reverse optdirs)
 
 colourise :: Idris Bool
 colourise = do i <- getIState
