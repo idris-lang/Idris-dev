@@ -45,7 +45,9 @@ compile codegen f tm
         maindef <- irMain tm
         objs <- getObjectFiles codegen
         libs <- getLibs codegen
+        flags <- getFlags codegen
         hdrs <- getHdrs codegen
+        impdirs <- allImportDirs
         let defs = defsIn ++ [(MN 0 "runMain", maindef)]
         -- iputStrLn $ showSep "\n" (map show defs)
         let (nexttag, tagged) = addTags 65536 (liftAll defs)
@@ -77,7 +79,9 @@ compile codegen f tm
                                   ViaC ->
                                     codegenC c f outty hdrs
                                       (concatMap mkObj objs)
-                                      (concatMap mkLib libs) NONE
+                                      (concatMap mkLib libs) 
+                                      (concatMap mkFlag flags ++
+                                       concatMap incdir impdirs) NONE
                                   ViaJava ->
                                     codegenJava [] c f hdrs libs outty
                                   ViaJavaScript ->
@@ -97,7 +101,9 @@ compile codegen f tm
                        if ex then return f else return h
         mkObj f = f ++ " "
         mkLib l = "-l" ++ l ++ " "
+        mkFlag l = l ++ " "
 
+        incdir i = "-I" ++ i ++ " "
 
 
 irMain :: TT Name -> Idris LDecl
@@ -159,8 +165,9 @@ declArgs args inl n x = LFun (if inl then [Inline] else []) n args x
 
 mkLDecl n (Function tm _) = do e <- ir tm
                                return (declArgs [] True n e)
-mkLDecl n (CaseOp ci _ _ pats _ _ args sc) 
-       = do e <- ir (args, sc)
+mkLDecl n (CaseOp ci _ _ pats cd) 
+   = let (args, sc) = cases_runtime cd in
+         do e <- ir (args, sc)
             return (declArgs [] (case_inlinable ci) n e)
 mkLDecl n (TyDecl (DCon t a) _) = return $ LConstructor n t a
 mkLDecl n (TyDecl (TCon t a) _) = return $ LConstructor n (-1) a
@@ -187,17 +194,17 @@ instance ToIR (TT Name) where
           | (P _ (UN "prim_fork") _, [arg]) <- unApply tm
               = do arg' <- ir' env arg
                    return $ LOp LFork [LLazyExp arg']
-          | (P _ (UN "prim__IO") _, [v]) <- unApply tm
-              = do v' <- ir' env v
-                   return v'
-          | (P _ (UN "prim_io_bind") _, [_,_,v,Bind n (Lam _) sc]) <- unApply tm
-              = do v' <- ir' env v 
-                   sc' <- ir' (n:env) sc
-                   return (LLet n (LForce v') sc')
-          | (P _ (UN "prim_io_bind") _, [_,_,v,k]) <- unApply tm
-              = do v' <- ir' env v 
-                   k' <- ir' env k
-                   return (LApp False k' [LForce v'])
+--           | (P _ (UN "prim__IO") _, [v]) <- unApply tm
+--               = do v' <- ir' env v
+--                    return v'
+--           | (P _ (UN "prim_io_bind") _, [_,_,v,Bind n (Lam _) sc]) <- unApply tm
+--               = do v' <- ir' env v 
+--                    sc' <- ir' (n:env) sc
+--                    return (LLet n (LForce v') sc')
+--           | (P _ (UN "prim_io_bind") _, [_,_,v,k]) <- unApply tm
+--               = do v' <- ir' env v 
+--                    k' <- ir' env k
+--                    return (LApp False k' [LForce v'])
           | (P _ (UN "malloc") _, [_,size,t]) <- unApply tm
               = do size' <- ir' env size
                    t' <- ir' env t

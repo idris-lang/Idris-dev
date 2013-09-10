@@ -60,7 +60,7 @@ fovm cgn outty f
 --       print checked
          case checked of
            OK c -> case cgn of
-                     ViaC -> codegenC c "a.out" outty ["math.h"] "" "" TRACE
+                     ViaC -> codegenC c "a.out" outty ["math.h"] "" "" "" TRACE
                      ViaJava -> codegenJava [] c "a.out" [] [] outty
            Error e -> fail $ show e 
 

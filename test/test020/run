@@ -1,5 +1,5 @@
 #!/bin/bash
 idris $@ test020.idr -o test020
-idris $@ test020a.idr --check
+idris $@ test020a.idr --check --nocolor
 ./test020
 rm -f test020 *.ibc

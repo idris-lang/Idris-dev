@@ -98,35 +98,40 @@ pshow i (Msg s) = s
 pshow i (InternalMsg s) = "INTERNAL ERROR: " ++ show s ++ 
    "\nThis is probably a bug, or a missing error message.\n" ++
    "Please consider reporting at " ++ bugaddr
-pshow i (CantUnify _ x y e sc s) 
+pshow i (CantUnify _ x y e sc s)
     = let imps = opt_showimp (idris_options i) in
-        "Can't unify " ++ showImp imps (delab i x)
-          ++ " with " ++ showImp imps (delab i y) ++
---          " (" ++ showEnvDbg [] x ++ " and " ++ showEnvDbg [] y ++ ") " ++
+      let colour = idris_colourRepl i in
+        "Can't unify " ++ showImp (Just i) imps colour (delab i x)
+          ++ " with " ++ showImp (Just i) imps colour (delab i y) ++
+--         " (" ++ show x ++ " and " ++ show y ++ ") " ++
         case e of
             Msg "" -> ""
-            _ -> "\n\nSpecifically:\n\t" ++ pshow i e ++ 
+            _ -> "\n\nSpecifically:\n\t" ++ pshow i e ++
                  if (opt_errContext (idris_options i)) then showSc i sc else ""
-pshow i (CantConvert x y env) 
+pshow i (CantConvert x y env)
     = let imps = opt_showimp (idris_options i) in
-          "Can't convert " ++ showImp imps (delab i x) ++ " with " 
-                 ++ showImp imps (delab i y) ++
+      let colour = idris_colourRepl i in
+          "Can't convert " ++ showImp (Just i) imps colour (delab i x) ++ " with "
+                 ++ showImp (Just i) imps colour (delab i y) ++
                  if (opt_errContext (idris_options i)) then showSc i env else ""
-pshow i (UnifyScope n out tm env) 
+pshow i (UnifyScope n out tm env)
     = let imps = opt_showimp (idris_options i) in
-          "Can't unify " ++ show n ++ " with " 
-                 ++ showImp imps (delab i tm) ++ " as " ++ show out ++
+      let colour = idris_colourRepl i in
+          "Can't unify " ++ show n ++ " with "
+                 ++ showImp (Just i) imps colour (delab i tm) ++ " as " ++ show out ++
                  " is not in scope" ++
                  if (opt_errContext (idris_options i)) then showSc i env else ""
 pshow i (CantInferType t)
     = "Can't infer type for " ++ t
 pshow i (NonFunctionType f ty)
     = let imps = opt_showimp (idris_options i) in
-          showImp imps (delab i f) ++ " does not have a function type ("
-            ++ showImp imps (delab i ty) ++ ")"
+      let colour = idris_colourRepl i in
+          showImp (Just i) imps colour (delab i f) ++ " does not have a function type ("
+            ++ showImp (Just i) imps colour (delab i ty) ++ ")"
 pshow i (CantIntroduce ty)
     = let imps = opt_showimp (idris_options i) in
-          "Can't use lambda here: type is " ++ showImp imps (delab i ty)
+      let colour = idris_colourRepl i in
+          "Can't use lambda here: type is " ++ showImp (Just i) imps colour (delab i ty)
 pshow i (InfiniteUnify x tm env)
     = "Unifying " ++ showbasic x ++ " and " ++ show (delab i tm) ++ 
       " would lead to infinite value" ++
@@ -138,7 +143,7 @@ pshow i (CantResolve c) = "Can't resolve type class " ++ show (delab i c)
 pshow i (CantResolveAlts as) = "Can't disambiguate name: " ++ showSep ", " as
 pshow i (NoTypeDecl n) = "No type declaration for " ++ show n
 pshow i (NoSuchVariable n) = "No such variable " ++ show n
-pshow i (IncompleteTerm t) = "Incomplete term " ++ showImp True (delab i t)
+pshow i (IncompleteTerm t) = "Incomplete term " ++ showImp Nothing True False (delab i t)
 pshow i UniverseError = "Universe inconsistency"
 pshow i ProgramLineComment = "Program line next to comment"
 pshow i (Inaccessible n) = show n ++ " is not an accessible pattern variable"
@@ -148,6 +153,8 @@ pshow i (AlreadyDefined n) = show n ++ " is already defined"
 pshow i (ProofSearchFail e) = pshow i e
 pshow i (NoRewriting tm) = "rewrite did not change type " ++ show (delab i tm)
 pshow i (At f e) = show f ++ ":" ++ pshow i e
+pshow i (Elaborating s n e) = "When elaborating " ++ s ++ 
+                               showbasic n ++ ":\n" ++ pshow i e
 pshow i (ProviderError msg) = "Type provider error: " ++ msg
 
 showSc i [] = ""

@@ -250,7 +250,7 @@ Executable     idris
                               Core.ShellParser, Core.Unify, Core.Elaborate,
                               Core.CaseTree, Core.Constraints,
 
-                              Idris.AbsSyntax, Idris.AbsSyntaxTree,
+                              Idris.AbsSyntax, Idris.AbsSyntaxTree, Idris.Colours,
                               Idris.Parser, Idris.Help, Idris.IdeSlave, Idris.REPL,
                               Idris.REPLParser, Idris.ElabDecls, Idris.Error,
                               Idris.Delaborate, Idris.Primitives, Idris.Imports,
@@ -259,6 +259,7 @@ Executable     idris
                               Idris.DataOpts, Idris.Transforms, Idris.DSL,
                               Idris.UnusedArgs, Idris.Docs, Idris.Completion,
                               Idris.PartialEval, Idris.Providers, Idris.Chaser,
+                              Idris.Inliner,
 
                               Util.Pretty, Util.System, Util.DynamicLinker,
                               Pkg.Package, Pkg.PParser,
@@ -278,7 +279,7 @@ Executable     idris
                                 containers, process, transformers, filepath,
                                 directory, binary, bytestring, text, pretty,
                                 language-java>=0.2.2, libffi,
-                                vector, vector-binary-instances
+                                vector, vector-binary-instances, ansi-terminal
 
                Extensions:      MultiParamTypeClasses, FunctionalDependencies,
                                 FlexibleInstances, TemplateHaskell

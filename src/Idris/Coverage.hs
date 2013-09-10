@@ -50,7 +50,7 @@ genClauses fc n xs given
         logLvl 5 $ show (map length argss) ++ "\n" ++ show (map length all_args)
         logLvl 10 $ show argss ++ "\n" ++ show all_args
         logLvl 10 $ "Original: \n" ++ 
-             showSep "\n" (map (\t -> showImp True (delab' i t True)) xs)
+             showSep "\n" (map (\t -> showImp Nothing True False (delab' i t True)) xs)
         -- add an infinite supply of explicit arguments to update the possible
         -- cases for (the return type may be variadic, or function type, sp
         -- there may be more case splitting that the idris_implicits record
@@ -62,7 +62,7 @@ genClauses fc n xs given
         logLvl 2 $ show (length tryclauses) ++ " initially to check"
         let new = filter (noMatch i) (mnub i tryclauses)
         logLvl 1 $ show (length new) ++ " clauses to check for impossibility"
-        logLvl 5 $ "New clauses: \n" ++ showSep "\n" (map (showImp True) new)
+        logLvl 5 $ "New clauses: \n" ++ showSep "\n" (map (showImp Nothing True False) new)
 --           ++ " from:\n" ++ showSep "\n" (map (showImp True) tryclauses) 
         return new
 --         return (map (\t -> PClause n t [] PImpossible []) new)
@@ -173,7 +173,7 @@ genAll i args
     resugar t = t
 
     getForceable i n = case lookupCtxt n (idris_optimisation i) of
-                            [Optimise _ fs _] -> fs
+                            [o] -> forceable o
                             _ -> []
 
     dropForce force (x : xs) i | i `elem` force 
@@ -303,7 +303,7 @@ checkTotality path fc n
         t' <- case t of 
                 Unchecked -> 
                     case lookupDef n ctxt of
-                        [CaseOp _ _ _ pats _ _ _ _] -> 
+                        [CaseOp _ _ _ pats _] -> 
                             do t' <- if AssertTotal `elem` opts
                                         then return $ Total []
                                         else calcTotality path fc n pats
@@ -367,7 +367,8 @@ buildSCG (_, n) = do
    ist <- getIState
    case lookupCtxt n (idris_callgraph ist) of
        [cg] -> case lookupDef n (tt_ctxt ist) of
-           [CaseOp _ _ pats _ args sc _ _] -> 
+           [CaseOp _ _ pats _ cd] -> 
+             let (args, sc) = cases_totcheck cd in
                do logLvl 2 $ "Building SCG for " ++ show n ++ " from\n" 
                                 ++ show pats ++ "\n" ++ show sc
                   let newscg = buildSCG' ist (rights pats) args

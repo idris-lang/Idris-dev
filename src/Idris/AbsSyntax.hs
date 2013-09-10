@@ -37,13 +37,19 @@ getObjectFiles :: Codegen -> Idris [FilePath]
 getObjectFiles tgt = do i <- getIState; return (forCodegen tgt $ idris_objs i)
 
 addObjectFile :: Codegen -> FilePath -> Idris ()
-addObjectFile tgt f = do i <- getIState; putIState $ i { idris_objs = (tgt, f) : idris_objs i }
+addObjectFile tgt f = do i <- getIState; putIState $ i { idris_objs = nub $ (tgt, f) : idris_objs i }
 
 getLibs :: Codegen -> Idris [String]
 getLibs tgt = do i <- getIState; return (forCodegen tgt $ idris_libs i)
 
 addLib :: Codegen -> String -> Idris ()
-addLib tgt f = do i <- getIState; putIState $ i { idris_libs = (tgt, f) : idris_libs i }
+addLib tgt f = do i <- getIState; putIState $ i { idris_libs = nub $ (tgt, f) : idris_libs i }
+
+getFlags :: Codegen -> Idris [String]
+getFlags tgt = do i <- getIState; return (forCodegen tgt $ idris_cgflags i)
+
+addFlag :: Codegen -> String -> Idris ()
+addFlag tgt f = do i <- getIState; putIState $ i { idris_cgflags = nub $ (tgt, f) : idris_cgflags i }
 
 addDyLib :: [String] -> Idris (Either DynamicLib String)
 addDyLib libs = do i <- getIState
@@ -56,7 +62,7 @@ addDyLib libs = do i <- getIState
                                   return (Left x)
 
 addHdr :: Codegen -> String -> Idris ()
-addHdr tgt f = do i <- getIState; putIState $ i { idris_hdrs = (tgt, f) : idris_hdrs i }
+addHdr tgt f = do i <- getIState; putIState $ i { idris_hdrs = nub $ (tgt, f) : idris_hdrs i }
 
 addLangExt :: LanguageExt -> Idris ()
 addLangExt TypeProviders = do i <- getIState ; putIState $ i { idris_language_extensions = [TypeProviders] }
@@ -477,9 +483,18 @@ setImportDirs fps = do i <- getIState
                        let opt' = opts { opt_importdirs = fps }
                        putIState $ i { idris_options = opt' }
 
-allImportDirs :: IState -> Idris [FilePath]
-allImportDirs i = do let optdirs = opt_importdirs (idris_options i)
-                     return ("." : reverse optdirs)
+allImportDirs :: Idris [FilePath]
+allImportDirs = do i <- getIState
+                   let optdirs = opt_importdirs (idris_options i)
+                   return ("." : reverse optdirs)
+
+colourise :: Idris Bool
+colourise = do i <- getIState
+               return $ idris_colourRepl i
+
+setColourise :: Bool -> Idris ()
+setColourise b = do i <- getIState
+                    putIState $ i { idris_colourRepl = b }
 
 impShow :: Idris Bool
 impShow = do i <- getIState
@@ -1170,7 +1185,7 @@ mkPApp fc a f as = let rest = drop a as in
 -- FIXME: It's possible that this really has to happen after elaboration
 
 findStatics :: IState -> PTerm -> (PTerm, [Bool])
-findStatics ist tm = trace (showImp True tm) $
+findStatics ist tm = trace (showImp Nothing True False tm) $
                       let (ns, ss) = fs tm in
                          runState (pos ns ss tm) []
   where fs (PPi p n t sc)
@@ -1201,7 +1216,7 @@ dumpDecls [] = ""
 dumpDecls (d:ds) = dumpDecl d ++ "\n" ++ dumpDecls ds
 
 dumpDecl (PFix _ f ops) = show f ++ " " ++ showSep ", " ops 
-dumpDecl (PTy _ _ _ _ n t) = "tydecl " ++ show n ++ " : " ++ showImp True t
+dumpDecl (PTy _ _ _ _ n t) = "tydecl " ++ show n ++ " : " ++ showImp Nothing True False t
 dumpDecl (PClauses _ _ n cs) = "pat " ++ show n ++ "\t" ++ showSep "\n\t" (map (showCImp True) cs)
 dumpDecl (PData _ _ _ _ d) = showDImp True d
 dumpDecl (PParams _ ns ps) = "params {" ++ show ns ++ "\n" ++ dumpDecls ps ++ "}\n"

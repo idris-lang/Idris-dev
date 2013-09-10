@@ -304,8 +304,9 @@ process fn (Eval t)
                       logLvl 3 $ "Raw: " ++ show (tm', ty')
                       logLvl 10 $ "Debug: " ++ showEnvDbg [] tm'
                       imp <- impShow
-                      iResult (showImp imp (delab ist tm') ++ " : " ++
-                               showImp imp (delab ist ty'))
+                      c <- colourise
+                      iResult (showImp (Just ist) imp c (delab ist tm') ++ " : " ++
+                               showImp (Just ist) imp c (delab ist ty'))
 process fn (ExecVal t)
                   = do ctxt <- getContext
                        ist <- getIState
@@ -314,15 +315,17 @@ process fn (ExecVal t)
                        let ty' = normaliseAll ctxt [] ty
                        res <- execute tm
                        imp <- impShow
-                       iResult (showImp imp (delab ist res) ++ " : " ++
-                                showImp imp (delab ist ty'))
+                       c <- colourise
+                       iResult (showImp (Just ist) imp c (delab ist res) ++ " : " ++
+                                showImp (Just ist) imp c (delab ist ty'))
 process fn (Check (PRef _ n))
    = do ctxt <- getContext
         ist <- getIState
         imp <- impShow
+        c <- colourise
         case lookupNames n ctxt of
-             ts@(_:_) -> do mapM_ (\n -> iputStrLn $ show n ++ " : " ++
-                                         showImp imp (delabTy ist n)) ts
+             ts@(_:_) -> do mapM_ (\n -> iputStrLn $ showName (Just ist) [] False c n ++ " : " ++
+                                         showImp (Just ist) imp c (delabTy ist n)) ts
                             iResult ""
              [] -> iFail $ "No such variable " ++ show n
 process fn (Check t)
@@ -330,11 +333,12 @@ process fn (Check t)
         ctxt <- getContext
         ist <- getIState
         imp <- impShow
+        c <- colourise
         let ty' = normaliseC ctxt [] ty
         case tm of
              TType _ -> iResult ("Type : Type 1")
-             _ -> iResult (showImp imp (delab ist tm) ++ " : " ++
-                          showImp imp (delab ist ty))
+             _ -> iResult (showImp (Just ist) imp c (delab ist tm) ++ " : " ++
+                          showImp (Just ist) imp c (delab ist ty))
 
 process fn (DocStr n) = do i <- getIState
                            case lookupCtxtName n (idris_docstrings i) of
@@ -364,8 +368,9 @@ process fn (Defn n) = do i <- getIState
                             [t] -> iputStrLn (showTotal t i)
                             _ -> return ()
     where printCase i (_, lhs, rhs)
-             = do iputStrLn (showImp True (delab i lhs) ++ " = " ++
-                             showImp True (delab i rhs))
+             = do c <- colourise
+                  iputStrLn (showImp (Just i) True c (delab i lhs) ++ " = " ++
+                             showImp (Just i) True c (delab i rhs))
 process fn (TotCheck n) = do i <- getIState
                              case lookupTotal n (tt_ctxt i) of
                                 [t] -> iResult (showTotal t i)
@@ -502,10 +507,11 @@ process fn (Pattelab t)
 
 process fn (Missing n)
     = do i <- getIState
+         c <- colourise
          case lookupCtxt n (idris_patdefs i) of
                   [] -> return ()
                   [(_, tms)] ->
-                       iResult (showSep "\n" (map (showImp True) tms))
+                       iResult (showSep "\n" (map (showImp (Just i) True c) tms))
                   _ -> iFail $ "Ambiguous name"
 process fn (DynamicLink l) = do i <- getIState
                                 let lib = trim l
@@ -553,7 +559,7 @@ dumpInstance n = do i <- getIState
                     ctxt <- getContext
                     imp <- impShow
                     case lookupTy n ctxt of
-                         ts -> mapM_ (\t -> iputStrLn $ showImp imp (delab i t)) ts
+                         ts -> mapM_ (\t -> iputStrLn $ showImp Nothing imp False (delab i t)) ts
 
 showTotal t@(Partial (Other ns)) i
    = show t ++ "\n\t" ++ showSep "\n\t" (map (showTotalN i) ns)
@@ -627,6 +633,10 @@ parseArgs ("-O0":ns)             = OptLevel 0 : parseArgs ns
 parseArgs ("-O":n:ns)            = OptLevel (read n) : parseArgs ns
 parseArgs ("--target":n:ns)      = TargetTriple n : parseArgs ns
 parseArgs ("--cpu":n:ns)         = TargetCPU n : parseArgs ns
+parseArgs ("--colour":ns)        = ColourREPL True : parseArgs ns
+parseArgs ("--color":ns)         = ColourREPL True : parseArgs ns
+parseArgs ("--nocolour":ns)      = ColourREPL False : parseArgs ns
+parseArgs ("--nocolor":ns)       = ColourREPL False : parseArgs ns
 parseArgs (n:ns)                 = Filename n : (parseArgs ns)
 
 helphead =
@@ -740,6 +750,7 @@ idrisMain opts =
                    [expr] -> return (Just expr)
        when (DefaultTotal `elem` opts) $ do i <- getIState
                                             putIState (i { default_total = True })
+       setColourise $ not quiet && last (True : opt getColour opts)
        mapM_ addLangExt (opt getLanguageExt opts)
        setREPL runrepl
        setQuiet (quiet || isJust script)
@@ -875,6 +886,10 @@ getCPU _ = Nothing
 getOptLevel :: Opt -> Maybe Int
 getOptLevel (OptLevel x) = Just x
 getOptLevel _ = Nothing
+
+getColour :: Opt -> Maybe Bool
+getColour (ColourREPL b) = Just b
+getColour _ = Nothing
 
 opt :: (Opt -> Maybe a) -> [Opt] -> [a]
 opt = mapMaybe

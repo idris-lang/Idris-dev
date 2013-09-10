@@ -23,7 +23,7 @@ import Debug.Trace
 import Paths_idris
 
 ibcVersion :: Word8
-ibcVersion = 34
+ibcVersion = 37
 
 data IBCFile = IBCFile { ver :: Word8,
                          sourcefile :: FilePath,
@@ -40,6 +40,7 @@ data IBCFile = IBCFile { ver :: Word8,
                          ibc_keywords :: [String],
                          ibc_objs :: [(Codegen, FilePath)],
                          ibc_libs :: [(Codegen, String)],
+                         ibc_cgflags :: [(Codegen, String)],
                          ibc_dynamic_libs :: [String],
                          ibc_hdrs :: [(Codegen, String)],
                          ibc_access :: [(Name, Accessibility)],
@@ -57,7 +58,7 @@ deriving instance Binary IBCFile
 !-}
 
 initIBC :: IBCFile
-initIBC = IBCFile ibcVersion "" [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] []
+initIBC = IBCFile ibcVersion "" [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] []
 
 loadIBC :: FilePath -> Idris ()
 loadIBC fp = do iLOG $ "Loading ibc " ++ fp
@@ -115,6 +116,7 @@ ibc i (IBCKeyword n) f = return f { ibc_keywords = n : ibc_keywords f }
 ibc i (IBCImport n) f = return f { ibc_imports = n : ibc_imports f }
 ibc i (IBCObj tgt n) f = return f { ibc_objs = (tgt, n) : ibc_objs f }
 ibc i (IBCLib tgt n) f = return f { ibc_libs = (tgt, n) : ibc_libs f }
+ibc i (IBCCGFlag tgt n) f = return f { ibc_cgflags = (tgt, n) : ibc_cgflags f }
 ibc i (IBCDyLib n) f = return f {ibc_dynamic_libs = n : ibc_dynamic_libs f }
 ibc i (IBCHeader tgt n) f = return f { ibc_hdrs = (tgt, n) : ibc_hdrs f }
 ibc i (IBCDef n) f = case lookupDef n (tt_ctxt i) of
@@ -155,6 +157,7 @@ process i fn
                pKeywords (ibc_keywords i)
                pObjs (ibc_objs i)
                pLibs (ibc_libs i)
+               pCGFlags (ibc_cgflags i)
                pDyLibs (ibc_dynamic_libs i)
                pHdrs (ibc_hdrs i)
                pDefs (ibc_defs i)
@@ -176,7 +179,7 @@ pImports :: [FilePath] -> Idris ()
 pImports fs 
   = do mapM_ (\f -> do i <- getIState
                        ibcsd <- valIBCSubDir i
-                       ids <- allImportDirs i
+                       ids <- allImportDirs
                        fp <- liftIO $ findImport ids ibcsd f
                        if (f `elem` imported i)
                         then iLOG $ "Already read " ++ f
@@ -254,10 +257,15 @@ pKeywords k = do i <- getIState
                  putIState (i { syntax_keywords = k ++ syntax_keywords i })
 
 pObjs :: [(Codegen, FilePath)] -> Idris ()
-pObjs os = mapM_ (uncurry addObjectFile) os
+pObjs os = mapM_ (\ (cg, obj) -> do dirs <- allImportDirs
+                                    o <- liftIO $ findInPath dirs obj
+                                    addObjectFile cg o) os
 
 pLibs :: [(Codegen, String)] -> Idris ()
 pLibs ls = mapM_ (uncurry addLib) ls
+
+pCGFlags :: [(Codegen, String)] -> Idris ()
+pCGFlags ls = mapM_ (uncurry addFlag) ls
 
 pDyLibs :: [String] -> Idris ()
 pDyLibs ls = do res <- mapM (addDyLib . return) ls
@@ -691,6 +699,18 @@ instance Binary CaseAlt where
                            return (FnCase x1 x2 x3)
                    _ -> error "Corrupted binary data for CaseAlt"
 
+instance Binary CaseDefs where
+        put (CaseDefs x1 x2 x3 x4)
+          = do -- don't need totality checked version
+               put x2
+               put x3
+               put x4
+        get
+          = do x2 <- get
+               x3 <- get -- use for totality checked version
+               x4 <- get
+               return (CaseDefs x3 x2 x3 x4)
+
 instance Binary CaseInfo where
         put x@(CaseInfo x1 x2) = do put x1
                                     put x2
@@ -710,16 +730,12 @@ instance Binary Def where
                                    put x2
                 -- all primitives just get added at the start, don't write
                 Operator x1 x2 x3 -> do return ()
-                CaseOp x1 x2 x3 x3a x4 x5 x6 x7 -> 
-                                               do putWord8 3
-                                                  put x1
-                                                  put x2
-                                                  put x3
-                                                  -- no x3a
-                                                  put x4
-                                                  put x5
-                                                  put x6
-                                                  put x7
+                CaseOp x1 x2 x3 x3a x4 -> do putWord8 3
+                                             put x1
+                                             put x2
+                                             put x3
+                                             -- no x3a
+                                             put x4
         get
           = do i <- getWord8
                case i of
@@ -738,10 +754,7 @@ instance Binary Def where
                            x3 <- get
                            -- x3 <- get always []
                            x4 <- get
-                           x5 <- get
-                           x6 <- get
-                           x7 <- get
-                           return (CaseOp x1 x2 x3 [] x4 x5 x6 x7)
+                           return (CaseOp x1 x2 x3 [] x4)
                    _ -> error "Corrupted binary data for Def"
 
 instance Binary Accessibility where
@@ -805,7 +818,7 @@ instance Binary Totality where
                    _ -> error "Corrupted binary data for Totality"
 
 instance Binary IBCFile where
-        put x@(IBCFile x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24 x25)
+        put x@(IBCFile x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24 x25 x26)
          = {-# SCC "putIBCFile" #-} 
             do put x1
                put x2
@@ -832,6 +845,7 @@ instance Binary IBCFile where
                put x23
                put x24
                put x25
+               put x26
         get
           = do x1 <- get
                if x1 == ibcVersion then 
@@ -859,7 +873,8 @@ instance Binary IBCFile where
                     x23 <- get
                     x24 <- get
                     x25 <- get
-                    return (IBCFile x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24 x25)
+                    x26 <- get
+                    return (IBCFile x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24 x25 x26)
                   else return (initIBC { ver = x1 })
  
 instance Binary FnOpt where
@@ -1639,15 +1654,17 @@ instance Binary ClassInfo where
                return (CI x1 x2 x3 x4 [])
 
 instance Binary OptInfo where
-        put (Optimise x1 x2 x3)
+        put (Optimise x1 x2 x3 x4)
           = do put x1
                put x2
                put x3
+               put x4
         get
           = do x1 <- get
                x2 <- get
                x3 <- get
-               return (Optimise x1 x2 x3)
+               x4 <- get
+               return (Optimise x1 x2 x3 x4)
 
 instance Binary TypeInfo where
         put (TI x1 x2 x3) = do put x1

@@ -1,4 +1,7 @@
-reg003a.idr:4:No such variable OddList
-reg003a.idr:7:No such variable EvenList
-reg003a.idr:10:No such variable EvenList
+reg003a.idr:4:When elaborating constructor ECons:
+No such variable OddList
+reg003a.idr:7:When elaborating constructor OCons:
+No such variable EvenList
+reg003a.idr:10:When elaborating type of test:
+No such variable EvenList
 reg003a.idr:10:No type declaration for test

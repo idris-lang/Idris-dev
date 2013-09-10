@@ -137,7 +137,7 @@ elements of vectors of the same length:
 
 \begin{SaveVerbatim}{vadd}
 
-vAdd : Num a => Vect n a -> Vect n -> Vect n a
+vAdd : Num a => Vect n a -> Vect n a -> Vect n a
 vAdd Nil       Nil       = Nil
 vAdd (x :: xs) (y :: ys) = x + y :: vAdd xs ys
 

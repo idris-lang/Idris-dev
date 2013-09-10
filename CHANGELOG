@@ -6,6 +6,7 @@ New in 0.9.10:
 * Add 'quoteGoal x by p in e' which makes x equal to p applied to the goal
   in the scope e
 * At the REPL, "it" now refers to the previous expression
+* Semantic colouring at the REPL. Turn this off with --nocolour.
 
 Internal changes
 

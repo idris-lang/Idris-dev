@@ -154,8 +154,8 @@ strToken = map pack (token (many1 alphanum))
 -- combinators
 --------------------------------------------------------------------------------
 
-optional : Parser a -> Parser () 
-optional p = (p $> pure ()) <|> pure ()
+optional : Parser a -> Parser (Maybe a)
+optional p = map Just p <|> pure Nothing
 
 sepBy1 : Parser a -> Parser b -> Parser (List a)
 sepBy1 p s = [| p :: many (s $> p) |]

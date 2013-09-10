@@ -12,9 +12,12 @@ import IRTS.CodegenCommon
 import Util.Pretty
 import Util.DynamicLinker
 
+import Idris.Colours
+
 import Paths_idris
 
 import System.Console.Haskeline
+
 
 import Control.Monad.Trans.State.Strict
 
@@ -28,7 +31,7 @@ data IOption = IOption { opt_logLevel   :: Int,
                          opt_typecase   :: Bool,
                          opt_typeintype :: Bool,
                          opt_coverage   :: Bool,
-                         opt_showimp    :: Bool,
+                         opt_showimp    :: Bool, -- ^^ show implicits
                          opt_errContext :: Bool,
                          opt_repl       :: Bool,
                          opt_verbose    :: Bool,
@@ -104,6 +107,7 @@ data IState = IState {
     idris_scprims :: [(Name, (Int, PrimFn))],
     idris_objs :: [(Codegen, FilePath)],
     idris_libs :: [(Codegen, String)],
+    idris_cgflags :: [(Codegen, String)],
     idris_hdrs :: [(Codegen, String)],
     proof_list :: [(Name, [String])],
     errLine :: Maybe Int,
@@ -117,7 +121,8 @@ data IState = IState {
     compiled_so :: Maybe String,
     idris_dynamic_libs :: [DynamicLib],
     idris_language_extensions :: [LanguageExt],
-    idris_outputmode :: OutputMode
+    idris_outputmode :: OutputMode,
+    idris_colourRepl :: Bool
    }
 
 data SizeChange = Smaller | Same | Bigger | Unknown
@@ -157,6 +162,7 @@ data IBCWrite = IBCFix FixDecl
               | IBCImport FilePath
               | IBCObj Codegen FilePath
               | IBCLib Codegen String
+              | IBCCGFlag Codegen String
               | IBCDyLib String
               | IBCHeader Codegen String
               | IBCAccess Name Accessibility
@@ -172,8 +178,9 @@ data IBCWrite = IBCFix FixDecl
 idrisInit = IState initContext [] [] emptyContext emptyContext emptyContext
                    emptyContext emptyContext emptyContext emptyContext 
                    emptyContext emptyContext emptyContext emptyContext
-                   [] "" defaultOpts 6 [] [] [] [] [] [] [] [] [] []
+                   [] "" defaultOpts 6 [] [] [] [] [] [] [] [] [] [] []
                    [] Nothing Nothing [] [] [] Hidden False [] Nothing [] [] RawOutput
+                   True
 
 -- | The monad for the main REPL - reading and processing files and updating 
 -- global state (hence the IO inner monad).
@@ -232,6 +239,7 @@ data Opt = Filename String
          | Ver
          | Usage
          | Quiet
+         | ColourREPL Bool
          | Ideslave
          | ShowLibs
          | ShowLibdir
@@ -245,8 +253,8 @@ data Opt = Filename String
          | DefaultTotal
          | DefaultPartial
          | WarnPartial
-         | NoCoverage 
-         | ErrContext 
+         | NoCoverage
+         | ErrContext
          | ShowImpl
          | Verbose
          | IBCSubDir String
@@ -688,6 +696,7 @@ deriving instance Binary ClassInfo
 !-}
 
 data OptInfo = Optimise { collapsible :: Bool,
+                          isnewtype :: Bool,
                           forceable :: [Int], -- argument positions
                           recursive :: [Int] }
     deriving Show
@@ -788,7 +797,7 @@ expandNS syn n = case syn_namespace syn of
 --- Pretty printing declarations and terms
 
 instance Show PTerm where
-    show tm = showImp False tm
+    show tm = showImp Nothing False False tm
 
 instance Pretty PTerm where
   pretty = prettyImp False
@@ -803,8 +812,8 @@ instance Show PData where
     show d = showDImp False d
 
 showDeclImp _ (PFix _ f ops) = show f ++ " " ++ showSep ", " ops
-showDeclImp t (PTy _ _ _ _ n ty) = show n ++ " : " ++ showImp t ty
-showDeclImp t (PPostulate _ _ _ _ n ty) = show n ++ " : " ++ showImp t ty
+showDeclImp t (PTy _ _ _ _ n ty) = show n ++ " : " ++ showImp Nothing t False ty
+showDeclImp t (PPostulate _ _ _ _ n ty) = show n ++ " : " ++ showImp Nothing t False ty
 showDeclImp _ (PClauses _ _ n c) = showSep "\n" (map show c)
 showDeclImp _ (PData _ _ _ _ d) = show d
 showDeclImp _ (PParams f ns ps) = "parameters " ++ show ns ++ "\n" ++ 
@@ -813,24 +822,24 @@ showDeclImp _ (PParams f ns ps) = "parameters " ++ show ns ++ "\n" ++
 
 showCImp :: Bool -> PClause -> String
 showCImp impl (PClause _ n l ws r w) 
-   = showImp impl l ++ showWs ws ++ " = " ++ showImp impl r
+   = showImp Nothing impl False l ++ showWs ws ++ " = " ++ showImp Nothing impl False r
              ++ " where " ++ show w 
   where
     showWs [] = ""
-    showWs (x : xs) = " | " ++ showImp impl x ++ showWs xs
+    showWs (x : xs) = " | " ++ showImp Nothing impl False x ++ showWs xs
 showCImp impl (PWith _ n l ws r w) 
-   = showImp impl l ++ showWs ws ++ " with " ++ showImp impl r
+   = showImp Nothing impl False l ++ showWs ws ++ " with " ++ showImp Nothing impl False r
              ++ " { " ++ show w ++ " } " 
   where
     showWs [] = ""
-    showWs (x : xs) = " | " ++ showImp impl x ++ showWs xs
+    showWs (x : xs) = " | " ++ showImp Nothing impl False x ++ showWs xs
 
 
 showDImp :: Bool -> PData -> String
 showDImp impl (PDatadecl n ty cons) 
-   = "data " ++ show n ++ " : " ++ showImp impl ty ++ " where\n\t"
+   = "data " ++ show n ++ " : " ++ showImp Nothing impl False ty ++ " where\n\t"
      ++ showSep "\n\t| " 
-            (map (\ (_, n, t, _) -> show n ++ " : " ++ showImp impl t) cons)
+            (map (\ (_, n, t, _) -> show n ++ " : " ++ showImp Nothing impl False t) cons)
 
 getImps :: [PArg] -> [(Name, PTerm)]
 getImps [] = []
@@ -850,7 +859,10 @@ getConsts (_ : xs) = getConsts xs
 getAll :: [PArg] -> [PTerm]
 getAll = map getTm 
 
-prettyImp :: Bool -> PTerm -> Doc
+-- | Pretty-print a high-level Idris term
+prettyImp :: Bool -- ^^ whether to show implicits
+          -> PTerm -- ^^ the term to pretty-print
+          -> Doc
 prettyImp impl = prettySe 10
   where
     prettySe p (PQuote r) =
@@ -1036,108 +1048,145 @@ prettyImp impl = prettySe 10
     bracket outer inner doc
       | inner > outer = lparen <> doc <> rparen
       | otherwise     = doc
-        
-showImp :: Bool -> PTerm -> String
-showImp impl tm = se 10 tm where
-    se p (PQuote r) = "![" ++ show r ++ "]"
-    se p (PPatvar fc n) = if impl then show n ++ "[p]" else show n
-    se p (PInferRef fc n) = "!" ++ show n -- ++ "[" ++ show fc ++ "]"
-    se p (PRef fc n) = if impl then show n -- ++ "[" ++ show fc ++ "]"
-                               else showbasic n
-      where showbasic n@(UN _) = show n
-            showbasic (MN _ s) = s
-            showbasic (NS n s) = showSep "." (reverse s) ++ "." ++ showbasic n
-    se p (PLam n ty sc) = bracket p 2 $ "\\ " ++ show n ++ 
-                            (if impl then " : " ++ se 10 ty else "") ++ " => " 
-                            ++ se 10 sc
-    se p (PLet n ty v sc) = bracket p 2 $ "let " ++ show n ++ " = " ++ se 10 v ++
-                            " in " ++ se 10 sc 
-    se p (PPi (Exp l s _) n ty sc)
+
+-- | Show Idris name
+showName :: Maybe IState   -- ^^ the Idris state, for information about names
+         -> [(Name, Bool)] -- ^^ the bound variables and whether they're implicit
+         -> Bool           -- ^^ whether to show implicits
+         -> Bool           -- ^^ whether to colourise
+         -> Name           -- ^^ the term to show
+         -> String
+showName ist bnd impl colour n = if colour then colourise n else showbasic n
+    where name = if impl then show n else showbasic n
+          showbasic n@(UN _) = show n
+          showbasic (MN _ s) = s
+          showbasic (NS n s) = showSep "." (reverse s) ++ "." ++ showbasic n
+          fst3 (x, _, _) = x
+          colourise n = let ctxt' = fmap tt_ctxt ist in
+                        case ctxt' of
+                          Nothing -> name
+                          Just ctxt | Just impl <- lookup n bnd -> if impl then colouriseImplicit name
+                                                                           else colouriseBound name
+                                    | isDConName n ctxt -> colouriseData name
+                                    | isFnName n ctxt   -> colouriseFun name
+                                    | isTConName n ctxt -> colouriseType name
+                                    -- The assumption is that if a name is not bound and does not exist in the
+                                    -- global context, then we're somewhere in which implicit info has been lost
+                                    -- (like error messages). Thus, unknown vars are colourised as implicits.
+                                    | otherwise         -> colouriseImplicit name
+
+-- | Show Idris term
+showImp :: Maybe IState -- ^^ the Idris state, for information about identifiers
+        -> Bool  -- ^^ whether to show implicits
+        -> Bool  -- ^^ whether to colourise
+        -> PTerm -- ^^ the term to show
+        -> String
+showImp ist impl colour tm = se 10 [] tm where
+    perhapsColourise :: (String -> String) -> String -> String
+    perhapsColourise col str = if colour then col str else str
+
+    se :: Int -> [(Name, Bool)] -> PTerm -> String
+    se p bnd (PQuote r) = "![" ++ show r ++ "]"
+    se p bnd (PPatvar fc n) = if impl then show n ++ "[p]" else show n
+    se p bnd (PInferRef fc n) = "!" ++ show n -- ++ "[" ++ show fc ++ "]"
+    se p bnd (PRef fc n) = showName ist bnd impl colour n
+    se p bnd (PLam n ty sc) = bracket p 2 $ "\\ " ++ perhapsColourise colouriseBound (show n) ++
+                              (if impl then " : " ++ se 10 bnd ty else "") ++ " => " 
+                              ++ se 10 ((n, False):bnd) sc
+    se p bnd (PLet n ty v sc) = bracket p 2 $ "let " ++ perhapsColourise colouriseBound (show n) ++
+                                " = " ++ se 10 bnd v ++
+                                " in " ++ se 10 ((n, False):bnd) sc
+    se p bnd (PPi (Exp l s _) n ty sc)
         | n `elem` allNamesIn sc || impl
                                   = bracket p 2 $
-                                    (if l then "|(" else "(") ++ 
-                                    show n ++ " : " ++ se 10 ty ++ 
+                                    (if l then "|(" else "(") ++
+                                    perhapsColourise colouriseBound (show n) ++ " : " ++ se 10 bnd ty ++
                                     ") " ++ st ++
-                                    "-> " ++ se 10 sc
-        | otherwise = bracket p 2 $ se 0 ty ++ " " ++ st ++ "-> " ++ se 10 sc
+                                    "-> " ++ se 10 ((n, False):bnd) sc
+        | otherwise = bracket p 2 $ se 0 bnd ty ++ " " ++ st ++ "-> " ++ se 10 bnd sc
       where st = case s of
                     Static -> "[static] "
                     _ -> ""
-    se p (PPi (Imp l s _) n ty sc)
-        | impl = bracket p 2 $ (if l then "|{" else "{") ++ 
-                               show n ++ " : " ++ se 10 ty ++ 
-                               "} " ++ st ++ "-> " ++ se 10 sc
-        | otherwise = se 10 sc
+    se p bnd (PPi (Imp l s _) n ty sc)
+        | impl = bracket p 2 $ (if l then "|{" else "{") ++
+                               perhapsColourise colouriseBound (show n) ++ " : " ++ se 10 bnd ty ++ 
+                               "} " ++ st ++ "-> " ++ se 10 ((n, True):bnd) sc
+        | otherwise = se 10 ((n, True):bnd) sc
       where st = case s of
                     Static -> "[static] "
                     _ -> ""
-    se p (PPi (Constraint _ _ _) n ty sc)
-        = bracket p 2 $ se 10 ty ++ " => " ++ se 10 sc
-    se p (PPi (TacImp _ _ s _) n ty sc)
-        = bracket p 2 $ "{tacimp " ++ show n ++ " : " ++ se 10 ty ++ "} -> " ++ se 10 sc
-    se p e
-        | Just str <- slist p e = str
-        | Just num <- snat p e  = show num
-    se p (PMatchApp _ f) = "match " ++ show f
-    se p (PApp _ (PRef _ f) [])
-        | not impl = show f
-    se p (PApp _ (PRef _ op@(UN (f:_))) args)
+    se p bnd (PPi (Constraint _ _ _) n ty sc)
+        = bracket p 2 $ se 10 bnd ty ++ " => " ++ se 10 bnd sc
+    se p bnd (PPi (TacImp _ _ s _) n ty sc)
+        = bracket p 2 $
+          "{tacimp " ++ (perhapsColourise colouriseBound (show n)) ++ " : " ++ se 10 bnd ty ++ "} -> " ++
+          se 10 ((n, False):bnd) sc
+    se p bnd e
+        | Just str <- slist p bnd e = str
+        | Just num <- snat p e  = perhapsColourise colouriseData (show num)
+    se p bnd (PMatchApp _ f) = "match " ++ show f
+    se p bnd (PApp _ hd@(PRef _ f) [])
+        | not impl = se p bnd hd
+    se p bnd (PApp _ op@(PRef _ (UN (f:_))) args)
         | length (getExps args) == 2 && not impl && not (isAlpha f) 
             = let [l, r] = getExps args in
-              bracket p 1 $ se 1 l ++ " " ++ show op ++ " " ++ se 0 r
-    se p (PApp _ f as) 
+              bracket p 1 $ se 1 bnd l ++ " " ++ se p bnd op ++ " " ++ se 0 bnd r
+    se p bnd (PApp _ f as)
         = let args = getExps as in
-              bracket p 1 $ se 1 f ++ if impl then concatMap sArg as
-                                              else concatMap seArg args
-    se p (PCase _ scr opts) = "case " ++ se 10 scr ++ " of " ++ showSep " | " (map sc opts)
-       where sc (l, r) = se 10 l ++ " => " ++ se 10 r
-    se p (PHidden tm) = "." ++ se 0 tm
-    se p (PRefl _ t) 
-        | not impl = "refl"
-        | otherwise = "refl {" ++ se 10 t ++ "}"
-    se p (PResolveTC _) = "resolvetc"
-    se p (PTrue _) = "()"
-    se p (PFalse _) = "_|_"
-    se p (PEq _ l r) = bracket p 2 $ se 10 l ++ " = " ++ se 10 r
-    se p (PRewrite _ l r _) = bracket p 2 $ "rewrite " ++ se 10 l ++ " in " ++ se 10 r
-    se p (PTyped l r) = "(" ++ se 10 l ++ " : " ++ se 10 r ++ ")"
-    se p (PPair _ l r) = "(" ++ se 10 l ++ ", " ++ se 10 r ++ ")"
-    se p (PDPair _ l t r) = "(" ++ se 10 l ++ " ** " ++ se 10 r ++ ")"
-    se p (PAlternative a as) = "(|" ++ showSep " , " (map (se 10) as) ++ "|)"
-    se p PType = "Type"
-    se p (PConstant c) = show c
-    se p (PProof ts) = "proof { " ++ show ts ++ "}"
-    se p (PTactics ts) = "tactics { " ++ show ts ++ "}"
-    se p (PMetavar n) = "?" ++ show n
-    se p (PReturn f) = "return"
-    se p PImpossible = "impossible"
-    se p Placeholder = "_"
-    se p (PDoBlock _) = "do block show not implemented"
-    se p (PElabError s) = show s
-    se p (PCoerced t) = se p t
-    se p (PUnifyLog t) = "%unifyLog " ++ se p t
-    se p (PGoal f t n sc) = "quoteGoal " ++ show n ++ " by " ++ se 10 t ++
-                            " in " ++ se 10 sc
---     se p x = "Not implemented"
+              bracket p 1 $ se 1 bnd f ++ if impl then concatMap (sArg bnd) as
+                                                  else concatMap (seArg bnd) args
+    se p bnd (PCase _ scr opts) = "case " ++ se 10 bnd scr ++ " of " ++ showSep " | " (map sc opts)
+       where sc (l, r) = se 10 bnd l ++ " => " ++ se 10 bnd r
+    se p bnd (PHidden tm) = "." ++ se 0 bnd tm
+    se p bnd (PRefl _ t)
+        | not impl = perhapsColourise colouriseData "refl"
+        | otherwise = perhapsColourise colouriseData $ "refl {" ++ se 10 bnd t ++ "}"
+    se p bnd (PResolveTC _) = "resolvetc"
+    se p bnd (PTrue _) = perhapsColourise colouriseType "()"
+    se p bnd (PFalse _) = perhapsColourise colouriseType "_|_"
+    se p bnd (PEq _ l r) = bracket p 2 $ se 10 bnd l ++ perhapsColourise colouriseType " = " ++ se 10 bnd r
+    se p bnd (PRewrite _ l r _) = bracket p 2 $ "rewrite " ++ se 10 bnd l ++ " in " ++ se 10 bnd r
+    se p bnd (PTyped l r) = "(" ++ se 10 bnd l ++ " : " ++ se 10 bnd r ++ ")"
+    se p bnd (PPair _ l r) = "(" ++ se 10 bnd l ++ ", " ++ se 10 bnd r ++ ")"
+    se p bnd (PDPair _ l t r) = "(" ++ se 10 bnd l ++ " ** " ++ se 10 bnd r ++ ")"
+    se p bnd (PAlternative a as) = "(|" ++ showSep " , " (map (se 10 bnd) as) ++ "|)"
+    se p bnd PType = perhapsColourise colouriseType "Type"
+    se p bnd (PConstant c) = perhapsColourise (cfun c) (show c)
+        where cfun (AType _) = colouriseType
+              cfun StrType   = colouriseType
+              cfun PtrType   = colouriseType
+              cfun VoidType  = colouriseType
+              cfun _         = colouriseData
+    se p bnd (PProof ts) = "proof { " ++ show ts ++ "}"
+    se p bnd (PTactics ts) = "tactics { " ++ show ts ++ "}"
+    se p bnd (PMetavar n) = "?" ++ show n
+    se p bnd (PReturn f) = "return"
+    se p bnd PImpossible = "impossible"
+    se p bnd Placeholder = "_"
+    se p bnd (PDoBlock _) = "do block show not implemented"
+    se p bnd (PElabError s) = show s
+    se p bnd (PCoerced t) = se p bnd t
+    se p bnd (PUnifyLog t) = "%unifyLog " ++ se p bnd t
+--     se p bnd x = "Not implemented"
 
-    slist' p (PApp _ (PRef _ nil) _)
+    slist' p bnd (PApp _ (PRef _ nil) _)
       | nsroot nil == UN "Nil" = Just []
-    slist' p (PApp _ (PRef _ cons) args)
+    slist' p bnd (PApp _ (PRef _ cons) args)
       | nsroot cons == UN "::",
         (PExp {getTm=tl}):(PExp {getTm=hd}):imps <- reverse args,
         all isImp imps,
-        Just tl' <- slist' p tl
+        Just tl' <- slist' p bnd tl
       = Just (hd:tl')
       where
         isImp (PImp {}) = True
         isImp _         = False
-    slist' _ _ = Nothing
+    slist' _ _ _ = Nothing
 
-    slist p e | Just es <- slist' p e = Just $
+    slist p bnd e | Just es <- slist' p bnd e = Just $
       case es of []  -> "[]"
-                 [x] -> "[" ++ se p x ++ "]"
-                 xs  -> "[" ++ intercalate "," (map (se p) xs) ++ "]"
-    slist _ _ = Nothing
+                 [x] -> "[" ++ se p bnd x ++ "]"
+                 xs  -> "[" ++ intercalate "," (map (se p bnd ) xs) ++ "]"
+    slist _ _ _ = Nothing
 
     -- since Prelude is always imported, S & Z are unqualified iff they're the
     -- Nat ones.
@@ -1151,15 +1200,15 @@ showImp impl tm = se 10 tm where
 
     natns = "Prelude.Nat."
 
-    sArg (PImp _ _ n tm _) = siArg (n, tm)
-    sArg (PExp _ _ tm _) = seArg tm
-    sArg (PConstraint _ _ tm _) = scArg tm
-    sArg (PTacImplicit _ _ n _ tm _) = stiArg (n, tm)
+    sArg bnd (PImp _ _ n tm _) = siArg bnd (n, tm)
+    sArg bnd (PExp _ _ tm _) = seArg bnd tm
+    sArg bnd (PConstraint _ _ tm _) = scArg bnd tm
+    sArg bnd (PTacImplicit _ _ n _ tm _) = stiArg bnd (n, tm)
 
-    seArg arg      = " " ++ se 0 arg
-    siArg (n, val) = " {" ++ show n ++ " = " ++ se 10 val ++ "}"
-    scArg val = " {{" ++ se 10 val ++ "}}"
-    stiArg (n, val) = " {auto " ++ show n ++ " = " ++ se 10 val ++ "}"
+    seArg bnd arg      = " " ++ se 0 bnd arg
+    siArg bnd (n, val) = " {" ++ show n ++ " = " ++ se 10 bnd val ++ "}"
+    scArg bnd val = " {{" ++ se 10 bnd val ++ "}}"
+    stiArg bnd (n, val) = " {auto " ++ show n ++ " = " ++ se 10 bnd val ++ "}"
 
     bracket outer inner str | inner > outer = "(" ++ str ++ ")"
                             | otherwise = str

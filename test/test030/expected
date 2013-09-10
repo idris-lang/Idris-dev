@@ -1,4 +1,5 @@
-test030a.idr:12:Can't unify IsJust (Just x) with IsJust (prove (getProof x))
+test030a.idr:12:When elaborating right hand side of test030.testReflect1:
+Can't unify IsJust (Just x) with IsJust (prove (getProof x))
 
 Specifically:
 	Can't unify Just x with Nothing

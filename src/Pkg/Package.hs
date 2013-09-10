@@ -34,9 +34,9 @@ buildPkg warnonly (install, fp)
      = do pkgdesc <- parseDesc fp
           ok <- mapM (testLib warnonly (pkgname pkgdesc)) (libdeps pkgdesc)
           when (and ok) $
-            do make (makefile pkgdesc)
-               dir <- getCurrentDirectory
+            do dir <- getCurrentDirectory
                setCurrentDirectory $ dir </> sourcedir pkgdesc
+               make (makefile pkgdesc)
                case (execout pkgdesc) of
                    Nothing -> buildMods (NoREPL : Verbose : idris_opts pkgdesc)
                                     (modules pkgdesc)
@@ -50,9 +50,9 @@ buildPkg warnonly (install, fp)
 cleanPkg :: FilePath -> IO ()
 cleanPkg fp 
      = do pkgdesc <- parseDesc fp
-          clean (makefile pkgdesc)
           dir <- getCurrentDirectory
           setCurrentDirectory $ dir </> sourcedir pkgdesc
+          clean (makefile pkgdesc) 
           mapM_ rmIBC (modules pkgdesc)
           case execout pkgdesc of
                Nothing -> return ()

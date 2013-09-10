@@ -78,6 +78,7 @@ data Err = Msg String
          | ProofSearchFail Err
          | NoRewriting Term
          | At FC Err
+         | Elaborating String Name Err
          | ProviderError String
   deriving Eq
 
@@ -98,6 +99,7 @@ instance Sized Err where
   size UniverseError = 1
   size ProgramLineComment = 1
   size (At fc err) = size fc + size err
+  size (Elaborating _ n err) = size err
   size (ProviderError msg) = length msg
   size _ = 1
 
