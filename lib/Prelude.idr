@@ -353,9 +353,9 @@ syntax "[" [start] ".." [end] "]"
 syntax "[" [start] "," [next] ".." [end] "]" 
      = count start (next - start) end 
 
-syntax "[" [start] "..]" 
+syntax "[" [start] ".." "]" 
      = countFrom start 1
-syntax "[" [start] "," [next] "..]" 
+syntax "[" [start] "," [next] ".." "]" 
      = countFrom start (next - start)
 
 ---- More utilities
