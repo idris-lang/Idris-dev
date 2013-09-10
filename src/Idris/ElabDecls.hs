@@ -869,8 +869,13 @@ elabClause info tcgen (cnum, PClause fc fname lhs_in withs rhs_in whereblock)
         checkInferred fc (delab' i crhs True) rhs
         return $ Right (clhs, crhs)
   where
-    decorate (NS x ns) = NS (UN ('#':show x)) (ns ++ [show cnum, show fname])
-    decorate x = NS (UN ('#':show x)) [show cnum, show fname]
+    decorate (NS x ns) 
+       = NS (SN (WhereN cnum fname x)) ns -- ++ [show cnum]) 
+--        = NS (UN ('#':show x)) (ns ++ [show cnum, show fname])
+    decorate x 
+       = SN (WhereN cnum fname x)
+--        = NS (SN (WhereN cnum fname x)) [show cnum]
+--        = NS (UN ('#':show x)) [show cnum, show fname]
 
     sepBlocks bs = sepBlocks' [] bs where
       sepBlocks' ns (d@(PTy _ _ _ _ n t) : bs)
@@ -1134,7 +1139,7 @@ elabClass info syn doc fc constraints tn ps ds
     pibind [] x = x
     pibind ((n, ty): ns) x = PPi expl n ty (pibind ns x) 
 
-    mdec (UN n) = UN ('!':n)
+    mdec (UN n) = SN (MethodN (UN n))
     mdec (NS x n) = NS (mdec x) n
     mdec x = x
 
@@ -1174,7 +1179,8 @@ elabClass info syn doc fc constraints tn ps ds
 
     -- Generate a function for chasing a dictionary constraint
     cfun cn c syn all con
-        = do let cfn = UN ('@':'@':show cn ++ "#" ++ show con)
+        = do let cfn = UN ('@':'@':show cn ++ "#" ++ show con) 
+                       -- SN (ParentN cn (show con))
              let mnames = take (length all) $ map (\x -> MN x "meth") [0..]
              let capp = PApp fc (PRef fc cn) (map (pexp . PRef fc) mnames)
              let lhs = PApp fc (PRef fc cfn) [pconst capp]
@@ -1254,7 +1260,8 @@ elabInstance info syn fc cs n ps t expn ds
                        _ -> fail $ show fc ++ ":" ++ show n ++ " is not a type class"
          let constraint = PApp fc (PRef fc n) (map pexp ps)
          let iname = case expn of
-                         Nothing -> UN ('@':show n ++ "$" ++ show ps)
+                         Nothing -> SN (InstanceN n (map show ps)) 
+                          -- UN ('@':show n ++ "$" ++ show ps)
                          Just nm -> nm
          -- if the instance type matches any of the instances we have already,
          -- and it's not a named instance, then it's overlapping, so report an error
@@ -1351,8 +1358,8 @@ elabInstance info syn fc cs n ps t expn ds
                 _ -> return ps'
     getWParams (_ : ps) = getWParams ps
 
-    decorate ns iname (UN n) = NS (UN ('!':n)) ns
-    decorate ns iname (NS (UN n) s) = NS (UN ('!':n)) ns
+    decorate ns iname (UN n) = NS (SN (MethodN (UN n))) ns
+    decorate ns iname (NS (UN n) s) = NS (SN (MethodN (UN n))) ns
 
     mkTyDecl (n, op, t, _) = PTy "" syn fc op n t
 

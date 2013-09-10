@@ -23,7 +23,7 @@ import Debug.Trace
 import Paths_idris
 
 ibcVersion :: Word8
-ibcVersion = 37
+ibcVersion = 38
 
 data IBCFile = IBCFile { ver :: Word8,
                          sourcefile :: FilePath,
@@ -356,21 +356,18 @@ instance Binary FC where
  
 instance Binary Name where
         put x
-          = {-# SCC "putName" #-}
-            case x of
-                UN x1 -> {-# SCC "putUN" #-}
-                         do putWord8 0
-                            {-# SCC "putNString" #-} put x1
-                NS x1 x2 -> {-# SCC "putNS" #-}
-                            do putWord8 1
+          = case x of
+                UN x1 -> do putWord8 0
+                            put x1
+                NS x1 x2 -> do putWord8 1
                                put x1
                                put x2
-                MN x1 x2 -> {-# SCC "putMN" #-}
-                            do putWord8 2
+                MN x1 x2 -> do putWord8 2
                                put x1
                                put x2
-                NErased -> {-# SCC "putNErased" #-}
-                         putWord8 3
+                NErased -> putWord8 3
+                SN x1 -> do putWord8 4
+                            put x1
         get
           = do i <- getWord8
                case i of
@@ -383,7 +380,44 @@ instance Binary Name where
                            x2 <- get
                            return (MN x1 x2)
                    3 -> return NErased
+                   4 -> do x1 <- get
+                           return (SN x1)
                    _ -> error "Corrupted binary data for Name"
+
+instance Binary SpecialName where
+        put x
+          = case x of
+                WhereN x1 x2 x3 -> do putWord8 0
+                                      put x1
+                                      put x2
+                                      put x3
+                InstanceN x1 x2 -> do putWord8 1
+                                      put x1
+                                      put x2
+                ParentN x1 x2 -> do putWord8 2
+                                    put x1
+                                    put x2
+                MethodN x1 -> do putWord8 3
+                                 put x1
+                CaseN x1 -> do putWord8 4; put x1
+        get
+          = do i <- getWord8
+               case i of
+                   0 -> do x1 <- get
+                           x2 <- get
+                           x3 <- get
+                           return (WhereN x1 x2 x3)
+                   1 -> do x1 <- get
+                           x2 <- get
+                           return (InstanceN x1 x2)
+                   2 -> do x1 <- get
+                           x2 <- get
+                           return (ParentN x1 x2)
+                   3 -> do x1 <- get
+                           return (MethodN x1)
+                   4 -> do x1 <- get
+                           return (CaseN x1)
+                   _ -> error "Corrupted binary data for SpecialName"
 
 
 instance Binary Const where

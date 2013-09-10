@@ -349,6 +349,7 @@ elab ist info pattern tcgen fn tm
              elabIArg _ = return () -- already done, just a name
              
              mkN n@(NS _ _) = n
+             mkN n@(SN _) = n
              mkN n = case namespace info of
                         Just xs@(_:_) -> NS n xs
                         _ -> n
@@ -498,8 +499,10 @@ elab ist info pattern tcgen fn tm
              movelast tyn
              solve
         where mkCaseName (NS n ns) = NS (mkCaseName n) ns
-              mkCaseName (UN x) = UN (x ++ "_case")
-              mkCaseName (MN i x) = MN i (x ++ "_case")
+              mkCaseName n = SN (CaseN n)
+--               mkCaseName (UN x) = UN (x ++ "_case")
+--               mkCaseName (MN i x) = MN i (x ++ "_case")
+--               mkCaseName (SN s) = 
               mkN n@(NS _ _) = n
               mkN n = case namespace info of
                         Just xs@(_:_) -> NS n xs
@@ -685,7 +688,8 @@ resolveTC depth fn ist
 
     -- HACK! Rather than giving a special name, better to have some kind
     -- of flag in ClassInfo structure
-    chaser (UN ('@':'@':_)) = True
+    chaser (UN ('@':'@':_)) = True -- old way
+    chaser (SN (ParentN _ _)) = True
     chaser (NS n _) = chaser n
     chaser _ = False
 
@@ -1208,6 +1212,7 @@ reflectName (NS n ns)
 reflectName (MN i n) 
   = reflCall "MN" [RConstant (I i), RConstant (Str n)]
 reflectName (NErased) = Var (reflm "NErased")
+reflectName n = Var (reflm "NErased") -- special name, not yet implemented
 
 reflectBinder :: Binder Term -> Raw
 reflectBinder (Lam t)

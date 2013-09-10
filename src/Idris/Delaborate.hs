@@ -154,13 +154,24 @@ pshow i (ProofSearchFail e) = pshow i e
 pshow i (NoRewriting tm) = "rewrite did not change type " ++ show (delab i tm)
 pshow i (At f e) = show f ++ ":" ++ pshow i e
 pshow i (Elaborating s n e) = "When elaborating " ++ s ++ 
-                               showbasic n ++ ":\n" ++ pshow i e
+                               showqual i n ++ ":\n" ++ pshow i e
 pshow i (ProviderError msg) = "Type provider error: " ++ msg
 
 showSc i [] = ""
 showSc i xs = "\n\nIn context:\n" ++ showSep "\n" (map showVar (reverse xs))
   where showVar (x, y) = "\t" ++ showbasic x ++ " : " ++ show (delab i y)
 
+showqual :: IState -> Name -> String
+showqual i n = showName (Just i) [] False False (dens n)
+  where
+    dens ns@(NS n _) = case lookupCtxt n (idris_implicits i) of
+                              [_] -> n -- just one thing
+                              _ -> ns
+    dens n = n
+
 showbasic n@(UN _) = show n
 showbasic (MN _ s) = s
 showbasic (NS n s) = showSep "." (reverse s) ++ "." ++ showbasic n
+showbasic (SN s) = show s
+
+

@@ -1061,6 +1061,7 @@ showName ist bnd impl colour n = if colour then colourise n else showbasic n
           showbasic n@(UN _) = show n
           showbasic (MN _ s) = s
           showbasic (NS n s) = showSep "." (reverse s) ++ "." ++ showbasic n
+          showbasic (SN s) = show s
           fst3 (x, _, _) = x
           colourise n = let ctxt' = fmap tt_ctxt ist in
                         case ctxt' of

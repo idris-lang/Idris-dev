@@ -394,6 +394,7 @@ prepare_apply fn imps =
 
     mkMN n@(MN _ _) = n
     mkMN n@(UN x) = MN 1000 x
+    mkMN n@(SN s) = MN 1000 (show s)
     mkMN (NS n xs) = NS (mkMN n) xs
 
     rebind hs (Bind n t sc)

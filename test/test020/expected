@@ -1,4 +1,4 @@
-When elaborating right hand side of Main.foo:
+When elaborating right hand side of foo:
 test020a.idr:16:Can't unify Vect n a with List a
 
 Specifically:

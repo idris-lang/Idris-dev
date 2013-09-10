@@ -80,7 +80,7 @@ gccDbg TRACE = "-O2"
 gccDbg _ = "-O2"
 
 cname :: Name -> String
-cname n = "_idris_" ++ concatMap cchar (show n)
+cname n = "_idris_" ++ concatMap cchar (showCG n)
   where cchar x | isAlpha x || isDigit x = [x]
                 | otherwise = "_" ++ show (fromEnum x) ++ "_"
 

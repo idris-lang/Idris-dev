@@ -1,1 +1,1 @@
-reg006.idr:17:RBTree.lookup is possibly not total due to: RBTree.lookup_case
+reg006.idr:17:RBTree.lookup is possibly not total due to: RBTree.case block in lookup

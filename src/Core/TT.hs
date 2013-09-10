@@ -193,28 +193,63 @@ data Name = UN String -- ^ User-provided name
           | NS Name [String] -- ^ Root, namespaces 
           | MN Int String -- ^ Machine chosen names
           | NErased -- ^ Name of somethng which is never used in scope
+          | SN SpecialName -- ^ Decorated function names
   deriving (Eq, Ord)
 {-! 
 deriving instance Binary Name 
+!-}
+
+data SpecialName = WhereN Int Name Name
+                 | InstanceN Name [String]
+                 | ParentN Name String
+                 | MethodN Name 
+                 | CaseN Name
+  deriving (Eq, Ord)
+{-! 
+deriving instance Binary SpecialName 
 !-}
 
 instance Sized Name where
   size (UN n)     = 1
   size (NS n els) = 1 + length els
   size (MN i n) = 1
-  size NErased = 1
+  size _ = 1
 
 instance Pretty Name where
   pretty (UN n) = text n
   pretty (NS n s) = pretty n
   pretty (MN i s) = lbrace <+> text s <+> (text . show $ i) <+> rbrace
+  pretty (SN s) = text (show s)
 
 instance Show Name where
     show (UN n) = n
     show (NS n s) = showSep "." (reverse s) ++ "." ++ show n
     show (MN _ "underscore") = "_"
     show (MN i s) = "{" ++ s ++ show i ++ "}"
+    show (SN s) = show s
     show NErased = "_"
+
+instance Show SpecialName where
+    show (WhereN i p c) = show p ++ ", " ++ show c
+    show (InstanceN cl inst) = showSep ", " inst ++ " instance of " ++ show cl
+    show (MethodN m) = "method " ++ show m
+    show (ParentN p c) = show p ++ "#" ++ c
+    show (CaseN n) = "case block in " ++ show n
+
+-- Show a name in a way decorated for code generation, not human reading
+showCG :: Name -> String
+showCG (UN n) = n
+showCG (NS n s) = showSep "." (reverse s) ++ "." ++ show n
+showCG (MN _ "underscore") = "_"
+showCG (MN i s) = "{" ++ s ++ show i ++ "}"
+showCG (SN s) = showCG' s
+  where showCG' (WhereN i p c) = show p ++ ":" ++ show c ++ ":" ++ show i
+        showCG' (InstanceN cl inst) = '@':show cl ++ '$':show inst
+        showCG' (MethodN m) = '!':show m
+        showCG' (ParentN p c) = show p ++ "#" ++ show c
+        showCG' (CaseN c) = show c ++ "_case"
+showCG NErased = "_"
+
 
 -- |Contexts allow us to map names to things. A root name maps to a collection
 -- of things in different namespaces with that name.
@@ -223,6 +258,9 @@ emptyContext = Map.empty
 
 tcname (UN ('@':_)) = True
 tcname (NS n _) = tcname n
+tcname (SN (InstanceN _ _)) = True
+tcname (SN (MethodN _)) = True
+tcname (SN (ParentN _ _)) = True
 tcname _ = False
 
 implicitable (NS n _) = implicitable n
@@ -761,6 +799,11 @@ nextName (UN x) = let (num', nm') = span isDigit (reverse x)
   where
     readN "" = 0
     readN x  = read x
+nextName (SN x) = SN (nextName' x)
+  where
+    nextName' (WhereN i f x) = WhereN i f (nextName x)
+    nextName' (CaseN n) = CaseN (nextName n)
+    nextName' (MethodN n) = MethodN (nextName n)
 
 type Term = TT Name
 type Type = Term
