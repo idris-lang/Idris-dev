@@ -59,6 +59,15 @@ loadState = do (ES p s e) <- get
                   Just st -> put st
                   _ -> fail "Nothing to undo"
 
+errAt :: String -> Name -> Elab' aux a -> Elab' aux a
+errAt thing n elab = do s <- get
+                        case runStateT elab s of
+                             OK (a, s') -> do put s'
+                                              return a
+                             Error (At f e) -> 
+                                 lift $ Error (At f (Elaborating thing n e))
+                             Error e -> lift $ Error (Elaborating thing n e)
+
 erun :: FC -> Elab' aux a -> Elab' aux a
 erun f elab = do s <- get
                  case runStateT elab s of
@@ -263,7 +272,7 @@ regret = processTactic' Regret
 compute :: Elab' aux ()
 compute = processTactic' Compute
 
-computeLet :: Name -> Elab' aux ()
+computeLet :: Name -> Elab' aux () 
 computeLet n = processTactic' (ComputeLet n)
 
 simplify :: Elab' aux ()

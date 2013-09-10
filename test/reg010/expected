@@ -1,4 +1,5 @@
-reg010.idr:5:Can't unify P x with P y
+reg010.idr:5:When elaborating right hand side of usubst.unsafeSubst:
+Can't unify P x with P y
 
 Specifically:
 	Can't unify P x with P y

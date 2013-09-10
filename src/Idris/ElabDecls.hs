@@ -57,8 +57,9 @@ elabType info syn doc fc opts n ty' = {- let ty' = piBind (params info) ty_in
          ty' <- implicit syn n ty'
          let ty = addImpl i ty'
          logLvl 2 $ show n ++ " type " ++ showImp Nothing True False ty
-         ((tyT, defer, is), log) <- tclift $ elaborate ctxt n (TType (UVal 0)) []
-                                             (erun fc (build i info False n ty))
+         ((tyT, defer, is), log) <- 
+               tclift $ elaborate ctxt n (TType (UVal 0)) []
+                        (errAt "type of " n (erun fc (build i info False n ty)))
          ds <- checkDef fc defer
          addDeferred ds
          mapM_ (elabCaseBlock info) is 
@@ -139,8 +140,9 @@ elabData info syn doc fc codata (PDatadecl n t_in dcons)
          i <- getIState
          t_in <- implicit syn n t_in
          let t = addImpl i t_in
-         ((t', defer, is), log) <- tclift $ elaborate ctxt n (TType (UVal 0)) []
-                                            (erun fc (build i info False n t))
+         ((t', defer, is), log) <- 
+             tclift $ elaborate ctxt n (TType (UVal 0)) []
+                  (errAt "data declaration " n (erun fc (build i info False n t)))
          def' <- checkDef fc defer
          addDeferredTyCon def'
          mapM_ (elabCaseBlock info) is
@@ -484,8 +486,9 @@ elabCon info syn tn codata (doc, n, t_in, fc)
          t_in <- implicit syn n (if codata then mkLazy t_in else t_in)
          let t = addImpl i t_in
          logLvl 2 $ show fc ++ ":Constructor " ++ show n ++ " : " ++ showImp Nothing True False t
-         ((t', defer, is), log) <- tclift $ elaborate ctxt n (TType (UVal 0)) []
-                                            (erun fc (build i info False n t))
+         ((t', defer, is), log) <- 
+              tclift $ elaborate ctxt n (TType (UVal 0)) []
+                       (errAt "constructor " n (erun fc (build i info False n t)))
          logLvl 2 $ "Rechecking " ++ show t'
          def' <- checkDef fc defer
          addDeferred def'
@@ -800,7 +803,8 @@ elabClause info tcgen (cnum, PClause fc fname lhs_in withs rhs_in whereblock)
         logLvl 4 ("Fixed parameters: " ++ show params ++ " from " ++ show (fn_ty, fn_is))
         ((lhs', dlhs, []), _) <- 
             tclift $ elaborate ctxt (MN 0 "patLHS") infP []
-                     (erun fc (buildTC i info True tcgen fname (infTerm lhs)))
+                     (errAt "left hand side of " fname 
+                       (erun fc (buildTC i info True tcgen fname (infTerm lhs))))
         let lhs_tm = orderPats (getInferTerm lhs')
         let lhs_ty = getInferType lhs'
         logLvl 3 ("Elaborated: " ++ show lhs_tm)
@@ -835,8 +839,10 @@ elabClause info tcgen (cnum, PClause fc fname lhs_in withs rhs_in whereblock)
         ((rhs', defer, is), _) <- 
            tclift $ elaborate ctxt (MN 0 "patRHS") clhsty []
                     (do pbinds lhs_tm
-                        (_, _, is) <- erun fc (build i info False fname rhs)
-                        erun fc $ psolve lhs_tm
+                        (_, _, is) <- errAt "right hand side of " fname 
+                                        (erun fc (build i info False fname rhs))
+                        errAt "right hand side of " fname 
+                              (erun fc $ psolve lhs_tm)
                         tt <- get_term
                         let (tm, ds) = runState (collectDeferred tt) []
                         return (tm, ds, is))
@@ -934,7 +940,8 @@ elabClause info tcgen (_, PWith fc fname lhs_in withs wval_in withblock)
         logLvl 5 ("LHS: " ++ showImp Nothing True False lhs)
         ((lhs', dlhs, []), _) <- 
             tclift $ elaborate ctxt (MN 0 "patLHS") infP []
-              (erun fc (buildTC i info True tcgen fname (infTerm lhs))) 
+              (errAt "left hand side of with in " fname
+                (erun fc (buildTC i info True tcgen fname (infTerm lhs))) )
         let lhs_tm = orderPats (getInferTerm lhs')
         let lhs_ty = getInferType lhs'
         let ret_ty = getRetTy lhs_ty
@@ -950,7 +957,8 @@ elabClause info tcgen (_, PWith fc fname lhs_in withs wval_in withblock)
                         (bindTyArgs PVTy bargs infP) []
                         (do pbinds lhs_tm
                             -- TODO: may want where here - see winfo abpve
-                            (_', d, is) <- erun fc (build i info False fname (infTerm wval))
+                            (_', d, is) <- errAt "with value in " fname 
+                              (erun fc (build i info False fname (infTerm wval)))
                             erun fc $ psolve lhs_tm
                             tt <- get_term
                             return (tt, d, is))

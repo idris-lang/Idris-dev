@@ -554,8 +554,11 @@ instance Show Def where
     show (Operator ty _ _) = "Operator: " ++ show ty
     show (CaseOp (CaseInfo inlc inlr) ty ps_in ps cd) 
       = let (ns, sc) = cases_compiletime cd
+            (ns_t, sc_t) = cases_totcheck cd 
             (ns', sc') = cases_runtime cd in
           "Case: " ++ show ty ++ " " ++ show ps ++ "\n" ++ 
+                                        "TOTALITY CHECK TIME:\n\n" ++
+                                        show ns_t ++ " " ++ show sc_t ++ "\n\n" ++
                                         "COMPILE TIME:\n\n" ++
                                         show ns ++ " " ++ show sc ++ "\n\n" ++
                                         "RUN TIME:\n\n" ++
