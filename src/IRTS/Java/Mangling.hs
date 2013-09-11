@@ -92,6 +92,7 @@ mangleWithPrefix prefix (UN name) =
       | capitalize = (toUpper x) : (cleanWs False xs)
       | otherwise  = x : (cleanWs False xs)
     cleanWs _ [] = []
+mangleWithPrefix prefix s@(SN _) = mangleWithPrefix prefix (UN (showCG s))
 
 mangle :: (Applicative m, MonadError String m) => Name -> m Ident
 mangle = mangleWithPrefix "__IDRCG__"
