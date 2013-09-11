@@ -83,6 +83,9 @@ mangleWithPrefix prefix (UN name) =
       | x == ']' = "_RSBrace" ++ cleanNonLetter xs
       | x == '(' = "_LBrace" ++ cleanNonLetter xs
       | x == ')' = "_RBrace" ++ cleanNonLetter xs
+      | x == ':' = "_Colon" ++ cleanNonLetter xs
+      | x == ' ' = "_Space" ++ cleanNonLetter xs
+      | x == ',' = "_Comma" ++ cleanNonLetter xs
       | x == '_' = "__" ++ cleanNonLetter xs
       | not (isAlphaNum x) = "_" ++ (show $ ord x) ++ xs
       | otherwise = x:cleanNonLetter xs
