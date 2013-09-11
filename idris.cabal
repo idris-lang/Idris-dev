@@ -227,6 +227,12 @@ Extra-source-files:    lib/Makefile  lib/*.idr lib/Prelude/*.idr
                        test/test028/run
                        test/test028/*.idr
                        test/test028/expected
+                       test/test029/run
+                       test/test029/*.idr
+                       test/test029/expected
+                       test/test030/run
+                       test/test030/*.idr
+                       test/test030/expected
 
 
 source-repository head
