@@ -313,11 +313,23 @@ translateNamespace :: Name -> String
 translateNamespace (UN _)    = idrNamespace
 translateNamespace (NS _ ns) = idrNamespace ++ concatMap translateIdentifier ns
 translateNamespace (MN _ _)  = idrNamespace
+translateNamespace (SN name) = idrNamespace ++ translateSpecialName name
+translateNamespace NErased   = idrNamespace
 
 translateName :: Name -> String
 translateName (UN name)   = translateIdentifier name
 translateName (NS name _) = translateName name
 translateName (MN i name) = translateIdentifier name ++ show i
+translateName (SN name)   = translateSpecialName name
+translateName NErased     = ""
+
+translateSpecialName :: SpecialName -> String
+translateSpecialName name
+  | WhereN i m n  <- name = translateName m ++ translateName n ++ show i
+  | InstanceN n s <- name = translateName n ++ concatMap translateIdentifier s
+  | ParentN n s   <- name = translateName n ++ translateIdentifier s
+  | MethodN n     <- name = translateName n
+  | CaseN n       <- name = translateName n
 
 translateConstant :: Const -> JS
 translateConstant (I i)                    = JSNum (JSInt i)
