@@ -122,7 +122,8 @@ data IState = IState {
     idris_dynamic_libs :: [DynamicLib],
     idris_language_extensions :: [LanguageExt],
     idris_outputmode :: OutputMode,
-    idris_colourRepl :: Bool
+    idris_colourRepl :: Bool,
+    idris_colourTheme :: ColourTheme
    }
 
 data SizeChange = Smaller | Same | Bigger | Unknown
@@ -180,7 +181,7 @@ idrisInit = IState initContext [] [] emptyContext emptyContext emptyContext
                    emptyContext emptyContext emptyContext emptyContext
                    [] "" defaultOpts 6 [] [] [] [] [] [] [] [] [] [] []
                    [] Nothing Nothing [] [] [] Hidden False [] Nothing [] [] RawOutput
-                   True
+                   True defaultTheme
 
 -- | The monad for the main REPL - reading and processing files and updating 
 -- global state (hence the IO inner monad).
@@ -1050,41 +1051,45 @@ prettyImp impl = prettySe 10
       | otherwise     = doc
 
 -- | Show Idris name
-showName :: Maybe IState   -- ^^ the Idris state, for information about names
+showName :: Maybe IState   -- ^^ the Idris state, for information about names and colours
          -> [(Name, Bool)] -- ^^ the bound variables and whether they're implicit
          -> Bool           -- ^^ whether to show implicits
          -> Bool           -- ^^ whether to colourise
          -> Name           -- ^^ the term to show
          -> String
-showName ist bnd impl colour n = if colour then colourise n else showbasic n
+showName ist bnd impl colour n = case ist of
+                                   Just i -> if colour then colourise n (idris_colourTheme i) else showbasic n
+                                   Nothing -> showbasic n
     where name = if impl then show n else showbasic n
           showbasic n@(UN _) = show n
           showbasic (MN _ s) = s
           showbasic (NS n s) = showSep "." (reverse s) ++ "." ++ showbasic n
           showbasic (SN s) = show s
           fst3 (x, _, _) = x
-          colourise n = let ctxt' = fmap tt_ctxt ist in
-                        case ctxt' of
-                          Nothing -> name
-                          Just ctxt | Just impl <- lookup n bnd -> if impl then colouriseImplicit name
-                                                                           else colouriseBound name
-                                    | isDConName n ctxt -> colouriseData name
-                                    | isFnName n ctxt   -> colouriseFun name
-                                    | isTConName n ctxt -> colouriseType name
-                                    -- The assumption is that if a name is not bound and does not exist in the
-                                    -- global context, then we're somewhere in which implicit info has been lost
-                                    -- (like error messages). Thus, unknown vars are colourised as implicits.
-                                    | otherwise         -> colouriseImplicit name
+          colourise n t = let ctxt' = fmap tt_ctxt ist in
+                          case ctxt' of
+                            Nothing -> name
+                            Just ctxt | Just impl <- lookup n bnd -> if impl then colouriseImplicit t name
+                                                                             else colouriseBound t name
+                                      | isDConName n ctxt -> colouriseData t name
+                                      | isFnName n ctxt   -> colouriseFun t name
+                                      | isTConName n ctxt -> colouriseType t name
+                                      -- The assumption is that if a name is not bound and does not exist in the
+                                      -- global context, then we're somewhere in which implicit info has been lost
+                                      -- (like error messages). Thus, unknown vars are colourised as implicits.
+                                      | otherwise         -> colouriseImplicit t name
 
 -- | Show Idris term
-showImp :: Maybe IState -- ^^ the Idris state, for information about identifiers
+showImp :: Maybe IState -- ^^ the Idris state, for information about identifiers and colours
         -> Bool  -- ^^ whether to show implicits
         -> Bool  -- ^^ whether to colourise
         -> PTerm -- ^^ the term to show
         -> String
 showImp ist impl colour tm = se 10 [] tm where
-    perhapsColourise :: (String -> String) -> String -> String
-    perhapsColourise col str = if colour then col str else str
+    perhapsColourise :: (ColourTheme -> String -> String) -> String -> String
+    perhapsColourise col str = case ist of
+                                 Just i -> if colour then col (idris_colourTheme i) str else str
+                                 Nothing -> str
 
     se :: Int -> [(Name, Bool)] -> PTerm -> String
     se p bnd (PQuote r) = "![" ++ show r ++ "]"
