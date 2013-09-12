@@ -1,4 +1,9 @@
-module Idris.Colours where
+module Idris.Colours (
+  IdrisColour(..),
+  ColourTheme(..),
+  defaultTheme,
+  colouriseKwd, colouriseBound, colouriseImplicit,
+  colouriseType, colouriseFun, colouriseData) where
 
 import System.Console.ANSI
 
@@ -35,20 +40,20 @@ colourise (IdrisColour c v u b) str = setSGRCode sgr ++ str ++ setSGRCode [Reset
                 (if u then [SetUnderlining SingleUnderline] else []) ++
                 (if b then [SetConsoleIntensity BoldIntensity] else [])
 
-colouriseKwd :: String -> String
-colouriseKwd = colourise (keywordColour defaultTheme)
+colouriseKwd :: ColourTheme -> String -> String
+colouriseKwd t = colourise (keywordColour t)
 
-colouriseBound :: String -> String
-colouriseBound = colourise (boundVarColour defaultTheme)
+colouriseBound :: ColourTheme -> String -> String
+colouriseBound t = colourise (boundVarColour t)
 
-colouriseImplicit :: String -> String
-colouriseImplicit = colourise (implicitColour defaultTheme)
+colouriseImplicit :: ColourTheme -> String -> String
+colouriseImplicit t = colourise (implicitColour t)
 
-colouriseFun :: String -> String
-colouriseFun = colourise (functionColour defaultTheme)
+colouriseFun :: ColourTheme -> String -> String
+colouriseFun t = colourise (functionColour t)
 
-colouriseType :: String -> String
-colouriseType = colourise (typeColour defaultTheme)
+colouriseType :: ColourTheme -> String -> String
+colouriseType t = colourise (typeColour t)
 
-colouriseData :: String -> String
-colouriseData = colourise (dataColour defaultTheme)
+colouriseData :: ColourTheme -> String -> String
+colouriseData t = colourise (dataColour t)
