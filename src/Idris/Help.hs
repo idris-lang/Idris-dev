@@ -46,5 +46,6 @@ help =
     ([":?",":h",":help"], NoArg, "Display this help text"),
     ([":set"], OptionArg, "Set an option (errorcontext, showimplicits)"),
     ([":unset"], OptionArg, "Unset an option"),
+    ([":colour", ":color"], NoArg, "Turn REPL colours on or off; set a specific colour"),
     ([":q",":quit"], NoArg, "Exit the Idris system")
   ]

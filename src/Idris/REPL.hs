@@ -541,6 +541,11 @@ process fn (UnsetOpt ShowImpl)   = setImpShow False
 
 process fn (SetOpt _) = iFail "Not a valid option"
 process fn (UnsetOpt _) = iFail "Not a valid option"
+process fn (SetColour ty c) = setColour ty c
+process fn ColourOn = do ist <- getIState
+                         putIState $ ist { idris_colourRepl = True }
+process fn ColourOff = do ist <- getIState
+                          putIState $ ist { idris_colourRepl = False }
 
 
 classInfo :: ClassInfo -> Idris ()

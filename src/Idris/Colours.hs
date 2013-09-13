@@ -3,7 +3,8 @@ module Idris.Colours (
   ColourTheme(..),
   defaultTheme,
   colouriseKwd, colouriseBound, colouriseImplicit,
-  colouriseType, colouriseFun, colouriseData) where
+  colouriseType, colouriseFun, colouriseData,
+  ColourType(..)) where
 
 import System.Console.ANSI
 
@@ -12,6 +13,7 @@ data IdrisColour = IdrisColour { colour    :: Color
                                , underline :: Bool
                                , bold      :: Bool
                                }
+                   deriving (Eq, Show)
 
 mkColour :: Color -> IdrisColour
 mkColour c = IdrisColour c True False False
@@ -23,6 +25,7 @@ data ColourTheme = ColourTheme { keywordColour  :: IdrisColour
                                , typeColour     :: IdrisColour
                                , dataColour     :: IdrisColour
                                }
+                   deriving (Eq, Show)
 
 defaultTheme :: ColourTheme
 defaultTheme = ColourTheme { keywordColour = IdrisColour Black True True True
@@ -57,3 +60,12 @@ colouriseType t = colourise (typeColour t)
 
 colouriseData :: ColourTheme -> String -> String
 colouriseData t = colourise (dataColour t)
+
+
+data ColourType = KeywordColour
+                | BoundVarColour
+                | ImplicitColour
+                | FunctionColour
+                | TypeColour
+                | DataColour
+                  deriving (Eq, Show, Bounded, Enum)
