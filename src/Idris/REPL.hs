@@ -524,7 +524,10 @@ process fn (DynamicLink l) = do i <- getIState
                                 case handle of
                                   Nothing -> iFail $ "Could not load dynamic lib \"" ++ l ++ "\""
                                   Just x -> do let libs = idris_dynamic_libs i
-                                               putIState $ i { idris_dynamic_libs = x:libs }
+                                               if x `elem` libs
+                                                  then do iLOG ("Tried to load duplicate library " ++ lib_name x)
+                                                          return ()
+                                                  else putIState $ i { idris_dynamic_libs = x:libs }
     where trim = reverse . dropWhile isSpace . reverse . dropWhile isSpace
 process fn ListDynamic = do i <- getIState
                             iputStrLn "Dynamic libraries:"
