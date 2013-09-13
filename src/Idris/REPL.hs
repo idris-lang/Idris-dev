@@ -113,7 +113,7 @@ ideslave orig mods
                  do let fn = case mods of
                                  (f:_) -> f
                                  _ -> ""
-                    case parseCmd i cmd of
+                    case parseCmd i "(input)" cmd of
                          Left err -> iFail $ show err
                          Right (Prove n') -> do iResult ""
                                                 idrisCatch
@@ -214,7 +214,7 @@ processInput cmd orig inputs
          let fn = case inputs of
                         (f:_) -> f
                         _ -> ""
-         case parseCmd i cmd of
+         case parseCmd i "(input)" cmd of
             Left err ->   do liftIO $ print err
                              return (Just inputs)
             Right Reload -> 
@@ -794,7 +794,7 @@ idrisMain opts =
                                                return ()
        when (runrepl && not quiet && not idesl && not (isJust script)) $ iputStrLn banner
        ist <- getIState
-       
+
        loadInputs inputs
 
        liftIO $ hSetBuffering stdout LineBuffering
@@ -806,6 +806,7 @@ idrisMain opts =
        case script of
          Nothing -> return ()
          Just expr -> execScript expr
+       when runrepl $ initScript
        when (runrepl && not idesl) $ runInputT replSettings $ repl ist inputs
        when (idesl) $ ideslaveStart ist inputs
        ok <- noErrors
@@ -831,6 +832,39 @@ execScript expr = do i <- getIState
                                         (tm, _) <- elabVal toplevel False term
                                         res <- execute tm
                                         liftIO $ exitWith ExitSuccess
+
+-- | Locate the platform-specific location for the init script
+getInitScript :: Idris FilePath
+getInitScript = do idrisDir <- lift $ getAppUserDataDirectory "idris"
+                   return $ idrisDir </> "repl" </> "init"
+
+-- | Run the initialisation script
+initScript :: Idris ()
+initScript = do script <- getInitScript
+                idrisCatch (do go <- liftIO $ doesFileExist script
+                               when go $ do
+                                 h <- liftIO $ openFile script ReadMode
+                                 runInit h
+                                 liftIO $ hClose h)
+                           (\e -> iFail $ "Error reading init file: " ++ show e)
+    where runInit :: Handle -> Idris ()
+          runInit h = do eof <- lift (hIsEOF h)
+                         ist <- getIState
+                         unless eof $ do
+                           line <- liftIO $ hGetLine h
+                           script <- getInitScript
+                           processLine ist line script
+                           runInit h
+          processLine i cmd input =
+              case parseCmd i input cmd of
+                   Left err -> liftIO $ print err
+                   Right Reload -> iFail "Init scripts cannot reload the file"
+                   Right (Load f) -> iFail "Init scripts cannot load files"
+                   Right (ModImport f) -> iFail "Init scripts cannot import modules"
+                   Right Edit -> iFail "Init scripts cannot invoke the editor"
+                   Right Proofs -> proofs i
+                   Right Quit -> iFail "Init scripts cannot quit Idris"
+                   Right cmd  -> process [] cmd
 
 getFile :: Opt -> Maybe String
 getFile (Filename str) = Just str
