@@ -93,13 +93,13 @@ pColour = doColour colours
           doColour ((s, c):cs) = (try (symbol s) >> return c) <|> doColour cs
 
 pColourMod :: IParser (IdrisColour -> IdrisColour)
-pColourMod = (symbol "vivid" >> return doVivid)
-         <|> (symbol "dull" >> return doDull)
-         <|> (symbol "underline" >> return doUnderline)
-         <|> (symbol "nounderline" >> return doNoUnderline)
-         <|> (symbol "bold" >> return doBold)
-         <|> (symbol "nobold" >> return doNoBold)
-         <|> (pColour >>= return . doSetColour)
+pColourMod = try (symbol "vivid" >> return doVivid)
+         <|> try (symbol "dull" >> return doDull)
+         <|> try (symbol "underline" >> return doUnderline)
+         <|> try (symbol "nounderline" >> return doNoUnderline)
+         <|> try (symbol "bold" >> return doBold)
+         <|> try (symbol "nobold" >> return doNoBold)
+         <|> try (pColour >>= return . doSetColour)
     where doVivid i       = i { vivid = True }
           doDull i        = i { vivid = False }
           doUnderline i   = i { underline = True }
