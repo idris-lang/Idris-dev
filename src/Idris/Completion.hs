@@ -7,13 +7,16 @@ import Core.CoreParser (opChars)
 
 import Idris.AbsSyntaxTree
 import Idris.Help
+import Idris.Colours
 
 import Control.Monad.State.Strict
 
 import Data.List
 import Data.Maybe
+import Data.Char(toLower)
 
 import System.Console.Haskeline
+import System.Console.ANSI (Color)
 
 
 fst3 :: (a, b, c) -> a
@@ -109,6 +112,32 @@ lookupInHelp cmd = lookupInHelp' cmd help
                                                 | otherwise   = lookupInHelp' cmd xs
           lookupInHelp' cmd [] = Nothing
 
+completeColour :: CompletionFunc Idris
+completeColour (prev, next) = case words (reverse prev) of
+                                [c] | isCmd c -> do cmpls <- completeColourOpt next
+                                                    return (reverse $ c ++ " ", cmpls)
+                                [c, o] | o `elem` opts -> let correct = (c ++ " " ++ o) in
+                                                          return (reverse correct, [simpleCompletion ""])
+                                       | o `elem` colourTypes -> completeColourFormat (prev, next)
+                                       | otherwise -> let cmpls = completeWith (opts ++ colourTypes) o in
+                                                      let sofar = (c ++ " ") in
+                                                      return (reverse sofar, cmpls)
+                                cmd@(c:o:_) | isCmd c && o `elem` colourTypes ->
+                                        completeColourFormat (prev, next)
+                                _ -> noCompletion (prev, next)
+    where completeColourOpt :: String -> Idris [Completion]
+          completeColourOpt = return . completeWith (opts ++ colourTypes)
+          opts = ["on", "off"]
+          colourTypes = map (map toLower . reverse . drop 6 . reverse . show) $
+                        enumFromTo (minBound::ColourType) maxBound
+          isCmd ":colour" = True
+          isCmd ":color"  = True
+          isCmd _         = False
+          colours = map (map toLower . show) $ enumFromTo (minBound::Color) maxBound
+          formats = ["vivid", "dull", "underline", "nounderline", "bold", "nobold"]
+          completeColourFormat = let getCmpl = completeWith (colours ++ formats) in
+                                 completeWord Nothing " \t" (return . getCmpl)
+
 -- | Get the completion function for a particular command
 completeCmd :: String -> CompletionFunc Idris
 completeCmd cmd (prev, next) = fromMaybe completeCmdName $ fmap completeArg $ lookupInHelp cmd
@@ -118,6 +147,7 @@ completeCmd cmd (prev, next) = fromMaybe completeCmdName $ fmap completeArg $ lo
           completeArg ModuleArg = noCompletion (prev, next) -- FIXME do later
           completeArg ExprArg = completeExpr [] (prev, next)
           completeArg MetaVarArg = completeMetaVar (prev, next) -- FIXME only complete one name
+          completeArg ColourArg = completeColour (prev, next)
           completeArg NoArg = noCompletion (prev, next)
           completeCmdName = return $ ("", completeWith commands cmd)
 

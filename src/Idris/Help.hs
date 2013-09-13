@@ -6,17 +6,19 @@ data CmdArg = ExprArg -- ^ The command takes an expression
             | ModuleArg -- ^ The command takes a module name
             | OptionArg -- ^ The command takes an option
             | MetaVarArg -- ^ The command takes a metavariable
+            | ColourArg  -- ^ The command is the colour-setting command
             | NoArg -- ^ No completion (yet!?)
             | SpecialHeaderArg -- ^ do not use
 
 instance Show CmdArg where
-    show ExprArg = "<expr>"
-    show NameArg = "<name>"
-    show FileArg = "<filename>"
-    show ModuleArg = "<module>"
-    show OptionArg = "<option>"
-    show MetaVarArg = "<metavar>"
-    show NoArg = ""
+    show ExprArg          = "<expr>"
+    show NameArg          = "<name>"
+    show FileArg          = "<filename>"
+    show ModuleArg        = "<module>"
+    show OptionArg        = "<option>"
+    show MetaVarArg       = "<metavar>"
+    show ColourArg        = "<option>"
+    show NoArg            = ""
     show SpecialHeaderArg = "Arguments"
 
 help :: [([String], CmdArg, String)]
@@ -46,5 +48,6 @@ help =
     ([":?",":h",":help"], NoArg, "Display this help text"),
     ([":set"], OptionArg, "Set an option (errorcontext, showimplicits)"),
     ([":unset"], OptionArg, "Unset an option"),
+    ([":colour", ":color"], ColourArg, "Turn REPL colours on or off; set a specific colour"),
     ([":q",":quit"], NoArg, "Exit the Idris system")
   ]
