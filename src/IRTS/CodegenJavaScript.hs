@@ -224,7 +224,7 @@ codegenJavaScript target definitions filename outputType = do
                                  ("#!/usr/bin/env node\n", "-node")
                                JavaScript ->
                                  ("", "-browser")
-  path <- getDataDir
+  path       <- getDataDir
   idrRuntime <- readFile $ path ++ "/js/Runtime-common.js"
   tgtRuntime <- readFile $ concat [path, "/js/Runtime", runtime, ".js"]
   writeFile filename $ intercalate "\n" $ [ header
@@ -246,19 +246,22 @@ codegenJavaScript target definitions filename outputType = do
     mainLoop :: String
     mainLoop = compileJS $
       JSSeq [ JSAlloc "main" $ Just $ JSFunction [] (
-                jsTailcall $ jsCall "__IDR__runMain0" []
+                jsTailcall $ jsCall mainFun []
               )
             , jsCall "main" []
             ]
+
+    mainFun :: String
+    mainFun = idrNamespace ++ translateName (MN 0 "runMain")
 
 translateIdentifier :: String -> String
 translateIdentifier =
   replaceReserved . concatMap replaceBadChars
   where replaceBadChars :: Char -> String
         replaceBadChars c
-          | ' ' <- c = "_"
-          | '_' <- c = "__"
-          | isDigit c = "_" ++ [c] ++ "_"
+          | ' ' <- c  = "_"
+          | '_' <- c  = "__"
+          | isDigit c = '_' : show (ord c)
           | not (isLetter c && isAscii c) = '_' : show (ord c)
           | otherwise = [c]
         replaceReserved s
@@ -317,24 +320,24 @@ translateNamespace (SN name) = idrNamespace ++ translateSpecialName name
 translateNamespace NErased   = idrNamespace
 
 translateName :: Name -> String
-translateName (UN name)   = translateIdentifier name
-translateName (NS name _) = translateName name
-translateName (MN i name) = translateIdentifier name ++ show i
-translateName (SN name)   = translateSpecialName name
-translateName NErased     = ""
+translateName (UN name)   = 'u' : translateIdentifier name
+translateName (NS name _) = 'n' : translateName name
+translateName (MN i name) = 'm' : translateIdentifier name ++ show i
+translateName (SN name)   = 's' : translateSpecialName name
+translateName NErased     = "e"
 
 translateSpecialName :: SpecialName -> String
 translateSpecialName name
   | WhereN i m n  <- name =
-    "_where" ++ show i ++ "_" ++ translateName m ++ translateName n
+    'w' : translateName m ++ translateName n ++ show i
   | InstanceN n s <- name =
-    "_inst_" ++ translateName n ++ concatMap translateIdentifier s
+    'i' : translateName n ++ concatMap translateIdentifier s
   | ParentN n s   <- name =
-    "_parent_" ++ translateName n ++ translateIdentifier s
+    'p' : translateName n ++ translateIdentifier s
   | MethodN n     <- name =
-    "_meth_" ++ translateName n
+    'm' : translateName n
   | CaseN n       <- name =
-    "_case_" ++ translateName n
+    'c' : translateName n
 
 translateConstant :: Const -> JS
 translateConstant (I i)                    = JSNum (JSInt i)
@@ -441,7 +444,8 @@ translateDeclaration (path, SFun name params stackSize body)
         assignVar n s = JSAlloc (jsVar n)  (Just $ JSRaw s)
 
         assignAux :: (LVar, String) -> JS
-        assignAux (var, val) = JSAssign (JSRaw $ translateVariableName var) (JSRaw val)
+        assignAux (var, val) =
+          JSAssign (JSRaw $ translateVariableName var) (JSRaw val)
 
         p :: [String]
         p = map translateName params
