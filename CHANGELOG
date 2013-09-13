@@ -9,6 +9,7 @@ New in 0.9.10:
 * Semantic colouring at the REPL. Turn this off with --nocolour.
 * Some prettifying of error message
 * The contents of ~/.idris/repl/init are run at REPL start-up.
+* The REPL stores a command history in ~/.idris/repl/history
 
 Internal changes
 
