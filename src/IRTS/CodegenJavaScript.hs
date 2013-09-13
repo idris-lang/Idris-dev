@@ -325,11 +325,16 @@ translateName NErased     = ""
 
 translateSpecialName :: SpecialName -> String
 translateSpecialName name
-  | WhereN i m n  <- name = translateName m ++ translateName n ++ show i
-  | InstanceN n s <- name = translateName n ++ concatMap translateIdentifier s
-  | ParentN n s   <- name = translateName n ++ translateIdentifier s
-  | MethodN n     <- name = translateName n
-  | CaseN n       <- name = translateName n
+  | WhereN i m n  <- name =
+    "_where" ++ show i ++ "_" ++ translateName m ++ translateName n
+  | InstanceN n s <- name =
+    "_inst_" ++ translateName n ++ concatMap translateIdentifier s
+  | ParentN n s   <- name =
+    "_parent_" ++ translateName n ++ translateIdentifier s
+  | MethodN n     <- name =
+    "_meth_" ++ translateName n
+  | CaseN n       <- name =
+    "_case_" ++ translateName n
 
 translateConstant :: Const -> JS
 translateConstant (I i)                    = JSNum (JSInt i)
@@ -626,59 +631,9 @@ translateExpression (SError msg) =
 translateExpression (SForeign _ _ "putStr" [(FString, var)]) =
   jsCall (idrRTNamespace ++ "print") [JSVar var]
 
-translateExpression (SForeign _ _ fun args)
-  | "[]=" `isSuffixOf` fun
-  , (obj:idx:val:[]) <- args =
-    JSRaw $ concat [object obj, index idx, assign val]
-
-  | "[]" `isSuffixOf` fun
-  , (obj:idx:[]) <- args =
-    JSRaw $ object obj ++ index idx
-
-  | "[" `isPrefixOf` fun && "]=" `isSuffixOf` fun
-  , (obj:val:[]) <- args =
-    JSRaw $ concat [object obj, '[' : name ++ "]", assign val]
-
-  | "[" `isPrefixOf` fun && "]" `isSuffixOf` fun
-  , (obj:[]) <- args =
-    JSRaw $ object obj ++ '[' : name ++ "]"
-
-  | "." `isPrefixOf` fun, "=" `isSuffixOf` fun
-  , (obj:val:[]) <- args =
-    JSRaw $ concat [object obj, field, assign val]
-
-  | "." `isPrefixOf` fun
-  , (obj:[]) <- args =
-    JSRaw $ object obj ++ field
-
-  | "." `isPrefixOf` fun
-  , (obj:[(FUnit, _)]) <- args =
-    JSRaw $ concat [object obj, method, "()"]
-
-  | "." `isPrefixOf` fun
-  , (obj:as) <- args =
-    JSRaw $ concat [object obj, method, arguments as]
-
-  | "[]=" `isSuffixOf` fun
-  , (idx:val:[]) <- args =
-    JSRaw $ concat [array, index idx, assign val]
-
-  | "[]" `isSuffixOf` fun
-  , (idx:[]) <- args =
-    JSRaw $ array ++ index idx
-
-  | otherwise = JSRaw $ fun ++ arguments args
+translateExpression (SForeign _ _ fun args) =
+  ffi fun (map generateWrapper args)
   where
-    name         = filter (`notElem` "[]=") fun
-    method       = name
-    field        = name
-    array        = name
-    object o     = translateVariableName (snd o)
-    index  i     = "[" ++ translateVariableName (snd i) ++ "]"
-    assign v     = '=' : generateWrapper v
-    arguments as =
-      '(' : intercalate "," (map generateWrapper as) ++ ")"
-
     generateWrapper (ffunc, name)
       | FFunction   <- ffunc =
         idrRTNamespace ++ "ffiWrap(" ++ translateVariableName name ++ ")"
@@ -726,6 +681,37 @@ translateExpression SNothing = JSNull
 
 translateExpression e =
   JSError $ "Not yet implemented: " ++ filter (/= '\'') (show e)
+
+data FFI = FFICode Char | FFIArg Int | FFIError String
+
+ffi :: String -> [String] -> JS
+ffi code args = let parsed = ffiParse code in
+                    case ffiError parsed of
+                         Just err -> JSError err
+                         Nothing  -> JSRaw $ renderFFI parsed args
+  where
+    ffiParse :: String -> [FFI]
+    ffiParse ""           = []
+    ffiParse ['%']        = [FFIError "Invalid positional argument"]
+    ffiParse ('%':'%':ss) = FFICode '%' : ffiParse ss
+    ffiParse ('%':s:ss)
+      | isDigit s =
+         FFIArg (read $ s : takeWhile isDigit ss) : ffiParse (dropWhile isDigit ss)
+      | otherwise =
+          [FFIError "Invalid positional argument"]
+    ffiParse (s:ss) = FFICode s : ffiParse ss
+
+    ffiError :: [FFI] -> Maybe String
+    ffiError []                 = Nothing
+    ffiError ((FFIError s):xs)  = Just s
+    ffiError (x:xs)             = ffiError xs
+
+    renderFFI :: [FFI] -> [String] -> String
+    renderFFI [] _ = ""
+    renderFFI ((FFICode c) : fs) args = c : renderFFI fs args
+    renderFFI ((FFIArg i) : fs) args
+      | i < length args && i >= 0 = args !! i ++ renderFFI fs args
+      | otherwise = "Argument index out of bounds"
 
 data CaseType = ConCase Int
               | TypeCase JSType
