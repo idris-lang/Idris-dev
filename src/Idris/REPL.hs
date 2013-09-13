@@ -20,6 +20,7 @@ import Idris.Completion
 import Idris.IdeSlave
 import Idris.Chaser
 import Idris.Imports
+import Idris.Colours
 
 import Paths_idris
 import Util.System
@@ -68,14 +69,18 @@ repl :: IState -- ^ The initial state
 repl orig mods
    = H.catch
       (do let quiet = opt_quiet (idris_options orig)
+          i <- lift getIState
+          let colour = idris_colourRepl i
+          let theme = idris_colourTheme i
           let prompt = if quiet
                           then ""
-                          else mkPrompt mods ++ "> "
+                          else let str = mkPrompt mods ++ ">" in
+                               (if colour then colourisePrompt theme str else str) ++ " "
           x <- getInputLine prompt
           case x of
               Nothing -> do lift $ when (not quiet) (iputStrLn "Bye bye")
                             return ()
-              Just input -> H.catch 
+              Just input -> H.catch
                               (do ms <- lift $ processInput input orig mods
                                   case ms of
                                       Just mods -> repl orig mods
@@ -541,6 +546,11 @@ process fn (UnsetOpt ShowImpl)   = setImpShow False
 
 process fn (SetOpt _) = iFail "Not a valid option"
 process fn (UnsetOpt _) = iFail "Not a valid option"
+process fn (SetColour ty c) = setColour ty c
+process fn ColourOn = do ist <- getIState
+                         putIState $ ist { idris_colourRepl = True }
+process fn ColourOff = do ist <- getIState
+                          putIState $ ist { idris_colourRepl = False }
 
 
 classInfo :: ClassInfo -> Idris ()

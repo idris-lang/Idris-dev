@@ -1,7 +1,9 @@
 module Idris.REPLParser(parseCmd) where
 
 import System.FilePath ((</>))
+import System.Console.ANSI (Color(..))
 
+import Idris.Colours
 import Idris.Parser
 import Idris.AbsSyntax
 import Core.TT
@@ -14,6 +16,7 @@ import qualified Text.ParserCombinators.Parsec.Token as PTok
 import Debug.Trace
 import Data.List
 import Data.List.Split(splitOn)
+import Data.Char(toLower)
 
 parseCmd i = runParser pCmd i "(input)"
 
@@ -57,6 +60,7 @@ pCmd = do spaces; try (do cmd ["q", "quit"]; eof; return Quit)
               <|> try (do cmd ["miss", "missing"]; n <- pfName; eof; return (Missing n))
               <|> try (do cmd ["dynamic"]; eof; return ListDynamic)
               <|> try (do cmd ["dynamic"]; l <- getInput; return (DynamicLink l))
+              <|> try (do cmd ["color", "colour"]; pSetColourCmd)
               <|> try (do cmd ["set"]; o <-pOption; return (SetOpt o))
               <|> try (do cmd ["unset"]; o <-pOption; return (UnsetOpt o))
               <|> try (do cmd ["s", "search"]; whiteSpace; t <- pFullExpr defaultSyntax; return (Search t))
@@ -71,3 +75,55 @@ pOption :: IParser Opt
 pOption = do discard (symbol "errorcontext"); return ErrContext
       <|> do discard (symbol "showimplicits"); return ShowImpl
 
+
+colours :: [(String, Color)]
+colours = [ ("black", Black)
+          , ("red", Red)
+          , ("green", Green)
+          , ("yellow", Yellow)
+          , ("blue", Blue)
+          , ("magenta", Magenta)
+          , ("cyan", Cyan)
+          , ("white", White)
+          ]
+
+pColour :: IParser Color
+pColour = doColour colours
+    where doColour [] = fail "Unknown colour"
+          doColour ((s, c):cs) = (try (symbol s) >> return c) <|> doColour cs
+
+pColourMod :: IParser (IdrisColour -> IdrisColour)
+pColourMod = try (symbol "vivid" >> return doVivid)
+         <|> try (symbol "dull" >> return doDull)
+         <|> try (symbol "underline" >> return doUnderline)
+         <|> try (symbol "nounderline" >> return doNoUnderline)
+         <|> try (symbol "bold" >> return doBold)
+         <|> try (symbol "nobold" >> return doNoBold)
+         <|> try (pColour >>= return . doSetColour)
+    where doVivid i       = i { vivid = True }
+          doDull i        = i { vivid = False }
+          doUnderline i   = i { underline = True }
+          doNoUnderline i = i { underline = False }
+          doBold i        = i { bold = True }
+          doNoBold i      = i { bold = False }
+          doSetColour c i = i { colour = c }
+
+
+colourTypes :: [(String, ColourType)]
+colourTypes = map (\x -> ((map toLower . reverse . drop 6 . reverse . show) x, x)) $
+              enumFromTo minBound maxBound
+
+pColourType :: IParser ColourType
+pColourType = doColourType colourTypes
+    where doColourType [] = fail $ "Unknown colour category. Options: " ++
+                                   (concat . intersperse ", " . map fst) colourTypes
+          doColourType ((s,ct):cts) = (try (symbol s) >> return ct) <|> doColourType cts
+
+pSetColourCmd :: IParser Command
+pSetColourCmd = (do c <- pColourType
+                    let defaultColour = IdrisColour Black True False False
+                    opts <- sepBy pColourMod spaces
+                    let colour = foldr ($) defaultColour $ reverse opts
+                    return $ SetColour c colour)
+            <|> try (symbol "on" >> return ColourOn)
+            <|> try (symbol "off" >> return ColourOff)

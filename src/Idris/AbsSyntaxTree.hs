@@ -235,6 +235,9 @@ data Command = Quit
              | SetOpt Opt
              | UnsetOpt Opt
              | NOP
+             | SetColour ColourType IdrisColour
+             | ColourOn
+             | ColourOff
 
 data Opt = Filename String
          | Ver
