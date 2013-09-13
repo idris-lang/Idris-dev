@@ -36,6 +36,19 @@ total mult : Nat -> Nat -> Nat
 mult Z right        = Z
 mult (S left) right = plus right $ mult left right
 
+%assert_total
+fromIntegerNat : Integer -> Nat
+fromIntegerNat 0 = Z
+fromIntegerNat n =
+  if (n > 0) then
+    S (fromIntegerNat (n - 1))
+  else
+    Z
+
+toIntegerNat : Nat -> Integer
+toIntegerNat Z = 0
+toIntegerNat (S k) = 1 + toIntegerNat k
+
 total minus : Nat -> Nat -> Nat
 minus Z        right     = Z
 minus left     Z         = left
@@ -108,8 +121,7 @@ instance Eq Nat where
   _ == _         = False
 
 instance Cast Nat Integer where
-  cast Z     = 0
-  cast (S k) = 1 + cast k
+  cast = toIntegerNat
 
 instance Ord Nat where
   compare Z Z         = EQ
@@ -124,16 +136,7 @@ instance Num Nat where
 
   abs x = x
 
-  fromInteger x = fromInteger' x
-    where
-      %assert_total
-      fromInteger' : Integer -> Nat
-      fromInteger' 0 = Z
-      fromInteger' n =
-        if (n > 0) then
-          S (fromInteger' (n - 1))
-        else
-          Z
+  fromInteger = fromIntegerNat
 
 instance Cast Integer Nat where
   cast = fromInteger

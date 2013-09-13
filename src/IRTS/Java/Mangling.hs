@@ -18,6 +18,7 @@ import           Language.Java.Syntax hiding (Name)
 import qualified Language.Java.Syntax as J
 
 import           System.FilePath
+import           Debug.Trace
 
 prefixCallNamespaces :: Ident -> SDecl -> SDecl
 prefixCallNamespaces name (SFun fname args i e) =

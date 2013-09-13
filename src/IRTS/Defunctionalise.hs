@@ -286,13 +286,14 @@ mkBigCase cn max arg branches
           tagOrd (DConCase t _ _ _) (DConCase t' _ _ _) = compare t t'
           tagOrd (DConstCase c _) (DConstCase c' _) = compare c c'
           tagOrd (DDefaultCase _) (DDefaultCase _) = EQ
+
           tagOrd (DConCase _ _ _ _) (DDefaultCase _) = LT
           tagOrd (DConCase _ _ _ _) (DConstCase _ _) = LT
           tagOrd (DConstCase _ _) (DDefaultCase _) = LT
+
           tagOrd (DDefaultCase _) (DConCase _ _ _ _) = GT
           tagOrd (DConstCase _ _) (DConCase _ _ _ _) = GT
           tagOrd (DDefaultCase _) (DConstCase _ _) = GT
-          
 
 groupsOf :: Int -> [DAlt] -> [[DAlt]]
 groupsOf x [] = []

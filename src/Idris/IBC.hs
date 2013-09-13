@@ -23,7 +23,7 @@ import Debug.Trace
 import Paths_idris
 
 ibcVersion :: Word8
-ibcVersion = 38
+ibcVersion = 39
 
 data IBCFile = IBCFile { ver :: Word8,
                          sourcefile :: FilePath,
@@ -714,6 +714,9 @@ instance Binary CaseAlt where
                                       put x1
                                       put x2
                                       put x3
+                SucCase x1 x2 -> do putWord8 4
+                                    put x1
+                                    put x2
         get
           = do i <- getWord8
                case i of
@@ -731,6 +734,9 @@ instance Binary CaseAlt where
                            x2 <- get
                            x3 <- get
                            return (FnCase x1 x2 x3)
+                   4 -> do x1 <- get
+                           x2 <- get
+                           return (SucCase x1 x2)
                    _ -> error "Corrupted binary data for CaseAlt"
 
 instance Binary CaseDefs where

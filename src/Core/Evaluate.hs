@@ -343,10 +343,13 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
         | Just (ns, sc) <- findTag i alts = return $ Just (updateAmap (zip ns args) amap, sc)
         | Just v <- findDefault alts      = return $ Just (amap, v)
     chooseAlt env _ (VP (TCon i a) _ _, args) alts amap
-        | Just (ns, sc) <- findTag i alts = return $ Just (updateAmap (zip ns args) amap, sc)
+        | Just (ns, sc) <- findTag i alts 
+                            = return $ Just (updateAmap (zip ns args) amap, sc)
         | Just v <- findDefault alts      = return $ Just (amap, v)
     chooseAlt env _ (VConstant c, []) alts amap
         | Just v <- findConst c alts      = return $ Just (amap, v)
+        | Just (n', sub, sc) <- findSuc c alts
+                            = return $ Just (updateAmap [(n',sub)] amap, sc)
         | Just v <- findDefault alts      = return $ Just (amap, v)
     chooseAlt env _ (VP _ n _, args) alts amap
         | Just (ns, sc) <- findFn n alts  = return $ Just (updateAmap (zip ns args) amap, sc)
@@ -380,6 +383,11 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
     findDefault [] = Nothing
     findDefault (DefaultCase sc : xs) = Just sc
     findDefault (_ : xs) = findDefault xs 
+
+    findSuc c [] = Nothing
+    findSuc (BI val) (SucCase n sc : _)
+         | val /= 0 = Just (n, VConstant (BI (val - 1)), sc)
+    findSuc c (_ : xs) = findSuc c xs
 
     findConst c [] = Nothing
     findConst c (ConstCase c' v : xs) | c == c' = Just v

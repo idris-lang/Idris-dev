@@ -379,6 +379,12 @@ instance ToIR SC where
           | matchableTy x
              = do rhs' <- ir rhs 
                   return $ LDefaultCase rhs'
+        mkIRAlt (P _ orig _) (SucCase n rhs)      
+           = do rhs' <- ir rhs
+                return $ LDefaultCase (LLet n (LOp (LMinus (ATInt ITBig))
+                                                 [LV (Glob orig),
+                                                  LConst (BI 1)]) rhs')
+--                 return $ LSucCase n rhs'
         mkIRAlt _ (ConstCase c rhs)      
            = fail $ "Can't match on (" ++ show c ++ ")"
         mkIRAlt _ (DefaultCase rhs)

@@ -214,13 +214,23 @@ applyDataOpt oi n args
 -- Run-time: do everything
 
 instance Optimisable (TT Name) where
+    applyOpts (P _ (NS (UN "plus") ["Nat","Prelude"]) _)
+        = return (P Ref (UN "prim__addBigInt") Erased)
+    applyOpts (P _ (NS (UN "mult") ["Nat","Prelude"]) _)
+        = return (P Ref (UN "prim__mulBigInt") Erased)
+    applyOpts (App (P _ (NS (UN "fromIntegerNat") ["Nat","Prelude"]) _) x)
+        = applyOpts x
+    applyOpts (P _ (NS (UN "fromIntegerNat") ["Nat","Prelude"]) _)
+        = return (App (P Ref (NS (UN "id") ["Builtins"]) Erased) Erased)
+    applyOpts (P _ (NS (UN "toIntegerNat") ["Nat","Prelude"]) _)
+        = return (App (P Ref (NS (UN "id") ["Builtins"]) Erased) Erased)
     applyOpts c@(P (DCon t arity) n _)
         = do i <- getIState
              case lookupCtxt n (idris_optimisation i) of
                  (oi:_) -> return $ applyDataOptRT oi n t arity []
                  _ -> return c
     applyOpts t@(App f a)
-        | (c@(P (DCon t arity) n _), args) <- unApply t -- MAGIC HERE
+        | (c@(P (DCon t arity) n _), args) <- unApply t
             = do args' <- mapM applyOpts args
                  i <- getIState
                  case lookupCtxt n (idris_optimisation i) of
@@ -265,6 +275,12 @@ applyDataOptRT oi n tag arity args
 
     bind [] tm = tm
     bind (n:ns) tm = Bind n (Lam Erased) (pToV n (bind ns tm))
+
+    -- Nat special cases
+    -- TODO: Would be nice if this was configurable in idris source!
+    doOpts (NS (UN "Z") ["Nat", "Prelude"]) [] _ _ = Constant (BI 0)
+    doOpts (NS (UN "S") ["Nat", "Prelude"]) [k] _ _ 
+        = App (App (P Ref (UN "prim__addBigInt") Erased) k) (Constant (BI 1))
 
     doOpts n args True f = Erased
     doOpts n args _ forced

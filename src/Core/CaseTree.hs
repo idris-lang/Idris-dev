@@ -29,6 +29,7 @@ type SC = SC' Term
 data CaseAlt' t = ConCase Name Int [Name] (SC' t)
                 | FnCase Name [Name]      (SC' t) -- ^ reflection function
                 | ConstCase Const         (SC' t)
+                | SucCase Name            (SC' t)
                 | DefaultCase             (SC' t)
     deriving (Show, Eq, Ord, Functor)
 {-! 
@@ -58,6 +59,8 @@ instance Show t => Show (SC' t) where
                 ++ show' (i+1) sc
         showA i (ConstCase t sc) 
            = show t ++ " => " ++ show' (i+1) sc
+        showA i (SucCase n sc) 
+           = show n ++ "+1 => " ++ show' (i+1) sc
         showA i (DefaultCase sc) 
            = "_ => " ++ show' (i+1) sc
               
@@ -76,6 +79,7 @@ instance TermSize CaseAlt where
     termsize n (ConCase _ _ _ s) = termsize n s
     termsize n (FnCase _ _ s) = termsize n s
     termsize n (ConstCase _ s) = termsize n s
+    termsize n (SucCase _ s) = termsize n s
     termsize n (DefaultCase s) = termsize n s
 
 -- simple terms can be inlined trivially - good for primitives in particular
@@ -98,6 +102,7 @@ namesUsed sc = nub $ nu' [] sc where
     nua ps (ConCase n i args sc) = nub (nu' (ps ++ args) sc) \\ args
     nua ps (FnCase n args sc) = nub (nu' (ps ++ args) sc) \\ args
     nua ps (ConstCase _ sc) = nu' ps sc
+    nua ps (SucCase _ sc) = nu' ps sc
     nua ps (DefaultCase sc) = nu' ps sc
 
     nut ps (P _ n _) | n `elem` ps = []
@@ -122,6 +127,7 @@ findCalls sc topargs = nub $ nu' topargs sc where
     nua ps (ConCase n i args sc) = nub (nu' (ps ++ args) sc) 
     nua ps (FnCase n args sc) = nub (nu' (ps ++ args) sc) 
     nua ps (ConstCase _ sc) = nu' ps sc
+    nua ps (SucCase _ sc) = nu' ps sc
     nua ps (DefaultCase sc) = nu' ps sc
 
     nut ps (P Ref n _) | n `elem` ps = []
@@ -166,6 +172,7 @@ findAllUsedArgs sc topargs = filter (\x -> x `elem` topargs) (nu' sc) where
     nua (ConCase n i args sc) = nu' sc 
     nua (FnCase n  args sc)   = nu' sc 
     nua (ConstCase _ sc)      = nu' sc
+    nua (SucCase _ sc)        = nu' sc
     nua (DefaultCase sc)      = nu' sc
 
 data Phase = CompileTime | RunTime
@@ -212,11 +219,13 @@ simpleCase tc cover reflect phase fc cs
           acc [] n = Error (Inaccessible n) 
           acc (PV x : xs) n | x == n = OK ()
           acc (PCon _ _ ps : xs) n = acc (ps ++ xs) n
+          acc (PSuc p : xs) n = acc (p : xs) n
           acc (_ : xs) n = acc xs n
 
 data Pat = PCon Name Int [Pat]
          | PConst Const
          | PV Name
+         | PSuc Pat -- special case for n+1 on Integer
          | PReflected Name [Pat]
          | PAny
     deriving Show
@@ -234,6 +243,11 @@ toPat reflect tc tms = evalState (mapM (\x -> toPat' x []) tms) []
   where
     toPat' (P (DCon t a) n _) args = do args' <- mapM (\x -> toPat' x []) args
                                         return $ PCon n t args'
+    -- n + 1
+    toPat' (P _ (UN "prim__addBigInt") _) 
+                  [p, Constant (BI 1)]
+                                   = do p' <- toPat' p []
+                                        return $ PSuc p'
     -- Typecase
     toPat' (P (TCon t a) n _) args | tc 
                                    = do args' <- mapM (\x -> toPat' x []) args
@@ -280,6 +294,7 @@ isVarPat _               = False
 
 isConPat (PCon _ _ _ : ps, _) = True
 isConPat (PReflected _ _ : ps, _) = True
+isConPat (PSuc _   : ps, _) = True
 isConPat (PConst _   : ps, _) = True
 isConPat _                    = False
 
@@ -338,11 +353,13 @@ mixture vs (Vars ms : ps) err = do fallthrough <- mixture vs ps err
 
 data ConType = CName Name Int -- named constructor
              | CFn Name -- reflected function name
+             | CSuc -- n+1
              | CConst Const -- constant, not implemented yet
-   deriving Eq
+   deriving (Show, Eq)
 
 data Group = ConGroup ConType -- Constructor
                       [([Pat], Clause)] -- arguments and rest of alternative
+   deriving Show
 
 conRule :: [Name] -> [Clause] -> SC -> State CS SC
 conRule (v:vs) cs err = do groups <- groupCons cs
@@ -361,6 +378,10 @@ caseGroups (v:vs) gs err = do g <- altGroups gs
         = do g <- altFnGroup n args
              rest <- altGroups cs
              return (g : rest)
+    altGroups (ConGroup CSuc args : cs)
+        = do g <- altSucGroup args
+             rest <- altGroups cs
+             return (g : rest)
     altGroups (ConGroup (CConst c) args : cs) 
         = do g <- altConstGroup c args
              rest <- altGroups cs
@@ -372,6 +393,9 @@ caseGroups (v:vs) gs err = do g <- altGroups gs
     altFnGroup n gs = do (newArgs, nextCs) <- argsToAlt gs
                          matchCs <- match (newArgs ++ vs) nextCs err
                          return $ FnCase n newArgs matchCs
+    altSucGroup gs = do ([newArg], nextCs) <- argsToAlt gs
+                        matchCs <- match (newArg:vs) nextCs err
+                        return $ SucCase newArg matchCs
     altConstGroup n gs = do (_, nextCs) <- argsToAlt gs
                             matchCs <- match vs nextCs err
                             return $ ConstCase n matchCs
@@ -411,6 +435,7 @@ groupCons cs = gc [] cs
     addGroup p ps res acc = case p of
         PCon con i args -> return $ addg (CName con i) args (ps, res) acc
         PConst cval -> return $ addConG cval (ps, res) acc
+        PSuc n -> return $ addg CSuc [n] (ps, res) acc
         PReflected fn args -> return $ addg (CFn fn) args (ps, res) acc
         pat -> fail $ show pat ++ " is not a constructor or constant (can't happen)"
 
@@ -423,7 +448,8 @@ groupCons cs = gc [] cs
     addConG con res [] = [ConGroup (CConst con) [([], res)]]
     addConG con res (g@(ConGroup (CConst n) cs) : gs)
         | con == n = ConGroup (CConst n) (cs ++ [([], res)]) : gs
-        | otherwise = g : addConG con res gs
+--         | otherwise = g : addConG con res gs
+    addConG con res (g : gs) = g : addConG con res gs
 
 varRule :: [Name] -> [Clause] -> SC -> State CS SC
 varRule (v : vs) alts err =
@@ -448,6 +474,7 @@ depatt ns tm = dp [] tm
     dpa ms x (FnCase n args sc)
         = FnCase n args (dp ((x, (n, args)) : ms) sc)
     dpa ms x (ConstCase c sc) = ConstCase c (dp ms sc)
+    dpa ms x (SucCase n sc) = SucCase n (dp ms sc)
     dpa ms x (DefaultCase sc) = DefaultCase (dp ms sc)
 
     applyMaps ms f@(App _ _)
@@ -478,6 +505,7 @@ prune proj (Case n alts)
     where pruneAlt (ConCase cn i ns sc) = ConCase cn i ns (prune proj sc)
           pruneAlt (FnCase cn ns sc) = FnCase cn ns (prune proj sc)
           pruneAlt (ConstCase c sc) = ConstCase c (prune proj sc)
+          pruneAlt (SucCase n sc) = SucCase n (prune proj sc)
           pruneAlt (DefaultCase sc) = DefaultCase (prune proj sc)
 
           notErased (DefaultCase (STerm Erased)) = False
@@ -503,6 +531,8 @@ prune proj (Case n alts)
               = FnCase cn args (projRep arg n i rhs)
           projRepAlt arg n i (ConstCase t rhs)
               = ConstCase t (projRep arg n i rhs)
+          projRepAlt arg n i (SucCase sn rhs)
+              = SucCase sn (projRep arg n i rhs)
           projRepAlt arg n i (DefaultCase rhs)
               = DefaultCase (projRep arg n i rhs)
 
