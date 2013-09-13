@@ -97,7 +97,7 @@ many : Parser a -> Parser (List a)
 
 many1 p = [| p :: many p |]
 
-many p = many1 p <|> pure []
+many p = lazy (many1 p) <|> pure []
 
 bool : Parser Bool
 bool = parseTrue <|> parseFalse
@@ -164,7 +164,7 @@ sepBy : Parser a -> Parser b -> Parser (List a)
 sepBy p s = sepBy1 p s <|> pure Nil
 
 manyTil : Parser a -> Parser b -> Parser (List a)
-manyTil p e = (e $> pure Nil) <|> [| p :: manyTil p e |]
+manyTil p e = (e $> pure Nil) <|> lazy [| p :: manyTil p e |] <|> pure Nil
 
 --------------------------------------------------------------------------------
 -- Expressions
