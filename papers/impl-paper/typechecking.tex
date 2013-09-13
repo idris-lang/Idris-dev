@@ -2,9 +2,9 @@
 
 \label{sect:typechecking}
 
-High level \Idris{} programs, as described in Section \ref{sect:hll}, are 
+High-level \Idris{} programs, as described in Section \ref{sect:hll}, are 
 \remph{elaborated} to a small core language, \TT{}, then type checked. 
-\TT{} is a dependently typed $\lambda$-calculus with inductive families
+\TT{} is a dependently-typed $\lambda$-calculus with inductive families
 and pattern matching definitions similar to UTT~\cite{luo1994}, and building
 on an earlier implementation, \Ivor{}~\cite{Brady2006b}.
 The
@@ -28,7 +28,7 @@ type of types, and may be extended with other primitives.
 
 The function space $\all{\vx}{\vS}\SC\vT$ may also be written as $(\vx\Hab\vS)\to\vT$,
 or $\vS\to\vT$ if $\vx$ is not free in $\vT$, to make the notation more consistent with
-the high level language. Universe levels on types ($\Type_i$) may be left implicit and
+the high-level language. Universe levels on types ($\Type_i$) may be left implicit and
 inferred by the machine~\cite{pollack1990implicit}.
 
 \FFIG{
@@ -133,7 +133,7 @@ contractions and reversed contractions. Terms which are convertible are also sai
 be definitionally equal.
 The evaluator can also be extended by defining pattern matching functions, which
 will be described in more detail in Section \ref{sect:patdefs}. In principle, pattern
-matching functions can be understood as extending the core language with high level
+matching functions can be understood as extending the core language with high-level
 reduction rules.
 
 \FFIG{
@@ -301,10 +301,11 @@ recursive arguments have types of the form
 where $\TC{T}$ does not occur in any of the $\tS$ or the $\ty$
 This restriction is known as
 \demph{strict positivity} and ensures that recursive arguments of the
-constructor are structurally smaller than the value itself\footnote{In
+constructor are structurally smaller than the value itself.
+In
 practice, this restriction can be relaxed when defining a family, but definitions
 using families which do not satisfy strict positivity will not pass totality
-checking.}.
+checking.
 
 For example, the \Idris{} data type \tTC{Nat} would be declared in \TT{} as follows:
 
@@ -611,12 +612,12 @@ is a deliberate choice --- it is a combination of small, well-understood compone
 The kernel of the \TT{} implementation, consisting of a type checker, evaluator and
 pattern match compiler, is less than 1000 lines of Haskell code. If we are confident
 in the correctness of the kernel of \TT{}, and any higher level language feature
-can be translated into \TT{}, we can be more confident of the correctness of the high
-level language implementation than if it were implemented directly.
+can be translated into \TT{}, we can be more confident of the correctness of
+the high-level language implementation than if it were implemented directly.
 
-The process of elaborating a high level language into a core type theory like \TT{} is,
+The process of elaborating a high-level language into a core type theory like \TT{} is,
 however, less well understood, and presents several challenges depending on the
-features of the high level language. 
+features of the high-level language. 
 %Elaboration has been implemented in various different ways, 
 %for example in Agda~\cite{norell2007thesis} and Epigram~\cite{McBride2004a}.
 
@@ -688,9 +689,9 @@ syntax:
 
 \subsubsection{An Observation: Programming vs Theorem Proving}
 
-\Idris{} programs may contain several high level constructs not present in \TT{}, such
+\Idris{} programs may contain several high-level constructs not present in \TT{}, such
 as implicit arguments, type classes, \texttt{where} clauses, pattern matching \texttt{let}
-and \texttt{case} constructs. We would like the high level language to be as expressive
+and \texttt{case} constructs. We would like the high-level language to be as expressive
 as possible, while remaining possible to translate to \TT{}.
 
 Before considering how to achieve this, we make an observation about the distinction between
@@ -706,12 +707,12 @@ prover~\cite{Bertot2004}, are a convenient abstraction for building proofs and
 programs by \remph{refinement}.
 \end{itemize}
 
-The idea behind the \Idris{} elaborator, therefore, is to use the high level
+The idea behind the \Idris{} elaborator, therefore, is to use the high-level
 program to direct \demph{tactics} to build \TT{} programs by refinement.  The
 elaborator is implemented as a Haskell monad capturing proof state, with a
 collection of tactics for updating and refining the proof state.  The remainder
 of this paper describes this elaborator and demonstrates how it is used to
-implement the high level features of \Idris{}.
+implement the high-level features of \Idris{}.
 
 
 

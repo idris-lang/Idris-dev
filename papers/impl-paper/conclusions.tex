@@ -2,13 +2,13 @@
 
 \label{sect:related}
 
-Dependently typed programming languages have become more prominent in recent
+Dependently-typed programming languages have become more prominent in recent
 years as tools for verifying software correctness, and several experimental
 languages are being developed, in particular Agda \cite{norell2007thesis},
 Epigram \cite{McBride2004a,Levitation2010} and Trellys \cite{Kimmell2012}.
 Furthermore, recent extensions to Haskell~\cite{Vytiniotis2011}, implemented in the
 Glasgow Haskell Compiler, are bringing more of the power of dependent types to
-Haskell. The problem of refining high level syntax to a core type theory also
+Haskell. The problem of refining high-level syntax to a core type theory also
 applies to theorem provers based on dependent types such as
 Coq~\cite{Bertot2004} and Matita~\cite{Asperti2011}.
 
@@ -20,7 +20,7 @@ Types are checked using an inference algorithm
 inference engine independent of the constraint
 system, and a constraint solver for $X$. An additional difficulty faced by
 Haskell, and hence any extensions, is the desire to support type \emph{inference}, in
-which principal types may be inferred for top level functions. We have avoided
+which principal types may be inferred for top-level functions. We have avoided
 such difficulties since, in general, type
 inference is undecidable for full dependent types. Indeed, it is not clear
 that type inference is even desirable in many cases, as programmers
@@ -32,14 +32,14 @@ inference.
 An earlier implementation of \Idris{} was built on the \Ivor{} proof engine
 \cite{Brady2006b}. This implementation differed in one important way --- unlike
 the present implementation, there was limited separation between the type
-theory and the high level language. The type theory itself supported implicit
-syntax and unification, with high level constructs such as the \texttt{with}
+theory and the high-level language. The type theory itself supported implicit
+syntax and unification, with high-level constructs such as the \texttt{with}
 rule implemented directly. Two important disadvantages were found with this
 approach, however: firstly, the type checker is much more complicated when
 combined with unification, making it harder to maintain; secondly, adding new
-high level features requires the type checker to support those features
+high-level features requires the type checker to support those features
 directly. In contrast, elaboration by tactics gives a clean separation between
-the low level and high level languages, and results in programs in a core
+the low-level and high-level languages, and results in programs in a core
 type theory which is separately checkable, perhaps even by an independently
 written checker which implements the \TT{} rules directly.
 
@@ -48,12 +48,12 @@ type directed approach, maintaining a set of yet to be solved unification
 problems and relying on a small kernel, similar to the approach we now take
 with \Idris{}, However, their approach uses refinement rules rather than
 tactics. This leads to good error messages though it is not clear how
-easy it would be to extend to additional high level language features, unlike
-the tactic based approach.
+easy it would be to extend to additional high-level language features, unlike
+the tactic-based approach.
 
 The Agda implementation is based on a type theory with
 implicit syntax and pattern matching --- Norell gives an algorithm for type checking
-a dependently typed language with pattern matching and metavariables 
+a dependently-typed language with pattern matching and metavariables 
 \cite{norell2007thesis}. Unlike the present \Idris{} implementation, metavariables
 and implicit arguments are part of the type theory. This has the advantage that
 implicit arguments can be used more freely (for example, in higher order
@@ -84,7 +84,7 @@ implementation of extra machinery for constructor manipulation
 
 In this paper, I have given an overview of the programming language \Idris{},
 and its core type theory \TT{}, giving a detailed algorithm for translating
-high level programs into \TT{}.
+high-level programs into \TT{}.
 \TT{} itself is deliberately small and simple, and the design has deliberately
 resisted innovation so that we can rely on existing metatheoretic properties
 being preserved. The kernel of the \Idris{} implementation consists of a type checker
@@ -94,11 +94,11 @@ in under 1000 lines of Haskell code. It is important that this kernel remains sm
 the correctness of the underlying type system, and keeping the implementation small
 reduces the possibility of errors.
 
-The approach we have taken to implementing the high level language,
+The approach we have taken to implementing the high-level language,
 implementing an elaboration monad with tactics for program construction, allows
 us to build programs on top of a small and unchanging kernel, rather than
 extending the core language to deal with implicit syntax, unification and type
-classes.  High level \Idris{} features are implemented by describing the
+classes.  High-level \Idris{} features are implemented by describing the
 corresponding sequence of tactics to build an equivalent program in \TT{}, via
 a development calculus of incomplete terms, \TTdev{}. A significant advantage
 we have found with this approach is that higher level features can easily be
@@ -108,19 +108,19 @@ several features:
 
 \begin{itemize}
 \item \textbf{Type classes}: A dictionary is merely a record containing the
-functions which implement a type class instance. Since we have a tactic based
+functions which implement a type class instance. Since we have a tactic-based
 refinement engine, we can implement type class resolution as a tactic.
 \item \textbf{\texttt{where} clauses}: We have access to local variables and
 their types, so we can
 elaborate \texttt{where} clauses at the point of definition simply by lifting
 them to the top level. 
 \item \textbf{\texttt{case} expressions}: Similar to \texttt{where} clauses,
-these are implemented by lifting the branches out to a top level function.
+these are implemented by lifting the branches out to a top-level function.
 \end{itemize}
 
 We do not need to make any changes to the core language type system in order to 
-implement these high level features. 
-Other high level features such as dependent records, tuples and monad comprehensions
+implement these high-level features. 
+Other high-level features such as dependent records, tuples and monad comprehensions
 can be added equally easily --- and indeed have been added in the full implementation.  
 Furthermore, 
 since we have taken a tactic-based approach to elaborating \Idris{} to \TT{},
@@ -129,7 +129,7 @@ the possibility of implementing domain specific decision procedures, or
 implementing user defined tactics in a style similar to Coq's \texttt{Ltac}
 language \cite{Delahaye2000}.  Although \TT{} is primarily intended as a core
 language for \Idris{}, its rich type system also means that it could be used
-as a core language for other high level languages, especially when augmented
+as a core language for other high-level languages, especially when augmented
 with primitive operators, and used to express additional properties of those
 languages.  
 
@@ -152,16 +152,16 @@ The objective of this implementation of \Idris{} is to provide a platform
 for experimenting with realistic, general purpose programming with dependent
 types, by implementing a Haskell-like language augmented with \emph{full}
 dependent types. 
-In this paper, we have seen how such a high level language can be implemented
+In this paper, we have seen how such a high-level language can be implemented
 by building on top of a small, well-understood, easy to reason about type
 theory. 
 However, a programming language implementation is not an end in itself. 
 Programming languages exist to support research and practice in many different
 domains. In future work, therefore, I plan to apply domain specific
-language based techniques to realistic problems in important safety critical
+language-based techniques to realistic problems in important safety critical
 domains such as security and network protocol design and implementation. In
 order to be successful, this will require a language which is expressive enough
-to describe protocol specifications at a high level, and robust enough to
+to describe protocol specifications at a high-level, and robust enough to
 guarantee correct implementation of those protocols. \Idris{}, I believe, is
 the right tool for this work.
 

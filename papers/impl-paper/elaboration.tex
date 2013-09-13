@@ -8,23 +8,23 @@
 
 An \Idris{} program consists of a series of declarations --- data types,
 functions, classes and instances. In this section, we describe how these
-high level declarations are translated into a \TT{} program consisting of
+high-level declarations are translated into a \TT{} program consisting of
 inductive families and pattern matching function definitions. We will need to
 work at the \remph{declaration} level, and at the \remph{expression} level,
 defining the following meta-operations.
 
 \begin{itemize}
 \item $\ttinterp{\cdot}$, which builds a \TT{} expression from an \Idris{} expression.
-\item $\MO{Elab}$, which processes a top level \Idris{} declaration by generating
+\item $\MO{Elab}$, which processes a top-level \Idris{} declaration by generating
 one or more \TT{} declarations.
-\item $\MO{TTDecl}$, which adds a top level \TT{} declaration.
+\item $\MO{TTDecl}$, which adds a top-level \TT{} declaration.
 \end{itemize}
 
 
 \subsection{The Development Calculus \TTdev}
 
-\TT{} expressions are built by using high level \Idris{} expressions to
-direct a tactic based theorem prover, which builds the \TT{} expressions
+\TT{} expressions are built by using high-level \Idris{} expressions to
+direct a tactic-based theorem prover, which builds the \TT{} expressions
 step by step, by refinement. In order to build expressions in this way,
 the type theory needs to support
 \remph{incomplete} terms, and a method for term construction. 
@@ -40,7 +40,7 @@ These extensions are given in Figure \ref{ttdev}.
 The \remph{guess} binding is
 similar to a $\LET$ binding, but without any computational force,
 i.e. there are no reduction rules for guess bindings. 
-Using binders to represent holes is useful in a dependently typed setting since
+Using binders to represent holes is useful in a dependently-typed setting since
 one value may determine another. Attaching a guess to a binder ensures that
 instantiating one such variable also instantiates all of its dependencies. 
 %The
@@ -87,12 +87,11 @@ instantiating one such variable also instantiates all of its dependencies.
 
 \label{sect:prfstate}
 
-We will build expressions in \TT{} from high level \Idris{} expressions by
-creating a top level hole binding with the appropriate type, and refining it
+We will build expressions in \TT{} from high-level \Idris{} expressions by
+creating a top-level hole binding with the appropriate type, and refining it
 according to the structure of the \Idris{} expression. Noting the Curry-Howard
 correspondence between programs and proofs, and the relationship between our
-method for elaboration and tactic
-based theorem proving, we refer to a development as a \emph{proof}.
+method for elaboration and tactic-based theorem proving, we refer to a development as a \emph{proof}.
 A proof state is a tuple, $(\vC, \Delta, \ve, \vP, \vQ)$, containing:
 
 \begin{itemize}
@@ -118,7 +117,7 @@ When the hole queue is empty, and there are no remaining unification
 problems, the proof term is complete.
 
 Creating a \TT{} expression from an \Idris{} expression involves creating
-a new proof state, with an empty proof term, and using the high level definition
+a new proof state, with an empty proof term, and using the high-level definition
 to direct the building of a final proof state, with a complete proof term.
 
 In the implementation, the proof state is captured in an elaboration monad,
@@ -890,7 +889,7 @@ a Coq proof script.
 
 \label{sect:sysstate}
 
-To elaborate \Idris{} programs we will build expressions from high level
+To elaborate \Idris{} programs we will build expressions from high-level
 declarations of functions, data types and classes, and add the resulting
 definitions to a global system state.
 The system state is a tuple, $(\vC,\vA,\vI)$, containing:
@@ -1035,7 +1034,7 @@ arguments in types bound explicitly
 (e.g. $\piimp{\va}{\_}\piimp{\vn}{\_}\TC{Vect}\;\vn\;\va$
 instead of simply $\Vect\;\vn\;\va$).
 Note that we separate implicit and type constraint bindings, to ensure that they
-only appear in top level declarations.
+only appear in top-level declarations.
 It is in general straightforward to
 convert full \Idris{} to \IdrisM{} --- syntactic sugar is implemented by a
 direct source transformation, and implicit arguments can be identified as the names
@@ -1091,10 +1090,7 @@ elaboration will fail.
 If we are building the left hand side of a pattern clause, however, there is a
 problem, as it is the left hand side which \remph{defines} variables. In this
 context, we assume that attempting to elaborate a variable which does not type
-check means that the variable is a pattern variable\footnote{In Haskell,
-pattern variables are all lower case, so type checking can assume that a
-lower case name in a pattern refers to a variable. In \Idris{} however, a
-name in a pattern may refer to a function, if forced by some dependency.}:
+check means that the variable is a pattern variable:
 
 \DM{
 \ttpinterp{\vx}\;\mq\;
@@ -1102,6 +1098,11 @@ name in a pattern may refer to a function, if forced by some dependency.}:
 (\MO{Pat}\;\vx)
 }
 }
+
+In Haskell, for comparison,
+pattern variables are all lower case, so type checking can assume that a
+lower case name in a pattern refers to a variable. In \Idris{} however, a
+name in a pattern may refer to a function, if forced by some dependency.
 
 We also need to elaborate \remph{placeholders}, which are subexpressions we expect to
 solve by unification. In this case, we simply move on to the next hole in the queue, moving
@@ -1425,14 +1426,14 @@ the right hand side $\ve$ to use the lifted definitions, rather than the origina
 \subsubsection{Elaborating the \texttt{with} rule}
 
 The \texttt{with} rule allows \remph{dependent} pattern matching on intermediate values.
-Translating this into \TT{} involves constructing an auxiliary top level
+Translating this into \TT{} involves constructing an auxiliary top-level
 definition for 
 the intermediate pattern match. For example, recall \tFN{natToBin}:
 
 \useverb{natToBin}
 
 \noindent
-This is equivalent to the following, using top level definitions only:
+This is equivalent to the following, using top-level definitions only:
 
 \begin{SaveVerbatim}{natToBinw}
 
@@ -1454,8 +1455,10 @@ natToBin' (S (j + j)) odd  = True  :: natToBin j
 
 \noindent
 Additionally, the elaborator abstracts over the term being analysed in the type
-of the generated auxiliary definition\footnote{This is sometimes referred to
-as ``magic \texttt{with}''.} and reorders the arguments as required.
+of the generated auxiliary definition
+%\footnote{This is sometimes referred to
+%as ``magic \texttt{with}''.} 
+and reorders the arguments as required.
 For example:
 
 \begin{SaveVerbatim}{magicwith}
@@ -1533,7 +1536,7 @@ A $\iwith$ block in a clause for $\vx$
 results in an auxiliary definition $\vx'$, where $\vx'$ is a fresh name,
 which takes an extra argument corresponding to the intermediate result which
 is to be matched.
-$\MO{MatchWith}$ matches the left hand side of the top level definition against
+$\MO{MatchWith}$ matches the left hand side of the top-level definition against
 each $\VV{pclause}$, using the result of the match to build each pattern clause
 for $\vx'$. 
 The clauses in the with block must be of a specific form: they must have an initial
@@ -1554,7 +1557,7 @@ Classes are implemented as dictionaries of functions for each instance,
 following the implementation of first class type classes in Coq~\cite{Sozeau2008}.
 Therefore, a class declaration elaborates to a record type containing all
 of the functions in the class, and an instance is simply an instance of the
-record. The methods are translated to top level functions which extract the
+record. The methods are translated to top-level functions which extract the
 relevant function from the dictionary.  For example, for the \texttt{Show}
 class, the \texttt{class} declaration is translated (in the elaborated code,
 using the surface \Idris{} syntax for readability)
@@ -1585,7 +1588,7 @@ showNat = InstanceShow show' where
 \end{SaveVerbatim}
 \useverb{shownatf} 
 
-The call to \tFN{show} in the body of the instance uses the top level \tFN{show}
+The call to \tFN{show} in the body of the instance uses the top-level \tFN{show}
 function, with the instance resolved by the elaborator.
 Where instances have constraints, these constraints are passed on to
 the function declaration for the instance. For example, for \texttt{Show (List a)}:
@@ -1710,7 +1713,7 @@ defined instance:
 Adding default definitions is straightforward: simply insert the default definition where
 there is a method missing in an \texttt{instance} declaration.
 
-\textbf{Remark:} Here, we have added a higher level language construct
+Here, we have added a higher level language construct
 (classes) simply by elaborating in terms of lower level language constructs
 (data types and functions).  We achieve type class resolution by implementing a
 tactic, $\MO{Instance}$.  We can build several extensions this way because we
@@ -1814,8 +1817,8 @@ dependent pattern matching definitions and expansion of implicit arguments
 and classes. In order to make the language truly general purpose, however, we
 will need to add higher level extensions. Full \Idris{} is \IdrisM{} extended
 with \texttt{do}-notation, idiom brackets~\cite{McBride2007}, \texttt{case} expressions,
-pattern matching \texttt{let}, metavariables and tactic based theorem proving.
-The majority of these extensions are straightforward transformations of high level
+pattern matching \texttt{let}, metavariables and tactic-based theorem proving.
+The majority of these extensions are straightforward transformations of high-level
 \Idris{} programs --- for example, \texttt{do}-notation can be reduced directly to
 \IdrisM{} function applications. Some, however, require further support. In this section,
 we complete the presentation of \IdrisM{} by extending it with metavariables
@@ -1877,7 +1880,7 @@ append_rec a m n x xs ys = app xs ys
 \end{SaveVerbatim}
 \useverb{appendrec_def} 
 
-Elaborating a metavariable involves adding a new top level definition which is applied
+Elaborating a metavariable involves adding a new top-level definition which is applied
 to all of the variables in local scope.
 
 \DM{
@@ -1894,8 +1897,8 @@ to all of the variables in local scope.
 
 A \texttt{case} expression allows pattern matching on intermediate values. The difficulty
 in elaborating \texttt{case} expressions is that \TT{} allows matching only on
-\emph{top level} values. Elaborating a \texttt{case} expression, therefore,
-involves creating a new top level function standing for the expression, and applying it. 
+\emph{top-level} values. Elaborating a \texttt{case} expression, therefore,
+involves creating a new top-level function standing for the expression, and applying it. 
 The natural
 way to implement this is to use a metavariable. For example, we have already seen
 \texttt{lookup\_default}:

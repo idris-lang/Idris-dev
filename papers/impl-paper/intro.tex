@@ -1,6 +1,6 @@
 \section{Introduction}
 
-Dependently typed programming languages, such as Agda \cite{norell2007thesis}
+Dependently-typed programming languages, such as Agda \cite{norell2007thesis}
 and Coq \cite{Bertot2004}, have emerged in recent years as a promising approach
 to ensuring the correctness of software. Type checking ensures a program has
 the intended meaning; \emph{dependent} types, where types may be predicated
@@ -26,10 +26,10 @@ language, has no such limitation, essentially asking the question:
 By \emph{full} dependent types, we mean that there is no restriction on which
 values may appear in types.  It is important for the sake of usability of a
 programming language to provide a notation which allows programmers to express
-high level concepts in a natural way. Taking Haskell as a starting point means
-that \Idris{} offers a variety of high level structures such as type 
+high-level concepts in a natural way. Taking Haskell as a starting point means
+that \Idris{} offers a variety of high-level structures such as type 
 classes, \texttt{do}-notation, primitive types and monadic I/O, for example.
-Furthermore, a goal of \Idris{} is to support high level domain specific
+Furthermore, a goal of \Idris{} is to support high-level domain-specific
 language implementation, providing appropriate notation for \emph{domain
 experts} and \emph{systems programmers}, who should not be required to be type
 theorists in order to solve programming problems.  Nevertheless, it is
@@ -37,26 +37,26 @@ important for the sake of correctness of the language implementation to have a
 well-defined core language with well-understood meta-theory \cite{Altenkirch2010}. 
 How can we achieve both of these goals?
 
-This paper describes a method for elaborating a high level dependently typed
-functional programming language to a low level core based on dependent
+This paper describes a method for elaborating a high-level dependently-typed
+functional programming language to a low-level core based on dependent
 type theory.  The method involves building an elaboration monad which captures
 the state of incomplete programs and a collection of \emph{tactics} used by the
-machine to refine programs, directed by high level syntax.  As we shall see,
+machine to refine programs, directed by high-level syntax.  As we shall see,
 this method allows higher level language constructs to be elaborated in a
 straightforward manner, without compromising the simplicity of the underlying
 type theory.
 
 \subsection{Contributions}
 
-A dependently typed programming language relies on several components, many of
+A dependently-typed programming language relies on several components, many of
 which are now well understood. For example, we rely on a type checker for
 the core type theory \cite{Chapman2005epigram,loh2010tutorial}, a
 unification algorithm \cite{Miller1992} and an evaluator. However, it is less
 well understood how to combine these components effectively into a practical
 programming language. 
 
-The primary contribution of this paper is a tactic based method for translating
-programs in a high level dependently typed programming language to a small core
+The primary contribution of this paper is a tactic-based method for translating
+programs in a high-level dependently-typed programming language to a small core
 type theory, \TT{}, based on UTT \cite{luo1994}. The paper describes the
 structure of an elaboration monad capturing proof and system state, and
 introduces a collection of \remph{tactics} which the machine uses to
@@ -66,7 +66,7 @@ description of the typing rules.  Finally, through describing the specific
 tactics, the paper shows how to extend \Idris{} with higher level features.
 While we apply these ideas to \Idris{} specifically, the method for term
 construction is equally applicable to other typed programming languages, and
-indeed the tactics themselves are applicable to any high level language which
+indeed the tactics themselves are applicable to any high-level language which
 can be explained in terms of \TT{}.
 
 \subsection{Outline}
@@ -95,11 +95,11 @@ phases, illustrated below:
 \noindent
 The main focus of this paper is the elaboration phase, which translates
 a desugared language \IdrisM{} into a core language \TT{}. In order to put
-this into its proper context, I give an overview of the high level language
+this into its proper context, I give an overview of the high-level language
 \Idris{} in Section \ref{sect:hll} and explain the core language \TT{} and
 its typing rules in Section \ref{sect:typechecking}; 
 Section \ref{sect:elaboration} describes the elaboration process itself,
-beginning with a tactic based system for constructing
+beginning with a tactic-based system for constructing
 \TT{} programs, then introducing the desugared language \IdrisM{} and
 showing how this is translated into \TT{} using tactics;
 Section
@@ -110,8 +110,8 @@ concludes.
 
 \subsection{Typographical conventions}
 
-This paper presents programs in two different but related languages: a high level
-language \Idris{} intended for programmers, and a low level language \TT{} to
+This paper presents programs in two different but related languages: a high-level
+language \Idris{} intended for programmers, and a low-level language \TT{} to
 which \Idris{} is elaborated. We distinguish these languages typographically as
 follows:
 
@@ -131,8 +131,8 @@ in $\MO{SmallCaps}$.
 
 \subsection{Elaboration Example}
 
-\Idris{} is a Haskell-like pure functional programming language with dependent
-types.  A simple example program is the following, which adds corresponding
+A simple example of an \Idris{} 
+program is the following, which adds corresponding
 elements of vectors of the same length:
 
 \begin{SaveVerbatim}{vadd}
@@ -148,7 +148,7 @@ vAdd (x :: xs) (y :: ys) = x + y :: vAdd xs ys
 This illustrates some basic features of \Idris{}:
 
 \begin{itemize}
-\item Functions are defined by pattern matching, with a top level type signature.
+\item Functions are defined by pattern matching, with a top-level type signature.
 Names which are free in the type signature (\texttt{a} and \texttt{n}) here
 are implicitly bound.
 \item The type system ensures that both input vectors are the same length (\texttt{n})
@@ -156,8 +156,8 @@ and have the same element type (\texttt{a}), and that the element type and lengt
 are preserved in the output vector.
 \item Functions can be overloaded using \remph{classes}. Here, the element type
 of the vector \texttt{a} must be numeric and therefore supports the \texttt{+} operator.
-\item A single colon is used for type signatures, and a double colon for the
-cons operator, emphasising the importance of types.
+\item Unlike Haskell, a single colon is used for type signatures, and a double
+colon for the cons operator, emphasising the importance of types.
 \end{itemize}
 
 \noindent

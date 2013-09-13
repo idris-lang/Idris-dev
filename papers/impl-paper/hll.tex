@@ -39,8 +39,8 @@ main = putStrLn ("The answer is " ++ show x)
 
 \noindent
 Like Haskell, the main function is called \texttt{main}, and input and output
-is managed with an \texttt{IO} monad. Unlike Haskell, however, \remph{all} top
-level functions must have a type signature. This is due to type inference
+is managed with an \texttt{IO} monad. Unlike Haskell, however, \remph{all} 
+top-level functions must have a type signature. This is due to type inference
 being, in general, undecidable for languages with dependent types.
 
 A module declaration also opens a \remph{namespace}. The fully qualified names
@@ -62,7 +62,7 @@ data List a = Nil | (::) a (List a)
 
 \noindent
 A standard example of a \remph{dependent} type is the type of ``lists with
-length'', conventionally called ``vectors'' in the dependently typed
+length'', conventionally called ``vectors'' in the dependently-typed
 programming literature. In \Idris{}, vectors are declared as follows:
 
 \begin{SaveVerbatim}{vectdecl}
@@ -86,7 +86,7 @@ Note that constructor names may be overloaded (such as \texttt{Nil} and
 \texttt{(::)} here) provided that they are declared in separate 
 namespaces.
 
-\textbf{Remark:} In the library, \texttt{List} is declared in a module
+Note that in the library, \texttt{List} is declared in a module
 \texttt{Prelude.List}, and \texttt{Vect} in a module \texttt{Prelude.Vect}, so
 the fully qualified names of \texttt{Nil} are \texttt{Prelude.List.Nil} and
 \texttt{Prelude.Vect.Nil}. They may be used qualified or unqualified; if
@@ -241,17 +241,18 @@ overloaded in an ad-hoc manner and resolved according to the context in which
 they are used. This is mostly for convenience, to eliminate the need to
 decorate constructor names in similarly structured data types, and eliminate
 explicit qualification of ambiguous names where only one is well-typed --- this
-is especially useful for disambiguating record field names\footnote{Records are
-however beyond the scope of this paper}.
+is especially useful for disambiguating record field names, although records
+are beyond the scope of this paper.
 
 Secondly, \Idris{} implements \remph{classes}, following Haskell's type
 classes.  This allows a more principled approach to overloading --- a class
 gives a collection of overloaded operations which describe the interface for
 \remph{instances} of that class. \Idris{} classes follow Haskell~98 type
 classes, except that multiple parameters are supported, and that classes can be
-parameterised by \remph{any} value, not just types\footnote{Hence we refer to
+parameterised by \remph{any} value, not just types.
+Hence we refer to
 them as \remph{classes} generally, rather than \remph{type classes}
-specifically.}.
+specifically.
 
 A simple example is the \texttt{Show} class, which is defined in the
 library and provides an interface for converting values to \texttt{String}s:
@@ -378,7 +379,7 @@ with a dependent type.
 \Idris{} provides a construct for this, the \texttt{with} rule, 
 inspired by views in \Epigram~\cite{McBride2004a},
 which takes account of the
-fact that matching on a value in a dependently typed language can affect what
+fact that matching on a value in a dependently-typed language can affect what
 is known about the forms of other values. 
 %
 For example, a \texttt{Nat} is either even or odd. 

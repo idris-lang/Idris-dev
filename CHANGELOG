@@ -12,6 +12,7 @@ New in 0.9.10:
 Internal changes
 
 * New module/dependency tree checking
+* Compiling Nat via GMP integers
 
 New in 0.9.9:
 -------------
