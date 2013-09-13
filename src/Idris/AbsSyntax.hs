@@ -517,6 +517,7 @@ setColour ct c = do i <- getIState
           setColour' FunctionColour c t = t { functionColour = c }
           setColour' TypeColour     c t = t { typeColour = c }
           setColour' DataColour     c t = t { dataColour = c }
+          setColour' PromptColour   c t = t { promptColour = c }
 
 logLvl :: Int -> String -> Idris ()
 logLvl l str = do i <- getIState
