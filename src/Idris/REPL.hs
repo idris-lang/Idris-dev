@@ -113,7 +113,7 @@ ideslave orig mods
                  do let fn = case mods of
                                  (f:_) -> f
                                  _ -> ""
-                    case parseCmd i cmd of
+                    case parseCmd i "(input)" cmd of
                          Left err -> iFail $ show err
                          Right (Prove n') -> do iResult ""
                                                 idrisCatch
@@ -214,7 +214,7 @@ processInput cmd orig inputs
          let fn = case inputs of
                         (f:_) -> f
                         _ -> ""
-         case parseCmd i cmd of
+         case parseCmd i "(input)" cmd of
             Left err ->   do liftIO $ print err
                              return (Just inputs)
             Right Reload -> 
@@ -524,7 +524,10 @@ process fn (DynamicLink l) = do i <- getIState
                                 case handle of
                                   Nothing -> iFail $ "Could not load dynamic lib \"" ++ l ++ "\""
                                   Just x -> do let libs = idris_dynamic_libs i
-                                               putIState $ i { idris_dynamic_libs = x:libs }
+                                               if x `elem` libs
+                                                  then do iLOG ("Tried to load duplicate library " ++ lib_name x)
+                                                          return ()
+                                                  else putIState $ i { idris_dynamic_libs = x:libs }
     where trim = reverse . dropWhile isSpace . reverse . dropWhile isSpace
 process fn ListDynamic = do i <- getIState
                             iputStrLn "Dynamic libraries:"
@@ -655,8 +658,10 @@ helphead =
   ]
 
 
-replSettings :: Settings Idris
-replSettings = setComplete replCompletion defaultSettings
+replSettings :: Maybe FilePath -> Settings Idris
+replSettings hFile = setComplete replCompletion $ defaultSettings {
+                       historyFile = hFile
+                     }
 
 -- invoke as if from command line
 idris :: [Opt] -> IO IState
@@ -725,7 +730,7 @@ loadInputs inputs
 
          ibc (IBC _ _) = True
          ibc _ = False
- 
+
 idrisMain :: [Opt] -> Idris ()
 idrisMain opts =
     do let inputs = opt getFile opts
@@ -794,7 +799,7 @@ idrisMain opts =
                                                return ()
        when (runrepl && not quiet && not idesl && not (isJust script)) $ iputStrLn banner
        ist <- getIState
-       
+
        loadInputs inputs
 
        liftIO $ hSetBuffering stdout LineBuffering
@@ -806,7 +811,11 @@ idrisMain opts =
        case script of
          Nothing -> return ()
          Just expr -> execScript expr
-       when (runrepl && not idesl) $ runInputT replSettings $ repl ist inputs
+
+       historyFile <- fmap (</> "repl" </> "history") getIdrisUserDataDir
+
+       when runrepl $ initScript
+       when (runrepl && not idesl) $ runInputT (replSettings (Just historyFile)) $ repl ist inputs
        when (idesl) $ ideslaveStart ist inputs
        ok <- noErrors
        when (not ok) $ liftIO (exitWith (ExitFailure 1))
@@ -819,7 +828,7 @@ idrisMain opts =
     makeOption _ = return ()
 
     addPkgDir :: String -> Idris ()
-    addPkgDir p = do ddir <- liftIO $ getDataDir 
+    addPkgDir p = do ddir <- liftIO $ getDataDir
                      addImportDir (ddir </> p)
 
 execScript :: String -> Idris ()
@@ -831,6 +840,43 @@ execScript expr = do i <- getIState
                                         (tm, _) <- elabVal toplevel False term
                                         res <- execute tm
                                         liftIO $ exitWith ExitSuccess
+
+-- | Get the platform-specific, user-specific Idris dir
+getIdrisUserDataDir :: Idris FilePath
+getIdrisUserDataDir = liftIO $ getAppUserDataDirectory "idris"
+
+-- | Locate the platform-specific location for the init script
+getInitScript :: Idris FilePath
+getInitScript = do idrisDir <- getIdrisUserDataDir
+                   return $ idrisDir </> "repl" </> "init"
+
+-- | Run the initialisation script
+initScript :: Idris ()
+initScript = do script <- getInitScript
+                idrisCatch (do go <- liftIO $ doesFileExist script
+                               when go $ do
+                                 h <- liftIO $ openFile script ReadMode
+                                 runInit h
+                                 liftIO $ hClose h)
+                           (\e -> iFail $ "Error reading init file: " ++ show e)
+    where runInit :: Handle -> Idris ()
+          runInit h = do eof <- lift (hIsEOF h)
+                         ist <- getIState
+                         unless eof $ do
+                           line <- liftIO $ hGetLine h
+                           script <- getInitScript
+                           processLine ist line script
+                           runInit h
+          processLine i cmd input =
+              case parseCmd i input cmd of
+                   Left err -> liftIO $ print err
+                   Right Reload -> iFail "Init scripts cannot reload the file"
+                   Right (Load f) -> iFail "Init scripts cannot load files"
+                   Right (ModImport f) -> iFail "Init scripts cannot import modules"
+                   Right Edit -> iFail "Init scripts cannot invoke the editor"
+                   Right Proofs -> proofs i
+                   Right Quit -> iFail "Init scripts cannot quit Idris"
+                   Right cmd  -> process [] cmd
 
 getFile :: Opt -> Maybe String
 getFile (Filename str) = Just str

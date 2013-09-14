@@ -18,7 +18,8 @@ import Data.List
 import Data.List.Split(splitOn)
 import Data.Char(toLower)
 
-parseCmd i = runParser pCmd i "(input)"
+parseCmd :: IState -> String -> String -> Either ParseError Command
+parseCmd i inputname = runParser pCmd i inputname
 
 cmd :: [String] -> IParser ()
 cmd xs = do lchar ':'; docmd (sortBy (\x y -> compare (length y) (length x)) xs)
