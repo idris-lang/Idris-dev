@@ -655,8 +655,10 @@ helphead =
   ]
 
 
-replSettings :: Settings Idris
-replSettings = setComplete replCompletion defaultSettings
+replSettings :: Maybe FilePath -> Settings Idris
+replSettings hFile = setComplete replCompletion $ defaultSettings {
+                       historyFile = hFile
+                     }
 
 -- invoke as if from command line
 idris :: [Opt] -> IO IState
@@ -725,7 +727,7 @@ loadInputs inputs
 
          ibc (IBC _ _) = True
          ibc _ = False
- 
+
 idrisMain :: [Opt] -> Idris ()
 idrisMain opts =
     do let inputs = opt getFile opts
@@ -806,8 +808,11 @@ idrisMain opts =
        case script of
          Nothing -> return ()
          Just expr -> execScript expr
+
+       historyFile <- fmap (</> "repl" </> "history") getIdrisUserDataDir
+
        when runrepl $ initScript
-       when (runrepl && not idesl) $ runInputT replSettings $ repl ist inputs
+       when (runrepl && not idesl) $ runInputT (replSettings (Just historyFile)) $ repl ist inputs
        when (idesl) $ ideslaveStart ist inputs
        ok <- noErrors
        when (not ok) $ liftIO (exitWith (ExitFailure 1))
@@ -820,7 +825,7 @@ idrisMain opts =
     makeOption _ = return ()
 
     addPkgDir :: String -> Idris ()
-    addPkgDir p = do ddir <- liftIO $ getDataDir 
+    addPkgDir p = do ddir <- liftIO $ getDataDir
                      addImportDir (ddir </> p)
 
 execScript :: String -> Idris ()
@@ -833,9 +838,13 @@ execScript expr = do i <- getIState
                                         res <- execute tm
                                         liftIO $ exitWith ExitSuccess
 
+-- | Get the platform-specific, user-specific Idris dir
+getIdrisUserDataDir :: Idris FilePath
+getIdrisUserDataDir = liftIO $ getAppUserDataDirectory "idris"
+
 -- | Locate the platform-specific location for the init script
 getInitScript :: Idris FilePath
-getInitScript = do idrisDir <- lift $ getAppUserDataDirectory "idris"
+getInitScript = do idrisDir <- getIdrisUserDataDir
                    return $ idrisDir </> "repl" </> "init"
 
 -- | Run the initialisation script
