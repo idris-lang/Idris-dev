@@ -224,7 +224,7 @@ codegenJavaScript target definitions filename outputType = do
                                  ("#!/usr/bin/env node\n", "-node")
                                JavaScript ->
                                  ("", "-browser")
-  path <- getDataDir
+  path       <- getDataDir
   idrRuntime <- readFile $ path ++ "/js/Runtime-common.js"
   tgtRuntime <- readFile $ concat [path, "/js/Runtime", runtime, ".js"]
   writeFile filename $ intercalate "\n" $ [ header
@@ -246,19 +246,22 @@ codegenJavaScript target definitions filename outputType = do
     mainLoop :: String
     mainLoop = compileJS $
       JSSeq [ JSAlloc "main" $ Just $ JSFunction [] (
-                jsTailcall $ jsCall "__IDR__runMain0" []
+                jsTailcall $ jsCall mainFun []
               )
             , jsCall "main" []
             ]
+
+    mainFun :: String
+    mainFun = idrNamespace ++ translateName (MN 0 "runMain")
 
 translateIdentifier :: String -> String
 translateIdentifier =
   replaceReserved . concatMap replaceBadChars
   where replaceBadChars :: Char -> String
         replaceBadChars c
-          | ' ' <- c = "_"
-          | '_' <- c = "__"
-          | isDigit c = "_" ++ [c] ++ "_"
+          | ' ' <- c  = "_"
+          | '_' <- c  = "__"
+          | isDigit c = '_' : show (ord c)
           | not (isLetter c && isAscii c) = '_' : show (ord c)
           | otherwise = [c]
         replaceReserved s
@@ -317,19 +320,24 @@ translateNamespace (SN name) = idrNamespace ++ translateSpecialName name
 translateNamespace NErased   = idrNamespace
 
 translateName :: Name -> String
-translateName (UN name)   = translateIdentifier name
-translateName (NS name _) = translateName name
-translateName (MN i name) = translateIdentifier name ++ show i
-translateName (SN name)   = translateSpecialName name
-translateName NErased     = ""
+translateName (UN name)   = 'u' : translateIdentifier name
+translateName (NS name _) = 'n' : translateName name
+translateName (MN i name) = 'm' : translateIdentifier name ++ show i
+translateName (SN name)   = 's' : translateSpecialName name
+translateName NErased     = "e"
 
 translateSpecialName :: SpecialName -> String
 translateSpecialName name
-  | WhereN i m n  <- name = translateName m ++ translateName n ++ show i
-  | InstanceN n s <- name = translateName n ++ concatMap translateIdentifier s
-  | ParentN n s   <- name = translateName n ++ translateIdentifier s
-  | MethodN n     <- name = translateName n
-  | CaseN n       <- name = translateName n
+  | WhereN i m n  <- name =
+    'w' : translateName m ++ translateName n ++ show i
+  | InstanceN n s <- name =
+    'i' : translateName n ++ concatMap translateIdentifier s
+  | ParentN n s   <- name =
+    'p' : translateName n ++ translateIdentifier s
+  | MethodN n     <- name =
+    'm' : translateName n
+  | CaseN n       <- name =
+    'c' : translateName n
 
 translateConstant :: Const -> JS
 translateConstant (I i)                    = JSNum (JSInt i)
@@ -436,7 +444,8 @@ translateDeclaration (path, SFun name params stackSize body)
         assignVar n s = JSAlloc (jsVar n)  (Just $ JSRaw s)
 
         assignAux :: (LVar, String) -> JS
-        assignAux (var, val) = JSAssign (JSRaw $ translateVariableName var) (JSRaw val)
+        assignAux (var, val) =
+          JSAssign (JSRaw $ translateVariableName var) (JSRaw val)
 
         p :: [String]
         p = map translateName params
@@ -626,59 +635,9 @@ translateExpression (SError msg) =
 translateExpression (SForeign _ _ "putStr" [(FString, var)]) =
   jsCall (idrRTNamespace ++ "print") [JSVar var]
 
-translateExpression (SForeign _ _ fun args)
-  | "[]=" `isSuffixOf` fun
-  , (obj:idx:val:[]) <- args =
-    JSRaw $ concat [object obj, index idx, assign val]
-
-  | "[]" `isSuffixOf` fun
-  , (obj:idx:[]) <- args =
-    JSRaw $ object obj ++ index idx
-
-  | "[" `isPrefixOf` fun && "]=" `isSuffixOf` fun
-  , (obj:val:[]) <- args =
-    JSRaw $ concat [object obj, '[' : name ++ "]", assign val]
-
-  | "[" `isPrefixOf` fun && "]" `isSuffixOf` fun
-  , (obj:[]) <- args =
-    JSRaw $ object obj ++ '[' : name ++ "]"
-
-  | "." `isPrefixOf` fun, "=" `isSuffixOf` fun
-  , (obj:val:[]) <- args =
-    JSRaw $ concat [object obj, field, assign val]
-
-  | "." `isPrefixOf` fun
-  , (obj:[]) <- args =
-    JSRaw $ object obj ++ field
-
-  | "." `isPrefixOf` fun
-  , (obj:[(FUnit, _)]) <- args =
-    JSRaw $ concat [object obj, method, "()"]
-
-  | "." `isPrefixOf` fun
-  , (obj:as) <- args =
-    JSRaw $ concat [object obj, method, arguments as]
-
-  | "[]=" `isSuffixOf` fun
-  , (idx:val:[]) <- args =
-    JSRaw $ concat [array, index idx, assign val]
-
-  | "[]" `isSuffixOf` fun
-  , (idx:[]) <- args =
-    JSRaw $ array ++ index idx
-
-  | otherwise = JSRaw $ fun ++ arguments args
+translateExpression (SForeign _ _ fun args) =
+  ffi fun (map generateWrapper args)
   where
-    name         = filter (`notElem` "[]=") fun
-    method       = name
-    field        = name
-    array        = name
-    object o     = translateVariableName (snd o)
-    index  i     = "[" ++ translateVariableName (snd i) ++ "]"
-    assign v     = '=' : generateWrapper v
-    arguments as =
-      '(' : intercalate "," (map generateWrapper as) ++ ")"
-
     generateWrapper (ffunc, name)
       | FFunction   <- ffunc =
         idrRTNamespace ++ "ffiWrap(" ++ translateVariableName name ++ ")"
@@ -726,6 +685,37 @@ translateExpression SNothing = JSNull
 
 translateExpression e =
   JSError $ "Not yet implemented: " ++ filter (/= '\'') (show e)
+
+data FFI = FFICode Char | FFIArg Int | FFIError String
+
+ffi :: String -> [String] -> JS
+ffi code args = let parsed = ffiParse code in
+                    case ffiError parsed of
+                         Just err -> JSError err
+                         Nothing  -> JSRaw $ renderFFI parsed args
+  where
+    ffiParse :: String -> [FFI]
+    ffiParse ""           = []
+    ffiParse ['%']        = [FFIError "Invalid positional argument"]
+    ffiParse ('%':'%':ss) = FFICode '%' : ffiParse ss
+    ffiParse ('%':s:ss)
+      | isDigit s =
+         FFIArg (read $ s : takeWhile isDigit ss) : ffiParse (dropWhile isDigit ss)
+      | otherwise =
+          [FFIError "Invalid positional argument"]
+    ffiParse (s:ss) = FFICode s : ffiParse ss
+
+    ffiError :: [FFI] -> Maybe String
+    ffiError []                 = Nothing
+    ffiError ((FFIError s):xs)  = Just s
+    ffiError (x:xs)             = ffiError xs
+
+    renderFFI :: [FFI] -> [String] -> String
+    renderFFI [] _ = ""
+    renderFFI ((FFICode c) : fs) args = c : renderFFI fs args
+    renderFFI ((FFIArg i) : fs) args
+      | i < length args && i >= 0 = args !! i ++ renderFFI fs args
+      | otherwise = "Argument index out of bounds"
 
 data CaseType = ConCase Int
               | TypeCase JSType
