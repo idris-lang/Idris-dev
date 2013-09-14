@@ -36,6 +36,9 @@ data DynamicLib = Lib { lib_name :: String
                       , lib_handle :: DL
                       }
 
+instance Eq DynamicLib where
+    (Lib a _) == (Lib b _) = a == b
+
 #ifndef WINDOWS
 tryLoadLib :: String -> IO (Maybe DynamicLib)
 tryLoadLib lib = do exactName <- doesFileExist lib
