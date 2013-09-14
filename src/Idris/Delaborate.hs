@@ -93,6 +93,12 @@ delabTy' ist imps tm fullname = de [] imps tm
     imp (PConstraint p l _ d) arg = PConstraint p l arg d
     imp (PTacImplicit p l n sc _ d) arg = PTacImplicit p l n sc arg d
 
+
+indented text = boxIt '\n' $ unlines $ map ('\t':) $ lines text where
+    boxIt c text = (c:text) ++ if last text == c
+                                  then ""
+                                  else [c]
+
 pshow :: IState -> Err -> String
 pshow i (Msg s) = s
 pshow i (InternalMsg s) = "INTERNAL ERROR: " ++ show s ++ 
@@ -101,25 +107,26 @@ pshow i (InternalMsg s) = "INTERNAL ERROR: " ++ show s ++
 pshow i (CantUnify _ x y e sc s)
     = let imps = opt_showimp (idris_options i) in
       let colour = idris_colourRepl i in
-        "Can't unify " ++ showImp (Just i) imps colour (delab i x)
-          ++ " with " ++ showImp (Just i) imps colour (delab i y) ++
+        "Can't unify" ++ indented (showImp (Just i) imps colour (delab i x))
+          ++ "with" ++ indented (showImp (Just i) imps colour (delab i y)) ++
 --         " (" ++ show x ++ " and " ++ show y ++ ") " ++
         case e of
             Msg "" -> ""
-            _ -> "\n\nSpecifically:\n\t" ++ pshow i e ++
-                 if (opt_errContext (idris_options i)) then showSc i sc else ""
+            _ -> "\nSpecifically:" ++
+                indented (pshow i e) ++
+                if (opt_errContext (idris_options i)) then showSc i sc else ""
 pshow i (CantConvert x y env)
     = let imps = opt_showimp (idris_options i) in
       let colour = idris_colourRepl i in
-          "Can't convert " ++ showImp (Just i) imps colour (delab i x) ++ " with "
-                 ++ showImp (Just i) imps colour (delab i y) ++
+          "Can't convert" ++ indented (showImp (Just i) imps colour (delab i x)) ++ "with"
+                 ++ indented (showImp (Just i) imps colour (delab i y)) ++
                  if (opt_errContext (idris_options i)) then showSc i env else ""
 pshow i (UnifyScope n out tm env)
     = let imps = opt_showimp (idris_options i) in
       let colour = idris_colourRepl i in
-          "Can't unify " ++ show n ++ " with "
-                 ++ showImp (Just i) imps colour (delab i tm) ++ " as " ++ show out ++
-                 " is not in scope" ++
+          "Can't unify" ++ indented (show n) ++ "with"
+                 ++ indented (showImp (Just i) imps colour (delab i tm)) ++ "as" ++
+                 indented (show out) ++ "is not in scope" ++
                  if (opt_errContext (idris_options i)) then showSc i env else ""
 pshow i (CantInferType t)
     = "Can't infer type for " ++ t
