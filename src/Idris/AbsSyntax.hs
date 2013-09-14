@@ -22,6 +22,7 @@ import Control.Monad.State
 import Data.List
 import Data.Char
 import Data.Either
+import Data.Maybe
 
 import Debug.Trace
 
@@ -54,13 +55,21 @@ addFlag tgt f = do i <- getIState; putIState $ i { idris_cgflags = nub $ (tgt, f
 
 addDyLib :: [String] -> Idris (Either DynamicLib String)
 addDyLib libs = do i <- getIState
-                   handle <- lift $ mapM (\l -> catchIO (tryLoadLib l) (\_ -> return Nothing)) libs
-                   case msum handle of
-                     Nothing -> return (Right $ "Could not load dynamic alternatives \"" ++
-                                                concat (intersperse "," libs) ++ "\"")
-                     Just x -> do let ls = idris_dynamic_libs i
-                                  putIState $ i { idris_dynamic_libs = x:ls }
-                                  return (Left x)
+                   let ls = idris_dynamic_libs i
+                   case mapMaybe (findDyLib ls) libs of
+                     x:_ -> return (Left x)
+                     [] -> do
+                       handle <- lift $ mapM (\l -> catchIO (tryLoadLib l) (\_ -> return Nothing)) $ libs
+                       case msum handle of
+                         Nothing -> return (Right $ "Could not load dynamic alternatives \"" ++
+                                                    concat (intersperse "," libs) ++ "\"")
+                         Just x -> do putIState $ i { idris_dynamic_libs = x:ls }
+                                      return (Left x)
+    where findDyLib :: [DynamicLib] -> String -> Maybe DynamicLib
+          findDyLib []         l                     = Nothing
+          findDyLib (lib:libs) l | l == lib_name lib = Just lib
+                                 | otherwise         = findDyLib libs l
+
 
 addHdr :: Codegen -> String -> Idris ()
 addHdr tgt f = do i <- getIState; putIState $ i { idris_hdrs = nub $ (tgt, f) : idris_hdrs i }
