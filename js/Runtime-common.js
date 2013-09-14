@@ -16,11 +16,19 @@ var __IDRRT__Forgot = new __IDRRT__Type('Forgot');
 var __IDRRT__Tailcall = function(f) { this.f = f };
 
 var __IDRRT__ffiWrap = function(fid) {
-  return function(arg) {
-    return __IDRRT__tailcall(function(){
-      return __IDR__APPLY0(fid, arg);
-    });
-  };
+  return function(){
+      var res = fid;
+      var i = 0;
+      var arg;
+      while (res instanceof __IDRRT__Con){
+          arg = arguments[i];
+          res = __IDRRT__tailcall(function(){
+              return __IDR__mAPPLY0(res, arg);
+          });
+          ++i;
+      }
+      return res;
+  }
 };
 
 /** @constructor */
