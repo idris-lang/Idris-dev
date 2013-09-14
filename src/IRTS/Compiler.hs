@@ -352,10 +352,10 @@ instance ToIR SC where
 
         ir' (STerm t) = ir t
         ir' (UnmatchedCase str) = return $ LError str
-        ir' (ProjCase tm alts) = do alts' <- mapM (mkIRAlt tm) alts
-                                    tm' <- ir tm
+        ir' (ProjCase tm alts) = do tm' <- ir tm
+                                    alts' <- mapM (mkIRAlt tm') alts
                                     return $ LCase tm' alts'
-        ir' (Case n alts) = do alts' <- mapM (mkIRAlt (P Bound n Erased)) alts
+        ir' (Case n alts) = do alts' <- mapM (mkIRAlt (LV (Glob n))) alts
                                return $ LCase (LV (Glob n)) alts'
         ir' ImpossibleCase = return LNothing
 
@@ -379,10 +379,10 @@ instance ToIR SC where
           | matchableTy x
              = do rhs' <- ir rhs 
                   return $ LDefaultCase rhs'
-        mkIRAlt (P _ orig _) (SucCase n rhs)      
+        mkIRAlt tm (SucCase n rhs)      
            = do rhs' <- ir rhs
                 return $ LDefaultCase (LLet n (LOp (LMinus (ATInt ITBig))
-                                                 [LV (Glob orig),
+                                                 [tm,
                                                   LConst (BI 1)]) rhs')
 --                 return $ LSucCase n rhs'
         mkIRAlt _ (ConstCase c rhs)      

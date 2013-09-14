@@ -501,6 +501,10 @@ prune proj (Case n alts)
             [] -> ImpossibleCase
             as@[ConCase cn i args sc] -> if proj then mkProj n 0 args sc
                                                  else Case n as
+            -- Bit of a hack here! The default case will always be 0, make sure
+            -- it gets caught first.
+            [s@(SucCase _ _), DefaultCase dc]
+                -> Case n [ConstCase (BI 0) dc, s]
             as  -> Case n as
     where pruneAlt (ConCase cn i ns sc) = ConCase cn i ns (prune proj sc)
           pruneAlt (FnCase cn ns sc) = FnCase cn ns (prune proj sc)
