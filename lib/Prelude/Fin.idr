@@ -3,6 +3,8 @@ module Prelude.Fin
 import Prelude.Nat
 import Prelude.Either
 
+%default total
+
 data Fin : Nat -> Type where
     fZ : Fin (S k)
     fS : Fin k -> Fin (S k)
@@ -26,7 +28,7 @@ finToInt (fS x) a = finToInt x (a + 1)
 instance Cast (Fin n) Integer where
     cast x = finToInt x 0
 
-weaken : Fin n -> Fin (S n)
+weaken : Fin n -> Fin (n + m)
 weaken fZ     = fZ
 weaken (fS k) = fS (weaken k)
 
@@ -41,7 +43,7 @@ last : Fin (S n)
 last {n=Z} = fZ
 last {n=S _} = fS last
 
-total fSinjective : {f : Fin n} -> {f' : Fin n} -> (fS f = fS f') -> f = f'
+fSinjective : {f : Fin n} -> {f' : Fin n} -> (fS f = fS f') -> f = f'
 fSinjective refl = refl
 
 
