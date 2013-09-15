@@ -59,6 +59,7 @@ import Data.Maybe
 import Data.List
 import Data.Char
 import Data.Version
+import Data.Word (Word)
 
 import Debug.Trace
 
@@ -939,7 +940,7 @@ getCPU :: Opt -> Maybe String
 getCPU (TargetCPU x) = Just x
 getCPU _ = Nothing
 
-getOptLevel :: Opt -> Maybe Int
+getOptLevel :: Opt -> Maybe Word
 getOptLevel (OptLevel x) = Just x
 getOptLevel _ = Nothing
 

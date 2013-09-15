@@ -19,7 +19,7 @@ import LLVM.General.Target ( TargetMachine
                            , initializeAllTargets, lookupTarget
                            )
 import LLVM.General.AST.DataLayout
-import LLVM.General.PassManager
+import qualified LLVM.General.PassManager as PM
 import qualified LLVM.General.Module as M
 import qualified LLVM.General.AST.IntegerPredicate as IPred
 import qualified LLVM.General.AST.Linkage as L
@@ -59,7 +59,7 @@ data Target = Target { triple :: String, dataLayout :: DataLayout }
 codegenLLVM :: [(TT.Name, SDecl)] ->
                String -> -- target triple
                String -> -- target CPU
-               Int -> -- Optimization degree
+               Word -> -- Optimization degree
                FilePath -> -- output file name
                OutputType ->
                IO ()
@@ -71,12 +71,12 @@ codegenLLVM defs triple cpu optimize file outty = withContext $ \context -> do
           do layout <- getTargetMachineDataLayout tm
              let ast = codegen (Target triple layout) (map snd defs)
              result <- runErrorT .  M.withModuleFromAST context ast $ \m ->
-                       do let opts = defaultCuratedPassSetSpec
-                                     { optLevel = Just optimize
-                                     , simplifyLibCalls = Just True
-                                     , useInlinerWithThreshold = Just 225
+                       do let opts = PM.defaultCuratedPassSetSpec
+                                     { PM.optLevel = Just optimize
+                                     , PM.simplifyLibCalls = Just True
+                                     , PM.useInlinerWithThreshold = Just 225
                                      }
-                          when (optimize /= 0) $ withPassManager opts $ void . flip runPassManager m
+                          when (optimize /= 0) $ PM.withPassManager opts $ void . flip PM.runPassManager m
                           outputModule tm file outty m
              case result of
                Right _ -> return ()
