@@ -40,13 +40,13 @@ combined with unification, making it harder to maintain; secondly, adding new
 high-level features requires the type checker to support those features
 directly. In contrast, elaboration by tactics gives a clean separation between
 the low-level and high-level languages, and results in programs in a core
-type theory which is separately checkable, perhaps even by an independently
+type theory which are separately checkable, perhaps even by an independently
 written checker which implements the \TT{} rules directly.
 
 Matita uses a bi-directional refinement algorithm~\cite{Asperti}. This is a
 type directed approach, maintaining a set of yet to be solved unification
 problems and relying on a small kernel, similar to the approach we now take
-with \Idris{}, However, their approach uses refinement rules rather than
+with \Idris{}, but using refinement rules rather than
 tactics. This leads to good error messages though it is not clear how
 easy it would be to extend to additional high-level language features, unlike
 the tactic-based approach.

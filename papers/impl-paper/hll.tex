@@ -369,7 +369,7 @@ lookup_default i xs def = case list_lookup i xs of
 
 The \texttt{case} construct is intended for simple analysis of intermediate
 expressions to avoid the need to write auxiliary functions.  It will
-\emph{only} work if each branch \emph{matches} a value of the same type, and
+only work if each branch \emph{matches} a value of the same type, and
 \emph{returns} a value of the same type.
 
 \subsubsection{The \texttt{with} rule}
@@ -399,7 +399,7 @@ data Parity : Nat -> Type where
 \noindent
 We say \texttt{Parity} is a \emph{view} of \texttt{Nat}. 
 It has a \emph{covering function} which tests whether
-it is even or odd and constructs the predicate accordingly.
+it is even or odd and constructs the predicate accordingly:
 
 \begin{SaveVerbatim}{parityty}
 
@@ -416,7 +416,7 @@ rule:
 \begin{SaveVerbatim}{natToBin}
 
 natToBin : Nat -> List Bool
-natToBin O = Nil
+natToBin Z = Nil
 natToBin k with (parity k)
    natToBin (j + j)     | even = False :: natToBin j
    natToBin (S (j + j)) | odd  = True  :: natToBin j

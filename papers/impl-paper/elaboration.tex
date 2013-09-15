@@ -34,7 +34,7 @@ Holes stand for the parts of programs which have not yet been
 instantiated; this largely follows the Oleg development
 calculus~\cite{McBride1999}.
 
-The basic idea is to extend the syntax for binders with a \remph{hole}
+The idea is to extend the syntax for binders with a \remph{hole}
 binding and a \remph{guess} binding. 
 These extensions are given in Figure \ref{ttdev}.
 The \remph{guess} binding is
@@ -101,7 +101,7 @@ A proof state is a tuple, $(\vC, \Delta, \ve, \vP, \vQ)$, containing:
 \item Unsolved unification problems, $\vP$
 \begin{itemize}
 \item These take the form $(\Gamma,\ve_1,\ve_2)$, i.e. the context in which
-the problem is run, and the expressions to be unified.
+the problem is to be solved, and the expressions to be unified.
 \end{itemize}
 \item A hole queue, $\vQ$
 %\item \remph{Deferred} definitions, $\vD$, for introducing global metavariables
@@ -110,7 +110,7 @@ the problem is run, and the expressions to be unified.
 The \remph{hole queue} is a priority queue of names of hole and guess binders 
 $\langle\vx_1,\vx_2,\ldots,\vx_n\rangle$
 in the proof term ---
-ensuring that each bound name is unique. Holes refer to \remph{sub goals}
+ensuring that each bound name is unique. Holes refer to \remph{sub-goals}
 in the proof. As a proof develops, unification problems arising from unsolved
 holes may be introduced, and may be solved when those holes are instantiated.
 When the hole queue is empty, and there are no remaining unification 
@@ -130,7 +130,7 @@ either indicates success, or reports an error $\MO{Err}$:
 }
 
 \noindent
-If any operation fails during a proof (e.g. a sub term fails to type check)
+If any operation fails during a proof (e.g. a sub-term fails to type check)
 then the entire proof fails (i.e. returns $\MO{Failure}\;\ve$ with some error
 message $\ve$) unless otherwise handled.
 
@@ -144,22 +144,21 @@ distracted by implementation details. These meta-operations include:
 \item \demph{Queries} which retrieve values from the proof state, without modifying
 the state. For example, we can:
 \begin{itemize}
-\item Get the type of the current sub goal ($\MO{Type}$).
-\item Get the current proof term ($\MO{Term}$).
-\item Retrieve the local context $\Gamma$ at the current sub goal
-($\MO{Context}$).
+\item Get the type of the current sub-goal ($\MO{Type}$)
+\item Get the current proof term ($\MO{Term}$)
+\item Retrieve the local context $\Gamma$ at the current sub-goal
+($\MO{Context}$)
 \item Type check ($\MO{Check}$) or normalise ($\MO{Normalise}$) a term relative
-to $\Gamma$.
+to $\Gamma$
 \end{itemize}
-\item \demph{Unification}, which unifies two terms (potentially solving sub
-goals) relative to $\Gamma$. This may introduce new unification problems
-to the proof state.
-\item \demph{Tactics} which update the proof term. Tactics operate on the sub term
-at the binder specified by the head of the hole queue $\vQ$.
-\item \demph{Focussing} on a specific sub goal, which brings a different sub goal to the
-head of the hole queue.
-%\item \demph{Deferring} a sub goal, which adds a new definition to the global context
-%$\vC$ which solves the sub goal.
+\item \demph{Unification}, which unifies two terms (potentially solving sub-goals) relative to $\Gamma$. This may introduce new unification problems
+to the proof state
+\item \demph{Tactics} which update the proof term. Tactics operate on the sub-term
+at the binder specified by the head of the hole queue $\vQ$
+\item \demph{Focussing} on a specific sub-goal, which brings a different sub-goal to the
+head of the hole queue
+%\item \demph{Deferring} a sub-goal, which adds a new definition to the global context
+%$\vC$ which solves the sub-goal.
 \end{itemize}
 
 Elaboration of an \Idris{} expression involves creating a new proof state,
@@ -307,7 +306,7 @@ of $\vt$.  Tactics may also have the side effect of updating the proof state,
 therefore we will describe tactics in a pseudo-code with $\RW{do}$ notation.
 
 Tactics are executed by a higher level meta-operation $\MO{Tactic}$, 
-given in Figure \ref{runtac} which
+given in Figure \ref{runtac}, which
 locates the appropriate sub-term, applies the tactic with the context
 local to this sub-term, and
 replaces the sub-term with the term returned by the
@@ -386,12 +385,13 @@ Unification is crucial to the success of elaboration --- it is unification
 which finds values of implicit arguments, in particular. We do not require
 unification to succeed immediately, in general, as instantiating a hole may 
 affect the solution to other unification problems. Instead, 
-$\MO{PrimUnify}$ may give one of the following results:
+$\PrimUnify\:\ve_1\:\ve_2$ may give one of the following results:
 
 \begin{itemize}
 \item $\MO{Success}\;(\tx=\te, \tp)$, containing the solved holes mapping
 $\vx$ to $\ve$, and a possibly empty set of blocked unification problems $\tp$.
-If $\tp$ is empty, there is a solution for $\ve_1$ and $\ve_2$. 
+If $\tp$ is empty, there is a solution unifying $\ve_1$ and $\ve_2$ in
+the context $\Gamma$.
 \item $\MO{Failure}\;\ve$, if no solution is found due to a failure to unify
 sub-terms in normal form.
 \end{itemize}
@@ -543,8 +543,8 @@ problem) and is handled by $\MO{Try}$.
 
 \subsubsection{Creating binders}
 
-We also define primitive tactics for constructing binders. Creating a $\lambda$
-binding requires that the goal normalises to a function type:
+We also define primitive tactics for constructing binders. Creating a
+$\lambda$-binding requires that the goal normalises to a function type:
 
 \DM{
 \PA{\A\A}{
@@ -627,7 +627,7 @@ entirety of $\vx\;\ve$, and the resulting term is not well-typed:
 
 \noindent
 If, on the other hand, we $\MO{Attack}$ the hole then instantiate it with
-a $\lambda$ binding $\vn$, we get:
+a $\lambda$-binding $\vn$, we get:
 
 \DM{
 \begin{array}{ll}
@@ -668,7 +668,7 @@ building the right hand side.
 
 To illustrate how tactics are applied, using $\MO{Tactic}$, to build a
 complete term by refining a proof state, let us consider the following
-\TT{} definition for the identify function:
+\TT{} definition for the identity function:
 
 \DM{
 \AR{
@@ -866,7 +866,7 @@ a Coq proof script.
 {Building $\FN{id}$ with tactics}
 {idelab}
 
-%--- give unify in full, esp. as it solves sub goals? Maybe...
+%--- give unify in full, esp. as it solves sub-goals? Maybe...
 
 % Unify' G x t             = Success (x, t) if ?x : t in G
 % Unify' G t x             = Success (x, t) if ?x : t in G
@@ -1347,7 +1347,7 @@ to the global context, such as definitions in $\iwhere$ clauses.
 First, let us consider the simplest case, with no $\iwhere$ clause:
 
 \DM{
-\MO{ElabClause}\;(\vx\;\ttt\;=\;\ve)\;\mq\;?
+\MO{ElabClause}\;(\vx\;\ttt\;=\;\ve)\;\mq\;\ldots
 }
 
 How does the left hand side get elaborated, given that elaboration is type directed, and
@@ -1396,9 +1396,10 @@ the clauses and adding the resulting collection to \TT{}.
 }
 
 Elaborating a clause is made only slightly more complex by the presence of
-$\iwhere$ clauses. In this case, after elaborating the left hand side, the pattern
-bound variables are added as extra arguments to the declarations in the $\iwhere$ block,
-which are then recursively elaborated before the right hand side.
+$\iwhere$ clauses. In this case, after elaborating the left hand side, the 
+pattern-bound variables are added as extra arguments to the declarations in the
+$\iwhere$ block, which are then recursively elaborated before the right hand
+side.
 
 \DM{
 \AR{
@@ -1419,7 +1420,7 @@ which are then recursively elaborated before the right hand side.
 }
 
 In \TT{}, all definitions must be at the top level. Therefore, the declarations 
-in the $\iwhere$ block are lifted out, adding the pattern bound names as additional arguments
+in the $\iwhere$ block are lifted out, adding the pattern-bound names as additional arguments
 to ensure they are in scope, using the $\MO{Lift}$ operation. This also modifies
 the right hand side $\ve$ to use the lifted definitions, rather than the original.
 
@@ -1438,7 +1439,7 @@ This is equivalent to the following, using top-level definitions only:
 \begin{SaveVerbatim}{natToBinw}
 
 natToBin : Nat -> List Bool
-natToBin O = Nil
+natToBin Z = Nil
 natToBin k = natToBin' k (parity k)
 
 \end{SaveVerbatim}
@@ -1582,7 +1583,7 @@ An instance for a type \texttt{a} is then a value of type \texttt{Show a}; for e
 showNat : Show Nat
 showNat = InstanceShow show' where
     show' : Nat -> String
-    show' O = "O"
+    show' Z = "Z"
     show' (S k) = "s" ++ show k
 
 \end{SaveVerbatim}
