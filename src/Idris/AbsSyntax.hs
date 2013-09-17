@@ -84,6 +84,9 @@ addTrans t = do i <- getIState
 totcheck :: (FC, Name) -> Idris ()
 totcheck n = do i <- getIState; putIState $ i { idris_totcheck = idris_totcheck i ++ [n] }
 
+clear_totcheck :: Idris ()
+clear_totcheck  = do i <- getIState; putIState $ i { idris_totcheck = [] }
+
 setFlags :: Name -> [FnOpt] -> Idris ()
 setFlags n fs = do i <- getIState; putIState $ i { idris_flags = addDef n fs (idris_flags i) }
 

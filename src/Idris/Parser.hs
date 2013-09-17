@@ -134,7 +134,10 @@ loadSource lidr f
                     -- Now add all the declarations to the context
                     v <- verbose
                     when v $ iputStrLn $ "Type checking " ++ f
-                    elabDecls toplevel ds
+                    -- we totality check after every Mutual block, so if
+                    -- anything is a single definition, wrap it in a
+                    -- mutual block on its own
+                    elabDecls toplevel (map toMutual ds)
                     i <- getIState
                     -- simplify every definition do give the totality checker
                     -- a better chance
@@ -144,8 +147,8 @@ loadSource lidr f
                     -- build size change graph from simplified definitions
                     iLOG "Totality checking"
                     i <- getIState
-                    mapM_ buildSCG (idris_totcheck i)
-                    mapM_ checkDeclTotality (idris_totcheck i)
+--                     mapM_ buildSCG (idris_totcheck i)
+--                     mapM_ checkDeclTotality (idris_totcheck i)
                     iLOG ("Finished " ++ f)
                     ibcsd <- valIBCSubDir i
                     iLOG "Universe checking"
@@ -165,6 +168,14 @@ loadSource lidr f
   where
     namespaces []     ds = ds
     namespaces (x:xs) ds = [PNamespace x (namespaces xs ds)]
+
+    toMutual m@(PMutual _ d) = m
+    toMutual x = let r = PMutual (FC "single mutual" 0) [x] in
+                 case x of
+                   PClauses _ _ _ _ -> r
+                   PClass _ _ _ _ _ _ _ -> r
+                   PInstance _ _ _ _ _ _ _ _ -> r
+                   _ -> x
 
 addHides :: [(Name, Maybe Accessibility)] -> Idris ()
 addHides xs = do i <- getIState

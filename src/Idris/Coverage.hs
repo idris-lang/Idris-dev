@@ -313,11 +313,11 @@ checkTotality path fc n
                             -- typechecking decidable
                                case t' of
 -- FIXME: Put this back when we can handle mutually recursive things
---                                  p@(Partial _) -> 
---                                      do setAccessibility n Frozen 
---                                         addIBC (IBCAccess n Frozen)
---                                         logLvl 5 $ "HIDDEN: " 
---                                               ++ show n ++ show p
+                                 p@(Partial _) -> 
+                                     do setAccessibility n Frozen 
+                                        addIBC (IBCAccess n Frozen)
+                                        logLvl 5 $ "HIDDEN: " 
+                                              ++ show n ++ show p
                                  _ -> return ()
                                return t'
                         _ -> return $ Total []

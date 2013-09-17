@@ -684,6 +684,7 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
                                      addToCalledG n (nub (map fst calls)) -- plus names in type!
                                      addIBC (IBCCG n)
                               _ -> return ()
+                          return ()
   --                         addIBC (IBCTotal n tot)
                [] -> return ()
            return ()
@@ -1495,6 +1496,12 @@ elabDecl' what info d@(PClauses f o n ps)
 elabDecl' what info (PMutual f ps) 
     = do mapM_ (elabDecl ETypes info) ps
          mapM_ (elabDecl EDefns info) ps
+         -- Do totality checking after entire mutual block
+         i <- get
+         mapM_ buildSCG (idris_totcheck i)
+         mapM_ checkDeclTotality (idris_totcheck i)
+         clear_totcheck
+
 elabDecl' what info (PParams f ns ps) 
     = do i <- getIState
          iLOG $ "Expanding params block with " ++ show ns ++ " decls " ++
