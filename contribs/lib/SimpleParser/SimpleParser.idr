@@ -54,9 +54,9 @@ failure : String -> Parser a
 failure msg = P (\inp => Left msg)
 
 item : Parser Char
-item = P (\inp => case unpack inp of
-                    []      => Left "Error! Parsing empty list."
-                    (x::xs) => Right (x, pack xs))
+item = P (\inp => case choose (inp == "") of
+                    Left  _ => Left "Error! Parsing empty list."
+                    Right p => Right (strHead' inp p, strTail' inp p))
 
 
 --------------------------------------------------------------------------------
@@ -92,12 +92,12 @@ char x = sat (== x)
 string : String -> Parser String
 string s = map pack (traverse char (unpack s))
 
-many1 : Parser a -> Parser (List a)
-many : Parser a -> Parser (List a)
+mutual
+  many1 : Parser a -> Parser (List a)
+  many1 p = [| p :: many p |]
 
-many1 p = [| p :: many p |]
-
-many p = lazy (many1 p) <|> pure []
+  many : Parser a -> Parser (List a)
+  many p = lazy (many1 p) <|> pure []
 
 bool : Parser Bool
 bool = parseTrue <|> parseFalse
