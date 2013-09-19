@@ -154,6 +154,9 @@ unify ctxt env topx topy dont holes =
     sc i = do UI s f <- get
               put (UI (s+i) f)
 
+    errors = do UI s f <- get
+                return (not (null f))
+
     uplus u1 u2 = do UI s f <- get
                      r <- u1
                      UI s f' <- get
@@ -290,7 +293,9 @@ unify ctxt env topx topy dont holes =
                        then
 --                      (notFn headx && notFn heady))) then
                    do uf <- un' True bnames headx heady
-                      unArgs uf argsx argsy
+                      failed <- errors
+                      if (not failed) then unArgs uf argsx argsy
+                        else return []
                    else -- trace ("TMPFAIL " ++ show (appx, appy, injective appx, injective appy)) $ 
                         unifyTmpFail appx appy)
                     (unifyTmpFail appx appy) -- whole application fails

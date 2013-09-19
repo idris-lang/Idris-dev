@@ -147,8 +147,8 @@ loadSource lidr f
                     -- build size change graph from simplified definitions
                     iLOG "Totality checking"
                     i <- getIState
---                     mapM_ buildSCG (idris_totcheck i)
---                     mapM_ checkDeclTotality (idris_totcheck i)
+                    mapM_ buildSCG (idris_totcheck i)
+                    mapM_ checkDeclTotality (idris_totcheck i)
                     iLOG ("Finished " ++ f)
                     ibcsd <- valIBCSubDir i
                     iLOG "Universe checking"

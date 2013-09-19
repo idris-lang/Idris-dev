@@ -1098,6 +1098,9 @@ showImp ist impl colour tm = se 10 [] tm where
     se p bnd (PQuote r) = "![" ++ show r ++ "]"
     se p bnd (PPatvar fc n) = if impl then show n ++ "[p]" else show n
     se p bnd (PInferRef fc n) = "!" ++ show n -- ++ "[" ++ show fc ++ "]"
+    se p bnd e
+        | Just str <- slist p bnd e = str
+        | Just num <- snat p e  = perhapsColourise colouriseData (show num)
     se p bnd (PRef fc n) = showName ist bnd impl colour n
     se p bnd (PLam n ty sc) = bracket p 2 $ "\\ " ++ perhapsColourise colouriseBound (show n) ++
                               (if impl then " : " ++ se 10 bnd ty else "") ++ " => " 
@@ -1130,9 +1133,6 @@ showImp ist impl colour tm = se 10 [] tm where
         = bracket p 2 $
           "{tacimp " ++ (perhapsColourise colouriseBound (show n)) ++ " : " ++ se 10 bnd ty ++ "} -> " ++
           se 10 ((n, False):bnd) sc
-    se p bnd e
-        | Just str <- slist p bnd e = str
-        | Just num <- snat p e  = perhapsColourise colouriseData (show num)
     se p bnd (PMatchApp _ f) = "match " ++ show f
     se p bnd (PApp _ hd@(PRef _ f) [])
         | not impl = se p bnd hd
