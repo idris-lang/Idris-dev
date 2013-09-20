@@ -217,13 +217,17 @@ processInput cmd orig inputs
          case parseCmd i "(input)" cmd of
             Left err ->   do liftIO $ print err
                              return (Just inputs)
-            Right Reload -> 
-                do putIState (orig { idris_options = idris_options i })
+            Right Reload ->
+                do putIState $ orig { idris_options = idris_options i
+                                    , idris_colourTheme = idris_colourTheme i
+                                    }
                    clearErr
-                   mods <- loadInputs inputs  
+                   mods <- loadInputs inputs
                    return (Just inputs)
-            Right (Load f) -> 
-                do putIState (orig { idris_options = idris_options i })
+            Right (Load f) ->
+                do putIState orig { idris_options = idris_options i
+                                  , idris_colourTheme = idris_colourTheme i
+                                  }
                    clearErr
                    mod <- loadModule f
                    return (Just [f])
