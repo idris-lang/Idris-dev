@@ -20,8 +20,16 @@ getArgs = do n <- numArgs
                     do arg <- getArg i
                        ga' (arg :: acc) (i+1) n
 
-getEnv : String -> IO String
-getEnv x = mkForeign (FFun "getenv" [FString] FString) x
+getEnv : String -> IO (Maybe String)
+getEnv key = do 
+    str_ptr <- getEnv'
+    exists  <- nullStr str_ptr
+    if exists
+       then pure Nothing
+       else pure (Just str_ptr)
+  where
+    getEnv' : IO String
+    getEnv' = mkForeign (FFun "getenv" [FString] FString) key
 
 exit : Int -> IO ()
 exit code = mkForeign (FFun "exit" [FInt] FUnit) code
