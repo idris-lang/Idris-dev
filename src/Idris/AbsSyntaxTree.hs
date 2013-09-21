@@ -24,6 +24,7 @@ import Control.Monad.Trans.State.Strict
 import Data.List
 import Data.Char
 import Data.Either
+import Data.Word (Word)
 
 import Debug.Trace
 
@@ -42,7 +43,7 @@ data IOption = IOption { opt_logLevel   :: Int,
                          opt_importdirs :: [FilePath],
                          opt_triple     :: String,
                          opt_cpu        :: String,
-                         opt_optLevel   :: Int,
+                         opt_optLevel   :: Word,
                          opt_cmdline    :: [Opt] -- remember whole command line
                        }
     deriving (Show, Eq)
@@ -278,7 +279,7 @@ data Opt = Filename String
          | InterpretScript String
          | TargetTriple String
          | TargetCPU String
-         | OptLevel Int
+         | OptLevel Word
     deriving (Show, Eq)
 
 -- Parsed declarations

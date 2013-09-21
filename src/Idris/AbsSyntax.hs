@@ -23,6 +23,7 @@ import Data.List
 import Data.Char
 import Data.Either
 import Data.Maybe
+import Data.Word (Word)
 
 import Debug.Trace
 
@@ -435,13 +436,13 @@ targetCPU :: Idris String
 targetCPU = do i <- getIState
                return (opt_cpu (idris_options i))
 
-setOptLevel :: Int -> Idris ()
+setOptLevel :: Word -> Idris ()
 setOptLevel t = do i <- getIState
                    let opts = idris_options i
                        opt' = opts { opt_optLevel = t }
                    putIState $ i { idris_options = opt' }
 
-optLevel :: Idris Int
+optLevel :: Idris Word
 optLevel = do i <- getIState
               return (opt_optLevel (idris_options i))
 
