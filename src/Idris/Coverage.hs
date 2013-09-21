@@ -130,8 +130,41 @@ genAll :: IState -> [PTerm] -> [PTerm]
 genAll i args 
    = case filter (/=Placeholder) $ fnub (concatMap otherPats (fnub args)) of
           [] -> [Placeholder]
-          xs -> xs
+          xs -> inventConsts xs
   where 
+    -- if they're constants, invent a new one to make sure that
+    -- constants which are not explicitly handled are covered
+    inventConsts cs@(PConstant c : _) = map PConstant (ic' (mapMaybe getConst cs))
+      where getConst (PConstant c) = Just c
+            getConst _ = Nothing
+    inventConsts xs = xs
+
+    -- try constants until they're not in the list. 
+    -- FIXME: It is, of course, possible that someone has enumerated all 
+    -- the constants and matched on them (maybe in generated code) and this 
+    -- will be really slow. This is sufficiently unlikely that we won't 
+    -- worry for now... 
+
+    ic' xs@(I _ : _) = firstMissing xs (lotsOfNums I) 
+    ic' xs@(BI _ : _) = firstMissing xs (lotsOfNums BI)
+    ic' xs@(Fl _ : _) = firstMissing xs (lotsOfNums Fl) 
+    ic' xs@(B8 _ : _) = firstMissing xs (lotsOfNums B8) 
+    ic' xs@(B16 _ : _) = firstMissing xs (lotsOfNums B16) 
+    ic' xs@(B32 _ : _) = firstMissing xs (lotsOfNums B32) 
+    ic' xs@(B64 _ : _) = firstMissing xs (lotsOfNums B64) 
+    ic' xs@(Ch _ : _) = firstMissing xs lotsOfChars
+    ic' xs@(Str _ : _) = firstMissing xs lotsOfStrings 
+    -- TODO: Bit vectors
+    -- The rest are types with only one case
+    ic' xs = xs
+
+    firstMissing cs (x : xs) | x `elem` cs = firstMissing cs xs
+                             | otherwise = x : cs
+
+    lotsOfNums t = map t [0..]
+    lotsOfChars = map Ch ['a'..]
+    lotsOfStrings = map Str (map (("some string " ++).show) [1..])
+
     conForm (PApp _ (PRef fc n) _) = isConName n (tt_ctxt i)
     conForm (PRef fc n) = isConName n (tt_ctxt i)
     conForm _ = False
@@ -149,7 +182,8 @@ genAll i args
     otherPats o@(PDPair fc t _ v) 
         = ops fc (UN "Ex_intro") 
                 ([pimp (UN "a") Placeholder, pimp (UN "P") Placeholder] ++
-                 [pexp t,pexp v]) o 
+                 [pexp t,pexp v]) o
+    otherPats o@(PConstant c) = return o
     otherPats arg = return Placeholder 
 
     ops fc n xs_in o
