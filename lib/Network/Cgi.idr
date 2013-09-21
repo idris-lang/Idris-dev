@@ -115,15 +115,20 @@ getContent x = getC x "" where
                             getC (n-1) (strCons x acc)
                     else (return "")
 
+getCgiEnv : String -> IO String
+getCgiEnv key = do
+  val <- getEnv key
+  return $ maybe "" id val 
+
 abstract
 runCGI : CGI a -> IO a
 runCGI prog = do 
-    clen_in <- getEnv "CONTENT_LENGTH"
+    clen_in <- getCgiEnv "CONTENT_LENGTH"
     let clen = prim__fromStrInt clen_in
     content <- getContent clen
-    query   <- getEnv "QUERY_STRING"
-    cookie  <- getEnv "HTTP_COOKIE"
-    agent   <- getEnv "HTTP_USER_AGENT"
+    query   <- getCgiEnv "QUERY_STRING"
+    cookie  <- getCgiEnv "HTTP_COOKIE"
+    agent   <- getCgiEnv "HTTP_USER_AGENT"
 
     let get_vars  = getVars ['&',';'] query
     let post_vars = getVars ['&'] content
