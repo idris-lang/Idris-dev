@@ -34,6 +34,10 @@ int isNull(void* ptr) {
     return ptr==NULL;
 }
 
+int isNullString(char* str) {
+    return str==NULL;
+}
+
 void* idris_stdin() {
     return (void*)stdin;
 }

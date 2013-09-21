@@ -119,6 +119,10 @@ int isNull(void* ptr) {
   return ptr==NULL;
 }
 
+int isNullString(char* str) {
+  return str==NULL;
+}
+
 void idris_memset(void* ptr, size_t offset, uint8_t c, size_t size) {
   memset(((uint8_t*)ptr) + offset, c, size);
 }

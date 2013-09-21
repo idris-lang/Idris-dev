@@ -479,6 +479,11 @@ nullPtr p = do ok <- mkForeign (FFun "isNull" [FPtr] FInt) p
                return (ok /= 0);
 
 partial
+nullStr : String -> IO Bool
+nullStr p = do ok <- mkForeign (FFun "isNullString" [FString] FInt) p
+               return (ok /= 0);
+
+partial
 validFile : File -> IO Bool
 validFile (FHandle h) = do x <- nullPtr h
                            return (not x)
