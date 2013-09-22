@@ -480,7 +480,7 @@ nullPtr p = do ok <- mkForeign (FFun "isNull" [FPtr] FInt) p
 
 partial
 nullStr : String -> IO Bool
-nullStr p = do ok <- mkForeign (FFun "isNullString" [FString] FInt) p
+nullStr p = do ok <- mkForeign (FFun "isNull" [FString] FInt) p
                return (ok /= 0);
 
 partial
