@@ -8,7 +8,7 @@ import IRTS.Simplified
 import Core.TT
 import Data.Maybe
 
-{- We have: 
+{- We have:
 
 BASE: Current stack frame's base
 TOP:  Top of stack
@@ -32,14 +32,14 @@ data BC = ASSIGN Reg Reg
         | CASE Bool -- definitely a constructor, no need to check, if true
                Reg [(Int, [BC])] (Maybe [BC])
         | PROJECT Reg Int Int -- get all args from reg, put them from Int onwards
-        | PROJECTINTO Reg Reg Int -- project argument from one reg into another 
+        | PROJECTINTO Reg Reg Int -- project argument from one reg into another
         | CONSTCASE Reg [(Const, [BC])] (Maybe [BC])
         | CALL Name
         | TAILCALL Name
-        | FOREIGNCALL Reg FLang FType String [(FType, Reg)] 
-        | SLIDE Int -- move this number from TOP to BASE 
+        | FOREIGNCALL Reg FLang FType String [(FType, Reg)]
+        | SLIDE Int -- move this number from TOP to BASE
         | REBASE -- set BASE = OLDBASE
-        | RESERVE Int -- reserve n more stack items 
+        | RESERVE Int -- reserve n more stack items
                       -- (i.e. check there's space, grow if necessary)
         | ADDTOP Int -- move the top of stack up
         | TOPBASE Int -- set TOP = BASE + n
@@ -51,7 +51,7 @@ data BC = ASSIGN Reg Reg
     deriving Show
 
 toBC :: (Name, SDecl) -> (Name, [BC])
-toBC (n, SFun n' args locs exp) 
+toBC (n, SFun n' args locs exp)
    = (n, reserve locs ++ bc RVal exp True)
   where reserve 0 = []
         reserve n = [RESERVE n, ADDTOP n]
@@ -63,10 +63,14 @@ bc :: Reg -> SExp -> Bool -> -- returning
       [BC]
 bc reg (SV (Glob n)) r = bc reg (SApp False n []) r
 bc reg (SV (Loc i))  r = assign reg (L i) ++ clean r
-bc reg (SApp False f vs) r
-    = RESERVE (length vs) : moveReg 0 vs
-      ++ [STOREOLD, BASETOP 0, ADDTOP (length vs), CALL f] ++ 
-         assign reg RVal ++ clean r
+bc reg (SApp False f vs) r =
+      if argCount == 0
+         then moveReg 0 vs ++ [STOREOLD, BASETOP 0, CALL f] ++ ret
+         else RESERVE argCount : moveReg 0 vs ++
+            [STOREOLD, BASETOP 0, ADDTOP argCount, CALL f] ++ ret
+   where
+      ret      = assign reg RVal ++ clean r
+      argCount = length vs
 bc reg (SApp True f vs) r
     = RESERVE (length vs) : moveReg 0 vs
       ++ [SLIDE (length vs), TOPBASE (length vs), TAILCALL f]
@@ -78,16 +82,16 @@ bc reg (SUpdate (Loc i) sc) r = bc reg sc False ++ [ASSIGN (L i) reg]
                                 ++ clean r
 bc reg (SCon i _ vs) r = MKCON reg i (map getL vs) : clean r
     where getL (Loc x) = L x
-bc reg (SProj (Loc l) i) r = PROJECTINTO reg (L l) i : clean r 
+bc reg (SProj (Loc l) i) r = PROJECTINTO reg (L l) i : clean r
 bc reg (SConst i) r = ASSIGNCONST reg i : clean r
 bc reg (SOp p vs) r = OP reg p (map getL vs) : clean r
     where getL (Loc x) = L x
 bc reg (SError str) r = [ERROR str]
 bc reg SNothing r = NULL reg : clean r
-bc reg (SCase (Loc l) alts) r 
+bc reg (SCase (Loc l) alts) r
    | isConst alts = constCase reg (L l) alts r
    | otherwise = conCase True reg (L l) alts r
-bc reg (SChkCase (Loc l) alts) r 
+bc reg (SChkCase (Loc l) alts) r
    = conCase False reg (L l) alts r
 
 isConst [] = False
@@ -107,12 +111,12 @@ conCase safe reg l xs r = [CASE safe l (mapMaybe (caseAlt l reg r) xs)
 constCase reg l xs r = [CONSTCASE l (mapMaybe (constAlt l reg r) xs)
                                (defaultAlt reg xs r)]
 
-caseAlt l reg r (SConCase lvar tag _ args e) 
-    = Just (tag, PROJECT l lvar (length args) : bc reg e r) 
+caseAlt l reg r (SConCase lvar tag _ args e)
+    = Just (tag, PROJECT l lvar (length args) : bc reg e r)
 caseAlt l reg r _ = Nothing
 
-constAlt l reg r (SConstCase c e) 
-    = Just (c, bc reg e r) 
+constAlt l reg r (SConstCase c e)
+    = Just (c, bc reg e r)
 constAlt l reg r _ = Nothing
 
 defaultAlt reg [] r = Nothing
