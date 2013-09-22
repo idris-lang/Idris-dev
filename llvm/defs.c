@@ -1,8 +1,11 @@
+#include <stdlib.h>
 #include <stdio.h>
 #include <gmp.h>
 #include <gc.h>
 #include <string.h>
 #include <inttypes.h>
+
+extern char** environ;
 
 void putStr(const char *str) {
   fputs(str, stdout);
@@ -119,8 +122,8 @@ int isNull(void* ptr) {
   return ptr==NULL;
 }
 
-int isNullString(char* str) {
-  return str==NULL;
+char* getEnvPair(int i) {
+    return *(environ + i);
 }
 
 void idris_memset(void* ptr, size_t offset, uint8_t c, size_t size) {
