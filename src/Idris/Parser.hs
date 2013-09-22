@@ -112,6 +112,8 @@ multiLineComment =     try (string "{-" *> (string "-}") *> pure ())
   where inCommentChars :: MonadicParsing m => m ()
         inCommentChars =     try (string "-}" *> pure ())
                          <|> try (multiLineComment *> inCommentChars)
+                         <|> try (docComment '|' *> inCommentChars)
+                         <|> try (docComment '^' *> inCommentChars)
                          <|> try (skipSome (noneOf startEnd) *> inCommentChars)
                          <|> oneOf startEnd *> inCommentChars
                          <?> "end of comment"
