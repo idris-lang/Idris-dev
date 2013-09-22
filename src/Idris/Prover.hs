@@ -16,6 +16,8 @@ import Idris.DataOpts
 import Idris.Completion
 import Idris.IdeSlave
 
+import Text.Trifecta.Result(Result(..))
+
 import System.Console.Haskeline
 import System.Console.Haskeline.History
 import Control.Monad.State
@@ -167,31 +169,31 @@ ploop d prompt prf e h
                   return (i, h)
          (cmd, step) <- case x of
             Nothing -> do iFail ""; fail "Abandoned"
-            Just input -> do return (parseTac i input, input)
+            Just input -> do return (parseTactic i input, input)
          case cmd of
-            Right Abandon -> do iFail ""; fail "Abandoned"
+            Success Abandon -> do iFail ""; fail "Abandoned"
             _ -> return ()
          (d, st, done, prf') <- idrisCatch
            (case cmd of
-              Left err -> do iFail (show err)
-                             return (False, e, False, prf)
-              Right Undo -> do (_, st) <- elabStep e loadState
-                               iResult ""
-                               return (True, st, False, init prf)
-              Right ProofState -> do iResult ""
-                                     return (True, e, False, prf)
-              Right ProofTerm -> do tm <- lifte e get_term
-                                    iResult $ "TT: " ++ show tm ++ "\n"
-                                    return (False, e, False, prf)
-              Right Qed -> do hs <- lifte e get_holes
-                              when (not (null hs)) $ fail "Incomplete proof"
-                              iResult "Proof completed!"
-                              return (False, e, True, prf)
-              Right tac -> do (_, e) <- elabStep e saveState
-                              (_, st) <- elabStep e (runTac True i tac)
+              Failure err -> do iFail (show err)
+                                return (False, e, False, prf)
+              Success Undo -> do (_, st) <- elabStep e loadState
+                                 iResult ""
+                                 return (True, st, False, init prf)
+              Success ProofState -> do iResult ""
+                                       return (True, e, False, prf)
+              Success ProofTerm -> do tm <- lifte e get_term
+                                      iResult $ "TT: " ++ show tm ++ "\n"
+                                      return (False, e, False, prf)
+              Success Qed -> do hs <- lifte e get_holes
+                                when (not (null hs)) $ fail "Incomplete proof"
+                                iResult "Proof completed!"
+                                return (False, e, True, prf)
+              Success tac -> do (_, e) <- elabStep e saveState
+                                (_, st) <- elabStep e (runTac True i tac)
 --                               trace (show (problems (proof st))) $
-                              iResult ""
-                              return (True, st, False, prf ++ [step]))
+                                iResult ""
+                                return (True, st, False, prf ++ [step]))
            (\err -> do iFail (show err)
                        return (False, e, False, prf))
          ideslavePutSExp "write-proof-state" (prf', length prf')

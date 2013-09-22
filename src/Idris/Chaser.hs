@@ -128,7 +128,7 @@ buildTree built fp = idrisCatch (btree [] fp)
         if exist then do
             file_in <- liftIO $ readFile f
             file <- if lit then tclift $ unlit f file_in else return file_in
-            (_, modules, _, _) <- parseImports f file
+            (_, modules, _) <- parseImports f file
             ms <- mapM (btree done) modules 
             return (concat ms)
            else return []) -- IBC with no source available

@@ -36,6 +36,8 @@ import IRTS.Compiler
 import IRTS.LParser
 import IRTS.CodegenCommon
 
+import Text.Trifecta.Result(Result(..))
+
 -- import RTS.SC
 -- import RTS.Bytecode
 -- import RTS.PreC
@@ -115,15 +117,15 @@ ideslave orig mods
                                  (f:_) -> f
                                  _ -> ""
                     case parseCmd i "(input)" cmd of
-                         Left err -> iFail $ show err
-                         Right (Prove n') -> do iResult ""
-                                                idrisCatch
-                                                  (do process fn (Prove n'))
-                                                  (\e -> do iFail $ show e)
-                                                isetPrompt (mkPrompt mods)
-                         Right cmd -> idrisCatch
-                                        (do ideslaveProcess fn cmd)
-                                        (\e -> do iFail $ show e)
+                         Failure err -> iFail $ show err
+                         Success (Prove n') -> do iResult ""
+                                                  idrisCatch
+                                                    (do process fn (Prove n'))
+                                                    (\e -> do iFail $ show e)
+                                                  isetPrompt (mkPrompt mods)
+                         Success cmd -> idrisCatch
+                                          (do ideslaveProcess fn cmd)
+                                          (\e -> do iFail $ show e)
                Just (REPLCompletions str) ->
                  do (unused, compls) <- replCompletion (reverse str, "")
                     let good = SexpList [SymbolAtom "ok", toSExp (map replacement compls, reverse unused)]
@@ -216,35 +218,35 @@ processInput cmd orig inputs
                         (f:_) -> f
                         _ -> ""
          case parseCmd i "(input)" cmd of
-            Left err ->   do liftIO $ print err
-                             return (Just inputs)
-            Right Reload ->
+            Failure err ->   do liftIO $ print err
+                                return (Just inputs)
+            Success Reload ->
                 do putIState $ orig { idris_options = idris_options i
                                     , idris_colourTheme = idris_colourTheme i
                                     }
                    clearErr
                    mods <- loadInputs inputs
                    return (Just inputs)
-            Right (Load f) ->
+            Success (Load f) ->
                 do putIState orig { idris_options = idris_options i
                                   , idris_colourTheme = idris_colourTheme i
                                   }
                    clearErr
                    mod <- loadModule f
                    return (Just [f])
-            Right (ModImport f) -> 
+            Success (ModImport f) -> 
                 do clearErr
                    fmod <- loadModule f
                    return (Just (inputs ++ [fmod]))
-            Right Edit -> do edit fn orig
-                             return (Just inputs)
-            Right Proofs -> do proofs orig
+            Success Edit -> do edit fn orig
                                return (Just inputs)
-            Right Quit -> do when (not quiet) (iputStrLn "Bye bye")
-                             return Nothing
-            Right cmd  -> do idrisCatch (process fn cmd)
-                                        (\e -> iputStrLn (show e))
-                             return (Just inputs)
+            Success Proofs -> do proofs orig
+                                 return (Just inputs)
+            Success Quit -> do when (not quiet) (iputStrLn "Bye bye")
+                               return Nothing
+            Success cmd  -> do idrisCatch (process fn cmd)
+                                          (\e -> iputStrLn (show e))
+                               return (Just inputs)
 
 resolveProof :: Name -> Idris Name
 resolveProof n'
@@ -839,12 +841,12 @@ idrisMain opts =
 execScript :: String -> Idris ()
 execScript expr = do i <- getIState
                      case parseExpr i expr of
-                       Left err -> do iputStrLn $ show err
-                                      liftIO $ exitWith (ExitFailure 1)
-                       Right term -> do ctxt <- getContext
-                                        (tm, _) <- elabVal toplevel False term
-                                        res <- execute tm
-                                        liftIO $ exitWith ExitSuccess
+                       Failure err -> do iputStrLn $ show err
+                                         liftIO $ exitWith (ExitFailure 1)
+                       Success term -> do ctxt <- getContext
+                                          (tm, _) <- elabVal toplevel False term
+                                          res <- execute tm
+                                          liftIO $ exitWith ExitSuccess
 
 -- | Get the platform-specific, user-specific Idris dir
 getIdrisUserDataDir :: Idris FilePath
@@ -874,14 +876,14 @@ initScript = do script <- getInitScript
                            runInit h
           processLine i cmd input =
               case parseCmd i input cmd of
-                   Left err -> liftIO $ print err
-                   Right Reload -> iFail "Init scripts cannot reload the file"
-                   Right (Load f) -> iFail "Init scripts cannot load files"
-                   Right (ModImport f) -> iFail "Init scripts cannot import modules"
-                   Right Edit -> iFail "Init scripts cannot invoke the editor"
-                   Right Proofs -> proofs i
-                   Right Quit -> iFail "Init scripts cannot quit Idris"
-                   Right cmd  -> process [] cmd
+                   Failure err -> liftIO $ print err
+                   Success Reload -> iFail "Init scripts cannot reload the file"
+                   Success (Load f) -> iFail "Init scripts cannot load files"
+                   Success (ModImport f) -> iFail "Init scripts cannot import modules"
+                   Success Edit -> iFail "Init scripts cannot invoke the editor"
+                   Success Proofs -> proofs i
+                   Success Quit -> iFail "Init scripts cannot quit Idris"
+                   Success cmd  -> process [] cmd
 
 getFile :: Opt -> Maybe String
 getFile (Filename str) = Just str
