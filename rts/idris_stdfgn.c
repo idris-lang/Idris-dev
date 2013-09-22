@@ -1,6 +1,8 @@
 #include "idris_stdfgn.h"
 #include "idris_rts.h"
 
+extern char** environ;
+
 void putStr(char* str) {
     printf("%s", str);
 }
@@ -34,10 +36,10 @@ int isNull(void* ptr) {
     return ptr==NULL;
 }
 
-int isNullString(char* str) {
-    return str==NULL;
-}
-
 void* idris_stdin() {
     return (void*)stdin;
+}
+
+char* getEnvPair(int i) {
+    return *(environ + i);
 }

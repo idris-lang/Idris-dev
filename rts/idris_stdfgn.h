@@ -13,7 +13,8 @@ int fileError(void* h);
 void fputStr(void*h, char* str);
 
 int isNull(void* ptr);
-int isNullString(char* str);
 void* idris_stdin();
+
+char* getEnvPair(int i);
 
 #endif
