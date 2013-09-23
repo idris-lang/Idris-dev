@@ -11,6 +11,7 @@ import qualified Core.TT as TT
 import IRTS.Simplified
 import IRTS.CodegenCommon
 
+import Data.Word (Word)
 
 getDefaultTargetTriple :: IO String
 getDefaultTargetTriple = return ""
@@ -22,7 +23,7 @@ getHostCPUName = return ""
 codegenLLVM :: [(TT.Name, SDecl)] ->
                String -> -- target triple
                String -> -- target CPU
-               Int -> -- Optimization degree
+               Word -> -- Optimization degree
                FilePath -> -- output file name
                OutputType ->
                IO ()
