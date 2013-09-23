@@ -134,7 +134,7 @@ completeColour (prev, next) = case words (reverse prev) of
           isCmd ":color"  = True
           isCmd _         = False
           colours = map (map toLower . show) $ enumFromTo (minBound::Color) maxBound
-          formats = ["vivid", "dull", "underline", "nounderline", "bold", "nobold"]
+          formats = ["vivid", "dull", "underline", "nounderline", "bold", "nobold", "italic", "noitalic"]
           completeColourFormat = let getCmpl = completeWith (colours ++ formats) in
                                  completeWord Nothing " \t" (return . getCmpl)
 

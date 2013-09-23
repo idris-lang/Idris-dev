@@ -104,6 +104,8 @@ pColourMod = try (P.symbol "vivid" >> return doVivid)
          <|> try (P.symbol "nounderline" >> return doNoUnderline)
          <|> try (P.symbol "bold" >> return doBold)
          <|> try (P.symbol "nobold" >> return doNoBold)
+         <|> try (P.symbol "italic" >> return doItalic)
+         <|> try (P.symbol "noitalic" >> return doNoItalic)
          <|> try (pColour >>= return . doSetColour)
     where doVivid i       = i { vivid = True }
           doDull i        = i { vivid = False }
@@ -111,6 +113,8 @@ pColourMod = try (P.symbol "vivid" >> return doVivid)
           doNoUnderline i = i { underline = False }
           doBold i        = i { bold = True }
           doNoBold i      = i { bold = False }
+          doItalic i      = i { italic = True }
+          doNoItalic i    = i { italic = False }
           doSetColour c i = i { colour = c }
 
 
@@ -126,7 +130,7 @@ pColourType = doColourType colourTypes
 
 pSetColourCmd :: P.IdrisParser Command
 pSetColourCmd = (do c <- pColourType
-                    let defaultColour = IdrisColour Black True False False
+                    let defaultColour = IdrisColour Black True False False False
                     opts <- sepBy pColourMod (P.whiteSpace)
                     let colour = foldr ($) defaultColour $ reverse opts
                     return $ SetColour c colour)
