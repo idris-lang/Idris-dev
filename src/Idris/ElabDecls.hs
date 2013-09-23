@@ -62,7 +62,7 @@ elabType info syn doc fc opts n ty' = {- let ty' = piBind (params info) ty_in
                         (errAt "type of " n (erun fc (build i info False n ty)))
          ds <- checkDef fc defer
          addDeferred ds
-         mapM_ (elabCaseBlock info) is 
+         mapM_ (elabCaseBlock info opts) is 
          ctxt <- getContext
          logLvl 5 $ "Rechecking"
          logLvl 6 $ show tyT
@@ -128,7 +128,7 @@ elabData info syn doc fc codata (PLaterdecl n t_in)
                                             (erun fc (build i info False n t))
          def' <- checkDef fc defer
          addDeferredTyCon def'
-         mapM_ (elabCaseBlock info) is
+         mapM_ (elabCaseBlock info []) is
          (cty, _)  <- recheckC fc [] t'
          logLvl 2 $ "---> " ++ show cty
          updateContext (addTyDecl n (TCon 0 0) cty) -- temporary, to check cons
@@ -145,7 +145,7 @@ elabData info syn doc fc codata (PDatadecl n t_in dcons)
                   (errAt "data declaration " n (erun fc (build i info False n t)))
          def' <- checkDef fc defer
          addDeferredTyCon def'
-         mapM_ (elabCaseBlock info) is
+         mapM_ (elabCaseBlock info []) is
          (cty, _)  <- recheckC fc [] t'
          logLvl 2 $ "---> " ++ show cty
          -- temporary, to check cons
@@ -492,7 +492,7 @@ elabCon info syn tn codata (doc, n, t_in, fc)
          logLvl 2 $ "Rechecking " ++ show t'
          def' <- checkDef fc defer
          addDeferred def'
-         mapM_ (elabCaseBlock info) is
+         mapM_ (elabCaseBlock info []) is
          ctxt <- getContext
          (cty, _)  <- recheckC fc [] t'
          let cty' = normaliseC ctxt [] cty
@@ -528,7 +528,7 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
                     -- question: CAFs in where blocks?
                     tclift $ tfail $ At fc (NoTypeDecl n)
               [ty] -> return ty
-           pats_in <- mapM (elabClause info (Dictionary `elem` opts)) 
+           pats_in <- mapM (elabClause info opts) 
                            (zip [0..] cs)
            logLvl 3 $ "Elaborated patterns:\n" ++ show pats_in
 
@@ -748,7 +748,7 @@ elabVal info aspat tm_in
                         (build i info aspat (MN 0 "val") (infTerm tm)))
         def' <- checkDef (FC "(input)" 0) defer
         addDeferred def'
-        mapM_ (elabCaseBlock info) is
+        mapM_ (elabCaseBlock info []) is
 
         logLvl 3 ("Value: " ++ show tm')
         recheckC (FC "(input)" 0) [] tm'
@@ -778,16 +778,18 @@ checkPossible info fc tcgen fname lhs_in
 --                   trace (show (delab' i lhs_tm True) ++ "\n" ++ show lhs) $ return (not b)
             err@(Error _) -> return False
 
-elabClause :: ElabInfo -> Bool -> (Int, PClause) -> 
+elabClause :: ElabInfo -> FnOpts -> (Int, PClause) -> 
               Idris (Either Term (Term, Term))
-elabClause info tcgen (_, PClause fc fname lhs_in [] PImpossible [])
-   = do b <- checkPossible info fc tcgen fname lhs_in
+elabClause info opts (_, PClause fc fname lhs_in [] PImpossible [])
+   = do let tcgen = Dictionary `elem` opts
+        b <- checkPossible info fc tcgen fname lhs_in
         case b of
             True -> fail $ show fc ++ ":" ++ show lhs_in ++ " is a possible case"
             False -> do ptm <- mkPatTm lhs_in
                         return (Left ptm)
-elabClause info tcgen (cnum, PClause fc fname lhs_in withs rhs_in whereblock) 
-   = do ctxt <- getContext
+elabClause info opts (cnum, PClause fc fname lhs_in withs rhs_in whereblock) 
+   = do let tcgen = Dictionary `elem` opts
+        ctxt <- getContext
         -- Build the LHS as an "Infer", and pull out its type and
         -- pattern bindings
         i <- getIState
@@ -857,7 +859,7 @@ elabClause info tcgen (cnum, PClause fc fname lhs_in withs rhs_in whereblock)
         -- from the where block
 
         mapM_ (elabDecl' EAll info) wafter
-        mapM_ (elabCaseBlock info) is
+        mapM_ (elabCaseBlock info opts) is
 
         ctxt <- getContext
         logLvl 5 $ "Rechecking"
@@ -937,8 +939,9 @@ elabClause info tcgen (cnum, PClause fc fname lhs_in withs rhs_in whereblock)
          = PApp fc (PRef fc n) (map (\x -> pimp x (PRef fc x)) ps)
     propagateParams ps x = x
 
-elabClause info tcgen (_, PWith fc fname lhs_in withs wval_in withblock) 
-   = do ctxt <- getContext
+elabClause info opts (_, PWith fc fname lhs_in withs wval_in withblock) 
+   = do let tcgen = Dictionary `elem` opts
+        ctxt <- getContext
         -- Build the LHS as an "Infer", and pull out its type and
         -- pattern bindings
         i <- getIState
@@ -970,7 +973,7 @@ elabClause info tcgen (_, PWith fc fname lhs_in withs wval_in withblock)
                             return (tt, d, is))
         def' <- checkDef fc defer
         addDeferred def'
-        mapM_ (elabCaseBlock info) is
+        mapM_ (elabCaseBlock info opts) is
         (cwval, cwvalty) <- recheckC fc [] (getInferTerm wval')
         let cwvaltyN = explicitNames cwvalty
         let cwvalN = explicitNames cwval
@@ -1026,7 +1029,7 @@ elabClause info tcgen (_, PWith fc fname lhs_in withs wval_in withblock)
                         return (tt, d, is))
         def' <- checkDef fc defer
         addDeferred def'
-        mapM_ (elabCaseBlock info) is
+        mapM_ (elabCaseBlock info opts) is
         logLvl 5 ("Checked RHS " ++ show rhs')
         (crhs, crhsty) <- recheckC fc [] rhs'
         return $ Right (clhs, crhs)
@@ -1549,10 +1552,10 @@ elabDecl' what info (PTransform fc safety old new)
     = elabTransform info fc safety old new 
 elabDecl' _ _ _ = return () -- skipped this time 
 
-elabCaseBlock info d@(PClauses f o n ps) 
+elabCaseBlock info opts d@(PClauses f o n ps) 
         = do addIBC (IBCDef n)
              logLvl 6 $ "CASE BLOCK: " ++ show (n, d)
-             elabDecl' EAll info d 
+             elabDecl' EAll info (PClauses f (nub (o ++ opts)) n ps ) 
 
 -- elabDecl' info (PImport i) = loadModule i
 
