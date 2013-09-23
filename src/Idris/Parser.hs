@@ -112,6 +112,8 @@ multiLineComment =     try (string "{-" *> (string "-}") *> pure ())
   where inCommentChars :: MonadicParsing m => m ()
         inCommentChars =     try (string "-}" *> pure ())
                          <|> try (multiLineComment *> inCommentChars)
+                         <|> try (docComment '|' *> inCommentChars)
+                         <|> try (docComment '^' *> inCommentChars)
                          <|> try (skipSome (noneOf startEnd) *> inCommentChars)
                          <|> oneOf startEnd *> inCommentChars
                          <?> "end of comment"
@@ -2560,7 +2562,7 @@ parseTactic :: IState -> String -> Result PTactic
 parseTactic st = parseString (evalStateT (fullTactic defaultSyntax) st) (Directed (UTF8.fromString "(input)") 0 0 0 0)
 
 -- | Parse module header and imports
-parseImports :: FilePath -> String -> Idris ([String], [String], Delta)
+parseImports :: FilePath -> String -> Idris ([String], [String], Maybe Delta)
 parseImports fname input
     = do i <- getIState
          case parseString (evalStateT imports i) (Directed (UTF8.fromString fname) 0 0 0 0) input of
@@ -2568,18 +2570,22 @@ parseImports fname input
               Success (x, i) -> do -- Discard state updates (there should be
                                    -- none anyway)
                                    return x
-  where imports :: IdrisParser (([String], [String], Delta), IState)
+  where imports :: IdrisParser (([String], [String], Maybe Delta), IState)
         imports = do whiteSpace
                      mname <- moduleHeader
                      ps    <- many import_
                      mrk   <- mark
+                     isEof <- lookAheadMatches eof
+                     let mrk' = if isEof
+                                   then Nothing
+                                   else Just mrk
                      i     <- get
-                     return ((mname, ps, mrk), i)
+                     return ((mname, ps, mrk'), i)
 
 
 -- | A program is a list of declarations, possibly with associated
 -- documentation strings.
-parseProg :: SyntaxInfo -> FilePath -> String -> Delta ->
+parseProg :: SyntaxInfo -> FilePath -> String -> Maybe Delta ->
              Idris [PDecl]
 parseProg syn fname input mrk
     = do i <- getIState
@@ -2593,10 +2599,13 @@ parseProg syn fname input mrk
             Success (x, i)  -> do putIState i
                                   return $ collect x
   where mainProg :: IdrisParser ([PDecl], IState)
-        mainProg = do release mrk
-                      ds <- prog syn
-                      i' <- get
-                      return (ds, i')
+        mainProg = case mrk of
+                        Nothing -> do i <- get; return ([], i)
+                        Just mrk -> do
+                          release mrk
+                          ds <- prog syn
+                          i' <- get
+                          return (ds, i')
 
 -- | Collect 'PClauses' with the same function name
 collect :: [PDecl] -> [PDecl]
