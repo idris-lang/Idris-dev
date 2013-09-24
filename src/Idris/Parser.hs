@@ -555,9 +555,9 @@ decl syn = do notEndBlock
                    <|> instance_ syn
                    <|> do d <- dsl syn; return [d]
                    <|> directive syn
-                   <|> try(provider syn)
+                   <|> provider syn
                    <|> transform syn
-                   <|> try(do import_; fail "imports must be at top of file")
+                   <|> do import_; fail "imports must be at top of file"
                    <?> "declaration"
         declBody' :: IdrisParser [PDecl]
         declBody' = do d <- decl' syn
@@ -575,11 +575,11 @@ Decl' ::=
   ;
 -}
 decl' :: SyntaxInfo -> IdrisParser PDecl
-decl' syn =    try fixity
-           <|> try (fnDecl' syn)
-           <|> try (data_ syn)
-           <|> try (record syn)
-           <|> try (syntaxDecl syn)
+decl' syn =    fixity
+           <|> syntaxDecl syn
+           <|> fnDecl' syn
+           <|> data_ syn
+           <|> record syn
            <?> "declaration"
 
 {- | Parses a syntax extension declaration (and adds the rule to parser state)
@@ -615,10 +615,12 @@ SyntaxSym ::=   '[' Name_t ']'
 -}
 syntaxRule :: SyntaxInfo -> IdrisParser Syntax
 syntaxRule syn
-    = do pushIndent
-         sty <- option AnySyntax (do reserved "term"; return TermSyntax
+    = do sty <- try (do
+            pushIndent
+            sty <- option AnySyntax (do reserved "term"; return TermSyntax
                                   <|> do reserved "pattern"; return PatternSyntax)
-         reserved "syntax"
+            reserved "syntax"
+            return sty)
          syms <- some syntaxSym
          when (all isExpr syms) $ unexpected "missing keywords in syntax rule"
          let ns = mapMaybe getName syms
@@ -932,8 +934,10 @@ Class ::=
   ;
 -}
 class_ :: SyntaxInfo -> IdrisParser [PDecl]
-class_ syn = do doc <- option "" (docComment '|')
-                acc <- optional accessibility
+class_ syn = do (doc, acc) <- try (do 
+                  doc <- option "" (docComment '|')
+                  acc <- optional accessibility
+                  return (doc, acc))
                 reserved "class"; fc <- getFC; cons <- constraintList syn; n_in <- name
                 let n = expandNS syn n_in
                 cs <- many carg
@@ -1923,9 +1927,11 @@ Record ::=
     DocComment Accessibility? 'record' FnName TypeSig 'where' OpenBlock Constructor KeepTerminator CloseBlock;
 -}
 record :: SyntaxInfo -> IdrisParser PDecl
-record syn = do doc <- option "" (docComment '|')
-                acc <- optional accessibility
-                reserved "record"
+record syn = do (doc, acc) <- try (do 
+                      doc <- option "" (docComment '|')
+                      acc <- optional accessibility
+                      reserved "record"
+                      return (doc, acc))
                 fc <- getFC
                 tyn_in <- fnName
                 ty <- typeSig (allowImp syn)
@@ -2400,7 +2406,7 @@ totality
 Provider ::= '%' 'provide' '(' FnName TypeSig ')' 'with' Expr;
  -}
 provider :: SyntaxInfo -> IdrisParser [PDecl]
-provider syn = do lchar '%'; reserved "provide";
+provider syn = do try (lchar '%' *> reserved "provide");
                   lchar '('; n <- fnName; t <- typeSig syn; lchar ')'
                   fc <- getFC
                   reserved "with"
@@ -2412,7 +2418,7 @@ provider syn = do lchar '%'; reserved "provide";
 Transform ::= '%' 'transform' Expr '==>' Expr
 -}
 transform :: SyntaxInfo -> IdrisParser [PDecl]
-transform syn = do lchar '%'; reserved "transform";
+transform syn = do try (lchar '%' *> reserved "transform")
                     -- leave it unchecked, until we work out what this should
                     -- actually mean...
 --                     safety <- option True (do reserved "unsafe"
