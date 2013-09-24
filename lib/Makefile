@@ -1,8 +1,7 @@
+IDRIS := idris
 
-check: .PHONY
+build: .PHONY
 	$(IDRIS) --build base.ipkg
-
-recheck: clean check
 
 install: 
 	$(IDRIS) --install base.ipkg
@@ -10,7 +9,9 @@ install:
 clean: .PHONY
 	$(IDRIS) --clean base.ipkg
 
+rebuild: clean build
+
 linecount: .PHONY
-	wc -l *.idr Network/*.idr Language/*.idr Prelude/*.idr Data/*.idr Control/Monad/*.idr Control/*.idr
+	find . -name '*.idr' | xargs wc -l
 
 .PHONY:

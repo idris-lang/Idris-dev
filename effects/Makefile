@@ -1,13 +1,14 @@
+IDRIS     := idris
 
-check: .PHONY
+build: .PHONY
 	$(IDRIS) --build effects.ipkg
 
-recheck: clean check
+clean: .PHONY
+	$(IDRIS) --clean effects.ipkg
 
 install:
 	$(IDRIS) --install effects.ipkg
 
-clean: .PHONY
-	$(IDRIS) --clean effects.ipkg
+rebuild: clean build
 
 .PHONY:

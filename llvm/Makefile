@@ -5,7 +5,7 @@ SOURCES=defs.c
 OBJECTS=$(SOURCES:.c=.o)
 LIB=libidris_rts.a
 
-all: $(SOURCES) $(LIB)
+build: $(SOURCES) $(LIB)
 
 $(LIB): $(OBJECTS) 
 	ar r $@ $(OBJECTS)
