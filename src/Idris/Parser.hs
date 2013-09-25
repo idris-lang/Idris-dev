@@ -90,7 +90,7 @@ isDocCommentMarker   _  = False
 singleLineComment :: MonadicParsing m => m ()
 singleLineComment =     try (string "--" *> satisfy isEol *> pure ())
                     <|> string "--" *> satisfy (not . isDocCommentMarker) *> many (satisfy (not . isEol)) *> (satisfy isEol <?> "end of line") *> pure ()
-                    <?> "single-line comment"
+                    <?> ""
 
 {- | Consumes a multi-line comment
   MultiLineComment_t ::=
@@ -108,7 +108,7 @@ singleLineComment =     try (string "--" *> satisfy isEol *> pure ())
 multiLineComment :: MonadicParsing m => m ()
 multiLineComment =     try (string "{-" *> (string "-}") *> pure ())
                    <|> string "{-" *> satisfy (not . isDocCommentMarker) *> inCommentChars
-                   <?> "multi-line comment"
+                   <?> ""
   where inCommentChars :: MonadicParsing m => m ()
         inCommentChars =     string "-}" *> pure ()
                          <|> try (multiLineComment) *> inCommentChars
@@ -131,7 +131,7 @@ docComment marker | isDocCommentMarker marker = do dc <- docComment' marker; ret
   where docComment' :: MonadicParsing m => Char -> m String
         docComment' marker  =     string "--" *> char marker *> many (satisfy (not . isEol)) <* satisfy isEol
                               <|> string "{-" *> char marker *> (manyTill anyChar (try (string "-}")) <?> "end of comment")
-                              <?> "documentation comment"
+                              <?> ""
 
 -- | Consumes whitespace (and comments)
 whiteSpace :: MonadicParsing m => m ()
