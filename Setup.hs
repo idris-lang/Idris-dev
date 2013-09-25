@@ -60,7 +60,6 @@ usesEffects flags =
 idrisClean _ flags _ _ = do
       cleanStdLib
       cleanLLVM
-      cleanJava
    where
       verbosity = S.fromFlag $ S.cleanVerbosity flags
 
@@ -68,10 +67,6 @@ idrisClean _ flags _ _ = do
          makeClean "lib"
          makeClean "effects"
          makeClean "javascript"
-
-      cleanJava = do
-         execPomExists <- doesFileExist ("java" </> "executable_pom.xml")
-         when execPomExists $ removeFile ("java" </> "executable_pom.xml")
 
       cleanLLVM = makeClean "llvm"
 
@@ -83,7 +78,6 @@ idrisClean _ flags _ _ = do
 
 idrisConfigure _ flags _ local = do
       configureRTS
-      configureJava
    where
       verbosity = S.fromFlag $ S.configVerbosity flags
       version   = pkgVersion . package $ localPkgDescr local
@@ -93,12 +87,6 @@ idrisConfigure _ flags _ local = do
       -- distribution if it's not there, so instead I just delete
       -- the file after configure.
       configureRTS = make verbosity ["-C", "rts", "clean"]
-
-      configureJava = do
-            execPomTemplate <- TIO.readFile ("java" </> "executable_pom_template.xml")
-            TIO.writeFile ("java" </> "executable_pom.xml") (insertVersion execPomTemplate)
-         where
-            insertVersion = T.replace (T.pack "$RTS-VERSION$") (T.pack $ display version)
 
 -- -----------------------------------------------------------------------------
 -- Build
@@ -128,7 +116,6 @@ idrisBuild _ flags _ local = do
 idrisInstall verbosity copy pkg local = do
       installStdLib
       installRTS
-      installJava
       when (usesLLVM $ configFlags local) installLLVM
    where
       target = datadir $ L.absoluteInstallDirs pkg local copy
@@ -143,10 +130,6 @@ idrisInstall verbosity copy pkg local = do
          let target' = target </> "rts"
          putStrLn $ "Installing run time system in " ++ target'
          makeInstall "rts" target'
-
-      installJava = do
-        putStrLn $ "Installing java pom template in " ++ target
-        copyFile ("java" </> "executable_pom.xml") (target </> "executable_pom.xml")
 
       installLLVM = do
          let target' = target </> "llvm"
