@@ -277,7 +277,9 @@ edit f orig
          let cmd = editor ++ line ++ f
          liftIO $ system cmd
          clearErr
-         putIState (orig { idris_options = idris_options i })
+         putIState $ orig { idris_options = idris_options i
+                          , idris_colourTheme = idris_colourTheme i
+                          }
          loadInputs [f]
          iucheck
          return ()
