@@ -2400,9 +2400,13 @@ directive syn = try (do lchar '%'; reserved "lib"; cgn <- codegen_; lib <- strin
                                                   Left lib -> addIBC (IBCDyLib (lib_name lib))
                                                   Right msg ->
                                                       fail $ msg)])
-             <|> try (do lchar '%'; reserved "language"; ext <- reserved "TypeProviders";
-                         return [PDirective (addLangExt TypeProviders)])
+             <|> try (do lchar '%'; reserved "language"; ext <- pLangExt;
+                         return [PDirective (addLangExt ext)])
              <?> "directive"
+
+pLangExt :: IdrisParser LanguageExt
+pLangExt = (reserved "TypeProviders" >> return TypeProviders)
+       <|> (reserved "ErrorReflection" >> return ErrorReflection)
 
 {- | Parses a totality
 Totality ::= 'partial' | 'total'
