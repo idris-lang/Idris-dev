@@ -14,7 +14,8 @@ Description:    Idris is a general purpose language with full dependent types.
                 Dependent types allow types to be predicated on values,
                 meaning that some aspects of a program's behaviour can be
                 specified precisely in the type. The language is closely
-		related to Epigram and Agda. There is a tutorial at <http://www.idris-lang.org/documentation>.
+		            related to Epigram and Agda. There is a tutorial at
+                <http://www.idris-lang.org/documentation>.
                 Features include:
                 .
                 * Full dependent types with dependent pattern matching
@@ -43,38 +44,60 @@ Description:    Idris is a general purpose language with full dependent types.
 
 Cabal-Version:  >= 1.6
 
-
 Build-type:     Custom
 
-
-Data-files:            rts/idris_rts.h rts/idris_gc.h rts/idris_stdfgn.h
-                       rts/idris_main.c rts/idris_gmp.h
-                       rts/libtest.c
+Data-files:            js/Runtime-browser.js
                        js/Runtime-common.js
                        js/Runtime-node.js
-                       js/Runtime-browser.js
-Extra-source-files:    lib/Makefile  lib/*.idr lib/Prelude/*.idr
-                       lib/Network/*.idr lib/Control/*.idr
-                       lib/Control/Monad/*.idr lib/Language/*.idr
-                       lib/Language/Reflection/*.idr
-                       lib/System/Concurrency/*.idr
-                       lib/Data/*.idr lib/Debug/*.idr
-                       lib/Data/Vect/*.idr
-                       lib/Decidable/*.idr
-                       tutorial/examples/*.idr lib/base.ipkg
-                       effects/Makefile effects/*.idr effects/Effect/*.idr
-                       effects/effects.ipkg
-                       javascript/Makefile
-                       javascript/JavaScript/*.idr
-                       javascript/*.idr
-                       javascript/javascript.ipkg
+                       rts/idris_gc.h
+                       rts/idris_gmp.h
+                       rts/idris_main.c
+                       rts/idris_rts.h
+                       rts/idris_stdfgn.h
+                       rts/libtest.c
+
+Extra-source-files:
+                       Makefile
                        config.mk
-                       rts/*.c rts/*.h rts/Makefile
-                       llvm/*.c llvm/Makefile
-                       js/*.js
+
+                       rts/*.c
+                       rts/*.h
+                       rts/Makefile
+
+                       lib/base.ipkg
+                       lib/*.idr
+                       lib/Control/*.idr
+                       lib/Control/Monad/*.idr
+                       lib/Data/*.idr
+                       lib/Data/Vect/*.idr
+                       lib/Debug/*.idr
+                       lib/Decidable/*.idr
+                       lib/Language/*.idr
+                       lib/Language/Reflection/*.idr
+                       lib/Makefile
+                       lib/Network/*.idr
+                       lib/Prelude/*.idr
+                       lib/System/Concurrency/*.idr
+
+                       effects/Makefile
+                       effects/effects.ipkg
+                       effects/Effect/*.idr
+                       effects/*.idr
+
                        java/*.xml
 
-                       Makefile
+                       javascript/*.idr
+                       javascript/JavaScript/*.idr
+                       javascript/Makefile
+                       javascript/javascript.ipkg
+
+                       js/*.js
+
+                       llvm/*.c
+                       llvm/Makefile
+
+                       tutorial/examples/*.idr
+
                        test/Makefile
                        test/runtest.pl
                        test/reg001/run
@@ -237,76 +260,140 @@ Extra-source-files:    lib/Makefile  lib/*.idr lib/Prelude/*.idr
                        test/test031/*.idr
                        test/test031/expected
 
-
 source-repository head
   type:     git
   location: git://github.com/edwinb/Idris-dev.git
 
-Flag NoEffects
-  Description: Do not build the effects package
-  Default:     False
+Flag Effects
+  Description: Build the effects package
+  Default:     True
 
 Flag LLVM
   Description:  Build the LLVM backend
   Default:      True
   manual:       True
 
-Executable     idris
-               Main-is: Main.hs
-               hs-source-dirs: src
-               Other-modules: Core.TT, Core.Evaluate, Core.Execute, Core.Typecheck,
-                              Core.ProofShell, Core.ProofState, Core.CoreParser,
-                              Core.ShellParser, Core.Unify, Core.Elaborate,
-                              Core.CaseTree, Core.Constraints,
+Executable idris
+  Main-is:        Main.hs
+  hs-source-dirs: src
+  Other-modules:
+                  Core.CaseTree
+                , Core.Constraints
+                , Core.CoreParser
+                , Core.Elaborate
+                , Core.Evaluate
+                , Core.Execute
+                , Core.ProofShell
+                , Core.ProofState
+                , Core.ShellParser
+                , Core.TT
+                , Core.Typecheck
+                , Core.Unify
 
-                              Idris.AbsSyntax, Idris.AbsSyntaxTree, Idris.Colours,
-                              Idris.Parser, Idris.Help, Idris.IdeSlave, Idris.REPL,
-                              Idris.REPLParser, Idris.ElabDecls, Idris.Error,
-                              Idris.Delaborate, Idris.Primitives, Idris.Imports,
-                              Idris.Prover, Idris.ElabTerm,
-                              Idris.Coverage, Idris.IBC, Idris.Unlit,
-                              Idris.DataOpts, Idris.Transforms, Idris.DSL,
-                              Idris.UnusedArgs, Idris.Docs, Idris.Completion,
-                              Idris.PartialEval, Idris.Providers, Idris.Chaser,
-                              Idris.Inliner,
+                , Idris.AbsSyntax
+                , Idris.AbsSyntaxTree
+                , Idris.Chaser
+                , Idris.Colours
+                , Idris.Completion
+                , Idris.Coverage
+                , Idris.DSL
+                , Idris.DataOpts
+                , Idris.Delaborate
+                , Idris.Docs
+                , Idris.ElabDecls
+                , Idris.ElabTerm
+                , Idris.Error
+                , Idris.Help
+                , Idris.IBC
+                , Idris.IdeSlave
+                , Idris.Imports
+                , Idris.Inliner
+                , Idris.Parser
+                , Idris.PartialEval
+                , Idris.Primitives
+                , Idris.Prover
+                , Idris.Providers
+                , Idris.REPL
+                , Idris.REPLParser
+                , Idris.Transforms
+                , Idris.Unlit
+                , Idris.UnusedArgs
 
-                              Util.Pretty, Util.System, Util.DynamicLinker,
-                              Pkg.Package, Pkg.PParser,
+                , IRTS.BCImp
+                , IRTS.Bytecode
+                , IRTS.CodegenC
+                , IRTS.CodegenCommon
+                , IRTS.CodegenJava
+                , IRTS.CodegenJavaScript
+                , IRTS.Compiler
+                , IRTS.Defunctionalise
+                , IRTS.DumpBC
+                , IRTS.Inliner
+                , IRTS.Java.ASTBuilding
+                , IRTS.Java.JTypes
+                , IRTS.Java.Mangling
+                , IRTS.LParser
+                , IRTS.Lang
+                , IRTS.Simplified
 
-                              IRTS.Lang, IRTS.LParser, IRTS.Bytecode, IRTS.Simplified,
-                              IRTS.CodegenC, IRTS.Defunctionalise, IRTS.Inliner,
-                              IRTS.Compiler, IRTS.CodegenJava, IRTS.Java.ASTBuilding,
-                              IRTS.Java.JTypes, IRTS.Java.Mangling, IRTS.BCImp,
-                              IRTS.CodegenJavaScript,
-                              IRTS.CodegenCommon, IRTS.DumpBC
+                , Util.Pretty
+                , Util.System
+                , Util.DynamicLinker
 
-                              Paths_idris
+                , Pkg.Package
+                , Pkg.PParser
 
-               Build-depends:   base>=4 && <5, parsec>=3, mtl, Cabal,
-                                haskeline>=0.7, split, directory>=1.2,
-                                time>=1.4,
-                                containers, process, transformers, filepath,
-                                directory, binary, bytestring, text, pretty,
-                                language-java>=0.2.2, libffi,
-                                vector, vector-binary-instances, ansi-terminal,
-                                utf8-string, unordered-containers, parsers>=0.9, trifecta>=1.1
+                -- Auto Generated
+                Paths_idris
 
-               Extensions:      MultiParamTypeClasses, FunctionalDependencies,
-                                FlexibleInstances, TemplateHaskell
-               ghc-prof-options: -auto-all -caf-all
-               ghc-options: -rtsopts
-               if os(linux)
-                  cpp-options: -DLINUX
-                  build-depends: unix
-               if os(darwin)
-                  cpp-options: -DMACOSX
-                  build-depends: unix
-               if os(windows)
-                  cpp-options: -DWINDOWS
-                  build-depends: Win32
-               if flag(LLVM)
-                  other-modules: IRTS.CodegenLLVM
-                  cpp-options: -DIDRIS_LLVM
-                  build-depends: llvm-general==3.3.8.*, llvm-general-pure==3.3.8.*
-               else
-                  other-modules: Util.LLVMStubs
+  Build-depends:  base >=4 && <5
+                , Cabal
+                , ansi-terminal
+                , binary
+                , bytestring
+                , containers
+                , directory
+                , directory >= 1.2
+                , filepath
+                , haskeline >= 0.7
+                , language-java >= 0.2.2
+                , libffi
+                , mtl
+                , parsec >= 3
+                , parsers >= 0.9
+                , pretty
+                , process
+                , split
+                , text
+                , time >= 1.4
+                , transformers
+                , trifecta >= 1.1
+                , unordered-containers
+                , utf8-string
+                , vector
+                , vector-binary-instances
+
+  Extensions:     MultiParamTypeClasses
+                , FunctionalDependencies
+                , FlexibleInstances
+                , TemplateHaskell
+
+  ghc-prof-options: -auto-all -caf-all
+  ghc-options:      -rtsopts
+
+  if os(linux)
+     cpp-options:   -DLINUX
+     build-depends: unix
+  if os(darwin)
+     cpp-options:   -DMACOSX
+     build-depends: unix
+  if os(windows)
+     cpp-options:   -DWINDOWS
+     build-depends: Win32
+  if flag(LLVM)
+     other-modules: IRTS.CodegenLLVM
+     cpp-options:   -DIDRIS_LLVM
+     build-depends: llvm-general == 3.3.8.*
+                  , llvm-general-pure == 3.3.8.*
+  else
+     other-modules: Util.LLVMStubs
