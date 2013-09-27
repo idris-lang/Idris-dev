@@ -33,6 +33,7 @@ data Err = Msg String
          | Elaborating String TTName Err
          | ProviderError String
 
+-- | Error reports are a list of report parts
 data ErrorReport = Message String
                  | Name TTName
                  | Term TT
