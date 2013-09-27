@@ -238,14 +238,18 @@ goalAtFocus ps
 
 goal :: Hole -> Term -> TC Goal
 goal h tm = g [] tm where
+    g env (Bind n b@(Guess _ _) sc) 
+                        | same h n = return $ GD env b 
+                        | otherwise          
+                           = gb env b `mplus` g ((n, b):env) sc 
     g env (Bind n b sc) | hole b && same h n = return $ GD env b 
                         | otherwise          
-                           = gb env b `mplus` g ((n, b):env) sc
+                           = g ((n, b):env) sc `mplus` gb env b
     g env (App f a)   = g env f `mplus` g env a
     g env t           = fail "Can't find hole"
 
-    gb env (Let t v) = g env t `mplus` g env v
-    gb env (Guess t v) = g env t `mplus` g env v
+    gb env (Let t v) = g env v `mplus` g env t
+    gb env (Guess t v) = g env v `mplus` g env t
     gb env t = g env (binderTy t)
 
 tactic :: Hole -> RunTactic -> StateT TState TC ()
