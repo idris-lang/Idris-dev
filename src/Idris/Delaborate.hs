@@ -11,7 +11,7 @@ import Core.Evaluate
 
 import Debug.Trace
 
-bugaddr = "https://github.com/edwinb/Idris-dev/issues"
+bugaddr = "https://github.com/idris-lang/Idris-dev/issues"
 
 delab :: IState -> Term -> PTerm
 delab i tm = delab' i tm False
