@@ -67,7 +67,7 @@ defaultOpts = IOption { opt_logLevel   = 0
                       , opt_cmdline    = []
                       }
 
-data LanguageExt = TypeProviders deriving (Show, Eq, Read, Ord)
+data LanguageExt = TypeProviders | ErrorReflection deriving (Show, Eq, Read, Ord)
 
 -- | The output mode in use
 data OutputMode = RawOutput | IdeSlave Integer deriving Show

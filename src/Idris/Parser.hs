@@ -2359,6 +2359,7 @@ Directive' ::= 'lib'      CodeGen String_t
            |   'logging'  Natural
            |   'dynamic'  StringList
            |   'language' 'TypeProviders'
+           |   'language' 'ErrorReflection'
            ;
 -}
 directive :: SyntaxInfo -> IdrisParser [PDecl]

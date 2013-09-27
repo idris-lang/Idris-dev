@@ -648,6 +648,7 @@ parseArgs ("--codegen":n:ns)     = UseCodegen (parseCodegen n) : (parseArgs ns)
 parseArgs ["--exec"]             = InterpretScript "Main.main" : []
 parseArgs ("--exec":expr:ns)     = InterpretScript expr : parseArgs ns
 parseArgs ("-XTypeProviders":ns) = Extension TypeProviders : (parseArgs ns)
+parseArgs ("-XErrorReflection":ns) = Extension ErrorReflection : (parseArgs ns)
 parseArgs ("-O3":ns)             = OptLevel 3 : parseArgs ns
 parseArgs ("-O2":ns)             = OptLevel 2 : parseArgs ns
 parseArgs ("-O1":ns)             = OptLevel 1 : parseArgs ns
