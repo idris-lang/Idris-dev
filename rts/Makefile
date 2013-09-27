@@ -9,7 +9,7 @@ endif
 
 LIBTARGET = libidris_rts.a
 
-check : $(LIBTARGET) $(DYLIBTARGET)
+build: $(LIBTARGET) $(DYLIBTARGET)
 
 $(LIBTARGET) : $(OBJS)
 	ar r $(LIBTARGET) $(OBJS)
