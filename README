@@ -12,3 +12,5 @@ To run the tests, type 'make test' which will execute the test suite, and
 Idris has buildtime dependencies on the C libraries llvm-3.3 and libffi. Be sure these are compiled for the same architecture as your Haskell compiler (e.g. 64 bit libraries for 64 bit ghc).
 
 Idris has a runtime dependency on libgmp, and on Boehm GC (libgc) when using the LLVM codegen. These are needed for linking into compiled programs, so be sure these are compiled for Idris's default target architecture (usually 64 bit on x86_64 systems).
+
+The Idris wiki contains instructions for building on various platforms and for getting involved with development. It is located at https://github.com/idris-lang/Idris-dev/wiki .
