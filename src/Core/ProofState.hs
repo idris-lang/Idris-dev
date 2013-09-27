@@ -250,21 +250,44 @@ goal h tm = g [] tm where
 
 tactic :: Hole -> RunTactic -> StateT TState TC ()
 tactic h f = do ps <- get
-                tm' <- atH (context ps) [] (pterm ps)
+                (tm', _) <- atH (context ps) [] (pterm ps)
                 ps <- get -- might have changed while processing
                 put (ps { pterm = tm' })
   where
-    atH c env binder@(Bind n b sc) 
-        | hole b && same h n = f c env binder
+    updated o = do o' <- o
+                   return (o', True)
+
+    ulift2 c env op a b 
+                  = do (b', u) <- atH c env b
+                       if u then return (op a b', True)
+                            else do (a', u) <- atH c env a
+                                    return (op a' b', u)
+
+    -- Search the things most likely to contain the binding first!
+
+    atH :: Context -> Env -> Term -> StateT TState TC (Term, Bool)
+    atH c env binder@(Bind n b@(Guess t v) sc) 
+        | same h n = updated (f c env binder)
         | otherwise          
-            = liftM2 (Bind n) (atHb c env b) (atH c ((n, b) : env) sc) 
-    atH c env (App f a)    = liftM2 App (atH c env f) (atH c env a)
-    atH c env t            = return t
+            = do -- binder first
+                 (b', u) <- ulift2 c env Guess t v
+                 if u then return (Bind n b' sc, True)
+                      else do (sc', u) <- atH c ((n, b) : env) sc
+                              return (Bind n b' sc', u)
+    atH c env binder@(Bind n b sc) 
+        | hole b && same h n = updated (f c env binder)
+        | otherwise -- scope first
+            = do (sc', u) <- atH c ((n, b) : env) sc
+                 if u then return (Bind n b sc', True)
+                      else do (b', u) <- atHb c env b
+                              return (Bind n b' sc', u)
+    atH c env (App f a)    = ulift2 c env App f a
+    atH c env t            = return (t, False)
     
-    atHb c env (Let t v)   = liftM2 Let (atH c env t) (atH c env v)    
-    atHb c env (Guess t v) = liftM2 Guess (atH c env t) (atH c env v)
-    atHb c env t           = do ty' <- atH c env (binderTy t)
-                                return $ t { binderTy = ty' }
+    atHb c env (Let t v)   = ulift2 c env Let t v    
+    atHb c env (Guess t v) = ulift2 c env Guess t v
+    atHb c env t           = do (ty', u) <- atH c env (binderTy t)
+                                return (t { binderTy = ty' }, u)
 
 computeLet :: Context -> Name -> Term -> Term
 computeLet ctxt n tm = cl [] tm where
@@ -453,8 +476,8 @@ solve ctxt env (Bind x (Guess ty val) sc)
                                            -- dontunify = dontunify ps \\ [x],
                                            -- unified = (uh, uns ++ [(x, val)]),
                                            instances = instances ps \\ [x] })
-                       return $ {- Bind x (Let ty val) sc -} 
-                                   instantiate val (pToV x sc)
+                       let tm' = instantiate val (pToV x sc) in
+                           return tm'
    | otherwise    = lift $ tfail $ IncompleteTerm val
 solve _ _ h@(Bind x t sc) 
             = do ps <- get
