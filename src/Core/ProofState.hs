@@ -741,9 +741,6 @@ processTactic t ps
     = case holes ps of
         [] -> fail "Nothing to fill in."
         (h:_)  -> do ps' <- execStateT (process t h) ps
-                     let pterm' = case solved ps' of
-                                    Just s -> updateSolved [s] (pterm ps')
-                                    _ -> pterm ps'
                      let (ns', probs') 
                                 = case solved ps' of
                                     Just s -> updateProblems (context ps')
@@ -753,7 +750,7 @@ processTactic t ps
                                     _ -> ([], problems ps')
                      -- rechecking problems may find more solutions, so 
                      -- apply them here
-                     let pterm'' = updateSolved ns' pterm'
+                     let pterm'' = updateSolved ns' (pterm ps')
                      return (ps' { pterm = pterm'',
                                    solved = Nothing,
                                    problems = probs',
