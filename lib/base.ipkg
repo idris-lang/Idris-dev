@@ -20,7 +20,7 @@ modules = Builtins, Prelude, IO, System,
 
           Providers,
 
-          Language.Reflection, Language.Reflection.Utils,
+          Language.Reflection, Language.Reflection.Utils, Language.Reflection.Errors,
 
           Data.Morphisms, 
           Data.Bits, Data.Mod2, 

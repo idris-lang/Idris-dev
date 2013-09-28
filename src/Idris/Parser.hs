@@ -2350,6 +2350,7 @@ Directive' ::= 'lib'      CodeGen String_t
            |   'logging'  Natural
            |   'dynamic'  StringList
            |   'language' 'TypeProviders'
+           |   'language' 'ErrorReflection'
            ;
 -}
 directive :: SyntaxInfo -> IdrisParser [PDecl]
@@ -2390,9 +2391,13 @@ directive syn = do try (lchar '%' *> reserved "lib"); cgn <- codegen_; lib <- st
                                              Left lib -> addIBC (IBCDyLib (lib_name lib))
                                              Right msg ->
                                                  fail $ msg)]
-             <|> do try (lchar '%' *> reserved "language"); ext <- reserved "TypeProviders";
-                    return [PDirective (addLangExt TypeProviders)]
+             <|> do try (lchar '%' *> reserved "language"); ext <- pLangExt;
+                    return [PDirective (addLangExt ext)]
              <?> "directive"
+
+pLangExt :: IdrisParser LanguageExt
+pLangExt = (reserved "TypeProviders" >> return TypeProviders)
+       <|> (reserved "ErrorReflection" >> return ErrorReflection)
 
 {- | Parses a totality
 Totality ::= 'partial' | 'total'
