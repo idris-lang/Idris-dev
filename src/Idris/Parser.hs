@@ -73,8 +73,10 @@ simpleWhiteSpace = satisfy isSpace *> pure ()
 -- | Checks if a charcter is end of line
 isEol :: Char -> Bool
 isEol '\n' = True
-isEol '\0' = True -- Check eof too
 isEol  _   = False
+
+eol :: MonadicParsing m => m ()
+eol = (satisfy isEol *> pure ()) <|> lookAhead eof <?> "end of line"
 
 -- | Checks if a character is a documentation comment marker
 isDocCommentMarker :: Char -> Bool
@@ -88,8 +90,8 @@ isDocCommentMarker   _  = False
                         ;
  -}
 singleLineComment :: MonadicParsing m => m ()
-singleLineComment =     try (string "--" *> satisfy isEol *> pure ())
-                    <|> string "--" *> satisfy (not . isDocCommentMarker) *> many (satisfy (not . isEol)) *> (satisfy isEol <?> "end of line") *> pure ()
+singleLineComment =     try (string "--" *> eol *> pure ())
+                    <|> string "--" *> satisfy (not . isDocCommentMarker) *> many (satisfy (not . isEol)) *> eol *> pure ()
                     <?> ""
 
 {- | Consumes a multi-line comment
@@ -129,7 +131,7 @@ docComment :: MonadicParsing m => Char -> m String
 docComment marker | isDocCommentMarker marker = do dc <- docComment' marker; return (T.unpack $ T.strip $ T.pack dc)
                        | otherwise            = fail "internal error: tried to parse a documentation comment with invalid marker"
   where docComment' :: MonadicParsing m => Char -> m String
-        docComment' marker  =     string "--" *> char marker *> many (satisfy (not . isEol)) <* satisfy isEol
+        docComment' marker  =     string "--" *> char marker *> many (satisfy (not . isEol)) <* eol
                               <|> string "{-" *> char marker *> (manyTill anyChar (try (string "-}")) <?> "end of comment")
                               <?> ""
 
