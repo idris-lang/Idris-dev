@@ -112,6 +112,12 @@ elabType' norm info syn doc fc opts n ty' = {- let ty' = piBind (params info) ty
          addIBC (IBCFlags n opts')
          when (Implicit `elem` opts) $ do addCoercion n
                                           addIBC (IBCCoercion n)
+         -- If the function is declared as an error handler and the language
+         -- extension is enabled, then add it to the list of error handlers.
+         when (ErrorReflection `elem` idris_language_extensions i && ErrorHandler `elem` opts) $
+           -- TODO: Check that the declared type is the correct type for an error handler:
+           -- handler : List (TTName, TT) -> Err -> ErrorReport
+           putIState $ i { idris_errorhandlers = n : idris_errorhandlers i }
          when corec $ do setAccessibility n Frozen
                          addIBC (IBCAccess n Frozen)
          return usety

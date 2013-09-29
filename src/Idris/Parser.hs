@@ -309,6 +309,7 @@ FnOpts ::= 'total'
   | 'partial'
   | 'implicit'
   | '%' 'assert_total'
+  | '%' 'error_handler'
   | '%' 'reflection'
   | '%' 'specialise' '[' NameTimesList? ']'
   ;
@@ -330,6 +331,8 @@ fnOpts opts
                   fnOpts (CExport c : opts)
       <|> do try (lchar '%' *> reserved "assert_total");
                   fnOpts (AssertTotal : opts)
+      <|> do try (lchar '%' *> reserved "error_handler");
+                 fnOpts (ErrorHandler : opts)
       <|> do try (lchar '%' *> reserved "reflection");
                   fnOpts (Reflection : opts)
       <|> do lchar '%'; reserved "specialise";

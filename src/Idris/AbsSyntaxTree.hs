@@ -131,7 +131,8 @@ data IState = IState {
     idris_outputmode :: OutputMode,
     idris_colourRepl :: Bool,
     idris_colourTheme :: ColourTheme,
-    idris_outh :: Handle
+    idris_outh :: Handle,
+    idris_errorhandlers :: [Name]
    }
 
 data SizeChange = Smaller | Same | Bigger | Unknown
@@ -189,13 +190,15 @@ data IBCWrite = IBCFix FixDecl
               | IBCLineApp FilePath Int PTerm
   deriving Show
 
+-- | The initial state for the compiler
+idrisInit :: IState
 idrisInit = IState initContext [] [] emptyContext emptyContext emptyContext
                    emptyContext emptyContext emptyContext emptyContext
                    emptyContext emptyContext emptyContext emptyContext
                    emptyContext
                    [] [] defaultOpts 6 [] [] [] [] [] [] [] [] [] [] [] []
                    [] Nothing Nothing [] [] [] Hidden False [] Nothing [] [] RawOutput
-                   True defaultTheme stdout
+                   True defaultTheme stdout []
 
 -- | The monad for the main REPL - reading and processing files and updating
 -- global state (hence the IO inner monad).
@@ -380,6 +383,7 @@ data FnOpt = Inlinable -- always evaluate when simplifying
                         -- a function argument, and further evaluation resutls
            | Implicit -- implicit coercion
            | CExport String    -- export, with a C name
+           | ErrorHandler     -- ^^ an error handler for use with the ErrorReflection extension
            | Reflection -- a reflecting function, compile-time only
            | Specialise [(Name, Maybe Int)] -- specialise it, freeze these names
     deriving (Show, Eq)
