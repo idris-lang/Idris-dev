@@ -4,7 +4,7 @@ module Idris.Parser where
 import Prelude hiding (pi)
 
 import Text.Trifecta.Delta
-import Text.Trifecta hiding (span, token, whiteSpace, stringLiteral, charLiteral, natural, symbol, char, string)
+import Text.Trifecta hiding (span, stringLiteral, charLiteral, natural, symbol, char, string, whiteSpace)
 import Text.Parser.LookAhead
 import Text.Parser.Expression
 import qualified Text.Parser.Token as Tok
@@ -56,15 +56,18 @@ import System.FilePath
 
 
 -- | Idris parser with state used during parsing
-type IdrisParser = StateT IState Parser
+type IdrisParser = StateT IState IdrisInnerParser
+
+newtype IdrisInnerParser a = IdrisInnerParser { runInnerParser :: Parser a }
+  deriving (Monad, Functor, MonadPlus, Applicative, Alternative, CharParsing, LookAheadParsing, Parsing, DeltaParsing, MarkParsing Delta, Monoid)
+
+instance TokenParsing IdrisInnerParser where
+  someSpace = many (simpleWhiteSpace <|> singleLineComment <|> multiLineComment) *> pure ()
 
 -- | Generalized monadic parsing constraint type
 type MonadicParsing m = (DeltaParsing m, LookAheadParsing m, TokenParsing m, Monad m)
 
 {- * Space, comments and literals (token/lexing like parsers) -}
--- | Parses a token by applying parser and then consuming all following whiteSpace
-lexeme :: MonadicParsing m => m a -> m a
-lexeme p = p <* whiteSpace
 
 -- | Consumes any simple whitespace (any character which satisfies Char.isSpace)
 simpleWhiteSpace :: MonadicParsing m => m ()
@@ -135,29 +138,29 @@ docComment marker | isDocCommentMarker marker = do dc <- docComment' marker; ret
                               <|> string "{-" *> char marker *> (manyTill anyChar (try (string "-}")) <?> "end of comment")
                               <?> ""
 
--- | Consumes whitespace (and comments)
+-- | Parses some white space
 whiteSpace :: MonadicParsing m => m ()
-whiteSpace = many (simpleWhiteSpace <|> singleLineComment <|> multiLineComment) *> pure ()
+whiteSpace = Tok.whiteSpace
 
 -- | Parses a string literal
 stringLiteral :: MonadicParsing m => m String
-stringLiteral = lexeme $ Tok.stringLiteral
+stringLiteral = Tok.stringLiteral
 
 -- | Parses a char literal
 charLiteral :: MonadicParsing m => m Char
-charLiteral = lexeme $ Tok.charLiteral
+charLiteral = Tok.charLiteral
 
 -- | Parses a natural number
 natural :: MonadicParsing m => m Integer
-natural = lexeme $ Tok.natural
+natural = Tok.natural
 
 -- | Parses an integral number
 integer :: MonadicParsing m => m Integer
-integer = lexeme $ Tok.integer
+integer = Tok.integer
 
 -- | Parses a floating point number
 float :: MonadicParsing m => m Double
-float = lexeme $ Tok.double
+float = Tok.double
 
 {- * Symbols, identifiers, names and operators -}
 
@@ -186,28 +189,28 @@ char = Chr.char
 string :: MonadicParsing m => String -> m String
 string = Chr.string
 
--- | Parses a character as a lexeme
+-- | Parses a character as a token
 lchar :: MonadicParsing m => Char -> m Char
-lchar = lexeme . char
+lchar = token . char
 
--- | Parses string as a lexeme
+-- | Parses string as a token
 symbol :: MonadicParsing m => String -> m String
-symbol = lexeme . Tok.symbol
+symbol = Tok.symbol
 
 -- | Parses a reserved identifier
 reserved :: MonadicParsing m => String -> m ()
-reserved = lexeme . Tok.reserve idrisStyle
+reserved = Tok.reserve idrisStyle
 
 -- Taken from Parsec (c) Daan Leijen 1999-2001, (c) Paolo Martini 2007
 -- | Parses a reserved operator
 reservedOp :: MonadicParsing m => String -> m ()
-reservedOp name = lexeme $ try $
+reservedOp name = token $ try $
   do string name
      notFollowedBy (operatorLetter) <?> ("end of " ++ show name)
 
--- | Parses an identifier as a lexeme
+-- | Parses an identifier as a token
 identifier :: MonadicParsing m => m String
-identifier = lexeme $ Tok.ident idrisStyle
+identifier = token $ Tok.ident idrisStyle
 
 -- | Parses an identifier with possible namespace as a name
 iName :: MonadicParsing m => [String] -> m Name
@@ -261,7 +264,7 @@ operatorLetter = oneOf ":!#$%&*+./<=>?@\\^|-~"
 
 -- | Parses an operator
 operator :: MonadicParsing m => m String
-operator = do op <- lexeme . some $ operatorLetter
+operator = do op <- token . some $ operatorLetter
               when (op == ":") $ fail "(:) is not a valid operator"
               return op
 
@@ -2536,17 +2539,17 @@ fullTactic syn = do t <- tactic syn
 {- * Loading and parsing -}
 {- | Parses an expression from input -}
 parseExpr :: IState -> String -> Result PTerm
-parseExpr st = parseString (evalStateT (fullExpr defaultSyntax) st) (Directed (UTF8.fromString "(input)") 0 0 0 0)
+parseExpr st = parseString (runInnerParser (evalStateT (fullExpr defaultSyntax) st)) (Directed (UTF8.fromString "(input)") 0 0 0 0)
 
 {- | Parses a tactic from input -}
 parseTactic :: IState -> String -> Result PTactic
-parseTactic st = parseString (evalStateT (fullTactic defaultSyntax) st) (Directed (UTF8.fromString "(input)") 0 0 0 0)
+parseTactic st = parseString (runInnerParser (evalStateT (fullTactic defaultSyntax) st)) (Directed (UTF8.fromString "(input)") 0 0 0 0)
 
 -- | Parse module header and imports
 parseImports :: FilePath -> String -> Idris ([String], [String], Maybe Delta)
 parseImports fname input
     = do i <- getIState
-         case parseString (evalStateT imports i) (Directed (UTF8.fromString fname) 0 0 0 0) input of
+         case parseString (runInnerParser (evalStateT imports i)) (Directed (UTF8.fromString fname) 0 0 0 0) input of
               Failure err    -> fail (show err)
               Success (x, i) -> do -- Discard state updates (there should be
                                    -- none anyway)
@@ -2570,7 +2573,7 @@ parseProg :: SyntaxInfo -> FilePath -> String -> Maybe Delta ->
              Idris [PDecl]
 parseProg syn fname input mrk
     = do i <- getIState
-         case parseString (evalStateT mainProg i) (Directed (UTF8.fromString fname) 0 0 0 0) input of
+         case parseString (runInnerParser (evalStateT mainProg i)) (Directed (UTF8.fromString fname) 0 0 0 0) input of
             Failure doc     -> do iputStrLn (show doc)
                                   -- FIXME: Get error location from trifecta
                                   --let errl = sourceLine (errorPos err)
