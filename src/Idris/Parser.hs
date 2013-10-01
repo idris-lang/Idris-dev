@@ -1613,50 +1613,48 @@ Pi ::=
   |              '{' 'static'               '}' Expr'      '->' Expr
   ;
  -}
+
+pi :: SyntaxInfo -> IdrisParser PTerm
 pi syn =
-     try (do lazy <- if implicitAllowed syn -- laziness is top level only
-                        then option False (do lchar '|'; return True)
-                        else return False
-             st <- static
-             lchar '('; xt <- typeDeclList syn; lchar ')'
-             doc <- option "" (docComment '^')
-             symbol "->"
-             sc <- expr syn
-             return (bindList (PPi (Exp lazy st doc)) xt sc))
- <|> try (if implicitAllowed syn
-             then do lazy <- option False (do lchar '|'
-                                              return True)
-                     st <- static
-                     lchar '{'
-                     xt <- typeDeclList syn
-                     lchar '}'
-                     symbol "->"
-                     sc <- expr syn
-                     return (bindList (PPi (Imp lazy st "")) xt sc)
-             else fail "no implicit arguments allowed here")
- <|> try (do lchar '{'
-             reserved "auto"
-             xt <- typeDeclList syn
-             lchar '}'
-             symbol "->"
-             sc <- expr syn
-             return (bindList (PPi
-                      (TacImp False Dynamic (PTactics [Trivial]) "")) xt sc))
- <|> try (do lchar '{'
-             reserved "default"
-             script <- simpleExpr syn
-             xt <- typeDeclList syn
-             lchar '}'
-             symbol "->"
-             sc <- expr syn
-             return (bindList (PPi (TacImp False Dynamic script "")) xt sc))
- <|> do lchar '{'
-        reserved "static"
-        lchar '}'
-        t <- expr' syn
-        symbol "->"
-        sc <- expr syn
-        return (PPi (Exp False Static "") (MN 42 "__pi_arg") t sc)
+     do lazy <- if implicitAllowed syn -- laziness is top level only
+                then option False (do lchar '|'; return True)
+                else return False
+        st <- static
+        (do try(lchar '('); xt <- typeDeclList syn; lchar ')'
+            doc <- option "" (docComment '^')
+            symbol "->"
+            sc <- expr syn
+            return (bindList (PPi (Exp lazy st doc)) xt sc)) <|> (do
+               lchar '{'
+               (do reserved "auto"
+                   when (lazy || (st == Static)) $ fail "auto type constraints can not be lazy or static"
+                   xt <- typeDeclList syn
+                   lchar '}'
+                   symbol "->"
+                   sc <- expr syn
+                   return (bindList (PPi
+                     (TacImp False Dynamic (PTactics [Trivial]) "")) xt sc)) <|> (do
+                       reserved "default"
+                       when (lazy || (st == Static)) $ fail "default tactic constraints can not be lazy or static"
+                       script <- simpleExpr syn
+                       xt <- typeDeclList syn
+                       lchar '}'
+                       symbol "->"
+                       sc <- expr syn
+                       return (bindList (PPi (TacImp False Dynamic script "")) xt sc)) <|> (do
+                       reserved "static"
+                       lchar '}'
+                       t <- expr' syn
+                       symbol "->"
+                       sc <- expr syn
+                       return (PPi (Exp False Static "") (MN 42 "__pi_arg") t sc)) <|> (
+                       if implicitAllowed syn then do
+                            xt <- typeDeclList syn
+                            lchar '}'
+                            symbol "->"
+                            sc <- expr syn
+                            return (bindList (PPi (Imp lazy st "")) xt sc)
+                       else do fail "no implicit arguments allowed here"))
   <?> "dependent type signature"
 
 {- | Parses a type constraint list
