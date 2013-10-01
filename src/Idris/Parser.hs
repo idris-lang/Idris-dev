@@ -261,7 +261,9 @@ operatorLetter = oneOf ":!#$%&*+./<=>?@\\^|-~"
 
 -- | Parses an operator
 operator :: MonadicParsing m => m String
-operator = lexeme . some $ operatorLetter
+operator = do op <- lexeme . some $ operatorLetter
+              when (op == ":") $ fail "(:) is not a valid operator"
+              return op
 
 {- * Position helpers -}
 {- | Get filename from position (returns "(interactive)" when no source file is given)  -}
@@ -687,22 +689,25 @@ fnDecl syn
   ;
 -}
 fnDecl' :: SyntaxInfo -> IdrisParser PDecl
-fnDecl' syn = try (do doc <- option "" (docComment '|')
-                      pushIndent
-                      ist <- get
-                      let initOpts = if default_total ist
-                                        then [TotalFn]
-                                        else []
-                      opts <- fnOpts initOpts
-                      acc <- optional accessibility
-                      opts' <- fnOpts opts
-                      n_in <- fnName
-                      let n = expandNS syn n_in
-                      fc <- getFC
-                      ty <- typeSig (allowImp syn)
-                      terminator
-                      addAcc n acc
-                      return (PTy doc syn fc opts' n ty))
+fnDecl' syn = do (doc, fc, opts', n, acc) <- try (do 
+                        doc <- option "" (docComment '|')
+                        pushIndent
+                        ist <- get
+                        let initOpts = if default_total ist
+                                          then [TotalFn]
+                                          else []
+                        opts <- fnOpts initOpts
+                        acc <- optional accessibility
+                        opts' <- fnOpts opts
+                        n_in <- fnName
+                        let n = expandNS syn n_in
+                        fc <- getFC
+                        lchar ':'
+                        return (doc, fc, opts', n, acc))
+                 ty <- typeExpr (allowImp syn)
+                 terminator
+                 addAcc n acc
+                 return (PTy doc syn fc opts' n ty)
             <|> postulate syn
             <|> caf syn
             <|> pattern syn
@@ -792,7 +797,8 @@ postulate syn = do doc <- try $ do doc <- option "" (docComment '|')
                    opts' <- fnOpts opts
                    n_in <- fnName
                    let n = expandNS syn n_in
-                   ty <- typeSig (allowImp syn)
+                   lchar ':'
+                   ty <- typeExpr (allowImp syn)
                    fc <- getFC
                    terminator
                    addAcc n acc
@@ -1189,7 +1195,6 @@ SimpleExpr ::=
   | '(' Bracketed
   | Constant
   | Type
-  | '()'
   | '_|_'
   | '_'
   | {- External (User-defined) Simple Expression -}
@@ -1214,15 +1219,12 @@ simpleExpr syn =
         <|> try (comprehension syn)
         <|> try (alt syn)
         <|> try (idiom syn)
-        <|> try (do lchar '('
-                    bracketed (disallowImp syn))
+        <|> do lchar '('
+               bracketed (disallowImp syn)
         <|> try (do c <- constant
                     fc <- getFC
                     return (modifyConst syn fc (PConstant c)))
         <|> do reserved "Type"; return PType
-        <|> try (do symbol "()"
-                    fc <- getFC
-                    return (PTrue fc))
         <|> try (do symbol "_|_"
                     fc <- getFC
                     return (PFalse fc))
@@ -1233,25 +1235,62 @@ simpleExpr syn =
 
 {- |Parses the rest of an expression in braces
 Bracketed ::=
-  | Pair
+  ')'
   | Expr ')'
+  | ExprList ')'
+  | Expr '**' Expr ')'
   | Operator Expr ')'
   | Expr Operator ')'
+  | Name ':' Expr '**' Expr ')'
   ;
 -}
 bracketed :: SyntaxInfo -> IdrisParser PTerm
 bracketed syn =
-            try (pair syn)
-        <|> try (do e <- expr syn; lchar ')'; return e)
-        <|> try (do fc <- getFC; o <- operator; e <- expr syn; lchar ')'
-                    return $ PLam (MN 1000 "ARG") Placeholder
-                                  (PApp fc (PRef fc (UN o)) [pexp (PRef fc (MN 1000 "ARG")),
+            do lchar ')'
+               fc <- getFC
+               return $ PTrue fc
+        <|>
+        try (do l <- expr syn
+                lchar ')'
+                return l) 
+        <|>  do (l, fc) <- try (do
+                     l <- expr syn
+                     fc <- getFC
+                     lchar ','
+                     return (l, fc))
+                rs <- sepBy1 (do fc' <- getFC; r <- expr syn; return (r, fc')) (lchar ',')
+                lchar ')'
+                return $ PPair fc l (mergePairs rs)
+        <|>  do (l, fc) <- try (do
+                   l <- expr syn
+                   fc <- getFC
+                   reservedOp "**"
+                   return (l, fc))
+                r <- expr syn
+                lchar ')'
+                return (PDPair fc l Placeholder r)
+        <|> try(do fc0 <- getFC
+                   l <- simpleExpr syn
+                   o <- operator
+                   lchar ')'
+                   return $ PLam (MN 1000 "ARG") Placeholder
+                                    (PApp fc0 (PRef fc0 (UN o)) [pexp l,
+                                                                 pexp (PRef fc0 (MN 1000 "ARG"))]))
+        <|> try(do fc <- getFC; o <- operator; e <- expr syn; lchar ')'
+                   return $ PLam (MN 1000 "ARG") Placeholder
+                             (PApp fc (PRef fc (UN o)) [pexp (PRef fc (MN 1000 "ARG")),
                                                              pexp e]))
-        <|> try (do fc <- getFC; e <- simpleExpr syn; o <- operator; lchar ')'
-                    return $ PLam (MN 1000 "ARG") Placeholder
-                                  (PApp fc (PRef fc (UN o)) [pexp e,
-                                                             pexp (PRef fc (MN 1000 "ARG"))]))
-        <?> "end of expression in braces"
+        <|> try (do ln <- name; lchar ':'
+                    lty <- expr syn
+                    reservedOp "**"
+                    fc <- getFC
+                    r <- expr syn
+                    lchar ')'
+                    return (PDPair fc (PRef fc ln) lty r))
+        <?> "end of braced expression"
+  where mergePairs :: [(PTerm, FC)] -> PTerm
+        mergePairs [(t, fc)]    = t
+        mergePairs ((t, fc):rs) = PPair fc t (mergePairs rs)
 
 -- bit of a hack here. If the integer doesn't fit in an Int, treat it as a
 -- big integer, otherwise try fromInteger and the constants as alternatives.
@@ -1295,62 +1334,6 @@ listExpr syn = do lchar '['; fc <- getFC; xs <- sepBy (expr syn) (lchar ','); lc
     mkList fc [] = PRef fc (UN "Nil")
     mkList fc (x : xs) = PApp fc (PRef fc (UN "::")) [pexp x, pexp (mkList fc xs)]
 
-{- | Parses rest of pair expression
-Pair ::=
-    Expr RestTuple? ')'
-  | NTuple ')'
-  | Name ':' Expr '**' 'Expr' ')'
-  ;
-
-RestTuple ::=
-    ',' Expr
-  | '**' Expr
-  ;
-
-NTuple ::=
-     Expr ',' Expr
-   | Expr ',' NTuple
-   ;
--}
-pair :: SyntaxInfo -> IdrisParser PTerm
-pair syn = try (do l <- expr syn
-                   fc <- getFC
-                   rest <- restTuple
-                   case rest of
-                       [] -> return l
-                       [Left r] -> return (PPair fc l r)
-                       [Right r] -> return (PDPair fc l Placeholder r))
-        <|> try (do x <- ntuple
-                    lchar ')'
-                    return x)
-        <|> do ln <- name; lchar ':'
-               lty <- expr syn
-               reservedOp "**"
-               fc <- getFC
-               r <- expr syn
-               lchar ')'
-               return (PDPair fc (PRef fc ln) lty r)
-        <?> "pair expression"
-  where
-    restTuple :: IdrisParser [Either PTerm PTerm]
-    restTuple = do lchar ')'; return []
-            <|> do lchar ','
-                   r <- expr syn
-                   lchar ')'
-                   return [Left r]
-            <|> do reservedOp "**"
-                   r <- expr syn
-                   lchar ')'
-                   return [Right r]
-            <?> "end of pair expression"
-    ntuple :: IdrisParser PTerm
-    ntuple = try (do l <- expr syn; fc <- getFC; lchar ','
-                     rest <- ntuple
-                     return (PPair fc l rest))
-             <|> (do l <- expr syn; fc <- getFC; lchar ','
-                     r <- expr syn
-                     return (PPair fc l r))
-             <?> "tuple expression"
 
 {- | Parses an alternative expression
   Alt ::= '(|' Expr_List '|)';
@@ -1526,15 +1509,10 @@ mkType (UN n) = UN ("set_" ++ n)
 mkType (MN 0 n) = MN 0 ("set_" ++ n)
 mkType (NS n s) = NS (mkType n) s
 
-{- |Parses a type for an expression
+{- |Parses a type signature
 TypeSig ::=
   ':' Expr
   ;
--}
-typeSig :: SyntaxInfo -> IdrisParser PTerm
-typeSig syn = lchar ':' *> typeExpr syn <?> "type"
-
-{- |Parses a type signature
 TypeExpr ::= ConstraintList? Expr;
  -}
 typeExpr :: SyntaxInfo -> IdrisParser PTerm
@@ -1719,7 +1697,8 @@ usingDeclList :: SyntaxInfo -> IdrisParser [Using]
 usingDeclList syn
                = try (sepBy1 (usingDecl syn) (lchar ','))
              <|> do ns <- sepBy1 name (lchar ',')
-                    t <- typeSig (disallowImp syn)
+                    lchar ':'
+                    t <- typeExpr (disallowImp syn)
                     return (map (\x -> UImplicit x t) ns)
              <?> "using declaration list"
 
@@ -1731,7 +1710,8 @@ UsingDecl ::=
 -}
 usingDecl :: SyntaxInfo -> IdrisParser Using
 usingDecl syn = try (do x <- fnName
-                        t <- typeSig (disallowImp syn)
+                        lchar ':'
+                        t <- typeExpr (disallowImp syn)
                         return (UImplicit x t))
             <|> do c <- fnName
                    xs <- some fnName
@@ -1751,11 +1731,13 @@ FunctionSignatureList ::=
 -}
 typeDeclList :: SyntaxInfo -> IdrisParser [(Name, PTerm)]
 typeDeclList syn = try (sepBy1 (do x <- fnName
-                                   t <- typeSig (disallowImp syn)
+                                   lchar ':'
+                                   t <- typeExpr (disallowImp syn)
                                    return (x,t))
                            (lchar ','))
                    <|> do ns <- sepBy1 name (lchar ',')
-                          t <- typeSig (disallowImp syn)
+                          lchar ':'
+                          t <- typeExpr (disallowImp syn)
                           return (map (\x -> (x, t)) ns)
                    <?> "type declaration list"
 
@@ -1936,7 +1918,8 @@ record syn = do (doc, acc) <- try (do
                       return (doc, acc))
                 fc <- getFC
                 tyn_in <- fnName
-                ty <- typeSig (allowImp syn)
+                lchar ':'
+                ty <- typeExpr (allowImp syn)
                 let tyn = expandNS syn tyn_in
                 reserved "where"
                 (cdoc, cn, cty, _) <- indentedBlockS (constructor syn)
@@ -1985,7 +1968,8 @@ data_ syn = try (do doc <- option "" (docComment '|')
                     co <- dataI
                     fc <- getFC
                     tyn_in <- fnName
-                    ty <- typeSig (allowImp syn)
+                    lchar ':'
+                    ty <- typeExpr (allowImp syn)
                     let tyn = expandNS syn tyn_in
                     option (PData doc syn fc co (PLaterdecl tyn ty)) (do
                       reserved "where"
@@ -2038,7 +2022,8 @@ constructor syn
     = do doc <- option "" (docComment '|')
          cn_in <- fnName; fc <- getFC
          let cn = expandNS syn cn_in
-         ty <- typeSig (allowImp syn)
+         lchar ':'
+         ty <- typeExpr (allowImp syn)
          return (doc, cn, ty, fc)
       <?> "constructor"
 
@@ -2416,7 +2401,7 @@ Provider ::= '%' 'provide' '(' FnName TypeSig ')' 'with' Expr;
  -}
 provider :: SyntaxInfo -> IdrisParser [PDecl]
 provider syn = do try (lchar '%' *> reserved "provide");
-                  lchar '('; n <- fnName; t <- typeSig syn; lchar ')'
+                  lchar '('; n <- fnName; lchar ':'; t <- typeExpr syn; lchar ')'
                   fc <- getFC
                   reserved "with"
                   e <- expr syn
