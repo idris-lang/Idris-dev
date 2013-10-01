@@ -32,7 +32,7 @@ bitsUsed n = 8 * (2 `power` n)
 %assert_total
 natToBits' : machineTy n -> Nat -> machineTy n
 natToBits' a Z = a
-natToBits' {n=n} a x with n
+natToBits' {n=n} a x with (n)
  -- it seems I have to manually recover the value of n here, instead of being able to reference it  
  natToBits' a (S x') | Z           = natToBits' {n=0} (prim__addB8  a (prim__truncInt_B8  1)) x'
  natToBits' a (S x') | S Z         = natToBits' {n=1} (prim__addB16 a (prim__truncInt_B16 1)) x'
@@ -40,7 +40,7 @@ natToBits' {n=n} a x with n
  natToBits' a (S x') | S (S (S _)) = natToBits' {n=3} (prim__addB64 a (prim__truncInt_B64 1)) x'
 
 natToBits : Nat -> machineTy n
-natToBits {n=n} x with n
+natToBits {n=n} x with (n)
     | Z           = natToBits' {n=0} (prim__truncInt_B8  0) x
     | S Z         = natToBits' {n=1} (prim__truncInt_B16 0) x
     | S (S Z)     = natToBits' {n=2} (prim__truncInt_B32 0) x
@@ -106,7 +106,7 @@ shiftLeft : Bits n -> Bits n -> Bits n
 shiftLeft (MkBits x) (MkBits y) = MkBits (shiftLeft' x y)
 
 shiftRightLogical' : machineTy n -> machineTy n -> machineTy n
-shiftRightLogical' {n=n} x c with n
+shiftRightLogical' {n=n} x c with (n)
     | Z = prim__lshrB8 x c
     | S Z = prim__lshrB16 x c
     | S (S Z) = prim__lshrB32 x c
@@ -129,7 +129,7 @@ shiftRightArithmetic : Bits n -> Bits n -> Bits n
 shiftRightArithmetic (MkBits x) (MkBits y) = MkBits (shiftRightArithmetic' x y)
 
 and' : machineTy n -> machineTy n -> machineTy n
-and' {n=n} x y with n
+and' {n=n} x y with (n)
     | Z = prim__andB8 x y
     | S Z = prim__andB16 x y
     | S (S Z) = prim__andB32 x y
@@ -140,7 +140,7 @@ and : Bits n -> Bits n -> Bits n
 and {n} (MkBits x) (MkBits y) = MkBits (and' {n=nextBytes n} x y)
 
 or' : machineTy n -> machineTy n -> machineTy n
-or' {n=n} x y with n
+or' {n=n} x y with (n)
     | Z = prim__orB8 x y
     | S Z = prim__orB16 x y
     | S (S Z) = prim__orB32 x y
@@ -151,7 +151,7 @@ or : Bits n -> Bits n -> Bits n
 or {n} (MkBits x) (MkBits y) = MkBits (or' {n=nextBytes n} x y)
 
 xor' : machineTy n -> machineTy n -> machineTy n
-xor' {n=n} x y with n
+xor' {n=n} x y with (n)
     | Z = prim__xorB8 x y
     | S Z = prim__xorB16 x y
     | S (S Z) = prim__xorB32 x y

@@ -2240,7 +2240,8 @@ clause syn
                   return $ PClause fc n capp wargs rs wheres) <|> (do
                    popIndent
                    reserved "with"
-                   wval <- simpleExpr syn
+                   lchar '(' <?> "parenthesized expression"
+                   wval <- bracketed syn
                    openBlock
                    ds <- some $ fnDecl syn
                    closeBlock
@@ -2273,7 +2274,8 @@ clause syn
                    reserved "with"
                    ist <- get
                    put (ist { lastParse = Just n })
-                   wval <- simpleExpr syn
+                   lchar '(' <?> "parenthesized expression"
+                   wval <- bracketed syn
                    openBlock
                    ds <- some $ fnDecl syn
                    let withs = map (fillLHSD n capp wargs) $ concat ds
