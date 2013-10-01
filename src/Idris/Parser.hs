@@ -1963,25 +1963,23 @@ SimpleConstructorList ::=
   ;
 -}
 data_ :: SyntaxInfo -> IdrisParser PDecl
-data_ syn = try (do doc <- option "" (docComment '|')
-                    acc <- optional accessibility
-                    co <- dataI
-                    fc <- getFC
-                    tyn_in <- fnName
-                    lchar ':'
-                    ty <- typeExpr (allowImp syn)
-                    let tyn = expandNS syn tyn_in
-                    option (PData doc syn fc co (PLaterdecl tyn ty)) (do
-                      reserved "where"
-                      cons <- indentedBlock (constructor syn)
-                      accData acc tyn (map (\ (_, n, _, _) -> n) cons)
-                      return $ PData doc syn fc co (PDatadecl tyn ty cons)))
-        <|> try (do doc <- option "" (docComment '|')
+data_ syn = do (doc, acc, co) <- try (do
+                    doc <- option "" (docComment '|')
                     pushIndent
                     acc <- optional accessibility
                     co <- dataI
-                    fc <- getFC
-                    tyn_in <- fnName
+                    return (doc, acc, co))
+               fc <- getFC
+               tyn_in <- fnName
+               (do try (lchar ':')
+                   popIndent
+                   ty <- typeExpr (allowImp syn)
+                   let tyn = expandNS syn tyn_in
+                   option (PData doc syn fc co (PLaterdecl tyn ty)) (do
+                     reserved "where"
+                     cons <- indentedBlock (constructor syn)
+                     accData acc tyn (map (\ (_, n, _, _) -> n) cons)
+                     return $ PData doc syn fc co (PDatadecl tyn ty cons))) <|> (do
                     args <- many name
                     let ty = bindArgs (map (const PType) args) PType
                     let tyn = expandNS syn tyn_in
@@ -2005,7 +2003,7 @@ data_ syn = try (do doc <- option "" (docComment '|')
                                       return (doc, x, cty, cfc)) cons
                       accData acc tyn (map (\ (_, n, _, _) -> n) cons')
                       return $ PData doc syn fc co (PDatadecl tyn ty cons')))
-        <?> "data type declaration"
+           <?> "data type declaration"
   where
     mkPApp :: FC -> PTerm -> [PTerm] -> PTerm
     mkPApp fc t [] = t
