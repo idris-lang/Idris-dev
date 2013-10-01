@@ -1282,6 +1282,12 @@ reflectEnv = foldr consToEnvList emptyEnvList
     emptyEnvList = raw_apply (Var (NS (UN "Nil") ["List", "Prelude"])) 
                              [envTupleType]
 
+-- | Reflect an error into the internal datatype of Idris -- TODO
+reflectErr :: Err -> Raw
+reflectErr (Msg msg) = raw_apply (Var (NS (UN "Msg") ["Reflection", "Language"])) [reflectConstant (Str msg)]
+reflectErr (InternalMsg msg) = raw_apply (Var (NS (UN "InternalMsg") ["Reflection", "Language"])) [reflectConstant (Str msg)]
+reflectErr x = trace ("Couldn't reflect error " ++ show x) raw_apply (Var (NS (UN "Msg") ["Reflection", "Language"])) [reflectConstant (Str $ show x)]
+
 envTupleType :: Raw
 envTupleType 
   = raw_apply (Var pairTy) [ (Var $ reflm "TTName") 

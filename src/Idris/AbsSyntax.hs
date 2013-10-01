@@ -76,7 +76,14 @@ addHdr :: Codegen -> String -> Idris ()
 addHdr tgt f = do i <- getIState; putIState $ i { idris_hdrs = nub $ (tgt, f) : idris_hdrs i }
 
 addLangExt :: LanguageExt -> Idris ()
-addLangExt TypeProviders = do i <- getIState ; putIState $ i { idris_language_extensions = [TypeProviders] }
+addLangExt TypeProviders = do i <- getIState
+                              putIState $ i {
+                                idris_language_extensions = TypeProviders : idris_language_extensions i
+                              }
+addLangExt ErrorReflection = do i <- getIState
+                                putIState $ i {
+                                  idris_language_extensions = ErrorReflection : idris_language_extensions i
+                                }
 
 addTrans :: (Term, Term) -> Idris ()
 addTrans t = do i <- getIState 
