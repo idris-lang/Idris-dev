@@ -212,6 +212,35 @@ jsLet name value body =
     )
   ) [value]
 
+optimizeJS :: JS -> JS
+optimizeJS (JSApp
+             (JSFunction [arg] (JSReturn (JSNew con [tag, JSArray vals])))
+             [val]
+           ) =
+  JSNew con [tag, JSArray $ subst arg vals (optimizeJS val)]
+  where subst :: String -> [JS] -> JS -> [JS]
+        subst _   []       _   = []
+        subst var (x@(JSVar old) : xs) new
+          | var == translateVariableName old = new : xs
+          | otherwise                        = x : subst var xs new
+
+optimizeJS (JSSeq seq) =
+  JSSeq (map optimizeJS seq)
+
+optimizeJS (JSFunction args body) =
+  JSFunction args (optimizeJS body)
+
+optimizeJS (JSApp fun args) =
+  JSApp (optimizeJS fun) (map optimizeJS args)
+
+optimizeJS (JSReturn js) =
+  JSReturn $ optimizeJS js
+
+optimizeJS (JSAlloc name (Just js)) =
+  JSAlloc name (Just $ optimizeJS js)
+
+optimizeJS js = js
+
 codegenJavaScript
   :: JSTarget
   -> [(Name, SDecl)]
@@ -241,7 +270,7 @@ codegenJavaScript target definitions filename outputType = do
     def = map (first translateNamespace) definitions
 
     functions :: [String]
-    functions = map (compileJS . translateDeclaration) def
+    functions = map (compileJS . optimizeJS . translateDeclaration) def
 
     mainLoop :: String
     mainLoop = compileJS $
