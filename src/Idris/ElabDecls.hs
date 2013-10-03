@@ -1535,9 +1535,12 @@ elabDecl' what info (PInstance s f cs n ps t expn ds)
     = do iLOG $ "Elaborating instance " ++ show n
          elabInstance info s f cs n ps t expn ds
 elabDecl' what info (PRecord doc s f tyn ty cdoc cn cty)
-  | what /= EDefns
+  | what /= ETypes
     = do iLOG $ "Elaborating record " ++ show tyn
          elabRecord info s doc f tyn ty cdoc cn cty
+  | otherwise 
+    = do iLOG $ "Elaborating [type of] " ++ show tyn
+         elabData info s doc f False (PLaterdecl tyn ty)
 elabDecl' _ info (PDSL n dsl)
     = do i <- getIState
          putIState (i { idris_dsls = addDef n dsl (idris_dsls i) }) 
