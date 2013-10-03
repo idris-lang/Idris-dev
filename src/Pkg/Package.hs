@@ -20,7 +20,7 @@ import Idris.AbsSyntax
 
 import Pkg.PParser
 
-import Paths_idris
+import Paths_idris (getDataDir)
 
 -- To build a package:
 -- * read the package description
@@ -98,8 +98,7 @@ toIBCFile (NS n ns) = foldl1' (</>) (reverse (toIBCFile n : ns))
 
 installIBC :: String -> Name -> IO ()
 installIBC p m = do let f = toIBCFile m
-                    target <- environment "TARGET"
-                    d <- maybe getDataDir return target
+                    d <- getTargetDir
                     let destdir = d </> p </> getDest m
                     putStrLn $ "Installing " ++ f ++ " to " ++ destdir
                     createDirectoryIfMissing True destdir
@@ -109,7 +108,7 @@ installIBC p m = do let f = toIBCFile m
           getDest (NS n ns) = foldl1' (</>) (reverse (getDest n : ns))
 
 installObj :: String -> String -> IO ()
-installObj p o = do d <- getDataDir
+installObj p o = do d <- getTargetDir
                     let destdir = addTrailingPathSeparator (d </> p)
                     putStrLn $ "Installing " ++ o ++ " to " ++ destdir
                     createDirectoryIfMissing True destdir
