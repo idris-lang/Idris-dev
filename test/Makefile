@@ -57,6 +57,9 @@ test_js:
 	@perl ./runtest.pl test026 --codegen node
 	@perl ./runtest.pl test027 --codegen node
 	@perl ./runtest.pl test028 --codegen node
+	@perl ./runtest.pl test029 --codegen node
+	@perl ./runtest.pl test030 --codegen node
+	@perl ./runtest.pl test031 --codegen node
 
 update:
 	perl ./runtest.pl all -u
