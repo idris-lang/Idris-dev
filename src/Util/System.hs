@@ -1,5 +1,5 @@
 {-# LANGUAGE CPP #-}
-module Util.System(tempfile,withTempdir,environment,getCC,
+module Util.System(tempfile,withTempdir,getTargetDir,getCC,
                    getLibFlags,getIdrisLibDir,getIncFlags,rmFile,
                    getMvn,getExecutablePom,catchIO) where
 
@@ -63,6 +63,9 @@ environment :: String -> IO (Maybe String)
 environment x = catchIO (do e <- getEnv x
                             return (Just e))
                       (\_ -> return Nothing)
+
+getTargetDir :: IO String
+getTargetDir = environment "TARGET" >>= maybe getDataDir return
 
 rmFile :: FilePath -> IO ()
 rmFile f = do putStrLn $ "Removing " ++ f
