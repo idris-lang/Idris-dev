@@ -4,7 +4,7 @@ module Idris.Parser where
 import Prelude hiding (pi)
 
 import Text.Trifecta.Delta
-import Text.Trifecta hiding (span, token, whiteSpace, stringLiteral, charLiteral, natural, symbol, char, string)
+import Text.Trifecta hiding (span, stringLiteral, charLiteral, natural, symbol, char, string, whiteSpace)
 import Text.Parser.LookAhead
 import Text.Parser.Expression
 import qualified Text.Parser.Token as Tok
@@ -56,15 +56,18 @@ import System.FilePath
 
 
 -- | Idris parser with state used during parsing
-type IdrisParser = StateT IState Parser
+type IdrisParser = StateT IState IdrisInnerParser
+
+newtype IdrisInnerParser a = IdrisInnerParser { runInnerParser :: Parser a }
+  deriving (Monad, Functor, MonadPlus, Applicative, Alternative, CharParsing, LookAheadParsing, Parsing, DeltaParsing, MarkParsing Delta, Monoid)
+
+instance TokenParsing IdrisInnerParser where
+  someSpace = many (simpleWhiteSpace <|> singleLineComment <|> multiLineComment) *> pure ()
 
 -- | Generalized monadic parsing constraint type
 type MonadicParsing m = (DeltaParsing m, LookAheadParsing m, TokenParsing m, Monad m)
 
 {- * Space, comments and literals (token/lexing like parsers) -}
--- | Parses a token by applying parser and then consuming all following whiteSpace
-lexeme :: MonadicParsing m => m a -> m a
-lexeme p = p <* whiteSpace
 
 -- | Consumes any simple whitespace (any character which satisfies Char.isSpace)
 simpleWhiteSpace :: MonadicParsing m => m ()
@@ -73,8 +76,10 @@ simpleWhiteSpace = satisfy isSpace *> pure ()
 -- | Checks if a charcter is end of line
 isEol :: Char -> Bool
 isEol '\n' = True
-isEol '\0' = True -- Check eof too
 isEol  _   = False
+
+eol :: MonadicParsing m => m ()
+eol = (satisfy isEol *> pure ()) <|> lookAhead eof <?> "end of line"
 
 -- | Checks if a character is a documentation comment marker
 isDocCommentMarker :: Char -> Bool
@@ -88,8 +93,8 @@ isDocCommentMarker   _  = False
                         ;
  -}
 singleLineComment :: MonadicParsing m => m ()
-singleLineComment =     try (string "--" *> satisfy isEol *> pure ())
-                    <|> string "--" *> satisfy (not . isDocCommentMarker) *> many (satisfy (not . isEol)) *> (satisfy isEol <?> "end of line") *> pure ()
+singleLineComment =     try (string "--" *> eol *> pure ())
+                    <|> string "--" *> satisfy (not . isDocCommentMarker) *> many (satisfy (not . isEol)) *> eol *> pure ()
                     <?> ""
 
 {- | Consumes a multi-line comment
@@ -129,33 +134,33 @@ docComment :: MonadicParsing m => Char -> m String
 docComment marker | isDocCommentMarker marker = do dc <- docComment' marker; return (T.unpack $ T.strip $ T.pack dc)
                        | otherwise            = fail "internal error: tried to parse a documentation comment with invalid marker"
   where docComment' :: MonadicParsing m => Char -> m String
-        docComment' marker  =     string "--" *> char marker *> many (satisfy (not . isEol)) <* satisfy isEol
+        docComment' marker  =     string "--" *> char marker *> many (satisfy (not . isEol)) <* eol
                               <|> string "{-" *> char marker *> (manyTill anyChar (try (string "-}")) <?> "end of comment")
                               <?> ""
 
--- | Consumes whitespace (and comments)
+-- | Parses some white space
 whiteSpace :: MonadicParsing m => m ()
-whiteSpace = many (simpleWhiteSpace <|> singleLineComment <|> multiLineComment) *> pure ()
+whiteSpace = Tok.whiteSpace
 
 -- | Parses a string literal
 stringLiteral :: MonadicParsing m => m String
-stringLiteral = lexeme $ Tok.stringLiteral
+stringLiteral = Tok.stringLiteral
 
 -- | Parses a char literal
 charLiteral :: MonadicParsing m => m Char
-charLiteral = lexeme $ Tok.charLiteral
+charLiteral = Tok.charLiteral
 
 -- | Parses a natural number
 natural :: MonadicParsing m => m Integer
-natural = lexeme $ Tok.natural
+natural = Tok.natural
 
 -- | Parses an integral number
 integer :: MonadicParsing m => m Integer
-integer = lexeme $ Tok.integer
+integer = Tok.integer
 
 -- | Parses a floating point number
 float :: MonadicParsing m => m Double
-float = lexeme $ Tok.double
+float = Tok.double
 
 {- * Symbols, identifiers, names and operators -}
 
@@ -184,28 +189,28 @@ char = Chr.char
 string :: MonadicParsing m => String -> m String
 string = Chr.string
 
--- | Parses a character as a lexeme
+-- | Parses a character as a token
 lchar :: MonadicParsing m => Char -> m Char
-lchar = lexeme . char
+lchar = token . char
 
--- | Parses string as a lexeme
+-- | Parses string as a token
 symbol :: MonadicParsing m => String -> m String
-symbol = lexeme . Tok.symbol
+symbol = Tok.symbol
 
 -- | Parses a reserved identifier
 reserved :: MonadicParsing m => String -> m ()
-reserved = lexeme . Tok.reserve idrisStyle
+reserved = Tok.reserve idrisStyle
 
 -- Taken from Parsec (c) Daan Leijen 1999-2001, (c) Paolo Martini 2007
 -- | Parses a reserved operator
 reservedOp :: MonadicParsing m => String -> m ()
-reservedOp name = lexeme $ try $
+reservedOp name = token $ try $
   do string name
      notFollowedBy (operatorLetter) <?> ("end of " ++ show name)
 
--- | Parses an identifier as a lexeme
+-- | Parses an identifier as a token
 identifier :: MonadicParsing m => m String
-identifier = lexeme $ Tok.ident idrisStyle
+identifier = token $ Tok.ident idrisStyle
 
 -- | Parses an identifier with possible namespace as a name
 iName :: MonadicParsing m => [String] -> m Name
@@ -259,7 +264,9 @@ operatorLetter = oneOf ":!#$%&*+./<=>?@\\^|-~"
 
 -- | Parses an operator
 operator :: MonadicParsing m => m String
-operator = lexeme . some $ operatorLetter
+operator = do op <- token . some $ operatorLetter
+              when (op == ":") $ fail "(:) is not a valid operator"
+              return op
 
 {- * Position helpers -}
 {- | Get filename from position (returns "(interactive)" when no source file is given)  -}
@@ -685,22 +692,25 @@ fnDecl syn
   ;
 -}
 fnDecl' :: SyntaxInfo -> IdrisParser PDecl
-fnDecl' syn = try (do doc <- option "" (docComment '|')
-                      pushIndent
-                      ist <- get
-                      let initOpts = if default_total ist
-                                        then [TotalFn]
-                                        else []
-                      opts <- fnOpts initOpts
-                      acc <- optional accessibility
-                      opts' <- fnOpts opts
-                      n_in <- fnName
-                      let n = expandNS syn n_in
-                      fc <- getFC
-                      ty <- typeSig (allowImp syn)
-                      terminator
-                      addAcc n acc
-                      return (PTy doc syn fc opts' n ty))
+fnDecl' syn = do (doc, fc, opts', n, acc) <- try (do 
+                        doc <- option "" (docComment '|')
+                        pushIndent
+                        ist <- get
+                        let initOpts = if default_total ist
+                                          then [TotalFn]
+                                          else []
+                        opts <- fnOpts initOpts
+                        acc <- optional accessibility
+                        opts' <- fnOpts opts
+                        n_in <- fnName
+                        let n = expandNS syn n_in
+                        fc <- getFC
+                        lchar ':'
+                        return (doc, fc, opts', n, acc))
+                 ty <- typeExpr (allowImp syn)
+                 terminator
+                 addAcc n acc
+                 return (PTy doc syn fc opts' n ty)
             <|> postulate syn
             <|> caf syn
             <|> pattern syn
@@ -790,7 +800,8 @@ postulate syn = do doc <- try $ do doc <- option "" (docComment '|')
                    opts' <- fnOpts opts
                    n_in <- fnName
                    let n = expandNS syn n_in
-                   ty <- typeSig (allowImp syn)
+                   lchar ':'
+                   ty <- typeExpr (allowImp syn)
                    fc <- getFC
                    terminator
                    addAcc n acc
@@ -1187,7 +1198,6 @@ SimpleExpr ::=
   | '(' Bracketed
   | Constant
   | Type
-  | '()'
   | '_|_'
   | '_'
   | {- External (User-defined) Simple Expression -}
@@ -1212,15 +1222,12 @@ simpleExpr syn =
         <|> try (comprehension syn)
         <|> try (alt syn)
         <|> try (idiom syn)
-        <|> try (do lchar '('
-                    bracketed (disallowImp syn))
+        <|> do lchar '('
+               bracketed (disallowImp syn)
         <|> try (do c <- constant
                     fc <- getFC
                     return (modifyConst syn fc (PConstant c)))
         <|> do reserved "Type"; return PType
-        <|> try (do symbol "()"
-                    fc <- getFC
-                    return (PTrue fc))
         <|> try (do symbol "_|_"
                     fc <- getFC
                     return (PFalse fc))
@@ -1231,25 +1238,62 @@ simpleExpr syn =
 
 {- |Parses the rest of an expression in braces
 Bracketed ::=
-  | Pair
+  ')'
   | Expr ')'
+  | ExprList ')'
+  | Expr '**' Expr ')'
   | Operator Expr ')'
   | Expr Operator ')'
+  | Name ':' Expr '**' Expr ')'
   ;
 -}
 bracketed :: SyntaxInfo -> IdrisParser PTerm
 bracketed syn =
-            try (pair syn)
-        <|> try (do e <- expr syn; lchar ')'; return e)
-        <|> try (do fc <- getFC; o <- operator; e <- expr syn; lchar ')'
-                    return $ PLam (MN 1000 "ARG") Placeholder
-                                  (PApp fc (PRef fc (UN o)) [pexp (PRef fc (MN 1000 "ARG")),
+            do lchar ')'
+               fc <- getFC
+               return $ PTrue fc
+        <|>
+        try (do l <- expr syn
+                lchar ')'
+                return l) 
+        <|>  do (l, fc) <- try (do
+                     l <- expr syn
+                     fc <- getFC
+                     lchar ','
+                     return (l, fc))
+                rs <- sepBy1 (do fc' <- getFC; r <- expr syn; return (r, fc')) (lchar ',')
+                lchar ')'
+                return $ PPair fc l (mergePairs rs)
+        <|>  do (l, fc) <- try (do
+                   l <- expr syn
+                   fc <- getFC
+                   reservedOp "**"
+                   return (l, fc))
+                r <- expr syn
+                lchar ')'
+                return (PDPair fc l Placeholder r)
+        <|> try(do fc0 <- getFC
+                   l <- simpleExpr syn
+                   o <- operator
+                   lchar ')'
+                   return $ PLam (MN 1000 "ARG") Placeholder
+                                    (PApp fc0 (PRef fc0 (UN o)) [pexp l,
+                                                                 pexp (PRef fc0 (MN 1000 "ARG"))]))
+        <|> try(do fc <- getFC; o <- operator; e <- expr syn; lchar ')'
+                   return $ PLam (MN 1000 "ARG") Placeholder
+                             (PApp fc (PRef fc (UN o)) [pexp (PRef fc (MN 1000 "ARG")),
                                                              pexp e]))
-        <|> try (do fc <- getFC; e <- simpleExpr syn; o <- operator; lchar ')'
-                    return $ PLam (MN 1000 "ARG") Placeholder
-                                  (PApp fc (PRef fc (UN o)) [pexp e,
-                                                             pexp (PRef fc (MN 1000 "ARG"))]))
-        <?> "end of expression in braces"
+        <|> try (do ln <- name; lchar ':'
+                    lty <- expr syn
+                    reservedOp "**"
+                    fc <- getFC
+                    r <- expr syn
+                    lchar ')'
+                    return (PDPair fc (PRef fc ln) lty r))
+        <?> "end of braced expression"
+  where mergePairs :: [(PTerm, FC)] -> PTerm
+        mergePairs [(t, fc)]    = t
+        mergePairs ((t, fc):rs) = PPair fc t (mergePairs rs)
 
 -- bit of a hack here. If the integer doesn't fit in an Int, treat it as a
 -- big integer, otherwise try fromInteger and the constants as alternatives.
@@ -1293,62 +1337,6 @@ listExpr syn = do lchar '['; fc <- getFC; xs <- sepBy (expr syn) (lchar ','); lc
     mkList fc [] = PRef fc (UN "Nil")
     mkList fc (x : xs) = PApp fc (PRef fc (UN "::")) [pexp x, pexp (mkList fc xs)]
 
-{- | Parses rest of pair expression
-Pair ::=
-    Expr RestTuple? ')'
-  | NTuple ')'
-  | Name ':' Expr '**' 'Expr' ')'
-  ;
-
-RestTuple ::=
-    ',' Expr
-  | '**' Expr
-  ;
-
-NTuple ::=
-     Expr ',' Expr
-   | Expr ',' NTuple
-   ;
--}
-pair :: SyntaxInfo -> IdrisParser PTerm
-pair syn = try (do l <- expr syn
-                   fc <- getFC
-                   rest <- restTuple
-                   case rest of
-                       [] -> return l
-                       [Left r] -> return (PPair fc l r)
-                       [Right r] -> return (PDPair fc l Placeholder r))
-        <|> try (do x <- ntuple
-                    lchar ')'
-                    return x)
-        <|> do ln <- name; lchar ':'
-               lty <- expr syn
-               reservedOp "**"
-               fc <- getFC
-               r <- expr syn
-               lchar ')'
-               return (PDPair fc (PRef fc ln) lty r)
-        <?> "pair expression"
-  where
-    restTuple :: IdrisParser [Either PTerm PTerm]
-    restTuple = do lchar ')'; return []
-            <|> do lchar ','
-                   r <- expr syn
-                   lchar ')'
-                   return [Left r]
-            <|> do reservedOp "**"
-                   r <- expr syn
-                   lchar ')'
-                   return [Right r]
-            <?> "end of pair expression"
-    ntuple :: IdrisParser PTerm
-    ntuple = try (do l <- expr syn; fc <- getFC; lchar ','
-                     rest <- ntuple
-                     return (PPair fc l rest))
-             <|> (do l <- expr syn; fc <- getFC; lchar ','
-                     r <- expr syn
-                     return (PPair fc l r))
-             <?> "tuple expression"
 
 {- | Parses an alternative expression
   Alt ::= '(|' Expr_List '|)';
@@ -1524,15 +1512,10 @@ mkType (UN n) = UN ("set_" ++ n)
 mkType (MN 0 n) = MN 0 ("set_" ++ n)
 mkType (NS n s) = NS (mkType n) s
 
-{- |Parses a type for an expression
+{- |Parses a type signature
 TypeSig ::=
   ':' Expr
   ;
--}
-typeSig :: SyntaxInfo -> IdrisParser PTerm
-typeSig syn = lchar ':' *> typeExpr syn <?> "type"
-
-{- |Parses a type signature
 TypeExpr ::= ConstraintList? Expr;
  -}
 typeExpr :: SyntaxInfo -> IdrisParser PTerm
@@ -1633,50 +1616,48 @@ Pi ::=
   |              '{' 'static'               '}' Expr'      '->' Expr
   ;
  -}
+
+pi :: SyntaxInfo -> IdrisParser PTerm
 pi syn =
-     try (do lazy <- if implicitAllowed syn -- laziness is top level only
-                        then option False (do lchar '|'; return True)
-                        else return False
-             st <- static
-             lchar '('; xt <- typeDeclList syn; lchar ')'
-             doc <- option "" (docComment '^')
-             symbol "->"
-             sc <- expr syn
-             return (bindList (PPi (Exp lazy st doc)) xt sc))
- <|> try (if implicitAllowed syn
-             then do lazy <- option False (do lchar '|'
-                                              return True)
-                     st <- static
-                     lchar '{'
-                     xt <- typeDeclList syn
-                     lchar '}'
-                     symbol "->"
-                     sc <- expr syn
-                     return (bindList (PPi (Imp lazy st "")) xt sc)
-             else fail "no implicit arguments allowed here")
- <|> try (do lchar '{'
-             reserved "auto"
-             xt <- typeDeclList syn
-             lchar '}'
-             symbol "->"
-             sc <- expr syn
-             return (bindList (PPi
-                      (TacImp False Dynamic (PTactics [Trivial]) "")) xt sc))
- <|> try (do lchar '{'
-             reserved "default"
-             script <- simpleExpr syn
-             xt <- typeDeclList syn
-             lchar '}'
-             symbol "->"
-             sc <- expr syn
-             return (bindList (PPi (TacImp False Dynamic script "")) xt sc))
- <|> do lchar '{'
-        reserved "static"
-        lchar '}'
-        t <- expr' syn
-        symbol "->"
-        sc <- expr syn
-        return (PPi (Exp False Static "") (MN 42 "__pi_arg") t sc)
+     do lazy <- if implicitAllowed syn -- laziness is top level only
+                then option False (do lchar '|'; return True)
+                else return False
+        st <- static
+        (do try(lchar '('); xt <- typeDeclList syn; lchar ')'
+            doc <- option "" (docComment '^')
+            symbol "->"
+            sc <- expr syn
+            return (bindList (PPi (Exp lazy st doc)) xt sc)) <|> (do
+               lchar '{'
+               (do reserved "auto"
+                   when (lazy || (st == Static)) $ fail "auto type constraints can not be lazy or static"
+                   xt <- typeDeclList syn
+                   lchar '}'
+                   symbol "->"
+                   sc <- expr syn
+                   return (bindList (PPi
+                     (TacImp False Dynamic (PTactics [Trivial]) "")) xt sc)) <|> (do
+                       reserved "default"
+                       when (lazy || (st == Static)) $ fail "default tactic constraints can not be lazy or static"
+                       script <- simpleExpr syn
+                       xt <- typeDeclList syn
+                       lchar '}'
+                       symbol "->"
+                       sc <- expr syn
+                       return (bindList (PPi (TacImp False Dynamic script "")) xt sc)) <|> (do
+                       reserved "static"
+                       lchar '}'
+                       t <- expr' syn
+                       symbol "->"
+                       sc <- expr syn
+                       return (PPi (Exp False Static "") (MN 42 "__pi_arg") t sc)) <|> (
+                       if implicitAllowed syn then do
+                            xt <- typeDeclList syn
+                            lchar '}'
+                            symbol "->"
+                            sc <- expr syn
+                            return (bindList (PPi (Imp lazy st "")) xt sc)
+                       else do fail "no implicit arguments allowed here"))
   <?> "dependent type signature"
 
 {- | Parses a type constraint list
@@ -1717,7 +1698,8 @@ usingDeclList :: SyntaxInfo -> IdrisParser [Using]
 usingDeclList syn
                = try (sepBy1 (usingDecl syn) (lchar ','))
              <|> do ns <- sepBy1 name (lchar ',')
-                    t <- typeSig (disallowImp syn)
+                    lchar ':'
+                    t <- typeExpr (disallowImp syn)
                     return (map (\x -> UImplicit x t) ns)
              <?> "using declaration list"
 
@@ -1729,7 +1711,8 @@ UsingDecl ::=
 -}
 usingDecl :: SyntaxInfo -> IdrisParser Using
 usingDecl syn = try (do x <- fnName
-                        t <- typeSig (disallowImp syn)
+                        lchar ':'
+                        t <- typeExpr (disallowImp syn)
                         return (UImplicit x t))
             <|> do c <- fnName
                    xs <- some fnName
@@ -1749,11 +1732,13 @@ FunctionSignatureList ::=
 -}
 typeDeclList :: SyntaxInfo -> IdrisParser [(Name, PTerm)]
 typeDeclList syn = try (sepBy1 (do x <- fnName
-                                   t <- typeSig (disallowImp syn)
+                                   lchar ':'
+                                   t <- typeExpr (disallowImp syn)
                                    return (x,t))
                            (lchar ','))
                    <|> do ns <- sepBy1 name (lchar ',')
-                          t <- typeSig (disallowImp syn)
+                          lchar ':'
+                          t <- typeExpr (disallowImp syn)
                           return (map (\x -> (x, t)) ns)
                    <?> "type declaration list"
 
@@ -1934,7 +1919,8 @@ record syn = do (doc, acc) <- try (do
                       return (doc, acc))
                 fc <- getFC
                 tyn_in <- fnName
-                ty <- typeSig (allowImp syn)
+                lchar ':'
+                ty <- typeExpr (allowImp syn)
                 let tyn = expandNS syn tyn_in
                 reserved "where"
                 (cdoc, cn, cty, _) <- indentedBlockS (constructor syn)
@@ -1978,24 +1964,23 @@ SimpleConstructorList ::=
   ;
 -}
 data_ :: SyntaxInfo -> IdrisParser PDecl
-data_ syn = try (do doc <- option "" (docComment '|')
-                    acc <- optional accessibility
-                    co <- dataI
-                    fc <- getFC
-                    tyn_in <- fnName
-                    ty <- typeSig (allowImp syn)
-                    let tyn = expandNS syn tyn_in
-                    option (PData doc syn fc co (PLaterdecl tyn ty)) (do
-                      reserved "where"
-                      cons <- indentedBlock (constructor syn)
-                      accData acc tyn (map (\ (_, n, _, _) -> n) cons)
-                      return $ PData doc syn fc co (PDatadecl tyn ty cons)))
-        <|> try (do doc <- option "" (docComment '|')
+data_ syn = do (doc, acc, co) <- try (do
+                    doc <- option "" (docComment '|')
                     pushIndent
                     acc <- optional accessibility
                     co <- dataI
-                    fc <- getFC
-                    tyn_in <- fnName
+                    return (doc, acc, co))
+               fc <- getFC
+               tyn_in <- fnName
+               (do try (lchar ':')
+                   popIndent
+                   ty <- typeExpr (allowImp syn)
+                   let tyn = expandNS syn tyn_in
+                   option (PData doc syn fc co (PLaterdecl tyn ty)) (do
+                     reserved "where"
+                     cons <- indentedBlock (constructor syn)
+                     accData acc tyn (map (\ (_, n, _, _) -> n) cons)
+                     return $ PData doc syn fc co (PDatadecl tyn ty cons))) <|> (do
                     args <- many name
                     let ty = bindArgs (map (const PType) args) PType
                     let tyn = expandNS syn tyn_in
@@ -2019,7 +2004,7 @@ data_ syn = try (do doc <- option "" (docComment '|')
                                       return (doc, x, cty, cfc)) cons
                       accData acc tyn (map (\ (_, n, _, _) -> n) cons')
                       return $ PData doc syn fc co (PDatadecl tyn ty cons')))
-        <?> "data type declaration"
+           <?> "data type declaration"
   where
     mkPApp :: FC -> PTerm -> [PTerm] -> PTerm
     mkPApp fc t [] = t
@@ -2036,7 +2021,8 @@ constructor syn
     = do doc <- option "" (docComment '|')
          cn_in <- fnName; fc <- getFC
          let cn = expandNS syn cn_in
-         ty <- typeSig (allowImp syn)
+         lchar ':'
+         ty <- typeExpr (allowImp syn)
          return (doc, cn, ty, fc)
       <?> "constructor"
 
@@ -2414,7 +2400,7 @@ Provider ::= '%' 'provide' '(' FnName TypeSig ')' 'with' Expr;
  -}
 provider :: SyntaxInfo -> IdrisParser [PDecl]
 provider syn = do try (lchar '%' *> reserved "provide");
-                  lchar '('; n <- fnName; t <- typeSig syn; lchar ')'
+                  lchar '('; n <- fnName; lchar ':'; t <- typeExpr syn; lchar ')'
                   fc <- getFC
                   reserved "with"
                   e <- expr syn
@@ -2553,17 +2539,17 @@ fullTactic syn = do t <- tactic syn
 {- * Loading and parsing -}
 {- | Parses an expression from input -}
 parseExpr :: IState -> String -> Result PTerm
-parseExpr st = parseString (evalStateT (fullExpr defaultSyntax) st) (Directed (UTF8.fromString "(input)") 0 0 0 0)
+parseExpr st = parseString (runInnerParser (evalStateT (fullExpr defaultSyntax) st)) (Directed (UTF8.fromString "(input)") 0 0 0 0)
 
 {- | Parses a tactic from input -}
 parseTactic :: IState -> String -> Result PTactic
-parseTactic st = parseString (evalStateT (fullTactic defaultSyntax) st) (Directed (UTF8.fromString "(input)") 0 0 0 0)
+parseTactic st = parseString (runInnerParser (evalStateT (fullTactic defaultSyntax) st)) (Directed (UTF8.fromString "(input)") 0 0 0 0)
 
 -- | Parse module header and imports
 parseImports :: FilePath -> String -> Idris ([String], [String], Maybe Delta)
 parseImports fname input
     = do i <- getIState
-         case parseString (evalStateT imports i) (Directed (UTF8.fromString fname) 0 0 0 0) input of
+         case parseString (runInnerParser (evalStateT imports i)) (Directed (UTF8.fromString fname) 0 0 0 0) input of
               Failure err    -> fail (show err)
               Success (x, i) -> do -- Discard state updates (there should be
                                    -- none anyway)
@@ -2587,7 +2573,7 @@ parseProg :: SyntaxInfo -> FilePath -> String -> Maybe Delta ->
              Idris [PDecl]
 parseProg syn fname input mrk
     = do i <- getIState
-         case parseString (evalStateT mainProg i) (Directed (UTF8.fromString fname) 0 0 0 0) input of
+         case parseString (runInnerParser (evalStateT mainProg i)) (Directed (UTF8.fromString fname) 0 0 0 0) input of
             Failure doc     -> do iputStrLn (show doc)
                                   -- FIXME: Get error location from trifecta
                                   --let errl = sourceLine (errorPos err)
