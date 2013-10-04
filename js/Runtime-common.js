@@ -13,9 +13,8 @@ var __IDRRT__Forgot = new __IDRRT__Type('Forgot');
 
 
 /** @constructor */
-var __IDRRT__Tailcall = function(fun, args) {
-  this.fun = fun;
-  this.args = args;
+var __IDRRT__Cont = function(k) {
+  this.k = k;
 };
 
 var __IDRRT__ffiWrap = function(fid) {
@@ -25,7 +24,9 @@ var __IDRRT__ffiWrap = function(fid) {
     var arg;
     while (res instanceof __IDRRT__Con){
       arg = arguments[i];
-      res = __IDRRT__tailcall(__IDR__mAPPLY0, [res, arg]);
+      res = __IDRRT__tailcall(function(){
+        return __IDR__mAPPLY0(res, arg);
+      });
       ++i;
     }
     return res;
@@ -38,10 +39,10 @@ var __IDRRT__Con = function(tag,vars) {
   this.vars =  vars;
 };
 
-var __IDRRT__tailcall = function(fun, args) {
-  var ret = new __IDRRT__Tailcall(fun, args);
-  while (ret instanceof __IDRRT__Tailcall)
-    ret = ret.fun.apply(this, ret.args);
+var __IDRRT__tailcall = function(k) {
+  var ret = k();
+  while (ret instanceof __IDRRT__Cont)
+    ret = ret.k();
 
   return ret;
 };

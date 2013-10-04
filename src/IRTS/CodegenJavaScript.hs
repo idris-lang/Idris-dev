@@ -163,9 +163,11 @@ compileJS (JSTernary cond true false) =
       f = compileJS false in
       "(" ++ c ++ ")?(" ++ t ++ "):(" ++ f ++ ")"
 
-jsTailcall :: String -> [JS] -> JS
-jsTailcall fun args =
-  jsCall (idrRTNamespace ++ "tailcall") [JSRaw fun, JSArray args]
+jsTailcall :: JS -> JS
+jsTailcall call =
+  jsCall (idrRTNamespace ++ "tailcall") [
+    JSFunction [] (JSReturn call)
+  ]
 
 jsCall :: String -> [JS] -> JS
 jsCall fun = JSApp (JSRaw fun)
@@ -265,7 +267,7 @@ codegenJavaScript target definitions filename outputType = do
   writeFile filename $ intercalate "\n" $ [ header
                                           , idrRuntime
                                           , tgtRuntime
-                                          ] ++ functions ++ [mainLoop]
+                                          ] ++ functions ++ [compileJS mainLoop]
 
   setPermissions filename (emptyPermissions { readable   = True
                                             , executable = target == Node
@@ -276,15 +278,20 @@ codegenJavaScript target definitions filename outputType = do
     def = map (first translateNamespace) definitions
 
     functions :: [String]
-    functions = map (compileJS . optJS 1 . translateDeclaration) def
+    functions = map (compileJS . translateDeclaration) def
 
-    mainLoop :: String
-    mainLoop = compileJS $
-      JSSeq [ JSAlloc "main" $ Just $ JSFunction [] (
-                jsTailcall mainFun []
-              )
-            , jsCall "main" []
-            ]
+    mainLoop :: JS
+    mainLoop =
+      if target == Node
+         then JSSeq [ loop
+                    , jsCall "main" []
+                    ]
+         else loop
+      where
+        loop :: JS
+        loop = JSAlloc "main" $ Just $ JSFunction [] (
+                          jsTailcall $ jsCall mainFun []
+               )
 
     mainFun :: String
     mainFun = idrNamespace ++ translateName (MN 0 "runMain")
@@ -503,15 +510,14 @@ translateExpression (SV var) =
 
 translateExpression (SApp tc name vars)
   | False <- tc =
-    jsTailcall (translateFunctionCall name) (map JSVar vars)
+    jsTailcall $ translateFunctionCall name vars
   | True <- tc =
-    JSNew (idrRTNamespace ++ "Tailcall")
-      [ JSRaw $ translateFunctionCall name
-      , JSArray $ map JSVar vars
-      ]
+    JSNew (idrRTNamespace ++ "Cont") [JSFunction [] (
+      JSReturn $ translateFunctionCall name vars
+    )]
   where
-    translateFunctionCall name =
-      translateNamespace name ++ translateName name
+    translateFunctionCall name vars =
+      jsCall (translateNamespace name ++ translateName name) (map JSVar vars)
 
 translateExpression (SOp op vars)
   | LNoOp <- op = JSVar (last vars)
