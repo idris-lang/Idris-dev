@@ -312,6 +312,7 @@ Executable idris
                 , Idris.ParseHelpers
                 , Idris.ParseOps
                 , Idris.ParseExpr
+                , Idris.ParseData
                 , Idris.PartialEval
                 , Idris.Primitives
                 , Idris.Prover

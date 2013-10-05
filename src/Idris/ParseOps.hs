@@ -86,3 +86,52 @@ operatorFront = maybeWithNS (lchar '(' *> operator <* lchar ')') False []
 fnName :: IdrisParser Name
 fnName = try operatorFront <|> name <?> "function name"
 
+{- | Parses a fixity declaration
+
+Fixity ::=
+  FixityType Natural_t OperatorList Terminator
+  ;
+-}
+fixity :: IdrisParser PDecl
+fixity = do pushIndent
+            f <- fixityType; i <- natural; ops <- sepBy1 operator (lchar ',')
+            terminator
+            let prec = fromInteger i
+            istate <- get
+            let infixes = idris_infixes istate
+            let fs      = map (Fix (f prec)) ops
+            let redecls = map (alreadyDeclared infixes) fs
+            let ill     = filter (not . checkValidity) redecls
+            if null ill
+               then do put (istate { idris_infixes = nub $ sort (fs ++ infixes)
+                                     , ibc_write     = map IBCFix fs ++ ibc_write istate
+                                   })
+                       fc <- getFC
+                       return (PFix fc (f prec) ops)
+               else fail $ concatMap (\(f, (x:xs)) -> "Illegal redeclaration of fixity:\n\t\""
+                                                ++ show f ++ "\" overrides \"" ++ show x ++ "\"") ill
+         <?> "fixity declaration"
+             where alreadyDeclared :: [FixDecl] -> FixDecl -> (FixDecl, [FixDecl])
+                   alreadyDeclared fs f = (f, filter ((extractName f ==) . extractName) fs)
+
+                   checkValidity :: (FixDecl, [FixDecl]) -> Bool
+                   checkValidity (f, fs) = all (== f) fs
+
+                   extractName :: FixDecl -> String
+                   extractName (Fix _ n) = n
+
+{- | Parses a fixity declaration type (i.e. infix or prefix, associtavity)
+FixityType ::=
+  'infixl'
+  | 'infixr'
+  | 'infix'
+  | 'prefix'
+  ;
+ -}
+fixityType :: IdrisParser (Int -> Fixity)
+fixityType = do reserved "infixl"; return Infixl
+         <|> do reserved "infixr"; return Infixr
+         <|> do reserved "infix";  return InfixN
+         <|> do reserved "prefix"; return PrefixN
+         <?> "fixity type"
+

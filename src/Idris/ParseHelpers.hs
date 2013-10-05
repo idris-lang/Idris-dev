@@ -14,6 +14,7 @@ import qualified Text.Parser.Token.Highlight as Hi
 import Idris.AbsSyntax
 
 import Core.TT
+import Core.Evaluate
 
 import Control.Applicative
 import Control.Monad
@@ -401,3 +402,60 @@ notOpenBraces = do ist <- get
                    when (hasNothing $ brace_stack ist) $ fail "end of input"
   where hasNothing :: [Maybe a] -> Bool
         hasNothing = any isNothing
+
+{- | Parses an accessibilty modifier (e.g. public, private) -}
+accessibility :: IdrisParser Accessibility
+accessibility = do reserved "public";   return Public
+            <|> do reserved "abstract"; return Frozen
+            <|> do reserved "private";  return Hidden
+            <?> "accessibility modifier"
+
+-- | Adds accessibility option for function
+addAcc :: Name -> Maybe Accessibility -> IdrisParser ()
+addAcc n a = do i <- get
+                put (i { hide_list = (n, a) : hide_list i })
+
+{- | Add accessbility option for data declarations
+ (works for classes too - 'abstract' means the data/class is visible but members not) -}
+accData :: Maybe Accessibility -> Name -> [Name] -> IdrisParser ()
+accData (Just Frozen) n ns = do addAcc n (Just Frozen)
+                                mapM_ (\n -> addAcc n (Just Hidden)) ns
+accData a n ns = do addAcc n a
+                    mapM_ (`addAcc` a) ns
+
+
+{- * Error reporting helpers -}
+{- | Error message with possible fixes list -}
+fixErrorMsg :: String -> [String] -> String
+fixErrorMsg msg fixes = msg ++ ", possible fixes:\n" ++ (concat $ intersperse "\n\nor\n\n" fixes)
+
+-- | Collect 'PClauses' with the same function name
+collect :: [PDecl] -> [PDecl]
+collect (c@(PClauses _ o _ _) : ds)
+    = clauses (cname c) [] (c : ds)
+  where clauses :: Maybe Name -> [PClause] -> [PDecl] -> [PDecl]
+        clauses j@(Just n) acc (PClauses fc _ _ [PClause fc' n' l ws r w] : ds)
+           | n == n' = clauses j (PClause fc' n' l ws r (collect w) : acc) ds
+        clauses j@(Just n) acc (PClauses fc _ _ [PWith fc' n' l ws r w] : ds)
+           | n == n' = clauses j (PWith fc' n' l ws r (collect w) : acc) ds
+        clauses (Just n) acc xs = PClauses (fcOf c) o n (reverse acc) : collect xs
+        clauses Nothing acc (x:xs) = collect xs
+        clauses Nothing acc [] = []
+
+        cname :: PDecl -> Maybe Name
+        cname (PClauses fc _ _ [PClause _ n _ _ _ _]) = Just n
+        cname (PClauses fc _ _ [PWith   _ n _ _ _ _]) = Just n
+        cname (PClauses fc _ _ [PClauseR _ _ _ _]) = Nothing
+        cname (PClauses fc _ _ [PWithR _ _ _ _]) = Nothing
+        fcOf :: PDecl -> FC
+        fcOf (PClauses fc _ _ _) = fc
+collect (PParams f ns ps : ds) = PParams f ns (collect ps) : collect ds
+collect (PMutual f ms : ds) = PMutual f (collect ms) : collect ds
+collect (PNamespace ns ps : ds) = PNamespace ns (collect ps) : collect ds
+collect (PClass doc f s cs n ps ds : ds') 
+    = PClass doc f s cs n ps (collect ds) : collect ds'
+collect (PInstance f s cs n ps t en ds : ds') 
+    = PInstance f s cs n ps t en (collect ds) : collect ds'
+collect (d : ds) = d : collect ds
+collect [] = []
+

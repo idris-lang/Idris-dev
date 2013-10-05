@@ -1,6 +1,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving, ConstraintKinds, PatternGuards #-}
 module Idris.Parser(module Idris.Parser, 
-                    module Idris.ParseExpr, 
+                    module Idris.ParseExpr,
+                    module Idris.ParseData,
                     module Idris.ParseHelpers,
                     module Idris.ParseOps) where
 
@@ -28,6 +29,7 @@ import Idris.Providers
 import Idris.ParseHelpers
 import Idris.ParseOps
 import Idris.ParseExpr
+import Idris.ParseData
 
 import Paths_idris
 
@@ -61,25 +63,6 @@ import System.FilePath
     RULE! = invalid rule (i.e. rule that is not valid in context, report meaningful error in case)
     RULE{n} = rule repeated n times
 -}
-
--- | Adds accessibility option for function
-addAcc :: Name -> Maybe Accessibility -> IdrisParser ()
-addAcc n a = do i <- get
-                put (i { hide_list = (n, a) : hide_list i })
-
-{- | Add accessbility option for data declarations
- (works for classes too - 'abstract' means the data/class is visible but members not) -}
-accData :: Maybe Accessibility -> Name -> [Name] -> IdrisParser ()
-accData (Just Frozen) n ns = do addAcc n (Just Frozen)
-                                mapM_ (\n -> addAcc n (Just Hidden)) ns
-accData a n ns = do addAcc n a
-                    mapM_ (`addAcc` a) ns
-
-
-{- * Error reporting helpers -}
-{- | Error message with possible fixes list -}
-fixErrorMsg :: String -> [String] -> String
-fixErrorMsg msg fixes = msg ++ ", possible fixes:\n" ++ (concat $ intersperse "\n\nor\n\n" fixes)
 
 {- * Main grammar -}
 
@@ -342,15 +325,6 @@ fnOpts opts
                                                return (Just (fromInteger reds)))
                        return (n, t)
 
-{- | Parses an accessibilty modifier (e.g. public, private) -}
-accessibility :: IdrisParser Accessibility
-accessibility = do reserved "public";   return Public
-            <|> do reserved "abstract"; return Frozen
-            <|> do reserved "private";  return Hidden
-            <?> "accessibility modifier"
-
-
-
 {- | Parses a postulate
 
 Postulate ::=
@@ -443,55 +417,6 @@ namespace syn =
        closeBlock
        return [PNamespace n (concat ds)]
      <?> "namespace declaration"
-
-{- | Parses a fixity declaration
-
-Fixity ::=
-  FixityType Natural_t OperatorList Terminator
-  ;
--}
-fixity :: IdrisParser PDecl
-fixity = do pushIndent
-            f <- fixityType; i <- natural; ops <- sepBy1 operator (lchar ',')
-            terminator
-            let prec = fromInteger i
-            istate <- get
-            let infixes = idris_infixes istate
-            let fs      = map (Fix (f prec)) ops
-            let redecls = map (alreadyDeclared infixes) fs
-            let ill     = filter (not . checkValidity) redecls
-            if null ill
-               then do put (istate { idris_infixes = nub $ sort (fs ++ infixes)
-                                     , ibc_write     = map IBCFix fs ++ ibc_write istate
-                                   })
-                       fc <- getFC
-                       return (PFix fc (f prec) ops)
-               else fail $ concatMap (\(f, (x:xs)) -> "Illegal redeclaration of fixity:\n\t\""
-                                                ++ show f ++ "\" overrides \"" ++ show x ++ "\"") ill
-         <?> "fixity declaration"
-             where alreadyDeclared :: [FixDecl] -> FixDecl -> (FixDecl, [FixDecl])
-                   alreadyDeclared fs f = (f, filter ((extractName f ==) . extractName) fs)
-
-                   checkValidity :: (FixDecl, [FixDecl]) -> Bool
-                   checkValidity (f, fs) = all (== f) fs
-
-                   extractName :: FixDecl -> String
-                   extractName (Fix _ n) = n
-
-{- | Parses a fixity declaration type (i.e. infix or prefix, associtavity)
-FixityType ::=
-  'infixl'
-  | 'infixr'
-  | 'infix'
-  | 'prefix'
-  ;
- -}
-fixityType :: IdrisParser (Int -> Fixity)
-fixityType = do reserved "infixl"; return Infixl
-         <|> do reserved "infixr"; return Infixr
-         <|> do reserved "infix";  return InfixN
-         <|> do reserved "prefix"; return PrefixN
-         <?> "fixity type"
 
 {- |Parses a methods block (for type classes and instances)
   MethodsBlock ::= 'where' OpenBlock FnDecl* CloseBlock
@@ -600,185 +525,6 @@ usingDecl syn = try (do x <- fnName
                    xs <- some fnName
                    return (UConstraint c xs)
             <?> "using declaration"
-
-{- |Parses a record type declaration
-Record ::=
-    DocComment Accessibility? 'record' FnName TypeSig 'where' OpenBlock Constructor KeepTerminator CloseBlock;
--}
-record :: SyntaxInfo -> IdrisParser PDecl
-record syn = do (doc, acc) <- try (do 
-                      doc <- option "" (docComment '|')
-                      acc <- optional accessibility
-                      reserved "record"
-                      return (doc, acc))
-                fc <- getFC
-                tyn_in <- fnName
-                lchar ':'
-                ty <- typeExpr (allowImp syn)
-                let tyn = expandNS syn tyn_in
-                reserved "where"
-                (cdoc, cn, cty, _) <- indentedBlockS (constructor syn)
-                accData acc tyn [cn]
-                let rsyn = syn { syn_namespace = show (nsroot tyn) :
-                                                    syn_namespace syn }
-                let fns = getRecNames rsyn cty
-                mapM_ (\n -> addAcc n acc) fns
-                return $ PRecord doc rsyn fc tyn ty cdoc cn cty
-             <?> "record type declaration"
-  where
-    getRecNames :: SyntaxInfo -> PTerm -> [Name]
-    getRecNames syn (PPi _ n _ sc) = [expandNS syn n, expandNS syn (mkType n)]
-                                       ++ getRecNames syn sc
-    getRecNames _ _ = []
-
-    toFreeze :: Maybe Accessibility -> Maybe Accessibility
-    toFreeze (Just Frozen) = Just Hidden
-    toFreeze x = x
-
-{- | Parses data declaration type (normal or codata)
-DataI ::= 'data' | 'codata';
--}
-dataI :: IdrisParser Bool
-dataI = do reserved "data"; return False
-    <|> do reserved "codata"; return True
-
-{- | Parses a data type declaration
-Data ::= DocComment? Accessibility? DataI FnName TypeSig ExplicitTypeDataRest?
-       | DocComment? Accessibility? DataI FnName Name*   DataRest?
-       ;
-Constructor' ::= Constructor KeepTerminator;
-ExplicitTypeDataRest ::= 'where' OpenBlock Constructor'* CloseBlock;
-
-DataRest ::= '=' SimpleConstructorList Terminator
-            | 'where'!
-           ;
-SimpleConstructorList ::=
-    SimpleConstructor
-  | SimpleConstructor '|' SimpleConstructorList
-  ;
--}
-data_ :: SyntaxInfo -> IdrisParser PDecl
-data_ syn = do (doc, acc, co) <- try (do
-                    doc <- option "" (docComment '|')
-                    pushIndent
-                    acc <- optional accessibility
-                    co <- dataI
-                    return (doc, acc, co))
-               fc <- getFC
-               tyn_in <- fnName
-               (do try (lchar ':')
-                   popIndent
-                   ty <- typeExpr (allowImp syn)
-                   let tyn = expandNS syn tyn_in
-                   option (PData doc syn fc co (PLaterdecl tyn ty)) (do
-                     reserved "where"
-                     cons <- indentedBlock (constructor syn)
-                     accData acc tyn (map (\ (_, n, _, _) -> n) cons)
-                     return $ PData doc syn fc co (PDatadecl tyn ty cons))) <|> (do
-                    args <- many name
-                    let ty = bindArgs (map (const PType) args) PType
-                    let tyn = expandNS syn tyn_in
-                    option (PData doc syn fc co (PLaterdecl tyn ty)) (do
-                      try (lchar '=') <|> do reserved "where"
-                                             let kw = (if co then "co" else "") ++ "data "
-                                             let n  = show tyn_in ++ " "
-                                             let s  = kw ++ n
-                                             let as = concat (intersperse " " $ map show args) ++ " "
-                                             let ns = concat (intersperse " -> " $ map ((\x -> "(" ++ x ++ " : Type)") . show) args)
-                                             let ss = concat (intersperse " -> " $ map (const "Type") args)
-                                             let fix1 = s ++ as ++ " = ..."
-                                             let fix2 = s ++ ": " ++ ns ++ " -> Type where\n  ..."
-                                             let fix3 = s ++ ": " ++ ss ++ " -> Type where\n  ..."
-                                             fail $ fixErrorMsg "unexpected \"where\"" [fix1, fix2, fix3]
-                      cons <- sepBy1 (simpleConstructor syn) (lchar '|')
-                      terminator
-                      let conty = mkPApp fc (PRef fc tyn) (map (PRef fc) args)
-                      cons' <- mapM (\ (doc, x, cargs, cfc) ->
-                                   do let cty = bindArgs cargs conty
-                                      return (doc, x, cty, cfc)) cons
-                      accData acc tyn (map (\ (_, n, _, _) -> n) cons')
-                      return $ PData doc syn fc co (PDatadecl tyn ty cons')))
-           <?> "data type declaration"
-  where
-    mkPApp :: FC -> PTerm -> [PTerm] -> PTerm
-    mkPApp fc t [] = t
-    mkPApp fc t xs = PApp fc t (map pexp xs)
-    bindArgs :: [PTerm] -> PTerm -> PTerm
-    bindArgs xs t = foldr (PPi expl (MN 0 "t")) t xs
-
-
-{- | Parses a type constructor declaration
-  Constructor ::= DocComment? FnName TypeSig;
--}
-constructor :: SyntaxInfo -> IdrisParser (String, Name, PTerm, FC)
-constructor syn
-    = do doc <- option "" (docComment '|')
-         cn_in <- fnName; fc <- getFC
-         let cn = expandNS syn cn_in
-         lchar ':'
-         ty <- typeExpr (allowImp syn)
-         return (doc, cn, ty, fc)
-      <?> "constructor"
-
-{- | Parses a constructor for simple discriminative union data types
-  SimpleConstructor ::= FnName SimpleExpr* DocComment?
--}
-simpleConstructor :: SyntaxInfo -> IdrisParser (String, Name, [PTerm], FC)
-simpleConstructor syn
-     = do cn_in <- fnName
-          let cn = expandNS syn cn_in
-          fc <- getFC
-          args <- many (do notEndApp
-                           simpleExpr syn)
-          doc <- option "" (docComment '^')
-          return (doc, cn, args, fc)
-       <?> "constructor"
-
-{- | Parses a dsl block declaration
-DSL ::= 'dsl' FnName OpenBlock Overload'+ CloseBlock;
- -}
-dsl :: SyntaxInfo -> IdrisParser PDecl
-dsl syn = do reserved "dsl"
-             n <- fnName
-             bs <- indentedBlock (overload syn)
-             let dsl = mkDSL bs (dsl_info syn)
-             checkDSL dsl
-             i <- get
-             put (i { idris_dsls = addDef n dsl (idris_dsls i) })
-             return (PDSL n dsl)
-          <?> "dsl block declaration"
-    where mkDSL :: [(String, PTerm)] -> DSL -> DSL
-          mkDSL bs dsl = let var    = lookup "variable" bs
-                             first  = lookup "index_first" bs
-                             next   = lookup "index_next" bs
-                             leto   = lookup "let" bs
-                             lambda = lookup "lambda" bs in
-                             initDSL { dsl_var = var,
-                                       index_first = first,
-                                       index_next = next,
-                                       dsl_lambda = lambda,
-                                       dsl_let = leto }
-
-{- | Checks DSL for errors -}
--- FIXME: currently does nothing, check if DSL is really sane
-checkDSL :: DSL -> IdrisParser ()
-checkDSL dsl = return ()
-
-{- | Parses a DSL overload declaration
-OverloadIdentifier ::= 'let' | Identifier;
-Overload ::= OverloadIdentifier '=' Expr;
--}
-overload :: SyntaxInfo -> IdrisParser (String, PTerm)
-overload syn = do o <- identifier <|> do reserved "let"
-                                         return "let"
-                  if o `notElem` overloadable
-                     then fail $ show o ++ " is not an overloading"
-                     else do
-                       lchar '='
-                       t <- expr syn
-                       return (o, t)
-               <?> "dsl overload declaratioN"
-    where overloadable = ["let","lambda","index_first","index_next","variable"]
 
 {- | Parse a clause with patterns
 Pattern ::= Clause;
@@ -1172,36 +918,6 @@ parseProg syn fname input mrk
                           ds <- prog syn
                           i' <- get
                           return (ds, i')
-
--- | Collect 'PClauses' with the same function name
-collect :: [PDecl] -> [PDecl]
-collect (c@(PClauses _ o _ _) : ds)
-    = clauses (cname c) [] (c : ds)
-  where clauses :: Maybe Name -> [PClause] -> [PDecl] -> [PDecl]
-        clauses j@(Just n) acc (PClauses fc _ _ [PClause fc' n' l ws r w] : ds)
-           | n == n' = clauses j (PClause fc' n' l ws r (collect w) : acc) ds
-        clauses j@(Just n) acc (PClauses fc _ _ [PWith fc' n' l ws r w] : ds)
-           | n == n' = clauses j (PWith fc' n' l ws r (collect w) : acc) ds
-        clauses (Just n) acc xs = PClauses (fcOf c) o n (reverse acc) : collect xs
-        clauses Nothing acc (x:xs) = collect xs
-        clauses Nothing acc [] = []
-
-        cname :: PDecl -> Maybe Name
-        cname (PClauses fc _ _ [PClause _ n _ _ _ _]) = Just n
-        cname (PClauses fc _ _ [PWith   _ n _ _ _ _]) = Just n
-        cname (PClauses fc _ _ [PClauseR _ _ _ _]) = Nothing
-        cname (PClauses fc _ _ [PWithR _ _ _ _]) = Nothing
-        fcOf :: PDecl -> FC
-        fcOf (PClauses fc _ _ _) = fc
-collect (PParams f ns ps : ds) = PParams f ns (collect ps) : collect ds
-collect (PMutual f ms : ds) = PMutual f (collect ms) : collect ds
-collect (PNamespace ns ps : ds) = PNamespace ns (collect ps) : collect ds
-collect (PClass doc f s cs n ps ds : ds') 
-    = PClass doc f s cs n ps (collect ds) : collect ds'
-collect (PInstance f s cs n ps t en ds : ds') 
-    = PInstance f s cs n ps t en (collect ds) : collect ds'
-collect (d : ds) = d : collect ds
-collect [] = []
 
 {- | Load idris module -}
 loadModule :: FilePath -> Idris String
