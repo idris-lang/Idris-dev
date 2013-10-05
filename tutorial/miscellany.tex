@@ -3,7 +3,7 @@
 In this section we discuss a variety of additional features:
 auto implicit and default 
 arguments, literate programming, interfacing with external libraries through the
-foreign function interface, type providers, and the universe hierarchy.
+foreign function interface, type providers, code generation and the universe hierarchy.
 
 \subsection{Auto implicit arguments}
 
@@ -331,6 +331,139 @@ constructor allows type providers to return useful error messages.  The
 example in this section was purposefully simple. More complex type provider
 implementations, including a statically-checked SQLite binding, are available
 in an external collection.\footnote{\url{https://github.com/david-christiansen/idris-type-providers}}
+
+\subsection{JavaScript Target}
+
+\Idris{} is capable of producing \emph{JavaScript} code that can be run in a browser
+as well as in the \emph{NodeJS} environment or alike. One can use the FFI to
+communicate with the \emph{JavaScript} ecosystem.
+
+\subsubsection*{Code Generation}
+
+\noindent
+Code generation is split into two separate targets. To generate code that is
+tailored for running in the browser issue the following command:
+
+\begin{SaveVerbatim}{jscodegen}
+
+$ idris --codegen javascript hello.idr -o hello.js
+
+\end{SaveVerbatim}
+\useverb{jscodegen}
+
+\noindent
+The resulting file can be embedded into your HTML just like any other
+\emph{JavaScript} code.
+
+\noindent
+Generating code for \emph{NodeJS} is slightly different. \Idris{} outputs
+a \emph{JavaScript} file that can be directly executed via \texttt{node}.
+
+\begin{SaveVerbatim}{nodecodegen}
+
+$ idris --codegen node hello.idr -o hello
+$ ./hello
+Hello world
+
+\end{SaveVerbatim}
+\useverb{nodecodegen}
+
+\noindent
+Take into consideration that the \emph{JavaScript} code generator is using
+\texttt{console.log} to write text to \texttt{stdout}, this means that it will
+automatically add a newline to the end of each string. This behavior
+does not show up in the \emph{NodeJS} code generator.
+
+\subsubsection*{Using the FFI}
+
+\noindent
+To write a useful application we need to communicate with the outside
+world. Maybe we want to manipulate the DOM or send an Ajax request. For this
+task we can use the FFI. Since most \emph{JavaScript} APIs demand callbacks
+we need to extend the FFI so we can pass functions as arguments.
+
+\noindent
+The \emph{JavaScript} FFI works a little bit differently than the regular FFI.
+It uses positional arguments to directly insert our arguments into a piece
+of \emph{JavaScript} code.
+
+\noindent
+One could use the primitive addition of \emph{JavaScript} like so:
+
+\begin{SaveVerbatim}{jsaddition}
+
+module Main
+
+primPlus : Int -> Int -> IO Int
+primPlus a b = mkForeign (FFun "%0 + %1" [FInt, FInt] FInt) a b
+
+main : IO ()
+main = do
+  a <- primPlus 1 1
+  b <- primPlus 1 2
+  print (a, b)
+
+\end{SaveVerbatim}
+\useverb{jsaddition}
+
+\noindent
+Notice that the \texttt{\%n} notation qualifies the position of the
+\texttt{n}-th argument given to our foreign function starting from 0. When
+you need a percent sign rather than a position simply use \texttt{\%\%}
+instead.
+
+\noindent
+Passing functions to a foreign function is very similar. Let's assume that
+we want to call the following function from the \emph{JavaScript} world:
+
+\begin{SaveVerbatim}{jstwice}
+
+function twice(f, x) {
+  return f(f(x));
+}
+
+\end{SaveVerbatim}
+\useverb{jstwice}
+
+\noindent
+We obviously need to pass a function \texttt{f} here (we can infer it from
+the way we use \texttt{f} in \texttt{twice}, it would be more obvious if
+\emph{JavaScript} had types).
+
+\noindent
+The \emph{JavaScript} FFI is able to understand functions as arguments when
+you give it something of type \texttt{FFunction}. The following example code
+calls \texttt{twice} in \emph{JavaScript} and returns the result to our
+\Idris{} program:
+
+\begin{SaveVerbatim}{jshof}
+module Main
+
+twice : (Int -> Int) -> Int -> IO Int
+twice f x = mkForeign (
+  FFun "twice(%0,%1)" [FFunction FInt FInt, FInt] FInt
+) f x
+
+main : IO ()
+main = do
+  a <- twice (+1) 1
+  print a
+
+\end{SaveVerbatim}
+\useverb{jshof}
+
+\noindent
+The program outputs \texttt{3}, just like we expected.
+
+\subsubsection*{Shrinking down generated \emph{JavaScript}}
+
+\Idris{} can produce very big chunks of \emph{JavaScript} code. However, the
+generated code can be minified using the \texttt{closure-compiler} from
+Google. Any other minifier is also suitable but \texttt{closure-compiler}
+offers advanced compilation that does some aggressive inlining and code
+elimination. \Idris{} can take full advantage of this compilation mode and
+it's highly recommended to use it when shipping a \emph{JavaScript}
+application written in \Idris{}.
 
 \subsection{Cumulativity}
 
