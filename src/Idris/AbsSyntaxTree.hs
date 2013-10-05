@@ -225,6 +225,7 @@ data Command = Quit
              | LogLvl Int
              | Spec PTerm
              | HNF PTerm
+             | TestInline PTerm
              | Defn Name
              | Info Name
              | Missing Name

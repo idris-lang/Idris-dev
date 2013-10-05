@@ -309,6 +309,9 @@ Executable idris
                 , Idris.Imports
                 , Idris.Inliner
                 , Idris.Parser
+                , Idris.ParseHelpers
+                , Idris.ParseOps
+                , Idris.ParseExpr
                 , Idris.PartialEval
                 , Idris.Primitives
                 , Idris.Prover

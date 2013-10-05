@@ -21,6 +21,7 @@ import Idris.IdeSlave
 import Idris.Chaser
 import Idris.Imports
 import Idris.Colours
+import Idris.Inliner
 
 import Paths_idris
 import Util.System
@@ -491,6 +492,13 @@ process fn (HNF t)  = do (tm, ty) <- elabVal toplevel False t
                          ist <- getIState
                          let tm' = hnf ctxt [] tm
                          iResult (show (delab ist tm'))
+process fn (TestInline t)  = do (tm, ty) <- elabVal toplevel False t
+                                ctxt <- getContext
+                                ist <- getIState
+                                let tm' = inlineTerm ist tm
+                                imp <- impShow
+                                c <- colourise
+                                iResult (showImp (Just ist) imp c (delab ist tm'))
 process fn TTShell  = do ist <- getIState
                          let shst = initState (tt_ctxt ist)
                          runShell shst
