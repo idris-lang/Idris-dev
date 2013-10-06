@@ -146,12 +146,21 @@ VAL MKFLOAT(VM* vm, double val) {
 }
 
 VAL MKSTR(VM* vm, char* str) {
+    int len;
+    if (str == NULL) {
+        len = 0;
+    } else {
+        len = strlen(str)+1;
+    }
     Closure* cl = allocate(vm, sizeof(Closure) + // Type) + sizeof(char*) +
-                               sizeof(char)*strlen(str)+1, 0);
+                               sizeof(char)*len, 0);
     SETTY(cl, STRING);
     cl -> info.str = (char*)cl + sizeof(Closure);
-
-    strcpy(cl -> info.str, str);
+    if (str == NULL) {
+        cl->info.str = NULL;
+    } else {
+        strcpy(cl -> info.str, str);
+    }
     return cl;
 }
 
