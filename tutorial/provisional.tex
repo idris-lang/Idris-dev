@@ -109,7 +109,7 @@ The first of these has the following type:
 *views> :p views.parity_lemma_1 
 
 ---------------------------------- (views.parity_lemma_1) --------
-{hole0} : (j : Nat) -> (Parity (plus (S j) (S j))) -> Parity (S (S (plus j j)))
+{hole0} : (j : Nat) -> (Parity (plus (S j) (S j))) -> Parity (S (S (j + j)))
 
 -views.parity_lemma_1>  
 
@@ -127,7 +127,7 @@ the prelude:
 \begin{SaveVerbatim}{plusnsm}
 
 plusSuccRightSucc : (left : Nat) -> (right : Nat) ->
-  S (plus left right) = plus left (S right)
+  S (left + right) = left + (S right)
 
 
 \end{SaveVerbatim}
@@ -143,10 +143,25 @@ After applying \texttt{intro} twice, we have:
   j : Nat
   value : Parity (S (plus j (S j)))
 ---------------------------------- (views.parity_lemma_1) --------
-{hole2} : Parity (S (S (plus j j)))
+{hole2} : Parity (S (S (j + j)))
 
 \end{SaveVerbatim}
 \useverb{prolemii}
+
+\noindent
+We need to use \texttt{compute} again to unfold the definition of \texttt{(+)}.
+
+\begin{SaveVerbatim}{prolemcomp}
+
+-views.parity_lemma_1> intro 
+
+  j : Nat
+  value : Parity (S (plus j (S j)))
+---------------------------------- (views.parity_lemma_1) --------
+{hole2} : Parity (S (S (plus j j)))
+
+\end{SaveVerbatim}
+\useverb{prolemcomp}
 
 \noindent
 Then we apply the \texttt{plusSuccRightSucc} rewrite rule, symmetrically,
