@@ -10,6 +10,7 @@ before_script:
   - cd idris*
 script:
   - cabal configure
-  - cabal install
+  - cabal build
+  - cabal copy
   - make test
 
