@@ -240,6 +240,10 @@ optimizeJS (JSApp (JSFunction [arg] (JSReturn ret)) [val])
         JSReturn $ JSApp fun (jsSubst arg args (optimizeJS val))
       )]
 
+  | JSOp op lhs rhs <- ret =
+      JSOp op (head $ jsSubst arg [lhs] (optimizeJS val)) $
+        (head $ jsSubst arg [rhs] (optimizeJS val))
+
 optimizeJS (JSSeq seq) =
   JSSeq (map optimizeJS seq)
 
