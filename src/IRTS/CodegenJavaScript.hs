@@ -273,6 +273,9 @@ optimizeJS (JSAlloc name (Just js)) =
 optimizeJS (JSCond cases) =
   JSCond (map (second optimizeJS) cases)
 
+optimizeJS (JSObject fields) =
+  JSObject (map (second optimizeJS) fields)
+
 optimizeJS js = js
 
 optJS :: Int -> JS -> JS
