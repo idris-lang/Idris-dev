@@ -258,6 +258,9 @@ optimizeJS (JSSeq seq) =
 optimizeJS (JSFunction args body) =
   JSFunction args (optimizeJS body)
 
+optimizeJS (JSProj (JSFunction args body) "apply") =
+  JSProj (JSFunction args (optimizeJS body)) "apply"
+
 optimizeJS (JSApp fun args) =
   JSApp (optimizeJS fun) (map optimizeJS args)
 
