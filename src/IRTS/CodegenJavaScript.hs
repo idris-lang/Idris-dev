@@ -267,6 +267,9 @@ optimizeJS (JSReturn js) =
 optimizeJS (JSAlloc name (Just js)) =
   JSAlloc name (Just $ optimizeJS js)
 
+optimizeJS (JSCond cases) =
+  JSCond (map (second optimizeJS) cases)
+
 optimizeJS js = js
 
 optJS :: Int -> JS -> JS
