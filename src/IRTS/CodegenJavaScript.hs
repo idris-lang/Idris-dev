@@ -268,10 +268,11 @@ codegenJavaScript target definitions filename outputType = do
   path       <- getDataDir
   idrRuntime <- readFile $ path ++ "/js/Runtime-common.js"
   tgtRuntime <- readFile $ concat [path, "/js/Runtime", runtime, ".js"]
-  writeFile filename $ intercalate "\n" $ [ header
-                                          , idrRuntime
-                                          , tgtRuntime
-                                          ] ++ functions ++ [compileJS mainLoop]
+  writeFile filename $ header ++ (
+    intercalate "\n" $ [ idrRuntime
+                       , tgtRuntime
+                       ] ++ functions ++ [mainLoop, invokeLoop]
+    )
 
   setPermissions filename (emptyPermissions { readable   = True
                                             , executable = target == Node
@@ -282,23 +283,28 @@ codegenJavaScript target definitions filename outputType = do
     def = map (first translateNamespace) definitions
 
     functions :: [String]
-    functions = map (compileJS . translateDeclaration) def
+    functions = map (compileJS . optJS 1 . translateDeclaration) def
 
-    mainLoop :: JS
-    mainLoop =
-      if target == Node
-         then JSSeq [ loop
-                    , jsCall "main" []
-                    ]
-         else loop
+    mainLoop :: String
+    mainLoop = compileJS $
+      JSAlloc "main" $ Just $ JSFunction [] (
+        case target of
+             Node       -> mainFun
+             JavaScript -> jsMeth (JSRaw "window") "addEventListener" [
+                 JSString "DOMContentLoaded", JSFunction [] (
+                   mainFun
+                 ), JSFalse
+               ]
+      )
       where
-        loop :: JS
-        loop = JSAlloc "main" $ Just $ JSFunction [] (
-                          jsTailcall $ jsCall mainFun []
-               )
+        mainFun :: JS
+        mainFun = jsTailcall $ jsCall runMain []
 
-    mainFun :: String
-    mainFun = idrNamespace ++ translateName (MN 0 "runMain")
+        runMain :: String
+        runMain = idrNamespace ++ translateName (MN 0 "runMain")
+
+    invokeLoop :: String
+    invokeLoop  = compileJS $ jsCall "main" []
 
 translateIdentifier :: String -> String
 translateIdentifier =
