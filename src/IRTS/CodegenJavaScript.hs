@@ -233,6 +233,13 @@ optimizeJS (JSApp (JSFunction [arg] (JSReturn ret)) [val])
         JSReturn $ JSApp fun (jsSubst arg vars (optimizeJS val))
       )]
 
+  | JSApp (JSRaw "__IDRRT__tailcall") [JSFunction [] (
+      JSReturn (JSApp fun args)
+    )] <- ret =
+      JSApp (JSRaw "__IDRRT__tailcall") [JSFunction [] (
+        JSReturn $ JSApp fun (jsSubst arg args (optimizeJS val))
+      )]
+
 optimizeJS (JSSeq seq) =
   JSSeq (map optimizeJS seq)
 
