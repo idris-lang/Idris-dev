@@ -109,6 +109,8 @@ compileJS (JSOp op lhs rhs) =
 compileJS (JSProj obj field)
   | JSFunction {} <- obj =
     concat ["(", compileJS obj, ").", field]
+  | JSAssign {} <- obj =
+    concat ["(", compileJS obj, ").", field]
   | otherwise =
     compileJS obj ++ '.' : field
 
@@ -243,6 +245,12 @@ optimizeJS (JSApp (JSFunction [arg] (JSReturn ret)) [val])
   | JSOp op lhs rhs <- ret =
       JSOp op (head $ jsSubst arg [lhs] (optimizeJS val)) $
         (head $ jsSubst arg [rhs] (optimizeJS val))
+
+  | JSIndex (JSProj obj field) idx <- ret =
+      JSIndex (JSProj (
+          head $ jsSubst arg [obj] (optimizeJS val)
+        ) field
+      ) (head $ jsSubst arg [idx] (optimizeJS val))
 
 optimizeJS (JSSeq seq) =
   JSSeq (map optimizeJS seq)
