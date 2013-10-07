@@ -52,6 +52,7 @@ data JS = JSRaw String
         | JSNull
         | JSThis
         | JSTrue
+        | JSFalse
         | JSArray [JS]
         | JSObject [(String, JS)]
         | JSString String
@@ -122,6 +123,9 @@ compileJS JSThis =
 
 compileJS JSTrue =
   "true"
+
+compileJS JSFalse =
+  "false"
 
 compileJS (JSArray elems) =
   "[" ++ intercalate "," (map compileJS elems) ++ "]"
