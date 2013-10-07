@@ -224,14 +224,14 @@ jsSubst var (x@(JSVar old) : xs) new
 jsSubst _ xs _ = xs
 
 optimizeJS :: JS -> JS
-optimizeJS (JSApp
-             (JSFunction [arg] (JSReturn ret))
-             [val]
-           )
+optimizeJS (JSApp (JSFunction [arg] (JSReturn ret)) [val])
   | JSNew con [tag, JSArray vals] <- ret =
-    JSNew con [tag, JSArray $ jsSubst arg vals (optimizeJS val)]
-  | JSApp (JSRaw tc@"__IDRRT__tailcall") [fun, JSArray args] <- ret =
-    JSApp (JSRaw tc) [fun, JSArray $ jsSubst arg args (optimizeJS val)]
+      JSNew con [tag, JSArray $ jsSubst arg vals (optimizeJS val)]
+
+  | JSNew con [JSFunction [] (JSReturn (JSApp fun vars))] <- ret =
+      JSNew con [JSFunction [] (
+        JSReturn $ JSApp fun (jsSubst arg vars (optimizeJS val))
+      )]
 
 optimizeJS (JSSeq seq) =
   JSSeq (map optimizeJS seq)
