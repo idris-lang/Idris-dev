@@ -226,6 +226,10 @@ jsSubst var (x@(JSVar old) : xs) new
 jsSubst _ xs _ = xs
 
 optimizeJS :: JS -> JS
+
+optimizeJS (JSApp (JSFunction [] (JSSeq ret)) []) =
+  JSApp (JSFunction [] (JSSeq (map optimizeJS ret))) []
+
 optimizeJS (JSApp (JSFunction [arg] (JSReturn ret)) [val])
   | JSNew con [tag, JSArray vals] <- ret =
       JSNew con [tag, JSArray $ jsSubst arg vals (optimizeJS val)]
