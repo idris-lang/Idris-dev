@@ -222,8 +222,26 @@ jsSubst :: String -> JS -> JS -> JS
 jsSubst var new (JSVar old)
   | var == translateVariableName old = new
 
+jsSubst var new (JSRaw old)
+  | var == old = new
+
 jsSubst var new (JSArray fields) =
   JSArray (map (jsSubst var new) fields)
+
+jsSubst var new (JSNew con [tag, vals]) =
+  JSNew con [tag, jsSubst var new vals]
+
+jsSubst var new (JSNew con [JSFunction [] (JSReturn (JSApp fun vars))]) =
+  JSNew con [JSFunction [] (
+    JSReturn $ JSApp fun (map (jsSubst var new) vars)
+  )]
+
+jsSubst var new (JSApp (JSRaw "__IDRRT__tailcall") [JSFunction [] (
+                  JSReturn (JSApp fun args)
+                )]) =
+                  JSApp (JSRaw "__IDRRT__tailcall") [JSFunction [] (
+                    JSReturn $ JSApp fun (map (jsSubst var new) args)
+                  )]
 
 jsSubst _ _ js = js
 
