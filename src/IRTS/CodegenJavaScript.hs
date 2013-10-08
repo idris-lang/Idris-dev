@@ -256,6 +256,9 @@ optimizeJS (JSApp (JSFunction [arg] (JSReturn ret)) [val])
         ) field
       ) (head $ jsSubst arg [idx] (optimizeJS val))
 
+optimizeJS (JSAssign lhs rhs) =
+  JSAssign lhs (optimizeJS rhs)
+
 optimizeJS (JSSeq seq) =
   JSSeq (map optimizeJS seq)
 
