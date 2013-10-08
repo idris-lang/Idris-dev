@@ -20,7 +20,7 @@ import LLVM.General.Target ( TargetMachine
                            )
 import LLVM.General.AST.DataLayout
 import qualified LLVM.General.PassManager as PM
-import qualified LLVM.General.Module as M
+import qualified LLVM.General.Module as MO
 import qualified LLVM.General.AST.IntegerPredicate as IPred
 import qualified LLVM.General.AST.Linkage as L
 import qualified LLVM.General.AST.Visibility as V
@@ -36,9 +36,9 @@ import qualified LLVM.General.CodeGenOpt as CGO
 import Data.List
 import Data.Maybe
 import Data.Word
-import Data.Set (Set)
-import qualified Data.Set as S
+import Data.Map (Map)
 import qualified Data.Map as M
+import qualified Data.Set as S
 import qualified Data.Vector.Unboxed as V
 import Control.Applicative
 import Control.Monad.RWS
@@ -70,7 +70,7 @@ codegenLLVM defs triple cpu optimize file outty = withContext $ \context -> do
       withTargetMachine target triple cpu S.empty options R.Default CM.Default CGO.Default $ \tm ->
           do layout <- getTargetMachineDataLayout tm
              let ast = codegen (Target triple layout) (map snd defs)
-             result <- runErrorT .  M.withModuleFromAST context ast $ \m ->
+             result <- runErrorT .  MO.withModuleFromAST context ast $ \m ->
                        do let opts = PM.defaultCuratedPassSetSpec
                                      { PM.optLevel = Just optimize
                                      , PM.simplifyLibCalls = Just True
@@ -85,9 +85,9 @@ codegenLLVM defs triple cpu optimize file outty = withContext $ \context -> do
 failInIO :: ErrorT String IO a -> IO a
 failInIO = either fail return <=< runErrorT
 
-outputModule :: TargetMachine -> FilePath -> OutputType -> M.Module -> IO ()
-outputModule _  file Raw    m = failInIO $ M.writeBitcodeToFile file m
-outputModule tm file Object m = failInIO $ M.writeObjectToFile tm file m
+outputModule :: TargetMachine -> FilePath -> OutputType -> MO.Module -> IO ()
+outputModule _  file Raw    m = failInIO $ MO.writeBitcodeToFile file m
+outputModule tm file Object m = failInIO $ MO.writeObjectToFile tm file m
 outputModule tm file Executable m = withTmpFile $ \obj -> do
   outputModule tm obj Object m
   cc <- getCC
@@ -266,14 +266,14 @@ conType nargs = StructureType False
                 ]
 
 data MGS = MGS { mgsNextGlobalName :: Word
-               , mgsForeignSyms :: Set String
+               , mgsForeignSyms :: Map String (FType, [FType])
                }
 
 type Modgen = RWS Target [Definition] MGS
 
 initialMGS :: MGS
 initialMGS = MGS { mgsNextGlobalName = 0
-                 , mgsForeignSyms = S.empty
+                 , mgsForeignSyms = M.empty
                  }
 
 cgDef :: SDecl -> Modgen Definition
@@ -317,7 +317,7 @@ data CGS = CGS { nextName :: Word
                , currentBlockName :: Name
                , instAccum :: [Named Instruction]
                , lexenv :: Env
-               , foreignSyms :: Set String
+               , foreignSyms :: Map String (FType, [FType])
                }
 
 data CGR = CGR { target :: Target
@@ -810,9 +810,11 @@ addGlobal' ty val = do
 ensureCDecl :: String -> FType -> [FType] -> Codegen Operand
 ensureCDecl name rty argtys = do
   syms <- gets foreignSyms
-  unless (S.member name syms) $ -- TODO: Perform a runtime check of declared type consistency here
-         do addGlobal (ffunDecl name rty argtys)
-            modify $ \s -> s { foreignSyms = S.insert name (foreignSyms s) }
+  case M.lookup name syms of
+    Nothing -> do addGlobal (ffunDecl name rty argtys)
+                  modify $ \s -> s { foreignSyms = M.insert name (rty, argtys) (foreignSyms s) }
+    Just (rty', argtys') -> unless (rty == rty' && argtys == argtys') . fail $
+                            "Mismatched type declarations for foreign symbol \"" ++ name ++ "\": " ++ show (rty, argtys) ++ " vs " ++ show (rty', argtys')
   return $ ConstantOperand (C.GlobalReference (Name name))
 
 ffunDecl :: String -> FType -> [FType] -> Global
