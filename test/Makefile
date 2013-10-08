@@ -61,6 +61,39 @@ test_js:
 	@perl ./runtest.pl test030 --codegen node
 	@perl ./runtest.pl test031 --codegen node
 
+test_llvm:
+	@perl ./runtest.pl test001 --codegen llvm
+	@perl ./runtest.pl test002 --codegen llvm
+	@perl ./runtest.pl test003 --codegen llvm
+	@perl ./runtest.pl test004 --codegen llvm
+	@perl ./runtest.pl test005 --codegen llvm
+	@perl ./runtest.pl test006 --codegen llvm
+	@perl ./runtest.pl test007 --codegen llvm
+	@perl ./runtest.pl test008 --codegen llvm
+	@perl ./runtest.pl test009 --codegen llvm
+	@perl ./runtest.pl test010 --codegen llvm
+	@perl ./runtest.pl test011 --codegen llvm
+	@perl ./runtest.pl test012 --codegen llvm
+	@perl ./runtest.pl test013 --codegen llvm
+	@perl ./runtest.pl test014 --codegen llvm
+	@perl ./runtest.pl test015 --codegen llvm
+	@perl ./runtest.pl test016 --codegen llvm
+	@perl ./runtest.pl test017 --codegen llvm
+	@#perl ./runtest.pl test018 --codegen llvm
+	@perl ./runtest.pl test019 --codegen llvm
+	@perl ./runtest.pl test020 --codegen llvm
+	@perl ./runtest.pl test021 --codegen llvm
+	@perl ./runtest.pl test022 --codegen llvm
+	@perl ./runtest.pl test023 --codegen llvm
+	@perl ./runtest.pl test024 --codegen llvm
+	@perl ./runtest.pl test025 --codegen llvm
+	@perl ./runtest.pl test026 --codegen llvm
+	@perl ./runtest.pl test027 --codegen llvm
+	@perl ./runtest.pl test028 --codegen llvm
+	@perl ./runtest.pl test029 --codegen llvm
+	@perl ./runtest.pl test030 --codegen llvm
+	@perl ./runtest.pl test031 --codegen llvm
+
 update:
 	perl ./runtest.pl all -u
 
