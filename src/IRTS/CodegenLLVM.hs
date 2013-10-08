@@ -193,6 +193,7 @@ initDefs tgt =
     , exfun "__idris_gmpFree" VoidType [ptrI8, intPtr] False
     , exfun "__idris_strRev" ptrI8 [ptrI8] False
     , exfun "strtoll" (IntegerType 64) [ptrI8, PointerType ptrI8 (AddrSpace 0), IntegerType 32] False
+    , exfun "putStr" VoidType [ptrI8] False
     , exVar (stdinName tgt) ptrI8
     , exVar (stdoutName tgt) ptrI8
     , exVar (stderrName tgt) ptrI8
@@ -264,24 +265,34 @@ conType nargs = StructureType False
                 , ArrayType nargs (PointerType valueType (AddrSpace 0))
                 ]
 
-type Modgen = RWS Target [Definition] Word
+data MGS = MGS { mgsNextGlobalName :: Word
+               , mgsForeignSyms :: Set String
+               }
+
+type Modgen = RWS Target [Definition] MGS
+
+initialMGS :: MGS
+initialMGS = MGS { mgsNextGlobalName = 0
+                 , mgsForeignSyms = S.empty
+                 }
 
 cgDef :: SDecl -> Modgen Definition
 cgDef (SFun name argNames _ expr) = do
-  nextGlobal <- get
+  nextGlobal <- gets mgsNextGlobalName
+  existingForeignSyms <- gets mgsForeignSyms
   tgt <- ask
-  let (_, CGS { nextGlobalName = nextGlobal' }, (allocas, bbs, globals)) =
+  let (_, CGS { nextGlobalName = nextGlobal', foreignSyms = foreignSyms' }, (allocas, bbs, globals)) =
           runRWS (do r <- cgExpr expr
                      case r of
                        Nothing -> terminate $ Unreachable []
                        Just r' -> terminate $ Ret (Just r') [])
                  (CGR tgt (show name))
-                 (CGS 0 nextGlobal (Name "begin") [] (map (Just . LocalReference . Name . show) argNames) S.empty)
+                 (CGS 0 nextGlobal (Name "begin") [] (map (Just . LocalReference . Name . show) argNames) existingForeignSyms)
       entryTerm = case bbs of
                     [] -> Do $ Ret Nothing []
                     BasicBlock n _ _:_ -> Do $ Br n []
   tell globals
-  put nextGlobal'
+  put (MGS { mgsNextGlobalName = nextGlobal', mgsForeignSyms = foreignSyms' })
   return . GlobalDefinition $ functionDefaults
              { G.linkage = L.Internal
              , G.callingConvention = CC.Fast
@@ -524,7 +535,7 @@ cgExpr (SOp fn args) = do
     Just ops -> Just <$> cgOp fn ops
     Nothing -> return Nothing
 cgExpr SNothing = return . Just . ConstantOperand $ nullValue
-cgExpr (SError msg) = do -- TODO: Print message
+cgExpr (SError msg) = do
   str <- addGlobal' (ArrayType (2 + fromIntegral (length msg)) (IntegerType 8))
          (cgConst' (TT.Str (msg ++ "\n")))
   inst' $ simpleCall "putStr" [ConstantOperand $ C.GetElementPtr True str [ C.Int 32 0
