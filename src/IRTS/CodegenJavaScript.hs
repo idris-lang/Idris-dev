@@ -482,14 +482,14 @@ translateDeclaration (path, SFun name params stackSize body)
   where
     hasProp :: String -> String -> JS
     hasProp table var =
-      jsMeth (JSRaw table) "hasOwnProperty" [JSRaw $ var ++ ".tag"]
+      JSIndex (JSRaw table) (JSProj (JSRaw var) "tag")
 
     caseFun :: [(LVar, String)] -> LVar -> SAlt -> JS
     caseFun aux var cse =
       jsFunAux aux (translateCase (Just (translateVariableName var)) cse)
 
-    getTag :: SAlt -> Maybe String
-    getTag (SConCase _ tag _ _ _) = Just $ show tag
+    getTag :: SAlt -> Maybe Int
+    getTag (SConCase _ tag _ _ _) = Just tag
     getTag _                      = Nothing
 
     lookupTableName :: String
@@ -498,10 +498,22 @@ translateDeclaration (path, SFun name params stackSize body)
     lookupTable :: [(LVar, String)] -> LVar -> [SAlt] -> JS
     lookupTable aux var cases =
       JSAlloc lookupTableName $ Just (
-        JSObject $ catMaybes $ map (lookupEntry aux var) cases
+        JSApp (JSFunction [] (
+          JSSeq $ [
+            JSAlloc "t" $ Just (JSArray [])
+          ] ++ assignEntries (catMaybes $ map (lookupEntry aux var) cases) ++ [
+            JSReturn (JSRaw "t")
+          ]
+        )) []
       )
       where
-        lookupEntry :: [(LVar, String)] ->  LVar -> SAlt -> Maybe (String, JS)
+        assignEntries :: [(Int, JS)] -> [JS]
+        assignEntries entries =
+          map (\(tag, fun) ->
+            JSAssign (JSIndex (JSRaw "t") (JSNum $ JSInt tag)) fun
+          ) entries
+
+        lookupEntry :: [(LVar, String)] ->  LVar -> SAlt -> Maybe (Int, JS)
         lookupEntry aux var alt = do
           tag <- getTag alt
           return (tag, caseFun aux var alt)
