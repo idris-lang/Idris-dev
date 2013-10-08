@@ -218,43 +218,44 @@ jsLet name value body =
     )
   ) [value]
 
-jsSubst :: String -> [JS] -> JS -> [JS]
-jsSubst _   []       _   = []
-jsSubst var (x@(JSVar old) : xs) new
-  | var == translateVariableName old = new : xs
-  | otherwise                        = x : jsSubst var xs new
-jsSubst _ xs _ = xs
+jsSubst :: String -> JS -> JS -> JS
+jsSubst var new (JSVar old)
+  | var == translateVariableName old = new
+
+jsSubst var new (JSArray fields) =
+  JSArray (map (jsSubst var new) fields)
+
+jsSubst _ _ js = js
 
 optimizeJS :: JS -> JS
-
 optimizeJS (JSApp (JSFunction [] (JSSeq ret)) []) =
   JSApp (JSFunction [] (JSSeq (map optimizeJS ret))) []
 
 optimizeJS (JSApp (JSFunction [arg] (JSReturn ret)) [val])
-  | JSNew con [tag, JSArray vals] <- ret =
-      JSNew con [tag, JSArray $ jsSubst arg vals (optimizeJS val)]
+  | JSNew con [tag, vals] <- ret =
+      JSNew con [tag, jsSubst arg (optimizeJS val) vals]
 
   | JSNew con [JSFunction [] (JSReturn (JSApp fun vars))] <- ret =
       JSNew con [JSFunction [] (
-        JSReturn $ JSApp fun (jsSubst arg vars (optimizeJS val))
+        JSReturn $ JSApp fun (map (jsSubst arg (optimizeJS val)) vars)
       )]
 
   | JSApp (JSRaw "__IDRRT__tailcall") [JSFunction [] (
       JSReturn (JSApp fun args)
     )] <- ret =
       JSApp (JSRaw "__IDRRT__tailcall") [JSFunction [] (
-        JSReturn $ JSApp fun (jsSubst arg args (optimizeJS val))
+        JSReturn $ JSApp fun (map (jsSubst arg (optimizeJS val)) args)
       )]
 
   | JSOp op lhs rhs <- ret =
-      JSOp op (head $ jsSubst arg [lhs] (optimizeJS val)) $
-        (head $ jsSubst arg [rhs] (optimizeJS val))
+      JSOp op (jsSubst arg (optimizeJS val) lhs) $
+        (jsSubst arg (optimizeJS val) rhs)
 
   | JSIndex (JSProj obj field) idx <- ret =
       JSIndex (JSProj (
-          head $ jsSubst arg [obj] (optimizeJS val)
+          jsSubst arg (optimizeJS val) obj
         ) field
-      ) (head $ jsSubst arg [idx] (optimizeJS val))
+      ) (jsSubst arg (optimizeJS val) idx)
 
 optimizeJS (JSAssign lhs rhs) =
   JSAssign lhs (optimizeJS rhs)
