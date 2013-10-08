@@ -193,7 +193,7 @@ initDefs tgt =
     , exfun "__idris_gmpFree" VoidType [ptrI8, intPtr] False
     , exfun "__idris_strRev" ptrI8 [ptrI8] False
     , exfun "strtoll" (IntegerType 64) [ptrI8, PointerType ptrI8 (AddrSpace 0), IntegerType 32] False
-    , exfun "putStr" VoidType [ptrI8] False
+    , exfun "putErr" VoidType [ptrI8] False
     , exVar (stdinName tgt) ptrI8
     , exVar (stdoutName tgt) ptrI8
     , exVar (stderrName tgt) ptrI8
@@ -245,7 +245,7 @@ getStdErr = ConstantOperand . C.GlobalReference . Name . stderrName <$> asks tar
 codegen :: Target -> [SDecl] -> Module
 codegen tgt defs = Module "idris" (Just . dataLayout $ tgt) (Just . triple $ tgt) (initDefs tgt ++ globals ++ gendefs)
     where
-      (gendefs, _, globals) = runRWS (mapM cgDef defs) tgt 0
+      (gendefs, _, globals) = runRWS (mapM cgDef defs) tgt initialMGS
 
 valueType :: Type
 valueType = NamedTypeReference (Name "valTy")
@@ -538,7 +538,7 @@ cgExpr SNothing = return . Just . ConstantOperand $ nullValue
 cgExpr (SError msg) = do
   str <- addGlobal' (ArrayType (2 + fromIntegral (length msg)) (IntegerType 8))
          (cgConst' (TT.Str (msg ++ "\n")))
-  inst' $ simpleCall "putStr" [ConstantOperand $ C.GetElementPtr True str [ C.Int 32 0
+  inst' $ simpleCall "putErr" [ConstantOperand $ C.GetElementPtr True str [ C.Int 32 0
                                                                           , C.Int 32 0]]
   inst' Call { isTailCall = True
              , callingConvention = CC.C
@@ -810,7 +810,7 @@ addGlobal' ty val = do
 ensureCDecl :: String -> FType -> [FType] -> Codegen Operand
 ensureCDecl name rty argtys = do
   syms <- gets foreignSyms
-  unless (S.member name syms) $
+  unless (S.member name syms) $ -- TODO: Perform a runtime check of declared type consistency here
          do addGlobal (ffunDecl name rty argtys)
             modify $ \s -> s { foreignSyms = S.insert name (foreignSyms s) }
   return $ ConstantOperand (C.GlobalReference (Name name))
