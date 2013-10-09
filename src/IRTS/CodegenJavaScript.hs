@@ -295,6 +295,9 @@ inlineJS (JSApp (JSFunction [arg] (JSReturn ret)) [val])
 inlineJS (JSApp fun args) =
   JSApp (inlineJS fun) (map inlineJS args)
 
+inlineJS (JSNew con args) =
+  JSNew con $ map inlineJS args
+
 inlineJS (JSAssign lhs rhs) =
   JSAssign lhs (inlineJS rhs)
 
