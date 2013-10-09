@@ -482,7 +482,7 @@ translateConstant (AType ATFloat)          = JSType JSFloatTy
 translateConstant (AType (ATInt ITChar))   = JSType JSCharTy
 translateConstant PtrType                  = JSType JSPtrTy
 translateConstant Forgot                   = JSType JSForgotTy
-translateConstant (BI i)                   = jsBigInt $ JSNum (JSInteger i)
+translateConstant (BI i)                   = jsBigInt $ JSString (show i)
 translateConstant c =
   JSError $ "Unimplemented Constant: " ++ show c
 
