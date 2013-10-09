@@ -254,15 +254,29 @@ jsSubst var new (JSReturn ret) =
 
 jsSubst _ _ js = js
 
-inlineAble :: JS -> Bool
-inlineAble (JSNew con [tag, args]) = True
-inlineAble (JSApp (JSRaw "__IDRRT__tailcall") _) = False
-inlineAble JSNull = True
-inlineAble (JSString _) = True
-inlineAble (JSType _) = True
-inlineAble (JSNum _) = True
-inlineAble (JSApp (JSRaw "__IDRRT__bigInt") _) = True
-inlineAble _ = False
+inlineAble :: Bool -> JS -> JS -> Bool
+inlineAble _ (JSNew con [tag, args]) _ = True
+inlineAble _ JSNull  _ = True
+inlineAble _ (JSString _) _ = True
+inlineAble _ (JSType _) _ = True
+inlineAble _ (JSNum _) _ = True
+inlineAble _ (JSApp (JSRaw "__IDRRT__bigInt") _) _ = True
+inlineAble insideTC (JSApp (JSRaw "__IDRRT__tailcall") _) into =
+  not insideTC && not (doesTailcall into)
+  where
+    doesTailcall :: JS -> Bool
+    doesTailcall (JSApp (JSRaw "__IDRRT__tailcall") _) = True
+    doesTailcall (JSApp (JSRaw _) args) = any id (map doesTailcall args)
+    doesTailcall (JSApp f args) = doesTailcall f || any id (map doesTailcall args)
+    doesTailcall (JSReturn ret) = doesTailcall ret
+    doesTailcall (JSFunction [_] body) = doesTailcall body
+    doesTailcall (JSNew _ [tag, args]) = doesTailcall args
+    doesTailcall (JSNew _ [JSFunction [] body]) = doesTailcall body
+    doesTailcall (JSArray vals) = any id (map doesTailcall vals)
+    doesTailcall (JSVar _) = False
+    doesTailcall _ = True
+
+inlineAble _ _ _ = False
 
 optimizeJS :: JS -> JS
 optimizeJS (JSApp (JSFunction [] (JSSeq ret)) []) =
@@ -271,12 +285,12 @@ optimizeJS (JSApp (JSFunction [] (JSSeq ret)) []) =
 optimizeJS (JSApp (JSFunction [arg] (JSReturn ret)) [val])
   | JSNew con [tag, vals] <- ret
   , opt <- optimizeJS val
-  , inlineAble opt =
+  , inlineAble False opt vals =
       JSNew con [tag, jsSubst arg opt vals]
 
   | JSNew con [JSFunction [] (JSReturn (JSApp fun vars))] <- ret
   , opt <- optimizeJS val
-  , inlineAble opt =
+  , all id $ map (inlineAble False opt) vars =
       JSNew con [JSFunction [] (
         JSReturn $ JSApp fun (map (jsSubst arg opt) vars)
       )]
@@ -285,17 +299,18 @@ optimizeJS (JSApp (JSFunction [arg] (JSReturn ret)) [val])
       JSReturn (JSApp fun args)
     )] <- ret
   , opt <- optimizeJS val
-  , inlineAble opt =
+  , all id $ map (inlineAble True opt) args =
       JSApp (JSRaw "__IDRRT__tailcall") [JSFunction [] (
         JSReturn $ JSApp fun (map (jsSubst arg opt) args)
       )]
 
   | JSApp (JSFunction [x] (JSReturn body)) [y] <- ret
-  , opt <- optimizeJS val
-  , inlineAble opt =
+  , opt     <- optimizeJS val
+  , optBody <- optimizeJS body
+  , inlineAble False opt optBody =
       optimizeJS (
         JSApp (JSFunction [x] $
-          JSReturn $ jsSubst arg opt (optimizeJS body)
+          JSReturn $ jsSubst arg opt optBody
         ) [y]
       )
 
