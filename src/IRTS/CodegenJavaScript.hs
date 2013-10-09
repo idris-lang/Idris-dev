@@ -243,37 +243,76 @@ jsSubst var new (JSApp (JSRaw "__IDRRT__tailcall") [JSFunction [] (
                     JSReturn $ JSApp fun (map (jsSubst var new) args)
                   )]
 
+jsSubst var new (JSApp (JSFunction [arg] body) vals)
+  | var /= arg =
+      JSApp (JSFunction [arg] (
+        jsSubst var new body
+      )) $ map (jsSubst var new) vals
+
+jsSubst var new (JSReturn ret) =
+  JSReturn $ jsSubst var new ret
+
 jsSubst _ _ js = js
+
+inlineAble :: JS -> Bool
+inlineAble (JSNew con [tag, args]) = True
+inlineAble (JSApp (JSRaw "__IDRRT__tailcall") _) = False
+inlineAble JSNull = True
+inlineAble (JSString _) = True
+inlineAble (JSType _) = True
+inlineAble (JSNum _) = True
+inlineAble (JSApp (JSRaw "__IDRRT__bigInt") _) = True
+inlineAble _ = False
 
 optimizeJS :: JS -> JS
 optimizeJS (JSApp (JSFunction [] (JSSeq ret)) []) =
   JSApp (JSFunction [] (JSSeq (map optimizeJS ret))) []
 
 optimizeJS (JSApp (JSFunction [arg] (JSReturn ret)) [val])
-  | JSNew con [tag, vals] <- ret =
-      JSNew con [tag, jsSubst arg (optimizeJS val) vals]
+  | JSNew con [tag, vals] <- ret
+  , opt <- optimizeJS val
+  , inlineAble opt =
+      JSNew con [tag, jsSubst arg opt vals]
 
-  | JSNew con [JSFunction [] (JSReturn (JSApp fun vars))] <- ret =
+  | JSNew con [JSFunction [] (JSReturn (JSApp fun vars))] <- ret
+  , opt <- optimizeJS val
+  , inlineAble opt =
       JSNew con [JSFunction [] (
-        JSReturn $ JSApp fun (map (jsSubst arg (optimizeJS val)) vars)
+        JSReturn $ JSApp fun (map (jsSubst arg opt) vars)
       )]
 
   | JSApp (JSRaw "__IDRRT__tailcall") [JSFunction [] (
       JSReturn (JSApp fun args)
-    )] <- ret =
+    )] <- ret
+  , opt <- optimizeJS val
+  , inlineAble opt =
       JSApp (JSRaw "__IDRRT__tailcall") [JSFunction [] (
-        JSReturn $ JSApp fun (map (jsSubst arg (optimizeJS val)) args)
+        JSReturn $ JSApp fun (map (jsSubst arg opt) args)
       )]
+
+  | JSApp (JSFunction [x] (JSReturn body)) [y] <- ret
+  , opt <- optimizeJS val
+  , inlineAble opt =
+      optimizeJS (
+        JSApp (JSFunction [x] $
+          JSReturn $ jsSubst arg opt (optimizeJS body)
+        ) [y]
+      )
+
+  | JSIndex (JSProj obj field) idx <- ret
+  , opt <- optimizeJS val =
+      JSIndex (JSProj (
+          jsSubst arg opt obj
+        ) field
+      ) (jsSubst arg opt idx)
 
   | JSOp op lhs rhs <- ret =
       JSOp op (jsSubst arg (optimizeJS val) lhs) $
         (jsSubst arg (optimizeJS val) rhs)
 
-  | JSIndex (JSProj obj field) idx <- ret =
-      JSIndex (JSProj (
-          jsSubst arg (optimizeJS val) obj
-        ) field
-      ) (jsSubst arg (optimizeJS val) idx)
+
+optimizeJS (JSApp fun args) =
+  JSApp (optimizeJS fun) (map optimizeJS args)
 
 optimizeJS (JSAssign lhs rhs) =
   JSAssign lhs (optimizeJS rhs)
@@ -286,9 +325,6 @@ optimizeJS (JSFunction args body) =
 
 optimizeJS (JSProj (JSFunction args body) "apply") =
   JSProj (JSFunction args (optimizeJS body)) "apply"
-
-optimizeJS (JSApp fun args) =
-  JSApp (optimizeJS fun) (map optimizeJS args)
 
 optimizeJS (JSReturn js) =
   JSReturn $ optimizeJS js
