@@ -37,6 +37,7 @@ data JSType = JSIntTy
 data JSNum = JSInt Int
            | JSFloat Double
            | JSInteger Integer
+           deriving Eq
 
 data JS = JSRaw String
         | JSFunction [String] JS
@@ -62,6 +63,7 @@ data JS = JSRaw String
         | JSIndex JS JS
         | JSCond [(JS, JS)]
         | JSTernary JS JS JS
+        deriving Eq
 
 compileJS :: JS -> String
 compileJS (JSRaw code) =
@@ -254,43 +256,19 @@ jsSubst var new (JSReturn ret) =
 
 jsSubst _ _ js = js
 
-inlineAble :: Bool -> JS -> JS -> Bool
-inlineAble _ (JSNew con [tag, args]) _ = True
-inlineAble _ JSNull  _ = True
-inlineAble _ (JSString _) _ = True
-inlineAble _ (JSType _) _ = True
-inlineAble _ (JSNum _) _ = True
-inlineAble _ (JSApp (JSRaw "__IDRRT__bigInt") _) _ = True
-inlineAble insideTC (JSApp (JSRaw "__IDRRT__tailcall") _) into =
-  not insideTC && not (doesTailcall into)
-  where
-    doesTailcall :: JS -> Bool
-    doesTailcall (JSApp (JSRaw "__IDRRT__tailcall") _) = True
-    doesTailcall (JSApp (JSRaw _) args) = any id (map doesTailcall args)
-    doesTailcall (JSApp f args) = doesTailcall f || any id (map doesTailcall args)
-    doesTailcall (JSReturn ret) = doesTailcall ret
-    doesTailcall (JSFunction [_] body) = doesTailcall body
-    doesTailcall (JSNew _ [tag, args]) = doesTailcall args
-    doesTailcall (JSNew _ [JSFunction [] body]) = doesTailcall body
-    doesTailcall (JSArray vals) = any id (map doesTailcall vals)
-    doesTailcall (JSVar _) = False
-    doesTailcall _ = True
+inlineAble _ _ _ = True
 
-inlineAble _ _ _ = False
+inlineJS :: JS -> JS
+inlineJS (JSApp (JSFunction [] (JSSeq ret)) []) =
+  JSApp (JSFunction [] (JSSeq (map inlineJS ret))) []
 
-optimizeJS :: JS -> JS
-optimizeJS (JSApp (JSFunction [] (JSSeq ret)) []) =
-  JSApp (JSFunction [] (JSSeq (map optimizeJS ret))) []
-
-optimizeJS (JSApp (JSFunction [arg] (JSReturn ret)) [val])
+inlineJS (JSApp (JSFunction [arg] (JSReturn ret)) [val])
   | JSNew con [tag, vals] <- ret
-  , opt <- optimizeJS val
-  , inlineAble False opt vals =
+  , opt <- inlineJS val =
       JSNew con [tag, jsSubst arg opt vals]
 
   | JSNew con [JSFunction [] (JSReturn (JSApp fun vars))] <- ret
-  , opt <- optimizeJS val
-  , all id $ map (inlineAble False opt) vars =
+  , opt <- inlineJS val =
       JSNew con [JSFunction [] (
         JSReturn $ JSApp fun (map (jsSubst arg opt) vars)
       )]
@@ -298,65 +276,58 @@ optimizeJS (JSApp (JSFunction [arg] (JSReturn ret)) [val])
   | JSApp (JSRaw "__IDRRT__tailcall") [JSFunction [] (
       JSReturn (JSApp fun args)
     )] <- ret
-  , opt <- optimizeJS val
-  , all id $ map (inlineAble True opt) args =
+  , opt <- inlineJS val =
       JSApp (JSRaw "__IDRRT__tailcall") [JSFunction [] (
         JSReturn $ JSApp fun (map (jsSubst arg opt) args)
       )]
 
-  | JSApp (JSFunction [x] (JSReturn body)) [y] <- ret
-  , opt     <- optimizeJS val
-  , optBody <- optimizeJS body
-  , inlineAble False opt optBody =
-      optimizeJS (
-        JSApp (JSFunction [x] $
-          JSReturn $ jsSubst arg opt optBody
-        ) [y]
-      )
-
   | JSIndex (JSProj obj field) idx <- ret
-  , opt <- optimizeJS val =
+  , opt <- inlineJS val =
       JSIndex (JSProj (
           jsSubst arg opt obj
         ) field
       ) (jsSubst arg opt idx)
 
   | JSOp op lhs rhs <- ret =
-      JSOp op (jsSubst arg (optimizeJS val) lhs) $
-        (jsSubst arg (optimizeJS val) rhs)
+      JSOp op (jsSubst arg (inlineJS val) lhs) $
+        (jsSubst arg (inlineJS val) rhs)
 
+inlineJS (JSApp fun args) =
+  JSApp (inlineJS fun) (map inlineJS args)
 
-optimizeJS (JSApp fun args) =
-  JSApp (optimizeJS fun) (map optimizeJS args)
+inlineJS (JSAssign lhs rhs) =
+  JSAssign lhs (inlineJS rhs)
 
-optimizeJS (JSAssign lhs rhs) =
-  JSAssign lhs (optimizeJS rhs)
+inlineJS (JSSeq seq) =
+  JSSeq (map inlineJS seq)
 
-optimizeJS (JSSeq seq) =
-  JSSeq (map optimizeJS seq)
+inlineJS (JSFunction args body) =
+  JSFunction args (inlineJS body)
 
-optimizeJS (JSFunction args body) =
-  JSFunction args (optimizeJS body)
+inlineJS (JSProj (JSFunction args body) "apply") =
+  JSProj (JSFunction args (inlineJS body)) "apply"
 
-optimizeJS (JSProj (JSFunction args body) "apply") =
-  JSProj (JSFunction args (optimizeJS body)) "apply"
+inlineJS (JSReturn js) =
+  JSReturn $ inlineJS js
 
-optimizeJS (JSReturn js) =
-  JSReturn $ optimizeJS js
+inlineJS (JSAlloc name (Just js)) =
+  JSAlloc name (Just $ inlineJS js)
 
-optimizeJS (JSAlloc name (Just js)) =
-  JSAlloc name (Just $ optimizeJS js)
+inlineJS (JSCond cases) =
+  JSCond (map (second inlineJS) cases)
 
-optimizeJS (JSCond cases) =
-  JSCond (map (second optimizeJS) cases)
+inlineJS (JSObject fields) =
+  JSObject (map (second inlineJS) fields)
 
-optimizeJS (JSObject fields) =
-  JSObject (map (second optimizeJS) fields)
+inlineJS js = js
 
-optimizeJS js = js
-
-optJS :: Int -> JS -> JS
-optJS c = foldr (.) id $ take c $ repeat optimizeJS
+optimizeJS :: JS -> JS
+optimizeJS = inlineLoop
+  where inlineLoop :: JS -> JS
+        inlineLoop js
+          | opt <- inlineJS js
+          , opt /= js = inlineLoop opt
+          | otherwise = js
 
 codegenJavaScript
   :: JSTarget
@@ -388,7 +359,7 @@ codegenJavaScript target definitions filename outputType = do
     def = map (first translateNamespace) definitions
 
     functions :: [String]
-    functions = map (compileJS . optJS 1 . translateDeclaration) def
+    functions = map (compileJS . optimizeJS . translateDeclaration) def
 
     mainLoop :: String
     mainLoop = compileJS $
