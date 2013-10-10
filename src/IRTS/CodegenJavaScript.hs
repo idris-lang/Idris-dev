@@ -296,6 +296,9 @@ inlineJS (JSApp fun args) =
 inlineJS (JSNew con args) =
   JSNew con $ map inlineJS args
 
+inlineJS (JSArray fields) =
+  JSArray (map inlineJS fields)
+
 inlineJS (JSAssign lhs rhs) =
   JSAssign lhs (inlineJS rhs)
 
