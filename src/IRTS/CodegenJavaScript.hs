@@ -353,6 +353,11 @@ reduceJS program =
         funNames _ = error "WTF?"
 
         reduceCall :: [String] -> JS -> JS
+        reduceCall funs (JSApp (JSRaw "__IDRRT__tailcall") [JSFunction [] (
+                          JSReturn (JSApp (JSRaw ret) [])
+                        )])
+          | ret `elem` funs = JSRaw ret
+
         reduceCall funs js@(JSApp (JSRaw fun) [])
           | fun `elem` funs = JSRaw fun
           | otherwise       = js
