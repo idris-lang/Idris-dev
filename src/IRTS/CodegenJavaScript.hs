@@ -325,6 +325,70 @@ inlineJS (JSObject fields) =
 
 inlineJS js = js
 
+reduceJS :: [JS] -> [JS]
+reduceJS program =
+  case partition findConstructors program of
+    (candidates, rest) ->
+      map reduce candidates ++ map (reduceCall (map funNames candidates)) rest
+  where findConstructors :: JS -> Bool
+        findConstructors js
+          | (JSAlloc fun (Just (JSFunction [] (JSSeq body)))) <- js =
+              reducable $ last body
+          | otherwise = False
+          where reducable :: JS -> Bool
+                reducable (JSReturn js) = reducable js
+                reducable (JSNew _ args) = and $ map reducable args
+                reducable (JSArray fields) = and $ map reducable fields
+                reducable (JSNum _) = True
+                reducable JSNull = True
+                reducable _ = False
+
+        reduce :: JS -> JS
+        reduce (JSAlloc fun (Just (JSFunction [] (JSSeq body))))
+          | JSReturn js <- last body = (JSAlloc fun (Just js))
+          | otherwise = error "this should not happen"
+
+        funNames :: JS -> String
+        funNames (JSAlloc fun _) = fun
+        funNames _ = error "WTF?"
+
+        reduceCall :: [String] -> JS -> JS
+        reduceCall funs js@(JSApp (JSRaw fun) [])
+          | fun `elem` funs = JSRaw fun
+          | otherwise       = js
+
+        reduceCall funs (JSAlloc fun (Just body)) =
+          JSAlloc fun (Just $ reduceCall funs body)
+
+        reduceCall funs (JSReturn js) =
+          JSReturn $ reduceCall funs js
+
+        reduceCall funs (JSSeq js) =
+          JSSeq $ map (reduceCall funs) js
+
+        reduceCall funs (JSNew con args) =
+          JSNew con $ map (reduceCall funs) args
+
+        reduceCall funs (JSFunction args body) =
+          JSFunction args $ reduceCall funs body
+
+        reduceCall funs (JSApp fun args) =
+          JSApp (reduceCall funs fun) $ map (reduceCall funs) args
+
+        reduceCall funs (JSProj obj field) =
+          JSProj (reduceCall funs obj) field
+
+        reduceCall funs (JSCond conds) =
+          JSCond $ map (reduceCall funs *** reduceCall funs) conds
+
+        reduceCall funs (JSAssign lhs rhs) =
+          JSAssign (reduceCall funs lhs) (reduceCall funs rhs)
+
+        reduceCall funs (JSArray fields) =
+          JSArray $ map (reduceCall funs) fields
+
+        reduceCall _ js = js
+
 optimizeJS :: JS -> JS
 optimizeJS = inlineLoop
   where inlineLoop :: JS -> JS
@@ -363,7 +427,8 @@ codegenJavaScript target definitions filename outputType = do
     def = map (first translateNamespace) definitions
 
     functions :: [String]
-    functions = map (compileJS . optimizeJS . translateDeclaration) def
+    functions =
+      map compileJS (reduceJS $ map (optimizeJS . translateDeclaration) def)
 
     mainLoop :: String
     mainLoop = compileJS $
@@ -815,7 +880,7 @@ translateExpression patterncase
               (checkTy `jsAnd` checkTag, branch)
 
 translateExpression (SCon i name vars) =
-  JSNew (idrRTNamespace ++ "Con") [ JSRaw $ show i
+  JSNew (idrRTNamespace ++ "Con") [ JSNum $ JSInt i
                                   , JSArray $ map JSVar vars
                                   ]
 
