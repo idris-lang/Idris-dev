@@ -256,8 +256,6 @@ jsSubst var new (JSReturn ret) =
 
 jsSubst _ _ js = js
 
-inlineAble _ _ _ = True
-
 inlineJS :: JS -> JS
 inlineJS (JSApp (JSFunction [] (JSSeq ret)) []) =
   JSApp (JSFunction [] (JSSeq (map inlineJS ret))) []
