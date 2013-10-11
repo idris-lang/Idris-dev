@@ -46,9 +46,11 @@ Cabal-Version:  >= 1.6
 
 Build-type:     Custom
 
-Data-files:            js/Runtime-browser.js
-                       js/Runtime-common.js
-                       js/Runtime-node.js
+Data-files:            jsrts/Runtime-browser.js
+                       jsrts/Runtime-common.js
+                       jsrts/Runtime-node.js
+                       jsrts/jsbn/jsbn.js
+                       jsrts/jsbn/LICENSE
                        rts/idris_gc.h
                        rts/idris_gmp.h
                        rts/idris_main.c

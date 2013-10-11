@@ -12,6 +12,7 @@ import Paths_idris
 import Util.System
 
 import Control.Arrow
+import Control.Applicative ((<$>), (<*>), pure)
 import Data.Char
 import Data.List
 import Data.Maybe
@@ -206,8 +207,9 @@ jsTypeTag :: JS -> JS
 jsTypeTag obj = JSProj obj "type"
 
 jsBigInt :: JS -> JS
-jsBigInt val =
-  JSApp (JSRaw $ idrRTNamespace ++ "bigInt") [val]
+jsBigInt (JSString "0") = JSRaw "__IDRRT__ZERO"
+jsBigInt (JSString "1") = JSRaw "__IDRRT__ONE"
+jsBigInt val = JSApp (JSRaw $ idrRTNamespace ++ "bigInt") [val]
 
 jsVar :: Int -> String
 jsVar = ("__var_" ++) . show
@@ -346,11 +348,9 @@ reduceJS program =
         reduce :: JS -> JS
         reduce (JSAlloc fun (Just (JSFunction [] (JSSeq body))))
           | JSReturn js <- last body = (JSAlloc fun (Just js))
-          | otherwise = error "this should not happen"
 
         funNames :: JS -> String
         funNames (JSAlloc fun _) = fun
-        funNames _ = error "WTF?"
 
         reduceCall :: [String] -> JS -> JS
         reduceCall funs (JSApp (JSRaw "__IDRRT__tailcall") [JSFunction [] (
@@ -414,11 +414,13 @@ codegenJavaScript target definitions filename outputType = do
                                  ("#!/usr/bin/env node\n", "-node")
                                JavaScript ->
                                  ("", "-browser")
-  path       <- getDataDir
-  idrRuntime <- readFile $ path ++ "/js/Runtime-common.js"
-  tgtRuntime <- readFile $ concat [path, "/js/Runtime", runtime, ".js"]
+  path       <- (++) <$> getDataDir <*> (pure "/jsrts/")
+  idrRuntime <- readFile $ path ++ "Runtime-common.js"
+  tgtRuntime <- readFile $ concat [path, "Runtime", runtime, ".js"]
+  jsbn       <- readFile $ path ++ "jsbn/jsbn.js"
   writeFile filename $ header ++ (
-    intercalate "\n" $ [ idrRuntime
+    intercalate "\n" $ [ jsbn
+                       , idrRuntime
                        , tgtRuntime
                        ] ++ functions ++ [mainLoop, invokeLoop]
     )
@@ -694,13 +696,13 @@ translateExpression (SApp tc name vars)
 translateExpression (SOp op vars)
   | LNoOp <- op = JSVar (last vars)
 
-  | (LZExt _ ITBig)        <- op = jsBigInt $ JSVar (last vars)
+  | (LZExt _ ITBig)        <- op = jsBigInt $ jsCall "String" [JSVar (last vars)]
   | (LPlus (ATInt ITBig))  <- op
   , (lhs:rhs:_)            <- vars = invokeMeth lhs "add" [rhs]
   | (LMinus (ATInt ITBig)) <- op
-  , (lhs:rhs:_)            <- vars = invokeMeth lhs "minus" [rhs]
+  , (lhs:rhs:_)            <- vars = invokeMeth lhs "subtract" [rhs]
   | (LTimes (ATInt ITBig)) <- op
-  , (lhs:rhs:_)            <- vars = invokeMeth lhs "times" [rhs]
+  , (lhs:rhs:_)            <- vars = invokeMeth lhs "multiply" [rhs]
   | (LSDiv (ATInt ITBig))  <- op
   , (lhs:rhs:_)            <- vars = invokeMeth lhs "divide" [rhs]
   | (LSRem (ATInt ITBig))  <- op
@@ -782,9 +784,9 @@ translateExpression (SOp op vars)
   | (LIntStr ITNative)      <- op
   , (arg:_)                 <- vars = jsCall "String" [JSVar arg]
   | (LSExt ITNative ITBig)  <- op
-  , (arg:_)                 <- vars = jsBigInt $ JSVar arg
+  , (arg:_)                 <- vars = jsBigInt $ jsCall "String" [JSVar arg]
   | (LTrunc ITBig ITNative) <- op
-  , (arg:_)                 <- vars = jsMeth (JSVar arg) "valueOf" []
+  , (arg:_)                 <- vars = jsMeth (JSVar arg) "intValue" []
   | (LIntStr ITBig)         <- op
   , (arg:_)                 <- vars = jsMeth (JSVar arg) "toString" []
   | (LStrInt ITBig)         <- op
