@@ -1,18 +1,18 @@
 module Prelude.Bits
 
 import Prelude.Strings
+import Prelude.Vect
 
 %access public
 %default total
 
-private
-hexVect : Vect 16 Char
-hexVect = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
-           'A', 'B', 'C', 'D', 'E', 'F']
 
 private
 toHexDigit : Fin 16 -> Char
-toHexDigit n = index n hexVect
+toHexDigit n = index n hexVect where
+  hexVect : Vect 16 Char
+  hexVect = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
+             'A', 'B', 'C', 'D', 'E', 'F']
 
 b8ToString : Bits8 -> String
 b8ToString c = pack [c1, c2] where
