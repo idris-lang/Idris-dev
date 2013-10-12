@@ -371,7 +371,7 @@ terminator =     do lchar ';'; popIndent
              <|> do c <- indent; l <- lastIndent
                     if c <= l then popIndent else fail "not a terminator"
              <|> do isParen <- lookAheadMatches (oneOf ")}")
-                    if isParen then popIndent else fail "not a termiantor"
+                    if isParen then popIndent else fail "not a terminator"
              <|> lookAhead eof
 
 -- | Parses and keeps a terminator
