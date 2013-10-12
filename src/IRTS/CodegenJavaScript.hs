@@ -334,6 +334,74 @@ inlineJS js = js
 reduceJS :: [JS] -> [JS]
 reduceJS js = reduceLoop [] ([], js)
 
+funName :: JS -> String
+funName (JSAlloc fun _) = fun
+
+removeIDs :: [JS] -> [JS]
+removeIDs js =
+  case partition isID js of
+       ([], rest)  -> rest
+       (ids, rest) -> removeIDs $ map (removeIDCall (map idFor ids)) rest
+  where isID :: JS -> Bool
+        isID (JSAlloc _ (Just (JSFunction _ (JSSeq body))))
+          | JSReturn (JSVar _) <- last body = True
+
+        isID _ = False
+
+        idFor :: JS -> (String, Int)
+        idFor (JSAlloc fun (Just (JSFunction _ (JSSeq body))))
+          | JSReturn (JSVar (Loc pos)) <- last body = (fun, pos)
+
+        removeIDCall :: [(String, Int)] -> JS -> JS
+        removeIDCall ids (JSApp (JSIdent "__IDRRT__tailcall") [JSFunction [] (
+                           JSReturn (JSApp (JSIdent fun) args)
+                         )])
+          | Just pos <- lookup fun ids
+          , pos < length args  = args !! pos
+
+        removeIDCall ids (JSNew _ [JSFunction [] (
+                           JSReturn (JSApp (JSIdent fun) args)
+                         )])
+          | Just pos <- lookup fun ids
+          , pos < length args = args !! pos
+
+        removeIDCall ids js@(JSApp id@(JSIdent fun) args)
+          | Just pos <- lookup fun ids
+          , pos < length args  = args !! pos
+
+        removeIDCall ids (JSAlloc fun (Just body)) =
+          JSAlloc fun (Just $ removeIDCall ids body)
+
+        removeIDCall ids (JSReturn js) =
+          JSReturn $ removeIDCall ids js
+
+        removeIDCall ids (JSSeq js) =
+          JSSeq $ map (removeIDCall ids) js
+
+        removeIDCall ids (JSNew con args) =
+          JSNew con $ map (removeIDCall ids) args
+
+        removeIDCall ids (JSFunction args body) =
+          JSFunction args $ removeIDCall ids body
+
+        removeIDCall ids (JSApp fun args) =
+          JSApp (removeIDCall ids fun) $ map (removeIDCall ids) args
+
+        removeIDCall ids (JSProj obj field) =
+          JSProj (removeIDCall ids obj) field
+
+        removeIDCall ids (JSCond conds) =
+          JSCond $ map (removeIDCall ids *** removeIDCall ids) conds
+
+        removeIDCall ids (JSAssign lhs rhs) =
+          JSAssign (removeIDCall ids lhs) (removeIDCall ids rhs)
+
+        removeIDCall ids (JSArray fields) =
+          JSArray $ map (removeIDCall ids) fields
+
+        removeIDCall _ js = js
+
+
 reduceLoop :: [String] -> ([JS], [JS]) -> [JS]
 reduceLoop reduced (cons, program) =
   case partition findConstructors program of
@@ -362,9 +430,6 @@ reduceLoop reduced (cons, program) =
           | JSReturn js <- last body = (JSAlloc fun (Just js))
 
         reduce js = js
-
-        funName :: JS -> String
-        funName (JSAlloc fun _) = fun
 
         reduceCall :: [String] -> JS -> JS
         reduceCall funs (JSApp (JSIdent "__IDRRT__tailcall") [JSFunction [] (
@@ -448,7 +513,7 @@ codegenJavaScript target definitions filename outputType = do
 
     functions :: [String]
     functions =
-      map compileJS (reduceJS $ map (optimizeJS . translateDeclaration) def)
+      map compileJS ((reduceJS . removeIDs) $ map (optimizeJS . translateDeclaration) def)
 
     mainLoop :: String
     mainLoop = compileJS $
