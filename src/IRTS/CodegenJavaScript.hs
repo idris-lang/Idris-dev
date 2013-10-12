@@ -332,10 +332,17 @@ inlineJS (JSObject fields) =
 inlineJS js = js
 
 reduceJS :: [JS] -> [JS]
-reduceJS program =
+reduceJS js = reduceLoop [] ([], js)
+
+reduceLoop :: [String] -> ([JS], [JS]) -> [JS]
+reduceLoop reduced (cons, program) =
   case partition findConstructors program of
-    (candidates, rest) ->
-      map reduce candidates ++ map (reduceCall (map funNames candidates)) rest
+       ([], js)           -> cons ++ js
+       (candidates, rest) ->
+         let names = reduced ++ map funName candidates in
+             reduceLoop names (
+               cons ++ map reduce candidates, map (reduceCall names) rest
+             )
   where findConstructors :: JS -> Bool
         findConstructors js
           | (JSAlloc fun (Just (JSFunction _ (JSSeq body)))) <- js =
@@ -356,8 +363,8 @@ reduceJS program =
 
         reduce js = js
 
-        funNames :: JS -> String
-        funNames (JSAlloc fun _) = fun
+        funName :: JS -> String
+        funName (JSAlloc fun _) = fun
 
         reduceCall :: [String] -> JS -> JS
         reduceCall funs (JSApp (JSIdent "__IDRRT__tailcall") [JSFunction [] (
