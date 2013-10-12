@@ -41,6 +41,7 @@ data JSNum = JSInt Int
            deriving Eq
 
 data JS = JSRaw String
+        | JSIdent String
         | JSFunction [String] JS
         | JSType JSType
         | JSSeq [JS]
@@ -69,6 +70,9 @@ data JS = JSRaw String
 compileJS :: JS -> String
 compileJS (JSRaw code) =
   code
+
+compileJS (JSIdent ident) =
+  ident
 
 compileJS (JSFunction args body) =
      "function("
@@ -179,7 +183,7 @@ jsTailcall call =
   ]
 
 jsCall :: String -> [JS] -> JS
-jsCall fun = JSApp (JSRaw fun)
+jsCall fun = JSApp (JSIdent fun)
 
 jsMeth :: JS -> String -> [JS] -> JS
 jsMeth obj meth =
@@ -195,10 +199,10 @@ jsAnd :: JS -> JS -> JS
 jsAnd = JSOp "&&"
 
 jsType :: JS
-jsType = JSRaw $ idrRTNamespace ++ "Type"
+jsType = JSIdent $ idrRTNamespace ++ "Type"
 
 jsCon :: JS
-jsCon = JSRaw $ idrRTNamespace ++ "Con"
+jsCon = JSIdent $ idrRTNamespace ++ "Con"
 
 jsTag :: JS -> JS
 jsTag obj = JSProj obj "tag"
@@ -207,9 +211,9 @@ jsTypeTag :: JS -> JS
 jsTypeTag obj = JSProj obj "type"
 
 jsBigInt :: JS -> JS
-jsBigInt (JSString "0") = JSRaw "__IDRRT__ZERO"
-jsBigInt (JSString "1") = JSRaw "__IDRRT__ONE"
-jsBigInt val = JSApp (JSRaw $ idrRTNamespace ++ "bigInt") [val]
+jsBigInt (JSString "0") = JSIdent "__IDRRT__ZERO"
+jsBigInt (JSString "1") = JSIdent "__IDRRT__ONE"
+jsBigInt val = JSApp (JSIdent $ idrRTNamespace ++ "bigInt") [val]
 
 jsVar :: Int -> String
 jsVar = ("__var_" ++) . show
@@ -226,7 +230,7 @@ jsSubst :: String -> JS -> JS -> JS
 jsSubst var new (JSVar old)
   | var == translateVariableName old = new
 
-jsSubst var new (JSRaw old)
+jsSubst var new (JSIdent old)
   | var == old = new
 
 jsSubst var new (JSArray fields) =
@@ -240,10 +244,10 @@ jsSubst var new (JSNew con [JSFunction [] (JSReturn (JSApp fun vars))]) =
     JSReturn $ JSApp fun (map (jsSubst var new) vars)
   )]
 
-jsSubst var new (JSApp (JSRaw "__IDRRT__tailcall") [JSFunction [] (
+jsSubst var new (JSApp (JSIdent "__IDRRT__tailcall") [JSFunction [] (
                   JSReturn (JSApp fun args)
                 )]) =
-                  JSApp (JSRaw "__IDRRT__tailcall") [JSFunction [] (
+                  JSApp (JSIdent "__IDRRT__tailcall") [JSFunction [] (
                     JSReturn $ JSApp fun (map (jsSubst var new) args)
                   )]
 
@@ -273,11 +277,11 @@ inlineJS (JSApp (JSFunction [arg] (JSReturn ret)) [val])
         JSReturn $ JSApp fun (map (jsSubst arg opt) vars)
       )]
 
-  | JSApp (JSRaw "__IDRRT__tailcall") [JSFunction [] (
+  | JSApp (JSIdent "__IDRRT__tailcall") [JSFunction [] (
       JSReturn (JSApp fun args)
     )] <- ret
   , opt <- inlineJS val =
-      JSApp (JSRaw "__IDRRT__tailcall") [JSFunction [] (
+      JSApp (JSIdent "__IDRRT__tailcall") [JSFunction [] (
         JSReturn $ JSApp fun (map (jsSubst arg opt) args)
       )]
 
@@ -353,13 +357,13 @@ reduceJS program =
         funNames (JSAlloc fun _) = fun
 
         reduceCall :: [String] -> JS -> JS
-        reduceCall funs (JSApp (JSRaw "__IDRRT__tailcall") [JSFunction [] (
-                          JSReturn (JSApp (JSRaw ret) [])
+        reduceCall funs (JSApp (JSIdent "__IDRRT__tailcall") [JSFunction [] (
+                          JSReturn (JSApp (JSIdent ret) [])
                         )])
-          | ret `elem` funs = JSRaw ret
+          | ret `elem` funs = JSIdent ret
 
-        reduceCall funs js@(JSApp (JSRaw fun) [])
-          | fun `elem` funs = JSRaw fun
+        reduceCall funs js@(JSApp (JSIdent fun) [])
+          | fun `elem` funs = JSIdent fun
           | otherwise       = js
 
         reduceCall funs (JSAlloc fun (Just body)) =
@@ -442,7 +446,7 @@ codegenJavaScript target definitions filename outputType = do
       JSAlloc "main" $ Just $ JSFunction [] (
         case target of
              Node       -> mainFun
-             JavaScript -> jsMeth (JSRaw "window") "addEventListener" [
+             JavaScript -> jsMeth (JSIdent "window") "addEventListener" [
                  JSString "DOMContentLoaded", JSFunction [] (
                    mainFun
                  ), JSFalse
@@ -568,13 +572,13 @@ translateDeclaration (path, SFun name params stackSize body)
         lookup = "[" ++ lvar ++ ".tag](fn0,arg0," ++ lvar ++ ")" in
         JSSeq [ lookupTable [(var, "chk")] var cases
               , jsDecl $ JSFunction ["fn0", "arg0"] (
-                  JSSeq [ JSAlloc "__var_0" (Just $ JSRaw "fn0")
+                  JSSeq [ JSAlloc "__var_0" (Just $ JSIdent "fn0")
                         , JSReturn $ jsLet (translateVariableName var) (
                             translateExpression val
                           ) (JSTernary (
                                (JSVar var `jsInstanceOf` jsCon) `jsAnd`
                                (hasProp lookupTableName (translateVariableName var))
-                            ) (JSRaw $
+                            ) (JSIdent $
                                  lookupTableName ++ lookup
                               ) JSNull
                             )
@@ -587,9 +591,9 @@ translateDeclaration (path, SFun name params stackSize body)
     JSSeq [ lookupTable [] var cases
           , jsDecl $ JSFunction ["arg0"] (JSReturn $
               JSTernary (
-                (JSRaw "arg0" `jsInstanceOf` jsCon) `jsAnd`
+                (JSIdent "arg0" `jsInstanceOf` jsCon) `jsAnd`
                 (hasProp lookupTableName "arg0")
-              ) (JSRaw $ lookupTableName ++ "[arg0.tag](arg0)") (JSRaw "arg0")
+              ) (JSRaw $ lookupTableName ++ "[arg0.tag](arg0)") (JSIdent "arg0")
             )
           ]
   | otherwise =
@@ -599,7 +603,7 @@ translateDeclaration (path, SFun name params stackSize body)
   where
     hasProp :: String -> String -> JS
     hasProp table var =
-      JSIndex (JSRaw table) (JSProj (JSRaw var) "tag")
+      JSIndex (JSIdent table) (JSProj (JSIdent var) "tag")
 
     caseFun :: [(LVar, String)] -> LVar -> SAlt -> JS
     caseFun aux var cse =
@@ -619,7 +623,7 @@ translateDeclaration (path, SFun name params stackSize body)
           JSSeq $ [
             JSAlloc "t" $ Just (JSArray [])
           ] ++ assignEntries (catMaybes $ map (lookupEntry aux var) cases) ++ [
-            JSReturn (JSRaw "t")
+            JSReturn (JSIdent "t")
           ]
         )) []
       )
@@ -627,7 +631,7 @@ translateDeclaration (path, SFun name params stackSize body)
         assignEntries :: [(Int, JS)] -> [JS]
         assignEntries entries =
           map (\(tag, fun) ->
-            JSAssign (JSIndex (JSRaw "t") (JSNum $ JSInt tag)) fun
+            JSAssign (JSIndex (JSIdent "t") (JSNum $ JSInt tag)) fun
           ) entries
 
         lookupEntry :: [(LVar, String)] ->  LVar -> SAlt -> Maybe (Int, JS)
@@ -657,11 +661,11 @@ translateDeclaration (path, SFun name params stackSize body)
         allocVar n = JSAlloc (jsVar n) Nothing
 
         assignVar :: Int -> String -> JS
-        assignVar n s = JSAlloc (jsVar n)  (Just $ JSRaw s)
+        assignVar n s = JSAlloc (jsVar n)  (Just $ JSIdent s)
 
         assignAux :: (LVar, String) -> JS
         assignAux (var, val) =
-          JSAssign (JSRaw $ translateVariableName var) (JSRaw val)
+          JSAssign (JSIdent $ translateVariableName var) (JSIdent val)
 
         p :: [String]
         p = map translateName params
@@ -830,7 +834,7 @@ translateExpression (SOp op vars)
   | LStrCons    <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp "+" lhs rhs
   | LStrHead    <- op
-  , (arg:_)     <- vars = JSIndex (JSVar arg) (JSRaw "0")
+  , (arg:_)     <- vars = JSIndex (JSVar arg) (JSNum (JSInt 0))
   | LStrRev     <- op
   , (arg:_)     <- vars = JSProj (JSVar arg) "split('').reverse().join('')"
   | LStrIndex   <- op
@@ -877,8 +881,8 @@ translateExpression patterncase
     expandCase _ (CaseCond DefaultCase, branch) = (JSTrue , branch)
     expandCase var (CaseCond caseTy, branch)
       | ConCase tag <- caseTy =
-          let checkCon = JSRaw var `jsInstanceOf` jsCon
-              checkTag = (JSRaw $ show tag) `jsEq` jsTag (JSRaw var) in
+          let checkCon = JSIdent var `jsInstanceOf` jsCon
+              checkTag = (JSNum $ JSInt tag) `jsEq` jsTag (JSIdent var) in
               (checkCon `jsAnd` checkTag, branch)
 
       | TypeCase ty <- caseTy =
