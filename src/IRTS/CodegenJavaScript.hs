@@ -338,7 +338,7 @@ reduceJS program =
       map reduce candidates ++ map (reduceCall (map funNames candidates)) rest
   where findConstructors :: JS -> Bool
         findConstructors js
-          | (JSAlloc fun (Just (JSFunction [] (JSSeq body)))) <- js =
+          | (JSAlloc fun (Just (JSFunction _ (JSSeq body)))) <- js =
               reducable $ last body
           | otherwise = False
           where reducable :: JS -> Bool
@@ -347,24 +347,26 @@ reduceJS program =
                 reducable (JSArray fields) = and $ map reducable fields
                 reducable (JSNum _) = True
                 reducable JSNull = True
+                reducable (JSIdent _) = True
                 reducable _ = False
 
         reduce :: JS -> JS
-        reduce (JSAlloc fun (Just (JSFunction [] (JSSeq body))))
+        reduce (JSAlloc fun (Just (JSFunction _ (JSSeq body))))
           | JSReturn js <- last body = (JSAlloc fun (Just js))
+
+        reduce js = js
 
         funNames :: JS -> String
         funNames (JSAlloc fun _) = fun
 
         reduceCall :: [String] -> JS -> JS
         reduceCall funs (JSApp (JSIdent "__IDRRT__tailcall") [JSFunction [] (
-                          JSReturn (JSApp (JSIdent ret) [])
+                          JSReturn (JSApp id@(JSIdent ret) _)
                         )])
-          | ret `elem` funs = JSIdent ret
+          | ret `elem` funs = id
 
-        reduceCall funs js@(JSApp (JSIdent fun) [])
-          | fun `elem` funs = JSIdent fun
-          | otherwise       = js
+        reduceCall funs js@(JSApp id@(JSIdent fun) _)
+          | fun `elem` funs = id
 
         reduceCall funs (JSAlloc fun (Just body)) =
           JSAlloc fun (Just $ reduceCall funs body)
@@ -886,8 +888,8 @@ translateExpression patterncase
               (checkCon `jsAnd` checkTag, branch)
 
       | TypeCase ty <- caseTy =
-          let checkTy  = JSRaw var `jsInstanceOf` jsType
-              checkTag = jsTypeTag (JSRaw var) `jsEq` JSType ty in
+          let checkTy  = JSIdent var `jsInstanceOf` jsType
+              checkTag = jsTypeTag (JSIdent var) `jsEq` JSType ty in
               (checkTy `jsAnd` checkTag, branch)
 
 translateExpression (SCon i name vars) =
@@ -899,7 +901,7 @@ translateExpression (SUpdate var e) =
   JSAssign (JSVar var) (translateExpression e)
 
 translateExpression (SProj var i) =
-  JSIndex (JSProj (JSVar var) "vars") (JSRaw $ show i)
+  JSIndex (JSProj (JSVar var) "vars") (JSNum $ JSInt i)
 
 translateExpression SNothing = JSNull
 
@@ -962,11 +964,11 @@ translateCaseCond var cse@(SConstCase ty _)
     matchHelper ty = (CaseCond $ TypeCase ty, translateCase Nothing cse)
 
 translateCaseCond var cse@(SConstCase cst@(BI _) _) =
-  let cond = jsMeth (JSRaw var) "equals" [translateConstant cst] in
+  let cond = jsMeth (JSIdent var) "equals" [translateConstant cst] in
       (RawCond cond, translateCase Nothing cse)
 
 translateCaseCond var cse@(SConstCase cst _) =
-  let cond = JSRaw var `jsEq` translateConstant cst in
+  let cond = JSIdent var `jsEq` translateConstant cst in
       (RawCond cond, translateCase Nothing cse)
 
 translateCaseCond var cse@(SConCase _ tag _ _ _) =
@@ -978,5 +980,5 @@ translateCase _          (SConstCase _ e) = translateExpression e
 translateCase (Just var) (SConCase a _ _ vars e) =
   let params = map jsVar [a .. (a + length vars)] in
       jsMeth (JSFunction params (JSReturn $ translateExpression e)) "apply" [
-        JSThis, JSProj (JSRaw var) "vars"
+        JSThis, JSProj (JSIdent var) "vars"
       ]
