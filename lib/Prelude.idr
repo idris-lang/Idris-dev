@@ -16,6 +16,7 @@ import Prelude.Vect
 import Prelude.Strings
 import Prelude.Chars
 import Prelude.Traversable
+import Prelude.Bits
 
 %access public
 %default total
@@ -48,16 +49,16 @@ instance Show Bool where
     show False = "False"
 
 instance Show Bits8 where
-  show = prim__toStrB8
+  show b = b8ToString b
 
 instance Show Bits16 where
-  show = prim__toStrB16
+  show b = b16ToString b
 
 instance Show Bits32 where
-  show = prim__toStrB32
+  show b = b32ToString b
 
 instance Show Bits64 where
-  show = prim__toStrB64
+  show b = b64ToString b
 
 %assert_total
 viewB8x16 : Bits8x16 -> (Bits8, Bits8, Bits8, Bits8, Bits8, Bits8, Bits8, Bits8, Bits8, Bits8, Bits8, Bits8, Bits8, Bits8, Bits8, Bits8)
