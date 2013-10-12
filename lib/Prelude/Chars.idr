@@ -1,7 +1,6 @@
 module Prelude.Char
 
 import Builtins
-import Prelude.Vect
 
 isUpper : Char -> Bool
 isUpper x = x >= 'A' && x <= 'Z'
@@ -38,7 +37,7 @@ toLower x = if (isUpper x)
 
 isHexDigit : Char -> Bool
 isHexDigit x = elem (toUpper x) hexChars where
-  hexChars : Vect 16 Char
+  hexChars : List Char
   hexChars = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
               'A', 'B', 'C', 'D', 'E', 'F']
 
