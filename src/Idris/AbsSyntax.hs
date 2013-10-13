@@ -684,6 +684,7 @@ expandParams dec ps ns infs tm = en tm
     en (PAlternative a as) = PAlternative a (map en as)
     en (PHidden t) = PHidden (en t)
     en (PUnifyLog t) = PUnifyLog (en t)
+    en (PNoImplicits t) = PNoImplicits (en t)
     en (PDoBlock ds) = PDoBlock (map (fmap en) ds)
     en (PProof ts)   = PProof (map (fmap en) ts)
     en (PTactics ts) = PTactics (map (fmap en) ts)
@@ -1011,6 +1012,7 @@ implicitise syn ignore ist tm = -- trace ("INCOMING " ++ showImp True tm) $
              imps False (n:env) sc
     imps top env (PHidden tm)    = imps False env tm
     imps top env (PUnifyLog tm)  = imps False env tm
+    imps top env (PNoImplicits tm)  = imps False env tm
     imps top env _               = return ()
 
     pibind using []     sc = sc
@@ -1100,6 +1102,7 @@ addImpl' inpat env infns ist ptm = ai (zip env (repeat Nothing)) ptm
     ai env (PTactics ts) = PTactics (map (fmap (ai env)) ts)
     ai env (PRefl fc tm) = PRefl fc (ai env tm)
     ai env (PUnifyLog tm) = PUnifyLog (ai env tm)
+    ai env (PNoImplicits tm) = PNoImplicits (ai env tm)
     ai env tm = tm
 
     handleErr (Left err) = PElabError err
@@ -1364,6 +1367,8 @@ matchClause' names i x y = checkRpts $ match (fullApp x) (fullApp y) where
     match (PHidden x) (PHidden y) = match' x y
     match (PUnifyLog x) y = match' x y
     match x (PUnifyLog y) = match' x y
+    match (PNoImplicits x) y = match' x y
+    match x (PNoImplicits y) = match' x y
     match Placeholder _ = return []
     match _ Placeholder = return []
     match (PResolveTC _) _ = return []
@@ -1411,6 +1416,7 @@ substMatchShadow n shs tm t = sm shs t where
     sm xs (PAlternative a as) = PAlternative a (map (sm xs) as)
     sm xs (PHidden x) = PHidden (sm xs x)
     sm xs (PUnifyLog x) = PUnifyLog (sm xs x)
+    sm xs (PNoImplicits x) = PNoImplicits (sm xs x)
     sm xs x = x
 
     fullApp (PApp _ (PApp fc f args) xs) = fullApp (PApp fc f (args ++ xs))
@@ -1431,6 +1437,7 @@ shadow n n' t = sm t where
     sm (PAlternative a as) = PAlternative a (map sm as)
     sm (PHidden x) = PHidden (sm x)
     sm (PUnifyLog x) = PUnifyLog (sm x)
+    sm (PNoImplicits x) = PNoImplicits (sm x)
     sm x = x
 
 

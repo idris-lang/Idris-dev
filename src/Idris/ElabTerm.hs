@@ -142,6 +142,7 @@ elab ist info pattern tcgen fn tm
     local f = do e <- get_env
                  return (f `elem` map fst e)
 
+    elab' ina (PNoImplicits t) = elab' ina t -- skip elabE step
     elab' ina PType           = do apply RType []; solve
     elab' ina (PConstant c)  = do apply (RConstant c) []; solve
     elab' ina (PQuote r)     = do fill r; solve

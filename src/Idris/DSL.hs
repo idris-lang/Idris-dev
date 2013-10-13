@@ -37,6 +37,8 @@ expandDo dsl (PDPair fc l t r) = PDPair fc (expandDo dsl l) (expandDo dsl t)
                                            (expandDo dsl r)
 expandDo dsl (PAlternative a as) = PAlternative a (map (expandDo dsl) as)
 expandDo dsl (PHidden t) = PHidden (expandDo dsl t)
+expandDo dsl (PNoImplicits t) = PNoImplicits (expandDo dsl t)
+expandDo dsl (PUnifyLog t) = PUnifyLog (expandDo dsl t)
 expandDo dsl (PReturn fc) = dsl_return dsl
 expandDo dsl (PRewrite fc r t ty)
     = PRewrite fc r (expandDo dsl t) ty
@@ -90,6 +92,7 @@ var dsl n t i = v' i t where
     v' i (PHidden t)     = PHidden (v' i t)
     v' i (PIdiom f t)    = PIdiom f (v' i t)
     v' i (PDoBlock ds)   = PDoBlock (map (fmap (v' i)) ds)
+    v' i (PNoImplicits t) = PNoImplicits (v' i t)
     v' i t = t
 
     mkVar fc 0 = case index_first dsl of

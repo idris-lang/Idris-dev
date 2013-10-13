@@ -79,7 +79,12 @@ findSubList (S n) ctxt goal
 updateResTy : (xs : List EFFECT) -> EffElem e a xs -> e a b t -> 
               List EFFECT
 updateResTy {b} (MkEff a e :: xs) Here n = (MkEff b e) :: xs
-updateResTy (x :: xs) (There p) n = x :: updateResTy xs p n
+updateResTy (x :: xs)        (There p) n = x :: updateResTy xs p n
+
+updateResTyImm : (xs : List EFFECT) -> EffElem e a xs -> Type -> 
+                 List EFFECT
+updateResTyImm (MkEff a e :: xs) Here b = (MkEff b e) :: xs
+updateResTyImm (x :: xs)    (There p) b = x :: updateResTyImm xs p b
 
 infix 5 :::, :-, :=
 
@@ -111,6 +116,15 @@ data EffM : (m : Type -> Type) ->
      new     : Handler e m =>
                res -> EffM m (MkEff res e :: xs) (MkEff res' e :: xs') a ->
                EffM m xs xs' a
+     test    : (prf : EffElem e (Either l r) xs) ->
+               EffM m (updateResTyImm xs prf l) xs' t ->
+               EffM m (updateResTyImm xs prf r) xs' t ->
+               EffM m xs xs' t
+     test_lbl : {x : lbl} ->
+                (prf : EffElem e (LRes x (Either l r)) xs) ->
+                EffM m (updateResTyImm xs prf (LRes x l)) xs' t ->
+                EffM m (updateResTyImm xs prf (LRes x r)) xs' t ->
+                EffM m xs xs' t
      catch   : Catchable m err =>
                EffM m xs xs' a -> (err -> EffM m xs xs' a) ->
                EffM m xs xs' a
@@ -132,6 +146,27 @@ effect' : {a, b: _} -> {e : Effect} ->
          EffM m xs (updateResTy xs prf eff) t
 effect' {prf} e = effect prf e
 
+data WrapEffM : (m : Type -> Type) ->
+                List EFFECT -> List EFFECT -> Type -> Type where
+     WEffM : EffM m xs xs' t -> WrapEffM m xs xs' t
+
+-- wrap subprograms to prevent lifting (need to guarantee same effects as
+-- parent!)
+
+test_lbl' : {x : lbl} ->
+            {default tactics { applyTactic findEffElem 20; solve; }
+              prf : EffElem e (LRes x (Either l r)) xs} ->
+            WrapEffM m (updateResTyImm xs prf (LRes x l)) xs' t ->
+            WrapEffM m (updateResTyImm xs prf (LRes x r)) xs' t ->
+            EffM m xs xs' t
+test_lbl' {prf} (WEffM l) (WEffM r) = test_lbl prf l r
+
+test' : {default tactics { applyTactic findEffElem 20; solve; }
+              prf : EffElem e (Either l r) xs} ->
+        EffM m (updateResTyImm xs prf l) xs' t ->
+        EffM m (updateResTyImm xs prf r) xs' t ->
+        EffM m xs xs' t
+test' {prf} l r = test prf l r
 
 -- for 'do' notation
 
@@ -164,6 +199,29 @@ execEff (val :: env) Here eff' k
 execEff (val :: env) (There p) eff k 
     = execEff env p eff (\env', v => k (val :: env') v)
 
+private
+testEff : Env m xs -> (p : EffElem e (Either l r) xs) ->
+          (Env m (updateResTyImm xs p l) -> m b) ->
+          (Env m (updateResTyImm xs p r) -> m b) ->
+          m b
+testEff (Left err :: env) Here lk rk = lk (err :: env)
+testEff (Right ok :: env) Here lk rk = rk (ok :: env)
+testEff (val :: env) (There p) lk rk
+   = testEff env p (\envk => lk (val :: envk))
+                   (\envk => rk (val :: envk)) 
+
+private
+testEffLbl : {x : lbl} ->
+             Env m xs -> (p : EffElem e (LRes x (Either l r)) xs) ->
+             (Env m (updateResTyImm xs p (LRes x l)) -> m b) ->
+             (Env m (updateResTyImm xs p (LRes x r)) -> m b) ->
+             m b
+testEffLbl ((lbl := Left err) :: env) Here lk rk = lk ((lbl := err) :: env)
+testEffLbl ((lbl := Right ok) :: env) Here lk rk = rk ((lbl := ok) :: env)
+testEffLbl (val :: env) (There p) lk rk
+   = testEffLbl env p (\envk => lk (val :: envk))
+                      (\envk => rk (val :: envk)) 
+
 -- Q: Instead of m b, implement as StateT (Env m xs') m b, so that state
 -- updates can be propagated even through failing computations?
 
@@ -178,6 +236,10 @@ eff env (lift prf effP) k
 eff env (new r prog) k
    = let env' = r :: env in 
          eff env' prog (\(v :: envk), p' => k envk p')
+eff env (test prf l r) k
+   = testEff env prf (\envk => eff envk l k) (\envk => eff envk r k)
+eff env (test_lbl prf l r) k
+   = testEffLbl env prf (\envk => eff envk l k) (\envk => eff envk r k)
 eff env (catch prog handler) k
    = catch (eff env prog k)
            (\e => eff env (handler e) k)

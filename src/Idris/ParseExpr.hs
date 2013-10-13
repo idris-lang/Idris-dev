@@ -177,6 +177,7 @@ internalExpr syn =
          try (app syn)
      <|> try (matchApp syn)
      <|> try (unifyLog syn)
+     <|> try (noImplicits syn)
      <|> recordType syn
      <|> try (simpleExpr syn)
      <|> lambda syn
@@ -440,6 +441,17 @@ unifyLog syn = do lchar '%'; reserved "unifyLog";
                   tm <- simpleExpr syn
                   return (PUnifyLog tm)
                <?> "unification log expression"
+
+{- | Parses a no implicits expression
+NoImplicits ::=
+  '%' 'noImplicits' SimpleExpr
+  ;
+-}
+noImplicits :: SyntaxInfo -> IdrisParser PTerm
+noImplicits syn = do lchar '%'; reserved "noImplicits";
+                     tm <- simpleExpr syn
+                     return (PNoImplicits tm)
+                 <?> "no implicits expression"
 
 {- | Parses a function application expression
 App ::=

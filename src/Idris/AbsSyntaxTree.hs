@@ -558,6 +558,7 @@ data PTerm = PQuote Raw
            | PImpossible -- ^ Special case for declaring when an LHS can't typecheck
            | PCoerced PTerm -- ^ To mark a coerced argument, so as not to coerce twice
            | PUnifyLog PTerm -- ^ dump a trace of unifications when building term
+           | PNoImplicits PTerm -- ^ never run implicit converions on the term 
     deriving Eq
 {-! 
 deriving instance Binary PTerm 
@@ -582,6 +583,7 @@ mapPT f t = f (mpt t) where
   mpt (PProof ts) = PProof (map (fmap (mapPT f)) ts)
   mpt (PTactics ts) = PTactics (map (fmap (mapPT f)) ts)
   mpt (PUnifyLog tm) = PUnifyLog (mapPT f tm)
+  mpt (PNoImplicits tm) = PNoImplicits (mapPT f tm)
   mpt (PGoal fc r n sc) = PGoal fc (mapPT f r) n (mapPT f sc)
   mpt x = x
 
@@ -682,9 +684,9 @@ instance Sized a => Sized (PArg' a) where
 deriving instance Binary PArg' 
 !-}
 
-pimp n t = PImp 0 True n t ""
-pexp t = PExp 0 False t ""
-pconst t = PConstraint 0 False t ""
+pimp n t = PImp 1 True n t ""
+pexp t = PExp 1 False t ""
+pconst t = PConstraint 1 False t ""
 ptacimp n s t = PTacImplicit 0 True n s t ""
 
 type PArg = PArg' PTerm
@@ -1178,6 +1180,7 @@ showImp ist impl colour tm = se 10 [] tm where
     se p bnd (PElabError s) = show s
     se p bnd (PCoerced t) = se p bnd t
     se p bnd (PUnifyLog t) = "%unifyLog " ++ se p bnd t
+    se p bnd (PNoImplicits t) = "%noimplicit " ++ se p bnd t
 --     se p bnd x = "Not implemented"
 
     slist' p bnd (PApp _ (PRef _ nil) _)
@@ -1245,6 +1248,7 @@ instance Sized PTerm where
   size (PAlternative a alts) = 1 + size alts
   size (PHidden hidden) = size hidden
   size (PUnifyLog tm) = size tm
+  size (PNoImplicits tm) = size tm
   size PType = 1
   size (PConstant const) = 1 + size const
   size Placeholder = 1
@@ -1280,6 +1284,7 @@ allNamesIn tm = nub $ ni [] tm
     ni env (PDPair _ l t r)  = ni env l ++ ni env t ++ ni env r
     ni env (PAlternative a ls) = concatMap (ni env) ls
     ni env (PUnifyLog tm)    = ni env tm
+    ni env (PNoImplicits tm)    = ni env tm
     ni env _               = []
 
 -- Return names which are free in the given term.
@@ -1305,6 +1310,7 @@ namesIn uvars ist tm = nub $ ni [] tm
     ni env (PAlternative a as) = concatMap (ni env) as
     ni env (PHidden tm)    = ni env tm
     ni env (PUnifyLog tm)    = ni env tm
+    ni env (PNoImplicits tm) = ni env tm
     ni env _               = []
 
 -- Return which of the given names are used in the given term.
@@ -1330,4 +1336,6 @@ usedNamesIn vars ist tm = nub $ ni [] tm
     ni env (PAlternative a as) = concatMap (ni env) as
     ni env (PHidden tm)    = ni env tm
     ni env (PUnifyLog tm)    = ni env tm
+    ni env (PNoImplicits tm) = ni env tm
     ni env _               = []
+
