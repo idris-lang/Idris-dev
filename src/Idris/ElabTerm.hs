@@ -97,6 +97,7 @@ elab :: IState -> ElabInfo -> Bool -> Bool -> Name -> PTerm ->
 elab ist info pattern tcgen fn tm 
     = do let loglvl = opt_logLevel (idris_options ist)
          when (loglvl > 5) $ unifyLog True
+         compute -- expand type synonyms, etc
          elabE (False, False) tm -- (in argument, guarded)
          end_unify
          when pattern -- convert remaining holes to pattern vars
@@ -493,7 +494,6 @@ elab ist info pattern tcgen fn tm
                              (caseBlock fc cname' (reverse args) opts)
              -- elaborate case
              env <- get_env
-             g <- goal
              updateAux (newdef : )
              -- if we haven't got the type yet, hopefully we'll get it later!
              movelast tyn

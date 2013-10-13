@@ -160,6 +160,9 @@ Extra-source-files:
                        test/reg020/run
                        test/reg020/*.idr
                        test/reg020/expected
+                       test/reg021/run
+                       test/reg021/*.idr
+                       test/reg021/expected
                        test/test001/run
                        test/test001/*.idr
                        test/test001/expected
