@@ -20,7 +20,7 @@ import LLVM.General.Target ( TargetMachine
                            )
 import LLVM.General.AST.DataLayout
 import qualified LLVM.General.PassManager as PM
-import qualified LLVM.General.Module as M
+import qualified LLVM.General.Module as MO
 import qualified LLVM.General.AST.IntegerPredicate as IPred
 import qualified LLVM.General.AST.Linkage as L
 import qualified LLVM.General.AST.Visibility as V
@@ -36,9 +36,9 @@ import qualified LLVM.General.CodeGenOpt as CGO
 import Data.List
 import Data.Maybe
 import Data.Word
-import Data.Set (Set)
-import qualified Data.Set as S
+import Data.Map (Map)
 import qualified Data.Map as M
+import qualified Data.Set as S
 import qualified Data.Vector.Unboxed as V
 import Control.Applicative
 import Control.Monad.RWS
@@ -70,7 +70,7 @@ codegenLLVM defs triple cpu optimize file outty = withContext $ \context -> do
       withTargetMachine target triple cpu S.empty options R.Default CM.Default CGO.Default $ \tm ->
           do layout <- getTargetMachineDataLayout tm
              let ast = codegen (Target triple layout) (map snd defs)
-             result <- runErrorT .  M.withModuleFromAST context ast $ \m ->
+             result <- runErrorT .  MO.withModuleFromAST context ast $ \m ->
                        do let opts = PM.defaultCuratedPassSetSpec
                                      { PM.optLevel = Just optimize
                                      , PM.simplifyLibCalls = Just True
@@ -85,9 +85,9 @@ codegenLLVM defs triple cpu optimize file outty = withContext $ \context -> do
 failInIO :: ErrorT String IO a -> IO a
 failInIO = either fail return <=< runErrorT
 
-outputModule :: TargetMachine -> FilePath -> OutputType -> M.Module -> IO ()
-outputModule _  file Raw    m = failInIO $ M.writeBitcodeToFile file m
-outputModule tm file Object m = failInIO $ M.writeObjectToFile tm file m
+outputModule :: TargetMachine -> FilePath -> OutputType -> MO.Module -> IO ()
+outputModule _  file Raw    m = failInIO $ MO.writeBitcodeToFile file m
+outputModule tm file Object m = failInIO $ MO.writeObjectToFile tm file m
 outputModule tm file Executable m = withTmpFile $ \obj -> do
   outputModule tm obj Object m
   cc <- getCC
@@ -193,6 +193,7 @@ initDefs tgt =
     , exfun "__idris_gmpFree" VoidType [ptrI8, intPtr] False
     , exfun "__idris_strRev" ptrI8 [ptrI8] False
     , exfun "strtoll" (IntegerType 64) [ptrI8, PointerType ptrI8 (AddrSpace 0), IntegerType 32] False
+    , exfun "putErr" VoidType [ptrI8] False
     , exVar (stdinName tgt) ptrI8
     , exVar (stdoutName tgt) ptrI8
     , exVar (stderrName tgt) ptrI8
@@ -244,7 +245,7 @@ getStdErr = ConstantOperand . C.GlobalReference . Name . stderrName <$> asks tar
 codegen :: Target -> [SDecl] -> Module
 codegen tgt defs = Module "idris" (Just . dataLayout $ tgt) (Just . triple $ tgt) (initDefs tgt ++ globals ++ gendefs)
     where
-      (gendefs, _, globals) = runRWS (mapM cgDef defs) tgt 0
+      (gendefs, _, globals) = runRWS (mapM cgDef defs) tgt initialMGS
 
 valueType :: Type
 valueType = NamedTypeReference (Name "valTy")
@@ -264,24 +265,34 @@ conType nargs = StructureType False
                 , ArrayType nargs (PointerType valueType (AddrSpace 0))
                 ]
 
-type Modgen = RWS Target [Definition] Word
+data MGS = MGS { mgsNextGlobalName :: Word
+               , mgsForeignSyms :: Map String (FType, [FType])
+               }
+
+type Modgen = RWS Target [Definition] MGS
+
+initialMGS :: MGS
+initialMGS = MGS { mgsNextGlobalName = 0
+                 , mgsForeignSyms = M.empty
+                 }
 
 cgDef :: SDecl -> Modgen Definition
 cgDef (SFun name argNames _ expr) = do
-  nextGlobal <- get
+  nextGlobal <- gets mgsNextGlobalName
+  existingForeignSyms <- gets mgsForeignSyms
   tgt <- ask
-  let (_, CGS { nextGlobalName = nextGlobal' }, (allocas, bbs, globals)) =
+  let (_, CGS { nextGlobalName = nextGlobal', foreignSyms = foreignSyms' }, (allocas, bbs, globals)) =
           runRWS (do r <- cgExpr expr
                      case r of
                        Nothing -> terminate $ Unreachable []
                        Just r' -> terminate $ Ret (Just r') [])
                  (CGR tgt (show name))
-                 (CGS 0 nextGlobal (Name "begin") [] (map (Just . LocalReference . Name . show) argNames) S.empty)
+                 (CGS 0 nextGlobal (Name "begin") [] (map (Just . LocalReference . Name . show) argNames) existingForeignSyms)
       entryTerm = case bbs of
                     [] -> Do $ Ret Nothing []
                     BasicBlock n _ _:_ -> Do $ Br n []
   tell globals
-  put nextGlobal'
+  put (MGS { mgsNextGlobalName = nextGlobal', mgsForeignSyms = foreignSyms' })
   return . GlobalDefinition $ functionDefaults
              { G.linkage = L.Internal
              , G.callingConvention = CC.Fast
@@ -306,7 +317,7 @@ data CGS = CGS { nextName :: Word
                , currentBlockName :: Name
                , instAccum :: [Named Instruction]
                , lexenv :: Env
-               , foreignSyms :: Set String
+               , foreignSyms :: Map String (FType, [FType])
                }
 
 data CGR = CGR { target :: Target
@@ -524,10 +535,10 @@ cgExpr (SOp fn args) = do
     Just ops -> Just <$> cgOp fn ops
     Nothing -> return Nothing
 cgExpr SNothing = return . Just . ConstantOperand $ nullValue
-cgExpr (SError msg) = do -- TODO: Print message
+cgExpr (SError msg) = do
   str <- addGlobal' (ArrayType (2 + fromIntegral (length msg)) (IntegerType 8))
          (cgConst' (TT.Str (msg ++ "\n")))
-  inst' $ simpleCall "putStr" [ConstantOperand $ C.GetElementPtr True str [ C.Int 32 0
+  inst' $ simpleCall "putErr" [ConstantOperand $ C.GetElementPtr True str [ C.Int 32 0
                                                                           , C.Int 32 0]]
   inst' Call { isTailCall = True
              , callingConvention = CC.C
@@ -799,9 +810,11 @@ addGlobal' ty val = do
 ensureCDecl :: String -> FType -> [FType] -> Codegen Operand
 ensureCDecl name rty argtys = do
   syms <- gets foreignSyms
-  unless (S.member name syms) $
-         do addGlobal (ffunDecl name rty argtys)
-            modify $ \s -> s { foreignSyms = S.insert name (foreignSyms s) }
+  case M.lookup name syms of
+    Nothing -> do addGlobal (ffunDecl name rty argtys)
+                  modify $ \s -> s { foreignSyms = M.insert name (rty, argtys) (foreignSyms s) }
+    Just (rty', argtys') -> unless (rty == rty' && argtys == argtys') . fail $
+                            "Mismatched type declarations for foreign symbol \"" ++ name ++ "\": " ++ show (rty, argtys) ++ " vs " ++ show (rty', argtys')
   return $ ConstantOperand (C.GlobalReference (Name name))
 
 ffunDecl :: String -> FType -> [FType] -> Global
