@@ -93,8 +93,6 @@ Extra-source-files:
                        javascript/Makefile
                        javascript/javascript.ipkg
 
-                       js/*.js
-
                        llvm/*.c
                        llvm/Makefile
 
