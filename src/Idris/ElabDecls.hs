@@ -1010,6 +1010,8 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in withblock)
         wb <- mapM (mkAuxC wname lhs (map fst bargs_pre) (map fst bargs_post))
                        withblock
         logLvl 3 ("with block " ++ show wb)
+        -- propagate totality assertion to the new definitions
+        when (AssertTotal `elem` opts) $ setFlags wname [AssertTotal]
         mapM_ (elabDecl EAll info) wb
 
         -- rhs becomes: fname' ps wval
@@ -1501,6 +1503,9 @@ elabDecl' what info (PMutual f ps)
          mapM_ (elabDecl EDefns info) ps
          -- Do totality checking after entire mutual block
          i <- get
+         mapM_ (\n -> do logLvl 5 $ "Simplifying " ++ show n
+                         updateContext (simplifyCasedef n))
+                 (map snd (idris_totcheck i))
          mapM_ buildSCG (idris_totcheck i)
          mapM_ checkDeclTotality (idris_totcheck i)
          clear_totcheck

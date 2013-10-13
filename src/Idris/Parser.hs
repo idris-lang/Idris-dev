@@ -1030,6 +1030,7 @@ loadSource lidr f
 
     toMutual :: PDecl -> PDecl
     toMutual m@(PMutual _ d) = m
+    toMutual (PNamespace x ds) = PNamespace x (map toMutual ds)
     toMutual x = let r = PMutual (FC "single mutual" 0) [x] in
                  case x of
                    PClauses _ _ _ _ -> r
