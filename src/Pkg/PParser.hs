@@ -67,11 +67,11 @@ pPkg = do reserved "package"; p <- identifier
 
 pClause :: PParser ()
 pClause = do reserved "executable"; lchar '=';
-             exec <- iName []
+             exec <- iModuleName []
              st <- getState
              setState (st { execout = Just (show exec) })
       <|> do reserved "main"; lchar '=';
-             main <- iName []
+             main <- iModuleName []
              st <- getState
              setState (st { idris_main = main })
       <|> do reserved "sourcedir"; lchar '=';
@@ -84,7 +84,7 @@ pClause = do reserved "executable"; lchar '=';
              let args = parseArgs (words opts)
              setState (st { idris_opts = args })
       <|> do reserved "modules"; lchar '=';
-             ms <- sepBy1 (iName []) (lchar ',') 
+             ms <- sepBy1 (iModuleName []) (lchar ',')
              st <- getState
              setState (st { modules = modules st ++ ms })
       <|> do reserved "libs"; lchar '=';

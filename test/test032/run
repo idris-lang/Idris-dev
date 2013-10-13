@@ -1,0 +1,12 @@
+#!/bin/bash
+
+idris --build test.ibc
+idris --clean test.ibc
+
+if [ -f "Test/String.ibc" ]; then
+	echo "String.ibc still exists!"
+else
+	echo "String.ibc does not exist."
+fi
+
+rm -f Test/String.ibc

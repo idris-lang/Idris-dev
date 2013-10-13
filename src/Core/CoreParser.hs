@@ -1,6 +1,6 @@
 {-# LANGUAGE MultiParamTypeClasses, FlexibleInstances #-}
 
-module Core.CoreParser(parseTerm, parseFile, parseDef, pTerm, iName, 
+module Core.CoreParser(parseTerm, parseFile, parseDef, pTerm, iName, iModuleName,
                        idrisLexer, maybeWithNS, pDocComment, opChars) where
 
 import Core.TT
@@ -92,6 +92,9 @@ operator  = PTok.operator lexer
 reservedOp= PTok.reservedOp lexer
 strlit    = PTok.stringLiteral lexer
 lchar = lexeme.char
+modulename= liftM2 (:) (satisfy isAlpha) (many $ satisfy isIdent)
+  where
+    isIdent c = isAlphaNum c || c == '_'
 
 type CParser a = GenParser Char a
 
@@ -105,6 +108,9 @@ pTestFile = do p <- many1 pDef ; eof
 
 iName :: [String] -> CParser a Name
 iName bad = maybeWithNS identifier False bad
+
+iModuleName :: [String] -> CParser a Name
+iModuleName bad = maybeWithNS modulename False bad
 
 -- Enhances a given parser to accept an optional namespace.  All possible
 -- namespace prefixes are tried in ascending / descending order, and
