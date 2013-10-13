@@ -47,6 +47,9 @@ instance Show Bool where
     show True = "True"
     show False = "False"
 
+instance Show () where
+  show () = "()"
+
 instance Show Bits8 where
   show = prim__toStrB8
 
