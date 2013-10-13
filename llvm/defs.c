@@ -11,6 +11,10 @@ void putStr(const char *str) {
   fputs(str, stdout);
 }
 
+void putErr(const char *str) {
+  fputs(str, stderr);
+}
+
 void mpz_init_set_ull(mpz_t n, unsigned long long ull)
 {
   mpz_init_set_ui(n, (unsigned int)(ull >> 32)); /* n = (unsigned int)(ull >> 32) */

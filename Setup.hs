@@ -134,7 +134,7 @@ idrisInstall verbosity copy pkg local = do
       installLLVM = do
          let target' = target </> "llvm"
          putStrLn $ "Installing LLVM library in " ++ target
-         makeInstall "llvm" target
+         makeInstall "llvm" target'
 
       makeInstall src target =
          make verbosity [ "-C", src, "install" , "TARGET=" ++ target, "IDRIS=" ++ idrisCmd local]

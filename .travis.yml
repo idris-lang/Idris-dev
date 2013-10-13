@@ -13,4 +13,4 @@ script:
   - cabal build
   - cabal copy
   - make test
-
+  - make test_llvm

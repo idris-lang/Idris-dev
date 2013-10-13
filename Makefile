@@ -19,6 +19,9 @@ test:
 test_java:
 	$(MAKE) -C test IDRIS=../dist/build/idris test_java
 
+test_llvm:
+	$(MAKE) -C test IDRIS=../dist/build/idris test_llvm
+
 relib:
 	$(MAKE) -C lib IDRIS=../dist/build/idris/idris RTS=../dist/build/rts/libidris_rts clean
 	$(MAKE) -C effects IDRIS=../dist/build/idris/idris RTS=../dist/build/rts/libidris_rts DIST=../dist/build clean
