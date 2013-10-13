@@ -1,0 +1,3 @@
+Type checking ./Test/String.idr
+Removing Test/String.ibc
+String.ibc does not exist.
