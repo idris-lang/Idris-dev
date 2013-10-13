@@ -37,9 +37,9 @@ prover lit x =
 
 showProof :: Bool -> Name -> [String] -> String
 showProof lit n ps 
-    = bird ++ show n ++ " = proof {" ++ break ++
-             showSep break (map (\x -> "  " ++ x ++ ";") ps) ++
-                     break ++ "}\n"
+    = bird ++ show n ++ " = proof" ++ break ++
+             showSep break (map (\x -> "  " ++ x) ps) ++
+                     break ++ "\n"
   where bird = if lit then "> " else ""
         break = "\n" ++ bird
 

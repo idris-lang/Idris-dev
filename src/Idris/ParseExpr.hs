@@ -324,7 +324,7 @@ bracketed syn =
                 lchar ')'
                 return (PDPair fc l Placeholder r)
         <|> try(do fc0 <- getFC
-                   l <- simpleExpr syn
+                   l <- expr' syn
                    o <- operator
                    lchar ')'
                    return $ PLam (MN 1000 "ARG") Placeholder
