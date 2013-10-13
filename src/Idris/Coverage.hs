@@ -346,7 +346,6 @@ checkTotality path fc n
                             -- if it's not total, it can't reduce, to keep
                             -- typechecking decidable
                                case t' of
--- FIXME: Put this back when we can handle mutually recursive things
                                  p@(Partial _) -> 
                                      do setAccessibility n Frozen 
                                         addIBC (IBCAccess n Frozen)
