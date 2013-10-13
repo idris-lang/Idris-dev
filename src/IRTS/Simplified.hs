@@ -46,7 +46,7 @@ simplify :: Bool -> DExp -> State (DDefs, Int) SExp
 simplify tl (DV (Loc i)) = return (SV (Loc i))
 simplify tl (DV (Glob x)) 
     = do ctxt <- ldefs
-         case lookupCtxt x ctxt of
+         case lookupCtxtExact x ctxt of
               [DConstructor _ t 0] -> return $ SCon t x []
               _ -> return $ SV (Glob x)
 simplify tl (DApp tc n args) = do args' <- mapM sVar args
@@ -88,7 +88,7 @@ simplify tl (DError str) = return $ SError str
 
 sVar (DV (Glob x))
     = do ctxt <- ldefs
-         case lookupCtxt x ctxt of
+         case lookupCtxtExact x ctxt of
               [DConstructor _ t 0] -> sVar (DC t x [])
               _ -> return (Glob x, Nothing)
 sVar (DV x) = return (x, Nothing)
@@ -136,7 +136,7 @@ scopecheck ctxt envTop tm = sc envTop tm where
     sc env (SV (Glob n)) =
        case lookup n (reverse env) of -- most recent first
               Just i -> do lvar i; return (SV (Loc i))
-              Nothing -> case lookupCtxt n ctxt of
+              Nothing -> case lookupCtxtExact n ctxt of
                               [DConstructor _ i ar] ->
                                   if True -- ar == 0 
                                      then return (SCon i n [])
@@ -146,7 +146,7 @@ scopecheck ctxt envTop tm = sc envTop tm where
                               [] -> fail $ "Codegen error: No such variable " ++ show n
     sc env (SApp tc f args)
        = do args' <- mapM (scVar env) args
-            case lookupCtxt f ctxt of
+            case lookupCtxtExact f ctxt of
                 [DConstructor n tag ar] ->
                     if True -- (ar == length args)
                        then return $ SCon tag n args'
@@ -160,7 +160,7 @@ scopecheck ctxt envTop tm = sc envTop tm where
             return $ SForeign l ty f args'
     sc env (SCon tag f args)
        = do args' <- mapM (scVar env) args
-            case lookupCtxt f ctxt of
+            case lookupCtxtExact f ctxt of
                 [DConstructor n tag ar] ->
                     if True -- (ar == length args)
                        then return $ SCon tag n args'
@@ -197,7 +197,7 @@ scopecheck ctxt envTop tm = sc envTop tm where
     scVar env (Glob n) =
        case lookup n (reverse env) of -- most recent first
               Just i -> do lvar i; return (Loc i)
-              Nothing -> case lookupCtxt n ctxt of
+              Nothing -> case lookupCtxtExact n ctxt of
                               [DConstructor _ i ar] ->
                                   fail $ "Codegen error : can't pass constructor here"
                               [_] -> return (Glob n)
@@ -207,7 +207,7 @@ scopecheck ctxt envTop tm = sc envTop tm where
 
     scalt env (SConCase _ i n args e)
        = do let env' = env ++ zip args [length env..]
-            tag <- case lookupCtxt n ctxt of
+            tag <- case lookupCtxtExact n ctxt of
                         [DConstructor _ i ar] -> 
                              if True -- (length args == ar) 
                                 then return i

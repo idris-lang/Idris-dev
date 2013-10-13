@@ -309,6 +309,9 @@ lookupCtxtName n ctxt = case Map.lookup (nsroot n) ctxt of
 lookupCtxt :: Name -> Ctxt a -> [a]
 lookupCtxt n ctxt = map snd (lookupCtxtName n ctxt)
 
+lookupCtxtExact :: Name -> Ctxt a -> [a]
+lookupCtxtExact n ctxt = [ v | (nm, v) <- lookupCtxtName n ctxt, nm == n]
+
 updateDef :: Name -> (a -> a) -> Ctxt a -> Ctxt a
 updateDef n f ctxt 
   = let ds = lookupCtxtName n ctxt in
