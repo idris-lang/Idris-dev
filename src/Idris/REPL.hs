@@ -56,6 +56,7 @@ import System.Process
 import System.Directory
 import System.IO
 import Control.Monad
+import Control.Monad.Trans.Error (ErrorT(..))
 import Control.Monad.Trans.State.Strict ( StateT, execStateT, get, put )
 import Control.Monad.Trans ( liftIO, lift )
 import Data.Maybe
@@ -250,7 +251,7 @@ processInput cmd orig inputs
             Success Quit -> do when (not quiet) (iputStrLn "Bye bye")
                                return Nothing
             Success cmd  -> do idrisCatch (process fn cmd)
-                                          (\e -> iputStrLn (show e))
+                                          (\e -> do msg <- showErr e ; iputStrLn msg)
                                return (Just inputs)
 
 resolveProof :: Name -> Idris Name
@@ -541,7 +542,7 @@ process fn (Missing n)
                   _ -> iFail $ "Ambiguous name"
 process fn (DynamicLink l) = do i <- getIState
                                 let lib = trim l
-                                handle <- lift $ tryLoadLib lib
+                                handle <- lift . lift $ tryLoadLib lib
                                 case handle of
                                   Nothing -> iFail $ "Could not load dynamic lib \"" ++ l ++ "\""
                                   Just x -> do let libs = idris_dynamic_libs i
@@ -686,8 +687,12 @@ replSettings hFile = setComplete replCompletion $ defaultSettings {
                      }
 
 -- invoke as if from command line
-idris :: [Opt] -> IO IState
-idris opts = execStateT (idrisMain opts) idrisInit
+idris :: [Opt] -> IO ()
+idris opts = do res <- runErrorT $ execStateT (idrisMain opts) idrisInit
+                case res of
+                  Left err -> putStrLn $ pshow idrisInit err
+                  Right ist -> return ()
+
 
 loadInputs :: [FilePath] -> Idris ()
 loadInputs inputs
@@ -888,7 +893,7 @@ initScript = do script <- getInitScript
                                  liftIO $ hClose h)
                            (\e -> iFail $ "Error reading init file: " ++ show e)
     where runInit :: Handle -> Idris ()
-          runInit h = do eof <- lift (hIsEOF h)
+          runInit h = do eof <- lift . lift $ hIsEOF h
                          ist <- getIState
                          unless eof $ do
                            line <- liftIO $ hGetLine h

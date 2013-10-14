@@ -60,7 +60,7 @@ addDyLib libs = do i <- getIState
                    case mapMaybe (findDyLib ls) libs of
                      x:_ -> return (Left x)
                      [] -> do
-                       handle <- lift $ mapM (\l -> catchIO (tryLoadLib l) (\_ -> return Nothing)) $ libs
+                       handle <- lift . lift $ mapM (\l -> catchIO (tryLoadLib l) (\_ -> return Nothing)) $ libs
                        case msum handle of
                          Nothing -> return (Right $ "Could not load dynamic alternatives \"" ++
                                                     concat (intersperse "," libs) ++ "\"")
