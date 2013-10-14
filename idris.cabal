@@ -376,7 +376,7 @@ Executable idris
                 , libffi
                 , mtl
                 , parsec >= 3
-                , parsers >= 0.9
+                , parsers == 0.9
                 , pretty
                 , process
                 , split
