@@ -337,7 +337,8 @@ unify ctxt env topx topy dont holes =
                      unArgs vs xs ys
 
             metavarApp tm = let (f, args) = unApply tm in
-                                all (\x -> metavar x) (f : args)
+                                metavar f &&
+                                all (\x -> metavarApp x) args
                                    && nub args == args
             metavarArgs tm = let (f, args) = unApply tm in
                                  all (\x -> metavar x || inenv x) args
