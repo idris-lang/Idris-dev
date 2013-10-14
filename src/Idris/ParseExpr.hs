@@ -179,13 +179,13 @@ internalExpr syn =
      <|> try (unifyLog syn)
      <|> try (noImplicits syn)
      <|> recordType syn
-     <|> try (simpleExpr syn)
      <|> lambda syn
      <|> quoteGoal syn
      <|> let_ syn
      <|> rewriteTerm syn
-     <|> pi syn
+     <|> try(pi syn)
      <|> doBlock syn
+     <|> simpleExpr syn
      <?> "expression"
 
 {- | Parses a case expression
@@ -266,22 +266,22 @@ simpleExpr syn =
         <|> proofExpr syn
         <|> tacticsExpr syn
         <|> caseExpr syn
-        <|> try (do fc <- getFC
-                    x <- fnName
-                    return (PRef fc x))
+        <|> do reserved "Type"; return PType
+        <|> do fc <- getFC
+               x <- fnName
+               return (PRef fc x)
         <|> try (listExpr syn)
         <|> try (comprehension syn)
-        <|> try (alt syn)
-        <|> try (idiom syn)
+        <|> alt syn
+        <|> idiom syn
         <|> do lchar '('
                bracketed (disallowImp syn)
-        <|> try (do c <- constant
-                    fc <- getFC
-                    return (modifyConst syn fc (PConstant c)))
-        <|> do reserved "Type"; return PType
-        <|> try (do symbol "_|_"
-                    fc <- getFC
-                    return (PFalse fc))
+        <|> do c <- constant
+               fc <- getFC
+               return (modifyConst syn fc (PConstant c))
+        <|> do symbol "_|_"
+               fc <- getFC
+               return (PFalse fc)
         <|> do lchar '_'; return Placeholder
         <|> simpleExternalExpr syn
         <?> "expression"
