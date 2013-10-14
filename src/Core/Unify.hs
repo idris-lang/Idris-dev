@@ -34,7 +34,7 @@ data UResult a = UOK a
 match_unify :: Context -> Env -> TT Name -> TT Name -> [Name] -> [Name] ->
                TC [(Name, TT Name)]
 match_unify ctxt env topx topy dont holes =
---    trace ("Matching " ++ show (topx, topy)) $
+--   trace ("Matching " ++ show (topx, topy)) $
      case runStateT (un [] topx topy) (UI 0 []) of
         OK (v, UI _ []) -> return (filter notTrivial v)
         res -> 
@@ -56,6 +56,10 @@ match_unify ctxt env topx topy dont holes =
         | fst (bnames!!i) == x || snd (bnames!!i) == x = do sc 1; return []
     un bnames (P _ x _) (V i)
         | fst (bnames!!i) == x || snd (bnames!!i) == x = do sc 1; return []
+    un bnames (Bind x bx sx) (Bind y by sy)
+        = do h1 <- uB bnames bx by
+             h2 <- un ((x, y) : bnames) sx sy
+             combine bnames h1 h2
     un names (App fx ax) (App fy ay)
         = do hf <- un names fx fy 
              ha <- un names ax ay
@@ -70,6 +74,19 @@ match_unify ctxt env topx topy dont holes =
                            else do put (UI s ((x, y, env, err) : f))
                                    lift $ tfail err
 
+
+    uB bnames (Let tx vx) (Let ty vy) = do h1 <- un bnames tx ty
+                                           h2 <- un bnames vx vy
+                                           combine bnames h1 h2
+    uB bnames (Lam tx) (Lam ty) = un bnames tx ty
+    uB bnames (Pi tx) (Pi ty) = un bnames tx ty
+    uB bnames x y = do UI s f <- get
+                       let r = recoverable (binderTy x) (binderTy y)
+                       let err = CantUnify r topx topy 
+                                  (CantUnify r (binderTy x) (binderTy y) (Msg "") [] s)
+                                  (errEnv env) s
+                       put (UI s ((binderTy x, binderTy y, env, err) : f))
+                       return []
 
     -- TODO: there's an annoying amount of repetition between this and the
     -- main unification function. Consider lifting it out.
@@ -391,12 +408,12 @@ unify ctxt env topx topy dont holes =
 
     uB bnames (Let tx vx) (Let ty vy)
         = do h1 <- un' False bnames tx ty
-             h2 <- un' False bnames ty vy
+             h2 <- un' False bnames vx vy
              sc 1
              combine bnames h1 h2
     uB bnames (Guess tx vx) (Guess ty vy)
         = do h1 <- un' False bnames tx ty
-             h2 <- un' False bnames ty vy
+             h2 <- un' False bnames vx vy
              sc 1
              combine bnames h1 h2
     uB bnames (Lam tx) (Lam ty) = do sc 1; un' False bnames tx ty

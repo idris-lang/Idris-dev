@@ -726,7 +726,8 @@ resolveTC depth fn ist
                                 [] -> []
                                 [args] -> map isImp (snd args) -- won't be overloaded!
                 ps <- get_probs
-                args <- apply (Var n) imps
+                args <- -- try (apply (Var n) imps)
+                              (match_apply (Var n) imps)
                 ps' <- get_probs
                 when (length ps < length ps') $ fail "Can't apply type class"
 --                 traceWhen (all boundVar ttypes) ("Progress: " ++ show t ++ " with " ++ show n) $
