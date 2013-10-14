@@ -60,7 +60,8 @@ genClauses fc n xs given
                         _ -> repeat (pexp Placeholder)
         let tryclauses = mkClauses parg all_args
         logLvl 2 $ show (length tryclauses) ++ " initially to check"
-        let new = filter (noMatch i) (mnub i tryclauses)
+        logLvl 5 $ showSep "\n" (map (showImp Nothing True False) tryclauses)
+        let new = filter (noMatch i) (nub tryclauses) 
         logLvl 1 $ show (length new) ++ " clauses to check for impossibility"
         logLvl 5 $ "New clauses: \n" ++ showSep "\n" (map (showImp Nothing True False) new)
 --           ++ " from:\n" ++ showSep "\n" (map (showImp True) tryclauses) 
@@ -72,18 +73,6 @@ genClauses fc n xs given
 
         lhsApp (PClause _ _ l _ _ _) = l
         lhsApp (PWith _ _ l _ _ _) = l
-
-        mnub i [] = []
-        mnub i (x : xs) = 
-            let xs' = filter (\t -> case matchClause i x t of
-                                         Right _ -> False
-                                         Left _ -> True) xs in
-                x : mnub i xs'
-
---             if (any (\t -> case matchClause i x t of
---                                 Right _ -> True
---                                 Left _ -> False) xs) then mnub i xs 
---                                                      else x : mnub i xs
 
         noMatch i tm = all (\x -> case matchClause i (delab' i x True) tm of
                                           Right _ -> False
@@ -188,11 +177,9 @@ genAll i args
     otherPats o@(PConstant c) = return o
     otherPats arg = return Placeholder 
 
-    ops fc n xs_in o
+    ops fc n xs o
         | (TyDecl c@(DCon _ arity) ty : _) <- lookupDef n (tt_ctxt i)
-            = do let force = getForceable i n -- no need to generate forceable positions
-                 let xs = dropForce force xs_in 0 
-                 xs' <- mapM otherPats (map getExpTm xs)
+            = do xs' <- mapM otherPats (map getExpTm xs)
                  let p = resugar (PApp fc (PRef fc n) (zipWith upd xs' xs))
                  let tyn = getTy n (tt_ctxt i)
                  case lookupCtxt tyn (idris_datatypes i) of
