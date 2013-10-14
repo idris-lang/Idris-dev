@@ -154,3 +154,29 @@ instance DecEq a => DecEq (List a) where
       decEq (x :: xs) (y :: ys) | (No p) | (No p') = No (\eq => lemma_x_neq_xs_neq p p' eq)
 
 
+--------------------------------------------------------------------------------
+-- Vect
+--------------------------------------------------------------------------------
+
+total
+vectInjective1 : {xs, ys : Vect n a} -> {x, y : a} -> x :: xs = y :: ys -> x = y
+vectInjective1 {x=x} {y=x} {xs=xs} {ys=xs} refl = refl
+
+total
+vectInjective2 : {xs, ys : Vect n a} -> {x, y : a} -> x :: xs = y :: ys -> xs = ys
+vectInjective2 {x=x} {y=x} {xs=xs} {ys=xs} refl = refl
+
+total
+vectLemma : {xs, ys : Vect n a} -> {x, y : a} -> x = y -> xs = ys -> x :: xs = y :: ys
+vectLemma {xs=xs} {ys=xs} {x=x} {y=x} refl refl = refl
+
+total
+vectDecEq : DecEq a => (x1 : Vect n a) -> (x2 : Vect n a) -> Dec (x1 = x2)
+vectDecEq [] [] = Yes refl
+vectDecEq (x :: xs) (y :: ys) with (decEq x y, vectDecEq xs ys)
+  vectDecEq (x :: xs) (x :: xs) | (Yes eqHd, Yes eqTl) = Yes (vectLemma eqHd eqTl)
+  vectDecEq (x :: xs) (y :: ys) | (_, No nEqTl) = No (\p => nEqTl (vectInjective2 p))
+  vectDecEq (x :: xs) (y :: ys) | (No nEqHd, _) = No (\p => nEqHd (vectInjective1 p))
+
+instance DecEq a => DecEq (Vect n a) where
+  decEq = vectDecEq
