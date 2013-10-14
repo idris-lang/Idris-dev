@@ -659,6 +659,7 @@ type PDo = PDo' PTerm
 -- TODO: priority no longer serves any purpose, drop it!
 
 data PArg' t = PImp { priority :: Int, 
+                      machine_inf :: Bool, -- true if the machine inferred it
                       lazyarg :: Bool, pname :: Name, getTm :: t,
                       pargdoc :: String }
              | PExp { priority :: Int,
@@ -675,7 +676,7 @@ data PArg' t = PImp { priority :: Int,
     deriving (Show, Eq, Functor)
 
 instance Sized a => Sized (PArg' a) where
-  size (PImp p l nm trm _) = 1 + size nm + size trm
+  size (PImp p _ l nm trm _) = 1 + size nm + size trm
   size (PExp p l trm _) = 1 + size trm
   size (PConstraint p l trm _) = 1 + size trm
   size (PTacImplicit p l nm scr trm _) = 1 + size nm + size scr + size trm
@@ -684,7 +685,7 @@ instance Sized a => Sized (PArg' a) where
 deriving instance Binary PArg' 
 !-}
 
-pimp n t = PImp 1 True n t ""
+pimp n t mach = PImp 1 mach True n t ""
 pexp t = PExp 1 False t ""
 pconst t = PConstraint 1 False t ""
 ptacimp n s t = PTacImplicit 0 True n s t ""
@@ -851,7 +852,7 @@ showDImp impl (PDatadecl n ty cons)
 
 getImps :: [PArg] -> [(Name, PTerm)]
 getImps [] = []
-getImps (PImp _ _ n tm _ : xs) = (n, tm) : getImps xs
+getImps (PImp _ _ _ n tm _ : xs) = (n, tm) : getImps xs
 getImps (_ : xs) = getImps xs
 
 getExps :: [PArg] -> [PTerm]
@@ -1043,7 +1044,7 @@ prettyImp impl = prettySe 10
 
     prettySe p _ = text "test"
 
-    prettyArgS (PImp _ _ n tm _) = prettyArgSi (n, tm)
+    prettyArgS (PImp _ _ _ n tm _) = prettyArgSi (n, tm)
     prettyArgS (PExp _ _ tm _)   = prettyArgSe tm
     prettyArgS (PConstraint _ _ tm _) = prettyArgSc tm
     prettyArgS (PTacImplicit _ _ n _ tm _) = prettyArgSti (n, tm)
@@ -1214,7 +1215,7 @@ showImp ist impl colour tm = se 10 [] tm where
 
     natns = "Prelude.Nat."
 
-    sArg bnd (PImp _ _ n tm _) = siArg bnd (n, tm)
+    sArg bnd (PImp _ _ _ n tm _) = siArg bnd (n, tm)
     sArg bnd (PExp _ _ tm _) = seArg bnd tm
     sArg bnd (PConstraint _ _ tm _) = scArg bnd tm
     sArg bnd (PTacImplicit _ _ n _ tm _) = stiArg bnd (n, tm)

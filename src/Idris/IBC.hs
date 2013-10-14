@@ -23,7 +23,7 @@ import Debug.Trace
 import Paths_idris
 
 ibcVersion :: Word8
-ibcVersion = 39
+ibcVersion = 41
 
 data IBCFile = IBCFile { ver :: Word8,
                          sourcefile :: FilePath,
@@ -1624,13 +1624,14 @@ instance (Binary t) => Binary (PDo' t) where
 instance (Binary t) => Binary (PArg' t) where
         put x
           = case x of
-                PImp x1 x2 x3 x4 x5 -> 
+                PImp x1 x2 x3 x4 x5 x6 -> 
                                     do putWord8 0
                                        put x1
                                        put x2
                                        put x3
                                        put x4
                                        put x5
+                                       put x6
                 PExp x1 x2 x3 x4 -> 
                                  do putWord8 1
                                     put x1
@@ -1659,7 +1660,8 @@ instance (Binary t) => Binary (PArg' t) where
                            x3 <- get
                            x4 <- get
                            x5 <- get
-                           return (PImp x1 x2 x3 x4 x5)
+                           x6 <- get
+                           return (PImp x1 x2 x3 x4 x5 x6)
                    1 -> do x1 <- get
                            x2 <- get
                            x3 <- get

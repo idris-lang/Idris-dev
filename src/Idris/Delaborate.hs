@@ -42,7 +42,7 @@ delabTy' ist imps tm fullname = de [] imps tm
                        | otherwise = PRef un (dens n)
     de env _ (Bind n (Lam ty) sc) 
           = PLam n (de env [] ty) (de ((n,n):env) [] sc)
-    de env (PImp _ _ _ _ _:is) (Bind n (Pi ty) sc) 
+    de env (PImp _ _ _ _ _ _:is) (Bind n (Pi ty) sc) 
           = PPi impl n (de env [] ty) (de ((n,n):env) is sc)
     de env (PConstraint _ _ _ _:is) (Bind n (Pi ty) sc) 
           = PPi constraint n (de env [] ty) (de ((n,n):env) is sc)
@@ -88,7 +88,7 @@ delabTy' ist imps tm fullname = de [] imps tm
             = PApp un (PRef un n) (zipWith imp (imps ++ repeat (pexp undefined)) args)
         | otherwise = PApp un (PRef un n) (map pexp args)
 
-    imp (PImp p l n _ d) arg = PImp p l n arg d
+    imp (PImp p m l n _ d) arg = PImp p m l n arg d
     imp (PExp p l _ d)   arg = PExp p l arg d
     imp (PConstraint p l _ d) arg = PConstraint p l arg d
     imp (PTacImplicit p l n sc _ d) arg = PTacImplicit p l n sc arg d

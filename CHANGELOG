@@ -14,7 +14,9 @@ New in 0.9.10:
 Internal changes
 
 * New module/dependency tree checking
+* Improved type class resolution
 * Compiling Nat via GMP integers
+* Performance improvements in elaboration
 
 New in 0.9.9:
 -------------

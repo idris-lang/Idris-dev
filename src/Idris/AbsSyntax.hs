@@ -578,7 +578,7 @@ inferDecl = PDatadecl inferTy
                                   PPi expl (MN 0 "a") (PRef bi (MN 0 "A"))
                                   (PRef bi inferTy)), bi)]
 
-infTerm t = PApp bi (PRef bi inferCon) [pimp (MN 0 "A") Placeholder, pexp t]
+infTerm t = PApp bi (PRef bi inferCon) [pimp (MN 0 "A") Placeholder True, pexp t]
 infP = P (TCon 6 0) inferTy (TType (UVal 0))
 
 getInferTerm, getInferType :: Term -> Term
@@ -621,8 +621,8 @@ eqDecl = PDatadecl eqTy (piBind [(n "a", PType), (n "b", PType),
                                  PType)
                 [("", eqCon, PPi impl (n "a") PType (
                          PPi impl (n "x") (PRef bi (n "a"))
-                           (PApp bi (PRef bi eqTy) [pimp (n "a") Placeholder,
-                                                    pimp (n "b") Placeholder,
+                           (PApp bi (PRef bi eqTy) [pimp (n "a") Placeholder False,
+                                                    pimp (n "b") Placeholder False,
                                                     pexp (PRef bi (n "x")),
                                                     pexp (PRef bi (n "x"))])), bi)]
     where n a = MN 0 a
@@ -953,7 +953,7 @@ implicitise syn ignore ist tm = -- trace ("INCOMING " ++ showImp True tm) $
     imps top env (PPi (Imp l _ doc) n ty sc) 
         = do let isn = nub (namesIn uvars ist ty) `dropAll` [n]
              (decls , ns) <- get
-             put (PImp (getPriority ist ty) l n ty doc : decls, 
+             put (PImp (getPriority ist ty) True l n ty doc : decls, 
                   nub (ns ++ (isn `dropAll` (env ++ map fst (getImps decls)))))
              imps True (n:env) sc
     imps top env (PPi (Exp l _ doc) n ty sc) 
@@ -1152,10 +1152,10 @@ aiFn inpat expat ist fc f as
                                  PConstraint p l tm d : insertImpl ps given
     insertImpl (PConstraint p l ty d : ps) given =
                  PConstraint p l (PResolveTC fc) d : insertImpl ps given
-    insertImpl (PImp p l n ty d : ps) given =
+    insertImpl (PImp p _ l n ty d : ps) given =
         case find n given [] of
-            Just (tm, given') -> PImp p l n tm "" : insertImpl ps given'
-            Nothing ->           PImp p l n Placeholder "" : insertImpl ps given
+            Just (tm, given') -> PImp p False l n tm "" : insertImpl ps given'
+            Nothing ->           PImp p True l n Placeholder "" : insertImpl ps given
     insertImpl (PTacImplicit p l n sc ty d : ps) given =
         case find n given [] of
             Just (tm, given') -> PTacImplicit p l n sc tm "" : insertImpl ps given'
@@ -1166,7 +1166,7 @@ aiFn inpat expat ist fc f as
     insertImpl _        given  = given
 
     find n []               acc = Nothing
-    find n (PImp _ _ n' t _ : gs) acc 
+    find n (PImp _ _ _ n' t _ : gs) acc 
          | n == n' = Just (t, reverse acc ++ gs)
     find n (PTacImplicit _ _ n' _ t _ : gs) acc 
          | n == n' = Just (t, reverse acc ++ gs)
@@ -1196,8 +1196,8 @@ stripLinear i tm = evalState (sl tm) [] where
     sl (PApp fc fn args) = do fn' <- sl fn
                               args' <- mapM slA args
                               return $ PApp fc fn' args'
-       where slA (PImp p l n t d) = do t' <- sl t
-                                       return $ PImp p l n t' d
+       where slA (PImp p m l n t d) = do t' <- sl t
+                                         return $ PImp p m l n t' d
              slA (PExp p l t d) = do t' <- sl t
                                      return $ PExp p l t' d
              slA (PConstraint p l t d) 

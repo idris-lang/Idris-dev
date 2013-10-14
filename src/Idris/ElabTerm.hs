@@ -158,11 +158,13 @@ elab ist info pattern tcgen fn tm
                          try (resolveTC 2 fn ist)
                           (do c <- unique_hole (MN 0 "class")
                               instanceArg c)
-    elab' ina (PRefl fc t)   = elab' ina (PApp fc (PRef fc eqCon) [pimp (MN 0 "a") Placeholder,
-                                                           pimp (MN 0 "x") t])
-    elab' ina (PEq fc l r)   = elab' ina (PApp fc (PRef fc eqTy) [pimp (MN 0 "a") Placeholder,
-                                                          pimp (MN 0 "b") Placeholder,
-                                                          pexp l, pexp r])
+    elab' ina (PRefl fc t)   
+        = elab' ina (PApp fc (PRef fc eqCon) [pimp (MN 0 "a") Placeholder True,
+                                              pimp (MN 0 "x") t False])
+    elab' ina (PEq fc l r)   = elab' ina (PApp fc (PRef fc eqTy) 
+                                    [pimp (MN 0 "a") Placeholder True,
+                                     pimp (MN 0 "b") Placeholder False,
+                                     pexp l, pexp r])
     elab' ina@(_, a) (PPair fc l r) 
         = do hnf_compute 
              g <- goal
@@ -170,8 +172,8 @@ elab ist info pattern tcgen fn tm
                 TType _ -> elabE (True, a) (PApp fc (PRef fc pairTy)
                                             [pexp l,pexp r])
                 _ -> elabE (True, a) (PApp fc (PRef fc pairCon)
-                                            [pimp (MN 0 "A") Placeholder,
-                                             pimp (MN 0 "B") Placeholder,
+                                            [pimp (MN 0 "A") Placeholder True,
+                                             pimp (MN 0 "B") Placeholder True,
                                              pexp l, pexp r])
     elab' ina (PDPair fc l@(PRef _ n) t r)
             = case t of 
@@ -186,12 +188,12 @@ elab ist info pattern tcgen fn tm
                                         [pexp t,
                                          pexp (PLam n Placeholder r)])
                asValue = elab' ina (PApp fc (PRef fc existsCon)
-                                         [pimp (MN 0 "a") t,
-                                          pimp (MN 0 "P") Placeholder,
+                                         [pimp (MN 0 "a") t False,
+                                          pimp (MN 0 "P") Placeholder True,
                                           pexp l, pexp r])
     elab' ina (PDPair fc l t r) = elab' ina (PApp fc (PRef fc existsCon)
-                                            [pimp (MN 0 "a") t,
-                                             pimp (MN 0 "P") Placeholder,
+                                            [pimp (MN 0 "a") t False,
+                                             pimp (MN 0 "P") Placeholder True,
                                              pexp l, pexp r])
     elab' ina (PAlternative True as) 
         = do hnf_compute
@@ -557,7 +559,7 @@ elab ist info pattern tcgen fn tm
     elabArgs ina failed fc r (n:ns) ((lazy, t) : args)
         | lazy && not pattern
           = do elabArg n (PApp bi (PRef bi (UN "lazy"))
-                               [pimp (UN "a") Placeholder,
+                               [pimp (UN "a") Placeholder True,
                                 pexp t]); 
         | otherwise = elabArg n t
       where elabArg n t 
@@ -739,7 +741,7 @@ resolveTC depth fn ist
                 -- if there's any arguments left, we've failed to resolve
                 hs <- get_holes
                 solve
-       where isImp (PImp p _ _ _ _) = (True, p)
+       where isImp (PImp p _ _ _ _ _) = (True, p)
              isImp arg = (False, priority arg)
 
 collectDeferred :: Term -> State [(Name, Type)] Term
@@ -808,7 +810,7 @@ runTac autoSolve ist tac
                                      show fn')) fnimps
              tryAll tacs
              when autoSolve solveAll
-       where isImp (PImp _ _ _ _ _) = True
+       where isImp (PImp _ _ _ _ _ _) = True
              isImp _ = False
              envArgs n = do e <- get_env
                             case lookup n e of

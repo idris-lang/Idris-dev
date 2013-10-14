@@ -414,7 +414,7 @@ elabRecord info syn doc fc tyn ty cdoc cn cty
         = getImplB k sc
     getImplB k _ = k
 
-    renameBs (PImp _ _ _ _ _ : ps) (PPi p n ty s)
+    renameBs (PImp _ _ _ _ _ _ : ps) (PPi p n ty s)
         = PPi p (mkImp n) ty (renameBs ps (substMatch n (PRef fc (mkImp n)) s))
     renameBs (_:ps) (PPi p n ty s) = PPi p n ty (renameBs ps s)
     renameBs _ t = t
@@ -932,11 +932,11 @@ elabClause info opts (cnum, PClause fc fname lhs_in withs rhs_in whereblock)
     propagateParams :: [Name] -> PTerm -> PTerm
     propagateParams ps (PApp _ (PRef fc n) args)
          = PApp fc (PRef fc n) (map addP args)
-       where addP imp@(PImp _ _ _ Placeholder _)
+       where addP imp@(PImp _ _ _ _ Placeholder _)
                   | pname imp `elem` ps = imp { getTm = PRef fc (pname imp) }
              addP t = t
     propagateParams ps (PRef fc n)
-         = PApp fc (PRef fc n) (map (\x -> pimp x (PRef fc x)) ps)
+         = PApp fc (PRef fc n) (map (\x -> pimp x (PRef fc x) True) ps)
     propagateParams ps x = x
 
 elabClause info opts (_, PWith fc fname lhs_in withs wval_in withblock) 
@@ -1344,7 +1344,7 @@ elabInstance info syn fc cs n ps t expn ds
           = PLam (MN i "meth") Placeholder (lamBind (i+1) sc sc')
     lamBind i _ sc = sc
     methArgs i (PPi (Imp _ _ _) n ty sc) 
-        = PImp 0 False n (PRef fc (MN i "meth")) "" : methArgs (i+1) sc
+        = PImp 0 True False n (PRef fc (MN i "meth")) "" : methArgs (i+1) sc
     methArgs i (PPi (Exp _ _ _) n ty sc) 
         = PExp 0 False (PRef fc (MN i "meth")) "" : methArgs (i+1) sc
     methArgs i (PPi (Constraint _ _ _) n ty sc) 
@@ -1360,7 +1360,7 @@ elabInstance info syn fc cs n ps t expn ds
         = do ps' <- getWParams ps
              ctxt <- getContext
              case lookupP n ctxt of
-                [] -> return (pimp n (PRef fc n) : ps')
+                [] -> return (pimp n (PRef fc n) True : ps')
                 _ -> return ps'
     getWParams (_ : ps) = getWParams ps
 

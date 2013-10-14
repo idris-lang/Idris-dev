@@ -117,7 +117,7 @@ quickEq (PApp _ t as) (PApp _ t' as')
     | length as == length as'
        = quickEq t t' && and (zipWith quickEq (map getTm as) (map getTm as'))
 quickEq Placeholder Placeholder = True
-quickEq _ _ = False
+quickEq x y = False
 
 qelem x [] = False
 qelem x (y : ys) | x `quickEq` y = True
@@ -177,11 +177,13 @@ genAll i args
     otherPats o@(PApp _ (PRef fc n) xs) = ops fc n xs o
     otherPats o@(PPair fc l r)
         = ops fc pairCon
-                ([pimp (UN "A") Placeholder, pimp (UN "B") Placeholder] ++
+                ([pimp (UN "A") Placeholder True, 
+                  pimp (UN "B") Placeholder True] ++
                  [pexp l, pexp r]) o
     otherPats o@(PDPair fc t _ v) 
         = ops fc (UN "Ex_intro") 
-                ([pimp (UN "a") Placeholder, pimp (UN "P") Placeholder] ++
+                ([pimp (UN "a") Placeholder True, 
+                  pimp (UN "P") Placeholder True] ++
                  [pexp t,pexp v]) o
     otherPats o@(PConstant c) = return o
     otherPats arg = return Placeholder 
@@ -190,13 +192,16 @@ genAll i args
         | (TyDecl c@(DCon _ arity) ty : _) <- lookupDef n (tt_ctxt i)
             = do let force = getForceable i n -- no need to generate forceable positions
                  let xs = dropForce force xs_in 0 
-                 xs' <- mapM otherPats (map getTm xs)
+                 xs' <- mapM otherPats (map getExpTm xs)
                  let p = resugar (PApp fc (PRef fc n) (zipWith upd xs' xs))
                  let tyn = getTy n (tt_ctxt i)
                  case lookupCtxt tyn (idris_datatypes i) of
                          (TI ns _ _ : _) -> p : map (mkPat fc) (ns \\ [n])
                          _ -> [p]
     ops fc n arg o = return Placeholder
+
+    getExpTm (PImp _ True _ _ _ _) = Placeholder -- machine inferred, no point!
+    getExpTm t = getTm t
 
     -- put it back to its original form
     resugar (PApp _ (PRef fc (UN "Ex_intro")) [_,_,t,v])

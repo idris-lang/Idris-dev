@@ -41,7 +41,7 @@ instance Show FunDoc where
              = Just $ "Class constraint " ++
                       show (getTm arg) ++ showDoc (pargdoc arg)
                       ++ "\n"
-          showArg (n, arg@(PImp _ _ _ _ doc))
+          showArg (n, arg@(PImp _ _ _ _ _ doc))
            | not (null doc)
              = Just $ "(implicit) " ++
                       show n ++ " : " ++ show (getTm arg) 
