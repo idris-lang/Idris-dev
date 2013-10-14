@@ -64,6 +64,8 @@ import Data.Char
 import Data.Version
 import Data.Word (Word)
 
+import qualified Text.PrettyPrint.ANSI.Leijen as ANSI
+
 import Debug.Trace
 
 -- | Run the REPL
@@ -117,8 +119,9 @@ ideslave orig mods
                  do let fn = case mods of
                                  (f:_) -> f
                                  _ -> ""
+                    c <- colourise
                     case parseCmd i "(input)" cmd of
-                         Failure err -> iFail $ show err
+                         Failure err -> iFail $ show (fixColour c err)
                          Success (Prove n') -> do iResult ""
                                                   idrisCatch
                                                     (do process fn (Prove n'))
@@ -218,8 +221,9 @@ processInput cmd orig inputs
          let fn = case inputs of
                         (f:_) -> f
                         _ -> ""
+         c <- colourise
          case parseCmd i "(input)" cmd of
-            Failure err ->   do liftIO $ print err
+            Failure err ->   do liftIO $ print (fixColour c err)
                                 return (Just inputs)
             Success Reload ->
                 do putIState $ orig { idris_options = idris_options i
@@ -851,13 +855,19 @@ idrisMain opts =
 
 execScript :: String -> Idris ()
 execScript expr = do i <- getIState
+                     c <- colourise
                      case parseExpr i expr of
-                       Failure err -> do iputStrLn $ show err
-                                         liftIO $ exitWith (ExitFailure 1)
-                       Success term -> do ctxt <- getContext
-                                          (tm, _) <- elabVal toplevel False term
-                                          res <- execute tm
-                                          liftIO $ exitWith ExitSuccess
+                          Failure err -> do iputStrLn $ show (fixColour c err)
+                                            liftIO $ exitWith (ExitFailure 1)
+                          Success term -> do ctxt <- getContext
+                                             (tm, _) <- elabVal toplevel False term
+                                             res <- execute tm
+                                             liftIO $ exitWith ExitSuccess
+
+-- | Check if the coloring matches the options and corrects if necessary
+fixColour :: Bool -> ANSI.Doc -> ANSI.Doc
+fixColour False doc = ANSI.plain doc
+fixColour True doc  = doc
 
 -- | Get the platform-specific, user-specific Idris dir
 getIdrisUserDataDir :: Idris FilePath
@@ -883,11 +893,12 @@ initScript = do script <- getInitScript
                          unless eof $ do
                            line <- liftIO $ hGetLine h
                            script <- getInitScript
-                           processLine ist line script
+                           c <- colourise
+                           processLine ist line script c
                            runInit h
-          processLine i cmd input =
+          processLine i cmd input clr =
               case parseCmd i input cmd of
-                   Failure err -> liftIO $ print err
+                   Failure err -> liftIO $ print (fixColour clr err)
                    Success Reload -> iFail "Init scripts cannot reload the file"
                    Success (Load f) -> iFail "Init scripts cannot load files"
                    Success (ModImport f) -> iFail "Init scripts cannot import modules"
