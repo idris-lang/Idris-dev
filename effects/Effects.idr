@@ -154,6 +154,26 @@ syntax if_valid then [e] else [t] =
 syntax if_valid [lbl] then [e] else [t] =
      test_lbl {x=lbl} (tactics { applyTactic findEffElem 20; solve; }) t e
   
+syntax if_error then [t] else [e] =
+     test (tactics { applyTactic findEffElem 20; solve; }) t e
+  
+syntax if_error [lbl] then [t] else [e] =
+     test_lbl {x=lbl} (tactics { applyTactic findEffElem 20; solve; }) t e
+
+-- These may read better in some contexts
+
+syntax if_right then [e] else [t] =
+     test (tactics { applyTactic findEffElem 20; solve; }) t e
+  
+syntax if_right [lbl] then [e] else [t] =
+     test_lbl {x=lbl} (tactics { applyTactic findEffElem 20; solve; }) t e
+  
+syntax if_left then [t] else [e] =
+     test (tactics { applyTactic findEffElem 20; solve; }) t e
+  
+syntax if_left [lbl] then [t] else [e] =
+     test_lbl {x=lbl} (tactics { applyTactic findEffElem 20; solve; }) t e
+  
 
 -- for 'do' notation
 
