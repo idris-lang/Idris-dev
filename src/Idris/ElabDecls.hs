@@ -289,21 +289,21 @@ elabProvider info syn fc n ty tm
     = do i <- getIState
          -- Ensure that the experimental extension is enabled
          unless (TypeProviders `elem` idris_language_extensions i) $
-           fail $ "Failed to define type provider \"" ++ show n ++
-                  "\".\nYou must turn on the TypeProviders extension."
+           ifail $ "Failed to define type provider \"" ++ show n ++
+                   "\".\nYou must turn on the TypeProviders extension."
 
          ctxt <- getContext
 
          -- First elaborate the expected type (and check that it's a type)
          (ty', typ) <- elabVal toplevel False ty
          unless (isTType typ) $
-           fail ("Expected a type, got " ++ show ty' ++ " : " ++ show typ)
+           ifail ("Expected a type, got " ++ show ty' ++ " : " ++ show typ)
 
          -- Elaborate the provider term to TT and check that the type matches
          (e, et) <- elabVal toplevel False tm
          unless (isProviderOf ty' et) $
-           fail $ "Expected provider type IO (Provider (" ++
-                  show ty' ++ "))" ++ ", got " ++ show et ++ " instead."
+           ifail $ "Expected provider type IO (Provider (" ++
+                   show ty' ++ "))" ++ ", got " ++ show et ++ " instead."
 
          -- Create the top-level type declaration
          elabType info syn "" fc [] n ty
@@ -376,7 +376,7 @@ elabRecord info syn doc fc tyn ty cdoc cn cty
          i <- getIState
          cty <- case lookupTy cn (tt_ctxt i) of
                     [t] -> return (delab i t)
-                    _ -> fail "Something went inexplicably wrong"
+                    _ -> ifail "Something went inexplicably wrong"
          cimp <- case lookupCtxt cn (idris_implicits i) of
                     [imps] -> return imps
          let ptys = getProjs [] (renameBs cimp cty)
@@ -784,7 +784,7 @@ elabClause info opts (_, PClause fc fname lhs_in [] PImpossible [])
    = do let tcgen = Dictionary `elem` opts
         b <- checkPossible info fc tcgen fname lhs_in
         case b of
-            True -> fail $ show fc ++ ":" ++ show lhs_in ++ " is a possible case"
+            True -> ifail $ show fc ++ ":" ++ show lhs_in ++ " is a possible case"
             False -> do ptm <- mkPatTm lhs_in
                         return (Left ptm)
 elabClause info opts (cnum, PClause fc fname lhs_in withs rhs_in whereblock) 
@@ -1042,7 +1042,7 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in withblock)
     mkAuxC wname lhs ns ns' (PClauses fc o n cs)
         | True  = do cs' <- mapM (mkAux wname lhs ns ns') cs
                      return $ PClauses fc o wname cs'
-        | otherwise = fail $ show fc ++ "with clause uses wrong function name " ++ show n
+        | otherwise = ifail $ show fc ++ "with clause uses wrong function name " ++ show n
     mkAuxC wname lhs ns ns' d = return $ d
 
     mkAux wname toplhs ns ns' (PClause fc n tm_in (w:ws) rhs wheres)
@@ -1051,7 +1051,7 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in withblock)
              logLvl 2 ("Matching " ++ showImp Nothing True False tm ++ " against " ++ 
                                       showImp Nothing True False toplhs)
              case matchClause i toplhs tm of
-                Left f -> fail $ show fc ++ ":with clause does not match top level"
+                Left f -> ifail $ show fc ++ ":with clause does not match top level"
                 Right mvars -> 
                     do logLvl 3 ("Match vars : " ++ show mvars)
                        lhs <- updateLHS n wname mvars ns ns' (fullApp tm) w
@@ -1063,12 +1063,12 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in withblock)
                                       showImp Nothing True False toplhs)
              withs' <- mapM (mkAuxC wname toplhs ns ns') withs
              case matchClause i toplhs tm of
-                Left _ -> fail $ show fc ++ "with clause does not match top level"
+                Left _ -> ifail $ show fc ++ "with clause does not match top level"
                 Right mvars -> 
                     do lhs <- updateLHS n wname mvars ns ns' (fullApp tm) w
                        return $ PWith fc wname lhs ws wval withs'
     mkAux wname toplhs ns ns' c
-        = fail $ show fc ++ "badly formed with clause"
+        = ifail $ show fc ++ "badly formed with clause"
 
     updateLHS n wname mvars ns_in ns_in' (PApp fc (PRef fc' n') args) w
         = let ns = map (keepMvar (map fst mvars) fc') ns_in
@@ -1077,7 +1077,7 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in withblock)
                   PApp fc (PRef fc' wname) 
                       (map pexp ns ++ pexp w : (map pexp ns'))
     updateLHS n wname mvars ns ns' tm w 
-        = fail $ "Not implemented match " ++ show tm 
+        = ifail $ "Not implemented match " ++ show tm 
 
     keepMvar mvs fc v | v `elem` mvs = PRef fc v
                       | otherwise = Placeholder
@@ -1161,7 +1161,7 @@ elabClass info syn doc fc constraints tn ps ds
                 return ( (n, (toExp (map fst ps) Exp t')),
                          (n, (doc, o, (toExp (map fst ps) Imp t'))),
                          (n, (syn, o, t) ) )
-    tdecl _ _ = fail "Not allowed in a class declaration"
+    tdecl _ _ = ifail "Not allowed in a class declaration"
 
     -- Create default definitions 
     defdecl mtys c d@(PClauses fc opts n cs) =
@@ -1172,8 +1172,8 @@ elabClass info syn doc fc constraints tn ps ds
                                                   PClauses fc (o ++ opts) n cs]
                                     iLOG (show ds)
                                     return (n, ((defaultdec n, ds!!1), ds))
-            _ -> fail $ show n ++ " is not a method"
-    defdecl _ _ _ = fail "Can't happen (defdecl)"
+            _ -> ifail $ show n ++ " is not a method"
+    defdecl _ _ _ = ifail "Can't happen (defdecl)"
 
     defaultdec (UN n) = UN ("default#" ++ n)
     defaultdec (NS n ns) = NS (defaultdec n) ns
@@ -1263,7 +1263,7 @@ elabInstance info syn fc cs n ps t expn ds
     = do i <- getIState 
          (n, ci) <- case lookupCtxtName n (idris_classes i) of
                        [c] -> return c
-                       _ -> fail $ show fc ++ ":" ++ show n ++ " is not a type class"
+                       _ -> ifail $ show fc ++ ":" ++ show n ++ " is not a type class"
          let constraint = PApp fc (PRef fc n) (map pexp ps)
          let iname = case expn of
                          Nothing -> SN (InstanceN n (map show ps)) 
@@ -1467,9 +1467,9 @@ elabDecls info ds = do mapM_ (elabDecl EAll info) ds
 elabDecl :: ElabWhat -> ElabInfo -> PDecl -> Idris ()
 elabDecl what info d 
     = idrisCatch (elabDecl' what info d) 
-                 (\e -> do let msg = show e
-                           setErrLine (getErrLine msg)
-                           iputStrLn msg)
+                 (\e -> do setErrLine (getErrLine e)
+                           ist <- getIState
+                           iputStrLn $ pshow ist e)
 
 elabDecl' _ info (PFix _ _ _)
      = return () -- nothing to elaborate

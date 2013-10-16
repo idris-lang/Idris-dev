@@ -56,6 +56,7 @@ import System.Process
 import System.Directory
 import System.IO
 import Control.Monad
+import Control.Monad.Trans.Error (ErrorT(..))
 import Control.Monad.Trans.State.Strict ( StateT, execStateT, get, put )
 import Control.Monad.Trans ( liftIO, lift )
 import Data.Maybe
@@ -121,15 +122,15 @@ ideslave orig mods
                                  _ -> ""
                     c <- colourise
                     case parseCmd i "(input)" cmd of
-                         Failure err -> iFail $ show (fixColour c err)
-                         Success (Prove n') -> do iResult ""
+                         Failure err -> iPrintError $ show (fixColour c err)
+                         Success (Prove n') -> do iPrintResult ""
                                                   idrisCatch
                                                     (do process fn (Prove n'))
-                                                    (\e -> do iFail $ show e)
+                                                    (\e -> do iPrintError $ show e)
                                                   isetPrompt (mkPrompt mods)
                          Success cmd -> idrisCatch
                                           (do ideslaveProcess fn cmd)
-                                          (\e -> do iFail $ show e)
+                                          (\e -> do iPrintError $ show e)
                Just (REPLCompletions str) ->
                  do (unused, compls) <- replCompletion (reverse str, "")
                     let good = SexpList [SymbolAtom "ok", toSExp (map replacement compls, reverse unused)]
@@ -145,17 +146,17 @@ ideslave orig mods
                     -- Report either success or failure
                     i <- getIState
                     case (errLine i) of
-                      Nothing -> iResult $ "loaded " ++ filename
-                      Just x -> iFail $ "didn't load " ++ filename
+                      Nothing -> iPrintResult $ "loaded " ++ filename
+                      Just x -> iPrintError $ "didn't load " ++ filename
                     ideslave orig [filename]
-               Nothing -> do iFail "did not understand")
-         (\e -> do iFail $ show e)
+               Nothing -> do iPrintError "did not understand")
+         (\e -> do iPrintError $ show e)
        ideslave orig mods
 
 ideslaveProcess :: FilePath -> Command -> Idris ()
 ideslaveProcess fn Help = process fn Help
 ideslaveProcess fn (ChangeDirectory f) = do process fn (ChangeDirectory f)
-                                            iResult "changed directory to"
+                                            iPrintResult "changed directory to"
 ideslaveProcess fn (Eval t) = process fn (Eval t)
 ideslaveProcess fn (ExecVal t) = process fn (ExecVal t)
 ideslaveProcess fn (Check (PRef x n)) = process fn (Check (PRef x n))
@@ -163,10 +164,10 @@ ideslaveProcess fn (Check t) = process fn (Check t)
 ideslaveProcess fn (DocStr n) = process fn (DocStr n)
 ideslaveProcess fn Universes = process fn Universes
 ideslaveProcess fn (Defn n) = do process fn (Defn n)
-                                 iResult ""
+                                 iPrintResult ""
 ideslaveProcess fn (TotCheck n) = process fn (TotCheck n)
 ideslaveProcess fn (DebugInfo n) = do process fn (DebugInfo n)
-                                      iResult ""
+                                      iPrintResult ""
 ideslaveProcess fn (Info n) = process fn (Info n)
 ideslaveProcess fn (Search t) = process fn (Search t)
 ideslaveProcess fn (Spec t) = process fn (Spec t)
@@ -178,29 +179,29 @@ ideslaveProcess fn (HNF t) = process fn (HNF t)
 --that most likely does not work, since we need to wrap
 --input/output of the executed binary...
 ideslaveProcess fn Execute = do process fn Execute
-                                iResult ""
+                                iPrintResult ""
 ideslaveProcess fn (Compile codegen f) = do process fn (Compile codegen f)
-                                            iResult ""
+                                            iPrintResult ""
 ideslaveProcess fn (LogLvl i) = do process fn (LogLvl i)
-                                   iResult ""
+                                   iPrintResult ""
 ideslaveProcess fn (Pattelab t) = process fn (Pattelab t)
 ideslaveProcess fn (Missing n) = process fn (Missing n)
 ideslaveProcess fn (DynamicLink l) = do process fn (DynamicLink l)
-                                        iResult ""
+                                        iPrintResult ""
 ideslaveProcess fn ListDynamic = do process fn ListDynamic
-                                    iResult ""
+                                    iPrintResult ""
 ideslaveProcess fn Metavars = process fn Metavars
 ideslaveProcess fn (SetOpt ErrContext) = do process fn (SetOpt ErrContext)
-                                            iResult ""
+                                            iPrintResult ""
 ideslaveProcess fn (UnsetOpt ErrContext) = do process fn (UnsetOpt ErrContext)
-                                              iResult ""
+                                              iPrintResult ""
 ideslaveProcess fn (SetOpt ShowImpl) = do process fn (SetOpt ShowImpl)
-                                          iResult ""
+                                          iPrintResult ""
 ideslaveProcess fn (UnsetOpt ShowImpl) = do process fn (UnsetOpt ShowImpl)
-                                            iResult ""
+                                            iPrintResult ""
 ideslaveProcess fn (SetOpt x) = process fn (SetOpt x)
 ideslaveProcess fn (UnsetOpt x) = process fn (UnsetOpt x)
-ideslaveProcess fn _ = iFail "command not recognized or not supported"
+ideslaveProcess fn _ = iPrintError "command not recognized or not supported"
 
 
 -- | The prompt consists of the currently loaded modules, or "Idris" if there are none
@@ -250,7 +251,7 @@ processInput cmd orig inputs
             Success Quit -> do when (not quiet) (iputStrLn "Bye bye")
                                return Nothing
             Success cmd  -> do idrisCatch (process fn cmd)
-                                          (\e -> iputStrLn (show e))
+                                          (\e -> do msg <- showErr e ; iputStrLn msg)
                                return (Just inputs)
 
 resolveProof :: Name -> Idris Name
@@ -260,7 +261,7 @@ resolveProof n'
        n <- case lookupNames n' ctxt of
                  [x] -> return x
                  [] -> return n'
-                 ns -> fail $ pshow i (CantResolveAlts (map show ns))
+                 ns -> ierror (CantResolveAlts (map show ns))
        return n
 
 removeProof :: Name -> Idris ()
@@ -308,7 +309,7 @@ insertScript prf (p@"---------- Proofs ----------" : "" : xs)
 insertScript prf (x : xs) = x : insertScript prf xs
 
 process :: FilePath -> Command -> Idris ()
-process fn Help = iResult displayHelp
+process fn Help = iPrintResult displayHelp
 process fn (ChangeDirectory f)
                  = do liftIO $ setCurrentDirectory f
                       return ()
@@ -324,7 +325,7 @@ process fn (Eval t)
                       logLvl 10 $ "Debug: " ++ showEnvDbg [] tm'
                       imp <- impShow
                       c <- colourise
-                      iResult (showImp (Just ist) imp c (delab ist tm') ++ " : " ++
+                      iPrintResult (showImp (Just ist) imp c (delab ist tm') ++ " : " ++
                                showImp (Just ist) imp c (delab ist ty'))
 process fn (ExecVal t)
                   = do ctxt <- getContext
@@ -335,7 +336,7 @@ process fn (ExecVal t)
                        res <- execute tm
                        imp <- impShow
                        c <- colourise
-                       iResult (showImp (Just ist) imp c (delab ist res) ++ " : " ++
+                       iPrintResult (showImp (Just ist) imp c (delab ist res) ++ " : " ++
                                 showImp (Just ist) imp c (delab ist ty'))
 process fn (Check (PRef _ n))
    = do ctxt <- getContext
@@ -345,8 +346,8 @@ process fn (Check (PRef _ n))
         case lookupNames n ctxt of
              ts@(_:_) -> do mapM_ (\n -> iputStrLn $ showName (Just ist) [] False c n ++ " : " ++
                                          showImp (Just ist) imp c (delabTy ist n)) ts
-                            iResult ""
-             [] -> iFail $ "No such variable " ++ show n
+                            iPrintResult ""
+             [] -> iPrintError $ "No such variable " ++ show n
 process fn (Check t)
    = do (tm, ty) <- elabVal toplevel False t
         ctxt <- getContext
@@ -355,15 +356,15 @@ process fn (Check t)
         c <- colourise
         let ty' = normaliseC ctxt [] ty
         case tm of
-             TType _ -> iResult ("Type : Type 1")
-             _ -> iResult (showImp (Just ist) imp c (delab ist tm) ++ " : " ++
-                          showImp (Just ist) imp c (delab ist ty))
+             TType _ -> iPrintResult ("Type : Type 1")
+             _ -> iPrintResult (showImp (Just ist) imp c (delab ist tm) ++ " : " ++
+                                showImp (Just ist) imp c (delab ist ty))
 
 process fn (DocStr n) = do i <- getIState
                            case lookupCtxtName n (idris_docstrings i) of
-                                [] -> iFail $ "No documentation for " ++ show n
+                                [] -> iPrintError $ "No documentation for " ++ show n
                                 ns -> do mapM_ showDoc ns
-                                         iResult ""
+                                         iPrintResult ""
     where showDoc (n, d)
              = do doc <- getDocs n
                   iputStrLn $ show doc
@@ -374,8 +375,8 @@ process fn Universes = do i <- getIState
                           let n = length cs
                           iputStrLn $ "(" ++ show n ++ " constraints)"
                           case ucheck cs of
-                            Error e -> iFail $ pshow i e
-                            OK _ -> iResult "Universes OK"
+                            Error e -> iPrintError $ pshow i e
+                            OK _ -> iPrintResult "Universes OK"
 process fn (Defn n) = do i <- getIState
                          iputStrLn "Compiled patterns:\n"
                          iputStrLn $ show (lookupDef n (tt_ctxt i))
@@ -392,8 +393,8 @@ process fn (Defn n) = do i <- getIState
                              showImp (Just i) True c (delab i rhs))
 process fn (TotCheck n) = do i <- getIState
                              case lookupTotal n (tt_ctxt i) of
-                                [t] -> iResult (showTotal t i)
-                                _ -> do iFail ""
+                                [t] -> iPrintResult (showTotal t i)
+                                _ -> do iPrintError ""
                                         return ()
 process fn (DebugInfo n)
    = do i <- getIState
@@ -416,13 +417,13 @@ process fn (DebugInfo n)
 process fn (Info n) = do i <- getIState
                          case lookupCtxt n (idris_classes i) of
                               [c] -> classInfo c
-                              _ -> iFail "Not a class"
-process fn (Search t) = iFail "Not implemented"
+                              _ -> iPrintError "Not a class"
+process fn (Search t) = iPrintError "Not implemented"
 process fn (Spec t) = do (tm, ty) <- elabVal toplevel False t
                          ctxt <- getContext
                          ist <- getIState
                          let tm' = simplify ctxt [] {- (idris_statics ist) -} tm
-                         iResult (show (delab ist tm'))
+                         iPrintResult (show (delab ist tm'))
 
 process fn (RmProof n')
   = do i <- getIState
@@ -449,7 +450,7 @@ process fn' (AddProof prf)
             then return fn'
             else if exExt
                     then return fnExt
-                    else fail $ "Neither \""++fn'++"\" nor \""++fnExt++"\" exist"
+                    else ifail $ "Neither \""++fn'++"\" nor \""++fnExt++"\" exist"
        let fb = fn ++ "~"
        liftIO $ copyFile fn fb -- make a backup in case something goes wrong!
        prog <- liftIO $ readFile fb
@@ -457,7 +458,7 @@ process fn' (AddProof prf)
        let proofs = proof_list i
        n' <- case prf of
                 Nothing -> case proofs of
-                             [] -> fail "No proof to add"
+                             [] -> ifail "No proof to add"
                              ((x, p) : _) -> return x
                 Just nm -> return nm
        n <- resolveProof n'
@@ -474,8 +475,8 @@ process fn (ShowProof n')
        n <- resolveProof n'
        let proofs = proof_list i
        case lookup n proofs of
-            Nothing -> iFail "No proof to show"
-            Just p  -> iResult $ showProof False n p
+            Nothing -> iPrintError "No proof to show"
+            Just p  -> iPrintResult $ showProof False n p
 
 process fn (Prove n')
      = do ctxt <- getContext
@@ -483,7 +484,7 @@ process fn (Prove n')
           n <- case lookupNames n' ctxt of
                     [x] -> return x
                     [] -> return n'
-                    ns -> fail $ pshow ist (CantResolveAlts (map show ns))
+                    ns -> ierror (CantResolveAlts (map show ns))
           prover (lit fn) n
           -- recheck totality
           i <- getIState
@@ -495,14 +496,14 @@ process fn (HNF t)  = do (tm, ty) <- elabVal toplevel False t
                          ctxt <- getContext
                          ist <- getIState
                          let tm' = hnf ctxt [] tm
-                         iResult (show (delab ist tm'))
+                         iPrintResult (show (delab ist tm'))
 process fn (TestInline t)  = do (tm, ty) <- elabVal toplevel False t
                                 ctxt <- getContext
                                 ist <- getIState
                                 let tm' = inlineTerm ist tm
                                 imp <- impShow
                                 c <- colourise
-                                iResult (showImp (Just ist) imp c (delab ist tm'))
+                                iPrintResult (showImp (Just ist) imp c (delab ist tm'))
 process fn TTShell  = do ist <- getIState
                          let shst = initState (tt_ctxt ist)
                          runShell shst
@@ -529,7 +530,7 @@ process fn (LogLvl i) = setLogLevel i
 -- Elaborate as if LHS of a pattern (debug command)
 process fn (Pattelab t)
      = do (tm, ty) <- elabVal toplevel True t
-          iResult $ show tm ++ "\n\n : " ++ show ty
+          iPrintResult $ show tm ++ "\n\n : " ++ show ty
 
 process fn (Missing n)
     = do i <- getIState
@@ -537,13 +538,13 @@ process fn (Missing n)
          case lookupCtxt n (idris_patdefs i) of
                   [] -> return ()
                   [(_, tms)] ->
-                       iResult (showSep "\n" (map (showImp (Just i) True c) tms))
-                  _ -> iFail $ "Ambiguous name"
+                       iPrintResult (showSep "\n" (map (showImp (Just i) True c) tms))
+                  _ -> iPrintError $ "Ambiguous name"
 process fn (DynamicLink l) = do i <- getIState
                                 let lib = trim l
-                                handle <- lift $ tryLoadLib lib
+                                handle <- lift . lift $ tryLoadLib lib
                                 case handle of
-                                  Nothing -> iFail $ "Could not load dynamic lib \"" ++ l ++ "\""
+                                  Nothing -> iPrintError $ "Could not load dynamic lib \"" ++ l ++ "\""
                                   Just x -> do let libs = idris_dynamic_libs i
                                                if x `elem` libs
                                                   then do iLOG ("Tried to load duplicate library " ++ lib_name x)
@@ -559,8 +560,8 @@ process fn Metavars
                  = do ist <- getIState
                       let mvs = idris_metavars ist \\ primDefs
                       case mvs of
-                        [] -> iFail "No global metavariables to solve"
-                        _ -> iResult $ "Global metavariables:\n\t" ++ show mvs
+                        [] -> iPrintError "No global metavariables to solve"
+                        _ -> iPrintResult $ "Global metavariables:\n\t" ++ show mvs
 process fn NOP      = return ()
 
 process fn (SetOpt   ErrContext) = setErrContext True
@@ -568,8 +569,8 @@ process fn (UnsetOpt ErrContext) = setErrContext False
 process fn (SetOpt ShowImpl)     = setImpShow True
 process fn (UnsetOpt ShowImpl)   = setImpShow False
 
-process fn (SetOpt _) = iFail "Not a valid option"
-process fn (UnsetOpt _) = iFail "Not a valid option"
+process fn (SetOpt _) = iPrintError "Not a valid option"
+process fn (UnsetOpt _) = iPrintError "Not a valid option"
 process fn (SetColour ty c) = setColour ty c
 process fn ColourOn = do ist <- getIState
                          putIState $ ist { idris_colourRepl = True }
@@ -583,7 +584,7 @@ classInfo ci = do iputStrLn "Methods:\n"
                   iputStrLn ""
                   iputStrLn "Instances:\n"
                   mapM_ dumpInstance (class_instances ci)
-                  iResult ""
+                  iPrintResult ""
 
 dumpMethod :: (Name, (FnOpts, PTerm)) -> Idris ()
 dumpMethod (n, (_, t)) = iputStrLn $ show n ++ " : " ++ show t
@@ -686,8 +687,12 @@ replSettings hFile = setComplete replCompletion $ defaultSettings {
                      }
 
 -- invoke as if from command line
-idris :: [Opt] -> IO IState
-idris opts = execStateT (idrisMain opts) idrisInit
+idris :: [Opt] -> IO ()
+idris opts = do res <- runErrorT $ execStateT (idrisMain opts) idrisInit
+                case res of
+                  Left err -> putStrLn $ pshow idrisInit err
+                  Right ist -> return ()
+
 
 loadInputs :: [FilePath] -> Idris ()
 loadInputs inputs
@@ -886,9 +891,9 @@ initScript = do script <- getInitScript
                                  h <- liftIO $ openFile script ReadMode
                                  runInit h
                                  liftIO $ hClose h)
-                           (\e -> iFail $ "Error reading init file: " ++ show e)
+                           (\e -> iPrintError $ "Error reading init file: " ++ show e)
     where runInit :: Handle -> Idris ()
-          runInit h = do eof <- lift (hIsEOF h)
+          runInit h = do eof <- lift . lift $ hIsEOF h
                          ist <- getIState
                          unless eof $ do
                            line <- liftIO $ hGetLine h
@@ -899,12 +904,12 @@ initScript = do script <- getInitScript
           processLine i cmd input clr =
               case parseCmd i input cmd of
                    Failure err -> liftIO $ print (fixColour clr err)
-                   Success Reload -> iFail "Init scripts cannot reload the file"
-                   Success (Load f) -> iFail "Init scripts cannot load files"
-                   Success (ModImport f) -> iFail "Init scripts cannot import modules"
-                   Success Edit -> iFail "Init scripts cannot invoke the editor"
+                   Success Reload -> iPrintError "Init scripts cannot reload the file"
+                   Success (Load f) -> iPrintError "Init scripts cannot load files"
+                   Success (ModImport f) -> iPrintError "Init scripts cannot import modules"
+                   Success Edit -> iPrintError "Init scripts cannot invoke the editor"
                    Success Proofs -> proofs i
-                   Success Quit -> iFail "Init scripts cannot quit Idris"
+                   Success Quit -> iPrintError "Init scripts cannot quit Idris"
                    Success cmd  -> process [] cmd
 
 getFile :: Opt -> Maybe String

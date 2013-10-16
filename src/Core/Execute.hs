@@ -159,8 +159,8 @@ debugThunks = do st <- getExecState
 execute :: Term -> Idris Term
 execute tm = do est <- initState
                 ctxt <- getContext
-                res <- lift $ flip runExec est $ do res <- doExec [] ctxt tm
-                                                    toTT res
+                res <- lift . lift $ flip runExec est $ do res <- doExec [] ctxt tm
+                                                           toTT res
                 case res of
                   Left err -> fail err
                   Right tm' -> return tm'

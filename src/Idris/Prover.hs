@@ -32,7 +32,7 @@ prover lit x =
               case lookupTy x ctxt of
                   [t] -> if elem x (idris_metavars i)
                                then prove ctxt lit x t
-                               else fail $ show x ++ " is not a metavariable"
+                               else ifail $ show x ++ " is not a metavariable"
                   _ -> fail "No such metavariable"
 
 showProof :: Bool -> Name -> [String] -> String
@@ -84,8 +84,7 @@ prove ctxt lit n ty
 elabStep :: ElabState [PDecl] -> ElabD a -> Idris (a, ElabState [PDecl])
 elabStep st e = do case runStateT e st of
                      OK (a, st') -> return (a, st')
-                     Error a -> do i <- getIState
-                                   fail (pshow i a)
+                     Error a -> ierror a
 
 dumpState :: IState -> ProofState -> Idris ()
 dumpState ist (PS nm [] _ _ tm _ _ _ _ _ _ _ _ _ _ _ _ _ _) =
@@ -168,33 +167,33 @@ ploop d prompt prf e h
                   i <- receiveInput e
                   return (i, h)
          (cmd, step) <- case x of
-            Nothing -> do iFail ""; fail "Abandoned"
+            Nothing -> do iPrintError ""; fail "Abandoned"
             Just input -> do return (parseTactic i input, input)
          case cmd of
-            Success Abandon -> do iFail ""; fail "Abandoned"
+            Success Abandon -> do iPrintError ""; fail "Abandoned"
             _ -> return ()
          (d, st, done, prf') <- idrisCatch
            (case cmd of
-              Failure err -> do iFail (show err)
+              Failure err -> do iPrintError (show err)
                                 return (False, e, False, prf)
               Success Undo -> do (_, st) <- elabStep e loadState
-                                 iResult ""
+                                 iPrintResult ""
                                  return (True, st, False, init prf)
-              Success ProofState -> do iResult ""
+              Success ProofState -> do iPrintResult ""
                                        return (True, e, False, prf)
               Success ProofTerm -> do tm <- lifte e get_term
-                                      iResult $ "TT: " ++ show tm ++ "\n"
+                                      iPrintResult $ "TT: " ++ show tm ++ "\n"
                                       return (False, e, False, prf)
               Success Qed -> do hs <- lifte e get_holes
-                                when (not (null hs)) $ fail "Incomplete proof"
-                                iResult "Proof completed!"
+                                when (not (null hs)) $ ifail "Incomplete proof"
+                                iPrintResult "Proof completed!"
                                 return (False, e, True, prf)
               Success tac -> do (_, e) <- elabStep e saveState
                                 (_, st) <- elabStep e (runTac True i tac)
 --                               trace (show (problems (proof st))) $
-                                iResult ""
+                                iPrintResult ""
                                 return (True, st, False, prf ++ [step]))
-           (\err -> do iFail (show err)
+           (\err -> do iPrintError (show err)
                        return (False, e, False, prf))
          ideslavePutSExp "write-proof-state" (prf', length prf')
          if done then do (tm, _) <- elabStep st get_term

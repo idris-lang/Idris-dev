@@ -60,7 +60,7 @@ addDyLib libs = do i <- getIState
                    case mapMaybe (findDyLib ls) libs of
                      x:_ -> return (Left x)
                      [] -> do
-                       handle <- lift $ mapM (\l -> catchIO (tryLoadLib l) (\_ -> return Nothing)) $ libs
+                       handle <- lift . lift $ mapM (\l -> catchIO (tryLoadLib l) (\_ -> return Nothing)) $ libs
                        case msum handle of
                          Nothing -> return (Right $ "Could not load dynamic alternatives \"" ++
                                                     concat (intersperse "," libs) ++ "\"")
@@ -277,25 +277,25 @@ solveDeferred :: Name -> Idris ()
 solveDeferred n = do i <- getIState
                      putIState $ i { idris_metavars = idris_metavars i \\ [n] }
 
-iResult :: String -> Idris ()
-iResult s = do i <- getIState
-               case idris_outputmode i of
-                 RawOutput -> case s of
-                                   "" -> return ()
-                                   s  -> liftIO $ putStrLn s
-                 IdeSlave n ->
-                   let good = SexpList [SymbolAtom "ok", toSExp s] in
-                       liftIO $ putStrLn $ convSExp "return" good n
+iPrintResult :: String -> Idris ()
+iPrintResult s = do i <- getIState
+                    case idris_outputmode i of
+                      RawOutput -> case s of
+                                     "" -> return ()
+                                     s  -> liftIO $ putStrLn s
+                      IdeSlave n ->
+                          let good = SexpList [SymbolAtom "ok", toSExp s] in
+                          liftIO $ putStrLn $ convSExp "return" good n
 
-iFail :: String -> Idris ()
-iFail s = do i <- getIState
-             case idris_outputmode i of
-               RawOutput -> case s of
-                                 "" -> return ()
-                                 s  -> liftIO $ putStrLn s
-               IdeSlave n ->
-                 let good = SexpList [SymbolAtom "error", toSExp s] in
-                     liftIO . putStrLn $ convSExp "return" good n
+iPrintError :: String -> Idris ()
+iPrintError s = do i <- getIState
+                   case idris_outputmode i of
+                     RawOutput -> case s of
+                                       "" -> return ()
+                                       s  -> liftIO $ putStrLn s
+                     IdeSlave n ->
+                       let good = SexpList [SymbolAtom "error", toSExp s] in
+                       liftIO . putStrLn $ convSExp "return" good n
 
 iputStrLn :: String -> Idris ()
 iputStrLn s = do i <- getIState

@@ -24,6 +24,7 @@ import Control.Monad.State
 import Debug.Trace
 import Data.Maybe
 import System.FilePath
+import Idris.Error
 
 type TokenParser a = PTok.TokenParser a
 
@@ -62,14 +63,14 @@ fovm cgn outty f
            OK c -> case cgn of
                      ViaC -> codegenC c "a.out" outty ["math.h"] "" "" "" TRACE
                      ViaJava -> codegenJava [] c "a.out" [] [] outty
-           Error e -> fail $ show e 
+           Error e -> fail (show e)
 
 parseFOVM :: FilePath -> IO [(Name, LDecl)]
 parseFOVM fname = do -- putStrLn $ "Reading " ++ fname
                      fp <- readFile fname
                      case runParser pProgram () fname fp of
-                        Left err-> fail (show err)
-                        Right x -> return x
+                        Left err -> fail (show err)
+                        Right x  -> return x
 
 pProgram :: LParser [(Name, LDecl)]
 pProgram = do fs <- many1 pLDecl

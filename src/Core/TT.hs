@@ -21,6 +21,7 @@
 module Core.TT where
 
 import Control.Monad.State
+import Control.Monad.Trans.Error (Error(..))
 import Debug.Trace
 import qualified Data.Map as Map
 import Data.Char
@@ -132,6 +133,9 @@ instance Pretty Err where
         nest nestingSize (text "where" <+> pretty e <+> text "with" <+> (text . show $ i))
   pretty (ProviderError msg) = text msg
   pretty _ = text "Error"
+
+instance Error Err where
+  strMsg = Msg
 
 data TC a = OK a
           | Error Err
