@@ -137,7 +137,7 @@ ibc i (IBCTrans t) f = return f { ibc_transforms = t : ibc_transforms f }
 process :: IBCFile -> FilePath -> Idris ()
 process i fn
    | ver i /= ibcVersion = do iLOG "ibc out of date"
-                              fail "Incorrect ibc version --- please rebuild"
+                              ifail "Incorrect ibc version --- please rebuild"
    | otherwise =
             do srcok <- liftIO $ doesFileExist (sourcefile i)
                when srcok $ liftIO $ timestampOlder (sourcefile i) fn
