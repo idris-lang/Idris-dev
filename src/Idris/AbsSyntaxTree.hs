@@ -888,6 +888,7 @@ prettyImp impl = prettySe 10
         prettyBasic n@(UN _) = pretty n
         prettyBasic (MN _ s) = text s
         prettyBasic (NS n s) = (foldr (<>) empty (intersperse (text ".") (map text $ reverse s))) <> prettyBasic n
+        prettyBasic (SN sn) = text (show sn)
     prettySe p (PLam n ty sc) =
       bracket p 2 $
         if size sc > breakingSize then
