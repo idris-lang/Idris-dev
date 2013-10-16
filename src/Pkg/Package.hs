@@ -70,7 +70,7 @@ installPkg pkgdesc
 buildMods :: [Opt] -> [Name] -> IO ()
 buildMods opts ns = do let f = map (toPath . show) ns
 --                        putStrLn $ "MODULE: " ++ show f
-                       idris (map Filename f ++ opts) 
+                       idris (map Filename f ++ opts)
                        return ()
     where toPath n = foldl1' (</>) $ splitOn "." n
 

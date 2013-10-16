@@ -8,6 +8,7 @@ import System.FilePath ((</>), addTrailingPathSeparator)
 
 import Data.Maybe
 import Data.Version
+import Control.Monad.Trans.Error ( ErrorT(..) )
 import Control.Monad.Trans.State.Strict ( execStateT, get, put )
 import Control.Monad.Trans ( liftIO )
 import Control.Monad ( when )
@@ -40,7 +41,7 @@ import Paths_idris
 
 main = do xs <- getArgs
           let opts = parseArgs xs
-          execStateT (runIdris opts) idrisInit
+          runErrorT $ execStateT (runIdris opts) idrisInit
 
 runIdris :: [Opt] -> Idris ()
 runIdris opts = do

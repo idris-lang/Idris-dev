@@ -941,8 +941,9 @@ loadModule f
                                                             LIDR sfn -> loadSource True sfn)
                     let (dir, fh) = splitFileName file
                     return (dropExtension fh))
-                (\e -> do let msg = show e
-                          setErrLine (getErrLine msg)
+                (\e -> do setErrLine (getErrLine e)
+                          ist <- getIState
+                          msg <- showErr e
                           iputStrLn msg
                           return "")
 
@@ -964,8 +965,8 @@ loadFromIFile (LIDR fn) = loadSource' True fn
 loadSource' :: Bool -> FilePath -> Idris ()
 loadSource' lidr r
    = idrisCatch (loadSource lidr r)
-                (\e -> do let msg = show e
-                          setErrLine (getErrLine msg)
+                (\e -> do setErrLine (getErrLine e)
+                          msg <- showErr e
                           iputStrLn msg)
 
 {- | Load Idris source code-}
