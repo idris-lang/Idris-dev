@@ -42,7 +42,7 @@ idrisCatch :: Idris a -> (Err -> Idris a) -> Idris a
 idrisCatch = catchError
 
 
-ifail :: String -> Idris ()
+ifail :: String -> Idris a
 ifail = throwError . Msg
 
 ierror :: Err -> Idris a

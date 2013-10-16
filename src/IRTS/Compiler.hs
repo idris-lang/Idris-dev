@@ -19,6 +19,7 @@ import IRTS.Inliner
 
 import Idris.AbsSyntax
 import Idris.UnusedArgs
+import Idris.Error
 
 import Core.TT
 import Core.Evaluate
@@ -91,11 +92,11 @@ compile codegen f tm
                                   ViaLLVM -> codegenLLVM c triple cpu optimize f outty
 
                                   Bytecode -> dumpBC c f
-            Error e -> fail $ show e 
+            Error e -> ierror e
   where checkMVs = do i <- getIState
                       case idris_metavars i \\ primDefs of
                             [] -> return ()
-                            ms -> fail $ "There are undefined metavariables: " ++ show ms
+                            ms -> ifail $ "There are undefined metavariables: " ++ show ms
         inDir d h = do let f = d </> h
                        ex <- doesFileExist f
                        if ex then return f else return h
@@ -249,7 +250,7 @@ instance ToIR (TT Name) where
 --                         = return $ LConst (BI 0)
       ir' env (P _ n _) = return $ LV (Glob n)
       ir' env (V i)     | i >= 0 && i < length env = return $ LV (Glob (env!!i))
-                        | otherwise = error $ "IR fail " ++ show i ++ " " ++ show tm
+                        | otherwise = ifail $ "IR fail " ++ show i ++ " " ++ show tm
       ir' env (Bind n (Lam _) sc)
           = do let n' = uniqueName n env
                sc' <- ir' (n' : env) sc
@@ -286,14 +287,14 @@ instance ToIR (TT Name) where
               = let maybeTys = getFTypes fgnArgTys
                     rty = mkIty' ret in
                 case maybeTys of
-                  Nothing -> fail $ "Foreign type specification is not a constant list: " ++ show (fgn:args)
+                  Nothing -> ifail $ "Foreign type specification is not a constant list: " ++ show (fgn:args)
                   Just tys -> do
                     args' <- mapM (ir' env) (init args)
                     -- wrap it in a prim__IO
                     -- return $ con_ 0 @@ impossible @@
                     return $ -- LLazyExp $
                       LForeign LANG_C rty fgnName (zip tys args')
-         | otherwise = fail "Badly formed foreign function call"
+         | otherwise = ifail "Badly formed foreign function call"
 
 getFTypes :: TT Name -> Maybe [FType]
 getFTypes tm = case unApply tm of
@@ -386,7 +387,7 @@ instance ToIR SC where
                                                   LConst (BI 1)]) rhs')
 --                 return $ LSucCase n rhs'
         mkIRAlt _ (ConstCase c rhs)      
-           = fail $ "Can't match on (" ++ show c ++ ")"
+           = ifail $ "Can't match on (" ++ show c ++ ")"
         mkIRAlt _ (DefaultCase rhs)
            = do rhs' <- ir rhs
                 return $ LDefaultCase rhs'
