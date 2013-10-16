@@ -70,7 +70,7 @@ writeIBC src f
     = do iLOG $ "Writing ibc " ++ show f
          i <- getIState
          case idris_metavars i \\ primDefs of
-                (_:_) -> fail "Can't write ibc when there are unsolved metavariables"
+                (_:_) -> ifail "Can't write ibc when there are unsolved metavariables"
                 [] -> return ()
          ibcf <- mkIBC (ibc_write i) (initIBC { sourcefile = src }) 
          idrisCatch (do liftIO $ createDirectoryIfMissing True (dropFileName f)
@@ -86,31 +86,32 @@ mkIBC (i:is) f = do ist <- getIState
                     f' <- ibc ist i f
                     mkIBC is f'
 
+ibc :: IState -> IBCWrite -> IBCFile -> Idris IBCFile
 ibc i (IBCFix d) f = return f { ibc_fixes = d : ibc_fixes f } 
 ibc i (IBCImp n) f = case lookupCtxt n (idris_implicits i) of
                         [v] -> return f { ibc_implicits = (n,v): ibc_implicits f     }
-                        _ -> fail "IBC write failed"
+                        _ -> ifail "IBC write failed"
 ibc i (IBCStatic n) f 
                    = case lookupCtxt n (idris_statics i) of
                         [v] -> return f { ibc_statics = (n,v): ibc_statics f     }
-                        _ -> fail "IBC write failed"
+                        _ -> ifail "IBC write failed"
 ibc i (IBCClass n) f 
                    = case lookupCtxt n (idris_classes i) of
                         [v] -> return f { ibc_classes = (n,v): ibc_classes f     }
-                        _ -> fail "IBC write failed"
+                        _ -> ifail "IBC write failed"
 ibc i (IBCInstance int n ins) f 
                    = return f { ibc_instances = (int,n,ins): ibc_instances f     }
 ibc i (IBCDSL n) f 
                    = case lookupCtxt n (idris_dsls i) of
                         [v] -> return f { ibc_dsls = (n,v): ibc_dsls f     }
-                        _ -> fail "IBC write failed"
+                        _ -> ifail "IBC write failed"
 ibc i (IBCData n) f 
                    = case lookupCtxt n (idris_datatypes i) of
                         [v] -> return f { ibc_datatypes = (n,v): ibc_datatypes f     }
-                        _ -> fail "IBC write failed"
+                        _ -> ifail "IBC write failed"
 ibc i (IBCOpt n) f = case lookupCtxt n (idris_optimisation i) of
                         [v] -> return f { ibc_optimise = (n,v): ibc_optimise f     }
-                        _ -> fail "IBC write failed"
+                        _ -> ifail "IBC write failed"
 ibc i (IBCSyntax n) f = return f { ibc_syntax = n : ibc_syntax f }
 ibc i (IBCKeyword n) f = return f { ibc_keywords = n : ibc_keywords f }
 ibc i (IBCImport n) f = return f { ibc_imports = n : ibc_imports f }
@@ -121,13 +122,13 @@ ibc i (IBCDyLib n) f = return f {ibc_dynamic_libs = n : ibc_dynamic_libs f }
 ibc i (IBCHeader tgt n) f = return f { ibc_hdrs = (tgt, n) : ibc_hdrs f }
 ibc i (IBCDef n) f = case lookupDef n (tt_ctxt i) of
                         [v] -> return f { ibc_defs = (n,v) : ibc_defs f     }
-                        _ -> fail "IBC write failed"
+                        _ -> ifail "IBC write failed"
 ibc i (IBCDoc n) f = case lookupCtxt n (idris_docstrings i) of
                         [v] -> return f { ibc_docstrings = (n,v) : ibc_docstrings f }
-                        _ -> fail "IBC write failed"
+                        _ -> ifail "IBC write failed"
 ibc i (IBCCG n) f = case lookupCtxt n (idris_callgraph i) of
                         [v] -> return f { ibc_cg = (n,v) : ibc_cg f     }
-                        _ -> fail "IBC write failed"
+                        _ -> ifail "IBC write failed"
 ibc i (IBCCoercion n) f = return f { ibc_coercions = n : ibc_coercions f }
 ibc i (IBCAccess n a) f = return f { ibc_access = (n,a) : ibc_access f }
 ibc i (IBCFlags n a) f = return f { ibc_flags = (n,a) : ibc_flags f }
@@ -186,9 +187,9 @@ pImports fs
                         else do putIState (i { imported = f : imported i })
                                 case fp of 
                                     LIDR fn -> do iLOG $ "Failed at " ++ fn
-                                                  fail "Must be an ibc"
+                                                  ifail "Must be an ibc"
                                     IDR fn -> do iLOG $ "Failed at " ++ fn
-                                                 fail "Must be an ibc"
+                                                 ifail "Must be an ibc"
                                     IBC fn src -> loadIBC fn) 
              fs
 
@@ -272,7 +273,7 @@ pDyLibs ls = do res <- mapM (addDyLib . return) ls
                 mapM_ checkLoad res
                 return ()
     where checkLoad (Left _) = return ()
-          checkLoad (Right err) = fail err
+          checkLoad (Right err) = ifail err
 
 pHdrs :: [(Codegen, String)] -> Idris ()
 pHdrs hs = mapM_ (uncurry addHdr) hs

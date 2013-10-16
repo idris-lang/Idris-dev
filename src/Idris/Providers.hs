@@ -19,9 +19,9 @@ getProvided tm | (P _ (UN "prim_io_return") _, [tp, result]) <- unApply tm
                , (P _ (NS (UN "Error") ["Providers"]) _, [_, err]) <- unApply result =
                      case err of
                        Constant (Str msg) -> ierror . ProviderError $ msg
-                       _ -> fail "Internal error in type provider, non-normalised error"
+                       _ -> ifail "Internal error in type provider, non-normalised error"
                | (P _ (UN "prim_io_return") _, [tp, result]) <- unApply tm
                , (P _ (NS (UN "Provide") ["Providers"]) _, [_, res]) <- unApply result =
                      return res
-               | otherwise = fail $ "Internal type provider error: result was not " ++
-                                    "IO (Provider a), or perhaps missing normalisation."
+               | otherwise = ifail $ "Internal type provider error: result was not " ++
+                                     "IO (Provider a), or perhaps missing normalisation."
