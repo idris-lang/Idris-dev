@@ -35,9 +35,14 @@ data JSType = JSIntTy
             | JSForgotTy
             deriving Eq
 
+data JSInteger = JSBigZero
+               | JSBigOne
+               | JSBigInt Integer
+               deriving Eq
+
 data JSNum = JSInt Int
            | JSFloat Double
-           | JSInteger Integer
+           | JSInteger JSInteger
            deriving Eq
 
 data JS = JSRaw String
@@ -149,9 +154,11 @@ compileJS (JSString str) =
   show str
 
 compileJS (JSNum num)
-  | JSInt i     <- num = show i
-  | JSFloat f   <- num = show f
-  | JSInteger i <- num = show i
+  | JSInt i                <- num = show i
+  | JSFloat f              <- num = show f
+  | JSInteger JSBigZero    <- num = "__IDRRT__ZERO"
+  | JSInteger JSBigOne     <- num = "__IDRRT__ONE"
+  | JSInteger (JSBigInt i) <- num = show i
 
 compileJS (JSAssign lhs rhs) =
   compileJS lhs ++ "=" ++ compileJS rhs
@@ -211,8 +218,8 @@ jsTypeTag :: JS -> JS
 jsTypeTag obj = JSProj obj "type"
 
 jsBigInt :: JS -> JS
-jsBigInt (JSString "0") = JSIdent "__IDRRT__ZERO"
-jsBigInt (JSString "1") = JSIdent "__IDRRT__ONE"
+jsBigInt (JSString "0") = JSNum $ JSInteger JSBigZero
+jsBigInt (JSString "1") = JSNum $ JSInteger JSBigOne
 jsBigInt val = JSApp (JSIdent $ idrRTNamespace ++ "bigInt") [val]
 
 jsVar :: Int -> String
@@ -430,6 +437,45 @@ removeIDs js =
 
         removeIDCall _ js = js
 
+reduceConstant :: JS -> JS
+reduceConstant (JSApp (JSIdent "__IDRRT__tailcall") [JSFunction [] (
+                 JSReturn (JSApp (JSIdent "__IDR__mEVAL0") [JSNum num])
+               )]) = JSNum num
+
+reduceConstant (JSReturn ret) =
+  JSReturn (reduceConstant ret)
+
+reduceConstant (JSApp fun args) =
+  JSApp (reduceConstant fun) (map reduceConstant args)
+
+reduceConstant (JSArray fields) =
+  JSArray (map reduceConstant fields)
+
+reduceConstant (JSAlloc name (Just val)) =
+  JSAlloc name $ Just (reduceConstant val)
+
+reduceConstant (JSNew con args) =
+  JSNew con (map reduceConstant args)
+
+reduceConstant (JSProj obj field) =
+  JSProj (reduceConstant obj) field
+
+reduceConstant (JSCond conds) =
+  JSCond $ map (reduceConstant *** reduceConstant) conds
+
+reduceConstant (JSSeq seq) =
+  JSSeq $ map reduceConstant seq
+
+reduceConstant (JSFunction args body) =
+  JSFunction args (reduceConstant body)
+
+reduceConstant js = js
+
+reduceConstants :: JS -> JS
+reduceConstants js
+  | ret <- reduceConstant js
+  , ret /= js = reduceConstants ret
+  | otherwise = js
 
 reduceLoop :: [String] -> ([JS], [JS]) -> [JS]
 reduceLoop reduced (cons, program) =
@@ -542,7 +588,7 @@ codegenJavaScript target definitions filename outputType = do
 
     functions :: [String]
     functions =
-      map compileJS ((reduceJS . removeIDs) $ map (optimizeJS . translateDeclaration) def)
+      map (compileJS . reduceConstants) ((reduceJS . removeIDs) $ map (optimizeJS . translateDeclaration) def)
 
     mainLoop :: String
     mainLoop = compileJS $
