@@ -146,27 +146,14 @@ effect' : {a, b: _} -> {e : Effect} ->
          EffM m xs (updateResTy xs prf eff) t
 effect' {prf} e = effect prf e
 
-data WrapEffM : (m : Type -> Type) ->
-                List EFFECT -> List EFFECT -> Type -> Type where
-     WEffM : EffM m xs xs' t -> WrapEffM m xs xs' t
+-- For making proofs implicitly for 'test' and 'test_lbl'
 
--- wrap subprograms to prevent lifting (need to guarantee same effects as
--- parent!)
-
-test_lbl' : {x : lbl} ->
-            {default tactics { applyTactic findEffElem 20; solve; }
-              prf : EffElem e (LRes x (Either l r)) xs} ->
-            WrapEffM m (updateResTyImm xs prf (LRes x l)) xs' t ->
-            WrapEffM m (updateResTyImm xs prf (LRes x r)) xs' t ->
-            EffM m xs xs' t
-test_lbl' {prf} (WEffM l) (WEffM r) = test_lbl prf l r
-
-test' : {default tactics { applyTactic findEffElem 20; solve; }
-              prf : EffElem e (Either l r) xs} ->
-        EffM m (updateResTyImm xs prf l) xs' t ->
-        EffM m (updateResTyImm xs prf r) xs' t ->
-        EffM m xs xs' t
-test' {prf} l r = test prf l r
+syntax if_valid then [e] else [t] =
+     test (tactics { applyTactic findEffElem 20; solve; }) t e
+  
+syntax if_valid [lbl] then [e] else [t] =
+     test_lbl {x=lbl} (tactics { applyTactic findEffElem 20; solve; }) t e
+  
 
 -- for 'do' notation
 

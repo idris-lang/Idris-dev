@@ -797,7 +797,7 @@ directive syn = do try (lchar '%' *> reserved "lib"); cgn <- codegen_; lib <- st
              <|> do try (lchar '%' *> reserved "include"); cgn <- codegen_; hdr <- stringLiteral;
                     return [PDirective (do addHdr cgn hdr
                                            addIBC (IBCHeader cgn hdr))]
-             <|> do try (lchar '%' *> reserved "hide"); n <- iName []
+             <|> do try (lchar '%' *> reserved "hide"); n <- fnName
                     return [PDirective (do setAccessibility n Hidden
                                            addIBC (IBCAccess n Hidden))]
              <|> do try (lchar '%' *> reserved "freeze"); n <- iName []

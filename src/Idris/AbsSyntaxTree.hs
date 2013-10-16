@@ -657,7 +657,6 @@ type PDo = PDo' PTerm
 -- The priority gives a hint as to elaboration order. Best to elaborate
 -- things early which will help give a more concrete type to other
 -- variables, e.g. a before (interpTy a).
--- TODO: priority no longer serves any purpose, drop it!
 
 data PArg' t = PImp { priority :: Int, 
                       machine_inf :: Bool, -- true if the machine inferred it

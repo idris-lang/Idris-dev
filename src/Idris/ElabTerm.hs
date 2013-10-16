@@ -393,6 +393,7 @@ elab ist info pattern tcgen fn tm
                     ns <- apply (Var f) (map isph args)
                     ptm <- get_term
                     g <- goal
+                    -- Sort so that the implicit tactics go last
                     let (ns', eargs) = unzip $ 
                              sortBy (\(_,x) (_,y) -> 
                                             compare (priority x) (priority y))
@@ -942,6 +943,8 @@ runTac autoSolve ist tac
                                           then runT tac
                                           else fail "Wrong goal type"
                                     _ -> fail "Wrong goal type"
+    runT ProofState = do g <- goal
+                         trace (show g) $ return ()
     runT x = fail $ "Not implemented " ++ show x
 
     runReflected t = do t' <- reify ist t
