@@ -130,6 +130,8 @@ data EffM : (m : Type -> Type) ->
                EffM m xs xs' a
      (:-)    : (l : ty) -> EffM m [x] [y] t -> EffM m [l ::: x] [l ::: y] t
 
+syntax [tag] ":!" [val] = !(tag :- val)
+
 --   Eff : List (EFFECT m) -> Type -> Type
 
 implicit

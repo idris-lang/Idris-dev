@@ -9,7 +9,11 @@ import Core.CoreParser
 import Core.TT
 import Core.Evaluate
 
+import Control.Monad.State
 import Debug.Trace
+
+debindApp :: SyntaxInfo -> PTerm -> PTerm
+debindApp syn t = debind (dsl_bind (dsl_info syn)) t
 
 desugar :: SyntaxInfo -> IState -> PTerm -> PTerm
 desugar syn i t = let t' = expandDo (dsl_info syn) t in
@@ -29,6 +33,8 @@ expandDo dsl (PLet n ty v tm) = PLet n (expandDo dsl ty) (expandDo dsl v) (expan
 expandDo dsl (PPi p n ty tm) = PPi p n (expandDo dsl ty) (expandDo dsl tm)
 expandDo dsl (PApp fc t args) = PApp fc (expandDo dsl t)
                                         (map (fmap (expandDo dsl)) args)
+expandDo dsl (PAppBind fc t args) = PAppBind fc (expandDo dsl t) 
+                                                (map (fmap (expandDo dsl)) args) 
 expandDo dsl (PCase fc s opts) = PCase fc (expandDo dsl s)
                                         (map (pmap (expandDo dsl)) opts)
 expandDo dsl (PEq fc l r) = PEq fc (expandDo dsl l) (expandDo dsl r)
@@ -44,7 +50,8 @@ expandDo dsl (PRewrite fc r t ty)
     = PRewrite fc r (expandDo dsl t) ty
 expandDo dsl (PGoal fc r n sc)
     = PGoal fc (expandDo dsl r) n (expandDo dsl sc)
-expandDo dsl (PDoBlock ds) = expandDo dsl $ block (dsl_bind dsl) ds 
+expandDo dsl (PDoBlock ds) 
+    = expandDo dsl $ debind (dsl_bind dsl) (block (dsl_bind dsl) ds)
   where
     block b [DoExp fc tm] = tm 
     block b [a] = PElabError (Msg "Last statement in do block must be an expression")
@@ -113,4 +120,46 @@ unIdiom ap pure fc e@(PApp _ _ _) = let f = getFn e in
     mkap (f, a:as) = mkap (PApp fc ap [pexp f, a], as)
 
 unIdiom ap pure fc e = PApp fc pure [pexp e]
+
+debind :: PTerm -> PTerm -> PTerm
+-- For every arg which is an AppBind, lift it out
+debind b tm = let (tm', (bs, _)) = runState (db' tm) ([], 0) in
+                  bindAll (reverse bs) tm'
+  where
+    db' :: PTerm -> State ([(Name, FC, PTerm)], Int) PTerm
+    db' (PAppBind fc t args)
+         = do args' <- dbs args
+              (bs, n) <- get
+              let nm = MN n ("bindApp" ++ show n)
+              put ((nm, fc, PApp fc t args') : bs, n+1)
+              return (PRef fc nm)
+    db' (PApp fc t args)
+         = do args' <- mapM dbArg args
+              return (PApp fc t args')
+    db' (PLam n ty sc) = return (PLam n ty (debind b sc))
+    db' (PLet n ty v sc) = do v' <- db' v
+                              return (PLet n ty v' (debind b sc))
+    db' (PCase fc s opts) = do s' <- db' s
+                               return (PCase fc s' (map (pmap (debind b)) opts))
+    db' (PPair fc l r) = do l' <- db' l
+                            r' <- db' r
+                            return (PPair fc l' r')
+    db' (PDPair fc l t r) = do l' <- db' l
+                               r' <- db' r
+                               return (PDPair fc l' t r')
+    db' t = return t -- TODO, finish
+
+    dbArg a = do t' <- db' (getTm a)
+                 return (a { getTm = t' })
+
+    dbs [] = return []
+    dbs (a : as) = do let t = getTm a
+                      t' <- db' t
+                      as' <- dbs as
+                      return (a { getTm = t' } : as')
+
+    bindAll [] tm = tm
+    bindAll ((n, fc, t) : bs) tm
+       = PApp fc b [pexp t, pexp (PLam n Placeholder (bindAll bs tm))]
+
 

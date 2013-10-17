@@ -137,7 +137,7 @@ decl syn = do notEndBlock
         declBody' :: IdrisParser [PDecl]
         declBody' = do d <- decl' syn
                        i <- get
-                       let d' = fmap (desugar syn i) d
+                       let d' = fmap (debindApp syn . (desugar syn i)) d
                        return [d']
 
 {- | Parses a top-level declaration with possible syntax sugar

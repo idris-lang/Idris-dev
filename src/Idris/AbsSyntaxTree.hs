@@ -533,6 +533,7 @@ data PTerm = PQuote Raw
            | PLet Name PTerm PTerm PTerm
            | PTyped PTerm PTerm -- ^ Term with explicit type
            | PApp FC PTerm [PArg]
+           | PAppBind FC PTerm [PArg] -- ^ implicitly bound application
            | PMatchApp FC Name -- ^ Make an application by type matching
            | PCase FC PTerm [(PTerm, PTerm)]
            | PTrue FC
@@ -573,6 +574,7 @@ mapPT f t = f (mpt t) where
   mpt (PRewrite fc t s g) = PRewrite fc (mapPT f t) (mapPT f s) 
                                  (fmap (mapPT f) g)
   mpt (PApp fc t as) = PApp fc (mapPT f t) (map (fmap (mapPT f)) as)
+  mpt (PAppBind fc t as) = PAppBind fc (mapPT f t) (map (fmap (mapPT f)) as)
   mpt (PCase fc c os) = PCase fc (mapPT f c) (map (pmap (mapPT f)) os)
   mpt (PEq fc l r) = PEq fc (mapPT f l) (mapPT f r)
   mpt (PTyped l r) = PTyped (mapPT f l) (mapPT f r)
@@ -957,6 +959,8 @@ prettyImp impl = prettySe 10
             rbrace <+> text "->" <+> prettySe 10 sc
     prettySe p (PApp _ (PRef _ f) [])
       | not impl = pretty f
+    prettySe p (PAppBind _ (PRef _ f) [])
+      | not impl = pretty f <+> text "!"
     prettySe p (PApp _ (PRef _ op@(UN (f:_))) args)
       | length (getExps args) == 2 && (not impl) && (not $ isAlpha f) =
           let [l, r] = getExps args in
@@ -1142,6 +1146,8 @@ showImp ist impl colour tm = se 10 [] tm where
     se p bnd (PMatchApp _ f) = "match " ++ show f
     se p bnd (PApp _ hd@(PRef _ f) [])
         | not impl = se p bnd hd
+    se p bnd (PAppBind _ hd@(PRef _ f) [])
+        | not impl = se p bnd hd ++ "!"
     se p bnd (PApp _ op@(PRef _ (UN (f:_))) args)
         | length (getExps args) == 2 && not impl && not (isAlpha f) 
             = let [l, r] = getExps args in
@@ -1149,6 +1155,10 @@ showImp ist impl colour tm = se 10 [] tm where
     se p bnd (PApp _ f as)
         = let args = getExps as in
               bracket p 1 $ se 1 bnd f ++ if impl then concatMap (sArg bnd) as
+                                                  else concatMap (seArg bnd) args
+    se p bnd (PAppBind _ f as)
+        = let args = getExps as in
+              bracket p 1 $ se 1 bnd f ++ "!" ++ if impl then concatMap (sArg bnd) as
                                                   else concatMap (seArg bnd) args
     se p bnd (PCase _ scr opts) = "case " ++ se 10 bnd scr ++ " of " ++ showSep " | " (map sc opts)
        where sc (l, r) = se 10 bnd l ++ " => " ++ se 10 bnd r
@@ -1238,6 +1248,7 @@ instance Sized PTerm where
   size (PLet name ty def bdy) = 1 + size ty + size def + size bdy
   size (PTyped trm ty) = 1 + size trm + size ty
   size (PApp fc name args) = 1 + size args
+  size (PAppBind fc name args) = 1 + size args
   size (PCase fc trm bdy) = 1 + size trm + size bdy
   size (PTrue fc) = 1
   size (PFalse fc) = 1
@@ -1274,6 +1285,7 @@ allNamesIn tm = nub $ ni [] tm
     ni env (PRef _ n)        
         | not (n `elem` env) = [n]
     ni env (PApp _ f as)   = ni env f ++ concatMap (ni env) (map getTm as)
+    ni env (PAppBind _ f as)   = ni env f ++ concatMap (ni env) (map getTm as)
     ni env (PCase _ c os)  = ni env c ++ concatMap (ni env) (map snd os)
     ni env (PLam n ty sc)  = ni env ty ++ ni (n:env) sc
     ni env (PPi _ n ty sc) = ni env ty ++ ni (n:env) sc
@@ -1300,6 +1312,7 @@ namesIn uvars ist tm = nub $ ni [] tm
                 [] -> [n]
                 _ -> if n `elem` (map fst uvars) then [n] else []
     ni env (PApp _ f as)   = ni env f ++ concatMap (ni env) (map getTm as)
+    ni env (PAppBind _ f as)   = ni env f ++ concatMap (ni env) (map getTm as)
     ni env (PCase _ c os)  = ni env c ++ concatMap (ni env) (map snd os)
     ni env (PLam n ty sc)  = ni env ty ++ ni (n:env) sc
     ni env (PPi _ n ty sc) = ni env ty ++ ni (n:env) sc
@@ -1326,6 +1339,7 @@ usedNamesIn vars ist tm = nub $ ni [] tm
                 [] -> [n]
                 _ -> []
     ni env (PApp _ f as)   = ni env f ++ concatMap (ni env) (map getTm as)
+    ni env (PAppBind _ f as)   = ni env f ++ concatMap (ni env) (map getTm as)
     ni env (PCase _ c os)  = ni env c ++ concatMap (ni env) (map snd os)
     ni env (PLam n ty sc)  = ni env ty ++ ni (n:env) sc
     ni env (PPi _ n ty sc) = ni env ty ++ ni (n:env) sc

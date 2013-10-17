@@ -138,6 +138,7 @@ extension syn (Rule ssym ptm _)
     update ns (PLet n ty val sc) = PLet (updateB ns n) (update ns ty) (update ns val)
                                           (update (dropn n ns) sc)
     update ns (PApp fc t args) = PApp fc (update ns t) (map (fmap (update ns)) args)
+    update ns (PAppBind fc t args) = PAppBind fc (update ns t) (map (fmap (update ns)) args)
     update ns (PCase fc c opts) = PCase fc (update ns c) (map (pmap (update ns)) opts)
     update ns (PPair fc l r) = PPair fc (update ns l) (update ns r)
     update ns (PDPair fc l t r) = PDPair fc (update ns l) (update ns t) (update ns r)
@@ -185,7 +186,7 @@ internalExpr syn =
      <|> rewriteTerm syn
      <|> try(pi syn)
      <|> doBlock syn
-     <|> simpleExpr syn
+     <|> do simpleExpr syn
      <?> "expression"
 
 {- | Parses a case expression
@@ -268,8 +269,10 @@ simpleExpr syn =
         <|> caseExpr syn
         <|> do reserved "Type"; return PType
         <|> do fc <- getFC
+               bang <- option False (do lchar '!'; return True)
                x <- fnName
-               return (PRef fc x)
+               if bang then return (PAppBind fc (PRef fc x) [])
+                       else return (PRef fc x)
         <|> try (listExpr syn)
         <|> try (comprehension syn)
         <|> alt syn
@@ -479,7 +482,10 @@ app syn = do f <- reserved "mkForeign"
               fc <- getFC
               args <- some (do notEndApp; arg syn)
               i <- get
-              return (dslify i $ PApp fc f args)
+              case f of
+                   PAppBind fc ref [] ->
+                      return (dslify i (PAppBind fc ref args))
+                   _ -> return (dslify i (PApp fc f args))
        <?> "function application"
   where
     dslify :: IState -> PTerm -> PTerm

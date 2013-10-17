@@ -1400,6 +1400,10 @@ instance Binary PTerm where
                                         put x2
                                         put x3
                                         put x4
+                PAppBind x1 x2 x3 -> do putWord8 32
+                                        put x1
+                                        put x2
+                                        put x3
         get
           = do i <- getWord8
                case i of
@@ -1494,6 +1498,10 @@ instance Binary PTerm where
                             x3 <- get
                             x4 <- get
                             return (PGoal x1 x2 x3 x4)
+                   32 -> do x1 <- get
+                            x2 <- get
+                            x3 <- get
+                            return (PAppBind x1 x2 x3)
                    _ -> error "Corrupted binary data for PTerm"
  
 instance (Binary t) => Binary (PTactic' t) where

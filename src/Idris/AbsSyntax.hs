@@ -699,6 +699,11 @@ expandParams dec ps ns infs tm = en tm
                            (map (pexp . (PRef fc)) (map fst ps) ++ (map (fmap en) as))
         | n `nselem` ns = PApp fc (PRef fc' (dec n)) 
                            (map (pexp . (PRef fc)) (map fst ps) ++ (map (fmap en) as))
+    en (PAppBind fc (PRef fc' n) as)
+        | n `elem` infs = PAppBind fc (PInferRef fc' (dec n)) 
+                           (map (pexp . (PRef fc)) (map fst ps) ++ (map (fmap en) as))
+        | n `nselem` ns = PAppBind fc (PRef fc' (dec n)) 
+                           (map (pexp . (PRef fc)) (map fst ps) ++ (map (fmap en) as))
     en (PRef fc n)
         | n `elem` infs = PApp fc (PInferRef fc (dec n)) 
                            (map (pexp . (PRef fc)) (map fst ps))
@@ -708,6 +713,7 @@ expandParams dec ps ns infs tm = en tm
         | n `nselem` ns = PApp fc (PInferRef fc (dec n)) 
                            (map (pexp . (PRef fc)) (map fst ps))
     en (PApp fc f as) = PApp fc (en f) (map (fmap en) as)
+    en (PAppBind fc f as) = PAppBind fc (en f) (map (fmap en) as)
     en (PCase fc c os) = PCase fc (en c) (map (pmap en) os)
     en t = t
 
@@ -829,6 +835,7 @@ getPriority i tm = 1 -- pri tm
     pri (PEq _ l r) = max 1 (max (pri l) (pri r))
     pri (PRewrite _ l r _) = max 1 (max (pri l) (pri r))
     pri (PApp _ f as) = max 1 (max (pri f) (foldr max 0 (map (pri.getTm) as))) 
+    pri (PAppBind _ f as) = max 1 (max (pri f) (foldr max 0 (map (pri.getTm) as))) 
     pri (PCase _ f as) = max 1 (max (pri f) (foldr max 0 (map (pri.snd) as))) 
     pri (PTyped l r) = pri l
     pri (PPair _ l r) = max 1 (max (pri l) (pri r))
