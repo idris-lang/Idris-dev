@@ -186,7 +186,12 @@ internalExpr syn =
      <|> rewriteTerm syn
      <|> try(pi syn)
      <|> doBlock syn
-     <|> do simpleExpr syn
+     <|> do s <- simpleExpr syn
+            fc <- getFC
+            bang <- option False (do lchar '!'; return True)
+            if bang then return (PAppBind fc s [])
+                    else return s
+
      <?> "expression"
 
 {- | Parses a case expression
@@ -269,8 +274,8 @@ simpleExpr syn =
         <|> caseExpr syn
         <|> do reserved "Type"; return PType
         <|> do fc <- getFC
-               bang <- option False (do lchar '!'; return True)
                x <- fnName
+               bang <- option False (do lchar '!'; return True)
                if bang then return (PAppBind fc (PRef fc x) [])
                        else return (PRef fc x)
         <|> try (listExpr syn)
