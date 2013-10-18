@@ -10,7 +10,6 @@ import Data.Maybe
 import Data.Version
 import Control.Monad.Trans.Error ( ErrorT(..) )
 import Control.Monad.Trans.State.Strict ( execStateT, get, put )
-import Control.Monad.Trans ( liftIO )
 import Control.Monad ( when )
 
 import Core.CoreParser
@@ -45,18 +44,18 @@ main = do xs <- getArgs
 
 runIdris :: [Opt] -> Idris ()
 runIdris opts = do
-       when (Ver `elem` opts) $ liftIO showver
-       when (Usage `elem` opts) $ liftIO usage
-       when (ShowIncs `elem` opts) $ liftIO showIncs
-       when (ShowLibs `elem` opts) $ liftIO showLibs
-       when (ShowLibdir `elem` opts) $ liftIO showLibdir
+       when (Ver `elem` opts) $ runIO showver
+       when (Usage `elem` opts) $ runIO usage
+       when (ShowIncs `elem` opts) $ runIO showIncs
+       when (ShowLibs `elem` opts) $ runIO showLibs
+       when (ShowLibdir `elem` opts) $ runIO showLibdir
        case opt getPkgClean opts of
            [] -> return ()
-           fs -> do liftIO $ mapM_ cleanPkg fs
-                    liftIO $ exitWith ExitSuccess
+           fs -> do runIO $ mapM_ cleanPkg fs
+                    runIO $ exitWith ExitSuccess
        case opt getPkg opts of
            [] -> idrisMain opts -- in Idris.REPL
-           fs -> liftIO $ mapM_ (buildPkg (WarnOnly `elem` opts)) fs
+           fs -> runIO $ mapM_ (buildPkg (WarnOnly `elem` opts)) fs
 
 usage = do putStrLn usagemsg
            exitWith ExitSuccess

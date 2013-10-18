@@ -71,7 +71,7 @@ getIModTime (LIDR i) = getModificationTime i
 buildTree :: [FilePath] -> -- already guaranteed built
              FilePath -> Idris [ModuleTree]
 buildTree built fp = idrisCatch (btree [] fp)
-                        (\e -> do now <- liftIO $ getCurrentTime
+                        (\e -> do now <- runIO $ getCurrentTime
                                   return [MTree (IDR fp) True now []])
  where
   btree done f = 
@@ -80,8 +80,8 @@ buildTree built fp = idrisCatch (btree [] fp)
        iLOG $ "CHASING " ++ show file
        ibcsd <- valIBCSubDir i
        ids <- allImportDirs 
-       fp <- liftIO $ findImport ids ibcsd file
-       mt <- liftIO $ getIModTime fp
+       fp <- runIO $ findImport ids ibcsd file
+       mt <- runIO $ getIModTime fp
        if (file `elem` built) 
           then return [MTree fp False mt []]
           else if file `elem` done 
@@ -89,19 +89,19 @@ buildTree built fp = idrisCatch (btree [] fp)
                   else mkChildren fp 
 
     where mkChildren (LIDR fn) = do ms <- children True fn (f:done)
-                                    mt <- liftIO $ getModificationTime fn
+                                    mt <- runIO $ getModificationTime fn
                                     return [MTree (LIDR fn) True mt ms]
           mkChildren (IDR fn) = do ms <- children False fn (f:done)
-                                   mt <- liftIO $ getModificationTime fn
+                                   mt <- runIO $ getModificationTime fn
                                    return [MTree (IDR fn) True mt ms]
           mkChildren (IBC fn src) 
-              = do srcexist <- liftIO $ doesFileExist (getSrcFile src)
+              = do srcexist <- runIO $ doesFileExist (getSrcFile src)
                    ms <- if srcexist then
                                do [MTree _ _ _ ms'] <- mkChildren src
                                   return ms'
                              else return []
-                   mt <- idrisCatch (liftIO $ getModificationTime fn)
-                                    (\c -> liftIO $ getIModTime src)
+                   mt <- idrisCatch (runIO $ getModificationTime fn)
+                                    (\c -> runIO $ getIModTime src)
                    ok <- checkIBCUpToDate fn src
                    return [MTree (IBC fn src) ok mt ms]
 
@@ -115,18 +115,18 @@ buildTree built fp = idrisCatch (btree [] fp)
           checkIBCUpToDate fn (LIDR src) = older fn src
           checkIBCUpToDate fn (IDR src) = older fn src
 
-          older ibc src = do exist <- liftIO $ doesFileExist src
+          older ibc src = do exist <- runIO $ doesFileExist src
                              if exist then do
-                                 ibct <- liftIO $ getModificationTime ibc
-                                 srct <- liftIO $ getModificationTime src
+                                 ibct <- runIO $ getModificationTime ibc
+                                 srct <- runIO $ getModificationTime src
                                  return (srct > ibct) 
                                else return False
 
   children :: Bool -> FilePath -> [FilePath] -> Idris [ModuleTree]
   children lit f done = idrisCatch
-    (do exist <- liftIO $ doesFileExist f
+    (do exist <- runIO $ doesFileExist f
         if exist then do
-            file_in <- liftIO $ readFile f
+            file_in <- runIO $ readFile f
             file <- if lit then tclift $ unlit f file_in else return file_in
             (_, modules, _) <- parseImports f file
             ms <- mapM (btree done) modules 
