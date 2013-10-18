@@ -34,15 +34,11 @@ import qualified Data.ByteString.UTF8 as UTF8
 table :: [FixDecl] -> OperatorTable IdrisParser PTerm
 table fixes
    = [[prefix "-" (\fc x -> PApp fc (PRef fc (UN "-"))
-        [pexp (PApp fc (PRef fc (UN "fromInteger")) [pexp (PConstant (BI 0))]), pexp x])],
-       [prefix "!" (\fc x -> bindApp fc x)]]
+        [pexp (PApp fc (PRef fc (UN "fromInteger")) [pexp (PConstant (BI 0))]), pexp x])]]
        ++ toTable (reverse fixes) ++
       [[backtick],
        [binary "="  PEq AssocLeft],
        [binary "->" (\fc x y -> PPi expl (MN 42 "__pi_arg") x y) AssocRight]]
-
-bindApp _ (PApp fc ref@(PRef _ _) args) = PAppBind fc ref args
-bindApp fc t = PAppBind fc t []
 
 {- |Calculates table for fixtiy declarations -}
 toTable :: [FixDecl] -> OperatorTable IdrisParser PTerm

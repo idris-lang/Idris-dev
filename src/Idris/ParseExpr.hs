@@ -31,6 +31,8 @@ import qualified Data.HashSet as HS
 import qualified Data.Text as T
 import qualified Data.ByteString.UTF8 as UTF8
 
+import Debug.Trace
+
 -- | Allow implicit type declarations
 allowImp :: SyntaxInfo -> SyntaxInfo
 allowImp syn = syn { implicitAllowed = True }
@@ -186,12 +188,7 @@ internalExpr syn =
      <|> rewriteTerm syn
      <|> try(pi syn)
      <|> doBlock syn
-     <|> do s <- simpleExpr syn
-            fc <- getFC
-            bang <- option False (do lchar '!'; return True)
-            if bang then return (PAppBind fc s [])
-                    else return s
-
+     <|> simpleExpr syn
      <?> "expression"
 
 {- | Parses a case expression
@@ -275,13 +272,15 @@ simpleExpr syn =
         <|> do reserved "Type"; return PType
         <|> do fc <- getFC
                x <- fnName
-               bang <- option False (do lchar '!'; return True)
-               if bang then return (PAppBind fc (PRef fc x) [])
-                       else return (PRef fc x)
+               return (PRef fc x)
         <|> try (listExpr syn)
         <|> try (comprehension syn)
         <|> alt syn
         <|> idiom syn
+        <|> do lchar '!'
+               s <- simpleExpr syn
+               fc <- getFC
+               return (PAppBind fc s [])
         <|> do lchar '('
                bracketed (disallowImp syn)
         <|> do c <- constant
@@ -487,10 +486,10 @@ app syn = do f <- reserved "mkForeign"
               fc <- getFC
               args <- some (do notEndApp; arg syn)
               i <- get
-              case f of
-                   PAppBind fc ref [] ->
-                      return (dslify i (PAppBind fc ref args))
-                   _ -> return (dslify i (PApp fc f args))
+--               case f of
+--                    PAppBind fc ref [] ->
+--                       return (dslify i (PAppBind fc ref args))
+              return (dslify i (PApp fc f args))
        <?> "function application"
   where
     dslify :: IState -> PTerm -> PTerm

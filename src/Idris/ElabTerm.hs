@@ -514,7 +514,7 @@ elab ist info pattern tcgen fn tm
     elab' ina (PUnifyLog t) = do unifyLog True
                                  elab' ina t
                                  unifyLog False
-    elab' ina x = fail $ "Something's gone wrong. Did you miss a semi-colon somewhere?"
+    elab' ina x = fail $ "Unelaboratable syntactic form " ++ show x
 
     caseBlock :: FC -> Name -> [(Name, Binder Term)] -> 
                                [(PTerm, PTerm)] -> [PClause]

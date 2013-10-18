@@ -13,7 +13,7 @@ import Control.Monad.State
 import Debug.Trace
 
 debindApp :: SyntaxInfo -> PTerm -> PTerm
-debindApp syn t = debind (dsl_bind (dsl_info syn)) t
+debindApp syn t = debind (dsl_bind (dsl_info syn)) t 
 
 desugar :: SyntaxInfo -> IState -> PTerm -> PTerm
 desugar syn i t = let t' = expandDo (dsl_info syn) t in
@@ -127,15 +127,18 @@ debind b tm = let (tm', (bs, _)) = runState (db' tm) ([], 0) in
                   bindAll (reverse bs) tm'
   where
     db' :: PTerm -> State ([(Name, FC, PTerm)], Int) PTerm
+    db' (PAppBind _ (PApp fc t args) [])
+         = db' (PAppBind fc t args)
     db' (PAppBind fc t args)
-         = do args' <- dbs args
-              (bs, n) <- get
-              let nm = MN n ("bindApp" ++ show n)
-              put ((nm, fc, PApp fc t args') : bs, n+1)
-              return (PRef fc nm)
+        = do args' <- dbs args
+             (bs, n) <- get
+             let nm = MN n ("bindApp" ++ show n)
+             put ((nm, fc, PApp fc t args') : bs, n+1)
+             return (PRef fc nm)
     db' (PApp fc t args)
-         = do args' <- mapM dbArg args
-              return (PApp fc t args')
+         = do t' <- db' t
+              args' <- mapM dbArg args
+              return (PApp fc t' args')
     db' (PLam n ty sc) = return (PLam n ty (debind b sc))
     db' (PLet n ty v sc) = do v' <- db' v
                               return (PLet n ty v' (debind b sc))
@@ -147,7 +150,7 @@ debind b tm = let (tm', (bs, _)) = runState (db' tm) ([], 0) in
     db' (PDPair fc l t r) = do l' <- db' l
                                r' <- db' r
                                return (PDPair fc l' t r')
-    db' t = return t -- TODO, finish
+    db' t = return t 
 
     dbArg a = do t' <- db' (getTm a)
                  return (a { getTm = t' })
