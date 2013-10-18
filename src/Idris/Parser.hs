@@ -975,7 +975,7 @@ loadSource lidr f
              = do iLOG ("Reading " ++ f)
                   i <- getIState
                   let def_total = default_total i
-                  file_in <- liftIO $ readFile f
+                  file_in <- runIO $ readFile f
                   file <- if lidr then tclift $ unlit f file_in else return file_in
                   (mname, modules, pos) <- parseImports f file
                   i <- getIState

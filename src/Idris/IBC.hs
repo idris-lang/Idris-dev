@@ -62,7 +62,7 @@ initIBC = IBCFile ibcVersion "" [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] 
 
 loadIBC :: FilePath -> Idris ()
 loadIBC fp = do iLOG $ "Loading ibc " ++ fp
-                ibcf <- liftIO $ (decodeFile fp :: IO IBCFile)
+                ibcf <- runIO $ (decodeFile fp :: IO IBCFile)
                 process ibcf fp
 
 writeIBC :: FilePath -> FilePath -> Idris ()
@@ -73,8 +73,8 @@ writeIBC src f
                 (_:_) -> ifail "Can't write ibc when there are unsolved metavariables"
                 [] -> return ()
          ibcf <- mkIBC (ibc_write i) (initIBC { sourcefile = src }) 
-         idrisCatch (do liftIO $ createDirectoryIfMissing True (dropFileName f)
-                        liftIO $ encodeFile f ibcf
+         idrisCatch (do runIO $ createDirectoryIfMissing True (dropFileName f)
+                        runIO $ encodeFile f ibcf
                         iLOG "Written")
             (\c -> do iLOG $ "Failed " ++ show c)
          return ()
@@ -140,8 +140,8 @@ process i fn
    | ver i /= ibcVersion = do iLOG "ibc out of date"
                               ifail "Incorrect ibc version --- please rebuild"
    | otherwise =
-            do srcok <- liftIO $ doesFileExist (sourcefile i)
-               when srcok $ liftIO $ timestampOlder (sourcefile i) fn
+            do srcok <- runIO $ doesFileExist (sourcefile i)
+               when srcok $ runIO $ timestampOlder (sourcefile i) fn
                v <- verbose
                quiet <- getQuiet
 --                when (v && srcok && not quiet) $ iputStrLn $ "Skipping " ++ sourcefile i
@@ -181,7 +181,7 @@ pImports fs
   = do mapM_ (\f -> do i <- getIState
                        ibcsd <- valIBCSubDir i
                        ids <- allImportDirs
-                       fp <- liftIO $ findImport ids ibcsd f
+                       fp <- runIO $ findImport ids ibcsd f
                        if (f `elem` imported i)
                         then iLOG $ "Already read " ++ f
                         else do putIState (i { imported = f : imported i })
@@ -259,7 +259,7 @@ pKeywords k = do i <- getIState
 
 pObjs :: [(Codegen, FilePath)] -> Idris ()
 pObjs os = mapM_ (\ (cg, obj) -> do dirs <- allImportDirs
-                                    o <- liftIO $ findInPath dirs obj
+                                    o <- runIO $ findInPath dirs obj
                                     addObjectFile cg o) os
 
 pLibs :: [(Codegen, String)] -> Idris ()

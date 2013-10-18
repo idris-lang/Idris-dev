@@ -136,7 +136,7 @@ lifte st e = do (v, _) <- elabStep st e
 receiveInput :: ElabState [PDecl] -> Idris (Maybe String)
 receiveInput e =
   do i <- getIState
-     l <- liftIO $ getLine
+     l <- runIO $ getLine
      let (sexp, id) = parseMessage l
      putIState $ i { idris_outputmode = (IdeSlave id) }
      case sexpToCommand sexp of

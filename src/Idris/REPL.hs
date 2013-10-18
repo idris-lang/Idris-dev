@@ -58,7 +58,7 @@ import System.IO
 import Control.Monad
 import Control.Monad.Trans.Error (ErrorT(..))
 import Control.Monad.Trans.State.Strict ( StateT, execStateT, get, put )
-import Control.Monad.Trans ( liftIO, lift )
+import Control.Monad.Trans ( lift )
 import Data.Maybe
 import Data.List
 import Data.Char
@@ -111,7 +111,7 @@ ideslaveStart orig mods
 ideslave :: IState -> [FilePath] -> Idris ()
 ideslave orig mods
   = do idrisCatch
-         (do l <- liftIO $ getLine
+         (do l <- runIO $ getLine
              let (sexp, id) = parseMessage l
              i <- getIState
              putIState $ i { idris_outputmode = (IdeSlave id) }
@@ -134,7 +134,7 @@ ideslave orig mods
                Just (REPLCompletions str) ->
                  do (unused, compls) <- replCompletion (reverse str, "")
                     let good = SexpList [SymbolAtom "ok", toSExp (map replacement compls, reverse unused)]
-                    liftIO $ putStrLn $ convSExp "return" good id
+                    runIO $ putStrLn $ convSExp "return" good id
                Just (LoadFile filename) ->
                  do clearErr
                     putIState (orig { idris_options = idris_options i,
@@ -224,7 +224,7 @@ processInput cmd orig inputs
                         _ -> ""
          c <- colourise
          case parseCmd i "(input)" cmd of
-            Failure err ->   do liftIO $ print (fixColour c err)
+            Failure err ->   do runIO $ print (fixColour c err)
                                 return (Just inputs)
             Success Reload ->
                 do putIState $ orig { idris_options = idris_options i
@@ -275,13 +275,13 @@ edit :: FilePath -> IState -> Idris ()
 edit "" orig = iputStrLn "Nothing to edit"
 edit f orig
     = do i <- getIState
-         env <- liftIO $ getEnvironment
+         env <- runIO $ getEnvironment
          let editor = getEditor env
          let line = case errLine i of
                         Just l -> " +" ++ show l ++ " "
                         Nothing -> " "
          let cmd = editor ++ line ++ f
-         liftIO $ system cmd
+         runIO $ system cmd
          clearErr
          putIState $ orig { idris_options = idris_options i
                           , idris_colourTheme = idris_colourTheme i
@@ -311,7 +311,7 @@ insertScript prf (x : xs) = x : insertScript prf xs
 process :: FilePath -> Command -> Idris ()
 process fn Help = iPrintResult displayHelp
 process fn (ChangeDirectory f)
-                 = do liftIO $ setCurrentDirectory f
+                 = do runIO $ setCurrentDirectory f
                       return ()
 process fn (Eval t)
                  = do (tm, ty) <- elabVal toplevel False t
@@ -443,17 +443,17 @@ process fn (RmProof n')
 
 process fn' (AddProof prf)
   = do fn <- do
-         ex <- liftIO $ doesFileExist fn'
+         ex <- runIO $ doesFileExist fn'
          let fnExt = fn' <.> "idr"
-         exExt <- liftIO $ doesFileExist fnExt
+         exExt <- runIO $ doesFileExist fnExt
          if ex
             then return fn'
             else if exExt
                     then return fnExt
                     else ifail $ "Neither \""++fn'++"\" nor \""++fnExt++"\" exist"
        let fb = fn ++ "~"
-       liftIO $ copyFile fn fb -- make a backup in case something goes wrong!
-       prog <- liftIO $ readFile fb
+       runIO $ copyFile fn fb -- make a backup in case something goes wrong!
+       prog <- runIO $ readFile fb
        i <- getIState
        let proofs = proof_list i
        n' <- case prf of
@@ -465,7 +465,7 @@ process fn' (AddProof prf)
        case lookup n proofs of
             Nothing -> iputStrLn "No proof to add"
             Just p  -> do let prog' = insertScript (showProof (lit fn) n p) ls
-                          liftIO $ writeFile fn (unlines prog')
+                          runIO $ writeFile fn (unlines prog')
                           removeProof n
                           iputStrLn $ "Added proof " ++ show n
                           where ls = (lines prog)
@@ -513,11 +513,11 @@ process fn Execute = do (m, _) <- elabVal toplevel False
                                            (PRef fc (UN "run__IO"))
                                            [pexp $ PRef fc (NS (UN "main") ["Main"])])
 --                                      (PRef (FC "main" 0) (NS (UN "main") ["main"]))
-                        (tmpn, tmph) <- liftIO tempfile
-                        liftIO $ hClose tmph
+                        (tmpn, tmph) <- runIO tempfile
+                        runIO $ hClose tmph
                         t <- codegen
                         compile t tmpn m
-                        liftIO $ system tmpn
+                        runIO $ system tmpn
                         return ()
   where fc = FC "main" 0
 process fn (Compile codegen f)
@@ -774,10 +774,10 @@ idrisMain opts =
                         [] -> 2
                         xs -> last xs
        trpl <- case opt getTriple opts of
-                 [] -> liftIO $ getDefaultTargetTriple
+                 [] -> runIO $ getDefaultTargetTriple
                  xs -> return (last xs)
        tcpu <- case opt getCPU opts of
-                 [] -> liftIO $ getHostCPUName
+                 [] -> runIO $ getHostCPUName
                  xs -> return (last xs)
        let outty = case opt getOutputTy opts of
                      [] -> Executable
@@ -788,7 +788,7 @@ idrisMain opts =
        script <- case opt getExecScript opts of
                    []     -> return Nothing
                    x:y:xs -> do iputStrLn "More than one interpreter expression found."
-                                liftIO $ exitWith (ExitFailure 1)
+                                runIO $ exitWith (ExitFailure 1)
                    [expr] -> return (Just expr)
        when (DefaultTotal `elem` opts) $ do i <- getIState
                                             putIState (i { default_total = True })
@@ -809,11 +809,11 @@ idrisMain opts =
        -- if we have the --fovm flag, drop into the first order VM testing
        case vm of
          [] -> return ()
-         xs -> liftIO $ mapM_ (fovm cgn outty) xs 
+         xs -> runIO $ mapM_ (fovm cgn outty) xs 
        -- if we have the --bytecode flag, drop into the bytecode assembler
        case bcs of
          [] -> return ()
-         xs -> return () -- liftIO $ mapM_ bcAsm xs 
+         xs -> return () -- runIO $ mapM_ bcAsm xs 
        case ibcsubdir of
          [] -> setIBCSubDir ""
          (d:_) -> setIBCSubDir d
@@ -829,7 +829,7 @@ idrisMain opts =
 
        loadInputs inputs
 
-       liftIO $ hSetBuffering stdout LineBuffering
+       runIO $ hSetBuffering stdout LineBuffering
 
        ok <- noErrors
        when ok $ case output of
@@ -845,7 +845,7 @@ idrisMain opts =
        when (runrepl && not idesl) $ runInputT (replSettings (Just historyFile)) $ repl ist inputs
        when (idesl) $ ideslaveStart ist inputs
        ok <- noErrors
-       when (not ok) $ liftIO (exitWith (ExitFailure 1))
+       when (not ok) $ runIO (exitWith (ExitFailure 1))
   where
     makeOption (OLogging i) = setLogLevel i
     makeOption TypeCase = setTypeCase True
@@ -855,7 +855,7 @@ idrisMain opts =
     makeOption _ = return ()
 
     addPkgDir :: String -> Idris ()
-    addPkgDir p = do ddir <- liftIO $ getDataDir
+    addPkgDir p = do ddir <- runIO $ getDataDir
                      addImportDir (ddir </> p)
 
 execScript :: String -> Idris ()
@@ -863,11 +863,11 @@ execScript expr = do i <- getIState
                      c <- colourise
                      case parseExpr i expr of
                           Failure err -> do iputStrLn $ show (fixColour c err)
-                                            liftIO $ exitWith (ExitFailure 1)
+                                            runIO $ exitWith (ExitFailure 1)
                           Success term -> do ctxt <- getContext
                                              (tm, _) <- elabVal toplevel False term
                                              res <- execute tm
-                                             liftIO $ exitWith ExitSuccess
+                                             runIO $ exitWith ExitSuccess
 
 -- | Check if the coloring matches the options and corrects if necessary
 fixColour :: Bool -> ANSI.Doc -> ANSI.Doc
@@ -876,7 +876,7 @@ fixColour True doc  = doc
 
 -- | Get the platform-specific, user-specific Idris dir
 getIdrisUserDataDir :: Idris FilePath
-getIdrisUserDataDir = liftIO $ getAppUserDataDirectory "idris"
+getIdrisUserDataDir = runIO $ getAppUserDataDirectory "idris"
 
 -- | Locate the platform-specific location for the init script
 getInitScript :: Idris FilePath
@@ -886,24 +886,24 @@ getInitScript = do idrisDir <- getIdrisUserDataDir
 -- | Run the initialisation script
 initScript :: Idris ()
 initScript = do script <- getInitScript
-                idrisCatch (do go <- liftIO $ doesFileExist script
+                idrisCatch (do go <- runIO $ doesFileExist script
                                when go $ do
-                                 h <- liftIO $ openFile script ReadMode
+                                 h <- runIO $ openFile script ReadMode
                                  runInit h
-                                 liftIO $ hClose h)
+                                 runIO $ hClose h)
                            (\e -> iPrintError $ "Error reading init file: " ++ show e)
     where runInit :: Handle -> Idris ()
           runInit h = do eof <- lift . lift $ hIsEOF h
                          ist <- getIState
                          unless eof $ do
-                           line <- liftIO $ hGetLine h
+                           line <- runIO $ hGetLine h
                            script <- getInitScript
                            c <- colourise
                            processLine ist line script c
                            runInit h
           processLine i cmd input clr =
               case parseCmd i input cmd of
-                   Failure err -> liftIO $ print (fixColour clr err)
+                   Failure err -> runIO $ print (fixColour clr err)
                    Success Reload -> iPrintError "Init scripts cannot reload the file"
                    Success (Load f) -> iPrintError "Init scripts cannot load files"
                    Success (ModImport f) -> iPrintError "Init scripts cannot import modules"

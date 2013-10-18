@@ -67,31 +67,30 @@ compile codegen f tm
         dumpDefun <- getDumpDefun
         case dumpCases of
             Nothing -> return ()
-            Just f -> liftIO $ writeFile f (showCaseTrees tagged)
+            Just f -> runIO $ writeFile f (showCaseTrees tagged)
         case dumpDefun of
             Nothing -> return ()
-            Just f -> liftIO $ writeFile f (dumpDefuns defuns)
+            Just f -> runIO $ writeFile f (dumpDefuns defuns)
         triple <- targetTriple
         cpu <- targetCPU
         optimize <- optLevel
         iLOG "Building output"
         case checked of
-            OK c -> liftIO $ case codegen of
-                                  ViaC ->
-                                    codegenC c f outty hdrs
-                                      (concatMap mkObj objs)
-                                      (concatMap mkLib libs) 
-                                      (concatMap mkFlag flags ++
-                                       concatMap incdir impdirs) NONE
-                                  ViaJava ->
-                                    codegenJava [] c f hdrs libs outty
-                                  ViaJavaScript ->
-                                    codegenJavaScript JavaScript c f outty
-                                  ViaNode ->
-                                    codegenJavaScript Node c f outty
-                                  ViaLLVM -> codegenLLVM c triple cpu optimize f outty
-
-                                  Bytecode -> dumpBC c f
+            OK c -> runIO $ case codegen of
+                              ViaC ->
+                                  codegenC c f outty hdrs
+                                    (concatMap mkObj objs)
+                                    (concatMap mkLib libs) 
+                                    (concatMap mkFlag flags ++
+                                     concatMap incdir impdirs) NONE
+                              ViaJava ->
+                                  codegenJava [] c f hdrs libs outty
+                              ViaJavaScript ->
+                                  codegenJavaScript JavaScript c f outty
+                              ViaNode ->
+                                  codegenJavaScript Node c f outty
+                              ViaLLVM -> codegenLLVM c triple cpu optimize f outty
+                              Bytecode -> dumpBC c f
             Error e -> ierror e
   where checkMVs = do i <- getIState
                       case idris_metavars i \\ primDefs of
