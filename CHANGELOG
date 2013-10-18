@@ -5,6 +5,8 @@ New in 0.9.10:
   syntax.
 * Add 'quoteGoal x by p in e' which makes x equal to p applied to the goal
   in the scope e
+* Add !expr notation for implicit binding of intermediate results in monadic/do/etc
+  expressions
 * Extend Effects package to cope with possibly failing operations, using
   "if_valid"
 * At the REPL, "it" now refers to the previous expression
