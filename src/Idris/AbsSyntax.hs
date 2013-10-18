@@ -27,6 +27,9 @@ import Data.Word (Word)
 
 import Debug.Trace
 
+import Control.Monad.Error (throwError, catchError)
+import System.IO.Error(isUserError, ioeGetErrorString, tryIOError)
+
 import Util.Pretty
 import Util.System
 
@@ -221,6 +224,11 @@ getIState = get
 putIState :: IState -> Idris ()
 putIState = put
 
+-- | A version of liftIO that puts errors into the exception type of the Idris monad
+runIO :: IO a -> Idris a
+runIO x = liftIO (tryIOError x) >>= either (throwError . Msg . show) return
+-- TODO: create specific Idris exceptions for specific IO errors such as "openFile: does not exist"
+
 getName :: Idris Int
 getName = do i <- getIState;
              let idx = idris_name i;
@@ -282,25 +290,25 @@ iPrintResult s = do i <- getIState
                     case idris_outputmode i of
                       RawOutput -> case s of
                                      "" -> return ()
-                                     s  -> liftIO $ putStrLn s
+                                     s  -> runIO $ putStrLn s
                       IdeSlave n ->
                           let good = SexpList [SymbolAtom "ok", toSExp s] in
-                          liftIO $ putStrLn $ convSExp "return" good n
+                          runIO $ putStrLn $ convSExp "return" good n
 
 iPrintError :: String -> Idris ()
 iPrintError s = do i <- getIState
                    case idris_outputmode i of
                      RawOutput -> case s of
                                        "" -> return ()
-                                       s  -> liftIO $ putStrLn s
+                                       s  -> runIO $ putStrLn s
                      IdeSlave n ->
                        let good = SexpList [SymbolAtom "error", toSExp s] in
-                       liftIO . putStrLn $ convSExp "return" good n
+                       runIO . putStrLn $ convSExp "return" good n
 
 iputStrLn :: String -> Idris ()
 iputStrLn s = do i <- getIState
                  case idris_outputmode i of
-                   RawOutput -> liftIO $ putStrLn s
+                   RawOutput -> runIO $ putStrLn s
                    IdeSlave n ->
                      case span (/=':') s of
                        (fn, ':':rest) -> case span isDigit rest of
@@ -308,31 +316,31 @@ iputStrLn s = do i <- getIState
                          ([], msg) -> write
                          (num, ':':msg) -> iWarn (FC fn (read num)) msg
                        _  -> write
-                     where write = liftIO . putStrLn $ convSExp "write-string" s n
+                     where write = runIO . putStrLn $ convSExp "write-string" s n
 
 ideslavePutSExp :: SExpable a => String -> a -> Idris ()
 ideslavePutSExp cmd info = do i <- getIState
                               case idris_outputmode i of
-                                   IdeSlave n -> liftIO . putStrLn $ convSExp cmd info n
+                                   IdeSlave n -> runIO . putStrLn $ convSExp cmd info n
                                    _ -> return ()
 
 -- this needs some typing magic and more structured output towards emacs
 iputGoal :: String -> Idris ()
 iputGoal s = do i <- getIState
                 case idris_outputmode i of
-                  RawOutput -> liftIO $ putStrLn s
-                  IdeSlave n -> liftIO . putStrLn $ convSExp "write-goal" s n
+                  RawOutput -> runIO $ putStrLn s
+                  IdeSlave n -> runIO . putStrLn $ convSExp "write-goal" s n
 
 isetPrompt :: String -> Idris ()
 isetPrompt p = do i <- getIState
                   case idris_outputmode i of
-                    IdeSlave n -> liftIO . putStrLn $ convSExp "set-prompt" p n
+                    IdeSlave n -> runIO . putStrLn $ convSExp "set-prompt" p n
 
 iWarn :: FC -> String -> Idris ()
 iWarn fc err = do i <- getIState
                   case idris_outputmode i of
-                    RawOutput -> liftIO $ putStrLn (show fc ++ ":" ++ err)
-                    IdeSlave n -> liftIO . putStrLn $ convSExp "warning" (fc_fname fc, fc_line fc, err) n
+                    RawOutput -> runIO $ putStrLn (show fc ++ ":" ++ err)
+                    IdeSlave n -> runIO . putStrLn $ convSExp "warning" (fc_fname fc, fc_line fc, err) n
 
 setLogLevel :: Int -> Idris ()
 setLogLevel l = do i <- getIState
@@ -543,7 +551,7 @@ logLvl :: Int -> String -> Idris ()
 logLvl l str = do i <- getIState
                   let lvl = opt_logLevel (idris_options i)
                   when (lvl >= l)
-                      $ do liftIO (putStrLn str)
+                      $ do runIO (putStrLn str)
                            putIState $ i { idris_log = idris_log i ++ str ++ "\n" }
 
 cmdOptType :: Opt -> Idris Bool
