@@ -280,7 +280,7 @@ edit f orig
          let line = case errLine i of
                         Just l -> " +" ++ show l ++ " "
                         Nothing -> " "
-         let cmd = editor ++ line ++ f
+         let cmd = editor ++ line ++ fixName f
          runIO $ system cmd
          clearErr
          putIState $ orig { idris_options = idris_options i
@@ -292,6 +292,9 @@ edit f orig
    where getEditor env | Just ed <- lookup "EDITOR" env = ed
                        | Just ed <- lookup "VISUAL" env = ed
                        | otherwise = "vi"
+         fixName file | map toLower (takeExtension file) `elem` [".lidr", ".idr"] = file
+                      | otherwise = addExtension file "idr"
+
 
 
 proofs :: IState -> Idris ()
