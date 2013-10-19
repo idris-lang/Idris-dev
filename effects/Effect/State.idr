@@ -26,12 +26,10 @@ putM : y -> EffM m [STATE x] [STATE y] ()
 putM val = Put val
 
 update : (x -> x) -> Eff m [STATE x] ()
-update f = do val <- get
-              put (f val) 
+update f = put (f !get) 
 
 updateM : (x -> y) -> EffM m [STATE x] [STATE y] ()
-updateM f = do val <- get
-               putM (f val) 
+updateM f = putM (f !get)
 
 locally : x -> Eff m [STATE x] t -> Eff m [STATE y] t
 locally newst prog = do st <- get
