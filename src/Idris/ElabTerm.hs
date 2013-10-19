@@ -149,7 +149,7 @@ elab ist info pattern tcgen fn tm
     elab' ina (PTrue fc)     = try (elab' ina (PRef fc unitCon))
                                    (elab' ina (PRef fc unitTy))
     elab' ina (PFalse fc)    = elab' ina (PRef fc falseTy)
-    elab' ina (PResolveTC (FC "HACK" _)) -- for chasing parent classes
+    elab' ina (PResolveTC (FC "HACK" _ _)) -- for chasing parent classes
        = resolveTC 5 fn ist
     elab' ina (PResolveTC fc) 
         | True = do c <- unique_hole (MN 0 "class")
@@ -548,7 +548,7 @@ elab ist info pattern tcgen fn tm
                                        PAlternative True (map (mkCoerce t) cs)]
            return t'
        where 
-         mkCoerce t n = let fc = FC "Coercion" 0 in -- line never appears!
+         mkCoerce t n = let fc = fileFC "Coercion" in -- line never appears!
                             addImpl ist (PApp fc (PRef fc n) [pexp (PCoerced t)])
 
     elabArgs ina failed fc retry [] _
@@ -633,7 +633,7 @@ pruneByType t _ as = as
 
 trivial :: IState -> ElabD ()
 trivial ist = try' (do elab ist toplevel False False (MN 0 "tac") 
-                                    (PRefl (FC "prf" 0) Placeholder)
+                                    (PRefl (fileFC "prf") Placeholder)
                        return ())
                    (do env <- get_env
                        g <- goal
@@ -647,7 +647,7 @@ trivial ist = try' (do elab ist toplevel False False (MN 0 "tac")
                 g <- goal
                 if all (\n -> not (n `elem` hs)) (freeNames (binderTy b))
                    then try' (elab ist toplevel False False
-                                    (MN 0 "tac") (PRef (FC "prf" 0) x))
+                                    (MN 0 "tac") (PRef (fileFC "prf") x))
                              (tryAll xs) True
                    else tryAll xs
 

@@ -38,20 +38,29 @@ data Option = TTypeInTType
             | CheckConv
   deriving Eq
 
--- | Source location. These are typically produced by the parser 'Idris.Parser.pfc'
+-- | Source location. These are typically produced by the parser 'Idris.Parser.getFC'
 data FC = FC { fc_fname :: String, -- ^ Filename
-               fc_line :: Int -- ^ Line number
-             }
-    deriving Eq
+               fc_line :: Int, -- ^ Line number
+               fc_column :: Int -- ^ Column number
+             } deriving Eq
+
+-- | Empty source location
+emptyFC :: FC
+emptyFC = fileFC ""
+
+-- | Source location with file only
+fileFC :: String -> FC
+fileFC s = FC s 0 0
+
 {-! 
 deriving instance Binary FC 
 !-}
 
 instance Sized FC where
-  size (FC f l) = 1 + length f
+  size (FC f l c) = 1 + length f
 
 instance Show FC where
-    show (FC f l) = f ++ ":" ++ show l
+    show (FC f l c) = f ++ ":" ++ show l ++ ":" ++ show c
 
 data Err = Msg String
          | InternalMsg String

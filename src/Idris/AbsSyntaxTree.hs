@@ -561,7 +561,7 @@ data PTerm = PQuote Raw
            | PCoerced PTerm -- ^ To mark a coerced argument, so as not to coerce twice
            | PUnifyLog PTerm -- ^ dump a trace of unifications when building term
            | PNoImplicits PTerm -- ^ never run implicit converions on the term 
-    deriving Eq
+    deriving (Eq, Show)
 {-! 
 deriving instance Binary PTerm 
 !-}
@@ -642,7 +642,7 @@ data PDo' t = DoExp  FC t
             | DoBindP FC t t
             | DoLet  FC Name t t
             | DoLetP FC t t
-    deriving (Eq, Functor)
+    deriving (Eq, Functor, Show)
 {-! 
 deriving instance Binary PDo' 
 !-}
@@ -774,7 +774,7 @@ initDSL = DSL (PRef f (UN ">>="))
               Nothing
               Nothing
               Nothing
-  where f = FC "(builtin)" 0
+  where f = fileFC "(builtin)"
 
 data Using = UImplicit Name PTerm
            | UConstraint Name [Name]
@@ -807,8 +807,8 @@ expandNS syn n = case syn_namespace syn of
 
 --- Pretty printing declarations and terms
 
-instance Show PTerm where
-    show tm = showImp Nothing False False tm
+{-instance Show PTerm where-}
+    {-show tm = showImp Nothing False False tm-}
 
 instance Pretty PTerm where
   pretty = prettyImp False

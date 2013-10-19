@@ -65,9 +65,9 @@ prove ctxt lit n ty
          ideslavePutSExp "end-proof-mode" n
          let proofs = proof_list i
          putIState (i { proof_list = (n, prf) : proofs })
-         let tree = simpleCase False True False CompileTime (FC "proof" 0) [([], P Ref n ty, tm)]
+         let tree = simpleCase False True False CompileTime (fileFC "proof") [([], P Ref n ty, tm)]
          logLvl 3 (show tree)
-         (ptm, pty) <- recheckC (FC "proof" 0) [] tm
+         (ptm, pty) <- recheckC (fileFC "proof") [] tm
          logLvl 5 ("Proof type: " ++ show pty ++ "\n" ++
                    "Expected type:" ++ show ty)
          case converts ctxt [] ty pty of

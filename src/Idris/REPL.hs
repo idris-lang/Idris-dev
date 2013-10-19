@@ -491,7 +491,7 @@ process fn (Prove n')
           prover (lit fn) n
           -- recheck totality
           i <- getIState
-          totcheck (FC "(input)" 0, n)
+          totcheck (fileFC "(input)", n)
           mapM_ (\ (f,n) -> setTotality n Unchecked) (idris_totcheck i)
           mapM_ checkDeclTotality (idris_totcheck i)
 
@@ -522,13 +522,13 @@ process fn Execute = do (m, _) <- elabVal toplevel False
                         compile t tmpn m
                         runIO $ system tmpn
                         return ()
-  where fc = FC "main" 0
+  where fc = fileFC "main"
 process fn (Compile codegen f)
       = do (m, _) <- elabVal toplevel False
                        (PApp fc (PRef fc (UN "run__IO"))
                        [pexp $ PRef fc (NS (UN "main") ["Main"])])
            compile codegen f m
-  where fc = FC "main" 0
+  where fc = fileFC "main"
 process fn (LogLvl i) = setLogLevel i
 -- Elaborate as if LHS of a pattern (debug command)
 process fn (Pattelab t)

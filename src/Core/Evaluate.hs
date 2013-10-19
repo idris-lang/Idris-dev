@@ -700,10 +700,10 @@ addCasedef n ci@(CaseInfo alwaysInline tcdict)
           access = case lookupDefAcc n False uctxt of
                         [(_, acc)] -> acc
                         _ -> Public
-          ctxt' = case (simpleCase tcase covering reflect CompileTime (FC "" 0) ps_tot,
-                        simpleCase tcase covering reflect CompileTime (FC "" 0) ps_ct, 
-                        simpleCase tcase covering reflect CompileTime (FC "" 0) ps_inl, 
-                        simpleCase tcase covering reflect RunTime (FC "" 0) ps_rt) of
+          ctxt' = case (simpleCase tcase covering reflect CompileTime emptyFC ps_tot,
+                        simpleCase tcase covering reflect CompileTime emptyFC ps_ct, 
+                        simpleCase tcase covering reflect CompileTime emptyFC ps_inl, 
+                        simpleCase tcase covering reflect RunTime emptyFC ps_rt) of
                     (OK (CaseDef args_tot sc_tot _), 
                      OK (CaseDef args_ct sc_ct _),
                      OK (CaseDef args_inl sc_inl _),
@@ -730,7 +730,7 @@ simplifyCasedef n uctxt
               [(CaseOp ci ty ps_in ps cd, acc, tot)] ->
                  let ps_in' = map simpl ps_in
                      pdef = map debind ps_in' in
-                     case simpleCase False True False CompileTime (FC "" 0) pdef of
+                     case simpleCase False True False CompileTime emptyFC pdef of
                        OK (CaseDef args sc _) ->
                           addDef n (CaseOp ci 
                                            ty ps_in' ps (cd { cases_totcheck = (args, sc) }),

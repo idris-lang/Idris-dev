@@ -1,1 +1,1 @@
-test012a.idr:7:x is not an accessible pattern variable
+test012a.idr:7:1:x is not an accessible pattern variable

@@ -1,4 +1,4 @@
-reg023.idr:7:When elaborating right hand side of bad:
+reg023.idr:7:5:When elaborating right hand side of bad:
 Can't unify
 	[94mNat[0m
 with

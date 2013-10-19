@@ -1,5 +1,5 @@
 When elaborating right hand side of foo:
-test020a.idr:14:Can't unify
+test020a.idr:14:18:Can't unify
 	Vect n a
 with
 	List a

@@ -50,7 +50,7 @@ ierror = throwError
 
 tclift :: TC a -> Idris a
 tclift (OK v) = return v
-tclift (Error err@(At (FC f l) e)) = do setErrLine l ; throwError err
+tclift (Error err@(At (FC f l c) e)) = do setErrLine l ; throwError err
 tclift (Error err) = throwError err
 
 tctry :: TC a -> TC a -> Idris a
@@ -60,7 +60,9 @@ tctry tc1 tc2
            Error err -> tclift tc2
 
 getErrLine :: Err -> Int
-getErrLine (At (FC _ l) _) = l
+getErrLine (At (FC _ l _) _) = l
 getErrLine _ = 0
 
-
+getErrColumn :: Err -> Int
+getErrColumn (At (FC _ _ c) _) = c
+getErrColumn _ = 0
