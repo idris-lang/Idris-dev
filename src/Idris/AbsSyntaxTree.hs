@@ -960,7 +960,7 @@ prettyImp impl = prettySe 10
     prettySe p (PApp _ (PRef _ f) [])
       | not impl = pretty f
     prettySe p (PAppBind _ (PRef _ f) [])
-      | not impl = pretty f <+> text "!"
+      | not impl = text "!" <+> pretty f
     prettySe p (PApp _ (PRef _ op@(UN (f:_))) args)
       | length (getExps args) == 2 && (not impl) && (not $ isAlpha f) =
           let [l, r] = getExps args in
@@ -1147,7 +1147,7 @@ showImp ist impl colour tm = se 10 [] tm where
     se p bnd (PApp _ hd@(PRef _ f) [])
         | not impl = se p bnd hd
     se p bnd (PAppBind _ hd@(PRef _ f) [])
-        | not impl = se p bnd hd ++ "!"
+        | not impl = "!" ++ se p bnd hd
     se p bnd (PApp _ op@(PRef _ (UN (f:_))) args)
         | length (getExps args) == 2 && not impl && not (isAlpha f) 
             = let [l, r] = getExps args in
@@ -1158,8 +1158,8 @@ showImp ist impl colour tm = se 10 [] tm where
                                                   else concatMap (seArg bnd) args
     se p bnd (PAppBind _ f as)
         = let args = getExps as in
-              bracket p 1 $ se 1 bnd f ++ "!" ++ if impl then concatMap (sArg bnd) as
-                                                  else concatMap (seArg bnd) args
+              "!" ++ (bracket p 1 $ se 1 bnd f ++ if impl then concatMap (sArg bnd) as
+                                                         else concatMap (seArg bnd) args)
     se p bnd (PCase _ scr opts) = "case " ++ se 10 bnd scr ++ " of " ++ showSep " | " (map sc opts)
        where sc (l, r) = se 10 bnd l ++ " => " ++ se 10 bnd r
     se p bnd (PHidden tm) = "." ++ se 0 bnd tm

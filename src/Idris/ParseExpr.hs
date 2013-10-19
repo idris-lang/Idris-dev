@@ -48,7 +48,7 @@ fullExpr :: SyntaxInfo -> IdrisParser PTerm
 fullExpr syn = do x <- expr syn
                   eof
                   i <- get
-                  return $ desugar syn i x
+                  return $ debindApp syn (desugar syn i x)
 
 
 {- |Parses an expression
