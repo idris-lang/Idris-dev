@@ -17,19 +17,16 @@ readFile = readAcc [] where
     readAcc acc = do e <- eof
                      if (not e) 
                         then do str <- readLine
-                                ls <- Count :- get
-                                Count :- put (ls + 1)
+                                Count :- put (!(Count :- get) + 1)
                                 readAcc (str :: acc)
                         else return (reverse acc)
 
 testFile : FileIO () () 
-testFile = catch (do open "testFile" Read
-                     str <- readFile
-                     putStrLn (show str)
-                     ls <- Count :- get
-                     close
-                     putStrLn (show ls))
-                 (\err => putStrLn ("Handled: " ++ show err))
+testFile = do open "testFile" Read
+              if_valid then do putStrLn (show !readFile)
+                               close
+                               putStrLn (show !(Count :- get))
+                 else putStrLn ("Error!")
 
 main : IO ()
 main = do ioe_run (run [(), (), Count := 0] testFile)
