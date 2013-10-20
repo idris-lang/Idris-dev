@@ -1130,18 +1130,21 @@ aiFn :: Bool -> Bool -> IState -> FC -> Name -> [PArg] -> Either Err PTerm
 aiFn inpat True ist fc f []
   = case lookupDef f (tt_ctxt ist) of
         [] -> Right $ PPatvar fc f
-        alts -> let ialts = lookupCtxt f (idris_implicits ist) in
+        alts -> let ialts = lookupCtxtName f (idris_implicits ist) in
                     -- trace (show f ++ " " ++ show (fc, any (all imp) ialts, ialts, any constructor alts)) $ 
                     if (not (vname f) || tcname f 
-                           || any constructor alts || any allImp ialts)
+                           || any (conCaf (tt_ctxt ist)) ialts)
+--                            any constructor alts || any allImp ialts))
                         then aiFn inpat False ist fc f [] -- use it as a constructor
                         else Right $ PPatvar fc f
     where imp (PExp _ _ _ _) = False
           imp _ = True
-          allImp [] = False
+--           allImp [] = False
           allImp xs = all imp xs
           constructor (TyDecl (DCon _ _) _) = True
           constructor _ = False
+
+          conCaf ctxt (n, cia) = isDConName n ctxt && allImp cia
 
           vname (UN n) = True -- non qualified
           vname _ = False
