@@ -35,9 +35,14 @@ data JSType = JSIntTy
             | JSForgotTy
             deriving Eq
 
+data JSInteger = JSBigZero
+               | JSBigOne
+               | JSBigInt Integer
+               deriving Eq
+
 data JSNum = JSInt Int
            | JSFloat Double
-           | JSInteger Integer
+           | JSInteger JSInteger
            deriving Eq
 
 data JS = JSRaw String
@@ -149,9 +154,11 @@ compileJS (JSString str) =
   show str
 
 compileJS (JSNum num)
-  | JSInt i     <- num = show i
-  | JSFloat f   <- num = show f
-  | JSInteger i <- num = show i
+  | JSInt i                <- num = show i
+  | JSFloat f              <- num = show f
+  | JSInteger JSBigZero    <- num = "__IDRRT__ZERO"
+  | JSInteger JSBigOne     <- num = "__IDRRT__ONE"
+  | JSInteger (JSBigInt i) <- num = show i
 
 compileJS (JSAssign lhs rhs) =
   compileJS lhs ++ "=" ++ compileJS rhs
@@ -211,8 +218,8 @@ jsTypeTag :: JS -> JS
 jsTypeTag obj = JSProj obj "type"
 
 jsBigInt :: JS -> JS
-jsBigInt (JSString "0") = JSIdent "__IDRRT__ZERO"
-jsBigInt (JSString "1") = JSIdent "__IDRRT__ONE"
+jsBigInt (JSString "0") = JSNum $ JSInteger JSBigZero
+jsBigInt (JSString "1") = JSNum $ JSInteger JSBigOne
 jsBigInt val = JSApp (JSIdent $ idrRTNamespace ++ "bigInt") [val]
 
 jsVar :: Int -> String
@@ -229,9 +236,11 @@ jsLet name value body =
 jsSubst :: String -> JS -> JS -> JS
 jsSubst var new (JSVar old)
   | var == translateVariableName old = new
+  | otherwise = JSVar old
 
 jsSubst var new (JSIdent old)
   | var == old = new
+  | otherwise = JSIdent old
 
 jsSubst var new (JSArray fields) =
   JSArray (map (jsSubst var new) fields)
@@ -241,24 +250,46 @@ jsSubst var new (JSNew con [tag, vals]) =
 
 jsSubst var new (JSNew con [JSFunction [] (JSReturn (JSApp fun vars))]) =
   JSNew con [JSFunction [] (
-    JSReturn $ JSApp fun (map (jsSubst var new) vars)
+    JSReturn $ JSApp (jsSubst var new fun) (map (jsSubst var new) vars)
   )]
 
 jsSubst var new (JSApp (JSIdent "__IDRRT__tailcall") [JSFunction [] (
                   JSReturn (JSApp fun args)
                 )]) =
                   JSApp (JSIdent "__IDRRT__tailcall") [JSFunction [] (
-                    JSReturn $ JSApp fun (map (jsSubst var new) args)
+                    JSReturn $ JSApp (jsSubst var new fun) (map (jsSubst var new) args)
                   )]
+
+jsSubst var new (JSApp (JSProj obj field) args) =
+  JSApp (JSProj (jsSubst var new obj) field) $ map (jsSubst var new) args
 
 jsSubst var new (JSApp (JSFunction [arg] body) vals)
   | var /= arg =
       JSApp (JSFunction [arg] (
         jsSubst var new body
       )) $ map (jsSubst var new) vals
+  | otherwise =
+      JSApp (JSFunction [arg] (
+        body
+      )) $ map (jsSubst var new) vals
 
 jsSubst var new (JSReturn ret) =
   JSReturn $ jsSubst var new ret
+
+jsSubst var new (JSProj obj field) =
+  JSProj (jsSubst var new obj) field
+
+jsSubst var new (JSSeq body) =
+  JSSeq $ map (jsSubst var new) body
+
+jsSubst var new (JSOp op lhs rhs) =
+  JSOp op (jsSubst var new lhs) (jsSubst var new rhs)
+
+jsSubst var new (JSIndex obj field) =
+  JSIndex (jsSubst var new obj) (jsSubst var new field)
+
+jsSubst var new (JSCond conds) =
+  JSCond (map ((jsSubst var new) *** (jsSubst var new)) conds)
 
 jsSubst _ _ js = js
 
@@ -274,16 +305,12 @@ inlineJS (JSApp (JSFunction [arg] (JSReturn ret)) [val])
   | JSNew con [JSFunction [] (JSReturn (JSApp fun vars))] <- ret
   , opt <- inlineJS val =
       JSNew con [JSFunction [] (
-        JSReturn $ JSApp fun (map (jsSubst arg opt) vars)
+        JSReturn $ JSApp (jsSubst arg opt fun) (map (jsSubst arg opt) vars)
       )]
 
-  | JSApp (JSIdent "__IDRRT__tailcall") [JSFunction [] (
-      JSReturn (JSApp fun args)
-    )] <- ret
+  | JSApp (JSProj obj field) args <- ret
   , opt <- inlineJS val =
-      JSApp (JSIdent "__IDRRT__tailcall") [JSFunction [] (
-        JSReturn $ JSApp fun (map (jsSubst arg opt) args)
-      )]
+      JSApp (JSProj (jsSubst arg opt obj) field) $ map (jsSubst arg opt) args
 
   | JSIndex (JSProj obj field) idx <- ret
   , opt <- inlineJS val =
@@ -292,9 +319,18 @@ inlineJS (JSApp (JSFunction [arg] (JSReturn ret)) [val])
         ) field
       ) (jsSubst arg opt idx)
 
-  | JSOp op lhs rhs <- ret =
-      JSOp op (jsSubst arg (inlineJS val) lhs) $
-        (jsSubst arg (inlineJS val) rhs)
+  | JSOp op lhs rhs <- ret
+  , opt <- inlineJS val =
+      JSOp op (jsSubst arg opt lhs) $
+        (jsSubst arg opt rhs)
+
+  | JSApp (JSIdent "__IDRRT__tailcall") [JSFunction [] (
+      JSReturn (JSApp fun args)
+    )] <- ret
+  , opt <- inlineJS val =
+      JSApp (JSIdent "__IDRRT__tailcall") [JSFunction [] (
+        JSReturn $ JSApp (jsSubst arg opt fun) (map (jsSubst arg opt) args)
+      )]
 
 inlineJS (JSApp fun args) =
   JSApp (inlineJS fun) (map inlineJS args)
@@ -306,7 +342,7 @@ inlineJS (JSArray fields) =
   JSArray (map inlineJS fields)
 
 inlineJS (JSAssign lhs rhs) =
-  JSAssign lhs (inlineJS rhs)
+  JSAssign (inlineJS lhs) (inlineJS rhs)
 
 inlineJS (JSSeq seq) =
   JSSeq (map inlineJS seq)
@@ -314,8 +350,8 @@ inlineJS (JSSeq seq) =
 inlineJS (JSFunction args body) =
   JSFunction args (inlineJS body)
 
-inlineJS (JSProj (JSFunction args body) "apply") =
-  JSProj (JSFunction args (inlineJS body)) "apply"
+inlineJS (JSProj (JSFunction args body) field) =
+  JSProj (JSFunction args (inlineJS body)) field
 
 inlineJS (JSReturn js) =
   JSReturn $ inlineJS js
@@ -401,6 +437,45 @@ removeIDs js =
 
         removeIDCall _ js = js
 
+reduceConstant :: JS -> JS
+reduceConstant (JSApp (JSIdent "__IDRRT__tailcall") [JSFunction [] (
+                 JSReturn (JSApp (JSIdent "__IDR__mEVAL0") [JSNum num])
+               )]) = JSNum num
+
+reduceConstant (JSReturn ret) =
+  JSReturn (reduceConstant ret)
+
+reduceConstant (JSApp fun args) =
+  JSApp (reduceConstant fun) (map reduceConstant args)
+
+reduceConstant (JSArray fields) =
+  JSArray (map reduceConstant fields)
+
+reduceConstant (JSAlloc name (Just val)) =
+  JSAlloc name $ Just (reduceConstant val)
+
+reduceConstant (JSNew con args) =
+  JSNew con (map reduceConstant args)
+
+reduceConstant (JSProj obj field) =
+  JSProj (reduceConstant obj) field
+
+reduceConstant (JSCond conds) =
+  JSCond $ map (reduceConstant *** reduceConstant) conds
+
+reduceConstant (JSSeq seq) =
+  JSSeq $ map reduceConstant seq
+
+reduceConstant (JSFunction args body) =
+  JSFunction args (reduceConstant body)
+
+reduceConstant js = js
+
+reduceConstants :: JS -> JS
+reduceConstants js
+  | ret <- reduceConstant js
+  , ret /= js = reduceConstants ret
+  | otherwise = js
 
 reduceLoop :: [String] -> ([JS], [JS]) -> [JS]
 reduceLoop reduced (cons, program) =
@@ -513,7 +588,7 @@ codegenJavaScript target definitions filename outputType = do
 
     functions :: [String]
     functions =
-      map compileJS ((reduceJS . removeIDs) $ map (optimizeJS . translateDeclaration) def)
+      map (compileJS . reduceConstants) ((reduceJS . removeIDs) $ map (optimizeJS . translateDeclaration) def)
 
     mainLoop :: String
     mainLoop = compileJS $
