@@ -80,14 +80,14 @@ addApps defs (n, LFun _ _ args e)
 --     aa env e@(LApp tc (MN 0 "EVAL") [a]) = e
     aa env (LApp tc (LV (Glob n)) args)
        = do args' <- mapM (aa env) args 
-            case lookupCtxt n defs of
+            case lookupCtxtExact n defs of
                 [LConstructor _ i ar] -> return $ DApp tc n args'
                 [LFun _ _ as _] -> let arity = length as in
                                        fixApply tc n args' arity
                 [] -> return $ chainAPPLY (DV (Glob n)) args'
     aa env (LLazyApp n args)
        = do args' <- mapM (aa env) args
-            case lookupCtxt n defs of
+            case lookupCtxtExact n defs of
                 [LConstructor _ i ar] -> return $ DApp False n args'
                 [LFun _ _ as _] -> let arity = length as in
                                        fixLazyApply n args' arity

@@ -113,7 +113,7 @@ irMain tm = do i <- ir tm
 allNames :: [Name] -> Name -> Idris [Name]
 allNames ns n | n `elem` ns = return []
 allNames ns n = do i <- getIState
-                   case lookupCtxt n (idris_callgraph i) of
+                   case lookupCtxtExact n (idris_callgraph i) of
                       [ns'] -> do more <- mapM (allNames (n:ns)) (map fst (calls ns')) 
                                   return (nub (n : concat more))
                       _ -> return [n]
@@ -224,12 +224,12 @@ instance ToIR (TT Name) where
                         Just tm -> return tm
                         _ -> do
                                  let collapse 
-                                        = case lookupCtxt n
+                                        = case lookupCtxtExact n
                                                    (idris_optimisation i) of
                                                [oi] -> collapsible oi
                                                _ -> False
                                  let unused 
-                                        = case lookupCtxt n
+                                        = case lookupCtxtExact n
                                                       (idris_callgraph i) of
                                                [CGInfo _ _ _ _ unusedpos] -> 
                                                       unusedpos
