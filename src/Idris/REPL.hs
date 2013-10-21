@@ -125,12 +125,12 @@ ideslave orig mods
                          Failure err -> iPrintError $ show (fixColour c err)
                          Success (Prove n') -> do iPrintResult ""
                                                   idrisCatch
-                                                    (do process fn (Prove n'))
-                                                    (\e -> do iPrintError $ show e)
+                                                    (process fn (Prove n'))
+                                                    (\e -> getIState >>= iPrintError . flip pshow e)
                                                   isetPrompt (mkPrompt mods)
                          Success cmd -> idrisCatch
-                                          (do ideslaveProcess fn cmd)
-                                          (\e -> do iPrintError $ show e)
+                                          (ideslaveProcess fn cmd)
+                                          (\e -> getIState >>= iPrintError . flip pshow e)
                Just (REPLCompletions str) ->
                  do (unused, compls) <- replCompletion (reverse str, "")
                     let good = SexpList [SymbolAtom "ok", toSExp (map replacement compls, reverse unused)]
