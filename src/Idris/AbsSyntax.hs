@@ -314,7 +314,10 @@ iputStrLn s = do i <- getIState
                        (fn, ':':rest) -> case span isDigit rest of
                          ([], ':':msg) -> write
                          ([], msg) -> write
-                         (num, ':':msg) -> iWarn (FC fn (read num)) msg
+                         (row, ':':rest') ->
+                          case span isDigit rest' of
+                            ([], msg) -> iWarn (FC fn (read row) 0) msg
+                            (col, ':':msg) -> iWarn (FC fn (read row) (read col)) msg
                        _  -> write
                      where write = runIO . putStrLn $ convSExp "write-string" s n
 
@@ -576,7 +579,7 @@ setTypeCase t = do i <- getIState
 
 -- For inferring types of things
 
-bi = FC "builtin" 0
+bi = fileFC "builtin"
 
 inferTy   = MN 0 "__Infer"
 inferCon  = MN 0 "__infer"
@@ -1420,8 +1423,8 @@ substMatchShadow n shs tm t = sm shs t where
     sm xs (PPi p x t sc) 
          | x `elem` xs 
              = let x' = nextName x in
-                   PPi p x' (sm (x':xs) (substMatch x (PRef (FC "" 0) x') t)) 
-                            (sm (x':xs) (substMatch x (PRef (FC "" 0) x') sc))
+                   PPi p x' (sm (x':xs) (substMatch x (PRef emptyFC x') t)) 
+                            (sm (x':xs) (substMatch x (PRef emptyFC x') sc))
          | otherwise = PPi p x (sm xs t) (sm (x : xs) sc)
     sm xs (PApp f x as) = fullApp $ PApp f (sm xs x) (map (fmap (sm xs)) as)
     sm xs (PCase f x as) = PCase f (sm xs x) (map (pmap (sm xs)) as)

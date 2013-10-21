@@ -561,7 +561,9 @@ data PTerm = PQuote Raw
            | PCoerced PTerm -- ^ To mark a coerced argument, so as not to coerce twice
            | PUnifyLog PTerm -- ^ dump a trace of unifications when building term
            | PNoImplicits PTerm -- ^ never run implicit converions on the term 
-    deriving Eq
+       deriving Eq
+
+
 {-! 
 deriving instance Binary PTerm 
 !-}
@@ -774,7 +776,7 @@ initDSL = DSL (PRef f (UN ">>="))
               Nothing
               Nothing
               Nothing
-  where f = FC "(builtin)" 0
+  where f = fileFC "(builtin)"
 
 data Using = UImplicit Name PTerm
            | UConstraint Name [Name]

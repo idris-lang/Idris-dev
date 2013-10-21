@@ -1,4 +1,4 @@
-test030a.idr:12:When elaborating right hand side of testReflect1:
+test030a.idr:12:14:When elaborating right hand side of testReflect1:
 Can't unify
 	IsJust (Just x)
 with

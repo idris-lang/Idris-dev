@@ -38,7 +38,7 @@ mkRels ((c, f) : cs) acc
 
 
 acyclic :: Relations -> [UExp] -> TC ()
-acyclic r cvs = checkCycle (FC "root" 0) r [] 0 cvs 
+acyclic r cvs = checkCycle (fileFC "root") r [] 0 cvs 
   where
     checkCycle :: FC -> Relations -> [(UExp, FC)] -> Int -> [UExp] -> TC ()
     checkCycle fc r path inc [] = return ()

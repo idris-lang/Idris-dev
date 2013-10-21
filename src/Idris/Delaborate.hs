@@ -30,7 +30,7 @@ delabTy' :: IState -> [PArg] -- ^ implicit arguments to type, if any
           -> Term -> Bool -> PTerm
 delabTy' ist imps tm fullname = de [] imps tm
   where
-    un = FC "(val)" 0
+    un = fileFC "(val)"
 
     de env _ (App f a) = deFn env f [a]
     de env _ (V i)     | i < length env = PRef un (snd (env!!i))

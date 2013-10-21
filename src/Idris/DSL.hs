@@ -22,12 +22,12 @@ desugar syn i t = let t' = expandDo (dsl_info syn) t in
 expandDo :: DSL -> PTerm -> PTerm
 expandDo dsl (PLam n ty tm)
     | Just lam <- dsl_lambda dsl 
-        = let sc = PApp (FC "(dsl)" 0) lam [pexp (var dsl n tm 0)] in
+        = let sc = PApp (fileFC "(dsl)") lam [pexp (var dsl n tm 0)] in
               expandDo dsl sc
 expandDo dsl (PLam n ty tm) = PLam n (expandDo dsl ty) (expandDo dsl tm)
 expandDo dsl (PLet n ty v tm)
     | Just letb <- dsl_let dsl
-        = let sc = PApp (FC "(dsl)" 0) letb [pexp v, pexp (var dsl n tm 0)] in
+        = let sc = PApp (fileFC "(dsl)") letb [pexp v, pexp (var dsl n tm 0)] in
               expandDo dsl sc
 expandDo dsl (PLet n ty v tm) = PLet n (expandDo dsl ty) (expandDo dsl v) (expandDo dsl tm)
 expandDo dsl (PPi p n ty tm) = PPi p n (expandDo dsl ty) (expandDo dsl tm)
