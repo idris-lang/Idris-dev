@@ -42,7 +42,18 @@ data Option = TTypeInTType
 data FC = FC { fc_fname :: String, -- ^ Filename
                fc_line :: Int, -- ^ Line number
                fc_column :: Int -- ^ Column number
-             } deriving Eq
+             }
+
+-- | Ignore source location equality (so deriving classes do not compare FCs)
+instance Eq FC where
+  _ == _ = True
+
+-- | FC with equality
+newtype FC' = FC' { unwrapFC :: FC }
+
+instance Eq FC' where
+  FC' fc == FC' fc' = fcEq fc fc'
+    where fcEq (FC n l c) (FC n' l' c') = n == n' && l == l' && c == c'
 
 -- | Empty source location
 emptyFC :: FC
