@@ -152,7 +152,7 @@ idrisStyle = IdentifierStyle _styleName _styleStart _styleLetter _styleReserved 
                                       "case", "of", "total", "partial", "mutual",
                                       "infix", "infixl", "infixr", "rewrite",
                                       "where", "with", "syntax", "proof", "postulate",
-                                      "using", "namespace", "class", "instance",
+                                      "using", "namespace", "class", "instance", "parameters",
                                       "public", "private", "abstract", "implicit",
                                       "quoteGoal",
                                       "Int", "Integer", "Float", "Char", "String", "Ptr",
