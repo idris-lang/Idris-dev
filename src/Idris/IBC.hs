@@ -23,7 +23,7 @@ import Debug.Trace
 import Paths_idris
 
 ibcVersion :: Word8
-ibcVersion = 41
+ibcVersion = 42
 
 data IBCFile = IBCFile { ver :: Word8,
                          sourcefile :: FilePath,
@@ -346,13 +346,15 @@ instance Binary CGInfo where
                return (CGInfo x1 x2 x3 x4 x5)
 
 instance Binary FC where
-        put (FC x1 x2)
+        put (FC x1 x2 x3)
           = do put x1
                put x2
+               put x3
         get
           = do x1 <- get
                x2 <- get
-               return (FC x1 x2)
+               x3 <- get
+               return (FC x1 x2 x3)
 
  
 instance Binary Name where

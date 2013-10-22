@@ -24,8 +24,8 @@ check f l [x] = return ()
 check f l [] = return ()
 
 chkAdj :: FilePath -> Int -> LineType -> LineType -> TC ()
-chkAdj f l Prog Comm = tfail $ At (FC f l) ProgramLineComment
-chkAdj f l Comm Prog = tfail $ At (FC f l) ProgramLineComment
+chkAdj f l Prog Comm = tfail $ At (FC f l 0) ProgramLineComment --TODO: Include column?
+chkAdj f l Comm Prog = tfail $ At (FC f l 0) ProgramLineComment --TODO: Include column?
 chkAdj f l _    _    = return ()
 
 

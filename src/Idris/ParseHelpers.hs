@@ -254,13 +254,19 @@ fileName _                     = "(interactive)"
 lineNum :: Delta -> Int
 lineNum (Lines l _ _ _)      = fromIntegral l + 1
 lineNum (Directed _ l _ _ _) = fromIntegral l + 1
+lineNum _ = 0
+
+{- | Get column number from position -}
+columnNum :: Delta -> Int
+columnNum pos = fromIntegral (column pos) + 1
+
 
 {- | Get file position as FC -}
 getFC :: MonadicParsing m => m FC
 getFC = do s <- position
            let (dir, file) = splitFileName (fileName s)
            let f = if dir == addTrailingPathSeparator "." then file else fileName s
-           return $ FC f (lineNum s)
+           return $ FC f (lineNum s) (columnNum s)
 
 {-* Syntax helpers-}
 -- | Bind constraints to term

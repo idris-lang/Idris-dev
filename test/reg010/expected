@@ -1,4 +1,4 @@
-reg010.idr:5:When elaborating right hand side of usubst.unsafeSubst:
+reg010.idr:5:15:When elaborating right hand side of usubst.unsafeSubst:
 Can't unify
 	P x
 with
