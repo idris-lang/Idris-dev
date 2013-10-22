@@ -79,6 +79,7 @@ data Tactic = Attack
             | SetInjective Name
             | MoveLast Name
             | MatchProblems
+            | UnifyProblems
             | ProofState
             | Undo
             | QED
@@ -754,6 +755,15 @@ processTactic (Reorder n) ps
          return (ps' { previous = Just ps, plog = "" }, plog ps')
 processTactic (ComputeLet n) ps
     = return (ps { pterm = computeLet (context ps) n (pterm ps) }, "")
+processTactic UnifyProblems ps 
+    = let (ns', probs') = updateProblems (context ps) []
+                                         (problems ps)
+                                         (injective ps)
+                                         (holes ps) 
+          pterm' = updateSolved ns' (pterm ps) in
+      return (ps { pterm = pterm', solved = Nothing, problems = probs',
+                   previous = Just ps, plog = "",
+                   holes = holes ps \\ (map fst ns') }, plog ps)
 processTactic MatchProblems ps 
     = let (ns', probs') = matchProblems (context ps)
                                         (problems ps)

@@ -329,6 +329,9 @@ movelast n = processTactic' (MoveLast n)
 matchProblems :: Elab' aux ()
 matchProblems = processTactic' MatchProblems
 
+unifyProblems :: Elab' aux ()
+unifyProblems = processTactic' UnifyProblems
+
 defer :: Name -> Elab' aux ()
 defer n = do n' <- unique_hole n
              processTactic' (Defer n')

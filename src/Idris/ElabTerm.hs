@@ -58,7 +58,7 @@ build ist info pattern fn tm
                                 resolveTC 7 fn ist) ivs
          tm <- get_term
          ctxt <- get_context
-         when (not pattern) matchProblems
+         when (not pattern) $ do matchProblems; unifyProblems
          probs <- get_probs
          case probs of
             [] -> return ()
