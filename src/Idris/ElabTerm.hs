@@ -56,9 +56,10 @@ build ist info pattern fn tm
               mapM_ (\n -> when (n `elem` hs) $ 
                              do focus n
                                 resolveTC 7 fn ist) ivs
-         probs <- get_probs
          tm <- get_term
          ctxt <- get_context
+         when (not pattern) matchProblems
+         probs <- get_probs
          case probs of
             [] -> return ()
             ((_,_,_,e):es) -> lift (Error e)

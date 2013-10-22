@@ -78,6 +78,7 @@ data Tactic = Attack
             | Instance Name
             | SetInjective Name
             | MoveLast Name
+            | MatchProblems
             | ProofState
             | Undo
             | QED
@@ -711,6 +712,20 @@ updateProblems ctxt ns ps inj holes = up ns ps where
             _ -> let (ns', ps') = up ns ps in
                      (ns', (x',y',env',err') : ps')
 
+-- attempt to solve remaining problems with match_unify
+matchProblems ctxt ps inj holes = up [] ps where
+  up ns [] = (ns, [])
+  up ns ((x, y, env, err) : ps) =
+    let x' = updateSolved ns x
+        y' = updateSolved ns y 
+        err' = updateError ns err
+        env' = updateEnv ns env in
+        case match_unify ctxt env' x' y' inj holes of
+            OK v -> -- trace ("Added " ++ show v ++ " from " ++ show (x', y')) $ 
+                               up (ns ++ v) ps
+            _ -> let (ns', ps') = up ns ps in
+                     (ns', (x',y',env',err') : ps')
+
 processTactic :: Tactic -> ProofState -> TC (ProofState, String)
 processTactic QED ps = case holes ps of
                            [] -> do let tm = {- normalise (context ps) [] -} (pterm ps)
@@ -739,6 +754,15 @@ processTactic (Reorder n) ps
          return (ps' { previous = Just ps, plog = "" }, plog ps')
 processTactic (ComputeLet n) ps
     = return (ps { pterm = computeLet (context ps) n (pterm ps) }, "")
+processTactic MatchProblems ps 
+    = let (ns', probs') = matchProblems (context ps)
+                                        (problems ps)
+                                        (injective ps)
+                                        (holes ps) 
+          pterm' = updateSolved ns' (pterm ps) in
+      return (ps { pterm = pterm', solved = Nothing, problems = probs',
+                   previous = Just ps, plog = "",
+                   holes = holes ps \\ (map fst ns') }, plog ps)
 processTactic t ps   
     = case holes ps of
         [] -> fail "Nothing to fill in."
@@ -795,4 +819,3 @@ process t h = tactic (Just h) (mktac t)
          mktac (Instance n)      = instanceArg n
          mktac (SetInjective n)  = setinj n
          mktac (MoveLast n)      = movelast n
-         

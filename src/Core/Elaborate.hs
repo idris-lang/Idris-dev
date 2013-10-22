@@ -326,6 +326,9 @@ focus n = processTactic' (Focus n)
 movelast :: Name -> Elab' aux ()
 movelast n = processTactic' (MoveLast n)
 
+matchProblems :: Elab' aux ()
+matchProblems = processTactic' MatchProblems
+
 defer :: Name -> Elab' aux ()
 defer n = do n' <- unique_hole n
              processTactic' (Defer n')
