@@ -220,7 +220,7 @@ elabData info syn doc fc codata (PDatadecl n t_in dcons)
 
 elabPrims :: Idris ()
 elabPrims = do mapM_ (elabDecl EAll toplevel)
-                     (map (PData "" defaultSyntax (FC "builtin" 0) False)
+                     (map (PData "" defaultSyntax (fileFC "builtin") False)
                          [inferDecl, unitDecl, falseDecl, pairDecl, eqDecl])
                mapM_ elabPrim primitives
                -- Special case prim__believe_me because it doesn't work on just constants
@@ -746,15 +746,15 @@ elabVal info aspat tm_in
 --                        (build i info aspat (MN 0 "val") tm))
                 tclift (elaborate ctxt (MN 0 "val") infP []
                         (build i info aspat (MN 0 "val") (infTerm tm)))
-        def' <- checkDef (FC "(input)" 0) defer
+        def' <- checkDef (fileFC "(input)") defer
         addDeferred def'
         mapM_ (elabCaseBlock info []) is
 
         logLvl 3 ("Value: " ++ show tm')
-        recheckC (FC "(input)" 0) [] tm'
+        recheckC (fileFC "(input)") [] tm'
         let vtm = getInferTerm tm'
         logLvl 2 (show vtm)
-        recheckC (FC "(input)" 0) [] vtm
+        recheckC (fileFC "(input)") [] vtm
 
 -- checks if the clause is a possible left hand side. Returns the term if
 -- possible, otherwise Nothing.
@@ -1051,7 +1051,7 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in withblock)
              logLvl 2 ("Matching " ++ showImp Nothing True False tm ++ " against " ++ 
                                       showImp Nothing True False toplhs)
              case matchClause i toplhs tm of
-                Left f -> ifail $ show fc ++ ":with clause does not match top level"
+                Left (a,b) -> trace ("matchClause: " ++ show a ++ " =/= " ++ show b) (ifail $ show fc ++ ":with clause does not match top level")
                 Right mvars -> 
                     do logLvl 3 ("Match vars : " ++ show mvars)
                        lhs <- updateLHS n wname mvars ns ns' (fullApp tm) w
@@ -1063,7 +1063,7 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in withblock)
                                       showImp Nothing True False toplhs)
              withs' <- mapM (mkAuxC wname toplhs ns ns') withs
              case matchClause i toplhs tm of
-                Left _ -> ifail $ show fc ++ "with clause does not match top level"
+                Left (a,b) -> trace ("matchClause: " ++ show a ++ " =/= " ++ show b) (ifail $ show fc ++ "with clause does not match top level")
                 Right mvars -> 
                     do lhs <- updateLHS n wname mvars ns ns' (fullApp tm) w
                        return $ PWith fc wname lhs ws wval withs'
@@ -1190,7 +1190,7 @@ elabClass info syn doc fc constraints tn ps ds
              let mnames = take (length all) $ map (\x -> MN x "meth") [0..]
              let capp = PApp fc (PRef fc cn) (map (pexp . PRef fc) mnames)
              let lhs = PApp fc (PRef fc cfn) [pconst capp]
-             let rhs = PResolveTC (FC "HACK" 0)
+             let rhs = PResolveTC (fileFC "HACK")
              let ty = PPi constraint (MN 0 "pc") c con
              iLOG (showImp Nothing True False ty)
              iLOG (showImp Nothing True False lhs ++ " = " ++ showImp Nothing True False rhs)
