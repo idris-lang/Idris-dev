@@ -976,49 +976,49 @@ TacticSeq ::=
 -}
 
 tactic :: SyntaxInfo -> IdrisParser PTactic
-tactic syn = do reserved "intro"; ns <- sepBy name (lchar ',')
+tactic syn = do reserved "intro"; ns <- sepBy (indentPropHolds gtProp *> name) (lchar ',')
                 return $ Intro ns
           <|> do reserved "intros"; return Intros
-          <|> try (do reserved "refine"; n <- name
+          <|> try (do reserved "refine"; n <- (indentPropHolds gtProp *> name)
                       imps <- some imp
                       return $ Refine n imps)
-          <|> do reserved "refine"; n <- name
+          <|> do reserved "refine"; n <- (indentPropHolds gtProp *> name)
                  i <- get
                  return $ Refine n []
-          <|> do reserved "mrefine"; n <- name
+          <|> do reserved "mrefine"; n <- (indentPropHolds gtProp *> name)
                  i <- get
                  return $ MatchRefine n
-          <|> do reserved "rewrite"; t <- expr syn;
+          <|> do reserved "rewrite"; t <- (indentPropHolds gtProp *> expr syn);
                  i <- get
                  return $ Rewrite (desugar syn i t)
-          <|> do reserved "equiv"; t <- expr syn;
+          <|> do reserved "equiv"; t <- (indentPropHolds gtProp *> expr syn);
                  i <- get
                  return $ Equiv (desugar syn i t)
-          <|> try (do reserved "let"; n <- name; lchar ':';
-                      ty <- expr' syn; lchar '='; t <- expr syn;
+          <|> try (do reserved "let"; n <- (indentPropHolds gtProp *> name); (indentPropHolds gtProp *> lchar ':');
+                      ty <- (indentPropHolds gtProp *> expr' syn); (indentPropHolds gtProp *> lchar '='); t <- (indentPropHolds gtProp *> expr syn);
                       i <- get
                       return $ LetTacTy n (desugar syn i ty) (desugar syn i t))
-          <|> try (do reserved "let"; n <- name; lchar '=';
-                      t <- expr syn;
+          <|> try (do reserved "let"; n <- (indentPropHolds gtProp *> name); (indentPropHolds gtProp *> lchar '=');
+                      t <- (indentPropHolds gtProp *> expr syn);
                       i <- get
                       return $ LetTac n (desugar syn i t))
-          <|> do reserved "focus"; n <- name
+          <|> do reserved "focus"; n <- (indentPropHolds gtProp *> name)
                  return $ Focus n
-          <|> do reserved "exact"; t <- expr syn;
+          <|> do reserved "exact"; t <- (indentPropHolds gtProp *> expr syn);
                  i <- get
                  return $ Exact (desugar syn i t)
-          <|> do reserved "applyTactic"; t <- expr syn;
+          <|> do reserved "applyTactic"; t <- (indentPropHolds gtProp *> expr syn);
                  i <- get
                  return $ ApplyTactic (desugar syn i t)
-          <|> do reserved "reflect"; t <- expr syn;
+          <|> do reserved "reflect"; t <- (indentPropHolds gtProp *> expr syn);
                  i <- get
                  return $ Reflect (desugar syn i t)
-          <|> do reserved "fill"; t <- expr syn;
+          <|> do reserved "fill"; t <- (indentPropHolds gtProp *> expr syn);
                  i <- get
                  return $ Fill (desugar syn i t)
-          <|> do reserved "try"; t <- tactic syn;
+          <|> do reserved "try"; t <- (indentPropHolds gtProp *> tactic syn);
                  lchar '|';
-                 t1 <- tactic syn
+                 t1 <- (indentPropHolds gtProp *> tactic syn)
                  return $ Try t t1
           <|> do lchar '{'
                  t <- tactic syn;
