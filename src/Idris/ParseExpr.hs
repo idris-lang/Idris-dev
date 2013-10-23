@@ -270,6 +270,9 @@ simpleExpr syn =
         <|> tacticsExpr syn
         <|> caseExpr syn
         <|> do reserved "Type"; return PType
+        <|> do c <- constant
+               fc <- getFC
+               return (modifyConst syn fc (PConstant c))
         <|> do fc <- getFC
                x <- fnName
                return (PRef fc x)
@@ -283,9 +286,6 @@ simpleExpr syn =
                return (PAppBind fc s [])
         <|> do lchar '('
                bracketed (disallowImp syn)
-        <|> do c <- constant
-               fc <- getFC
-               return (modifyConst syn fc (PConstant c))
         <|> do symbol "_|_"
                fc <- getFC
                return (PFalse fc)
