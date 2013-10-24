@@ -101,6 +101,7 @@ data Err = Msg String
          | At FC Err
          | Elaborating String Name Err
          | ProviderError String
+         | LoadingFailed String Err
   deriving Eq
 
 instance Sized Err where
@@ -122,6 +123,7 @@ instance Sized Err where
   size (At fc err) = size fc + size err
   size (Elaborating _ n err) = size err
   size (ProviderError msg) = length msg
+  size (LoadingFailed fn e) = 1 + length fn + size e
   size _ = 1
 
 score :: Err -> Int
@@ -139,6 +141,7 @@ instance Show Err where
                                       ++ show e ++ " in " ++ show sc ++ " " ++ show i
     show (Inaccessible n) = show n ++ " is not an accessible pattern variable"
     show (ProviderError msg) = "Type provider error: " ++ msg
+    show (LoadingFailed fn e) = "Loading " ++ fn ++ " failed: " ++ show e
     show _ = "Error"
 
 instance Pretty Err where
@@ -152,6 +155,7 @@ instance Pretty Err where
       text "Cannot unify" <+> colon <+> pretty l <+> text "and" <+> pretty r $$
         nest nestingSize (text "where" <+> pretty e <+> text "with" <+> (text . show $ i))
   pretty (ProviderError msg) = text msg
+  pretty err@(LoadingFailed _ _) = text (show err)
   pretty _ = text "Error"
 
 instance Error Err where

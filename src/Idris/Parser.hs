@@ -952,7 +952,7 @@ loadFromIFile :: IFileType -> Idris ()
 loadFromIFile i@(IBC fn src)
    = do iLOG $ "Skipping " ++ getSrcFile i
         idrisCatch (loadIBC fn)
-                (\c -> do fail $ fn ++ " failed " ++ show c)
+                (\err -> ierror $ LoadingFailed fn err)
   where
     getSrcFile (IDR fn) = fn
     getSrcFile (LIDR fn) = fn
