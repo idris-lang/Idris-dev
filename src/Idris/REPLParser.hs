@@ -70,6 +70,10 @@ pCmd = do P.whiteSpace; try (do cmd ["q", "quit"]; eof; return Quit)
               <|> try (do cmd ["set"]; o <-pOption; return (SetOpt o))
               <|> try (do cmd ["unset"]; o <-pOption; return (UnsetOpt o))
               <|> try (do cmd ["s", "search"]; P.whiteSpace; t <- P.fullExpr defaultSyntax; return (Search t))
+              <|> try (do cmd ["cs", "casesplit"]; P.whiteSpace; 
+                                 n <- P.name; 
+                                 t <- P.fullExpr defaultSyntax; 
+                                 return (CaseSplit n t))
               <|> try (do cmd ["x"]; P.whiteSpace; t <- P.fullExpr defaultSyntax; return (ExecVal t))
               <|> try (do cmd ["patt"]; P.whiteSpace; t <- P.fullExpr defaultSyntax; return (Pattelab t))
               <|> do P.whiteSpace; do eof; return NOP

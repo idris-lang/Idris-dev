@@ -22,6 +22,7 @@ import Idris.Chaser
 import Idris.Imports
 import Idris.Colours
 import Idris.Inliner
+import Idris.CaseSplit
 
 import Paths_idris
 import Util.System
@@ -422,6 +423,9 @@ process fn (Info n) = do i <- getIState
                               [c] -> classInfo c
                               _ -> iPrintError "Not a class"
 process fn (Search t) = iPrintError "Not implemented"
+process fn (CaseSplit n t)
+   = do tms <- split n t
+        iputStrLn (showSep "\n" (map show tms))
 process fn (Spec t) = do (tm, ty) <- elabVal toplevel False t
                          ctxt <- getContext
                          ist <- getIState

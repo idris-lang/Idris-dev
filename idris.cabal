@@ -304,6 +304,7 @@ Executable idris
 
                 , Idris.AbsSyntax
                 , Idris.AbsSyntaxTree
+                , Idris.CaseSplit
                 , Idris.Chaser
                 , Idris.Colours
                 , Idris.Completion

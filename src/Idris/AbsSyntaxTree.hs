@@ -235,6 +235,7 @@ data Command = Quit
              | Pattelab PTerm
              | DebugInfo Name
              | Search PTerm
+             | CaseSplit Name PTerm
              | SetOpt Opt
              | UnsetOpt Opt
              | NOP
@@ -1155,9 +1156,10 @@ showImp ist impl colour tm = se 10 [] tm where
             = let [l, r] = getExps args in
               bracket p 1 $ se 1 bnd l ++ " " ++ se p bnd op ++ " " ++ se 0 bnd r
     se p bnd (PApp _ f as)
-        = let args = getExps as in
-              bracket p 1 $ se 1 bnd f ++ if impl then concatMap (sArg bnd) as
-                                                  else concatMap (seArg bnd) args
+        = -- let args = getExps as in
+              bracket p 1 $ se 1 bnd f ++ 
+                  if impl then concatMap (sArg bnd) as
+                          else concatMap (suiArg impl bnd) as
     se p bnd (PAppBind _ f as)
         = let args = getExps as in
               "!" ++ (bracket p 1 $ se 1 bnd f ++ if impl then concatMap (sArg bnd) as
@@ -1233,8 +1235,19 @@ showImp ist impl colour tm = se 10 [] tm where
     sArg bnd (PConstraint _ _ tm _) = scArg bnd tm
     sArg bnd (PTacImplicit _ _ n _ tm _) = stiArg bnd (n, tm)
 
+    -- show argument, implicits given by the user also shown
+    suiArg impl bnd (PImp _ mi _ n tm _) 
+        | impl || not mi = siArg bnd (n, tm)
+    suiArg impl bnd (PExp _ _ tm _) = seArg bnd tm
+    suiArg impl bnd _ = ""
+
     seArg bnd arg      = " " ++ se 0 bnd arg
-    siArg bnd (n, val) = " {" ++ show n ++ " = " ++ se 10 bnd val ++ "}"
+    siArg bnd (n, val) = 
+        let n' = show n
+            val' = se 10 bnd val in
+            if (n' == val') 
+               then " {" ++ n' ++ "}"
+               else " {" ++ n' ++ " = " ++ val' ++ "}"
     scArg bnd val = " {{" ++ se 10 bnd val ++ "}}"
     stiArg bnd (n, val) = " {auto " ++ show n ++ " = " ++ se 10 bnd val ++ "}"
 
