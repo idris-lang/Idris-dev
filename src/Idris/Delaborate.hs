@@ -163,6 +163,7 @@ pshow i (At f e) = show f ++ ":" ++ pshow i e
 pshow i (Elaborating s n e) = "When elaborating " ++ s ++ 
                                showqual i n ++ ":\n" ++ pshow i e
 pshow i (ProviderError msg) = "Type provider error: " ++ msg
+pshow i (LoadingFailed fn e) = "Loading " ++ fn ++ " failed: " ++ pshow i e
 
 showSc i [] = ""
 showSc i xs = "\n\nIn context:\n" ++ showSep "\n" (map showVar (reverse xs))

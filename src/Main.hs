@@ -40,7 +40,10 @@ import Paths_idris
 
 main = do xs <- getArgs
           let opts = parseArgs xs
-          runErrorT $ execStateT (runIdris opts) idrisInit
+          result <- runErrorT $ execStateT (runIdris opts) idrisInit
+          case result of
+            Left err -> putStrLn $ "Uncaught error: " ++ show err
+            Right _ -> return ()
 
 runIdris :: [Opt] -> Idris ()
 runIdris opts = do
