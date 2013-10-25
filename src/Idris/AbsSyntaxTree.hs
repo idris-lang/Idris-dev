@@ -100,6 +100,9 @@ data IState = IState {
     idris_log :: String,
     idris_options :: IOption,
     idris_name :: Int,
+    idris_linename :: [((FilePath, Int), (Name, Int))], 
+          -- ^ internal name for function defined on that line,
+          --   number of 'with' arguments
     idris_metavars :: [Name], -- ^ The currently defined but not proven metavariables
     idris_coercions :: [Name],
     idris_transforms :: [(Term, Term)],
@@ -176,12 +179,13 @@ data IBCWrite = IBCFix FixDecl
               | IBCDoc Name
               | IBCCoercion Name
               | IBCDef Name -- i.e. main context
+              | IBCLineName FilePath Int Name Int
   deriving Show
 
 idrisInit = IState initContext [] [] emptyContext emptyContext emptyContext
                    emptyContext emptyContext emptyContext emptyContext 
                    emptyContext emptyContext emptyContext emptyContext
-                   [] "" defaultOpts 6 [] [] [] [] [] [] [] [] [] [] []
+                   [] "" defaultOpts 6 [] [] [] [] [] [] [] [] [] [] [] []
                    [] Nothing Nothing [] [] [] Hidden False [] Nothing [] [] RawOutput
                    True defaultTheme
 

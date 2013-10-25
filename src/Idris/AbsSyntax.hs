@@ -235,6 +235,18 @@ getName = do i <- getIState;
              putIState $ (i { idris_name = idx + 1 })
              return idx
 
+addInternalName :: FilePath -> Int -> Name -> Int -> Idris ()
+addInternalName fp l n w 
+    = do i <- getIState
+         putIState (i { idris_linename = ((fp, l), (n, w)) : idris_linename i })
+
+getInternalName :: FilePath -> Int -> Name -- ^ default name
+                      -> Idris (Name, Int)
+getInternalName fp l n = do i <- getIState
+                            case lookup (fp, l) (idris_linename i) of
+                                 Nothing -> return (n, 0)
+                                 Just n' -> return n'
+
 checkUndefined :: FC -> Name -> Idris ()
 checkUndefined fc n 
     = do i <- getContext

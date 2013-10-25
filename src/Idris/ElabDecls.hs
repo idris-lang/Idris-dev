@@ -1009,6 +1009,9 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in withblock)
                      (substTerm wargval (P Bound (MN 0 "warg") wargtype) ret_ty)
         logLvl 3 ("New function type " ++ show wtype)
         let wname = MN windex (show fname)
+        addInternalName (fc_fname fc) (fc_line fc) wname (length withs)
+        addIBC (IBCLineName (fc_fname fc) (fc_line fc) wname (length withs))
+
         let imps = getImps wtype -- add to implicits context
         putIState (i { idris_implicits = addDef wname imps (idris_implicits i) })
         addIBC (IBCDef wname)
