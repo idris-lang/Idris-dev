@@ -84,4 +84,4 @@ getIncFlags = do dir <- getDataDir
                  return $ "-I" ++ dir </> "rts"
 
 getExecutablePom = do dir <- getDataDir
-                      return $ dir </> "executable_pom.xml"
+                      return $ dir </> "java" </> "executable_pom.xml"
