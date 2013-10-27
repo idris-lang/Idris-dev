@@ -22,6 +22,7 @@ Internal changes
 * Improved type class resolution
 * Compiling Nat via GMP integers
 * Performance improvements in elaboration
+* Machinery for case-splitting, to support interactive editing
 
 New in 0.9.9:
 -------------
