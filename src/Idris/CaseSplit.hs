@@ -1,6 +1,6 @@
 {-# LANGUAGE PatternGuards #-}
 
-module Idris.CaseSplit(split) where
+module Idris.CaseSplit(split, splitOnLine) where
 
 -- splitting a variable in a pattern clause
 
@@ -8,14 +8,22 @@ import Idris.AbsSyntax
 import Idris.ElabDecls
 import Idris.ElabTerm
 import Idris.Delaborate
+import Idris.Parser
 import Idris.Error
 
 import Core.TT
+import Core.Typecheck
 import Core.Evaluate
 
 import Data.Maybe
 import Control.Monad
-import Control.Monad.State
+import Control.Monad.State.Strict
+
+import Text.Parser.Combinators
+import Text.Parser.Char(anyChar)
+import Text.Trifecta(Result(..), parseString)
+import Text.Trifecta.Delta
+import qualified Data.ByteString.UTF8 as UTF8
 
 {- 
 
@@ -31,9 +39,12 @@ Always take the "more specific" argument when there is a discrepancy, i.e.
 names over '_', patterns over names, etc.
 -}
 
-split :: Name -> PTerm -> Idris [PTerm]
+-- Given a variable to split, and a term application, return a list of
+-- variable updates
+split :: Name -> PTerm -> Idris [[(Name, PTerm)]]
 split n t' 
    = do (tm, ty, pats) <- elabValBind toplevel True t'
+        logLvl 4 ("Elaborated:\n" ++ show tm ++ " : " ++ show ty ++ "\n" ++ show pats)
         ist <- getIState
 --         iputStrLn (show (delab ist tm) ++ " : " ++ show (delab ist ty))
 --         iputStrLn (show pats)
@@ -43,25 +54,48 @@ split n t'
              Nothing -> fail $ show n ++ " is not a pattern variable"
              Just ty -> 
                 do let splits = findPats ist ty
+                   iLOG ("New patterns " ++ show splits)
                    let newPats_in = zipWith (replaceVar ctxt n) splits (repeat t)
+                   logLvl 4 ("Trying " ++ showSep "\n" (map show newPats_in))
                    newPats <- mapM elabNewPat newPats_in
-                   logLvl 5 (showSep "\n" (map show (t : mapMaybe id newPats)))
-                   logLvl 5 "----"
-                   let newPats' = evalState (mapM (mergePat ctxt t)
-                                                  (mapMaybe id newPats))
-                                                  []
-                   return newPats'
+                   logLvl 3 ("Original:\n" ++ show t)
+                   logLvl 3 ("Split:\n" ++  
+                              (showSep "\n" (map show (mapMaybe id newPats))))
+                   logLvl 3 "----"
+                   let newPats' = mergeAllPats ctxt t (mapMaybe id newPats)
+                   iLOG ("Name updates " ++ showSep "\n"
+                         (map (\ (p, u) -> show u ++ " " ++ show p) newPats'))
+                   return (map snd newPats')
 
-mergePat :: Context -> PTerm -> PTerm -> State [(Name, Name)] PTerm
+data MergeState = MS { namemap :: [(Name, Name)],
+                       updates :: [(Name, PTerm)] }
+                       
+addUpdate n tm = do ms <- get
+                    put (ms { updates = ((n, tm) : updates ms) } )
+
+mergeAllPats :: Context -> PTerm -> [PTerm] -> [(PTerm, [(Name, PTerm)])]
+mergeAllPats ctxt t [] = []
+mergeAllPats ctxt t (p : ps) 
+    = let (p', MS _ u) = runState (mergePat ctxt t p) (MS [] [])
+          ps' = mergeAllPats ctxt t ps in
+          ((p, u) : ps')
+
+mergePat :: Context -> PTerm -> PTerm -> State MergeState PTerm
 -- If any names are unified, make sure they stay unified. Always prefer
 -- user provided name (first pattern)
+mergePat ctxt (PPatvar fc n) new
+  = mergePat ctxt (PRef fc n) new
+mergePat ctxt old (PPatvar fc n)
+  = mergePat ctxt old (PRef fc n)
 mergePat ctxt orig@(PRef fc n) new@(PRef _ n') 
-  | isConName n' ctxt = return new
+  | isConName n' ctxt = do addUpdate n new;
+                           return new
   | otherwise
-    = do nmap <- get
-         case lookup n' nmap of
-              Just x -> return (PRef fc x)
-              Nothing -> do put ((n', n) : nmap)
+    = do ms <- get
+         case lookup n' (namemap ms) of
+              Just x -> do addUpdate n (PRef fc x)
+                           return (PRef fc x)
+              Nothing -> do put (ms { namemap = ((n', n) : namemap ms) })
                             return (PRef fc n)
 mergePat ctxt (PApp _ _ args) (PApp fc f args') 
       = do newArgs <- zipWithM mergeArg args args'
@@ -72,15 +106,17 @@ mergePat ctxt (PApp _ _ args) (PApp fc f args')
                                    return (y { machine_inf = machine_inf x,
                                                getTm = tm' })
                                 _ -> return (y { getTm = tm' })
-mergePat ctxt (PRef fc n) t = tidy t
+mergePat ctxt (PRef fc n) t = do tm <- tidy t
+                                 addUpdate n tm
+                                 return tm
 mergePat ctxt x y = return y
 
 mergeUserImpl :: PTerm -> PTerm -> PTerm
 mergeUserImpl x y = x
 
 tidy orig@(PRef fc n) 
-     = do nmap <- get
-          case lookup n nmap of
+     = do ms <- get
+          case lookup n (namemap ms) of
                Just x -> return (PRef fc x)
                Nothing -> case n of
                                (UN _) -> return orig
@@ -118,6 +154,8 @@ findPats ist t = [Placeholder]
 replaceVar :: Context -> Name -> PTerm -> PTerm -> PTerm
 replaceVar ctxt n t (PApp fc f pats) = PApp fc f (map substArg pats)
   where subst :: PTerm -> PTerm
+        subst orig@(PPatvar _ v) | v == n = t
+                                 | otherwise = Placeholder
         subst orig@(PRef _ v) | v == n = t
                               | isConName v ctxt = orig
         subst (PRef _ _) = Placeholder
@@ -128,5 +166,21 @@ replaceVar ctxt n t (PApp fc f pats) = PApp fc f (map substArg pats)
 
 replaceVar ctxt n t pat = pat
 
+splitOnLine :: Int -- ^ line number
+               -> Name -- ^ variable
+               -> FilePath -- ^ name of file
+               -> String -- ^ file contents
+               -> Idris [[(Name, PTerm)]]
+splitOnLine l n fn inp = do 
+--     let (before, later) = splitAt (l-1) (lines inp)
+--     i <- getIState
+    cl <- getInternalApp fn l 
+    logLvl 3 ("Working with " ++ showImp Nothing True False cl)
+    tms <- split n cl
+--     iputStrLn (showSep "\n" (map show tms))
+    return tms -- "" -- not yet done...
 
+getFnName (PClause _ n _ _ _ _) = n
+getFnName (PWith _ n _ _ _ _) = n
 
+    

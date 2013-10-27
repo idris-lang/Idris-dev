@@ -235,17 +235,16 @@ getName = do i <- getIState;
              putIState $ (i { idris_name = idx + 1 })
              return idx
 
-addInternalName :: FilePath -> Int -> Name -> Int -> Idris ()
-addInternalName fp l n w 
+addInternalApp :: FilePath -> Int -> PTerm -> Idris ()
+addInternalApp fp l t
     = do i <- getIState
-         putIState (i { idris_linename = ((fp, l), (n, w)) : idris_linename i })
+         putIState (i { idris_lineapps = ((fp, l), t) : idris_lineapps i })
 
-getInternalName :: FilePath -> Int -> Name -- ^ default name
-                      -> Idris (Name, Int)
-getInternalName fp l n = do i <- getIState
-                            case lookup (fp, l) (idris_linename i) of
-                                 Nothing -> return (n, 0)
-                                 Just n' -> return n'
+getInternalApp :: FilePath -> Int -> Idris PTerm
+getInternalApp fp l = do i <- getIState
+                         case lookup (fp, l) (idris_lineapps i) of
+                              Just n' -> return n'
+                              -- TODO: What if it's not there?
 
 checkUndefined :: FC -> Name -> Idris ()
 checkUndefined fc n 

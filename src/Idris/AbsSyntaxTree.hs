@@ -100,9 +100,8 @@ data IState = IState {
     idris_log :: String,
     idris_options :: IOption,
     idris_name :: Int,
-    idris_linename :: [((FilePath, Int), (Name, Int))], 
-          -- ^ internal name for function defined on that line,
-          --   number of 'with' arguments
+    idris_lineapps :: [((FilePath, Int), PTerm)], 
+          -- ^ Full application LHS on source line 
     idris_metavars :: [Name], -- ^ The currently defined but not proven metavariables
     idris_coercions :: [Name],
     idris_transforms :: [(Term, Term)],
@@ -179,7 +178,7 @@ data IBCWrite = IBCFix FixDecl
               | IBCDoc Name
               | IBCCoercion Name
               | IBCDef Name -- i.e. main context
-              | IBCLineName FilePath Int Name Int
+              | IBCLineApp FilePath Int PTerm
   deriving Show
 
 idrisInit = IState initContext [] [] emptyContext emptyContext emptyContext
@@ -240,6 +239,7 @@ data Command = Quit
              | DebugInfo Name
              | Search PTerm
              | CaseSplit Name PTerm
+             | CaseSplitAt Int Name 
              | SetOpt Opt
              | UnsetOpt Opt
              | NOP
@@ -416,13 +416,14 @@ deriving instance Binary PDecl'
 --
 -- 1. The whole application (missing for PClauseR and PWithR because they're within a "with" clause)
 --
--- 2. The list of patterns
+-- 2. The list of extra 'with' patterns
 --
 -- 3. The right-hand side
 --
 -- 4. The where block (PDecl' t)
+
 data PClause' t = PClause  FC Name t [t] t [PDecl' t] -- ^ A normal top-level definition.
-                | PWith    FC Name t [t] t [PDecl' t]
+                | PWith    FC Name t [t] t [PDecl' t]   
                 | PClauseR FC        [t] t [PDecl' t]
                 | PWithR   FC        [t] t [PDecl' t]
     deriving Functor

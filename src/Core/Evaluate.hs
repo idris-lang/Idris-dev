@@ -10,7 +10,7 @@ module Core.Evaluate(normalise, normaliseTrace, normaliseC, normaliseAll,
                 addDatatype, addCasedef, simplifyCasedef, addOperator,
                 lookupNames, lookupTy, lookupP, lookupDef, lookupVal, 
                 lookupTotal, lookupTyEnv, isDConName, isTConName, isConName, isFnName,
-                Value(..), Quote(..), evalState, initEval) where
+                Value(..), Quote(..), initEval) where
 
 import Debug.Trace
 import Control.Monad.State

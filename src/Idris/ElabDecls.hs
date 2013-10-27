@@ -801,6 +801,7 @@ elabClause info opts (_, PClause fc fname lhs_in [] PImpossible [])
 elabClause info opts (cnum, PClause fc fname lhs_in withs rhs_in whereblock) 
    = do let tcgen = Dictionary `elem` opts
         ctxt <- getContext
+
         -- Build the LHS as an "Infer", and pull out its type and
         -- pattern bindings
         i <- getIState
@@ -815,6 +816,10 @@ elabClause info opts (cnum, PClause fc fname lhs_in withs rhs_in whereblock)
         let lhs = addImplPat i (propagateParams params (stripLinear i lhs_in))
         logLvl 5 ("LHS: " ++ show fc ++ " " ++ showImp Nothing True False lhs)
         logLvl 4 ("Fixed parameters: " ++ show params ++ " from " ++ show (fn_ty, fn_is))
+
+        addInternalApp (fc_fname fc) (fc_line fc) lhs
+        addIBC (IBCLineApp (fc_fname fc) (fc_line fc) lhs)
+
         ((lhs', dlhs, []), _) <- 
             tclift $ elaborate ctxt (MN 0 "patLHS") infP []
                      (errAt "left hand side of " fname 
@@ -956,7 +961,7 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in withblock)
         -- Build the LHS as an "Infer", and pull out its type and
         -- pattern bindings
         i <- getIState
-        let lhs = addImplPat i lhs_in 
+        let lhs = addImplPat i lhs_in
         logLvl 5 ("LHS: " ++ showImp Nothing True False lhs)
         ((lhs', dlhs, []), _) <- 
             tclift $ elaborate ctxt (MN 0 "patLHS") infP []
@@ -1009,8 +1014,6 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in withblock)
                      (substTerm wargval (P Bound (MN 0 "warg") wargtype) ret_ty)
         logLvl 3 ("New function type " ++ show wtype)
         let wname = MN windex (show fname)
-        addInternalName (fc_fname fc) (fc_line fc) wname (length withs)
-        addIBC (IBCLineName (fc_fname fc) (fc_line fc) wname (length withs))
 
         let imps = getImps wtype -- add to implicits context
         putIState (i { idris_implicits = addDef wname imps (idris_implicits i) })
@@ -1080,9 +1083,12 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in withblock)
                 Left (a,b) -> trace ("matchClause: " ++ show a ++ " =/= " ++ show b) (ifail $ show fc ++ "with clause does not match top level")
                 Right mvars -> 
                     do lhs <- updateLHS n wname mvars ns ns' (fullApp tm) w
-                       return $ PWith fc wname lhs ws wval withs'
+                       return $ PWith fc wname lhs ws wval withs' 
     mkAux wname toplhs ns ns' c
         = ifail $ show fc ++ "badly formed with clause"
+
+    addArg (PApp fc f args) w = PApp fc f (args ++ [pexp w])
+    addArg (PRef fc f) w = PApp fc (PRef fc f) [pexp w]
 
     updateLHS n wname mvars ns_in ns_in' (PApp fc (PRef fc' n') args) w
         = let ns = map (keepMvar (map fst mvars) fc') ns_in
@@ -1448,8 +1454,9 @@ decorateid decorate (PTy doc s f o n t) = PTy doc s f o (decorate n) t
 decorateid decorate (PClauses f o n cs) 
    = PClauses f o (decorate n) (map dc cs)
     where dc (PClause fc n t as w ds) = PClause fc (decorate n) (dappname t) as w ds
-          dc (PWith   fc n t as w ds) = PWith   fc (decorate n) (dappname t) as w 
-                                              (map (decorateid decorate) ds)
+          dc (PWith   fc n t as w ds) 
+                 = PWith fc (decorate n) (dappname t) as w 
+                            (map (decorateid decorate) ds)
           dappname (PApp fc (PRef fc' n) as) = PApp fc (PRef fc' (decorate n)) as
           dappname t = t
 

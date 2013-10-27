@@ -426,6 +426,10 @@ process fn (Search t) = iPrintError "Not implemented"
 process fn (CaseSplit n t)
    = do tms <- split n t
         iputStrLn (showSep "\n" (map show tms))
+process fn (CaseSplitAt l n)
+   = do src <- runIO $ readFile fn
+        res <- splitOnLine l n fn src
+        iputStrLn (showSep "\n" (map show res))
 process fn (Spec t) = do (tm, ty) <- elabVal toplevel False t
                          ctxt <- getContext
                          ist <- getIState
