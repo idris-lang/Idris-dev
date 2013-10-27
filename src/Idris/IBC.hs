@@ -1325,96 +1325,105 @@ instance Binary PTerm where
                 PRef x1 x2 -> do putWord8 1
                                  put x1
                                  put x2
-                PLam x1 x2 x3 -> do putWord8 2
+                PInferRef x1 x2 -> do putWord8 2
+                                      put x1
+                                      put x2
+                PPatvar x1 x2 -> do putWord8 3
+                                    put x1
+                                    put x2
+                PLam x1 x2 x3 -> do putWord8 4
                                     put x1
                                     put x2
                                     put x3
-                PPi x1 x2 x3 x4 -> do putWord8 3
+                PPi x1 x2 x3 x4 -> do putWord8 5
                                       put x1
                                       put x2
                                       put x3
                                       put x4
-                PLet x1 x2 x3 x4 -> do putWord8 4
+                PLet x1 x2 x3 x4 -> do putWord8 6
                                        put x1
                                        put x2
                                        put x3
                                        put x4
-                PTyped x1 x2 -> do putWord8 5
+                PTyped x1 x2 -> do putWord8 7
                                    put x1
                                    put x2
-                PApp x1 x2 x3 -> do putWord8 6
+                PApp x1 x2 x3 -> do putWord8 8
                                     put x1
                                     put x2
                                     put x3
-                PCase x1 x2 x3 -> do putWord8 7
+                PAppBind x1 x2 x3 -> do putWord8 9
+                                        put x1
+                                        put x2
+                                        put x3
+                PMatchApp x1 x2 -> do putWord8 10
+                                      put x1
+                                      put x2
+                PCase x1 x2 x3 -> do putWord8 11
                                      put x1
                                      put x2
                                      put x3
-                PTrue x1 -> do putWord8 8
+                PTrue x1 -> do putWord8 12
                                put x1
-                PFalse x1 -> do putWord8 9
+                PFalse x1 -> do putWord8 13
                                 put x1
-                PRefl x1 x2 -> do putWord8 10
+                PRefl x1 x2 -> do putWord8 14
                                   put x1
                                   put x2
-                PResolveTC x1 -> do putWord8 11
+                PResolveTC x1 -> do putWord8 15
                                     put x1
-                PEq x1 x2 x3 -> do putWord8 12
+                PEq x1 x2 x3 -> do putWord8 16
                                    put x1
                                    put x2
                                    put x3
-                PPair x1 x2 x3 -> do putWord8 13
-                                     put x1
-                                     put x2
-                                     put x3
-                PDPair x1 x2 x3 x4 -> do putWord8 14
-                                         put x1
-                                         put x2
-                                         put x3
-                                         put x4
-                PAlternative x1 x2 -> do putWord8 15
-                                         put x1
-                                         put x2
-                PHidden x1 -> do putWord8 16
-                                 put x1
-                PType -> putWord8 17
-                PConstant x1 -> do putWord8 18
-                                   put x1
-                Placeholder -> putWord8 19
-                PDoBlock x1 -> do putWord8 20
-                                  put x1
-                PIdiom x1 x2 -> do putWord8 21
-                                   put x1
-                                   put x2
-                PReturn x1 -> do putWord8 22
-                                 put x1
-                PMetavar x1 -> do putWord8 23
-                                  put x1
-                PProof x1 -> do putWord8 24
-                                put x1
-                PTactics x1 -> do putWord8 25
-                                  put x1
-                PImpossible -> putWord8 27
-                PPatvar x1 x2 -> do putWord8 28
-                                    put x1
-                                    put x2
-                PInferRef x1 x2 -> do putWord8 29
-                                      put x1
-                                      put x2
-                PRewrite x1 x2 x3 x4 -> do putWord8 30
+                PRewrite x1 x2 x3 x4 -> do putWord8 17
                                            put x1
                                            put x2
                                            put x3
                                            put x4
-                PGoal x1 x2 x3 x4 -> do putWord8 31
+                PPair x1 x2 x3 -> do putWord8 18
+                                     put x1
+                                     put x2
+                                     put x3
+                PDPair x1 x2 x3 x4 -> do putWord8 19
+                                         put x1
+                                         put x2
+                                         put x3
+                                         put x4
+                PAlternative x1 x2 -> do putWord8 20
+                                         put x1
+                                         put x2
+                PHidden x1 -> do putWord8 21
+                                 put x1
+                PType -> putWord8 22
+                PGoal x1 x2 x3 x4 -> do putWord8 23
                                         put x1
                                         put x2
                                         put x3
                                         put x4
-                PAppBind x1 x2 x3 -> do putWord8 32
-                                        put x1
-                                        put x2
-                                        put x3
+                PConstant x1 -> do putWord8 24
+                                   put x1
+                Placeholder -> putWord8 25
+                PDoBlock x1 -> do putWord8 26
+                                  put x1
+                PIdiom x1 x2 -> do putWord8 27
+                                   put x1
+                                   put x2
+                PReturn x1 -> do putWord8 28
+                                 put x1
+                PMetavar x1 -> do putWord8 29
+                                  put x1
+                PProof x1 -> do putWord8 30
+                                put x1
+                PTactics x1 -> do putWord8 31
+                                  put x1
+                PImpossible -> putWord8 33
+                PCoerced x1 -> do putWord8 34
+                                  put x1
+                PUnifyLog x1 -> do putWord8 35
+                                   put x1
+                PNoImplicits x1 -> do putWord8 36
+                                      put x1
         get
           = do i <- getWord8
                case i of
@@ -1425,96 +1434,105 @@ instance Binary PTerm where
                            return (PRef x1 x2)
                    2 -> do x1 <- get
                            x2 <- get
+                           return (PInferRef x1 x2)
+                   3 -> do x1 <- get
+                           x2 <- get
+                           return (PPatvar x1 x2)
+                   4 -> do x1 <- get
+                           x2 <- get
                            x3 <- get
                            return (PLam x1 x2 x3)
-                   3 -> do x1 <- get
+                   5 -> do x1 <- get
                            x2 <- get
                            x3 <- get
                            x4 <- get
                            return (PPi x1 x2 x3 x4)
-                   4 -> do x1 <- get
+                   6 -> do x1 <- get
                            x2 <- get
                            x3 <- get
                            x4 <- get
                            return (PLet x1 x2 x3 x4)
-                   5 -> do x1 <- get
+                   7 -> do x1 <- get
                            x2 <- get
                            return (PTyped x1 x2)
-                   6 -> do x1 <- get
+                   8 -> do x1 <- get
                            x2 <- get
                            x3 <- get
                            return (PApp x1 x2 x3)
-                   7 -> do x1 <- get
+                   9 -> do x1 <- get
                            x2 <- get
                            x3 <- get
-                           return (PCase x1 x2 x3)
-                   8 -> do x1 <- get
-                           return (PTrue x1)
-                   9 -> do x1 <- get
-                           return (PFalse x1)
+                           return (PAppBind x1 x2 x3)
                    10 -> do x1 <- get
                             x2 <- get
-                            return (PRefl x1 x2)
+                            return (PMatchApp x1 x2)
                    11 -> do x1 <- get
-                            return (PResolveTC x1)
+                            x2 <- get
+                            x3 <- get
+                            return (PCase x1 x2 x3)
                    12 -> do x1 <- get
+                            return (PTrue x1)
+                   13 -> do x1 <- get
+                            return (PFalse x1)
+                   14 -> do x1 <- get
+                            x2 <- get
+                            return (PRefl x1 x2)
+                   15 -> do x1 <- get
+                            return (PResolveTC x1)
+                   16 -> do x1 <- get
                             x2 <- get
                             x3 <- get
                             return (PEq x1 x2 x3)
-                   13 -> do x1 <- get
-                            x2 <- get
-                            x3 <- get
-                            return (PPair x1 x2 x3)
-                   14 -> do x1 <- get
-                            x2 <- get
-                            x3 <- get
-                            x4 <- get
-                            return (PDPair x1 x2 x3 x4)
-                   15 -> do x1 <- get
-                            x2 <- get
-                            return (PAlternative x1 x2)
-                   16 -> do x1 <- get
-                            return (PHidden x1)
-                   17 -> return PType
-                   18 -> do x1 <- get
-                            return (PConstant x1)
-                   19 -> return Placeholder
-                   20 -> do x1 <- get
-                            return (PDoBlock x1)
-                   21 -> do x1 <- get
-                            x2 <- get
-                            return (PIdiom x1 x2)
-                   22 -> do x1 <- get
-                            return (PReturn x1)
-                   23 -> do x1 <- get
-                            return (PMetavar x1)
-                   24 -> do x1 <- get
-                            return (PProof x1)
-                   25 -> do x1 <- get
-                            return (PTactics x1)
-                   27 -> return PImpossible
-                   28 -> do x1 <- get
-                            x2 <- get
-                            return (PPatvar x1 x2)
-                   29 -> do x1 <- get
-                            x2 <- get
-                            return (PInferRef x1 x2)
-                   30 -> do x1 <- get
+                   17 -> do x1 <- get
                             x2 <- get
                             x3 <- get
                             x4 <- get
                             return (PRewrite x1 x2 x3 x4)
-                   31 -> do x1 <- get
+                   18 -> do x1 <- get
+                            x2 <- get
+                            x3 <- get
+                            return (PPair x1 x2 x3)
+                   19 -> do x1 <- get
+                            x2 <- get
+                            x3 <- get
+                            x4 <- get
+                            return (PDPair x1 x2 x3 x4)
+                   20 -> do x1 <- get
+                            x2 <- get
+                            return (PAlternative x1 x2)
+                   21 -> do x1 <- get
+                            return (PHidden x1)
+                   22 -> return PType
+                   23 -> do x1 <- get
                             x2 <- get
                             x3 <- get
                             x4 <- get
                             return (PGoal x1 x2 x3 x4)
-                   32 -> do x1 <- get
+                   24 -> do x1 <- get
+                            return (PConstant x1)
+                   25 -> return Placeholder
+                   26 -> do x1 <- get
+                            return (PDoBlock x1)
+                   27 -> do x1 <- get
                             x2 <- get
-                            x3 <- get
-                            return (PAppBind x1 x2 x3)
+                            return (PIdiom x1 x2)
+                   28 -> do x1 <- get
+                            return (PReturn x1)
+                   29 -> do x1 <- get
+                            return (PMetavar x1)
+                   30 -> do x1 <- get
+                            return (PProof x1)
+                   31 -> do x1 <- get
+                            return (PTactics x1)
+                   33 -> return PImpossible
+                   34 -> do x1 <- get
+                            return (PCoerced x1)
+                   35 -> do x1 <- get
+                            return (PUnifyLog x1)
+                   36 -> do x1 <- get
+                            return (PNoImplicits x1)
                    _ -> error "Corrupted binary data for PTerm"
- 
+
 instance (Binary t) => Binary (PTactic' t) where
         put x
           = case x of
