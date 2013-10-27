@@ -428,8 +428,12 @@ process fn (CaseSplit n t)
         iputStrLn (showSep "\n" (map show tms))
 process fn (CaseSplitAt l n)
    = do src <- runIO $ readFile fn
-        res <- splitOnLine l n fn src
-        iputStrLn (showSep "\n" (map show res))
+        res <- splitOnLine l n fn 
+        iLOG (showSep "\n" (map show res))
+        let (before, (ap : later)) = splitAt (l-1) (lines src)
+        iputStrLn (showSep "\n" (replaceSplits ap res))
+
+
 process fn (Spec t) = do (tm, ty) <- elabVal toplevel False t
                          ctxt <- getContext
                          ist <- getIState

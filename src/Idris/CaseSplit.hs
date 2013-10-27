@@ -1,6 +1,6 @@
 {-# LANGUAGE PatternGuards #-}
 
-module Idris.CaseSplit(split, splitOnLine) where
+module Idris.CaseSplit(split, splitOnLine, replaceSplits) where
 
 -- splitting a variable in a pattern clause
 
@@ -16,6 +16,7 @@ import Core.Typecheck
 import Core.Evaluate
 
 import Data.Maybe
+import Data.Char
 import Control.Monad
 import Control.Monad.State.Strict
 
@@ -24,6 +25,8 @@ import Text.Parser.Char(anyChar)
 import Text.Trifecta(Result(..), parseString)
 import Text.Trifecta.Delta
 import qualified Data.ByteString.UTF8 as UTF8
+
+import Debug.Trace
 
 {- 
 
@@ -71,7 +74,11 @@ data MergeState = MS { namemap :: [(Name, Name)],
                        updates :: [(Name, PTerm)] }
                        
 addUpdate n tm = do ms <- get
-                    put (ms { updates = ((n, tm) : updates ms) } )
+                    put (ms { updates = ((n, stripNS tm) : updates ms) } )
+
+stripNS tm = mapPT dens tm where 
+    dens (PRef fc n) = PRef fc (nsroot n)
+    dens t = t
 
 mergeAllPats :: Context -> PTerm -> [PTerm] -> [(PTerm, [(Name, PTerm)])]
 mergeAllPats ctxt t [] = []
@@ -169,9 +176,8 @@ replaceVar ctxt n t pat = pat
 splitOnLine :: Int -- ^ line number
                -> Name -- ^ variable
                -> FilePath -- ^ name of file
-               -> String -- ^ file contents
                -> Idris [[(Name, PTerm)]]
-splitOnLine l n fn inp = do 
+splitOnLine l n fn = do 
 --     let (before, later) = splitAt (l-1) (lines inp)
 --     i <- getIState
     cl <- getInternalApp fn l 
@@ -180,7 +186,43 @@ splitOnLine l n fn inp = do
 --     iputStrLn (showSep "\n" (map show tms))
     return tms -- "" -- not yet done...
 
-getFnName (PClause _ n _ _ _ _) = n
-getFnName (PWith _ n _ _ _ _) = n
+replaceSplits :: String -> [[(Name, PTerm)]] -> [String]
+replaceSplits l ups = map (rep (expandBraces l)) ups
+  where
+    rep str [] = str
+    rep str ((n, tm) : ups) = rep (updatePat False (show n) (nshow False tm) str) ups
+
+    -- TMP HACK: If there are Nats, we don't want to show as numerals since 
+    -- this isn't supported in a pattern, so special case here
+    nshow brack (PRef _ (UN "Z")) = "Z"
+    nshow brack (PApp _ (PRef _ (UN "S")) [x]) = 
+       if brack then "(S " else "S " ++ nshow True (getTm x) ++
+       if brack then ")" else ""
+    nshow _ t = show t
+
+    -- if there's any {n} replace with {n=n}
+    expandBraces ('{' : xs)
+        = let (brace, (_:rest)) = span (/= '}') xs in
+              if (not ('=' `elem` brace))
+                 then ('{' : brace ++ " = " ++ brace ++ "}") ++ 
+                         expandBraces rest
+                 else ('{' : brace ++ "}") ++ expandBraces rest
+    expandBraces (x : xs) = x : expandBraces xs
+    expandBraces [] = []
+
+    updatePat start n tm [] = []
+    updatePat start n tm ('{':rest) = 
+        let (space, rest') = span isSpace rest in
+            '{' : space ++ updatePat False n tm rest'
+    updatePat True n tm xs@(c:rest) | length xs > length n
+        = let (before, after@(next:_)) = splitAt (length n) xs in
+              if (before == n && not (isAlpha next))
+                 then addBrackets tm ++ updatePat False n tm after
+                 else c : updatePat (not (isAlpha c)) n tm rest
+    updatePat start n tm (c:rest) = c : updatePat (not (isAlpha c)) n tm rest
+
+    addBrackets tm | ' ' `elem` tm = "(" ++ tm ++ ")"
+                   | otherwise = tm
+
 
     
