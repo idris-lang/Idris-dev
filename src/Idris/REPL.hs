@@ -1,5 +1,5 @@
 {-# LANGUAGE MultiParamTypeClasses, FlexibleInstances, DeriveFunctor,
-             PatternGuards, ScopedTypeVariables, CPP #-}
+             PatternGuards, CPP #-}
 
 module Idris.REPL where
 
@@ -111,11 +111,9 @@ startServer orig stvar fn_in = do tid <- runIO $ forkOS serverLoop
   where serverLoop :: IO ()
         -- TODO: option for port number
         serverLoop = withSocketsDo $ 
-                              catch (do sock <- listenOn $ PortNumber 4294
-                                        i <- readMVar stvar
-                                        loop i sock)
-                                    (\(e :: IOException) -> return ()) -- silently fail
-                                    -- TODO: allow multiple instances somehow
+                              do sock <- listenOn $ PortNumber 4294
+                                 i <- readMVar stvar
+                                 loop i sock
 
         fn = case fn_in of
                   (f:_) -> f
