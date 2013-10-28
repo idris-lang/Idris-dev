@@ -78,9 +78,21 @@ function IdrisAddClause()
   endif
 endfunction
 
+function IdrisEval()
+  let tc = IdrisReload()
+  if (tc is "")
+     let expr = input ("Expression: ")
+     let fn = "idris --client '" . expr . "'"
+     let result = system(fn)
+     echo result
+  endif
+  echo ""
+endfunction
+
 map ct :call IdrisShowType()<ENTER>
 map cr :call IdrisReload()<ENTER>
 map ci :call IdrisCaseSplit()<ENTER>
 map cd ?:<ENTER>b:call IdrisAddClause()<ENTER>w
 map cm 0:call IdrisMakeWith()<ENTER>
+map ce :call IdrisEval()<ENTER>
 
