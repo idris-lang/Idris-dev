@@ -119,13 +119,16 @@ startServer orig stvar fn_in = do tid <- runIO $ forkOS serverLoop
                   (f:_) -> f
                   _ -> ""
 
-        loop ist sock = do (h,_,_) <- accept sock
-                           cmd <- hGetLine h
-                           takeMVar stvar
-                           ist' <- processNetCmd stvar orig ist h fn cmd
-                           putMVar stvar ist'
-                           hClose h
-                           loop ist' sock
+        loop ist sock = do (h,host,_) <- accept sock
+                           if (host == "localhost" ||
+                               host == "127.0.0.1") then do
+                               cmd <- hGetLine h
+                               takeMVar stvar
+                               ist' <- processNetCmd stvar orig ist h fn cmd
+                               putMVar stvar ist'
+                               hClose h
+                               loop ist' sock
+                             else hClose h
 
 processNetCmd :: MVar IState -> 
                  IState -> IState -> Handle -> FilePath -> String -> IO IState
