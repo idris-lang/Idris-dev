@@ -528,12 +528,18 @@ elab ist info pattern tcgen fn tm
              -- old ones with an _
              mkClause args (l, r) 
                    = let args' = map (shadowed (allNamesIn l)) args
-                         lhs = PApp fc (PRef fc n)
+                         lhs = PApp (getFC fc l) (PRef (getFC fc l) n)
                                  (map pexp args' ++ [pexp l]) in
-                         PClause fc n lhs [] r []
+--                          trace (show (getFC fc l, getFC fc r)) $
+                            PClause (getFC fc l) n lhs [] r []
 
              shadowed new (PRef _ n) | n `elem` new = Placeholder
              shadowed new t = t
+
+    getFC d (PApp fc _ _) = fc
+    getFC d (PRef fc _) = fc
+    getFC d (PAlternative _ (x:_)) = getFC d x
+    getFC d x = d
 
     insertCoerce ina t =
         do ty <- goal
