@@ -532,8 +532,19 @@ process h fn (AddClauseFrom updatefile l n)
        getIndent i n [] = 0
        getIndent i n xs | take (length n) xs == n = i
        getIndent i n (x : xs) = getIndent (i + 1) n xs
-
-
+process h fn (MakeWith updatefile l n)
+   = do src <- runIO $ readFile fn
+        let (before, tyline : later) = splitAt (l-1) (lines src)
+        let with = mkWith tyline n
+        -- add clause before first blank line in 'later'
+        let (nonblank, rest) = span (not . all isSpace) later
+        if updatefile then
+           do let fb = fn ++ "~"
+              runIO $ writeFile fb (unlines (before ++ nonblank) 
+                                        ++ with ++ "\n" ++
+                                    unlines rest)
+              runIO $ copyFile fb fn
+           else ihputStrLn h with
 
 process h fn (Spec t)
                     = do (tm, ty) <- elabVal toplevel False t

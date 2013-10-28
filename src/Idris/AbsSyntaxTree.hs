@@ -242,6 +242,7 @@ data Command = Quit
              | CaseSplit Name PTerm
              | CaseSplitAt Bool Int Name 
              | AddClauseFrom Bool Int Name 
+             | MakeWith Bool Int Name 
              | SetOpt Opt
              | UnsetOpt Opt
              | NOP

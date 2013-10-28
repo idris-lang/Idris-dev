@@ -1,6 +1,8 @@
 {-# LANGUAGE PatternGuards #-}
 
-module Idris.CaseSplit(split, splitOnLine, replaceSplits, getClause) where
+module Idris.CaseSplit(split, splitOnLine, replaceSplits, 
+                       getClause,
+                       mkWith) where
 
 -- splitting a variable in a pattern clause
 
@@ -59,6 +61,7 @@ split n t'
                 do let splits = findPats ist ty
                    iLOG ("New patterns " ++ show splits)
                    let newPats_in = zipWith (replaceVar ctxt n) splits (repeat t)
+                   logLvl 4 ("Working from " ++ show t)
                    logLvl 4 ("Trying " ++ showSep "\n" (map show newPats_in))
                    newPats <- mapM elabNewPat newPats_in
                    logLvl 3 ("Original:\n" ++ show t)
@@ -95,8 +98,8 @@ mergePat ctxt (PPatvar fc n) new
 mergePat ctxt old (PPatvar fc n)
   = mergePat ctxt old (PRef fc n)
 mergePat ctxt orig@(PRef fc n) new@(PRef _ n') 
-  | isConName n' ctxt = do addUpdate n new;
-                           return new
+  | isDConName n' ctxt = do addUpdate n new;
+                            return new
   | otherwise
     = do ms <- get
          case lookup n' (namemap ms) of
@@ -164,9 +167,10 @@ replaceVar ctxt n t (PApp fc f pats) = PApp fc f (map substArg pats)
         subst orig@(PPatvar _ v) | v == n = t
                                  | otherwise = Placeholder
         subst orig@(PRef _ v) | v == n = t
-                              | isConName v ctxt = orig
+                              | isDConName v ctxt = orig
         subst (PRef _ _) = Placeholder
         subst (PApp fc f pats) = PApp fc f (map substArg pats)
+        subst (PEq fc l r) = PEq fc (subst l) (subst r)
         subst x = x
 
         substArg arg = arg { getTm = subst (getTm arg) }
@@ -239,7 +243,22 @@ getClause l fn fp = do ty <- getInternalApp fp l
          mkApp (PPi _ _ _ sc) ns = mkApp sc ns
          mkApp _ _ = ""
 
+-- Purely syntactic - turn a pattern match clause into a with and a new
+-- match clause
 
+mkWith :: String -> Name -> String
+mkWith str n = let ind = getIndent str
+                   str' = replicate ind ' ' ++ 
+                          replaceRHS str "with (_)"
+                   newpat = replicate (ind + 2) ' ' ++ 
+                            replaceRHS str "| with_pat = ?" ++ show n ++ "_rhs" in
+                   str' ++ "\n" ++ newpat
+                   
+   where getIndent s = length (takeWhile isSpace s)
 
+         replaceRHS [] str = str
+         replaceRHS ('?':'=': rest) str = str
+         replaceRHS ('=': rest) str = str
+         replaceRHS (x : rest) str = x : replaceRHS rest str
 
     

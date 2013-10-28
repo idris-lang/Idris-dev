@@ -37,6 +37,26 @@ function IdrisCaseSplit()
   endif
 endfunction
 
+function IdrisMakeWith()
+  let view = winsaveview()
+  w
+  let cline = line(".")
+  let word = expand("<cword>")
+  let tc = IdrisReload()
+
+  if (tc is "")
+    let fn = "idris --client :mw! " . cline . " " . word
+    let result = system(fn)
+    if (! (result is "")) 
+       echo result
+    else
+      e
+      call winrestview(view)
+      call search("_")
+    endif
+  endif
+endfunction
+
 function IdrisAddClause()
   let view = winsaveview()
   w
@@ -62,4 +82,5 @@ map ct :call IdrisShowType()<ENTER>
 map cr :call IdrisReload()<ENTER>
 map ci :call IdrisCaseSplit()<ENTER>
 map cd ?:<ENTER>b:call IdrisAddClause()<ENTER>w
+map cm 0:call IdrisMakeWith()<ENTER>
 

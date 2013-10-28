@@ -34,7 +34,7 @@ pCmd :: P.IdrisParser Command
 pCmd = do P.whiteSpace; try (do cmd ["q", "quit"]; eof; return Quit)
               <|> try (do cmd ["h", "?", "help"]; eof; return Help)
               <|> try (do cmd ["r", "reload"]; eof; return Reload)
-              <|> try (do cmd ["m", "module"]; f <- P.identifier; eof;
+              <|> try (do cmd ["module"]; f <- P.identifier; eof;
                           return (ModImport (toPath f)))
               <|> try (do cmd ["e", "edit"]; eof; return Edit)
               <|> try (do cmd ["exec", "execute"]; eof; return Execute)
@@ -42,7 +42,6 @@ pCmd = do P.whiteSpace; try (do cmd ["q", "quit"]; eof; return Quit)
               <|> try (do cmd ["c", "compile"]; f <- P.identifier; eof; return (Compile ViaC f))
               <|> try (do cmd ["jc", "newcompile"]; f <- P.identifier; eof; return (Compile ViaJava f))
               <|> try (do cmd ["js", "javascript"]; f <- P.identifier; eof; return (Compile ViaJavaScript f))
-              <|> try (do cmd ["m", "metavars"]; eof; return Metavars)
               <|> try (do cmd ["proofs"]; eof; return Proofs)
               <|> try (do cmd ["p", "prove"]; n <- P.name; eof; return (Prove n))
               <|> try (do cmd ["rmproof"]; n <- P.name; eof; return (RmProof n))
@@ -79,6 +78,11 @@ pCmd = do P.whiteSpace; try (do cmd ["q", "quit"]; eof; return Quit)
                           upd <- option False (do P.lchar '!'; return True)
                           l <- P.natural; n <- P.name; 
                           return (AddClauseFrom upd (fromInteger l) n))
+              <|> try (do cmd ["mw", "makewith"]; P.whiteSpace; 
+                          upd <- option False (do P.lchar '!'; return True)
+                          l <- P.natural; n <- P.name; 
+                          return (MakeWith upd (fromInteger l) n))
+              <|> try (do cmd ["m", "metavars"]; eof; return Metavars)
               <|> try (do cmd ["a", "addproof"]; do n <- option Nothing (do x <- P.name;
                                                                             return (Just x))
                                                     eof; return (AddProof n))
