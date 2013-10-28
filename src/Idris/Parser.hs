@@ -54,6 +54,8 @@ import qualified Data.ByteString.UTF8 as UTF8
 import Debug.Trace
 
 import System.FilePath
+import System.IO
+
 {-
  grammar shortcut notation:
     ~CHARSEQ = complement of char sequence (i.e. any character except CHARSEQ)
@@ -902,10 +904,10 @@ parseProg :: SyntaxInfo -> FilePath -> String -> Maybe Delta ->
 parseProg syn fname input mrk
     = do i <- getIState
          case parseString (runInnerParser (evalStateT mainProg i)) (Directed (UTF8.fromString fname) 0 0 0 0) input of
-            Failure doc     -> do iputStrLn (show doc)
-                                  -- FIXME: Get error location from trifecta
+            Failure doc     -> do -- FIXME: Get error location from trifecta
                                   --let errl = sourceLine (errorPos err)
                                   i <- getIState
+                                  ihputStrLn (idris_outh i) (show doc)
                                   putIState (i { errLine = Just 0 }) -- Just errl })
                                   return []
             Success (x, i)  -> do putIState i
@@ -920,8 +922,8 @@ parseProg syn fname input mrk
                           return (ds, i')
 
 {- | Load idris module -}
-loadModule :: FilePath -> Idris String
-loadModule f
+loadModule :: Handle -> FilePath -> Idris String
+loadModule outh f
    = idrisCatch (do i <- getIState
                     let file = takeWhile (/= ' ') f
                     ibcsd <- valIBCSubDir i
@@ -931,25 +933,25 @@ loadModule f
                        then iLOG $ "Already read " ++ file
                        else do putIState (i { imported = file : imported i })
                                case fp of
-                                   IDR fn  -> loadSource False fn
-                                   LIDR fn -> loadSource True  fn
+                                   IDR fn  -> loadSource outh False fn
+                                   LIDR fn -> loadSource outh True  fn
                                    IBC fn src ->
                                      idrisCatch (loadIBC fn)
                                                 (\c -> do iLOG $ fn ++ " failed " ++ show c
                                                           case src of
-                                                            IDR sfn -> loadSource False sfn
-                                                            LIDR sfn -> loadSource True sfn)
+                                                            IDR sfn -> loadSource outh False sfn
+                                                            LIDR sfn -> loadSource outh True sfn)
                     let (dir, fh) = splitFileName file
                     return (dropExtension fh))
                 (\e -> do setErrLine (getErrLine e)
                           ist <- getIState
                           msg <- showErr e
-                          iputStrLn msg
+                          ihputStrLn outh msg
                           return "")
 
 {- | Load idris code from file -}
-loadFromIFile :: IFileType -> Idris ()
-loadFromIFile i@(IBC fn src)
+loadFromIFile :: Handle -> IFileType -> Idris ()
+loadFromIFile h i@(IBC fn src)
    = do iLOG $ "Skipping " ++ getSrcFile i
         idrisCatch (loadIBC fn)
                 (\err -> ierror $ LoadingFailed fn err)
@@ -958,20 +960,20 @@ loadFromIFile i@(IBC fn src)
     getSrcFile (LIDR fn) = fn
     getSrcFile (IBC f src) = getSrcFile src
 
-loadFromIFile (IDR fn) = loadSource' False fn
-loadFromIFile (LIDR fn) = loadSource' True fn
+loadFromIFile h (IDR fn) = loadSource' h False fn
+loadFromIFile h (LIDR fn) = loadSource' h True fn
 
 {-| Load idris source code and show error if something wrong happens -}
-loadSource' :: Bool -> FilePath -> Idris ()
-loadSource' lidr r
-   = idrisCatch (loadSource lidr r)
+loadSource' :: Handle -> Bool -> FilePath -> Idris ()
+loadSource' h lidr r
+   = idrisCatch (loadSource h lidr r)
                 (\e -> do setErrLine (getErrLine e)
                           msg <- showErr e
-                          iputStrLn msg)
+                          ihputStrLn h msg)
 
 {- | Load Idris source code-}
-loadSource :: Bool -> FilePath -> Idris ()
-loadSource lidr f
+loadSource :: Handle -> Bool -> FilePath -> Idris ()
+loadSource h lidr f
              = do iLOG ("Reading " ++ f)
                   i <- getIState
                   let def_total = default_total i
@@ -992,7 +994,7 @@ loadSource lidr f
                     logLvl 3 (show (idris_infixes i))
                     -- Now add all the declarations to the context
                     v <- verbose
-                    when v $ iputStrLn $ "Type checking " ++ f
+                    when v $ ihputStrLn h $ "Type checking " ++ f
                     -- we totality check after every Mutual block, so if
                     -- anything is a single definition, wrap it in a
                     -- mutual block on its own

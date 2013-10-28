@@ -1490,7 +1490,8 @@ elabDecl what info d
     = idrisCatch (elabDecl' what info d) 
                  (\e -> do setErrLine (getErrLine e)
                            ist <- getIState
-                           iputStrLn $ pshow ist e)
+                           let h = idris_outh ist
+                           ihputStrLn h $ pshow ist e)
 
 elabDecl' _ info (PFix _ _ _)
      = return () -- nothing to elaborate

@@ -71,8 +71,9 @@ pCmd = do P.whiteSpace; try (do cmd ["q", "quit"]; eof; return Quit)
               <|> try (do cmd ["unset"]; o <-pOption; return (UnsetOpt o))
               <|> try (do cmd ["s", "search"]; P.whiteSpace; t <- P.fullExpr defaultSyntax; return (Search t))
               <|> try (do cmd ["cs", "casesplit"]; P.whiteSpace; 
-                                 l <- P.natural; n <- P.name; 
-                                 return (CaseSplitAt (fromInteger l) n))
+                          upd <- option False (do P.lchar '!'; return True)
+                          l <- P.natural; n <- P.name; 
+                          return (CaseSplitAt upd (fromInteger l) n))
               <|> try (do cmd ["cs", "casesplit"]; P.whiteSpace; 
                                  n <- P.name; 
                                  t <- P.fullExpr defaultSyntax; 

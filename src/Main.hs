@@ -46,6 +46,9 @@ main = do xs <- getArgs
             Right _ -> return ()
 
 runIdris :: [Opt] -> Idris ()
+runIdris [Client c] = do setVerbose False
+                         setQuiet True
+                         runIO $ runClient c
 runIdris opts = do
        when (Ver `elem` opts) $ runIO showver
        when (Usage `elem` opts) $ runIO usage

@@ -390,6 +390,7 @@ Executable idris
                 , utf8-string
                 , vector
                 , vector-binary-instances
+                , network
 
   Extensions:     MultiParamTypeClasses
                 , FunctionalDependencies
@@ -397,7 +398,7 @@ Executable idris
                 , TemplateHaskell
 
   ghc-prof-options: -auto-all -caf-all
-  ghc-options:      -rtsopts
+  ghc-options:      -threaded -rtsopts
 
   if os(linux)
      cpp-options:   -DLINUX

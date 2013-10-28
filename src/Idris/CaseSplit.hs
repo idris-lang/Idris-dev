@@ -189,7 +189,7 @@ splitOnLine l n fn = do
 replaceSplits :: String -> [[(Name, PTerm)]] -> [String]
 replaceSplits l ups = map (rep (expandBraces l)) ups
   where
-    rep str [] = str
+    rep str [] = str ++ "\n"
     rep str ((n, tm) : ups) = rep (updatePat False (show n) (nshow False tm) str) ups
 
     -- TMP HACK: If there are Nats, we don't want to show as numerals since 

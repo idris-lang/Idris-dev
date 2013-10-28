@@ -16,6 +16,7 @@ import Util.DynamicLinker
 import Paths_idris
 
 import System.Console.Haskeline
+import System.IO
 
 import Control.Monad.State
 
@@ -244,6 +245,7 @@ getInternalApp :: FilePath -> Int -> Idris PTerm
 getInternalApp fp l = do i <- getIState
                          case lookup (fp, l) (idris_lineapps i) of
                               Just n' -> return n'
+                              Nothing -> return Placeholder
                               -- TODO: What if it's not there?
 
 checkUndefined :: FC -> Name -> Idris ()
@@ -296,41 +298,45 @@ solveDeferred :: Name -> Idris ()
 solveDeferred n = do i <- getIState
                      putIState $ i { idris_metavars = idris_metavars i \\ [n] }
 
-iPrintResult :: String -> Idris ()
-iPrintResult s = do i <- getIState
+ihPrintResult :: Handle -> String -> Idris ()
+ihPrintResult h s = do i <- getIState
+                       case idris_outputmode i of
+                         RawOutput -> case s of
+                                        "" -> return ()
+                                        s  -> runIO $ hPutStrLn h s
+                         IdeSlave n ->
+                             let good = SexpList [SymbolAtom "ok", toSExp s] in
+                             runIO $ hPutStrLn h $ convSExp "return" good n
+
+ihPrintError :: Handle -> String -> Idris ()
+ihPrintError h s = do i <- getIState
+                      case idris_outputmode i of
+                        RawOutput -> case s of
+                                          "" -> return ()
+                                          s  -> runIO $ hPutStrLn h s
+                        IdeSlave n ->
+                          let good = SexpList [SymbolAtom "error", toSExp s] in
+                          runIO . hPutStrLn h $ convSExp "return" good n
+
+ihputStrLn :: Handle -> String -> Idris ()
+ihputStrLn h s = do i <- getIState
                     case idris_outputmode i of
-                      RawOutput -> case s of
-                                     "" -> return ()
-                                     s  -> runIO $ putStrLn s
+                      RawOutput -> runIO $ hPutStrLn h s
                       IdeSlave n ->
-                          let good = SexpList [SymbolAtom "ok", toSExp s] in
-                          runIO $ putStrLn $ convSExp "return" good n
+                        case span (/=':') s of
+                          (fn, ':':rest) -> case span isDigit rest of
+                            ([], ':':msg) -> write
+                            ([], msg) -> write
+                            (row, ':':rest') ->
+                             case span isDigit rest' of
+                               ([], msg) -> iWarn (FC fn (read row) 0) msg
+                               (col, ':':msg) -> iWarn (FC fn (read row) (read col)) msg
+                          _  -> write
+                        where write = runIO . hPutStrLn h $ convSExp "write-string" s n
 
-iPrintError :: String -> Idris ()
-iPrintError s = do i <- getIState
-                   case idris_outputmode i of
-                     RawOutput -> case s of
-                                       "" -> return ()
-                                       s  -> runIO $ putStrLn s
-                     IdeSlave n ->
-                       let good = SexpList [SymbolAtom "error", toSExp s] in
-                       runIO . putStrLn $ convSExp "return" good n
-
-iputStrLn :: String -> Idris ()
-iputStrLn s = do i <- getIState
-                 case idris_outputmode i of
-                   RawOutput -> runIO $ putStrLn s
-                   IdeSlave n ->
-                     case span (/=':') s of
-                       (fn, ':':rest) -> case span isDigit rest of
-                         ([], ':':msg) -> write
-                         ([], msg) -> write
-                         (row, ':':rest') ->
-                          case span isDigit rest' of
-                            ([], msg) -> iWarn (FC fn (read row) 0) msg
-                            (col, ':':msg) -> iWarn (FC fn (read row) (read col)) msg
-                       _  -> write
-                     where write = runIO . putStrLn $ convSExp "write-string" s n
+iputStrLn = ihputStrLn stdout
+iPrintError = ihPrintError stdout
+iPrintResult = ihPrintResult stdout
 
 ideslavePutSExp :: SExpable a => String -> a -> Idris ()
 ideslavePutSExp cmd info = do i <- getIState
@@ -538,6 +544,10 @@ colourise = do i <- getIState
 setColourise :: Bool -> Idris ()
 setColourise b = do i <- getIState
                     putIState $ i { idris_colourRepl = b }
+
+setOutH :: Handle -> Idris ()
+setOutH h = do i <- getIState
+               putIState $ i { idris_outh = h }
 
 impShow :: Idris Bool
 impShow = do i <- getIState

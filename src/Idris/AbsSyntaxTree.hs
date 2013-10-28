@@ -17,7 +17,7 @@ import Idris.Colours
 import Paths_idris
 
 import System.Console.Haskeline
-
+import System.IO
 
 import Control.Monad.Trans.State.Strict
 import Control.Monad.Trans.Error
@@ -127,7 +127,8 @@ data IState = IState {
     idris_language_extensions :: [LanguageExt],
     idris_outputmode :: OutputMode,
     idris_colourRepl :: Bool,
-    idris_colourTheme :: ColourTheme
+    idris_colourTheme :: ColourTheme,
+    idris_outh :: Handle
    }
 
 data SizeChange = Smaller | Same | Bigger | Unknown
@@ -186,7 +187,7 @@ idrisInit = IState initContext [] [] emptyContext emptyContext emptyContext
                    emptyContext emptyContext emptyContext emptyContext
                    [] "" defaultOpts 6 [] [] [] [] [] [] [] [] [] [] [] []
                    [] Nothing Nothing [] [] [] Hidden False [] Nothing [] [] RawOutput
-                   True defaultTheme
+                   True defaultTheme stdout
 
 -- | The monad for the main REPL - reading and processing files and updating 
 -- global state (hence the IO inner monad).
@@ -239,7 +240,7 @@ data Command = Quit
              | DebugInfo Name
              | Search PTerm
              | CaseSplit Name PTerm
-             | CaseSplitAt Int Name 
+             | CaseSplitAt Bool Int Name 
              | SetOpt Opt
              | UnsetOpt Opt
              | NOP
@@ -287,6 +288,7 @@ data Opt = Filename String
          | TargetTriple String
          | TargetCPU String
          | OptLevel Word
+         | Client String
     deriving (Show, Eq)
 
 -- Parsed declarations
