@@ -143,6 +143,8 @@ processNetCmd stvar orig i h fn cmd
                           }
            putIState orig
            setOutH h
+           setQuiet True
+           setVerbose False
            mods <- loadInputs h [fn]
            ist <- getIState
            return ist
