@@ -190,11 +190,38 @@ splitOnLine l n fn = do
 --     iputStrLn (showSep "\n" (map show tms))
     return tms -- "" -- not yet done...
 
-replaceSplits :: String -> [[(Name, PTerm)]] -> [String]
-replaceSplits l ups = map (rep (expandBraces l)) ups
+replaceSplits :: String -> [[(Name, PTerm)]] -> Idris [String]
+replaceSplits l ups = updateRHSs 1 (map (rep (expandBraces l)) ups)
   where
     rep str [] = str ++ "\n"
     rep str ((n, tm) : ups) = rep (updatePat False (show n) (nshow False tm) str) ups
+
+    updateRHSs i [] = return []
+    updateRHSs i (x : xs) = do (x', i') <- updateRHS i x
+                               xs' <- updateRHSs i' xs
+                               return (x' : xs')
+
+    updateRHS i ('?':'=':xs) = do (xs', i') <- updateRHS i xs
+                                  return ("?=" ++ xs', i')
+    updateRHS i ('?':xs) = do let (nm, rest) = span (not . isSpace) xs
+                              (nm', i') <- getUniq nm i
+                              return ('?':nm' ++ rest, i')
+    updateRHS i (x : xs) = do (xs', i') <- updateRHS i xs
+                              return (x : xs', i')
+    updateRHS i [] = return ("", i)
+
+    getUniq nm i 
+       = do ist <- getIState
+            let n = nameRoot [] nm ++ "_" ++ show i
+            case lookupTy (UN n) (tt_ctxt ist) of
+                 [] -> return (n, i+1)
+                 _ -> getUniq nm (i+1)
+
+    nameRoot acc nm | all isDigit nm = showSep "_" acc
+    nameRoot acc nm = 
+        case span (/='_') nm of
+             (before, ('_' : after)) -> nameRoot (acc ++ [before]) after
+             _ -> showSep "_" (acc ++ [nm])
 
     -- TMP HACK: If there are Nats, we don't want to show as numerals since 
     -- this isn't supported in a pattern, so special case here

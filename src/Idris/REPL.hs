@@ -506,7 +506,8 @@ process h fn (CaseSplitAt updatefile l n)
         res <- splitOnLine l n fn 
         iLOG (showSep "\n" (map show res))
         let (before, (ap : later)) = splitAt (l-1) (lines src)
-        let new = concat (replaceSplits ap res)
+        res' <- replaceSplits ap res 
+        let new = concat res'
         if updatefile then
            do let fb = fn ++ "~" -- make a backup!
               runIO $ writeFile fb (unlines before ++ new ++ unlines later)

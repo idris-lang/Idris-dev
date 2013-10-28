@@ -530,7 +530,6 @@ elab ist info pattern tcgen fn tm
                    = let args' = map (shadowed (allNamesIn l)) args
                          lhs = PApp (getFC fc l) (PRef (getFC fc l) n)
                                  (map pexp args' ++ [pexp l]) in
---                          trace (show (getFC fc l, getFC fc r)) $
                             PClause (getFC fc l) n lhs [] r []
 
              shadowed new (PRef _ n) | n `elem` new = Placeholder
