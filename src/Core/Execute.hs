@@ -409,10 +409,7 @@ data Foreign = FFun String [FType] FType deriving Show
 call :: Foreign -> [ExecVal] -> Exec (Maybe ExecVal)
 call (FFun name argTypes retType) args =
     do fn <- findForeign name
-       case fn of
-         Nothing -> return Nothing
-         Just f -> do res <- call' f args retType
-                      return . Just . ioWrap $ res
+       maybe (return Nothing) (\f -> Just . ioWrap <$> call' f args retType) fn
     where call' :: ForeignFun -> [ExecVal] -> FType -> Exec ExecVal
           call' (Fun _ h) args (FArith (ATInt ITNative)) = do
             res <- execIO $ callFFI h retCInt (prepArgs args)
@@ -440,10 +437,9 @@ call (FFun name argTypes retType) args =
 --                                            lift $ free res
                                             return (EConstant (Str hStr))
 
-          call' (Fun _ h) args FPtr = do res <- execIO $ callFFI h (retPtr retVoid) (prepArgs args)
-                                         return (EPtr res)
-          call' (Fun _ h) args FUnit = do res <- execIO $ callFFI h retVoid (prepArgs args)
-                                          return (EP Ref unitCon EErased)
+          call' (Fun _ h) args FPtr = EPtr <$> (execIO $ callFFI h (retPtr retVoid) (prepArgs args))
+          call' (Fun _ h) args FUnit = do _ <- execIO $ callFFI h retVoid (prepArgs args)
+                                          return $ EP Ref unitCon EErased
 --          call' (Fun _ h) args other = fail ("Unsupported foreign return type " ++ show other)
 
 
@@ -511,21 +507,16 @@ toConst (Constant c) = Just c
 toConst _ = Nothing
 
 stepForeign :: [ExecVal] -> Exec (Maybe ExecVal)
-stepForeign (ty:fn:args) = do let ffun = foreignFromTT fn
-                              f' <- case (call <$> ffun) of
-                                      Just f -> f args
-                                      Nothing -> return Nothing
-                              return f'
+stepForeign (ty:fn:args) = let ffun = foreignFromTT fn
+                           in case (call <$> ffun) of
+                                Just f -> f args
+                                Nothing -> return Nothing
 stepForeign _ = fail "Tried to call foreign function that wasn't mkForeignPrim"
 
-mapMaybeM :: Monad m => (a -> m (Maybe b)) -> [a] -> m [b]
+mapMaybeM :: (Functor m, Monad m) => (a -> m (Maybe b)) -> [a] -> m [b]
 mapMaybeM f [] = return []
 mapMaybeM f (x:xs) = do rest <- mapMaybeM f xs
-                        x' <- f x
-                        case x' of
-                          Just x'' -> return (x'':rest)
-                          Nothing -> return rest
-
+                        maybe rest (:rest) <$> f x
 findForeign :: String -> Exec (Maybe ForeignFun)
 findForeign fn = do est <- getExecState
                     let libs = exec_dynamic_libs est

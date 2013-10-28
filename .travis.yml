@@ -14,3 +14,5 @@ script:
   - cabal copy
   - make test
   - make test_llvm
+  - make test_java
+
