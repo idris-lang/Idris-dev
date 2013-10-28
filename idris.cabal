@@ -57,6 +57,7 @@ Data-files:            jsrts/Runtime-browser.js
                        rts/idris_rts.h
                        rts/idris_stdfgn.h
                        rts/libtest.c
+                       java/*.xml
 
 Extra-source-files:
                        Makefile
@@ -86,7 +87,6 @@ Extra-source-files:
                        effects/Effect/*.idr
                        effects/*.idr
 
-                       java/*.xml
 
                        javascript/*.idr
                        javascript/JavaScript/*.idr

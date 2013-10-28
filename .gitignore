@@ -10,7 +10,6 @@ cabal-dev/
 *~
 .DS_Store
 custom.mk
-java/executable_pom.xml
 test/output
 test/test???/output
 test/reg???/output
