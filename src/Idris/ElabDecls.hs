@@ -52,9 +52,15 @@ elabType info syn doc fc opts n ty' = {- let ty' = piBind (params info) ty_in
       do checkUndefined fc n
          ctxt <- getContext
          i <- getIState
+
+         -- Add user one, not implicitsed one
+         addInternalApp (fc_fname fc) (fc_line fc) ty'
+         addIBC (IBCLineApp (fc_fname fc) (fc_line fc) ty')
+
          logLvl 3 $ show n ++ " pre-type " ++ showImp Nothing True False ty'
          ty' <- addUsingConstraints syn fc ty'
          ty' <- implicit syn n ty'
+
          let ty = addImpl i ty'
          logLvl 2 $ show n ++ " type " ++ showImp Nothing True False ty
          ((tyT, defer, is), log) <- 
@@ -406,10 +412,10 @@ elabRecord info syn doc fc tyn ty cdoc cn cty
                                       show fn ++ " (" ++ show ty ++ ")"
                                   putIState i)
 
-    getImplB k (PPi (Imp l s _) n Placeholder sc)
+    getImplB k (PPi (Imp l s _ _) n Placeholder sc)
         = getImplB k sc
-    getImplB k (PPi (Imp l s d) n ty sc)
-        = getImplB (\x -> k (PPi (Imp l s d) n ty x)) sc
+    getImplB k (PPi (Imp l s d p) n ty sc)
+        = getImplB (\x -> k (PPi (Imp l s d p) n ty x)) sc
     getImplB k (PPi _ n ty sc)
         = getImplB k sc
     getImplB k _ = k
@@ -1244,8 +1250,8 @@ elabClass info syn doc fc constraints tn ps ds
              return [PTy doc syn fc o m ty',
                      PClauses fc [Inlinable] m [PClause fc m lhs [] rhs []]]
 
-    getMArgs (PPi (Imp _ _ _) n ty sc) = IA : getMArgs sc
-    getMArgs (PPi (Exp _ _ _) n ty sc) = EA  : getMArgs sc
+    getMArgs (PPi (Imp _ _ _ _) n ty sc) = IA : getMArgs sc
+    getMArgs (PPi (Exp _ _ _ _) n ty sc) = EA  : getMArgs sc
     getMArgs (PPi (Constraint _ _ _) n ty sc) = CA : getMArgs sc
     getMArgs _ = []
 
@@ -1262,14 +1268,14 @@ elabClass info syn doc fc constraints tn ps ds
     rhsArgs (CA : xs) ns = pconst (PResolveTC fc) : rhsArgs xs ns
     rhsArgs [] _ = []
 
-    insertConstraint c (PPi p@(Imp _ _ _) n ty sc)
+    insertConstraint c (PPi p@(Imp _ _ _ _) n ty sc)
                           = PPi p n ty (insertConstraint c sc)
     insertConstraint c sc = PPi constraint (MN 0 "class") c sc
 
     -- make arguments explicit and don't bind class parameters
-    toExp ns e (PPi (Imp l s _) n ty sc)
+    toExp ns e (PPi (Imp l s _ p) n ty sc)
         | n `elem` ns = toExp ns e sc
-        | otherwise = PPi (e l s "") n ty (toExp ns e sc)
+        | otherwise = PPi (e l s "" p) n ty (toExp ns e sc)
     toExp ns e (PPi p n ty sc) = PPi p n ty (toExp ns e sc)
     toExp ns e sc = sc
 
@@ -1364,9 +1370,9 @@ elabInstance info syn fc cs n ps t expn ds
     lamBind i (PPi _ n ty sc) sc' 
           = PLam (MN i "meth") Placeholder (lamBind (i+1) sc sc')
     lamBind i _ sc = sc
-    methArgs i (PPi (Imp _ _ _) n ty sc) 
+    methArgs i (PPi (Imp _ _ _ _) n ty sc) 
         = PImp 0 True False n (PRef fc (MN i "meth")) "" : methArgs (i+1) sc
-    methArgs i (PPi (Exp _ _ _) n ty sc) 
+    methArgs i (PPi (Exp _ _ _ _) n ty sc) 
         = PExp 0 False (PRef fc (MN i "meth")) "" : methArgs (i+1) sc
     methArgs i (PPi (Constraint _ _ _) n ty sc) 
         = PConstraint 0 False (PResolveTC fc) "" : methArgs (i+1) sc
@@ -1393,7 +1399,7 @@ elabInstance info syn fc cs n ps t expn ds
     conbind (ty : ns) x = PPi constraint (MN 0 "class") ty (conbind ns x)
     conbind [] x = x
 
-    coninsert cs (PPi p@(Imp _ _ _) n t sc) = PPi p n t (coninsert cs sc)
+    coninsert cs (PPi p@(Imp _ _ _ _) n t sc) = PPi p n t (coninsert cs sc)
     coninsert cs sc = conbind cs sc
 
     insertDefaults :: IState -> Name ->

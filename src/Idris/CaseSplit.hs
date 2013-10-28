@@ -1,6 +1,6 @@
 {-# LANGUAGE PatternGuards #-}
 
-module Idris.CaseSplit(split, splitOnLine, replaceSplits) where
+module Idris.CaseSplit(split, splitOnLine, replaceSplits, getClause) where
 
 -- splitting a variable in a pattern clause
 
@@ -223,6 +223,23 @@ replaceSplits l ups = map (rep (expandBraces l)) ups
 
     addBrackets tm | ' ' `elem` tm = "(" ++ tm ++ ")"
                    | otherwise = tm
+
+getClause :: Int -> -- ^ Line type is declared on
+             Name -> -- ^ Function name
+             FilePath -> -- ^ Source file name
+             Idris String
+getClause l fn fp = do ty <- getInternalApp fp l
+                       let ap = mkApp ty [1..]
+                       return (show fn ++ " " ++ ap ++ 
+                                   "= ?" ++ show fn ++ "_rhs")
+   where mkApp (PPi (Exp _ _ _ False) (MN _ _) _ sc) (n : ns)
+               = "x" ++ show n ++ " " ++ mkApp sc ns
+         mkApp (PPi (Exp _ _ _ False) n _ sc) ns
+               = show n ++ " " ++ mkApp sc ns
+         mkApp (PPi _ _ _ sc) ns = mkApp sc ns
+         mkApp _ _ = ""
+
+
 
 
     

@@ -241,6 +241,7 @@ data Command = Quit
              | Search PTerm
              | CaseSplit Name PTerm
              | CaseSplitAt Bool Int Name 
+             | AddClauseFrom Bool Int Name 
              | SetOpt Opt
              | UnsetOpt Opt
              | NOP
@@ -331,10 +332,12 @@ deriving instance Binary Static
 -- Mark bindings with their explicitness, and laziness
 data Plicity = Imp { plazy :: Bool,
                      pstatic :: Static,
-                     pdocstr :: String }
+                     pdocstr :: String,
+                     pparam :: Bool }
              | Exp { plazy :: Bool,
                      pstatic :: Static,
-                     pdocstr :: String }
+                     pdocstr :: String,
+                     pparam :: Bool }
              | Constraint { plazy :: Bool,
                             pstatic :: Static,
                             pdocstr :: String }
@@ -348,8 +351,9 @@ data Plicity = Imp { plazy :: Bool,
 deriving instance Binary Plicity 
 !-}
 
-impl = Imp False Dynamic ""
-expl = Exp False Dynamic ""
+impl = Imp False Dynamic "" False
+expl = Exp False Dynamic "" False
+expl_param = Exp False Dynamic "" True
 constraint = Constraint False Dynamic ""
 tacimpl t = TacImp False Dynamic t ""
 
@@ -916,7 +920,7 @@ prettyImp impl = prettySe 10
         else
           text "let" <+> pretty n <+> text "=" <+> prettySe 10 v <+> text "in" <+>
             prettySe 10 sc
-    prettySe p (PPi (Exp l s _) n ty sc)
+    prettySe p (PPi (Exp l s _ _) n ty sc)
       | n `elem` allNamesIn sc || impl =
           let open = if l then text "|" <> lparen else lparen in
             bracket p 2 $
@@ -937,7 +941,7 @@ prettyImp impl = prettySe 10
           case s of
             Static -> text "[static]"
             _      -> empty
-    prettySe p (PPi (Imp l s _) n ty sc)
+    prettySe p (PPi (Imp l s _ _) n ty sc)
       | impl =
           let open = if l then text "|" <> lbrace else lbrace in
             bracket p 2 $
@@ -1128,18 +1132,20 @@ showImp ist impl colour tm = se 10 [] tm where
     se p bnd (PLet n ty v sc) = bracket p 2 $ "let " ++ perhapsColourise colouriseBound (show n) ++
                                 " = " ++ se 10 bnd v ++
                                 " in " ++ se 10 ((n, False):bnd) sc
-    se p bnd (PPi (Exp l s _) n ty sc)
+    se p bnd (PPi (Exp l s _ param) n ty sc)
         | n `elem` allNamesIn sc || impl
                                   = bracket p 2 $
                                     (if l then "|(" else "(") ++
                                     perhapsColourise colouriseBound (show n) ++ " : " ++ se 10 bnd ty ++
-                                    ") " ++ st ++
+                                    ") " ++ 
+                                    (if (impl && param) then "P" else "") ++
+                                    st ++
                                     "-> " ++ se 10 ((n, False):bnd) sc
         | otherwise = bracket p 2 $ se 0 bnd ty ++ " " ++ st ++ "-> " ++ se 10 bnd sc
       where st = case s of
                     Static -> "[static] "
                     _ -> ""
-    se p bnd (PPi (Imp l s _) n ty sc)
+    se p bnd (PPi (Imp l s _ _) n ty sc)
         | impl = bracket p 2 $ (if l then "|{" else "{") ++
                                perhapsColourise colouriseBound (show n) ++ " : " ++ se 10 bnd ty ++ 
                                "} " ++ st ++ "-> " ++ se 10 ((n, True):bnd) sc

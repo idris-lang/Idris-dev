@@ -668,7 +668,7 @@ piBind = piBindp expl
 
 piBindp :: Plicity -> [(Name, PTerm)] -> PTerm -> PTerm
 piBindp p [] t = t
-piBindp p ((n, ty):ns) t = PPi p n ty (piBind ns t)
+piBindp p ((n, ty):ns) t = PPi p n ty (piBindp p ns t)
     
 -- Dealing with parameters
 
@@ -761,7 +761,7 @@ expandParamsD :: Bool -> -- True = RHS only
 expandParamsD rhsonly ist dec ps ns (PTy doc syn fc o n ty) 
     = if n `elem` ns && (not rhsonly)
          then -- trace (show (n, expandParams dec ps ns ty)) $
-              PTy doc syn fc o (dec n) (piBind ps (expandParams dec ps ns [] ty))
+              PTy doc syn fc o (dec n) (piBindp expl_param ps (expandParams dec ps ns [] ty))
          else --trace (show (n, expandParams dec ps ns ty)) $ 
               PTy doc syn fc o n (expandParams dec ps ns [] ty)
 expandParamsD rhsonly ist dec ps ns (PPostulate doc syn fc o n ty) 
@@ -989,13 +989,13 @@ implicitise syn ignore ist tm = -- trace ("INCOMING " ++ showImp True tm) $
        = do (decls, ns) <- get
             let isn = concatMap (namesIn uvars ist) (map getTm as)
             put (decls, nub (ns ++ (isn `dropAll` (env ++ map fst (getImps decls)))))
-    imps top env (PPi (Imp l _ doc) n ty sc) 
+    imps top env (PPi (Imp l _ doc _) n ty sc) 
         = do let isn = nub (namesIn uvars ist ty) `dropAll` [n]
              (decls , ns) <- get
              put (PImp (getPriority ist ty) True l n ty doc : decls, 
                   nub (ns ++ (isn `dropAll` (env ++ map fst (getImps decls)))))
              imps True (n:env) sc
-    imps top env (PPi (Exp l _ doc) n ty sc) 
+    imps top env (PPi (Exp l _ doc _) n ty sc) 
         = do let isn = nub (namesIn uvars ist ty ++ case sc of
                             (PRef _ x) -> namesIn uvars ist sc `dropAll` [n]
                             _ -> [])
@@ -1057,8 +1057,8 @@ implicitise syn ignore ist tm = -- trace ("INCOMING " ++ showImp True tm) $
     pibind using []     sc = sc
     pibind using (n:ns) sc 
       = case lookup n using of
-            Just ty -> PPi (Imp False Dynamic "") n ty (pibind using ns sc)
-            Nothing -> PPi (Imp False Dynamic "") n Placeholder 
+            Just ty -> PPi (Imp False Dynamic "" False) n ty (pibind using ns sc)
+            Nothing -> PPi (Imp False Dynamic "" False) n Placeholder 
                                    (pibind using ns sc)
 
 -- Add implicit arguments in function calls

@@ -45,9 +45,6 @@ pCmd = do P.whiteSpace; try (do cmd ["q", "quit"]; eof; return Quit)
               <|> try (do cmd ["m", "metavars"]; eof; return Metavars)
               <|> try (do cmd ["proofs"]; eof; return Proofs)
               <|> try (do cmd ["p", "prove"]; n <- P.name; eof; return (Prove n))
-              <|> try (do cmd ["a", "addproof"]; do n <- option Nothing (do x <- P.name;
-                                                                            return (Just x))
-                                                    eof; return (AddProof n))
               <|> try (do cmd ["rmproof"]; n <- P.name; eof; return (RmProof n))
               <|> try (do cmd ["showproof"]; n <- P.name; eof; return (ShowProof n))
               <|> try (do cmd ["log"]; i <- P.natural; eof; return (LogLvl (fromIntegral i)))
@@ -78,6 +75,13 @@ pCmd = do P.whiteSpace; try (do cmd ["q", "quit"]; eof; return Quit)
                                  n <- P.name; 
                                  t <- P.fullExpr defaultSyntax; 
                                  return (CaseSplit n t))
+              <|> try (do cmd ["ac", "addclause"]; P.whiteSpace; 
+                          upd <- option False (do P.lchar '!'; return True)
+                          l <- P.natural; n <- P.name; 
+                          return (AddClauseFrom upd (fromInteger l) n))
+              <|> try (do cmd ["a", "addproof"]; do n <- option Nothing (do x <- P.name;
+                                                                            return (Just x))
+                                                    eof; return (AddProof n))
               <|> try (do cmd ["x"]; P.whiteSpace; t <- P.fullExpr defaultSyntax; return (ExecVal t))
               <|> try (do cmd ["patt"]; P.whiteSpace; t <- P.fullExpr defaultSyntax; return (Pattelab t))
               <|> do P.whiteSpace; do eof; return NOP

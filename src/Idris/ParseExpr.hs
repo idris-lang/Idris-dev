@@ -699,7 +699,7 @@ pi syn =
             doc <- option "" (docComment '^')
             symbol "->"
             sc <- expr syn
-            return (bindList (PPi (Exp lazy st doc)) xt sc)) <|> (do
+            return (bindList (PPi (Exp lazy st doc False)) xt sc)) <|> (do
                lchar '{'
                (do reserved "auto"
                    when (lazy || (st == Static)) $ fail "auto type constraints can not be lazy or static"
@@ -722,13 +722,13 @@ pi syn =
                        t <- expr' syn
                        symbol "->"
                        sc <- expr syn
-                       return (PPi (Exp False Static "") (MN 42 "__pi_arg") t sc)) <|> (
+                       return (PPi (Exp False Static "" False) (MN 42 "__pi_arg") t sc)) <|> (
                        if implicitAllowed syn then do
                             xt <- typeDeclList syn
                             lchar '}'
                             symbol "->"
                             sc <- expr syn
-                            return (bindList (PPi (Imp lazy st "")) xt sc)
+                            return (bindList (PPi (Imp lazy st "" False)) xt sc)
                        else do fail "no implicit arguments allowed here"))
   <?> "dependent type signature"
 
