@@ -451,7 +451,8 @@ data Binder b = Lam   { binderTy  :: b {-^ type annotation for bound variable-}}
               | NLet  { binderTy  :: b,
                         binderVal :: b }
               | Hole  { binderTy  :: b}
-              | GHole { binderTy  :: b}
+              | GHole { envlen :: Int,
+                        binderTy  :: b}
               | Guess { binderTy  :: b,
                         binderVal :: b }
               | PVar  { binderTy  :: b }
@@ -467,7 +468,7 @@ instance Sized a => Sized (Binder a) where
   size (Let ty val) = 1 + size ty + size val
   size (NLet ty val) = 1 + size ty + size val
   size (Hole ty) = 1 + size ty
-  size (GHole ty) = 1 + size ty
+  size (GHole _ ty) = 1 + size ty
   size (Guess ty val) = 1 + size ty + size val
   size (PVar ty) = 1 + size ty
   size (PVTy ty) = 1 + size ty
@@ -479,7 +480,7 @@ fmapMB f (Guess t v) = liftM2 Guess (f t) (f v)
 fmapMB f (Lam t)     = liftM Lam (f t)
 fmapMB f (Pi t)      = liftM Pi (f t)
 fmapMB f (Hole t)    = liftM Hole (f t)
-fmapMB f (GHole t)   = liftM GHole (f t)
+fmapMB f (GHole i t)   = liftM (GHole i) (f t)
 fmapMB f (PVar t)    = liftM PVar (f t)
 fmapMB f (PVTy t)    = liftM PVTy (f t)
 
@@ -951,7 +952,7 @@ showEnv' env t dbg = se 10 env t where
 
     sb env n (Lam t)  = showb env "\\ " " => " n t
     sb env n (Hole t) = showb env "? " ". " n t
-    sb env n (GHole t) = showb env "?defer " ". " n t
+    sb env n (GHole i t) = showb env "?defer " ". " n t
     sb env n (Pi t)   = showb env "(" ") -> " n t
     sb env n (PVar t) = showb env "pat " ". " n t
     sb env n (PVTy t) = showb env "pty " ". " n t

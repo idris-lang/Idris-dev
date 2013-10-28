@@ -281,11 +281,12 @@ addConstraints fc (v, cs)
 addDeferred = addDeferred' Ref
 addDeferredTyCon = addDeferred' (TCon 0 0)
 
-addDeferred' :: NameType -> [(Name, Type)] -> Idris ()
+addDeferred' :: NameType -> [(Name, (Int, Type))] -> Idris ()
 addDeferred' nt ns 
-  = do mapM_ (\(n, t) -> updateContext (addTyDecl n nt (tidyNames [] t))) ns
+  = do mapM_ (\(n, (i, t)) -> updateContext (addTyDecl n nt (tidyNames [] t))) ns
        i <- getIState
-       putIState $ i { idris_metavars = map fst ns ++ idris_metavars i }
+       putIState $ i { idris_metavars = map (\(n, (i, _)) -> (n, i)) ns ++ 
+                                            idris_metavars i }
   where tidyNames used (Bind (MN i x) b sc)
             = let n' = uniqueName (UN x) used in
                   Bind n' b $ tidyNames (n':used) sc
@@ -296,7 +297,9 @@ addDeferred' nt ns
 
 solveDeferred :: Name -> Idris ()
 solveDeferred n = do i <- getIState
-                     putIState $ i { idris_metavars = idris_metavars i \\ [n] }
+                     putIState $ i { idris_metavars = 
+                                       filter (\(n', _) -> n/=n')
+                                          (idris_metavars i) }
 
 ihPrintResult :: Handle -> String -> Idris ()
 ihPrintResult h s = do i <- getIState
@@ -1179,7 +1182,7 @@ aiFn inpat expat ist fc f as
           -- This is where namespaces get resolved by adding PAlternative
         = case lookupCtxtName f (idris_implicits ist) of
             [(f',ns)] -> Right $ mkPApp fc (length ns) (PRef fc f') (insertImpl ns as)
-            [] -> if f `elem` idris_metavars ist
+            [] -> if f `elem` (map fst (idris_metavars ist))
                     then Right $ PApp fc (PRef fc f) as
                     else Right $ mkPApp fc (length as) (PRef fc f) as
             alts -> Right $

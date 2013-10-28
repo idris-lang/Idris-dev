@@ -379,7 +379,7 @@ defer :: Name -> RunTactic
 defer n ctxt env (Bind x (Hole t) (P nt x' ty)) | x == x' = 
     do action (\ps -> let hs = holes ps in
                           ps { holes = hs \\ [x] })
-       return (Bind n (GHole (mkTy (reverse env) t)) 
+       return (Bind n (GHole (length env) (mkTy (reverse env) t)) 
                       (mkApp (P Ref n ty) (map getP (reverse env))))
   where
     mkTy []           t = t
@@ -395,7 +395,7 @@ deferType n fty_in args ctxt env (Bind x (Hole t) (P nt x' ty)) | x == x' =
                           ds = deferred ps in
                           ps { holes = hs \\ [x],
                                deferred = n : ds })
-       return (Bind n (GHole fty) 
+       return (Bind n (GHole 0 fty) 
                       (mkApp (P Ref n ty) (map getP args)))
   where
     getP n = case lookup n env of

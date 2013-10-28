@@ -30,7 +30,7 @@ prover lit x =
            do ctxt <- getContext
               i <- getIState
               case lookupTy x ctxt of
-                  [t] -> if elem x (idris_metavars i)
+                  [t] -> if elem x (map fst (idris_metavars i))
                                then prove ctxt lit x t
                                else ifail $ show x ++ " is not a metavariable"
                   _ -> fail "No such metavariable"

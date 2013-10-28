@@ -37,7 +37,7 @@ type ElabD a = Elab' [PDecl] a
 -- Also find deferred names in the term and their types
 
 build :: IState -> ElabInfo -> Bool -> Name -> PTerm -> 
-         ElabD (Term, [(Name, Type)], [PDecl])
+         ElabD (Term, [(Name, (Int, Type))], [PDecl])
 build ist info pattern fn tm 
     = do elab ist info pattern False fn tm
          ivs <- get_instances
@@ -75,7 +75,7 @@ build ist info pattern fn tm
 -- know about yet on the LHS of a pattern def)
 
 buildTC :: IState -> ElabInfo -> Bool -> Bool -> Name -> PTerm -> 
-         ElabD (Term, [(Name, Type)], [PDecl])
+         ElabD (Term, [(Name, (Int, Type))], [PDecl])
 buildTC ist info pattern tcgen fn tm 
     = do elab ist info pattern tcgen fn tm
          probs <- get_probs
@@ -751,10 +751,10 @@ resolveTC depth fn ist
        where isImp (PImp p _ _ _ _ _) = (True, p)
              isImp arg = (False, priority arg)
 
-collectDeferred :: Term -> State [(Name, Type)] Term
-collectDeferred (Bind n (GHole t) app) =
+collectDeferred :: Term -> State [(Name, (Int, Type))] Term
+collectDeferred (Bind n (GHole i t) app) =
     do ds <- get
-       when (not (n `elem` map fst ds)) $ put ((n, t) : ds)
+       when (not (n `elem` map fst ds)) $ put ((n, (i, t)) : ds)
        collectDeferred app
 collectDeferred (Bind n b t) = do b' <- cdb b
                                   t' <- collectDeferred t
@@ -1123,7 +1123,7 @@ reifyTTBinderApp reif f [x, y]
 reifyTTBinderApp reif f [t]
                       | f == reflm "Hole" = liftM Hole (reif t)
 reifyTTBinderApp reif f [t]
-                      | f == reflm "GHole" = liftM GHole (reif t)
+                      | f == reflm "GHole" = liftM (GHole 0) (reif t)
 reifyTTBinderApp reif f [x, y]
                       | f == reflm "Guess" = liftM2 Guess (reif x) (reif y)
 reifyTTBinderApp reif f [t]
@@ -1237,7 +1237,7 @@ reflectBinder (NLet x y)
    = reflCall "NLet" [Var (reflm "TT"), reflect x, reflect y]
 reflectBinder (Hole t)
    = reflCall "Hole" [Var (reflm "TT"), reflect t]
-reflectBinder (GHole t)
+reflectBinder (GHole _ t)
    = reflCall "GHole" [Var (reflm "TT"), reflect t]
 reflectBinder (Guess x y)
    = reflCall "Guess" [Var (reflm "TT"), reflect x, reflect y]

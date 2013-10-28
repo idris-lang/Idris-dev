@@ -1,5 +1,5 @@
 {-# LANGUAGE MultiParamTypeClasses, FlexibleInstances, DeriveFunctor,
-             PatternGuards, CPP #-}
+             PatternGuards, ScopedTypeVariables, CPP #-}
 
 module Idris.REPL where
 
@@ -110,9 +110,12 @@ startServer orig stvar fn_in = do tid <- runIO $ forkOS serverLoop
                                   return ()
   where serverLoop :: IO ()
         -- TODO: option for port number
-        serverLoop = withSocketsDo $ do sock <- listenOn $ PortNumber 4294
+        serverLoop = withSocketsDo $ 
+                              catch (do sock <- listenOn $ PortNumber 4294
                                         i <- readMVar stvar
-                                        loop i sock
+                                        loop i sock)
+                                    (\(e :: IOException) -> return ()) -- silently fail
+                                    -- TODO: allow multiple instances somehow
 
         fn = case fn_in of
                   (f:_) -> f
@@ -418,10 +421,31 @@ process h fn (Check (PRef _ n))
         imp <- impShow
         c <- colourise
         case lookupNames n ctxt of
-             ts@(_:_) -> do mapM_ (\n -> ihputStrLn h $ showName (Just ist) [] False c n ++ " : " ++
-                                         showImp (Just ist) imp c (delabTy ist n)) ts
-                            ihPrintResult h ""
-             [] -> ihPrintError h $ "No such variable " ++ show n
+          ts@(t:_) -> 
+            case lookup t (idris_metavars ist) of
+                Just i -> showMetavarInfo c imp ist n i
+                Nothing -> do mapM_ (\n -> ihputStrLn h $ showName (Just ist) [] False c n ++ " : " ++
+                                           showImp (Just ist) imp c (delabTy ist n)) ts
+                              ihPrintResult h ""
+          [] -> ihPrintError h $ "No such variable " ++ show n
+  where
+    showMetavarInfo c imp ist n i 
+         = case lookupTy n (tt_ctxt ist) of
+                (ty:_) -> putTy c imp ist i (delab ist ty)
+    putTy c imp ist 0 sc 
+               = do ihputStrLn h $ "--------------------------------------"
+                    ihputStrLn h $ showName (Just ist) [] False c n ++ " : " 
+                                   ++ showImp (Just ist) imp c sc
+    putTy c imp ist i (PPi _ n t sc) 
+               = do ihputStrLn h $ "  " ++ 
+                         (case n of
+                              MN _ _ -> "_"
+                              UN ('_':'_':_) -> "_"
+                              _ -> showName (Just ist) [] False c n) ++ 
+                                   " : " ++ showImp (Just ist) imp c t
+                    putTy c imp ist (i-1) sc
+
+
 process h fn (Check t)
    = do (tm, ty) <- elabVal toplevel False t
         ctxt <- getContext
@@ -568,7 +592,7 @@ process h fn (RmProof n')
                             insertMetavar n =
                               do i <- getIState
                                  let ms = idris_metavars i
-                                 putIState $ i { idris_metavars = n : ms }
+                                 putIState $ i { idris_metavars = (n, 0) : ms }
 
 process h fn' (AddProof prf)
   = do fn <- do
@@ -693,7 +717,7 @@ process h fn ListDynamic
           showLibs ((Lib name _):ls) = do iputStrLn $ "\t" ++ name; showLibs ls
 process h fn Metavars
                  = do ist <- getIState
-                      let mvs = idris_metavars ist \\ primDefs
+                      let mvs = map fst (idris_metavars ist) \\ primDefs
                       case mvs of
                         [] -> iPrintError "No global metavariables to solve"
                         _ -> iPrintResult $ "Global metavariables:\n\t" ++ show mvs

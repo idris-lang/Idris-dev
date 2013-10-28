@@ -102,7 +102,7 @@ data IState = IState {
     idris_name :: Int,
     idris_lineapps :: [((FilePath, Int), PTerm)], 
           -- ^ Full application LHS on source line 
-    idris_metavars :: [Name], -- ^ The currently defined but not proven metavariables
+    idris_metavars :: [(Name, Int)], -- ^ The currently defined but not proven metavariables
     idris_coercions :: [Name],
     idris_transforms :: [(Term, Term)],
     syntax_rules :: [Syntax],

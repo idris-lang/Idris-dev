@@ -70,7 +70,7 @@ writeIBC :: FilePath -> FilePath -> Idris ()
 writeIBC src f 
     = do iLOG $ "Writing ibc " ++ show f
          i <- getIState
-         case idris_metavars i \\ primDefs of
+         case (Data.List.map fst (idris_metavars i)) \\ primDefs of
                 (_:_) -> ifail "Can't write ibc when there are unsolved metavariables"
                 [] -> return ()
          ibcf <- mkIBC (ibc_write i) (initIBC { sourcefile = src }) 
@@ -561,8 +561,9 @@ instance (Binary b) => Binary (Binder b) where
                                  put x2
                 Hole x1 -> do putWord8 4
                               put x1
-                GHole x1 -> do putWord8 5
-                               put x1
+                GHole x1 x2 -> do putWord8 5
+                                  put x1
+                                  put x2
                 Guess x1 x2 -> do putWord8 6
                                   put x1
                                   put x2
@@ -586,7 +587,8 @@ instance (Binary b) => Binary (Binder b) where
                    4 -> do x1 <- get
                            return (Hole x1)
                    5 -> do x1 <- get
-                           return (GHole x1)
+                           x2 <- get
+                           return (GHole x1 x2)
                    6 -> do x1 <- get
                            x2 <- get
                            return (Guess x1 x2)

@@ -41,8 +41,8 @@ recheckC fc env t
          return (tm, ty)
 
 checkDef fc ns = do ctxt <- getContext
-                    mapM (\(n, t) -> do (t', _) <- recheckC fc [] t
-                                        return (n, t')) ns
+                    mapM (\(n, (i, t)) -> do (t', _) <- recheckC fc [] t
+                                             return (n, (i, t'))) ns
 
 -- | Elaborate a top-level type declaration - for example, "foo : Int -> Int".
 elabType :: ElabInfo -> SyntaxInfo -> String ->
@@ -86,7 +86,7 @@ elabType info syn doc fc opts n ty' = {- let ty' = piBind (params info) ty_in
                                         _ -> False
                         _ -> False
          let opts' = if corec then (Coinductive : opts) else opts
-         ds <- checkDef fc [(n, nty)]
+         ds <- checkDef fc [(n, (0, nty))]
          addIBC (IBCDef n)
          addDeferred ds
          setFlags n opts'
@@ -1025,7 +1025,7 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in withblock)
         let imps = getImps wtype -- add to implicits context
         putIState (i { idris_implicits = addDef wname imps (idris_implicits i) })
         addIBC (IBCDef wname)
-        def' <- checkDef fc [(wname, wtype)]
+        def' <- checkDef fc [(wname, (0, wtype))]
         addDeferred def'
 
         -- in the subdecls, lhs becomes:

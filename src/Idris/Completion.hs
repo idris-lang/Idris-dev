@@ -71,7 +71,7 @@ names = do i <- get
 
 metavars :: Idris [String]
 metavars = do i <- get
-              return . map (show . nsroot) $ idris_metavars i \\ primDefs
+              return . map (show . nsroot) $ map fst (idris_metavars i) \\ primDefs
 
 
 modules :: Idris [String]

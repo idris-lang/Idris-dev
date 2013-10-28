@@ -93,7 +93,7 @@ compile codegen f tm
                               Bytecode -> dumpBC c f
             Error e -> ierror e
   where checkMVs = do i <- getIState
-                      case idris_metavars i \\ primDefs of
+                      case map fst (idris_metavars i) \\ primDefs of
                             [] -> return ()
                             ms -> ifail $ "There are undefined metavariables: " ++ show ms
         inDir d h = do let f = d </> h

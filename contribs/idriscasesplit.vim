@@ -7,6 +7,7 @@ function IdrisReload()
 endfunction
 
 function IdrisShowType()
+  w
   let word = expand("<cword>")
   let tc = IdrisReload()
   if (! (tc is ""))
