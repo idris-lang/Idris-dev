@@ -89,10 +89,10 @@ function IdrisEval()
   echo ""
 endfunction
 
-map ct :call IdrisShowType()<ENTER>
-map cr :call IdrisReload()<ENTER>
-map ci :call IdrisCaseSplit()<ENTER>
-map cd ?:<ENTER>b:call IdrisAddClause()<ENTER>w
-map cm 0:call IdrisMakeWith()<ENTER>
-map ce :call IdrisEval()<ENTER>
+map <LocalLeader>t :call IdrisShowType()<ENTER>
+map <LocalLeader>r :call IdrisReload()<ENTER>
+map <LocalLeader>c :call IdrisCaseSplit()<ENTER>
+map <LocalLeader>d ?:<ENTER>b:call IdrisAddClause()<ENTER>w
+map <LocalLeader>w 0:call IdrisMakeWith()<ENTER>
+map <LocalLeader>e :call IdrisEval()<ENTER>
 
