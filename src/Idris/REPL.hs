@@ -503,12 +503,12 @@ process h fn (CaseSplitAt updatefile l n)
         iLOG (showSep "\n" (map show res))
         let (before, (ap : later)) = splitAt (l-1) (lines src)
         let new = concat (replaceSplits ap res)
-        ihputStrLn h new
         if updatefile then
            do let fb = fn ++ "~" -- make a backup!
               runIO $ writeFile fb (unlines before ++ new ++ unlines later)
               runIO $ copyFile fb fn
-           else return ()
+           else do ihputStrLn h (show res)
+                   ihputStrLn h new
 
 
 process h fn (Spec t)

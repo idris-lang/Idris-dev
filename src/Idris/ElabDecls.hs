@@ -817,9 +817,6 @@ elabClause info opts (cnum, PClause fc fname lhs_in withs rhs_in whereblock)
         logLvl 5 ("LHS: " ++ show fc ++ " " ++ showImp Nothing True False lhs)
         logLvl 4 ("Fixed parameters: " ++ show params ++ " from " ++ show (fn_ty, fn_is))
 
-        addInternalApp (fc_fname fc) (fc_line fc) lhs
-        addIBC (IBCLineApp (fc_fname fc) (fc_line fc) lhs)
-
         ((lhs', dlhs, []), _) <- 
             tclift $ elaborate ctxt (MN 0 "patLHS") infP []
                      (errAt "left hand side of " fname 
@@ -828,6 +825,10 @@ elabClause info opts (cnum, PClause fc fname lhs_in withs rhs_in whereblock)
         let lhs_ty = getInferType lhs'
         logLvl 3 ("Elaborated: " ++ show lhs_tm)
         logLvl 3 ("Elaborated type: " ++ show lhs_ty)
+
+        addInternalApp (fc_fname fc) (fc_line fc) (delab i lhs_tm)
+        addIBC (IBCLineApp (fc_fname fc) (fc_line fc) (delab i lhs_tm))
+
         (clhs_c, clhsty) <- recheckC fc [] lhs_tm
         let clhs = normalise ctxt [] clhs_c
         logLvl 5 ("Checked " ++ show clhs ++ "\n" ++ show clhsty)
