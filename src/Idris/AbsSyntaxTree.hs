@@ -243,6 +243,7 @@ data Command = Quit
              | CaseSplitAt Bool Int Name 
              | AddClauseFrom Bool Int Name 
              | MakeWith Bool Int Name 
+             | DoProofSearch Bool Int Name
              | SetOpt Opt
              | UnsetOpt Opt
              | NOP
@@ -418,6 +419,9 @@ data PDecl' t
 {-!
 deriving instance Binary PDecl'
 !-}
+
+-- For elaborator state
+type ElabD a = Elab' [PDecl] a
 
 -- | One clause of a top-level definition. Term arguments to constructors are:
 --
@@ -611,7 +615,7 @@ data PTactic' t = Intro [Name] | Intros | Focus Name
                 | Equiv t
                 | MatchRefine Name 
                 | LetTac Name t | LetTacTy Name t t
-                | Exact t | Compute | Trivial
+                | Exact t | Compute | Trivial | ProofSearch
                 | Solve
                 | Attack
                 | ProofState | ProofTerm | Undo

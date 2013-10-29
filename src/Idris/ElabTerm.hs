@@ -5,6 +5,7 @@ module Idris.ElabTerm where
 import Idris.AbsSyntax
 import Idris.DSL
 import Idris.Delaborate
+import Idris.ProofSearch
 
 import Core.Elaborate hiding (Tactic(..))
 import Core.TT
@@ -25,8 +26,6 @@ data ElabInfo = EInfo { params :: [(Name, PTerm)],
                         namespace :: Maybe [String] }
 
 toplevel = EInfo [] emptyContext id Nothing
-
-type ElabD a = Elab' [PDecl] a
 
 -- Using the elaborator, convert a term in raw syntax to a fully
 -- elaborated, typechecked term.
@@ -637,26 +636,6 @@ pruneByType (P _ n _) c as
 
 pruneByType t _ as = as
 
-trivial :: IState -> ElabD ()
-trivial ist = try' (do elab ist toplevel False False (MN 0 "tac") 
-                                    (PRefl (fileFC "prf") Placeholder)
-                       return ())
-                   (do env <- get_env
-                       g <- goal
-                       tryAll env
-                       return ()) True
-      where
-        tryAll []     = fail "No trivial solution"
-        tryAll ((x, b):xs) 
-           = do -- if type of x has any holes in it, move on
-                hs <- get_holes
-                g <- goal
-                if all (\n -> not (n `elem` hs)) (freeNames (binderTy b))
-                   then try' (elab ist toplevel False False
-                                    (MN 0 "tac") (PRef (fileFC "prf") x))
-                             (tryAll xs) True
-                   else tryAll xs
-
 findInstances :: IState -> Term -> [Name]
 findInstances ist t 
     | (P _ n _, _) <- unApply t 
@@ -665,16 +644,20 @@ findInstances ist t
             _ -> []
     | otherwise = []
 
+trivial' ist = trivial (elab ist toplevel False False (MN 0 "tac")) ist
+proofSearch' ist = trivial (elab ist toplevel False False (MN 0 "tac")) ist 
+                          
+
 resolveTC :: Int -> Name -> IState -> ElabD ()
 resolveTC 0 fn ist = fail $ "Can't resolve type class"
-resolveTC 1 fn ist = try' (trivial ist) (resolveTC 0 fn ist) True
+resolveTC 1 fn ist = try' (trivial' ist) (resolveTC 0 fn ist) True
 resolveTC depth fn ist 
       = do hnf_compute
            g <- goal
            ptm <- get_term
            hs <- get_holes 
            if True -- all (\n -> not (n `elem` hs)) (freeNames g)
-            then try' (trivial ist)
+            then try' (trivial' ist)
                 (do t <- goal
                     let (tc, ttypes) = unApply t
                     scopeOnly <- needsDefault t tc ttypes
@@ -687,7 +670,7 @@ resolveTC depth fn ist
 --                     if scopeOnly then fail "Can't resolve" else
                     let depth' = if scopeOnly then 2 else depth
                     blunderbuss t depth' insts) True
-            else do try' (trivial ist)
+            else do try' (trivial' ist)
                          (do g <- goal
                              fail $ "Can't resolve " ++ show g) True
 --             tm <- get_term
@@ -876,7 +859,8 @@ runTac autoSolve ist tac
                    elab ist toplevel False False (MN 0 "tac") tm
                    when autoSolve solveAll
     runT Compute = compute
-    runT Trivial = do trivial ist; when autoSolve solveAll
+    runT Trivial = do trivial' ist; when autoSolve solveAll
+    runT ProofSearch = do proofSearch' ist; when autoSolve solveAll
     runT (Focus n) = focus n
     runT Solve = solve
     runT (Try l r) = do try' (runT l) (runT r) True

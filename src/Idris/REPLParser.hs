@@ -43,7 +43,6 @@ pCmd = do P.whiteSpace; try (do cmd ["q", "quit"]; eof; return Quit)
               <|> try (do cmd ["jc", "newcompile"]; f <- P.identifier; eof; return (Compile ViaJava f))
               <|> try (do cmd ["js", "javascript"]; f <- P.identifier; eof; return (Compile ViaJavaScript f))
               <|> try (do cmd ["proofs"]; eof; return Proofs)
-              <|> try (do cmd ["p", "prove"]; n <- P.name; eof; return (Prove n))
               <|> try (do cmd ["rmproof"]; n <- P.name; eof; return (RmProof n))
               <|> try (do cmd ["showproof"]; n <- P.name; eof; return (ShowProof n))
               <|> try (do cmd ["log"]; i <- P.natural; eof; return (LogLvl (fromIntegral i)))
@@ -78,6 +77,11 @@ pCmd = do P.whiteSpace; try (do cmd ["q", "quit"]; eof; return Quit)
                           upd <- option False (do P.lchar '!'; return True)
                           l <- P.natural; n <- P.name; 
                           return (MakeWith upd (fromInteger l) n))
+              <|> try (do cmd ["ps", "proofsearch"]; P.whiteSpace; 
+                          upd <- option False (do P.lchar '!'; return True)
+                          l <- P.natural; n <- P.name; 
+                          return (DoProofSearch upd (fromInteger l) n))
+              <|> try (do cmd ["p", "prove"]; n <- P.name; eof; return (Prove n))
               <|> try (do cmd ["m", "metavars"]; eof; return Metavars)
               <|> try (do cmd ["a", "addproof"]; do n <- option Nothing (do x <- P.name;
                                                                             return (Just x))

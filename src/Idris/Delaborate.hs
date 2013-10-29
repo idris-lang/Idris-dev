@@ -63,6 +63,7 @@ delabTy' ist imps tm fullname = de [] imps tm
     dens x | fullname = x
     dens ns@(NS n _) = case lookupCtxt n (idris_implicits ist) of
                               [_] -> n -- just one thing
+                              [] -> n -- metavariables have no implicits
                               _ -> ns
     dens n = n
 
@@ -80,9 +81,16 @@ delabTy' ist imps tm fullname = de [] imps tm
          | n == eqTy    = PEq un (de env [] l) (de env [] r)
          | n == UN "Ex_intro" = PDPair un (de env [] l) Placeholder
                                           (de env [] r)
-    deFn env (P _ n _) args = mkPApp (dens n) (map (de env []) args)
+    deFn env (P _ n _) args 
+         = case lookup n (idris_metavars ist) of
+                Just mi -> mkMVApp (dens n) (drop mi (map (de env []) args))
+                Nothing -> mkPApp (dens n) (map (de env []) args)
     deFn env f args = PApp un (de env [] f) (map pexp (map (de env []) args))
 
+    mkMVApp n []
+            = PMetavar n
+    mkMVApp n args 
+            = PApp un (PMetavar n) (map pexp args)
     mkPApp n args 
         | [imps] <- lookupCtxt n (idris_implicits ist)
             = PApp un (PRef un n) (zipWith imp (imps ++ repeat (pexp undefined)) args)

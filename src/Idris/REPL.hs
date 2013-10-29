@@ -575,6 +575,48 @@ process h fn (MakeWith updatefile l n)
                                     unlines rest)
               runIO $ copyFile fb fn
            else ihputStrLn h with
+process h fn (DoProofSearch updatefile l n)
+    = do src <- runIO $ readFile fn
+         let (before, tyline : later) = splitAt (l-1) (lines src)
+         let body = PProof [Try (TSeq Intros ProofSearch) ProofSearch]
+         ctxt <- getContext
+         mn <- case lookupNames n ctxt of
+                    [x] -> return x
+                    [] -> return n
+                    ns -> ierror (CantResolveAlts (map show ns))
+         i <- getIState
+         let envlen = case lookup mn (idris_metavars i) of
+                           Just mi -> mi
+                           _ -> 0
+         let fc = fileFC fn
+         let def = PClause fc mn (PRef fc mn) [] body []
+         elabDecls toplevel [PClauses fc [] mn [def]]
+         (tm, ty) <- elabVal toplevel False (PRef fc mn)
+         ctxt <- getContext
+         let newmv = show (dropCtxt envlen (delab i (normaliseAll ctxt [] tm)))
+         if updatefile then
+            do let fb = fn ++ "~"
+               runIO $ writeFile fb (unlines before ++ 
+                                     updateMeta tyline (show n) newmv ++ "\n"
+                                       ++ unlines later)
+               runIO $ copyFile fb fn
+            else ihputStrLn h newmv
+    where dropCtxt 0 sc = sc
+          dropCtxt i (PPi _ _ _ sc) = dropCtxt (i - 1) sc
+          dropCtxt i (PLet _ _ _ sc) = dropCtxt (i - 1) sc
+          dropCtxt i (PLam _ _ sc) = dropCtxt (i - 1) sc
+          dropCtxt _ t = t
+
+          updateMeta ('?':cs) n new
+            | length cs >= length n
+              = case splitAt (length n) cs of
+                     (mv, c:cs) ->
+                          if (isSpace c && mv == n)
+                             then new ++ (c : cs)
+                             else '?' : mv ++ c : updateMeta cs n new
+                     (mv, []) -> if (mv == n) then new else '?' : mv 
+          updateMeta (c:cs) n new = c : updateMeta cs n new
+          updateMeta [] n new = ""
 
 process h fn (Spec t)
                     = do (tm, ty) <- elabVal toplevel False t

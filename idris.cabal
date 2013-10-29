@@ -328,6 +328,7 @@ Executable idris
                 , Idris.ParseData
                 , Idris.PartialEval
                 , Idris.Primitives
+                , Idris.ProofSearch
                 , Idris.Prover
                 , Idris.Providers
                 , Idris.REPL
