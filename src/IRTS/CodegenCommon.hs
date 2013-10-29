@@ -7,7 +7,7 @@ import Control.Exception
 import System.Environment
 
 data DbgLevel = NONE | DEBUG | TRACE deriving Eq
-data OutputType = Raw | Object | Executable deriving (Eq, Show)
+data OutputType = Raw | Object | Executable | MavenProject deriving (Eq, Show)
 
 environment :: String -> IO (Maybe String)
 environment x = Control.Exception.catch (do e <- getEnv x

@@ -94,6 +94,7 @@ outputModule tm file Executable m = withTmpFile $ \obj -> do
   defs <- (</> "llvm" </> "libidris_rts.a") <$> getDataDir
   exit <- rawSystem cc [obj, defs, "-lm", "-lgmp", "-lgc", "-o", file]
   when (exit /= ExitSuccess) $ ierror "FAILURE: Linking"
+outputModule _ _ MavenProject _ = ierror "FAILURE: unsupported output type"
 
 withTmpFile :: (FilePath -> IO a) -> IO a
 withTmpFile f = do

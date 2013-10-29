@@ -98,6 +98,7 @@ usagemsg = "Idris version " ++ ver ++ "\n" ++
            "\t--log [level]     Type debugging log level\n" ++
            "\t-S                Do no further compilation of code generator output\n" ++
            "\t-c                Compile to object files rather than an executable\n" ++
+           "\t--mvn             Create a maven project (for Java codegen)\n" ++
            "\t--exec [expr]     Execute the expression expr in the interpreter,\n" ++
            "\t                  defaulting to Main.main if none provided, and exit.\n" ++
            "\t--ideslave        Ideslave mode (for editors; in/ouput wrapped in \n" ++

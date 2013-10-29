@@ -37,6 +37,7 @@ codegenC defs out exec incs objs libs flags dbg
          let cout = headers incs ++ debug dbg ++ h ++ cc ++ 
                      (if (exec == Executable) then mprog else "")
          case exec of
+           MavenProject -> putStrLn ("FAILURE: output type not supported")
            Raw -> writeFile out cout
            _ -> do
              (tmpn, tmph) <- tempfile
