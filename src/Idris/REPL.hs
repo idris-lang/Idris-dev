@@ -113,35 +113,39 @@ startServer orig stvar fn_in = do tid <- runIO $ forkOS serverLoop
         serverLoop = withSocketsDo $ 
                               do sock <- listenOn $ PortNumber 4294
                                  i <- readMVar stvar
-                                 loop i sock
+                                 loop fn i sock
 
         fn = case fn_in of
                   (f:_) -> f
                   _ -> ""
 
-        loop ist sock = do (h,host,_) <- accept sock
-                           if (host == "localhost" ||
-                               host == "127.0.0.1") then do
-                               cmd <- hGetLine h
-                               takeMVar stvar
-                               ist' <- processNetCmd stvar orig ist h fn cmd
-                               putMVar stvar ist'
-                               hClose h
-                               loop ist' sock
-                             else hClose h
+        loop fn ist sock 
+            = do (h,host,_) <- accept sock
+                 if (host == "localhost" ||
+                     host == "127.0.0.1") 
+                   then do
+                     cmd <- hGetLine h
+                     takeMVar stvar
+                     (ist', fn) <- processNetCmd stvar orig ist h fn cmd
+                     putMVar stvar ist'
+                     hClose h
+                     loop fn ist' sock
+                   else hClose h
 
 processNetCmd :: MVar IState -> 
-                 IState -> IState -> Handle -> FilePath -> String -> IO IState
+                 IState -> IState -> Handle -> FilePath -> String -> 
+                 IO (IState, FilePath)
 processNetCmd stvar orig i h fn cmd 
     = do res <- case parseCmd i "(net)" cmd of
                   Failure err -> return (Left (Msg " invalid command"))
                   Success c -> runErrorT $ evalStateT (processNet fn c) i
          case res of
-              Right ist -> return ist
+              Right x -> return x
               Left err -> do hPutStrLn h (show err)
-                             return i
+                             return (i, fn)
   where 
-    processNet fn Reload =
+    processNet fn Reload = processNet fn (Load fn)
+    processNet fn (Load f) =
         do let ist = orig { idris_options = idris_options i
                           , idris_colourTheme = idris_colourTheme i
                           , idris_colourRepl = False
@@ -151,12 +155,12 @@ processNetCmd stvar orig i h fn cmd
            setOutH h
            setQuiet True
            setVerbose False
-           mods <- loadInputs h [fn]
+           mods <- loadInputs h [f]
            ist <- getIState
-           return ist
+           return (ist, f)
     processNet fn c = do process h fn c
                          ist <- getIState
-                         return ist
+                         return (ist, fn)
                    
 -- | Run a command on the server on localhost
 runClient :: String -> IO ()

@@ -1,5 +1,6 @@
 function IdrisReload()
-  let tc = system("idris --client :r")
+  let file = expand("%")
+  let tc = system("idris --client :l " . file)
   if (! (tc is ""))
     echo tc
   endif
