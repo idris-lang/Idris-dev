@@ -12,7 +12,7 @@ script:
   - cabal configure
   - cabal build
   - cabal copy
-  - make test
-  - make test_llvm
-  - make test_java
+  - make -j2 test
+  - make -j2 test_llvm
+  - make -j2 test_java
 
