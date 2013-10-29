@@ -83,7 +83,7 @@ delabTy' ist imps tm fullname = de [] imps tm
                                           (de env [] r)
     deFn env (P _ n _) args 
          = case lookup n (idris_metavars ist) of
---                 Just mi -> mkMVApp (dens n) (drop mi (map (de env []) args))
+                Just mi | mi >=0 -> mkMVApp (dens n) (drop mi (map (de env []) args))
                 _ -> mkPApp (dens n) (map (de env []) args)
     deFn env f args = PApp un (de env [] f) (map pexp (map (de env []) args))
 

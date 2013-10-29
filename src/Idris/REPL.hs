@@ -594,7 +594,8 @@ process h fn (DoProofSearch updatefile l n)
          (tm, ty) <- elabVal toplevel False (PRef fc mn)
          ctxt <- getContext
          i <- getIState
-         let newmv = show (dropCtxt envlen (delab i (normaliseAll ctxt [] tm)))
+         let newmv = show (stripNS
+                       (dropCtxt envlen (delab i (normaliseAll ctxt [] tm))))
          if updatefile then
             do let fb = fn ++ "~"
                runIO $ writeFile fb (unlines before ++ 
@@ -607,6 +608,10 @@ process h fn (DoProofSearch updatefile l n)
           dropCtxt i (PLet _ _ _ sc) = dropCtxt (i - 1) sc
           dropCtxt i (PLam _ _ sc) = dropCtxt (i - 1) sc
           dropCtxt _ t = t
+ 
+          stripNS tm = mapPT dens tm where 
+              dens (PRef fc n) = PRef fc (nsroot n)
+              dens t = t
 
           updateMeta ('?':cs) n new
             | length cs >= length n

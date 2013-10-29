@@ -86,7 +86,7 @@ elabType info syn doc fc opts n ty' = {- let ty' = piBind (params info) ty_in
                                         _ -> False
                         _ -> False
          let opts' = if corec then (Coinductive : opts) else opts
-         ds <- checkDef fc [(n, (0, nty))]
+         ds <- checkDef fc [(n, (-1, nty))]
          addIBC (IBCDef n)
          addDeferred ds
          setFlags n opts'
@@ -1025,7 +1025,7 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in withblock)
         let imps = getImps wtype -- add to implicits context
         putIState (i { idris_implicits = addDef wname imps (idris_implicits i) })
         addIBC (IBCDef wname)
-        def' <- checkDef fc [(wname, (0, wtype))]
+        def' <- checkDef fc [(wname, (-1, wtype))]
         addDeferred def'
 
         -- in the subdecls, lhs becomes:
