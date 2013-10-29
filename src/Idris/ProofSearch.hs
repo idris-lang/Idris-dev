@@ -30,6 +30,9 @@ trivial elab ist = try' (do elab (PRefl (fileFC "prf") Placeholder)
                              (tryAll xs) True
                    else tryAll xs
 
-proofSearch :: (PTerm -> ElabD ()) -> IState -> ElabD ()
-proofSearch elab ist = trivial elab ist 
+proofSearch :: (PTerm -> ElabD ()) -> Name -> IState -> ElabD ()
+proofSearch elab nroot ist 
+    = try (trivial elab ist)
+          (do attack; defer nroot; solve)
+
 

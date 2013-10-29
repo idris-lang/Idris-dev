@@ -1,7 +1,7 @@
 reg007.lidr:8:1:A.n is already defined
 reg007.lidr:12:9:When elaborating right hand side of hurrah:
 Can't unify
-	[92mn[0m[94m = [0m[92mA.lala[0m
+	[92mn[0m[94m = [0m[92mlala[0m
 with
 	[91m0[0m[94m = [0m[91m1[0m
 

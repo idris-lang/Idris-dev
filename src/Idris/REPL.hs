@@ -578,7 +578,7 @@ process h fn (MakeWith updatefile l n)
 process h fn (DoProofSearch updatefile l n)
     = do src <- runIO $ readFile fn
          let (before, tyline : later) = splitAt (l-1) (lines src)
-         let body = PProof [Try (TSeq Intros ProofSearch) ProofSearch]
+         let body = PProof [Try (TSeq Intros (ProofSearch n)) (ProofSearch n)]
          ctxt <- getContext
          mn <- case lookupNames n ctxt of
                     [x] -> return x
@@ -593,6 +593,7 @@ process h fn (DoProofSearch updatefile l n)
          elabDecls toplevel [PClauses fc [] mn [def]]
          (tm, ty) <- elabVal toplevel False (PRef fc mn)
          ctxt <- getContext
+         i <- getIState
          let newmv = show (dropCtxt envlen (delab i (normaliseAll ctxt [] tm)))
          if updatefile then
             do let fb = fn ++ "~"
