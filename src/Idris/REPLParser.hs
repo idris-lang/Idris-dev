@@ -73,6 +73,10 @@ pCmd = do P.whiteSpace; try (do cmd ["q", "quit"]; eof; return Quit)
                           upd <- option False (do P.lchar '!'; return True)
                           l <- P.natural; n <- P.name; 
                           return (AddClauseFrom upd (fromInteger l) n))
+              <|> try (do cmd ["am", "addmissing"]; P.whiteSpace; 
+                          upd <- option False (do P.lchar '!'; return True)
+                          l <- P.natural; n <- P.name; 
+                          return (AddMissing upd (fromInteger l) n))
               <|> try (do cmd ["mw", "makewith"]; P.whiteSpace; 
                           upd <- option False (do P.lchar '!'; return True)
                           l <- P.natural; n <- P.name; 

@@ -2,7 +2,8 @@
 
 module Idris.CaseSplit(split, splitOnLine, replaceSplits,
                        getClause,
-                       mkWith) where
+                       mkWith,
+                       getUniq, nameRoot) where
 
 -- splitting a variable in a pattern clause
 
@@ -210,18 +211,6 @@ replaceSplits l ups = updateRHSs 1 (map (rep (expandBraces l)) ups)
                               return (x : xs', i')
     updateRHS i [] = return ("", i)
 
-    getUniq nm i
-       = do ist <- getIState
-            let n = nameRoot [] nm ++ "_" ++ show i
-            case lookupTy (UN n) (tt_ctxt ist) of
-                 [] -> return (n, i+1)
-                 _ -> getUniq nm (i+1)
-
-    nameRoot acc nm | all isDigit nm = showSep "_" acc
-    nameRoot acc nm =
-        case span (/='_') nm of
-             (before, ('_' : after)) -> nameRoot (acc ++ [before]) after
-             _ -> showSep "_" (acc ++ [nm])
 
     -- TMP HACK: If there are Nats, we don't want to show as numerals since
     -- this isn't supported in a pattern, so special case here
@@ -255,6 +244,18 @@ replaceSplits l ups = updateRHSs 1 (map (rep (expandBraces l)) ups)
     addBrackets tm | ' ' `elem` tm = "(" ++ tm ++ ")"
                    | otherwise = tm
 
+getUniq nm i
+       = do ist <- getIState
+            let n = nameRoot [] nm ++ "_" ++ show i
+            case lookupTy (UN n) (tt_ctxt ist) of
+                 [] -> return (n, i+1)
+                 _ -> getUniq nm (i+1)
+
+nameRoot acc nm | all isDigit nm = showSep "_" acc
+nameRoot acc nm =
+        case span (/='_') nm of
+             (before, ('_' : after)) -> nameRoot (acc ++ [before]) after
+             _ -> showSep "_" (acc ++ [nm])
 getClause :: Int -> -- ^ Line type is declared on
              Name -> -- ^ Function name
              FilePath -> -- ^ Source file name

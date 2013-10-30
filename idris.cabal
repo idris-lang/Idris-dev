@@ -271,6 +271,10 @@ Extra-source-files:
                        test/test031/run
                        test/test031/*.idr
                        test/test031/expected
+                       test/test032/run
+                       test/test032/*.idr
+                       test/test032/input
+                       test/test032/expected
 
 source-repository head
   type:     git

@@ -567,6 +567,38 @@ process h fn (AddClauseFrom updatefile l n)
        getIndent i n [] = 0
        getIndent i n xs | take (length n) xs == n = i
        getIndent i n (x : xs) = getIndent (i + 1) n xs
+process h fn (AddMissing updatefile l n)
+   = do src <- runIO $ readFile fn
+        let (before, tyline : later) = splitAt (l-1) (lines src)
+        i <- getIState
+        cl <- getInternalApp fn l
+        let n' = getAppName cl
+        extras <- case lookupCtxt n' (idris_patdefs i) of
+                       [] -> return ""
+                       [(_, tms)] -> showNew (show n ++ "_rhs") 1 tms
+        let (nonblank, rest) = span (not . all isSpace) (tyline:later)
+        if updatefile then
+           do let fb = fn ++ "~"
+              runIO $ writeFile fb (unlines (before ++ nonblank) ++
+                                           extras ++ unlines rest)
+              runIO $ copyFile fb fn
+           else ihputStrLn h extras
+    where showPat = show . stripNS
+          stripNS tm = mapPT dens tm where 
+              dens (PRef fc n) = PRef fc (nsroot n)
+              dens t = t
+
+          getAppName (PApp _ r _) = getAppName r
+          getAppName (PRef _ r) = r
+          getAppName _ = n
+
+          showNew nm i (tm : tms) 
+                        = do (nm', i') <- getUniq nm i
+                             rest <- showNew nm i' tms
+                             return (showPat tm ++ " = ?" ++ nm' ++
+                                     "\n" ++ rest)
+          showNew nm i [] = return ""
+
 process h fn (MakeWith updatefile l n)
    = do src <- runIO $ readFile fn
         let (before, tyline : later) = splitAt (l-1) (lines src)
