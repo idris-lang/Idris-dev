@@ -27,6 +27,7 @@ import Idris.CaseSplit
 import Paths_idris
 import Util.System
 import Util.DynamicLinker
+import Util.Net (listenOnLocalhost)
 
 import Core.Evaluate
 import Core.Execute (execute)
@@ -111,7 +112,7 @@ startServer orig stvar fn_in = do tid <- runIO $ forkOS serverLoop
   where serverLoop :: IO ()
         -- TODO: option for port number
         serverLoop = withSocketsDo $ 
-                              do sock <- listenOn $ PortNumber 4294
+                              do sock <- listenOnLocalhost $ PortNumber 4294
                                  i <- readMVar stvar
                                  loop fn i sock
 
