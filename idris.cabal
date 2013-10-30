@@ -357,6 +357,7 @@ Executable idris
                 , Util.Pretty
                 , Util.System
                 , Util.DynamicLinker
+                , Util.Net
 
                 , Pkg.Package
                 , Pkg.PParser

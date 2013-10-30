@@ -27,6 +27,7 @@ import Idris.CaseSplit
 import Paths_idris
 import Util.System
 import Util.DynamicLinker
+import Util.Net (listenOnLocalhost)
 
 import Core.Evaluate
 import Core.Execute (execute)
@@ -111,7 +112,7 @@ startServer orig stvar fn_in = do tid <- runIO $ forkOS serverLoop
   where serverLoop :: IO ()
         -- TODO: option for port number
         serverLoop = withSocketsDo $ 
-                              do sock <- listenOn $ PortNumber 4294
+                              do sock <- listenOnLocalhost $ PortNumber 4294
                                  i <- readMVar stvar
                                  loop fn i sock
 
@@ -121,7 +122,9 @@ startServer orig stvar fn_in = do tid <- runIO $ forkOS serverLoop
 
         loop fn ist sock 
             = do (h,host,_) <- accept sock
-                 if (host == "localhost" ||
+                 -- just use the local part of the hostname
+                 -- for the "localhost.localdomain" case
+                 if ((takeWhile (/= '.') host) == "localhost" ||
                      host == "127.0.0.1") 
                    then do
                      cmd <- hGetLine h
@@ -872,6 +875,7 @@ parseArgs ("--bytecode":n:ns)    = NoREPL : BCAsm n : (parseArgs ns)
 parseArgs ("--fovm":n:ns)        = NoREPL : FOVM n : (parseArgs ns)
 parseArgs ("-S":ns)              = OutputTy Raw : (parseArgs ns)
 parseArgs ("-c":ns)              = OutputTy Object : (parseArgs ns)
+parseArgs ("--mvn":ns)           = OutputTy MavenProject : (parseArgs ns)
 parseArgs ("--dumpdefuns":n:ns)  = DumpDefun n : (parseArgs ns)
 parseArgs ("--dumpcases":n:ns)   = DumpCases n : (parseArgs ns)
 parseArgs ("--codegen":n:ns)     = UseCodegen (parseCodegen n) : (parseArgs ns)
