@@ -29,5 +29,6 @@ modules = Builtins, Prelude, IO, System,
           Data.Vect, Data.HVect, Data.Vect.Quantifiers,
 
           Control.Monad.Identity, Control.Monad.State, Control.Category,
+          Control.Monad.Writer,
           Control.Arrow,
           Control.Catchable, Control.IOExcept
