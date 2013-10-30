@@ -37,66 +37,132 @@ import           System.Process
 
 -----------------------------------------------------------------------
 -- Main function
-
 codegenJava :: [(Name, SExp)] -> -- initialization of globals
-               [(Name, SDecl)] ->
+               [(Name, SDecl)] -> -- decls
                FilePath -> -- output file name
                [String] -> -- headers
                [String] -> -- libs
                OutputType ->
                IO ()
-codegenJava globalInit defs out hdrs libs exec = do
-  withTempdir (takeBaseName out) $ \ tmpDir -> do
-    let srcdir = tmpDir </> "src" </> "main" </> "java"
-    createDirectoryIfMissing True srcdir
-    let (Ident clsName) = either error id (mkClassName out)
-    let outjava = srcdir </> clsName <.> "java"
-    let jout = either error
+codegenJava globalInit defs out hdrs libs exec =
+  withTgtDir exec out (codegenJava' exec)
+  where
+    codegenJava' :: OutputType -> FilePath -> IO ()
+    codegenJava' Raw tgtDir = do
+        srcDir <- prepareSrcDir exec tgtDir
+        generateJavaFile globalInit defs hdrs srcDir out
+    codegenJava' MavenProject tgtDir = do
+      codegenJava' Raw tgtDir
+      generatePom tgtDir out libs
+    codegenJava' Object tgtDir = do
+      codegenJava' MavenProject tgtDir
+      invokeMvn tgtDir "compile"
+      copyClassFiles tgtDir out
+      cleanUpTmp tgtDir
+    codegenJava' _  tgtDir = do
+        codegenJava' MavenProject tgtDir
+        invokeMvn tgtDir "package";
+        copyJar tgtDir out
+        makeJarExecutable out
+        cleanUpTmp tgtDir
+
+-----------------------------------------------------------------------
+-- Compiler IO
+
+withTgtDir :: OutputType -> FilePath -> (FilePath -> IO ()) -> IO ()
+withTgtDir Raw out action = action (dropFileName out)
+withTgtDir MavenProject out action = createDirectoryIfMissing False out >> action out
+withTgtDir _ out action = withTempdir (takeBaseName out) action
+
+prepareSrcDir :: OutputType -> FilePath -> IO FilePath
+prepareSrcDir Raw tgtDir = return tgtDir
+prepareSrcDir _ tgtDir = do
+  let srcDir = (tgtDir </> "src" </> "main" </> "java")
+  createDirectoryIfMissing True srcDir
+  return srcDir
+
+javaFileName :: FilePath -> FilePath -> FilePath
+javaFileName srcDir out =
+  either error (\ (Ident clsName) -> srcDir </> clsName <.> "java") (mkClassName out)
+
+generateJavaFile :: [(Name, SExp)] -> -- initialization of globals
+                    [(Name, SDecl)] -> -- definitions
+                    [String] -> -- headers
+                    FilePath -> -- Source dir
+                    FilePath -> -- output target
+                    IO ()
+generateJavaFile globalInit defs hdrs srcDir out = do
+    let code = either error
                       (prettyPrint)-- flatIndent . prettyPrint)
                       (evalStateT (mkCompilationUnit globalInit defs hdrs out) mkCodeGenEnv)
-    writeFile outjava jout
-    if (exec == Raw)
-       then copyFile outjava (takeDirectory out </> clsName <.> "java")
-       else do
-         execPom <- getExecutablePom
-         execPomTemplate <- TIO.readFile execPom
-         let execPom = T.replace (T.pack "$MAIN-CLASS$")
-                                 (T.pack clsName)
-                                 (T.replace (T.pack "$ARTIFACT-NAME$")
-                                            (T.pack $ takeBaseName out)
-                                            (T.replace (T.pack "$DEPENDENCIES$")
-                                                       (mkPomDependencies libs)
-                                                       execPomTemplate
-                                            )
-                                 )
-         TIO.writeFile (tmpDir </> "pom.xml") execPom
-         mvnCmd <- getMvn
-         let args = ["-f", (tmpDir </> "pom.xml")]
-         (exit, mvout, err) <- readProcessWithExitCode mvnCmd (args ++ ["compile"]) ""
-         when (exit /= ExitSuccess) $ error ("FAILURE: " ++ mvnCmd ++ " compile\n" ++ err ++ mvout)
-         if (exec == Object)
-            then do
-              classFiles <-
-                map (\ clsFile -> tmpDir </> "target" </> "classes" </> clsFile)
+    writeFile (javaFileName srcDir out) code
+
+pomFileName :: FilePath -> FilePath
+pomFileName tgtDir = tgtDir </> "pom.xml"
+
+generatePom :: FilePath -> -- tgt dir
+               FilePath -> -- output target
+               [String] -> -- libs
+               IO ()
+generatePom tgtDir out libs = do
+  execPom <- getExecutablePom
+  execPomTemplate <- TIO.readFile execPom
+  let (Ident clsName) = either error id (mkClassName out)
+  let execPom = T.replace (T.pack "$MAIN-CLASS$")
+                          (T.pack clsName)
+                          (T.replace (T.pack "$ARTIFACT-NAME$")
+                                     (T.pack $ takeBaseName out)
+                                     (T.replace (T.pack "$DEPENDENCIES$")
+                                                (mkPomDependencies libs)
+                                                execPomTemplate
+                                     )
+                          )
+  TIO.writeFile (pomFileName tgtDir) execPom
+
+invokeMvn :: FilePath -> String -> IO ()
+invokeMvn tgtDir command = do
+   mvnCmd <- getMvn
+   let args = ["-f", pomFileName tgtDir]
+   (exit, mvout, err) <- readProcessWithExitCode mvnCmd (args ++ [command]) ""
+   when (exit /= ExitSuccess) $
+     error ("FAILURE: " ++ mvnCmd ++ " " ++ command ++ "\n" ++ err ++ mvout)
+
+classFileDir :: FilePath -> FilePath
+classFileDir tgtDir = tgtDir </> "target" </> "classes"
+
+copyClassFiles :: FilePath -> FilePath -> IO ()
+copyClassFiles tgtDir out = do
+  classFiles <- map (\ clsFile -> classFileDir tgtDir </> clsFile)
                 . filter ((".class" ==) . takeExtension)
-                <$> getDirectoryContents (tmpDir </> "target" </> "classes")
-              mapM_ (\ clsFile -> copyFile clsFile (takeDirectory out </> takeFileName clsFile))
-                    classFiles
-             else do
-               (exit, mvout, err) <- readProcessWithExitCode mvnCmd (args ++ ["package"]) ""
-               when (exit /= ExitSuccess) (error ("FAILURE: " ++ mvnCmd ++ " package\n" ++ err ++ mvout))
-               copyFile (tmpDir </> "target" </> (takeBaseName out) <.> "jar") out
-               handle <- openBinaryFile out ReadMode
-               contents <- TIO.hGetContents handle
-               hClose handle
-               handle <- openBinaryFile out WriteMode
-               TIO.hPutStr handle (T.append (T.pack jarHeader) contents)
-               hFlush handle
-               hClose handle
-               perms <- getPermissions out
-               setPermissions out (setOwnerExecutable True perms)
-         readProcess mvnCmd (args ++ ["clean"]) ""
-         removeFile (tmpDir </> "pom.xml")
+                <$> getDirectoryContents (classFileDir tgtDir)
+  mapM_ (\ clsFile -> copyFile clsFile (takeDirectory out </> takeFileName clsFile)) classFiles
+
+jarFileName :: FilePath -> FilePath -> FilePath
+jarFileName tgtDir out = tgtDir </> "target" </> (takeBaseName out) <.> "jar"
+
+copyJar :: FilePath -> FilePath -> IO ()
+copyJar tgtDir out =
+  copyFile (jarFileName tgtDir out) out
+
+makeJarExecutable :: FilePath -> IO ()
+makeJarExecutable out = do
+  handle <- openBinaryFile out ReadMode
+  contents <- TIO.hGetContents handle
+  hClose handle
+  handle <- openBinaryFile out WriteMode
+  TIO.hPutStr handle (T.append (T.pack jarHeader) contents)
+  hFlush handle
+  hClose handle
+  perms <- getPermissions out
+  setPermissions out (setOwnerExecutable True perms)
+
+removePom :: FilePath -> IO ()
+removePom tgtDir = removeFile (pomFileName tgtDir)
+
+cleanUpTmp :: FilePath -> IO ()
+cleanUpTmp tgtDir = do
+  invokeMvn tgtDir "clean"
+  removePom tgtDir
 
 -----------------------------------------------------------------------
 -- Jar and Pom infrastructure
