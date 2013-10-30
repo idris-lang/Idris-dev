@@ -437,10 +437,7 @@ process h fn (Check (PRef _ n))
     showMetavarInfo c imp ist n i 
          = case lookupTy n (tt_ctxt ist) of
                 (ty:_) -> putTy c imp ist i (delab ist ty)
-    putTy c imp ist 0 sc 
-               = do ihputStrLn h $ "--------------------------------------"
-                    ihputStrLn h $ showName (Just ist) [] False c n ++ " : " 
-                                   ++ showImp (Just ist) imp c sc
+    putTy c imp ist 0 sc = putGoal c imp ist sc
     putTy c imp ist i (PPi _ n t sc) 
                = do ihputStrLn h $ "  " ++ 
                          (case n of
@@ -449,6 +446,11 @@ process h fn (Check (PRef _ n))
                               _ -> showName (Just ist) [] False c n) ++ 
                                    " : " ++ showImp (Just ist) imp c t
                     putTy c imp ist (i-1) sc
+    putTy c imp ist _ sc = putGoal c imp ist sc
+    putGoal c imp ist g
+               = do ihputStrLn h $ "--------------------------------------"
+                    ihputStrLn h $ showName (Just ist) [] False c n ++ " : " 
+                                   ++ showImp (Just ist) imp c g
 
 
 process h fn (Check t)
