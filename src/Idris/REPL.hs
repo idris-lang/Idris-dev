@@ -546,7 +546,7 @@ process h fn (CaseSplitAt updatefile l n)
            do let fb = fn ++ "~" -- make a backup!
               runIO $ writeFile fb (unlines before ++ new ++ unlines later)
               runIO $ copyFile fb fn
-           else do ihputStrLn h (show res)
+           else -- do ihputStrLn h (show res)
                    ihputStrLn h new
 process h fn (AddClauseFrom updatefile l n)
    = do src <- runIO $ readFile fn
