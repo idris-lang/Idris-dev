@@ -281,11 +281,11 @@ addConstraints fc (v, cs)
 addDeferred = addDeferred' Ref
 addDeferredTyCon = addDeferred' (TCon 0 0)
 
-addDeferred' :: NameType -> [(Name, (Int, Type))] -> Idris ()
+addDeferred' :: NameType -> [(Name, (Int, Maybe Name, Type))] -> Idris ()
 addDeferred' nt ns 
-  = do mapM_ (\(n, (i, t)) -> updateContext (addTyDecl n nt (tidyNames [] t))) ns
+  = do mapM_ (\(n, (i, _, t)) -> updateContext (addTyDecl n nt (tidyNames [] t))) ns
        i <- getIState
-       putIState $ i { idris_metavars = map (\(n, (i, _)) -> (n, i)) ns ++ 
+       putIState $ i { idris_metavars = map (\(n, (i, top, _)) -> (n, (top, i))) ns ++ 
                                             idris_metavars i }
   where tidyNames used (Bind (MN i x) b sc)
             = let n' = uniqueName (UN x) used in

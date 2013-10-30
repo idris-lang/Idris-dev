@@ -33,26 +33,49 @@ trivial elab ist = try' (do elab (PRefl (fileFC "prf") Placeholder)
                              (tryAll xs) True
                    else tryAll xs
 
-proofSearch :: (PTerm -> ElabD ()) -> Name -> IState -> ElabD ()
-proofSearch elab nroot ist = psRec 10 where
+proofSearch :: (PTerm -> ElabD ()) -> Maybe Name -> Name -> IState -> ElabD ()
+proofSearch elab fn nroot ist = psRec maxDepth where
+    maxDepth = 10
+  
     psRec 0 = fail "Maximum depth reached"
     psRec d = try' (trivial elab ist)
-                   (try' (resolveByCon (d - 1))
+                   (try' (try' (resolveByCon (d - 1)) (resolveByLocals (d - 1))
+                               True)
              -- if all else fails, make a new metavariable
                          (do attack; defer nroot; solve) True) True
+
+    getFn d Nothing = []
+    getFn d (Just f) | d < maxDepth-1 = [f]
+                     | otherwise = []
 
     resolveByCon d 
         = do t <- goal
              let (f, _) = unApply t
              case f of
                 P _ n _ -> case lookupCtxt n (idris_datatypes ist) of
-                               [t] -> tryCons d (con_names t)
+                               [t] -> tryCons d (con_names t ++ getFn d fn)
                                _ -> fail "Not a data type"
                 _ -> fail "Not a data type"
+
+    -- if there are local variables which have a function type, try
+    -- applying them too
+    resolveByLocals d
+        = do env <- get_env
+             tryLocals d env
+
+    tryLocals d [] = fail "Locals failed"
+    tryLocals d ((x, t) : xs) = try' (tryLocal d x t) (tryLocals d xs) True
 
     tryCons d [] = fail "Constructors failed"
     tryCons d (c : cs) = try' (tryCon d c) (tryCons d cs) True
    
+    tryLocal d n t = do let a = getPArity (delab ist (binderTy t))
+                        tryLocalArg d n a
+
+    tryLocalArg d n 0 = elab (PRef (fileFC "prf") n)
+    tryLocalArg d n i = simple_app (tryLocalArg d n (i - 1))
+                                   (psRec d) "proof search local apply"
+
     -- Like type class resolution, but searching with constructors
     tryCon d n
        = do let imps = case lookupCtxtName n (idris_implicits ist) of

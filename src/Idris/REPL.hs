@@ -428,7 +428,7 @@ process h fn (Check (PRef _ n))
         case lookupNames n ctxt of
           ts@(t:_) -> 
             case lookup t (idris_metavars ist) of
-                Just i -> showMetavarInfo c imp ist n i
+                Just (_, i) -> showMetavarInfo c imp ist n i
                 Nothing -> do mapM_ (\n -> ihputStrLn h $ showName (Just ist) [] False c n ++ " : " ++
                                            showImp (Just ist) imp c (delabTy ist n)) ts
                               ihPrintResult h ""
@@ -578,17 +578,18 @@ process h fn (MakeWith updatefile l n)
 process h fn (DoProofSearch updatefile l n)
     = do src <- runIO $ readFile fn
          let (before, tyline : later) = splitAt (l-1) (lines src)
-         let body = PProof [Try (TSeq Intros (ProofSearch n)) (ProofSearch n)]
          ctxt <- getContext
          mn <- case lookupNames n ctxt of
                     [x] -> return x
                     [] -> return n
                     ns -> ierror (CantResolveAlts (map show ns))
          i <- getIState
-         let envlen = case lookup mn (idris_metavars i) of
-                           Just mi -> mi
-                           _ -> 0
+         let (top, envlen) = case lookup mn (idris_metavars i) of
+                                  Just mi -> mi
+                                  _ -> (Nothing, 0)
          let fc = fileFC fn
+         let body = PProof [Try (TSeq Intros (ProofSearch top n)) 
+                                (ProofSearch top n)]
          let def = PClause fc mn (PRef fc mn) [] body []
          elabDecls toplevel [PClauses fc [] mn [def]]
          (tm, ty) <- elabVal toplevel False (PRef fc mn)
@@ -645,7 +646,7 @@ process h fn (RmProof n')
                             insertMetavar n =
                               do i <- getIState
                                  let ms = idris_metavars i
-                                 putIState $ i { idris_metavars = (n, 0) : ms }
+                                 putIState $ i { idris_metavars = (n, (Nothing, 0)) : ms }
 
 process h fn' (AddProof prf)
   = do fn <- do

@@ -41,8 +41,8 @@ recheckC fc env t
          return (tm, ty)
 
 checkDef fc ns = do ctxt <- getContext
-                    mapM (\(n, (i, t)) -> do (t', _) <- recheckC fc [] t
-                                             return (n, (i, t'))) ns
+                    mapM (\(n, (i, top, t)) -> do (t', _) <- recheckC fc [] t
+                                                  return (n, (i, top, t'))) ns
 
 -- | Elaborate a top-level type declaration - for example, "foo : Int -> Int".
 elabType :: ElabInfo -> SyntaxInfo -> String ->
@@ -86,7 +86,7 @@ elabType info syn doc fc opts n ty' = {- let ty' = piBind (params info) ty_in
                                         _ -> False
                         _ -> False
          let opts' = if corec then (Coinductive : opts) else opts
-         ds <- checkDef fc [(n, (-1, nty))]
+         ds <- checkDef fc [(n, (-1, Nothing, nty))]
          addIBC (IBCDef n)
          addDeferred ds
          setFlags n opts'
@@ -363,7 +363,7 @@ elabTransform info fc safe lhs_in rhs_in
                            erun fc (build i info False (UN "transform") rhs)
                            erun fc $ psolve lhs_tm
                            tt <- get_term
-                           let (tm, ds) = runState (collectDeferred tt) []
+                           let (tm, ds) = runState (collectDeferred Nothing tt) []
                            return (tm, ds))
          (crhs_tm, crhs_ty) <- recheckC fc [] rhs'
          logLvl 3 ("Transform RHS " ++ show crhs_tm)
@@ -870,7 +870,7 @@ elabClause info opts (cnum, PClause fc fname lhs_in withs rhs_in whereblock)
                         errAt "right hand side of " fname 
                               (erun fc $ psolve lhs_tm)
                         tt <- get_term
-                        let (tm, ds) = runState (collectDeferred tt) []
+                        let (tm, ds) = runState (collectDeferred (Just fname) tt) []
                         return (tm, ds, is))
         logLvl 5 "DONE CHECK"
         logLvl 2 $ "---> " ++ show rhs'
@@ -1025,7 +1025,7 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in withblock)
         let imps = getImps wtype -- add to implicits context
         putIState (i { idris_implicits = addDef wname imps (idris_implicits i) })
         addIBC (IBCDef wname)
-        def' <- checkDef fc [(wname, (-1, wtype))]
+        def' <- checkDef fc [(wname, (-1, Nothing, wtype))]
         addDeferred def'
 
         -- in the subdecls, lhs becomes:

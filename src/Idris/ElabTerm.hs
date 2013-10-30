@@ -36,7 +36,7 @@ toplevel = EInfo [] emptyContext id Nothing
 -- Also find deferred names in the term and their types
 
 build :: IState -> ElabInfo -> Bool -> Name -> PTerm -> 
-         ElabD (Term, [(Name, (Int, Type))], [PDecl])
+         ElabD (Term, [(Name, (Int, Maybe Name, Type))], [PDecl])
 build ist info pattern fn tm 
     = do elab ist info pattern False fn tm
          ivs <- get_instances
@@ -64,7 +64,7 @@ build ist info pattern fn tm
             ((_,_,_,e):es) -> lift (Error e)
          is <- getAux
          tt <- get_term
-         let (tm, ds) = runState (collectDeferred tt) []
+         let (tm, ds) = runState (collectDeferred (Just fn) tt) []
          log <- getLog
          if (log /= "") then trace log $ return (tm, ds, is)
             else return (tm, ds, is)
@@ -74,7 +74,7 @@ build ist info pattern fn tm
 -- know about yet on the LHS of a pattern def)
 
 buildTC :: IState -> ElabInfo -> Bool -> Bool -> Name -> PTerm -> 
-         ElabD (Term, [(Name, (Int, Type))], [PDecl])
+         ElabD (Term, [(Name, (Int, Maybe Name, Type))], [PDecl])
 buildTC ist info pattern tcgen fn tm 
     = do elab ist info pattern tcgen fn tm
          probs <- get_probs
@@ -84,7 +84,7 @@ buildTC ist info pattern tcgen fn tm
             ((_,_,_,e):es) -> lift (Error e)
          is <- getAux
          tt <- get_term
-         let (tm, ds) = runState (collectDeferred tt) []
+         let (tm, ds) = runState (collectDeferred (Just fn) tt) []
          log <- getLog
          if (log /= "") then trace log $ return (tm, ds, is)
             else return (tm, ds, is)
@@ -646,8 +646,8 @@ findInstances ist t
 
 trivial' ist 
     = trivial (elab ist toplevel False False (MN 0 "tac")) ist
-proofSearch' ist n 
-    = proofSearch (elab ist toplevel False False (MN 0 "tac")) n ist 
+proofSearch' ist top n 
+    = proofSearch (elab ist toplevel False False (MN 0 "tac")) top n ist 
                           
 
 resolveTC :: Int -> Name -> IState -> ElabD ()
@@ -736,21 +736,22 @@ resolveTC depth fn ist
        where isImp (PImp p _ _ _ _ _) = (True, p)
              isImp arg = (False, priority arg)
 
-collectDeferred :: Term -> State [(Name, (Int, Type))] Term
-collectDeferred (Bind n (GHole i t) app) =
+collectDeferred :: Maybe Name ->
+                   Term -> State [(Name, (Int, Maybe Name, Type))] Term
+collectDeferred top (Bind n (GHole i t) app) =
     do ds <- get
-       when (not (n `elem` map fst ds)) $ put ((n, (i, t)) : ds)
-       collectDeferred app
-collectDeferred (Bind n b t) = do b' <- cdb b
-                                  t' <- collectDeferred t
-                                  return (Bind n b' t')
+       when (not (n `elem` map fst ds)) $ put ((n, (i, top, t)) : ds)
+       collectDeferred top app
+collectDeferred top (Bind n b t) = do b' <- cdb b
+                                      t' <- collectDeferred top t
+                                      return (Bind n b' t')
   where
-    cdb (Let t v)   = liftM2 Let (collectDeferred t) (collectDeferred v)
-    cdb (Guess t v) = liftM2 Guess (collectDeferred t) (collectDeferred v)
-    cdb b           = do ty' <- collectDeferred (binderTy b)
+    cdb (Let t v)   = liftM2 Let (collectDeferred top t) (collectDeferred top v)
+    cdb (Guess t v) = liftM2 Guess (collectDeferred top t) (collectDeferred top v)
+    cdb b           = do ty' <- collectDeferred top (binderTy b)
                          return (b { binderTy = ty' })
-collectDeferred (App f a) = liftM2 App (collectDeferred f) (collectDeferred a)
-collectDeferred t = return t
+collectDeferred top (App f a) = liftM2 App (collectDeferred top f) (collectDeferred top a)
+collectDeferred top t = return t
 
 -- Running tactics directly
 -- if a tactic adds unification problems, return an error
@@ -862,7 +863,7 @@ runTac autoSolve ist tac
                    when autoSolve solveAll
     runT Compute = compute
     runT Trivial = do trivial' ist; when autoSolve solveAll
-    runT (ProofSearch n) = do proofSearch' ist n; when autoSolve solveAll
+    runT (ProofSearch top n) = do proofSearch' ist top n; when autoSolve solveAll
     runT (Focus n) = focus n
     runT Solve = solve
     runT (Try l r) = do try' (runT l) (runT r) True

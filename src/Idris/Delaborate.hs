@@ -39,7 +39,10 @@ delabTy' ist imps tm fullname = de [] imps tm
                        | n == unitCon = PTrue un
                        | n == falseTy = PFalse un
                        | Just n' <- lookup n env = PRef un n'
-                       | otherwise = PRef un (dens n)
+                       | otherwise
+                            = case lookup n (idris_metavars ist) of
+                                  Just (Just _, mi) -> mkMVApp (dens n) []
+                                  _ -> PRef un (dens n)
     de env _ (Bind n (Lam ty) sc) 
           = PLam n (de env [] ty) (de ((n,n):env) [] sc)
     de env (PImp _ _ _ _ _ _:is) (Bind n (Pi ty) sc) 
@@ -83,7 +86,8 @@ delabTy' ist imps tm fullname = de [] imps tm
                                           (de env [] r)
     deFn env (P _ n _) args 
          = case lookup n (idris_metavars ist) of
-                Just mi | mi >=0 -> mkMVApp (dens n) (drop mi (map (de env []) args))
+                Just (Just _, mi) -> 
+                     mkMVApp (dens n) (drop mi (map (de env []) args))
                 _ -> mkPApp (dens n) (map (de env []) args)
     deFn env f args = PApp un (de env [] f) (map pexp (map (de env []) args))
 
