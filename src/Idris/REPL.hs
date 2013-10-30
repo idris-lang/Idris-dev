@@ -625,15 +625,17 @@ process h fn (DoProofSearch updatefile l n)
                                   Just mi -> mi
                                   _ -> (Nothing, 0)
          let fc = fileFC fn
-         let body = PProof [Try (TSeq Intros (ProofSearch top n)) 
-                                (ProofSearch top n)]
-         let def = PClause fc mn (PRef fc mn) [] body []
-         elabDecls toplevel [PClauses fc [] mn [def]]
-         (tm, ty) <- elabVal toplevel False (PRef fc mn)
-         ctxt <- getContext
-         i <- getIState
-         let newmv = show (stripNS
-                       (dropCtxt envlen (delab i (normaliseAll ctxt [] tm))))
+         let body t = PProof [Try (TSeq Intros (ProofSearch top n)) 
+                                  (ProofSearch t n)]
+         let def = PClause fc mn (PRef fc mn) [] (body top) []
+         newmv <- idrisCatch
+             (do elabDecl' EAll toplevel (PClauses fc [] mn [def])
+                 (tm, ty) <- elabVal toplevel False (PRef fc mn)
+                 ctxt <- getContext
+                 i <- getIState
+                 return $ show (stripNS
+                           (dropCtxt envlen (delab i (normaliseAll ctxt [] tm)))))
+             (\e -> return ("?" ++ show n))
          if updatefile then
             do let fb = fn ++ "~"
                runIO $ writeFile fb (unlines before ++ 

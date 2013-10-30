@@ -34,10 +34,11 @@ trivial elab ist = try' (do elab (PRefl (fileFC "prf") Placeholder)
                    else tryAll xs
 
 proofSearch :: (PTerm -> ElabD ()) -> Maybe Name -> Name -> IState -> ElabD ()
-proofSearch elab fn nroot ist = psRec maxDepth where
-    maxDepth = 10
+proofSearch elab fn nroot ist = psRec maxDepth 
+  where
+    maxDepth = 6
   
-    psRec 0 = fail "Maximum depth reached"
+    psRec 0 = do attack; defer nroot; solve --fail "Maximum depth reached"
     psRec d = try' (trivial elab ist)
                    (try' (try' (resolveByCon (d - 1)) (resolveByLocals (d - 1))
                                True)
@@ -77,8 +78,8 @@ proofSearch elab fn nroot ist = psRec maxDepth where
                                    (psRec d) "proof search local apply"
 
     -- Like type class resolution, but searching with constructors
-    tryCon d n
-       = do let imps = case lookupCtxtName n (idris_implicits ist) of
+    tryCon d n = 
+         do let imps = case lookupCtxtName n (idris_implicits ist) of
                             [] -> []
                             [args] -> map isImp (snd args)
             ps <- get_probs
@@ -92,3 +93,4 @@ proofSearch elab fn nroot ist = psRec maxDepth where
     
     isImp (PImp p _ _ _ _ _) = (True, p)
     isImp arg = (False, priority arg)
+
