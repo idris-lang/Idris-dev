@@ -121,7 +121,9 @@ startServer orig stvar fn_in = do tid <- runIO $ forkOS serverLoop
 
         loop fn ist sock 
             = do (h,host,_) <- accept sock
-                 if (host == "localhost" ||
+                 -- just use the local part of the hostname
+                 -- for the "localhost.localdomain" case
+                 if ((takeWhile (/= '.') host) == "localhost" ||
                      host == "127.0.0.1") 
                    then do
                      cmd <- hGetLine h
