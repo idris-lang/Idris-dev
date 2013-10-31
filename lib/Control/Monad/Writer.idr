@@ -9,11 +9,9 @@ import Prelude.Functor
 %access public
 
 class (Monoid w, Monad m) => MonadWriter w (m : Type -> Type) where
-    tell    : w -> m ()
-    listen  : m a -> m (a, w)
-    listens : (w -> b) -> m a -> m (a, b)
-    pass    : m (a, w -> w) -> m a
-    censor  : (w -> w) -> m a -> m a
+    tell   : w -> m ()
+    listen : m a -> m (a, w)
+    pass   : m (a, w -> w) -> m a
 
 record WriterT : Type -> (Type -> Type) -> Type -> Type where
     WR : {m : Type -> Type} ->
@@ -38,16 +36,20 @@ instance (Monoid w, Monad m) => Monad (WriterT w m) where
                            return (b, w <+> w')
 
 instance (Monoid w, Monad m) => MonadWriter w (WriterT w m) where
-    tell w           = WR $ return ((), w)
-    listen (WR m)    = WR $ do (a, w) <- m
-                               return ((a, w), w)
-    listens f (WR m) = WR $ do (a, w) <- m
-                               return ((a, f w), w)
-    pass (WR m)      = WR $ do ((a, f), w) <- m
-                               return (a, f w)
-    censor f (WR m)  = WR $ do (a, w) <- m
-                               return (a, f w)
+    tell w        = WR $ return ((), w)
+    listen (WR m) = WR $ do (a, w) <- m
+                            return ((a, w), w)
+    pass (WR m)   = WR $ do ((a, f), w) <- m
+                            return (a, f w)
 
+listens : MonadWriter w m => (w -> b) -> m a -> m (a, b)
+listens f m = listens' f (listen m) where
+  listens' f' ma = do (a, w) <- ma
+                      return (a, f' w)
+
+censor : MonadWriter w m => (w -> w) -> m a -> m a
+censor f m = pass $ do a <- m
+                       return (a, f)
 
 Writer : Type -> Type -> Type
 Writer w a = WriterT w Identity a
