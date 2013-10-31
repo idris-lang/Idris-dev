@@ -9,7 +9,11 @@ import Prelude.Functor
 %access public
 
 class (Monoid w, Monad m) => MonadWriter w (m : Type -> Type) where
-    tell : w -> m ()
+    tell    : w -> m ()
+    listen  : m a -> m (a, w)
+    listens : (w -> b) -> m a -> m (a, b)
+    pass    : m (a, w -> w) -> m a
+    censor  : (w -> w) -> m a -> m a
 
 record WriterT : Type -> (Type -> Type) -> Type -> Type where
     WR : {m : Type -> Type} ->
@@ -34,7 +38,15 @@ instance (Monoid w, Monad m) => Monad (WriterT w m) where
                            return (b, w <+> w')
 
 instance (Monoid w, Monad m) => MonadWriter w (WriterT w m) where
-    tell w = WR $ return ((), w)
+    tell w           = WR $ return ((), w)
+    listen (WR m)    = WR $ do (a, w) <- m
+                               return ((a, w), w)
+    listens f (WR m) = WR $ do (a, w) <- m
+                               return ((a, f w), w)
+    pass (WR m)      = WR $ do ((a, f), w) <- m
+                               return (a, f w)
+    censor f (WR m)  = WR $ do (a, w) <- m
+                               return (a, f w)
 
 
 Writer : Type -> Type -> Type

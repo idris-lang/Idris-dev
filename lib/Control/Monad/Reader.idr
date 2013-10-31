@@ -9,7 +9,9 @@ import Prelude.Functor
 %access public
 
 class Monad m => MonadReader r (m : Type -> Type) where
-  ask : m r
+    ask   : m r
+    local : (r -> r) -> m a -> m a
+    asks  : (r -> a) -> m a
 
 record ReaderT : Type -> (Type -> Type) -> Type -> Type where
     RD : {m : Type -> Type} ->
@@ -35,7 +37,9 @@ instance Monad m => Monad (ReaderT r m) where
                                  ka r
 
 instance Monad m => MonadReader r (ReaderT r m) where
-    ask = RD return
+    ask            = RD return
+    local f (RD m) = RD $ m . f
+    asks f         = RD $ return . f
 
 Reader : Type -> Type -> Type
 Reader r a = ReaderT r Identity a
