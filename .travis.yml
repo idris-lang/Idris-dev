@@ -3,6 +3,8 @@ before_install:
   - sudo add-apt-repository --yes ppa:h-rayflood/llvm
   - sudo apt-get update -qq
   - sudo apt-get install -qq libgc-dev llvm-3.3
+install:
+  - cabal install -f FFI -f LLVM --only-dependencies --enable-tests
 before_script:
   - cabal sdist
   - cd ..
