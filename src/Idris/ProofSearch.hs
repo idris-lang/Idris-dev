@@ -33,8 +33,9 @@ trivial elab ist = try' (do elab (PRefl (fileFC "prf") Placeholder)
                              (tryAll xs) True
                    else tryAll xs
 
-proofSearch :: (PTerm -> ElabD ()) -> Maybe Name -> Name -> IState -> ElabD ()
-proofSearch elab fn nroot ist = psRec maxDepth 
+proofSearch :: (PTerm -> ElabD ()) -> Maybe Name -> Name -> [Name] ->
+               IState -> ElabD ()
+proofSearch elab fn nroot hints ist = psRec maxDepth 
   where
     maxDepth = 6
   
@@ -54,7 +55,8 @@ proofSearch elab fn nroot ist = psRec maxDepth
              let (f, _) = unApply t
              case f of
                 P _ n _ -> case lookupCtxt n (idris_datatypes ist) of
-                               [t] -> tryCons d (con_names t ++ getFn d fn)
+                               [t] -> tryCons d (hints ++ con_names t ++
+                                                                getFn d fn)
                                _ -> fail "Not a data type"
                 _ -> fail "Not a data type"
 
@@ -82,6 +84,7 @@ proofSearch elab fn nroot ist = psRec maxDepth
          do let imps = case lookupCtxtName n (idris_implicits ist) of
                             [] -> []
                             [args] -> map isImp (snd args)
+                            _ -> fail "Ambiguous name"
             ps <- get_probs
             args <- apply (Var n) imps
             ps' <- get_probs

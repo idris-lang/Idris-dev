@@ -256,6 +256,7 @@ nameRoot acc nm =
         case span (/='_') nm of
              (before, ('_' : after)) -> nameRoot (acc ++ [before]) after
              _ -> showSep "_" (acc ++ [nm])
+
 getClause :: Int -> -- ^ Line type is declared on
              Name -> -- ^ Function name
              FilePath -> -- ^ Source file name

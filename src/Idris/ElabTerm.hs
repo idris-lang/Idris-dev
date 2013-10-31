@@ -646,8 +646,8 @@ findInstances ist t
 
 trivial' ist 
     = trivial (elab ist toplevel False False (MN 0 "tac")) ist
-proofSearch' ist top n 
-    = proofSearch (elab ist toplevel False False (MN 0 "tac")) top n ist 
+proofSearch' ist top n hints
+    = proofSearch (elab ist toplevel False False (MN 0 "tac")) top n hints ist
                           
 
 resolveTC :: Int -> Name -> IState -> ElabD ()
@@ -863,7 +863,8 @@ runTac autoSolve ist tac
                    when autoSolve solveAll
     runT Compute = compute
     runT Trivial = do trivial' ist; when autoSolve solveAll
-    runT (ProofSearch top n) = do proofSearch' ist top n; when autoSolve solveAll
+    runT (ProofSearch top n hints) 
+         = do proofSearch' ist top n hints; when autoSolve solveAll
     runT (Focus n) = focus n
     runT Solve = solve
     runT (Try l r) = do try' (runT l) (runT r) True

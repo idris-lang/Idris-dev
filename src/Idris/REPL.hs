@@ -588,6 +588,10 @@ process h fn (AddMissing updatefile l n)
               dens (PRef fc n) = PRef fc (nsroot n)
               dens t = t
 
+          nsroot (NS n _) = nsroot n
+          nsroot (SN (WhereN _ _ n)) = nsroot n
+          nsroot n = n
+
           getAppName (PApp _ r _) = getAppName r
           getAppName (PRef _ r) = r
           getAppName _ = n
@@ -612,7 +616,7 @@ process h fn (MakeWith updatefile l n)
                                     unlines rest)
               runIO $ copyFile fb fn
            else ihputStrLn h with
-process h fn (DoProofSearch updatefile l n)
+process h fn (DoProofSearch updatefile l n hints)
     = do src <- runIO $ readFile fn
          let (before, tyline : later) = splitAt (l-1) (lines src)
          ctxt <- getContext
@@ -625,8 +629,8 @@ process h fn (DoProofSearch updatefile l n)
                                   Just mi -> mi
                                   _ -> (Nothing, 0)
          let fc = fileFC fn
-         let body t = PProof [Try (TSeq Intros (ProofSearch top n)) 
-                                  (ProofSearch t n)]
+         let body t = PProof [Try (TSeq Intros (ProofSearch t n hints)) 
+                                  (ProofSearch t n hints)]
          let def = PClause fc mn (PRef fc mn) [] (body top) []
          newmv <- idrisCatch
              (do elabDecl' EAll toplevel (PClauses fc [] mn [def])
@@ -634,7 +638,8 @@ process h fn (DoProofSearch updatefile l n)
                  ctxt <- getContext
                  i <- getIState
                  return $ show (stripNS
-                           (dropCtxt envlen (delab i (normaliseAll ctxt [] tm)))))
+                           (dropCtxt envlen 
+                              (delab i (specialise ctxt [] [(mn, 1)] tm)))))
              (\e -> return ("?" ++ show n))
          if updatefile then
             do let fb = fn ++ "~"
@@ -652,6 +657,10 @@ process h fn (DoProofSearch updatefile l n)
           stripNS tm = mapPT dens tm where 
               dens (PRef fc n) = PRef fc (nsroot n)
               dens t = t
+
+          nsroot (NS n _) = nsroot n
+          nsroot (SN (WhereN _ _ n)) = nsroot n
+          nsroot n = n
 
           updateMeta ('?':cs) n new
             | length cs >= length n

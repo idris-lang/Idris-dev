@@ -244,7 +244,7 @@ data Command = Quit
              | AddClauseFrom Bool Int Name 
              | AddMissing Bool Int Name 
              | MakeWith Bool Int Name 
-             | DoProofSearch Bool Int Name
+             | DoProofSearch Bool Int Name [Name]
              | SetOpt Opt
              | UnsetOpt Opt
              | NOP
@@ -616,7 +616,8 @@ data PTactic' t = Intro [Name] | Intros | Focus Name
                 | Equiv t
                 | MatchRefine Name 
                 | LetTac Name t | LetTacTy Name t t
-                | Exact t | Compute | Trivial | ProofSearch (Maybe Name) Name
+                | Exact t | Compute | Trivial 
+                | ProofSearch (Maybe Name) Name [Name]
                 | Solve
                 | Attack
                 | ProofState | ProofTerm | Undo
