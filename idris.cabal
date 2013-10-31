@@ -289,6 +289,11 @@ Flag LLVM
   Default:      True
   manual:       True
 
+Flag FFI
+  Description:  Build support for libffi 
+  Default:      True
+  manual:       True
+
 Executable idris
   Main-is:        Main.hs
   hs-source-dirs: src
@@ -381,7 +386,6 @@ Executable idris
                 , filepath
                 , haskeline >= 0.7
                 , language-java >= 0.2.2
-                , libffi
                 , mtl
                 , parsec >= 3
                 , parsers == 0.9
@@ -422,3 +426,7 @@ Executable idris
                   , llvm-general-pure == 3.3.8.*
   else
      other-modules: Util.LLVMStubs
+  if flag(FFI)
+     build-depends: libffi
+     cpp-options:   -DIDRIS_FFI
+

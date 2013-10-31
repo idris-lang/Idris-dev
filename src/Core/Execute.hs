@@ -1,4 +1,4 @@
-{-# LANGUAGE PatternGuards, ExistentialQuantification #-}
+{-# LANGUAGE PatternGuards, ExistentialQuantification, CPP #-}
 module Core.Execute (execute) where
 
 import Idris.AbsSyntax
@@ -25,13 +25,19 @@ import Data.Maybe
 import Data.Bits
 import qualified Data.Map as M
 
+#ifdef IDRIS_FFI
 import Foreign.LibFFI
 import Foreign.C.String
 import Foreign.Marshal.Alloc (free)
 import Foreign.Ptr
+#endif
 
 import System.IO
 
+#ifndef IDRIS_FFI
+execute :: Term -> Idris Term
+execute tm = fail "libffi not supported, rebuild Idris with -f FFI"
+#else -- rest of file
 readMay :: (Read a) => String -> Maybe a
 readMay s = case reads s of
               [(x, "")] -> Just x
@@ -529,3 +535,5 @@ findForeign fn = do est <- getExecState
                                                    show (length fs) ++ " occurrences."
                                return Nothing
     where getFn lib = execIO $ catchIO (tryLoadFn fn lib) (\_ -> return Nothing)
+
+#endif
