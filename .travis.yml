@@ -9,7 +9,7 @@ before_script:
   - tar -xf Idris-dev/dist/idris*.tar.gz
   - cd idris*
 script:
-  - cabal configure
+  - cabal configure -f FFI -f LLVM
   - cabal build
   - cabal copy
   - make -j2 test

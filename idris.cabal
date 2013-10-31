@@ -286,12 +286,12 @@ Flag Effects
 
 Flag LLVM
   Description:  Build the LLVM backend
-  Default:      True
+  Default:      False
   manual:       True
 
 Flag FFI
   Description:  Build support for libffi 
-  Default:      True
+  Default:      False
   manual:       True
 
 Executable idris
