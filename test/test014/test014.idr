@@ -16,7 +16,7 @@ syntax ifM [test] then [t] else [e]
 
 open : String -> (p:Purpose) -> Creator (Either () (FILE p))
 open fn p = ioc (do h <- fopen fn (pstring p)
-                    ifM validFile h 
+                    ifM validFile h
                         then return (Right (OpenH h))
                         else return (Left ()))
 

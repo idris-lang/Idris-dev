@@ -8,7 +8,7 @@ module Prelude.Complex
 import Builtins
 import Prelude
 
------------------------------- Rectangular form 
+------------------------------ Rectangular form
 
 infix 6 :+
 data Complex a = (:+) a a

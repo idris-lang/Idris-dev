@@ -1,10 +1,10 @@
 module Main
 
-implicit 
+implicit
 natInt : Nat -> Integer
 natInt x = cast x
 
-implicit 
+implicit
 forget : Vect n a -> List a
 forget [] = []
 forget (x :: xs) = x :: forget xs

@@ -1,4 +1,4 @@
-module Main 
+module Main
 
 import Effect.File
 import Effect.State
@@ -8,20 +8,20 @@ import Control.IOExcept
 data FName = Count | NotCount
 
 FileIO : Type -> Type -> Type
-FileIO st t 
+FileIO st t
    = Eff (IOExcept String) [FILE_IO st, STDIO, Count ::: STATE Int] t
 
 readFile : FileIO (OpenFile Read) (List String)
 readFile = readAcc [] where
-    readAcc : List String -> FileIO (OpenFile Read) (List String) 
+    readAcc : List String -> FileIO (OpenFile Read) (List String)
     readAcc acc = do e <- eof
-                     if (not e) 
+                     if (not e)
                         then do str <- readLine
                                 Count :- put (!(Count :- get) + 1)
                                 readAcc (str :: acc)
                         else return (reverse acc)
 
-testFile : FileIO () () 
+testFile : FileIO () ()
 testFile = do open "testFile" Read
               if_valid then do putStrLn (show !readFile)
                                close

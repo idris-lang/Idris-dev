@@ -21,7 +21,7 @@ instance --- they must not overlap.
 Sort foo using the default comparison operator:
 
 > test1 : List Nat
-> test1 = sort foo 
+> test1 = sort foo
 
 -- which gives [1,2,3,4,5,6,7,8]
 
@@ -29,7 +29,7 @@ Sort foo using the alternative instance. No need for 'sortBy' and other
 such functions. Hoorah!
 
 > test2 : List Nat
-> test2 = sort @{myord} foo 
+> test2 = sort @{myord} foo
 
 -- which gives [8,7,6,5,4,3,2,1]
 

@@ -127,7 +127,7 @@ instance Eq a => Eq (MaxiphobicHeap a) where
   (Node ls ll le lr) == (Node rs rl re rr) =
     ls == rs && ll == rl && le == re && lr == rr
   _                  == _                  = False
-   
+
 instance Ord a => Semigroup (MaxiphobicHeap a) where
   (<+>) = merge
 

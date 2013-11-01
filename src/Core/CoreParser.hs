@@ -1,6 +1,6 @@
 {-# LANGUAGE MultiParamTypeClasses, FlexibleInstances #-}
 
-module Core.CoreParser(parseTerm, parseFile, parseDef, pTerm, iName, 
+module Core.CoreParser(parseTerm, parseFile, parseDef, pTerm, iName,
                        idrisLexer, maybeWithNS, pDocComment, opChars) where
 
 import Core.TT
@@ -21,22 +21,22 @@ import Debug.Trace
 
 type TokenParser a = PTok.TokenParser a
 
-idrisDef = haskellDef { 
+idrisDef = haskellDef {
               opStart = iOpStart,
               opLetter = iOpLetter,
               identLetter = identLetter haskellDef <|> lchar '.',
-              reservedOpNames 
+              reservedOpNames
                  = [":", "..", "=", "\\", "|", "<-", "->", "=>", "**"],
-              reservedNames 
-                 = ["let", "in", "data", "codata", "record", "Type", 
-                    "do", "dsl", "import", "impossible", 
+              reservedNames
+                 = ["let", "in", "data", "codata", "record", "Type",
+                    "do", "dsl", "import", "impossible",
                     "case", "of", "total", "partial", "mutual",
                     "infix", "infixl", "infixr", "rewrite",
                     "where", "with", "syntax", "proof", "postulate",
                     "using", "namespace", "class", "instance",
                     "public", "private", "abstract", "implicit",
                     "quoteGoal"]
-           } 
+           }
 
 -- | The characters allowed in operator names
 opChars = ":!#$%&*+./<=>?@\\^|-~"
@@ -46,7 +46,7 @@ iOpLetter = oneOf opChars
 --          <|> letter
 
 idrisLexer :: TokenParser a
-idrisLexer  = idrisMakeTokenParser idrisDef 
+idrisLexer  = idrisMakeTokenParser idrisDef
 
 lexer = idrisLexer
 
@@ -130,14 +130,14 @@ initsEndAt p (x:xs) | p x = [] : x_inits_xs
 -- Create a `Name' from a pair of strings representing a base name and its
 -- namespace.
 mkName :: (String, String) -> Name
-mkName (n, "") = UN n 
+mkName (n, "") = UN n
 mkName (n, ns) = NS (UN n) (reverse (parseNS ns))
   where parseNS x = case span (/= '.') x of
                       (x, "")    -> [x]
                       (x, '.':y) -> x : parseNS y
 
 pDocComment :: Char -> CParser a String
-pDocComment c 
+pDocComment c
    = try (do string ("--")
              char c
              skipMany simpleSpace
@@ -193,13 +193,13 @@ pExp = do lchar '\\'; x <- iName []; lchar ':'; ty <- pTerm
                    lchar '.';
                    sc <- pTerm
                    return (RBind x (Hole ty) sc))
-       <|> try (do lchar '('; 
+       <|> try (do lchar '(';
                    x <- iName []; lchar ':'; ty <- pTerm
                    lchar ')';
                    symbol "->";
                    sc <- pTerm
                    return (RBind x (Pi ty) sc))
-       <|> try (do lchar '('; 
+       <|> try (do lchar '(';
                    t <- pTerm
                    lchar ')'
                    return t)
@@ -209,14 +209,14 @@ pExp = do lchar '\\'; x <- iName []; lchar ':'; ty <- pTerm
                    val <- pTerm
                    sc <- pTerm
                    return (RBind x (Guess ty val) sc))
-       <|> try (do reserved "let"; 
+       <|> try (do reserved "let";
                    x <- iName []; lchar ':'; ty <- pTerm
                    lchar '=';
                    val <- pTerm
                    reserved "in";
                    sc <- pTerm
                    return (RBind x (Let ty val) sc))
-       <|> try (do lchar '_'; 
+       <|> try (do lchar '_';
                    x <- iName []; lchar ':'; ty <- pTerm
                    lchar '.';
                    sc <- pTerm
@@ -236,11 +236,11 @@ pConstructor = do lchar '|'
                   c <- iName []; lchar ':'; ty <- pTerm
                   return (c, ty)
 
------- borrowed from Parsec 
+------ borrowed from Parsec
 -- (c) Daan Leijen 1999-2001, (c) Paolo Martini 2007
 
 idrisMakeTokenParser languageDef
-    = PTok.TokenParser{ 
+    = PTok.TokenParser{
                    PTok.identifier = identifier
                  , PTok.reserved = reserved
                  , PTok.operator = operator

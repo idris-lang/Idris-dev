@@ -6,5 +6,5 @@ namespace x
 
 namespace y
   test : String -> String
-  test x = x ++ x 
+  test x = x ++ x
 

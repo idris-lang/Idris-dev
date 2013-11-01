@@ -1,6 +1,6 @@
-{-- 
+{--
 
-Things needed to build without LLVM 
+Things needed to build without LLVM
 Replaces stuff from LLVM.General.Target and IRTS.CodegenLLVM.
 
 --}

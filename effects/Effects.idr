@@ -52,36 +52,36 @@ updateWith (y :: ys) []        SubNil      = y :: ys
 updateWith []        (x :: xs) (Keep rest) = []
 
 -- put things back, replacing old with new in the sub-environment
-rebuildEnv : Env m ys' -> (prf : SubList ys xs) -> 
-             Env m xs -> Env m (updateWith ys' xs prf) 
+rebuildEnv : Env m ys' -> (prf : SubList ys xs) ->
+             Env m xs -> Env m (updateWith ys' xs prf)
 rebuildEnv []        SubNil      env = env
 rebuildEnv (x :: xs) (Keep rest) (y :: env) = x :: rebuildEnv xs rest env
 rebuildEnv xs        (Drop rest) (y :: env) = y :: rebuildEnv xs rest env
-rebuildEnv (x :: xs) SubNil      [] = x :: xs 
+rebuildEnv (x :: xs) SubNil      [] = x :: xs
 
 ---- The Effect EDSL itself ----
 
 -- some proof automation
 findEffElem : Nat -> List (TTName, Binder TT) -> TT -> Tactic -- Nat is maximum search depth
 findEffElem Z ctxt goal = Refine "Here" `Seq` Solve
-findEffElem (S n) ctxt goal = GoalType "EffElem" 
+findEffElem (S n) ctxt goal = GoalType "EffElem"
           (Try (Refine "Here" `Seq` Solve)
                (Refine "There" `Seq` (Solve `Seq` findEffElem n ctxt goal)))
 
 findSubList : Nat -> List (TTName, Binder TT) -> TT -> Tactic
 findSubList Z ctxt goal = Refine "SubNil" `Seq` Solve
 findSubList (S n) ctxt goal
-   = GoalType "SubList" 
+   = GoalType "SubList"
          (Try (Refine "subListId" `Seq` Solve)
          ((Try (Refine "Keep" `Seq` Solve)
                (Refine "Drop" `Seq` Solve)) `Seq` findSubList n ctxt goal))
 
-updateResTy : (xs : List EFFECT) -> EffElem e a xs -> e a b t -> 
+updateResTy : (xs : List EFFECT) -> EffElem e a xs -> e a b t ->
               List EFFECT
 updateResTy {b} (MkEff a e :: xs) Here n = (MkEff b e) :: xs
 updateResTy (x :: xs)        (There p) n = x :: updateResTy xs p n
 
-updateResTyImm : (xs : List EFFECT) -> EffElem e a xs -> Type -> 
+updateResTyImm : (xs : List EFFECT) -> EffElem e a xs -> Type ->
                  List EFFECT
 updateResTyImm (MkEff a e :: xs) Here b = (MkEff b e) :: xs
 updateResTyImm (x :: xs)    (There p) b = x :: updateResTyImm xs p b
@@ -91,7 +91,7 @@ infix 5 :::, :-, :=
 data LRes : lbl -> Type -> Type where
      (:=) : (x : lbl) -> res -> LRes x res
 
-(:::) : lbl -> EFFECT -> EFFECT 
+(:::) : lbl -> EFFECT -> EFFECT
 (:::) {lbl} x (MkEff r eff) = MkEff (LRes x r) eff
 
 private
@@ -108,8 +108,8 @@ data EffM : (m : Type -> Type) ->
             List EFFECT -> List EFFECT -> Type -> Type where
      value   : a -> EffM m xs xs a
      ebind   : EffM m xs xs' a -> (a -> EffM m xs' xs'' b) -> EffM m xs xs'' b
-     effect  : (prf : EffElem e a xs) -> 
-               (eff : e a b t) -> 
+     effect  : (prf : EffElem e a xs) ->
+               (eff : e a b t) ->
                EffM m xs (updateResTy xs prf eff) t
      lift    : (prf : SubList ys xs) ->
                EffM m ys ys' t -> EffM m xs (updateWith ys' xs prf) t
@@ -142,9 +142,9 @@ lift' {prf} e = lift prf e
 
 implicit
 effect' : {a, b: _} -> {e : Effect} ->
-          {default tactics { applyTactic findEffElem 20; solve; } 
-             prf : EffElem e a xs} -> 
-          (eff : e a b t) -> 
+          {default tactics { applyTactic findEffElem 20; solve; }
+             prf : EffElem e a xs} ->
+          (eff : e a b t) ->
          EffM m xs (updateResTy xs prf eff) t
 effect' {prf} e = effect prf e
 
@@ -152,13 +152,13 @@ effect' {prf} e = effect prf e
 
 syntax if_valid then [e] else [t] =
      test (tactics { applyTactic findEffElem 20; solve; }) t e
-  
+
 syntax if_valid [lbl] then [e] else [t] =
      test_lbl {x=lbl} (tactics { applyTactic findEffElem 20; solve; }) t e
-  
+
 syntax if_error then [t] else [e] =
      test (tactics { applyTactic findEffElem 20; solve; }) t e
-  
+
 syntax if_error [lbl] then [t] else [e] =
      test_lbl {x=lbl} (tactics { applyTactic findEffElem 20; solve; }) t e
 
@@ -166,16 +166,16 @@ syntax if_error [lbl] then [t] else [e] =
 
 syntax if_right then [e] else [t] =
      test (tactics { applyTactic findEffElem 20; solve; }) t e
-  
+
 syntax if_right [lbl] then [e] else [t] =
      test_lbl {x=lbl} (tactics { applyTactic findEffElem 20; solve; }) t e
-  
+
 syntax if_left then [t] else [e] =
      test (tactics { applyTactic findEffElem 20; solve; }) t e
-  
+
 syntax if_left [lbl] then [t] else [e] =
      test_lbl {x=lbl} (tactics { applyTactic findEffElem 20; solve; }) t e
-  
+
 
 -- for 'do' notation
 
@@ -200,12 +200,12 @@ pure = value
 -- an interpreter
 
 private
-execEff : Env m xs -> (p : EffElem e res xs) -> 
+execEff : Env m xs -> (p : EffElem e res xs) ->
           (eff : e res b a) ->
           (Env m (updateResTy xs p eff) -> a -> m t) -> m t
-execEff (val :: env) Here eff' k 
+execEff (val :: env) Here eff' k
     = handle val eff' (\res, v => k (res :: env) v)
-execEff (val :: env) (There p) eff k 
+execEff (val :: env) (There p) eff k
     = execEff env p eff (\env', v => k (val :: env') v)
 
 private
@@ -217,7 +217,7 @@ testEff (Left err :: env) Here lk rk = lk (err :: env)
 testEff (Right ok :: env) Here lk rk = rk (ok :: env)
 testEff (val :: env) (There p) lk rk
    = testEff env p (\envk => lk (val :: envk))
-                   (\envk => rk (val :: envk)) 
+                   (\envk => rk (val :: envk))
 
 private
 testEffLbl : {x : lbl} ->
@@ -229,21 +229,21 @@ testEffLbl ((lbl := Left err) :: env) Here lk rk = lk ((lbl := err) :: env)
 testEffLbl ((lbl := Right ok) :: env) Here lk rk = rk ((lbl := ok) :: env)
 testEffLbl (val :: env) (There p) lk rk
    = testEffLbl env p (\envk => lk (val :: envk))
-                      (\envk => rk (val :: envk)) 
+                      (\envk => rk (val :: envk))
 
 -- Q: Instead of m b, implement as StateT (Env m xs') m b, so that state
 -- updates can be propagated even through failing computations?
 
 eff : Env m xs -> EffM m xs xs' a -> (Env m xs' -> a -> m b) -> m b
 eff env (value x) k = k env x
-eff env (prog `ebind` c) k 
+eff env (prog `ebind` c) k
    = eff env prog (\env', p' => eff env' (c p') k)
 eff env (effect prf effP) k = execEff env prf effP k
-eff env (lift prf effP) k 
-   = let env' = dropEnv env prf in 
+eff env (lift prf effP) k
+   = let env' = dropEnv env prf in
          eff env' effP (\envk, p' => k (rebuildEnv envk prf env) p')
 eff env (new r prog) k
-   = let env' = r :: env in 
+   = let env' = r :: env in
          eff env' prog (\(v :: envk), p' => k envk p')
 eff env (test prf l r) k
    = testEff env prf (\envk => eff envk l k) (\envk => eff envk r k)
@@ -281,7 +281,7 @@ Eff m xs t = EffM m xs xs t
 -- some higher order things
 
 mapE : Applicative m => (a -> Eff m xs b) -> List a -> Eff m xs (List b)
-mapE f []        = pure [] 
+mapE f []        = pure []
 mapE f (x :: xs) = [| f x :: mapE f xs |]
 
 when : Applicative m => Bool -> Eff m xs () -> Eff m xs ()

@@ -21,21 +21,21 @@ instance Show (Binary w k) where
 pattern syntax bitpair [x] [y] = (_ ** (_ ** (x, y, _)))
 term    syntax bitpair [x] [y] = (_ ** (_ ** (x, y, refl)))
 
-addBit : Bit x -> Bit y -> Bit c -> 
+addBit : Bit x -> Bit y -> Bit c ->
           (bx ** (by ** (Bit bx, Bit by, c + x + y = by + 2 * bx)))
 addBit b0 b0 b0 = bitpair b0 b0
-addBit b0 b0 b1 = bitpair b0 b1 
+addBit b0 b0 b1 = bitpair b0 b1
 addBit b0 b1 b0 = bitpair b0 b1
 addBit b0 b1 b1 = bitpair b1 b0
-addBit b1 b0 b0 = bitpair b0 b1 
-addBit b1 b0 b1 = bitpair b1 b0 
-addBit b1 b1 b0 = bitpair b1 b0 
-addBit b1 b1 b1 = bitpair b1 b1 
+addBit b1 b0 b0 = bitpair b0 b1
+addBit b1 b0 b1 = bitpair b1 b0
+addBit b1 b1 b0 = bitpair b1 b0
+addBit b1 b1 b1 = bitpair b1 b1
 
-adc : Binary w x -> Binary w y -> Bit c -> Binary (S w) (c + x + y) 
+adc : Binary w x -> Binary w y -> Bit c -> Binary (S w) (c + x + y)
 adc zero        zero        carry ?= zero # carry
 adc (numx # bx) (numy # by) carry
-   ?= let (bitpair carry0 lsb) = addBit bx by carry in 
+   ?= let (bitpair carry0 lsb) = addBit bx by carry in
           adc numx numy carry0 # lsb
 
 main : IO ()

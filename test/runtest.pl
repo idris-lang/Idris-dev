@@ -24,7 +24,7 @@ sub runtest {
     $got =~ s/\r\n/\n/g;
     $exp =~ s/\r\n/\n/g;
 
-    # Normalize paths in $got and $exp, so the expected outcomes don't 
+    # Normalize paths in $got and $exp, so the expected outcomes don't
     # change between platforms
     while($got =~ /(^|.*?\n)(.*?)\\(.*?):(\d+):(.*)/ms) {
         $got = "$1$2/$3:$4:$5";
@@ -35,7 +35,7 @@ sub runtest {
 
     if ($got eq $exp) {
     	print "Ran $test...success\n";
-    } 
+    }
     else {
         if ($update == 0) {
             $exitstatus = 1;
@@ -66,7 +66,7 @@ if ($#ARGV>=0) {
 	    push @tests, $test;
     }
     @opts = @ARGV;
-} 
+}
 else {
     print "Give a test name, or 'all' to run all.\n";
     exit;

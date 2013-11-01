@@ -66,7 +66,7 @@ firstEq ((y, Lam yt)::(x, Lam xt)::(_, Let _ f)::Nil) _ = Exact (App (App f (P (
 firstEq xs _ = Exact (TConst (I 0))
 
 -- | Skip 1 argument of the proof context and return the second one which
--- has to be introduced. Used for the tactical dispatch example, which 
+-- has to be introduced. Used for the tactical dispatch example, which
 -- will push dispatch, as first env agrument.
 innerTac : List (TTName, Binder TT) -> TT -> Tactic
 innerTac (_::(x, Lam xt)::_) _ = Exact (P Bound x xt)

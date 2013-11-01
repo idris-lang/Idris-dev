@@ -16,7 +16,7 @@ fetch x = MkEval (\e => fetchVal e) where
 instance Functor Eval where
     map f (MkEval g) = MkEval (\e => map f (g e))
 
-instance Applicative Eval where 
+instance Applicative Eval where
     pure x = MkEval (\e => Just x)
 
     (<$>) (MkEval f) (MkEval g) = MkEval (\x => app (f x) (g x)) where

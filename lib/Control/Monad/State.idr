@@ -33,7 +33,7 @@ instance Monad m => Monad (StateT s m) where
 
 instance Monad m => MonadState s (StateT s m) where
     get   = ST (\x => return (x, x))
-    put x = ST (\y => return ((), x)) 
+    put x = ST (\y => return ((), x))
 
 modify : MonadState s m => (s -> s) -> m ()
 modify f = do s <- get

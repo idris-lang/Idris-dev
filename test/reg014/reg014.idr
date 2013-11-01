@@ -6,7 +6,7 @@ Matrix a n m = Vect n (Vect m a)
 transpose : Matrix a (S n) (S m) -> Matrix a (S m) (S n)
 transpose ((x:: []) :: []) = [[x]]
 transpose [x :: y :: xs] = [x] :: (transpose [y :: xs])
-transpose (x :: y :: xs) 
-    = let tx = transpose [x] in 
+transpose (x :: y :: xs)
+    = let tx = transpose [x] in
       let ux = transpose (y :: xs) in zipWith (++) tx ux
 

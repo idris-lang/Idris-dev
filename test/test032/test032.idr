@@ -14,7 +14,7 @@ vadd : Num a => Vect n a -> Vect n a -> Vect n a
 vadd xs ys = localZipWith (+) xs ys where
    localZipWith : (a -> b -> c) -> Vect n a -> Vect n b -> Vect n c
    localZipWith f [] [] = []
-   localZipWith f (_ :: _) ys = ?localZipWith_rhs 
+   localZipWith f (_ :: _) ys = ?localZipWith_rhs
 
 map : (a -> b) -> Vect n a -> Vect n b
 map f [] = []
