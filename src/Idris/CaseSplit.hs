@@ -1,7 +1,7 @@
 {-# LANGUAGE PatternGuards #-}
 
 module Idris.CaseSplit(split, splitOnLine, replaceSplits,
-                       getClause,
+                       getClause, getProofClause,
                        mkWith,
                        getUniq, nameRoot) where
 
@@ -271,6 +271,16 @@ getClause l fn fp = do ty <- getInternalApp fp l
                = show n ++ " " ++ mkApp sc ns
          mkApp (PPi _ _ _ sc) ns = mkApp sc ns
          mkApp _ _ = ""
+
+getProofClause :: Int -> -- ^ Line type is declared on
+                  Name -> -- ^ Function name
+                  FilePath -> -- ^ Source file name
+                  Idris String
+getProofClause l fn fp 
+                  = do ty <- getInternalApp fp l
+                       return (mkApp ty ++ " = ?" ++ show fn ++ "_rhs")
+   where mkApp (PPi _ _ _ sc) = mkApp sc 
+         mkApp rt = "(" ++ show rt ++ ") <== " ++ show fn
 
 -- Purely syntactic - turn a pattern match clause into a with and a new
 -- match clause

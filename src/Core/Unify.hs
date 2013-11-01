@@ -34,7 +34,6 @@ data UResult a = UOK a
 match_unify :: Context -> Env -> TT Name -> TT Name -> [Name] -> [Name] ->
                TC [(Name, TT Name)]
 match_unify ctxt env topx topy dont holes =
---   trace ("Matching " ++ show (topx, topy)) $
      case runStateT (un [] topx topy) (UI 0 []) of
         OK (v, UI _ []) -> return (filter notTrivial v)
         res -> 
@@ -44,7 +43,13 @@ match_unify ctxt env topx topy dont holes =
         	  	        (UI 0 []) of
                        OK (v, UI _ fails) -> 
                             return (filter notTrivial v)
-                       Error e -> tfail e
+                       Error e -> 
+                        -- just normalise the term we're matching against
+                         case runStateT (un [] topxn topy)
+        	  	          (UI 0 []) of
+                           OK (v, UI _ fails) -> 
+                              return (filter notTrivial v)
+                           _ -> tfail e
   where
     un names (P _ x _) tm
         | holeIn env x || x `elem` holes

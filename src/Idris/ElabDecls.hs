@@ -53,10 +53,6 @@ elabType info syn doc fc opts n ty' = {- let ty' = piBind (params info) ty_in
          ctxt <- getContext
          i <- getIState
 
-         -- Add user one, not implicitsed one
-         addInternalApp (fc_fname fc) (fc_line fc) ty'
-         addIBC (IBCLineApp (fc_fname fc) (fc_line fc) ty')
-
          logLvl 3 $ show n ++ " pre-type " ++ showImp Nothing True False ty'
          ty' <- addUsingConstraints syn fc ty'
          ty' <- implicit syn n ty'
@@ -79,6 +75,11 @@ elabType info syn doc fc opts n ty' = {- let ty' = piBind (params info) ty_in
          let nty = cty -- normalise ctxt [] cty
          -- if the return type is something coinductive, freeze the definition
          let nty' = normalise ctxt [] nty
+
+         -- Add normalised type to internals
+         addInternalApp (fc_fname fc) (fc_line fc) (delab i nty')
+         addIBC (IBCLineApp (fc_fname fc) (fc_line fc) (delab i nty'))
+
          let (t, _) = unApply (getRetTy nty')
          let corec = case t of
                         P _ rcty _ -> case lookupCtxt rcty (idris_datatypes i) of
@@ -832,11 +833,12 @@ elabClause info opts (cnum, PClause fc fname lhs_in withs rhs_in whereblock)
         logLvl 3 ("Elaborated: " ++ show lhs_tm)
         logLvl 3 ("Elaborated type: " ++ show lhs_ty)
 
-        addInternalApp (fc_fname fc) (fc_line fc) (delab i lhs_tm)
-        addIBC (IBCLineApp (fc_fname fc) (fc_line fc) (delab i lhs_tm))
-
         (clhs_c, clhsty) <- recheckC fc [] lhs_tm
         let clhs = normalise ctxt [] clhs_c
+
+        addInternalApp (fc_fname fc) (fc_line fc) (delab i clhs)
+        addIBC (IBCLineApp (fc_fname fc) (fc_line fc) (delab i clhs))
+
         logLvl 5 ("Checked " ++ show clhs ++ "\n" ++ show clhsty)
         -- Elaborate where block
         ist <- getIState

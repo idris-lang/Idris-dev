@@ -242,6 +242,7 @@ data Command = Quit
              | CaseSplit Name PTerm
              | CaseSplitAt Bool Int Name 
              | AddClauseFrom Bool Int Name 
+             | AddProofClauseFrom Bool Int Name 
              | AddMissing Bool Int Name 
              | MakeWith Bool Int Name 
              | DoProofSearch Bool Int Name [Name]

@@ -535,6 +535,7 @@ process h fn (Search t) = iPrintError "Not implemented"
 process h fn (CaseSplit n t)
    = do tms <- split n t
         iputStrLn (showSep "\n" (map show tms))
+-- FIXME: There is far too much repetition in the cases below!
 process h fn (CaseSplitAt updatefile l n)
    = do src <- runIO $ readFile fn
         res <- splitOnLine l n fn 
@@ -553,6 +554,25 @@ process h fn (AddClauseFrom updatefile l n)
         let (before, tyline : later) = splitAt (l-1) (lines src)
         let indent = getIndent 0 (show n) tyline
         cl <- getClause l n fn
+        -- add clause before first blank line in 'later'
+        let (nonblank, rest) = span (not . all isSpace) (tyline:later)
+        if updatefile then
+           do let fb = fn ++ "~"
+              runIO $ writeFile fb (unlines (before ++ nonblank) 
+                                        ++ replicate indent ' ' ++
+                                        cl ++ "\n" ++
+                                    unlines rest)
+              runIO $ copyFile fb fn
+           else ihputStrLn h cl
+    where
+       getIndent i n [] = 0
+       getIndent i n xs | take (length n) xs == n = i
+       getIndent i n (x : xs) = getIndent (i + 1) n xs
+process h fn (AddProofClauseFrom updatefile l n)
+   = do src <- runIO $ readFile fn
+        let (before, tyline : later) = splitAt (l-1) (lines src)
+        let indent = getIndent 0 (show n) tyline
+        cl <- getProofClause l n fn
         -- add clause before first blank line in 'later'
         let (nonblank, rest) = span (not . all isSpace) (tyline:later)
         if updatefile then
