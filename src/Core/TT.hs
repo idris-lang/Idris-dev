@@ -390,7 +390,7 @@ intTyWidth ITNative = 8 * sizeOf (0 :: Int)
 intTyWidth ITChar = error "IRTS.Lang.intTyWidth: Characters have platform and backend dependent width"
 intTyWidth ITBig = error "IRTS.Lang.intTyWidth: Big integers have variable width"
 
-data Const = I Int | BI Integer | Fl Double | Ch Char | Str String
+data Const = I Int | BI Integer | Fl Double | Ch Char | Str String | NullPtr
            | B8 Word8 | B16 Word16 | B32 Word32 | B64 Word64
            | B8V (Vector Word8) | B16V (Vector Word16)
            | B32V (Vector Word32) | B64V (Vector Word64)

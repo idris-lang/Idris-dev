@@ -369,5 +369,10 @@ strIndex = prim__strIndex
 reverse : String -> String
 reverse = prim__strRev
 
+-- Null pointer
+total
+null : Ptr
+null = prim__null
+
 }
 
