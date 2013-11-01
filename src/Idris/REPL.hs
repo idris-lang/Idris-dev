@@ -590,12 +590,14 @@ process h fn (AddProofClauseFrom updatefile l n)
 process h fn (AddMissing updatefile l n)
    = do src <- runIO $ readFile fn
         let (before, tyline : later) = splitAt (l-1) (lines src)
+        let indent = getIndent 0 (show n) tyline
         i <- getIState
         cl <- getInternalApp fn l
         let n' = getAppName cl
+
         extras <- case lookupCtxt n' (idris_patdefs i) of
                        [] -> return ""
-                       [(_, tms)] -> showNew (show n ++ "_rhs") 1 tms
+                       [(_, tms)] -> showNew (show n ++ "_rhs") 1 indent tms
         let (nonblank, rest) = span (not . all isSpace) (tyline:later)
         if updatefile then
            do let fb = fn ++ "~"
@@ -616,12 +618,17 @@ process h fn (AddMissing updatefile l n)
           getAppName (PRef _ r) = r
           getAppName _ = n
 
-          showNew nm i (tm : tms)
+          showNew nm i ind (tm : tms)
                         = do (nm', i') <- getUniq nm i
-                             rest <- showNew nm i' tms
-                             return (showPat tm ++ " = ?" ++ nm' ++
+                             rest <- showNew nm i' ind tms
+                             return (replicate ind ' ' ++
+                                     showPat tm ++ " = ?" ++ nm' ++
                                      "\n" ++ rest)
-          showNew nm i [] = return ""
+          showNew nm i _ [] = return ""
+          
+          getIndent i n [] = 0
+          getIndent i n xs | take (length n) xs == n = i
+          getIndent i n (x : xs) = getIndent (i + 1) n xs
 
 process h fn (MakeWith updatefile l n)
    = do src <- runIO $ readFile fn

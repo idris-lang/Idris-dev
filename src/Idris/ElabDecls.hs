@@ -77,8 +77,8 @@ elabType info syn doc fc opts n ty' = {- let ty' = piBind (params info) ty_in
          let nty' = normalise ctxt [] nty
 
          -- Add normalised type to internals
-         addInternalApp (fc_fname fc) (fc_line fc) (delab i nty')
-         addIBC (IBCLineApp (fc_fname fc) (fc_line fc) (delab i nty'))
+         addInternalApp (fc_fname fc) (fc_line fc) (mergeTy ty' (delab i nty'))
+         addIBC (IBCLineApp (fc_fname fc) (fc_line fc) (mergeTy ty' (delab i nty')))
 
          let (t, _) = unApply (getRetTy nty')
          let corec = case t of
@@ -98,6 +98,15 @@ elabType info syn doc fc opts n ty' = {- let ty' = piBind (params info) ty_in
                                           addIBC (IBCCoercion n)
          when corec $ do setAccessibility n Frozen
                          addIBC (IBCAccess n Frozen)
+  where
+    -- for making an internalapp, we only want the explicit ones, and don't
+    -- want the parameters, so just take the arguments which correspond to the
+    -- user declared explicit ones
+    mergeTy (PPi e n ty sc) (PPi e' _ _ sc')
+         | e == e' = PPi e n ty (mergeTy sc sc')
+         | otherwise = mergeTy sc sc'
+    mergeTy _ sc = sc
+
 
 elabPostulate :: ElabInfo -> SyntaxInfo -> String ->
                  FC -> FnOpts -> Name -> PTerm -> Idris ()
