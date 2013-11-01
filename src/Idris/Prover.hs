@@ -36,7 +36,7 @@ prover lit x =
                   _ -> fail "No such metavariable"
 
 showProof :: Bool -> Name -> [String] -> String
-showProof lit n ps 
+showProof lit n ps
     = bird ++ show n ++ " = proof" ++ break ++
              showSep break (map (\x -> "  " ++ x) ps) ++
                      break ++ "\n"
@@ -105,7 +105,7 @@ dumpState ist ps@(PS nm (h:hs) _ _ tm _ _ _ _ _ _ problems i _ _ ctxy _ _ _) = d
     prettyPs ((n, Let t v) : bs) =
       nest nestingSize (pretty n <+> text "=" <+> tPretty v <> colon <+>
         tPretty t $$ prettyPs bs)
-    prettyPs ((n, b) : bs) = 
+    prettyPs ((n, b) : bs) =
       pretty n <+> colon <+> tPretty (binderTy b) $$ prettyPs bs
 
     prettyG (Guess t v) = tPretty t <+> text "=?=" <+> tPretty v

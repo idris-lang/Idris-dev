@@ -48,17 +48,17 @@ tempfile = do dir <- getTemporaryDirectory
               openTempFile (normalise dir) "idris"
 
 withTempdir :: String -> (FilePath -> IO a) -> IO a
-withTempdir subdir callback 
+withTempdir subdir callback
   = do dir <- getTemporaryDirectory
        let tmpDir = (normalise dir) </> subdir
        removeLater <- catchIO (createDirectoryIfMissing True tmpDir >> return True)
-                              (\ ioError -> if isAlreadyExistsError ioError then return False 
+                              (\ ioError -> if isAlreadyExistsError ioError then return False
                                             else throw ioError
                               )
        result <- callback tmpDir
        when removeLater $ removeDirectoryRecursive tmpDir
        return result
-                       
+
 environment :: String -> IO (Maybe String)
 environment x = catchIO (do e <- getEnv x
                             return (Just e))
@@ -70,13 +70,13 @@ getTargetDir = environment "TARGET" >>= maybe getDataDir return
 rmFile :: FilePath -> IO ()
 rmFile f = do putStrLn $ "Removing " ++ f
               catchIO (removeFile f)
-                      (\ioerr -> putStrLn $ "WARNING: Cannot remove file " 
+                      (\ioerr -> putStrLn $ "WARNING: Cannot remove file "
                                  ++ f ++ ", Error msg:" ++ show ioerr)
 
-	
+
 getLibFlags = do dir <- getDataDir
                  return $ "-L" ++ (dir </> "rts") ++ " -lidris_rts -lgmp -lpthread"
-                 
+
 getIdrisLibDir = do dir <- getDataDir
                     return $ addTrailingPathSeparator dir
 

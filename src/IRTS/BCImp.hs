@@ -1,6 +1,6 @@
 module IRTS.BCImp where
 
--- Bytecode for a register/variable based VM (e.g. for generating code in an 
+-- Bytecode for a register/variable based VM (e.g. for generating code in an
 -- imperative language where we let the language deal with GC)
 
 import IRTS.Lang

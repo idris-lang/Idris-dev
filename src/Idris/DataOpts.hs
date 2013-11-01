@@ -28,11 +28,11 @@ forceArgs n t = do i <- getIState
   where
     force :: IState -> Int -> Term -> [Int]
     force ist i (Bind _ (Pi ty) sc)
-        | collapsibleIn ist ty 
+        | collapsibleIn ist ty
             = nub $ i : (force ist (i + 1) $ instantiate (P Bound (MN i "?") Erased) sc)
         | otherwise = force ist (i + 1) $ instantiate (P Bound (MN i "?") Erased) sc
-    force _ _ sc@(App f a) 
-        | (_, args) <- unApply sc 
+    force _ _ sc@(App f a)
+        | (_, args) <- unApply sc
             = nub $ concatMap guarded args
     force _ _ _ = []
 
@@ -57,7 +57,7 @@ forceArgs n t = do i <- getIState
 -- Calculate whether a collection of constructors is collapsible
 
 collapseCons :: Name -> [(Name, Type)] -> Idris ()
-collapseCons ty cons = 
+collapseCons ty cons =
      do i <- getIState
         let cons' = map (\ (n, t) -> (n, map snd (getArgTys t))) cons
         allFR <- mapM (forceRec i) cons'
@@ -75,7 +75,7 @@ collapseCons ty cons =
                                   putIState (i { idris_optimisation = opts })
                                else return ()
                _ -> return ()
-    
+
     checkNewType _ = return ()
 
     setCollapsible :: Name -> Idris ()
@@ -101,12 +101,12 @@ collapseCons ty cons =
     checkFR fs i (t : xs)
         -- must be recursive or type is not collapsible
         = do let (rtf, rta) = unApply $ getRetTy t
-             if (ty `elem` freeNames rtf) 
+             if (ty `elem` freeNames rtf)
                then checkFR fs (i+1) xs
                else return False
 
     detaggable :: [Type] -> Idris ()
-    detaggable rtys 
+    detaggable rtys
         = do let rtyArgs = map (snd . unApply) rtys
              -- if every rtyArgs is disjoint with every other, it's detaggable,
              -- therefore also collapsible given forceable/recursive check
@@ -204,7 +204,7 @@ instance Optimisable t => Optimisable (Binder t) where
 
 applyDataOpt :: OptInfo -> Name -> [Raw] -> Raw
 applyDataOpt oi n args
-    = let args' = zipWith doForce (map (\x -> x `elem` (forceable oi)) [0..]) 
+    = let args' = zipWith doForce (map (\x -> x `elem` (forceable oi)) [0..])
                                   args in
           raw_apply (Var n) args'
   where
@@ -267,7 +267,7 @@ applyDataOptRT :: OptInfo -> Name -> Int -> Int -> [Term] -> Term
 applyDataOptRT oi n tag arity args
     | length args == arity = doOpts n args (collapsible oi) (forceable oi)
     | otherwise = let extra = satArgs (arity - length args)
-                      tm = doOpts n (args ++ map (\n -> P Bound n Erased) extra) 
+                      tm = doOpts n (args ++ map (\n -> P Bound n Erased) extra)
                                     (collapsible oi) (forceable oi) in
                       bind extra tm
   where
@@ -279,7 +279,7 @@ applyDataOptRT oi n tag arity args
     -- Nat special cases
     -- TODO: Would be nice if this was configurable in idris source!
     doOpts (NS (UN "Z") ["Nat", "Prelude"]) [] _ _ = Constant (BI 0)
-    doOpts (NS (UN "S") ["Nat", "Prelude"]) [k] _ _ 
+    doOpts (NS (UN "S") ["Nat", "Prelude"]) [k] _ _
         = App (App (P Ref (UN "prim__addBigInt") Erased) k) (Constant (BI 1))
 
     doOpts n args True f = Erased
@@ -290,8 +290,8 @@ applyDataOptRT oi n tag arity args
                 then case args' of
                           [(_, val)] -> val
                           _ -> error "Can't happen (not isnewtype)"
-                else 
-                  mkApp (P (DCon tag (arity - length forced)) n Erased) 
+                else
+                  mkApp (P (DCon tag (arity - length forced)) n Erased)
                         (map snd args')
 
     keep (forced, _) = not forced

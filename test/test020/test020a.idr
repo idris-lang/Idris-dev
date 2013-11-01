@@ -1,6 +1,6 @@
 module Main
 
-implicit 
+implicit
 forget : Vect n a -> List a
 forget [] = []
 forget (x :: xs) = x :: forget xs

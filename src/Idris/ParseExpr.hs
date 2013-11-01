@@ -313,7 +313,7 @@ bracketed syn =
         <|>
         try (do l <- expr syn
                 lchar ')'
-                return l) 
+                return l)
         <|>  do (l, fc) <- try (do
                      l <- expr syn
                      fc <- getFC

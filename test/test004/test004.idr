@@ -20,10 +20,10 @@ main : IO ()
 main = do { h <- openFile "testfile" Write
             fwrite h "Hello!\nWorld!\n...\n3\n4\nLast line\n"
             closeFile h
-            putStrLn "Reading testfile" 
+            putStrLn "Reading testfile"
             f <- readFile "testfile"
             putStrLn f
-            putStrLn "---" 
+            putStrLn "---"
             dumpFile "testfile"
             putStrLn "---"
           }

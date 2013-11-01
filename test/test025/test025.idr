@@ -26,7 +26,7 @@ testMemory = do Src :- allocate 5
                 res <- Dst :- peek 1 (S(S(S(S Z)))) oh
                 Dst :- free
                 return (map (prim__zextB8_Int) res)
-               
+
 main : IO ()
 main = do ioe_run (run [Dst := (), Src := ()] testMemory)
                   (\err => print err) (\ok => print ok)

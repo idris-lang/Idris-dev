@@ -26,17 +26,17 @@ using (G : Vect n Ty)
       Val : (x : Int) -> Expr G TyInt
       Lam : Expr (a :: G) t -> Expr G (TyFun a t)
       App : Expr G (TyFun a t) -> Expr G a -> Expr G t
-      Op  : (interpTy a -> interpTy b -> interpTy c) -> Expr G a -> Expr G b -> 
+      Op  : (interpTy a -> interpTy b -> interpTy c) -> Expr G a -> Expr G b ->
             Expr G c
       If  : Expr G TyBool -> Expr G a -> Expr G a -> Expr G a
       Bind : Expr G a -> (interpTy a -> Expr G b) -> Expr G b
- 
+
   dsl expr
       lambda      = Lam
       variable    = Var
       index_first = stop
       index_next  = pop
- 
+
   (<$>) : |(f : Expr G (TyFun a t)) -> Expr G a -> Expr G t
   (<$>) = \f, a => App f a
 
@@ -59,7 +59,7 @@ using (G : Vect n Ty)
     abs x = IF (x < 0) THEN (-x) ELSE x
 
     fromInteger = Val . fromInteger
-  
+
   interp : Env G -> {static} Expr G t -> interpTy t
   interp env (Var i)     = lookup i env
   interp env (Val x)     = x
@@ -77,7 +77,7 @@ using (G : Vect n Ty)
 
   eAdd : Expr G (TyFun TyInt (TyFun TyInt TyInt))
   eAdd = expr (\x, y => Op (+) x y)
-  
+
   eDouble : Expr G (TyFun TyInt TyInt)
   eDouble = expr (\x => App (App eAdd x) (Var stop))
 

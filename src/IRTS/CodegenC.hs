@@ -20,9 +20,9 @@ import Control.Monad
 
 codegenC :: [(Name, SDecl)] ->
             String -> -- output file name
-            OutputType ->   -- generate executable if True, only .o if False 
+            OutputType ->   -- generate executable if True, only .o if False
             [FilePath] -> -- include files
-            String -> -- extra object files 
+            String -> -- extra object files
             String -> -- extra compiler flags (libraries)
             String -> -- extra compiler flags (anything)
             DbgLevel ->
@@ -34,7 +34,7 @@ codegenC defs out exec incs objs libs flags dbg
          let cc = concatMap (uncurry toC) bc
          d <- getDataDir
          mprog <- readFile (d </> "rts" </> "idris_main" <.> "c")
-         let cout = headers incs ++ debug dbg ++ h ++ cc ++ 
+         let cout = headers incs ++ debug dbg ++ h ++ cc ++
                      (if (exec == Executable) then mprog else "")
          case exec of
            MavenProject -> putStrLn ("FAILURE: output type not supported")
@@ -94,18 +94,18 @@ creg (T i) = "TOP(" ++ show i ++ ")"
 creg Tmp = "REG1"
 
 toDecl :: Name -> String
-toDecl f = "void " ++ cname f ++ "(VM*, VAL*);\n" 
+toDecl f = "void " ++ cname f ++ "(VM*, VAL*);\n"
 
 toC :: Name -> [BC] -> String
-toC f code 
-    = -- "/* " ++ show code ++ "*/\n\n" ++ 
+toC f code
+    = -- "/* " ++ show code ++ "*/\n\n" ++
       "void " ++ cname f ++ "(VM* vm, VAL* oldbase) {\n" ++
-                 indent 1 ++ "INITFRAME;\n" ++ 
+                 indent 1 ++ "INITFRAME;\n" ++
                  concatMap (bcc 1) code ++ "}\n\n"
 
 bcc :: Int -> BC -> String
 bcc i (ASSIGN l r) = indent i ++ creg l ++ " = " ++ creg r ++ ";\n"
-bcc i (ASSIGNCONST l c) 
+bcc i (ASSIGNCONST l c)
     = indent i ++ creg l ++ " = " ++ mkConst c ++ ";\n"
   where
     mkConst (I i) = "MKINT(" ++ show i ++ ")"
@@ -123,9 +123,9 @@ bcc i (UPDATE l r) = indent i ++ creg l ++ " = " ++ creg r ++ ";\n"
 bcc i (MKCON l tag args)
     = indent i ++ "allocCon(" ++ creg Tmp ++ ", vm, " ++ show tag ++ "," ++
          show (length args) ++ ", 0);\n" ++
-      indent i ++ setArgs 0 args ++ "\n" ++ 
+      indent i ++ setArgs 0 args ++ "\n" ++
       indent i ++ creg l ++ " = " ++ creg Tmp ++ ";\n"
-         
+
 --         "MKCON(vm, " ++ creg l ++ ", " ++ show tag ++ ", " ++
 --         show (length args) ++ concatMap showArg args ++ ");\n"
   where showArg r = ", " ++ creg r
@@ -133,15 +133,15 @@ bcc i (MKCON l tag args)
         setArgs i (x : xs) = "SETARG(" ++ creg Tmp ++ ", " ++ show i ++ ", " ++ creg x ++
                              "); " ++ setArgs (i + 1) xs
 
-bcc i (PROJECT l loc a) = indent i ++ "PROJECT(vm, " ++ creg l ++ ", " ++ show loc ++ 
+bcc i (PROJECT l loc a) = indent i ++ "PROJECT(vm, " ++ creg l ++ ", " ++ show loc ++
                                       ", " ++ show a ++ ");\n"
 bcc i (PROJECTINTO r t idx)
-    = indent i ++ creg r ++ " = GETARG(" ++ creg t ++ ", " ++ show idx ++ ");\n" 
-bcc i (CASE True r code def) 
+    = indent i ++ creg r ++ " = GETARG(" ++ creg t ++ ", " ++ show idx ++ ");\n"
+bcc i (CASE True r code def)
     | length code < 4 = showCase i def code
   where
     showCode :: Int -> [BC] -> String
-    showCode i bc = "{\n" ++ indent i ++ concatMap (bcc (i + 1)) bc ++ 
+    showCode i bc = "{\n" ++ indent i ++ concatMap (bcc (i + 1)) bc ++
                     indent i ++ "}\n"
 
     showCase :: Int -> Maybe [BC] -> [(Int, [BC])] -> String
@@ -151,7 +151,7 @@ bcc i (CASE True r code def)
         = "if (CTAG(" ++ creg r ++ ") == " ++ show t ++ ") " ++ showCode i c
            ++ "else " ++ showCase i def cs
 
-bcc i (CASE safe r code def) 
+bcc i (CASE safe r code def)
     = indent i ++ "switch(" ++ ctag safe ++ "(" ++ creg r ++ ")) {\n" ++
       concatMap (showCase i) code ++
       showDef i def ++
@@ -163,9 +163,9 @@ bcc i (CASE safe r code def)
     showCase i (t, bc) = indent i ++ "case " ++ show t ++ ":\n"
                          ++ concatMap (bcc (i+1)) bc ++ indent (i + 1) ++ "break;\n"
     showDef i Nothing = ""
-    showDef i (Just c) = indent i ++ "default:\n" 
+    showDef i (Just c) = indent i ++ "default:\n"
                          ++ concatMap (bcc (i+1)) c ++ indent (i + 1) ++ "break;\n"
-bcc i (CONSTCASE r code def) 
+bcc i (CONSTCASE r code def)
    | intConsts code
 --      = indent i ++ "switch(GETINT(" ++ creg r ++ ")) {\n" ++
 --        concatMap (showCase i) code ++
@@ -205,11 +205,11 @@ bcc i (CONSTCASE r code def)
            ++ concatMap (bcc (i+1)) bc ++ indent i ++ "} else\n"
 
     showCase i (t, bc) = indent i ++ "case " ++ show t ++ ":\n"
-                         ++ concatMap (bcc (i+1)) bc ++ 
+                         ++ concatMap (bcc (i+1)) bc ++
                             indent (i + 1) ++ "break;\n"
     showDef i Nothing = ""
-    showDef i (Just c) = indent i ++ "default:\n" 
-                         ++ concatMap (bcc (i+1)) c ++ 
+    showDef i (Just c) = indent i ++ "default:\n"
+                         ++ concatMap (bcc (i+1)) c ++
                             indent (i + 1) ++ "break;\n"
     showDefS i Nothing = ""
     showDefS i (Just c) = concatMap (bcc (i+1)) c
@@ -227,8 +227,8 @@ bcc i (BASETOP n) = indent i ++ "BASETOP(" ++ show n ++ ");\n"
 bcc i STOREOLD = indent i ++ "STOREOLD;\n"
 bcc i (OP l fn args) = indent i ++ doOp (creg l ++ " = ") fn args ++ ";\n"
 bcc i (FOREIGNCALL l LANG_C rty fn args)
-      = indent i ++ 
-        c_irts rty (creg l ++ " = ") 
+      = indent i ++
+        c_irts rty (creg l ++ " = ")
                    (fn ++ "(" ++ showSep "," (map fcall args) ++ ")") ++ ";\n"
     where fcall (t, arg) = irts_c t (creg arg)
 bcc i (NULL r) = indent i ++ creg r ++ " = NULL;\n" -- clear, so it'll be GCed
@@ -289,27 +289,27 @@ doOp v (LLe ITNative) [l, r] = v ++ "UINTOP(<=," ++ creg l ++ ", " ++ creg r ++ 
 doOp v (LGt ITNative) [l, r] = v ++ "UINTOP(>," ++ creg l ++ ", " ++ creg r ++ ")"
 doOp v (LGe ITNative) [l, r] = v ++ "UINTOP(>=," ++ creg l ++ ", " ++ creg r ++ ")"
 
-doOp v (LPlus (ATInt ITChar)) [l, r] = doOp v (LPlus (ATInt ITNative)) [l, r] 
-doOp v (LMinus (ATInt ITChar)) [l, r] = doOp v (LMinus (ATInt ITNative)) [l, r] 
+doOp v (LPlus (ATInt ITChar)) [l, r] = doOp v (LPlus (ATInt ITNative)) [l, r]
+doOp v (LMinus (ATInt ITChar)) [l, r] = doOp v (LMinus (ATInt ITNative)) [l, r]
 doOp v (LTimes (ATInt ITChar)) [l, r] = doOp v (LTimes (ATInt ITNative)) [l, r]
-doOp v (LUDiv ITChar) [l, r] = doOp v (LUDiv ITNative) [l, r] 
-doOp v (LSDiv (ATInt ITChar)) [l, r] = doOp v (LSDiv (ATInt ITNative)) [l, r] 
-doOp v (LURem ITChar) [l, r] = doOp v (LURem ITNative) [l, r] 
-doOp v (LSRem (ATInt ITChar)) [l, r] = doOp v (LSRem (ATInt ITNative)) [l, r] 
-doOp v (LAnd ITChar) [l, r] = doOp v (LAnd ITNative) [l, r]  
-doOp v (LOr ITChar) [l, r] = doOp v (LOr ITNative) [l, r] 
-doOp v (LXOr ITChar) [l, r] = doOp v (LXOr ITNative) [l, r] 
-doOp v (LSHL ITChar) [l, r] = doOp v (LSHL ITNative) [l, r] 
-doOp v (LLSHR ITChar) [l, r] = doOp v (LLSHR ITNative) [l, r] 
-doOp v (LASHR ITChar) [l, r] = doOp v (LASHR ITNative) [l, r] 
-doOp v (LCompl ITChar) [x] = doOp v (LCompl ITNative) [x] 
-doOp v (LEq (ATInt ITChar)) [l, r] = doOp v (LEq (ATInt ITNative)) [l, r] 
-doOp v (LSLt (ATInt ITChar)) [l, r] = doOp v (LSLt (ATInt ITNative)) [l, r] 
-doOp v (LSLe (ATInt ITChar)) [l, r] = doOp v (LSLe (ATInt ITNative)) [l, r] 
+doOp v (LUDiv ITChar) [l, r] = doOp v (LUDiv ITNative) [l, r]
+doOp v (LSDiv (ATInt ITChar)) [l, r] = doOp v (LSDiv (ATInt ITNative)) [l, r]
+doOp v (LURem ITChar) [l, r] = doOp v (LURem ITNative) [l, r]
+doOp v (LSRem (ATInt ITChar)) [l, r] = doOp v (LSRem (ATInt ITNative)) [l, r]
+doOp v (LAnd ITChar) [l, r] = doOp v (LAnd ITNative) [l, r]
+doOp v (LOr ITChar) [l, r] = doOp v (LOr ITNative) [l, r]
+doOp v (LXOr ITChar) [l, r] = doOp v (LXOr ITNative) [l, r]
+doOp v (LSHL ITChar) [l, r] = doOp v (LSHL ITNative) [l, r]
+doOp v (LLSHR ITChar) [l, r] = doOp v (LLSHR ITNative) [l, r]
+doOp v (LASHR ITChar) [l, r] = doOp v (LASHR ITNative) [l, r]
+doOp v (LCompl ITChar) [x] = doOp v (LCompl ITNative) [x]
+doOp v (LEq (ATInt ITChar)) [l, r] = doOp v (LEq (ATInt ITNative)) [l, r]
+doOp v (LSLt (ATInt ITChar)) [l, r] = doOp v (LSLt (ATInt ITNative)) [l, r]
+doOp v (LSLe (ATInt ITChar)) [l, r] = doOp v (LSLe (ATInt ITNative)) [l, r]
 doOp v (LSGt (ATInt ITChar)) [l, r] = doOp v (LSGt (ATInt ITNative)) [l, r]
 doOp v (LSGe (ATInt ITChar)) [l, r] = doOp v (LSGe (ATInt ITNative)) [l, r]
-doOp v (LLt ITChar) [l, r] = doOp v (LLt ITNative) [l, r] 
-doOp v (LLe ITChar) [l, r] = doOp v (LLe ITNative) [l, r] 
+doOp v (LLt ITChar) [l, r] = doOp v (LLt ITNative) [l, r]
+doOp v (LLe ITChar) [l, r] = doOp v (LLe ITNative) [l, r]
 doOp v (LGt ITChar) [l, r] = doOp v (LGt ITNative) [l, r]
 doOp v (LGe ITChar) [l, r] = doOp v (LGe ITNative) [l, r]
 

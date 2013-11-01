@@ -131,7 +131,7 @@ primitives =
      (1, LFloatStr) total,
 
    Prim (UN "prim__floatExp") (ty [(AType ATFloat)] (AType ATFloat)) 1 (p_floatExp)
-     (1, LFExp) total, 
+     (1, LFExp) total,
    Prim (UN "prim__floatLog") (ty [(AType ATFloat)] (AType ATFloat)) 1 (p_floatLog)
      (1, LFLog) total,
    Prim (UN "prim__floatSin") (ty [(AType ATFloat)] (AType ATFloat)) 1 (p_floatSin)
@@ -193,7 +193,7 @@ intSCmps ity =
 
 intCmps :: IntTy -> [Prim]
 intCmps ITNative = intSCmps ITNative
-intCmps ity = 
+intCmps ity =
     intSCmps ity ++
     [ iCmp ity "lt" False (bCmp ity (cmpOp ity (<))) LLt total
     , iCmp ity "lte" False (bCmp ity (cmpOp ity (<=))) LLe total

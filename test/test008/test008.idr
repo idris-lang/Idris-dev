@@ -14,7 +14,7 @@ foo = (4, "foo")
 
 
 ioVals : IO (String, String)
-ioVals = do { return ("First", "second") } 
+ioVals = do { return ("First", "second") }
 
 main : IO ()
 main = do (a, b) <- ioVals

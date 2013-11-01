@@ -17,7 +17,7 @@ STATE : Type -> EFFECT
 STATE t = MkEff t State
 
 get : Eff m [STATE x] x
-get = Get 
+get = Get
 
 put : x -> Eff m [STATE x] ()
 put val = Put val
@@ -26,7 +26,7 @@ putM : y -> EffM m [STATE x] [STATE y] ()
 putM val = Put val
 
 update : (x -> x) -> Eff m [STATE x] ()
-update f = put (f !get) 
+update f = put (f !get)
 
 updateM : (x -> y) -> EffM m [STATE x] [STATE y] ()
 updateM f = putM (f !get)

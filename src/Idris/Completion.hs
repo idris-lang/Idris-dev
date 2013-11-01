@@ -22,7 +22,7 @@ import System.Console.ANSI (Color)
 fst3 :: (a, b, c) -> a
 fst3 (a, b, c) = a
 
-commands = concatMap fst3 help
+commands = concatMap fst3 (help ++ extraHelp)
 
 -- | A specification of the arguments that tactics can take
 data TacticArg = NameTArg -- ^ Names: n1, n2, n3, ... n

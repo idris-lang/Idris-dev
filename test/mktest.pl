@@ -2,7 +2,7 @@
 
 if ($#ARGV>=0) {
     $test=shift(@ARGV);
-} else { 
+} else {
     print "What's its name?\n";
     exit;
 }

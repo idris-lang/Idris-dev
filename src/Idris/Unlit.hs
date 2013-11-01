@@ -15,7 +15,7 @@ ulLine ('>':' ':xs)        = (Prog, xs)
 ulLine ('>':xs)            = (Prog, xs)
 ulLine xs | all isSpace xs = (Blank, "")
 -- make sure it's not a doc comment
-          | otherwise      = (Comm, '-':'-':' ':'>':xs) 
+          | otherwise      = (Comm, '-':'-':' ':'>':xs)
 
 check :: FilePath -> Int -> [(LineType, String)] -> TC ()
 check f l (a:b:cs) = do chkAdj f l (fst a) (fst b)

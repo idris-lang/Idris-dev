@@ -9,7 +9,7 @@ import Prelude.Nat
 %access public
 %default total
 
-infixr 7 :: 
+infixr 7 ::
 
 data Vect : Nat -> Type -> Type where
   Nil  : Vect Z a
@@ -109,7 +109,7 @@ instance Functor (Vect n) where
 -- XXX: causes Idris to enter an infinite loop when type checking in the REPL
 --mapMaybe : (a -> Maybe b) -> Vect n a -> (p ** Vect b p)
 --mapMaybe f []      = (_ ** [])
---mapMaybe f (x::xs) = mapMaybe' (f x) 
+--mapMaybe f (x::xs) = mapMaybe' (f x)
 -- XXX: working around the type restrictions on case statements
 --  where
 --    mapMaybe' : (Maybe b) -> (n ** Vect b n) -> (p ** Vect b p)

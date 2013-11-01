@@ -97,34 +97,34 @@ ForeignTy (t::ts) rt = interpFTy t -> ForeignTy ts rt
 
 
 data Foreign : Type -> Type where
-    FFun : String -> (xs:List FTy) -> (t:FTy) -> 
+    FFun : String -> (xs:List FTy) -> (t:FTy) ->
            Foreign (ForeignTy xs t)
 
 mkForeignPrim : Foreign x -> x
 mkLazyForeignPrim : Foreign x -> x
 -- mkForeign and mkLazyForeign compiled as primitives
 
-abstract 
+abstract
 io_bind : IO a -> (a -> IO b) -> IO b
 io_bind (MkIO fn) k
    = MkIO (\w => prim_io_bind (fn w)
                     (\ b => case k b of
                                  MkIO fkb => fkb w))
 
-abstract 
+abstract
 io_return : a -> IO a
 io_return x = MkIO (\w => prim_io_return x)
 
 liftPrimIO : (World -> PrimIO a) -> IO a
-liftPrimIO f = MkIO (\w => prim_io_bind (f w) 
+liftPrimIO f = MkIO (\w => prim_io_bind (f w)
                          (\x => prim_io_return x))
 
 run__IO : IO () -> PrimIO ()
-run__IO (MkIO f) = prim_io_bind (f TheWorld) 
+run__IO (MkIO f) = prim_io_bind (f TheWorld)
                         (\ b => prim_io_return b)
 
 run__provider : IO a -> PrimIO a
-run__provider (MkIO f) = prim_io_bind (f TheWorld) 
+run__provider (MkIO f) = prim_io_bind (f TheWorld)
                             (\ b => prim_io_return b)
 
 -- io_bind v (\v' => io_return v')
@@ -143,7 +143,7 @@ prim_fread : Ptr -> IO String
 prim_fread h = MkIO (\w => prim_io_return (prim__readString h))
 
 unsafePerformIO : IO a -> a
-unsafePerformIO (MkIO f) = unsafePerformPrimIO 
+unsafePerformIO (MkIO f) = unsafePerformPrimIO
         (prim_io_bind (f TheWorld) (\ b => prim_io_return b))
 
 

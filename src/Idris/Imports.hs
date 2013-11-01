@@ -9,7 +9,7 @@ import System.FilePath
 import System.Directory
 import Control.Monad.State
 
-data IFileType = IDR FilePath | LIDR FilePath | IBC FilePath IFileType 
+data IFileType = IDR FilePath | LIDR FilePath | IBC FilePath IFileType
     deriving (Show, Eq)
 
 srcPath :: FilePath -> FilePath
@@ -60,7 +60,7 @@ findImport (d:ds) ibcsd fp = do let fp_full = d </> fp
                                            else IDR idrp
                                 if ibc
                                   then return (IBC ibcp isrc)
-                                  else if (idr || lidr) 
+                                  else if (idr || lidr)
                                        then return isrc
                                        else findImport ds ibcsd fp
 
