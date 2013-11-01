@@ -169,7 +169,9 @@ primitives =
      (0, LVMPtr) total,
    -- Streams
    Prim (UN "prim__stdin") (ty [] PtrType) 0 (p_cantreduce)
-    (0, LStdIn) partial
+    (0, LStdIn) partial,
+   -- Constants
+   Prim (UN "prim__null") (ty [] PtrType) 0 (\[] -> Just $ NullPtr) (0, LNullPtr) total 
   ] ++ concatMap intOps [ITFixed IT8, ITFixed IT16, ITFixed IT32, ITFixed IT64, ITBig, ITNative, ITChar]
     ++ concatMap vecOps vecTypes
     ++ vecBitcasts vecTypes
@@ -676,4 +678,7 @@ p_strRev _ = Nothing
 p_cantreduce :: a -> Maybe b
 p_cantreduce _ = Nothing
 
+p_nullPtr :: [Const] -> Maybe Const
+p_nullPtr [] = Just NullPtr
+p_nullPtr _ = Nothing
 

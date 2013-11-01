@@ -458,6 +458,7 @@ call (FFun name argTypes retType) args =
           prepArg (EConstant (Fl f)) = argCDouble (realToFrac f)
           prepArg (EConstant (Ch c)) = argCChar (castCharToCChar c) -- FIXME - castCharToCChar only safe for first 256 chars
           prepArg (EConstant (Str s)) = argString s
+          prepArg (EConstant (NullPtr)) = argPtr nullPtr
           prepArg (EPtr p) = argPtr p
           prepArg other = trace ("Could not use " ++ take 100 (show other) ++ " as FFI arg.") undefined
 
