@@ -26,9 +26,11 @@
 
 (defun idris-thing-at-point ()
   "Return the line number and name at point"
-  (let ((name (string-no-properties (symbol-name (symbol-at-point))))
+  (let ((name (symbol-at-point))
         (line (idris-get-line-num)))
-    (cons name line)))
+    (if name
+        (cons (string-no-properties (symbol-name name)) line)
+      (error "Nothing identifiable under point"))))
 
 (defun idris-load ()
   "Load the current buffer using Idris client mode"
@@ -41,7 +43,7 @@
 (defun idris-type-at-point ()
   "Show the type of the name at point"
   (interactive)
-  (message (call-idris-client (concat ":t " (string-no-properties (symbol-name (symbol-at-point)))) t)))
+  (message (call-idris-client (concat ":t " (car (idris-thing-at-point))) t)))
 
 (defun idris-add-clause ()
   "Add clauses to the declaration at point"
@@ -49,7 +51,8 @@
   (idris-load)
   (let ((what (idris-thing-at-point)))
     (call-idris-client (concat ":ac! " (number-to-string (cdr what)) (car what))))
-  (revert-buffer t t))
+  (revert-buffer t t)
+  (idris-load))
 
 (defun idris-case-split ()
   "Case split the pattern var at point"
@@ -57,7 +60,8 @@
   (idris-load)
   (let ((what (idris-thing-at-point)))
    (call-idris-client (concat ":cs! " (number-to-string (cdr what)) " " (car what))))
-  (revert-buffer t t))
+  (revert-buffer t t)
+  (idris-load))
 
 (defun idris-proof-search (&optional hints)
   "Invoke the proof search"
@@ -65,7 +69,8 @@
   (let ((hints (if hints (split-string hints "[^a-zA-Z0-9']") " "))
         (what (idris-thing-at-point)))
     (call-idris-client (format ":ps! %s %s %s" (number-to-string (cdr what)) (car what) hints)))
-  (revert-buffer t t))
+  (revert-buffer t t)
+  (idris-load))
 
 (defun idris-add-missing ()
   "Add missing cases"
@@ -73,7 +78,8 @@
   (idris-load)
   (let ((what (idris-thing-at-point)))
    (call-idris-client (concat ":am! " (number-to-string (cdr what)) " " (car what))))
-  (revert-buffer t t))
+  (revert-buffer t t)
+  (idris-load))
 
 ;;;; Bindings to imitate Agda somewhat
 (define-key idris-mode-map (kbd "C-c C-c") 'idris-case-split)
@@ -82,5 +88,7 @@
 (define-key idris-mode-map (kbd "C-c C-t") 'idris-type-at-point)
 (define-key idris-mode-map (kbd "C-c C-d") 'idris-add-clause)
 
+(add-hook 'idris-mode-hook
+          (lambda () (add-hook 'after-save-hook 'idris-load t)))
 
 (provide 'auto-idris)
