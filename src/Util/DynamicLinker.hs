@@ -78,7 +78,8 @@ data DynamicLib = Lib { lib_name :: String
     deriving Eq
 
 tryLoadLib :: String -> IO (Maybe DynamicLib)
-tryLoadLib _ = return Nothing
+tryLoadLib lib = do putStrLn $ "WARNING: Cannot load '" ++ lib ++ "' at compile time because Idris was compiled without libffi support."
+                    return Nothing
 
 
 #endif
