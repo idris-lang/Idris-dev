@@ -14,7 +14,7 @@ Env : Type
 Env = List (String, Integer)
 
 -- Evaluator : Type -> Type
--- Evaluator t 
+-- Evaluator t
 --    = Eff m [EXCEPTION String, RND, STATE Env] t
 
 eval : Expr -> Eff IO [EXCEPTION String, STDIO, RND, STATE Env] Integer

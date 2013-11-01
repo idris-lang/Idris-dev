@@ -17,7 +17,7 @@ delab :: IState -> Term -> PTerm
 delab i tm = delab' i tm False
 
 delabTy :: IState -> Name -> PTerm
-delabTy i n 
+delabTy i n
     = case lookupTy n (tt_ctxt i) of
            (ty:_) -> case lookupCtxt n (idris_implicits i) of
                          (imps:_) -> delabTy' i imps ty False
@@ -43,17 +43,17 @@ delabTy' ist imps tm fullname = de [] imps tm
                             = case lookup n (idris_metavars ist) of
                                   Just (Just _, mi) -> mkMVApp (dens n) []
                                   _ -> PRef un (dens n)
-    de env _ (Bind n (Lam ty) sc) 
+    de env _ (Bind n (Lam ty) sc)
           = PLam n (de env [] ty) (de ((n,n):env) [] sc)
-    de env (PImp _ _ _ _ _ _:is) (Bind n (Pi ty) sc) 
+    de env (PImp _ _ _ _ _ _:is) (Bind n (Pi ty) sc)
           = PPi impl n (de env [] ty) (de ((n,n):env) is sc)
-    de env (PConstraint _ _ _ _:is) (Bind n (Pi ty) sc) 
+    de env (PConstraint _ _ _ _:is) (Bind n (Pi ty) sc)
           = PPi constraint n (de env [] ty) (de ((n,n):env) is sc)
-    de env (PTacImplicit _ _ _ tac _ _:is) (Bind n (Pi ty) sc) 
+    de env (PTacImplicit _ _ _ tac _ _:is) (Bind n (Pi ty) sc)
           = PPi (tacimpl tac) n (de env [] ty) (de ((n,n):env) is sc)
-    de env _ (Bind n (Pi ty) sc) 
+    de env _ (Bind n (Pi ty) sc)
           = PPi expl n (de env [] ty) (de ((n,n):env) [] sc)
-    de env _ (Bind n (Let ty val) sc) 
+    de env _ (Bind n (Let ty val) sc)
         = PLet n (de env [] ty) (de env [] val) (de ((n,n):env) [] sc)
     de env _ (Bind n (Hole ty) sc) = de ((n, UN "[__]"):env) [] sc
     de env _ (Bind n (Guess ty val) sc) = de ((n, UN "[__]"):env) [] sc
@@ -61,7 +61,7 @@ delabTy' ist imps tm fullname = de [] imps tm
     de env _ (Constant i) = PConstant i
     de env _ Erased = Placeholder
     de env _ Impossible = Placeholder
-    de env _ (TType i) = PType 
+    de env _ (TType i) = PType
 
     dens x | fullname = x
     dens ns@(NS n _) = case lookupCtxt n (idris_implicits ist) of
@@ -71,31 +71,31 @@ delabTy' ist imps tm fullname = de [] imps tm
     dens n = n
 
     deFn env (App f a) args = deFn env f (a:args)
-    deFn env (P _ n _) [l,r]     
+    deFn env (P _ n _) [l,r]
          | n == pairTy    = PPair un (de env [] l) (de env [] r)
          | n == eqCon     = PRefl un (de env [] r)
          | n == UN "lazy" = de env [] r
     deFn env (P _ n _) [ty, Bind x (Lam _) r]
-         | n == UN "Exists" 
+         | n == UN "Exists"
                = PDPair un (PRef un x) (de env [] ty)
                            (de ((x,x):env) [] (instantiate (P Bound x ty) r))
-    deFn env (P _ n _) [_,_,l,r] 
+    deFn env (P _ n _) [_,_,l,r]
          | n == pairCon = PPair un (de env [] l) (de env [] r)
          | n == eqTy    = PEq un (de env [] l) (de env [] r)
          | n == UN "Ex_intro" = PDPair un (de env [] l) Placeholder
                                           (de env [] r)
-    deFn env (P _ n _) args 
+    deFn env (P _ n _) args
          = case lookup n (idris_metavars ist) of
-                Just (Just _, mi) -> 
+                Just (Just _, mi) ->
                      mkMVApp (dens n) (drop mi (map (de env []) args))
                 _ -> mkPApp (dens n) (map (de env []) args)
     deFn env f args = PApp un (de env [] f) (map pexp (map (de env []) args))
 
     mkMVApp n []
             = PMetavar n
-    mkMVApp n args 
+    mkMVApp n args
             = PApp un (PMetavar n) (map pexp args)
-    mkPApp n args 
+    mkPApp n args
         | [imps] <- lookupCtxt n (idris_implicits ist)
             = PApp un (PRef un n) (zipWith imp (imps ++ repeat (pexp undefined)) args)
         | otherwise = PApp un (PRef un n) (map pexp args)
@@ -113,7 +113,7 @@ indented text = boxIt '\n' $ unlines $ map ('\t':) $ lines text where
 
 pshow :: IState -> Err -> String
 pshow i (Msg s) = s
-pshow i (InternalMsg s) = "INTERNAL ERROR: " ++ show s ++ 
+pshow i (InternalMsg s) = "INTERNAL ERROR: " ++ show s ++
    "\nThis is probably a bug, or a missing error message.\n" ++
    "Please consider reporting at " ++ bugaddr
 pshow i (CantUnify _ x y e sc s)
@@ -152,11 +152,11 @@ pshow i (CantIntroduce ty)
       let colour = idris_colourRepl i in
           "Can't use lambda here: type is " ++ showImp (Just i) imps colour (delab i ty)
 pshow i (InfiniteUnify x tm env)
-    = "Unifying " ++ showbasic x ++ " and " ++ show (delab i tm) ++ 
+    = "Unifying " ++ showbasic x ++ " and " ++ show (delab i tm) ++
       " would lead to infinite value" ++
                  if (opt_errContext (idris_options i)) then showSc i env else ""
 pshow i (NotInjective p x y) = "Can't verify injectivity of " ++ show (delab i p) ++
-                               " when unifying " ++ show (delab i x) ++ " and " ++ 
+                               " when unifying " ++ show (delab i x) ++ " and " ++
                                                     show (delab i y)
 pshow i (CantResolve c) = "Can't resolve type class " ++ show (delab i c)
 pshow i (CantResolveAlts as) = "Can't disambiguate name: " ++ showSep ", " as
@@ -166,13 +166,13 @@ pshow i (IncompleteTerm t) = "Incomplete term " ++ showImp Nothing True False (d
 pshow i UniverseError = "Universe inconsistency"
 pshow i ProgramLineComment = "Program line next to comment"
 pshow i (Inaccessible n) = show n ++ " is not an accessible pattern variable"
-pshow i (NonCollapsiblePostulate n) 
+pshow i (NonCollapsiblePostulate n)
     = "The return type of postulate " ++ show n ++ " is not collapsible"
 pshow i (AlreadyDefined n) = show n ++ " is already defined"
 pshow i (ProofSearchFail e) = pshow i e
 pshow i (NoRewriting tm) = "rewrite did not change type " ++ show (delab i tm)
 pshow i (At f e) = show f ++ ":" ++ pshow i e
-pshow i (Elaborating s n e) = "When elaborating " ++ s ++ 
+pshow i (Elaborating s n e) = "When elaborating " ++ s ++
                                showqual i n ++ ":\n" ++ pshow i e
 pshow i (ProviderError msg) = "Type provider error: " ++ msg
 pshow i (LoadingFailed fn e) = "Loading " ++ fn ++ " failed: " ++ pshow i e

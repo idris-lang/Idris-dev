@@ -9,7 +9,7 @@ instance Functor (Result str) where
 ParserT : (Type -> Type) -> Type -> Type -> Type
 ParserT m str a = str -> m (Result str a)
 
-ap : Monad m => ParserT m str (a -> b) -> ParserT m str a -> 
+ap : Monad m => ParserT m str (a -> b) -> ParserT m str a ->
                 ParserT m str b
 ap f x = \s => do f' <- f s
                   case f' of

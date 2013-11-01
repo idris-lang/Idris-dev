@@ -248,8 +248,8 @@ class (VerifiedJoinSemilattice a, VerifiedMeetSemilattice a) => VerifiedLattice 
 class (BoundedJoinSemilattice a, BoundedMeetSemilattice a) => BoundedLattice a where { }
 
 class (VerifiedBoundedJoinSemilattice a, VerifiedBoundedMeetSemilattice a, VerifiedLattice a) => VerifiedBoundedLattice a where { }
-  
-  
+
+
 -- XXX todo:
 --   Fields and vector spaces.
 --   Structures where "abs" make sense.

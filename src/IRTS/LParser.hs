@@ -31,7 +31,7 @@ type TokenParser a = PTok.TokenParser a
 type LParser = GenParser Char ()
 
 lexer :: TokenParser ()
-lexer  = idrisLexer 
+lexer  = idrisLexer
 
 whiteSpace= PTok.whiteSpace lexer
 lexeme    = PTok.lexeme lexer
@@ -75,7 +75,7 @@ parseFOVM fname = do -- putStrLn $ "Reading " ++ fname
 pProgram :: LParser [(Name, LDecl)]
 pProgram = do fs <- many1 pLDecl
               eof
-              return fs 
+              return fs
 
 pLDecl :: LParser (Name, LDecl)
 pLDecl = do reserved "data"
@@ -91,7 +91,7 @@ pLDecl = do reserved "data"
             def <- pLExp
             return (n, LFun [] n args def)
 
-pLExp = buildExpressionParser optable pLExp' 
+pLExp = buildExpressionParser optable pLExp'
 
 optable = [[binary "*" (\x y -> LOp (LTimes (ATInt ITNative)) [x,y]) AssocLeft,
             binary "/" (\x y -> LOp (LSDiv (ATInt ITNative)) [x,y]) AssocLeft,
@@ -149,9 +149,9 @@ pLExp' = try (do lchar '%'; pCast)
                  lchar '('
                  args <- sepBy pLExp (lchar ',')
                  lchar ')'
-                 if null args 
+                 if null args
                     then if lazy then return (LLazyApp x [])
-                                 else return (LV (Glob x)) 
+                                 else return (LV (Glob x))
                     else if lazy then return (LLazyApp x args)
                                  else return (LApp tc (LV (Glob x)) args))
      <|> do lchar '('; e <- pLExp; lchar ')'; return e
@@ -172,7 +172,7 @@ pLExp' = try (do lchar '%'; pCast)
      <|> pCase
      <|> do x <- iName []
             return (LV (Glob x))
-     
+
 pLang = do reserved "C"; return LANG_C
 
 pType = do reserved "Int"; return (FArith (ATInt ITNative))
@@ -215,10 +215,10 @@ pCast = do reserved "FloatString"; lchar '('; e <- pLExp; lchar ')'
 pPrim :: LParser LExp
 pPrim = do reserved "StrEq"; lchar '(';
            e <- pLExp; lchar ',';
-           e' <- pLExp; lchar ')'; 
+           e' <- pLExp; lchar ')';
            return (LOp LStrEq [e, e'])
     <|> do reserved "StrLt"; lchar '('
-           e <- pLExp; lchar ','; e' <- pLExp; 
+           e <- pLExp; lchar ','; e' <- pLExp;
            lchar ')'
            return (LOp LStrLt [e, e'])
     <|> do reserved "StrLen"; lchar '('; e <- pLExp; lchar ')';
@@ -228,7 +228,7 @@ pPrim = do reserved "StrEq"; lchar '(';
     <|> do reserved "WriteString"; lchar '(';
            e <- pLExp; lchar ')'
            return (LOp LPrintStr [e])
-    <|> do reserved "WriteInt"; lchar '('; 
+    <|> do reserved "WriteInt"; lchar '(';
            e <- pLExp; lchar ')';
            return (LOp LPrintNum [e])
     <|> do reserved "lazy"; lchar '(';
@@ -240,10 +240,10 @@ pPrim = do reserved "StrEq"; lchar '(';
            return (LOp LStrTail [e])
     <|> do reserved "StrRev"; lchar '('; e <- pLExp; lchar ')';
            return (LOp LStrRev [e])
-    <|> do reserved "StrCons"; lchar '('; x <- pLExp; lchar ','; 
+    <|> do reserved "StrCons"; lchar '('; x <- pLExp; lchar ',';
            xs <- pLExp; lchar ')';
            return (LOp LStrCons [x, xs])
-    <|> do reserved "StrIndex"; lchar '('; x <- pLExp; lchar ','; 
+    <|> do reserved "StrIndex"; lchar '('; x <- pLExp; lchar ',';
            i <- pLExp; lchar ')';
            return (LOp LStrIndex [x, i])
 
@@ -269,8 +269,8 @@ pAlt = try (do x <- iName []
 
 pLConst :: LParser LExp
 pLConst = try (do f <- float; return $ LConst (Fl f))
-      <|> try (do i <- natural; lchar ':'; return $ LConst (BI i))     
-      <|> try (do i <- natural; return $ LConst (I (fromInteger i)))     
+      <|> try (do i <- natural; lchar ':'; return $ LConst (BI i))
+      <|> try (do i <- natural; return $ LConst (I (fromInteger i)))
       <|> try (do s <- strlit; return $ LConst (Str s))
       <|> try (do c <- chlit; return $ LConst (Ch c))
 

@@ -65,25 +65,25 @@ pCmd = do P.whiteSpace; try (do cmd ["q", "quit"]; eof; return Quit)
               <|> try (do cmd ["set"]; o <-pOption; return (SetOpt o))
               <|> try (do cmd ["unset"]; o <-pOption; return (UnsetOpt o))
               <|> try (do cmd ["s", "search"]; P.whiteSpace; t <- P.fullExpr defaultSyntax; return (Search t))
-              <|> try (do cmd ["cs", "casesplit"]; P.whiteSpace; 
+              <|> try (do cmd ["cs", "casesplit"]; P.whiteSpace;
                           upd <- option False (do P.lchar '!'; return True)
-                          l <- P.natural; n <- P.name; 
+                          l <- P.natural; n <- P.name;
                           return (CaseSplitAt upd (fromInteger l) n))
-              <|> try (do cmd ["ac", "addclause"]; P.whiteSpace; 
+              <|> try (do cmd ["ac", "addclause"]; P.whiteSpace;
                           upd <- option False (do P.lchar '!'; return True)
-                          l <- P.natural; n <- P.name; 
+                          l <- P.natural; n <- P.name;
                           return (AddClauseFrom upd (fromInteger l) n))
-              <|> try (do cmd ["am", "addmissing"]; P.whiteSpace; 
+              <|> try (do cmd ["am", "addmissing"]; P.whiteSpace;
                           upd <- option False (do P.lchar '!'; return True)
-                          l <- P.natural; n <- P.name; 
+                          l <- P.natural; n <- P.name;
                           return (AddMissing upd (fromInteger l) n))
-              <|> try (do cmd ["mw", "makewith"]; P.whiteSpace; 
+              <|> try (do cmd ["mw", "makewith"]; P.whiteSpace;
                           upd <- option False (do P.lchar '!'; return True)
-                          l <- P.natural; n <- P.name; 
+                          l <- P.natural; n <- P.name;
                           return (MakeWith upd (fromInteger l) n))
-              <|> try (do cmd ["ps", "proofsearch"]; P.whiteSpace; 
+              <|> try (do cmd ["ps", "proofsearch"]; P.whiteSpace;
                           upd <- option False (do P.lchar '!'; return True)
-                          l <- P.natural; n <- P.name; 
+                          l <- P.natural; n <- P.name;
                           hints <- many P.name
                           return (DoProofSearch upd (fromInteger l) n hints))
               <|> try (do cmd ["p", "prove"]; n <- P.name; eof; return (Prove n))

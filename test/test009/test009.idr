@@ -6,4 +6,4 @@ pythag n = [ (x, y, z) | z <- [1..n], y <- [1..z], x <- [1..y],
 
 main : IO ()
 main = putStrLn (show (pythag 50))
-      
+

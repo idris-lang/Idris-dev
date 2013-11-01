@@ -45,7 +45,7 @@ instance Preorder Nat NatLTE where
   transitive = NatLTEIsTransitive
   reflexive  = NatLTEIsReflexive
 
-total NatLTEIsAntisymmetric : (m : Nat) -> (n : Nat) -> 
+total NatLTEIsAntisymmetric : (m : Nat) -> (n : Nat) ->
                               NatLTE m n -> NatLTE n m -> m = n
 NatLTEIsAntisymmetric n n nEqn nEqn = refl
 NatLTEIsAntisymmetric n m nEqn (nLTESm _) impossible

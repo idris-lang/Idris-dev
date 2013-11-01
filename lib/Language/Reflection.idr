@@ -172,7 +172,7 @@ data Tactic = Try Tactic Tactic
             | Reflect TT
             -- ^ turn a value into its reflected representation
             | Fill Raw
-            -- ^ turn a raw value back into a term 
+            -- ^ turn a raw value back into a term
             | Exact TT
             -- ^ use the given value to conclude the proof
             | Focus TTName

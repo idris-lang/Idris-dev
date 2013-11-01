@@ -50,7 +50,7 @@ serializeBC n bc = indent n ++
       CALL x -> "CALL " ++ show x
       TAILCALL x -> "TAILCALL " ++ show x
       FOREIGNCALL r _ ret name args ->
-        "FOREIGNCALL " ++ serializeReg r ++ " \"" ++ name ++ "\" " ++ show ret ++ 
+        "FOREIGNCALL " ++ serializeReg r ++ " \"" ++ name ++ "\" " ++ show ret ++
         " [" ++ interMap args ", " (\(ty, r) -> serializeReg r ++ " : " ++ show ty) ++ "]"
       SLIDE n -> "SLIDE " ++ show n
       REBASE -> "REBASE"

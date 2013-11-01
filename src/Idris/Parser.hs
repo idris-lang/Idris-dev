@@ -1,5 +1,5 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving, ConstraintKinds, PatternGuards #-}
-module Idris.Parser(module Idris.Parser, 
+module Idris.Parser(module Idris.Parser,
                     module Idris.ParseExpr,
                     module Idris.ParseData,
                     module Idris.ParseHelpers,
@@ -262,7 +262,7 @@ fnDecl syn
   ;
 -}
 fnDecl' :: SyntaxInfo -> IdrisParser PDecl
-fnDecl' syn = do (doc, fc, opts', n, acc) <- try (do 
+fnDecl' syn = do (doc, fc, opts', n, acc) <- try (do
                         doc <- option "" (docComment '|')
                         pushIndent
                         ist <- get
@@ -443,7 +443,7 @@ Class ::=
   ;
 -}
 class_ :: SyntaxInfo -> IdrisParser [PDecl]
-class_ syn = do (doc, acc) <- try (do 
+class_ syn = do (doc, acc) <- try (do
                   doc <- option "" (docComment '|')
                   acc <- optional accessibility
                   return (doc, acc))
@@ -645,7 +645,7 @@ clause syn
               ist <- get
               put (ist { lastParse = Just n })
               return $ PClause fc n capp [] r wheres
-       <|> do (l, op) <- try (do 
+       <|> do (l, op) <- try (do
                 pushIndent
                 l <- argExpr syn
                 op <- operator

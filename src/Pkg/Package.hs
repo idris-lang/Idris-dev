@@ -30,7 +30,7 @@ import Paths_idris (getDataDir)
 -- * install everything into datadir/pname, if install flag is set
 
 buildPkg :: Bool -> (Bool, FilePath) -> IO ()
-buildPkg warnonly (install, fp) 
+buildPkg warnonly (install, fp)
      = do pkgdesc <- parseDesc fp
           ok <- mapM (testLib warnonly (pkgname pkgdesc)) (libdeps pkgdesc)
           when (and ok) $
@@ -42,17 +42,17 @@ buildPkg warnonly (install, fp)
                                     (modules pkgdesc)
                    Just o -> do let exec = dir </> o
                                 buildMods
-                                    (NoREPL : Verbose : Output exec : idris_opts pkgdesc) 
+                                    (NoREPL : Verbose : Output exec : idris_opts pkgdesc)
                                     [idris_main pkgdesc]
                setCurrentDirectory dir
                when install $ installPkg pkgdesc
 
 cleanPkg :: FilePath -> IO ()
-cleanPkg fp 
+cleanPkg fp
      = do pkgdesc <- parseDesc fp
           dir <- getCurrentDirectory
           setCurrentDirectory $ dir </> sourcedir pkgdesc
-          clean (makefile pkgdesc) 
+          clean (makefile pkgdesc)
           mapM_ rmIBC (modules pkgdesc)
           case execout pkgdesc of
                Nothing -> return ()
@@ -75,7 +75,7 @@ buildMods opts ns = do let f = map (toPath . show) ns
     where toPath n = foldl1' (</>) $ splitOn "." n
 
 testLib :: Bool -> String -> String -> IO Bool
-testLib warn p f 
+testLib warn p f
     = do d <- getDataDir
          gcc <- getCC
          (tmpf, tmph) <- tempfile
@@ -84,15 +84,15 @@ testLib warn p f
          e <- system $ gcc ++ " " ++ libtest ++ " -l" ++ f ++ " -o " ++ tmpf
          case e of
             ExitSuccess -> return True
-            _ -> do if warn 
-                       then do putStrLn $ "Not building " ++ p ++ 
+            _ -> do if warn
+                       then do putStrLn $ "Not building " ++ p ++
                                           " due to missing library " ++ f
                                return False
                        else fail $ "Missing library " ++ f
 
 rmIBC :: Name -> IO ()
-rmIBC m = rmFile $ toIBCFile m 
-             
+rmIBC m = rmFile $ toIBCFile m
+
 toIBCFile (UN n) = n ++ ".ibc"
 toIBCFile (NS n ns) = foldl1' (</>) (reverse (toIBCFile n : ns))
 

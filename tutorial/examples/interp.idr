@@ -7,7 +7,7 @@ interpTy TyInt       = Int
 interpTy TyBool      = Bool
 interpTy (TyFun s t) = interpTy s -> interpTy t
 
-using (G : Vect n Ty) 
+using (G : Vect n Ty)
 
   data Env : Vect n Ty -> Type where
       Nil  : Env Nil
@@ -26,17 +26,17 @@ using (G : Vect n Ty)
       Val : (x : Int) -> Expr G TyInt
       Lam : Expr (a :: G) t -> Expr G (TyFun a t)
       App : Expr G (TyFun a t) -> Expr G a -> Expr G t
-      Op  : (interpTy a -> interpTy b -> interpTy c) -> Expr G a -> Expr G b -> 
+      Op  : (interpTy a -> interpTy b -> interpTy c) -> Expr G a -> Expr G b ->
             Expr G c
       If  : Expr G TyBool -> Expr G a -> Expr G a -> Expr G a
-  
+
   interp : Env G -> {static} Expr G t -> interpTy t
   interp env (Var i)     = lookup i env
   interp env (Val x)     = x
   interp env (Lam sc)    = \x => interp (x :: env) sc
   interp env (App f s)   = interp env f (interp env s)
   interp env (Op op x y) = op (interp env x) (interp env y)
-  interp env (If x t e)  = if interp env x then interp env t 
+  interp env (If x t e)  = if interp env x then interp env t
                                            else interp env e
 
   eId : Expr G (TyFun TyInt TyInt)
@@ -47,10 +47,10 @@ using (G : Vect n Ty)
 
   eEq : Expr G (TyFun TyInt (TyFun TyInt TyBool))
   eEq = Lam (Lam (Op (==) (Var stop) (Var (pop stop))))
-  
+
   eDouble : Expr G (TyFun TyInt TyInt)
   eDouble = Lam (App (App eAdd (Var stop)) (Var stop))
- 
+
   app : |(f : Expr G (TyFun a t)) -> Expr G a -> Expr G t
   app = \f, a => App f a
 
@@ -67,5 +67,5 @@ unitTestFac = oh
 main : IO ()
 main = do putStr "Enter a number: "
           x <- getLine
-          print (interp [] fact (cast x)) 
+          print (interp [] fact (cast x))
 

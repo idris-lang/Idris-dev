@@ -537,7 +537,7 @@ hasAnyByNilFalse p (x::xs) =
 
 hasAnyNilFalse : Eq a => (l : List a) -> hasAny [] l = False
 hasAnyNilFalse l = ?hasAnyNilFalseBody
-    
+
 --------------------------------------------------------------------------------
 -- Proofs
 --------------------------------------------------------------------------------

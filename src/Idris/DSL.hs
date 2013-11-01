@@ -13,7 +13,7 @@ import Control.Monad.State
 import Debug.Trace
 
 debindApp :: SyntaxInfo -> PTerm -> PTerm
-debindApp syn t = debind (dsl_bind (dsl_info syn)) t 
+debindApp syn t = debind (dsl_bind (dsl_info syn)) t
 
 desugar :: SyntaxInfo -> IState -> PTerm -> PTerm
 desugar syn i t = let t' = expandDo (dsl_info syn) t in
@@ -21,7 +21,7 @@ desugar syn i t = let t' = expandDo (dsl_info syn) t in
 
 expandDo :: DSL -> PTerm -> PTerm
 expandDo dsl (PLam n ty tm)
-    | Just lam <- dsl_lambda dsl 
+    | Just lam <- dsl_lambda dsl
         = let sc = PApp (fileFC "(dsl)") lam [pexp (var dsl n tm 0)] in
               expandDo dsl sc
 expandDo dsl (PLam n ty tm) = PLam n (expandDo dsl ty) (expandDo dsl tm)
@@ -33,13 +33,13 @@ expandDo dsl (PLet n ty v tm) = PLet n (expandDo dsl ty) (expandDo dsl v) (expan
 expandDo dsl (PPi p n ty tm) = PPi p n (expandDo dsl ty) (expandDo dsl tm)
 expandDo dsl (PApp fc t args) = PApp fc (expandDo dsl t)
                                         (map (fmap (expandDo dsl)) args)
-expandDo dsl (PAppBind fc t args) = PAppBind fc (expandDo dsl t) 
-                                                (map (fmap (expandDo dsl)) args) 
+expandDo dsl (PAppBind fc t args) = PAppBind fc (expandDo dsl t)
+                                                (map (fmap (expandDo dsl)) args)
 expandDo dsl (PCase fc s opts) = PCase fc (expandDo dsl s)
                                         (map (pmap (expandDo dsl)) opts)
 expandDo dsl (PEq fc l r) = PEq fc (expandDo dsl l) (expandDo dsl r)
 expandDo dsl (PPair fc l r) = PPair fc (expandDo dsl l) (expandDo dsl r)
-expandDo dsl (PDPair fc l t r) = PDPair fc (expandDo dsl l) (expandDo dsl t) 
+expandDo dsl (PDPair fc l t r) = PDPair fc (expandDo dsl l) (expandDo dsl t)
                                            (expandDo dsl r)
 expandDo dsl (PAlternative a as) = PAlternative a (map (expandDo dsl) as)
 expandDo dsl (PHidden t) = PHidden (expandDo dsl t)
@@ -50,15 +50,15 @@ expandDo dsl (PRewrite fc r t ty)
     = PRewrite fc r (expandDo dsl t) ty
 expandDo dsl (PGoal fc r n sc)
     = PGoal fc (expandDo dsl r) n (expandDo dsl sc)
-expandDo dsl (PDoBlock ds) 
+expandDo dsl (PDoBlock ds)
     = expandDo dsl $ debind (dsl_bind dsl) (block (dsl_bind dsl) ds)
   where
-    block b [DoExp fc tm] = tm 
+    block b [DoExp fc tm] = tm
     block b [a] = PElabError (Msg "Last statement in do block must be an expression")
     block b (DoBind fc n tm : rest)
         = PApp fc b [pexp tm, pexp (PLam n Placeholder (block b rest))]
     block b (DoBindP fc p tm : rest)
-        = PApp fc b [pexp tm, pexp (PLam (MN 0 "bpat") Placeholder 
+        = PApp fc b [pexp tm, pexp (PLam (MN 0 "bpat") Placeholder
                                    (PCase fc (PRef fc (MN 0 "bpat"))
                                              [(p, block b rest)]))]
     block b (DoLet fc n ty tm : rest)
@@ -66,8 +66,8 @@ expandDo dsl (PDoBlock ds)
     block b (DoLetP fc p tm : rest)
         = PCase fc tm [(p, block b rest)]
     block b (DoExp fc tm : rest)
-        = PApp fc b 
-            [pexp tm, 
+        = PApp fc b
+            [pexp tm,
              pexp (PLam (MN 0 "bindx") Placeholder (block b rest))]
     block b _ = PElabError (Msg "Invalid statement in do block")
 
@@ -76,7 +76,7 @@ expandDo dsl t = t
 
 var :: DSL -> Name -> PTerm -> Int -> PTerm
 var dsl n t i = v' i t where
-    v' i (PRef fc x) | x == n = 
+    v' i (PRef fc x) | x == n =
         case dsl_var dsl of
             Nothing -> PElabError (Msg "No 'variable' defined in dsl")
             Just v -> PApp fc v [pexp (mkVar fc i)]
@@ -107,7 +107,7 @@ var dsl n t i = v' i t where
                    Just f  -> f
     mkVar fc n = case index_next dsl of
                    Nothing -> PElabError (Msg "No index_next defined")
-                   Just f -> PApp fc f [pexp (mkVar fc (n-1))] 
+                   Just f -> PApp fc f [pexp (mkVar fc (n-1))]
 
 unIdiom :: PTerm -> PTerm -> FC -> PTerm -> PTerm
 unIdiom ap pure fc e@(PApp _ _ _) = let f = getFn e in
@@ -150,7 +150,7 @@ debind b tm = let (tm', (bs, _)) = runState (db' tm) ([], 0) in
     db' (PDPair fc l t r) = do l' <- db' l
                                r' <- db' r
                                return (PDPair fc l' t r')
-    db' t = return t 
+    db' t = return t
 
     dbArg a = do t' <- db' (getTm a)
                  return (a { getTm = t' })

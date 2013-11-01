@@ -9,7 +9,7 @@ isLower : Char -> Bool
 isLower x = x >= 'a' && x <= 'z'
 
 isAlpha : Char -> Bool
-isAlpha x = isUpper x || isLower x 
+isAlpha x = isUpper x || isLower x
 
 isDigit : Char -> Bool
 isDigit x = (x >= '0' && x <= '9')
@@ -23,10 +23,10 @@ isSpace x = x == ' '  || x == '\t' || x == '\r' ||
             x == '\xa0'
 
 isNL : Char -> Bool
-isNL x = x == '\r' || x == '\n' 
+isNL x = x == '\r' || x == '\n'
 
 toUpper : Char -> Char
-toUpper x = if (isLower x) 
+toUpper x = if (isLower x)
                then (prim__intToChar (prim__charToInt x - 32))
                else x
 

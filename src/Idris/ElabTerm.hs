@@ -35,9 +35,9 @@ toplevel = EInfo [] emptyContext id Nothing
 
 -- Also find deferred names in the term and their types
 
-build :: IState -> ElabInfo -> Bool -> Name -> PTerm -> 
+build :: IState -> ElabInfo -> Bool -> Name -> PTerm ->
          ElabD (Term, [(Name, (Int, Maybe Name, Type))], [PDecl])
-build ist info pattern fn tm 
+build ist info pattern fn tm
     = do elab ist info pattern False fn tm
          ivs <- get_instances
          hs <- get_holes
@@ -45,14 +45,14 @@ build ist info pattern fn tm
          -- Resolve remaining type classes. Two passes - first to get the
          -- default Num instances, second to clean up the rest
          when (not pattern) $
-              mapM_ (\n -> when (n `elem` hs) $ 
+              mapM_ (\n -> when (n `elem` hs) $
                              do focus n
                                 try (resolveTC 7 fn ist)
                                     (movelast n)) ivs
          ivs <- get_instances
          hs <- get_holes
          when (not pattern) $
-              mapM_ (\n -> when (n `elem` hs) $ 
+              mapM_ (\n -> when (n `elem` hs) $
                              do focus n
                                 resolveTC 7 fn ist) ivs
          tm <- get_term
@@ -73,9 +73,9 @@ build ist info pattern fn tm
 -- (Separate, so we don't go overboard resolving things that we don't
 -- know about yet on the LHS of a pattern def)
 
-buildTC :: IState -> ElabInfo -> Bool -> Bool -> Name -> PTerm -> 
+buildTC :: IState -> ElabInfo -> Bool -> Bool -> Name -> PTerm ->
          ElabD (Term, [(Name, (Int, Maybe Name, Type))], [PDecl])
-buildTC ist info pattern tcgen fn tm 
+buildTC ist info pattern tcgen fn tm
     = do elab ist info pattern tcgen fn tm
          probs <- get_probs
          tm <- get_term
@@ -92,9 +92,9 @@ buildTC ist info pattern tcgen fn tm
 -- Returns the set of declarations we need to add to complete the definition
 -- (most likely case blocks to elaborate)
 
-elab :: IState -> ElabInfo -> Bool -> Bool -> Name -> PTerm -> 
+elab :: IState -> ElabInfo -> Bool -> Bool -> Name -> PTerm ->
         ElabD ()
-elab ist info pattern tcgen fn tm 
+elab ist info pattern tcgen fn tm
     = do let loglvl = opt_logLevel (idris_options ist)
          when (loglvl > 5) $ unifyLog True
          compute -- expand type synonyms, etc
@@ -125,15 +125,15 @@ elab ist info pattern tcgen fn tm
 
     elabE ina t = {- do g <- goal
                  tm <- get_term
-                 trace ("Elaborating " ++ show t ++ " : " ++ show g ++ "\n\tin " ++ show tm) 
-                    $ -} 
+                 trace ("Elaborating " ++ show t ++ " : " ++ show g ++ "\n\tin " ++ show tm)
+                    $ -}
                   do t' <- insertCoerce ina t
                      g <- goal
                      tm <- get_term
                      ps <- get_probs
                      hs <- get_holes
 --                      trace ("Elaborating " ++ show t' ++ " in " ++ show g
--- --                             ++ "\n" ++ show tm 
+-- --                             ++ "\n" ++ show tm
 --                             ++ "\nholes " ++ show hs
 --                             ++ "\nproblems " ++ show ps
 --                             ++ "\n-----------\n") $
@@ -151,22 +151,22 @@ elab ist info pattern tcgen fn tm
     elab' ina (PFalse fc)    = elab' ina (PRef fc falseTy)
     elab' ina (PResolveTC (FC "HACK" _ _)) -- for chasing parent classes
        = resolveTC 5 fn ist
-    elab' ina (PResolveTC fc) 
+    elab' ina (PResolveTC fc)
         | True = do c <- unique_hole (MN 0 "class")
                     instanceArg c
         | otherwise = do g <- goal
                          try (resolveTC 2 fn ist)
                           (do c <- unique_hole (MN 0 "class")
                               instanceArg c)
-    elab' ina (PRefl fc t)   
+    elab' ina (PRefl fc t)
         = elab' ina (PApp fc (PRef fc eqCon) [pimp (MN 0 "a") Placeholder True,
                                               pimp (MN 0 "x") t False])
-    elab' ina (PEq fc l r)   = elab' ina (PApp fc (PRef fc eqTy) 
+    elab' ina (PEq fc l r)   = elab' ina (PApp fc (PRef fc eqTy)
                                     [pimp (MN 0 "a") Placeholder True,
                                      pimp (MN 0 "b") Placeholder False,
                                      pexp l, pexp r])
-    elab' ina@(_, a) (PPair fc l r) 
-        = do hnf_compute 
+    elab' ina@(_, a) (PPair fc l r)
+        = do hnf_compute
              g <- goal
              case g of
                 TType _ -> elabE (True, a) (PApp fc (PRef fc pairTy)
@@ -176,8 +176,8 @@ elab ist info pattern tcgen fn tm
                                              pimp (MN 0 "B") Placeholder True,
                                              pexp l, pexp r])
     elab' ina (PDPair fc l@(PRef _ n) t r)
-            = case t of 
-                Placeholder -> 
+            = case t of
+                Placeholder ->
                    do hnf_compute
                       g <- goal
                       case g of
@@ -195,7 +195,7 @@ elab ist info pattern tcgen fn tm
                                             [pimp (MN 0 "a") t False,
                                              pimp (MN 0 "P") Placeholder True,
                                              pexp l, pexp r])
-    elab' ina (PAlternative True as) 
+    elab' ina (PAlternative True as)
         = do hnf_compute
              ty <- goal
              ctxt <- get_context
@@ -207,13 +207,13 @@ elab ist info pattern tcgen fn tm
              tryAll (zip (map (elab' ina) as') (map showHd as'))
         where showHd (PApp _ h _) = show h
               showHd x = show x
-    elab' ina (PAlternative False as) 
+    elab' ina (PAlternative False as)
         = trySeq as
         where -- if none work, take the error from the first
               trySeq (x : xs) = let e1 = elab' ina x in
                                     try' e1 (trySeq' e1 xs) True
               trySeq' deferr [] = proofFail deferr
-              trySeq' deferr (x : xs) 
+              trySeq' deferr (x : xs)
                   = try' (elab' ina x) (trySeq' deferr xs) True
     elab' ina (PPatvar fc n) | pattern = patvar n
     elab' (ina, guarded) (PRef fc n) | pattern && not (inparamBlock n)
@@ -239,8 +239,8 @@ elab ist info pattern tcgen fn tm
                ptm <- get_term
                g <- goal
                checkPiGoal n
-               attack; intro (Just n); 
-               -- trace ("------ intro " ++ show n ++ " ---- \n" ++ show ptm) 
+               attack; intro (Just n);
+               -- trace ("------ intro " ++ show n ++ " ---- \n" ++ show ptm)
                elabE (True, a) sc; solve
        where repN n n' (PRef fc x) | x == n' = PRef fc n'
              repN _ _ t = t
@@ -254,7 +254,7 @@ elab ist info pattern tcgen fn tm
                ptm <- get_term
                hs <- get_holes
                -- trace ("BEFORE:\n" ++ show hsin ++ "\n" ++ show ptmin ++
-               --       "\nNOW:\n" ++ show hs ++ "\n" ++ show ptm) $ 
+               --       "\nNOW:\n" ++ show hs ++ "\n" ++ show ptm) $
                introTy (Var tyn) (Just n)
                -- end_unify
                focus tyn
@@ -265,10 +265,10 @@ elab ist info pattern tcgen fn tm
                solve
     elab' ina@(_,a) (PPi _ n Placeholder sc)
           = do attack; arg n (MN 0 "ty"); elabE (True, a) sc; solve
-    elab' ina@(_,a) (PPi _ n ty sc) 
+    elab' ina@(_,a) (PPi _ n ty sc)
           = do attack; tyn <- unique_hole (MN 0 "ty")
                claim tyn RType
-               n' <- case n of 
+               n' <- case n of
                         MN _ _ -> unique_hole n
                         _ -> return n
                forall n' (Var tyn)
@@ -310,8 +310,8 @@ elab ist info pattern tcgen fn tm
          computeLet n
          elabE (True, a) sc
          solve
---          elab' ina (PLet n Placeholder 
---              (PApp fc r [pexp (delab ist rty)]) sc) 
+--          elab' ina (PLet n Placeholder
+--              (PApp fc r [pexp (delab ist rty)]) sc)
     elab' ina tm@(PApp fc (PInferRef _ f) args) = do
          rty <- goal
          ds <- get_deferred
@@ -330,10 +330,10 @@ elab ist info pattern tcgen fn tm
          mapM_ elabIArg (zip argTys args)
        where claimArgTys env [] = return []
              claimArgTys env (arg : xs) | Just n <- localVar env (getTm arg)
-                                  = do nty <- get_type (Var n) 
+                                  = do nty <- get_type (Var n)
                                        ans <- claimArgTys env xs
                                        return ((n, (False, forget nty)) : ans)
-             claimArgTys env (_ : xs) 
+             claimArgTys env (_ : xs)
                                   = do an <- unique_hole (MN 0 "inf_argTy")
                                        aval <- unique_hole (MN 0 "inf_arg")
                                        claim an RType
@@ -343,15 +343,15 @@ elab ist info pattern tcgen fn tm
              fnTy [] ret  = forget ret
              fnTy ((x, (_, xt)) : xs) ret = RBind x (Pi xt) (fnTy xs ret)
 
-             localVar env (PRef _ x) 
+             localVar env (PRef _ x)
                            = case lookup x env of
                                   Just _ -> Just x
                                   _ -> Nothing
              localVar env _ = Nothing
 
-             elabIArg ((n, (True, ty)), def) = do focus n; elabE ina (getTm def) 
+             elabIArg ((n, (True, ty)), def) = do focus n; elabE ina (getTm def)
              elabIArg _ = return () -- already done, just a name
-             
+
              mkN n@(NS _ _) = n
              mkN n@(SN _) = n
              mkN n = case namespace info of
@@ -365,7 +365,7 @@ elab ist info pattern tcgen fn tm
             ns <- match_apply (Var fn') (map (\x -> (x,0)) imps)
             solve
     -- if f is local, just do a simple_app
-    elab' (ina, g) tm@(PApp fc (PRef _ f) args') 
+    elab' (ina, g) tm@(PApp fc (PRef _ f) args')
        = do let args = {- case lookupCtxt f (inblock info) of
                           Just ps -> (map (pexp . (PRef fc)) ps ++ args')
                           _ -> -} args'
@@ -373,11 +373,11 @@ elab ist info pattern tcgen fn tm
             env <- get_env
             if (f `elem` map fst env && length args' == 1)
                then -- simple app, as below
-                    do simple_app (elabE (ina, g) (PRef fc f)) 
+                    do simple_app (elabE (ina, g) (PRef fc f))
                                   (elabE (True, g) (getTm (head args')))
                                   (show tm)
                        solve
-               else 
+               else
                  do ivs <- get_instances
                     ps <- get_probs
                     -- HACK: we shouldn't resolve type classes if we're defining an instance
@@ -394,8 +394,8 @@ elab ist info pattern tcgen fn tm
                     ptm <- get_term
                     g <- goal
                     -- Sort so that the implicit tactics go last
-                    let (ns', eargs) = unzip $ 
-                             sortBy (\(_,x) (_,y) -> 
+                    let (ns', eargs) = unzip $
+                             sortBy (\(_,x) (_,y) ->
                                             compare (priority x) (priority y))
                                     (zip ns args)
                     elabArgs (ina || not isinf, guarded)
@@ -416,7 +416,7 @@ elab ist info pattern tcgen fn tm
                                         -- let insts = filter tcname $ map fst (ctxtAlist (tt_ctxt ist))
                                          then try (resolveTC 7 fn ist)
                                                   (movelast n)
-                                         else movelast n) 
+                                         else movelast n)
                               (ivs' \\ ivs)
       where tcArg (n, PConstraint _ _ Placeholder _) = True
             tcArg _ = False
@@ -430,7 +430,7 @@ elab ist info pattern tcgen fn tm
             setInjective _ = return ()
 
     elab' ina@(_, a) tm@(PApp fc f [arg])
-          = erun fc $ 
+          = erun fc $
              do simple_app (elabE ina f) (elabE (True, a) (getTm arg))
                            (show tm)
                 solve
@@ -443,18 +443,18 @@ elab ist info pattern tcgen fn tm
                         Just xs@(_:_) -> NS n xs
                         _ -> n
     elab' ina (PProof ts) = do compute; mapM_ (runTac True ist) ts
-    elab' ina (PTactics ts) 
+    elab' ina (PTactics ts)
         | not pattern = do mapM_ (runTac False ist) ts
         | otherwise = elab' ina Placeholder
     elab' ina (PElabError e) = fail (pshow ist e)
-    elab' ina (PRewrite fc r sc newg) 
+    elab' ina (PRewrite fc r sc newg)
         = do attack
              tyn <- unique_hole (MN 0 "rty")
              claim tyn RType
              valn <- unique_hole (MN 0 "rval")
              claim valn (Var tyn)
              letn <- unique_hole (MN 0 "rewrite_rule")
-             letbind letn (Var tyn) (Var valn)  
+             letbind letn (Var tyn) (Var valn)
              focus valn
              elab' ina r
              compute
@@ -494,7 +494,7 @@ elab ist info pattern tcgen fn tm
              cname <- unique_hole' True (mkCaseName fn)
              let cname' = mkN cname
              elab' ina (PMetavar cname')
-             let newdef = PClauses fc [] cname' 
+             let newdef = PClauses fc [] cname'
                              (caseBlock fc cname' (reverse args) opts)
              -- elaborate case
              env <- get_env
@@ -506,7 +506,7 @@ elab ist info pattern tcgen fn tm
               mkCaseName n = SN (CaseN n)
 --               mkCaseName (UN x) = UN (x ++ "_case")
 --               mkCaseName (MN i x) = MN i (x ++ "_case")
---               mkCaseName (SN s) = 
+--               mkCaseName (SN s) =
               mkN n@(NS _ _) = n
               mkN n = case namespace info of
                         Just xs@(_:_) -> NS n xs
@@ -516,16 +516,16 @@ elab ist info pattern tcgen fn tm
                                  unifyLog False
     elab' ina x = fail $ "Unelaboratable syntactic form " ++ show x
 
-    caseBlock :: FC -> Name -> [(Name, Binder Term)] -> 
+    caseBlock :: FC -> Name -> [(Name, Binder Term)] ->
                                [(PTerm, PTerm)] -> [PClause]
-    caseBlock fc n env opts 
+    caseBlock fc n env opts
         = let args = map mkarg (map fst (init env)) in
               map (mkClause args) opts
        where -- mkarg (MN _ _) = Placeholder
              mkarg n = PRef fc n
              -- may be shadowed names in the new pattern - so replace the
              -- old ones with an _
-             mkClause args (l, r) 
+             mkClause args (l, r)
                    = let args' = map (shadowed (allNamesIn l)) args
                          lhs = PApp (getFC fc l) (PRef (getFC fc l) n)
                                  (map pexp args' ++ [pexp l]) in
@@ -552,7 +552,7 @@ elab ist info pattern tcgen fn tm
                          (_, cs) -> PAlternative False [t ,
                                        PAlternative True (map (mkCoerce t) cs)]
            return t'
-       where 
+       where
          mkCoerce t n = let fc = fileFC "Coercion" in -- line never appears!
                             addImpl ist (PApp fc (PRef fc n) [pexp (PCoerced t)])
 
@@ -560,18 +560,18 @@ elab ist info pattern tcgen fn tm
 --         | retry = let (ns, ts) = unzip (reverse failed) in
 --                       elabArgs ina [] False ns ts
         | otherwise = return ()
-    elabArgs ina failed fc r (n:ns) ((_, Placeholder) : args) 
+    elabArgs ina failed fc r (n:ns) ((_, Placeholder) : args)
         = elabArgs ina failed fc r ns args
     elabArgs ina failed fc r (n:ns) ((lazy, t) : args)
         | lazy && not pattern
           = do elabArg n (PApp bi (PRef bi (UN "lazy"))
                                [pimp (UN "a") Placeholder True,
-                                pexp t]); 
+                                pexp t]);
         | otherwise = elabArg n t
-      where elabArg n t 
+      where elabArg n t
                 = do hs <- get_holes
                      tm <- get_term
-                     failed' <- -- trace (show (n, t, hs, tm)) $ 
+                     failed' <- -- trace (show (n, t, hs, tm)) $
                                 -- traceWhen (not (null cs)) (show ty ++ "\n" ++ showImp True t) $
                                 case n `elem` hs of
                                    True ->
@@ -588,7 +588,7 @@ elab ist info pattern tcgen fn tm
 pruneAlt :: [PTerm] -> [PTerm]
 pruneAlt xs = map prune xs
   where
-    prune (PApp fc1 (PRef fc2 f) as) 
+    prune (PApp fc1 (PRef fc2 f) as)
         = PApp fc1 (PRef fc2 f) (fmap (fmap (choose f)) as)
     prune t = t
 
@@ -608,11 +608,11 @@ pruneAlt xs = map prune xs
 -- Rule out alternatives that don't return the same type as the head of the goal
 -- (If there are none left as a result, do nothing)
 pruneByType :: Term -> Context -> [PTerm] -> [PTerm]
-pruneByType (P _ n _) c as 
+pruneByType (P _ n _) c as
 -- if the goal type is polymorphic, keep e
    | [] <- lookupTy n c = as
-   | otherwise 
-       = let asV = filter (headIs True n) as 
+   | otherwise
+       = let asV = filter (headIs True n) as
              as' = filter (headIs False n) as in
              case as' of
                [] -> case asV of
@@ -625,7 +625,7 @@ pruneByType (P _ n _) c as
     headIs var f (PPi _ _ _ sc) = headIs var f sc
     headIs _ _ _ = True -- keep if it's not an application
 
-    typeHead var f f' 
+    typeHead var f f'
         = case lookupTy f' c of
                        [ty] -> let ty' = normalise c [] ty in
                                    case unApply (getRetTy ty') of
@@ -637,27 +637,27 @@ pruneByType (P _ n _) c as
 pruneByType t _ as = as
 
 findInstances :: IState -> Term -> [Name]
-findInstances ist t 
-    | (P _ n _, _) <- unApply t 
+findInstances ist t
+    | (P _ n _, _) <- unApply t
         = case lookupCtxt n (idris_classes ist) of
             [CI _ _ _ _ ins] -> ins
             _ -> []
     | otherwise = []
 
-trivial' ist 
+trivial' ist
     = trivial (elab ist toplevel False False (MN 0 "tac")) ist
 proofSearch' ist top n hints
     = proofSearch (elab ist toplevel False False (MN 0 "tac")) top n hints ist
-                          
+
 
 resolveTC :: Int -> Name -> IState -> ElabD ()
 resolveTC 0 fn ist = fail $ "Can't resolve type class"
 resolveTC 1 fn ist = try' (trivial' ist) (resolveTC 0 fn ist) True
-resolveTC depth fn ist 
+resolveTC depth fn ist
       = do hnf_compute
            g <- goal
            ptm <- get_term
-           hs <- get_holes 
+           hs <- get_holes
            if True -- all (\n -> not (n `elem` hs)) (freeNames g)
             then try' (trivial' ist)
                 (do t <- goal
@@ -703,17 +703,17 @@ resolveTC depth fn ist
     blunderbuss t d [] = do -- c <- get_env
                             -- ps <- get_probs
                             lift $ tfail $ CantResolve t
-    blunderbuss t d (n:ns) 
+    blunderbuss t d (n:ns)
         | n /= fn && tcname n = try' (resolve n d)
                                      (blunderbuss t d ns) True
         | otherwise = blunderbuss t d ns
 
     resolve n depth
        | depth == 0 = fail $ "Can't resolve type class"
-       | otherwise 
+       | otherwise
            = do t <- goal
                 let (tc, ttypes) = unApply t
---                 if (all boundVar ttypes) then resolveTC (depth - 1) fn insts ist 
+--                 if (all boundVar ttypes) then resolveTC (depth - 1) fn insts ist
 --                   else do
                    -- if there's a hole in the goal, don't even try
                 let imps = case lookupCtxtName n (idris_implicits ist) of
@@ -728,7 +728,7 @@ resolveTC depth fn ist
                                      t' <- goal
                                      let (tc', ttype) = unApply t'
                                      let depth' = if t == t' then depth - 1 else depth
-                                     resolveTC depth' fn ist) 
+                                     resolveTC depth' fn ist)
                       (filter (\ (x, y) -> not x) (zip (map fst imps) args))
                 -- if there's any arguments left, we've failed to resolve
                 hs <- get_holes
@@ -757,9 +757,9 @@ collectDeferred top t = return t
 -- if a tactic adds unification problems, return an error
 
 runTac :: Bool -> IState -> PTactic -> ElabD ()
-runTac autoSolve ist tac 
+runTac autoSolve ist tac
     = do env <- get_env
-         no_errors $ runT (fmap (addImplBound ist (map fst env)) tac) 
+         no_errors $ runT (fmap (addImplBound ist (map fst env)) tac)
   where
     runT (Intro []) = do g <- goal
                          attack; intro (bname g)
@@ -776,8 +776,8 @@ runTac autoSolve ist tac
         bname _ = Nothing
     runT (Exact tm) = do elab ist toplevel False False (MN 0 "tac") tm
                          when autoSolve solveAll
-    runT (MatchRefine fn)   
-        = do fnimps <- 
+    runT (MatchRefine fn)
+        = do fnimps <-
                case lookupCtxtName fn (idris_implicits ist) of
                     [] -> do a <- envArgs fn
                              return [(fn, a)]
@@ -792,8 +792,8 @@ runTac autoSolve ist tac
                                Just t -> return $ map (const False)
                                                       (getArgTys (binderTy t))
                                _ -> return []
-    runT (Refine fn [])   
-        = do fnimps <- 
+    runT (Refine fn [])
+        = do fnimps <-
                case lookupCtxtName fn (idris_implicits ist) of
                     [] -> do a <- envArgs fn
                              return [(fn, a)]
@@ -812,7 +812,7 @@ runTac autoSolve ist tac
                                _ -> return []
     runT (Refine fn imps) = do ns <- apply (Var fn) (map (\x -> (x,0)) imps)
                                when autoSolve solveAll
-    runT (Equiv tm) -- let bind tm, then 
+    runT (Equiv tm) -- let bind tm, then
               = do attack
                    tyn <- unique_hole (MN 0 "ety")
                    claim tyn RType
@@ -832,7 +832,7 @@ runTac autoSolve ist tac
                    valn <- unique_hole (MN 0 "rval")
                    claim valn (Var tyn)
                    letn <- unique_hole (MN 0 "rewrite_rule")
-                   letbind letn (Var tyn) (Var valn)  
+                   letbind letn (Var tyn) (Var valn)
                    focus valn
                    elab ist toplevel False False (MN 0 "tac") tm
                    rewrite (Var letn)
@@ -863,7 +863,7 @@ runTac autoSolve ist tac
                    when autoSolve solveAll
     runT Compute = compute
     runT Trivial = do trivial' ist; when autoSolve solveAll
-    runT (ProofSearch top n hints) 
+    runT (ProofSearch top n hints)
          = do proofSearch' ist top n hints; when autoSolve solveAll
     runT (Focus n) = focus n
     runT Solve = solve
@@ -884,7 +884,7 @@ runTac autoSolve ist tac
                                restac <- unique_hole (MN 0 "restac")
                                claim restac tacticTy
                                focus restac
-                               fill (raw_apply (forget script') 
+                               fill (raw_apply (forget script')
                                                [reflectEnv tenv, reflect tgoal])
                                restac' <- get_guess
                                solve
@@ -896,9 +896,9 @@ runTac autoSolve ist tac
                                runReflected tactic
         where tacticTy = Var (reflm "Tactic")
               listTy = Var (NS (UN "List") ["List", "Prelude"])
-              scriptTy = (RBind (UN "__pi_arg") 
+              scriptTy = (RBind (UN "__pi_arg")
                                 (Pi (RApp listTy envTupleType))
-                                    (RBind (UN "__pi_arg1") 
+                                    (RBind (UN "__pi_arg1")
                                            (Pi (Var $ reflm "TT")) tacticTy))
 
     runT (Reflect v) = do attack -- let x = reflect v in ...
@@ -932,7 +932,7 @@ runTac autoSolve ist tac
                        runTac autoSolve ist (Exact $ PQuote rawValue)
     runT (GoalType n tac) = do g <- goal
                                case unApply g of
-                                    (P _ n' _, _) -> 
+                                    (P _ n' _, _) ->
                                        if nsroot n' == UN n
                                           then runT tac
                                           else fail "Wrong goal type"
@@ -969,7 +969,7 @@ reifyApp ist t [Constant (Str n), x]
              | t == reflm "GoalType" = liftM (GoalType n) (reify ist x)
 reifyApp _ t [Constant (Str n)]
            | t == reflm "Intro" = return $ Intro [UN n]
-reifyApp ist t [t']   
+reifyApp ist t [t']
              | t == reflm "ApplyTactic" = liftM (ApplyTactic . delab ist) (reifyTT t')
 reifyApp ist t [t']
              | t == reflm "Reflect" = liftM (Reflect . delab ist) (reifyTT t')
@@ -1071,9 +1071,9 @@ reifyTTNameApp t []
 reifyTTNameApp t args = fail ("Unknown reflection term name: " ++ show (t, args))
 
 reifyTTNamespace :: Term -> ElabD [String]
-reifyTTNamespace t@(App _ _) 
+reifyTTNamespace t@(App _ _)
   = case unApply t of
-      (P _ f _, [Constant StrType]) 
+      (P _ f _, [Constant StrType])
            | f == NS (UN "Nil") ["List", "Prelude"] -> return []
       (P _ f _, [Constant StrType, Constant (Str n), ns])
            | f == NS (UN "::")  ["List", "Prelude"] -> liftM (n:) (reifyTTNamespace ns)
@@ -1094,7 +1094,7 @@ reifyTTNameType t = fail ("Unknown reflection name type: " ++ show t)
 reifyTTBinder :: (Term -> ElabD a) -> Name -> Term -> ElabD (Binder a)
 reifyTTBinder reificator binderType t@(App _ _)
   = case unApply t of
-     (P _ f _, bt:args) | forget bt == Var binderType 
+     (P _ f _, bt:args) | forget bt == Var binderType
        -> reifyTTBinderApp reificator f args
      _ -> fail ("Mismatching binder reflection: " ++ show t)
 reifyTTBinder _ _ t = fail ("Unknown reflection binder: " ++ show t)
@@ -1168,14 +1168,14 @@ reifyTTUExp t = fail ("Unknown reflection type universe expression: " ++ show t)
 
 -- | Create a reflected call to a named function/constructor
 reflCall :: String -> [Raw] -> Raw
-reflCall funName args 
+reflCall funName args
   = raw_apply (Var (reflm funName)) args
 
 -- | Lift a term into its Language.Reflection.TT representation
 reflect :: Term -> Raw
-reflect (P nt n t) 
+reflect (P nt n t)
   = reflCall "P" [reflectNameType nt, reflectName n, reflect t]
-reflect (V n) 
+reflect (V n)
   = reflCall "V" [RConstant (I n)]
 reflect (Bind n b x)
   = reflCall "Bind" [reflectName n, reflectBinder b, reflect x]
@@ -1192,24 +1192,24 @@ reflect (TType exp) = reflCall "TType" [reflectUExp exp]
 reflectNameType :: NameType -> Raw
 reflectNameType (Bound) = Var (reflm "Bound")
 reflectNameType (Ref) = Var (reflm "Ref")
-reflectNameType (DCon x y) 
+reflectNameType (DCon x y)
   = reflCall "DCon" [RConstant (I x), RConstant (I y)]
-reflectNameType (TCon x y) 
+reflectNameType (TCon x y)
   = reflCall "TCon" [RConstant (I x), RConstant (I y)]
 
 reflectName :: Name -> Raw
-reflectName (UN str) 
+reflectName (UN str)
   = reflCall "UN" [RConstant (Str str)]
 reflectName (NS n ns)
   = reflCall "NS" [ reflectName n
-                  , foldr (\ n s -> 
+                  , foldr (\ n s ->
                              raw_apply ( Var $ NS (UN "::") ["List", "Prelude"] )
                                        [ RConstant StrType, RConstant (Str n), s ])
                              ( raw_apply ( Var $ NS (UN "Nil") ["List", "Prelude"] )
                                          [ RConstant StrType ])
-                             ns 
-                  ] 
-reflectName (MN i n) 
+                             ns
+                  ]
+reflectName (MN i n)
   = reflCall "MN" [RConstant (I i), RConstant (Str n)]
 reflectName (NErased) = Var (reflm "NErased")
 reflectName n = Var (reflm "NErased") -- special name, not yet implemented
@@ -1270,16 +1270,16 @@ reflectEnv = foldr consToEnvList emptyEnvList
       = raw_apply (Var (NS (UN "::") ["List", "Prelude"]))
                   [ envTupleType
                   , raw_apply (Var pairCon) [ (Var $ reflm "TTName")
-                                            , (RApp (Var $ reflm "Binder") 
+                                            , (RApp (Var $ reflm "Binder")
                                                     (Var $ reflm "TT"))
-                                            , reflectName n 
+                                            , reflectName n
                                             , reflectBinder b
                                             ]
                   , l
                   ]
 
     emptyEnvList :: Raw
-    emptyEnvList = raw_apply (Var (NS (UN "Nil") ["List", "Prelude"])) 
+    emptyEnvList = raw_apply (Var (NS (UN "Nil") ["List", "Prelude"]))
                              [envTupleType]
 
 -- | Reflect an error into the internal datatype of Idris -- TODO
@@ -1289,8 +1289,8 @@ reflectErr (InternalMsg msg) = raw_apply (Var (NS (UN "InternalMsg") ["Reflectio
 reflectErr x = trace ("Couldn't reflect error " ++ show x) raw_apply (Var (NS (UN "Msg") ["Reflection", "Language"])) [reflectConstant (Str $ show x)]
 
 envTupleType :: Raw
-envTupleType 
-  = raw_apply (Var pairTy) [ (Var $ reflm "TTName") 
+envTupleType
+  = raw_apply (Var pairTy) [ (Var $ reflm "TTName")
                            , (RApp (Var $ reflm "Binder") (Var $ reflm "TT"))
                            ]
 
@@ -1322,7 +1322,7 @@ mkSpecDecl i n pargs tm'
               let g' = g -- specialise ctxt env ntimes g
               return tm'
 --               trace (show t ++ "\n" ++
---                      show ntimes ++ "\n" ++ 
+--                      show ntimes ++ "\n" ++
 --                      show (delab i g) ++ "\n" ++ show (delab i g')) $ return tm' -- TODO
            else return tm'
   where
@@ -1330,7 +1330,7 @@ mkSpecDecl i n pargs tm'
     cg = idris_callgraph i
 
     staticFnNames tm | (P _ f _, as) <- unApply tm
-        = if not (isFnName f ctxt) then [] 
+        = if not (isFnName f ctxt) then []
              else case lookupCtxt f cg of
                     [ns] -> f : f : [] --(ns \\ [f])
                     [] -> [f,f]

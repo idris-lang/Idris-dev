@@ -109,9 +109,9 @@ lemma_both_neq p_x_not_x' p_y_not_y' refl = p_x_not_x' refl
 lemma_snd_neq : {x : a, y : b, y' : d} -> (x = x) -> (y = y' -> _|_) -> ((x, y) = (x, y') -> _|_)
 lemma_snd_neq refl p refl = p refl
 
-lemma_fst_neq_snd_eq : {x : a, x' : b, y : c, y' : d} -> 
-                       (x = x' -> _|_) -> 
-                       (y = y') -> 
+lemma_fst_neq_snd_eq : {x : a, x' : b, y : c, y' : d} ->
+                       (x = x' -> _|_) ->
+                       (y = y') ->
                        ((x, y) = (x', y) -> _|_)
 lemma_fst_neq_snd_eq p_x_not_x' refl refl = p_x_not_x' refl
 
@@ -133,7 +133,7 @@ lemma_val_not_nil : {x : t, xs : List t} -> ((x :: xs) = Prelude.List.Nil {a = t
 lemma_val_not_nil refl impossible
 
 lemma_x_eq_xs_neq : {x : t, xs : List t, y : t, ys : List t} -> (x = y) -> (xs = ys -> _|_) -> ((x :: xs) = (y :: ys) -> _|_)
-lemma_x_eq_xs_neq refl p refl = p refl 
+lemma_x_eq_xs_neq refl p refl = p refl
 
 lemma_x_neq_xs_eq : {x : t, xs : List t, y : t, ys : List t} -> (x = y -> _|_) -> (xs = ys) -> ((x :: xs) = (y :: ys) -> _|_)
 lemma_x_neq_xs_eq p refl refl = p refl

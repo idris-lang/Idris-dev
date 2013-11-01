@@ -80,7 +80,7 @@ compile codegen f tm
                               ViaC ->
                                   codegenC c f outty hdrs
                                     (concatMap mkObj objs)
-                                    (concatMap mkLib libs) 
+                                    (concatMap mkLib libs)
                                     (concatMap mkFlag flags ++
                                      concatMap incdir impdirs) NONE
                               ViaJava ->
@@ -114,12 +114,12 @@ allNames :: [Name] -> Name -> Idris [Name]
 allNames ns n | n `elem` ns = return []
 allNames ns n = do i <- getIState
                    case lookupCtxtExact n (idris_callgraph i) of
-                      [ns'] -> do more <- mapM (allNames (n:ns)) (map fst (calls ns')) 
+                      [ns'] -> do more <- mapM (allNames (n:ns)) (map fst (calls ns'))
                                   return (nub (n : concat more))
                       _ -> return [n]
 
 mkDecls :: Term -> [Name] -> Idris [(Name, LDecl)]
-mkDecls t used 
+mkDecls t used
     = do i <- getIState
          let ds = filter (\ (n, d) -> n `elem` used || isCon d) $ ctxtAlist (tt_ctxt i)
          mapM traceUnused used
@@ -129,10 +129,10 @@ mkDecls t used
 showCaseTrees :: [(Name, LDecl)] -> String
 showCaseTrees ds = showSep "\n\n" (map showCT ds)
   where
-    showCT (n, LFun _ f args lexp) 
+    showCT (n, LFun _ f args lexp)
        = show n ++ " " ++ showSep " " (map show args) ++ " =\n\t "
-            ++ show lexp 
-    showCT (n, LConstructor c t a) = "data " ++ show n ++ " " ++ show a 
+            ++ show lexp
+    showCT (n, LConstructor c t a) = "data " ++ show n ++ " " ++ show a
 
 isCon (TyDecl _ _) = True
 isCon _ = False
@@ -144,9 +144,9 @@ build :: (Name, Def) -> Idris (Name, LDecl)
 build (n, d)
     = do i <- getIState
          case lookup n (idris_scprims i) of
-              Just (ar, op) -> 
+              Just (ar, op) ->
                   let args = map (\x -> MN x "op") [0..] in
-                      return (n, (LFun [] n (take ar args) 
+                      return (n, (LFun [] n (take ar args)
                                          (LOp op (map (LV . Glob) (take ar args)))))
               _ -> do def <- mkLDecl n d
                       logLvl 3 $ "Compiled " ++ show n ++ " =\n\t" ++ show def
@@ -154,18 +154,18 @@ build (n, d)
 
 getPrim :: IState -> Name -> [LExp] -> Maybe LExp
 getPrim i n args = case lookup n (idris_scprims i) of
-                        Just (ar, op) -> 
-                           if (ar == length args) 
+                        Just (ar, op) ->
+                           if (ar == length args)
                              then return (LOp op args)
                              else Nothing
                         _ -> Nothing
 
 declArgs args inl n (LLam xs x) = declArgs (args ++ xs) inl n x
-declArgs args inl n x = LFun (if inl then [Inline] else []) n args x 
+declArgs args inl n x = LFun (if inl then [Inline] else []) n args x
 
 mkLDecl n (Function tm _) = do e <- ir tm
                                return (declArgs [] True n e)
-mkLDecl n (CaseOp ci _ _ pats cd) 
+mkLDecl n (CaseOp ci _ _ pats cd)
    = let (args, sc) = cases_runtime cd in
          do e <- ir (args, sc)
             return (declArgs [] (case_inlinable ci) n e)
@@ -173,14 +173,14 @@ mkLDecl n (TyDecl (DCon t a) _) = return $ LConstructor n t a
 mkLDecl n (TyDecl (TCon t a) _) = return $ LConstructor n (-1) a
 mkLDecl n _ = return (LFun [] n [] (LError ("Impossible declaration " ++ show n)))
 
-instance ToIR (TT Name) where 
+instance ToIR (TT Name) where
     ir tm = ir' [] tm where
       ir' env tm@(App f a)
           | (P _ (UN "mkForeignPrim") _, args) <- unApply tm
               = doForeign env args
           | (P _ (UN "unsafePerformPrimIO") _, [_, arg]) <- unApply tm
               = ir' env arg
-            -- TMP HACK - until we get inlining. 
+            -- TMP HACK - until we get inlining.
           | (P _ (UN "replace") _, [_, _, _, _, _, arg]) <- unApply tm
               = ir' env arg
           | (P _ (UN "lazy") _, [_, arg]) <- unApply tm
@@ -198,11 +198,11 @@ instance ToIR (TT Name) where
 --               = do v' <- ir' env v
 --                    return v'
 --           | (P _ (UN "prim_io_bind") _, [_,_,v,Bind n (Lam _) sc]) <- unApply tm
---               = do v' <- ir' env v 
+--               = do v' <- ir' env v
 --                    sc' <- ir' (n:env) sc
 --                    return (LLet n (LForce v') sc')
 --           | (P _ (UN "prim_io_bind") _, [_,_,v,k]) <- unApply tm
---               = do v' <- ir' env v 
+--               = do v' <- ir' env v
 --                    k' <- ir' env k
 --                    return (LApp False k' [LForce v'])
           | (P _ (UN "malloc") _, [_,size,t]) <- unApply tm
@@ -223,20 +223,20 @@ instance ToIR (TT Name) where
                    case getPrim i n args' of
                         Just tm -> return tm
                         _ -> do
-                                 let collapse 
+                                 let collapse
                                         = case lookupCtxtExact n
                                                    (idris_optimisation i) of
                                                [oi] -> collapsible oi
                                                _ -> False
-                                 let unused 
+                                 let unused
                                         = case lookupCtxtExact n
                                                       (idris_callgraph i) of
-                                               [CGInfo _ _ _ _ unusedpos] -> 
+                                               [CGInfo _ _ _ _ unusedpos] ->
                                                       unusedpos
                                                _ -> []
-                                 if collapse 
+                                 if collapse
                                      then return LNothing
-                                     else return (LApp False (LV (Glob n)) 
+                                     else return (LApp False (LV (Glob n))
                                                  (mkUnused unused 0 args'))
           | (f, args) <- unApply tm
               = do f' <- ir' env f
@@ -270,10 +270,10 @@ instance ToIR (TT Name) where
       irCon env t arity n args
         | length args == arity = buildApp env (LV (Glob n)) args
         | otherwise = let extra = satArgs (arity - length args) in
-                          do sc' <- irCon env t arity n 
+                          do sc' <- irCon env t arity n
                                         (args ++ map (\n -> P Bound n undefined) extra)
                              return $ LLam extra sc'
-        
+
       satArgs n = map (\i -> MN i "sat") [1..n]
 
       buildApp env e [] = return e
@@ -298,7 +298,7 @@ instance ToIR (TT Name) where
 getFTypes :: TT Name -> Maybe [FType]
 getFTypes tm = case unApply tm of
                  (nil, []) -> Just []
-                 (cons, [ty, xs]) -> 
+                 (cons, [ty, xs]) ->
                      fmap (mkIty' ty :) (getFTypes xs)
                  _ -> Nothing
 
@@ -340,7 +340,7 @@ mkIntIty "IT32" = FArith (ATInt (ITFixed IT32))
 mkIntIty "IT64" = FArith (ATInt (ITFixed IT64))
 
 zname = NS (UN "Z") ["Nat","Prelude"]
-sname = NS (UN "S") ["Nat","Prelude"] 
+sname = NS (UN "S") ["Nat","Prelude"]
 
 instance ToIR ([Name], SC) where
     ir (args, tree) = do logLvl 3 $ "Compiling " ++ show args ++ "\n" ++ show tree
@@ -367,9 +367,9 @@ instance ToIR SC where
 --              = do n' <- ir n
 --                   rhs' <- ir rhs
 --                   return $ LDefaultCase
---                               (LLet arg (LOp LBMinus [n', LConst (BI 1)]) 
+--                               (LLet arg (LOp LBMinus [n', LConst (BI 1)])
 --                                           rhs')
-        mkIRAlt _ (ConCase n t args rhs) 
+        mkIRAlt _ (ConCase n t args rhs)
              = do rhs' <- ir rhs
                   return $ LConCase (-1) n args rhs'
         mkIRAlt _ (ConstCase x rhs)
@@ -377,15 +377,15 @@ instance ToIR SC where
              = do rhs' <- ir rhs
                   return $ LConstCase x rhs'
           | matchableTy x
-             = do rhs' <- ir rhs 
+             = do rhs' <- ir rhs
                   return $ LDefaultCase rhs'
-        mkIRAlt tm (SucCase n rhs)      
+        mkIRAlt tm (SucCase n rhs)
            = do rhs' <- ir rhs
                 return $ LDefaultCase (LLet n (LOp (LMinus (ATInt ITBig))
                                                  [tm,
                                                   LConst (BI 1)]) rhs')
 --                 return $ LSucCase n rhs'
-        mkIRAlt _ (ConstCase c rhs)      
+        mkIRAlt _ (ConstCase c rhs)
            = ifail $ "Can't match on (" ++ show c ++ ")"
         mkIRAlt _ (DefaultCase rhs)
            = do rhs' <- ir rhs

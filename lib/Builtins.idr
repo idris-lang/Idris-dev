@@ -39,7 +39,7 @@ believe_me : a -> b -- compiled specially as id, use with care!
 believe_me x = prim__believe_me _ _ x
 
 public %assert_total -- reduces at compile time, use with extreme care!
-really_believe_me : a -> b 
+really_believe_me : a -> b
 really_believe_me x = prim__believe_me _ _ x
 
 namespace Builtins {
@@ -84,7 +84,7 @@ data Dec : Type -> Type where
 
 data Bool = False | True
 
-boolElim : Bool -> |(t : a) -> |(f : a) -> a 
+boolElim : Bool -> |(t : a) -> |(f : a) -> a
 boolElim True  t e = t
 boolElim False t e = e
 
@@ -120,7 +120,7 @@ intToBool 0 = False
 intToBool x = True
 
 boolOp : (a -> a -> Int) -> a -> a -> Bool
-boolOp op x y = intToBool (op x y) 
+boolOp op x y = intToBool (op x y)
 
 class Eq a where
     (==) : a -> a -> Bool
@@ -129,7 +129,7 @@ class Eq a where
     x /= y = not (x == y)
     x == y = not (x /= y)
 
-instance Eq Int where 
+instance Eq Int where
     (==) = boolOp prim__eqInt
 
 instance Eq Integer where
@@ -162,11 +162,11 @@ instance Eq Ordering where
     GT == GT = True
     _  == _  = False
 
-class Eq a => Ord a where 
+class Eq a => Ord a where
     compare : a -> a -> Ordering
 
     (<) : a -> a -> Bool
-    (<) x y with (compare x y) 
+    (<) x y with (compare x y)
         (<) x y | LT = True
         (<) x y | _  = False
 
@@ -188,31 +188,31 @@ class Eq a => Ord a where
     min x y = if (x < y) then x else y
 
 
-instance Ord Int where 
+instance Ord Int where
     compare x y = if (x == y) then EQ else
                   if (boolOp prim__sltInt x y) then LT else
                   GT
 
 
-instance Ord Integer where 
+instance Ord Integer where
     compare x y = if (x == y) then EQ else
                   if (boolOp prim__sltBigInt x y) then LT else
                   GT
 
 
-instance Ord Float where 
+instance Ord Float where
     compare x y = if (x == y) then EQ else
                   if (boolOp prim__sltFloat x y) then LT else
                   GT
 
 
-instance Ord Char where 
+instance Ord Char where
     compare x y = if (x == y) then EQ else
                   if (boolOp prim__sltChar x y) then LT else
                   GT
 
 
-instance Ord String where 
+instance Ord String where
     compare x y = if (x == y) then EQ else
                   if (boolOp prim__ltString x y) then LT else
                   GT
@@ -225,7 +225,7 @@ instance (Ord a, Ord b) => Ord (a, b) where
       else compare xr yr
 
 
-class Num a where 
+class Num a where
     (+) : a -> a -> a
     (-) : a -> a -> a
     (*) : a -> a -> a
@@ -233,7 +233,7 @@ class Num a where
     abs : a -> a
     fromInteger : Integer -> a
 
-instance Num Integer where 
+instance Num Integer where
     (+) = prim__addBigInt
     (-) = prim__subBigInt
     (*) = prim__mulBigInt
@@ -241,7 +241,7 @@ instance Num Integer where
     abs x = if x < 0 then -x else x
     fromInteger = id
 
-instance Num Int where 
+instance Num Int where
     (+) = prim__addInt
     (-) = prim__subInt
     (*) = prim__mulInt
@@ -250,7 +250,7 @@ instance Num Int where
     abs x = if x < (prim__truncBigInt_Int 0) then -x else x
 
 
-instance Num Float where 
+instance Num Float where
     (+) = prim__addFloat
     (-) = prim__subFloat
     (*) = prim__mulFloat

@@ -16,10 +16,10 @@ import Core.Evaluate
 -- indexed with 'finalise'
 
 convertsC :: Context -> Env -> Term -> Term -> StateT UCs TC ()
-convertsC ctxt env x y 
+convertsC ctxt env x y
   = do c1 <- convEq ctxt x y
        if c1 then return ()
-         else 
+         else
             do c2 <- convEq ctxt (finalise (normalise ctxt env x))
                          (finalise (normalise ctxt env y))
                if c2 then return ()
@@ -28,10 +28,10 @@ convertsC ctxt env x y
                              (finalise (normalise ctxt env y)) (errEnv env))
 
 converts :: Context -> Env -> Term -> Term -> TC ()
-converts ctxt env x y 
-     = case convEq' ctxt x y of 
+converts ctxt env x y
+     = case convEq' ctxt x y of
           OK True -> return ()
-          _ -> case convEq' ctxt (finalise (normalise ctxt env x)) 
+          _ -> case convEq' ctxt (finalise (normalise ctxt env x))
                                  (finalise (normalise ctxt env y)) of
                 OK True -> return ()
                 _ -> tfail (CantConvert
@@ -51,7 +51,7 @@ recheck ctxt env tm orig
        case runStateT (check' False ctxt env tm) (v, []) of -- holes banned
           Error (IncompleteTerm _) -> Error $ IncompleteTerm orig
           Error e -> Error e
-          OK ((tm, ty), constraints) -> 
+          OK ((tm, ty), constraints) ->
               return (tm, ty, constraints)
 
 check :: Context -> Env -> Raw -> TC (Term, Type)
@@ -68,7 +68,7 @@ check' holes ctxt env top = chk env top where
            (av, aty) <- chk env a
            let fty' = case uniqueBinders (map fst env) (finalise fty) of
                         ty@(Bind x (Pi s) t) -> ty
-                        _ -> uniqueBinders (map fst env) 
+                        _ -> uniqueBinders (map fst env)
                                  $ case hnf ctxt env fty of
                                      ty@(Bind x (Pi s) t) -> ty
                                      _ -> normalise ctxt env fty
@@ -77,21 +77,21 @@ check' holes ctxt env top = chk env top where
 --                trace ("Converting " ++ show aty ++ " and " ++ show s ++
 --                       " from " ++ show fv ++ " : " ++ show fty) $
                  do convertsC ctxt env aty s
-                    -- let apty = normalise initContext env 
+                    -- let apty = normalise initContext env
                                        -- (Bind x (Let aty av) t)
-                    let apty = simplify initContext env 
+                    let apty = simplify initContext env
                                         (Bind x (Let aty av) t)
                     return (App fv av, apty)
              t -> lift $ tfail $ NonFunctionType fv fty -- "Can't apply a non-function type"
-    -- This rather unpleasant hack is needed because during incomplete 
-    -- proofs, variables are locally bound with an explicit name. If we just 
+    -- This rather unpleasant hack is needed because during incomplete
+    -- proofs, variables are locally bound with an explicit name. If we just
     -- make sure bound names in function types are locally unique, machine
     -- generated names, we'll be fine.
     -- NOTE: now replaced with 'uniqueBinders' above
-    where renameBinders i (Bind x (Pi s) t) = Bind (MN i "binder") (Pi s) 
+    where renameBinders i (Bind x (Pi s) t) = Bind (MN i "binder") (Pi s)
                                                    (renameBinders (i+1) t)
           renameBinders i sc = sc
-  chk env RType 
+  chk env RType
     | holes = return (TType (UVal 0), TType (UVal 0))
     | otherwise = do (v, cs) <- get
                      let c = ULT (UVar v) (UVar (v+1))
@@ -123,8 +123,8 @@ check' holes ctxt env top = chk env top where
            let TType su = normalise ctxt env st
            let TType tu = normalise ctxt env tt
            when (not holes) $ put (v+1, ULE su (UVar v):ULE tu (UVar v):cs)
-           return (Bind n (Pi (uniqueBinders (map fst env) sv)) 
-                              (pToV n tv), TType (UVar v))  
+           return (Bind n (Pi (uniqueBinders (map fst env) sv))
+                              (pToV n tv), TType (UVar v))
   chk env (RBind n b sc)
       = do b' <- checkBinder b
            (scv, sct) <- chk ((n, b'):env) sc
@@ -193,7 +193,7 @@ check' holes ctxt env top = chk env top where
                  let tt' = normalise ctxt env tt
                  lift $ isType ctxt env tt'
                  return (PVTy tv)
-  
+
           discharge n (Lam t) scv sct
             = return (Bind n (Lam t) scv, Bind n (Pi t) sct)
           discharge n (Pi t) scv sct
@@ -216,7 +216,7 @@ check' holes ctxt env top = chk env top where
 
 checkProgram :: Context -> RProgram -> TC Context
 checkProgram ctxt [] = return ctxt
-checkProgram ctxt ((n, RConst t) : xs) 
+checkProgram ctxt ((n, RConst t) : xs)
    = do (t', tt') <- trace (show n) $ check ctxt [] t
         isType ctxt [] tt'
         checkProgram (addTyDecl n Ref t' ctxt) xs

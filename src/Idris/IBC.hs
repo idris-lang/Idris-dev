@@ -54,8 +54,8 @@ data IBCFile = IBCFile { ver :: Word8,
                          ibc_lineapps :: [(FilePath, Int, PTerm)]
                        }
    deriving Show
-{-! 
-deriving instance Binary IBCFile 
+{-!
+deriving instance Binary IBCFile
 !-}
 
 initIBC :: IBCFile
@@ -67,13 +67,13 @@ loadIBC fp = do iLOG $ "Loading ibc " ++ fp
                 process ibcf fp
 
 writeIBC :: FilePath -> FilePath -> Idris ()
-writeIBC src f 
+writeIBC src f
     = do iLOG $ "Writing ibc " ++ show f
          i <- getIState
          case (Data.List.map fst (idris_metavars i)) \\ primDefs of
                 (_:_) -> ifail "Can't write ibc when there are unsolved metavariables"
                 [] -> return ()
-         ibcf <- mkIBC (ibc_write i) (initIBC { sourcefile = src }) 
+         ibcf <- mkIBC (ibc_write i) (initIBC { sourcefile = src })
          idrisCatch (do runIO $ createDirectoryIfMissing True (dropFileName f)
                         runIO $ encodeFile f ibcf
                         iLOG "Written")
@@ -88,25 +88,25 @@ mkIBC (i:is) f = do ist <- getIState
                     mkIBC is f'
 
 ibc :: IState -> IBCWrite -> IBCFile -> Idris IBCFile
-ibc i (IBCFix d) f = return f { ibc_fixes = d : ibc_fixes f } 
+ibc i (IBCFix d) f = return f { ibc_fixes = d : ibc_fixes f }
 ibc i (IBCImp n) f = case lookupCtxt n (idris_implicits i) of
                         [v] -> return f { ibc_implicits = (n,v): ibc_implicits f     }
                         _ -> ifail "IBC write failed"
-ibc i (IBCStatic n) f 
+ibc i (IBCStatic n) f
                    = case lookupCtxt n (idris_statics i) of
                         [v] -> return f { ibc_statics = (n,v): ibc_statics f     }
                         _ -> ifail "IBC write failed"
-ibc i (IBCClass n) f 
+ibc i (IBCClass n) f
                    = case lookupCtxt n (idris_classes i) of
                         [v] -> return f { ibc_classes = (n,v): ibc_classes f     }
                         _ -> ifail "IBC write failed"
-ibc i (IBCInstance int n ins) f 
+ibc i (IBCInstance int n ins) f
                    = return f { ibc_instances = (int,n,ins): ibc_instances f     }
-ibc i (IBCDSL n) f 
+ibc i (IBCDSL n) f
                    = case lookupCtxt n (idris_dsls i) of
                         [v] -> return f { ibc_dsls = (n,v): ibc_dsls f     }
                         _ -> ifail "IBC write failed"
-ibc i (IBCData n) f 
+ibc i (IBCData n) f
                    = case lookupCtxt n (idris_datatypes i) of
                         [v] -> return f { ibc_datatypes = (n,v): ibc_datatypes f     }
                         _ -> ifail "IBC write failed"
@@ -135,7 +135,7 @@ ibc i (IBCAccess n a) f = return f { ibc_access = (n,a) : ibc_access f }
 ibc i (IBCFlags n a) f = return f { ibc_flags = (n,a) : ibc_flags f }
 ibc i (IBCTotal n a) f = return f { ibc_total = (n,a) : ibc_total f }
 ibc i (IBCTrans t) f = return f { ibc_transforms = t : ibc_transforms f }
-ibc i (IBCLineApp fp l t) f 
+ibc i (IBCLineApp fp l t) f
      = return f { ibc_lineapps = (fp,l,t) : ibc_lineapps f }
 
 process :: IBCFile -> FilePath -> Idris ()
@@ -181,7 +181,7 @@ timestampOlder src ibc = do srct <- getModificationTime src
                                else return ()
 
 pImports :: [FilePath] -> Idris ()
-pImports fs 
+pImports fs
   = do mapM_ (\f -> do i <- getIState
                        ibcsd <- valIBCSubDir i
                        ids <- allImportDirs
@@ -189,18 +189,18 @@ pImports fs
                        if (f `elem` imported i)
                         then iLOG $ "Already read " ++ f
                         else do putIState (i { imported = f : imported i })
-                                case fp of 
+                                case fp of
                                     LIDR fn -> do iLOG $ "Failed at " ++ fn
                                                   ifail "Must be an ibc"
                                     IDR fn -> do iLOG $ "Failed at " ++ fn
                                                  ifail "Must be an ibc"
-                                    IBC fn src -> loadIBC fn) 
+                                    IBC fn src -> loadIBC fn)
              fs
 
 pImps :: [(Name, [PArg])] -> Idris ()
-pImps imps = mapM_ (\ (n, imp) -> 
+pImps imps = mapM_ (\ (n, imp) ->
                         do i <- getIState
-                           putIState (i { idris_implicits 
+                           putIState (i { idris_implicits
                                             = addDef n imp (idris_implicits i) }))
                    imps
 
@@ -216,7 +216,7 @@ pStatics ss = mapM_ (\ (n, s) ->
                     ss
 
 pClasses :: [(Name, ClassInfo)] -> Idris ()
-pClasses cs = mapM_ (\ (n, c) -> 
+pClasses cs = mapM_ (\ (n, c) ->
                         do i <- getIState
                            -- Don't lose instances from previous IBCs, which
                            -- could have loaded in any order
@@ -283,11 +283,11 @@ pHdrs :: [(Codegen, String)] -> Idris ()
 pHdrs hs = mapM_ (uncurry addHdr) hs
 
 pDefs :: [(Name, Def)] -> Idris ()
-pDefs ds = mapM_ (\ (n, d) -> 
+pDefs ds = mapM_ (\ (n, d) ->
                      do i <- getIState
                         logLvl 5 $ "Added " ++ show (n, d)
                         putIState (i { tt_ctxt = addCtxtDef n d (tt_ctxt i) }))
-                 ds       
+                 ds
 
 pDocs :: [(Name, String)] -> Idris ()
 pDocs ds = mapM_ (\ (n, a) -> addDocStr n a) ds
@@ -363,7 +363,7 @@ instance Binary FC where
                x3 <- get
                return (FC x1 x2 x3)
 
- 
+
 instance Binary Name where
         put x
           = case x of
@@ -508,7 +508,7 @@ instance Binary Const where
 
                    _ -> error "Corrupted binary data for Const"
 
- 
+
 instance Binary Raw where
         put x
           = case x of
@@ -545,7 +545,7 @@ instance Binary Raw where
                            return (RForce x1)
                    _ -> error "Corrupted binary data for Raw"
 
- 
+
 instance (Binary b) => Binary (Binder b) where
         put x
           = case x of
@@ -598,7 +598,7 @@ instance (Binary b) => Binary (Binder b) where
                            return (PVTy x1)
                    _ -> error "Corrupted binary data for Binder"
 
- 
+
 instance Binary NameType where
         put x
           = case x of
@@ -626,7 +626,7 @@ instance Binary NameType where
 
 instance {-(Binary n) =>-} Binary (TT Name) where
         put x
-          = {-# SCC "putTT" #-} 
+          = {-# SCC "putTT" #-}
             case x of
                 P x1 x2 x3 -> do putWord8 0
                                  put x1
@@ -705,12 +705,12 @@ instance Binary SC where
                    3 -> do x1 <- get
                            return (UnmatchedCase x1)
                    4 -> return ImpossibleCase
-                   _ -> error "Corrupted binary data for SC" 
+                   _ -> error "Corrupted binary data for SC"
 
- 
+
 instance Binary CaseAlt where
         put x
-          = {-# SCC "putCaseAlt" #-} 
+          = {-# SCC "putCaseAlt" #-}
             case x of
                 ConCase x1 x2 x3 x4 -> do putWord8 0
                                           put x1
@@ -769,10 +769,10 @@ instance Binary CaseInfo where
         get = do x1 <- get
                  x2 <- get
                  return (CaseInfo x1 x2)
- 
+
 instance Binary Def where
         put x
-          = {-# SCC "putDef" #-} 
+          = {-# SCC "putDef" #-}
             case x of
                 Function x1 x2 -> do putWord8 0
                                      put x1
@@ -871,7 +871,7 @@ instance Binary Totality where
 
 instance Binary IBCFile where
         put x@(IBCFile x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24 x25 x26 x27)
-         = {-# SCC "putIBCFile" #-} 
+         = {-# SCC "putIBCFile" #-}
             do put x1
                put x2
                put x3
@@ -901,7 +901,7 @@ instance Binary IBCFile where
                put x27
         get
           = do x1 <- get
-               if x1 == ibcVersion then 
+               if x1 == ibcVersion then
                  do x2 <- get
                     x3 <- get
                     x4 <- get
@@ -930,7 +930,7 @@ instance Binary IBCFile where
                     x27 <- get
                     return (IBCFile x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24 x25 x26 x27)
                   else return (initIBC { ver = x1 })
- 
+
 instance Binary FnOpt where
         put x
           = case x of
@@ -983,7 +983,7 @@ instance Binary Fixity where
                            return (PrefixN x1)
                    _ -> error "Corrupted binary data for Fixity"
 
- 
+
 instance Binary FixDecl where
         put (Fix x1 x2)
           = do put x1
@@ -993,7 +993,7 @@ instance Binary FixDecl where
                x2 <- get
                return (Fix x1 x2)
 
- 
+
 instance Binary Static where
         put x
           = case x of
@@ -1006,28 +1006,28 @@ instance Binary Static where
                    1 -> return Dynamic
                    _ -> error "Corrupted binary data for Static"
 
- 
+
 instance Binary Plicity where
         put x
           = case x of
-                Imp x1 x2 x3 x4 -> 
+                Imp x1 x2 x3 x4 ->
                              do putWord8 0
                                 put x1
                                 put x2
                                 put x3
                                 put x4
-                Exp x1 x2 x3 x4 -> 
+                Exp x1 x2 x3 x4 ->
                              do putWord8 1
                                 put x1
                                 put x2
                                 put x3
                                 put x4
-                Constraint x1 x2 x3 -> 
+                Constraint x1 x2 x3 ->
                                     do putWord8 2
                                        put x1
                                        put x2
                                        put x3
-                TacImp x1 x2 x3 x4 -> 
+                TacImp x1 x2 x3 x4 ->
                                    do putWord8 3
                                       put x1
                                       put x2
@@ -1057,7 +1057,7 @@ instance Binary Plicity where
                            return (TacImp x1 x2 x3 x4)
                    _ -> error "Corrupted binary data for Plicity"
 
- 
+
 instance (Binary t) => Binary (PDecl' t) where
         put x
           = case x of
@@ -1078,7 +1078,7 @@ instance (Binary t) => Binary (PDecl' t) where
                                            put x2
                                            put x3
                                            put x4
-                PData x1 x2 x3 x4 x5 -> 
+                PData x1 x2 x3 x4 x5 ->
                                      do putWord8 3
                                         put x1
                                         put x2
@@ -1092,7 +1092,7 @@ instance (Binary t) => Binary (PDecl' t) where
                 PNamespace x1 x2 -> do putWord8 5
                                        put x1
                                        put x2
-                PRecord x1 x2 x3 x4 x5 x6 x7 x8 -> 
+                PRecord x1 x2 x3 x4 x5 x6 x7 x8 ->
                                              do putWord8 6
                                                 put x1
                                                 put x2
@@ -1575,7 +1575,7 @@ instance (Binary t) => Binary (PTactic' t) where
                 Reflect x1 -> do putWord8 17
                                  put x1
                 Fill x1 -> do putWord8 18
-                              put x1                
+                              put x1
         get
           = do i <- getWord8
                case i of
@@ -1668,7 +1668,7 @@ instance (Binary t) => Binary (PDo' t) where
 instance (Binary t) => Binary (PArg' t) where
         put x
           = case x of
-                PImp x1 x2 x3 x4 x5 x6 -> 
+                PImp x1 x2 x3 x4 x5 x6 ->
                                     do putWord8 0
                                        put x1
                                        put x2
@@ -1676,19 +1676,19 @@ instance (Binary t) => Binary (PArg' t) where
                                        put x4
                                        put x5
                                        put x6
-                PExp x1 x2 x3 x4 -> 
+                PExp x1 x2 x3 x4 ->
                                  do putWord8 1
                                     put x1
                                     put x2
                                     put x3
                                     put x4
-                PConstraint x1 x2 x3 x4 -> 
+                PConstraint x1 x2 x3 x4 ->
                                         do putWord8 2
                                            put x1
                                            put x2
                                            put x3
                                            put x4
-                PTacImplicit x1 x2 x3 x4 x5 x6 -> 
+                PTacImplicit x1 x2 x3 x4 x5 x6 ->
                                                do putWord8 3
                                                   put x1
                                                   put x2
@@ -1725,7 +1725,7 @@ instance (Binary t) => Binary (PArg' t) where
                            return (PTacImplicit x1 x2 x3 x4 x5 x6)
                    _ -> error "Corrupted binary data for PArg'"
 
- 
+
 instance Binary ClassInfo where
         put (CI x1 x2 x3 x4 _)
           = do put x1
@@ -1775,7 +1775,7 @@ instance Binary SynContext where
                    2 -> return AnySyntax
                    _ -> error "Corrupted binary data for SynContext"
 
- 
+
 instance Binary Syntax where
         put (Rule x1 x2 x3)
           = do put x1
@@ -1809,7 +1809,7 @@ instance (Binary t) => Binary (DSL' t) where
                x8 <- get
                x9 <- get
                return (DSL x1 x2 x3 x4 x5 x6 x7 x8 x9)
- 
+
 instance Binary SSymbol where
         put x
           = case x of

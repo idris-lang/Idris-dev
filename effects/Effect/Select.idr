@@ -14,7 +14,7 @@ instance Handler Selection Maybe where
 
 instance Handler Selection List where
      handle r (Select xs) k = concatMap (k r) xs
-     
+
 SELECT : EFFECT
 SELECT = MkEff () Selection
 

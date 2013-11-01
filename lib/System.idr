@@ -7,7 +7,7 @@ import Prelude
 
 getArgs : IO (List String)
 getArgs = do n <- numArgs
-             ga' [] 0 n 
+             ga' [] 0 n
   where
     numArgs : IO Int
     numArgs = mkForeign (FFun "idris_numArgs" [FPtr] FInt) prim__vm
@@ -23,7 +23,7 @@ getArgs = do n <- numArgs
 -- Retrieves an value from the environment, if the given key is present,
 -- otherwise it returns Nothing.
 getEnv : String -> IO (Maybe String)
-getEnv key = do 
+getEnv key = do
     str_ptr <- getEnv'
     is_nil  <- nullStr str_ptr
     if is_nil
