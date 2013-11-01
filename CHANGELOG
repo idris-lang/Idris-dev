@@ -22,7 +22,8 @@ Internal changes
 * Improved type class resolution
 * Compiling Nat via GMP integers
 * Performance improvements in elaboration
-* Machinery for case-splitting, to support interactive editing
+* Various REPL commands to support interactive editing, and a client/server
+  mode to allow external invocation of REPL commands.
 
 New in 0.9.9:
 -------------
