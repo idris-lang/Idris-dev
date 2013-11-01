@@ -1,4 +1,4 @@
-module Idris.Help (CmdArg(..), help) where
+module Idris.Help (CmdArg(..), help, extraHelp) where
 
 data CmdArg = ExprArg -- ^ The command takes an expression
             | NameArg -- ^ The command takes a name
@@ -51,3 +51,18 @@ help =
     ([":colour", ":color"], ColourArg, "Turn REPL colours on or off; set a specific colour"),
     ([":q",":quit"], NoArg, "Exit the Idris system")
   ]
+
+-- | Use these for completion, but don't show them in :help
+extraHelp ::[([String], CmdArg, String)]
+extraHelp =
+    [ ([":casesplit", ":cs"], NoArg, ":cs <line> <name> splits the pattern variable on the line")
+    , ([":casesplit!", ":cs!"], NoArg, ":cs! <line> <name> destructively splits the pattern variable on the line")
+    , ([":addclause", ":ac"], NoArg, ":ac <line> <name> adds a clause for the definition of the name on the line")
+    , ([":addclause!", ":ac!"], NoArg, ":ac! <line> <name> destructively adds a clause for the definition of the name on the line")
+    , ([":makewith", ":mw"], NoArg, ":mw <line> <name> adds a with clause for the definition of the name on the line")
+    , ([":makewith!", ":mw!"], NoArg, ":mw! <line> <name> destructively adds a with clause for the definition of the name on the line")
+    , ([":proofsearch", ":ps"], NoArg, ":ps <line> <name> <names> does proof search for name on line, with names as hints")
+    , ([":proofsearch!", ":ps!"], NoArg, ":ps! <line> <name> <names> destructively does proof search for name on line, with names as hints")
+    , ([":addproofclause", ":apc"], NoArg, ":apc <line> <name> adds a pattern-matching proof clause to name on line")
+    , ([":addproofclause!", ":apc!"], NoArg, ":apc! <line> <name> destructively adds a pattern-matching proof clause to name on line")
+    ]
