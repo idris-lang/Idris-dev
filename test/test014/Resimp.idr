@@ -29,7 +29,7 @@ getCreator (MkCreator x) = x
 
 ioc : IO a -> Creator a
 ioc = MkCreator
-  
+
 infixr 5 :->
 
 using (i: Fin n, gam : Vect n Ty, gam' : Vect n Ty, gam'' : Vect n Ty)
@@ -63,14 +63,14 @@ using (i: Fin n, gam : Vect n Ty, gam' : Vect n Ty, gam'' : Vect n Ty)
   update Nil       stop    _ impossible
 
   total
-  envUpdate : (p:HasType gam i a) -> (val:interpTy b) -> 
+  envUpdate : (p:HasType gam i a) -> (val:interpTy b) ->
               Env gam -> Env (update gam p b)
   envUpdate stop    val (x :: xs) = val :: xs
   envUpdate (pop k) val (x :: xs) = x :: envUpdate k val xs
   envUpdate stop    _   Nil impossible
 
   total
-  envUpdateVal : (p:HasType gam i a) -> (val:b) -> 
+  envUpdateVal : (p:HasType gam i a) -> (val:b) ->
               Env gam -> Env (update gam p (Val b))
   envUpdateVal stop    val (x :: xs) = val :: xs
   envUpdateVal (pop k) val (x :: xs) = x :: envUpdateVal k val xs
@@ -81,7 +81,7 @@ using (i: Fin n, gam : Vect n Ty, gam' : Vect n Ty, gam'' : Vect n Ty)
 
   data Args  : Vect n Ty -> List Type -> Type where
        ANil  : Args gam []
-       ACons : HasType gam i a -> 
+       ACons : HasType gam i a ->
                Args gam as -> Args gam (interpTy a :: as)
 
   funTy : List Type -> Ty -> Ty
@@ -95,31 +95,31 @@ using (i: Fin n, gam : Vect n Ty, gam' : Vect n Ty, gam'' : Vect n Ty)
     it goes out of scope, where "consumed" simply means that it has been
     replaced with a value of type '()'. --}
 
-       Let    : Creator (interpTy a) -> 
-                Res (a :: gam) (Val () :: gam') (R t) -> 
+       Let    : Creator (interpTy a) ->
+                Res (a :: gam) (Val () :: gam') (R t) ->
                 Res gam gam' (R t)
-       Update : (a -> Updater b) -> (p:HasType gam i (Val a)) -> 
+       Update : (a -> Updater b) -> (p:HasType gam i (Val a)) ->
                 Res gam (update gam p (Val b)) (R ())
-       Use    : (a -> Reader b) -> HasType gam i (Val a) -> 
+       Use    : (a -> Reader b) -> HasType gam i (Val a) ->
                 Res gam gam (R b)
 
 {-- Control structures --}
 
        Lift   : |(action:IO a) -> Res gam gam (R a)
-       Check  : (p:HasType gam i (Choice (interpTy a) (interpTy b))) -> 
+       Check  : (p:HasType gam i (Choice (interpTy a) (interpTy b))) ->
                 (failure:Res (update gam p a) (update gam p c) t) ->
                 (success:Res (update gam p b) (update gam p c) t) ->
                 Res gam (update gam p c) t
-       While  : Res gam gam (R Bool) -> 
+       While  : Res gam gam (R Bool) ->
                 Res gam gam (R ()) -> Res gam gam (R ())
        Return : a -> Res gam gam (R a)
-       (>>=)  : Res gam gam'  (R a) -> (a -> Res gam' gam'' (R t)) -> 
+       (>>=)  : Res gam gam'  (R a) -> (a -> Res gam' gam'' (R t)) ->
                 Res gam gam'' (R t)
 
   ioret : a -> IO a
   ioret = return
 
-  interp : Env gam -> {static} Res gam gam' t -> 
+  interp : Env gam -> {static} Res gam gam' t ->
            (Env gam' -> interpTy t -> IO u) -> IO u
 
   interp env (Let val scope) k
@@ -128,24 +128,24 @@ using (i: Fin n, gam : Vect n Ty, gam' : Vect n Ty, gam'' : Vect n Ty)
                    (\env', scope' => k (envTail env') scope')
   interp env (Update method x) k
       = do x' <- getUpdater (method (envLookup x env))
-           k (envUpdateVal x x' env) (return ()) 
+           k (envUpdateVal x x' env) (return ())
   interp env (Use method x) k
       = do x' <- getReader (method (envLookup x env))
            k env (return x')
-  interp env (Lift io) k 
+  interp env (Lift io) k
      = k env io
   interp env (Check x left right) k =
-     either (envLookup x env) 
+     either (envLookup x env)
             (\a => interp (envUpdate x a env) left k)
             (\b => interp (envUpdate x b env) right k)
   interp env (While test body) k
      = interp env test
           (\env', result =>
              do r <- result
-                if (not r) 
+                if (not r)
                    then (k env' (return ()))
-                   else (interp env' body 
-                        (\env'', body' => 
+                   else (interp env' body
+                        (\env'', body' =>
                            do v <- body' -- make sure it's evalled
                               interp env'' (While test body) k )))
   interp env (Return v) k = k env (return v)

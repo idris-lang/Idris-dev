@@ -7,7 +7,7 @@ mutual
 
   namespace Odd
     data OddList : Type where
-        (::) : Nat -> EvenList -> OddList                                                                                                                                                 
+        (::) : Nat -> EvenList -> OddList
 
 test : EvenList
 test = [1, 2, 3, 4, 5, 6]

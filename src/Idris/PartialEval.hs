@@ -7,7 +7,7 @@ import Core.Evaluate
 
 import Debug.Trace
 
-partial_eval :: Context -> [(Name, Maybe Int)] -> 
+partial_eval :: Context -> [(Name, Maybe Int)] ->
                 [Either Term (Term, Term)] ->
                 [Either Term (Term, Term)]
 partial_eval ctxt ns tms = map peClause tms where

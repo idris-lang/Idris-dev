@@ -2,7 +2,7 @@ module CodataTest
 %default total
 
 codata InfStream a = (::) a (InfStream a)
--- 
+--
 -- natStream : InfStream Nat
 -- natStream = natFromStream 0 where
 --   natFromStream : Nat -> InfStream Nat

@@ -1,4 +1,4 @@
--- WARNING: No guarantees that this works properly yet! 
+-- WARNING: No guarantees that this works properly yet!
 
 module System.Concurrency.Process
 
@@ -6,7 +6,7 @@ import System.Concurrency.Raw
 
 %access public
 
-abstract 
+abstract
 data ProcID msg = MkPID Ptr
 
 -- Type safe message passing programs. Parameterised over the type of
@@ -43,7 +43,7 @@ send (MkPID p) m = lift (sendToThread p (prim__vm, m))
 -- Return whether a message is waiting in the queue
 
 msgWaiting : Process msg Bool
-msgWaiting = lift checkMsgs 
+msgWaiting = lift checkMsgs
 
 -- Receive a message - blocks if there is no message waiting
 
@@ -56,7 +56,7 @@ recv {msg} = do (senderid, m) <- lift get
 -- receive a message, and return with the sender's process ID.
 
 recvWithSender : Process msg (ProcID msg, msg)
-recvWithSender {msg} 
+recvWithSender {msg}
      = do (senderid, m) <- lift get
           return (MkPID senderid, m)
   where get : IO (Ptr, msg)

@@ -1,10 +1,10 @@
 module wheres
 
-even : Nat -> Bool 
+even : Nat -> Bool
 even Z = True
-even (S k) = odd k where 
+even (S k) = odd k where
   odd Z = False
-  odd (S k) = even k 
+  odd (S k) = even k
 
 test : List Nat
 test = [c (S 1), c Z, d (S Z)]

@@ -24,7 +24,7 @@ trivial elab ist = try' (do elab (PRefl (fileFC "prf") Placeholder)
                             return ()) True
       where
         tryAll []     = fail "No trivial solution"
-        tryAll ((x, b):xs) 
+        tryAll ((x, b):xs)
            = do -- if type of x has any holes in it, move on
                 hs <- get_holes
                 g <- goal
@@ -35,10 +35,10 @@ trivial elab ist = try' (do elab (PRefl (fileFC "prf") Placeholder)
 
 proofSearch :: (PTerm -> ElabD ()) -> Maybe Name -> Name -> [Name] ->
                IState -> ElabD ()
-proofSearch elab fn nroot hints ist = psRec maxDepth 
+proofSearch elab fn nroot hints ist = psRec maxDepth
   where
     maxDepth = 6
-  
+
     psRec 0 = do attack; defer nroot; solve --fail "Maximum depth reached"
     psRec d = try' (trivial elab ist)
                    (try' (try' (resolveByCon (d - 1)) (resolveByLocals (d - 1))
@@ -50,7 +50,7 @@ proofSearch elab fn nroot hints ist = psRec maxDepth
     getFn d (Just f) | d < maxDepth-1 = [f]
                      | otherwise = []
 
-    resolveByCon d 
+    resolveByCon d
         = do t <- goal
              let (f, _) = unApply t
              case f of
@@ -71,7 +71,7 @@ proofSearch elab fn nroot hints ist = psRec maxDepth
 
     tryCons d [] = fail "Constructors failed"
     tryCons d (c : cs) = try' (tryCon d c) (tryCons d cs) True
-   
+
     tryLocal d n t = do let a = getPArity (delab ist (binderTy t))
                         tryLocalArg d n a
 
@@ -80,7 +80,7 @@ proofSearch elab fn nroot hints ist = psRec maxDepth
                                    (psRec d) "proof search local apply"
 
     -- Like type class resolution, but searching with constructors
-    tryCon d n = 
+    tryCon d n =
          do let imps = case lookupCtxtName n (idris_implicits ist) of
                             [] -> []
                             [args] -> map isImp (snd args)
@@ -93,7 +93,7 @@ proofSearch elab fn nroot hints ist = psRec maxDepth
                                   psRec d)
                   (filter (\ (x, y) -> not x) (zip (map fst imps) args))
             solve
-    
+
     isImp (PImp p _ _ _ _ _) = (True, p)
     isImp arg = (False, priority arg)
 

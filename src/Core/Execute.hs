@@ -247,15 +247,15 @@ execApp' env ctxt con@(EP _ (UN "prim_io_return") _) args@(tp:v:rest) =
 
 -- Special cases arising from not having access to the C RTS in the interpreter
 execApp' env ctxt (EP _ (UN "mkForeignPrim") _) (_:fn:EConstant (Str arg):_:rest)
-    | Just (FFun "putStr" _ _) <- foreignFromTT fn 
+    | Just (FFun "putStr" _ _) <- foreignFromTT fn
            = do execIO (putStr arg)
                 execApp' env ctxt ioUnit rest
 execApp' env ctxt (EP _ (UN "mkForeignPrim") _) (_:fn:_:EHandle h:_:rest)
-    | Just (FFun "idris_readStr" _ _) <- foreignFromTT fn 
+    | Just (FFun "idris_readStr" _ _) <- foreignFromTT fn
            = do contents <- execIO $ hGetLine h
                 execApp' env ctxt (EConstant (Str (contents ++ "\n"))) rest
 execApp' env ctxt (EP _ (UN "mkForeignPrim") _) (_:fn:EConstant (Str f):EConstant (Str mode):rest)
-    | Just (FFun "fileOpen" _ _) <- foreignFromTT fn 
+    | Just (FFun "fileOpen" _ _) <- foreignFromTT fn
            = do m <- case mode of
                          "r" -> return ReadMode
                          "w" -> return WriteMode
@@ -268,25 +268,25 @@ execApp' env ctxt (EP _ (UN "mkForeignPrim") _) (_:fn:EConstant (Str f):EConstan
                 execApp' env ctxt (ioWrap (EHandle h)) (tail rest)
 
 execApp' env ctxt (EP _ (UN "mkForeignPrim") _) (_:fn:(EHandle h):rest)
-    | Just (FFun "fileEOF" _ _) <- foreignFromTT fn 
+    | Just (FFun "fileEOF" _ _) <- foreignFromTT fn
            = do eofp <- execIO $ hIsEOF h
                 let res = ioWrap (EConstant (I $ if eofp then 1 else 0))
                 execApp' env ctxt res (tail rest)
 
 execApp' env ctxt (EP _ (UN "mkForeignPrim") _) (_:fn:(EHandle h):rest)
-    | Just (FFun "fileClose" _ _) <- foreignFromTT fn 
+    | Just (FFun "fileClose" _ _) <- foreignFromTT fn
            = do execIO $ hClose h
                 execApp' env ctxt ioUnit (tail rest)
 
 execApp' env ctxt (EP _ (UN "mkForeignPrim") _) (_:fn:(EPtr p):rest)
-    | Just (FFun "isNull" _ _) <- foreignFromTT fn 
+    | Just (FFun "isNull" _ _) <- foreignFromTT fn
            = let res = ioWrap . EConstant . I $
                        if p == nullPtr then 1 else 0
                   in execApp' env ctxt res (tail rest)
 
 -- Throw away the 'World' argument to the foreign function
 
-execApp' env ctxt f@(EP _ (UN "mkForeignPrim") _) args@(ty:fn:xs) 
+execApp' env ctxt f@(EP _ (UN "mkForeignPrim") _) args@(ty:fn:xs)
       | Just (FFun f argTs retT) <- foreignFromTT fn
         , length xs >= length argTs =
     do let (args', xs') = (take (length argTs) xs, -- foreign args

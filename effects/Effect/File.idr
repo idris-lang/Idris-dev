@@ -9,11 +9,11 @@ data OpenFile : Mode -> Type where
 data FileIO : Effect where
      Open  : String -> (m : Mode) -> FileIO () (Either () (OpenFile m)) Bool
      Close :                         FileIO (OpenFile m) () ()
-  
+
      ReadLine  :           FileIO (OpenFile Read)  (OpenFile Read) String
      WriteLine : String -> FileIO (OpenFile Write) (OpenFile Write) ()
      EOF       :           FileIO (OpenFile Read)  (OpenFile Read) Bool
-  
+
 
 instance Handler FileIO IO where
     handle () (Open fname m) k = do h <- openFile fname m
@@ -30,7 +30,7 @@ instance Handler FileIO IO where
                                          k (FH h) e
 
 instance Handler FileIO (IOExcept String) where
-    handle () (Open fname m) k 
+    handle () (Open fname m) k
        = do h <- ioe_lift (openFile fname m)
             valid <- ioe_lift (validFile h)
             if valid then k (Right (FH h)) True
@@ -44,10 +44,10 @@ instance Handler FileIO (IOExcept String) where
                                          k (FH h) e
 
 FILE_IO : Type -> EFFECT
-FILE_IO t = MkEff t FileIO 
+FILE_IO t = MkEff t FileIO
 
 open : Handler FileIO e =>
-       String -> (m : Mode) -> EffM e [FILE_IO ()] 
+       String -> (m : Mode) -> EffM e [FILE_IO ()]
                                       [FILE_IO (Either () (OpenFile m))] Bool
 open f m = Open f m
 

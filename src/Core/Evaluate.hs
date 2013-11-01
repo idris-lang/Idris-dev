@@ -6,9 +6,9 @@ module Core.Evaluate(normalise, normaliseTrace, normaliseC, normaliseAll,
                 Def(..), CaseInfo(..), CaseDefs(..),
                 Accessibility(..), Totality(..), PReason(..),
                 Context, initContext, ctxtAlist, uconstraints, next_tvar,
-                addToCtxt, setAccess, setTotal, addCtxtDef, addTyDecl, 
+                addToCtxt, setAccess, setTotal, addCtxtDef, addTyDecl,
                 addDatatype, addCasedef, simplifyCasedef, addOperator,
-                lookupNames, lookupTy, lookupP, lookupDef, lookupVal, 
+                lookupNames, lookupTy, lookupP, lookupDef, lookupVal,
                 lookupTotal, lookupTyEnv, isDConName, isTConName, isConName, isFnName,
                 Value(..), Quote(..), initEval) where
 
@@ -25,9 +25,9 @@ data EvalState = ES { limited :: [(Name, Int)],
 
 type Eval a = State EvalState a
 
-data EvalOpt = Spec 
-             | HNF 
-             | Simplify 
+data EvalOpt = Spec
+             | HNF
+             | Simplify
              | AtREPL
   deriving (Show, Eq)
 
@@ -56,19 +56,19 @@ instance Show (a -> b) where
 
 -- THE EVALUATOR ------------------------------------------------------------
 
--- The environment is assumed to be "locally named" - i.e., not de Bruijn 
+-- The environment is assumed to be "locally named" - i.e., not de Bruijn
 -- indexed.
 -- i.e. it's an intermediate environment that we have while type checking or
 -- while building a proof.
 
 -- | Normalise fully type checked terms (so, assume all names/let bindings resolved)
 normaliseC :: Context -> Env -> TT Name -> TT Name
-normaliseC ctxt env t 
+normaliseC ctxt env t
    = evalState (do val <- eval False ctxt [] env t []
                    quote 0 val) initEval
 
 normaliseAll :: Context -> Env -> TT Name -> TT Name
-normaliseAll ctxt env t 
+normaliseAll ctxt env t
    = evalState (do val <- eval False ctxt [] env t [AtREPL]
                    quote 0 val) initEval
 
@@ -76,38 +76,38 @@ normalise :: Context -> Env -> TT Name -> TT Name
 normalise = normaliseTrace False
 
 normaliseTrace :: Bool -> Context -> Env -> TT Name -> TT Name
-normaliseTrace tr ctxt env t 
+normaliseTrace tr ctxt env t
    = evalState (do val <- eval tr ctxt [] (map finalEntry env) (finalise t) []
                    quote 0 val) initEval
 
 specialise :: Context -> Env -> [(Name, Int)] -> TT Name -> TT Name
-specialise ctxt env limits t 
-   = evalState (do val <- eval False ctxt [] 
-                                 (map finalEntry env) (finalise t) 
+specialise ctxt env limits t
+   = evalState (do val <- eval False ctxt []
+                                 (map finalEntry env) (finalise t)
                                  [Spec]
                    quote 0 val) (initEval { limited = limits })
 
--- | Like normalise, but we only reduce functions that are marked as okay to 
+-- | Like normalise, but we only reduce functions that are marked as okay to
 -- inline (and probably shouldn't reduce lets?)
 -- 20130908: now only used to reduce for totality checking. Inlining should
 -- be done elsewhere.
 
 simplify :: Context -> Env -> TT Name -> TT Name
-simplify ctxt env t 
+simplify ctxt env t
    = evalState (do val <- eval False ctxt [(UN "lazy", 0),
                                            (UN "assert_smaller", 0),
                                            (UN "par", 0),
                                            (UN "prim__syntactic_eq", 0),
-                                           (UN "fork", 0)] 
-                                 (map finalEntry env) (finalise t) 
+                                           (UN "fork", 0)]
+                                 (map finalEntry env) (finalise t)
                                  [Simplify]
                    quote 0 val) initEval
 
 -- | Reduce a term to head normal form
 hnf :: Context -> Env -> TT Name -> TT Name
-hnf ctxt env t 
-   = evalState (do val <- eval False ctxt [] 
-                                 (map finalEntry env) 
+hnf ctxt env t
+   = evalState (do val <- eval False ctxt []
+                                 (map finalEntry env)
                                  (finalise t) [HNF]
                    quote 0 val) initEval
 
@@ -136,7 +136,7 @@ usable True n ns
             Just 0 -> return (False, ns)
             Just i -> return (True, ns)
             _ -> return (False, ns)
-usable False n ns 
+usable False n ns
   = case lookup n ns of
          Just 0 -> return (False, ns)
          Just i -> return $ (True, (n, abs (i-1)) : filter (\ (n', _) -> n/=n') ns)
@@ -157,58 +157,58 @@ deduct n = do ES ls num <- get
 -- a name. The corresponding pair in the state is the maximum number of
 -- unfoldings overall.
 
-eval :: Bool -> Context -> [(Name, Int)] -> Env -> TT Name -> 
+eval :: Bool -> Context -> [(Name, Int)] -> Env -> TT Name ->
         [EvalOpt] -> Eval Value
 eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
     spec = Spec `elem` opts
-    simpl = Simplify `elem` opts 
+    simpl = Simplify `elem` opts
     atRepl = AtREPL `elem` opts
     hnf = HNF `elem` opts
 
     -- returns 'True' if the function should block
     -- normal evaluation should return false
-    blockSimplify (CaseInfo inl dict) n stk 
-       | Simplify `elem` opts 
+    blockSimplify (CaseInfo inl dict) n stk
+       | Simplify `elem` opts
            = (not (inl || dict) || elem n stk)
              || (n == UN "prim__syntactic_eq")
        | otherwise = False
 
     ev ntimes stk top env (P _ n ty)
-        | Just (Let t v) <- lookup n genv = ev ntimes stk top env v 
-    ev ntimes_in stk top env (P Ref n ty) 
+        | Just (Let t v) <- lookup n genv = ev ntimes stk top env v
+    ev ntimes_in stk top env (P Ref n ty)
       | not top && hnf = liftM (VP Ref n) (ev ntimes stk top env ty)
-      | otherwise 
+      | otherwise
          = do (u, ntimes) <- usable spec n ntimes_in
               if u then
-               do let val = lookupDefAcc n atRepl ctxt 
+               do let val = lookupDefAcc n atRepl ctxt
                   case val of
-                    [(Function _ tm, Public)] -> 
+                    [(Function _ tm, Public)] ->
                            ev ntimes (n:stk) True env tm
                     [(TyDecl nt ty, _)] -> do vty <- ev ntimes stk True env ty
                                               return $ VP nt n vty
-                    [(CaseOp ci _ _ _ cd, acc)] 
+                    [(CaseOp ci _ _ _ cd, acc)]
                          | acc == Public &&
                              null (fst (cases_totcheck cd)) -> -- unoptimised version
                        let (_, tree) = if simpl then cases_totcheck cd
                                                 else cases_compiletime cd in
                          if blockSimplify ci n stk
                             then liftM (VP Ref n) (ev ntimes stk top env ty)
-                            else do c <- evCase ntimes n (n:stk) top env [] [] tree 
+                            else do c <- evCase ntimes n (n:stk) top env [] [] tree
                                     case c of
                                         (Nothing, _) -> liftM (VP Ref n) (ev ntimes stk top env ty)
                                         (Just v, _)  -> return v
                     _ -> liftM (VP Ref n) (ev ntimes stk top env ty)
                else liftM (VP Ref n) (ev ntimes stk top env ty)
-    ev ntimes stk top env (P nt n ty) 
+    ev ntimes stk top env (P nt n ty)
          = liftM (VP nt n) (ev ntimes stk top env ty)
-    ev ntimes stk top env (V i) 
+    ev ntimes stk top env (V i)
                      | i < length env && i >= 0 = return $ env !! i
-                     | otherwise      = return $ VV i 
+                     | otherwise      = return $ VV i
     ev ntimes stk top env (Bind n (Let t v) sc)
            = do v' <- ev ntimes stk top env v --(finalise v)
                 sc' <- ev ntimes stk top (v' : env) sc
                 wknV (-1) sc'
---         | otherwise 
+--         | otherwise
 --            = do t' <- ev ntimes stk top env t
 --                 v' <- ev ntimes stk top env v --(finalise v)
 --                 -- use Tmp as a placeholder, then make it a variable reference
@@ -223,40 +223,40 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
                 v' <- ev ntimes stk top env (finalise v)
                 sc' <- ev ntimes stk top (v' : env) sc
                 return $ VBind True n (Let t' v') (\x -> return sc')
-    ev ntimes stk top env (Bind n b sc) 
+    ev ntimes stk top env (Bind n b sc)
            = do b' <- vbind env b
                 return $ VBind True -- (vinstances 0 sc < 2)
                                n b' (\x -> ev ntimes stk False (x:env) sc)
-       where vbind env t 
---                  | simpl 
---                      = fmapMB (\tm -> ev ((MN 0 "STOP", 0) : ntimes) 
---                                          stk top env (finalise tm)) t 
---                  | otherwise 
+       where vbind env t
+--                  | simpl
+--                      = fmapMB (\tm -> ev ((MN 0 "STOP", 0) : ntimes)
+--                                          stk top env (finalise tm)) t
+--                  | otherwise
                      = fmapMB (\tm -> ev ntimes stk top env (finalise tm)) t
-    ev ntimes stk top env (App f a) 
+    ev ntimes stk top env (App f a)
            = do f' <- ev ntimes stk False env f
                 a' <- ev ntimes stk False env a
                 evApply ntimes stk top env [a'] f'
     ev ntimes stk top env (Constant c) = return $ VConstant c
     ev ntimes stk top env Erased    = return VErased
     ev ntimes stk top env (TType i)   = return $ VType i
-    
+
     evApply ntimes stk top env args (VApp f a)
           = evApply ntimes stk top env (a:args) f
-    evApply ntimes stk top env args f 
+    evApply ntimes stk top env args f
           = apply ntimes stk top env f args
 
-    apply ntimes stk top env (VBind True n (Lam t) sc) (a:as) 
+    apply ntimes stk top env (VBind True n (Lam t) sc) (a:as)
          = do a' <- sc a
-              app <- apply ntimes stk top env a' as 
+              app <- apply ntimes stk top env a' as
               wknV (-1) app
     apply ntimes_in stk top env f@(VP Ref n ty) args
       | not top && hnf = case args of
                             [] -> return f
                             _ -> return $ unload env f args
-      | otherwise 
+      | otherwise
          = do (u, ntimes) <- usable spec n ntimes_in
-              if u then 
+              if u then
                  do let val = lookupDefAcc n atRepl ctxt
                     case val of
                       [(CaseOp ci _ _ _ cd, acc)]
@@ -286,19 +286,19 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
 
 --     specApply stk env f@(VP Ref n ty) args
 --         = case lookupCtxt n statics of
---                 [as] -> if or as 
---                           then trace (show (n, map fst (filter (\ (_, s) -> s) (zip args as)))) $ 
+--                 [as] -> if or as
+--                           then trace (show (n, map fst (filter (\ (_, s) -> s) (zip args as)))) $
 --                                 return $ unload env f args
 --                           else return $ unload env f args
 --                 _ -> return $ unload env f args
 --     specApply stk env f args = return $ unload env f args
 
-    unload :: [Value] -> Value -> [Value] -> Value 
+    unload :: [Value] -> Value -> [Value] -> Value
     unload env f [] = f
     unload env f (a:as) = unload env (VApp f a) as
 
     evCase ntimes n stk top env ns args tree
-        | length ns <= length args 
+        | length ns <= length args
              = do let args' = take (length ns) args
                   let rest  = drop (length ns) args
                   when spec $ deduct n -- successful, so deduct usages
@@ -307,12 +307,12 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
                   return (t, rest)
         | otherwise = return (Nothing, args)
 
-    evTree :: [(Name, Int)] -> [Name] -> Bool -> 
+    evTree :: [(Name, Int)] -> [Name] -> Bool ->
               [Value] -> [(Name, Value)] -> SC -> Eval (Maybe Value)
     evTree ntimes stk top env amap (UnmatchedCase str) = return Nothing
-    evTree ntimes stk top env amap (STerm tm) 
+    evTree ntimes stk top env amap (STerm tm)
         = do let etm = pToVs (map fst amap) tm
-             etm' <- ev ntimes stk (not (conHeaded tm)) 
+             etm' <- ev ntimes stk (not (conHeaded tm))
                                    (map snd amap ++ env) etm
              return $ Just etm'
     evTree ntimes stk top env amap (Case n alts)
@@ -327,7 +327,7 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
             _ -> return Nothing
     evTree ntimes stk top env amap ImpossibleCase = return Nothing
 
-    conHeaded tm@(App _ _) 
+    conHeaded tm@(App _ _)
         | (P (DCon _ _) _ _, args) <- unApply tm = True
     conHeaded t = False
 
@@ -336,14 +336,14 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
              chooseAlt env f' (getValArgs f')
                        alts amap
 
-    chooseAlt :: [Value] -> Value -> (Value, [Value]) -> [CaseAlt] -> 
+    chooseAlt :: [Value] -> Value -> (Value, [Value]) -> [CaseAlt] ->
                  [(Name, Value)] ->
                  Eval (Maybe ([(Name, Value)], SC))
     chooseAlt env _ (VP (DCon i a) _ _, args) alts amap
         | Just (ns, sc) <- findTag i alts = return $ Just (updateAmap (zip ns args) amap, sc)
         | Just v <- findDefault alts      = return $ Just (amap, v)
     chooseAlt env _ (VP (TCon i a) _ _, args) alts amap
-        | Just (ns, sc) <- findTag i alts 
+        | Just (ns, sc) <- findTag i alts
                             = return $ Just (updateAmap (zip ns args) amap, sc)
         | Just v <- findDefault alts      = return $ Just (amap, v)
     chooseAlt env _ (VConstant c, []) alts amap
@@ -358,7 +358,7 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
            = do t' <- t (VV 0) -- we know it's not in scope or it's not a pattern
                 return $ Just (updateAmap (zip ns [s, t']) amap, sc)
     chooseAlt _ _ _ alts amap
-        | Just v <- findDefault alts      
+        | Just v <- findDefault alts
              = if (any fnCase alts)
                   then return $ Just (amap, v)
                   else return Nothing
@@ -370,7 +370,7 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
     -- Replace old variable names in the map with new matches
     -- (This is possibly unnecessary since we make unique names and don't
     -- allow repeated variables...?)
-    updateAmap newm amap 
+    updateAmap newm amap
        = newm ++ filter (\ (x, _) -> not (elem x (map fst newm))) amap
     findTag i [] = Nothing
     findTag i (ConCase n j ns sc : xs) | i == j = Just (ns, sc)
@@ -382,7 +382,7 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
 
     findDefault [] = Nothing
     findDefault (DefaultCase sc : xs) = Just sc
-    findDefault (_ : xs) = findDefault xs 
+    findDefault (_ : xs) = findDefault xs
 
     findSuc c [] = Nothing
     findSuc (BI val) (SucCase n sc : _)
@@ -393,10 +393,10 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
     findConst c (ConstCase c' v : xs) | c == c' = Just v
     findConst (AType (ATInt ITNative)) (ConCase n 1 [] v : xs) = Just v
     findConst (AType ATFloat) (ConCase n 2 [] v : xs) = Just v
-    findConst (AType (ATInt ITChar))  (ConCase n 3 [] v : xs) = Just v 
-    findConst StrType (ConCase n 4 [] v : xs) = Just v 
+    findConst (AType (ATInt ITChar))  (ConCase n 3 [] v : xs) = Just v
+    findConst StrType (ConCase n 4 [] v : xs) = Just v
     findConst PtrType (ConCase n 5 [] v : xs) = Just v
-    findConst (AType (ATInt ITBig)) (ConCase n 6 [] v : xs) = Just v 
+    findConst (AType (ATInt ITBig)) (ConCase n 6 [] v : xs) = Just v
     findConst (AType (ATInt (ITFixed ity))) (ConCase n tag [] v : xs)
         | tag == 7 + fromEnum ity = Just v
     findConst (AType (ATInt (ITVec ity count))) (ConCase n tag [] v : xs)
@@ -430,7 +430,7 @@ instance Quote Value where
                                   b' <- quoteB b
                                   liftM (Bind n b') (quote (i+1) sc')
        where quoteB t = fmapMB (quote i) t
-    quote i (VBLet vd n t v sc) 
+    quote i (VBLet vd n t v sc)
                            = do sc' <- quote i sc
                                 t' <- quote i t
                                 v' <- quote i v
@@ -455,7 +455,7 @@ convEq' ctxt x y = evalStateT (convEq ctxt x y) (0, [])
 convEq :: Context -> TT Name -> TT Name -> StateT UCs TC Bool
 convEq ctxt = ceq [] where
     ceq :: [(Name, Name)] -> TT Name -> TT Name -> StateT UCs TC Bool
-    ceq ps (P xt x _) (P yt y _) 
+    ceq ps (P xt x _) (P yt y _)
         | x == y || (x, y) `elem` ps || (y,x) `elem` ps = return True
         | otherwise = sameDefs ps x y
     ceq ps x (Bind n (Lam t) (App y (V 0))) = ceq ps x y
@@ -465,9 +465,9 @@ convEq ctxt = ceq [] where
     ceq ps (Bind n (Lam t) (App x (P Bound n' _))) y
         | n == n' = ceq ps x y
     ceq ps (V x)      (V y)      = return (x == y)
-    ceq ps (Bind _ xb xs) (Bind _ yb ys) 
+    ceq ps (Bind _ xb xs) (Bind _ yb ys)
                              = liftM2 (&&) (ceqB ps xb yb) (ceq ps xs ys)
-        where 
+        where
             ceqB ps (Let v t) (Let v' t') = liftM2 (&&) (ceq ps v v') (ceq ps t t')
             ceqB ps (Guess v t) (Guess v' t') = liftM2 (&&) (ceq ps v v') (ceq ps t t')
             ceqB ps b b' = ceq ps (binderTy b) (binderTy b')
@@ -501,7 +501,7 @@ convEq ctxt = ceq [] where
     sameDefs ps x y = case (lookupDef x ctxt, lookupDef y ctxt) of
                         ([Function _ xdef], [Function _ ydef])
                               -> ceq ((x,y):ps) xdef ydef
-                        ([CaseOp _ _ _ _ xd],   
+                        ([CaseOp _ _ _ _ xd],
                          [CaseOp _ _ _ _ yd])
                               -> let (_, xdef) = cases_compiletime xd
                                      (_, ydef) = cases_compiletime yd in
@@ -509,25 +509,25 @@ convEq ctxt = ceq [] where
                         _ -> return False
 
 -- SPECIALISATION -----------------------------------------------------------
--- We need too much control to be able to do this by tweaking the main 
+-- We need too much control to be able to do this by tweaking the main
 -- evaluator
 
 spec :: Context -> Ctxt [Bool] -> Env -> TT Name -> Eval (TT Name)
-spec ctxt statics genv tm = error "spec undefined" 
+spec ctxt statics genv tm = error "spec undefined"
 
 -- CONTEXTS -----------------------------------------------------------------
 
 {-| A definition is either a simple function (just an expression with a type),
    a constant, which could be a data or type constructor, an axiom or as an
    yet undefined function, or an Operator.
-   An Operator is a function which explains how to reduce. 
+   An Operator is a function which explains how to reduce.
    A CaseOp is a function defined by a simple case tree -}
-   
+
 data Def = Function Type Term
-         | TyDecl NameType Type 
+         | TyDecl NameType Type
          | Operator Type Int ([Value] -> Maybe Value)
-         | CaseOp CaseInfo 
-                  Type 
+         | CaseOp CaseInfo
+                  Type
                   [Either Term (Term, Term)] -- original definition
                   [([Name], Term, Term)] -- simplified for totality check definition
                   CaseDefs
@@ -546,13 +546,13 @@ data CaseInfo = CaseInfo {
                   tc_dictionary :: Bool
                 }
 
-{-! 
-deriving instance Binary Def 
+{-!
+deriving instance Binary Def
 !-}
-{-! 
+{-!
 deriving instance Binary CaseInfo
 !-}
-{-! 
+{-!
 deriving instance Binary CaseDefs
 !-}
 
@@ -560,11 +560,11 @@ instance Show Def where
     show (Function ty tm) = "Function: " ++ show (ty, tm)
     show (TyDecl nt ty) = "TyDecl: " ++ show nt ++ " " ++ show ty
     show (Operator ty _ _) = "Operator: " ++ show ty
-    show (CaseOp (CaseInfo inlc inlr) ty ps_in ps cd) 
+    show (CaseOp (CaseInfo inlc inlr) ty ps_in ps cd)
       = let (ns, sc) = cases_compiletime cd
-            (ns_t, sc_t) = cases_totcheck cd 
+            (ns_t, sc_t) = cases_totcheck cd
             (ns', sc') = cases_runtime cd in
-          "Case: " ++ show ty ++ " " ++ show ps ++ "\n" ++ 
+          "Case: " ++ show ty ++ " " ++ show ps ++ "\n" ++
                                         "TOTALITY CHECK TIME:\n\n" ++
                                         show ns_t ++ " " ++ show sc_t ++ "\n\n" ++
                                         "COMPILE TIME:\n\n" ++
@@ -580,7 +580,7 @@ instance Binary (a -> b) where
     put x = return ()
     get = error "Getting a function"
 
-------- 
+-------
 
 -- Frozen => doesn't reduce
 -- Hidden => doesn't reduce and invisible to type checker
@@ -610,7 +610,7 @@ instance Show Totality where
     show (Partial NotProductive) = "not productive"
     show (Partial BelieveMe) = "not total due to use of believe_me in proof"
     show (Partial (Other ns)) = "possibly not total due to: " ++ showSep ", " (map show ns)
-    show (Partial (Mutual ns)) = "possibly not total due to recursive path " ++ 
+    show (Partial (Mutual ns)) = "possibly not total due to recursive path " ++
                                  showSep " --> " (map show ns)
 
 {-!
@@ -627,10 +627,10 @@ deriving instance Binary PReason
 
 -- | Contexts used for global definitions and for proof state. They contain
 -- universe constraints and existing definitions.
-data Context = MkContext { 
+data Context = MkContext {
                   uconstraints :: [UConstraint],
                   next_tvar    :: Int,
-                  definitions  :: Ctxt (Def, Accessibility, Totality) 
+                  definitions  :: Ctxt (Def, Accessibility, Totality)
                 } deriving Show
 
 -- | The initial empty context
@@ -643,10 +643,10 @@ ctxtAlist ctxt = map (\(n, (d, a, t)) -> (n, d)) $ toAlist (definitions ctxt)
 veval ctxt env t = evalState (eval False ctxt [] env t []) initEval
 
 addToCtxt :: Name -> Term -> Type -> Context -> Context
-addToCtxt n tm ty uctxt 
-    = let ctxt = definitions uctxt 
+addToCtxt n tm ty uctxt
+    = let ctxt = definitions uctxt
           ctxt' = addDef n (Function ty tm, Public, Unchecked) ctxt in
-          uctxt { definitions = ctxt' } 
+          uctxt { definitions = ctxt' }
 
 setAccess :: Name -> Accessibility -> Context -> Context
 setAccess n a uctxt
@@ -666,54 +666,54 @@ addCtxtDef n d c = let ctxt = definitions c
                        c { definitions = ctxt' }
 
 addTyDecl :: Name -> NameType -> Type -> Context -> Context
-addTyDecl n nt ty uctxt 
+addTyDecl n nt ty uctxt
     = let ctxt = definitions uctxt
           ctxt' = addDef n (TyDecl nt ty, Public, Unchecked) ctxt in
           uctxt { definitions = ctxt' }
 
 addDatatype :: Datatype Name -> Context -> Context
 addDatatype (Data n tag ty cons) uctxt
-    = let ctxt = definitions uctxt 
+    = let ctxt = definitions uctxt
           ty' = normalise uctxt [] ty
-          ctxt' = addCons 0 cons (addDef n 
+          ctxt' = addCons 0 cons (addDef n
                     (TyDecl (TCon tag (arity ty')) ty, Public, Unchecked) ctxt) in
           uctxt { definitions = ctxt' }
   where
     addCons tag [] ctxt = ctxt
-    addCons tag ((n, ty) : cons) ctxt 
+    addCons tag ((n, ty) : cons) ctxt
         = let ty' = normalise uctxt [] ty in
               addCons (tag+1) cons (addDef n
                   (TyDecl (DCon tag (arity ty')) ty, Public, Unchecked) ctxt)
 
 -- FIXME: Too many arguments! Refactor all these Bools.
 addCasedef :: Name -> CaseInfo -> Bool -> Bool -> Bool -> Bool ->
-              [Either Term (Term, Term)] -> 
+              [Either Term (Term, Term)] ->
               [([Name], Term, Term)] -> -- totality
               [([Name], Term, Term)] -> -- compile time
-              [([Name], Term, Term)] -> -- inlined 
+              [([Name], Term, Term)] -> -- inlined
               [([Name], Term, Term)] -> -- run time
               Type -> Context -> Context
 addCasedef n ci@(CaseInfo alwaysInline tcdict)
-           tcase covering reflect asserted ps_in 
-           ps_tot ps_inl ps_ct ps_rt ty uctxt 
+           tcase covering reflect asserted ps_in
+           ps_tot ps_inl ps_ct ps_rt ty uctxt
     = let ctxt = definitions uctxt
           access = case lookupDefAcc n False uctxt of
                         [(_, acc)] -> acc
                         _ -> Public
           ctxt' = case (simpleCase tcase covering reflect CompileTime emptyFC ps_tot,
-                        simpleCase tcase covering reflect CompileTime emptyFC ps_ct, 
-                        simpleCase tcase covering reflect CompileTime emptyFC ps_inl, 
+                        simpleCase tcase covering reflect CompileTime emptyFC ps_ct,
+                        simpleCase tcase covering reflect CompileTime emptyFC ps_inl,
                         simpleCase tcase covering reflect RunTime emptyFC ps_rt) of
-                    (OK (CaseDef args_tot sc_tot _), 
+                    (OK (CaseDef args_tot sc_tot _),
                      OK (CaseDef args_ct sc_ct _),
                      OK (CaseDef args_inl sc_inl _),
-                     OK (CaseDef args_rt sc_rt _)) -> 
+                     OK (CaseDef args_rt sc_rt _)) ->
                        let inl = alwaysInline -- || tcdict
-                           inlc = (inl || small n args_ct sc_ct) && (not asserted) 
+                           inlc = (inl || small n args_ct sc_ct) && (not asserted)
                            inlr = inl || small n args_rt sc_rt
-                           cdef = CaseDefs (args_tot, sc_tot) 
-                                           (args_ct, sc_ct) 
-                                           (args_inl, sc_inl) 
+                           cdef = CaseDefs (args_tot, sc_tot)
+                                           (args_ct, sc_ct)
+                                           (args_inl, sc_inl)
                                            (args_rt, sc_rt) in
                            addDef n (CaseOp (ci { case_inlinable = inlc })
                                             ty ps_in ps_tot cdef,
@@ -732,17 +732,17 @@ simplifyCasedef n uctxt
                      pdef = map debind ps_in' in
                      case simpleCase False True False CompileTime emptyFC pdef of
                        OK (CaseDef args sc _) ->
-                          addDef n (CaseOp ci 
+                          addDef n (CaseOp ci
                                            ty ps_in' ps (cd { cases_totcheck = (args, sc) }),
-                                    acc, tot) ctxt 
+                                    acc, tot) ctxt
                        Error err -> error (show err)
               _ -> ctxt in
          uctxt { definitions = ctxt' }
-  where                  
-    depat acc (Bind n (PVar t) sc) 
+  where
+    depat acc (Bind n (PVar t) sc)
         = depat (n : acc) (instantiate (P Bound n t) sc)
     depat acc x = (acc, x)
-    debind (Right (x, y)) = let (vs, x') = depat [] x 
+    debind (Right (x, y)) = let (vs, x') = depat [] x
                                 (_, y') = depat [] y in
                                 (vs, x', y')
     debind (Left x)       = let (vs, x') = depat [] x in
@@ -750,10 +750,10 @@ simplifyCasedef n uctxt
     simpl (Right (x, y)) = Right (x, simplify uctxt [] y)
     simpl t = t
 
-addOperator :: Name -> Type -> Int -> ([Value] -> Maybe Value) -> 
+addOperator :: Name -> Type -> Int -> ([Value] -> Maybe Value) ->
                Context -> Context
 addOperator n ty a op uctxt
-    = let ctxt = definitions uctxt 
+    = let ctxt = definitions uctxt
           ctxt' = addDef n (Operator ty a op, Public, Unchecked) ctxt in
           uctxt { definitions = ctxt' }
 
@@ -836,7 +836,7 @@ lookupVal n ctxt
 lookupTyEnv :: Name -> Env -> Maybe (Int, Type)
 lookupTyEnv n env = li n 0 env where
   li n i []           = Nothing
-  li n i ((x, b): xs) 
+  li n i ((x, b): xs)
              | n == x = Just (i, binderTy b)
              | otherwise = li n (i+1) xs
 

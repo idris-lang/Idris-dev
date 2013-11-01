@@ -9,16 +9,16 @@ data StdIO : Effect where
 
 instance Handler StdIO IO where
     handle () (PutStr s) k = do putStr s; k () ()
-    handle () GetStr     k = do x <- getLine; k () x 
+    handle () GetStr     k = do x <- getLine; k () x
 
 instance Handler StdIO (IOExcept a) where
     handle () (PutStr s) k = do ioe_lift (putStr s); k () ()
-    handle () GetStr     k = do x <- ioe_lift getLine; k () x 
+    handle () GetStr     k = do x <- ioe_lift getLine; k () x
 
 -- Handle effects in a pure way, for simulating IO for unit testing/proof
 
 data IOStream a = MkStream (List String -> (a, List String))
-  
+
 instance Handler StdIO IOStream where
     handle () (PutStr s) k
        = MkStream (\x => case k () () of
@@ -31,7 +31,7 @@ instance Handler StdIO IOStream where
         where
             cont : String -> List String -> (a, List String)
             cont t ts = case k () t of
-                             MkStream f => f ts 
+                             MkStream f => f ts
 
 --- The Effect and associated functions
 
@@ -47,8 +47,8 @@ putStrLn s = putStr (s ++ "\n")
 getStr : Handler StdIO e => Eff e [STDIO] String
 getStr = GetStr
 
-mkStrFn : Env IOStream xs -> 
-          Eff IOStream xs a -> 
+mkStrFn : Env IOStream xs ->
+          Eff IOStream xs a ->
           List String -> (a, List String)
 mkStrFn {a} env p input = case mkStrFn' of
                                MkStream f => f input
@@ -57,4 +57,4 @@ mkStrFn {a} env p input = case mkStrFn' of
         mkStrFn' : IOStream a
         mkStrFn' = runWith injStream env p
 
-  
+

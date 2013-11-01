@@ -58,10 +58,10 @@ integerToFin : Integer -> (n : Nat) -> Maybe (Fin n)
 integerToFin x = natToFin (cast x)
 
 data IsJust : Maybe a -> Type where
-     ItIsJust : IsJust {a} (Just x) 
+     ItIsJust : IsJust {a} (Just x)
 
-fromInteger : (x : Integer) -> 
-        {default (ItIsJust _ _) 
+fromInteger : (x : Integer) ->
+        {default (ItIsJust _ _)
              prf : (IsJust (integerToFin x n))} -> Fin n
 fromInteger {n} x {prf} with (integerToFin x n)
   fromInteger {n} x {prf = ItIsJust} | Just y = y

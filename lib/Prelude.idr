@@ -23,28 +23,28 @@ import Prelude.Bits
 
 -- Show and instances
 
-class Show a where 
+class Show a where
     partial show : a -> String
 
-instance Show Int where 
+instance Show Int where
     show = prim__toStrInt
 
-instance Show Integer where 
+instance Show Integer where
     show = prim__toStrBigInt
 
-instance Show Float where 
+instance Show Float where
     show = prim__floatToStr
 
-instance Show Char where 
-    show x = strCons x "" 
+instance Show Char where
+    show x = strCons x ""
 
-instance Show String where 
+instance Show String where
     show = id
 
-instance Show Nat where 
+instance Show Nat where
     show n = show (the Integer (cast n))
 
-instance Show Bool where 
+instance Show Bool where
     show True = "True"
     show False = "False"
 
@@ -163,23 +163,23 @@ instance Show Bits64x2 where
         ++ ", " ++ prim__toStrB64 b
         ++ ">"
 
-instance (Show a, Show b) => Show (a, b) where 
+instance (Show a, Show b) => Show (a, b) where
     show (x, y) = "(" ++ show x ++ ", " ++ show y ++ ")"
 
-instance Show a => Show (List a) where 
-    show xs = "[" ++ show' "" xs ++ "]" where 
+instance Show a => Show (List a) where
+    show xs = "[" ++ show' "" xs ++ "]" where
         show' acc []        = acc
         show' acc [x]       = acc ++ show x
         show' acc (x :: xs) = show' (acc ++ show x ++ ", ") xs
 
-instance Show a => Show (Vect n a) where 
-    show xs = "[" ++ show' xs ++ "]" where 
+instance Show a => Show (Vect n a) where
+    show xs = "[" ++ show' xs ++ "]" where
         show' : Vect n a -> String
         show' []        = ""
         show' [x]       = show x
         show' (x :: xs) = show x ++ ", " ++ show' xs
 
-instance Show a => Show (Maybe a) where 
+instance Show a => Show (Maybe a) where
     show Nothing = "Nothing"
     show (Just x) = "Just " ++ show x
 
@@ -191,7 +191,7 @@ instance Functor PrimIO where
 instance Functor IO where
     map f io = io_bind io (\b => io_return (f b))
 
-instance Functor Maybe where 
+instance Functor Maybe where
     map f (Just x) = Just (f x)
     map f Nothing  = Nothing
 
@@ -203,7 +203,7 @@ instance Functor (Either e) where
 
 instance Applicative PrimIO where
     pure = prim_io_return
-    
+
     am <$> bm = prim_io_bind am (\f => prim_io_bind bm (prim_io_return . f))
 
 instance Applicative IO where
@@ -245,18 +245,18 @@ instance Alternative Maybe where
 
 instance Alternative List where
     empty = []
-    
+
     (<|>) = (++)
 
 ---- Monad instances
 
-instance Monad PrimIO where 
+instance Monad PrimIO where
     b >>= k = prim_io_bind b k
 
 instance Monad IO where
     b >>= k = io_bind b k
 
-instance Monad Maybe where 
+instance Monad Maybe where
     Nothing  >>= k = Nothing
     (Just x) >>= k = k x
 
@@ -264,7 +264,7 @@ instance Monad (Either e) where
     (Left n) >>= _ = Left n
     (Right r) >>= f = f r
 
-instance Monad List where 
+instance Monad List where
     m >>= f = concatMap f m
 
 instance Monad (Vect n) where
@@ -347,19 +347,19 @@ partial abstract
 count : (Ord a, Num a) => a -> a -> a -> List a
 count a inc b = if a <= b then a :: count (a + inc) inc b
                           else []
-  
+
 partial abstract
 countFrom : (Ord a, Num a) => a -> a -> List a
 countFrom a inc = a :: lazy (countFrom (a + inc) inc)
-  
-syntax "[" [start] ".." [end] "]" 
-     = count start 1 end 
-syntax "[" [start] "," [next] ".." [end] "]" 
-     = count start (next - start) end 
 
-syntax "[" [start] "..]" 
+syntax "[" [start] ".." [end] "]"
+     = count start 1 end
+syntax "[" [start] "," [next] ".." [end] "]"
+     = count start (next - start) end
+
+syntax "[" [start] "..]"
      = countFrom start 1
-syntax "[" [start] "," [next] "..]" 
+syntax "[" [start] "," [next] "..]"
      = countFrom start (next - start)
 
 ---- More utilities
@@ -410,25 +410,25 @@ getChar = map cast $ mkForeign (FFun "getchar" [] FInt)
 
 ---- some basic file handling
 
-abstract 
+abstract
 data File = FHandle Ptr
 
 partial stdin : File
 stdin = FHandle prim__stdin
 
 do_fopen : String -> String -> IO Ptr
-do_fopen f m 
+do_fopen f m
    = mkForeign (FFun "fileOpen" [FString, FString] FPtr) f m
 
 fopen : String -> String -> IO File
 fopen f m = do h <- do_fopen f m
-               return (FHandle h) 
+               return (FHandle h)
 
 data Mode = Read | Write | ReadWrite
 
 partial
 openFile : String -> Mode -> IO File
-openFile f m = fopen f (modeStr m) where 
+openFile f m = fopen f (modeStr m) where
   modeStr Read  = "r"
   modeStr Write = "w"
   modeStr ReadWrite = "r+"
@@ -454,7 +454,7 @@ fread (FHandle h) = do_fread h
 
 partial
 do_fwrite : Ptr -> String -> IO ()
-do_fwrite h s 
+do_fwrite h s
    = mkForeign (FFun "fputStr" [FPtr, FString] FUnit) h s
 
 partial
@@ -498,7 +498,7 @@ while t b = do v <- t
                if v then do b
                             while t b
                     else return ()
-               
+
 partial -- no error checking!
 readFile : String -> IO String
 readFile fn = do h <- openFile fn Read
@@ -508,7 +508,7 @@ readFile fn = do h <- openFile fn Read
   where
     partial
     readFile' : File -> String -> IO String
-    readFile' h contents = 
+    readFile' h contents =
        do x <- feof h
           if not x then do l <- fread h
                            readFile' h (contents ++ l)

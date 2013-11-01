@@ -2,7 +2,7 @@ module Main
 
 %default total
 
-data CoNat 
+data CoNat
     = Co Nat
     | Infinity
 
@@ -11,7 +11,7 @@ S (Co n)   = Co (S n)
 S Infinity = Infinity
 
 Sn_notzero : Main.S n = Co 0 -> _|_
-Sn_notzero = believe_me 
+Sn_notzero = believe_me
 
 S_Co_not_Inf : Main.S (Co n) = Infinity -> _|_
 S_Co_not_Inf = believe_me

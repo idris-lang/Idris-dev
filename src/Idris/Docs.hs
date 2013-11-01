@@ -11,7 +11,7 @@ import Data.List
 
 -- TODO: Only include names with public/abstract accessibility
 
-data FunDoc = Doc Name String 
+data FunDoc = Doc Name String
                   [(Name, PArg)] -- args
                   PTerm -- function type
                   (Maybe Fixity)
@@ -23,7 +23,7 @@ data Doc = FunDoc FunDoc
                     [FunDoc] -- method docs
 
 showDoc "" = ""
-showDoc x = "  -- " ++ x 
+showDoc x = "  -- " ++ x
 
 instance Show FunDoc where
    show (Doc n doc args ty f)
@@ -35,7 +35,7 @@ instance Show FunDoc where
                else ""
 
     where showArg (n, arg@(PExp _ _ _ _))
-             = Just $ showName n ++ show (getTm arg) ++ 
+             = Just $ showName n ++ show (getTm arg) ++
                       showDoc (pargdoc arg) ++ "\n"
           showArg (n, arg@(PConstraint _ _ _ _))
              = Just $ "Class constraint " ++
@@ -44,7 +44,7 @@ instance Show FunDoc where
           showArg (n, arg@(PImp _ _ _ _ _ doc))
            | not (null doc)
              = Just $ "(implicit) " ++
-                      show n ++ " : " ++ show (getTm arg) 
+                      show n ++ " : " ++ show (getTm arg)
                       ++ showDoc (pargdoc arg) ++ "\n"
           showArg (n, _) = Nothing
 
@@ -57,13 +57,13 @@ instance Show Doc where
     show (DataDoc t args) = "Data type " ++ show t ++
        "\nConstructors:\n\n" ++
        showSep "\n" (map show args)
-    show (ClassDoc n doc meths) 
+    show (ClassDoc n doc meths)
        = "Type class " ++ show n ++ -- parameters?
          "\nMethods:\n\n" ++
          showSep "\n" (map show meths)
 
 getDocs :: Name -> Idris Doc
-getDocs n 
+getDocs n
    = do i <- getIState
         case lookupCtxt n (idris_classes i) of
              [ci] -> docClass n ci
@@ -73,7 +73,7 @@ getDocs n
                                return (FunDoc fd)
 
 docData :: Name -> TypeInfo -> Idris Doc
-docData n ti 
+docData n ti
   = do tdoc <- docFun n
        cdocs <- mapM docFun (con_names ti)
        return (DataDoc tdoc cdocs)
@@ -103,7 +103,7 @@ docFun n
        let fixdecls = filter (\(Fix _ x) -> x == funName n) infixes
        let f = case fixdecls of
                     []          -> Nothing
-                    (Fix x _:_) -> Just x 
+                    (Fix x _:_) -> Just x
 
        return (Doc n docstr args (delab i ty) f)
        where funName :: Name -> String

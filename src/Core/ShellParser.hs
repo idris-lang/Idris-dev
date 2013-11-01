@@ -50,7 +50,7 @@ pTactic = do reserved "attack";  return attack
       <|> do reserved "regret";  return regret
       <|> do reserved "exact";   tm <- pTerm; return (exact tm)
       <|> do reserved "fill";    tm <- pTerm; return (fill tm)
-      <|> do reserved "apply";   tm <- pTerm; args <- many pArgType; 
+      <|> do reserved "apply";   tm <- pTerm; args <- many pArgType;
              return (discard (apply tm (map (\x -> (x,0)) args)))
       <|> do reserved "solve";   return solve
       <|> do reserved "compute"; return compute

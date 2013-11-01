@@ -13,7 +13,7 @@ ordElim : (x : Ord) ->
           (P : Ord -> Type) ->
           (P Zero) ->
           ((x : Ord) -> P x -> P (Suc x)) ->
-          ((f : Nat -> Ord) -> ((n : Nat) -> P (f n)) -> 
+          ((f : Nat -> Ord) -> ((n : Nat) -> P (f n)) ->
              P (Sup f)) -> P x
 ordElim Zero P mZ mSuc mSup = mZ
 ordElim (Suc o) P mZ mSuc mSup = mSuc o (ordElim o P mZ mSuc mSup)
@@ -56,7 +56,7 @@ even (S k) = odd k
 ack : Nat -> Nat -> Nat
 ack Z     n     = S n
 ack (S m) Z     = ack m (S Z)
-ack (S m) (S n) = ack m (ack (S m) n) 
+ack (S m) (S n) = ack m (ack (S m) n)
 
 data Bin = eps | c0 Bin | c1 Bin
 

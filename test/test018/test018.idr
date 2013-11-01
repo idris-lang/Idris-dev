@@ -17,10 +17,10 @@ ping : Ptr -> IO ()
 ping thread = sendToThread thread (prim__vm, "Hello!")
 
 pingpong : IO ()
-pingpong 
+pingpong
      = do th <- fork pong
           putStrLn "Sending"
-          ping th 
+          ping th
           reply <- getMsg
           putStrLn reply
           usleep 100000

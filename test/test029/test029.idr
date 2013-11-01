@@ -1,10 +1,10 @@
-module simple 
+module simple
 
 plus_comm : (n : Nat) -> (m : Nat) -> (n + m = m + n)
 
 -- Base case
 (Z + m = m + Z) <== plus_comm =
-    rewrite ((m + Z = m) <== plusZeroRightNeutral) ==> 
+    rewrite ((m + Z = m) <== plusZeroRightNeutral) ==>
             (Z + m = m) in refl
 
 -- Step case

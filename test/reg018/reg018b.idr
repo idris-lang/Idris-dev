@@ -1,4 +1,4 @@
-module A 
+module A
 
 %default total
 
@@ -8,7 +8,7 @@ showB : B -> String
 showB (I x) = "I" ++ showB x
 showB (Z x) = "Z" ++ showB x
 
-instance Show B where show = showB 
+instance Show B where show = showB
 
 os : B
 os = Z os

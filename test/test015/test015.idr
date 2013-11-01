@@ -24,7 +24,7 @@ instance Show (Binary w k) where
      show (bin # bit) = show bin ++ show bit
 
 pad : Binary w n -> Binary (S w) n
-pad zero = zero # b0 
+pad zero = zero # b0
 pad (num # x) = pad num # x
 
 natToBin : (width : Nat) -> (n : Nat) ->
@@ -47,21 +47,21 @@ testBin = natToBin _ _
 pattern syntax bitpair [x] [y] = (_ ** (_ ** (x, y, _)))
 term    syntax bitpair [x] [y] = (_ ** (_ ** (x, y, refl)))
 
-addBit : Bit x -> Bit y -> Bit c -> 
+addBit : Bit x -> Bit y -> Bit c ->
           (bX ** (bY ** (Bit bX, Bit bY, c + x + y = bY + 2 * bX)))
 addBit b0 b0 b0 = bitpair b0 b0
-addBit b0 b0 b1 = bitpair b0 b1 
+addBit b0 b0 b1 = bitpair b0 b1
 addBit b0 b1 b0 = bitpair b0 b1
 addBit b0 b1 b1 = bitpair b1 b0
-addBit b1 b0 b0 = bitpair b0 b1 
-addBit b1 b0 b1 = bitpair b1 b0 
-addBit b1 b1 b0 = bitpair b1 b0 
-addBit b1 b1 b1 = bitpair b1 b1 
+addBit b1 b0 b0 = bitpair b0 b1
+addBit b1 b0 b1 = bitpair b1 b0
+addBit b1 b1 b0 = bitpair b1 b0
+addBit b1 b1 b1 = bitpair b1 b1
 
-adc : Binary w x -> Binary w y -> Bit c -> Binary (S w) (c + x + y) 
+adc : Binary w x -> Binary w y -> Bit c -> Binary (S w) (c + x + y)
 adc zero        zero        carry ?= zero # carry
 adc (numx # bX) (numy # bY) carry
-   ?= let (bitpair carry0 lsb) = addBit bX bY carry in 
+   ?= let (bitpair carry0 lsb) = addBit bX bY carry in
           adc numx numy carry0 # lsb
 
 readNum : IO Nat
@@ -82,7 +82,7 @@ main = do let Just bin1 = natToBin 8 42
 
 
 
-    
+
 ---------- Proofs ----------
 
 Main.ntbOdd = proof {

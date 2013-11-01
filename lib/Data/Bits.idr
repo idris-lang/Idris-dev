@@ -33,7 +33,7 @@ bitsUsed n = 8 * (2 `power` n)
 natToBits' : machineTy n -> Nat -> machineTy n
 natToBits' a Z = a
 natToBits' {n=n} a x with (n)
- -- it seems I have to manually recover the value of n here, instead of being able to reference it  
+ -- it seems I have to manually recover the value of n here, instead of being able to reference it
  natToBits' a (S x') | Z           = natToBits' {n=0} (prim__addB8  a (prim__truncInt_B8  1)) x'
  natToBits' a (S x') | S Z         = natToBits' {n=1} (prim__addB16 a (prim__truncInt_B16 1)) x'
  natToBits' a (S x') | S (S Z)     = natToBits' {n=2} (prim__addB32 a (prim__truncInt_B32 1)) x'
@@ -114,7 +114,7 @@ shiftRightLogical' {n=n} x c with (n)
 
 public
 shiftRightLogical : Bits n -> Bits n -> Bits n
-shiftRightLogical {n} (MkBits x) (MkBits y) 
+shiftRightLogical {n} (MkBits x) (MkBits y)
     = MkBits {n} (shiftRightLogical' {n=nextBytes n} x y)
 
 shiftRightArithmetic' : machineTy (nextBytes n) -> machineTy (nextBytes n) -> machineTy (nextBytes n)
