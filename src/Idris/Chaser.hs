@@ -51,7 +51,7 @@ getModuleFiles ts = nub $ execState (modList ts) [] where
 
    ibc (IBC _ _) = True
    ibc _ = False
- 
+
    chkReload False p = p
    chkReload True (IBC fn src) = chkReload True src
    chkReload True p = p
@@ -74,19 +74,19 @@ buildTree built fp = idrisCatch (btree [] fp)
                         (\e -> do now <- runIO $ getCurrentTime
                                   return [MTree (IDR fp) True now []])
  where
-  btree done f = 
+  btree done f =
     do i <- getIState
        let file = takeWhile (/= ' ') f
        iLOG $ "CHASING " ++ show file
        ibcsd <- valIBCSubDir i
-       ids <- allImportDirs 
+       ids <- allImportDirs
        fp <- runIO $ findImport ids ibcsd file
        mt <- runIO $ getIModTime fp
-       if (file `elem` built) 
+       if (file `elem` built)
           then return [MTree fp False mt []]
-          else if file `elem` done 
+          else if file `elem` done
                   then return []
-                  else mkChildren fp 
+                  else mkChildren fp
 
     where mkChildren (LIDR fn) = do ms <- children True fn (f:done)
                                     mt <- runIO $ getModificationTime fn
@@ -94,7 +94,7 @@ buildTree built fp = idrisCatch (btree [] fp)
           mkChildren (IDR fn) = do ms <- children False fn (f:done)
                                    mt <- runIO $ getModificationTime fn
                                    return [MTree (IDR fn) True mt ms]
-          mkChildren (IBC fn src) 
+          mkChildren (IBC fn src)
               = do srcexist <- runIO $ doesFileExist (getSrcFile src)
                    ms <- if srcexist then
                                do [MTree _ _ _ ms'] <- mkChildren src
@@ -119,7 +119,7 @@ buildTree built fp = idrisCatch (btree [] fp)
                              if exist then do
                                  ibct <- runIO $ getModificationTime ibc
                                  srct <- runIO $ getModificationTime src
-                                 return (srct > ibct) 
+                                 return (srct > ibct)
                                else return False
 
   children :: Bool -> FilePath -> [FilePath] -> Idris [ModuleTree]
@@ -129,7 +129,7 @@ buildTree built fp = idrisCatch (btree [] fp)
             file_in <- runIO $ readFile f
             file <- if lit then tclift $ unlit f file_in else return file_in
             (_, modules, _) <- parseImports f file
-            ms <- mapM (btree done) modules 
+            ms <- mapM (btree done) modules
             return (concat ms)
            else return []) -- IBC with no source available
     (\c -> return []) -- error, can't chase modules here

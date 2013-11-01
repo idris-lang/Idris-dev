@@ -38,7 +38,7 @@ Record ::=
     DocComment Accessibility? 'record' FnName TypeSig 'where' OpenBlock Constructor KeepTerminator CloseBlock;
 -}
 record :: SyntaxInfo -> IdrisParser PDecl
-record syn = do (doc, acc) <- try (do 
+record syn = do (doc, acc) <- try (do
                       doc <- option "" (docComment '|')
                       acc <- optional accessibility
                       reserved "record"

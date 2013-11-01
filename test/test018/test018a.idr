@@ -3,7 +3,7 @@ module Main
 import System.Concurrency.Process
 
 ping : ProcID String -> ProcID String -> Process String ()
-ping main proc 
+ping main proc
    = do lift (usleep 1000)
         send proc "Hello!"
         lift (putStrLn "Sent ping")
@@ -14,7 +14,7 @@ ping main proc
 pong : Process String ()
 pong = do -- lift (putStrLn "Waiting for message")
           (sender, m) <- recvWithSender
-          lift $ putStrLn ("Received " ++ m) 
+          lift $ putStrLn ("Received " ++ m)
           send sender ("Hello back!")
 
 mainProc : Process String ()
@@ -27,7 +27,7 @@ mainProc = do mainID <- myID
 repeatIO : Int -> IO ()
 repeatIO 0 = return ()
 repeatIO n = do print n
-                run mainProc 
+                run mainProc
                 repeatIO (n - 1)
 
 main : IO ()

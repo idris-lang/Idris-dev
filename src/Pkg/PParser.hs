@@ -58,10 +58,10 @@ parseDesc fp = do p <- readFile fp
                        Right x -> return x
 
 pPkg :: PParser PkgDesc
-pPkg = do reserved "package"; p <- identifier 
+pPkg = do reserved "package"; p <- identifier
           st <- getState
           setState (st { pkgname = p })
-          many1 pClause 
+          many1 pClause
           st <- getState
           return st
 
@@ -84,7 +84,7 @@ pClause = do reserved "executable"; lchar '=';
              let args = parseArgs (words opts)
              setState (st { idris_opts = args })
       <|> do reserved "modules"; lchar '=';
-             ms <- sepBy1 (iName []) (lchar ',') 
+             ms <- sepBy1 (iName []) (lchar ',')
              st <- getState
              setState (st { modules = modules st ++ ms })
       <|> do reserved "libs"; lchar '=';
@@ -99,4 +99,4 @@ pClause = do reserved "executable"; lchar '=';
              mk <- iName []
              st <- getState
              setState (st { makefile = Just (show mk) })
-  
+

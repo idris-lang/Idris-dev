@@ -33,7 +33,7 @@ instance Functor CGI where
 
 instance Applicative CGI where
     pure v = MkCGI (\s => return (v, s))
-    
+
     (MkCGI a) <$> (MkCGI b) = MkCGI (\s => do (f, i) <- a s
                                               (c, j) <- b i
                                               return (f c, j))
@@ -50,9 +50,9 @@ getInfo : CGI CGIInfo
 getInfo = MkCGI (\s => return (s, s))
 
 abstract
-lift : IO a -> CGI a 
+lift : IO a -> CGI a
 lift op = MkCGI (\st => do { x <- op
-                             return (x, st) } ) 
+                             return (x, st) } )
 
 abstract
 output : String -> CGI ()
@@ -95,10 +95,10 @@ flushHeaders = do o <- getHeaders
 abstract
 flush : CGI ()
 flush = do o <- getOutput
-           lift (putStr o) 
+           lift (putStr o)
 
 getVars : List Char -> String -> List (String, String)
-getVars seps query = mapMaybe readVar (split (\x => elem x seps) query) 
+getVars seps query = mapMaybe readVar (split (\x => elem x seps) query)
   where
     readVar : String -> Maybe (String, String)
     readVar xs with (split (\x => x == '=') xs)
@@ -118,11 +118,11 @@ getContent x = getC x "" where
 getCgiEnv : String -> IO String
 getCgiEnv key = do
   val <- getEnv key
-  return $ maybe "" id val 
+  return $ maybe "" id val
 
 abstract
 runCGI : CGI a -> IO a
-runCGI prog = do 
+runCGI prog = do
     clen_in <- getCgiEnv "CONTENT_LENGTH"
     let clen = prim__fromStrInt clen_in
     content <- getContent clen
@@ -134,8 +134,8 @@ runCGI prog = do
     let post_vars = getVars ['&'] content
     let cookies   = getVars [';'] cookie
 
-    (v, st) <- getAction prog (CGISt get_vars post_vars cookies agent 
-                 "Content-type: text/html\n" 
+    (v, st) <- getAction prog (CGISt get_vars post_vars cookies agent
+                 "Content-type: text/html\n"
                  "")
     putStrLn (Headers st)
     putStr (Output st)

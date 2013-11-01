@@ -32,7 +32,7 @@ showErr e = getIState >>= return . flip pshow e
 
 report :: IOError -> String
 report e
-    | isUserError e = ioeGetErrorString e 
+    | isUserError e = ioeGetErrorString e
     | otherwise     = show e
 
 --idrisCatch :: Idris a -> (SomeException -> Idris a) -> Idris a
@@ -54,7 +54,7 @@ tclift (Error err@(At (FC f l c) e)) = do setErrLine l ; throwError err
 tclift (Error err) = throwError err
 
 tctry :: TC a -> TC a -> Idris a
-tctry tc1 tc2 
+tctry tc1 tc2
     = case tc1 of
            OK v -> return v
            Error err -> tclift tc2

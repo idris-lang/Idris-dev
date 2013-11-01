@@ -2,7 +2,7 @@ module Control.Monad.Identity
 
 import Prelude.Functor
 import Prelude.Applicative
-import Prelude.Monad 
+import Prelude.Monad
 
 public record Identity : Type -> Type where
     Id : (runIdentity : a) -> Identity a
@@ -12,7 +12,7 @@ instance Functor Identity where
 
 instance Applicative Identity where
     pure x = Id x
-    
+
     (Id f) <$> (Id g) = Id (f g)
 
 instance Monad Identity where

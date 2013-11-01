@@ -2,8 +2,8 @@ Type checking ./test032.idr
 isElem x [] = ?isElem_rhs_1
 isElem x (_ :: _) = ?isElem_rhs_3
 
-   localZipWith f (_ :: _) ys = ?localZipWith_rhs_1 
-   localZipWith f (_ :: _) ys = ?localZipWith_rhs_2 
+   localZipWith f (_ :: _) ys = ?localZipWith_rhs_1
+   localZipWith f (_ :: _) ys = ?localZipWith_rhs_2
 
 f x :: (map f xs)
 isElem2 x (y :: ys) with (_)

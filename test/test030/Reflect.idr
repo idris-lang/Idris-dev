@@ -41,7 +41,7 @@ using (xs : List a, ys : List a, G : List (List a))
   expr_r (App ex ey) = let (xl ** (xr, xprf)) = expr_r ex in
                        let (yl ** (yr, yprf)) = expr_r ey in
                            appRExpr _ _ xr yr xprf yprf
-    where 
+    where
       appRExpr : (xs', ys' : List a) ->
                  RExpr G xs -> RExpr G ys -> (xs' = xs) -> (ys' = ys) ->
                  (ws' ** (RExpr G ws', xs' ++ ys' = ws'))
@@ -80,13 +80,13 @@ using (xs : List a, ys : List a, G : List (List a))
 
   buildProof : {xs : List a} -> {ys : List a} ->
                Expr G ln -> Expr G rn ->
-               (xs = ln) -> (ys = rn) -> Maybe (xs = ys) 
+               (xs = ln) -> (ys = rn) -> Maybe (xs = ys)
   buildProof e e' lp rp with (eqExpr e e')
     buildProof e e lp rp  | Just refl = ?bp1
     buildProof e e' lp rp | Nothing = Nothing
 
   testEq : Expr G xs -> Expr G ys -> Maybe (xs = ys)
-  testEq l r = let (ln ** (l', lPrf)) = reduce l in 
+  testEq l r = let (ln ** (l', lPrf)) = reduce l in
                let (rn ** (r', rPrf)) = reduce r in
                    buildProof l' r' lPrf rPrf
 
@@ -129,7 +129,7 @@ using (xs : List a, ys : List a, G : List (List a))
 -- reduction will work the right way.
 
 %reflection
-reflectList : (G : List (List a)) -> 
+reflectList : (G : List (List a)) ->
           (xs : List a) -> (G' ** Expr (G' ++ G) xs)
 reflectList G [] = ([] ** ENil)
 
@@ -140,7 +140,7 @@ reflectList G (x :: xs) with (reflectList G xs)
 
 reflectList G (xs ++ ys) with (reflectList G xs)
      | (G' ** xs') with (reflectList (G' ++ G) ys)
-         | (G'' ** ys') = ((G'' ++ G') ** 
+         | (G'' ** ys') = ((G'' ++ G') **
                               rewrite (sym (appendAssociative G'' G' G)) in
                                  App (weaken G'' xs') ys')
 reflectList G t with (isElem t G)
@@ -157,7 +157,7 @@ reflectList G t with (isElem t G)
 
 %reflection
 reflectEq : (a : Type) -> (G : List (List a)) -> (P : Type) -> (G' ** ListEq (G' ++ G) P)
-reflectEq a G (the (List a) xs = the (List a) ys) with (reflectList G xs) 
+reflectEq a G (the (List a) xs = the (List a) ys) with (reflectList G xs)
      | (G' ** xs')  with (reflectList (G' ++ G) ys)
         | (G'' ** ys') = ((G'' ++ G') **
                            rewrite (sym (appendAssociative G'' G' G)) in
@@ -197,7 +197,7 @@ Reflect.bp1 = proof {
 -- The effect is to bind x to p applied to the current goal. If 'p' is a
 -- reflection function (which is the most likely thing to be useful...)
 -- then we can feed the result to the above 'prove' function and pull out
--- the proof, if it exists. 
+-- the proof, if it exists.
 
 -- The syntax declaration below just gives us an easy way to invoke the
 -- prover.

@@ -25,7 +25,7 @@ type Relations = M.Map UExp [(UConstraint, FC)]
 
 mkRels :: [(UConstraint, FC)] -> Relations -> Relations
 mkRels [] acc = acc
-mkRels ((c, f) : cs) acc 
+mkRels ((c, f) : cs) acc
     | not (ignore c)
        = case M.lookup (lhs c) acc of
               Nothing -> mkRels cs (M.insert (lhs c) [(c,f)] acc)
@@ -38,7 +38,7 @@ mkRels ((c, f) : cs) acc
 
 
 acyclic :: Relations -> [UExp] -> TC ()
-acyclic r cvs = checkCycle (fileFC "root") r [] 0 cvs 
+acyclic r cvs = checkCycle (fileFC "root") r [] 0 cvs
   where
     checkCycle :: FC -> Relations -> [(UExp, FC)] -> Int -> [UExp] -> TC ()
     checkCycle fc r path inc [] = return ()
@@ -50,18 +50,18 @@ acyclic r cvs = checkCycle (fileFC "root") r [] 0 cvs
 
     check fc path inc (UVar x) | x < 0 = return ()
     check fc path inc cv
-        | inc > 0 && cv `elem` map fst path 
+        | inc > 0 && cv `elem` map fst path
             = Error $ At fc UniverseError
                 -- FIXME: Make informative
                 -- e.g. (Msg ("Cycle: " ++ show cv ++ ", " ++ show path))
         -- if we reach a cycle but we're at the same universe level, it's
         -- fine, because they must all be equal, so stop.
         | inc == 0 && cv `elem` map fst path
-            = return () 
+            = return ()
         | otherwise = case M.lookup cv r of
                             Nothing       -> return ()
                             Just cs -> mapM_ (next ((cv, fc):path) inc) cs
-    
+
     next path inc (ULT l r, fc) = check fc path (inc + 1) r
     next path inc (ULE l r, fc) = check fc path inc r
 

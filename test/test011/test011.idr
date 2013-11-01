@@ -16,7 +16,7 @@ person : Person
 person = MkPerson "Fred" 30
 
 main : IO ()
-main = do let x = record { name = "foo", 
+main = do let x = record { name = "foo",
                            more_things = reverse ["a","b"] } testFoo
           print $ name x
           print $ name person

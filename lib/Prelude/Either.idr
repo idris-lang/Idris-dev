@@ -49,7 +49,7 @@ rights (x::xs) =
 
 partitionEithers : List (Either a b) -> (List a, List b)
 partitionEithers l = (lefts l, rights l)
-    
+
 fromEither : Either a a -> a
 fromEither (Left l)  = l
 fromEither (Right r) = r

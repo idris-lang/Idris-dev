@@ -216,7 +216,7 @@ initDefs tgt =
                                , G.name = Name $ "__idris_" ++ name
                                , G.basicBlocks = def
                                }
-      
+
       exfun :: String -> Type -> [Type] -> Bool -> Definition
       exfun name rty argtys vari =
           GlobalDefinition $ functionDefaults
@@ -562,7 +562,7 @@ cgCase val alts =
       defExp = getDefExp =<< find isDefCase alts
       constAlts = filter isConstCase alts
       conAlts = filter isConCase alts
-                
+
       isConstCase (SConstCase {}) = True
       isConstCase _ = False
 
@@ -806,7 +806,7 @@ addGlobal' ty val = do
                 , G.initializer = Just val
                 }
   return . C.GlobalReference $ name
-  
+
 
 ensureCDecl :: String -> FType -> [FType] -> Codegen Operand
 ensureCDecl name rty argtys = do
@@ -1110,7 +1110,7 @@ cgStrCat x y = do
   end <- inst $ IntToPtr offj (PointerType (IntegerType 8) (AddrSpace 0)) []
   inst' $ Store False end (ConstantOperand (C.Int 8 0)) Nothing 0 []
   box FString mem
-  
+
 ibin :: IntTy -> Operand -> Operand
      -> (Operand -> Operand -> InstructionMetadata -> Instruction) -> Codegen Operand
 ibin ity x y instCon = do

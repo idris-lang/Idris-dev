@@ -8,7 +8,7 @@
    tactics out of the primitives.
 -}
 
-module Core.Elaborate(module Core.Elaborate, 
+module Core.Elaborate(module Core.Elaborate,
                       module Core.ProofState) where
 
 import Core.ProofState
@@ -64,7 +64,7 @@ errAt thing n elab = do s <- get
                         case runStateT elab s of
                              OK (a, s') -> do put s'
                                               return a
-                             Error (At f e) -> 
+                             Error (At f e) ->
                                  lift $ Error (At f (Elaborating thing n e))
                              Error e -> lift $ Error (Elaborating thing n e)
 
@@ -182,8 +182,8 @@ get_deferred = do ES p _ _ <- get
 checkInjective :: (Term, Term, Term) -> Elab' aux ()
 checkInjective (tm, l, r) = do ctxt <- get_context
                                if isInj ctxt tm then return ()
-                                else lift $ tfail (NotInjective tm l r) 
-  where isInj ctxt (P _ n _) 
+                                else lift $ tfail (NotInjective tm l r)
+  where isInj ctxt (P _ n _)
             | isConName n ctxt = True
         isInj ctxt (App f a) = isInj ctxt f
         isInj ctxt (Constant _) = True
@@ -200,15 +200,15 @@ get_instances = do ES p _ _ <- get
 unique_hole = unique_hole' False
 
 unique_hole' :: Bool -> Name -> Elab' aux Name
-unique_hole' reusable n 
+unique_hole' reusable n
       = do ES p _ _ <- get
-           let bs = bound_in (pterm (fst p)) ++ 
+           let bs = bound_in (pterm (fst p)) ++
                     bound_in (ptype (fst p))
-           n' <- uniqueNameCtxt (context (fst p)) n (holes (fst p) 
+           n' <- uniqueNameCtxt (context (fst p)) n (holes (fst p)
                    ++ bs ++ dontunify (fst p) ++ usedns (fst p))
            ES (p, a) s u <- get
            -- Hmm: Do we need this level of uniqueness?
-           let p' = p -- if reusable then p else p { usedns = n' : usedns p } 
+           let p' = p -- if reusable then p else p { usedns = n' : usedns p }
            put (ES (p', a) s u)
            return n'
   where
@@ -221,7 +221,7 @@ unique_hole' reusable n
     bound_in _ = []
 
 uniqueNameCtxt :: Context -> Name -> [Name] -> Elab' aux Name
-uniqueNameCtxt ctxt n hs 
+uniqueNameCtxt ctxt n hs
     | n `elem` hs = uniqueNameCtxt ctxt (nextName n) hs
     | [_] <- lookupTy n ctxt = uniqueNameCtxt ctxt (nextName n) hs
     | otherwise = return n
@@ -272,7 +272,7 @@ regret = processTactic' Regret
 compute :: Elab' aux ()
 compute = processTactic' Compute
 
-computeLet :: Name -> Elab' aux () 
+computeLet :: Name -> Elab' aux ()
 computeLet n = processTactic' (ComputeLet n)
 
 simplify :: Elab' aux ()
@@ -391,7 +391,7 @@ prepare_apply fn imps =
             | Var n <- fn
                    = do ctxt <- get_context
                         case lookupTy n ctxt of
-                                [] -> lift $ tfail $ NoSuchVariable n  
+                                [] -> lift $ tfail $ NoSuchVariable n
                                 _ -> fail $ "Too many arguments for " ++ show fn
             | otherwise = fail $ "Too many arguments for " ++ show fn
 
@@ -415,7 +415,7 @@ apply = apply' fill
 match_apply = apply' match_fill
 
 apply' :: (Raw -> Elab' aux ()) -> Raw -> [(Bool, Int)] -> Elab' aux [Name]
-apply' fillt fn imps = 
+apply' fillt fn imps =
     do args <- prepare_apply fn (map fst imps)
        env <- get_env
        g <- goal
@@ -428,20 +428,20 @@ apply' fillt fn imps =
        hs <- get_holes
        ES (p, a) s prev <- get
        let dont = nub $ head hs : dontunify p ++
-                          if null imps then [] -- do all we can 
+                          if null imps then [] -- do all we can
                              else
                              map fst (filter (not.snd) (zip args (map fst imps)))
-       let (n, hunis) = -- trace ("AVOID UNIFY: " ++ show (fn, dont) ++ "\n" ++ show ptm) $ 
+       let (n, hunis) = -- trace ("AVOID UNIFY: " ++ show (fn, dont) ++ "\n" ++ show ptm) $
                         unified p
-       let unify = -- trace ("Not done " ++ show hs) $ 
+       let unify = -- trace ("Not done " ++ show hs) $
                    dropGiven dont hunis hs
-       let notunify = -- trace ("Not done " ++ show hs) $ 
+       let notunify = -- trace ("Not done " ++ show hs) $
                        keepGiven dont hunis hs
        put (ES (p { dontunify = dont, unified = (n, unify),
                     notunified = notunify ++ notunified p }, a) s prev)
        ptm <- get_term
        g <- goal
---        trace ("Goal " ++ show g ++ "\n" ++ show (fn,  imps, unify) ++ "\n" ++ show ptm) $ 
+--        trace ("Goal " ++ show g ++ "\n" ++ show (fn,  imps, unify) ++ "\n" ++ show ptm) $
        end_unify
        ptm <- get_term
        return (map (updateUnify unify) args)
@@ -449,8 +449,8 @@ apply' fillt fn imps =
                                 Just (P _ t _) -> t
                                 _ -> n
 
-apply2 :: Raw -> [Maybe (Elab' aux ())] -> Elab' aux () 
-apply2 fn elabs = 
+apply2 :: Raw -> [Maybe (Elab' aux ())] -> Elab' aux ()
+apply2 fn elabs =
     do args <- prepare_apply fn (map isJust elabs)
        fill (raw_apply fn (map Var args))
        elabArgs args elabs
@@ -463,11 +463,11 @@ apply2 fn elabs =
                                          elabArgs ns es
         elabArgs (n:ns) (_:es) = elabArgs ns es
 
-        isJust (Just _) = False 
+        isJust (Just _) = False
         isJust _        = True
 
 apply_elab :: Name -> [Maybe (Int, Elab' aux ())] -> Elab' aux ()
-apply_elab n args = 
+apply_elab n args =
     do ty <- get_type (Var n)
        ctxt <- get_context
        env <- get_env
@@ -497,7 +497,7 @@ apply_elab n args =
     doClaims t [] claims = return (reverse claims)
     doClaims _ _ _ = fail $ "Wrong number of arguments for " ++ show n
 
-    elabClaims failed r [] 
+    elabClaims failed r []
         | null failed = return ()
         | otherwise = if r then elabClaims [] False failed
                            else return ()
@@ -515,7 +515,7 @@ apply_elab n args =
 
 -- If the goal is not a Pi-type, invent some names and make it a pi type
 checkPiGoal :: Name -> Elab' aux ()
-checkPiGoal n 
+checkPiGoal n
             = do g <- goal
                  case g of
                     Bind _ (Pi _) _ -> return ()
@@ -551,8 +551,8 @@ simple_app fun arg appstr =
        complete_fill
        hs <- get_holes
        env <- get_env
-       -- We don't need a and b in the hole queue any more since they were 
-       -- just for checking f, so discard them if they are still there. 
+       -- We don't need a and b in the hole queue any more since they were
+       -- just for checking f, so discard them if they are still there.
        -- If they haven't been solved, regret will fail
        when (a `elem` hs) $ do focus a; regretWith (CantInferType appstr)
        when (b `elem` hs) $ do focus b; regretWith (CantInferType appstr)
@@ -569,7 +569,7 @@ arg n tyhole = do ty <- unique_hole tyhole
 
 -- try a tactic, if it adds any unification problem, return an error
 no_errors :: Elab' aux () -> Elab' aux ()
-no_errors tac 
+no_errors tac
    = do ps <- get_probs
         tac
         ps' <- get_probs
@@ -594,11 +594,11 @@ try' t1 t2 proofSearch
                     Error e1 -> if recoverableErr e1 then
                                    do case runStateT t2 s of
                                          OK (v, s') -> do put s'; return v
-                                         Error e2 -> if score e1 >= score e2 
-                                                        then lift (tfail e1) 
+                                         Error e2 -> if score e1 >= score e2
+                                                        then lift (tfail e1)
                                                         else lift (tfail e2)
                                    else lift (tfail e1)
-  where recoverableErr err@(CantUnify r _ _ _ _ _) 
+  where recoverableErr err@(CantUnify r _ _ _ _ _)
              = -- traceWhen r (show err) $
                r || proofSearch
         recoverableErr (ProofSearchFail _) = False
@@ -614,7 +614,7 @@ tryAll :: [(Elab' aux a, String)] -> Elab' aux a
 tryAll xs = tryAll' [] 999999 (cantResolve, 0) (map fst xs)
   where
     cantResolve :: Elab' aux a
-    cantResolve = lift $ tfail $ CantResolveAlts (map snd xs) 
+    cantResolve = lift $ tfail $ CantResolveAlts (map snd xs)
 
     tryAll' :: [Elab' aux a] -> -- successes
                Int -> -- most problems
@@ -624,12 +624,12 @@ tryAll xs = tryAll' [] 999999 (cantResolve, 0) (map fst xs)
     tryAll' [res] pmax _   [] = res
     tryAll' (_:_) pmax _   [] = cantResolve
     tryAll' [] pmax (f, _) [] = f
-    tryAll' cs pmax f (x:xs) 
+    tryAll' cs pmax f (x:xs)
        = do s <- get
             ps <- get_probs
             case prunStateT pmax True ps x s of
-                OK ((v, newps), s') -> 
-                    do let cs' = if (newps < pmax) 
+                OK ((v, newps), s') ->
+                    do let cs' = if (newps < pmax)
                                     then [do put s'; return v]
                                     else (do put s'; return v) : cs
                        tryAll' cs' newps f xs
@@ -643,10 +643,10 @@ tryAll xs = tryAll' [] 999999 (cantResolve, 0) (map fst xs)
                             if (s >= i) then (lift (tfail err), s)
                                         else (f, i)
 
-prunStateT pmax zok ps x s 
+prunStateT pmax zok ps x s
       = case runStateT x s of
-             OK (v, s'@(ES (p, _) _ _)) -> 
-                 let newps = length (problems p) - length ps 
+             OK (v, s'@(ES (p, _) _ _)) ->
+                 let newps = length (problems p) - length ps
                      newpmax = if newps < 0 then 0 else newps in
                  if (newpmax > pmax || (not zok && newps > 0)) -- length ps == 0 && newpmax > 0))
                     then case reverse (problems p) of
@@ -655,7 +655,7 @@ prunStateT pmax zok ps x s
              Error e -> Error e
 
 qshow :: Fails -> String
-qshow fs = show (map (\ (x, y, _, _) -> (x, y)) fs) 
+qshow fs = show (map (\ (x, y, _, _) -> (x, y)) fs)
 
 dumpprobs [] = ""
 dumpprobs ((_,_,_,e):es) = show e ++ "\n" ++ dumpprobs es

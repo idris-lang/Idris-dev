@@ -63,8 +63,8 @@ emptyFC = fileFC ""
 fileFC :: String -> FC
 fileFC s = FC s 0 0
 
-{-! 
-deriving instance Binary FC 
+{-!
+deriving instance Binary FC
 !-}
 
 instance Sized FC where
@@ -75,7 +75,7 @@ instance Show FC where
 
 data Err = Msg String
          | InternalMsg String
-         | CantUnify Bool Term Term Err [(Name, Type)] Int 
+         | CantUnify Bool Term Term Err [(Name, Type)] Int
               -- Int is 'score' - how much we did unify
               -- Bool indicates recoverability, True indicates more info may make
               -- unification succeed
@@ -181,8 +181,8 @@ instance Show a => Show (TC a) where
 -- (e.g. Type:Type)
 
 instance Monad TC where
-    return = OK 
-    x >>= k = case x of 
+    return = OK
+    x >>= k = case x of
                 OK v -> k v
                 Error e -> Error e
     fail e = Error (InternalMsg e)
@@ -192,7 +192,7 @@ tfail e = Error e
 
 trun :: FC -> TC a -> TC a
 trun fc (OK a)    = OK a
-trun fc (Error e) = Error (At fc e) 
+trun fc (Error e) = Error (At fc e)
 
 instance MonadPlus TC where
     mzero = fail "Unknown error"
@@ -218,23 +218,23 @@ traceWhen False _  a = a
 -- | Names are hierarchies of strings, describing scope (so no danger of
 -- duplicate names, but need to be careful on lookup).
 data Name = UN String -- ^ User-provided name
-          | NS Name [String] -- ^ Root, namespaces 
+          | NS Name [String] -- ^ Root, namespaces
           | MN Int String -- ^ Machine chosen names
           | NErased -- ^ Name of somethng which is never used in scope
           | SN SpecialName -- ^ Decorated function names
   deriving (Eq, Ord)
-{-! 
-deriving instance Binary Name 
+{-!
+deriving instance Binary Name
 !-}
 
 data SpecialName = WhereN Int Name Name
                  | InstanceN Name [String]
                  | ParentN Name String
-                 | MethodN Name 
+                 | MethodN Name
                  | CaseN Name
   deriving (Eq, Ord)
-{-! 
-deriving instance Binary SpecialName 
+{-!
+deriving instance Binary SpecialName
 !-}
 
 instance Sized Name where
@@ -300,9 +300,9 @@ nsroot n = n
 
 addDef :: Name -> a -> Ctxt a -> Ctxt a
 addDef n v ctxt = case Map.lookup (nsroot n) ctxt of
-                        Nothing -> Map.insert (nsroot n) 
+                        Nothing -> Map.insert (nsroot n)
                                         (Map.insert n v Map.empty) ctxt
-                        Just xs -> Map.insert (nsroot n) 
+                        Just xs -> Map.insert (nsroot n)
                                         (Map.insert n v xs) ctxt
 
 {-| Look up a name in the context, given an optional namespace.
@@ -326,7 +326,7 @@ lookupCtxtName n ctxt = case Map.lookup (nsroot n) ctxt of
                                   Nothing -> []
   where
     filterNS [] = []
-    filterNS ((found, v) : xs) 
+    filterNS ((found, v) : xs)
         | nsmatch n found = (found, v) : filterNS xs
         | otherwise       = filterNS xs
 
@@ -341,9 +341,9 @@ lookupCtxtExact :: Name -> Ctxt a -> [a]
 lookupCtxtExact n ctxt = [ v | (nm, v) <- lookupCtxtName n ctxt, nm == n]
 
 updateDef :: Name -> (a -> a) -> Ctxt a -> Ctxt a
-updateDef n f ctxt 
+updateDef n f ctxt
   = let ds = lookupCtxtName n ctxt in
-        foldr (\ (n, t) c -> addDef n (f t) c) ctxt ds  
+        foldr (\ (n, t) c -> addDef n (f t) c) ctxt ds
 
 toAlist :: Ctxt a -> [(Name, a)]
 toAlist ctxt = let allns = map snd (Map.toList ctxt) in
@@ -390,15 +390,15 @@ intTyWidth ITNative = 8 * sizeOf (0 :: Int)
 intTyWidth ITChar = error "IRTS.Lang.intTyWidth: Characters have platform and backend dependent width"
 intTyWidth ITBig = error "IRTS.Lang.intTyWidth: Big integers have variable width"
 
-data Const = I Int | BI Integer | Fl Double | Ch Char | Str String 
+data Const = I Int | BI Integer | Fl Double | Ch Char | Str String
            | B8 Word8 | B16 Word16 | B32 Word32 | B64 Word64
            | B8V (Vector Word8) | B16V (Vector Word16)
            | B32V (Vector Word32) | B64V (Vector Word64)
            | AType ArithTy | StrType
            | PtrType | VoidType | Forgot
   deriving (Eq, Ord)
-{-! 
-deriving instance Binary Const 
+{-!
+deriving instance Binary Const
 !-}
 
 instance Sized Const where
@@ -439,8 +439,8 @@ instance Sized Raw where
 instance Pretty Raw where
   pretty = text . show
 
-{-! 
-deriving instance Binary Raw 
+{-!
+deriving instance Binary Raw
 !-}
 
 -- | All binding forms are represented in a unform fashion.
@@ -458,8 +458,8 @@ data Binder b = Lam   { binderTy  :: b {-^ type annotation for bound variable-}}
               | PVar  { binderTy  :: b }
               | PVTy  { binderTy  :: b }
   deriving (Show, Eq, Ord, Functor)
-{-! 
-deriving instance Binary Binder 
+{-!
+deriving instance Binary Binder
 !-}
 
 instance Sized a => Sized (Binder a) where
@@ -548,8 +548,8 @@ data NameType = Bound
               | DCon Int Int -- ^ Data constructor; Ints are tag and arity
               | TCon Int Int -- ^ Type constructor; Ints are tag and arity
   deriving (Show, Ord)
-{-! 
-deriving instance Binary NameType 
+{-!
+deriving instance Binary NameType
 !-}
 
 instance Sized NameType where
@@ -576,8 +576,8 @@ data TT n = P NameType n (TT n) -- ^ named references
           | Impossible -- ^ special case for totality checking
           | TType UExp -- ^ the type of types at some level
   deriving (Ord, Functor)
-{-! 
-deriving instance Binary TT 
+{-!
+deriving instance Binary TT
 !-}
 
 class TermSize a where
@@ -588,14 +588,14 @@ instance TermSize a => TermSize [a] where
     termsize n (x : xs) = termsize n x + termsize n xs
 
 instance TermSize (TT Name) where
-    termsize n (P _ x _) 
+    termsize n (P _ x _)
        | x == n = 1000000 -- recursive => really big
        | otherwise = 1
     termsize n (V _) = 1
-    termsize n (Bind n' (Let t v) sc) 
+    termsize n (Bind n' (Let t v) sc)
        = let rn = if n == n' then MN 0 "noname" else n in
              termsize rn v + termsize rn sc
-    termsize n (Bind n' b sc) 
+    termsize n (Bind n' b sc)
        = let rn = if n == n' then MN 0 "noname" else n in
              termsize rn sc
     termsize n (App f a) = termsize n f + termsize n a
@@ -652,7 +652,7 @@ isInjective _                  = False
 vinstances :: Int -> TT n -> Int
 vinstances i (V x) | i == x = 1
 vinstances i (App f a) = vinstances i f + vinstances i a
-vinstances i (Bind x b sc) = instancesB b + vinstances (i + 1) sc 
+vinstances i (Bind x b sc) = instancesB b + vinstances (i + 1) sc
   where instancesB (Let t v) = vinstances i v
         instancesB _ = 0
 vinstances i t = 0
@@ -662,7 +662,7 @@ instantiate e = subst 0 where
     subst i (V x) | i == x = e
     subst i (Bind x b sc) = Bind x (fmap (subst i) b) (subst (i+1) sc)
     subst i (App f a) = App (subst i f) (subst i a)
-    subst i (Proj x idx) = Proj (subst i x) idx 
+    subst i (Proj x idx) = Proj (subst i x) idx
     subst i t = t
 
 substV :: TT n -> TT n -> TT n
@@ -677,7 +677,7 @@ substV x tm = dropV 0 (instantiate x tm) where
 explicitNames :: TT n -> TT n
 explicitNames (Bind x b sc) = let b' = fmap explicitNames b in
                                   Bind x b'
-                                     (explicitNames (instantiate 
+                                     (explicitNames (instantiate
                                         (P Bound x (binderTy b')) sc))
 explicitNames (App f a) = App (explicitNames f) (explicitNames a)
 explicitNames (Proj x idx) = Proj (explicitNames x) idx
@@ -785,15 +785,15 @@ forget tm = fe [] tm
   where
     fe env (P _ n _) = Var n
     fe env (V i)     = Var (env !! i)
-    fe env (Bind n b sc) = RBind n (fmap (fe env) b) 
+    fe env (Bind n b sc) = RBind n (fmap (fe env) b)
                                    (fe (n:env) sc)
     fe env (App f a) = RApp (fe env f) (fe env a)
-    fe env (Constant c) 
+    fe env (Constant c)
                      = RConstant c
     fe env (TType i)   = RType
-    fe env Erased    = RConstant Forgot 
-    
-bindAll :: [(n, Binder (TT n))] -> TT n -> TT n 
+    fe env Erased    = RConstant Forgot
+
+bindAll :: [(n, Binder (TT n))] -> TT n -> TT n
 bindAll [] t =t
 bindAll ((n, b) : bs) t = Bind n b (bindAll bs t)
 
@@ -820,7 +820,7 @@ uniqueBinders ns (Bind n b sc)
           Bind n' (fmap (uniqueBinders (n':ns)) b) (uniqueBinders ns sc)
 uniqueBinders ns (App f a) = App (uniqueBinders ns f) (uniqueBinders ns a)
 uniqueBinders ns t = t
-  
+
 
 nextName (NS x s)    = NS (nextName x) s
 nextName (MN i n)    = MN (i+1) n
@@ -892,7 +892,7 @@ prettyEnv env t = prettyEnv' env t False
       | otherwise     = p
 
     prettySe p env (P nt n t) debug =
-      pretty n <+> 
+      pretty n <+>
         if debug then
           lbrack <+> pretty nt <+> colon <+> prettySe 10 env t debug <+> rbrack
         else
@@ -931,16 +931,16 @@ prettyEnv env t = prettyEnv' env t False
     prettyBv env op sc n t v debug =
       text op <> pretty n <+> colon <+> prettySe 10 env t debug <+> text "=" <+>
         prettySe 10 env v debug <> text sc
-          
+
 
 showEnv' env t dbg = se 10 env t where
-    se p env (P nt n t) = show n 
+    se p env (P nt n t) = show n
                             ++ if dbg then "{" ++ show nt ++ " : " ++ se 10 env t ++ "}" else ""
     se p env (V i) | i < length env && i >= 0
                                     = (show $ fst $ env!!i) ++
                                       if dbg then "{" ++ show i ++ "}" else ""
                    | otherwise = "!!V " ++ show i ++ "!!"
-    se p env (Bind n b@(Pi t) sc)  
+    se p env (Bind n b@(Pi t) sc)
         | noOccurrence n sc && not dbg = bracket p 2 $ se 1 env t ++ " -> " ++ se 10 ((n,b):env) sc
     se p env (Bind n b sc) = bracket p 2 $ sb env n b ++ se 10 ((n,b):env) sc
     se p env (App f a) = bracket p 1 $ se 1 env f ++ " " ++ se 0 env a
@@ -960,8 +960,8 @@ showEnv' env t dbg = se 10 env t where
     sb env n (Guess t v) = showbv env "?? " " in " n t v
 
     showb env op sc n t    = op ++ show n ++ " : " ++ se 10 env t ++ sc
-    showbv env op sc n t v = op ++ show n ++ " : " ++ se 10 env t ++ " = " ++ 
-                             se 10 env v ++ sc 
+    showbv env op sc n t v = op ++ show n ++ " : " ++ se 10 env t ++ " = " ++
+                             se 10 env v ++ sc
 
     bracket outer inner str | inner > outer = "(" ++ str ++ ")"
                             | otherwise = str
@@ -1008,7 +1008,7 @@ orderPats tm = op [] tm
   where
     op ps (Bind n (PVar t) sc) = op ((n, PVar t) : ps) sc
     op ps (Bind n (Hole t) sc) = op ((n, Hole t) : ps) sc
-    op ps sc = bindAll (map (\ (n, t) -> (n, t)) (sortP ps)) sc 
+    op ps sc = bindAll (map (\ (n, t) -> (n, t)) (sortP ps)) sc
 
     sortP ps = pick [] (reverse ps)
 
@@ -1025,7 +1025,7 @@ orderPats tm = op [] tm
 
     insert n t [] = [(n, t)]
     insert n t ((n',t') : ps)
-        | n `elem` (namesIn (binderTy t') ++ 
+        | n `elem` (namesIn (binderTy t') ++
                       concatMap namesIn (map (binderTy . snd) ps))
             = (n', t') : insert n t ps
         | otherwise = (n,t):(n',t'):ps
