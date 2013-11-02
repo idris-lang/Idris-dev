@@ -260,7 +260,7 @@ SimpleExpr ::=
 simpleExpr :: SyntaxInfo -> IdrisParser PTerm
 simpleExpr syn =
         {-try (do symbol "!["; t <- term; lchar ']'; return $ PQuote t)
-        <|>-} do lchar '?'; x <- name; return (PMetavar x)
+        <|>-} do x <- try (lchar '?' *> name); return (PMetavar x)
         <|> do lchar '%'; fc <- getFC; reserved "instance"; return (PResolveTC fc)
         <|> do reserved "refl"; fc <- getFC;
                tm <- option Placeholder (do lchar '{'; t <- expr syn; lchar '}';
