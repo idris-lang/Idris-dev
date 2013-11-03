@@ -193,7 +193,7 @@ ploop d prompt prf e h
 --                               trace (show (problems (proof st))) $
                                 iPrintResult ""
                                 return (True, st, False, prf ++ [step]))
-           (\err -> do iPrintError (show err)
+           (\err -> do iPrintError (pshow i err)
                        return (False, e, False, prf))
          ideslavePutSExp "write-proof-state" (prf', length prf')
          if done then do (tm, _) <- elabStep st get_term
