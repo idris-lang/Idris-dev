@@ -1130,6 +1130,13 @@ idrisMain opts =
          Nothing -> return ()
          Just expr -> execScript expr
 
+       -- Create Idris data dir + repl history and config dir
+       idrisCatch (do dir <- getIdrisUserDataDir
+                      exists <- runIO $ doesDirectoryExist dir
+                      unless exists $ iLOG ("Creating " ++ dir)
+                      runIO $ createDirectoryIfMissing True (dir </> "repl"))
+         (\e -> return ())
+
        historyFile <- fmap (</> "repl" </> "history") getIdrisUserDataDir
 
        when runrepl $ initScript
