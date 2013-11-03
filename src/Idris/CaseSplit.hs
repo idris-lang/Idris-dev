@@ -49,12 +49,12 @@ names over '_', patterns over names, etc.
 -- variable updates
 split :: Name -> PTerm -> Idris [[(Name, PTerm)]]
 split n t'
-   = do (tm, ty, pats) <- elabValBind toplevel True t'
+   = do ist <- getIState
+        (tm, ty, pats) <- elabValBind toplevel True (addImplPat ist t')
         logLvl 4 ("Elaborated:\n" ++ show tm ++ " : " ++ show ty ++ "\n" ++ show pats)
-        ist <- getIState
 --         iputStrLn (show (delab ist tm) ++ " : " ++ show (delab ist ty))
 --         iputStrLn (show pats)
-        let t = mergeUserImpl (addImpl ist t') (delab ist tm) -- addImplPat ist t'
+        let t = mergeUserImpl (addImplPat ist t') (delab ist tm) 
         let ctxt = tt_ctxt ist
         case lookup n pats of
              Nothing -> fail $ show n ++ " is not a pattern variable"
