@@ -37,7 +37,8 @@ import System.IO
 #ifndef IDRIS_FFI
 execute :: Term -> Idris Term
 execute tm = fail "libffi not supported, rebuild Idris with -f FFI"
-#else -- rest of file
+#else
+-- else is rest of file
 readMay :: (Read a) => String -> Maybe a
 readMay s = case reads s of
               [(x, "")] -> Just x
