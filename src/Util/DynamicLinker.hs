@@ -70,7 +70,8 @@ tryLoadFn fn (Lib _ h) = do cFn <- getProcAddress h fn
                                 then return Nothing
                                 else return . Just $ Fun fn (castPtrToFunPtr cFn)
 #endif
-#else -- no libffi, just add stubbs.
+#else
+-- no libffi, just add stubbs.
 
 data DynamicLib = Lib { lib_name :: String
                       , lib_handle :: ()
