@@ -100,7 +100,7 @@ the program is compiled to the executable \texttt{hello}.
 
 \begin{SaveVerbatim}[commandchars=\\\{\}]{cmds}
 Idris version \version{}
--------------------
+--------------------
 
    Command         Arguments   Purpose
                                
@@ -111,19 +111,26 @@ Idris version \version{}
    :total          <name>      Check the totality of a name
    :r :reload                  Reload current file
    :l :load        <filename>  Load a new file
+   :cd             <filename>  Change working directory
    :m :module      <module>    Import an extra module
    :e :edit                    Edit current file using $EDITOR or $VISUAL
-   :m :metavars                Show remaining proof obligations (metavariables)
-   :p :prove       <name>      Prove a metavariable
+   :m :metavars    <metavar>   Show remaining proof obligations (metavariables)
+   :p :prove       <metavar>   Prove a metavariable
    :a :addproof    <name>      Add proof to source file
    :rmproof        <name>      Remove proof from proof stack
    :showproof      <name>      Show proof
    :proofs                     Show available proofs
+   :x              <expr>      Execute IO actions resulting from an expression 
+                               using the interpreter
    :c :compile     <filename>  Compile to an executable <filename>
+   :js :javascript <filename>  Compile to JavaScript <filename>
    :exec :execute              Compile to an executable and run
+   :dynamic        <filename>  Dynamically load a C library (similar to %dynamic)
+   :dynamic                    List dynamically loaded C libraries
    :? :h :help                 Display this help text
    :set            <option>    Set an option (errorcontext, showimplicits)
    :unset          <option>    Unset an option
+   :colour :color  <option>    Turn REPL colours on or off; set a specific colour
    :q :quit                    Exit the Idris system
 \end{SaveVerbatim}
 \codefigs{cmds}{Interactive environment commands}
