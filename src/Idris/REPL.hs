@@ -1125,7 +1125,8 @@ idrisMain opts =
        ok <- noErrors
        when ok $ case output of
                     [] -> return ()
-                    (o:_) -> process stdout "" (Compile cgn o)
+                    (o:_) -> idrisCatch (process stdout "" (Compile cgn o))
+                               (\e -> do ist <- getIState ; iputStrLn $ pshow ist e)
        case script of
          Nothing -> return ()
          Just expr -> execScript expr
