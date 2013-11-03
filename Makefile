@@ -1,4 +1,4 @@
-.PHONY: build configure doc install linecount nodefault pinstall relib test
+.PHONY: build configure doc install linecount nodefault pinstall lib_clean relib test
 
 include config.mk
 -include custom.mk
@@ -22,10 +22,12 @@ test_java:
 test_llvm:
 	$(MAKE) -C test IDRIS=../dist/build/idris test_llvm
 
-relib:
+lib_clean:
 	$(MAKE) -C lib IDRIS=../dist/build/idris/idris RTS=../dist/build/rts/libidris_rts clean
 	$(MAKE) -C effects IDRIS=../dist/build/idris/idris RTS=../dist/build/rts/libidris_rts DIST=../dist/build clean
 	$(MAKE) -C javascript IDRIS=../dist/build/idris/idris RTS=../dist/build/rts/libidris_rts DIST=../dist/build clean
+
+relib: lib_clean
 	$(CABAL) install $(CABALFLAGS)
 
 linecount:

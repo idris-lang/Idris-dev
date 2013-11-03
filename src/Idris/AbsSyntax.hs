@@ -1180,7 +1180,9 @@ aiFn inpat expat ist fc f as
     | f `elem` primNames = Right $ PApp fc (PRef fc f) as
 aiFn inpat expat ist fc f as
           -- This is where namespaces get resolved by adding PAlternative
-        = case lookupCtxtName f (idris_implicits ist) of
+     = do let ns = lookupCtxtName f (idris_implicits ist)
+          let ns' = filter (\(n, _) -> notHidden n) ns
+          case ns' of
             [(f',ns)] -> Right $ mkPApp fc (length ns) (PRef fc f') (insertImpl ns as)
             [] -> if f `elem` (map fst (idris_metavars ist))
                     then Right $ PApp fc (PRef fc f) as
@@ -1190,6 +1192,16 @@ aiFn inpat expat ist fc f as
                        map (\(f', ns) -> mkPApp fc (length ns) (PRef fc f')
                                                    (insertImpl ns as)) alts
   where
+    notHidden n = case getAccessibility n of
+                        Hidden -> False
+                        _ -> True
+
+    getAccessibility n
+             = case lookupDefAcc n False (tt_ctxt ist) of
+                    [(n,t)] -> t
+                    _ -> Public
+
+
     insertImpl :: [PArg] -> [PArg] -> [PArg]
     insertImpl (PExp p l ty _ : ps) (PExp _ _ tm d : given) =
                                  PExp p l tm d : insertImpl ps given
