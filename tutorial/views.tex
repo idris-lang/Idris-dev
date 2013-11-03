@@ -75,6 +75,8 @@ parity : (n:Nat) -> Parity n
 \end{SaveVerbatim}
 \useverb{parityty}
 
+\label{sect:nattobin}
+
 \noindent
 We'll come back to the definition of \texttt{parity} shortly. We can use it
 to write a function which converts a natural number to a list of binary digits
@@ -103,15 +105,7 @@ function in the patterns (\texttt{+}) and repeated occurrences of \texttt{j} ---
 this is allowed
 because another argument has determined the form of these patterns.
 
-We can test this function at the prompt. 42 is 101010 in binary. The binary digits
-are reversed with natToBin:
-
-\begin{SaveVerbatim}{ntbtest}
-
-*views> show (natToBin 42)
-"[False, True, False, True, False, True]" : String
-
-\end{SaveVerbatim}
-\useverb{ntbtest}
+We will return to this function in Section \ref{sect:provisional} to complete
+the definition of \texttt{parity}.
 
 

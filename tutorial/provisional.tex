@@ -1,5 +1,7 @@
 \section{Provisional Definitions}
 
+\label{sect:provisional}
+
 Sometimes when programming with dependent types, the type required by the type
 checker and the type of the program we have written will be different (in that
 they do not have the same normal form), but nevertheless provably equal. For
@@ -194,6 +196,19 @@ sym refl = refl
 We can complete this proof using the \texttt{trivial} tactic, which finds 
 \texttt{value} in the premisses. The proof of the second lemma proceeds in
 exactly the same way.
+
+We can now test the \texttt{natToBin} function from Section 
+\ref{sect:nattobin} at the prompt. 42 is 101010 in
+binary. The binary digits are reversed:
+
+\begin{SaveVerbatim}{ntbtest}
+
+*views> show (natToBin 42)
+"[False, True, False, True, False, True]" : String
+
+\end{SaveVerbatim}
+\useverb{ntbtest}
+
 
 \subsection{Suspension of Disbelief}
 
