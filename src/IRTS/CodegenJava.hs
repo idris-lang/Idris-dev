@@ -6,6 +6,7 @@ import           IRTS.CodegenCommon
 import           IRTS.Java.ASTBuilding
 import           IRTS.Java.JTypes
 import           IRTS.Java.Mangling
+import           IRTS.Java.Pom (pomString)
 import           IRTS.Lang
 import           IRTS.Simplified
 import           Util.System
@@ -16,10 +17,9 @@ import           Control.Monad
 import           Control.Monad.Error
 import qualified Control.Monad.Trans       as T
 import           Control.Monad.Trans.State
-import           Data.List                 (foldl', isSuffixOf, unfoldr)
+import           Data.List                 (foldl', isSuffixOf)
 import qualified Data.Text                 as T
 import qualified Data.Text.IO              as TIO
-import           Text.XML.Light
 import qualified Data.Vector.Unboxed       as V
 import           Language.Java.Parser
 import           Language.Java.Pretty
@@ -101,19 +101,9 @@ generatePom :: FilePath -> -- tgt dir
                [String] -> -- libs
                IO ()
 generatePom tgtDir out libs = do
-  execPom <- getExecutablePom
-  execPomTemplate <- TIO.readFile execPom
   let (Ident clsName) = either error id (mkClassName out)
-  let execPom = T.replace (T.pack "$MAIN-CLASS$")
-                          (T.pack clsName)
-                          (T.replace (T.pack "$ARTIFACT-NAME$")
-                                     (T.pack $ takeBaseName out)
-                                     (T.replace (T.pack "$DEPENDENCIES$")
-                                                (T.pack $ concatMap (ppElement . mkDependency) libs)
-                                                execPomTemplate
-                                     )
-                          )
-  TIO.writeFile (pomFileName tgtDir) execPom
+  let execPom = pomString clsName (takeBaseName out) libs
+  writeFile (pomFileName tgtDir) execPom
 
 invokeMvn :: FilePath -> String -> IO ()
 invokeMvn tgtDir command = do
@@ -174,26 +164,6 @@ jarHeader =
   ++ "fi\n"
   ++ "exec \"$java\" $java_args -jar $MYSELF \"$@\""
   ++ "exit 1\n"
-
--- from http://stackoverflow.com/a/4978733/283260
-splitOn :: Eq a => a -> [a] -> [[a]]
-splitOn chr = unfoldr sep where
-  sep [] = Nothing
-  sep l  = Just . fmap (drop 1) . break (==chr) $ l
-
-mkDependency :: String -> Element
-mkDependency d =
-  case splitOn ':' d of
-    [g, a, v] ->
-      unode "dependency" [
-        mkGroupId g,
-        mkArtifactId a,
-        mkVersion v
-      ]
-    _     -> blank_element
-mkGroupId g    = unode "groupId" g
-mkArtifactId a = unode "artifactId" a
-mkVersion v    = unode "version" v
 
 -----------------------------------------------------------------------
 -- Code generation environment
