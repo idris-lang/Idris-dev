@@ -100,10 +100,11 @@ generatePom :: FilePath -> -- tgt dir
                FilePath -> -- output target
                [String] -> -- libs
                IO ()
-generatePom tgtDir out libs = do
-  let (Ident clsName) = either error id (mkClassName out)
-  let execPom = pomString clsName (takeBaseName out) libs
-  writeFile (pomFileName tgtDir) execPom
+generatePom tgtDir out libs = writeFile (pomFileName tgtDir) execPom
+  where
+    (Ident clsName) = either error id (mkClassName out)
+    execPom = pomString clsName (takeBaseName out) libs
+  
 
 invokeMvn :: FilePath -> String -> IO ()
 invokeMvn tgtDir command = do
