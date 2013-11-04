@@ -401,6 +401,7 @@ Executable idris
                 , vector
                 , vector-binary-instances
                 , network
+                , xml
 
   Extensions:     MultiParamTypeClasses
                 , FunctionalDependencies

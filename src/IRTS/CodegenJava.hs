@@ -2,14 +2,12 @@
 module IRTS.CodegenJava (codegenJava) where
 
 import           Core.TT                   hiding (mkApp)
-import           IRTS.BCImp
 import           IRTS.CodegenCommon
 import           IRTS.Java.ASTBuilding
 import           IRTS.Java.JTypes
 import           IRTS.Java.Mangling
 import           IRTS.Lang
 import           IRTS.Simplified
-import           Paths_idris
 import           Util.System
 
 import           Control.Applicative       hiding (Const)
@@ -18,12 +16,10 @@ import           Control.Monad
 import           Control.Monad.Error
 import qualified Control.Monad.Trans       as T
 import           Control.Monad.Trans.State
-import           Data.Int
-import           Data.List                 (foldl', intercalate, isPrefixOf,
-                                            isSuffixOf)
-import           Data.Maybe                (fromJust)
+import           Data.List                 (foldl', isSuffixOf, unfoldr)
 import qualified Data.Text                 as T
 import qualified Data.Text.IO              as TIO
+import           Text.XML.Light
 import qualified Data.Vector.Unboxed       as V
 import           Language.Java.Parser
 import           Language.Java.Pretty
@@ -113,7 +109,7 @@ generatePom tgtDir out libs = do
                           (T.replace (T.pack "$ARTIFACT-NAME$")
                                      (T.pack $ takeBaseName out)
                                      (T.replace (T.pack "$DEPENDENCIES$")
-                                                (mkPomDependencies libs)
+                                                (T.pack $ concatMap (ppElement . mkDependency) libs)
                                                 execPomTemplate
                                      )
                           )
@@ -179,23 +175,25 @@ jarHeader =
   ++ "exec \"$java\" $java_args -jar $MYSELF \"$@\""
   ++ "exit 1\n"
 
-mkPomDependencies :: [String] -> T.Text
-mkPomDependencies deps =
-  T.concat $ map (T.concat . map (T.append (T.pack "    ")) . mkDependency . T.pack) deps
-  where
-    mkDependency s =
-      case T.splitOn (T.pack ":") s of
-        [g, a, v] ->
-          [ T.pack $ "<dependency>\n"
-          , T.append (T.pack "  ") $ mkGroupId g
-          , T.append (T.pack "  ") $ mkArtifactId a
-          , T.append (T.pack "  ") $ mkVersion v
-          , T.pack $ "</dependency>\n"
-          ]
-        _     -> []
-    mkGroupId g    = T.append (T.pack $ "<groupId>")    (T.append g $ T.pack "</groupId>\n")
-    mkArtifactId a = T.append (T.pack $ "<artifactId>") (T.append a $ T.pack "</artifactId>\n")
-    mkVersion v    = T.append (T.pack $ "<version>")    (T.append v $ T.pack "</version>\n")
+-- from http://stackoverflow.com/a/4978733/283260
+splitOn :: Eq a => a -> [a] -> [[a]]
+splitOn chr = unfoldr sep where
+  sep [] = Nothing
+  sep l  = Just . fmap (drop 1) . break (==chr) $ l
+
+mkDependency :: String -> Element
+mkDependency d =
+  case splitOn ':' d of
+    [g, a, v] ->
+      unode "dependency" [
+        mkGroupId g,
+        mkArtifactId a,
+        mkVersion v
+      ]
+    _     -> blank_element
+mkGroupId g    = unode "groupId" g
+mkArtifactId a = unode "artifactId" a
+mkVersion v    = unode "version" v
 
 -----------------------------------------------------------------------
 -- Code generation environment
