@@ -1,0 +1,8 @@
+package sort
+
+modules = sortvec 
+opts = "-p effects" 
+
+executable = sortvec
+main = sortvec
+

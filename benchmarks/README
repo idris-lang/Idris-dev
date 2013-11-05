@@ -1,0 +1,21 @@
+Benchmarks
+----------
+
+To run:
+
+$ ./build.pl   -- builds all benchmark binaries
+$ ./run.pl     -- runs all benchmarks
+
+Adding a test 
+-------------
+
+Add a line to the 'ALL' file of the following form:
+
+dir/main   arg
+
+where 'dir' is the directory the benchmark lives in, 'main' is the name of the
+ipkg file and executable (these must be the same), 'arg' is the input to give
+to the binary. 
+
+It is assumed that all benchmarks take exactly one argument, which helps to
+ensure that they are not simply doing all the work at compile time.
