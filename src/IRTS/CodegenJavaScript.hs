@@ -991,6 +991,9 @@ translateExpression (SOp op vars)
   | LStrTail    <- op
   , (arg:_)     <- vars = let v = translateVariableName arg in
                               JSRaw $ v ++ ".substr(1," ++ v ++ ".length-1)"
+  | LNullPtr    <- op
+  , (_)         <- vars = JSNull
+
   where
     translateBinaryOp :: String -> LVar -> LVar -> JS
     translateBinaryOp f lhs rhs = JSOp f (JSVar lhs) (JSVar rhs)

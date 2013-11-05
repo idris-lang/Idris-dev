@@ -54,6 +54,7 @@ data PrimFn = LPlus ArithTy | LMinus ArithTy | LTimes ArithTy
             | LPar -- evaluate argument anywhere, possibly on another
                    -- core or another machine. 'id' is a valid implementation
             | LVMPtr
+            | LNullPtr
             | LNoOp
   deriving (Show, Eq)
 

@@ -369,5 +369,8 @@ strIndex = prim__strIndex
 reverse : String -> String
 reverse = prim__strRev
 
+null : Ptr
+null = prim__null
+
 }
 
