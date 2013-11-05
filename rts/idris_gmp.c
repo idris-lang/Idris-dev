@@ -1,5 +1,5 @@
 #include "idris_rts.h"
-#include <gmp.h>
+#include <gmp.h> 
 #include <stdlib.h>
 #include <string.h>
 
@@ -92,7 +92,12 @@ VAL GETBIG(VM * vm, VAL x) {
 
         return cl;
     } else {
-        return x;
+        switch(GETTY(x)) {
+        case FWD:
+            return GETBIG(vm, x->info.ptr);
+        default:
+            return x;
+        }
     }
 }
 
@@ -100,7 +105,7 @@ VAL bigAdd(VM* vm, VAL x, VAL y) {
     mpz_t* bigint;
     VAL cl = allocate(vm, sizeof(Closure) + sizeof(mpz_t), 0);
     bigint = (mpz_t*)(((char*)cl) + sizeof(Closure));
-    mpz_add(*bigint, GETMPZ(x), GETMPZ(y));
+    mpz_add(*bigint, GETMPZ(GETBIG(vm,x)), GETMPZ(GETBIG(vm,y)));
     SETTY(cl, BIGINT);
     cl -> info.ptr = (void*)bigint;
     return cl;
@@ -110,7 +115,7 @@ VAL bigSub(VM* vm, VAL x, VAL y) {
     mpz_t* bigint;
     VAL cl = allocate(vm, sizeof(Closure) + sizeof(mpz_t), 0);
     bigint = (mpz_t*)(((char*)cl) + sizeof(Closure));
-    mpz_sub(*bigint, GETMPZ(x), GETMPZ(y));
+    mpz_sub(*bigint, GETMPZ(GETBIG(vm,x)), GETMPZ(GETBIG(vm,y)));
     SETTY(cl, BIGINT);
     cl -> info.ptr = (void*)bigint;
     return cl;
@@ -120,7 +125,7 @@ VAL bigMul(VM* vm, VAL x, VAL y) {
     mpz_t* bigint;
     VAL cl = allocate(vm, sizeof(Closure) + sizeof(mpz_t), 0);
     bigint = (mpz_t*)(((char*)cl) + sizeof(Closure));
-    mpz_mul(*bigint, GETMPZ(x), GETMPZ(y));
+    mpz_mul(*bigint, GETMPZ(GETBIG(vm,x)), GETMPZ(GETBIG(vm,y)));
     SETTY(cl, BIGINT);
     cl -> info.ptr = (void*)bigint;
     return cl;
@@ -130,7 +135,7 @@ VAL bigDiv(VM* vm, VAL x, VAL y) {
     mpz_t* bigint;
     VAL cl = allocate(vm, sizeof(Closure) + sizeof(mpz_t), 0);
     bigint = (mpz_t*)(((char*)cl) + sizeof(Closure));
-    mpz_div(*bigint, GETMPZ(x), GETMPZ(y));
+    mpz_tdiv_q(*bigint, GETMPZ(GETBIG(vm,x)), GETMPZ(GETBIG(vm,y)));
     SETTY(cl, BIGINT);
     cl -> info.ptr = (void*)bigint;
     return cl;
@@ -140,7 +145,7 @@ VAL bigMod(VM* vm, VAL x, VAL y) {
     mpz_t* bigint;
     VAL cl = allocate(vm, sizeof(Closure) + sizeof(mpz_t), 0);
     bigint = (mpz_t*)(((char*)cl) + sizeof(Closure));
-    mpz_mod(*bigint, GETMPZ(x), GETMPZ(y));
+    mpz_mod(*bigint, GETMPZ(GETBIG(vm,x)), GETMPZ(GETBIG(vm,y)));
     SETTY(cl, BIGINT);
     cl -> info.ptr = (void*)bigint;
     return cl;
