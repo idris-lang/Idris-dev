@@ -293,6 +293,7 @@ sourceTypes (LStdErr) = []
 sourceTypes (LFork) = [objectType]
 sourceTypes (LPar) = [objectType]
 sourceTypes (LVMPtr) = []
+sourceTypes (LNullPtr) = [objectType]
 sourceTypes (LNoOp) = repeat objectType
 
 
