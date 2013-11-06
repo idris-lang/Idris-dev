@@ -29,6 +29,7 @@ data EvalOpt = Spec
              | HNF
              | Simplify
              | AtREPL
+             | RunTT
   deriving (Show, Eq)
 
 initEval = ES [] 0
@@ -162,6 +163,7 @@ eval :: Bool -> Context -> [(Name, Int)] -> Env -> TT Name ->
 eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
     spec = Spec `elem` opts
     simpl = Simplify `elem` opts
+    runtime = RunTT `elem` opts
     atRepl = AtREPL `elem` opts
     hnf = HNF `elem` opts
 
@@ -172,6 +174,10 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
            = (not (inl || dict) || elem n stk)
              || (n == UN "prim__syntactic_eq")
        | otherwise = False
+
+    getCases cd | simpl = cases_totcheck cd
+                | runtime = cases_runtime cd
+                | otherwise = cases_compiletime cd
 
     ev ntimes stk top env (P _ n ty)
         | Just (Let t v) <- lookup n genv = ev ntimes stk top env v
@@ -189,8 +195,7 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
                     [(CaseOp ci _ _ _ cd, acc)]
                          | acc == Public &&
                              null (fst (cases_totcheck cd)) -> -- unoptimised version
-                       let (_, tree) = if simpl then cases_totcheck cd
-                                                else cases_compiletime cd in
+                       let (_, tree) = getCases cd in
                          if blockSimplify ci n stk
                             then liftM (VP Ref n) (ev ntimes stk top env ty)
                             else do c <- evCase ntimes n (n:stk) top env [] [] tree
@@ -261,8 +266,7 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
                     case val of
                       [(CaseOp ci _ _ _ cd, acc)]
                            | acc == Public -> -- unoptimised version
-                       let (ns, tree) = if simpl then cases_totcheck cd
-                                                 else cases_compiletime cd in
+                       let (ns, tree) = getCases cd in
                          if blockSimplify ci n stk
                            then return $ unload env (VP Ref n ty) args
                            else do c <- evCase ntimes n (n:stk) top env ns args tree

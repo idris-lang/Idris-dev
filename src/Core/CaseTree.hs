@@ -502,6 +502,9 @@ prune proj (Case n alts)
             [] -> ImpossibleCase
             as@[ConCase cn i args sc] -> if proj then mkProj n 0 args sc
                                                  else Case n as
+            as@[SucCase cn sc] -> if proj then mkProj n (-1) [cn] sc 
+                                          else Case n as
+            as@[ConstCase _ sc] -> prune proj sc
             -- Bit of a hack here! The default case will always be 0, make sure
             -- it gets caught first.
             [s@(SucCase _ _), DefaultCase dc]
@@ -517,8 +520,15 @@ prune proj (Case n alts)
           notErased (DefaultCase ImpossibleCase) = False
           notErased _ = True
 
-          mkProj n i []       sc = sc
+          mkProj n i []       sc = prune proj sc
           mkProj n i (x : xs) sc = mkProj n (i + 1) xs (projRep x n i sc)
+
+          -- Change every 'n' in sc to 'n-1'
+--           mkProjS n cn sc = prune proj (fmap projn sc) where
+--              projn pn@(P _ n' _) 
+--                 | cn == n' = App (App (P Ref (UN "prim__subBigInt") Erased)
+--                                       (P Bound n Erased)) (Constant (BI 1))
+--              projn t = t
 
           projRep :: Name -> Name -> Int -> SC -> SC
           projRep arg n i (Case x alts)

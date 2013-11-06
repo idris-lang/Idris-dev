@@ -67,7 +67,7 @@ compile codegen f tm
         dumpDefun <- getDumpDefun
         case dumpCases of
             Nothing -> return ()
-            Just f -> runIO $ writeFile f (showCaseTrees tagged)
+            Just f -> runIO $ writeFile f (showCaseTrees defs)
         case dumpDefun of
             Nothing -> return ()
             Just f -> runIO $ writeFile f (dumpDefuns defuns)
@@ -259,6 +259,10 @@ instance ToIR (TT Name) where
                v' <- ir' env v
                return $ LLet n v' sc'
       ir' env (Bind _ _ _) = return $ LNothing
+      ir' env (Proj t i) | i == -1
+                             = do t' <- ir' env t
+                                  return $ LOp (LMinus (ATInt ITBig)) 
+                                               [t', LConst (BI 1)]
       ir' env (Proj t i) = do t' <- ir' env t
                               return $ LProj t' i
       ir' env (Constant c) = return $ LConst c
