@@ -1,5 +1,4 @@
 #!/bin/bash
-gcc -c test033.c
-idris -o test033 test033.idr
+idris $@ -o test033 test033.idr
 ./test033
-rm -f *.ibc *.o test033
+rm -f *.ibc test033
