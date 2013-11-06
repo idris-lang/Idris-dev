@@ -67,6 +67,9 @@ Extra-source-files:
                        rts/*.h
                        rts/Makefile
 
+                       contribs/lib/SimpleParser/simpleparser.ipkg
+                       contribs/lib/SimpleParser/src/SimpleParser.idr
+
                        lib/base.ipkg
                        lib/*.idr
                        lib/Control/*.idr

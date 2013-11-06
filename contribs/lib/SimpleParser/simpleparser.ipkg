@@ -1,0 +1,4 @@
+package simpleparser
+
+sourcedir = src
+modules = SimpleParser
