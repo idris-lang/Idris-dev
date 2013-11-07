@@ -10,7 +10,7 @@ Cell : Nat -> Type
 Cell n = Maybe (Fin n)
 
 data Board : Nat -> Type where
-  MkBoard : {n : Nat} -> Vect (Vect (Cell n) n) n -> Board n
+  MkBoard : {n : Nat} -> Vect n (Vect n (Cell n)) -> Board n
 
 emptyBoard : Board n
 emptyBoard {n=n} = MkBoard (replicate n (replicate n Nothing))
@@ -19,10 +19,11 @@ showElt : Cell n -> String
 showElt Nothing = "."
 showElt (Just x) = show (1 + (the Int (fromInteger (cast x))))
 
-showRow : Vect (Cell n) n -> String
-showRow xs = unwords (toList (map showElt xs))
+-- FIXME: Inline type decl should not be necessary here
+showRow : Vect n (Cell n) -> String
+showRow {n=n} xs = unwords (toList (the (Vect n String) (map showElt xs)))
 
-unlines : Vect String n -> String
+unlines : Vect n String -> String
 unlines Nil = ""
 unlines (l::Nil) = l
 unlines (l::ls) = pack (foldl addLine (unpack l) (map unpack ls))
@@ -33,8 +34,8 @@ unlines (l::ls) = pack (foldl addLine (unpack l) (map unpack ls))
 instance Show (Board n) where
   show (MkBoard rs) = unlines (map showRow rs)
 
-updateAt : Fin n -> Vect a n -> (a -> a) -> Vect a n
-updateAt fO (x::xs) f = f x :: xs
+updateAt : Fin n -> Vect n a -> (a -> a) -> Vect n a
+updateAt fZ (x::xs) f = f x :: xs
 updateAt (fS i) (x::xs) f = x :: updateAt i xs f
 
 setCell : Board n -> (Fin n, Fin n) -> Fin n -> Board n
@@ -43,17 +44,17 @@ setCell (MkBoard b) (x, y) value = MkBoard (updateAt y b (\row => updateAt x row
 getCell : Board n -> (Fin n, Fin n) -> Cell n
 getCell (MkBoard b) (x, y) = index x (index y b)
 
-anyElim : {xs : Vect a n} -> {P : a -> Type} -> (Any P xs -> b) -> (P x -> b) -> Any P (x :: xs) -> b
+anyElim : {xs : Vect n a} -> {P : a -> Type} -> (Any P xs -> b) -> (P x -> b) -> Any P (x :: xs) -> b
 anyElim _ f (Here p) = f p
 anyElim f _ (There p) = f p
 
-getRow : Fin n -> Board n -> Vect (Cell n) n
+getRow : Fin n -> Board n -> Vect n (Cell n)
 getRow i (MkBoard b) = index i b
 
-getCol : Fin n -> Board n -> Vect (Cell n) n
+getCol : Fin n -> Board n -> Vect n (Cell n)
 getCol i (MkBoard b) = helper i b
   where
-    helper : Fin n -> Vect (Vect a n) m -> Vect a m
+    helper : Fin n -> Vect m (Vect n a) -> Vect m a
     helper _ Nil = Nil
     helper i (xs::xss) = index i xs :: helper i xss
 
@@ -115,8 +116,8 @@ FullBoard (MkBoard b) = All (All Filled) b
 fullBoard : (b : Board n) -> Dec (FullBoard b)
 fullBoard (MkBoard b) = all (all filled) b
 
-fins : Vect (Fin n) n
-fins {n=O} = Nil
+fins : Vect n (Fin n)
+fins {n=Z} = Nil
 fins {n=(S m)} = last :: map weaken fins
 
 data LegalBoard : Board n -> Type where
@@ -126,21 +127,21 @@ data LegalBoard : Board n -> Type where
 CompleteBoard : Board n -> Type
 CompleteBoard b = (LegalBoard b, FullBoard b)
 
-indexStep : {i : Fin n} -> {xs : Vect a n} -> {x : a} -> index i xs = index (fS i) (x::xs)
+indexStep : {i : Fin n} -> {xs : Vect n a} -> {x : a} -> index i xs = index (fS i) (x::xs)
 indexStep = refl
 
-find : {P : a -> Type} -> ((x : a) -> Dec (P x)) -> (xs : Vect a n)
+find : {P : a -> Type} -> ((x : a) -> Dec (P x)) -> (xs : Vect n a)
        -> Either (All (\x => Not (P x)) xs) (y : a ** (P y, (i : Fin n ** y = index i xs)))
 find _ Nil = Left Nil
 find d (x::xs) with (d x)
-  | Yes prf = Right (x ** (prf, (fO ** refl)))
+  | Yes prf = Right (x ** (prf, (fZ ** refl)))
   | No prf =
     case find d xs of
       Right (y ** (prf', (i ** prf''))) =>
         Right (y ** (prf', (fS i ** replace {P=(\x => y = x)} (indexStep {x=x}) prf'')))
       Left prf' => Left (prf::prf')
 
-findEmptyInRow : (xs : Vect (Cell n) n) -> Either (All Filled xs) (i : Fin n ** Empty (index i xs))
+findEmptyInRow : (xs : Vect n (Cell n)) -> Either (All Filled xs) (i : Fin n ** Empty (index i xs))
 findEmptyInRow xs =
   case find {P=Empty} empty xs of
     Right (_ ** (pempty, (i ** pidx))) => Right (i ** trans pempty pidx)
@@ -152,12 +153,12 @@ emptyCell (MkBoard rs) =
     Left p => Left p
     Right (ri ** (ci ** pf)) => Right ((ci, ri) ** pf)
   where
-    helper : (rs : Vect (Vect (Cell n) n) m)
+    helper : (rs : Vect m (Vect n (Cell n)))
              -> Either (All (All Filled) rs) (r : Fin m ** (c : Fin n ** Empty (index c (index r rs))))
     helper Nil = Left Nil
     helper (r::rs) =
       case findEmptyInRow r of
-        Right (ci ** pf) => Right (fO ** (ci ** pf))
+        Right (ci ** pf) => Right (fZ ** (ci ** pf))
         Left prf =>
           case helper rs of
             Left prf' => Left (prf::prf')
@@ -171,12 +172,12 @@ tryValue {b=b} l c _ v =
     No prf => Left prf
     Yes prf => Right (_ ** Step prf l)
 
-nullBoardFull : (b : Board O) -> FullBoard b
+nullBoardFull : (b : Board Z) -> FullBoard b
 nullBoardFull (MkBoard Nil) = Nil
 
 -- TODO: Prove complete by induction on illegal values wrt. some base state, e.g. every value is illegal for 123\21_\3_2
 fillBoard : (b : Board n) -> LegalBoard b -> Maybe (b' : Board n ** CompleteBoard b')
-fillBoard {n=O} b l = Just (b ** (l, nullBoardFull b))
+fillBoard {n=Z} b l = Just (b ** (l, nullBoardFull b))
 fillBoard {n=(S n)} b l with (emptyCell b)
   | Left full = Just (b ** (l, full))
   | Right (coords ** p) = recurse last
@@ -189,14 +190,14 @@ fillBoard {n=(S n)} b l with (emptyCell b)
         Left _ => -- TODO: Prove unsolvable
           case v of
             fS k => tryAll (weaken k)
-            fO => (v, Nothing)
+            fZ => (v, Nothing)
 
     %assert_total
     recurse : Fin (S n) -> Maybe (b' : Board (S n) ** CompleteBoard b')
     recurse start = 
       case tryAll start of
         (_, Nothing) => Nothing
-        (fO, Just (b' ** l')) => fillBoard b' l'
+        (fZ, Just (b' ** l')) => fillBoard b' l'
         (fS next, Just (b' ** l')) =>
           case fillBoard b' l' of
             Just solution => Just solution

@@ -10,7 +10,7 @@ ParseErr = String
 Parser : Nat -> Type
 Parser n = Either ParseErr (b : Board n ** LegalBoard b)
 
-mapM : Monad m => (a -> m b) -> Vect a n -> m (Vect b n)
+mapM : Monad m => (a -> m b) -> Vect n a -> m (Vect n b)
 mapM _ Nil = return Vect.Nil
 mapM f (x::xs) = do
   x' <- f x
@@ -20,21 +20,21 @@ mapM f (x::xs) = do
 parseToken : String -> Either String (Cell n)
 parseToken "." = return Nothing
 parseToken "0" = Left "Got cell 0, expected 1-based numbering"
-parseToken x = fmap Just (tryParseFin ((cast x) - 1))
+parseToken x = map Just (tryParseFin ((cast x) - 1))
   where
     tryParseFin : Int -> Either String (Fin n)
-    tryParseFin {n=O} _ = Left ("Given cell " ++ x ++ " out of range")
-    tryParseFin {n=S k} 0 = return fO
+    tryParseFin {n=Z} _ = Left ("Given cell " ++ x ++ " out of range")
+    tryParseFin {n=S k} 0 = return fZ
     tryParseFin {n=S k} x =
       case tryParseFin {n=k} (x-1) of
         Left err => Left err
         Right fin => return (fS fin)
 
-length : Vect a n -> Nat
+length : Vect n a -> Nat
 length {n=n} _ = n
 
-parseCols : {b : Board n} -> Fin n -> LegalBoard b -> Vect String n -> Parser n
-parseCols {n=O} _ l _ = Right (_ ** l)
+parseCols : {b : Board n} -> Fin n -> LegalBoard b -> Vect n String -> Parser n
+parseCols {n=Z} _ l _ = Right (_ ** l)
 parseCols {n=S k} row l cs = helper last l
   where
     step : {b : Board (S k)} -> LegalBoard b -> Fin (S k) -> Parser (S k)
@@ -49,13 +49,13 @@ parseCols {n=S k} row l cs = helper last l
              No _ => Left ("Illegal cell " ++ index x cs)
 
     helper : {b : Board (S k)} -> Fin (S k) -> LegalBoard b -> Parser (S k)
-    helper fO l = step l fO
+    helper fZ l = step l fZ
     helper (fS k) l = do
       (_ ** next) <- step l (fS k)
       helper (weaken k) next
 
-parseRows : (b : Board n) -> LegalBoard b -> Vect String n -> Parser n
-parseRows {n=O}   _ l _  = Right (_ ** l)
+parseRows : (b : Board n) -> LegalBoard b -> Vect n String -> Parser n
+parseRows {n=Z}   _ l _  = Right (_ ** l)
 parseRows {n=S k} _ l rs = helper last l
   where
     step : {b : Board (S k)} -> Fin (S k) -> LegalBoard b -> Parser (S k)
@@ -63,10 +63,10 @@ parseRows {n=S k} _ l rs = helper last l
       let cs = fromList (words (index i rs)) in
       case decEq (length cs) (S k) of
         No _  => Left "Row length not equal to column height"
-        Yes prf => parseCols i l (replace prf cs)
+        Yes prf => let foo = (replace {P=\n => Vect n String} prf cs) in parseCols i l foo -- TODO: foo shouldn't be needed
 
     helper : {b : Board (S k)} -> Fin (S k) -> LegalBoard b -> Parser (S k)
-    helper fO l = step fO l
+    helper fZ l = step fZ l
     helper (fS k) l = do
       (_ ** next) <- step (fS k) l
       helper (weaken k) next
