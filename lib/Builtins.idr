@@ -12,7 +12,7 @@ getProof (a ** v) = v
 
 FalseElim : _|_ -> a
 
--- For rewrite tactic
+-- ------------------------------------------------------ [ For rewrite tactic ]
 replace : {a:_} -> {x:_} -> {y:_} -> {P : a -> Type} -> x = y -> P x -> P y
 replace refl prf = prf
 
@@ -42,36 +42,45 @@ public %assert_total -- reduces at compile time, use with extreme care!
 really_believe_me : a -> b
 really_believe_me x = prim__believe_me _ _ x
 
+-- ---------------------------------------------------------------- [ Builtins ]
 namespace Builtins {
 
 Not : Type -> Type
 Not a = a -> _|_
 
+-- | Identity function.
 id : a -> a
 id x = x
 
+-- | Manually assign a type to an expression.
 the : (a : Type) -> a -> a
 the _ = id
 
+-- | Constant function.
 const : a -> b -> a
 const x _ = x
 
+-- | Return the first element of a pair.
 fst : (s, t) -> s
 fst (x, y) = x
 
+-- | Return the second element of a pair.
 snd : (a, b) -> b
 snd (x, y) = y
 
 infixl 9 .
 
+-- | Function composition
 (.) : (b -> c) -> (a -> b) -> a -> c
 (.) f g x = f (g x)
 
+-- | Takes in the first two arguments in reverse order.
 flip : (a -> b -> c) -> b -> a -> c
 flip f x y = f y x
 
 infixr 1 $
 
+-- | Function application.
 ($) : (a -> b) -> a -> b
 f $ a = f a
 
@@ -82,39 +91,47 @@ data Dec : Type -> Type where
     Yes : {A : Type} -> A          -> Dec A
     No  : {A : Type} -> (A -> _|_) -> Dec A
 
+-- | Boolean Data Type
 data Bool = False | True
 
+-- | Boolean elimination
 boolElim : Bool -> |(t : a) -> |(f : a) -> a
 boolElim True  t e = t
 boolElim False t e = e
 
+-- | Defines a predicate on Bool which guarantees that the value is true.
 data so : Bool -> Type where oh : so True
 
+-- Syntaxtic sugar for boolean elimination.
 syntax if [test] then [t] else [e] = boolElim test t e
 syntax [test] "?" [t] ":" [e] = if test then t else e
 
+-- Boolean Operator Precedence
 infixl 4 &&, ||
 
+-- | Boolean OR
 (||) : Bool -> Bool -> Bool
 (||) False x = x
 (||) True _  = True
 
+-- | Boolean AND
 (&&) : Bool -> Bool -> Bool
 (&&) True x  = x
 (&&) False _ = False
 
+-- | Boolean NOT
 not : Bool -> Bool
 not True = False
 not False = True
 
+-- Numerical Operator Precedence
 infixl 5 ==, /=
 infixl 6 <, <=, >, >=
 infixl 7 <<, >>
 infixl 8 +,-,++
 infixl 9 *,/
 
---- Numeric operators
-
+-- ------------------------------------------------------- [ Numeric Operators ]
 intToBool : Int -> Bool
 intToBool 0 = False
 intToBool x = True
@@ -122,6 +139,7 @@ intToBool x = True
 boolOp : (a -> a -> Int) -> a -> a -> Bool
 boolOp op x y = intToBool (op x y)
 
+-- | The Eq class defines inequality and equality.
 class Eq a where
     (==) : a -> a -> Bool
     (/=) : a -> a -> Bool
@@ -162,6 +180,7 @@ instance Eq Ordering where
     GT == GT = True
     _  == _  = False
 
+-- | The Ord class defines comparison operations on ordered data types.
 class Eq a => Ord a where
     compare : a -> a -> Ordering
 
@@ -224,13 +243,14 @@ instance (Ord a, Ord b) => Ord (a, b) where
       then compare xl yl
       else compare xr yr
 
-
+-- | The Num class defines basic numerical arithmetic.
 class Num a where
     (+) : a -> a -> a
     (-) : a -> a -> a
     (*) : a -> a -> a
-
+    -- | Absolute value
     abs : a -> a
+    -- | Conversion from Integer.
     fromInteger : Integer -> a
 
 instance Num Integer where
@@ -334,38 +354,45 @@ instance Ord Bits64 where
                 else if l > r then GT
                      else EQ
 
+-- | Integer division.
 partial
 div : Integer -> Integer -> Integer
 div = prim__sdivBigInt
 
+-- | Integer modulus.
 partial
 mod : Integer -> Integer -> Integer
 mod = prim__sremBigInt
 
-
+-- | Fractional division of two Floats.
 (/) : Float -> Float -> Float
 (/) = prim__divFloat
 
---- string operators
-
+-- -------------------------------------------------------- [ String Operators ]
+-- | Appends two strings together.
 (++) : String -> String -> String
 (++) = prim__concat
 
+-- | Returns the first character in the specified string.
 partial
 strHead : String -> Char
 strHead = prim__strHead
 
+-- | Returns the characters specified after the head of the string.
 partial
 strTail : String -> String
 strTail = prim__strTail
 
+-- | Adds a character to the from of the specified string.
 strCons : Char -> String -> String
 strCons = prim__strCons
 
+-- | Returns the nth character (starting from 0) of the specified string.
 partial
 strIndex : String -> Int -> Char
 strIndex = prim__strIndex
 
+-- | Reverses the elements within a String.
 reverse : String -> String
 reverse = prim__strRev
 
