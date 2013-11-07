@@ -169,7 +169,9 @@ primitives =
      (0, LVMPtr) total,
    -- Streams
    Prim (UN "prim__stdin") (ty [] PtrType) 0 (p_cantreduce)
-    (0, LStdIn) partial
+    (0, LStdIn) partial,
+   Prim (UN "prim__null") (ty [] PtrType) 0 (p_cantreduce)
+    (0, LNullPtr) total
   ] ++ concatMap intOps [ITFixed IT8, ITFixed IT16, ITFixed IT32, ITFixed IT64, ITBig, ITNative, ITChar]
     ++ concatMap vecOps vecTypes
     ++ vecBitcasts vecTypes

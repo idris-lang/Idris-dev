@@ -2,14 +2,13 @@
 module IRTS.CodegenJava (codegenJava) where
 
 import           Core.TT                   hiding (mkApp)
-import           IRTS.BCImp
 import           IRTS.CodegenCommon
 import           IRTS.Java.ASTBuilding
 import           IRTS.Java.JTypes
 import           IRTS.Java.Mangling
+import           IRTS.Java.Pom (pomString)
 import           IRTS.Lang
 import           IRTS.Simplified
-import           Paths_idris
 import           Util.System
 
 import           Control.Applicative       hiding (Const)
@@ -18,10 +17,7 @@ import           Control.Monad
 import           Control.Monad.Error
 import qualified Control.Monad.Trans       as T
 import           Control.Monad.Trans.State
-import           Data.Int
-import           Data.List                 (foldl', intercalate, isPrefixOf,
-                                            isSuffixOf)
-import           Data.Maybe                (fromJust)
+import           Data.List                 (foldl', isSuffixOf)
 import qualified Data.Text                 as T
 import qualified Data.Text.IO              as TIO
 import qualified Data.Vector.Unboxed       as V
@@ -104,20 +100,11 @@ generatePom :: FilePath -> -- tgt dir
                FilePath -> -- output target
                [String] -> -- libs
                IO ()
-generatePom tgtDir out libs = do
-  execPom <- getExecutablePom
-  execPomTemplate <- TIO.readFile execPom
-  let (Ident clsName) = either error id (mkClassName out)
-  let execPom = T.replace (T.pack "$MAIN-CLASS$")
-                          (T.pack clsName)
-                          (T.replace (T.pack "$ARTIFACT-NAME$")
-                                     (T.pack $ takeBaseName out)
-                                     (T.replace (T.pack "$DEPENDENCIES$")
-                                                (mkPomDependencies libs)
-                                                execPomTemplate
-                                     )
-                          )
-  TIO.writeFile (pomFileName tgtDir) execPom
+generatePom tgtDir out libs = writeFile (pomFileName tgtDir) execPom
+  where
+    (Ident clsName) = either error id (mkClassName out)
+    execPom = pomString clsName (takeBaseName out) libs
+  
 
 invokeMvn :: FilePath -> String -> IO ()
 invokeMvn tgtDir command = do
@@ -178,24 +165,6 @@ jarHeader =
   ++ "fi\n"
   ++ "exec \"$java\" $java_args -jar $MYSELF \"$@\""
   ++ "exit 1\n"
-
-mkPomDependencies :: [String] -> T.Text
-mkPomDependencies deps =
-  T.concat $ map (T.concat . map (T.append (T.pack "    ")) . mkDependency . T.pack) deps
-  where
-    mkDependency s =
-      case T.splitOn (T.pack ":") s of
-        [g, a, v] ->
-          [ T.pack $ "<dependency>\n"
-          , T.append (T.pack "  ") $ mkGroupId g
-          , T.append (T.pack "  ") $ mkArtifactId a
-          , T.append (T.pack "  ") $ mkVersion v
-          , T.pack $ "</dependency>\n"
-          ]
-        _     -> []
-    mkGroupId g    = T.append (T.pack $ "<groupId>")    (T.append g $ T.pack "</groupId>\n")
-    mkArtifactId a = T.append (T.pack $ "<artifactId>") (T.append a $ T.pack "</artifactId>\n")
-    mkVersion v    = T.append (T.pack $ "<version>")    (T.append v $ T.pack "</version>\n")
 
 -----------------------------------------------------------------------
 -- Code generation environment
