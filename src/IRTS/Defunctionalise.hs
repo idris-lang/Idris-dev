@@ -97,8 +97,8 @@ addApps defs (n, LFun _ _ args e)
     aa env (LLet n v sc) = liftM2 (DLet n) (aa env v) (aa (n : env) sc)
     aa env (LCon i n args) = liftM (DC i n) (mapM (aa env) args)
     aa env (LProj t@(LV (Glob n)) i)
-        = do t' <- aa env t
-             return $ DProj (DUpdate n (eEVAL t')) i
+        | n `elem` env = do t' <- aa env t
+                            return $ DProj (DUpdate n (eEVAL t')) i
     aa env (LProj t i) = do t' <- aa env t
                             return $ DProj (eEVAL t') i
     aa env (LCase e alts) = do e' <- aa env e

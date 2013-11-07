@@ -80,6 +80,7 @@ bc reg (SForeign l t fname args) r
 bc reg (SLet (Loc i) e sc) r = bc (L i) e False ++ bc reg sc r
 bc reg (SUpdate (Loc i) sc) r = bc reg sc False ++ [ASSIGN (L i) reg]
                                 ++ clean r
+-- bc reg (SUpdate x sc) r = bc reg sc r -- can't update, just do it
 bc reg (SCon i _ vs) r = MKCON reg i (map getL vs) : clean r
     where getL (Loc x) = L x
 bc reg (SProj (Loc l) i) r = PROJECTINTO reg (L l) i : clean r
@@ -93,6 +94,7 @@ bc reg (SCase (Loc l) alts) r
    | otherwise = conCase True reg (L l) alts r
 bc reg (SChkCase (Loc l) alts) r
    = conCase False reg (L l) alts r
+bc reg t r = error $ "Can't compile " ++ show t
 
 isConst [] = False
 isConst (SConstCase _ _ : xs) = True

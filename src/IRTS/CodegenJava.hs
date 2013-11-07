@@ -485,8 +485,10 @@ mkExp pp (SApp pushTail name args) =
 -- Bindings
 mkExp pp (SLet    var newExp inExp) =
   mkLet pp var newExp inExp
-mkExp pp (SUpdate var newExp) =
+mkExp pp (SUpdate var@(Loc i) newExp) = -- can only update locals
   mkUpdate pp var newExp
+mkExp pp (SUpdate var newExp) =
+  mkExp pp newExp
 
 -- Objects
 mkExp pp (SCon conId _ args) =
