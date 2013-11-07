@@ -217,6 +217,8 @@ instance ToIR (TT Name) where
 --                    return (LOp LBPlus [k', LConst (BI 1)])
           | (P (DCon t a) n _, args) <- unApply tm
               = irCon env t a n args
+          | (P (TCon t a) n _, args) <- unApply tm
+              = return LNothing
           | (P _ n _, args) <- unApply tm
               = do i <- getIState
                    args' <- mapM (ir' env) args
