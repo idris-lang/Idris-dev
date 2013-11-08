@@ -27,8 +27,12 @@ Tests:
 025: memory effects
 026: simple file-I/O-based type provider
 027: class constraints in using block
-028:
+028: hello world with comment and block comment syntax in idr file
 029: match_refine and apply by type
+030: %reflection for functions running on syntax
+031: error reflection 
+032: control idris via stdin
+033: null pointer creation and check
 
 regxxx: various regression tests
 reg020: working strlen

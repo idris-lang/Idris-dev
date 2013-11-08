@@ -486,6 +486,8 @@ mkExp pp (SOp LPar [arg]) =
   (Nothing <>@! arg) >>= ppExp pp
 mkExp pp (SOp LNoOp args) =
   (Nothing <>@! (last args)) >>= ppExp pp
+mkExp pp (SOp LNullPtr args) =
+  ppExp pp $ Lit Null
 mkExp pp (SOp op args) =
   (mkPrimitiveFunction op args) >>= ppExp pp
 
