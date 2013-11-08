@@ -22,6 +22,7 @@ import LLVM.General.AST.DataLayout
 import qualified LLVM.General.PassManager as PM
 import qualified LLVM.General.Module as MO
 import qualified LLVM.General.AST.IntegerPredicate as IPred
+import qualified LLVM.General.AST.FloatingPointPredicate as FPred
 import qualified LLVM.General.AST.Linkage as L
 import qualified LLVM.General.AST.Visibility as V
 import qualified LLVM.General.AST.CallingConvention as CC
@@ -161,6 +162,38 @@ initDefs tgt =
           ]
           (Do $ Ret (Just (LocalReference (UnName 1))) [])
         ]
+    , GlobalDefinition $ globalVariableDefaults
+      { G.name = Name "__idris_floatFmtStr"
+      , G.linkage = L.Internal
+      , G.isConstant = True
+      , G.hasUnnamedAddr = True
+      , G.type' = ArrayType 5 (IntegerType 8)
+      , G.initializer = Just $ C.Array (IntegerType 8) (map (C.Int 8 . fromIntegral . fromEnum) "%g" ++ [C.Int 8 0])
+      }
+    , rtsFun "floatStr" ptrI8 [FloatingPointType 64 IEEE]
+        [ BasicBlock (UnName 0)
+          [ UnName 1 := simpleCall "GC_malloc_atomic" [ConstantOperand (C.Int (tgtWordSize tgt) 21)]
+          , UnName 2 := simpleCall "snprintf"
+                       [ LocalReference (UnName 1)
+                       , ConstantOperand (C.Int (tgtWordSize tgt) 21)
+                       , ConstantOperand $ C.GetElementPtr True (C.GlobalReference . Name $ "__idris_floatFmtStr") [C.Int 32 0, C.Int 32 0]
+                       , LocalReference (UnName 0)
+                       ]
+          ]
+          (Do $ Ret (Just (LocalReference (UnName 1))) [])
+        ]
+    , exfun "llvm.sin.f64" (FloatingPointType 64 IEEE) [ FloatingPointType 64 IEEE ] False
+    , exfun "llvm.cos.f64" (FloatingPointType 64 IEEE) [ FloatingPointType 64 IEEE ] False
+    , exfun "llvm.pow.f64"  (FloatingPointType 64 IEEE) [ FloatingPointType 64 IEEE ] False
+    , exfun "llvm.ceil.f64" (FloatingPointType 64 IEEE) [ FloatingPointType 64 IEEE ] False
+    , exfun "llvm.floor.f64" (FloatingPointType 64 IEEE) [ FloatingPointType 64 IEEE ] False
+    , exfun "llvm.exp.f64" (FloatingPointType 64 IEEE) [ FloatingPointType 64 IEEE ] False
+    , exfun "llvm.log.f64" (FloatingPointType 64 IEEE) [ FloatingPointType 64 IEEE ] False
+    , exfun "llvm.sqrt.f64" (FloatingPointType 64 IEEE) [ FloatingPointType 64 IEEE ] False
+    , exfun "tan" (FloatingPointType 64 IEEE) [ FloatingPointType 64 IEEE ] False
+    , exfun "asin" (FloatingPointType 64 IEEE) [ FloatingPointType 64 IEEE ] False
+    , exfun "acos" (FloatingPointType 64 IEEE) [ FloatingPointType 64 IEEE ] False
+    , exfun "atan" (FloatingPointType 64 IEEE) [ FloatingPointType 64 IEEE ] False
     , exfun "llvm.trap" VoidType [] False
     -- , exfun "llvm.llvm.memcpy.p0i8.p0i8.i32" VoidType [ptrI8, ptrI8, IntegerType 32, IntegerType 32, IntegerType 1] False
     -- , exfun "llvm.llvm.memcpy.p0i8.p0i8.i64" VoidType [ptrI8, ptrI8, IntegerType 64, IntegerType 32, IntegerType 1] False
@@ -184,6 +217,8 @@ initDefs tgt =
     , exfun "__gmpz_cmp" (IntegerType 32) [pmpz, pmpz] False
     , exfun "__gmpz_fdiv_q_2exp" VoidType [pmpz, pmpz, intPtr] False
     , exfun "__gmpz_mul_2exp" VoidType [pmpz, pmpz, intPtr] False
+    , exfun "__gmpz_get_d" (FloatingPointType 64 IEEE) [pmpz] False
+    , exfun "__gmpz_set_d" VoidType [pmpz, FloatingPointType 64 IEEE] False
     , exfun "mpz_get_ull" (IntegerType 64) [pmpz] False
     , exfun "mpz_init_set_ull" VoidType [pmpz, IntegerType 64] False
     , exfun "mpz_init_set_sll" VoidType [pmpz, IntegerType 64] False
@@ -837,10 +872,10 @@ ftyToTy (FArith (ATInt (ITFixed ty))) = IntegerType (fromIntegral $ nativeTyWidt
 ftyToTy (FArith (ATInt (ITVec e c)))
     = VectorType (fromIntegral c) (IntegerType (fromIntegral $ nativeTyWidth e))
 ftyToTy (FArith (ATInt ITChar)) = IntegerType 32
+ftyToTy (FArith ATFloat) = FloatingPointType 64 IEEE
 ftyToTy FString = PointerType (IntegerType 8) (AddrSpace 0)
 ftyToTy FUnit = VoidType
 ftyToTy FPtr = PointerType (IntegerType 8) (AddrSpace 0)
-ftyToTy (FArith ATFloat) = FloatingPointType 64 IEEE
 ftyToTy FAny = valueType
 
 -- Only use when known not to be ITBig
@@ -932,20 +967,69 @@ cgOp (LSGe   (ATInt ity)) [x,y] = iCmp ity IPred.SGE x y
 cgOp (LSGt   (ATInt ity)) [x,y] = iCmp ity IPred.SGT x y
 cgOp (LGe    ity)         [x,y] = iCmp ity IPred.UGE x y
 cgOp (LGt    ity)         [x,y] = iCmp ity IPred.UGT x y
-cgOp (LPlus  (ATInt ity)) [x,y] = ibin ity x y (Add False False)
-cgOp (LMinus (ATInt ity)) [x,y] = ibin ity x y (Sub False False)
-cgOp (LTimes (ATInt ity)) [x,y] = ibin ity x y (Mul False False)
-cgOp (LSDiv  (ATInt ity)) [x,y] = ibin ity x y (SDiv False)
-cgOp (LSRem  (ATInt ity)) [x,y] = ibin ity x y SRem
-cgOp (LUDiv  ity) [x,y] = ibin ity x y (UDiv False)
-cgOp (LURem  ity) [x,y] = ibin ity x y URem
-cgOp (LAnd   ity) [x,y] = ibin ity x y And
-cgOp (LOr    ity) [x,y] = ibin ity x y Or
-cgOp (LXOr   ity) [x,y] = ibin ity x y Xor
-cgOp (LCompl ity) [x]   = iun ity x (Xor . ConstantOperand $ itConst ity (-1))
-cgOp (LSHL   ity) [x,y] = ibin ity x y (Shl False False)
-cgOp (LLSHR  ity) [x,y] = ibin ity x y (LShr False)
-cgOp (LASHR  ity) [x,y] = ibin ity x y (AShr False)
+cgOp (LPlus  ty@(ATInt _)) [x,y] = binary ty x y (Add False False)
+cgOp (LMinus ty@(ATInt _)) [x,y] = binary ty x y (Sub False False)
+cgOp (LTimes ty@(ATInt _)) [x,y] = binary ty x y (Mul False False)
+cgOp (LSDiv  ty@(ATInt _)) [x,y] = binary ty x y (SDiv False)
+cgOp (LSRem  ty@(ATInt _)) [x,y] = binary ty x y SRem
+cgOp (LUDiv  ity)          [x,y] = binary (ATInt ity) x y (UDiv False)
+cgOp (LURem  ity)          [x,y] = binary (ATInt ity) x y URem
+cgOp (LAnd   ity)          [x,y] = binary (ATInt ity) x y And
+cgOp (LOr    ity)          [x,y] = binary (ATInt ity) x y Or
+cgOp (LXOr   ity)          [x,y] = binary (ATInt ity) x y Xor
+cgOp (LCompl ity)          [x] = unary (ATInt ity) x (Xor . ConstantOperand $ itConst ity (-1))
+cgOp (LSHL   ity)          [x,y] = binary (ATInt ity) x y (Shl False False)
+cgOp (LLSHR  ity)          [x,y] = binary (ATInt ity) x y (LShr False)
+cgOp (LASHR  ity)          [x,y] = binary (ATInt ity) x y (AShr False)
+
+cgOp (LSLt   ATFloat) [x,y] = fCmp FPred.OLT x y
+cgOp (LSLe   ATFloat) [x,y] = fCmp FPred.OLE x y
+cgOp (LEq    ATFloat) [x,y] = fCmp FPred.OEQ x y
+cgOp (LSGe   ATFloat) [x,y] = fCmp FPred.OGE x y
+cgOp (LSGt   ATFloat) [x,y] = fCmp FPred.OGT x y
+cgOp (LPlus  ATFloat) [x,y] = binary ATFloat x y FAdd
+cgOp (LMinus ATFloat) [x,y] = binary ATFloat x y FSub
+cgOp (LTimes ATFloat) [x,y] = binary ATFloat x y FMul 
+cgOp (LSDiv  ATFloat) [x,y] = binary ATFloat x y FDiv
+
+cgOp LFExp   [x] = nunary ATFloat "llvm.exp.f64" x 
+cgOp LFLog   [x] = nunary ATFloat "llvm.log.f64" x
+cgOp LFSin   [x] = nunary ATFloat "llvm.sin.f64" x
+cgOp LFCos   [x] = nunary ATFloat "llvm.cos.f64" x
+cgOp LFTan   [x] = nunary ATFloat "tan" x
+cgOp LFASin  [x] = nunary ATFloat "asin" x
+cgOp LFACos  [x] = nunary ATFloat "acos" x
+cgOp LFATan  [x] = nunary ATFloat "atan" x
+cgOp LFSqrt  [x] = nunary ATFloat "llvm.sqrt.f64" x
+cgOp LFFloor [x] = nunary ATFloat "llvm.floor.f64" x
+cgOp LFCeil  [x] = nunary ATFloat "llvm.ceil.f64" x
+
+cgOp (LIntFloat ITBig) [x] = do
+  x' <- unbox (FArith (ATInt ITBig)) x
+  uflt <- inst $ simpleCall "__gmpz_get_d" [ x' ]
+  box (FArith ATFloat) uflt
+
+cgOp (LIntFloat ity) [x] = do
+  x' <- unbox (FArith (ATInt ity)) x
+  x'' <- inst $ SIToFP x' (FloatingPointType 64 IEEE) []
+  box (FArith ATFloat) x''
+
+cgOp (LFloatInt ITBig) [x] = do
+  x' <- unbox (FArith ATFloat) x
+  z  <- alloc mpzTy
+  inst' $ simpleCall "__gmpz_init" [z]
+  inst' $ simpleCall "__gmpz_set_d" [ z, x' ]
+  box (FArith (ATInt ITBig)) z
+
+cgOp (LFloatInt ity) [x] = do
+  x' <- unbox (FArith ATFloat) x
+  x'' <- inst $ FPToSI x' (ftyToTy $ cmpResultTy ity) []
+  box (FArith (ATInt ity)) x''
+
+cgOp LFloatStr [x] = do
+    x' <- unbox (FArith ATFloat) x
+    ustr <- inst (idrCall "__idris_floatStr" [x'])
+    box FString ustr 
 
 cgOp LNoOp xs = return $ last xs
 
@@ -1113,19 +1197,27 @@ cgStrCat x y = do
   inst' $ Store False end (ConstantOperand (C.Int 8 0)) Nothing 0 []
   box FString mem
 
-ibin :: IntTy -> Operand -> Operand
+binary :: ArithTy -> Operand -> Operand
      -> (Operand -> Operand -> InstructionMetadata -> Instruction) -> Codegen Operand
-ibin ity x y instCon = do
-  nx <- unbox (FArith (ATInt ity)) x
-  ny <- unbox (FArith (ATInt ity)) y
+binary ty x y instCon = do
+  nx <- unbox (FArith ty) x
+  ny <- unbox (FArith ty) y
   nr <- inst $ instCon nx ny []
-  box (FArith (ATInt ity)) nr
+  box (FArith ty) nr
 
-iun :: IntTy -> Operand -> (Operand -> InstructionMetadata -> Instruction) -> Codegen Operand
-iun ity x instCon = do
-  nx <- unbox (FArith (ATInt ity)) x
+unary :: ArithTy -> Operand 
+    -> (Operand -> InstructionMetadata -> Instruction) -> Codegen Operand
+unary ty x instCon = do
+  nx <- unbox (FArith ty) x
   nr <- inst $ instCon nx []
-  box (FArith (ATInt ity)) nr
+  box (FArith ty) nr
+
+nunary :: ArithTy -> String
+     -> Operand -> Codegen Operand
+nunary ty name x = do
+  nx <- unbox (FArith ty) x
+  nr <- inst $ simpleCall name [nx]
+  box (FArith ty) nr
 
 iCmp :: IntTy -> IPred.IntegerPredicate -> Operand -> Operand -> Codegen Operand
 iCmp ity pred x y = do
@@ -1134,6 +1226,13 @@ iCmp ity pred x y = do
   nr <- inst $ ICmp pred nx ny []
   nr' <- inst $ SExt nr (ftyToTy $ cmpResultTy ity) []
   box (cmpResultTy ity) nr'
+
+fCmp :: FPred.FloatingPointPredicate -> Operand -> Operand -> Codegen Operand
+fCmp pred x y = do
+  nx <- unbox (FArith ATFloat) x
+  ny <- unbox (FArith ATFloat) y
+  nr <- inst $ FCmp pred nx ny []
+  box (FArith (ATInt (ITFixed IT32))) nr
 
 cmpResultTy :: IntTy -> FType
 cmpResultTy v@(ITVec _ _) = FArith (ATInt v)
