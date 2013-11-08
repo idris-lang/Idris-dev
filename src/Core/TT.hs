@@ -572,6 +572,7 @@ data TT n = P NameType n (TT n) -- ^ named references
           | App (TT n) (TT n) -- ^ function, function type, arg
           | Constant Const -- ^ constant
           | Proj (TT n) Int -- ^ argument projection; runtime only
+                            -- (-1) is a special case for 'subtract one from BI'
           | Erased -- ^ an erased term
           | Impossible -- ^ special case for totality checking
           | TType UExp -- ^ the type of types at some level

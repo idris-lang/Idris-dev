@@ -2,7 +2,7 @@
              PatternGuards #-}
 
 module Core.Evaluate(normalise, normaliseTrace, normaliseC, normaliseAll,
-                simplify, specialise, hnf, convEq, convEq',
+                rt_simplify, simplify, specialise, hnf, convEq, convEq',
                 Def(..), CaseInfo(..), CaseDefs(..),
                 Accessibility(..), Totality(..), PReason(..),
                 Context, initContext, ctxtAlist, uconstraints, next_tvar,
@@ -22,6 +22,7 @@ import Core.CaseTree
 
 data EvalState = ES { limited :: [(Name, Int)],
                       nexthole :: Int }
+  deriving Show
 
 type Eval a = State EvalState a
 
@@ -29,6 +30,7 @@ data EvalOpt = Spec
              | HNF
              | Simplify
              | AtREPL
+             | RunTT
   deriving (Show, Eq)
 
 initEval = ES [] 0
@@ -44,7 +46,9 @@ data Value = VP NameType Name Value
            | VApp Value Value
            | VType UExp
            | VErased
+           | VImpossible
            | VConstant Const
+           | VProj Value Int
 --            | VLazy Env [Value] Term
            | VTmp Int
 
@@ -101,6 +105,18 @@ simplify ctxt env t
                                            (UN "fork", 0)]
                                  (map finalEntry env) (finalise t)
                                  [Simplify]
+                   quote 0 val) initEval
+
+-- | Simplify for run-time (i.e. basic inlining)
+rt_simplify :: Context -> Env -> TT Name -> TT Name
+rt_simplify ctxt env t
+   = evalState (do val <- eval False ctxt [(UN "lazy", 0),
+                                           (UN "assert_smaller", 0),
+                                           (UN "par", 0),
+                                           (UN "prim__syntactic_eq", 0),
+                                           (UN "prim_fork", 0)]
+                                 (map finalEntry env) (finalise t)
+                                 [RunTT]
                    quote 0 val) initEval
 
 -- | Reduce a term to head normal form
@@ -162,16 +178,23 @@ eval :: Bool -> Context -> [(Name, Int)] -> Env -> TT Name ->
 eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
     spec = Spec `elem` opts
     simpl = Simplify `elem` opts
+    runtime = RunTT `elem` opts
     atRepl = AtREPL `elem` opts
     hnf = HNF `elem` opts
 
     -- returns 'True' if the function should block
     -- normal evaluation should return false
     blockSimplify (CaseInfo inl dict) n stk
+       | RunTT `elem` opts
+           = not (inl || dict) || elem n stk
        | Simplify `elem` opts
            = (not (inl || dict) || elem n stk)
              || (n == UN "prim__syntactic_eq")
        | otherwise = False
+
+    getCases cd | simpl = cases_totcheck cd
+                | runtime = cases_runtime cd
+                | otherwise = cases_compiletime cd
 
     ev ntimes stk top env (P _ n ty)
         | Just (Let t v) <- lookup n genv = ev ntimes stk top env v
@@ -189,11 +212,11 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
                     [(CaseOp ci _ _ _ cd, acc)]
                          | acc == Public &&
                              null (fst (cases_totcheck cd)) -> -- unoptimised version
-                       let (_, tree) = if simpl then cases_totcheck cd
-                                                else cases_compiletime cd in
+                       let (ns, tree) = getCases cd in
                          if blockSimplify ci n stk
                             then liftM (VP Ref n) (ev ntimes stk top env ty)
-                            else do c <- evCase ntimes n (n:stk) top env [] [] tree
+                            else -- traceWhen runtime (show (n, ns, tree)) $
+                                 do c <- evCase ntimes n (n:stk) top env ns [] tree
                                     case c of
                                         (Nothing, _) -> liftM (VP Ref n) (ev ntimes stk top env ty)
                                         (Just v, _)  -> return v
@@ -237,14 +260,39 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
            = do f' <- ev ntimes stk False env f
                 a' <- ev ntimes stk False env a
                 evApply ntimes stk top env [a'] f'
+    ev ntimes stk top env (Proj t i)
+           = do -- evaluate dictionaries if it means the projection works
+                t' <- ev ntimes stk top env t
+--                 tfull' <- reapply ntimes stk top env t' []
+                return (doProj t' (getValArgs t'))
+       where doProj t' (VP (DCon _ _) _ _, args) | i < length args = args!!i
+             doProj t' _ = VProj t' i
+
     ev ntimes stk top env (Constant c) = return $ VConstant c
     ev ntimes stk top env Erased    = return VErased
+    ev ntimes stk top env Impossible  = return VImpossible
     ev ntimes stk top env (TType i)   = return $ VType i
 
     evApply ntimes stk top env args (VApp f a)
           = evApply ntimes stk top env (a:args) f
     evApply ntimes stk top env args f
           = apply ntimes stk top env f args
+
+    reapply ntimes stk top env f@(VP Ref n ty) args
+       = let val = lookupDefAcc n atRepl ctxt in
+         case val of
+              [(CaseOp ci _ _ _ cd, acc)] ->
+                 let (ns, tree) = getCases cd in
+                     do c <- evCase ntimes n (n:stk) top env ns args tree
+                        case c of
+                             (Nothing, _) -> return $ unload env (VP Ref n ty) args
+                             (Just v, rest) -> evApply ntimes stk top env rest v
+              _ -> case args of
+                        (a : as) -> return $ unload env f (a : as)
+                        [] -> return f
+    reapply ntimes stk top env (VApp f a) args 
+            = reapply ntimes stk top env f (a : args)
+    reapply ntimes stk top env v args = return v
 
     apply ntimes stk top env (VBind True n (Lam t) sc) (a:as)
          = do a' <- sc a
@@ -261,11 +309,11 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
                     case val of
                       [(CaseOp ci _ _ _ cd, acc)]
                            | acc == Public -> -- unoptimised version
-                       let (ns, tree) = if simpl then cases_totcheck cd
-                                                 else cases_compiletime cd in
+                       let (ns, tree) = getCases cd in
                          if blockSimplify ci n stk
                            then return $ unload env (VP Ref n ty) args
-                           else do c <- evCase ntimes n (n:stk) top env ns args tree
+                           else -- traceWhen runtime (show (n, ns, tree)) $
+                                do c <- evCase ntimes n (n:stk) top env ns args tree
                                    case c of
                                       (Nothing, _) -> return $ unload env (VP Ref n ty) args
                                       (Just v, rest) -> evApply ntimes stk top env rest v
@@ -315,17 +363,23 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
              etm' <- ev ntimes stk (not (conHeaded tm))
                                    (map snd amap ++ env) etm
              return $ Just etm'
+    evTree ntimes stk top env amap (ProjCase t alts)
+        = do t' <- ev ntimes stk top env t 
+             doCase ntimes stk top env amap t' alts
     evTree ntimes stk top env amap (Case n alts)
         = case lookup n amap of
-            Just v -> do c <- chooseAlt env v (getValArgs v) alts amap
-                         case c of
-                            Just (altmap, sc) -> evTree ntimes stk top env altmap sc
-                            _ -> do c' <- chooseAlt' ntimes stk env v (getValArgs v) alts amap
-                                    case c' of
-                                        Just (altmap, sc) -> evTree ntimes stk top env altmap sc
-                                        _ -> return Nothing
+            Just v -> doCase ntimes stk top env amap v alts
             _ -> return Nothing
     evTree ntimes stk top env amap ImpossibleCase = return Nothing
+
+    doCase ntimes stk top env amap v alts =
+            do c <- chooseAlt env v (getValArgs v) alts amap
+               case c of
+                    Just (altmap, sc) -> evTree ntimes stk top env altmap sc
+                    _ -> do c' <- chooseAlt' ntimes stk env v (getValArgs v) alts amap
+                            case c' of
+                                 Just (altmap, sc) -> evTree ntimes stk top env altmap sc
+                                 _ -> return Nothing
 
     conHeaded tm@(App _ _)
         | (P (DCon _ _) _ _, args) <- unApply tm = True
@@ -439,6 +493,9 @@ instance Quote Value where
     quote i (VApp f a)     = liftM2 App (quote i f) (quote i a)
     quote i (VType u)       = return $ TType u
     quote i VErased        = return $ Erased
+    quote i VImpossible    = return $ Impossible
+    quote i (VProj v j)    = do v' <- quote i v
+                                return (Proj v' j)
     quote i (VConstant c)  = return $ Constant c
     quote i (VTmp x)       = return $ V (i - x - 1)
 

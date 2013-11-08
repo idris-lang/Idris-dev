@@ -447,6 +447,7 @@ cgExpr (SUpdate (Loc level) expr) = do
   val <- cgExpr expr
   modify $ \s -> s { lexenv = replaceElt level val (lexenv s) }
   return val
+cgExpr (SUpdate x expr) = cgExpr expr
 cgExpr (SCon tag name args) = do
   argSlots <- mapM var args
   case sequence argSlots of
@@ -775,7 +776,8 @@ cgConst c@(TT.Str s) = do
   str <- addGlobal' (ArrayType (1 + fromIntegral (length s)) (IntegerType 8)) (cgConst' c)
   box FString (ConstantOperand $ C.GetElementPtr True str [C.Int 32 0, C.Int 32 0])
 cgConst c@(TT.BI i) = do
-  str <- addGlobal' (ArrayType (1 + fromInteger (numDigits 10 i)) (IntegerType 8)) (cgConst' c)
+  let stringRepLen = (if i < 0 then 2 else 1) + fromInteger (numDigits 10 i)
+  str <- addGlobal' (ArrayType stringRepLen (IntegerType 8)) (cgConst' c)
   mpz <- alloc mpzTy
   inst $ simpleCall "__gmpz_init_set_str" [mpz
                                           , ConstantOperand $ C.GetElementPtr True str [ C.Int 32 0, C.Int 32 0]

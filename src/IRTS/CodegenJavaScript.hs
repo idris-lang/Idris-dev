@@ -1047,7 +1047,7 @@ translateExpression (SCon i name vars) =
                                   , JSArray $ map JSVar vars
                                   ]
 
-translateExpression (SUpdate var e) =
+translateExpression (SUpdate var@(Loc i) e) =
   JSAssign (JSVar var) (translateExpression e)
 
 translateExpression (SProj var i) =

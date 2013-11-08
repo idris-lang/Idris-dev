@@ -642,7 +642,9 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
            let pcover = null pmissing
 
            -- pdef' is the version that gets compiled for run-time
-           pdef' <- applyOpts optpdef
+           pdef_in' <- applyOpts optpdef
+           let pdef' = map (simple_rt (tt_ctxt ist)) pdef_in'
+
            logLvl 5 $ "After data structure transformations:\n" ++ show pdef'
 
            ist <- getIState
@@ -727,6 +729,8 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
 
     simple_lhs ctxt (Right (x, y)) = Right (normalise ctxt [] x, y)
     simple_lhs ctxt t = t
+
+    simple_rt ctxt (p, x, y) = (p, x, rt_simplify ctxt [] y)
 
     specNames [] = Nothing
     specNames (Specialise ns : _) = Just ns
