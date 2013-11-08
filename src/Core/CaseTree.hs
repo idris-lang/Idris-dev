@@ -136,6 +136,7 @@ findCalls sc topargs = nub $ nu' topargs sc where
         | (P Ref n _, args) <- unApply fn
              = if n `elem` ps then nut ps f ++ nut ps a
                   else [(n, map argNames args)] ++ concatMap (nut ps) args
+        | (P (TCon _ _) n _, _) <- unApply fn = []
         | otherwise = nut ps f ++ nut ps a
     nut ps (Bind n (Let t v) sc) = nut ps v ++ nut (n:ps) sc
     nut ps (Proj t _) = nut ps t
