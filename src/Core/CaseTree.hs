@@ -277,7 +277,7 @@ toPat reflect tc tms = evalState (mapM (\x -> toPat' x []) tms) []
     toPat' (P _ n _) args | reflect
           = do args' <- mapM (\x -> toPat' x []) args
                return $ PReflected n args'
-    toPat' _            _  = return PAny
+    toPat' t            _  = return PAny
 
     fixedN IT8 = "Bits8"
     fixedN IT16 = "Bits16"

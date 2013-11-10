@@ -506,7 +506,6 @@ elab ist info pattern tcgen fn tm
               mkCaseName n = SN (CaseN n)
 --               mkCaseName (UN x) = UN (x ++ "_case")
 --               mkCaseName (MN i x) = MN i (x ++ "_case")
---               mkCaseName (SN s) =
               mkN n@(NS _ _) = n
               mkN n = case namespace info of
                         Just xs@(_:_) -> NS n xs

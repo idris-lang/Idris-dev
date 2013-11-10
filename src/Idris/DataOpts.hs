@@ -248,6 +248,9 @@ instance Optimisable (TT Name) where
 
     stripCollapsed (Bind n (PVar x) t) | (P _ ty _, _) <- unApply x
            = do i <- getIState
+                -- NOTE: This assumes that 'ty' is in normal form, which it
+                -- has to be before now because we're not keeping track of
+                -- an environment so we can't do it here.
                 case lookupCtxt ty (idris_optimisation i) of
                   [oi] -> if collapsible oi
                              then do t' <- stripCollapsed t
