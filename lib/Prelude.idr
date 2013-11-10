@@ -35,11 +35,48 @@ instance Show Integer where
 instance Show Float where
     show = prim__floatToStr
 
+asciiTab : Vect 32 String
+asciiTab = ["NUL", "SOH", "STX", "ETX", "EOT", "ENQ", "ACK", "BEL",
+            "BS",  "HT",  "LF",  "VT",  "FF",  "CR",  "SO",  "SI",
+            "DLE", "DC1", "DC2", "DC3", "DC4", "NAK", "SYN", "ETB",
+            "CAN", "EM",  "SUB", "ESC", "FS",  "GS",  "RS",  "US"]
+
+firstCharIs : (Char -> Bool) -> String -> Bool
+firstCharIs p s with (strM s)
+  firstCharIs p ""             | StrNil = False
+  firstCharIs p (strCons c cs) | StrCons c cs = p c
+
+protectEsc : (Char -> Bool) -> String -> String -> String
+protectEsc p f s = f ++ (if firstCharIs p s then "\\&" else "") ++ s
+
+showLitChar : Char -> String -> String
+showLitChar '\a'   = ("\\a" ++)
+showLitChar '\b'   = ("\\b" ++)
+showLitChar '\f'   = ("\\f" ++)
+showLitChar '\n'   = ("\\n" ++)
+showLitChar '\r'   = ("\\r" ++)
+showLitChar '\t'   = ("\\t" ++)
+showLitChar '\v'   = ("\\v" ++)
+showLitChar '\SO'  = protectEsc (== 'H') "\\SO"
+showLitChar '\DEL' = ("\\DEL" ++)
+showLitChar '\\'   = ("\\\\" ++)
+showLitChar c      = case (integerToFin (cast (cast {to=Int} c)) 32) of
+                          Just k => strCons '\\' . ((index k asciiTab) ++)
+                          Nothing => if (c > '\DEL')
+                                        then strCons '\\' . protectEsc isDigit (show (cast {to=Int} c))
+                                        else strCons c
+
+showLitString : List Char -> String -> String
+showLitString []        = id
+showLitString ('"'::cs) = ("\\\"" ++) . showLitString cs
+showLitString (c  ::cs) = showLitChar c . showLitString cs
+
 instance Show Char where
-    show x = strCons x ""
+  show '\'' = "'\\''"
+  show c    = strCons '\'' (showLitChar c "'")
 
 instance Show String where
-    show = id
+  show cs = strCons '"' (showLitString (cast cs) "\"")
 
 instance Show Nat where
     show n = show (the Integer (cast n))
