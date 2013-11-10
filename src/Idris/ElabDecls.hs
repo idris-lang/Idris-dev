@@ -767,6 +767,17 @@ elabPE info fc r =
      let sa = getSpecApps ist [] r
      mapM_ (mkSpecialised ist) sa
   where 
+    -- TODO: Freeze the newly defined name, make sure it never gets
+    -- reduced when specialising (not quite the same as an 'abstract' name
+    -- so may need a new class (public/abstract/private/specialised)
+    
+    -- Add a PTerm level transformation rule, which is basically the 
+    -- new definition in reverse (before specialising it). 
+    -- RHS => LHS where implicit arguments are left blank in the 
+    -- transformation.
+
+    -- Apply that transformation after every PClauses elaboration
+
     mkSpecialised ist specapp = do
         let specTy = getSpecTy ist specapp
         let (n, newnm, [(lhs, rhs)]) = getSpecClause ist specapp
@@ -822,7 +833,8 @@ elabValBind :: ElabInfo -> Bool -> PTerm -> Idris (Term, Type, [(Name, Type)])
 elabValBind info aspat tm_in
    = do ctxt <- getContext
         i <- getIState
-        let tm = addImpl i tm_in
+        let tm = if aspat then addImplPat i tm_in
+                          else addImpl i tm_in
         logLvl 10 (showImp Nothing True False tm)
         -- try:
         --    * ordinary elaboration
@@ -833,18 +845,19 @@ elabValBind info aspat tm_in
 --             tctry (elaborate ctxt (MN 0 "val") (TType (UVal 0)) []
 --                        (build i info aspat (MN 0 "val") tm))
                 tclift (elaborate ctxt (MN 0 "val") infP []
-                        (build i info aspat (MN 0 "val") (infTerm tm)))
+                        (buildTC i info aspat False (MN 0 "val") (infTerm tm)))
         let vtm = orderPats (getInferTerm tm')
-        let bargs = getPBtys vtm
 
         def' <- checkDef (fileFC "(input)") defer
         addDeferred def'
         mapM_ (elabCaseBlock info []) is
 
-        logLvl 3 ("Value: " ++ show tm')
-        recheckC (fileFC "(input)") [] tm'
-        logLvl 2 (show vtm)
+        logLvl 3 ("Value: " ++ show vtm)
+--         recheckC (fileFC "(input)") [] tm'
+--         logLvl 2 (show vtm)
         (vtm, vty) <- recheckC (fileFC "(input)") [] vtm
+        let bargs = getPBtys vtm
+
         return (vtm, vty, bargs)
 
 elabVal :: ElabInfo -> Bool -> PTerm -> Idris (Term, Type)

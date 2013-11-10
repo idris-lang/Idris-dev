@@ -60,10 +60,12 @@ split n t'
              Nothing -> fail $ show n ++ " is not a pattern variable"
              Just ty ->
                 do let splits = findPats ist ty
-                   iLOG ("New patterns " ++ show splits)
+                   iLOG ("New patterns " ++ showSep ", "  
+                         (map (showImp Nothing True False) splits))
                    let newPats_in = zipWith (replaceVar ctxt n) splits (repeat t)
                    logLvl 4 ("Working from " ++ show t)
-                   logLvl 4 ("Trying " ++ showSep "\n" (map show newPats_in))
+                   logLvl 4 ("Trying " ++ showSep "\n" 
+                               (map (showImp Nothing True False) newPats_in))
                    newPats <- mapM elabNewPat newPats_in
                    logLvl 3 ("Original:\n" ++ show t)
                    logLvl 3 ("Split:\n" ++
@@ -148,7 +150,9 @@ elabNewPat :: PTerm -> Idris (Maybe PTerm)
 elabNewPat t = idrisCatch (do (tm, ty) <- elabVal toplevel True t
                               i <- getIState
                               return (Just (delab i tm)))
-                          (\e -> return Nothing)
+                          (\e -> do i <- getIState
+                                    logLvl 5 $ "Not a valid split:\n" ++ pshow i e
+                                    return Nothing)
 
 findPats :: IState -> Type -> [PTerm]
 findPats ist t | (P _ n _, _) <- unApply t
@@ -170,6 +174,8 @@ replaceVar ctxt n t (PApp fc f pats) = PApp fc f (map substArg pats)
         subst orig@(PRef _ v) | v == n = t
                               | isDConName v ctxt = orig
         subst (PRef _ _) = Placeholder
+        subst (PApp fc (PRef _ t) pats) 
+            | isTConName t ctxt = Placeholder -- infer types
         subst (PApp fc f pats) = PApp fc f (map substArg pats)
         subst (PEq fc l r) = PEq fc (subst l) (subst r)
         subst x = x

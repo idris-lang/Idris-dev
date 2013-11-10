@@ -1221,7 +1221,7 @@ showImp ist impl colour tm = se 10 [] tm where
 --     se p bnd x = "Not implemented"
 
     slist' p bnd (PApp _ (PRef _ nil) _)
-      | nsroot nil == UN "Nil" = Just []
+      | not impl && nsroot nil == UN "Nil" = Just []
     slist' p bnd (PApp _ (PRef _ cons) args)
       | nsroot cons == UN "::",
         (PExp {getTm=tl}):(PExp {getTm=hd}):imps <- reverse args,
