@@ -883,11 +883,13 @@ getPriority i tm = 1 -- pri tm
 addStatics :: Name -> Term -> PTerm -> Idris ()
 addStatics n tm ptm =
     do let (statics, dynamics) = initStatics tm ptm
-       let stnames = nub $ concatMap freeNames (map snd statics)
-       let dnames = nub $ concatMap freeNames (map snd dynamics)
+       let stnames = nub $ concatMap freeArgNames (map snd statics)
+       let dnames = nub $ concatMap freeArgNames (map snd dynamics)
        when (not (null statics)) $
           logLvl 7 $ show n ++ " " ++ show statics ++ "\n" ++ show dynamics
                         ++ "\n" ++ show stnames ++ "\n" ++ show dnames
+       -- also get the arguments which are 'uniquely inferrable' from
+       -- statics (see sec 4.2 of "Scrapping Your Inefficient Engine")
        let statics' = nub $ map fst statics ++
                               filter (\x -> not (elem x dnames)) stnames
        let stpos = staticList statics' tm
@@ -898,8 +900,20 @@ addStatics n tm ptm =
     initStatics (Bind n (Pi ty) sc) (PPi p _ _ s)
             = let (static, dynamic) = initStatics (instantiate (P Bound n ty) sc) s in
                   if pstatic p == Static then ((n, ty) : static, dynamic)
-                                         else (static, (n, ty) : dynamic)
+                    else if (not (searchArg p)) 
+                            then (static, (n, ty) : dynamic)
+                            else (static, dynamic)
     initStatics t pt = ([], [])
+
+    freeArgNames tm = let (_, args) = unApply tm in
+                          concatMap freeNames args
+
+    -- if a name appears in a type class or tactic implicit index, it doesn't
+    -- affect its 'uniquely inferrable' from a static status since these are
+    -- resolved by searching.
+    searchArg (Constraint _ _ _) = True
+    searchArg (TacImp _ _ _ _) = True
+    searchArg _ = False
 
     staticList sts (Bind n (Pi _) sc) = (n `elem` sts) : staticList sts sc
     staticList _ _ = []

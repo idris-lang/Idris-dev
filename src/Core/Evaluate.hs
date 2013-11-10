@@ -151,7 +151,7 @@ usable True n ns
        case lookup n ls of
             Just 0 -> return (False, ns)
             Just i -> return (True, ns)
-            _ -> return (False, ns)
+            _ -> return (True, ns)
 usable False n ns
   = case lookup n ns of
          Just 0 -> return (False, ns)
@@ -203,7 +203,7 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
       | otherwise
          = do (u, ntimes) <- usable spec n ntimes_in
               if u then
-               do let val = lookupDefAcc n atRepl ctxt
+               do let val = lookupDefAcc n (spec || atRepl) ctxt
                   case val of
                     [(Function _ tm, Public)] ->
                            ev ntimes (n:stk) True env tm
@@ -279,7 +279,7 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
           = apply ntimes stk top env f args
 
     reapply ntimes stk top env f@(VP Ref n ty) args
-       = let val = lookupDefAcc n atRepl ctxt in
+       = let val = lookupDefAcc n (spec || atRepl) ctxt in
          case val of
               [(CaseOp ci _ _ _ cd, acc)] ->
                  let (ns, tree) = getCases cd in
@@ -305,7 +305,7 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
       | otherwise
          = do (u, ntimes) <- usable spec n ntimes_in
               if u then
-                 do let val = lookupDefAcc n atRepl ctxt
+                 do let val = lookupDefAcc n (spec || atRepl) ctxt
                     case val of
                       [(CaseOp ci _ _ _ cd, acc)]
                            | acc == Public -> -- unoptimised version

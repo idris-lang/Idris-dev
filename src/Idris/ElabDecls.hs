@@ -593,7 +593,17 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
            -- further inlined to help with totality checking.
            let pdef = map debind $ map (simple_lhs (tt_ctxt ist)) pats
 
-           logLvl 5 $ "Initial typechecked patterns:\n" ++ show pdef
+           logLvl 5 $ "Initial typechecked patterns:\n" ++ show pats
+           logLvl 5 $ "Initial typechecked pattern def:\n" ++ show pdef
+
+           -- Look for 'static' names and generate new specialised
+           -- definitions for them
+
+           {- Not fully implemented yet!
+           mapM_ (\ e -> case e of
+                           Left _ -> return ()
+                           Right (l, r) -> elabPE info fc r) pats
+           -}
 
            -- TODO: Inlining on initial definition happens here.
 
@@ -747,12 +757,67 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
     -- user defined transformation rules later)
     doTransforms ist pats =
            case specNames opts of
-                            Nothing -> pats
-                            Just ns -> partial_eval (tt_ctxt ist) ns pats
+                Nothing -> pats
+                Just ns -> partial_eval (tt_ctxt ist) ns pats
+
+-- Find 'static' applications in a term and partially evaluate them
+elabPE :: ElabInfo -> FC -> Term -> Idris ()
+elabPE info fc r =
+  do ist <- getIState
+     let sa = getSpecApps ist [] r
+     mapM_ (mkSpecialised ist) sa
+  where 
+    mkSpecialised ist specapp = do
+        let specTy = getSpecTy ist specapp
+        let (n, newnm, [(lhs, rhs)]) = getSpecClause ist specapp
+        let undef = case lookupDef newnm (tt_ctxt ist) of
+                         [] -> True
+                         _ -> False
+        when (undef && all (concreteArg ist) (snd specapp)) $ do
+            let opts = [Specialise ((n, Nothing) : 
+                                     (mapMaybe specName (snd specapp)))]
+            iputStrLn (show specapp)
+            iputStrLn $ "PE definition type : " ++ (show specTy)
+                        ++ "\n" ++ show opts
+            iputStrLn $ "PE definition " ++ show newnm ++ ":\n" ++
+                        (show lhs ++ " = " ++ show rhs)
+            elabType info defaultSyntax "" fc opts newnm specTy
+            let def = [PClause fc newnm lhs [] rhs []]
+            elabClauses info fc opts newnm def
+
+    specName (ImplicitS, tm) 
+        | (P Ref n _, _) <- unApply tm = Just (n, Just 1)
+    specName (ExplicitS, tm)
+        | (P Ref n _, _) <- unApply tm = Just (n, Just 1)
+    specName _ = Nothing
+
+    concreteArg ist (ImplicitS, tm) = concreteTm ist tm
+    concreteArg ist (ExplicitS, tm) = concreteTm ist tm
+    concreteArg ist _ = True
+
+    concreteTm ist tm | (P _ n _, _) <- unApply tm =
+        case lookupTy n (tt_ctxt ist) of
+             [] -> False
+             _ -> True
+    concreteTm ist _ = False
+
+    -- get the type of a specialised application
+    getSpecTy ist (n, args)
+       = case lookupTy n (tt_ctxt ist) of
+              [ty] -> let specty = normalise (tt_ctxt ist) [] (specType args ty) in 
+                          trace (show specty) $ mkPE_TyDecl ist args 
+                                                    (explicitNames specty)
+--                             (normalise (tt_ctxt ist) [] (specType args ty))
+              _ -> error "Can't happen (getSpecTy)"
+
+    getSpecClause ist (n, args)
+       = let newnm = UN (show (nsroot n) ++ "__spectest") in -- UN (show n ++ show (map snd args)) in
+             (n, newnm, mkPE_TermDecl ist newnm n args)
+
+
 
 -- Elaborate a value, returning any new bindings created (this will only
 -- happen if elaborating as a pattern clause)
-
 elabValBind :: ElabInfo -> Bool -> PTerm -> Idris (Term, Type, [(Name, Type)])
 elabValBind info aspat tm_in
    = do ctxt <- getContext
