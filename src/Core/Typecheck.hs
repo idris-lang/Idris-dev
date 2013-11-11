@@ -188,13 +188,13 @@ check' holes ctxt env top = chk env top where
                  lift $ isType ctxt env tt'
                  -- Normalised version, for erasure purposes (it's easier
                  -- to tell if it's a collapsible variable)
-                 return (PVar tv')
+                 return (PVar tv)
           checkBinder (PVTy t)
             = do (tv, tt) <- chk env t
                  let tv' = normalise ctxt env tv
                  let tt' = normalise ctxt env tt
                  lift $ isType ctxt env tt'
-                 return (PVTy tv')
+                 return (PVTy tv)
 
           discharge n (Lam t) scv sct
             = return (Bind n (Lam t) scv, Bind n (Pi t) sct)

@@ -572,7 +572,7 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
                          putIState (ist { idris_optimisation = opts })
                          addIBC (IBCOpt n)
            ist <- getIState
-           let pats = doTransforms ist pats_in
+           let pats = map (simple_lhs (tt_ctxt ist)) $ doTransforms ist pats_in
 
   --          logLvl 3 (showSep "\n" (map (\ (l,r) ->
   --                                         show l ++ " = " ++
@@ -591,7 +591,7 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
            -- pdef is the compile-time pattern definition.
            -- This will get further optimised for run-time, and, separately,
            -- further inlined to help with totality checking.
-           let pdef = map debind $ map (simple_lhs (tt_ctxt ist)) pats
+           let pdef = map debind pats
 
            logLvl 5 $ "Initial typechecked patterns:\n" ++ show pats
            logLvl 5 $ "Initial typechecked pattern def:\n" ++ show pdef
@@ -628,7 +628,7 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
                 Just _ -> logLvl 5 $ "Partially evaluated:\n" ++ show pats
                 _ -> return ()
 
-           let optpdef = map debind $ map (simple_lhs (tt_ctxt ist)) optpats
+           let optpdef = map debind optpats -- $ map (simple_lhs (tt_ctxt ist)) optpats
            tree@(CaseDef scargs sc _) <- tclift $
                    simpleCase tcase False reflect CompileTime fc pdef
            cov <- coverage
@@ -737,10 +737,20 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
 
     getLHS (_, l, _) = l
 
-    simple_lhs ctxt (Right (x, y)) = Right (normalise ctxt [] x, y)
+    simple_lhs ctxt (Right (x, y)) = Right (normalise ctxt [] x, 
+                                            normalisePats ctxt [] y)
     simple_lhs ctxt t = t
 
     simple_rt ctxt (p, x, y) = (p, x, rt_simplify ctxt [] y)
+
+    -- this is so pattern types are in the right form for erasure
+    normalisePats ctxt env (Bind n (PVar t) sc) 
+       = let t' = normalise ctxt env t in
+             Bind n (PVar t') (normalisePats ctxt ((n, PVar t') : env) sc)
+    normalisePats ctxt env (Bind n (PVTy t) sc) 
+       = let t' = normalise ctxt env t in
+             Bind n (PVTy t') (normalisePats ctxt ((n, PVar t') : env) sc)
+    normalisePats ctxt env t = t
 
     specNames [] = Nothing
     specNames (Specialise ns : _) = Just ns
