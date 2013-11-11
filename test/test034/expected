@@ -1,5 +1,5 @@
 prim__floatToStr 0.0
-0.0
+"0.0"
 prim__strToFloat "0.0"
 0.0
 prim__addFloat 1.0 1.0

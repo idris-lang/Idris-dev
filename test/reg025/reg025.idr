@@ -70,6 +70,6 @@ emptyCell (MkBoard rs) =
 main : IO ()
 main =
   case emptyCell (emptyBoard {n=0}) of
-    Left _ => print "l"
-    Right _ => print "r"
+    Left _ => putStrLn "l"
+    Right _ => putStrLn "r"
 
