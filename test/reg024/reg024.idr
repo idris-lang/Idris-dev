@@ -28,4 +28,4 @@ test : String
 test = printf "The %s is %d" "answer" 42
 
 main : IO ()
-main = print test
+main = putStrLn test

@@ -18,7 +18,7 @@ ioVals = do { return ("First", "second") }
 
 main : IO ()
 main = do (a, b) <- ioVals
-          putStr (show a ++ " and " ++ show b ++ "? ")
+          putStr (a ++ " and " ++ b ++ "? ")
           let x = "bar"
           putStrLn (show (getVal x 7 testlist))
           let ((y, z) :: _) = testlist
