@@ -32,6 +32,32 @@ idrisCmd local = ".." </>  buildDir local </>  "idris" </>  "idris"
 #endif
 
 -- -----------------------------------------------------------------------------
+-- Idris Command Path for Contributed Libraries
+#ifdef mingw32_HOST_OS
+(<//>) = (Px.</>)
+idrisCmdContrib local = Px.joinPath $ 
+    splitDirectories $ ".." <//> ".." <//> ".." <//> buildDir local <//> "idris" <//> "idris"
+#else
+idrisCmdContrib local = ".." </> ".." </> ".." </>  buildDir local </>  "idris" </>  "idris"
+#endif
+
+-- -----------------------------------------------------------------------------
+-- List of contributed libraries to build
+contribLibs = ["SimpleParser"]
+
+-- -----------------------------------------------------------------------------
+-- Location of contributed libraries
+#ifdef mingw32_HOST_OS
+(<//>) = (Px.</>)
+contribPath contrib = Px.joinPath $ 
+    splitDirectories $ "contribs" <//> "lib" <//> contrib
+#else
+contribPath contrib = "contribs" </>  "lib" </> contrib
+#endif
+
+
+
+-- -----------------------------------------------------------------------------
 -- Make Commands
 
 make verbosity =
@@ -67,7 +93,8 @@ idrisClean _ flags _ _ = do
          makeClean "lib"
          makeClean "effects"
          makeClean "javascript"
-
+         mapM_ makeClean contribLibs
+                  
       cleanLLVM = makeClean "llvm"
 
       makeClean dir = make verbosity [ "-C", dir, "clean", "IDRIS=idris" ]
@@ -103,9 +130,11 @@ idrisBuild _ flags _ local = do
             makeBuild "lib"
             when (usesEffects $ configFlags local) $ makeBuild "effects"
             makeBuild "javascript"
+            mapM_ makeContrib contribLibs
          where
             makeBuild dir = make verbosity [ "-C", dir, "build" , "IDRIS=" ++ idrisCmd local]
-
+            makeContrib contrib = make verbosity [ "-C", contribPath contrib, "build" , "IDRIS=" ++ idrisCmdContrib local]
+ 
       buildRTS = make verbosity ["-C", "rts", "build"]
 
       buildLLVM = make verbosity ["-C", "llvm", "build"]
@@ -114,6 +143,7 @@ idrisBuild _ flags _ local = do
 -- Copy/Install
 
 idrisInstall verbosity copy pkg local = do
+      installContribs 
       installStdLib
       installRTS
       when (usesLLVM $ configFlags local) installLLVM
@@ -133,8 +163,15 @@ idrisInstall verbosity copy pkg local = do
 
       installLLVM = do
          let target' = target </> "llvm"
-         putStrLn $ "Installing LLVM library in " ++ target
+         putStrLn $ "Installing LLVM library in " ++ target'
          makeInstall "llvm" target'
+
+      installContribs = mapM_ installContrib contribLibs
+
+      installContrib contrib = do
+         let target' = target </> contrib
+         putStrLn $ "Installing " ++ contrib ++ " library in " ++ target'
+         make verbosity [ "-C", contribPath contrib, "install" , "TARGET=" ++ target', "IDRIS=" ++ idrisCmdContrib local]
 
       makeInstall src target =
          make verbosity [ "-C", src, "install" , "TARGET=" ++ target, "IDRIS=" ++ idrisCmd local]
