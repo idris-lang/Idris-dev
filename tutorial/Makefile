@@ -2,9 +2,7 @@ PAPER = idris-tutorial
 
 all: ${PAPER}.pdf
 
-TEXFILES = ${PAPER}.tex intro.tex starting.tex miscellany.tex typesfuns.tex \
-           classes.tex modules.tex interp.tex views.tex theorems.tex \
-	   provisional.tex syntax.tex conclusions.tex miscellany.tex dsl.tex
+TEXFILES = ${PAPER}.tex content/*.tex
 
 DIAGS = 
 
@@ -13,7 +11,6 @@ SOURCES = ${TEXFILES} ${DIAGS} macros.ltx library.ltx literature.bib
 DITAA = java -jar ~/Downloads/ditaa.jar
 
 ${PAPER}.pdf: ${SOURCES}
-#	dvipdf ${PAPER}.dvi
 	pdflatex ${PAPER}
 	-bibtex ${PAPER}
 	-pdflatex ${PAPER}
