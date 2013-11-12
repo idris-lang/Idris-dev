@@ -11,23 +11,25 @@ running concurrent processes safely~\cite{cbconc-fi}.
 Unfortunately, the form of object language programs makes it rather hard to program
 this way in practice. Recall the factorial program in \texttt{Expr} for example:
 
-\useverb{facttest}
+\begin{code}
+fact : Expr G (TyFun TyInt TyInt)
+fact = Lam (If (Op (==) (Var stop) (Val 0))
+               (Val 1) (Op (*) (app fact (Op (-) (Var stop) (Val 1))) 
+                               (Var stop)))
+\end{code}
 
 \noindent
 Since this is a particularly useful pattern, \Idris{} provides syntax
 overloading~\cite{res-dsl-padl12} to make it easier to program in such
 object languages:
 
-\begin{SaveVerbatim}{exprdsl}
-
+\begin{code}
 dsl expr
     lambda      = Lam
     variable    = Var
     index_first = stop
     index_next  = pop
-
-\end{SaveVerbatim}
-\useverb{exprdsl} 
+\end{code} 
 
 \noindent
 A \texttt{dsl} block describes how each syntactic construct is represented in an
@@ -38,55 +40,43 @@ de Bruijn index (i.e., to count how many bindings since the variable itself was 
 It is also possible to overload \texttt{let} in this way. We can now write \texttt{fact}
 as follows:
 
-\begin{SaveVerbatim}{factb}
-
+\begin{code}
 fact : Expr G (TyFun TyInt TyInt)
 fact = expr (\x => If (Op (==) x (Val 0))
                       (Val 1) (Op (*) (app fact (Op (-) x (Val 1))) x))
-
-\end{SaveVerbatim}
-\useverb{factb} 
+\end{code} 
 
 \noindent
 In this new version, \texttt{expr} declares that the next expression will be overloaded.
 We can take this further, using idiom brackets, by declaring:
 
-\begin{SaveVerbatim}{idiomexpr}
-
+\begin{code}
 (<$>) : |(f : Expr G (TyFun a t)) -> Expr G a -> Expr G t
 (<$>) = \f, a => App f a
 
 pure : Expr G a -> Expr G a
 pure = id
-
-\end{SaveVerbatim}
-\useverb{idiomexpr} 
+\end{code} 
 
 \noindent
 Note that there is no need for these to be part of an instance of \texttt{Applicative},
 since idiom bracket notation translates directly to the names \texttt{<\$>} and
 \texttt{pure}, and ad-hoc type-directed overloading is allowed. We can now say:
 
-\begin{SaveVerbatim}{factc}
-
+\begin{code}
 fact : Expr G (TyFun TyInt TyInt)
 fact = expr (\x => If (Op (==) x (Val 0))
                       (Val 1) (Op (*) [| fact (Op (-) x (Val 1)) |] x))
-
-\end{SaveVerbatim}
-\useverb{factc} 
+\end{code} 
 
 \noindent
 With some more ad-hoc overloading and type class instances, and a new
 syntax rule, we can even go as far as:
 
-\begin{SaveVerbatim}{factd}
-
+\begin{code}
 syntax IF [x] THEN [t] ELSE [e] = If x t e
 
 fact : Expr G (TyFun TyInt TyInt)
 fact = expr (\x => IF x == 0 THEN 1 ELSE [| fact (x - 1) |] * x)
-
-\end{SaveVerbatim}
-\useverb{factd} 
+\end{code} 
 

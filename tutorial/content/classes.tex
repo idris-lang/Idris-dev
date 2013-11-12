@@ -14,24 +14,18 @@ is the \texttt{Show} type class, which is defined in the prelude and
 provides an interface for converting values to
 \texttt{String}s:
 
-\begin{SaveVerbatim}{showclass}
-
+\begin{code}
 class Show a where
     show : a -> String
-
-\end{SaveVerbatim}
-\useverb{showclass}
+\end{code}
 
 \noindent
 This generates a function of the following type (which we call a \emph{method} of the 
 \texttt{Show} class):
 
-\begin{SaveVerbatim}{showty}
-
+\begin{code}
 show : Show a => a -> String
-
-\end{SaveVerbatim}
-\useverb{showty}
+\end{code}
 
 \noindent
 We can read this as ``under the constraint that \texttt{a} is an instance of \texttt{Show},
@@ -40,17 +34,16 @@ is defined with an \texttt{instance} declaration, which provides implementations
 the function for a specific type. For example, the \texttt{Show} instance for \texttt{Nat}
 could be defined as:
 
-\begin{SaveVerbatim}{shownat}
-
+\begin{code}
 instance Show Nat where
     show Z = "Z"
     show (S k) = "s" ++ show k
+\end{code}
 
+\begin{lstlisting}
 Idris> show (S (S (S Z)))
 "sssO" : String
-
-\end{SaveVerbatim}
-\useverb{shownat}
+\end{lstlisting}
 
 \noindent
 Only one instance of a class can be given for a type --- instances may not overlap.
@@ -59,17 +52,14 @@ Instance declarations can themselves have constraints. For example, to define a
 instance for the element type, because we are going to use it to convert each element
 to a \texttt{String}:
 
-\begin{SaveVerbatim}{showvec}
-
+\begin{code}
 instance Show a => Show (Vect n a) where
     show xs = "[" ++ show' xs ++ "]" where
         show' : Vect n a -> String
         show' Nil        = ""
         show' (x :: Nil) = show x
         show' (x :: xs)  = show x ++ ", " ++ show' xs
-
-\end{SaveVerbatim}
-\useverb{showvec}
+\end{code}
 
 %\noindent
 %\textbf{Remark: } The type of the auxiliary function \texttt{show'} is
@@ -85,21 +75,17 @@ instance Show a => Show (Vect n a) where
 The library defines an \texttt{Eq} class which provides an interface for comparing
 values for equality or inequality, with instances for all of the built-in types:
 
-\begin{SaveVerbatim}{eqbasic}
-
+\begin{code}
 class Eq a where
     (==) : a -> a -> Bool
     (/=) : a -> a -> Bool
-
-\end{SaveVerbatim}
-\useverb{eqbasic}
+\end{code}
 
 \noindent
 To declare an instance of a type, we have to give definitions of all of the methods.
 For example, for an instance of \texttt{Eq} for \texttt{Nat}:
 
-\begin{SaveVerbatim}{eqnat}
-
+\begin{code}
 instance Eq Nat where
     Z     == Z     = True
     (S x) == (S y) = x == y
@@ -107,9 +93,7 @@ instance Eq Nat where
     (S x) == Z     = False
 
     x /= y = not (x == y)
-
-\end{SaveVerbatim}
-\useverb{eqnat}
+\end{code}
 
 \noindent
 It is hard to imagine many cases where the \texttt{/=} method will be anything other
@@ -117,17 +101,14 @@ than the negation of the result of applying the \texttt{==} method. It is theref
 convenient to give a default definition for each method in the class
 declaration, in terms of the other method:
 
-\begin{SaveVerbatim}{eqdefault}
-
+\begin{code}
 class Eq a where
     (==) : a -> a -> Bool
     (/=) : a -> a -> Bool
 
     x /= y = not (x == y)
     y == y = not (x /= y)
-
-\end{SaveVerbatim}
-\useverb{eqdefault}
+\end{code}
 
 \noindent
 A minimal complete definition of an \texttt{Eq} instance requires either \texttt{==}
@@ -140,15 +121,11 @@ Classes can also be extended. A logical next step from an equality relation \tex
 is to define an ordering relation \texttt{Ord}. We can define an \texttt{Ord} class
 which inherits methods from \texttt{Eq} as well as defining some of its own:
 
-\begin{SaveVerbatim}{ord}
-
+\begin{code}
 data Ordering = LT | EQ | GT
+\end{code} 
 
-\end{SaveVerbatim}
-\useverb{ord} 
-
-\begin{SaveVerbatim}{eqord}
-
+\begin{code}
 class Eq a => Ord a where
     compare : a -> a -> Ordering
 
@@ -158,9 +135,7 @@ class Eq a => Ord a where
     (>=) : a -> a -> Bool
     max : a -> a -> a
     min : a -> a -> a
-
-\end{SaveVerbatim}
-\useverb{eqord}
+\end{code}
 
 \noindent
 The \texttt{Ord} class allows us to compare two values and determine their ordering. 
@@ -171,24 +146,18 @@ increasing order, provided that the element type of the list is in the \texttt{O
 We give the constraints on the type variables left of the fat arrow \texttt{=>}, and the
 function type to the right of the fat arrow:
 
-\begin{SaveVerbatim}{sortty}
-
+\begin{code}
 sort : Ord a => List a -> List a
-
-\end{SaveVerbatim}
-\useverb{sortty}
+\end{code}
 
 \noindent
 Functions, classes and instances can have multiple constraints. Multiple constaints are
 written in brackets in a comma separated list, for example:
 
-\begin{SaveVerbatim}{sortshow}
-
+\begin{code}
 sortAndShow : (Ord a, Show a) => List a -> String
 sortAndShow xs = show (sort xs)
-
-\end{SaveVerbatim}
-\useverb{sortshow}
+\end{code}
 
 \subsection{Monads and \texttt{do}-notation}
 
@@ -200,14 +169,11 @@ and the parameters can have \remph{any} type.
 If the type of the parameter is not \texttt{Type}, we need to give an explicit type
 declaration. For example:
 
-\begin{SaveVerbatim}{monad}
-
+\begin{code}
 class Monad (m : Type -> Type) where
     return : a -> m a
     (>>=)  : m a -> (a -> m b) -> m b
-
-\end{SaveVerbatim}
-\useverb{monad}
+\end{code}
 
 \noindent
 The \texttt{Monad} class allows us to encapsulate binding and computation, and is the
@@ -224,30 +190,24 @@ basis of \texttt{do}-notation introduced in Section \ref{sect:do}. Inside a
 \texttt{IO} is an instance of \texttt{Monad}, defined using primitive functions.
 We can also define an instance for \texttt{Maybe}, as follows:
 
-\begin{SaveVerbatim}{maybemonad}
-
+\begin{code}
 instance Monad Maybe where
     return = Just
 
     Nothing  >>= k = Nothing
     (Just x) >>= k = k x
-
-\end{SaveVerbatim}
-\useverb{maybemonad}
+\end{code}
 
 \noindent
 Using this we can, for example, define a function which adds two 
 \texttt{Maybe Int}s, using the monad to encapsulate the error handling:
 
-\begin{SaveVerbatim}{maybeadd}
-
+\begin{code}
 m_add : Maybe Int -> Maybe Int -> Maybe Int
 m_add x y = do x' <- x -- Extract value from x
                y' <- y -- Extract value from y
                return (x' + y') -- Add them 
-
-\end{SaveVerbatim}
-\useverb{maybeadd}
+\end{code}
 
 \noindent
 This function will extract the values from \texttt{x} and \texttt{y}, if they
@@ -255,29 +215,23 @@ are available, or return \texttt{Nothing} if they are not. Managing the
 \texttt{Nothing} cases is achieved by the \texttt{>>=} operator, hidden by the
 \texttt{do} notation.
 
-\begin{SaveVerbatim}{maybeaddt}
-
+\begin{lstlisting}
 *classes> m_add (Just 20) (Just 22) 
 Just 42 : Maybe Int
 *classes> m_add (Just 20) Nothing 
 Nothing : Maybe Int
-
-\end{SaveVerbatim}
-\useverb{maybeaddt}
+\end{lstlisting}
 
 \subsubsection*{Monad comprehensions}
 
 The list comprehension notation we saw in Section \ref{sec:listcomp} is more
 general, and applies to anything which is an instance of \texttt{MonadPlus}:
 
-\begin{SaveVerbatim}{monadplus}
-
+\begin{code}
 class Monad m => MonadPlus (m : Type -> Type) where
     mplus : m a -> m a -> m a
     mzero : m a
-
-\end{SaveVerbatim}
-\useverb{monadplus}
+\end{code}
 
 \noindent
 In general, a comprehension takes the form \texttt{[ exp | qual1, qual2, ..., qualn ]} where
@@ -295,32 +249,24 @@ any qualifier
 \texttt{qual} which is a \emph{guard} is translated to \texttt{guard qual}, using
 the following function:
 
-\begin{SaveVerbatim}{guardq}
-
+\begin{code}
 guard : MonadPlus m => Bool -> m ()
-
-\end{SaveVerbatim}
-\useverb{guardq} 
+\end{code} 
 
 \noindent
 Then the comprehension is converted to \texttt{do} notation:
 
-\begin{SaveVerbatim}{comptrans}
-
+\begin{code}
 do { qual1; qual2; ...; qualn; return exp; }
-
-\end{SaveVerbatim}
-\useverb{comptrans} 
+\end{code} 
 
 \noindent
 Using monad comprehensions, an alternative definition for \texttt{m\_add} would be:
 
-\begin{SaveVerbatim}{maddb}
-
+\begin{code}
 m_add : Maybe Int -> Maybe Int -> Maybe Int
 m_add x y = [ x' + y' | x' <- x, y' <- y ]
-\end{SaveVerbatim}
-\useverb{maddb} 
+\end{code} 
 
 \subsection{Idiom brackets}
 
@@ -333,26 +279,20 @@ First, let us revisit \texttt{m\_add} above. All it is really doing is applying
 an operator to two values extracted from Maybe Ints. We could abstract out the
 application:
 
-\begin{SaveVerbatim}{mapp}
-
+\begin{code}
 m_app : Maybe (a -> b) -> Maybe a -> Maybe b
 m_app (Just f) (Just a) = Just (f a)
 m_app _        _        = Nothing
-
-\end{SaveVerbatim}
-\useverb{mapp} 
+\end{code} 
 
 \noindent
 Using this, we can write an alternative \texttt{m\_add} which uses this alternative
 notion of function application, with explicit calls to \texttt{m\_app}:
 
-\begin{SaveVerbatim}{maddb}
-
+\begin{code}
 m_add' : Maybe Int -> Maybe Int -> Maybe Int
 m_add' x y = m_app (m_app (Just (+)) x) y
-
-\end{SaveVerbatim}
-\useverb{maddb} 
+\end{code} 
 
 \noindent
 Rather than having to insert \texttt{m\_app} everywhere there is an
@@ -360,44 +300,35 @@ application, we can use \remph{idiom brackets} to do the job for us. To do
 this, we use the \texttt{Applicative} class, which captures the notion of
 application for a data type:
 
-\begin{SaveVerbatim}{applicative}
-
+\begin{code}
 infixl 2 <$> 
 
 class Applicative (f : Type -> Type) where 
     pure  : a -> f a
     (<$>) : f (a -> b) -> f a -> f b 
-
-\end{SaveVerbatim}
-\useverb{applicative} 
+\end{code} 
 
 \noindent
 \texttt{Maybe} is made an instance of \texttt{Applicative} as follows, where
 \texttt{<\$>} is defined in the same way as \texttt{m\_app} above:
 
-\begin{SaveVerbatim}{maybeapp}
-
+\begin{code}
 instance Applicative Maybe where
     pure = Just
 
     (Just f) <$> (Just a) = Just (f a)
     _        <$> _        = Nothing
-
-\end{SaveVerbatim}
-\useverb{maybeapp} 
+\end{code} 
 
 \noindent
 Using \remph{idiom brackets} we can use this instance as follows, where a function
 application \texttt{[| f a1 ... an |]}
 is translated into \texttt{pure f <\$> a1 <\$> ... <\$> an}:
 
-\begin{SaveVerbatim}{maddc}
-
+\begin{code}
 m_add' : Maybe Int -> Maybe Int -> Maybe Int
 m_add' x y = [| x + y |]
-
-\end{SaveVerbatim}
-\useverb{maddc} 
+\end{code} 
 
 \subsubsection{An error-handling interpreter}
 
@@ -405,43 +336,34 @@ Idiom notation is commonly useful when defining evaluators. McBride and
 Paterson describe such an evaluator~\cite{idioms}, for a language similar to
 the following:
 
-\begin{SaveVerbatim}{idiomexpr}
-
+\begin{code}
 data Expr = Var String      -- variables
           | Val Int         -- values
           | Add Expr Expr   -- addition
-
-\end{SaveVerbatim}
-\useverb{idiomexpr} 
+\end{code} 
 
 \noindent
 Evaluation will take place relative to a context mapping variables (represented as
 \texttt{String}s) to integer values, and can possibly fail. We define a data type
 \texttt{Eval} to wrap an evaluator:
 
-\begin{SaveVerbatim}{evalctxt}
-
+\begin{code}
 data Eval : Type -> Type where
      MkEval : (List (String, Int) -> Maybe a) -> Eval a
-
-\end{SaveVerbatim}
-\useverb{evalctxt} 
+\end{code} 
 
 \noindent
 Wrapping the evaluator in a data type means we will be able to make it an instance
 of a type class later. We begin by defining a function to retrieve values from
 the context during evaluation:
 
-\begin{SaveVerbatim}{fetch}
-
+\begin{code}
 fetch : String -> Eval Int
 fetch x = MkEval (\e => fetchVal e) where
     fetchVal : List (String, Int) -> Maybe Int
     fetchVal [] = Nothing
     fetchVal ((v, val) :: xs) = if (x == v) then (Just val) else (fetchVal xs)
-  
-\end{SaveVerbatim}
-\useverb{fetch} 
+\end{code} 
   
 \noindent
 When defining an evaluator for the language, we will be applying functions in
@@ -451,8 +373,7 @@ Before \texttt{Eval} can be an instance of
 \texttt{Applicative} it is necessary to make \texttt{Eval} an instance of
 \texttt{Functor}:
 
-\begin{SaveVerbatim}{}
-
+\begin{code}
 instance Functor Eval where
     fmap f (MkEval g) = MkEval (\e => fmap f (g e))
 
@@ -463,20 +384,13 @@ instance Applicative Eval where
         app : Maybe (a -> b) -> Maybe a -> Maybe b
         app (Just fx) (Just gx) = Just (fx gx)
         app _         _         = Nothing
-
-\end{SaveVerbatim}
-\useverb{}
-
-\begin{SaveVerbatim}{grr}
-<$>
-\end{SaveVerbatim}
+\end{code}
 
 \noindent
 Evaluating an expression can now make use of the idiomatic application to handle
 errors:
 
-\begin{SaveVerbatim}{evalexpr}
-
+\begin{code}
 eval : Expr -> Eval Int
 eval (Var x)   = fetch x
 eval (Val x)   = [| x |]
@@ -485,9 +399,7 @@ eval (Add x y) = [| eval x + eval y |]
 runEval : List (String, Int) -> Expr -> Maybe Int
 runEval env e = case eval e of
     MkEval envFn => envFn env
-
-\end{SaveVerbatim}
-\useverb{evalexpr} 
+\end{code} 
 
 \subsection{Named Instances}
 
@@ -495,16 +407,13 @@ It can be desirable to have multiple instances of a type class, for example to p
 alternative methods for sorting or printing values. To achieve this, instances can
 be \remph{named} as follows:
 
-\begin{SaveVerbatim}{myord}
-
+\begin{code}
 instance [myord] Ord Nat where
    compare Z (S n)     = GT
    compare (S n) Z     = LT
    compare Z Z         = EQ
    compare (S x) (S y) = compare @{myord} x y
-
-\end{SaveVerbatim}
-\useverb{myord}
+\end{code}
 
 \noindent
 This declares an instance as normal, but with an explicit name, \texttt{myord}.
@@ -513,25 +422,19 @@ The syntax \texttt{compare @\{myord\}} gives an explicit instance to
 We can use this, for example, to sort a list of \texttt{Nat}s in reverse.
 Given the following list:
 
-\begin{SaveVerbatim}{myordlist}
-
+\begin{code}
 testList : List Nat
 testList = [3,4,1]
-
-\end{SaveVerbatim}
-\useverb{myordlist}
+\end{code}
 
 \noindent
 \ldots we can sort it using the default \texttt{Ord} instance, then the named
 instance \texttt{myord} as follows, at the \Idris{} prompt:
 
-\begin{SaveVerbatim}{myordlistrun}
-
+\begin{lstlisting}
 *named_instance> show (sort testList)
 "[sO, sssO, ssssO]" : String
 *named_instance> show (sort @{myord} testList)
 "[ssssO, sssO, sO]" : String
-
-\end{SaveVerbatim}
-\useverb{myordlistrun}
+\end{lstlisting}
 

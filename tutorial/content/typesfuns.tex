@@ -11,8 +11,7 @@ We can declare some constants with these types. Enter the following
 into a file \texttt{prims.idr} and load it into the \Idris{} interactive
 environment by typing \texttt{idris prims.idr}:
 
-\begin{SaveVerbatim}{constprims}
-
+\begin{code}
 module prims
 
 x : Int
@@ -26,9 +25,7 @@ bar = 'Z'
 
 quux : Bool
 quux = False
-
-\end{SaveVerbatim}
-\useverb{constprims}
+\end{code}
 
 \noindent
 An \Idris{} file consists of an optional module declaration (here
@@ -50,15 +47,12 @@ functions. The prelude defines several arithmetic and comparison operators,
 which we can use at the prompt. Evaluating things at the prompt gives an
 answer, and the type of the answer. For example:
 
-\begin{SaveVerbatim}{promptprim}
-
+\begin{lstlisting}
 *prims> 6*6+6
 42 : Int
 *prims> x == 6*6+6
 True : Bool
-
-\end{SaveVerbatim}
-\useverb{promptprim}
+\end{lstlisting}
 
 \noindent
 All of the usual arithmetic and comparison operators are defined for the primitive
@@ -66,27 +60,21 @@ types. They are overloaded using type classes, as we will discuss in Section
 \ref{sec:classes} and can be extended to work on user defined types.
 Boolean expressions can be tested with the \texttt{if...then...else} construct:
 
-\begin{SaveVerbatim}{ifthenelse}
-
+\begin{lstlisting}
 *prims> if x == 6 * 6 + 6 then "The answer!" else "Not the answer"
 "The answer!" : String
-
-\end{SaveVerbatim}
-\useverb{ifthenelse}
+\end{lstlisting}
 
 \subsection{Data Types}
 
 Data types are declared in a similar way to Haskell data types, with a similar
 syntax. Natural numbers and lists, for example, can be declared as follows:
 
-\begin{SaveVerbatim}{natlist}
-
+\begin{code}
 data Nat    = Z   | S Nat           -- Natural numbers
                                     -- (zero and successor)
 data List a = Nil | (::) a (List a) -- Polymorphic lists
-
-\end{SaveVerbatim}
-\useverb{natlist}
+\end{code}
 
 \noindent
 The above declarations are taken from the standard library. Unary natural
@@ -97,28 +85,18 @@ or a value added to the front of another list (\texttt{x :: xs}).
 In the declaration for \tTC{List}, we used an infix operator \tDC{::}. New operators
 such as this can be added using a fixity declaration, as follows:
 
-\begin{SaveVerbatim}{infixcons}
-
+\begin{code}
 infixr 10 :: 
-
-\end{SaveVerbatim}
-\useverb{infixcons}
+\end{code}
 
 \noindent
 Functions, data constructors and type constuctors may all be given infix
 operators as names. They may be used in prefix form if enclosed in brackets,
 e.g. \tDC{(::)}. Infix operators can use any of the symbols:
 
-\begin{SaveVerbatim}{infixsyms}
-
+\begin{lstlisting}
 :+-*/=_.?|&><!@$%^~.
-
-\end{SaveVerbatim}
-\useverb{infixsyms}
-
-\begin{SaveVerbatim}{argh}
-$
-\end{SaveVerbatim}
+\end{lstlisting}
 
 \subsection{Functions}
 
@@ -128,8 +106,7 @@ functions, using a single colon \texttt{:} (rather than
 Haskell's double colon \texttt{::}). Some natural number arithmetic functions can be
 defined as follows, again taken from the standard library:
 
-\begin{SaveVerbatim}{natfns}
-
+\begin{code}
 -- Unary addition
 plus : Nat -> Nat -> Nat
 plus Z     y = y
@@ -139,9 +116,7 @@ plus (S k) y = S (plus k y)
 mult : Nat -> Nat -> Nat
 mult Z     y = Z
 mult (S k) y = plus y (mult k y)
-
-\end{SaveVerbatim}
-\useverb{natfns}
+\end{code}
 
 \noindent
 The standard arithmetic operators \texttt{+} and \texttt{*} are also overloaded
@@ -154,29 +129,23 @@ all part of the same namespace.
 
 We can test these functions at the \Idris{} prompt:
 
-\begin{SaveVerbatim}{fntest}
-
+\begin{lstlisting}
 Idris> plus (S (S Z)) (S (S Z))
 S (S (S (S Z))) : Nat
 Idris> mult (S (S (S Z))) (plus (S (S Z)) (S (S Z)))
 S (S (S (S (S (S (S (S (S (S (S (S Z))))))))))) : Nat
-
-\end{SaveVerbatim}
-\useverb{fntest}
+\end{lstlisting}
 
 \noindent
 Like arithmetic operations, integer literals are also overloaded using type classes, 
 meaning that we can also test the functions as follows:
 
-\begin{SaveVerbatim}{fntest}
-
+\begin{lstlisting}
 Idris> plus 2 2 
 S (S (S (S Z))) : Nat
 Idris> mult 3 (plus 2 2)
 S (S (S (S (S (S (S (S (S (S (S (S Z))))))))))) : Nat
-
-\end{SaveVerbatim}
-\useverb{fntest}
+\end{lstlisting}
 
 \noindent
 You may wonder, by the way, why we have unary natural numbers when our
@@ -194,16 +163,13 @@ Functions can also be defined \emph{locally} using \texttt{where} clauses. For e
 to define a function which reverses a list, we can use an auxiliary function which
 accumulates the new, reversed list, and which does not need to be visible globally:
 
-\begin{SaveVerbatim}{revwhere}
-
+\begin{code}
 reverse : List a -> List a
 reverse xs = revAcc [] xs where
   revAcc : List a -> List a -> List a
   revAcc acc [] = acc
   revAcc acc (x :: xs) = revAcc (x :: acc) xs
-
-\end{SaveVerbatim}
-\useverb{revwhere}
+\end{code}
 
 \noindent
 Indentation is significant --- functions in the \texttt{where} block must be indented
@@ -220,8 +186,7 @@ As well as functions, \texttt{where} blocks can include local data
 declarations, such as the following where \texttt{MyLT} is not accessible outside
 the definition of \texttt{foo}:
 
-\begin{SaveVerbatim}{wheredata}
-
+\begin{code}
 foo : Int -> Int
 foo x = case isLT of
             Yes => x*2
@@ -231,9 +196,7 @@ foo x = case isLT of
 
        isLT : MyLT
        isLT = if x < 20 then Yes else No
-
-\end{SaveVerbatim}
-\useverb{wheredata}
+\end{code}
 
 \noindent
 In general, functions defined in a \texttt{where} clause need a type declaration
@@ -249,8 +212,7 @@ application
 \noindent
 So, for example, the following definitions are legal:
 
-\begin{SaveVerbatim}{whereinfer}
-
+\begin{code}
 even : Nat -> Bool 
 even Z = True
 even (S k) = odd k where 
@@ -262,10 +224,7 @@ test = [c (S 1), c Z, d (S Z)]
   where c x = 42 + x
         d y = c (y + 1 + z y)
               where z w = y + w
-
-\end{SaveVerbatim}
-\useverb{whereinfer}
-
+\end{code}
 
 \subsection{Dependent Types}
 
@@ -276,14 +235,11 @@ conventionally called vectors in the dependent type literature. In \Idris{},
 we declare vectors as follows\footnote{Note that prior to \Idris{} 0.9.9,
 the order of the arguments to \texttt{Vect} was reversed.}:
 
-\begin{SaveVerbatim}{vect}
-
+\begin{code}
 data Vect : Nat -> Type -> Type where
    Nil  : Vect Z a
    (::) : a -> Vect k a -> Vect (S k) a
-
-\end{SaveVerbatim}
-\useverb{vect}
+\end{code}
 
 \noindent
 Note that we have used the same constructor names as for \tTC{List}. Ad-hoc
@@ -308,42 +264,31 @@ The type of a function over \tTC{Vect} will describe what happens to the
 lengths of the vectors involved. For example, \tFN{++}, defined in the
 library, appends two \tTC{Vect}s:
 
-\begin{SaveVerbatim}{vapp}
-
+\begin{code}
 (++) : Vect n a -> Vect m a -> Vect (n + m) a
 (++) Nil       ys = ys
 (++) (x :: xs) ys = x :: xs ++ ys
-
-\end{SaveVerbatim}
-\useverb{vapp}
+\end{code}
 
 \noindent
 The type of \tFN{(++)} states that the resulting vector's length will be the sum of
 the input lengths. If we get the definition wrong in such a way that this does
 not hold, \Idris{} will not accept the definition. For example:
 
-\begin{SaveVerbatim}{vapperr}
-
+\begin{code}
 (++) : Vect n a -> Vect m a -> Vect (n + m) a
 (++) Nil       ys = ys
 (++) (x :: xs) ys = x :: xs ++ xs -- BROKEN
+\end{code}
 
-\end{SaveVerbatim}
-\useverb{vapperr}
-
-\begin{SaveVerbatim}{vapperrmsg}
-
+\begin{lstlisting}
 $ idris vbroken.idr --check
 vbroken.idr:3:Can't unify Vect n a with Vect m a
 
 Specifically:
 	Can't unify n with m
+\end{lstlisting}
 
-\end{SaveVerbatim}
-\begin{SaveVerbatim}{bleh}
-$
-\end{SaveVerbatim}
-\useverb{vapperrmsg}
 
 \noindent
 This error message suggests that there is a length mismatch between two vectors
@@ -357,14 +302,11 @@ of length \texttt{n}.
 Finite sets, as the name suggests, are sets with a finite number of elements.
 They are declared as follows (again, in the prelude):
 
-\begin{SaveVerbatim}{findecl}
-
+\begin{code}
 data Fin : Nat -> Type where
    fZ : Fin (S k)
    fS : Fin k -> Fin (S k)
-
-\end{SaveVerbatim}
-\useverb{findecl}
+\end{code}
 
 \noindent
 \tDC{fZ} is the zeroth element of a finite set with \texttt{S k} elements;
@@ -382,14 +324,11 @@ numbers bounded by \tTC{n}.
 For example, the following function which looks up an element in a \tTC{Vect},
 by a bounded index given as a \tTC{Fin n}, is defined in the prelude:
 
-\begin{SaveVerbatim}{vindex}
-
+\begin{code}
 index : Fin n -> Vect n a -> a
 index fZ     (x :: xs) = x
 index (fS k) (x :: xs) = index k xs
-
-\end{SaveVerbatim}
-\useverb{vindex}
+\end{code}
 
 \noindent
 This function looks up a value at a given location in a vector. The location is
@@ -407,12 +346,9 @@ since it would force \texttt{n} to be \tDC{Z}.
 
 Let us take a closer look at the type of \texttt{index}:
 
-\begin{SaveVerbatim}{vindexty}
-
+\begin{code}
 index : Fin n -> Vect n a -> a
-
-\end{SaveVerbatim}
-\useverb{vindexty}
+\end{code}
 
 \noindent
 It takes two arguments, an element of the finite set of \texttt{n} elements, and a vector
@@ -420,12 +356,9 @@ with \texttt{n} elements of type \texttt{a}. But there are also two names,
 \texttt{n} and \texttt{a}, which are not declared explictly. These are \emph{implicit}
 arguments to \texttt{index}. We could also write the type of \texttt{index} as:
 
-\begin{SaveVerbatim}{vindeximpty}
-
+\begin{code}
 index : {a:Type} -> {n:Nat} -> Fin n -> Vect n a -> a
-
-\end{SaveVerbatim}
-\useverb{vindeximpty}
+\end{code}
 
 \noindent
 Implicit arguments, given in braces \texttt{\{\}} in the type declaration, are
@@ -437,23 +370,17 @@ free, will be automatically bound as an implicit argument.  Implicit arguments
 can still be given explicitly in applications, using \texttt{\{a=value\}} and
 \texttt{\{n=value\}}, for example:
 
-\begin{SaveVerbatim}{vindexexp}
-
+\begin{code}
 index {a=Int} {n=2} fZ (2 :: 3 :: Nil)
-
-\end{SaveVerbatim}
-\useverb{vindexexp}
+\end{code}
 
 \noindent
 In fact, any argument, implicit or explicit, may be given a name. We could have
 declared the type of \texttt{index} as:
 
-\begin{SaveVerbatim}{vindexn}
-
+\begin{code}
 index : (i:Fin n) -> (xs:Vect n a) -> a
-
-\end{SaveVerbatim}
-\useverb{vindexn}
+\end{code}
 
 \noindent
 It is a matter of taste whether you want to do this --- sometimes it can help
@@ -468,14 +395,11 @@ before being used --- or if an implicit argument has a complex type. For example
 we will need to state the types of the implicit arguments in the following
 definition, which defines a predicate on vectors:
 
-\begin{SaveVerbatim}{elem}
-
+\begin{code}
 data Elem : a -> Vect n a -> Type where
    here :  {x:a} ->   {xs:Vect n a} -> Elem x (x :: xs)
    there : {x,y:a} -> {xs:Vect n a} -> Elem x xs -> Elem x (y :: xs)
-
-\end{SaveVerbatim}
-\useverb{elem}
+\end{code}
 
 \noindent
 An instance of \texttt{Elem x xs} states that \texttt{x} is an element of 
@@ -483,31 +407,26 @@ An instance of \texttt{Elem x xs} states that \texttt{x} is an element of
 such a predicate if the required element is \texttt{here}, at the head of the vector, 
 or \texttt{there}, in the tail of the vector. For example:
 
-\begin{SaveVerbatim}{testelem}
-
+\begin{code}
 testVec : Vect 4 Int
 testVec = 3 :: 4 :: 5 :: 6 :: Nil
 
 inVect : Elem 5 testVec
 inVect = there (there here)
-
-\end{SaveVerbatim}
-\useverb{testelem}
+\end{code}
 
 \noindent
 If the same implicit arguments are being used a lot, it can make a definition
 difficult to read. To avoid this problem, a \texttt{using} block gives the types and
 ordering of any implicit arguments which can appear within the block:
 
-\begin{SaveVerbatim}{elemusing}
-
+\begin{code}
 using (x:a, y:a, xs:Vect n a)
   data Elem : a -> Vect n a -> Type where
      here  : Elem x (x :: xs)
      there : Elem x xs -> Elem x (y :: xs)
+\end{code}
 
-\end{SaveVerbatim}
-\useverb{elemusing}
 
 \subsubsection*{Note: Declaration Order and \texttt{mutual} blocks}
 
@@ -517,8 +436,7 @@ reduction behaviour to affect type checking. However, this
 restriction can be relaxed by using a \texttt{mutual} block, which allows
 data types and functions to be defined simultaneously:
 
-\begin{SaveVerbatim}{mutual}
-
+\begin{code}
 mutual
   even : Nat -> Bool
   even Z = True
@@ -527,9 +445,8 @@ mutual
   odd : Nat -> Bool
   odd Z = False
   odd (S k) = even k
+\end{code}
 
-\end{SaveVerbatim}
-\useverb{mutual}
 
 \noindent
 In a \texttt{mutual} block, first all of the type declarations are added,
@@ -544,12 +461,10 @@ that is, a language where expressions do not have side-effects --- is that I/O
 is inherently side-effecting. Therefore in \Idris{}, such interactions are
 encapsulated in the type \texttt{IO}:
 
-\begin{SaveVerbatim}{ioty}
-
+\begin{code}
 data IO a -- IO operation returning a value of type a
+\end{code}
 
-\end{SaveVerbatim}
-\useverb{ioty}
 
 \noindent
 We'll leave the definition of \texttt{IO} abstract, but effectively it describes what
@@ -558,41 +473,34 @@ resulting operations are executed externally,
 by the run-time system. We've already seen one IO
 program:
 
-\begin{SaveVerbatim}{main}
-
+\begin{code}
 main : IO ()
 main = putStrLn "Hello world"
+\end{code}
 
-\end{SaveVerbatim}
-\useverb{main}
 
 \noindent
 The type of \texttt{putStrLn} explains that it takes a string, and returns an
 element of the unit type () via an I/O action. There is a variant \texttt{putStr} which
 outputs a string without a newline:
 
-\begin{SaveVerbatim}{putstr}
-
+\begin{code}
 putStrLn : String -> IO ()
 putStr   : String -> IO ()
-
-\end{SaveVerbatim}
+\end{code}
 
 We can also read strings from user input:
 
-\begin{SaveVerbatim}{getline}
-
+\begin{code}
 getLine : IO String
+\end{code}
 
-\end{SaveVerbatim}
-\useverb{getline}
 
 \noindent
 A number of other I/O operations are defined in the prelude, for example for reading and
 writing files, including:
 
-\begin{SaveVerbatim}{fileops}
-
+\begin{code}
 data File -- abstract
 data Mode = Read | Write | ReadWrite
 
@@ -604,9 +512,8 @@ fwrite : File -> String -> IO ()
 feof   : File -> IO Bool
 
 readFile : String -> IO String
+\end{code}
 
-\end{SaveVerbatim}
-\useverb{fileops}
 
 \subsection{``\texttt{do}'' notation}
 
@@ -617,15 +524,13 @@ computation into the input of the next. \texttt{IO} is an abstract type, however
 can't access the result of a computation directly. Instead, we sequence
 operations with \texttt{do} notation:
 
-\begin{SaveVerbatim}{greet}
-
+\begin{code}
 greet : IO ()
 greet = do putStr "What is your name? "
            name <- getLine
            putStrLn ("Hello " ++ name)
+\end{code}
 
-\end{SaveVerbatim}
-\useverb{greet}
 
 \noindent
 The syntax \texttt{x <- iovalue} executes the I/O operation \texttt{iovalue}, of type 
@@ -637,12 +542,10 @@ statement in the do block must begin in the same column.
 The \texttt{return} operation allows us to inject a value directly into an IO
 operation:
 
-\begin{SaveVerbatim}{return}
-
+\begin{code}
 return : a -> IO a
+\end{code}
 
-\end{SaveVerbatim}
-\useverb{return}
 
 \noindent
 As we will see later, \texttt{do} notation is more general than this, and can be
@@ -659,16 +562,14 @@ part of \texttt{prelude.idr}.
 
 We have already seen the \texttt{List} and \texttt{Vect} data types:
 
-\begin{SaveVerbatim}{listvec}
-
+\begin{code}
 data List a = Nil | (::) a (List a)
 
 data Vect : Nat -> Type -> Type where
    Nil  : Vect Z a
    (::) : a -> Vect k a -> Vect (S k) a
+\end{code}
 
-\end{SaveVerbatim}
-\useverb{listvec}
 
 \noindent
 Note that the constructor names are the same for each --- constructor names (in
@@ -687,8 +588,7 @@ The library also defines a number of functions for manipulating these types.
 \texttt{map} is overloaded both for \texttt{List} and \texttt{Vect}
 and applies a function to every element of the list or vector.
 
-\begin{SaveVerbatim}{map}
-
+\begin{code}
 map : (a -> b) -> List a -> List b
 map f []        = []
 map f (x :: xs) = f x :: map f xs
@@ -696,34 +596,29 @@ map f (x :: xs) = f x :: map f xs
 map : (a -> b) -> Vect n a -> Vect n b
 map f []        = []
 map f (x :: xs) = f x :: map f xs
+\end{code}
 
-\end{SaveVerbatim}
-\useverb{map}
 
 \noindent
 For example, to double every element in a vector of integers:
 
-\begin{SaveVerbatim}{dvect}
-
+\begin{code}
 intVec : Vect 5 Int
 intVec = [1, 2, 3, 4, 5]
 
 double : Int -> Int
 double x = x * 2
+\end{code}
 
-\end{SaveVerbatim}
-\useverb{dvect}
 
 \noindent
 You'll find these examples in \texttt{usefultypes.idr} in the \texttt{examples/} directory:
 
-\begin{SaveVerbatim}{rundvect}
-
+\begin{lstlisting}
 *usefultypes> show (map double intVec) 
 "[2, 4, 6, 8, 10]" : String
+\end{lstlisting}
 
-\end{SaveVerbatim}
-\useverb{rundvect}
 
 \noindent
 For more details of the functions available on \texttt{List} and \texttt{Vect},
@@ -737,13 +632,11 @@ need, please feel free to add it and submit a patch!
 There are actually neater ways to write the above expression. One way would be
 to use an anonymous function:
 
-\begin{SaveVerbatim}{lam1}
-
+\begin{lstlisting}
 *usefultypes> show (map (\x => x * 2) intVec)
 "[2, 4, 6, 8, 10]" : String
+\end{lstlisting}
 
-\end{SaveVerbatim}
-\useverb{lam1}
 
 \noindent
 The notation \texttt{$\backslash$x => val} constructs an anonymous function
@@ -754,13 +647,11 @@ types, e.g. \texttt{$\backslash$x : Int => x * 2}, and can pattern match,
 e.g. \texttt{$\backslash$ (x, y) => x + y}.
 We could also use an operator section:
 
-\begin{SaveVerbatim}{sec1}
-
+\begin{code}
 *usefultypes> show (map (* 2) intVec)
 "[2, 4, 6, 8, 10]" : String
+\end{code}
 
-\end{SaveVerbatim}
-\useverb{sec1}
 
 \noindent
 \texttt{(*2)} is shorthand for a function which multiplies a number by 2. It expands to
@@ -772,38 +663,32 @@ Similarly, \texttt{(2*)} would expand to \texttt{$\backslash$x => 2 * x}.
 \texttt{Maybe} describes an optional value. Either there is a value of the given type,
 or there isn't:
 
-\begin{SaveVerbatim}{maybe}
-
+\begin{code}
 data Maybe a = Just a | Nothing
+\end{code}
 
-\end{SaveVerbatim}
-\useverb{maybe}
 
 \noindent
 \texttt{Maybe} is one way of giving a type to an operation that may fail. For example,
 looking something up in a \texttt{List} (rather than a vector) may result in an out of
 bounds error:
 
-\begin{SaveVerbatim}{lookuplist}
-
+\begin{code}
 list_lookup : Nat -> List a -> Maybe a
 list_lookup _     Nil       = Nothing
 list_lookup Z     (x :: xs) = Just x
 list_lookup (S k) (x :: xs) = list_lookup k xs
+\end{code}
 
-\end{SaveVerbatim}
-\useverb{lookuplist}
 
 \noindent
 The \texttt{maybe} function is used to process values of type \texttt{Maybe}, 
 either by applying a function to the value, if there is one, or by providing a default value:
 
-\begin{SaveVerbatim}{maybefn}
-
+\begin{code}
 maybe : Maybe a -> |(default:b) -> (a -> b) -> b
+\end{code}
 
-\end{SaveVerbatim}
-\useverb{maybefn}
 
 \noindent
 The vertical bar $\mid$ before the default value is a laziness annotation. Normally
@@ -817,41 +702,35 @@ needed.
 
 Values can be paired with the following built-in data type:
 
-\begin{SaveVerbatim}{mkpair}
-
+\begin{code}
 data Pair a b = MkPair a b
+\end{code}
 
-\end{SaveVerbatim}
-\useverb{mkpair}
 
 \noindent
 As syntactic sugar, we can write \texttt{(a, b)} which, according to context,
 means either \texttt{Pair a b} or \texttt{MkPair a b}.
 Tuples can contain an arbitrary number of values, represented as nested pairs:
 
-\begin{SaveVerbatim}{tuple}
-
+\begin{code}
 fred : (String, Int)
 fred = ("Fred", 42)
 
 jim : (String, Int, String)
 jim = ("Jim", 25, "Cambridge")
+\end{code}
 
-\end{SaveVerbatim}
-\useverb{tuple}
 
 \subsubsection*{Dependent Pairs}
 
 Dependent pairs allow the type of the second element of a pair to depend on
 the value of the first element:
 
-\begin{SaveVerbatim}{sigma}
-
+\begin{code}
 data Exists : (A : Type) -> (P : A -> Type) -> Type where
    Ex_intro : {P : A -> Type} -> (a : A) -> P a -> Exists A P
+\end{code}
 
-\end{SaveVerbatim}
-\useverb{sigma}
 
 \noindent
 Again, there is syntactic sugar for this. \texttt{(a : A ** P)} is the type of a pair of
@@ -859,13 +738,11 @@ A and P, where the name \texttt{a} can occur inside P. \texttt{( a ** p )}
 constructs a value of this type. For example, we can pair a number with a 
 \texttt{Vect} of a particular length.
 
-\begin{SaveVerbatim}{dvec}
-
+\begin{code}
 vec : (n : Nat ** Vect n Int)
 vec = (2 ** [3, 4])
+\end{code}
 
-\end{SaveVerbatim}
-\useverb{dvec}
 
 \noindent
 The type checker could of course infer the value of the first element from the
@@ -873,25 +750,21 @@ length of the vector. We can write an underscore \texttt{\_} in place of values 
 expect the type checker to fill in, so the above definition could also be
 written as:
 
-\begin{SaveVerbatim}{dvec1}
-
+\begin{code}
 vec : (n : Nat ** Vect n Int)
 vec = (_ ** [3, 4])
+\end{code}
 
-\end{SaveVerbatim}
-\useverb{dvec1}
 
 \noindent
 We might also prefer to omit the type of the first element of the pair, since,
 again, it can be inferred:
 
-\begin{SaveVerbatim}{dvec2}
-
+\begin{code}
 vec : (n ** Vect n Int)
 vec = (_ ** [3, 4])
+\end{code}
 
-\end{SaveVerbatim}
-\useverb{dvec2}
 
 \noindent
 One use for dependent pairs is to return values of dependent types where the
@@ -899,22 +772,18 @@ index is not necessarily known in advance. For example, if we filter elements
 out of a \texttt{Vect} according to some predicate, we will not know in advance what the
 length of the resulting vector will be:
 
-\begin{SaveVerbatim}{vfilter}
-
+\begin{code}
 filter : (a -> Bool) -> Vect n a -> (p ** Vect p a)
+\end{code}
 
-\end{SaveVerbatim}
-\useverb{vfilter}
 
 \noindent
 If the \texttt{Vect} is empty, the result is easy:
 
-\begin{SaveVerbatim}{vfilternil}
-
+\begin{code}
 filter p Nil = (_ ** [])
+\end{code}
 
-\end{SaveVerbatim}
-\useverb{vfilternil}
 
 \noindent
 In the \texttt{::} case, we need to inspect the result of a recursive call to 
@@ -922,13 +791,10 @@ In the \texttt{::} case, we need to inspect the result of a recursive call to
 extract the length and the vector from the result. To do this, we use \texttt{with}
 notation, which allows pattern matching on intermediate values:
 
-\begin{SaveVerbatim}{vfiltercons}
-
+\begin{code}
 filter p (x :: xs) with (filter p xs)
   | ( _ ** xs' ) = if (p x) then ( _ ** x :: xs' ) else ( _ ** xs' )
-
-\end{SaveVerbatim}
-\useverb{vfiltercons}
+\end{code}
 
 \noindent
 We will see more on \texttt{with} notation later.
@@ -938,13 +804,11 @@ We will see more on \texttt{with} notation later.
 The \texttt{so} data type is a predicate on \texttt{Bool} which guarantees that the
 value is true:
 
-\begin{SaveVerbatim}{sotype}
-
+\begin{code}
 data so : Bool -> Type where
     oh : so True
-
-\end{SaveVerbatim}
-\useverb{sotype} 
+\end{code}
+ 
 
 \noindent
 This is most useful for providing a static guarantee that a dynamic check has been made.
@@ -952,16 +816,14 @@ For example, we might provide a safe interface to a function which draws a pixel
 on a graphical display as follows, where \texttt{so (inBounds x y)} guarantees that 
 the point \texttt{(x,y)} is within the bounds of a 640x480 window:
 
-\begin{SaveVerbatim}{soexample}
-
+\begin{code}
 inBounds : Int -> Int -> Bool
 inBounds x y = x >= 0 && x < 640 && y >= 0 && y < 480
 
 drawPoint : (x : Int) -> (y : Int) -> so (inBounds x y) -> IO ()
 drawPoint x y p = unsafeDrawPoint x y
-
-\end{SaveVerbatim}
-\useverb{soexample} 
+\end{code}
+ 
 
 \subsection{More Expressions}
 
@@ -969,29 +831,25 @@ drawPoint x y p = unsafeDrawPoint x y
 
 Intermediate values can be calculated using \texttt{let} bindings:
 
-\begin{SaveVerbatim}{letb}
-
+\begin{code}
 mirror : List a -> List a
 mirror xs = let xs' = rev xs in
                 xs ++ xs'
-
-\end{SaveVerbatim}
-\useverb{letb} 
+\end{code}
+ 
 
 \noindent
 We can do simple pattern matching in \texttt{let} bindings too. For example, we can extract
 fields from a record as follows, as well as by pattern matching at the top level:
 
-\begin{SaveVerbatim}{letp}
-
+\begin{code}
 data Person = MkPerson String Int
 
 showPerson : Person -> String
 showPerson p = let MkPerson name age = p in
                    name ++ " is " ++ show age ++ " years old"
-
-\end{SaveVerbatim}
-\useverb{letp} 
+\end{code}
+ 
 
 \subsubsection*{List comprehensions}
 
@@ -1000,12 +858,10 @@ showPerson p = let MkPerson name age = p in
 \Idris{} provides \emph{comprehension} notation as a convenient shorthand for
 building lists. The general form is:
 
-\begin{SaveVerbatim}{listcomp}
-
+\begin{lstlisting}
 [ expression | qualifiers ]
-
-\end{SaveVerbatim}
-\useverb{listcomp} 
+\end{lstlisting}
+ 
 
 \noindent
 This generates the list of values produced by evaluating the
@@ -1013,14 +869,12 @@ This generates the list of values produced by evaluating the
 \texttt{qualifiers}. For example, we can build a list of Pythagorean triples as
 follows:
 
-\begin{SaveVerbatim}{triples}
-
+\begin{code}
 pythag : Int -> List (Int, Int, Int)
 pythag n = [ (x, y, z) | z <- [1..n], y <- [1..z], x <- [1..y],
                          x*x + y*y == z*z ]
-  
-\end{SaveVerbatim}
-\useverb{triples} 
+\end{code}
+ 
 
 \noindent
 The \texttt{[a..b]} notation is another shorthand which builds a list of
@@ -1035,14 +889,12 @@ Another way of inspecting intermediate values of \emph{simple} types
 is to use a \texttt{case} expression.
 The following function, for example, splits a string into two at a given character:
 
-\begin{SaveVerbatim}{split}
-
+\begin{code}
 splitAt : Char -> String -> (String, String)
 splitAt c x = case break (== c) x of
                   (x, y) => (x, strTail y)
-
-\end{SaveVerbatim}
-\useverb{split} 
+\end{code}
+ 
 
 \noindent
 \texttt{break} is a library function which breaks a string into a pair of strings
@@ -1055,29 +907,25 @@ looks up an index in a list, returning \texttt{Nothing} if the index is out
 of bounds. We can use this to write \texttt{lookup\_default}, which
 looks up an index and returns a default value if the index is out of bounds:
 
-\begin{SaveVerbatim}{listlookup}
-
+\begin{code}
 lookup_default : Nat -> List a -> a -> a
 lookup_default i xs def = case list_lookup i xs of
                               Nothing => def
                               Just x => x
-
-\end{SaveVerbatim}
-\useverb{listlookup} 
+\end{code}
+ 
 
 \noindent
 If the index is in bounds, we get the value at that index, otherwise we get
 a default value:
 
-\begin{SaveVerbatim}{deftest}
-
+\begin{lstlisting}
 *usefultypes> lookup_default 2 [3,4,5,6] (-1)
 5 : Int
 *usefultypes> lookup_default 4 [3,4,5,6] (-1)
 -1 : Int
-
-\end{SaveVerbatim}
-\useverb{deftest} 
+\end{lstlisting}
+ 
 
 \noindent
 \textbf{Restrictions:} The \texttt{case} construct is intended for simple analysis
@@ -1099,17 +947,15 @@ determined \emph{without} type checking the \texttt{case}-expression itself.
 automatically generating field access and update functions. For example, we
 can represent a person's name and age in a record:
 
-\begin{SaveVerbatim}{recsimpl}
-
+\begin{code}
 record Person : Type where
     MkPerson : (name : String) ->
                (age : Int) -> Person
 
 fred : Person
 fred = MkPerson "Fred" 30
-
-\end{SaveVerbatim}
-\useverb{recsimpl} 
+\end{code}
+ 
 
 \noindent
 Record declarations are like \texttt{data} declarations, except that they are 
@@ -1117,31 +963,25 @@ introduced by the \texttt{record} keyword, and can only have one constructor.
 The names of the binders in the constructor type (\texttt{name} and \texttt{age})
 here are the field names, which we can use to access the field values:
 
-\begin{SaveVerbatim}{recaccess}
-
+\begin{lstlisting}
 *record> name fred
 "Fred" : String
 *record> age fred
 30 : Int
 *record> :t name
 name : Person -> String
-
-\end{SaveVerbatim}
-\useverb{recaccess} 
+\end{lstlisting}
 
 \noindent
 We can also use the field names to update a record (or, more precisely, produce a
 new record with the given fields updates).
 
-\begin{SaveVerbatim}{recupdate}
-
+\begin{lstlisting}
 *record> record { name = "Jim" } fred
 MkPerson "Jim" 30 : Person
 *record> record { name = "Jim", age = 20 } fred
 MkPerson "Jim" 20 : Person
-
-\end{SaveVerbatim}
-\useverb{recupdate} 
+\end{lstlisting}
 
 \noindent
 The syntax \texttt{record \{ field = val, ... \}} generates a function which updates
@@ -1152,29 +992,26 @@ Updates are allowed to change the type of a field,
 provided that the result is well-typed, and the result does not affect the type of
 the record as a whole. For example:
 
-\begin{SaveVerbatim}{deprec}
-
+\begin{code}
 record Class : Type where
     ClassInfo : (students : Vect n Person) ->
                 (className : String) ->
                 Class
-
-\end{SaveVerbatim}
-\useverb{deprec} 
+\end{code}
 
 \noindent
 It is safe to update the \texttt{students} field to a vector of a different length
 because it will not affect the type of the record:
 
-\begin{SaveVerbatim}{addstu}
-
+\begin{code}
 addStudent : Person -> Class -> Class
 addStudent p c = record { students = p :: students c } c
+\end{code}
 
+\begin{lstlisting}
 *record> addStudent fred (ClassInfo [] "CS")
 ClassInfo (prelude.vect.:: (MkPerson "Fred" 30) (prelude.vect.Nil)) "CS" 
   : Class
+\end{lstlisting}
 
-\end{SaveVerbatim}
-\useverb{addstu} 
 

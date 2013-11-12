@@ -19,22 +19,23 @@
 \usepackage[missing=0.9.10]{gitinfo}
 
 \usepackage{fpmacros}
+\usepackage{idrislang}
 
 \input{conf.ltx}
 \input{library.ltx}
 
-\newcommand{\Idris}{\textsc{Idris}}
 \newcommand{\version}{\gitVtagn}
-\newcommand{\email}[1]{\texttt{\href{mailto:#1}{#1}}}
 
 \title{Programming in \Idris{}: a tutorial}
-\author{Edwin Brady \\ \email{eb@cs.st-andrews.ac.uk}}
+\author{The \Idris{} Community}
+\date{\origdate\today}
 
 \begin{document}
 
 \maketitle
 
 \tableofcontents
+\newpage
 
 \input{./content/intro}
 \input{./content/starting}
