@@ -22,7 +22,7 @@ printf fmt = printFormat (fromList $ unpack fmt) where
    rec End acc            = acc
    rec (FInt rest) acc    = \i: Int => rec rest (acc ++ (show i))
    rec (FStr rest) acc = \s: String => rec rest (acc ++ s)
-   rec (FChar c rest) acc = rec rest (acc ++ (pack [c]))
+   rec (FChar c rest) acc = rec rest (acc ++ (strCons c ""))
 
 test : String
 test = printf "The %s is %d" "answer" 42
