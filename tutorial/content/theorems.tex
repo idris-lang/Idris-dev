@@ -6,28 +6,22 @@
 programs to be stated and proved. Equality is built in, but conceptually has
 the following definition:
 
-\begin{SaveVerbatim}{}
-
+\begin{code}
 data (=) : a -> b -> Type where
    refl : x = x
-
-\end{SaveVerbatim}
-\useverb{}
+\end{code}
 
 \noindent
 Equalities can be proposed between any values of any types, but the only way to
 construct a proof of equality is if values actually are equal. For example:
 
-\begin{SaveVerbatim}{eqprf}
-
+\begin{code}
 fiveIsFive : 5 = 5
 fiveIsFive = refl
 
 twoPlusTwo : 2 + 2 = 4
 twoPlusTwo = refl
-
-\end{SaveVerbatim}
-\useverb{eqprf}
+\end{code}
 
 \subsection{The Empty Type}
 
@@ -40,46 +34,36 @@ without using a partially defined or general recursive function (see Section
 to prove that something is impossible, for example zero is never equal
 to a successor:
 
-\begin{SaveVerbatim}{natdisjoint}
-
+\begin{code}
 disjoint : (n : Nat) -> Z = S n -> _|_
 disjoint n p = replace {P = disjointTy} p ()
   where
     disjointTy : Nat -> Type
     disjointTy Z = ()
     disjointTy (S k) = _|_
-
-\end{SaveVerbatim}
-\useverb{natdisjoint} 
+\end{code} 
 
 \noindent
 There is no need to worry too much about how this function works --- essentially,
 it applies the library function \texttt{replace}, which uses an equality proof to 
 transform a predicate. Here we use it to transform a value of a type which can exist,
-the empty tuple, to a value of a type which can't, by using a proof of something
-which can't exist.
+the empty tuple, to a value of a type which can't, by using a proof of something which can't exist.
 
 Once we have an element of the empty type, we can prove anything. \texttt{FalseElim}
 is defined in the library, to assist with proofs by contradiction.
 
-\begin{SaveVerbatim}{falseelim}
-
+\begin{code}
 FalseElim : _|_ -> a
-
-\end{SaveVerbatim}
-\useverb{falseelim} 
+\end{code} 
 
 \subsection{Simple Theorems}
 
 When type checking dependent types, the type itself gets \emph{normalised}. So imagine
 we want to prove the following theorem about the reduction behaviour of \texttt{plus}:
 
-\begin{SaveVerbatim}{plusred}
-
+\begin{code}
 plusReduces : (n:Nat) -> plus Z n = n
-
-\end{SaveVerbatim}
-\useverb{plusred}
+\end{code}
 
 \noindent
 We've written down the statement of the theorem as a type, in just the same way
@@ -93,49 +77,37 @@ correspondence~\cite{howard} explains this relationship.
 The proof itself is trivial, because \texttt{plus Z n} normalises to \texttt{n}
 by the definition of \texttt{plus}:
 
-\begin{SaveVerbatim}{plusredp}
-
+\begin{code}
 plusReduces n = refl
-
-\end{SaveVerbatim}
-\useverb{plusredp}
+\end{code}
 
 \noindent
 It is slightly harder if we try the arguments the other way, because plus is
 defined by recursion on its first argument. The proof also works by recursion
 on the first argument to \texttt{plus}, namely \texttt{n}.
 
-\begin{SaveVerbatim}{plusRedO}
-
+\begin{code}
 plusReducesZ : (n:Nat) -> n = plus n Z
 plusReducesZ Z = refl
 plusReducesZ (S k) = cong (plusReducesZ k)
-
-\end{SaveVerbatim}
-\useverb{plusRedO}
+\end{code}
 
 \noindent
 \texttt{cong} is a function defined in the library which states that
 equality respects function application:
 
-\begin{SaveVerbatim}{resps}
-
+\begin{code}
 cong : {f : t -> u} -> a = b -> f a = f b
-
-\end{SaveVerbatim}
-\useverb{resps}
+\end{code}
 
 \noindent
 We can do the same for the reduction behaviour of plus on successors:
 
-\begin{SaveVerbatim}{plusRedS}
-
+\begin{code}
 plusReducesS : (n:Nat) -> (m:Nat) -> S (plus n m) = plus n (S m)
 plusReducesS Z m = refl
 plusReducesS (S k) m = cong (plusReducesS k m)
-
-\end{SaveVerbatim}
-\useverb{plusRedS}
+\end{code}
 
 \noindent
 Even for trival theorems like these, the proofs are a little tricky to
@@ -152,15 +124,12 @@ the proof by \emph{induction}, so we write the cases for \texttt{Z} and
 \texttt{S}, with a recursive call in the \texttt{S} case giving the inductive
 hypothesis, and insert \emph{metavariables} for the rest of the definition:
 
-\begin{SaveVerbatim}{prOstruct}
-
+\begin{code}
 plusReducesZ' : (n:Nat) -> n = plus n Z
 plusReducesZ' Z     = ?plusredZ_Z
 plusReducesZ' (S k) = let ih = plusReducesZ' k in
                       ?plusredZ_S
-
-\end{SaveVerbatim}
-\useverb{prOstruct}
+\end{code}
 
 \noindent
 On running \Idris{}, two global names are created, \texttt{plusredZ\_O} and
@@ -169,40 +138,31 @@ at the prompt to find out which metavariables are still to be solved (or, more
 precisely, which functions exist but have no definitions), then the
 \texttt{:t} command to see their types:
 
-\begin{SaveVerbatim}{showmetas}
-
+\begin{lstlisting}
 *theorems> :m 
 Global metavariables:
         [plusredZ_S,plusredZ_Z]
 
-\end{SaveVerbatim}
+\end{lstlisting}
 
-\begin{SaveVerbatim}{metatypes}
-
+\begin{lstlisting}
 *theorems> :t plusredZ_Z
 plusredZ_Z : Z = plus Z Z
 
 *theorems> :t plusredZ_S
 plusredZ_S : (k : Nat) -> (k = plus k Z) -> S k = plus (S k) Z
-
-\end{SaveVerbatim}
-\useverb{showmetas}
-
-\useverb{metatypes}
+\end{lstlisting}
 
 \noindent
 The \texttt{:p} command enters interactive proof mode, which can be used to complete
 the missing definitions.
 
-\begin{SaveVerbatim}{proveO}
-
+\begin{lstlisting}
 *theorems> :p plusredZ_Z
 
 ---------------------------------- (plusredZ_Z) --------
 {hole0} : Z = plus Z Z
-
-\end{SaveVerbatim}
-\useverb{proveO}
+\end{lstlisting}
 
 \noindent
 This gives us a list of premisses 
@@ -211,15 +171,12 @@ named \texttt{\{hole0\}} here).
 At the prompt we can enter tactics to direct the construction of the proof. In this case,
 we can normalise the goal with the \texttt{compute} tactic:
 
-\begin{SaveVerbatim}{compute}
-
+\begin{lstlisting}
 -plusredZ_Z> compute
 
 ---------------------------------- (plusredZ_Z) --------
 {hole0} : Z = Z
-
-\end{SaveVerbatim}
-\useverb{compute}
+\end{lstlisting}
 
 \noindent
 Now we have to prove that \texttt{Z} equals \texttt{Z}, which is easy to prove by
@@ -227,13 +184,10 @@ Now we have to prove that \texttt{Z} equals \texttt{Z}, which is easy to prove b
 which introduces subgoals for each of the function's explicit arguments (\texttt{refl}
 has none):
 
-\begin{SaveVerbatim}{refrefl}
-
+\begin{lstlisting}
 -plusredZ_Z> refine refl
 plusredZ_Z: no more goals
-
-\end{SaveVerbatim}
-\useverb{refrefl}
+\end{lstlisting}
 
 \noindent
 Here, we could also have used the \texttt{trivial} tactic, which tries to refine by
@@ -242,40 +196,31 @@ When a proof is complete, we use the \texttt{qed} tactic to add the proof to the
 global context, and remove the metavariable from the unsolved metavariables list.
 This also outputs a trace of the proof:
 
-\begin{SaveVerbatim}{prOprooftrace}
-
+\begin{code}
 -plusredZ_Z> qed
 plusredZ_Z = proof {
     compute;
     refine refl;
 }
+\end{code}
 
-\end{SaveVerbatim}
-\useverb{prOprooftrace}
-
-\begin{SaveVerbatim}{showmetasO}
-
+\begin{lstlisting}
 *theorems> :m 
 Global metavariables:
         [plusredZ_S]
-
-\end{SaveVerbatim}
-\useverb{showmetasO} 
+\end{lstlisting} 
 
 \noindent
 The \texttt{:addproof} command, at the interactive prompt, will add the proof to
 the source file (effectively in an appendix).
 Let us now prove the other required lemma, \texttt{plusredZ\_S}:
 
-\begin{SaveVerbatim}{plusredZSprf}
-
+\begin{lstlisting}
 *theorems> :p plusredZ_S
 
 ---------------------------------- (plusredZ_S) --------
 {hole0} : (k : Nat) -> (k = plus k Z) -> S k = plus (S k) Z
-
-\end{SaveVerbatim}
-\useverb{plusredZSprf}
+\end{lstlisting}
 
 \noindent
 In this case, the goal is a function type, using \texttt{k} (the argument accessible by
@@ -283,37 +228,31 @@ pattern matching) and \texttt{ih} (the local variable containing the result of
 the recursive call). We can introduce these as premisses using the \texttt{intro} tactic
 twice (or \texttt{intros}, which introduces all arguments as premisses). This gives:
 
-\begin{SaveVerbatim}{prSintros}
-
+\begin{lstlisting}
   k : Nat
   ih : k = plus k Z
 ---------------------------------- (plusredZ_S) --------
 {hole2} : S k = plus (S k) Z
-
-\end{SaveVerbatim}
-\useverb{prSintros}
+\end{lstlisting}
 
 \noindent
 Since plus is defined is defined by recursion on its first argument, the term
 \texttt{plus (S k) Z} in the goal can be simplified, so we use
 \texttt{compute}.
 
-\begin{SaveVerbatim}{prScompute}
+\begin{lstlisting}
   k : Nat
   ih : k = plus k Z
 ---------------------------------- (plusredZ_S) --------
 {hole2} : S k = S (plus k Z)
-
-\end{SaveVerbatim}
-\useverb{prScompute}
+\end{lstlisting}
 
 \noindent
 We know, from the type of \texttt{ih}, that \texttt{k = plus k Z}, so we would like to
 use this knowledge to replace \texttt{plus k Z} in the goal with \texttt{k}. We can
 achieve this with the \texttt{rewrite} tactic:
 
-\begin{SaveVerbatim}{}
-
+\begin{lstlisting}
 -plusredZ_S> rewrite ih
 
   k : Nat
@@ -322,16 +261,13 @@ achieve this with the \texttt{rewrite} tactic:
 {hole3} : S k = S k
 
 -plusredZ_S>
-
-\end{SaveVerbatim}
-\useverb{}
+\end{lstlisting}
 
 \noindent
 The \texttt{rewrite} tactic takes an equality proof as an argument, and tries to rewrite
 the goal using that proof. Here, it results in an equality which is trivially provable:
 
-\begin{SaveVerbatim}{prOStrace}
-
+\begin{lstlisting}
 -plusredZ_S> trivial
 plusredZ_S: no more goals
 -plusredZ_S> qed
@@ -340,9 +276,7 @@ plusredZ_S = proof {
     rewrite ih;
     trivial;
 }
-
-\end{SaveVerbatim}
-\useverb{prOStrace}
+\end{lstlisting}
 
 \noindent
 Again, we can add this proof to the end of our source file using the \texttt{:addproof}
@@ -357,8 +291,7 @@ If we really want to trust our proofs, it is important that they are defined by
 possible inputs and is guaranteed to terminate. Otherwise we could construct an
 element of the empty type, from which we could prove anything:
 
-\begin{SaveVerbatim}{empties}
-
+\begin{code}
 -- making use of 'hd' being partially defined
 empty1 : _|_
 empty1 = hd [] where
@@ -368,25 +301,20 @@ empty1 = hd [] where
 -- not terminating
 empty2 : _|_
 empty2 = empty2
-
-\end{SaveVerbatim}
-\useverb{empties} 
+\end{code} 
 
 \noindent
 Internally, \Idris{} checks every definition for totality, and we can check at
 the prompt with the \texttt{:total} command. We see that neither of the above
 definitions is total:
 
-\begin{SaveVerbatim}{totalcheck}
-
+\begin{lstlisting}
 *theorems> :total empty1
 possibly not total due to: empty1#hd
 	not total as there are missing cases
 *theorems> :total empty2
 possibly not total due to recursive path empty2
-
-\end{SaveVerbatim}
-\useverb{totalcheck} 
+\end{lstlisting} 
 
 \noindent
 Note the use of the word ``possibly'' --- a totality check can, of course,
@@ -395,28 +323,22 @@ is, therefore, conservative.  It is also possible (and indeed advisable, in the
 case of proofs) to mark functions as total so that it will be a compile time
 error for the totality check to fail:
 
-\begin{SaveVerbatim}{emptyfail}
-
+\begin{lstlisting}
 total empty2 : _|_
 empty2 = empty2
 
 Type checking ./theorems.idr
 theorems.idr:25:empty2 is possibly not total due to recursive path empty2 
-
-\end{SaveVerbatim}
-\useverb{emptyfail} 
+\end{lstlisting} 
 
 \noindent
 Reassuringly, our proof in Section \ref{sect:empty} that the zero and successor constructors
 are disjoint is total:
 
-\begin{SaveVerbatim}{totdisjoint}
-
+\begin{lstlisting}
 *theorems> :total disjoint
 Total
-
-\end{SaveVerbatim}
-\useverb{totdisjoint} 
+\end{lstlisting} 
 
 \noindent
 The totality check is, necessarily, conservative. To be recorded as total, a

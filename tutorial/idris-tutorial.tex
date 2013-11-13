@@ -1,39 +1,54 @@
-\documentclass{article}
+\documentclass[british, final]{article}
+
+\usepackage[l2tabu,orthodox]{nag}
+\usepackage{fixltx2e}
+\usepackage{babel}
+\usepackage[iso]{isodate}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[protrusion=true, expansion=true]{microtype}
+\usepackage[strict=true]{csquotes}
+\usepackage{xspace}
+
+\usepackage{mathpazo}
+\usepackage[scaled=0.95]{helvet}
+\usepackage{courier}
 
 \usepackage{fullpage}
-\usepackage{palatino}
-\usepackage{url}
-\usepackage{fancyvrb}
 \usepackage{hyperref}
+\usepackage[missing=0.9.10]{gitinfo}
+
+\usepackage{fpmacros}
+\usepackage[numbers]{idrislang}
 
 \input{conf.ltx}
-\input{macros.ltx}
 \input{library.ltx}
 
-\newcommand{\Idris}{\textsc{Idris}}
-\newcommand{\version}{0.9.10}
+\newcommand{\version}{\gitVtagn}
 
 \title{Programming in \Idris{}: a tutorial}
-\author{Edwin Brady \\ \url{eb@cs.st-andrews.ac.uk}}
+\author{The \Idris{} Community}
+\date{\origdate\today}
 
 \begin{document}
 
 \maketitle
 
 \tableofcontents
+\newpage
 
-\input{intro}
-\input{starting}
-\input{typesfuns}
-\input{classes}
-\input{modules}
-\input{interp}
-\input{views}
-\input{theorems}
-\input{provisional}
-\input{syntax}
-\input{miscellany}
-\input{conclusions}
+\input{./content/intro}
+\input{./content/starting}
+\input{./content/typesfuns}
+\input{./content/classes}
+\input{./content/modules}
+\input{./content/interp}
+\input{./content/views}
+\input{./content/theorems}
+\input{./content/provisional}
+\input{./content/syntax}
+\input{./content/miscellany}
+\input{./content/conclusions}
 
 \bibliographystyle{abbrv}
 \bibliography{literature.bib}

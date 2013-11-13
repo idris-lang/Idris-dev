@@ -21,3 +21,5 @@ tutorial/*.blg
 tutorial/*.log
 tutorial/*.out
 tutorial/*.toc
+tutorial/*.fdb_latexmk
+tutorial/*.fls

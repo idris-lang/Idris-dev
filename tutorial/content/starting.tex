@@ -16,12 +16,9 @@ all major Linux distributions.
 
 The easiest way to install \Idris{}, if you have all of the prerequisites, is to type:
 
-\begin{SaveVerbatim}{install}
-
+\begin{lstlisting}[language=bash]
 cabal update; cabal install idris
-
-\end{SaveVerbatim}
-\useverb{install}
+\end{lstlisting}
 
 \noindent
 This will install the latest version released on Hackage, along with any dependencies. 
@@ -33,15 +30,12 @@ To check that installation has succeeded, and to write your first \Idris{}
 program, create a file called ``\texttt{hello.idr}'' containing the following
 text:
 
-\begin{SaveVerbatim}{hello}
-
+\begin{code}
 module Main
 
 main : IO ()
 main = putStrLn "Hello world"
-
-\end{SaveVerbatim}
-\useverb{hello}
+\end{code}
 
 \noindent
 If you are familiar with Haskell, it should be fairly clear what the program is doing
@@ -49,14 +43,11 @@ and how it works, but if not, we will explain the details later.
 You can compile the program to an executable by entering \texttt{idris hello.idr -o hello}
 at the shell prompt. This will create an executable called \texttt{hello}, which you can run:
 
-\begin{SaveVerbatim}{hello}
-
+\begin{lstlisting}[language=bash]
 $ idris hello.idr -o hello
 $ ./hello
 Hello world
-
-\end{SaveVerbatim}
-\useverb{hello}
+\end{lstlisting}
 
 \noindent
 Note that the \texttt{\$} indicates the shell prompt! Some useful options to the
@@ -74,21 +65,16 @@ interactive environment.
 Entering \texttt{idris} at the shell prompt starts up the interactive
 environment. You should see something like the following:
 
-\begin{SaveVerbatim}[commandchars=^\{\}]{prompt1}
-
+\begin{lstlisting}[escapechar=^]
 $ idris
      ____    __     _                                          
     /  _/___/ /____(_)____                                     
-    / // __  / ___/ / ___/     Version ^version{}
+    / // __  / ___/ / ___/     Version ^\version{}^
   _/ // /_/ / /  / (__  )      http://www.idris-lang.org/      
  /___/\__,_/_/  /_/____/       Type :? for help      
 
 Idris>
-
-\end{SaveVerbatim}
-%$
-
-\useverb{prompt1}
+\end{lstlisting}
 
 \noindent
 This gives a \texttt{ghci}-style interface which allows evaluation of expressions,
@@ -98,8 +84,8 @@ as shown in Figure \ref{cmds}. Figure \ref{run1} shows an example run in which
 \texttt{hello.idr} is loaded, the type of \texttt{main} is checked and then
 the program is compiled to the executable \texttt{hello}.
 
-\begin{SaveVerbatim}[commandchars=\\\{\}]{cmds}
-Idris version \version{}
+\begin{lstlisting}[caption={Interactive environment commands}, label=cmds, escapechar=^]
+Idris version ^\version{}^
 --------------------
 
    Command         Arguments   Purpose
@@ -132,16 +118,13 @@ Idris version \version{}
    :unset          <option>    Unset an option
    :colour :color  <option>    Turn REPL colours on or off; set a specific colour
    :q :quit                    Exit the Idris system
-\end{SaveVerbatim}
-\codefigs{cmds}{Interactive environment commands}
+\end{lstlisting}
 
-
-\begin{SaveVerbatim}[commandchars=^\{\}]{run1}
-
+\begin{lstlisting}[caption={Sample Interactive Run}, label=run1, escapechar=^]
 $ idris hello.idr
      ____    __     _                                          
     /  _/___/ /____(_)____                                     
-    / // __  / ___/ / ___/     Version ^version{}
+    / // __  / ___/ / ___/     Version ^\version{}^
   _/ // /_/ / /  / (__  )      http://www.idris-lang.org/      
  /___/\__,_/_/  /_/____/       Type :? for help        
 
@@ -153,10 +136,7 @@ main : IO ()
 Bye bye
 $ ./hello 
 Hello world
-
-\end{SaveVerbatim}
-
-\codefig{run1}{Sample interactive run}
+\end{lstlisting}
 
 \noindent
 Type checking a file, if successful, creates a bytecode version of the file (in

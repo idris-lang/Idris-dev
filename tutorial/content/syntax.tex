@@ -11,24 +11,18 @@ rules and \texttt{dsl} notation.
 We have seen \texttt{if...then...else} expressions, but these
 are not built in --- instead, we define a function in the prelude\ldots
 
-\begin{SaveVerbatim}{boolelim}
-
+\begin{code}
 boolElim : (x:Bool) -> |(t : a) -> |(f : a) -> a; 
 boolElim True  t e = t;
 boolElim False t e = e;
-
-\end{SaveVerbatim}
-\useverb{boolelim}
+\end{code}
 
 \noindent
 \ldots and extend the core syntax with a \texttt{syntax} declaration:
 
-\begin{SaveVerbatim}{syntaxif}
-
+\begin{code}
 syntax if [test] then [t] else [e] = boolElim test t e;
-
-\end{SaveVerbatim}
-\useverb{syntaxif}
+\end{code}
 
 \noindent
 The left hand side of a \texttt{syntax} declaration describes the syntax rule, and the right
@@ -56,15 +50,12 @@ constants, or bracketed expressions). Rules can use previously defined rules,
 but may not be recursive.  The following syntax extensions would therefore be
 valid:
 
-\begin{SaveVerbatim}{syntaxex}
-
+\begin{code}
 syntax [var] ":=" [val]              = Assign var val;
 syntax [test] "?" [t] ":" [e]        = if test then t else e;
 syntax select [x] from [t] where [w] = SelectWhere x t w;
 syntax select [x] from [t]           = Select x t;
-
-\end{SaveVerbatim}
-\useverb{syntaxex}
+\end{code}
 
 \noindent
 Syntax macros can be further restricted to apply only in patterns (i.e., only on the left
@@ -73,26 +64,20 @@ of a pattern match clause) by being marked as \texttt{pattern} or \texttt{term} 
 rules. For example, we might define an interval as follows, with a static check
 that the lower bound is below the upper bound using \texttt{so}:
 
-\begin{SaveVerbatim}{interval}
-
+\begin{code}
 data Interval : Type where
    MkInterval : (lower : Float) -> (upper : Float) -> 
                 so (lower < upper) -> Interval
-
-\end{SaveVerbatim}
-\useverb{interval}
+\end{code}
 
 \noindent
 We can define a syntax which, in patterns, always matches \texttt{oh} for the proof 
 argument, and in terms requires a proof term to be provided:
 
-\begin{SaveVerbatim}{intervalsyn}
-
+\begin{code}
 pattern syntax "[" [x] "..." [y] "]" = MkInterval x y oh
 term    syntax "[" [x] "..." [y] "]" = MkInterval x y ?bounds_lemma
-
-\end{SaveVerbatim}
-\useverb{intervalsyn} 
+\end{code} 
 
 \noindent
 In terms, the syntax \texttt{[x...y]} will generate a proof obligation
@@ -101,22 +86,19 @@ In terms, the syntax \texttt{[x...y]} will generate a proof obligation
 Finally, syntax rules may be used to introduce alternative binding forms. For
 exampe, a \texttt{for} loop binds a variable on each iteration:
 
-\begin{SaveVerbatim}{forloop}
-
+\begin{code}
 syntax for {x} "in" [xs] ":" [body] = forLoop xs (\x => body)
   
 main : IO ()
 main = do for x in [1..10]:
               putStrLn ("Number " ++ show x)
           putStrLn "Done!"
-
-\end{SaveVerbatim}
-\useverb{forloop} 
+\end{code} 
 
 \noindent
 Note that we have used the \texttt{\{x\}} form to state that \texttt{x} represents
 a bound variable, substituted on the right hand side. We have also put \texttt{"in"} in
 quotation marks since it is already a reserved word.
 
-\input{dsl}
+\input{./content/dsl}
 

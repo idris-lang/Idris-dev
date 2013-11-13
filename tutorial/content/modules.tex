@@ -10,8 +10,7 @@ tree type \texttt{BTree} (in a file \texttt{btree.idr}) and Figure
 \ref{bstmain} gives a main program (in a file \texttt{bmain.idr} which uses the
 \texttt{bst} module to sort a list.
 
-\begin{SaveVerbatim}{bstmod}
-
+\begin{code}[caption={Binary Tree module}, label=bstmod]
 module btree
 
 data BTree a = Leaf
@@ -29,12 +28,9 @@ toList (Node l v r) = toList l ++ (v :: toList r)
 toTree : Ord a => List a -> BTree a
 toTree [] = Leaf
 toTree (x :: xs) = insert x (toTree xs)
+\end{code}
 
-\end{SaveVerbatim}
-\codefig{bstmod}{Binary Tree module}
-
-\begin{SaveVerbatim}{bstmain}
-
+\begin{code}[caption={Binary Tree main program},label=bstmain]
 module Main
 
 import btree
@@ -42,9 +38,7 @@ import btree
 main : IO ()
 main = do let t = toTree [1,8,2,7,9,3] 
           print (toList t)
-
-\end{SaveVerbatim}
-\codefig{bstmain}{Binary Tree main program}
+\end{code}
 
 \noindent
 The same names can be defined in multiple modules. This is possible because in practice names
@@ -96,8 +90,7 @@ to be \texttt{private}. For our \texttt{btree} module, it makes sense for the
 tree data type and the functions to be exported as \texttt{abstract}, as we see in
 Figure \ref{bstmodp}.
 
-\begin{SaveVerbatim}{bstmodp}
-
+\begin{code}[caption={Binary Tree module, with export modifiers}, label=bstmodp]
 module btree
 
 abstract data BTree a = Leaf
@@ -118,20 +111,15 @@ abstract
 toTree : Ord a => List a -> BTree a
 toTree [] = Leaf
 toTree (x :: xs) = insert x (toTree xs)
-
-\end{SaveVerbatim}
-\codefig{bstmodp}{Binary Tree module, with export modifiers}
+\end{code}
 
 \noindent
 Finally, the default export mode can be changed with the \texttt{\%access} directive,
 for example:
 
-\begin{SaveVerbatim}{access}
-
+\begin{code}
 %access abstract
-
-\end{SaveVerbatim}
-\useverb{access}
+\end{code}
 
 \noindent
 In this case, any function with no access modifier will be exported as \texttt{abstract},
@@ -143,8 +131,7 @@ Defining a module also defines a namespace implicitly. However, namespaces can a
 be given \emph{explicitly}. This is most useful if you wish to overload names within
 the same module:
 
-\begin{SaveVerbatim}{nsfoo}
-
+\begin{code}
 module foo
 
 namespace x
@@ -154,78 +141,61 @@ namespace x
 namespace y
   test : String -> String
   test x = x ++ x 
-
-\end{SaveVerbatim}
-\useverb{nsfoo}
+\end{code}
 
 \noindent
 This (admittedly contrived) module defines two functions with fully qualified names
 \texttt{foo.x.test} and \texttt{foo.y.test}, which can be disambiguated by their
 types:
 
-\begin{SaveVerbatim}{usetest}
-
+\begin{lstlisting}
 *foo> test 3 
 6 : Int
 *foo> test "foo" 
 "foofoo" : String
-
-\end{SaveVerbatim}
-\useverb{usetest}
+\end{lstlisting}
 
 \subsection{Parameterised blocks}
 
 Groups of functions can be parameterised over a number of arguments using a
 \texttt{parameters} declaration, for example:
 
-\begin{SaveVerbatim}{paramex}
-
+\begin{code}
 parameters (x : Nat, y : Nat)
     addAll : Nat -> Nat
     addAll z = x + y + z
-
-\end{SaveVerbatim}
-\useverb{paramex}
+\end{code}
 
 \noindent
 The effect of a \texttt{parameters} block is to add the declared parameters to every
 function, type and data constructor within the block. Outside the block, the parameters
 must be given explicitly:
 
-\begin{SaveVerbatim}{addall}
-
+\begin{lstlisting}
 *params> :t addAll
 addAll : Nat -> Nat -> Nat -> Nat
-
-\end{SaveVerbatim}
-\useverb{addall}
+\end{lstlisting}
 
 \noindent
 Parameters blocks can be nested, and can also include data declarations, in
 which case the parameters are added explicitly to all type and data
 constructors. They may also be dependent types with implicit arguments:
 
-\begin{SaveVerbatim}{paramdata}
-
+\begin{code}
 parameters (xs : Vect x a, y : Nat)
     data Vects : Type -> Type where
          MkVects : Vect a y -> Vects a
   
     append : Vects a -> Vect (x + y) a
     append (MkVects ys) = xs ++ ys
-
-\end{SaveVerbatim}
-\useverb{paramdata}
+\end{code}
 
 \noindent
 To use \texttt{Vects} or \texttt{append} outside the block, we must also
 give the \texttt{xs} and \texttt{y} arguments. Here, we can use placeholders for
 the values which can be inferred by the type checker:
 
-\begin{SaveVerbatim}{paramuse}
-
+\begin{lstlisting}
 *params> show (append _ _ (MkVects [1,2,3] _ [4,5,6]))
 "[1, 2, 3, 4, 5, 6]" : String
-
-\end{SaveVerbatim}
-\useverb{paramuse}
+\end{lstlisting}

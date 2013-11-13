@@ -1,5 +1,4 @@
 \section{Example: The Well-Typed Interpreter}
-
 \label{sect:interp}
 
 In this section, we'll use the features we've seen so far to write a larger
@@ -9,27 +8,21 @@ construct. We will use the dependent type system to ensure that any programs
 which can be represented are well-typed. First, let us define the types in the
 language. We have integers, booleans, and functions, represented by \texttt{Ty}:
 
-\begin{SaveVerbatim}{tydecl}
-
+\begin{code}
 data Ty = TyInt | TyBool | TyFun Ty Ty
-
-\end{SaveVerbatim}
-\useverb{tydecl}
+\end{code}
 
 \noindent
 We can write a function to translate these representations to a concrete \Idris{}
 type --- remember that types are first class, so can be calculated just like
 any other value:
 
-\begin{SaveVerbatim}{interpty}
-
+\begin{code}
 interpTy : Ty -> Type
 interpTy TyInt       = Int
 interpTy TyBool      = Bool
 interpTy (TyFun A T) = interpTy A -> interpTy T
-
-\end{SaveVerbatim}
-\useverb{interpty}
+\end{code}
 
 \noindent
 We're going to define a representation of our language in such a way that only
@@ -38,31 +31,24 @@ expressions by their type and the types of local variables (the context), which
 we'll be using regularly as an implicit argument, so we define everything
 in a \texttt{using} block:
 
-\begin{SaveVerbatim}{usingg}
-
+\begin{code}
 using (G:Vect n Ty)
-
-\end{SaveVerbatim}
-\useverb{usingg}
+\end{code}
 
 \noindent
 The full representation of expressions is given in Figure \ref{exprty}. They are
 indexed by the types of the local variables, and the type of the expression itself:
 
-\begin{SaveVerbatim}{exprdecl}
-
+\begin{code}
 data Expr : Vect n Ty -> Ty -> Type
-
-\end{SaveVerbatim}
-\useverb{exprdecl}
+\end{code}
 
 \noindent
 Since expressions are indexed by their type, we can read the typing rules of
 the language from the definitions of the constructors. Let us look at each
 constructor in turn.
 
-\begin{SaveVerbatim}{exprty}
-
+\begin{code}[caption={Expression representation},label=exprty]
 data HasType : (i : Fin n) -> Vect n Ty -> Ty -> Type where
     stop : HasType fZ (t :: G) t
     pop  : HasType k G t -> HasType (fS k) (u :: G) t
@@ -75,9 +61,7 @@ data Expr : Vect n Ty -> Ty -> Type where
     Op  : (interpTy a -> interpTy b -> interpTy c) -> Expr G a -> Expr G b -> 
           Expr G c
     If  : Expr G TyBool -> Expr G a -> Expr G a -> Expr G a
-  
-\end{SaveVerbatim}
-\codefig{exprty}{Expression representation}
+\end{code}
 
 \noindent
 We use a nameless representation for variables --- they are \emph{de Bruijn indexed}.
@@ -85,14 +69,11 @@ Variables are represented by a proof of their membership in the context,
 \texttt{HasType i G T}, which is a proof that variable \texttt{i} in context 
 \texttt{G} has type \texttt{T}. This is defined as follows:
 
-\begin{SaveVerbatim}{hastype}
-
+\begin{code}
 data HasType : (i : Fin n) -> Vect n Ty -> Ty -> Type where
     stop : HasType fZ (t :: G) t
     pop  : HasType k G t -> HasType (fS k) (u :: G) t
-
-\end{SaveVerbatim}
-\useverb{hastype}
+\end{code}
 
 \noindent
 We can treat \remph{stop} as a proof that the most recently defined variable is well-typed,
@@ -101,12 +82,9 @@ well-typed, so is the \texttt{n+1}th. In practice, this means we use \texttt{sto
 refer to the most recently defined variable, \texttt{pop stop} to refer to the next, and so on,
 via the \texttt{Var} constructor:
 
-\begin{SaveVerbatim}{varcon}
-
+\begin{code}
 Var : HasType i G t -> Expr G t
-
-\end{SaveVerbatim}
-\useverb{varcon}
+\end{code}
 
 \noindent
 So, in an expression \texttt{$\backslash$x. $\backslash$y. x y}, 
@@ -118,58 +96,43 @@ definition and the use.
 \noindent
 A value carries a concrete representation of an integer: 
 
-\begin{SaveVerbatim}{valcon}
-
+\begin{code}
 Val : (x : Int) -> Expr G TyInt
-
-\end{SaveVerbatim}
-\useverb{valcon}
+\end{code}
 
 \noindent
 A lambda creates a function. In the scope of a function of type \texttt{a -> t}, there is
 a new local variable of type \texttt{a}, which is expressed by the context index:
 
-\begin{SaveVerbatim}{lamcon}
-
+\begin{code}
 Lam : Expr (a :: G) t -> Expr G (TyFun a t)
-
-\end{SaveVerbatim}
-\useverb{lamcon}
+\end{code}
 
 \noindent
 Function application produces a value of type \texttt{t} given a function from 
 \texttt{a} to \texttt{t}
 and a value of type \texttt{a}:
 
-\begin{SaveVerbatim}{appcon}
-
+\begin{code}
 App : Expr G (TyFun a t) -> Expr G a -> Expr G t
-
-\end{SaveVerbatim}
-\useverb{appcon}
+\end{code}
 
 \noindent
 We allow arbitrary binary operators, where the type of the operator
 informs what the types of the arguments must be:
 
-\begin{SaveVerbatim}{opcon}
-
+\begin{code}
 Op  : (interpTy a -> interpTy b -> interpTy c) -> Expr G a -> Expr G b -> 
       Expr G c
-
-\end{SaveVerbatim}
-\useverb{opcon}
+\end{code}
 
 \noindent
 Finally, if expressions make a choice given a boolean. Each branch must
 have the same type:
 
-\begin{SaveVerbatim}{ifcon}
-
+\begin{code}
 If  : Expr G TyBool -> Expr G a -> Expr G a -> Expr G a
-
-\end{SaveVerbatim}
-\useverb{ifcon}
+\end{code}
 
 \noindent
 When we evaluate an \texttt{Expr}, we'll need to know the values in scope, as well as
@@ -179,8 +142,7 @@ to the vector of local variable types, we use the usual \texttt{::} and \texttt{
 constructors so that we can use the usual list syntax. Given a proof that a variable
 is defined in the context, we can then produce a value from the environment:
 
-\begin{SaveVerbatim}{envtype}
-
+\begin{code}
 data Env : Vect n Ty -> Type where
     Nil  : Env Nil
     (::) : interpTy a -> Env G -> Env (a :: G)
@@ -188,12 +150,9 @@ data Env : Vect n Ty -> Type where
 lookup : HasType i G t -> Env G -> interpTy t
 lookup stop    (x :: xs) = x
 lookup (pop k) (x :: xs) = lookup k xs
+\end{code}
 
-\end{SaveVerbatim}
-\useverb{envtype}
-
-\begin{SaveVerbatim}{interpdef}
-
+\begin{code}[caption={Intepreter definition},label=interpdef]
 interp : Env G -> Expr G t -> interpTy t
 interp env (Var i)     = lookup i env
 interp env (Val x)     = x
@@ -202,65 +161,48 @@ interp env (App f s)   = interp env f (interp env s)
 interp env (Op op x y) = op (interp env x) (interp env y)
 interp env (If x t e)  = if interp env x then interp env t 
                                          else interp env e
-
-\end{SaveVerbatim}
-\codefig{interpdef}{Intepreter definition}
+\end{code}
 
 \noindent
 Given this, an interpreter (Figure \ref{interpdef})
 is a function which translates an \texttt{Expr} into a
 concrete \Idris{} value with respect to a specific environment:
 
-\begin{SaveVerbatim}{interpty}
-
+\begin{code}
 interp : Env G -> Expr G t -> interpTy t
-
-\end{SaveVerbatim}
-\useverb{interpty}
+\end{code}
 
 \noindent
 To translate a variable, we simply look it up in the environment:
 
-\begin{SaveVerbatim}{varinterp}
-
+\begin{code}
 interp env (Var i) = lookup i env
-
-\end{SaveVerbatim}
-\useverb{varinterp}
+\end{code}
 
 \noindent
 To translate a value, we just return the concrete representation of the value:
 
-\begin{SaveVerbatim}{valinterp}
-
+\begin{code}
 interp env (Val x) = x
-
-\end{SaveVerbatim}
-\useverb{valinterp}
+\end{code}
 
 \noindent
 Lambdas are more interesting. In this case, we construct a function which
 interprets the scope of the lambda with a new value in the environment. So, a
 function in the object language is translated to an \Idris{} function:
 
-\begin{SaveVerbatim}{laminterp}
-
+\begin{code}
 interp env (Lam sc) = \x => interp (x :: env) sc
-
-\end{SaveVerbatim}
-\useverb{laminterp}
+\end{code}
 
 \noindent
 For an application, we interpret the function and its argument and apply it
 directly. We know that interpreting \texttt{f} must produce a function, because of its
 type:
 
-\begin{SaveVerbatim}{appinterp}
-
+\begin{code}
 interp env (App f s) = interp env f (interp env s)
-
-\end{SaveVerbatim}
-\useverb{appinterp}
+\end{code}
 
 \noindent
 Operators and interpreters are, again, direct translations into the equivalent
@@ -268,39 +210,30 @@ Operators and interpreters are, again, direct translations into the equivalent
 and for \texttt{If}, we apply the \Idris{} \texttt{if...then...else} construct
 directly.
 
-\begin{SaveVerbatim}{opinterp}
-
+\begin{code}
 interp env (Op op x y) = op (interp env x) (interp env y)
 interp env (If x t e)  = if interp env x then interp env t 
                                          else interp env e
-
-\end{SaveVerbatim}
-\useverb{opinterp}
+\end{code}
 
 \noindent
 We can make some simple test functions. Firstly, adding two inputs
 \texttt{$\backslash$x. $\backslash$y. y + x} is written as follows:
 
-\begin{SaveVerbatim}{addtest}
-
+\begin{code}
 add : Expr G (TyFun TyInt (TyFun TyInt TyInt))
 add = Lam (Lam (Op (+) (Var stop) (Var (pop stop))))
-  
-\end{SaveVerbatim}
-\useverb{addtest}
+\end{code}
 
 \noindent
 More interestingly, we can write a factorial function. First, we write a \emph{lazy}
 version of the \texttt{App} constructor, so that the recursive branch will only
 be evaluated if necessary:
 
-\begin{SaveVerbatim}{lazyapp}
- 
+\begin{code} 
 app : |(f : Expr G (TyFun a t)) -> Expr G a -> Expr G t
 app = \f, a => App f a
-
-\end{SaveVerbatim}
-\useverb{lazyapp}
+\end{code}
 
 \noindent
 The vertical bar annotation before the \texttt{f} argument indicates that this
@@ -310,28 +243,22 @@ Then \texttt{fact}
 (i.e. \texttt{$\backslash$x. if (x == 0) then 1 else (fact (x-1) * x)})
 is written as follows:
 
-\begin{SaveVerbatim}{facttest}
-
+\begin{code}
 fact : Expr G (TyFun TyInt TyInt)
 fact = Lam (If (Op (==) (Var stop) (Val 0))
                (Val 1) (Op (*) (app fact (Op (-) (Var stop) (Val 1))) 
                                (Var stop)))
-
-\end{SaveVerbatim}
-\useverb{facttest}
+\end{code}
 
 To finish, we write a \texttt{main} program which interprets the factorial function
 on user input:
 
-\begin{SaveVerbatim}{factmain}
-
+\begin{code}
 main : IO ()
 main = do putStr "Enter a number: "
           x <- getLine
           print (interp [] fact (cast x)) 
-
-\end{SaveVerbatim}
-\useverb{factmain}
+\end{code}
 
 \noindent
 Here, \texttt{cast} is an overloaded function which converts a value from one
@@ -339,12 +266,11 @@ type to another if possible. Here, it converts a string to
 an integer, giving 0 if the input is invalid. An example run of this program
 at the \Idris{} interactive environment is shown in Figure \ref{factrun}.
 
-\begin{SaveVerbatim}[commandchars=^\{\}]{factrun}
-
+\begin{lstlisting}[caption={Running the well-typed interpreter}, label=factrun, escapechar=^]
 $ idris interp.idr  
      ____    __     _                                          
     /  _/___/ /____(_)____                                     
-    / // __  / ___/ / ___/     Version ^version{}
+    / // __  / ___/ / ___/     Version ^\version{}^
   _/ // /_/ / /  / (__  )      http://www.idris-lang.org/      
  /___/\__,_/_/  /_/____/       Type :? for help                
 
@@ -353,22 +279,17 @@ Type checking ./interp.idr
 Enter a number: 6 
 720
 *interp> 
-
-\end{SaveVerbatim}
-\codefig{factrun}{Running the well-typed interpreter}
+\end{lstlisting}
 
 \subsubsection*{Aside: \texttt{cast}}
 
 The prelude defines a type class \texttt{Cast} which allows conversion between
 types:
 
-\begin{SaveVerbatim}{castclass}
-
+\begin{code}
 class Cast from to where
     cast : from -> to
-
-\end{SaveVerbatim}
-\useverb{castclass} 
+\end{code} 
 
 \noindent
 It is a \emph{multi-parameter} type class, defining the source type and object
@@ -381,34 +302,31 @@ they make sense.
 
 Recall the \texttt{so} data type:
 
-\useverb{sotype}
+\begin{code}
+data so : Bool -> Type where
+  oh : so True
+\end{code}
 
 \noindent
 This requires its parameter to be a \texttt{True} value. One simple application of this
 is to perform unit testing of functions at compile time. For example, we know that 
 \texttt{4! = 24} so we can set up a test case as follows:
 
-\begin{SaveVerbatim}{unitTestFac}
-
+\begin{code}
 unitTestFac : so (interp [] fact 4 == 24)
 unitTestFac = oh
-
-\end{SaveVerbatim}
-\useverb{unitTestFac} 
+\end{code} 
 
 \noindent
 For the program to compile, the test case must pass. If we change \texttt{24} to \texttt{25},
 say, we will get an error message like the following:
 
-\begin{SaveVerbatim}{unitTestErr}
-
+\begin{lstlisting}
 Type checking ./interp.idr
 interp.idr:64:Can't unify so True with so False
 
 Specifically:
 	 Can't unify True with False
-
-\end{SaveVerbatim}
-\useverb{unitTestErr} 
+\end{lstlisting} 
 
 

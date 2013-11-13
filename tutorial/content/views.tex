@@ -7,14 +7,11 @@ by the value of others. For example, if we were to write down the implicit
 length arguments to \texttt{(++)}, we'd see that the form of the length argument was
 determined by whether the vector was empty or not:
 
-\begin{SaveVerbatim}{appdep}
-
+\begin{code}
 (++) : Vect n a -> Vect m a -> Vect (n + m) a
 (++) {n=Z}   []        ys = ys
 (++) {n=S k} (x :: xs) ys = x :: xs ++ ys
-
-\end{SaveVerbatim}
-\useverb{appdep}
+\end{code}
 
 \noindent
 If \texttt{n} was a successor in the \texttt{[]} case, or zero in the 
@@ -32,15 +29,12 @@ we know about the forms of other values. In its simplest form, the \texttt{with}
 adds another argument to the function being defined, e.g. we have already seen
 a vector filter function, defined as follows:
 
-\begin{SaveVerbatim}{vfilterdef}
-
+\begin{code}
 filter : (a -> Bool) -> Vect n a -> (p ** Vect p a)
 filter p [] = ( _ ** [] )
 filter p (x :: xs) with (filter p xs)
   | ( _ ** xs' ) = if (p x) then ( _ ** x :: xs' ) else ( _ ** xs' )
-
-\end{SaveVerbatim}
-\useverb{vfilterdef}
+\end{code}
 
 \noindent
 Here, the \texttt{with} clause allows us to deconstruct the result of 
@@ -54,26 +48,20 @@ testing another. For example, a \texttt{Nat} is either even or odd. If it's even
 be the sum of two equal \texttt{Nat}s. Otherwise, it is the sum of two equal \texttt{Nat}s 
 plus one:
 
-\begin{SaveVerbatim}{parity}
-
+\begin{code}
 data Parity : Nat -> Type where
    even : Parity (n + n)
    odd  : Parity (S (n + n))
-
-\end{SaveVerbatim}
-\useverb{parity}
+\end{code}
 
 \noindent
 We say \texttt{Parity} is a \emph{view} of \texttt{Nat}. 
 It has a \emph{covering function} which tests whether
 it is even or odd and constructs the predicate accordingly.
 
-\begin{SaveVerbatim}{parityty}
-
+\begin{code}
 parity : (n:Nat) -> Parity n
-
-\end{SaveVerbatim}
-\useverb{parityty}
+\end{code}
 
 \label{sect:nattobin}
 
@@ -82,16 +70,13 @@ We'll come back to the definition of \texttt{parity} shortly. We can use it
 to write a function which converts a natural number to a list of binary digits
 (least significant first) as follows, using the \texttt{with} rule:
 
-\begin{SaveVerbatim}{natToBin}
-
+\begin{code}
 natToBin : Nat -> List Bool
 natToBin Z = Nil
 natToBin k with (parity k)
    natToBin (j + j)     | even = False :: natToBin j
    natToBin (S (j + j)) | odd  = True  :: natToBin j
-
-\end{SaveVerbatim}
-\useverb{natToBin}
+\end{code}
 
 \noindent
 The value of the result of \texttt{parity k} affects the form of \texttt{k}, 

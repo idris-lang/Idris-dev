@@ -1,11 +1,25 @@
-%\usepackage{amstex}
-\usepackage{amssymb}
-\usepackage{latexsym}
-\usepackage{eepic}
+%% ------------------------------------------- [ Functional Programming Macros ]
+%% A Package to provide support for functional programming.
+%%
+\NeedsTeXFormat{LaTeX2e}[1994/06/01]
+\ProvidesPackage{fpmacros}[2013/12/17 fpmacros]
+%% ------------------------------------------------------- [ Required Packages ]
+\RequirePackage{ifthen}
+\RequirePackage{amssymb}
+\RequirePackage{latexsym}
+\RequirePackage{eepic}
+\RequirePackage{fancyvrb}
+%% ----------------------------------------------------- [ Option Delcarations ]
+\newboolean{useverb}
+\setboolean{useverb}{true}
 
+\DeclareOption{noverb}{%
+  \setboolean{useverb}{false}
+}
 
-%%%%%%%%% INFERENCE RULES
+\ProcessOptions\relax
 
+%% --------------------------------------------------------- [ Inference Rules ]
 \newlength{\rulevgap}
 \setlength{\rulevgap}{0.05in}
 \newlength{\ruleheight}
@@ -78,8 +92,7 @@
 \setlength{\unitlength}{0.0005in}
 \begin{picture}(69,180)(0,12)
 \blacken\path(12,192)(12,12)(57,102)
-	(12,192)(12,192)
-\path(12,192)(12,12)(57,102)
+	(12,192)(12,192)\path(12,192)(12,12)(57,102)
 	(12,192)(12,192)
 \end{picture}
 }
@@ -305,18 +318,20 @@
 
 \newcommand{\DBOX}[2]{\fbox{\parbox{#1}{\textbf{Definition:}#2}}}
 
-\newcommand{\useverbtb}[1]{\begin{tiny}\BUseVerbatim{#1}\end{tiny}}
-\newcommand{\useverb}[1]{\BUseVerbatim{#1}}
-\newcommand{\useverbs}[1]{\begin{small}\BUseVerbatim{#1}\end{small}}
-\newcommand{\useverbb}[1]{\begin{small}\BUseVerbatim{#1}\end{small}}
+\ifthenelse{\boolean{useverb}}{%
+    \newcommand{\useverbtb}[1]{\begin{tiny}\BUseVerbatim{#1}\end{tiny}}
+    \newcommand{\useverb}[1]{\BUseVerbatim{#1}}
+    \newcommand{\useverbs}[1]{\begin{small}\BUseVerbatim{#1}\end{small}}
+    \newcommand{\useverbb}[1]{\begin{small}\BUseVerbatim{#1}\end{small}}
+    \newcommand{\codefig}[2]{\begin{figure}[h]\useverb{#1}\caption{#2}\label{#1}\end{figure}}
+    \newcommand{\codefigs}[2]{\begin{figure}[h]\useverbs{#1}\caption{#2}\label{#1}\end{figure}}
+    \newcommand{\codefigt}[2]{\begin{figure}[t]\useverb{#1}\caption{#2}\label{#1}\end{figure}}
+    \newcommand{\codefigb}[2]{\begin{figure}[b]\useverb{#1}\caption{#2}\label{#1}\end{figure}}
+    \newcommand{\codefigtc}[2]{\begin{figure*}[t]\useverb{#1}\caption{#2}\label{#1}\end{figure}}
+}{}
 
 \newcommand{\diagfig}[3]{\begin{figure}[h]\begin{center}\includegraphics[width=#1]{#2}\end{center}
 \caption{#3}\label{#2}\end{figure}}
-\newcommand{\codefig}[2]{\begin{figure}[h]\useverb{#1}\caption{#2}\label{#1}\end{figure}}
-\newcommand{\codefigs}[2]{\begin{figure}[h]\useverbs{#1}\caption{#2}\label{#1}\end{figure}}
-\newcommand{\codefigt}[2]{\begin{figure}[t]\useverb{#1}\caption{#2}\label{#1}\end{figure}}
-\newcommand{\codefigb}[2]{\begin{figure}[b]\useverb{#1}\caption{#2}\label{#1}\end{figure}}
-\newcommand{\codefigtc}[2]{\begin{figure*}[t]\useverb{#1}\caption{#2}\label{#1}\end{figure}}
 \newcommand{\diagfigtc}[3]{\begin{figure*}[t]\begin{center}\includegraphics[width=#1]{#2}\end{center}
 \caption{#3}\label{#2}\end{figure*}}
 
@@ -324,9 +339,12 @@
 \newcommand{\FFIG}[3]{\begin{figure}\begin{center}\DM{#1}\end{center}\caption{#2}\label{#3}\end{figure}}
 \newcommand{\FFIGB}[3]{\begin{figure}[b]\begin{center}\DM{#1}\end{center}\caption{#2}\label{#3}\end{figure}}
 \newcommand{\FFIGTC}[3]{\begin{figure*}[t]\begin{center}\DM{#1}\end{center}\caption{#2}\label{#3}\end{figure*}}
-\newcommand{\VFIG}[3]{\begin{figure}[h]\begin{boxedverbatim}#1\end{boxedverbatim}\caption{#2}\label{#3}\end{figure}}
 \newcommand{\PFIG}[3]{\begin{figure}[p]\begin{center}\fbox{\DM{#1}}\end{center}\caption{#2}\label{#3}\end{figure}}
 \newcommand{\CFIG}[3]{\begin{figure}[h]\begin{center}\DM{#1}\end{center}\caption{#2}\label{#3}\end{figure}}
+
+\ifthenelse{\boolean{useverb}}{%
+  \newcommand{\VFIG}[3]{\begin{figure}[h]\begin{boxedverbatim}#1\end{boxedverbatim}\caption{#2}\label{#3}\end{figure}}
+}{}
 
 \newcommand{\TFIG}[4]{\begin{figure}[h]\begin{center}\begin{tabular}{#1}#2\end{tabular}\end{center}\caption{#3}\label{#4}\end{figure}}
 \newcommand{\TFIGTC}[4]{\begin{figure*}[t]\begin{center}\begin{tabular}{#1}#2\end{tabular}\end{center}\caption{#3}\label{#4}\end{figure*}}
@@ -676,8 +694,9 @@ Program & Version & Instructions & Thunks & Memory Accesses & Cells \\
 \newcommand{\falsecase}{\Cases{\False}}
 
 % Code
-\newcommand{\Haskell}[1]{\begin{quotation}\begin{verbatim}#1\end{verbatim}\end{quotation}}
-
+\ifthenelse{\boolean{useverb}}{%
+  \newcommand{\Haskell}[1]{\begin{quotation}\begin{verbatim}#1\end{verbatim}\end{quotation}}
+}{}
 % Quicksort
 
 \newcommand{\QSView}{\TC{QuickSort}}
@@ -1063,4 +1082,5 @@ Program & Version & Instructions & Thunks & Memory Accesses & Cells \\
 \newcommand{\direct}[1]{\texttt{\%#1}}
 
 \newcommand{\Feature}[1]{\textbf{Remark:}}
-%\newcommand{\Remark}[1]{\textbf{Remark:}}
+
+\endinput

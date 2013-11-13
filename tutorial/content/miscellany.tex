@@ -10,7 +10,9 @@ foreign function interface, type providers, code generation and the universe hie
 We have already seen implicit arguments, which allows arguments to be omitted when
 they can be inferred by the type checker, e.g.
 
-\useverb{vindeximpty}
+\begin{code}
+index : {a:Type} -> {n:Nat} -> Fin n -> Vect n a -> a
+\end{code}
 
 \noindent
 In other situations, it may be possible to infer arguments not by type checking but
@@ -18,17 +20,14 @@ by searching the context for an appropriate value, or constructing a proof. For 
 the following definition of \texttt{head} which requires a proof that the list is
 non-empty
 
-\begin{SaveVerbatim}{safehead}
-
+\begin{code}
 isCons : List a -> Bool
 isCons [] = False
 isCons (x :: xs) = True
 
 head : (xs : List a) -> (isCons xs = True) -> a
 head (x :: xs) _ = x
-
-\end{SaveVerbatim}
-\useverb{safehead} 
+\end{code} 
 
 \noindent
 If the list is statically known to be non-empty, either because its value is known or
@@ -36,13 +35,10 @@ because a proof already exists in the context, the proof can be constructed
 automatically. Auto implicit arguments allow this to happen silently. We define
 \texttt{head} as follows:
 
-\begin{SaveVerbatim}{headauto}
-
+\begin{code}
 head : (xs : List a) -> {auto p : isCons xs = True} -> a
 head (x :: xs) = x
-
-\end{SaveVerbatim}
-\useverb{headauto} 
+\end{code} 
 
 \noindent
 The \texttt{auto} annotation on the implicit argument means that \Idris{} will
@@ -52,25 +48,19 @@ if a proof is not found.
 Now when \texttt{head} is applied, the proof can be omitted. In the case that a proof
 is not found, it can be provided explicitly as normal:
 
-\begin{SaveVerbatim}{headapp}
-
+\begin{code}
 head xs {p = ?headProof} 
-
-\end{SaveVerbatim}
-\useverb{headapp} 
+\end{code} 
 
 \noindent
 More generally, we can fill in implicit arguments with a default value by annotating
 them with \texttt{default}. The definition above is equivalent to:
 
-\begin{SaveVerbatim}{defimp}
-
+\begin{code}
 head : (xs : List a) -> 
        {default proof { trivial; } p : isCons xs = True} -> a
 head (x :: xs) = x
-
-\end{SaveVerbatim}
-\useverb{defimp} 
+\end{code} 
 
 \subsection{Implicit conversions}
 
@@ -79,16 +69,13 @@ automatic conversion of values from one type to another when required to make
 a term type correct. This is intended to increase convenience and reduce
 verbosity. A contrived but simple example is the following:
 
-\begin{SaveVerbatim}{implicit}
-
+\begin{code}
 implicit intString : Int -> String
 intString = show
   
 test : Int -> String
 test x = "Number " ++ x
-
-\end{SaveVerbatim}
-\useverb{implicit}
+\end{code}
 
 \noindent
 In general, we cannot append an \texttt{Int} to a \texttt{String}, but the
@@ -111,17 +98,14 @@ extension of \texttt{.lidr} then it is assumed to be a literate file. In literat
 programs, everything is assumed to be a comment unless the line begins with a
 greater than sign \texttt{>}, for example:
 
-\begin{SaveVerbatim}{litidr}
-
+\begin{lstlisting}
 > module literate
 
 This is a comment. The main program is below
 
 > main : IO ()
 > main = putStrLn "Hello literate world!\n"
-
-\end{SaveVerbatim}
-\useverb{litidr}
+\end{lstlisting}
 
 \noindent
 An additional restriction is that there must be a blank line between a program
@@ -137,12 +121,9 @@ as part of the prelude. For this, we assume a certain amount of knowledge of
 C and the \texttt{gcc} compiler. First, we define a datatype which describes the external
 types we can handle:
 
-\begin{SaveVerbatim}{foreignty}
-
+\begin{code}
 data FTy = FInt | FFloat | FChar | FString | FPtr | FUnit
-
-\end{SaveVerbatim}
-\useverb{foreignty}
+\end{code}
 
 \noindent
 Each of these corresponds directly to a C type. Respectively: \texttt{int},
@@ -150,8 +131,7 @@ Each of these corresponds directly to a C type. Respectively: \texttt{int},
 There is also a translation to a concrete \Idris{} type, described by the
 following function:
 
-\begin{SaveVerbatim}{interpfty}
-
+\begin{code}
 interpFTy : FTy -> Type
 interpFTy FInt    = Int
 interpFTy FFloat  = Float
@@ -159,62 +139,49 @@ interpFTy FChar   = Char
 interpFTy FString = String
 interpFTy FPtr    = Ptr
 interpFTy FUnit   = ()
-
-\end{SaveVerbatim}
-\useverb{interpfty}
+\end{code}
 
 \noindent
 A foreign function is described by a list of input types and a return type, which
 can then be converted to an \Idris{} type:
 
-\begin{SaveVerbatim}{ffunty}
-
+\begin{code}
 ForeignTy : (xs:List FTy) -> (t:FTy) -> Type
-
-\end{SaveVerbatim}
-\useverb{ffunty}
+\end{code}
 
 \noindent
 A foreign function is assumed to be impure, so \texttt{ForeignTy} builds an
 \texttt{IO} type, for example:
 
-\begin{SaveVerbatim}{ftyex}
-
+\begin{lstlisting}
 Idris> ForeignTy [FInt, FString] FString
 Int -> String -> IO String : Type
 
 Idris> ForeignTy [FInt, FString] FUnit 
 Int -> String -> IO () : Type
-
-\end{SaveVerbatim}
-\useverb{ftyex}
+\end{lstlisting}
 
 \noindent
 We build a call to a foreign function by giving the name of the function, a list of
 argument types and the return type. The built in function \texttt{mkForeign}
 converts this description to a function callable by \Idris{}
 
-\begin{SaveVerbatim}{mkForeign}
-
+\begin{code}
 data Foreign : Type -> Type where
     FFun : String -> (xs:List FTy) -> (t:FTy) -> 
            Foreign (ForeignTy xs t)
 
 mkForeign : Foreign x -> x
-
-\end{SaveVerbatim}
-\useverb{mkForeign}
+\end{code}
 
 \noindent
 For example, the \texttt{putStr} function is implemented as follows, as a call to 
 an external function \texttt{putStr} defined in the run-time system:
 
-\begin{SaveVerbatim}{putStrex}
-
+\begin{code}
 putStr : String -> IO ()
 putStr x = mkForeign (FFun "putStr" [FString] FUnit) x
-\end{SaveVerbatim}
-\useverb{putStrex}
+\end{code}
 
 \subsubsection*{Include and linker directives}
 
@@ -241,14 +208,11 @@ tested using the special REPL command \texttt{:x EXPR}, and C libraries can be
 dynamically loaded in the interpreter by using the \texttt{:dynamic} command
 or the \texttt{\%dynamic} directive. For example:
 
-\begin{SaveVerbatim}{xdynamic}
-
+\begin{lstlisting}
 Idris> :dynamic libm.so
 Idris> :x unsafePerformIO ((mkForeign (FFun "sin" [FFloat] FFloat)) 1.6)
 0.9995736030415051 : Float
-
-\end{SaveVerbatim}
-\useverb{xdynamic}
+\end{lstlisting}
 
 \subsection{Type Providers}
 Idris type providers, inspired by F\#'s type providers, are a means of making
@@ -265,14 +229,10 @@ including as an index in types.
 
 Type providers are still an experimental extension. To enable the extension,
 use the \texttt{\%language} directive:
-\begin{SaveVerbatim}{languageProv}
 
+\begin{code}
 %language TypeProviders
-
-\end{SaveVerbatim}
-
-\useverb{languageProv}
-
+\end{code}
 
 A provider \texttt{p} for some type \texttt{t} is simply an expression of type
 \texttt{IO (Provider t)}. The \texttt{\%provide} directive causes the type
@@ -282,8 +242,7 @@ reads a text file. If the file consists of the string \texttt{"Int"}, then the
 type \texttt{Int} will be provided. Otherwise, it will provide the type
 \texttt{Nat}.
 
-\begin{SaveVerbatim}{fromFile}
-
+\begin{code}
 strToType : String -> Type
 strToType "Int" = Int
 strToType _ = Nat
@@ -291,21 +250,16 @@ strToType _ = Nat
 fromFile : String -> IO (Provider Type)
 fromFile fname = do str <- readFile fname
                     return (Provide (strToType (trim str)))
-
-\end{SaveVerbatim}
-\useverb{fromFile}
+\end{code}
 
 We then use the \texttt{\%provide} directive:
 
-\begin{SaveVerbatim}{fromFileUse}
-
+\begin{code}
 %provide (T1 : Type) with fromFile "theType"
 
 foo : T1
 foo = 2
-
-\end{SaveVerbatim}
-\useverb{fromFileUse}
+\end{code}
 
 \noindent
 If the file named \texttt{theType} consists of the word \texttt{Int}, then
@@ -317,13 +271,10 @@ then \texttt{T1} is defined as \texttt{t}. Otherwise, the result is an error.
 
 Our datatype \texttt{Provider t} has the following definition:
 
-\begin{SaveVerbatim}{providerdef}
-
+\begin{code}
 data Provider a = Error String
                 | Provide a
-
-\end{SaveVerbatim}
-\useverb{providerdef}
+\end{code}
 
 \noindent
 We have already seen the \texttt{Provide} constructor. The \texttt{Error}
@@ -344,12 +295,9 @@ communicate with the \emph{JavaScript} ecosystem.
 Code generation is split into two separate targets. To generate code that is
 tailored for running in the browser issue the following command:
 
-\begin{SaveVerbatim}{jscodegen}
-
+\begin{lstlisting}[language=bash]
 $ idris --codegen javascript hello.idr -o hello.js
-
-\end{SaveVerbatim}
-\useverb{jscodegen}
+\end{lstlisting}
 
 \noindent
 The resulting file can be embedded into your HTML just like any other
@@ -359,14 +307,11 @@ The resulting file can be embedded into your HTML just like any other
 Generating code for \emph{NodeJS} is slightly different. \Idris{} outputs
 a \emph{JavaScript} file that can be directly executed via \texttt{node}.
 
-\begin{SaveVerbatim}{nodecodegen}
-
+\begin{lstlisting}[language=bash]
 $ idris --codegen node hello.idr -o hello
 $ ./hello
 Hello world
-
-\end{SaveVerbatim}
-\useverb{nodecodegen}
+\end{lstlisting}
 
 \noindent
 Take into consideration that the \emph{JavaScript} code generator is using
@@ -390,8 +335,7 @@ of \emph{JavaScript} code.
 \noindent
 One could use the primitive addition of \emph{JavaScript} like so:
 
-\begin{SaveVerbatim}{jsaddition}
-
+\begin{code}
 module Main
 
 primPlus : Int -> Int -> IO Int
@@ -402,9 +346,7 @@ main = do
   a <- primPlus 1 1
   b <- primPlus 1 2
   print (a, b)
-
-\end{SaveVerbatim}
-\useverb{jsaddition}
+\end{code}
 
 \noindent
 Notice that the \texttt{\%n} notation qualifies the position of the
@@ -416,14 +358,11 @@ instead.
 Passing functions to a foreign function is very similar. Let's assume that
 we want to call the following function from the \emph{JavaScript} world:
 
-\begin{SaveVerbatim}{jstwice}
-
+\begin{code}[language=c]
 function twice(f, x) {
   return f(f(x));
 }
-
-\end{SaveVerbatim}
-\useverb{jstwice}
+\end{code}
 
 \noindent
 We obviously need to pass a function \texttt{f} here (we can infer it from
@@ -436,7 +375,7 @@ you give it something of type \texttt{FFunction}. The following example code
 calls \texttt{twice} in \emph{JavaScript} and returns the result to our
 \Idris{} program:
 
-\begin{SaveVerbatim}{jshof}
+\begin{code}
 module Main
 
 twice : (Int -> Int) -> Int -> IO Int
@@ -448,9 +387,7 @@ main : IO ()
 main = do
   a <- twice (+1) 1
   print a
-
-\end{SaveVerbatim}
-\useverb{jshof}
+\end{code}
 
 \noindent
 The program outputs \texttt{3}, just like we expected.
@@ -470,38 +407,29 @@ application written in \Idris{}.
 Since values can appear in types and \emph{vice versa}, it is natural that types themselves
 have types. For example:
 
-\begin{SaveVerbatim}{typetypes}
-
+\begin{lstlisting}
 *universe> :t Nat
 Nat : Type
 *universe> :t Vect
 Vect : Nat -> Type -> Type
-
-\end{SaveVerbatim}
-\useverb{typetypes} 
+\end{lstlisting} 
 
 \noindent
 But what about the type of \texttt{Type}? If we ask \Idris{} it reports
 
-\begin{SaveVerbatim}{setset}
-
+\begin{lstlisting}
 *universe> :t Type
 Type : Type 1
-
-\end{SaveVerbatim}
-\useverb{setset} 
+\end{lstlisting} 
 
 \noindent
 If \texttt{Type} were its own type, it would lead to an inconsitency
 due to Girard's paradox~\cite{girard-thesis}, so internally there is a \emph{hierarchy}
 of types (or \emph{universes}):
 
-\begin{SaveVerbatim}{sethierarchy}
-
+\begin{code}
 Type : Type 1 : Type 2 : Type 3 : ...
-
-\end{SaveVerbatim}
-\useverb{sethierarchy} 
+\end{code} 
 
 \noindent
 Universes are \emph{cumulative}, that is, if \texttt{x : Type n} we can also have that
@@ -511,16 +439,13 @@ constraints and reports an error if any inconsistencies are found. Ordinarily, a
 programmer does not need to worry about this, but it does prevent (contrived)
 programs such as the following:
 
-\begin{SaveVerbatim}{idid}
-
+\begin{code}
 myid : (a : Type) -> a -> a
 myid _ x = x
 
 idid :  (a : Type) -> a -> a
 idid = myid _ myid
-
-\end{SaveVerbatim}
-\useverb{idid} 
+\end{code} 
 
 \noindent
 The application of \texttt{myid} to itself leads to a cycle in the universe hierarchy

@@ -7,31 +7,25 @@ checker and the type of the program we have written will be different (in that
 they do not have the same normal form), but nevertheless provably equal. For
 example, recall the \texttt{parity} function:
 
-\begin{SaveVerbatim}{pardecl}
-
+\begin{code}
 data Parity : Nat -> Type where
    even : Parity (n + n)
    odd  : Parity (S (n + n))
 
 parity : (n:Nat) -> Parity n
-
-\end{SaveVerbatim}
-\useverb{pardecl}
+\end{code}
 
 \noindent
 We'd like to implement this as follows:
 
-\begin{SaveVerbatim}{parfail}
-
+\begin{code}
 parity : (n:Nat) -> Parity n
 parity Z     = even {n=Z}
 parity (S Z) = odd {n=Z}
 parity (S (S k)) with (parity k)
   parity (S (S (j + j)))     | even = even {n=S j}
   parity (S (S (S (j + j)))) | odd  = odd {n=S j}
-
-\end{SaveVerbatim}
-\useverb{parfail}
+\end{code}
 
 \noindent
 This simply states that zero is even, one is odd, and recursively, the parity
@@ -40,13 +34,10 @@ Explicitly marking the value of \texttt{n} in
 even and odd is necessary to help type inference. Unfortunately, the type
 checker rejects this:
 
-\begin{SaveVerbatim}{parerror}
-
+\begin{code}
 views.idr:12:Can't unify Parity (plus (S j) (S j)) with 
 Parity (S (S (plus j j)))
-
-\end{SaveVerbatim}
-\useverb{parerror}
+\end{code}
 
 \noindent
 The type checker
@@ -54,8 +45,7 @@ is telling us that \texttt{(j+1)+(j+1)} and \texttt{2+j+j}
 do not normalise to the same value.
 This is because \texttt{plus} is defined by recursion on its first argument, and in the
 second value, there is a successor symbol on the second argument, so this will
-not help with reduction. These values are obviously equal --- how can we rewrite
-the program to fix this problem?
+not help with reduction. These values are obviously equal --- how can we rewrite the program to fix this problem?
 
 \subsection{Provisional definitions}
 
@@ -76,17 +66,14 @@ except that they introduce the right hand side with a \texttt{?=} rathar than
 \texttt{=}. We define
 \texttt{parity} as follows:
 
-\begin{SaveVerbatim}{paritypro}
-
+\begin{code}
 parity : (n:Nat) -> Parity n
 parity Z     = even {n=Z}
 parity (S Z) = odd {n=Z}
 parity (S (S k)) with (parity k)
   parity (S (S (j + j)))     | even ?= even {n=S j}
   parity (S (S (S (j + j)))) | odd  ?= odd {n=S j}
-
-\end{SaveVerbatim}
-\useverb{paritypro}
+\end{code}
 
 \noindent
 When written in this form, instead of reporting a type error, \Idris{} will insert
@@ -94,29 +81,23 @@ a metavariable standing for a theorem which will correct the type error. \Idris{
 tells us we have two proof obligations, with names generated from the module and
 function names:
 
-\begin{SaveVerbatim}{prometas}
-
+\begin{lstlisting}
 *views> :m 
 Global metavariables:
         [views.parity_lemma_2,views.parity_lemma_1]
-
-\end{SaveVerbatim}
-\useverb{prometas}
+\end{lstlisting}
 
 \noindent
 The first of these has the following type:
 
-\begin{SaveVerbatim}{prolem1}
-
+\begin{lstlisting}
 *views> :p views.parity_lemma_1 
 
 ---------------------------------- (views.parity_lemma_1) --------
 {hole0} : (j : Nat) -> (Parity (plus (S j) (S j))) -> Parity (S (S (j + j)))
 
 -views.parity_lemma_1>  
-
-\end{SaveVerbatim}
-\useverb{prolem1}
+\end{lstlisting}
 
 \noindent
 The two arguments are \texttt{j}, the variable in scope from the pattern match,
@@ -126,71 +107,55 @@ this value.
 We can achieve this using the following theorem from
 the prelude:
 
-\begin{SaveVerbatim}{plusnsm}
-
+\begin{code}
 plusSuccRightSucc : (left : Nat) -> (right : Nat) ->
   S (left + right) = left + (S right)
-
-
-\end{SaveVerbatim}
-\useverb{plusnsm}
+\end{code}
 
 \noindent
 After applying \texttt{intro} twice, we have:
 
-\begin{SaveVerbatim}{prolemii}
-
+\begin{lstlisting}
 -views.parity_lemma_1> intro 
 
   j : Nat
   value : Parity (S (plus j (S j)))
 ---------------------------------- (views.parity_lemma_1) --------
 {hole2} : Parity (S (S (j + j)))
-
-\end{SaveVerbatim}
-\useverb{prolemii}
+\end{lstlisting}
 
 \noindent
 We need to use \texttt{compute} again to unfold the definition of \texttt{(+)}.
 
-\begin{SaveVerbatim}{prolemcomp}
-
+\begin{lstlisting}
 -views.parity_lemma_1> intro 
 
   j : Nat
   value : Parity (S (plus j (S j)))
 ---------------------------------- (views.parity_lemma_1) --------
 {hole2} : Parity (S (S (plus j j)))
-
-\end{SaveVerbatim}
-\useverb{prolemcomp}
+\end{lstlisting}
 
 \noindent
 Then we apply the \texttt{plusSuccRightSucc} rewrite rule, symmetrically,
 to \texttt{j} and \texttt{j}, giving:
 
-\begin{SaveVerbatim}{prolemr}
-
+\begin{lstlisting}
 -views.parity_lemma_1> rewrite sym (plusSuccRightSucc j j) 
  
   j : Nat
   value : Parity (S (plus j (S j)))
 ---------------------------------- (views.parity_lemma_1) --------
 {hole3} : Parity (S (plus j (S j)))
-
-\end{SaveVerbatim}
-\useverb{prolemr}
+\end{lstlisting}
 
 \noindent
 \texttt{sym} is a function, defined in the library, which reverses the order of the rewrite:
 
-\begin{SaveVerbatim}{sym}
-
+\begin{lstlisting}
 sym : l = r -> r = l
 sym refl = refl
-
-\end{SaveVerbatim}
-\useverb{sym} 
+\end{lstlisting} 
 
 \noindent
 We can complete this proof using the \texttt{trivial} tactic, which finds 
@@ -201,13 +166,10 @@ We can now test the \texttt{natToBin} function from Section
 \ref{sect:nattobin} at the prompt. 42 is 101010 in
 binary. The binary digits are reversed:
 
-\begin{SaveVerbatim}{ntbtest}
-
+\begin{lstlisting}
 *views> show (natToBin 42)
 "[False, True, False, True, False, True]" : String
-
-\end{SaveVerbatim}
-\useverb{ntbtest}
+\end{lstlisting}
 
 
 \subsection{Suspension of Disbelief}
@@ -222,28 +184,22 @@ something!
 Therefore, \Idris{} provides a built-in coercion function, which allows you to use
 a value of the incorrect types:
 
-\begin{SaveVerbatim}{believe}
-
+\begin{code}
 believe_me : a -> b 
-
-\end{SaveVerbatim}
-\useverb{believe}
+\end{code}
 
 \noindent
 Obviously, this should be used with extreme caution. It is useful when prototyping, and
 can also be appropriate when asserting properties of external code (perhaps in an
 external C library). The ``proof'' of \texttt{views.parity\_lemma\_1} using this is:
 
-\begin{SaveVerbatim}{pladodgy}
-
+\begin{lstlisting}
 views.parity_lemma_2 = proof {
     intro;
     intro;
     exact believe_me value;
 }
-
-\end{SaveVerbatim}
-\useverb{pladodgy}
+\end{lstlisting}
 
 \noindent
 The \texttt{exact} tactic allows us to provide an exact value for the proof. In this case,
@@ -258,15 +214,12 @@ We begin by indexing binary numbers over their \texttt{Nat} equivalent. This is 
 pattern, linking a representation (in this case \texttt{Binary}) with a meaning (in this
 case \texttt{Nat}):
 
-\begin{SaveVerbatim}{bindef}
-
+\begin{code}
 data Binary : Nat -> Type where
    bEnd : Binary Z
    bO : Binary n -> Binary (n + n)
    bI : Binary n -> Binary (S (n + n))
-
-\end{SaveVerbatim}
-\useverb{bindef}
+\end{code}
 
 \noindent
 \texttt{bO} and \texttt{bI} take a binary number as an argument and effectively shift it one bit
@@ -278,69 +231,54 @@ the least significant bit at the front.
 Now a function which converts a Nat to binary will state, in the type, that the
 resulting binary number is a faithful representation of the original Nat:
 
-\begin{SaveVerbatim}{ntbty}
-
+\begin{code}
 natToBin : (n:Nat) -> Binary n
-
-\end{SaveVerbatim}
-\useverb{ntbty}
+\end{code}
 
 \noindent
 The \texttt{Parity} view makes the definition fairly simple --- halving the
 number is effectively a right shift after all --- although we need to use a
 provisional definition in the odd case:
 
-\begin{SaveVerbatim}{ntbdef}
-
+\begin{code}
 natToBin : (n:Nat) -> Binary n
 natToBin Z = bEnd
 natToBin (S k) with (parity k)
    natToBin (S (j + j))     | even  = bI (natToBin j)
    natToBin (S (S (j + j))) | odd  ?= bO (natToBin (S j))
-
-\end{SaveVerbatim}
-\useverb{ntbdef}
+\end{code}
 
 \noindent
 The problem with the odd case is the same as in the definition of \texttt{parity}, and
 the proof proceeds in the same way:
 
-\begin{SaveVerbatim}{ntboddprf}
-
+\begin{code}
 natToBin_lemma_1 = proof {
     intro;
     intro;
     rewrite sym (plusSuccRightSucc j j);
     trivial;
 }
-
-\end{SaveVerbatim}
-\useverb{ntboddprf}
+\end{code}
 
 \noindent
 To finish, we'll implement a main program which reads an integer from the user and
 outputs it in binary. 
 
-\begin{SaveVerbatim}{binmain}
-
+\begin{code}
 main : IO ()
 main = do putStr "Enter a number: "
           x <- getLine
           print (natToBin (fromInteger (cast x)))
-
-\end{SaveVerbatim}
-\useverb{binmain}
+\end{code}
 
 \noindent
 For this to work, of course, we need a \texttt{Show} instance for \texttt{Binary n}:
 
-\begin{SaveVerbatim}{showbin}
-
+\begin{code}
 instance Show (Binary n) where
     show (bO x) = show x ++ "0"
     show (bI x) = show x ++ "1"
     show bEnd = ""
-
-\end{SaveVerbatim}
-\useverb{showbin}
+\end{code}
 
