@@ -124,6 +124,10 @@ mainDef =
                      , ConstantOperand . C.GlobalReference . Name $ "__idris_gmpRealloc"
                      , ConstantOperand . C.GlobalReference . Name $ "__idris_gmpFree"
                      ]
+          , Do $ Store False (ConstantOperand . C.GlobalReference . Name $ "__idris_argc") 
+                       (LocalReference (Name "argc")) Nothing 0 []
+          , Do $ Store False (ConstantOperand . C.GlobalReference . Name $ "__idris_argv") 
+                       (LocalReference (Name "argv")) Nothing 0 []
           , UnName 1 := idrCall "{runMain0}" [] ]
           (Do $ Ret (Just (ConstantOperand (C.Int 32 0))) [])
         ]}
@@ -198,6 +202,8 @@ initDefs tgt =
     , exVar (stdinName tgt) ptrI8
     , exVar (stdoutName tgt) ptrI8
     , exVar (stderrName tgt) ptrI8
+    , exVar "__idris_argc" (IntegerType 32)
+    , exVar "__idris_argv" (PointerType ptrI8 (AddrSpace 0))
     , GlobalDefinition mainDef
     ] ++ map mpzBinFun ["add", "sub", "mul", "fdiv_q", "fdiv_r", "and", "ior", "xor"]
     where

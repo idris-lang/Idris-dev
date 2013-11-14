@@ -10,8 +10,11 @@ RTSOpts opts = {
 
 int main(int argc, char* argv[]) {
     parse_shift_args(&opts, &argc, &argv);
-    
-    VM* vm = init_vm(opts.max_stack_size, opts.init_heap_size, 1, argc, argv);
+
+    __idris_argc = argc;
+    __idris_argv = argv;
+
+    VM* vm = init_vm(opts.max_stack_size, opts.init_heap_size, 1);
     _idris__123_runMain0_125_(vm, NULL);
 
 #ifdef IDRIS_DEBUG

@@ -169,3 +169,14 @@ char *__idris_strRev(const char *s) {
   }
   return t;
 }
+
+int __idris_argc;
+char **__idris_argv;
+
+int idris_numArgs() {
+    return __idris_argc;
+}
+
+const char* idris_getArg(int i) {
+    return __idris_argv[i];
+}

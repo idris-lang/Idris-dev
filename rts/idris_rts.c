@@ -12,8 +12,8 @@
 
 
 VM* init_vm(int stack_size, size_t heap_size, 
-            int max_threads, // not implemented yet
-            int argc, char* argv[]) {
+            int max_threads // not implemented yet
+            ) {
 
     VM* vm = malloc(sizeof(VM));
     STATS_INIT_STATS(vm->stats)
@@ -44,9 +44,6 @@ VM* init_vm(int stack_size, size_t heap_size,
 
     vm->max_threads = max_threads;
     vm->processes = 0;
-
-    vm->argv = argv;
-    vm->argc = argc;
 
     STATS_LEAVE_INIT(vm->stats)
     return vm;
@@ -145,7 +142,7 @@ VAL MKFLOAT(VM* vm, double val) {
     return cl;
 }
 
-VAL MKSTR(VM* vm, char* str) {
+VAL MKSTR(VM* vm, const char* str) {
     int len;
     if (str == NULL) {
         len = 0;
@@ -164,7 +161,7 @@ VAL MKSTR(VM* vm, char* str) {
     return cl;
 }
 
-VAL MKPTR(VM* vm, void* ptr) {
+VAL MKPTR(VM* vm, const void* ptr) {
     Closure* cl = allocate(vm, sizeof(Closure), 0);
     SETTY(cl, PTR);
     cl -> info.ptr = ptr;
@@ -462,8 +459,7 @@ void* runThread(void* arg) {
 
 void* vmThread(VM* callvm, func f, VAL arg) {
     VM* vm = init_vm(callvm->stack_max - callvm->valstack, callvm->heap.size, 
-                     callvm->max_threads,
-                     0, NULL);
+                     callvm->max_threads);
     vm->processes=1; // since it can send and receive messages
     pthread_t t;
     pthread_attr_t attr;
@@ -626,12 +622,15 @@ VAL idris_recvMessage(VM* vm) {
     return msg;
 }
 
-int idris_numArgs(VM* vm) {
-    return vm->argc;
+int __idris_argc;
+char **__idris_argv;
+
+int idris_numArgs() {
+    return __idris_argc;
 }
 
-VAL idris_getArg(VM* vm, int i) {
-    return MKSTR(vm, vm->argv[i]);
+const char* idris_getArg(int i) {
+    return __idris_argv[i];
 }
 
 void stackOverflow() {
