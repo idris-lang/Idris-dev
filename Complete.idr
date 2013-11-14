@@ -6,15 +6,19 @@ import Solver
 
 main : IO ()
 main = do
-  f <- readFile "/dev/stdin"
-  case parse f of
-    Left err => putStrLn err
-    Right (_ ** (board ** legal)) => do
-      putStrLn "Got board:"
-      print board
-      putStrLn "Solving..."
-      case fillBoard board legal of
-        Nothing => putStrLn "No solution found"
-        Just (solved ** _) => do
-          putStrLn "Solution found:"
-          print solved
+  args <- getArgs
+  case args of
+    [_, path] => do
+      f <- readFile path
+      case parse f of
+        Left err => putStrLn err
+        Right (_ ** (board ** legal)) => do
+          putStrLn "Got board:"
+          print board
+          putStrLn "Solving..."
+          case fillBoard board legal of
+            Nothing => putStrLn "No solution found"
+            Just (solved ** _) => do
+              putStrLn "Solution found:"
+              print solved
+    [self] => putStrLn ("Usage: " ++ self ++ " <board file>")
