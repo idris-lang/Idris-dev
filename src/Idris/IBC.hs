@@ -643,7 +643,7 @@ instance Binary NameType where
                    _ -> error "Corrupted binary data for NameType"
 
 
-instance {-(Binary n) =>-} Binary (TT Name) where
+instance {- (Binary n) => -} Binary (TT Name) where
         put x
           = {-# SCC "putTT" #-}
             case x of
