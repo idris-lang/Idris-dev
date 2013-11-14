@@ -5,6 +5,7 @@ import Prelude.List
 import Prelude.Chars
 import Prelude.Cast
 import Prelude.Either
+import Prelude.Foldable
 
 -- Some more complex string operations
 
@@ -38,9 +39,8 @@ unpack s with (strM s)
   unpack ""             | StrNil = []
   unpack (strCons x xs) | (StrCons x xs) = x :: unpack xs
 
-pack : List Char -> String
-pack [] = ""
-pack (x :: xs) = strCons x (pack xs)
+pack : (Foldable t) => t Char -> String
+pack = foldr strCons ""
 
 instance Cast String (List Char) where
   cast = unpack
