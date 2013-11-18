@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 idris -p effects $@ test021.idr -o test021
 idris -p effects $@ test021a.idr -o test021a
 ./test021

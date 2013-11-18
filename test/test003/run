@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 idris $@ test003a.lidr --check
 idris $@ test003.lidr -o test003
 ./test003

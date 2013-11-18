@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 idris $@ reg016.idr -o reg016
 ./reg016
 rm -f reg016 *.ibc

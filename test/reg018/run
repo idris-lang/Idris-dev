@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 idris $@ reg018a.idr --check
 idris $@ reg018b.idr --check
 idris $@ reg018c.idr --check
