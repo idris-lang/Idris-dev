@@ -25,3 +25,5 @@ tutorial/*.out
 tutorial/*.toc
 tutorial/*.fdb_latexmk
 tutorial/*.fls
+tags
+TAGS
