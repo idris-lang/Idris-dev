@@ -1,6 +1,6 @@
 {-# LANGUAGE PatternGuards #-}
 
-module Idris.CaseSplit(split, splitOnLine, replaceSplits,
+module Idris.CaseSplit(splitOnLine, replaceSplits,
                        getClause, getProofClause,
                        mkWith,
                        getUniq, nameRoot) where

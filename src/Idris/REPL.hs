@@ -536,9 +536,6 @@ process h fn (Info n)
                               [c] -> classInfo c
                               _ -> iPrintError "Not a class"
 process h fn (Search t) = iPrintError "Not implemented"
-process h fn (CaseSplit n t)
-   = do tms <- split n t
-        iputStrLn (showSep "\n" (map show tms))
 -- FIXME: There is far too much repetition in the cases below!
 process h fn (CaseSplitAt updatefile l n)
    = do src <- runIO $ readFile fn
