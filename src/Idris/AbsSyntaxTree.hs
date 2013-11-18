@@ -239,7 +239,6 @@ data Command = Quit
              | Pattelab PTerm
              | DebugInfo Name
              | Search PTerm
-             | CaseSplit Name PTerm
              | CaseSplitAt Bool Int Name
              | AddClauseFrom Bool Int Name
              | AddProofClauseFrom Bool Int Name
