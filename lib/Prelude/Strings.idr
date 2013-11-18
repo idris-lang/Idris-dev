@@ -42,11 +42,17 @@ unpack s with (strM s)
 pack : (Foldable t) => t Char -> String
 pack = foldr strCons ""
 
+singleton : Char -> String
+singleton c = strCons c ""
+
 instance Cast String (List Char) where
   cast = unpack
 
 instance Cast (List Char) String where
   cast = pack
+
+instance Cast Char String where
+  cast = singleton
 
 instance Semigroup String where
   (<+>) = (++)
