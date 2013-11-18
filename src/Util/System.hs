@@ -5,6 +5,8 @@ module Util.System(tempfile,withTempdir,getTargetDir,getCC,
 
 -- System helper functions.
 import Control.Monad (when)
+import Control.Applicative ((<$>))
+import Data.Maybe (fromMaybe)
 import Distribution.Text (display)
 import System.Directory (getTemporaryDirectory
                         , removeFile
@@ -26,22 +28,18 @@ throwIO :: IOError -> IO a
 throwIO = CE.throw
 
 
-
 getCC :: IO String
-getCC = do env <- environment "IDRIS_CC"
-           case env of
-                Nothing -> return "gcc"
-                Just cc -> return cc
+getCC = fromMaybe "gcc" <$> environment "IDRIS_CC"
+
+mvnCommand :: String
+#ifdef mingw32_HOST_OS
+mvnCommand = "mvn.bat"
+#else
+mvnCommand = "mvn"
+#endif
 
 getMvn :: IO String
-getMvn = do env <- environment "IDRIS_MVN"
-            case env of
-#ifdef mingw32_HOST_OS
-              Nothing  -> return "mvn.bat"
-#else
-              Nothing  -> return "mvn"
-#endif
-              Just mvn -> return mvn
+getMvn = fromMaybe mvnCommand <$> environment "IDRIS_MVN"
 
 tempfile :: IO (FilePath, Handle)
 tempfile = do dir <- getTemporaryDirectory

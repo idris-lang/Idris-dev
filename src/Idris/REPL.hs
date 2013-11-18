@@ -133,7 +133,9 @@ startServer orig stvar fn_in = do tid <- runIO $ forkOS serverLoop
                      putMVar stvar ist'
                      hClose h
                      loop fn ist' sock
-                   else hClose h
+                   else do
+                     putStrLn $ "Closing connection attempt from non-localhost " ++ host
+                     hClose h
 
 processNetCmd :: MVar IState ->
                  IState -> IState -> Handle -> FilePath -> String ->
