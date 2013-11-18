@@ -94,16 +94,18 @@ parseSExp = parse pSExp "(unknown)"
 data IdeSlaveCommand = REPLCompletions String
                      | Interpret String
                      | TypeOf String
+                     | CaseSplit Int String
                      | LoadFile String
   deriving Show
 
 sexpToCommand :: SExp -> Maybe IdeSlaveCommand
-sexpToCommand (SexpList (x:[]))                                             = sexpToCommand x
-sexpToCommand (SexpList [SymbolAtom "interpret", StringAtom cmd])           = Just (Interpret cmd)
-sexpToCommand (SexpList [SymbolAtom "repl-completions", StringAtom prefix]) = Just (REPLCompletions prefix)
-sexpToCommand (SexpList [SymbolAtom "load-file", StringAtom filename])      = Just (LoadFile filename)
-sexpToCommand (SexpList [SymbolAtom "type-of", StringAtom name])            = Just (TypeOf name)
-sexpToCommand _                                                             = Nothing
+sexpToCommand (SexpList (x:[]))                                                       = sexpToCommand x
+sexpToCommand (SexpList [SymbolAtom "interpret", StringAtom cmd])                     = Just (Interpret cmd)
+sexpToCommand (SexpList [SymbolAtom "repl-completions", StringAtom prefix])           = Just (REPLCompletions prefix)
+sexpToCommand (SexpList [SymbolAtom "load-file", StringAtom filename])                = Just (LoadFile filename)
+sexpToCommand (SexpList [SymbolAtom "type-of", StringAtom name])                      = Just (TypeOf name)
+sexpToCommand (SexpList [SymbolAtom "case-split", IntegerAtom line, StringAtom name]) = Just (CaseSplit (fromInteger line) name)
+sexpToCommand _                                                                       = Nothing
 
 parseMessage :: String -> Either Err (SExp, Integer)
 parseMessage x = case receiveString x of

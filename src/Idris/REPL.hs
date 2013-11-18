@@ -17,7 +17,7 @@ import Idris.UnusedArgs
 import Idris.Docs
 import Idris.Help
 import Idris.Completion
-import Idris.IdeSlave
+import qualified Idris.IdeSlave as IdeSlave
 import Idris.Chaser
 import Idris.Imports
 import Idris.Colours
@@ -194,17 +194,17 @@ ideslave :: IState -> [FilePath] -> Idris ()
 ideslave orig mods
   = do idrisCatch
          (do l <- runIO $ getLine
-             (sexp, id) <- case parseMessage l of
+             (sexp, id) <- case IdeSlave.parseMessage l of
                              Left err -> ierror err
                              Right (sexp, id) -> return (sexp, id)
              i <- getIState
              putIState $ i { idris_outputmode = (IdeSlave id) }
-             case sexpToCommand sexp of
-               Just (Interpret cmd) ->
-                 do let fn = case mods of
-                                 (f:_) -> f
-                                 _ -> ""
-                    c <- colourise
+             let fn = case mods of
+                        (f:_) -> f
+                        _ -> ""
+             case IdeSlave.sexpToCommand sexp of
+               Just (IdeSlave.Interpret cmd) ->
+                 do c <- colourise
                     case parseCmd i "(input)" cmd of
                          Failure err -> iPrintError $ show (fixColour c err)
                          Success (Prove n') -> do iPrintResult ""
@@ -215,11 +215,11 @@ ideslave orig mods
                          Success cmd -> idrisCatch
                                           (ideslaveProcess fn cmd)
                                           (\e -> getIState >>= iPrintError . flip pshow e)
-               Just (REPLCompletions str) ->
+               Just (IdeSlave.REPLCompletions str) ->
                  do (unused, compls) <- replCompletion (reverse str, "")
-                    let good = SexpList [SymbolAtom "ok", toSExp (map replacement compls, reverse unused)]
-                    runIO $ putStrLn $ convSExp "return" good id
-               Just (LoadFile filename) ->
+                    let good = IdeSlave.SexpList [IdeSlave.SymbolAtom "ok", IdeSlave.toSExp (map replacement compls, reverse unused)]
+                    runIO $ putStrLn $ IdeSlave.convSExp "return" good id
+               Just (IdeSlave.LoadFile filename) ->
                  do clearErr
                     putIState (orig { idris_options = idris_options i,
                                       idris_outputmode = (IdeSlave id) })
@@ -233,8 +233,10 @@ ideslave orig mods
                       Nothing -> iPrintResult $ "loaded " ++ filename
                       Just x -> iPrintError $ "didn't load " ++ filename
                     ideslave orig [filename]
-               Just (TypeOf name) ->
+               Just (IdeSlave.TypeOf name) ->
                  process stdout "(ideslave)" (Check (PRef (FC "(ideslave)" 0 0) (UN name)))
+               Just (IdeSlave.CaseSplit line name) ->
+                 process stdout fn (CaseSplitAt False line (UN name))
                Nothing -> do iPrintError "did not understand")
          (\e -> do iPrintError $ show e)
        ideslave orig mods
@@ -550,12 +552,12 @@ process h fn (CaseSplitAt updatefile l n)
         let (before, (ap : later)) = splitAt (l-1) (lines src)
         res' <- replaceSplits ap res
         let new = concat res'
-        if updatefile then
-           do let fb = fn ++ "~" -- make a backup!
-              runIO $ writeFile fb (unlines before ++ new ++ unlines later)
-              runIO $ copyFile fb fn
-           else -- do ihputStrLn h (show res)
-                   ihputStrLn h new
+        if updatefile
+          then do let fb = fn ++ "~" -- make a backup!
+                  runIO $ writeFile fb (unlines before ++ new ++ unlines later)
+                  runIO $ copyFile fb fn
+          else -- do ihputStrLn h (show res)
+            ihPrintResult h new
 process h fn (AddClauseFrom updatefile l n)
    = do src <- runIO $ readFile fn
         let (before, tyline : later) = splitAt (l-1) (lines src)
