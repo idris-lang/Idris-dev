@@ -156,7 +156,7 @@ cleanUpTmp tgtDir = do
 
 jarHeader :: String
 jarHeader =
-  "#!/bin/sh\n"
+  "#!/usr/bin/env sh\n"
   ++ "MYSELF=`which \"$0\" 2>/dev/null`\n"
   ++ "[ $? -gt 0 -a -f \"$0\" ] && MYSELF=\"./$0\"\n"
   ++ "java=java\n"

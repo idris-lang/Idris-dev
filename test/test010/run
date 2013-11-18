@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 idris $@ test010.idr -o test010
 idris $@ test010a.idr -o test010
 idris $@ test010b.idr -o test010

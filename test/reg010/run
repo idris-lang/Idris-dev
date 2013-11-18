@@ -1,2 +1,2 @@
-#!/bin/bash
+#!/usr/bin/env bash
 idris $@ reg010.idr --check --nocolour

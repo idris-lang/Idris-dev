@@ -95,10 +95,10 @@ test_llvm:
 	@perl ./runtest.pl test031 --codegen llvm
 
 update:
-	perl ./runtest.pl all -u
+	/usr/bin/env perl ./runtest.pl all -u
 
 diff:
-	perl ./runtest.pl all -d
+	/usr/bin/env perl ./runtest.pl all -d
 
 distclean:
 	rm -f *~
