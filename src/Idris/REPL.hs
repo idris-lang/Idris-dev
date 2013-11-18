@@ -237,6 +237,8 @@ ideslave orig mods
                  process stdout "(ideslave)" (Check (PRef (FC "(ideslave)" 0 0) (UN name)))
                Just (IdeSlave.CaseSplit line name) ->
                  process stdout fn (CaseSplitAt False line (UN name))
+               Just (IdeSlave.AddClause line name) ->
+                 process stdout fn (AddClauseFrom False line (UN name))
                Nothing -> do iPrintError "did not understand")
          (\e -> do iPrintError $ show e)
        ideslave orig mods
@@ -572,7 +574,7 @@ process h fn (AddClauseFrom updatefile l n)
                                         cl ++ "\n" ++
                                     unlines rest)
               runIO $ copyFile fb fn
-           else ihputStrLn h cl
+           else ihPrintResult h cl
     where
        getIndent i n [] = 0
        getIndent i n xs | take (length n) xs == n = i
