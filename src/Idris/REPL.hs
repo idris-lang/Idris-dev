@@ -233,6 +233,8 @@ ideslave orig mods
                       Nothing -> iPrintResult $ "loaded " ++ filename
                       Just x -> iPrintError $ "didn't load " ++ filename
                     ideslave orig [filename]
+               Just (TypeOf name) ->
+                 process stdout "(ideslave)" (Check (PRef (FC "(ideslave)" 0 0) (UN name)))
                Nothing -> do iPrintError "did not understand")
          (\e -> do iPrintError $ show e)
        ideslave orig mods
@@ -435,10 +437,10 @@ process h fn (Check (PRef _ n))
         case lookupNames n ctxt of
           ts@(t:_) ->
             case lookup t (idris_metavars ist) of
-                Just (_, i) -> showMetavarInfo c imp ist n i
-                Nothing -> do mapM_ (\n -> ihputStrLn h $ showName (Just ist) [] False c n ++ " : " ++
-                                           showImp (Just ist) imp c (delabTy ist n)) ts
-                              ihPrintResult h ""
+                Just (_, i) -> ihPrintResult h (showMetavarInfo c imp ist n i)
+                Nothing -> ihPrintResult h $
+                           concat . intersperse "\n" . map (\n -> showName (Just ist) [] False c n ++ " : " ++
+                                                                  showImp (Just ist) imp c (delabTy ist n)) $ ts
           [] -> ihPrintError h $ "No such variable " ++ show n
   where
     showMetavarInfo c imp ist n i
@@ -446,18 +448,19 @@ process h fn (Check (PRef _ n))
                 (ty:_) -> putTy c imp ist i (delab ist ty)
     putTy c imp ist 0 sc = putGoal c imp ist sc
     putTy c imp ist i (PPi _ n t sc)
-               = do ihputStrLn h $ "  " ++
-                         (case n of
-                              MN _ _ -> "_"
-                              UN ('_':'_':_) -> "_"
-                              _ -> showName (Just ist) [] False c n) ++
-                                   " : " ++ showImp (Just ist) imp c t
-                    putTy c imp ist (i-1) sc
+               = let current = "  " ++
+                               (case n of
+                                   MN _ _ -> "_"
+                                   UN ('_':'_':_) -> "_"
+                                   _ -> showName (Just ist) [] False c n) ++
+                               " : " ++ showImp (Just ist) imp c t
+                 in
+                    current ++ putTy c imp ist (i-1) sc
     putTy c imp ist _ sc = putGoal c imp ist sc
     putGoal c imp ist g
-               = do ihputStrLn h $ "--------------------------------------"
-                    ihputStrLn h $ showName (Just ist) [] False c n ++ " : "
-                                   ++ showImp (Just ist) imp c g
+               = "--------------------------------------\n" ++
+                 showName (Just ist) [] False c n ++ " : " ++
+                 showImp (Just ist) imp c g
 
 
 process h fn (Check t)
@@ -470,7 +473,7 @@ process h fn (Check t)
         case tm of
              TType _ -> ihPrintResult h ("Type : Type 1")
              _ -> ihPrintResult h (showImp (Just ist) imp c (delab ist tm) ++ " : " ++
-                                 showImp (Just ist) imp c (delab ist ty))
+                                   showImp (Just ist) imp c (delab ist ty))
 
 process h fn (DocStr n)
                       = do i <- getIState

@@ -93,6 +93,7 @@ parseSExp = parse pSExp "(unknown)"
 
 data IdeSlaveCommand = REPLCompletions String
                      | Interpret String
+                     | TypeOf String
                      | LoadFile String
   deriving Show
 
@@ -101,6 +102,7 @@ sexpToCommand (SexpList (x:[]))                                             = se
 sexpToCommand (SexpList [SymbolAtom "interpret", StringAtom cmd])           = Just (Interpret cmd)
 sexpToCommand (SexpList [SymbolAtom "repl-completions", StringAtom prefix]) = Just (REPLCompletions prefix)
 sexpToCommand (SexpList [SymbolAtom "load-file", StringAtom filename])      = Just (LoadFile filename)
+sexpToCommand (SexpList [SymbolAtom "type-of", StringAtom name])            = Just (TypeOf name)
 sexpToCommand _                                                             = Nothing
 
 parseMessage :: String -> Either Err (SExp, Integer)
