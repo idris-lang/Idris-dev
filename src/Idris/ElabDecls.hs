@@ -843,8 +843,7 @@ elabValBind :: ElabInfo -> Bool -> PTerm -> Idris (Term, Type, [(Name, Type)])
 elabValBind info aspat tm_in
    = do ctxt <- getContext
         i <- getIState
-        let tm = if aspat then addImplPat i tm_in
-                          else addImpl i tm_in
+        let tm = addImpl i tm_in
         logLvl 10 (showImp Nothing True False tm)
         -- try:
         --    * ordinary elaboration
@@ -855,7 +854,7 @@ elabValBind info aspat tm_in
 --             tctry (elaborate ctxt (MN 0 "val") (TType (UVal 0)) []
 --                        (build i info aspat (MN 0 "val") tm))
                 tclift (elaborate ctxt (MN 0 "val") infP []
-                        (buildTC i info aspat False (MN 0 "val") (infTerm tm)))
+                        (build i info aspat (MN 0 "val") (infTerm tm)))
         let vtm = orderPats (getInferTerm tm')
 
         def' <- checkDef (fileFC "(input)") defer
