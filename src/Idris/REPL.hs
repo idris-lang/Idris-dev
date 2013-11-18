@@ -192,7 +192,9 @@ ideslave :: IState -> [FilePath] -> Idris ()
 ideslave orig mods
   = do idrisCatch
          (do l <- runIO $ getLine
-             let (sexp, id) = parseMessage l
+             (sexp, id) <- case parseMessage l of
+                             Left err -> ierror err
+                             Right (sexp, id) -> return (sexp, id)
              i <- getIState
              putIState $ i { idris_outputmode = (IdeSlave id) }
              case sexpToCommand sexp of

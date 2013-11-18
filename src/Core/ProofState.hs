@@ -238,7 +238,7 @@ goalAtFocus :: ProofState -> TC (Binder Type)
 goalAtFocus ps
     | not $ null (holes ps) = do g <- goal (Just (head (holes ps))) (pterm ps)
                                  return (goalType g)
-    | otherwise = error $ "No goal in " ++ show (holes ps) ++ show (pterm ps)
+    | otherwise = Error . Msg $ "No goal in " ++ show (holes ps) ++ show (pterm ps)
 
 goal :: Hole -> Term -> TC Goal
 goal h tm = g [] tm where

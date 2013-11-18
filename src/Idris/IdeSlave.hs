@@ -103,22 +103,22 @@ sexpToCommand (SexpList [SymbolAtom "repl-completions", StringAtom prefix]) = Ju
 sexpToCommand (SexpList [SymbolAtom "load-file", StringAtom filename])      = Just (LoadFile filename)
 sexpToCommand _                                                             = Nothing
 
-parseMessage :: String -> (SExp, Integer)
+parseMessage :: String -> Either Err (SExp, Integer)
 parseMessage x = case receiveString x of
-                      (SexpList [cmd, (IntegerAtom id)]) ->
-                        (cmd, id)
+                   Right (SexpList [cmd, (IntegerAtom id)]) -> Right (cmd, id)
+                   Left err -> Left err
 
-receiveString :: String -> SExp
+receiveString :: String -> Either Err SExp
 receiveString x =
   case readHex (take 6 x) of
     ((num, ""):_) ->
       let msg = drop 6 x in
         if (length msg) /= (num - 1)
-           then error "bad input length"
+           then Left . Msg $ "bad input length"
            else (case parseSExp msg of
-                      Left _ -> error "parse failure"
-                      Right r -> r)
-    _ -> error "readHex failed"
+                      Left _ -> Left . Msg $ "parse failure"
+                      Right r -> Right r)
+    _ -> Left . Msg $ "readHex failed"
 
 convSExp :: SExpable a => String -> a -> Integer -> String
 convSExp pre s id =
