@@ -117,7 +117,7 @@ collapseCons ty cons =
     disjoint :: [[Term]] -> Bool
     disjoint []         = True
     disjoint [xs]       = True
-    disjoint (xs : xss) = any (and . zipWith disjointPair xs) xss && disjoint xss
+    disjoint (xs : xss) = all (or . zipWith disjointPair xs) xss && disjoint xss
 
     -- Return True  if the two patterns are provably disjoint.
     -- Return False if they're not or if unsure.
