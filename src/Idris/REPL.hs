@@ -239,6 +239,8 @@ ideslave orig mods
                  process stdout fn (CaseSplitAt False line (UN name))
                Just (IdeSlave.AddClause line name) ->
                  process stdout fn (AddClauseFrom False line (UN name))
+               Just (IdeSlave.AddProofClause line name) ->
+                 process stdout fn (AddProofClauseFrom False line (UN name))
                Just (IdeSlave.AddMissing line name) ->
                  process stdout fn (AddMissing False line (UN name))
                Just (IdeSlave.MakeWithBlock line name) ->

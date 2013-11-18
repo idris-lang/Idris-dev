@@ -97,6 +97,7 @@ data IdeSlaveCommand = REPLCompletions String
                      | TypeOf String
                      | CaseSplit Int String
                      | AddClause Int String
+                     | AddProofClause Int String
                      | AddMissing Int String
                      | MakeWithBlock Int String
                      | ProofSearch Int String [String]
@@ -111,6 +112,7 @@ sexpToCommand (SexpList [SymbolAtom "load-file", StringAtom filename])          
 sexpToCommand (SexpList [SymbolAtom "type-of", StringAtom name])                        = Just (TypeOf name)
 sexpToCommand (SexpList [SymbolAtom "case-split", IntegerAtom line, StringAtom name])   = Just (CaseSplit (fromInteger line) name)
 sexpToCommand (SexpList [SymbolAtom "add-clause", IntegerAtom line, StringAtom name])   = Just (AddClause (fromInteger line) name)
+sexpToCommand (SexpList [SymbolAtom "add-proof-clause", IntegerAtom line, StringAtom name])   = Just (AddProofClause (fromInteger line) name)
 sexpToCommand (SexpList [SymbolAtom "add-missing", IntegerAtom line, StringAtom name])  = Just (AddMissing (fromInteger line) name)
 sexpToCommand (SexpList [SymbolAtom "make-with", IntegerAtom line, StringAtom name])    = Just (MakeWithBlock (fromInteger line) name)
 sexpToCommand (SexpList [SymbolAtom "proof-search", IntegerAtom line, StringAtom name, SexpList hintexp]) | Just hints <- getHints hintexp = Just (ProofSearch (fromInteger line) name hints)
