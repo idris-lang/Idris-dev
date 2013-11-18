@@ -115,24 +115,22 @@ collapseCons ty cons =
                 else return ()
 
     disjoint :: [[Term]] -> Bool
-    disjoint []       = True
-    disjoint [x]      = True
-    disjoint (x : xs) = anyDisjoint x xs && disjoint xs
+    disjoint []         = True
+    disjoint [xs]       = True
+    disjoint (xs : xss) = any (and . zipWith disjointPair xs) xss && disjoint xss
 
-    anyDisjoint x [] = True
-    anyDisjoint x (y : ys) = disjointCons x y
-
-    disjointCons [] [] = False
-    disjointCons [] y  = False
-    disjointCons x  [] = False
-    disjointCons (x : xs) (y : ys)
-        = disjointCon x y || disjointCons xs ys
-
-    disjointCon x y = let (cx, _) = unApply x
-                          (cy, _) = unApply y in
-                          case (cx, cy) of
-                               (P (DCon _ _) nx _, P (DCon _ _) ny _) -> nx /= ny
-                               _ -> False
+    -- Return True  if the two patterns are provably disjoint.
+    -- Return False if they're not or if unsure.
+    disjointPair :: Term -> Term -> Bool
+    disjointPair x y = case (cx, cy) of
+        -- data constructors -> compare their names
+        (P (DCon _ _) nx _, P (DCon _ _) ny _)
+            | nx /= ny -> True
+            | nx == ny -> and $ zipWith disjointPair xargs yargs
+        _ -> False
+      where
+        (cx, xargs) = unApply x
+        (cy, yargs) = unApply y
 
 class Optimisable term where
     applyOpts :: term -> Idris term
