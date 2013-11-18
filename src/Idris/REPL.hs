@@ -239,6 +239,12 @@ ideslave orig mods
                  process stdout fn (CaseSplitAt False line (UN name))
                Just (IdeSlave.AddClause line name) ->
                  process stdout fn (AddClauseFrom False line (UN name))
+               Just (IdeSlave.AddMissing line name) ->
+                 process stdout fn (AddMissing False line (UN name))
+               Just (IdeSlave.MakeWithBlock line name) ->
+                 process stdout fn (MakeWith False line (UN name))
+               Just (IdeSlave.ProofSearch line name hints) ->
+                 process stdout fn (DoProofSearch False line (UN name) (map UN hints))
                Nothing -> do iPrintError "did not understand")
          (\e -> do iPrintError $ show e)
        ideslave orig mods
@@ -567,14 +573,14 @@ process h fn (AddClauseFrom updatefile l n)
         cl <- getClause l n fn
         -- add clause before first blank line in 'later'
         let (nonblank, rest) = span (not . all isSpace) (tyline:later)
-        if updatefile then
-           do let fb = fn ++ "~"
-              runIO $ writeFile fb (unlines (before ++ nonblank)
-                                        ++ replicate indent ' ' ++
+        if updatefile
+          then do let fb = fn ++ "~"
+                  runIO $ writeFile fb (unlines (before ++ nonblank) ++
+                                        replicate indent ' ' ++
                                         cl ++ "\n" ++
-                                    unlines rest)
-              runIO $ copyFile fb fn
-           else ihPrintResult h cl
+                                        unlines rest)
+                  runIO $ copyFile fb fn
+          else ihPrintResult h cl
     where
        getIndent i n [] = 0
        getIndent i n xs | take (length n) xs == n = i
@@ -586,14 +592,14 @@ process h fn (AddProofClauseFrom updatefile l n)
         cl <- getProofClause l n fn
         -- add clause before first blank line in 'later'
         let (nonblank, rest) = span (not . all isSpace) (tyline:later)
-        if updatefile then
-           do let fb = fn ++ "~"
-              runIO $ writeFile fb (unlines (before ++ nonblank)
-                                        ++ replicate indent ' ' ++
+        if updatefile
+          then do let fb = fn ++ "~"
+                  runIO $ writeFile fb (unlines (before ++ nonblank) ++
+                                        replicate indent ' ' ++
                                         cl ++ "\n" ++
-                                    unlines rest)
-              runIO $ copyFile fb fn
-           else ihputStrLn h cl
+                                        unlines rest)
+                  runIO $ copyFile fb fn
+          else ihPrintResult h cl
     where
        getIndent i n [] = 0
        getIndent i n xs | take (length n) xs == n = i
@@ -610,12 +616,12 @@ process h fn (AddMissing updatefile l n)
                        [] -> return ""
                        [(_, tms)] -> showNew (show n ++ "_rhs") 1 indent tms
         let (nonblank, rest) = span (not . all isSpace) (tyline:later)
-        if updatefile then
-           do let fb = fn ++ "~"
-              runIO $ writeFile fb (unlines (before ++ nonblank) ++
-                                           extras ++ unlines rest)
-              runIO $ copyFile fb fn
-           else ihputStrLn h extras
+        if updatefile
+          then do let fb = fn ++ "~"
+                  runIO $ writeFile fb (unlines (before ++ nonblank)
+                                        ++ extras ++ unlines rest)
+                  runIO $ copyFile fb fn
+          else ihPrintResult h extras
     where showPat = show . stripNS
           stripNS tm = mapPT dens tm where
               dens (PRef fc n) = PRef fc (nsroot n)
@@ -636,7 +642,7 @@ process h fn (AddMissing updatefile l n)
                                      showPat tm ++ " = ?" ++ nm' ++
                                      "\n" ++ rest)
           showNew nm i _ [] = return ""
-          
+
           getIndent i n [] = 0
           getIndent i n xs | take (length n) xs == n = i
           getIndent i n (x : xs) = getIndent (i + 1) n xs
@@ -653,7 +659,7 @@ process h fn (MakeWith updatefile l n)
                                         ++ with ++ "\n" ++
                                     unlines rest)
               runIO $ copyFile fb fn
-           else ihputStrLn h with
+           else ihPrintResult h with
 process h fn (DoProofSearch updatefile l n hints)
     = do src <- runIO $ readFile fn
          let (before, tyline : later) = splitAt (l-1) (lines src)
@@ -685,7 +691,7 @@ process h fn (DoProofSearch updatefile l n hints)
                                      updateMeta tyline (show n) newmv ++ "\n"
                                        ++ unlines later)
                runIO $ copyFile fb fn
-            else ihputStrLn h newmv
+            else ihPrintResult h newmv
     where dropCtxt 0 sc = sc
           dropCtxt i (PPi _ _ _ sc) = dropCtxt (i - 1) sc
           dropCtxt i (PLet _ _ _ sc) = dropCtxt (i - 1) sc

@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleInstances, IncoherentInstances #-}
+{-# LANGUAGE FlexibleInstances, IncoherentInstances, PatternGuards #-}
 
 module Idris.IdeSlave(parseMessage, convSExp, IdeSlaveCommand(..), sexpToCommand, toSExp, SExp(..), SExpable) where
 
@@ -73,7 +73,8 @@ pSExp = do xs <- between (char '(') (char ')') (pSExp `sepBy` (char ' '))
            return (SexpList xs)
     <|> atom
 
-atom = do char ':'; x <- atomC; return x
+atom = do string "nil"; return (SexpList [])
+   <|> do char ':'; x <- atomC; return x
    <|> do char '"'; xs <- many quotedChar; char '"'; return (StringAtom xs)
    <|> do ints <- many1 digit
           case readDec ints of
@@ -96,18 +97,27 @@ data IdeSlaveCommand = REPLCompletions String
                      | TypeOf String
                      | CaseSplit Int String
                      | AddClause Int String
+                     | AddMissing Int String
+                     | MakeWithBlock Int String
+                     | ProofSearch Int String [String]
                      | LoadFile String
   deriving Show
 
 sexpToCommand :: SExp -> Maybe IdeSlaveCommand
-sexpToCommand (SexpList (x:[]))                                                       = sexpToCommand x
-sexpToCommand (SexpList [SymbolAtom "interpret", StringAtom cmd])                     = Just (Interpret cmd)
-sexpToCommand (SexpList [SymbolAtom "repl-completions", StringAtom prefix])           = Just (REPLCompletions prefix)
-sexpToCommand (SexpList [SymbolAtom "load-file", StringAtom filename])                = Just (LoadFile filename)
-sexpToCommand (SexpList [SymbolAtom "type-of", StringAtom name])                      = Just (TypeOf name)
-sexpToCommand (SexpList [SymbolAtom "case-split", IntegerAtom line, StringAtom name]) = Just (CaseSplit (fromInteger line) name)
-sexpToCommand (SexpList [SymbolAtom "add-clause", IntegerAtom line, StringAtom name]) = Just (AddClause (fromInteger line) name)
-sexpToCommand _                                                                       = Nothing
+sexpToCommand (SexpList (x:[]))                                                         = sexpToCommand x
+sexpToCommand (SexpList [SymbolAtom "interpret", StringAtom cmd])                       = Just (Interpret cmd)
+sexpToCommand (SexpList [SymbolAtom "repl-completions", StringAtom prefix])             = Just (REPLCompletions prefix)
+sexpToCommand (SexpList [SymbolAtom "load-file", StringAtom filename])                  = Just (LoadFile filename)
+sexpToCommand (SexpList [SymbolAtom "type-of", StringAtom name])                        = Just (TypeOf name)
+sexpToCommand (SexpList [SymbolAtom "case-split", IntegerAtom line, StringAtom name])   = Just (CaseSplit (fromInteger line) name)
+sexpToCommand (SexpList [SymbolAtom "add-clause", IntegerAtom line, StringAtom name])   = Just (AddClause (fromInteger line) name)
+sexpToCommand (SexpList [SymbolAtom "add-missing", IntegerAtom line, StringAtom name])  = Just (AddMissing (fromInteger line) name)
+sexpToCommand (SexpList [SymbolAtom "make-with", IntegerAtom line, StringAtom name])    = Just (MakeWithBlock (fromInteger line) name)
+sexpToCommand (SexpList [SymbolAtom "proof-search", IntegerAtom line, StringAtom name, SexpList hintexp]) | Just hints <- getHints hintexp = Just (ProofSearch (fromInteger line) name hints)
+  where getHints = mapM (\h -> case h of
+                                 StringAtom s -> Just s
+                                 _            -> Nothing)
+sexpToCommand _                                                                         = Nothing
 
 parseMessage :: String -> Either Err (SExp, Integer)
 parseMessage x = case receiveString x of
