@@ -451,7 +451,7 @@ outputTy = do i <- getIState
 
 setIdeSlave :: Bool -> Idris ()
 setIdeSlave True  = do i <- getIState
-                       putIState $ i { idris_outputmode = (IdeSlave 0) }
+                       putIState $ i { idris_outputmode = (IdeSlave 0), idris_colourRepl = False }
 setIdeSlave False = return ()
 
 setTargetTriple :: String -> Idris ()
