@@ -35,16 +35,18 @@ forceArgs tn n t = do
 
     force :: IState -> Int -> Type -> Type -> ([Int], Type)
     force ist i (Bind n (Pi ty) sc) whole
-        | collapsibleIn ist ty = (nub (i : ixs), whole')
-        | otherwise = (ixs, whole')
+        | isCollapsible = (nub (i : ixs), whole')
+        | otherwise     = (         ixs , whole')
       where
+        isCollapsible = collapsibleIn ist ty
         (ixs, whole') = force ist (i+1) (eraseIn sc) (eraseIn whole)
-        eraseIn       = instantiate $ P Bound (MN i "?") Erased
+        eraseIn       = instantiate $ P Bound (MN i erasedName) Erased
+        erasedName    = if isCollapsible then "?forced" else "?"
 
     force _ _ sc@(App f a) whole
         = (ixs, foldr (.) id (map erase ixs) whole)
       where
-        erase i = instantiate $ P Bound (MN i "?") Erased
+        erase i = instantiate $ P Bound (MN i "?forced") Erased
         ixs = nub $ concatMap guarded args
         (_, args) = unApply sc
 
@@ -54,19 +56,22 @@ forceArgs tn n t = do
     collapsibleIn ist t = case unApply t of
         (P _ n' _, args)
             -- recursive applications of the datatype: n' == tn
-            | n' == tn -> all known args
+            | n' == tn -> ("--->", args, map known args) `traceShow` all known args
             | otherwise -> case lookupCtxt n' (idris_optimisation ist) of
                 [oi] -> collapsible oi
                 _    -> False
         _ -> False
 
+    -- somehow it marks (U xs) as known although xs is not known
+
     known :: Term -> Bool
+    known (P Bound (MN _ "?forced") Erased) = True  -- erased data is trivially known
     known (P (DCon _ _) _ _) = True  -- data constructors are known
     known (P (TCon _ _) _ _) = True  -- type constructors are known
-    known (P Bound _ Erased) = True  -- erased data is trivially known as well
     -- what about (P Bound), (P Ref)?
-    -- let's ignore Binder, too
-    known (App f x) = known f && known x
+    known (V _)        = False  -- references to previous non-erased fields are not known
+    known (Bind _ _ _) = False  -- let's ignore binders, too
+    known (App f x)    = known f && known x
     known (Constant _) = True
     known (Proj t _)   = known t
     known Erased       = True
