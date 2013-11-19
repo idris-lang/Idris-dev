@@ -190,6 +190,15 @@ instance Lattice Nat where { }
 instance BoundedJoinSemilattice Nat where
   bottom = Z
 
+
+instance Cast Int Nat where
+  cast i = fromInteger (cast i)
+
+instance Cast Nat Int where
+  cast Z     = 0
+  cast (S n) = 1 + cast {to=Int} n
+
+
 --------------------------------------------------------------------------------
 -- Auxilliary notions
 --------------------------------------------------------------------------------

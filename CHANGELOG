@@ -14,6 +14,9 @@ New in 0.9.10:
 * Some prettifying of error message
 * The contents of ~/.idris/repl/init are run at REPL start-up.
 * The REPL stores a command history in ~/.idris/repl/history
+* The [a..b], [a,b..c], [a..], and [a,b..] syntax now pass the totality
+  checker and can thus be used in types. The [x..] syntax now returns an
+  actually infinite stream.
 
 Internal changes
 
