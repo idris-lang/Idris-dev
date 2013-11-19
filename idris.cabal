@@ -277,7 +277,7 @@ Extra-source-files:
 
 source-repository head
   type:     git
-  location: git://github.com/edwinb/Idris-dev.git
+  location: git://github.com/idris-lang/Idris-dev.git
 
 Flag Effects
   Description: Build the effects package
@@ -289,7 +289,7 @@ Flag LLVM
   manual:       True
 
 Flag FFI
-  Description:  Build support for libffi 
+  Description:  Build support for libffi
   Default:      False
   manual:       True
 
@@ -413,6 +413,9 @@ Executable idris
 
   if os(linux)
      cpp-options:   -DLINUX
+     build-depends: unix
+  if os(freebsd)
+     cpp-options:   -DFREEBSD
      build-depends: unix
   if os(darwin)
      cpp-options:   -DMACOSX
