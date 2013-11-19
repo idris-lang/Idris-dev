@@ -5,7 +5,6 @@ module Idris.DSL where
 import Idris.AbsSyntax
 import Paths_idris
 
-import Core.CoreParser
 import Core.TT
 import Core.Evaluate
 

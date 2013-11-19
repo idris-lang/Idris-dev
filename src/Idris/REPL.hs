@@ -31,12 +31,10 @@ import Util.Net (listenOnLocalhost)
 
 import Core.Evaluate
 import Core.Execute (execute)
-import Core.ProofShell
 import Core.TT
 import Core.Constraints
 
 import IRTS.Compiler
-import IRTS.LParser
 import IRTS.CodegenCommon
 
 import Text.Trifecta.Result(Result(..))
@@ -811,11 +809,6 @@ process h fn (TestInline t)
                                 imp <- impShow
                                 c <- colourise
                                 iPrintResult (showImp (Just ist) imp c (delab ist tm'))
-process h fn TTShell
-                    = do ist <- getIState
-                         let shst = initState (tt_ctxt ist)
-                         runShell shst
-                         return ()
 process h fn Execute
                    = do (m, _) <- elabVal toplevel False
                                         (PApp fc
@@ -966,7 +959,6 @@ parseArgs ("--build":n:ns)       = PkgBuild n : (parseArgs ns)
 parseArgs ("--install":n:ns)     = PkgInstall n : (parseArgs ns)
 parseArgs ("--clean":n:ns)       = PkgClean n : (parseArgs ns)
 parseArgs ("--bytecode":n:ns)    = NoREPL : BCAsm n : (parseArgs ns)
-parseArgs ("--fovm":n:ns)        = NoREPL : FOVM n : (parseArgs ns)
 parseArgs ("-S":ns)              = OutputTy Raw : (parseArgs ns)
 parseArgs ("-c":ns)              = OutputTy Object : (parseArgs ns)
 parseArgs ("--mvn":ns)           = OutputTy MavenProject : (parseArgs ns)
@@ -1083,7 +1075,6 @@ idrisMain opts =
        let ibcsubdir = opt getIBCSubDir opts
        let importdirs = opt getImportDir opts
        let bcs = opt getBC opts
-       let vm = opt getFOVM opts
        let pkgdirs = opt getPkgDir opts
        let optimize = case opt getOptLevel opts of
                         [] -> 2
@@ -1121,10 +1112,6 @@ idrisMain opts =
        setOptLevel optimize
        when (Verbose `elem` opts) $ setVerbose True
        mapM_ makeOption opts
-       -- if we have the --fovm flag, drop into the first order VM testing
-       case vm of
-         [] -> return ()
-         xs -> runIO $ mapM_ (fovm cgn outty) xs
        -- if we have the --bytecode flag, drop into the bytecode assembler
        case bcs of
          [] -> return ()
@@ -1244,10 +1231,6 @@ getFile _ = Nothing
 getBC :: Opt -> Maybe String
 getBC (BCAsm str) = Just str
 getBC _ = Nothing
-
-getFOVM :: Opt -> Maybe String
-getFOVM (FOVM str) = Just str
-getFOVM _ = Nothing
 
 getOutput :: Opt -> Maybe String
 getOutput (Output str) = Just str

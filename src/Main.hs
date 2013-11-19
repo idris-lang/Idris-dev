@@ -12,11 +12,8 @@ import Control.Monad.Trans.Error ( ErrorT(..) )
 import Control.Monad.Trans.State.Strict ( execStateT, get, put )
 import Control.Monad ( when )
 
-import Core.CoreParser
-import Core.ShellParser
 import Core.TT
 import Core.Typecheck
-import Core.ProofShell
 import Core.Evaluate
 import Core.Constraints
 

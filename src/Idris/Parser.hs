@@ -30,7 +30,6 @@ import Idris.ParseHelpers
 import Idris.ParseOps
 import Idris.ParseExpr
 import Idris.ParseData
-import Core.CoreParser (opChars)
 
 import Paths_idris
 
@@ -885,11 +884,11 @@ transform syn = do try (lchar '%' *> reserved "transform")
 {- * Loading and parsing -}
 {- | Parses an expression from input -}
 parseExpr :: IState -> String -> Result PTerm
-parseExpr st = parseString (runInnerParser (evalStateT (fullExpr defaultSyntax) st)) (Directed (UTF8.fromString "(input)") 0 0 0 0)
+parseExpr st = runparser (fullExpr defaultSyntax) st "(input)"
 
 {- | Parses a tactic from input -}
 parseTactic :: IState -> String -> Result PTactic
-parseTactic st = parseString (runInnerParser (evalStateT (fullTactic defaultSyntax) st)) (Directed (UTF8.fromString "(input)") 0 0 0 0)
+parseTactic st = runparser (fullTactic defaultSyntax) st "(input)"
 
 -- | Parse module header and imports
 parseImports :: FilePath -> String -> Idris ([String], [String], Maybe Delta)
@@ -912,14 +911,13 @@ parseImports fname input
                      i     <- get
                      return ((mname, ps, mrk'), i)
 
-
 -- | A program is a list of declarations, possibly with associated
 -- documentation strings.
 parseProg :: SyntaxInfo -> FilePath -> String -> Maybe Delta ->
              Idris [PDecl]
 parseProg syn fname input mrk
     = do i <- getIState
-         case parseString (runInnerParser (evalStateT mainProg i)) (Directed (UTF8.fromString fname) 0 0 0 0) input of
+         case runparser mainProg i fname input of
             Failure doc     -> do -- FIXME: Get error location from trifecta
                                   --let errl = sourceLine (errorPos err)
                                   i <- getIState

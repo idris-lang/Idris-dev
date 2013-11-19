@@ -8,8 +8,8 @@ import Core.Evaluate
 import Core.Elaborate hiding (Tactic(..))
 import Core.Typecheck
 import Idris.AbsSyntaxTree
-import Idris.IdeSlave
 import Idris.Colours
+import Idris.IdeSlave
 import IRTS.CodegenCommon
 import Util.DynamicLinker
 
