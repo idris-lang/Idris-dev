@@ -9,7 +9,7 @@ module Core.Evaluate(normalise, normaliseTrace, normaliseC, normaliseAll,
                 addToCtxt, setAccess, setTotal, addCtxtDef, addTyDecl,
                 addDatatype, addCasedef, simplifyCasedef, addOperator,
                 lookupNames, lookupTy, lookupP, lookupDef, lookupDefAcc, lookupVal,
-                lookupTotal, lookupTyEnv, isDConName, isTConName, isConName, isFnName,
+                lookupTotal, lookupNameTotal, lookupTyEnv, isDConName, isTConName, isConName, isFnName,
                 Value(..), Quote(..), initEval) where
 
 import Debug.Trace
@@ -882,6 +882,10 @@ lookupDefAcc n mkpublic ctxt
 lookupTotal :: Name -> Context -> [Totality]
 lookupTotal n ctxt = map mkt $ lookupCtxt n (definitions ctxt)
   where mkt (d, a, t) = t
+
+lookupNameTotal :: Name -> Context -> [(Name, Totality)]
+lookupNameTotal n = map (\(n, (_, _, t)) -> (n, t)) . lookupCtxtName n . definitions
+
 
 lookupVal :: Name -> Context -> [Value]
 lookupVal n ctxt
