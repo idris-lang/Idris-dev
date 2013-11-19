@@ -12,7 +12,7 @@ sub runtest {
     chdir($test);
 
     print "Running $test...\n";
-    my $got = `sh ./run @idrOpts`;
+    my $got = `./run @idrOpts`;
     my $exp = `cat expected`;
 
     open my $out, '>', 'output';
