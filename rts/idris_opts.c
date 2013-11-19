@@ -6,18 +6,17 @@
 #include <string.h>
 
 
-char usage[] = 
-    "\n"                                                        \
+#define USAGE "\n"                                              \
     "Usage: <prog> [+RTS <rtsopts> -RTS] <args>\n\n"            \
     "Options:\n\n"                                              \
     "  -?    Print this message and exits.\n"                   \
     "  -s    Summary GC statistics.\n"                          \
     "  -H    Initial heap size. Egs: -H4M, -H500K, -H1G\n"      \
     "  -K    Sets the maximum stack size. Egs: -K8M\n"          \
-    "\n";
+    "\n"
 
 void print_usage(FILE * s) {
-    fprintf(s, usage);
+    fprintf(s, USAGE);
 }
 
 int read_size(char * str) {
