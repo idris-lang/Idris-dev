@@ -523,10 +523,17 @@ process h fn (Defn n)
                              showImp (Just i) True c (delab i rhs))
 process h fn (TotCheck n)
                         = do i <- getIState
-                             case lookupTotal n (tt_ctxt i) of
-                                [t] -> iPrintResult (showTotal t i)
-                                _ -> do iPrintError ""
-                                        return ()
+                             case lookupNameTotal n (tt_ctxt i) of
+                                []  -> ihPrintError h $ "Unknown operator " ++ show n
+                                ts  -> do ist <- getIState
+                                          c <- colourise
+                                          imp <- impShow
+                                          let showN = showName (Just ist) [] imp c
+                                          ihPrintResult h . concat . intersperse "\n" .
+                                            map (\(n, t) -> showN n ++ " is " ++ showTotal t i) $
+                                            ts
+
+
 process h fn (DebugInfo n)
    = do i <- getIState
         let oi = lookupCtxtName n (idris_optimisation i)
@@ -901,6 +908,7 @@ dumpInstance n = do i <- getIState
                     case lookupTy n ctxt of
                          ts -> mapM_ (\t -> iputStrLn $ showImp Nothing imp False (delab i t)) ts
 
+showTotal :: Totality -> IState -> String
 showTotal t@(Partial (Other ns)) i
    = show t ++ "\n\t" ++ showSep "\n\t" (map (showTotalN i) ns)
 showTotal t i = show t
