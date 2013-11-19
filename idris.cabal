@@ -414,6 +414,9 @@ Executable idris
   if os(linux)
      cpp-options:   -DLINUX
      build-depends: unix
+  if os(freebsd)
+     cpp-options:   -DFREEBSD
+     build-depends: unix
   if os(darwin)
      cpp-options:   -DMACOSX
      build-depends: unix

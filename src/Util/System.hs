@@ -71,15 +71,24 @@ rmFile f = do putStrLn $ "Removing " ++ f
                       (\ioerr -> putStrLn $ "WARNING: Cannot remove file "
                                  ++ f ++ ", Error msg:" ++ show ioerr)
 
-
+#ifdef FREEBSD
+extraLib = " -L/usr/local/lib"
+#else
+extraLib = ""
+#endif
 getLibFlags = do dir <- getDataDir
-                 return $ "-L" ++ (dir </> "rts") ++ " -lidris_rts -lgmp -lpthread"
+                 return $ "-L" ++ (dir </> "rts") ++ " -lidris_rts" ++ extraLib ++ " -lgmp -lpthread"
 
 getIdrisLibDir = do dir <- getDataDir
                     return $ addTrailingPathSeparator dir
 
+#ifdef FREEBSD
+extraInclude = " -I/usr/local/include"
+#else
+extraInclude = ""
+#endif
 getIncFlags = do dir <- getDataDir
-                 return $ "-I" ++ dir </> "rts"
+                 return $ "-I" ++ dir </> "rts" ++ extraInclude
 
 getExecutablePom = do dir <- getDataDir
                       return $ dir </> "java" </> "executable_pom.xml"

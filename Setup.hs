@@ -34,8 +34,14 @@ idrisCmd local = ".." </>  buildDir local </>  "idris" </>  "idris"
 -- -----------------------------------------------------------------------------
 -- Make Commands
 
+-- use GNU make on FreeBSD
+#ifdef freebsd_HOST_OS
+mymake = "gmake"
+#else
+mymake = "make"
+#endif
 make verbosity =
-   P.runProgramInvocation verbosity . P.simpleProgramInvocation "make"
+   P.runProgramInvocation verbosity . P.simpleProgramInvocation mymake
 
 -- -----------------------------------------------------------------------------
 -- Flags

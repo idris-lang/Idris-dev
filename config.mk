@@ -1,4 +1,3 @@
-GMP_INCLUDE_DIR :=
 CC              :=gcc
 CABAL           :=cabal
 CFLAGS          :=-O2 -Wall $(CFLAGS)
@@ -6,6 +5,11 @@ CFLAGS          :=-O2 -Wall $(CFLAGS)
 ## Disable building of Effects
 #CABALFLAGS :=-f NoEffects
 
+ifneq (, $(findstring bsd, $(MACHINE)))
+	GMP_INCLUDE_DIR      :=
+else
+	GMP_INCLUDE_DIR      :=-I/usr/local/include
+endif
 
 MACHINE         := $(shell $(CC) -dumpmachine)
 ifneq (, $(findstring darwin, $(MACHINE)))
