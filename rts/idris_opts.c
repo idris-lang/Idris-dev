@@ -6,7 +6,7 @@
 #include <string.h>
 
 
-char usage[] = 
+const char usage[] =
     "\n"                                                        \
     "Usage: <prog> [+RTS <rtsopts> -RTS] <args>\n\n"            \
     "Options:\n\n"                                              \
@@ -26,7 +26,7 @@ int read_size(char * str) {
 
     int r = sscanf(str, "%u%c", &size, &mult);
 
-    if (r == 1) 
+    if (r == 1)
         return size;
 
     if (r == 2) {
@@ -34,8 +34,8 @@ int read_size(char * str) {
         case 'K': size = size << 10; break;
         case 'M': size = size << 20; break;
         case 'G': size = size << 30; break;
-        default: 
-            fprintf(stderr, 
+        default:
+            fprintf(stderr,
                     "RTS Opts: Unable to recognize size suffix `%c'.\n" \
                     "          Possible suffixes are K or M or G.\n",
                     mult);
@@ -58,7 +58,7 @@ int parse_args(RTSOpts * opts, int argc, char *argv[])
 
     if (strcmp(argv[0], "+RTS") != 0)
         return 0;
-    
+
     int i;
     for (i = 1; i < argc; i++) {
         if (strcmp(argv[i], "-RTS") == 0) {

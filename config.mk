@@ -1,4 +1,4 @@
-CC              :=gcc
+CC              :=cc
 CABAL           :=cabal
 CFLAGS          :=-O2 -Wall $(CFLAGS)
 #CABALFLAGS	:=

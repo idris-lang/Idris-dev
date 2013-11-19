@@ -5,9 +5,7 @@ OBJS = idris_rts.o idris_heap.o idris_gc.o idris_gmp.o idris_stdfgn.o \
 HDRS = idris_rts.h idris_heap.h idris_gc.h idris_gmp.h idris_stdfgn.h \
        idris_bitstring.h idris_opts.h idris_stats.h
 CFLAGS:=-fPIC $(CFLAGS)
-ifneq ($(GMP_INCLUDE_DIR),)
-	CFLAGS += -isystem $(GMP_INCLUDE_DIR)
-endif
+CFLAGS += $(GMP_INCLUDE_DIR)
 
 LIBTARGET = libidris_rts.a
 
