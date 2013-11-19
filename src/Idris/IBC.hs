@@ -185,7 +185,7 @@ pImports fs
   = do mapM_ (\f -> do i <- getIState
                        ibcsd <- valIBCSubDir i
                        ids <- allImportDirs
-                       fp <- runIO $ findImport ids ibcsd f
+                       fp <- getImport ids ibcsd f
                        if (f `elem` imported i)
                         then iLOG $ "Already read " ++ f
                         else do putIState (i { imported = f : imported i })

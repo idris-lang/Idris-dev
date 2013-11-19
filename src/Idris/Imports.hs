@@ -1,7 +1,7 @@
 module Idris.Imports where
 
 import Idris.AbsSyntax
-
+import Idris.Error
 import Core.TT
 import Paths_idris
 
@@ -43,8 +43,15 @@ ibcPathWithFallback ibcsd fp = do let ibcp = ibcPath ibcsd True fp
 ibcPathNoFallback :: FilePath -> FilePath -> FilePath
 ibcPathNoFallback ibcsd fp = ibcPath ibcsd True fp
 
-findImport :: [FilePath] -> FilePath -> FilePath -> IO IFileType
-findImport []     ibcsd fp = fail $ "Can't find import " ++ fp
+getImport :: [FilePath] -> FilePath -> FilePath -> Idris IFileType
+getImport ds ibcsd fp = do
+    m_fp <- runIO $ findImport ds ibcsd fp
+    case m_fp of
+        Just ift -> return ift
+        Nothing -> ifail $ "Could not locate import " ++ fp
+
+findImport :: [FilePath] -> FilePath -> FilePath -> IO (Maybe IFileType)
+findImport []     ibcsd fp = return Nothing
 findImport (d:ds) ibcsd fp = do let fp_full = d </> fp
                                 ibcp <- ibcPathWithFallback ibcsd fp_full
                                 let idrp = srcPath fp_full
@@ -52,16 +59,13 @@ findImport (d:ds) ibcsd fp = do let fp_full = d </> fp
                                 ibc <- doesFileExist ibcp
                                 idr  <- doesFileExist idrp
                                 lidr <- doesFileExist lidrp
---                              when idr $ putStrLn $ idrp ++ " ok"
---                              when lidr $ putStrLn $ lidrp ++ " ok"
---                              when ibc $ putStrLn $ ibcp ++ " ok"
                                 let isrc = if lidr
                                            then LIDR lidrp
                                            else IDR idrp
                                 if ibc
-                                  then return (IBC ibcp isrc)
+                                  then return (Just (IBC ibcp isrc))
                                   else if (idr || lidr)
-                                       then return isrc
+                                       then return (Just isrc)
                                        else findImport ds ibcsd fp
 
 -- find a specific filename somewhere in a path
