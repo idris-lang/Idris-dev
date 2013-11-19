@@ -33,6 +33,7 @@ Tests:
 031: error reflection 
 032: control idris via stdin
 033: null pointer creation and check
+034: presence of floating point primitives in backends
 
 regxxx: various regression tests
 reg020: working strlen

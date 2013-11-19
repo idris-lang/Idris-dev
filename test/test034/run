@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+
+HEAD="module Main
+
+import Data.Float
+
+main : IO ()"
+
+TESTS=("prim__floatToStr 0.0"
+"prim__strToFloat \"0.0\""
+"prim__addFloat 1.0 1.0"
+"prim__subFloat 1.0 1.0"
+"prim__mulFloat 1.0 1.0"
+"prim__divFloat 1.0 1.0"
+"prim__slteFloat 1.0 1.0"
+"prim__sltFloat 1.0 1.0"
+"prim__sgteFloat 1.0 1.0"
+"prim__sgtFloat 1.0 1.0"
+"prim__eqFloat 1.0 1.0"
+"prim__floatACos 1.0"
+"prim__floatATan 1.0"
+"prim__floatCos 1.0"
+"prim__floatFloor 1.0"
+"prim__floatSin 1.0"
+"prim__floatTan 1.0"
+"prim__floatASin 1.0"
+"prim__floatCeil 1.0"
+"prim__floatExp 1.0"
+"prim__floatLog 1.0"
+"prim__floatSqrt 1.0"
+)
+
+generate_testfile()
+{
+cat <<EOF > $1
+${HEAD}
+main = do
+    putStrLn $ show $ $2
+EOF
+}
+
+for T in "${TESTS[@]}"
+do
+    echo ${T}
+    generate_testfile "tmptest.idr" "${T}"
+    idris $@ --quiet tmptest.idr -o tmptest || echo "missing primitive in ${CG}"
+    ./tmptest
+    rm tmptest.idr tmptest.ibc tmptest
+done

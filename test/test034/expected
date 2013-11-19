@@ -1,0 +1,44 @@
+prim__floatToStr 0.0
+0.0
+prim__strToFloat "0.0"
+0.0
+prim__addFloat 1.0 1.0
+2.0
+prim__subFloat 1.0 1.0
+0.0
+prim__mulFloat 1.0 1.0
+1.0
+prim__divFloat 1.0 1.0
+1.0
+prim__slteFloat 1.0 1.0
+1
+prim__sltFloat 1.0 1.0
+0
+prim__sgteFloat 1.0 1.0
+1
+prim__sgtFloat 1.0 1.0
+0
+prim__eqFloat 1.0 1.0
+1
+prim__floatACos 1.0
+0.0
+prim__floatATan 1.0
+0.7853981633974483
+prim__floatCos 1.0
+0.5403023058681398
+prim__floatFloor 1.0
+1.0
+prim__floatSin 1.0
+0.8414709848078965
+prim__floatTan 1.0
+1.5574077246549023
+prim__floatASin 1.0
+1.5707963267948966
+prim__floatCeil 1.0
+1.0
+prim__floatExp 1.0
+2.718281828459045
+prim__floatLog 1.0
+0.0
+prim__floatSqrt 1.0
+1.0
