@@ -201,7 +201,7 @@ bcc i (CONSTCASE r code def)
         indent i ++ "if (GETINT(" ++ v ++ ") == " ++ show b ++ ") {\n"
            ++ concatMap (bcc (i+1)) bc ++ indent i ++ "} else\n"
     iCase v (Ch b, bc) =
-        indent i ++ "if (GETINT(" ++ v ++ ") == " ++ show b ++ ") {\n"
+        indent i ++ "if (GETINT(" ++ v ++ ") == " ++ show (fromEnum b) ++ ") {\n"
            ++ concatMap (bcc (i+1)) bc ++ indent i ++ "} else\n"
 
     showCase i (t, bc) = indent i ++ "case " ++ show t ++ ":\n"
