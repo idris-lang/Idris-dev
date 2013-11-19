@@ -14,34 +14,65 @@ import Debug.Trace
 -- Calculate the forceable arguments to a constructor and update the set of
 -- optimisations
 
-forceArgs :: Name -> Type -> Idris ()
-forceArgs n t = do i <- getIState
-                   let fargs = force i 0 t
-                   copt <- case lookupCtxt n (idris_optimisation i) of
-                                 []     -> return $ Optimise False False [] []
-                                 (op:_) -> return op
-                   let opts = addDef n (copt { forceable = fargs }) (idris_optimisation i)
-                   putIState (i { idris_optimisation = opts })
-                   addIBC (IBCOpt n)
-                   iLOG $ "Forced: " ++ show n ++ " " ++ show fargs ++ "\n   from " ++
-                          show t
+forceArgs :: Name -> Name -> Type -> Idris ()
+forceArgs tn n t = do
+    ist <- getIState
+    let fargs = forceableArgs ist t []
+        copt  = case lookupCtxt n (idris_optimisation ist) of
+          []     -> Optimise False False [] []
+          (op:_) -> op
+        opts = addDef n (copt { forceable = fargs }) (idris_optimisation ist)
+    putIState (ist { idris_optimisation = opts })
+    addIBC (IBCOpt n)
+    iLOG $ "Forced: " ++ show n ++ " " ++ show fargs ++ "\n   from " ++ show t
   where
-    force :: IState -> Int -> Term -> [Int]
-    force ist i (Bind _ (Pi ty) sc)
-        | collapsibleIn ist ty
-            = nub $ i : (force ist (i + 1) $ instantiate (P Bound (MN i "?") Erased) sc)
-        | otherwise = force ist (i + 1) $ instantiate (P Bound (MN i "?") Erased) sc
-    force _ _ sc@(App f a)
-        | (_, args) <- unApply sc
-            = nub $ concatMap guarded args
-    force _ _ _ = []
+    forceableArgs :: IState -> Type -> [Int] -> [Int]
+    forceableArgs ist t prevIxs
+        | all (`elem` prevIxs) ixs = prevIxs
+        | otherwise = forceableArgs ist t' (nub $ prevIxs ++ ixs)
+      where
+        (ixs, t') = force ist 0 t t
 
-    collapsibleIn i t
-        | (P _ tn _, _) <- unApply t
-           = case lookupCtxt tn (idris_optimisation i) of
+    force :: IState -> Int -> Type -> Type -> ([Int], Type)
+    force ist i (Bind n (Pi ty) sc) whole
+        | collapsibleIn ist ty = (nub (i : ixs), whole')
+        | otherwise = (ixs, whole')
+      where
+        (ixs, whole') = force ist (i+1) (eraseIn sc) (eraseIn whole)
+        eraseIn       = instantiate $ P Bound (MN i "?") Erased
+
+    force _ _ sc@(App f a) whole
+        = (ixs, foldr (.) id (map erase ixs) whole)
+      where
+        erase i = instantiate $ P Bound (MN i "?") Erased
+        ixs = nub $ concatMap guarded args
+        (_, args) = unApply sc
+
+    force _ _ _ whole = ([], whole)
+
+    collapsibleIn :: IState -> Type -> Bool
+    collapsibleIn ist t = case unApply t of
+        (P _ n' _, args)
+            -- recursive applications of the datatype: n' == tn
+            | n' == tn -> all known args
+            | otherwise -> case lookupCtxt n' (idris_optimisation ist) of
                 [oi] -> collapsible oi
-                _ -> False
-        | otherwise = False
+                _    -> False
+        _ -> False
+
+    known :: Term -> Bool
+    known (P (DCon _ _) _ _) = True  -- data constructors are known
+    known (P (TCon _ _) _ _) = True  -- type constructors are known
+    known (P Bound _ Erased) = True  -- erased data is trivially known as well
+    -- what about (P Bound), (P Ref)?
+    -- let's ignore Binder, too
+    known (App f x) = known f && known x
+    known (Constant _) = True
+    known (Proj t _)   = known t
+    known Erased       = True
+    known Impossible   = True
+    known (TType _)    = True
+    known _            = False
 
     isF (P _ (MN force "?") _) = Just force
     isF _ = Nothing
@@ -96,6 +127,7 @@ collapseCons ty cons =
        = case lookupCtxt n (idris_optimisation i) of
             (oi:_) -> checkFR (forceable oi) 0 ts
             _ -> return False
+
     checkFR fs i [] = return True
     checkFR fs i (_ : xs) | i `elem` fs = checkFR fs (i + 1) xs
     checkFR fs i (t : xs)
@@ -117,7 +149,11 @@ collapseCons ty cons =
     disjoint :: [[Term]] -> Bool
     disjoint []         = True
     disjoint [xs]       = True
-    disjoint (xs : xss) = all (or . zipWith disjointPair xs) xss && disjoint xss
+    disjoint (xs : xss) =
+        -- xs is disjoint with every pattern from xss
+        all (or . zipWith disjointPair xs) xss
+        -- and xss is pairwise disjoint, too
+        && disjoint xss
 
     -- Return True  if the two patterns are provably disjoint.
     -- Return False if they're not or if unsure.
