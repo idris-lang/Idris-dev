@@ -1117,8 +1117,16 @@ idrisMain opts =
                                                return ()
        when (runrepl && not quiet && not idesl && not (isJust script)) $ iputStrLn banner
        ist <- getIState
-
-       loadInputs stdout inputs
+       -- Check if the file specified inthe comand line exists.
+       -- If so, then process the imports, and report any errors.
+       -- If not, then don't do anything.
+       when (length inputs > 0) 
+         (do exists <- runIO $ doesFileExist $ head inputs
+             when exists (do
+               idrisCatch (loadInputs stdout inputs)
+                          (\e -> do ist <- getIState
+                                    iputStrLn $ pshow ist e
+                                    setErrLine 0)))
 
        runIO $ hSetBuffering stdout LineBuffering
 
@@ -1126,7 +1134,7 @@ idrisMain opts =
        when ok $ case output of
                     [] -> return ()
                     (o:_) -> idrisCatch (process stdout "" (Compile cgn o))
-                               (\e -> do ist <- getIState ; iputStrLn $ pshow ist e)
+                              (\e -> do ist <- getIState ; iputStrLn $ pshow ist e)
        case script of
          Nothing -> return ()
          Just expr -> execScript expr

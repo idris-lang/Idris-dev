@@ -928,7 +928,7 @@ loadModule outh f
                     let file = takeWhile (/= ' ') f
                     ibcsd <- valIBCSubDir i
                     ids <- allImportDirs
-                    fp <- liftIO $ findImport ids ibcsd file
+                    fp <- getImport ids ibcsd file
                     if file `elem` imported i
                        then iLOG $ "Already read " ++ file
                        else do putIState (i { imported = file : imported i })

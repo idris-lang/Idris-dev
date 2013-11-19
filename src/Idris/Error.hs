@@ -41,7 +41,6 @@ report e
 idrisCatch :: Idris a -> (Err -> Idris a) -> Idris a
 idrisCatch = catchError
 
-
 ifail :: String -> Idris a
 ifail = throwError . Msg
 
