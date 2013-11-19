@@ -17,6 +17,7 @@ import Prelude.Strings
 import Prelude.Chars
 import Prelude.Traversable
 import Prelude.Bits
+import Prelude.Stream
 
 %access public
 %default total
@@ -343,24 +344,73 @@ ceiling x = prim__floatCeil x
 
 ---- Ranges
 
-partial abstract
-count : (Ord a, Num a) => a -> a -> a -> List a
-count a inc b = if a <= b then a :: count (a + inc) inc b
-                          else []
 
-partial abstract
-countFrom : (Ord a, Num a) => a -> a -> List a
-countFrom a inc = a :: lazy (countFrom (a + inc) inc)
+natRange : Nat -> List Nat
+natRange n = List.reverse (go n)
+  where go Z = []
+        go (S n) = n :: go n
+
+class Enum a where
+  total pred : a -> a
+  total succ : a -> a
+  total toNat : a -> Nat
+  total fromNat : Nat -> a
+  total enumFrom : a -> Stream a
+  enumFrom n = n :: enumFrom (succ n)
+  total enumFromThen : a -> a -> Stream a
+  total enumFromTo : a -> a -> List a
+  total enumFromThenTo : a -> a -> a -> List a
+
+
+instance Enum Nat where
+  pred = Nat.pred
+  succ = S
+  toNat = id
+  fromNat = id
+  enumFromThen n inc = n :: enumFromThen (fromNat (plus (toNat inc) (toNat n))) inc
+  enumFromThenTo n inc m = map (plus n . (* inc)) (natRange (S (( m - n) `div` inc)))
+  enumFromTo n m = map (plus n) (natRange (S (m - n)))
+
+
+instance Enum Integer where
+  pred n = n - 1
+  succ n = n + 1
+  toNat n = cast n
+  fromNat n = cast n
+  enumFromThen n inc = n :: enumFromThen (inc + n) inc
+  enumFromTo n m = go (natRange (S (cast {to = Nat} (m - n))))
+    where go : List Nat -> List Integer
+          go [] = []
+          go (x :: xs) = n + cast x :: go xs
+  enumFromThenTo n inc m = go (natRange (S (fromInteger (abs (m - n)) `div` fromInteger (abs inc))))
+    where go : List Nat -> List Integer
+          go [] = []
+          go (x :: xs) = n + (cast x * inc) :: go xs
+
+instance Enum Int where
+  pred n = n - 1
+  succ n = n + 1
+  toNat n = cast n
+  fromNat n = cast n
+  enumFromThen n inc = n :: enumFromThen (inc + n) inc
+  enumFromTo n m = go (natRange (S (cast {to = Nat} (m - n))))
+    where go : List Nat -> List Int
+          go [] = []
+          go (x :: xs) = n + cast x :: go xs
+  enumFromThenTo n inc m = go (natRange (S (cast {to=Nat} (abs (m - n)) `div` cast {to=Nat} (abs inc))))
+    where go : List Nat -> List Int
+          go [] = []
+          go (x :: xs) = n + (cast x * inc) :: go xs
 
 syntax "[" [start] ".." [end] "]"
-     = count start 1 end
+     = enumFromTo start end
 syntax "[" [start] "," [next] ".." [end] "]"
-     = count start (next - start) end
+     = enumFromThenTo start (next - start) end
 
 syntax "[" [start] "..]"
-     = countFrom start 1
+     = enumFrom start 1
 syntax "[" [start] "," [next] "..]"
-     = countFrom start (next - start)
+     = enumFromThen start (next - start)
 
 ---- More utilities
 
