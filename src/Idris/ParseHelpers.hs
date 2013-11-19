@@ -43,6 +43,10 @@ instance TokenParsing IdrisInnerParser where
 -- | Generalized monadic parsing constraint type
 type MonadicParsing m = (DeltaParsing m, LookAheadParsing m, TokenParsing m, Monad m)
 
+-- | Helper to run Idris inner parser based stateT parsers
+runparser :: StateT st IdrisInnerParser res -> st -> String -> String -> Result res
+runparser p i inputname = parseString (runInnerParser (evalStateT p i)) (Directed (UTF8.fromString inputname) 0 0 0 0)
+
 {- * Space, comments and literals (token/lexing like parsers) -}
 
 -- | Consumes any simple whitespace (any character which satisfies Char.isSpace)
@@ -232,8 +236,11 @@ mkName (n, ns) = NS (UN n) (reverse (parseNS ns))
                       (x, "")    -> [x]
                       (x, '.':y) -> x : parseNS y
 
+opChars :: String
+opChars = ":!#$%&*+./<=>?@\\^|-~"
+
 operatorLetter :: MonadicParsing m => m Char
-operatorLetter = oneOf ":!#$%&*+./<=>?@\\^|-~"
+operatorLetter = oneOf opChars
 
 -- | Parses an operator
 operator :: MonadicParsing m => m String

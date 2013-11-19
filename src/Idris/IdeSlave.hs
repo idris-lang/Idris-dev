@@ -5,10 +5,14 @@ module Idris.IdeSlave(parseMessage, convSExp, IdeSlaveCommand(..), sexpToCommand
 import Text.Printf
 import Numeric
 import Data.List
+import qualified Data.ByteString.UTF8 as UTF8
 -- import qualified Data.Text as T
-import Text.Parsec
+import Text.Trifecta hiding (Err)
+import Text.Trifecta.Delta
 
 import Core.TT
+
+import Control.Applicative
 
 data SExp = SexpList [SExp]
           | StringAtom String
@@ -76,7 +80,7 @@ pSExp = do xs <- between (char '(') (char ')') (pSExp `sepBy` (char ' '))
 atom = do string "nil"; return (SexpList [])
    <|> do char ':'; x <- atomC; return x
    <|> do char '"'; xs <- many quotedChar; char '"'; return (StringAtom xs)
-   <|> do ints <- many1 digit
+   <|> do ints <- some digit
           case readDec ints of
             ((num, ""):_) -> return (IntegerAtom (toInteger num))
             _ -> return (StringAtom ints)
@@ -89,8 +93,8 @@ quotedChar = try (string "\\\\" >> return '\\')
          <|> try (string "\\\"" >> return '"')
          <|> noneOf "\""
 
-parseSExp :: String -> Either ParseError SExp
-parseSExp = parse pSExp "(unknown)"
+parseSExp :: String -> Result SExp
+parseSExp = parseString pSExp (Directed (UTF8.fromString "(unknown)") 0 0 0 0)
 
 data IdeSlaveCommand = REPLCompletions String
                      | Interpret String
@@ -134,8 +138,8 @@ receiveString x =
         if (length msg) /= (num - 1)
            then Left . Msg $ "bad input length"
            else (case parseSExp msg of
-                      Left _ -> Left . Msg $ "parse failure"
-                      Right r -> Right r)
+                      Failure _ -> Left . Msg $ "parse failure"
+                      Success r -> Right r)
     _ -> Left . Msg $ "readHex failed"
 
 convSExp :: SExpable a => String -> a -> Integer -> String

@@ -23,7 +23,7 @@ import Data.Char(toLower)
 import qualified Data.ByteString.UTF8 as UTF8
 
 parseCmd :: IState -> String -> String -> Result Command
-parseCmd i inputname = parseString (P.runInnerParser (evalStateT pCmd i)) (Directed (UTF8.fromString inputname) 0 0 0 0)
+parseCmd i inputname = P.runparser pCmd i inputname
 
 cmd :: [String] -> P.IdrisParser ()
 cmd xs = do P.lchar ':'; docmd (sortBy (\x y -> compare (length y) (length x)) xs)
@@ -38,7 +38,6 @@ pCmd = do P.whiteSpace; try (do cmd ["q", "quit"]; eof; return Quit)
                           return (ModImport (toPath f)))
               <|> try (do cmd ["e", "edit"]; eof; return Edit)
               <|> try (do cmd ["exec", "execute"]; eof; return Execute)
-              <|> try (do cmd ["ttshell"]; eof; return TTShell)
               <|> try (do cmd ["c", "compile"]; f <- P.identifier; eof; return (Compile ViaC f))
               <|> try (do cmd ["jc", "newcompile"]; f <- P.identifier; eof; return (Compile ViaJava f))
               <|> try (do cmd ["js", "javascript"]; f <- P.identifier; eof; return (Compile ViaJavaScript f))

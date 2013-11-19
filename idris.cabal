@@ -299,13 +299,10 @@ Executable idris
   Other-modules:
                   Core.CaseTree
                 , Core.Constraints
-                , Core.CoreParser
                 , Core.Elaborate
                 , Core.Evaluate
                 , Core.Execute
-                , Core.ProofShell
                 , Core.ProofState
-                , Core.ShellParser
                 , Core.TT
                 , Core.Typecheck
                 , Core.Unify
@@ -359,7 +356,6 @@ Executable idris
                 , IRTS.Java.JTypes
                 , IRTS.Java.Mangling
                 , IRTS.Java.Pom
-                , IRTS.LParser
                 , IRTS.Lang
                 , IRTS.Simplified
 
@@ -387,7 +383,7 @@ Executable idris
                 , haskeline >= 0.7
                 , language-java >= 0.2.2
                 , mtl
-                , parsec >= 3
+                --, parsec >= 3
                 , parsers == 0.9
                 , pretty
                 , process

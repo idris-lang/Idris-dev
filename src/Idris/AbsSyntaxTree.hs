@@ -226,7 +226,6 @@ data Command = Quit
              | ShowProof Name
              | Proofs
              | Universes
-             | TTShell
              | LogLvl Int
              | Spec PTerm
              | HNF PTerm
@@ -284,7 +283,6 @@ data Opt = Filename String
          | BCAsm String
          | DumpDefun String
          | DumpCases String
-         | FOVM String
          | UseCodegen Codegen
          | OutputTy OutputType
          | Extension LanguageExt

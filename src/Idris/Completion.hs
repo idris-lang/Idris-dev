@@ -3,11 +3,11 @@ module Idris.Completion (replCompletion, proverCompletion) where
 
 import Core.Evaluate (ctxtAlist)
 import Core.TT
-import Core.CoreParser (opChars)
 
 import Idris.AbsSyntaxTree
 import Idris.Help
 import Idris.Colours
+import Idris.ParseHelpers(opChars)
 
 import Control.Monad.State.Strict
 
