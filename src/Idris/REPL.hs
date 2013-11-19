@@ -449,7 +449,7 @@ process h fn (Check (PRef _ n))
         case lookupNames n ctxt of
           ts@(t:_) ->
             case lookup t (idris_metavars ist) of
-                Just (_, i) -> ihPrintResult h (showMetavarInfo c imp ist n i)
+                Just (_, i, _) -> ihPrintResult h (showMetavarInfo c imp ist n i)
                 Nothing -> ihPrintResult h $
                            concat . intersperse "\n" . map (\n -> showName (Just ist) [] False c n ++ " : " ++
                                                                   showImp (Just ist) imp c (delabTy ist n)) $ ts
@@ -675,9 +675,9 @@ process h fn (DoProofSearch updatefile l n hints)
                     [] -> return n
                     ns -> ierror (CantResolveAlts (map show ns))
          i <- getIState
-         let (top, envlen) = case lookup mn (idris_metavars i) of
-                                  Just mi -> mi
-                                  _ -> (Nothing, 0)
+         let (top, envlen, _) = case lookup mn (idris_metavars i) of
+                                  Just (t, e, False) -> (t, e, False)
+                                  _ -> (Nothing, 0, True)
          let fc = fileFC fn
          let body t = PProof [Try (TSeq Intros (ProofSearch t n hints))
                                   (ProofSearch t n hints)]
@@ -744,7 +744,7 @@ process h fn (RmProof n')
                             insertMetavar n =
                               do i <- getIState
                                  let ms = idris_metavars i
-                                 putIState $ i { idris_metavars = (n, (Nothing, 0)) : ms }
+                                 putIState $ i { idris_metavars = (n, (Nothing, 0, False)) : ms }
 
 process h fn' (AddProof prf)
   = do fn <- do
@@ -786,10 +786,13 @@ process h fn (ShowProof n')
 process h fn (Prove n')
      = do ctxt <- getContext
           ist <- getIState
-          n <- case lookupNames n' ctxt of
-                    [x] -> return x
-                    [] -> return n'
-                    ns -> ierror (CantResolveAlts (map show ns))
+          let ns = lookupNames n' ctxt
+          let metavars = mapMaybe (\n -> do c <- lookup n (idris_metavars ist); return (n, c)) ns
+          n <- case metavars of
+              [] -> ierror (Msg $ "Cannot find metavariable " ++ show n')
+              [(n, (_,_,False))] -> return n
+              [(_, (_,_,True))]  -> ierror (Msg $ "Declarations not solvable using prover")
+              ns -> ierror (CantResolveAlts (map show ns))
           prover (lit fn) n
           -- recheck totality
           i <- getIState

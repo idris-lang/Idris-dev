@@ -63,7 +63,8 @@ elabType info syn doc fc opts n ty' = {- let ty' = piBind (params info) ty_in
                tclift $ elaborate ctxt n (TType (UVal 0)) []
                         (errAt "type of " n (erun fc (build i info False n ty)))
          ds <- checkDef fc defer
-         addDeferred ds
+         let ds' = map (\(n, (i, top, t)) -> (n, (i, top, t, True))) ds
+         addDeferred ds'
          mapM_ (elabCaseBlock info opts) is
          ctxt <- getContext
          logLvl 5 $ "Rechecking"
@@ -89,7 +90,8 @@ elabType info syn doc fc opts n ty' = {- let ty' = piBind (params info) ty_in
          let opts' = if corec then (Coinductive : opts) else opts
          ds <- checkDef fc [(n, (-1, Nothing, nty))]
          addIBC (IBCDef n)
-         addDeferred ds
+         let ds' = map (\(n, (i, top, t)) -> (n, (i, top, t, True))) ds
+         addDeferred ds'
          setFlags n opts'
          addDocStr n doc
          addIBC (IBCDoc n)
@@ -143,7 +145,8 @@ elabData info syn doc fc codata (PLaterdecl n t_in)
          ((t', defer, is), log) <- tclift $ elaborate ctxt n (TType (UVal 0)) []
                                             (erun fc (build i info False n t))
          def' <- checkDef fc defer
-         addDeferredTyCon def'
+         let def'' = map (\(n, (i, top, t)) -> (n, (i, top, t, True))) def'
+         addDeferredTyCon def''
          mapM_ (elabCaseBlock info []) is
          (cty, _)  <- recheckC fc [] t'
          logLvl 2 $ "---> " ++ show cty
@@ -160,7 +163,8 @@ elabData info syn doc fc codata (PDatadecl n t_in dcons)
              tclift $ elaborate ctxt n (TType (UVal 0)) []
                   (errAt "data declaration " n (erun fc (build i info False n t)))
          def' <- checkDef fc defer
-         addDeferredTyCon def'
+         let def'' = map (\(n, (i, top, t)) -> (n, (i, top, t, True))) def'
+         addDeferredTyCon def''
          mapM_ (elabCaseBlock info []) is
          (cty, _)  <- recheckC fc [] t'
          logLvl 2 $ "---> " ++ show cty
@@ -507,7 +511,8 @@ elabCon info syn tn codata (doc, n, t_in, fc)
                        (errAt "constructor " n (erun fc (build i info False n t)))
          logLvl 2 $ "Rechecking " ++ show t'
          def' <- checkDef fc defer
-         addDeferred def'
+         let def'' = map (\(n, (i, top, t)) -> (n, (i, top, t, True))) def'
+         addDeferred def''
          mapM_ (elabCaseBlock info []) is
          ctxt <- getContext
          (cty, _)  <- recheckC fc [] t'
@@ -858,7 +863,8 @@ elabValBind info aspat tm_in
         let vtm = orderPats (getInferTerm tm')
 
         def' <- checkDef (fileFC "(input)") defer
-        addDeferred def'
+        let def'' = map (\(n, (i, top, t)) -> (n, (i, top, t, True))) def'
+        addDeferred def''
         mapM_ (elabCaseBlock info []) is
 
         logLvl 3 ("Value: " ++ show vtm)
@@ -978,7 +984,8 @@ elabClause info opts (cnum, PClause fc fname lhs_in withs rhs_in whereblock)
         logLvl 2 $ "---> " ++ show rhs'
         when (not (null defer)) $ iLOG $ "DEFERRED " ++ show defer
         def' <- checkDef fc defer
-        addDeferred def'
+        let def'' = map (\(n, (i, top, t)) -> (n, (i, top, t, False))) def'
+        addDeferred def''
 
         -- Now the remaining deferred (i.e. no type declarations) clauses
         -- from the where block
@@ -1097,7 +1104,8 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in withblock)
                             tt <- get_term
                             return (tt, d, is))
         def' <- checkDef fc defer
-        addDeferred def'
+        let def'' = map (\(n, (i, top, t)) -> (n, (i, top, t, False))) def'
+        addDeferred def''
         mapM_ (elabCaseBlock info opts) is
         (cwval, cwvalty) <- recheckC fc [] (getInferTerm wval')
         let cwvaltyN = explicitNames cwvalty
@@ -1128,7 +1136,8 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in withblock)
         putIState (i { idris_implicits = addDef wname imps (idris_implicits i) })
         addIBC (IBCDef wname)
         def' <- checkDef fc [(wname, (-1, Nothing, wtype))]
-        addDeferred def'
+        let def'' = map (\(n, (i, top, t)) -> (n, (i, top, t, False))) def'
+        addDeferred def''
 
         -- in the subdecls, lhs becomes:
         --         fname  pats | wpat [rest]
@@ -1156,7 +1165,8 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in withblock)
                         tt <- get_term
                         return (tt, d, is))
         def' <- checkDef fc defer
-        addDeferred def'
+        let def'' = map (\(n, (i, top, t)) -> (n, (i, top, t, False))) def'
+        addDeferred def''
         mapM_ (elabCaseBlock info opts) is
         logLvl 5 ("Checked RHS " ++ show rhs')
         (crhs, crhsty) <- recheckC fc [] rhs'
