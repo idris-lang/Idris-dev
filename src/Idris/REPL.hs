@@ -17,7 +17,7 @@ import Idris.UnusedArgs
 import Idris.Docs
 import Idris.Help
 import Idris.Completion
-import Idris.IdeSlave
+import qualified Idris.IdeSlave as IdeSlave
 import Idris.Chaser
 import Idris.Imports
 import Idris.Colours
@@ -194,17 +194,17 @@ ideslave :: IState -> [FilePath] -> Idris ()
 ideslave orig mods
   = do idrisCatch
          (do l <- runIO $ getLine
-             (sexp, id) <- case parseMessage l of
+             (sexp, id) <- case IdeSlave.parseMessage l of
                              Left err -> ierror err
                              Right (sexp, id) -> return (sexp, id)
              i <- getIState
              putIState $ i { idris_outputmode = (IdeSlave id) }
-             case sexpToCommand sexp of
-               Just (Interpret cmd) ->
-                 do let fn = case mods of
-                                 (f:_) -> f
-                                 _ -> ""
-                    c <- colourise
+             let fn = case mods of
+                        (f:_) -> f
+                        _ -> ""
+             case IdeSlave.sexpToCommand sexp of
+               Just (IdeSlave.Interpret cmd) ->
+                 do c <- colourise
                     case parseCmd i "(input)" cmd of
                          Failure err -> iPrintError $ show (fixColour c err)
                          Success (Prove n') -> do iPrintResult ""
@@ -215,11 +215,11 @@ ideslave orig mods
                          Success cmd -> idrisCatch
                                           (ideslaveProcess fn cmd)
                                           (\e -> getIState >>= iPrintError . flip pshow e)
-               Just (REPLCompletions str) ->
+               Just (IdeSlave.REPLCompletions str) ->
                  do (unused, compls) <- replCompletion (reverse str, "")
-                    let good = SexpList [SymbolAtom "ok", toSExp (map replacement compls, reverse unused)]
-                    runIO $ putStrLn $ convSExp "return" good id
-               Just (LoadFile filename) ->
+                    let good = IdeSlave.SexpList [IdeSlave.SymbolAtom "ok", IdeSlave.toSExp (map replacement compls, reverse unused)]
+                    runIO $ putStrLn $ IdeSlave.convSExp "return" good id
+               Just (IdeSlave.LoadFile filename) ->
                  do clearErr
                     putIState (orig { idris_options = idris_options i,
                                       idris_outputmode = (IdeSlave id) })
@@ -233,6 +233,20 @@ ideslave orig mods
                       Nothing -> iPrintResult $ "loaded " ++ filename
                       Just x -> iPrintError $ "didn't load " ++ filename
                     ideslave orig [filename]
+               Just (IdeSlave.TypeOf name) ->
+                 process stdout "(ideslave)" (Check (PRef (FC "(ideslave)" 0 0) (UN name)))
+               Just (IdeSlave.CaseSplit line name) ->
+                 process stdout fn (CaseSplitAt False line (UN name))
+               Just (IdeSlave.AddClause line name) ->
+                 process stdout fn (AddClauseFrom False line (UN name))
+               Just (IdeSlave.AddProofClause line name) ->
+                 process stdout fn (AddProofClauseFrom False line (UN name))
+               Just (IdeSlave.AddMissing line name) ->
+                 process stdout fn (AddMissing False line (UN name))
+               Just (IdeSlave.MakeWithBlock line name) ->
+                 process stdout fn (MakeWith False line (UN name))
+               Just (IdeSlave.ProofSearch line name hints) ->
+                 process stdout fn (DoProofSearch False line (UN name) (map UN hints))
                Nothing -> do iPrintError "did not understand")
          (\e -> do iPrintError $ show e)
        ideslave orig mods
@@ -435,10 +449,10 @@ process h fn (Check (PRef _ n))
         case lookupNames n ctxt of
           ts@(t:_) ->
             case lookup t (idris_metavars ist) of
-                Just (_, i) -> showMetavarInfo c imp ist n i
-                Nothing -> do mapM_ (\n -> ihputStrLn h $ showName (Just ist) [] False c n ++ " : " ++
-                                           showImp (Just ist) imp c (delabTy ist n)) ts
-                              ihPrintResult h ""
+                Just (_, i) -> ihPrintResult h (showMetavarInfo c imp ist n i)
+                Nothing -> ihPrintResult h $
+                           concat . intersperse "\n" . map (\n -> showName (Just ist) [] False c n ++ " : " ++
+                                                                  showImp (Just ist) imp c (delabTy ist n)) $ ts
           [] -> ihPrintError h $ "No such variable " ++ show n
   where
     showMetavarInfo c imp ist n i
@@ -446,18 +460,19 @@ process h fn (Check (PRef _ n))
                 (ty:_) -> putTy c imp ist i (delab ist ty)
     putTy c imp ist 0 sc = putGoal c imp ist sc
     putTy c imp ist i (PPi _ n t sc)
-               = do ihputStrLn h $ "  " ++
-                         (case n of
-                              MN _ _ -> "_"
-                              UN ('_':'_':_) -> "_"
-                              _ -> showName (Just ist) [] False c n) ++
-                                   " : " ++ showImp (Just ist) imp c t
-                    putTy c imp ist (i-1) sc
+               = let current = "  " ++
+                               (case n of
+                                   MN _ _ -> "_"
+                                   UN ('_':'_':_) -> "_"
+                                   _ -> showName (Just ist) [] False c n) ++
+                               " : " ++ showImp (Just ist) imp c t
+                 in
+                    current ++ putTy c imp ist (i-1) sc
     putTy c imp ist _ sc = putGoal c imp ist sc
     putGoal c imp ist g
-               = do ihputStrLn h $ "--------------------------------------"
-                    ihputStrLn h $ showName (Just ist) [] False c n ++ " : "
-                                   ++ showImp (Just ist) imp c g
+               = "--------------------------------------\n" ++
+                 showName (Just ist) [] False c n ++ " : " ++
+                 showImp (Just ist) imp c g
 
 
 process h fn (Check t)
@@ -470,7 +485,7 @@ process h fn (Check t)
         case tm of
              TType _ -> ihPrintResult h ("Type : Type 1")
              _ -> ihPrintResult h (showImp (Just ist) imp c (delab ist tm) ++ " : " ++
-                                 showImp (Just ist) imp c (delab ist ty))
+                                   showImp (Just ist) imp c (delab ist ty))
 
 process h fn (DocStr n)
                       = do i <- getIState
@@ -544,12 +559,12 @@ process h fn (CaseSplitAt updatefile l n)
         let (before, (ap : later)) = splitAt (l-1) (lines src)
         res' <- replaceSplits ap res
         let new = concat res'
-        if updatefile then
-           do let fb = fn ++ "~" -- make a backup!
-              runIO $ writeFile fb (unlines before ++ new ++ unlines later)
-              runIO $ copyFile fb fn
-           else -- do ihputStrLn h (show res)
-                   ihputStrLn h new
+        if updatefile
+          then do let fb = fn ++ "~" -- make a backup!
+                  runIO $ writeFile fb (unlines before ++ new ++ unlines later)
+                  runIO $ copyFile fb fn
+          else -- do ihputStrLn h (show res)
+            ihPrintResult h new
 process h fn (AddClauseFrom updatefile l n)
    = do src <- runIO $ readFile fn
         let (before, tyline : later) = splitAt (l-1) (lines src)
@@ -557,14 +572,14 @@ process h fn (AddClauseFrom updatefile l n)
         cl <- getClause l n fn
         -- add clause before first blank line in 'later'
         let (nonblank, rest) = span (not . all isSpace) (tyline:later)
-        if updatefile then
-           do let fb = fn ++ "~"
-              runIO $ writeFile fb (unlines (before ++ nonblank)
-                                        ++ replicate indent ' ' ++
+        if updatefile
+          then do let fb = fn ++ "~"
+                  runIO $ writeFile fb (unlines (before ++ nonblank) ++
+                                        replicate indent ' ' ++
                                         cl ++ "\n" ++
-                                    unlines rest)
-              runIO $ copyFile fb fn
-           else ihputStrLn h cl
+                                        unlines rest)
+                  runIO $ copyFile fb fn
+          else ihPrintResult h cl
     where
        getIndent i n [] = 0
        getIndent i n xs | take (length n) xs == n = i
@@ -576,14 +591,14 @@ process h fn (AddProofClauseFrom updatefile l n)
         cl <- getProofClause l n fn
         -- add clause before first blank line in 'later'
         let (nonblank, rest) = span (not . all isSpace) (tyline:later)
-        if updatefile then
-           do let fb = fn ++ "~"
-              runIO $ writeFile fb (unlines (before ++ nonblank)
-                                        ++ replicate indent ' ' ++
+        if updatefile
+          then do let fb = fn ++ "~"
+                  runIO $ writeFile fb (unlines (before ++ nonblank) ++
+                                        replicate indent ' ' ++
                                         cl ++ "\n" ++
-                                    unlines rest)
-              runIO $ copyFile fb fn
-           else ihputStrLn h cl
+                                        unlines rest)
+                  runIO $ copyFile fb fn
+          else ihPrintResult h cl
     where
        getIndent i n [] = 0
        getIndent i n xs | take (length n) xs == n = i
@@ -600,12 +615,12 @@ process h fn (AddMissing updatefile l n)
                        [] -> return ""
                        [(_, tms)] -> showNew (show n ++ "_rhs") 1 indent tms
         let (nonblank, rest) = span (not . all isSpace) (tyline:later)
-        if updatefile then
-           do let fb = fn ++ "~"
-              runIO $ writeFile fb (unlines (before ++ nonblank) ++
-                                           extras ++ unlines rest)
-              runIO $ copyFile fb fn
-           else ihputStrLn h extras
+        if updatefile
+          then do let fb = fn ++ "~"
+                  runIO $ writeFile fb (unlines (before ++ nonblank)
+                                        ++ extras ++ unlines rest)
+                  runIO $ copyFile fb fn
+          else ihPrintResult h extras
     where showPat = show . stripNS
           stripNS tm = mapPT dens tm where
               dens (PRef fc n) = PRef fc (nsroot n)
@@ -626,7 +641,7 @@ process h fn (AddMissing updatefile l n)
                                      showPat tm ++ " = ?" ++ nm' ++
                                      "\n" ++ rest)
           showNew nm i _ [] = return ""
-          
+
           getIndent i n [] = 0
           getIndent i n xs | take (length n) xs == n = i
           getIndent i n (x : xs) = getIndent (i + 1) n xs
@@ -643,7 +658,7 @@ process h fn (MakeWith updatefile l n)
                                         ++ with ++ "\n" ++
                                     unlines rest)
               runIO $ copyFile fb fn
-           else ihputStrLn h with
+           else ihPrintResult h with
 process h fn (DoProofSearch updatefile l n hints)
     = do src <- runIO $ readFile fn
          let (before, tyline : later) = splitAt (l-1) (lines src)
@@ -675,7 +690,7 @@ process h fn (DoProofSearch updatefile l n hints)
                                      updateMeta tyline (show n) newmv ++ "\n"
                                        ++ unlines later)
                runIO $ copyFile fb fn
-            else ihputStrLn h newmv
+            else ihPrintResult h newmv
     where dropCtxt 0 sc = sc
           dropCtxt i (PPi _ _ _ sc) = dropCtxt (i - 1) sc
           dropCtxt i (PLet _ _ _ sc) = dropCtxt (i - 1) sc
