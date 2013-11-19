@@ -506,9 +506,13 @@ process h fn (TotCheck n)
                         = do i <- getIState
                              case lookupNameTotal n (tt_ctxt i) of
                                 []  -> ihPrintError h $ "Unknown operator " ++ show n
-                                ts  -> ihPrintResult h . concat . intersperse "\n" .
-                                       map (\(n, t) -> show n ++ " is " ++ showTotal t i) $
-                                           ts
+                                ts  -> do ist <- getIState
+                                          c <- colourise
+                                          imp <- impShow
+                                          let showN = showName (Just ist) [] imp c
+                                          ihPrintResult h . concat . intersperse "\n" .
+                                            map (\(n, t) -> showN n ++ " is " ++ showTotal t i) $
+                                            ts
 
 
 process h fn (DebugInfo n)
