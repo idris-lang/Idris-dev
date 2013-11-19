@@ -1,9 +1,8 @@
-myid : a -> a
-myid x = x
+myid : (a : Type) -> a -> a
+myid _ x = x
 
--- FIXME: Raw TT quotations currently unsupported in parser
---idid :  (a : Type) -> a -> a
---idid = myid ![myid]
+idid :  (a : Type) -> a -> a
+idid = myid _ myid
 
 app : (a -> b) -> a -> b
 app f x = f x
@@ -12,7 +11,7 @@ foo : a -> b -> c -> d -> e -> e
 foo a b c d e = e
 
 doapp : a -> a
-doapp x = app myid x
+doapp x = app (myid _) x
 
 {-
 
