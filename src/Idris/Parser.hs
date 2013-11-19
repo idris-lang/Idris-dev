@@ -30,6 +30,7 @@ import Idris.ParseHelpers
 import Idris.ParseOps
 import Idris.ParseExpr
 import Idris.ParseData
+import Core.CoreParser (opChars)
 
 import Paths_idris
 
@@ -245,13 +246,11 @@ syntaxSym =    try (do lchar '['; n <- name; lchar ']'
   FunDecl ::= FunDecl';
 -}
 fnDecl :: SyntaxInfo -> IdrisParser [PDecl]
-fnDecl syn
-      = try (do notEndBlock
-                d <- fnDecl' syn
-                i <- get
-                let d' = fmap (desugar syn i) d
-                return [d'])
-        <?> "function declaration"
+fnDecl syn = try (do notEndBlock
+                     d <- fnDecl' syn
+                     i <- get
+                     let d' = fmap (desugar syn i) d
+                     return [d']) <?> "function declaration"
 
 {- Parses a function declaration
  FunDecl' ::=
@@ -262,7 +261,8 @@ fnDecl syn
   ;
 -}
 fnDecl' :: SyntaxInfo -> IdrisParser PDecl
-fnDecl' syn = do (doc, fc, opts', n, acc) <- try (do
+fnDecl' syn = checkFixity $
+              do (doc, fc, opts', n, acc) <- try (do
                         doc <- option "" (docComment '|')
                         pushIndent
                         ist <- get
@@ -285,7 +285,22 @@ fnDecl' syn = do (doc, fc, opts', n, acc) <- try (do
             <|> caf syn
             <|> pattern syn
             <?> "function declaration"
-
+    where checkFixity :: IdrisParser PDecl -> IdrisParser PDecl
+          checkFixity p = do decl <- p
+                             case getName decl of
+                               Nothing -> return decl
+                               Just n -> do fOk <- fixityOK n
+                                            unless fOk . fail $
+                                              "Missing fixity declaration for " ++ show n
+                                            return decl
+          getName (PTy _ _ _ _ n _) = Just n
+          getName _ = Nothing
+          fixityOK (NS n _) = fixityOK n
+          fixityOK (UN n)  | all (flip elem opChars) n =
+                               do fixities <- fmap idris_infixes get
+                                  return . elem n . map (\ (Fix _ op) -> op) $ fixities
+                           | otherwise                 = return True
+          fixityOK _        = return True
 
 {- Parses function options given initial options
 FnOpts ::= 'total'
@@ -649,7 +664,8 @@ clause syn
                 pushIndent
                 l <- argExpr syn
                 op <- operator
-                when (op == "=" || op == "?=" ) (fail "infix clause definition with \"=\" and \"?=\" not supported ")
+                when (op == "=" || op == "?=" ) $
+                     fail "infix clause definition with \"=\" and \"?=\" not supported "
                 return (l, op))
               let n = expandNS syn (UN op)
               r <- argExpr syn
