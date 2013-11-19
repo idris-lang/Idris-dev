@@ -465,7 +465,7 @@ process h fn (Check (PRef _ n))
                                    MN _ _ -> "_"
                                    UN ('_':'_':_) -> "_"
                                    _ -> showName (Just ist) [] False c n) ++
-                               " : " ++ showImp (Just ist) imp c t
+                               " : " ++ showImp (Just ist) imp c t ++ "\n"
                  in
                     current ++ putTy c imp ist (i-1) sc
     putTy c imp ist _ sc = putGoal c imp ist sc
