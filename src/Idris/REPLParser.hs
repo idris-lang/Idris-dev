@@ -106,18 +106,19 @@ pOption = do discard (P.symbol "errorcontext"); return ErrContext
       <|> do discard (P.symbol "showimplicits"); return ShowImpl
 
 
-colours :: [(String, Color)]
-colours = [ ("black", Black)
-          , ("red", Red)
-          , ("green", Green)
-          , ("yellow", Yellow)
-          , ("blue", Blue)
-          , ("magenta", Magenta)
-          , ("cyan", Cyan)
-          , ("white", White)
+colours :: [(String, Maybe Color)]
+colours = [ ("black", Just Black)
+          , ("red", Just Red)
+          , ("green", Just Green)
+          , ("yellow", Just Yellow)
+          , ("blue", Just Blue)
+          , ("magenta", Just Magenta)
+          , ("cyan", Just Cyan)
+          , ("white", Just White)
+          , ("default", Nothing)
           ]
 
-pColour :: P.IdrisParser Color
+pColour :: P.IdrisParser (Maybe Color)
 pColour = doColour colours
     where doColour [] = fail "Unknown colour"
           doColour ((s, c):cs) = (try (P.symbol s) >> return c) <|> doColour cs
@@ -155,7 +156,7 @@ pColourType = doColourType colourTypes
 
 pSetColourCmd :: P.IdrisParser Command
 pSetColourCmd = (do c <- pColourType
-                    let defaultColour = IdrisColour Black True False False False
+                    let defaultColour = IdrisColour Nothing True False False False
                     opts <- sepBy pColourMod (P.whiteSpace)
                     let colour = foldr ($) defaultColour $ reverse opts
                     return $ SetColour c colour)

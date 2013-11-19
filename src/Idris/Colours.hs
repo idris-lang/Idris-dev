@@ -9,7 +9,7 @@ module Idris.Colours (
 
 import System.Console.ANSI
 
-data IdrisColour = IdrisColour { colour    :: Color
+data IdrisColour = IdrisColour { colour    :: Maybe Color
                                , vivid     :: Bool
                                , underline :: Bool
                                , bold      :: Bool
@@ -18,7 +18,7 @@ data IdrisColour = IdrisColour { colour    :: Color
                    deriving (Eq, Show)
 
 mkColour :: Color -> IdrisColour
-mkColour c = IdrisColour c True False False False
+mkColour c = IdrisColour (Just c) True False False False
 
 data ColourTheme = ColourTheme { keywordColour  :: IdrisColour
                                , boundVarColour :: IdrisColour
@@ -31,22 +31,24 @@ data ColourTheme = ColourTheme { keywordColour  :: IdrisColour
                    deriving (Eq, Show)
 
 defaultTheme :: ColourTheme
-defaultTheme = ColourTheme { keywordColour = IdrisColour Black True True True False
+defaultTheme = ColourTheme { keywordColour = IdrisColour Nothing True True True False
                            , boundVarColour = mkColour Magenta
-                           , implicitColour = IdrisColour Magenta True True False False
+                           , implicitColour = IdrisColour (Just Magenta) True True False False
                            , functionColour = mkColour Green
                            , typeColour = mkColour Blue
                            , dataColour = mkColour Red
-                           , promptColour = IdrisColour Black True False True False
+                           , promptColour = IdrisColour Nothing True False True False
                            }
 
 -- Set the colour of a string using POSIX escape codes
 colourise :: IdrisColour -> String -> String
 colourise (IdrisColour c v u b i) str = setSGRCode sgr ++ str ++ setSGRCode [Reset]
-    where sgr = [SetColor Foreground (if v then Vivid else Dull) c] ++
+    where sgr = fg c ++
                 (if u then [SetUnderlining SingleUnderline] else []) ++
                 (if b then [SetConsoleIntensity BoldIntensity] else []) ++
                 (if i then [SetItalicized True] else [])
+          fg Nothing = []
+          fg (Just c) = [SetColor Foreground (if v then Vivid else Dull) c]
 
 colouriseKwd :: ColourTheme -> String -> String
 colouriseKwd t = colourise (keywordColour t)
