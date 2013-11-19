@@ -599,13 +599,11 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
            -- Look for 'static' names and generate new specialised
            -- definitions for them
 
-           {- Not fully implemented yet!
+           {-
            mapM_ (\ e -> case e of
                            Left _ -> return ()
-                           Right (l, r) -> elabPE info fc r) pats
-           -}
-
-           -- TODO: Inlining on initial definition happens here.
+                           Right (l, r) -> elabPE info fc n r) pats
+                           -}
 
            -- NOTE: Need to store original definition so that proofs which
            -- rely on its structure aren't affected by any changes to the
@@ -771,8 +769,8 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
                 Just ns -> partial_eval (tt_ctxt ist) ns pats
 
 -- Find 'static' applications in a term and partially evaluate them
-elabPE :: ElabInfo -> FC -> Term -> Idris ()
-elabPE info fc r =
+elabPE :: ElabInfo -> FC -> Name -> Term -> Idris ()
+elabPE info fc caller r =
   do ist <- getIState
      let sa = getSpecApps ist [] r
      mapM_ (mkSpecialised ist) sa
@@ -789,11 +787,13 @@ elabPE info fc r =
     -- Apply that transformation after every PClauses elaboration
 
     mkSpecialised ist specapp = do
+        iputStrLn (show specapp)
         let specTy = getSpecTy ist specapp
         let (n, newnm, [(lhs, rhs)]) = getSpecClause ist specapp
         let undef = case lookupDef newnm (tt_ctxt ist) of
                          [] -> True
                          _ -> False
+        iputStrLn $ show (newnm, map (concreteArg ist) (snd specapp))
         when (undef && all (concreteArg ist) (snd specapp)) $ do
             let opts = [Specialise ((n, Nothing) : 
                                      (mapMaybe specName (snd specapp)))]
@@ -820,6 +820,7 @@ elabPE info fc r =
         case lookupTy n (tt_ctxt ist) of
              [] -> False
              _ -> True
+    concreteTm ist (Constant _) = True
     concreteTm ist _ = False
 
     -- get the type of a specialised application
@@ -832,7 +833,8 @@ elabPE info fc r =
               _ -> error "Can't happen (getSpecTy)"
 
     getSpecClause ist (n, args)
-       = let newnm = UN (show (nsroot n) ++ "__spectest") in -- UN (show n ++ show (map snd args)) in
+       = let newnm = UN (show (nsroot n) ++ "_" ++ show (nsroot caller) ++
+                         "__spectest") in -- UN (show n ++ show (map snd args)) in
              (n, newnm, mkPE_TermDecl ist newnm n args)
 
 
