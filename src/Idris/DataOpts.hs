@@ -7,6 +7,8 @@ module Idris.DataOpts where
 import Idris.AbsSyntax
 import Core.TT
 
+import qualified Data.IntSet as S
+import Data.IntSet (IntSet)
 import Data.List
 import Data.Maybe
 import Debug.Trace
@@ -15,9 +17,9 @@ import Debug.Trace
 -- optimisations
 
 forceArgs :: Name -> Name -> Type -> Idris ()
-forceArgs tn n t = do
+forceArgs typeName n t = do
     ist <- getIState
-    let fargs = forceableArgs ist t []
+    let fargs = S.toList $ forceableArgs ist t S.empty
         copt  = case lookupCtxt n (idris_optimisation ist) of
           []     -> Optimise False False [] []
           (op:_) -> op
@@ -26,70 +28,82 @@ forceArgs tn n t = do
     addIBC (IBCOpt n)
     iLOG $ "Forced: " ++ show n ++ " " ++ show fargs ++ "\n   from " ++ show t
   where
-    forceableArgs :: IState -> Type -> [Int] -> [Int]
-    forceableArgs ist t prevIxs
-        | all (`elem` prevIxs) ixs = prevIxs
-        | otherwise = forceableArgs ist t' (nub $ prevIxs ++ ixs)
+    -- Calculate the indices of forceable arguments from a type of a data constructor.
+    forceableArgs :: IState -> Type -> IntSet -> IntSet
+    forceableArgs ist t alreadyForceable
+        | forceable `S.isSubsetOf` alreadyForceable = forceable  -- no more indices, stop iterating
+        | otherwise = forceableArgs ist t (forceable `S.union` alreadyForceable)
       where
-        (ixs, t') = force ist 0 t t prevIxs
+        forceable = force ist 0 t alreadyForceable
 
-    force :: IState -> Int -> Type -> Type -> [Int] -> ([Int], Type)
-    force ist i (Bind n (Pi ty) sc) whole alreadyForceable
-        | isCollapsible = (nub (i : ixs), whole')
-        | otherwise     = (         ixs , whole')
+    force :: IState -> Int -> Type -> IntSet -> IntSet
+    force ist i (Bind n (Pi ty) sc) alreadyForceable
+        = force ist (i+1) (labelIn sc) forceable
       where
-        isCollapsible = collapsibleIn ist ty || (i `elem` alreadyForceable)
-        (ixs, whole') = force ist (i+1) (eraseIn sc) (eraseIn whole) alreadyForceable
-        eraseIn       = instantiate $ P Bound (MN i erasedName) Erased
-        erasedName    = if isCollapsible then "?forced" else "?"
+        -- Label all occurrences of the variable bound in Pi in the rest of
+        -- the term with the number i so that we can recognize them anytime later.
+        labelIn = instantiate $ P Bound (MN i "ctor_arg") Erased
 
-    force _ _ sc@(App f a) whole _
-        = (ixs, foldr (.) id (map erase ixs) whole)
+        forceable
+            | -- if `ty' is collapsible, the argument is forceable
+              ty `collapsibleIn` ist  
+              -- a recursive occurrence with known indices is "forceable"
+              || knownRecursive ty alreadyForceable    
+                = S.insert i alreadyForceable
+            | otherwise = alreadyForceable
+
+    -- constructor target
+    force _ _ sc@(App f a) alreadyForceable = unionMap guardedArgs args
       where
-        erase i = instantiate $ P Bound (MN i "?forced") Erased
-        ixs = nub $ concatMap guarded args
         (_, args) = unApply sc
 
-    force _ _ _ whole _ = ([], whole)
-
-    collapsibleIn :: IState -> Type -> Bool
-    collapsibleIn ist t = case unApply t of
-        (P _ n' _, args)
-            -- recursive applications of the datatype: n' == tn
-            | n' == tn -> all known args
-            | otherwise -> case lookupCtxt n' (idris_optimisation ist) of
-                [oi] -> collapsible oi
-                _    -> False
+    force _ _ _ alreadyForceable = alreadyForceable
+    
+    knownRecursive :: Type -> IntSet -> Bool
+    knownRecursive t forceable = case unApply t of
+        (P _ n' _, args) -> n' == typeName && all (known forceable) args
         _ -> False
 
-    known :: Term -> Bool
-    known (P Bound (MN _ "?forced") Erased) = True  -- erased data is trivially known
-    known (P (DCon _ _) _ _) = True  -- data constructors are known
-    known (P (TCon _ _) _ _) = True  -- type constructors are known
+    collapsibleIn :: Type -> IState -> Bool
+    t `collapsibleIn` ist = case unApply t of
+        (P _ n' _, _) -> case lookupCtxt n' (idris_optimisation ist) of
+            [oi] -> collapsible oi
+            _    -> False
+        _ -> False
+
+    -- This predicate does not cover all known terms;
+    -- hopefully it does not cover any not-known terms.
+    known :: IntSet -> Term -> Bool
+    known forceable (P Bound (MN i "ctor_arg") Erased)
+        = i `S.member` forceable  -- forceable data is known
+    known _ (P (DCon _ _) _ _) = True  -- data constructors are known
+    known _ (P (TCon _ _) _ _) = True  -- type constructors are known
     -- what about (P Bound), (P Ref)?
-    known (V _)        = False  -- references to previous non-erased fields are not known
-    known (Bind _ _ _) = False  -- let's ignore binders, too
-    known (App f x)    = known f && known x
-    known (Constant _) = True
-    known (Proj t _)   = known t
-    known Erased       = True
-    known Impossible   = True
-    known (TType _)    = True
-    known _            = False
+    known _ (V _)        = False
+    known _ (Bind _ _ _) = False  -- let's ignore binders, too
+    known f (App g x)    = known f g && known f x
+    known _ (Constant _) = True
+    known f (Proj t _)   = known f t
+    known _ Erased       = True
+    known _ Impossible   = True
+    known _ (TType _)    = True
+    known _ _            = False
 
-    isF (P _ (MN force ('?':_)) _) = Just force
-    isF _ = Nothing
+    -- Return the indices of all constructor arguments
+    -- referenced to in the term.
+    ctorArgs :: Term -> IntSet
+    ctorArgs (P _ (MN i "ctor_arg") _) = S.singleton i
+    ctorArgs _ = S.empty
 
-    guarded :: Term -> [Int]
-    guarded t@(App f a)
---         | (P (TCon _ _) _ _, args) <- unApply t
---             = mapMaybe isF args ++ concatMap guarded args
-        | (P (DCon _ _) _ _, args) <- unApply t
-            = mapMaybe isF args ++ concatMap guarded args
-    guarded t = mapMaybe isF [t]
+    guardedArgs :: Term -> IntSet
+    guardedArgs t@(App f a) | (P (DCon _ _) _ _, args) <- unApply t
+        = unionMap ctorArgs args `S.union` unionMap guardedArgs args
+    guardedArgs t = ctorArgs t
+
+    unionMap :: (a -> IntSet) -> [a] -> IntSet
+    unionMap f xs = S.unions $ map f xs
 
 -- Calculate whether a collection of constructors is collapsible
-
 collapseCons :: Name -> [(Name, Type)] -> Idris ()
 collapseCons ty cons =
      do i <- getIState
