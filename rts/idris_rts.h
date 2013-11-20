@@ -143,7 +143,7 @@ typedef intptr_t i_int;
 // Creating new values (each value placed at the top of the stack)
 VAL MKFLOAT(VM* vm, double val);
 VAL MKSTR(VM* vm, const char* str);
-VAL MKPTR(VM* vm, const void* ptr);
+VAL MKPTR(VM* vm, void* ptr);
 VAL MKB8(VM* vm, uint8_t b);
 VAL MKB16(VM* vm, uint16_t b);
 VAL MKB32(VM* vm, uint32_t b);

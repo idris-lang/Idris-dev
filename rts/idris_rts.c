@@ -161,7 +161,7 @@ VAL MKSTR(VM* vm, const char* str) {
     return cl;
 }
 
-VAL MKPTR(VM* vm, const void* ptr) {
+VAL MKPTR(VM* vm, void* ptr) {
     Closure* cl = allocate(vm, sizeof(Closure), 0);
     SETTY(cl, PTR);
     cl -> info.ptr = ptr;
@@ -452,7 +452,7 @@ void* runThread(void* arg) {
 
     free(td);
 
-    Stats stats = terminate(vm);
+    //    Stats stats = terminate(vm);
     //    aggregate_stats(&(td->vm->stats), &stats);
     return NULL;
 }
