@@ -8,6 +8,8 @@ module Prelude.Complex
 import Builtins
 import Prelude
 
+import Data.Floats
+
 ------------------------------ Rectangular form
 
 infix 6 :+
