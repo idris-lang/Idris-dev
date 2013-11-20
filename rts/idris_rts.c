@@ -452,7 +452,8 @@ void* runThread(void* arg) {
 
     free(td);
 
-    //    Stats stats = terminate(vm);
+    //    Stats stats =
+    terminate(vm);
     //    aggregate_stats(&(td->vm->stats), &stats);
     return NULL;
 }
