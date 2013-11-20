@@ -8,7 +8,7 @@ module Prelude.Complex
 import Builtins
 import Prelude
 
-import Data.Floats
+import Data.Float
 
 ------------------------------ Rectangular form
 
