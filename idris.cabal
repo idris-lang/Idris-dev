@@ -66,31 +66,31 @@ Extra-source-files:
                        rts/*.h
                        rts/Makefile
 
-                       lib/base.ipkg
-                       lib/*.idr
-                       lib/Control/*.idr
-                       lib/Control/Monad/*.idr
-                       lib/Data/*.idr
-                       lib/Data/Vect/*.idr
-                       lib/Debug/*.idr
-                       lib/Decidable/*.idr
-                       lib/Language/*.idr
-                       lib/Language/Reflection/*.idr
-                       lib/Makefile
-                       lib/Network/*.idr
-                       lib/Prelude/*.idr
-                       lib/System/Concurrency/*.idr
+                       libs/base/base.ipkg
+                       libs/base/*.idr
+                       libs/base/Control/*.idr
+                       libs/base/Control/Monad/*.idr
+                       libs/base/Data/*.idr
+                       libs/base/Data/Vect/*.idr
+                       libs/base/Debug/*.idr
+                       libs/base/Decidable/*.idr
+                       libs/base/Language/*.idr
+                       libs/base/Language/Reflection/*.idr
+                       libs/base/Makefile
+                       libs/base/Network/*.idr
+                       libs/base/Prelude/*.idr
+                       libs/base/System/Concurrency/*.idr
 
-                       effects/Makefile
-                       effects/effects.ipkg
-                       effects/Effect/*.idr
-                       effects/*.idr
+                       libs/effects/Makefile
+                       libs/effects/effects.ipkg
+                       libs/effects/Effect/*.idr
+                       libs/effects/*.idr
 
 
-                       javascript/*.idr
-                       javascript/JavaScript/*.idr
-                       javascript/Makefile
-                       javascript/javascript.ipkg
+                       libs/javascript/*.idr
+                       libs/javascript/JavaScript/*.idr
+                       libs/javascript/Makefile
+                       libs/javascript/javascript.ipkg
 
                        llvm/*.c
                        llvm/Makefile
