@@ -236,6 +236,10 @@ instance Applicative (Vect k) where
 
     fs <$> vs = zipWith ($) fs vs
 
+instance Applicative Stream where
+  pure = repeat
+  (<$>) = zipWith ($)
+
 ---- Alternative instances
 
 instance Alternative Maybe where
@@ -270,6 +274,9 @@ instance Monad List where
 
 instance Monad (Vect n) where
     m >>= f = diag (map f m)
+
+instance Monad Stream where
+  s >>= f = diag (map f s)
 
 ---- Traversable instances
 
