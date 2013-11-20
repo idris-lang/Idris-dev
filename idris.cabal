@@ -276,7 +276,6 @@ Extra-source-files:
                        test/test032/expected
                        test/test033/*.idr
                        test/test033/expected
-                       test/test034/*.idr
                        test/test034/expected
 
 source-repository head
