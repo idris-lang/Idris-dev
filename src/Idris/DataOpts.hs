@@ -177,7 +177,7 @@ collapseCons ty cons =
         -- data constructors -> compare their names
         (P (DCon _ _) nx _, P (DCon _ _) ny _)
             | nx /= ny -> True
-            | nx == ny -> and $ zipWith disjointPair xargs yargs
+            | nx == ny -> or $ zipWith disjointPair xargs yargs
         _ -> False
       where
         (cx, xargs) = unApply x
