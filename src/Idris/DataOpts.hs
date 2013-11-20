@@ -53,20 +53,21 @@ forceArgs typeName n t = do
             | otherwise = alreadyForceable
 
     -- constructor target
-    force _ _ sc@(App f a) alreadyForceable = unionMap guardedArgs args
+    force _ _ sc@(App f a) alreadyForceable
+        = alreadyForceable `S.union` unionMap guardedArgs args
       where
         (_, args) = unApply sc
 
-    force _ _ _ alreadyForceable = alreadyForceable
+    force _ _ _ forceable = forceable
     
     knownRecursive :: Type -> IntSet -> Bool
     knownRecursive t forceable = case unApply t of
-        (P _ n' _, args) -> n' == typeName && all (known forceable) args
+        (P _ n _, args) -> n == typeName && all (known forceable) args
         _ -> False
 
     collapsibleIn :: Type -> IState -> Bool
     t `collapsibleIn` ist = case unApply t of
-        (P _ n' _, _) -> case lookupCtxt n' (idris_optimisation ist) of
+        (P _ n _, _) -> case lookupCtxt n (idris_optimisation ist) of
             [oi] -> collapsible oi
             _    -> False
         _ -> False
