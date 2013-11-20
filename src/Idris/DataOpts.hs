@@ -31,38 +31,36 @@ forceArgs tn n t = do
         | all (`elem` prevIxs) ixs = prevIxs
         | otherwise = forceableArgs ist t' (nub $ prevIxs ++ ixs)
       where
-        (ixs, t') = force ist 0 t t
+        (ixs, t') = force ist 0 t t prevIxs
 
-    force :: IState -> Int -> Type -> Type -> ([Int], Type)
-    force ist i (Bind n (Pi ty) sc) whole
+    force :: IState -> Int -> Type -> Type -> [Int] -> ([Int], Type)
+    force ist i (Bind n (Pi ty) sc) whole alreadyForceable
         | isCollapsible = (nub (i : ixs), whole')
         | otherwise     = (         ixs , whole')
       where
-        isCollapsible = collapsibleIn ist ty
-        (ixs, whole') = force ist (i+1) (eraseIn sc) (eraseIn whole)
+        isCollapsible = collapsibleIn ist ty || (i `elem` alreadyForceable)
+        (ixs, whole') = force ist (i+1) (eraseIn sc) (eraseIn whole) alreadyForceable
         eraseIn       = instantiate $ P Bound (MN i erasedName) Erased
         erasedName    = if isCollapsible then "?forced" else "?"
 
-    force _ _ sc@(App f a) whole
+    force _ _ sc@(App f a) whole _
         = (ixs, foldr (.) id (map erase ixs) whole)
       where
         erase i = instantiate $ P Bound (MN i "?forced") Erased
         ixs = nub $ concatMap guarded args
         (_, args) = unApply sc
 
-    force _ _ _ whole = ([], whole)
+    force _ _ _ whole _ = ([], whole)
 
     collapsibleIn :: IState -> Type -> Bool
     collapsibleIn ist t = case unApply t of
         (P _ n' _, args)
             -- recursive applications of the datatype: n' == tn
-            | n' == tn -> ("--->", args, map known args) `traceShow` all known args
+            | n' == tn -> all known args
             | otherwise -> case lookupCtxt n' (idris_optimisation ist) of
                 [oi] -> collapsible oi
                 _    -> False
         _ -> False
-
-    -- somehow it marks (U xs) as known although xs is not known
 
     known :: Term -> Bool
     known (P Bound (MN _ "?forced") Erased) = True  -- erased data is trivially known
@@ -79,7 +77,7 @@ forceArgs tn n t = do
     known (TType _)    = True
     known _            = False
 
-    isF (P _ (MN force "?") _) = Just force
+    isF (P _ (MN force ('?':_)) _) = Just force
     isF _ = Nothing
 
     guarded :: Term -> [Int]
