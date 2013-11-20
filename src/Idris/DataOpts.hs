@@ -45,10 +45,11 @@ forceArgs typeName n t = do
         labelIn = instantiate $ P Bound (MN i "ctor_arg") Erased
 
         forceable
-            | -- if `ty' is collapsible, the argument is forceable
-              ty `collapsibleIn` ist  
+            | (P _ n' _, args) <- unApply ty
+              -- if `ty' is collapsible, the argument is forceable
+            , n' `collapsibleIn` ist  
               -- a recursive occurrence with known indices is "forceable"
-              || knownRecursive ty alreadyForceable    
+              || knownRecursive n' args alreadyForceable    
                 = S.insert i alreadyForceable
             | otherwise = alreadyForceable
 
@@ -60,17 +61,13 @@ forceArgs typeName n t = do
 
     force _ _ _ forceable = forceable
     
-    knownRecursive :: Type -> IntSet -> Bool
-    knownRecursive t forceable = case unApply t of
-        (P _ n _, args) -> n == typeName && all (known forceable) args
-        _ -> False
+    knownRecursive :: Name -> [Term] -> IntSet -> Bool
+    knownRecursive n args forceable = n == typeName && all (known forceable) args
 
-    collapsibleIn :: Type -> IState -> Bool
-    t `collapsibleIn` ist = case unApply t of
-        (P _ n _, _) -> case lookupCtxt n (idris_optimisation ist) of
-            [oi] -> collapsible oi
-            _    -> False
-        _ -> False
+    collapsibleIn :: Name -> IState -> Bool
+    n `collapsibleIn` ist = case lookupCtxt n (idris_optimisation ist) of
+        [oi] -> collapsible oi
+        _    -> False
 
     -- This predicate does not cover all known terms;
     -- hopefully it does not cover any not-known terms.
