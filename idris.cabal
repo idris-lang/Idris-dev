@@ -284,10 +284,6 @@ source-repository head
   type:     git
   location: git://github.com/idris-lang/Idris-dev.git
 
-Flag Effects
-  Description: Build the effects package
-  Default:     True
-
 Flag LLVM
   Description:  Build the LLVM backend
   Default:      False

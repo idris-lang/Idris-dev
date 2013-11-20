@@ -26,9 +26,9 @@ import qualified Data.Text.IO as TIO
 -- make on mingw32 exepects unix style separators
 #ifdef mingw32_HOST_OS
 (<//>) = (Px.</>)
-idrisCmd local = Px.joinPath $ splitDirectories $ ".." <//> buildDir local <//> "idris" <//> "idris"
+idrisCmd local = Px.joinPath $ splitDirectories $ ".." <//> ".." <//> buildDir local <//> "idris" <//> "idris"
 #else
-idrisCmd local = ".." </>  buildDir local </>  "idris" </>  "idris"
+idrisCmd local = ".." </> ".." </>  buildDir local </>  "idris" </>  "idris"
 #endif
 
 -- -----------------------------------------------------------------------------
@@ -53,13 +53,6 @@ usesLLVM flags =
     Just False -> False
     Nothing -> True
 
-usesEffects :: S.ConfigFlags -> Bool
-usesEffects flags =
-   case lookup (FlagName "effects") (S.configConfigurationsFlags flags) of
-      Just True -> True
-      Just False -> False
-      Nothing -> True
-
 -- -----------------------------------------------------------------------------
 -- Clean
 
@@ -70,9 +63,7 @@ idrisClean _ flags _ _ = do
       verbosity = S.fromFlag $ S.cleanVerbosity flags
 
       cleanStdLib = do
-         makeClean "lib"
-         makeClean "effects"
-         makeClean "javascript"
+         makeClean "libs"
 
       cleanLLVM = makeClean "llvm"
 
@@ -106,9 +97,7 @@ idrisBuild _ flags _ local = do
 
       buildStdLib = do
             putStrLn "Building libraries..."
-            makeBuild "lib"
-            when (usesEffects $ configFlags local) $ makeBuild "effects"
-            makeBuild "javascript"
+            makeBuild "libs"
          where
             makeBuild dir = make verbosity [ "-C", dir, "build" , "IDRIS=" ++ idrisCmd local]
 
@@ -128,9 +117,7 @@ idrisInstall verbosity copy pkg local = do
 
       installStdLib = do
             putStrLn $ "Installing libraries in " ++ target
-            makeInstall "lib" target
-            when (usesEffects $ configFlags local) $ makeInstall "effects" target
-            makeInstall "javascript" target
+            makeInstall "libs" target
 
       installRTS = do
          let target' = target </> "rts"
