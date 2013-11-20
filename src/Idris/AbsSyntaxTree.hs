@@ -97,7 +97,6 @@ data IState = IState {
     idris_calledgraph :: Ctxt [Name],
     idris_docstrings :: Ctxt String,
     idris_totcheck :: [(FC, Name)],
-    idris_log :: String,
     idris_options :: IOption,
     idris_name :: Int,
     idris_lineapps :: [((FilePath, Int), PTerm)],
@@ -185,7 +184,7 @@ data IBCWrite = IBCFix FixDecl
 idrisInit = IState initContext [] [] emptyContext emptyContext emptyContext
                    emptyContext emptyContext emptyContext emptyContext
                    emptyContext emptyContext emptyContext emptyContext
-                   [] "" defaultOpts 6 [] [] [] [] [] [] [] [] [] [] [] []
+                   [] defaultOpts 6 [] [] [] [] [] [] [] [] [] [] [] []
                    [] Nothing Nothing [] [] [] Hidden False [] Nothing [] [] RawOutput
                    True defaultTheme stdout
 
