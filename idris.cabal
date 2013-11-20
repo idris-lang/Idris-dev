@@ -66,6 +66,8 @@ Extra-source-files:
                        rts/*.h
                        rts/Makefile
 
+                       libs/Makefile
+
                        libs/base/base.ipkg
                        libs/base/*.idr
                        libs/base/Control/*.idr
@@ -85,7 +87,6 @@ Extra-source-files:
                        libs/effects/effects.ipkg
                        libs/effects/Effect/*.idr
                        libs/effects/*.idr
-
 
                        libs/javascript/*.idr
                        libs/javascript/JavaScript/*.idr
