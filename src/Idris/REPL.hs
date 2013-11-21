@@ -1155,7 +1155,7 @@ idrisMain opts =
 
        historyFile <- fmap (</> "repl" </> "history") getIdrisUserDataDir
 
-       when runrepl $ initScript
+       when (runrepl && not idesl) $ initScript
        stvar <- runIO $ newMVar ist
        when (runrepl && not idesl) $ startServer ist stvar inputs
        when (runrepl && not idesl) $ runInputT (replSettings (Just historyFile)) $ repl ist stvar inputs
