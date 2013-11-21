@@ -3,14 +3,7 @@
 --   ``Fun with binary heap trees'', Chris Okasaki, Fun of programming, 2003.
 --------------------------------------------------------------------------------
 
-module Prelude.Heap
-
-import Builtins
-
-import Prelude
-import Prelude.Algebra
-import Prelude.List
-import Prelude.Nat
+module Data.Heap
 
 %access public
 
@@ -112,7 +105,7 @@ fromList : Ord a => List a -> MaxiphobicHeap a
 fromList = foldr insert empty
 
 sort : Ord a => List a -> List a
-sort = Prelude.Heap.toList . Prelude.Heap.fromList
+sort = Heap.toList . Heap.fromList
 
 --------------------------------------------------------------------------------
 -- Class instances

@@ -68,6 +68,11 @@ Extra-source-files:
 
                        libs/Makefile
 
+                       libs/prelude/prelude.ipkg
+                       libs/prelude/Prelude/*.idr
+                       libs/prelude/Makefile
+                       libs/prelude/*.idr
+
                        libs/base/base.ipkg
                        libs/base/*.idr
                        libs/base/Control/*.idr
@@ -80,8 +85,8 @@ Extra-source-files:
                        libs/base/Language/Reflection/*.idr
                        libs/base/Makefile
                        libs/base/Network/*.idr
-                       libs/base/Prelude/*.idr
                        libs/base/System/Concurrency/*.idr
+
 
                        libs/effects/Makefile
                        libs/effects/effects.ipkg

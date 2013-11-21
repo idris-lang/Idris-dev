@@ -1125,6 +1125,7 @@ idrisMain opts =
        setImportDirs importdirs
 
        addPkgDir "base"
+       addPkgDir "prelude"
        mapM_ addPkgDir pkgdirs
        elabPrims
        when (not (NoPrelude `elem` opts)) $ do x <- loadModule stdout "Prelude"
