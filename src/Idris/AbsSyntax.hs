@@ -577,9 +577,12 @@ setColour ct c = do i <- getIState
 logLvl :: Int -> String -> Idris ()
 logLvl l str = do i <- getIState
                   let lvl = opt_logLevel (idris_options i)
-                  when (lvl >= l)
-                      $ do runIO (putStrLn str)
-                           putIState $ i { idris_log = idris_log i ++ str ++ "\n" }
+                  when (lvl >= l) $
+                    case idris_outputmode i of
+                      RawOutput -> do runIO $ putStrLn str
+                      IdeSlave n ->
+                        do let good = SexpList [IntegerAtom (toInteger l), toSExp str]
+                           runIO $ putStrLn $ convSExp "log" good n
 
 cmdOptType :: Opt -> Idris Bool
 cmdOptType x = do i <- getIState
