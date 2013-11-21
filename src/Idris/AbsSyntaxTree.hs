@@ -26,6 +26,7 @@ import Data.List
 import Data.Char
 import Data.Either
 import Data.Word (Word)
+import Data.IntMap.Strict (IntMap)
 
 import Debug.Trace
 
@@ -756,9 +757,14 @@ deriving instance Binary ClassInfo
 deriving instance NFData ClassInfo
 !-}
 
+-- An argument is conditionally forceable iff its forceability
+-- depends on the collapsibility of the whole type.
+data Forceability = Unforceable | CondForceable | Forceable deriving Ord
+type ForceMap = IntMap Forceability
+
 data OptInfo = Optimise { collapsible :: Bool,
                           isnewtype :: Bool,
-                          forceable :: [Int], -- argument positions
+                          forceable :: ForceMap, -- argument position -> forceability
                           recursive :: [Int] }
     deriving Show
 {-!

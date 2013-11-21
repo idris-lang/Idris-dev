@@ -5,10 +5,11 @@ module Idris.DataOpts where
 -- Forcing, detagging and collapsing
 
 import Idris.AbsSyntax
+import Idris.AbsSyntaxTree
 import Core.TT
 
-import qualified Data.IntSet as S
-import Data.IntSet (IntSet)
+import qualified Data.ForceMap.Strict as M
+import Data.ForceMap.Strict (ForceMap)
 import Data.List
 import Data.Maybe
 import Debug.Trace
@@ -19,7 +20,7 @@ import Debug.Trace
 forceArgs :: Name -> Name -> Type -> Idris ()
 forceArgs typeName n t = do
     ist <- getIState
-    let fargs = S.toList $ forceableArgs ist t S.empty
+    let fargs = forceableArgs ist t M.empty
         copt  = case lookupCtxt n (idris_optimisation ist) of
           []     -> Optimise False False [] []
           (op:_) -> op
@@ -28,15 +29,18 @@ forceArgs typeName n t = do
     addIBC (IBCOpt n)
     iLOG $ "Forced: " ++ show n ++ " " ++ show fargs ++ "\n   from " ++ show t
   where
+    maxUnion = M.unionWith max
+    minUnion = M.unionWith min
+
     -- Calculate the indices of forceable arguments from a type of a data constructor.
-    forceableArgs :: IState -> Type -> IntSet -> IntSet
+    forceableArgs :: IState -> Type -> ForceMap -> ForceMap
     forceableArgs ist t alreadyForceable
-        | forceable `S.isSubsetOf` alreadyForceable = forceable  -- no more indices, stop iterating
-        | otherwise = forceableArgs ist t (forceable `S.union` alreadyForceable)
+        | forceable `M.isSubmapOf` alreadyForceable = forceable  -- no more indices, stop iterating
+        | otherwise = forceableArgs ist t (forceable `maxUnion` alreadyForceable)
       where
         forceable = force ist 0 t alreadyForceable
 
-    force :: IState -> Int -> Type -> IntSet -> IntSet
+    force :: IState -> Int -> Type -> ForceMap -> ForceMap
     force ist i (Bind n (Pi ty) sc) alreadyForceable
         = force ist (i+1) (labelIn sc) forceable
       where
@@ -45,23 +49,27 @@ forceArgs typeName n t = do
         labelIn = instantiate $ P Bound (MN i "ctor_arg") Erased
 
         forceable
+              -- if `ty' is collapsible, the argument is unconditionally forceable
             | (P _ n' _, args) <- unApply ty
-              -- if `ty' is collapsible, the argument is forceable
             , n' `collapsibleIn` ist  
-              -- a recursive occurrence with known indices is "forceable"
-              || knownRecursive n' args alreadyForceable    
-                = S.insert i alreadyForceable
+            = M.insert i Forceable alreadyForceable
+
+              -- a recursive occurrence with known indices is conditionally forceable
+            | (P _ n' _, args) <- unApply ty
+            , knownRecursive n' args alreadyForceable    
+            = M.insertWith max i CondForceable alreadyForceable
+
             | otherwise = alreadyForceable
 
     -- constructor target
     force _ _ sc@(App f a) alreadyForceable
-        = alreadyForceable `S.union` unionMap guardedArgs args
+        = unionMap guardedArgs args `maxUnion` alreadyForceable
       where
         (_, args) = unApply sc
 
     force _ _ _ forceable = forceable
     
-    knownRecursive :: Name -> [Term] -> IntSet -> Bool
+    knownRecursive :: Name -> [Term] -> ForceMap -> Forceability
     knownRecursive n args forceable = n == typeName && all (known forceable) args
 
     collapsibleIn :: Name -> IState -> Bool
@@ -71,37 +79,38 @@ forceArgs typeName n t = do
 
     -- This predicate does not cover all known terms;
     -- hopefully it does not cover any not-known terms.
-    known :: IntSet -> Term -> Bool
+    known :: ForceMap -> Term -> Forceability
     known forceable (P Bound (MN i "ctor_arg") Erased)
-        = i `S.member` forceable  -- forceable data is known
-    known _ (P (DCon _ _) _ _) = True  -- data constructors are known
-    known _ (P (TCon _ _) _ _) = True  -- type constructors are known
+        = M.findWithDefault Unforceable i forceable  -- forceable data is known
+    known _ (P (DCon _ _) _ _) = Forceable  -- data constructors are known
+    known _ (P (TCon _ _) _ _) = Forceable  -- type constructors are known
     -- what about (P Bound), (P Ref)?
-    known _ (V _)        = False
-    known _ (Bind _ _ _) = False  -- let's ignore binders, too
-    known f (App g x)    = known f g && known f x
-    known _ (Constant _) = True
+    known _ (V _)        = Unforceable
+    known _ (Bind _ _ _) = Unforceable  -- let's ignore binders, too
+    known f (App g x)    = known f g `min` known f x
+    known _ (Constant _) = Forceable
     known f (Proj t _)   = known f t
-    known _ Erased       = True
-    known _ Impossible   = True
-    known _ (TType _)    = True
-    known _ _            = False
+    known _ Erased       = Forceable
+    known _ Impossible   = Forceable
+    known _ (TType _)    = Forceable
+    known _ _            = Unforceable
 
     -- Return the indices of all constructor arguments
     -- referenced to in the term.
-    ctorArgs :: Term -> IntSet
-    ctorArgs (P _ (MN i "ctor_arg") _) = S.singleton i
-    ctorArgs _ = S.empty
+    ctorArgs :: Term -> ForceMap
+    ctorArgs (P _ (MN i "ctor_arg") _) = M.singleton i Forceable
+    ctorArgs _ = M.empty
 
-    guardedArgs :: Term -> IntSet
+    guardedArgs :: Term -> ForceMap
     guardedArgs t@(App f a) | (P (DCon _ _) _ _, args) <- unApply t
-        = unionMap ctorArgs args `S.union` unionMap guardedArgs args
+        = unionMap ctorArgs args `maxUnion` unionMap guardedArgs args
     guardedArgs t = ctorArgs t
 
-    unionMap :: (a -> IntSet) -> [a] -> IntSet
-    unionMap f xs = S.unions $ map f xs
+    unionMap :: (a -> ForceMap) -> [a] -> ForceMap
+    unionMap f xs = maxUnion $ map f xs
 
 -- Calculate whether a collection of constructors is collapsible
+-- and update the state accordingly.
 collapseCons :: Name -> [(Name, Type)] -> Idris ()
 collapseCons ty cons =
      do i <- getIState
