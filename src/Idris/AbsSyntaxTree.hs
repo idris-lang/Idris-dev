@@ -759,7 +759,7 @@ deriving instance NFData ClassInfo
 
 -- An argument is conditionally forceable iff its forceability
 -- depends on the collapsibility of the whole type.
-data Forceability = Unforceable | CondForceable | Forceable deriving Ord
+data Forceability = Unforceable | CondForceable | Forceable deriving (Eq, Ord, Show, Enum, Bounded)
 type ForceMap = IntMap Forceability
 
 data OptInfo = Optimise { collapsible :: Bool,

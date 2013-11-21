@@ -8,21 +8,20 @@ import Idris.AbsSyntax
 import Idris.AbsSyntaxTree
 import Core.TT
 
-import qualified Data.ForceMap.Strict as M
-import Data.ForceMap.Strict (ForceMap)
+import qualified Data.IntMap.Strict as M
 import Data.List
 import Data.Maybe
 import Debug.Trace
 
--- Calculate the forceable arguments to a constructor and update the set of
--- optimisations
-
+-- Calculate the forceable arguments to a constructor
+-- and update the set of optimisations.
 forceArgs :: Name -> Name -> Type -> Idris ()
 forceArgs typeName n t = do
     ist <- getIState
-    let fargs = forceableArgs ist t M.empty
-        copt  = case lookupCtxt n (idris_optimisation ist) of
-          []     -> Optimise False False [] []
+    let ftarget = forcedInTarget 0 t
+        fargs   = addCollapsibleArgs ist 0 t ftarget
+        copt = case lookupCtxt n (idris_optimisation ist) of
+          []     -> Optimise False False M.empty []
           (op:_) -> op
         opts = addDef n (copt { forceable = fargs }) (idris_optimisation ist)
     putIState (ist { idris_optimisation = opts })
@@ -32,22 +31,14 @@ forceArgs typeName n t = do
     maxUnion = M.unionWith max
     minUnion = M.unionWith min
 
-    -- Calculate the indices of forceable arguments from a type of a data constructor.
-    forceableArgs :: IState -> Type -> ForceMap -> ForceMap
-    forceableArgs ist t alreadyForceable
-        | forceable `M.isSubmapOf` alreadyForceable = forceable  -- no more indices, stop iterating
-        | otherwise = forceableArgs ist t (forceable `maxUnion` alreadyForceable)
-      where
-        forceable = force ist 0 t alreadyForceable
+    -- Label all occurrences of the variable bound in Pi in the rest of
+    -- the term with the number i so that we can recognize them anytime later.
+    label i = instantiate $ P Bound (MN i "ctor_arg") Erased
 
-    force :: IState -> Int -> Type -> ForceMap -> ForceMap
-    force ist i (Bind n (Pi ty) sc) alreadyForceable
-        = force ist (i+1) (labelIn sc) forceable
+    addCollapsibleArgs :: IState -> Int -> Type -> ForceMap -> ForceMap
+    addCollapsibleArgs ist i (Bind n (Pi ty) rest) alreadyForceable
+        = addCollapsibleArgs ist (i+1) (label i rest) forceable
       where
-        -- Label all occurrences of the variable bound in Pi in the rest of
-        -- the term with the number i so that we can recognize them anytime later.
-        labelIn = instantiate $ P Bound (MN i "ctor_arg") Erased
-
         forceable
               -- if `ty' is collapsible, the argument is unconditionally forceable
             | (P _ n' _, args) <- unApply ty
@@ -56,58 +47,56 @@ forceArgs typeName n t = do
 
               -- a recursive occurrence with known indices is conditionally forceable
             | (P _ n' _, args) <- unApply ty
-            , knownRecursive n' args alreadyForceable    
+            , knownRecursive n' args alreadyForceable >= CondForceable
             = M.insertWith max i CondForceable alreadyForceable
 
             | otherwise = alreadyForceable
 
-    -- constructor target
-    force _ _ sc@(App f a) alreadyForceable
-        = unionMap guardedArgs args `maxUnion` alreadyForceable
-      where
-        (_, args) = unApply sc
+        collapsibleIn :: Name -> IState -> Bool
+        n `collapsibleIn` ist = case lookupCtxt n (idris_optimisation ist) of
+            [oi] -> collapsible oi
+            _    -> False
 
-    force _ _ _ forceable = forceable
-    
+    addCollapsibleArgs _ _ _ fs = fs
+
     knownRecursive :: Name -> [Term] -> ForceMap -> Forceability
-    knownRecursive n args forceable = n == typeName && all (known forceable) args
+    knownRecursive n args forceable
+        | n == typeName = minimum $ map (known forceable) args
+        | otherwise     = Unforceable
+      where
+        -- This predicate does not cover all known terms;
+        -- hopefully it does not cover any not-known terms.
+        known :: ForceMap -> Term -> Forceability
+        known forceable (P Bound (MN i "ctor_arg") Erased)
+            = M.findWithDefault Unforceable i forceable  -- forceable data is known
+        known _ (P (DCon _ _) _ _) = Forceable  -- data constructors are known
+        known _ (P (TCon _ _) _ _) = Forceable  -- type constructors are known
+        -- what about (P Bound), (P Ref)?
+        known _ (V _)        = Unforceable
+        known _ (Bind _ _ _) = Unforceable  -- let's ignore binders, too
+        known f (App g x)    = known f g `min` known f x
+        known _ (Constant _) = Forceable
+        known f (Proj t _)   = known f t
+        known _  Erased      = Forceable
+        known _  Impossible  = Forceable
+        known _ (TType _)    = Forceable
+        known _ _            = Unforceable
 
-    collapsibleIn :: Name -> IState -> Bool
-    n `collapsibleIn` ist = case lookupCtxt n (idris_optimisation ist) of
-        [oi] -> collapsible oi
-        _    -> False
+    forcedInTarget :: Int -> Type -> ForceMap
+    forcedInTarget i (Bind _ (Pi _) rest) = forcedInTarget (i+1) (label i rest)
+    forcedInTarget i t@(App f a) | (_, as) <- unApply t = unionMap guardedArgs as
+      where
+        guardedArgs :: Term -> ForceMap
+        guardedArgs t@(App f a) | (P (DCon _ _) _ _, args) <- unApply t
+            = unionMap bareArg args `maxUnion` unionMap guardedArgs args
+        guardedArgs t = bareArg t
 
-    -- This predicate does not cover all known terms;
-    -- hopefully it does not cover any not-known terms.
-    known :: ForceMap -> Term -> Forceability
-    known forceable (P Bound (MN i "ctor_arg") Erased)
-        = M.findWithDefault Unforceable i forceable  -- forceable data is known
-    known _ (P (DCon _ _) _ _) = Forceable  -- data constructors are known
-    known _ (P (TCon _ _) _ _) = Forceable  -- type constructors are known
-    -- what about (P Bound), (P Ref)?
-    known _ (V _)        = Unforceable
-    known _ (Bind _ _ _) = Unforceable  -- let's ignore binders, too
-    known f (App g x)    = known f g `min` known f x
-    known _ (Constant _) = Forceable
-    known f (Proj t _)   = known f t
-    known _ Erased       = Forceable
-    known _ Impossible   = Forceable
-    known _ (TType _)    = Forceable
-    known _ _            = Unforceable
+        bareArg :: Term -> ForceMap
+        bareArg (P _ (MN i "ctor_arg") _) = M.singleton i Forceable
+        bareArg  _                        = M.empty
 
-    -- Return the indices of all constructor arguments
-    -- referenced to in the term.
-    ctorArgs :: Term -> ForceMap
-    ctorArgs (P _ (MN i "ctor_arg") _) = M.singleton i Forceable
-    ctorArgs _ = M.empty
-
-    guardedArgs :: Term -> ForceMap
-    guardedArgs t@(App f a) | (P (DCon _ _) _ _, args) <- unApply t
-        = unionMap ctorArgs args `maxUnion` unionMap guardedArgs args
-    guardedArgs t = ctorArgs t
-
-    unionMap :: (a -> ForceMap) -> [a] -> ForceMap
-    unionMap f xs = maxUnion $ map f xs
+        unionMap :: (a -> ForceMap) -> [a] -> ForceMap
+        unionMap f = M.unionsWith max . map f
 
 -- Calculate whether a collection of constructors is collapsible
 -- and update the state accordingly.
@@ -123,7 +112,7 @@ collapseCons ty cons =
     checkNewType [(n, ts)] = do
        i <- getIState
        case lookupCtxt n (idris_optimisation i) of
-               (oi:_) -> do let remaining = length ts - length (forceable oi)
+               (oi:_) -> do let remaining = length ts - M.size (forceable oi)
                             if remaining == 1 then
                                do let oi' = oi { isnewtype = True }
                                   let opts = addDef n oi' (idris_optimisation i)
@@ -141,7 +130,7 @@ collapseCons ty cons =
                (oi:_) -> do let oi' = oi { collapsible = True }
                             let opts = addDef n oi' (idris_optimisation i)
                             putIState (i { idris_optimisation = opts })
-               [] -> do let oi = Optimise True False [] []
+               [] -> do let oi = Optimise True False M.empty []
                         let opts = addDef n oi (idris_optimisation i)
                         putIState (i { idris_optimisation = opts })
                         addIBC (IBCOpt n)
