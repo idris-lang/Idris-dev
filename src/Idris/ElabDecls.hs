@@ -1258,9 +1258,6 @@ elabClass info syn doc fc constraints tn ps ds
          -- build instance constructor type
          -- decorate names of functions to ensure they can't be referred
          -- to elsewhere in the class declaration
-         -- TODO: Remove mdec to make it a dependent record, which would
-         -- allow dependent type classes, but building instances will
-         -- then need some attention.
          let cty = impbind ps $ conbind constraints
                       $ pibind (map (\ (n, ty) -> (nsroot n, ty)) methods)
                                constraint
