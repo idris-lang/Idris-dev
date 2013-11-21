@@ -8,7 +8,7 @@ modules = System,
 
           System.Concurrency.Raw, System.Concurrency.Process,
 
-          Decidable.Equality, Decidable.Decidable, Decidable.Order,
+          Decidable.Decidable, Decidable.Order,
 
           Uninhabited,
 

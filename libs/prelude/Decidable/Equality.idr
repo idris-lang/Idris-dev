@@ -1,6 +1,11 @@
 module Decidable.Equality
 
-import Prelude
+import Builtins
+import Prelude.Either
+import Prelude.List
+import Prelude.Vect
+import Prelude.Fin
+import Prelude.Maybe
 
 --------------------------------------------------------------------------------
 -- Utility lemmas

@@ -19,6 +19,8 @@ import Prelude.Traversable
 import Prelude.Bits
 import Prelude.Stream
 
+import Decidable.Equality
+
 %access public
 %default total
 
