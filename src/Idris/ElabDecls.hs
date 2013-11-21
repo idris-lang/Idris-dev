@@ -1262,7 +1262,7 @@ elabClass info syn doc fc constraints tn ps ds
          -- allow dependent type classes, but building instances will
          -- then need some attention.
          let cty = impbind ps $ conbind constraints
-                      $ pibind (map (\ (n, ty) -> (mdec n, ty)) methods)
+                      $ pibind (map (\ (n, ty) -> (nsroot n, ty)) methods)
                                constraint
          let cons = [("", cn, cty, fc)]
          let ddecl = PDatadecl tn tty cons
@@ -1427,11 +1427,15 @@ elabInstance info syn fc cs n ps t expn ds
                                   PApp _ _ args -> getWParams args
                                   _ -> return []) ps
          let pnames = map pname (concat (nub wparams))
+         let all_meths = map (nsroot . fst) (class_methods ci)
          let mtys = map (\ (n, (op, t)) ->
-                             let t' = substMatchesShadow ips pnames t in
-                                 (decorate ns iname n,
-                                     op, coninsert cs t', t'))
-                        (class_methods ci)
+                   let t_in = substMatchesShadow ips pnames t 
+                       mnamemap = map (\n -> (n, PRef fc (decorate ns iname n)))
+                                      all_meths
+                       t' = substMatchesShadow mnamemap pnames t_in in
+                       (decorate ns iname n,
+                           op, coninsert cs t', t'))
+              (class_methods ci)
          logLvl 3 (show (mtys, ips))
          let ds' = insertDefaults i iname (class_defaults ci) ns ds
          iLOG ("Defaults inserted: " ++ show ds' ++ "\n" ++ show ci)
