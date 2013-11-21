@@ -70,6 +70,7 @@ Extra-source-files:
 
                        libs/prelude/prelude.ipkg
                        libs/prelude/Prelude/*.idr
+                       libs/prelude/Decidable/*.idr
                        libs/prelude/Makefile
                        libs/prelude/*.idr
 
