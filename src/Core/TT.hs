@@ -1010,7 +1010,7 @@ orderPats tm = op [] tm
   where
     op ps (Bind n (PVar t) sc) = op ((n, PVar t) : ps) sc
     op ps (Bind n (Hole t) sc) = op ((n, Hole t) : ps) sc
-    op ps sc = bindAll (map (\ (n, t) -> (n, t)) (sortP ps)) sc
+    op ps sc = bindAll (sortP ps) sc
 
     sortP ps = pick [] (reverse ps)
 
