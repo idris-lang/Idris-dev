@@ -1157,7 +1157,7 @@ idrisMain opts =
 
        when runrepl $ initScript
        stvar <- runIO $ newMVar ist
-       when runrepl $ startServer ist stvar inputs
+       when (runrepl && not idesl) $ startServer ist stvar inputs
        when (runrepl && not idesl) $ runInputT (replSettings (Just historyFile)) $ repl ist stvar inputs
        when (idesl) $ ideslaveStart ist inputs
        ok <- noErrors

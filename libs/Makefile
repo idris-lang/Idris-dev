@@ -1,20 +1,20 @@
 build: .PHONY
-	make -C prelude build
-	make -C base build
-	make -C effects build
-	make -C javascript build
+	$(MAKE) -C prelude build
+	$(MAKE) -C base build
+	$(MAKE) -C effects build
+	$(MAKE) -C javascript build
 
 
 install: .PHONY
-	make -C prelude install
-	make -C base install
-	make -C effects install
-	make -C javascript install
+	$(MAKE) -C prelude install
+	$(MAKE) -C base install
+	$(MAKE) -C effects install
+	$(MAKE) -C javascript install
 
 clean: .PHONY
-	make -C prelude clean
-	make -C base clean
-	make -C effects clean
-	make -C javascript clean
+	$(MAKE) -C prelude clean
+	$(MAKE) -C base clean
+	$(MAKE) -C effects clean
+	$(MAKE) -C javascript clean
         
 .PHONY:
