@@ -223,8 +223,9 @@ ideslave orig mods
                  do clearErr
                     putIState (orig { idris_options = idris_options i,
                                       idris_outputmode = (IdeSlave id) })
-                    loadModule stdout filename
-                    iucheck
+                    idrisCatch (do mod <- loadModule' stdout filename
+                                   return ())
+                               (setAndReport)
                     isetPrompt (mkPrompt [filename])
 
                     -- Report either success or failure

@@ -15,6 +15,8 @@ import qualified Text.Parser.Token as Tok
 import qualified Text.Parser.Char as Chr
 import qualified Text.Parser.Token.Highlight as Hi
 
+import Text.PrettyPrint.ANSI.Leijen (Doc, plain)
+
 import Idris.AbsSyntax
 import Idris.DSL
 import Idris.Imports
@@ -911,6 +913,13 @@ parseImports fname input
                      i     <- get
                      return ((mname, ps, mrk'), i)
 
+-- | There should be a better way of doing this...
+findFC :: Doc -> (FC, String)
+findFC x = let s = show (plain x) in
+             case span (/= ':') s of
+               (failname, ':':rest) -> case span isDigit rest of
+                 (line, ':':rest') -> (FC failname (read line) 0, drop 2 (dropWhile (/= ':') rest'))
+
 -- | A program is a list of declarations, possibly with associated
 -- documentation strings.
 parseProg :: SyntaxInfo -> FilePath -> String -> Maybe Delta ->
@@ -919,10 +928,13 @@ parseProg syn fname input mrk
     = do i <- getIState
          case runparser mainProg i fname input of
             Failure doc     -> do -- FIXME: Get error location from trifecta
-                                  --let errl = sourceLine (errorPos err)
+                                  -- this can't be the solution!
+                                  let (fc, msg) = findFC doc
                                   i <- getIState
-                                  ihputStrLn (idris_outh i) (show doc)
-                                  putIState (i { errLine = Just 0 }) -- Just errl })
+                                  case idris_outputmode i of
+                                    RawOutput -> ihputStrLn (idris_outh i) (show doc)
+                                    IdeSlave n -> ihWarn (idris_outh i) fc msg
+                                  putIState (i { errLine = Just (fc_line fc) }) -- Just errl })
                                   return []
             Success (x, i)  -> do putIState i
                                   return $ collect x
@@ -935,33 +947,39 @@ parseProg syn fname input mrk
                           i' <- get
                           return (ds, i')
 
-{- | Load idris module -}
+{- | Load idris module and show error if something wrong happens -}
 loadModule :: Handle -> FilePath -> Idris String
 loadModule outh f
-   = idrisCatch (do i <- getIState
-                    let file = takeWhile (/= ' ') f
-                    ibcsd <- valIBCSubDir i
-                    ids <- allImportDirs
-                    fp <- liftIO $ findImport ids ibcsd file
-                    if file `elem` imported i
-                       then iLOG $ "Already read " ++ file
-                       else do putIState (i { imported = file : imported i })
-                               case fp of
-                                   IDR fn  -> loadSource outh False fn
-                                   LIDR fn -> loadSource outh True  fn
-                                   IBC fn src ->
-                                     idrisCatch (loadIBC fn)
-                                                (\c -> do iLOG $ fn ++ " failed " ++ show c
-                                                          case src of
-                                                            IDR sfn -> loadSource outh False sfn
-                                                            LIDR sfn -> loadSource outh True sfn)
-                    let (dir, fh) = splitFileName file
-                    return (dropExtension fh))
+   = idrisCatch (loadModule' outh f)
                 (\e -> do setErrLine (getErrLine e)
                           ist <- getIState
                           msg <- showErr e
                           ihputStrLn outh msg
                           return "")
+
+{- | Load idris module -}
+loadModule' :: Handle -> FilePath -> Idris String
+loadModule' outh f
+   = do i <- getIState
+        let file = takeWhile (/= ' ') f
+        ibcsd <- valIBCSubDir i
+        ids <- allImportDirs
+        fp <- liftIO $ findImport ids ibcsd file
+        if file `elem` imported i
+          then iLOG $ "Already read " ++ file
+          else do putIState (i { imported = file : imported i })
+                  case fp of
+                    IDR fn  -> loadSource outh False fn
+                    LIDR fn -> loadSource outh True  fn
+                    IBC fn src ->
+                      idrisCatch (loadIBC fn)
+                                 (\c -> do iLOG $ fn ++ " failed " ++ show c
+                                           case src of
+                                             IDR sfn -> loadSource outh False sfn
+                                             LIDR sfn -> loadSource outh True sfn)
+        let (dir, fh) = splitFileName file
+        return (dropExtension fh)
+
 
 {- | Load idris code from file -}
 loadFromIFile :: Handle -> IFileType -> Idris ()

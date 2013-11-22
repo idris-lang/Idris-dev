@@ -35,12 +35,17 @@ report e
     | isUserError e = ioeGetErrorString e
     | otherwise     = show e
 
---idrisCatch :: Idris a -> (SomeException -> Idris a) -> Idris a
---idrisCatch = catch
-
 idrisCatch :: Idris a -> (Err -> Idris a) -> Idris a
 idrisCatch = catchError
 
+setAndReport :: Err -> Idris ()
+setAndReport e = do ist <- getIState
+                    let h = idris_outh ist
+                    case e of
+                      At fc@(FC f l c) e -> do setErrLine l
+                                               ihWarn h fc $ pshow ist e
+                      _ -> do setErrLine (getErrLine e)
+                              ihputStrLn h $ pshow ist e
 
 ifail :: String -> Idris a
 ifail = throwError . Msg
