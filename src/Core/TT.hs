@@ -65,6 +65,7 @@ fileFC s = FC s 0 0
 
 {-!
 deriving instance Binary FC
+deriving instance NFData FC
 !-}
 
 instance Sized FC where
@@ -103,6 +104,9 @@ data Err = Msg String
          | ProviderError String
          | LoadingFailed String Err
   deriving Eq
+{-!
+deriving instance NFData Err
+!-}
 
 instance Sized Err where
   size (Msg msg) = length msg
@@ -225,6 +229,7 @@ data Name = UN String -- ^ User-provided name
   deriving (Eq, Ord)
 {-!
 deriving instance Binary Name
+deriving instance NFData Name
 !-}
 
 data SpecialName = WhereN Int Name Name
@@ -235,6 +240,7 @@ data SpecialName = WhereN Int Name Name
   deriving (Eq, Ord)
 {-!
 deriving instance Binary SpecialName
+deriving instance NFData SpecialName
 !-}
 
 instance Sized Name where
@@ -369,6 +375,11 @@ data IntTy = ITFixed NativeTy | ITNative | ITBig | ITChar
 
 data ArithTy = ATInt IntTy | ATFloat -- TODO: Float vectors
     deriving (Show, Eq, Ord)
+{-!
+deriving instance NFData IntTy
+deriving instance NFData NativeTy
+deriving instance NFData ArithTy
+!-}
 
 instance Pretty ArithTy where
     pretty (ATInt ITNative) = text "Int"
@@ -400,6 +411,7 @@ data Const = I Int | BI Integer | Fl Double | Ch Char | Str String
   deriving (Eq, Ord)
 {-!
 deriving instance Binary Const
+deriving instance NFData Const
 !-}
 
 instance Sized Const where
@@ -442,6 +454,7 @@ instance Pretty Raw where
 
 {-!
 deriving instance Binary Raw
+deriving instance NFData Raw
 !-}
 
 -- | All binding forms are represented in a unform fashion.
@@ -461,6 +474,7 @@ data Binder b = Lam   { binderTy  :: b {-^ type annotation for bound variable-}}
   deriving (Show, Eq, Ord, Functor)
 {-!
 deriving instance Binary Binder
+deriving instance NFData Binder
 !-}
 
 instance Sized a => Sized (Binder a) where
@@ -515,6 +529,9 @@ type RProgram = [(Name, RDef)]
 data UExp = UVar Int -- ^ universe variable
           | UVal Int -- ^ explicit universe level
   deriving (Eq, Ord)
+{-!
+deriving instance NFData UExp
+!-}
 
 instance Sized UExp where
   size _ = 1
@@ -551,6 +568,7 @@ data NameType = Bound
   deriving (Show, Ord)
 {-!
 deriving instance Binary NameType
+deriving instance NFData NameType
 !-}
 
 instance Sized NameType where
@@ -580,6 +598,7 @@ data TT n = P NameType n (TT n) -- ^ named references
   deriving (Ord, Functor)
 {-!
 deriving instance Binary TT
+deriving instance NFData TT
 !-}
 
 class TermSize a where

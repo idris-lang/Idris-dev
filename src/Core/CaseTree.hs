@@ -11,12 +11,12 @@ import Data.Maybe
 import Data.List hiding (partition)
 import Debug.Trace
 
-data CaseDef = CaseDef [Name] SC [Term]
+data CaseDef = CaseDef [Name] !SC [Term]
     deriving Show
 
 data SC' t = Case Name [CaseAlt' t] -- ^ invariant: lowest tags first
            | ProjCase t [CaseAlt' t] -- ^ special case for projections
-           | STerm t
+           | STerm !t
            | UnmatchedCase String -- ^ error message
            | ImpossibleCase -- ^ already checked to be impossible
     deriving (Eq, Ord, Functor)
@@ -26,11 +26,11 @@ deriving instance Binary SC
 
 type SC = SC' Term
 
-data CaseAlt' t = ConCase Name Int [Name] (SC' t)
-                | FnCase Name [Name]      (SC' t) -- ^ reflection function
-                | ConstCase Const         (SC' t)
-                | SucCase Name            (SC' t)
-                | DefaultCase             (SC' t)
+data CaseAlt' t = ConCase Name Int [Name] !(SC' t)
+                | FnCase Name [Name]      !(SC' t) -- ^ reflection function
+                | ConstCase Const         !(SC' t)
+                | SucCase Name            !(SC' t)
+                | DefaultCase             !(SC' t)
     deriving (Show, Eq, Ord, Functor)
 {-!
 deriving instance Binary CaseAlt

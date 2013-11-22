@@ -324,6 +324,7 @@ Executable idris
                 , Idris.Coverage
                 , Idris.DSL
                 , Idris.DataOpts
+                , Idris.DeepSeq
                 , Idris.Delaborate
                 , Idris.Docs
                 , Idris.ElabDecls
@@ -406,6 +407,7 @@ Executable idris
                 , vector-binary-instances
                 , network
                 , xml
+                , deepseq
 
   Extensions:     MultiParamTypeClasses
                 , FunctionalDependencies

@@ -134,6 +134,7 @@ data SizeChange = Smaller | Same | Bigger | Unknown
     deriving (Show, Eq)
 {-!
 deriving instance Binary SizeChange
+deriving instance NFData SizeChange
 !-}
 
 type SCGEntry = (Name, [Maybe (Int, SizeChange)])
@@ -146,6 +147,7 @@ data CGInfo = CGInfo { argsdef :: [Name],
     deriving Show
 {-!
 deriving instance Binary CGInfo
+deriving instance NFData CGInfo
 !-}
 
 primDefs = [UN "unsafePerformPrimIO",
@@ -301,6 +303,7 @@ data Fixity = Infixl { prec :: Int }
     deriving Eq
 {-!
 deriving instance Binary Fixity
+deriving instance NFData Fixity
 !-}
 
 instance Show Fixity where
@@ -317,6 +320,7 @@ instance Show FixDecl where
 
 {-!
 deriving instance Binary FixDecl
+deriving instance NFData FixDecl
 !-}
 
 instance Ord FixDecl where
@@ -327,6 +331,7 @@ data Static = Static | Dynamic
   deriving (Show, Eq)
 {-!
 deriving instance Binary Static
+deriving instance NFData Static
 !-}
 
 -- Mark bindings with their explicitness, and laziness
@@ -349,6 +354,7 @@ data Plicity = Imp { plazy :: Bool,
 
 {-!
 deriving instance Binary Plicity
+deriving instance NFData Plicity
 !-}
 
 impl = Imp False Dynamic "" False
@@ -369,6 +375,7 @@ data FnOpt = Inlinable -- always evaluate when simplifying
     deriving (Show, Eq)
 {-!
 deriving instance Binary FnOpt
+deriving instance NFData FnOpt
 !-}
 
 type FnOpts = [FnOpt]
@@ -416,6 +423,7 @@ data PDecl' t
  deriving Functor
 {-!
 deriving instance Binary PDecl'
+deriving instance NFData PDecl'
 !-}
 
 -- For elaborator state
@@ -438,6 +446,7 @@ data PClause' t = PClause  FC Name t [t] t [PDecl' t] -- ^ A normal top-level de
     deriving Functor
 {-!
 deriving instance Binary PClause'
+deriving instance NFData PClause'
 !-}
 
 -- | Data declaration
@@ -451,6 +460,7 @@ data PData' t  = PDatadecl { d_name :: Name, -- ^ The name of the datatype
     deriving Functor
 {-!
 deriving instance Binary PData'
+deriving instance NFData PData'
 !-}
 
 -- Handy to get a free function for applying PTerm -> PTerm functions
@@ -581,6 +591,7 @@ data PTerm = PQuote Raw
 
 {-!
 deriving instance Binary PTerm
+deriving instance NFData PTerm
 !-}
 
 mapPT :: (PTerm -> PTerm) -> PTerm -> PTerm
@@ -628,6 +639,7 @@ data PTactic' t = Intro [Name] | Intros | Focus Name
     deriving (Show, Eq, Functor)
 {-!
 deriving instance Binary PTactic'
+deriving instance NFData PTactic'
 !-}
 
 instance Sized a => Sized (PTactic' a) where
@@ -663,6 +675,7 @@ data PDo' t = DoExp  FC t
     deriving (Eq, Functor)
 {-!
 deriving instance Binary PDo'
+deriving instance NFData PDo'
 !-}
 
 instance Sized a => Sized (PDo' a) where
@@ -703,6 +716,7 @@ instance Sized a => Sized (PArg' a) where
 
 {-!
 deriving instance Binary PArg'
+deriving instance NFData PArg'
 !-}
 
 pimp n t mach = PImp 1 mach True n t ""
@@ -722,6 +736,7 @@ data ClassInfo = CI { instanceName :: Name,
     deriving Show
 {-!
 deriving instance Binary ClassInfo
+deriving instance NFData ClassInfo
 !-}
 
 data OptInfo = Optimise { collapsible :: Bool,
@@ -731,6 +746,7 @@ data OptInfo = Optimise { collapsible :: Bool,
     deriving Show
 {-!
 deriving instance Binary OptInfo
+deriving instance NFData OptInfo
 !-}
 
 
@@ -740,6 +756,7 @@ data TypeInfo = TI { con_names :: [Name],
     deriving Show
 {-!
 deriving instance Binary TypeInfo
+deriving instance NFData TypeInfo
 !-}
 
 -- Syntactic sugar info
@@ -757,6 +774,7 @@ data DSL' t = DSL { dsl_bind    :: t,
     deriving (Show, Functor)
 {-!
 deriving instance Binary DSL'
+deriving instance NFData DSL'
 !-}
 
 type DSL = DSL' PTerm
@@ -765,12 +783,14 @@ data SynContext = PatternSyntax | TermSyntax | AnySyntax
     deriving Show
 {-!
 deriving instance Binary SynContext
+deriving instance NFData SynContext
 !-}
 
 data Syntax = Rule [SSymbol] PTerm SynContext
     deriving Show
 {-!
 deriving instance Binary Syntax
+deriving instance NFData Syntax
 !-}
 
 data SSymbol = Keyword Name
@@ -781,6 +801,7 @@ data SSymbol = Keyword Name
     deriving Show
 {-!
 deriving instance Binary SSymbol
+deriving instance NFData SSymbol
 !-}
 
 initDSL = DSL (PRef f (UN ">>="))
@@ -799,6 +820,7 @@ data Using = UImplicit Name PTerm
     deriving (Show, Eq)
 {-!
 deriving instance Binary Using
+deriving instance NFData Using
 !-}
 
 data SyntaxInfo = Syn { using :: [Using],
@@ -811,6 +833,7 @@ data SyntaxInfo = Syn { using :: [Using],
                         dsl_info :: DSL }
     deriving Show
 {-!
+deriving instance NFData SyntaxInfo
 deriving instance Binary SyntaxInfo
 !-}
 

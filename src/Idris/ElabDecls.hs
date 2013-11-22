@@ -15,6 +15,7 @@ import Idris.Providers
 import Idris.Primitives
 import Idris.Inliner
 import Idris.PartialEval
+import Idris.DeepSeq
 import IRTS.Lang
 import Paths_idris
 
@@ -25,6 +26,7 @@ import Core.Execute
 import Core.Typecheck
 import Core.CaseTree
 
+import Control.DeepSeq
 import Control.Monad
 import Control.Monad.State
 import Data.List
@@ -686,7 +688,7 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
            logLvl 3 $ "Optimised: " ++ show tree'
            ctxt <- getContext
            ist <- getIState
-           putIState (ist { idris_patdefs = addDef n (pdef', pmissing)
+           putIState (ist { idris_patdefs = addDef n (force pdef', force pmissing)
                                                 (idris_patdefs ist) })
            let caseInfo = CaseInfo (inlinable opts) (dictionary opts)
            case lookupTy n ctxt of
@@ -741,10 +743,10 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
     getLHS (_, l, _) = l
 
     simple_lhs ctxt (Right (x, y)) = Right (normalise ctxt [] x, 
-                                            normalisePats ctxt [] y)
+                                            force (normalisePats ctxt [] y))
     simple_lhs ctxt t = t
 
-    simple_rt ctxt (p, x, y) = (p, x, rt_simplify ctxt [] y)
+    simple_rt ctxt (p, x, y) = (p, x, force (rt_simplify ctxt [] y))
 
     -- this is so pattern types are in the right form for erasure
     normalisePats ctxt env (Bind n (PVar t) sc) 

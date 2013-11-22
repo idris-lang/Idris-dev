@@ -23,6 +23,7 @@ import Idris.Imports
 import Idris.Colours
 import Idris.Inliner
 import Idris.CaseSplit
+import Idris.DeepSeq
 
 import Paths_idris
 import Util.System
@@ -67,6 +68,7 @@ import Data.List
 import Data.Char
 import Data.Version
 import Data.Word (Word)
+import Control.DeepSeq
 
 import qualified Text.PrettyPrint.ANSI.Leijen as ANSI
 
@@ -417,11 +419,11 @@ process h fn (ChangeDirectory f)
 process h fn (Eval t)
                  = do (tm, ty) <- elabVal toplevel False t
                       ctxt <- getContext
-                      ist <- getIState
-                      let tm' = normaliseAll ctxt [] tm
-                      let ty' = normaliseAll ctxt [] ty
+                      let tm' = force (normaliseAll ctxt [] tm)
+                      let ty' = force (normaliseAll ctxt [] ty)
                       -- Add value to context, call it "it"
                       updateContext (addCtxtDef (UN "it") (Function ty' tm'))
+                      ist <- getIState
                       logLvl 3 $ "Raw: " ++ show (tm', ty')
                       logLvl 10 $ "Debug: " ++ showEnvDbg [] tm'
                       imp <- impShow

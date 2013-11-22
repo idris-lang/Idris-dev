@@ -580,22 +580,22 @@ spec ctxt statics genv tm = error "spec undefined"
    An Operator is a function which explains how to reduce.
    A CaseOp is a function defined by a simple case tree -}
 
-data Def = Function Type Term
-         | TyDecl NameType Type
+data Def = Function !Type !Term
+         | TyDecl NameType !Type
          | Operator Type Int ([Value] -> Maybe Value)
          | CaseOp CaseInfo
-                  Type
-                  [Either Term (Term, Term)] -- original definition
-                  [([Name], Term, Term)] -- simplified for totality check definition
-                  CaseDefs
+                  !Type
+                  ![Either Term (Term, Term)] -- original definition
+                  ![([Name], Term, Term)] -- simplified for totality check definition
+                  !CaseDefs
 --                   [Name] SC -- Compile time case definition
 --                   [Name] SC -- Run time cae definitions
 
 data CaseDefs = CaseDefs {
-                  cases_totcheck :: ([Name], SC),
-                  cases_compiletime :: ([Name], SC),
-                  cases_inlined :: ([Name], SC),
-                  cases_runtime :: ([Name], SC)
+                  cases_totcheck :: !([Name], SC),
+                  cases_compiletime :: !([Name], SC),
+                  cases_inlined :: !([Name], SC),
+                  cases_runtime :: !([Name], SC)
                 }
 
 data CaseInfo = CaseInfo {
@@ -719,7 +719,7 @@ setTotal n t uctxt
 
 addCtxtDef :: Name -> Def -> Context -> Context
 addCtxtDef n d c = let ctxt = definitions c
-                       ctxt' = addDef n (d, Public, Unchecked) ctxt in
+                       ctxt' = addDef n (d, Public, Unchecked) $! ctxt in
                        c { definitions = ctxt' }
 
 addTyDecl :: Name -> NameType -> Type -> Context -> Context
