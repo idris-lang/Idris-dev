@@ -36,20 +36,22 @@ forceArgs typeName n t = do
 
     addCollapsibleArgs :: IState -> Int -> Type -> ForceMap -> ForceMap
     addCollapsibleArgs ist i (Bind n (Pi ty) rest) alreadyForceable
-        = addCollapsibleArgs ist (i+1) (label i rest) forceable
+        = addCollapsibleArgs ist (i+1) (label i rest) (forceable $ unApply ty)
       where
-        forceable
+        forceable (P _ n' _, args)
               -- if `ty' is collapsible, the argument is unconditionally forceable
-            | (P _ n' _, args) <- unApply ty
-            , n' `collapsibleIn` ist  
+            | n' `collapsibleIn` ist  
             = M.insert i Forceable alreadyForceable
 
               -- a recursive occurrence with known indices is conditionally forceable
-            | (P _ n' _, args) <- unApply ty
-            , knownRecursive n' args alreadyForceable >= CondForceable
+            | knownRecursive n' args alreadyForceable >= CondForceable
             = M.insertWith max i CondForceable alreadyForceable
+    
+              -- a recursive occurrence can also force variables guarded in its indices
+            | n' == typeName
+            = unionMap guardedArgs args `maxUnion` alreadyForceable
 
-            | otherwise = alreadyForceable
+        forceable _ = alreadyForceable
 
         collapsibleIn :: Name -> IState -> Bool
         n `collapsibleIn` ist = case lookupCtxt n (idris_optimisation ist) of
@@ -86,20 +88,19 @@ forceArgs typeName n t = do
     forcedInTarget :: Int -> Type -> ForceMap
     forcedInTarget i (Bind _ (Pi _) rest) = forcedInTarget (i+1) (label i rest)
     forcedInTarget i t@(App f a) | (_, as) <- unApply t = unionMap guardedArgs as
-      where
-        guardedArgs :: Term -> ForceMap
-        guardedArgs t@(App f a) | (P (DCon _ _) _ _, args) <- unApply t
-            = unionMap bareArg args `maxUnion` unionMap guardedArgs args
-        guardedArgs t = bareArg t
-
-        bareArg :: Term -> ForceMap
-        bareArg (P _ (MN i "ctor_arg") _) = M.singleton i Forceable
-        bareArg  _                        = M.empty
-
-        unionMap :: (a -> ForceMap) -> [a] -> ForceMap
-        unionMap f = M.unionsWith max . map f
-
     forcedInTarget _ _ = M.empty
+
+    guardedArgs :: Term -> ForceMap
+    guardedArgs t@(App f a) | (P (DCon _ _) _ _, args) <- unApply t
+        = unionMap bareArg args `maxUnion` unionMap guardedArgs args
+    guardedArgs t = bareArg t
+
+    bareArg :: Term -> ForceMap
+    bareArg (P _ (MN i "ctor_arg") _) = M.singleton i Forceable
+    bareArg  _                        = M.empty
+
+    unionMap :: (a -> ForceMap) -> [a] -> ForceMap
+    unionMap f = M.unionsWith max . map f
 
 -- Calculate whether a collection of constructors is collapsible
 -- and update the state accordingly.
