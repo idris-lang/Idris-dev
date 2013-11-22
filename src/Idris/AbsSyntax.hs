@@ -1295,7 +1295,9 @@ stripUnmatchable i (PApp fc fn args) = PApp fc fn (fmap (fmap su) args) where
     su (PApp fc fn args) 
        = PApp fc fn (fmap (fmap su) args)
     su (PAlternative b alts) 
-       = PAlternative b (filter (/= Placeholder) (map su alts))
+       = let alts' = filter (/= Placeholder) (map su alts) in
+             if null alts' then Placeholder
+                           else PAlternative b alts'
     su (PPair fc l r) = PPair fc (su l) (su r)
     su (PDPair fc l t r) = PDPair fc (su l) (su t) (su r)
     su t = t
