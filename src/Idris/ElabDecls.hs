@@ -32,6 +32,7 @@ import Control.Monad.State
 import Data.List
 import Data.Maybe
 import Debug.Trace
+import qualified Data.IntMap.Strict as M
 
 import qualified Data.Map as Map
 import Data.Char(isLetter, toLower)
@@ -842,7 +843,7 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
                  [oi] -> do let opts = addDef n (oi { collapsible = True })
                                            (idris_optimisation ist)
                             putIState (ist { idris_optimisation = opts })
-                 _ -> do let opts = addDef n (Optimise True False [] [])
+                 _ -> do let opts = addDef n (Optimise True False M.empty [])
                                            (idris_optimisation ist)
                          putIState (ist { idris_optimisation = opts })
                          addIBC (IBCOpt n)

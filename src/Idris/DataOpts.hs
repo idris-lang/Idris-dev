@@ -29,7 +29,6 @@ forceArgs typeName n t = do
     iLOG $ "Forced: " ++ show n ++ " " ++ show fargs ++ "\n   from " ++ show t
   where
     maxUnion = M.unionWith max
-    minUnion = M.unionWith min
 
     -- Label all occurrences of the variable bound in Pi in the rest of
     -- the term with the number i so that we can recognize them anytime later.
@@ -101,26 +100,38 @@ forceArgs typeName n t = do
 -- Calculate whether a collection of constructors is collapsible
 -- and update the state accordingly.
 collapseCons :: Name -> [(Name, Type)] -> Idris ()
-collapseCons ty cons =
-     do i <- getIState
-        let cons' = map (\ (n, t) -> (n, map snd (getArgTys t))) cons
-        allFR <- mapM (forceRec i) cons'
-        if and allFR then detaggable (map getRetTy (map snd cons))
-           else checkNewType cons'
-  where
-    -- one constructor; if one remaining argument, treat as newtype
-    checkNewType [(n, ts)] = do
-       i <- getIState
-       case lookupCtxt n (idris_optimisation i) of
-               (oi:_) -> do let remaining = length ts - M.size (forceable oi)
-                            if remaining == 1 then
-                               do let oi' = oi { isnewtype = True }
-                                  let opts = addDef n oi' (idris_optimisation i)
-                                  putIState (i { idris_optimisation = opts })
-                               else return ()
-               _ -> return ()
+collapseCons tn ctors = do
+    ist <- getIState
+    case ctors of
+        _
+          | all (>= CondForceable) (M.elems $ forceMap tn ist)
+          , disjointTerms ctorTargetArgs
+            -> mapM_ setCollapsible (tn : map fst ctors)
 
-    checkNewType _ = return ()
+        [(cn, ct)]
+            -> checkNewType ist cn ct
+
+        _ -> return () -- nothing can be done
+  where
+    --- [(name, [types of arguments w/o their names])]
+    ctorArgs = map (\(n, t) -> (n, map snd (getArgTys t))) ctors
+    ctorTargetArgs = map (snd . unApply . getRetTy . snd) ctors
+
+    forceMap :: Name -> IState -> ForceMap
+    forceMap n ist = case lookupCtxt n (idris_optimisation ist) of
+        (oi:_) -> forceable oi
+        _      -> M.empty
+
+    -- one constructor; if one remaining argument, treat as newtype
+    checkNewType :: IState -> Name -> Type -> Idris ()
+    checkNewType ist cn ct
+        | oi:_ <- lookupCtxt cn opt
+        , length (getArgTys ct) == 1 + M.size (forceable oi)
+            = putIState ist{ idris_optimisation = opt' oi }
+        | otherwise = return ()
+      where
+        opt = idris_optimisation ist
+        opt' oi = addDef cn oi{ isnewtype = True } opt
 
     setCollapsible :: Name -> Idris ()
     setCollapsible n
@@ -135,47 +146,23 @@ collapseCons ty cons =
                         putIState (i { idris_optimisation = opts })
                         addIBC (IBCOpt n)
 
-    forceRec :: IState -> (Name, [Type]) -> Idris Bool
-    forceRec i (n, ts)
-       = case lookupCtxt n (idris_optimisation i) of
-            (oi:_) -> checkFR (forceable oi) 0 ts
-            _ -> return False
-
-    checkFR fs i [] = return True
-    checkFR fs i (_ : xs) | i `elem` fs = checkFR fs (i + 1) xs
-    checkFR fs i (t : xs)
-        -- must be recursive or type is not collapsible
-        = do let (rtf, rta) = unApply $ getRetTy t
-             if (ty `elem` freeNames rtf)
-               then checkFR fs (i+1) xs
-               else return False
-
-    detaggable :: [Type] -> Idris ()
-    detaggable rtys
-        = do let rtyArgs = map (snd . unApply) rtys
-             -- if every rtyArgs is disjoint with every other, it's detaggable,
-             -- therefore also collapsible given forceable/recursive check
-             if disjoint rtyArgs
-                then mapM_ setCollapsible (ty : map fst cons)
-                else return ()
-
-    disjoint :: [[Term]] -> Bool
-    disjoint []         = True
-    disjoint [xs]       = True
-    disjoint (xs : xss) =
+    disjointTerms :: [[Term]] -> Bool
+    disjointTerms []         = True
+    disjointTerms [xs]       = True
+    disjointTerms (xs : xss) =
         -- xs is disjoint with every pattern from xss
-        all (or . zipWith disjointPair xs) xss
+        all (or . zipWith disjoint xs) xss
         -- and xss is pairwise disjoint, too
-        && disjoint xss
+        && disjointTerms xss
 
     -- Return True  if the two patterns are provably disjoint.
     -- Return False if they're not or if unsure.
-    disjointPair :: Term -> Term -> Bool
-    disjointPair x y = case (cx, cy) of
+    disjoint :: Term -> Term -> Bool
+    disjoint x y = case (cx, cy) of
         -- data constructors -> compare their names
         (P (DCon _ _) nx _, P (DCon _ _) ny _)
-            | nx /= ny -> True
-            | nx == ny -> or $ zipWith disjointPair xargs yargs
+            | nx /= ny  -> True
+            | otherwise -> or $ zipWith disjoint xargs yargs
         _ -> False
       where
         (cx, xargs) = unApply x
@@ -248,12 +235,18 @@ instance Optimisable t => Optimisable (Binder t) where
     stripCollapsed b = do t' <- stripCollapsed (binderTy b)
                           return (b { binderTy = t' })
 
+forcedArgSeq :: OptInfo -> [Bool]
+forcedArgSeq oi = map (isForced oi) [0..]
+  where
+    isForced oi i 
+        -- We needn't consider CondForceable because it's only important when the type
+        -- is collapsible -- but in that case this whole optimisation is irrelevant
+        | Just f <- M.lookup i (forceable oi) = f == Forceable
+        | otherwise = False
 
 applyDataOpt :: OptInfo -> Name -> [Raw] -> Raw
-applyDataOpt oi n args
-    = let args' = zipWith doForce (map (\x -> x `elem` (forceable oi)) [0..])
-                                  args in
-          raw_apply (Var n) args'
+applyDataOpt oi n args 
+    = raw_apply (Var n) $ zipWith doForce (forcedArgSeq oi) args
   where
     doForce True  a = RForce a
     doForce False a = a
@@ -332,18 +325,14 @@ applyDataOptRT oi n tag arity args
     doOpts (NS (UN "S") ["Nat", "Prelude"]) [k] _ _
         = App (App (P Ref (UN "prim__addBigInt") Erased) k) (Constant (BI 1))
 
-    doOpts n args True f = Erased
-    doOpts n args _ forced
-        = let args' = filter keep (zip (map (\x -> x `elem` forced) [0..])
-                                       args) in
-              if isnewtype oi
-                then case args' of
-                          [(_, val)] -> val
-                          _ -> error "Can't happen (not isnewtype)"
-                else
-                  mkApp (P (DCon tag (arity - length forced)) n Erased)
-                        (map snd args')
+    doOpts n args True _  = Erased
+    doOpts n args _ forceMap
+        | isnewtype oi = case args' of
+            [val] -> val
+            _ -> error "Can't happen (newtype not a singleton)"
+        | otherwise = mkApp ctor' args'
+      where
+        ctor' = (P (DCon tag (arity - M.size forceMap)) n Erased)
+        args' = map snd . filter keep $ zip (forcedArgSeq oi) args
 
     keep (forced, _) = not forced
-
-
