@@ -762,7 +762,7 @@ deriving instance NFData ClassInfo
 data Forceability = Unforceable | CondForceable | Forceable deriving (Eq, Ord, Show, Enum, Bounded)
 type ForceMap = IntMap Forceability
 
--- debugging
+-- This must be here until we fix the Binary instance for IntMaps :(
 newtype W a = W a deriving Show
 unW (W x) = x
 
