@@ -1,6 +1,8 @@
 #ifndef _IDRISGMP_H
 #define _IDRISGMP_H
 
+#include <gmp.h>
+
 VAL MKBIGI(int val);
 VAL MKBIGC(VM* vm, char* bigint);
 VAL MKBIGM(VM* vm, void* bigint);
