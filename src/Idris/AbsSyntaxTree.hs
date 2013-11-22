@@ -762,6 +762,11 @@ deriving instance NFData ClassInfo
 data Forceability = Unforceable | CondForceable | Forceable deriving (Eq, Ord, Show, Enum, Bounded)
 type ForceMap = IntMap Forceability
 
+{-!
+deriving instance Binary Forceability
+deriving instance NFData Forceability
+!-}
+
 data OptInfo = Optimise { collapsible :: Bool,
                           isnewtype :: Bool,
                           forceable :: ForceMap, -- argument position -> forceability

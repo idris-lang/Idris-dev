@@ -60,7 +60,9 @@ forceArgs typeName n t = do
 
     knownRecursive :: Name -> [Term] -> ForceMap -> Forceability
     knownRecursive n args forceable
-        | n == typeName = minimum $ map (known forceable) args
+        | n == typeName 
+        , not (null args)
+            = minimum $ map (known forceable) args
         | otherwise     = Unforceable
       where
         -- This predicate does not cover all known terms;
