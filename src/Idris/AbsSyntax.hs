@@ -1282,6 +1282,25 @@ stripLinear i tm = evalState (sl tm) [] where
                                      return $ PTacImplicit p l n sc t' d
     sl x = return x
 
+-- Remove functions which aren't applied to anything, which must then
+-- be resolved by unification. Assume names resolved and alternatives
+-- filled in (so no ambiguity).
+
+stripUnmatchable :: IState -> PTerm -> PTerm
+stripUnmatchable i (PApp fc fn args) = PApp fc fn (fmap (fmap su) args) where
+    su :: PTerm -> PTerm
+    su (PRef fc f)
+       | (Bind n (Pi t) sc :_) <- lookupTy f (tt_ctxt i) 
+          = Placeholder
+    su (PApp fc fn args) 
+       = PApp fc fn (fmap (fmap su) args)
+    su (PAlternative b alts) 
+       = PAlternative b (filter (/= Placeholder) (map su alts))
+    su (PPair fc l r) = PPair fc (su l) (su r)
+    su (PDPair fc l t r) = PDPair fc (su l) (su t) (su r)
+    su t = t
+stripUnmatchable i tm = tm
+
 mkPApp fc a f [] = f
 mkPApp fc a f as = let rest = drop a as in
                        appRest fc (PApp fc f (take a as)) rest
