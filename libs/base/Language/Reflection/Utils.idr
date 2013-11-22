@@ -1,6 +1,5 @@
 module Language.Reflection.Utils
 
-import Prelude
 import Language.Reflection
 
 --------------------------------------------------------

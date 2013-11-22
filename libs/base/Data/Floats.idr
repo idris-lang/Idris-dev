@@ -1,7 +1,5 @@
 module Data.Floats
 
-import Prelude
-
 %access public
 %default total
 

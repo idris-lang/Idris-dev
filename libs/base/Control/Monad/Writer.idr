@@ -2,9 +2,6 @@ module Control.Monad.Writer
 
 import Builtins
 import Control.Monad.Identity
-import Prelude.Monad
-import Prelude.Applicative
-import Prelude.Functor
 
 %access public
 

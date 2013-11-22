@@ -1,8 +1,5 @@
 module Prelude.Catchable
 
-import Prelude.List
-import Prelude.Maybe
-import Prelude.Either
 import Control.IOExcept
 
 class Catchable (m : Type -> Type) t where

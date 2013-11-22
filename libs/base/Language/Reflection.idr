@@ -1,7 +1,5 @@
 module Language.Reflection
 
-import Prelude
-
 %access public
 
 data TTName = UN String

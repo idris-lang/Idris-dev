@@ -1,7 +1,5 @@
 module Data.Morphisms
 
-import Prelude
-
 %access public
 
 data Morphism : Type -> Type -> Type where

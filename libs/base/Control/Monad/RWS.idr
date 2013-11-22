@@ -1,12 +1,9 @@
 module Control.Monad.RWS
 
-import Builtins
 import Control.Monad.Identity
 import Control.Monad.State
 import Control.Monad.Writer
 import Control.Monad.Reader
-import Prelude.Monad
-import Prelude.Functor
 
 %access public
 

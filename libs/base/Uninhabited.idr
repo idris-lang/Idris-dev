@@ -1,7 +1,5 @@
 module Uninhabited
 
-import Prelude
-
 class Uninhabited t where
   total uninhabited : t -> _|_
 

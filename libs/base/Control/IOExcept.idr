@@ -1,7 +1,5 @@
 module Control.IOExcept
 
-import Prelude
-
 -- An IO monad with exception handling
 
 data IOExcept : Type -> Type -> Type where

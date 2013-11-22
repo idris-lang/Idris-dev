@@ -1,7 +1,5 @@
 module Data.Vect.Quantifiers
 
-import Prelude
-
 data Any : (P : a -> Type) -> Vect n a -> Type where
   Here  : {P : a -> Type} -> {xs : Vect n a} -> P x -> Any P (x :: xs)
   There : {P : a -> Type} -> {xs : Vect n a} -> Any P xs -> Any P (x :: xs)

@@ -3,10 +3,7 @@
 -}
 
 
-module Prelude.Complex
-
-import Builtins
-import Prelude
+module Data.Complex
 
 import Data.Floats
 

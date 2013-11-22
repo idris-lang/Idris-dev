@@ -1,6 +1,5 @@
 module Data.SortedSet
 
-import Prelude
 import Data.SortedMap
 
 -- TODO: add intersection, union, difference

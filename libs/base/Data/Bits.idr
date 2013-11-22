@@ -1,7 +1,5 @@
 module Data.Bits
 
-import Prelude
-
 %default total
 
 divCeil : Nat -> Nat -> Nat
