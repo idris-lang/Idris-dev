@@ -762,6 +762,10 @@ deriving instance NFData ClassInfo
 data Forceability = Unforceable | CondForceable | Forceable deriving (Eq, Ord, Show, Enum, Bounded)
 type ForceMap = IntMap Forceability
 
+-- debugging
+newtype W a = W a deriving Show
+unW (W x) = x
+
 {-!
 deriving instance Binary Forceability
 deriving instance NFData Forceability
@@ -769,7 +773,7 @@ deriving instance NFData Forceability
 
 data OptInfo = Optimise { collapsible :: Bool,
                           isnewtype :: Bool,
-                          forceable :: ForceMap, -- argument position -> forceability
+                          forceable :: W ForceMap, -- argument position -> forceability
                           recursive :: [Int] }
     deriving Show
 {-!

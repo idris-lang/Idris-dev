@@ -843,7 +843,7 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
                  [oi] -> do let opts = addDef n (oi { collapsible = True })
                                            (idris_optimisation ist)
                             putIState (ist { idris_optimisation = opts })
-                 _ -> do let opts = addDef n (Optimise True False M.empty [])
+                 _ -> do let opts = addDef n (Optimise True False (W M.empty) [])
                                            (idris_optimisation ist)
                          putIState (ist { idris_optimisation = opts })
                          addIBC (IBCOpt n)

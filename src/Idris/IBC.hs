@@ -12,6 +12,7 @@ import Idris.Error
 import Data.Binary
 import Data.Vector.Binary
 import Data.List
+import qualified Data.IntMap.Strict as M
 import Data.ByteString.Lazy as B hiding (length, elem)
 import Control.Monad
 import Control.Monad.State hiding (get, put)
@@ -843,9 +844,15 @@ safeToEnum label x' = result
             = error $ label ++ ": corrupted binary representation in IBC"
         | otherwise = toEnum x
 
+{-
 instance Binary Forceability where
     put = putWord8 . fromIntegral . fromEnum
     get = safeToEnum "Forceability" `fmap` getWord8
+-}
+
+instance Binary (W ForceMap) where
+    put (W m) = return () -- put (M.toList m)
+    get = return (W M.empty) -- (W . M.fromList) `fmap` get
 
 instance Binary PReason where
         put x
