@@ -97,6 +97,8 @@ forceArgs typeName n t = do
         unionMap :: (a -> ForceMap) -> [a] -> ForceMap
         unionMap f = M.unionsWith max . map f
 
+    forcedInTarget _ _ = M.empty
+
 -- Calculate whether a collection of constructors is collapsible
 -- and update the state accordingly.
 collapseCons :: Name -> [(Name, Type)] -> Idris ()
