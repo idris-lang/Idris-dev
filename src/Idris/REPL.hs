@@ -939,6 +939,7 @@ parseArgs ("--quiet":ns)         = Quiet : (parseArgs ns)
 parseArgs ("--ideslave":ns)      = Ideslave : (parseArgs ns)
 parseArgs ("--client":ns)        = [Client (showSep " " ns)]
 parseArgs ("--log":lvl:ns)       = OLogging (read lvl) : (parseArgs ns)
+parseArgs ("--nobasepkgs":ns)    = NoBasePkgs : (parseArgs ns)
 parseArgs ("--noprelude":ns)     = NoPrelude : (parseArgs ns)
 parseArgs ("--nobuiltins":ns)    = NoBuiltins : NoPrelude : (parseArgs ns)
 parseArgs ("--check":ns)         = NoREPL : (parseArgs ns)
@@ -1127,8 +1128,9 @@ idrisMain opts =
          (d:_) -> setIBCSubDir d
        setImportDirs importdirs
 
-       addPkgDir "prelude"
-       addPkgDir "base"
+       when (not (NoBasePkgs `elem` opts)) $ do
+           addPkgDir "prelude"
+           addPkgDir "base"
        mapM_ addPkgDir pkgdirs
        elabPrims
        when (not (NoBuiltins `elem` opts)) $ do x <- loadModule stdout "Builtins"

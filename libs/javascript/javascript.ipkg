@@ -1,5 +1,5 @@
 package javascript
 
-opts    = "-i ../base"
+opts    = "--nobasepkgs -i ../prelude -i ../base"
 modules = JavaScript, JavaScript.JSON
 

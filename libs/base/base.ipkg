@@ -1,6 +1,6 @@
 package base
 
-opts = "--total"
+opts = "--nobasepkgs --total -i ../prelude"
 modules = System,
 
           Network.Cgi,
