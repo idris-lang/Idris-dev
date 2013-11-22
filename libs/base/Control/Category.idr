@@ -9,7 +9,7 @@ class Category (cat : Type -> Type -> Type) where
   (.) : cat b c -> cat a b -> cat a c
 
 instance Category Morphism where
-  id                = Mor Builtins.id
+  id                = Mor id
   (Mor f) . (Mor g) = Mor (f . g)
 
 instance Monad m => Category (Kleislimorphism m) where

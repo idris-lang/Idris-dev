@@ -221,9 +221,9 @@ instance Optimisable (TT Name) where
     applyOpts (App (P _ (NS (UN "fromIntegerNat") ["Nat","Prelude"]) _) x)
         = applyOpts x
     applyOpts (P _ (NS (UN "fromIntegerNat") ["Nat","Prelude"]) _)
-        = return (App (P Ref (NS (UN "id") ["Builtins"]) Erased) Erased)
+        = return (App (P Ref (NS (UN "id") ["Basics","Prelude"]) Erased) Erased)
     applyOpts (P _ (NS (UN "toIntegerNat") ["Nat","Prelude"]) _)
-        = return (App (P Ref (NS (UN "id") ["Builtins"]) Erased) Erased)
+        = return (App (P Ref (NS (UN "id") ["Basics","Prelude"]) Erased) Erased)
     applyOpts c@(P (DCon t arity) n _)
         = do i <- getIState
              case lookupCtxt n (idris_optimisation i) of

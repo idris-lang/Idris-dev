@@ -262,6 +262,7 @@ data Opt = Filename String
          | ShowLibdir
          | ShowIncs
          | NoPrelude
+         | NoBuiltins -- only for the really primitive stuff!
          | NoREPL
          | OLogging Int
          | Output String

@@ -687,7 +687,7 @@ resolveTC depth fn ist
     chaser (NS n _) = chaser n
     chaser _ = False
 
-    needsDefault t num@(P _ (NS (UN "Num") ["Builtins"]) _) [P Bound a _]
+    needsDefault t num@(P _ (NS (UN "Num") ["Classes","Prelude"]) _) [P Bound a _]
         = do focus a
              fill (RConstant (AType (ATInt ITBig))) -- default Integer
              solve

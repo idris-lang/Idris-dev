@@ -3,7 +3,9 @@ module Prelude.Nat
 import Builtins
 
 import Prelude.Algebra
+import Prelude.Bool
 import Prelude.Cast
+import Prelude.Classes
 
 %access public
 %default total

@@ -1,6 +1,8 @@
 module Prelude.Foldable
 
 import Builtins
+import Prelude.Bool
+import Prelude.Classes
 import Prelude.Algebra
 
 %access public

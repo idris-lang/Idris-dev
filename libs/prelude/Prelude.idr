@@ -3,6 +3,8 @@ module Prelude
 import Builtins
 import IO
 
+import Prelude.Bool
+import Prelude.Classes
 import Prelude.Cast
 import Prelude.Nat
 import Prelude.Fin

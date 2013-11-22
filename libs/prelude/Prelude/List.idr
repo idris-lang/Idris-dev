@@ -3,6 +3,7 @@ module Prelude.List
 import Builtins
 
 import Prelude.Algebra
+import Prelude.Basics
 import Prelude.Foldable
 import Prelude.Functor
 import Prelude.Maybe
@@ -12,6 +13,7 @@ import Prelude.Nat
 %default total
 
 infixr 7 ::
+infixl 8 ++
 
 data List a
   = Nil

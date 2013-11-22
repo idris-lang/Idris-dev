@@ -7,6 +7,36 @@ import Prelude.Cast
 import Prelude.Either
 import Prelude.Foldable
 
+-- | Appends two strings together.
+(++) : String -> String -> String
+(++) = prim__concat
+
+-- | Returns the first character in the specified string.
+partial
+strHead : String -> Char
+strHead = prim__strHead
+
+-- | Returns the characters specified after the head of the string.
+partial
+strTail : String -> String
+strTail = prim__strTail
+
+-- | Adds a character to the from of the specified string.
+strCons : Char -> String -> String
+strCons = prim__strCons
+
+-- | Returns the nth character (starting from 0) of the specified string.
+partial
+strIndex : String -> Int -> Char
+strIndex = prim__strIndex
+
+-- | Reverses the elements within a String.
+reverse : String -> String
+reverse = prim__strRev
+
+null : Ptr
+null = prim__null
+
 -- Some more complex string operations
 
 data StrM : String -> Type where
