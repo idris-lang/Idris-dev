@@ -1612,11 +1612,7 @@ elabDecls info ds = do mapM_ (elabDecl EAll info) ds
 
 elabDecl :: ElabWhat -> ElabInfo -> PDecl -> Idris ()
 elabDecl what info d
-    = idrisCatch (elabDecl' what info d)
-                 (\e -> do setErrLine (getErrLine e)
-                           ist <- getIState
-                           let h = idris_outh ist
-                           ihputStrLn h $ pshow ist e)
+    = idrisCatch (elabDecl' what info d) (setAndReport)
 
 elabDecl' _ info (PFix _ _ _)
      = return () -- nothing to elaborate

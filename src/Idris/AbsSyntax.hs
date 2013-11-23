@@ -325,21 +325,12 @@ ihputStrLn :: Handle -> String -> Idris ()
 ihputStrLn h s = do i <- getIState
                     case idris_outputmode i of
                       RawOutput -> runIO $ hPutStrLn h s
-                      IdeSlave n ->
-                        case span (/=':') s of
-                          (fn, ':':rest) -> case span isDigit rest of
-                            ([], ':':msg) -> write
-                            ([], msg) -> write
-                            (row, ':':rest') ->
-                             case span isDigit rest' of
-                               ([], msg) -> iWarn (FC fn (read row) 0) msg
-                               (col, ':':msg) -> iWarn (FC fn (read row) (read col)) msg
-                          _  -> write
-                        where write = runIO . hPutStrLn h $ convSExp "write-string" s n
+                      IdeSlave n -> runIO . hPutStrLn h $ convSExp "write-string" s n
 
 iputStrLn = ihputStrLn stdout
 iPrintError = ihPrintError stdout
 iPrintResult = ihPrintResult stdout
+iWarn = ihWarn stdout
 
 ideslavePutSExp :: SExpable a => String -> a -> Idris ()
 ideslavePutSExp cmd info = do i <- getIState
@@ -359,11 +350,11 @@ isetPrompt p = do i <- getIState
                   case idris_outputmode i of
                     IdeSlave n -> runIO . putStrLn $ convSExp "set-prompt" p n
 
-iWarn :: FC -> String -> Idris ()
-iWarn fc err = do i <- getIState
-                  case idris_outputmode i of
-                    RawOutput -> runIO $ putStrLn (show fc ++ ":" ++ err)
-                    IdeSlave n -> runIO . putStrLn $ convSExp "warning" (fc_fname fc, fc_line fc, err) n
+ihWarn :: Handle -> FC -> String -> Idris ()
+ihWarn h fc err = do i <- getIState
+                     case idris_outputmode i of
+                       RawOutput -> runIO $ hPutStrLn h (show fc ++ ":" ++ err)
+                       IdeSlave n -> runIO $ hPutStrLn h $ convSExp "warning" (fc_fname fc, fc_line fc, err) n
 
 setLogLevel :: Int -> Idris ()
 setLogLevel l = do i <- getIState

@@ -199,55 +199,57 @@ ideslave orig mods
                              Right (sexp, id) -> return (sexp, id)
              i <- getIState
              putIState $ i { idris_outputmode = (IdeSlave id) }
-             let fn = case mods of
-                        (f:_) -> f
-                        _ -> ""
-             case IdeSlave.sexpToCommand sexp of
-               Just (IdeSlave.Interpret cmd) ->
-                 do c <- colourise
-                    case parseCmd i "(input)" cmd of
-                         Failure err -> iPrintError $ show (fixColour c err)
-                         Success (Prove n') -> do iPrintResult ""
-                                                  idrisCatch
-                                                    (process stdout fn (Prove n'))
-                                                    (\e -> getIState >>= iPrintError . flip pshow e)
-                                                  isetPrompt (mkPrompt mods)
-                         Success cmd -> idrisCatch
-                                          (ideslaveProcess fn cmd)
-                                          (\e -> getIState >>= iPrintError . flip pshow e)
-               Just (IdeSlave.REPLCompletions str) ->
-                 do (unused, compls) <- replCompletion (reverse str, "")
-                    let good = IdeSlave.SexpList [IdeSlave.SymbolAtom "ok", IdeSlave.toSExp (map replacement compls, reverse unused)]
-                    runIO $ putStrLn $ IdeSlave.convSExp "return" good id
-               Just (IdeSlave.LoadFile filename) ->
-                 do clearErr
-                    putIState (orig { idris_options = idris_options i,
-                                      idris_outputmode = (IdeSlave id) })
-                    loadModule stdout filename
-                    iucheck
-                    isetPrompt (mkPrompt [filename])
-
-                    -- Report either success or failure
-                    i <- getIState
-                    case (errLine i) of
-                      Nothing -> iPrintResult $ "loaded " ++ filename
-                      Just x -> iPrintError $ "didn't load " ++ filename
-                    ideslave orig [filename]
-               Just (IdeSlave.TypeOf name) ->
-                 process stdout "(ideslave)" (Check (PRef (FC "(ideslave)" 0 0) (UN name)))
-               Just (IdeSlave.CaseSplit line name) ->
-                 process stdout fn (CaseSplitAt False line (UN name))
-               Just (IdeSlave.AddClause line name) ->
-                 process stdout fn (AddClauseFrom False line (UN name))
-               Just (IdeSlave.AddProofClause line name) ->
-                 process stdout fn (AddProofClauseFrom False line (UN name))
-               Just (IdeSlave.AddMissing line name) ->
-                 process stdout fn (AddMissing False line (UN name))
-               Just (IdeSlave.MakeWithBlock line name) ->
-                 process stdout fn (MakeWith False line (UN name))
-               Just (IdeSlave.ProofSearch line name hints) ->
-                 process stdout fn (DoProofSearch False line (UN name) (map UN hints))
-               Nothing -> do iPrintError "did not understand")
+             idrisCatch -- to report correct id back!
+               (do let fn = case mods of
+                              (f:_) -> f
+                              _ -> ""
+                   case IdeSlave.sexpToCommand sexp of
+                     Just (IdeSlave.Interpret cmd) ->
+                       do c <- colourise
+                          case parseCmd i "(input)" cmd of
+                            Failure err -> iPrintError $ show (fixColour c err)
+                            Success (Prove n') -> do iPrintResult ""
+                                                     idrisCatch
+                                                       (process stdout fn (Prove n'))
+                                                       (\e -> getIState >>= iPrintError . flip pshow e)
+                                                     isetPrompt (mkPrompt mods)
+                            Success cmd -> idrisCatch
+                                             (ideslaveProcess fn cmd)
+                                             (\e -> getIState >>= iPrintError . flip pshow e)
+                     Just (IdeSlave.REPLCompletions str) ->
+                       do (unused, compls) <- replCompletion (reverse str, "")
+                          let good = IdeSlave.SexpList [IdeSlave.SymbolAtom "ok", IdeSlave.toSExp (map replacement compls, reverse unused)]
+                          runIO $ putStrLn $ IdeSlave.convSExp "return" good id
+                     Just (IdeSlave.LoadFile filename) ->
+                       do clearErr
+                          putIState (orig { idris_options = idris_options i,
+                                            idris_outputmode = (IdeSlave id) })
+                          idrisCatch (do mod <- loadModule' stdout filename
+                                         return ())
+                                     (setAndReport)
+                          isetPrompt (mkPrompt [filename])
+                          -- Report either success or failure
+                          i <- getIState
+                          case (errLine i) of
+                            Nothing -> iPrintResult $ "loaded " ++ filename
+                            Just x -> iPrintError $ "didn't load " ++ filename
+                          ideslave orig [filename]
+                     Just (IdeSlave.TypeOf name) ->
+                       process stdout "(ideslave)" (Check (PRef (FC "(ideslave)" 0 0) (UN name)))
+                     Just (IdeSlave.CaseSplit line name) ->
+                       process stdout fn (CaseSplitAt False line (UN name))
+                     Just (IdeSlave.AddClause line name) ->
+                       process stdout fn (AddClauseFrom False line (UN name))
+                     Just (IdeSlave.AddProofClause line name) ->
+                       process stdout fn (AddProofClauseFrom False line (UN name))
+                     Just (IdeSlave.AddMissing line name) ->
+                       process stdout fn (AddMissing False line (UN name))
+                     Just (IdeSlave.MakeWithBlock line name) ->
+                       process stdout fn (MakeWith False line (UN name))
+                     Just (IdeSlave.ProofSearch line name hints) ->
+                       process stdout fn (DoProofSearch False line (UN name) (map UN hints))
+                     Nothing -> do iPrintError "did not understand")
+               (\e -> do iPrintError $ show e))
          (\e -> do iPrintError $ show e)
        ideslave orig mods
 
