@@ -49,8 +49,13 @@ checkDef fc ns = do ctxt <- getContext
 -- | Elaborate a top-level type declaration - for example, "foo : Int -> Int".
 elabType :: ElabInfo -> SyntaxInfo -> String ->
             FC -> FnOpts -> Name -> PTerm -> Idris Type
-elabType info syn doc fc opts n ty' = {- let ty' = piBind (params info) ty_in
-                                      n  = liftname info n_in in    -}
+elabType = elabType' False
+
+elabType' :: Bool -> -- normalise it
+             ElabInfo -> SyntaxInfo -> String ->
+             FC -> FnOpts -> Name -> PTerm -> Idris Type
+elabType' norm info syn doc fc opts n ty' = {- let ty' = piBind (params info) ty_in
+                                               n  = liftname info n_in in    -}
       do checkUndefined fc n
          ctxt <- getContext
          i <- getIState
@@ -90,7 +95,8 @@ elabType info syn doc fc opts n ty' = {- let ty' = piBind (params info) ty_in
                                         _ -> False
                         _ -> False
          let opts' = if corec then (Coinductive : opts) else opts
-         ds <- checkDef fc [(n, (-1, Nothing, nty))]
+         let usety = if norm then nty' else nty
+         ds <- checkDef fc [(n, (-1, Nothing, usety))]
          addIBC (IBCDef n)
          let ds' = map (\(n, (i, top, t)) -> (n, (i, top, t, True))) ds
          addDeferred ds'
@@ -102,7 +108,7 @@ elabType info syn doc fc opts n ty' = {- let ty' = piBind (params info) ty_in
                                           addIBC (IBCCoercion n)
          when corec $ do setAccessibility n Frozen
                          addIBC (IBCAccess n Frozen)
-         return nty
+         return usety
   where
     -- for making an internalapp, we only want the explicit ones, and don't
     -- want the parameters, so just take the arguments which correspond to the
@@ -1411,14 +1417,14 @@ elabInstance info syn fc cs n ps t expn ds
                          Nothing -> SN (InstanceN n (map show ps))
                           -- UN ('@':show n ++ "$" ++ show ps)
                          Just nm -> nm
+         nty <- elabType' True info syn "" fc [] iname t
          -- if the instance type matches any of the instances we have already,
          -- and it's not a named instance, then it's overlapping, so report an error
          case expn of
-            Nothing -> do mapM_ (checkNotOverlapping i t) (class_instances ci)
+            Nothing -> do mapM_ (checkNotOverlapping i (delab i nty)) 
+                                (class_instances ci)
                           addInstance intInst n iname
             Just _ -> addInstance intInst n iname
-         tt_ty <- elabType info syn "" fc [] iname t
-         let nty = normalise (tt_ctxt i) [] tt_ty
          let ips = zip (class_params ci) ps
          let ns = case n of
                     NS n ns' -> ns'

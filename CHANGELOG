@@ -3,6 +3,8 @@ New in 0.9.10:
 
 * Type classes now implemented as dependent records, meaning that method
   types may now depend on earlier methods.
+* More flexible class instance resolution, so that function types and lambda
+  expressions can be made instances of a type class.
 * Add '%reflection' option for functions, for compile-time operations on
   syntax.
 * Add 'quoteGoal x by p in e' which makes x equal to p applied to the goal
