@@ -48,7 +48,7 @@ checkDef fc ns = do ctxt <- getContext
 
 -- | Elaborate a top-level type declaration - for example, "foo : Int -> Int".
 elabType :: ElabInfo -> SyntaxInfo -> String ->
-            FC -> FnOpts -> Name -> PTerm -> Idris ()
+            FC -> FnOpts -> Name -> PTerm -> Idris Type
 elabType info syn doc fc opts n ty' = {- let ty' = piBind (params info) ty_in
                                       n  = liftname info n_in in    -}
       do checkUndefined fc n
@@ -102,6 +102,7 @@ elabType info syn doc fc opts n ty' = {- let ty' = piBind (params info) ty_in
                                           addIBC (IBCCoercion n)
          when corec $ do setAccessibility n Frozen
                          addIBC (IBCAccess n Frozen)
+         return nty
   where
     -- for making an internalapp, we only want the explicit ones, and don't
     -- want the parameters, so just take the arguments which correspond to the
@@ -1416,7 +1417,8 @@ elabInstance info syn fc cs n ps t expn ds
             Nothing -> do mapM_ (checkNotOverlapping i t) (class_instances ci)
                           addInstance intInst n iname
             Just _ -> addInstance intInst n iname
-         elabType info syn "" fc [] iname t
+         tt_ty <- elabType info syn "" fc [] iname t
+         let nty = normalise (tt_ctxt i) [] tt_ty
          let ips = zip (class_params ci) ps
          let ns = case n of
                     NS n ns' -> ns'
@@ -1471,9 +1473,9 @@ elabInstance info syn fc cs n ps t expn ds
             [t'] -> let tret = getRetType t
                         tret' = getRetType (delab i t') in
                         case matchClause i tret' tret of
-                            Right _ -> overlapping tret tret'
+                            Right ms -> overlapping tret tret'
                             Left _ -> case matchClause i tret tret' of
-                                Right _ -> overlapping tret tret'
+                                Right ms -> overlapping tret tret'
                                 Left _ -> return ()
             _ -> return ()
     overlapping t t' = tclift $ tfail (At fc (Msg $
@@ -1622,6 +1624,7 @@ elabDecl' what info (PTy doc s f o n ty)
   | what /= EDefns
     = do iLOG $ "Elaborating type decl " ++ show n ++ show o
          elabType info s doc f o n ty
+         return ()
 elabDecl' what info (PPostulate doc s f o n ty)
   | what /= EDefns
     = do iLOG $ "Elaborating postulate " ++ show n ++ show o

@@ -653,7 +653,7 @@ resolveTC :: Int -> Name -> IState -> ElabD ()
 resolveTC 0 fn ist = fail $ "Can't resolve type class"
 resolveTC 1 fn ist = try' (trivial' ist) (resolveTC 0 fn ist) True
 resolveTC depth fn ist
-      = do hnf_compute
+      = do compute
            g <- goal
            ptm <- get_term
            hs <- get_holes
@@ -719,7 +719,9 @@ resolveTC depth fn ist
                                 [] -> []
                                 [args] -> map isImp (snd args) -- won't be overloaded!
                 ps <- get_probs
-                args <- match_apply (Var n) imps
+                tm <- get_term
+                args <- try' (match_apply (Var n) imps)
+                             (apply (Var n) imps) True
                 ps' <- get_probs
                 when (length ps < length ps') $ fail "Can't apply type class"
 --                 traceWhen (all boundVar ttypes) ("Progress: " ++ show t ++ " with " ++ show n) $

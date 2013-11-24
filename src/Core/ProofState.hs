@@ -530,6 +530,7 @@ forall :: Name -> Raw -> RunTactic
 forall n ty ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' =
     do (tyv, tyt) <- lift $ check ctxt env ty
        unify' ctxt env tyt (TType (UVar 0))
+       unify' ctxt env t (TType (UVar 0))
        return $ Bind n (Pi tyv) (Bind x (Hole t) (P Bound x t))
 forall n ty ctxt env _ = fail "Can't pi bind here"
 
