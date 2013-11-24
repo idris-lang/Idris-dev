@@ -207,10 +207,12 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
                   case val of
                     [(Function _ tm, Public)] ->
                            ev ntimes (n:stk) True env tm
+                    [(Function _ tm, Hidden)] ->
+                           ev ntimes (n:stk) True env tm
                     [(TyDecl nt ty, _)] -> do vty <- ev ntimes stk True env ty
                                               return $ VP nt n vty
                     [(CaseOp ci _ _ _ cd, acc)]
-                         | acc == Public &&
+                         | (acc /= Frozen) &&
                              null (fst (cases_totcheck cd)) -> -- unoptimised version
                        let (ns, tree) = getCases cd in
                          if blockSimplify ci n stk
@@ -308,7 +310,7 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
                  do let val = lookupDefAcc n (spec || atRepl) ctxt
                     case val of
                       [(CaseOp ci _ _ _ cd, acc)]
-                           | acc == Public -> -- unoptimised version
+                           | acc /= Frozen -> -- unoptimised version
                        let (ns, tree) = getCases cd in
                          if blockSimplify ci n stk
                            then return $ unload env (VP Ref n ty) args
