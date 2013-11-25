@@ -218,6 +218,7 @@ opName x
   | (LTrunc _ to)  <- x = "LTrunc" ++ (suffixFor to)
   | (LFloatInt to) <- x = "LFloatInt" ++ (suffixFor to)
   | (LStrInt to)   <- x = "LStrInt" ++ (suffixFor to)
+  | (LChInt to)    <- x = "LChInt" ++ (suffixFor to)
   | otherwise = takeWhile ((/=) ' ') $ show x
   where
     suffixFor (ITFixed nt) = show nt
