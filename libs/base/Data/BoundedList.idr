@@ -77,7 +77,6 @@ map f (x :: xs) = f x :: map f xs
 -- Misc
 --------------------------------------------------------------------------------
 
-%assert_total -- not sure why this isn't accepted - clearly decreasing on n
 pad : (xs : BoundedList a n) -> (padding : a) -> BoundedList a n
 pad {n=Z}    []        _       = []
 pad {n=S n'} []        padding = padding :: (pad {n=n'} [] padding)
