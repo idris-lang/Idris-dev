@@ -2,6 +2,8 @@ module Network.Cgi
 
 import System
 
+%default total
+
 public
 Vars : Type
 Vars = List (String, String)
@@ -106,14 +108,11 @@ getVars seps query = mapMaybe readVar (split (\x => elem x seps) query)
         | _      = Nothing
 
 getContent : Int -> IO String
-getContent x = getC x "" where
-    %assert_total
-    getC : Int -> String -> IO String
-    getC 0 acc = return $ reverse acc
-    getC n acc = if (n > 0)
-                    then do x <- getChar
-                            getC (n-1) (strCons x acc)
-                    else (return "")
+getContent x = getC (toNat x) "" where
+    getC : Nat -> String -> IO String
+    getC Z     acc = return $ reverse acc
+    getC (S k) acc = do x <- getChar
+                        getC k (strCons x acc)
 
 getCgiEnv : String -> IO String
 getCgiEnv key = do

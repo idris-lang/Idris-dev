@@ -1,4 +1,5 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving, ConstraintKinds, PatternGuards #-}
+{-# OPTIONS_GHC -O0 #-}
 module Idris.ParseExpr where
 
 import Prelude hiding (pi)
