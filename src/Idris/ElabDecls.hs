@@ -925,7 +925,7 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
 
            -- pdef' is the version that gets compiled for run-time
            pdef_in' <- applyOpts optpdef
-           let pdef' = map (simple_rt (tt_ctxt ist)) pdef_in'
+           let pdef' = map (applyReconstruction . simple_rt (tt_ctxt ist)) pdef_in'
 
            logLvl 5 $ "After data structure transformations:\n" ++ show pdef'
 

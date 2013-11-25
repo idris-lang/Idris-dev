@@ -341,3 +341,6 @@ applyDataOptRT oi n tag arity args
         args' = map snd . filter keep $ zip (forcedArgSeq oi) args
 
     keep (forced, _) = not forced
+
+applyReconstruction :: ([Name], Term, Term) -> ([Name], Term, Term)
+applyReconstruction (vs, lhs, rhs) = (vs, lhs, rhs)
