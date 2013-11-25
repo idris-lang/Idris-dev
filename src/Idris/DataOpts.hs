@@ -350,12 +350,22 @@ reconstructCollapsed (Left t) = return $ Left t  -- TODO: what's this?
 reconstructCollapsed (Right (p, t)) = do
         ist <- getIState
         let ns = erasedNames ist p
-        logLvl 1 $ "----------> " ++ show p ++ ", " ++ show t
         return $ Right (p, replaceReconstrs ns t)
   where
+    -- what if somebody writes (C x (y :: ys) z) and the middle arg should be erased?
     erasedNames :: IState -> Term -> Map Name Term
-    erasedNames ist t = M.empty
+    erasedNames ist (Bind n (PVar _) t)
+        = erasedNames ist $ instantiate (P Bound n Erased) t
+    erasedNames ist app@(App f x)
+        | (P (DCon _ _) n _, args) <- unApply app
+            = ("ctor", n, app) `traceShow` M.empty
+        | otherwise = erasedNames ist f `M.union` erasedNames ist x
+
+    -- are these cases correctly empty?
+    erasedNames ist (P nt n _) = M.empty
+    erasedNames ist (V n)      = M.empty
+    erasedNames ist p = ("[unhandled]---->", p) `traceShow` M.empty
 
     replaceReconstrs :: Map Name Term -> Term -> Term
-    replaceReconstrs m t = t
+    replaceReconstrs m t = m `traceShow` t
 
