@@ -15,7 +15,8 @@
 // Closures
 
 typedef enum {
-    CON, INT, BIGINT, FLOAT, STRING, BITS8, BITS16, BITS32, BITS64, UNIT, PTR, FWD
+    CON, INT, BIGINT, FLOAT, STRING, STROFFSET,
+    BITS8, BITS16, BITS32, BITS64, UNIT, PTR, FWD
 } ClosureType;
 
 typedef struct Closure *VAL;
@@ -24,6 +25,11 @@ typedef struct {
     int tag_arity;
     VAL args[];
 } con;
+
+typedef struct {
+    VAL str;
+    int offset;
+} StrOffset;
 
 typedef struct Closure {
 // Use top 16 bits of ty for saying which heap value is in
@@ -34,6 +40,7 @@ typedef struct Closure {
         int i;
         double f;
         char* str;
+        StrOffset* str_offset;
         void* ptr;
         uint8_t bits8;
         uint16_t bits16;
@@ -92,7 +99,7 @@ typedef void(*func)(VM*, VAL*);
 
 // Retrieving values
 
-#define GETSTR(x) (((VAL)(x))->info.str) 
+#define GETSTR(x) (ISSTR(x) ? (((VAL)(x))->info.str) : GETSTROFF(x))
 #define GETPTR(x) (((VAL)(x))->info.ptr) 
 #define GETFLOAT(x) (((VAL)(x))->info.f)
 
@@ -119,6 +126,7 @@ typedef intptr_t i_int;
 #define MKINT(x) ((void*)((x)<<1)+1)
 #define GETINT(x) ((i_int)(x)>>1)
 #define ISINT(x) ((((i_int)x)&1) == 1)
+#define ISSTR(x) (((VAL)(x))->ty == STRING)
 
 #define INTOP(op,x,y) MKINT((i_int)((((i_int)x)>>1) op (((i_int)y)>>1)))
 #define UINTOP(op,x,y) MKINT((i_int)((((uintptr_t)x)>>1) op (((uintptr_t)y)>>1)))
@@ -151,8 +159,11 @@ VAL MKB64(VM* vm, uint64_t b);
 
 // following versions don't take a lock when allocating
 VAL MKFLOATc(VM* vm, double val);
+VAL MKSTROFFc(VM* vm, StrOffset* off);
 VAL MKSTRc(VM* vm, char* str);
 VAL MKPTRc(VM* vm, void* ptr);
+
+char* GETSTROFF(VAL stroff);
 
 // #define SETTAG(x, a) (x)->info.c.tag = (a)
 #define SETARG(x, i, a) ((x)->info.c.args)[i] = ((VAL)(a))

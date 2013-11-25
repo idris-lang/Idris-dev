@@ -84,6 +84,10 @@ void idris_doneAlloc(VM* vm) {
     }
 }
 
+int space(VM* vm, size_t size) {
+    return (vm->heap.next + size + sizeof(size_t) < vm->heap.end);
+}
+
 void* allocate(VM* vm, size_t size, int outerlock) {
 //    return malloc(size);
     int lock = vm->processes > 0 && !outerlock;
@@ -159,6 +163,12 @@ VAL MKSTR(VM* vm, const char* str) {
         strcpy(cl -> info.str, str);
     }
     return cl;
+}
+
+char* GETSTROFF(VAL stroff) {
+    // Assume STROFF
+    StrOffset* root = stroff->info.str_offset;
+    return (root->str->info.str + root->offset);
 }
 
 VAL MKPTR(VM* vm, void* ptr) {
@@ -397,8 +407,41 @@ VAL idris_strHead(VM* vm, VAL str) {
     return MKINT((i_int)(GETSTR(str)[0]));
 }
 
+VAL MKSTROFFc(VM* vm, StrOffset* off) {
+    Closure* cl = allocate(vm, sizeof(Closure) + sizeof(StrOffset), 1);
+    SETTY(cl, STROFFSET);
+    cl->info.str_offset = (StrOffset*)((char*)cl + sizeof(Closure));
+
+    cl->info.str_offset->str = off->str;
+    cl->info.str_offset->offset = off->offset;
+
+    return cl;
+}
+
 VAL idris_strTail(VM* vm, VAL str) {
-    return MKSTR(vm, GETSTR(str)+1);
+    // If there's no room, just copy the string, or we'll have a problem after
+    // gc moves str
+    if (space(vm, sizeof(Closure) + sizeof(StrOffset))) {
+        Closure* cl = allocate(vm, sizeof(Closure) + sizeof(StrOffset), 0);
+        SETTY(cl, STROFFSET);
+        cl->info.str_offset = (StrOffset*)((char*)cl + sizeof(Closure));
+
+        int offset = 0;
+        VAL root = str;
+
+        while(root!=NULL && !ISSTR(root)) { // find the root, carry on.
+                              // In theory, at most one step here!
+            offset += root->info.str_offset->offset;
+            root = root->info.str_offset->str;
+        }
+
+        cl->info.str_offset->str = root;
+        cl->info.str_offset->offset = offset+1;
+
+        return cl;
+    } else {
+        return MKSTR(vm, GETSTR(str)+1);
+    }
 }
 
 VAL idris_strCons(VM* vm, VAL x, VAL xs) {

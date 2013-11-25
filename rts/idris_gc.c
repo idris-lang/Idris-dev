@@ -24,6 +24,9 @@ VAL copy(VM* vm, VAL x) {
     case STRING:
         cl = MKSTRc(vm, x->info.str);
         break;
+    case STROFFSET:
+        cl = MKSTROFFc(vm, x->info.str_offset);
+        break;
     case BIGINT:
         cl = MKBIGMc(vm, x->info.ptr);
         break;
@@ -60,7 +63,7 @@ void cheney(VM *vm) {
     while(scan < vm->heap.next) {
        size_t inc = *((size_t*)scan);
        VAL heap_item = (VAL)(scan+sizeof(size_t));
-       // If it's a CON, copy its arguments
+       // If it's a CON or STROFFSET, copy its arguments
        switch(GETTY(heap_item)) {
        case CON:
            ar = ARITY(heap_item);
@@ -70,6 +73,10 @@ void cheney(VM *vm) {
                // printf("Got %p\t\t%p %p\n", newptr, scan, vm->heap_next);
                heap_item->info.c.args[i] = newptr;
            }
+           break;
+       case STROFFSET:
+           heap_item->info.str_offset->str 
+               = copy(vm, heap_item->info.str_offset->str);
            break;
        default: // Nothing to copy
            break;
