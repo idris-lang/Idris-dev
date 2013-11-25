@@ -301,6 +301,11 @@ Flag FFI
   Default:      False
   manual:       True
 
+Flag GMP
+  Description:  Use GMP for Integers
+  Default:      False
+  manual:       True
+
 Executable idris
   Main-is:        Main.hs
   hs-source-dirs: src
@@ -439,4 +444,7 @@ Executable idris
   if flag(FFI)
      build-depends: libffi
      cpp-options:   -DIDRIS_FFI
+  if flag(GMP)
+     build-depends: libffi
+     cpp-options:   -DIDRIS_GMP
 

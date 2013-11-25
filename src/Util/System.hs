@@ -76,8 +76,16 @@ extraLib = " -L/usr/local/lib"
 #else
 extraLib = ""
 #endif
+
+#ifdef IDRIS_GMP
+gmpLib = " -lgmp"
+#else
+gmpLib = ""
+#endif
+
 getLibFlags = do dir <- getDataDir
-                 return $ "-L" ++ (dir </> "rts") ++ " -lidris_rts" ++ extraLib ++ " -lgmp -lpthread"
+                 return $ "-L" ++ (dir </> "rts") ++ 
+                          " -lidris_rts" ++ extraLib ++ gmpLib ++ " -lpthread"
 
 getIdrisLibDir = do dir <- getDataDir
                     return $ addTrailingPathSeparator dir
