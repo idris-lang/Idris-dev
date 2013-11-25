@@ -8,7 +8,10 @@ import Idris.AbsSyntax
 import Idris.AbsSyntaxTree
 import Core.TT
 
-import qualified Data.IntMap.Strict as M
+import qualified Data.IntMap.Strict as IM
+import Data.IntMap.Strict (IntMap)
+import qualified Data.Map as M
+import Data.Map (Map)
 import Data.List
 import Data.Maybe
 import Debug.Trace
@@ -21,14 +24,14 @@ forceArgs typeName n t = do
     let ftarget = forcedInTarget 0 t
         fargs   = addCollapsibleArgs ist 0 t ftarget
         copt = case lookupCtxt n (idris_optimisation ist) of
-          []     -> Optimise False False (W M.empty) []
+          []     -> Optimise False False (W IM.empty) []
           (op:_) -> op
         opts = addDef n (copt { forceable = W fargs }) (idris_optimisation ist)
     putIState (ist { idris_optimisation = opts })
     addIBC (IBCOpt n)
     iLOG $ "Forced: " ++ show n ++ " " ++ show fargs ++ "\n   from " ++ show t
   where
-    maxUnion = M.unionWith max
+    maxUnion = IM.unionWith max
 
     -- Label all occurrences of the variable bound in Pi in the rest of
     -- the term with the number i so that we can recognize them anytime later.
@@ -41,11 +44,11 @@ forceArgs typeName n t = do
         forceable (P _ n' _, args)
               -- if `ty' is collapsible, the argument is unconditionally forceable
             | n' `collapsibleIn` ist  
-            = M.insert i Forceable alreadyForceable
+            = IM.insert i Forceable alreadyForceable
 
               -- a recursive occurrence with known indices is conditionally forceable
             | knownRecursive n' args alreadyForceable >= CondForceable
-            = M.insertWith max i CondForceable alreadyForceable
+            = IM.insertWith max i CondForceable alreadyForceable
     
               -- a recursive occurrence can also force variables guarded in its indices
             | n' == typeName
@@ -71,7 +74,7 @@ forceArgs typeName n t = do
         -- hopefully it does not cover any not-known terms.
         known :: ForceMap -> Term -> Forceability
         known forceable (P Bound (MN i "ctor_arg") Erased)
-            = M.findWithDefault Unforceable i forceable  -- forceable data is known
+            = IM.findWithDefault Unforceable i forceable  -- forceable data is known
         known _ (P (DCon _ _) _ _) = Forceable  -- data constructors are known
         known _ (P (TCon _ _) _ _) = Forceable  -- type constructors are known
         -- what about (P Bound), (P Ref)?
@@ -88,7 +91,7 @@ forceArgs typeName n t = do
     forcedInTarget :: Int -> Type -> ForceMap
     forcedInTarget i (Bind _ (Pi _) rest) = forcedInTarget (i+1) (label i rest)
     forcedInTarget i t@(App f a) | (_, as) <- unApply t = unionMap guardedArgs as
-    forcedInTarget _ _ = M.empty
+    forcedInTarget _ _ = IM.empty
 
     guardedArgs :: Term -> ForceMap
     guardedArgs t@(App f a) | (P (DCon _ _) _ _, args) <- unApply t
@@ -96,11 +99,11 @@ forceArgs typeName n t = do
     guardedArgs t = bareArg t
 
     bareArg :: Term -> ForceMap
-    bareArg (P _ (MN i "ctor_arg") _) = M.singleton i Forceable
-    bareArg  _                        = M.empty
+    bareArg (P _ (MN i "ctor_arg") _) = IM.singleton i Forceable
+    bareArg  _                        = IM.empty
 
     unionMap :: (a -> ForceMap) -> [a] -> ForceMap
-    unionMap f = M.unionsWith max . map f
+    unionMap f = IM.unionsWith max . map f
 
 -- Calculate whether a collection of constructors is collapsible
 -- and update the state accordingly.
@@ -109,7 +112,7 @@ collapseCons tn ctors = do
     ist <- getIState
     case ctors of
         _
-          | all (>= CondForceable) (M.elems $ forceMap tn ist)
+          | all (>= CondForceable) (IM.elems $ forceMap tn ist)
           , disjointTerms ctorTargetArgs
             -> mapM_ setCollapsible (tn : map fst ctors)
 
@@ -125,13 +128,13 @@ collapseCons tn ctors = do
     forceMap :: Name -> IState -> ForceMap
     forceMap n ist = case lookupCtxt n (idris_optimisation ist) of
         (oi:_) -> unW $ forceable oi
-        _      -> M.empty
+        _      -> IM.empty
 
     -- one constructor; if one remaining argument, treat as newtype
     checkNewType :: IState -> Name -> Type -> Idris ()
     checkNewType ist cn ct
         | oi:_ <- lookupCtxt cn opt
-        , length (getArgTys ct) == 1 + M.size (unW $ forceable oi)
+        , length (getArgTys ct) == 1 + IM.size (unW $ forceable oi)
             = putIState ist{ idris_optimisation = opt' oi }
         | otherwise = return ()
       where
@@ -146,7 +149,7 @@ collapseCons tn ctors = do
                (oi:_) -> do let oi' = oi { collapsible = True }
                             let opts = addDef n oi' (idris_optimisation i)
                             putIState (i { idris_optimisation = opts })
-               [] -> do let oi = Optimise True False (W M.empty) []
+               [] -> do let oi = Optimise True False (W IM.empty) []
                         let opts = addDef n oi (idris_optimisation i)
                         putIState (i { idris_optimisation = opts })
                         addIBC (IBCOpt n)
@@ -246,7 +249,7 @@ forcedArgSeq oi = map (isForced oi) [0..]
     isForced oi i 
         -- We needn't consider CondForceable because it's only important when the type
         -- is collapsible -- but in that case this whole optimisation is irrelevant
-        | Just f <- M.lookup i (unW $ forceable oi) = f == Forceable
+        | Just f <- IM.lookup i (unW $ forceable oi) = f == Forceable
         | otherwise = False
 
 applyDataOpt :: OptInfo -> Name -> [Raw] -> Raw
@@ -337,10 +340,22 @@ applyDataOptRT oi n tag arity args
             _ -> error "Can't happen (newtype not a singleton)"
         | otherwise = mkApp ctor' args'
       where
-        ctor' = (P (DCon tag (arity - M.size forceMap)) n Erased)
+        ctor' = (P (DCon tag (arity - IM.size forceMap)) n Erased)
         args' = map snd . filter keep $ zip (forcedArgSeq oi) args
 
     keep (forced, _) = not forced
 
-applyReconstruction :: ([Name], Term, Term) -> ([Name], Term, Term)
-applyReconstruction (vs, lhs, rhs) = (vs, lhs, rhs)
+reconstructCollapsed :: Either Term (Term, Term) -> Idris (Either Term (Term, Term))
+reconstructCollapsed (Left t) = return $ Left t  -- TODO: what's this?
+reconstructCollapsed (Right (p, t)) = do
+        ist <- getIState
+        let ns = erasedNames ist p
+        logLvl 1 $ "----------> " ++ show p ++ ", " ++ show t
+        return $ Right (p, replaceReconstrs ns t)
+  where
+    erasedNames :: IState -> Term -> Map Name Term
+    erasedNames ist t = M.empty
+
+    replaceReconstrs :: Map Name Term -> Term -> Term
+    replaceReconstrs m t = t
+

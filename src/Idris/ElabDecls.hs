@@ -894,7 +894,7 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
            optpats <- if doNothing
                          then return $ [Right (mkApp (P Bound n Erased)
                                                     (take numArgs (repeat Erased)), Erased)]
-                         else stripCollapsed pats
+                         else (stripCollapsed <=< mapM reconstructCollapsed) pats
 
            case specNames opts of
                 Just _ -> logLvl 5 $ "Partially evaluated:\n" ++ show pats
@@ -925,7 +925,7 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
 
            -- pdef' is the version that gets compiled for run-time
            pdef_in' <- applyOpts optpdef
-           let pdef' = map (applyReconstruction . simple_rt (tt_ctxt ist)) pdef_in'
+           let pdef' = map (simple_rt (tt_ctxt ist)) pdef_in'
 
            logLvl 5 $ "After data structure transformations:\n" ++ show pdef'
 
