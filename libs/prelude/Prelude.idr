@@ -365,9 +365,8 @@ instance Enum Nat where
   fromNat = id
   enumFromThen n inc = n :: enumFromThen (fromNat (plus (toNat inc) (toNat n))) inc
   enumFromThenTo _ Z   _ = []
-  enumFromThenTo n inc m = map (plus n . (* inc)) (natRange (S (( m - n) `div` inc)))
-  enumFromTo n m = map (plus n) (natRange (S (m - n)))
-
+  enumFromThenTo n inc m = map (plus n . (* inc)) (natRange (S ((m - n) `div` inc)))
+  enumFromTo n m = map (plus n) (natRange ((S m) - n))
 
 instance Enum Integer where
   pred n = n - 1
@@ -375,7 +374,9 @@ instance Enum Integer where
   toNat n = cast n
   fromNat n = cast n
   enumFromThen n inc = n :: enumFromThen (inc + n) inc
-  enumFromTo n m = go (natRange (S (cast {to = Nat} (m - n))))
+  enumFromTo n m = if n <= m
+                   then go (natRange (S (cast {to = Nat} (m - n))))
+                   else []          
     where go : List Nat -> List Integer
           go [] = []
           go (x :: xs) = n + cast x :: go xs
@@ -391,7 +392,9 @@ instance Enum Int where
   toNat n = cast n
   fromNat n = cast n
   enumFromThen n inc = n :: enumFromThen (inc + n) inc
-  enumFromTo n m = go (natRange (S (cast {to = Nat} (m - n))))
+  enumFromTo n m = if n <= m 
+                   then go (natRange (S (cast {to = Nat} (m - n))))
+                   else []
     where go : List Nat -> List Int
           go [] = []
           go (x :: xs) = n + cast x :: go xs
