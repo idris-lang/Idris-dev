@@ -237,6 +237,7 @@ data SpecialName = WhereN Int Name Name
                  | ParentN Name String
                  | MethodN Name
                  | CaseN Name
+                 | ElimN Name
   deriving (Eq, Ord)
 {-!
 deriving instance Binary SpecialName
@@ -252,14 +253,14 @@ instance Sized Name where
 instance Pretty Name where
   pretty (UN n) = text n
   pretty (NS n s) = pretty n
-  pretty (MN i s) = lbrace <+> text s <+> (text . show $ i) <+> rbrace
+  pretty (MN i s) = text "«" <+> text s <+> (text . show $ i) <+> text "»"
   pretty (SN s) = text (show s)
 
 instance Show Name where
     show (UN n) = n
     show (NS n s) = showSep "." (reverse s) ++ "." ++ show n
     show (MN _ "underscore") = "_"
-    show (MN i s) = "{" ++ s ++ show i ++ "}"
+    show (MN i s) = "«" ++ s ++ show i ++ "»"
     show (SN s) = show s
     show NErased = "_"
 
@@ -269,6 +270,7 @@ instance Show SpecialName where
     show (MethodN m) = "method " ++ show m
     show (ParentN p c) = show p ++ "#" ++ c
     show (CaseN n) = "case block in " ++ show n
+    show (ElimN n) = "<<" ++ show n ++ " eliminator>>"
 
 -- Show a name in a way decorated for code generation, not human reading
 showCG :: Name -> String

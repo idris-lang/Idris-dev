@@ -78,7 +78,7 @@ dataI = do reserved "data"; return []
 DefaultEliminator ::= 'noelim'?
  -}
 defaultEliminator :: IdrisParser DataOpts
-defaultEliminator = do option [DefaultEliminator] (do reserved "%noelim"; return [])
+defaultEliminator = do option [] (do reserved "%elim"; return [DefaultEliminator])
 
 {- | Parses a data type declaration
 Data ::= DocComment? Accessibility? DataI DefaultEliminator FnName TypeSig ExplicitTypeDataRest?

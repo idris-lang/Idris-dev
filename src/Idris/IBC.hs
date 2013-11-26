@@ -410,6 +410,7 @@ instance Binary SpecialName where
                 MethodN x1 -> do putWord8 3
                                  put x1
                 CaseN x1 -> do putWord8 4; put x1
+                ElimN x1 -> do putWord8 5; put x1
         get
           = do i <- getWord8
                case i of
@@ -427,6 +428,8 @@ instance Binary SpecialName where
                            return (MethodN x1)
                    4 -> do x1 <- get
                            return (CaseN x1)
+                   5 -> do x1 <- get
+                           return (ElimN x1)
                    _ -> error "Corrupted binary data for SpecialName"
 
 

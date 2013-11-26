@@ -619,7 +619,7 @@ getInferTerm tm = tm -- error ("getInferTerm " ++ show tm)
 getInferType (Bind n b sc) = Bind n b $ getInferType sc
 getInferType (App (App _ ty) _) = ty
 
--- Handy primitives: Unit, False, Pair, MkPair, =, mkForeign
+-- Handy primitives: Unit, False, Pair, MkPair, =, mkForeign, Elim type class
 
 primNames = [unitTy, unitCon,
              falseTy, pairTy, pairCon,
@@ -645,7 +645,7 @@ pairDecl  = PDatadecl pairTy (piBind [(n "A", PType), (n "B", PType)] PType)
                            (PApp bi (PRef bi pairTy) [pexp (PRef bi (n "A")),
                                                 pexp (PRef bi (n "B"))])))), bi)]
     where n a = MN 0 a
-pairOpts = [DefaultEliminator]
+pairOpts = []
 
 eqTy = UN "="
 eqCon = UN "refl"
@@ -661,6 +661,12 @@ eqDecl = PDatadecl eqTy (piBind [(n "a", PType), (n "b", PType),
     where n a = MN 0 a
 eqOpts = []
 
+elimName       = UN "__Elim"
+elimMethElimTy = UN "__elimTy"
+elimMethElim   = UN "elim"
+elimDecl = PClass "Type class for eliminators" defaultSyntax bi [] elimName [(UN "scrutineeType", PType)] 
+                     [PTy "" defaultSyntax bi [TotalFn] elimMethElimTy PType,
+                      PTy "" defaultSyntax bi [TotalFn] elimMethElim (PRef bi elimMethElimTy)]
 
 -- Defined in builtins.idr
 sigmaTy   = UN "Exists"

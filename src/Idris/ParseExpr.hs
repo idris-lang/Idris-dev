@@ -267,6 +267,7 @@ simpleExpr syn =
                tm <- option Placeholder (do lchar '{'; t <- expr syn; lchar '}';
                                             return t)
                return (PRefl fc tm)
+        <|> do reserved "elim_for"; fc <- getFC; t <- fnName; return (PRef fc (SN $ ElimN t))
         <|> proofExpr syn
         <|> tacticsExpr syn
         <|> caseExpr syn
