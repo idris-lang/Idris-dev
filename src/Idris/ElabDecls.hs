@@ -803,8 +803,9 @@ elabPE info fc caller r =
         logLvl 5 $ show (newnm, map (concreteArg ist) (snd specapp))
         idrisCatch
           (when (undef && all (concreteArg ist) (snd specapp)) $ do
-            let opts = [Specialise ((n, Nothing) : 
-                                     (mapMaybe specName (snd specapp)))]
+            cgns <- getAllNames n
+            let opts = [Specialise (map (\x -> (x, Nothing)) cgns ++ 
+                                     mapMaybe specName (snd specapp))]
             logLvl 3 $ "Specialising application: " ++ show specapp
             logLvl 2 $ "New name: " ++ show newnm
             iLOG $ "PE definition type : " ++ (show specTy)
