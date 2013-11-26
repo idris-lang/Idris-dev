@@ -421,6 +421,17 @@ setREPL t = do i <- getIState
                let opt' = opts { opt_repl = t }
                putIState $ i { idris_options = opt' }
 
+setNoBanner :: Bool -> Idris ()
+setNoBanner n = do i <- getIState
+                   let opts = idris_options i
+                   let opt' = opts {opt_nobanner = n}
+                   putIState $ i { idris_options = opt' }
+
+getNoBanner :: Idris Bool
+getNoBanner = do i <- getIState
+                 let opts = idris_options i
+                 return (opt_nobanner opts)
+
 setQuiet :: Bool -> Idris ()
 setQuiet q = do i <- getIState
                 let opts = idris_options i

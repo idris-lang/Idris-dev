@@ -937,6 +937,7 @@ parseCodegen _ = error "unknown codegen" -- FIXME: partial function
 
 parseArgs :: [String] -> [Opt]
 parseArgs [] = []
+parseArgs ("--nobanner":ns)      = NoBanner : (parseArgs ns)
 parseArgs ("--quiet":ns)         = Quiet : (parseArgs ns)
 parseArgs ("--ideslave":ns)      = Ideslave : (parseArgs ns)
 parseArgs ("--client":ns)        = [Client (showSep " " ns)]
@@ -1078,6 +1079,7 @@ idrisMain :: [Opt] -> Idris ()
 idrisMain opts =
     do let inputs = opt getFile opts
        let quiet = Quiet `elem` opts
+       let nobanner = NoBanner `elem` opts
        let idesl = Ideslave `elem` opts
        let runrepl = not (NoREPL `elem` opts)
        let output = opt getOutput opts
@@ -1139,7 +1141,7 @@ idrisMain opts =
                                                 return ()
        when (not (NoPrelude `elem` opts)) $ do x <- loadModule stdout "Prelude"
                                                return ()
-       when (runrepl && not quiet && not idesl && not (isJust script)) $ iputStrLn banner
+       when (runrepl && not quiet && not idesl && not (isJust script) && not nobanner) $ iputStrLn banner
        ist <- getIState
 
        loadInputs stdout inputs
