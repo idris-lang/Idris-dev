@@ -686,7 +686,6 @@ Pi ::=
   | '|'? Static? '{'           TypeDeclList '}'            '->' Expr
   |              '{' 'auto'    TypeDeclList '}'            '->' Expr
   |              '{' 'default' TypeDeclList '}'            '->' Expr
-  |              '{' 'static'               '}' Expr'      '->' Expr
   ;
  -}
 
@@ -709,7 +708,8 @@ pi syn =
                    symbol "->"
                    sc <- expr syn
                    return (bindList (PPi
-                     (TacImp False Dynamic (PTactics [Trivial]) "")) xt sc)) <|> (do
+                     (TacImp False Dynamic (PTactics [Trivial]) "")) xt sc)) 
+                 <|> (do
                        reserved "default"
                        when (lazy || (st == Static)) $ fail "default tactic constraints can not be lazy or static"
                        script <- simpleExpr syn
@@ -717,14 +717,8 @@ pi syn =
                        lchar '}'
                        symbol "->"
                        sc <- expr syn
-                       return (bindList (PPi (TacImp False Dynamic script "")) xt sc)) <|> (do
-                       reserved "static"
-                       lchar '}'
-                       t <- expr' syn
-                       symbol "->"
-                       sc <- expr syn
-                       return (PPi (Exp False Static "" False) (MN 42 "__pi_arg") t sc)) <|> (
-                       if implicitAllowed syn then do
+                       return (bindList (PPi (TacImp False Dynamic script "")) xt sc)) 
+                 <|> (if implicitAllowed syn then do
                             xt <- typeDeclList syn
                             lchar '}'
                             symbol "->"

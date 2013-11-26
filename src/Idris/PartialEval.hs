@@ -9,6 +9,7 @@ import Idris.Delaborate
 import Core.TT
 import Core.Evaluate
 
+import Control.Monad.State
 import Debug.Trace
 
 partial_eval :: Context -> [(Name, Maybe Int)] ->
@@ -23,26 +24,52 @@ partial_eval ctxt ns tms = map peClause tms where
    toLimit (n, Nothing) = (n, 65536) -- somewhat arbitrary reduction limit
    toLimit (n, Just l) = (n, l)
 
-specType :: [(PEArgType, Term)] -> Type -> Type
-specType ((ExplicitS, v) : xs) (Bind n (Pi t) sc)
-         = Bind n (Let t v) (specType xs sc)
-specType ((ImplicitS, v) : xs) (Bind n (Pi t) sc)
-         = Bind n (Let t v) (specType xs sc)
-specType (_ : xs) (Bind n (Pi t) sc)
-         = Bind n (Pi t) (specType xs sc)
-specType _ t = t
+specType :: [(PEArgType, Term)] -> Type -> (Type, [(PEArgType, Term)])
+specType args ty = let (t, args') = runState (unifyEq args ty) [] in
+                       (st (map fst args') t, map fst args')
+  where
+    st ((ExplicitS, v) : xs) (Bind n (Pi t) sc)
+         = Bind n (Let t v) (st xs sc)
+    st ((ImplicitS, v) : xs) (Bind n (Pi t) sc)
+         = Bind n (Let t v) (st xs sc)
+    st ((UnifiedD, _) : xs) (Bind n (Pi t) sc)
+         = st xs sc
+    st (_ : xs) (Bind n (Pi t) sc)
+         = Bind n (Pi t) (st xs sc)
+    st _ t = t
+
+    unifyEq (imp@(ImplicitD, v) : xs) (Bind n (Pi t) sc)
+         = do amap <- get
+              case lookup imp amap of
+                   Just n' -> 
+                        do put (amap ++ [((UnifiedD, Erased), n)])
+                           sc' <- unifyEq xs (subst n (P Bound n' Erased) sc)
+                           return (Bind n (Pi t) sc') -- erase later
+                   _ -> do put (amap ++ [(imp, n)])
+                           sc' <- unifyEq xs sc
+                           return (Bind n (Pi t) sc')
+    unifyEq (x : xs) (Bind n (Pi t) sc)
+         = do args <- get
+              put (args ++ [(x, n)])
+              sc' <- unifyEq xs sc
+              return (Bind n (Pi t) sc')
+    unifyEq xs t = do args <- get
+                      put (args ++ (zip xs (repeat (UN "_"))))
+                      return t
 
 mkPE_TyDecl :: IState -> [(PEArgType, Term)] -> Type -> PTerm
-mkPE_TyDecl ist ((ExplicitD, v) : xs) (Bind n (Pi t) sc)
-   = PPi expl n (delab ist t) (mkPE_TyDecl ist xs sc)
-mkPE_TyDecl ist ((ImplicitD, v) : xs) (Bind n (Pi t) sc)
-     | concreteClass ist t = mkPE_TyDecl ist xs sc
-     | classConstraint ist t 
-         = PPi constraint n (delab ist t) (mkPE_TyDecl ist xs sc)
-     | otherwise = PPi impl n (delab ist t) (mkPE_TyDecl ist xs sc)
-mkPE_TyDecl ist (_ : xs) t
-   = mkPE_TyDecl ist xs t
-mkPE_TyDecl ist [] t = delab ist t
+mkPE_TyDecl ist args ty = mkty args ty
+  where
+    mkty ((ExplicitD, v) : xs) (Bind n (Pi t) sc)
+       = PPi expl n (delab ist t) (mkty xs sc)
+    mkty ((ImplicitD, v) : xs) (Bind n (Pi t) sc)
+         | concreteClass ist t = mkty xs sc
+         | classConstraint ist t 
+             = PPi constraint n (delab ist t) (mkty xs sc)
+         | otherwise = PPi impl n (delab ist t) (mkty xs sc)
+    mkty (_ : xs) t
+       = mkty xs t
+    mkty [] t = delab ist t
 
 classConstraint ist v
     | (P _ c _, args) <- unApply v = case lookupCtxt c (idris_classes ist) of
@@ -81,7 +108,8 @@ mkPE_TermDecl ist newname sname ns
 
 data PEArgType = ImplicitS | ImplicitD
                | ExplicitS | ExplicitD
-  deriving Show
+               | UnifiedD
+  deriving (Eq, Show)
 
 getSpecApps :: IState -> [Name] -> Term -> 
                [(Name, [(PEArgType, Term)])]
@@ -94,7 +122,7 @@ getSpecApps ist env tm = ga env (explicitNames tm) where
          | x && imparg imp = (ImplicitS, tm)
          | x = (ExplicitS, tm)
          | imparg imp = (ImplicitD, tm)
-         | otherwise = (ExplicitD, (P Ref (MN n "arg") Erased))
+         | otherwise = (ExplicitD, (P Ref (UN (show n ++ "arg")) Erased))
 
     imparg (PExp _ _ _ _) = False
     imparg _ = True

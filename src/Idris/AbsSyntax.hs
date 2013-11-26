@@ -879,15 +879,15 @@ addStatics n tm ptm =
     do let (statics, dynamics) = initStatics tm ptm
        let stnames = nub $ concatMap freeArgNames (map snd statics)
        let dnames = nub $ concatMap freeArgNames (map snd dynamics)
-       when (not (null statics)) $
-          logLvl 7 $ show n ++ " " ++ show statics ++ "\n" ++ show dynamics
-                        ++ "\n" ++ show stnames ++ "\n" ++ show dnames
        -- also get the arguments which are 'uniquely inferrable' from
        -- statics (see sec 4.2 of "Scrapping Your Inefficient Engine")
        let statics' = nub $ map fst statics ++
                               filter (\x -> not (elem x dnames)) stnames
        let stpos = staticList statics' tm
        i <- getIState
+       when (not (null statics)) $
+          logLvl 5 $ show n ++ " " ++ show statics' ++ "\n" ++ show dynamics
+                        ++ "\n" ++ show stnames ++ "\n" ++ show dnames
        putIState $ i { idris_statics = addDef n stpos (idris_statics i) }
        addIBC (IBCStatic n)
   where
@@ -899,6 +899,8 @@ addStatics n tm ptm =
                             else (static, dynamic)
     initStatics t pt = ([], [])
 
+    freeArgNames (Bind n (Pi ty) sc) 
+          = nub $ freeArgNames ty 
     freeArgNames tm = let (_, args) = unApply tm in
                           concatMap freeNames args
 
