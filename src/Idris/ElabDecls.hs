@@ -143,9 +143,10 @@ elabPostulate info syn doc fc opts n ty
          -- remove it from the deferred definitions list
          solveDeferred n
 
-elabData :: ElabInfo -> SyntaxInfo -> String -> FC -> Bool -> PData -> Idris ()
-elabData info syn doc fc codata (PLaterdecl n t_in)
-    = do iLOG (show (fc, doc))
+elabData :: ElabInfo -> SyntaxInfo -> String -> FC -> DataOpts -> PData -> Idris ()
+elabData info syn doc fc opts (PLaterdecl n t_in)
+    = do let codata = Codata `elem` opts
+         iLOG (show (fc, doc))
          checkUndefined fc n
          ctxt <- getContext
          i <- getIState
@@ -161,8 +162,9 @@ elabData info syn doc fc codata (PLaterdecl n t_in)
          logLvl 2 $ "---> " ++ show cty
          updateContext (addTyDecl n (TCon 0 0) cty) -- temporary, to check cons
 
-elabData info syn doc fc codata (PDatadecl n t_in dcons)
-    = do iLOG (show fc)
+elabData info syn doc fc opts (PDatadecl n t_in dcons)
+    = do let codata = Codata `elem` opts
+         iLOG (show fc)
          undef <- isUndefined fc n
          ctxt <- getContext
          i <- getIState
@@ -249,8 +251,10 @@ elabData info syn doc fc codata (PDatadecl n t_in dcons)
 
 elabPrims :: Idris ()
 elabPrims = do mapM_ (elabDecl EAll toplevel)
-                     (map (PData "" defaultSyntax (fileFC "builtin") False)
-                         [inferDecl, unitDecl, falseDecl, pairDecl, eqDecl])
+                     (map (\(opt, decl) -> PData "" defaultSyntax (fileFC "builtin") opt decl)
+                        (zip
+                         [inferOpts, unitOpts, falseOpts, pairOpts, eqOpts]
+                         [inferDecl, unitDecl, falseDecl, pairDecl, eqDecl]))
                mapM_ elabPrim primitives
                -- Special case prim__believe_me because it doesn't work on just constants
                elabBelieveMe
@@ -400,7 +404,7 @@ elabTransform info fc safe lhs_in rhs_in
 elabRecord :: ElabInfo -> SyntaxInfo -> String -> FC -> Name ->
               PTerm -> String -> Name -> PTerm -> Idris ()
 elabRecord info syn doc fc tyn ty cdoc cn cty
-    = do elabData info syn doc fc False (PDatadecl tyn ty [(cdoc, cn, cty, fc)])
+    = do elabData info syn doc fc [] (PDatadecl tyn ty [(cdoc, cn, cty, fc)])
          cty' <- implicit syn cn cty
          i <- getIState
          cty <- case lookupTy cn (tt_ctxt i) of
@@ -1274,7 +1278,7 @@ elabClass info syn doc fc constraints tn ps ds
          let cons = [("", cn, cty, fc)]
          let ddecl = PDatadecl tn tty cons
          logLvl 5 $ "Class data " ++ showDImp True ddecl
-         elabData info (syn { no_imp = no_imp syn ++ mnames }) doc fc False ddecl
+         elabData info (syn { no_imp = no_imp syn ++ mnames }) doc fc [] ddecl
          -- for each constraint, build a top level function to chase it
          logLvl 5 $ "Building functions"
          let usyn = syn { using = map (\ (x,y) -> UImplicit x y) ps
@@ -1697,7 +1701,7 @@ elabDecl' what info (PRecord doc s f tyn ty cdoc cn cty)
          elabRecord info s doc f tyn ty cdoc cn cty
   | otherwise
     = do iLOG $ "Elaborating [type of] " ++ show tyn
-         elabData info s doc f False (PLaterdecl tyn ty)
+         elabData info s doc f [] (PLaterdecl tyn ty)
 elabDecl' _ info (PDSL n dsl)
     = do i <- getIState
          putIState (i { idris_dsls = addDef n dsl (idris_dsls i) })

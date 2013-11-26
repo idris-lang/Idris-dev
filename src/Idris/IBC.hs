@@ -23,7 +23,7 @@ import Debug.Trace
 import Paths_idris
 
 ibcVersion :: Word8
-ibcVersion = 44
+ibcVersion = 45
 
 data IBCFile = IBCFile { ver :: Word8,
                          sourcefile :: FilePath,
@@ -930,6 +930,15 @@ instance Binary IBCFile where
                     x27 <- get
                     return (IBCFile x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24 x25 x26 x27)
                   else return (initIBC { ver = x1 })
+
+instance Binary DataOpt where
+  put x = case x of
+    Codata -> putWord8 0
+    DefaultEliminator -> putWord8 1
+  get = do i <- getWord8
+           case i of
+            0 -> return Codata
+            1 -> return DefaultEliminator
 
 instance Binary FnOpt where
         put x

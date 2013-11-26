@@ -164,6 +164,10 @@ instance NFData FnOpt where
         rnf Reflection = ()
         rnf (Specialise x1) = rnf x1 `seq` ()
 
+instance NFData DataOpt where
+        rnf Codata = ()
+        rnf DefaultEliminator = ()
+
 instance (NFData t) => NFData (PDecl' t) where
         rnf (PFix x1 x2 x3) = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` ()
         rnf (PTy x1 x2 x3 x4 x5 x6)
