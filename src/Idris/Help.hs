@@ -60,6 +60,8 @@ extraHelp =
     , ([":casesplit!", ":cs!"], NoArg, ":cs! <line> <name> destructively splits the pattern variable on the line")
     , ([":addclause", ":ac"], NoArg, ":ac <line> <name> adds a clause for the definition of the name on the line")
     , ([":addclause!", ":ac!"], NoArg, ":ac! <line> <name> destructively adds a clause for the definition of the name on the line")
+    , ([":addmissing", ":am"], NoArg, ":am <line> <name> adds all missing pattern matches for the name on the line")
+    , ([":addmissing!", ":am!"], NoArg, ":am! <line> <name> destructively adds all missing pattern matches for the name on the line")
     , ([":makewith", ":mw"], NoArg, ":mw <line> <name> adds a with clause for the definition of the name on the line")
     , ([":makewith!", ":mw!"], NoArg, ":mw! <line> <name> destructively adds a with clause for the definition of the name on the line")
     , ([":proofsearch", ":ps"], NoArg, ":ps <line> <name> <names> does proof search for name on line, with names as hints")

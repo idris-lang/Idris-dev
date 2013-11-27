@@ -275,6 +275,7 @@ ideslaveProcess fn (Spec t) = process stdout fn (Spec t)
 ideslaveProcess fn (ShowProof n') = process stdout fn (ShowProof n')
 ideslaveProcess fn (HNF t) = process stdout fn (HNF t)
 --ideslaveProcess fn TTShell = process stdout fn TTShell -- need some prove mode!
+ideslaveProcess fn (TestInline t) = process stdout fn (TestInline t)
 
 --that most likely does not work, since we need to wrap
 --input/output of the executed binary...
@@ -301,6 +302,12 @@ ideslaveProcess fn (UnsetOpt ShowImpl) = do process stdout fn (UnsetOpt ShowImpl
                                             iPrintResult ""
 ideslaveProcess fn (SetOpt x) = process stdout fn (SetOpt x)
 ideslaveProcess fn (UnsetOpt x) = process stdout fn (UnsetOpt x)
+ideslaveProcess fn (CaseSplitAt False pos str) = process stdout fn (CaseSplitAt False pos str)
+ideslaveProcess fn (AddProofClauseFrom False pos str) = process stdout fn (AddProofClauseFrom False pos str)
+ideslaveProcess fn (AddClauseFrom False pos str) = process stdout fn (AddClauseFrom False pos str)
+ideslaveProcess fn (AddMissing False pos str) = process stdout fn (AddMissing False pos str)
+ideslaveProcess fn (MakeWith False pos str) = process stdout fn (MakeWith False pos str)
+ideslaveProcess fn (DoProofSearch False pos str xs) = process stdout fn (DoProofSearch False pos str xs)
 ideslaveProcess fn _ = iPrintError "command not recognized or not supported"
 
 
