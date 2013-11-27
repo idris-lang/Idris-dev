@@ -42,17 +42,15 @@ forceArgs typeName n t = do
         = addCollapsibleArgs ist (i+1) (label i rest) (forceable $ unApply ty)
       where
         forceable (P _ n' _, args)
-              -- if `ty' is collapsible, the argument is unconditionally forceable
+            -- if `ty' is collapsible, the argument is unconditionally forceable
             | n' `collapsibleIn` ist  
             = IM.insert i Forceable alreadyForceable
 
-              -- a recursive occurrence with known indices is conditionally forceable
-            | knownRecursive n' args alreadyForceable >= CondForceable
-            = IM.insertWith max i CondForceable alreadyForceable
-    
-              -- a recursive occurrence can also force variables guarded in its indices
             | n' == typeName
-            = unionMap guardedArgs args `maxUnion` alreadyForceable
+            -- a recursive occurrence with known indices is conditionally forceable
+            = IM.insertWith max i CondForceable
+                -- and it can also force variables guarded in its indices
+                (unionMap guardedArgs args `maxUnion` alreadyForceable)
 
         forceable _ = alreadyForceable
 
@@ -62,31 +60,6 @@ forceArgs typeName n t = do
             _    -> False
 
     addCollapsibleArgs _ _ _ fs = fs
-
-    knownRecursive :: Name -> [Term] -> ForceMap -> Forceability
-    knownRecursive n args forceable
-        | n == typeName 
-        , not (null args)
-            = minimum $ map (known forceable) args
-        | otherwise     = Unforceable
-      where
-        -- This predicate does not cover all known terms;
-        -- hopefully it does not cover any not-known terms.
-        known :: ForceMap -> Term -> Forceability
-        known forceable (P Bound (MN i "ctor_arg") Erased)
-            = IM.findWithDefault Unforceable i forceable  -- forceable data is known
-        known _ (P (DCon _ _) _ _) = Forceable  -- data constructors are known
-        known _ (P (TCon _ _) _ _) = Forceable  -- type constructors are known
-        -- what about (P Bound), (P Ref)?
-        known _ (V _)        = Unforceable
-        known _ (Bind _ _ _) = Unforceable  -- let's ignore binders, too
-        known f (App g x)    = known f g `min` known f x
-        known _ (Constant _) = Forceable
-        known f (Proj t _)   = known f t
-        known _  Erased      = Forceable
-        known _  Impossible  = Forceable
-        known _ (TType _)    = Forceable
-        known _ _            = Unforceable
 
     forcedInTarget :: Int -> Type -> ForceMap
     forcedInTarget i (Bind _ (Pi _) rest) = forcedInTarget (i+1) (label i rest)
@@ -352,20 +325,43 @@ reconstructCollapsed (Right (p, t)) = do
         let ns = erasedNames ist p
         return $ Right (p, replaceReconstrs ns t)
   where
-    -- what if somebody writes (C x (y :: ys) z) and the middle arg should be erased?
     erasedNames :: IState -> Term -> Map Name Term
-    erasedNames ist (Bind n (PVar _) t)
-        = erasedNames ist $ instantiate (P Bound n Erased) t
-    erasedNames ist app@(App f x)
-        | (P (DCon _ _) n _, args) <- unApply app
-            = ("ctor", n, app) `traceShow` M.empty
-        | otherwise = erasedNames ist f `M.union` erasedNames ist x
 
-    -- are these cases correctly empty?
+    -- TODO: are these cases correctly empty?
     erasedNames ist (P nt n _) = M.empty
     erasedNames ist (V n)      = M.empty
+
+    -- introductory pattern vars: pat x. T
+    erasedNames ist (Bind n (PVar _) t)
+        = erasedNames ist $ instantiate (P Bound n Erased) t
+
+    -- todo: if the whole type of the ctor is collapsible, we shouldn't do anything here
+    erasedNames ist app@(App f x)
+        | (P (DCon _ _) n _, args) <- unApply app
+            = M.unions $ map traverseArgs (zip [0..] args)
+        | otherwise = erasedNames ist f `M.union` erasedNames ist x
+      where
+        forceMap = forceables ist n
+
+        traverseArgs :: Int -> Term -> Map Name Term
+        traverseArgs i t
+            | Just (Forceable reconstr) <- IM.lookup i forceMap
+                -- note that mkLazy gets inserted by replaceReconstrs
+                = let recon = reconstr i args in case t of
+                    -- bare variable, just reconstruct it
+                    P Bound vn Erased ->
+                        M.insert vn recon
+                    -- we need to create a let-binding for every sub-variable
+                    pat -> error $ "pattern-matching an erased term: " ++ pat
+            | otherwise = erasedNames ist t
+
     erasedNames ist p = ("[unhandled]---->", p) `traceShow` M.empty
 
+    -- TODO: don't forget to insert mkLazy around every replacement
     replaceReconstrs :: Map Name Term -> Term -> Term
     replaceReconstrs m t = m `traceShow` t
 
+    forceables :: IState -> Name -> ForceMap
+    forceables ist n = case lookupCtxt n (idris_optimisation ist) of
+        [oi] -> forceable oi
+        _    -> IM.empty
