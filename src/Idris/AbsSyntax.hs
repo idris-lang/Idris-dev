@@ -96,6 +96,11 @@ addTrans t = do i <- getIState
 totcheck :: (FC, Name) -> Idris ()
 totcheck n = do i <- getIState; putIState $ i { idris_totcheck = idris_totcheck i ++ [n] }
 
+defer_totcheck :: (FC, Name) -> Idris ()
+defer_totcheck n 
+   = do i <- getIState; 
+        putIState $ i { idris_defertotcheck = nub (idris_defertotcheck i ++ [n]) }
+
 clear_totcheck :: Idris ()
 clear_totcheck  = do i <- getIState; putIState $ i { idris_totcheck = [] }
 

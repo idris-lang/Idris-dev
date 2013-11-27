@@ -423,7 +423,15 @@ buildSCG' ist pats args = nub $ concatMap scgPat pats where
       | not (f `elem` pvs) = [(f, [])]
   findCalls _ _ _ = []
 
-  mkChange n args pargs = [(n, sizes args)]
+  expandToArity n args 
+     = case lookupTy n (tt_ctxt ist) of
+            [ty] -> expand 0 (normalise (tt_ctxt ist) [] ty) args
+            _ -> args
+     where expand i (Bind n (Pi _) sc) (x : xs) = x : expand (i + 1) sc xs
+           expand i (Bind n (Pi _) sc) [] = Just (i, Same) : expand (i + 1) sc []
+           expand i _ xs = xs
+
+  mkChange n args pargs = [(n, expandToArity n (sizes args))]
     where
       sizes [] = []
       sizes (a : as) = checkSize a pargs 0 : sizes as
@@ -574,12 +582,16 @@ checkSizeChange n = do
                   -- thread, then the function terminates
                   -- also need to checks functions called are all total
                   -- (Unchecked is okay as we'll spot problems here)
-                  let tot = map (checkMP ist (length (argsdef cg))) ms
+                  let tot = map (checkMP ist (getArity ist n)) ms
                   logLvl 4 $ "Generated " ++ show (length tot) ++ " paths"
                   logLvl 6 $ "Paths for " ++ show n ++ " yield " ++ (show tot)
                   return (noPartial tot)
        [] -> do logLvl 5 $ "No paths for " ++ show n
                 return Unchecked
+  where getArity ist n 
+          = case lookupTy n (tt_ctxt ist) of
+                 [ty] -> arity (normalise (tt_ctxt ist) [] ty)
+                 _ -> error "Can't happen: checkSizeChange.getArity"
 
 type MultiPath = [SCGEntry]
 
@@ -609,7 +621,9 @@ mkMultiPaths ist path cg
 
 checkMP :: IState -> Int -> MultiPath -> Totality
 checkMP ist i mp = if i > 0
-                     then collapse (map (tryPath 0 [] mp) [0..i-1])
+                     then let paths = (map (tryPath 0 [] mp) [0..i-1]) in
+--                               trace ("Paths " ++ show paths) $
+                               collapse paths
                      else tryPath 0 [] mp 0
   where
     tryPath' d path mp arg
@@ -635,12 +649,15 @@ checkMP ist i mp = if i > 0
         | Just d <- lookup e path
             = if desc > 0
                    then -- trace ("Descent " ++ show (desc - d) ++ " "
-                        --       ++ show (path, e)) $
+                        --      ++ show (path, e)) $
                         Total []
                    else Partial (Mutual (map (fst . fst) path ++ [f]))
         | [Unchecked] <- lookupTotal f (tt_ctxt ist) =
-            let argspos = collapseNothing (zip nextargs [0..]) in
-                collapse' Unchecked $
+            let argspos = case collapseNothing (zip nextargs [0..]) of
+                               [] -> [(Nothing, 0)]
+                               x -> x
+--               trace (show (argspos, nextargs, path)) $
+                pathres = 
                   do (a, pos) <- argspos
                      case a of
                         Nothing -> -- don't know, but if the
@@ -662,7 +679,10 @@ checkMP ist i mp = if i > 0
                                                           pos
                               _ -> trace ("Shouldn't happen " ++ show e) $
                                       return (Partial Itself)
-                            else return Unchecked
+                            else return Unchecked in
+--                   trace (show (desc, argspos, path, es, pathres)) $ 
+                  collapse' Unchecked pathres
+
         | [Total a] <- lookupTotal f (tt_ctxt ist) = Total a
         | [Partial _] <- lookupTotal f (tt_ctxt ist) = Partial (Other [f])
         | otherwise = Unchecked
@@ -671,8 +691,8 @@ allNothing xs = null (collapseNothing (zip xs [0..]))
 
 collapseNothing ((Nothing, _) : xs)
    = filter (\ (x, _) -> case x of
-                              Nothing -> False
-                              _ -> True) xs
+                             Nothing -> False
+                             _ -> True) xs
 collapseNothing (x : xs) = x : collapseNothing xs
 collapseNothing [] = []
 

@@ -96,7 +96,8 @@ data IState = IState {
     idris_callgraph :: Ctxt CGInfo, -- name, args used in each pos
     idris_calledgraph :: Ctxt [Name],
     idris_docstrings :: Ctxt String,
-    idris_totcheck :: [(FC, Name)],
+    idris_totcheck :: [(FC, Name)], -- names to check totality on 
+    idris_defertotcheck :: [(FC, Name)], -- names to check at the end
     idris_options :: IOption,
     idris_name :: Int,
     idris_lineapps :: [((FilePath, Int), PTerm)],
@@ -186,7 +187,7 @@ data IBCWrite = IBCFix FixDecl
 idrisInit = IState initContext [] [] emptyContext emptyContext emptyContext
                    emptyContext emptyContext emptyContext emptyContext
                    emptyContext emptyContext emptyContext emptyContext
-                   [] defaultOpts 6 [] [] [] [] [] [] [] [] [] [] [] []
+                   [] [] defaultOpts 6 [] [] [] [] [] [] [] [] [] [] [] []
                    [] Nothing Nothing [] [] [] Hidden False [] Nothing [] [] RawOutput
                    True defaultTheme stdout
 

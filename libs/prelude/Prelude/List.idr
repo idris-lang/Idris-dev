@@ -306,7 +306,7 @@ find p (x::xs) =
 findIndex : (a -> Bool) -> List a -> Maybe Nat
 findIndex = findIndex' Z
   where
---     findIndex' : Nat -> (a -> Bool) -> List a -> Maybe Nat
+    findIndex' : Nat -> (a -> Bool) -> List a -> Maybe Nat
     findIndex' cnt p []      = Nothing
     findIndex' cnt p (x::xs) =
       if p x then
@@ -317,7 +317,7 @@ findIndex = findIndex' Z
 findIndices : (a -> Bool) -> List a -> List Nat
 findIndices = findIndices' Z
   where
---     findIndices' : Nat -> (a -> Bool) -> List a -> List Nat
+    findIndices' : Nat -> (a -> Bool) -> List a -> List Nat
     findIndices' cnt p []      = []
     findIndices' cnt p (x::xs) =
       if p x then

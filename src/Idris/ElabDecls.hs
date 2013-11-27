@@ -1005,6 +1005,11 @@ elabClause info opts (cnum, PClause fc fname lhs_in withs rhs_in whereblock)
         let def'' = map (\(n, (i, top, t)) -> (n, (i, top, t, False))) def'
         addDeferred def''
 
+        when (not (null def')) $ do
+           -- check these at the end, when definitions are complete
+           defer_totcheck (fc, fname)
+           mapM_ defer_totcheck (map (\x -> (fc, fst x)) def'')
+
         -- Now the remaining deferred (i.e. no type declarations) clauses
         -- from the where block
 
