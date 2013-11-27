@@ -9,7 +9,7 @@ chr x = prim__intToChar x
 
 -- | Convert the number to its ASCII equivalent.
 ord : Char -> Int
-ord x = prim__charToInt
+ord x = prim__charToInt x
 
 -- | Returns true if the character is in the range [A-Z].
 isUpper : Char -> Bool
@@ -64,6 +64,6 @@ isHexDigit x = elem (toUpper x) hexChars where
 
 -- | Returns true if the character is an octal digit.
 isOctDigit : Char -> Bool
-isOctDigit x = (x >= '0' && x <= '9')
+isOctDigit x = (x >= '0' && x <= '7')
 
 -- --------------------------------------------------------------------- [ EOF ]
