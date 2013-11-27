@@ -253,14 +253,14 @@ instance Sized Name where
 instance Pretty Name where
   pretty (UN n) = text n
   pretty (NS n s) = pretty n
-  pretty (MN i s) = text "«" <+> text s <+> (text . show $ i) <+> text "»"
+  pretty (MN i s) = lbrace <+> text s <+> (text . show $ i) <+> rbrace
   pretty (SN s) = text (show s)
 
 instance Show Name where
     show (UN n) = n
     show (NS n s) = showSep "." (reverse s) ++ "." ++ show n
     show (MN _ "underscore") = "_"
-    show (MN i s) = "«" ++ s ++ show i ++ "»"
+    show (MN i s) = "{" ++ s ++ show i ++ "}"
     show (SN s) = show s
     show NErased = "_"
 

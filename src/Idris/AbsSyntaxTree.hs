@@ -940,7 +940,7 @@ prettyImp impl = prettySe 10
         prettyBasic n
       where
         prettyBasic n@(UN _) = pretty n
-        prettyBasic n@(MN _ _) = pretty n
+        prettyBasic (MN _ s) = text s
         prettyBasic (NS n s) = (foldr (<>) empty (intersperse (text ".") (map text $ reverse s))) <> prettyBasic n
         prettyBasic (SN sn) = text (show sn)
     prettySe p (PLam n ty sc) =
@@ -1126,7 +1126,7 @@ showName ist bnd impl colour n = case ist of
                                    Nothing -> showbasic n
     where name = if impl then show n else showbasic n
           showbasic n@(UN _) = show n
-          showbasic n@(MN _ _) = show n
+          showbasic (MN _ s) = s
           showbasic (NS n s) = showSep "." (reverse s) ++ "." ++ showbasic n
           showbasic (SN s) = show s
           fst3 (x, _, _) = x
