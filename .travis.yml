@@ -14,7 +14,8 @@ script:
   - cabal configure -f FFI -f LLVM
   - cabal build
   - cabal copy
-  - make -j2 test
-  - make -j2 test_llvm
-  - make -j2 test_java
-
+  - make -j2 $TESTS
+env:
+  - TESTS=test
+  - TESTS=test_java
+  - TESTS=test_llvm
