@@ -705,7 +705,8 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
                                                        pdef pdef pdef_inl pdef' ty)
                           addIBC (IBCDef n)
                           setTotality n tot
-                          when (not reflect) $ totcheck (fc, n)
+                          when (not reflect) $ do totcheck (fc, n)
+                                                  defer_totcheck (fc, n)
                           when (tot /= Unchecked) $ addIBC (IBCTotal n tot)
                           i <- getIState
                           case lookupDef n (tt_ctxt i) of
@@ -1006,8 +1007,6 @@ elabClause info opts (cnum, PClause fc fname lhs_in withs rhs_in whereblock)
         addDeferred def''
 
         when (not (null def')) $ do
-           -- check these at the end, when definitions are complete
-           defer_totcheck (fc, fname)
            mapM_ defer_totcheck (map (\x -> (fc, fst x)) def'')
 
         -- Now the remaining deferred (i.e. no type declarations) clauses

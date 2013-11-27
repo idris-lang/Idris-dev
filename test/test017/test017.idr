@@ -20,14 +20,16 @@ ordElim (Suc o) P mZ mSuc mSup = mSuc o (ordElim o P mZ mSuc mSup)
 ordElim (Sup f) P mZ mSuc mSup =
    mSup f (\n => ordElim (f n) P mZ mSuc mSup)
 
-myplus' : Nat -> Nat -> Nat
-myplus : Nat -> Nat -> Nat
+-- For now, not going to support this
 
-myplus Z y     = y
-myplus (S k) y = S (myplus' k y)
-
-myplus' Z y     = y
-myplus' (S k) y = S (myplus y k)
+-- myplus' : Nat -> Nat -> Nat
+-- myplus : Nat -> Nat -> Nat
+-- 
+-- myplus Z y     = y
+-- myplus (S k) y = S (myplus' k y)
+-- 
+-- myplus' Z y     = y
+-- myplus' (S k) y = S (myplus y k)
 
 mnubBy : (a -> a -> Bool) -> List a -> List a
 mnubBy = nubBy' []

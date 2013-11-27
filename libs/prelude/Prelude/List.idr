@@ -58,10 +58,10 @@ last (x::y::ys) p    = last (y::ys) refl
 
 last' : (l : List a) -> Maybe a
 last' []      = Nothing
-last' (x::xs) =
+last' (x::xs) = 
   case xs of
-    []    => Just x
-    y::ys => last' xs
+    []      => Just x
+    y :: ys => last' xs
 
 init : (l : List a) -> (isCons l = True) -> List a
 init []         refl   impossible

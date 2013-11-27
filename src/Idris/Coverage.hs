@@ -630,12 +630,12 @@ checkMP ist i mp = if i > 0
            = let res = tryPath d path mp arg in
                  trace (show mp ++ "\n" ++ show arg ++ " " ++ show res) res
 
-    tryPath :: Int -> [(SCGEntry, Int)] -> MultiPath -> Int -> Totality
+    tryPath :: Int -> [((SCGEntry, Int), Int)] -> MultiPath -> Int -> Totality
     tryPath desc path [] _ = Total []
 --     tryPath desc path ((UN "believe_me", _) : _) arg
 --             = Partial BelieveMe
     -- if we get to a constructor, it's fine as long as it's strictly positive
-    tryPath desc path ((f, _) :es) arg
+    tryPath desc path ((f, _) : es) arg
         | [TyDecl (DCon _ _) _] <- lookupDef f (tt_ctxt ist)
             = case lookupTotal f (tt_ctxt ist) of
                    [Total _] -> Unchecked -- okay so far
@@ -646,12 +646,15 @@ checkMP ist i mp = if i > 0
     tryPath desc path (e@(f, args) : es) arg
         | e `elem` es && allNothing args = Partial (Mutual [f])
     tryPath desc path (e@(f, nextargs) : es) arg
-        | Just d <- lookup e path
+        | Just d <- lookup (e, arg) path
             = if desc > 0
                    then -- trace ("Descent " ++ show (desc - d) ++ " "
                         --      ++ show (path, e)) $
                         Total []
-                   else Partial (Mutual (map (fst . fst) path ++ [f]))
+                   else Partial (Mutual (map (fst . fst . fst) path ++ [f]))
+        | e `elem` map (fst . fst) path
+           && not (f `elem` map fst es) 
+              = Partial (Mutual (map (fst . fst . fst) path ++ [f]))
         | [Unchecked] <- lookupTotal f (tt_ctxt ist) =
             let argspos = case collapseNothing (zip nextargs [0..]) of
                                [] -> [(Nothing, 0)]
@@ -664,24 +667,24 @@ checkMP ist i mp = if i > 0
                                    -- rest definitely terminates without
                                    -- any cycles with route so far,
                                    -- then we might yet be total
-                            case collapse (map (tryPath (-10000) ((e, 0):path) es)
+                            case collapse (map (tryPath 0 (((e, arg), 0):path) es)
                                           [0..length nextargs - 1]) of
                                 Total _ -> return Unchecked
                                 x -> return x
                         Just (nextarg, sc) ->
                           if nextarg == arg then
                             case sc of
-                              Same -> return $ tryPath desc ((e, desc) : path)
+                              Same -> return $ tryPath desc (((e, arg), desc) : path)
                                                        es pos
                               Smaller -> return $ tryPath (desc+1)
-                                                          ((e, desc):path)
+                                                          (((e, arg), desc) : path)
                                                           es
                                                           pos
                               _ -> trace ("Shouldn't happen " ++ show e) $
                                       return (Partial Itself)
                             else return Unchecked in
 --                   trace (show (desc, argspos, path, es, pathres)) $ 
-                  collapse' Unchecked pathres
+                   collapse' Unchecked pathres
 
         | [Total a] <- lookupTotal f (tt_ctxt ist) = Total a
         | [Partial _] <- lookupTotal f (tt_ctxt ist) = Partial (Other [f])
