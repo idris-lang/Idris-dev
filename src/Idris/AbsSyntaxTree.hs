@@ -37,6 +37,7 @@ data IOption = IOption { opt_logLevel   :: Int,
                          opt_errContext :: Bool,
                          opt_repl       :: Bool,
                          opt_verbose    :: Bool,
+                         opt_nobanner   :: Bool,
                          opt_quiet      :: Bool,
                          opt_codegen    :: Codegen,
                          opt_outputTy   :: OutputType,
@@ -57,6 +58,7 @@ defaultOpts = IOption { opt_logLevel   = 0
                       , opt_errContext = False
                       , opt_repl       = True
                       , opt_verbose    = True
+                      , opt_nobanner   = False
                       , opt_quiet      = False
                       , opt_codegen    = ViaC
                       , opt_outputTy   = Executable
@@ -257,6 +259,7 @@ data Opt = Filename String
          | Ver
          | Usage
          | Quiet
+         | NoBanner
          | ColourREPL Bool
          | Ideslave
          | ShowLibs
