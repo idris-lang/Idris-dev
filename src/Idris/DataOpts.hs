@@ -21,15 +21,20 @@ import Debug.Trace
 forceArgs :: Name -> Name -> Type -> Idris ()
 forceArgs typeName n t = do
     ist <- getIState
-    let ftarget = forcedInTarget 0 t
-        fargs   = addCollapsibleArgs ist 0 t ftarget
+    let fargs = replace () $ getForcedArgs ist typeName t
         copt = case lookupCtxt n (idris_optimisation ist) of
-          []     -> Optimise False False (W IM.empty) []
-          (op:_) -> op
+          []   -> Optimise False False (W IM.empty) []
+          op:_ -> op
         opts = addDef n (copt { forceable = W fargs }) (idris_optimisation ist)
     putIState (ist { idris_optimisation = opts })
     addIBC (IBCOpt n)
     iLOG $ "Forced: " ++ show n ++ " " ++ show fargs ++ "\n   from " ++ show t
+  where
+    replace :: b -> ForceMap' a -> ForceMap' b
+    replace x = M.map (fmap $ const x)
+
+getForcedArgs :: IState -> Name -> Type -> ForceMap
+getForcedArgs ist typeName t = addCollapsibleArgs 0 t $ forcedInTarget 0 t
   where
     maxUnion = IM.unionWith max
 
@@ -37,16 +42,16 @@ forceArgs typeName n t = do
     -- the term with the number i so that we can recognize them anytime later.
     label i = instantiate $ P Bound (MN i "ctor_arg") Erased
 
-    addCollapsibleArgs :: IState -> Int -> Type -> ForceMap -> ForceMap
-    addCollapsibleArgs ist i (Bind n (Pi ty) rest) alreadyForceable
-        = addCollapsibleArgs ist (i+1) (label i rest) (forceable $ unApply ty)
+    addCollapsibleArgs :: Int -> Type -> ForceMap -> ForceMap
+    addCollapsibleArgs i (Bind vn (Pi ty) rest) alreadyForceable
+        = addCollapsibleArgs (i+1) (label i rest) (forceable $ unApply ty)
       where
-        forceable (P _ n' _, args)
+        forceable (P _ tn _, args)
             -- if `ty' is collapsible, the argument is unconditionally forceable
-            | n' `collapsibleIn` ist  
+            | isCollapsible tn
             = IM.insert i Forceable alreadyForceable
 
-            | n' == typeName
+            | tn == typeName
             -- a recursive occurrence with known indices is conditionally forceable
             = IM.insertWith max i CondForceable
                 -- and it can also force variables guarded in its indices
@@ -54,12 +59,12 @@ forceArgs typeName n t = do
 
         forceable _ = alreadyForceable
 
-        collapsibleIn :: Name -> IState -> Bool
-        n `collapsibleIn` ist = case lookupCtxt n (idris_optimisation ist) of
+        isCollapsible :: Name -> Bool
+        isCollapsible n = case lookupCtxt n (idris_optimisation ist) of
             [oi] -> collapsible oi
             _    -> False
 
-    addCollapsibleArgs _ _ _ fs = fs
+    addCollapsibleArgs _ _ fs = fs
 
     forcedInTarget :: Int -> Type -> ForceMap
     forcedInTarget i (Bind _ (Pi _) rest) = forcedInTarget (i+1) (label i rest)

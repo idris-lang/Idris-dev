@@ -759,14 +759,46 @@ deriving instance NFData ClassInfo
 
 -- An argument is conditionally forceable iff its forceability
 -- depends on the collapsibility of the whole type.
-data Forceability =
-      Unforceable
-    | CondForceable
-    | Forceable (Int -> [Term] -> Term) -- should this be a term? shouldn't this emit a new function?
-    deriving (Eq, Ord, Show, Enum, Bounded)
-type ForceMap = IntMap Forceability
+data Forceability a =
 
--- This must be here until we fix the Binary instance for IntMaps :(
+      -- Unforceable arguments, these cannot be erased.
+      Unforceable
+
+      -- CondForceable arguments don't need a reconstruction function
+      -- because either the type gets collapsed completely
+      -- or they don't get erased.
+    | CondForceable
+
+      -- Forceable arguments may carry a reconstruction function
+      -- operating on some context. Usually, the context is:
+      --   (in arguments guarded in recursive occurrences)
+      --     the value of an argument which is a recursive occurrence of the type
+      --   (in arguments forced from the index in the constructor target)
+      --     the index of the type family
+    | Forceable a
+
+    deriving (Show, Enum, Bounded)
+
+instance Eq (Forceability a) where
+    Unforceable   == Unforceable   = True
+    CondForceable == CondForceable = True
+    Forceable _   == Forceable _   = True
+
+instance Ord (Forceability a) where
+    compare  Unforceable     Unforceable    = EQ
+    compare  Unforceable     CondForceable  = LT
+    compare  Unforceable    (Forceable _  ) = LT
+    compare  CondForceable   Unforceable    = GT
+    compare  CondForceable   CondForceable  = EQ
+    compare  CondForceable  (Forceable _  ) = LT
+    compare (Forceable _  )  Unforceable    = GT
+    compare (Forceable _  )  CondForceable  = GT
+    compare (Forceable _  ) (Forceable _  ) = EQ
+
+type ForceMap' a = IntMap (Forceability a)
+type ForceMap = ForceMap' ()
+
+-- This has to be here until we fix the Binary instance for IntMaps :(
 newtype W a = W a deriving Show
 unW (W x) = x
 
