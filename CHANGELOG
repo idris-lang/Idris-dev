@@ -19,8 +19,8 @@ New in 0.9.10:
   actually infinite stream.
 * Add '%reflection' option for functions, for compile-time operations on
   syntax.
-* Add 'quoteGoal x by p in e' which makes x equal to p applied to the goal
-  in the scope e.
+* Add expression form 'quoteGoal x by p in e' which applies p to the expected
+  expression type and binds the result to x in the scope e.
 * Performance improvements in Strings library.
 * Library reorganisation, separated into prelude/ and base/.
 
