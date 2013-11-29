@@ -93,6 +93,7 @@ fnName :: IdrisParser Name
 fnName = try operatorFront <|> name <?> "function name"
 
 {- | Parses a fixity declaration
+
 @
 Fixity ::=
   FixityType Natural_t OperatorList Terminator
@@ -128,6 +129,7 @@ fixity = do pushIndent
                    extractName (Fix _ n) = n
 
 {- | Parses a fixity declaration type (i.e. infix or prefix, associtavity)
+
 @
     FixityType ::=
       'infixl'

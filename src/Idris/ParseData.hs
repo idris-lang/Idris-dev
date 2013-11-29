@@ -34,8 +34,11 @@ import qualified Data.Text as T
 import qualified Data.ByteString.UTF8 as UTF8
 
 {- |Parses a record type declaration
+
+@
 Record ::=
     DocComment Accessibility? 'record' FnName TypeSig 'where' OpenBlock Constructor KeepTerminator CloseBlock;
+@
 -}
 record :: SyntaxInfo -> IdrisParser PDecl
 record syn = do (doc, acc) <- try (do
@@ -68,26 +71,43 @@ record syn = do (doc, acc) <- try (do
     toFreeze x = x
 
 {- | Parses data declaration type (normal or codata)
+
+@
 DataI ::= 'data' | 'codata';
+@
 -}
 dataI :: IdrisParser Bool
 dataI = do reserved "data"; return False
     <|> do reserved "codata"; return True
 
 {- | Parses a data type declaration
+
+@
 Data ::= DocComment? Accessibility? DataI FnName TypeSig ExplicitTypeDataRest?
        | DocComment? Accessibility? DataI FnName Name*   DataRest?
        ;
-Constructor' ::= Constructor KeepTerminator;
-ExplicitTypeDataRest ::= 'where' OpenBlock Constructor'* CloseBlock;
+@
 
+@
+Constructor' ::= Constructor KeepTerminator;
+@
+
+@
+ExplicitTypeDataRest ::= 'where' OpenBlock Constructor'* CloseBlock;
+@
+
+@
 DataRest ::= '=' SimpleConstructorList Terminator
-            | 'where'!
+           | 'where'!
            ;
+@
+
+@
 SimpleConstructorList ::=
     SimpleConstructor
   | SimpleConstructor '|' SimpleConstructorList
   ;
+@
 -}
 data_ :: SyntaxInfo -> IdrisParser PDecl
 data_ syn = do (doc, acc, co) <- try (do
@@ -140,7 +160,10 @@ data_ syn = do (doc, acc, co) <- try (do
 
 
 {- | Parses a type constructor declaration
+
+@
   Constructor ::= DocComment? FnName TypeSig;
+@
 -}
 constructor :: SyntaxInfo -> IdrisParser (String, Name, PTerm, FC)
 constructor syn
@@ -153,7 +176,10 @@ constructor syn
       <?> "constructor"
 
 {- | Parses a constructor for simple discriminative union data types
+
+@
   SimpleConstructor ::= FnName SimpleExpr* DocComment?
+@
 -}
 simpleConstructor :: SyntaxInfo -> IdrisParser (String, Name, [PTerm], FC)
 simpleConstructor syn
@@ -166,8 +192,11 @@ simpleConstructor syn
           return (doc, cn, args, fc)
        <?> "constructor"
 
-{- | Parses a dsl block declaration
+{- | Parses a dsl block declaration
+
+@
 DSL ::= 'dsl' FnName OpenBlock Overload'+ CloseBlock;
+@
  -}
 dsl :: SyntaxInfo -> IdrisParser PDecl
 dsl syn = do reserved "dsl"
@@ -197,8 +226,14 @@ checkDSL :: DSL -> IdrisParser ()
 checkDSL dsl = return ()
 
 {- | Parses a DSL overload declaration
+
+@
 OverloadIdentifier ::= 'let' | Identifier;
+@
+
+@
 Overload ::= OverloadIdentifier '=' Expr;
+@
 -}
 overload :: SyntaxInfo -> IdrisParser (String, PTerm)
 overload syn = do o <- identifier <|> do reserved "let"
