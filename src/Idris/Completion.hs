@@ -1,8 +1,8 @@
 -- | Support for command-line completion at the REPL and in the prover
 module Idris.Completion (replCompletion, proverCompletion) where
 
-import Core.Evaluate (ctxtAlist)
-import Core.TT
+import Idris.Core.Evaluate (ctxtAlist)
+import Idris.Core.TT
 
 import Idris.AbsSyntaxTree
 import Idris.Help

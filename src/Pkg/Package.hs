@@ -14,7 +14,7 @@ import Control.Monad
 import Data.List
 import Data.List.Split(splitOn)
 
-import Core.TT
+import Idris.Core.TT
 import Idris.REPL
 import Idris.AbsSyntax
 

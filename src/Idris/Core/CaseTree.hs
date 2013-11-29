@@ -1,10 +1,10 @@
 {-# LANGUAGE PatternGuards, DeriveFunctor, TypeSynonymInstances #-}
 
-module Core.CaseTree(CaseDef(..), SC, SC'(..), CaseAlt, CaseAlt'(..),
+module Idris.Core.CaseTree(CaseDef(..), SC, SC'(..), CaseAlt, CaseAlt'(..),
                      Phase(..), CaseTree,
                      simpleCase, small, namesUsed, findCalls, findUsedArgs) where
 
-import Core.TT
+import Idris.Core.TT
 
 import Control.Monad.State
 import Data.Maybe

@@ -7,9 +7,9 @@ import Idris.DSL
 import Idris.Delaborate
 import Idris.ProofSearch
 
-import Core.Elaborate hiding (Tactic(..))
-import Core.TT
-import Core.Evaluate
+import Idris.Core.Elaborate hiding (Tactic(..))
+import Idris.Core.TT
+import Idris.Core.Evaluate
 
 import Control.Monad
 import Control.Monad.State

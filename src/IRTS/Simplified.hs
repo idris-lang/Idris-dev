@@ -1,7 +1,7 @@
 module IRTS.Simplified where
 
 import IRTS.Defunctionalise
-import Core.TT
+import Idris.Core.TT
 import Data.Maybe
 import Control.Monad.State
 

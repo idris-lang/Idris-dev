@@ -1,10 +1,10 @@
 module Idris.ProofSearch(trivial, proofSearch) where
 
-import Core.Elaborate hiding (Tactic(..))
-import Core.TT
-import Core.Evaluate
-import Core.CaseTree
-import Core.Typecheck
+import Idris.Core.Elaborate hiding (Tactic(..))
+import Idris.Core.TT
+import Idris.Core.Evaluate
+import Idris.Core.CaseTree
+import Idris.Core.Typecheck
 
 import Idris.AbsSyntax
 import Idris.Delaborate

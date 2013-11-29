@@ -16,7 +16,7 @@ import Idris.ParseHelpers
 import Idris.ParseOps
 import Idris.DSL
 
-import Core.TT
+import Idris.Core.TT
 
 import Control.Applicative
 import Control.Monad
@@ -907,7 +907,7 @@ Constant ::=
   | Char_t
   ;
 -}
-constant :: IdrisParser Core.TT.Const
+constant :: IdrisParser Idris.Core.TT.Const
 constant =  do reserved "Integer";return (AType (ATInt ITBig))
         <|> do reserved "Int";    return (AType (ATInt ITNative))
         <|> do reserved "Char";   return (AType (ATInt ITChar))

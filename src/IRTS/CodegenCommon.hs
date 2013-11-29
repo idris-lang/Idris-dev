@@ -1,6 +1,6 @@
 module IRTS.CodegenCommon where
 
-import Core.TT
+import Idris.Core.TT
 import IRTS.Simplified
 
 import Control.Exception

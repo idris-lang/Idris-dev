@@ -5,7 +5,7 @@ module Idris.DataOpts where
 -- Forcing, detagging and collapsing
 
 import Idris.AbsSyntax
-import Core.TT
+import Idris.Core.TT
 
 import Data.List
 import Data.Maybe

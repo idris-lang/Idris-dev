@@ -13,8 +13,8 @@ import qualified Text.Parser.Token.Highlight as Hi
 
 import Idris.AbsSyntax
 
-import Core.TT
-import Core.Evaluate
+import Idris.Core.TT
+import Idris.Core.Evaluate
 
 import Control.Applicative
 import Control.Monad

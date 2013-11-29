@@ -7,7 +7,7 @@ Replaces stuff from LLVM.General.Target and IRTS.CodegenLLVM.
 
 module Util.LLVMStubs where
 
-import qualified Core.TT as TT
+import qualified Idris.Core.TT as TT
 import IRTS.Simplified
 import IRTS.CodegenCommon
 

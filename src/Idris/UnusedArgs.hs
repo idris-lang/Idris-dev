@@ -2,8 +2,8 @@ module Idris.UnusedArgs where
 
 import Idris.AbsSyntax
 
-import Core.CaseTree
-import Core.TT
+import Idris.Core.CaseTree
+import Idris.Core.TT
 
 import Control.Monad.State
 import Data.Maybe

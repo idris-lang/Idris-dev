@@ -18,7 +18,7 @@
      programs with implicit syntax into fully explicit terms.
 -}
 
-module Core.TT where
+module Idris.Core.TT where
 
 import Control.Monad.State
 import Control.Monad.Trans.Error (Error(..))

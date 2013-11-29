@@ -2,7 +2,7 @@ module IRTS.DumpBC where
 
 import IRTS.Lang
 import IRTS.Simplified
-import Core.TT
+import Idris.Core.TT
 
 import IRTS.Bytecode
 import Data.List

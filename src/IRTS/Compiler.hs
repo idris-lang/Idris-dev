@@ -21,9 +21,9 @@ import Idris.AbsSyntax
 import Idris.UnusedArgs
 import Idris.Error
 
-import Core.TT
-import Core.Evaluate
-import Core.CaseTree
+import Idris.Core.TT
+import Idris.Core.Evaluate
+import Idris.Core.CaseTree
 
 import Control.Monad.State
 import Data.List

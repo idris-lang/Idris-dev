@@ -3,10 +3,10 @@
 
 module Idris.AbsSyntaxTree where
 
-import Core.TT
-import Core.Evaluate
-import Core.Elaborate hiding (Tactic(..))
-import Core.Typecheck
+import Idris.Core.TT
+import Idris.Core.Evaluate
+import Idris.Core.Elaborate hiding (Tactic(..))
+import Idris.Core.Typecheck
 import IRTS.Lang
 import IRTS.CodegenCommon
 import Util.Pretty

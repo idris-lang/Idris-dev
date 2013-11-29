@@ -5,7 +5,7 @@ module IRTS.BCImp where
 
 import IRTS.Lang
 import IRTS.Simplified
-import Core.TT
+import Idris.Core.TT
 
 data Reg = RVal | L Int
 

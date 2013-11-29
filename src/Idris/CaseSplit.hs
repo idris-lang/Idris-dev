@@ -14,9 +14,9 @@ import Idris.Delaborate
 import Idris.Parser
 import Idris.Error
 
-import Core.TT
-import Core.Typecheck
-import Core.Evaluate
+import Idris.Core.TT
+import Idris.Core.Typecheck
+import Idris.Core.Evaluate
 
 import Data.Maybe
 import Data.Char

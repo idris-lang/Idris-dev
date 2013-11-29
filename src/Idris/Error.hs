@@ -6,9 +6,9 @@ import Prelude hiding (catch)
 import Idris.AbsSyntax
 import Idris.Delaborate
 
-import Core.TT
-import Core.Typecheck
-import Core.Constraints
+import Idris.Core.TT
+import Idris.Core.Typecheck
+import Idris.Core.Constraints
 
 import System.Console.Haskeline
 import System.Console.Haskeline.MonadException

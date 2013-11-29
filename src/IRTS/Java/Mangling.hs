@@ -3,7 +3,7 @@
 
 module IRTS.Java.Mangling where
 
-import           Core.TT
+import           Idris.Core.TT
 import           IRTS.Lang
 import           IRTS.Simplified
 

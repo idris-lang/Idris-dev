@@ -5,7 +5,7 @@ import System.Console.ANSI (Color(..))
 
 import Idris.Colours
 import Idris.AbsSyntax
-import Core.TT
+import Idris.Core.TT
 import qualified Idris.Parser as P
 
 import Control.Applicative

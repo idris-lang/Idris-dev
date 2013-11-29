@@ -5,7 +5,7 @@ module IRTS.Bytecode where
 
 import IRTS.Lang
 import IRTS.Simplified
-import Core.TT
+import Idris.Core.TT
 import Data.Maybe
 
 {- We have:

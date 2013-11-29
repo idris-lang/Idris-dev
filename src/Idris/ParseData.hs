@@ -17,8 +17,8 @@ import Idris.ParseOps
 import Idris.ParseExpr
 import Idris.DSL
 
-import Core.TT
-import Core.Evaluate
+import Idris.Core.TT
+import Idris.Core.Evaluate
 
 import Control.Applicative
 import Control.Monad

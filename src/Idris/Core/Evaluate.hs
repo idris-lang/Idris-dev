@@ -1,7 +1,7 @@
 {-# LANGUAGE MultiParamTypeClasses, FlexibleInstances,
              PatternGuards #-}
 
-module Core.Evaluate(normalise, normaliseTrace, normaliseC, normaliseAll,
+module Idris.Core.Evaluate(normalise, normaliseTrace, normaliseC, normaliseAll,
                 rt_simplify, simplify, specialise, hnf, convEq, convEq',
                 Def(..), CaseInfo(..), CaseDefs(..),
                 Accessibility(..), Totality(..), PReason(..),
@@ -17,8 +17,8 @@ import Control.Monad.State
 import qualified Data.Binary as B
 import Data.Binary hiding (get, put)
 
-import Core.TT
-import Core.CaseTree
+import Idris.Core.TT
+import Idris.Core.CaseTree
 
 data EvalState = ES { limited :: [(Name, Int)],
                       nexthole :: Int }

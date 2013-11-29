@@ -8,14 +8,14 @@
    tactics out of the primitives.
 -}
 
-module Core.Elaborate(module Core.Elaborate,
-                      module Core.ProofState) where
+module Idris.Core.Elaborate(module Idris.Core.Elaborate,
+                            module Idris.Core.ProofState) where
 
-import Core.ProofState
-import Core.TT
-import Core.Evaluate
-import Core.Typecheck
-import Core.Unify
+import Idris.Core.ProofState
+import Idris.Core.TT
+import Idris.Core.Evaluate
+import Idris.Core.Typecheck
+import Idris.Core.Unify
 
 import Control.Monad.State
 import Data.Char

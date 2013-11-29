@@ -6,8 +6,8 @@ module Idris.PartialEval(partial_eval, getSpecApps, specType,
 import Idris.AbsSyntax
 import Idris.Delaborate
 
-import Core.TT
-import Core.Evaluate
+import Idris.Core.TT
+import Idris.Core.Evaluate
 
 import Debug.Trace
 

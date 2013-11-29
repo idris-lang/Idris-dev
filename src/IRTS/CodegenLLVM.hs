@@ -4,8 +4,8 @@ module IRTS.CodegenLLVM (codegenLLVM) where
 import IRTS.CodegenCommon
 import IRTS.Lang
 import IRTS.Simplified
-import qualified Core.TT as TT
-import Core.TT (ArithTy(..), IntTy(..), NativeTy(..), nativeTyWidth)
+import qualified Idris.Core.TT as TT
+import Idris.Core.TT (ArithTy(..), IntTy(..), NativeTy(..), nativeTyWidth)
 
 import Util.System
 import Paths_idris

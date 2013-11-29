@@ -1,7 +1,7 @@
 {-# LANGUAGE PatternGuards #-}
 module IRTS.CodegenJava (codegenJava) where
 
-import           Core.TT                   hiding (mkApp)
+import           Idris.Core.TT             hiding (mkApp)
 import           IRTS.CodegenCommon
 import           IRTS.Java.ASTBuilding
 import           IRTS.Java.JTypes

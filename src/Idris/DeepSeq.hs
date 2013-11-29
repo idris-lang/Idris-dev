@@ -1,6 +1,6 @@
 module Idris.DeepSeq where
 
-import Core.TT
+import Idris.Core.TT
 import Idris.AbsSyntax
 
 import Control.DeepSeq
