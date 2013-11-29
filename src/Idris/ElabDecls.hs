@@ -638,7 +638,7 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
                 Just _ -> logLvl 5 $ "Partially evaluated:\n" ++ show pats
                 _ -> return ()
 
-           let optpdef = map debind optpats -- $ map (simple_lhs (tt_ctxt ist)) optpats
+           let optpdef = map debind optpats -- \$ map (simple_lhs (tt_ctxt ist)) optpats
            tree@(CaseDef scargs sc _) <- tclift $
                    simpleCase tcase False reflect CompileTime fc pdef
            cov <- coverage
