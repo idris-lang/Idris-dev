@@ -1121,7 +1121,7 @@ showName ist bnd impl colour n = case ist of
                                    Just i -> if colour then colourise n (idris_colourTheme i) else showbasic n
                                    Nothing -> showbasic n
     where name = if impl then show n else showbasic n
-          showbasic n@(UN _) = show n
+          showbasic n@(UN _) = showCG n
           showbasic (MN _ s) = s
           showbasic (NS n s) = showSep "." (reverse s) ++ "." ++ showbasic n
           showbasic (SN s) = show s
