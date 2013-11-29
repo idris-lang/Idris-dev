@@ -5,6 +5,7 @@
 
 module Data.Heap
 
+%default total
 %access public
 
 abstract data MaxiphobicHeap : Type -> Type where
@@ -82,12 +83,12 @@ insert e = merge $ singleton e
 --------------------------------------------------------------------------------
 
 findMinimum : (h : MaxiphobicHeap a) -> (isEmpty h = False) -> a
-findMinimum Empty          p = ?findMinimumEmptyAbsurd
-findMinimum (Node s l e r) p = e
+findMinimum Empty          refl   impossible
+findMinimum (Node s l e r) p    = e
 
 deleteMinimum : Ord a => (h : MaxiphobicHeap a) -> (isEmpty h = False) -> MaxiphobicHeap a
-deleteMinimum Empty          p = ?deleteMinimumEmptyAbsurd
-deleteMinimum (Node s l e r) p = merge l r
+deleteMinimum Empty          refl   impossible
+deleteMinimum (Node s l e r) p    = merge l r
 
 --------------------------------------------------------------------------------
 -- Conversions to and from lists (and a derived heap sorting algorithm)
@@ -171,22 +172,6 @@ isEmptySizeZeroNodeAbsurd = proof {
     refine FalseElim;
     refine absurdBoolDischarge;
     exact p;
-}
-
-findMinimumEmptyAbsurd = proof {
-    intros;
-    refine FalseElim;
-    refine absurdBoolDischarge;
-    rewrite p;
-    trivial;
-}
-
-deleteMinimumEmptyAbsurd = proof {
-    intros;
-    refine FalseElim;
-    refine absurdBoolDischarge;
-    rewrite p;
-    trivial;
 }
 
 --------------------------------------------------------------------------------

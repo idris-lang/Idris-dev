@@ -110,14 +110,6 @@ irMain :: TT Name -> Idris LDecl
 irMain tm = do i <- ir tm
                return $ LFun [] (MN 0 "runMain") [] (LForce i)
 
-allNames :: [Name] -> Name -> Idris [Name]
-allNames ns n | n `elem` ns = return []
-allNames ns n = do i <- getIState
-                   case lookupCtxtExact n (idris_callgraph i) of
-                      [ns'] -> do more <- mapM (allNames (n:ns)) (map fst (calls ns'))
-                                  return (nub (n : concat more))
-                      _ -> return [n]
-
 mkDecls :: Term -> [Name] -> Idris [(Name, LDecl)]
 mkDecls t used
     = do i <- getIState

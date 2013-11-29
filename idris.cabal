@@ -301,6 +301,11 @@ Flag FFI
   Default:      False
   manual:       True
 
+Flag GMP
+  Description:  Use GMP for Integers
+  Default:      False
+  manual:       True
+
 Library
   hs-source-dirs: src
   Exposed-modules:
@@ -409,6 +414,9 @@ Library
   if flag(FFI)
      build-depends: libffi
      cpp-options:   -DIDRIS_FFI
+  if flag(GMP)
+     build-depends: libffi
+     cpp-options:   -DIDRIS_GMP
 
 Executable idris
   Main-is:        Main.hs
@@ -499,7 +507,7 @@ Executable idris
                 , directory >= 1.2
                 , filepath
                 , haskeline >= 0.7
-                , language-java >= 0.2.2
+                , language-java >= 0.2.6
                 , mtl
                 --, parsec >= 3
                 , parsers == 0.9
@@ -548,4 +556,7 @@ Executable idris
   if flag(FFI)
      build-depends: libffi
      cpp-options:   -DIDRIS_FFI
+  if flag(GMP)
+     build-depends: libffi
+     cpp-options:   -DIDRIS_GMP
 

@@ -53,6 +53,13 @@ usesLLVM flags =
     Just False -> False
     Nothing -> True
 
+usesGMP :: S.ConfigFlags -> Bool
+usesGMP flags =
+  case lookup (FlagName "gmp") (S.configConfigurationsFlags flags) of
+    Just True -> True
+    Just False -> False
+    Nothing -> True
+
 -- -----------------------------------------------------------------------------
 -- Clean
 
@@ -101,9 +108,13 @@ idrisBuild _ flags _ local = do
          where
             makeBuild dir = make verbosity [ "-C", dir, "build" , "IDRIS=" ++ idrisCmd local]
 
-      buildRTS = make verbosity ["-C", "rts", "build"]
+      buildRTS = make verbosity (["-C", "rts", "build"] ++ 
+                                   gmpflag (usesGMP (configFlags local)))
 
       buildLLVM = make verbosity ["-C", "llvm", "build"]
+
+      gmpflag False = []
+      gmpflag True = ["GMP=-DIDRIS_GMP"]
 
 -- -----------------------------------------------------------------------------
 -- Copy/Install

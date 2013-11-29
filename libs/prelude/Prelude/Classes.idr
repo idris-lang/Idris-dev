@@ -11,7 +11,7 @@ infixl 7 <<, >>
 infixl 8 +,-
 infixl 9 *,/
 
--- ------------------------------------------------------- [ Numeric Operators ]
+-- ------------------------------------------------------------- [ Boolean Ops ]
 intToBool : Int -> Bool
 intToBool 0 = False
 intToBool x = True
@@ -19,6 +19,7 @@ intToBool x = True
 boolOp : (a -> a -> Int) -> a -> a -> Bool
 boolOp op x y = intToBool (op x y)
 
+-- ---------------------------------------------------------- [ Equality Class ]
 -- | The Eq class defines inequality and equality.
 class Eq a where
     (==) : a -> a -> Bool
@@ -47,11 +48,12 @@ instance Eq Bool where
     True  == False = False
     False == True  = False
     False == False = True
-
+    
 instance (Eq a, Eq b) => Eq (a, b) where
   (==) (a, c) (b, d) = (a == b) && (c == d)
 
 
+-- ---------------------------------------------------------- [ Ordering Class ]
 data Ordering = LT | EQ | GT
 
 instance Eq Ordering where
@@ -123,6 +125,7 @@ instance (Ord a, Ord b) => Ord (a, b) where
       then compare xl yl
       else compare xr yr
 
+-- --------------------------------------------------------- [ Numerical Class ]
 -- | The Num class defines basic numerical arithmetic.
 class Num a where
     (+) : a -> a -> a
@@ -234,17 +237,86 @@ instance Ord Bits64 where
                 else if l > r then GT
                      else EQ
 
--- | Integer division.
-partial
-div : Integer -> Integer -> Integer
-div = prim__sdivBigInt
 
--- | Integer modulus.
-partial
-mod : Integer -> Integer -> Integer
-mod = prim__sremBigInt
+-- ------------------------------------------------------------- [ Fractionals ]
 
 -- | Fractional division of two Floats.
 (/) : Float -> Float -> Float
 (/) = prim__divFloat
+
+
+-- --------------------------------------------------------------- [ Integrals ]
+%default partial
+
+class Integral a where
+   div : a -> a -> a
+   mod : a -> a -> a
+
+-- ---------------------------------------------------------------- [ Integers ]
+divBigInt : Integer -> Integer -> Integer
+divBigInt = prim__sdivBigInt
+
+modBigInt : Integer -> Integer -> Integer
+modBigInt = prim__sremBigInt
+
+instance Integral Integer where
+  div = divBigInt
+  mod = modBigInt
+
+-- --------------------------------------------------------------------- [ Int ]
+
+divInt : Int -> Int -> Int
+divInt = prim__sdivInt
+
+modInt : Int -> Int -> Int
+modInt = prim__sremInt
+
+instance Integral Int where
+  div = divInt
+  mod = modInt
+
+-- ------------------------------------------------------------------- [ Bits8 ]
+divB8 : Bits8 -> Bits8 -> Bits8
+divB8 = prim__sdivB8
+
+modB8 : Bits8 -> Bits8 -> Bits8
+modB8 = prim__sremB8
+  
+instance Integral Bits8 where
+  div = divB8
+  mod = modB8
+
+-- ------------------------------------------------------------------ [ Bits16 ]
+divB16 : Bits16 -> Bits16 -> Bits16
+divB16 = prim__sdivB16
+
+modB16 : Bits16 -> Bits16 -> Bits16
+modB16 = prim__sremB16
+
+instance Integral Bits16 where
+  div = divB16 
+  mod = modB16 
+
+-- ------------------------------------------------------------------ [ Bits32 ]
+divB32 : Bits32 -> Bits32 -> Bits32
+divB32 = prim__sdivB32
+
+modB32 : Bits32 -> Bits32 -> Bits32
+modB32 = prim__sremB32
+
+instance Integral Bits32 where
+  div = divB32 
+  mod = modB32 
+
+-- ------------------------------------------------------------------ [ Bits64 ]
+divB64 : Bits64 -> Bits64 -> Bits64
+divB64 = prim__sdivB64
+
+modB64 : Bits64 -> Bits64 -> Bits64
+modB64 = prim__sremB64
+
+instance Integral Bits64 where
+  div = divB64 
+  mod = modB64 
+
 

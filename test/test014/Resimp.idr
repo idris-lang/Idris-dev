@@ -119,7 +119,7 @@ using (i: Fin n, gam : Vect n Ty, gam' : Vect n Ty, gam'' : Vect n Ty)
   ioret : a -> IO a
   ioret = return
 
-  interp : Env gam -> {static} Res gam gam' t ->
+  interp : Env gam -> [static] (e : Res gam gam' t) ->
            (Env gam' -> interpTy t -> IO u) -> IO u
 
   interp env (Let val scope) k

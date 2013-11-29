@@ -653,7 +653,7 @@ resolveTC :: Int -> Name -> IState -> ElabD ()
 resolveTC 0 fn ist = fail $ "Can't resolve type class"
 resolveTC 1 fn ist = try' (trivial' ist) (resolveTC 0 fn ist) True
 resolveTC depth fn ist
-      = do compute
+      = do hnf_compute
            g <- goal
            ptm <- get_term
            hs <- get_holes

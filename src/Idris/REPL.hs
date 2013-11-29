@@ -275,6 +275,7 @@ ideslaveProcess fn (Spec t) = process stdout fn (Spec t)
 ideslaveProcess fn (ShowProof n') = process stdout fn (ShowProof n')
 ideslaveProcess fn (HNF t) = process stdout fn (HNF t)
 --ideslaveProcess fn TTShell = process stdout fn TTShell -- need some prove mode!
+ideslaveProcess fn (TestInline t) = process stdout fn (TestInline t)
 
 --that most likely does not work, since we need to wrap
 --input/output of the executed binary...
@@ -301,6 +302,12 @@ ideslaveProcess fn (UnsetOpt ShowImpl) = do process stdout fn (UnsetOpt ShowImpl
                                             iPrintResult ""
 ideslaveProcess fn (SetOpt x) = process stdout fn (SetOpt x)
 ideslaveProcess fn (UnsetOpt x) = process stdout fn (UnsetOpt x)
+ideslaveProcess fn (CaseSplitAt False pos str) = process stdout fn (CaseSplitAt False pos str)
+ideslaveProcess fn (AddProofClauseFrom False pos str) = process stdout fn (AddProofClauseFrom False pos str)
+ideslaveProcess fn (AddClauseFrom False pos str) = process stdout fn (AddClauseFrom False pos str)
+ideslaveProcess fn (AddMissing False pos str) = process stdout fn (AddMissing False pos str)
+ideslaveProcess fn (MakeWith False pos str) = process stdout fn (MakeWith False pos str)
+ideslaveProcess fn (DoProofSearch False pos str xs) = process stdout fn (DoProofSearch False pos str xs)
 ideslaveProcess fn _ = iPrintError "command not recognized or not supported"
 
 
@@ -658,9 +665,12 @@ process h fn (AddMissing updatefile l n)
 process h fn (MakeWith updatefile l n)
    = do src <- runIO $ readFile fn
         let (before, tyline : later) = splitAt (l-1) (lines src)
+        let ind = getIndent tyline
         let with = mkWith tyline n
-        -- add clause before first blank line in 'later'
-        let (nonblank, rest) = span (not . all isSpace) later
+        -- add clause before first blank line in 'later',
+        -- or (TODO) before first line with same indentation as tyline
+        let (nonblank, rest) = span (\x -> not (all isSpace x) &&
+                                           not (ind == getIndent x)) later
         if updatefile then
            do let fb = fn ++ "~"
               runIO $ writeFile fb (unlines (before ++ nonblank)
@@ -668,6 +678,8 @@ process h fn (MakeWith updatefile l n)
                                     unlines rest)
               runIO $ copyFile fb fn
            else ihPrintResult h with
+  where getIndent s = length (takeWhile isSpace s)
+    
 process h fn (DoProofSearch updatefile l n hints)
     = do src <- runIO $ readFile fn
          let (before, tyline : later) = splitAt (l-1) (lines src)
@@ -937,6 +949,7 @@ parseCodegen _ = error "unknown codegen" -- FIXME: partial function
 
 parseArgs :: [String] -> [Opt]
 parseArgs [] = []
+parseArgs ("--nobanner":ns)      = NoBanner : (parseArgs ns)
 parseArgs ("--quiet":ns)         = Quiet : (parseArgs ns)
 parseArgs ("--ideslave":ns)      = Ideslave : (parseArgs ns)
 parseArgs ("--client":ns)        = [Client (showSep " " ns)]
@@ -1078,6 +1091,7 @@ idrisMain :: [Opt] -> Idris ()
 idrisMain opts =
     do let inputs = opt getFile opts
        let quiet = Quiet `elem` opts
+       let nobanner = NoBanner `elem` opts
        let idesl = Ideslave `elem` opts
        let runrepl = not (NoREPL `elem` opts)
        let output = opt getOutput opts
@@ -1139,7 +1153,7 @@ idrisMain opts =
                                                 return ()
        when (not (NoPrelude `elem` opts)) $ do x <- loadModule stdout "Prelude"
                                                return ()
-       when (runrepl && not quiet && not idesl && not (isJust script)) $ iputStrLn banner
+       when (runrepl && not quiet && not idesl && not (isJust script) && not nobanner) $ iputStrLn banner
        ist <- getIState
 
        loadInputs stdout inputs

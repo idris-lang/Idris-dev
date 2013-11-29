@@ -50,7 +50,7 @@ genClauses fc n xs given
         logLvl 5 $ show (map length argss) ++ "\n" ++ show (map length all_args)
         logLvl 10 $ show argss ++ "\n" ++ show all_args
         logLvl 10 $ "Original: \n" ++
-             showSep "\n" (map (\t -> showImp Nothing True False (delab' i t True)) xs)
+             showSep "\n" (map (\t -> showImp Nothing True False (delab' i t True True)) xs)
         -- add an infinite supply of explicit arguments to update the possible
         -- cases for (the return type may be variadic, or function type, sp
         -- there may be more case splitting that the idris_implicits record
@@ -68,13 +68,13 @@ genClauses fc n xs given
         return new
 --         return (map (\t -> PClause n t [] PImpossible []) new)
   where getLHS i term
-            | (f, args) <- unApply term = map (\t -> delab' i t True) args
+            | (f, args) <- unApply term = map (\t -> delab' i t True True) args
             | otherwise = []
 
         lhsApp (PClause _ _ l _ _ _) = l
         lhsApp (PWith _ _ l _ _ _) = l
 
-        noMatch i tm = all (\x -> case matchClause i (delab' i x True) tm of
+        noMatch i tm = all (\x -> case matchClause i (delab' i x True True) tm of
                                           Right _ -> False
                                           Left miss -> True) xs
 
@@ -423,7 +423,15 @@ buildSCG' ist pats args = nub $ concatMap scgPat pats where
       | not (f `elem` pvs) = [(f, [])]
   findCalls _ _ _ = []
 
-  mkChange n args pargs = [(n, sizes args)]
+  expandToArity n args 
+     = case lookupTy n (tt_ctxt ist) of
+            [ty] -> expand 0 (normalise (tt_ctxt ist) [] ty) args
+            _ -> args
+     where expand i (Bind n (Pi _) sc) (x : xs) = x : expand (i + 1) sc xs
+           expand i (Bind n (Pi _) sc) [] = Just (i, Same) : expand (i + 1) sc []
+           expand i _ xs = xs
+
+  mkChange n args pargs = [(n, expandToArity n (sizes args))]
     where
       sizes [] = []
       sizes (a : as) = checkSize a pargs 0 : sizes as
@@ -574,12 +582,16 @@ checkSizeChange n = do
                   -- thread, then the function terminates
                   -- also need to checks functions called are all total
                   -- (Unchecked is okay as we'll spot problems here)
-                  let tot = map (checkMP ist (length (argsdef cg))) ms
+                  let tot = map (checkMP ist (getArity ist n)) ms
                   logLvl 4 $ "Generated " ++ show (length tot) ++ " paths"
                   logLvl 6 $ "Paths for " ++ show n ++ " yield " ++ (show tot)
                   return (noPartial tot)
        [] -> do logLvl 5 $ "No paths for " ++ show n
                 return Unchecked
+  where getArity ist n 
+          = case lookupTy n (tt_ctxt ist) of
+                 [ty] -> arity (normalise (tt_ctxt ist) [] ty)
+                 _ -> error "Can't happen: checkSizeChange.getArity"
 
 type MultiPath = [SCGEntry]
 
@@ -609,19 +621,21 @@ mkMultiPaths ist path cg
 
 checkMP :: IState -> Int -> MultiPath -> Totality
 checkMP ist i mp = if i > 0
-                     then collapse (map (tryPath 0 [] mp) [0..i-1])
+                     then let paths = (map (tryPath 0 [] mp) [0..i-1]) in
+--                               trace ("Paths " ++ show paths) $
+                               collapse paths
                      else tryPath 0 [] mp 0
   where
     tryPath' d path mp arg
            = let res = tryPath d path mp arg in
                  trace (show mp ++ "\n" ++ show arg ++ " " ++ show res) res
 
-    tryPath :: Int -> [(SCGEntry, Int)] -> MultiPath -> Int -> Totality
+    tryPath :: Int -> [((SCGEntry, Int), Int)] -> MultiPath -> Int -> Totality
     tryPath desc path [] _ = Total []
 --     tryPath desc path ((UN "believe_me", _) : _) arg
 --             = Partial BelieveMe
     -- if we get to a constructor, it's fine as long as it's strictly positive
-    tryPath desc path ((f, _) :es) arg
+    tryPath desc path ((f, _) : es) arg
         | [TyDecl (DCon _ _) _] <- lookupDef f (tt_ctxt ist)
             = case lookupTotal f (tt_ctxt ist) of
                    [Total _] -> Unchecked -- okay so far
@@ -632,37 +646,46 @@ checkMP ist i mp = if i > 0
     tryPath desc path (e@(f, args) : es) arg
         | e `elem` es && allNothing args = Partial (Mutual [f])
     tryPath desc path (e@(f, nextargs) : es) arg
-        | Just d <- lookup e path
+        | Just d <- lookup (e, arg) path
             = if desc > 0
                    then -- trace ("Descent " ++ show (desc - d) ++ " "
-                        --       ++ show (path, e)) $
+                        --      ++ show (path, e)) $
                         Total []
-                   else Partial (Mutual (map (fst . fst) path ++ [f]))
+                   else Partial (Mutual (map (fst . fst . fst) path ++ [f]))
+        | e `elem` map (fst . fst) path
+           && not (f `elem` map fst es) 
+              = Partial (Mutual (map (fst . fst . fst) path ++ [f]))
         | [Unchecked] <- lookupTotal f (tt_ctxt ist) =
-            let argspos = collapseNothing (zip nextargs [0..]) in
-                collapse' Unchecked $
+            let argspos = case collapseNothing (zip nextargs [0..]) of
+                               [] -> [(Nothing, 0)]
+                               x -> x
+--               trace (show (argspos, nextargs, path)) $
+                pathres = 
                   do (a, pos) <- argspos
                      case a of
                         Nothing -> -- don't know, but if the
                                    -- rest definitely terminates without
                                    -- any cycles with route so far,
                                    -- then we might yet be total
-                            case collapse (map (tryPath (-10000) ((e, 0):path) es)
+                            case collapse (map (tryPath 0 (((e, arg), 0):path) es)
                                           [0..length nextargs - 1]) of
                                 Total _ -> return Unchecked
                                 x -> return x
                         Just (nextarg, sc) ->
                           if nextarg == arg then
                             case sc of
-                              Same -> return $ tryPath desc ((e, desc) : path)
+                              Same -> return $ tryPath desc (((e, arg), desc) : path)
                                                        es pos
                               Smaller -> return $ tryPath (desc+1)
-                                                          ((e, desc):path)
+                                                          (((e, arg), desc) : path)
                                                           es
                                                           pos
                               _ -> trace ("Shouldn't happen " ++ show e) $
                                       return (Partial Itself)
-                            else return Unchecked
+                            else return Unchecked in
+--                   trace (show (desc, argspos, path, es, pathres)) $ 
+                   collapse' Unchecked pathres
+
         | [Total a] <- lookupTotal f (tt_ctxt ist) = Total a
         | [Partial _] <- lookupTotal f (tt_ctxt ist) = Partial (Other [f])
         | otherwise = Unchecked
@@ -671,8 +694,8 @@ allNothing xs = null (collapseNothing (zip xs [0..]))
 
 collapseNothing ((Nothing, _) : xs)
    = filter (\ (x, _) -> case x of
-                              Nothing -> False
-                              _ -> True) xs
+                             Nothing -> False
+                             _ -> True) xs
 collapseNothing (x : xs) = x : collapseNothing xs
 collapseNothing [] = []
 

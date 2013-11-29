@@ -55,7 +55,7 @@ natToFin (S k) (S j) with (natToFin k j)
 natToFin _ _ = Nothing
 
 integerToFin : Integer -> (n : Nat) -> Maybe (Fin n)
-integerToFin x = natToFin (cast x)
+integerToFin x n = if x >= 0 then natToFin (cast x) n else Nothing
 
 data IsJust : Maybe a -> Type where
      ItIsJust : IsJust {a} (Just x)

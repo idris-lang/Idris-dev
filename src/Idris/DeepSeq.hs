@@ -13,7 +13,7 @@ instance NFData Raw where
         rnf (RApp x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
         rnf RType = ()
         rnf (RForce x1) = rnf x1 `seq` ()
-        rnf (RConstant x1) = rnf x1 `seq` ()
+        rnf (RConstant x1) = x1 `seq` ()
 
 instance NFData FC where
         rnf (FC x1 x2 x3) = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` ()
@@ -31,26 +31,6 @@ instance NFData SpecialName where
         rnf (ParentN x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
         rnf (MethodN x1) = rnf x1 `seq` ()
         rnf (CaseN x1) = rnf x1 `seq` ()
-
-instance NFData Const where
-        rnf (I x1) = rnf x1 `seq` ()
-        rnf (BI x1) = rnf x1 `seq` ()
-        rnf (Fl x1) = rnf x1 `seq` ()
-        rnf (Ch x1) = rnf x1 `seq` ()
-        rnf (Str x1) = rnf x1 `seq` ()
-        rnf (B8 x1) = rnf x1 `seq` ()
-        rnf (B16 x1) = rnf x1 `seq` ()
-        rnf (B32 x1) = rnf x1 `seq` ()
-        rnf (B64 x1) = rnf x1 `seq` ()
-        rnf (B8V x1) = rnf x1 `seq` ()
-        rnf (B16V x1) = rnf x1 `seq` ()
-        rnf (B32V x1) = rnf x1 `seq` ()
-        rnf (B64V x1) = rnf x1 `seq` ()
-        rnf (AType x1) = rnf x1 `seq` ()
-        rnf StrType = ()
-        rnf PtrType = ()
-        rnf VoidType = ()
-        rnf Forgot = ()
 
 instance NFData IntTy where
         rnf (ITFixed x1) = rnf x1 `seq` ()
@@ -132,7 +112,7 @@ instance (NFData n) => NFData (TT n) where
         rnf (V x1) = rnf x1 `seq` ()
         rnf (Bind x1 x2 x3) = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` ()
         rnf (App x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
-        rnf (Constant x1) = rnf x1 `seq` ()
+        rnf (Constant x1) = x1 `seq` ()
         rnf (Proj x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
         rnf Erased = ()
         rnf Impossible = ()
@@ -271,7 +251,7 @@ instance NFData PTerm where
         rnf PType = ()
         rnf (PGoal x1 x2 x3 x4)
           = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` rnf x4 `seq` ()
-        rnf (PConstant x1) = rnf x1 `seq` ()
+        rnf (PConstant x1) = x1 `seq` ()
         rnf Placeholder = ()
         rnf (PDoBlock x1) = rnf x1 `seq` ()
         rnf (PIdiom x1 x2) = rnf x1 `seq` rnf x2 `seq` ()

@@ -1,7 +1,7 @@
 ./test003a.lidr:1:0:Program line next to comment
-a
-d
+'a'
+'d'
 zabcdefg
 gfedcba
-[g, f, e, d, c, b, a]
+['g', 'f', 'e', 'd', 'c', 'b', 'a']
 abcdefg

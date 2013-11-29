@@ -1,4 +1,5 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving, ConstraintKinds, PatternGuards #-}
+{-# OPTIONS_GHC -O0 #-}
 module Idris.Parser(module Idris.Parser,
                     module Idris.ParseExpr,
                     module Idris.ParseData,
@@ -1042,6 +1043,14 @@ loadSource h lidr f
                     i <- getIState
                     mapM_ buildSCG (idris_totcheck i)
                     mapM_ checkDeclTotality (idris_totcheck i)
+
+                    -- Redo totality check for deferred names
+                    let deftots = idris_defertotcheck i
+                    iLOG $ "Totality checking " ++ show deftots
+                    mapM_ (\x -> setTotality x Unchecked) (map snd deftots)
+                    mapM_ buildSCG deftots
+                    mapM_ checkDeclTotality deftots
+
                     iLOG ("Finished " ++ f)
                     ibcsd <- valIBCSubDir i
                     iLOG "Universe checking"

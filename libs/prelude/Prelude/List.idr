@@ -35,42 +35,38 @@ isCons (x::xs) = True
 -- Indexing into lists
 --------------------------------------------------------------------------------
 
-%assert_total
 head : (l : List a) -> (isCons l = True) -> a
-head (x::xs) p = x
+head []      refl   impossible
+head (x::xs) p    = x
 
 head' : (l : List a) -> Maybe a
 head' []      = Nothing
 head' (x::xs) = Just x
 
-%assert_total
 tail : (l : List a) -> (isCons l = True) -> List a
-tail (x::xs) p = xs
+tail []      refl   impossible
+tail (x::xs) p    = xs
 
 tail' : (l : List a) -> Maybe (List a)
 tail' []      = Nothing
 tail' (x::xs) = Just xs
 
-%assert_total
 last : (l : List a) -> (isCons l = True) -> a
-last (x::xs) p =
-  case xs of
-    []    => x
-    y::ys => last (y::ys) ?lastProof
+last []         refl   impossible
+last [x]        p    = x
+last (x::y::ys) p    = last (y::ys) refl
 
 last' : (l : List a) -> Maybe a
 last' []      = Nothing
-last' (x::xs) =
+last' (x::xs) = 
   case xs of
-    []    => Just x
-    y::ys => last' xs
+    []      => Just x
+    y :: ys => last' xs
 
-%assert_total
 init : (l : List a) -> (isCons l = True) -> List a
-init (x::xs) p =
-  case xs of
-    []    => []
-    y::ys => x :: init (y::ys) ?initProof
+init []         refl   impossible
+init [x]        p    = []
+init (x::y::ys) p    = x :: init (y::ys) refl
 
 init' : (l : List a) -> Maybe (List a)
 init' []      = Nothing
@@ -175,17 +171,21 @@ instance Functor List where
 -- Zips and unzips
 --------------------------------------------------------------------------------
 
-%assert_total
 zipWith : (f : a -> b -> c) -> (l : List a) -> (r : List b) ->
   (length l = length r) -> List c
-zipWith f []      []      p = []
-zipWith f (x::xs) (y::ys) p = f x y :: (zipWith f xs ys ?zipWithTailProof)
+zipWith f []      (y::ys) refl   impossible
+zipWith f (x::xs) []      refl   impossible
+zipWith f []      []      p    = []
+zipWith f (x::xs) (y::ys) p    = f x y :: (zipWith f xs ys ?zipWithTailProof)
 
-%assert_total
 zipWith3 : (f : a -> b -> c -> d) -> (x : List a) -> (y : List b) ->
   (z : List c) -> (length x = length y) -> (length y = length z) -> List d
-zipWith3 f []      []      []      refl refl = []
-zipWith3 f (x::xs) (y::ys) (z::zs) p q =
+zipWith3 f _       []      (z::zs) p    refl   impossible
+zipWith3 f _       (y::ys) []      p    refl   impossible
+zipWith3 f []      (y::ys) _       refl q      impossible
+zipWith3 f (x::xs) []      _       refl q      impossible
+zipWith3 f []      []      []      p    q    = []
+zipWith3 f (x::xs) (y::ys) (z::zs) p    q    =
   f x y z :: (zipWith3 f xs ys zs ?zipWith3TailProof ?zipWith3TailProof')
 
 zip : (l : List a) -> (r : List b) -> (length l = length r) -> List (a, b)
@@ -306,7 +306,7 @@ find p (x::xs) =
 findIndex : (a -> Bool) -> List a -> Maybe Nat
 findIndex = findIndex' Z
   where
---     findIndex' : Nat -> (a -> Bool) -> List a -> Maybe Nat
+    findIndex' : Nat -> (a -> Bool) -> List a -> Maybe Nat
     findIndex' cnt p []      = Nothing
     findIndex' cnt p (x::xs) =
       if p x then
@@ -317,7 +317,7 @@ findIndex = findIndex' Z
 findIndices : (a -> Bool) -> List a -> List Nat
 findIndices = findIndices' Z
   where
---     findIndices' : Nat -> (a -> Bool) -> List a -> List Nat
+    findIndices' : Nat -> (a -> Bool) -> List a -> List Nat
     findIndices' cnt p []      = []
     findIndices' cnt p (x::xs) =
       if p x then
@@ -559,16 +559,6 @@ hasAnyNilFalseBody = proof {
 hasAnyByNilFalseStepCase = proof {
     intros;
     rewrite inductiveHypothesis;
-    trivial;
-}
-
-initProof = proof {
-    intros;
-    trivial;
-}
-
-lastProof = proof {
-    intros;
     trivial;
 }
 

@@ -37,6 +37,7 @@ data IOption = IOption { opt_logLevel   :: Int,
                          opt_errContext :: Bool,
                          opt_repl       :: Bool,
                          opt_verbose    :: Bool,
+                         opt_nobanner   :: Bool,
                          opt_quiet      :: Bool,
                          opt_codegen    :: Codegen,
                          opt_outputTy   :: OutputType,
@@ -57,6 +58,7 @@ defaultOpts = IOption { opt_logLevel   = 0
                       , opt_errContext = False
                       , opt_repl       = True
                       , opt_verbose    = True
+                      , opt_nobanner   = False
                       , opt_quiet      = False
                       , opt_codegen    = ViaC
                       , opt_outputTy   = Executable
@@ -96,7 +98,8 @@ data IState = IState {
     idris_callgraph :: Ctxt CGInfo, -- name, args used in each pos
     idris_calledgraph :: Ctxt [Name],
     idris_docstrings :: Ctxt String,
-    idris_totcheck :: [(FC, Name)],
+    idris_totcheck :: [(FC, Name)], -- names to check totality on 
+    idris_defertotcheck :: [(FC, Name)], -- names to check at the end
     idris_options :: IOption,
     idris_name :: Int,
     idris_lineapps :: [((FilePath, Int), PTerm)],
@@ -186,7 +189,7 @@ data IBCWrite = IBCFix FixDecl
 idrisInit = IState initContext [] [] emptyContext emptyContext emptyContext
                    emptyContext emptyContext emptyContext emptyContext
                    emptyContext emptyContext emptyContext emptyContext
-                   [] defaultOpts 6 [] [] [] [] [] [] [] [] [] [] [] []
+                   [] [] defaultOpts 6 [] [] [] [] [] [] [] [] [] [] [] []
                    [] Nothing Nothing [] [] [] Hidden False [] Nothing [] [] RawOutput
                    True defaultTheme stdout
 
@@ -256,6 +259,7 @@ data Opt = Filename String
          | Ver
          | Usage
          | Quiet
+         | NoBanner
          | ColourREPL Bool
          | Ideslave
          | ShowLibs

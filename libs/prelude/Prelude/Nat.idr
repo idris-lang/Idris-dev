@@ -227,9 +227,10 @@ fact (S n) = (S n) * fact n
 -- Division and modulus
 --------------------------------------------------------------------------------
 
-total mod : Nat -> Nat -> Nat
-mod left Z         = left
-mod left (S right) = mod' left left right
+total
+modNat : Nat -> Nat -> Nat
+modNat left Z         = left
+modNat left (S right) = mod' left left right
   where
     total mod' : Nat -> Nat -> Nat -> Nat
     mod' Z        centre right = centre
@@ -239,9 +240,10 @@ mod left (S right) = mod' left left right
       else
         mod' left (centre - (S right)) right
 
-total div : Nat -> Nat -> Nat
-div left Z         = S left               -- div by zero
-div left (S right) = div' left left right
+total
+divNat : Nat -> Nat -> Nat
+divNat left Z         = S left               -- div by zero
+divNat left (S right) = div' left left right
   where
     total div' : Nat -> Nat -> Nat -> Nat
     div' Z        centre right = Z
@@ -251,11 +253,15 @@ div left (S right) = div' left left right
       else
         S (div' left (centre - (S right)) right)
 
+instance Integral Nat where
+  div = divNat
+  mod = modNat
+
 %assert_total
 log2 : Nat -> Nat
 log2 Z = Z
 log2 (S Z) = Z
-log2 n = S (log2 (n `div` 2))
+log2 n = S (log2 (n `divNat` 2))
 
 --------------------------------------------------------------------------------
 -- GCD and LCM
@@ -263,12 +269,12 @@ log2 n = S (log2 (n `div` 2))
 %assert_total
 gcd : Nat -> Nat -> Nat
 gcd a Z = a
-gcd a b = gcd b (a `mod` b)
+gcd a b = gcd b (a `modNat` b)
 
 total lcm : Nat -> Nat -> Nat
 lcm _ Z = Z
 lcm Z _ = Z
-lcm x y = div (x * y) (gcd x y)
+lcm x y = divNat (x * y) (gcd x y)
 
 --------------------------------------------------------------------------------
 -- Properties

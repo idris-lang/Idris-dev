@@ -96,6 +96,11 @@ addTrans t = do i <- getIState
 totcheck :: (FC, Name) -> Idris ()
 totcheck n = do i <- getIState; putIState $ i { idris_totcheck = idris_totcheck i ++ [n] }
 
+defer_totcheck :: (FC, Name) -> Idris ()
+defer_totcheck n 
+   = do i <- getIState; 
+        putIState $ i { idris_defertotcheck = nub (idris_defertotcheck i ++ [n]) }
+
 clear_totcheck :: Idris ()
 clear_totcheck  = do i <- getIState; putIState $ i { idris_totcheck = [] }
 
@@ -140,6 +145,18 @@ addToCG :: Name -> CGInfo -> Idris ()
 addToCG n cg
    = do i <- getIState
         putIState $ i { idris_callgraph = addDef n cg (idris_callgraph i) }
+
+-- Trace all the names in a call graph starting at the given name
+getAllNames :: Name -> Idris [Name]
+getAllNames n = allNames [] n
+
+allNames :: [Name] -> Name -> Idris [Name]
+allNames ns n | n `elem` ns = return []
+allNames ns n = do i <- getIState
+                   case lookupCtxtExact n (idris_callgraph i) of
+                      [ns'] -> do more <- mapM (allNames (n:ns)) (map fst (calls ns'))
+                                  return (nub (n : concat more))
+                      _ -> return [n]
 
 addCoercion :: Name -> Idris ()
 addCoercion n = do i <- getIState
@@ -408,6 +425,17 @@ setREPL t = do i <- getIState
                let opts = idris_options i
                let opt' = opts { opt_repl = t }
                putIState $ i { idris_options = opt' }
+
+setNoBanner :: Bool -> Idris ()
+setNoBanner n = do i <- getIState
+                   let opts = idris_options i
+                   let opt' = opts {opt_nobanner = n}
+                   putIState $ i { idris_options = opt' }
+
+getNoBanner :: Idris Bool
+getNoBanner = do i <- getIState
+                 let opts = idris_options i
+                 return (opt_nobanner opts)
 
 setQuiet :: Bool -> Idris ()
 setQuiet q = do i <- getIState
@@ -879,15 +907,15 @@ addStatics n tm ptm =
     do let (statics, dynamics) = initStatics tm ptm
        let stnames = nub $ concatMap freeArgNames (map snd statics)
        let dnames = nub $ concatMap freeArgNames (map snd dynamics)
-       when (not (null statics)) $
-          logLvl 7 $ show n ++ " " ++ show statics ++ "\n" ++ show dynamics
-                        ++ "\n" ++ show stnames ++ "\n" ++ show dnames
        -- also get the arguments which are 'uniquely inferrable' from
        -- statics (see sec 4.2 of "Scrapping Your Inefficient Engine")
        let statics' = nub $ map fst statics ++
                               filter (\x -> not (elem x dnames)) stnames
        let stpos = staticList statics' tm
        i <- getIState
+       when (not (null statics)) $
+          logLvl 5 $ show n ++ " " ++ show statics' ++ "\n" ++ show dynamics
+                        ++ "\n" ++ show stnames ++ "\n" ++ show dnames
        putIState $ i { idris_statics = addDef n stpos (idris_statics i) }
        addIBC (IBCStatic n)
   where
@@ -899,6 +927,8 @@ addStatics n tm ptm =
                             else (static, dynamic)
     initStatics t pt = ([], [])
 
+    freeArgNames (Bind n (Pi ty) sc) 
+          = nub $ freeArgNames ty 
     freeArgNames tm = let (_, args) = unApply tm in
                           concatMap freeNames args
 

@@ -5,30 +5,33 @@ New in 0.9.10:
   types may now depend on earlier methods.
 * More flexible class instance resolution, so that function types and lambda
   expressions can be made instances of a type class.
-* Add '%reflection' option for functions, for compile-time operations on
-  syntax.
-* Add 'quoteGoal x by p in e' which makes x equal to p applied to the goal
-  in the scope e
 * Add !expr notation for implicit binding of intermediate results in 
-  monadic/do/etc expressions
+  monadic/do/etc expressions.
 * Extend Effects package to cope with possibly failing operations, using
-  "if_valid", "if_error", etc
-* At the REPL, "it" now refers to the previous expression
+  "if_valid", "if_error", etc.
+* At the REPL, "it" now refers to the previous expression.
 * Semantic colouring at the REPL. Turn this off with --nocolour.
-* Some prettifying of error message
+* Some prettifying of error messages.
 * The contents of ~/.idris/repl/init are run at REPL start-up.
-* The REPL stores a command history in ~/.idris/repl/history
+* The REPL stores a command history in ~/.idris/repl/history.
 * The [a..b], [a,b..c], [a..], and [a,b..] syntax now pass the totality
   checker and can thus be used in types. The [x..] syntax now returns an
   actually infinite stream.
+* Add '%reflection' option for functions, for compile-time operations on
+  syntax.
+* Add expression form 'quoteGoal x by p in e' which applies p to the expected
+  expression type and binds the result to x in the scope e.
+* Performance improvements in Strings library.
+* Library reorganisation, separated into prelude/ and base/.
 
 Internal changes
 
-* New module/dependency tree checking
-* New parser implementation with more precise errors
-* Improved type class resolution
-* Compiling Nat via GMP integers
-* Performance improvements in elaboration
+* New module/dependency tree checking.
+* New parser implementation with more precise errors.
+* Improved type class resolution.
+* Compiling Nat via GMP integers.
+* Performance improvements in elaboration.
+* Improvements in termination checking.
 * Various REPL commands to support interactive editing, and a client/server
   mode to allow external invocation of REPL commands.
 

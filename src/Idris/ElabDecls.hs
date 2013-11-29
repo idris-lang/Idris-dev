@@ -613,11 +613,9 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
            -- Look for 'static' names and generate new specialised
            -- definitions for them
 
-           {-
            mapM_ (\ e -> case e of
                            Left _ -> return ()
                            Right (l, r) -> elabPE info fc n r) pats
-                           -}
 
            -- NOTE: Need to store original definition so that proofs which
            -- rely on its structure aren't affected by any changes to the
@@ -707,7 +705,8 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
                                                        pdef pdef pdef_inl pdef' ty)
                           addIBC (IBCDef n)
                           setTotality n tot
-                          when (not reflect) $ totcheck (fc, n)
+                          when (not reflect) $ do totcheck (fc, n)
+                                                  defer_totcheck (fc, n)
                           when (tot /= Unchecked) $ addIBC (IBCTotal n tot)
                           i <- getIState
                           case lookupDef n (tt_ctxt i) of
@@ -729,7 +728,7 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
                [] -> return ()
            return ()
   where
-    noMatch i cs tm = all (\x -> case matchClause i (delab' i x True) tm of
+    noMatch i cs tm = all (\x -> case matchClause i (delab' i x True True) tm of
                                       Right _ -> False
                                       Left miss -> True) cs
 
@@ -789,36 +788,40 @@ elabPE info fc caller r =
      let sa = getSpecApps ist [] r
      mapM_ (mkSpecialised ist) sa
   where 
-    -- TODO: Freeze the newly defined name, make sure it never gets
-    -- reduced when specialising (not quite the same as an 'abstract' name
-    -- so may need a new class (public/abstract/private/specialised)
-    
-    -- Add a PTerm level transformation rule, which is basically the 
+    -- TODO: Add a PTerm level transformation rule, which is basically the 
     -- new definition in reverse (before specialising it). 
     -- RHS => LHS where implicit arguments are left blank in the 
     -- transformation.
 
     -- Apply that transformation after every PClauses elaboration
 
-    mkSpecialised ist specapp = do
-        iputStrLn (show specapp)
-        let specTy = getSpecTy ist specapp
+    mkSpecialised ist specapp_in = do
+        let (specTy, specapp) = getSpecTy ist specapp_in
         let (n, newnm, [(lhs, rhs)]) = getSpecClause ist specapp
         let undef = case lookupDef newnm (tt_ctxt ist) of
                          [] -> True
                          _ -> False
-        iputStrLn $ show (newnm, map (concreteArg ist) (snd specapp))
-        when (undef && all (concreteArg ist) (snd specapp)) $ do
-            let opts = [Specialise ((n, Nothing) : 
-                                     (mapMaybe specName (snd specapp)))]
-            iputStrLn (show specapp)
-            iputStrLn $ "PE definition type : " ++ (show specTy)
+        logLvl 5 $ show (newnm, map (concreteArg ist) (snd specapp))
+        idrisCatch
+          (when (undef && all (concreteArg ist) (snd specapp)) $ do
+            cgns <- getAllNames n
+            let opts = [Specialise (map (\x -> (x, Nothing)) cgns ++ 
+                                     mapMaybe specName (snd specapp))]
+            logLvl 3 $ "Specialising application: " ++ show specapp
+            logLvl 2 $ "New name: " ++ show newnm
+            iLOG $ "PE definition type : " ++ (show specTy)
                         ++ "\n" ++ show opts
-            iputStrLn $ "PE definition " ++ show newnm ++ ":\n" ++
-                        (show lhs ++ " = " ++ show rhs)
+            logLvl 2 $ "PE definition " ++ show newnm ++ ":\n" ++
+                        (showImp Nothing True False lhs ++ " = " ++ 
+                         showImp Nothing True False rhs)
             elabType info defaultSyntax "" fc opts newnm specTy
             let def = [PClause fc newnm lhs [] rhs []]
             elabClauses info fc opts newnm def
+            logLvl 1 $ "Specialised " ++ show newnm)
+          -- if it doesn't work, just don't specialise. Could happen for lots
+          -- of valid reasons (e.g. local variables in scope which can't be
+          -- lifted out).
+          (\e -> logLvl 4 $ "Couldn't specialise: " ++ (pshow ist e)) 
 
     specName (ImplicitS, tm) 
         | (P Ref n _, _) <- unApply tm = Just (n, Just 1)
@@ -840,17 +843,21 @@ elabPE info fc caller r =
     -- get the type of a specialised application
     getSpecTy ist (n, args)
        = case lookupTy n (tt_ctxt ist) of
-              [ty] -> let specty = normalise (tt_ctxt ist) [] (specType args ty) in 
-                          trace (show specty) $ mkPE_TyDecl ist args 
-                                                    (explicitNames specty)
+              [ty] -> let (specty_in, args') = specType args (explicitNames ty)
+                          specty = normalise (tt_ctxt ist) [] (finalise specty_in)
+                          t = mkPE_TyDecl ist args' (explicitNames specty) in
+                          (t, (n, args'))
 --                             (normalise (tt_ctxt ist) [] (specType args ty))
               _ -> error "Can't happen (getSpecTy)"
 
     getSpecClause ist (n, args)
-       = let newnm = UN (show (nsroot n) ++ "_" ++ show (nsroot caller) ++
-                         "__spectest") in -- UN (show n ++ show (map snd args)) in
+       = let newnm = UN ("__"++show (nsroot n) ++ "_" ++ 
+                               showSep "_" (map showArg args)) in 
+                               -- UN (show n ++ show (map snd args)) in
              (n, newnm, mkPE_TermDecl ist newnm n args)
-
+      where showArg (ExplicitS, n) = show n
+            showArg (ImplicitS, n) = show n
+            showArg _ = ""
 
 
 -- Elaborate a value, returning any new bindings created (this will only
@@ -953,9 +960,11 @@ elabClause info opts (cnum, PClause fc fname lhs_in withs rhs_in whereblock)
 
         (clhs_c, clhsty) <- recheckC fc [] lhs_tm
         let clhs = normalise ctxt [] clhs_c
+        
+        logLvl 3 ("Normalised LHS: " ++ showImp Nothing True False (delabMV i clhs))
 
-        addInternalApp (fc_fname fc) (fc_line fc) (delab i clhs)
-        addIBC (IBCLineApp (fc_fname fc) (fc_line fc) (delab i clhs))
+        addInternalApp (fc_fname fc) (fc_line fc) (delabMV i clhs)
+        addIBC (IBCLineApp (fc_fname fc) (fc_line fc) (delabMV i clhs))
 
         logLvl 5 ("Checked " ++ show clhs ++ "\n" ++ show clhsty)
         -- Elaborate where block
@@ -999,6 +1008,9 @@ elabClause info opts (cnum, PClause fc fname lhs_in withs rhs_in whereblock)
         let def'' = map (\(n, (i, top, t)) -> (n, (i, top, t, False))) def'
         addDeferred def''
 
+        when (not (null def')) $ do
+           mapM_ defer_totcheck (map (\x -> (fc, fst x)) def'')
+
         -- Now the remaining deferred (i.e. no type declarations) clauses
         -- from the where block
 
@@ -1013,7 +1025,7 @@ elabClause info opts (cnum, PClause fc fname lhs_in withs rhs_in whereblock)
             OK _ -> return ()
             Error e -> ierror (At fc (CantUnify False clhsty crhsty e [] 0))
         i <- getIState
-        checkInferred fc (delab' i crhs True) rhs
+        checkInferred fc (delab' i crhs True True) rhs
         return $ Right (clhs, crhs)
   where
     decorate (NS x ns)
