@@ -42,8 +42,10 @@ allowImp syn = syn { implicitAllowed = True }
 disallowImp :: SyntaxInfo -> SyntaxInfo
 disallowImp syn = syn { implicitAllowed = False }
 
-{- | Parses an expression as a whole
+{-| Parses an expression as a whole
+@
   FullExpr ::= Expr EOF_t;
+@
  -}
 fullExpr :: SyntaxInfo -> IdrisParser PTerm
 fullExpr syn = do x <- expr syn
@@ -53,7 +55,9 @@ fullExpr syn = do x <- expr syn
 
 
 {- |Parses an expression
+@
   Expr ::= Expr';
+@
 -}
 expr :: SyntaxInfo -> IdrisParser PTerm
 expr syn = do i <- get
@@ -61,10 +65,10 @@ expr syn = do i <- get
 
 {- | Parses either an internally defined expression or
     a user-defined one
-
+@
 Expr' ::=  "External (User-defined) Syntax"
       |   InternalExpr;
-
+@
  -}
 expr' :: SyntaxInfo -> IdrisParser PTerm
 expr' syn =     try (externalExpr syn)
@@ -92,7 +96,7 @@ simpleExternalExpr syn = do i <- get
         _ -> False
     isSimple _ = False
 
-{- | Tries to parse a user-defined expression given a list of syntactic extensions -}
+{- | Tries to parse a user-defined expression given a list of syntactic extensions -}
 extensions :: SyntaxInfo -> [Syntax] -> IdrisParser PTerm
 extensions syn rules = choice (map (try . extension syn) (filter isValid rules))
                        <?> "user-defined expression"
@@ -160,8 +164,8 @@ extension syn (Rule ssym ptm _)
     update ns (PGoal fc r n sc) = PGoal fc (update ns r) n (update ns sc)
     update ns t = t
 
-{- |Parses a (normal) built-in expression
-
+{- | Parses a (normal) built-in expression
+@
 InternalExpr ::=
   App
   | MatchApp
@@ -173,8 +177,9 @@ InternalExpr ::=
   | Let
   | RewriteTerm
   | Pi
-  | DoBlock
+  | DoBlock
   ;
+@
 -}
 internalExpr :: SyntaxInfo -> IdrisParser PTerm
 internalExpr syn =
@@ -193,8 +198,10 @@ internalExpr syn =
      <?> "expression"
 
 {- | Parses a case expression
+@
 CaseExpr ::=
   'case' Expr 'of' OpenBlock CaseOption+ CloseBlock;
+@
 -}
 caseExpr :: SyntaxInfo -> IdrisParser PTerm
 caseExpr syn = do reserved "case"; fc <- getFC
@@ -204,9 +211,11 @@ caseExpr syn = do reserved "case"; fc <- getFC
                <?> "case expression"
 
 {- | Parses a case in a case expression
+@
 CaseOption ::=
   Expr '=>' Expr Terminator
   ;
+@
 -}
 caseOption :: SyntaxInfo -> IdrisParser (PTerm, PTerm)
 caseOption syn = do lhs <- expr (syn { inPattern = True })
@@ -215,9 +224,11 @@ caseOption syn = do lhs <- expr (syn { inPattern = True })
                  <?> "case option"
 
 {- | Parses a proof block
+@
 ProofExpr ::=
   'proof' OpenBlock Tactic'* CloseBlock
   ;
+@
 -}
 proofExpr :: SyntaxInfo -> IdrisParser PTerm
 proofExpr syn = do reserved "proof"
@@ -225,10 +236,12 @@ proofExpr syn = do reserved "proof"
                    return $ PProof ts
                 <?> "proof block"
 
-{- | Parses a tactics block
+{- | Parses a tactics block
+@
 TacticsExpr :=
   'tactics' OpenBlock Tactic'* CloseBlock
 ;
+@
 -}
 tacticsExpr :: SyntaxInfo -> IdrisParser PTerm
 tacticsExpr syn = do reserved "tactics"
@@ -236,7 +249,8 @@ tacticsExpr syn = do reserved "tactics"
                      return $ PTactics ts
                   <?> "tactics block"
 
-{- | Parses a simple expresion
+{- | Parses a simple expression
+@
 SimpleExpr ::=
   '![' Term ']'
   | '?' Name
@@ -257,6 +271,7 @@ SimpleExpr ::=
   | '_'
   | {- External (User-defined) Simple Expression -}
   ;
+@
 -}
 simpleExpr :: SyntaxInfo -> IdrisParser PTerm
 simpleExpr syn =
@@ -295,7 +310,8 @@ simpleExpr syn =
         <?> "expression"
 
 
-{- |Parses the rest of an expression in braces
+{- |Parses the rest of an expression in braces
+@
 Bracketed ::=
   ')'
   | Expr ')'
@@ -305,6 +321,7 @@ Bracketed ::=
   | Expr Operator ')'
   | Name ':' Expr '**' Expr ')'
   ;
+@
 -}
 bracketed :: SyntaxInfo -> IdrisParser PTerm
 bracketed syn =
@@ -377,15 +394,17 @@ modifyConst syn fc (PConstant (BI x))
 modifyConst syn fc x = x
 
 {- | Parses a list literal expression e.g. [1,2,3]
+@
 ListExpr ::=
   '[' ExprList? ']'
 ;
-
+@
+@
 ExprList ::=
   Expr
   | Expr ',' ExprList
   ;
-
+@
  -}
 listExpr :: SyntaxInfo -> IdrisParser PTerm
 listExpr syn = do lchar '['; fc <- getFC; xs <- sepBy (expr syn) (lchar ','); lchar ']'
@@ -398,22 +417,26 @@ listExpr syn = do lchar '['; fc <- getFC; xs <- sepBy (expr syn) (lchar ','); lc
 
 
 {- | Parses an alternative expression
+@
   Alt ::= '(|' Expr_List '|)';
 
   Expr_List ::=
     Expr'
     | Expr' ',' Expr_List
   ;
+@
 -}
 alt :: SyntaxInfo -> IdrisParser PTerm
 alt syn = do symbol "(|"; alts <- sepBy1 (expr' syn) (lchar ','); symbol "|)"
              return (PAlternative False alts)
 
 {- | Parses a possibly hidden simple expression
+@
 HSimpleExpr ::=
   '.' SimpleExpr
   | SimpleExpr
   ;
+@
 -}
 hsimpleExpr :: SyntaxInfo -> IdrisParser PTerm
 hsimpleExpr syn =
@@ -424,9 +447,11 @@ hsimpleExpr syn =
   <?> "expression"
 
 {- | Parses a matching application expression
+@
 MatchApp ::=
   SimpleExpr '<==' FnName
   ;
+@
 -}
 matchApp :: SyntaxInfo -> IdrisParser PTerm
 matchApp syn = do ty <- simpleExpr syn
@@ -451,9 +476,11 @@ unifyLog syn = do lchar '%'; reserved "unifyLog";
                <?> "unification log expression"
 
 {- | Parses a no implicits expression
+@
 NoImplicits ::=
   '%' 'noImplicits' SimpleExpr
   ;
+@
 -}
 noImplicits :: SyntaxInfo -> IdrisParser PTerm
 noImplicits syn = do lchar '%'; reserved "noImplicits";
@@ -462,10 +489,12 @@ noImplicits syn = do lchar '%'; reserved "noImplicits";
                  <?> "no implicits expression"
 
 {- | Parses a function application expression
+@
 App ::=
   'mkForeign' Arg Arg*
   | SimpleExpr Arg+
   ;
+@
 -}
 app :: SyntaxInfo -> IdrisParser PTerm
 app syn = do f <- reserved "mkForeign"
@@ -499,12 +528,14 @@ app syn = do f <- reserved "mkForeign"
             = desugar (syn { dsl_info = d }) i (getTm a)
     dslify i t = t
 
-{- |Parses a function argument
+{-| Parses a function argument
+@
 Arg ::=
   ImplicitArg
   | ConstraintArg
   | SimpleExpr
   ;
+@
 -}
 arg :: SyntaxInfo -> IdrisParser PArg
 arg syn =  implicitArg syn
@@ -513,10 +544,12 @@ arg syn =  implicitArg syn
               return (pexp e)
        <?> "function argument"
 
-{- |Parses an implicit function argument
+{-| Parses an implicit function argument
+@
 ImplicitArg ::=
   '{' Name ('=' Expr)? '}'
   ;
+@
 -}
 implicitArg :: SyntaxInfo -> IdrisParser PArg
 implicitArg syn = do lchar '{'
@@ -528,10 +561,12 @@ implicitArg syn = do lchar '{'
                      return (pimp n v False)
                   <?> "implicit function argument"
 
-{- |Parses a constraint argument (for selecting a named type class instance)
-ConstraintArg ::=
-  '@{' Expr '}'
-  ;
+{-| Parses a constraint argument (for selecting a named type class instance)
+
+>    ConstraintArg ::=
+>      '@{' Expr '}'
+>      ;
+
 -}
 constraintArg :: SyntaxInfo -> IdrisParser PArg
 constraintArg syn = do symbol "@{"
@@ -541,18 +576,22 @@ constraintArg syn = do symbol "@{"
                     <?> "constraint argument"
 
 
-{- |Parses a record field setter expression
+{-| Parses a record field setter expression
+@
 RecordType ::=
   'record' '{' FieldTypeList '}';
-
+@
+@
 FieldTypeList ::=
   FieldType
   | FieldType ',' FieldTypeList
   ;
-
+@
+@
 FieldType ::=
   FnName '=' Expr
   ;
+@
 -}
 recordType :: SyntaxInfo -> IdrisParser PTerm
 recordType syn
@@ -579,17 +618,21 @@ recordType syn
          applyAll fc ((n, e) : es) x
             = applyAll fc es (PApp fc (PRef fc (mkType n)) [pexp e, pexp x])
 
-{- |Creates setters for record types on necessary functions -}
+-- | Creates setters for record types on necessary functions
 mkType :: Name -> Name
 mkType (UN n) = UN ("set_" ++ n)
 mkType (MN 0 n) = MN 0 ("set_" ++ n)
 mkType (NS n s) = NS (mkType n) s
 
-{- |Parses a type signature
+{- | Parses a type signature
+@
 TypeSig ::=
   ':' Expr
   ;
+@
+@
 TypeExpr ::= ConstraintList? Expr;
+@
  -}
 typeExpr :: SyntaxInfo -> IdrisParser PTerm
 typeExpr syn = do cs <- if implicitAllowed syn then constraintList syn else return []
@@ -597,15 +640,19 @@ typeExpr syn = do cs <- if implicitAllowed syn then constraintList syn else retu
                   return (bindList (PPi constraint) (map (\x -> (MN 0 "c", x)) cs) sc)
                <?> "type signature"
 
-{- |Parses a lambda expression
+{- | Parses a lambda expression
+@
 Lambda ::=
     '\\' TypeOptDeclList '=>' Expr
   | '\\' SimpleExprList  '=>' Expr
   ;
+@
+@
 SimpleExprList ::=
   SimpleExpr
   | SimpleExpr ',' SimpleExprList
   ;
+@
 -}
 lambda :: SyntaxInfo -> IdrisParser PTerm
 lambda syn = do lchar '\\'
@@ -627,10 +674,12 @@ lambda syn = do lchar '\\'
                         (PCase fc (PRef fc (MN i "lamp"))
                                 [(x, pmList xs sc)])
 
-{- |Parses a term rewrite expression
+{- | Parses a term rewrite expression
+@
 RewriteTerm ::=
   'rewrite' Expr ('==>' Expr)? 'in' Expr
   ;
+@
 -}
 rewriteTerm :: SyntaxInfo -> IdrisParser PTerm
 rewriteTerm syn = do reserved "rewrite"
@@ -644,6 +693,7 @@ rewriteTerm syn = do reserved "rewrite"
                   <?> "term rewrite expression"
 
 {- |Parses a let binding
+@
 Let ::=
   'let' Name TypeSig'? '=' Expr  'in' Expr
 | 'let' Expr'          '=' Expr' 'in' Expr
@@ -651,6 +701,7 @@ Let ::=
 TypeSig' ::=
   ':' Expr'
   ;
+@
  -}
 let_ :: SyntaxInfo -> IdrisParser PTerm
 let_ syn = try (do reserved "let"; n <- name;
@@ -665,10 +716,13 @@ let_ syn = try (do reserved "let"; n <- name;
                    return (PCase fc v [(pat, sc)]))
            <?> "let binding"
 
-{- |Parses a quote goal
+{- | Parses a quote goal
+
+@
 QuoteGoal ::=
   'quoteGoal' Name 'by' Expr 'in' Expr
   ;
+@
  -}
 quoteGoal :: SyntaxInfo -> IdrisParser PTerm
 quoteGoal syn = do reserved "quoteGoal"; n <- name;
@@ -680,13 +734,15 @@ quoteGoal syn = do reserved "quoteGoal"; n <- name;
                    return (PGoal fc r n sc)
                 <?> "quote goal expression"
 
-{- |Parses a dependent type signature
+{- | Parses a dependent type signature
+@
 Pi ::=
     '|'? Static? '('           TypeDeclList ')' DocComment '->' Expr
   | '|'? Static? '{'           TypeDeclList '}'            '->' Expr
   |              '{' 'auto'    TypeDeclList '}'            '->' Expr
   |              '{' 'default' TypeDeclList '}'            '->' Expr
   ;
+@
  -}
 
 pi :: SyntaxInfo -> IdrisParser PTerm
@@ -728,10 +784,13 @@ pi syn =
   <?> "dependent type signature"
 
 {- | Parses a type constraint list
+
+@
 ConstraintList ::=
     '(' Expr_List ')' '=>'
   | Expr              '=>'
   ;
+@
 -}
 constraintList :: SyntaxInfo -> IdrisParser [PTerm]
 constraintList syn = try (do lchar '('
@@ -745,16 +804,20 @@ constraintList syn = try (do lchar '('
                  <|> return []
                  <?> "type constraint list"
 
-{- |Parses a type declaration list
+{- | Parses a type declaration list
+@
 TypeDeclList ::=
     FunctionSignatureList
   | NameList TypeSig
   ;
+@
 
+@
 FunctionSignatureList ::=
     Name TypeSig
   | Name TypeSig ',' FunctionSignatureList
   ;
+@
 -}
 typeDeclList :: SyntaxInfo -> IdrisParser [(Name, PTerm)]
 typeDeclList syn = try (sepBy1 (do x <- fnName
@@ -768,13 +831,17 @@ typeDeclList syn = try (sepBy1 (do x <- fnName
                           return (map (\x -> (x, t)) ns)
                    <?> "type declaration list"
 
-{- |Parses a type declaration list with optional parameters
+{- | Parses a type declaration list with optional parameters
+@
 TypeOptDeclList ::=
     NameOrPlaceholder TypeSig?
   | NameOrPlaceholder TypeSig? ',' TypeOptDeclList
   ;
+@
 
+@
 NameOrPlaceHolder ::= Name | '_';
+@
 -}
 tyOptDeclList :: SyntaxInfo -> IdrisParser [(Name, PTerm)]
 tyOptDeclList syn = sepBy1 (do x <- nameOrPlaceholder
@@ -789,13 +856,17 @@ tyOptDeclList syn = sepBy1 (do x <- nameOrPlaceholder
                                   return (MN 0 "underscore")
                            <?> "name or placeholder"
 
-{- |Parses a list comprehension
+{- | Parses a list comprehension
+@
 Comprehension ::= '[' Expr '|' DoList ']';
+@
 
+@
 DoList ::=
     Do
   | Do ',' DoList
   ;
+@
 -}
 comprehension :: SyntaxInfo -> IdrisParser PTerm
 comprehension syn
@@ -814,12 +885,16 @@ comprehension syn
                                                     [pexp e])
           addGuard x = x
 
-{- |Parses a do-block
+{- | Parses a do-block
+@
 Do' ::= Do KeepTerminator;
+@
 
+@
 DoBlock ::=
   'do' OpenBlock Do'+ CloseBlock
   ;
+@
  -}
 doBlock :: SyntaxInfo -> IdrisParser PTerm
 doBlock syn
@@ -828,7 +903,8 @@ doBlock syn
          return (PDoBlock ds)
       <?> "do block"
 
-{- |Parses an expression inside a do block
+{- | Parses an expression inside a do block
+@
 Do ::=
     'let' Name  TypeSig'?      '=' Expr
   | 'let' Expr'                '=' Expr
@@ -836,6 +912,7 @@ Do ::=
   | Expr' '<-' Expr
   | Expr
   ;
+@
 -}
 do_ :: SyntaxInfo -> IdrisParser PDo
 do_ syn
@@ -868,8 +945,10 @@ do_ syn
           return (DoExp fc e)
    <?> "do block expression"
 
-{- |Parses an expression in idiom brackets
+{- | Parses an expression in idiom brackets
+@
 Idiom ::= '[|' Expr '|]';
+@
 -}
 idiom :: SyntaxInfo -> IdrisParser PTerm
 idiom syn
@@ -881,6 +960,8 @@ idiom syn
       <?> "expression in idiom brackets"
 
 {- |Parses a constant or literal expression
+
+@
 Constant ::=
     'Integer'
   | 'Int'
@@ -901,6 +982,7 @@ Constant ::=
   | String_t
   | Char_t
   ;
+@
 -}
 constant :: IdrisParser Core.TT.Const
 constant =  do reserved "Integer";return (AType (ATInt ITBig))
@@ -923,17 +1005,22 @@ constant =  do reserved "Integer";return (AType (ATInt ITBig))
         <|> try (do c <- charLiteral;   return $ Ch c)
         <?> "constant or literal"
 
-{- |Parses a static modifier
+{- | Parses a static modifier
+
+@
 Static ::=
   '[' static ']'
 ;
+@
 -}
 static :: IdrisParser Static
 static =     do lchar '['; reserved "static"; lchar ']'; return Static
          <|> return Dynamic
          <?> "static modifier"
 
-{- | Parses a tactic script
+{- | Parses a tactic script
+
+@
 Tactic ::= 'intro' NameList?
        |   'intros'
        |   'refine'      Name Imp+
@@ -967,7 +1054,7 @@ TacticSeq ::=
     Tactic ';' Tactic
   | Tactic ';' TacticSeq
   ;
-
+@
 -}
 
 tactic :: SyntaxInfo -> IdrisParser PTactic
@@ -1040,7 +1127,7 @@ tactic syn = do reserved "intro"; ns <- sepBy (indentPropHolds gtProp *> name) (
     mergeSeq [t]    = t
     mergeSeq (t:ts) = TSeq t (mergeSeq ts)
 
-{- | Parses a tactic as a whole -}
+-- | Parses a tactic as a whole
 fullTactic :: SyntaxInfo -> IdrisParser PTactic
 fullTactic syn = do t <- tactic syn
                     eof
