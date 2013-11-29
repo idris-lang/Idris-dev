@@ -51,15 +51,14 @@ replaceAt (fS k) y (x::xs) = x :: replaceAt k y xs
 -- Subvectors
 --------------------------------------------------------------------------------
 
-take : Fin n -> Vect n a -> (p ** Vect p a)
-take fZ     xs      = (_ ** [])
-take (fS k) []      impossible
-take (fS k) (x::xs) with (take k xs)
-  | (_ ** tail) = (_ ** x::tail)
+take : {n : Nat} -> (m : Fin (S n)) -> Vect n a -> Vect (cast m) a
+take (fS k) []      = FinZElim k
+take fZ     _       = []
+take (fS k) (x::xs) = x :: take k xs
 
-drop : Fin n -> Vect n a -> (p ** Vect p a)
-drop fZ     xs      = (_ ** xs)
-drop (fS k) []      impossible
+drop : (m : Fin (S n)) -> Vect n a -> Vect (n - cast m) a
+drop (fS k) []      = FinZElim k
+drop fZ     xs      ?= xs
 drop (fS k) (x::xs) = drop k xs
 
 --------------------------------------------------------------------------------
@@ -310,6 +309,12 @@ range {n=S _} = fZ :: map fS range
 --------------------------------------------------------------------------------
 -- Proofs
 --------------------------------------------------------------------------------
+
+Prelude.Vect.drop_lemma_1 = proof {
+  intros;
+  rewrite sym (minusZeroRight n);
+  trivial;
+}
 
 Prelude.Vect.reverse'_lemma_2 = proof {
     intros;
