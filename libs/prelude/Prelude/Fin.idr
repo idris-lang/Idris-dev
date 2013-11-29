@@ -3,6 +3,8 @@ module Prelude.Fin
 import Prelude.Nat
 import Prelude.Either
 
+%default total
+
 data Fin : Nat -> Type where
     fZ : Fin (S k)
     fS : Fin k -> Fin (S k)
@@ -12,19 +14,19 @@ instance Eq (Fin n) where
     (==) (fS k) (fS k') = k == k'
     (==) _ _ = False
 
-finToNat : Fin n -> Nat -> Nat
-finToNat fZ a = a
-finToNat (fS x) a = finToNat x (S a)
+finToNat : Fin n -> Nat
+finToNat fZ = Z
+finToNat (fS k) = S (finToNat k)
 
 instance Cast (Fin n) Nat where
-    cast x = finToNat x Z
+    cast x = finToNat x
 
-finToInt : Fin n -> Integer -> Integer
-finToInt fZ a = a
-finToInt (fS x) a = finToInt x (a + 1)
+finToInteger : Fin n -> Integer
+finToInteger fZ     = 0
+finToInteger (fS k) = 1 + finToInteger k
 
 instance Cast (Fin n) Integer where
-    cast x = finToInt x 0
+    cast x = finToInteger x
 
 weaken : Fin n -> Fin (S n)
 weaken fZ     = fZ
