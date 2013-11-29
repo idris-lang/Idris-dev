@@ -14,6 +14,12 @@ instance Eq (Fin n) where
     (==) (fS k) (fS k') = k == k'
     (==) _ _ = False
 
+FinZAbsurd : Fin Z -> _|_
+FinZAbsurd fZ impossible
+
+FinZElim : Fin Z -> a
+FinZElim x = FalseElim (FinZAbsurd x)
+
 finToNat : Fin n -> Nat
 finToNat fZ = Z
 finToNat (fS k) = S (finToNat k)
