@@ -30,3 +30,6 @@ isElem3 x (y :: ys) with (decEq x y)
   isElem3 x (y :: ys) | (Yes p) = ?isElem3_rhs_1
   isElem3 x (y :: ys) | (No _) = ?isElem3_rhs_2
 
+foo : List a -> List a
+foo xs = case xs of
+              xs' => ?bar

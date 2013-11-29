@@ -9,3 +9,6 @@ isElem2 x (y :: ys) with (_)
   isElem2 x (y :: ys) | with_pat = ?isElem2_rhs
   isElem3 x (x :: ys) | (Yes refl) = ?isElem3_rhs_3
 
+              [] => ?bar_1
+              (_ :: _) => ?bar_2
+

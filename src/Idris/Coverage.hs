@@ -50,7 +50,7 @@ genClauses fc n xs given
         logLvl 5 $ show (map length argss) ++ "\n" ++ show (map length all_args)
         logLvl 10 $ show argss ++ "\n" ++ show all_args
         logLvl 10 $ "Original: \n" ++
-             showSep "\n" (map (\t -> showImp Nothing True False (delab' i t True)) xs)
+             showSep "\n" (map (\t -> showImp Nothing True False (delab' i t True True)) xs)
         -- add an infinite supply of explicit arguments to update the possible
         -- cases for (the return type may be variadic, or function type, sp
         -- there may be more case splitting that the idris_implicits record
@@ -68,13 +68,13 @@ genClauses fc n xs given
         return new
 --         return (map (\t -> PClause n t [] PImpossible []) new)
   where getLHS i term
-            | (f, args) <- unApply term = map (\t -> delab' i t True) args
+            | (f, args) <- unApply term = map (\t -> delab' i t True True) args
             | otherwise = []
 
         lhsApp (PClause _ _ l _ _ _) = l
         lhsApp (PWith _ _ l _ _ _) = l
 
-        noMatch i tm = all (\x -> case matchClause i (delab' i x True) tm of
+        noMatch i tm = all (\x -> case matchClause i (delab' i x True True) tm of
                                           Right _ -> False
                                           Left miss -> True) xs
 

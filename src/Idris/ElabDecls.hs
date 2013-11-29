@@ -728,7 +728,7 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
                [] -> return ()
            return ()
   where
-    noMatch i cs tm = all (\x -> case matchClause i (delab' i x True) tm of
+    noMatch i cs tm = all (\x -> case matchClause i (delab' i x True True) tm of
                                       Right _ -> False
                                       Left miss -> True) cs
 
@@ -960,9 +960,11 @@ elabClause info opts (cnum, PClause fc fname lhs_in withs rhs_in whereblock)
 
         (clhs_c, clhsty) <- recheckC fc [] lhs_tm
         let clhs = normalise ctxt [] clhs_c
+        
+        logLvl 3 ("Normalised LHS: " ++ showImp Nothing True False (delabMV i clhs))
 
-        addInternalApp (fc_fname fc) (fc_line fc) (delab i clhs)
-        addIBC (IBCLineApp (fc_fname fc) (fc_line fc) (delab i clhs))
+        addInternalApp (fc_fname fc) (fc_line fc) (delabMV i clhs)
+        addIBC (IBCLineApp (fc_fname fc) (fc_line fc) (delabMV i clhs))
 
         logLvl 5 ("Checked " ++ show clhs ++ "\n" ++ show clhsty)
         -- Elaborate where block
@@ -1023,7 +1025,7 @@ elabClause info opts (cnum, PClause fc fname lhs_in withs rhs_in whereblock)
             OK _ -> return ()
             Error e -> ierror (At fc (CantUnify False clhsty crhsty e [] 0))
         i <- getIState
-        checkInferred fc (delab' i crhs True) rhs
+        checkInferred fc (delab' i crhs True True) rhs
         return $ Right (clhs, crhs)
   where
     decorate (NS x ns)

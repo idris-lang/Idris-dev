@@ -14,21 +14,27 @@ import Debug.Trace
 bugaddr = "https://github.com/idris-lang/Idris-dev/issues"
 
 delab :: IState -> Term -> PTerm
-delab i tm = delab' i tm False
+delab i tm = delab' i tm False False
+
+delabMV :: IState -> Term -> PTerm
+delabMV i tm = delab' i tm False True
 
 delabTy :: IState -> Name -> PTerm
 delabTy i n
     = case lookupTy n (tt_ctxt i) of
            (ty:_) -> case lookupCtxt n (idris_implicits i) of
-                         (imps:_) -> delabTy' i imps ty False
-                         _ -> delabTy' i [] ty False
+                         (imps:_) -> delabTy' i imps ty False False
+                         _ -> delabTy' i [] ty False False
 
-delab' :: IState -> Term -> Bool -> PTerm
-delab' i t f = delabTy' i [] t f
+delab' :: IState -> Term -> Bool -> Bool -> PTerm
+delab' i t f mvs = delabTy' i [] t f mvs
 
 delabTy' :: IState -> [PArg] -- ^ implicit arguments to type, if any
-          -> Term -> Bool -> PTerm
-delabTy' ist imps tm fullname = de [] imps tm
+          -> Term 
+          -> Bool -- ^ use full names
+          -> Bool -- ^ Don't treat metavariables specially
+          -> PTerm
+delabTy' ist imps tm fullname mvs = de [] imps tm
   where
     un = fileFC "(val)"
 
@@ -84,11 +90,12 @@ delabTy' ist imps tm fullname = de [] imps tm
          | n == eqTy    = PEq un (de env [] l) (de env [] r)
          | n == UN "Ex_intro" = PDPair un (de env [] l) Placeholder
                                           (de env [] r)
-    deFn env (P _ n _) args
+    deFn env (P _ n _) args | not mvs
          = case lookup n (idris_metavars ist) of
                 Just (Just _, mi, _) ->
                      mkMVApp (dens n) (drop mi (map (de env []) args))
                 _ -> mkPApp (dens n) (map (de env []) args)
+         | otherwise = mkPApp (dens n) (map (de env []) args)
     deFn env f args = PApp un (de env [] f) (map pexp (map (de env []) args))
 
     mkMVApp n []

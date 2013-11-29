@@ -303,5 +303,8 @@ mkWith str n = let ind = getIndent str
 
          replaceRHS [] str = str
          replaceRHS ('?':'=': rest) str = str
-         replaceRHS ('=': rest) str = str
+         replaceRHS ('=': rest) str 
+              | not ('=' `elem` rest) = str
          replaceRHS (x : rest) str = x : replaceRHS rest str
+
+

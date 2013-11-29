@@ -665,9 +665,12 @@ process h fn (AddMissing updatefile l n)
 process h fn (MakeWith updatefile l n)
    = do src <- runIO $ readFile fn
         let (before, tyline : later) = splitAt (l-1) (lines src)
+        let ind = getIndent tyline
         let with = mkWith tyline n
-        -- add clause before first blank line in 'later'
-        let (nonblank, rest) = span (not . all isSpace) later
+        -- add clause before first blank line in 'later',
+        -- or (TODO) before first line with same indentation as tyline
+        let (nonblank, rest) = span (\x -> not (all isSpace x) &&
+                                           not (ind == getIndent x)) later
         if updatefile then
            do let fb = fn ++ "~"
               runIO $ writeFile fb (unlines (before ++ nonblank)
@@ -675,6 +678,8 @@ process h fn (MakeWith updatefile l n)
                                     unlines rest)
               runIO $ copyFile fb fn
            else ihPrintResult h with
+  where getIndent s = length (takeWhile isSpace s)
+    
 process h fn (DoProofSearch updatefile l n hints)
     = do src <- runIO $ readFile fn
          let (before, tyline : later) = splitAt (l-1) (lines src)
