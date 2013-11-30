@@ -240,7 +240,7 @@ opChars :: String
 opChars = ":!#$%&*+./<=>?@\\^|-~"
 
 operatorLetter :: MonadicParsing m => m Char
-operatorLetter = oneOf opChars
+operatorLetter = oneOf opChars <|> satisfy isSymbol
 
 -- | Parses an operator
 operator :: MonadicParsing m => m String
