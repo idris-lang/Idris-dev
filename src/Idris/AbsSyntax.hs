@@ -1361,26 +1361,6 @@ findStatics ist tm = trace (showImp Nothing True False tm) $
                              return (PPi p n t sc')
         pos ns ss t = return t
 
--- Debugging/logging stuff
-
-dumpDecls :: [PDecl] -> String
-dumpDecls [] = ""
-dumpDecls (d:ds) = dumpDecl d ++ "\n" ++ dumpDecls ds
-
-dumpDecl (PFix _ f ops) = show f ++ " " ++ showSep ", " ops
-dumpDecl (PTy _ _ _ _ n t) = "tydecl " ++ show n ++ " : " ++ showImp Nothing True False t
-dumpDecl (PClauses _ _ n cs) = "pat " ++ show n ++ "\t" ++ showSep "\n\t" (map (showCImp True) cs)
-dumpDecl (PData _ _ _ _ d) = showDImp True d
-dumpDecl (PParams _ ns ps) = "params {" ++ show ns ++ "\n" ++ dumpDecls ps ++ "}\n"
-dumpDecl (PNamespace n ps) = "namespace {" ++ n ++ "\n" ++ dumpDecls ps ++ "}\n"
-dumpDecl (PSyntax _ syn) = "syntax " ++ show syn
-dumpDecl (PClass _ _ _ cs n ps ds)
-    = "class " ++ show cs ++ " " ++ show n ++ " " ++ show ps ++ "\n" ++ dumpDecls ds
-dumpDecl (PInstance _ _ cs n _ t _ ds)
-    = "instance " ++ show cs ++ " " ++ show n ++ " " ++ show t ++ "\n" ++ dumpDecls ds
-dumpDecl _ = "..."
--- dumpDecl (PImport i) = "import " ++ i
-
 -- for 6.12/7 compatibility
 data EitherErr a b = LeftErr a | RightOK b
 

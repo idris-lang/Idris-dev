@@ -869,13 +869,23 @@ instance Show PClause where
 instance Show PData where
     show d = showDImp False d
 
+showDecls :: Bool -> [PDecl] -> String
+showDecls _ [] = ""
+showDecls i (d:ds) = showDeclImp i d ++ "\n" ++ showDecls i ds
+
 showDeclImp _ (PFix _ f ops) = show f ++ " " ++ showSep ", " ops
-showDeclImp t (PTy _ _ _ _ n ty) = show n ++ " : " ++ showImp Nothing t False ty
-showDeclImp t (PPostulate _ _ _ _ n ty) = show n ++ " : " ++ showImp Nothing t False ty
-showDeclImp _ (PClauses _ _ n c) = showSep "\n" (map show c)
-showDeclImp _ (PData _ _ _ _ d) = show d
-showDeclImp _ (PParams f ns ps) = "parameters " ++ show ns ++ "\n" ++
-                                    showSep "\n" (map show ps)
+showDeclImp i (PTy _ _ _ _ n t) = "tydecl " ++ showCG n ++ " : " ++ showImp Nothing i False t
+showDeclImp i (PClauses _ _ n cs) = "pat " ++ showCG n ++ "\t" ++ showSep "\n\t" (map (showCImp i) cs)
+showDeclImp _ (PData _ _ _ _ d) = showDImp True d
+showDeclImp i (PParams _ ns ps) = "params {" ++ show ns ++ "\n" ++ showDecls i ps ++ "}\n"
+showDeclImp i (PNamespace n ps) = "namespace {" ++ n ++ "\n" ++ showDecls i ps ++ "}\n"
+showDeclImp _ (PSyntax _ syn) = "syntax " ++ show syn
+showDeclImp i (PClass _ _ _ cs n ps ds)
+    = "class " ++ show cs ++ " " ++ show n ++ " " ++ show ps ++ "\n" ++ showDecls i ds
+showDeclImp i (PInstance _ _ cs n _ t _ ds)
+    = "instance " ++ show cs ++ " " ++ show n ++ " " ++ show t ++ "\n" ++ showDecls i ds
+showDeclImp _ _ = "..."
+-- showDeclImp (PImport i) = "import " ++ i
 
 
 showCImp :: Bool -> PClause -> String
@@ -1121,7 +1131,7 @@ showName ist bnd impl colour n = case ist of
                                    Just i -> if colour then colourise n (idris_colourTheme i) else showbasic n
                                    Nothing -> showbasic n
     where name = if impl then show n else showbasic n
-          showbasic n@(UN _) = show n
+          showbasic n@(UN _) = showCG n
           showbasic (MN _ s) = s
           showbasic (NS n s) = showSep "." (reverse s) ++ "." ++ showbasic n
           showbasic (SN s) = show s

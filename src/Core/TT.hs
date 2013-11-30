@@ -273,15 +273,15 @@ instance Show SpecialName where
 -- Show a name in a way decorated for code generation, not human reading
 showCG :: Name -> String
 showCG (UN n) = n
-showCG (NS n s) = showSep "." (reverse s) ++ "." ++ show n
+showCG (NS n s) = showSep "." (reverse s) ++ "." ++ showCG n
 showCG (MN _ "underscore") = "_"
 showCG (MN i s) = "{" ++ s ++ show i ++ "}"
 showCG (SN s) = showCG' s
-  where showCG' (WhereN i p c) = show p ++ ":" ++ show c ++ ":" ++ show i
-        showCG' (InstanceN cl inst) = '@':show cl ++ '$':showSep ":" inst
-        showCG' (MethodN m) = '!':show m
-        showCG' (ParentN p c) = show p ++ "#" ++ show c
-        showCG' (CaseN c) = show c ++ "_case"
+  where showCG' (WhereN i p c) = showCG p ++ ":" ++ showCG c ++ ":" ++ show i
+        showCG' (InstanceN cl inst) = '@':showCG cl ++ '$':showSep ":" inst
+        showCG' (MethodN m) = '!':showCG m
+        showCG' (ParentN p c) = showCG p ++ "#" ++ show c
+        showCG' (CaseN c) = showCG c ++ "_case"
 showCG NErased = "_"
 
 
