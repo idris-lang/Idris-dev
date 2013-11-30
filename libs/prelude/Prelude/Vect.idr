@@ -13,7 +13,7 @@ infixr 7 ::
 
 %elim data Vect : Nat -> Type -> Type where
   Nil  : Vect Z a
-  (::) : a -> Vect n a -> Vect (S n) a
+  (::) : (x : a) -> (xs : Vect n a) -> Vect (S n) a
 
 --------------------------------------------------------------------------------
 -- Indexing into vectors

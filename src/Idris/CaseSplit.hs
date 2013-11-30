@@ -77,10 +77,27 @@ split n t'
                    return (map snd newPats')
 
 data MergeState = MS { namemap :: [(Name, Name)],
+                       invented :: [(Name, Name)],
+                       explicit :: [Name],
                        updates :: [(Name, PTerm)] }
 
 addUpdate n tm = do ms <- get
                     put (ms { updates = ((n, stripNS tm) : updates ms) } )
+
+inventName n = 
+    do ms <- get
+       let badnames = map snd (namemap ms) ++ map snd (invented ms) ++
+                      explicit ms
+       case lookup n (invented ms) of
+          Just n' -> return n'
+          Nothing ->
+             do let n' = case n of
+                              MN i ('_':_) ->
+                                        uniqueName (UN "var") badnames
+                              MN i n -> uniqueName (UN n) badnames
+                              x -> x
+                put (ms { invented = (n, n') : invented ms })
+                return n'
 
 stripNS tm = mapPT dens tm where
     dens (PRef fc n) = PRef fc (nsroot n)
@@ -89,9 +106,14 @@ stripNS tm = mapPT dens tm where
 mergeAllPats :: Context -> PTerm -> [PTerm] -> [(PTerm, [(Name, PTerm)])]
 mergeAllPats ctxt t [] = []
 mergeAllPats ctxt t (p : ps)
-    = let (p', MS _ u) = runState (mergePat ctxt t p) (MS [] [])
+    = let (p', MS _ _ _ u) = runState (mergePat ctxt t p) 
+                                      (MS [] [] (patvars t) [])
           ps' = mergeAllPats ctxt t ps in
           ((p, u) : ps')
+  where patvars (PRef _ n) = [n]
+        patvars (PApp _ _ as) = concatMap (patvars . getTm) as
+        patvars (PPatvar _ n) = [n]
+        patvars _ = []
 
 mergePat :: Context -> PTerm -> PTerm -> State MergeState PTerm
 -- If any names are unified, make sure they stay unified. Always prefer
@@ -133,7 +155,8 @@ tidy orig@(PRef fc n)
                Just x -> return (PRef fc x)
                Nothing -> case n of
                                (UN _) -> return orig
-                               _ -> return Placeholder
+                               _ -> do n' <- inventName n
+                                       return (PRef fc n')
 tidy (PApp fc f args)
      = do args' <- mapM tidyArg args
           return (PApp fc f args')
@@ -292,16 +315,12 @@ getProofClause l fn fp
 -- match clause
 
 mkWith :: String -> Name -> String
-mkWith str n = let ind = getIndent str
-                   str' = replicate ind ' ' ++
-                          replaceRHS str "with (_)"
-                   newpat = replicate (ind + 2) ' ' ++
+mkWith str n = let str' = replaceRHS str "with (_)"
+                   newpat = "  " ++
                             replaceRHS str "| with_pat = ?" ++ show n ++ "_rhs" in
                    str' ++ "\n" ++ newpat
 
-   where getIndent s = length (takeWhile isSpace s)
-
-         replaceRHS [] str = str
+   where replaceRHS [] str = str
          replaceRHS ('?':'=': rest) str = str
          replaceRHS ('=': rest) str 
               | not ('=' `elem` rest) = str
