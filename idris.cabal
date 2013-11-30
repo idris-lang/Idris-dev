@@ -371,6 +371,7 @@ Library
                 , IRTS.Java.Pom
                 , IRTS.Lang
                 , IRTS.Simplified
+                , IRTS.System
 
   Other-modules:
                   Util.Pretty
@@ -484,6 +485,7 @@ Executable idris
                 , IRTS.Java.Pom
                 , IRTS.Lang
                 , IRTS.Simplified
+                , IRTS.System
 
                 , Util.Pretty
                 , Util.System

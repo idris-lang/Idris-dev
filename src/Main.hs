@@ -25,7 +25,8 @@ import Idris.Primitives
 import Idris.Imports
 import Idris.Error
 
-import Util.System ( getLibFlags, getIdrisLibDir, getIncFlags )
+import IRTS.System ( getLibFlags, getIdrisLibDir, getIncFlags )
+
 import Util.DynamicLinker
 
 import Pkg.Package

@@ -4,6 +4,7 @@ import Idris.AbsSyntax
 import IRTS.Bytecode
 import IRTS.Lang
 import IRTS.Simplified
+import IRTS.System
 import IRTS.CodegenCommon
 import Idris.Core.TT
 import Paths_idris

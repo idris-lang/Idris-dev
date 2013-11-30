@@ -18,6 +18,8 @@ import Idris.Core.TT
 import Idris.REPL
 import Idris.AbsSyntax
 
+import IRTS.System
+
 import Pkg.PParser
 
 import Paths_idris (getDataDir)

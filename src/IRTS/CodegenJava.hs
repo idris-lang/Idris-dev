@@ -9,6 +9,7 @@ import           IRTS.Java.Mangling
 import           IRTS.Java.Pom (pomString)
 import           IRTS.Lang
 import           IRTS.Simplified
+import           IRTS.System
 import           Util.System
 
 import           Control.Applicative       hiding (Const)
