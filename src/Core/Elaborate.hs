@@ -392,7 +392,7 @@ prepare_apply fn imps =
                    = do ctxt <- get_context
                         case lookupTy n ctxt of
                                 [] -> lift $ tfail $ NoSuchVariable n
-                                _ -> fail $ "Too many arguments for " ++ show fn
+                                _ -> lift $ tfail $ TooManyArguments n
             | otherwise = fail $ "Too many arguments for " ++ show fn
 
     doClaim ((i, _), n, t) = do claim n t
