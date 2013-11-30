@@ -56,7 +56,10 @@ simpleWhiteSpace = satisfy isSpace *> pure ()
 -- | Checks if a charcter is end of line
 isEol :: Char -> Bool
 isEol '\n' = True
-isEol  _   = False
+isEol c = isEol' . generalCategory $ c
+  where isEol' :: GeneralCategory -> Bool
+        isEol' LineSeparator = True
+        isEol' _             = False
 
 eol :: MonadicParsing m => m ()
 eol = (satisfy isEol *> pure ()) <|> lookAhead eof <?> "end of line"
