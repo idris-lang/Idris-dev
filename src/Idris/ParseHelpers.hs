@@ -55,14 +55,18 @@ simpleWhiteSpace = satisfy isSpace *> pure ()
 
 -- | Checks if a charcter is end of line
 isEol :: Char -> Bool
-isEol '\n' = True
-isEol c = isEol' . generalCategory $ c
-  where isEol' :: GeneralCategory -> Bool
-        isEol' LineSeparator = True
-        isEol' _             = False
+isEol '\FF'    = True -- FORM FEED
+isEol '\VT'    = True -- LINE TABULATION
+isEol '\x2028' = True -- LINE SEPARATOR
+isEol '\x2029' = True -- PARAGRAPH SEPARATOR
+isEol '\CR'    = True -- CARRIAGE RETURN
+isEol '\LF'    = True -- LINE FEED
+isEol '\x85'   = True -- NEXT LINE
+isEol _        = False
 
 eol :: MonadicParsing m => m ()
-eol = (satisfy isEol *> pure ()) <|> lookAhead eof <?> "end of line"
+eol = try (string "\CR\LF" *> pure()) -- Because CRLF is used in some operating systems as ONE line separator
+      <|> (satisfy isEol *> pure ()) <|> lookAhead eof <?> "end of line"
 
 -- | Checks if a character is a documentation comment marker
 isDocCommentMarker :: Char -> Bool
