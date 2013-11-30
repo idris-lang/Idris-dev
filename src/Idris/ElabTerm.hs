@@ -47,14 +47,16 @@ build ist info pattern fn tm
          when (not pattern) $
               mapM_ (\n -> when (n `elem` hs) $
                              do focus n
-                                try (resolveTC 7 fn ist)
+                                g <- goal
+                                try (resolveTC 7 g fn ist)
                                     (movelast n)) ivs
          ivs <- get_instances
          hs <- get_holes
          when (not pattern) $
               mapM_ (\n -> when (n `elem` hs) $
                              do focus n
-                                resolveTC 7 fn ist) ivs
+                                g <- goal
+                                resolveTC 7 g fn ist) ivs
          tm <- get_term
          ctxt <- get_context
          when (not pattern) $ do matchProblems; unifyProblems
@@ -150,12 +152,12 @@ elab ist info pattern tcgen fn tm
                                    (elab' ina (PRef fc unitTy))
     elab' ina (PFalse fc)    = elab' ina (PRef fc falseTy)
     elab' ina (PResolveTC (FC "HACK" _ _)) -- for chasing parent classes
-       = resolveTC 5 fn ist
+       = do g <- goal; resolveTC 5 g fn ist
     elab' ina (PResolveTC fc)
         | True = do c <- unique_hole (MN 0 "class")
                     instanceArg c
         | otherwise = do g <- goal
-                         try (resolveTC 2 fn ist)
+                         try (resolveTC 2 g fn ist)
                           (do c <- unique_hole (MN 0 "class")
                               instanceArg c)
     elab' ina (PRefl fc t)
@@ -414,7 +416,7 @@ elab ist info pattern tcgen fn tm
                                         hs <- get_holes
                                         if all (\n -> not (n `elem` hs)) (freeNames g)
                                         -- let insts = filter tcname $ map fst (ctxtAlist (tt_ctxt ist))
-                                         then try (resolveTC 7 fn ist)
+                                         then try (resolveTC 7 g fn ist)
                                                   (movelast n)
                                          else movelast n)
                               (ivs' \\ ivs)
@@ -649,10 +651,10 @@ proofSearch' ist top n hints
     = proofSearch (elab ist toplevel False False (MN 0 "tac")) top n hints ist
 
 
-resolveTC :: Int -> Name -> IState -> ElabD ()
-resolveTC 0 fn ist = fail $ "Can't resolve type class"
-resolveTC 1 fn ist = try' (trivial' ist) (resolveTC 0 fn ist) True
-resolveTC depth fn ist
+resolveTC :: Int -> Term -> Name -> IState -> ElabD ()
+resolveTC 0 topg fn ist = fail $ "Can't resolve type class"
+resolveTC 1 topg fn ist = try' (trivial' ist) (resolveTC 0 topg fn ist) True
+resolveTC depth topg fn ist
       = do hnf_compute
            g <- goal
            ptm <- get_term
@@ -701,7 +703,7 @@ resolveTC depth fn ist
 
     blunderbuss t d [] = do -- c <- get_env
                             -- ps <- get_probs
-                            lift $ tfail $ CantResolve t
+                            lift $ tfail $ CantResolve topg
     blunderbuss t d (n:ns)
         | n /= fn && tcname n = try' (resolve n d)
                                      (blunderbuss t d ns) True
@@ -729,7 +731,7 @@ resolveTC depth fn ist
                                      t' <- goal
                                      let (tc', ttype) = unApply t'
                                      let depth' = if t == t' then depth - 1 else depth
-                                     resolveTC depth' fn ist)
+                                     resolveTC depth' topg fn ist)
                       (filter (\ (x, y) -> not x) (zip (map fst imps) args))
                 -- if there's any arguments left, we've failed to resolve
                 hs <- get_holes
