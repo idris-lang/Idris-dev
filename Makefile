@@ -13,7 +13,7 @@ pinstall: dist/setup-config
 build: dist/setup-config
 	$(CABAL) build $(CABALFLAGS)
 
-test:
+test: doc
 	$(MAKE) -C test IDRIS=../dist/build/idris
 
 test_java:

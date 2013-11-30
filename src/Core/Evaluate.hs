@@ -767,7 +767,7 @@ addCasedef n ci@(CaseInfo alwaysInline tcdict)
                      OK (CaseDef args_ct sc_ct _),
                      OK (CaseDef args_inl sc_inl _),
                      OK (CaseDef args_rt sc_rt _)) ->
-                       let inl = alwaysInline -- || tcdict
+                       let inl = alwaysInline -- tcdict
                            inlc = (inl || small n args_ct sc_ct) && (not asserted)
                            inlr = inl || small n args_rt sc_rt
                            cdef = CaseDefs (args_tot, sc_tot)

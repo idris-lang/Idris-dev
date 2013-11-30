@@ -184,10 +184,10 @@ replaceVar ctxt n t (PApp fc f pats) = PApp fc f (map substArg pats)
 
 replaceVar ctxt n t pat = pat
 
-splitOnLine :: Int -- ^ line number
-               -> Name -- ^ variable
-               -> FilePath -- ^ name of file
-               -> Idris [[(Name, PTerm)]]
+splitOnLine :: Int         -- ^ line number
+            -> Name        -- ^ variable
+            -> FilePath    -- ^ name of file
+            -> Idris [[(Name, PTerm)]]
 splitOnLine l n fn = do
 --     let (before, later) = splitAt (l-1) (lines inp)
 --     i <- getIState
@@ -263,10 +263,10 @@ nameRoot acc nm =
              (before, ('_' : after)) -> nameRoot (acc ++ [before]) after
              _ -> showSep "_" (acc ++ [nm])
 
-getClause :: Int -> -- ^ Line type is declared on
-             Name -> -- ^ Function name
-             FilePath -> -- ^ Source file name
-             Idris String
+getClause :: Int      -- ^ line number that the type is declared on
+          -> Name     -- ^ Function name
+          -> FilePath -- ^ Source file name
+          -> Idris String
 getClause l fn fp = do ty <- getInternalApp fp l
                        let ap = mkApp ty [1..]
                        return (show fn ++ " " ++ ap ++
@@ -278,10 +278,10 @@ getClause l fn fp = do ty <- getInternalApp fp l
          mkApp (PPi _ _ _ sc) ns = mkApp sc ns
          mkApp _ _ = ""
 
-getProofClause :: Int -> -- ^ Line type is declared on
-                  Name -> -- ^ Function name
-                  FilePath -> -- ^ Source file name
-                  Idris String
+getProofClause :: Int      -- ^ line number that the type is declared
+               -> Name     -- ^ Function name
+               -> FilePath -- ^ Source file name
+               -> Idris String
 getProofClause l fn fp
                   = do ty <- getInternalApp fp l
                        return (mkApp ty ++ " = ?" ++ show fn ++ "_rhs")

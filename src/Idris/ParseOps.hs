@@ -29,8 +29,8 @@ import qualified Data.HashSet as HS
 import qualified Data.Text as T
 import qualified Data.ByteString.UTF8 as UTF8
 
-{- |Creates table for fixity declarations to build expression parser using
-  pre-build and user-defined operator/fixity declarations -}
+-- | Creates table for fixity declarations to build expression parser
+-- using pre-build and user-defined operator/fixity declarations
 table :: [FixDecl] -> OperatorTable IdrisParser PTerm
 table fixes
    = [[prefix "-" (\fc x -> PApp fc (PRef fc (UN "-"))
@@ -40,7 +40,7 @@ table fixes
        [binary "="  PEq AssocLeft],
        [binary "->" (\fc x y -> PPi expl (MN 42 "__pi_arg") x y) AssocRight]]
 
-{- |Calculates table for fixtiy declarations -}
+-- | Calculates table for fixtiy declarations
 toTable :: [FixDecl] -> OperatorTable IdrisParser PTerm
 toTable fs = map (map toBin)
                  (groupBy (\ (Fix x _) (Fix y _) -> prec x == prec y) fs)
@@ -52,20 +52,20 @@ toTable fs = map (map toBin)
          assoc (Infixr _) = AssocRight
          assoc (InfixN _) = AssocNone
 
-{- |Binary operator -}
+-- | Binary operator
 binary :: String -> (FC -> PTerm -> PTerm -> PTerm) -> Assoc -> Operator IdrisParser PTerm
 binary name f = Infix (do fc <- getFC
                           reservedOp name
                           doc <- option "" (docComment '^')
                           return (f fc))
 
-{- |Prefix operator -}
+-- | Prefix operator
 prefix :: String -> (FC -> PTerm -> PTerm) -> Operator IdrisParser PTerm
 prefix name f = Prefix (do reservedOp name
                            fc <- getFC
                            return (f fc))
 
-{- |Backtick operator -}
+-- | Backtick operator
 backtick :: Operator IdrisParser PTerm
 backtick = Infix (do lchar '`'; n <- fnName
                      lchar '`'
@@ -75,22 +75,29 @@ backtick = Infix (do lchar '`'; n <- fnName
 {- | Parses an operator in function position i.e. enclosed by `()', with an
  optional namespace
 
+@
   OperatorFront ::= (Identifier_t '.')? '(' Operator_t ')';
+@
+
 -}
 operatorFront :: IdrisParser Name
 operatorFront = maybeWithNS (lchar '(' *> operator <* lchar ')') False []
 
 {- | Parses a function (either normal name or operator)
-  FnName ::= Name | OperatorFront;
+
+@
+  FnName ::= Name | OperatorFront;
+@
 -}
 fnName :: IdrisParser Name
 fnName = try operatorFront <|> name <?> "function name"
 
 {- | Parses a fixity declaration
-
+@
 Fixity ::=
   FixityType Natural_t OperatorList Terminator
   ;
+@
 -}
 fixity :: IdrisParser PDecl
 fixity = do pushIndent
@@ -121,12 +128,14 @@ fixity = do pushIndent
                    extractName (Fix _ n) = n
 
 {- | Parses a fixity declaration type (i.e. infix or prefix, associtavity)
-FixityType ::=
-  'infixl'
-  | 'infixr'
-  | 'infix'
-  | 'prefix'
-  ;
+@
+    FixityType ::=
+      'infixl'
+      | 'infixr'
+      | 'infix'
+      | 'prefix'
+      ;
+@
  -}
 fixityType :: IdrisParser (Int -> Fixity)
 fixityType = do reserved "infixl"; return Infixl
