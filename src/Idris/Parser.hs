@@ -1021,7 +1021,7 @@ loadSource h lidr f
                                    f file pos
                   unless (null ds') $ do
                     let ds = namespaces mname ds'
-                    logLvl 3 (dumpDecls ds)
+                    logLvl 3 (showDecls True ds)
                     i <- getIState
                     logLvl 10 (show (toAlist (idris_implicits i)))
                     logLvl 3 (show (idris_infixes i))
