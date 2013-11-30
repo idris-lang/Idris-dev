@@ -187,30 +187,30 @@ instance DecEq a => DecEq (Vect n a) where
 --------------------------------------------------------------------------------
 
 instance DecEq Int where
-    decEq x y = if x == y then Yes (believe_me (x = x))
-                          else No (believe_me _|_)
+    decEq x y = if x == y then Yes (really_believe_me {a = x=x} {b = x=y} refl)
+                          else No (really_believe_me _|_)
 
 --------------------------------------------------------------------------------
 -- Char
 --------------------------------------------------------------------------------
 
 instance DecEq Char where
-    decEq x y = if x == y then Yes (believe_me (x = x))
-                          else No (believe_me _|_)
+    decEq x y = if x == y then Yes (really_believe_me {a = x=x} {b = x=y} refl)
+                          else No (really_believe_me _|_)
 
 --------------------------------------------------------------------------------
 -- Integer
 --------------------------------------------------------------------------------
 
 instance DecEq Integer where
-    decEq x y = if x == y then Yes (believe_me (x = x))
-                          else No (believe_me _|_)
+    decEq x y = if x == y then Yes (really_believe_me {a = x=x} {b = x=y} refl)
+                          else No (really_believe_me _|_)
 
 --------------------------------------------------------------------------------
 -- Float
 --------------------------------------------------------------------------------
 
 instance DecEq Float where
-    decEq x y = if x == y then Yes (believe_me (x = x))
-                          else No (believe_me _|_)
+    decEq x y = if x == y then Yes (really_believe_me {a = x=x} {b = x=y} refl)
+                          else No (really_believe_me _|_)
 
