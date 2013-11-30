@@ -142,15 +142,13 @@ reverse = reverse' []
     reverse' acc []      ?= acc
     reverse' acc (x::xs) ?= reverse' (x::acc) xs
 
-total intersperse' : a -> Vect m a -> (p ** Vect p a)
-intersperse' sep []      = (_ ** [])
-intersperse' sep (y::ys) with (intersperse' sep ys)
-  | (_ ** tail) = (_ ** sep::y::tail)
-
-total intersperse : a -> Vect m a -> (p ** Vect p a)
-intersperse sep []      = (_ ** [])
-intersperse sep (x::xs) with (intersperse' sep xs)
-  | (_ ** tail) = (_ ** x::tail)
+intersperse : a -> Vect n a -> Vect (n + pred n) a
+intersperse sep []      = []
+intersperse sep (x::xs) = x :: intersperse' sep xs
+  where
+    intersperse' : a -> Vect n a -> Vect (n + n) a
+    intersperse' sep []      = []
+    intersperse' sep (x::xs) ?= sep :: x :: intersperse' sep xs
 
 --------------------------------------------------------------------------------
 -- Membership tests
@@ -328,3 +326,8 @@ Prelude.Vect.reverse'_lemma_1 = proof {
     exact value;
 }
 
+Prelude.Vect.intersperse'_lemma_1 = proof {
+  intros;
+  rewrite (plusSuccRightSucc n1 n1);
+  trivial;
+}
