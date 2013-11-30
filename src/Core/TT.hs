@@ -237,6 +237,7 @@ data SpecialName = WhereN Int Name Name
                  | ParentN Name String
                  | MethodN Name
                  | CaseN Name
+                 | ElimN Name
   deriving (Eq, Ord)
 {-!
 deriving instance Binary SpecialName
@@ -269,6 +270,7 @@ instance Show SpecialName where
     show (MethodN m) = "method " ++ show m
     show (ParentN p c) = show p ++ "#" ++ c
     show (CaseN n) = "case block in " ++ show n
+    show (ElimN n) = "<<" ++ show n ++ " eliminator>>"
 
 -- Show a name in a way decorated for code generation, not human reading
 showCG :: Name -> String

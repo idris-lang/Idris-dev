@@ -70,13 +70,19 @@ record syn = do (doc, acc) <- try (do
 {- | Parses data declaration type (normal or codata)
 DataI ::= 'data' | 'codata';
 -}
-dataI :: IdrisParser Bool
-dataI = do reserved "data"; return False
-    <|> do reserved "codata"; return True
+dataI :: IdrisParser DataOpts
+dataI = do reserved "data"; return []
+    <|> do reserved "codata"; return [Codata]
+
+{- | Parses if a data should not have a default eliminator 
+DefaultEliminator ::= 'noelim'?
+ -}
+defaultEliminator :: IdrisParser DataOpts
+defaultEliminator = do option [] (do reserved "%elim"; return [DefaultEliminator])
 
 {- | Parses a data type declaration
-Data ::= DocComment? Accessibility? DataI FnName TypeSig ExplicitTypeDataRest?
-       | DocComment? Accessibility? DataI FnName Name*   DataRest?
+Data ::= DocComment? Accessibility? DataI DefaultEliminator FnName TypeSig ExplicitTypeDataRest?
+       | DocComment? Accessibility? DataI DefaultEliminator FnName Name*   DataRest?
        ;
 Constructor' ::= Constructor KeepTerminator;
 ExplicitTypeDataRest ::= 'where' OpenBlock Constructor'* CloseBlock;
@@ -90,29 +96,31 @@ SimpleConstructorList ::=
   ;
 -}
 data_ :: SyntaxInfo -> IdrisParser PDecl
-data_ syn = do (doc, acc, co) <- try (do
+data_ syn = do (doc, acc, dataOpts) <- try (do
                     doc <- option "" (docComment '|')
                     pushIndent
                     acc <- optional accessibility
+                    elim <- defaultEliminator
                     co <- dataI
-                    return (doc, acc, co))
+                    let dataOpts = combineDataOpts(elim ++ co)
+                    return (doc, acc, dataOpts))
                fc <- getFC
                tyn_in <- fnName
                (do try (lchar ':')
                    popIndent
                    ty <- typeExpr (allowImp syn)
                    let tyn = expandNS syn tyn_in
-                   option (PData doc syn fc co (PLaterdecl tyn ty)) (do
+                   option (PData doc syn fc dataOpts (PLaterdecl tyn ty)) (do
                      reserved "where"
                      cons <- indentedBlock (constructor syn)
                      accData acc tyn (map (\ (_, n, _, _) -> n) cons)
-                     return $ PData doc syn fc co (PDatadecl tyn ty cons))) <|> (do
+                     return $ PData doc syn fc dataOpts (PDatadecl tyn ty cons))) <|> (do
                     args <- many name
                     let ty = bindArgs (map (const PType) args) PType
                     let tyn = expandNS syn tyn_in
-                    option (PData doc syn fc co (PLaterdecl tyn ty)) (do
+                    option (PData doc syn fc dataOpts (PLaterdecl tyn ty)) (do
                       try (lchar '=') <|> do reserved "where"
-                                             let kw = (if co then "co" else "") ++ "data "
+                                             let kw = (if DefaultEliminator `elem` dataOpts then "" else "%noelim ") ++ (if Codata `elem` dataOpts then "co" else "") ++ "data "
                                              let n  = show tyn_in ++ " "
                                              let s  = kw ++ n
                                              let as = concat (intersperse " " $ map show args) ++ " "
@@ -129,7 +137,7 @@ data_ syn = do (doc, acc, co) <- try (do
                                    do let cty = bindArgs cargs conty
                                       return (doc, x, cty, cfc)) cons
                       accData acc tyn (map (\ (_, n, _, _) -> n) cons')
-                      return $ PData doc syn fc co (PDatadecl tyn ty cons')))
+                      return $ PData doc syn fc dataOpts (PDatadecl tyn ty cons')))
            <?> "data type declaration"
   where
     mkPApp :: FC -> PTerm -> [PTerm] -> PTerm
@@ -137,6 +145,8 @@ data_ syn = do (doc, acc, co) <- try (do
     mkPApp fc t xs = PApp fc t (map pexp xs)
     bindArgs :: [PTerm] -> PTerm -> PTerm
     bindArgs xs t = foldr (PPi expl (MN 0 "t")) t xs
+    combineDataOpts :: DataOpts -> DataOpts
+    combineDataOpts opts = if Codata `elem` opts then delete DefaultEliminator opts else opts
 
 
 {- | Parses a type constructor declaration

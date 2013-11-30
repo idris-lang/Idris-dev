@@ -15,7 +15,7 @@ import Prelude.Nat
 infixr 7 ::
 infixl 8 ++
 
-data List a
+%elim data List a
   = Nil
   | (::) a (List a)
 
