@@ -31,6 +31,7 @@ instance NFData SpecialName where
         rnf (ParentN x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
         rnf (MethodN x1) = rnf x1 `seq` ()
         rnf (CaseN x1) = rnf x1 `seq` ()
+        rnf (ElimN x1) = rnf x1 `seq` ()
 
 instance NFData IntTy where
         rnf (ITFixed x1) = rnf x1 `seq` ()
@@ -163,6 +164,10 @@ instance NFData FnOpt where
         rnf (CExport x1) = rnf x1 `seq` ()
         rnf Reflection = ()
         rnf (Specialise x1) = rnf x1 `seq` ()
+
+instance NFData DataOpt where
+        rnf Codata = ()
+        rnf DefaultEliminator = ()
 
 instance (NFData t) => NFData (PDecl' t) where
         rnf (PFix x1 x2 x3) = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` ()

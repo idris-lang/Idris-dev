@@ -634,6 +634,7 @@ inferDecl = PDatadecl inferTy
                       [("", inferCon, PPi impl (MN 0 "A") PType (
                                   PPi expl (MN 0 "a") (PRef bi (MN 0 "A"))
                                   (PRef bi inferTy)), bi)]
+inferOpts = []
 
 infTerm t = PApp bi (PRef bi inferCon) [pimp (MN 0 "A") Placeholder True, pexp t]
 infP = P (TCon 6 0) inferTy (TType (UVal 0))
@@ -646,7 +647,7 @@ getInferTerm tm = tm -- error ("getInferTerm " ++ show tm)
 getInferType (Bind n b sc) = Bind n b $ getInferType sc
 getInferType (App (App _ ty) _) = ty
 
--- Handy primitives: Unit, False, Pair, MkPair, =, mkForeign
+-- Handy primitives: Unit, False, Pair, MkPair, =, mkForeign, Elim type class
 
 primNames = [unitTy, unitCon,
              falseTy, pairTy, pairCon,
@@ -656,9 +657,11 @@ unitTy   = MN 0 "__Unit"
 unitCon  = MN 0 "__II"
 unitDecl = PDatadecl unitTy PType
                      [("", unitCon, PRef bi unitTy, bi)]
+unitOpts = [DefaultEliminator]
 
 falseTy   = MN 0 "__False"
 falseDecl = PDatadecl falseTy PType []
+falseOpts = []
 
 pairTy    = MN 0 "__Pair"
 pairCon   = MN 0 "__MkPair"
@@ -670,6 +673,7 @@ pairDecl  = PDatadecl pairTy (piBind [(n "A", PType), (n "B", PType)] PType)
                            (PApp bi (PRef bi pairTy) [pexp (PRef bi (n "A")),
                                                 pexp (PRef bi (n "B"))])))), bi)]
     where n a = MN 0 a
+pairOpts = []
 
 eqTy = UN "="
 eqCon = UN "refl"
@@ -683,6 +687,14 @@ eqDecl = PDatadecl eqTy (piBind [(n "a", PType), (n "b", PType),
                                                     pexp (PRef bi (n "x")),
                                                     pexp (PRef bi (n "x"))])), bi)]
     where n a = MN 0 a
+eqOpts = []
+
+elimName       = UN "__Elim"
+elimMethElimTy = UN "__elimTy"
+elimMethElim   = UN "elim"
+elimDecl = PClass "Type class for eliminators" defaultSyntax bi [] elimName [(UN "scrutineeType", PType)] 
+                     [PTy "" defaultSyntax bi [TotalFn] elimMethElimTy PType,
+                      PTy "" defaultSyntax bi [TotalFn] elimMethElim (PRef bi elimMethElimTy)]
 
 -- Defined in builtins.idr
 sigmaTy   = UN "Exists"

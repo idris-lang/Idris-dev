@@ -10,7 +10,7 @@ import Prelude.Classes
 %access public
 %default total
 
-data Nat
+%elim data Nat
   = Z
   | S Nat
 

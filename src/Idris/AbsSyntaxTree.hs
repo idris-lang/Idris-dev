@@ -392,6 +392,14 @@ inlinable = elem Inlinable
 dictionary :: FnOpts -> Bool
 dictionary = elem Dictionary
 
+
+-- | Data declaration options
+data DataOpt = Codata -- Set if the the data-type is coinductive
+             | DefaultEliminator -- Set if an eliminator should be generated for data type
+    deriving (Show, Eq)
+
+type DataOpts = [DataOpt]
+
 -- | Top-level declarations such as compiler directives, definitions,
 -- datatypes and typeclasses.
 data PDecl' t
@@ -400,7 +408,7 @@ data PDecl' t
    | PPostulate String SyntaxInfo FC FnOpts Name t -- ^ Postulate
    | PClauses FC FnOpts Name [PClause' t]   -- ^ Pattern clause
    | PCAF     FC Name t -- ^ Top level constant
-   | PData    String SyntaxInfo FC Bool (PData' t)  -- ^ Data declaration. The Bool argument is True for codata.
+   | PData    String SyntaxInfo FC DataOpts (PData' t)  -- ^ Data declaration.
    | PParams  FC [(Name, t)] [PDecl' t] -- ^ Params block
    | PNamespace String [PDecl' t] -- ^ New namespace
    | PRecord  String SyntaxInfo FC Name t String Name t  -- ^ Record declaration
