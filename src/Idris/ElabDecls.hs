@@ -1168,7 +1168,12 @@ checkPossible info fc tcgen fname lhs_in
 --                   b <- inferredDiff fc (delab' i lhs_tm True) lhs
 --                   return (not b) -- then return (Just lhs_tm) else return Nothing
 --                   trace (show (delab' i lhs_tm True) ++ "\n" ++ show lhs) $ return (not b)
-            err@(Error _) -> return False
+            Error err -> return (impossibleError err)
+    where impossibleError (CantUnify _ _ _ _ _ _) = False
+          impossibleError (CantConvert _ _ _) = False
+          impossibleError (At _ e) = impossibleError e
+          impossibleError (Elaborating _ _ e) = impossibleError e
+          impossibleError _ = True
 
 elabClause :: ElabInfo -> FnOpts -> (Int, PClause) ->
               Idris (Either Term (Term, Term))
