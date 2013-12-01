@@ -1169,11 +1169,17 @@ checkPossible info fc tcgen fname lhs_in
 --                   return (not b) -- then return (Just lhs_tm) else return Nothing
 --                   trace (show (delab' i lhs_tm True) ++ "\n" ++ show lhs) $ return (not b)
             Error err -> return (impossibleError err)
-    where impossibleError (CantUnify _ _ _ _ _ _) = False
+    where impossibleError (CantUnify _ topx topy e _ _) 
+              = not (sameFam topx topy || not (impossibleError e))
           impossibleError (CantConvert _ _ _) = False
           impossibleError (At _ e) = impossibleError e
           impossibleError (Elaborating _ _ e) = impossibleError e
           impossibleError _ = True
+
+          sameFam topx topy 
+              = case (unApply topx, unApply topy) of
+                     ((P _ x _, _), (P _ y _, _)) -> x == y
+                     _ -> False
 
 elabClause :: ElabInfo -> FnOpts -> (Int, PClause) ->
               Idris (Either Term (Term, Term))
@@ -1181,7 +1187,7 @@ elabClause info opts (_, PClause fc fname lhs_in [] PImpossible [])
    = do let tcgen = Dictionary `elem` opts
         b <- checkPossible info fc tcgen fname lhs_in
         case b of
-            True -> ifail $ show fc ++ ":" ++ show lhs_in ++ " is a possible case"
+            True -> ifail $ show fc ++ ":" ++ show lhs_in ++ " is a valid case"
             False -> do ptm <- mkPatTm lhs_in
                         return (Left ptm)
 elabClause info opts (cnum, PClause fc fname lhs_in withs rhs_in whereblock)
