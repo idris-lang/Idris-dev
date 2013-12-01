@@ -1054,7 +1054,10 @@ loadSource h lidr f
                     -- Redo totality check for deferred names
                     let deftots = idris_defertotcheck i
                     iLOG $ "Totality checking " ++ show deftots
-                    mapM_ (\x -> setTotality x Unchecked) (map snd deftots)
+                    mapM_ (\x -> do tot <- getTotality x
+                                    case tot of
+                                         Total _ -> setTotality x Unchecked
+                                         _ -> return ()) (map snd deftots)
                     mapM_ buildSCG deftots
                     mapM_ checkDeclTotality deftots
 
