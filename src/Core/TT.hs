@@ -834,6 +834,11 @@ getRetTy (Bind n (PVTy _) sc) = getRetTy sc
 getRetTy (Bind n (Pi _) sc)   = getRetTy sc
 getRetTy sc = sc
 
+uniqueNameFrom :: [Name] -> [Name] -> Name
+uniqueNameFrom (s : supply) hs
+       | s `elem` hs = uniqueNameFrom supply hs
+       | otherwise   = s
+
 uniqueName :: Name -> [Name] -> Name
 uniqueName n hs | n `elem` hs = uniqueName (nextName n) hs
                 | otherwise   = n

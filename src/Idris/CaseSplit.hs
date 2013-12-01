@@ -71,7 +71,7 @@ split n t'
                    logLvl 3 ("Split:\n" ++
                               (showSep "\n" (map show (mapMaybe id newPats))))
                    logLvl 3 "----"
-                   let newPats' = mergeAllPats ctxt t (mapMaybe id newPats)
+                   let newPats' = mergeAllPats ist n t (mapMaybe id newPats)
                    iLOG ("Name updates " ++ showSep "\n"
                          (map (\ (p, u) -> show u ++ " " ++ show p) newPats'))
                    return (map snd newPats')
@@ -84,47 +84,55 @@ data MergeState = MS { namemap :: [(Name, Name)],
 addUpdate n tm = do ms <- get
                     put (ms { updates = ((n, stripNS tm) : updates ms) } )
 
-inventName n = 
+inventName ist ty n = 
     do ms <- get
+       let supp = case ty of
+                       Nothing -> []
+                       Just t -> getNameHints ist t
+       let nsupp = case n of
+                        MN i ('_':_) -> mkSupply (supp ++ varlist)
+                        MN i n -> mkSupply (UN n : supp ++ varlist)
+                        x -> mkSupply (x : supp)
        let badnames = map snd (namemap ms) ++ map snd (invented ms) ++
                       explicit ms
        case lookup n (invented ms) of
           Just n' -> return n'
           Nothing ->
-             do let n' = case n of
-                              MN i ('_':_) ->
-                                        uniqueName (UN "var") badnames
-                              MN i n -> uniqueName (UN n) badnames
-                              x -> x
+             do let n' = uniqueNameFrom nsupp badnames
                 put (ms { invented = (n, n') : invented ms })
                 return n'
+                
+mkSupply ns = mkSupply' ns (map nextName ns)
+  where mkSupply' xs ns' = xs ++ mkSupply ns'
+   
+varlist = map (UN . (:[])) "xyzwstuv" -- EB's personal preference :)
 
 stripNS tm = mapPT dens tm where
     dens (PRef fc n) = PRef fc (nsroot n)
     dens t = t
 
-mergeAllPats :: Context -> PTerm -> [PTerm] -> [(PTerm, [(Name, PTerm)])]
-mergeAllPats ctxt t [] = []
-mergeAllPats ctxt t (p : ps)
-    = let (p', MS _ _ _ u) = runState (mergePat ctxt t p) 
-                                      (MS [] [] (patvars t) [])
-          ps' = mergeAllPats ctxt t ps in
+mergeAllPats :: IState -> Name -> PTerm -> [PTerm] -> [(PTerm, [(Name, PTerm)])]
+mergeAllPats ist cv t [] = []
+mergeAllPats ist cv t (p : ps)
+    = let (p', MS _ _ _ u) = runState (mergePat ist t p Nothing) 
+                                      (MS [] [] (filter (/=cv) (patvars t)) [])
+          ps' = mergeAllPats ist cv t ps in
           ((p, u) : ps')
   where patvars (PRef _ n) = [n]
         patvars (PApp _ _ as) = concatMap (patvars . getTm) as
         patvars (PPatvar _ n) = [n]
         patvars _ = []
 
-mergePat :: Context -> PTerm -> PTerm -> State MergeState PTerm
+mergePat :: IState -> PTerm -> PTerm -> Maybe Name -> State MergeState PTerm
 -- If any names are unified, make sure they stay unified. Always prefer
 -- user provided name (first pattern)
-mergePat ctxt (PPatvar fc n) new
-  = mergePat ctxt (PRef fc n) new
-mergePat ctxt old (PPatvar fc n)
-  = mergePat ctxt old (PRef fc n)
-mergePat ctxt orig@(PRef fc n) new@(PRef _ n')
-  | isDConName n' ctxt = do addUpdate n new;
-                            return new
+mergePat ist (PPatvar fc n) new t
+  = mergePat ist (PRef fc n) new t
+mergePat ist old (PPatvar fc n) t
+  = mergePat ist old (PRef fc n) t
+mergePat ist orig@(PRef fc n) new@(PRef _ n') t
+  | isDConName n' (tt_ctxt ist) = do addUpdate n new
+                                     return new
   | otherwise
     = do ms <- get
          case lookup n' (namemap ms) of
@@ -132,37 +140,49 @@ mergePat ctxt orig@(PRef fc n) new@(PRef _ n')
                            return (PRef fc x)
               Nothing -> do put (ms { namemap = ((n', n) : namemap ms) })
                             return (PRef fc n)
-mergePat ctxt (PApp _ _ args) (PApp fc f args')
-      = do newArgs <- zipWithM mergeArg args args'
+mergePat ist (PApp _ _ args) (PApp fc f args') t
+      = do newArgs <- zipWithM mergeArg args (zip args' (argTys ist f))
            return (PApp fc f newArgs)
-   where mergeArg x y = do tm' <- mergePat ctxt (getTm x) (getTm y)
-                           case x of
-                                (PImp _ _ _ _ _ _) ->
-                                   return (y { machine_inf = machine_inf x,
-                                               getTm = tm' })
-                                _ -> return (y { getTm = tm' })
-mergePat ctxt (PRef fc n) t = do tm <- tidy t
-                                 addUpdate n tm
-                                 return tm
-mergePat ctxt x y = return y
+   where mergeArg x (y, t)
+              = do tm' <- mergePat ist (getTm x) (getTm y) t
+                   case x of
+                        (PImp _ _ _ _ _ _) ->
+                             return (y { machine_inf = machine_inf x,
+                                         getTm = tm' })
+                        _ -> return (y { getTm = tm' })
+mergePat ist (PRef fc n) tm ty = do tm <- tidy ist tm ty
+                                    addUpdate n tm
+                                    return tm
+mergePat ist x y t = return y
 
 mergeUserImpl :: PTerm -> PTerm -> PTerm
 mergeUserImpl x y = x
 
-tidy orig@(PRef fc n)
+argTys :: IState -> PTerm -> [Maybe Name]
+argTys ist (PRef fc n) 
+    = case lookupTy n (tt_ctxt ist) of
+           [ty] -> map (tyName . snd) (getArgTys ty) ++ repeat Nothing
+           _ -> repeat Nothing
+  where tyName (Bind _ (Pi _) _) = Just (UN "->")
+        tyName t | (P _ n _, _) <- unApply t = Just n
+                 | otherwise = Nothing
+argTys _ _ = repeat Nothing
+
+tidy :: IState -> PTerm -> Maybe Name -> State MergeState PTerm
+tidy ist orig@(PRef fc n) ty
      = do ms <- get
           case lookup n (namemap ms) of
                Just x -> return (PRef fc x)
                Nothing -> case n of
                                (UN _) -> return orig
-                               _ -> do n' <- inventName n
+                               _ -> do n' <- inventName ist ty n
                                        return (PRef fc n')
-tidy (PApp fc f args)
-     = do args' <- mapM tidyArg args
+tidy ist (PApp fc f args) ty
+     = do args' <- zipWithM tidyArg args (argTys ist f)
           return (PApp fc f args')
-    where tidyArg x = do tm' <- tidy (getTm x)
-                         return (x { getTm = tm' })
-tidy tm = return tm
+    where tidyArg x ty' = do tm' <- tidy ist (getTm x) ty'
+                             return (x { getTm = tm' })
+tidy ist tm ty = return tm
 
 
 -- mapPT tidyVar tm
@@ -291,15 +311,26 @@ getClause :: Int      -- ^ line number that the type is declared on
           -> FilePath -- ^ Source file name
           -> Idris String
 getClause l fn fp = do ty <- getInternalApp fp l
-                       let ap = mkApp ty [1..]
+                       ist <- get
+                       let ap = mkApp ist ty []
                        return (show fn ++ " " ++ ap ++
                                    "= ?" ++ show fn ++ "_rhs")
-   where mkApp (PPi (Exp _ _ _ False) (MN _ _) _ sc) (n : ns)
-               = "x" ++ show n ++ " " ++ mkApp sc ns
-         mkApp (PPi (Exp _ _ _ False) n _ sc) ns
-               = show n ++ " " ++ mkApp sc ns
-         mkApp (PPi _ _ _ sc) ns = mkApp sc ns
-         mkApp _ _ = ""
+   where mkApp i (PPi (Exp _ _ _ False) (MN _ _) ty sc) used
+               = let n = getNameFrom i used ty in
+                     show n ++ " " ++ mkApp i sc (n : used) 
+         mkApp i (PPi (Exp _ _ _ False) n _ sc) used 
+               = show n ++ " " ++ mkApp i sc (n : used) 
+         mkApp i (PPi _ _ _ sc) used = mkApp i sc used
+         mkApp i _ _ = ""
+
+         getNameFrom i used (PPi _ _ _ _) 
+              = uniqueNameFrom (mkSupply [UN "f", UN "g"]) used
+         getNameFrom i used (PApp fc f as) = getNameFrom i used f
+         getNameFrom i used (PRef fc f) 
+            = case getNameHints i f of
+                   [] -> uniqueName (UN "x") used
+                   ns -> uniqueNameFrom (mkSupply ns) used
+         getNameFrom i used _ = uniqueName (UN "x") used 
 
 getProofClause :: Int      -- ^ line number that the type is declared
                -> Name     -- ^ Function name
@@ -325,5 +356,4 @@ mkWith str n = let str' = replaceRHS str "with (_)"
          replaceRHS ('=': rest) str 
               | not ('=' `elem` rest) = str
          replaceRHS (x : rest) str = x : replaceRHS rest str
-
 

@@ -15,6 +15,9 @@ infixr 7 ::
   Nil  : Vect Z a
   (::) : (x : a) -> (xs : Vect n a) -> Vect (S n) a
 
+-- Hints for interactive editing
+%name Vect xs,ys,zs,ws
+
 --------------------------------------------------------------------------------
 -- Indexing into vectors
 --------------------------------------------------------------------------------

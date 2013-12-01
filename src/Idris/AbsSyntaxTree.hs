@@ -92,6 +92,7 @@ data IState = IState {
     idris_dsls :: Ctxt DSL,
     idris_optimisation :: Ctxt OptInfo,
     idris_datatypes :: Ctxt TypeInfo,
+    idris_namehints :: Ctxt [Name],
     idris_patdefs :: Ctxt ([([Name], Term, Term)], [PTerm]), -- not exported
       -- ^ list of lhs/rhs, and a list of missing clauses
     idris_flags :: Ctxt [FnOpt],
@@ -183,12 +184,14 @@ data IBCWrite = IBCFix FixDecl
               | IBCDoc Name
               | IBCCoercion Name
               | IBCDef Name -- i.e. main context
+              | IBCNameHint (Name, Name)
               | IBCLineApp FilePath Int PTerm
   deriving Show
 
 idrisInit = IState initContext [] [] emptyContext emptyContext emptyContext
                    emptyContext emptyContext emptyContext emptyContext
                    emptyContext emptyContext emptyContext emptyContext
+                   emptyContext
                    [] [] defaultOpts 6 [] [] [] [] [] [] [] [] [] [] [] []
                    [] Nothing Nothing [] [] [] Hidden False [] Nothing [] [] RawOutput
                    True defaultTheme stdout

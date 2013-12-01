@@ -144,7 +144,7 @@ data_ syn = do (doc, acc, dataOpts) <- try (do
     mkPApp fc t [] = t
     mkPApp fc t xs = PApp fc t (map pexp xs)
     bindArgs :: [PTerm] -> PTerm -> PTerm
-    bindArgs xs t = foldr (PPi expl (MN 0 "t")) t xs
+    bindArgs xs t = foldr (PPi expl (MN 0 "_t")) t xs
     combineDataOpts :: DataOpts -> DataOpts
     combineDataOpts opts = if Codata `elem` opts then delete DefaultEliminator opts else opts
 

@@ -797,6 +797,7 @@ Directive' ::= 'lib'      CodeGen String_t
            |   'default'  Totality
            |   'logging'  Natural
            |   'dynamic'  StringList
+           |   'name'     Name NameList
            |   'language' 'TypeProviders'
            |   'language' 'ErrorReflection'
            ;
@@ -839,6 +840,12 @@ directive syn = do try (lchar '%' *> reserved "lib"); cgn <- codegen_; lib <- st
                                              Left lib -> addIBC (IBCDyLib (lib_name lib))
                                              Right msg ->
                                                  fail $ msg)]
+             <|> do try (lchar '%' *> reserved "name")
+                    ty <- iName []
+                    ns <- sepBy1 name (lchar ',')
+                    return [PDirective 
+                               (do mapM_ (addNameHint ty) ns
+                                   mapM_ (\n -> addIBC (IBCNameHint (ty, n))) ns)] 
              <|> do try (lchar '%' *> reserved "language"); ext <- pLangExt;
                     return [PDirective (addLangExt ext)]
              <?> "directive"

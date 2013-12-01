@@ -167,6 +167,25 @@ addDocStr n doc
    = do i <- getIState
         putIState $ i { idris_docstrings = addDef n doc (idris_docstrings i) }
 
+addNameHint :: Name -> Name -> Idris ()
+addNameHint ty n
+   = do i <- getIState
+        ty' <- case lookupCtxtName ty (idris_implicits i) of
+                       [(tyn, _)] -> return tyn
+                       [] -> throwError (NoSuchVariable ty)
+                       tyns -> throwError (CantResolveAlts (map show (map fst tyns)))
+        let ns' = case lookupCtxt ty' (idris_namehints i) of
+                       [ns] -> ns ++ [n]
+                       _ -> [n]
+        putIState $ i { idris_namehints = addDef ty' ns' (idris_namehints i) }
+
+getNameHints :: IState -> Name -> [Name]
+getNameHints i (UN "->") = [UN "f",UN "g"]
+getNameHints i n =
+        case lookupCtxt n (idris_namehints i) of
+             [ns] -> ns
+             _ -> []
+
 addToCalledG :: Name -> [Name] -> Idris ()
 addToCalledG n ns = return () -- TODO
 

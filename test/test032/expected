@@ -1,8 +1,8 @@
 Type checking ./test032.idr
 isElem x [] = ?isElem_rhs_1
-isElem x (t :: t1) = ?isElem_rhs_3
+isElem x (y :: xs) = ?isElem_rhs_3
 
-   localZipWith f (_ :: _) (x :: xs1) = ?localZipWith_rhs_1
+   localZipWith f (_ :: _) (x :: ys) = ?localZipWith_rhs_1
 
 f x :: (map f xs)
 isElem2 x (y :: ys) with (_)
@@ -10,5 +10,5 @@ isElem2 x (y :: ys) with (_)
   isElem3 x (x :: ys) | (Yes refl) = ?isElem3_rhs_3
 
               [] => ?bar_1
-              (t :: t1) => ?bar_2
+              (x :: ys) => ?bar_2
 
