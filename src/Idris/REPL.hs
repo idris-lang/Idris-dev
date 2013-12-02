@@ -709,7 +709,7 @@ process h fn (DoProofSearch updatefile l n hints)
          if updatefile then
             do let fb = fn ++ "~"
                runIO $ writeFile fb (unlines before ++
-                                     updateMeta tyline (show n) newmv ++ "\n"
+                                     updateMeta False tyline (show n) newmv ++ "\n"
                                        ++ unlines later)
                runIO $ copyFile fb fn
             else ihPrintResult h newmv
@@ -727,16 +727,22 @@ process h fn (DoProofSearch updatefile l n hints)
           nsroot (SN (WhereN _ _ n)) = nsroot n
           nsroot n = n
 
-          updateMeta ('?':cs) n new
+          updateMeta brack ('?':cs) n new
             | length cs >= length n
               = case splitAt (length n) cs of
                      (mv, c:cs) ->
                           if (isSpace c && mv == n)
-                             then new ++ (c : cs)
-                             else '?' : mv ++ c : updateMeta cs n new
+                             then addBracket brack new ++ (c : cs)
+                             else '?' : mv ++ c : updateMeta True cs n new
                      (mv, []) -> if (mv == n) then new else '?' : mv
-          updateMeta (c:cs) n new = c : updateMeta cs n new
-          updateMeta [] n new = ""
+          updateMeta brack ('=':cs) n new = '=':updateMeta False cs n new
+          updateMeta brack (c:cs) n new 
+              = c : updateMeta (not (not brack && isSpace c)) cs n new
+          updateMeta brack [] n new = ""
+
+          addBracket False new = new
+          addBracket True new | any isSpace new = '(' : new ++ ")"
+                              | otherwise = new
 
 process h fn (Spec t)
                     = do (tm, ty) <- elabVal toplevel False t
