@@ -181,6 +181,9 @@ elabData info syn doc fc opts (PDatadecl n t_in dcons)
                   (errAt "data declaration " n (erun fc (build i info False n t)))
          def' <- checkDef fc defer
          let def'' = map (\(n, (i, top, t)) -> (n, (i, top, t, True))) def'
+         -- if n is defined already, make sure it is just a type declaration
+         -- with the same type we've just elaborated
+         checkDefinedAs fc n t' (tt_ctxt i)
          addDeferredTyCon def''
          mapM_ (elabCaseBlock info []) is
          (cty, _)  <- recheckC fc [] t'
@@ -205,6 +208,14 @@ elabData info syn doc fc opts (PDatadecl n t_in dcons)
          if DefaultEliminator `elem` opts then evalStateT (elabEliminator params n t dcons info) Map.empty
                                           else return ()
   where
+        checkDefinedAs fc n t ctxt 
+            = case lookupDef n ctxt of
+                   [] -> return ()
+                   [TyDecl _ ty] -> 
+                      case converts ctxt [] t ty of
+                           OK () -> return ()
+                           _ -> tclift $ tfail (At fc (AlreadyDefined n))
+                   _ -> tclift $ tfail (At fc (AlreadyDefined n))
         -- parameters are names which are unchanged across the structure,
         -- which appear exactly once in the return type of a constructor
 
