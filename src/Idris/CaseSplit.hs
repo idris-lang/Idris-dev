@@ -286,9 +286,9 @@ replaceSplits l ups = updateRHSs 1 (map (rep (expandBraces l)) ups)
             '{' : space ++ updatePat False n tm rest'
     updatePat True n tm xs@(c:rest) | length xs > length n
         = let (before, after@(next:_)) = splitAt (length n) xs in
-              if (before == n && not (isAlpha next))
+              if (before == n && not (isAlphaNum next))
                  then addBrackets tm ++ updatePat False n tm after
-                 else c : updatePat (not (isAlpha c)) n tm rest
+                 else c : updatePat (not (isAlphaNum c)) n tm rest
     updatePat start n tm (c:rest) = c : updatePat (not (isAlpha c)) n tm rest
 
     addBrackets tm | ' ' `elem` tm = "(" ++ tm ++ ")"
