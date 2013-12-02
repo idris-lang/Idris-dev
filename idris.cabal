@@ -102,8 +102,6 @@ Extra-source-files:
                        llvm/*.c
                        llvm/Makefile
 
-                       tutorial/examples/*.idr
-
                        test/Makefile
                        test/runtest.pl
                        test/reg001/run
