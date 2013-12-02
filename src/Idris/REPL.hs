@@ -1094,6 +1094,7 @@ idrisMain opts =
        let nobanner = NoBanner `elem` opts
        let idesl = Ideslave `elem` opts
        let runrepl = not (NoREPL `elem` opts)
+       let verbose = runrepl || Verbose `elem` opts
        let output = opt getOutput opts
        let ibcsubdir = opt getIBCSubDir opts
        let importdirs = opt getImportDir opts
@@ -1126,14 +1127,13 @@ idrisMain opts =
        setREPL runrepl
        setQuiet (quiet || isJust script)
        setIdeSlave idesl
-       setVerbose runrepl
+       setVerbose verbose
        setCmdLine opts
        setOutputTy outty
        setCodegen cgn
        setTargetTriple trpl
        setTargetCPU tcpu
        setOptLevel optimize
-       when (Verbose `elem` opts) $ setVerbose True
        mapM_ makeOption opts
        -- if we have the --bytecode flag, drop into the bytecode assembler
        case bcs of
