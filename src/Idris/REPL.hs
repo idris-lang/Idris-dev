@@ -629,7 +629,8 @@ process h fn (AddMissing updatefile l n)
 
         extras <- case lookupCtxt n' (idris_patdefs i) of
                        [] -> return ""
-                       [(_, tms)] -> showNew (show n ++ "_rhs") 1 indent tms
+                       [(_, tms)] -> do tms' <- nameMissing tms
+                                        showNew (show n ++ "_rhs") 1 indent tms'
         let (nonblank, rest) = span (not . all isSpace) (tyline:later)
         if updatefile
           then do let fb = fn ++ "~"

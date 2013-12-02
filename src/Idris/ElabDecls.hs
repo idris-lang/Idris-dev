@@ -1198,7 +1198,8 @@ elabClause info opts (_, PClause fc fname lhs_in [] PImpossible [])
    = do let tcgen = Dictionary `elem` opts
         b <- checkPossible info fc tcgen fname lhs_in
         case b of
-            True -> ifail $ show fc ++ ":" ++ show lhs_in ++ " is a valid case"
+            True -> tclift $ tfail (At fc 
+                                (Msg $ show lhs_in ++ " is a valid case"))
             False -> do ptm <- mkPatTm lhs_in
                         return (Left ptm)
 elabClause info opts (cnum, PClause fc fname lhs_in withs rhs_in whereblock)

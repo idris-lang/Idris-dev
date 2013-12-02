@@ -3,6 +3,7 @@
 module Idris.CaseSplit(splitOnLine, replaceSplits,
                        getClause, getProofClause,
                        mkWith,
+                       nameMissing,
                        getUniq, nameRoot) where
 
 -- splitting a variable in a pattern clause
@@ -117,7 +118,7 @@ mergeAllPats ist cv t (p : ps)
     = let (p', MS _ _ _ u) = runState (mergePat ist t p Nothing) 
                                       (MS [] [] (filter (/=cv) (patvars t)) [])
           ps' = mergeAllPats ist cv t ps in
-          ((p, u) : ps')
+          ((p', u) : ps')
   where patvars (PRef _ n) = [n]
         patvars (PApp _ _ as) = concatMap (patvars . getTm) as
         patvars (PPatvar _ n) = [n]
@@ -356,4 +357,24 @@ mkWith str n = let str' = replaceRHS str "with (_)"
          replaceRHS ('=': rest) str 
               | not ('=' `elem` rest) = str
          replaceRHS (x : rest) str = x : replaceRHS rest str
+
+-- Replace _ with names in missing clauses
+
+nameMissing :: [PTerm] -> Idris [PTerm]
+nameMissing ps = do ist <- get
+                    newPats <- mapM nm ps
+                    let newPats' = mergeAllPats ist (UN "_") (base (head ps))
+                                                newPats
+                    return (map fst newPats')
+  where
+    base (PApp fc f args) = PApp fc f (map (fmap (const (PRef fc (UN "_")))) args)
+    base t = t
+
+    nm ptm = do mptm <- elabNewPat ptm
+                case mptm of
+                     Nothing -> return ptm
+                     Just ptm' -> return ptm'
+                       
+
+
 
