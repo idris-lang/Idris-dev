@@ -245,7 +245,7 @@ replaceSplits :: String -> [[(Name, PTerm)]] -> Idris [String]
 replaceSplits l ups = updateRHSs 1 (map (rep (expandBraces l)) ups)
   where
     rep str [] = str ++ "\n"
-    rep str ((n, tm) : ups) = rep (updatePat False (show n) (nshow False tm) str) ups
+    rep str ((n, tm) : ups) = rep (updatePat False (show n) (nshow tm) str) ups
 
     updateRHSs i [] = return []
     updateRHSs i (x : xs) = do (x', i') <- updateRHS i x
@@ -264,11 +264,10 @@ replaceSplits l ups = updateRHSs 1 (map (rep (expandBraces l)) ups)
 
     -- TMP HACK: If there are Nats, we don't want to show as numerals since
     -- this isn't supported in a pattern, so special case here
-    nshow brack (PRef _ (UN "Z")) = "Z"
-    nshow brack (PApp _ (PRef _ (UN "S")) [x]) =
-       if brack then "(S " else "S " ++ nshow True (getTm x) ++
-       if brack then ")" else ""
-    nshow _ t = show t
+    nshow (PRef _ (UN "Z")) = "Z"
+    nshow (PApp _ (PRef _ (UN "S")) [x]) =
+               "S " ++ addBrackets (nshow (getTm x))
+    nshow t = show t
 
     -- if there's any {n} replace with {n=n}
     expandBraces ('{' : xs)
