@@ -894,7 +894,7 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
            optpats <- if doNothing
                          then return $ [Right (mkApp (P Bound n Erased)
                                                     (take numArgs (repeat Erased)), Erased)]
-                         else (stripCollapsed <=< mapM reconstructCollapsed) pats
+                         else stripCollapsed pats
 
            case specNames opts of
                 Just _ -> logLvl 5 $ "Partially evaluated:\n" ++ show pats

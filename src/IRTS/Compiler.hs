@@ -284,7 +284,7 @@ instance ToIR (TT Name) where
               = let maybeTys = getFTypes fgnArgTys
                     rty = mkIty' ret in
                 case maybeTys of
-                  Nothing -> ifail $ "Foreign type specification is not a constant list: " ++ show (fgn:args, fgnArgTys)
+                  Nothing -> ifail $ "Foreign type specification is not a constant list: " ++ show (fgn:args)
                   Just tys -> do
                     args' <- mapM (ir' env) (init args)
                     -- wrap it in a prim__IO
