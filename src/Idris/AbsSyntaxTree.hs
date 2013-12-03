@@ -759,7 +759,7 @@ deriving instance NFData ClassInfo
 
 -- An argument is conditionally forceable iff its forceability
 -- depends on the collapsibility of the whole type.
-data Forceability a = Unforceable | CondForceable | Forceable deriving (Show, Enum, Bounded, Eq, Ord)
+data Forceability = Unforceable | CondForceable | Forceable deriving (Show, Enum, Bounded, Eq, Ord)
 type ForceMap = IntMap Forceability
 
 -- This wrapper has to be here until we fix the Binary instance for IntMaps :(

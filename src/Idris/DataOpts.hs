@@ -21,7 +21,7 @@ import Debug.Trace
 forceArgs :: Name -> Name -> Type -> Idris ()
 forceArgs typeName n t = do
     ist <- getIState
-    let fargs = replace () $ getForcedArgs ist typeName t
+    let fargs = getForcedArgs ist typeName t
         copt = case lookupCtxt n (idris_optimisation ist) of
           []   -> Optimise False False (W IM.empty) []
           op:_ -> op
@@ -29,9 +29,6 @@ forceArgs typeName n t = do
     putIState (ist { idris_optimisation = opts })
     addIBC (IBCOpt n)
     iLOG $ "Forced: " ++ show n ++ " " ++ show fargs ++ "\n   from " ++ show t
-  where
-    replace :: b -> ForceMap' a -> ForceMap' b
-    replace x = M.map (fmap $ const x)
 
 getForcedArgs :: IState -> Name -> Type -> ForceMap
 getForcedArgs ist typeName t = addCollapsibleArgs 0 t $ forcedInTarget 0 t
