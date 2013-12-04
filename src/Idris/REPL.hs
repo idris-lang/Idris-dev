@@ -734,10 +734,10 @@ process h fn (DoProofSearch updatefile l n hints)
                           if (isSpace c && mv == n)
                              then addBracket brack new ++ (c : cs)
                              else '?' : mv ++ c : updateMeta True cs n new
-                     (mv, []) -> if (mv == n) then new else '?' : mv
+                     (mv, []) -> if (mv == n) then addBracket brack new else '?' : mv
           updateMeta brack ('=':cs) n new = '=':updateMeta False cs n new
           updateMeta brack (c:cs) n new 
-              = c : updateMeta (not (not brack && isSpace c)) cs n new
+              = c : updateMeta (brack || not (isSpace c)) cs n new
           updateMeta brack [] n new = ""
 
           addBracket False new = new
