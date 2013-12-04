@@ -8,6 +8,7 @@ import Idris.AbsSyntax
 import Idris.AbsSyntaxTree
 import Core.TT
 
+import Control.Applicative
 import qualified Data.IntMap.Strict as IM
 import Data.IntMap.Strict (IntMap)
 import qualified Data.Map as M
@@ -155,31 +156,22 @@ class Optimisable term where
     stripCollapsed :: term -> Idris term
 
 instance (Optimisable a, Optimisable b) => Optimisable (a, b) where
-    applyOpts (x, y) = do x' <- applyOpts x
-                          y' <- applyOpts y
-                          return (x', y')
-    stripCollapsed (x, y) = do x' <- stripCollapsed x
-                               y' <- stripCollapsed y
-                               return (x', y')
-
+    applyOpts (x, y) = (,) <$> applyOpts x <*> applyOpts y
+    stripCollapsed (x, y) = (,) <$> stripCollapsed x <*> stripCollapsed y
 
 instance (Optimisable a, Optimisable b) => Optimisable (vs, a, b) where
-    applyOpts (v, x, y) = do x' <- applyOpts x
-                             y' <- applyOpts y
-                             return (v, x', y')
-    stripCollapsed (v, x, y) = do x' <- stripCollapsed x
-                                  y' <- stripCollapsed y
-                                  return (v, x', y')
+    applyOpts (v, x, y) = (,,) v <$> applyOpts x <*> applyOpts y
+    stripCollapsed (v, x, y) = (,,) v <$> stripCollapsed x <*> stripCollapsed y
 
 instance Optimisable a => Optimisable [a] where
     applyOpts = mapM applyOpts
     stripCollapsed = mapM stripCollapsed
 
 instance Optimisable a => Optimisable (Either a (a, a)) where
-    applyOpts (Left t) = do t' <- applyOpts t; return $ Left t'
-    applyOpts (Right t) = do t' <- applyOpts t; return $ Right t'
-    stripCollapsed (Left t) = do t' <- stripCollapsed t; return $ Left t'
-    stripCollapsed (Right t) = do t' <- stripCollapsed t; return $ Right t'
+    applyOpts (Left  t) = Left  <$> applyOpts t
+    applyOpts (Right t) = Right <$> applyOpts t
+    stripCollapsed (Left  t) = Left  <$> stripCollapsed t
+    stripCollapsed (Right t) = Right <$> stripCollapsed t
 
 -- Raw is for compile time optimisation (before type checking)
 -- Term is for run time optimisation (after type checking, collapsing allowed)
@@ -191,40 +183,34 @@ instance Optimisable Raw where
         | (Var n, args) <- raw_unapply t -- MAGIC HERE
             = do args' <- mapM applyOpts args
                  i <- getIState
-                 case lookupCtxt n (idris_optimisation i) of
-                    (oi:_) -> return $ applyDataOpt oi n args'
-                    _ -> return (raw_apply (Var n) args')
-        | otherwise = do f' <- applyOpts f
-                         a' <- applyOpts a
-                         return (RApp f' a')
-    applyOpts (RBind n b t) = do b' <- applyOpts b
-                                 t' <- applyOpts t
-                                 return (RBind n b' t')
-    applyOpts (RForce t) = applyOpts t
+                 return $ case lookupCtxt n (idris_optimisation i) of
+                    oi:_ -> applyDataOpt oi n args'
+                    _    -> raw_apply (Var n) args'
+        | otherwise = RApp <$> applyOpts f <*> applyOpts a
+
+    applyOpts (RBind n b t) = RBind n <$> applyOpts b <*> applyOpts t
+    applyOpts (RForce t)    = applyOpts t
     applyOpts t = return t
 
     stripCollapsed t = return t
 
 instance Optimisable t => Optimisable (Binder t) where
-    applyOpts (Let t v) = do t' <- applyOpts t
-                             v' <- applyOpts v
-                             return (Let t' v')
+    applyOpts (Let t v) = Let <$> applyOpts t <*> applyOpts v
     applyOpts b = do t' <- applyOpts (binderTy b)
                      return (b { binderTy = t' })
-    stripCollapsed (Let t v) = do t' <- stripCollapsed t
-                                  v' <- stripCollapsed v
-                                  return (Let t' v')
+    stripCollapsed (Let t v) = Let <$> stripCollapsed t <*> stripCollapsed v
     stripCollapsed b = do t' <- stripCollapsed (binderTy b)
                           return (b { binderTy = t' })
 
 forcedArgSeq :: OptInfo -> [Bool]
 forcedArgSeq oi = map (isForced oi) [0..]
   where
-    isForced oi i 
+    isForced oi i =
+      case IM.lookup i $ unW (forceable oi) of
+        Just Forceable -> True
+        _ -> False
         -- We needn't consider CondForceable because it's only important when the type
         -- is collapsible -- but in that case this whole optimisation is irrelevant
-        | Just f <- IM.lookup i (unW $ forceable oi) = f == Forceable
-        | otherwise = False
 
 applyDataOpt :: OptInfo -> Name -> [Raw] -> Raw
 applyDataOpt oi n args 
