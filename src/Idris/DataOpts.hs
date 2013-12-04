@@ -87,7 +87,7 @@ collapseCons tn ctors = do
     ist <- getIState
     case ctors of
         _
-          | all (>= CondForceable) (IM.elems $ forceMap tn ist)
+          | all (ctorCollapsible ist) ctors
           , disjointTerms ctorTargetArgs
             -> mapM_ setCollapsible (tn : map fst ctors)
 
@@ -96,14 +96,19 @@ collapseCons tn ctors = do
 
         _ -> return () -- nothing can be done
   where
-    --- [(name, [types of arguments w/o their names])]
-    ctorArgs = map (\(n, t) -> (n, map snd (getArgTys t))) ctors
     ctorTargetArgs = map (snd . unApply . getRetTy . snd) ctors
 
-    forceMap :: Name -> IState -> ForceMap
-    forceMap n ist = case lookupCtxt n (idris_optimisation ist) of
-        (oi:_) -> unW $ forceable oi
-        _      -> IM.empty
+    ctorArity :: Type -> Int
+    ctorArity = length . getArgTys
+
+    ctorCollapsible :: IState -> (Name, Type) -> Bool
+    ctorCollapsible ist (n, t) = all argForceable [0 .. ctorArity t - 1]
+      where
+        argForceable i = IM.findWithDefault Unforceable i forceMap >= CondForceable
+
+        forceMap = case lookupCtxt n (idris_optimisation ist) of
+            oi:_ -> unW $ forceable oi
+            _    -> IM.empty
 
     -- one constructor; if one remaining argument, treat as newtype
     checkNewType :: IState -> Name -> Type -> Idris ()
