@@ -9,10 +9,7 @@ import Idris.AbsSyntaxTree
 import Core.TT
 
 import Control.Applicative
-import qualified Data.IntMap.Strict as IM
-import Data.IntMap.Strict (IntMap)
-import qualified Data.Map as M
-import Data.Map (Map)
+import qualified Data.IntMap.Strict as M
 import Data.List
 import Data.Maybe
 import Debug.Trace
@@ -24,7 +21,7 @@ forceArgs typeName n t = do
     ist <- getIState
     let fargs = getForcedArgs ist typeName t
         copt = case lookupCtxt n (idris_optimisation ist) of
-          []   -> Optimise False False (W IM.empty) []
+          []   -> Optimise False False (W M.empty) []
           op:_ -> op
         opts = addDef n (copt { forceable = W fargs }) (idris_optimisation ist)
     putIState (ist { idris_optimisation = opts })
@@ -34,7 +31,7 @@ forceArgs typeName n t = do
 getForcedArgs :: IState -> Name -> Type -> ForceMap
 getForcedArgs ist typeName t = addCollapsibleArgs 0 t $ forcedInTarget 0 t
   where
-    maxUnion = IM.unionWith max
+    maxUnion = M.unionWith max
 
     -- Label all occurrences of the variable bound in Pi in the rest of
     -- the term with the number i so that we can recognize them anytime later.
@@ -48,11 +45,11 @@ getForcedArgs ist typeName t = addCollapsibleArgs 0 t $ forcedInTarget 0 t
         forceable (P _ tn _, args)
             -- if `ty' is collapsible, the argument is unconditionally forceable
             | isCollapsible tn
-            = IM.insert i Forceable alreadyForceable
+            = M.insert i Forceable alreadyForceable
 
             -- a recursive occurrence with known indices is conditionally forceable
             | tn == typeName
-            = IM.insertWith max i CondForceable alreadyForceable
+            = M.insertWith max i CondForceable alreadyForceable
 
         forceable _ = alreadyForceable
 
@@ -66,7 +63,7 @@ getForcedArgs ist typeName t = addCollapsibleArgs 0 t $ forcedInTarget 0 t
     forcedInTarget :: Int -> Type -> ForceMap
     forcedInTarget i (Bind _ (Pi _) rest) = forcedInTarget (i+1) (label i rest)
     forcedInTarget i t@(App f a) | (_, as) <- unApply t = unionMap guardedArgs as
-    forcedInTarget _ _ = IM.empty
+    forcedInTarget _ _ = M.empty
 
     guardedArgs :: Term -> ForceMap
     guardedArgs t@(App f a) | (P (DCon _ _) _ _, args) <- unApply t
@@ -74,11 +71,11 @@ getForcedArgs ist typeName t = addCollapsibleArgs 0 t $ forcedInTarget 0 t
     guardedArgs t = bareArg t
 
     bareArg :: Term -> ForceMap
-    bareArg (P _ (MN i "ctor_arg") _) = IM.singleton i Forceable
-    bareArg  _                        = IM.empty
+    bareArg (P _ (MN i "ctor_arg") _) = M.singleton i Forceable
+    bareArg  _                        = M.empty
 
     unionMap :: (a -> ForceMap) -> [a] -> ForceMap
-    unionMap f = IM.unionsWith max . map f
+    unionMap f = M.unionsWith max . map f
 
 -- Calculate whether a collection of constructors is collapsible
 -- and update the state accordingly.
@@ -104,11 +101,11 @@ collapseCons tn ctors = do
     ctorCollapsible :: IState -> (Name, Type) -> Bool
     ctorCollapsible ist (n, t) = all argForceable [0 .. ctorArity t - 1]
       where
-        argForceable i = IM.findWithDefault Unforceable i forceMap >= CondForceable
+        argForceable i = M.findWithDefault Unforceable i forceMap >= CondForceable
 
         forceMap = case lookupCtxt n (idris_optimisation ist) of
             oi:_ -> unW $ forceable oi
-            _    -> IM.empty
+            _    -> M.empty
 
     -- one constructor; if one remaining argument, treat as newtype
     checkNewType :: IState -> Name -> Type -> Idris ()
@@ -129,7 +126,7 @@ collapseCons tn ctors = do
                (oi:_) -> do let oi' = oi { collapsible = True }
                             let opts = addDef n oi' (idris_optimisation i)
                             putIState (i { idris_optimisation = opts })
-               [] -> do let oi = Optimise True False (W IM.empty) []
+               [] -> do let oi = Optimise True False (W M.empty) []
                         let opts = addDef n oi (idris_optimisation i)
                         putIState (i { idris_optimisation = opts })
                         addIBC (IBCOpt n)
@@ -208,12 +205,12 @@ instance Optimisable t => Optimisable (Binder t) where
                           return (b { binderTy = t' })
 
 forcedArgSeq :: OptInfo -> [Forceability]
-forcedArgSeq oi = map (\i -> IM.findWithDefault Unforceable i forceMap) [0..]
+forcedArgSeq oi = map (\i -> M.findWithDefault Unforceable i forceMap) [0..]
   where
     forceMap = unW (forceable oi)
 
 forcedCnt :: ForceMap -> Int
-forcedCnt = length . filter (== Forceable) . IM.elems
+forcedCnt = length . filter (== Forceable) . M.elems
 
 applyDataOpt :: OptInfo -> Name -> [Raw] -> Raw
 applyDataOpt oi n args 
