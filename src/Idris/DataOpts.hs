@@ -114,7 +114,7 @@ collapseCons tn ctors = do
     checkNewType :: IState -> Name -> Type -> Idris ()
     checkNewType ist cn ct
         | oi:_ <- lookupCtxt cn opt
-        , length (getArgTys ct) == 1 + IM.size (unW $ forceable oi)
+        , length (getArgTys ct) == 1 + forcedCnt (unW $ forceable oi)
             = putIState ist{ idris_optimisation = opt' oi }
         | otherwise = return ()
       where
@@ -207,22 +207,20 @@ instance Optimisable t => Optimisable (Binder t) where
     stripCollapsed b = do t' <- stripCollapsed (binderTy b)
                           return (b { binderTy = t' })
 
-forcedArgSeq :: OptInfo -> [Bool]
-forcedArgSeq oi = map (isForced oi) [0..]
+forcedArgSeq :: OptInfo -> [Forceability]
+forcedArgSeq oi = map (\i -> IM.findWithDefault Unforceable i forceMap) [0..]
   where
-    isForced oi i =
-      case IM.lookup i $ unW (forceable oi) of
-        Just Forceable -> True
-        _ -> False
-        -- We needn't consider CondForceable because it's only important when the type
-        -- is collapsible -- but in that case this whole optimisation is irrelevant
+    forceMap = unW (forceable oi)
+
+forcedCnt :: ForceMap -> Int
+forcedCnt = length . filter (== Forceable) . IM.elems
 
 applyDataOpt :: OptInfo -> Name -> [Raw] -> Raw
 applyDataOpt oi n args 
     = raw_apply (Var n) $ zipWith doForce (forcedArgSeq oi) args
   where
-    doForce True  a = RForce a
-    doForce False a = a
+    doForce Forceable a = RForce a
+    doForce _         a =        a
 
 -- Run-time: do everything
 
@@ -302,10 +300,11 @@ applyDataOptRT oi n tag arity args
     doOpts n args _ forceMap
         | isnewtype oi = case args' of
             [val] -> val
-            _ -> error "Can't happen (newtype not a singleton)"
+            _     -> error $ "Can't happen (newtype not a singleton): " ++ show args'
         | otherwise = mkApp ctor' args'
       where
-        ctor' = (P (DCon tag (arity - IM.size forceMap)) n Erased)
+        ctor' = (P (DCon tag (arity - forcedCnt forceMap)) n Erased)
         args' = map snd . filter keep $ zip (forcedArgSeq oi) args
 
-    keep (forced, _) = not forced
+    keep (Forceable, _) = False
+    keep (_        , _) = True
