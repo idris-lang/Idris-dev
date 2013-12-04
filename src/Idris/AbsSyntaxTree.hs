@@ -772,8 +772,8 @@ deriving instance NFData Forceability
 data OptInfo = Optimise { collapsible :: Bool,
                           isnewtype :: Bool,
                           -- The following should actually be (IntMap Forceability)
-                          -- but the corresponding Binary instance is broken. Let's
-                          -- instead store a list and convert it to IntMap when needed.
+                          -- but the corresponding Binary instance seems to be broken.
+                          -- Let's store a list and convert it to IntMap when needed.
                           forceable :: [(Int, Forceability)],
                           recursive :: [Int] }
     deriving Show

@@ -303,7 +303,4 @@ applyDataOptRT oi n tag arity args
         | otherwise = mkApp ctor' args'
       where
         ctor' = (P (DCon tag (arity - forcedCnt forceMap)) n Erased)
-        args' = map snd . filter keep $ zip (forcedArgSeq oi) args
-
-    keep (Forceable, _) = False
-    keep (_        , _) = True
+        args' = [t | (f, t) <- zip (forcedArgSeq oi) args, f /= Forceable]
