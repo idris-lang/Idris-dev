@@ -14,6 +14,8 @@ import Data.List
 import Data.Maybe
 import Debug.Trace
 
+type ForceMap = M.IntMap Forceability
+
 -- Calculate the forceable arguments to a constructor
 -- and update the set of optimisations.
 forceArgs :: Name -> Name -> Type -> Idris ()
@@ -21,9 +23,9 @@ forceArgs typeName n t = do
     ist <- getIState
     let fargs = getForcedArgs ist typeName t
         copt = case lookupCtxt n (idris_optimisation ist) of
-          []   -> Optimise False False (W M.empty) []
+          []   -> Optimise False False [] []
           op:_ -> op
-        opts = addDef n (copt { forceable = W fargs }) (idris_optimisation ist)
+        opts = addDef n (copt { forceable = M.toList fargs }) (idris_optimisation ist)
     putIState (ist { idris_optimisation = opts })
     addIBC (IBCOpt n)
     iLOG $ "Forced: " ++ show n ++ " " ++ show fargs ++ "\n   from " ++ show t
@@ -104,14 +106,14 @@ collapseCons tn ctors = do
         argForceable i = M.findWithDefault Unforceable i forceMap >= CondForceable
 
         forceMap = case lookupCtxt n (idris_optimisation ist) of
-            oi:_ -> unW $ forceable oi
+            oi:_ -> M.fromList $ forceable oi
             _    -> M.empty
 
     -- one constructor; if one remaining argument, treat as newtype
     checkNewType :: IState -> Name -> Type -> Idris ()
     checkNewType ist cn ct
         | oi:_ <- lookupCtxt cn opt
-        , length (getArgTys ct) == 1 + forcedCnt (unW $ forceable oi)
+        , length (getArgTys ct) == 1 + forcedCnt (M.fromList $ forceable oi)
             = putIState ist{ idris_optimisation = opt' oi }
         | otherwise = return ()
       where
@@ -126,7 +128,7 @@ collapseCons tn ctors = do
                (oi:_) -> do let oi' = oi { collapsible = True }
                             let opts = addDef n oi' (idris_optimisation i)
                             putIState (i { idris_optimisation = opts })
-               [] -> do let oi = Optimise True False (W M.empty) []
+               [] -> do let oi = Optimise True False [] []
                         let opts = addDef n oi (idris_optimisation i)
                         putIState (i { idris_optimisation = opts })
                         addIBC (IBCOpt n)
@@ -207,7 +209,7 @@ instance Optimisable t => Optimisable (Binder t) where
 forcedArgSeq :: OptInfo -> [Forceability]
 forcedArgSeq oi = map (\i -> M.findWithDefault Unforceable i forceMap) [0..]
   where
-    forceMap = unW (forceable oi)
+    forceMap = M.fromList $ forceable oi
 
 forcedCnt :: ForceMap -> Int
 forcedCnt = length . filter (== Forceable) . M.elems
@@ -276,10 +278,10 @@ instance Optimisable (TT Name) where
 
 applyDataOptRT :: OptInfo -> Name -> Int -> Int -> [Term] -> Term
 applyDataOptRT oi n tag arity args
-    | length args == arity = doOpts n args (collapsible oi) (unW $ forceable oi)
+    | length args == arity = doOpts n args (collapsible oi) (M.fromList $ forceable oi)
     | otherwise = let extra = satArgs (arity - length args)
                       tm = doOpts n (args ++ map (\n -> P Bound n Erased) extra)
-                                    (collapsible oi) (unW $ forceable oi) in
+                                    (collapsible oi) (M.fromList $ forceable oi) in
                       bind extra tm
   where
     satArgs n = map (\i -> MN i "sat") [1..n]

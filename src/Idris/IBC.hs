@@ -848,10 +848,6 @@ instance Binary Forceability where
     put = putWord8 . fromIntegral . fromEnum
     get = safeToEnum "Forceability" `fmap` getWord8
 
-instance Binary (W ForceMap) where
-    put (W m) = put (M.toList m)
-    get = (W . M.fromList) `fmap` get
-
 instance Binary PReason where
         put x
           = case x of

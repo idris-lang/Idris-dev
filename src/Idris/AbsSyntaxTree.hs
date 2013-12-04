@@ -26,7 +26,6 @@ import Data.List
 import Data.Char
 import Data.Either
 import Data.Word (Word)
-import Data.IntMap.Strict (IntMap)
 
 import Debug.Trace
 
@@ -759,12 +758,11 @@ deriving instance NFData ClassInfo
 
 -- An argument is conditionally forceable iff its forceability
 -- depends on the collapsibility of the whole type.
-data Forceability = Unforceable | CondForceable | Forceable deriving (Show, Enum, Bounded, Eq, Ord)
-type ForceMap = IntMap Forceability
-
--- This wrapper has to be here until we fix the Binary instance for IntMaps :(
-newtype W a = W a deriving Show
-unW (W x) = x
+data Forceability =
+      Unforceable
+    | CondForceable
+    | Forceable
+    deriving (Show, Enum, Bounded, Eq, Ord)
 
 {-!
 deriving instance Binary Forceability
@@ -773,7 +771,10 @@ deriving instance NFData Forceability
 
 data OptInfo = Optimise { collapsible :: Bool,
                           isnewtype :: Bool,
-                          forceable :: W ForceMap, -- argument position -> forceability
+                          -- The following should actually be (IntMap Forceability)
+                          -- but the corresponding Binary instance is broken. Let's
+                          -- instead store a list and convert it to IntMap when needed.
+                          forceable :: [(Int, Forceability)],
                           recursive :: [Int] }
     deriving Show
 {-!

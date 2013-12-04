@@ -13,9 +13,6 @@ instance NFData Forceability where
         rnf CondForceable = ()
         rnf Unforceable = ()
 
-instance NFData a => NFData (W a) where
-    rnf (W x) = rnf x `seq` ()
-
 instance NFData Raw where
         rnf (Var x1) = rnf x1 `seq` ()
         rnf (RBind x1 x2 x3) = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` ()
