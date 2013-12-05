@@ -769,7 +769,7 @@ data OptInfo = Optimise { collapsible :: Bool,
                           isnewtype :: Bool,
                           -- The following should actually be (IntMap Forceability)
                           -- but the corresponding Binary instance seems to be broken.
-                          -- Let's store a list and convert it to IntMap when needed.
+                          -- Let's store a list and convert it to IntMap whenever needed.
                           forceable :: [(Int, Forceability)],
                           recursive :: [Int] }
     deriving Show

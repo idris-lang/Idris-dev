@@ -24,7 +24,7 @@ import Debug.Trace
 import Paths_idris
 
 ibcVersion :: Word8
-ibcVersion = 46
+ibcVersion = 47
 
 data IBCFile = IBCFile { ver :: Word8,
                          sourcefile :: FilePath,
