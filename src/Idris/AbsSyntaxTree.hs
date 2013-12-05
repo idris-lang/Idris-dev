@@ -758,11 +758,7 @@ deriving instance NFData ClassInfo
 
 -- An argument is conditionally forceable iff its forceability
 -- depends on the collapsibility of the whole type.
-data Forceability =
-      Unforceable
-    | CondForceable
-    | Forceable
-    deriving (Show, Enum, Bounded, Eq, Ord)
+data Forceability = Conditional | Unconditional deriving (Show, Enum, Bounded, Eq, Ord)
 
 {-!
 deriving instance Binary Forceability

@@ -47,11 +47,11 @@ getForcedArgs ist typeName t = addCollapsibleArgs 0 t $ forcedInTarget 0 t
         forceable (P _ tn _, args)
             -- if `ty' is collapsible, the argument is unconditionally forceable
             | isCollapsible tn
-            = M.insert i Forceable alreadyForceable
+            = M.insert i Unconditional alreadyForceable
 
             -- a recursive occurrence with known indices is conditionally forceable
             | tn == typeName
-            = M.insertWith max i CondForceable alreadyForceable
+            = M.insertWith max i Conditional alreadyForceable
 
         forceable _ = alreadyForceable
 
@@ -73,7 +73,7 @@ getForcedArgs ist typeName t = addCollapsibleArgs 0 t $ forcedInTarget 0 t
     guardedArgs t = bareArg t
 
     bareArg :: Term -> ForceMap
-    bareArg (P _ (MN i "ctor_arg") _) = M.singleton i Forceable
+    bareArg (P _ (MN i "ctor_arg") _) = M.singleton i Unconditional
     bareArg  _                        = M.empty
 
     unionMap :: (a -> ForceMap) -> [a] -> ForceMap
@@ -101,10 +101,8 @@ collapseCons tn ctors = do
     ctorArity = length . getArgTys
 
     ctorCollapsible :: IState -> (Name, Type) -> Bool
-    ctorCollapsible ist (n, t) = all argForceable [0 .. ctorArity t - 1]
+    ctorCollapsible ist (n, t) = all (`M.member` forceMap) [0 .. ctorArity t - 1]
       where
-        argForceable i = M.findWithDefault Unforceable i forceMap >= CondForceable
-
         forceMap = case lookupCtxt n (idris_optimisation ist) of
             oi:_ -> M.fromList $ forceable oi
             _    -> M.empty
@@ -206,20 +204,20 @@ instance Optimisable t => Optimisable (Binder t) where
     stripCollapsed b = do t' <- stripCollapsed (binderTy b)
                           return (b { binderTy = t' })
 
-forcedArgSeq :: OptInfo -> [Forceability]
-forcedArgSeq oi = map (\i -> M.findWithDefault Unforceable i forceMap) [0..]
+forcedArgSeq :: OptInfo -> [Maybe Forceability]
+forcedArgSeq oi = map (\i -> M.lookup i forceMap) [0..]
   where
     forceMap = M.fromList $ forceable oi
 
 forcedCnt :: ForceMap -> Int
-forcedCnt = length . filter (== Forceable) . M.elems
+forcedCnt = length . filter (== Unconditional) . M.elems
 
 applyDataOpt :: OptInfo -> Name -> [Raw] -> Raw
 applyDataOpt oi n args 
     = raw_apply (Var n) $ zipWith doForce (forcedArgSeq oi) args
   where
-    doForce Forceable a = RForce a
-    doForce _         a =        a
+    doForce (Just Unconditional) a = RForce a
+    doForce _ a = a
 
 -- Run-time: do everything
 
@@ -303,4 +301,4 @@ applyDataOptRT oi n tag arity args
         | otherwise = mkApp ctor' args'
       where
         ctor' = (P (DCon tag (arity - forcedCnt forceMap)) n Erased)
-        args' = [t | (f, t) <- zip (forcedArgSeq oi) args, f /= Forceable]
+        args' = [t | (f, t) <- zip (forcedArgSeq oi) args, f /= Just Unconditional]
