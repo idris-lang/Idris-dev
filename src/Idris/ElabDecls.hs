@@ -511,6 +511,7 @@ elabPrims = do mapM_ (elabDecl EAll toplevel)
                         (zip
                          [inferOpts, unitOpts, falseOpts, pairOpts, eqOpts]
                          [inferDecl, unitDecl, falseDecl, pairDecl, eqDecl]))
+               addNameHint eqTy (UN "prf")
                elabDecl EAll toplevel elimDecl
                mapM_ elabPrim primitives
                -- Special case prim__believe_me because it doesn't work on just constants

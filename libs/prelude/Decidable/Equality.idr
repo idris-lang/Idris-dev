@@ -1,6 +1,7 @@
 module Decidable.Equality
 
 import Builtins
+import Prelude.Basics
 import Prelude.Either
 import Prelude.List
 import Prelude.Vect

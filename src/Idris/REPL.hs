@@ -741,6 +741,7 @@ process h fn (DoProofSearch updatefile l n hints)
           updateMeta brack [] n new = ""
 
           addBracket False new = new
+          addBracket True new@('(':xs) | last xs == ')' = new
           addBracket True new | any isSpace new = '(' : new ++ ")"
                               | otherwise = new
 

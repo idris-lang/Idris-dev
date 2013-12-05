@@ -326,6 +326,7 @@ getClause l fn fp = do ty <- getInternalApp fp l
          getNameFrom i used (PPi _ _ _ _) 
               = uniqueNameFrom (mkSupply [UN "f", UN "g"]) used
          getNameFrom i used (PApp fc f as) = getNameFrom i used f
+         getNameFrom i used (PEq _ _ _) = uniqueNameFrom [UN "prf"] used 
          getNameFrom i used (PRef fc f) 
             = case getNameHints i f of
                    [] -> uniqueName (UN "x") used
