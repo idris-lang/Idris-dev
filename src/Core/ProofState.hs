@@ -609,7 +609,8 @@ induction nm ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' = do
              mapM_ addConsHole (reverse consargs)
              let res' = forget $ res
              (scv, sct) <- lift $ check ctxt env res'
-             return scv
+             let scv' = specialise ctxt env [] scv
+             return scv'
           [] -> fail $ "Induction needs an eliminator for " ++ show nm
           xs -> fail $ "Multiple definitions found when searching for the eliminator of " ++ show nm
     (P _ nm _, _) -> fail "Induction not yet supported for types with arguments"

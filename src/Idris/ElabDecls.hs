@@ -359,18 +359,18 @@ elabEliminator paramPos n ty cons info = do
         freshName key = do
           nameMap <- get
           let i = fromMaybe 0 (Map.lookup key nameMap)
-          let name = key ++ show i ++ "__"
+          let name = key ++ show i
           put $ Map.insert key (i+1) nameMap
-          return (MN i name)
+          return (UN name)
 
         scrutineeName :: Name
-        scrutineeName = MN 0 "scrutinee"
+        scrutineeName = UN "scrutinee"
 
         scrutineeArgName :: Name
-        scrutineeArgName = MN 0 "scrutineeArg"
+        scrutineeArgName = UN "scrutineeArg"
 
         motiveName :: Name
-        motiveName = MN 0 "prop"
+        motiveName = UN "prop"
 
         mkMotive :: Name -> [Int] -> [(Name, Plicity, PTerm)] -> [(Name, Plicity, PTerm)] -> PTerm
         mkMotive n paramPos params indicies =
@@ -460,7 +460,7 @@ elabEliminator paramPos n ty cons info = do
           let (_, consIdxs) = splitArgPms resTy
           return $ piConstr (implidxs ++ consArgs ++ recMotives) (applyMotive consIdxs (applyCons cnm consArgs))
             where applyRecMotive :: (Name, Plicity, PTerm) -> (Name, Plicity, PTerm)
-                  applyRecMotive (n,_,ty)  = (MN 0 $ "ih" ++ simpleName n, expl, applyMotive idxs (PRef elimFC n))
+                  applyRecMotive (n,_,ty)  = (UN $ "ih" ++ simpleName n, expl, applyMotive idxs (PRef elimFC n))
                       where (_, idxs) = splitArgPms ty
 
         findRecArgs :: [(Name, Plicity, PTerm)] -> [(Name, Plicity, PTerm)]
