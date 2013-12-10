@@ -756,9 +756,21 @@ deriving instance Binary ClassInfo
 deriving instance NFData ClassInfo
 !-}
 
+-- An argument is conditionally forceable iff its forceability
+-- depends on the collapsibility of the whole type.
+data Forceability = Conditional | Unconditional deriving (Show, Enum, Bounded, Eq, Ord)
+
+{-!
+deriving instance Binary Forceability
+deriving instance NFData Forceability
+!-}
+
 data OptInfo = Optimise { collapsible :: Bool,
                           isnewtype :: Bool,
-                          forceable :: [Int], -- argument positions
+                          -- The following should actually be (IntMap Forceability)
+                          -- but the corresponding Binary instance seems to be broken.
+                          -- Let's store a list and convert it to IntMap whenever needed.
+                          forceable :: [(Int, Forceability)],
                           recursive :: [Int] }
     deriving Show
 {-!

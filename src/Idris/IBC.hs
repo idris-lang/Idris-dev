@@ -23,7 +23,7 @@ import Debug.Trace
 import Paths_idris
 
 ibcVersion :: Word8
-ibcVersion = 46
+ibcVersion = 47
 
 data IBCFile = IBCFile { ver :: Word8,
                          sourcefile :: FilePath,
@@ -832,6 +832,20 @@ instance Binary Accessibility where
                    1 -> return Frozen
                    2 -> return Hidden
                    _ -> error "Corrupted binary data for Accessibility"
+
+safeToEnum :: (Enum a, Bounded a, Integral int) => String -> int -> a
+safeToEnum label x' = result
+  where
+    x = fromIntegral x'
+    result 
+        |  x < fromEnum (minBound `asTypeOf` result)
+        || x > fromEnum (maxBound `asTypeOf` result)
+            = error $ label ++ ": corrupted binary representation in IBC"
+        | otherwise = toEnum x
+
+instance Binary Forceability where
+    put = putWord8 . fromIntegral . fromEnum
+    get = safeToEnum "Forceability" `fmap` getWord8
 
 instance Binary PReason where
         put x
