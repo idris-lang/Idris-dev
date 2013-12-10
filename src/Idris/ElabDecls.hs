@@ -32,7 +32,6 @@ import Control.Monad.State
 import Data.List
 import Data.Maybe
 import Debug.Trace
-import qualified Data.IntMap.Strict as M
 
 import qualified Data.Map as Map
 import Data.Char(isLetter, toLower)

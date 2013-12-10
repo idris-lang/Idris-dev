@@ -12,7 +12,6 @@ import Idris.Error
 import Data.Binary
 import Data.Vector.Binary
 import Data.List
-import qualified Data.IntMap.Strict as M
 import Data.ByteString.Lazy as B hiding (length, elem)
 import Control.Monad
 import Control.Monad.State hiding (get, put)
