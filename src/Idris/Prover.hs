@@ -91,7 +91,7 @@ dumpState ist (PS nm [] _ _ tm _ _ _ _ _ _ _ _ _ _ _ _ _ _) =
   iputGoal . render $ pretty nm <> colon <+> text "No more goals."
 dumpState ist ps@(PS nm (h:hs) _ _ tm _ _ _ _ _ _ problems i _ _ ctxy _ _ _) = do
   let OK ty  = goalAtFocus ps
-  let OK env = envAtFocus ps
+  let OK env = trace (show $ envAtFocus ps) $ envAtFocus ps
   iputGoal . render $
     prettyOtherGoals hs $$
     prettyAssumptions env $$
