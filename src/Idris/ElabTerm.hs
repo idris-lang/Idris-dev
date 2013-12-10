@@ -842,7 +842,7 @@ runTac autoSolve ist tac
                    when autoSolve solveAll
     runT (Induction nm)
               = do induction nm
- --                  when autoSolve solveAll
+                   when autoSolve solveAll
     runT (LetTac n tm)
               = do attack
                    tyn <- unique_hole (MN 0 "letty")
