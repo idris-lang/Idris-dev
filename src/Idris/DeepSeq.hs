@@ -276,6 +276,7 @@ instance (NFData t) => NFData (PTactic' t) where
         rnf (Focus x1) = rnf x1 `seq` ()
         rnf (Refine x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
         rnf (Rewrite x1) = rnf x1 `seq` ()
+        rnf (Induction x1) = rnf x1 `seq` ()
         rnf (Equiv x1) = rnf x1 `seq` ()
         rnf (MatchRefine x1) = rnf x1 `seq` ()
         rnf (LetTac x1 x2) = rnf x1 `seq` rnf x2 `seq` ()

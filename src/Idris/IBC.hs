@@ -23,7 +23,7 @@ import Debug.Trace
 import Paths_idris
 
 ibcVersion :: Word8
-ibcVersion = 46
+ibcVersion = 47
 
 data IBCFile = IBCFile { ver :: Word8,
                          sourcefile :: FilePath,
@@ -1597,6 +1597,8 @@ instance (Binary t) => Binary (PTactic' t) where
                                  put x1
                 Fill x1 -> do putWord8 18
                               put x1
+                Induction x1 -> do putWord8 19
+                                   put x1
         get
           = do i <- getWord8
                case i of
@@ -1634,6 +1636,8 @@ instance (Binary t) => Binary (PTactic' t) where
                             return (Reflect x1)
                    18 -> do x1 <- get
                             return (Fill x1)
+                   19 -> do x1 <- get
+                            return (Induction x1)
                    _ -> error "Corrupted binary data for PTactic'"
 
 

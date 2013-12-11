@@ -840,6 +840,9 @@ runTac autoSolve ist tac
                    elab ist toplevel False False (MN 0 "tac") tm
                    rewrite (Var letn)
                    when autoSolve solveAll
+    runT (Induction nm)
+              = do induction nm
+                   when autoSolve solveAll
     runT (LetTac n tm)
               = do attack
                    tyn <- unique_hole (MN 0 "letty")

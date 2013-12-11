@@ -69,6 +69,7 @@ data Tactic = Attack
             | LetBind Name Raw Raw
             | ExpandLet Name Term
             | Rewrite Raw
+            | Induction Name
             | Equiv Raw
             | PatVar Name
             | PatBind Name
@@ -566,27 +567,62 @@ rewrite tm ctxt env (Bind x (Hole t) xp@(P _ x' _)) | x == x' =
                (scv, sct) <- lift $ check ctxt env sc
                return scv
          _ -> fail "Not an equality type"
-  where
-    -- to make the P for rewrite, replace syntactic occurrences of l in ty with
-    -- an x, and put \x : lt in front
-    mkP lt l r ty | l == ty = lt
-    mkP lt l r (App f a) = let f' = if (r /= f) then mkP lt l r f else f
-                               a' = if (r /= a) then mkP lt l r a else a in
-                               App f' a'
-    mkP lt l r (Bind n b sc)
-                         = let b' = mkPB b
-                               sc' = if (r /= sc) then mkP lt l r sc else sc in
-                               Bind n b' sc'
-        where mkPB (Let t v) = let t' = if (r /= t) then mkP lt l r t else t
-                                   v' = if (r /= v) then mkP lt l r v else v in
-                                   Let t' v'
-              mkPB b = let ty = binderTy b
-                           ty' = if (r /= ty) then mkP lt l r ty else ty in
-                                 b { binderTy = ty' }
-    mkP lt l r x = x
-
-    rname = MN 0 "replaced"
+  where rname = MN 0 "replaced"
 rewrite _ _ _ _ = fail "Can't rewrite here"
+
+-- To make the P for rewrite, replace syntactic occurrences of l in ty with
+-- an x, and put \x : lt in front
+mkP :: TT Name -> TT Name -> TT Name -> TT Name -> TT Name
+mkP lt l r ty | l == ty = lt
+mkP lt l r (App f a) = let f' = if (r /= f) then mkP lt l r f else f
+                           a' = if (r /= a) then mkP lt l r a else a in
+                           App f' a'
+mkP lt l r (Bind n b sc)
+                     = let b' = mkPB b
+                           sc' = if (r /= sc) then mkP lt l r sc else sc in
+                           Bind n b' sc'
+    where mkPB (Let t v) = let t' = if (r /= t) then mkP lt l r t else t
+                               v' = if (r /= v) then mkP lt l r v else v in
+                               Let t' v'
+          mkPB b = let ty = binderTy b
+                       ty' = if (r /= ty) then mkP lt l r ty else ty in
+                             b { binderTy = ty' }
+mkP lt l r x = x
+
+induction :: Name -> RunTactic
+induction nm ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' = do
+  (tmv, tmt) <- lift $ check ctxt env (Var nm)
+  let tmt' = normalise ctxt env tmt
+  case unApply tmt' of
+    (P _ tnm _, pms@[]) -> do
+        case lookupTy (SN (ElimN tnm)) ctxt of
+          [elimTy] -> do
+             let args     = getArgTys elimTy
+             let pmargs   = take (length pms) args -- TODO: Fill these correctly when having multiple parameters working
+             let args'    = drop (length pms) args
+             let propTy   = head args'
+             let consargs = init $ tail args -- TODO: This is incorrect when type has indicies, get indicies and use the correct count
+             let scr      = last $ tail args
+             let prop = Bind nm (Lam tmt') t -- TODO: Make this work for types with indicies
+             let res = substV prop $ bindConsArgs consargs (mkApp (P Ref (SN (ElimN tnm)) (TType (UVal 0))) ([prop] ++ map makeConsArg consargs ++ [tmv]))
+             action (\ps -> ps {holes = holes ps \\ [x]})
+             mapM_ addConsHole (reverse consargs)
+             let res' = forget $ res
+             (scv, sct) <- lift $ check ctxt env res'
+             let scv' = specialise ctxt env [] scv
+             return scv'
+          [] -> fail $ "Induction needs an eliminator for " ++ show nm
+          xs -> fail $ "Multiple definitions found when searching for the eliminator of " ++ show nm
+    (P _ nm _, _) -> fail "Induction not yet supported for types with arguments"
+    _ -> fail "Unkown type for induction"
+    where scname = MN 0 "scarg"
+          makeConsArg (nm, ty) = P Bound nm ty
+          bindConsArgs ((nm, ty):args) v = Bind nm (Hole ty) $ bindConsArgs args v
+          bindConsArgs [] v = v
+          addConsHole (nm, ty) =
+            action (\ps -> ps { holes = nm : holes ps })
+induction tm ctxt env _ = do fail "Can't do induction here"
+
 
 equiv :: Raw -> RunTactic
 equiv tm ctxt env (Bind x (Hole t) sc) =
@@ -819,6 +855,7 @@ process t h = tactic (Just h) (mktac t)
          mktac (LetBind n t v)   = letbind n t v
          mktac (ExpandLet n b)   = expandLet n b
          mktac (Rewrite t)       = rewrite t
+         mktac (Induction t)     = induction t
          mktac (Equiv t)         = equiv t
          mktac (PatVar n)        = patvar n
          mktac (PatBind n)       = patbind n

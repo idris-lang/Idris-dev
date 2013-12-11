@@ -1074,6 +1074,8 @@ tactic syn = do reserved "intro"; ns <- sepBy (indentPropHolds gtProp *> name) (
           <|> do reserved "rewrite"; t <- (indentPropHolds gtProp *> expr syn);
                  i <- get
                  return $ Rewrite (desugar syn i t)
+          <|> do reserved "induction"; nm <- (indentPropHolds gtProp *> name);
+                 return $ Induction nm
           <|> do reserved "equiv"; t <- (indentPropHolds gtProp *> expr syn);
                  i <- get
                  return $ Equiv (desugar syn i t)
