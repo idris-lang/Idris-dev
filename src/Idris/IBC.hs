@@ -225,7 +225,7 @@ pClasses cs = mapM_ (\ (n, c) ->
                            -- Don't lose instances from previous IBCs, which
                            -- could have loaded in any order
                            let is = case lookupCtxt n (idris_classes i) of
-                                      [CI _ _ _ _ ins] -> ins
+                                      [CI _ _ _ _ _ ins] -> ins
                                       _ -> []
                            let c' = c { class_instances =
                                           class_instances c ++ is }
@@ -807,10 +807,7 @@ instance Binary Def where
                    1 -> do x1 <- get
                            x2 <- get
                            return (TyDecl x1 x2)
-                   2 -> do x1 <- get
-                           x2 <- get
-                           x3 <- get
-                           return (Operator x1 x2 x3)
+                   -- Operator isn't written, don't read
                    3 -> do x1 <- get
                            x2 <- get
                            x3 <- get
@@ -1246,7 +1243,7 @@ instance Binary Using where
                     1 -> do x1 <- get; x2 <- get; return (UConstraint x1 x2)
 
 instance Binary SyntaxInfo where
-        put (Syn x1 x2 x3 x4 x5 x6 x7 x8)
+        put (Syn x1 x2 x3 x4 _ x5 x6 x7)
           = do put x1
                put x2
                put x3
@@ -1254,7 +1251,6 @@ instance Binary SyntaxInfo where
                put x5
                put x6
                put x7
-               put x8
         get
           = do x1 <- get
                x2 <- get
@@ -1263,8 +1259,7 @@ instance Binary SyntaxInfo where
                x5 <- get
                x6 <- get
                x7 <- get
-               x8 <- get
-               return (Syn x1 x2 x3 x4 x5 x6 x7 x8)
+               return (Syn x1 x2 x3 x4 id x5 x6 x7)
 
 instance (Binary t) => Binary (PClause' t) where
         put x
@@ -1752,17 +1747,19 @@ instance (Binary t) => Binary (PArg' t) where
 
 
 instance Binary ClassInfo where
-        put (CI x1 x2 x3 x4 _)
+        put (CI x1 x2 x3 x4 x5 _)
           = do put x1
                put x2
                put x3
                put x4
+               put x5
         get
           = do x1 <- get
                x2 <- get
                x3 <- get
                x4 <- get
-               return (CI x1 x2 x3 x4 [])
+               x5 <- get
+               return (CI x1 x2 x3 x4 x5 [])
 
 instance Binary OptInfo where
         put (Optimise x1 x2 x3 x4)
