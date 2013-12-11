@@ -464,10 +464,6 @@ sort xs  =
 -- Conversions
 --------------------------------------------------------------------------------
 
-maybeToList : Maybe a -> List a
-maybeToList Nothing  = []
-maybeToList (Just j) = [j]
-
 listToMaybe : List a -> Maybe a
 listToMaybe []      = Nothing
 listToMaybe (x::xs) = Just x
