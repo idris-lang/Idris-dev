@@ -437,16 +437,35 @@ namespace syn =
        return [PNamespace n (concat ds)]
      <?> "namespace declaration"
 
-{- |Parses a methods block (for type classes and instances)
-  MethodsBlock ::= 'where' OpenBlock FnDecl* CloseBlock
+{- |Parses a methods block (for instances)
+  InstanceBlock ::= 'where' OpenBlock FnDecl* CloseBlock
  -}
-methodsBlock :: SyntaxInfo -> IdrisParser [PDecl]
-methodsBlock syn = do reserved "where"
-                      openBlock
-                      ds <- many (fnDecl syn)
-                      closeBlock
-                      return (concat ds)
-                   <?> "methods block"
+instanceBlock :: SyntaxInfo -> IdrisParser [PDecl]
+instanceBlock syn = do reserved "where"
+                       openBlock
+                       ds <- many (fnDecl syn)
+                       closeBlock
+                       return (concat ds)
+                    <?> "instance block"
+
+{- |Parses a methods and instances block (for type classes)
+
+MethodOrInstance ::=
+   FnDecl
+   | Instance
+   ;
+
+ClassBlock ::=
+  'where' OpenBlock MethodOrInstance* CloseBlock
+  ;
+-}
+classBlock :: SyntaxInfo -> IdrisParser [PDecl]
+classBlock syn = do reserved "where"
+                    openBlock
+                    ds <- many ((notEndBlock >> instance_ syn) <|> fnDecl syn)
+                    closeBlock
+                    return (concat ds)
+                 <?> "class block"
 
 {- |Parses a type class declaration
 
@@ -456,7 +475,7 @@ ClassArgument ::=
    ;
 
 Class ::=
-  DocComment_t? Accessibility? 'class' ConstraintList? Name ClassArgument* MethodsBlock?
+  DocComment_t? Accessibility? 'class' ConstraintList? Name ClassArgument* ClassBlock?
   ;
 -}
 class_ :: SyntaxInfo -> IdrisParser [PDecl]
@@ -467,7 +486,7 @@ class_ syn = do (doc, acc) <- try (do
                 reserved "class"; fc <- getFC; cons <- constraintList syn; n_in <- name
                 let n = expandNS syn n_in
                 cs <- many carg
-                ds <- option [] (methodsBlock syn)
+                ds <- option [] (classBlock syn)
                 accData acc n (concatMap declared ds)
                 return [PClass doc syn fc cons n cs ds]
              <?> "type-class declaration"
@@ -481,7 +500,7 @@ class_ syn = do (doc, acc) <- try (do
 {- |Parses a type class instance declaration
 
   Instance ::=
-    'instance' InstanceName? ConstraintList? Name SimpleExpr* MethodsBlock?
+    'instance' InstanceName? ConstraintList? Name SimpleExpr* InstanceBlock?
     ;
 
   InstanceName ::= '[' Name ']';
@@ -494,9 +513,9 @@ instance_ syn = do reserved "instance"; fc <- getFC
                    args <- many (simpleExpr syn)
                    let sc = PApp fc (PRef fc cn) (map pexp args)
                    let t = bindList (PPi constraint) (map (\x -> (MN 0 "c", x)) cs) sc
-                   ds <- option [] (methodsBlock syn)
+                   ds <- option [] (instanceBlock syn)
                    return [PInstance syn fc cs cn args t en ds]
-                 <?> "instance declaratioN"
+                 <?> "instance declaration"
   where instanceName :: IdrisParser Name
         instanceName = do lchar '['; n_in <- fnName; lchar ']'
                           let n = expandNS syn n_in

@@ -197,10 +197,10 @@ addInstance :: Bool -> Name -> Name -> Idris ()
 addInstance int n i
     = do ist <- getIState
          case lookupCtxt n (idris_classes ist) of
-                [CI a b c d ins] ->
-                     do let cs = addDef n (CI a b c d (addI i ins)) (idris_classes ist)
+                [CI a b c d e ins] ->
+                     do let cs = addDef n (CI a b c d e (addI i ins)) (idris_classes ist)
                         putIState $ ist { idris_classes = cs }
-                _ -> do let cs = addDef n (CI (MN 0 "none") [] [] [] [i]) (idris_classes ist)
+                _ -> do let cs = addDef n (CI (MN 0 "none") [] [] [] [] [i]) (idris_classes ist)
                         putIState $ ist { idris_classes = cs }
   where addI i ins | int = i : ins
                    | chaser n = ins ++ [i]

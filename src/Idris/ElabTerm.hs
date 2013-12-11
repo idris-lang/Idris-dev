@@ -641,7 +641,7 @@ findInstances :: IState -> Term -> [Name]
 findInstances ist t
     | (P _ n _, _) <- unApply t
         = case lookupCtxt n (idris_classes ist) of
-            [CI _ _ _ _ ins] -> ins
+            [CI _ _ _ _ _ ins] -> ins
             _ -> []
     | otherwise = []
 

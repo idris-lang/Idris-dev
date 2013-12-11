@@ -320,9 +320,9 @@ instance (NFData t) => NFData (PArg' t) where
               rnf x2 `seq` rnf x3 `seq` rnf x4 `seq` rnf x5 `seq` rnf x6 `seq` ()
 
 instance NFData ClassInfo where
-        rnf (CI x1 x2 x3 x4 x5)
+        rnf (CI x1 x2 x3 x4 x5 x6)
           = rnf x1 `seq`
-              rnf x2 `seq` rnf x3 `seq` rnf x4 `seq` rnf x5 `seq` ()
+              rnf x2 `seq` rnf x3 `seq` rnf x4 `seq` rnf x5 `seq` rnf x6 `seq` ()
 
 instance NFData OptInfo where
         rnf (Optimise x1 x2 x3 x4)
