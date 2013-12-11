@@ -410,7 +410,7 @@ syntax "[" [start] "," [next] ".." [end] "]"
      = enumFromThenTo start (next - start) end
 
 syntax "[" [start] "..]"
-     = enumFrom start 1
+     = enumFrom start
 syntax "[" [start] "," [next] "..]"
      = enumFromThen start (next - start)
 
