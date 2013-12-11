@@ -19,7 +19,7 @@ script:
   - cabal copy
   - make -j2 $TESTS
 env:
-  - TESTS=doc
+  # TESTS=doc
   - TESTS=test_c
   - TESTS=test_java
   - TESTS=test_llvm
