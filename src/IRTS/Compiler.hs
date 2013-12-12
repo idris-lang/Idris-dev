@@ -105,7 +105,7 @@ mkDecls :: Term -> [Name] -> Idris [(Name, LDecl)]
 mkDecls t used
     = do i <- getIState
          let ds = filter (\ (n, d) -> n `elem` used || isCon d) $ ctxtAlist (tt_ctxt i)
-         mapM traceUnused used
+         findUnusedArgs used
          decls <- mapM build ds
          return decls
 
