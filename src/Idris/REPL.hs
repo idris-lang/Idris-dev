@@ -224,9 +224,7 @@ ideslave orig mods
                        do clearErr
                           putIState (orig { idris_options = idris_options i,
                                             idris_outputmode = (IdeSlave id) })
-                          idrisCatch (do mod <- loadModule' stdout filename
-                                         return ())
-                                     (setAndReport)
+                          loadInputs stdout [filename]
                           isetPrompt (mkPrompt [filename])
                           -- Report either success or failure
                           i <- getIState
@@ -346,7 +344,7 @@ processInput stvar cmd orig inputs
                                   , idris_colourTheme = idris_colourTheme i
                                   }
                    clearErr
-                   mod <- loadModule stdout f
+                   mod <- loadInputs stdout [f]
                    return (Just [f])
             Success (ModImport f) ->
                 do clearErr
