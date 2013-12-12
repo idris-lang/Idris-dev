@@ -1186,10 +1186,11 @@ idrisMain opts =
 
        historyFile <- fmap (</> "repl" </> "history") getIdrisUserDataDir
 
-       when (runrepl && not idesl) $ initScript
-       stvar <- runIO $ newMVar ist
-       when (runrepl && not idesl) $ startServer ist stvar inputs
-       when (runrepl && not idesl) $ runInputT (replSettings (Just historyFile)) $ repl ist stvar inputs
+       when (runrepl && not idesl) $ do
+         initScript
+         stvar <- runIO $ newMVar ist
+         startServer ist stvar inputs
+         runInputT (replSettings (Just historyFile)) $ repl ist stvar inputs
        when (idesl) $ ideslaveStart ist inputs
        ok <- noErrors
        when (not ok) $ runIO (exitWith (ExitFailure 1))
