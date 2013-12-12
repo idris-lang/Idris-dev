@@ -18,7 +18,7 @@ import Util.LLVMStubs
 import IRTS.Inliner
 
 import Idris.AbsSyntax
-import Idris.UnusedArgs
+import Idris.Erasure
 import Idris.Error
 
 import Idris.Core.TT

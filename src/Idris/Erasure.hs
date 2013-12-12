@@ -1,4 +1,7 @@
-module Idris.UnusedArgs where
+module Idris.Erasure
+    ( findUnusedArgs
+    , traceUnused
+    ) where
 
 import Idris.AbsSyntax
 

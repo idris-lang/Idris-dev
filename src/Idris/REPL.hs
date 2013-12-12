@@ -16,8 +16,8 @@ import Idris.Prover
 import Idris.Parser hiding (indent)
 import Idris.Primitives
 import Idris.Coverage
-import Idris.UnusedArgs
 import Idris.Docs hiding (Doc)
+import Idris.Erasure
 import Idris.Help
 import Idris.Completion
 import qualified Idris.IdeSlave as IdeSlave
