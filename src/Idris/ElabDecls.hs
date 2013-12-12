@@ -793,7 +793,7 @@ elabCon info syn tn codata (doc, n, t_in, fc)
          addIBC (IBCDef n)
          addDocStr n doc
          addIBC (IBCDoc n)
-         forceArgs n cty'
+         forceArgs tn n cty'
          return (n, cty')
   where
     tyIs (Bind n b sc) = tyIs sc
