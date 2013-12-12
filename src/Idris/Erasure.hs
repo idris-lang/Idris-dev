@@ -11,45 +11,42 @@ import Control.Applicative
 import Control.Monad.State
 import Data.Maybe
 import Data.List
+import qualified Data.Set as S
 
 findUnusedArgs :: [Name] -> Idris ()
-findUnusedArgs ns = mapM_ traceUnused ns
+findUnusedArgs = mapM_ (\n -> withContext_ idris_callgraph n $ traceUnused n)
 
-traceUnused :: Name -> Idris ()
-traceUnused n = withContext_ idris_callgraph n $
-    \(CGInfo args calls scg usedns _) -> do
-        let argpos = zip args [0..]
-        let fargs = concatMap (getFargpos calls) argpos
-        logLvl 3 $ show n ++ " used TRACE: " ++ show fargs
-        recused <- mapM getUsed fargs
-        let fused = nub $ usedns ++ map fst (filter snd recused)
-        logLvl 1 $ show n ++ " used args: " ++ show fused
-        let unusedpos = mapMaybe (getUnused fused) (zip [0..] args)
-        logLvl 1 $ show n ++ " unused args: " ++ show (args, unusedpos)
-        addToCG n (CGInfo args calls scg usedns unusedpos) -- updates
+traceUnused :: Name -> CGInfo -> Idris ()
+traceUnused n (CGInfo args calls scg usedns _) = do
+    logLvl 3 $ show n ++ " used TRACE: " ++ show fargs
+    recused <- recUsed . idris_callgraph <$> getIState
+    let fused = nub $ usedns ++ recused
+    logLvl 1 $ show n ++ " used args: " ++ show fused
+    let unused = findIndices (not . (`elem` fused)) args
+    logLvl 1 $ show n ++ " unused args: " ++ show (args, unused)
+    addToCG n (CGInfo args calls scg usedns unused) -- updates
   where
-    getUsed (argn, i, (g, j)) = (,) argn <$> used [(n,i)] g j
-    getUnused fused (i,n)
-        | n `elem` fused = Nothing
-        | otherwise      = Just i
+    fargs = concatMap (getFargpos calls) (zip args [0..])
+    recUsed cg = [n | (n, i, (g,j)) <- fargs, used cg [(n,i)] g j]
 
-used :: [(Name, Int)] -> Name -> Int -> Idris Bool
-used path g j
-   | (g, j) `elem` path = return False -- cycle, never used on the way
-   | otherwise          = withContext idris_callgraph g True $
-        \(CGInfo args calls scg usedns unused) ->
+used :: Ctxt CGInfo -> [(Name, Int)] -> Name -> Int -> Bool
+used cg path g j
+   | (g, j) `elem` path = False -- cycle, never used on the way
+   | otherwise = case lookupCtxt g cg of
+        [CGInfo args calls scg usedns unused] ->
             if j >= length args
-              then return True -- overapplied, assume used
-              else do
-                logLvl 5 $ (show ((g, j) : path))
-                let directuse = args!!j `elem` usedns
-                let garg = getFargpos calls (args!!j, j)
-                logLvl 5 $ show (g, j, garg)
-                recused <- mapM getUsed garg
+              then True -- overapplied, assume used
+              else
+                --logLvl 5 $ (show ((g, j) : path))
+                let directuse = args!!j `elem` usedns in
+                let garg = getFargpos calls (args!!j, j) in
+                --logLvl 5 $ show (g, j, garg)
+                let recused = map getUsed garg in
                 -- used on any route from here, or not used recursively
-                return (directuse || null recused || or recused)
+                (directuse || null recused || or recused)
+        _ -> True
   where
-    getUsed (argn, j, (g', j')) = used ((g,j):path) g' j'
+    getUsed (argn, j, (g', j')) = used cg ((g,j):path) g' j'
 
 getFargpos :: [(Name, [[Name]])] -> (Name, Int) -> [(Name, Int, (Name, Int))]
 getFargpos calls (n, i) = concatMap (getCallArgpos n i) calls
