@@ -632,13 +632,6 @@ instance Show Def where
                                         show ns' ++ " " ++ show sc' ++ "\n\n" ++
             if inlc then "Inlinable\n" else "Not inlinable\n"
 
--- We need this for serialising Def. Fortunately, it never gets used because
--- we'll never serialise a primitive operator
-
-instance Binary (a -> b) where
-    put x = return ()
-    get = error "Getting a function"
-
 -------
 
 -- Frozen => doesn't reduce

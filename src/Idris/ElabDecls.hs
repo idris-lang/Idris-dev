@@ -1542,6 +1542,8 @@ elabClass info syn doc fc constraints tn ps ds
                                   (map (pexp . PRef fc) (map fst ps))
          -- build data declaration
          let mdecls = filter tydecl ds -- method declarations
+         let idecls = filter instdecl ds -- default superclass instance declarations
+         mapM_ checkDefaultSuperclassInstance idecls
          let mnames = map getMName mdecls
          logLvl 2 $ "Building methods " ++ show mnames
          ims <- mapM (tdecl mnames) mdecls
@@ -1550,7 +1552,7 @@ elabClass info syn doc fc constraints tn ps ds
          let (methods, imethods)
               = unzip (map (\ ( x,y,z) -> (x, y)) ims)
          let defaults = map (\ (x, (y, z)) -> (x,y)) defs
-         addClass tn (CI cn (map nodoc imethods) defaults (map fst ps) [])
+         addClass tn (CI cn (map nodoc imethods) defaults idecls (map fst ps) [])
          -- build instance constructor type
          -- decorate names of functions to ensure they can't be referred
          -- to elsewhere in the class declaration
@@ -1572,7 +1574,6 @@ elabClass info syn doc fc constraints tn ps ds
          mapM_ (elabDecl EAll info) (concat fns)
          -- add the default definitions
          mapM_ (elabDecl EAll info) (concat (map (snd.snd) defs))
-         i <- getIState
          addIBC (IBCClass tn)
   where
     nodoc (n, (_, o, t)) = (n, (o, t))
@@ -1582,6 +1583,17 @@ elabClass info syn doc fc constraints tn ps ds
     mdec (UN n) = SN (MethodN (UN n))
     mdec (NS x n) = NS (mdec x) n
     mdec x = x
+
+    -- TODO: probably should normalise
+    checkDefaultSuperclassInstance (PInstance _ fc cs n ps _ _ _)
+        = do when (not $ null cs) . tclift
+                $ tfail (At fc (Msg $ "Default superclass instances can't have constraints."))
+             i <- getIState
+             let t = PApp fc (PRef fc n) (map pexp ps)
+             let isConstrained = any (== t) constraints
+             when (not isConstrained) . tclift
+                $ tfail (At fc (Msg $ "Default instances must be for a superclass constraint on the containing class."))
+             return ()
 
     impbind [] x = x
     impbind ((n, ty): ns) x = PPi impl n ty (impbind ns x)
@@ -1614,6 +1626,8 @@ elabClass info syn doc fc constraints tn ps ds
 
     tydecl (PTy _ _ _ _ _ _) = True
     tydecl _ = False
+    instdecl (PInstance _ _ _ _ _ _ _ _) = True
+    instdecl _ = False
     clause (PClauses _ _ _ _) = True
     clause _ = False
 
@@ -1699,15 +1713,12 @@ elabInstance info syn fc cs n ps t expn ds
                        [c] -> return c
                        _ -> ifail $ show fc ++ ":" ++ show n ++ " is not a type class"
          let constraint = PApp fc (PRef fc n) (map pexp ps)
-         let iname = case expn of
-                         Nothing -> SN (InstanceN n (map show ps))
-                          -- UN ('@':show n ++ "$" ++ show ps)
-                         Just nm -> nm
+         let iname = mkiname n ps expn
          nty <- elabType' True info syn "" fc [] iname t
          -- if the instance type matches any of the instances we have already,
          -- and it's not a named instance, then it's overlapping, so report an error
          case expn of
-            Nothing -> do mapM_ (checkNotOverlapping i (delab i nty)) 
+            Nothing -> do mapM_ (maybe (return ()) overlapping . findOverlapping i (delab i nty))
                                 (class_instances ci)
                           addInstance intInst n iname
             Just _ -> addInstance intInst n iname
@@ -1721,6 +1732,9 @@ elabInstance info syn fc cs n ps t expn ds
                                   PApp _ _ args -> getWParams args
                                   _ -> return []) ps
          let pnames = map pname (concat (nub wparams))
+         let superclassInstances = map (substInstance ips pnames) (class_default_superclasses ci)
+         undefinedSuperclassInstances <- filterM (fmap not . isOverlapping i) superclassInstances
+         mapM_ (elabDecl EAll info) undefinedSuperclassInstances
          let all_meths = map (nsroot . fst) (class_methods ci)
          let mtys = map (\ (n, (op, t)) ->
                    let t_in = substMatchesShadow ips pnames t 
@@ -1747,7 +1761,7 @@ elabInstance info syn fc cs n ps t expn ds
          let idecls = [PClauses fc [Dictionary] iname
                                  [PClause fc iname lhs [] rhs wb]]
          iLOG (show idecls)
-         mapM (elabDecl EAll info) idecls
+         mapM_ (elabDecl EAll info) idecls
          addIBC (IBCInstance intInst n iname)
 --          -- for each constraint, build a top level function to chase it
 --          logLvl 5 $ "Building functions"
@@ -1758,20 +1772,50 @@ elabInstance info syn fc cs n ps t expn ds
                 [PConstant (AType (ATInt ITNative))] -> True
                 _ -> False
 
-    checkNotOverlapping i t n
-     | take 2 (show n) == "@@" = return ()
+    mkiname n' ps' expn' =
+        case expn' of
+          Nothing -> SN (InstanceN n' (map show ps'))
+          Just nm -> nm
+
+    substInstance ips pnames (PInstance syn _ cs n ps t expn ds)
+        = PInstance syn fc cs n (map (substMatchesShadow ips pnames) ps) (substMatchesShadow ips pnames t) expn ds
+
+    isOverlapping i (PInstance syn _ _ n ps t expn _)
+        = case lookupCtxtName n (idris_classes i) of
+            [(n, ci)] -> let iname = (mkiname n ps expn) in
+                            case lookupTy iname (tt_ctxt i) of
+                              [] -> elabFindOverlapping i ci iname syn t
+                              (_:_) -> return True
+            _ -> return False -- couldn't find class, just let elabInstance fail later
+
+    -- TODO: largely based upon elabType' - should try to abstract
+    elabFindOverlapping i ci iname syn t
+        = do ty' <- addUsingConstraints syn fc t
+             ty' <- implicit syn iname ty'
+             let ty = addImpl i ty'
+             ctxt <- getContext
+             ((tyT, _, _), _) <-
+                   tclift $ elaborate ctxt iname (TType (UVal 0)) []
+                            (errAt "type of " iname (erun fc (build i info False iname ty)))
+             ctxt <- getContext
+             (cty, _) <- recheckC fc [] tyT
+             let nty = normalise ctxt [] cty
+             return $ any (isJust . findOverlapping i (delab i nty)) (class_instances ci)
+
+    findOverlapping i t n
+     | take 2 (show n) == "@@" = Nothing
      | otherwise
         = case lookupTy n (tt_ctxt i) of
             [t'] -> let tret = getRetType t
                         tret' = getRetType (delab i t') in
                         case matchClause i tret' tret of
-                            Right ms -> overlapping tret tret'
+                            Right ms -> Just tret'
                             Left _ -> case matchClause i tret tret' of
-                                Right ms -> overlapping tret tret'
-                                Left _ -> return ()
-            _ -> return ()
-    overlapping t t' = tclift $ tfail (At fc (Msg $
-                            "Overlapping instance: " ++ show t' ++ " already defined"))
+                                Right ms -> Just tret'
+                                Left _ -> Nothing
+            _ -> Nothing
+    overlapping t' = tclift $ tfail (At fc (Msg $
+                          "Overlapping instance: " ++ show t' ++ " already defined"))
     getRetType (PPi _ _ _ sc) = getRetType sc
     getRetType t = t
 
