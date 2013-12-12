@@ -1,3 +1,5 @@
+{-# LANGUAGE PatternGuards #-}
+
 module Idris.Erasure
     ( findUnusedArgs
     ) where
@@ -35,20 +37,17 @@ traceUnused cg n (CGInfo args calls _ usedns _)
      
 used :: Ctxt CGInfo -> [(Name, Int)] -> Name -> Int -> Bool
 used cg path g j
-   | (g, j) `elem` path = False -- cycle, never used on the way
-   | otherwise = case lookupCtxt g cg of
-        [CGInfo args calls _ usedns _] ->
-            if j >= length args
-              then True -- overapplied, assume used
-              else
-                --logLvl 5 $ (show ((g, j) : path))
-                let directuse = args!!j `elem` usedns in
-                let garg = getFargpos calls (args!!j, j) in
-                --logLvl 5 $ show (g, j, garg)
-                let recused = map getUsed garg in
-                -- used on any route from here, or not used recursively
-                (directuse || null recused || or recused)
-        _ -> True
+    | (g, j) `elem` path = False -- cycle, never used on the way
+
+    | [CGInfo args calls _ usedns _] <- lookupCtxt g cg
+    , j < length args  -- not overapplied
+    = let directuse = args!!j `elem` usedns
+          garg      = getFargpos calls (args!!j, j)
+          recused   = map getUsed garg
+      in directuse || null recused || or recused
+      -- used on any route from here, or not used recursively
+
+    | otherwise = True
   where
     getUsed (argn, j, (g', j')) = used cg ((g,j):path) g' j'
 
