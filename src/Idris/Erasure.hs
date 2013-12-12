@@ -14,26 +14,30 @@ import Data.List
 import qualified Data.Set as S
 
 findUnusedArgs :: [Name] -> Idris ()
-findUnusedArgs = mapM_ (\n -> withContext_ idris_callgraph n $ traceUnused n)
-
-traceUnused :: Name -> CGInfo -> Idris ()
-traceUnused n (CGInfo args calls scg usedns _) = do
-    logLvl 3 $ show n ++ " used TRACE: " ++ show fargs
-    recused <- recUsed . idris_callgraph <$> getIState
-    let fused = nub $ usedns ++ recused
-    logLvl 1 $ show n ++ " used args: " ++ show fused
-    let unused = findIndices (not . (`elem` fused)) args
-    logLvl 1 $ show n ++ " unused args: " ++ show (args, unused)
-    addToCG n (CGInfo args calls scg usedns unused) -- updates
+findUnusedArgs names = do
+    cg <- idris_callgraph <$> getIState
+    mapM_ (process cg) names
   where
-    fargs = concatMap (getFargpos calls) (zip args [0..])
-    recUsed cg = [n | (n, i, (g,j)) <- fargs, used cg [(n,i)] g j]
+    process cg n = case lookupCtxt n cg of
+        [x] -> do
+            let unused = traceUnused cg n x 
+            logLvl 1 $ show n ++ " unused: " ++ show unused
+            addToCG n $ x{ unusedpos = unused }
+        _ -> return ()
 
+traceUnused :: Ctxt CGInfo -> Name -> CGInfo -> [Int]
+traceUnused cg n (CGInfo args calls _ usedns _)
+    = findIndices (not . (`elem` fused)) args
+  where
+    fargs   = concatMap (getFargpos calls) (zip args [0..])
+    recused = [n | (n, i, (g,j)) <- fargs, used cg [(n,i)] g j]
+    fused   = nub $ usedns ++ recused
+     
 used :: Ctxt CGInfo -> [(Name, Int)] -> Name -> Int -> Bool
 used cg path g j
    | (g, j) `elem` path = False -- cycle, never used on the way
    | otherwise = case lookupCtxt g cg of
-        [CGInfo args calls scg usedns unused] ->
+        [CGInfo args calls _ usedns _] ->
             if j >= length args
               then True -- overapplied, assume used
               else
