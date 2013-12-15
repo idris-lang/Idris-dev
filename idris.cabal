@@ -87,6 +87,7 @@ Extra-source-files:
                        libs/base/Makefile
                        libs/base/Network/*.idr
                        libs/base/System/Concurrency/*.idr
+                       libs/base/Syntax/*.ids
 
 
                        libs/effects/Makefile
