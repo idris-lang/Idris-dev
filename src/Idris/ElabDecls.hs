@@ -1059,7 +1059,7 @@ elabPE info fc caller r =
 
     mkSpecialised ist specapp_in = do
         let (specTy, specapp) = getSpecTy ist specapp_in
-        let (n, newnm, [(lhs, rhs)]) = getSpecClause ist specapp
+        let (n, newnm, pats) = getSpecClause ist specapp
         let undef = case lookupDef newnm (tt_ctxt ist) of
                          [] -> True
                          _ -> False
@@ -1074,10 +1074,12 @@ elabPE info fc caller r =
             iLOG $ "PE definition type : " ++ (show specTy)
                         ++ "\n" ++ show opts
             logLvl 2 $ "PE definition " ++ show newnm ++ ":\n" ++
-                        (showImp Nothing True False lhs ++ " = " ++ 
-                         showImp Nothing True False rhs)
+                        showSep "\n" 
+                           (map (\ (lhs, rhs) ->
+                              (showImp Nothing True False lhs ++ " = " ++ 
+                               showImp Nothing True False rhs)) pats)
             elabType info defaultSyntax "" fc opts newnm specTy
-            let def = [PClause fc newnm lhs [] rhs []]
+            let def = map (\ (lhs, rhs) -> PClause fc newnm lhs [] rhs []) pats
             elabClauses info fc opts newnm def
             logLvl 1 $ "Specialised " ++ show newnm)
           -- if it doesn't work, just don't specialise. Could happen for lots
