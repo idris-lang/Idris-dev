@@ -16,6 +16,8 @@ modules = System,
 
           Language.Reflection, Language.Reflection.Utils, Language.Reflection.Errors,
 
+          Syntax.PreorderReasoning,
+
           Data.Morphisms,
           Data.Bits, Data.Mod2,
           Data.ZZ, Data.Sign,
@@ -28,6 +30,6 @@ modules = System,
           Control.Monad.RWS,
           Control.Monad.State, Control.Monad.Writer, Control.Monad.Reader,
           Control.Category, Control.Arrow,
-          Control.Catchable, Control.IOExcept,
+          Control.Catchable, Control.IOExcept
 
-          Syntax.PreorderReasoning
+
