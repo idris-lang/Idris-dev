@@ -23,6 +23,7 @@ modules = System,
           Data.Vect, Data.HVect, Data.Vect.Quantifiers,
           Data.Floats, Data.Complex, Data.Heap,
 
+          Control.Isomorphism,
           Control.Monad.Identity,
           Control.Monad.RWS,
           Control.Monad.State, Control.Monad.Writer, Control.Monad.Reader,
