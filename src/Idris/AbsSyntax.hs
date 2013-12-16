@@ -390,7 +390,7 @@ ihWarn :: Handle -> FC -> String -> Idris ()
 ihWarn h fc err = do i <- getIState
                      case idris_outputmode i of
                        RawOutput -> runIO $ hPutStrLn h (show fc ++ ":" ++ err)
-                       IdeSlave n -> runIO $ hPutStrLn h $ convSExp "warning" (fc_fname fc, fc_line fc, err) n
+                       IdeSlave n -> runIO $ hPutStrLn h $ convSExp "warning" (fc_fname fc, fc_line fc, fc_column fc, err) n
 
 setLogLevel :: Int -> Idris ()
 setLogLevel l = do i <- getIState
