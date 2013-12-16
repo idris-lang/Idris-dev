@@ -44,7 +44,7 @@ findUsed ctx cg ns = union $ map (findUsedDef cg . getDef ctx) ns
     findUsedSC cg vars  ImpossibleCase     = M.empty
     findUsedSC cg vars (UnmatchedCase msg) = M.empty
     findUsedSC cg vars (Case     n alts) = undefined
-    findUsedSC cg vars (ProjCase t alts) = undefined
+    findUsedSC cg vars (ProjCase t alt) = undefined
     findUsedSC cg vars (STerm t) = undefined
 
 findUnusedArgs :: [Name] -> Idris ()

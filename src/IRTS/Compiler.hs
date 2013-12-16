@@ -370,9 +370,9 @@ instance ToIR SC where
 
         ir' (STerm t) = ir t
         ir' (UnmatchedCase str) = return $ LError str
-        ir' (ProjCase tm alts) = do tm' <- ir tm
-                                    alts' <- mapM (mkIRAlt tm') alts
-                                    return $ LCase tm' alts'
+        ir' (ProjCase tm alt) = do tm' <- ir tm
+                                   alt' <- mkIRAlt tm' alt
+                                   return $ LCase tm' [alt']
         ir' (Case n alts) = do alts' <- mapM (mkIRAlt (LV (Glob n))) alts
                                return $ LCase (LV (Glob n)) alts'
         ir' ImpossibleCase = return LNothing

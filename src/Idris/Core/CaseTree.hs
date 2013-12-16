@@ -14,8 +14,8 @@ import Debug.Trace
 data CaseDef = CaseDef [Name] !SC [Term]
     deriving Show
 
-data SC' t = Case Name [CaseAlt' t] -- ^ invariant: lowest tags first
-           | ProjCase t [CaseAlt' t] -- ^ special case for projections
+data SC' t = Case Name [CaseAlt' t]  -- ^ invariant: lowest tags first
+           | ProjCase t (CaseAlt' t) -- ^ special case for projections
            | STerm !t
            | UnmatchedCase String -- ^ error message
            | ImpossibleCase -- ^ already checked to be impossible
@@ -45,8 +45,8 @@ instance Show t => Show (SC' t) where
       where
         show' i (Case n alts) = "case " ++ show n ++ " of\n" ++ indent i ++
                                     showSep ("\n" ++ indent i) (map (showA i) alts)
-        show' i (ProjCase tm alts) = "case " ++ show tm ++ " of " ++
-                                      showSep ("\n" ++ indent i) (map (showA i) alts)
+        show' i (ProjCase tm alt) = "case " ++ show tm ++ " of " ++
+                                      showSep ("\n" ++ indent i) (map (showA i) [alt])
         show' i (STerm tm) = show tm
         show' i (UnmatchedCase str) = "error " ++ show str
         show' i ImpossibleCase = "impossible"
@@ -96,8 +96,7 @@ small n args t = let as = findAllUsedArgs t args in
 namesUsed :: SC -> [Name]
 namesUsed sc = nub $ nu' [] sc where
     nu' ps (Case n alts) = nub (concatMap (nua ps) alts) \\ [n]
-    nu' ps (ProjCase t alts) = nub $ (nut ps t ++
-                                      (concatMap (nua ps) alts))
+    nu' ps (ProjCase t alt) = nub $ nut ps t ++ nua ps alt
     nu' ps (STerm t)     = nub $ nut ps t
     nu' ps _ = []
 
@@ -122,7 +121,7 @@ namesUsed sc = nub $ nu' [] sc where
 findCalls :: SC -> [Name] -> [(Name, [[Name]])]
 findCalls sc topargs = nub $ nu' topargs sc where
     nu' ps (Case n alts) = nub (concatMap (nua (n : ps)) alts)
-    nu' ps (ProjCase t alts) = nub (nut ps t ++ concatMap (nua ps) alts)
+    nu' ps (ProjCase t alt) = nub (nut ps t ++ nua ps alt)
     nu' ps (STerm t)     = nub $ nut ps t
     nu' ps _ = []
 
@@ -175,7 +174,7 @@ findUsedArgs sc topargs = nub (findAllUsedArgs sc topargs)
 
 findAllUsedArgs sc topargs = filter (\x -> x `elem` topargs) (nu' sc) where
     nu' (Case n alts) = n : concatMap nua alts
-    nu' (ProjCase t alts) = directUse t ++ concatMap nua alts
+    nu' (ProjCase t alt) = directUse t ++ nua alt
     nu' (STerm t)     = directUse t
     nu' _             = []
 
@@ -640,12 +639,12 @@ prune proj (Case n alts)
 --              projn t = t
 
           projRep :: Name -> Name -> Int -> SC -> SC
+          projRep arg n i (Case x [alt]) | x == arg
+                = ProjCase (Proj (P Bound n Erased) i) (projRepAlt arg n i alt)
           projRep arg n i (Case x alts)
-                | x == arg = ProjCase (Proj (P Bound n Erased) i)
-                                      (map (projRepAlt arg n i) alts)
-                | otherwise = Case x (map (projRepAlt arg n i) alts)
-          projRep arg n i (ProjCase t alts)
-                = ProjCase (projRepTm arg n i t) (map (projRepAlt arg n i) alts)
+                = Case x (map (projRepAlt arg n i) alts)
+          projRep arg n i (ProjCase t alt)
+                = ProjCase (projRepTm arg n i t) (projRepAlt arg n i alt)
           projRep arg n i (STerm t) = STerm (projRepTm arg n i t)
           projRep arg n i c = c -- unmatched
 
