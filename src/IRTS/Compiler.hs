@@ -27,6 +27,7 @@ import Idris.Core.CaseTree
 
 import Control.Monad.State
 import Data.List
+import qualified Data.Map as M
 import System.Process
 import System.IO
 import System.Directory
@@ -43,6 +44,12 @@ compile codegen f tm
         let used = [sUN "prim__subBigInt", sUN "prim__addBigInt"] : usedIn
         defsIn <- mkDecls tm (concat used)
         findUnusedArgs (concat used)
+
+        -- TODO: DEBUG-ONLY, remove
+        ist <- getIState
+        let usedCtorArgs = findUsed (tt_ctxt ist) (idris_callgraph ist) (concat used)
+        iLOG $ "USED CTOR ARGS:\n" ++ unlines (map show . M.toList $ usedCtorArgs)
+        
         maindef <- irMain tm
         objs <- getObjectFiles codegen
         libs <- getLibs codegen

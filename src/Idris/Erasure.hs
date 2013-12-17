@@ -2,6 +2,7 @@
 
 module Idris.Erasure
     ( findUnusedArgs
+    , findUsed
     ) where
 
 import Idris.AbsSyntax
@@ -53,7 +54,7 @@ findUsed ctx cg = unionMap $ findUsedDef cg . getDef ctx
     findUsedSC cg vars (UnmatchedCase msg) = M.empty
     findUsedSC cg vars (Case     n alts) = unionMap (findUsedAlt cg vars) alts
     findUsedSC cg vars (ProjCase t alt) = findUsedAlt cg vars alt
-    findUsedSC cg vars (STerm t) = unionMap lookUp $ findUsedTerm cg t
+    findUsedSC cg vars (STerm t) = unionMap lookUp . S.toList $ findUsedTerm cg t
       where
         lookUp :: Name -> UseMap
         lookUp n = case M.lookup n vars of
@@ -61,18 +62,33 @@ findUsed ctx cg = unionMap $ findUsedDef cg . getDef ctx
             Nothing      -> M.empty
 
     findUsedAlt :: Ctxt CGInfo -> PatvarMap -> CaseAlt -> UseMap
-    findUsedAlt cg vars (FnCase n ns sc) = findUsedAlt cg vars sc  -- TODO: what's this?
-    findUsedAlt cg vars (ConstCase c sc) = findUsedAlt cg vars sc
-    findUsedAlt cg vars (SucCase n sc) = findUsedAlt cg (M.insert n (error "put S here") vars) sc  -- TODO
-    findUsedAlt cg vars (DefaultCase sc) = findUsedAlt cg vars sc
-    findUsedAlt cg vars (ConCase n cnt ns sc) = findUsedAlt cg (ns `u` vars) sc
+    findUsedAlt cg vars (FnCase n ns sc) = findUsedSC cg vars sc  -- TODO: what's this?
+    findUsedAlt cg vars (ConstCase c sc) = findUsedSC cg vars sc
+    findUsedAlt cg vars (SucCase n sc) = findUsedSC cg (M.insert n (error "put S here") vars) sc  -- TODO
+    findUsedAlt cg vars (DefaultCase sc) = findUsedSC cg vars sc
+    findUsedAlt cg vars (ConCase n cnt ns sc) = findUsedSC cg (ns `u` vars) sc
       where
         u :: [Name] -> PatvarMap -> PatvarMap
         vs `u` pmap = M.fromList [(var, (n, i)) | (i, var) <- zip [0..] vs] `M.union` pmap
 
+    -- Find used pattern variables in the given term.
     findUsedTerm :: Ctxt CGInfo -> Term -> Set Name
-    findUsedTerm cg t = undefined
-
+    findUsedTerm cg (P _ n _) = S.singleton n
+    findUsedTerm cg (Bind n (Let t v) body) = S.unions
+        [ findUsedTerm cg v
+        , S.delete n $ findUsedTerm cg body
+        , findUsedTerm cg t ]
+    findUsedTerm cg (Bind n b t) = S.unions
+        [ findUsedTerm cg (binderTy b)
+        , S.delete n $ findUsedTerm cg t ]
+    findUsedTerm cg (Proj t i) = findUsedTerm cg t
+    findUsedTerm cg t@(App _ _) | (P _ n _, args) <- unApply t
+        = let unused = case lookupCtxt n cg of
+                [cgi] -> unusedpos cgi
+                _     -> []
+          in S.unions [findUsedTerm cg arg | (i,arg) <- zip [0..] args, i `notElem` unused]
+    findUsedTerm cg _ = S.empty
+        
 findUnusedArgs :: [Name] -> Idris ()
 findUnusedArgs names = do
     cg <- idris_callgraph <$> getIState
