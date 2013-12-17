@@ -224,9 +224,7 @@ ideslave orig mods
                        do clearErr
                           putIState (orig { idris_options = idris_options i,
                                             idris_outputmode = (IdeSlave id) })
-                          idrisCatch (do mod <- loadModule' stdout filename
-                                         return ())
-                                     (setAndReport)
+                          loadInputs stdout [filename]
                           isetPrompt (mkPrompt [filename])
                           -- Report either success or failure
                           i <- getIState
@@ -346,7 +344,7 @@ processInput stvar cmd orig inputs
                                   , idris_colourTheme = idris_colourTheme i
                                   }
                    clearErr
-                   mod <- loadModule stdout f
+                   mod <- loadInputs stdout [f]
                    return (Just [f])
             Success (ModImport f) ->
                 do clearErr
@@ -1186,10 +1184,11 @@ idrisMain opts =
 
        historyFile <- fmap (</> "repl" </> "history") getIdrisUserDataDir
 
-       when (runrepl && not idesl) $ initScript
-       stvar <- runIO $ newMVar ist
-       when (runrepl && not idesl) $ startServer ist stvar inputs
-       when (runrepl && not idesl) $ runInputT (replSettings (Just historyFile)) $ repl ist stvar inputs
+       when (runrepl && not idesl) $ do
+         initScript
+         stvar <- runIO $ newMVar ist
+         startServer ist stvar inputs
+         runInputT (replSettings (Just historyFile)) $ repl ist stvar inputs
        when (idesl) $ ideslaveStart ist inputs
        ok <- noErrors
        when (not ok) $ runIO (exitWith (ExitFailure 1))

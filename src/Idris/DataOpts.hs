@@ -9,7 +9,7 @@ import Idris.AbsSyntaxTree
 import Core.TT
 
 import Control.Applicative
-import qualified Data.IntMap.Strict as M
+import qualified Data.IntMap as M
 import Data.List
 import Data.Maybe
 import Debug.Trace
