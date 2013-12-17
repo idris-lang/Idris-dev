@@ -907,6 +907,12 @@ process h fn ColourOn
 process h fn ColourOff
                      = do ist <- getIState
                           putIState $ ist { idris_colourRepl = False }
+process h fn ListErrorHandlers =
+  do ist <- getIState
+     case idris_errorhandlers ist of
+       [] -> iPrintResult "No registered error handlers"
+       handlers ->
+           iPrintResult $ "Registered error handlers: " ++ (concat . intersperse ", " . map show) handlers
 
 classInfo :: ClassInfo -> Idris ()
 classInfo ci = do iputStrLn "Methods:\n"
