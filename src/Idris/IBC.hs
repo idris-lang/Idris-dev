@@ -634,7 +634,7 @@ instance Binary NameType where
                    _ -> error "Corrupted binary data for NameType"
 
 
-instance {-(Binary n) =>-} Binary (TT Name) where
+instance {- (Binary n) => -} Binary (TT Name) where
         put x
           = {-# SCC "putTT" #-}
             case x of
@@ -976,6 +976,7 @@ instance Binary FnOpt where
                 PartialFn -> putWord8 6
                 Implicit -> putWord8 7
                 Reflection -> putWord8 8
+                ErrorHandler -> putWord8 9
         get
           = do i <- getWord8
                case i of
@@ -989,6 +990,7 @@ instance Binary FnOpt where
                    6 -> return PartialFn
                    7 -> return Implicit
                    8 -> return Reflection
+                   9 -> return ErrorHandler
                    _ -> error "Corrupted binary data for FnOpt"
 
 instance Binary Fixity where

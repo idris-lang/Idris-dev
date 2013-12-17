@@ -112,6 +112,17 @@ elabType' norm info syn doc fc opts n ty' = {- let ty' = piBind (params info) ty
          addIBC (IBCFlags n opts')
          when (Implicit `elem` opts) $ do addCoercion n
                                           addIBC (IBCCoercion n)
+         -- If the function is declared as an error handler and the language
+         -- extension is enabled, then add it to the list of error handlers.
+         errorReflection <- fmap (elem ErrorReflection . idris_language_extensions) getIState
+         when (ErrorHandler `elem` opts) $ do
+           if errorReflection
+             then do
+               -- TODO: Check that the declared type is the correct type for an error handler:
+               -- handler : List (TTName, TT) -> Err -> ErrorReport
+               i <- getIState
+               putIState $ i { idris_errorhandlers = n : idris_errorhandlers i }
+             else ifail "Error handlers can only be defined when the ErrorReflection language extension is enabled."
          when corec $ do setAccessibility n Frozen
                          addIBC (IBCAccess n Frozen)
          return usety
