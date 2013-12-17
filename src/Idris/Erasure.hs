@@ -13,16 +13,24 @@ import Control.Applicative
 import Control.Monad.State
 import Data.Maybe
 import Data.List
-import qualified Data.IntSet as S
+import qualified Data.Set as S
+import qualified Data.IntSet as IS
 import qualified Data.Map as M
+import Data.Set (Set)
 import Data.IntSet (IntSet)
 import Data.Map (Map)
 
-findUsed :: Context -> Ctxt CGInfo -> [Name] -> Map Name IntSet
-findUsed ctx cg ns = union $ map (findUsedDef cg . getDef ctx) ns
+-- UseMap maps names to the set of used argument positions.
+type UseMap = Map Name IntSet
+
+-- PatvarMap maps pattern variable names to the corresponding (data-ctor-name, argpos).
+type PatvarMap = Map Name (Name, Int)
+
+findUsed :: Context -> Ctxt CGInfo -> [Name] -> UseMap
+findUsed ctx cg = unionMap $ findUsedDef cg . getDef ctx
   where
-    union :: [Map Name IntSet] -> Map Name IntSet
-    union = M.unionsWith S.union
+    unionMap :: (a -> UseMap) -> [a] -> UseMap
+    unionMap f = M.unionsWith IS.union . map f
 
     getDef :: Context -> Name -> Def
     getDef ctx n = case lookupDef n ctx of
@@ -30,7 +38,7 @@ findUsed ctx cg ns = union $ map (findUsedDef cg . getDef ctx) ns
         [] -> error $ "erasure checker: unknown name: " ++ show n  -- TODO: fix this
         _  -> error $ "erasure checker: ambiguous name: " ++ show n  -- TODO: fix this
 
-    findUsedDef :: Ctxt CGInfo -> Def -> Map Name IntSet
+    findUsedDef :: Ctxt CGInfo -> Def -> UseMap
     findUsedDef cg (Function ty t  ) = M.empty
     findUsedDef cg (TyDecl   ty t  ) = M.empty
     findUsedDef cg (Operator ty n f) = M.empty
@@ -40,12 +48,30 @@ findUsed ctx cg ns = union $ map (findUsedDef cg . getDef ctx) ns
         -- the fst component is the list of pattern variables, which we don't use
         = findUsedSC cg M.empty (snd $ cases_compiletime cdefs)  -- TODO: or cases_runtime?
 
-    findUsedSC :: Ctxt CGInfo -> Map Name (Name, Int) -> SC -> Map Name IntSet
+    findUsedSC :: Ctxt CGInfo -> PatvarMap -> SC -> UseMap
     findUsedSC cg vars  ImpossibleCase     = M.empty
     findUsedSC cg vars (UnmatchedCase msg) = M.empty
-    findUsedSC cg vars (Case     n alts) = undefined
-    findUsedSC cg vars (ProjCase t alt) = undefined
-    findUsedSC cg vars (STerm t) = undefined
+    findUsedSC cg vars (Case     n alts) = unionMap (findUsedAlt cg vars) alts
+    findUsedSC cg vars (ProjCase t alt) = findUsedAlt cg vars alt
+    findUsedSC cg vars (STerm t) = unionMap lookUp $ findUsedTerm cg t
+      where
+        lookUp :: Name -> UseMap
+        lookUp n = case M.lookup n vars of
+            Just (cn, i) -> M.singleton cn (IS.singleton i)
+            Nothing      -> M.empty
+
+    findUsedAlt :: Ctxt CGInfo -> PatvarMap -> CaseAlt -> UseMap
+    findUsedAlt cg vars (FnCase n ns sc) = findUsedAlt cg vars sc  -- TODO: what's this?
+    findUsedAlt cg vars (ConstCase c sc) = findUsedAlt cg vars sc
+    findUsedAlt cg vars (SucCase n sc) = findUsedAlt cg (M.insert n (error "put S here") vars) sc  -- TODO
+    findUsedAlt cg vars (DefaultCase sc) = findUsedAlt cg vars sc
+    findUsedAlt cg vars (ConCase n cnt ns sc) = findUsedAlt cg (ns `u` vars) sc
+      where
+        u :: [Name] -> PatvarMap -> PatvarMap
+        vs `u` pmap = M.fromList [(var, (n, i)) | (i, var) <- zip [0..] vs] `M.union` pmap
+
+    findUsedTerm :: Ctxt CGInfo -> Term -> Set Name
+    findUsedTerm cg t = undefined
 
 findUnusedArgs :: [Name] -> Idris ()
 findUnusedArgs names = do
