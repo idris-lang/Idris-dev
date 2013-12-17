@@ -221,7 +221,7 @@ replaceVar ctxt n t (PApp fc f pats) = PApp fc f (map substArg pats)
         subst (PApp fc (PRef _ t) pats) 
             | isTConName t ctxt = Placeholder -- infer types
         subst (PApp fc f pats) = PApp fc f (map substArg pats)
-        subst (PEq fc l r) = PEq fc (subst l) (subst r)
+        subst (PEq fc l r) = Placeholder -- PEq fc (subst l) (subst r)
         subst x = x
 
         substArg arg = arg { getTm = subst (getTm arg) }

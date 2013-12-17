@@ -650,12 +650,12 @@ inferTy   = MN 0 "__Infer"
 inferCon  = MN 0 "__infer"
 inferDecl = PDatadecl inferTy
                       PType
-                      [("", inferCon, PPi impl (MN 0 "A") PType (
-                                  PPi expl (MN 0 "a") (PRef bi (MN 0 "A"))
+                      [("", inferCon, PPi impl (MN 0 "iType") PType (
+                                  PPi expl (MN 0 "ival") (PRef bi (MN 0 "iType"))
                                   (PRef bi inferTy)), bi)]
 inferOpts = []
 
-infTerm t = PApp bi (PRef bi inferCon) [pimp (MN 0 "A") Placeholder True, pexp t]
+infTerm t = PApp bi (PRef bi inferCon) [pimp (MN 0 "iType") Placeholder True, pexp t]
 infP = P (TCon 6 0) inferTy (TType (UVal 0))
 
 getInferTerm, getInferType :: Term -> Term

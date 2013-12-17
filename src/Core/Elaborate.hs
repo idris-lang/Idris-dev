@@ -422,7 +422,6 @@ apply' fillt fn imps =
     do args <- prepare_apply fn (map fst imps)
        env <- get_env
        g <- goal
-       fillt (raw_apply fn (map Var args))
        -- _Don't_ solve the arguments we're specifying by hand.
        -- (remove from unified list before calling end_unify)
        -- HMMM: Actually, if we get it wrong, the typechecker will complain!
@@ -442,6 +441,7 @@ apply' fillt fn imps =
                        keepGiven dont hunis hs
        put (ES (p { dontunify = dont, unified = (n, unify),
                     notunified = notunify ++ notunified p }, a) s prev)
+       fillt (raw_apply fn (map Var args))
        ptm <- get_term
        g <- goal
 --        trace ("Goal " ++ show g ++ "\n" ++ show (fn,  imps, unify) ++ "\n" ++ show ptm) $
