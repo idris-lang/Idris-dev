@@ -66,6 +66,9 @@ instance (SExpable a, SExpable b) => SExpable (a, b) where
 instance (SExpable a, SExpable b, SExpable c) => SExpable (a, b, c) where
   toSExp (l, m, n) = SexpList [toSExp l, toSExp m, toSExp n]
 
+instance (SExpable a, SExpable b, SExpable c, SExpable d) => SExpable (a, b, c, d) where
+  toSExp (l, m, n, o) = SexpList [toSExp l, toSExp m, toSExp n, toSExp o]
+
 escape :: String -> String
 escape = concatMap escapeChar
   where
