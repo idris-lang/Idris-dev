@@ -16,15 +16,20 @@ modules = System,
 
           Language.Reflection, Language.Reflection.Utils, Language.Reflection.Errors,
 
-          Data.Morphisms, 
-          Data.Bits, Data.Mod2, 
+          Syntax.PreorderReasoning,
+
+          Data.Morphisms,
+          Data.Bits, Data.Mod2,
           Data.ZZ, Data.Sign,
           Data.SortedMap, Data.SortedSet, Data.BoundedList,
           Data.Vect, Data.HVect, Data.Vect.Quantifiers,
           Data.Floats, Data.Complex, Data.Heap,
 
+          Control.Isomorphism,
           Control.Monad.Identity,
           Control.Monad.RWS,
           Control.Monad.State, Control.Monad.Writer, Control.Monad.Reader,
           Control.Category, Control.Arrow,
           Control.Catchable, Control.IOExcept
+
+
