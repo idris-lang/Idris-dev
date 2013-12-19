@@ -11,9 +11,12 @@ import Prelude.Nat
 
 infixr 7 ::
 
-data Vect : Nat -> Type -> Type where
+%elim data Vect : Nat -> Type -> Type where
   Nil  : Vect Z a
-  (::) : a -> Vect n a -> Vect (S n) a
+  (::) : (x : a) -> (xs : Vect n a) -> Vect (S n) a
+
+-- Hints for interactive editing
+%name Vect xs,ys,zs,ws
 
 --------------------------------------------------------------------------------
 -- Indexing into vectors
@@ -51,15 +54,14 @@ replaceAt (fS k) y (x::xs) = x :: replaceAt k y xs
 -- Subvectors
 --------------------------------------------------------------------------------
 
-take : Fin n -> Vect n a -> (p ** Vect p a)
-take fZ     xs      = (_ ** [])
-take (fS k) []      impossible
-take (fS k) (x::xs) with (take k xs)
-  | (_ ** tail) = (_ ** x::tail)
+take : {n : Nat} -> (m : Fin (S n)) -> Vect n a -> Vect (cast m) a
+take (fS k) []      = FinZElim k
+take fZ     _       = []
+take (fS k) (x::xs) = x :: take k xs
 
-drop : Fin n -> Vect n a -> (p ** Vect p a)
-drop fZ     xs      = (_ ** xs)
-drop (fS k) []      impossible
+drop : (m : Fin (S n)) -> Vect n a -> Vect (n - cast m) a
+drop (fS k) []      = FinZElim k
+drop fZ     xs      ?= xs
 drop (fS k) (x::xs) = drop k xs
 
 --------------------------------------------------------------------------------
@@ -143,15 +145,13 @@ reverse = reverse' []
     reverse' acc []      ?= acc
     reverse' acc (x::xs) ?= reverse' (x::acc) xs
 
-total intersperse' : a -> Vect m a -> (p ** Vect p a)
-intersperse' sep []      = (_ ** [])
-intersperse' sep (y::ys) with (intersperse' sep ys)
-  | (_ ** tail) = (_ ** sep::y::tail)
-
-total intersperse : a -> Vect m a -> (p ** Vect p a)
-intersperse sep []      = (_ ** [])
-intersperse sep (x::xs) with (intersperse' sep xs)
-  | (_ ** tail) = (_ ** x::tail)
+intersperse : a -> Vect n a -> Vect (n + pred n) a
+intersperse sep []      = []
+intersperse sep (x::xs) = x :: intersperse' sep xs
+  where
+    intersperse' : a -> Vect n a -> Vect (n + n) a
+    intersperse' sep []      = []
+    intersperse' sep (x::xs) ?= sep :: x :: intersperse' sep xs
 
 --------------------------------------------------------------------------------
 -- Membership tests
@@ -311,6 +311,12 @@ range {n=S _} = fZ :: map fS range
 -- Proofs
 --------------------------------------------------------------------------------
 
+Prelude.Vect.drop_lemma_1 = proof {
+  intros;
+  rewrite sym (minusZeroRight n);
+  trivial;
+}
+
 Prelude.Vect.reverse'_lemma_2 = proof {
     intros;
     rewrite (plusSuccRightSucc m n1);
@@ -323,3 +329,8 @@ Prelude.Vect.reverse'_lemma_1 = proof {
     exact value;
 }
 
+Prelude.Vect.intersperse'_lemma_1 = proof {
+  intros;
+  rewrite (plusSuccRightSucc n1 n1);
+  trivial;
+}

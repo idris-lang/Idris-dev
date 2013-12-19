@@ -1,5 +1,5 @@
 Name:           idris
-Version:        0.9.10
+Version:        0.9.10.1
 License:        BSD3
 License-file:   LICENSE
 Author:         Edwin Brady
@@ -87,6 +87,7 @@ Extra-source-files:
                        libs/base/Makefile
                        libs/base/Network/*.idr
                        libs/base/System/Concurrency/*.idr
+                       libs/base/Syntax/*.idr
 
 
                        libs/effects/Makefile
@@ -101,8 +102,6 @@ Extra-source-files:
 
                        llvm/*.c
                        llvm/Makefile
-
-                       tutorial/examples/*.idr
 
                        test/Makefile
                        test/runtest.pl
@@ -286,6 +285,9 @@ Extra-source-files:
                        test/test033/expected
                        test/test034/run
                        test/test034/expected
+                       test/test035/run
+                       test/test035/expected
+                       test/test035/*.idr
 
 source-repository head
   type:     git
@@ -511,7 +513,6 @@ Executable idris
                 , haskeline >= 0.7
                 , language-java >= 0.2.6
                 , mtl
-                --, parsec >= 3
                 , parsers == 0.9
                 , pretty
                 , process

@@ -154,6 +154,8 @@ pshow i (NonFunctionType f ty)
       let colour = idris_colourRepl i in
           showImp (Just i) imps colour (delab i f) ++ " does not have a function type ("
             ++ showImp (Just i) imps colour (delab i ty) ++ ")"
+pshow i (TooManyArguments f)
+    = "Too many arguments for " ++ show f
 pshow i (CantIntroduce ty)
     = let imps = opt_showimp (idris_options i) in
       let colour = idris_colourRepl i in

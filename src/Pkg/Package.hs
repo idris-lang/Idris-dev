@@ -70,7 +70,7 @@ installPkg pkgdesc
           mapM_ (installObj (pkgname pkgdesc)) (objs pkgdesc)
 
 buildMods :: [Opt] -> [Name] -> IO ()
-buildMods opts ns = do let f = map (toPath . show) ns
+buildMods opts ns = do let f = map (toPath . showCG) ns
 --                        putStrLn $ "MODULE: " ++ show f
                        idris (map Filename f ++ opts)
                        return ()

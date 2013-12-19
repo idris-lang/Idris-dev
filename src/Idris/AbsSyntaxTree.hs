@@ -92,6 +92,7 @@ data IState = IState {
     idris_dsls :: Ctxt DSL,
     idris_optimisation :: Ctxt OptInfo,
     idris_datatypes :: Ctxt TypeInfo,
+    idris_namehints :: Ctxt [Name],
     idris_patdefs :: Ctxt ([([Name], Term, Term)], [PTerm]), -- not exported
       -- ^ list of lhs/rhs, and a list of missing clauses
     idris_flags :: Ctxt [FnOpt],
@@ -183,12 +184,14 @@ data IBCWrite = IBCFix FixDecl
               | IBCDoc Name
               | IBCCoercion Name
               | IBCDef Name -- i.e. main context
+              | IBCNameHint (Name, Name)
               | IBCLineApp FilePath Int PTerm
   deriving Show
 
 idrisInit = IState initContext [] [] emptyContext emptyContext emptyContext
                    emptyContext emptyContext emptyContext emptyContext
                    emptyContext emptyContext emptyContext emptyContext
+                   emptyContext
                    [] [] defaultOpts 6 [] [] [] [] [] [] [] [] [] [] [] []
                    [] Nothing Nothing [] [] [] Hidden False [] Nothing [] [] RawOutput
                    True defaultTheme stdout
@@ -392,6 +395,14 @@ inlinable = elem Inlinable
 dictionary :: FnOpts -> Bool
 dictionary = elem Dictionary
 
+
+-- | Data declaration options
+data DataOpt = Codata -- Set if the the data-type is coinductive
+             | DefaultEliminator -- Set if an eliminator should be generated for data type
+    deriving (Show, Eq)
+
+type DataOpts = [DataOpt]
+
 -- | Top-level declarations such as compiler directives, definitions,
 -- datatypes and typeclasses.
 data PDecl' t
@@ -400,7 +411,7 @@ data PDecl' t
    | PPostulate String SyntaxInfo FC FnOpts Name t -- ^ Postulate
    | PClauses FC FnOpts Name [PClause' t]   -- ^ Pattern clause
    | PCAF     FC Name t -- ^ Top level constant
-   | PData    String SyntaxInfo FC Bool (PData' t)  -- ^ Data declaration. The Bool argument is True for codata.
+   | PData    String SyntaxInfo FC DataOpts (PData' t)  -- ^ Data declaration.
    | PParams  FC [(Name, t)] [PDecl' t] -- ^ Params block
    | PNamespace String [PDecl' t] -- ^ New namespace
    | PRecord  String SyntaxInfo FC Name t String Name t  -- ^ Record declaration
@@ -627,6 +638,7 @@ mapPT f t = f (mpt t) where
 
 data PTactic' t = Intro [Name] | Intros | Focus Name
                 | Refine Name [Bool] | Rewrite t
+                | Induction Name
                 | Equiv t
                 | MatchRefine Name
                 | LetTac Name t | LetTacTy Name t t
@@ -654,6 +666,7 @@ instance Sized a => Sized (PTactic' a) where
   size (Focus nm) = 1 + size nm
   size (Refine nm bs) = 1 + size nm + length bs
   size (Rewrite t) = 1 + size t
+  size (Induction t) = 1 + size t
   size (LetTac nm t) = 1 + size nm + size t
   size (Exact t) = 1 + size t
   size Compute = 1
@@ -737,6 +750,7 @@ type PArg = PArg' PTerm
 data ClassInfo = CI { instanceName :: Name,
                       class_methods :: [(Name, (FnOpts, PTerm))],
                       class_defaults :: [(Name, (Name, PDecl))], -- method name -> default impl
+                      class_default_superclasses :: [PDecl],
                       class_params :: [Name],
                       class_instances :: [Name] }
     deriving Show
@@ -745,9 +759,21 @@ deriving instance Binary ClassInfo
 deriving instance NFData ClassInfo
 !-}
 
+-- An argument is conditionally forceable iff its forceability
+-- depends on the collapsibility of the whole type.
+data Forceability = Conditional | Unconditional deriving (Show, Enum, Bounded, Eq, Ord)
+
+{-!
+deriving instance Binary Forceability
+deriving instance NFData Forceability
+!-}
+
 data OptInfo = Optimise { collapsible :: Bool,
                           isnewtype :: Bool,
-                          forceable :: [Int], -- argument positions
+                          -- The following should actually be (IntMap Forceability)
+                          -- but the corresponding Binary instance seems to be broken.
+                          -- Let's store a list and convert it to IntMap whenever needed.
+                          forceable :: [(Int, Forceability)],
                           recursive :: [Int] }
     deriving Show
 {-!
@@ -869,13 +895,23 @@ instance Show PClause where
 instance Show PData where
     show d = showDImp False d
 
+showDecls :: Bool -> [PDecl] -> String
+showDecls _ [] = ""
+showDecls i (d:ds) = showDeclImp i d ++ "\n" ++ showDecls i ds
+
 showDeclImp _ (PFix _ f ops) = show f ++ " " ++ showSep ", " ops
-showDeclImp t (PTy _ _ _ _ n ty) = show n ++ " : " ++ showImp Nothing t False ty
-showDeclImp t (PPostulate _ _ _ _ n ty) = show n ++ " : " ++ showImp Nothing t False ty
-showDeclImp _ (PClauses _ _ n c) = showSep "\n" (map show c)
-showDeclImp _ (PData _ _ _ _ d) = show d
-showDeclImp _ (PParams f ns ps) = "parameters " ++ show ns ++ "\n" ++
-                                    showSep "\n" (map show ps)
+showDeclImp i (PTy _ _ _ _ n t) = "tydecl " ++ showCG n ++ " : " ++ showImp Nothing i False t
+showDeclImp i (PClauses _ _ n cs) = "pat " ++ showCG n ++ "\t" ++ showSep "\n\t" (map (showCImp i) cs)
+showDeclImp _ (PData _ _ _ _ d) = showDImp True d
+showDeclImp i (PParams _ ns ps) = "params {" ++ show ns ++ "\n" ++ showDecls i ps ++ "}\n"
+showDeclImp i (PNamespace n ps) = "namespace {" ++ n ++ "\n" ++ showDecls i ps ++ "}\n"
+showDeclImp _ (PSyntax _ syn) = "syntax " ++ show syn
+showDeclImp i (PClass _ _ _ cs n ps ds)
+    = "class " ++ show cs ++ " " ++ show n ++ " " ++ show ps ++ "\n" ++ showDecls i ds
+showDeclImp i (PInstance _ _ cs n _ t _ ds)
+    = "instance " ++ show cs ++ " " ++ show n ++ " " ++ show t ++ "\n" ++ showDecls i ds
+showDeclImp _ _ = "..."
+-- showDeclImp (PImport i) = "import " ++ i
 
 
 showCImp :: Bool -> PClause -> String
@@ -1121,7 +1157,7 @@ showName ist bnd impl colour n = case ist of
                                    Just i -> if colour then colourise n (idris_colourTheme i) else showbasic n
                                    Nothing -> showbasic n
     where name = if impl then show n else showbasic n
-          showbasic n@(UN _) = show n
+          showbasic n@(UN _) = showCG n
           showbasic (MN _ s) = s
           showbasic (NS n s) = showSep "." (reverse s) ++ "." ++ showbasic n
           showbasic (SN s) = show s

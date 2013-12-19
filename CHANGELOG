@@ -1,3 +1,7 @@
+New in 0.9.11:
+-------------
+* Agda-style equational reasoning (in Syntax.PreorderReasoning)
+
 New in 0.9.10:
 --------------
 

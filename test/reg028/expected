@@ -1,2 +1,2 @@
-reg028.idr:5:1:tbad.bad is possibly not total due to: {tbad.bad12}
-reg028a.idr:11:1:tbad.qsort' is possibly not total due to: {tbad.qsort'14}
+reg028.idr:5:1:tbad.bad is possibly not total due to: {tbad.bad16}
+reg028a.idr:11:1:tbad.qsort' is possibly not total due to: {tbad.qsort'18}

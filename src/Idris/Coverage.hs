@@ -198,10 +198,6 @@ genAll i args
         = PPair fc (getTm l) (getTm r)
     resugar t = t
 
-    getForceable i n = case lookupCtxt n (idris_optimisation i) of
-                            [o] -> forceable o
-                            _ -> []
-
     dropForce force (x : xs) i | i `elem` force
         = upd Placeholder x : dropForce force xs (i + 1)
     dropForce force (x : xs) i = x : dropForce force xs (i + 1)

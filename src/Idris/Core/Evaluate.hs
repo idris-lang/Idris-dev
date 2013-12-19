@@ -632,13 +632,6 @@ instance Show Def where
                                         show ns' ++ " " ++ show sc' ++ "\n\n" ++
             if inlc then "Inlinable\n" else "Not inlinable\n"
 
--- We need this for serialising Def. Fortunately, it never gets used because
--- we'll never serialise a primitive operator
-
-instance Binary (a -> b) where
-    put x = return ()
-    get = error "Getting a function"
-
 -------
 
 -- Frozen => doesn't reduce
@@ -767,7 +760,7 @@ addCasedef n ci@(CaseInfo alwaysInline tcdict)
                      OK (CaseDef args_ct sc_ct _),
                      OK (CaseDef args_inl sc_inl _),
                      OK (CaseDef args_rt sc_rt _)) ->
-                       let inl = alwaysInline -- || tcdict
+                       let inl = alwaysInline -- tcdict
                            inlc = (inl || small n args_ct sc_ct) && (not asserted)
                            inlr = inl || small n args_rt sc_rt
                            cdef = CaseDefs (args_tot, sc_tot)

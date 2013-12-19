@@ -5,8 +5,8 @@ data Any : (P : a -> Type) -> Vect n a -> Type where
   There : {P : a -> Type} -> {xs : Vect n a} -> Any P xs -> Any P (x :: xs)
 
 anyNilAbsurd : {P : a -> Type} -> Any P Nil -> _|_
-anyNilAbsurd Here impossible
-anyNilAbsurd There impossible
+anyNilAbsurd (Here _) impossible 
+anyNilAbsurd (There _) impossible
 
 anyElim : {xs : Vect n a} -> {P : a -> Type} -> (Any P xs -> b) -> (P x -> b) -> Any P (x :: xs) -> b
 anyElim _ f (Here p) = f p

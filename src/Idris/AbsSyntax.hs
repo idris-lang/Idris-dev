@@ -167,6 +167,25 @@ addDocStr n doc
    = do i <- getIState
         putIState $ i { idris_docstrings = addDef n doc (idris_docstrings i) }
 
+addNameHint :: Name -> Name -> Idris ()
+addNameHint ty n
+   = do i <- getIState
+        ty' <- case lookupCtxtName ty (idris_implicits i) of
+                       [(tyn, _)] -> return tyn
+                       [] -> throwError (NoSuchVariable ty)
+                       tyns -> throwError (CantResolveAlts (map show (map fst tyns)))
+        let ns' = case lookupCtxt ty' (idris_namehints i) of
+                       [ns] -> ns ++ [n]
+                       _ -> [n]
+        putIState $ i { idris_namehints = addDef ty' ns' (idris_namehints i) }
+
+getNameHints :: IState -> Name -> [Name]
+getNameHints i (UN "->") = [UN "f",UN "g"]
+getNameHints i n =
+        case lookupCtxt n (idris_namehints i) of
+             [ns] -> ns
+             _ -> []
+
 addToCalledG :: Name -> [Name] -> Idris ()
 addToCalledG n ns = return () -- TODO
 
@@ -178,10 +197,10 @@ addInstance :: Bool -> Name -> Name -> Idris ()
 addInstance int n i
     = do ist <- getIState
          case lookupCtxt n (idris_classes ist) of
-                [CI a b c d ins] ->
-                     do let cs = addDef n (CI a b c d (addI i ins)) (idris_classes ist)
+                [CI a b c d e ins] ->
+                     do let cs = addDef n (CI a b c d e (addI i ins)) (idris_classes ist)
                         putIState $ ist { idris_classes = cs }
-                _ -> do let cs = addDef n (CI (MN 0 "none") [] [] [] [i]) (idris_classes ist)
+                _ -> do let cs = addDef n (CI (MN 0 "none") [] [] [] [] [i]) (idris_classes ist)
                         putIState $ ist { idris_classes = cs }
   where addI i ins | int = i : ins
                    | chaser n = ins ++ [i]
@@ -371,7 +390,7 @@ ihWarn :: Handle -> FC -> String -> Idris ()
 ihWarn h fc err = do i <- getIState
                      case idris_outputmode i of
                        RawOutput -> runIO $ hPutStrLn h (show fc ++ ":" ++ err)
-                       IdeSlave n -> runIO $ hPutStrLn h $ convSExp "warning" (fc_fname fc, fc_line fc, err) n
+                       IdeSlave n -> runIO $ hPutStrLn h $ convSExp "warning" (fc_fname fc, fc_line fc, fc_column fc, err) n
 
 setLogLevel :: Int -> Idris ()
 setLogLevel l = do i <- getIState
@@ -631,11 +650,12 @@ inferTy   = MN 0 "__Infer"
 inferCon  = MN 0 "__infer"
 inferDecl = PDatadecl inferTy
                       PType
-                      [("", inferCon, PPi impl (MN 0 "A") PType (
-                                  PPi expl (MN 0 "a") (PRef bi (MN 0 "A"))
+                      [("", inferCon, PPi impl (MN 0 "iType") PType (
+                                  PPi expl (MN 0 "ival") (PRef bi (MN 0 "iType"))
                                   (PRef bi inferTy)), bi)]
+inferOpts = []
 
-infTerm t = PApp bi (PRef bi inferCon) [pimp (MN 0 "A") Placeholder True, pexp t]
+infTerm t = PApp bi (PRef bi inferCon) [pimp (MN 0 "iType") Placeholder True, pexp t]
 infP = P (TCon 6 0) inferTy (TType (UVal 0))
 
 getInferTerm, getInferType :: Term -> Term
@@ -646,7 +666,7 @@ getInferTerm tm = tm -- error ("getInferTerm " ++ show tm)
 getInferType (Bind n b sc) = Bind n b $ getInferType sc
 getInferType (App (App _ ty) _) = ty
 
--- Handy primitives: Unit, False, Pair, MkPair, =, mkForeign
+-- Handy primitives: Unit, False, Pair, MkPair, =, mkForeign, Elim type class
 
 primNames = [unitTy, unitCon,
              falseTy, pairTy, pairCon,
@@ -656,9 +676,11 @@ unitTy   = MN 0 "__Unit"
 unitCon  = MN 0 "__II"
 unitDecl = PDatadecl unitTy PType
                      [("", unitCon, PRef bi unitTy, bi)]
+unitOpts = [DefaultEliminator]
 
 falseTy   = MN 0 "__False"
 falseDecl = PDatadecl falseTy PType []
+falseOpts = []
 
 pairTy    = MN 0 "__Pair"
 pairCon   = MN 0 "__MkPair"
@@ -670,6 +692,7 @@ pairDecl  = PDatadecl pairTy (piBind [(n "A", PType), (n "B", PType)] PType)
                            (PApp bi (PRef bi pairTy) [pexp (PRef bi (n "A")),
                                                 pexp (PRef bi (n "B"))])))), bi)]
     where n a = MN 0 a
+pairOpts = []
 
 eqTy = UN "="
 eqCon = UN "refl"
@@ -683,6 +706,14 @@ eqDecl = PDatadecl eqTy (piBind [(n "a", PType), (n "b", PType),
                                                     pexp (PRef bi (n "x")),
                                                     pexp (PRef bi (n "x"))])), bi)]
     where n a = MN 0 a
+eqOpts = []
+
+elimName       = UN "__Elim"
+elimMethElimTy = UN "__elimTy"
+elimMethElim   = UN "elim"
+elimDecl = PClass "Type class for eliminators" defaultSyntax bi [] elimName [(UN "scrutineeType", PType)] 
+                     [PTy "" defaultSyntax bi [TotalFn] elimMethElimTy PType,
+                      PTy "" defaultSyntax bi [TotalFn] elimMethElim (PRef bi elimMethElimTy)]
 
 -- Defined in builtins.idr
 sigmaTy   = UN "Exists"
@@ -1360,26 +1391,6 @@ findStatics ist tm = trace (showImp Nothing True False tm) $
                              put (False : spos)
                              return (PPi p n t sc')
         pos ns ss t = return t
-
--- Debugging/logging stuff
-
-dumpDecls :: [PDecl] -> String
-dumpDecls [] = ""
-dumpDecls (d:ds) = dumpDecl d ++ "\n" ++ dumpDecls ds
-
-dumpDecl (PFix _ f ops) = show f ++ " " ++ showSep ", " ops
-dumpDecl (PTy _ _ _ _ n t) = "tydecl " ++ show n ++ " : " ++ showImp Nothing True False t
-dumpDecl (PClauses _ _ n cs) = "pat " ++ show n ++ "\t" ++ showSep "\n\t" (map (showCImp True) cs)
-dumpDecl (PData _ _ _ _ d) = showDImp True d
-dumpDecl (PParams _ ns ps) = "params {" ++ show ns ++ "\n" ++ dumpDecls ps ++ "}\n"
-dumpDecl (PNamespace n ps) = "namespace {" ++ n ++ "\n" ++ dumpDecls ps ++ "}\n"
-dumpDecl (PSyntax _ syn) = "syntax " ++ show syn
-dumpDecl (PClass _ _ _ cs n ps ds)
-    = "class " ++ show cs ++ " " ++ show n ++ " " ++ show ps ++ "\n" ++ dumpDecls ds
-dumpDecl (PInstance _ _ cs n _ t _ ds)
-    = "instance " ++ show cs ++ " " ++ show n ++ " " ++ show t ++ "\n" ++ dumpDecls ds
-dumpDecl _ = "..."
--- dumpDecl (PImport i) = "import " ++ i
 
 -- for 6.12/7 compatibility
 data EitherErr a b = LeftErr a | RightOK b

@@ -305,6 +305,9 @@ expandLet n v = processTactic' (ExpandLet n v)
 rewrite :: Raw -> Elab' aux ()
 rewrite tm = processTactic' (Rewrite tm)
 
+induction :: Name -> Elab' aux ()
+induction nm = processTactic' (Induction nm)
+
 equiv :: Raw -> Elab' aux ()
 equiv tm = processTactic' (Equiv tm)
 
@@ -392,7 +395,7 @@ prepare_apply fn imps =
                    = do ctxt <- get_context
                         case lookupTy n ctxt of
                                 [] -> lift $ tfail $ NoSuchVariable n
-                                _ -> fail $ "Too many arguments for " ++ show fn
+                                _ -> lift $ tfail $ TooManyArguments n
             | otherwise = fail $ "Too many arguments for " ++ show fn
 
     doClaim ((i, _), n, t) = do claim n t
@@ -419,7 +422,6 @@ apply' fillt fn imps =
     do args <- prepare_apply fn (map fst imps)
        env <- get_env
        g <- goal
-       fillt (raw_apply fn (map Var args))
        -- _Don't_ solve the arguments we're specifying by hand.
        -- (remove from unified list before calling end_unify)
        -- HMMM: Actually, if we get it wrong, the typechecker will complain!
@@ -439,6 +441,7 @@ apply' fillt fn imps =
                        keepGiven dont hunis hs
        put (ES (p { dontunify = dont, unified = (n, unify),
                     notunified = notunify ++ notunified p }, a) s prev)
+       fillt (raw_apply fn (map Var args))
        ptm <- get_term
        g <- goal
 --        trace ("Goal " ++ show g ++ "\n" ++ show (fn,  imps, unify) ++ "\n" ++ show ptm) $

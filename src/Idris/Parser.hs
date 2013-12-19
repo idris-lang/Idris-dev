@@ -437,16 +437,35 @@ namespace syn =
        return [PNamespace n (concat ds)]
      <?> "namespace declaration"
 
-{- |Parses a methods block (for type classes and instances)
-  MethodsBlock ::= 'where' OpenBlock FnDecl* CloseBlock
+{- |Parses a methods block (for instances)
+  InstanceBlock ::= 'where' OpenBlock FnDecl* CloseBlock
  -}
-methodsBlock :: SyntaxInfo -> IdrisParser [PDecl]
-methodsBlock syn = do reserved "where"
-                      openBlock
-                      ds <- many (fnDecl syn)
-                      closeBlock
-                      return (concat ds)
-                   <?> "methods block"
+instanceBlock :: SyntaxInfo -> IdrisParser [PDecl]
+instanceBlock syn = do reserved "where"
+                       openBlock
+                       ds <- many (fnDecl syn)
+                       closeBlock
+                       return (concat ds)
+                    <?> "instance block"
+
+{- |Parses a methods and instances block (for type classes)
+
+MethodOrInstance ::=
+   FnDecl
+   | Instance
+   ;
+
+ClassBlock ::=
+  'where' OpenBlock MethodOrInstance* CloseBlock
+  ;
+-}
+classBlock :: SyntaxInfo -> IdrisParser [PDecl]
+classBlock syn = do reserved "where"
+                    openBlock
+                    ds <- many ((notEndBlock >> instance_ syn) <|> fnDecl syn)
+                    closeBlock
+                    return (concat ds)
+                 <?> "class block"
 
 {- |Parses a type class declaration
 
@@ -456,7 +475,7 @@ ClassArgument ::=
    ;
 
 Class ::=
-  DocComment_t? Accessibility? 'class' ConstraintList? Name ClassArgument* MethodsBlock?
+  DocComment_t? Accessibility? 'class' ConstraintList? Name ClassArgument* ClassBlock?
   ;
 -}
 class_ :: SyntaxInfo -> IdrisParser [PDecl]
@@ -467,7 +486,7 @@ class_ syn = do (doc, acc) <- try (do
                 reserved "class"; fc <- getFC; cons <- constraintList syn; n_in <- name
                 let n = expandNS syn n_in
                 cs <- many carg
-                ds <- option [] (methodsBlock syn)
+                ds <- option [] (classBlock syn)
                 accData acc n (concatMap declared ds)
                 return [PClass doc syn fc cons n cs ds]
              <?> "type-class declaration"
@@ -481,7 +500,7 @@ class_ syn = do (doc, acc) <- try (do
 {- |Parses a type class instance declaration
 
   Instance ::=
-    'instance' InstanceName? ConstraintList? Name SimpleExpr* MethodsBlock?
+    'instance' InstanceName? ConstraintList? Name SimpleExpr* InstanceBlock?
     ;
 
   InstanceName ::= '[' Name ']';
@@ -494,9 +513,9 @@ instance_ syn = do reserved "instance"; fc <- getFC
                    args <- many (simpleExpr syn)
                    let sc = PApp fc (PRef fc cn) (map pexp args)
                    let t = bindList (PPi constraint) (map (\x -> (MN 0 "c", x)) cs) sc
-                   ds <- option [] (methodsBlock syn)
+                   ds <- option [] (instanceBlock syn)
                    return [PInstance syn fc cs cn args t en ds]
-                 <?> "instance declaratioN"
+                 <?> "instance declaration"
   where instanceName :: IdrisParser Name
         instanceName = do lchar '['; n_in <- fnName; lchar ']'
                           let n = expandNS syn n_in
@@ -797,6 +816,7 @@ Directive' ::= 'lib'      CodeGen String_t
            |   'default'  Totality
            |   'logging'  Natural
            |   'dynamic'  StringList
+           |   'name'     Name NameList
            |   'language' 'TypeProviders'
            |   'language' 'ErrorReflection'
            ;
@@ -839,6 +859,12 @@ directive syn = do try (lchar '%' *> reserved "lib"); cgn <- codegen_; lib <- st
                                              Left lib -> addIBC (IBCDyLib (lib_name lib))
                                              Right msg ->
                                                  fail $ msg)]
+             <|> do try (lchar '%' *> reserved "name")
+                    ty <- iName []
+                    ns <- sepBy1 name (lchar ',')
+                    return [PDirective 
+                               (do mapM_ (addNameHint ty) ns
+                                   mapM_ (\n -> addIBC (IBCNameHint (ty, n))) ns)] 
              <|> do try (lchar '%' *> reserved "language"); ext <- pLangExt;
                     return [PDirective (addLangExt ext)]
              <?> "directive"
@@ -919,7 +945,8 @@ findFC :: Doc -> (FC, String)
 findFC x = let s = show (plain x) in
              case span (/= ':') s of
                (failname, ':':rest) -> case span isDigit rest of
-                 (line, ':':rest') -> (FC failname (read line) 0, drop 2 (dropWhile (/= ':') rest'))
+                 (line, ':':rest') -> case span isDigit rest' of
+                   (col, ':':msg) -> (FC failname (read line) (read col), msg)
 
 -- | A program is a list of declarations, possibly with associated
 -- documentation strings.
@@ -1021,7 +1048,7 @@ loadSource h lidr f
                                    f file pos
                   unless (null ds') $ do
                     let ds = namespaces mname ds'
-                    logLvl 3 (dumpDecls ds)
+                    logLvl 3 (showDecls True ds)
                     i <- getIState
                     logLvl 10 (show (toAlist (idris_implicits i)))
                     logLvl 3 (show (idris_infixes i))
@@ -1047,7 +1074,10 @@ loadSource h lidr f
                     -- Redo totality check for deferred names
                     let deftots = idris_defertotcheck i
                     iLOG $ "Totality checking " ++ show deftots
-                    mapM_ (\x -> setTotality x Unchecked) (map snd deftots)
+                    mapM_ (\x -> do tot <- getTotality x
+                                    case tot of
+                                         Total _ -> setTotality x Unchecked
+                                         _ -> return ()) (map snd deftots)
                     mapM_ buildSCG deftots
                     mapM_ checkDeclTotality deftots
 

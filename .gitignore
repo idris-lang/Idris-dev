@@ -11,6 +11,8 @@ cabal.sandbox.config
 *.swp
 *~
 .DS_Store
+.hpc
+*.tix
 custom.mk
 test/output
 test/test???/output
@@ -25,3 +27,5 @@ tutorial/*.out
 tutorial/*.toc
 tutorial/*.fdb_latexmk
 tutorial/*.fls
+tags
+TAGS

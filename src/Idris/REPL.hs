@@ -224,9 +224,7 @@ ideslave orig mods
                        do clearErr
                           putIState (orig { idris_options = idris_options i,
                                             idris_outputmode = (IdeSlave id) })
-                          idrisCatch (do mod <- loadModule' stdout filename
-                                         return ())
-                                     (setAndReport)
+                          loadInputs stdout [filename]
                           isetPrompt (mkPrompt [filename])
                           -- Report either success or failure
                           i <- getIState
@@ -346,7 +344,7 @@ processInput stvar cmd orig inputs
                                   , idris_colourTheme = idris_colourTheme i
                                   }
                    clearErr
-                   mod <- loadModule stdout f
+                   mod <- loadInputs stdout [f]
                    return (Just [f])
             Success (ModImport f) ->
                 do clearErr
@@ -629,7 +627,8 @@ process h fn (AddMissing updatefile l n)
 
         extras <- case lookupCtxt n' (idris_patdefs i) of
                        [] -> return ""
-                       [(_, tms)] -> showNew (show n ++ "_rhs") 1 indent tms
+                       [(_, tms)] -> do tms' <- nameMissing tms
+                                        showNew (show n ++ "_rhs") 1 indent tms'
         let (nonblank, rest) = span (not . all isSpace) (tyline:later)
         if updatefile
           then do let fb = fn ++ "~"
@@ -708,7 +707,7 @@ process h fn (DoProofSearch updatefile l n hints)
          if updatefile then
             do let fb = fn ++ "~"
                runIO $ writeFile fb (unlines before ++
-                                     updateMeta tyline (show n) newmv ++ "\n"
+                                     updateMeta False tyline (show n) newmv ++ "\n"
                                        ++ unlines later)
                runIO $ copyFile fb fn
             else ihPrintResult h newmv
@@ -726,16 +725,23 @@ process h fn (DoProofSearch updatefile l n hints)
           nsroot (SN (WhereN _ _ n)) = nsroot n
           nsroot n = n
 
-          updateMeta ('?':cs) n new
+          updateMeta brack ('?':cs) n new
             | length cs >= length n
               = case splitAt (length n) cs of
                      (mv, c:cs) ->
                           if (isSpace c && mv == n)
-                             then new ++ (c : cs)
-                             else '?' : mv ++ c : updateMeta cs n new
-                     (mv, []) -> if (mv == n) then new else '?' : mv
-          updateMeta (c:cs) n new = c : updateMeta cs n new
-          updateMeta [] n new = ""
+                             then addBracket brack new ++ (c : cs)
+                             else '?' : mv ++ c : updateMeta True cs n new
+                     (mv, []) -> if (mv == n) then addBracket brack new else '?' : mv
+          updateMeta brack ('=':cs) n new = '=':updateMeta False cs n new
+          updateMeta brack (c:cs) n new 
+              = c : updateMeta (brack || not (isSpace c)) cs n new
+          updateMeta brack [] n new = ""
+
+          addBracket False new = new
+          addBracket True new@('(':xs) | last xs == ')' = new
+          addBracket True new | any isSpace new = '(' : new ++ ")"
+                              | otherwise = new
 
 process h fn (Spec t)
                     = do (tm, ty) <- elabVal toplevel False t
@@ -1094,6 +1100,7 @@ idrisMain opts =
        let nobanner = NoBanner `elem` opts
        let idesl = Ideslave `elem` opts
        let runrepl = not (NoREPL `elem` opts)
+       let verbose = runrepl || Verbose `elem` opts
        let output = opt getOutput opts
        let ibcsubdir = opt getIBCSubDir opts
        let importdirs = opt getImportDir opts
@@ -1126,14 +1133,13 @@ idrisMain opts =
        setREPL runrepl
        setQuiet (quiet || isJust script)
        setIdeSlave idesl
-       setVerbose runrepl
+       setVerbose verbose
        setCmdLine opts
        setOutputTy outty
        setCodegen cgn
        setTargetTriple trpl
        setTargetCPU tcpu
        setOptLevel optimize
-       when (Verbose `elem` opts) $ setVerbose True
        mapM_ makeOption opts
        -- if we have the --bytecode flag, drop into the bytecode assembler
        case bcs of
@@ -1178,10 +1184,11 @@ idrisMain opts =
 
        historyFile <- fmap (</> "repl" </> "history") getIdrisUserDataDir
 
-       when (runrepl && not idesl) $ initScript
-       stvar <- runIO $ newMVar ist
-       when (runrepl && not idesl) $ startServer ist stvar inputs
-       when (runrepl && not idesl) $ runInputT (replSettings (Just historyFile)) $ repl ist stvar inputs
+       when (runrepl && not idesl) $ do
+         initScript
+         stvar <- runIO $ newMVar ist
+         startServer ist stvar inputs
+         runInputT (replSettings (Just historyFile)) $ repl ist stvar inputs
        when (idesl) $ ideslaveStart ist inputs
        ok <- noErrors
        when (not ok) $ runIO (exitWith (ExitFailure 1))

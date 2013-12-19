@@ -10,9 +10,12 @@ import Prelude.Classes
 %access public
 %default total
 
-data Nat
+%elim data Nat
   = Z
   | S Nat
+
+-- name hints for interactive editing
+%name Nat k,j,i,n,m
 
 --------------------------------------------------------------------------------
 -- Syntactic tests

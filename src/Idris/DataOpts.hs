@@ -5,78 +5,118 @@ module Idris.DataOpts where
 -- Forcing, detagging and collapsing
 
 import Idris.AbsSyntax
+import Idris.AbsSyntaxTree
 import Idris.Core.TT
 
+import Control.Applicative
+import qualified Data.IntMap as M
 import Data.List
 import Data.Maybe
 import Debug.Trace
 
--- Calculate the forceable arguments to a constructor and update the set of
--- optimisations
+type ForceMap = M.IntMap Forceability
 
-forceArgs :: Name -> Type -> Idris ()
-forceArgs n t = do i <- getIState
-                   let fargs = force i 0 t
-                   copt <- case lookupCtxt n (idris_optimisation i) of
-                                 []     -> return $ Optimise False False [] []
-                                 (op:_) -> return op
-                   let opts = addDef n (copt { forceable = fargs }) (idris_optimisation i)
-                   putIState (i { idris_optimisation = opts })
-                   addIBC (IBCOpt n)
-                   iLOG $ "Forced: " ++ show n ++ " " ++ show fargs ++ "\n   from " ++
-                          show t
+-- Calculate the forceable arguments to a constructor
+-- and update the set of optimisations.
+forceArgs :: Name -> Name -> Type -> Idris ()
+forceArgs typeName n t = do
+    ist <- getIState
+    let fargs = getForcedArgs ist typeName t
+        copt = case lookupCtxt n (idris_optimisation ist) of
+          []   -> Optimise False False [] []
+          op:_ -> op
+        opts = addDef n (copt { forceable = M.toList fargs }) (idris_optimisation ist)
+    putIState (ist { idris_optimisation = opts })
+    addIBC (IBCOpt n)
+    iLOG $ "Forced: " ++ show n ++ " " ++ show fargs ++ "\n   from " ++ show t
+
+getForcedArgs :: IState -> Name -> Type -> ForceMap
+getForcedArgs ist typeName t = addCollapsibleArgs 0 t $ forcedInTarget 0 t
   where
-    force :: IState -> Int -> Term -> [Int]
-    force ist i (Bind _ (Pi ty) sc)
-        | collapsibleIn ist ty
-            = nub $ i : (force ist (i + 1) $ instantiate (P Bound (MN i "?") Erased) sc)
-        | otherwise = force ist (i + 1) $ instantiate (P Bound (MN i "?") Erased) sc
-    force _ _ sc@(App f a)
-        | (_, args) <- unApply sc
-            = nub $ concatMap guarded args
-    force _ _ _ = []
+    maxUnion = M.unionWith max
 
-    collapsibleIn i t
-        | (P _ tn _, _) <- unApply t
-           = case lookupCtxt tn (idris_optimisation i) of
-                [oi] -> collapsible oi
-                _ -> False
-        | otherwise = False
+    -- Label all occurrences of the variable bound in Pi in the rest of
+    -- the term with the number i so that we can recognize them anytime later.
+    label i = instantiate $ P Bound (MN i "ctor_arg") Erased
 
-    isF (P _ (MN force "?") _) = Just force
-    isF _ = Nothing
+    addCollapsibleArgs :: Int -> Type -> ForceMap -> ForceMap
+    addCollapsibleArgs i (Bind vn (Pi ty) rest) alreadyForceable
+        = addCollapsibleArgs (i+1) (label i rest) (forceable $ unApply ty)
+      where
+        -- forceable takes an un-applied type of a ctor argument
+        forceable (P _ tn _, args)
+            -- if `ty' is collapsible, the argument is unconditionally forceable
+            | isCollapsible tn
+            = M.insert i Unconditional alreadyForceable
 
-    guarded :: Term -> [Int]
-    guarded t@(App f a)
---         | (P (TCon _ _) _ _, args) <- unApply t
---             = mapMaybe isF args ++ concatMap guarded args
-        | (P (DCon _ _) _ _, args) <- unApply t
-            = mapMaybe isF args ++ concatMap guarded args
-    guarded t = mapMaybe isF [t]
+            -- a recursive occurrence with known indices is conditionally forceable
+            | tn == typeName
+            = M.insertWith max i Conditional alreadyForceable
+
+        forceable _ = alreadyForceable
+
+        isCollapsible :: Name -> Bool
+        isCollapsible n = case lookupCtxt n (idris_optimisation ist) of
+            [oi] -> collapsible oi
+            _    -> False
+
+    addCollapsibleArgs _ _ fs = fs
+
+    forcedInTarget :: Int -> Type -> ForceMap
+    forcedInTarget i (Bind _ (Pi _) rest) = forcedInTarget (i+1) (label i rest)
+    forcedInTarget i t@(App f a) | (_, as) <- unApply t = unionMap guardedArgs as
+    forcedInTarget _ _ = M.empty
+
+    guardedArgs :: Term -> ForceMap
+    guardedArgs t@(App f a) | (P (DCon _ _) _ _, args) <- unApply t
+        = unionMap bareArg args `maxUnion` unionMap guardedArgs args
+    guardedArgs t = bareArg t
+
+    bareArg :: Term -> ForceMap
+    bareArg (P _ (MN i "ctor_arg") _) = M.singleton i Unconditional
+    bareArg  _                        = M.empty
+
+    unionMap :: (a -> ForceMap) -> [a] -> ForceMap
+    unionMap f = M.unionsWith max . map f
 
 -- Calculate whether a collection of constructors is collapsible
-
+-- and update the state accordingly.
 collapseCons :: Name -> [(Name, Type)] -> Idris ()
-collapseCons ty cons =
-     do i <- getIState
-        let cons' = map (\ (n, t) -> (n, map snd (getArgTys t))) cons
-        allFR <- mapM (forceRec i) cons'
-        if and allFR then detaggable (map getRetTy (map snd cons))
-           else checkNewType cons'
-  where
-    -- one constructor; if one remaining argument, treat as newtype
-    checkNewType [(n, ts)] = do
-       i <- getIState
-       case lookupCtxt n (idris_optimisation i) of
-               (oi:_) -> do let remaining = length ts - length (forceable oi)
-                            if remaining == 1 then
-                               do let oi' = oi { isnewtype = True }
-                                  let opts = addDef n oi' (idris_optimisation i)
-                                  putIState (i { idris_optimisation = opts })
-                               else return ()
-               _ -> return ()
+collapseCons tn ctors = do
+    ist <- getIState
+    case ctors of
+        _
+          | all (ctorCollapsible ist) ctors
+          , disjointTerms ctorTargetArgs
+            -> mapM_ setCollapsible (tn : map fst ctors)
 
-    checkNewType _ = return ()
+        [(cn, ct)]
+            -> checkNewType ist cn ct
+
+        _ -> return () -- nothing can be done
+  where
+    ctorTargetArgs = map (snd . unApply . getRetTy . snd) ctors
+
+    ctorArity :: Type -> Int
+    ctorArity = length . getArgTys
+
+    ctorCollapsible :: IState -> (Name, Type) -> Bool
+    ctorCollapsible ist (n, t) = all (`M.member` forceMap) [0 .. ctorArity t - 1]
+      where
+        forceMap = case lookupCtxt n (idris_optimisation ist) of
+            oi:_ -> M.fromList $ forceable oi
+            _    -> M.empty
+
+    -- one constructor; if one remaining argument, treat as newtype
+    checkNewType :: IState -> Name -> Type -> Idris ()
+    checkNewType ist cn ct
+        | oi:_ <- lookupCtxt cn opt
+        , length (getArgTys ct) == 1 + forcedCnt (M.fromList $ forceable oi)
+            = putIState ist{ idris_optimisation = opt' oi }
+        | otherwise = return ()
+      where
+        opt = idris_optimisation ist
+        opt' oi = addDef cn oi{ isnewtype = True } opt
 
     setCollapsible :: Name -> Idris ()
     setCollapsible n
@@ -91,79 +131,49 @@ collapseCons ty cons =
                         putIState (i { idris_optimisation = opts })
                         addIBC (IBCOpt n)
 
-    forceRec :: IState -> (Name, [Type]) -> Idris Bool
-    forceRec i (n, ts)
-       = case lookupCtxt n (idris_optimisation i) of
-            (oi:_) -> checkFR (forceable oi) 0 ts
-            _ -> return False
-    checkFR fs i [] = return True
-    checkFR fs i (_ : xs) | i `elem` fs = checkFR fs (i + 1) xs
-    checkFR fs i (t : xs)
-        -- must be recursive or type is not collapsible
-        = do let (rtf, rta) = unApply $ getRetTy t
-             if (ty `elem` freeNames rtf)
-               then checkFR fs (i+1) xs
-               else return False
+    disjointTerms :: [[Term]] -> Bool
+    disjointTerms []         = True
+    disjointTerms [xs]       = True
+    disjointTerms (xs : xss) =
+        -- xs is disjoint with every pattern from xss
+        all (or . zipWith disjoint xs) xss
+        -- and xss is pairwise disjoint, too
+        && disjointTerms xss
 
-    detaggable :: [Type] -> Idris ()
-    detaggable rtys
-        = do let rtyArgs = map (snd . unApply) rtys
-             -- if every rtyArgs is disjoint with every other, it's detaggable,
-             -- therefore also collapsible given forceable/recursive check
-             if disjoint rtyArgs
-                then mapM_ setCollapsible (ty : map fst cons)
-                else return ()
-
-    disjoint :: [[Term]] -> Bool
-    disjoint []       = True
-    disjoint [x]      = True
-    disjoint (x : xs) = anyDisjoint x xs && disjoint xs
-
-    anyDisjoint x [] = True
-    anyDisjoint x (y : ys) = disjointCons x y
-
-    disjointCons [] [] = False
-    disjointCons [] y  = False
-    disjointCons x  [] = False
-    disjointCons (x : xs) (y : ys)
-        = disjointCon x y || disjointCons xs ys
-
-    disjointCon x y = let (cx, _) = unApply x
-                          (cy, _) = unApply y in
-                          case (cx, cy) of
-                               (P (DCon _ _) nx _, P (DCon _ _) ny _) -> nx /= ny
-                               _ -> False
+    -- Return True  if the two patterns are provably disjoint.
+    -- Return False if they're not or if unsure.
+    disjoint :: Term -> Term -> Bool
+    disjoint x y = case (cx, cy) of
+        -- data constructors -> compare their names
+        (P (DCon _ _) nx _, P (DCon _ _) ny _)
+            | nx /= ny  -> True
+            | otherwise -> or $ zipWith disjoint xargs yargs
+        _ -> False
+      where
+        (cx, xargs) = unApply x
+        (cy, yargs) = unApply y
 
 class Optimisable term where
     applyOpts :: term -> Idris term
     stripCollapsed :: term -> Idris term
 
 instance (Optimisable a, Optimisable b) => Optimisable (a, b) where
-    applyOpts (x, y) = do x' <- applyOpts x
-                          y' <- applyOpts y
-                          return (x', y')
-    stripCollapsed (x, y) = do x' <- stripCollapsed x
-                               y' <- stripCollapsed y
-                               return (x', y')
-
+    applyOpts (x, y) = (,) <$> applyOpts x <*> applyOpts y
+    stripCollapsed (x, y) = (,) <$> stripCollapsed x <*> stripCollapsed y
 
 instance (Optimisable a, Optimisable b) => Optimisable (vs, a, b) where
-    applyOpts (v, x, y) = do x' <- applyOpts x
-                             y' <- applyOpts y
-                             return (v, x', y')
-    stripCollapsed (v, x, y) = do x' <- stripCollapsed x
-                                  y' <- stripCollapsed y
-                                  return (v, x', y')
+    applyOpts (v, x, y) = (,,) v <$> applyOpts x <*> applyOpts y
+    stripCollapsed (v, x, y) = (,,) v <$> stripCollapsed x <*> stripCollapsed y
 
 instance Optimisable a => Optimisable [a] where
     applyOpts = mapM applyOpts
     stripCollapsed = mapM stripCollapsed
 
 instance Optimisable a => Optimisable (Either a (a, a)) where
-    applyOpts (Left t) = do t' <- applyOpts t; return $ Left t'
-    applyOpts (Right t) = do t' <- applyOpts t; return $ Right t'
-    stripCollapsed (Left t) = do t' <- stripCollapsed t; return $ Left t'
-    stripCollapsed (Right t) = do t' <- stripCollapsed t; return $ Right t'
+    applyOpts (Left  t) = Left  <$> applyOpts t
+    applyOpts (Right t) = Right <$> applyOpts t
+    stripCollapsed (Left  t) = Left  <$> stripCollapsed t
+    stripCollapsed (Right t) = Right <$> stripCollapsed t
 
 -- Raw is for compile time optimisation (before type checking)
 -- Term is for run time optimisation (after type checking, collapsing allowed)
@@ -175,41 +185,39 @@ instance Optimisable Raw where
         | (Var n, args) <- raw_unapply t -- MAGIC HERE
             = do args' <- mapM applyOpts args
                  i <- getIState
-                 case lookupCtxt n (idris_optimisation i) of
-                    (oi:_) -> return $ applyDataOpt oi n args'
-                    _ -> return (raw_apply (Var n) args')
-        | otherwise = do f' <- applyOpts f
-                         a' <- applyOpts a
-                         return (RApp f' a')
-    applyOpts (RBind n b t) = do b' <- applyOpts b
-                                 t' <- applyOpts t
-                                 return (RBind n b' t')
-    applyOpts (RForce t) = applyOpts t
+                 return $ case lookupCtxt n (idris_optimisation i) of
+                    oi:_ -> applyDataOpt oi n args'
+                    _    -> raw_apply (Var n) args'
+        | otherwise = RApp <$> applyOpts f <*> applyOpts a
+
+    applyOpts (RBind n b t) = RBind n <$> applyOpts b <*> applyOpts t
+    applyOpts (RForce t)    = applyOpts t
     applyOpts t = return t
 
     stripCollapsed t = return t
 
 instance Optimisable t => Optimisable (Binder t) where
-    applyOpts (Let t v) = do t' <- applyOpts t
-                             v' <- applyOpts v
-                             return (Let t' v')
+    applyOpts (Let t v) = Let <$> applyOpts t <*> applyOpts v
     applyOpts b = do t' <- applyOpts (binderTy b)
                      return (b { binderTy = t' })
-    stripCollapsed (Let t v) = do t' <- stripCollapsed t
-                                  v' <- stripCollapsed v
-                                  return (Let t' v')
+    stripCollapsed (Let t v) = Let <$> stripCollapsed t <*> stripCollapsed v
     stripCollapsed b = do t' <- stripCollapsed (binderTy b)
                           return (b { binderTy = t' })
 
+forcedArgSeq :: OptInfo -> [Maybe Forceability]
+forcedArgSeq oi = map (\i -> M.lookup i forceMap) [0..]
+  where
+    forceMap = M.fromList $ forceable oi
+
+forcedCnt :: ForceMap -> Int
+forcedCnt = length . filter (== Unconditional) . M.elems
 
 applyDataOpt :: OptInfo -> Name -> [Raw] -> Raw
-applyDataOpt oi n args
-    = let args' = zipWith doForce (map (\x -> x `elem` (forceable oi)) [0..])
-                                  args in
-          raw_apply (Var n) args'
+applyDataOpt oi n args 
+    = raw_apply (Var n) $ zipWith doForce (forcedArgSeq oi) args
   where
-    doForce True  a = RForce a
-    doForce False a = a
+    doForce (Just Unconditional) a = RForce a
+    doForce _ a = a
 
 -- Run-time: do everything
 
@@ -268,10 +276,10 @@ instance Optimisable (TT Name) where
 
 applyDataOptRT :: OptInfo -> Name -> Int -> Int -> [Term] -> Term
 applyDataOptRT oi n tag arity args
-    | length args == arity = doOpts n args (collapsible oi) (forceable oi)
+    | length args == arity = doOpts n args (collapsible oi) (M.fromList $ forceable oi)
     | otherwise = let extra = satArgs (arity - length args)
                       tm = doOpts n (args ++ map (\n -> P Bound n Erased) extra)
-                                    (collapsible oi) (forceable oi) in
+                                    (collapsible oi) (M.fromList $ forceable oi) in
                       bind extra tm
   where
     satArgs n = map (\i -> MN i "sat") [1..n]
@@ -285,18 +293,12 @@ applyDataOptRT oi n tag arity args
     doOpts (NS (UN "S") ["Nat", "Prelude"]) [k] _ _
         = App (App (P Ref (UN "prim__addBigInt") Erased) k) (Constant (BI 1))
 
-    doOpts n args True f = Erased
-    doOpts n args _ forced
-        = let args' = filter keep (zip (map (\x -> x `elem` forced) [0..])
-                                       args) in
-              if isnewtype oi
-                then case args' of
-                          [(_, val)] -> val
-                          _ -> error "Can't happen (not isnewtype)"
-                else
-                  mkApp (P (DCon tag (arity - length forced)) n Erased)
-                        (map snd args')
-
-    keep (forced, _) = not forced
-
-
+    doOpts n args True _  = Erased
+    doOpts n args _ forceMap
+        | isnewtype oi = case args' of
+            [val] -> val
+            _     -> error $ "Can't happen (newtype not a singleton): " ++ show args'
+        | otherwise = mkApp ctor' args'
+      where
+        ctor' = (P (DCon tag (arity - forcedCnt forceMap)) n Erased)
+        args' = [t | (f, t) <- zip (forcedArgSeq oi) args, f /= Just Unconditional]

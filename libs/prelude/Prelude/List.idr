@@ -15,9 +15,12 @@ import Prelude.Nat
 infixr 7 ::
 infixl 8 ++
 
-data List a
+%elim data List a
   = Nil
   | (::) a (List a)
+
+-- Name hints for interactive editing
+%name List xs, ys, zs, ws
 
 --------------------------------------------------------------------------------
 -- Syntactic tests
@@ -460,10 +463,6 @@ sort xs  =
 --------------------------------------------------------------------------------
 -- Conversions
 --------------------------------------------------------------------------------
-
-maybeToList : Maybe a -> List a
-maybeToList Nothing  = []
-maybeToList (Just j) = [j]
 
 listToMaybe : List a -> Maybe a
 listToMaybe []      = Nothing

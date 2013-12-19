@@ -1,4 +1,4 @@
-.PHONY: build configure doc install linecount nodefault pinstall lib_clean relib test
+.PHONY: build configure doc install linecount nodefault pinstall lib_clean relib test_c test
 
 include config.mk
 -include custom.mk
@@ -13,7 +13,9 @@ pinstall: dist/setup-config
 build: dist/setup-config
 	$(CABAL) build $(CABALFLAGS)
 
-test:
+test: doc test_c
+
+test_c:
 	$(MAKE) -C test IDRIS=../dist/build/idris
 
 test_java:

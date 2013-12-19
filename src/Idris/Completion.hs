@@ -38,6 +38,7 @@ tacticArgs = [ ("intro", Nothing) -- FIXME syntax for intro (fresh name)
              , ("let", Nothing) -- FIXME syntax for let
              , ("focus", Just ExprTArg)
              , ("exact", Just ExprTArg)
+             , ("equiv", Just ExprTArg)
              , ("applyTactic", Just ExprTArg)
              , ("reflect", Just ExprTArg)
              , ("fill", Just ExprTArg)

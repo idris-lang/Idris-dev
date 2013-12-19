@@ -33,6 +33,12 @@ import Data.List
 import Data.Maybe
 import Debug.Trace
 
+import qualified Data.Map as Map
+import Data.Char(isLetter, toLower)
+import Data.List.Split (splitOn)
+
+import Util.Pretty(pretty)
+
 recheckC fc env t
     = do -- t' <- applyOpts (forget t) (doesn't work, or speed things up...)
          ctxt <- getContext
@@ -143,9 +149,10 @@ elabPostulate info syn doc fc opts n ty
          -- remove it from the deferred definitions list
          solveDeferred n
 
-elabData :: ElabInfo -> SyntaxInfo -> String -> FC -> Bool -> PData -> Idris ()
-elabData info syn doc fc codata (PLaterdecl n t_in)
-    = do iLOG (show (fc, doc))
+elabData :: ElabInfo -> SyntaxInfo -> String -> FC -> DataOpts -> PData -> Idris ()
+elabData info syn doc fc opts (PLaterdecl n t_in)
+    = do let codata = Codata `elem` opts
+         iLOG (show (fc, doc))
          checkUndefined fc n
          ctxt <- getContext
          i <- getIState
@@ -161,8 +168,9 @@ elabData info syn doc fc codata (PLaterdecl n t_in)
          logLvl 2 $ "---> " ++ show cty
          updateContext (addTyDecl n (TCon 0 0) cty) -- temporary, to check cons
 
-elabData info syn doc fc codata (PDatadecl n t_in dcons)
-    = do iLOG (show fc)
+elabData info syn doc fc opts (PDatadecl n t_in dcons)
+    = do let codata = Codata `elem` opts
+         iLOG (show fc)
          undef <- isUndefined fc n
          ctxt <- getContext
          i <- getIState
@@ -173,6 +181,9 @@ elabData info syn doc fc codata (PDatadecl n t_in dcons)
                   (errAt "data declaration " n (erun fc (build i info False n t)))
          def' <- checkDef fc defer
          let def'' = map (\(n, (i, top, t)) -> (n, (i, top, t, True))) def'
+         -- if n is defined already, make sure it is just a type declaration
+         -- with the same type we've just elaborated
+         checkDefinedAs fc n t' (tt_ctxt i)
          addDeferredTyCon def''
          mapM_ (elabCaseBlock info []) is
          (cty, _)  <- recheckC fc [] t'
@@ -194,7 +205,17 @@ elabData info syn doc fc codata (PDatadecl n t_in dcons)
          collapseCons n cons
          updateContext (addDatatype (Data n ttag cty cons))
          mapM_ (checkPositive n) cons
+         if DefaultEliminator `elem` opts then evalStateT (elabEliminator params n t dcons info) Map.empty
+                                          else return ()
   where
+        checkDefinedAs fc n t ctxt 
+            = case lookupDef n ctxt of
+                   [] -> return ()
+                   [TyDecl _ ty] -> 
+                      case converts ctxt [] t ty of
+                           OK () -> return ()
+                           _ -> tclift $ tfail (At fc (AlreadyDefined n))
+                   _ -> tclift $ tfail (At fc (AlreadyDefined n))
         -- parameters are names which are unchanged across the structure,
         -- which appear exactly once in the return type of a constructor
 
@@ -245,12 +266,253 @@ elabData info syn doc fc codata (PDatadecl n t_in dcons)
                        | otherwise = count n ts
         mParam args (_ : rest) = Nothing : mParam args rest
 
+type EliminatorState = StateT (Map.Map String Int) Idris
+
+-- TODO: Use uniqueName for generating names, rewrite everything to use idris_implicits instead of manual splitting, generally just rewrite
+elabEliminator :: [Int] -> Name -> PTerm -> [(String, Name, PTerm, FC)] -> ElabInfo -> EliminatorState ()
+elabEliminator paramPos n ty cons info = do
+  elimLog $ "Elaborating eliminator"
+  let (cnstrs, _) = splitPi ty
+  let (splittedTy@(pms, idxs)) = splitPms cnstrs
+  generalParams <- namePis False pms
+  motiveIdxs    <- namePis False idxs
+  let motive = mkMotive n paramPos generalParams motiveIdxs
+  consTerms <- mapM (\(c@(_,cnm,_,_)) -> do
+                              name <- freshName $ "elim_" ++ simpleName cnm
+                              consTerm <- extractConsTerm c generalParams
+                              return (name, expl, consTerm)) cons
+  scrutineeIdxs <- namePis False idxs
+  let motiveConstr = [(motiveName, expl, motive)]
+  let scrutinee = (scrutineeName, expl, applyCons n (interlievePos paramPos generalParams scrutineeIdxs 0))
+  let eliminatorTy = piConstr (generalParams ++ motiveConstr ++ consTerms ++ scrutineeIdxs ++ [scrutinee]) (applyMotive (map (\(n,_,_) -> PRef elimFC n) scrutineeIdxs) (PRef elimFC scrutineeName))
+  let eliminatorTyDecl = PTy (show n) defaultSyntax elimFC [TotalFn] elimDeclName eliminatorTy
+  let clauseConsElimArgs = map getPiName consTerms
+  let clauseGeneralArgs' = map getPiName generalParams ++ [motiveName] ++ clauseConsElimArgs
+  let clauseGeneralArgs  = map (\arg -> pexp (PRef elimFC arg)) clauseGeneralArgs'
+  let elimSig = "-- eliminator signature: " ++ showImp Nothing True True eliminatorTy
+  eliminatorClauses <- mapM (\(cns, cnsElim) -> generateEliminatorClauses cns cnsElim clauseGeneralArgs generalParams) (zip cons clauseConsElimArgs)
+  let eliminatorDef = PClauses emptyFC [TotalFn] elimDeclName eliminatorClauses
+  elimLog $ "-- eliminator definition: " ++ showDeclImp True eliminatorDef
+  Control.Monad.State.lift $ idrisCatch (elabDecl EAll info eliminatorTyDecl) (\err -> return ())
+  -- Do not elaborate clauses if there aren't any
+  case eliminatorClauses of
+    [] -> return ()
+    _  -> Control.Monad.State.lift $ idrisCatch (elabDecl EAll info eliminatorDef) (\err -> return ())
+  where elimLog :: String -> EliminatorState ()
+        elimLog s = Control.Monad.State.lift (logLvl 2 s)
+
+        elimFC :: FC
+        elimFC = fileFC "(eliminator)"
+
+        elimDeclName :: Name
+        elimDeclName = SN $ ElimN n
+
+        applyNS :: Name -> [String] -> Name
+        applyNS n []  = n
+        applyNS n ns  = NS n ns
+
+        splitPi :: PTerm -> ([(Name, Plicity, PTerm)], PTerm)
+        splitPi = splitPi' []
+          where splitPi' :: [(Name, Plicity, PTerm)] -> PTerm -> ([(Name, Plicity, PTerm)], PTerm)
+                splitPi' acc (PPi pl n tyl tyr) = splitPi' ((n, pl, tyl):acc) tyr
+                splitPi' acc t                  = (reverse acc, t)
+
+        splitPms :: [(Name, Plicity, PTerm)] -> ([(Name, Plicity, PTerm)], [(Name, Plicity, PTerm)])
+        splitPms cnstrs = (map fst pms, map fst idxs)
+           where (pms, idxs) = partition (\c -> snd c `elem` paramPos) (zip cnstrs [0..])
+
+        isMachineGenerated :: Name -> Bool
+        isMachineGenerated (MN _ _) = True
+        isMachineGenerated _        = False
+
+        namePis :: Bool -> [(Name, Plicity, PTerm)] -> EliminatorState [(Name, Plicity, PTerm)]
+        namePis keepOld pms = do names <- mapM (mkPiName keepOld) pms
+                                 let oldNames = map fst names
+                                 let params   = map snd names
+                                 return $ map (\(n, pl, ty) -> (n, pl, removeParamPis oldNames params ty)) params
+
+        mkPiName :: Bool -> (Name, Plicity, PTerm) -> EliminatorState (Name, (Name, Plicity, PTerm))
+        mkPiName keepOld (n, pl, piarg) | not (isMachineGenerated n) && keepOld = do return (n, (n, pl, piarg))
+        mkPiName _ (oldName, pl, piarg) =  do name <- freshName $ keyOf piarg
+                                              return (oldName, (name, pl, piarg))
+          where keyOf :: PTerm -> String
+                keyOf (PRef _ name) | isLetter (nameStart name) = (toLower $ nameStart name):"__"
+                keyOf (PApp _ tyf _) = keyOf tyf
+                keyOf PType = "ty__"
+                keyOf _     = "carg__"
+                nameStart :: Name -> Char
+                nameStart n = nameStart' (simpleName n)
+                  where nameStart' :: String -> Char
+                        nameStart' "" = ' '
+                        nameStart' ns = head ns
+
+        simpleName :: Name -> String
+        simpleName (NS n _) = simpleName n
+        simpleName (MN i n) = n ++ show i
+        simpleName n        = show n
+
+        nameSpaces :: Name -> [String]
+        nameSpaces (NS _ ns) = ns
+        nameSpaces _         = []
+
+        freshName :: String -> EliminatorState Name
+        freshName key = do
+          nameMap <- get
+          let i = fromMaybe 0 (Map.lookup key nameMap)
+          let name = key ++ show i
+          put $ Map.insert key (i+1) nameMap
+          return (UN name)
+
+        scrutineeName :: Name
+        scrutineeName = UN "scrutinee"
+
+        scrutineeArgName :: Name
+        scrutineeArgName = UN "scrutineeArg"
+
+        motiveName :: Name
+        motiveName = UN "prop"
+
+        mkMotive :: Name -> [Int] -> [(Name, Plicity, PTerm)] -> [(Name, Plicity, PTerm)] -> PTerm
+        mkMotive n paramPos params indicies =
+          let scrutineeTy = (scrutineeArgName, expl, applyCons n (interlievePos paramPos params indicies 0))
+          in piConstr (indicies ++ [scrutineeTy]) PType
+
+        piConstr :: [(Name, Plicity, PTerm)] -> PTerm -> PTerm
+        piConstr [] ty = ty
+        piConstr ((n, pl, tyb):tyr) ty = PPi pl n tyb (piConstr tyr ty)
+
+        interlievePos :: [Int] -> [a] -> [a] -> Int -> [a]
+        interlievePos idxs []     l2     i = l2
+        interlievePos idxs l1     []     i = l1
+        interlievePos idxs (x:xs) l2     i | i `elem` idxs = x:(interlievePos idxs xs l2 (i+1))
+        interlievePos idxs l1     (y:ys) i = y:(interlievePos idxs l1 ys (i+1))
+
+        replaceParams :: [Int] -> [(Name, Plicity, PTerm)] -> PTerm -> PTerm
+        replaceParams paramPos params cns =
+          let (_, cnsResTy) = splitPi cns
+          in case cnsResTy of
+               PApp _ _ args ->
+                let oldParams = paramNamesOf 0 paramPos args
+                in removeParamPis oldParams params cns
+               _ -> cns
+
+        removeParamPis :: [Name] -> [(Name, Plicity, PTerm)] -> PTerm -> PTerm
+        removeParamPis oldParams params (PPi pl n tyb tyr) =
+          case findIndex (== n) oldParams of
+            Nothing -> (PPi pl n (removeParamPis oldParams params tyb) (removeParamPis oldParams params tyr))
+            Just i  -> (removeParamPis oldParams params tyr)
+        removeParamPis oldParams params (PRef _ n) = 
+          case findIndex (== n) oldParams of
+               Nothing -> (PRef elimFC n)
+               Just i  -> let (newname,_,_) = params !! i in (PRef elimFC (newname))
+        removeParamPis oldParams params (PApp _ cns args) =
+          PApp elimFC (removeParamPis oldParams params cns) $ replaceParamArgs args
+            where replaceParamArgs :: [PArg] -> [PArg]
+                  replaceParamArgs []          = []
+                  replaceParamArgs (arg:args)  =
+                    case extractName (getTm arg) of
+                      []   -> arg:replaceParamArgs args
+                      [n]  ->
+                        case findIndex (== n) oldParams of
+                          Nothing -> arg:replaceParamArgs args
+                          Just i  -> let (newname,_,_) = params !! i in arg {getTm = PRef elimFC newname}:replaceParamArgs args
+        removeParamPis oldParams params t = t
+
+        paramNamesOf :: Int -> [Int] -> [PArg] -> [Name]
+        paramNamesOf i paramPos []          = []
+        paramNamesOf i paramPos (arg:args)  = (if i `elem` paramPos then extractName (getTm arg) else []) ++ paramNamesOf (i+1) paramPos args
+
+        extractName :: PTerm -> [Name]
+        extractName (PRef _ n) = [n]
+        extractName _          = []
+
+        splitArgPms :: PTerm -> ([PTerm], [PTerm])
+        splitArgPms (PApp _ f args) = splitArgPms' args
+          where splitArgPms' :: [PArg] -> ([PTerm], [PTerm])
+                splitArgPms' cnstrs = (map (getTm . fst) pms, map (getTm . fst) idxs)
+                    where (pms, idxs) = partition (\c -> snd c `elem` paramPos) (zip cnstrs [0..])
+        splitArgPms _                 = ([],[])
+
+
+        implicitIndexes :: (String, Name, PTerm, FC) -> EliminatorState [(Name, Plicity, PTerm)]
+        implicitIndexes (cns@(doc, cnm, ty, fc)) = do
+          i <-  Control.Monad.State.lift getIState
+          implargs' <- case lookupCtxt cnm (idris_implicits i) of
+            [] -> do fail $ "Error while showing implicits for " ++ show cnm
+            [args] -> do return args
+            _ -> do fail $ "Ambigous name for " ++ show cnm
+          let implargs = mapMaybe convertImplPi implargs'
+          let (_, cnsResTy) = splitPi ty
+          case cnsResTy of
+             PApp _ _ args ->
+              let oldParams = paramNamesOf 0 paramPos args
+              in return $ filter (\(n,_,_) -> not (n `elem` oldParams))implargs
+             _ -> return implargs
+
+        extractConsTerm :: (String, Name, PTerm, FC) -> [(Name, Plicity, PTerm)] -> EliminatorState PTerm
+        extractConsTerm (doc, cnm, ty, fc) generalParameters = do
+          let cons' = replaceParams paramPos generalParameters ty
+          let (args, resTy) = splitPi cons'
+          implidxs <- implicitIndexes (doc, cnm, ty, fc)
+          consArgs <- namePis True args
+          let recArgs = findRecArgs consArgs
+          let recMotives = map applyRecMotive recArgs
+          let (_, consIdxs) = splitArgPms resTy
+          return $ piConstr (implidxs ++ consArgs ++ recMotives) (applyMotive consIdxs (applyCons cnm consArgs))
+            where applyRecMotive :: (Name, Plicity, PTerm) -> (Name, Plicity, PTerm)
+                  applyRecMotive (n,_,ty)  = (UN $ "ih" ++ simpleName n, expl, applyMotive idxs (PRef elimFC n))
+                      where (_, idxs) = splitArgPms ty
+
+        findRecArgs :: [(Name, Plicity, PTerm)] -> [(Name, Plicity, PTerm)]
+        findRecArgs []                            = []
+        findRecArgs (ty@(_,_,PRef _ tn):rs)            | simpleName tn == simpleName n = ty:findRecArgs rs
+        findRecArgs (ty@(_,_,PApp _ (PRef _ tn) _):rs) | simpleName tn == simpleName n = ty:findRecArgs rs
+        findRecArgs (ty:rs)                                                            = findRecArgs rs
+
+        applyCons :: Name -> [(Name, Plicity, PTerm)] -> PTerm
+        applyCons tn targs = PApp elimFC (PRef elimFC tn) (map convertArg targs)
+
+        convertArg :: (Name, Plicity, PTerm) -> PArg
+        convertArg (n, _, _)      = pexp (PRef elimFC n)
+
+        applyMotive :: [PTerm] -> PTerm -> PTerm
+        applyMotive idxs t = PApp elimFC (PRef elimFC motiveName) (map pexp idxs ++ [pexp t])
+
+        getPiName :: (Name, Plicity, PTerm) -> Name
+        getPiName (name,_,_) = name
+
+        convertImplPi :: PArg -> Maybe (Name, Plicity, PTerm)
+        convertImplPi (PImp {getTm = t, pname = n}) = Just (n, expl, t)
+        convertImplPi _                             = Nothing
+
+        generateEliminatorClauses :: (String, Name, PTerm, FC) -> Name -> [PArg] -> [(Name, Plicity, PTerm)] -> EliminatorState PClause
+        generateEliminatorClauses (doc, cnm, ty, fc) cnsElim generalArgs generalParameters = do
+          let cons' = replaceParams paramPos generalParameters ty
+          let (args, resTy) = splitPi cons'
+          i <- Control.Monad.State.lift getIState
+          implidxs <- implicitIndexes (doc, cnm, ty, fc)
+          let (_, generalIdxs') = splitArgPms resTy
+          let generalIdxs = map pexp generalIdxs'
+          consArgs <- namePis True args
+          let lhsPattern = PApp elimFC (PRef elimFC elimDeclName) (generalArgs ++ generalIdxs ++ [pexp $ applyCons cnm consArgs])
+          let recArgs = findRecArgs consArgs
+          let recElims = map applyRecElim recArgs
+          let rhsExpr    = PApp elimFC (PRef elimFC cnsElim) (map convertArg implidxs ++ map convertArg consArgs ++ recElims)
+          return $ PClause elimFC elimDeclName lhsPattern [] rhsExpr []
+            where applyRecElim :: (Name, Plicity, PTerm) -> PArg
+                  applyRecElim (constr@(recCnm,_,recTy)) = pexp $ PApp elimFC (PRef elimFC elimDeclName) (generalArgs ++ map pexp idxs ++ [pexp $ PRef elimFC recCnm])
+                    where (_, idxs) = splitArgPms recTy
+
 -- | Elaborate primitives
 
 elabPrims :: Idris ()
 elabPrims = do mapM_ (elabDecl EAll toplevel)
-                     (map (PData "" defaultSyntax (fileFC "builtin") False)
-                         [inferDecl, unitDecl, falseDecl, pairDecl, eqDecl])
+                     (map (\(opt, decl) -> PData "" defaultSyntax (fileFC "builtin") opt decl)
+                        (zip
+                         [inferOpts, unitOpts, falseOpts, pairOpts, eqOpts]
+                         [inferDecl, unitDecl, falseDecl, pairDecl, eqDecl]))
+               addNameHint eqTy (UN "prf")
+               elabDecl EAll toplevel elimDecl
                mapM_ elabPrim primitives
                -- Special case prim__believe_me because it doesn't work on just constants
                elabBelieveMe
@@ -400,7 +662,7 @@ elabTransform info fc safe lhs_in rhs_in
 elabRecord :: ElabInfo -> SyntaxInfo -> String -> FC -> Name ->
               PTerm -> String -> Name -> PTerm -> Idris ()
 elabRecord info syn doc fc tyn ty cdoc cn cty
-    = do elabData info syn doc fc False (PDatadecl tyn ty [(cdoc, cn, cty, fc)])
+    = do elabData info syn doc fc [] (PDatadecl tyn ty [(cdoc, cn, cty, fc)])
          cty' <- implicit syn cn cty
          i <- getIState
          cty <- case lookupTy cn (tt_ctxt i) of
@@ -531,7 +793,7 @@ elabCon info syn tn codata (doc, n, t_in, fc)
          addIBC (IBCDef n)
          addDocStr n doc
          addIBC (IBCDoc n)
-         forceArgs n cty'
+         forceArgs tn n cty'
          return (n, cty')
   where
     tyIs (Bind n b sc) = tyIs sc
@@ -638,7 +900,7 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
                 Just _ -> logLvl 5 $ "Partially evaluated:\n" ++ show pats
                 _ -> return ()
 
-           let optpdef = map debind optpats -- $ map (simple_lhs (tt_ctxt ist)) optpats
+           let optpdef = map debind optpats -- \$ map (simple_lhs (tt_ctxt ist)) optpats
            tree@(CaseDef scargs sc _) <- tclift $
                    simpleCase tcase False reflect CompileTime fc pdef
            cov <- coverage
@@ -797,7 +1059,7 @@ elabPE info fc caller r =
 
     mkSpecialised ist specapp_in = do
         let (specTy, specapp) = getSpecTy ist specapp_in
-        let (n, newnm, [(lhs, rhs)]) = getSpecClause ist specapp
+        let (n, newnm, pats) = getSpecClause ist specapp
         let undef = case lookupDef newnm (tt_ctxt ist) of
                          [] -> True
                          _ -> False
@@ -812,10 +1074,12 @@ elabPE info fc caller r =
             iLOG $ "PE definition type : " ++ (show specTy)
                         ++ "\n" ++ show opts
             logLvl 2 $ "PE definition " ++ show newnm ++ ":\n" ++
-                        (showImp Nothing True False lhs ++ " = " ++ 
-                         showImp Nothing True False rhs)
+                        showSep "\n" 
+                           (map (\ (lhs, rhs) ->
+                              (showImp Nothing True False lhs ++ " = " ++ 
+                               showImp Nothing True False rhs)) pats)
             elabType info defaultSyntax "" fc opts newnm specTy
-            let def = [PClause fc newnm lhs [] rhs []]
+            let def = map (\ (lhs, rhs) -> PClause fc newnm lhs [] rhs []) pats
             elabClauses info fc opts newnm def
             logLvl 1 $ "Specialised " ++ show newnm)
           -- if it doesn't work, just don't specialise. Could happen for lots
@@ -918,7 +1182,18 @@ checkPossible info fc tcgen fname lhs_in
 --                   b <- inferredDiff fc (delab' i lhs_tm True) lhs
 --                   return (not b) -- then return (Just lhs_tm) else return Nothing
 --                   trace (show (delab' i lhs_tm True) ++ "\n" ++ show lhs) $ return (not b)
-            err@(Error _) -> return False
+            Error err -> return (impossibleError err)
+    where impossibleError (CantUnify _ topx topy e _ _) 
+              = not (sameFam topx topy || not (impossibleError e))
+          impossibleError (CantConvert _ _ _) = False
+          impossibleError (At _ e) = impossibleError e
+          impossibleError (Elaborating _ _ e) = impossibleError e
+          impossibleError _ = True
+
+          sameFam topx topy 
+              = case (unApply topx, unApply topy) of
+                     ((P _ x _, _), (P _ y _, _)) -> x == y
+                     _ -> False
 
 elabClause :: ElabInfo -> FnOpts -> (Int, PClause) ->
               Idris (Either Term (Term, Term))
@@ -926,7 +1201,8 @@ elabClause info opts (_, PClause fc fname lhs_in [] PImpossible [])
    = do let tcgen = Dictionary `elem` opts
         b <- checkPossible info fc tcgen fname lhs_in
         case b of
-            True -> ifail $ show fc ++ ":" ++ show lhs_in ++ " is a possible case"
+            True -> tclift $ tfail (At fc 
+                                (Msg $ show lhs_in ++ " is a valid case"))
             False -> do ptm <- mkPatTm lhs_in
                         return (Left ptm)
 elabClause info opts (cnum, PClause fc fname lhs_in withs rhs_in whereblock)
@@ -1268,6 +1544,8 @@ elabClass info syn doc fc constraints tn ps ds
                                   (map (pexp . PRef fc) (map fst ps))
          -- build data declaration
          let mdecls = filter tydecl ds -- method declarations
+         let idecls = filter instdecl ds -- default superclass instance declarations
+         mapM_ checkDefaultSuperclassInstance idecls
          let mnames = map getMName mdecls
          logLvl 2 $ "Building methods " ++ show mnames
          ims <- mapM (tdecl mnames) mdecls
@@ -1276,7 +1554,7 @@ elabClass info syn doc fc constraints tn ps ds
          let (methods, imethods)
               = unzip (map (\ ( x,y,z) -> (x, y)) ims)
          let defaults = map (\ (x, (y, z)) -> (x,y)) defs
-         addClass tn (CI cn (map nodoc imethods) defaults (map fst ps) [])
+         addClass tn (CI cn (map nodoc imethods) defaults idecls (map fst ps) [])
          -- build instance constructor type
          -- decorate names of functions to ensure they can't be referred
          -- to elsewhere in the class declaration
@@ -1286,7 +1564,7 @@ elabClass info syn doc fc constraints tn ps ds
          let cons = [("", cn, cty, fc)]
          let ddecl = PDatadecl tn tty cons
          logLvl 5 $ "Class data " ++ showDImp True ddecl
-         elabData info (syn { no_imp = no_imp syn ++ mnames }) doc fc False ddecl
+         elabData info (syn { no_imp = no_imp syn ++ mnames }) doc fc [] ddecl
          -- for each constraint, build a top level function to chase it
          logLvl 5 $ "Building functions"
          let usyn = syn { using = map (\ (x,y) -> UImplicit x y) ps
@@ -1298,7 +1576,6 @@ elabClass info syn doc fc constraints tn ps ds
          mapM_ (elabDecl EAll info) (concat fns)
          -- add the default definitions
          mapM_ (elabDecl EAll info) (concat (map (snd.snd) defs))
-         i <- getIState
          addIBC (IBCClass tn)
   where
     nodoc (n, (_, o, t)) = (n, (o, t))
@@ -1308,6 +1585,17 @@ elabClass info syn doc fc constraints tn ps ds
     mdec (UN n) = SN (MethodN (UN n))
     mdec (NS x n) = NS (mdec x) n
     mdec x = x
+
+    -- TODO: probably should normalise
+    checkDefaultSuperclassInstance (PInstance _ fc cs n ps _ _ _)
+        = do when (not $ null cs) . tclift
+                $ tfail (At fc (Msg $ "Default superclass instances can't have constraints."))
+             i <- getIState
+             let t = PApp fc (PRef fc n) (map pexp ps)
+             let isConstrained = any (== t) constraints
+             when (not isConstrained) . tclift
+                $ tfail (At fc (Msg $ "Default instances must be for a superclass constraint on the containing class."))
+             return ()
 
     impbind [] x = x
     impbind ((n, ty): ns) x = PPi impl n ty (impbind ns x)
@@ -1340,6 +1628,8 @@ elabClass info syn doc fc constraints tn ps ds
 
     tydecl (PTy _ _ _ _ _ _) = True
     tydecl _ = False
+    instdecl (PInstance _ _ _ _ _ _ _ _) = True
+    instdecl _ = False
     clause (PClauses _ _ _ _) = True
     clause _ = False
 
@@ -1425,15 +1715,12 @@ elabInstance info syn fc cs n ps t expn ds
                        [c] -> return c
                        _ -> ifail $ show fc ++ ":" ++ show n ++ " is not a type class"
          let constraint = PApp fc (PRef fc n) (map pexp ps)
-         let iname = case expn of
-                         Nothing -> SN (InstanceN n (map show ps))
-                          -- UN ('@':show n ++ "$" ++ show ps)
-                         Just nm -> nm
+         let iname = mkiname n ps expn
          nty <- elabType' True info syn "" fc [] iname t
          -- if the instance type matches any of the instances we have already,
          -- and it's not a named instance, then it's overlapping, so report an error
          case expn of
-            Nothing -> do mapM_ (checkNotOverlapping i (delab i nty)) 
+            Nothing -> do mapM_ (maybe (return ()) overlapping . findOverlapping i (delab i nty))
                                 (class_instances ci)
                           addInstance intInst n iname
             Just _ -> addInstance intInst n iname
@@ -1447,6 +1734,9 @@ elabInstance info syn fc cs n ps t expn ds
                                   PApp _ _ args -> getWParams args
                                   _ -> return []) ps
          let pnames = map pname (concat (nub wparams))
+         let superclassInstances = map (substInstance ips pnames) (class_default_superclasses ci)
+         undefinedSuperclassInstances <- filterM (fmap not . isOverlapping i) superclassInstances
+         mapM_ (elabDecl EAll info) undefinedSuperclassInstances
          let all_meths = map (nsroot . fst) (class_methods ci)
          let mtys = map (\ (n, (op, t)) ->
                    let t_in = substMatchesShadow ips pnames t 
@@ -1473,7 +1763,7 @@ elabInstance info syn fc cs n ps t expn ds
          let idecls = [PClauses fc [Dictionary] iname
                                  [PClause fc iname lhs [] rhs wb]]
          iLOG (show idecls)
-         mapM (elabDecl EAll info) idecls
+         mapM_ (elabDecl EAll info) idecls
          addIBC (IBCInstance intInst n iname)
 --          -- for each constraint, build a top level function to chase it
 --          logLvl 5 $ "Building functions"
@@ -1484,20 +1774,50 @@ elabInstance info syn fc cs n ps t expn ds
                 [PConstant (AType (ATInt ITNative))] -> True
                 _ -> False
 
-    checkNotOverlapping i t n
-     | take 2 (show n) == "@@" = return ()
+    mkiname n' ps' expn' =
+        case expn' of
+          Nothing -> SN (InstanceN n' (map show ps'))
+          Just nm -> nm
+
+    substInstance ips pnames (PInstance syn _ cs n ps t expn ds)
+        = PInstance syn fc cs n (map (substMatchesShadow ips pnames) ps) (substMatchesShadow ips pnames t) expn ds
+
+    isOverlapping i (PInstance syn _ _ n ps t expn _)
+        = case lookupCtxtName n (idris_classes i) of
+            [(n, ci)] -> let iname = (mkiname n ps expn) in
+                            case lookupTy iname (tt_ctxt i) of
+                              [] -> elabFindOverlapping i ci iname syn t
+                              (_:_) -> return True
+            _ -> return False -- couldn't find class, just let elabInstance fail later
+
+    -- TODO: largely based upon elabType' - should try to abstract
+    elabFindOverlapping i ci iname syn t
+        = do ty' <- addUsingConstraints syn fc t
+             ty' <- implicit syn iname ty'
+             let ty = addImpl i ty'
+             ctxt <- getContext
+             ((tyT, _, _), _) <-
+                   tclift $ elaborate ctxt iname (TType (UVal 0)) []
+                            (errAt "type of " iname (erun fc (build i info False iname ty)))
+             ctxt <- getContext
+             (cty, _) <- recheckC fc [] tyT
+             let nty = normalise ctxt [] cty
+             return $ any (isJust . findOverlapping i (delab i nty)) (class_instances ci)
+
+    findOverlapping i t n
+     | take 2 (show n) == "@@" = Nothing
      | otherwise
         = case lookupTy n (tt_ctxt i) of
             [t'] -> let tret = getRetType t
                         tret' = getRetType (delab i t') in
                         case matchClause i tret' tret of
-                            Right ms -> overlapping tret tret'
+                            Right ms -> Just tret'
                             Left _ -> case matchClause i tret tret' of
-                                Right ms -> overlapping tret tret'
-                                Left _ -> return ()
-            _ -> return ()
-    overlapping t t' = tclift $ tfail (At fc (Msg $
-                            "Overlapping instance: " ++ show t' ++ " already defined"))
+                                Right ms -> Just tret'
+                                Left _ -> Nothing
+            _ -> Nothing
+    overlapping t' = tclift $ tfail (At fc (Msg $
+                          "Overlapping instance: " ++ show t' ++ " already defined"))
     getRetType (PPi _ _ _ sc) = getRetType sc
     getRetType t = t
 
@@ -1709,7 +2029,7 @@ elabDecl' what info (PRecord doc s f tyn ty cdoc cn cty)
          elabRecord info s doc f tyn ty cdoc cn cty
   | otherwise
     = do iLOG $ "Elaborating [type of] " ++ show tyn
-         elabData info s doc f False (PLaterdecl tyn ty)
+         elabData info s doc f [] (PLaterdecl tyn ty)
 elabDecl' _ info (PDSL n dsl)
     = do i <- getIState
          putIState (i { idris_dsls = addDef n dsl (idris_dsls i) })

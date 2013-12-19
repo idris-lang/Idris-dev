@@ -1,6 +1,7 @@
 module Decidable.Equality
 
 import Builtins
+import Prelude.Basics
 import Prelude.Either
 import Prelude.List
 import Prelude.Vect
@@ -177,3 +178,40 @@ instance DecEq a => DecEq (Vect n a) where
     decEq (x :: xs) (x :: xs) | (Yes refl, Yes refl) = Yes refl
     decEq (x :: xs) (y :: ys) | (_, No nEqTl) = No (\p => nEqTl (vectInjective2 p))
     decEq (x :: xs) (y :: ys) | (No nEqHd, _) = No (\p => nEqHd (vectInjective1 p))
+    
+
+-- For the primitives, we have to cheat because we don't have access to their
+-- internal implementations.
+
+--------------------------------------------------------------------------------
+-- Int
+--------------------------------------------------------------------------------
+
+instance DecEq Int where
+    decEq x y = if x == y then Yes (really_believe_me {a = x=x} {b = x=y} refl)
+                          else No (really_believe_me _|_)
+
+--------------------------------------------------------------------------------
+-- Char
+--------------------------------------------------------------------------------
+
+instance DecEq Char where
+    decEq x y = if x == y then Yes (really_believe_me {a = x=x} {b = x=y} refl)
+                          else No (really_believe_me _|_)
+
+--------------------------------------------------------------------------------
+-- Integer
+--------------------------------------------------------------------------------
+
+instance DecEq Integer where
+    decEq x y = if x == y then Yes (really_believe_me {a = x=x} {b = x=y} refl)
+                          else No (really_believe_me _|_)
+
+--------------------------------------------------------------------------------
+-- Float
+--------------------------------------------------------------------------------
+
+instance DecEq Float where
+    decEq x y = if x == y then Yes (really_believe_me {a = x=x} {b = x=y} refl)
+                          else No (really_believe_me _|_)
+
