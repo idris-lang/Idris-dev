@@ -308,6 +308,13 @@ Flag GMP
   Default:      False
   manual:       True
 
+-- This flag determines whether to show Git hashes in version strings
+-- Defaults to True because Hackage is a source release
+Flag release
+  Description:  This is an official release
+  Default:      False
+  manual:       True
+
 Executable idris
   Main-is:        Main.hs
   hs-source-dirs: src

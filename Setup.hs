@@ -1,12 +1,15 @@
 {-# LANGUAGE CPP #-}
 import Control.Monad
 import Data.IORef
+import Control.Exception (SomeException, catch)
 
 import Distribution.Simple
+import Distribution.Simple.BuildPaths (autogenModulesDir)
 import Distribution.Simple.InstallDirs as I
 import Distribution.Simple.LocalBuildInfo as L
 import qualified Distribution.Simple.Setup as S
 import qualified Distribution.Simple.Program as P
+import Distribution.Simple.Utils (createDirectoryIfMissingVerbose, rewriteFile)
 import Distribution.PackageDescription
 import Distribution.Text
 
@@ -60,6 +63,13 @@ usesGMP flags =
     Just False -> False
     Nothing -> True
 
+isRelease :: S.ConfigFlags -> Bool
+isRelease flags =
+    case lookup (FlagName "release") (S.configConfigurationsFlags flags) of
+      Just True -> True
+      Just False -> False
+      Nothing -> False
+
 -- -----------------------------------------------------------------------------
 -- Clean
 
@@ -82,6 +92,7 @@ idrisClean _ flags _ _ = do
 
 idrisConfigure _ flags _ local = do
       configureRTS
+      generateVersionModule
    where
       verbosity = S.fromFlag $ S.configVerbosity flags
       version   = pkgVersion . package $ localPkgDescr local
@@ -91,6 +102,23 @@ idrisConfigure _ flags _ local = do
       -- distribution if it's not there, so instead I just delete
       -- the file after configure.
       configureRTS = make verbosity ["-C", "rts", "clean"]
+
+      -- Put the Git hash into a module for use in the program
+      -- For release builds, just put the empty string in the module
+      generateVersionModule = do
+        gitHash <- catch (readProcess "git" ["rev-parse", "--short", "HEAD"] "")
+                         (\e -> let e' = (e :: SomeException) in return "PRE")
+        let hash = takeWhile (/= '\n') gitHash
+        let versionModulePath = autogenModulesDir local </> "Version_idris" Px.<.> "hs"
+        createDirectoryIfMissingVerbose verbosity True (autogenModulesDir local)
+        rewriteFile versionModulePath (versionModuleContents hash)
+
+      versionModuleContents h = "module Version_idris where\n\n" ++
+                                "gitHash :: String\n" ++
+                                if isRelease (configFlags local)
+                                  then "gitHash = \"\"\n"
+                                  else "gitHash = \"-git:" ++ h ++ "\"\n"
+
 
 -- -----------------------------------------------------------------------------
 -- Build
