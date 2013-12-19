@@ -26,6 +26,7 @@ import Idris.CaseSplit
 import Idris.DeepSeq
 
 import Paths_idris
+import Version_idris (gitHash)
 import Util.System
 import Util.DynamicLinker
 import Util.Net (listenOnLocalhost)
@@ -1326,7 +1327,7 @@ getColour _ = Nothing
 opt :: (Opt -> Maybe a) -> [Opt] -> [a]
 opt = mapMaybe
 
-ver = showVersion version
+ver = showVersion version ++ gitHash
 
 banner = "     ____    __     _                                          \n" ++
          "    /  _/___/ /____(_)____                                     \n" ++
