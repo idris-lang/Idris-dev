@@ -34,9 +34,9 @@ data Err = Msg String
          | ProviderError String
 
 -- | Error reports are a list of report parts
-data ErrorReport = Message String
-                 | Name TTName
-                 | Term TT
+data ErrorReportPart = Message String
+                     | Name TTName
+                     | Term TT
 
 
 -- Error reports become functions in List (String, TT) -> Err -> ErrorReport
