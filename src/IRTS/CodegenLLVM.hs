@@ -4,6 +4,7 @@ module IRTS.CodegenLLVM (codegenLLVM) where
 import IRTS.CodegenCommon
 import IRTS.Lang
 import IRTS.Simplified
+import IRTS.System
 import qualified Idris.Core.TT as TT
 import Idris.Core.TT (ArithTy(..), IntTy(..), NativeTy(..), nativeTyWidth)
 
