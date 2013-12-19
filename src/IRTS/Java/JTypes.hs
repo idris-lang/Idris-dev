@@ -1,7 +1,7 @@
 {-# LANGUAGE PatternGuards #-}
 module IRTS.Java.JTypes where
 
-import           Core.TT
+import           Idris.Core.TT
 import           IRTS.Lang
 import           Language.Java.Syntax
 import qualified Language.Java.Syntax as J

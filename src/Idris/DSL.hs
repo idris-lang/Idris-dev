@@ -5,8 +5,8 @@ module Idris.DSL where
 import Idris.AbsSyntax
 import Paths_idris
 
-import Core.TT
-import Core.Evaluate
+import Idris.Core.TT
+import Idris.Core.Evaluate
 
 import Control.Monad.State
 import Debug.Trace

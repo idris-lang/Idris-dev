@@ -1,7 +1,7 @@
 -- | Check universe constraints.
-module Core.Constraints(ucheck) where
+module Idris.Core.Constraints(ucheck) where
 
-import Core.TT
+import Idris.Core.TT
 
 import Control.Applicative
 import Control.Arrow

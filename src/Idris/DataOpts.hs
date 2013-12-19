@@ -6,7 +6,7 @@ module Idris.DataOpts where
 
 import Idris.AbsSyntax
 import Idris.AbsSyntaxTree
-import Core.TT
+import Idris.Core.TT
 
 import Control.Applicative
 import qualified Data.IntMap as M

@@ -1,5 +1,5 @@
 {-# LANGUAGE PatternGuards, ExistentialQuantification, CPP #-}
-module Core.Execute (execute) where
+module Idris.Core.Execute (execute) where
 
 import Idris.AbsSyntax
 import Idris.AbsSyntaxTree
@@ -7,9 +7,9 @@ import IRTS.Lang(FType(..))
 
 import Idris.Primitives(Prim(..), primitives)
 
-import Core.TT
-import Core.Evaluate
-import Core.CaseTree
+import Idris.Core.TT
+import Idris.Core.Evaluate
+import Idris.Core.CaseTree
 
 import Debug.Trace
 

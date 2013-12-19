@@ -1,7 +1,7 @@
 module IRTS.Lang where
 
 import           Control.Monad.State hiding (lift)
-import           Core.TT
+import           Idris.Core.TT
 import           Data.List
 import           Debug.Trace
 

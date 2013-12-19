@@ -10,7 +10,7 @@ import qualified Data.ByteString.UTF8 as UTF8
 import Text.Trifecta hiding (Err)
 import Text.Trifecta.Delta
 
-import Core.TT
+import Idris.Core.TT
 
 import Control.Applicative
 

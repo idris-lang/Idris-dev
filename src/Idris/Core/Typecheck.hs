@@ -1,14 +1,14 @@
 {-# LANGUAGE MultiParamTypeClasses, FlexibleInstances, DeriveFunctor,
              PatternGuards #-}
 
-module Core.Typecheck where
+module Idris.Core.Typecheck where
 
 import Control.Monad.State
 import Debug.Trace
 import qualified Data.Vector.Unboxed as V (length)
 
-import Core.TT
-import Core.Evaluate
+import Idris.Core.TT
+import Idris.Core.Evaluate
 
 -- To check conversion, normalise each term wrt the current environment.
 -- Since we haven't converted everything to de Bruijn indices yet, we'll have to

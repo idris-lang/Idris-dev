@@ -1,9 +1,9 @@
 {-# LANGUAGE PatternGuards #-}
 
-module Core.Unify(match_unify, unify, Fails) where
+module Idris.Core.Unify(match_unify, unify, Fails) where
 
-import Core.TT
-import Core.Evaluate
+import Idris.Core.TT
+import Idris.Core.Evaluate
 
 import Control.Monad
 import Control.Monad.State

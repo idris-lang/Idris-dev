@@ -4,14 +4,14 @@
    proofs, and some high level commands for introducing new theorems,
    evaluation/checking inside the proof system, etc. --}
 
-module Core.ProofState(ProofState(..), newProof, envAtFocus, goalAtFocus,
+module Idris.Core.ProofState(ProofState(..), newProof, envAtFocus, goalAtFocus,
                   Tactic(..), Goal(..), processTactic,
                   dropGiven, keepGiven) where
 
-import Core.Typecheck
-import Core.Evaluate
-import Core.TT
-import Core.Unify
+import Idris.Core.Typecheck
+import Idris.Core.Evaluate
+import Idris.Core.TT
+import Idris.Core.Unify
 
 import Control.Monad.State
 import Control.Applicative hiding (empty)
@@ -847,7 +847,7 @@ process t h = tactic (Just h) (mktac t)
          mktac Solve             = solve
          mktac (StartUnify n)    = start_unify n
          mktac Compute           = compute
-         mktac Simplify          = Core.ProofState.simplify
+         mktac Simplify          = Idris.Core.ProofState.simplify
          mktac HNF_Compute       = hnf_compute
          mktac (Intro n)         = intro n
          mktac (IntroTy ty n)    = introTy ty n

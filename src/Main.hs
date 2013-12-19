@@ -12,10 +12,10 @@ import Control.Monad.Trans.Error ( ErrorT(..) )
 import Control.Monad.Trans.State.Strict ( execStateT, get, put )
 import Control.Monad ( when )
 
-import Core.TT
-import Core.Typecheck
-import Core.Evaluate
-import Core.Constraints
+import Idris.Core.TT
+import Idris.Core.Typecheck
+import Idris.Core.Evaluate
+import Idris.Core.Constraints
 
 import Idris.AbsSyntax
 import Idris.Parser
@@ -25,7 +25,8 @@ import Idris.Primitives
 import Idris.Imports
 import Idris.Error
 
-import Util.System ( getLibFlags, getIdrisLibDir, getIncFlags )
+import IRTS.System ( getLibFlags, getIdrisLibDir, getIncFlags )
+
 import Util.DynamicLinker
 
 import Pkg.Package

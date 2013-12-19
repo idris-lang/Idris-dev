@@ -1,8 +1,8 @@
 {-# LANGUAGE PatternGuards #-}
 module Idris.Providers (providerTy, getProvided) where
 
-import Core.TT
-import Core.Evaluate
+import Idris.Core.TT
+import Idris.Core.Evaluate
 import Idris.AbsSyntax
 import Idris.AbsSyntaxTree
 import Idris.Error

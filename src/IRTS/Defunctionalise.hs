@@ -2,7 +2,7 @@ module IRTS.Defunctionalise(module IRTS.Defunctionalise,
                             module IRTS.Lang) where
 
 import IRTS.Lang
-import Core.TT
+import Idris.Core.TT
 
 import Debug.Trace
 import Data.Maybe

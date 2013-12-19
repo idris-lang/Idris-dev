@@ -3,8 +3,8 @@
 module Idris.Transforms where
 
 import Idris.AbsSyntax
-import Core.CaseTree
-import Core.TT
+import Idris.Core.CaseTree
+import Idris.Core.TT
 
 data TTOpt = TermTrans (TT Name -> TT Name) -- term transform
            | CaseTrans (SC -> SC) -- case expression transform

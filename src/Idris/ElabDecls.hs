@@ -19,12 +19,12 @@ import Idris.DeepSeq
 import IRTS.Lang
 import Paths_idris
 
-import Core.TT
-import Core.Elaborate hiding (Tactic(..))
-import Core.Evaluate
-import Core.Execute
-import Core.Typecheck
-import Core.CaseTree
+import Idris.Core.TT
+import Idris.Core.Elaborate hiding (Tactic(..))
+import Idris.Core.Evaluate
+import Idris.Core.Execute
+import Idris.Core.Typecheck
+import Idris.Core.CaseTree
 
 import Control.DeepSeq
 import Control.Monad
