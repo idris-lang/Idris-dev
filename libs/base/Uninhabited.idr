@@ -10,3 +10,6 @@ instance Uninhabited (Fin Z) where
 instance Uninhabited (Z = S n) where
   uninhabited refl impossible
 
+-- | Use an absurd assumption to discharge a proof obligation
+absurd : Uninhabited t => t -> a
+absurd t = FalseElim (uninhabited t)
