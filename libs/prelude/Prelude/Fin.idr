@@ -38,12 +38,20 @@ weaken : Fin n -> Fin (S n)
 weaken fZ     = fZ
 weaken (fS k) = fS (weaken k)
 
+weakenN : (n : Nat) -> Fin m -> Fin (m + n)
+weakenN n fZ = fZ
+weakenN n (fS f) = fS (weakenN n f)
+
 strengthen : Fin (S n) -> Either (Fin (S n)) (Fin n)
 strengthen {n = S k} fZ = Right fZ
 strengthen {n = S k} (fS i) with (strengthen i)
   strengthen (fS k) | Left x   = Left (fS x)
   strengthen (fS k) | Right x  = Right (fS x)
 strengthen f = Left f
+
+shift : (m : Nat) -> Fin n -> Fin (m + n)
+shift Z f = f
+shift {n=n} (S m) f = fS {k = (m + n)} (shift m f)
 
 last : Fin (S n)
 last {n=Z} = fZ
