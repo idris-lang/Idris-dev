@@ -23,11 +23,11 @@ isoTrans (MkIso to from toFrom fromTo) (MkIso to' from' toFrom' fromTo') =
   MkIso (\x => to' (to x))
         (\y => from (from' y))
         (\y => (to' (to (from (from' y))))  ={ cong (toFrom (from' y)) }=
-               (to' (from' y))              ={ toFrom' y }=
-               y QED)
+               (to' (from' y))              ={ toFrom' y               }=
+               y                            QED)
         (\x => (from (from' (to' (to x))))  ={ cong (fromTo' (to x)) }=
-               (from (to x))                ={ fromTo x }=
-               x QED)
+               (from (to x))                ={ fromTo x              }=
+               x                            QED)
 
 isoSym : Iso a b -> Iso b a
 isoSym (MkIso to from toFrom fromTo) = MkIso from to fromTo toFrom
@@ -216,7 +216,7 @@ maybeEither = MkIso to from iso1 iso2
         iso2 (Just x) = refl
 
 maybeVoidUnit : Iso (Maybe _|_) ()
-maybeVoidUnit = (Maybe _|_)     ={ maybeEither }=
+maybeVoidUnit = (Maybe _|_)     ={ maybeEither   }=
                 (Either _|_ ()) ={ eitherBotLeft }=
                 ()              QED
 
