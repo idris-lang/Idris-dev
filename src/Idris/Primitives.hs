@@ -6,8 +6,8 @@ import Idris.AbsSyntax
 
 import IRTS.Lang
 
-import Core.TT
-import Core.Evaluate
+import Idris.Core.TT
+import Idris.Core.Evaluate
 import Data.Bits
 import Data.Word
 import Data.Int

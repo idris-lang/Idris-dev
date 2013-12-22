@@ -14,7 +14,7 @@ import qualified Text.Parser.Token.Highlight as Hi
 import Idris.AbsSyntax
 import Idris.ParseHelpers
 
-import Core.TT
+import Idris.Core.TT
 
 import Control.Applicative
 import Control.Monad

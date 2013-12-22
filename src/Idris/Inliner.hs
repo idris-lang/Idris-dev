@@ -2,7 +2,7 @@
 
 module Idris.Inliner where
 
-import Core.TT
+import Idris.Core.TT
 import Idris.AbsSyntax
 
 inlineDef :: IState -> [([Name], Term, Term)] -> [([Name], Term, Term)]

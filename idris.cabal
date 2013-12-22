@@ -329,20 +329,18 @@ Flag release
   Description:  This is an official release
   Default:      False
   manual:       True
-
-Executable idris
-  Main-is:        Main.hs
+Library
   hs-source-dirs: src
-  Other-modules:
-                  Core.CaseTree
-                , Core.Constraints
-                , Core.Elaborate
-                , Core.Evaluate
-                , Core.Execute
-                , Core.ProofState
-                , Core.TT
-                , Core.Typecheck
-                , Core.Unify
+  Exposed-modules:
+                  Idris.Core.CaseTree
+                , Idris.Core.Constraints
+                , Idris.Core.Elaborate
+                , Idris.Core.Evaluate
+                , Idris.Core.Execute
+                , Idris.Core.ProofState
+                , Idris.Core.TT
+                , Idris.Core.Typecheck
+                , Idris.Core.Unify
 
                 , Idris.AbsSyntax
                 , Idris.AbsSyntaxTree
@@ -396,6 +394,121 @@ Executable idris
                 , IRTS.Java.Pom
                 , IRTS.Lang
                 , IRTS.Simplified
+                , IRTS.System
+
+  Other-modules:
+                  Util.Pretty
+                , Util.System
+                , Util.DynamicLinker
+                , Util.Net
+
+                , Pkg.Package
+                , Pkg.PParser
+
+                -- Auto Generated
+                Paths_idris
+
+  Extensions:     MultiParamTypeClasses
+                , FunctionalDependencies
+                , FlexibleInstances
+                , TemplateHaskell
+
+  ghc-prof-options: -auto-all -caf-all
+  ghc-options:      -threaded -rtsopts
+
+  if os(linux)
+     cpp-options:   -DLINUX
+     build-depends: unix
+  if os(freebsd)
+     cpp-options:   -DFREEBSD
+     build-depends: unix
+  if os(darwin)
+     cpp-options:   -DMACOSX
+     build-depends: unix
+  if os(windows)
+     cpp-options:   -DWINDOWS
+     build-depends: Win32
+  if flag(LLVM)
+     other-modules: IRTS.CodegenLLVM
+     cpp-options:   -DIDRIS_LLVM
+     build-depends: llvm-general == 3.3.8.*
+                  , llvm-general-pure == 3.3.8.*
+  else
+     other-modules: Util.LLVMStubs
+  if flag(FFI)
+     build-depends: libffi
+     cpp-options:   -DIDRIS_FFI
+  if flag(GMP)
+     build-depends: libffi
+     cpp-options:   -DIDRIS_GMP
+
+Executable idris
+  Main-is:        Main.hs
+  hs-source-dirs: src
+  Other-modules:
+                  Idris.Core.CaseTree
+                , Idris.Core.Constraints
+                , Idris.Core.Elaborate
+                , Idris.Core.Evaluate
+                , Idris.Core.Execute
+                , Idris.Core.ProofState
+                , Idris.Core.TT
+                , Idris.Core.Typecheck
+                , Idris.Core.Unify
+
+                , Idris.AbsSyntax
+                , Idris.AbsSyntaxTree
+                , Idris.CaseSplit
+                , Idris.Chaser
+                , Idris.Colours
+                , Idris.Completion
+                , Idris.Coverage
+                , Idris.DSL
+                , Idris.DataOpts
+                , Idris.DeepSeq
+                , Idris.Delaborate
+                , Idris.Docs
+                , Idris.ElabDecls
+                , Idris.ElabTerm
+                , Idris.Error
+                , Idris.Help
+                , Idris.IBC
+                , Idris.IdeSlave
+                , Idris.Imports
+                , Idris.Inliner
+                , Idris.Parser
+                , Idris.ParseHelpers
+                , Idris.ParseOps
+                , Idris.ParseExpr
+                , Idris.ParseData
+                , Idris.PartialEval
+                , Idris.Primitives
+                , Idris.ProofSearch
+                , Idris.Prover
+                , Idris.Providers
+                , Idris.REPL
+                , Idris.REPLParser
+                , Idris.Transforms
+                , Idris.Unlit
+                , Idris.UnusedArgs
+
+                , IRTS.BCImp
+                , IRTS.Bytecode
+                , IRTS.CodegenC
+                , IRTS.CodegenCommon
+                , IRTS.CodegenJava
+                , IRTS.CodegenJavaScript
+                , IRTS.Compiler
+                , IRTS.Defunctionalise
+                , IRTS.DumpBC
+                , IRTS.Inliner
+                , IRTS.Java.ASTBuilding
+                , IRTS.Java.JTypes
+                , IRTS.Java.Mangling
+                , IRTS.Java.Pom
+                , IRTS.Lang
+                , IRTS.Simplified
+                , IRTS.System
 
                 , Util.Pretty
                 , Util.System

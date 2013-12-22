@@ -38,8 +38,8 @@ import Paths_idris
 
 import Util.DynamicLinker
 
-import Core.TT
-import Core.Evaluate
+import Idris.Core.TT
+import Idris.Core.Evaluate
 
 import Control.Applicative
 import Control.Monad

@@ -1,6 +1,6 @@
 module IRTS.Inliner where
 
-import Core.TT
+import Idris.Core.TT
 
 import IRTS.Defunctionalise
 

@@ -31,10 +31,10 @@ import Util.System
 import Util.DynamicLinker
 import Util.Net (listenOnLocalhost)
 
-import Core.Evaluate
-import Core.Execute (execute)
-import Core.TT
-import Core.Constraints
+import Idris.Core.Evaluate
+import Idris.Core.Execute (execute)
+import Idris.Core.TT
+import Idris.Core.Constraints
 
 import IRTS.Compiler
 import IRTS.CodegenCommon
