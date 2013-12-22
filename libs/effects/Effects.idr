@@ -69,6 +69,10 @@ reflectListEffElem [] = Refine "Here" `Seq` Solve
 reflectListEffElem (x :: xs)
      = Try (Refine "Here" `Seq` Solve)
            (Refine "There" `Seq` (Solve `Seq` reflectListEffElem xs))
+-- TMP HACK! FIXME!
+-- The evaluator needs a 'function case' to know its a reflection function
+-- until we propagate that information! Without this, the _ case won't get
+-- matched. 
 reflectListEffElem (x ++ y) = Refine "Here" `Seq` Solve
 reflectListEffElem _ = Refine "Here" `Seq` Solve
 
