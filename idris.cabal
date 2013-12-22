@@ -42,7 +42,7 @@ Description:    Idris is a general purpose language with full dependent types.
                 .
                 * Hugs style interactive environment
 
-Cabal-Version:  >= 1.6
+Cabal-Version:  >= 1.8
 
 Build-type:     Custom
 
@@ -329,6 +329,7 @@ Flag release
   Description:  This is an official release
   Default:      False
   manual:       True
+
 Library
   hs-source-dirs: src
   Exposed-modules:
@@ -396,18 +397,48 @@ Library
                 , IRTS.Simplified
                 , IRTS.System
 
+                , Pkg.Package
+                , Util.DynamicLinker
+
   Other-modules:
                   Util.Pretty
                 , Util.System
-                , Util.DynamicLinker
                 , Util.Net
 
-                , Pkg.Package
                 , Pkg.PParser
 
                 -- Auto Generated
-                Paths_idris
+                , Paths_idris
+                , Version_idris
 
+  Build-depends:  base >=4 && <5
+                , Cabal
+                , ansi-terminal
+                , ansi-wl-pprint
+                , binary
+                , bytestring
+                , containers
+                , directory
+                , directory >= 1.2
+                , filepath
+                , haskeline >= 0.7
+                , language-java >= 0.2.6
+                , mtl
+                , parsers == 0.9
+                , pretty
+                , process
+                , split
+                , text
+                , time >= 1.4
+                , transformers
+                , trifecta == 1.1
+                , unordered-containers
+                , utf8-string
+                , vector
+                , vector-binary-instances
+                , network
+                , xml
+                , deepseq
   Extensions:     MultiParamTypeClasses
                 , FunctionalDependencies
                 , FlexibleInstances
@@ -444,143 +475,15 @@ Library
 
 Executable idris
   Main-is:        Main.hs
-  hs-source-dirs: src
-  Other-modules:
-                  Idris.Core.CaseTree
-                , Idris.Core.Constraints
-                , Idris.Core.Elaborate
-                , Idris.Core.Evaluate
-                , Idris.Core.Execute
-                , Idris.Core.ProofState
-                , Idris.Core.TT
-                , Idris.Core.Typecheck
-                , Idris.Core.Unify
+  hs-source-dirs: main
 
-                , Idris.AbsSyntax
-                , Idris.AbsSyntaxTree
-                , Idris.CaseSplit
-                , Idris.Chaser
-                , Idris.Colours
-                , Idris.Completion
-                , Idris.Coverage
-                , Idris.DSL
-                , Idris.DataOpts
-                , Idris.DeepSeq
-                , Idris.Delaborate
-                , Idris.Docs
-                , Idris.ElabDecls
-                , Idris.ElabTerm
-                , Idris.Error
-                , Idris.Help
-                , Idris.IBC
-                , Idris.IdeSlave
-                , Idris.Imports
-                , Idris.Inliner
-                , Idris.Parser
-                , Idris.ParseHelpers
-                , Idris.ParseOps
-                , Idris.ParseExpr
-                , Idris.ParseData
-                , Idris.PartialEval
-                , Idris.Primitives
-                , Idris.ProofSearch
-                , Idris.Prover
-                , Idris.Providers
-                , Idris.REPL
-                , Idris.REPLParser
-                , Idris.Transforms
-                , Idris.Unlit
-                , Idris.UnusedArgs
-
-                , IRTS.BCImp
-                , IRTS.Bytecode
-                , IRTS.CodegenC
-                , IRTS.CodegenCommon
-                , IRTS.CodegenJava
-                , IRTS.CodegenJavaScript
-                , IRTS.Compiler
-                , IRTS.Defunctionalise
-                , IRTS.DumpBC
-                , IRTS.Inliner
-                , IRTS.Java.ASTBuilding
-                , IRTS.Java.JTypes
-                , IRTS.Java.Mangling
-                , IRTS.Java.Pom
-                , IRTS.Lang
-                , IRTS.Simplified
-                , IRTS.System
-
-                , Util.Pretty
-                , Util.System
-                , Util.DynamicLinker
-                , Util.Net
-
-                , Pkg.Package
-                , Pkg.PParser
-
-                -- Auto Generated
-                Paths_idris
-
-  Build-depends:  base >=4 && <5
-                , Cabal
-                , ansi-terminal
-                , ansi-wl-pprint
-                , binary
-                , bytestring
-                , containers
-                , directory
-                , directory >= 1.2
+  Build-depends:  idris
+                , base
                 , filepath
                 , haskeline >= 0.7
-                , language-java >= 0.2.6
-                , mtl
-                , parsers == 0.9
-                , pretty
-                , process
-                , split
-                , text
-                , time >= 1.4
                 , transformers
-                , trifecta == 1.1
-                , unordered-containers
-                , utf8-string
-                , vector
-                , vector-binary-instances
-                , network
-                , xml
-                , deepseq
-
-  Extensions:     MultiParamTypeClasses
-                , FunctionalDependencies
-                , FlexibleInstances
-                , TemplateHaskell
 
   ghc-prof-options: -auto-all -caf-all
   ghc-options:      -threaded -rtsopts
 
-  if os(linux)
-     cpp-options:   -DLINUX
-     build-depends: unix
-  if os(freebsd)
-     cpp-options:   -DFREEBSD
-     build-depends: unix
-  if os(darwin)
-     cpp-options:   -DMACOSX
-     build-depends: unix
-  if os(windows)
-     cpp-options:   -DWINDOWS
-     build-depends: Win32
-  if flag(LLVM)
-     other-modules: IRTS.CodegenLLVM
-     cpp-options:   -DIDRIS_LLVM
-     build-depends: llvm-general == 3.3.8.*
-                  , llvm-general-pure == 3.3.8.*
-  else
-     other-modules: Util.LLVMStubs
-  if flag(FFI)
-     build-depends: libffi
-     cpp-options:   -DIDRIS_FFI
-  if flag(GMP)
-     build-depends: libffi
-     cpp-options:   -DIDRIS_GMP
 
