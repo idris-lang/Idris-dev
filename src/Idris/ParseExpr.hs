@@ -1095,6 +1095,9 @@ tactic syn = do reserved "intro"; ns <- sepBy (indentPropHolds gtProp *> name) (
           <|> do reserved "applyTactic"; t <- (indentPropHolds gtProp *> expr syn);
                  i <- get
                  return $ ApplyTactic (desugar syn i t)
+          <|> do reserved "byReflection"; t <- (indentPropHolds gtProp *> expr syn);
+                 i <- get
+                 return $ ByReflection (desugar syn i t)
           <|> do reserved "reflect"; t <- (indentPropHolds gtProp *> expr syn);
                  i <- get
                  return $ Reflect (desugar syn i t)

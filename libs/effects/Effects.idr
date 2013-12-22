@@ -62,19 +62,32 @@ rebuildEnv (x :: xs) SubNil      [] = x :: xs
 ---- The Effect EDSL itself ----
 
 -- some proof automation
-findEffElem : Nat -> List (TTName, Binder TT) -> TT -> Tactic -- Nat is maximum search depth
-findEffElem Z ctxt goal = Refine "Here" `Seq` Solve
-findEffElem (S n) ctxt goal = GoalType "EffElem"
-          (Try (Refine "Here" `Seq` Solve)
-               (Refine "There" `Seq` (Solve `Seq` findEffElem n ctxt goal)))
 
-findSubList : Nat -> List (TTName, Binder TT) -> TT -> Tactic
-findSubList Z ctxt goal = Refine "SubNil" `Seq` Solve
-findSubList (S n) ctxt goal
-   = GoalType "SubList"
-         (Try (Refine "subListId" `Seq` Solve)
-         ((Try (Refine "Keep" `Seq` Solve)
-               (Refine "Drop" `Seq` Solve)) `Seq` findSubList n ctxt goal))
+%reflection
+reflectListEffElem : List a -> Tactic
+reflectListEffElem [] = Refine "Here" `Seq` Solve
+reflectListEffElem (x :: xs)
+     = Try (Refine "Here" `Seq` Solve)
+           (Refine "There" `Seq` (Solve `Seq` reflectListEffElem xs))
+reflectListEffElem (x ++ y) = Refine "Here" `Seq` Solve
+reflectListEffElem _ = Refine "Here" `Seq` Solve
+
+%reflection
+reflectSubList : List a -> Tactic
+reflectSubList [] = Refine "SubNil" `Seq` Solve
+reflectSubList (x :: xs)
+     = Try (Refine "subListId" `Seq` Solve)
+           (Try (Refine "Keep" `Seq` (Solve `Seq` reflectSubList xs))
+                (Refine "Drop" `Seq` (Solve `Seq` reflectSubList xs)))
+reflectSubList (x ++ y) = Refine "subListId" `Seq` Solve
+reflectSubList _ = Refine "subListId" `Seq` Solve
+
+%reflection
+reflectEff : (P : Type) -> Tactic
+reflectEff (EffElem m a xs)
+     = reflectListEffElem xs `Seq` Solve
+reflectEff (SubList xs ys)
+     = reflectSubList ys `Seq` Solve
 
 updateResTy : (xs : List EFFECT) -> EffElem e a xs -> e a b t ->
               List EFFECT
@@ -135,46 +148,47 @@ syntax [tag] ":!" [val] = !(tag :- val)
 --   Eff : List (EFFECT m) -> Type -> Type
 
 implicit
-lift' : {default tactics { applyTactic findSubList 20; solve; }
+lift' : EffM m ys ys' t ->
+        {default tactics { byReflection reflectEff; }
            prf : SubList ys xs} ->
-        EffM m ys ys' t -> EffM m xs (updateWith ys' xs prf) t
-lift' {prf} e = lift prf e
+        EffM m xs (updateWith ys' xs prf) t
+lift' e {prf} = lift prf e
 
 implicit
 effect' : {a, b: _} -> {e : Effect} ->
-          {default tactics { applyTactic findEffElem 20; solve; }
-             prf : EffElem e a xs} ->
           (eff : e a b t) ->
+          {default tactics { byReflection reflectEff; }
+             prf : EffElem e a xs} ->
          EffM m xs (updateResTy xs prf eff) t
-effect' {prf} e = effect prf e
+effect' e {prf} = effect prf e
 
 -- For making proofs implicitly for 'test' and 'test_lbl'
 
 syntax if_valid then [e] else [t] =
-     test (tactics { applyTactic findEffElem 20; solve; }) t e
+  test (tactics { byReflection reflectEff; }) t e
 
 syntax if_valid [lbl] then [e] else [t] =
-     test_lbl {x=lbl} (tactics { applyTactic findEffElem 20; solve; }) t e
+  test_lbl {x=lbl} (tactics { byReflection reflectEff; }) t e
 
 syntax if_error then [t] else [e] =
-     test (tactics { applyTactic findEffElem 20; solve; }) t e
+  test (tactics { byReflection reflectEff; }) t e
 
 syntax if_error [lbl] then [t] else [e] =
-     test_lbl {x=lbl} (tactics { applyTactic findEffElem 20; solve; }) t e
+  test_lbl {x=lbl} (tactics { byReflection reflectEff; }) t e
 
 -- These may read better in some contexts
 
 syntax if_right then [e] else [t] =
-     test (tactics { applyTactic findEffElem 20; solve; }) t e
+  test (tactics { byReflection reflectEff; }) t e
 
 syntax if_right [lbl] then [e] else [t] =
-     test_lbl {x=lbl} (tactics { applyTactic findEffElem 20; solve; }) t e
+  test_lbl {x=lbl} (tactics { byReflection reflectEff; }) t e
 
 syntax if_left then [t] else [e] =
-     test (tactics { applyTactic findEffElem 20; solve; }) t e
+  test (tactics { byReflection reflectEff; }) t e
 
 syntax if_left [lbl] then [t] else [e] =
-     test_lbl {x=lbl} (tactics { applyTactic findEffElem 20; solve; }) t e
+  test_lbl {x=lbl} (tactics { byReflection reflectEff; }) t e
 
 
 -- for 'do' notation

@@ -1608,6 +1608,8 @@ instance (Binary t) => Binary (PTactic' t) where
                               put x1
                 Induction x1 -> do putWord8 19
                                    put x1
+                ByReflection x1 -> do putWord8 20
+                                      put x1
         get
           = do i <- getWord8
                case i of
@@ -1647,6 +1649,8 @@ instance (Binary t) => Binary (PTactic' t) where
                             return (Fill x1)
                    19 -> do x1 <- get
                             return (Induction x1)
+                   20 -> do x1 <- get
+                            return (ByReflection x1)
                    _ -> error "Corrupted binary data for PTactic'"
 
 

@@ -650,6 +650,7 @@ data PTactic' t = Intro [Name] | Intros | Focus Name
                 | Try (PTactic' t) (PTactic' t)
                 | TSeq (PTactic' t) (PTactic' t)
                 | ApplyTactic t -- see Language.Reflection module
+                | ByReflection t
                 | Reflect t
                 | Fill t
                 | GoalType String (PTactic' t)
@@ -741,7 +742,7 @@ deriving instance NFData PArg'
 pimp n t mach = PImp 1 mach True n t ""
 pexp t = PExp 1 False t ""
 pconst t = PConstraint 1 False t ""
-ptacimp n s t = PTacImplicit 0 True n s t ""
+ptacimp n s t = PTacImplicit 2 True n s t ""
 
 type PArg = PArg' PTerm
 

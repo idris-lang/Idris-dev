@@ -206,6 +206,8 @@ elab ist info pattern tcgen fn tm
 --              case as' of
 --                 [a] -> elab' ina a
 --                 as -> lift $ tfail $ CantResolveAlts (map showHd as)
+--              trace ("Original " ++ show (length as, as) ++ "\n" ++
+--                     "New " ++ show (length as', as)) $
              tryAll (zip (map (elab' ina) as') (map showHd as'))
         where showHd (PApp _ h _) = show h
               showHd x = show x
@@ -906,6 +908,35 @@ runTac autoSolve ist tac
                                 (Pi (RApp listTy envTupleType))
                                     (RBind (UN "__pi_arg1")
                                            (Pi (Var $ reflm "TT")) tacticTy))
+    runT (ByReflection tm) -- run the reflection function 'tm' on the
+                           -- goal, then apply the resulting reflected Tactic
+        = do tgoal <- goal
+             attack
+             script <- unique_hole (MN 0 "script")
+             claim script scriptTy
+             scriptvar <- unique_hole (MN 0 "scriptvar" )
+             letbind scriptvar scriptTy (Var script)
+             focus script
+             ptm <- get_term
+             elab ist toplevel False False (MN 0 "tac") 
+                  (PApp emptyFC tm [pexp (delabTy' ist [] tgoal True True)])
+             (script', _) <- get_type_val (Var scriptvar)
+             -- now that we have the script apply
+             -- it to the reflected goal 
+             restac <- unique_hole (MN 0 "restac")
+             claim restac tacticTy
+             focus restac
+             fill (forget script')
+             restac' <- get_guess
+             solve
+             -- normalise the result in order to
+             -- reify it
+             ctxt <- get_context
+             env <- get_env
+             let tactic = normalise ctxt env restac'
+             runReflected tactic
+      where tacticTy = Var (reflm "Tactic")
+            scriptTy = tacticTy
 
     runT (Reflect v) = do attack -- let x = reflect v in ...
                           tyn <- unique_hole (MN 0 "letty")
