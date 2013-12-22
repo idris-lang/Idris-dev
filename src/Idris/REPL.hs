@@ -913,12 +913,18 @@ classInfo :: ClassInfo -> Idris ()
 classInfo ci = do iputStrLn "Methods:\n"
                   mapM_ dumpMethod (class_methods ci)
                   iputStrLn ""
+                  iputStrLn "Default superclass instances:\n"
+                  mapM_ dumpDefaultInstance (class_default_superclasses ci)
+                  iputStrLn ""
                   iputStrLn "Instances:\n"
                   mapM_ dumpInstance (class_instances ci)
                   iPrintResult ""
 
 dumpMethod :: (Name, (FnOpts, PTerm)) -> Idris ()
 dumpMethod (n, (_, t)) = iputStrLn $ show n ++ " : " ++ show t
+
+dumpDefaultInstance :: PDecl -> Idris ()
+dumpDefaultInstance (PInstance _ _ _ _ _ t _ _) = iputStrLn $ show t
 
 dumpInstance :: Name -> Idris ()
 dumpInstance n = do i <- getIState
