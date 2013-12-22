@@ -285,6 +285,12 @@ execApp' env ctxt (EP _ (UN "mkForeignPrim") _) (_:fn:(EPtr p):rest)
                        if p == nullPtr then 1 else 0
                   in execApp' env ctxt res (tail rest)
 
+-- A foreign-returned char* has to be tested for NULL sometimes
+execApp' env ctxt (EP _ (UN "mkForeignPrim") _) (_:fn:EConstant (Str s):rest)
+    | Just (FFun "isNull" _ _) <- foreignFromTT fn
+           = let res = ioWrap . EConstant . I $ 0
+                 in execApp' env ctxt res (tail rest)
+
 -- Throw away the 'World' argument to the foreign function
 
 execApp' env ctxt f@(EP _ (UN "mkForeignPrim") _) args@(ty:fn:xs)
@@ -440,9 +446,10 @@ call (FFun name argTypes retType) args =
             res <- execIO $ callFFI h retCChar (prepArgs args)
             return (EConstant (Ch (castCCharToChar res)))
           call' (Fun _ h) args FString = do res <- execIO $ callFFI h retCString (prepArgs args)
-                                            hStr <- execIO $ peekCString res
---                                            lift $ free res
-                                            return (EConstant (Str hStr))
+                                            if res == nullPtr
+                                               then return (EPtr res)
+                                               else do hStr <- execIO $ peekCString res
+                                                       return (EConstant (Str hStr))
 
           call' (Fun _ h) args FPtr = EPtr <$> (execIO $ callFFI h (retPtr retVoid) (prepArgs args))
           call' (Fun _ h) args FUnit = do _ <- execIO $ callFFI h retVoid (prepArgs args)

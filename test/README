@@ -37,4 +37,5 @@ Tests:
 
 regxxx: various regression tests
 reg020: working strlen
+reg029: executor doesn’t crash receiving a NULL String from C
 
