@@ -601,7 +601,7 @@ try' t1 t2 proofSearch
                                                         then lift (tfail e1)
                                                         else lift (tfail e2)
                                    else lift (tfail e1)
-  where recoverableErr err@(CantUnify r _ _ _ _ _)
+  where recoverableErr err@(CantUnify r x y _ _ _)
              = -- traceWhen r (show err) $
                r || proofSearch
         recoverableErr (ProofSearchFail _) = False

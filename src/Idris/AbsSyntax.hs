@@ -135,10 +135,10 @@ getCoercionsTo i ty =
     where findCoercions t [] = []
           findCoercions t (n : ns) =
              let ps = case lookupTy n (tt_ctxt i) of
-                         [ty] -> case unApply (getRetTy ty) of
+                        [ty'] -> case unApply (getRetTy ty') of
                                    (t', _) ->
                                       if t == t' then [n] else []
-                         _ -> [] in
+                        _ -> [] in
                  ps ++ findCoercions t ns
 
 addToCG :: Name -> CGInfo -> Idris ()

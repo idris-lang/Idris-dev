@@ -508,6 +508,12 @@ recoverable p@(P _ n _) (App f a) = recoverable p f
 --     recoverable (App f a) p@(P _ _ _) = recoverable f p
 recoverable (App f a) (App f' a')
     = recoverable f f' -- && recoverable a a'
+recoverable f (Bind _ (Pi _) sc)
+    | (P (DCon _ _) _ _, _) <- unApply f = False
+    | (P (TCon _ _) _ _, _) <- unApply f = False
+recoverable (Bind _ (Pi _) sc) f
+    | (P (DCon _ _) _ _, _) <- unApply f = False
+    | (P (TCon _ _) _ _, _) <- unApply f = False
 recoverable _ _ = True
 
 errEnv = map (\(x, b) -> (x, binderTy b))

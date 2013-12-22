@@ -139,6 +139,7 @@ elab ist info pattern tcgen fn tm
 --                             ++ "\nholes " ++ show hs
 --                             ++ "\nproblems " ++ show ps
 --                             ++ "\n-----------\n") $
+--                      trace ("ELAB " ++ show t') $ 
                      elab' ina t'
 
     local f = do e <- get_env
@@ -208,6 +209,7 @@ elab ist info pattern tcgen fn tm
 --                 as -> lift $ tfail $ CantResolveAlts (map showHd as)
 --              trace ("Original " ++ show (length as, as) ++ "\n" ++
 --                     "New " ++ show (length as', as)) $
+--              traceWhen (length as' > 1) (show as') $
              tryAll (zip (map (elab' ina) as') (map showHd as'))
         where showHd (PApp _ h _) = show h
               showHd x = show x
