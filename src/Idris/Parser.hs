@@ -945,7 +945,8 @@ findFC :: Doc -> (FC, String)
 findFC x = let s = show (plain x) in
              case span (/= ':') s of
                (failname, ':':rest) -> case span isDigit rest of
-                 (line, ':':rest') -> (FC failname (read line) 0, drop 2 (dropWhile (/= ':') rest'))
+                 (line, ':':rest') -> case span isDigit rest' of
+                   (col, ':':msg) -> (FC failname (read line) (read col), msg)
 
 -- | A program is a list of declarations, possibly with associated
 -- documentation strings.

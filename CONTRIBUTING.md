@@ -20,6 +20,11 @@ Here are a few guidelines that we would like contributors to follow so that we c
 Before you report an issue, or wish to add cool functionality please try and check to see if there are existing [issues](https://github.com/idris-lang/Idris-dev/issues) and [pull requests](https://github.com/idris-lang/Idris-dev/pulls).
 We do not want you wasting your time, duplicating somebody's work!
 
+## The Campsite Rule
+
+A basic rule when contributing to Idris is the **campsite rule**: leave the codebase in better condition than you found it.
+Please clean up any messes that you find, and don't leave behind new messes for the next contributor.
+
 ## Making Changes
 
 Idris developers and hackers try to adhere to something similar to the [successful git branching model](http://nvie.com/posts/a-successful-git-branching-model/).
