@@ -106,7 +106,7 @@ idrisConfigure _ flags _ local = do
       -- Put the Git hash into a module for use in the program
       -- For release builds, just put the empty string in the module
       generateVersionModule = do
-        gitHash <- catch (readProcess "git" ["rev-parse", "--short", "HEAD"] "")
+        gitHash <- Control.Exception.catch (readProcess "git" ["rev-parse", "--short", "HEAD"] "")
                          (\e -> let e' = (e :: SomeException) in return "PRE")
         let hash = takeWhile (/= '\n') gitHash
         let versionModulePath = autogenModulesDir local </> "Version_idris" Px.<.> "hs"
