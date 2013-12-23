@@ -85,6 +85,7 @@ data Err = Msg String
          | UnifyScope Name Name Term [(Name, Type)]
          | CantInferType String
          | NonFunctionType Term Term
+         | NotEquality Term Term 
          | TooManyArguments Name
          | CantIntroduce Term
          | NoSuchVariable Name

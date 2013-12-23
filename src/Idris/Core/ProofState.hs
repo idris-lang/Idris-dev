@@ -574,7 +574,7 @@ rewrite tm ctxt env (Bind x (Hole t) xp@(P _ x' _)) | x == x' =
                                               [lt, l, r, p, tmv, xp]))
                (scv, sct) <- lift $ check ctxt env sc
                return scv
-         _ -> fail "Not an equality type"
+         _ -> lift $ tfail (NotEquality tmv tmt') 
   where rname = MN 0 "replaced"
 rewrite _ _ _ _ = fail "Can't rewrite here"
 
