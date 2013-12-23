@@ -49,6 +49,11 @@ proofFail e = do s <- get
                                        return a
                       Error err -> lift $ Error (ProofSearchFail err)
 
+explicit :: Name -> Elab' aux ()
+explicit n = do ES (p, a) s m <- get
+                let p' = p { dontunify = n : dontunify p }
+                put (ES (p', a) s m)
+
 saveState :: Elab' aux ()
 saveState = do e@(ES p s _) <- get
                put (ES p s (Just e))

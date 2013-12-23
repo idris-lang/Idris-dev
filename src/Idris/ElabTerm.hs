@@ -256,6 +256,7 @@ elab ist info pattern tcgen fn tm
                tyn <- unique_hole (MN 0 "lamty")
                checkPiGoal n
                claim tyn RType
+               explicit tyn
                attack
                ptm <- get_term
                hs <- get_holes
@@ -264,8 +265,6 @@ elab ist info pattern tcgen fn tm
                introTy (Var tyn) (Just n)
                -- end_unify
                focus tyn
-               ptm <- get_term
-               hs <- get_holes
                elabE (True, a) ty
                elabE (True, a) sc
                solve
@@ -288,10 +287,12 @@ elab ist info pattern tcgen fn tm
                claim tyn RType
                valn <- unique_hole (MN 0 "letval")
                claim valn (Var tyn)
+               explicit valn
                letbind n (Var tyn) (Var valn)
                case ty of
                    Placeholder -> return ()
                    _ -> do focus tyn
+                           explicit tyn
                            elabE (True, a) ty
                focus valn
                elabE (True, a) val
