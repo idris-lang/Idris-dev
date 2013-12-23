@@ -490,7 +490,15 @@ solve ctxt env (Bind x (Guess ty val) sc)
    | otherwise    = lift $ tfail $ IncompleteTerm val
 solve _ _ h@(Bind x t sc)
             = do ps <- get
-                 fail $ "Not a guess " ++ show h ++ "\n" ++ show (holes ps, pterm ps)
+                 case findType x sc of
+                      Just t -> lift $ tfail (CantInferType (show t))
+                      _ -> fail $ "Not a guess " ++ show h ++ "\n" ++ show (holes ps, pterm ps)
+   where findType x (Bind n (Let t v) sc)
+              = findType x v `mplus` findType x sc
+         findType x (Bind n t sc) 
+              | P _ x' _ <- binderTy t, x == x' = Just n
+              | otherwise = findType x sc
+         findType x _ = Nothing
 
 introTy :: Raw -> Maybe Name -> RunTactic
 introTy ty mn ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' =
