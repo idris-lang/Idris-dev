@@ -424,14 +424,14 @@ Library
                 , haskeline >= 0.7
                 , language-java >= 0.2.6
                 , mtl
-                , parsers == 0.9
+                , parsers >= 0.9
                 , pretty
                 , process
                 , split
                 , text
                 , time >= 1.4
                 , transformers
-                , trifecta == 1.1
+                , trifecta >= 1.1
                 , unordered-containers
                 , utf8-string
                 , vector
