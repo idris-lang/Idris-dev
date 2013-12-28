@@ -223,7 +223,6 @@ fib (S (S n)) = fib (S n) + fib n
 
 total fact : Nat -> Nat
 fact Z     = S Z
-fact (S Z) = S Z
 fact (S n) = (S n) * fact n
 
 --------------------------------------------------------------------------------
