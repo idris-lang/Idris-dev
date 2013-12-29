@@ -148,6 +148,8 @@ instance Show Err where
     show (Inaccessible n) = show n ++ " is not an accessible pattern variable"
     show (ProviderError msg) = "Type provider error: " ++ msg
     show (LoadingFailed fn e) = "Loading " ++ fn ++ " failed: " ++ show e
+    show ProgramLineComment = "Program line next to comment"
+    show (At f e) = show f ++ ":" ++ show e
     show _ = "Error"
 
 instance Pretty Err where

@@ -2,7 +2,7 @@
 
 HEAD="module Main
 
-import Data.Float
+import Data.Floats
 
 main : IO ()"
 

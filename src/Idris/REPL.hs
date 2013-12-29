@@ -1038,56 +1038,53 @@ idris opts = do res <- runErrorT $ execStateT (idrisMain opts) idrisInit
 
 loadInputs :: Handle -> [FilePath] -> Idris ()
 loadInputs h inputs
-  = do ist <- getIState
-       -- if we're in --check and not outputting anything, don't bother
-       -- loading, as it gets really slow if there's lots of modules in
-       -- a package (instead, reload all at the end to check for
-       -- consistency only)
-       opts <- getCmdLine
+  = idrisCatch
+       (do ist <- getIState
+           -- if we're in --check and not outputting anything, don't bother
+           -- loading, as it gets really slow if there's lots of modules in
+           -- a package (instead, reload all at the end to check for
+           -- consistency only)
+           opts <- getCmdLine
 
-       let loadCode = case opt getOutput opts of
-                           [] -> not (NoREPL `elem` opts)
-                           _ -> True
+           let loadCode = case opt getOutput opts of
+                               [] -> not (NoREPL `elem` opts)
+                               _ -> True
 
-       -- For each ifile list, check it and build ibcs in the same clean IState
-       -- so that they don't interfere with each other when checking
+           -- For each ifile list, check it and build ibcs in the same clean IState
+           -- so that they don't interfere with each other when checking
 
-       let ninputs = zip [1..] inputs
-       ifiles <- mapM (\(num, input) ->
-            do putIState ist
-               v <- verbose
---                           when v $ iputStrLn $ "(" ++ show num ++ "/" ++
---                                                show (length inputs) ++
---                                                ") " ++ input
-               modTree <- buildTree
-                               (map snd (take (num-1) ninputs))
-                               input
-               let ifiles = getModuleFiles modTree
-               iLOG ("MODULE TREE : " ++ show modTree)
-               iLOG ("RELOAD: " ++ show ifiles)
-               when (not (all ibc ifiles) || loadCode) $ tryLoad ifiles
-               -- return the files that need rechecking
-               return (if (all ibc ifiles) then ifiles else []))
-                  ninputs
-       inew <- getIState
-       -- to check everything worked consistently (in particular, will catch
-       -- if the ibc version is out of date) if we weren't loading per
-       -- module
-       case errLine inew of
-          Nothing ->
-            do putIState ist
-               when (not loadCode) $ tryLoad $ nub (concat ifiles)
-          _ -> return ()
-       putIState inew
---        inew <- getIState
---        case errLine inew of
---             Nothing ->
---             -- Then, load all the ibcs again, if there were no errors.
---               do putIState ist
---                  modTree <- mapM (buildTree (map snd ninputs)) inputs
---                  let ifiless = map getModuleFiles modTree
---                  mapM_ loadFromIFile (concat ifiless)
---             _ -> return ()
+           let ninputs = zip [1..] inputs
+           ifiles <- mapM (\(num, input) ->
+                do putIState ist
+                   v <- verbose
+    --                           when v $ iputStrLn $ "(" ++ show num ++ "/" ++
+    --                                                show (length inputs) ++
+    --                                                ") " ++ input
+                   modTree <- buildTree
+                                   (map snd (take (num-1) ninputs))
+                                   input
+                   let ifiles = getModuleFiles modTree
+                   iLOG ("MODULE TREE : " ++ show modTree)
+                   iLOG ("RELOAD: " ++ show ifiles)
+                   when (not (all ibc ifiles) || loadCode) $ tryLoad ifiles
+                   -- return the files that need rechecking
+                   return (if (all ibc ifiles) then ifiles else []))
+                      ninputs
+           inew <- getIState
+           -- to check everything worked consistently (in particular, will catch
+           -- if the ibc version is out of date) if we weren't loading per
+           -- module
+           case errLine inew of
+              Nothing ->
+                do putIState ist
+                   when (not loadCode) $ tryLoad $ nub (concat ifiles)
+              _ -> return ()
+           putIState inew)
+        (\e -> case e of
+                    At f e -> do setErrLine (fc_line f)
+                                 iputStrLn (show e)
+                    _ -> do setErrLine 3 -- FIXME! Propagate it
+                            iputStrLn (show e))
    where -- load all files, stop if any fail
          tryLoad :: [IFileType] -> Idris ()
          tryLoad [] = return ()

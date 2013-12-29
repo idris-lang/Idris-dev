@@ -70,9 +70,11 @@ getIModTime (LIDR i) = getModificationTime i
 
 buildTree :: [FilePath] -> -- already guaranteed built
              FilePath -> Idris [ModuleTree]
-buildTree built fp = idrisCatch (btree [] fp)
-                        (\e -> do now <- runIO $ getCurrentTime
-                                  return [MTree (IDR fp) True now []])
+buildTree built fp = btree [] fp 
+--                    = idrisCatch (btree [] fp)
+--                         (\e -> do now <- runIO $ getCurrentTime
+--                                   iputStrLn (show e)
+--                                   return [MTree (IDR fp) True now []])
  where
   btree done f =
     do i <- getIState
@@ -81,6 +83,7 @@ buildTree built fp = idrisCatch (btree [] fp)
        ibcsd <- valIBCSubDir i
        ids <- allImportDirs
        fp <- runIO $ findImport ids ibcsd file
+       iLOG $ "Found " ++ show fp
        mt <- runIO $ getIModTime fp
        if (file `elem` built)
           then return [MTree fp False mt []]
@@ -123,13 +126,13 @@ buildTree built fp = idrisCatch (btree [] fp)
                                else return False
 
   children :: Bool -> FilePath -> [FilePath] -> Idris [ModuleTree]
-  children lit f done = idrisCatch
-    (do exist <- runIO $ doesFileExist f
+  children lit f done = -- idrisCatch
+     do exist <- runIO $ doesFileExist f
         if exist then do
             file_in <- runIO $ readFile f
             file <- if lit then tclift $ unlit f file_in else return file_in
             (_, modules, _) <- parseImports f file
             ms <- mapM (btree done) modules
             return (concat ms)
-           else return []) -- IBC with no source available
-    (\c -> return []) -- error, can't chase modules here
+           else return [] -- IBC with no source available
+--     (\c -> return []) -- error, can't chase modules here
