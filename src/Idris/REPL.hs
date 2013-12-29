@@ -1081,8 +1081,9 @@ loadInputs h inputs
               _ -> return ()
            putIState inew)
         (\e -> case e of
-                    At f e -> do setErrLine (fc_line f)
+                    At f _ -> do setErrLine (fc_line f)
                                  iputStrLn (show e)
+                    ProgramLineComment -> return () -- fail elsewhere
                     _ -> do setErrLine 3 -- FIXME! Propagate it
                             iputStrLn (show e))
    where -- load all files, stop if any fail
