@@ -87,9 +87,11 @@ repl orig stvar mods
           lift $ runIO $ swapMVar stvar i -- update shared state
           let colour = idris_colourRepl i
           let theme = idris_colourTheme i
+          let mvs = idris_metavars i
           let prompt = if quiet
                           then ""
-                          else let str = mkPrompt mods ++ ">" in
+                          else showMVs colour theme mvs ++
+                               let str = mkPrompt mods ++ ">" in
                                (if colour then colourisePrompt theme str else str) ++ " "
           x <- getInputLine prompt
           case x of
@@ -105,6 +107,21 @@ repl orig stvar mods
    where ctrlC :: SomeException -> InputT Idris ()
          ctrlC e = do lift $ iputStrLn (show e)
                       repl orig stvar mods
+
+         showMVs c thm [] = ""
+         showMVs c thm ms = "Metavariables: " ++ 
+                                 show' 4 c thm (map fst ms) ++ "\n"
+
+         show' 0 c thm ms = let l = length ms in
+                          "... ( + " ++ show l
+                             ++ " other"
+                             ++ if l == 1 then ")" else "s)"
+         show' n c thm [m] = showM c thm m
+         show' n c thm (m : ms) = showM c thm m ++ ", " ++ 
+                                  show' (n - 1) c thm ms
+
+         showM c thm n = if c then colouriseFun thm (show n)
+                              else show n
 
 -- | Run the REPL server
 startServer :: IState -> MVar IState -> [FilePath] -> Idris ()
