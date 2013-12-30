@@ -39,7 +39,7 @@ buildPkg warnonly (install, fp)
             do dir <- getCurrentDirectory
                setCurrentDirectory $ dir </> sourcedir pkgdesc
                make (makefile pkgdesc)
-               case (execout pkgdesc) of
+               m_ist <- case (execout pkgdesc) of
                    Nothing -> buildMods (NoREPL : Verbose : idris_opts pkgdesc)
                                     (modules pkgdesc)
                    Just o -> do let exec = dir </> o
@@ -47,7 +47,21 @@ buildPkg warnonly (install, fp)
                                     (NoREPL : Verbose : Output exec : idris_opts pkgdesc)
                                     [idris_main pkgdesc]
                setCurrentDirectory dir
-               when install $ installPkg pkgdesc
+               case m_ist of
+                    Nothing -> exitWith (ExitFailure 1)
+                    Just ist -> do
+                       -- Quit with error code if there was a problem
+                       case errLine ist of
+                            Just _ -> exitWith (ExitFailure 1)
+                            _ -> return ()
+                       -- Also give up if there are metavariables to solve
+                       case (map fst (idris_metavars ist) \\ primDefs) of
+                            [] -> when install $ installPkg pkgdesc
+                            ms -> do if install 
+                                        then putStrLn "Can't install: there are undefined metavariables:"
+                                        else putStrLn "There are undefined metavariables:"
+                                     putStrLn $ "\t" ++ show ms 
+                                     exitWith (ExitFailure 1)
 
 cleanPkg :: FilePath -> IO ()
 cleanPkg fp
@@ -69,11 +83,10 @@ installPkg pkgdesc
               Just o -> return () -- do nothing, keep executable locally, for noe
           mapM_ (installObj (pkgname pkgdesc)) (objs pkgdesc)
 
-buildMods :: [Opt] -> [Name] -> IO ()
+buildMods :: [Opt] -> [Name] -> IO (Maybe IState)
 buildMods opts ns = do let f = map (toPath . showCG) ns
 --                        putStrLn $ "MODULE: " ++ show f
                        idris (map Filename f ++ opts)
-                       return ()
     where toPath n = foldl1' (</>) $ splitOn "." n
 
 testLib :: Bool -> String -> String -> IO Bool

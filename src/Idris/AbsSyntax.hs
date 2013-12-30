@@ -337,6 +337,10 @@ solveDeferred n = do i <- getIState
                                        filter (\(n', _) -> n/=n')
                                           (idris_metavars i) }
 
+getUndefined :: Idris [Name]
+getUndefined = do i <- getIState
+                  return (map fst (idris_metavars i) \\ primDefs)
+
 ihPrintResult :: Handle -> String -> Idris ()
 ihPrintResult h s = do i <- getIState
                        case idris_outputmode i of

@@ -1029,11 +1029,12 @@ replSettings hFile = setComplete replCompletion $ defaultSettings {
                      }
 
 -- invoke as if from command line
-idris :: [Opt] -> IO ()
+idris :: [Opt] -> IO (Maybe IState)
 idris opts = do res <- runErrorT $ execStateT (idrisMain opts) idrisInit
                 case res of
-                  Left err -> putStrLn $ pshow idrisInit err
-                  Right ist -> return ()
+                  Left err -> do putStrLn $ pshow idrisInit err
+                                 return Nothing
+                  Right ist -> return (Just ist)
 
 
 loadInputs :: Handle -> [FilePath] -> Idris ()
@@ -1054,7 +1055,7 @@ loadInputs h inputs
            -- so that they don't interfere with each other when checking
 
            let ninputs = zip [1..] inputs
-           ifiles <- mapM (\(num, input) ->
+           ifiles <- mapWhileOK (\(num, input) ->
                 do putIState ist
                    v <- verbose
     --                           when v $ iputStrLn $ "(" ++ show num ++ "/" ++
@@ -1080,7 +1081,7 @@ loadInputs h inputs
                    when (not loadCode) $ tryLoad $ nub (concat ifiles)
               _ -> return ()
            putIState inew)
-        (\e -> case e of
+        (\e -> do case e of
                     At f _ -> do setErrLine (fc_line f)
                                  iputStrLn (show e)
                     ProgramLineComment -> return () -- fail elsewhere
@@ -1090,13 +1091,19 @@ loadInputs h inputs
          tryLoad :: [IFileType] -> Idris ()
          tryLoad [] = return ()
          tryLoad (f : fs) = do loadFromIFile h f
-                               inew <- getIState
-                               case errLine inew of
-                                    Nothing -> tryLoad fs
-                                    _ -> return () -- error, stop
+                               ok <- noErrors
+                               when ok $ tryLoad fs
 
          ibc (IBC _ _) = True
          ibc _ = False
+
+         -- Like mapM, but give up when there's an error
+         mapWhileOK f [] = return []
+         mapWhileOK f (x : xs) = do x' <- f x
+                                    ok <- noErrors
+                                    if ok then do xs' <- mapWhileOK f xs
+                                                  return (x' : xs')
+                                          else return [x']
 
 idrisMain :: [Opt] -> Idris ()
 idrisMain opts =
