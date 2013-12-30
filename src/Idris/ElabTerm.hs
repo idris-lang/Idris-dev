@@ -501,8 +501,11 @@ elab ist info pattern tcgen fn tm
              cname <- unique_hole' True (mkCaseName fn)
              let cname' = mkN cname
              elab' ina (PMetavar cname')
+             -- if the scrutinee is one of the 'args' in env, we should
+             -- inspect it directly, rather than adding it as a new argument
              let newdef = PClauses fc [] cname'
-                             (caseBlock fc cname' (reverse args) opts)
+                             (caseBlock fc cname'
+                                (map (isScr scr) (reverse args)) opts)
              -- elaborate case
              env <- get_env
              updateAux (newdef : )
@@ -522,22 +525,47 @@ elab ist info pattern tcgen fn tm
                                  unifyLog False
     elab' ina x = fail $ "Unelaboratable syntactic form " ++ show x
 
-    caseBlock :: FC -> Name -> [(Name, Binder Term)] ->
-                               [(PTerm, PTerm)] -> [PClause]
+    isScr :: PTerm -> (Name, Binder Term) -> (Name, (Bool, Binder Term))
+    isScr (PRef _ n) (n', b) = (n', (n == n', b))
+    isScr _ (n', b) = (n', (False, b))
+
+    caseBlock :: FC -> Name -> 
+                 [(Name, (Bool, Binder Term))] -> [(PTerm, PTerm)] -> [PClause]
     caseBlock fc n env opts
-        = let args = map mkarg (map fst (init env)) in
+        = let args' = findScr env
+              args = map mkarg (map getNmScr args') in
               map (mkClause args) opts
-       where -- mkarg (MN _ _) = Placeholder
-             mkarg n = PRef fc n
+
+       where -- Find the variable we want as the scrutinee and mark it as
+             -- 'True'. If the scrutinee is in the environment, match on that
+             -- otherwise match on the new argument we're adding.
+             findScr ((n, (True, t)) : xs) 
+                        = (n, (True, t)) : scrName n xs
+             findScr [(n, (_, t))] = [(n, (True, t))] 
+             findScr (x : xs) = x : findScr xs
+             -- [] can't happen since scrutinee is in the environment!
+             
+             -- To make sure top level pattern name remains in scope, put
+             -- it at the end of the environment
+             scrName n []  = []
+             scrName n [(_, t)] = [(n, t)]
+             scrName n (x : xs) = x : scrName n xs
+
+             getNmScr (n, (s, _)) = (n, s)
+
+             mkarg (n, s) = (PRef fc n, s)
              -- may be shadowed names in the new pattern - so replace the
              -- old ones with an _
              mkClause args (l, r)
                    = let args' = map (shadowed (allNamesIn l)) args
                          lhs = PApp (getFC fc l) (PRef (getFC fc l) n)
-                                 (map pexp args' ++ [pexp l]) in
+                                 (map (mkLHSarg l) args') in
                             PClause (getFC fc l) n lhs [] r []
 
-             shadowed new (PRef _ n) | n `elem` new = Placeholder
+             mkLHSarg l (tm, True) = pexp l
+             mkLHSarg l (tm, False) = pexp tm
+
+             shadowed new (PRef _ n, s) | n `elem` new = (Placeholder, s)
              shadowed new t = t
 
     getFC d (PApp fc _ _) = fc
