@@ -14,7 +14,7 @@ sendToThread {a} dest val
         [FPtr, FPtr, FAny a] FUnit) prim__vm dest val
 
 checkMsgs : IO Bool
-checkMsgs = do msgs <- mkForeign (FFun "idris_checkMessage"
+checkMsgs = do msgs <- mkForeign (FFun "idris_checkMessages"
                         [FPtr] FInt) prim__vm
                return (intToBool msgs)
 

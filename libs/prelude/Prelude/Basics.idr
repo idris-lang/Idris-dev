@@ -13,7 +13,7 @@ the _ = id
 
 -- | Constant function.
 const : a -> b -> a
-const x _ = x
+const x = \v => x
 
 -- | Return the first element of a pair.
 fst : (s, t) -> s

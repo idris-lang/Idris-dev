@@ -602,7 +602,7 @@ void idris_sendMessage(VM* sender, VM* dest, VAL msg) {
 
     pthread_mutex_lock(&(dest->inbox_lock));
     *(dest->inbox_write) = dmsg;
-   
+  
     dest->inbox_write++;
     if (dest->inbox_write >= dest->inbox_end) {
         dest->inbox_write = dest->inbox;
