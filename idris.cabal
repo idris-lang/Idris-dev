@@ -409,7 +409,7 @@ Library
 
                 -- Auto Generated
                 , Paths_idris
---                 , Version_idris
+                , Version_idris
 
   Build-depends:  base >=4 && <5
                 , Cabal
