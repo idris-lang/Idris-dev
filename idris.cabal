@@ -331,7 +331,7 @@ Flag release
   manual:       True
 
 Library
-  hs-source-dirs: src, dist/build/autogen
+  hs-source-dirs: src
   Exposed-modules:
                   Idris.Core.CaseTree
                 , Idris.Core.Constraints

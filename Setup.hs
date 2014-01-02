@@ -127,8 +127,16 @@ idrisConfigure _ flags _ local = do
 idrisPreSDist args flags = do
   let dir = S.fromFlag (S.sDistDirectory flags)
   let verb = S.fromFlag (S.sDistVerbosity flags)
-  generateVersionModule verb (dir </> "dist" </>"build" </> "autogen") True
+  generateVersionModule verb ("src") True
   preSDist simpleUserHooks args flags
+
+idrisPostSDist args flags desc lbi = do
+  Control.Exception.catch (do let file = "src" </> "Version_idris" Px.<.> "hs"
+                              putStrLn $ "Removing generated module " ++ file
+                              removeFile file)
+             (\e -> let e' = (e :: SomeException) in return ())
+  postSDist simpleUserHooks args flags desc lbi
+
 -- -----------------------------------------------------------------------------
 -- Build
 
@@ -203,4 +211,5 @@ main = defaultMainWithHooks $ simpleUserHooks
                   idrisInstall (S.fromFlag $ S.installVerbosity flags)
                                NoCopyDest pkg local
    , preSDist = idrisPreSDist --do { putStrLn (show args) ; putStrLn (show flags) ; return emptyHookedBuildInfo }
-    }
+   , postSDist = idrisPostSDist
+   }
