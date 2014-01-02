@@ -90,9 +90,30 @@ idrisClean _ flags _ _ = do
 -- -----------------------------------------------------------------------------
 -- Configure
 
+gitHash :: IO String
+gitHash = do h <- Control.Exception.catch (readProcess "git" ["rev-parse", "--short", "HEAD"] "")
+                  (\e -> let e' = (e :: SomeException) in return "PRE")
+             return $ takeWhile (/= '\n') h
+
+-- Put the Git hash into a module for use in the program
+-- For release builds, just put the empty string in the module
+generateVersionModule verbosity dir release = do
+  hash <- gitHash
+  let versionModulePath = dir </> "Version_idris" Px.<.> "hs"
+  putStrLn $ "Generating " ++ versionModulePath ++
+             if release then " for release" else (" for prerelease " ++ hash)
+  createDirectoryIfMissingVerbose verbosity True dir
+  rewriteFile versionModulePath (versionModuleContents hash)
+
+  where versionModuleContents h = "module Version_idris where\n\n" ++
+                                  "gitHash :: String\n" ++
+                                  if release
+                                    then "gitHash = \"\"\n"
+                                    else "gitHash = \"-git:" ++ h ++ "\"\n"
+
 idrisConfigure _ flags _ local = do
       configureRTS
-      generateVersionModule
+      generateVersionModule verbosity (autogenModulesDir local) (isRelease (configFlags local))
    where
       verbosity = S.fromFlag $ S.configVerbosity flags
       version   = pkgVersion . package $ localPkgDescr local
@@ -103,25 +124,19 @@ idrisConfigure _ flags _ local = do
       -- the file after configure.
       configureRTS = make verbosity ["-C", "rts", "clean"]
 
-      -- Put the Git hash into a module for use in the program
-      -- For release builds, just put the empty string in the module
-      generateVersionModule = do
-        gitHash <- Control.Exception.catch (readProcess "git" ["rev-parse", "--short", "HEAD"] "")
-                         (\e -> let e' = (e :: SomeException) in return "PRE")
-        let hash = takeWhile (/= '\n') gitHash
-        let versionModulePath = autogenModulesDir local </> "Version_idris" Px.<.> "hs"
-        createDirectoryIfMissingVerbose verbosity True (autogenModulesDir local)
-        rewriteFile versionModulePath (versionModuleContents hash)
-
-      versionModuleContents h = "module Version_idris where\n\n" ++
-                                "gitHash :: String\n" ++
-                                if isRelease (configFlags local)
-                                  then "gitHash = \"\"\n"
-                                  else "gitHash = \"-git:" ++ h ++ "\"\n"
-
-
+idrisPreSDist args flags = do
+  let dir = S.fromFlag (S.sDistDirectory flags)
+  let verb = S.fromFlag (S.sDistVerbosity flags)
+  generateVersionModule verb (dir </> "dist" </>"build" </> "autogen") True
+  preSDist simpleUserHooks args flags
 -- -----------------------------------------------------------------------------
 -- Build
+
+getVersion :: Args -> S.BuildFlags -> IO HookedBuildInfo
+getVersion args flags = do
+      hash <- gitHash
+      let buildinfo = (emptyBuildInfo { cppOptions = ["-DVERSION="++hash] }) :: BuildInfo
+      return (Just buildinfo, [])
 
 idrisBuild _ flags _ local = do
       buildStdLib
@@ -143,6 +158,7 @@ idrisBuild _ flags _ local = do
 
       gmpflag False = []
       gmpflag True = ["GMP=-DIDRIS_GMP"]
+
 
 -- -----------------------------------------------------------------------------
 -- Copy/Install
@@ -186,4 +202,5 @@ main = defaultMainWithHooks $ simpleUserHooks
    , postInst = \_ flags pkg local ->
                   idrisInstall (S.fromFlag $ S.installVerbosity flags)
                                NoCopyDest pkg local
-   }
+   , preSDist = idrisPreSDist --do { putStrLn (show args) ; putStrLn (show flags) ; return emptyHookedBuildInfo }
+    }
