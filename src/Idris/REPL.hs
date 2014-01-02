@@ -26,7 +26,7 @@ import Idris.CaseSplit
 import Idris.DeepSeq
 
 import Paths_idris
--- import Version_idris (gitHash)
+import Version_idris (gitHash)
 import Util.System
 import Util.DynamicLinker
 import Util.Net (listenOnLocalhost)
@@ -1354,8 +1354,6 @@ getColour _ = Nothing
 
 opt :: (Opt -> Maybe a) -> [Opt] -> [a]
 opt = mapMaybe
-
-gitHash = "" -- TMP until we work out how to deal with this in the .cabal
 
 ver = showVersion version ++ gitHash
 
