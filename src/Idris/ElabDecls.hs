@@ -2048,7 +2048,8 @@ elabCaseBlock info opts d@(PClauses f o n ps)
         = do addIBC (IBCDef n)
              logLvl 6 $ "CASE BLOCK: " ++ show (n, d)
              let opts' = nub (o ++ opts)
-             setFlags n opts'
+             -- propagate totality assertion to the new definitions
+             when (AssertTotal `elem` opts) $ setFlags n [AssertTotal]
              elabDecl' EAll info (PClauses f opts' n ps )
 
 -- elabDecl' info (PImport i) = loadModule i
