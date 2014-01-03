@@ -2047,7 +2047,9 @@ elabDecl' _ _ _ = return () -- skipped this time
 elabCaseBlock info opts d@(PClauses f o n ps)
         = do addIBC (IBCDef n)
              logLvl 6 $ "CASE BLOCK: " ++ show (n, d)
-             elabDecl' EAll info (PClauses f (nub (o ++ opts)) n ps )
+             let opts' = nub (o ++ opts)
+             setFlags n opts'
+             elabDecl' EAll info (PClauses f opts' n ps )
 
 -- elabDecl' info (PImport i) = loadModule i
 

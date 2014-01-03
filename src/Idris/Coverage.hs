@@ -370,7 +370,16 @@ checkDeclTotality (fc, n)
     = do logLvl 2 $ "Checking " ++ show n ++ " for totality"
 --          buildSCG (fc, n)
 --          logLvl 2 $ "Built SCG"
-         checkTotality [] fc n
+         i <- getIState 
+         let opts = case lookupCtxt n (idris_flags i) of
+                            [fs] -> fs
+                            _ -> []
+         case lookupDef n (tt_ctxt i) of
+              [CaseOp _ _ _ pats _] ->
+                  if AssertTotal `elem` opts
+                     then return $ Total []
+                     else checkTotality [] fc n 
+              _ -> checkTotality [] fc n
 
 -- Calculate the size change graph for this definition
 
