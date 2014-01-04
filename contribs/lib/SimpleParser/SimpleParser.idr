@@ -110,7 +110,9 @@ bool = parseTrue <|> parseFalse
                         pure False
 
 ident : Parser String
-ident = map pack [| letter :: many1 alphanum |]
+ident = map pack xs
+  where xs : Parser (List Char)
+        xs = [| letter :: many1 alphanum |]
 
 nat : Parser Int
 nat = do xs <- many digit
