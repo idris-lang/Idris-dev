@@ -453,6 +453,9 @@ Library
   if os(freebsd)
      cpp-options:   -DFREEBSD
      build-depends: unix
+  if os(dragonfly) 
+     cpp-options:   -DDRAGONFLY
+     build-depends: unix
   if os(darwin)
      cpp-options:   -DMACOSX
      build-depends: unix

@@ -24,6 +24,8 @@ hostDynamicLibExt = "dylib"
 hostDynamicLibExt = "dll"
 #elif FREEBSD
 hostDynamicLibExt = "so"
+#elif DRAGONFLY
+hostDynamicLibExt = "so"
 #else
 hostDynamicLibExt = error $ unwords
   [ "Undefined file extension for dynamic libraries"
