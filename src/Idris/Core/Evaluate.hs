@@ -10,7 +10,7 @@ module Idris.Core.Evaluate(normalise, normaliseTrace, normaliseC, normaliseAll,
                 addDatatype, addCasedef, simplifyCasedef, addOperator,
                 lookupNames, lookupTy, lookupP, lookupDef, lookupDefAcc, lookupVal,
                 lookupTotal, lookupNameTotal, lookupMetaInformation, lookupTyEnv, isDConName, isTConName, isConName, isFnName,
-                Value(..), Quote(..), initEval) where
+                Value(..), Quote(..), initEval, uniqueNameCtxt) where
 
 import Debug.Trace
 import Control.Monad.State
@@ -913,3 +913,9 @@ lookupTyEnv n env = li n 0 env where
              | n == x = Just (i, binderTy b)
              | otherwise = li n (i+1) xs
 
+-- | Create a unique name given context and other existing names
+uniqueNameCtxt :: Context -> Name -> [Name] -> Name
+uniqueNameCtxt ctxt n hs
+    | n `elem` hs = uniqueNameCtxt ctxt (nextName n) hs
+    | [_] <- lookupTy n ctxt = uniqueNameCtxt ctxt (nextName n) hs
+    | otherwise = n

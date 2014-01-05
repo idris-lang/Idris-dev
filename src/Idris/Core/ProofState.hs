@@ -611,15 +611,17 @@ induction nm ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' = do
                                _ -> return []
              let (params, indicies) = splitTyArgs param_pos tyargs
              let args     = getArgTys elimTy
-             let pmargs   = take (length tyargs) args
-             let args'    = drop (length tyargs) args
+             let pmargs   = take (length params) args
+             let args'    = drop (length params) args
              let propTy   = head args'
              let restargs = init $ tail args'
              let consargs = take (length restargs - length indicies) $ restargs
              let indxargs = drop (length restargs - length indicies) $ restargs
              let scr      = last $ tail args'
-             let prop = Bind nm (Lam tmt') t -- TODO: Make this work for types with indicies
-             let res = flip (foldr substV) params $ (substV prop $ bindConsArgs consargs (mkApp (P Ref (SN (ElimN tnm)) (TType (UVal 0))) (params ++ [prop] ++ map makeConsArg consargs ++ [tmv])))
+             let indxnames = makeIndexNames indicies
+             prop <- replaceIndicies indxnames indicies $ Bind nm (Lam tmt') t
+             let res = flip (foldr substV) params $ (substV prop $ bindConsArgs consargs (mkApp (P Ref (SN (ElimN tnm)) (TType (UVal 0)))
+                                                        (params ++ [prop] ++ map makeConsArg consargs ++ indicies ++ [tmv])))
              action (\ps -> ps {holes = holes ps \\ [x]})
              mapM_ addConsHole (reverse consargs)
              let res' = forget $ res
@@ -638,6 +640,10 @@ induction nm ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' = do
           splitTyArgs param_pos tyargs =
             let (params, indicies) = partition (flip elem param_pos . fst) . zip [0..] $ tyargs
             in (map snd params, map snd indicies)
+          makeIndexNames = foldr (\_ nms -> (uniqueNameCtxt ctxt (MN 0 "idx") nms):nms) []
+          replaceIndicies idnms idxs prop = foldM (\t (idnm, idx) -> do (idxv, idxt) <- lift $ check ctxt env (forget idx)
+                                                                        let var = P Bound idnm idxt
+                                                                        return $ Bind idnm (Lam idxt) (mkP var idxv var t)) prop $ zip idnms idxs
 induction tm ctxt env _ = do fail "Can't do induction here"
 
 

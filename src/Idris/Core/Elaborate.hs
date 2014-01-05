@@ -209,7 +209,7 @@ unique_hole' reusable n
       = do ES p _ _ <- get
            let bs = bound_in (pterm (fst p)) ++
                     bound_in (ptype (fst p))
-           n' <- uniqueNameCtxt (context (fst p)) n (holes (fst p)
+           n' <- return $ uniqueNameCtxt (context (fst p)) n (holes (fst p)
                    ++ bs ++ dontunify (fst p) ++ usedns (fst p))
            ES (p, a) s u <- get
            -- Hmm: Do we need this level of uniqueness?
@@ -224,12 +224,6 @@ unique_hole' reusable n
         bi b = bound_in (binderTy b)
     bound_in (App f a) = bound_in f ++ bound_in a
     bound_in _ = []
-
-uniqueNameCtxt :: Context -> Name -> [Name] -> Elab' aux Name
-uniqueNameCtxt ctxt n hs
-    | n `elem` hs = uniqueNameCtxt ctxt (nextName n) hs
-    | [_] <- lookupTy n ctxt = uniqueNameCtxt ctxt (nextName n) hs
-    | otherwise = return n
 
 elog :: String -> Elab' aux ()
 elog str = do ES p logs prev <- get
