@@ -177,6 +177,7 @@ data IBCWrite = IBCFix FixDecl
               | IBCDyLib String
               | IBCHeader Codegen String
               | IBCAccess Name Accessibility
+              | IBCMetaInformation Name MetaInformation
               | IBCTotal Name Totality
               | IBCFlags Name [FnOpt]
               | IBCTrans (Term, Term)

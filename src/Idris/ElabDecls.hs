@@ -202,8 +202,11 @@ elabData info syn doc fc opts (PDatadecl n t_in dcons)
          addIBC (IBCData n)
          addDocStr n doc
          addIBC (IBCDoc n)
+         let metainf = DataMI params
+         addIBC (IBCMetaInformation n metainf)
          collapseCons n cons
          updateContext (addDatatype (Data n ttag cty cons))
+         updateContext (setMetaInformation n metainf)
          mapM_ (checkPositive n) cons
          if DefaultEliminator `elem` opts then evalStateT (elabEliminator params n t dcons info) Map.empty
                                           else return ()

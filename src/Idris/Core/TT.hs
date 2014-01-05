@@ -515,21 +515,6 @@ raw_unapply t = ua [] t where
     ua args (RApp f a) = ua (a:args) f
     ua args t          = (t, args)
 
-data RawFun = RawFun { rtype :: Raw,
-                       rval  :: Raw
-                     }
-  deriving Show
-
-data RawDatatype = RDatatype Name Raw [(Name, Raw)]
-  deriving Show
-
-data RDef = RFunction RawFun
-          | RConst Raw
-          | RData RawDatatype
-  deriving Show
-
-type RProgram = [(Name, RDef)]
-
 -- WELL TYPED TERMS ---------------------------------------------------------
 
 -- | Universe expressions for universe checking
