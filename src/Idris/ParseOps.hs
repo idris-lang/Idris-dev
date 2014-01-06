@@ -55,7 +55,9 @@ toTable fs = map (map toBin)
 -- | Binary operator
 binary :: String -> (FC -> PTerm -> PTerm -> PTerm) -> Assoc -> Operator IdrisParser PTerm
 binary name f = Infix (do fc <- getFC
+                          indentPropHolds gtProp
                           reservedOp name
+                          indentPropHolds gtProp
                           doc <- option "" (docComment '^')
                           return (f fc))
 
@@ -63,12 +65,15 @@ binary name f = Infix (do fc <- getFC
 prefix :: String -> (FC -> PTerm -> PTerm) -> Operator IdrisParser PTerm
 prefix name f = Prefix (do reservedOp name
                            fc <- getFC
+                           indentPropHolds gtProp
                            return (f fc))
 
 -- | Backtick operator
 backtick :: Operator IdrisParser PTerm
-backtick = Infix (do lchar '`'; n <- fnName
+backtick = Infix (do indentPropHolds gtProp
+                     lchar '`'; n <- fnName
                      lchar '`'
+                     indentPropHolds gtProp
                      fc <- getFC
                      return (\x y -> PApp fc (PRef fc n) [pexp x, pexp y])) AssocNone
 
