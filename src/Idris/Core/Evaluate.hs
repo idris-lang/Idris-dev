@@ -268,7 +268,7 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
 --                 tfull' <- reapply ntimes stk top env t' []
                 return (doProj t' (getValArgs t'))
        where doProj t' (VP (DCon _ _) _ _, args) 
-                  | i >=0 && i < length args = args!!i
+                  | i >= 0 && i < length args = args!!i
              doProj t' _ = VProj t' i
 
     ev ntimes stk top env (Constant c) = return $ VConstant c

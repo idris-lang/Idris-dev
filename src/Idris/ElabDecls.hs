@@ -1274,6 +1274,9 @@ elabClause info opts (cnum, PClause fc fname lhs_in withs rhs_in whereblock)
                                         (erun fc (build i info False fname rhs))
                         errAt "right hand side of " fname
                               (erun fc $ psolve lhs_tm)
+                        hs <- get_holes
+                        aux <- getAux
+                        mapM_ (elabCaseHole aux) hs
                         tt <- get_term
                         let (tm, ds) = runState (collectDeferred (Just fname) tt) []
                         return (tm, ds, is))
@@ -1370,6 +1373,26 @@ elabClause info opts (cnum, PClause fc fname lhs_in withs rhs_in whereblock)
     propagateParams ps (PRef fc n)
          = PApp fc (PRef fc n) (map (\x -> pimp x (PRef fc x) True) ps)
     propagateParams ps x = x
+
+    -- if a hole is just an argument/result of a case block, treat it as
+    -- the unit type. Hack to help elaborate case in do blocks.
+    elabCaseHole aux h = do
+        focus h
+        g <- goal
+        case g of
+             TType _ -> when (any (isArg h) aux) $ do apply (Var unitTy) []; solve
+             _ -> return ()
+
+    -- Is the name a pattern argument in the declaration
+    isArg :: Name -> PDecl -> Bool
+    isArg n (PClauses _ _ _ cs) = any isArg' cs
+      where
+        isArg' (PClause _ _ (PApp _ _ args) _ _ _) 
+           = any (\x -> case x of
+                          PRef _ n' -> n == n'
+                          _ -> False) (map getTm args)
+        isArg' _ = False
+    isArg _ _ = False
 
 elabClause info opts (_, PWith fc fname lhs_in withs wval_in withblock)
    = do let tcgen = Dictionary `elem` opts
