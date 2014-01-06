@@ -32,7 +32,7 @@ environment x = catchIO (do e <- getEnv x
 getTargetDir :: IO String
 getTargetDir = environment "TARGET" >>= maybe getDataDir return
 
-#ifdef FREEBSD
+#if defined(FREEBSD) || defined(DRAGONFLY)
 extraLib = " -L/usr/local/lib"
 #else
 extraLib = ""
@@ -51,7 +51,7 @@ getLibFlags = do dir <- getDataDir
 getIdrisLibDir = do dir <- getDataDir
                     return $ addTrailingPathSeparator dir
 
-#ifdef FREEBSD
+#if defined(FREEBSD) || defined(DRAGONFLY)
 extraInclude = " -I/usr/local/include"
 #else
 extraInclude = ""
