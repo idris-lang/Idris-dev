@@ -184,24 +184,25 @@ unify' ctxt env topx topy =
                          " in " ++ show env ++
                          "\nHoles: " ++ show (holes ps) ++ "\n") $
                      lift $ unify ctxt env topx topy dont (holes ps)
+      let notu = filter (\ (n, t) -> case t of
+                                        P _ _ _ -> False
+                                        _ -> n `elem` dont) u
       traceWhen (unifylog ps)
             ("Unified " ++ show (topx, topy) ++ " without " ++ show dont ++
              "\nSolved: " ++ show u ++ "\nNew problems: " ++ qshow fails
              ++ "\nCurrent problems:\n" ++ qshow (problems ps)
 --              ++ show (pterm ps)
              ++ "\n----------") $
-       case fails of
---            [] -> return u
-           err ->
-               do ps <- get
-                  let (h, ns) = unified ps
-                  let (ns', probs') = updateProblems (context ps) (u ++ ns)
-                                                     (err ++ problems ps)
-                                                     (injective ps)
-                                                     (holes ps)
-                  put (ps { problems = probs',
-                            unified = (h, ns') })
-                  return u
+        do ps <- get
+           let (h, ns) = unified ps
+           let (ns', probs') = updateProblems (context ps) (u ++ ns)
+                                              (fails ++ problems ps)
+                                              (injective ps)
+                                              (holes ps)
+           put (ps { problems = probs',
+                     unified = (h, ns'),
+                     notunified = notu ++ notunified ps })
+           return u
 
 getName :: Monad m => String -> StateT TState m Name
 getName tag = do ps <- get
