@@ -40,3 +40,5 @@ data ErrorReportPart = Message String
 
 
 -- Error reports become functions in List (String, TT) -> Err -> ErrorReport
+ErrorHandler : Type
+ErrorHandler = Err -> Maybe (List ErrorReportPart)

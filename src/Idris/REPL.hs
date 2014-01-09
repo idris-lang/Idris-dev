@@ -442,19 +442,19 @@ process h fn (ChangeDirectory f)
                  = do runIO $ setCurrentDirectory f
                       return ()
 process h fn (Eval t)
-                 = do (tm, ty) <- elabVal toplevel False t
-                      ctxt <- getContext
-                      let tm' = force (normaliseAll ctxt [] tm)
-                      let ty' = force (normaliseAll ctxt [] ty)
-                      -- Add value to context, call it "it"
-                      updateContext (addCtxtDef (UN "it") (Function ty' tm'))
-                      ist <- getIState
-                      logLvl 3 $ "Raw: " ++ show (tm', ty')
-                      logLvl 10 $ "Debug: " ++ showEnvDbg [] tm'
-                      imp <- impShow
-                      c <- colourise
-                      ihPrintResult h (showImp (Just ist) imp c (delab ist tm') ++ " : " ++
-                               showImp (Just ist) imp c (delab ist ty'))
+                 = withErrorReflection $ do (tm, ty) <- elabVal toplevel False t
+                                            ctxt <- getContext
+                                            let tm' = force (normaliseAll ctxt [] tm)
+                                            let ty' = force (normaliseAll ctxt [] ty)
+                                            -- Add value to context, call it "it"
+                                            updateContext (addCtxtDef (UN "it") (Function ty' tm'))
+                                            ist <- getIState
+                                            logLvl 3 $ "Raw: " ++ show (tm', ty')
+                                            logLvl 10 $ "Debug: " ++ showEnvDbg [] tm'
+                                            imp <- impShow
+                                            c <- colourise
+                                            ihPrintResult h (showImp (Just ist) imp c (delab ist tm') ++ " : " ++
+                                                     showImp (Just ist) imp c (delab ist ty'))
 process h fn (ExecVal t)
                   = do ctxt <- getContext
                        ist <- getIState

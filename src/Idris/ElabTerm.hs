@@ -5,15 +5,18 @@ module Idris.ElabTerm where
 import Idris.AbsSyntax
 import Idris.DSL
 import Idris.Delaborate
+import Idris.Error
 import Idris.ProofSearch
 
 import Idris.Core.Elaborate hiding (Tactic(..))
 import Idris.Core.TT
 import Idris.Core.Evaluate
+import Idris.Core.Typecheck (check)
 
 import Control.Monad
 import Control.Monad.State
 import Data.List
+import Data.Maybe (mapMaybe)
 
 import Debug.Trace
 
@@ -1352,9 +1355,36 @@ reflectEnv = foldr consToEnvList emptyEnvList
 
 -- | Reflect an error into the internal datatype of Idris -- TODO
 reflectErr :: Err -> Raw
-reflectErr (Msg msg) = raw_apply (Var (NS (UN "Msg") ["Reflection", "Language"])) [reflectConstant (Str msg)]
-reflectErr (InternalMsg msg) = raw_apply (Var (NS (UN "InternalMsg") ["Reflection", "Language"])) [reflectConstant (Str msg)]
-reflectErr x = trace ("Couldn't reflect error " ++ show x) raw_apply (Var (NS (UN "Msg") ["Reflection", "Language"])) [reflectConstant (Str $ show x)]
+reflectErr (Msg msg) = raw_apply (Var (NS (UN "Msg") ["Errors", "Reflection", "Language"])) [RConstant (Str msg)]
+reflectErr (InternalMsg msg) = raw_apply (Var (NS (UN "InternalMsg") ["Errors", "Reflection", "Language"])) [RConstant (Str msg)]
+reflectErr x = raw_apply (Var (NS (UN "Msg") ["Errors", "Reflection", "Language"])) [RConstant . Str $ "Default reflection: " ++ show x]
+
+withErrorReflection :: Idris a -> Idris a
+withErrorReflection x = idrisCatch x (\ e -> handle e >>= ierror)
+    where handle :: Err -> Idris Err
+          handle e = do ist <- getIState
+                        let handlers = idris_errorhandlers ist
+                        let reports = map (\n -> RApp (Var n) (reflectErr e)) handlers
+
+                        -- Typecheck error handlers - if this fails, then something else was wrong earlier!
+                        handlers <- case mapM (check (tt_ctxt ist) []) reports of
+                                      Error e -> do formatted <- showErr e
+                                                    ierror . InternalMsg $
+                                                      "Type error during error reflection: " ++ formatted
+                                      OK hs   -> return hs
+
+                        -- Normalize error handler terms to produce the new messages
+                        ctxt <- getContext
+                        let results = map (normalise ctxt []) (map fst handlers)
+
+
+                        errorparts <- mapM reifyReportPart (concat (mapMaybe unList (mapMaybe fromTTMaybe results)))
+                        newMsgs <- mapM renderReportPart errorparts
+                        return . Msg $ concat (intersperse " " newMsgs)
+
+          fromTTMaybe :: Term -> Maybe Term -- WARNING: Assumes the term has type Maybe a
+          fromTTMaybe (App (App (P (DCon _ _) (NS (UN "Just") _) _) ty) tm) = Just tm
+          fromTTMaybe x                                            = Nothing
 
 envTupleType :: Raw
 envTupleType

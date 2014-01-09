@@ -793,6 +793,14 @@ mkApp :: TT n -> [TT n] -> TT n
 mkApp f [] = f
 mkApp f (a:as) = mkApp (App f a) as
 
+unList :: Term -> Maybe [Term]
+unList tm = case unApply tm of
+              (nil, [_]) -> Just []
+              (cons, ([_, x, xs])) ->
+                  do rest <- unList xs
+                     return $ x:rest
+              (f, args) -> Nothing
+
 forget :: TT Name -> Raw
 forget tm = fe [] tm
   where
