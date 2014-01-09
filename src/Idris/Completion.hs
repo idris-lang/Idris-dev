@@ -44,6 +44,7 @@ tacticArgs = [ ("intro", Nothing) -- FIXME syntax for intro (fresh name)
              , ("reflect", Just ExprTArg)
              , ("fill", Just ExprTArg)
              , ("try", Just AltsTArg)
+             , ("induction", Just NameTArg)
              ] ++ map (\x -> (x, Nothing)) [
               "intros", "compute", "trivial", "solve", "attack",
               "state", "term", "undo", "qed", "abandon", ":q"
