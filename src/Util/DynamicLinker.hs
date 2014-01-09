@@ -5,11 +5,12 @@ module Util.DynamicLinker where
 
 #ifdef IDRIS_FFI
 import Foreign.LibFFI
-import Foreign.Ptr (nullPtr, FunPtr, nullFunPtr,castPtrToFunPtr)
+import Foreign.Ptr (Ptr(), nullPtr, FunPtr, nullFunPtr, castPtrToFunPtr)
 import System.Directory
 #ifndef WINDOWS
 import System.Posix.DynamicLinker
 #else
+import qualified Control.Exception as Exception (catch, IOException)
 import System.Win32.DLL
 import System.Win32.Types
 type DL = HMODULE
@@ -63,10 +64,13 @@ tryLoadFn fn (Lib _ h) = do cFn <- dlsym h fn
 tryLoadLib :: String -> IO (Maybe DynamicLib)
 tryLoadLib lib = do exactName <- doesFileExist lib
                     let filename = if exactName then lib else lib ++ "." ++ hostDynamicLibExt
-                    handle <- loadLibrary filename
+                    handle <- Exception.catch (loadLibrary filename) nullPtrOnException
                     if handle == nullPtr
                         then return Nothing
                         else return . Just $ Lib lib handle
+  where nullPtrOnException :: Exception.IOException -> IO DL
+        nullPtrOnException e = return nullPtr
+        -- `show e` will however give broken error message
 
 tryLoadFn :: String -> DynamicLib -> IO (Maybe ForeignFun)
 tryLoadFn fn (Lib _ h) = do cFn <- getProcAddress h fn
