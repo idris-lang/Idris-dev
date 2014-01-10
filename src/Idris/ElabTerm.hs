@@ -1015,7 +1015,7 @@ runTac autoSolve ist tac
     runReflected t = do t' <- reify ist t
                         runTac autoSolve ist t'
 
--- | Prefix a name with the "Reflection.Language" namespace
+-- | Prefix a name with the "Language.Reflection" namespace
 reflm :: String -> Name
 reflm n = NS (UN n) ["Reflection", "Language"]
 
@@ -1354,31 +1354,54 @@ reflectEnv = foldr consToEnvList emptyEnvList
                              [envTupleType]
 
 -- | Reflect an error into the internal datatype of Idris -- TODO
+rawBool :: Bool -> Raw
+rawBool True  = Var (NS (UN "True") ["Bool", "Prelude"])
+rawBool False = Var (NS (UN "False") ["Bool", "Prelude"])
+
+rawNil :: Raw -> Raw
+rawNil ty = raw_apply (Var (NS (UN "Nil") ["List", "Prelude"])) [ty]
+
+rawPairTy :: Raw -> Raw -> Raw
+rawPairTy t1 t2 = raw_apply (Var pairTy) [t1, t2]
+
 reflectErr :: Err -> Raw
-reflectErr (Msg msg) = raw_apply (Var (NS (UN "Msg") ["Errors", "Reflection", "Language"])) [RConstant (Str msg)]
-reflectErr (InternalMsg msg) = raw_apply (Var (NS (UN "InternalMsg") ["Errors", "Reflection", "Language"])) [RConstant (Str msg)]
+reflectErr (Msg msg) = raw_apply (Var $ reflErrName "Msg") [RConstant (Str msg)]
+reflectErr (InternalMsg msg) = raw_apply (Var $ reflErrName "InternalMsg") [RConstant (Str msg)]
+reflectErr (CantUnify b t1 t2 e ctxt i) =
+  raw_apply (Var $ reflErrName "CantUnify")
+            [ rawBool b
+            , reflect t1
+            , reflect t2
+            , reflectErr e
+            , rawNil $ rawPairTy (Var (reflm "TTName")) (Var (reflm "TT")) --FIXME
+            , RConstant (I i)]
 reflectErr x = raw_apply (Var (NS (UN "Msg") ["Errors", "Reflection", "Language"])) [RConstant . Str $ "Default reflection: " ++ show x]
 
 withErrorReflection :: Idris a -> Idris a
 withErrorReflection x = idrisCatch x (\ e -> handle e >>= ierror)
     where handle :: Err -> Idris Err
+          handle e@(ReflectionError _ _)  = do logLvl 3 "Skipping reflection of error reflection result"
+                                               return e -- Don't do meta-reflection of errors
+          handle e@(ReflectionFailed _ _) = do logLvl 3 "Skipping reflection of reflection failure"
+                                               return e
           handle e = do ist <- getIState
+                        logLvl 2 "Starting error reflection"
                         let handlers = idris_errorhandlers ist
+                        logLvl 3 $ "Using reflection handlers " ++ concat (intersperse ", " (map show handlers))
                         let reports = map (\n -> RApp (Var n) (reflectErr e)) handlers
 
                         -- Typecheck error handlers - if this fails, then something else was wrong earlier!
                         handlers <- case mapM (check (tt_ctxt ist) []) reports of
-                                      Error e -> do formatted <- showErr e
-                                                    ierror . InternalMsg $
-                                                      "Type error during error reflection: " ++ formatted
+                                      Error e -> ierror $ ReflectionFailed "Type error while constructing reflected error" e
                                       OK hs   -> return hs
 
                         -- Normalize error handler terms to produce the new messages
                         ctxt <- getContext
-                        let results = map (normalise ctxt []) (map fst handlers) :: [Term]
+                        let results = map (normalise ctxt []) (map fst handlers)
+                        logLvl 3 $ "New error message info: " ++ concat (intersperse " and " (map show results))
 
                         -- For each handler term output, either discard it if it is Nothing or reify it the Haskell equivalent
-                        let errorpartsTT = mapMaybe unList (mapMaybe fromTTMaybe results) :: [[Term]]
+                        let errorpartsTT = mapMaybe unList (mapMaybe fromTTMaybe results)
                         errorparts <- mapM (mapM reifyReportPart) errorpartsTT
 
                         return $ case errorparts of
