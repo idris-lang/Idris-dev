@@ -201,6 +201,7 @@ pshow i (ReflectionError parts orig) = let parts' = map (concat . intersperse " 
                                       showName (Just i) [] False colour n
             showPart (TermPart tm)  = let colour = idris_colourRepl i
                                       in showImp (Just i) False colour (delab i tm)
+            showPart (SubReport rs) = indented . concat . intersperse " " . map showPart $ rs
 pshow i (ReflectionFailed msg err) = "When attempting to perform error reflection, the following internal error occurred:\n" ++
                                      indented (pshow i err) ++
                                      "\nThis is probably a bug. Please consider reporting it at " ++ bugaddr

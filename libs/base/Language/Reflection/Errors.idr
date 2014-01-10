@@ -40,6 +40,7 @@ data Err = Msg String
 data ErrorReportPart = TextPart String
                      | NamePart TTName
                      | TermPart TT
+                     | SubReport (List ErrorReportPart)
 
 
 -- Error reports become functions in List (String, TT) -> Err -> ErrorReport

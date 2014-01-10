@@ -78,6 +78,7 @@ instance Show FC where
 data ErrorReportPart = TextPart String
                      | NamePart Name
                      | TermPart Term
+                     | SubReport [ErrorReportPart]
                        deriving (Show, Eq)
 
 

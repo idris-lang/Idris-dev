@@ -1513,6 +1513,12 @@ reifyReportPart (App (P (DCon _ _) n _) tm)
           show tm ++
           " when reflecting an error"
         OK (tm', _) -> return $ TermPart tm'
+reifyReportPart (App (P (DCon _ _) n _) tm)
+  | n == reflErrName "SubReport" =
+   case unList tm of
+     Just xs -> do subParts <- mapM reifyReportPart xs
+                   return (SubReport subParts)
+     Nothing -> ierror . InternalMsg $ "could not reify subreport " ++ show tm
 reifyReportPart x = ierror . InternalMsg $ "could not reify " ++ show x
 
 envTupleType :: Raw
