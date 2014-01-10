@@ -32,11 +32,12 @@ data Err = Msg String
          | At SourceLocation Err
          | Elaborating String TTName Err
          | ProviderError String
+         | LoadingFailed String Err
 
 -- | Error reports are a list of report parts
-data ErrorReportPart = Message String
-                     | Name TTName
-                     | Term TT
+data ErrorReportPart = TextPart String
+                     | NamePart TTName
+                     | TermPart TT
 
 
 -- Error reports become functions in List (String, TT) -> Err -> ErrorReport

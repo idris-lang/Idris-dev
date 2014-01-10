@@ -73,17 +73,3 @@ getErrColumn :: Err -> Int
 getErrColumn (At (FC _ _ c) _) = c
 getErrColumn _ = 0
 
-data ErrorReportPart = Message String
-                     | Name Name
-                     | Term Term
-                       deriving (Show)
-
-reifyReportPart :: Term -> Idris ErrorReportPart
-reifyReportPart (App (P (DCon _ _) (NS (UN "Message") ["Errors", "Reflection", "Language"]) _) (Constant (Str msg))) =
-    return (Message msg)
-reifyReportPart x = ierror . Msg $ "could not reify " ++ show x
-
-renderReportPart ::  ErrorReportPart -> Idris String
-renderReportPart (Message str) = return str
-renderReportPart (Name n) = return (show n) -- TODO colouring
-renderReportPart (Term t) = return (show t) -- TODO pretty-print and colour

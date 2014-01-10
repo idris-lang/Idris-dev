@@ -1379,12 +1379,36 @@ withErrorReflection x = idrisCatch x (\ e -> handle e >>= ierror)
 
 
                         errorparts <- mapM reifyReportPart (concat (mapMaybe unList (mapMaybe fromTTMaybe results)))
-                        newMsgs <- mapM renderReportPart errorparts
-                        return . Msg $ concat (intersperse " " newMsgs)
+                        return $ ReflectionError errorparts
 
           fromTTMaybe :: Term -> Maybe Term -- WARNING: Assumes the term has type Maybe a
           fromTTMaybe (App (App (P (DCon _ _) (NS (UN "Just") _) _) ty) tm) = Just tm
           fromTTMaybe x                                            = Nothing
+
+reflErrName :: String -> Name
+reflErrName n = NS (UN n) ["Errors", "Reflection", "Language"]
+
+reifyReportPart :: Term -> Idris ErrorReportPart
+reifyReportPart (App (P (DCon _ _) n _) (Constant (Str msg))) | n == reflErrName "TextPart" =
+    return (TextPart msg)
+reifyReportPart (App (P (DCon _ _) n _) ttn)
+  | n == reflErrName "NamePart" =
+    case runElab [] (reifyTTName ttn) (initElaborator NErased initContext Erased) of
+      Error e -> ierror . InternalMsg $
+       "could not reify name term " ++
+       show ttn ++
+       " when reflecting an error"
+      OK (n', _)-> return $ NamePart n'
+reifyReportPart (App (P (DCon _ _) n _) tm)
+  | n == reflErrName "TermPart" =
+   do ist <- getIState
+      case runElab [] (reifyTT tm) (initElaborator NErased initContext Erased) of
+        Error e -> ierror . InternalMsg $
+          "could not reify reflected term " ++
+          show tm ++
+          " when reflecting an error"
+        OK (tm', _) -> return $ TermPart tm'
+reifyReportPart x = ierror . InternalMsg $ "could not reify " ++ show x
 
 envTupleType :: Raw
 envTupleType

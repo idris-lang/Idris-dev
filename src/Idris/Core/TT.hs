@@ -74,37 +74,50 @@ instance Sized FC where
 instance Show FC where
     show (FC f l c) = f ++ ":" ++ show l ++ ":" ++ show c
 
+-- | Used for error reflection
+data ErrorReportPart = TextPart String
+                     | NamePart Name
+                     | TermPart Term
+                       deriving (Show, Eq)
+
+
+-- Please remember to keep Err synchronised with
+-- Language.Reflection.Errors.Err in the stdlib!
+
+-- | Idris errors. Used as exceptions in the compiler, but reported to users
+-- if they reach the top level.
 data Err = Msg String
-         | InternalMsg String
-         | CantUnify Bool Term Term Err [(Name, Type)] Int
-              -- Int is 'score' - how much we did unify
-              -- Bool indicates recoverability, True indicates more info may make
-              -- unification succeed
-         | InfiniteUnify Name Term [(Name, Type)]
-         | CantConvert Term Term [(Name, Type)]
-         | UnifyScope Name Name Term [(Name, Type)]
-         | CantInferType String
-         | NonFunctionType Term Term
-         | NotEquality Term Term 
-         | TooManyArguments Name
-         | CantIntroduce Term
-         | NoSuchVariable Name
-         | NoTypeDecl Name
-         | NotInjective Term Term Term
-         | CantResolve Term
-         | CantResolveAlts [String]
-         | IncompleteTerm Term
-         | UniverseError
-         | ProgramLineComment
-         | Inaccessible Name
-         | NonCollapsiblePostulate Name
-         | AlreadyDefined Name
-         | ProofSearchFail Err
-         | NoRewriting Term
-         | At FC Err
-         | Elaborating String Name Err
-         | ProviderError String
-         | LoadingFailed String Err
+          | InternalMsg String
+          | CantUnify Bool Term Term Err [(Name, Type)] Int
+               -- Int is 'score' - how much we did unify
+               -- Bool indicates recoverability, True indicates more info may make
+               -- unification succeed
+          | InfiniteUnify Name Term [(Name, Type)]
+          | CantConvert Term Term [(Name, Type)]
+          | UnifyScope Name Name Term [(Name, Type)]
+          | CantInferType String
+          | NonFunctionType Term Term
+          | NotEquality Term Term
+          | TooManyArguments Name
+          | CantIntroduce Term
+          | NoSuchVariable Name
+          | NoTypeDecl Name
+          | NotInjective Term Term Term
+          | CantResolve Term
+          | CantResolveAlts [String]
+          | IncompleteTerm Term
+          | UniverseError
+          | ProgramLineComment
+          | Inaccessible Name
+          | NonCollapsiblePostulate Name
+          | AlreadyDefined Name
+          | ProofSearchFail Err
+          | NoRewriting Term
+          | At FC Err
+          | Elaborating String Name Err
+          | ProviderError String
+          | LoadingFailed String Err
+          | ReflectionError [ErrorReportPart]
   deriving Eq
 {-!
 deriving instance NFData Err
