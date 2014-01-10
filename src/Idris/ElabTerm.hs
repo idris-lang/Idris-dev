@@ -1361,8 +1361,23 @@ rawBool False = Var (NS (UN "False") ["Bool", "Prelude"])
 rawNil :: Raw -> Raw
 rawNil ty = raw_apply (Var (NS (UN "Nil") ["List", "Prelude"])) [ty]
 
+rawCons :: Raw -> Raw -> Raw -> Raw
+rawCons ty hd tl = raw_apply (Var (NS (UN "::") ["List", "Prelude"])) [ty, hd, tl]
+
+rawList :: Raw -> [Raw] -> Raw
+rawList ty = foldr (rawCons ty) (rawNil ty)
+
 rawPairTy :: Raw -> Raw -> Raw
 rawPairTy t1 t2 = raw_apply (Var pairTy) [t1, t2]
+
+rawPair :: (Raw, Raw) -> (Raw, Raw) -> Raw
+rawPair (a, b) (x, y) = raw_apply (Var pairCon) [a, b, x, y]
+
+reflectCtxt :: [(Name, Type)] -> Raw
+reflectCtxt ctxt = rawList (rawPairTy  (Var $ reflm "TTName") (Var $ reflm "TT"))
+                           (map (\ (n, t) -> (rawPair (Var $ reflm "TTName", Var $ reflm "TT")
+                                                      (reflectName n, reflect t)))
+                                ctxt)
 
 reflectErr :: Err -> Raw
 reflectErr (Msg msg) = raw_apply (Var $ reflErrName "Msg") [RConstant (Str msg)]
@@ -1373,8 +1388,71 @@ reflectErr (CantUnify b t1 t2 e ctxt i) =
             , reflect t1
             , reflect t2
             , reflectErr e
-            , rawNil $ rawPairTy (Var (reflm "TTName")) (Var (reflm "TT")) --FIXME
+            , reflectCtxt ctxt
             , RConstant (I i)]
+reflectErr (InfiniteUnify n tm ctxt) =
+  raw_apply (Var $ reflErrName "InfiniteUnify")
+            [ reflectName n
+            , reflect tm
+            , reflectCtxt ctxt
+            ]
+reflectErr (CantConvert t t' ctxt) =
+  raw_apply (Var $ reflErrName "CantConvert")
+            [ reflect t
+            , reflect t'
+            , reflectCtxt ctxt
+            ]
+reflectErr (UnifyScope n n' t ctxt) =
+  raw_apply (Var $ reflErrName "UnifyScope")
+            [ reflectName n
+            , reflectName n'
+            , reflect t
+            , reflectCtxt ctxt
+            ]
+reflectErr (CantInferType str) =
+  raw_apply (Var $ reflErrName "CantInferType") [RConstant (Str str)]
+reflectErr (NonFunctionType t t') =
+  raw_apply (Var $ reflErrName "NonFunctionType") [reflect t, reflect t']
+reflectErr (NotEquality t t') =
+  raw_apply (Var $ reflErrName "NotEquality") [reflect t, reflect t']
+reflectErr (TooManyArguments n) = raw_apply (Var $ reflErrName "TooManyArguments") [reflectName n]
+reflectErr (CantIntroduce t) = raw_apply (Var $ reflErrName "CantIntroduce") [reflect t]
+reflectErr (NoSuchVariable n) = raw_apply (Var $ reflErrName "NoSuchVariable") [reflectName n]
+reflectErr (NoTypeDecl n) = raw_apply (Var $ reflErrName "NoTypeDecl") [reflectName n]
+reflectErr (NotInjective t1 t2 t3) =
+  raw_apply (Var $ reflErrName "NotInjective")
+            [ reflect t1
+            , reflect t2
+            , reflect t3
+            ]
+reflectErr (CantResolve t) = raw_apply (Var $ reflErrName "CantResolve") [reflect t]
+reflectErr (CantResolveAlts ss) =
+  raw_apply (Var $ reflErrName "CantResolve")
+            [rawList (Var $ (UN "String")) (map (RConstant . Str) ss)]
+reflectErr (IncompleteTerm t) = raw_apply (Var $ reflErrName "IncompleteTerm") [reflect t]
+reflectErr UniverseError = Var $ reflErrName "UniverseError"
+reflectErr ProgramLineComment = Var $ reflErrName "ProgramLineComment"
+reflectErr (Inaccessible n) = raw_apply (Var $ reflErrName "Inaccessible") [reflectName n]
+reflectErr (NonCollapsiblePostulate n) = raw_apply (Var $ reflErrName "NonCollabsiblePostulate") [reflectName n]
+reflectErr (AlreadyDefined n) = raw_apply (Var $ reflErrName "AlreadyDefined") [reflectName n]
+reflectErr (ProofSearchFail e) = raw_apply (Var $ reflErrName "ProofSearchFail") [reflectErr e]
+reflectErr (NoRewriting tm) = raw_apply (Var $ reflErrName "NoRewriting") [reflect tm]
+reflectErr (At fc err) = raw_apply (Var $ reflErrName "At") [reflectFC fc, reflectErr err]
+           where reflectFC (FC source line col) = raw_apply (Var $ reflErrName "FileLoc")
+                                                            [ RConstant (Str source)
+                                                            , RConstant (I line)
+                                                            , RConstant (I col)
+                                                            ]
+reflectErr (Elaborating str n e) =
+  raw_apply (Var $ reflErrName "Elaborating")
+            [ RConstant (Str str)
+            , reflectName n
+            , reflectErr e
+            ]
+reflectErr (ProviderError str) =
+  raw_apply (Var $ reflErrName "ProviderError") [RConstant (Str str)]
+reflectErr (LoadingFailed str err) =
+  raw_apply (Var $ reflErrName "LoadingFailed") [RConstant (Str str)]
 reflectErr x = raw_apply (Var (NS (UN "Msg") ["Errors", "Reflection", "Language"])) [RConstant . Str $ "Default reflection: " ++ show x]
 
 withErrorReflection :: Idris a -> Idris a

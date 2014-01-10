@@ -2,7 +2,7 @@ module Language.Reflection.Errors
 
 import Language.Reflection
 
-data SourceLocation = FileLoc String Int
+data SourceLocation = FileLoc String Int Int
 
 data Err = Msg String
          | InternalMsg String
@@ -15,13 +15,15 @@ data Err = Msg String
          | UnifyScope TTName TTName TT (List (TTName, TT))
          | CantInferType String
          | NonFunctionType TT TT
+         | NotEquality TT TT
+         | TooManyArguments TTName
          | CantIntroduce TT
          | NoSuchVariable TTName
          | NoTypeDecl TTName
          | NotInjective TT TT TT
          | CantResolve TT
          | CantResolveAlts (List String)
-         | IncompleteTT TT
+         | IncompleteTerm TT
          | UniverseError
          | ProgramLineComment
          | Inaccessible TTName
