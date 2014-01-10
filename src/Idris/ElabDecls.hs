@@ -122,7 +122,7 @@ elabType' norm info syn doc fc opts n ty' = {- let ty' = piBind (params info) ty
                -- handler : List (TTName, TT) -> Err -> ErrorReport - for now no ctxt
                if tyIsHandler nty'
                  then do i <- getIState
-                         putIState $ i { idris_errorhandlers = n : idris_errorhandlers i }
+                         putIState $ i { idris_errorhandlers = idris_errorhandlers i ++ [n] }
                  else ifail $ "The type " ++ show nty' ++ " is invalid for an error handler"
              else ifail "Error handlers can only be defined when the ErrorReflection language extension is enabled."
          when corec $ do setAccessibility n Frozen

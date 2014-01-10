@@ -1375,11 +1375,15 @@ withErrorReflection x = idrisCatch x (\ e -> handle e >>= ierror)
 
                         -- Normalize error handler terms to produce the new messages
                         ctxt <- getContext
-                        let results = map (normalise ctxt []) (map fst handlers)
+                        let results = map (normalise ctxt []) (map fst handlers) :: [Term]
 
+                        -- For each handler term output, either discard it if it is Nothing or reify it the Haskell equivalent
+                        let errorpartsTT = mapMaybe unList (mapMaybe fromTTMaybe results) :: [[Term]]
+                        errorparts <- mapM (mapM reifyReportPart) errorpartsTT
 
-                        errorparts <- mapM reifyReportPart (concat (mapMaybe unList (mapMaybe fromTTMaybe results)))
-                        return $ ReflectionError errorparts
+                        return $ case errorparts of
+                                   []    -> e
+                                   parts -> ReflectionError errorparts e
 
           fromTTMaybe :: Term -> Maybe Term -- WARNING: Assumes the term has type Maybe a
           fromTTMaybe (App (App (P (DCon _ _) (NS (UN "Just") _) _) ty) tm) = Just tm

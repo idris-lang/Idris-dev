@@ -117,7 +117,7 @@ data Err = Msg String
           | Elaborating String Name Err
           | ProviderError String
           | LoadingFailed String Err
-          | ReflectionError [ErrorReportPart]
+          | ReflectionError [[ErrorReportPart]] Err
   deriving Eq
 {-!
 deriving instance NFData Err

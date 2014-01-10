@@ -192,8 +192,9 @@ pshow i (Elaborating s n e) = "When elaborating " ++ s ++
                                showqual i n ++ ":\n" ++ pshow i e
 pshow i (ProviderError msg) = "Type provider error: " ++ msg
 pshow i (LoadingFailed fn e) = "Loading " ++ fn ++ " failed: " ++ pshow i e
-pshow i (ReflectionError parts) = let parts' = map showPart parts in
-                                  concat (intersperse " " parts')
+pshow i (ReflectionError parts orig) = let parts' = map (concat . intersperse " " . map showPart) parts in
+                                       concat (intersperse "\n" parts') ++
+                                       "\nOriginal error:\n" ++ indented (pshow i orig)
       where showPart :: ErrorReportPart -> String
             showPart (TextPart str) = str
             showPart (NamePart n)   = let colour = idris_colourRepl i in
