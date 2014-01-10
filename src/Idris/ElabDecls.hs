@@ -2001,7 +2001,7 @@ elabDecls info ds = do mapM_ (elabDecl EAll info) ds
 
 elabDecl :: ElabWhat -> ElabInfo -> PDecl -> Idris ()
 elabDecl what info d
-    = idrisCatch (elabDecl' what info d) (setAndReport)
+    = idrisCatch (withErrorReflection $ elabDecl' what info d) (setAndReport)
 
 elabDecl' _ info (PFix _ _ _)
      = return () -- nothing to elaborate
