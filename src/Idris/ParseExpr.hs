@@ -1015,8 +1015,8 @@ VerbatimString_t ::=
 @
  -}
 verbatimStringLiteral :: MonadicParsing m => m String
-verbatimStringLiteral = do string "\"\"\""
-                           manyTill anyChar $ try (string "\"\"\"")
+verbatimStringLiteral = token $ do string "\"\"\""
+                                   manyTill anyChar $ try (string "\"\"\"")
 
 {- | Parses a static modifier
 
