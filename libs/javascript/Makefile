@@ -1,14 +1,14 @@
 IDRIS := idris
 
-build: .PHONY
+build:
 	$(IDRIS) --build javascript.ipkg
 
 install:
 	$(IDRIS) --install javascript.ipkg
 
-clean: .PHONY
+clean:
 	$(IDRIS) --clean javascript.ipkg
 
 rebuild: clean build
 
-.PHONY:
+.PHONY: build install clean rebuild
