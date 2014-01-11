@@ -980,6 +980,7 @@ Constant ::=
   | 'Bits64x2'
   | Float_t
   | Natural_t
+  | VerbatimString_t
   | String_t
   | Char_t
   ;
@@ -1002,9 +1003,20 @@ constant =  do reserved "Integer";return (AType (ATInt ITBig))
         <|> do reserved "Bits64x2"; return (AType (ATInt (ITVec IT64 2)))
         <|> try (do f <- float;   return $ Fl f)
         <|> try (do i <- natural; return $ BI i)
+        <|> try (do s <- verbatimStringLiteral; return $ Str s)
         <|> try (do s <- stringLiteral;  return $ Str s)
         <|> try (do c <- charLiteral;   return $ Ch c)
         <?> "constant or literal"
+
+{- | Parses a verbatim multi-line string literal (triple-quoted)
+@
+VerbatimString_t ::=
+  '"""' ~'"""' '"""'
+@
+ -}
+verbatimStringLiteral :: MonadicParsing m => m String
+verbatimStringLiteral = do string "\"\"\""
+                           manyTill anyChar $ try (string "\"\"\"")
 
 {- | Parses a static modifier
 
