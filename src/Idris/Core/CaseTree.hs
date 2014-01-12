@@ -183,9 +183,10 @@ data Phase = CompileTime | RunTime
 -- Work Right to Left
 
 simpleCase :: Bool -> Bool -> Bool ->
-              Phase -> FC -> [([Name], Term, Term)] ->
+              Phase -> FC -> [Type] ->
+              [([Name], Term, Term)] ->
               TC CaseDef
-simpleCase tc cover reflect phase fc cs
+simpleCase tc cover reflect phase fc argtys cs
       = sc' tc cover phase fc (filter (\(_, _, r) ->
                                           case r of
                                             Impossible -> False
@@ -205,7 +206,8 @@ simpleCase tc cover reflect phase fc cs
                         ns         = take numargs args
                         (ns', ps') = order ns pats
                         (tree, st) = runState
-                                         (match ns' ps' (defaultCase cover)) ([], numargs, [])
+                                         (match ns' ps' (defaultCase cover)) 
+                                         ([], numargs, [])
                         t          = CaseDef ns (prune proj (depatt ns' tree)) (fstT st) in
                         if proj then return (stripLambdas t) 
                                 else if checkSameTypes (lstT st) tree
@@ -255,6 +257,7 @@ checkSameTypes _ _ = True
 -- at a specific constructor for a polymorphic argument. I *think* this
 -- is sufficient, but if it turns out not to be, fix it!
 isType n t | (P (TCon _ _) _ _, _) <- unApply t = True
+isType n t | (P Ref _ _, _) <- unApply t = True
 isType n t = False
 
 isConstType (I _) (AType (ATInt ITNative)) = True 

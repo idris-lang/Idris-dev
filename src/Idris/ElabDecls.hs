@@ -906,7 +906,7 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
 
            let optpdef = map debind optpats -- \$ map (simple_lhs (tt_ctxt ist)) optpats
            tree@(CaseDef scargs sc _) <- tclift $
-                   simpleCase tcase False reflect CompileTime fc pdef
+                   simpleCase tcase False reflect CompileTime fc atys pdef
            cov <- coverage
            pmissing <-
                    if cov
@@ -954,7 +954,7 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
            let knowncovering = (pcover && cov) || AssertTotal `elem` opts
 
            tree' <- tclift $ simpleCase tcase knowncovering reflect
-                                        RunTime fc pdef'
+                                        RunTime fc atys pdef'
            logLvl 3 (show tree)
            logLvl 3 $ "Optimised: " ++ show tree'
            ctxt <- getContext
@@ -967,6 +967,7 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
                                                        tcase knowncovering
                                                        reflect
                                                        (AssertTotal `elem` opts)
+                                                       atys
                                                        pats
                                                        pdef pdef pdef_inl pdef' ty)
                           addIBC (IBCDef n)
@@ -976,7 +977,7 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
                           when (tot /= Unchecked) $ addIBC (IBCTotal n tot)
                           i <- getIState
                           case lookupDef n (tt_ctxt i) of
-                              (CaseOp _ _ _ _ cd : _) ->
+                              (CaseOp _ _ _ _ _ cd : _) ->
                                 let (scargs, sc) = cases_compiletime cd
                                     (scargs', sc') = cases_runtime cd in
                                   do let calls = findCalls sc' scargs'

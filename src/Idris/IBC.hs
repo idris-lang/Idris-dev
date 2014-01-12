@@ -23,7 +23,7 @@ import Debug.Trace
 import Paths_idris
 
 ibcVersion :: Word8
-ibcVersion = 49
+ibcVersion = 50
 
 data IBCFile = IBCFile { ver :: Word8,
                          sourcefile :: FilePath,
@@ -801,12 +801,13 @@ instance Binary Def where
                                    put x2
                 -- all primitives just get added at the start, don't write
                 Operator x1 x2 x3 -> do return ()
-                CaseOp x1 x2 x3 x3a x4 -> do putWord8 3
-                                             put x1
-                                             put x2
-                                             put x3
-                                             -- no x3a
-                                             put x4
+                CaseOp x1 x2 x2a x3 x3a x4 -> do putWord8 3
+                                                 put x1
+                                                 put x2
+                                                 put x2a
+                                                 put x3
+                                                 -- no x3a
+                                                 put x4
         get
           = do i <- getWord8
                case i of
@@ -820,9 +821,10 @@ instance Binary Def where
                    3 -> do x1 <- get
                            x2 <- get
                            x3 <- get
-                           -- x3 <- get always []
                            x4 <- get
-                           return (CaseOp x1 x2 x3 [] x4)
+                           -- x3 <- get always []
+                           x5 <- get
+                           return (CaseOp x1 x2 x3 x4 [] x5)
                    _ -> error "Corrupted binary data for Def"
 
 instance Binary Accessibility where
