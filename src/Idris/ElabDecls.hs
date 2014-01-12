@@ -1405,7 +1405,7 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in withblock)
         -- Build the LHS as an "Infer", and pull out its type and
         -- pattern bindings
         i <- getIState
-        let lhs = addImplPat i lhs_in
+        let lhs = addImplPat i (stripLinear i lhs_in)
         logLvl 5 ("LHS: " ++ showImp Nothing True False lhs)
         ((lhs', dlhs, []), _) <-
             tclift $ elaborate ctxt (MN 0 "patLHS") infP []
