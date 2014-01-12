@@ -195,6 +195,7 @@ simpleCase tc cover reflect phase fc cs
                  = return $ CaseDef [] (UnmatchedCase "No pattern clauses") []
  sc' tc cover phase fc cs
       = let proj       = phase == RunTime
+            vnames     = fstT (head cs)
             pats       = map (\ (avs, l, r) ->
                                    (avs, toPats reflect tc l, (l, r))) cs
             chkPats    = mapM chkAccessible pats in
@@ -463,7 +464,9 @@ argsToAlt rs@((r, m) : rest)
          return (newArgs, addRs rs)
   where
     getNewVars [] = return []
-    getNewVars ((PV n t) : ns) = do v <- getVar "e"
+    getNewVars ((PV n t) : ns) = do v <- getVar "e" 
+                                    (cs, i, ntys) <- get
+                                    put (cs, i, (v, t) : ntys)
                                     nsv <- getNewVars ns
                                     return (v : nsv)
     getNewVars (PAny : ns) = do v <- getVar "i"
