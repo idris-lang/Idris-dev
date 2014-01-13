@@ -2,7 +2,10 @@ module Language.Reflection.Errors
 
 import Language.Reflection
 
-data SourceLocation = FileLoc String Int Int
+record SourceLocation : Type where
+  FileLoc : (filename : String) -> (line : Int) -> (col : Int) -> SourceLocation
+
+%name SourceLocation loc
 
 data Err = Msg String
          | InternalMsg String
@@ -36,12 +39,14 @@ data Err = Msg String
          | ProviderError String
          | LoadingFailed String Err
 
+%name Err err, e
+
 -- | Error reports are a list of report parts
 data ErrorReportPart = TextPart String
                      | NamePart TTName
                      | TermPart TT
                      | SubReport (List ErrorReportPart)
-
+%name ErrorReportPart part, p
 
 -- Error reports become functions in List (String, TT) -> Err -> ErrorReport
 ErrorHandler : Type
