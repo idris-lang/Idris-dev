@@ -184,24 +184,26 @@ unify' ctxt env topx topy =
                          " in " ++ show env ++
                          "\nHoles: " ++ show (holes ps) ++ "\n") $
                      lift $ unify ctxt env topx topy dont (holes ps)
+      let notu = filter (\ (n, t) -> case t of
+                                        P _ _ _ -> False
+                                        _ -> n `elem` dont) u
       traceWhen (unifylog ps)
             ("Unified " ++ show (topx, topy) ++ " without " ++ show dont ++
              "\nSolved: " ++ show u ++ "\nNew problems: " ++ qshow fails
+             ++ "\nNot unified:\n" ++ show (notunified ps) 
              ++ "\nCurrent problems:\n" ++ qshow (problems ps)
 --              ++ show (pterm ps)
              ++ "\n----------") $
-       case fails of
---            [] -> return u
-           err ->
-               do ps <- get
-                  let (h, ns) = unified ps
-                  let (ns', probs') = updateProblems (context ps) (u ++ ns)
-                                                     (err ++ problems ps)
-                                                     (injective ps)
-                                                     (holes ps)
-                  put (ps { problems = probs',
-                            unified = (h, ns') })
-                  return u
+        do ps <- get
+           let (h, ns) = unified ps
+           let (ns', probs') = updateProblems (context ps) (u ++ ns)
+                                              (fails ++ problems ps)
+                                              (injective ps)
+                                              (holes ps)
+           put (ps { problems = probs',
+                     unified = (h, ns'),
+                     notunified = notu ++ notunified ps })
+           return u
 
 getName :: Monad m => String -> StateT TState m Name
 getName tag = do ps <- get
@@ -760,6 +762,11 @@ solveInProblems x val ((l, r, env, err) : ps)
    = ((instantiate val (pToV x l), instantiate val (pToV x r),
        updateEnv [(x, val)] env, err) : solveInProblems x val ps)
 
+updateNotunified ns nu = up nu where
+  up [] = []
+  up ((n, t) : ns) = let t' = updateSolved ns t in
+                         ((n, t') : up ns)
+
 updateProblems ctxt ns ps inj holes = up ns ps where
   up ns [] = (ns, [])
   up ns ((x, y, env, err) : ps) =
@@ -809,6 +816,7 @@ processTactic EndUnify ps
           return (ps { pterm = tm',
                        unified = (h, []),
                        problems = probs',
+                       notunified = updateNotunified ns (notunified ps),
                        holes = holes ps \\ map fst ns'' }, "")
 processTactic (Reorder n) ps
     = do ps' <- execStateT (tactic (Just n) reorder_claims) ps
@@ -823,6 +831,7 @@ processTactic UnifyProblems ps
           pterm' = updateSolved ns' (pterm ps) in
       return (ps { pterm = pterm', solved = Nothing, problems = probs',
                    previous = Just ps, plog = "",
+                   notunified = updateNotunified ns' (notunified ps),
                    holes = holes ps \\ (map fst ns') }, plog ps)
 processTactic MatchProblems ps
     = let (ns', probs') = matchProblems (context ps)
@@ -850,6 +859,7 @@ processTactic t ps
                      return (ps' { pterm = pterm'',
                                    solved = Nothing,
                                    problems = probs',
+                                   notunified = updateNotunified ns' (notunified ps'),
                                    previous = Just ps, plog = "",
                                    holes = holes ps' \\ (map fst ns')}, plog ps')
 

@@ -35,20 +35,20 @@ match_unify :: Context -> Env -> TT Name -> TT Name -> [Name] -> [Name] ->
                TC [(Name, TT Name)]
 match_unify ctxt env topx topy dont holes =
      case runStateT (un [] topx topy) (UI 0 []) of
-        OK (v, UI _ []) -> return (filter notTrivial v)
+        OK (v, UI _ []) -> return (trimSolutions v)
         res ->
                let topxn = normalise ctxt env topx
                    topyn = normalise ctxt env topy in
                      case runStateT (un [] topxn topyn)
         	  	        (UI 0 []) of
                        OK (v, UI _ fails) ->
-                            return (filter notTrivial v)
+                            return (trimSolutions v)
                        Error e ->
                         -- just normalise the term we're matching against
                          case runStateT (un [] topxn topy)
         	  	          (UI 0 []) of
                            OK (v, UI _ fails) ->
-                              return (filter notTrivial v)
+                              return (trimSolutions v)
                            _ -> tfail e
   where
     un names (P _ x _) tm
@@ -128,9 +128,17 @@ match_unify ctxt env topx topy dont holes =
       where inst [] tm = tm
             inst ((n, _) : ns) tm = inst ns (substV (P Bound n Erased) tm)
 
-notTrivial (x, P _ x' _) = x /= x'
-notTrivial _ = True
-
+trimSolutions ns = dropPairs ns
+  where dropPairs [] = []
+        dropPairs (n@(x, P _ x' _) : ns)
+          | x == x' = dropPairs ns
+          | otherwise
+            = n : dropPairs 
+                    (filter (\t -> case t of
+                                      (n, P _ n' _) -> not (n == x' && n' == x)
+                                      _ -> True) ns)
+        dropPairs (n : ns) = n : dropPairs ns
+            
 expandLets env (x, tm) = (x, doSubst (reverse env) tm)
   where
     doSubst [] tm = tm
@@ -146,7 +154,7 @@ unify ctxt env topx topy dont holes =
 --      trace ("Unifying " ++ show (topx, topy)) $
              -- don't bother if topx and topy are different at the head
       case runStateT (un False [] topx topy) (UI 0 []) of
-        OK (v, UI _ []) -> return (filter notTrivial v,
+        OK (v, UI _ []) -> return (trimSolutions v,
                                    [])
         res ->
                let topxn = normalise ctxt env topx
@@ -155,7 +163,7 @@ unify ctxt env topx topy dont holes =
                      case runStateT (un False [] topxn topyn)
         	  	        (UI 0 []) of
                        OK (v, UI _ fails) ->
-                            return (filter notTrivial v, reverse fails)
+                            return (trimSolutions v, reverse fails)
 --         Error e@(CantUnify False _ _ _ _ _)  -> tfail e
         	       Error e -> tfail e
   where

@@ -188,9 +188,9 @@ doExec env ctxt p@(P Ref n ty) =
          [Function _ tm] -> doExec env ctxt tm
          [TyDecl _ _] -> return (EP Ref n EErased) -- abstract def
          [Operator tp arity op] -> return (EP Ref n EErased) -- will be special-cased later
-         [CaseOp _ _ _ _ (CaseDefs _ ([], STerm tm) _ _)] -> -- nullary fun
+         [CaseOp _ _ _ _ _ (CaseDefs _ ([], STerm tm) _ _)] -> -- nullary fun
              doExec env ctxt tm
-         [CaseOp _ _ _ _ (CaseDefs _ (ns, sc) _ _)] -> return (EP Ref n EErased)
+         [CaseOp _ _ _ _ _ (CaseDefs _ (ns, sc) _ _)] -> return (EP Ref n EErased)
          [] -> execFail $ "Could not find " ++ show n ++ " in definitions."
          thing -> trace (take 200 $ "got to " ++ show thing ++ " lookup up " ++ show n) $ undefined
 doExec env ctxt p@(P Bound n ty) =
@@ -328,10 +328,10 @@ execApp' env ctxt f@(EP _ n _) args =
                                         execApp' env ctxt r (drop arity args)
                          Nothing -> return (mkEApp f args)
                else return (mkEApp f args)
-         [CaseOp _ _ _ _ (CaseDefs _ ([], STerm tm) _ _)] -> -- nullary fun
+         [CaseOp _ _ _ _ _ (CaseDefs _ ([], STerm tm) _ _)] -> -- nullary fun
              do rhs <- doExec env ctxt tm
                 execApp' env ctxt rhs args
-         [CaseOp _ _ _ _ (CaseDefs _ (ns, sc) _ _)] ->
+         [CaseOp _ _ _ _ _ (CaseDefs _ (ns, sc) _ _)] ->
              do res <- execCase env ctxt ns sc args
                 return $ fromMaybe (mkEApp f args) res
          thing -> return $ mkEApp f args

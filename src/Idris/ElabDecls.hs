@@ -74,7 +74,7 @@ elabType' norm info syn doc fc opts n ty' = {- let ty' = piBind (params info) ty
          logLvl 2 $ show n ++ " type " ++ showImp Nothing True False ty
          ((tyT, defer, is), log) <-
                tclift $ elaborate ctxt n (TType (UVal 0)) []
-                        (errAt "type of " n (erun fc (build i info False n ty)))
+                        (errAt "type of " n (erun fc (build i info False [] n ty)))
          ds <- checkDef fc defer
          let ds' = map (\(n, (i, top, t)) -> (n, (i, top, t, True))) ds
          addDeferred ds'
@@ -182,7 +182,7 @@ elabData info syn doc fc opts (PLaterdecl n t_in)
          t_in <- implicit syn n t_in
          let t = addImpl i t_in
          ((t', defer, is), log) <- tclift $ elaborate ctxt n (TType (UVal 0)) []
-                                            (erun fc (build i info False n t))
+                                            (erun fc (build i info False [] n t))
          def' <- checkDef fc defer
          let def'' = map (\(n, (i, top, t)) -> (n, (i, top, t, True))) def'
          addDeferredTyCon def''
@@ -201,7 +201,7 @@ elabData info syn doc fc opts (PDatadecl n t_in dcons)
          let t = addImpl i t_in
          ((t', defer, is), log) <-
              tclift $ elaborate ctxt n (TType (UVal 0)) []
-                  (errAt "data declaration " n (erun fc (build i info False n t)))
+                  (errAt "data declaration " n (erun fc (build i info False [] n t)))
          def' <- checkDef fc defer
          let def'' = map (\(n, (i, top, t)) -> (n, (i, top, t, True))) def'
          -- if n is defined already, make sure it is just a type declaration
@@ -659,7 +659,7 @@ elabTransform info fc safe lhs_in rhs_in
          let lhs = addImplPat i lhs_in
          ((lhs', dlhs, []), _) <-
               tclift $ elaborate ctxt (MN 0 "transLHS") infP []
-                       (erun fc (buildTC i info True False (UN "transform")
+                       (erun fc (buildTC i info True [] (UN "transform")
                                    (infTerm lhs)))
          let lhs_tm = orderPats (getInferTerm lhs')
          let lhs_ty = getInferType lhs'
@@ -671,7 +671,7 @@ elabTransform info fc safe lhs_in rhs_in
          ((rhs', defer), _) <-
               tclift $ elaborate ctxt (MN 0 "transRHS") clhs_ty []
                        (do pbinds lhs_tm
-                           erun fc (build i info False (UN "transform") rhs)
+                           erun fc (build i info False [] (UN "transform") rhs)
                            erun fc $ psolve lhs_tm
                            tt <- get_term
                            let (tm, ds) = runState (collectDeferred Nothing tt) []
@@ -805,7 +805,7 @@ elabCon info syn tn codata (doc, n, t_in, fc)
          logLvl 2 $ show fc ++ ":Constructor " ++ show n ++ " : " ++ showImp Nothing True False t
          ((t', defer, is), log) <-
               tclift $ elaborate ctxt n (TType (UVal 0)) []
-                       (errAt "constructor " n (erun fc (build i info False n t)))
+                       (errAt "constructor " n (erun fc (build i info False [] n t)))
          logLvl 2 $ "Rechecking " ++ show t'
          def' <- checkDef fc defer
          let def'' = map (\(n, (i, top, t)) -> (n, (i, top, t, True))) def'
@@ -846,6 +846,7 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
                     -- question: CAFs in where blocks?
                     tclift $ tfail $ At fc (NoTypeDecl n)
               [ty] -> return ty
+           let atys = map snd (getArgTys fty)
            pats_in <- mapM (elabClause info opts)
                            (zip [0..] cs)
            logLvl 3 $ "Elaborated patterns:\n" ++ show pats_in
@@ -928,7 +929,7 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
 
            let optpdef = map debind optpats -- \$ map (simple_lhs (tt_ctxt ist)) optpats
            tree@(CaseDef scargs sc _) <- tclift $
-                   simpleCase tcase False reflect CompileTime fc pdef
+                   simpleCase tcase False reflect CompileTime fc atys pdef
            cov <- coverage
            pmissing <-
                    if cov
@@ -976,7 +977,7 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
            let knowncovering = (pcover && cov) || AssertTotal `elem` opts
 
            tree' <- tclift $ simpleCase tcase knowncovering reflect
-                                        RunTime fc pdef'
+                                        RunTime fc atys pdef'
            logLvl 3 (show tree)
            logLvl 3 $ "Optimised: " ++ show tree'
            ctxt <- getContext
@@ -989,6 +990,7 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
                                                        tcase knowncovering
                                                        reflect
                                                        (AssertTotal `elem` opts)
+                                                       atys
                                                        pats
                                                        pdef pdef pdef_inl pdef' ty)
                           addIBC (IBCDef n)
@@ -998,7 +1000,7 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
                           when (tot /= Unchecked) $ addIBC (IBCTotal n tot)
                           i <- getIState
                           case lookupDef n (tt_ctxt i) of
-                              (CaseOp _ _ _ _ cd : _) ->
+                              (CaseOp _ _ _ _ _ cd : _) ->
                                 let (scargs, sc) = cases_compiletime cd
                                     (scargs', sc') = cases_runtime cd in
                                   do let calls = findCalls sc' scargs'
@@ -1167,7 +1169,7 @@ elabValBind info aspat tm_in
 --             tctry (elaborate ctxt (MN 0 "val") (TType (UVal 0)) []
 --                        (build i info aspat (MN 0 "val") tm))
                 tclift (elaborate ctxt (MN 0 "val") infP []
-                        (build i info aspat (MN 0 "val") (infTerm tm)))
+                        (build i info aspat [Reflection] (MN 0 "val") (infTerm tm)))
         let vtm = orderPats (getInferTerm tm')
 
         def' <- checkDef (fileFC "(input)") defer
@@ -1198,7 +1200,7 @@ checkPossible info fc tcgen fname lhs_in
         let lhs = addImpl i lhs_in
         -- if the LHS type checks, it is possible
         case elaborate ctxt (MN 0 "patLHS") infP []
-                            (erun fc (buildTC i info True tcgen fname (infTerm lhs))) of
+                            (erun fc (buildTC i info True [] fname (infTerm lhs))) of
             OK ((lhs', _, _), _) ->
                do let lhs_tm = orderPats (getInferTerm lhs')
                   case recheck ctxt [] (forget lhs_tm) lhs_tm of
@@ -1254,7 +1256,7 @@ elabClause info opts (cnum, PClause fc fname lhs_in withs rhs_in whereblock)
         ((lhs', dlhs, []), _) <-
             tclift $ elaborate ctxt (MN 0 "patLHS") infP []
                      (errAt "left hand side of " fname
-                       (erun fc (buildTC i info True tcgen fname (infTerm lhs))))
+                       (erun fc (buildTC i info True opts fname (infTerm lhs))))
         let lhs_tm = orderPats (getInferTerm lhs')
         let lhs_ty = getInferType lhs'
         logLvl 3 ("Elaborated: " ++ show lhs_tm)
@@ -1297,7 +1299,7 @@ elabClause info opts (cnum, PClause fc fname lhs_in withs rhs_in whereblock)
            tclift $ elaborate ctxt (MN 0 "patRHS") clhsty []
                     (do pbinds lhs_tm
                         (_, _, is) <- errAt "right hand side of " fname
-                                        (erun fc (build i info False fname rhs))
+                                        (erun fc (build i info False opts fname rhs))
                         errAt "right hand side of " fname
                               (erun fc $ psolve lhs_tm)
                         hs <- get_holes
@@ -1426,12 +1428,12 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in withblock)
         -- Build the LHS as an "Infer", and pull out its type and
         -- pattern bindings
         i <- getIState
-        let lhs = addImplPat i lhs_in
+        let lhs = addImplPat i (stripLinear i lhs_in)
         logLvl 5 ("LHS: " ++ showImp Nothing True False lhs)
         ((lhs', dlhs, []), _) <-
             tclift $ elaborate ctxt (MN 0 "patLHS") infP []
               (errAt "left hand side of with in " fname
-                (erun fc (buildTC i info True tcgen fname (infTerm lhs))) )
+                (erun fc (buildTC i info True opts fname (infTerm lhs))) )
         let lhs_tm = orderPats (getInferTerm lhs')
         let lhs_ty = getInferType lhs'
         let ret_ty = getRetTy lhs_ty
@@ -1448,7 +1450,7 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in withblock)
                         (do pbinds lhs_tm
                             -- TODO: may want where here - see winfo abpve
                             (_', d, is) <- errAt "with value in " fname
-                              (erun fc (build i info False fname (infTerm wval)))
+                              (erun fc (build i info False opts fname (infTerm wval)))
                             erun fc $ psolve lhs_tm
                             tt <- get_term
                             return (tt, d, is))
@@ -1509,7 +1511,7 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in withblock)
         ((rhs', defer, is), _) <-
            tclift $ elaborate ctxt (MN 0 "wpatRHS") clhsty []
                     (do pbinds lhs_tm
-                        (_, d, is) <- erun fc (build i info False fname rhs)
+                        (_, d, is) <- erun fc (build i info False opts fname rhs)
                         psolve lhs_tm
                         tt <- get_term
                         return (tt, d, is))
@@ -1847,7 +1849,7 @@ elabInstance info syn fc cs n ps t expn ds
              ctxt <- getContext
              ((tyT, _, _), _) <-
                    tclift $ elaborate ctxt iname (TType (UVal 0)) []
-                            (errAt "type of " iname (erun fc (build i info False iname ty)))
+                            (errAt "type of " iname (erun fc (build i info False [] iname ty)))
              ctxt <- getContext
              (cty, _) <- recheckC fc [] tyT
              let nty = normalise ctxt [] cty

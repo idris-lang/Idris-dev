@@ -80,8 +80,8 @@ instance Handler RawMemory (IOExcept String) where
   handle () (Allocate n) k
     = do ptr <- do_malloc n
          k (CH ptr) ()
-  handle {res = MemoryChunk _ offset} (CH ptr) (Initialize c size _) k
-    = ioe_lift (do_memset ptr offset c size) $> k (CH ptr) ()
+  handle (CH ptr) (Initialize {i} c size _) k
+    = ioe_lift (do_memset ptr i c size) $> k (CH ptr) ()
   handle (CH ptr) (Free) k
     = ioe_lift (do_free ptr) $> k () ()
   handle (CH ptr) (Peek offset size _) k

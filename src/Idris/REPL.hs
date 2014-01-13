@@ -77,14 +77,12 @@ import Debug.Trace
 
 -- | Run the REPL
 repl :: IState -- ^ The initial state
-     -> MVar IState -- ^ Server's MVar
      -> [FilePath] -- ^ The loaded modules
      -> InputT Idris ()
-repl orig stvar mods
+repl orig mods
    = H.catch
       (do let quiet = opt_quiet (idris_options orig)
           i <- lift getIState
-          lift $ runIO $ swapMVar stvar i -- update shared state
           let colour = idris_colourRepl i
           let theme = idris_colourTheme i
           let mvs = idris_metavars i
@@ -98,15 +96,15 @@ repl orig stvar mods
               Nothing -> do lift $ when (not quiet) (iputStrLn "Bye bye")
                             return ()
               Just input -> H.catch
-                              (do ms <- lift $ processInput stvar input orig mods
+                              (do ms <- lift $ processInput input orig mods
                                   case ms of
-                                      Just mods -> repl orig stvar mods
+                                      Just mods -> repl orig mods
                                       Nothing -> return ())
                               ctrlC)
       ctrlC
    where ctrlC :: SomeException -> InputT Idris ()
          ctrlC e = do lift $ iputStrLn (show e)
-                      repl orig stvar mods
+                      repl orig mods
 
          showMVs c thm [] = ""
          showMVs c thm ms = "Metavariables: " ++ 
@@ -124,15 +122,14 @@ repl orig stvar mods
                               else show n
 
 -- | Run the REPL server
-startServer :: IState -> MVar IState -> [FilePath] -> Idris ()
-startServer orig stvar fn_in = do tid <- runIO $ forkOS serverLoop
-                                  return ()
+startServer :: IState -> [FilePath] -> Idris ()
+startServer orig fn_in = do tid <- runIO $ forkOS serverLoop
+                            return ()
   where serverLoop :: IO ()
         -- TODO: option for port number
         serverLoop = withSocketsDo $
                               do sock <- listenOnLocalhost $ PortNumber 4294
-                                 i <- readMVar stvar
-                                 loop fn i sock
+                                 loop fn orig sock
 
         fn = case fn_in of
                   (f:_) -> f
@@ -146,19 +143,16 @@ startServer orig stvar fn_in = do tid <- runIO $ forkOS serverLoop
                      host == "127.0.0.1")
                    then do
                      cmd <- hGetLine h
-                     takeMVar stvar
-                     (ist', fn) <- processNetCmd stvar orig ist h fn cmd
-                     putMVar stvar ist'
+                     (ist', fn) <- processNetCmd orig ist h fn cmd
                      hClose h
                      loop fn ist' sock
                    else do
                      putStrLn $ "Closing connection attempt from non-localhost " ++ host
                      hClose h
 
-processNetCmd :: MVar IState ->
-                 IState -> IState -> Handle -> FilePath -> String ->
+processNetCmd :: IState -> IState -> Handle -> FilePath -> String ->
                  IO (IState, FilePath)
-processNetCmd stvar orig i h fn cmd
+processNetCmd orig i h fn cmd
     = do res <- case parseCmd i "(net)" cmd of
                   Failure err -> return (Left (Msg " invalid command"))
                   Success c -> runErrorT $ evalStateT (processNet fn c) i
@@ -337,9 +331,9 @@ lit f = case splitExtension f of
             (_, ".lidr") -> True
             _ -> False
 
-processInput :: MVar IState -> String ->
+processInput :: String ->
                 IState -> [FilePath] -> Idris (Maybe [FilePath])
-processInput stvar cmd orig inputs
+processInput cmd orig inputs
     = do i <- getIState
          let opts = idris_options i
          let quiet = opt_quiet opts
@@ -1224,9 +1218,8 @@ idrisMain opts =
 
        when (runrepl && not idesl) $ do
          initScript
-         stvar <- runIO $ newMVar ist
-         startServer ist stvar inputs
-         runInputT (replSettings (Just historyFile)) $ repl ist stvar inputs
+         startServer ist inputs
+         runInputT (replSettings (Just historyFile)) $ repl ist inputs
        when (idesl) $ ideslaveStart ist inputs
        ok <- noErrors
        when (not ok) $ runIO (exitWith (ExitFailure 1))

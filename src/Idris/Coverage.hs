@@ -325,7 +325,7 @@ checkTotality path fc n
         t' <- case t of
                 Unchecked ->
                     case lookupDef n ctxt of
-                        [CaseOp _ _ _ pats _] ->
+                        [CaseOp _ _ _ _ pats _] ->
                             do t' <- if AssertTotal `elem` opts
                                         then return $ Total []
                                         else calcTotality path fc n pats
@@ -389,7 +389,7 @@ buildSCG (_, n) = do
    ist <- getIState
    case lookupCtxt n (idris_callgraph ist) of
        [cg] -> case lookupDef n (tt_ctxt ist) of
-           [CaseOp _ _ pats _ cd] ->
+           [CaseOp _ _ _ pats _ cd] ->
              let (args, sc) = cases_totcheck cd in
                do logLvl 2 $ "Building SCG for " ++ show n ++ " from\n"
                                 ++ show pats ++ "\n" ++ show sc
