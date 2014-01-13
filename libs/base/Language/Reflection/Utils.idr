@@ -1,6 +1,7 @@
 module Language.Reflection.Utils
 
 import Language.Reflection
+import Language.Reflection.Errors
 
 --------------------------------------------------------
 -- Tactic construction conveniences
@@ -185,3 +186,73 @@ instance Eq TT where
           equalp Impossible   Impossible       = True
           equalp (TType u)    (TType u')       = u == u'
           equalp x            y                = False
+
+total
+forget : TT -> Maybe Raw
+forget tm = fe [] tm
+  where
+    atIndex : List a -> Int -> Maybe a
+    atIndex [] _ = Nothing
+    atIndex (x::xs) n =
+      case compare n 0 of
+        EQ => Just x
+        LT => Nothing
+        GT => atIndex xs (n-1)
+
+    %assert_total
+    fe : List TTName -> TT -> Maybe Raw
+    fe env (P _ n _)     = Just $ Var n
+    fe env (V i)         = map Var (atIndex env i)
+    fe env (Bind n b sc) = [| RBind (pure n) (traverse (fe env) b) (fe (n::env) sc) |]
+    fe env (App f a)     = [| RApp (fe env f) (fe env a) |]
+    fe env (TConst c)    = Just $ RConstant c
+    fe env (Proj tm i)   = Nothing -- runtime only, not useful for metaprogramming
+    fe env (TType i)     = Just RType
+    fe env Erased        = Just $ RConstant Forgot
+    fe env Impossible    = Nothing
+
+instance Show Raw where
+  show r = my_show r
+    where %assert_total my_show : Raw -> String
+          my_show (Var n) = "Var " ++ show n
+          my_show (RBind n b tm) = "RBind " ++ show n ++ " " ++ show b ++ " (" ++ my_show tm ++ ")"
+          my_show (RApp tm tm') = "RApp " ++ my_show tm ++ " " ++ my_show tm'
+          my_show RType = "RType"
+          my_show (RForce tm) = "RForce " ++ my_show tm
+          my_show (RConstant c) = "RConstant " ++ show c
+
+instance Show SourceLocation where
+  show (FileLoc filename line col) = "FileLoc \"" ++ filename ++ "\" " ++ show line ++ " " ++ show col
+
+instance Show Err where
+  show (Msg x) = "Msg \"" ++ x ++ "\""
+  show (InternalMsg x) = "InternalMsg \"" ++ x ++ "\""
+  show (CantUnify x tm tm' err xs y) = "CantUnify " ++ show x ++
+                                       " ( " ++ show tm ++ ") (" ++ show tm' ++ ") (" ++ show err ++ ") " ++
+                                       show xs ++ " " ++ show y
+  show (InfiniteUnify n tm xs) = "InfiniteUnify " ++ show n ++ show tm ++ show xs
+  show (CantConvert tm tm' xs) = "CantConvert " ++ show tm ++ show tm' ++ show xs
+  show (UnifyScope n n' tm xs) = "UnifyScope " ++ show n ++ " " ++ show n' ++ " " ++ show tm ++ " " ++ show xs
+  show (CantInferType x) = "CantInferType " ++ show x
+  show (NonFunctionType tm tm') = "NonFunctionType " ++ show tm ++ show tm'
+  show (NotEquality tm tm') = "NotEquality " ++ show tm ++ " " ++ show tm'
+  show (TooManyArguments n) = "TooManyArguments " ++ show n
+  show (CantIntroduce tm) = "CantIntroduce " ++ show tm
+  show (NoSuchVariable n) = "NoSuchVariable " ++ show n
+  show (NoTypeDecl n) = "NoTypeDecl " ++ show n
+  show (NotInjective tm tm' x) = "NotInjective " ++ show tm ++ " " ++ show tm'
+  show (CantResolve tm) = "CantResolve " ++ show tm
+  show (CantResolveAlts xs) = "CantResolveAlts " ++ show xs
+  show (IncompleteTerm tm) = "IncompleteTerm " ++ show tm
+  show UniverseError = "UniverseError"
+  show ProgramLineComment = "ProgramLineComment"
+  show (Inaccessible n) = "Inaccessible " ++ show n
+  show (NonCollapsiblePostulate n) = "NonCollapsiblePostulate " ++ show n
+  show (AlreadyDefined n) = "AlreadyDefined " ++ show n
+  show (ProofSearchFail err) = "ProofSearchFail " ++ show err
+  show (NoRewriting tm) = "NoRewriting " ++ show tm
+  show (At loc err) = "At " ++ show loc ++ " " ++ show err
+  show (Elaborating x n err) = "Elaborating " ++ show x ++ " " ++ show x ++ " " ++ show n ++ " (" ++ show err ++ ")"
+  show (ProviderError x) = "ProviderError \"" ++ show x ++ "\""
+  show (LoadingFailed x err) = "LoadingFailed " ++ show x ++ " (" ++ show err ++ ")"
+
