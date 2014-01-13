@@ -3,6 +3,10 @@ New in 0.9.11:
 
 * Agda-style equational reasoning (in Syntax.PreorderReasoning)
 * 'case' construct now abstracts over the scrutinee in its type
+* Added label type 'name (equivalent to the empty type).
+  This is intended for field/effect disambiguation. "name" can be any
+  valid identifier. Two labels are definitionally equal if they have the
+  same name.
 
 New in 0.9.10:
 --------------

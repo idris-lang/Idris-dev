@@ -287,9 +287,12 @@ simpleExpr syn =
         <|> tacticsExpr syn
         <|> caseExpr syn
         <|> do reserved "Type"; return PType
-        <|> do c <- constant
-               fc <- getFC
-               return (modifyConst syn fc (PConstant c))
+        <|> try (do c <- constant
+                    fc <- getFC
+                    return (modifyConst syn fc (PConstant c)))
+        <|> try (do symbol "'"; fc <- getFC; str <- name
+                    return (PApp fc (PRef fc (UN "Symbol_"))
+                               [pexp (PConstant (Str (show str)))]))
         <|> do fc <- getFC
                x <- fnName
                return (PRef fc x)

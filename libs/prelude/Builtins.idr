@@ -12,6 +12,9 @@ getProof (a ** v) = v
 
 FalseElim : _|_ -> a
 
+-- For 'symbol syntax. 'foo becomes Symbol_ "foo"
+data Symbol_ : String -> Type where
+
 -- ------------------------------------------------------ [ For rewrite tactic ]
 replace : {a:_} -> {x:_} -> {y:_} -> {P : a -> Type} -> x = y -> P x -> P y
 replace refl prf = prf
