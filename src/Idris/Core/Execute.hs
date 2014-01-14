@@ -499,14 +499,6 @@ getFTy (EP _ (UN t) _) =
       _         -> Nothing
 getFTy _ = Nothing
 
-unList :: Term -> Maybe [Term]
-unList tm = case unApply tm of
-              (nil, [_]) -> Just []
-              (cons, ([_, x, xs])) ->
-                  do rest <- unList xs
-                     return $ x:rest
-              (f, args) -> Nothing
-
 unEList :: ExecVal -> Maybe [ExecVal]
 unEList tm = case unApplyV tm of
                (nil, [_]) -> Just []

@@ -38,6 +38,7 @@ report e
 idrisCatch :: Idris a -> (Err -> Idris a) -> Idris a
 idrisCatch = catchError
 
+
 setAndReport :: Err -> Idris ()
 setAndReport e = do ist <- getIState
                     let h = idris_outh ist
@@ -71,3 +72,4 @@ getErrLine _ = 0
 getErrColumn :: Err -> Int
 getErrColumn (At (FC _ _ c) _) = c
 getErrColumn _ = 0
+

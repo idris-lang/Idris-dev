@@ -5,15 +5,18 @@ module Idris.ElabTerm where
 import Idris.AbsSyntax
 import Idris.DSL
 import Idris.Delaborate
+import Idris.Error
 import Idris.ProofSearch
 
 import Idris.Core.Elaborate hiding (Tactic(..))
 import Idris.Core.TT
 import Idris.Core.Evaluate
+import Idris.Core.Typecheck (check)
 
 import Control.Monad
 import Control.Monad.State
 import Data.List
+import Data.Maybe (mapMaybe)
 
 import Debug.Trace
 
@@ -1031,7 +1034,7 @@ runTac autoSolve ist tac
     runReflected t = do t' <- reify ist t
                         runTac autoSolve ist t'
 
--- | Prefix a name with the "Reflection.Language" namespace
+-- | Prefix a name with the "Language.Reflection" namespace
 reflm :: String -> Name
 reflm n = NS (UN n) ["Reflection", "Language"]
 
@@ -1370,10 +1373,172 @@ reflectEnv = foldr consToEnvList emptyEnvList
                              [envTupleType]
 
 -- | Reflect an error into the internal datatype of Idris -- TODO
+rawBool :: Bool -> Raw
+rawBool True  = Var (NS (UN "True") ["Bool", "Prelude"])
+rawBool False = Var (NS (UN "False") ["Bool", "Prelude"])
+
+rawNil :: Raw -> Raw
+rawNil ty = raw_apply (Var (NS (UN "Nil") ["List", "Prelude"])) [ty]
+
+rawCons :: Raw -> Raw -> Raw -> Raw
+rawCons ty hd tl = raw_apply (Var (NS (UN "::") ["List", "Prelude"])) [ty, hd, tl]
+
+rawList :: Raw -> [Raw] -> Raw
+rawList ty = foldr (rawCons ty) (rawNil ty)
+
+rawPairTy :: Raw -> Raw -> Raw
+rawPairTy t1 t2 = raw_apply (Var pairTy) [t1, t2]
+
+rawPair :: (Raw, Raw) -> (Raw, Raw) -> Raw
+rawPair (a, b) (x, y) = raw_apply (Var pairCon) [a, b, x, y]
+
+reflectCtxt :: [(Name, Type)] -> Raw
+reflectCtxt ctxt = rawList (rawPairTy  (Var $ reflm "TTName") (Var $ reflm "TT"))
+                           (map (\ (n, t) -> (rawPair (Var $ reflm "TTName", Var $ reflm "TT")
+                                                      (reflectName n, reflect t)))
+                                ctxt)
+
 reflectErr :: Err -> Raw
-reflectErr (Msg msg) = raw_apply (Var (NS (UN "Msg") ["Reflection", "Language"])) [reflectConstant (Str msg)]
-reflectErr (InternalMsg msg) = raw_apply (Var (NS (UN "InternalMsg") ["Reflection", "Language"])) [reflectConstant (Str msg)]
-reflectErr x = trace ("Couldn't reflect error " ++ show x) raw_apply (Var (NS (UN "Msg") ["Reflection", "Language"])) [reflectConstant (Str $ show x)]
+reflectErr (Msg msg) = raw_apply (Var $ reflErrName "Msg") [RConstant (Str msg)]
+reflectErr (InternalMsg msg) = raw_apply (Var $ reflErrName "InternalMsg") [RConstant (Str msg)]
+reflectErr (CantUnify b t1 t2 e ctxt i) =
+  raw_apply (Var $ reflErrName "CantUnify")
+            [ rawBool b
+            , reflect t1
+            , reflect t2
+            , reflectErr e
+            , reflectCtxt ctxt
+            , RConstant (I i)]
+reflectErr (InfiniteUnify n tm ctxt) =
+  raw_apply (Var $ reflErrName "InfiniteUnify")
+            [ reflectName n
+            , reflect tm
+            , reflectCtxt ctxt
+            ]
+reflectErr (CantConvert t t' ctxt) =
+  raw_apply (Var $ reflErrName "CantConvert")
+            [ reflect t
+            , reflect t'
+            , reflectCtxt ctxt
+            ]
+reflectErr (UnifyScope n n' t ctxt) =
+  raw_apply (Var $ reflErrName "UnifyScope")
+            [ reflectName n
+            , reflectName n'
+            , reflect t
+            , reflectCtxt ctxt
+            ]
+reflectErr (CantInferType str) =
+  raw_apply (Var $ reflErrName "CantInferType") [RConstant (Str str)]
+reflectErr (NonFunctionType t t') =
+  raw_apply (Var $ reflErrName "NonFunctionType") [reflect t, reflect t']
+reflectErr (NotEquality t t') =
+  raw_apply (Var $ reflErrName "NotEquality") [reflect t, reflect t']
+reflectErr (TooManyArguments n) = raw_apply (Var $ reflErrName "TooManyArguments") [reflectName n]
+reflectErr (CantIntroduce t) = raw_apply (Var $ reflErrName "CantIntroduce") [reflect t]
+reflectErr (NoSuchVariable n) = raw_apply (Var $ reflErrName "NoSuchVariable") [reflectName n]
+reflectErr (NoTypeDecl n) = raw_apply (Var $ reflErrName "NoTypeDecl") [reflectName n]
+reflectErr (NotInjective t1 t2 t3) =
+  raw_apply (Var $ reflErrName "NotInjective")
+            [ reflect t1
+            , reflect t2
+            , reflect t3
+            ]
+reflectErr (CantResolve t) = raw_apply (Var $ reflErrName "CantResolve") [reflect t]
+reflectErr (CantResolveAlts ss) =
+  raw_apply (Var $ reflErrName "CantResolve")
+            [rawList (Var $ (UN "String")) (map (RConstant . Str) ss)]
+reflectErr (IncompleteTerm t) = raw_apply (Var $ reflErrName "IncompleteTerm") [reflect t]
+reflectErr UniverseError = Var $ reflErrName "UniverseError"
+reflectErr ProgramLineComment = Var $ reflErrName "ProgramLineComment"
+reflectErr (Inaccessible n) = raw_apply (Var $ reflErrName "Inaccessible") [reflectName n]
+reflectErr (NonCollapsiblePostulate n) = raw_apply (Var $ reflErrName "NonCollabsiblePostulate") [reflectName n]
+reflectErr (AlreadyDefined n) = raw_apply (Var $ reflErrName "AlreadyDefined") [reflectName n]
+reflectErr (ProofSearchFail e) = raw_apply (Var $ reflErrName "ProofSearchFail") [reflectErr e]
+reflectErr (NoRewriting tm) = raw_apply (Var $ reflErrName "NoRewriting") [reflect tm]
+reflectErr (At fc err) = raw_apply (Var $ reflErrName "At") [reflectFC fc, reflectErr err]
+           where reflectFC (FC source line col) = raw_apply (Var $ reflErrName "FileLoc")
+                                                            [ RConstant (Str source)
+                                                            , RConstant (I line)
+                                                            , RConstant (I col)
+                                                            ]
+reflectErr (Elaborating str n e) =
+  raw_apply (Var $ reflErrName "Elaborating")
+            [ RConstant (Str str)
+            , reflectName n
+            , reflectErr e
+            ]
+reflectErr (ProviderError str) =
+  raw_apply (Var $ reflErrName "ProviderError") [RConstant (Str str)]
+reflectErr (LoadingFailed str err) =
+  raw_apply (Var $ reflErrName "LoadingFailed") [RConstant (Str str)]
+reflectErr x = raw_apply (Var (NS (UN "Msg") ["Errors", "Reflection", "Language"])) [RConstant . Str $ "Default reflection: " ++ show x]
+
+withErrorReflection :: Idris a -> Idris a
+withErrorReflection x = idrisCatch x (\ e -> handle e >>= ierror)
+    where handle :: Err -> Idris Err
+          handle e@(ReflectionError _ _)  = do logLvl 3 "Skipping reflection of error reflection result"
+                                               return e -- Don't do meta-reflection of errors
+          handle e@(ReflectionFailed _ _) = do logLvl 3 "Skipping reflection of reflection failure"
+                                               return e
+          handle e = do ist <- getIState
+                        logLvl 2 "Starting error reflection"
+                        let handlers = idris_errorhandlers ist
+                        logLvl 3 $ "Using reflection handlers " ++ concat (intersperse ", " (map show handlers))
+                        let reports = map (\n -> RApp (Var n) (reflectErr e)) handlers
+
+                        -- Typecheck error handlers - if this fails, then something else was wrong earlier!
+                        handlers <- case mapM (check (tt_ctxt ist) []) reports of
+                                      Error e -> ierror $ ReflectionFailed "Type error while constructing reflected error" e
+                                      OK hs   -> return hs
+
+                        -- Normalize error handler terms to produce the new messages
+                        ctxt <- getContext
+                        let results = map (normalise ctxt []) (map fst handlers)
+                        logLvl 3 $ "New error message info: " ++ concat (intersperse " and " (map show results))
+
+                        -- For each handler term output, either discard it if it is Nothing or reify it the Haskell equivalent
+                        let errorpartsTT = mapMaybe unList (mapMaybe fromTTMaybe results)
+                        errorparts <- mapM (mapM reifyReportPart) errorpartsTT
+
+                        return $ case errorparts of
+                                   []    -> e
+                                   parts -> ReflectionError errorparts e
+
+          fromTTMaybe :: Term -> Maybe Term -- WARNING: Assumes the term has type Maybe a
+          fromTTMaybe (App (App (P (DCon _ _) (NS (UN "Just") _) _) ty) tm) = Just tm
+          fromTTMaybe x                                            = Nothing
+
+reflErrName :: String -> Name
+reflErrName n = NS (UN n) ["Errors", "Reflection", "Language"]
+
+reifyReportPart :: Term -> Idris ErrorReportPart
+reifyReportPart (App (P (DCon _ _) n _) (Constant (Str msg))) | n == reflErrName "TextPart" =
+    return (TextPart msg)
+reifyReportPart (App (P (DCon _ _) n _) ttn)
+  | n == reflErrName "NamePart" =
+    case runElab [] (reifyTTName ttn) (initElaborator NErased initContext Erased) of
+      Error e -> ierror . InternalMsg $
+       "could not reify name term " ++
+       show ttn ++
+       " when reflecting an error"
+      OK (n', _)-> return $ NamePart n'
+reifyReportPart (App (P (DCon _ _) n _) tm)
+  | n == reflErrName "TermPart" =
+   do ist <- getIState
+      case runElab [] (reifyTT tm) (initElaborator NErased initContext Erased) of
+        Error e -> ierror . InternalMsg $
+          "could not reify reflected term " ++
+          show tm ++
+          " when reflecting an error"
+        OK (tm', _) -> return $ TermPart tm'
+reifyReportPart (App (P (DCon _ _) n _) tm)
+  | n == reflErrName "SubReport" =
+   case unList tm of
+     Just xs -> do subParts <- mapM reifyReportPart xs
+                   return (SubReport subParts)
+     Nothing -> ierror . InternalMsg $ "could not reify subreport " ++ show tm
+reifyReportPart x = ierror . InternalMsg $ "could not reify " ++ show x
 
 envTupleType :: Raw
 envTupleType

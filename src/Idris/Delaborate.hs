@@ -9,6 +9,8 @@ import Idris.AbsSyntax
 import Idris.Core.TT
 import Idris.Core.Evaluate
 
+import Data.List (intersperse)
+
 import Debug.Trace
 
 bugaddr = "https://github.com/idris-lang/Idris-dev/issues"
@@ -190,6 +192,20 @@ pshow i (Elaborating s n e) = "When elaborating " ++ s ++
                                showqual i n ++ ":\n" ++ pshow i e
 pshow i (ProviderError msg) = "Type provider error: " ++ msg
 pshow i (LoadingFailed fn e) = "Loading " ++ fn ++ " failed: " ++ pshow i e
+pshow i (ReflectionError parts orig) = let parts' = map (concat . intersperse " " . map showPart) parts in
+                                       concat (intersperse "\n" parts') ++
+                                       "\nOriginal error:\n" ++ indented (pshow i orig)
+      where showPart :: ErrorReportPart -> String
+            showPart (TextPart str) = str
+            showPart (NamePart n)   = let colour = idris_colourRepl i in
+                                      showName (Just i) [] False colour n
+            showPart (TermPart tm)  = let colour = idris_colourRepl i
+                                      in showImp (Just i) False colour (delab i tm)
+            showPart (SubReport rs) = indented . concat . intersperse " " . map showPart $ rs
+pshow i (ReflectionFailed msg err) = "When attempting to perform error reflection, the following internal error occurred:\n" ++
+                                     indented (pshow i err) ++
+                                     "\nThis is probably a bug. Please consider reporting it at " ++ bugaddr
+
 
 showSc i [] = ""
 showSc i xs = "\n\nIn context:\n" ++ showSep "\n" (map showVar (reverse xs))

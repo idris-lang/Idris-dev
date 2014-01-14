@@ -112,6 +112,19 @@ elabType' norm info syn doc fc opts n ty' = {- let ty' = piBind (params info) ty
          addIBC (IBCFlags n opts')
          when (Implicit `elem` opts) $ do addCoercion n
                                           addIBC (IBCCoercion n)
+         -- If the function is declared as an error handler and the language
+         -- extension is enabled, then add it to the list of error handlers.
+         errorReflection <- fmap (elem ErrorReflection . idris_language_extensions) getIState
+         when (ErrorHandler `elem` opts) $ do
+           if errorReflection
+             then
+               -- TODO: Check that the declared type is the correct type for an error handler:
+               -- handler : List (TTName, TT) -> Err -> ErrorReport - for now no ctxt
+               if tyIsHandler nty'
+                 then do i <- getIState
+                         putIState $ i { idris_errorhandlers = idris_errorhandlers i ++ [n] }
+                 else ifail $ "The type " ++ show nty' ++ " is invalid for an error handler"
+             else ifail "Error handlers can only be defined when the ErrorReflection language extension is enabled."
          when corec $ do setAccessibility n Frozen
                          addIBC (IBCAccess n Frozen)
          return usety
@@ -123,6 +136,16 @@ elabType' norm info syn doc fc opts n ty' = {- let ty' = piBind (params info) ty
          | e == e' = PPi e n ty (mergeTy sc sc')
          | otherwise = mergeTy sc sc'
     mergeTy _ sc = sc
+
+    tyIsHandler (Bind _ (Pi (P _ (NS (UN "Err") ns1) _))
+                        (App (P _ (NS (UN "Maybe") ns2) _)
+                             (App (P _ (NS (UN "List") ns3) _)
+                                  (P _ (NS (UN "ErrorReportPart") ns4) _))))
+        | ns1 == ["Errors","Reflection","Language"]
+        , ns2 == ["Maybe", "Prelude"]
+        , ns3 == ["List", "Prelude"]
+        , ns4 == ["Errors","Reflection","Language"] = True
+    tyIsHandler _                                   = False
 
 
 elabPostulate :: ElabInfo -> SyntaxInfo -> String ->
@@ -1980,7 +2003,7 @@ elabDecls info ds = do mapM_ (elabDecl EAll info) ds
 
 elabDecl :: ElabWhat -> ElabInfo -> PDecl -> Idris ()
 elabDecl what info d
-    = idrisCatch (elabDecl' what info d) (setAndReport)
+    = idrisCatch (withErrorReflection $ elabDecl' what info d) (setAndReport)
 
 elabDecl' _ info (PFix _ _ _)
      = return () -- nothing to elaborate
