@@ -700,6 +700,8 @@ substV x tm = dropV 0 (instantiate x tm) where
     dropV i (Proj x idx) = Proj (dropV i x) idx
     dropV i t = t
 
+-- | Replace all non-free de Bruijn references in the given term with references
+-- to the name of their binding.
 explicitNames :: TT n -> TT n
 explicitNames (Bind x b sc) = let b' = fmap explicitNames b in
                                   Bind x b'
@@ -709,6 +711,8 @@ explicitNames (App f a) = App (explicitNames f) (explicitNames a)
 explicitNames (Proj x idx) = Proj (explicitNames x) idx
 explicitNames t = t
 
+-- | Replace references to the given `Name`-like id with references to
+-- de Bruijn index 0.
 pToV :: Eq n => n -> TT n -> TT n
 pToV n = pToV' n 0
 pToV' n i (P _ x _) | n == x = V i
@@ -738,6 +742,9 @@ pToVs ns tm = pToVs' ns tm 0 where
     pToVs' []     tm i = tm
     pToVs' (n:ns) tm i = pToV' n i (pToVs' ns tm (i+1))
 
+-- | Replace de Bruijn indices in the given term with explicit references to
+-- the names of the bindings they refer to. It is an error if the given term
+-- contains free de Bruijn indices.
 vToP :: TT n -> TT n
 vToP = vToP' [] where
     vToP' env (V i) = let (n, b) = (env !! i) in
@@ -747,12 +754,19 @@ vToP = vToP' [] where
     vToP' env (App f a) = App (vToP' env f) (vToP' env a)
     vToP' env t = t
 
+-- | Replace every non-free reference to the name of a binding in
+-- the given term with a de Bruijn index.
 finalise :: Eq n => TT n -> TT n
 finalise (Bind x b sc) = Bind x (fmap finalise b) (pToV x (finalise sc))
 finalise (App f a) = App (finalise f) (finalise a)
 finalise t = t
 
-subst :: Eq n => n -> TT n -> TT n -> TT n
+-- | As `instantiate`, but in addition to replacing `V 0`,
+-- replace references to the given `Name`-like id.
+subst :: Eq n => n {-^ The id to replace -} ->
+         TT n {-^ The replacement term -} ->
+         TT n {-^ The term to replace in -} ->
+         TT n
 subst n v tm = instantiate v (pToV n tm)
 
 substNames :: Eq n => [(n, TT n)] -> TT n -> TT n
