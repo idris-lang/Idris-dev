@@ -297,6 +297,8 @@ showCG NErased = "_"
 type Ctxt a = Map.Map Name (Map.Map Name a)
 emptyContext = Map.empty
 
+-- |Return True if the argument Name should be interpreted as the name of a
+-- typeclass.
 tcname (UN ('@':_)) = True
 tcname (NS n _) = tcname n
 tcname (SN (InstanceN _ _)) = True
