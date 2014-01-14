@@ -114,7 +114,7 @@ extension :: SyntaxInfo -> Syntax -> IdrisParser PTerm
 extension syn (Rule ssym ptm _)
     = do smap <- mapM extensionSymbol ssym
          let ns = mapMaybe id smap
-         return (update ns ptm) -- updated with smap
+         return (flatten (update ns ptm)) -- updated with smap
   where
     extensionSymbol :: SSymbol -> IdrisParser (Maybe (Name, SynMatch))
     extensionSymbol (Keyword n)    = do reserved (show n); return Nothing
@@ -130,6 +130,10 @@ extension syn (Rule ssym ptm _)
     dropn n [] = []
     dropn n ((x,t) : xs) | n == x = xs
                          | otherwise = (x,t):dropn n xs
+
+    flatten :: PTerm -> PTerm -- flatten application
+    flatten (PApp fc (PApp _ f as) bs) = flatten (PApp fc f (as ++ bs))
+    flatten t = t
 
     updateB :: [(Name, SynMatch)] -> Name -> Name
     updateB ns n = case lookup n ns of
