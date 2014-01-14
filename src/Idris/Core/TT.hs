@@ -469,11 +469,15 @@ deriving instance NFData Raw
 -- The type parameter `b` will normally be something like `TT Name` or just
 -- `Raw`. We do not make a type-level distinction between TT terms that happen
 -- to be TT types and TT terms that are not TT types.
--- | All binding forms are represented in a uniform fashion.
+-- | All binding forms are represented in a uniform fashion. This type only represents
+-- the types of bindings (and their values, if any); the attached identifiers are part
+-- of the 'Bind' constructor for the 'TT' type.
 data Binder b = Lam   { binderTy  :: b {-^ type annotation for bound variable-}}
               | Pi    { binderTy  :: b }
+                {-^ A binding that occurs in a function type expression, e.g. @(x:Int) -> ...@ -}
               | Let   { binderTy  :: b,
                         binderVal :: b {-^ value for bound variable-}}
+                -- ^ A binding that occurs in a @let@ expression
               | NLet  { binderTy  :: b,
                         binderVal :: b }
               | Hole  { binderTy  :: b}
@@ -771,19 +775,25 @@ subst :: Eq n => n {-^ The id to replace -} ->
          TT n
 subst n v tm = instantiate v (pToV n tm)
 
+-- | As 'subst', but takes a list of (name, substitution) pairs instead
+-- of a single name and substitution
 substNames :: Eq n => [(n, TT n)] -> TT n -> TT n
 substNames []             t = t
 substNames ((n, tm) : xs) t = subst n tm (substNames xs t)
 
-substTerm :: Eq n => TT n -> TT n -> TT n -> TT n
+-- | Replaces all terms equal (in the sense of @(==)@) to
+-- the old term with the new term.
+substTerm :: Eq n => TT n {-^ Old term -} ->
+             TT n {-^ New term -} ->
+             TT n {-^ template term -}
+             -> TT n
 substTerm old new = st where
   st t | t == old = new
   st (App f a) = App (st f) (st a)
   st (Bind x b sc) = Bind x (fmap st b) (st sc)
   st t = t
 
--- Returns true if V 0 and bound name n do not occur in the term
-
+-- | Returns true if V 0 and bound name n do not occur in the term
 noOccurrence :: Eq n => n -> TT n -> Bool
 noOccurrence n t = no' 0 t
   where
@@ -818,10 +828,16 @@ unApply t = ua [] t where
     ua args (App f a) = ua (a:args) f
     ua args t         = (t, args)
 
+-- | Returns a term representing the application of the first argument
+-- (a function) to every element of the second argument.
 mkApp :: TT n -> [TT n] -> TT n
 mkApp f [] = f
 mkApp f (a:as) = mkApp (App f a) as
 
+-- | Cast a 'TT' term to a 'Raw' value, discarding universe information and
+-- the types of named references and replacing all de Bruijn indices
+-- with the corresponding name. It is an error if there are free de
+-- Bruijn indices.
 forget :: TT Name -> Raw
 forget tm = fe [] tm
   where
@@ -835,13 +851,21 @@ forget tm = fe [] tm
     fe env (TType i)   = RType
     fe env Erased    = RConstant Forgot
 
+-- | Introduce a 'Bind' into the given term for each element of the
+-- given list of (name, binder) pairs.
 bindAll :: [(n, Binder (TT n))] -> TT n -> TT n
-bindAll [] t =t
+bindAll [] t = t
 bindAll ((n, b) : bs) t = Bind n b (bindAll bs t)
 
+-- | Like 'bindAll', but the 'Binder's are 'TT' terms instead.
+-- The first argument is a function to map @TT@ terms to @Binder@s.
+-- This function might often be something like 'Lam', which directly
+-- constructs a @Binder@ from a @TT@ term.
 bindTyArgs :: (TT n -> Binder (TT n)) -> [(n, TT n)] -> TT n -> TT n
 bindTyArgs b xs = bindAll (map (\ (n, ty) -> (n, b ty)) xs)
 
+-- | Return a list of pairs of the names of the outermost 'Pi'-bound
+-- variables in the given term, together with their types.
 getArgTys :: TT n -> [(n, TT n)]
 getArgTys (Bind n (Pi t) sc) = (n, t) : getArgTys sc
 getArgTys _ = []
@@ -889,7 +913,7 @@ type Type = Term
 
 type Env  = EnvTT Name
 
--- an environment with de Bruijn indices 'normalised' so that they all refer to
+-- | an environment with de Bruijn indices 'normalised' so that they all refer to
 -- this environment
 
 newtype WkEnvTT n = Wk (EnvTT n)
@@ -927,6 +951,7 @@ instance Show Const where
     show PtrType = "Ptr"
     show VoidType = "Void"
 
+showEnv :: (Eq n, Show n) => EnvTT n -> TT n -> String
 showEnv env t = showEnv' env t False
 showEnvDbg env t = showEnv' env t True
 
@@ -964,6 +989,7 @@ prettyEnv env t = prettyEnv' env t False
     prettySe p env Erased debug = text "[_]"
     prettySe p env (TType i) debug = text "Type" <+> (text . show $ i)
 
+    -- Render a `Binder` and its name
     prettySb env n (Lam t) = prettyB env "λ" "=>" n t
     prettySb env n (Hole t) = prettyB env "?defer" "." n t
     prettySb env n (Pi t) = prettyB env "(" ") ->" n t
@@ -972,9 +998,14 @@ prettyEnv env t = prettyEnv' env t False
     prettySb env n (Let t v) = prettyBv env "let" "in" n t v
     prettySb env n (Guess t v) = prettyBv env "??" "in" n t v
 
+    -- Use `op` and `sc` to delimit `n` (a binding name) and its type
+    -- declaration
+    -- e.g. "λx : Int =>" for the Lam case
     prettyB env op sc n t debug =
       text op <> pretty n <+> colon <+> prettySe 10 env t debug <> text sc
 
+    -- Like `prettyB`, but handle the bindings that have values in addition
+    -- to names and types
     prettyBv env op sc n t v debug =
       text op <> pretty n <+> colon <+> prettySe 10 env t debug <+> text "=" <+>
         prettySe 10 env v debug <> text sc
@@ -1047,6 +1078,7 @@ weakenEnv env = wk (length env - 1) env
         weakenTmB i (Guess t v) = Guess (weakenTm i t) (weakenTm i v)
         weakenTmB i t           = t { binderTy = weakenTm i (binderTy t) }
 
+-- | Weaken every term in the environment by the given amount
 weakenTmEnv :: Int -> EnvTT n -> EnvTT n
 weakenTmEnv i = map (\ (n, b) -> (n, fmap (weakenTm i) b))
 
