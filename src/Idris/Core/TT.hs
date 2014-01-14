@@ -606,8 +606,8 @@ instance TermSize a => TermSize [a] where
     termsize n (x : xs) = termsize n x + termsize n xs
 
 instance TermSize (TT Name) where
-    termsize n (P _ x _)
-       | x == n = 1000000 -- recursive => really big
+    termsize n (P _ n' _)
+       | n' == n = 1000000 -- recursive => really big
        | otherwise = 1
     termsize n (V _) = 1
     termsize n (Bind n' (Let t v) sc)
