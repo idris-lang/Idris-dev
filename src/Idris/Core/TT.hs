@@ -297,7 +297,7 @@ showCG NErased = "_"
 type Ctxt a = Map.Map Name (Map.Map Name a)
 emptyContext = Map.empty
 
--- |Return True if the argument Name should be interpreted as the name of a
+-- |Return True if the argument 'Name' should be interpreted as the name of a
 -- typeclass.
 tcname (UN ('@':_)) = True
 tcname (NS n _) = tcname n
@@ -581,7 +581,9 @@ instance Eq NameType where
     TCon _ a == TCon _ b = (a == b) -- ignore tag
     _        == _        = False
 
--- | Terms in the core language
+-- | Terms in the core language. The type parameter is the type of
+-- identifiers used for bindings and explicit named references;
+-- usually we use @TT 'Name'@.
 data TT n = P NameType n (TT n) -- ^ named references with type
           | V Int -- ^ a resolved de Bruijn-indexed variable
           | Bind n (Binder (TT n)) (TT n) -- ^ a binding
@@ -688,7 +690,7 @@ instantiate e = subst 0 where
     subst i (Proj x idx) = Proj (subst i x) idx
     subst i t = t
 
--- | As `instantiate`, but also decrement the indices of all de Bruijn variables
+-- | As 'instantiate', but also decrement the indices of all de Bruijn variables
 -- remaining in the term, so that there are no more references to the variable
 -- that has been substituted.
 substV :: TT n -> TT n -> TT n
@@ -711,7 +713,7 @@ explicitNames (App f a) = App (explicitNames f) (explicitNames a)
 explicitNames (Proj x idx) = Proj (explicitNames x) idx
 explicitNames t = t
 
--- | Replace references to the given `Name`-like id with references to
+-- | Replace references to the given 'Name'-like id with references to
 -- de Bruijn index 0.
 pToV :: Eq n => n -> TT n -> TT n
 pToV n = pToV' n 0
@@ -761,8 +763,8 @@ finalise (Bind x b sc) = Bind x (fmap finalise b) (pToV x (finalise sc))
 finalise (App f a) = App (finalise f) (finalise a)
 finalise t = t
 
--- | As `instantiate`, but in addition to replacing `V 0`,
--- replace references to the given `Name`-like id.
+-- | As 'instantiate', but in addition to replacing @'V' 0@,
+-- replace references to the given 'Name'-like id.
 subst :: Eq n => n {-^ The id to replace -} ->
          TT n {-^ The replacement term -} ->
          TT n {-^ The term to replace in -} ->
