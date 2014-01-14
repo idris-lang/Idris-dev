@@ -610,6 +610,10 @@ instance TermSize (TT Name) where
        | n' == n = 1000000 -- recursive => really big
        | otherwise = 1
     termsize n (V _) = 1
+    -- for `Bind` terms, we can erroneously declare a term
+    -- "recursive => really big" if the name of the bound 
+    -- variable is the same as the name we're using
+    -- So generate a different name in that case.
     termsize n (Bind n' (Let t v) sc)
        = let rn = if n == n' then MN 0 "noname" else n in
              termsize rn v + termsize rn sc
