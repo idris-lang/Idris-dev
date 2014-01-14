@@ -557,8 +557,8 @@ type UCs = (Int, [UConstraint])
 
 data NameType = Bound
               | Ref
-              | DCon Int Int -- ^ Data constructor; Ints are tag and arity
-              | TCon Int Int -- ^ Type constructor; Ints are tag and arity
+              | DCon {tag :: Int, arity :: Int} -- ^ Data constructor
+              | TCon {tag :: Int, arity :: Int} -- ^ Type constructor
   deriving (Show, Ord)
 {-!
 deriving instance Binary NameType
