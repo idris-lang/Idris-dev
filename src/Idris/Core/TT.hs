@@ -582,7 +582,7 @@ instance Eq NameType where
     _        == _        = False
 
 -- | Terms in the core language
-data TT n = P NameType n (TT n) -- ^ named references
+data TT n = P NameType n (TT n) -- ^ named references with type
           | V Int -- ^ a resolved de Bruijn-indexed variable
           | Bind n (Binder (TT n)) (TT n) -- ^ a binding
           | App (TT n) (TT n) -- ^ function, function type, arg
@@ -679,6 +679,7 @@ vinstances i (Bind x b sc) = instancesB b + vinstances (i + 1) sc
         instancesB _ = 0
 vinstances i t = 0
 
+-- | Replace the outermost (index 0) de Bruijn variable with the given term
 instantiate :: TT n -> TT n -> TT n
 instantiate e = subst 0 where
     subst i (V x) | i == x = e
@@ -687,6 +688,9 @@ instantiate e = subst 0 where
     subst i (Proj x idx) = Proj (subst i x) idx
     subst i t = t
 
+-- | As `instantiate`, but also decrement the indices of all de Bruijn variables
+-- remaining in the term, so that there are no more references to the variable
+-- that has been substituted.
 substV :: TT n -> TT n -> TT n
 substV x tm = dropV 0 (instantiate x tm) where
     dropV i (V x) | x > i = V (x - 1)
