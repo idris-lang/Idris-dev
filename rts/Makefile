@@ -15,13 +15,13 @@ $(LIBTARGET) : $(OBJS)
 	ar r $(LIBTARGET) $(OBJS)
 	ranlib $(LIBTARGET)
 
-install : .PHONY
+install :
 	mkdir -p $(TARGET)
 	install $(LIBTARGET) $(HDRS) $(TARGET)
 
-clean : .PHONY
+clean :
 	rm -f $(OBJS) $(LIBTARGET) $(DYLIBTARGET)
 
 idris_rts.o: idris_rts.h
 
-.PHONY:
+.PHONY: build install clean

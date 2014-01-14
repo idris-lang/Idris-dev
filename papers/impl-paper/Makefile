@@ -1,6 +1,6 @@
 PAPER = impldtp
 
-all: ${PAPER}.pdf .PHONY
+all: ${PAPER}.pdf
 
 TEXFILES = ${PAPER}.tex intro.tex conclusions.tex hll.tex\
            typechecking.tex elaboration.tex delab.tex \
@@ -28,16 +28,16 @@ ${PAPER}.dvi: $(SOURCES)
 	-latex ${PAPER}
 	-latex ${PAPER}
 
-progress: .PHONY
+progress:
 	wc -w ${TEXFILES}
 
 %.png : %.diag
 	$(DITAA) -o -E $<
 
-todropbox: .PHONY
+todropbox:
 	cp ${SOURCES} ~/Dropbox/TeX/ImplDTP/
 
-fromdropbox: .PHONY
+fromdropbox:
 	cp ~/Dropbox/TeX/ImplDTP/* .
 
-.PHONY:
+.PHONY: all progress todropbox fromdropbox

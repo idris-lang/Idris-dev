@@ -14,11 +14,11 @@ $(LIB): $(OBJECTS)
 .c.o:
 	$(CC) -c $(CFLAGS) $< -o $@
 
-install: $(LIB) .PHONY
+install: $(LIB)
 	mkdir -p $(TARGET)
 	install $(LIB) $(TARGET)
 
-clean: .PHONY
+clean:
 	rm -f $(OBJECTS) $(LIB)
 
-.PHONY:
+.PHONY: build install clean

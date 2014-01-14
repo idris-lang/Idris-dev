@@ -12,4 +12,4 @@ install: check
 	install $(LIBTARGET) $(TARGET)
 	install $(HDRS) $(TARGET)
 
-.PHONY:
+.PHONY: check install
