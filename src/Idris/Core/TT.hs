@@ -466,6 +466,9 @@ deriving instance Binary Raw
 deriving instance NFData Raw
 !-}
 
+-- The type parameter `b` will normally be something like `TT Name` or just
+-- `Raw`. We do not make a type-level distinction between TT terms that happen
+-- to be TT types and TT terms that are not TT types.
 -- | All binding forms are represented in a unform fashion.
 data Binder b = Lam   { binderTy  :: b {-^ type annotation for bound variable-}}
               | Pi    { binderTy  :: b }
