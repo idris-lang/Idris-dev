@@ -739,6 +739,7 @@ keepGiven du (u@(n, _) : us) hs
    | n `elem` du = u : keepGiven du us hs
 keepGiven du (u : us) hs = keepGiven du us hs
 
+updateSolved [] x = x
 updateSolved xs x = -- trace ("Updating " ++ show xs ++ " in " ++ show x) $
                       updateSolved' xs x
 updateSolved' xs (Bind n (Hole ty) t)
@@ -750,9 +751,11 @@ updateSolved' xs (P _ n _)
     | Just v <- lookup n xs = v
 updateSolved' xs t = t
 
+updateEnv [] e = e
 updateEnv ns [] = []
 updateEnv ns ((n, b) : env) = (n, fmap (updateSolved ns) b) : updateEnv ns env
 
+updateError [] err = err
 updateError ns (CantUnify b l r e xs sc)
  = CantUnify b (updateSolved ns l) (updateSolved ns r) (updateError ns e) xs sc
 updateError ns e = e
@@ -762,11 +765,13 @@ solveInProblems x val ((l, r, env, err) : ps)
    = ((psubst x val l, psubst x val r, 
        updateEnv [(x, val)] env, err) : solveInProblems x val ps)
 
+updateNotunified [] nu = nu
 updateNotunified ns nu = up nu where
   up [] = []
   up ((n, t) : ns) = let t' = updateSolved ns t in
                          ((n, t') : up ns)
 
+updateProblems ctxt [] ps inj holes = ([], ps)
 updateProblems ctxt ns ps inj holes = up ns ps where
   up ns [] = (ns, [])
   up ns ((x, y, env, err) : ps) =
@@ -812,7 +817,7 @@ processTactic EndUnify ps
           (ns'', probs') = updateProblems (context ps) ns' (problems ps)
                                           (injective ps) (holes ps)
           tm' = -- trace ("Updating " ++ show ns_in ++ "\n" ++ show ns'') $ --  ++ " in " ++ show (pterm ps)) $
-                  updateSolved ns'' (pterm ps) in
+                updateSolved ns'' (pterm ps) in
           return (ps { pterm = tm',
                        unified = (h, []),
                        problems = probs',
