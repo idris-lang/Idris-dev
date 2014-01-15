@@ -64,6 +64,34 @@ loadState = do (ES p s e) <- get
                   Just st -> put st
                   _ -> fail "Nothing to undo"
 
+getNameFrom :: Name -> Elab' aux Name
+getNameFrom n = do (ES (p, a) s e) <- get
+                   let next = nextname p
+                   let p' = p { nextname = next + 1 } 
+                   put (ES (p', a) s e)
+                   let n' = case n of
+                        UN x -> MN (next+100) x
+                        MN i x -> if i == 99999 
+                                     then MN (next+500) x
+                                     else MN (next+100) x
+                        NS (UN x) s -> MN (next+100) x
+                   return n'
+
+setNextName :: Elab' aux ()
+setNextName = do env <- get_env
+                 ES (p, a) s e <- get
+                 let pargs = map fst (getArgTys (ptype p))
+                 initNextNameFrom (pargs ++ map fst env)
+
+initNextNameFrom :: [Name] -> Elab' aux ()
+initNextNameFrom ns = do ES (p, a) s e <- get
+                         let n' = maxName (nextname p) ns 
+                         put (ES (p { nextname = n' }, a) s e)
+  where
+    maxName m ((MN i _) : xs) = maxName (max m i) xs
+    maxName m (_ : xs) = maxName m xs
+    maxName m [] = m + 1
+
 errAt :: String -> Name -> Elab' aux a -> Elab' aux a
 errAt thing n elab = do s <- get
                         case runStateT elab s of
@@ -209,12 +237,20 @@ unique_hole' reusable n
       = do ES p _ _ <- get
            let bs = bound_in (pterm (fst p)) ++
                     bound_in (ptype (fst p))
-           n' <- return $ uniqueNameCtxt (context (fst p)) n (holes (fst p)
-                   ++ bs ++ dontunify (fst p) ++ usedns (fst p))
+           let nouse = holes (fst p) ++ bs ++ dontunify (fst p) ++ usedns (fst p)
+           n' <- 
+--                  case lookupTy n (context (fst p)) of
+--                       [] -> if not (n `elem` holes (fst p) ++
+--                                            bs ++ dontunify (fst p) ++ usedns (fst p))
+--                                then return n
+--                                else getNameFrom n
+--                       _ -> getNameFrom n
+                 return $ uniqueNameCtxt (context (fst p)) n nouse
            ES (p, a) s u <- get
-           -- Hmm: Do we need this level of uniqueness?
-           let p' = p -- if reusable then p else p { usedns = n' : usedns p }
-           put (ES (p', a) s u)
+           case n' of
+                MN i _ -> when (i >= nextname p) $
+                            put (ES (p { nextname = i + 1 }, a) s u)
+                _ -> return ()
            return n'
   where
     bound_in (Bind n b sc) = n : bi b ++ bound_in sc
@@ -312,6 +348,7 @@ equiv tm = processTactic' (Equiv tm)
 
 patvar :: Name -> Elab' aux ()
 patvar n = do env <- get_env
+              hs <- get_holes
               if (n `elem` map fst env) then do apply (Var n) []; solve
                 else do n' <- case n of
                                     UN _ -> return n
@@ -362,7 +399,7 @@ undo :: Elab' aux ()
 undo = processTactic' Undo
 
 prepare_apply :: Raw -> [Bool] -> Elab' aux [Name]
-prepare_apply fn imps =
+prepare_apply fn imps = 
     do ty <- get_type fn
        ctxt <- get_context
        env <- get_env
@@ -381,10 +418,10 @@ prepare_apply fn imps =
   where
     mkClaims (Bind n' (Pi t_in) sc) (i : is) claims hs =
         do let t = rebind hs t_in
-           n <- unique_hole (mkMN n')
+           n <- getNameFrom (mkMN n')
 --            when (null claims) (start_unify n)
            let sc' = instantiate (P Bound n t) sc
---            trace ("CLAIMING " ++ show (n, t) ++ " with " ++ show hs) $
+--            trace ("CLAIMING " ++ show (n, t) ++ " with " ++ show (fn, hs)) $
            claim n (forget t)
            when i (movelast n)
            mkClaims sc' is (n : claims) hs
@@ -400,9 +437,9 @@ prepare_apply fn imps =
     doClaim ((i, _), n, t) = do claim n t
                                 when i (movelast n)
 
-    mkMN n@(MN _ _) = n
-    mkMN n@(UN x) = MN 1000 x
-    mkMN n@(SN s) = MN 1000 (show s)
+    mkMN n@(MN i _) = n
+    mkMN n@(UN x) = MN 99999 x
+    mkMN n@(SN s) = MN 99999 (show s)
     mkMN (NS n xs) = NS (mkMN n) xs
 
     rebind hs (Bind n t sc)
@@ -428,7 +465,7 @@ apply' fillt fn imps =
        ptm <- get_term
        hs <- get_holes
        ES (p, a) s prev <- get
-       let dont = nub $ head hs : dontunify p ++
+       let dont = head hs : dontunify p ++
                           if null imps then [] -- do all we can
                              else
                              map fst (filter (not.snd) (zip args (map fst imps)))
@@ -447,7 +484,7 @@ apply' fillt fn imps =
        end_unify
        ptm <- get_term
        return (map (updateUnify unify) args)
-  where updateUnify hs n = case lookup n hs of
+  where updateUnify us n = case lookup n us of
                                 Just (P _ t _) -> t
                                 _ -> n
 
@@ -512,7 +549,7 @@ apply_elab n args =
                          focus n; elaboration; elabClaims failed r xs
 
     mkMN n@(MN _ _) = n
-    mkMN n@(UN x) = MN 1000 x
+    mkMN n@(UN x) = MN 0 x
     mkMN (NS n ns) = NS (mkMN n) ns
 
 -- If the goal is not a Pi-type, invent some names and make it a pi type
@@ -521,9 +558,9 @@ checkPiGoal n
             = do g <- goal
                  case g of
                     Bind _ (Pi _) _ -> return ()
-                    _ -> do a <- unique_hole (MN 0 "pargTy")
-                            b <- unique_hole (MN 0 "pretTy")
-                            f <- unique_hole (MN 0 "pf")
+                    _ -> do a <- getNameFrom (MN 0 "pargTy")
+                            b <- getNameFrom (MN 0 "pretTy")
+                            f <- getNameFrom (MN 0 "pf")
                             claim a RType
                             claim b RType
                             claim f (RBind n (Pi (Var a)) (Var b))
@@ -535,10 +572,10 @@ checkPiGoal n
 
 simple_app :: Elab' aux () -> Elab' aux () -> String -> Elab' aux ()
 simple_app fun arg appstr =
-    do a <- unique_hole (MN 0 "argTy")
-       b <- unique_hole (MN 0 "retTy")
-       f <- unique_hole (MN 0 "f")
-       s <- unique_hole (MN 0 "s")
+    do a <- getNameFrom (MN 0 "argTy")
+       b <- getNameFrom (MN 0 "retTy")
+       f <- getNameFrom (MN 0 "f")
+       s <- getNameFrom (MN 0 "s")
        claim a RType
        claim b RType
        claim f (RBind (MN 0 "aX") (Pi (Var a)) (Var b))

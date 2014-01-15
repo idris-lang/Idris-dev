@@ -81,7 +81,10 @@ build ist info pattern opts fn tm
 buildTC :: IState -> ElabInfo -> Bool -> FnOpts -> Name -> PTerm ->
          ElabD (Term, [(Name, (Int, Maybe Name, Type))], [PDecl])
 buildTC ist info pattern opts fn tm
-    = do elab ist info pattern opts fn tm
+    = do -- set name supply to begin after highest index in tm
+         let ns = allNamesIn tm
+         initNextNameFrom ns
+         elab ist info pattern opts fn tm
          probs <- get_probs
          tm <- get_term
          case probs of
@@ -171,18 +174,18 @@ elab ist info pattern opts fn tm
     elab' ina (PResolveTC (FC "HACK" _ _)) -- for chasing parent classes
        = do g <- goal; resolveTC 5 g fn ist
     elab' ina (PResolveTC fc)
-        | True = do c <- unique_hole (MN 0 "class")
+        | True = do c <- getNameFrom (MN 0 "class")
                     instanceArg c
         | otherwise = do g <- goal
                          try (resolveTC 2 g fn ist)
-                          (do c <- unique_hole (MN 0 "class")
+                          (do c <- getNameFrom (MN 0 "class")
                               instanceArg c)
     elab' ina (PRefl fc t)
-        = elab' ina (PApp fc (PRef fc eqCon) [pimp (MN 0 "a") Placeholder True,
+        = elab' ina (PApp fc (PRef fc eqCon) [pimp (MN 0 "A") Placeholder True,
                                               pimp (MN 0 "x") t False])
     elab' ina (PEq fc l r)   = elab' ina (PApp fc (PRef fc eqTy)
-                                    [pimp (MN 0 "a") Placeholder True,
-                                     pimp (MN 0 "b") Placeholder False,
+                                    [pimp (MN 0 "A") Placeholder True,
+                                     pimp (MN 0 "B") Placeholder False,
                                      pexp l, pexp r])
     elab' ina@(_, a, inty) (PPair fc l r)
         = do hnf_compute
@@ -272,7 +275,7 @@ elab ist info pattern opts fn tm
     elab' ina@(_, a, inty) (PLam n ty sc)
           = do hsin <- get_holes
                ptmin <- get_term
-               tyn <- unique_hole (MN 0 "lamty")
+               tyn <- getNameFrom (MN 0 "lamty")
                checkPiGoal n
                claim tyn RType
                explicit tyn
@@ -290,7 +293,7 @@ elab ist info pattern opts fn tm
     elab' ina@(_, a, _) (PPi _ n Placeholder sc)
           = do attack; arg n (MN 0 "ty"); elabE (True, a, True) sc; solve
     elab' ina@(_, a, _) (PPi _ n ty sc)
-          = do attack; tyn <- unique_hole (MN 0 "ty")
+          = do attack; tyn <- getNameFrom (MN 0 "ty")
                claim tyn RType
                n' <- case n of
                         MN _ _ -> unique_hole n
@@ -302,9 +305,9 @@ elab ist info pattern opts fn tm
                solve
     elab' ina@(_, a, inty) (PLet n ty val sc)
           = do attack;
-               tyn <- unique_hole (MN 0 "letty")
+               tyn <- getNameFrom (MN 0 "letty")
                claim tyn RType
-               valn <- unique_hole (MN 0 "letval")
+               valn <- getNameFrom (MN 0 "letval")
                claim valn (Var tyn)
                explicit valn
                letbind n (Var tyn) (Var valn)
@@ -325,9 +328,9 @@ elab ist info pattern opts fn tm
     elab' ina@(_, a, inty) (PGoal fc r n sc) = do
          rty <- goal
          attack
-         tyn <- unique_hole (MN 0 "letty")
+         tyn <- getNameFrom (MN 0 "letty")
          claim tyn RType
-         valn <- unique_hole (MN 0 "letval")
+         valn <- getNameFrom (MN 0 "letval")
          claim valn (Var tyn)
          letbind n (Var tyn) (Var valn)
          focus valn
@@ -346,7 +349,7 @@ elab ist info pattern opts fn tm
          -- new function name
          env <- get_env
          argTys <- claimArgTys env args
-         fn <- unique_hole (MN 0 "inf_fn")
+         fn <- getNameFrom (MN 0 "inf_fn")
          let fty = fnTy argTys rty
 --             trace (show (ptm, map fst argTys)) $ focus fn
             -- build and defer the function application
@@ -360,8 +363,8 @@ elab ist info pattern opts fn tm
                                        ans <- claimArgTys env xs
                                        return ((n, (False, forget nty)) : ans)
              claimArgTys env (_ : xs)
-                                  = do an <- unique_hole (MN 0 "inf_argTy")
-                                       aval <- unique_hole (MN 0 "inf_arg")
+                                  = do an <- getNameFrom (MN 0 "inf_argTy")
+                                       aval <- getNameFrom (MN 0 "inf_arg")
                                        claim an RType
                                        claim aval (Var an)
                                        ans <- claimArgTys env xs
@@ -394,16 +397,12 @@ elab ist info pattern opts fn tm
        | isTConName f (tt_ctxt ist) && pattern && not reflect && not inty
           = lift $ tfail (Msg "Typecase is not allowed") 
     -- if f is local, just do a simple_app
-    elab' (ina, g, inty) tm@(PApp fc (PRef _ f) args')
-       = do let args = {- case lookupCtxt f (inblock info) of
-                          Just ps -> (map (pexp . (PRef fc)) ps ++ args')
-                          _ -> -} args'
---             newtm <- mkSpecialised ist fc f (map getTm args') tm
-            env <- get_env
-            if (f `elem` map fst env && length args' == 1)
+    elab' (ina, g, inty) tm@(PApp fc (PRef _ f) args)
+       = do env <- get_env
+            if (f `elem` map fst env && length args == 1)
                then -- simple app, as below
                     do simple_app (elabE (ina, g, inty) (PRef fc f))
-                                  (elabE (True, g, inty) (getTm (head args')))
+                                  (elabE (True, g, inty) (getTm (head args)))
                                   (show tm)
                        solve
                else
@@ -416,7 +415,7 @@ elab ist info pattern opts fn tm
                     -- we can unify with them
                     case lookupCtxt f (idris_classes ist) of
                         [] -> return ()
-                        _ -> mapM_ setInjective (map getTm args')
+                        _ -> mapM_ setInjective (map getTm args)
                     ctxt <- get_context
                     let guarded = isConName f ctxt
                     ns <- apply (Var f) (map isph args)
@@ -429,7 +428,7 @@ elab ist info pattern opts fn tm
                                     (zip ns args)
                     elabArgs (ina || not isinf, guarded, inty)
                            [] fc False ns' (map (\x -> (lazyarg x, getTm x)) eargs)
-                    mkSpecialised ist fc f (map getTm args') tm
+                    mkSpecialised ist fc f (map getTm args) tm
                     solve
                     ptm <- get_term
                     ivs' <- get_instances
@@ -478,11 +477,11 @@ elab ist info pattern opts fn tm
     elab' ina (PElabError e) = fail (pshow ist e)
     elab' ina (PRewrite fc r sc newg)
         = do attack
-             tyn <- unique_hole (MN 0 "rty")
+             tyn <- getNameFrom (MN 0 "rty")
              claim tyn RType
-             valn <- unique_hole (MN 0 "rval")
+             valn <- getNameFrom (MN 0 "rval")
              claim valn (Var tyn)
-             letn <- unique_hole (MN 0 "rewrite_rule")
+             letn <- getNameFrom (MN 0 "rewrite_rule")
              letbind letn (Var tyn) (Var valn)
              focus valn
              elab' ina r
@@ -497,11 +496,11 @@ elab ist info pattern opts fn tm
              solve
         where doEquiv t sc =
                 do attack
-                   tyn <- unique_hole (MN 0 "ety")
+                   tyn <- getNameFrom (MN 0 "ety")
                    claim tyn RType
-                   valn <- unique_hole (MN 0 "eqval")
+                   valn <- getNameFrom (MN 0 "eqval")
                    claim valn (Var tyn)
-                   letn <- unique_hole (MN 0 "equiv_val")
+                   letn <- getNameFrom (MN 0 "equiv_val")
                    letbind letn (Var tyn) (Var valn)
                    focus tyn
                    elab' ina t
@@ -511,10 +510,10 @@ elab ist info pattern opts fn tm
                    solve
     elab' ina@(_, a, inty) c@(PCase fc scr opts)
         = do attack
-             tyn <- unique_hole (MN 0 "scty")
+             tyn <- getNameFrom (MN 0 "scty")
              claim tyn RType
-             valn <- unique_hole (MN 0 "scval")
-             scvn <- unique_hole (MN 0 "scvar")
+             valn <- getNameFrom (MN 0 "scval")
+             scvn <- getNameFrom (MN 0 "scvar")
              claim valn (Var tyn)
              letbind scvn (Var tyn) (Var valn)
              focus valn
@@ -872,11 +871,11 @@ runTac autoSolve ist tac
                                when autoSolve solveAll
     runT (Equiv tm) -- let bind tm, then
               = do attack
-                   tyn <- unique_hole (MN 0 "ety")
+                   tyn <- getNameFrom (MN 0 "ety")
                    claim tyn RType
-                   valn <- unique_hole (MN 0 "eqval")
+                   valn <- getNameFrom (MN 0 "eqval")
                    claim valn (Var tyn)
-                   letn <- unique_hole (MN 0 "equiv_val")
+                   letn <- getNameFrom (MN 0 "equiv_val")
                    letbind letn (Var tyn) (Var valn)
                    focus tyn
                    elab ist toplevel False [] (MN 0 "tac") tm
@@ -884,12 +883,12 @@ runTac autoSolve ist tac
                    when autoSolve solveAll
     runT (Rewrite tm) -- to elaborate tm, let bind it, then rewrite by that
               = do attack; -- (h:_) <- get_holes
-                   tyn <- unique_hole (MN 0 "rty")
+                   tyn <- getNameFrom (MN 0 "rty")
                    -- start_unify h
                    claim tyn RType
-                   valn <- unique_hole (MN 0 "rval")
+                   valn <- getNameFrom (MN 0 "rval")
                    claim valn (Var tyn)
-                   letn <- unique_hole (MN 0 "rewrite_rule")
+                   letn <- getNameFrom (MN 0 "rewrite_rule")
                    letbind letn (Var tyn) (Var valn)
                    focus valn
                    elab ist toplevel False [] (MN 0 "tac") tm
@@ -900,9 +899,9 @@ runTac autoSolve ist tac
                    when autoSolve solveAll
     runT (LetTac n tm)
               = do attack
-                   tyn <- unique_hole (MN 0 "letty")
+                   tyn <- getNameFrom (MN 0 "letty")
                    claim tyn RType
-                   valn <- unique_hole (MN 0 "letval")
+                   valn <- getNameFrom (MN 0 "letval")
                    claim valn (Var tyn)
                    letn <- unique_hole n
                    letbind letn (Var tyn) (Var valn)
@@ -911,9 +910,9 @@ runTac autoSolve ist tac
                    when autoSolve solveAll
     runT (LetTacTy n ty tm)
               = do attack
-                   tyn <- unique_hole (MN 0 "letty")
+                   tyn <- getNameFrom (MN 0 "letty")
                    claim tyn RType
-                   valn <- unique_hole (MN 0 "letval")
+                   valn <- getNameFrom (MN 0 "letval")
                    claim valn (Var tyn)
                    letn <- unique_hole n
                    letbind letn (Var tyn) (Var valn)
@@ -933,16 +932,16 @@ runTac autoSolve ist tac
     runT (ApplyTactic tm) = do tenv <- get_env -- store the environment
                                tgoal <- goal -- store the goal
                                attack -- let f : List (TTName, Binder TT) -> TT -> Tactic = tm in ...
-                               script <- unique_hole (MN 0 "script")
+                               script <- getNameFrom (MN 0 "script")
                                claim script scriptTy
-                               scriptvar <- unique_hole (MN 0 "scriptvar" )
+                               scriptvar <- getNameFrom (MN 0 "scriptvar" )
                                letbind scriptvar scriptTy (Var script)
                                focus script
                                elab ist toplevel False [] (MN 0 "tac") tm
                                (script', _) <- get_type_val (Var scriptvar)
                                -- now that we have the script apply
                                -- it to the reflected goal and context
-                               restac <- unique_hole (MN 0 "restac")
+                               restac <- getNameFrom (MN 0 "restac")
                                claim restac tacticTy
                                focus restac
                                fill (raw_apply (forget script')
@@ -965,9 +964,9 @@ runTac autoSolve ist tac
                            -- goal, then apply the resulting reflected Tactic
         = do tgoal <- goal
              attack
-             script <- unique_hole (MN 0 "script")
+             script <- getNameFrom (MN 0 "script")
              claim script scriptTy
-             scriptvar <- unique_hole (MN 0 "scriptvar" )
+             scriptvar <- getNameFrom (MN 0 "scriptvar" )
              letbind scriptvar scriptTy (Var script)
              focus script
              ptm <- get_term
@@ -976,7 +975,7 @@ runTac autoSolve ist tac
              (script', _) <- get_type_val (Var scriptvar)
              -- now that we have the script apply
              -- it to the reflected goal 
-             restac <- unique_hole (MN 0 "restac")
+             restac <- getNameFrom (MN 0 "restac")
              claim restac tacticTy
              focus restac
              fill (forget script')
@@ -992,11 +991,11 @@ runTac autoSolve ist tac
             scriptTy = tacticTy
 
     runT (Reflect v) = do attack -- let x = reflect v in ...
-                          tyn <- unique_hole (MN 0 "letty")
+                          tyn <- getNameFrom (MN 0 "letty")
                           claim tyn RType
-                          valn <- unique_hole (MN 0 "letval")
+                          valn <- getNameFrom (MN 0 "letval")
                           claim valn (Var tyn)
-                          letn <- unique_hole (MN 0 "letvar")
+                          letn <- getNameFrom (MN 0 "letvar")
                           letbind letn (Var tyn) (Var valn)
                           focus valn
                           elab ist toplevel False [] (MN 0 "tac") v
@@ -1006,11 +1005,11 @@ runTac autoSolve ist tac
                           let value' = hnf ctxt env value
                           runTac autoSolve ist (Exact $ PQuote (reflect value'))
     runT (Fill v) = do attack -- let x = fill x in ...
-                       tyn <- unique_hole (MN 0 "letty")
+                       tyn <- getNameFrom (MN 0 "letty")
                        claim tyn RType
-                       valn <- unique_hole (MN 0 "letval")
+                       valn <- getNameFrom (MN 0 "letval")
                        claim valn (Var tyn)
-                       letn <- unique_hole (MN 0 "letvar")
+                       letn <- getNameFrom (MN 0 "letvar")
                        letbind letn (Var tyn) (Var valn)
                        focus valn
                        elab ist toplevel False [] (MN 0 "tac") v

@@ -1388,6 +1388,7 @@ allNamesIn tm = nub $ ni [] tm
   where
     ni env (PRef _ n)
         | not (n `elem` env) = [n]
+    ni env (PPatvar _ n) = [n]
     ni env (PApp _ f as)   = ni env f ++ concatMap (ni env) (map getTm as)
     ni env (PAppBind _ f as)   = ni env f ++ concatMap (ni env) (map getTm as)
     ni env (PCase _ c os)  = ni env c ++ concatMap (ni env) (map snd os)

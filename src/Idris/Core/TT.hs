@@ -246,6 +246,7 @@ data Name = UN String -- ^ User-provided name
           | NErased -- ^ Name of somethng which is never used in scope
           | SN SpecialName -- ^ Decorated function names
   deriving (Eq, Ord)
+
 {-!
 deriving instance Binary Name
 deriving instance NFData Name
@@ -653,8 +654,8 @@ data Datatype n = Data { d_typename :: n,
 instance Eq n => Eq (TT n) where
     (==) (P xt x _)     (P yt y _)     = x == y
     (==) (V x)          (V y)          = x == y
-    (==) (Bind _ xb xs) (Bind _ yb ys) = xb == yb && xs == ys
-    (==) (App fx ax)    (App fy ay)    = fx == fy && ax == ay
+    (==) (Bind _ xb xs) (Bind _ yb ys) = xs == ys && xb == yb
+    (==) (App fx ax)    (App fy ay)    = ax == ay && fx == fy
     (==) (TType _)        (TType _)        = True -- deal with constraints later
     (==) (Constant x)   (Constant y)   = x == y
     (==) (Proj x i)     (Proj y j)     = x == y && i == j

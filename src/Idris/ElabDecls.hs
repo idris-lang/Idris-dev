@@ -671,6 +671,7 @@ elabTransform info fc safe lhs_in rhs_in
          ((rhs', defer), _) <-
               tclift $ elaborate ctxt (MN 0 "transRHS") clhs_ty []
                        (do pbinds lhs_tm
+                           setNextName
                            erun fc (build i info False [] (UN "transform") rhs)
                            erun fc $ psolve lhs_tm
                            tt <- get_term
@@ -1298,8 +1299,9 @@ elabClause info opts (cnum, PClause fc fname lhs_in withs rhs_in whereblock)
         ((rhs', defer, is), _) <-
            tclift $ elaborate ctxt (MN 0 "patRHS") clhsty []
                     (do pbinds lhs_tm
+                        setNextName 
                         (_, _, is) <- errAt "right hand side of " fname
-                                        (erun fc (build i info False opts fname rhs))
+                                         (erun fc (build i info False opts fname rhs))
                         errAt "right hand side of " fname
                               (erun fc $ psolve lhs_tm)
                         hs <- get_holes
@@ -1448,6 +1450,7 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in withblock)
             tclift $ elaborate ctxt (MN 0 "withRHS")
                         (bindTyArgs PVTy bargs infP) []
                         (do pbinds lhs_tm
+                            setNextName
                             -- TODO: may want where here - see winfo abpve
                             (_', d, is) <- errAt "with value in " fname
                               (erun fc (build i info False opts fname (infTerm wval)))
@@ -1511,6 +1514,7 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in withblock)
         ((rhs', defer, is), _) <-
            tclift $ elaborate ctxt (MN 0 "wpatRHS") clhsty []
                     (do pbinds lhs_tm
+                        setNextName
                         (_, d, is) <- erun fc (build i info False opts fname rhs)
                         psolve lhs_tm
                         tt <- get_term

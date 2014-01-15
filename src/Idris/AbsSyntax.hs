@@ -700,13 +700,13 @@ pairOpts = []
 
 eqTy = UN "="
 eqCon = UN "refl"
-eqDecl = PDatadecl eqTy (piBind [(n "a", PType), (n "b", PType),
-                                 (n "x", PRef bi (n "a")), (n "y", PRef bi (n "b"))]
+eqDecl = PDatadecl eqTy (piBind [(n "A", PType), (n "B", PType),
+                                 (n "x", PRef bi (n "A")), (n "y", PRef bi (n "B"))]
                                  PType)
-                [("", eqCon, PPi impl (n "a") PType (
-                         PPi impl (n "x") (PRef bi (n "a"))
-                           (PApp bi (PRef bi eqTy) [pimp (n "a") Placeholder False,
-                                                    pimp (n "b") Placeholder False,
+                [("", eqCon, PPi impl (n "A") PType (
+                         PPi impl (n "x") (PRef bi (n "A"))
+                           (PApp bi (PRef bi eqTy) [pimp (n "A") Placeholder False,
+                                                    pimp (n "B") Placeholder False,
                                                     pexp (PRef bi (n "x")),
                                                     pexp (PRef bi (n "x"))])), bi)]
     where n a = MN 0 a
