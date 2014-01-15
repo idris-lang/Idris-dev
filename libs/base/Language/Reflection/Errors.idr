@@ -2,7 +2,7 @@ module Language.Reflection.Errors
 
 import Language.Reflection
 
-record SourceLocation : Type where
+data SourceLocation : Type where
   FileLoc : (filename : String) -> (line : Int) -> (col : Int) -> SourceLocation
 
 %name SourceLocation loc
