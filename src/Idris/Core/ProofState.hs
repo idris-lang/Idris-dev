@@ -487,7 +487,7 @@ solve ctxt env (Bind x (Guess ty val) sc)
                                            -- dontunify = dontunify ps \\ [x],
                                            -- unified = (uh, uns ++ [(x, val)]),
                                            instances = instances ps \\ [x] })
-                       let tm' = instantiate val (pToV x sc) in
+                       let tm' = subst x val sc in 
                            return tm'
    | otherwise    = lift $ tfail $ IncompleteTerm val
 solve _ _ h@(Bind x t sc)
@@ -513,7 +513,7 @@ introTy ty mn ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' =
        (tyv, tyt) <- lift $ check ctxt env ty
 --        ns <- lift $ unify ctxt env tyv t'
        case t' of
-           Bind y (Pi s) t -> let t' = instantiate (P Bound n s) (pToV y t) in
+           Bind y (Pi s) t -> let t' = subst y (P Bound n s) t in
                                   do ns <- unify' ctxt env s tyv
                                      ps <- get
                                      let (uh, uns) = unified ps
@@ -532,7 +532,7 @@ intro mn ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' =
                     _ -> hnf ctxt env t
        case t' of
            Bind y (Pi s) t -> -- trace ("in type " ++ show t') $
-               let t' = instantiate (P Bound n s) (pToV y t) in
+               let t' = subst y (P Bound n s) t in
                    return $ Bind n (Lam s) (Bind x (Hole t') (P Bound x t'))
            _ -> lift $ tfail $ CantIntroduce t'
 intro n ctxt env _ = fail "Can't introduce here."
@@ -548,7 +548,7 @@ forall n ty ctxt env _ = fail "Can't pi bind here"
 patvar :: Name -> RunTactic
 patvar n ctxt env (Bind x (Hole t) sc) =
     do action (\ps -> ps { holes = holes ps \\ [x] })
-       return $ Bind n (PVar t) (instantiate (P Bound n t) (pToV x sc))
+       return $ Bind n (PVar t) (subst x (P Bound n t) sc)
 patvar n ctxt env tm = fail $ "Can't add pattern var at " ++ show tm
 
 letbind :: Name -> Raw -> Raw -> RunTactic
@@ -662,7 +662,7 @@ patbind n ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' =
                     x@(Bind y (PVTy s) t) -> x
                     _ -> hnf ctxt env t
        case t' of
-           Bind y (PVTy s) t -> let t' = instantiate (P Bound n s) (pToV y t) in
+           Bind y (PVTy s) t -> let t' = subst y (P Bound n s) t in
                                     return $ Bind n (PVar s) (Bind x (Hole t') (P Bound x t'))
            _ -> fail "Nothing to pattern bind"
 patbind n ctxt env _ = fail "Can't pattern bind here"
@@ -742,7 +742,7 @@ keepGiven du (u : us) hs = keepGiven du us hs
 updateSolved xs x = -- trace ("Updating " ++ show xs ++ " in " ++ show x) $
                       updateSolved' xs x
 updateSolved' xs (Bind n (Hole ty) t)
-    | Just v <- lookup n xs = instantiate v (pToV n (updateSolved' xs t))
+    | Just v <- lookup n xs = psubst n v (updateSolved' xs t)
 updateSolved' xs (Bind n b t)
     | otherwise = Bind n (fmap (updateSolved' xs) b) (updateSolved' xs t)
 updateSolved' xs (App f a) = App (updateSolved' xs f) (updateSolved' xs a)
@@ -759,7 +759,7 @@ updateError ns e = e
 
 solveInProblems x val [] = []
 solveInProblems x val ((l, r, env, err) : ps)
-   = ((instantiate val (pToV x l), instantiate val (pToV x r),
+   = ((psubst x val l, psubst x val r, 
        updateEnv [(x, val)] env, err) : solveInProblems x val ps)
 
 updateNotunified ns nu = up nu where

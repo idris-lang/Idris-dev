@@ -757,6 +757,16 @@ finalise t = t
 subst :: Eq n => n -> TT n -> TT n -> TT n
 subst n v tm = instantiate v (pToV n tm)
 
+-- If there are no Vs in the term (i.e. in proof state)
+psubst :: Eq n => n -> TT n -> TT n -> TT n
+psubst n v tm = s' tm where
+   s' (P _ x _) | n == x = v
+   s' (Bind x b sc) | n == x = Bind x (fmap s' b) sc
+                    | otherwise = Bind x (fmap s' b) (s' sc)
+   s' (App f a) = App (s' f) (s' a)
+   s' (Proj t idx) = Proj (s' t) idx
+   s' t = t
+
 substNames :: Eq n => [(n, TT n)] -> TT n -> TT n
 substNames []             t = t
 substNames ((n, tm) : xs) t = subst n tm (substNames xs t)

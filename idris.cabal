@@ -341,6 +341,7 @@ Library
   Exposed-modules:
                   Idris.Core.CaseTree
                 , Idris.Core.Constraints
+                , Idris.Core.DeepSeq
                 , Idris.Core.Elaborate
                 , Idris.Core.Evaluate
                 , Idris.Core.Execute
