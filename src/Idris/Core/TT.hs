@@ -486,6 +486,7 @@ data Binder b = Lam   { binderTy  :: b {-^ type annotation for bound variable-}}
               | Guess { binderTy  :: b,
                         binderVal :: b }
               | PVar  { binderTy  :: b }
+                -- ^ A pattern variable
               | PVTy  { binderTy  :: b }
   deriving (Show, Eq, Ord, Functor)
 {-!
@@ -1082,6 +1083,8 @@ weakenEnv env = wk (length env - 1) env
 weakenTmEnv :: Int -> EnvTT n -> EnvTT n
 weakenTmEnv i = map (\ (n, b) -> (n, fmap (weakenTm i) b))
 
+-- | Gather up all the outer 'PVar's and 'Hole's in an expression and reintroduce
+-- them in a canonical order
 orderPats :: Term -> Term
 orderPats tm = op [] tm
   where
