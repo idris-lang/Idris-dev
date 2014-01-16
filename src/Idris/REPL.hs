@@ -80,31 +80,33 @@ repl :: IState -- ^ The initial state
      -> [FilePath] -- ^ The loaded modules
      -> InputT Idris ()
 repl orig mods
-   = H.catch
-      (do let quiet = opt_quiet (idris_options orig)
-          i <- lift getIState
-          let colour = idris_colourRepl i
-          let theme = idris_colourTheme i
-          let mvs = idris_metavars i
-          let prompt = if quiet
-                          then ""
-                          else showMVs colour theme mvs ++
-                               let str = mkPrompt mods ++ ">" in
-                               (if colour then colourisePrompt theme str else str) ++ " "
-          x <- getInputLine prompt
-          case x of
-              Nothing -> do lift $ when (not quiet) (iputStrLn "Bye bye")
-                            return ()
-              Just input -> H.catch
-                              (do ms <- lift $ processInput input orig mods
-                                  case ms of
-                                      Just mods -> repl orig mods
-                                      Nothing -> return ())
-                              ctrlC)
-      ctrlC
-   where ctrlC :: SomeException -> InputT Idris ()
-         ctrlC e = do lift $ iputStrLn (show e)
-                      repl orig mods
+   = -- H.catch
+     do let quiet = opt_quiet (idris_options orig)
+        i <- lift getIState
+        let colour = idris_colourRepl i
+        let theme = idris_colourTheme i
+        let mvs = idris_metavars i
+        let prompt = if quiet
+                        then ""
+                        else showMVs colour theme mvs ++
+                             let str = mkPrompt mods ++ ">" in
+                             (if colour then colourisePrompt theme str else str) ++ " "
+        x <- H.catch (getInputLine prompt)
+                     (ctrlC (return Nothing))
+        case x of
+            Nothing -> do lift $ when (not quiet) (iputStrLn "Bye bye")
+                          return ()
+            Just input -> -- H.catch
+                do ms <- H.catch (lift $ processInput input orig mods)
+                                 (ctrlC (return (Just mods))) 
+                   case ms of
+                        Just mods -> repl orig mods
+                        Nothing -> return ()
+--                             ctrlC)
+--       ctrlC
+   where ctrlC :: InputT Idris a -> SomeException -> InputT Idris a
+         ctrlC act e = do lift $ iputStrLn (show e)
+                          act -- repl orig mods
 
          showMVs c thm [] = ""
          showMVs c thm ms = "Metavariables: " ++ 
@@ -1193,8 +1195,8 @@ idrisMain opts =
        when (not (NoPrelude `elem` opts)) $ do x <- loadModule stdout "Prelude"
                                                return ()
        when (runrepl && not quiet && not idesl && not (isJust script) && not nobanner) $ iputStrLn banner
-       ist <- getIState
 
+       orig <- getIState
        loadInputs stdout inputs
 
        runIO $ hSetBuffering stdout LineBuffering
@@ -1219,9 +1221,9 @@ idrisMain opts =
 
        when (runrepl && not idesl) $ do
          initScript
-         startServer ist inputs
-         runInputT (replSettings (Just historyFile)) $ repl ist inputs
-       when (idesl) $ ideslaveStart ist inputs
+         startServer orig inputs
+         runInputT (replSettings (Just historyFile)) $ repl orig inputs
+       when (idesl) $ ideslaveStart orig inputs
        ok <- noErrors
        when (not ok) $ runIO (exitWith (ExitFailure 1))
   where

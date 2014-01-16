@@ -177,7 +177,7 @@ ibc i (IBCDef n) f = case lookupDef n (tt_ctxt i) of
     update (P t n@(MN _ _) ty) = return (P t n ty)
     update (P t n@(UN _) ty) = return (P t n ty)
     update (P t n ty) = do (f, len) <- ST.get
-                           i <- lift (addNameIdx n)
+                           (i, _) <- lift (addNameIdx n)
                            when (i >= len) $
                              ST.put (f { symbols = symbols f ++ [n] }, len+1)
                            return (P t (SymRef i) ty)

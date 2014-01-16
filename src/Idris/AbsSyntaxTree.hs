@@ -133,7 +133,7 @@ data IState = IState {
     idris_colourTheme :: ColourTheme,
     idris_outh :: Handle,
     idris_errorhandlers :: [Name],
-    idris_nameIdx :: (Int, Ctxt Int)
+    idris_nameIdx :: (Int, Ctxt (Int, Name))
    }
 
 data SizeChange = Smaller | Same | Bigger | Unknown

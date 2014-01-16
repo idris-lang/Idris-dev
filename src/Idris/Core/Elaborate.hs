@@ -16,7 +16,9 @@ import Idris.Core.TT
 import Idris.Core.Evaluate
 import Idris.Core.Typecheck
 import Idris.Core.Unify
+import Idris.Core.DeepSeq
 
+import Control.DeepSeq
 import Control.Monad.State
 import Data.Char
 import Data.List
@@ -124,6 +126,10 @@ elaborate :: Context -> Name -> Type -> aux -> Elab' aux a -> TC (a, String)
 elaborate ctxt n ty d elab = do let ps = initElaborator n ctxt ty
                                 (a, ES ps' str _) <- runElab d elab ps
                                 return (a, str)
+
+force_term :: Elab' aux ()
+force_term = do ES (ps, a) l p <- get
+                put (ES (ps { pterm = force (pterm ps) }, a) l p)
 
 updateAux :: (aux -> aux) -> Elab' aux ()
 updateAux f = do ES (ps, a) l p <- get

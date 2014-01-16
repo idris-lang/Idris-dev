@@ -238,14 +238,19 @@ resetNameIdx :: Idris ()
 resetNameIdx = do i <- getIState
                   put (i { idris_nameIdx = (0, emptyContext) })
 
-addNameIdx :: Name -> Idris Int
+-- Used to preserve sharing of names
+addNameIdx :: Name -> Idris (Int, Name)
 addNameIdx n = do i <- getIState
-                  let idxs = snd (idris_nameIdx i)
-                  case lookupCtxt n idxs of
-                       [x] -> return x
-                       _ -> do let i' = fst (idris_nameIdx i) + 1
-                               put (i { idris_nameIdx = (i', addDef n i' idxs) })
-                               return i'
+                  let (i', x) = addNameIdx' i n
+                  return x
+
+addNameIdx' :: IState -> Name -> (IState, (Int, Name))
+addNameIdx' i n
+   = let idxs = snd (idris_nameIdx i) in
+         case lookupCtxt n idxs of
+            [x] -> (i, x)
+            _ -> let i' = fst (idris_nameIdx i) + 1 in
+                    (i { idris_nameIdx = (i', addDef n (i', n) idxs) }, (i', n))
 
 getHdrs :: Codegen -> Idris [String]
 getHdrs tgt = do i <- getIState; return (forCodegen tgt $ idris_hdrs i)

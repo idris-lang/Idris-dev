@@ -740,7 +740,7 @@ keepGiven du (u@(n, _) : us) hs
 keepGiven du (u : us) hs = keepGiven du us hs
 
 updateSolved xs x = -- trace ("Updating " ++ show xs ++ " in " ++ show x) $
-                      updateSolved' xs x
+                     updateSolved' xs x
 updateSolved' [] x = x
 updateSolved' xs (Bind n (Hole ty) t)
     | Just v <- lookup n xs = case xs of

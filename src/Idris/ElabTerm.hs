@@ -110,7 +110,6 @@ elab ist info pattern opts fn tm
          end_unify
          when pattern -- convert remaining holes to pattern vars
               (do update_term orderPats
-                  tm <- get_term
                   mkPat)
   where
     tcgen = Dictionary `elem` opts
