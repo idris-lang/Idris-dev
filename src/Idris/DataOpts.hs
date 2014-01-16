@@ -196,8 +196,14 @@ instance Optimisable Raw where
 
     stripCollapsed t = return t
 
-instance Optimisable t => Optimisable (Binder t) where
-    applyOpts (Let t v) = Let <$> applyOpts t <*> applyOpts v
+-- Erase types (makes ibc smaller, and we don't need them)
+instance Optimisable (Binder (TT Name)) where
+    applyOpts (Let t v) = Let <$> return Erased <*> applyOpts v
+    applyOpts b = return (b { binderTy = Erased })
+    stripCollapsed (Let t v) = Let <$> return Erased <*> stripCollapsed v
+    stripCollapsed b = return (b { binderTy = Erased })
+
+instance Optimisable (Binder Raw) where
     applyOpts b = do t' <- applyOpts (binderTy b)
                      return (b { binderTy = t' })
     stripCollapsed (Let t v) = Let <$> stripCollapsed t <*> stripCollapsed v

@@ -23,7 +23,7 @@ import Debug.Trace
 import Paths_idris
 
 ibcVersion :: Word8
-ibcVersion = 50
+ibcVersion = 51
 
 data IBCFile = IBCFile { ver :: Word8,
                          sourcefile :: FilePath,
@@ -357,16 +357,15 @@ instance Binary CGInfo where
         put (CGInfo x1 x2 x3 x4 x5)
           = do put x1
                put x2
-               put x3
+--                put x3 -- Already used SCG info for totality check
                put x4
                put x5
         get
           = do x1 <- get
                x2 <- get
-               x3 <- get
                x4 <- get
                x5 <- get
-               return (CGInfo x1 x2 x3 x4 x5)
+               return (CGInfo x1 x2 [] x4 x5)
 
 instance Binary FC where
         put (FC x1 x2 x3)
@@ -650,7 +649,7 @@ instance {- (Binary n) => -} Binary (TT Name) where
                 P x1 x2 x3 -> do putWord8 0
                                  put x1
                                  put x2
-                                 put x3
+--                                  put x3
                 V x1 -> do putWord8 1
                            put x1
                 Bind x1 x2 x3 -> do putWord8 2
@@ -674,8 +673,8 @@ instance {- (Binary n) => -} Binary (TT Name) where
                case i of
                    0 -> do x1 <- get
                            x2 <- get
-                           x3 <- get
-                           return (P x1 x2 x3)
+--                            x3 <- get
+                           return (P x1 x2 Erased)
                    1 -> do x1 <- get
                            return (V x1)
                    2 -> do x1 <- get
@@ -772,15 +771,13 @@ instance Binary CaseAlt where
 
 instance Binary CaseDefs where
         put (CaseDefs x1 x2 x3 x4)
-          = do -- don't need totality checked version
+          = do -- don't need totality checked or inlined versions
                put x2
-               put x3
                put x4
         get
           = do x2 <- get
-               x3 <- get -- use for totality checked version
                x4 <- get
-               return (CaseDefs x3 x2 x3 x4)
+               return (CaseDefs x2 x2 x2 x4)
 
 instance Binary CaseInfo where
         put x@(CaseInfo x1 x2) = do put x1
