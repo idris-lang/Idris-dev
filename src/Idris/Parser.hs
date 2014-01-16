@@ -21,6 +21,7 @@ import Text.PrettyPrint.ANSI.Leijen (Doc, plain)
 import Idris.AbsSyntax
 import Idris.DSL
 import Idris.Imports
+import Idris.Delaborate
 import Idris.Error
 import Idris.ElabDecls
 import Idris.ElabTerm hiding (namespace, params)
@@ -1004,7 +1005,7 @@ loadModule' outh f
                     LIDR fn -> loadSource outh True  fn
                     IBC fn src ->
                       idrisCatch (loadIBC fn)
-                                 (\c -> do iLOG $ fn ++ " failed " ++ show c
+                                 (\c -> do iLOG $ fn ++ " failed " ++ pshow i c
                                            case src of
                                              IDR sfn -> loadSource outh False sfn
                                              LIDR sfn -> loadSource outh True sfn)

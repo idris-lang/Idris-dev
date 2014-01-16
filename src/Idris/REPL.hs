@@ -1101,12 +1101,13 @@ loadInputs h inputs
                    when (not loadCode) $ tryLoad $ nub (concat ifiles)
               _ -> return ()
            putIState inew)
-        (\e -> do case e of
+        (\e -> do i <- getIState
+                  case e of
                     At f _ -> do setErrLine (fc_line f)
                                  iputStrLn (show e)
                     ProgramLineComment -> return () -- fail elsewhere
                     _ -> do setErrLine 3 -- FIXME! Propagate it
-                            iputStrLn (show e))
+                            iputStrLn (pshow i e))
    where -- load all files, stop if any fail
          tryLoad :: [IFileType] -> Idris ()
          tryLoad [] = return ()

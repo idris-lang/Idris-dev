@@ -8,6 +8,7 @@ import Idris.Core.CaseTree
 import Idris.AbsSyntax
 import Idris.Imports
 import Idris.Error
+import Idris.Delaborate
 
 import Data.Binary
 import Data.Vector.Binary
@@ -79,7 +80,7 @@ writeIBC src f
          idrisCatch (do runIO $ createDirectoryIfMissing True (dropFileName f)
                         runIO $ encodeFile f ibcf
                         iLOG "Written")
-            (\c -> do iLOG $ "Failed " ++ show c)
+            (\c -> do iLOG $ "Failed " ++ pshow i c)
          return ()
 
 mkIBC :: [IBCWrite] -> IBCFile -> Idris IBCFile
