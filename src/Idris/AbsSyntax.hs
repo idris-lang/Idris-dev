@@ -1068,7 +1068,7 @@ implicitise syn ignore ist tm = -- trace ("INCOMING " ++ showImp True tm) $
     imps top env (PPi (Imp l _ doc _) n ty sc)
         = do let isn = nub (namesIn uvars ist ty) `dropAll` [n]
              (decls , ns) <- get
-             put (PImp (getPriority ist ty) True l n ty doc : decls,
+             put (PImp (getPriority ist ty) True l n Placeholder doc : decls,
                   nub (ns ++ (isn `dropAll` (env ++ map fst (getImps decls)))))
              imps True (n:env) sc
     imps top env (PPi (Exp l _ doc _) n ty sc)
@@ -1076,7 +1076,7 @@ implicitise syn ignore ist tm = -- trace ("INCOMING " ++ showImp True tm) $
                             (PRef _ x) -> namesIn uvars ist sc `dropAll` [n]
                             _ -> [])
              (decls, ns) <- get -- ignore decls in HO types
-             put (PExp (getPriority ist ty) l ty doc : decls,
+             put (PExp (getPriority ist ty) l Placeholder doc : decls,
                   nub (ns ++ (isn `dropAll` (env ++ map fst (getImps decls)))))
              imps True (n:env) sc
     imps top env (PPi (Constraint l _ doc) n ty sc)
@@ -1084,7 +1084,7 @@ implicitise syn ignore ist tm = -- trace ("INCOMING " ++ showImp True tm) $
                             (PRef _ x) -> namesIn uvars ist sc `dropAll` [n]
                             _ -> [])
              (decls, ns) <- get -- ignore decls in HO types
-             put (PConstraint 10 l ty doc : decls,
+             put (PConstraint 10 l Placeholder doc : decls,
                   nub (ns ++ (isn `dropAll` (env ++ map fst (getImps decls)))))
              imps True (n:env) sc
     imps top env (PPi (TacImp l _ scr doc) n ty sc)
@@ -1092,7 +1092,7 @@ implicitise syn ignore ist tm = -- trace ("INCOMING " ++ showImp True tm) $
                             (PRef _ x) -> namesIn uvars ist sc `dropAll` [n]
                             _ -> [])
              (decls, ns) <- get -- ignore decls in HO types
-             put (PTacImplicit 10 l n scr ty doc : decls,
+             put (PTacImplicit 10 l n scr Placeholder doc : decls,
                   nub (ns ++ (isn `dropAll` (env ++ map fst (getImps decls)))))
              imps True (n:env) sc
     imps top env (PEq _ l r)

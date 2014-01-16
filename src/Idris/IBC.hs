@@ -24,7 +24,7 @@ import Debug.Trace
 import Paths_idris
 
 ibcVersion :: Word8
-ibcVersion = 51
+ibcVersion = 52
 
 data IBCFile = IBCFile { ver :: Word8,
                          sourcefile :: FilePath,
@@ -208,7 +208,9 @@ pImports fs
 pImps :: [(Name, [PArg])] -> Idris ()
 pImps imps = mapM_ (\ (n, imp) ->
                         do i <- getIState
-                           putIState (i { idris_implicits
+                           case lookupDefAcc n False (tt_ctxt i) of
+                              [(n, Hidden)] -> return ()
+                              _ -> putIState (i { idris_implicits
                                             = addDef n imp (idris_implicits i) }))
                    imps
 
@@ -371,13 +373,11 @@ instance Binary CGInfo where
 instance Binary FC where
         put (FC x1 x2 x3)
           = do put x1
-               put x2
-               put x3
+               put (x2 * 65536 + x3)
         get
           = do x1 <- get
-               x2 <- get
-               x3 <- get
-               return (FC x1 x2 x3)
+               x2x3 <- get
+               return (FC x1 (x2x3 `div` 65536) (x2x3 `mod` 65536))
 
 
 instance Binary Name where
@@ -624,22 +624,18 @@ instance Binary NameType where
                 Bound -> putWord8 0
                 Ref -> putWord8 1
                 DCon x1 x2 -> do putWord8 2
-                                 put x1
-                                 put x2
+                                 put (x1 * 65536 + x2)
                 TCon x1 x2 -> do putWord8 3
-                                 put x1
-                                 put x2
+                                 put (x1 * 65536 + x2)
         get
           = do i <- getWord8
                case i of
                    0 -> return Bound
                    1 -> return Ref
-                   2 -> do x1 <- get
-                           x2 <- get
-                           return (DCon x1 x2)
-                   3 -> do x1 <- get
-                           x2 <- get
-                           return (TCon x1 x2)
+                   2 -> do x1x2 <- get
+                           return (DCon (x1x2 `div` 65536) (x1x2 `mod` 65536))
+                   3 -> do x1x2 <- get
+                           return (TCon (x1x2 `div` 65536) (x1x2 `mod` 65536))
                    _ -> error "Corrupted binary data for NameType"
 
 
