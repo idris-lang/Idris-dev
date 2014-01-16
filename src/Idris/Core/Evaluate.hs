@@ -9,6 +9,7 @@ module Idris.Core.Evaluate(normalise, normaliseTrace, normaliseC, normaliseAll,
                 addToCtxt, setAccess, setTotal, setMetaInformation, addCtxtDef, addTyDecl,
                 addDatatype, addCasedef, simplifyCasedef, addOperator,
                 lookupNames, lookupTy, lookupP, lookupDef, lookupDefAcc, lookupVal,
+                mapDefCtxt,
                 lookupTotal, lookupNameTotal, lookupMetaInformation, lookupTyEnv, isDConName, isTConName, isConName, isFnName,
                 Value(..), Quote(..), initEval, uniqueNameCtxt) where
 
@@ -695,6 +696,10 @@ data Context = MkContext {
 
 -- | The initial empty context
 initContext = MkContext [] 0 emptyContext
+
+mapDefCtxt :: (Def -> Def) -> Context -> Context
+mapDefCtxt f (MkContext c t defs) = MkContext c t (mapCtxt f' defs)
+   where f' (d, a, t, m) = f' (f d, a, t, m)
 
 -- | Get the definitions from a context
 ctxtAlist :: Context -> [(Name, Def)]

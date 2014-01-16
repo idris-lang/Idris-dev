@@ -23,7 +23,7 @@ module Idris.Core.TT where
 import Control.Monad.State
 import Control.Monad.Trans.Error (Error(..))
 import Debug.Trace
-import qualified Data.Map as Map
+import qualified Data.Map.Strict as Map
 import Data.Char
 import Data.List
 import Data.Vector.Unboxed (Vector)
@@ -313,6 +313,9 @@ showCG NErased = "_"
 -- of things in different namespaces with that name.
 type Ctxt a = Map.Map Name (Map.Map Name a)
 emptyContext = Map.empty
+
+mapCtxt :: (a -> b) -> Ctxt a -> Ctxt b
+mapCtxt = fmap . fmap
 
 tcname (UN ('@':_)) = True
 tcname (NS n _) = tcname n
@@ -755,6 +758,15 @@ finalise :: Eq n => TT n -> TT n
 finalise (Bind x b sc) = Bind x (fmap finalise b) (pToV x (finalise sc))
 finalise (App f a) = App (finalise f) (finalise a)
 finalise t = t
+
+-- Once we've finished checking everything about a term we no longer need
+-- the type on the 'P' so erase it so save memory
+
+pEraseType :: TT n -> TT n
+pEraseType (P nt t _) = P nt t Erased
+pEraseType (App f a) = App (pEraseType f) (pEraseType a)
+pEraseType (Bind n b sc) = Bind n (fmap pEraseType b) (pEraseType sc)
+pEraseType t = t
 
 subst :: Eq n => n -> TT n -> TT n -> TT n
 subst n v tm = instantiate v (pToV n tm)

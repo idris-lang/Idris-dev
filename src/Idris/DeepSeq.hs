@@ -2,7 +2,6 @@ module Idris.DeepSeq(module Idris.DeepSeq, module Idris.Core.DeepSeq) where
 
 import Idris.Core.DeepSeq
 import Idris.Core.TT
-import Idris.AbsSyntax
 import Idris.AbsSyntaxTree
 
 import Control.DeepSeq

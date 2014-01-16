@@ -408,6 +408,7 @@ edit f orig
                           , idris_colourTheme = idris_colourTheme i
                           }
          loadInputs stdout [f]
+         clearOrigPats
          iucheck
          return ()
    where getEditor env | Just ed <- lookup "EDITOR" env = ed
@@ -1220,6 +1221,7 @@ idrisMain opts =
        historyFile <- fmap (</> "repl" </> "history") getIdrisUserDataDir
 
        when (runrepl && not idesl) $ do
+         clearOrigPats
          initScript
          startServer orig inputs
          runInputT (replSettings (Just historyFile)) $ repl orig inputs

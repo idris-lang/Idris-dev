@@ -302,6 +302,27 @@ getInternalApp fp l = do i <- getIState
                               Nothing -> return Placeholder
                               -- TODO: What if it's not there?
 
+-- Pattern definitions are only used for coverage checking, so erase them
+-- when we're done
+clearOrigPats :: Idris ()
+clearOrigPats = do i <- get
+                   let ps = idris_patdefs i
+                   let ps' = mapCtxt (\ (_,miss) -> ([], miss)) ps
+                   put (i { idris_patdefs = ps' })
+
+-- Erase types from Ps in the context (basically ending up with what's in
+-- the .ibc, which is all we need after all the analysis is done)
+clearPTypes :: Idris ()
+clearPTypes = do i <- get
+                 let ctxt = tt_ctxt i 
+                 put (i { tt_ctxt = mapDefCtxt pErase ctxt })
+   where pErase (CaseOp c t tys orig tot cds) 
+            = CaseOp c t tys orig [] (pErase' cds)
+         pErase x = x
+         pErase' (CaseDefs _ (cs, c) _ rs)
+             = let c' = (cs, fmap pEraseType c) in
+                   CaseDefs c' c' c' rs
+
 checkUndefined :: FC -> Name -> Idris ()
 checkUndefined fc n
     = do i <- getContext

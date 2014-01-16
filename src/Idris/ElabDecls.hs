@@ -91,8 +91,10 @@ elabType' norm info syn doc fc opts n ty' = {- let ty' = piBind (params info) ty
          let nty' = normalise ctxt [] nty
 
          -- Add normalised type to internals
-         addInternalApp (fc_fname fc) (fc_line fc) (mergeTy ty' (delab i nty'))
-         addIBC (IBCLineApp (fc_fname fc) (fc_line fc) (mergeTy ty' (delab i nty')))
+         rep <- useREPL
+         when rep $ do
+           addInternalApp (fc_fname fc) (fc_line fc) (mergeTy ty' (delab i nty'))
+           addIBC (IBCLineApp (fc_fname fc) (fc_line fc) (mergeTy ty' (delab i nty')))
 
          let (t, _) = unApply (getRetTy nty')
          let corec = case t of
@@ -675,8 +677,7 @@ elabTransform info fc safe lhs_in rhs_in
                            erun fc (build i info False [] (UN "transform") rhs)
                            erun fc $ psolve lhs_tm
                            tt <- get_term
-                           let (tm, ds) = runState (collectDeferred Nothing tt) []
-                           return (tm, ds))
+                           return (runState (collectDeferred Nothing tt) []))
          (crhs_tm, crhs_ty) <- recheckC fc [] rhs'
          logLvl 3 ("Transform RHS " ++ show crhs_tm)
          when safe $ case converts ctxt [] clhs_tm crhs_tm of
@@ -1268,8 +1269,10 @@ elabClause info opts (cnum, PClause fc fname lhs_in withs rhs_in whereblock)
         
         logLvl 3 ("Normalised LHS: " ++ showImp Nothing True False (delabMV i clhs))
 
-        addInternalApp (fc_fname fc) (fc_line fc) (delabMV i clhs)
-        addIBC (IBCLineApp (fc_fname fc) (fc_line fc) (delabMV i clhs))
+        rep <- useREPL
+        when rep $ do
+          addInternalApp (fc_fname fc) (fc_line fc) (delabMV i clhs)
+          addIBC (IBCLineApp (fc_fname fc) (fc_line fc) (delabMV i clhs))
 
         logLvl 5 ("Checked " ++ show clhs ++ "\n" ++ show clhsty)
         -- Elaborate where block

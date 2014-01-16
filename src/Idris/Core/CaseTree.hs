@@ -21,7 +21,8 @@ data SC' t = Case Name [CaseAlt' t] -- ^ invariant: lowest tags first
            | ImpossibleCase -- ^ already checked to be impossible
     deriving (Eq, Ord, Functor)
 {-!
-deriving instance Binary SC
+deriving instance Binary SC'
+deriving instance NFData SC'
 !-}
 
 type SC = SC' Term
@@ -33,7 +34,8 @@ data CaseAlt' t = ConCase Name Int [Name] !(SC' t)
                 | DefaultCase             !(SC' t)
     deriving (Show, Eq, Ord, Functor)
 {-!
-deriving instance Binary CaseAlt
+deriving instance Binary CaseAlt'
+deriving instance NFData CaseAlt'
 !-}
 
 type CaseAlt = CaseAlt' Term

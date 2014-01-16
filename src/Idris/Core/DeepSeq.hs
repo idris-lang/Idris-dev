@@ -1,6 +1,7 @@
 module Idris.Core.DeepSeq where
 
 import Idris.Core.TT
+import Idris.Core.CaseTree
 
 import Control.DeepSeq
 
@@ -97,3 +98,17 @@ instance (NFData n) => NFData (TT n) where
         rnf Impossible = ()
         rnf (TType x1) = rnf x1 `seq` ()
 
+instance (NFData t) => NFData (SC' t) where
+        rnf (Case x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
+        rnf (ProjCase x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
+        rnf (STerm x1) = rnf x1 `seq` ()
+        rnf (UnmatchedCase x1) = rnf x1 `seq` ()
+        rnf ImpossibleCase = ()
+
+instance (NFData t) => NFData (CaseAlt' t) where
+        rnf (ConCase x1 x2 x3 x4)
+          = x1 `seq` x2 `seq` x3 `seq` rnf x4 `seq` ()
+        rnf (FnCase x1 x2 x3) = x1 `seq` x2 `seq` rnf x3 `seq` ()
+        rnf (ConstCase x1 x2) = x1 `seq` rnf x2 `seq` ()
+        rnf (SucCase x1 x2) = x1 `seq` rnf x2 `seq` ()
+        rnf (DefaultCase x1) = rnf x1 `seq` ()
