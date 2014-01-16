@@ -747,7 +747,7 @@ updateSolved' xs (Bind n (Hole ty) t)
 updateSolved' xs (Bind n b t)
     | otherwise = Bind n (fmap (updateSolved' xs) b) (updateSolved' xs t)
 updateSolved' xs (App f a) = App (updateSolved' xs f) (updateSolved' xs a)
-updateSolved' xs (P _ n _)
+updateSolved' xs (P _ n@(MN _ _) _)
     | Just v <- lookup n xs = v
 updateSolved' xs t = t
 
