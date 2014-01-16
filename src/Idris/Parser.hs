@@ -44,6 +44,7 @@ import Idris.Core.Evaluate
 
 import Control.Applicative
 import Control.Monad
+import Control.Monad.Error (throwError, catchError)
 import Control.Monad.State.Strict
 
 import Data.Maybe
@@ -867,8 +868,13 @@ directive syn = do try (lchar '%' *> reserved "lib"); cgn <- codegen_; lib <- st
                     ty <- iName []
                     ns <- sepBy1 name (lchar ',')
                     return [PDirective 
-                               (do mapM_ (addNameHint ty) ns
-                                   mapM_ (\n -> addIBC (IBCNameHint (ty, n))) ns)] 
+                               (do i <- getIState
+                                   ty' <- case lookupCtxtName ty (idris_implicits i) of
+                                             [(tyn, _)] -> return tyn
+                                             [] -> throwError (NoSuchVariable ty)
+                                             tyns -> throwError (CantResolveAlts (map show (map fst tyns)))
+                                   mapM_ (addNameHint ty') ns
+                                   mapM_ (\n -> addIBC (IBCNameHint (ty', n))) ns)] 
              <|> do try (lchar '%' *> reserved "language"); ext <- pLangExt;
                     return [PDirective (addLangExt ext)]
              <?> "directive"
