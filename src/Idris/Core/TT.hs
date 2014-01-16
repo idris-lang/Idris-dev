@@ -590,6 +590,8 @@ instance Eq NameType where
 -- identifiers used for bindings and explicit named references;
 -- usually we use @TT 'Name'@.
 data TT n = P NameType n (TT n) -- ^ named references with type
+            -- (P for "Parameter", motivated by McKinna and Pollack's
+            -- Pure Type Systems Formalized)
           | V Int -- ^ a resolved de Bruijn-indexed variable
           | Bind n (Binder (TT n)) (TT n) -- ^ a binding
           | App (TT n) (TT n) -- ^ function, function type, arg
