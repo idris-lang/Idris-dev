@@ -234,6 +234,19 @@ addIBC ibc = do i <- getIState; putIState $ i { ibc_write = ibc : ibc_write i }
 clearIBC :: Idris ()
 clearIBC = do i <- getIState; putIState $ i { ibc_write = [] }
 
+resetNameIdx :: Idris ()
+resetNameIdx = do i <- getIState
+                  put (i { idris_nameIdx = (0, emptyContext) })
+
+addNameIdx :: Name -> Idris Int
+addNameIdx n = do i <- getIState
+                  let idxs = snd (idris_nameIdx i)
+                  case lookupCtxt n idxs of
+                       [x] -> return x
+                       _ -> do let i' = fst (idris_nameIdx i) + 1
+                               put (i { idris_nameIdx = (i', addDef n i' idxs) })
+                               return i'
+
 getHdrs :: Codegen -> Idris [String]
 getHdrs tgt = do i <- getIState; return (forCodegen tgt $ idris_hdrs i)
 

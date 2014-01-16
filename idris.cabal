@@ -446,6 +446,7 @@ Library
                 , network
                 , xml
                 , deepseq
+                , zlib
   Extensions:     MultiParamTypeClasses
                 , FunctionalDependencies
                 , FlexibleInstances

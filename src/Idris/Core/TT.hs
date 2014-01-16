@@ -245,6 +245,7 @@ data Name = UN String -- ^ User-provided name
           | MN Int String -- ^ Machine chosen names
           | NErased -- ^ Name of somethng which is never used in scope
           | SN SpecialName -- ^ Decorated function names
+          | SymRef Int -- ^ Reference to IBC file symbol table (used during serialisation)
   deriving (Eq, Ord)
 
 {-!

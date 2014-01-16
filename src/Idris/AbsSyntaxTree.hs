@@ -132,7 +132,8 @@ data IState = IState {
     idris_colourRepl :: Bool,
     idris_colourTheme :: ColourTheme,
     idris_outh :: Handle,
-    idris_errorhandlers :: [Name]
+    idris_errorhandlers :: [Name],
+    idris_nameIdx :: (Int, Ctxt Int)
    }
 
 data SizeChange = Smaller | Same | Bigger | Unknown
@@ -198,7 +199,7 @@ idrisInit = IState initContext [] [] emptyContext emptyContext emptyContext
                    emptyContext
                    [] [] defaultOpts 6 [] [] [] [] [] [] [] [] [] [] [] []
                    [] Nothing Nothing [] [] [] Hidden False [] Nothing [] [] RawOutput
-                   True defaultTheme stdout []
+                   True defaultTheme stdout [] (0, emptyContext)
 
 -- | The monad for the main REPL - reading and processing files and updating
 -- global state (hence the IO inner monad).
