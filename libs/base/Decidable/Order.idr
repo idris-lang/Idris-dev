@@ -2,7 +2,6 @@ module Decidable.Order
 
 %access public
 
-{-
 Doesn't work yet, see note in Decidable.idr
 
 import Decidable.Decidable
@@ -82,6 +81,4 @@ instance Decidable NatLTE where
 
 lte : (m : Nat) -> (n : Nat) -> Dec (NatLTE m n)
 lte m n = decide {p = NatLTE} m n
-
--}
 
