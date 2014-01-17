@@ -177,9 +177,9 @@ ibc i (IBCDef n) f
 
     updateSC (Case n alts) = do alts' <- mapM updateAlt alts
                                 return (Case n alts')
-    updateSC (ProjCase t alts) = do t' <- update t
-                                    alts' <- mapM updateAlt alts
-                                    return (ProjCase t' alts')
+    updateSC (ProjCase t alt) = do t' <- update t
+                                   alt' <- updateAlt alt
+                                   return (ProjCase t' alt')
     updateSC (STerm t) = do t' <- update t
                             return (STerm t')
     updateSC t = return t

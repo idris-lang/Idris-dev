@@ -101,7 +101,7 @@ buildDepGraph ctx cg = unionMap (findDepsDef cg <*> getDef ctx)
         , findDepsTerm cg vars (tn,ta) (binderTy b)
         ]
 
-    infixr 3 (~>)
+    infixr 3 ~>
     (~>) :: (Ord a) => a -> b -> Map a b
     (~>) = M.singleton
 
