@@ -544,6 +544,12 @@ reduceLoop reduced (cons, program) =
         reduceCall funs (JSProj obj field) =
           JSProj (reduceCall funs obj) field
 
+        reduceCall funs (JSIndex obj idx) =
+          JSIndex (reduceCall funs obj) (reduceCall funs idx)
+
+        reduceCall funs (JSOp op rhs lhs) =
+          JSOp op (reduceCall funs rhs) (reduceCall funs lhs)
+
         reduceCall funs (JSCond conds) =
           JSCond $ map (reduceCall funs *** reduceCall funs) conds
 
