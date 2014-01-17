@@ -301,7 +301,26 @@ jsSubst var new (JSCond conds) =
 
 jsSubst _ _ js = js
 
+
+isJSConstant :: JS -> Bool
+isJSConstant js
+  | JSString _ <- js = True
+  | JSChar _   <- js = True
+  | JSNum _    <- js = True
+  | JSType _   <- js = True
+
+  | JSApp (JSIdent "__IDRRT__bigInt") _ <- js = True
+  | otherwise = False
+
 inlineJS :: JS -> JS
+inlineJS (JSApp (JSIdent "__IDR__mEVAL0") [val])
+  | isJSConstant val = val
+
+inlineJS (JSApp (JSIdent "__IDRRT__tailcall") [
+    JSFunction [] (JSReturn val)
+  ])
+  | isJSConstant val = val
+
 inlineJS (JSApp (JSFunction [] (JSSeq ret)) []) =
   JSApp (JSFunction [] (JSSeq (map inlineJS ret))) []
 
@@ -372,6 +391,9 @@ inlineJS (JSCond cases) =
 
 inlineJS (JSObject fields) =
   JSObject (map (second inlineJS) fields)
+
+inlineJS (JSOp op lhs rhs) =
+  JSOp op (inlineJS lhs) (inlineJS rhs)
 
 inlineJS js = js
 
