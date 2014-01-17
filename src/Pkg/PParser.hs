@@ -27,7 +27,7 @@ data PkgDesc = PkgDesc { pkgname :: String,
                        }
     deriving Show
 
-defaultPkg = PkgDesc "" [] [] Nothing [] "" [] (UN "") Nothing
+defaultPkg = PkgDesc "" [] [] Nothing [] "" [] (sUN "") Nothing
 
 parseDesc :: FilePath -> IO PkgDesc
 parseDesc fp = do p <- readFile fp

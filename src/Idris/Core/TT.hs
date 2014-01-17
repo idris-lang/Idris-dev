@@ -27,6 +27,7 @@ import Control.Monad.Trans.Error (Error(..))
 import Debug.Trace
 import qualified Data.Map.Strict as Map
 import Data.Char
+import qualified Data.Text as T
 import Data.List
 import Data.Vector.Unboxed (Vector)
 import qualified Data.Vector.Unboxed as V
@@ -227,13 +228,35 @@ traceWhen False _  a = a
 
 -- | Names are hierarchies of strings, describing scope (so no danger of
 -- duplicate names, but need to be careful on lookup).
-data Name = UN String -- ^ User-provided name
-          | NS Name [String] -- ^ Root, namespaces
-          | MN Int String -- ^ Machine chosen names
+data Name = UN T.Text -- ^ User-provided name
+          | NS Name [T.Text] -- ^ Root, namespaces
+          | MN Int T.Text -- ^ Machine chosen names
           | NErased -- ^ Name of somethng which is never used in scope
           | SN SpecialName -- ^ Decorated function names
           | SymRef Int -- ^ Reference to IBC file symbol table (used during serialisation)
   deriving (Eq, Ord)
+
+txt :: String -> T.Text
+txt = T.pack
+
+str :: T.Text -> String
+str = T.unpack
+
+tnull :: T.Text -> Bool
+tnull = T.null
+
+thead :: T.Text -> Char
+thead = T.head
+
+-- Smart constructors for names, using old String style
+sUN :: String -> Name
+sUN s = UN (txt s)
+
+sNS :: Name -> [String] -> Name
+sNS n ss = NS n (map txt ss)
+
+sMN :: Int -> String -> Name
+sMN i s = MN i (txt s)
 
 {-!
 deriving instance Binary Name
@@ -241,8 +264,8 @@ deriving instance NFData Name
 !-}
 
 data SpecialName = WhereN Int Name Name
-                 | InstanceN Name [String]
-                 | ParentN Name String
+                 | InstanceN Name [T.Text]
+                 | ParentN Name T.Text
                  | MethodN Name
                  | CaseN Name
                  | ElimN Name
@@ -252,6 +275,12 @@ deriving instance Binary SpecialName
 deriving instance NFData SpecialName
 !-}
 
+sInstanceN :: Name -> [String] -> SpecialName
+sInstanceN n ss = InstanceN n (map T.pack ss)
+
+sParentN :: Name -> String -> SpecialName
+sParentN n s = ParentN n (T.pack s)
+
 instance Sized Name where
   size (UN n)     = 1
   size (NS n els) = 1 + length els
@@ -259,36 +288,36 @@ instance Sized Name where
   size _ = 1
 
 instance Pretty Name where
-  pretty (UN n) = text n
+  pretty (UN n) = text (T.unpack n)
   pretty (NS n s) = pretty n
-  pretty (MN i s) = lbrace <+> text s <+> (text . show $ i) <+> rbrace
+  pretty (MN i s) = lbrace <+> text (T.unpack s) <+> (text . show $ i) <+> rbrace
   pretty (SN s) = text (show s)
 
 instance Show Name where
-    show (UN n) = n
-    show (NS n s) = showSep "." (reverse s) ++ "." ++ show n
-    show (MN _ "underscore") = "_"
-    show (MN i s) = "{" ++ s ++ show i ++ "}"
+    show (UN n) = str n
+    show (NS n s) = showSep "." (map T.unpack (reverse s)) ++ "." ++ show n
+    show (MN _ u) | u == txt "underscore" = "_"
+    show (MN i s) = "{" ++ str s ++ show i ++ "}"
     show (SN s) = show s
     show NErased = "_"
 
 instance Show SpecialName where
     show (WhereN i p c) = show p ++ ", " ++ show c
-    show (InstanceN cl inst) = showSep ", " inst ++ " instance of " ++ show cl
+    show (InstanceN cl inst) = showSep ", " (map T.unpack inst) ++ " instance of " ++ show cl
     show (MethodN m) = "method " ++ show m
-    show (ParentN p c) = show p ++ "#" ++ c
+    show (ParentN p c) = show p ++ "#" ++ T.unpack c
     show (CaseN n) = "case block in " ++ show n
     show (ElimN n) = "<<" ++ show n ++ " eliminator>>"
 
 -- Show a name in a way decorated for code generation, not human reading
 showCG :: Name -> String
-showCG (UN n) = n
-showCG (NS n s) = showSep "." (reverse s) ++ "." ++ showCG n
-showCG (MN _ "underscore") = "_"
-showCG (MN i s) = "{" ++ s ++ show i ++ "}"
+showCG (UN n) = T.unpack n
+showCG (NS n s) = showSep "." (map T.unpack (reverse s)) ++ "." ++ showCG n
+showCG (MN _ u) | u == txt "underscore" = "_"
+showCG (MN i s) = "{" ++ T.unpack s ++ show i ++ "}"
 showCG (SN s) = showCG' s
   where showCG' (WhereN i p c) = showCG p ++ ":" ++ showCG c ++ ":" ++ show i
-        showCG' (InstanceN cl inst) = '@':showCG cl ++ '$':showSep ":" inst
+        showCG' (InstanceN cl inst) = '@':showCG cl ++ '$':showSep ":" (map T.unpack inst)
         showCG' (MethodN m) = '!':showCG m
         showCG' (ParentN p c) = showCG p ++ "#" ++ show c
         showCG' (CaseN c) = showCG c ++ "_case"
@@ -304,7 +333,8 @@ emptyContext = Map.empty
 mapCtxt :: (a -> b) -> Ctxt a -> Ctxt b
 mapCtxt = fmap . fmap
 
-tcname (UN ('@':_)) = True
+tcname (UN xs) | T.null xs = False
+               | otherwise = T.head xs == '@'
 tcname (NS n _) = tcname n
 tcname (SN (InstanceN _ _)) = True
 tcname (SN (MethodN _)) = True
@@ -312,7 +342,8 @@ tcname (SN (ParentN _ _)) = True
 tcname _ = False
 
 implicitable (NS n _) = implicitable n
-implicitable (UN (x:xs)) = isLower x
+implicitable (UN xs) | T.null xs = False
+                     | otherwise = isLower (T.head xs)
 implicitable (MN _ _) = True
 implicitable _ = False
 
@@ -613,10 +644,10 @@ instance TermSize (TT Name) where
        | otherwise = 1
     termsize n (V _) = 1
     termsize n (Bind n' (Let t v) sc)
-       = let rn = if n == n' then MN 0 "noname" else n in
+       = let rn = if n == n' then sMN 0 "noname" else n in
              termsize rn v + termsize rn sc
     termsize n (Bind n' b sc)
-       = let rn = if n == n' then MN 0 "noname" else n in
+       = let rn = if n == n' then sMN 0 "noname" else n in
              termsize rn sc
     termsize n (App f a) = termsize n f + termsize n a
     termsize n (Proj t i) = termsize n t
@@ -876,13 +907,13 @@ uniqueBinders ns t = t
 
 nextName (NS x s)    = NS (nextName x) s
 nextName (MN i n)    = MN (i+1) n
-nextName (UN x) = let (num', nm') = span isDigit (reverse x)
-                      nm = reverse nm'
-                      num = readN (reverse num') in
-                          UN (nm ++ show (num+1))
+nextName (UN x) = let (num', nm') = T.span isDigit (T.reverse x)
+                      nm = T.reverse nm'
+                      num = readN (T.reverse num') in
+                          UN (nm `T.append` txt (show (num+1)))
   where
-    readN "" = 0
-    readN x  = read x
+    readN x | not (T.null x) = read (T.unpack x)
+    readN x = 0
 nextName (SN x) = SN (nextName' x)
   where
     nextName' (WhereN i f x) = WhereN i f (nextName x)
@@ -1027,7 +1058,7 @@ pureTerm (Bind n b sc) = notClassName n && pureBinder b && pureTerm sc where
     pureBinder (Let t v) = pureTerm t && pureTerm v
     pureBinder t = pureTerm (binderTy t)
 
-    notClassName (MN _ "class") = False
+    notClassName (MN _ c) | c == txt "class" = False
     notClassName _ = True
 
 pureTerm _ = True

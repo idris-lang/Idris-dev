@@ -230,8 +230,8 @@ initsEndAt p (x:xs) | p x = [] : x_inits_xs
  namespace.
 -}
 mkName :: (String, String) -> Name
-mkName (n, "") = UN n
-mkName (n, ns) = NS (UN n) (reverse (parseNS ns))
+mkName (n, "") = sUN n
+mkName (n, ns) = sNS (sUN n) (reverse (parseNS ns))
   where parseNS x = case span (/= '.') x of
                       (x, "")    -> [x]
                       (x, '.':y) -> x : parseNS y

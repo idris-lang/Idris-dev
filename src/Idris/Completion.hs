@@ -54,9 +54,9 @@ tactics = map fst tacticArgs
 -- | Convert a name into a string usable for completion. Filters out names
 -- that users probably don't want to see.
 nameString :: Name -> Maybe String
-nameString (UN ('@':_)) = Nothing
-nameString (UN ('#':_)) = Nothing
-nameString (UN n)       = Just n
+nameString (UN nm) 
+   | not (tnull nm) && (thead nm == '@' || thead nm == '#') = Nothing
+nameString (UN n)       = Just (str n)
 nameString (NS n _)     = nameString n
 nameString _            = Nothing
 

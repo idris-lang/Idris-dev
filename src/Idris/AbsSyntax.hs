@@ -180,7 +180,7 @@ addNameHint ty n
         putIState $ i { idris_namehints = addDef ty' ns' (idris_namehints i) }
 
 getNameHints :: IState -> Name -> [Name]
-getNameHints i (UN "->") = [UN "f",UN "g"]
+getNameHints i (UN arr) | arr == txt "->" = [sUN "f",sUN "g"]
 getNameHints i n =
         case lookupCtxt n (idris_namehints i) of
              [ns] -> ns
@@ -200,7 +200,7 @@ addInstance int n i
                 [CI a b c d e ins] ->
                      do let cs = addDef n (CI a b c d e (addI i ins)) (idris_classes ist)
                         putIState $ ist { idris_classes = cs }
-                _ -> do let cs = addDef n (CI (MN 0 "none") [] [] [] [] [i]) (idris_classes ist)
+                _ -> do let cs = addDef n (CI (sMN 0 "none") [] [] [] [] [i]) (idris_classes ist)
                         putIState $ ist { idris_classes = cs }
   where addI i ins | int = i : ins
                    | chaser n = ins ++ [i]
@@ -209,7 +209,8 @@ addInstance int n i
         insI i (n : ns) | chaser n = i : n : ns
                         | otherwise = n : insI i ns
 
-        chaser (UN ('@':'@':_)) = True
+        chaser (UN nm) 
+             | ('@':'@':_) <- str nm = True
         chaser (NS n _) = chaser n
         chaser _ = False
 
@@ -689,16 +690,16 @@ setTypeCase t = do i <- getIState
 
 bi = fileFC "builtin"
 
-inferTy   = MN 0 "__Infer"
-inferCon  = MN 0 "__infer"
+inferTy   = sMN 0 "__Infer"
+inferCon  = sMN 0 "__infer"
 inferDecl = PDatadecl inferTy
                       PType
-                      [("", inferCon, PPi impl (MN 0 "iType") PType (
-                                  PPi expl (MN 0 "ival") (PRef bi (MN 0 "iType"))
+                      [("", inferCon, PPi impl (sMN 0 "iType") PType (
+                                  PPi expl (sMN 0 "ival") (PRef bi (sMN 0 "iType"))
                                   (PRef bi inferTy)), bi)]
 inferOpts = []
 
-infTerm t = PApp bi (PRef bi inferCon) [pimp (MN 0 "iType") Placeholder True, pexp t]
+infTerm t = PApp bi (PRef bi inferCon) [pimp (sMN 0 "iType") Placeholder True, pexp t]
 infP = P (TCon 6 0) inferTy (TType (UVal 0))
 
 getInferTerm, getInferType :: Term -> Term
@@ -715,18 +716,18 @@ primNames = [unitTy, unitCon,
              falseTy, pairTy, pairCon,
              eqTy, eqCon, inferTy, inferCon]
 
-unitTy   = MN 0 "__Unit"
-unitCon  = MN 0 "__II"
+unitTy   = sMN 0 "__Unit"
+unitCon  = sMN 0 "__II"
 unitDecl = PDatadecl unitTy PType
                      [("", unitCon, PRef bi unitTy, bi)]
 unitOpts = [DefaultEliminator]
 
-falseTy   = MN 0 "__False"
+falseTy   = sMN 0 "__False"
 falseDecl = PDatadecl falseTy PType []
 falseOpts = []
 
-pairTy    = MN 0 "__Pair"
-pairCon   = MN 0 "__MkPair"
+pairTy    = sMN 0 "__Pair"
+pairCon   = sMN 0 "__MkPair"
 pairDecl  = PDatadecl pairTy (piBind [(n "A", PType), (n "B", PType)] PType)
             [("", pairCon, PPi impl (n "A") PType (
                        PPi impl (n "B") PType (
@@ -734,11 +735,11 @@ pairDecl  = PDatadecl pairTy (piBind [(n "A", PType), (n "B", PType)] PType)
                        PPi expl (n "b") (PRef bi (n "B"))
                            (PApp bi (PRef bi pairTy) [pexp (PRef bi (n "A")),
                                                 pexp (PRef bi (n "B"))])))), bi)]
-    where n a = MN 0 a
+    where n a = sMN 0 a
 pairOpts = []
 
-eqTy = UN "="
-eqCon = UN "refl"
+eqTy = sUN "="
+eqCon = sUN "refl"
 eqDecl = PDatadecl eqTy (piBind [(n "A", PType), (n "B", PType),
                                  (n "x", PRef bi (n "A")), (n "y", PRef bi (n "B"))]
                                  PType)
@@ -748,19 +749,19 @@ eqDecl = PDatadecl eqTy (piBind [(n "A", PType), (n "B", PType),
                                                     pimp (n "B") Placeholder False,
                                                     pexp (PRef bi (n "x")),
                                                     pexp (PRef bi (n "x"))])), bi)]
-    where n a = MN 0 a
+    where n a = sMN 0 a
 eqOpts = []
 
-elimName       = UN "__Elim"
-elimMethElimTy = UN "__elimTy"
-elimMethElim   = UN "elim"
-elimDecl = PClass "Type class for eliminators" defaultSyntax bi [] elimName [(UN "scrutineeType", PType)] 
+elimName       = sUN "__Elim"
+elimMethElimTy = sUN "__elimTy"
+elimMethElim   = sUN "elim"
+elimDecl = PClass "Type class for eliminators" defaultSyntax bi [] elimName [(sUN "scrutineeType", PType)] 
                      [PTy "" defaultSyntax bi [TotalFn] elimMethElimTy PType,
                       PTy "" defaultSyntax bi [TotalFn] elimMethElim (PRef bi elimMethElimTy)]
 
 -- Defined in builtins.idr
-sigmaTy   = UN "Exists"
-existsCon = UN "Ex_intro"
+sigmaTy   = sUN "Exists"
+existsCon = sUN "Ex_intro"
 
 piBind :: [(Name, PTerm)] -> PTerm -> PTerm
 piBind = piBindp expl
@@ -898,7 +899,7 @@ expandParamsD rhsonly ist dec ps ns (PClauses fc opts n cs)
     updateps yn nm [] = []
     updateps yn nm (((a, t), i):as)
         | (a `elem` nm) == yn = (a, t) : updateps yn nm as
-        | otherwise = (MN i (show n ++ "_u"), t) : updateps yn nm as
+        | otherwise = (sMN i (show n ++ "_u"), t) : updateps yn nm as
 
     removeBound lhs ns = ns \\ nub (bnames lhs)
 
@@ -1037,7 +1038,7 @@ addUsingConstraints syn fc t
          -- if all of args in ns, then add it
          doAdd (UConstraint c args : cs) ns t
              | all (\n -> elem n ns) args
-                   = PPi (Constraint False Dynamic "") (MN 0 "cu")
+                   = PPi (Constraint False Dynamic "") (sMN 0 "cu")
                          (mkConst c args) (doAdd cs ns t)
              | otherwise = doAdd cs ns t
 
@@ -1462,12 +1463,14 @@ matchClause' names i x y = checkRpts $ match (fullApp x) (fullApp y) where
     fullApp x = x
 
     match' x y = match (fullApp x) (fullApp y)
-    match (PApp _ (PRef _ (NS (UN "fromInteger") ["builtins"])) [_,_,x]) x'
-        | PConstant (I _) <- getTm x = match (getTm x) x'
-    match x' (PApp _ (PRef _ (NS (UN "fromInteger") ["builtins"])) [_,_,x])
-        | PConstant (I _) <- getTm x = match (getTm x) x'
-    match (PApp _ (PRef _ (UN "lazy")) [_,x]) x' = match (getTm x) x'
-    match x (PApp _ (PRef _ (UN "lazy")) [_,x']) = match x (getTm x')
+    match (PApp _ (PRef _ (NS (UN fi) [b])) [_,_,x]) x'
+        | fi == txt "fromInteger" && b == txt "builtins",
+          PConstant (I _) <- getTm x = match (getTm x) x'
+    match x' (PApp _ (PRef _ (NS (UN fi) [b])) [_,_,x])
+        | fi == txt "fromInteger" && b == txt "builtins",
+          PConstant (I _) <- getTm x = match (getTm x) x'
+    match (PApp _ (PRef _ (UN l)) [_,x]) x' | l == txt "lazy" = match (getTm x) x'
+    match x (PApp _ (PRef _ (UN l)) [_,x']) | l == txt "lazy" = match x (getTm x')
     match (PApp _ f args) (PApp _ f' args')
         | length args == length args'
             = do mf <- match' f f'

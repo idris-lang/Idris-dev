@@ -156,10 +156,10 @@ deriving instance Binary CGInfo
 deriving instance NFData CGInfo
 !-}
 
-primDefs = [UN "unsafePerformPrimIO",
-            UN "mkLazyForeignPrim",
-            UN "mkForeignPrim",
-            UN "FalseElim"]
+primDefs = [sUN "unsafePerformPrimIO",
+            sUN "mkLazyForeignPrim",
+            sUN "mkForeignPrim",
+            sUN "FalseElim"]
 
 -- information that needs writing for the current module's .ibc file
 data IBCWrite = IBCFix FixDecl
@@ -844,10 +844,10 @@ deriving instance Binary SSymbol
 deriving instance NFData SSymbol
 !-}
 
-initDSL = DSL (PRef f (UN ">>="))
-              (PRef f (UN "return"))
-              (PRef f (UN "<$>"))
-              (PRef f (UN "pure"))
+initDSL = DSL (PRef f (sUN ">>="))
+              (PRef f (sUN "return"))
+              (PRef f (sUN "<$>"))
+              (PRef f (sUN "pure"))
               Nothing
               Nothing
               Nothing
@@ -883,7 +883,7 @@ expandNS :: SyntaxInfo -> Name -> Name
 expandNS syn n@(NS _ _) = n
 expandNS syn n = case syn_namespace syn of
                         [] -> n
-                        xs -> NS n xs
+                        xs -> sNS n xs
 
 
 --- Pretty printing declarations and terms
@@ -980,8 +980,8 @@ prettyImp impl = prettySe 10
         prettyBasic n
       where
         prettyBasic n@(UN _) = pretty n
-        prettyBasic (MN _ s) = text s
-        prettyBasic (NS n s) = (foldr (<>) empty (intersperse (text ".") (map text $ reverse s))) <> prettyBasic n
+        prettyBasic (MN _ s) = text (str s)
+        prettyBasic (NS n s) = (foldr (<>) empty (intersperse (text ".") (map (text.str) $ reverse s))) <> prettyBasic n
         prettyBasic (SN sn) = text (show sn)
     prettySe p (PLam n ty sc) =
       bracket p 2 $
@@ -1052,8 +1052,9 @@ prettyImp impl = prettySe 10
       | not impl = pretty f
     prettySe p (PAppBind _ (PRef _ f) [])
       | not impl = text "!" <+> pretty f
-    prettySe p (PApp _ (PRef _ op@(UN (f:_))) args)
-      | length (getExps args) == 2 && (not impl) && (not $ isAlpha f) =
+    prettySe p (PApp _ (PRef _ op@(UN nm)) args)
+      | not (tnull nm) &&
+        length (getExps args) == 2 && (not impl) && (not $ isAlpha (thead nm)) =
           let [l, r] = getExps args in
             bracket p 1 $
               if size r > breakingSize then
@@ -1166,8 +1167,8 @@ showName ist bnd impl colour n = case ist of
                                    Nothing -> showbasic n
     where name = if impl then show n else showbasic n
           showbasic n@(UN _) = showCG n
-          showbasic (MN _ s) = s
-          showbasic (NS n s) = showSep "." (reverse s) ++ "." ++ showbasic n
+          showbasic (MN _ s) = str s
+          showbasic (NS n s) = showSep "." (map str (reverse s)) ++ "." ++ showbasic n
           showbasic (SN s) = show s
           fst3 (x, _, _) = x
           colourise n t = let ctxt' = fmap tt_ctxt ist in
@@ -1241,8 +1242,9 @@ showImp ist impl colour tm = se 10 [] tm where
         | not impl = se p bnd hd
     se p bnd (PAppBind _ hd@(PRef _ f) [])
         | not impl = "!" ++ se p bnd hd
-    se p bnd (PApp _ op@(PRef _ (UN (f:_))) args)
-        | length (getExps args) == 2 && not impl && not (isAlpha f)
+    se p bnd (PApp _ op@(PRef _ (UN nm)) args)
+        | not (tnull nm) &&
+          length (getExps args) == 2 && not impl && not (isAlpha (thead nm))
             = let [l, r] = getExps args in
               bracket p 1 $ se 1 bnd l ++ " " ++ se p bnd op ++ " " ++ se 0 bnd r
     se p bnd (PApp _ f as)
@@ -1290,9 +1292,9 @@ showImp ist impl colour tm = se 10 [] tm where
 --     se p bnd x = "Not implemented"
 
     slist' p bnd (PApp _ (PRef _ nil) _)
-      | not impl && nsroot nil == UN "Nil" = Just []
+      | not impl && nsroot nil == sUN "Nil" = Just []
     slist' p bnd (PApp _ (PRef _ cons) args)
-      | nsroot cons == UN "::",
+      | nsroot cons == sUN "::",
         (PExp {getTm=tl}):(PExp {getTm=hd}):imps <- reverse args,
         all isImp imps,
         Just tl' <- slist' p bnd tl

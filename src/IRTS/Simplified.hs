@@ -95,7 +95,7 @@ sVar (DV (Glob x))
 sVar (DV x) = return (x, Nothing)
 sVar e = do e' <- simplify False e
             i <- hvar
-            return (Glob (MN i "R"), Just e')
+            return (Glob (sMN i "R"), Just e')
 
 mkapp f args = mkapp' f args [] where
    mkapp' f [] args = return $ f (reverse args)

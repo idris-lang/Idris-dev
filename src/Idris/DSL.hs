@@ -57,8 +57,8 @@ expandDo dsl (PDoBlock ds)
     block b (DoBind fc n tm : rest)
         = PApp fc b [pexp tm, pexp (PLam n Placeholder (block b rest))]
     block b (DoBindP fc p tm : rest)
-        = PApp fc b [pexp tm, pexp (PLam (MN 0 "bpat") Placeholder
-                                   (PCase fc (PRef fc (MN 0 "bpat"))
+        = PApp fc b [pexp tm, pexp (PLam (sMN 0 "bpat") Placeholder
+                                   (PCase fc (PRef fc (sMN 0 "bpat"))
                                              [(p, block b rest)]))]
     block b (DoLet fc n ty tm : rest)
         = PLet n ty tm (block b rest)
@@ -67,7 +67,7 @@ expandDo dsl (PDoBlock ds)
     block b (DoExp fc tm : rest)
         = PApp fc b
             [pexp tm,
-             pexp (PLam (MN 0 "bindx") Placeholder (block b rest))]
+             pexp (PLam (sMN 0 "bindx") Placeholder (block b rest))]
     block b _ = PElabError (Msg "Invalid statement in do block")
 
 expandDo dsl (PIdiom fc e) = expandDo dsl $ unIdiom (dsl_apply dsl) (dsl_pure dsl) fc e
@@ -131,7 +131,7 @@ debind b tm = let (tm', (bs, _)) = runState (db' tm) ([], 0) in
     db' (PAppBind fc t args)
         = do args' <- dbs args
              (bs, n) <- get
-             let nm = MN n ("bindApp" ++ show n)
+             let nm = sMN n ("bindApp" ++ show n)
              put ((nm, fc, PApp fc t args') : bs, n+1)
              return (PRef fc nm)
     db' (PApp fc t args)

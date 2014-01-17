@@ -102,7 +102,7 @@ data LiftState = LS Name Int [(Name, LDecl)]
 
 lname (NS n x) i = NS (lname n i) x
 lname (UN n) i = MN i n
-lname x i = MN i (show x)
+lname x i = sMN i (show x)
 
 liftAll :: [(Name, LDecl)] -> [(Name, LDecl)]
 liftAll xs = concatMap (\ (x, d) -> lambdaLift x d) xs

@@ -99,11 +99,11 @@ specialise ctxt env limits t
 
 simplify :: Context -> Env -> TT Name -> TT Name
 simplify ctxt env t
-   = evalState (do val <- eval False ctxt [(UN "lazy", 0),
-                                           (UN "assert_smaller", 0),
-                                           (UN "par", 0),
-                                           (UN "prim__syntactic_eq", 0),
-                                           (UN "fork", 0)]
+   = evalState (do val <- eval False ctxt [(sUN "lazy", 0),
+                                           (sUN "assert_smaller", 0),
+                                           (sUN "par", 0),
+                                           (sUN "prim__syntactic_eq", 0),
+                                           (sUN "fork", 0)]
                                  (map finalEntry env) (finalise t)
                                  [Simplify]
                    quote 0 val) initEval
@@ -111,11 +111,11 @@ simplify ctxt env t
 -- | Simplify for run-time (i.e. basic inlining)
 rt_simplify :: Context -> Env -> TT Name -> TT Name
 rt_simplify ctxt env t
-   = evalState (do val <- eval False ctxt [(UN "lazy", 0),
-                                           (UN "assert_smaller", 0),
-                                           (UN "par", 0),
-                                           (UN "prim__syntactic_eq", 0),
-                                           (UN "prim_fork", 0)]
+   = evalState (do val <- eval False ctxt [(sUN "lazy", 0),
+                                           (sUN "assert_smaller", 0),
+                                           (sUN "par", 0),
+                                           (sUN "prim__syntactic_eq", 0),
+                                           (sUN "prim_fork", 0)]
                                  (map finalEntry env) (finalise t)
                                  [RunTT]
                    quote 0 val) initEval
@@ -190,7 +190,7 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
            = not (inl || dict) || elem n stk
        | Simplify `elem` opts
            = (not (inl || dict) || elem n stk)
-             || (n == UN "prim__syntactic_eq")
+             || (n == sUN "prim__syntactic_eq")
        | otherwise = False
 
     getCases cd | simpl = cases_totcheck cd
@@ -412,7 +412,7 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
     chooseAlt env _ (VP _ n _, args) alts amap
         | Just (ns, sc) <- findFn n alts  = return $ Just (updateAmap (zip ns args) amap, sc)
     chooseAlt env _ (VBind _ _ (Pi s) t, []) alts amap
-        | Just (ns, sc) <- findFn (UN "->") alts
+        | Just (ns, sc) <- findFn (sUN "->") alts
            = do t' <- t (VV 0) -- we know it's not in scope or it's not a pattern
                 return $ Just (updateAmap (zip ns [s, t']) amap, sc)
     chooseAlt _ _ _ alts amap
@@ -492,7 +492,7 @@ instance Quote Value where
                            = do sc' <- quote i sc
                                 t' <- quote i t
                                 v' <- quote i v
-                                let sc'' = pToV (MN vd "vlet") (addBinder sc')
+                                let sc'' = pToV (sMN vd "vlet") (addBinder sc')
                                 return (Bind n (Let t' v') sc'')
     quote i (VApp f a)     = liftM2 App (quote i f) (quote i a)
     quote i (VType u)       = return $ TType u
@@ -891,7 +891,7 @@ lookupDefAcc :: Name -> Bool -> Context ->
 lookupDefAcc n mkpublic ctxt
     = map mkp $ lookupCtxt n (definitions ctxt)
   -- io_bind a special case for REPL prettiness
-  where mkp (d, a, _, _) = if mkpublic && (not (n == UN "io_bind" || n == UN "io_return"))
+  where mkp (d, a, _, _) = if mkpublic && (not (n == sUN "io_bind" || n == sUN "io_return"))
                              then (d, Public) else (d, a)
 
 lookupTotal :: Name -> Context -> [Totality]

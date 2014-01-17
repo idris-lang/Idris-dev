@@ -277,7 +277,7 @@ unify ctxt env topx topy dont holes =
 
     un' fn bnames (App f x) (Bind n (Pi t) y)
       | noOccurrence n y && x == y
-        = un' False bnames f (Bind (MN 0 "uv") (Lam (TType (UVar 0))) 
+        = un' False bnames f (Bind (sMN 0 "uv") (Lam (TType (UVar 0))) 
                                    (Bind n (Pi t) (V 1)))
              
     un' fn bnames (Bind x bx sx) (Bind y by sy)

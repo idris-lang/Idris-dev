@@ -102,7 +102,8 @@ dumpState ist ps@(PS nm (h:hs) _ _ tm _ _ _ _ _ _ problems i _ _ ctxy _ _ _) = d
     tPretty t = pretty $ delab ist t
 
     prettyPs [] = empty
-    prettyPs ((MN _ "rewrite_rule", _) : bs) = prettyPs bs
+    prettyPs ((MN _ r, _) : bs) 
+        | r == txt "rewrite_rule" = prettyPs bs
     prettyPs ((n, Let t v) : bs) =
       nest nestingSize (pretty n <+> text "=" <+> tPretty v <> colon <+>
         tPretty t $$ prettyPs bs)
