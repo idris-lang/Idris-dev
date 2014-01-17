@@ -472,19 +472,19 @@ deriving instance NFData Raw
 !-}
 
 -- | All binding forms are represented in a unform fashion.
-data Binder b = Lam   { binderTy  :: b {-^ type annotation for bound variable-}}
-              | Pi    { binderTy  :: b }
-              | Let   { binderTy  :: b,
+data Binder b = Lam   { binderTy  :: !b {-^ type annotation for bound variable-}}
+              | Pi    { binderTy  :: !b }
+              | Let   { binderTy  :: !b,
                         binderVal :: b {-^ value for bound variable-}}
-              | NLet  { binderTy  :: b,
+              | NLet  { binderTy  :: !b,
                         binderVal :: b }
-              | Hole  { binderTy  :: b}
+              | Hole  { binderTy  :: !b}
               | GHole { envlen :: Int,
-                        binderTy  :: b}
-              | Guess { binderTy  :: b,
+                        binderTy  :: !b}
+              | Guess { binderTy  :: !b,
                         binderVal :: b }
-              | PVar  { binderTy  :: b }
-              | PVTy  { binderTy  :: b }
+              | PVar  { binderTy  :: !b }
+              | PVTy  { binderTy  :: !b }
   deriving (Show, Eq, Ord, Functor)
 {-!
 deriving instance Binary Binder
@@ -586,8 +586,8 @@ instance Eq NameType where
 -- | Terms in the core language
 data TT n = P NameType n (TT n) -- ^ named references
           | V !Int -- ^ a resolved de Bruijn-indexed variable
-          | Bind n (Binder (TT n)) (TT n) -- ^ a binding
-          | App (TT n) (TT n) -- ^ function, function type, arg
+          | Bind n !(Binder (TT n)) (TT n) -- ^ a binding
+          | App !(TT n) (TT n) -- ^ function, function type, arg
           | Constant Const -- ^ constant
           | Proj (TT n) !Int -- ^ argument projection; runtime only
                              -- (-1) is a special case for 'subtract one from BI'
