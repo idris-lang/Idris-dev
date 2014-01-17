@@ -170,8 +170,16 @@ compileJS (JSIndex lhs rhs) =
   compileJS lhs ++ "[" ++ compileJS rhs ++ "]"
 
 compileJS (JSCond branches) =
-  intercalate " else " $ map createIfBlock branches
+  intercalate " else " $ map createIfBlock (eliminateDeadBranches branches)
   where
+    eliminateDeadBranches (e@(JSTrue, _):_) = [e]
+    eliminateDeadBranches (x:xs)            = x : eliminateDeadBranches xs
+    eliminateDeadBranches []                = []
+
+    createIfBlock (JSTrue, e) =
+         "{\n"
+      ++ "return " ++ compileJS e
+      ++ ";\n}"
     createIfBlock (cond, e) =
          "if (" ++ compileJS cond ++") {\n"
       ++ "return " ++ compileJS e
