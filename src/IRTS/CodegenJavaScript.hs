@@ -268,6 +268,16 @@ jsSubst var new (JSApp (JSIdent "__IDRRT__tailcall") [JSFunction [] (
                     JSReturn $ JSApp (jsSubst var new fun) (map (jsSubst var new) args)
                   )]
 
+jsSubst var new (JSApp (JSProj (JSFunction args body) "apply") vals)
+  | var `notElem` args =
+      JSApp (JSProj (JSFunction args (jsSubst var new body)) "apply") (
+        map (jsSubst var new) vals
+      )
+  | otherwise =
+      JSApp (JSProj (JSFunction args body) "apply") (
+        map (jsSubst var new) vals
+      )
+
 jsSubst var new (JSApp (JSProj obj field) args) =
   JSApp (JSProj (jsSubst var new obj) field) $ map (jsSubst var new) args
 
@@ -313,6 +323,18 @@ isJSConstant js
   | otherwise = False
 
 inlineJS :: JS -> JS
+inlineJS (JSApp (JSProj (JSFunction args (JSReturn body)) "apply") [
+    JSThis,JSProj (JSIdent var) "vars"
+  ])
+  | var /= "cse" =
+    inlineApply args body 0
+  where
+    inlineApply []     body _ = body
+    inlineApply (a:as) body n =
+      inlineApply as (
+        jsSubst a (JSIndex (JSProj (JSIdent var) "vars") (JSNum (JSInt n))) body
+      ) (n + 1)
+
 inlineJS (JSApp (JSIdent "__IDR__mEVAL0") [val])
   | isJSConstant val = val
 
