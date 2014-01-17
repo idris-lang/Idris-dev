@@ -15,7 +15,7 @@ import Data.Either
 import Data.Maybe
 import Debug.Trace
 
-import Control.Monad.State
+import Control.Monad.State.Strict
 
 mkPatTm :: PTerm -> Idris Term
 mkPatTm t = do i <- getIState

@@ -13,7 +13,7 @@ import Idris.Core.Evaluate
 import Idris.Core.TT
 import Idris.Core.Unify
 
-import Control.Monad.State
+import Control.Monad.State.Strict
 import Control.Applicative hiding (empty)
 import Data.List
 import Debug.Trace
@@ -743,12 +743,14 @@ updateSolved xs x = -- trace ("Updating " ++ show xs ++ " in " ++ show x) $
                      updateSolved' xs x
 updateSolved' [] x = x
 updateSolved' xs (Bind n (Hole ty) t)
-    | Just v <- lookup n xs = case xs of
-                                   [_] -> psubst n v t
-                                   _ -> psubst n v (updateSolved' xs t)
+    | Just v <- lookup n xs 
+        = case xs of
+               [_] -> psubst n v t
+               _ -> psubst n v (updateSolved' xs t)
 updateSolved' xs (Bind n b t)
     | otherwise = Bind n (fmap (updateSolved' xs) b) (updateSolved' xs t)
-updateSolved' xs (App f a) = App (updateSolved' xs f) (updateSolved' xs a)
+updateSolved' xs (App f a) 
+    = App (updateSolved' xs f) (updateSolved' xs a)
 updateSolved' xs (P _ n@(MN _ _) _)
     | Just v <- lookup n xs = v
 updateSolved' xs t = t

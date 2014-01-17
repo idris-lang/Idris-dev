@@ -8,7 +8,7 @@ import Paths_idris
 import Idris.Core.TT
 import Idris.Core.Evaluate
 
-import Control.Monad.State
+import Control.Monad.State.Strict
 import Debug.Trace
 
 debindApp :: SyntaxInfo -> PTerm -> PTerm

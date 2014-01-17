@@ -6,7 +6,7 @@ import Idris.Core.TT
 import Idris.Core.Evaluate
 
 import Control.Monad
-import Control.Monad.State
+import Control.Monad.State.Strict
 import Data.List
 import Debug.Trace
 

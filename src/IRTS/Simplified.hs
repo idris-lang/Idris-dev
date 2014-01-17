@@ -2,6 +2,7 @@ module IRTS.Simplified where
 
 import IRTS.Defunctionalise
 import Idris.Core.TT
+import Idris.Core.Typecheck
 import Data.Maybe
 import Control.Monad.State
 

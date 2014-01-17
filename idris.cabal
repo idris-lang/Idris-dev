@@ -346,6 +346,7 @@ Library
                 , Idris.Core.Evaluate
                 , Idris.Core.Execute
                 , Idris.Core.ProofState
+                , Idris.Core.TC
                 , Idris.Core.TT
                 , Idris.Core.Typecheck
                 , Idris.Core.Unify
@@ -495,6 +496,6 @@ Executable idris
                 , transformers
 
   ghc-prof-options: -auto-all -caf-all
-  ghc-options:      -threaded -rtsopts
+  ghc-options:      -threaded -rtsopts -funbox-strict-fields
 
 

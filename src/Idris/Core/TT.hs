@@ -18,9 +18,11 @@
      programs with implicit syntax into fully explicit terms.
 -}
 
-module Idris.Core.TT where
+module Idris.Core.TT(module Idris.Core.TT, module Idris.Core.TC) where
 
-import Control.Monad.State
+import Idris.Core.TC
+
+import Control.Monad.State.Strict
 import Control.Monad.Trans.Error (Error(..))
 import Debug.Trace
 import qualified Data.Map.Strict as Map
@@ -182,13 +184,11 @@ instance Pretty Err where
   pretty _ = text "Error"
 
 instance Error Err where
-  strMsg = Msg
+  strMsg = InternalMsg
 
-data TC a = OK a
-          | Error Err
-  deriving (Eq, Functor)
+type TC = TC' Err
 
-instance Pretty a => Pretty (TC a) where
+instance (Pretty a) => Pretty (TC a) where
   pretty (OK ok) = pretty ok
   pretty (Error err) =
     if size err > breakingSize then
@@ -200,28 +200,15 @@ instance Show a => Show (TC a) where
     show (OK x) = show x
     show (Error str) = "Error: " ++ show str
 
--- at some point, this instance should also carry type checking options
--- (e.g. Type:Type)
-
-instance Monad TC where
-    return = OK
-    x >>= k = case x of
-                OK v -> k v
-                Error e -> Error e
-    fail e = Error (InternalMsg e)
-
 tfail :: Err -> TC a
 tfail e = Error e
+
+failMsg :: String -> TC a
+failMsg str = Error (Msg str)
 
 trun :: FC -> TC a -> TC a
 trun fc (OK a)    = OK a
 trun fc (Error e) = Error (At fc e)
-
-instance MonadPlus TC where
-    mzero = fail "Unknown error"
-    (OK x) `mplus` _ = OK x
-    _ `mplus` (OK y) = OK y
-    err `mplus` _    = err
 
 discard :: Monad m => m a -> m ()
 discard f = f >> return ()
@@ -598,12 +585,12 @@ instance Eq NameType where
 
 -- | Terms in the core language
 data TT n = P NameType n (TT n) -- ^ named references
-          | V Int -- ^ a resolved de Bruijn-indexed variable
+          | V !Int -- ^ a resolved de Bruijn-indexed variable
           | Bind n (Binder (TT n)) (TT n) -- ^ a binding
           | App (TT n) (TT n) -- ^ function, function type, arg
           | Constant Const -- ^ constant
-          | Proj (TT n) Int -- ^ argument projection; runtime only
-                            -- (-1) is a special case for 'subtract one from BI'
+          | Proj (TT n) !Int -- ^ argument projection; runtime only
+                             -- (-1) is a special case for 'subtract one from BI'
           | Erased -- ^ an erased term
           | Impossible -- ^ special case for totality checking
           | TType UExp -- ^ the type of types at some level

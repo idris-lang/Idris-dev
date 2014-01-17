@@ -20,7 +20,7 @@ import Text.Trifecta.Result(Result(..))
 
 import System.Console.Haskeline
 import System.Console.Haskeline.History
-import Control.Monad.State
+import Control.Monad.State.Strict
 
 import Util.Pretty
 import Debug.Trace

@@ -14,7 +14,7 @@ module Idris.Core.Evaluate(normalise, normaliseTrace, normaliseC, normaliseAll,
                 Value(..), Quote(..), initEval, uniqueNameCtxt) where
 
 import Debug.Trace
-import Control.Monad.State
+import Control.Monad.State -- not Strict!
 import qualified Data.Binary as B
 import Data.Binary hiding (get, put)
 
@@ -513,9 +513,9 @@ wknV i t              = return t
 
 convEq' ctxt x y = evalStateT (convEq ctxt x y) (0, [])
 
-convEq :: Context -> TT Name -> TT Name -> StateT UCs TC Bool
+convEq :: Context -> TT Name -> TT Name -> StateT UCs (TC' Err) Bool
 convEq ctxt = ceq [] where
-    ceq :: [(Name, Name)] -> TT Name -> TT Name -> StateT UCs TC Bool
+    ceq :: [(Name, Name)] -> TT Name -> TT Name -> StateT UCs (TC' Err) Bool
     ceq ps (P xt x _) (P yt y _)
         | x == y || (x, y) `elem` ps || (y,x) `elem` ps = return True
         | otherwise = sameDefs ps x y

@@ -28,7 +28,7 @@ import Idris.Core.CaseTree
 
 import Control.DeepSeq
 import Control.Monad
-import Control.Monad.State
+import Control.Monad.State.Strict as State
 import Data.List
 import Data.Maybe
 import Debug.Trace
@@ -321,13 +321,13 @@ elabEliminator paramPos n ty cons info = do
   eliminatorClauses <- mapM (\(cns, cnsElim) -> generateEliminatorClauses cns cnsElim clauseGeneralArgs generalParams) (zip cons clauseConsElimArgs)
   let eliminatorDef = PClauses emptyFC [TotalFn] elimDeclName eliminatorClauses
   elimLog $ "-- eliminator definition: " ++ showDeclImp True eliminatorDef
-  Control.Monad.State.lift $ idrisCatch (elabDecl EAll info eliminatorTyDecl) (\err -> return ())
+  State.lift $ idrisCatch (elabDecl EAll info eliminatorTyDecl) (\err -> return ())
   -- Do not elaborate clauses if there aren't any
   case eliminatorClauses of
     [] -> return ()
-    _  -> Control.Monad.State.lift $ idrisCatch (elabDecl EAll info eliminatorDef) (\err -> return ())
+    _  -> State.lift $ idrisCatch (elabDecl EAll info eliminatorDef) (\err -> return ())
   where elimLog :: String -> EliminatorState ()
-        elimLog s = Control.Monad.State.lift (logLvl 2 s)
+        elimLog s = State.lift (logLvl 2 s)
 
         elimFC :: FC
         elimFC = fileFC "(eliminator)"
@@ -464,7 +464,7 @@ elabEliminator paramPos n ty cons info = do
 
         implicitIndexes :: (String, Name, PTerm, FC) -> EliminatorState [(Name, Plicity, PTerm)]
         implicitIndexes (cns@(doc, cnm, ty, fc)) = do
-          i <-  Control.Monad.State.lift getIState
+          i <-  State.lift getIState
           implargs' <- case lookupCtxt cnm (idris_implicits i) of
             [] -> do fail $ "Error while showing implicits for " ++ show cnm
             [args] -> do return args
@@ -517,7 +517,7 @@ elabEliminator paramPos n ty cons info = do
         generateEliminatorClauses (doc, cnm, ty, fc) cnsElim generalArgs generalParameters = do
           let cons' = replaceParams paramPos generalParameters ty
           let (args, resTy) = splitPi cons'
-          i <- Control.Monad.State.lift getIState
+          i <- State.lift getIState
           implidxs <- implicitIndexes (doc, cnm, ty, fc)
           let (_, generalIdxs') = splitArgPms resTy
           let generalIdxs = map pexp generalIdxs'

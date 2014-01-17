@@ -15,8 +15,8 @@ import Data.Vector.Binary
 import Data.List
 import Data.ByteString.Lazy as B hiding (length, elem, map)
 import Control.Monad
-import Control.Monad.State hiding (get, put)
-import qualified Control.Monad.State as ST
+import Control.Monad.State.Strict hiding (get, put)
+import qualified Control.Monad.State.Strict as ST
 import System.FilePath
 import System.Directory
 import Codec.Compression.Zlib

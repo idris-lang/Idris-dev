@@ -14,7 +14,7 @@ import Idris.Core.Evaluate
 import Idris.Core.Typecheck (check)
 
 import Control.Monad
-import Control.Monad.State
+import Control.Monad.State.Strict
 import Data.List
 import Data.Maybe (mapMaybe)
 
@@ -418,8 +418,6 @@ elab ist info pattern opts fn tm
                     ctxt <- get_context
                     let guarded = isConName f ctxt
                     ns <- apply (Var f) (map isph args)
-                    ptm <- get_term
-                    g <- goal
                     -- Sort so that the implicit tactics go last
                     let (ns', eargs) = unzip $
                              sortBy (\(_,x) (_,y) ->
@@ -427,11 +425,8 @@ elab ist info pattern opts fn tm
                                     (zip ns args)
                     elabArgs (ina || not isinf, guarded, inty)
                            [] fc False ns' (map (\x -> (lazyarg x, getTm x)) eargs)
-                    mkSpecialised ist fc f (map getTm args) tm
                     solve
-                    ptm <- get_term
                     ivs' <- get_instances
-                    ps' <- get_probs
             -- Attempt to resolve any type classes which have 'complete' types,
             -- i.e. no holes in them
                     when (not pattern || (ina && not tcgen && not guarded)) $
@@ -1545,45 +1540,4 @@ envTupleType
                            ]
 
 solveAll = try (do solve; solveAll) (return ())
-
--- If the function application is specialisable, make a new
--- top level function by normalising the application
--- and elaborating the new expression.
-
-mkSpecialised :: IState -> FC -> Name -> [PTerm] -> PTerm -> ElabD PTerm
-mkSpecialised i fc n args def
-    = do let tm' = def
-         case lookupCtxt n (idris_statics i) of
-           [as] -> if (not (or as)) then return tm' else
-                       mkSpecDecl i n (zip args as) tm'
-           _ -> return tm'
-
-mkSpecDecl :: IState -> Name -> [(PTerm, Bool)] -> PTerm -> ElabD PTerm
-mkSpecDecl i n pargs tm'
-    = do t <- goal
-         g <- get_guess
-         let (f, args) = unApply g
-         let sargs = zip args (map snd pargs)
-         let staticArgs = map fst (filter (\ (_,x) -> x) sargs)
-         let ns = group (sort (concatMap staticFnNames staticArgs))
-         let ntimes = map (\xs -> (head xs, length xs - 1)) ns
-         if (not (null ns)) then
-           do env <- get_env
-              let g' = g -- specialise ctxt env ntimes g
-              return tm'
---               trace (show t ++ "\n" ++
---                      show ntimes ++ "\n" ++
---                      show (delab i g) ++ "\n" ++ show (delab i g')) $ return tm' -- TODO
-           else return tm'
-  where
-    ctxt = tt_ctxt i
-    cg = idris_callgraph i
-
-    staticFnNames tm | (P _ f _, as) <- unApply tm
-        = if not (isFnName f ctxt) then []
-             else case lookupCtxt f cg of
-                    [ns] -> f : f : [] --(ns \\ [f])
-                    [] -> [f,f]
-                    _ -> []
-    staticFnNames _ = []
 
