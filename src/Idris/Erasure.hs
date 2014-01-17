@@ -3,12 +3,15 @@
 module Idris.Erasure
     ( findUnusedArgs
     , findUsed
+    , buildDepGraph
     ) where
 
 import Idris.AbsSyntax
 import Idris.Core.CaseTree
 import Idris.Core.TT
 import Idris.Core.Evaluate
+
+import Debug.Trace
 
 import Control.Applicative
 import Control.Monad.State
@@ -17,15 +20,90 @@ import Data.List
 import qualified Data.Set as S
 import qualified Data.IntSet as IS
 import qualified Data.Map as M
+import qualified Data.IntMap as IM
 import Data.Set (Set)
 import Data.IntSet (IntSet)
 import Data.Map (Map)
+import Data.IntMap (IntMap)
 
--- UseMap maps names to the set of used argument positions.
+{- The whole idea of usage analysis is as follows:
+ -
+ -   1. traverse all definitions and build a DepGraph
+ -   2. perform search of DepGraph from (main, Result)
+ -   3. record all reachable nodes into UseMap
+ -}
+
+-- An Arg, for the purposes of usage analysis, is either an argument
+-- of a function or the return value of the function.
+data Arg = Arg Int | Retval
+
+-- DepGraph maps a (Name, Arg) to (Name, Arg)'s that it depends upon.
+type DepGraph = Map Name (Map Arg (Set (Name, Arg)))
+
+-- UseMap maps names to the set of used (reachable) argument positions.
 type UseMap = Map Name IntSet
 
 -- PatvarMap maps pattern variable names to the corresponding (data-ctor-name, argpos).
 type PatvarMap = Map Name (Name, Int)
+
+buildDepGraph :: Context -> Ctxt CGInfo -> [Name] -> DepGraph
+buildDepGraph ctx cg = unionMap (findDepsDef cg <*> getDef ctx)
+  where
+    union :: [DepGraph] -> DepGraph
+    union = M.unionsWith $ M.unionWith S.union
+
+    unionMap :: (a -> DepGraph) -> [a] -> DepGraph
+    unionMap f = union . map f
+
+    getDef :: Context -> Name -> Def
+    getDef ctx n = case lookupDef n ctx of
+        [def] -> def
+        [] -> error $ "erasure checker: unknown name: " ++ show n  -- TODO: fix this
+        _  -> error $ "erasure checker: ambiguous name: " ++ show n  -- TODO: fix this
+
+    findDepsDef :: Ctxt CGInfo -> Name -> Def -> DepGraph
+    findDepsDef cg fn (Function ty t  ) = M.empty
+    findDepsDef cg fn (TyDecl   ty t  ) = M.empty
+    findDepsDef cg fn (Operator ty n f) = M.empty
+    --  ^- non-pattern-matching definitions don't contribute to dependencies
+    
+    findDepsDef cg fn (CaseOp ci ty def tot cdefs)
+        -- the fst component is the list of pattern variables, which we don't use
+        = findDepsSC cg fn M.empty (snd $ cases_compiletime cdefs)  -- TODO: or cases_runtime?
+
+    findDepsSC :: Ctxt CGInfo -> Name -> PatvarMap -> SC -> DepGraph
+    findDepsSC cg fn vars  ImpossibleCase     = M.empty
+    findDepsSC cg fn vars (UnmatchedCase msg) = M.empty
+    findDepsSC cg fn vars (Case     n alts)   = unionMap (findDepsAlt cg fn vars) alts
+    findDepsSC cg fn vars (ProjCase t alt )   = findDepsAlt cg fn vars alt
+    findDepsSC cg fn vars (STerm t) = findDepsTerm cg vars (fn, Retval) t
+
+    findDepsAlt :: Ctxt CGInfo -> Name -> PatvarMap -> CaseAlt -> DepGraph
+    findDepsAlt cg fn vars (FnCase n ns sc) = findDepsSC cg fn vars sc  -- TODO: what's this?
+    findDepsAlt cg fn vars (ConstCase c sc) = findDepsSC cg fn vars sc
+    findDepsAlt cg fn vars (SucCase n sc)   = findDepsSC cg fn (M.insert n (error "put S here") vars) sc  -- TODO
+    findDepsAlt cg fn vars (DefaultCase sc) = findDepsSC cg fn vars sc
+    findDepsAlt cg fn vars (ConCase n cnt ns sc) = findDepsSC cg fn (ns `u` vars) sc
+      where
+        u :: [Name] -> PatvarMap -> PatvarMap
+        vs `u` pmap = M.fromList [(var, (n, i)) | (i, var) <- zip [0..] vs] `M.union` pmap
+
+    findDepsTerm :: Ctxt CGInfo -> PatvarMap -> (Name, Arg) -> Term -> DepGraph
+    findDepsTerm cg vars (tn,ta) (P _ n _) = tn ~> ta ~> case M.lookup n vars of
+        Just v  -> S.singleton v  -- an existing patvar
+        Nothing -> (n, Retval)    -- must be the return value of something from the context
+    findDepsTerm cg vars (tn,ta) (Bind n (Let t v) body) = union
+        [ findDepsTerm cg vars (tn,ta) (instantiate v body)
+        , findDepsTerm cg vars (tn,ta) t
+        ]
+    findDepsterm cg vars (tn,ta) (Bind n b body) = union
+        [ findDepsTerm cg (M.delete n vars) (tn,ta) body
+        , findDepsTerm cg vars (tn,ta) (binderTy b)
+        ]
+
+    infixr 3 (~>)
+    (~>) :: (Ord a) => a -> b -> Map a b
+    (~>) = M.singleton
 
 findUsed :: Context -> Ctxt CGInfo -> [Name] -> UseMap
 findUsed ctx cg = unionMap $ findUsedDef cg . getDef ctx

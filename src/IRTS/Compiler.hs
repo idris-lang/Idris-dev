@@ -47,7 +47,9 @@ compile codegen f tm
 
         -- TODO: DEBUG-ONLY, remove
         ist <- getIState
+        let depGraph = buildDepGraph (tt_ctxt ist) (idris_callgraph ist) (concat used)
         let usedCtorArgs = findUsed (tt_ctxt ist) (idris_callgraph ist) (concat used)
+        iLOG $ "DEPGRAPH:\n" ++ unlines (map show . M.toList $ usedCtorArgs)
         iLOG $ "USED CTOR ARGS:\n" ++ unlines (map show . M.toList $ usedCtorArgs)
         
         maindef <- irMain tm
