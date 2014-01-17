@@ -1,11 +1,9 @@
 module Decidable.Order
 
-%access public
-
-Doesn't work yet, see note in Decidable.idr
-
 import Decidable.Decidable
 import Decidable.Equality
+
+%access public
 
 --------------------------------------------------------------------------------
 -- Utility Lemmas
