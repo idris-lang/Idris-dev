@@ -418,11 +418,9 @@ elab ist info pattern opts fn tm
                     ctxt <- get_context
                     let guarded = isConName f ctxt
                     ns <- apply (Var f) (map isph args)
-                    -- Sort so that the implicit tactics go last
+                    -- Sort so that the implicit tactics and alternatives go last
                     let (ns', eargs) = unzip $
-                             sortBy (\(_,x) (_,y) ->
-                                            compare (priority x) (priority y))
-                                    (zip ns args)
+                             sortBy cmpArg (zip ns args)
                     elabArgs (ina || not isinf, guarded, inty)
                            [] fc False ns' (map (\x -> (lazyarg x, getTm x)) eargs)
                     solve
@@ -442,6 +440,13 @@ elab ist info pattern opts fn tm
                               (ivs' \\ ivs)
       where tcArg (n, PConstraint _ _ Placeholder _) = True
             tcArg _ = False
+            
+            -- normal < tactic < default tactic
+            cmpArg (_, x) (_, y)
+                   = compare (priority x + alt x) (priority y + alt y)
+                where alt t = case getTm t of
+                                   PAlternative False _ -> 5
+                                   _ -> 0
 
             tacTm (PTactics _) = True
             tacTm (PProof _) = True

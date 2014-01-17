@@ -1325,7 +1325,8 @@ aiFn inpat expat ist fc f as
         case find n given [] of
             Just (tm, given') -> PImp p False l n tm "" : insertImpl ps given'
             Nothing ->           PImp p True l n Placeholder "" : insertImpl ps given
-    insertImpl (PTacImplicit p l n sc ty d : ps) given =
+    insertImpl (PTacImplicit p l n sc' ty d : ps) given =
+      let sc = addImpl ist sc' in
         case find n given [] of
             Just (tm, given') -> PTacImplicit p l n sc tm "" : insertImpl ps given'
             Nothing -> if inpat
