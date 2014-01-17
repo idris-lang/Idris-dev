@@ -33,21 +33,21 @@ import qualified Data.ByteString.UTF8 as UTF8
 -- using pre-build and user-defined operator/fixity declarations
 table :: [FixDecl] -> OperatorTable IdrisParser PTerm
 table fixes
-   = [[prefix "-" (\fc x -> PApp fc (PRef fc (UN "-"))
-        [pexp (PApp fc (PRef fc (UN "fromInteger")) [pexp (PConstant (BI 0))]), pexp x])]]
+   = [[prefix "-" (\fc x -> PApp fc (PRef fc (sUN "-"))
+        [pexp (PApp fc (PRef fc (sUN "fromInteger")) [pexp (PConstant (BI 0))]), pexp x])]]
        ++ toTable (reverse fixes) ++
       [[backtick],
        [binary "="  PEq AssocLeft],
-       [binary "->" (\fc x y -> PPi expl (MN 42 "__pi_arg") x y) AssocRight]]
+       [binary "->" (\fc x y -> PPi expl (sMN 42 "__pi_arg") x y) AssocRight]]
 
 -- | Calculates table for fixtiy declarations
 toTable :: [FixDecl] -> OperatorTable IdrisParser PTerm
 toTable fs = map (map toBin)
                  (groupBy (\ (Fix x _) (Fix y _) -> prec x == prec y) fs)
    where toBin (Fix (PrefixN _) op) = prefix op
-                                       (\fc x -> PApp fc (PRef fc (UN op)) [pexp x])
+                                       (\fc x -> PApp fc (PRef fc (sUN op)) [pexp x])
          toBin (Fix f op)
-            = binary op (\fc x y -> PApp fc (PRef fc (UN op)) [pexp x,pexp y]) (assoc f)
+            = binary op (\fc x y -> PApp fc (PRef fc (sUN op)) [pexp x,pexp y]) (assoc f)
          assoc (Infixl _) = AssocLeft
          assoc (Infixr _) = AssocRight
          assoc (InfixN _) = AssocNone

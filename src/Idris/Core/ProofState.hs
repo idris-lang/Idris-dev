@@ -159,7 +159,7 @@ hole (Hole _)    = True
 hole (Guess _ _) = True
 hole _           = False
 
-holeName i = MN i "hole"
+holeName i = sMN i "hole"
 
 qshow :: Fails -> String
 qshow fs = show (map (\ (x, y, _, _) -> (x, y)) fs)
@@ -209,7 +209,7 @@ getName :: Monad m => String -> StateT TState m Name
 getName tag = do ps <- get
                  let n = nextname ps
                  put (ps { nextname = n+1 })
-                 return $ MN n tag
+                 return $ sMN n tag
 
 action :: Monad m => (ProofState -> ProofState) -> StateT TState m ()
 action a = do ps <- get
@@ -568,16 +568,16 @@ rewrite tm ctxt env (Bind x (Hole t) xp@(P _ x' _)) | x == x' =
     do (tmv, tmt) <- lift $ check ctxt env tm
        let tmt' = normalise ctxt env tmt
        case unApply tmt' of
-         (P _ (UN "=") _, [lt,rt,l,r]) ->
+         (P _ (UN q) _, [lt,rt,l,r]) | q == txt "=" ->
             do let p = Bind rname (Lam lt) (mkP (P Bound rname lt) r l t)
                let newt = mkP l r l t
                let sc = forget $ (Bind x (Hole newt)
-                                       (mkApp (P Ref (UN "replace") (TType (UVal 0)))
+                                       (mkApp (P Ref (sUN "replace") (TType (UVal 0)))
                                               [lt, l, r, p, tmv, xp]))
                (scv, sct) <- lift $ check ctxt env sc
                return scv
          _ -> lift $ tfail (NotEquality tmv tmt') 
-  where rname = MN 0 "replaced"
+  where rname = sMN 0 "replaced"
 rewrite _ _ _ _ = fail "Can't rewrite here"
 
 -- To make the P for rewrite, replace syntactic occurrences of l in ty with
@@ -633,7 +633,7 @@ induction nm ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' = do
           [] -> fail $ "Induction needs an eliminator for " ++ show tnm
           xs -> fail $ "Multiple definitions found when searching for the eliminator of " ++ show tnm
     _ -> fail "Unkown type for induction"
-    where scname = MN 0 "scarg"
+    where scname = sMN 0 "scarg"
           makeConsArg (nm, ty) = P Bound nm ty
           bindConsArgs ((nm, ty):args) v = Bind nm (Hole ty) $ bindConsArgs args v
           bindConsArgs [] v = v
@@ -642,7 +642,7 @@ induction nm ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' = do
           splitTyArgs param_pos tyargs =
             let (params, indicies) = partition (flip elem param_pos . fst) . zip [0..] $ tyargs
             in (map snd params, map snd indicies)
-          makeIndexNames = foldr (\_ nms -> (uniqueNameCtxt ctxt (MN 0 "idx") nms):nms) []
+          makeIndexNames = foldr (\_ nms -> (uniqueNameCtxt ctxt (sMN 0 "idx") nms):nms) []
           replaceIndicies idnms idxs prop = foldM (\t (idnm, idx) -> do (idxv, idxt) <- lift $ check ctxt env (forget idx)
                                                                         let var = P Bound idnm idxt
                                                                         return $ Bind idnm (Lam idxt) (mkP var idxv var t)) prop $ zip idnms idxs

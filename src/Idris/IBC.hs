@@ -14,6 +14,8 @@ import Data.Binary
 import Data.Vector.Binary
 import Data.List
 import Data.ByteString.Lazy as B hiding (length, elem, map)
+import qualified Data.Text as T
+
 import Control.Monad
 import Control.Monad.State hiding (get, put)
 import qualified Control.Monad.State as ST
@@ -26,7 +28,7 @@ import Debug.Trace
 import Paths_idris
 
 ibcVersion :: Word8
-ibcVersion = 53
+ibcVersion = 54
 
 data IBCFile = IBCFile { ver :: Word8,
                          sourcefile :: FilePath,
@@ -497,6 +499,11 @@ instance Binary Name where
                    5 -> do x1 <- get
                            return (SymRef x1)
                    _ -> error "Corrupted binary data for Name"
+
+instance Binary T.Text where
+        put x = put (str x)
+        get = do x <- get
+                 return (txt x)
 
 instance Binary SpecialName where
         put x

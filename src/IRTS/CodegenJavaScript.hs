@@ -606,7 +606,7 @@ codegenJavaScript target definitions filename outputType = do
         mainFun = jsTailcall $ jsCall runMain []
 
         runMain :: String
-        runMain = idrNamespace ++ translateName (MN 0 "runMain")
+        runMain = idrNamespace ++ translateName (sMN 0 "runMain")
 
     invokeLoop :: String
     invokeLoop  = compileJS $ jsCall "main" []
@@ -671,15 +671,15 @@ translateIdentifier =
 
 translateNamespace :: Name -> String
 translateNamespace (UN _)    = idrNamespace
-translateNamespace (NS _ ns) = idrNamespace ++ concatMap translateIdentifier ns
+translateNamespace (NS _ ns) = idrNamespace ++ concatMap (translateIdentifier . str) ns
 translateNamespace (MN _ _)  = idrNamespace
 translateNamespace (SN name) = idrNamespace ++ translateSpecialName name
 translateNamespace NErased   = idrNamespace
 
 translateName :: Name -> String
-translateName (UN name)   = 'u' : translateIdentifier name
+translateName (UN name)   = 'u' : translateIdentifier (str name)
 translateName (NS name _) = 'n' : translateName name
-translateName (MN i name) = 'm' : translateIdentifier name ++ show i
+translateName (MN i name) = 'm' : translateIdentifier (str name) ++ show i
 translateName (SN name)   = 's' : translateSpecialName name
 translateName NErased     = "e"
 
@@ -688,9 +688,9 @@ translateSpecialName name
   | WhereN i m n  <- name =
     'w' : translateName m ++ translateName n ++ show i
   | InstanceN n s <- name =
-    'i' : translateName n ++ concatMap translateIdentifier s
+    'i' : translateName n ++ concatMap (translateIdentifier . str) s
   | ParentN n s   <- name =
-    'p' : translateName n ++ translateIdentifier s
+    'p' : translateName n ++ translateIdentifier (str s)
   | MethodN n     <- name =
     'm' : translateName n
   | CaseN n       <- name =
@@ -714,9 +714,10 @@ translateConstant c =
 
 translateDeclaration :: (String, SDecl) -> JS
 translateDeclaration (path, SFun name params stackSize body)
-  | (MN _ "APPLY")        <- name
+  | (MN _ ap)        <- name
   , (SLet var val next)   <- body
-  , (SChkCase cvar cases) <- next =
+  , (SChkCase cvar cases) <- next
+  , ap == txt "APPLY" =
     let lvar   = translateVariableName var
         lookup = "[" ++ lvar ++ ".tag](fn0,arg0," ++ lvar ++ ")" in
         JSSeq [ lookupTable [(var, "chk")] var cases
@@ -735,8 +736,9 @@ translateDeclaration (path, SFun name params stackSize body)
                 )
               ]
 
-  | (MN _ "EVAL")        <- name
-  , (SChkCase var cases) <- body =
+  | (MN _ ev)        <- name
+  , (SChkCase var cases) <- body
+  , ev == txt "EVAL" =
     JSSeq [ lookupTable [] var cases
           , jsDecl $ JSFunction ["arg0"] (JSReturn $
               JSTernary (

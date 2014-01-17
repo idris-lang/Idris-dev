@@ -40,7 +40,7 @@ compile codegen f tm
    = do checkMVs
         let tmnames = namesUsed (STerm tm)
         usedIn <- mapM (allNames []) tmnames
-        let used = [UN "prim__subBigInt", UN "prim__addBigInt"] : usedIn
+        let used = [sUN "prim__subBigInt", sUN "prim__addBigInt"] : usedIn
         defsIn <- mkDecls tm (concat used)
         findUnusedArgs (concat used)
         maindef <- irMain tm
@@ -49,7 +49,7 @@ compile codegen f tm
         flags <- getFlags codegen
         hdrs <- getHdrs codegen
         impdirs <- allImportDirs
-        let defs = defsIn ++ [(MN 0 "runMain", maindef)]
+        let defs = defsIn ++ [(sMN 0 "runMain", maindef)]
         -- iputStrLn $ showSep "\n" (map show defs)
         let (nexttag, tagged) = addTags 65536 (liftAll defs)
         let ctxtIn = addAlist tagged emptyContext
@@ -108,7 +108,7 @@ compile codegen f tm
 
 irMain :: TT Name -> Idris LDecl
 irMain tm = do i <- ir tm
-               return $ LFun [] (MN 0 "runMain") [] (LForce i)
+               return $ LFun [] (sMN 0 "runMain") [] (LForce i)
 
 mkDecls :: Term -> [Name] -> Idris [(Name, LDecl)]
 mkDecls t used
@@ -137,7 +137,7 @@ build (n, d)
     = do i <- getIState
          case lookup n (idris_scprims i) of
               Just (ar, op) ->
-                  let args = map (\x -> MN x "op") [0..] in
+                  let args = map (\x -> sMN x "op") [0..] in
                       return (n, (LFun [] n (take ar args)
                                          (LOp op (map (LV . Glob) (take ar args)))))
               _ -> do def <- mkLDecl n d
@@ -168,40 +168,38 @@ mkLDecl n _ = return (LFun [] n [] (LError ("Impossible declaration " ++ show n)
 instance ToIR (TT Name) where
     ir tm = ir' [] tm where
       ir' env tm@(App f a)
-          | (P _ (UN "mkForeignPrim") _, args) <- unApply tm
+          | (P _ (UN m) _, args) <- unApply tm,
+            m == txt "mkForeignPrim"
               = doForeign env args
-          | (P _ (UN "unsafePerformPrimIO") _, [_, arg]) <- unApply tm
+          | (P _ (UN u) _, [_, arg]) <- unApply tm,
+            u == txt "unsafePerformPrimIO"
               = ir' env arg
             -- TMP HACK - until we get inlining.
-          | (P _ (UN "replace") _, [_, _, _, _, _, arg]) <- unApply tm
+          | (P _ (UN r) _, [_, _, _, _, _, arg]) <- unApply tm,
+            r == txt "replace"
               = ir' env arg
-          | (P _ (UN "lazy") _, [_, arg]) <- unApply tm
+          | (P _ (UN l) _, [_, arg]) <- unApply tm,
+            l == txt "lazy"
               = do arg' <- ir' env arg
                    return $ LLazyExp arg'
-          | (P _ (UN "assert_smaller") _, [_, _, _, arg]) <- unApply tm
+          | (P _ (UN a) _, [_, _, _, arg]) <- unApply tm,
+            a == txt "assert_smaller"
               = ir' env arg
-          | (P _ (UN "par") _, [_, arg]) <- unApply tm
+          | (P _ (UN p) _, [_, arg]) <- unApply tm,
+            p == txt "par"
               = do arg' <- ir' env arg
                    return $ LOp LPar [LLazyExp arg']
-          | (P _ (UN "prim_fork") _, [arg]) <- unApply tm
+          | (P _ (UN pf) _, [arg]) <- unApply tm,
+            pf == txt "prim_fork"
               = do arg' <- ir' env arg
                    return $ LOp LFork [LLazyExp arg']
---           | (P _ (UN "prim__IO") _, [v]) <- unApply tm
---               = do v' <- ir' env v
---                    return v'
---           | (P _ (UN "prim_io_bind") _, [_,_,v,Bind n (Lam _) sc]) <- unApply tm
---               = do v' <- ir' env v
---                    sc' <- ir' (n:env) sc
---                    return (LLet n (LForce v') sc')
---           | (P _ (UN "prim_io_bind") _, [_,_,v,k]) <- unApply tm
---               = do v' <- ir' env v
---                    k' <- ir' env k
---                    return (LApp False k' [LForce v'])
-          | (P _ (UN "malloc") _, [_,size,t]) <- unApply tm
+          | (P _ (UN m) _, [_,size,t]) <- unApply tm,
+            m == txt "malloc"
               = do size' <- ir' env size
                    t' <- ir' env t
                    return t' -- TODO $ malloc_ size' t'
-          | (P _ (UN "trace_malloc") _, [_,t]) <- unApply tm
+          | (P _ (UN tm) _, [_,t]) <- unApply tm,
+            tm == txt "trace_malloc"
               = do t' <- ir' env t
                    return t' -- TODO
 --           | (P _ (NS (UN "S") ["Nat", "Prelude"]) _, [k]) <- unApply tm
@@ -272,7 +270,7 @@ instance ToIR (TT Name) where
                                         (args ++ map (\n -> P Bound n undefined) extra)
                              return $ LLam extra sc'
 
-      satArgs n = map (\i -> MN i "sat") [1..n]
+      satArgs n = map (\i -> sMN i "sat") [1..n]
 
       buildApp env e [] = return e
       buildApp env e xs = do xs' <- mapM (ir' env) xs
@@ -300,10 +298,15 @@ getFTypes tm = case unApply tm of
                      fmap (mkIty' ty :) (getFTypes xs)
                  _ -> Nothing
 
-mkIty' (P _ (UN ty) _) = mkIty ty
-mkIty' (App (P _ (UN "FIntT") _) (P _ (UN intTy) _)) = mkIntIty intTy
-mkIty' (App (App (P _ (UN "FFunction") _) _) (App (P _ (UN "FAny") _) (App (P _ (UN "IO") _) _))) = FFunctionIO
-mkIty' (App (App (P _ (UN "FFunction") _) _) _) = FFunction
+mkIty' (P _ (UN ty) _) = mkIty (str ty)
+mkIty' (App (P _ (UN fi) _) (P _ (UN intTy) _))
+   | fi == txt "FIntT" = mkIntIty (str intTy)
+mkIty' (App (App (P _ (UN ff) _) _) (App (P _ (UN fa) _) (App (P _ (UN io) _) _))) 
+   | ff == txt "FFunction" && fa == txt "FAny" &&
+     io == txt "IO" 
+        = FFunctionIO
+mkIty' (App (App (P _ (UN ff) _) _) _) 
+   | ff == txt "FFunction" = FFunction
 mkIty' _ = FAny
 
 -- would be better if these FInt types were evaluated at compile time
@@ -337,8 +340,8 @@ mkIntIty "IT16" = FArith (ATInt (ITFixed IT16))
 mkIntIty "IT32" = FArith (ATInt (ITFixed IT32))
 mkIntIty "IT64" = FArith (ATInt (ITFixed IT64))
 
-zname = NS (UN "Z") ["Nat","Prelude"]
-sname = NS (UN "S") ["Nat","Prelude"]
+zname = sNS (sUN "Z") ["Nat","Prelude"]
+sname = sNS (sUN "S") ["Nat","Prelude"]
 
 instance ToIR ([Name], SC) where
     ir (args, tree) = do logLvl 3 $ "Compiling " ++ show args ++ "\n" ++ show tree

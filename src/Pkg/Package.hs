@@ -108,8 +108,8 @@ testLib warn p f
 rmIBC :: Name -> IO ()
 rmIBC m = rmFile $ toIBCFile m
 
-toIBCFile (UN n) = n ++ ".ibc"
-toIBCFile (NS n ns) = foldl1' (</>) (reverse (toIBCFile n : ns))
+toIBCFile (UN n) = str n ++ ".ibc"
+toIBCFile (NS n ns) = foldl1' (</>) (reverse (toIBCFile n : map str ns))
 
 installIBC :: String -> Name -> IO ()
 installIBC p m = do let f = toIBCFile m
@@ -120,7 +120,7 @@ installIBC p m = do let f = toIBCFile m
                     copyFile f (destdir </> takeFileName f)
                     return ()
     where getDest (UN n) = ""
-          getDest (NS n ns) = foldl1' (</>) (reverse (getDest n : ns))
+          getDest (NS n ns) = foldl1' (</>) (reverse (getDest n : map str ns))
 
 installObj :: String -> String -> IO ()
 installObj p o = do d <- getTargetDir

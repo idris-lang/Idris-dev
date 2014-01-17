@@ -91,7 +91,8 @@ inventName ist ty n =
                        Nothing -> []
                        Just t -> getNameHints ist t
        let nsupp = case n of
-                        MN i ('_':_) -> mkSupply (supp ++ varlist)
+                        MN i n | not (tnull n) && thead n == '_'
+                               -> mkSupply (supp ++ varlist)
                         MN i n -> mkSupply (UN n : supp ++ varlist)
                         x -> mkSupply (x : supp)
        let badnames = map snd (namemap ms) ++ map snd (invented ms) ++
@@ -106,7 +107,7 @@ inventName ist ty n =
 mkSupply ns = mkSupply' ns (map nextName ns)
   where mkSupply' xs ns' = xs ++ mkSupply ns'
    
-varlist = map (UN . (:[])) "xyzwstuv" -- EB's personal preference :)
+varlist = map (sUN . (:[])) "xyzwstuv" -- EB's personal preference :)
 
 stripNS tm = mapPT dens tm where
     dens (PRef fc n) = PRef fc (nsroot n)
@@ -164,7 +165,7 @@ argTys ist (PRef fc n)
     = case lookupTy n (tt_ctxt ist) of
            [ty] -> map (tyName . snd) (getArgTys ty) ++ repeat Nothing
            _ -> repeat Nothing
-  where tyName (Bind _ (Pi _) _) = Just (UN "->")
+  where tyName (Bind _ (Pi _) _) = Just (sUN "->")
         tyName t | (P _ n _, _) <- unApply t = Just n
                  | otherwise = Nothing
 argTys _ _ = repeat Nothing
@@ -264,8 +265,8 @@ replaceSplits l ups = updateRHSs 1 (map (rep (expandBraces l)) ups)
 
     -- TMP HACK: If there are Nats, we don't want to show as numerals since
     -- this isn't supported in a pattern, so special case here
-    nshow (PRef _ (UN "Z")) = "Z"
-    nshow (PApp _ (PRef _ (UN "S")) [x]) =
+    nshow (PRef _ (UN z)) | z == txt "Z" = "Z"
+    nshow (PApp _ (PRef _ (UN s)) [x]) | s == txt "S" =
                "S " ++ addBrackets (nshow (getTm x))
     nshow t = show t
 
@@ -296,7 +297,7 @@ replaceSplits l ups = updateRHSs 1 (map (rep (expandBraces l)) ups)
 getUniq nm i
        = do ist <- getIState
             let n = nameRoot [] nm ++ "_" ++ show i
-            case lookupTy (UN n) (tt_ctxt ist) of
+            case lookupTy (sUN n) (tt_ctxt ist) of
                  [] -> return (n, i+1)
                  _ -> getUniq nm (i+1)
 
@@ -324,14 +325,14 @@ getClause l fn fp = do ty <- getInternalApp fp l
          mkApp i _ _ = ""
 
          getNameFrom i used (PPi _ _ _ _) 
-              = uniqueNameFrom (mkSupply [UN "f", UN "g"]) used
+              = uniqueNameFrom (mkSupply [sUN "f", sUN "g"]) used
          getNameFrom i used (PApp fc f as) = getNameFrom i used f
-         getNameFrom i used (PEq _ _ _) = uniqueNameFrom [UN "prf"] used 
+         getNameFrom i used (PEq _ _ _) = uniqueNameFrom [sUN "prf"] used 
          getNameFrom i used (PRef fc f) 
             = case getNameHints i f of
-                   [] -> uniqueName (UN "x") used
+                   [] -> uniqueName (sUN "x") used
                    ns -> uniqueNameFrom (mkSupply ns) used
-         getNameFrom i used _ = uniqueName (UN "x") used 
+         getNameFrom i used _ = uniqueName (sUN "x") used 
 
 getProofClause :: Int      -- ^ line number that the type is declared
                -> Name     -- ^ Function name
@@ -363,11 +364,11 @@ mkWith str n = let str' = replaceRHS str "with (_)"
 nameMissing :: [PTerm] -> Idris [PTerm]
 nameMissing ps = do ist <- get
                     newPats <- mapM nm ps
-                    let newPats' = mergeAllPats ist (UN "_") (base (head ps))
+                    let newPats' = mergeAllPats ist (sUN "_") (base (head ps))
                                                 newPats
                     return (map fst newPats')
   where
-    base (PApp fc f args) = PApp fc f (map (fmap (const (PRef fc (UN "_")))) args)
+    base (PApp fc f args) = PApp fc f (map (fmap (const (PRef fc (sUN "_")))) args)
     base t = t
 
     nm ptm = do mptm <- elabNewPat ptm

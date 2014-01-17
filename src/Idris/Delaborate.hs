@@ -42,7 +42,7 @@ delabTy' ist imps tm fullname mvs = de [] imps tm
 
     de env _ (App f a) = deFn env f [a]
     de env _ (V i)     | i < length env = PRef un (snd (env!!i))
-                       | otherwise = PRef un (UN ("v" ++ show i ++ ""))
+                       | otherwise = PRef un (sUN ("v" ++ show i ++ ""))
     de env _ (P _ n _) | n == unitTy = PTrue un
                        | n == unitCon = PTrue un
                        | n == falseTy = PFalse un
@@ -63,8 +63,8 @@ delabTy' ist imps tm fullname mvs = de [] imps tm
           = PPi expl n (de env [] ty) (de ((n,n):env) [] sc)
     de env _ (Bind n (Let ty val) sc)
         = PLet n (de env [] ty) (de env [] val) (de ((n,n):env) [] sc)
-    de env _ (Bind n (Hole ty) sc) = de ((n, UN "[__]"):env) [] sc
-    de env _ (Bind n (Guess ty val) sc) = de ((n, UN "[__]"):env) [] sc
+    de env _ (Bind n (Hole ty) sc) = de ((n, sUN "[__]"):env) [] sc
+    de env _ (Bind n (Guess ty val) sc) = de ((n, sUN "[__]"):env) [] sc
     de env _ (Bind n _ sc) = de ((n,n):env) [] sc
     de env _ (Constant i) = PConstant i
     de env _ Erased = Placeholder
@@ -82,16 +82,16 @@ delabTy' ist imps tm fullname mvs = de [] imps tm
     deFn env (P _ n _) [l,r]
          | n == pairTy    = PPair un (de env [] l) (de env [] r)
          | n == eqCon     = PRefl un (de env [] r)
-         | n == UN "lazy" = de env [] r
+         | n == sUN "lazy" = de env [] r
     deFn env (P _ n _) [ty, Bind x (Lam _) r]
-         | n == UN "Exists"
+         | n == sUN "Exists"
                = PDPair un (PRef un x) (de env [] ty)
                            (de ((x,x):env) [] (instantiate (P Bound x ty) r))
     deFn env (P _ n _) [_,_,l,r]
          | n == pairCon = PPair un (de env [] l) (de env [] r)
          | n == eqTy    = PEq un (de env [] l) (de env [] r)
-         | n == UN "Ex_intro" = PDPair un (de env [] l) Placeholder
-                                          (de env [] r)
+         | n == sUN "Ex_intro" = PDPair un (de env [] l) Placeholder
+                                           (de env [] r)
     deFn env (P _ n _) args | not mvs
          = case lookup n (idris_metavars ist) of
                 Just (Just _, mi, _) ->
@@ -220,8 +220,8 @@ showqual i n = showName (Just i) [] False False (dens n)
     dens n = n
 
 showbasic n@(UN _) = show n
-showbasic (MN _ s) = s
-showbasic (NS n s) = showSep "." (reverse s) ++ "." ++ showbasic n
+showbasic (MN _ s) = str s
+showbasic (NS n s) = showSep "." (map str (reverse s)) ++ "." ++ showbasic n
 showbasic (SN s) = show s
 
 

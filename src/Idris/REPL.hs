@@ -247,19 +247,19 @@ ideslave orig mods
                             Just x -> iPrintError $ "didn't load " ++ filename
                           ideslave orig [filename]
                      Just (IdeSlave.TypeOf name) ->
-                       process stdout "(ideslave)" (Check (PRef (FC "(ideslave)" 0 0) (UN name)))
+                       process stdout "(ideslave)" (Check (PRef (FC "(ideslave)" 0 0) (sUN name)))
                      Just (IdeSlave.CaseSplit line name) ->
-                       process stdout fn (CaseSplitAt False line (UN name))
+                       process stdout fn (CaseSplitAt False line (sUN name))
                      Just (IdeSlave.AddClause line name) ->
-                       process stdout fn (AddClauseFrom False line (UN name))
+                       process stdout fn (AddClauseFrom False line (sUN name))
                      Just (IdeSlave.AddProofClause line name) ->
-                       process stdout fn (AddProofClauseFrom False line (UN name))
+                       process stdout fn (AddProofClauseFrom False line (sUN name))
                      Just (IdeSlave.AddMissing line name) ->
-                       process stdout fn (AddMissing False line (UN name))
+                       process stdout fn (AddMissing False line (sUN name))
                      Just (IdeSlave.MakeWithBlock line name) ->
-                       process stdout fn (MakeWith False line (UN name))
+                       process stdout fn (MakeWith False line (sUN name))
                      Just (IdeSlave.ProofSearch line name hints) ->
-                       process stdout fn (DoProofSearch False line (UN name) (map UN hints))
+                       process stdout fn (DoProofSearch False line (sUN name) (map sUN hints))
                      Nothing -> do iPrintError "did not understand")
                (\e -> do iPrintError $ show e))
          (\e -> do iPrintError $ show e)
@@ -408,7 +408,7 @@ edit f orig
                           , idris_colourTheme = idris_colourTheme i
                           }
          loadInputs stdout [f]
-         clearOrigPats
+--          clearOrigPats
          iucheck
          return ()
    where getEditor env | Just ed <- lookup "EDITOR" env = ed
@@ -444,7 +444,7 @@ process h fn (Eval t)
                                             let tm' = force (normaliseAll ctxt [] tm)
                                             let ty' = force (normaliseAll ctxt [] ty)
                                             -- Add value to context, call it "it"
-                                            updateContext (addCtxtDef (UN "it") (Function ty' tm'))
+                                            updateContext (addCtxtDef (sUN "it") (Function ty' tm'))
                                             ist <- getIState
                                             logLvl 3 $ "Raw: " ++ show (tm', ty')
                                             logLvl 10 $ "Debug: " ++ showEnvDbg [] tm'
@@ -485,7 +485,7 @@ process h fn (Check (PRef _ n))
                = let current = "  " ++
                                (case n of
                                    MN _ _ -> "_"
-                                   UN ('_':'_':_) -> "_"
+                                   UN nm | ('_':'_':_) <- str nm -> "_"
                                    _ -> showName (Just ist) [] False c n) ++
                                " : " ++ showImp (Just ist) imp c t ++ "\n"
                  in
@@ -852,8 +852,8 @@ process h fn (TestInline t)
 process h fn Execute
                    = do (m, _) <- elabVal toplevel False
                                         (PApp fc
-                                           (PRef fc (UN "run__IO"))
-                                           [pexp $ PRef fc (NS (UN "main") ["Main"])])
+                                           (PRef fc (sUN "run__IO"))
+                                           [pexp $ PRef fc (sNS (sUN "main") ["Main"])])
 --                                      (PRef (FC "main" 0) (NS (UN "main") ["main"]))
                         (tmpn, tmph) <- runIO tempfile
                         runIO $ hClose tmph
@@ -864,8 +864,8 @@ process h fn Execute
   where fc = fileFC "main"
 process h fn (Compile codegen f)
       = do (m, _) <- elabVal toplevel False
-                       (PApp fc (PRef fc (UN "run__IO"))
-                       [pexp $ PRef fc (NS (UN "main") ["Main"])])
+                       (PApp fc (PRef fc (sUN "run__IO"))
+                       [pexp $ PRef fc (sNS (sUN "main") ["Main"])])
            compile codegen f m
   where fc = fileFC "main"
 process h fn (LogLvl i) = setLogLevel i
@@ -1221,7 +1221,7 @@ idrisMain opts =
        historyFile <- fmap (</> "repl" </> "history") getIdrisUserDataDir
 
        when (runrepl && not idesl) $ do
-         clearOrigPats
+--          clearOrigPats
          initScript
          startServer orig inputs
          runInputT (replSettings (Just historyFile)) $ repl orig inputs

@@ -26,7 +26,7 @@ data Prim = Prim { p_name  :: Name,
 
 ty :: [Const] -> Const -> Type
 ty []     x = Constant x
-ty (t:ts) x = Bind (MN 0 "T") (Pi (Constant t)) (ty ts x)
+ty (t:ts) x = Bind (sMN 0 "T") (Pi (Constant t)) (ty ts x)
 
 total, partial :: Totality
 total = Total []
@@ -94,83 +94,83 @@ primitives =
    iCoerce ITNative (ITFixed IT64) "trunc" trunc LTrunc,
    iCoerce ITBig ITChar "trunc" trunc LTrunc,
 
-   Prim (UN "prim__addFloat") (ty [(AType ATFloat), (AType ATFloat)] (AType ATFloat)) 2 (fBin (+))
+   Prim (sUN "prim__addFloat") (ty [(AType ATFloat), (AType ATFloat)] (AType ATFloat)) 2 (fBin (+))
      (2, LPlus ATFloat) total,
-   Prim (UN "prim__subFloat") (ty [(AType ATFloat), (AType ATFloat)] (AType ATFloat)) 2 (fBin (-))
+   Prim (sUN "prim__subFloat") (ty [(AType ATFloat), (AType ATFloat)] (AType ATFloat)) 2 (fBin (-))
      (2, LMinus ATFloat) total,
-   Prim (UN "prim__mulFloat") (ty [(AType ATFloat), (AType ATFloat)] (AType ATFloat)) 2 (fBin (*))
+   Prim (sUN "prim__mulFloat") (ty [(AType ATFloat), (AType ATFloat)] (AType ATFloat)) 2 (fBin (*))
      (2, LTimes ATFloat) total,
-   Prim (UN "prim__divFloat") (ty [(AType ATFloat), (AType ATFloat)] (AType ATFloat)) 2 (fBin (/))
+   Prim (sUN "prim__divFloat") (ty [(AType ATFloat), (AType ATFloat)] (AType ATFloat)) 2 (fBin (/))
      (2, LSDiv ATFloat) total,
-   Prim (UN "prim__eqFloat")  (ty [(AType ATFloat), (AType ATFloat)] (AType (ATInt ITNative))) 2 (bfBin (==))
+   Prim (sUN "prim__eqFloat")  (ty [(AType ATFloat), (AType ATFloat)] (AType (ATInt ITNative))) 2 (bfBin (==))
      (2, LEq ATFloat) total,
-   Prim (UN "prim__sltFloat")  (ty [(AType ATFloat), (AType ATFloat)] (AType (ATInt ITNative))) 2 (bfBin (<))
+   Prim (sUN "prim__sltFloat")  (ty [(AType ATFloat), (AType ATFloat)] (AType (ATInt ITNative))) 2 (bfBin (<))
      (2, LSLt ATFloat) total,
-   Prim (UN "prim__slteFloat") (ty [(AType ATFloat), (AType ATFloat)] (AType (ATInt ITNative))) 2 (bfBin (<=))
+   Prim (sUN "prim__slteFloat") (ty [(AType ATFloat), (AType ATFloat)] (AType (ATInt ITNative))) 2 (bfBin (<=))
      (2, LSLe ATFloat) total,
-   Prim (UN "prim__sgtFloat")  (ty [(AType ATFloat), (AType ATFloat)] (AType (ATInt ITNative))) 2 (bfBin (>))
+   Prim (sUN "prim__sgtFloat")  (ty [(AType ATFloat), (AType ATFloat)] (AType (ATInt ITNative))) 2 (bfBin (>))
      (2, LSGt ATFloat) total,
-   Prim (UN "prim__sgteFloat") (ty [(AType ATFloat), (AType ATFloat)] (AType (ATInt ITNative))) 2 (bfBin (>=))
+   Prim (sUN "prim__sgteFloat") (ty [(AType ATFloat), (AType ATFloat)] (AType (ATInt ITNative))) 2 (bfBin (>=))
      (2, LSGe ATFloat) total,
-   Prim (UN "prim__concat") (ty [StrType, StrType] StrType) 2 (sBin (++))
+   Prim (sUN "prim__concat") (ty [StrType, StrType] StrType) 2 (sBin (++))
     (2, LStrConcat) total,
-   Prim (UN "prim__eqString") (ty [StrType, StrType] (AType (ATInt ITNative))) 2 (bsBin (==))
+   Prim (sUN "prim__eqString") (ty [StrType, StrType] (AType (ATInt ITNative))) 2 (bsBin (==))
     (2, LStrEq) total,
-   Prim (UN "prim__ltString") (ty [StrType, StrType] (AType (ATInt ITNative))) 2 (bsBin (<))
+   Prim (sUN "prim__ltString") (ty [StrType, StrType] (AType (ATInt ITNative))) 2 (bsBin (<))
     (2, LStrLt) total,
-   Prim (UN "prim_lenString") (ty [StrType] (AType (ATInt ITNative))) 1 (p_strLen)
+   Prim (sUN "prim_lenString") (ty [StrType] (AType (ATInt ITNative))) 1 (p_strLen)
     (1, LStrLen) total,
     -- Conversions
-   Prim (UN "prim__charToInt") (ty [(AType (ATInt ITChar))] (AType (ATInt ITNative))) 1 (c_charToInt)
+   Prim (sUN "prim__charToInt") (ty [(AType (ATInt ITChar))] (AType (ATInt ITNative))) 1 (c_charToInt)
      (1, LChInt ITNative) total,
-   Prim (UN "prim__intToChar") (ty [(AType (ATInt ITNative))] (AType (ATInt ITChar))) 1 (c_intToChar)
+   Prim (sUN "prim__intToChar") (ty [(AType (ATInt ITNative))] (AType (ATInt ITChar))) 1 (c_intToChar)
      (1, LIntCh ITNative) total,
-   Prim (UN "prim__strToFloat") (ty [StrType] (AType ATFloat)) 1 (c_strToFloat)
+   Prim (sUN "prim__strToFloat") (ty [StrType] (AType ATFloat)) 1 (c_strToFloat)
      (1, LStrFloat) total,
-   Prim (UN "prim__floatToStr") (ty [(AType ATFloat)] StrType) 1 (c_floatToStr)
+   Prim (sUN "prim__floatToStr") (ty [(AType ATFloat)] StrType) 1 (c_floatToStr)
      (1, LFloatStr) total,
 
-   Prim (UN "prim__floatExp") (ty [(AType ATFloat)] (AType ATFloat)) 1 (p_floatExp)
+   Prim (sUN "prim__floatExp") (ty [(AType ATFloat)] (AType ATFloat)) 1 (p_floatExp)
      (1, LFExp) total,
-   Prim (UN "prim__floatLog") (ty [(AType ATFloat)] (AType ATFloat)) 1 (p_floatLog)
+   Prim (sUN "prim__floatLog") (ty [(AType ATFloat)] (AType ATFloat)) 1 (p_floatLog)
      (1, LFLog) total,
-   Prim (UN "prim__floatSin") (ty [(AType ATFloat)] (AType ATFloat)) 1 (p_floatSin)
+   Prim (sUN "prim__floatSin") (ty [(AType ATFloat)] (AType ATFloat)) 1 (p_floatSin)
      (1, LFSin) total,
-   Prim (UN "prim__floatCos") (ty [(AType ATFloat)] (AType ATFloat)) 1 (p_floatCos)
+   Prim (sUN "prim__floatCos") (ty [(AType ATFloat)] (AType ATFloat)) 1 (p_floatCos)
      (1, LFCos) total,
-   Prim (UN "prim__floatTan") (ty [(AType ATFloat)] (AType ATFloat)) 1 (p_floatTan)
+   Prim (sUN "prim__floatTan") (ty [(AType ATFloat)] (AType ATFloat)) 1 (p_floatTan)
      (1, LFTan) total,
-   Prim (UN "prim__floatASin") (ty [(AType ATFloat)] (AType ATFloat)) 1 (p_floatASin)
+   Prim (sUN "prim__floatASin") (ty [(AType ATFloat)] (AType ATFloat)) 1 (p_floatASin)
      (1, LFASin) total,
-   Prim (UN "prim__floatACos") (ty [(AType ATFloat)] (AType ATFloat)) 1 (p_floatACos)
+   Prim (sUN "prim__floatACos") (ty [(AType ATFloat)] (AType ATFloat)) 1 (p_floatACos)
      (1, LFACos) total,
-   Prim (UN "prim__floatATan") (ty [(AType ATFloat)] (AType ATFloat)) 1 (p_floatATan)
+   Prim (sUN "prim__floatATan") (ty [(AType ATFloat)] (AType ATFloat)) 1 (p_floatATan)
      (1, LFATan) total,
-   Prim (UN "prim__floatSqrt") (ty [(AType ATFloat)] (AType ATFloat)) 1 (p_floatSqrt)
+   Prim (sUN "prim__floatSqrt") (ty [(AType ATFloat)] (AType ATFloat)) 1 (p_floatSqrt)
      (1, LFSqrt) total,
-   Prim (UN "prim__floatFloor") (ty [(AType ATFloat)] (AType ATFloat)) 1 (p_floatFloor)
+   Prim (sUN "prim__floatFloor") (ty [(AType ATFloat)] (AType ATFloat)) 1 (p_floatFloor)
      (1, LFFloor) total,
-   Prim (UN "prim__floatCeil") (ty [(AType ATFloat)] (AType ATFloat)) 1 (p_floatCeil)
+   Prim (sUN "prim__floatCeil") (ty [(AType ATFloat)] (AType ATFloat)) 1 (p_floatCeil)
      (1, LFCeil) total,
 
-   Prim (UN "prim__strHead") (ty [StrType] (AType (ATInt ITChar))) 1 (p_strHead)
+   Prim (sUN "prim__strHead") (ty [StrType] (AType (ATInt ITChar))) 1 (p_strHead)
      (1, LStrHead) partial,
-   Prim (UN "prim__strTail") (ty [StrType] StrType) 1 (p_strTail)
+   Prim (sUN "prim__strTail") (ty [StrType] StrType) 1 (p_strTail)
      (1, LStrTail) partial,
-   Prim (UN "prim__strCons") (ty [(AType (ATInt ITChar)), StrType] StrType) 2 (p_strCons)
+   Prim (sUN "prim__strCons") (ty [(AType (ATInt ITChar)), StrType] StrType) 2 (p_strCons)
     (2, LStrCons) total,
-   Prim (UN "prim__strIndex") (ty [StrType, (AType (ATInt ITNative))] (AType (ATInt ITChar))) 2 (p_strIndex)
+   Prim (sUN "prim__strIndex") (ty [StrType, (AType (ATInt ITNative))] (AType (ATInt ITChar))) 2 (p_strIndex)
     (2, LStrIndex) partial,
-   Prim (UN "prim__strRev") (ty [StrType] StrType) 1 (p_strRev)
+   Prim (sUN "prim__strRev") (ty [StrType] StrType) 1 (p_strRev)
     (1, LStrRev) total,
-   Prim (UN "prim__readString") (ty [PtrType] StrType) 1 (p_cantreduce)
+   Prim (sUN "prim__readString") (ty [PtrType] StrType) 1 (p_cantreduce)
      (1, LReadStr) partial,
-   Prim (UN "prim__vm") (ty [] PtrType) 0 (p_cantreduce)
+   Prim (sUN "prim__vm") (ty [] PtrType) 0 (p_cantreduce)
      (0, LVMPtr) total,
    -- Streams
-   Prim (UN "prim__stdin") (ty [] PtrType) 0 (p_cantreduce)
+   Prim (sUN "prim__stdin") (ty [] PtrType) 0 (p_cantreduce)
     (0, LStdIn) partial,
-   Prim (UN "prim__null") (ty [] PtrType) 0 (p_cantreduce)
+   Prim (sUN "prim__null") (ty [] PtrType) 0 (p_cantreduce)
     (0, LNullPtr) total
   ] ++ concatMap intOps [ITFixed IT8, ITFixed IT16, ITFixed IT32, ITFixed IT64, ITBig, ITNative, ITChar]
     ++ concatMap vecOps vecTypes
@@ -221,13 +221,13 @@ intArith ity =
 
 intConv :: IntTy -> [Prim]
 intConv ity =
-    [ Prim (UN $ "prim__toStr" ++ intTyName ity) (ty [AType . ATInt $ ity] StrType) 1 intToStr
+    [ Prim (sUN $ "prim__toStr" ++ intTyName ity) (ty [AType . ATInt $ ity] StrType) 1 intToStr
                (1, LIntStr ity) total
-    , Prim (UN $ "prim__fromStr" ++ intTyName ity) (ty [StrType] (AType . ATInt $ ity)) 1 (strToInt ity)
+    , Prim (sUN $ "prim__fromStr" ++ intTyName ity) (ty [StrType] (AType . ATInt $ ity)) 1 (strToInt ity)
                (1, LStrInt ity) total
-    , Prim (UN $ "prim__toFloat" ++ intTyName ity) (ty [AType . ATInt $ ity] (AType ATFloat)) 1 intToFloat
+    , Prim (sUN $ "prim__toFloat" ++ intTyName ity) (ty [AType . ATInt $ ity] (AType ATFloat)) 1 intToFloat
                (1, LIntFloat ity) total
-    , Prim (UN $ "prim__fromFloat" ++ intTyName ity) (ty [AType ATFloat] (AType . ATInt $ ity)) 1 (floatToInt ity)
+    , Prim (sUN $ "prim__fromFloat" ++ intTyName ity) (ty [AType ATFloat] (AType . ATInt $ ity)) 1 (floatToInt ity)
                (1, LFloatInt ity) total
     ]
 
@@ -246,13 +246,13 @@ vecCmps ity =
 
 vecOps :: IntTy -> [Prim]
 vecOps ity@(ITVec elem count) =
-    [ Prim (UN $ "prim__mk" ++ intTyName ity)
+    [ Prim (sUN $ "prim__mk" ++ intTyName ity)
                (ty (replicate count . AType . ATInt . ITFixed $ elem) (AType . ATInt $ ity))
                count (mkVecCon elem count) (count, LMkVec elem count) total
-    , Prim (UN $ "prim__index" ++ intTyName ity)
+    , Prim (sUN $ "prim__index" ++ intTyName ity)
                (ty [AType . ATInt $ ity, AType (ATInt (ITFixed IT32))] (AType . ATInt . ITFixed $ elem))
                2 (mkVecIndex count) (2, LIdxVec elem count) partial -- TODO: Ensure this reduces
-    , Prim (UN $ "prim__update" ++ intTyName ity)
+    , Prim (sUN $ "prim__update" ++ intTyName ity)
                (ty [AType . ATInt $ ity, AType (ATInt (ITFixed IT32)), AType . ATInt . ITFixed $ elem]
                        (AType . ATInt $ ity))
                3 (mkVecUpdate elem count) (3, LUpdateVec elem count) partial -- TODO: Ensure this reduces
@@ -260,7 +260,7 @@ vecOps ity@(ITVec elem count) =
 
 bitcastPrim :: ArithTy -> ArithTy -> (ArithTy -> [Const] -> Maybe Const) -> PrimFn -> Prim
 bitcastPrim from to impl prim =
-    Prim (UN $ "prim__bitcast" ++ aTyName from ++ "_" ++ aTyName to) (ty [AType from] (AType to)) 1 (impl to)
+    Prim (sUN $ "prim__bitcast" ++ aTyName from ++ "_" ++ aTyName to) (ty [AType from] (AType to)) 1 (impl to)
          (1, prim) total
 
 vecBitcasts :: [IntTy] -> [Prim]
@@ -377,23 +377,23 @@ intTyName (ITVec ity count) = "B" ++ show (nativeTyWidth ity) ++ "x" ++ show cou
 
 iCmp  :: IntTy -> String -> Bool -> ([Const] -> Maybe Const) -> (IntTy -> PrimFn) -> Totality -> Prim
 iCmp ity op self impl irop totality
-    = Prim (UN $ "prim__" ++ op ++ intTyName ity)
+    = Prim (sUN $ "prim__" ++ op ++ intTyName ity)
       (ty (replicate 2 . AType . ATInt $ ity) (AType (ATInt (if self then ity else ITNative))))
       2 impl (2, irop ity) totality
 
 iBinOp, iUnOp :: IntTy -> String -> ([Const] -> Maybe Const) -> (IntTy -> PrimFn) -> Totality -> Prim
 iBinOp ity op impl irop totality
-    = Prim (UN $ "prim__" ++ op ++ intTyName ity)
+    = Prim (sUN $ "prim__" ++ op ++ intTyName ity)
       (ty (replicate 2  . AType . ATInt $ ity) (AType . ATInt $ ity))
       2 impl (2, irop ity) totality
 iUnOp ity op impl irop totality
-    = Prim (UN $ "prim__" ++ op ++ intTyName ity)
+    = Prim (sUN $ "prim__" ++ op ++ intTyName ity)
       (ty [AType . ATInt $ ity] (AType . ATInt $ ity))
       1 impl (1, irop ity) totality
 
 iCoerce :: IntTy -> IntTy -> String -> (IntTy -> IntTy -> [Const] -> Maybe Const) -> (IntTy -> IntTy -> PrimFn) -> Prim
 iCoerce from to op impl irop =
-    Prim (UN $ "prim__" ++ op ++ intTyName from ++ "_" ++ intTyName to)
+    Prim (sUN $ "prim__" ++ op ++ intTyName from ++ "_" ++ intTyName to)
              (ty [AType . ATInt $ from] (AType . ATInt $ to)) 1 (impl from to) (1, irop from to) total
 
 fBin :: (Double -> Double -> Double) -> [Const] -> Maybe Const

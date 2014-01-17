@@ -26,7 +26,7 @@ prefixCallNamespaces name (SFun fname args i e) =
   where
     prefixCallNamespacesExp :: Ident -> SExp -> SExp
     prefixCallNamespacesExp (Ident name) (SApp tail (NS n ns) args) =
-      SApp tail (NS n (name:ns)) args
+      SApp tail (NS n (txt name:ns)) args
     prefixCallNamespacesExp name (SLet var e1 e2) =
       SLet var (prefixCallNamespacesExp name e1) (prefixCallNamespacesExp name e2)
     prefixCallNamespacesExp name (SUpdate var e) =
@@ -63,7 +63,7 @@ mangleWithPrefix prefix (UN name) =
   . parser ident
   . (prefix ++)
   . cleanNonLetter
-  $ cleanWs False name
+  $ cleanWs False (str name)
   where
     cleanNonLetter (x:xs)
       | x == '#' = "_Hash" ++ cleanNonLetter xs
@@ -96,7 +96,7 @@ mangleWithPrefix prefix (UN name) =
       | capitalize = (toUpper x) : (cleanWs False xs)
       | otherwise  = x : (cleanWs False xs)
     cleanWs _ [] = []
-mangleWithPrefix prefix s@(SN _) = mangleWithPrefix prefix (UN (showCG s))
+mangleWithPrefix prefix s@(SN _) = mangleWithPrefix prefix (sUN (showCG s))
 
 mangle :: (Applicative m, MonadError String m) => Name -> m Ident
 mangle = mangleWithPrefix "__IDRCG__"

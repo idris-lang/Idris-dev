@@ -31,7 +31,7 @@ mkPatTm t = do i <- getIState
                               return $ mkApp t' args'
     toTT _ = do v <- get
                 put (v + 1)
-                return (P Bound (MN v "imp") Erased)
+                return (P Bound (sMN v "imp") Erased)
 
 -- Given a list of LHSs, generate a extra clauses which cover the remaining
 -- cases. The ones which haven't been provided are marked 'absurd' so that the
@@ -166,13 +166,13 @@ genAll i args
     otherPats o@(PApp _ (PRef fc n) xs) = ops fc n xs o
     otherPats o@(PPair fc l r)
         = ops fc pairCon
-                ([pimp (UN "A") Placeholder True,
-                  pimp (UN "B") Placeholder True] ++
+                ([pimp (sUN "A") Placeholder True,
+                  pimp (sUN "B") Placeholder True] ++
                  [pexp l, pexp r]) o
     otherPats o@(PDPair fc t _ v)
-        = ops fc (UN "Ex_intro")
-                ([pimp (UN "a") Placeholder True,
-                  pimp (UN "P") Placeholder True] ++
+        = ops fc (sUN "Ex_intro")
+                ([pimp (sUN "a") Placeholder True,
+                  pimp (sUN "P") Placeholder True] ++
                  [pexp t,pexp v]) o
     otherPats o@(PConstant c) = return o
     otherPats arg = return Placeholder
@@ -191,7 +191,8 @@ genAll i args
     getExpTm t = getTm t
 
     -- put it back to its original form
-    resugar (PApp _ (PRef fc (UN "Ex_intro")) [_,_,t,v])
+    resugar (PApp _ (PRef fc (UN ei)) [_,_,t,v])
+      | ei == txt "Ex_intro"
         = PDPair fc (getTm t) Placeholder (getTm v)
     resugar (PApp _ (PRef fc n) [_,_,l,r])
       | n == pairCon
@@ -258,7 +259,8 @@ calcProd i fc topn pats
 
      prod :: Name -> [Name] -> Bool -> Term -> Idris Bool
      prod n done ok ap@(App _ _)
-        | (P _ (UN "lazy") _, [_, arg]) <- unApply ap = prod n done ok arg
+        | (P _ (UN l) _, [_, arg]) <- unApply ap,
+          l == txt "lazy" = prod n done ok arg
         | (P nt f _, args) <- unApply ap
             = do recOK <- checkProdRec (n:done) f
                  let ctxt = tt_ctxt i
@@ -405,7 +407,8 @@ buildSCG' ist pats args = nub $ concatMap scgPat pats where
                           findCalls (dePat rhs) (patvars lhs) pargs
 
   findCalls ap@(App f a) pvs pargs
-     | (P _ (UN "lazy") _, [_, arg]) <- unApply ap
+     | (P _ (UN l) _, [_, arg]) <- unApply ap,
+       l == txt "lazy"
         = findCalls arg pvs pargs
      | (P _ n _, args) <- unApply ap
         = mkChange n args pargs ++

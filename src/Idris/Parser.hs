@@ -300,9 +300,9 @@ fnDecl' syn = checkFixity $
           getName (PTy _ _ _ _ n _) = Just n
           getName _ = Nothing
           fixityOK (NS n _) = fixityOK n
-          fixityOK (UN n)  | all (flip elem opChars) n =
+          fixityOK (UN n)  | all (flip elem opChars) (str n) =
                                do fixities <- fmap idris_infixes get
-                                  return . elem n . map (\ (Fix _ op) -> op) $ fixities
+                                  return . elem (str n) . map (\ (Fix _ op) -> op) $ fixities
                            | otherwise                 = return True
           fixityOK _        = return True
 
@@ -517,7 +517,7 @@ instance_ syn = do reserved "instance"; fc <- getFC
                    cn <- name
                    args <- many (simpleExpr syn)
                    let sc = PApp fc (PRef fc cn) (map pexp args)
-                   let t = bindList (PPi constraint) (map (\x -> (MN 0 "constraint", x)) cs) sc
+                   let t = bindList (PPi constraint) (map (\x -> (sMN 0 "constraint", x)) cs) sc
                    ds <- option [] (instanceBlock syn)
                    return [PInstance syn fc cs cn args t en ds]
                  <?> "instance declaration"
@@ -575,7 +575,7 @@ Pattern ::= Clause;
 pattern :: SyntaxInfo -> IdrisParser PDecl
 pattern syn = do fc <- getFC
                  clause <- clause syn
-                 return (PClauses fc [] (MN 2 "_") [clause]) -- collect together later
+                 return (PClauses fc [] (sMN 2 "_") [clause]) -- collect together later
               <?> "pattern"
 
 {- | Parse a constant applicative form declaration
@@ -617,7 +617,7 @@ rhs syn n = do lchar '='; expr syn
         <|> do reserved "impossible"; return PImpossible
         <?> "function right hand side"
   where mkN :: Name -> Name
-        mkN (UN x)   = UN (x++"_lemma_1")
+        mkN (UN x)   = sUN (str x++"_lemma_1")
         mkN (NS x n) = NS (mkN x) n
         n' :: Name
         n' = mkN n
@@ -625,7 +625,7 @@ rhs syn n = do lchar '='; expr syn
         addLet nm (PLet n ty val r) = PLet n ty val (addLet nm r)
         addLet nm (PCase fc t cs) = PCase fc t (map addLetC cs)
           where addLetC (l, r) = (l, addLet nm r)
-        addLet nm r = (PLet (UN "value") Placeholder r (PMetavar nm))
+        addLet nm r = (PLet (sUN "value") Placeholder r (PMetavar nm))
 
 {- |Parses a function clause
 RHSOrWithBlock ::= RHS WhereOrTerminator
@@ -679,10 +679,10 @@ clause syn
                                            return x,
                                         do terminator
                                            return ([], [])]
-              let capp = PLet (MN 0 "match")
+              let capp = PLet (sMN 0 "match")
                               ty
                               (PMatchApp fc n)
-                              (PRef fc (MN 0 "match"))
+                              (PRef fc (sMN 0 "match"))
               ist <- get
               put (ist { lastParse = Just n })
               return $ PClause fc n capp [] r wheres
@@ -693,7 +693,7 @@ clause syn
                 when (op == "=" || op == "?=" ) $
                      fail "infix clause definition with \"=\" and \"?=\" not supported "
                 return (l, op))
-              let n = expandNS syn (UN op)
+              let n = expandNS syn (sUN op)
               r <- argExpr syn
               fc <- getFC
               wargs <- many (wExpr syn)

@@ -445,7 +445,7 @@ prepare_apply fn imps =
 
     mkMN n@(MN i _) = n
     mkMN n@(UN x) = MN 99999 x
-    mkMN n@(SN s) = MN 99999 (show s)
+    mkMN n@(SN s) = sMN 99999 (show s)
     mkMN (NS n xs) = NS (mkMN n) xs
 
     rebind hs (Bind n t sc)
@@ -564,9 +564,9 @@ checkPiGoal n
             = do g <- goal
                  case g of
                     Bind _ (Pi _) _ -> return ()
-                    _ -> do a <- getNameFrom (MN 0 "pargTy")
-                            b <- getNameFrom (MN 0 "pretTy")
-                            f <- getNameFrom (MN 0 "pf")
+                    _ -> do a <- getNameFrom (sMN 0 "pargTy")
+                            b <- getNameFrom (sMN 0 "pretTy")
+                            f <- getNameFrom (sMN 0 "pf")
                             claim a RType
                             claim b RType
                             claim f (RBind n (Pi (Var a)) (Var b))
@@ -578,13 +578,13 @@ checkPiGoal n
 
 simple_app :: Elab' aux () -> Elab' aux () -> String -> Elab' aux ()
 simple_app fun arg appstr =
-    do a <- getNameFrom (MN 0 "argTy")
-       b <- getNameFrom (MN 0 "retTy")
-       f <- getNameFrom (MN 0 "f")
-       s <- getNameFrom (MN 0 "s")
+    do a <- getNameFrom (sMN 0 "argTy")
+       b <- getNameFrom (sMN 0 "retTy")
+       f <- getNameFrom (sMN 0 "f")
+       s <- getNameFrom (sMN 0 "s")
        claim a RType
        claim b RType
-       claim f (RBind (MN 0 "aX") (Pi (Var a)) (Var b))
+       claim f (RBind (sMN 0 "aX") (Pi (Var a)) (Var b))
        tm <- get_term
        start_unify s
        claim s (Var a)
