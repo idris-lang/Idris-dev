@@ -306,17 +306,17 @@ execApp' env ctxt (EP _ fp _) (_:fn:EConstant (Str s):rest)
 
 -- Throw away the 'World' argument to the foreign function
 
-execApp' env ctxt f@(EP _ fp _) args@(ty:fn:xs)
-      | Just (FFun f argTs retT) <- foreignFromTT fn,
-        fp == mkfprim && length xs >= length argTs =
-    do let (args', xs') = (take (length argTs) xs, -- foreign args
-                           drop (length argTs + 1) xs) -- rest
-       res <- stepForeign (ty:fn:args')
-       case res of
-         Nothing -> fail $ "Could not call foreign function \"" ++ f ++
-                           "\" with args " ++ show args
-         Just r -> return (mkEApp r xs')
-      | otherwise = return (mkEApp f args)
+execApp' env ctxt f@(EP _ fp _) args@(ty:fn:xs) | fp == mkfprim
+   = case foreignFromTT fn of
+        Just (FFun f argTs retT) | length xs >= length argTs ->
+           do let (args', xs') = (take (length argTs) xs, -- foreign args
+                                  drop (length argTs + 1) xs) -- rest
+              res <- stepForeign (ty:fn:args')
+              case res of
+                   Nothing -> fail $ "Could not call foreign function \"" ++ f ++
+                                     "\" with args " ++ show args
+                   Just r -> return (mkEApp r xs')
+        Nothing -> return (mkEApp f args)
 
 execApp' env ctxt c@(EP (DCon _ arity) n _) args =
     do args' <- mapM tryForce (take arity args)
