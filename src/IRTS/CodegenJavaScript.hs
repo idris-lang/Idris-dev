@@ -806,23 +806,16 @@ translateDeclaration (path, SFun name params stackSize body)
       JSFunction (p ++ map snd aux) (
         JSSeq $
         zipWith assignVar [0..] p ++
-        map allocVar [numP .. (numP + stackSize - 1)] ++
         map assignAux aux ++
         [JSReturn body]
       )
       where
-        numP :: Int
-        numP = length params
-
-        allocVar :: Int -> JS
-        allocVar n = JSAlloc (jsVar n) Nothing
-
         assignVar :: Int -> String -> JS
         assignVar n s = JSAlloc (jsVar n)  (Just $ JSIdent s)
 
         assignAux :: (LVar, String) -> JS
-        assignAux (var, val) =
-          JSAssign (JSIdent $ translateVariableName var) (JSIdent val)
+        assignAux (Loc var, val) =
+          JSAlloc (jsVar var) (Just $ JSIdent val)
 
         p :: [String]
         p = map translateName params
