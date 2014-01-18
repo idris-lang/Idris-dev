@@ -53,6 +53,10 @@ runIdris opts = do
        when (ShowIncs `elem` opts) $ runIO showIncs
        when (ShowLibs `elem` opts) $ runIO showLibs
        when (ShowLibdir `elem` opts) $ runIO showLibdir
+       case opt getPkgCheck opts of
+           [] -> return ()
+           fs -> do runIO $ mapM_ (checkPkg (WarnOnly `elem` opts)) fs
+                    runIO $ exitWith ExitSuccess
        case opt getPkgClean opts of
            [] -> return ()
            fs -> do runIO $ mapM_ cleanPkg fs
@@ -79,34 +83,57 @@ showIncs = do incFlags <- getIncFlags
               putStrLn incFlags
               exitWith ExitSuccess
 
-usagemsg = "Idris version " ++ ver ++ "\n" ++
-           "--------------" ++ map (\x -> '-') ver ++ "\n" ++
-           "Usage: idris [input file] [options]\n" ++
-           "Options:\n" ++
-           "\t--quiet           Quiet mode (for editors)\n" ++
-           "\t--[no]colour      Control REPL colour highlighting\n" ++
-           "\t--check           Type check only\n" ++
-           "\t-o [file]         Specify output filename\n" ++
-           "\t-i [dir]          Add directory to the list of import paths\n" ++
-           "\t--ibcsubdir [dir] Write IBC files into sub directory\n" ++
-           "\t--noprelude       Don't import the prelude\n" ++
-           "\t--total           Require functions to be total by default\n" ++
-           "\t--warnpartial     Warn about undeclared partial functions\n" ++
-           "\t--typeintype      Disable universe checking\n" ++
-           "\t--log [level]     Type debugging log level\n" ++
-           "\t-S                Do no further compilation of code generator output\n" ++
-           "\t-c                Compile to object files rather than an executable\n" ++
-           "\t--mvn             Create a maven project (for Java codegen)\n" ++
-           "\t--exec [expr]     Execute the expression expr in the interpreter,\n" ++
-           "\t                  defaulting to Main.main if none provided, and exit.\n" ++
-           "\t--ideslave        Ideslave mode (for editors; in/ouput wrapped in \n" ++
-           "\t                  s-expressions)\n" ++
-           "\t--libdir          Show library install directory and exit\n" ++
-           "\t--link            Show C library directories and exit (for C linking)\n" ++
-           "\t--include         Show C include directories and exit (for C linking)\n" ++
-           "\t--codegen [cg]    Select code generator: C, Java, bytecode, javascript,\n" ++
-           "\t                  node or llvm\n" ++
-           "\t--target [triple] Select target triple (for LLVM codegen)\n" ++
-           "\t--cpu [cpu]       Select target CPU (e.g. corei7 or cortex-m3) (for LLVM codegen)\n"
+usagemsghdr = "Idris version " ++ ver ++ ", (C) The Idris Community 2014"
 
+usagemsg = usagemsghdr ++ "\n" ++ 
+           map (\x -> '-') usagemsghdr ++ "\n" ++  
+           "idris [OPTIONS] [FILE]\n\n" ++
+           "Common flags:\n" ++
+           "\t    --install=IPKG          Install Package\n" ++
+           "\t    --clean=IPKG            Clean Package\n" ++
+           "\t    --build=IPKG            Build Package\n" ++
+           "\t    --exec=EXPR             Execute as Idris\n" ++
+           "\t    --libdir                Display library directory\n" ++
+           "\t    --link                  Display link directory\n" ++
+           "\t    --include               Display the includes directory\n" ++
+           "\t    --nobanner              Suppress the banner\n" ++
+           "\t    --color                 Force colored output\n" ++
+           "\t    --colour                Force coloured output\n" ++
+           "\t    --nocolor               Disable colored output\n" ++
+           "\t    --nocolour              Disable coloured output\n" ++
+           "\t    --errorcontent          Undocumented\n" ++
+           "\t    --nocoverage            Undocumented\n" ++
+           "\t -o --output=FILE           Specify output file\n" ++
+           "\t    --check                 Undocumented\n" ++
+           "\t    --total                 Require functions to be total by default\n" ++
+           "\t    --partial               Undocumented\n" ++
+           "\t    --warnpartial           Warn about undeclared partial functions.\n" ++
+           "\t    --warn                  Undocumented\n" ++
+           "\t    --typecase              Undocumented\n" ++
+           "\t    --typeintype            Undocumented\n" ++
+           "\t    --nobasepkgs            Undocumented\n" ++
+           "\t    --noprelude             Undocumented\n" ++
+           "\t    --nobuiltins            Undocumented\n" ++
+           "\t -O --level=LEVEL           Undocumented\n" ++
+           "\t -i --idrispath=DIR         Add directory to the list of import paths\n" ++
+           "\t    --package=ITEM          Undocumented\n" ++
+           "\t    --ibcsubdir=FILE        Write IBC files into sub directory\n" ++
+           "\t    --codegen=TARGET        Select code generator: C, Java, bytecode," ++
+           "\t                            javascript, node, or llvm\n" ++
+           "\t    --mvn                   Create a maven project (for Java codegen)\n" ++
+           "\t    --cpu=CPU               Select tartget CPU e.g. corei& or cortex-m3" ++
+           "\t                            (for LLVM codegen)\n" ++
+           "\t    --target=TRIPLE         Select target triple (for llvm codegen)\n" ++
+           "\t -S --codegenonly           Do no further compilation of code generator output\n" ++
+           "\t -c --compileonly           Compile to object fules rather than an executable\n" ++
+           "\t -X --extension=ITEM        undocumented\n" ++
+           "\t    --dumpdefuns            Undocumented\n" ++
+           "\t    --dumpcases             Undocumented\n" ++
+           "\t    --log=LEVEL --loglevel  Type Debugging log level\n" ++
+           "\t    --ideslave              Undocumented\n" ++
+           "\t    --client                Undocumented\n" ++
+           "\t -h --help                  Display help message\n" ++
+           "\t -v --version               Print version information\n" ++
+           "\t -V --Verbose               Loud verbosity\n" ++
+           "\t -q --quiet                 Quiet verbosity\n"
 

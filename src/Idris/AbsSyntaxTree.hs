@@ -295,6 +295,7 @@ data Opt = Filename String
          | PkgBuild String
          | PkgInstall String
          | PkgClean String
+         | PkgCheck String
          | WarnOnly
          | Pkg String
          | BCAsm String
