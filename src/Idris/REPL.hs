@@ -1008,11 +1008,14 @@ parseArgs ("--verbose":ns)       = Verbose : (parseArgs ns)
 parseArgs ("--ibcsubdir":n:ns)   = IBCSubDir n : (parseArgs ns)
 parseArgs ("-i":n:ns)            = ImportDir n : (parseArgs ns)
 parseArgs ("--warn":ns)          = WarnOnly : (parseArgs ns)
+-- Package Related options
 parseArgs ("--package":n:ns)     = Pkg n : (parseArgs ns)
 parseArgs ("-p":n:ns)            = Pkg n : (parseArgs ns)
 parseArgs ("--build":n:ns)       = PkgBuild n : (parseArgs ns)
 parseArgs ("--install":n:ns)     = PkgInstall n : (parseArgs ns)
 parseArgs ("--clean":n:ns)       = PkgClean n : (parseArgs ns)
+parseArgs ("--checkpkg":n:ns)    = PkgCheck n : (parseArgs ns)
+-- Misc Options
 parseArgs ("--bytecode":n:ns)    = NoREPL : BCAsm n : (parseArgs ns)
 parseArgs ("-S":ns)              = OutputTy Raw : (parseArgs ns)
 parseArgs ("-c":ns)              = OutputTy Object : (parseArgs ns)
@@ -1326,6 +1329,10 @@ getPkg _ = Nothing
 getPkgClean :: Opt -> Maybe String
 getPkgClean (PkgClean str) = Just str
 getPkgClean _ = Nothing
+
+getPkgCheck :: Opt -> Maybe String
+getPkgCheck (PkgCheck str) = Just str
+getPkgCheck _              = Nothing
 
 getCodegen :: Opt -> Maybe Codegen
 getCodegen (UseCodegen x) = Just x
