@@ -1,6 +1,3 @@
-apply : (a -> b) -> a -> b
-apply f x = f x
-
 class Functor f => VerifiedFunctor (f : Type -> Type) where
    identity : (fa : f a) -> map id fa = fa
 
