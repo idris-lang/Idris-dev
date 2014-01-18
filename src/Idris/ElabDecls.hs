@@ -2053,8 +2053,10 @@ elabDecl' what info d@(PClauses f o n ps)
                     [] -> []
          elabClauses info f (o ++ o') n ps
 elabDecl' what info (PMutual f ps)
-    = do mapM_ (elabDecl ETypes info) ps
-         mapM_ (elabDecl EDefns info) ps
+    = do case ps of
+              [p] -> elabDecl what info p
+              _ -> do mapM_ (elabDecl ETypes info) ps
+                      mapM_ (elabDecl EDefns info) ps
          -- Do totality checking after entire mutual block
          i <- get
          mapM_ (\n -> do logLvl 5 $ "Simplifying " ++ show n
