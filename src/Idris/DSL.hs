@@ -132,7 +132,7 @@ debind b tm = let (tm', (bs, _)) = runState (db' tm) ([], 0) in
     db' (PAppBind fc t args)
         = do args' <- dbs args
              (bs, n) <- get
-             let nm = sMN n ("bindApp" ++ show n)
+             let nm = sUN ("_bindApp" ++ show n)
              put ((nm, fc, PApp fc t args') : bs, n+1)
              return (PRef fc nm)
     db' (PApp fc t args)

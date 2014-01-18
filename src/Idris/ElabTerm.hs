@@ -261,16 +261,12 @@ elab ist info pattern opts fn tm
     elab' ina f@(PInferRef fc n) = elab' ina (PApp fc f [])
     elab' ina (PRef fc n) = erun fc $ do apply (Var n) []; solve
     elab' ina@(_, a, inty) (PLam n Placeholder sc)
-          = do -- n' <- unique_hole n
-               -- let sc' = mapPT (repN n n') sc
-               ptm <- get_term
+          = do ptm <- get_term
                g <- goal
                checkPiGoal n
                attack; intro (Just n);
                -- trace ("------ intro " ++ show n ++ " ---- \n" ++ show ptm)
                elabE (True, a, inty) sc; solve
-       where repN n n' (PRef fc x) | x == n' = PRef fc n'
-             repN _ _ t = t
     elab' ina@(_, a, inty) (PLam n ty sc)
           = do hsin <- get_holes
                ptmin <- get_term

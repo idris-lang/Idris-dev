@@ -1415,8 +1415,30 @@ allNamesIn tm = nub $ ni [] tm
     ni env (PNoImplicits tm)    = ni env tm
     ni env _               = []
 
--- Return names which are free in the given term.
+-- Return all names defined in binders in the given term
+boundNamesIn :: PTerm -> [Name]
+boundNamesIn tm = nub $ ni tm
+  where
+    ni (PApp _ f as)   = ni f ++ concatMap (ni) (map getTm as)
+    ni (PAppBind _ f as)   = ni f ++ concatMap (ni) (map getTm as)
+    ni (PCase _ c os)  = ni c ++ concatMap (ni) (map snd os)
+    ni (PLam n ty sc)  = n : (ni ty ++ ni sc)
+    ni (PLet n ty val sc)  = n : (ni ty ++ ni val ++ ni sc)
+    ni (PPi _ n ty sc) = n : (ni ty ++ ni sc)
+    ni (PEq _ l r)     = ni l ++ ni r
+    ni (PRewrite _ l r _) = ni l ++ ni r
+    ni (PTyped l r)    = ni l ++ ni r
+    ni (PPair _ l r)   = ni l ++ ni r
+    ni (PDPair _ (PRef _ n) t r) = ni t ++ ni r
+    ni (PDPair _ l t r) = ni l ++ ni t ++ ni r
+    ni (PAlternative a as) = concatMap (ni) as
+    ni (PHidden tm)    = ni tm
+    ni (PUnifyLog tm)    = ni tm
+    ni (PDisamb _ tm)    = ni tm
+    ni (PNoImplicits tm) = ni tm
+    ni _               = []
 
+-- Return names which are free in the given term.
 namesIn :: [(Name, PTerm)] -> IState -> PTerm -> [Name]
 namesIn uvars ist tm = nub $ ni [] tm
   where

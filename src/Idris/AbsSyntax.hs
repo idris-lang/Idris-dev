@@ -1195,7 +1195,8 @@ addImpl = addImpl' False [] []
 -- and *not* inside a PHidden
 
 addImpl' :: Bool -> [Name] -> [Name] -> IState -> PTerm -> PTerm
-addImpl' inpat env infns ist ptm = ai (zip env (repeat Nothing)) [] ptm
+addImpl' inpat env infns ist ptm 
+         = mkUniqueNames env (ai (zip env (repeat Nothing)) [] ptm)
   where
     ai env ds (PRef fc f)
         | f `elem` infns = PInferRef fc f
@@ -1624,9 +1625,11 @@ substMatchShadow n shs tm t = sm shs t where
 shadow :: Name -> Name -> PTerm -> PTerm
 shadow n n' t = sm t where
     sm (PRef fc x) | n == x = PRef fc n'
-    sm (PLam x t sc) = PLam x (sm t) (sm sc)
-    sm (PPi p x t sc) = PPi p x (sm t) (sm sc)
+    sm (PLam x t sc) | n /= x = PLam x (sm t) (sm sc)
+    sm (PPi p x t sc) | n /=x = PPi p x (sm t) (sm sc)
+    sm (PLet x t v sc) | n /= x = PLet x (sm t) (sm v) (sm sc)
     sm (PApp f x as) = PApp f (sm x) (map (fmap sm) as)
+    sm (PAppBind f x as) = PAppBind f (sm x) (map (fmap sm) as)
     sm (PCase f x as) = PCase f (sm x) (map (pmap sm) as)
     sm (PEq f x y) = PEq f (sm x) (sm y)
     sm (PRewrite f x y tm) = PRewrite f (sm x) (sm y) (fmap sm tm)
@@ -1634,9 +1637,87 @@ shadow n n' t = sm t where
     sm (PPair f x y) = PPair f (sm x) (sm y)
     sm (PDPair f x t y) = PDPair f (sm x) (sm t) (sm y)
     sm (PAlternative a as) = PAlternative a (map sm as)
+    sm (PTactics ts) = PTactics (map (fmap sm) ts)
+    sm (PProof ts) = PProof (map (fmap sm) ts)
     sm (PHidden x) = PHidden (sm x)
     sm (PUnifyLog x) = PUnifyLog (sm x)
     sm (PNoImplicits x) = PNoImplicits (sm x)
     sm x = x
 
+-- Rename any binders which are repeated (so that we don't have to mess
+-- about with shadowing anywhere else).
+
+mkUniqueNames :: [Name] -> PTerm -> PTerm
+mkUniqueNames env tm = evalState (mkUniq tm) env where
+  inScope = boundNamesIn tm
+
+  mkUniqA arg = do t' <- mkUniq (getTm arg)
+                   return (arg { getTm = t' })
+
+  -- FIXME: Probably ought to do this for completeness! It's fine as
+  -- long as there are no bindings inside tactics though.
+  mkUniqT tac = return tac 
+
+  mkUniq :: PTerm -> State [Name] PTerm
+  mkUniq (PLam n ty sc)
+         = do env <- get
+              (n', sc') <- 
+                    if n `elem` env 
+                       then do let n' = uniqueName n (env ++ inScope)
+                               return (n', shadow n n' sc)
+                       else return (n, sc)
+              put (n' : env)
+              ty' <- mkUniq ty
+              sc'' <- mkUniq sc'
+              return $! PLam n' ty' sc''
+  mkUniq (PPi p n ty sc)
+         = do env <- get
+              (n', sc') <- 
+                    if n `elem` env 
+                       then do let n' = uniqueName n (env ++ inScope)
+                               return (n', shadow n n' sc)
+                       else return (n, sc)
+              put (n' : env)
+              ty' <- mkUniq ty
+              sc'' <- mkUniq sc'
+              return $! PPi p n' ty' sc''
+  mkUniq (PLet n ty val sc)
+         = do env <- get
+              (n', sc') <- 
+                    if n `elem` env 
+                       then do let n' = uniqueName n (env ++ inScope)
+                               return (n', shadow n n' sc)
+                       else return (n, sc)
+              put (n' : env)
+              ty' <- mkUniq ty; val' <- mkUniq val
+              sc'' <- mkUniq sc'
+              return $! PLet n' ty' val' sc''
+  mkUniq (PApp fc t args) 
+         = do t' <- mkUniq t
+              args' <- mapM mkUniqA args
+              return $! PApp fc t' args'
+  mkUniq (PAppBind fc t args) 
+         = do t' <- mkUniq t
+              args' <- mapM mkUniqA args
+              return $! PAppBind fc t' args'
+  mkUniq (PCase fc t alts) 
+         = do t' <- mkUniq t
+              alts' <- mapM (\(x,y)-> do x' <- mkUniq x; y' <- mkUniq y
+                                         return (x', y')) alts
+              return $! PCase fc t' alts'
+  mkUniq (PPair fc l r) 
+         = do l' <- mkUniq l; r' <- mkUniq r
+              return $! PPair fc l' r'                                                      
+  mkUniq (PDPair fc l t r) 
+         = do l' <- mkUniq l; t' <- mkUniq t; r' <- mkUniq r
+              return $! PDPair fc l' t' r'                                                      
+  mkUniq (PAlternative b as) 
+         = liftM (PAlternative b) (mapM mkUniq as)
+  mkUniq (PHidden t) = liftM PHidden (mkUniq t)
+  mkUniq (PUnifyLog t) = liftM PUnifyLog (mkUniq t)
+  mkUniq (PDisamb n t) = liftM (PDisamb n) (mkUniq t)
+  mkUniq (PNoImplicits t) = liftM PNoImplicits (mkUniq t)
+  mkUniq (PProof ts) = liftM PProof (mapM mkUniqT ts)
+  mkUniq (PTactics ts) = liftM PTactics (mapM mkUniqT ts)
+  mkUniq t = return t
 

@@ -244,14 +244,7 @@ unique_hole' reusable n
            let bs = bound_in (pterm (fst p)) ++
                     bound_in (ptype (fst p))
            let nouse = holes (fst p) ++ bs ++ dontunify (fst p) ++ usedns (fst p)
-           n' <- 
---                  case lookupTy n (context (fst p)) of
---                       [] -> if not (n `elem` holes (fst p) ++
---                                            bs ++ dontunify (fst p) ++ usedns (fst p))
---                                then return n
---                                else getNameFrom n
---                       _ -> getNameFrom n
-                 return $! uniqueNameCtxt (context (fst p)) n nouse
+           n' <- return $! uniqueNameCtxt (context (fst p)) n nouse
            ES (p, a) s u <- get
            case n' of
                 MN i _ -> when (i >= nextname p) $
