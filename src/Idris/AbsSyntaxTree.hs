@@ -24,6 +24,7 @@ import Control.Monad.Trans.Error
 
 import Data.List
 import Data.Char
+import qualified Data.Text as T
 import Data.Either
 import Data.Word (Word)
 
@@ -608,6 +609,7 @@ data PTerm = PQuote Raw
            | PElabError Err -- ^ Error to report on elaboration
            | PImpossible -- ^ Special case for declaring when an LHS can't typecheck
            | PCoerced PTerm -- ^ To mark a coerced argument, so as not to coerce twice
+           | PDisamb [[T.Text]] PTerm -- ^ Preferences for explicit namespaces
            | PUnifyLog PTerm -- ^ dump a trace of unifications when building term
            | PNoImplicits PTerm -- ^ never run implicit converions on the term
        deriving Eq
@@ -638,6 +640,7 @@ mapPT f t = f (mpt t) where
   mpt (PProof ts) = PProof (map (fmap (mapPT f)) ts)
   mpt (PTactics ts) = PTactics (map (fmap (mapPT f)) ts)
   mpt (PUnifyLog tm) = PUnifyLog (mapPT f tm)
+  mpt (PDisamb ns tm) = PDisamb ns (mapPT f tm)
   mpt (PNoImplicits tm) = PNoImplicits (mapPT f tm)
   mpt (PGoal fc r n sc) = PGoal fc (mapPT f r) n (mapPT f sc)
   mpt x = x
@@ -1288,6 +1291,7 @@ showImp ist impl colour tm = se 10 [] tm where
     se p bnd (PElabError s) = show s
     se p bnd (PCoerced t) = se p bnd t
     se p bnd (PUnifyLog t) = "%unifyLog " ++ se p bnd t
+    se p bnd (PDisamb ns t) = "%disamb " ++ show ns ++ se p bnd t
     se p bnd (PNoImplicits t) = "%noimplicit " ++ se p bnd t
 --     se p bnd x = "Not implemented"
 
@@ -1368,6 +1372,7 @@ instance Sized PTerm where
   size (PAlternative a alts) = 1 + size alts
   size (PHidden hidden) = size hidden
   size (PUnifyLog tm) = size tm
+  size (PDisamb _ tm) = size tm
   size (PNoImplicits tm) = size tm
   size PType = 1
   size (PConstant const) = 1 + size const
@@ -1406,6 +1411,7 @@ allNamesIn tm = nub $ ni [] tm
     ni env (PDPair _ l t r)  = ni env l ++ ni env t ++ ni env r
     ni env (PAlternative a ls) = concatMap (ni env) ls
     ni env (PUnifyLog tm)    = ni env tm
+    ni env (PDisamb _ tm)    = ni env tm
     ni env (PNoImplicits tm)    = ni env tm
     ni env _               = []
 
@@ -1433,6 +1439,7 @@ namesIn uvars ist tm = nub $ ni [] tm
     ni env (PAlternative a as) = concatMap (ni env) as
     ni env (PHidden tm)    = ni env tm
     ni env (PUnifyLog tm)    = ni env tm
+    ni env (PDisamb _ tm)    = ni env tm
     ni env (PNoImplicits tm) = ni env tm
     ni env _               = []
 
@@ -1460,6 +1467,7 @@ usedNamesIn vars ist tm = nub $ ni [] tm
     ni env (PAlternative a as) = concatMap (ni env) as
     ni env (PHidden tm)    = ni env tm
     ni env (PUnifyLog tm)    = ni env tm
+    ni env (PDisamb _ tm)    = ni env tm
     ni env (PNoImplicits tm) = ni env tm
     ni env _               = []
 

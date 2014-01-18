@@ -190,6 +190,7 @@ internalExpr syn =
          try (app syn)
      <|> try (matchApp syn)
      <|> try (unifyLog syn)
+     <|> try (disamb syn)
      <|> try (noImplicits syn)
      <|> recordType syn
      <|> lambda syn
@@ -483,6 +484,19 @@ unifyLog syn = do lchar '%'; reserved "unifyLog";
                   return (PUnifyLog tm)
                <?> "unification log expression"
 
+{- | Parses a disambiguation expression 
+Disamb ::=
+  '%' 'disamb' NameList Expr
+  ;
+-}
+disamb :: SyntaxInfo -> IdrisParser PTerm
+disamb syn = do reserved "with";
+                ns <- sepBy1 name (lchar ',')
+                tm <- expr' syn
+                return (PDisamb (map tons ns) tm)
+               <?> "unification log expression"
+  where tons (NS n s) = txt (show n) : s
+        tons n = [txt (show n)]
 {- | Parses a no implicits expression
 @
 NoImplicits ::=

@@ -44,6 +44,7 @@ expandDo dsl (PAlternative a as) = PAlternative a (map (expandDo dsl) as)
 expandDo dsl (PHidden t) = PHidden (expandDo dsl t)
 expandDo dsl (PNoImplicits t) = PNoImplicits (expandDo dsl t)
 expandDo dsl (PUnifyLog t) = PUnifyLog (expandDo dsl t)
+expandDo dsl (PDisamb ns t) = PDisamb ns (expandDo dsl t)
 expandDo dsl (PReturn fc) = dsl_return dsl
 expandDo dsl (PRewrite fc r t ty)
     = PRewrite fc r (expandDo dsl t) ty
