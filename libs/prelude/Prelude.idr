@@ -275,11 +275,11 @@ instance Applicative List where
 instance Applicative (Vect k) where
     pure = replicate _
 
-    fs <$> vs = zipWith ($) fs vs
+    fs <$> vs = zipWith apply fs vs
 
 instance Applicative Stream where
   pure = repeat
-  (<$>) = zipWith ($)
+  (<$>) = zipWith apply
 
 ---- Alternative instances
 

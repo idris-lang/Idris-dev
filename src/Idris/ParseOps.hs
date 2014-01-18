@@ -37,6 +37,7 @@ table fixes
         [pexp (PApp fc (PRef fc (sUN "fromInteger")) [pexp (PConstant (BI 0))]), pexp x])]]
        ++ toTable (reverse fixes) ++
       [[backtick],
+       [binary "$" (\fc x y -> PApp fc x [pexp y]) AssocRight],
        [binary "="  PEq AssocLeft],
        [binary "->" (\fc x y -> PPi expl (sMN 42 "__pi_arg") x y) AssocRight]]
 
