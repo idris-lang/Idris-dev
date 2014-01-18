@@ -19,6 +19,7 @@ import System.Console.Haskeline
 import System.IO
 
 import Control.Monad.State
+import Control.Monad.Error(throwError)
 
 import Data.List
 import Data.Char
@@ -329,8 +330,8 @@ checkUndefined :: FC -> Name -> Idris ()
 checkUndefined fc n
     = do i <- getContext
          case lookupTy n i of
-             (_:_)  -> fail $ show fc ++ ":" ++
-                       show n ++ " already defined"
+             (_:_)  -> throwError . Msg $ show fc ++ ":" ++
+                                          show n ++ " already defined"
              _ -> return ()
 
 isUndefined :: FC -> Name -> Idris Bool

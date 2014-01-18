@@ -1770,19 +1770,21 @@ elabClass info syn doc fc constraints tn ps ds
     toExp ns e sc = sc
 
 elabInstance :: ElabInfo -> SyntaxInfo ->
+                ElabWhat -> -- phase
                 FC -> [PTerm] -> -- constraints
                 Name -> -- the class
                 [PTerm] -> -- class parameters (i.e. instance)
                 PTerm -> -- full instance type
                 Maybe Name -> -- explicit name
                 [PDecl] -> Idris ()
-elabInstance info syn fc cs n ps t expn ds
-    = do i <- getIState
-         (n, ci) <- case lookupCtxtName n (idris_classes i) of
-                       [c] -> return c
-                       _ -> ifail $ show fc ++ ":" ++ show n ++ " is not a type class"
-         let constraint = PApp fc (PRef fc n) (map pexp ps)
-         let iname = mkiname n ps expn
+elabInstance info syn what fc cs n ps t expn ds = do
+    i <- getIState
+    (n, ci) <- case lookupCtxtName n (idris_classes i) of
+                  [c] -> return c
+                  _ -> ifail $ show fc ++ ":" ++ show n ++ " is not a type class"
+    let constraint = PApp fc (PRef fc n) (map pexp ps)
+    let iname = mkiname n ps expn
+    when (what /= EDefns) $ do
          nty <- elabType' True info syn "" fc [] iname t
          -- if the instance type matches any of the instances we have already,
          -- and it's not a named instance, then it's overlapping, so report an error
@@ -1791,6 +1793,7 @@ elabInstance info syn fc cs n ps t expn ds
                                 (class_instances ci)
                           addInstance intInst n iname
             Just _ -> addInstance intInst n iname
+    when (what /= ETypes) $ do 
          let ips = zip (class_params ci) ps
          let ns = case n of
                     NS n ns' -> ns'
@@ -2087,9 +2090,8 @@ elabDecl' what info (PClass doc s f cs n ps ds)
     = do iLOG $ "Elaborating class " ++ show n
          elabClass info (s { syn_params = [] }) doc f cs n ps ds
 elabDecl' what info (PInstance s f cs n ps t expn ds)
-  | what /= ETypes
     = do iLOG $ "Elaborating instance " ++ show n
-         elabInstance info s f cs n ps t expn ds
+         elabInstance info s what f cs n ps t expn ds
 elabDecl' what info (PRecord doc s f tyn ty cdoc cn cty)
   | what /= ETypes
     = do iLOG $ "Elaborating record " ++ show tyn
