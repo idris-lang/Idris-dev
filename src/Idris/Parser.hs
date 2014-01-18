@@ -81,7 +81,9 @@ moduleHeader =     try (do reserved "module"
                            i <- identifier
                            option ';' (lchar ';')
                            return (moduleName i))
-               <|> return []
+               <|> try (do lchar '%'; reserved "unqualified"
+                           return [])
+               <|> return (moduleName "Main")
   where moduleName x = case span (/='.') x of
                            (x, "")    -> [x]
                            (x, '.':y) -> x : moduleName y

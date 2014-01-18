@@ -1,7 +1,2 @@
-reg003a.idr:4:20:When elaborating constructor ECons:
+reg003a.idr:4:20:When elaborating constructor Main.ECons:
 No such variable OddList
-reg003a.idr:7:20:When elaborating constructor OCons:
-No such variable EvenList
-reg003a.idr:9:8:When elaborating type of test:
-No such variable EvenList
-reg003a.idr:10:1:No type declaration for test
