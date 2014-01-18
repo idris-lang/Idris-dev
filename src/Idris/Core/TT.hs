@@ -863,8 +863,9 @@ forget tm = fe [] tm
   where
     fe env (P _ n _) = Var n
     fe env (V i)     = Var (env !! i)
-    fe env (Bind n b sc) = RBind n (fmap (fe env) b)
-                                   (fe (n:env) sc)
+    fe env (Bind n b sc) = let n' = uniqueName n env in
+                               RBind n' (fmap (fe env) b)
+                                        (fe (n':env) sc)
     fe env (App f a) = RApp (fe env f) (fe env a)
     fe env (Constant c)
                      = RConstant c

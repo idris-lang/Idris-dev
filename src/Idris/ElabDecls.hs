@@ -1339,6 +1339,7 @@ elabClause info opts (cnum, PClause fc fname lhs_in withs rhs_in whereblock)
 
         ctxt <- getContext
         logLvl 5 $ "Rechecking"
+        logLvl 6 $ " ==> " ++ show (forget rhs')
         (crhs, crhsty) <- recheckC fc [] rhs'
         logLvl 6 $ " ==> " ++ show crhsty ++ "   against   " ++ show clhsty
         case  converts ctxt [] clhsty crhsty of
