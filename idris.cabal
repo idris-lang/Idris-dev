@@ -14,7 +14,7 @@ Description:    Idris is a general purpose language with full dependent types.
                 Dependent types allow types to be predicated on values,
                 meaning that some aspects of a program's behaviour can be
                 specified precisely in the type. The language is closely
-		            related to Epigram and Agda. There is a tutorial at
+                related to Epigram and Agda. There is a tutorial at
                 <http://www.idris-lang.org/documentation>.
                 Features include:
                 .
@@ -462,7 +462,7 @@ Library
   if os(freebsd)
      cpp-options:   -DFREEBSD
      build-depends: unix
-  if os(dragonfly) 
+  if os(dragonfly)
      cpp-options:   -DDRAGONFLY
      build-depends: unix
   if os(darwin)
