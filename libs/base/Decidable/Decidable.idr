@@ -8,6 +8,8 @@ import Data.Rel
 -- Typeclass for decidable n-ary Relations
 --------------------------------------------------------------------------------
 
+--  Note: Instance resolution for Decidable is likely to not work in the REPL
+--        at the moment.
 class Decidable (ts : Vect k Type) (p : Rel ts) where
   total decide : liftRel ts p Dec
 
