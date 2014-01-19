@@ -580,7 +580,7 @@ implicitArg syn = do lchar '{'
                      v <- option (PRef fc n) (do lchar '='
                                                  expr syn)
                      lchar '}'
-                     return (pimp n v False)
+                     return (pimp n v True)
                   <?> "implicit function argument"
 
 {-| Parses a constraint argument (for selecting a named type class instance)

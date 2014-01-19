@@ -304,7 +304,8 @@ elabData info syn doc fc opts (PDatadecl n t_in dcons)
 type EliminatorState = StateT (Map.Map String Int) Idris
 
 -- TODO: Use uniqueName for generating names, rewrite everything to use idris_implicits instead of manual splitting, generally just rewrite
-elabEliminator :: [Int] -> Name -> PTerm -> [(String, Name, PTerm, FC)] -> ElabInfo -> EliminatorState ()
+elabEliminator :: [Int] -> Name -> PTerm -> [(String, Name, PTerm, FC, [Name])] -> 
+                  ElabInfo -> EliminatorState ()
 elabEliminator paramPos n ty cons info = do
   elimLog $ "Elaborating eliminator"
   let (cnstrs, _) = splitPi ty
@@ -312,7 +313,7 @@ elabEliminator paramPos n ty cons info = do
   generalParams <- namePis False pms
   motiveIdxs    <- namePis False idxs
   let motive = mkMotive n paramPos generalParams motiveIdxs
-  consTerms <- mapM (\(c@(_,cnm,_,_)) -> do
+  consTerms <- mapM (\(c@(_,cnm,_,_,_)) -> do
                               name <- freshName $ "elim_" ++ simpleName cnm
                               consTerm <- extractConsTerm c generalParams
                               return (name, expl, consTerm)) cons
@@ -469,8 +470,8 @@ elabEliminator paramPos n ty cons info = do
         splitArgPms _                 = ([],[])
 
 
-        implicitIndexes :: (String, Name, PTerm, FC) -> EliminatorState [(Name, Plicity, PTerm)]
-        implicitIndexes (cns@(doc, cnm, ty, fc)) = do
+        implicitIndexes :: (String, Name, PTerm, FC, [Name]) -> EliminatorState [(Name, Plicity, PTerm)]
+        implicitIndexes (cns@(doc, cnm, ty, fc, fs)) = do
           i <-  State.lift getIState
           implargs' <- case lookupCtxt cnm (idris_implicits i) of
             [] -> do fail $ "Error while showing implicits for " ++ show cnm
@@ -484,11 +485,11 @@ elabEliminator paramPos n ty cons info = do
               in return $ filter (\(n,_,_) -> not (n `elem` oldParams))implargs
              _ -> return implargs
 
-        extractConsTerm :: (String, Name, PTerm, FC) -> [(Name, Plicity, PTerm)] -> EliminatorState PTerm
-        extractConsTerm (doc, cnm, ty, fc) generalParameters = do
+        extractConsTerm :: (String, Name, PTerm, FC, [Name]) -> [(Name, Plicity, PTerm)] -> EliminatorState PTerm
+        extractConsTerm (doc, cnm, ty, fc, fs) generalParameters = do
           let cons' = replaceParams paramPos generalParameters ty
           let (args, resTy) = splitPi cons'
-          implidxs <- implicitIndexes (doc, cnm, ty, fc)
+          implidxs <- implicitIndexes (doc, cnm, ty, fc, fs)
           consArgs <- namePis True args
           let recArgs = findRecArgs consArgs
           let recMotives = map applyRecMotive recArgs
@@ -520,12 +521,12 @@ elabEliminator paramPos n ty cons info = do
         convertImplPi (PImp {getTm = t, pname = n}) = Just (n, expl, t)
         convertImplPi _                             = Nothing
 
-        generateEliminatorClauses :: (String, Name, PTerm, FC) -> Name -> [PArg] -> [(Name, Plicity, PTerm)] -> EliminatorState PClause
-        generateEliminatorClauses (doc, cnm, ty, fc) cnsElim generalArgs generalParameters = do
+        generateEliminatorClauses :: (String, Name, PTerm, FC, [Name]) -> Name -> [PArg] -> [(Name, Plicity, PTerm)] -> EliminatorState PClause
+        generateEliminatorClauses (doc, cnm, ty, fc, fs) cnsElim generalArgs generalParameters = do
           let cons' = replaceParams paramPos generalParameters ty
           let (args, resTy) = splitPi cons'
           i <- State.lift getIState
-          implidxs <- implicitIndexes (doc, cnm, ty, fc)
+          implidxs <- implicitIndexes (doc, cnm, ty, fc, fs)
           let (_, generalIdxs') = splitArgPms resTy
           let generalIdxs = map pexp generalIdxs'
           consArgs <- namePis True args
@@ -698,7 +699,7 @@ elabTransform info fc safe lhs_in rhs_in
 elabRecord :: ElabInfo -> SyntaxInfo -> String -> FC -> Name ->
               PTerm -> String -> Name -> PTerm -> Idris ()
 elabRecord info syn doc fc tyn ty cdoc cn cty
-    = do elabData info syn doc fc [] (PDatadecl tyn ty [(cdoc, cn, cty, fc)])
+    = do elabData info syn doc fc [] (PDatadecl tyn ty [(cdoc, cn, cty, fc, [])])
          cty' <- implicit syn cn cty
          i <- getIState
          cty <- case lookupTy cn (tt_ctxt i) of
@@ -805,8 +806,8 @@ elabRecord info syn doc fc tyn ty cdoc cn cty
             return (pn, pfnTy, PClauses fc [] setname [pclause])
 
 elabCon :: ElabInfo -> SyntaxInfo -> Name -> Bool ->
-           (String, Name, PTerm, FC) -> Idris (Name, Type)
-elabCon info syn tn codata (doc, n, t_in, fc)
+           (String, Name, PTerm, FC, [Name]) -> Idris (Name, Type)
+elabCon info syn tn codata (doc, n, t_in, fc, forcenames)
     = do checkUndefined fc n
          ctxt <- getContext
          i <- getIState
@@ -829,7 +830,10 @@ elabCon info syn tn codata (doc, n, t_in, fc)
          addIBC (IBCDef n)
          addDocStr n doc
          addIBC (IBCDoc n)
-         forceArgs tn n cty'
+         let fs = map (getNamePos 0 t) forcenames
+         -- FIXME: 'forcenames' is an almighty hack! Need a better way of
+         -- erasing non-forceable things
+         forceArgs tn n (mapMaybe (getNamePos 0 t) forcenames) cty'
          return (n, cty')
   where
     tyIs (Bind n b sc) = tyIs sc
@@ -840,6 +844,11 @@ elabCon info syn tn codata (doc, n, t_in, fc)
 
     mkLazy (PPi pl n ty sc) = PPi (pl { plazy = True }) n ty (mkLazy sc)
     mkLazy t = t
+
+    getNamePos :: Int -> PTerm -> Name -> Maybe Int
+    getNamePos i (PPi _ n _ sc) x | n == x = Just i
+                                  | otherwise = getNamePos (i + 1) sc x
+    getNamePos _ _ _ = Nothing
 
 -- | Elaborate a collection of left-hand and right-hand pairs - that is, a
 -- top-level definition.
@@ -1628,7 +1637,7 @@ elabClass info syn doc fc constraints tn ps ds
          let cty = impbind ps $ conbind constraints
                       $ pibind (map (\ (n, ty) -> (nsroot n, ty)) methods)
                                constraint
-         let cons = [("", cn, cty, fc)]
+         let cons = [("", cn, cty, fc, [])]
          let ddecl = PDatadecl tn tty cons
          logLvl 5 $ "Class data " ++ showDImp True ddecl
          elabData info (syn { no_imp = no_imp syn ++ mnames }) doc fc [] ddecl

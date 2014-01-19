@@ -698,7 +698,7 @@ inferDecl = PDatadecl inferTy
                       PType
                       [("", inferCon, PPi impl (sMN 0 "iType") PType (
                                   PPi expl (sMN 0 "ival") (PRef bi (sMN 0 "iType"))
-                                  (PRef bi inferTy)), bi)]
+                                  (PRef bi inferTy)), bi, [])]
 inferOpts = []
 
 infTerm t = PApp bi (PRef bi inferCon) [pimp (sMN 0 "iType") Placeholder True, pexp t]
@@ -721,7 +721,7 @@ primNames = [unitTy, unitCon,
 unitTy   = sMN 0 "__Unit"
 unitCon  = sMN 0 "__II"
 unitDecl = PDatadecl unitTy PType
-                     [("", unitCon, PRef bi unitTy, bi)]
+                     [("", unitCon, PRef bi unitTy, bi, [])]
 unitOpts = [DefaultEliminator]
 
 falseTy   = sMN 0 "__False"
@@ -736,7 +736,7 @@ pairDecl  = PDatadecl pairTy (piBind [(n "A", PType), (n "B", PType)] PType)
                        PPi expl (n "a") (PRef bi (n "A")) (
                        PPi expl (n "b") (PRef bi (n "B"))
                            (PApp bi (PRef bi pairTy) [pexp (PRef bi (n "A")),
-                                                pexp (PRef bi (n "B"))])))), bi)]
+                                                pexp (PRef bi (n "B"))])))), bi, [])]
     where n a = sMN 0 a
 pairOpts = []
 
@@ -750,7 +750,7 @@ eqDecl = PDatadecl eqTy (piBind [(n "A", PType), (n "B", PType),
                            (PApp bi (PRef bi eqTy) [pimp (n "A") Placeholder False,
                                                     pimp (n "B") Placeholder False,
                                                     pexp (PRef bi (n "x")),
-                                                    pexp (PRef bi (n "x"))])), bi)]
+                                                    pexp (PRef bi (n "x"))])), bi, [])]
     where n a = sMN 0 a
 eqOpts = []
 
@@ -921,8 +921,8 @@ expandParamsD rhs ist dec ps ns (PData doc syn fc co pd)
             then PDatadecl (dec n) (piBind ps (expandParams dec ps ns [] ty))
                            (map econ cons)
             else PDatadecl n (expandParams dec ps ns [] ty) (map econ cons)
-    econ (doc, n, t, fc)
-       = (doc, dec n, piBindp expl ps (expandParams dec ps ns [] t), fc)
+    econ (doc, n, t, fc, fs)
+       = (doc, dec n, piBindp expl ps (expandParams dec ps ns [] t), fc, fs)
 expandParamsD rhs ist dec ps ns (PParams f params pds)
    = PParams f (ps ++ map (mapsnd (expandParams dec ps ns [])) params)
                (map (expandParamsD True ist dec ps ns) pds)

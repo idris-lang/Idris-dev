@@ -18,14 +18,16 @@ type ForceMap = M.IntMap Forceability
 
 -- Calculate the forceable arguments to a constructor
 -- and update the set of optimisations.
-forceArgs :: Name -> Name -> Type -> Idris ()
-forceArgs typeName n t = do
+forceArgs :: Name -> Name -> [Int] -> Type -> Idris ()
+forceArgs typeName n expforce t = do
     ist <- getIState
     let fargs = getForcedArgs ist typeName t
         copt = case lookupCtxt n (idris_optimisation ist) of
           []   -> Optimise False False [] []
           op:_ -> op
-        opts = addDef n (copt { forceable = M.toList fargs }) (idris_optimisation ist)
+        opts = addDef n (copt { forceable = M.toList fargs ++
+                                            zip expforce (repeat Unconditional) }) 
+                        (idris_optimisation ist)
     putIState (ist { idris_optimisation = opts })
     addIBC (IBCOpt n)
     iLOG $ "Forced: " ++ show n ++ " " ++ show fargs ++ "\n   from " ++ show t
@@ -319,3 +321,4 @@ applyDataOptRT oi n tag arity args
       where
         ctor' = (P (DCon tag (arity - forcedCnt forceMap)) n Erased)
         args' = [t | (f, t) <- zip (forcedArgSeq oi) args, f /= Just Unconditional]
+
