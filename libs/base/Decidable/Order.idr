@@ -71,6 +71,7 @@ decideNatLTE    x   (S y) with (decEq x (S y))
     | Yes nLTEm = Yes (nLTESm nLTEm)
     | No  nGTm  = No (nGTSm nGTm)
 
+{-
 instance Rel NatLTE where
   liftRel P = (n : Nat) -> (m : Nat) -> P (NatLTE n m)
 
@@ -79,4 +80,17 @@ instance Decidable NatLTE where
 
 lte : (m : Nat) -> (n : Nat) -> Dec (NatLTE m n)
 lte m n = decide {p = NatLTE} m n
+-}
 
+instance Decidable [Nat,Nat] NatLTE where
+  decide = decideNatLTE
+
+--lte : DecProc [Nat,Nat] NatLTE
+--lte m n = decide m n -- FIXME can this work?
+--lte : liftRel [Nat,Nat] NatLTE Dec
+lte : (m : Nat) -> (n : Nat) -> Dec (NatLTE m n)
+lte m n = decide {ts = [Nat,Nat]} {p = NatLTE} m n
+--lte m n = decide {p = NatLTE} m n
+--lte = decide
+--lte m n = decide m n -- FIXME can this work?
+--lte = decide -- FIXME can this work?
