@@ -21,11 +21,9 @@ import Control.Monad.State.Strict hiding (get, put)
 import qualified Control.Monad.State.Strict as ST
 import System.FilePath
 import System.Directory
-import Codec.Compression.Zlib
+import Codec.Compression.Zlib (compress)
+import Util.Zlib (decompressEither)
 
-import Debug.Trace
-
-import Paths_idris
 
 ibcVersion :: Word8
 ibcVersion = 54
@@ -74,9 +72,15 @@ loadIBC fp = do iLOG $ "Loading ibc " ++ fp
                 ibcf <- runIO $ (bdecode fp :: IO IBCFile)
                 process ibcf fp
 
+bencode :: Binary a => FilePath -> a -> IO ()
 bencode f d = B.writeFile f (compress (encode d))
+
+bdecode :: Binary b => FilePath -> IO b
 bdecode f = do d' <- B.readFile f
-               return (decode (decompress d'))
+               either
+                 (\(_, e) -> error $ "Invalid / corrupted zip format on " ++ show f ++ ": " ++ e)
+                 (return . decode)
+                 (decompressEither d')
 
 writeIBC :: FilePath -> FilePath -> Idris ()
 writeIBC src f
