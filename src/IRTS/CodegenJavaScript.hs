@@ -64,6 +64,7 @@ data JS = JSRaw String
         | JSArray [JS]
         | JSObject [(String, JS)]
         | JSString String
+        | JSChar String
         | JSNum JSNum
         | JSAssign JS JS
         | JSAlloc String (Maybe JS)
@@ -153,6 +154,9 @@ compileJS (JSObject fields) =
 compileJS (JSString str) =
   show str
 
+compileJS (JSChar chr) =
+  chr
+
 compileJS (JSNum num)
   | JSInt i                <- num = show i
   | JSFloat f              <- num = show f
@@ -240,6 +244,7 @@ jsLet name value body =
       JSReturn body
     )
   ) [value]
+
 
 jsSubst :: String -> JS -> JS -> JS
 jsSubst var new (JSVar old)
@@ -757,6 +762,9 @@ translateSpecialName name
 translateConstant :: Const -> JS
 translateConstant (I i)                    = JSNum (JSInt i)
 translateConstant (Fl f)                   = JSNum (JSFloat f)
+translateConstant (Ch '\DEL')              = JSChar "'\\u007F'"
+translateConstant (Ch '\a')                = JSChar "'\\u0007'"
+translateConstant (Ch '\SO')               = JSChar "'\\u000E'"
 translateConstant (Ch c)                   = JSString [c]
 translateConstant (Str s)                  = JSString s
 translateConstant (AType (ATInt ITNative)) = JSType JSIntTy
