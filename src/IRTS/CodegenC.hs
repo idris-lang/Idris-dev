@@ -114,7 +114,7 @@ showCStr s = '"' : foldr ((++) . showChar) "\"" s
     showChar c
         | ord c < 0x10  = "\\x0" ++ showHex (ord c) ""
         | ord c < 0x20  = "\\x"  ++ showHex (ord c) ""
-        | ord c < 0x80  = [c]
+        | ord c < 0x7f  = [c]    -- 0x7f = \DEL
         | ord c < 0x100 = "\\x"  ++ showHex (ord c) ""
         | otherwise = error $ "non-8-bit character in string literal: " ++ show c
 
