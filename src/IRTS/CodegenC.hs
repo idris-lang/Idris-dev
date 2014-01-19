@@ -112,10 +112,13 @@ showCStr s = '"' : foldr ((++) . showChar) "\"" s
     showChar '"'  = "\\\""
     showChar '\\' = "\\\\"
     showChar c
-        | ord c < 0x10  = "\\x0" ++ showHex (ord c) ""
-        | ord c < 0x20  = "\\x"  ++ showHex (ord c) ""
+        -- Note: we need the double quotes around the codes because otherwise
+        -- "\n3" would get encoded as "\x0a3", which is incorrect.
+        -- Instead, we opt for "\x0a""3" and let the C compiler deal with it.
+        | ord c < 0x10  = "\"\"\\x0" ++ showHex (ord c) "\"\""
+        | ord c < 0x20  = "\"\"\\x"  ++ showHex (ord c) "\"\""
         | ord c < 0x7f  = [c]    -- 0x7f = \DEL
-        | ord c < 0x100 = "\\x"  ++ showHex (ord c) ""
+        | ord c < 0x100 = "\"\"\\x"  ++ showHex (ord c) "\"\""
         | otherwise = error $ "non-8-bit character in string literal: " ++ show c
 
 bcc :: Int -> BC -> String
