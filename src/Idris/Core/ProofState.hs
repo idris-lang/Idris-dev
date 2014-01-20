@@ -476,16 +476,10 @@ solve ctxt env (Bind x (Guess ty val) sc)
    | True         = do ps <- get
                        let (uh, uns) = unified ps
                        case lookup x (notunified ps) of
-                           Just tm -> do -- trace ("AVOIDED " ++ show (x, tm, val)) $
-                                         -- return []
-                                         unify' ctxt env tm val
+                           Just tm -> unify' ctxt env tm val
                            _ -> return []
                        action (\ps -> ps { holes = holes ps \\ [x],
                                            solved = Just (x, val),
---                                            problems = solveInProblems
---                                                         x val (problems ps),
-                                           -- dontunify = dontunify ps \\ [x],
-                                           -- unified = (uh, uns ++ [(x, val)]),
                                            instances = instances ps \\ [x] })
                        let tm' = subst x val sc in 
                            return tm'
@@ -739,8 +733,7 @@ keepGiven du (u@(n, _) : us) hs
    | n `elem` du = u : keepGiven du us hs
 keepGiven du (u : us) hs = keepGiven du us hs
 
-updateSolved xs x = -- trace ("Updating " ++ show xs ++ " in " ++ show x) $
-                     updateSolved' xs x
+updateSolved xs x = updateSolved' xs x
 updateSolved' [] x = x
 updateSolved' xs (Bind n (Hole ty) t)
     | Just v <- lookup n xs 
@@ -772,8 +765,8 @@ solveInProblems x val ((l, r, env, err) : ps)
 updateNotunified [] nu = nu
 updateNotunified ns nu = up nu where
   up [] = []
-  up ((n, t) : ns) = let t' = updateSolved ns t in
-                         ((n, t') : up ns)
+  up ((n, t) : nus) = let t' = updateSolved ns t in
+                          ((n, t') : up nus)
 
 updateProblems ctxt [] ps inj holes = ([], ps)
 updateProblems ctxt ns ps inj holes = up ns ps where
@@ -820,12 +813,11 @@ processTactic EndUnify ps
           ns' = map (\ (n, t) -> (n, updateSolved ns t)) ns
           (ns'', probs') = updateProblems (context ps) ns' (problems ps)
                                           (injective ps) (holes ps)
-          tm' = -- trace ("Updating " ++ show ns_in ++ "\n" ++ show ns'') $ --  ++ " in " ++ show (pterm ps)) $
-                updateSolved ns'' (pterm ps) in
+          tm' = updateSolved ns'' (pterm ps) in
           return (ps { pterm = tm',
                        unified = (h, []),
                        problems = probs',
-                       notunified = updateNotunified ns (notunified ps),
+                       notunified = updateNotunified ns'' (notunified ps),
                        holes = holes ps \\ map fst ns'' }, "")
 processTactic (Reorder n) ps
     = do ps' <- execStateT (tactic (Just n) reorder_claims) ps
@@ -850,6 +842,7 @@ processTactic MatchProblems ps
           pterm' = updateSolved ns' (pterm ps) in
       return (ps { pterm = pterm', solved = Nothing, problems = probs',
                    previous = Just ps, plog = "",
+                   notunified = updateNotunified ns' (notunified ps),
                    holes = holes ps \\ (map fst ns') }, plog ps)
 processTactic t ps
     = case holes ps of
