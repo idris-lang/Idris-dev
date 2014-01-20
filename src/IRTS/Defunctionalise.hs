@@ -143,7 +143,7 @@ addApps defs (n, LFun _ _ args e)
              = return $ chainAPPLY (DApp False n (take ar args)) (drop ar args)
 
     chainAPPLY f [] = f
-    chainAPPLY f (a : as) = chainAPPLY (DApp False (MN 0 "APPLY") [f, a]) as
+    chainAPPLY f (a : as) = chainAPPLY (DApp False (sMN 0 "APPLY") [f, a]) as
 
     -- if anything in the DExp is projected from, we'll need to evaluate it,
     -- but we only want to do it once, rather than every time we project.
@@ -171,7 +171,7 @@ addApps defs (n, LFun _ _ args e)
     needsEval x (DProj (DV (Glob x')) _) = x == x'
     needsEval x _ = False
 
-eEVAL x = DApp False (MN 0 "EVAL") [x]
+eEVAL x = DApp False (sMN 0 "EVAL") [x]
 
 data EvalApply a = EvalCase (Name -> a)
                  | ApplyCase a
@@ -198,26 +198,26 @@ mkApplyCase fname n ar
               (nm, n, ApplyCase (DConCase (-1) nm (take n (genArgs 0))
                   (DApp False (mkUnderCon fname (ar - (n + 1)))
                        (map (DV . Glob) (take n (genArgs 0) ++
-                         [MN 0 "arg"])))))
+                         [sMN 0 "arg"])))))
                             : mkApplyCase fname (n + 1) ar
 
 mkEval :: [(Name, Int, EvalApply DAlt)] -> (Name, DDecl)
-mkEval xs = (MN 0 "EVAL", DFun (MN 0 "EVAL") [MN 0 "arg"]
-               (mkBigCase (MN 0 "EVAL") 256 (DV (Glob (MN 0 "arg")))
+mkEval xs = (sMN 0 "EVAL", DFun (sMN 0 "EVAL") [sMN 0 "arg"]
+               (mkBigCase (sMN 0 "EVAL") 256 (DV (Glob (sMN 0 "arg")))
                   (mapMaybe evalCase xs ++
-                      [DDefaultCase (DV (Glob (MN 0 "arg")))])))
+                      [DDefaultCase (DV (Glob (sMN 0 "arg")))])))
   where
-    evalCase (n, t, EvalCase x) = Just (x (MN 0 "arg"))
+    evalCase (n, t, EvalCase x) = Just (x (sMN 0 "arg"))
     evalCase _ = Nothing
 
 mkApply :: [(Name, Int, EvalApply DAlt)] -> (Name, DDecl)
-mkApply xs = (MN 0 "APPLY", DFun (MN 0 "APPLY") [MN 0 "fn", MN 0 "arg"]
+mkApply xs = (sMN 0 "APPLY", DFun (sMN 0 "APPLY") [sMN 0 "fn", sMN 0 "arg"]
                              (case mapMaybe applyCase xs of
                                 [] -> DNothing
                                 cases ->
-                                    mkBigCase (MN 0 "APPLY") 256
-                                              (DApp False (MN 0 "EVAL")
-                                               [DV (Glob (MN 0 "fn"))])
+                                    mkBigCase (sMN 0 "APPLY") 256
+                                              (DApp False (sMN 0 "EVAL")
+                                               [DV (Glob (sMN 0 "fn"))])
                                               (cases ++
                                     [DDefaultCase DNothing])))
   where
@@ -231,11 +231,11 @@ declare t xs = dec' t xs [] where
    dec' t ((n, ar, _) : xs) acc = dec' (t + 1) xs ((n, DConstructor n t ar) : acc)
 
 
-genArgs i = MN i "P_c" : genArgs (i + 1)
+genArgs i = sMN i "P_c" : genArgs (i + 1)
 
-mkFnCon    n = MN 0 ("P_" ++ show n)
+mkFnCon    n = sMN 0 ("P_" ++ show n)
 mkUnderCon n 0       = n
-mkUnderCon n missing = MN missing ("U_" ++ show n)
+mkUnderCon n missing = sMN missing ("U_" ++ show n)
 
 instance Show DExp where
    show e = show' [] e where

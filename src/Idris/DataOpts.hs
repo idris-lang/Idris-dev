@@ -18,14 +18,16 @@ type ForceMap = M.IntMap Forceability
 
 -- Calculate the forceable arguments to a constructor
 -- and update the set of optimisations.
-forceArgs :: Name -> Name -> Type -> Idris ()
-forceArgs typeName n t = do
+forceArgs :: Name -> Name -> [Int] -> Type -> Idris ()
+forceArgs typeName n expforce t = do
     ist <- getIState
     let fargs = getForcedArgs ist typeName t
         copt = case lookupCtxt n (idris_optimisation ist) of
           []   -> Optimise False False [] []
           op:_ -> op
-        opts = addDef n (copt { forceable = M.toList fargs }) (idris_optimisation ist)
+        opts = addDef n (copt { forceable = M.toList fargs ++
+                                            zip expforce (repeat Unconditional) }) 
+                        (idris_optimisation ist)
     putIState (ist { idris_optimisation = opts })
     addIBC (IBCOpt n)
     iLOG $ "Forced: " ++ show n ++ " " ++ show fargs ++ "\n   from " ++ show t
@@ -37,7 +39,7 @@ getForcedArgs ist typeName t = addCollapsibleArgs 0 t $ forcedInTarget 0 t
 
     -- Label all occurrences of the variable bound in Pi in the rest of
     -- the term with the number i so that we can recognize them anytime later.
-    label i = instantiate $ P Bound (MN i "ctor_arg") Erased
+    label i = instantiate $ P Bound (sMN i "ctor_arg") Erased
 
     addCollapsibleArgs :: Int -> Type -> ForceMap -> ForceMap
     addCollapsibleArgs i (Bind vn (Pi ty) rest) alreadyForceable
@@ -73,7 +75,8 @@ getForcedArgs ist typeName t = addCollapsibleArgs 0 t $ forcedInTarget 0 t
     guardedArgs t = bareArg t
 
     bareArg :: Term -> ForceMap
-    bareArg (P _ (MN i "ctor_arg") _) = M.singleton i Unconditional
+    bareArg (P _ (MN i ctor_arg) _) 
+         | ctor_arg == txt "ctor_arg" = M.singleton i Unconditional
     bareArg  _                        = M.empty
 
     unionMap :: (a -> ForceMap) -> [a] -> ForceMap
@@ -196,8 +199,14 @@ instance Optimisable Raw where
 
     stripCollapsed t = return t
 
-instance Optimisable t => Optimisable (Binder t) where
-    applyOpts (Let t v) = Let <$> applyOpts t <*> applyOpts v
+-- Erase types (makes ibc smaller, and we don't need them)
+instance Optimisable (Binder (TT Name)) where
+    applyOpts (Let t v) = Let <$> return Erased <*> applyOpts v
+    applyOpts b = return (b { binderTy = Erased })
+    stripCollapsed (Let t v) = Let <$> return Erased <*> stripCollapsed v
+    stripCollapsed b = return (b { binderTy = Erased })
+
+instance Optimisable (Binder Raw) where
     applyOpts b = do t' <- applyOpts (binderTy b)
                      return (b { binderTy = t' })
     stripCollapsed (Let t v) = Let <$> stripCollapsed t <*> stripCollapsed v
@@ -221,17 +230,24 @@ applyDataOpt oi n args
 
 -- Run-time: do everything
 
+prel = [txt "Nat", txt "Prelude"]
+
 instance Optimisable (TT Name) where
-    applyOpts (P _ (NS (UN "plus") ["Nat","Prelude"]) _)
-        = return (P Ref (UN "prim__addBigInt") Erased)
-    applyOpts (P _ (NS (UN "mult") ["Nat","Prelude"]) _)
-        = return (P Ref (UN "prim__mulBigInt") Erased)
-    applyOpts (App (P _ (NS (UN "fromIntegerNat") ["Nat","Prelude"]) _) x)
+    applyOpts (P _ (NS (UN fn) mod) _)
+       | fn == txt "plus" && mod == prel
+        = return (P Ref (sUN "prim__addBigInt") Erased)
+    applyOpts (P _ (NS (UN fn) mod) _)
+       | fn == txt "mult" && mod == prel
+        = return (P Ref (sUN "prim__mulBigInt") Erased)
+    applyOpts (App (P _ (NS (UN fn) mod) _) x)
+       | fn == txt "fromIntegerNat" && mod == prel
         = applyOpts x
-    applyOpts (P _ (NS (UN "fromIntegerNat") ["Nat","Prelude"]) _)
-        = return (App (P Ref (NS (UN "id") ["Basics","Prelude"]) Erased) Erased)
-    applyOpts (P _ (NS (UN "toIntegerNat") ["Nat","Prelude"]) _)
-        = return (App (P Ref (NS (UN "id") ["Basics","Prelude"]) Erased) Erased)
+    applyOpts (P _ (NS (UN fn) mod) _)
+       | fn == txt "fromIntegerNat" && mod == prel
+        = return (App (P Ref (sNS (sUN "id") ["Basics","Prelude"]) Erased) Erased)
+    applyOpts (P _ (NS (UN fn) mod) _)
+       | fn == txt "toIntegerNat" && mod == prel
+         = return (App (P Ref (sNS (sUN "id") ["Basics","Prelude"]) Erased) Erased)
     applyOpts c@(P (DCon t arity) n _)
         = do i <- getIState
              case lookupCtxt n (idris_optimisation i) of
@@ -282,16 +298,19 @@ applyDataOptRT oi n tag arity args
                                     (collapsible oi) (M.fromList $ forceable oi) in
                       bind extra tm
   where
-    satArgs n = map (\i -> MN i "sat") [1..n]
+    satArgs n = map (\i -> sMN i "sat") [1..n]
 
     bind [] tm = tm
     bind (n:ns) tm = Bind n (Lam Erased) (pToV n (bind ns tm))
 
     -- Nat special cases
     -- TODO: Would be nice if this was configurable in idris source!
-    doOpts (NS (UN "Z") ["Nat", "Prelude"]) [] _ _ = Constant (BI 0)
-    doOpts (NS (UN "S") ["Nat", "Prelude"]) [k] _ _
-        = App (App (P Ref (UN "prim__addBigInt") Erased) k) (Constant (BI 1))
+    doOpts (NS (UN z) [nat, prelude]) [] _ _ 
+        | z == txt "Z" && nat == txt "Nat" && prelude == txt "Prelude"
+          = Constant (BI 0)
+    doOpts (NS (UN s) [nat, prelude]) [k] _ _
+        | s == txt "S" && nat == txt "Nat" && prelude == txt "Prelude"
+          = App (App (P Ref (sUN "prim__addBigInt") Erased) k) (Constant (BI 1))
 
     doOpts n args True _  = Erased
     doOpts n args _ forceMap
@@ -302,3 +321,4 @@ applyDataOptRT oi n tag arity args
       where
         ctor' = (P (DCon tag (arity - forcedCnt forceMap)) n Erased)
         args' = [t | (f, t) <- zip (forcedArgSeq oi) args, f /= Just Unconditional]
+

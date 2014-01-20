@@ -14,7 +14,7 @@ Description:    Idris is a general purpose language with full dependent types.
                 Dependent types allow types to be predicated on values,
                 meaning that some aspects of a program's behaviour can be
                 specified precisely in the type. The language is closely
-		            related to Epigram and Agda. There is a tutorial at
+                related to Epigram and Agda. There is a tutorial at
                 <http://www.idris-lang.org/documentation>.
                 Features include:
                 .
@@ -341,10 +341,12 @@ Library
   Exposed-modules:
                   Idris.Core.CaseTree
                 , Idris.Core.Constraints
+                , Idris.Core.DeepSeq
                 , Idris.Core.Elaborate
                 , Idris.Core.Evaluate
                 , Idris.Core.Execute
                 , Idris.Core.ProofState
+                , Idris.Core.TC
                 , Idris.Core.TT
                 , Idris.Core.Typecheck
                 , Idris.Core.Unify
@@ -445,6 +447,7 @@ Library
                 , network
                 , xml
                 , deepseq
+                , zlib
   Extensions:     MultiParamTypeClasses
                 , FunctionalDependencies
                 , FlexibleInstances
@@ -459,7 +462,7 @@ Library
   if os(freebsd)
      cpp-options:   -DFREEBSD
      build-depends: unix
-  if os(dragonfly) 
+  if os(dragonfly)
      cpp-options:   -DDRAGONFLY
      build-depends: unix
   if os(darwin)
@@ -493,6 +496,6 @@ Executable idris
                 , transformers
 
   ghc-prof-options: -auto-all -caf-all
-  ghc-options:      -threaded -rtsopts
+  ghc-options:      -threaded -rtsopts -funbox-strict-fields
 
 

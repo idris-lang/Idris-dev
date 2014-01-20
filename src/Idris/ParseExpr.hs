@@ -190,6 +190,7 @@ internalExpr syn =
          try (app syn)
      <|> try (matchApp syn)
      <|> try (unifyLog syn)
+     <|> try (disamb syn)
      <|> try (noImplicits syn)
      <|> recordType syn
      <|> lambda syn
@@ -295,7 +296,7 @@ simpleExpr syn =
                     fc <- getFC
                     return (modifyConst syn fc (PConstant c)))
         <|> try (do symbol "'"; fc <- getFC; str <- name
-                    return (PApp fc (PRef fc (UN "Symbol_"))
+                    return (PApp fc (PRef fc (sUN "Symbol_"))
                                [pexp (PConstant (Str (show str)))]))
         <|> do fc <- getFC
                x <- fnName
@@ -360,12 +361,12 @@ bracketed syn =
                    l <- expr' syn
                    o <- operator
                    lchar ')'
-                   return $ PLam (MN 1000 "ARG") Placeholder
-                                    (PApp fc0 (PRef fc0 (UN o)) [pexp l,
-                                                                 pexp (PRef fc0 (MN 1000 "ARG"))]))
+                   return $ PLam (sMN 1000 "ARG") Placeholder
+                                    (PApp fc0 (PRef fc0 (sUN o)) [pexp l,
+                                                                 pexp (PRef fc0 (sMN 1000 "ARG"))]))
         <|> try(do fc <- getFC; o <- operator; e <- expr syn; lchar ')'
-                   return $ PLam (MN 1000 "ARG") Placeholder
-                             (PApp fc (PRef fc (UN o)) [pexp (PRef fc (MN 1000 "ARG")),
+                   return $ PLam (sMN 1000 "ARG") Placeholder
+                             (PApp fc (PRef fc (sUN o)) [pexp (PRef fc (sMN 1000 "ARG")),
                                                              pexp e]))
         <|> try (do ln <- name; lchar ':'
                     lty <- expr syn
@@ -388,7 +389,7 @@ modifyConst :: SyntaxInfo -> FC -> PTerm -> PTerm
 modifyConst syn fc (PConstant (BI x))
     | not (inPattern syn)
         = PAlternative False
-             (PApp fc (PRef fc (UN "fromInteger")) [pexp (PConstant (BI (fromInteger x)))]
+             (PApp fc (PRef fc (sUN "fromInteger")) [pexp (PConstant (BI (fromInteger x)))]
              : consts)
     | otherwise = PAlternative False consts
     where
@@ -420,8 +421,8 @@ listExpr syn = do lchar '['; fc <- getFC; xs <- sepBy (expr syn) (lchar ','); lc
                <?> "list expression"
   where
     mkList :: FC -> [PTerm] -> PTerm
-    mkList fc [] = PRef fc (UN "Nil")
-    mkList fc (x : xs) = PApp fc (PRef fc (UN "::")) [pexp x, pexp (mkList fc xs)]
+    mkList fc [] = PRef fc (sUN "Nil")
+    mkList fc (x : xs) = PApp fc (PRef fc (sUN "::")) [pexp x, pexp (mkList fc xs)]
 
 
 {- | Parses an alternative expression
@@ -466,10 +467,10 @@ matchApp syn = do ty <- simpleExpr syn
                   symbol "<=="
                   fc <- getFC
                   f <- fnName
-                  return (PLet (MN 0 "match")
+                  return (PLet (sMN 0 "match")
                                 ty
                                 (PMatchApp fc f)
-                                (PRef fc (MN 0 "match")))
+                                (PRef fc (sMN 0 "match")))
                <?> "matching application expression"
 
 {- | Parses a unification log expression
@@ -483,6 +484,19 @@ unifyLog syn = do lchar '%'; reserved "unifyLog";
                   return (PUnifyLog tm)
                <?> "unification log expression"
 
+{- | Parses a disambiguation expression 
+Disamb ::=
+  '%' 'disamb' NameList Expr
+  ;
+-}
+disamb :: SyntaxInfo -> IdrisParser PTerm
+disamb syn = do reserved "with";
+                ns <- sepBy1 name (lchar ',')
+                tm <- expr' syn
+                return (PDisamb (map tons ns) tm)
+               <?> "unification log expression"
+  where tons (NS n s) = txt (show n) : s
+        tons n = [txt (show n)]
 {- | Parses a no implicits expression
 @
 NoImplicits ::=
@@ -512,12 +526,12 @@ app syn = do f <- reserved "mkForeign"
              i <- get
              -- mkForeign f args ==>
              -- liftPrimIO (\w => mkForeignPrim f args w)
-             let ap = PApp fc (PRef fc (UN "liftPrimIO"))
-                       [pexp (PLam (MN 0 "w")
+             let ap = PApp fc (PRef fc (sUN "liftPrimIO"))
+                       [pexp (PLam (sMN 0 "w")
                              Placeholder
-                             (PApp fc (PRef fc (UN "mkForeignPrim"))
+                             (PApp fc (PRef fc (sUN "mkForeignPrim"))
                                          (fn : args ++
-                                            [pexp (PRef fc (MN 0 "w"))])))]
+                                            [pexp (PRef fc (sMN 0 "w"))])))]
              return (dslify i ap)
 
        <|> do f <- simpleExpr syn
@@ -566,7 +580,7 @@ implicitArg syn = do lchar '{'
                      v <- option (PRef fc n) (do lchar '='
                                                  expr syn)
                      lchar '}'
-                     return (pimp n v False)
+                     return (pimp n v True)
                   <?> "implicit function argument"
 
 {-| Parses a constraint argument (for selecting a named type class instance)
@@ -611,8 +625,8 @@ recordType syn
          rec <- optional (simpleExpr syn)
          case rec of
             Nothing ->
-                return (PLam (MN 0 "fldx") Placeholder
-                            (applyAll fc fields (PRef fc (MN 0 "fldx"))))
+                return (PLam (sMN 0 "fldx") Placeholder
+                            (applyAll fc fields (PRef fc (sMN 0 "fldx"))))
             Just v -> return (applyAll fc fields v)
        <?> "record setting expression"
    where fieldType :: IdrisParser (Name, PTerm)
@@ -628,8 +642,8 @@ recordType syn
 
 -- | Creates setters for record types on necessary functions
 mkType :: Name -> Name
-mkType (UN n) = UN ("set_" ++ n)
-mkType (MN 0 n) = MN 0 ("set_" ++ n)
+mkType (UN n) = sUN ("set_" ++ str n)
+mkType (MN 0 n) = sMN 0 ("set_" ++ str n)
 mkType (NS n s) = NS (mkType n) s
 
 {- | Parses a type signature
@@ -645,7 +659,7 @@ TypeExpr ::= ConstraintList? Expr;
 typeExpr :: SyntaxInfo -> IdrisParser PTerm
 typeExpr syn = do cs <- if implicitAllowed syn then constraintList syn else return []
                   sc <- expr syn
-                  return (bindList (PPi constraint) (map (\x -> (MN 0 "c", x)) cs) sc)
+                  return (bindList (PPi constraint) (map (\x -> (sMN 0 "constrarg", x)) cs) sc)
                <?> "type signature"
 
 {- | Parses a lambda expression
@@ -678,8 +692,8 @@ lambda syn = do lchar '\\'
     where pmList :: [(Int, (FC, PTerm))] -> PTerm -> PTerm
           pmList [] sc = sc
           pmList ((i, (fc, x)) : xs) sc
-                = PLam (MN i "lamp") Placeholder
-                        (PCase fc (PRef fc (MN i "lamp"))
+                = PLam (sMN i "lamp") Placeholder
+                        (PCase fc (PRef fc (sMN i "lamp"))
                                 [(x, pmList xs sc)])
 
 {- | Parses a term rewrite expression
@@ -696,7 +710,7 @@ rewriteTerm syn = do reserved "rewrite"
                      giving <- optional (do symbol "==>"; expr' syn)
                      reserved "in";  sc <- expr syn
                      return (PRewrite fc
-                             (PApp fc (PRef fc (UN "sym")) [pexp prf]) sc
+                             (PApp fc (PRef fc (sUN "sym")) [pexp prf]) sc
                                giving)
                   <?> "term rewrite expression"
 
@@ -861,7 +875,7 @@ tyOptDeclList syn = sepBy1 (do x <- nameOrPlaceholder
     where  nameOrPlaceholder :: IdrisParser Name
            nameOrPlaceholder = fnName
                            <|> do symbol "_"
-                                  return (MN 0 "underscore")
+                                  return (sMN 0 "underscore")
                            <?> "name or placeholder"
 
 {- | Parses a list comprehension
@@ -885,11 +899,11 @@ comprehension syn
          qs <- sepBy1 (do_ syn) (lchar ',')
          lchar ']'
          return (PDoBlock (map addGuard qs ++
-                    [DoExp fc (PApp fc (PRef fc (UN "return"))
+                    [DoExp fc (PApp fc (PRef fc (sUN "return"))
                                  [pexp pat])]))
       <?> "list comprehension"
     where addGuard :: PDo -> PDo
-          addGuard (DoExp fc e) = DoExp fc (PApp fc (PRef fc (UN "guard"))
+          addGuard (DoExp fc e) = DoExp fc (PApp fc (PRef fc (sUN "guard"))
                                                     [pexp e])
           addGuard x = x
 

@@ -80,31 +80,33 @@ repl :: IState -- ^ The initial state
      -> [FilePath] -- ^ The loaded modules
      -> InputT Idris ()
 repl orig mods
-   = H.catch
-      (do let quiet = opt_quiet (idris_options orig)
-          i <- lift getIState
-          let colour = idris_colourRepl i
-          let theme = idris_colourTheme i
-          let mvs = idris_metavars i
-          let prompt = if quiet
-                          then ""
-                          else showMVs colour theme mvs ++
-                               let str = mkPrompt mods ++ ">" in
-                               (if colour then colourisePrompt theme str else str) ++ " "
-          x <- getInputLine prompt
-          case x of
-              Nothing -> do lift $ when (not quiet) (iputStrLn "Bye bye")
-                            return ()
-              Just input -> H.catch
-                              (do ms <- lift $ processInput input orig mods
-                                  case ms of
-                                      Just mods -> repl orig mods
-                                      Nothing -> return ())
-                              ctrlC)
-      ctrlC
-   where ctrlC :: SomeException -> InputT Idris ()
-         ctrlC e = do lift $ iputStrLn (show e)
-                      repl orig mods
+   = -- H.catch
+     do let quiet = opt_quiet (idris_options orig)
+        i <- lift getIState
+        let colour = idris_colourRepl i
+        let theme = idris_colourTheme i
+        let mvs = idris_metavars i
+        let prompt = if quiet
+                        then ""
+                        else showMVs colour theme mvs ++
+                             let str = mkPrompt mods ++ ">" in
+                             (if colour then colourisePrompt theme str else str) ++ " "
+        x <- H.catch (getInputLine prompt)
+                     (ctrlC (return Nothing))
+        case x of
+            Nothing -> do lift $ when (not quiet) (iputStrLn "Bye bye")
+                          return ()
+            Just input -> -- H.catch
+                do ms <- H.catch (lift $ processInput input orig mods)
+                                 (ctrlC (return (Just mods))) 
+                   case ms of
+                        Just mods -> repl orig mods
+                        Nothing -> return ()
+--                             ctrlC)
+--       ctrlC
+   where ctrlC :: InputT Idris a -> SomeException -> InputT Idris a
+         ctrlC act e = do lift $ iputStrLn (show e)
+                          act -- repl orig mods
 
          showMVs c thm [] = ""
          showMVs c thm ms = "Metavariables: " ++ 
@@ -245,19 +247,19 @@ ideslave orig mods
                             Just x -> iPrintError $ "didn't load " ++ filename
                           ideslave orig [filename]
                      Just (IdeSlave.TypeOf name) ->
-                       process stdout "(ideslave)" (Check (PRef (FC "(ideslave)" 0 0) (UN name)))
+                       process stdout "(ideslave)" (Check (PRef (FC "(ideslave)" 0 0) (sUN name)))
                      Just (IdeSlave.CaseSplit line name) ->
-                       process stdout fn (CaseSplitAt False line (UN name))
+                       process stdout fn (CaseSplitAt False line (sUN name))
                      Just (IdeSlave.AddClause line name) ->
-                       process stdout fn (AddClauseFrom False line (UN name))
+                       process stdout fn (AddClauseFrom False line (sUN name))
                      Just (IdeSlave.AddProofClause line name) ->
-                       process stdout fn (AddProofClauseFrom False line (UN name))
+                       process stdout fn (AddProofClauseFrom False line (sUN name))
                      Just (IdeSlave.AddMissing line name) ->
-                       process stdout fn (AddMissing False line (UN name))
+                       process stdout fn (AddMissing False line (sUN name))
                      Just (IdeSlave.MakeWithBlock line name) ->
-                       process stdout fn (MakeWith False line (UN name))
+                       process stdout fn (MakeWith False line (sUN name))
                      Just (IdeSlave.ProofSearch line name hints) ->
-                       process stdout fn (DoProofSearch False line (UN name) (map UN hints))
+                       process stdout fn (DoProofSearch False line (sUN name) (map sUN hints))
                      Nothing -> do iPrintError "did not understand")
                (\e -> do iPrintError $ show e))
          (\e -> do iPrintError $ show e)
@@ -406,6 +408,7 @@ edit f orig
                           , idris_colourTheme = idris_colourTheme i
                           }
          loadInputs stdout [f]
+--          clearOrigPats
          iucheck
          return ()
    where getEditor env | Just ed <- lookup "EDITOR" env = ed
@@ -441,7 +444,7 @@ process h fn (Eval t)
                                             let tm' = force (normaliseAll ctxt [] tm)
                                             let ty' = force (normaliseAll ctxt [] ty)
                                             -- Add value to context, call it "it"
-                                            updateContext (addCtxtDef (UN "it") (Function ty' tm'))
+                                            updateContext (addCtxtDef (sUN "it") (Function ty' tm'))
                                             ist <- getIState
                                             logLvl 3 $ "Raw: " ++ show (tm', ty')
                                             logLvl 10 $ "Debug: " ++ showEnvDbg [] tm'
@@ -482,7 +485,7 @@ process h fn (Check (PRef _ n))
                = let current = "  " ++
                                (case n of
                                    MN _ _ -> "_"
-                                   UN ('_':'_':_) -> "_"
+                                   UN nm | ('_':'_':_) <- str nm -> "_"
                                    _ -> showName (Just ist) [] False c n) ++
                                " : " ++ showImp (Just ist) imp c t ++ "\n"
                  in
@@ -849,8 +852,8 @@ process h fn (TestInline t)
 process h fn Execute
                    = do (m, _) <- elabVal toplevel False
                                         (PApp fc
-                                           (PRef fc (UN "run__IO"))
-                                           [pexp $ PRef fc (NS (UN "main") ["Main"])])
+                                           (PRef fc (sUN "run__IO"))
+                                           [pexp $ PRef fc (sNS (sUN "main") ["Main"])])
 --                                      (PRef (FC "main" 0) (NS (UN "main") ["main"]))
                         (tmpn, tmph) <- runIO tempfile
                         runIO $ hClose tmph
@@ -861,8 +864,8 @@ process h fn Execute
   where fc = fileFC "main"
 process h fn (Compile codegen f)
       = do (m, _) <- elabVal toplevel False
-                       (PApp fc (PRef fc (UN "run__IO"))
-                       [pexp $ PRef fc (NS (UN "main") ["Main"])])
+                       (PApp fc (PRef fc (sUN "run__IO"))
+                       [pexp $ PRef fc (sNS (sUN "main") ["Main"])])
            compile codegen f m
   where fc = fileFC "main"
 process h fn (LogLvl i) = setLogLevel i
@@ -1005,11 +1008,14 @@ parseArgs ("--verbose":ns)       = Verbose : (parseArgs ns)
 parseArgs ("--ibcsubdir":n:ns)   = IBCSubDir n : (parseArgs ns)
 parseArgs ("-i":n:ns)            = ImportDir n : (parseArgs ns)
 parseArgs ("--warn":ns)          = WarnOnly : (parseArgs ns)
+-- Package Related options
 parseArgs ("--package":n:ns)     = Pkg n : (parseArgs ns)
 parseArgs ("-p":n:ns)            = Pkg n : (parseArgs ns)
 parseArgs ("--build":n:ns)       = PkgBuild n : (parseArgs ns)
 parseArgs ("--install":n:ns)     = PkgInstall n : (parseArgs ns)
 parseArgs ("--clean":n:ns)       = PkgClean n : (parseArgs ns)
+parseArgs ("--checkpkg":n:ns)    = PkgCheck n : (parseArgs ns)
+-- Misc Options
 parseArgs ("--bytecode":n:ns)    = NoREPL : BCAsm n : (parseArgs ns)
 parseArgs ("-S":ns)              = OutputTy Raw : (parseArgs ns)
 parseArgs ("-c":ns)              = OutputTy Object : (parseArgs ns)
@@ -1101,12 +1107,13 @@ loadInputs h inputs
                    when (not loadCode) $ tryLoad $ nub (concat ifiles)
               _ -> return ()
            putIState inew)
-        (\e -> do case e of
+        (\e -> do i <- getIState
+                  case e of
                     At f _ -> do setErrLine (fc_line f)
                                  iputStrLn (show e)
                     ProgramLineComment -> return () -- fail elsewhere
                     _ -> do setErrLine 3 -- FIXME! Propagate it
-                            iputStrLn (show e))
+                            iputStrLn (pshow i e))
    where -- load all files, stop if any fail
          tryLoad :: [IFileType] -> Idris ()
          tryLoad [] = return ()
@@ -1192,8 +1199,8 @@ idrisMain opts =
        when (not (NoPrelude `elem` opts)) $ do x <- loadModule stdout "Prelude"
                                                return ()
        when (runrepl && not quiet && not idesl && not (isJust script) && not nobanner) $ iputStrLn banner
-       ist <- getIState
 
+       orig <- getIState
        loadInputs stdout inputs
 
        runIO $ hSetBuffering stdout LineBuffering
@@ -1217,10 +1224,11 @@ idrisMain opts =
        historyFile <- fmap (</> "repl" </> "history") getIdrisUserDataDir
 
        when (runrepl && not idesl) $ do
+--          clearOrigPats
          initScript
-         startServer ist inputs
-         runInputT (replSettings (Just historyFile)) $ repl ist inputs
-       when (idesl) $ ideslaveStart ist inputs
+         startServer orig inputs
+         runInputT (replSettings (Just historyFile)) $ repl orig inputs
+       when (idesl) $ ideslaveStart orig inputs
        ok <- noErrors
        when (not ok) $ runIO (exitWith (ExitFailure 1))
   where
@@ -1321,6 +1329,10 @@ getPkg _ = Nothing
 getPkgClean :: Opt -> Maybe String
 getPkgClean (PkgClean str) = Just str
 getPkgClean _ = Nothing
+
+getPkgCheck :: Opt -> Maybe String
+getPkgCheck (PkgCheck str) = Just str
+getPkgCheck _              = Nothing
 
 getCodegen :: Opt -> Maybe Codegen
 getCodegen (UseCodegen x) = Just x

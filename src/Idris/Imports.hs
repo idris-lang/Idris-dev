@@ -7,7 +7,7 @@ import Paths_idris
 
 import System.FilePath
 import System.Directory
-import Control.Monad.State
+import Control.Monad.State.Strict
 
 data IFileType = IDR FilePath | LIDR FilePath | IBC FilePath IFileType
     deriving (Show, Eq)

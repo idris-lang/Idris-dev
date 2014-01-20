@@ -18,13 +18,16 @@
      programs with implicit syntax into fully explicit terms.
 -}
 
-module Idris.Core.TT where
+module Idris.Core.TT(module Idris.Core.TT, module Idris.Core.TC) where
 
-import Control.Monad.State
+import Idris.Core.TC
+
+import Control.Monad.State.Strict
 import Control.Monad.Trans.Error (Error(..))
 import Debug.Trace
-import qualified Data.Map as Map
+import qualified Data.Map.Strict as Map
 import Data.Char
+import qualified Data.Text as T
 import Data.List
 import Data.Vector.Unboxed (Vector)
 import qualified Data.Vector.Unboxed as V
@@ -162,7 +165,7 @@ instance Show Err where
                                       ++ show e ++ " in " ++ show sc ++ " " ++ show i
     show (Inaccessible n) = show n ++ " is not an accessible pattern variable"
     show (ProviderError msg) = "Type provider error: " ++ msg
-    show (LoadingFailed fn e) = "Loading " ++ fn ++ " failed: " ++ show e
+    show (LoadingFailed fn e) = "Loading " ++ fn ++ " failed: (TT) " ++ show e
     show ProgramLineComment = "Program line next to comment"
     show (At f e) = show f ++ ":" ++ show e
     show _ = "Error"
@@ -182,13 +185,11 @@ instance Pretty Err where
   pretty _ = text "Error"
 
 instance Error Err where
-  strMsg = Msg
+  strMsg = InternalMsg
 
-data TC a = OK a
-          | Error Err
-  deriving (Eq, Functor)
+type TC = TC' Err
 
-instance Pretty a => Pretty (TC a) where
+instance (Pretty a) => Pretty (TC a) where
   pretty (OK ok) = pretty ok
   pretty (Error err) =
     if size err > breakingSize then
@@ -200,28 +201,15 @@ instance Show a => Show (TC a) where
     show (OK x) = show x
     show (Error str) = "Error: " ++ show str
 
--- at some point, this instance should also carry type checking options
--- (e.g. Type:Type)
-
-instance Monad TC where
-    return = OK
-    x >>= k = case x of
-                OK v -> k v
-                Error e -> Error e
-    fail e = Error (InternalMsg e)
-
 tfail :: Err -> TC a
 tfail e = Error e
+
+failMsg :: String -> TC a
+failMsg str = Error (Msg str)
 
 trun :: FC -> TC a -> TC a
 trun fc (OK a)    = OK a
 trun fc (Error e) = Error (At fc e)
-
-instance MonadPlus TC where
-    mzero = fail "Unknown error"
-    (OK x) `mplus` _ = OK x
-    _ `mplus` (OK y) = OK y
-    err `mplus` _    = err
 
 discard :: Monad m => m a -> m ()
 discard f = f >> return ()
@@ -240,20 +228,44 @@ traceWhen False _  a = a
 
 -- | Names are hierarchies of strings, describing scope (so no danger of
 -- duplicate names, but need to be careful on lookup).
-data Name = UN String -- ^ User-provided name
-          | NS Name [String] -- ^ Root, namespaces
-          | MN Int String -- ^ Machine chosen names
+data Name = UN T.Text -- ^ User-provided name
+          | NS Name [T.Text] -- ^ Root, namespaces
+          | MN Int T.Text -- ^ Machine chosen names
           | NErased -- ^ Name of somethng which is never used in scope
           | SN SpecialName -- ^ Decorated function names
+          | SymRef Int -- ^ Reference to IBC file symbol table (used during serialisation)
   deriving (Eq, Ord)
+
+txt :: String -> T.Text
+txt = T.pack
+
+str :: T.Text -> String
+str = T.unpack
+
+tnull :: T.Text -> Bool
+tnull = T.null
+
+thead :: T.Text -> Char
+thead = T.head
+
+-- Smart constructors for names, using old String style
+sUN :: String -> Name
+sUN s = UN (txt s)
+
+sNS :: Name -> [String] -> Name
+sNS n ss = NS n (map txt ss)
+
+sMN :: Int -> String -> Name
+sMN i s = MN i (txt s)
+
 {-!
 deriving instance Binary Name
 deriving instance NFData Name
 !-}
 
 data SpecialName = WhereN Int Name Name
-                 | InstanceN Name [String]
-                 | ParentN Name String
+                 | InstanceN Name [T.Text]
+                 | ParentN Name T.Text
                  | MethodN Name
                  | CaseN Name
                  | ElimN Name
@@ -263,6 +275,12 @@ deriving instance Binary SpecialName
 deriving instance NFData SpecialName
 !-}
 
+sInstanceN :: Name -> [String] -> SpecialName
+sInstanceN n ss = InstanceN n (map T.pack ss)
+
+sParentN :: Name -> String -> SpecialName
+sParentN n s = ParentN n (T.pack s)
+
 instance Sized Name where
   size (UN n)     = 1
   size (NS n els) = 1 + length els
@@ -270,36 +288,36 @@ instance Sized Name where
   size _ = 1
 
 instance Pretty Name where
-  pretty (UN n) = text n
+  pretty (UN n) = text (T.unpack n)
   pretty (NS n s) = pretty n
-  pretty (MN i s) = lbrace <+> text s <+> (text . show $ i) <+> rbrace
+  pretty (MN i s) = lbrace <+> text (T.unpack s) <+> (text . show $ i) <+> rbrace
   pretty (SN s) = text (show s)
 
 instance Show Name where
-    show (UN n) = n
-    show (NS n s) = showSep "." (reverse s) ++ "." ++ show n
-    show (MN _ "underscore") = "_"
-    show (MN i s) = "{" ++ s ++ show i ++ "}"
+    show (UN n) = str n
+    show (NS n s) = showSep "." (map T.unpack (reverse s)) ++ "." ++ show n
+    show (MN _ u) | u == txt "underscore" = "_"
+    show (MN i s) = "{" ++ str s ++ show i ++ "}"
     show (SN s) = show s
     show NErased = "_"
 
 instance Show SpecialName where
     show (WhereN i p c) = show p ++ ", " ++ show c
-    show (InstanceN cl inst) = showSep ", " inst ++ " instance of " ++ show cl
+    show (InstanceN cl inst) = showSep ", " (map T.unpack inst) ++ " instance of " ++ show cl
     show (MethodN m) = "method " ++ show m
-    show (ParentN p c) = show p ++ "#" ++ c
+    show (ParentN p c) = show p ++ "#" ++ T.unpack c
     show (CaseN n) = "case block in " ++ show n
     show (ElimN n) = "<<" ++ show n ++ " eliminator>>"
 
 -- Show a name in a way decorated for code generation, not human reading
 showCG :: Name -> String
-showCG (UN n) = n
-showCG (NS n s) = showSep "." (reverse s) ++ "." ++ showCG n
-showCG (MN _ "underscore") = "_"
-showCG (MN i s) = "{" ++ s ++ show i ++ "}"
+showCG (UN n) = T.unpack n
+showCG (NS n s) = showSep "." (map T.unpack (reverse s)) ++ "." ++ showCG n
+showCG (MN _ u) | u == txt "underscore" = "_"
+showCG (MN i s) = "{" ++ T.unpack s ++ show i ++ "}"
 showCG (SN s) = showCG' s
   where showCG' (WhereN i p c) = showCG p ++ ":" ++ showCG c ++ ":" ++ show i
-        showCG' (InstanceN cl inst) = '@':showCG cl ++ '$':showSep ":" inst
+        showCG' (InstanceN cl inst) = '@':showCG cl ++ '$':showSep ":" (map T.unpack inst)
         showCG' (MethodN m) = '!':showCG m
         showCG' (ParentN p c) = showCG p ++ "#" ++ show c
         showCG' (CaseN c) = showCG c ++ "_case"
@@ -312,7 +330,11 @@ showCG NErased = "_"
 type Ctxt a = Map.Map Name (Map.Map Name a)
 emptyContext = Map.empty
 
-tcname (UN ('@':_)) = True
+mapCtxt :: (a -> b) -> Ctxt a -> Ctxt b
+mapCtxt = fmap . fmap
+
+tcname (UN xs) | T.null xs = False
+               | otherwise = T.head xs == '@'
 tcname (NS n _) = tcname n
 tcname (SN (InstanceN _ _)) = True
 tcname (SN (MethodN _)) = True
@@ -320,7 +342,8 @@ tcname (SN (ParentN _ _)) = True
 tcname _ = False
 
 implicitable (NS n _) = implicitable n
-implicitable (UN (x:xs)) = isLower x
+implicitable (UN xs) | T.null xs = False
+                     | otherwise = isLower (T.head xs)
 implicitable (MN _ _) = True
 implicitable _ = False
 
@@ -480,19 +503,19 @@ deriving instance NFData Raw
 !-}
 
 -- | All binding forms are represented in a unform fashion.
-data Binder b = Lam   { binderTy  :: b {-^ type annotation for bound variable-}}
-              | Pi    { binderTy  :: b }
-              | Let   { binderTy  :: b,
+data Binder b = Lam   { binderTy  :: !b {-^ type annotation for bound variable-}}
+              | Pi    { binderTy  :: !b }
+              | Let   { binderTy  :: !b,
                         binderVal :: b {-^ value for bound variable-}}
-              | NLet  { binderTy  :: b,
+              | NLet  { binderTy  :: !b,
                         binderVal :: b }
-              | Hole  { binderTy  :: b}
+              | Hole  { binderTy  :: !b}
               | GHole { envlen :: Int,
-                        binderTy  :: b}
-              | Guess { binderTy  :: b,
+                        binderTy  :: !b}
+              | Guess { binderTy  :: !b,
                         binderVal :: b }
-              | PVar  { binderTy  :: b }
-              | PVTy  { binderTy  :: b }
+              | PVar  { binderTy  :: !b }
+              | PVTy  { binderTy  :: !b }
   deriving (Show, Eq, Ord, Functor)
 {-!
 deriving instance Binary Binder
@@ -593,12 +616,12 @@ instance Eq NameType where
 
 -- | Terms in the core language
 data TT n = P NameType n (TT n) -- ^ named references
-          | V Int -- ^ a resolved de Bruijn-indexed variable
-          | Bind n (Binder (TT n)) (TT n) -- ^ a binding
-          | App (TT n) (TT n) -- ^ function, function type, arg
+          | V !Int -- ^ a resolved de Bruijn-indexed variable
+          | Bind n !(Binder (TT n)) (TT n) -- ^ a binding
+          | App !(TT n) (TT n) -- ^ function, function type, arg
           | Constant Const -- ^ constant
-          | Proj (TT n) Int -- ^ argument projection; runtime only
-                            -- (-1) is a special case for 'subtract one from BI'
+          | Proj (TT n) !Int -- ^ argument projection; runtime only
+                             -- (-1) is a special case for 'subtract one from BI'
           | Erased -- ^ an erased term
           | Impossible -- ^ special case for totality checking
           | TType UExp -- ^ the type of types at some level
@@ -621,10 +644,10 @@ instance TermSize (TT Name) where
        | otherwise = 1
     termsize n (V _) = 1
     termsize n (Bind n' (Let t v) sc)
-       = let rn = if n == n' then MN 0 "noname" else n in
+       = let rn = if n == n' then sMN 0 "noname" else n in
              termsize rn v + termsize rn sc
     termsize n (Bind n' b sc)
-       = let rn = if n == n' then MN 0 "noname" else n in
+       = let rn = if n == n' then sMN 0 "noname" else n in
              termsize rn sc
     termsize n (App f a) = termsize n f + termsize n a
     termsize n (Proj t i) = termsize n t
@@ -653,8 +676,8 @@ data Datatype n = Data { d_typename :: n,
 instance Eq n => Eq (TT n) where
     (==) (P xt x _)     (P yt y _)     = x == y
     (==) (V x)          (V y)          = x == y
-    (==) (Bind _ xb xs) (Bind _ yb ys) = xb == yb && xs == ys
-    (==) (App fx ax)    (App fy ay)    = fx == fy && ax == ay
+    (==) (Bind _ xb xs) (Bind _ yb ys) = xs == ys && xb == yb
+    (==) (App fx ax)    (App fy ay)    = ax == ay && fx == fy
     (==) (TType _)        (TType _)        = True -- deal with constraints later
     (==) (Constant x)   (Constant y)   = x == y
     (==) (Proj x i)     (Proj y j)     = x == y && i == j
@@ -754,8 +777,27 @@ finalise (Bind x b sc) = Bind x (fmap finalise b) (pToV x (finalise sc))
 finalise (App f a) = App (finalise f) (finalise a)
 finalise t = t
 
+-- Once we've finished checking everything about a term we no longer need
+-- the type on the 'P' so erase it so save memory
+
+pEraseType :: TT n -> TT n
+pEraseType (P nt t _) = P nt t Erased
+pEraseType (App f a) = App (pEraseType f) (pEraseType a)
+pEraseType (Bind n b sc) = Bind n (fmap pEraseType b) (pEraseType sc)
+pEraseType t = t
+
 subst :: Eq n => n -> TT n -> TT n -> TT n
 subst n v tm = instantiate v (pToV n tm)
+
+-- If there are no Vs in the term (i.e. in proof state)
+psubst :: Eq n => n -> TT n -> TT n -> TT n
+psubst n v tm = s' tm where
+   s' (P _ x _) | n == x = v
+   s' (Bind x b sc) | n == x = Bind x (fmap s' b) sc
+                    | otherwise = Bind x (fmap s' b) (s' sc)
+   s' (App f a) = App (s' f) (s' a)
+   s' (Proj t idx) = Proj (s' t) idx
+   s' t = t
 
 substNames :: Eq n => [(n, TT n)] -> TT n -> TT n
 substNames []             t = t
@@ -821,8 +863,9 @@ forget tm = fe [] tm
   where
     fe env (P _ n _) = Var n
     fe env (V i)     = Var (env !! i)
-    fe env (Bind n b sc) = RBind n (fmap (fe env) b)
-                                   (fe (n:env) sc)
+    fe env (Bind n b sc) = let n' = uniqueName n env in
+                               RBind n' (fmap (fe env) b)
+                                        (fe (n':env) sc)
     fe env (App f a) = RApp (fe env f) (fe env a)
     fe env (Constant c)
                      = RConstant c
@@ -865,13 +908,13 @@ uniqueBinders ns t = t
 
 nextName (NS x s)    = NS (nextName x) s
 nextName (MN i n)    = MN (i+1) n
-nextName (UN x) = let (num', nm') = span isDigit (reverse x)
-                      nm = reverse nm'
-                      num = readN (reverse num') in
-                          UN (nm ++ show (num+1))
+nextName (UN x) = let (num', nm') = T.span isDigit (T.reverse x)
+                      nm = T.reverse nm'
+                      num = readN (T.reverse num') in
+                          UN (nm `T.append` txt (show (num+1)))
   where
-    readN "" = 0
-    readN x  = read x
+    readN x | not (T.null x) = read (T.unpack x)
+    readN x = 0
 nextName (SN x) = SN (nextName' x)
   where
     nextName' (WhereN i f x) = WhereN i f (nextName x)
@@ -1016,7 +1059,7 @@ pureTerm (Bind n b sc) = notClassName n && pureBinder b && pureTerm sc where
     pureBinder (Let t v) = pureTerm t && pureTerm v
     pureBinder t = pureTerm (binderTy t)
 
-    notClassName (MN _ "class") = False
+    notClassName (MN _ c) | c == txt "class" = False
     notClassName _ = True
 
 pureTerm _ = True

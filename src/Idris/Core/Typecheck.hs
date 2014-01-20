@@ -88,7 +88,7 @@ check' holes ctxt env top = chk env top where
     -- make sure bound names in function types are locally unique, machine
     -- generated names, we'll be fine.
     -- NOTE: now replaced with 'uniqueBinders' above
-    where renameBinders i (Bind x (Pi s) t) = Bind (MN i "binder") (Pi s)
+    where renameBinders i (Bind x (Pi s) t) = Bind (sMN i "binder") (Pi s)
                                                    (renameBinders (i+1) t)
           renameBinders i sc = sc
   chk env RType

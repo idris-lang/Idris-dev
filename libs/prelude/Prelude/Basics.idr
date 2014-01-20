@@ -33,11 +33,9 @@ infixl 9 .
 flip : (a -> b -> c) -> b -> a -> c
 flip f x y = f y x
 
-infixr 1 $
-
 -- | Function application.
-($) : (a -> b) -> a -> b
-f $ a = f a
+apply : (a -> b) -> a -> b
+apply f a = f a
 
 cong : {f : t -> u} -> (a = b) -> f a = f b
 cong refl = refl

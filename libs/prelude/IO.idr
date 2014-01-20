@@ -1,3 +1,5 @@
+%unqualified
+
 import Prelude.List
 
 %access public

@@ -12,7 +12,7 @@ import Idris.Core.Constraints
 
 import System.Console.Haskeline
 import System.Console.Haskeline.MonadException
-import Control.Monad.State
+import Control.Monad.State.Strict
 import Control.Monad.Error (throwError, catchError)
 import System.IO.Error(isUserError, ioeGetErrorString)
 import Data.Char

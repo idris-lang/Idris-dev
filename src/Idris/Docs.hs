@@ -107,7 +107,7 @@ docFun n
 
        return (Doc n docstr args (delab i ty) f)
        where funName :: Name -> String
-             funName (UN n)   = n
+             funName (UN n)   = str n
              funName (NS n _) = funName n
 
 

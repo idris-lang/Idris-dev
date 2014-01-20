@@ -54,7 +54,7 @@ specType args ty = let (t, args') = runState (unifyEq args ty) [] in
               sc' <- unifyEq xs sc
               return (Bind n (Pi t) sc')
     unifyEq xs t = do args <- get
-                      put (args ++ (zip xs (repeat (UN "_"))))
+                      put (args ++ (zip xs (repeat (sUN "_"))))
                       return t
 
 mkPE_TyDecl :: IState -> [(PEArgType, Term)] -> Type -> PTerm
@@ -122,7 +122,7 @@ getSpecApps ist env tm = ga env (explicitNames tm) where
          | x && imparg imp = (ImplicitS, tm)
          | x = (ExplicitS, tm)
          | imparg imp = (ImplicitD, tm)
-         | otherwise = (ExplicitD, (P Ref (UN (show n ++ "arg")) Erased))
+         | otherwise = (ExplicitD, (P Ref (sUN (show n ++ "arg")) Erased))
 
     imparg (PExp _ _ _ _) = False
     imparg _ = True

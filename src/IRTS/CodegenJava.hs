@@ -369,13 +369,13 @@ addMainMethod decls
   | otherwise = decls
   where
     findMain ((MemberDecl (MemberClassDecl (ClassDecl _ name _ _ _ (ClassBody body)))):_)
-      | name == mangle' (UN "Main") = findMainMethod body
+      | name == mangle' (sUN "Main") = findMainMethod body
     findMain (_:decls) = findMain decls
     findMain [] = False
 
-    innerMainMethod = (either error id $ mangle (UN "main"))
+    innerMainMethod = (either error id $ mangle (sUN "main"))
     findMainMethod ((MemberDecl (MethodDecl _ _ _ name [] _ _)):_)
-      | name == mangle' (UN "main") = True
+      | name == mangle' (sUN "main") = True
     findMainMethod (_:decls) = findMainMethod decls
     findMainMethod [] = False
 
@@ -390,7 +390,7 @@ mkMainMethod =
               $ call "idris_initArgs" [ (threadType ~> "currentThread") []
                                       , jConst "args"
                                       ]
-            , BlockStmt . ExpStmt $ call (mangle' (MN 0 "runMain")) []
+            , BlockStmt . ExpStmt $ call (mangle' (sMN 0 "runMain")) []
             ]
 
 -----------------------------------------------------------------------
@@ -749,6 +749,6 @@ mkPrimitiveFunction op args =
 
 mkThread :: LVar -> CodeGeneration Exp
 mkThread arg =
-  (\ closure -> (closure ~> "fork") []) <$> mkMethodCallClosure (MN 0 "EVAL") [arg]
+  (\ closure -> (closure ~> "fork") []) <$> mkMethodCallClosure (sMN 0 "EVAL") [arg]
 
 
