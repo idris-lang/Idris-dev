@@ -197,7 +197,7 @@ findUnusedArgs names = do
         = let directuse = args!!j `elem` usedns
               garg      = getFargpos calls (args!!j, j)
               recused   = map getUsed garg
-          in directuse || null recused || or recused
+          in directuse || or recused
           -- used on any route from here, or not used recursively
 
         | otherwise = True
