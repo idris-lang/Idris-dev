@@ -1,12 +1,12 @@
 module Data.Rel
 
-import Data.FunN
+import Data.Fun
 
 --------------------------------------------------------------------------------
 -- Build an n-ary relation type from a Vect of Types
 --------------------------------------------------------------------------------
 Rel : Vect n Type -> Type
-Rel ts = FunN ts Type
+Rel ts = Fun ts Type
 
 liftRel : (ts : Vect n Type) -> (p : Rel ts) -> (Type -> Type) -> Type
 liftRel [] p f = f p

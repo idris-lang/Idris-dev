@@ -1,8 +1,8 @@
-module Data.FunN
+module Data.Fun
 
 --------------------------------------------------------------------------------
 -- Build an n-ary function type from a Vect of Types and a result type
 --------------------------------------------------------------------------------
-FunN : Vect n Type -> Type -> Type
-FunN [] r = r
-FunN (t::ts) r = t -> FunN ts r
+Fun : Vect n Type -> Type -> Type
+Fun [] r = r
+Fun (t::ts) r = t -> Fun ts r
