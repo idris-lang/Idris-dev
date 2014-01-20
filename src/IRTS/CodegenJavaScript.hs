@@ -780,7 +780,7 @@ translateConstant c =
 
 translateDeclaration :: (String, SDecl) -> JS
 translateDeclaration (path, SFun name params stackSize body)
-  | (MN _ ap)        <- name
+  | (MN _ ap)             <- name
   , (SLet var val next)   <- body
   , (SChkCase cvar cases) <- next
   , ap == txt "APPLY" =
@@ -802,7 +802,7 @@ translateDeclaration (path, SFun name params stackSize body)
                 )
               ]
 
-  | (MN _ ev)        <- name
+  | (MN _ ev)            <- name
   , (SChkCase var cases) <- body
   , ev == txt "EVAL" =
     JSSeq [ lookupTable [] var cases
