@@ -532,12 +532,16 @@ ferror (FHandle h) = do err <- do_ferror h
 partial
 nullPtr : Ptr -> IO Bool
 nullPtr p = do ok <- mkForeign (FFun "isNull" [FPtr] FInt) p
-               return (ok /= 0);
+               return (ok /= 0)
 
 partial
 nullStr : String -> IO Bool
 nullStr p = do ok <- mkForeign (FFun "isNull" [FString] FInt) p
-               return (ok /= 0);
+               return (ok /= 0)
+
+eqPtr : Ptr -> Ptr -> IO Bool
+eqPtr x y = do eq <- mkForeign (FFun "idris_eqPtr" [FPtr, FPtr] FInt) x y
+               return (eq /= 0)
 
 partial
 validFile : File -> IO Bool
