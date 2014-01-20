@@ -143,6 +143,10 @@ unifyLog :: Bool -> Elab' aux ()
 unifyLog log = do ES (ps, a) l p <- get
                   put (ES (ps { unifylog = log }, a) l p)
 
+getUnifyLog :: Elab' aux Bool
+getUnifyLog = do ES (ps, a) l p <- get
+                 return (unifylog ps)
+
 processTactic' t = do ES (p, a) logs prev <- get
                       (p', log) <- lift $ processTactic t p
                       put (ES (p', a) (logs ++ log) prev)

@@ -708,9 +708,10 @@ resolveTC depth topg fn ist
       = do hnf_compute
            g <- goal
            ptm <- get_term
+           ulog <- getUnifyLog
            hs <- get_holes
-           if True -- all (\n -> not (n `elem` hs)) (freeNames g)
-            then try' (trivial' ist)
+           traceWhen ulog ("Resolving class " ++ show g) $ 
+            try' (trivial' ist)
                 (do t <- goal
                     let (tc, ttypes) = unApply t
                     scopeOnly <- needsDefault t tc ttypes
@@ -718,16 +719,8 @@ resolveTC depth topg fn ist
                     let insts = if scopeOnly then filter chaser insts_in
                                     else insts_in
                     tm <- get_term
---                    traceWhen (depth > 6) ("GOAL: " ++ show t ++ "\nTERM: " ++ show tm) $
---                        (tryAll (map elabTC (map fst (ctxtAlist (tt_ctxt ist)))))
---                     if scopeOnly then fail "Can't resolve" else
                     let depth' = if scopeOnly then 2 else depth
                     blunderbuss t depth' insts) True
-            else do try' (trivial' ist)
-                         (do g <- goal
-                             fail $ "Can't resolve " ++ show g) True
---             tm <- get_term
---                     fail $ "Can't resolve yet in " ++ show tm
   where
     elabTC n | n /= fn && tcname n = (resolve n depth, show n)
              | otherwise = (fail "Can't resolve", show n)
@@ -775,8 +768,8 @@ resolveTC depth topg fn ist
                                 [args] -> map isImp (snd args) -- won't be overloaded!
                 ps <- get_probs
                 tm <- get_term
-                args <- try' (match_apply (Var n) imps)
-                             (apply (Var n) imps) True
+                args <- try' (apply (Var n) imps)
+                             (match_apply (Var n) imps) True
                 ps' <- get_probs
                 when (length ps < length ps') $ fail "Can't apply type class"
 --                 traceWhen (all boundVar ttypes) ("Progress: " ++ show t ++ " with " ++ show n) $
@@ -788,7 +781,9 @@ resolveTC depth topg fn ist
                       (filter (\ (x, y) -> not x) (zip (map fst imps) args))
                 -- if there's any arguments left, we've failed to resolve
                 hs <- get_holes
-                solve
+                ulog <- getUnifyLog
+                solve 
+                traceWhen ulog ("Got " ++ show n) $ return ()
        where isImp (PImp p _ _ _ _ _) = (True, p)
              isImp arg = (False, priority arg)
 
@@ -1026,7 +1021,7 @@ runTac autoSolve ist tac
                                           else fail "Wrong goal type"
                                     _ -> fail "Wrong goal type"
     runT ProofState = do g <- goal
-                         trace (show g) $ return ()
+                         return ()
     runT x = fail $ "Not implemented " ++ show x
 
     runReflected t = do t' <- reify ist t
