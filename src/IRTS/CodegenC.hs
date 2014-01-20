@@ -10,6 +10,7 @@ import Idris.Core.TT
 import Paths_idris
 import Util.System
 
+import Numeric
 import Data.Char
 import Data.List (intercalate)
 import System.Process
@@ -104,6 +105,22 @@ toC f code
                  indent 1 ++ "INITFRAME;\n" ++
                  concatMap (bcc 1) code ++ "}\n\n"
 
+showCStr :: String -> String
+showCStr s = '"' : foldr ((++) . showChar) "\"" s
+  where
+    showChar :: Char -> String
+    showChar '"'  = "\\\""
+    showChar '\\' = "\\\\"
+    showChar c
+        -- Note: we need the double quotes around the codes because otherwise
+        -- "\n3" would get encoded as "\x0a3", which is incorrect.
+        -- Instead, we opt for "\x0a""3" and let the C compiler deal with it.
+        | ord c < 0x10  = "\"\"\\x0" ++ showHex (ord c) "\"\""
+        | ord c < 0x20  = "\"\"\\x"  ++ showHex (ord c) "\"\""
+        | ord c < 0x7f  = [c]    -- 0x7f = \DEL
+        | ord c < 0x100 = "\"\"\\x"  ++ showHex (ord c) "\"\""
+        | otherwise = error $ "non-8-bit character in string literal: " ++ show c
+
 bcc :: Int -> BC -> String
 bcc i (ASSIGN l r) = indent i ++ creg l ++ " = " ++ creg r ++ ";\n"
 bcc i (ASSIGNCONST l c)
@@ -114,7 +131,7 @@ bcc i (ASSIGNCONST l c)
                    | otherwise = "MKBIGC(vm,\"" ++ show i ++ "\")"
     mkConst (Fl f) = "MKFLOAT(vm, " ++ show f ++ ")"
     mkConst (Ch c) = "MKINT(" ++ show (fromEnum c) ++ ")"
-    mkConst (Str s) = "MKSTR(vm, " ++ show s ++ ")"
+    mkConst (Str s) = "MKSTR(vm, " ++ showCStr s ++ ")"
     mkConst (B8  x) = "idris_b8const(vm, "  ++ show x ++ ")"
     mkConst (B16 x) = "idris_b16const(vm, " ++ show x ++ ")"
     mkConst (B32 x) = "idris_b32const(vm, " ++ show x ++ ")"

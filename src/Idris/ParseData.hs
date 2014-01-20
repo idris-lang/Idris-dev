@@ -49,7 +49,7 @@ record syn = do (doc, acc) <- try (do
                 ty <- typeExpr (allowImp syn)
                 let tyn = expandNS syn tyn_in
                 reserved "where"
-                (cdoc, cn, cty, _) <- indentedBlockS (constructor syn)
+                (cdoc, cn, cty, _, _) <- indentedBlockS (constructor syn)
                 accData acc tyn [cn]
                 let rsyn = syn { syn_namespace = show (nsroot tyn) :
                                                     syn_namespace syn }
@@ -113,7 +113,7 @@ data_ syn = do (doc, acc, dataOpts) <- try (do
                    option (PData doc syn fc dataOpts (PLaterdecl tyn ty)) (do
                      reserved "where"
                      cons <- indentedBlock (constructor syn)
-                     accData acc tyn (map (\ (_, n, _, _) -> n) cons)
+                     accData acc tyn (map (\ (_, n, _, _, _) -> n) cons)
                      return $ PData doc syn fc dataOpts (PDatadecl tyn ty cons))) <|> (do
                     args <- many name
                     let ty = bindArgs (map (const PType) args) PType
@@ -133,10 +133,10 @@ data_ syn = do (doc, acc, dataOpts) <- try (do
                       cons <- sepBy1 (simpleConstructor syn) (lchar '|')
                       terminator
                       let conty = mkPApp fc (PRef fc tyn) (map (PRef fc) args)
-                      cons' <- mapM (\ (doc, x, cargs, cfc) ->
+                      cons' <- mapM (\ (doc, x, cargs, cfc, fs) ->
                                    do let cty = bindArgs cargs conty
-                                      return (doc, x, cty, cfc)) cons
-                      accData acc tyn (map (\ (_, n, _, _) -> n) cons')
+                                      return (doc, x, cty, cfc, fs)) cons
+                      accData acc tyn (map (\ (_, n, _, _, _) -> n) cons')
                       return $ PData doc syn fc dataOpts (PDatadecl tyn ty cons')))
            <?> "data type declaration"
   where
@@ -152,20 +152,24 @@ data_ syn = do (doc, acc, dataOpts) <- try (do
 {- | Parses a type constructor declaration
   Constructor ::= DocComment? FnName TypeSig;
 -}
-constructor :: SyntaxInfo -> IdrisParser (String, Name, PTerm, FC)
+constructor :: SyntaxInfo -> IdrisParser (String, Name, PTerm, FC, [Name])
 constructor syn
     = do doc <- option "" (docComment '|')
          cn_in <- fnName; fc <- getFC
          let cn = expandNS syn cn_in
          lchar ':'
+         -- FIXME: 'forcenames' is an almighty hack! Need a better way of
+         -- erasing non-forceable things
+         fs <- option [] (do lchar '%'; reserved "erase"
+                             sepBy1 name (lchar ','))
          ty <- typeExpr (allowImp syn)
-         return (doc, cn, ty, fc)
+         return (doc, cn, ty, fc, fs)
       <?> "constructor"
 
 {- | Parses a constructor for simple discriminative union data types
   SimpleConstructor ::= FnName SimpleExpr* DocComment?
 -}
-simpleConstructor :: SyntaxInfo -> IdrisParser (String, Name, [PTerm], FC)
+simpleConstructor :: SyntaxInfo -> IdrisParser (String, Name, [PTerm], FC, [Name])
 simpleConstructor syn
      = do cn_in <- fnName
           let cn = expandNS syn cn_in
@@ -173,7 +177,7 @@ simpleConstructor syn
           args <- many (do notEndApp
                            simpleExpr syn)
           doc <- option "" (docComment '^')
-          return (doc, cn, args, fc)
+          return (doc, cn, args, fc, [])
        <?> "constructor"
 
 {- | Parses a dsl block declaration

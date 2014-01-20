@@ -23,6 +23,7 @@ traceUnused n
                    recused <- mapM (\ (argn, i, (g, j)) ->
                                         do u <- used [(n, i)] g j
                                            return (argn, u)) fargs
+                   logLvl 4 $ show n ++ " recused TRACE: " ++ show recused
                    let fused = nub $ usedns ++ map fst (filter snd recused)
                    logLvl 1 $ show n ++ " used args: " ++ show fused
                    let unusedpos = mapMaybe (getUnused fused) (zip [0..] args)
@@ -50,7 +51,7 @@ used path g j
                             recused <- mapM (\ (argn, j, (g', j')) ->
                                            used ((g,j):path) g' j') garg
                             -- used on any route from here, or not used recursively
-                            return (directuse || null recused || or recused)
+                            return (directuse || or recused)
                _ -> return True -- no definition, assume used
 
 getFargpos :: [(Name, [[Name]])] -> (Name, Int) -> [(Name, Int, (Name, Int))]

@@ -157,6 +157,7 @@ directUse (Bind n (Let t v) sc) = nub $ directUse v ++ (directUse sc \\ [n])
 directUse (Bind n b sc) = nub $ directUse (binderTy b) ++ (directUse sc \\ [n])
 directUse fn@(App f a)
     | (P Ref n _, args) <- unApply fn = [] -- need to know what n does with them
+    | (P (TCon _ _) n _, args) <- unApply fn = [] -- type constructors not used at runtime 
     | otherwise = nub $ directUse f ++ directUse a
 directUse (Proj x i) = nub $ directUse x
 directUse _ = []

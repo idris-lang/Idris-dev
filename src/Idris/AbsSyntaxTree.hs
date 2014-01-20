@@ -478,7 +478,7 @@ deriving instance NFData PClause'
 -- | Data declaration
 data PData' t  = PDatadecl { d_name :: Name, -- ^ The name of the datatype
                              d_tcon :: t, -- ^ Type constructor
-                             d_cons :: [(String, Name, t, FC)] -- ^ Constructors
+                             d_cons :: [(String, Name, t, FC, [Name])] -- ^ Constructors
                            }
                  -- ^ Data declaration
                | PLaterdecl { d_name :: Name, d_tcon :: t }
@@ -505,7 +505,7 @@ declared (PPostulate _ _ _ _ n t) = [n]
 declared (PClauses _ _ n _) = [] -- not a declaration
 declared (PCAF _ n _) = [n]
 declared (PData _ _ _ _ (PDatadecl n _ ts)) = n : map fstt ts
-   where fstt (_, a, _, _) = a
+   where fstt (_, a, _, _, _) = a
 declared (PData _ _ _ _ (PLaterdecl n _)) = [n]
 declared (PParams _ _ ds) = concatMap declared ds
 declared (PNamespace _ ds) = concatMap declared ds
@@ -525,7 +525,7 @@ tldeclared (PPostulate _ _ _ _ n t) = [n]
 tldeclared (PClauses _ _ n _) = [] -- not a declaration
 tldeclared (PRecord _ _ _ n _ _ c _) = [n, c]
 tldeclared (PData _ _ _ _ (PDatadecl n _ ts)) = n : map fstt ts
-   where fstt (_, a, _, _) = a
+   where fstt (_, a, _, _, _) = a
 tldeclared (PParams _ _ ds) = []
 tldeclared (PMutual _ ds) = concatMap tldeclared ds
 tldeclared (PNamespace _ ds) = concatMap tldeclared ds
@@ -540,7 +540,7 @@ defined (PPostulate _ _ _ _ n t) = []
 defined (PClauses _ _ n _) = [n] -- not a declaration
 defined (PCAF _ n _) = [n]
 defined (PData _ _ _ _ (PDatadecl n _ ts)) = n : map fstt ts
-   where fstt (_, a, _, _) = a
+   where fstt (_, a, _, _, _) = a
 defined (PData _ _ _ _ (PLaterdecl n _)) = []
 defined (PParams _ _ ds) = concatMap defined ds
 defined (PNamespace _ ds) = concatMap defined ds
@@ -945,7 +945,7 @@ showDImp :: Bool -> PData -> String
 showDImp impl (PDatadecl n ty cons)
    = "data " ++ show n ++ " : " ++ showImp Nothing impl False ty ++ " where\n\t"
      ++ showSep "\n\t| "
-            (map (\ (_, n, t, _) -> show n ++ " : " ++ showImp Nothing impl False t) cons)
+            (map (\ (_, n, t, _, _) -> show n ++ " : " ++ showImp Nothing impl False t) cons)
 
 getImps :: [PArg] -> [(Name, PTerm)]
 getImps [] = []
