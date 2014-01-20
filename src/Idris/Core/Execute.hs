@@ -316,7 +316,7 @@ execApp' env ctxt f@(EP _ fp _) args@(ty:fn:xs)
          Nothing -> fail $ "Could not call foreign function \"" ++ f ++
                            "\" with args " ++ show args
          Just r -> return (mkEApp r xs')
-      | otherwise = return (mkEApp f args)
+      | fp == mkfprim = return (mkEApp f args)
 
 execApp' env ctxt c@(EP (DCon _ arity) n _) args =
     do args' <- mapM tryForce (take arity args)
@@ -501,7 +501,7 @@ foreignFromTT t = case (unApplyV t) of
                            argFTy <- sequence $ map getFTy argTy
                            retFTy <- getFTy ret
                            return $ FFun name argFTy retFTy
-                    _ -> trace ("failed to construct ffun") Nothing
+                    _ -> Nothing
 
 getFTy :: ExecVal -> Maybe FType
 getFTy (EApp (EP _ (UN fi) _) (EP _ (UN intTy) _)) 
