@@ -41,16 +41,15 @@ compile codegen f tm
    = do checkMVs
         let tmnames = namesUsed (STerm tm)
         usedIn <- mapM (allNames []) tmnames
-        let used = [sUN "prim__subBigInt", sUN "prim__addBigInt"] : usedIn
-        defsIn <- mkDecls tm (concat used)
-        findUnusedArgs (concat used)
+        let used = sUN "prim__subBigInt" : sUN "prim__addBigInt"] : concat usedIn
+        defsIn <- mkDecls tm used
+        findUnusedArgs used
 
         -- TODO: DEBUG-ONLY, remove
         ist <- getIState
-        let depGraph = buildDepGraph (tt_ctxt ist) (idris_callgraph ist) (concat used)
-        let usedCtorArgs = findUsed (tt_ctxt ist) (idris_callgraph ist) (concat used)
-        iLOG $ "DEPGRAPH:\n" ++ unlines (map show . M.toList $ usedCtorArgs)
-        iLOG $ "USED CTOR ARGS:\n" ++ unlines (map show . M.toList $ usedCtorArgs)
+        let usedF = findUsed (tt_ctxt ist) (idris_callgraph ist) used
+        iLOG $ "USAGE ANALYSIS:\n" ++ unlines (map show . M.toList $ usedF)
+        -- END TODO
         
         maindef <- irMain tm
         objs <- getObjectFiles codegen
