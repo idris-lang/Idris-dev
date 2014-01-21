@@ -314,6 +314,9 @@ jsSubst var new (JSIndex obj field) =
 jsSubst var new (JSCond conds) =
   JSCond (map ((jsSubst var new) *** (jsSubst var new)) conds)
 
+jsSubst var new (JSAssign lhs rhs) =
+  JSAssign (jsSubst var new lhs) (jsSubst var new rhs)
+
 jsSubst _ _ js = js
 
 
@@ -328,16 +331,24 @@ isJSConstant js
   | otherwise = False
 
 inlineJS :: JS -> JS
+inlineJS (JSReturn (JSApp (JSFunction ["cse"] body) [val@(JSVar _)])) =
+  inlineJS $ jsSubst "cse" val body
+
+inlineJS (JSReturn (JSApp (JSFunction [arg] cond@(JSCond _)) [val])) =
+  JSSeq [ JSAlloc arg (Just (inlineJS val))
+        , inlineJS cond
+        ]
+
 inlineJS (JSApp (JSProj (JSFunction args (JSReturn body)) "apply") [
-    JSThis,JSProj (JSIdent var) "vars"
+    JSThis,JSProj var "vars"
   ])
-  | var /= "cse" =
-    inlineApply args body 0
+  | var /= JSIdent "cse" =
+      inlineApply args body 0
   where
-    inlineApply []     body _ = body
+    inlineApply []     body _ = inlineJS body
     inlineApply (a:as) body n =
       inlineApply as (
-        jsSubst a (JSIndex (JSProj (JSIdent var) "vars") (JSNum (JSInt n))) body
+        jsSubst a (JSIndex (JSProj var "vars") (JSNum (JSInt n))) body
       ) (n + 1)
 
 inlineJS (JSApp (JSIdent "__IDR__mEVAL0") [val])
@@ -347,9 +358,6 @@ inlineJS (JSApp (JSIdent "__IDRRT__tailcall") [
     JSFunction [] (JSReturn val)
   ])
   | isJSConstant val = val
-
-inlineJS (JSApp (JSFunction [] (JSSeq ret)) []) =
-  JSApp (JSFunction [] (JSSeq (map inlineJS ret))) []
 
 inlineJS (JSApp (JSFunction [arg] (JSReturn ret)) [val])
   | JSNew con [tag, vals] <- ret
