@@ -28,8 +28,25 @@ import Data.IntMap (IntMap)
 -- UseMap maps names to the set of used (reachable) argument positions.
 type UseMap = Map Name IntSet
 
-type Deps = IntMap (Set (Name, Int))
+-- DepMap maps functions (only functions) to their Deps.
 type DepMap = Map Name Deps
+
+-- Deps of a function is a map from argument index
+-- to all usages of the argument, including conditions
+-- and which constructor fields the particular usage touched.
+type Deps = IntMap (Set (Ctors, Cond))
+
+-- "Condition" is the conjunction
+-- of elementary assumptions along the path from the root.
+-- Elementary assumption (f, i) means that "function f uses the argument i".
+type Cond = Set (Name, Int)
+
+-- "Ctors" is the set of pairs (ctor_name, arg_no) saying
+-- which constructor fields have been accessed to obtain the variable.
+type Ctors = Set (Name, Int)
+
+-- Just a translation from name to argument number.
+type VarMap = Map Name (Int, Ctors)
 
 findUsed :: Context -> Ctxt CGInfo -> [Name] -> DepMap
 findUsed ctx cg ns = M.fromList [(n, getDeps n) | n <- ns]
@@ -41,10 +58,55 @@ findUsed ctx cg ns = M.fromList [(n, getDeps n) | n <- ns]
         _     -> error $ "erasure checker: ambiguous name: " ++ show n
 
     getDepsDef :: Def -> Deps
-    getDepsDef (Function ty t) = IM.empty
+    getDepsDef (Function ty t) = error "a function encountered"  -- TODO
     getDepsDef (TyDecl   ty t) = IM.empty
     getDepsDef (Operator ty n f) = IM.empty
-    getDepsDef (CaseOp ci ty tys def tot cdefs) = IM.empty
+    getDepsDef (CaseOp ci ty tys def tot cdefs)
+        = getDepsSC varMap S.empty S.empty sc
+      where
+        varMap = M.fromList [(v, (i, S.empty)) | (i,v) <- zip [0..] vars]
+        (vars, sc) = cases_compiletime cdefs  -- TODO: or cases_runtime?
+
+    getDepsSC :: VarMap -> Cond -> SC -> Deps
+    getDepsSC vs cd  ImpossibleCase     = IM.empty
+    getDepsSC vs cd (UnmatchedCase msg) = IM.empty
+    getDepsSC vs cd (ProjCase t alt)    = getDepsAlt vs cd alt
+    getDepsSC vs cd (STerm    t)        = getDepsTerm vs cd t
+    getDepsSC vs cd (Case     n alts)   = unionMap (getDepsAlt vs cd cs) alts
+      where
+        cs = fromMaybe (error $ "nonpatvar in case: " ++ show n) (M.lookup n vs)
+
+    getDepsAlt :: VarMap -> Cond -> (Int, Ctors) -> CaseAlt -> Deps
+    getDepsAlt vs cd cs (FnCase n ns sc) = error "an FnCase encountered"  -- TODO: what's this?
+    getDepsAlt vs cd cs (ConstCase c sc) = error "a ConstCase encountered"
+    getDepsAlt vs cd cs (SucCase   n sc) = error "a SucCase encountered"
+    getDepsAlt vs cd cs (DefaultCase sc) = error "a DefaultCase encountered"
+    getDepsAlt vs cd (i, cs) (ConCase n cnt ns sc)
+        = getDepsSC (vs' `M.union` vs) cd sc  -- left-biased union
+      where
+        vs' = M.fromList [(n, (i, S.insert (n,j) cs)) | (n,j) <- zip ns [0..]]
+
+    getDepsTerm :: VarMap -> Cond -> Term -> Deps
+    getDepsTerm vs cd t = IM.empty
+
+{-
+data TT n = P NameType n (TT n) -- ^ named references
+          | V !Int -- ^ a resolved de Bruijn-indexed variable
+          | Bind n !(Binder (TT n)) (TT n) -- ^ a binding
+          | App !(TT n) (TT n) -- ^ function, function type, arg
+          | Constant Const -- ^ constant
+          | Proj (TT n) !Int -- ^ argument projection; runtime only
+                             -- (-1) is a special case for 'subtract one from BI'
+          | Erased -- ^ an erased term
+          | Impossible -- ^ special case for totality checking
+          | TType UExp -- ^ the type of types at some level
+-}
+
+    unions :: [Deps] -> Deps
+    unions = IM.unionsWith S.union
+
+    unionMap :: (a -> Deps) -> [a] -> Deps
+    unionMap f = unions . map f
 
 {-
 buildDepGraph :: Context -> Ctxt CGInfo -> [Name] -> DepGraph
@@ -102,7 +164,7 @@ buildDepGraph ctx cg = unionMap (findDepsDef cg <*> getDef ctx)
         [ findDepsTerm cg vars (tn,ta) (instantiate v body)
         , findDepsTerm cg vars (tn,ta) t
         ]
-    findDepsterm cg vars (tn,ta) (Bind n b body) = union
+    findDepsTerm cg vars (tn,ta) (Bind n b body) = union
         [ findDepsTerm cg (M.delete n vars) (tn,ta) body
         , findDepsTerm cg vars (tn,ta) (binderTy b)
         ]
