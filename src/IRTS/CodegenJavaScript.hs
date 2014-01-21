@@ -438,6 +438,96 @@ reduceJS js = reduceLoop [] ([], js)
 funName :: JS -> String
 funName (JSAlloc fun _) = fun
 
+initConstructors :: [JS] -> [JS]
+initConstructors js =
+    let tags = nub $ sort $ concat (map getTags js) in
+      map createConstant tags ++ replaceConstructors tags js
+      where
+        getTags :: JS -> [Int]
+        getTags (JSNew "__IDRRT__Con" [JSNum (JSInt tag), JSArray []]) = [tag]
+
+        getTags (JSNew _ args) = concatMap getTags args
+
+        getTags (JSFunction _ body) = getTags body
+
+        getTags (JSReturn ret) = getTags ret
+
+        getTags (JSApp lhs rhs) = getTags lhs ++ concatMap getTags rhs
+
+        getTags (JSSeq seq) = concatMap getTags seq
+
+        getTags (JSOp _ lhs rhs) = getTags lhs ++ getTags rhs
+
+        getTags (JSProj obj _) = getTags obj
+
+        getTags (JSArray vals) = concatMap getTags vals
+
+        getTags (JSAssign lhs rhs) = getTags lhs ++ getTags rhs
+
+        getTags (JSAlloc _ (Just val)) = getTags val
+
+        getTags (JSCond conds) =
+          concatMap (uncurry (++)) $ map (getTags *** getTags) conds
+
+        getTags (JSTernary c t f) = getTags c ++ getTags t ++ getTags f
+
+        getTags js = []
+
+        replaceConstructors :: [Int] -> [JS] -> [JS]
+        replaceConstructors tags js = map (replaceHelper tags) js
+          where
+            replaceHelper :: [Int] -> JS -> JS
+            replaceHelper tags (JSNew "__IDRRT__Con" [JSNum (JSInt tag), JSArray []])
+              | tag `elem` tags = JSIdent ("__IDRCTR__" ++ show tag)
+
+            replaceHelper tags (JSNew con args) =
+              JSNew con $ map (replaceHelper tags) args
+
+            replaceHelper tags (JSFunction fun body) =
+              JSFunction fun (replaceHelper tags body)
+
+            replaceHelper tags (JSReturn ret) =
+              JSReturn (replaceHelper tags ret)
+
+            replaceHelper tags (JSApp lhs rhs) =
+              JSApp (replaceHelper tags lhs) (map (replaceHelper tags) rhs)
+
+            replaceHelper tags (JSSeq seq) =
+              JSSeq $ map (replaceHelper tags) seq
+
+            replaceHelper tags (JSOp op lhs rhs) =
+              JSOp op (replaceHelper tags lhs) (replaceHelper tags rhs)
+
+            replaceHelper tags (JSProj obj field) =
+              JSProj (replaceHelper tags obj) field
+
+            replaceHelper tags (JSArray vals) =
+              JSArray $ map (replaceHelper tags) vals
+
+            replaceHelper tags (JSAssign lhs rhs) =
+              JSAssign (replaceHelper tags lhs) (replaceHelper tags rhs)
+
+            replaceHelper tags (JSAlloc var (Just val)) =
+              JSAlloc var $ Just (replaceHelper tags val)
+
+            replaceHelper tags (JSCond conds) =
+              JSCond (map ((replaceHelper tags) *** (replaceHelper tags)) conds)
+
+            replaceHelper tags (JSTernary c t f) =
+              JSTernary (replaceHelper tags c) (
+                replaceHelper tags t
+              ) (
+                replaceHelper tags f
+              )
+
+            replaceHelper tags js = js
+
+        createConstant :: Int -> JS
+        createConstant tag =
+          JSAlloc ("__IDRCTR__" ++ show tag) (Just (
+            JSNew (idrRTNamespace ++ "Con") [JSNum (JSInt tag), JSArray []]
+          ))
+
 removeIDs :: [JS] -> [JS]
 removeIDs js =
   case partition isID js of
@@ -659,7 +749,7 @@ codegenJavaScript target definitions filename outputType = do
 
     functions :: [String]
     functions =
-      map (compileJS . reduceConstants) ((reduceJS . removeIDs) $ map (optimizeJS . translateDeclaration) def)
+      map compileJS $ initConstructors (map reduceConstants ((reduceJS . removeIDs) $ map (optimizeJS . translateDeclaration) def))
 
     mainLoop :: String
     mainLoop = compileJS $
