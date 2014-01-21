@@ -887,15 +887,16 @@ translateDeclaration (path, SFun name params stackSize body)
         JSSeq [ lookupTable [(var, "chk")] var cases
               , jsDecl $ JSFunction ["fn0", "arg0"] (
                   JSSeq [ JSAlloc "__var_0" (Just $ JSIdent "fn0")
-                        , JSReturn $ jsLet (translateVariableName var) (
-                            translateExpression val
-                          ) (JSTernary (
-                               (JSVar var `jsInstanceOf` jsCon) `jsAnd`
-                               (hasProp lookupTableName (translateVariableName var))
-                            ) (JSIdent $
-                                 lookupTableName ++ lookup
-                              ) JSNull
-                            )
+                        , JSAlloc (translateVariableName var) (
+                            Just $ translateExpression val
+                          )
+                        , JSReturn $ (JSTernary (
+                             (JSVar var `jsInstanceOf` jsCon) `jsAnd`
+                             (hasProp lookupTableName (translateVariableName var))
+                          ) (JSIdent $
+                               lookupTableName ++ lookup
+                            ) JSNull
+                          )
                         ]
                 )
               ]
