@@ -28,37 +28,23 @@ import Data.IntMap (IntMap)
 -- UseMap maps names to the set of used (reachable) argument positions.
 type UseMap = Map Name IntSet
 
--- A dependency, potential edge in the dep graph.
--- Every dependency belongs to a certain Idris function.
--- For the effect to take place, the condition must be true.
-data Dep = Dep
-    -- Effect
-    { depArg    :: Int              -- | This argument of the function should be marked as used.
-    , depCtors  :: Set (Name, Int)  -- | These ctor fields should be marked as used.
-    , depTags   :: Set Name         -- | Tags of these ADTs should be marked as used.
+type Deps = IntMap (Set (Name, Int))
+type DepMap = Map Name Deps
 
-    -- Condition
-    , depGuards :: Set (Name, Int)  -- | All these arguments must be marked as used.
-    }
-    deriving (Eq, Ord, Show)
-
--- DepMap maps function names to their sets of dependencies.
-type DepMap = Map Name (Set Dep)
-
-findUsed :: Context -> Ctxt CGInfo -> [Name] -> UseMap
+findUsed :: Context -> Ctxt CGInfo -> [Name] -> DepMap
 findUsed ctx cg ns = M.fromList [(n, getDeps n) | n <- ns]
   where
-    getDeps :: Name -> Set Dep
+    getDeps :: Name -> Deps
     getDeps n = case lookupDef n ctx of
         [def] -> getDepsDef def
         []    -> error $ "erasure checker: unknown name: " ++ show n
         _     -> error $ "erasure checker: ambiguous name: " ++ show n
 
-    getDepsDef :: Def -> Set Dep
-    getDepsDef (Function ty t) = S.empty
-    getDepsDef (TyDecl   ty t) = S.empty
-    getDepsDef (Operator ty n f) = S.empty
-    getDepsDef (CaseOp ci ty tys def tot cdefs) = S.empty
+    getDepsDef :: Def -> Deps
+    getDepsDef (Function ty t) = IM.empty
+    getDepsDef (TyDecl   ty t) = IM.empty
+    getDepsDef (Operator ty n f) = IM.empty
+    getDepsDef (CaseOp ci ty tys def tot cdefs) = IM.empty
 
 {-
 buildDepGraph :: Context -> Ctxt CGInfo -> [Name] -> DepGraph

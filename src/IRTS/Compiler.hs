@@ -41,7 +41,7 @@ compile codegen f tm
    = do checkMVs
         let tmnames = namesUsed (STerm tm)
         usedIn <- mapM (allNames []) tmnames
-        let used = sUN "prim__subBigInt" : sUN "prim__addBigInt"] : concat usedIn
+        let used = sUN "prim__subBigInt" : sUN "prim__addBigInt" : concat usedIn
         defsIn <- mkDecls tm used
         findUnusedArgs used
 
