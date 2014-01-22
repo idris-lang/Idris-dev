@@ -744,7 +744,7 @@ process h fn (DoProofSearch updatefile l n hints)
             | length cs >= length n
               = case splitAt (length n) cs of
                      (mv, c:cs) ->
-                          if (isSpace c && mv == n)
+                          if ((isSpace c || c == ')' || c == '}') && mv == n)
                              then addBracket brack new ++ (c : cs)
                              else '?' : mv ++ c : updateMeta True cs n new
                      (mv, []) -> if (mv == n) then addBracket brack new else '?' : mv

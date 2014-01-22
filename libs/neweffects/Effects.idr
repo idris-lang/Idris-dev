@@ -253,9 +253,6 @@ runEnv env prog = eff env prog (\r, env => pure (r ** env))
 runPure : Env id xs -> Eff id a xs xs' -> a
 runPure env prog = eff env prog (\r, env => r)
 
--- runPureEnv : Env id xs -> Eff id a xs xs' -> (x : a ** Env id (xs' x))
--- runPureEnv env prog = eff env prog (%unifyLog (\r, env => id (r ** env)))
-
 runWith : (a -> m a) -> Env m xs -> Eff m a xs xs' -> m a
 runWith inj env prog = eff env prog (\r, env => inj r)
 
