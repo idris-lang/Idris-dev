@@ -96,7 +96,7 @@ Extra-source-files:
                        libs/effects/*.idr
 
                        libs/neweffects/Makefile
-                       libs/neweffects/effects.ipkg
+                       libs/neweffects/neweffects.ipkg
                        libs/neweffects/Effect/*.idr
                        libs/neweffects/*.idr
 
