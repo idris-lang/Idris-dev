@@ -153,13 +153,18 @@ elab ist info pattern opts fn tm
 
     local f = do e <- get_env
                  return (f `elem` map fst e)
-    
+
+    -- | Is a constant a type?
+    constType :: Const -> Bool
     constType (AType _) = True
     constType StrType = True
     constType PtrType = True
     constType VoidType = True
     constType _ = False
 
+    elab' :: (Bool, Bool, Bool)  -- ^ (in an argument, guarded, in a type)
+          -> PTerm -- ^ The term to elaborate
+          -> ElabD ()
     elab' ina (PNoImplicits t) = elab' ina t -- skip elabE step
     elab' ina PType           = do apply RType []; solve
     elab' (_,_,inty) (PConstant c) 
@@ -607,6 +612,14 @@ elab ist info pattern opts fn tm
          mkCoerce t n = let fc = fileFC "Coercion" in -- line never appears!
                             addImpl ist (PApp fc (PRef fc n) [pexp (PCoerced t)])
 
+    -- | Elaborate the arguments to a function
+    elabArgs :: (Bool, Bool, Bool) -- ^ (in an argument, guarded, in a type)
+             -> [Bool]
+             -> FC -- ^ Source location
+             -> Bool
+             -> [Name] -- ^ Names of arguments - these identify the holes to be filled
+             -> [(Bool, PTerm)] -- ^ (Laziness, argument)
+             -> ElabD ()
     elabArgs ina failed fc retry [] _
 --         | retry = let (ns, ts) = unzip (reverse failed) in
 --                       elabArgs ina [] False ns ts
