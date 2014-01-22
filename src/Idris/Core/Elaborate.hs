@@ -604,17 +604,24 @@ arg n tyhole = do ty <- unique_hole tyhole
                   forall n (Var ty)
 
 -- try a tactic, if it adds any unification problem, return an error
-no_errors :: Elab' aux () -> Elab' aux ()
-no_errors tac
-   = do ps <- get_probs
-        tac
-        ps' <- get_probs
-        if (length ps' > length ps) then
-           case reverse ps' of
-                ((x,y,env,err) : _) ->
-                   let env' = map (\(x, b) -> (x, binderTy b)) env in
-                              lift $ tfail $ CantUnify False x y err env' 0
-           else return $! ()
+no_errors :: Elab' aux () -> Maybe Err -> Elab' aux ()
+no_errors tac err
+       = do ps <- get_probs
+            s <- get
+            case err of
+                 Nothing -> tac
+                 Just e -> -- update the error, if there is one.
+                     case runStateT tac s of
+                          Error _ -> lift $ Error e
+                          OK (a, s') -> do put s'
+                                           return a
+            ps' <- get_probs
+            if (length ps' > length ps) then
+               case reverse ps' of
+                    ((x,y,env,err) : _) ->
+                       let env' = map (\(x, b) -> (x, binderTy b)) env in
+                                  lift $ tfail $ CantUnify False x y err env' 0
+               else return $! ()
 
 -- Try a tactic, if it fails, try another
 try :: Elab' aux a -> Elab' aux a -> Elab' aux a
@@ -637,6 +644,7 @@ try' t1 t2 proofSearch
   where recoverableErr err@(CantUnify r x y _ _ _)
              = -- traceWhen r (show err) $
                r || proofSearch
+        recoverableErr (CantSolveGoal _ _) = False
         recoverableErr (ProofSearchFail _) = False
         recoverableErr _ = True
 

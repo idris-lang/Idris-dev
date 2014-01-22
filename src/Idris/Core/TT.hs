@@ -98,6 +98,7 @@ data Err = Msg String
                -- unification succeed
           | InfiniteUnify Name Term [(Name, Type)]
           | CantConvert Term Term [(Name, Type)]
+          | CantSolveGoal Term [(Name, Type)]
           | UnifyScope Name Name Term [(Name, Type)]
           | CantInferType String
           | NonFunctionType Term Term
@@ -155,6 +156,7 @@ score (CantUnify _ _ _ m _ s) = s + score m
 score (CantResolve _) = 20
 score (NoSuchVariable _) = 1000
 score (ProofSearchFail _) = 10000
+score (CantSolveGoal _ _) = 10000
 score (InternalMsg _) = -1
 score _ = 0
 
@@ -163,6 +165,7 @@ instance Show Err where
     show (InternalMsg s) = "Internal error: " ++ show s
     show (CantUnify _ l r e sc i) = "CantUnify " ++ show l ++ " " ++ show r ++ " "
                                       ++ show e ++ " in " ++ show sc ++ " " ++ show i
+    show (CantSolveGoal g _) = "CantSolve " ++ show g
     show (Inaccessible n) = show n ++ " is not an accessible pattern variable"
     show (ProviderError msg) = "Type provider error: " ++ msg
     show (LoadingFailed fn e) = "Loading " ++ fn ++ " failed: (TT) " ++ show e
