@@ -801,7 +801,14 @@ codegenJavaScript target definitions filename outputType = do
 
     functions :: [String]
     functions =
-      map (compileJS . removeAllocations) $ initConstructors (map reduceConstants ((reduceJS . removeIDs) $ map (optimizeJS . translateDeclaration) def))
+      let translated   = map translateDeclaration def
+          optimized    = map optimizeJS translated
+          idsRemoved   = removeIDs optimized
+          reduced      = reduceJS idsRemoved
+          constRemoved = map reduceConstants reduced
+          constrInit   = initConstructors constRemoved
+          js           = map removeAllocations constrInit in
+          map compileJS js
 
     mainLoop :: String
     mainLoop = compileJS $
