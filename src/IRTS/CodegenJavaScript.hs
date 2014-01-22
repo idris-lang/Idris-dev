@@ -317,7 +317,59 @@ jsSubst var new (JSCond conds) =
 jsSubst var new (JSAssign lhs rhs) =
   JSAssign (jsSubst var new lhs) (jsSubst var new rhs)
 
+jsSubst var new (JSAlloc val (Just js)) =
+  JSAlloc val (Just (jsSubst var new js))
+
 jsSubst _ _ js = js
+
+
+removeAllocations :: JS -> JS
+removeAllocations (JSSeq body) =
+  JSSeq $ removeHelper (map removeAllocations body)
+  where
+    removeHelper :: [JS] -> [JS]
+    removeHelper [js] = [js]
+    removeHelper ((JSAlloc name (Just val@(JSIdent _))):js) =
+      map (jsSubst name val) (removeHelper js)
+    removeHelper (j:js) = j : removeHelper js
+
+removeAllocations (JSFunction args body) =
+  JSFunction args $ removeAllocations body
+
+removeAllocations (JSReturn ret) =
+  JSReturn $ removeAllocations ret
+
+removeAllocations (JSApp fun args) =
+  JSApp (removeAllocations fun) (map removeAllocations args)
+
+removeAllocations (JSNew con args) =
+  JSNew con $ map removeAllocations args
+
+removeAllocations (JSOp op lhs rhs) =
+  JSOp op (removeAllocations lhs) (removeAllocations rhs)
+
+removeAllocations (JSProj obj field) =
+  JSProj (removeAllocations obj) field
+
+removeAllocations (JSArray vals) =
+  JSArray $ map removeAllocations vals
+
+removeAllocations (JSAssign lhs rhs) =
+  JSAssign (removeAllocations lhs) (removeAllocations rhs)
+
+removeAllocations (JSAlloc name (Just val)) =
+  JSAlloc name $ Just (removeAllocations val)
+
+removeAllocations (JSIndex val idx) =
+  JSIndex (removeAllocations val) (removeAllocations idx)
+
+removeAllocations (JSCond conds) =
+  JSCond $ map (removeAllocations *** removeAllocations) conds
+
+removeAllocations (JSTernary c t f) =
+  JSTernary (removeAllocations c) (removeAllocations t) (removeAllocations f)
+
+removeAllocations js = js
 
 
 isJSConstant :: JS -> Bool
@@ -749,7 +801,7 @@ codegenJavaScript target definitions filename outputType = do
 
     functions :: [String]
     functions =
-      map compileJS $ initConstructors (map reduceConstants ((reduceJS . removeIDs) $ map (optimizeJS . translateDeclaration) def))
+      map (compileJS . removeAllocations) $ initConstructors (map reduceConstants ((reduceJS . removeIDs) $ map (optimizeJS . translateDeclaration) def))
 
     mainLoop :: String
     mainLoop = compileJS $
