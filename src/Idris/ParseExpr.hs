@@ -1030,9 +1030,11 @@ constant =  do reserved "Integer";return (AType (ATInt ITBig))
         <?> "constant or literal"
 
 {- | Parses a verbatim multi-line string literal (triple-quoted)
+
 @
 VerbatimString_t ::=
-  '"""' ~'"""' '"""'
+  '\"\"\"' ~'\"\"\"' '\"\"\"'
+;
 @
  -}
 verbatimStringLiteral :: MonadicParsing m => m String
