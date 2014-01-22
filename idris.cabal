@@ -423,6 +423,7 @@ Library
                   Util.Pretty
                 , Util.System
                 , Util.Net
+                , Util.Zlib
 
                 , Pkg.PParser
 
