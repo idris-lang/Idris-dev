@@ -813,19 +813,20 @@ StringList ::=
 
 Directive ::= '%' Directive';
 
-Directive' ::= 'lib'      CodeGen String_t
-           |   'link'     CodeGen String_t
-           |   'flag'     CodeGen String_t
-           |   'include'  CodeGen String_t
-           |   'hide'     Name
-           |   'freeze'   Name
-           |   'access'   Accessibility
-           |   'default'  Totality
-           |   'logging'  Natural
-           |   'dynamic'  StringList
-           |   'name'     Name NameList
-           |   'language' 'TypeProviders'
-           |   'language' 'ErrorReflection'
+Directive' ::= 'lib'            CodeGen String_t
+           |   'link'           CodeGen String_t
+           |   'flag'           CodeGen String_t
+           |   'include'        CodeGen String_t
+           |   'hide'           Name
+           |   'freeze'         Name
+           |   'access'         Accessibility
+           |   'default'        Totality
+           |   'logging'        Natural
+           |   'dynamic'        StringList
+           |   'name'           Name NameList
+           |   'error_handlers' Name NameList
+           |   'language'       'TypeProviders'
+           |   'language'       'ErrorReflection'
            ;
 -}
 directive :: SyntaxInfo -> IdrisParser [PDecl]
@@ -870,16 +871,23 @@ directive syn = do try (lchar '%' *> reserved "lib"); cgn <- codegen_; lib <- st
                     ty <- iName []
                     ns <- sepBy1 name (lchar ',')
                     return [PDirective 
-                               (do i <- getIState
-                                   ty' <- case lookupCtxtName ty (idris_implicits i) of
-                                             [(tyn, _)] -> return tyn
-                                             [] -> throwError (NoSuchVariable ty)
-                                             tyns -> throwError (CantResolveAlts (map show (map fst tyns)))
+                               (do ty' <- disambiguate ty
                                    mapM_ (addNameHint ty') ns
-                                   mapM_ (\n -> addIBC (IBCNameHint (ty', n))) ns)] 
+                                   mapM_ (\n -> addIBC (IBCNameHint (ty', n))) ns)]
+             <|> do try (lchar '%' *> reserved "error_handlers")
+                    fn <- iName []
+                    ns <- sepBy1 name (lchar ',')
+                    return [PDirective $ do n' <- disambiguate fn
+                                            addFunctionErrorHandlers fn ns]
              <|> do try (lchar '%' *> reserved "language"); ext <- pLangExt;
                     return [PDirective (addLangExt ext)]
              <?> "directive"
+  where disambiguate :: Name -> Idris Name
+        disambiguate n = do i <- getIState
+                            case lookupCtxtName n (idris_implicits i) of
+                              [(n', _)] -> return n'
+                              []        -> throwError (NoSuchVariable n)
+                              more      -> throwError (CantResolveAlts (map (show . fst) more))
 
 pLangExt :: IdrisParser LanguageExt
 pLangExt = (reserved "TypeProviders" >> return TypeProviders)

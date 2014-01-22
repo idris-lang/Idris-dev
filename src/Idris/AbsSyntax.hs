@@ -26,6 +26,7 @@ import Data.Char
 import qualified Data.Text as T
 import Data.Either
 import Data.Maybe
+import qualified Data.Set as S
 import Data.Word (Word)
 
 import Debug.Trace
@@ -147,6 +148,15 @@ addToCG :: Name -> CGInfo -> Idris ()
 addToCG n cg
    = do i <- getIState
         putIState $ i { idris_callgraph = addDef n cg (idris_callgraph i) }
+
+-- | Adds hs as error handlers for n. If n is ambiguous, all matching ns are updated.
+addFunctionErrorHandlers :: Name -> [Name] -> Idris ()
+addFunctionErrorHandlers n hs = do i <- getIState
+                                   let currentHandlers = idris_function_errorhandlers i
+                                   let newHandlers = updateDef n
+                                                       (\handlers -> handlers `S.union` S.fromList hs)
+                                                       currentHandlers
+                                   putIState $ i { idris_function_errorhandlers = newHandlers  }
 
 -- Trace all the names in a call graph starting at the given name
 getAllNames :: Name -> Idris [Name]

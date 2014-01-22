@@ -427,8 +427,8 @@ elab ist info pattern opts fn tm
                            [] fc False ns' (map (\x -> (lazyarg x, getTm x)) eargs)
                     solve
                     ivs' <- get_instances
-            -- Attempt to resolve any type classes which have 'complete' types,
-            -- i.e. no holes in them
+                    -- Attempt to resolve any type classes which have 'complete' types,
+                    -- i.e. no holes in them
                     when (not pattern || (ina && not tcgen && not guarded)) $
                         mapM_ (\n -> do focus n
                                         g <- goal
@@ -638,13 +638,20 @@ elab ist info pattern opts fn tm
                      failed' <- -- trace (show (n, t, hs, tm)) $
                                 -- traceWhen (not (null cs)) (show ty ++ "\n" ++ showImp True t) $
                                 case n `elem` hs of
-                                   True ->
---                                       if r
---                                          then try (do focus n; elabE ina t; return failed)
---                                                   (return ((n,(lazy, t)):failed))
-                                         do focus n; elabE ina t; return failed
+                                   True -> do focus n; elabE ina t; return failed
                                    False -> return failed
                      elabArgs ina failed fc r ns args
+
+-- | Perform error reflection for functions with specific error handlers
+reflectFunctionErrors :: IState -> Name -> ElabD a -> ElabD a
+reflectFunctionErrors ist f action =
+  do elabState <- get
+     (result, newState) <- case runStateT action elabState of
+                             OK (res, newState) -> return (res, newState)
+                             Error e -> lift (tfail e) -- TODO: actual error reflection!
+     put newState
+     return result
+
 
 -- For every alternative, look at the function at the head. Automatically resolve
 -- any nested alternatives where that function is also at the head
