@@ -30,34 +30,54 @@ Please clean up any messes that you find, and don't leave behind new messes for 
 Idris developers and hackers try to adhere to something similar to the [successful git branching model](http://nvie.com/posts/a-successful-git-branching-model/).
 The steps are straightforward.
 
+### New contributors
+
 For those new to the project:
 
-1. Fork the `idris-dev` repo e.g.
+1. Fork our [main development repository](https://github.com/idris-lang/Idris-dev) `idris-dev` on github e.g.
+2. Clone your fork to your local machine:
 
-        $ git clone git@github.com/<your github user name>/Idris-dev.git
-        $ git remote add upstream git@github.com:idris-lang/Idris-dev.git
+```
+$ git clone git@github.com/<your github user name>/Idris-dev.git
+```
+
+3. Add `idris-lang/Idris-dev` as a remote upstream
+
+```
+$ git remote add upstream git@github.com:idris-lang/Idris-dev.git
+```
+
+### Existing Contributors
 
 For those already contributing to the project:
 
-1. Ensure your existing clone is up-to-date with current HEAD e.g.
+1. Ensure your existing clone is up-to-date with current `HEAD` e.g.
 
-        $ git fetch upstream
-        $ git merge upstream/master
+```
+$ git fetch upstream
+$ git merge upstream/master
+```
 
-The remaining steps are the same:
+### Remaining Steps
+
+The remaining steps are the same for both new and existing contributors:
 
 1. Create, and checkout onto, a topic branch on which to base you work.
   * This is typically the master branch.
   * For your own sanity, please avoid working on the `master` branch.
 
-        $ git branch fix/master/my_contrib master
-        $ git checkout fix/master/my_contrib
+```
+$ git branch fix/master/my_contrib master
+$ git checkout fix/master/my_contrib
+```
 
 1. Make commits of logical units.
 1. Check for unnecessary whitespace with
 
-        $ git diff --check
-    
+```
+$ git diff --check
+```
+
 1. Make sure your commit messages are along the lines of:
 
         Short (50 chars or less) summary of changes
@@ -79,11 +99,15 @@ The remaining steps are the same:
 1. Make sure you have added any necessary tests for your changes.
 1. Run all the tests to assure nothing else was accidentally broken.
 
-        $ make test
+```
+$ make test
+```
 
 1. Push your changes to a topic branch in your fork of the repository.
 
-        $ git push origin fix/master/my_contrib
+```
+$ git push origin fix/master/my_contrib
+```
 
 1. Go to GitHub and submit a pull request to `idris-dev`
 
