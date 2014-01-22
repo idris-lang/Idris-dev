@@ -24,6 +24,7 @@ import Control.Monad.Trans.Error
 
 import Data.List
 import Data.Char
+import qualified Data.Text as T
 import Data.Either
 import Data.Word (Word)
 
@@ -131,7 +132,9 @@ data IState = IState {
     idris_outputmode :: OutputMode,
     idris_colourRepl :: Bool,
     idris_colourTheme :: ColourTheme,
-    idris_outh :: Handle
+    idris_outh :: Handle,
+    idris_errorhandlers :: [Name],
+    idris_nameIdx :: (Int, Ctxt (Int, Name))
    }
 
 data SizeChange = Smaller | Same | Bigger | Unknown
@@ -154,10 +157,10 @@ deriving instance Binary CGInfo
 deriving instance NFData CGInfo
 !-}
 
-primDefs = [UN "unsafePerformPrimIO",
-            UN "mkLazyForeignPrim",
-            UN "mkForeignPrim",
-            UN "FalseElim"]
+primDefs = [sUN "unsafePerformPrimIO",
+            sUN "mkLazyForeignPrim",
+            sUN "mkForeignPrim",
+            sUN "FalseElim"]
 
 -- information that needs writing for the current module's .ibc file
 data IBCWrite = IBCFix FixDecl
@@ -189,13 +192,15 @@ data IBCWrite = IBCFix FixDecl
               | IBCLineApp FilePath Int PTerm
   deriving Show
 
+-- | The initial state for the compiler
+idrisInit :: IState
 idrisInit = IState initContext [] [] emptyContext emptyContext emptyContext
                    emptyContext emptyContext emptyContext emptyContext
                    emptyContext emptyContext emptyContext emptyContext
                    emptyContext
                    [] [] defaultOpts 6 [] [] [] [] [] [] [] [] [] [] [] []
                    [] Nothing Nothing [] [] [] Hidden False [] Nothing [] [] RawOutput
-                   True defaultTheme stdout
+                   True defaultTheme stdout [] (0, emptyContext)
 
 -- | The monad for the main REPL - reading and processing files and updating
 -- global state (hence the IO inner monad).
@@ -258,6 +263,7 @@ data Command = Quit
              | SetColour ColourType IdrisColour
              | ColourOn
              | ColourOff
+             | ListErrorHandlers
 
 data Opt = Filename String
          | Ver
@@ -289,6 +295,7 @@ data Opt = Filename String
          | PkgBuild String
          | PkgInstall String
          | PkgClean String
+         | PkgCheck String
          | WarnOnly
          | Pkg String
          | BCAsm String
@@ -380,6 +387,7 @@ data FnOpt = Inlinable -- always evaluate when simplifying
                         -- a function argument, and further evaluation resutls
            | Implicit -- implicit coercion
            | CExport String    -- export, with a C name
+           | ErrorHandler     -- ^^ an error handler for use with the ErrorReflection extension
            | Reflection -- a reflecting function, compile-time only
            | Specialise [(Name, Maybe Int)] -- specialise it, freeze these names
     deriving (Show, Eq)
@@ -470,7 +478,7 @@ deriving instance NFData PClause'
 -- | Data declaration
 data PData' t  = PDatadecl { d_name :: Name, -- ^ The name of the datatype
                              d_tcon :: t, -- ^ Type constructor
-                             d_cons :: [(String, Name, t, FC)] -- ^ Constructors
+                             d_cons :: [(String, Name, t, FC, [Name])] -- ^ Constructors
                            }
                  -- ^ Data declaration
                | PLaterdecl { d_name :: Name, d_tcon :: t }
@@ -497,7 +505,7 @@ declared (PPostulate _ _ _ _ n t) = [n]
 declared (PClauses _ _ n _) = [] -- not a declaration
 declared (PCAF _ n _) = [n]
 declared (PData _ _ _ _ (PDatadecl n _ ts)) = n : map fstt ts
-   where fstt (_, a, _, _) = a
+   where fstt (_, a, _, _, _) = a
 declared (PData _ _ _ _ (PLaterdecl n _)) = [n]
 declared (PParams _ _ ds) = concatMap declared ds
 declared (PNamespace _ ds) = concatMap declared ds
@@ -517,7 +525,7 @@ tldeclared (PPostulate _ _ _ _ n t) = [n]
 tldeclared (PClauses _ _ n _) = [] -- not a declaration
 tldeclared (PRecord _ _ _ n _ _ c _) = [n, c]
 tldeclared (PData _ _ _ _ (PDatadecl n _ ts)) = n : map fstt ts
-   where fstt (_, a, _, _) = a
+   where fstt (_, a, _, _, _) = a
 tldeclared (PParams _ _ ds) = []
 tldeclared (PMutual _ ds) = concatMap tldeclared ds
 tldeclared (PNamespace _ ds) = concatMap tldeclared ds
@@ -532,7 +540,7 @@ defined (PPostulate _ _ _ _ n t) = []
 defined (PClauses _ _ n _) = [n] -- not a declaration
 defined (PCAF _ n _) = [n]
 defined (PData _ _ _ _ (PDatadecl n _ ts)) = n : map fstt ts
-   where fstt (_, a, _, _) = a
+   where fstt (_, a, _, _, _) = a
 defined (PData _ _ _ _ (PLaterdecl n _)) = []
 defined (PParams _ _ ds) = concatMap defined ds
 defined (PNamespace _ ds) = concatMap defined ds
@@ -602,6 +610,7 @@ data PTerm = PQuote Raw
            | PElabError Err -- ^ Error to report on elaboration
            | PImpossible -- ^ Special case for declaring when an LHS can't typecheck
            | PCoerced PTerm -- ^ To mark a coerced argument, so as not to coerce twice
+           | PDisamb [[T.Text]] PTerm -- ^ Preferences for explicit namespaces
            | PUnifyLog PTerm -- ^ dump a trace of unifications when building term
            | PNoImplicits PTerm -- ^ never run implicit converions on the term
        deriving Eq
@@ -632,6 +641,7 @@ mapPT f t = f (mpt t) where
   mpt (PProof ts) = PProof (map (fmap (mapPT f)) ts)
   mpt (PTactics ts) = PTactics (map (fmap (mapPT f)) ts)
   mpt (PUnifyLog tm) = PUnifyLog (mapPT f tm)
+  mpt (PDisamb ns tm) = PDisamb ns (mapPT f tm)
   mpt (PNoImplicits tm) = PNoImplicits (mapPT f tm)
   mpt (PGoal fc r n sc) = PGoal fc (mapPT f r) n (mapPT f sc)
   mpt x = x
@@ -838,10 +848,10 @@ deriving instance Binary SSymbol
 deriving instance NFData SSymbol
 !-}
 
-initDSL = DSL (PRef f (UN ">>="))
-              (PRef f (UN "return"))
-              (PRef f (UN "<$>"))
-              (PRef f (UN "pure"))
+initDSL = DSL (PRef f (sUN ">>="))
+              (PRef f (sUN "return"))
+              (PRef f (sUN "<$>"))
+              (PRef f (sUN "pure"))
               Nothing
               Nothing
               Nothing
@@ -877,7 +887,7 @@ expandNS :: SyntaxInfo -> Name -> Name
 expandNS syn n@(NS _ _) = n
 expandNS syn n = case syn_namespace syn of
                         [] -> n
-                        xs -> NS n xs
+                        xs -> sNS n xs
 
 
 --- Pretty printing declarations and terms
@@ -935,7 +945,7 @@ showDImp :: Bool -> PData -> String
 showDImp impl (PDatadecl n ty cons)
    = "data " ++ show n ++ " : " ++ showImp Nothing impl False ty ++ " where\n\t"
      ++ showSep "\n\t| "
-            (map (\ (_, n, t, _) -> show n ++ " : " ++ showImp Nothing impl False t) cons)
+            (map (\ (_, n, t, _, _) -> show n ++ " : " ++ showImp Nothing impl False t) cons)
 
 getImps :: [PArg] -> [(Name, PTerm)]
 getImps [] = []
@@ -974,8 +984,8 @@ prettyImp impl = prettySe 10
         prettyBasic n
       where
         prettyBasic n@(UN _) = pretty n
-        prettyBasic (MN _ s) = text s
-        prettyBasic (NS n s) = (foldr (<>) empty (intersperse (text ".") (map text $ reverse s))) <> prettyBasic n
+        prettyBasic (MN _ s) = text (str s)
+        prettyBasic (NS n s) = (foldr (<>) empty (intersperse (text ".") (map (text.str) $ reverse s))) <> prettyBasic n
         prettyBasic (SN sn) = text (show sn)
     prettySe p (PLam n ty sc) =
       bracket p 2 $
@@ -1046,8 +1056,9 @@ prettyImp impl = prettySe 10
       | not impl = pretty f
     prettySe p (PAppBind _ (PRef _ f) [])
       | not impl = text "!" <+> pretty f
-    prettySe p (PApp _ (PRef _ op@(UN (f:_))) args)
-      | length (getExps args) == 2 && (not impl) && (not $ isAlpha f) =
+    prettySe p (PApp _ (PRef _ op@(UN nm)) args)
+      | not (tnull nm) &&
+        length (getExps args) == 2 && (not impl) && (not $ isAlpha (thead nm)) =
           let [l, r] = getExps args in
             bracket p 1 $
               if size r > breakingSize then
@@ -1160,8 +1171,8 @@ showName ist bnd impl colour n = case ist of
                                    Nothing -> showbasic n
     where name = if impl then show n else showbasic n
           showbasic n@(UN _) = showCG n
-          showbasic (MN _ s) = s
-          showbasic (NS n s) = showSep "." (reverse s) ++ "." ++ showbasic n
+          showbasic (MN _ s) = str s
+          showbasic (NS n s) = showSep "." (map str (reverse s)) ++ "." ++ showbasic n
           showbasic (SN s) = show s
           fst3 (x, _, _) = x
           colourise n t = let ctxt' = fmap tt_ctxt ist in
@@ -1235,8 +1246,9 @@ showImp ist impl colour tm = se 10 [] tm where
         | not impl = se p bnd hd
     se p bnd (PAppBind _ hd@(PRef _ f) [])
         | not impl = "!" ++ se p bnd hd
-    se p bnd (PApp _ op@(PRef _ (UN (f:_))) args)
-        | length (getExps args) == 2 && not impl && not (isAlpha f)
+    se p bnd (PApp _ op@(PRef _ (UN nm)) args)
+        | not (tnull nm) &&
+          length (getExps args) == 2 && not impl && not (isAlpha (thead nm))
             = let [l, r] = getExps args in
               bracket p 1 $ se 1 bnd l ++ " " ++ se p bnd op ++ " " ++ se 0 bnd r
     se p bnd (PApp _ f as)
@@ -1280,13 +1292,14 @@ showImp ist impl colour tm = se 10 [] tm where
     se p bnd (PElabError s) = show s
     se p bnd (PCoerced t) = se p bnd t
     se p bnd (PUnifyLog t) = "%unifyLog " ++ se p bnd t
+    se p bnd (PDisamb ns t) = "%disamb " ++ show ns ++ se p bnd t
     se p bnd (PNoImplicits t) = "%noimplicit " ++ se p bnd t
 --     se p bnd x = "Not implemented"
 
     slist' p bnd (PApp _ (PRef _ nil) _)
-      | not impl && nsroot nil == UN "Nil" = Just []
+      | not impl && nsroot nil == sUN "Nil" = Just []
     slist' p bnd (PApp _ (PRef _ cons) args)
-      | nsroot cons == UN "::",
+      | nsroot cons == sUN "::",
         (PExp {getTm=tl}):(PExp {getTm=hd}):imps <- reverse args,
         all isImp imps,
         Just tl' <- slist' p bnd tl
@@ -1360,6 +1373,7 @@ instance Sized PTerm where
   size (PAlternative a alts) = 1 + size alts
   size (PHidden hidden) = size hidden
   size (PUnifyLog tm) = size tm
+  size (PDisamb _ tm) = size tm
   size (PNoImplicits tm) = size tm
   size PType = 1
   size (PConstant const) = 1 + size const
@@ -1383,6 +1397,7 @@ allNamesIn tm = nub $ ni [] tm
   where
     ni env (PRef _ n)
         | not (n `elem` env) = [n]
+    ni env (PPatvar _ n) = [n]
     ni env (PApp _ f as)   = ni env f ++ concatMap (ni env) (map getTm as)
     ni env (PAppBind _ f as)   = ni env f ++ concatMap (ni env) (map getTm as)
     ni env (PCase _ c os)  = ni env c ++ concatMap (ni env) (map snd os)
@@ -1397,11 +1412,34 @@ allNamesIn tm = nub $ ni [] tm
     ni env (PDPair _ l t r)  = ni env l ++ ni env t ++ ni env r
     ni env (PAlternative a ls) = concatMap (ni env) ls
     ni env (PUnifyLog tm)    = ni env tm
+    ni env (PDisamb _ tm)    = ni env tm
     ni env (PNoImplicits tm)    = ni env tm
     ni env _               = []
 
--- Return names which are free in the given term.
+-- Return all names defined in binders in the given term
+boundNamesIn :: PTerm -> [Name]
+boundNamesIn tm = nub $ ni tm
+  where
+    ni (PApp _ f as)   = ni f ++ concatMap (ni) (map getTm as)
+    ni (PAppBind _ f as)   = ni f ++ concatMap (ni) (map getTm as)
+    ni (PCase _ c os)  = ni c ++ concatMap (ni) (map snd os)
+    ni (PLam n ty sc)  = n : (ni ty ++ ni sc)
+    ni (PLet n ty val sc)  = n : (ni ty ++ ni val ++ ni sc)
+    ni (PPi _ n ty sc) = n : (ni ty ++ ni sc)
+    ni (PEq _ l r)     = ni l ++ ni r
+    ni (PRewrite _ l r _) = ni l ++ ni r
+    ni (PTyped l r)    = ni l ++ ni r
+    ni (PPair _ l r)   = ni l ++ ni r
+    ni (PDPair _ (PRef _ n) t r) = ni t ++ ni r
+    ni (PDPair _ l t r) = ni l ++ ni t ++ ni r
+    ni (PAlternative a as) = concatMap (ni) as
+    ni (PHidden tm)    = ni tm
+    ni (PUnifyLog tm)    = ni tm
+    ni (PDisamb _ tm)    = ni tm
+    ni (PNoImplicits tm) = ni tm
+    ni _               = []
 
+-- Return names which are free in the given term.
 namesIn :: [(Name, PTerm)] -> IState -> PTerm -> [Name]
 namesIn uvars ist tm = nub $ ni [] tm
   where
@@ -1424,6 +1462,7 @@ namesIn uvars ist tm = nub $ ni [] tm
     ni env (PAlternative a as) = concatMap (ni env) as
     ni env (PHidden tm)    = ni env tm
     ni env (PUnifyLog tm)    = ni env tm
+    ni env (PDisamb _ tm)    = ni env tm
     ni env (PNoImplicits tm) = ni env tm
     ni env _               = []
 
@@ -1451,6 +1490,7 @@ usedNamesIn vars ist tm = nub $ ni [] tm
     ni env (PAlternative a as) = concatMap (ni env) as
     ni env (PHidden tm)    = ni env tm
     ni env (PUnifyLog tm)    = ni env tm
+    ni env (PDisamb _ tm)    = ni env tm
     ni env (PNoImplicits tm) = ni env tm
     ni env _               = []
 

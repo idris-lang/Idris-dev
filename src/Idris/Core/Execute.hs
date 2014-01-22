@@ -96,7 +96,7 @@ toTT (EApp e1 e2) = do e1' <- toTT e1
 toTT (EType u) = return $ TType u
 toTT EErased = return Erased
 toTT (EConstant c) = return (Constant c)
-toTT (EThunk i) = return (P (DCon 0 0) (MN i "THUNK") Erased) --(force i) >>= toTT
+toTT (EThunk i) = return (P (DCon 0 0) (sMN i "THUNK") Erased) --(force i) >>= toTT
 toTT (EHandle _) = return Erased
 
 unApplyV :: ExecVal -> (ExecVal, [ExecVal])
@@ -173,7 +173,7 @@ execute tm = do est <- initState
                   Right tm' -> return tm'
 
 ioWrap :: ExecVal -> ExecVal
-ioWrap tm = mkEApp (EP (DCon 0 2) (UN "prim__IO") EErased) [EErased, tm]
+ioWrap tm = mkEApp (EP (DCon 0 2) (sUN "prim__IO") EErased) [EErased, tm]
 
 ioUnit :: ExecVal
 ioUnit = ioWrap (EP Ref unitCon EErased)
@@ -219,8 +219,9 @@ execApp :: ExecEnv -> Context -> (Term, [Term]) -> Exec ExecVal
 execApp env ctxt (f, args) = do newF <- doExec env ctxt f
                                 laziness <- (++ repeat False) <$> (getLaziness newF)
                                 newArgs <- mapM argExec (zip args laziness)
-                                execApp' env ctxt newF newArgs
-    where getLaziness (EP _ (UN "lazy") _) = return [False, True]
+                                res <- execApp' env ctxt newF newArgs
+                                return res
+    where getLaziness (EP _ l _) | l == sUN "lazy" = return [False, True]
           getLaziness (EP _ n _) = do est <- getExecState
                                       let argInfo = exec_implicits est
                                       case lookupCtxtName n argInfo of
@@ -235,28 +236,36 @@ execApp env ctxt (f, args) = do newF <- doExec env ctxt f
 
 execApp' :: ExecEnv -> Context -> ExecVal -> [ExecVal] -> Exec ExecVal
 execApp' env ctxt v [] = return v -- no args is just a constant! can result from function calls
-execApp' env ctxt (EP _ (UN "unsafePerformPrimIO") _) (ty:action:rest) | (prim__IO, [_, v]) <- unApplyV action =
-    execApp' env ctxt v rest
+execApp' env ctxt (EP _ fp _) (ty:action:rest) 
+  | fp == upio,
+    (prim__IO, [_, v]) <- unApplyV action
+       = execApp' env ctxt v rest
 
-execApp' env ctxt (EP _ (UN "prim_io_bind") _) args@(_:_:v:k:rest) | (prim__IO, [_, v']) <- unApplyV v =
+execApp' env ctxt (EP _ fp _) args@(_:_:v:k:rest) 
+  | fp == piobind,
+    (prim__IO, [_, v']) <- unApplyV v =
     do v'' <- tryForce v'
        res <- execApp' env ctxt k [v''] >>= tryForce
        execApp' env ctxt res rest
-execApp' env ctxt con@(EP _ (UN "prim_io_return") _) args@(tp:v:rest) =
+execApp' env ctxt con@(EP _ fp _) args@(tp:v:rest) 
+  | fp == pioret =
     do v' <- tryForce v
        execApp' env ctxt (mkEApp con [tp, v']) rest
 
 -- Special cases arising from not having access to the C RTS in the interpreter
-execApp' env ctxt (EP _ (UN "mkForeignPrim") _) (_:fn:EConstant (Str arg):_:rest)
-    | Just (FFun "putStr" _ _) <- foreignFromTT fn
+execApp' env ctxt (EP _ fp _) (_:fn:EConstant (Str arg):_:rest)
+    | fp == mkfprim,
+      Just (FFun "putStr" _ _) <- foreignFromTT fn 
            = do execIO (putStr arg)
                 execApp' env ctxt ioUnit rest
-execApp' env ctxt (EP _ (UN "mkForeignPrim") _) (_:fn:_:EHandle h:_:rest)
-    | Just (FFun "idris_readStr" _ _) <- foreignFromTT fn
+execApp' env ctxt (EP _ fp _) (_:fn:_:EHandle h:_:rest)
+    | fp == mkfprim,
+      Just (FFun "idris_readStr" _ _) <- foreignFromTT fn
            = do contents <- execIO $ hGetLine h
                 execApp' env ctxt (EConstant (Str (contents ++ "\n"))) rest
-execApp' env ctxt (EP _ (UN "mkForeignPrim") _) (_:fn:EConstant (Str f):EConstant (Str mode):rest)
-    | Just (FFun "fileOpen" _ _) <- foreignFromTT fn
+execApp' env ctxt (EP _ fp _) (_:fn:EConstant (Str f):EConstant (Str mode):rest)
+    | fp == mkfprim,
+      Just (FFun "fileOpen" _ _) <- foreignFromTT fn
            = do m <- case mode of
                          "r" -> return ReadMode
                          "w" -> return WriteMode
@@ -268,42 +277,46 @@ execApp' env ctxt (EP _ (UN "mkForeignPrim") _) (_:fn:EConstant (Str f):EConstan
                 h <- execIO $ openFile f m
                 execApp' env ctxt (ioWrap (EHandle h)) (tail rest)
 
-execApp' env ctxt (EP _ (UN "mkForeignPrim") _) (_:fn:(EHandle h):rest)
-    | Just (FFun "fileEOF" _ _) <- foreignFromTT fn
+execApp' env ctxt (EP _ fp _) (_:fn:(EHandle h):rest)
+    | fp == mkfprim,
+      Just (FFun "fileEOF" _ _) <- foreignFromTT fn
            = do eofp <- execIO $ hIsEOF h
                 let res = ioWrap (EConstant (I $ if eofp then 1 else 0))
                 execApp' env ctxt res (tail rest)
 
-execApp' env ctxt (EP _ (UN "mkForeignPrim") _) (_:fn:(EHandle h):rest)
-    | Just (FFun "fileClose" _ _) <- foreignFromTT fn
+execApp' env ctxt (EP _ fp _) (_:fn:(EHandle h):rest)
+    | fp == mkfprim,
+      Just (FFun "fileClose" _ _) <- foreignFromTT fn
            = do execIO $ hClose h
                 execApp' env ctxt ioUnit (tail rest)
 
-execApp' env ctxt (EP _ (UN "mkForeignPrim") _) (_:fn:(EPtr p):rest)
-    | Just (FFun "isNull" _ _) <- foreignFromTT fn
+execApp' env ctxt (EP _ fp _) (_:fn:(EPtr p):rest)
+    | fp == mkfprim,
+      Just (FFun "isNull" _ _) <- foreignFromTT fn
            = let res = ioWrap . EConstant . I $
                        if p == nullPtr then 1 else 0
                   in execApp' env ctxt res (tail rest)
 
 -- A foreign-returned char* has to be tested for NULL sometimes
-execApp' env ctxt (EP _ (UN "mkForeignPrim") _) (_:fn:EConstant (Str s):rest)
-    | Just (FFun "isNull" _ _) <- foreignFromTT fn
+execApp' env ctxt (EP _ fp _) (_:fn:EConstant (Str s):rest)
+    | fp == mkfprim,
+      Just (FFun "isNull" _ _) <- foreignFromTT fn
            = let res = ioWrap . EConstant . I $ 0
                  in execApp' env ctxt res (tail rest)
 
 -- Throw away the 'World' argument to the foreign function
 
-execApp' env ctxt f@(EP _ (UN "mkForeignPrim") _) args@(ty:fn:xs)
-      | Just (FFun f argTs retT) <- foreignFromTT fn
-        , length xs >= length argTs =
-    do let (args', xs') = (take (length argTs) xs, -- foreign args
-                           drop (length argTs + 1) xs) -- rest
-       res <- stepForeign (ty:fn:args')
-       case res of
-         Nothing -> fail $ "Could not call foreign function \"" ++ f ++
-                           "\" with args " ++ show args
-         Just r -> return (mkEApp r xs')
-      | otherwise = return (mkEApp f args)
+execApp' env ctxt f@(EP _ fp _) args@(ty:fn:xs) | fp == mkfprim
+   = case foreignFromTT fn of
+        Just (FFun f argTs retT) | length xs >= length argTs ->
+           do let (args', xs') = (take (length argTs) xs, -- foreign args
+                                  drop (length argTs + 1) xs) -- rest
+              res <- stepForeign (ty:fn:args')
+              case res of
+                   Nothing -> fail $ "Could not call foreign function \"" ++ f ++
+                                     "\" with args " ++ show args
+                   Just r -> return (mkEApp r xs')
+        Nothing -> return (mkEApp f args)
 
 execApp' env ctxt c@(EP (DCon _ arity) n _) args =
     do args' <- mapM tryForce (take arity args)
@@ -343,13 +356,23 @@ execApp' env ctxt (EThunk i) args = do f <- force i
 execApp' env ctxt app@(EApp _ _) args2 | (f, args1) <- unApplyV app = execApp' env ctxt f (args1 ++ args2)
 execApp' env ctxt f args = return (mkEApp f args)
 
+prs = sUN "prim__readString"
+pbm = sUN "prim__believe_me"
+pstd = sUN "prim__stdin"
+mkfprim = sUN "mkForeignPrim"
+pioret = sUN "prim_io_return"
+piobind = sUN "prim_io_bind"
+upio = sUN "unsafePerformPrimIO"
+
 -- | Look up primitive operations in the global table and transform them into ExecVal functions
 getOp :: Name -> [ExecVal] -> Maybe (Exec ExecVal)
-getOp (UN "prim__believe_me") [_, _, x] = Just (return x)
-getOp (UN "prim__readString") [EP _ (UN "prim__stdin") _] =
+getOp fn [_, _, x] | fn == pbm = Just (return x)
+getOp fn [EP _ fn' _] 
+    | fn == prs && fn' == pstd =
               Just $ do line <- execIO getLine
                         return (EConstant (Str line))
-getOp (UN "prim__readString") [EHandle h] =
+getOp fn [EHandle h]
+    | fn == prs =
               Just $ do contents <- execIO $ hGetLine h
                         return (EConstant (Str (contents ++ "\n")))
 getOp n args = getPrim n primitives >>= flip applyPrim args
@@ -478,11 +501,12 @@ foreignFromTT t = case (unApplyV t) of
                            argFTy <- sequence $ map getFTy argTy
                            retFTy <- getFTy ret
                            return $ FFun name argFTy retFTy
-                    _ -> trace "failed to construct ffun" Nothing
+                    _ -> trace ("failed to construct ffun") Nothing
 
 getFTy :: ExecVal -> Maybe FType
-getFTy (EApp (EP _ (UN "FIntT") _) (EP _ (UN intTy) _)) =
-    case intTy of
+getFTy (EApp (EP _ (UN fi) _) (EP _ (UN intTy) _)) 
+  | fi == txt "FIntT" =
+    case str intTy of
       "ITNative" -> Just (FArith (ATInt ITNative))
       "ITChar" -> Just (FArith (ATInt ITChar))
       "IT8" -> Just (FArith (ATInt (ITFixed IT8)))
@@ -491,21 +515,13 @@ getFTy (EApp (EP _ (UN "FIntT") _) (EP _ (UN intTy) _)) =
       "IT64" -> Just (FArith (ATInt (ITFixed IT64)))
       _ -> Nothing
 getFTy (EP _ (UN t) _) =
-    case t of
+    case str t of
       "FFloat"  -> Just (FArith ATFloat)
       "FString" -> Just FString
       "FPtr"    -> Just FPtr
       "FUnit"   -> Just FUnit
       _         -> Nothing
 getFTy _ = Nothing
-
-unList :: Term -> Maybe [Term]
-unList tm = case unApply tm of
-              (nil, [_]) -> Just []
-              (cons, ([_, x, xs])) ->
-                  do rest <- unList xs
-                     return $ x:rest
-              (f, args) -> Nothing
 
 unEList :: ExecVal -> Maybe [ExecVal]
 unEList tm = case unApplyV tm of

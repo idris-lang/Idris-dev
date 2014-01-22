@@ -13,7 +13,7 @@ import Idris.Core.Evaluate
 import Idris.Core.TT
 import Idris.Core.Unify
 
-import Control.Monad.State
+import Control.Monad.State.Strict
 import Control.Applicative hiding (empty)
 import Data.List
 import Debug.Trace
@@ -159,7 +159,7 @@ hole (Hole _)    = True
 hole (Guess _ _) = True
 hole _           = False
 
-holeName i = MN i "hole"
+holeName i = sMN i "hole"
 
 qshow :: Fails -> String
 qshow fs = show (map (\ (x, y, _, _) -> (x, y)) fs)
@@ -209,7 +209,7 @@ getName :: Monad m => String -> StateT TState m Name
 getName tag = do ps <- get
                  let n = nextname ps
                  put (ps { nextname = n+1 })
-                 return $ MN n tag
+                 return $ sMN n tag
 
 action :: Monad m => (ProofState -> ProofState) -> StateT TState m ()
 action a = do ps <- get
@@ -476,18 +476,12 @@ solve ctxt env (Bind x (Guess ty val) sc)
    | True         = do ps <- get
                        let (uh, uns) = unified ps
                        case lookup x (notunified ps) of
-                           Just tm -> do -- trace ("AVOIDED " ++ show (x, tm, val)) $
-                                         -- return []
-                                         unify' ctxt env tm val
+                           Just tm -> unify' ctxt env tm val
                            _ -> return []
                        action (\ps -> ps { holes = holes ps \\ [x],
                                            solved = Just (x, val),
---                                            problems = solveInProblems
---                                                         x val (problems ps),
-                                           -- dontunify = dontunify ps \\ [x],
-                                           -- unified = (uh, uns ++ [(x, val)]),
                                            instances = instances ps \\ [x] })
-                       let tm' = instantiate val (pToV x sc) in
+                       let tm' = subst x val sc in 
                            return tm'
    | otherwise    = lift $ tfail $ IncompleteTerm val
 solve _ _ h@(Bind x t sc)
@@ -513,7 +507,7 @@ introTy ty mn ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' =
        (tyv, tyt) <- lift $ check ctxt env ty
 --        ns <- lift $ unify ctxt env tyv t'
        case t' of
-           Bind y (Pi s) t -> let t' = instantiate (P Bound n s) (pToV y t) in
+           Bind y (Pi s) t -> let t' = subst y (P Bound n s) t in
                                   do ns <- unify' ctxt env s tyv
                                      ps <- get
                                      let (uh, uns) = unified ps
@@ -532,7 +526,7 @@ intro mn ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' =
                     _ -> hnf ctxt env t
        case t' of
            Bind y (Pi s) t -> -- trace ("in type " ++ show t') $
-               let t' = instantiate (P Bound n s) (pToV y t) in
+               let t' = subst y (P Bound n s) t in
                    return $ Bind n (Lam s) (Bind x (Hole t') (P Bound x t'))
            _ -> lift $ tfail $ CantIntroduce t'
 intro n ctxt env _ = fail "Can't introduce here."
@@ -548,7 +542,7 @@ forall n ty ctxt env _ = fail "Can't pi bind here"
 patvar :: Name -> RunTactic
 patvar n ctxt env (Bind x (Hole t) sc) =
     do action (\ps -> ps { holes = holes ps \\ [x] })
-       return $ Bind n (PVar t) (instantiate (P Bound n t) (pToV x sc))
+       return $ Bind n (PVar t) (subst x (P Bound n t) sc)
 patvar n ctxt env tm = fail $ "Can't add pattern var at " ++ show tm
 
 letbind :: Name -> Raw -> Raw -> RunTactic
@@ -568,16 +562,16 @@ rewrite tm ctxt env (Bind x (Hole t) xp@(P _ x' _)) | x == x' =
     do (tmv, tmt) <- lift $ check ctxt env tm
        let tmt' = normalise ctxt env tmt
        case unApply tmt' of
-         (P _ (UN "=") _, [lt,rt,l,r]) ->
+         (P _ (UN q) _, [lt,rt,l,r]) | q == txt "=" ->
             do let p = Bind rname (Lam lt) (mkP (P Bound rname lt) r l t)
                let newt = mkP l r l t
                let sc = forget $ (Bind x (Hole newt)
-                                       (mkApp (P Ref (UN "replace") (TType (UVal 0)))
+                                       (mkApp (P Ref (sUN "replace") (TType (UVal 0)))
                                               [lt, l, r, p, tmv, xp]))
                (scv, sct) <- lift $ check ctxt env sc
                return scv
          _ -> lift $ tfail (NotEquality tmv tmt') 
-  where rname = MN 0 "replaced"
+  where rname = sMN 0 "replaced"
 rewrite _ _ _ _ = fail "Can't rewrite here"
 
 -- To make the P for rewrite, replace syntactic occurrences of l in ty with
@@ -633,7 +627,7 @@ induction nm ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' = do
           [] -> fail $ "Induction needs an eliminator for " ++ show tnm
           xs -> fail $ "Multiple definitions found when searching for the eliminator of " ++ show tnm
     _ -> fail "Unkown type for induction"
-    where scname = MN 0 "scarg"
+    where scname = sMN 0 "scarg"
           makeConsArg (nm, ty) = P Bound nm ty
           bindConsArgs ((nm, ty):args) v = Bind nm (Hole ty) $ bindConsArgs args v
           bindConsArgs [] v = v
@@ -642,7 +636,7 @@ induction nm ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' = do
           splitTyArgs param_pos tyargs =
             let (params, indicies) = partition (flip elem param_pos . fst) . zip [0..] $ tyargs
             in (map snd params, map snd indicies)
-          makeIndexNames = foldr (\_ nms -> (uniqueNameCtxt ctxt (MN 0 "idx") nms):nms) []
+          makeIndexNames = foldr (\_ nms -> (uniqueNameCtxt ctxt (sMN 0 "idx") nms):nms) []
           replaceIndicies idnms idxs prop = foldM (\t (idnm, idx) -> do (idxv, idxt) <- lift $ check ctxt env (forget idx)
                                                                         let var = P Bound idnm idxt
                                                                         return $ Bind idnm (Lam idxt) (mkP var idxv var t)) prop $ zip idnms idxs
@@ -662,7 +656,7 @@ patbind n ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' =
                     x@(Bind y (PVTy s) t) -> x
                     _ -> hnf ctxt env t
        case t' of
-           Bind y (PVTy s) t -> let t' = instantiate (P Bound n s) (pToV y t) in
+           Bind y (PVTy s) t -> let t' = subst y (P Bound n s) t in
                                     return $ Bind n (PVar s) (Bind x (Hole t') (P Bound x t'))
            _ -> fail "Nothing to pattern bind"
 patbind n ctxt env _ = fail "Can't pattern bind here"
@@ -739,34 +733,42 @@ keepGiven du (u@(n, _) : us) hs
    | n `elem` du = u : keepGiven du us hs
 keepGiven du (u : us) hs = keepGiven du us hs
 
-updateSolved xs x = -- trace ("Updating " ++ show xs ++ " in " ++ show x) $
-                      updateSolved' xs x
+updateSolved xs x = updateSolved' xs x
+updateSolved' [] x = x
 updateSolved' xs (Bind n (Hole ty) t)
-    | Just v <- lookup n xs = instantiate v (pToV n (updateSolved' xs t))
+    | Just v <- lookup n xs 
+        = case xs of
+               [_] -> psubst n v t
+               _ -> psubst n v (updateSolved' xs t)
 updateSolved' xs (Bind n b t)
     | otherwise = Bind n (fmap (updateSolved' xs) b) (updateSolved' xs t)
-updateSolved' xs (App f a) = App (updateSolved' xs f) (updateSolved' xs a)
-updateSolved' xs (P _ n _)
+updateSolved' xs (App f a) 
+    = App (updateSolved' xs f) (updateSolved' xs a)
+updateSolved' xs (P _ n@(MN _ _) _)
     | Just v <- lookup n xs = v
 updateSolved' xs t = t
 
+updateEnv [] e = e
 updateEnv ns [] = []
 updateEnv ns ((n, b) : env) = (n, fmap (updateSolved ns) b) : updateEnv ns env
 
+updateError [] err = err
 updateError ns (CantUnify b l r e xs sc)
  = CantUnify b (updateSolved ns l) (updateSolved ns r) (updateError ns e) xs sc
 updateError ns e = e
 
 solveInProblems x val [] = []
 solveInProblems x val ((l, r, env, err) : ps)
-   = ((instantiate val (pToV x l), instantiate val (pToV x r),
+   = ((psubst x val l, psubst x val r, 
        updateEnv [(x, val)] env, err) : solveInProblems x val ps)
 
+updateNotunified [] nu = nu
 updateNotunified ns nu = up nu where
   up [] = []
-  up ((n, t) : ns) = let t' = updateSolved ns t in
-                         ((n, t') : up ns)
+  up ((n, t) : nus) = let t' = updateSolved ns t in
+                          ((n, t') : up nus)
 
+updateProblems ctxt [] ps inj holes = ([], ps)
 updateProblems ctxt ns ps inj holes = up ns ps where
   up ns [] = (ns, [])
   up ns ((x, y, env, err) : ps) =
@@ -811,12 +813,11 @@ processTactic EndUnify ps
           ns' = map (\ (n, t) -> (n, updateSolved ns t)) ns
           (ns'', probs') = updateProblems (context ps) ns' (problems ps)
                                           (injective ps) (holes ps)
-          tm' = -- trace ("Updating " ++ show ns_in ++ "\n" ++ show ns'') $ --  ++ " in " ++ show (pterm ps)) $
-                  updateSolved ns'' (pterm ps) in
+          tm' = updateSolved ns'' (pterm ps) in
           return (ps { pterm = tm',
                        unified = (h, []),
                        problems = probs',
-                       notunified = updateNotunified ns (notunified ps),
+                       notunified = updateNotunified ns'' (notunified ps),
                        holes = holes ps \\ map fst ns'' }, "")
 processTactic (Reorder n) ps
     = do ps' <- execStateT (tactic (Just n) reorder_claims) ps
@@ -841,6 +842,7 @@ processTactic MatchProblems ps
           pterm' = updateSolved ns' (pterm ps) in
       return (ps { pterm = pterm', solved = Nothing, problems = probs',
                    previous = Just ps, plog = "",
+                   notunified = updateNotunified ns' (notunified ps),
                    holes = holes ps \\ (map fst ns') }, plog ps)
 processTactic t ps
     = case holes ps of

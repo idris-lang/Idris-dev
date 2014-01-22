@@ -10,6 +10,7 @@ data TTName = UN String
             -- ^ Machine chosen names
             | NErased
             -- ^ Name of somethng which is never used in scope
+%name TTName n, n'
 
 implicit
 userSuppliedName : String -> TTName
@@ -19,6 +20,7 @@ data TTUExp = UVar Int
             -- ^ universe variable
             | UVal Int
             -- ^ explicit universe variable
+%name TTUExp uexp
 
 -- | Primitive constants
 data Const = I Int | BI Nat | Fl Float | Ch Char | Str String
@@ -26,6 +28,8 @@ data Const = I Int | BI Nat | Fl Float | Ch Char | Str String
            | B8 Bits8 | B16 Bits16 | B32 Bits32 | B64 Bits64
            | B8Type   | B16Type    | B32Type    | B64Type
            | PtrType | VoidType | Forgot
+
+%name Const c, c'
 
 abstract class ReflConst (a : Type) where
    toConst : a -> Const
@@ -71,6 +75,7 @@ data NameType = Bound
               -- ^ constructor with tag and number
               | TCon Int Int
               -- ^ type constructor with tag and number
+%name NameType nt, nt'
 
 -- | Types annotations for bound variables in different
 -- binding contexts
@@ -83,7 +88,7 @@ data Binder a = Lam a
               | Guess a a
               | PVar a
               | PVTy a
-
+%name Binder b, b'
 
 instance Functor Binder where
   map f (Lam x) = Lam (f x)
@@ -139,6 +144,8 @@ data TT = P NameType TTName TT
         | TType TTUExp
         -- ^ types
 
+%name TT tm, tm'
+
 -- | Raw terms without types
 data Raw = Var TTName
          | RBind TTName (Binder Raw) Raw
@@ -146,6 +153,8 @@ data Raw = Var TTName
          | RType
          | RForce Raw
          | RConstant Const
+
+%name Raw tm, tm'
 
 data Tactic = Try Tactic Tactic
             -- ^ try the first tactic and resort to the second one on failure
@@ -185,4 +194,4 @@ data Tactic = Try Tactic Tactic
             -- ^ name a reflected term and type it
             | Compute
             -- ^ normalise the context
-
+%name Tactic tac, tac'

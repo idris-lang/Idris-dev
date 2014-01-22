@@ -21,7 +21,8 @@ data SC' t = Case Name [CaseAlt' t] -- ^ invariant: lowest tags first
            | ImpossibleCase -- ^ already checked to be impossible
     deriving (Eq, Ord, Functor)
 {-!
-deriving instance Binary SC
+deriving instance Binary SC'
+deriving instance NFData SC'
 !-}
 
 type SC = SC' Term
@@ -33,7 +34,8 @@ data CaseAlt' t = ConCase Name Int [Name] !(SC' t)
                 | DefaultCase             !(SC' t)
     deriving (Show, Eq, Ord, Functor)
 {-!
-deriving instance Binary CaseAlt
+deriving instance Binary CaseAlt'
+deriving instance NFData CaseAlt'
 !-}
 
 type CaseAlt = CaseAlt' Term
@@ -155,6 +157,7 @@ directUse (Bind n (Let t v) sc) = nub $ directUse v ++ (directUse sc \\ [n])
 directUse (Bind n b sc) = nub $ directUse (binderTy b) ++ (directUse sc \\ [n])
 directUse fn@(App f a)
     | (P Ref n _, args) <- unApply fn = [] -- need to know what n does with them
+    | (P (TCon _ _) n _, args) <- unApply fn = [] -- type constructors not used at runtime 
     | otherwise = nub $ directUse f ++ directUse a
 directUse (Proj x i) = nub $ directUse x
 directUse _ = []
@@ -214,7 +217,7 @@ simpleCase tc cover reflect phase fc argtys cs
                                         then return t
                                         else Error (At fc (Msg "Typecase is not allowed"))
                 Error err -> Error (At fc err)
-    where args = map (\i -> MN i "e") [0..]
+    where args = map (\i -> sMN i "e") [0..]
           defaultCase True = STerm Erased
           defaultCase False = UnmatchedCase "Error"
           fstT (x, _, _) = x
@@ -298,8 +301,8 @@ toPat reflect tc tms = evalState (mapM (\x -> toPat' x []) tms) []
     toPat' (P (DCon t a) n _) args = do args' <- mapM (\x -> toPat' x []) args
                                         return $ PCon n t args'
     -- n + 1
-    toPat' (P _ (UN "prim__addBigInt") _)
-                  [p, Constant (BI 1)]
+    toPat' (P _ (UN pabi) _)
+                  [p, Constant (BI 1)] | pabi == txt "prim__addBigInt"
                                    = do p' <- toPat' p []
                                         return $ PSuc p'
     -- Typecase
@@ -331,7 +334,7 @@ toPat reflect tc tms = evalState (mapM (\x -> toPat' x []) tms) []
     toPat' (Bind n (Pi t) sc) [] | reflect && noOccurrence n sc
           = do t' <- toPat' t []
                sc' <- toPat' sc []
-               return $ PReflected (UN "->") (t':sc':[])
+               return $ PReflected (sUN "->") (t':sc':[])
     toPat' (P _ n _) args | reflect
           = do args' <- mapM (\x -> toPat' x []) args
                return $ PReflected n args'
@@ -488,7 +491,7 @@ argsToAlt rs@((r, m) : rest)
     uniq i n = n
 
 getVar :: String -> State CS Name
-getVar b = do (t, v, ntys) <- get; put (t, v+1, ntys); return (MN v b)
+getVar b = do (t, v, ntys) <- get; put (t, v+1, ntys); return (sMN v b)
 
 groupCons :: [Clause] -> State CS [Group]
 groupCons cs = gc [] cs

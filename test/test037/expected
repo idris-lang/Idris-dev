@@ -1,0 +1,18 @@
+In file ErrorReflection.idr line 78 column 5 
+	When elaborating right hand side of  Main.bad : 
+		DSL type error: (t'(504) => t'(504)) doesn't match ()
+
+Original error:
+
+	ErrorReflection.idr:78:5:When elaborating right hand side of bad:
+	Can't unify
+		Tm [] (Main.TFun t' t')
+	with
+		Tm [] Main.TUnit
+	
+	Specifically:
+		Can't unify
+			Main.TFun t' t'
+		with
+			Main.TUnit
+

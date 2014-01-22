@@ -1,17 +1,17 @@
 IDRIS := idris
 
-build: .PHONY
+build:
 	$(IDRIS) --build base.ipkg
 
 install: 
 	$(IDRIS) --install base.ipkg
 
-clean: .PHONY
+clean:
 	$(IDRIS) --clean base.ipkg
 
 rebuild: clean build
 
-linecount: .PHONY
+linecount:
 	find . -name '*.idr' | xargs wc -l
 
-.PHONY:
+.PHONY: build install clean rebuild linecount

@@ -275,11 +275,11 @@ instance Applicative List where
 instance Applicative (Vect k) where
     pure = replicate _
 
-    fs <$> vs = zipWith ($) fs vs
+    fs <$> vs = zipWith apply fs vs
 
 instance Applicative Stream where
   pure = repeat
-  (<$>) = zipWith ($)
+  (<$>) = zipWith apply
 
 ---- Alternative instances
 
@@ -334,7 +334,7 @@ instance Traversable (Vect n) where
     traverse f (x::xs) = [| Vect.(::) (f x) (traverse f xs) |]
 
 ---- some mathematical operations
----- XXX this should probably go some place else, 
+---- XXX this should probably go some place else,
 pow : (Num a) => a -> Nat -> a
 pow x Z = 1
 pow x (S n) = x * (pow x n)
@@ -376,7 +376,7 @@ instance Enum Integer where
   enumFromThen n inc = n :: enumFromThen (inc + n) inc
   enumFromTo n m = if n <= m
                    then go (natRange (S (cast {to = Nat} (m - n))))
-                   else []          
+                   else []
     where go : List Nat -> List Integer
           go [] = []
           go (x :: xs) = n + cast x :: go xs
@@ -392,7 +392,7 @@ instance Enum Int where
   toNat n = cast n
   fromNat n = cast n
   enumFromThen n inc = n :: enumFromThen (inc + n) inc
-  enumFromTo n m = if n <= m 
+  enumFromTo n m = if n <= m
                    then go (natRange (S (cast {to = Nat} (m - n))))
                    else []
     where go : List Nat -> List Int
@@ -532,12 +532,16 @@ ferror (FHandle h) = do err <- do_ferror h
 partial
 nullPtr : Ptr -> IO Bool
 nullPtr p = do ok <- mkForeign (FFun "isNull" [FPtr] FInt) p
-               return (ok /= 0);
+               return (ok /= 0)
 
 partial
 nullStr : String -> IO Bool
 nullStr p = do ok <- mkForeign (FFun "isNull" [FString] FInt) p
-               return (ok /= 0);
+               return (ok /= 0)
+
+eqPtr : Ptr -> Ptr -> IO Bool
+eqPtr x y = do eq <- mkForeign (FFun "idris_eqPtr" [FPtr, FPtr] FInt) x y
+               return (eq /= 0)
 
 partial
 validFile : File -> IO Bool

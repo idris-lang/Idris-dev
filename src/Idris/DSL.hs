@@ -8,7 +8,7 @@ import Paths_idris
 import Idris.Core.TT
 import Idris.Core.Evaluate
 
-import Control.Monad.State
+import Control.Monad.State.Strict
 import Debug.Trace
 
 debindApp :: SyntaxInfo -> PTerm -> PTerm
@@ -44,6 +44,7 @@ expandDo dsl (PAlternative a as) = PAlternative a (map (expandDo dsl) as)
 expandDo dsl (PHidden t) = PHidden (expandDo dsl t)
 expandDo dsl (PNoImplicits t) = PNoImplicits (expandDo dsl t)
 expandDo dsl (PUnifyLog t) = PUnifyLog (expandDo dsl t)
+expandDo dsl (PDisamb ns t) = PDisamb ns (expandDo dsl t)
 expandDo dsl (PReturn fc) = dsl_return dsl
 expandDo dsl (PRewrite fc r t ty)
     = PRewrite fc r (expandDo dsl t) ty
@@ -57,8 +58,8 @@ expandDo dsl (PDoBlock ds)
     block b (DoBind fc n tm : rest)
         = PApp fc b [pexp tm, pexp (PLam n Placeholder (block b rest))]
     block b (DoBindP fc p tm : rest)
-        = PApp fc b [pexp tm, pexp (PLam (MN 0 "bpat") Placeholder
-                                   (PCase fc (PRef fc (MN 0 "bpat"))
+        = PApp fc b [pexp tm, pexp (PLam (sMN 0 "bpat") Placeholder
+                                   (PCase fc (PRef fc (sMN 0 "bpat"))
                                              [(p, block b rest)]))]
     block b (DoLet fc n ty tm : rest)
         = PLet n ty tm (block b rest)
@@ -67,7 +68,7 @@ expandDo dsl (PDoBlock ds)
     block b (DoExp fc tm : rest)
         = PApp fc b
             [pexp tm,
-             pexp (PLam (MN 0 "bindx") Placeholder (block b rest))]
+             pexp (PLam (sMN 0 "bindx") Placeholder (block b rest))]
     block b _ = PElabError (Msg "Invalid statement in do block")
 
 expandDo dsl (PIdiom fc e) = expandDo dsl $ unIdiom (dsl_apply dsl) (dsl_pure dsl) fc e
@@ -131,7 +132,7 @@ debind b tm = let (tm', (bs, _)) = runState (db' tm) ([], 0) in
     db' (PAppBind fc t args)
         = do args' <- dbs args
              (bs, n) <- get
-             let nm = MN n ("bindApp" ++ show n)
+             let nm = sUN ("_bindApp" ++ show n)
              put ((nm, fc, PApp fc t args') : bs, n+1)
              return (PRef fc nm)
     db' (PApp fc t args)

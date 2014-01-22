@@ -14,7 +14,7 @@ Description:    Idris is a general purpose language with full dependent types.
                 Dependent types allow types to be predicated on values,
                 meaning that some aspects of a program's behaviour can be
                 specified precisely in the type. The language is closely
-		            related to Epigram and Agda. There is a tutorial at
+                related to Epigram and Agda. There is a tutorial at
                 <http://www.idris-lang.org/documentation>.
                 Features include:
                 .
@@ -94,6 +94,11 @@ Extra-source-files:
                        libs/effects/effects.ipkg
                        libs/effects/Effect/*.idr
                        libs/effects/*.idr
+
+                       libs/neweffects/Makefile
+                       libs/neweffects/neweffects.ipkg
+                       libs/neweffects/Effect/*.idr
+                       libs/neweffects/*.idr
 
                        libs/javascript/*.idr
                        libs/javascript/JavaScript/*.idr
@@ -192,6 +197,12 @@ Extra-source-files:
                        test/reg029/run
                        test/reg029/*.idr
                        test/reg029/expected
+                       test/reg030/run
+                       test/reg030/*.idr
+                       test/reg030/expected
+                       test/reg031/run
+                       test/reg031/*.idr
+                       test/reg031/expected
                        test/test001/run
                        test/test001/*.idr
                        test/test001/expected
@@ -303,6 +314,12 @@ Extra-source-files:
                        test/test035/run
                        test/test035/expected
                        test/test035/*.idr
+                       test/test036/run
+                       test/test036/expected
+                       test/test036/*.idr
+                       test/test037/run
+                       test/test037/expected
+                       test/test037/*.idr
 
 source-repository head
   type:     git
@@ -335,10 +352,12 @@ Library
   Exposed-modules:
                   Idris.Core.CaseTree
                 , Idris.Core.Constraints
+                , Idris.Core.DeepSeq
                 , Idris.Core.Elaborate
                 , Idris.Core.Evaluate
                 , Idris.Core.Execute
                 , Idris.Core.ProofState
+                , Idris.Core.TC
                 , Idris.Core.TT
                 , Idris.Core.Typecheck
                 , Idris.Core.Unify
@@ -404,6 +423,7 @@ Library
                   Util.Pretty
                 , Util.System
                 , Util.Net
+                , Util.Zlib
 
                 , Pkg.PParser
 
@@ -439,6 +459,7 @@ Library
                 , network
                 , xml
                 , deepseq
+                , zlib
   Extensions:     MultiParamTypeClasses
                 , FunctionalDependencies
                 , FlexibleInstances
@@ -453,7 +474,7 @@ Library
   if os(freebsd)
      cpp-options:   -DFREEBSD
      build-depends: unix
-  if os(dragonfly) 
+  if os(dragonfly)
      cpp-options:   -DDRAGONFLY
      build-depends: unix
   if os(darwin)
@@ -487,6 +508,6 @@ Executable idris
                 , transformers
 
   ghc-prof-options: -auto-all -caf-all
-  ghc-options:      -threaded -rtsopts
+  ghc-options:      -threaded -rtsopts -funbox-strict-fields
 
 

@@ -12,7 +12,7 @@ import Idris.Core.Constraints
 
 import System.Console.Haskeline
 import System.Console.Haskeline.MonadException
-import Control.Monad.State
+import Control.Monad.State.Strict
 import Control.Monad.Error (throwError, catchError)
 import System.IO.Error(isUserError, ioeGetErrorString)
 import Data.Char
@@ -37,6 +37,7 @@ report e
 
 idrisCatch :: Idris a -> (Err -> Idris a) -> Idris a
 idrisCatch = catchError
+
 
 setAndReport :: Err -> Idris ()
 setAndReport e = do ist <- getIState
@@ -71,3 +72,4 @@ getErrLine _ = 0
 getErrColumn :: Err -> Int
 getErrColumn (At (FC _ _ c) _) = c
 getErrColumn _ = 0
+

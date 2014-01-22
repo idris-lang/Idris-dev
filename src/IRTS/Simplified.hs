@@ -2,6 +2,7 @@ module IRTS.Simplified where
 
 import IRTS.Defunctionalise
 import Idris.Core.TT
+import Idris.Core.Typecheck
 import Data.Maybe
 import Control.Monad.State
 
@@ -94,7 +95,7 @@ sVar (DV (Glob x))
 sVar (DV x) = return (x, Nothing)
 sVar e = do e' <- simplify False e
             i <- hvar
-            return (Glob (MN i "R"), Just e')
+            return (Glob (sMN i "R"), Just e')
 
 mkapp f args = mkapp' f args [] where
    mkapp' f [] args = return $ f (reverse args)

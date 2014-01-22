@@ -1,3 +1,5 @@
+.PHONY: test test_java test_js update diff distclean $(TESTS)
+
 TESTS = $(sort $(patsubst %/,%.test,$(wildcard */)))
 
 test: $(TESTS)
@@ -105,4 +107,3 @@ distclean:
 	rm -f *~
 	rm -f */output
 
-.phony: test test_java test_js update diff distclean $(TESTS)
