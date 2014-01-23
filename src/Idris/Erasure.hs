@@ -84,9 +84,9 @@ findUsed ctx cg ns = M.fromList [(n, getDeps n) | n <- ns]
 
     getDepsAlt :: PatVars -> PatVar -> CaseAlt -> Deps
     getDepsAlt vs pv (FnCase n ns sc) = error "an FnCase encountered"  -- TODO: what's this?
-    getDepsAlt vs pv (ConstCase c sc) = error "a ConstCase encountered"
+    getDepsAlt vs pv (ConstCase c sc) = IM.empty
     getDepsAlt vs pv (SucCase   n sc) = error "a SucCase encountered"
-    getDepsAlt vs pv (DefaultCase sc) = error "a DefaultCase encountered"
+    getDepsAlt vs pv (DefaultCase sc) = error $ "a DefaultCase encountered: " ++ show (DefaultCase sc)
     getDepsAlt vs pv (ConCase n cnt ns sc)
         = getDepsSC (vs' `M.union` vs) sc  -- left-biased union
       where
@@ -95,22 +95,38 @@ findUsed ctx cg ns = M.fromList [(n, getDeps n) | n <- ns]
 
     -- Named variables -> DeBruijn variables -> Conds/guards -> Term -> Deps
     getDepsTerm :: Vars -> [Var] -> Cond -> Term -> Deps
+
+    -- named variables introduce dependencies as described in `vs'
     getDepsTerm vs bs cd (P _ n _)
         | Just var <- M.lookup n vs = var cd
         | otherwise = IM.empty
+
+    -- dependencies of de bruijn variables are described in `bs'
     getDepsTerm vs bs cd (V i) = (bs !! i) cd
-    getDepsTerm vs bs cd (Bind n (Lam ty) t) = error "stray lambda"  -- probably just push S.empty on the DeBruijn stack
-    getDepsTerm vs bs cd (Bind n (Pi  ty) t) = error "stray bind"    -- the args will be marked as used on the usage site
-    getDepsTerm vs bs cd (Bind n (Let ty v) t) =
-        getDepsTerm (M.insert n (\cd -> getDepsTerm vs bs cd v) vs) bs cd t
-    getDepsTerm vs bs cd (Bind n (NLet ty v) t) = 
-        getDepsTerm (M.insert n (\cd -> getDepsTerm vs bs cd v) vs) bs cd t  -- TODO: what's this?
+
+    getDepsTerm vs bs cd (Bind n bdr t)
+        -- here we just push IM.empty on the de bruijn stack
+        -- the args will be marked as used at the usage site
+        | Lam ty <- bdr = getDepsTerm vs (const IM.empty : bs) cd t
+        | Pi  ty <- bdr = getDepsTerm vs (const IM.empty : bs) cd t
+
+        -- let-bound variables can get partially evaluated
+        -- it is sufficient just to plug the Cond in when the bound names are used
+        |  Let ty v <- bdr = getDepsTerm (M.insert n (var v) vs) (var v : bs) cd t
+        | NLet ty v <- bdr = getDepsTerm (M.insert n (var v) vs) (var v : bs) cd t
+      where
+        var v cd = getDepsTerm vs bs cd v
+
+    -- applications may add items to Cond
     getDepsTerm vs bs cd app@(App _ _)
         | (fun, args) <- unApply app = case fun of
-            P Bound n _ -> ?
-            -- named references depend on whether the referred thing uses the argument
-            P Ref n _ -> called n args
+            -- these depend on whether the referred thing uses the argument
+            P  Ref       n _ -> called n args
             P (DCon _ _) n _ -> called n args
+
+            -- these do not
+            P (TCon _ _) n _ -> unionMap (getDepsTerm vs bs cd) args
+            P  Bound     n _ -> unionMap (getDepsTerm vs bs cd) args
       where
         called n args = unionMap (\(i,t) -> getDepsTerm vs bs (S.insert (n,i) cd) t) (zip [0..] args)
 
