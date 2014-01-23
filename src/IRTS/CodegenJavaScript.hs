@@ -477,6 +477,62 @@ reduceJS js = reduceLoop [] ([], js)
 funName :: JS -> String
 funName (JSAlloc fun _) = fun
 
+
+deadEvalApplyCases :: [JS] -> [JS]
+deadEvalApplyCases js =
+  let tags = sort $ nub $ concatMap (getTags) js in
+      map (removeHelper tags) js
+      where
+        getTags :: JS -> [Int]
+        getTags (JSNew "__IDRRT__Con" [JSNum (JSInt tag), args]) =
+          tag : getTags args
+
+        getTags (JSNew _ args) = concatMap getTags args
+
+        getTags (JSFunction _ body) = getTags body
+
+        getTags (JSReturn ret) = getTags ret
+
+        getTags (JSApp lhs rhs) = getTags lhs ++ concatMap getTags rhs
+
+        getTags (JSSeq seq) = concatMap getTags seq
+
+        getTags (JSOp _ lhs rhs) = getTags lhs ++ getTags rhs
+
+        getTags (JSProj obj _) = getTags obj
+
+        getTags (JSArray vals) = concatMap getTags vals
+
+        getTags (JSAssign lhs rhs) = getTags lhs ++ getTags rhs
+
+        getTags (JSAlloc _ (Just val)) = getTags val
+
+        getTags (JSCond conds) =
+          concatMap (uncurry (++)) $ map (getTags *** getTags) conds
+
+        getTags (JSTernary c t f) = getTags c ++ getTags t ++ getTags f
+
+        getTags js = []
+        removeHelper :: [Int] -> JS -> JS
+        removeHelper tags (JSAlloc fun (Just (
+            JSApp (JSFunction [] (JSSeq seq)) []))
+          ) =
+            (JSAlloc fun (Just (
+              JSApp (JSFunction [] (JSSeq $ remover tags seq)) []))
+            )
+
+        removeHelper _ js = js
+
+        remover :: [Int] -> [JS] -> [JS]
+        remover tags (
+            j@(JSAssign ((JSIndex (JSIdent "t") (JSNum (JSInt tag)))) _):js
+          )
+          | tag `notElem` tags = remover tags js
+
+        remover tags (j:js) = j : remover tags js
+        remover _    []     = []
+
+
 initConstructors :: [JS] -> [JS]
 initConstructors js =
     let tags = nub $ sort $ concat (map getTags js) in
@@ -794,7 +850,8 @@ codegenJavaScript target definitions filename outputType = do
           reduced      = reduceJS idsRemoved
           constRemoved = map reduceConstants reduced
           constrInit   = initConstructors constRemoved
-          js           = map removeAllocations constrInit in
+          removeAlloc  = map removeAllocations constrInit
+          js           = deadEvalApplyCases removeAlloc in
           map compileJS js
 
     mainLoop :: String
