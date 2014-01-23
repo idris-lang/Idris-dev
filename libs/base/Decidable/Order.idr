@@ -71,12 +71,8 @@ decideNatLTE    x   (S y) with (decEq x (S y))
     | Yes nLTEm = Yes (nLTESm nLTEm)
     | No  nGTm  = No (nGTSm nGTm)
 
-instance Rel NatLTE where
-  liftRel P = (n : Nat) -> (m : Nat) -> P (NatLTE n m)
-
-instance Decidable NatLTE where
+instance Decidable [Nat,Nat] NatLTE where
   decide = decideNatLTE
 
 lte : (m : Nat) -> (n : Nat) -> Dec (NatLTE m n)
-lte m n = decide {p = NatLTE} m n
-
+lte m n = decide {ts = [Nat,Nat]} {p = NatLTE} m n

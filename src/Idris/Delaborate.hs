@@ -142,6 +142,11 @@ pshow i (CantConvert x y env)
           "Can't convert" ++ indented (showImp (Just i) imps colour (delab i x)) ++ "with"
                  ++ indented (showImp (Just i) imps colour (delab i y)) ++
                  if (opt_errContext (idris_options i)) then showSc i env else ""
+pshow i (CantSolveGoal x env)
+    = let imps = opt_showimp (idris_options i) in
+      let colour = idris_colourRepl i in
+          "Can't solve goal " ++ indented (showImp (Just i) imps colour (delab i x)) ++
+                 if (opt_errContext (idris_options i)) then showSc i env else ""
 pshow i (UnifyScope n out tm env)
     = let imps = opt_showimp (idris_options i) in
       let colour = idris_colourRepl i in

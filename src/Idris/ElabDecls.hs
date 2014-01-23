@@ -1332,7 +1332,7 @@ elabClause info opts (cnum, PClause fc fname lhs_in withs rhs_in whereblock)
                         return (tm, ds, is))
         logLvl 5 "DONE CHECK"
         logLvl 2 $ "---> " ++ show rhs'
-        when (not (null defer)) $ iLOG $ "DEFERRED " ++ show defer
+        when (not (null defer)) $ iLOG $ "DEFERRED " ++ show (map fst defer)
         def' <- checkDef fc defer
         let def'' = map (\(n, (i, top, t)) -> (n, (i, top, t, False))) def'
         addDeferred def''
@@ -2126,7 +2126,7 @@ elabDecl' _ _ _ = return () -- skipped this time
 
 elabCaseBlock info opts d@(PClauses f o n ps)
         = do addIBC (IBCDef n)
-             logLvl 6 $ "CASE BLOCK: " ++ show (n, d)
+             logLvl 5 $ "CASE BLOCK: " ++ show (n, d)
              let opts' = nub (o ++ opts)
              -- propagate totality assertion to the new definitions
              when (AssertTotal `elem` opts) $ setFlags n [AssertTotal]

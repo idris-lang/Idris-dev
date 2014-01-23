@@ -864,7 +864,9 @@ collectDeferred top t = return t
 runTac :: Bool -> IState -> PTactic -> ElabD ()
 runTac autoSolve ist tac
     = do env <- get_env
-         no_errors $ runT (fmap (addImplBound ist (map fst env)) tac)
+         g <- goal
+         no_errors (runT (fmap (addImplBound ist (map fst env)) tac))
+                   (Just (CantSolveGoal g (map (\(n, b) -> (n, binderTy b)) env)))
   where
     runT (Intro []) = do g <- goal
                          attack; intro (bname g)
@@ -1466,6 +1468,11 @@ reflectErr (CantConvert t t' ctxt) =
   raw_apply (Var $ reflErrName "CantConvert")
             [ reflect t
             , reflect t'
+            , reflectCtxt ctxt
+            ]
+reflectErr (CantSolveGoal t ctxt) =
+  raw_apply (Var $ reflErrName "CantSolveGoal")
+            [ reflect t
             , reflectCtxt ctxt
             ]
 reflectErr (UnifyScope n n' t ctxt) =
