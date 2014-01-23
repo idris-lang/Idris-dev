@@ -788,7 +788,7 @@ codegenJavaScript target definitions filename outputType = do
 
     functions :: [String]
     functions =
-      let translated   = map translateDeclaration def
+      let translated   = concatMap translateDeclaration def
           optimized    = map optimizeJS translated
           idsRemoved   = removeIDs optimized
           reduced      = reduceJS idsRemoved
@@ -922,7 +922,7 @@ translateConstant (BI i)                   = jsBigInt $ JSString (show i)
 translateConstant c =
   JSError $ "Unimplemented Constant: " ++ show c
 
-translateDeclaration :: (String, SDecl) -> JS
+translateDeclaration :: (String, SDecl) -> [JS]
 translateDeclaration (path, SFun name params stackSize body)
   | (MN _ ap)             <- name
   , (SLet var val next)   <- body
@@ -930,37 +930,37 @@ translateDeclaration (path, SFun name params stackSize body)
   , ap == txt "APPLY" =
     let lvar   = translateVariableName var
         lookup = "[" ++ lvar ++ ".tag](fn0,arg0," ++ lvar ++ ")" in
-        JSSeq [ lookupTable [(var, "chk")] var cases
-              , jsDecl $ JSFunction ["fn0", "arg0"] (
-                  JSSeq [ JSAlloc "__var_0" (Just $ JSIdent "fn0")
-                        , JSAlloc (translateVariableName var) (
-                            Just $ translateExpression val
-                          )
-                        , JSReturn $ (JSTernary (
-                             (JSVar var `jsInstanceOf` jsCon) `jsAnd`
-                             (hasProp lookupTableName (translateVariableName var))
-                          ) (JSIdent $
-                               lookupTableName ++ lookup
-                            ) JSNull
-                          )
-                        ]
-                )
-              ]
+        [ lookupTable [(var, "chk")] var cases
+        , jsDecl $ JSFunction ["fn0", "arg0"] (
+            JSSeq [ JSAlloc "__var_0" (Just $ JSIdent "fn0")
+                  , JSAlloc (translateVariableName var) (
+                      Just $ translateExpression val
+                    )
+                  , JSReturn $ (JSTernary (
+                       (JSVar var `jsInstanceOf` jsCon) `jsAnd`
+                       (hasProp lookupTableName (translateVariableName var))
+                    ) (JSIdent $
+                         lookupTableName ++ lookup
+                      ) JSNull
+                    )
+                  ]
+          )
+        ]
 
   | (MN _ ev)            <- name
   , (SChkCase var cases) <- body
   , ev == txt "EVAL" =
-    JSSeq [ lookupTable [] var cases
-          , jsDecl $ JSFunction ["arg0"] (JSReturn $
-              JSTernary (
-                (JSIdent "arg0" `jsInstanceOf` jsCon) `jsAnd`
-                (hasProp lookupTableName "arg0")
-              ) (JSRaw $ lookupTableName ++ "[arg0.tag](arg0)") (JSIdent "arg0")
-            )
-          ]
+    [ lookupTable [] var cases
+    , jsDecl $ JSFunction ["arg0"] (JSReturn $
+        JSTernary (
+          (JSIdent "arg0" `jsInstanceOf` jsCon) `jsAnd`
+          (hasProp lookupTableName "arg0")
+        ) (JSRaw $ lookupTableName ++ "[arg0.tag](arg0)") (JSIdent "arg0")
+      )
+    ]
   | otherwise =
     let fun = translateExpression body in
-        jsDecl $ jsFun fun
+        [jsDecl $ jsFun fun]
 
   where
     hasProp :: String -> String -> JS
