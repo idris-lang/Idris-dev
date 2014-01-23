@@ -27,7 +27,9 @@ import Idris.Core.CaseTree
 
 import Control.Monad.State
 import Data.List
+import qualified Data.IntMap as IM
 import qualified Data.Map as M
+import qualified Data.Set as S
 import System.Process
 import System.IO
 import System.Directory
@@ -48,7 +50,10 @@ compile codegen f tm
         -- TODO: DEBUG-ONLY, remove
         ist <- getIState
         let usedF = findUsed (tt_ctxt ist) (idris_callgraph ist) used
-        iLOG $ "USAGE ANALYSIS:\n" ++ unlines (map show . M.toList $ usedF)
+        let printCond (ctors, cond) = "if " ++ show (S.toList cond) ++ "  -ctors-  " ++ show (S.toList ctors)
+        let printDep  (i, conds) = unlines . map ("  "++) $ (show i : map printCond (S.toList conds))
+        let printItem (fn, deps) = unlines (show fn : map printDep (IM.toList deps))
+        iLOG $ "USAGE ANALYSIS:\n" ++ unlines (map printItem . M.toList $ usedF)
         -- END TODO
         
         maindef <- irMain tm
