@@ -232,6 +232,7 @@ instance Show Err where
                                        show xs ++ " " ++ show y
   show (InfiniteUnify n tm xs) = "InfiniteUnify " ++ show n ++ show tm ++ show xs
   show (CantConvert tm tm' xs) = "CantConvert " ++ show tm ++ show tm' ++ show xs
+  show (CantSolveGoal tm ctxt) = "CantSolveGoal " ++ show tm ++ " " ++ show ctxt
   show (UnifyScope n n' tm xs) = "UnifyScope " ++ show n ++ " " ++ show n' ++ " " ++ show tm ++ " " ++ show xs
   show (CantInferType x) = "CantInferType " ++ show x
   show (NonFunctionType tm tm') = "NonFunctionType " ++ show tm ++ show tm'
