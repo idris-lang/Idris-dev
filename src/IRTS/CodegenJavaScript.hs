@@ -258,20 +258,8 @@ jsSubst var new (JSIdent old)
 jsSubst var new (JSArray fields) =
   JSArray (map (jsSubst var new) fields)
 
-jsSubst var new (JSNew con [tag, vals]) =
-  JSNew con [tag, jsSubst var new vals]
-
-jsSubst var new (JSNew con [JSFunction [] (JSReturn (JSApp fun vars))]) =
-  JSNew con [JSFunction [] (
-    JSReturn $ JSApp (jsSubst var new fun) (map (jsSubst var new) vars)
-  )]
-
-jsSubst var new (JSApp (JSIdent "__IDRRT__tailcall") [JSFunction [] (
-                  JSReturn (JSApp fun args)
-                )]) =
-                  JSApp (JSIdent "__IDRRT__tailcall") [JSFunction [] (
-                    JSReturn $ JSApp (jsSubst var new fun) (map (jsSubst var new) args)
-                  )]
+jsSubst var new (JSNew con vals) =
+  JSNew con $ map (jsSubst var new) vals
 
 jsSubst var new (JSApp (JSProj (JSFunction args body) "apply") vals)
   | var `notElem` args =
@@ -283,9 +271,6 @@ jsSubst var new (JSApp (JSProj (JSFunction args body) "apply") vals)
         map (jsSubst var new) vals
       )
 
-jsSubst var new (JSApp (JSProj obj field) args) =
-  JSApp (JSProj (jsSubst var new obj) field) $ map (jsSubst var new) args
-
 jsSubst var new (JSApp (JSFunction [arg] body) vals)
   | var /= arg =
       JSApp (JSFunction [arg] (
@@ -295,6 +280,12 @@ jsSubst var new (JSApp (JSFunction [arg] body) vals)
       JSApp (JSFunction [arg] (
         body
       )) $ map (jsSubst var new) vals
+
+jsSubst var new (JSApp lhs rhs) =
+  JSApp (jsSubst var new lhs) (map (jsSubst var new) rhs)
+
+jsSubst var new (JSFunction [] body) =
+  JSFunction [] (jsSubst var new body)
 
 jsSubst var new (JSReturn ret) =
   JSReturn $ jsSubst var new ret
@@ -438,13 +429,9 @@ inlineJS (JSApp (JSFunction [arg] (JSReturn ret)) [val])
       JSOp op (jsSubst arg opt lhs) $
         (jsSubst arg opt rhs)
 
-  | JSApp (JSIdent "__IDRRT__tailcall") [JSFunction [] (
-      JSReturn (JSApp fun args)
-    )] <- ret
+  | JSApp (JSIdent fun) args <- ret
   , opt <- inlineJS val =
-      JSApp (JSIdent "__IDRRT__tailcall") [JSFunction [] (
-        JSReturn $ JSApp (jsSubst arg opt fun) (map (jsSubst arg opt) args)
-      )]
+      JSApp (JSIdent fun) $ map (jsSubst arg opt) args
 
 inlineJS (JSApp fun args) =
   JSApp (inlineJS fun) (map inlineJS args)
