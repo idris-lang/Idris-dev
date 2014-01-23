@@ -68,7 +68,7 @@ findUsed ctx cg ns = dfs M.empty ns
         | otherwise         = dfs (M.insert n (deps, depn) dmap) ns
       where
         next = [n | n <- S.toList depn, n `M.notMember` dmap]
-        depn = depNames deps
+        depn = S.delete n (depNames deps)
         deps = getDeps n
 
     depNames :: Deps -> Set Name
