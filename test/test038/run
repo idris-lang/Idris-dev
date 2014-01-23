@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+idris $@ FunErrTest.idr --nocolour --check
+rm -f *.ibc

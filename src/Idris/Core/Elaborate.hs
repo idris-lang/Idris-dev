@@ -401,8 +401,11 @@ qed = do processTactic' QED
 undo :: Elab' aux ()
 undo = processTactic' Undo
 
-prepare_apply :: Raw -> [Bool] -> Elab' aux [Name]
-prepare_apply fn imps = 
+-- | Prepare to apply a function by creating holes to be filled by the arguments
+prepare_apply :: Raw    -- ^ The operation being applied
+              -> [Bool] -- ^ Whether arguments are implicit
+              -> Elab' aux [(Name, Name)] -- ^ The names of the arguments and their holes to be filled with elaborated argument values
+prepare_apply fn imps =
     do ty <- get_type fn
        ctxt <- get_context
        env <- get_env
@@ -414,11 +417,13 @@ prepare_apply fn imps =
        let n = length (filter not imps)
        let (h : hs) = holes p
        put (ES (p { holes = h : (reverse (take n hs) ++ drop n hs) }, a) s prev)
---        case claims of
---             [] -> return ()
---             (h : _) -> reorder_claims h
        return $! claims
   where
+    mkClaims :: Type   -- ^ The type of the operation being applied
+             -> [Bool] -- ^ Whether the arguments are implicit
+             -> [(Name, Name)] -- ^ Accumulator for produced claims
+             -> [Name] -- ^ Hypotheses
+             -> Elab' aux [(Name, Name)] -- ^ The names of the arguments and their holes, resp.
     mkClaims (Bind n' (Pi t_in) sc) (i : is) claims hs =
         do let t = rebind hs t_in
            n <- getNameFrom (mkMN n')
@@ -427,7 +432,7 @@ prepare_apply fn imps =
 --            trace ("CLAIMING " ++ show (n, t) ++ " with " ++ show (fn, hs)) $
            claim n (forget t)
            when i (movelast n)
-           mkClaims sc' is (n : claims) hs
+           mkClaims sc' is ((n', n) : claims) hs
     mkClaims t [] claims _ = return $! (reverse claims)
     mkClaims _ _ _ _
             | Var n <- fn
@@ -452,11 +457,11 @@ prepare_apply fn imps =
     rebind hs (App f a) = App (rebind hs f) (rebind hs a)
     rebind hs t = t
 
-apply, match_apply :: Raw -> [(Bool, Int)] -> Elab' aux [Name]
+apply, match_apply :: Raw -> [(Bool, Int)] -> Elab' aux [(Name, Name)]
 apply = apply' fill
 match_apply = apply' match_fill
 
-apply' :: (Raw -> Elab' aux ()) -> Raw -> [(Bool, Int)] -> Elab' aux [Name]
+apply' :: (Raw -> Elab' aux ()) -> Raw -> [(Bool, Int)] -> Elab' aux [(Name, Name)]
 apply' fillt fn imps =
     do args <- prepare_apply fn (map fst imps)
        -- _Don't_ solve the arguments we're specifying by hand.
@@ -468,7 +473,7 @@ apply' fillt fn imps =
        let dont = head hs : dontunify p ++
                           if null imps then [] -- do all we can
                              else
-                             map fst (filter (not.snd) (zip args (map fst imps)))
+                             map fst (filter (not . snd) (zip (map snd args) (map fst imps)))
        let (n, hunis) = -- trace ("AVOID UNIFY: " ++ show (fn, dont) ++ "\n" ++ show ptm) $
                         unified p
        let unify = -- trace ("Not done " ++ show hs) $
@@ -477,10 +482,10 @@ apply' fillt fn imps =
                        keepGiven dont hunis hs
        put (ES (p { dontunify = dont, unified = (n, unify),
                     notunified = notunify ++ notunified p }, a) s prev)
-       fillt (raw_apply fn (map Var args))
+       fillt (raw_apply fn (map (Var . snd) args))
 --        trace ("Goal " ++ show g ++ "\n" ++ show (fn,  imps, unify) ++ "\n" ++ show ptm) $
        end_unify
-       return $! (map (updateUnify unify) args)
+       return $! (map (\(argName, argHole) -> (argName, updateUnify unify argHole)) args)
   where updateUnify us n = case lookup n us of
                                 Just (P _ t _) -> t
                                 _ -> n
@@ -488,8 +493,8 @@ apply' fillt fn imps =
 apply2 :: Raw -> [Maybe (Elab' aux ())] -> Elab' aux ()
 apply2 fn elabs =
     do args <- prepare_apply fn (map isJust elabs)
-       fill (raw_apply fn (map Var args))
-       elabArgs args elabs
+       fill (raw_apply fn (map (Var . snd) args))
+       elabArgs (map snd args) elabs
        ES (p, a) s prev <- get
        let (n, hs) = unified p
        end_unify

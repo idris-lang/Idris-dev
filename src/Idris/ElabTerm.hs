@@ -13,10 +13,14 @@ import Idris.Core.TT
 import Idris.Core.Evaluate
 import Idris.Core.Typecheck (check)
 
+import Control.Applicative ((<$>))
 import Control.Monad
 import Control.Monad.State.Strict
 import Data.List
+import qualified Data.Map as M
 import Data.Maybe (mapMaybe)
+import qualified Data.Set as S
+import qualified Data.Text as T
 
 import Debug.Trace
 
@@ -396,7 +400,7 @@ elab ist info pattern opts fn tm
             solve
     elab' (_, _, inty) (PApp fc (PRef _ f) args')
        | isTConName f (tt_ctxt ist) && pattern && not reflect && not inty
-          = lift $ tfail (Msg "Typecase is not allowed") 
+          = lift $ tfail (Msg "Typecase is not allowed")
     -- if f is local, just do a simple_app
     elab' (ina, g, inty) tm@(PApp fc (PRef _ f) args)
        = do env <- get_env
@@ -419,12 +423,14 @@ elab ist info pattern opts fn tm
                         _ -> mapM_ setInjective (map getTm args)
                     ctxt <- get_context
                     let guarded = isConName f ctxt
+--                    trace ("args is " ++ show args) $ return ()
                     ns <- apply (Var f) (map isph args)
+--                    trace ("ns is " ++ show ns) $ return ()
                     -- Sort so that the implicit tactics and alternatives go last
                     let (ns', eargs) = unzip $
                              sortBy cmpArg (zip ns args)
-                    elabArgs (ina || not isinf, guarded, inty)
-                           [] fc False ns' (map (\x -> (lazyarg x, getTm x)) eargs)
+                    elabArgs ist (ina || not isinf, guarded, inty)
+                           [] fc False f ns' (map (\x -> (lazyarg x, getTm x)) eargs)
                     solve
                     ivs' <- get_instances
                     -- Attempt to resolve any type classes which have 'complete' types,
@@ -613,45 +619,73 @@ elab ist info pattern opts fn tm
                             addImpl ist (PApp fc (PRef fc n) [pexp (PCoerced t)])
 
     -- | Elaborate the arguments to a function
-    elabArgs :: (Bool, Bool, Bool) -- ^ (in an argument, guarded, in a type)
+    elabArgs :: IState -- ^ The current Idris state
+             -> (Bool, Bool, Bool) -- ^ (in an argument, guarded, in a type)
              -> [Bool]
              -> FC -- ^ Source location
              -> Bool
-             -> [Name] -- ^ Names of arguments - these identify the holes to be filled
+             -> Name -- ^ Name of the function being applied
+             -> [(Name, Name)] -- ^ (Argument Name, Hole Name)
              -> [(Bool, PTerm)] -- ^ (Laziness, argument)
              -> ElabD ()
-    elabArgs ina failed fc retry [] _
+    elabArgs ist ina failed fc retry f [] _
 --         | retry = let (ns, ts) = unzip (reverse failed) in
 --                       elabArgs ina [] False ns ts
         | otherwise = return ()
-    elabArgs ina failed fc r (n:ns) ((_, Placeholder) : args)
-        = elabArgs ina failed fc r ns args
-    elabArgs ina failed fc r (n:ns) ((lazy, t) : args)
+    elabArgs ist ina failed fc r f (n:ns) ((_, Placeholder) : args)
+        = elabArgs ist ina failed fc r f ns args
+    elabArgs ist ina failed fc r f ((argName, holeName):ns) ((lazy, t) : args)
         | lazy && not pattern
-          = do elabArg n (PApp bi (PRef bi (sUN "lazy"))
-                               [pimp (sUN "a") Placeholder True,
-                                pexp t]);
-        | otherwise = elabArg n t
-      where elabArg n t
-                = do hs <- get_holes
-                     tm <- get_term
-                     failed' <- -- trace (show (n, t, hs, tm)) $
-                                -- traceWhen (not (null cs)) (show ty ++ "\n" ++ showImp True t) $
-                                case n `elem` hs of
-                                   True -> do focus n; elabE ina t; return failed
-                                   False -> return failed
-                     elabArgs ina failed fc r ns args
+          = elabArg argName holeName (PApp bi (PRef bi (sUN "lazy"))
+                                           [pimp (sUN "a") Placeholder True,
+                                            pexp t])
+        | otherwise = elabArg argName holeName t
+      where elabArg argName holeName t =
+              reflectFunctionErrors ist f argName $
+              do hs <- get_holes
+                 tm <- get_term
+                 failed' <- -- trace (show (n, t, hs, tm)) $
+                            -- traceWhen (not (null cs)) (show ty ++ "\n" ++ showImp True t) $
+                            case holeName `elem` hs of
+                              True -> do focus holeName; elabE ina t; return failed
+                              False -> return failed
+                 elabArgs ist ina failed fc r f ns args
 
--- | Perform error reflection for functions with specific error handlers
-reflectFunctionErrors :: IState -> Name -> ElabD a -> ElabD a
-reflectFunctionErrors ist f action =
+-- | Perform error reflection for function applicaitons with specific error handlers
+reflectFunctionErrors :: IState -> Name -> Name -> ElabD a -> ElabD a
+reflectFunctionErrors ist f arg action =
   do elabState <- get
      (result, newState) <- case runStateT action elabState of
                              OK (res, newState) -> return (res, newState)
-                             Error e -> lift (tfail e) -- TODO: actual error reflection!
+                             Error e@(ReflectionError _ _) -> (lift . tfail) e
+                             Error e@(ReflectionFailed _ _) -> (lift . tfail) e
+                             Error e -> handle e >>= lift . tfail
      put newState
      return result
+  where handle :: Err -> ElabD Err
+        handle e = do let funhandlers = (maybe M.empty id . lookupCtxtExact f . idris_function_errorhandlers) ist
+                          handlers = (maybe [] S.toList . M.lookup arg) funhandlers
+                          reports  = map (\n -> RApp (Var n) (reflectErr e)) handlers
 
+
+                      -- Typecheck error handlers - if this fails, then something else was wrong earlier!
+                      handlers <- case mapM (check (tt_ctxt ist) []) reports of
+                                      Error e -> lift . tfail $
+                                                 ReflectionFailed "Type error while constructing reflected error" e
+                                      OK hs   -> return hs
+
+                      -- Normalize error handler terms to produce the new messages
+                      let ctxt    = tt_ctxt ist
+                          results = map (normalise ctxt []) (map fst handlers)
+
+                      -- For each handler term output, either discard it if it is Nothing or reify it the Haskell equivalent
+                      let errorpartsTT = mapMaybe unList (mapMaybe fromTTMaybe results)
+                      errorparts <- case mapM (mapM reifyReportPart) errorpartsTT of
+                                      Left err -> lift (tfail err)
+                                      Right ok -> return ok
+                      return $ case errorparts of
+                                   []    -> e
+                                   parts -> ReflectionError errorparts e
 
 -- For every alternative, look at the function at the head. Automatically resolve
 -- any nested alternatives where that function is also at the head
@@ -788,8 +822,8 @@ resolveTC depth topg fn ist
                                 [args] -> map isImp (snd args) -- won't be overloaded!
                 ps <- get_probs
                 tm <- get_term
-                args <- try' (apply (Var n) imps)
-                             (match_apply (Var n) imps) True
+                args <- map snd <$> try' (apply (Var n) imps)
+                                         (match_apply (Var n) imps) True
                 ps' <- get_probs
                 when (length ps < length ps') $ fail "Can't apply type class"
 --                 traceWhen (all boundVar ttypes) ("Progress: " ++ show t ++ " with " ++ show n) $
@@ -802,7 +836,7 @@ resolveTC depth topg fn ist
                 -- if there's any arguments left, we've failed to resolve
                 hs <- get_holes
                 ulog <- getUnifyLog
-                solve 
+                solve
                 traceWhen ulog ("Got " ++ show n) $ return ()
        where isImp (PImp p _ _ _ _ _) = (True, p)
              isImp arg = (False, priority arg)
@@ -1487,6 +1521,7 @@ reflectErr (LoadingFailed str err) =
   raw_apply (Var $ reflErrName "LoadingFailed") [RConstant (Str str)]
 reflectErr x = raw_apply (Var (sNS (sUN "Msg") ["Errors", "Reflection", "Language"])) [RConstant . Str $ "Default reflection: " ++ show x]
 
+
 withErrorReflection :: Idris a -> Idris a
 withErrorReflection x = idrisCatch x (\ e -> handle e >>= ierror)
     where handle :: Err -> Idris Err
@@ -1512,47 +1547,50 @@ withErrorReflection x = idrisCatch x (\ e -> handle e >>= ierror)
 
                         -- For each handler term output, either discard it if it is Nothing or reify it the Haskell equivalent
                         let errorpartsTT = mapMaybe unList (mapMaybe fromTTMaybe results)
-                        errorparts <- mapM (mapM reifyReportPart) errorpartsTT
-
+                        errorparts <- case mapM (mapM reifyReportPart) errorpartsTT of
+                                        Left err -> ierror err
+                                        Right ok -> return ok
                         return $ case errorparts of
                                    []    -> e
                                    parts -> ReflectionError errorparts e
 
-          fromTTMaybe :: Term -> Maybe Term -- WARNING: Assumes the term has type Maybe a
-          fromTTMaybe (App (App (P (DCon _ _) (NS (UN just) _) _) ty) tm) 
-               | just == txt "Just" = Just tm
-          fromTTMaybe x                                            = Nothing
+fromTTMaybe :: Term -> Maybe Term -- WARNING: Assumes the term has type Maybe a
+fromTTMaybe (App (App (P (DCon _ _) (NS (UN just) _) _) ty) tm)
+  | just == txt "Just" = Just tm
+fromTTMaybe x          = Nothing
 
 reflErrName :: String -> Name
 reflErrName n = sNS (sUN n) ["Errors", "Reflection", "Language"]
 
-reifyReportPart :: Term -> Idris ErrorReportPart
+-- | Attempt to reify a report part from TT to the internal
+-- representation. Not in Idris or ElabD monads because it should be usable
+-- from either.
+reifyReportPart :: Term -> Either Err ErrorReportPart
 reifyReportPart (App (P (DCon _ _) n _) (Constant (Str msg))) | n == reflErrName "TextPart" =
-    return (TextPart msg)
+    Right (TextPart msg)
 reifyReportPart (App (P (DCon _ _) n _) ttn)
   | n == reflErrName "NamePart" =
     case runElab [] (reifyTTName ttn) (initElaborator NErased initContext Erased) of
-      Error e -> ierror . InternalMsg $
+      Error e -> Left . InternalMsg $
        "could not reify name term " ++
        show ttn ++
        " when reflecting an error"
-      OK (n', _)-> return $ NamePart n'
+      OK (n', _)-> Right $ NamePart n'
 reifyReportPart (App (P (DCon _ _) n _) tm)
   | n == reflErrName "TermPart" =
-   do ist <- getIState
-      case runElab [] (reifyTT tm) (initElaborator NErased initContext Erased) of
-        Error e -> ierror . InternalMsg $
-          "could not reify reflected term " ++
-          show tm ++
-          " when reflecting an error"
-        OK (tm', _) -> return $ TermPart tm'
+  case runElab [] (reifyTT tm) (initElaborator NErased initContext Erased) of
+    Error e -> Left . InternalMsg $
+      "could not reify reflected term " ++
+      show tm ++
+      " when reflecting an error"
+    OK (tm', _) -> Right $ TermPart tm'
 reifyReportPart (App (P (DCon _ _) n _) tm)
   | n == reflErrName "SubReport" =
-   case unList tm of
-     Just xs -> do subParts <- mapM reifyReportPart xs
-                   return (SubReport subParts)
-     Nothing -> ierror . InternalMsg $ "could not reify subreport " ++ show tm
-reifyReportPart x = ierror . InternalMsg $ "could not reify " ++ show x
+  case unList tm of
+    Just xs -> do subParts <- mapM reifyReportPart xs
+                  Right (SubReport subParts)
+    Nothing -> Left . InternalMsg $ "could not reify subreport " ++ show tm
+reifyReportPart x = Left . InternalMsg $ "could not reify " ++ show x
 
 envTupleType :: Raw
 envTupleType

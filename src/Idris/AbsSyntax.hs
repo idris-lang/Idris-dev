@@ -25,6 +25,7 @@ import Data.List
 import Data.Char
 import qualified Data.Text as T
 import Data.Either
+import qualified Data.Map as M
 import Data.Maybe
 import qualified Data.Set as S
 import Data.Word (Word)
@@ -149,14 +150,23 @@ addToCG n cg
    = do i <- getIState
         putIState $ i { idris_callgraph = addDef n cg (idris_callgraph i) }
 
--- | Adds hs as error handlers for n. If n is ambiguous, all matching ns are updated.
-addFunctionErrorHandlers :: Name -> [Name] -> Idris ()
-addFunctionErrorHandlers n hs = do i <- getIState
-                                   let currentHandlers = idris_function_errorhandlers i
-                                   let newHandlers = updateDef n
-                                                       (\handlers -> handlers `S.union` S.fromList hs)
-                                                       currentHandlers
-                                   putIState $ i { idris_function_errorhandlers = newHandlers  }
+-- | Adds error handlers for a particular function and argument. If names are is ambiguous, all matching handlers are updated.
+addFunctionErrorHandlers :: Name -> Name -> [Name] -> Idris ()
+addFunctionErrorHandlers f arg hs =
+ do i <- getIState
+    let oldHandlers = idris_function_errorhandlers i
+    let newHandlers = flip (addDef f) oldHandlers $
+                      case lookupCtxtExact f oldHandlers of
+                        Nothing            -> M.singleton arg (S.fromList hs)
+                        Just (oldHandlers) -> M.insertWith S.union arg (S.fromList hs) oldHandlers
+                        -- will always be one of those two, thus no extra case
+    putIState $ i { idris_function_errorhandlers = newHandlers }
+
+getFunctionErrorHandlers :: Name -> Name -> Idris [Name]
+getFunctionErrorHandlers f arg = do i <- getIState
+                                    return . maybe [] S.toList $
+                                     undefined --lookup arg =<< lookupCtxtExact f (idris_function_errorhandlers i)
+
 
 -- Trace all the names in a call graph starting at the given name
 getAllNames :: Name -> Idris [Name]

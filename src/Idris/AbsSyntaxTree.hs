@@ -24,6 +24,7 @@ import Control.Monad.Trans.Error
 
 import Data.List
 import Data.Char
+import qualified Data.Map as M
 import qualified Data.Text as T
 import Data.Either
 import qualified Data.Set as S
@@ -136,7 +137,7 @@ data IState = IState {
     idris_outh :: Handle,
     idris_errorhandlers :: [Name], -- ^ Global error handlers
     idris_nameIdx :: (Int, Ctxt (Int, Name)),
-    idris_function_errorhandlers :: Ctxt (S.Set Name) -- ^ Specific error handlers
+    idris_function_errorhandlers :: Ctxt (M.Map Name (S.Set Name)) -- ^ Specific error handlers
    }
 
 data SizeChange = Smaller | Same | Bigger | Unknown

@@ -55,6 +55,7 @@ import Data.Char
 import qualified Data.HashSet as HS
 import qualified Data.Text as T
 import qualified Data.ByteString.UTF8 as UTF8
+import qualified Data.Set as S
 
 import Debug.Trace
 
@@ -870,15 +871,16 @@ directive syn = do try (lchar '%' *> reserved "lib"); cgn <- codegen_; lib <- st
              <|> do try (lchar '%' *> reserved "name")
                     ty <- iName []
                     ns <- sepBy1 name (lchar ',')
-                    return [PDirective 
-                               (do ty' <- disambiguate ty
-                                   mapM_ (addNameHint ty') ns
-                                   mapM_ (\n -> addIBC (IBCNameHint (ty', n))) ns)]
+                    return [PDirective (do ty' <- disambiguate ty
+                                           mapM_ (addNameHint ty') ns
+                                           mapM_ (\n -> addIBC (IBCNameHint (ty', n))) ns)]
              <|> do try (lchar '%' *> reserved "error_handlers")
                     fn <- iName []
+                    arg <- iName []
                     ns <- sepBy1 name (lchar ',')
-                    return [PDirective $ do n' <- disambiguate fn
-                                            addFunctionErrorHandlers fn ns]
+                    return [PDirective (do fn' <- disambiguate fn
+                                           ns' <- mapM disambiguate ns
+                                           addFunctionErrorHandlers fn' arg ns')]
              <|> do try (lchar '%' *> reserved "language"); ext <- pLangExt;
                     return [PDirective (addLangExt ext)]
              <?> "directive"
