@@ -831,7 +831,7 @@ codegenJavaScript target definitions filename outputType = do
     intercalate "\n" $ [ jsbn
                        , idrRuntime
                        , tgtRuntime
-                       ] ++ functions ++ [mainLoop, invokeLoop]
+                       ] ++ functions
     )
 
   setPermissions filename (emptyPermissions { readable   = True
@@ -844,7 +844,9 @@ codegenJavaScript target definitions filename outputType = do
 
     functions :: [String]
     functions =
-      let translated   = concatMap translateDeclaration def
+      let translated  =
+            concatMap translateDeclaration def ++ [mainLoop, invokeLoop]
+
           optimized    = map optimizeJS translated
           idsRemoved   = removeIDs optimized
           reduced      = reduceJS idsRemoved
@@ -854,8 +856,8 @@ codegenJavaScript target definitions filename outputType = do
           js           = deadEvalApplyCases removeAlloc in
           map compileJS js
 
-    mainLoop :: String
-    mainLoop = compileJS $
+    mainLoop :: JS
+    mainLoop =
       JSAlloc "main" $ Just $ JSFunction [] (
         case target of
              Node       -> mainFun
@@ -872,8 +874,8 @@ codegenJavaScript target definitions filename outputType = do
         runMain :: String
         runMain = idrNamespace ++ translateName (sMN 0 "runMain")
 
-    invokeLoop :: String
-    invokeLoop  = compileJS $ jsCall "main" []
+    invokeLoop :: JS
+    invokeLoop  = jsCall "main" []
 
 translateIdentifier :: String -> String
 translateIdentifier =
