@@ -166,8 +166,8 @@ allNames :: [Name] -> Name -> Idris [Name]
 allNames ns n | n `elem` ns = return []
 allNames ns n = do i <- getIState
                    case lookupCtxtExact n (idris_callgraph i) of
-                      [ns'] -> do more <- mapM (allNames (n:ns)) (map fst (calls ns'))
-                                  return (nub (n : concat more))
+                      Just ns' -> do more <- mapM (allNames (n:ns)) (map fst (calls ns'))
+                                     return (nub (n : concat more))
                       _ -> return [n]
 
 addCoercion :: Name -> Idris ()

@@ -81,17 +81,17 @@ addApps defs (n, LFun _ _ args e)
     aa env (LApp tc (LV (Glob n)) args)
        = do args' <- mapM (aa env) args
             case lookupCtxtExact n defs of
-                [LConstructor _ i ar] -> return $ DApp tc n args'
-                [LFun _ _ as _] -> let arity = length as in
-                                       fixApply tc n args' arity
-                [] -> return $ chainAPPLY (DV (Glob n)) args'
+                Just (LConstructor _ i ar) -> return $ DApp tc n args'
+                Just (LFun _ _ as _) -> let arity = length as in
+                                               fixApply tc n args' arity
+                Nothing -> return $ chainAPPLY (DV (Glob n)) args'
     aa env (LLazyApp n args)
        = do args' <- mapM (aa env) args
             case lookupCtxtExact n defs of
-                [LConstructor _ i ar] -> return $ DApp False n args'
-                [LFun _ _ as _] -> let arity = length as in
-                                       fixLazyApply n args' arity
-                [] -> return $ chainAPPLY (DV (Glob n)) args'
+                Just (LConstructor _ i ar) -> return $ DApp False n args'
+                Just (LFun _ _ as _) -> let arity = length as in
+                                           fixLazyApply n args' arity
+                Nothing -> return $ chainAPPLY (DV (Glob n)) args'
     aa env (LForce (LLazyApp n args)) = aa env (LApp False (LV (Glob n)) args)
     aa env (LForce e) = liftM eEVAL (aa env e)
     aa env (LLet n v sc) = liftM2 (DLet n) (aa env v) (aa (n : env) sc)
