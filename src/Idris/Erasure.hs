@@ -45,8 +45,13 @@ type Cond = Set (Name, Int)
 -- which constructor fields have been accessed to obtain the variable.
 type Ctors = Set (Name, Int)
 
--- Just a translation from name to argument number.
-type VarMap = Map Name (Int, Ctors)
+-- Variables used in terms.
+type Var = Cond -> Deps
+type Vars = Map Name Var
+
+-- Variables passing the pattern-matches before being used in terms.
+type PatVar = Ctors -> Var
+type PatVars = Map Name PatVar
 
 findUsed :: Context -> Ctxt CGInfo -> [Name] -> DepMap
 findUsed ctx cg ns = M.fromList [(n, getDeps n) | n <- ns]
@@ -62,32 +67,54 @@ findUsed ctx cg ns = M.fromList [(n, getDeps n) | n <- ns]
     getDepsDef (TyDecl   ty t) = IM.empty
     getDepsDef (Operator ty n f) = IM.empty
     getDepsDef (CaseOp ci ty tys def tot cdefs)
-        = getDepsSC varMap S.empty S.empty sc
+        = getDepsSC varMap sc
       where
-        varMap = M.fromList [(v, (i, S.empty)) | (i,v) <- zip [0..] vars]
+        pvar i cs cd = IM.singleton i (S.singleton (cs, cd))
+        varMap = M.fromList [(v, pvar i) | (v,i) <- zip vars [0..]]
         (vars, sc) = cases_compiletime cdefs  -- TODO: or cases_runtime?
 
-    getDepsSC :: VarMap -> Cond -> SC -> Deps
-    getDepsSC vs cd  ImpossibleCase     = IM.empty
-    getDepsSC vs cd (UnmatchedCase msg) = IM.empty
-    getDepsSC vs cd (ProjCase t alt)    = getDepsAlt vs cd alt
-    getDepsSC vs cd (STerm    t)        = getDepsTerm vs cd t
-    getDepsSC vs cd (Case     n alts)   = unionMap (getDepsAlt vs cd cs) alts
+    getDepsSC :: PatVars -> SC -> Deps
+    getDepsSC vs  ImpossibleCase     = IM.empty
+    getDepsSC vs (UnmatchedCase msg) = IM.empty
+    getDepsSC vs (ProjCase t alt)    = error "ProjCase not supported"
+    getDepsSC vs (STerm    t)        = getDepsTerm (M.map ($ S.empty) vs) [] S.empty t
+    getDepsSC vs (Case     n alts)   = unionMap (getDepsAlt vs pvar) alts
       where
-        cs = fromMaybe (error $ "nonpatvar in case: " ++ show n) (M.lookup n vs)
+        pvar  = fromMaybe (error $ "nonpatvar in case: " ++ show n) (M.lookup n vs)
 
-    getDepsAlt :: VarMap -> Cond -> (Int, Ctors) -> CaseAlt -> Deps
-    getDepsAlt vs cd cs (FnCase n ns sc) = error "an FnCase encountered"  -- TODO: what's this?
-    getDepsAlt vs cd cs (ConstCase c sc) = error "a ConstCase encountered"
-    getDepsAlt vs cd cs (SucCase   n sc) = error "a SucCase encountered"
-    getDepsAlt vs cd cs (DefaultCase sc) = error "a DefaultCase encountered"
-    getDepsAlt vs cd (i, cs) (ConCase n cnt ns sc)
-        = getDepsSC (vs' `M.union` vs) cd sc  -- left-biased union
+    getDepsAlt :: PatVars -> PatVar -> CaseAlt -> Deps
+    getDepsAlt vs pv (FnCase n ns sc) = error "an FnCase encountered"  -- TODO: what's this?
+    getDepsAlt vs pv (ConstCase c sc) = error "a ConstCase encountered"
+    getDepsAlt vs pv (SucCase   n sc) = error "a SucCase encountered"
+    getDepsAlt vs pv (DefaultCase sc) = error "a DefaultCase encountered"
+    getDepsAlt vs pv (ConCase n cnt ns sc)
+        = getDepsSC (vs' `M.union` vs) sc  -- left-biased union
       where
-        vs' = M.fromList [(n, (i, S.insert (n,j) cs)) | (n,j) <- zip ns [0..]]
+        -- n = ctor name, j = ctor arg#, i = fun arg# of the cased var, cs = ctors of the cased var
+        vs' = M.fromList [(v, pv . S.insert (n,j)) | (v,j) <- zip ns [0..]]
 
-    getDepsTerm :: VarMap -> Cond -> Term -> Deps
-    getDepsTerm vs cd t = IM.empty
+    -- Named variables -> DeBruijn variables -> Conds/guards -> Term -> Deps
+    getDepsTerm :: Vars -> [Var] -> Cond -> Term -> Deps
+    getDepsTerm vs bs cd (P _ n _)
+        | Just var <- M.lookup n vs = var cd
+        | otherwise = IM.empty
+    getDepsTerm vs bs cd (V i) = (bs !! i) cd
+    getDepsTerm vs bs cd (Bind n (Lam ty) t) = error "stray lambda"  -- probably just push S.empty on the DeBruijn stack
+    getDepsTerm vs bs cd (Bind n (Pi  ty) t) = error "stray bind"    -- the args will be marked as used on the usage site
+    getDepsTerm vs bs cd (Bind n (Let ty v) t) =
+        getDepsTerm (M.insert n (\cd -> getDepsTerm vs bs cd v) vs) bs cd t
+    getDepsTerm vs bs cd (Bind n (NLet ty v) t) = 
+        getDepsTerm (M.insert n (\cd -> getDepsTerm vs bs cd v) vs) bs cd t  -- TODO: what's this?
+    getDepsTerm vs bs cd app@(App _ _)
+        | (fun, args) <- unApply app = case fun of
+            P Bound n _ -> ?
+            -- named references depend on whether the referred thing uses the argument
+            P Ref n _ -> called n args
+            P (DCon _ _) n _ -> called n args
+      where
+        called n args = unionMap (\(i,t) -> getDepsTerm vs bs (S.insert (n,i) cd) t) (zip [0..] args)
+
+    getDepsTerm _ _ _ t = error $ "getDepsTerm: unrecognised term: " ++ show t
 
 {-
 data TT n = P NameType n (TT n) -- ^ named references
@@ -100,6 +127,21 @@ data TT n = P NameType n (TT n) -- ^ named references
           | Erased -- ^ an erased term
           | Impossible -- ^ special case for totality checking
           | TType UExp -- ^ the type of types at some level
+
+-- | All binding forms are represented in a unform fashion.
+data Binder b = Lam   { binderTy  :: !b {-^ type annotation for bound variable-}}
+              | Pi    { binderTy  :: !b }
+              | Let   { binderTy  :: !b,
+                        binderVal :: b {-^ value for bound variable-}}
+              | NLet  { binderTy  :: !b,
+                        binderVal :: b }
+              | Hole  { binderTy  :: !b}
+              | GHole { envlen :: Int,
+                        binderTy  :: !b}
+              | Guess { binderTy  :: !b,
+                        binderVal :: b }
+              | PVar  { binderTy  :: !b }
+              | PVTy  { binderTy  :: !b }
 -}
 
     unions :: [Deps] -> Deps
