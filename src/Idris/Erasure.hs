@@ -28,8 +28,13 @@ import Data.IntMap (IntMap)
 -- UseMap maps names to the set of used (reachable) argument positions.
 type UseMap = Map Name IntSet
 
--- DepMap maps functions (only functions) to their Deps.
-type DepMap = Map Name Deps
+-- Deps augmented with cached info.
+-- fst = deps
+-- snd = all names that the function depends on
+type Deps' = (Deps, Set Name)
+
+-- DepMap maps functions (only functions) to their Deps'.
+type DepMap = Map Name Deps'
 
 -- Deps of a function is a map from argument index
 -- to all usages of the argument, including conditions
@@ -54,8 +59,24 @@ type PatVar = Ctors -> Var
 type PatVars = Map Name PatVar
 
 findUsed :: Context -> Ctxt CGInfo -> [Name] -> DepMap
-findUsed ctx cg ns = M.fromList [(n, getDeps n) | n <- ns]
+findUsed ctx cg ns = dfs M.empty ns
   where
+    dfs :: DepMap -> [Name] -> DepMap
+    dfs dmap [] = dmap
+    dfs dmap (n : ns)
+        | n `M.member` dmap = dfs dmap ns
+        | otherwise         = dfs (M.insert n (deps, depn) dmap) ns
+      where
+        next = [n | n <- S.toList depn, n `M.notMember` dmap]
+        depn = depNames deps
+        deps = getDeps n
+
+    depNames :: Deps -> Set Name
+    depNames = S.unions . map (S.unions . map f . S.toList) . IM.elems
+      where
+        f :: (Ctors, Cond) -> Set Name
+        f (ctors, cond) = S.map fst cond  -- let's ignore ctors for now
+
     getDeps :: Name -> Deps
     getDeps n = case lookupDef n ctx of
         [def] -> getDepsDef def
