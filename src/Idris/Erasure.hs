@@ -84,9 +84,9 @@ findUsed ctx cg ns = M.fromList [(n, getDeps n) | n <- ns]
 
     getDepsAlt :: PatVars -> PatVar -> CaseAlt -> Deps
     getDepsAlt vs pv (FnCase n ns sc) = error "an FnCase encountered"  -- TODO: what's this?
-    getDepsAlt vs pv (ConstCase c sc) = IM.empty
-    getDepsAlt vs pv (SucCase   n sc) = error "a SucCase encountered"
-    getDepsAlt vs pv (DefaultCase sc) = error $ "a DefaultCase encountered: " ++ show (DefaultCase sc)
+    getDepsAlt vs pv (ConstCase c sc) = getDepsSC vs sc
+    getDepsAlt vs pv (SucCase   n sc) = getDepsSC vs sc  -- deps for S can be hardcoded if needed
+    getDepsAlt vs pv (DefaultCase sc) = getDepsSC vs sc
     getDepsAlt vs pv (ConCase n cnt ns sc)
         = getDepsSC (vs' `M.union` vs) sc  -- left-biased union
       where
@@ -130,7 +130,11 @@ findUsed ctx cg ns = M.fromList [(n, getDeps n) | n <- ns]
       where
         called n args = unionMap (\(i,t) -> getDepsTerm vs bs (S.insert (n,i) cd) t) (zip [0..] args)
 
-    getDepsTerm _ _ _ t = error $ "getDepsTerm: unrecognised term: " ++ show t
+    -- the easy cases
+    getDepsTerm vs bs cd (Constant _) = IM.empty
+    getDepsTerm vs bs cd Erased       = IM.empty
+    getDepsTerm vs bs cd Impossible   = IM.empty
+    getDepsTerm vs bs cd (TType _)    = IM.empty
 
 {-
 data TT n = P NameType n (TT n) -- ^ named references
