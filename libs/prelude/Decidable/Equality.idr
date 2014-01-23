@@ -153,7 +153,7 @@ instance DecEq a => DecEq (List a) where
   decEq [] (x :: xs) = No (negEqSym lemma_val_not_nil)
   decEq (x :: xs) (y :: ys) with (decEq x y)
     decEq (x :: xs) (x :: ys) | Yes refl with (decEq xs ys)
-      decEq (x :: xs) (x :: xs) | (Yes refl) | (Yes refl) = Yes refl -- maybe another yes refl
+      decEq (x :: xs) (x :: xs) | (Yes refl) | (Yes refl) = Yes refl 
       decEq (x :: xs) (x :: ys) | (Yes refl) | (No p) = No (\eq => lemma_x_eq_xs_neq refl p eq)
     decEq (x :: xs) (y :: ys) | No p with (decEq xs ys)
       decEq (x :: xs) (y :: xs) | (No p) | (Yes refl) = No (\eq => lemma_x_neq_xs_eq p refl eq)
@@ -214,4 +214,13 @@ instance DecEq Integer where
 instance DecEq Float where
     decEq x y = if x == y then Yes (really_believe_me {a = x=x} {b = x=y} refl)
                           else No (really_believe_me _|_)
+
+--------------------------------------------------------------------------------
+-- String
+--------------------------------------------------------------------------------
+
+instance DecEq String where
+    decEq x y = if x == y then Yes (really_believe_me {a = x=x} {b = x=y} refl)
+                          else No (really_believe_me _|_)
+
 
