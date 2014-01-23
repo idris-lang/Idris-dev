@@ -880,7 +880,8 @@ directive syn = do try (lchar '%' *> reserved "lib"); cgn <- codegen_; lib <- st
                     ns <- sepBy1 name (lchar ',')
                     return [PDirective (do fn' <- disambiguate fn
                                            ns' <- mapM disambiguate ns
-                                           addFunctionErrorHandlers fn' arg ns')]
+                                           addFunctionErrorHandlers fn' arg ns'
+                                           mapM_ (addIBC . IBCFunctionErrorHandler fn' arg) ns')]
              <|> do try (lchar '%' *> reserved "language"); ext <- pLangExt;
                     return [PDirective (addLangExt ext)]
              <?> "directive"

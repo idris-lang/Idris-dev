@@ -193,6 +193,8 @@ data IBCWrite = IBCFix FixDecl
               | IBCDef Name -- i.e. main context
               | IBCNameHint (Name, Name)
               | IBCLineApp FilePath Int PTerm
+              | IBCErrorHandler Name
+              | IBCFunctionErrorHandler Name Name Name
   deriving Show
 
 -- | The initial state for the compiler
