@@ -687,6 +687,93 @@ removeIDs js =
 
         removeIDCall _ js = js
 
+inlineFunctions :: [JS] -> [JS]
+inlineFunctions js =
+  let funs       = collectFunctions js
+      occurences = map (id &&& countAll js) funs in
+      -- (JSRaw $ "// " ++ show (map (id &&& countAll js) funs))
+      removeDeadFunctions occurences js
+      where
+        removeDeadFunctions :: [(String, Int)] -> [JS] -> [JS]
+        removeDeadFunctions _ [] = []
+        removeDeadFunctions funOccur ((JSAlloc fun (Just (JSFunction  _ _))):js)
+          | Just o <- lookup fun funOccur
+          , o == 0 = removeDeadFunctions funOccur js
+
+        removeDeadFunctions funOccur (j:js) = j : removeDeadFunctions funOccur js
+
+
+        collectFunctions :: [JS] -> [String]
+        collectFunctions js =
+          catMaybes $ map collectHelper js
+
+
+        collectHelper :: JS -> Maybe String
+        collectHelper (JSAlloc fun (Just (JSFunction _ body)))
+          | fun /= "main" && nonRecur fun body = Just fun
+        collectHelper _                        = Nothing
+
+
+        nonRecur :: String -> JS -> Bool
+        nonRecur name body = countInvokations name body == 0
+
+
+        countAll :: [JS] -> String -> Int
+        countAll js name = sum $ map (countInvokations name) js
+
+
+        countInvokations :: String -> JS -> Int
+        countInvokations name (JSApp (JSIdent ident) args)
+          | name == ident = 1 + (sum $ map (countInvokations name) args)
+          | otherwise     = sum $ map (countInvokations name) args
+
+        countInvokations name (JSApp lhs rhs) =
+          countInvokations name lhs + (sum $ map (countInvokations name) rhs)
+
+        countInvokations name (JSFunction _ body) =
+          countInvokations name body
+
+        countInvokations name (JSSeq seq) =
+          sum $ map (countInvokations name) seq
+
+        countInvokations name (JSReturn ret) =
+          countInvokations name ret
+
+        countInvokations name (JSNew _ args) =
+          sum $ map (countInvokations name) args
+
+        countInvokations name (JSOp _ lhs rhs) =
+          countInvokations name lhs + countInvokations name rhs
+
+        countInvokations name (JSProj obj _) =
+          countInvokations name obj
+
+        countInvokations name (JSArray vals) =
+          sum $ map (countInvokations name) vals
+
+        countInvokations name (JSAssign _ rhs) =
+          countInvokations name rhs
+
+        countInvokations name (JSAlloc _ (Just js)) =
+          countInvokations name js
+
+        countInvokations name (JSIndex lhs rhs) =
+          countInvokations name lhs + countInvokations name rhs
+
+        countInvokations name (JSCond conds) =
+          sum $ map (uncurry (+)) (
+            map (countInvokations name *** countInvokations name) conds
+          )
+
+        countInvokations name (JSTernary c t f) =
+          sum $ [ countInvokations name c
+                , countInvokations name t
+                , countInvokations name f
+                ]
+
+        countInvokations _ _ = 0
+
+
 reduceConstant :: JS -> JS
 reduceConstant (JSApp (JSIdent "__IDRRT__tailcall") [JSFunction [] (
                  JSReturn (JSApp (JSIdent "__IDR__mEVAL0") [JSNum num])
@@ -853,7 +940,8 @@ codegenJavaScript target definitions filename outputType = do
           constRemoved = map reduceConstants reduced
           constrInit   = initConstructors constRemoved
           removeAlloc  = map removeAllocations constrInit
-          js           = deadEvalApplyCases removeAlloc in
+          deadElim     = deadEvalApplyCases removeAlloc
+          js           = inlineFunctions deadElim in
           map compileJS js
 
     mainLoop :: JS
