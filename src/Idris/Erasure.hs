@@ -51,7 +51,7 @@ type Vars = Map Name Var
 
 -- Find the minimal consistent usage by forward chaining.
 minimalUsage :: Deps -> UseMap
-minimalUsage = gather . forwardChain . triggerMain
+minimalUsage = gather . forwardChain
   where
     gather :: Set (Name, Arg) -> UseMap
     gather = foldr ins M.empty . S.toList 
@@ -60,13 +60,11 @@ minimalUsage = gather . forwardChain . triggerMain
         ins (n, Result) = id
         ins (n, Arg i ) = M.insertWith IS.union n (IS.singleton i)
 
-    triggerMain :: Deps -> Deps
-    triggerMain = M.insertWith S.union S.empty $ S.singleton (main, Result)
-      where
-        main = NS (UN $ pack "main") [pack "Main"]
-
 forwardChain :: Deps -> Set Node
 forwardChain deps
+    | Just trivials <- M.lookup S.empty deps 
+    , ("==>", S.toList trivials) `traceShow` False = undefined
+    
     | Just trivials <- M.lookup S.empty deps 
         = trivials `S.union` forwardChain (remove trivials . M.delete S.empty $ deps)
     | otherwise = S.empty
@@ -79,8 +77,14 @@ forwardChain deps
 -- Build the dependency graph,
 -- starting the depth-first search from a list of Names.
 buildDepMap :: Context -> [Name] -> Deps
-buildDepMap ctx ns = dfs S.empty M.empty ns
+buildDepMap ctx ns = addMain $ dfs S.empty M.empty ns
   where
+    -- mark the result of Main.main as used with the empty assumption
+    addMain :: Deps -> Deps
+    addMain = M.insertWith S.union S.empty $ S.singleton (main, Result)
+      where
+        main = NS (UN $ pack "main") [pack "Main"]
+
     -- perform depth-first search
     -- to discover all the names used in the program
     -- and call getDeps for every name
