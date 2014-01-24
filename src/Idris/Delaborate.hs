@@ -199,7 +199,9 @@ pshow i (ProviderError msg) = "Type provider error: " ++ msg
 pshow i (LoadingFailed fn e) = "Loading " ++ fn ++ " failed: " ++ pshow i e
 pshow i (ReflectionError parts orig) = let parts' = map (concat . intersperse " " . map showPart) parts in
                                        concat (intersperse "\n" parts') ++
-                                       "\nOriginal error:\n" ++ indented (pshow i orig)
+                                       if (opt_origerr (idris_options i))
+                                          then "\nOriginal error:\n" ++ indented (pshow i orig) 
+                                          else ""
       where showPart :: ErrorReportPart -> String
             showPart (TextPart str) = str
             showPart (NamePart n)   = let colour = idris_colourRepl i in

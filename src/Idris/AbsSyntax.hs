@@ -511,10 +511,20 @@ setREPL t = do i <- getIState
                let opt' = opts { opt_repl = t }
                putIState $ i { idris_options = opt' }
 
+showOrigErr :: Idris Bool
+showOrigErr = do i <- getIState
+                 return (opt_origerr (idris_options i))
+
+setShowOrigErr :: Bool -> Idris ()
+setShowOrigErr b = do i <- getIState
+                      let opts = idris_options i
+                      let opt' = opts { opt_origerr = b }
+                      putIState $ i { idris_options = opt' }
+
 setNoBanner :: Bool -> Idris ()
 setNoBanner n = do i <- getIState
                    let opts = idris_options i
-                   let opt' = opts {opt_nobanner = n}
+                   let opt' = opts { opt_nobanner = n }
                    putIState $ i { idris_options = opt' }
 
 getNoBanner :: Idris Bool

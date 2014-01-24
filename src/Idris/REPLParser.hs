@@ -61,8 +61,8 @@ pCmd = do P.whiteSpace; try (do cmd ["q", "quit"]; eof; return Quit)
               <|> try (do cmd ["dynamic"]; eof; return ListDynamic)
               <|> try (do cmd ["dynamic"]; l <- many anyChar; return (DynamicLink l))
               <|> try (do cmd ["color", "colour"]; pSetColourCmd)
-              <|> try (do cmd ["set"]; o <-pOption; return (SetOpt o))
-              <|> try (do cmd ["unset"]; o <-pOption; return (UnsetOpt o))
+              <|> try (do cmd ["set"]; o <- pOption; return (SetOpt o))
+              <|> try (do cmd ["unset"]; o <- pOption; return (UnsetOpt o))
               <|> try (do cmd ["s", "search"]; P.whiteSpace; t <- P.fullExpr defaultSyntax; return (Search t))
               <|> try (do cmd ["cs", "casesplit"]; P.whiteSpace;
                           upd <- option False (do P.lchar '!'; return True)
@@ -105,7 +105,7 @@ pCmd = do P.whiteSpace; try (do cmd ["q", "quit"]; eof; return Quit)
 pOption :: P.IdrisParser Opt
 pOption = do discard (P.symbol "errorcontext"); return ErrContext
       <|> do discard (P.symbol "showimplicits"); return ShowImpl
-
+      <|> do discard (P.symbol "originalerrors"); return ShowOrigErr
 
 colours :: [(String, Maybe Color)]
 colours = [ ("black", Just Black)

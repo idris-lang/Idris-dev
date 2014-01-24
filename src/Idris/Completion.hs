@@ -104,7 +104,7 @@ completeMetaVar = completeWord Nothing (" \t(){}:" ++ opChars) completeM
 
 completeOption :: CompletionFunc Idris
 completeOption = completeWord Nothing " \t" completeOpt
-    where completeOpt = return . (completeWith ["errorcontext", "showimplicits"])
+    where completeOpt = return . completeWith ["errorcontext", "showimplicits", "originalerrors"]
 
 isWhitespace :: Char -> Bool
 isWhitespace = (flip elem) " \t\n"
