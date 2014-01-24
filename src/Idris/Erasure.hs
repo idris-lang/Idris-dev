@@ -77,13 +77,17 @@ forwardChain deps
 -- Build the dependency graph,
 -- starting the depth-first search from a list of Names.
 buildDepMap :: Context -> [Name] -> Deps
-buildDepMap ctx ns = addMain $ dfs S.empty M.empty ns
+buildDepMap ctx ns = addPostulates $ dfs S.empty M.empty ns
   where
     -- mark the result of Main.main as used with the empty assumption
-    addMain :: Deps -> Deps
-    addMain = M.insertWith S.union S.empty $ S.singleton (main, Result)
+    addPostulates :: Deps -> Deps
+    addPostulates deps = foldr (\(ds, rs) -> M.insertWith S.union ds rs) deps postulates
       where
-        main = NS (UN $ pack "main") [pack "Main"]
+        (==>) ds rs = (S.fromList ds, S.fromList rs)
+        (.:) ms n = NS (UN $ pack n) (map pack ms)
+        postulates = 
+            [ [] ==> [(["Main"] .: "main", Result)]
+            ]
 
     -- perform depth-first search
     -- to discover all the names used in the program
