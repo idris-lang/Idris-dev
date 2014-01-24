@@ -58,6 +58,8 @@ compile codegen f tm
 
         let minUse = minimalUsage depMap
         iLOG $ "MINIMAL USAGE:\n" ++ unlines (map (\(n,is) -> show n ++ " -> " ++ show (IS.toList is)) $ M.toList minUse)
+
+        iLOG $ "MAIN:\n" ++ show tm
         -- END TODO
         
         maindef <- irMain tm

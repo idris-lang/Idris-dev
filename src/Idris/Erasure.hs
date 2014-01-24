@@ -12,6 +12,7 @@ import Idris.Core.TT
 import Idris.Core.Evaluate
 
 import Debug.Trace
+import System.IO.Unsafe
 
 import Control.Arrow
 import Control.Applicative
@@ -67,12 +68,19 @@ forwardChain deps
     
     | Just trivials <- M.lookup S.empty deps 
         = trivials `S.union` forwardChain (remove trivials . M.delete S.empty $ deps)
+
+    | unsafePerformIO prn `seq` False = undefined
     | otherwise = S.empty
   where
     -- Remove the given nodes from the Deps entirely,
     -- possibly creating new empty Conds.
     remove :: Set Node -> Deps -> Deps
     remove ns = M.mapKeysWith S.union (S.\\ ns)
+
+    printItem (cond, deps) = show (S.toList cond) ++ " -> " ++ show (S.toList deps)
+    prn = do
+        putStrLn $ "SINGLES:\n" ++ unlines (map show . filter ((==1) . S.size) $ M.keys deps)
+        putStrLn $ "USAGE SUB-ANALYSIS:\n" ++ unlines (map printItem . M.toList $ deps)
 
 -- Build the dependency graph,
 -- starting the depth-first search from a list of Names.
@@ -83,10 +91,23 @@ buildDepMap ctx ns = addPostulates $ dfs S.empty M.empty ns
     addPostulates :: Deps -> Deps
     addPostulates deps = foldr (\(ds, rs) -> M.insertWith S.union ds rs) deps postulates
       where
+        -- mini-DSL for postulates
         (==>) ds rs = (S.fromList ds, S.fromList rs)
         (.:) ms n = NS (UN $ pack n) (map pack ms)
+        name = UN . pack
+
         postulates = 
-            [ [] ==> [(["Main"] .: "main", Result)]
+            [ [] ==>
+                [ (["Main"] .: "main", Result) -- These two, Main.main and run__IO, are always evaluated
+                , (name "run__IO", Result)     -- but evade analysis since they come from the seed term.
+                , (name "prim__believe_me", Arg 2)
+                , (name "prim__strCons", Arg 0)
+                , (name "prim__strCons", Arg 1)
+                , (name "prim__strHead", Arg 0)
+                , (name "prim__strTail", Arg 0)
+                , (name "mkForeignPrim", Arg 2)
+--                , (name "MkIO", Arg 1)
+                ]  
             ]
 
     -- perform depth-first search
@@ -179,12 +200,16 @@ buildDepMap ctx ns = addPostulates $ dfs S.empty M.empty ns
             P  Ref       n _ -> node n args
             P (DCon _ _) n _ -> node n args
 
-            -- these do not
+            -- this does not
             P (TCon _ _) n _ -> unionMap (getDepsTerm vs bs cd) args
-            P  Bound     n _ -> unionMap (getDepsTerm vs bs cd) args
+
+            -- a bound variable might draw in additional dependencies,
+            -- think: f x = x 0  <-- here, `x' _is_ used
+            P Bound n _ -> var n `ins` unionMap (getDepsTerm vs bs cd) args
       where
-        node n = M.insertWith S.union cd (S.singleton (n, Result))
-                    . unionMap (getDepsArgs n) . zip [0..]
+        ins = M.insertWith S.union cd
+        var n = fromMaybe (error $ "non-existent bound variable: " ++ show n) (M.lookup n vs)
+        node n = ins (S.singleton (n, Result)) . unionMap (getDepsArgs n) . zip [0..]
         getDepsArgs n (i, t) = getDepsTerm vs bs (S.insert (n, Arg i) cd) t
 
     -- the easy cases
