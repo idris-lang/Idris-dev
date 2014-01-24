@@ -1153,6 +1153,18 @@ instance Binary FixDecl where
                return (Fix x1 x2)
 
 
+instance Binary ArgOpt where
+        put x
+          = case x of
+                Lazy -> putWord8 0
+                HideDisplay -> putWord8 1
+        get
+          = do i <- getWord8
+               case i of
+                   0 -> return Lazy
+                   1 -> return HideDisplay
+                   _ -> error "Corrupted binary data for Static"
+
 instance Binary Static where
         put x
           = case x of

@@ -222,12 +222,6 @@ elab ist info pattern opts fn tm
              ctxt <- get_context
              let (tc, _) = unApply ty
              let as' = pruneByType tc ctxt as
---              case as' of
---                 [a] -> elab' ina a
---                 as -> lift $ tfail $ CantResolveAlts (map showHd as)
---              trace ("Original " ++ show (length as, as) ++ "\n" ++
---                     "New " ++ show (length as', as)) $
---              traceWhen (length as' > 1) (show as') $
              tryAll (zip (map (elab' ina) as') (map showHd as'))
         where showHd (PApp _ h _) = show h
               showHd x = show x

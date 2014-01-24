@@ -842,7 +842,8 @@ elabCon info syn tn codata (doc, n, t_in, fc, forcenames)
              else return ()
     tyIs t = tclift $ tfail (At fc (Msg (show t ++ " is not " ++ show tn)))
 
-    mkLazy (PPi pl n ty sc) = PPi (pl { plazy = True }) n ty (mkLazy sc)
+    mkLazy (PPi pl n ty sc) 
+        = PPi (pl { pargopts = nub (Lazy : pargopts pl) }) n ty (mkLazy sc)
     mkLazy t = t
 
     getNamePos :: Int -> PTerm -> Name -> Maybe Int
@@ -1908,11 +1909,11 @@ elabInstance info syn what fc cs n ps t expn ds = do
           = PLam (sMN i "meth") Placeholder (lamBind (i+1) sc sc')
     lamBind i _ sc = sc
     methArgs i (PPi (Imp _ _ _ _) n ty sc)
-        = PImp 0 True False n (PRef fc (sMN i "meth")) "" : methArgs (i+1) sc
+        = PImp 0 True [] n (PRef fc (sMN i "meth")) "" : methArgs (i+1) sc
     methArgs i (PPi (Exp _ _ _ _) n ty sc)
-        = PExp 0 False (PRef fc (sMN i "meth")) "" : methArgs (i+1) sc
+        = PExp 0 [] (PRef fc (sMN i "meth")) "" : methArgs (i+1) sc
     methArgs i (PPi (Constraint _ _ _) n ty sc)
-        = PConstraint 0 False (PResolveTC fc) "" : methArgs (i+1) sc
+        = PConstraint 0 [] (PResolveTC fc) "" : methArgs (i+1) sc
     methArgs i _ = []
 
     papp fc f [] = f

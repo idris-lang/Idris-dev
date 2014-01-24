@@ -53,6 +53,9 @@ instance NFData Static where
         rnf Static = ()
         rnf Dynamic = ()
 
+instance NFData ArgOpt where
+        rnf _ = ()
+
 instance NFData Plicity where
         rnf (Imp x1 x2 x3 x4)
           = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` rnf x4 `seq` ()

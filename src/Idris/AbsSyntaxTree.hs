@@ -352,33 +352,36 @@ deriving instance NFData Static
 !-}
 
 -- Mark bindings with their explicitness, and laziness
-data Plicity = Imp { plazy :: Bool,
+data Plicity = Imp { pargopts :: [ArgOpt],
                      pstatic :: Static,
                      pdocstr :: String,
                      pparam :: Bool }
-             | Exp { plazy :: Bool,
+             | Exp { pargopts :: [ArgOpt],
                      pstatic :: Static,
                      pdocstr :: String,
                      pparam :: Bool }
-             | Constraint { plazy :: Bool,
+             | Constraint { pargopts :: [ArgOpt],
                             pstatic :: Static,
                             pdocstr :: String }
-             | TacImp { plazy :: Bool,
+             | TacImp { pargopts :: [ArgOpt],
                         pstatic :: Static,
                         pscript :: PTerm,
                         pdocstr :: String }
   deriving (Show, Eq)
+
+plazy :: Plicity -> Bool
+plazy tm = Lazy `elem` pargopts tm
 
 {-!
 deriving instance Binary Plicity
 deriving instance NFData Plicity
 !-}
 
-impl = Imp False Dynamic "" False
-expl = Exp False Dynamic "" False
-expl_param = Exp False Dynamic "" True
-constraint = Constraint False Dynamic ""
-tacimpl t = TacImp False Dynamic t ""
+impl = Imp [Lazy] Dynamic "" False
+expl = Exp [] Dynamic "" False
+expl_param = Exp [] Dynamic "" True
+constraint = Constraint [] Dynamic ""
+tacimpl t = TacImp [] Dynamic t ""
 
 data FnOpt = Inlinable -- always evaluate when simplifying
            | TotalFn | PartialFn
@@ -724,20 +727,30 @@ type PDo = PDo' PTerm
 
 data PArg' t = PImp { priority :: Int,
                       machine_inf :: Bool, -- true if the machine inferred it
-                      lazyarg :: Bool, pname :: Name, getTm :: t,
+                      argopts :: [ArgOpt],
+                      pname :: Name, getTm :: t,
                       pargdoc :: String }
              | PExp { priority :: Int,
-                      lazyarg :: Bool, getTm :: t,
+                      argopts :: [ArgOpt],
+                      getTm :: t,
                       pargdoc :: String }
              | PConstraint { priority :: Int,
-                             lazyarg :: Bool, getTm :: t,
+                             argopts :: [ArgOpt],
+                             getTm :: t,
                              pargdoc :: String }
              | PTacImplicit { priority :: Int,
-                              lazyarg :: Bool, pname :: Name,
+                              argopts :: [ArgOpt],
+                              pname :: Name,
                               getScript :: t,
                               getTm :: t,
                               pargdoc :: String }
     deriving (Show, Eq, Functor)
+
+data ArgOpt = Lazy | HideDisplay
+    deriving (Show, Eq)
+
+lazyarg :: PArg' t -> Bool
+lazyarg tm = Lazy `elem` argopts tm
 
 instance Sized a => Sized (PArg' a) where
   size (PImp p _ l nm trm _) = 1 + size nm + size trm
@@ -750,10 +763,10 @@ deriving instance Binary PArg'
 deriving instance NFData PArg'
 !-}
 
-pimp n t mach = PImp 1 mach True n t ""
-pexp t = PExp 1 False t ""
-pconst t = PConstraint 1 False t ""
-ptacimp n s t = PTacImplicit 2 True n s t ""
+pimp n t mach = PImp 1 mach [Lazy] n t ""
+pexp t = PExp 1 [] t ""
+pconst t = PConstraint 1 [] t ""
+ptacimp n s t = PTacImplicit 2 [Lazy] n s t ""
 
 type PArg = PArg' PTerm
 
@@ -1003,7 +1016,7 @@ prettyImp impl = prettySe 10
             prettySe 10 sc
     prettySe p (PPi (Exp l s _ _) n ty sc)
       | n `elem` allNamesIn sc || impl =
-          let open = if l then text "|" <> lparen else lparen in
+          let open = if Lazy `elem` l then text "|" <> lparen else lparen in
             bracket p 2 $
               if size sc > breakingSize then
                 open <> pretty n <+> colon <+> prettySe 10 ty <> rparen <+>
@@ -1024,7 +1037,7 @@ prettyImp impl = prettySe 10
             _      -> empty
     prettySe p (PPi (Imp l s _ _) n ty sc)
       | impl =
-          let open = if l then text "|" <> lbrace else lbrace in
+          let open = if Lazy `elem` l then text "|" <> lbrace else lbrace in
             bracket p 2 $
               if size sc > breakingSize then
                 open <> pretty n <+> colon <+> prettySe 10 ty <> rbrace <+>
@@ -1217,7 +1230,7 @@ showImp ist impl colour tm = se 10 [] tm where
     se p bnd (PPi (Exp l s _ param) n ty sc)
         | n `elem` allNamesIn sc || impl
                                   = bracket p 2 $
-                                    (if l then "|(" else "(") ++
+                                    (if Lazy `elem` l then "|(" else "(") ++
                                     perhapsColourise colouriseBound (show n) ++ " : " ++ se 10 bnd ty ++
                                     ") " ++
                                     (if (impl && param) then "P" else "") ++
@@ -1228,7 +1241,7 @@ showImp ist impl colour tm = se 10 [] tm where
                     Static -> "[static] "
                     _ -> ""
     se p bnd (PPi (Imp l s _ _) n ty sc)
-        | impl = bracket p 2 $ (if l then "|{" else "{") ++
+        | impl = bracket p 2 $ (if Lazy `elem` l then "|{" else "{") ++
                                perhapsColourise colouriseBound (show n) ++ " : " ++ se 10 bnd ty ++
                                "} " ++ st ++ "-> " ++ se 10 ((n, True):bnd) sc
         | otherwise = se 10 ((n, True):bnd) sc
