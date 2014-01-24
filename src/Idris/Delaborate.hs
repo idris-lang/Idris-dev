@@ -200,7 +200,7 @@ pshow i (LoadingFailed fn e) = "Loading " ++ fn ++ " failed: " ++ pshow i e
 pshow i (ReflectionError parts orig) = let parts' = map (concat . intersperse " " . map showPart) parts in
                                        concat (intersperse "\n" parts') ++
                                        if (opt_origerr (idris_options i))
-                                          then "\nOriginal error:\n" ++ indented (pshow i orig) 
+                                          then "\nOriginal error:\n" ++ indented (pshow i orig)
                                           else ""
       where showPart :: ErrorReportPart -> String
             showPart (TextPart str) = str
@@ -210,6 +210,7 @@ pshow i (ReflectionError parts orig) = let parts' = map (concat . intersperse " 
                                       in showImp (Just i) False colour (delab i tm)
             showPart (SubReport rs) = indented . concat . intersperse " " . map showPart $ rs
 pshow i (ReflectionFailed msg err) = "When attempting to perform error reflection, the following internal error occurred:\n" ++
+                                     indented msg ++
                                      indented (pshow i err) ++
                                      "\nThis is probably a bug. Please consider reporting it at " ++ bugaddr
 
