@@ -58,8 +58,13 @@ type Vars = Map Name Var
 type PatVar = Ctors -> Var
 type PatVars = Map Name PatVar
 
-buildDepMap :: Context -> Ctxt CGInfo -> [Name] -> DepMap
-buildDepMap ctx cg ns = dfs M.empty ns
+minimalUsage :: DepMap -> UseMap
+minimalUsage dmap = undefined
+
+-- Build the dependency graph,
+-- starting the depth-first search from a list of Names.
+buildDepMap :: Context -> [Name] -> DepMap
+buildDepMap ctx ns = dfs M.empty ns
   where
     -- perform depth-first search
     -- to discover all the names used in the program
