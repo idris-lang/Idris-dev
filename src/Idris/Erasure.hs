@@ -72,16 +72,16 @@ buildDepMap ctx ns = dfs S.empty M.empty ns
     dfs visited deps [] = deps
     dfs visited deps (n : ns)
         | n `S.member` visited = dfs visited deps ns
-        | otherwise = dfs (S.insert n visited) (M.unionWith S.union (getDeps n) deps) (next ++ ns)
+        | otherwise = dfs (S.insert n visited) (M.unionWith S.union deps' deps) (next ++ ns)
       where
         next = [n | n <- S.toList depn, n `S.notMember` visited]
-        depn = S.delete n $ depNames deps
-        deps = getDeps n
+        depn = S.delete n $ depNames deps'
+        deps' = getDeps n
 
-    -- extract all names that a function depends on
-    -- from the Deps of the function
-    depNames :: Deps -> Set Name
-    depNames = S.unions . map (S.map fst) . M.keys
+        -- extract all names that a function depends on
+        -- from the Deps of the function
+        depNames :: Deps -> Set Name
+        depNames = S.unions . map (S.map fst) . M.keys
 
     -- get Deps for a Name
     getDeps :: Name -> Deps
