@@ -28,13 +28,9 @@ import Data.IntMap (IntMap)
 -- UseMap maps names to the set of used (reachable) argument positions.
 type UseMap = Map Name IntSet
 
--- Deps augmented with cached info.
--- fst = deps
--- snd = all names that the function depends on
-type Deps' = (Deps, Set Name)
-
--- DepMap maps functions (only functions) to their Deps'.
-type DepMap = Map Name Deps'
+-- DepMap maps functions (only functions) to their Deps.
+type DepMap = Map Name Deps
+type FlatMap = Map (Name, Int) (Set (Ctors, Cond))
 
 -- Deps of a function is a map from argument index
 -- to all usages of the argument, including conditions
@@ -58,8 +54,21 @@ type Vars = Map Name Var
 type PatVar = Ctors -> Var
 type PatVars = Map Name PatVar
 
+{-
+-- Find the minimal consistent usage by forward chaining.
 minimalUsage :: DepMap -> UseMap
-minimalUsage dmap = undefined
+minimalUsage dmap = 
+  where
+    flatten :: DepMap -> FlatMap
+    flatten 
+
+    trivials :: DepMap
+    trivials = M.mapMaybeWithKey isTrivial dmap
+
+    isTrivial :: Name -> (Deps, Set Name) -> Maybe (Deps, Set Name)
+    isTrivial n (deps, ns)
+      where
+-}
 
 -- Build the dependency graph,
 -- starting the depth-first search from a list of Names.
@@ -73,7 +82,7 @@ buildDepMap ctx ns = dfs M.empty ns
     dfs dmap [] = dmap
     dfs dmap (n : ns)
         | n `M.member` dmap = dfs dmap ns
-        | otherwise         = dfs (M.insert n (deps, depn) dmap) ns
+        | otherwise         = dfs (M.insert n deps dmap) ns
       where
         next = [n | n <- S.toList depn, n `M.notMember` dmap]
         depn = S.delete n (depNames deps)

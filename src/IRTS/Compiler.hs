@@ -54,7 +54,7 @@ compile codegen f tm
         let depMap = buildDepMap (tt_ctxt ist) used
         let printCond (ctors, cond) = "if " ++ show (S.toList cond) ++ "  -ctors-  " ++ show (S.toList ctors)
         let printDep  (i, conds) = unlines . map ("  "++) $ (show i : map printCond (S.toList conds))
-        let printItem (fn, (deps, depns)) = unlines ((show fn ++ " <- " ++ show (S.toList depns)) : map printDep (IM.toList deps))
+        let printItem (fn, deps) = unlines (show fn : map printDep (IM.toList deps))
         iLOG $ "USAGE ANALYSIS:\n" ++ unlines (map printItem . M.toList $ depMap)
         -- END TODO
         
