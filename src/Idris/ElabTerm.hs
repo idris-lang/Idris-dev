@@ -1192,7 +1192,7 @@ reifyRawApp t [c]
 reifyRawApp t args = fail ("Unknown reflection raw term: " ++ show (t, args))
 
 reifyTTName :: Term -> ElabD Name
-reifyTTName t@(App _ _)
+reifyTTName t
             | (P _ f _, args) <- unApply t = reifyTTNameApp f args
 reifyTTName t = fail ("Unknown reflection term name: " ++ show t)
 
