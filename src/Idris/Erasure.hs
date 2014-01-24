@@ -3,6 +3,7 @@
 module Idris.Erasure
     ( findUnusedArgs
     , buildDepMap
+    , minimalUsage
     ) where
 
 import Idris.AbsSyntax
@@ -12,6 +13,7 @@ import Idris.Core.Evaluate
 
 import Debug.Trace
 
+import Control.Arrow
 import Control.Applicative
 import Control.Monad.State
 import Data.Maybe
@@ -30,7 +32,9 @@ type UseMap = Map Name IntSet
 
 -- DepMap maps functions (only functions) to their Deps.
 type DepMap = Map Name Deps
-type FlatMap = Map (Name, Int) (Set (Ctors, Cond))
+
+type Node = (Name, Int)
+type FlatMap = Map Node (Set (Ctors, Cond))
 
 -- Deps of a function is a map from argument index
 -- to all usages of the argument, including conditions
@@ -54,21 +58,45 @@ type Vars = Map Name Var
 type PatVar = Ctors -> Var
 type PatVars = Map Name PatVar
 
-{-
 -- Find the minimal consistent usage by forward chaining.
 minimalUsage :: DepMap -> UseMap
-minimalUsage dmap = 
+minimalUsage dmap = gather reachable
   where
     flatten :: DepMap -> FlatMap
-    flatten 
+    flatten dmap = M.fromList $ concat [[((n,i), ccs) | (i, ccs) <- IM.toList deps] | (n, deps) <- M.toList dmap]
 
-    trivials :: DepMap
-    trivials = M.mapMaybeWithKey isTrivial dmap
+    gather :: Ord a => Set (a, Int) -> Map a IntSet
+    gather = foldr (\(n,i) -> M.insertWith IS.union n (IS.singleton i)) M.empty . S.toList 
 
-    isTrivial :: Name -> (Deps, Set Name) -> Maybe (Deps, Set Name)
-    isTrivial n (deps, ns)
+    reachable :: Set Node
+    reachable = forwardChain $ flatten dmap
+
+    -- TODO: final pass to find out the constructors
+    -- (cannot be done on the fly because new reasons can be discovered after the rule has been triggered)
+
+forwardChain :: FlatMap -> Set Node
+forwardChain dmap 
+    | S.null trivials = S.empty 
+    | otherwise = trivials `S.union` forwardChain (remove trivials dmap)
+  where
+    -- Remove the given nodes from the FlatMap entirely, including from Conds,
+    -- possibly creating new empty Conds.
+    remove :: Set Node -> FlatMap -> FlatMap
+    remove ns = M.mapMaybeWithKey rm
       where
--}
+        rm :: Node -> Set (Ctors, Cond) -> Maybe (Set (Ctors, Cond))
+        rm n ccs | n `S.member` ns = Nothing
+        rm n ccs = Just $ S.map (second (S.\\ ns)) ccs
+
+    trivials :: Set Node
+    trivials = S.fromList . map fst . filter isTrivial . M.toList $ dmap
+
+    -- A node is trivially reachable if it has at least one trivial (empty) Cond.
+    isTrivial :: (Node, Set (Ctors, Cond)) -> Bool
+    isTrivial (node, alts) = not . S.null $ trivialConds
+      where
+        trivialConds :: Set (Ctors, Cond)
+        trivialConds = S.filter (S.null . snd) alts
 
 -- Build the dependency graph,
 -- starting the depth-first search from a list of Names.

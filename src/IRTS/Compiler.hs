@@ -28,6 +28,7 @@ import Idris.Core.CaseTree
 import Control.Monad.State
 import Data.List
 import qualified Data.IntMap as IM
+import qualified Data.IntSet as IS
 import qualified Data.Map as M
 import qualified Data.Set as S
 import System.Process
@@ -56,6 +57,9 @@ compile codegen f tm
         let printDep  (i, conds) = unlines . map ("  "++) $ (show i : map printCond (S.toList conds))
         let printItem (fn, deps) = unlines (show fn : map printDep (IM.toList deps))
         iLOG $ "USAGE ANALYSIS:\n" ++ unlines (map printItem . M.toList $ depMap)
+
+        let minUse = minimalUsage depMap
+        iLOG $ "MINIMAL USAGE:\n" ++ unlines (map (\(n,is) -> show n ++ " -> " ++ show (IS.toList is)) $ M.toList minUse)
         -- END TODO
         
         maindef <- irMain tm
