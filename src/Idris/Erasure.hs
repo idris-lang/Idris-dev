@@ -58,9 +58,12 @@ type Vars = Map Name Var
 type PatVar = Ctors -> Var
 type PatVars = Map Name PatVar
 
-findUsed :: Context -> Ctxt CGInfo -> [Name] -> DepMap
-findUsed ctx cg ns = dfs M.empty ns
+buildDepMap :: Context -> Ctxt CGInfo -> [Name] -> DepMap
+buildDepMap ctx cg ns = dfs M.empty ns
   where
+    -- perform depth-first search
+    -- to discover all the names used in the program
+    -- and call getDeps for every name
     dfs :: DepMap -> [Name] -> DepMap
     dfs dmap [] = dmap
     dfs dmap (n : ns)
@@ -71,12 +74,15 @@ findUsed ctx cg ns = dfs M.empty ns
         depn = S.delete n (depNames deps)
         deps = getDeps n
 
+    -- extract all names that a function depends on
+    -- from the Deps of the function
     depNames :: Deps -> Set Name
     depNames = S.unions . map (S.unions . map f . S.toList) . IM.elems
       where
         f :: (Ctors, Cond) -> Set Name
         f (ctors, cond) = S.map fst cond  -- let's ignore ctors for now
 
+    -- get Deps for a Name
     getDeps :: Name -> Deps
     getDeps n = case lookupDef n ctx of
         [def] -> getDepsDef def
