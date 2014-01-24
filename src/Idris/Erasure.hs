@@ -26,9 +26,16 @@ import Data.Set (Set)
 import Data.IntSet (IntSet)
 import Data.Map (Map)
 import Data.IntMap (IntMap)
+import Data.Text (pack)
 
 -- UseMap maps names to the set of used (reachable) argument positions.
 type UseMap = Map Name IntSet
+
+data Arg = Arg !Int | Result
+
+instance Show Arg where
+    show (Arg i) = show i
+    show Result  = "*"
 
 type Node = (Name, Int)
 type Deps = Map Cond (Set Node)
@@ -44,10 +51,15 @@ type Vars = Map Name Var
 
 -- Find the minimal consistent usage by forward chaining.
 minimalUsage :: Deps -> UseMap
-minimalUsage = gather . forwardChain
+minimalUsage = gather . forwardChain . triggerMain
   where
     gather :: Ord a => Set (a, Int) -> Map a IntSet
     gather = foldr (\(n,i) -> M.insertWith IS.union n (IS.singleton i)) M.empty . S.toList 
+
+    triggerMain :: Deps -> Deps
+    triggerMain = M.insert S.empty $ S.singleton (main, -1)
+      where
+        main = NS (UN $ pack "main") [pack "Main"]
 
 forwardChain :: Deps -> Set Node
 forwardChain deps
@@ -91,32 +103,32 @@ buildDepMap ctx ns = dfs S.empty M.empty ns
         _     -> error $ "erasure checker: ambiguous name: " ++ show n
 
     getDepsDef :: Name -> Def -> Deps
-    getDepsDef n (Function ty t) = error "a function encountered"  -- TODO
-    getDepsDef n (TyDecl   ty t) = M.empty
-    getDepsDef n (Operator ty n' f) = M.empty
-    getDepsDef n (CaseOp ci ty tys def tot cdefs)
-        = getDepsSC varMap sc
+    getDepsDef fn (Function ty t) = error "a function encountered"  -- TODO
+    getDepsDef fn (TyDecl   ty t) = M.empty
+    getDepsDef fn (Operator ty n' f) = M.empty
+    getDepsDef fn (CaseOp ci ty tys def tot cdefs)
+        = getDepsSC fn varMap sc
       where
         -- the variables that arose as function arguments only depend on (n, i)
-        varMap = M.fromList [(v, S.singleton (n,i)) | (v,i) <- zip vars [0..]]
+        varMap = M.fromList [(v, S.singleton (fn,i)) | (v,i) <- zip vars [0..]]
         (vars, sc) = cases_compiletime cdefs  -- TODO: or cases_runtime?
 
-    getDepsSC :: Vars -> SC -> Deps
-    getDepsSC vs  ImpossibleCase     = M.empty
-    getDepsSC vs (UnmatchedCase msg) = M.empty
-    getDepsSC vs (ProjCase t alt)    = error "ProjCase not supported"
-    getDepsSC vs (STerm    t)        = getDepsTerm vs [] S.empty t
-    getDepsSC vs (Case     n alts)   = unionMap (getDepsAlt vs var) alts
+    getDepsSC :: Name -> Vars -> SC -> Deps
+    getDepsSC fn vs  ImpossibleCase     = M.empty
+    getDepsSC fn vs (UnmatchedCase msg) = M.empty
+    getDepsSC fn vs (ProjCase t alt)    = error "ProjCase not supported"
+    getDepsSC fn vs (STerm    t)        = getDepsTerm vs [] (S.singleton (fn, -1)) t
+    getDepsSC fn vs (Case     n alts)   = unionMap (getDepsAlt fn vs var) alts
       where
         var  = fromMaybe (error $ "nonpatvar in case: " ++ show n) (M.lookup n vs)
 
-    getDepsAlt :: Vars -> Var -> CaseAlt -> Deps
-    getDepsAlt vs var (FnCase n ns sc) = error "an FnCase encountered"  -- TODO: what's this?
-    getDepsAlt vs var (ConstCase c sc) = getDepsSC vs sc
-    getDepsAlt vs var (SucCase   n sc) = getDepsSC vs sc  -- deps for S can be hardcoded if needed
-    getDepsAlt vs var (DefaultCase sc) = getDepsSC vs sc
-    getDepsAlt vs var (ConCase n cnt ns sc)
-        = getDepsSC (vs' `M.union` vs) sc  -- left-biased union
+    getDepsAlt :: Name -> Vars -> Var -> CaseAlt -> Deps
+    getDepsAlt fn vs var (FnCase n ns sc) = error "an FnCase encountered"  -- TODO: what's this?
+    getDepsAlt fn vs var (ConstCase c sc) = getDepsSC fn vs sc
+    getDepsAlt fn vs var (SucCase   n sc) = getDepsSC fn vs sc  -- deps for S can be hardcoded if needed
+    getDepsAlt fn vs var (DefaultCase sc) = getDepsSC fn vs sc
+    getDepsAlt fn vs var (ConCase n cnt ns sc)
+        = getDepsSC fn (vs' `M.union` vs) sc  -- left-biased union
       where
         -- Here we insert dependencies that arose from pattern matching on a constructor.
         -- n = ctor name, j = ctor arg#, i = fun arg# of the cased var, cs = ctors of the cased var
@@ -150,14 +162,14 @@ buildDepMap ctx ns = dfs S.empty M.empty ns
     getDepsTerm vs bs cd app@(App _ _)
         | (fun, args) <- unApply app = case fun of
             -- these depend on whether the referred thing uses the argument
-            P  Ref       n _ -> called n args
-            P (DCon _ _) n _ -> called n args
+            P  Ref       n _ -> unionMap (getDepsArgs n) $ zip [0..] args
+            P (DCon _ _) n _ -> unionMap (getDepsArgs n) $ zip [0..] args
 
             -- these do not
             P (TCon _ _) n _ -> unionMap (getDepsTerm vs bs cd) args
             P  Bound     n _ -> unionMap (getDepsTerm vs bs cd) args
       where
-        called n args = unionMap (\(i,t) -> getDepsTerm vs bs (S.insert (n,i) cd) t) (zip [0..] args)
+        getDepsArgs n (i, t) = getDepsTerm vs bs (S.insert (n,i) . S.insert (n,-1) $ cd) t
 
     -- the easy cases
     getDepsTerm vs bs cd (Constant _) = M.empty
