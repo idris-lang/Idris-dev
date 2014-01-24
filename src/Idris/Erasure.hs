@@ -52,7 +52,7 @@ minimalUsage = gather . forwardChain
 forwardChain :: Deps -> Set Node
 forwardChain deps
     | Just trivials <- M.lookup S.empty deps 
-        = trivials `S.union` forwardChain (remove trivials deps)
+        = trivials `S.union` forwardChain (remove trivials . M.delete S.empty $ deps)
     | otherwise = S.empty
   where
     -- Remove the given nodes from the Deps entirely,
