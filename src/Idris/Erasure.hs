@@ -31,13 +31,13 @@ import Data.Text (pack)
 -- UseMap maps names to the set of used (reachable) argument positions.
 type UseMap = Map Name IntSet
 
-data Arg = Arg !Int | Result
+data Arg = Arg !Int | Result deriving (Eq, Ord)
 
 instance Show Arg where
     show (Arg i) = show i
     show Result  = "*"
 
-type Node = (Name, Int)
+type Node = (Name, Arg)
 type Deps = Map Cond (Set Node)
 
 -- "Condition" is the conjunction
@@ -53,11 +53,15 @@ type Vars = Map Name Var
 minimalUsage :: Deps -> UseMap
 minimalUsage = gather . forwardChain . triggerMain
   where
-    gather :: Ord a => Set (a, Int) -> Map a IntSet
-    gather = foldr (\(n,i) -> M.insertWith IS.union n (IS.singleton i)) M.empty . S.toList 
+    gather :: Set (Name, Arg) -> UseMap
+    gather = foldr ins M.empty . S.toList 
+       where
+        ins :: Node -> UseMap -> UseMap
+        ins (n, Result) = id
+        ins (n, Arg i ) = M.insertWith IS.union n (IS.singleton i)
 
     triggerMain :: Deps -> Deps
-    triggerMain = M.insert S.empty $ S.singleton (main, -1)
+    triggerMain = M.insertWith S.union S.empty $ S.singleton (main, Result)
       where
         main = NS (UN $ pack "main") [pack "Main"]
 
@@ -110,14 +114,14 @@ buildDepMap ctx ns = dfs S.empty M.empty ns
         = getDepsSC fn varMap sc
       where
         -- the variables that arose as function arguments only depend on (n, i)
-        varMap = M.fromList [(v, S.singleton (fn,i)) | (v,i) <- zip vars [0..]]
+        varMap = M.fromList [(v, S.singleton (fn, Arg i)) | (v,i) <- zip vars [0..]]
         (vars, sc) = cases_compiletime cdefs  -- TODO: or cases_runtime?
 
     getDepsSC :: Name -> Vars -> SC -> Deps
     getDepsSC fn vs  ImpossibleCase     = M.empty
     getDepsSC fn vs (UnmatchedCase msg) = M.empty
     getDepsSC fn vs (ProjCase t alt)    = error "ProjCase not supported"
-    getDepsSC fn vs (STerm    t)        = getDepsTerm vs [] (S.singleton (fn, -1)) t
+    getDepsSC fn vs (STerm    t)        = getDepsTerm vs [] (S.singleton (fn, Result)) t
     getDepsSC fn vs (Case     n alts)   = unionMap (getDepsAlt fn vs var) alts
       where
         var  = fromMaybe (error $ "nonpatvar in case: " ++ show n) (M.lookup n vs)
@@ -132,7 +136,7 @@ buildDepMap ctx ns = dfs S.empty M.empty ns
       where
         -- Here we insert dependencies that arose from pattern matching on a constructor.
         -- n = ctor name, j = ctor arg#, i = fun arg# of the cased var, cs = ctors of the cased var
-        vs' = M.fromList [(v, S.insert (n,j) var) | (v,j) <- zip ns [0..]]
+        vs' = M.fromList [(v, S.insert (n, Arg j) var) | (v,j) <- zip ns [0..]]
 
     -- Named variables -> DeBruijn variables -> Conds/guards -> Term -> Deps
     getDepsTerm :: Vars -> [Cond -> Deps] -> Cond -> Term -> Deps
@@ -162,14 +166,16 @@ buildDepMap ctx ns = dfs S.empty M.empty ns
     getDepsTerm vs bs cd app@(App _ _)
         | (fun, args) <- unApply app = case fun of
             -- these depend on whether the referred thing uses the argument
-            P  Ref       n _ -> unionMap (getDepsArgs n) $ zip [0..] args
-            P (DCon _ _) n _ -> unionMap (getDepsArgs n) $ zip [0..] args
+            P  Ref       n _ -> node n args
+            P (DCon _ _) n _ -> node n args
 
             -- these do not
             P (TCon _ _) n _ -> unionMap (getDepsTerm vs bs cd) args
             P  Bound     n _ -> unionMap (getDepsTerm vs bs cd) args
       where
-        getDepsArgs n (i, t) = getDepsTerm vs bs (S.insert (n,i) . S.insert (n,-1) $ cd) t
+        node n = M.insertWith S.union cd (S.singleton (n, Result))
+                    . unionMap (getDepsArgs n) . zip [0..]
+        getDepsArgs n (i, t) = getDepsTerm vs bs (S.insert (n, Arg i) cd) t
 
     -- the easy cases
     getDepsTerm vs bs cd (Constant _) = M.empty
