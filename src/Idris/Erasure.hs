@@ -12,7 +12,6 @@ import Idris.Core.TT
 import Idris.Core.Evaluate
 
 import Debug.Trace
-import System.IO.Unsafe
 
 import Control.Arrow
 import Control.Applicative
@@ -64,23 +63,13 @@ minimalUsage = gather . forwardChain
 forwardChain :: Deps -> Set Node
 forwardChain deps
     | Just trivials <- M.lookup S.empty deps 
-    , ("==>", S.toList trivials) `traceShow` False = undefined
-    
-    | Just trivials <- M.lookup S.empty deps 
         = trivials `S.union` forwardChain (remove trivials . M.delete S.empty $ deps)
-
-    | unsafePerformIO prn `seq` False = undefined
     | otherwise = S.empty
   where
     -- Remove the given nodes from the Deps entirely,
     -- possibly creating new empty Conds.
     remove :: Set Node -> Deps -> Deps
     remove ns = M.mapKeysWith S.union (S.\\ ns)
-
-    printItem (cond, deps) = show (S.toList cond) ++ " -> " ++ show (S.toList deps)
-    prn = do
-        putStrLn $ "SINGLES:\n" ++ unlines (map show . filter ((==1) . S.size) $ M.keys deps)
-        putStrLn $ "USAGE SUB-ANALYSIS:\n" ++ unlines (map printItem . M.toList $ deps)
 
 -- Build the dependency graph,
 -- starting the depth-first search from a list of Names.
@@ -164,8 +153,7 @@ buildDepMap ctx ns = addPostulates $ dfs S.empty M.empty ns
     getDepsSC fn es vs  ImpossibleCase     = M.empty
     getDepsSC fn es vs (UnmatchedCase msg) = M.empty
     getDepsSC fn es vs (ProjCase t alt)    = error "ProjCase not supported"
-    getDepsSC fn [] vs (STerm    t)        = getDepsTerm vs [] (S.singleton (fn, Result)) t
-    getDepsSC fn es vs (STerm    t) | ("EXPAND",es,t,"==>",etaExpand es t) `traceShow` True = getDepsTerm vs [] (S.singleton (fn, Result)) (etaExpand es t)
+    getDepsSC fn es vs (STerm    t)        = getDepsTerm vs [] (S.singleton (fn, Result)) (etaExpand es t)
     getDepsSC fn es vs (Case     n alts)   = unionMap (getDepsAlt fn es vs var) alts
       where
         var  = fromMaybe (error $ "nonpatvar in case: " ++ show n) (M.lookup n vs)
@@ -221,9 +209,7 @@ buildDepMap ctx ns = addPostulates $ dfs S.empty M.empty ns
             P Bound n _ -> var n `ins` unionMap (getDepsTerm vs bs cd) args
 
             -- we interpret applied lambdas as lets in order to reuse code here
-            Bind n (Lam ty) t ->
-                ("REFORM", app, "==>", lamToLet [] app) `traceShow`
-                    getDepsTerm vs bs cd (lamToLet [] app)
+            Bind n (Lam ty) t -> getDepsTerm vs bs cd (lamToLet [] app)
 
             _ -> error $ "cannot analyse application of: " ++ show fun
       where
