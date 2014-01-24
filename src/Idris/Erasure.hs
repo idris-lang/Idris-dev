@@ -105,8 +105,9 @@ buildDepMap ctx ns = addPostulates $ dfs S.empty M.empty ns
                 , (name "prim__strCons", Arg 1)
                 , (name "prim__strHead", Arg 0)
                 , (name "prim__strTail", Arg 0)
+                , (name "prim__concat", Arg 0)
+                , (name "prim__concat", Arg 1)
                 , (name "mkForeignPrim", Arg 2)
---                , (name "MkIO", Arg 1)
                 ]  
             ]
 
@@ -142,28 +143,40 @@ buildDepMap ctx ns = addPostulates $ dfs S.empty M.empty ns
     getDepsDef fn (TyDecl   ty t) = M.empty
     getDepsDef fn (Operator ty n' f) = M.empty
     getDepsDef fn (CaseOp ci ty tys def tot cdefs)
-        = getDepsSC fn varMap sc
+        = getDepsSC fn etaVars (etaMap `M.union` varMap) sc
       where
+        -- we must eta-expand the definition with fresh variables
+        -- to capture these dependencies as well
+        etaIdx = [length vars .. length tys - 1]
+        etaVars = [eta i | i <- etaIdx]
+        etaMap = M.fromList [(eta i, S.singleton (fn, Arg i)) | i <- etaIdx]
+        eta i = MN i (pack "eta")
+
         -- the variables that arose as function arguments only depend on (n, i)
         varMap = M.fromList [(v, S.singleton (fn, Arg i)) | (v,i) <- zip vars [0..]]
         (vars, sc) = cases_compiletime cdefs  -- TODO: or cases_runtime?
 
-    getDepsSC :: Name -> Vars -> SC -> Deps
-    getDepsSC fn vs  ImpossibleCase     = M.empty
-    getDepsSC fn vs (UnmatchedCase msg) = M.empty
-    getDepsSC fn vs (ProjCase t alt)    = error "ProjCase not supported"
-    getDepsSC fn vs (STerm    t)        = getDepsTerm vs [] (S.singleton (fn, Result)) t
-    getDepsSC fn vs (Case     n alts)   = unionMap (getDepsAlt fn vs var) alts
+    etaExpand :: [Name] -> Term -> Term
+    etaExpand []       t = t
+    etaExpand (n : ns) t = App (etaExpand ns t) (P Bound n Erased)
+
+    getDepsSC :: Name -> [Name] -> Vars -> SC -> Deps
+    getDepsSC fn es vs  ImpossibleCase     = M.empty
+    getDepsSC fn es vs (UnmatchedCase msg) = M.empty
+    getDepsSC fn es vs (ProjCase t alt)    = error "ProjCase not supported"
+    getDepsSC fn [] vs (STerm    t)        = getDepsTerm vs [] (S.singleton (fn, Result)) t
+    getDepsSC fn es vs (STerm    t) | ("EXPAND",es,t,"==>",etaExpand es t) `traceShow` True = getDepsTerm vs [] (S.singleton (fn, Result)) (etaExpand es t)
+    getDepsSC fn es vs (Case     n alts)   = unionMap (getDepsAlt fn es vs var) alts
       where
         var  = fromMaybe (error $ "nonpatvar in case: " ++ show n) (M.lookup n vs)
 
-    getDepsAlt :: Name -> Vars -> Var -> CaseAlt -> Deps
-    getDepsAlt fn vs var (FnCase n ns sc) = error "an FnCase encountered"  -- TODO: what's this?
-    getDepsAlt fn vs var (ConstCase c sc) = getDepsSC fn vs sc
-    getDepsAlt fn vs var (SucCase   n sc) = getDepsSC fn vs sc  -- deps for S can be hardcoded if needed
-    getDepsAlt fn vs var (DefaultCase sc) = getDepsSC fn vs sc
-    getDepsAlt fn vs var (ConCase n cnt ns sc)
-        = getDepsSC fn (vs' `M.union` vs) sc  -- left-biased union
+    getDepsAlt :: Name -> [Name] -> Vars -> Var -> CaseAlt -> Deps
+    getDepsAlt fn es vs var (FnCase n ns sc) = error "an FnCase encountered"  -- TODO: what's this?
+    getDepsAlt fn es vs var (ConstCase c sc) = getDepsSC fn es vs sc
+    getDepsAlt fn es vs var (SucCase   n sc) = getDepsSC fn es vs sc  -- deps for S can be hardcoded if needed
+    getDepsAlt fn es vs var (DefaultCase sc) = getDepsSC fn es vs sc
+    getDepsAlt fn es vs var (ConCase n cnt ns sc)
+        = getDepsSC fn es (vs' `M.union` vs) sc  -- left-biased union
       where
         -- Here we insert dependencies that arose from pattern matching on a constructor.
         -- n = ctor name, j = ctor arg#, i = fun arg# of the cased var, cs = ctors of the cased var
@@ -206,6 +219,13 @@ buildDepMap ctx ns = addPostulates $ dfs S.empty M.empty ns
             -- a bound variable might draw in additional dependencies,
             -- think: f x = x 0  <-- here, `x' _is_ used
             P Bound n _ -> var n `ins` unionMap (getDepsTerm vs bs cd) args
+
+            -- we interpret applied lambdas as lets in order to reuse code here
+            Bind n (Lam ty) t ->
+                ("REFORM", app, "==>", lamToLet [] app) `traceShow`
+                    getDepsTerm vs bs cd (lamToLet [] app)
+
+            _ -> error $ "cannot analyse application of: " ++ show fun
       where
         ins = M.insertWith S.union cd
         var n = fromMaybe (error $ "non-existent bound variable: " ++ show n) (M.lookup n vs)
@@ -217,6 +237,14 @@ buildDepMap ctx ns = addPostulates $ dfs S.empty M.empty ns
     getDepsTerm vs bs cd (TType    _) = M.empty
     getDepsTerm vs bs cd  Erased      = M.empty
     getDepsTerm vs bs cd  Impossible  = M.empty
+
+    -- convert applications of lambdas to lets
+    -- Note that this transformation preserves de bruijn numbering
+    lamToLet :: [Term] -> Term -> Term
+    lamToLet    xs  (App f x)           = lamToLet (x:xs) f
+    lamToLet (x:xs) (Bind n (Lam ty) t) = Bind n (Let ty x) (lamToLet xs t)
+    lamToLet (x:xs)  t                  = App (lamToLet xs t) x
+    lamToLet    []   t                  = t
 
     unions :: [Deps] -> Deps
     unions = M.unionsWith S.union
