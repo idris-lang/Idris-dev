@@ -51,6 +51,7 @@ compile codegen f tm
         -- TODO: traverse all names correctly
 
         -- TODO: DEBUG-ONLY, remove
+        {-
         ist <- getIState
         let depMap = buildDepMap (tt_ctxt ist) used
         let printCond (ctors, cond) = "if " ++ show (S.toList cond) ++ "  -ctors-  " ++ show (S.toList ctors)
@@ -60,6 +61,7 @@ compile codegen f tm
 
         let minUse = minimalUsage depMap
         iLOG $ "MINIMAL USAGE:\n" ++ unlines (map (\(n,is) -> show n ++ " -> " ++ show (IS.toList is)) $ M.toList minUse)
+        -}
         -- END TODO
         
         maindef <- irMain tm
