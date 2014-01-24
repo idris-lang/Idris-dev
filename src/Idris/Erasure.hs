@@ -101,7 +101,9 @@ buildDepMap ctx ns = addMain $ dfs S.empty M.empty ns
         -- extract all names that a function depends on
         -- from the Deps of the function
         depNames :: Deps -> Set Name
-        depNames = S.unions . map (S.map fst) . M.keys
+        depNames = S.unions . map names . M.toList
+          where
+            names (cs, ns) = S.map fst cs `S.union` S.map fst ns
 
     -- get Deps for a Name
     getDeps :: Name -> Deps
