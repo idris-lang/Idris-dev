@@ -2,7 +2,7 @@
 
 module Idris.Erasure
     ( findUnusedArgs
-    , findUsed
+    , buildDepMap
     ) where
 
 import Idris.AbsSyntax
