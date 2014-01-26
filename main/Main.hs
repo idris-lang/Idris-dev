@@ -89,18 +89,16 @@ usagemsg = usagemsghdr ++ "\n" ++
            map (\x -> '-') usagemsghdr ++ "\n" ++  
            "idris [OPTIONS] [FILE]\n\n" ++
            "Common flags:\n" ++
-           "\t    --install=IPKG          Install Package\n" ++
-           "\t    --clean=IPKG            Clean Package\n" ++
-           "\t    --build=IPKG            Build Package\n" ++
-           "\t    --exec=EXPR             Execute as Idris\n" ++
+           "\t    --install=IPKG          Install package\n" ++
+           "\t    --clean=IPKG            Clean package\n" ++
+           "\t    --build=IPKG            Build package\n" ++
+           "\t    --exec=EXPR             Execute as idris\n" ++
            "\t    --libdir                Display library directory\n" ++
            "\t    --link                  Display link directory\n" ++
            "\t    --include               Display the includes directory\n" ++
            "\t    --nobanner              Suppress the banner\n" ++
-           "\t    --color                 Force colored output\n" ++
-           "\t    --colour                Force coloured output\n" ++
-           "\t    --nocolor               Disable colored output\n" ++
-           "\t    --nocolour              Disable coloured output\n" ++
+           "\t    --color, --colour       Force coloured output\n" ++
+           "\t    --nocolor, --nocolour   Disable coloured output\n" ++
            "\t    --errorcontent          Undocumented\n" ++
            "\t    --nocoverage            Undocumented\n" ++
            "\t -o --output=FILE           Specify output file\n" ++
@@ -118,22 +116,22 @@ usagemsg = usagemsghdr ++ "\n" ++
            "\t -i --idrispath=DIR         Add directory to the list of import paths\n" ++
            "\t    --package=ITEM          Undocumented\n" ++
            "\t    --ibcsubdir=FILE        Write IBC files into sub directory\n" ++
-           "\t    --codegen=TARGET        Select code generator: C, Java, bytecode," ++
+           "\t    --codegen=TARGET        Select code generator: C, Java, bytecode,\n" ++
            "\t                            javascript, node, or llvm\n" ++
            "\t    --mvn                   Create a maven project (for Java codegen)\n" ++
-           "\t    --cpu=CPU               Select tartget CPU e.g. corei& or cortex-m3" ++
+           "\t    --cpu=CPU               Select tartget CPU e.g. corei7 or cortex-m3\n" ++
            "\t                            (for LLVM codegen)\n" ++
            "\t    --target=TRIPLE         Select target triple (for llvm codegen)\n" ++
            "\t -S --codegenonly           Do no further compilation of code generator output\n" ++
-           "\t -c --compileonly           Compile to object fules rather than an executable\n" ++
-           "\t -X --extension=ITEM        undocumented\n" ++
+           "\t -c --compileonly           Compile to object files rather than an executable\n" ++
+           "\t -X --extension=ITEM        Undocumented\n" ++
            "\t    --dumpdefuns            Undocumented\n" ++
            "\t    --dumpcases             Undocumented\n" ++
-           "\t    --log=LEVEL --loglevel  Type Debugging log level\n" ++
+           "\t    --log=LEVEL --loglevel  Debugging log level\n" ++
            "\t    --ideslave              Undocumented\n" ++
            "\t    --client                Undocumented\n" ++
            "\t -h --help                  Display help message\n" ++
            "\t -v --version               Print version information\n" ++
-           "\t -V --Verbose               Loud verbosity\n" ++
+           "\t -V --verbose               Loud verbosity\n" ++
            "\t -q --quiet                 Quiet verbosity\n"
 
