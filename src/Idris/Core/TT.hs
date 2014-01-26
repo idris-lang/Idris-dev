@@ -78,10 +78,11 @@ instance Show FC where
     show (FC f l c) = f ++ ":" ++ show l ++ ":" ++ show c
 
 -- | Output annotation for pretty-printed name - decides colour
-data NameOutput = TypeOutput | FunOutput | DataOutput | BoundOutput Bool
+data NameOutput = TypeOutput | FunOutput | DataOutput
 
 -- | Output annotations for pretty-printing
-data OutputAnnotation = OutName Name (Maybe NameOutput) (Maybe Type)
+data OutputAnnotation = AnnName Name (Maybe NameOutput) (Maybe Type)
+                      | AnnBoundName Name Bool
 
 -- | Used for error reflection
 data ErrorReportPart = TextPart String
@@ -294,11 +295,11 @@ instance Sized Name where
   size _ = 1
 
 instance Pretty Name OutputAnnotation where
-  pretty n@(UN n') = annotate (OutName n Nothing Nothing) $ text (T.unpack n')
-  pretty n@(NS un s) = annotate (OutName n Nothing Nothing) . noAnnotate $ pretty n
-  pretty n@(MN i s) = annotate (OutName n Nothing Nothing) $
+  pretty n@(UN n') = annotate (AnnName n Nothing Nothing) $ text (T.unpack n')
+  pretty n@(NS un s) = annotate (AnnName n Nothing Nothing) . noAnnotate $ pretty un
+  pretty n@(MN i s) = annotate (AnnName n Nothing Nothing) $
                       lbrace <+> text (T.unpack s) <+> (text . show $ i) <+> rbrace
-  pretty n@(SN s) = annotate (OutName n Nothing Nothing) $ text (show s)
+  pretty n@(SN s) = annotate (AnnName n Nothing Nothing) $ text (show s)
 
 instance Pretty [Name] OutputAnnotation where
   pretty = encloseSep empty empty comma . map pretty

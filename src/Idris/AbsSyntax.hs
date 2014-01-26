@@ -424,7 +424,7 @@ ideslavePutSExp cmd info = do i <- getIState
 iputGoal :: SimpleDoc OutputAnnotation -> Idris ()
 iputGoal g = do i <- getIState
                 case idris_outputmode i of
-                  RawOutput -> runIO $ displayIO stdout g >> putStrLn ""
+                  RawOutput -> runIO $ putStrLn (displayDecorated (consoleDecorate i) g)
                   IdeSlave n -> runIO . putStrLn $ convSExp "write-goal" (displayS g "") n
 
 isetPrompt :: String -> Idris ()
@@ -757,7 +757,7 @@ eqOpts = []
 elimName       = sUN "__Elim"
 elimMethElimTy = sUN "__elimTy"
 elimMethElim   = sUN "elim"
-elimDecl = PClass "Type class for eliminators" defaultSyntax bi [] elimName [(sUN "scrutineeType", PType)] 
+elimDecl = PClass "Type class for eliminators" defaultSyntax bi [] elimName [(sUN "scrutineeType", PType)]
                      [PTy "" defaultSyntax bi [TotalFn] elimMethElimTy PType,
                       PTy "" defaultSyntax bi [TotalFn] elimMethElim (PRef bi elimMethElimTy)]
 
@@ -1722,3 +1722,224 @@ mkUniqueNames env tm = evalState (mkUniq tm) env where
   mkUniq (PTactics ts) = liftM PTactics (mapM mkUniqT ts)
   mkUniq t = return t
 
+
+---------------------------------------------------------
+-- Pretty-printing
+---------------------------------------------------------
+
+instance Pretty PTerm OutputAnnotation where
+  pretty = prettyImp False
+
+-- | Colourise annotations according to an Idris state. It ignores the names
+-- in the annotation, as there's no good way to show extended information on a
+-- terminal.
+consoleDecorate :: IState -> OutputAnnotation -> String -> String
+consoleDecorate ist _ | not (idris_colourRepl ist) = id
+consoleDecorate ist (AnnBoundName _ True) = colouriseImplicit (idris_colourTheme ist)
+consoleDecorate ist (AnnBoundName _ False) = colouriseBound (idris_colourTheme ist)
+consoleDecorate ist (AnnName n _ _) = let ctxt  = tt_ctxt ist
+                                          theme = idris_colourTheme ist
+                                      in case () of
+                                           _ | isDConName n ctxt -> colouriseData theme
+                                           _ | isFnName n ctxt   -> colouriseFun theme
+                                           _ | isTConName n ctxt -> colouriseType theme
+                                           _ | otherwise         -> id -- don't colourise unknown names
+
+-- | Pretty-print a high-level closed Idris term
+prettyImp :: Bool -- ^^ whether to show implicits
+          -> PTerm -- ^^ the term to pretty-print
+          -> Doc OutputAnnotation
+prettyImp impl = pprintPTerm impl []
+
+-- | Pretty-print a high-level Idris term in some bindings context
+pprintPTerm :: Bool -- ^^ whether to show implicits
+            -> [(Name, Bool)] -- ^^ the currently-bound names and whether they are implicit
+            -> PTerm -- ^^ the term to pretty-print
+            -> Doc OutputAnnotation
+pprintPTerm impl bnd = prettySe 10 bnd
+  where
+    prettySe :: Int -> [(Name, Bool)] -> PTerm -> Doc OutputAnnotation
+    prettySe p bnd (PQuote r) =
+      if size r > breakingSize then
+        text "![" <> line <> pretty r <> text "]"
+      else
+        text "![" <> pretty r <> text "]"
+    prettySe p bnd (PPatvar fc n) = pretty n
+    prettySe p bnd (PRef fc n) = prettyName impl bnd n
+    prettySe p bnd (PLam n ty sc) =
+      bracket p 2 $
+        if size sc > breakingSize then
+          text "\\" <> bindingOf n False <+> text "=>" <> line <> prettySe 10 ((n, False):bnd) sc
+        else
+          text "\\" <> bindingOf n False <+> text "=>" <+> prettySe 10 ((n, False):bnd) sc
+    prettySe p bnd (PLet n ty v sc) =
+      bracket p 2 $
+        if size sc > breakingSize then
+          text "let" <+> bindingOf n False <+> text "=" <+> prettySe 10 bnd v <+> text "in" <>
+            nest nestingSize (prettySe 10 ((n, False):bnd) sc)
+        else
+          text "let" <+> bindingOf n False <+> text "=" <+> prettySe 10 bnd v <+> text "in" <+>
+            prettySe 10 ((n, False):bnd) sc
+    prettySe p bnd (PPi (Exp l s _ _) n ty sc)
+      | n `elem` allNamesIn sc || impl =
+          let open = (if l then text "|" else empty) <> lparen in
+            bracket p 2 $
+              if size sc > breakingSize then
+                enclose open rparen (bindingOf n False <+> colon <+> prettySe 10 bnd ty) <+>
+                  st <> text "->" <> line <> prettySe 10 ((n, False):bnd) sc
+              else
+                enclose open rparen (bindingOf n False <+> colon <+> prettySe 10 bnd ty) <+>
+                 st <> text "->" <+> prettySe 10 ((n, False):bnd) sc
+      | otherwise                      =
+          bracket p 2 $
+            if size sc > breakingSize then
+              prettySe 0 bnd ty <+> st <+> text "->" <> line <> prettySe 10 ((n, False):bnd) sc
+            else
+              prettySe 0 bnd ty <+> st <+> text "->" <+> prettySe 10 ((n, False):bnd) sc
+      where
+        st =
+          case s of
+            Static -> text "[static]" <> space
+            _      -> empty
+    prettySe p bnd (PPi (Imp l s _ _) n ty sc)
+      | impl =
+          let open = if l then text "|" <> lbrace else lbrace in
+            bracket p 2 $
+              if size sc > breakingSize then
+                open <> bindingOf n True <+> colon <+> prettySe 10 bnd ty <> rbrace <+>
+                  st <> text "->" <+> prettySe 10 ((n, True):bnd) sc
+              else
+                open <> bindingOf n True <+> colon <+> prettySe 10 bnd ty <> rbrace <+>
+                  st <> text "->" <+> prettySe 10 ((n, True):bnd) sc
+      | otherwise = prettySe 10 ((n, True):bnd) sc
+      where
+        st =
+          case s of
+            Static -> text "[static]" <> space
+            _      -> empty
+    prettySe p bnd (PPi (Constraint _ _ _) n ty sc) =
+      bracket p 2 $
+        if size sc > breakingSize then
+          prettySe 10 bnd ty <+> text "=>" <+> prettySe 10 ((n, True):bnd) sc
+        else
+          prettySe 10 bnd ty <+> text "=>" <> line <> prettySe 10 ((n, True):bnd) sc
+    prettySe p bnd (PPi (TacImp _ _ s _) n ty sc) =
+      bracket p 2 $
+        if size sc > breakingSize then
+          lbrace <> text "tacimp" <+> bindingOf n True <+> colon <+> prettySe 10 bnd ty <>
+            rbrace <+> text "->" <> line <> prettySe 10 ((n, True):bnd) sc
+        else
+          lbrace <> text "tacimp" <+> pretty n <+> colon <+> prettySe 10 bnd ty <>
+            rbrace <+> text "->" <+> prettySe 10 ((n, True):bnd) sc
+    prettySe p bnd (PApp _ (PRef _ f) [])
+      | not impl = pretty f
+    prettySe p bnd (PAppBind _ (PRef _ f) [])
+      | not impl = text "!" <+> pretty f
+    prettySe p bnd (PApp _ (PRef _ op@(UN nm)) args)
+      | not (tnull nm) &&
+        length (getExps args) == 2 && (not impl) && (not $ isAlpha (thead nm)) =
+          let [l, r] = getExps args in
+            bracket p 1 $
+              if size r > breakingSize then
+                prettySe 1 bnd l <+> prettyName impl bnd op <> line <> prettySe 0 bnd r
+              else
+                prettySe 1 bnd l <+> prettyName impl bnd op <+> prettySe 0 bnd r
+    prettySe p bnd (PApp _ f as) =
+      let args = getExps as in
+        bracket p 1 $
+          prettySe 1 bnd f <+>
+            align (hsep (if impl
+                           then map (prettyArgS bnd) as
+                           else map (prettyArgSe bnd) args))
+    prettySe p bnd (PCase _ scr opts) =
+      text "case" <+> prettySe 10 bnd scr <+> text "of" <> prettyBody
+      where
+        prettyBody = foldr (<>) empty $ intersperse (text "|") $ map sc opts
+
+        sc (l, r) = nest nestingSize $ prettySe 10 bnd l <+> text "=>" <+> prettySe 10 bnd r
+    prettySe p bnd (PHidden tm) = text "." <> prettySe 0 bnd tm
+    prettySe p bnd (PRefl _ _) = annotate (AnnName eqCon Nothing Nothing) $ text "refl"
+    prettySe p bnd (PResolveTC _) = text "resolvetc"
+    prettySe p bnd (PTrue _) = annotate (AnnName unitTy Nothing Nothing) $ text "()"
+    prettySe p bnd (PFalse _) = annotate (AnnName falseTy Nothing Nothing) $ text "_|_"
+    prettySe p bnd (PEq _ l r) =
+      bracket p 2 $
+        if size r > breakingSize then
+          prettySe 10 bnd l <+> eq <> nest nestingSize (prettySe 10 bnd r)
+        else
+          prettySe 10 bnd l <+> eq <+> prettySe 10 bnd r
+      where eq = annotate (AnnName eqTy Nothing Nothing) (text "=")
+    prettySe p bnd (PRewrite _ l r _) =
+      bracket p 2 $
+        if size r > breakingSize then
+          text "rewrite" <+> prettySe 10 bnd l <+> text "in" <> nest nestingSize (prettySe 10 bnd r)
+        else
+          text "rewrite" <+> prettySe 10 bnd l <+> text "in" <+> prettySe 10 bnd r
+    prettySe p bnd (PTyped l r) =
+      lparen <> prettySe 10 bnd l <+> colon <+> prettySe 10 bnd r <> rparen
+    prettySe p bnd (PPair _ l r) =
+      if size r > breakingSize then
+        lparen <> prettySe 10 bnd l <> text "," <>
+          line <> prettySe 10 bnd r <> rparen
+      else
+        lparen <> prettySe 10 bnd l <> text "," <+> prettySe 10 bnd r <> rparen
+    prettySe p bnd (PDPair _ l t r) =
+      if size r > breakingSize then
+        lparen <> prettySe 10 bnd l <+> text "**" <>
+          line <> prettySe 10 bnd r <> rparen
+      else
+        lparen <> prettySe 10 bnd l <+> text "**" <+> prettySe 10 bnd r <> rparen
+    prettySe p bnd (PAlternative a as) =
+      lparen <> text "|" <> prettyAs <> text "|" <> rparen
+        where
+          prettyAs =
+            foldr (\l -> \r -> l <+> text "," <+> r) empty $ map (prettySe 10 bnd) as
+    prettySe p bnd PType = text "Type"
+    prettySe p bnd (PConstant c) = pretty c
+    -- XXX: add pretty for tactics
+    prettySe p bnd (PProof ts) =
+      text "proof" <+> lbrace <> nest nestingSize (text . show $ ts) <> rbrace
+    prettySe p bnd (PTactics ts) =
+      text "tactics" <+> lbrace <> nest nestingSize (text . show $ ts) <> rbrace
+    prettySe p bnd (PMetavar n) = text "?" <> pretty n
+    prettySe p bnd (PReturn f) = text "return"
+    prettySe p bnd PImpossible = text "impossible"
+    prettySe p bnd Placeholder = text "_"
+    prettySe p bnd (PDoBlock _) = text "do block pretty not implemented"
+    prettySe p bnd (PElabError s) = pretty s
+
+    prettySe p bnd _ = text "test"
+
+    prettyArgS bnd (PImp _ _ _ n tm _) = prettyArgSi bnd (n, tm)
+    prettyArgS bnd (PExp _ _ tm _)   = prettyArgSe bnd tm
+    prettyArgS bnd (PConstraint _ _ tm _) = prettyArgSc bnd tm
+    prettyArgS bnd (PTacImplicit _ _ n _ tm _) = prettyArgSti bnd (n, tm)
+
+    prettyArgSe bnd arg = prettySe 0 bnd arg
+    prettyArgSi bnd (n, val) = lbrace <> pretty n <+> text "=" <+> prettySe 10 bnd val <> rbrace
+    prettyArgSc bnd val = lbrace <> lbrace <> prettySe 10 bnd val <> rbrace <> rbrace
+    prettyArgSti bnd (n, val) = lbrace <> text "auto" <+> pretty n <+> text "=" <+> prettySe 10 bnd val <> rbrace
+
+
+    bracket outer inner doc
+      | inner > outer = lparen <> doc <> rparen
+      | otherwise     = doc
+
+-- | Pretty-printer helper for the binding site of a name
+bindingOf :: Name -- ^^ the bound name
+          -> Bool -- ^^ whether the name is implicit
+          -> Doc OutputAnnotation
+bindingOf n imp = annotate (AnnBoundName n imp) (text (show n))
+
+-- | Pretty-printer helper for names that attaches the correct annotations
+prettyName :: Bool -- ^^ whether to show namespaces
+           -> [(Name, Bool)] -- ^^ the current bound variables and whether they are implicit
+           -> Name -- ^^ the name to pprint
+           -> Doc OutputAnnotation
+prettyName showNS bnd n | Just imp <- lookup n bnd = annotate (AnnBoundName n imp) (text (strName n))
+                        | otherwise = annotate (AnnName n Nothing Nothing) (text (strName n))
+  where strName (UN n) = T.unpack n
+        strName (NS n ns) | showNS    = (concatMap (++ ".") . map T.unpack . reverse) ns ++ strName n
+                          | otherwise = strName n
+        strName (MN i s) = "{" ++ T.unpack s ++ show i ++ "}"
+        strName other = show other
