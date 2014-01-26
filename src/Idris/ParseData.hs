@@ -77,8 +77,12 @@ dataI = do reserved "data"; return []
 {- | Parses if a data should not have a default eliminator 
 DefaultEliminator ::= 'noelim'?
  -}
-defaultEliminator :: IdrisParser DataOpts
-defaultEliminator = do option [] (do reserved "%elim"; return [DefaultEliminator])
+dataOpts :: DataOpts -> IdrisParser DataOpts
+dataOpts opts
+    = do reserved "%elim"; dataOpts (DefaultEliminator : opts)
+  <|> do reserved "%error_reverse"; dataOpts (DataErrRev : opts)
+  <|> return opts
+  <?> "data options"
 
 {- | Parses a data type declaration
 Data ::= DocComment? Accessibility? DataI DefaultEliminator FnName TypeSig ExplicitTypeDataRest?
@@ -100,7 +104,7 @@ data_ syn = do (doc, acc, dataOpts) <- try (do
                     doc <- option "" (docComment '|')
                     pushIndent
                     acc <- optional accessibility
-                    elim <- defaultEliminator
+                    elim <- dataOpts []
                     co <- dataI
                     let dataOpts = combineDataOpts(elim ++ co)
                     return (doc, acc, dataOpts))
@@ -146,7 +150,9 @@ data_ syn = do (doc, acc, dataOpts) <- try (do
     bindArgs :: [PTerm] -> PTerm -> PTerm
     bindArgs xs t = foldr (PPi expl (sMN 0 "_t")) t xs
     combineDataOpts :: DataOpts -> DataOpts
-    combineDataOpts opts = if Codata `elem` opts then delete DefaultEliminator opts else opts
+    combineDataOpts opts = if Codata `elem` opts 
+                              then delete DefaultEliminator opts 
+                              else opts
 
 
 {- | Parses a type constructor declaration

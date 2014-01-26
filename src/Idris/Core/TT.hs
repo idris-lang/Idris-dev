@@ -90,41 +90,45 @@ data ErrorReportPart = TextPart String
 
 -- | Idris errors. Used as exceptions in the compiler, but reported to users
 -- if they reach the top level.
-data Err = Msg String
+data Err' t 
+          = Msg String
           | InternalMsg String
-          | CantUnify Bool Term Term Err [(Name, Type)] Int
+          | CantUnify Bool t t (Err' t) [(Name, t)] Int
                -- Int is 'score' - how much we did unify
                -- Bool indicates recoverability, True indicates more info may make
                -- unification succeed
-          | InfiniteUnify Name Term [(Name, Type)]
-          | CantConvert Term Term [(Name, Type)]
-          | CantSolveGoal Term [(Name, Type)]
-          | UnifyScope Name Name Term [(Name, Type)]
+          | InfiniteUnify Name t [(Name, t)]
+          | CantConvert t t [(Name, t)]
+          | CantSolveGoal t [(Name, t)]
+          | UnifyScope Name Name t [(Name, t)]
           | CantInferType String
-          | NonFunctionType Term Term
-          | NotEquality Term Term
+          | NonFunctionType t t
+          | NotEquality t t
           | TooManyArguments Name
-          | CantIntroduce Term
+          | CantIntroduce t
           | NoSuchVariable Name
           | NoTypeDecl Name
-          | NotInjective Term Term Term
-          | CantResolve Term
+          | NotInjective t t t
+          | CantResolve t
           | CantResolveAlts [String]
-          | IncompleteTerm Term
+          | IncompleteTerm t
           | UniverseError
           | ProgramLineComment
           | Inaccessible Name
           | NonCollapsiblePostulate Name
           | AlreadyDefined Name
-          | ProofSearchFail Err
-          | NoRewriting Term
-          | At FC Err
-          | Elaborating String Name Err
+          | ProofSearchFail (Err' t)
+          | NoRewriting t
+          | At FC (Err' t)
+          | Elaborating String Name (Err' t)
           | ProviderError String
-          | LoadingFailed String Err
-          | ReflectionError [[ErrorReportPart]] Err
-          | ReflectionFailed String Err
-  deriving Eq
+          | LoadingFailed String (Err' t)
+          | ReflectionError [[ErrorReportPart]] (Err' t)
+          | ReflectionFailed String (Err' t)
+  deriving (Eq, Functor)
+
+type Err = Err' Term
+
 {-!
 deriving instance NFData Err
 !-}

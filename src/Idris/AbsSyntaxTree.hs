@@ -109,6 +109,7 @@ data IState = IState {
     idris_metavars :: [(Name, (Maybe Name, Int, Bool))], -- ^ The currently defined but not proven metavariables
     idris_coercions :: [Name],
     idris_transforms :: [(Term, Term)],
+    idris_errRev :: [(Term, Term)],
     syntax_rules :: [Syntax],
     syntax_keywords :: [String],
     imported :: [FilePath], -- ^ The imported modules
@@ -184,6 +185,7 @@ data IBCWrite = IBCFix FixDecl
               | IBCTotal Name Totality
               | IBCFlags Name [FnOpt]
               | IBCTrans (Term, Term)
+              | IBCErrRev (Term, Term)
               | IBCCG Name
               | IBCDoc Name
               | IBCCoercion Name
@@ -198,7 +200,7 @@ idrisInit = IState initContext [] [] emptyContext emptyContext emptyContext
                    emptyContext emptyContext emptyContext emptyContext
                    emptyContext emptyContext emptyContext emptyContext
                    emptyContext
-                   [] [] defaultOpts 6 [] [] [] [] [] [] [] [] [] [] [] []
+                   [] [] defaultOpts 6 [] [] [] [] [] [] [] [] [] [] [] [] []
                    [] Nothing Nothing [] [] [] Hidden False [] Nothing [] [] RawOutput
                    True defaultTheme stdout [] (0, emptyContext)
 
@@ -391,6 +393,7 @@ data FnOpt = Inlinable -- always evaluate when simplifying
            | Implicit -- implicit coercion
            | CExport String    -- export, with a C name
            | ErrorHandler     -- ^^ an error handler for use with the ErrorReflection extension
+           | ErrorReverse     -- ^^ attempt to reverse normalise before showing in error 
            | Reflection -- a reflecting function, compile-time only
            | Specialise [(Name, Maybe Int)] -- specialise it, freeze these names
     deriving (Show, Eq)
@@ -411,6 +414,7 @@ dictionary = elem Dictionary
 -- | Data declaration options
 data DataOpt = Codata -- Set if the the data-type is coinductive
              | DefaultEliminator -- Set if an eliminator should be generated for data type
+             | DataErrRev
     deriving (Show, Eq)
 
 type DataOpts = [DataOpt]
@@ -809,6 +813,7 @@ deriving instance NFData OptInfo
 
 data TypeInfo = TI { con_names :: [Name],
                      codata :: Bool,
+                     data_opts :: DataOpts,
                      param_pos :: [Int] }
     deriving Show
 {-!
@@ -1255,6 +1260,9 @@ showImp ist impl colour tm = se 10 [] tm where
           "{tacimp " ++ (perhapsColourise colouriseBound (show n)) ++ " : " ++ se 10 bnd ty ++ "} -> " ++
           se 10 ((n, False):bnd) sc
     se p bnd (PMatchApp _ f) = "match " ++ show f
+    se p bnd (PApp _ hd@(PRef fc f) [tm])
+        | PConstant (Idris.Core.TT.Str str) <- getTm tm,
+          f == sUN "Symbol_" = "'" ++ se 10 bnd (PRef fc (sUN str))
     se p bnd (PApp _ hd@(PRef _ f) [])
         | not impl = se p bnd hd
     se p bnd (PAppBind _ hd@(PRef _ f) [])

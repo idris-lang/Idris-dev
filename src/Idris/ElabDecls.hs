@@ -100,7 +100,7 @@ elabType' norm info syn doc fc opts n ty' = {- let ty' = piBind (params info) ty
          let (t, _) = unApply (getRetTy nty')
          let corec = case t of
                         P _ rcty _ -> case lookupCtxt rcty (idris_datatypes i) of
-                                        [TI _ True _] -> True
+                                        [TI _ True _ _] -> True
                                         _ -> False
                         _ -> False
          let opts' = if corec then (Coinductive : opts) else opts
@@ -228,7 +228,8 @@ elabData info syn doc fc opts (PDatadecl n t_in dcons)
          let as = map (const Nothing) (getArgTys cty)
          let params = findParams  (map snd cons)
          logLvl 2 $ "Parameters : " ++ show params
-         putIState (i { idris_datatypes = addDef n (TI (map fst cons) codata params)
+         putIState (i { idris_datatypes = 
+                          addDef n (TI (map fst cons) codata opts params)
                                              (idris_datatypes i) })
          addIBC (IBCDef n)
          addIBC (IBCData n)
@@ -1357,6 +1358,20 @@ elabClause info opts (cnum, PClause fc fname lhs_in withs rhs_in whereblock)
             Error e -> ierror (At fc (CantUnify False clhsty crhsty e [] 0))
         i <- getIState
         checkInferred fc (delab' i crhs True True) rhs
+        -- if the function is declared '%error_reverse', or its type,
+        -- then we'll try running it in reverse to improve error messages
+        let (ret_fam, _) = unApply (getRetTy crhsty)
+        rev <- case ret_fam of
+                    P _ rfamn _ -> 
+                        case lookupCtxt rfamn (idris_datatypes i) of
+                             [TI _ _ dopts _] -> 
+                                 return (DataErrRev `elem` dopts)
+                             _ -> return False
+                    _ -> return False
+
+        when (rev || ErrorReverse `elem` opts) $ do
+           addIBC (IBCErrRev (crhs, clhs))
+           addErrRev (crhs, clhs) 
         return $ Right (clhs, crhs)
   where
     decorate (NS x ns)

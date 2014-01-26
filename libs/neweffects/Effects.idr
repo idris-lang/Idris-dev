@@ -11,6 +11,7 @@ import Effect.Default
 Effect : Type
 Effect = (x : Type) -> Type -> (x -> Type) -> Type
 
+%error_reverse
 data EFFECT : Type where
      MkEff : Type -> Effect -> EFFECT
 

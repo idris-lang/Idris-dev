@@ -377,6 +377,7 @@ Library
                 , Idris.ElabDecls
                 , Idris.ElabTerm
                 , Idris.Error
+                , Idris.ErrReverse
                 , Idris.Help
                 , Idris.IBC
                 , Idris.IdeSlave

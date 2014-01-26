@@ -95,6 +95,10 @@ addTrans :: (Term, Term) -> Idris ()
 addTrans t = do i <- getIState
                 putIState $ i { idris_transforms = t : idris_transforms i }
 
+addErrRev :: (Term, Term) -> Idris ()
+addErrRev t = do i <- getIState
+                 putIState $ i { idris_errRev = t : idris_errRev i }
+
 totcheck :: (FC, Name) -> Idris ()
 totcheck n = do i <- getIState; putIState $ i { idris_totcheck = idris_totcheck i ++ [n] }
 
