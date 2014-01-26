@@ -30,6 +30,8 @@ import Data.Word (Word)
 
 import Debug.Trace
 
+import Text.PrettyPrint.Annotated.Leijen
+
 data IOption = IOption { opt_logLevel   :: Int,
                          opt_typecase   :: Bool,
                          opt_typeintype :: Bool,
@@ -895,7 +897,7 @@ expandNS syn n = case syn_namespace syn of
 instance Show PTerm where
     show tm = showImp Nothing False False tm
 
-instance Pretty PTerm where
+instance Pretty PTerm OutputAnnotation where
   pretty = prettyImp False
 
 instance Show PDecl where
@@ -965,15 +967,17 @@ getConsts (_ : xs) = getConsts xs
 getAll :: [PArg] -> [PTerm]
 getAll = map getTm
 
+
 -- | Pretty-print a high-level Idris term
 prettyImp :: Bool -- ^^ whether to show implicits
           -> PTerm -- ^^ the term to pretty-print
-          -> Doc
+          -> Doc OutputAnnotation
 prettyImp impl = prettySe 10
   where
+    prettySe :: Int -> PTerm -> Doc OutputAnnotation
     prettySe p (PQuote r) =
       if size r > breakingSize then
-        text "![" $$ pretty r <> text "]"
+        text "![" <> line <> pretty r <> text "]"
       else
         text "![" <> pretty r <> text "]"
     prettySe p (PPatvar fc n) = pretty n
@@ -990,37 +994,37 @@ prettyImp impl = prettySe 10
     prettySe p (PLam n ty sc) =
       bracket p 2 $
         if size sc > breakingSize then
-          text "λ" <> pretty n <+> text "=>" $+$ pretty sc
+          text "λ" <> pretty n <+> text "=>" <> line <> pretty sc
         else
           text "λ" <> pretty n <+> text "=>" <+> pretty sc
     prettySe p (PLet n ty v sc) =
       bracket p 2 $
         if size sc > breakingSize then
-          text "let" <+> pretty n <+> text "=" <+> prettySe 10 v <+> text "in" $+$
+          text "let" <+> pretty n <+> text "=" <+> prettySe 10 v <+> text "in" <>
             nest nestingSize (prettySe 10 sc)
         else
           text "let" <+> pretty n <+> text "=" <+> prettySe 10 v <+> text "in" <+>
             prettySe 10 sc
     prettySe p (PPi (Exp l s _ _) n ty sc)
       | n `elem` allNamesIn sc || impl =
-          let open = if l then text "|" <> lparen else lparen in
+          let open = (if l then text "|" else empty) <> lparen in
             bracket p 2 $
               if size sc > breakingSize then
-                open <> pretty n <+> colon <+> prettySe 10 ty <> rparen <+>
-                  st <+> text "->" $+$ prettySe 10 sc
+                enclose open rparen (pretty n <+> colon <+> prettySe 10 ty) <+>
+                  st <> text "->" <> line <> prettySe 10 sc
               else
-                open <> pretty n <+> colon <+> prettySe 10 ty <> rparen <+>
-                  st <+> text "->" <+> prettySe 10 sc
+                enclose open rparen (pretty n <+> colon <+> prettySe 10 ty) <+>
+                 st <> text "->" <+> prettySe 10 sc
       | otherwise                      =
           bracket p 2 $
             if size sc > breakingSize then
-              prettySe 0 ty <+> st <+> text "->" $+$ prettySe 10 sc
+              prettySe 0 ty <+> st <+> text "->" <> line <> prettySe 10 sc
             else
               prettySe 0 ty <+> st <+> text "->" <+> prettySe 10 sc
       where
         st =
           case s of
-            Static -> text "[static]"
+            Static -> text "[static]" <> space
             _      -> empty
     prettySe p (PPi (Imp l s _ _) n ty sc)
       | impl =
@@ -1028,27 +1032,27 @@ prettyImp impl = prettySe 10
             bracket p 2 $
               if size sc > breakingSize then
                 open <> pretty n <+> colon <+> prettySe 10 ty <> rbrace <+>
-                  st <+> text "->" <+> prettySe 10 sc
+                  st <> text "->" <+> prettySe 10 sc
               else
                 open <> pretty n <+> colon <+> prettySe 10 ty <> rbrace <+>
-                  st <+> text "->" <+> prettySe 10 sc
+                  st <> text "->" <+> prettySe 10 sc
       | otherwise = prettySe 10 sc
       where
         st =
           case s of
-            Static -> text $ "[static]"
+            Static -> text "[static]" <> space
             _      -> empty
     prettySe p (PPi (Constraint _ _ _) n ty sc) =
       bracket p 2 $
         if size sc > breakingSize then
           prettySe 10 ty <+> text "=>" <+> prettySe 10 sc
         else
-          prettySe 10 ty <+> text "=>" $+$ prettySe 10 sc
+          prettySe 10 ty <+> text "=>" <> line <> prettySe 10 sc
     prettySe p (PPi (TacImp _ _ s _) n ty sc) =
       bracket p 2 $
         if size sc > breakingSize then
           lbrace <> text "tacimp" <+> pretty n <+> colon <+> prettySe 10 ty <>
-            rbrace <+> text "->" $+$ prettySe 10 sc
+            rbrace <+> text "->" <> line <> prettySe 10 sc
         else
           lbrace <> text "tacimp" <+> pretty n <+> colon <+> prettySe 10 ty <>
             rbrace <+> text "->" <+> prettySe 10 sc
@@ -1062,37 +1066,22 @@ prettyImp impl = prettySe 10
           let [l, r] = getExps args in
             bracket p 1 $
               if size r > breakingSize then
-                prettySe 1 l <+> pretty op $+$ prettySe 0 r
+                prettySe 1 l <+> pretty op <> line <> prettySe 0 r
               else
                 prettySe 1 l <+> pretty op <+> prettySe 0 r
     prettySe p (PApp _ f as) =
       let args = getExps as in
         bracket p 1 $
           prettySe 1 f <+>
-            if impl then
-              foldl' fS empty as
-              -- foldr (<+>) empty $ map prettyArgS as
-            else
-              foldl' fSe empty args
-              -- foldr (<+>) empty $ map prettyArgSe args
-      where
-        fS l r =
-          if size r > breakingSize then
-            l $+$ nest nestingSize (prettyArgS r)
-          else
-            l <+> prettyArgS r
-
-        fSe l r =
-          if size r > breakingSize then
-            l $+$ nest nestingSize (prettyArgSe r)
-          else
-            l <+> prettyArgSe r
+            align (hsep (if impl
+                           then map prettyArgS as
+                           else map prettyArgSe args))
     prettySe p (PCase _ scr opts) =
-      text "case" <+> prettySe 10 scr <+> text "of" $+$ nest nestingSize prettyBody
+      text "case" <+> prettySe 10 scr <+> text "of" <> prettyBody
       where
-        prettyBody = foldr ($$) empty $ intersperse (text "|") $ map sc opts
+        prettyBody = foldr (<>) empty $ intersperse (text "|") $ map sc opts
 
-        sc (l, r) = prettySe 10 l <+> text "=>" <+> prettySe 10 r
+        sc (l, r) = nest nestingSize $ prettySe 10 l <+> text "=>" <+> prettySe 10 r
     prettySe p (PHidden tm) = text "." <> prettySe 0 tm
     prettySe p (PRefl _ _) = text "refl"
     prettySe p (PResolveTC _) = text "resolvetc"
@@ -1101,27 +1090,27 @@ prettyImp impl = prettySe 10
     prettySe p (PEq _ l r) =
       bracket p 2 $
         if size r > breakingSize then
-          prettySe 10 l <+> text "=" $$ nest nestingSize (prettySe 10 r)
+          prettySe 10 l <+> text "=" <> nest nestingSize (prettySe 10 r)
         else
           prettySe 10 l <+> text "=" <+> prettySe 10 r
     prettySe p (PRewrite _ l r _) =
       bracket p 2 $
         if size r > breakingSize then
-          text "rewrite" <+> prettySe 10 l <+> text "in" $$ nest nestingSize (prettySe 10 r)
+          text "rewrite" <+> prettySe 10 l <+> text "in" <> nest nestingSize (prettySe 10 r)
         else
           text "rewrite" <+> prettySe 10 l <+> text "in" <+> prettySe 10 r
     prettySe p (PTyped l r) =
       lparen <> prettySe 10 l <+> colon <+> prettySe 10 r <> rparen
     prettySe p (PPair _ l r) =
       if size r > breakingSize then
-        lparen <> prettySe 10 l <> text "," $+$
-          prettySe 10 r <> rparen
+        lparen <> prettySe 10 l <> text "," <>
+          line <> prettySe 10 r <> rparen
       else
         lparen <> prettySe 10 l <> text "," <+> prettySe 10 r <> rparen
     prettySe p (PDPair _ l t r) =
       if size r > breakingSize then
-        lparen <> prettySe 10 l <+> text "**" $+$
-          prettySe 10 r <> rparen
+        lparen <> prettySe 10 l <+> text "**" <>
+          line <> prettySe 10 r <> rparen
       else
         lparen <> prettySe 10 l <+> text "**" <+> prettySe 10 r <> rparen
     prettySe p (PAlternative a as) =
@@ -1133,9 +1122,9 @@ prettyImp impl = prettySe 10
     prettySe p (PConstant c) = pretty c
     -- XXX: add pretty for tactics
     prettySe p (PProof ts) =
-      text "proof" <+> lbrace $+$ nest nestingSize (text . show $ ts) $+$ rbrace
+      text "proof" <+> lbrace <> nest nestingSize (text . show $ ts) <> rbrace
     prettySe p (PTactics ts) =
-      text "tactics" <+> lbrace $+$ nest nestingSize (text . show $ ts) $+$ rbrace
+      text "tactics" <+> lbrace <> nest nestingSize (text . show $ ts) <> rbrace
     prettySe p (PMetavar n) = text "?" <> pretty n
     prettySe p (PReturn f) = text "return"
     prettySe p PImpossible = text "impossible"

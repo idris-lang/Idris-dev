@@ -1,10 +1,12 @@
 module Util.Pretty (
-  module Text.PrettyPrint.HughesPJ,
+  --module Text.PrettyPrint.HughesPJ,
+  module Text.PrettyPrint.Annotated.Leijen,
   Sized(..), breakingSize, nestingSize,
   Pretty(..)
 ) where
 
-import Text.PrettyPrint.HughesPJ
+--import Text.PrettyPrint.HughesPJ
+import Text.PrettyPrint.Annotated.Leijen
 
 -- A rough notion of size for pretty printing various types.
 class Sized a where
@@ -23,11 +25,6 @@ breakingSize = 15
 nestingSize :: Int
 nestingSize = 1
 
-class Pretty a where
-  pretty :: a -> Doc
+class Pretty a ty where
+  pretty :: a -> Doc ty
 
-instance Pretty () where
-  pretty () = text "()"
-
-instance Pretty a => Pretty [a] where
-  pretty l = foldr ($$) empty $ map pretty l

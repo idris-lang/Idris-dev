@@ -421,11 +421,11 @@ ideslavePutSExp cmd info = do i <- getIState
                                    _ -> return ()
 
 -- this needs some typing magic and more structured output towards emacs
-iputGoal :: String -> Idris ()
-iputGoal s = do i <- getIState
+iputGoal :: SimpleDoc OutputAnnotation -> Idris ()
+iputGoal g = do i <- getIState
                 case idris_outputmode i of
-                  RawOutput -> runIO $ putStrLn s
-                  IdeSlave n -> runIO . putStrLn $ convSExp "write-goal" s n
+                  RawOutput -> runIO $ displayIO stdout g >> putStrLn ""
+                  IdeSlave n -> runIO . putStrLn $ convSExp "write-goal" (displayS g "") n
 
 isetPrompt :: String -> Idris ()
 isetPrompt p = do i <- getIState

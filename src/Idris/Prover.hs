@@ -89,13 +89,13 @@ elabStep st e = do case runStateT e st of
 
 dumpState :: IState -> ProofState -> Idris ()
 dumpState ist (PS nm [] _ _ tm _ _ _ _ _ _ _ _ _ _ _ _ _ _) =
-  iputGoal . render $ pretty nm <> colon <+> text "No more goals."
+  iputGoal . renderPretty 0.7 breakingSize $ pretty nm <> colon <+> text "No more goals."
 dumpState ist ps@(PS nm (h:hs) _ _ tm _ _ _ _ _ _ problems i _ _ ctxy _ _ _) = do
   let OK ty  = goalAtFocus ps
   let OK env = envAtFocus ps
-  iputGoal . render $
-    prettyOtherGoals hs $$
-    prettyAssumptions env $$
+  iputGoal . renderPretty 0.7 breakingSize $
+    prettyOtherGoals hs <> line <>
+    prettyAssumptions env <> line <>
     prettyGoal ty
   where
     -- XXX
@@ -106,30 +106,30 @@ dumpState ist ps@(PS nm (h:hs) _ _ tm _ _ _ _ _ _ problems i _ _ ctxy _ _ _) = d
         | r == txt "rewrite_rule" = prettyPs bs
     prettyPs ((n, Let t v) : bs) =
       nest nestingSize (pretty n <+> text "=" <+> tPretty v <> colon <+>
-        tPretty t $$ prettyPs bs)
+        tPretty t <> line <> prettyPs bs)
     prettyPs ((n, b) : bs) =
-      pretty n <+> colon <+> tPretty (binderTy b) $$ prettyPs bs
+      line <> pretty n <+> colon <+> tPretty (binderTy b) <> prettyPs bs
 
     prettyG (Guess t v) = tPretty t <+> text "=?=" <+> tPretty v
     prettyG b = tPretty $ binderTy b
 
     prettyGoal ty =
-      text "----------                 Goal:                  ----------" $$
-      pretty h <> colon $$ nest nestingSize (prettyG ty)
+      text "----------                 Goal:                  ----------" <$$>
+      pretty h <+> colon <+> nest nestingSize (prettyG ty)
 
     prettyAssumptions env =
       if length env == 0 then
         empty
       else
-        text "----------              Assumptions:              ----------" $$
+        text "----------              Assumptions:              ----------" <>
         nest nestingSize (prettyPs $ reverse env)
 
     prettyOtherGoals hs =
       if length hs == 0 then
         empty
       else
-        text "----------              Other goals:              ----------" $$
-        pretty hs
+        text "----------              Other goals:              ----------" <$$>
+        nest nestingSize (align . cat . punctuate (text ",") . map pretty $ hs)
 
 lifte :: ElabState [PDecl] -> ElabD a -> Idris a
 lifte st e = do (v, _) <- elabStep st e
