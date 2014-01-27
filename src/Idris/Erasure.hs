@@ -4,6 +4,7 @@ module Idris.Erasure
     ( findUnusedArgs
     , buildDepMap
     , minimalUsage
+    , usedToUnused
     ) where
 
 import Idris.AbsSyntax
@@ -48,6 +49,21 @@ type Cond = Set Node
 -- Every variable draws in certain dependencies.
 type Var = Set Node
 type Vars = Map Name Var
+
+-- Change the map of used args to a map of unused args.
+usedToUnused :: Context -> UseMap -> UseMap
+usedToUnused ctx = M.mapWithKey invert
+  where
+    invert :: Name -> IntSet -> IntSet
+    invert n used = IS.fromList [0 .. arity n - 1] IS.\\ used
+
+    arity :: Name -> Int
+    arity n = case lookupDef n ctx of
+        [TyDecl (DCon tag n) t] -> n
+        [CaseOp ci ty tys def tot cdefs] -> length tys
+        [def] -> error $ "unsupported definition of " ++ show n ++ ": " ++ show def
+        [] -> error $ "unknown name in conversion to unused: " ++ show n
+        _ -> error $ "ambiguous name in conversion to unused: " ++ show n
 
 -- Find the minimal consistent usage by forward chaining.
 minimalUsage :: Deps -> UseMap

@@ -25,6 +25,7 @@ import Idris.Core.TT
 import Idris.Core.Evaluate
 import Idris.Core.CaseTree
 
+import Control.Applicative
 import Control.Monad.State
 import Data.List
 import qualified Data.IntMap as IM
@@ -51,13 +52,17 @@ compile codegen f tm
         -- TODO: traverse all names correctly
 
         -- TODO: DEBUG-ONLY, remove
-        ist <- getIState
-        let depMap = buildDepMap (tt_ctxt ist) used
+        ctx <- tt_ctxt <$> getIState
+        let depMap = buildDepMap ctx used
         let printItem (cond, deps) = show (S.toList cond) ++ " -> " ++ show (S.toList deps)
         iLOG $ "USAGE ANALYSIS:\n" ++ unlines (map printItem . M.toList $ depMap)
 
+        let fmtDepMap = unlines . map (\(n,is) -> show n ++ " -> " ++ show (IS.toList is)) . M.toList
         let minUse = minimalUsage depMap
-        iLOG $ "MINIMAL USAGE:\n" ++ unlines (map (\(n,is) -> show n ++ " -> " ++ show (IS.toList is)) $ M.toList minUse)
+        iLOG $ "MINIMAL USAGE:\n" ++ fmtDepMap minUse
+
+        let unusedMap = usedToUnused ctx minUse
+        iLOG $ "UNUSED:\n" ++ fmtDepMap unusedMap
         -- END TODO
         
         maindef <- irMain tm
