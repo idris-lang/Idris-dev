@@ -52,6 +52,7 @@ import qualified Data.List.Split as Spl
 import Data.List
 import Data.Monoid
 import Data.Char
+import qualified Data.Map as M
 import qualified Data.HashSet as HS
 import qualified Data.Text as T
 import qualified Data.ByteString.UTF8 as UTF8
@@ -91,13 +92,14 @@ moduleHeader =     try (do reserved "module"
 {- | Parses an import statement
   Import ::= 'import' Identifier_t ';'?;
  -}
-import_ :: IdrisParser String
+import_ :: IdrisParser (String, Maybe String)
 import_ = do reserved "import"
              id <- identifier
+             newName <- optional (reserved "as" *> identifier)
              option ';' (lchar ';')
-             return (toPath id)
+             return (toPath id, toPath <$> newName)
           <?> "import statement"
-  where toPath f = foldl1' (</>) (Spl.splitOn "." f)
+  where toPath = foldl1' (</>) . Spl.splitOn "."
 
 {- | Parses program source
      Prog ::= Decl* EOF;
@@ -934,7 +936,7 @@ parseTactic :: IState -> String -> Result PTactic
 parseTactic st = runparser (fullTactic defaultSyntax) st "(input)"
 
 -- | Parse module header and imports
-parseImports :: FilePath -> String -> Idris ([String], [String], Maybe Delta)
+parseImports :: FilePath -> String -> Idris ([String], [(String, Maybe String)], Maybe Delta)
 parseImports fname input
     = do i <- getIState
          case parseString (runInnerParser (evalStateT imports i)) (Directed (UTF8.fromString fname) 0 0 0 0) input of
@@ -942,7 +944,7 @@ parseImports fname input
               Success (x, i) -> do -- Discard state updates (there should be
                                    -- none anyway)
                                    return x
-  where imports :: IdrisParser (([String], [String], Maybe Delta), IState)
+  where imports :: IdrisParser (([String], [(String, Maybe String)], Maybe Delta), IState)
         imports = do whiteSpace
                      mname <- moduleHeader
                      ps    <- many import_
@@ -1053,13 +1055,17 @@ loadSource h lidr f
                   let def_total = default_total i
                   file_in <- runIO $ readFile f
                   file <- if lidr then tclift $ unlit f file_in else return file_in
-                  (mname, modules, pos) <- parseImports f file
+                  (mname, imports, pos) <- parseImports f file
+                  let modules = map fst imports
+                      modAliases = M.fromList
+                        [(prep alias, prep realName)| (realName, Just alias) <- imports]
+                      prep = map T.pack . Spl.splitOn "/"
                   i <- getIState
                   putIState (i { default_access = Hidden })
                   clearIBC -- start a new .ibc file
                   mapM_ (addIBC . IBCImport) modules
-                  ds' <- parseProg (defaultSyntax {syn_namespace = reverse mname })
-                                   f file pos
+                  let syntax = defaultSyntax{ syn_namespace = reverse mname }
+                  ds' <- parseProg syntax f file pos
                   unless (null ds') $ do
                     let ds = namespaces mname ds'
                     logLvl 3 (showDecls True ds)
