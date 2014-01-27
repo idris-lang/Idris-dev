@@ -316,7 +316,10 @@ jsSubst _ _ js = js
 
 removeAllocations :: JS -> JS
 removeAllocations (JSSeq body) =
-  JSSeq $ removeHelper (map removeAllocations body)
+  let opt = removeHelper (map removeAllocations body) in
+      case opt of
+           [ret] -> ret
+           _     -> JSSeq opt
   where
     removeHelper :: [JS] -> [JS]
     removeHelper [js] = [js]
@@ -690,27 +693,102 @@ removeIDs js =
 inlineFunctions :: [JS] -> [JS]
 inlineFunctions js =
   let funs       = collectFunctions js
-      occurences = map (id &&& countAll js) funs in
-      -- (JSRaw $ "// " ++ show (map (id &&& countAll js) funs))
+      occurences = map ((id . fst) &&& countAll js) funs in
       removeDeadFunctions occurences js
       where
-        removeDeadFunctions :: [(String, Int)] -> [JS] -> [JS]
+        removeDeadFunctions :: [(String, (Int, JS))] -> [JS] -> [JS]
         removeDeadFunctions _ [] = []
         removeDeadFunctions funOccur ((JSAlloc fun (Just (JSFunction  _ _))):js)
-          | Just o <- lookup fun funOccur
+          | Just (o, _) <- lookup fun funOccur
           , o == 0 = removeDeadFunctions funOccur js
 
         removeDeadFunctions funOccur (j:js) = j : removeDeadFunctions funOccur js
 
 
-        collectFunctions :: [JS] -> [String]
+        inlineSingleOccur :: [(String, (Int, JS))] -> [JS] -> [JS]
+        inlineSingleOccur occur js =
+          let funs = map (id *** snd) $ filter ((== 1) . fst . snd) occur in
+              inlineHelper funs js
+
+
+        inlineHelper :: [(String, JS)] -> [JS] -> [JS]
+        inlineHelper [] js = js
+        inlineHelper ((name, fun):funs) js =
+          let njs   = map (inlineFun name fun) js
+              nfuns = map (id *** (inlineFun name fun)) funs in
+              inlineHelper nfuns njs
+
+
+        inlineArgs [] _ js          = js
+        inlineArgs (a:as) (v:vs) js = jsSubst a v (inlineArgs as vs js)
+
+
+        inlineFun :: String -> JS -> JS -> JS
+        inlineFun name (JSFunction args (JSReturn js)) (JSApp (JSIdent lhs) rhs)
+          | name == lhs = inlineArgs args rhs js
+
+        inlineFun name (JSFunction args (JSSeq js)) (JSReturn (JSApp (JSIdent lhs) rhs))
+          | name == lhs = JSSeq $ map (inlineArgs args rhs) js
+
+        inlineFun name (JSFunction args (JSSeq js)) (JSApp (JSIdent lhs) rhs)
+          | name == lhs = JSSeq $ map (inlineArgs args rhs) js
+
+        inlineFun name fun (JSFunction args body) =
+          JSFunction args (inlineFun name fun body)
+
+        inlineFun name fun (JSSeq seq) =
+          JSSeq $ map (inlineFun name fun) seq
+
+        inlineFun name fun (JSReturn ret) =
+          JSReturn $ inlineFun name fun ret
+
+        inlineFun name fun (JSApp lhs rhs) =
+          JSApp (inlineFun name fun lhs) $ map (inlineFun name fun) rhs
+
+        inlineFun name fun (JSNew con args) =
+          JSNew con $ map (inlineFun name fun) args
+
+        inlineFun name fun (JSOp op lhs rhs) =
+          JSOp op (inlineFun name fun lhs) (inlineFun name fun rhs)
+
+        inlineFun name fun (JSProj obj field) =
+          JSProj (inlineFun name fun obj) field
+
+        inlineFun name fun (JSArray vals) =
+          JSArray $ map (inlineFun name fun) vals
+
+        inlineFun name fun (JSAssign lhs rhs) =
+          JSAssign (inlineFun name fun lhs) (inlineFun name fun rhs)
+
+        inlineFun name fun (JSAlloc var (Just val)) =
+          JSAlloc var (Just $ inlineFun name fun val)
+
+        inlineFun name fun (JSIndex lhs rhs) =
+          JSIndex (inlineFun name fun lhs) (inlineFun name fun rhs)
+
+        inlineFun name fun (JSCond conds) =
+          JSCond $ map (inlineFun name fun *** inlineFun name fun) conds
+
+        inlineFun name fun (JSTernary c t f) =
+          JSTernary (
+            inlineFun name fun c
+          ) (
+            inlineFun name fun t
+          ) (
+            inlineFun name fun f
+          )
+
+        inlineFun name fun js = js
+
+
+        collectFunctions :: [JS] -> [(String, JS)]
         collectFunctions js =
           catMaybes $ map collectHelper js
 
 
-        collectHelper :: JS -> Maybe String
-        collectHelper (JSAlloc fun (Just (JSFunction _ body)))
-          | fun /= "main" && nonRecur fun body = Just fun
+        collectHelper :: JS -> Maybe (String, JS)
+        collectHelper (JSAlloc fun (Just js@(JSFunction _ body)))
+          | fun /= "main" && nonRecur fun body = Just (fun, js)
         collectHelper _                        = Nothing
 
 
@@ -718,8 +796,8 @@ inlineFunctions js =
         nonRecur name body = countInvokations name body == 0
 
 
-        countAll :: [JS] -> String -> Int
-        countAll js name = sum $ map (countInvokations name) js
+        countAll :: [JS] -> (String, JS) -> (Int, JS)
+        countAll js (name, fun) = (sum $ map (countInvokations name) js, fun)
 
 
         countInvokations :: String -> JS -> Int
@@ -1102,7 +1180,10 @@ translateDeclaration (path, SFun name params stackSize body)
         JSTernary (
           (JSIdent "arg0" `jsInstanceOf` jsCon) `jsAnd`
           (hasProp lookupTableName "arg0")
-        ) (JSRaw $ lookupTableName ++ "[arg0.tag](arg0)") (JSIdent "arg0")
+        ) (JSApp
+            (JSIndex (JSIdent lookupTableName) (JSProj (JSIdent "arg0") "tag"))
+            [JSIdent "arg0"]
+        ) (JSIdent "arg0")
       )
     ]
   | otherwise =
