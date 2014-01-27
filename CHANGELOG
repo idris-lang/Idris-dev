@@ -7,11 +7,15 @@ New in 0.9.11:
   This is intended for field/effect disambiguation. "name" can be any
   valid identifier. Two labels are definitionally equal if they have the
   same name.
+* General improvements in error messages, especially %error_reverse
+  annotation, which allows a hint as to how to display a term in error
+  messages
 
 Internal changes
 
 * Faster elaboration
 * Smaller .ibc files
+
 
 New in 0.9.10:
 --------------

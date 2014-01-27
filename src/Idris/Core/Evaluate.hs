@@ -228,11 +228,11 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
     ev ntimes stk top env (P nt n ty)
          = liftM (VP nt n) (ev ntimes stk top env ty)
     ev ntimes stk top env (V i)
-                     | i < length env && i >= 0 = return $ env !! i
+                     | i < length env && i >= 0 = return $ snd (env !! i)
                      | otherwise      = return $ VV i
     ev ntimes stk top env (Bind n (Let t v) sc)
            = do v' <- ev ntimes stk top env v --(finalise v)
-                sc' <- ev ntimes stk top (v' : env) sc
+                sc' <- ev ntimes stk top ((n, v') : env) sc
                 wknV (-1) sc'
 --         | otherwise
 --            = do t' <- ev ntimes stk top env t
@@ -247,12 +247,13 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
     ev ntimes stk top env (Bind n (NLet t v) sc)
            = do t' <- ev ntimes stk top env (finalise t)
                 v' <- ev ntimes stk top env (finalise v)
-                sc' <- ev ntimes stk top (v' : env) sc
+                sc' <- ev ntimes stk top ((n, v') : env) sc
                 return $ VBind True n (Let t' v') (\x -> return sc')
     ev ntimes stk top env (Bind n b sc)
            = do b' <- vbind env b
+                let n' = uniqueName n (map fst env)
                 return $ VBind True -- (vinstances 0 sc < 2)
-                               n b' (\x -> ev ntimes stk False (x:env) sc)
+                               n' b' (\x -> ev ntimes stk False ((n, x):env) sc)
        where vbind env t
 --                  | simpl
 --                      = fmapMB (\tm -> ev ((MN 0 "STOP", 0) : ntimes)
@@ -345,7 +346,7 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
 --                 _ -> return $ unload env f args
 --     specApply stk env f args = return $ unload env f args
 
-    unload :: [Value] -> Value -> [Value] -> Value
+    unload :: [(Name, Value)] -> Value -> [Value] -> Value
     unload env f [] = f
     unload env f (a:as) = unload env (VApp f a) as
 
@@ -360,12 +361,12 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
         | otherwise = return (Nothing, args)
 
     evTree :: [(Name, Int)] -> [Name] -> Bool ->
-              [Value] -> [(Name, Value)] -> SC -> Eval (Maybe Value)
+              [(Name, Value)] -> [(Name, Value)] -> SC -> Eval (Maybe Value)
     evTree ntimes stk top env amap (UnmatchedCase str) = return Nothing
     evTree ntimes stk top env amap (STerm tm)
         = do let etm = pToVs (map fst amap) tm
              etm' <- ev ntimes stk (not (conHeaded tm))
-                                   (map snd amap ++ env) etm
+                                   (amap ++ env) etm
              return $ Just etm'
     evTree ntimes stk top env amap (ProjCase t alts)
         = do t' <- ev ntimes stk top env t 
@@ -394,7 +395,7 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
              chooseAlt env f' (getValArgs f')
                        alts amap
 
-    chooseAlt :: [Value] -> Value -> (Value, [Value]) -> [CaseAlt] ->
+    chooseAlt :: [(Name, Value)] -> Value -> (Value, [Value]) -> [CaseAlt] ->
                  [(Name, Value)] ->
                  Eval (Maybe ([(Name, Value)], SC))
     chooseAlt env _ (VP (DCon i a) _ _, args) alts amap

@@ -100,7 +100,7 @@ elabType' norm info syn doc fc opts n ty' = {- let ty' = piBind (params info) ty
          let (t, _) = unApply (getRetTy nty')
          let corec = case t of
                         P _ rcty _ -> case lookupCtxt rcty (idris_datatypes i) of
-                                        [TI _ True _] -> True
+                                        [TI _ True _ _] -> True
                                         _ -> False
                         _ -> False
          let opts' = if corec then (Coinductive : opts) else opts
@@ -228,7 +228,8 @@ elabData info syn doc fc opts (PDatadecl n t_in dcons)
          let as = map (const Nothing) (getArgTys cty)
          let params = findParams  (map snd cons)
          logLvl 2 $ "Parameters : " ++ show params
-         putIState (i { idris_datatypes = addDef n (TI (map fst cons) codata params)
+         putIState (i { idris_datatypes = 
+                          addDef n (TI (map fst cons) codata opts params)
                                              (idris_datatypes i) })
          addIBC (IBCDef n)
          addIBC (IBCData n)
@@ -842,7 +843,8 @@ elabCon info syn tn codata (doc, n, t_in, fc, forcenames)
              else return ()
     tyIs t = tclift $ tfail (At fc (Msg (show t ++ " is not " ++ show tn)))
 
-    mkLazy (PPi pl n ty sc) = PPi (pl { plazy = True }) n ty (mkLazy sc)
+    mkLazy (PPi pl n ty sc) 
+        = PPi (pl { pargopts = nub (Lazy : pargopts pl) }) n ty (mkLazy sc)
     mkLazy t = t
 
     getNamePos :: Int -> PTerm -> Name -> Maybe Int
@@ -1332,7 +1334,7 @@ elabClause info opts (cnum, PClause fc fname lhs_in withs rhs_in whereblock)
                         return (tm, ds, is))
         logLvl 5 "DONE CHECK"
         logLvl 2 $ "---> " ++ show rhs'
-        when (not (null defer)) $ iLOG $ "DEFERRED " ++ show defer
+        when (not (null defer)) $ iLOG $ "DEFERRED " ++ show (map fst defer)
         def' <- checkDef fc defer
         let def'' = map (\(n, (i, top, t)) -> (n, (i, top, t, False))) def'
         addDeferred def''
@@ -1356,6 +1358,20 @@ elabClause info opts (cnum, PClause fc fname lhs_in withs rhs_in whereblock)
             Error e -> ierror (At fc (CantUnify False clhsty crhsty e [] 0))
         i <- getIState
         checkInferred fc (delab' i crhs True True) rhs
+        -- if the function is declared '%error_reverse', or its type,
+        -- then we'll try running it in reverse to improve error messages
+        let (ret_fam, _) = unApply (getRetTy crhsty)
+        rev <- case ret_fam of
+                    P _ rfamn _ -> 
+                        case lookupCtxt rfamn (idris_datatypes i) of
+                             [TI _ _ dopts _] -> 
+                                 return (DataErrRev `elem` dopts)
+                             _ -> return False
+                    _ -> return False
+
+        when (rev || ErrorReverse `elem` opts) $ do
+           addIBC (IBCErrRev (crhs, clhs))
+           addErrRev (crhs, clhs) 
         return $ Right (clhs, crhs)
   where
     decorate (NS x ns)
@@ -1908,11 +1924,11 @@ elabInstance info syn what fc cs n ps t expn ds = do
           = PLam (sMN i "meth") Placeholder (lamBind (i+1) sc sc')
     lamBind i _ sc = sc
     methArgs i (PPi (Imp _ _ _ _) n ty sc)
-        = PImp 0 True False n (PRef fc (sMN i "meth")) "" : methArgs (i+1) sc
+        = PImp 0 True [] n (PRef fc (sMN i "meth")) "" : methArgs (i+1) sc
     methArgs i (PPi (Exp _ _ _ _) n ty sc)
-        = PExp 0 False (PRef fc (sMN i "meth")) "" : methArgs (i+1) sc
+        = PExp 0 [] (PRef fc (sMN i "meth")) "" : methArgs (i+1) sc
     methArgs i (PPi (Constraint _ _ _) n ty sc)
-        = PConstraint 0 False (PResolveTC fc) "" : methArgs (i+1) sc
+        = PConstraint 0 [] (PResolveTC fc) "" : methArgs (i+1) sc
     methArgs i _ = []
 
     papp fc f [] = f
@@ -2126,7 +2142,7 @@ elabDecl' _ _ _ = return () -- skipped this time
 
 elabCaseBlock info opts d@(PClauses f o n ps)
         = do addIBC (IBCDef n)
-             logLvl 6 $ "CASE BLOCK: " ++ show (n, d)
+             logLvl 5 $ "CASE BLOCK: " ++ show (n, d)
              let opts' = nub (o ++ opts)
              -- propagate totality assertion to the new definitions
              when (AssertTotal `elem` opts) $ setFlags n [AssertTotal]

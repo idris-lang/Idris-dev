@@ -222,12 +222,6 @@ elab ist info pattern opts fn tm
              ctxt <- get_context
              let (tc, _) = unApply ty
              let as' = pruneByType tc ctxt as
---              case as' of
---                 [a] -> elab' ina a
---                 as -> lift $ tfail $ CantResolveAlts (map showHd as)
---              trace ("Original " ++ show (length as, as) ++ "\n" ++
---                     "New " ++ show (length as', as)) $
---              traceWhen (length as' > 1) (show as') $
              tryAll (zip (map (elab' ina) as') (map showHd as'))
         where showHd (PApp _ h _) = show h
               showHd x = show x
@@ -810,7 +804,9 @@ collectDeferred top t = return t
 runTac :: Bool -> IState -> PTactic -> ElabD ()
 runTac autoSolve ist tac
     = do env <- get_env
-         no_errors $ runT (fmap (addImplBound ist (map fst env)) tac)
+         g <- goal
+         no_errors (runT (fmap (addImplBound ist (map fst env)) tac))
+                   (Just (CantSolveGoal g (map (\(n, b) -> (n, binderTy b)) env)))
   where
     runT (Intro []) = do g <- goal
                          attack; intro (bname g)
@@ -1412,6 +1408,11 @@ reflectErr (CantConvert t t' ctxt) =
   raw_apply (Var $ reflErrName "CantConvert")
             [ reflect t
             , reflect t'
+            , reflectCtxt ctxt
+            ]
+reflectErr (CantSolveGoal t ctxt) =
+  raw_apply (Var $ reflErrName "CantSolveGoal")
+            [ reflect t
             , reflectCtxt ctxt
             ]
 reflectErr (UnifyScope n n' t ctxt) =

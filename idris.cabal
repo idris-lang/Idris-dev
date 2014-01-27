@@ -95,6 +95,11 @@ Extra-source-files:
                        libs/effects/Effect/*.idr
                        libs/effects/*.idr
 
+                       libs/neweffects/Makefile
+                       libs/neweffects/neweffects.ipkg
+                       libs/neweffects/Effect/*.idr
+                       libs/neweffects/*.idr
+
                        libs/javascript/*.idr
                        libs/javascript/JavaScript/*.idr
                        libs/javascript/Makefile
@@ -192,6 +197,12 @@ Extra-source-files:
                        test/reg029/run
                        test/reg029/*.idr
                        test/reg029/expected
+                       test/reg030/run
+                       test/reg030/*.idr
+                       test/reg030/expected
+                       test/reg031/run
+                       test/reg031/*.idr
+                       test/reg031/expected
                        test/test001/run
                        test/test001/*.idr
                        test/test001/expected
@@ -366,6 +377,7 @@ Library
                 , Idris.ElabDecls
                 , Idris.ElabTerm
                 , Idris.Error
+                , Idris.ErrReverse
                 , Idris.Help
                 , Idris.IBC
                 , Idris.IdeSlave
@@ -412,6 +424,7 @@ Library
                   Util.Pretty
                 , Util.System
                 , Util.Net
+                , Util.Zlib
 
                 , Pkg.PParser
 

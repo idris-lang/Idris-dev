@@ -15,6 +15,7 @@ data Err = Msg String
               -- unification succeed
          | InfiniteUnify TTName TT (List (TTName, TT))
          | CantConvert TT TT (List (TTName, TT))
+         | CantSolveGoal TT (List (TTName, TT))
          | UnifyScope TTName TTName TT (List (TTName, TT))
          | CantInferType String
          | NonFunctionType TT TT

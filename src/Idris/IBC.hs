@@ -21,14 +21,12 @@ import Control.Monad.State.Strict hiding (get, put)
 import qualified Control.Monad.State.Strict as ST
 import System.FilePath
 import System.Directory
-import Codec.Compression.Zlib
+import Codec.Compression.Zlib (compress)
+import Util.Zlib (decompressEither)
 
-import Debug.Trace
-
-import Paths_idris
 
 ibcVersion :: Word8
-ibcVersion = 54
+ibcVersion = 56
 
 data IBCFile = IBCFile { ver :: Word8,
                          sourcefile :: FilePath,
@@ -56,6 +54,7 @@ data IBCFile = IBCFile { ver :: Word8,
                          ibc_defs :: [(Name, Def)],
                          ibc_docstrings :: [(Name, String)],
                          ibc_transforms :: [(Term, Term)],
+                         ibc_errRev :: [(Term, Term)],
                          ibc_coercions :: [Name],
                          ibc_lineapps :: [(FilePath, Int, PTerm)],
                          ibc_namehints :: [(Name, Name)],
@@ -67,16 +66,22 @@ deriving instance Binary IBCFile
 !-}
 
 initIBC :: IBCFile
-initIBC = IBCFile ibcVersion "" [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] []
+initIBC = IBCFile ibcVersion "" [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] []
 
 loadIBC :: FilePath -> Idris ()
 loadIBC fp = do iLOG $ "Loading ibc " ++ fp
                 ibcf <- runIO $ (bdecode fp :: IO IBCFile)
                 process ibcf fp
 
+bencode :: Binary a => FilePath -> a -> IO ()
 bencode f d = B.writeFile f (compress (encode d))
+
+bdecode :: Binary b => FilePath -> IO b
 bdecode f = do d' <- B.readFile f
-               return (decode (decompress d'))
+               either
+                 (\(_, e) -> error $ "Invalid / corrupted zip format on " ++ show f ++ ": " ++ e)
+                 (return . decode)
+                 (decompressEither d')
 
 writeIBC :: FilePath -> FilePath -> Idris ()
 writeIBC src f
@@ -204,6 +209,7 @@ ibc i (IBCAccess n a) f = return f { ibc_access = (n,a) : ibc_access f }
 ibc i (IBCFlags n a) f = return f { ibc_flags = (n,a) : ibc_flags f }
 ibc i (IBCTotal n a) f = return f { ibc_total = (n,a) : ibc_total f }
 ibc i (IBCTrans t) f = return f { ibc_transforms = t : ibc_transforms f }
+ibc i (IBCErrRev t) f = return f { ibc_errRev = t : ibc_errRev f }
 ibc i (IBCLineApp fp l t) f
      = return f { ibc_lineapps = (fp,l,t) : ibc_lineapps f }
 ibc i (IBCNameHint (n, ty)) f
@@ -243,6 +249,7 @@ process i fn
                pDocs (ibc_docstrings i)
                pCoercions (ibc_coercions i)
                pTrans (ibc_transforms i)
+               pErrRev (ibc_errRev i)
                pLineApps (ibc_lineapps i)
                pNameHints (ibc_namehints i)
                pMetaInformation (ibc_metainformation i)
@@ -411,6 +418,9 @@ pCoercions ns = mapM_ (\ n -> addCoercion n) ns
 
 pTrans :: [(Term, Term)] -> Idris ()
 pTrans ts = mapM_ addTrans ts
+
+pErrRev :: [(Term, Term)] -> Idris ()
+pErrRev ts = mapM_ addErrRev ts
 
 pLineApps :: [(FilePath, Int, PTerm)] -> Idris ()
 pLineApps ls = mapM_ (\ (f, i, t) -> addInternalApp f i t) ls
@@ -1008,7 +1018,7 @@ instance Binary MetaInformation where
                      return (DataMI x1)
 
 instance Binary IBCFile where
-        put x@(IBCFile x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24 x25 x26 x27 x28 x29 x30)
+        put x@(IBCFile x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24 x25 x26 x27 x28 x29 x30 x31)
          = {-# SCC "putIBCFile" #-}
             do put x1
                put x2
@@ -1040,6 +1050,7 @@ instance Binary IBCFile where
                put x28
                put x29
                put x30
+               put x31
         get
           = do x1 <- get
                if x1 == ibcVersion then
@@ -1072,17 +1083,20 @@ instance Binary IBCFile where
                     x28 <- get
                     x29 <- get
                     x30 <- get
-                    return (IBCFile x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24 x25 x26 x27 x28 x29 x30)
+                    x31 <- get
+                    return (IBCFile x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24 x25 x26 x27 x28 x29 x30 x31)
                   else return (initIBC { ver = x1 })
 
 instance Binary DataOpt where
   put x = case x of
     Codata -> putWord8 0
     DefaultEliminator -> putWord8 1
+    DataErrRev -> putWord8 2
   get = do i <- getWord8
            case i of
             0 -> return Codata
             1 -> return DefaultEliminator
+            2 -> return DataErrRev
 
 instance Binary FnOpt where
         put x
@@ -1098,6 +1112,7 @@ instance Binary FnOpt where
                 Implicit -> putWord8 7
                 Reflection -> putWord8 8
                 ErrorHandler -> putWord8 9
+                ErrorReverse -> putWord8 10
         get
           = do i <- getWord8
                case i of
@@ -1112,6 +1127,7 @@ instance Binary FnOpt where
                    7 -> return Implicit
                    8 -> return Reflection
                    9 -> return ErrorHandler
+                   10 -> return ErrorReverse
                    _ -> error "Corrupted binary data for FnOpt"
 
 instance Binary Fixity where
@@ -1148,6 +1164,18 @@ instance Binary FixDecl where
                x2 <- get
                return (Fix x1 x2)
 
+
+instance Binary ArgOpt where
+        put x
+          = case x of
+                Lazy -> putWord8 0
+                HideDisplay -> putWord8 1
+        get
+          = do i <- getWord8
+               case i of
+                   0 -> return Lazy
+                   1 -> return HideDisplay
+                   _ -> error "Corrupted binary data for Static"
 
 instance Binary Static where
         put x
@@ -1916,13 +1944,15 @@ instance Binary OptInfo where
                return (Optimise x1 x2 x3 x4)
 
 instance Binary TypeInfo where
-        put (TI x1 x2 x3) = do put x1
-                               put x2
-                               put x3
+        put (TI x1 x2 x3 x4) = do put x1
+                                  put x2
+                                  put x3
+                                  put x4
         get = do x1 <- get
                  x2 <- get
                  x3 <- get
-                 return (TI x1 x2 x3)
+                 x4 <- get
+                 return (TI x1 x2 x3 x4)
 
 instance Binary SynContext where
         put x
