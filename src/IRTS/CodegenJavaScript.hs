@@ -694,13 +694,13 @@ inlineFunctions :: [JS] -> [JS]
 inlineFunctions js =
   let funs       = collectFunctions js
       occurences = map ((id . fst) &&& countAll js) funs in
-      removeDeadFunctions occurences js
+      inlineSingleOccur occurences $ removeDeadFunctions occurences js
       where
         removeDeadFunctions :: [(String, (Int, JS))] -> [JS] -> [JS]
         removeDeadFunctions _ [] = []
         removeDeadFunctions funOccur ((JSAlloc fun (Just (JSFunction  _ _))):js)
           | Just (o, _) <- lookup fun funOccur
-          , o == 0 = removeDeadFunctions funOccur js
+          , o == 0 || o == 1 = removeDeadFunctions funOccur js
 
         removeDeadFunctions funOccur (j:js) = j : removeDeadFunctions funOccur js
 
@@ -719,8 +719,21 @@ inlineFunctions js =
               inlineHelper nfuns njs
 
 
-        inlineArgs [] _ js          = js
-        inlineArgs (a:as) (v:vs) js = jsSubst a v (inlineArgs as vs js)
+        inlineArgs args vals js =
+          let (njs, vars) = putPlaceHolders args 0 js in
+              inlineArgsHelper (map (("__repvar_" ++) . show) [0 .. vars - 1]) vals njs
+
+              where
+                inlineArgsHelper :: [String] -> [JS] -> JS -> JS
+                inlineArgsHelper [] _ js = js
+                inlineArgsHelper (a:as) (v:vs) js = jsSubst a v (inlineArgsHelper as vs js)
+
+
+                putPlaceHolders :: [String] -> Int -> JS -> (JS, Int)
+                putPlaceHolders []     n js = (js, n)
+                putPlaceHolders (a:as) n js
+                  | (njs, nn) <- putPlaceHolders as (n + 1) js =
+                    (jsSubst a (JSIdent ("__repvar_" ++ show n)) njs, nn)
 
 
         inlineFun :: String -> JS -> JS -> JS
