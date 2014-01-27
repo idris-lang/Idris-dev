@@ -69,6 +69,23 @@ instance (SExpable a, SExpable b, SExpable c) => SExpable (a, b, c) where
 instance (SExpable a, SExpable b, SExpable c, SExpable d) => SExpable (a, b, c, d) where
   toSExp (l, m, n, o) = SexpList [toSExp l, toSExp m, toSExp n, toSExp o]
 
+instance SExpable NameOutput where
+  toSExp TypeOutput = SymbolAtom "type"
+  toSExp FunOutput  = SymbolAtom "function"
+  toSExp DataOutput = SymbolAtom "data"
+
+instance SExpable OutputAnnotation where
+  toSExp (AnnName n Nothing   _) = toSExp [(SymbolAtom "name", StringAtom (show n)),
+                                           (SymbolAtom "implicit", BoolAtom False)]
+  toSExp (AnnName n (Just ty) _) = toSExp [(SymbolAtom "name", StringAtom (show n)),
+                                           (SymbolAtom "decor", toSExp ty),
+                                           (SymbolAtom "implicit", BoolAtom False)]
+  toSExp (AnnBoundName n imp)    = toSExp [(SymbolAtom "name", StringAtom (show n)),
+                                           (SymbolAtom "decor", SymbolAtom "bound"),
+                                           (SymbolAtom "implicit", BoolAtom imp)]
+  toSExp AnnConstData            = toSExp [(SymbolAtom "decor", SymbolAtom "data")]
+  toSExp AnnConstType            = toSExp [(SymbolAtom "decor", SymbolAtom "type")]
+
 escape :: String -> String
 escape = concatMap escapeChar
   where

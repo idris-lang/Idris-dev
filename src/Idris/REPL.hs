@@ -448,8 +448,11 @@ process h fn (Eval t)
                                             ist <- getIState
                                             logLvl 3 $ "Raw: " ++ show (tm', ty')
                                             logLvl 10 $ "Debug: " ++ showEnvDbg [] tm'
-                                            ihPrintResult h (showTm ist (delab ist tm') ++ " : " ++
-                                                             showTm ist (delab ist ty'))
+                                            let imp = opt_showimp (idris_options ist)
+                                                tmDoc = prettyImp imp (delab ist tm')
+                                                tyDoc = prettyImp imp (delab ist ty')
+                                            ihPrintTermWithType h tmDoc tyDoc
+
 process h fn (ExecVal t)
                   = do ctxt <- getContext
                        ist <- getIState
@@ -497,11 +500,13 @@ process h fn (Check t)
    = do (tm, ty) <- elabVal toplevel False t
         ctxt <- getContext
         ist <- getIState
-        let ty' = normaliseC ctxt [] ty
+        let imp = opt_showimp (idris_options ist)
+            ty' = normaliseC ctxt [] ty
         case tm of
-             TType _ -> ihPrintResult h ("Type : Type 1")
-             _ -> ihPrintResult h (showTm ist (delab ist tm) ++ " : " ++
-                                   showTm ist (delab ist ty))
+           TType _ ->
+             ihPrintTermWithType h (prettyImp imp PType) type1Doc
+           _ -> ihPrintTermWithType h (prettyImp imp (delab ist tm))
+                                      (prettyImp imp (delab ist ty))
 
 process h fn (DocStr n)
                       = do i <- getIState

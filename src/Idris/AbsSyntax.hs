@@ -397,6 +397,31 @@ ihPrintResult h s = do i <- getIState
                              let good = SexpList [SymbolAtom "ok", toSExp s] in
                              runIO $ hPutStrLn h $ convSExp "return" good n
 
+ihPrintTermWithType :: Handle -> Doc OutputAnnotation -> Doc OutputAnnotation -> Idris ()
+ihPrintTermWithType h tm ty = do ist <- getIState
+                                 let output = tm <+> colon <+> ty
+                                 case idris_outputmode ist of
+                                   RawOutput -> runIO .
+                                                hPutStrLn h .
+                                                displayDecorated (consoleDecorate ist) .
+                                                renderCompact $ output
+                                   IdeSlave n -> let (str, spans) = displaySpans (fmap (fancifyAnnots ist) (renderCompact output))
+                                                     good = [SymbolAtom "ok", toSExp str, toSExp spans]
+                                                 in runIO . hPutStrLn h $ convSExp "return" good n
+
+fancifyAnnots :: IState -> OutputAnnotation -> OutputAnnotation
+fancifyAnnots ist annot@(AnnName n _ _) =
+  do let ctxt = tt_ctxt ist
+     case () of
+       _ | isDConName n ctxt -> AnnName n (Just DataOutput) Nothing
+       _ | isFnName   n ctxt -> AnnName n (Just FunOutput) Nothing
+       _ | isTConName n ctxt -> AnnName n (Just TypeOutput) Nothing
+       _ | otherwise         -> annot
+fancifyAnnots _ annot = annot
+
+type1Doc :: Doc OutputAnnotation
+type1Doc = (annotate AnnConstType $ text "Type 1")
+
 ihPrintError :: Handle -> String -> Idris ()
 ihPrintError h s = do i <- getIState
                       case idris_outputmode i of
@@ -429,7 +454,8 @@ iputGoal :: SimpleDoc OutputAnnotation -> Idris ()
 iputGoal g = do i <- getIState
                 case idris_outputmode i of
                   RawOutput -> runIO $ putStrLn (displayDecorated (consoleDecorate i) g)
-                  IdeSlave n -> runIO . putStrLn $ convSExp "write-goal" (displayS g "") n
+                  IdeSlave n -> runIO . putStrLn $
+                                convSExp "write-goal" (displayS (fmap (fancifyAnnots i) g) "") n
 
 isetPrompt :: String -> Idris ()
 isetPrompt p = do i <- getIState
