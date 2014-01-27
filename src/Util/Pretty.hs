@@ -1,5 +1,4 @@
 module Util.Pretty (
-  --module Text.PrettyPrint.HughesPJ,
   module Text.PrettyPrint.Annotated.Leijen,
   Sized(..), breakingSize, nestingSize,
   Pretty(..)
@@ -27,4 +26,5 @@ nestingSize = 1
 
 class Pretty a ty where
   pretty :: a -> Doc ty
+
 

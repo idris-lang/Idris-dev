@@ -6,13 +6,13 @@ Original error:
 
 	ErrorReflection.idr:78:5:When elaborating right hand side of bad:
 	Can't unify
-		Tm [] (Main.TFun t' t')
+		Tm [] (TFun t' t')
 	with
-		Tm [] Main.TUnit
+		Tm [] TUnit
 	
 	Specifically:
 		Can't unify
-			Main.TFun t' t'
+			TFun t' t'
 		with
-			Main.TUnit
+			TUnit
 

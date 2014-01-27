@@ -125,60 +125,48 @@ pshow i (Msg s) = s
 pshow i (InternalMsg s) = "INTERNAL ERROR: " ++ show s ++
    "\nThis is probably a bug, or a missing error message.\n" ++
    "Please consider reporting at " ++ bugaddr
-pshow i (CantUnify _ x y e sc s)
-    = let imps = opt_showimp (idris_options i) in
-      let colour = idris_colourRepl i in
-        "Can't unify" ++ indented (showImp (Just i) imps colour (delab i x))
-          ++ "with" ++ indented (showImp (Just i) imps colour (delab i y)) ++
---         " (" ++ show x ++ " and " ++ show y ++ ") " ++
-        case e of
-            Msg "" -> ""
-            _ -> "\nSpecifically:" ++
-                indented (pshow i e) ++
-                if (opt_errContext (idris_options i)) then showSc i sc else ""
-pshow i (CantConvert x y env)
-    = let imps = opt_showimp (idris_options i) in
-      let colour = idris_colourRepl i in
-          "Can't convert" ++ indented (showImp (Just i) imps colour (delab i x)) ++ "with"
-                 ++ indented (showImp (Just i) imps colour (delab i y)) ++
-                 if (opt_errContext (idris_options i)) then showSc i env else ""
-pshow i (UnifyScope n out tm env)
-    = let imps = opt_showimp (idris_options i) in
-      let colour = idris_colourRepl i in
-          "Can't unify" ++ indented (show n) ++ "with"
-                 ++ indented (showImp (Just i) imps colour (delab i tm)) ++ "as" ++
-                 indented (show out) ++ "is not in scope" ++
-                 if (opt_errContext (idris_options i)) then showSc i env else ""
-pshow i (CantInferType t)
-    = "Can't infer type for " ++ t
-pshow i (NonFunctionType f ty)
-    = let imps = opt_showimp (idris_options i) in
-      let colour = idris_colourRepl i in
-          showImp (Just i) imps colour (delab i f) ++ " does not have a function type ("
-            ++ showImp (Just i) imps colour (delab i ty) ++ ")"
-pshow i (NotEquality tm ty)
-    = let imps = opt_showimp (idris_options i) in
-      let colour = idris_colourRepl i in
-          showImp (Just i) imps colour (delab i tm) ++ " does not have an equality type ("
-            ++ showImp (Just i) imps colour (delab i ty) ++ ")"
-pshow i (TooManyArguments f)
-    = "Too many arguments for " ++ show f
-pshow i (CantIntroduce ty)
-    = let imps = opt_showimp (idris_options i) in
-      let colour = idris_colourRepl i in
-          "Can't use lambda here: type is " ++ showImp (Just i) imps colour (delab i ty)
+pshow i (CantUnify _ x y e sc s) =
+  "Can't unify" ++ indented (showTm i (delab i x)) ++
+  "with" ++ indented (showTm i (delab i y)) ++
+  case e of
+    Msg "" -> ""
+    _ -> "\nSpecifically:" ++
+         indented (pshow i e) ++
+         if (opt_errContext (idris_options i)) then showSc i sc else ""
+pshow i (CantConvert x y env) =
+  "Can't convert" ++ indented (showTm i (delab i x)) ++
+  "with" ++ indented (showTm i (delab i y)) ++
+  if (opt_errContext (idris_options i)) then showSc i env else ""
+pshow i (UnifyScope n out tm env) =
+  "Can't unify" ++ indented (show n) ++
+  "with" ++ indented (showTm i (delab i tm)) ++
+  "as" ++ indented (show out) ++ "is not in scope" ++
+  if (opt_errContext (idris_options i)) then showSc i env else ""
+pshow i (CantInferType t) = "Can't infer type for " ++ t
+pshow i (NonFunctionType f ty) =
+  showTm i (delab i f) ++
+  " does not have a function type (" ++
+  showTm i (delab i ty) ++ ")"
+pshow i (NotEquality tm ty) =
+  showTm i (delab i tm) ++
+  " does not have an equality type (" ++
+  showTm i (delab i ty) ++ ")"
+pshow i (TooManyArguments f) = "Too many arguments for " ++ show f
+pshow i (CantIntroduce ty) =
+  "Can't use lambda here: type is " ++ showTm i (delab i ty)
 pshow i (InfiniteUnify x tm env)
-    = "Unifying " ++ showbasic x ++ " and " ++ show (delab i tm) ++
+    = "Unifying " ++ showbasic x ++ " and " ++ showTm i (delab i tm) ++
       " would lead to infinite value" ++
                  if (opt_errContext (idris_options i)) then showSc i env else ""
-pshow i (NotInjective p x y) = "Can't verify injectivity of " ++ show (delab i p) ++
-                               " when unifying " ++ show (delab i x) ++ " and " ++
-                                                    show (delab i y)
+pshow i (NotInjective p x y) =
+  "Can't verify injectivity of " ++ showTm i (delab i p) ++
+  " when unifying " ++ showTm i (delab i x) ++ " and " ++
+  showTm i (delab i y)
 pshow i (CantResolve c) = "Can't resolve type class " ++ show (delab i c)
 pshow i (CantResolveAlts as) = "Can't disambiguate name: " ++ showSep ", " as
 pshow i (NoTypeDecl n) = "No type declaration for " ++ show n
 pshow i (NoSuchVariable n) = "No such variable " ++ show n
-pshow i (IncompleteTerm t) = "Incomplete term " ++ showImp Nothing True False (delab i t)
+pshow i (IncompleteTerm t) = "Incomplete term " ++ showTm i (delab i t)
 pshow i UniverseError = "Universe inconsistency"
 pshow i ProgramLineComment = "Program line next to comment"
 pshow i (Inaccessible n) = show n ++ " is not an accessible pattern variable"
@@ -199,8 +187,7 @@ pshow i (ReflectionError parts orig) = let parts' = map (concat . intersperse " 
             showPart (TextPart str) = str
             showPart (NamePart n)   = let colour = idris_colourRepl i in
                                       showName (Just i) [] False colour n
-            showPart (TermPart tm)  = let colour = idris_colourRepl i
-                                      in showImp (Just i) False colour (delab i tm)
+            showPart (TermPart tm)  = showTm i (delab i tm)
             showPart (SubReport rs) = indented . concat . intersperse " " . map showPart $ rs
 pshow i (ReflectionFailed msg err) = "When attempting to perform error reflection, the following internal error occurred:\n" ++
                                      indented (pshow i err) ++

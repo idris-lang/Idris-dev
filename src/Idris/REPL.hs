@@ -448,10 +448,8 @@ process h fn (Eval t)
                                             ist <- getIState
                                             logLvl 3 $ "Raw: " ++ show (tm', ty')
                                             logLvl 10 $ "Debug: " ++ showEnvDbg [] tm'
-                                            imp <- impShow
-                                            c <- colourise
-                                            ihPrintResult h (showImp (Just ist) imp c (delab ist tm') ++ " : " ++
-                                                     showImp (Just ist) imp c (delab ist ty'))
+                                            ihPrintResult h (showTm ist (delab ist tm') ++ " : " ++
+                                                             showTm ist (delab ist ty'))
 process h fn (ExecVal t)
                   = do ctxt <- getContext
                        ist <- getIState
@@ -459,10 +457,8 @@ process h fn (ExecVal t)
 --                       let tm' = normaliseAll ctxt [] tm
                        let ty' = normaliseAll ctxt [] ty
                        res <- execute tm
-                       imp <- impShow
-                       c <- colourise
-                       ihPrintResult h (showImp (Just ist) imp c (delab ist res) ++ " : " ++
-                                showImp (Just ist) imp c (delab ist ty'))
+                       ihPrintResult h (showTm ist (delab ist res) ++ " : " ++
+                                        showTm ist (delab ist ty'))
 process h fn (Check (PRef _ n))
    = do ctxt <- getContext
         ist <- getIState
@@ -474,7 +470,7 @@ process h fn (Check (PRef _ n))
                 Just (_, i, _) -> ihPrintResult h (showMetavarInfo c imp ist n i)
                 Nothing -> ihPrintResult h $
                            concat . intersperse "\n" . map (\n -> showName (Just ist) [] False c n ++ " : " ++
-                                                                  showImp (Just ist) imp c (delabTy ist n)) $ ts
+                                                                  showTm ist (delabTy ist n)) $ ts
           [] -> ihPrintError h $ "No such variable " ++ show n
   where
     showMetavarInfo c imp ist n i
@@ -487,27 +483,25 @@ process h fn (Check (PRef _ n))
                                    MN _ _ -> "_"
                                    UN nm | ('_':'_':_) <- str nm -> "_"
                                    _ -> showName (Just ist) [] False c n) ++
-                               " : " ++ showImp (Just ist) imp c t ++ "\n"
+                               " : " ++ showTm ist t ++ "\n"
                  in
                     current ++ putTy c imp ist (i-1) sc
     putTy c imp ist _ sc = putGoal c imp ist sc
     putGoal c imp ist g
                = "--------------------------------------\n" ++
                  showName (Just ist) [] False c n ++ " : " ++
-                 showImp (Just ist) imp c g
+                 showTm ist g
 
 
 process h fn (Check t)
    = do (tm, ty) <- elabVal toplevel False t
         ctxt <- getContext
         ist <- getIState
-        imp <- impShow
-        c <- colourise
         let ty' = normaliseC ctxt [] ty
         case tm of
              TType _ -> ihPrintResult h ("Type : Type 1")
-             _ -> ihPrintResult h (showImp (Just ist) imp c (delab ist tm) ++ " : " ++
-                                   showImp (Just ist) imp c (delab ist ty))
+             _ -> ihPrintResult h (showTm ist (delab ist tm) ++ " : " ++
+                                   showTm ist (delab ist ty))
 
 process h fn (DocStr n)
                       = do i <- getIState
@@ -540,9 +534,9 @@ process h fn (Defn n)
                             [t] -> iputStrLn (showTotal t i)
                             _ -> return ()
     where printCase i (_, lhs, rhs)
-             = do c <- colourise
-                  iputStrLn (showImp (Just i) True c (delab i lhs) ++ " = " ++
-                             showImp (Just i) True c (delab i rhs))
+             = let i' = i { idris_options = (idris_options i) { opt_showimp = True } }
+               in iputStrLn (showTm i' (delab i lhs) ++ " = " ++
+                             showTm i' (delab i rhs))
 process h fn (TotCheck n)
                         = do i <- getIState
                              case lookupNameTotal n (tt_ctxt i) of
@@ -848,7 +842,7 @@ process h fn (TestInline t)
                                 let tm' = inlineTerm ist tm
                                 imp <- impShow
                                 c <- colourise
-                                iPrintResult (showImp (Just ist) imp c (delab ist tm'))
+                                iPrintResult (showTm ist (delab ist tm'))
 process h fn Execute
                    = do (m, _) <- elabVal toplevel False
                                         (PApp fc
@@ -876,11 +870,11 @@ process h fn (Pattelab t)
 
 process h fn (Missing n)
     = do i <- getIState
-         c <- colourise
+         let i' = i { idris_options = (idris_options i) { opt_showimp = True } }
          case lookupCtxt n (idris_patdefs i) of
                   [] -> return ()
                   [(_, tms)] ->
-                       iPrintResult (showSep "\n" (map (showImp (Just i) True c) tms))
+                       iPrintResult (showSep "\n" (map (showTm i') tms))
                   _ -> iPrintError $ "Ambiguous name"
 process h fn (DynamicLink l)
                            = do i <- getIState
@@ -949,9 +943,8 @@ dumpDefaultInstance (PInstance _ _ _ _ _ t _ _) = iputStrLn $ show t
 dumpInstance :: Name -> Idris ()
 dumpInstance n = do i <- getIState
                     ctxt <- getContext
-                    imp <- impShow
                     case lookupTy n ctxt of
-                         ts -> mapM_ (\t -> iputStrLn $ showImp Nothing imp False (delab i t)) ts
+                         ts -> mapM_ (\t -> iputStrLn $ showTm i (delab i t)) ts
 
 showTotal :: Totality -> IState -> String
 showTotal t@(Partial (Other ns)) i

@@ -83,6 +83,8 @@ data NameOutput = TypeOutput | FunOutput | DataOutput
 -- | Output annotations for pretty-printing
 data OutputAnnotation = AnnName Name (Maybe NameOutput) (Maybe Type)
                       | AnnBoundName Name Bool
+                      | AnnConstData
+                      | AnnConstType
 
 -- | Used for error reflection
 data ErrorReportPart = TextPart String
