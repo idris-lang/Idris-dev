@@ -1189,7 +1189,7 @@ pprintPTerm impl bnd = prettySe 10 bnd
         where
           prettyAs =
             foldr (\l -> \r -> l <+> text "," <+> r) empty $ map (prettySe 10 bnd) as
-    prettySe p bnd PType = text "Type"
+    prettySe p bnd PType = annotate AnnConstType $ text "Type"
     prettySe p bnd (PConstant c) = annotate (annot c) (text (show c))
       where annot (AType _) = AnnConstType
             annot StrType   = AnnConstType
