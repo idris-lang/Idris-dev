@@ -1058,10 +1058,11 @@ loadSource h lidr f
                   (mname, imports, pos) <- parseImports f file
                   let modules = map fst imports
                       modAliases = M.fromList
-                        [(prep alias, prep realName)| (realName, Just alias) <- imports]
-                      prep = map T.pack . Spl.splitOn "/"
+                        [(prep alias, prep realName) | (realName, Just alias) <- imports]
+                      prep = map T.pack . reverse . Spl.splitOn "/"
+                  logLvl 3 $ "Module aliases: " ++ show (M.toList modAliases)
                   i <- getIState
-                  putIState (i { default_access = Hidden })
+                  putIState (i { default_access = Hidden, module_aliases = modAliases })
                   clearIBC -- start a new .ibc file
                   mapM_ (addIBC . IBCImport) modules
                   let syntax = defaultSyntax{ syn_namespace = reverse mname }
