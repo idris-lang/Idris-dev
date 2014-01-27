@@ -1,0 +1,3 @@
+MAIN-PASS
+Faulty.idr:6:7:When elaborating type of Faulty.fault:
+Can't disambiguate name: A.num, B.C.num
