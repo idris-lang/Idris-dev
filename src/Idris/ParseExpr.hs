@@ -292,9 +292,9 @@ simpleExpr syn =
         <|> tacticsExpr syn
         <|> caseExpr syn
         <|> do reserved "Type"; return PType
-        <|> try (do c <- constant
-                    fc <- getFC
-                    return (modifyConst syn fc (PConstant c)))
+        <|> do c <- constant
+               fc <- getFC
+               return $ modifyConst syn fc (PConstant c)
         <|> try (do symbol "'"; fc <- getFC; str <- name
                     return (PApp fc (PRef fc (sUN "Symbol_"))
                                [pexp (PConstant (Str (show str)))]))
@@ -1008,26 +1008,27 @@ Constant ::=
 @
 -}
 constant :: IdrisParser Idris.Core.TT.Const
-constant =  do reserved "Integer";return (AType (ATInt ITBig))
-        <|> do reserved "Int";    return (AType (ATInt ITNative))
-        <|> do reserved "Char";   return (AType (ATInt ITChar))
-        <|> do reserved "Float";  return (AType ATFloat)
-        <|> do reserved "String"; return StrType
-        <|> do reserved "Ptr";    return PtrType
-        <|> do reserved "Bits8";  return (AType (ATInt (ITFixed IT8)))
-        <|> do reserved "Bits16"; return (AType (ATInt (ITFixed IT16)))
-        <|> do reserved "Bits32"; return (AType (ATInt (ITFixed IT32)))
-        <|> do reserved "Bits64"; return (AType (ATInt (ITFixed IT64)))
-        <|> do reserved "Bits8x16"; return (AType (ATInt (ITVec IT8 16)))
-        <|> do reserved "Bits16x8"; return (AType (ATInt (ITVec IT16 8)))
-        <|> do reserved "Bits32x4"; return (AType (ATInt (ITVec IT32 4)))
-        <|> do reserved "Bits64x2"; return (AType (ATInt (ITVec IT64 2)))
-        <|> try (do f <- float;   return $ Fl f)
-        <|> try (do i <- natural; return $ BI i)
-        <|> try (do s <- verbatimStringLiteral; return $ Str s)
-        <|> try (do s <- stringLiteral;  return $ Str s)
-        <|> try (do c <- charLiteral;   return $ Ch c)
+constant =  do kwd "Integer";return (AType (ATInt ITBig))
+        <|> do kwd "Int";    return (AType (ATInt ITNative))
+        <|> do kwd "Char";   return (AType (ATInt ITChar))
+        <|> do kwd "Float";  return (AType ATFloat)
+        <|> do kwd "String"; return StrType
+        <|> do kwd "Ptr";    return PtrType
+        <|> do kwd "Bits8";  return (AType (ATInt (ITFixed IT8)))
+        <|> do kwd "Bits16"; return (AType (ATInt (ITFixed IT16)))
+        <|> do kwd "Bits32"; return (AType (ATInt (ITFixed IT32)))
+        <|> do kwd "Bits64"; return (AType (ATInt (ITFixed IT64)))
+        <|> do kwd "Bits8x16"; return (AType (ATInt (ITVec IT8 16)))
+        <|> do kwd "Bits16x8"; return (AType (ATInt (ITVec IT16 8)))
+        <|> do kwd "Bits32x4"; return (AType (ATInt (ITVec IT32 4)))
+        <|> do kwd "Bits64x2"; return (AType (ATInt (ITVec IT64 2)))
+        <|> Fl <$> try float
+        <|> BI <$> try natural
+        <|> Str <$> (verbatimStringLiteral <|> stringLiteral)
+        <|> Ch  <$> charLiteral
         <?> "constant or literal"
+  where
+    kwd = try . reserved
 
 {- | Parses a verbatim multi-line string literal (triple-quoted)
 @
@@ -1036,7 +1037,7 @@ VerbatimString_t ::=
 @
  -}
 verbatimStringLiteral :: MonadicParsing m => m String
-verbatimStringLiteral = token $ do string "\"\"\""
+verbatimStringLiteral = token $ do try (string "\"\"\"")
                                    manyTill anyChar $ try (string "\"\"\"")
 
 {- | Parses a static modifier
