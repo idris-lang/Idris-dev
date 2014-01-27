@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+idris $@ Main.idr --nocolour --check && echo MAIN-PASS
+idris $@ Faulty.idr --nocolour --check && echo FAULTY-PASS
+find -name \*.ibc -delete
