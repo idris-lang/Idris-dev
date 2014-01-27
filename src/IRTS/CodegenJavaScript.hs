@@ -694,104 +694,15 @@ inlineFunctions :: [JS] -> [JS]
 inlineFunctions js =
   let funs       = collectFunctions js
       occurences = map ((id . fst) &&& countAll js) funs in
-      inlineSingleOccur occurences $ removeDeadFunctions occurences js
+      removeDeadFunctions occurences js
       where
         removeDeadFunctions :: [(String, (Int, JS))] -> [JS] -> [JS]
         removeDeadFunctions _ [] = []
         removeDeadFunctions funOccur ((JSAlloc fun (Just (JSFunction  _ _))):js)
           | Just (o, _) <- lookup fun funOccur
-          , o == 0 || o == 1 = removeDeadFunctions funOccur js
+          , o == 0 = removeDeadFunctions funOccur js
 
         removeDeadFunctions funOccur (j:js) = j : removeDeadFunctions funOccur js
-
-
-        inlineSingleOccur :: [(String, (Int, JS))] -> [JS] -> [JS]
-        inlineSingleOccur occur js =
-          let funs = map (id *** snd) $ filter ((== 1) . fst . snd) occur in
-              inlineHelper funs js
-
-
-        inlineHelper :: [(String, JS)] -> [JS] -> [JS]
-        inlineHelper [] js = js
-        inlineHelper ((name, fun):funs) js =
-          let njs   = map (inlineFun name fun) js
-              nfuns = map (id *** (inlineFun name fun)) funs in
-              inlineHelper nfuns njs
-
-
-        inlineArgs args vals js =
-          let (njs, vars) = putPlaceHolders args 0 js in
-              inlineArgsHelper (map (("__repvar_" ++) . show) [0 .. vars - 1]) vals njs
-
-              where
-                inlineArgsHelper :: [String] -> [JS] -> JS -> JS
-                inlineArgsHelper [] _ js = js
-                inlineArgsHelper (a:as) (v:vs) js = jsSubst a v (inlineArgsHelper as vs js)
-
-
-                putPlaceHolders :: [String] -> Int -> JS -> (JS, Int)
-                putPlaceHolders []     n js = (js, n)
-                putPlaceHolders (a:as) n js
-                  | (njs, nn) <- putPlaceHolders as (n + 1) js =
-                    (jsSubst a (JSIdent ("__repvar_" ++ show n)) njs, nn)
-
-
-        inlineFun :: String -> JS -> JS -> JS
-        inlineFun name (JSFunction args (JSReturn js)) (JSApp (JSIdent lhs) rhs)
-          | name == lhs = inlineArgs args rhs js
-
-        inlineFun name (JSFunction args (JSSeq js)) (JSReturn (JSApp (JSIdent lhs) rhs))
-          | name == lhs = JSSeq $ map (inlineArgs args rhs) js
-
-        inlineFun name (JSFunction args (JSSeq js)) (JSApp (JSIdent lhs) rhs)
-          | name == lhs = JSSeq $ map (inlineArgs args rhs) js
-
-        inlineFun name fun (JSFunction args body) =
-          JSFunction args (inlineFun name fun body)
-
-        inlineFun name fun (JSSeq seq) =
-          JSSeq $ map (inlineFun name fun) seq
-
-        inlineFun name fun (JSReturn ret) =
-          JSReturn $ inlineFun name fun ret
-
-        inlineFun name fun (JSApp lhs rhs) =
-          JSApp (inlineFun name fun lhs) $ map (inlineFun name fun) rhs
-
-        inlineFun name fun (JSNew con args) =
-          JSNew con $ map (inlineFun name fun) args
-
-        inlineFun name fun (JSOp op lhs rhs) =
-          JSOp op (inlineFun name fun lhs) (inlineFun name fun rhs)
-
-        inlineFun name fun (JSProj obj field) =
-          JSProj (inlineFun name fun obj) field
-
-        inlineFun name fun (JSArray vals) =
-          JSArray $ map (inlineFun name fun) vals
-
-        inlineFun name fun (JSAssign lhs rhs) =
-          JSAssign (inlineFun name fun lhs) (inlineFun name fun rhs)
-
-        inlineFun name fun (JSAlloc var (Just val)) =
-          JSAlloc var (Just $ inlineFun name fun val)
-
-        inlineFun name fun (JSIndex lhs rhs) =
-          JSIndex (inlineFun name fun lhs) (inlineFun name fun rhs)
-
-        inlineFun name fun (JSCond conds) =
-          JSCond $ map (inlineFun name fun *** inlineFun name fun) conds
-
-        inlineFun name fun (JSTernary c t f) =
-          JSTernary (
-            inlineFun name fun c
-          ) (
-            inlineFun name fun t
-          ) (
-            inlineFun name fun f
-          )
-
-        inlineFun name fun js = js
 
 
         collectFunctions :: [JS] -> [(String, JS)]
