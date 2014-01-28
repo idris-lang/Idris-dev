@@ -28,6 +28,7 @@ import Idris.Core.CaseTree
 import Control.Applicative
 import Control.Monad.State
 import Data.List
+import Data.IntSet (IntSet)
 import qualified Data.IntMap as IM
 import qualified Data.IntSet as IS
 import qualified Data.Map as M
@@ -60,6 +61,8 @@ compile codegen f tm
         let fmtDepMap = unlines . map (\(n,is) -> show n ++ " -> " ++ show (IS.toList is)) . M.toList
         let minUse = minimalUsage depMap
         iLOG $ "MINIMAL USAGE:\n" ++ fmtDepMap minUse
+
+        mapM_ (uncurry storeUsage) (M.toList minUse)
         -- END TODO
         
         maindef <- irMain tm
@@ -115,6 +118,13 @@ compile codegen f tm
         inDir d h = do let f = d </> h
                        ex <- doesFileExist f
                        if ex then return f else return h
+
+storeUsage :: Name -> IntSet -> Idris ()
+storeUsage n args = do
+    cg <- idris_callgraph <$> getIState
+    case lookupCtxt n cg of
+        [x] -> addToCG n x{ usedpos = IS.toList args }
+        _   -> return ()
 
 irMain :: TT Name -> Idris LDecl
 irMain tm = do i <- ir tm
