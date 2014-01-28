@@ -1032,6 +1032,7 @@ consoleDecorate ist (AnnName n _ _) = let ctxt  = tt_ctxt ist
                                            _ | isFnName n ctxt   -> colouriseFun theme
                                            _ | isTConName n ctxt -> colouriseType theme
                                            _ | otherwise         -> id -- don't colourise unknown names
+consoleDecorate ist (AnnFC _) = id
 
 -- | Pretty-print a high-level closed Idris term
 prettyImp :: Bool -- ^^ whether to show implicits
