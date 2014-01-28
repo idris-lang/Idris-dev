@@ -1,5 +1,7 @@
 module Main
 
+import Data.Buffer
+
 em : Buffer 0
 em = allocate 32
 
@@ -10,30 +12,31 @@ two : Bits8
 two = 2
 
 firstHalf : Buffer 32
-firstHalf = appendLE em 1 one
+firstHalf = appendBits32LE em 1 one
 
 full : Buffer 64
-full = appendLE firstHalf 4 two
+full = appendBits8LE firstHalf 4 two
 
 firstByte : Bits8
-firstByte = peekLE full 0
+firstByte = peekBits8LE full 0
 
 firstHalfView : Buffer 32
-firstHalfView = peekLE full 0
+firstHalfView = peekBufferLE full 0
 
 firstHalfCopy : Buffer 32
 firstHalfCopy = copy firstHalfView
 
 oneFromFirstHalf : Bits32
-oneFromFirstHalf = peekLE firstHalf 0
+oneFromFirstHalf = peekBits32LE firstHalf 0
 
-oneFromFirstHalfCopy = peekLE firstHalfCopy 0
+oneFromFirstHalfCopy : Bits32
+oneFromFirstHalfCopy = peekBits32LE firstHalfCopy 0
 
 viewsAndCopiesPreserveEquality : Bool
-viewsAndCopiesPreserveEquality = (oneFromFirstHalf == one) && (oneFromFirstHalfCopy == one)
+viewsAndCopiesPreserveEquality = ( oneFromFirstHalf == one ) && ( oneFromFirstHalfCopy == one )
 
 secondHalfWord : Bits32
-secondHalfWord = peekLE full 1
+secondHalfWord = peekBits32LE full 1
 
 main : IO ()
 main = do
