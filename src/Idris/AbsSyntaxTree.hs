@@ -1126,8 +1126,9 @@ pprintPTerm impl bnd = prettySe 10 bnd
       | not impl = prettyName impl bnd f
     prettySe p bnd (PAppBind _ (PRef _ f) [])
       | not impl = text "!" <> prettyName impl bnd f
-    prettySe p bnd (PApp _ (PRef _ op@(UN nm)) args)
-      | not (tnull nm) &&
+    prettySe p bnd (PApp _ (PRef _ op) args)
+      | UN nm <- basename op
+      , not (tnull nm) &&
         length (getExps args) == 2 && (not impl) && (not $ isAlpha (thead nm)) =
           let [l, r] = getExps args in
             bracket p 1 $
@@ -1220,6 +1221,9 @@ pprintPTerm impl bnd = prettySe 10 bnd
     prettyArgSc bnd val = lbrace <> lbrace <> prettySe 10 bnd val <> rbrace <> rbrace
     prettyArgSti bnd (n, val) = lbrace <> text "auto" <+> pretty n <+> text "=" <+> prettySe 10 bnd val <> rbrace
 
+    basename :: Name -> Name
+    basename (NS n _) = basename n
+    basename n = n
 
     slist' p bnd (PApp _ (PRef _ nil) _)
       | not impl && nsroot nil == sUN "Nil" = Just []
