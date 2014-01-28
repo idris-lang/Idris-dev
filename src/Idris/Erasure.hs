@@ -211,6 +211,10 @@ buildDepMap ctx ns = addPostulates $ dfs S.empty M.empty ns
             -- we interpret applied lambdas as lets in order to reuse code here
             Bind n (Lam ty) t -> getDepsTerm vs bs cd (lamToLet [] app)
 
+            -- and we interpret applied lets as lambdas
+            Bind n ( Let ty t') t -> getDepsTerm vs bs cd (App (Bind n (Lam ty) t) t')
+            Bind n (NLet ty t') t -> getDepsTerm vs bs cd (App (Bind n (Lam ty) t) t')
+
             _ -> error $ "cannot analyse application of: " ++ show fun
       where
         ins = M.insertWith S.union cd
