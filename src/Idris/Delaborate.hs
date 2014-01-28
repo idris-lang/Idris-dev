@@ -8,6 +8,7 @@ module Idris.Delaborate where
 import Idris.AbsSyntax
 import Idris.Core.TT
 import Idris.Core.Evaluate
+import Idris.ErrReverse
 
 import Data.List (intersperse)
 
@@ -121,11 +122,13 @@ indented text = boxIt '\n' $ unlines $ map ('\t':) $ lines text where
                                   else [c]
 
 pshow :: IState -> Err -> String
-pshow i (Msg s) = s
-pshow i (InternalMsg s) = "INTERNAL ERROR: " ++ show s ++
+pshow i err = pshow' i (fmap (errReverse i) err)
+
+pshow' i (Msg s) = s
+pshow' i (InternalMsg s) = "INTERNAL ERROR: " ++ show s ++
    "\nThis is probably a bug, or a missing error message.\n" ++
    "Please consider reporting at " ++ bugaddr
-pshow i (CantUnify _ x y e sc s)
+pshow' i (CantUnify _ x y e sc s)
     = let imps = opt_showimp (idris_options i) in
       let colour = idris_colourRepl i in
         "Can't unify" ++ indented (showImp (Just i) imps colour (delab i x))
@@ -134,72 +137,72 @@ pshow i (CantUnify _ x y e sc s)
         case e of
             Msg "" -> ""
             _ -> "\nSpecifically:" ++
-                indented (pshow i e) ++
+                indented (pshow' i e) ++
                 if (opt_errContext (idris_options i)) then showSc i sc else ""
-pshow i (CantConvert x y env)
+pshow' i (CantConvert x y env)
     = let imps = opt_showimp (idris_options i) in
       let colour = idris_colourRepl i in
           "Can't convert" ++ indented (showImp (Just i) imps colour (delab i x)) ++ "with"
                  ++ indented (showImp (Just i) imps colour (delab i y)) ++
                  if (opt_errContext (idris_options i)) then showSc i env else ""
-pshow i (CantSolveGoal x env)
+pshow' i (CantSolveGoal x env)
     = let imps = opt_showimp (idris_options i) in
       let colour = idris_colourRepl i in
           "Can't solve goal " ++ indented (showImp (Just i) imps colour (delab i x)) ++
                  if (opt_errContext (idris_options i)) then showSc i env else ""
-pshow i (UnifyScope n out tm env)
+pshow' i (UnifyScope n out tm env)
     = let imps = opt_showimp (idris_options i) in
       let colour = idris_colourRepl i in
           "Can't unify" ++ indented (show n) ++ "with"
                  ++ indented (showImp (Just i) imps colour (delab i tm)) ++ "as" ++
                  indented (show out) ++ "is not in scope" ++
                  if (opt_errContext (idris_options i)) then showSc i env else ""
-pshow i (CantInferType t)
+pshow' i (CantInferType t)
     = "Can't infer type for " ++ t
-pshow i (NonFunctionType f ty)
+pshow' i (NonFunctionType f ty)
     = let imps = opt_showimp (idris_options i) in
       let colour = idris_colourRepl i in
           showImp (Just i) imps colour (delab i f) ++ " does not have a function type ("
             ++ showImp (Just i) imps colour (delab i ty) ++ ")"
-pshow i (NotEquality tm ty)
+pshow' i (NotEquality tm ty)
     = let imps = opt_showimp (idris_options i) in
       let colour = idris_colourRepl i in
           showImp (Just i) imps colour (delab i tm) ++ " does not have an equality type ("
             ++ showImp (Just i) imps colour (delab i ty) ++ ")"
-pshow i (TooManyArguments f)
+pshow' i (TooManyArguments f)
     = "Too many arguments for " ++ show f
-pshow i (CantIntroduce ty)
+pshow' i (CantIntroduce ty)
     = let imps = opt_showimp (idris_options i) in
       let colour = idris_colourRepl i in
           "Can't use lambda here: type is " ++ showImp (Just i) imps colour (delab i ty)
-pshow i (InfiniteUnify x tm env)
+pshow' i (InfiniteUnify x tm env)
     = "Unifying " ++ showbasic x ++ " and " ++ show (delab i tm) ++
       " would lead to infinite value" ++
                  if (opt_errContext (idris_options i)) then showSc i env else ""
-pshow i (NotInjective p x y) = "Can't verify injectivity of " ++ show (delab i p) ++
-                               " when unifying " ++ show (delab i x) ++ " and " ++
-                                                    show (delab i y)
-pshow i (CantResolve c) = "Can't resolve type class " ++ show (delab i c)
-pshow i (CantResolveAlts as) = "Can't disambiguate name: " ++ showSep ", " as
-pshow i (NoTypeDecl n) = "No type declaration for " ++ show n
-pshow i (NoSuchVariable n) = "No such variable " ++ show n
-pshow i (IncompleteTerm t) = "Incomplete term " ++ showImp Nothing True False (delab i t)
-pshow i UniverseError = "Universe inconsistency"
-pshow i ProgramLineComment = "Program line next to comment"
-pshow i (Inaccessible n) = show n ++ " is not an accessible pattern variable"
-pshow i (NonCollapsiblePostulate n)
+pshow' i (NotInjective p x y) = "Can't verify injectivity of " ++ show (delab i p) ++
+                                " when unifying " ++ show (delab i x) ++ " and " ++
+                                                     show (delab i y)
+pshow' i (CantResolve c) = "Can't resolve type class " ++ show (delab i c)
+pshow' i (CantResolveAlts as) = "Can't disambiguate name: " ++ showSep ", " as
+pshow' i (NoTypeDecl n) = "No type declaration for " ++ show n
+pshow' i (NoSuchVariable n) = "No such variable " ++ show n
+pshow' i (IncompleteTerm t) = "Incomplete term " ++ showImp Nothing True False (delab i t)
+pshow' i UniverseError = "Universe inconsistency"
+pshow' i ProgramLineComment = "Program line next to comment"
+pshow' i (Inaccessible n) = show n ++ " is not an accessible pattern variable"
+pshow' i (NonCollapsiblePostulate n)
     = "The return type of postulate " ++ show n ++ " is not collapsible"
-pshow i (AlreadyDefined n) = show n ++ " is already defined"
-pshow i (ProofSearchFail e) = pshow i e
-pshow i (NoRewriting tm) = "rewrite did not change type " ++ show (delab i tm)
-pshow i (At f e) = show f ++ ":" ++ pshow i e
-pshow i (Elaborating s n e) = "When elaborating " ++ s ++
-                               showqual i n ++ ":\n" ++ pshow i e
-pshow i (ProviderError msg) = "Type provider error: " ++ msg
-pshow i (LoadingFailed fn e) = "Loading " ++ fn ++ " failed: " ++ pshow i e
-pshow i (ReflectionError parts orig) = let parts' = map (concat . intersperse " " . map showPart) parts in
+pshow' i (AlreadyDefined n) = show n ++ " is already defined"
+pshow' i (ProofSearchFail e) = pshow' i e
+pshow' i (NoRewriting tm) = "rewrite did not change type " ++ show (delab i tm)
+pshow' i (At f e) = show f ++ ":" ++ pshow' i e
+pshow' i (Elaborating s n e) = "When elaborating " ++ s ++
+                               showqual i n ++ ":\n" ++ pshow' i e
+pshow' i (ProviderError msg) = "Type provider error: " ++ msg
+pshow' i (LoadingFailed fn e) = "Loading " ++ fn ++ " failed: " ++ pshow' i e
+pshow' i (ReflectionError parts orig) = let parts' = map (concat . intersperse " " . map showPart) parts in
                                        concat (intersperse "\n" parts') ++
-                                       "\nOriginal error:\n" ++ indented (pshow i orig)
+                                       "\nOriginal error:\n" ++ indented (pshow' i orig)
       where showPart :: ErrorReportPart -> String
             showPart (TextPart str) = str
             showPart (NamePart n)   = let colour = idris_colourRepl i in
@@ -207,8 +210,8 @@ pshow i (ReflectionError parts orig) = let parts' = map (concat . intersperse " 
             showPart (TermPart tm)  = let colour = idris_colourRepl i
                                       in showImp (Just i) False colour (delab i tm)
             showPart (SubReport rs) = indented . concat . intersperse " " . map showPart $ rs
-pshow i (ReflectionFailed msg err) = "When attempting to perform error reflection, the following internal error occurred:\n" ++
-                                     indented (pshow i err) ++
+pshow' i (ReflectionFailed msg err) = "When attempting to perform error reflection, the following internal error occurred:\n" ++
+                                     indented (pshow' i err) ++
                                      "\nThis is probably a bug. Please consider reporting it at " ++ bugaddr
 
 

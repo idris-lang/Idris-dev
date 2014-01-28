@@ -111,6 +111,7 @@ data IState = IState {
     idris_metavars :: [(Name, (Maybe Name, Int, Bool))], -- ^ The currently defined but not proven metavariables
     idris_coercions :: [Name],
     idris_transforms :: [(Term, Term)],
+    idris_errRev :: [(Term, Term)],
     syntax_rules :: [Syntax],
     syntax_keywords :: [String],
     imported :: [FilePath], -- ^ The imported modules
@@ -187,6 +188,7 @@ data IBCWrite = IBCFix FixDecl
               | IBCTotal Name Totality
               | IBCFlags Name [FnOpt]
               | IBCTrans (Term, Term)
+              | IBCErrRev (Term, Term)
               | IBCCG Name
               | IBCDoc Name
               | IBCCoercion Name
@@ -203,7 +205,7 @@ idrisInit = IState initContext [] [] emptyContext emptyContext emptyContext
                    emptyContext emptyContext emptyContext emptyContext
                    emptyContext emptyContext emptyContext emptyContext
                    emptyContext
-                   [] [] defaultOpts 6 [] [] [] [] [] [] [] [] [] [] [] []
+                   [] [] defaultOpts 6 [] [] [] [] [] [] [] [] [] [] [] [] []
                    [] Nothing Nothing [] [] [] Hidden False [] Nothing [] [] RawOutput
                    True defaultTheme stdout [] (0, emptyContext) emptyContext
 
@@ -357,33 +359,36 @@ deriving instance NFData Static
 !-}
 
 -- Mark bindings with their explicitness, and laziness
-data Plicity = Imp { plazy :: Bool,
+data Plicity = Imp { pargopts :: [ArgOpt],
                      pstatic :: Static,
                      pdocstr :: String,
                      pparam :: Bool }
-             | Exp { plazy :: Bool,
+             | Exp { pargopts :: [ArgOpt],
                      pstatic :: Static,
                      pdocstr :: String,
                      pparam :: Bool }
-             | Constraint { plazy :: Bool,
+             | Constraint { pargopts :: [ArgOpt],
                             pstatic :: Static,
                             pdocstr :: String }
-             | TacImp { plazy :: Bool,
+             | TacImp { pargopts :: [ArgOpt],
                         pstatic :: Static,
                         pscript :: PTerm,
                         pdocstr :: String }
   deriving (Show, Eq)
+
+plazy :: Plicity -> Bool
+plazy tm = Lazy `elem` pargopts tm
 
 {-!
 deriving instance Binary Plicity
 deriving instance NFData Plicity
 !-}
 
-impl = Imp False Dynamic "" False
-expl = Exp False Dynamic "" False
-expl_param = Exp False Dynamic "" True
-constraint = Constraint False Dynamic ""
-tacimpl t = TacImp False Dynamic t ""
+impl = Imp [Lazy] Dynamic "" False
+expl = Exp [] Dynamic "" False
+expl_param = Exp [] Dynamic "" True
+constraint = Constraint [] Dynamic ""
+tacimpl t = TacImp [] Dynamic t ""
 
 data FnOpt = Inlinable -- always evaluate when simplifying
            | TotalFn | PartialFn
@@ -393,6 +398,7 @@ data FnOpt = Inlinable -- always evaluate when simplifying
            | Implicit -- implicit coercion
            | CExport String    -- export, with a C name
            | ErrorHandler     -- ^^ an error handler for use with the ErrorReflection extension
+           | ErrorReverse     -- ^^ attempt to reverse normalise before showing in error 
            | Reflection -- a reflecting function, compile-time only
            | Specialise [(Name, Maybe Int)] -- specialise it, freeze these names
     deriving (Show, Eq)
@@ -413,6 +419,7 @@ dictionary = elem Dictionary
 -- | Data declaration options
 data DataOpt = Codata -- Set if the the data-type is coinductive
              | DefaultEliminator -- Set if an eliminator should be generated for data type
+             | DataErrRev
     deriving (Show, Eq)
 
 type DataOpts = [DataOpt]
@@ -729,20 +736,30 @@ type PDo = PDo' PTerm
 
 data PArg' t = PImp { priority :: Int,
                       machine_inf :: Bool, -- true if the machine inferred it
-                      lazyarg :: Bool, pname :: Name, getTm :: t,
+                      argopts :: [ArgOpt],
+                      pname :: Name, getTm :: t,
                       pargdoc :: String }
              | PExp { priority :: Int,
-                      lazyarg :: Bool, getTm :: t,
+                      argopts :: [ArgOpt],
+                      getTm :: t,
                       pargdoc :: String }
              | PConstraint { priority :: Int,
-                             lazyarg :: Bool, getTm :: t,
+                             argopts :: [ArgOpt],
+                             getTm :: t,
                              pargdoc :: String }
              | PTacImplicit { priority :: Int,
-                              lazyarg :: Bool, pname :: Name,
+                              argopts :: [ArgOpt],
+                              pname :: Name,
                               getScript :: t,
                               getTm :: t,
                               pargdoc :: String }
     deriving (Show, Eq, Functor)
+
+data ArgOpt = Lazy | HideDisplay
+    deriving (Show, Eq)
+
+lazyarg :: PArg' t -> Bool
+lazyarg tm = Lazy `elem` argopts tm
 
 instance Sized a => Sized (PArg' a) where
   size (PImp p _ l nm trm _) = 1 + size nm + size trm
@@ -755,10 +772,10 @@ deriving instance Binary PArg'
 deriving instance NFData PArg'
 !-}
 
-pimp n t mach = PImp 1 mach True n t ""
-pexp t = PExp 1 False t ""
-pconst t = PConstraint 1 False t ""
-ptacimp n s t = PTacImplicit 2 True n s t ""
+pimp n t mach = PImp 1 mach [Lazy] n t ""
+pexp t = PExp 1 [] t ""
+pconst t = PConstraint 1 [] t ""
+ptacimp n s t = PTacImplicit 2 [Lazy] n s t ""
 
 type PArg = PArg' PTerm
 
@@ -801,6 +818,7 @@ deriving instance NFData OptInfo
 
 data TypeInfo = TI { con_names :: [Name],
                      codata :: Bool,
+                     data_opts :: DataOpts,
                      param_pos :: [Int] }
     deriving Show
 {-!
@@ -1008,7 +1026,7 @@ prettyImp impl = prettySe 10
             prettySe 10 sc
     prettySe p (PPi (Exp l s _ _) n ty sc)
       | n `elem` allNamesIn sc || impl =
-          let open = if l then text "|" <> lparen else lparen in
+          let open = if Lazy `elem` l then text "|" <> lparen else lparen in
             bracket p 2 $
               if size sc > breakingSize then
                 open <> pretty n <+> colon <+> prettySe 10 ty <> rparen <+>
@@ -1029,7 +1047,7 @@ prettyImp impl = prettySe 10
             _      -> empty
     prettySe p (PPi (Imp l s _ _) n ty sc)
       | impl =
-          let open = if l then text "|" <> lbrace else lbrace in
+          let open = if Lazy `elem` l then text "|" <> lbrace else lbrace in
             bracket p 2 $
               if size sc > breakingSize then
                 open <> pretty n <+> colon <+> prettySe 10 ty <> rbrace <+>
@@ -1222,7 +1240,7 @@ showImp ist impl colour tm = se 10 [] tm where
     se p bnd (PPi (Exp l s _ param) n ty sc)
         | n `elem` allNamesIn sc || impl
                                   = bracket p 2 $
-                                    (if l then "|(" else "(") ++
+                                    (if Lazy `elem` l then "|(" else "(") ++
                                     perhapsColourise colouriseBound (show n) ++ " : " ++ se 10 bnd ty ++
                                     ") " ++
                                     (if (impl && param) then "P" else "") ++
@@ -1233,7 +1251,7 @@ showImp ist impl colour tm = se 10 [] tm where
                     Static -> "[static] "
                     _ -> ""
     se p bnd (PPi (Imp l s _ _) n ty sc)
-        | impl = bracket p 2 $ (if l then "|{" else "{") ++
+        | impl = bracket p 2 $ (if Lazy `elem` l then "|{" else "{") ++
                                perhapsColourise colouriseBound (show n) ++ " : " ++ se 10 bnd ty ++
                                "} " ++ st ++ "-> " ++ se 10 ((n, True):bnd) sc
         | otherwise = se 10 ((n, True):bnd) sc
@@ -1247,6 +1265,9 @@ showImp ist impl colour tm = se 10 [] tm where
           "{tacimp " ++ (perhapsColourise colouriseBound (show n)) ++ " : " ++ se 10 bnd ty ++ "} -> " ++
           se 10 ((n, False):bnd) sc
     se p bnd (PMatchApp _ f) = "match " ++ show f
+    se p bnd (PApp _ hd@(PRef fc f) [tm])
+        | PConstant (Idris.Core.TT.Str str) <- getTm tm,
+          f == sUN "Symbol_" = "'" ++ se 10 bnd (PRef fc (sUN str))
     se p bnd (PApp _ hd@(PRef _ f) [])
         | not impl = se p bnd hd
     se p bnd (PAppBind _ hd@(PRef _ f) [])

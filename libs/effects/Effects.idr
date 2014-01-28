@@ -10,6 +10,7 @@ import Control.Catchable
 Effect : Type
 Effect = Type -> Type -> Type -> Type
 
+%error_reverse
 data EFFECT : Type where
      MkEff : Type -> Effect -> EFFECT
 

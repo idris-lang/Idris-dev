@@ -97,6 +97,10 @@ addTrans :: (Term, Term) -> Idris ()
 addTrans t = do i <- getIState
                 putIState $ i { idris_transforms = t : idris_transforms i }
 
+addErrRev :: (Term, Term) -> Idris ()
+addErrRev t = do i <- getIState
+                 putIState $ i { idris_errRev = t : idris_errRev i }
+
 totcheck :: (FC, Name) -> Idris ()
 totcheck n = do i <- getIState; putIState $ i { idris_totcheck = idris_totcheck i ++ [n] }
 
@@ -1060,12 +1064,12 @@ addUsingConstraints syn fc t
          -- if all of args in ns, then add it
          doAdd (UConstraint c args : cs) ns t
              | all (\n -> elem n ns) args
-                   = PPi (Constraint False Dynamic "") (sMN 0 "cu")
+                   = PPi (Constraint [] Dynamic "") (sMN 0 "cu")
                          (mkConst c args) (doAdd cs ns t)
              | otherwise = doAdd cs ns t
 
          mkConst c args = PApp fc (PRef fc c)
-                             (map (\n -> PExp 0 False (PRef fc n) "") args)
+                             (map (\n -> PExp 0 [] (PRef fc n) "") args)
 
          getConstraints (PPi (Constraint _ _ _) _ c sc)
              = getcapp c ++ getConstraints sc
@@ -1195,8 +1199,8 @@ implicitise syn ignore ist tm = -- trace ("INCOMING " ++ showImp True tm) $
     pibind using []     sc = sc
     pibind using (n:ns) sc
       = case lookup n using of
-            Just ty -> PPi (Imp False Dynamic "" False) n ty (pibind using ns sc)
-            Nothing -> PPi (Imp False Dynamic "" False) n Placeholder
+            Just ty -> PPi (Imp [] Dynamic "" False) n ty (pibind using ns sc)
+            Nothing -> PPi (Imp [] Dynamic "" False) n Placeholder
                                    (pibind using ns sc)
 
 -- Add implicit arguments in function calls

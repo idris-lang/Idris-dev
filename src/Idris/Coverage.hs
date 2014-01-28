@@ -56,7 +56,7 @@ genClauses fc n xs given
         -- there may be more case splitting that the idris_implicits record
         -- suggests)
         let parg = case lookupCtxt n (idris_implicits i) of
-                        (p : _) -> p ++ repeat (PExp 0 False Placeholder "")
+                        (p : _) -> p ++ repeat (PExp 0 [] Placeholder "")
                         _ -> repeat (pexp Placeholder)
         let tryclauses = mkClauses parg all_args
         logLvl 2 $ show (length tryclauses) ++ " initially to check"
@@ -183,7 +183,7 @@ genAll i args
                  let p = resugar (PApp fc (PRef fc n) (zipWith upd xs' xs))
                  let tyn = getTy n (tt_ctxt i)
                  case lookupCtxt tyn (idris_datatypes i) of
-                         (TI ns _ _ : _) -> p : map (mkPat fc) (ns \\ [n])
+                         (TI ns _ _ _ : _) -> p : map (mkPat fc) (ns \\ [n])
                          _ -> [p]
     ops fc n arg o = return Placeholder
 
@@ -289,7 +289,7 @@ calcProd i fc topn pats
      cotype (DCon _ _) n ty
         | (P _ t _, _) <- unApply (getRetTy ty)
             = case lookupCtxt t (idris_datatypes i) of
-                   [TI _ True _] -> True
+                   [TI _ True _ _] -> True
                    _ -> False
      cotype nt n ty = False
 
@@ -466,7 +466,7 @@ buildSCG' ist pats args = nub $ concatMap scgPat pats where
 
       isInductive (P _ nty _) (P _ nty' _) =
           let co = case lookupCtxt nty (idris_datatypes ist) of
-                        [TI _ x _] -> x
+                        [TI _ x _ _] -> x
                         _ -> False in
               nty == nty' && not co
       isInductive _ _ = False
@@ -507,7 +507,7 @@ buildSCG' ist sc args = -- trace ("Building SCG for " ++ show sc) $
                       [ty] = lookupTy n ctxt -- must exist!
                       P _ nty _ = fst (unApply (getRetTy ty))
                       co = case lookupCtxt nty (idris_datatypes ist) of
-                              [TI _ x _] -> x
+                              [TI _ x _ _] -> x
                               _ -> False
                       args = map snd (getArgTys ty) in
                       map (getRel co nty) (map (fst . unApply . getRetTy) args)

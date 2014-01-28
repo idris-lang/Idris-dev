@@ -11,7 +11,7 @@ import Debug.Trace
 
 -- | Wrap a type provider in the type of type providers
 providerTy :: FC -> PTerm -> PTerm
-providerTy fc tm = PApp fc (PRef fc $ sUN "Provider") [PExp 0 False tm ""]
+providerTy fc tm = PApp fc (PRef fc $ sUN "Provider") [PExp 0 [] tm ""]
 
 ioret = sUN "prim_io_return"
 ermod = sNS (sUN "Error") ["Providers"]

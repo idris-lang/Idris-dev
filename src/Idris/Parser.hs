@@ -338,6 +338,8 @@ fnOpts opts
                   fnOpts (AssertTotal : opts)
       <|> do try (lchar '%' *> reserved "error_handler");
                  fnOpts (ErrorHandler : opts)
+      <|> do try (lchar '%' *> reserved "error_reverse");
+                 fnOpts (ErrorReverse : opts)
       <|> do try (lchar '%' *> reserved "reflection");
                   fnOpts (Reflection : opts)
       <|> do lchar '%'; reserved "specialise";
