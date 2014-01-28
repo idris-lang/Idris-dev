@@ -89,47 +89,52 @@ elabStep st e = do case runStateT e st of
 
 dumpState :: IState -> ProofState -> Idris ()
 dumpState ist (PS nm [] _ _ tm _ _ _ _ _ _ _ _ _ _ _ _ _ _) =
-  iputGoal . render $ pretty nm <> colon <+> text "No more goals."
+  iputGoal . renderPretty 0.7 breakingSize $
+    prettyName False [] nm <> colon <+> text "No more goals."
 dumpState ist ps@(PS nm (h:hs) _ _ tm _ _ _ _ _ _ problems i _ _ ctxy _ _ _) = do
   let OK ty  = goalAtFocus ps
   let OK env = envAtFocus ps
-  iputGoal . render $
-    prettyOtherGoals hs $$
-    prettyAssumptions env $$
-    prettyGoal ty
+  iputGoal . renderPretty 0.7 breakingSize $
+    prettyOtherGoals hs <> line <>
+    prettyAssumptions env <> line <>
+    prettyGoal (zip (assumptionNames env) (repeat False)) ty
   where
     -- XXX
-    tPretty t = pretty $ delab ist t
+    tPretty bnd t = pprintPTerm True bnd $ delab ist t
 
-    prettyPs [] = empty
-    prettyPs ((MN _ r, _) : bs) 
-        | r == txt "rewrite_rule" = prettyPs bs
-    prettyPs ((n, Let t v) : bs) =
-      nest nestingSize (pretty n <+> text "=" <+> tPretty v <> colon <+>
-        tPretty t $$ prettyPs bs)
-    prettyPs ((n, b) : bs) =
-      pretty n <+> colon <+> tPretty (binderTy b) $$ prettyPs bs
+    assumptionNames :: Env -> [Name]
+    assumptionNames = map fst
 
-    prettyG (Guess t v) = tPretty t <+> text "=?=" <+> tPretty v
-    prettyG b = tPretty $ binderTy b
+    prettyPs :: [(Name, Bool)] -> Env -> Doc OutputAnnotation
+    prettyPs bnd [] = empty
+    prettyPs bnd ((n@(MN _ r), _) : bs)
+        | r == txt "rewrite_rule" = prettyPs ((n, False):bnd) bs
+    prettyPs bnd ((n, Let t v) : bs) =
+      nest nestingSize (bindingOf n False <+> text "=" <+> tPretty bnd v <> colon <+>
+        tPretty ((n, False):bnd) t <> line <> prettyPs ((n, False):bnd) bs)
+    prettyPs bnd ((n, b) : bs) =
+      line <> bindingOf n False <+> colon <+> tPretty bnd (binderTy b) <> prettyPs ((n, False):bnd) bs
 
-    prettyGoal ty =
-      text "----------                 Goal:                  ----------" $$
-      pretty h <> colon $$ nest nestingSize (prettyG ty)
+    prettyG bnd (Guess t v) = tPretty bnd t <+> text "=?=" <+> tPretty bnd v
+    prettyG bnd b = tPretty bnd $ binderTy b
+
+    prettyGoal bnd ty =
+      text "----------                 Goal:                  ----------" <$$>
+      bindingOf h False <+> colon <+> nest nestingSize (prettyG bnd ty)
 
     prettyAssumptions env =
       if length env == 0 then
         empty
       else
-        text "----------              Assumptions:              ----------" $$
-        nest nestingSize (prettyPs $ reverse env)
+        text "----------              Assumptions:              ----------" <>
+        nest nestingSize (prettyPs [] $ reverse env)
 
     prettyOtherGoals hs =
       if length hs == 0 then
         empty
       else
-        text "----------              Other goals:              ----------" $$
-        pretty hs
+        text "----------              Other goals:              ----------" <$$>
+        nest nestingSize (align . cat . punctuate (text ",") . map (flip bindingOf False) $ hs)
 
 lifte :: ElabState [PDecl] -> ElabD a -> Idris a
 lifte st e = do (v, _) <- elabStep st e

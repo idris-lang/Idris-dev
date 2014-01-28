@@ -18,7 +18,7 @@ import Control.Applicative hiding (empty)
 import Data.List
 import Debug.Trace
 
-import Util.Pretty
+import Util.Pretty hiding (fill)
 
 data ProofState = PS { thname   :: Name,
                        holes    :: [Name], -- holes still to be solved
@@ -113,23 +113,23 @@ instance Show ProofState where
                                          " =?= " ++ showEnv ps v
                showG ps b = showEnv ps (binderTy b)
 
-instance Pretty ProofState where
+instance Pretty ProofState OutputAnnotation where
   pretty (PS nm [] _ _ trm _ _ _ _ _ _ _ _ _ _ _ _ _ _) =
     if size nm > breakingSize then
-      pretty nm <> colon $$ nest nestingSize (text " no more goals.")
+      pretty nm <+> colon <+> nest nestingSize (text " no more goals.")
     else
-      pretty nm <> colon <+> text " no more goals."
+      pretty nm <+> colon <+> text " no more goals."
   pretty p@(PS nm (h:hs) _ _ tm _ _ _ _ _ _ _ i _ _ ctxt _ _ _) =
     let OK g  = goal (Just h) tm in
     let wkEnv = premises g in
-      text "Other goals" <+> colon <+> pretty hs $$
-      prettyPs wkEnv (reverse wkEnv) $$
-      text "---------- " <+> text "Focussing on" <> colon <+> pretty nm <+> text " ----------" $$
+      text "Other goals" <+> colon <+> pretty hs <+>
+      prettyPs wkEnv (reverse wkEnv) <+>
+      text "---------- " <+> text "Focussing on" <> colon <+> pretty nm <+> text " ----------" <+>
       pretty h <+> colon <+> prettyGoal wkEnv (goalType g)
     where
       prettyGoal ps (Guess t v) =
         if size v > breakingSize then
-          prettyEnv ps t <+> text "=?=" $$
+          prettyEnv ps t <+> text "=?=" <+>
             nest nestingSize (prettyEnv ps v)
         else
           prettyEnv ps t <+> text "=?=" <+> prettyEnv ps v
@@ -139,17 +139,17 @@ instance Pretty ProofState where
       prettyPs env ((n, Let t v):bs) =
         nest nestingSize (pretty n <+> colon <+>
           if size v > breakingSize then
-            prettyEnv env t <+> text "=" $$
-              nest nestingSize (prettyEnv env v) $$
+            prettyEnv env t <+> text "=" <+>
+              nest nestingSize (prettyEnv env v) <+>
                 nest nestingSize (prettyPs env bs)
           else
-            prettyEnv env t <+> text "=" <+> prettyEnv env v $$
+            prettyEnv env t <+> text "=" <+> prettyEnv env v <+>
               nest nestingSize (prettyPs env bs))
       prettyPs env ((n, b):bs) =
         if size (binderTy b) > breakingSize then
           nest nestingSize (pretty n <+> colon <+> prettyEnv env (binderTy b) <+> prettyPs env bs)
         else
-          nest nestingSize (pretty n <+> colon <+> prettyEnv env (binderTy b) $$
+          nest nestingSize (pretty n <+> colon <+> prettyEnv env (binderTy b) <+>
             nest nestingSize (prettyPs env bs))
 
 same Nothing n  = True

@@ -78,6 +78,16 @@ instance Sized FC where
 instance Show FC where
     show (FC f l c) = f ++ ":" ++ show l ++ ":" ++ show c
 
+-- | Output annotation for pretty-printed name - decides colour
+data NameOutput = TypeOutput | FunOutput | DataOutput
+
+-- | Output annotations for pretty-printing
+data OutputAnnotation = AnnName Name (Maybe NameOutput) (Maybe Type)
+                      | AnnBoundName Name Bool
+                      | AnnConstData
+                      | AnnConstType
+                      | AnnFC FC
+
 -- | Used for error reflection
 data ErrorReportPart = TextPart String
                      | NamePart Name
@@ -178,15 +188,15 @@ instance Show Err where
     show (At f e) = show f ++ ":" ++ show e
     show _ = "Error"
 
-instance Pretty Err where
+instance Pretty Err OutputAnnotation where
   pretty (Msg m) = text m
   pretty (CantUnify _ l r e _ i) =
     if size l + size r > breakingSize then
-      text "Cannot unify" <+> colon $$
-        nest nestingSize (pretty l <+> text "and" <+> pretty r) $$
+      text "Cannot unify" <+> colon <+>
+        nest nestingSize (pretty l <+> text "and" <+> pretty r) <+>
         nest nestingSize (text "where" <+> pretty e <+> text "with" <+> (text . show $ i))
     else
-      text "Cannot unify" <+> colon <+> pretty l <+> text "and" <+> pretty r $$
+      text "Cannot unify" <+> colon <+> pretty l <+> text "and" <+> pretty r <+>
         nest nestingSize (text "where" <+> pretty e <+> text "with" <+> (text . show $ i))
   pretty (ProviderError msg) = text msg
   pretty err@(LoadingFailed _ _) = text (show err)
@@ -197,11 +207,11 @@ instance Error Err where
 
 type TC = TC' Err
 
-instance (Pretty a) => Pretty (TC a) where
+instance (Pretty a OutputAnnotation) => Pretty (TC a) OutputAnnotation where
   pretty (OK ok) = pretty ok
   pretty (Error err) =
     if size err > breakingSize then
-      text "Error" <+> colon $$ (nest nestingSize $ pretty err)
+      text "Error" <+> colon <+> (nest nestingSize $ pretty err)
     else
       text "Error" <+> colon <+> pretty err
 
@@ -295,11 +305,15 @@ instance Sized Name where
   size (MN i n) = 1
   size _ = 1
 
-instance Pretty Name where
-  pretty (UN n) = text (T.unpack n)
-  pretty (NS n s) = pretty n
-  pretty (MN i s) = lbrace <+> text (T.unpack s) <+> (text . show $ i) <+> rbrace
-  pretty (SN s) = text (show s)
+instance Pretty Name OutputAnnotation where
+  pretty n@(UN n') = annotate (AnnName n Nothing Nothing) $ text (T.unpack n')
+  pretty n@(NS un s) = annotate (AnnName n Nothing Nothing) . noAnnotate $ pretty un
+  pretty n@(MN i s) = annotate (AnnName n Nothing Nothing) $
+                      lbrace <+> text (T.unpack s) <+> (text . show $ i) <+> rbrace
+  pretty n@(SN s) = annotate (AnnName n Nothing Nothing) $ text (show s)
+
+instance Pretty [Name] OutputAnnotation where
+  pretty = encloseSep empty empty comma . map pretty
 
 instance Show Name where
     show (UN n) = str n
@@ -418,7 +432,7 @@ addAlist ((n, tm) : ds) ctxt = addDef n tm (addAlist ds ctxt)
 data NativeTy = IT8 | IT16 | IT32 | IT64
     deriving (Show, Eq, Ord, Enum)
 
-instance Pretty NativeTy where
+instance Pretty NativeTy OutputAnnotation where
     pretty IT8  = text "Bits8"
     pretty IT16 = text "Bits16"
     pretty IT32 = text "Bits32"
@@ -436,7 +450,7 @@ deriving instance NFData NativeTy
 deriving instance NFData ArithTy
 !-}
 
-instance Pretty ArithTy where
+instance Pretty ArithTy OutputAnnotation where
     pretty (ATInt ITNative) = text "Int"
     pretty (ATInt ITBig) = text "BigInt"
     pretty (ATInt ITChar) = text "Char"
@@ -472,7 +486,7 @@ deriving instance NFData Const
 instance Sized Const where
   size _ = 1
 
-instance Pretty Const where
+instance Pretty Const OutputAnnotation where
   pretty (I i) = text . show $ i
   pretty (BI i) = text . show $ i
   pretty (Fl f) = text . show $ f
@@ -504,7 +518,7 @@ instance Sized Raw where
   size (RForce raw) = 1 + size raw
   size (RConstant const) = size const
 
-instance Pretty Raw where
+instance Pretty Raw OutputAnnotation where
   pretty = text . show
 
 {-!
@@ -622,7 +636,7 @@ deriving instance NFData NameType
 instance Sized NameType where
   size _ = 1
 
-instance Pretty NameType where
+instance Pretty NameType OutputAnnotation where
   pretty = text . show
 
 instance Eq NameType where
@@ -688,7 +702,7 @@ instance Sized a => Sized (TT a) where
   size Erased = 1
   size (TType u) = 1 + size u
 
-instance Pretty a => Pretty (TT a) where
+instance Pretty a o => Pretty (TT a) o where
   pretty _ = text "test"
 
 type EnvTT n = [(n, Binder (TT n))]
@@ -1043,7 +1057,7 @@ prettyEnv env t = prettyEnv' env t False
     prettySe p env (P nt n t) debug =
       pretty n <+>
         if debug then
-          lbrack <+> pretty nt <+> colon <+> prettySe 10 env t debug <+> rbrack
+          lbracket <+> pretty nt <+> colon <+> prettySe 10 env t debug <+> rbracket
         else
           empty
     prettySe p env (V i) debug
@@ -1051,7 +1065,7 @@ prettyEnv env t = prettyEnv' env t False
         if debug then
           text . show . fst $ env!!i
         else
-          lbrack <+> text (show i) <+> rbrack
+          lbracket <+> text (show i) <+> rbracket
       | otherwise      = text "unbound" <+> text (show i) <+> text "!"
     prettySe p env (Bind n b@(Pi t) sc) debug
       | noOccurrence n sc && not debug =

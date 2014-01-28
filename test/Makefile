@@ -26,7 +26,7 @@ test_js:
 	@perl ./runtest.pl reg013 --codegen node
 	@perl ./runtest.pl reg014 --codegen node
 	@perl ./runtest.pl reg015 --codegen node
-	@#perl ./runtest.pl reg016 --codegen node
+	@perl ./runtest.pl reg016 --codegen node
 	@perl ./runtest.pl reg017 --codegen node
 	@perl ./runtest.pl reg018 --codegen node
 	@perl ./runtest.pl reg019 --codegen node
@@ -62,6 +62,12 @@ test_js:
 	@perl ./runtest.pl test029 --codegen node
 	@perl ./runtest.pl test030 --codegen node
 	@perl ./runtest.pl test031 --codegen node
+	@perl ./runtest.pl test032 --codegen node
+	@#perl ./runtest.pl test033 --codegen node
+	@perl ./runtest.pl test034 --codegen node
+	@perl ./runtest.pl test035 --codegen node
+	@perl ./runtest.pl test036 --codegen node
+	@perl ./runtest.pl test037 --codegen node
 
 test_llvm:
 	@perl ./runtest.pl test001 --codegen llvm

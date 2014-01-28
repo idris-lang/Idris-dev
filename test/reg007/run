@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
-idris --check $@ reg007.lidr
+idris --nocolour --check $@ reg007.lidr
 rm -f *.ibc

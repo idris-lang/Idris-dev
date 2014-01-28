@@ -417,6 +417,55 @@ ihPrintResult h s = do i <- getIState
                              let good = SexpList [SymbolAtom "ok", toSExp s] in
                              runIO $ hPutStrLn h $ convSExp "return" good n
 
+-- | Write a pretty-printed term to the console with semantic coloring
+consoleDisplayAnnotated :: Handle -> Doc OutputAnnotation -> Idris ()
+consoleDisplayAnnotated h output = do ist <- getIState
+                                      runIO . hPutStrLn h .
+                                        displayDecorated (consoleDecorate ist) .
+                                        renderCompact $ output
+
+-- | Write pretty-printed output to IDESlave with semantic annotations
+ideSlaveReturnAnnotated :: Integer -> Handle -> Doc OutputAnnotation -> Idris ()
+ideSlaveReturnAnnotated n h out = do ist <- getIState
+                                     let (str, spans) = displaySpans .
+                                                        renderCompact .
+                                                        fmap (fancifyAnnots ist) $
+                                                        out
+                                         good = [SymbolAtom "ok", toSExp str, toSExp spans]
+                                     runIO . hPutStrLn h $ convSExp "return" good n
+
+ihPrintTermWithType :: Handle -> Doc OutputAnnotation -> Doc OutputAnnotation -> Idris ()
+ihPrintTermWithType h tm ty = do ist <- getIState
+                                 let output = tm <+> colon <+> ty
+                                 case idris_outputmode ist of
+                                   RawOutput -> consoleDisplayAnnotated h output
+                                   IdeSlave n -> ideSlaveReturnAnnotated n h output
+
+-- | Pretty-print a collection of overloadings to REPL or IDESlave - corresponds to :t name
+ihPrintFunTypes :: Handle -> Name -> [(Name, PTerm)] -> Idris ()
+ihPrintFunTypes h n []        = ihPrintError h $ "No such variable " ++ show n
+ihPrintFunTypes h n overloads = do imp <- impShow
+                                   ist <- getIState
+                                   let output = vsep (map (uncurry (ppOverload imp)) overloads)
+                                   case idris_outputmode ist of
+                                     RawOutput -> consoleDisplayAnnotated h output
+                                     IdeSlave n -> ideSlaveReturnAnnotated n h output
+  where fullName n = annotate (AnnName n Nothing Nothing) $ text (show n)
+        ppOverload imp n tm = fullName n <+> colon <+> prettyImp imp tm
+
+fancifyAnnots :: IState -> OutputAnnotation -> OutputAnnotation
+fancifyAnnots ist annot@(AnnName n _ _) =
+  do let ctxt = tt_ctxt ist
+     case () of
+       _ | isDConName n ctxt -> AnnName n (Just DataOutput) Nothing
+       _ | isFnName   n ctxt -> AnnName n (Just FunOutput) Nothing
+       _ | isTConName n ctxt -> AnnName n (Just TypeOutput) Nothing
+       _ | otherwise         -> annot
+fancifyAnnots _ annot = annot
+
+type1Doc :: Doc OutputAnnotation
+type1Doc = (annotate AnnConstType $ text "Type 1")
+
 ihPrintError :: Handle -> String -> Idris ()
 ihPrintError h s = do i <- getIState
                       case idris_outputmode i of
@@ -445,11 +494,12 @@ ideslavePutSExp cmd info = do i <- getIState
                                    _ -> return ()
 
 -- this needs some typing magic and more structured output towards emacs
-iputGoal :: String -> Idris ()
-iputGoal s = do i <- getIState
+iputGoal :: SimpleDoc OutputAnnotation -> Idris ()
+iputGoal g = do i <- getIState
                 case idris_outputmode i of
-                  RawOutput -> runIO $ putStrLn s
-                  IdeSlave n -> runIO . putStrLn $ convSExp "write-goal" s n
+                  RawOutput -> runIO $ putStrLn (displayDecorated (consoleDecorate i) g)
+                  IdeSlave n -> runIO . putStrLn $
+                                convSExp "write-goal" (displayS (fmap (fancifyAnnots i) g) "") n
 
 isetPrompt :: String -> Idris ()
 isetPrompt p = do i <- getIState
@@ -721,90 +771,6 @@ setTypeCase t = do i <- getIState
                    let opt' = opts { opt_typecase = t }
                    putIState $ i { idris_options = opt' }
 
-
--- For inferring types of things
-
-bi = fileFC "builtin"
-
-inferTy   = sMN 0 "__Infer"
-inferCon  = sMN 0 "__infer"
-inferDecl = PDatadecl inferTy
-                      PType
-                      [("", inferCon, PPi impl (sMN 0 "iType") PType (
-                                  PPi expl (sMN 0 "ival") (PRef bi (sMN 0 "iType"))
-                                  (PRef bi inferTy)), bi, [])]
-inferOpts = []
-
-infTerm t = PApp bi (PRef bi inferCon) [pimp (sMN 0 "iType") Placeholder True, pexp t]
-infP = P (TCon 6 0) inferTy (TType (UVal 0))
-
-getInferTerm, getInferType :: Term -> Term
-getInferTerm (Bind n b sc) = Bind n b $ getInferTerm sc
-getInferTerm (App (App _ _) tm) = tm
-getInferTerm tm = tm -- error ("getInferTerm " ++ show tm)
-
-getInferType (Bind n b sc) = Bind n b $ getInferType sc
-getInferType (App (App _ ty) _) = ty
-
--- Handy primitives: Unit, False, Pair, MkPair, =, mkForeign, Elim type class
-
-primNames = [unitTy, unitCon,
-             falseTy, pairTy, pairCon,
-             eqTy, eqCon, inferTy, inferCon]
-
-unitTy   = sMN 0 "__Unit"
-unitCon  = sMN 0 "__II"
-unitDecl = PDatadecl unitTy PType
-                     [("", unitCon, PRef bi unitTy, bi, [])]
-unitOpts = [DefaultEliminator]
-
-falseTy   = sMN 0 "__False"
-falseDecl = PDatadecl falseTy PType []
-falseOpts = []
-
-pairTy    = sMN 0 "__Pair"
-pairCon   = sMN 0 "__MkPair"
-pairDecl  = PDatadecl pairTy (piBind [(n "A", PType), (n "B", PType)] PType)
-            [("", pairCon, PPi impl (n "A") PType (
-                       PPi impl (n "B") PType (
-                       PPi expl (n "a") (PRef bi (n "A")) (
-                       PPi expl (n "b") (PRef bi (n "B"))
-                           (PApp bi (PRef bi pairTy) [pexp (PRef bi (n "A")),
-                                                pexp (PRef bi (n "B"))])))), bi, [])]
-    where n a = sMN 0 a
-pairOpts = []
-
-eqTy = sUN "="
-eqCon = sUN "refl"
-eqDecl = PDatadecl eqTy (piBind [(n "A", PType), (n "B", PType),
-                                 (n "x", PRef bi (n "A")), (n "y", PRef bi (n "B"))]
-                                 PType)
-                [("", eqCon, PPi impl (n "A") PType (
-                         PPi impl (n "x") (PRef bi (n "A"))
-                           (PApp bi (PRef bi eqTy) [pimp (n "A") Placeholder False,
-                                                    pimp (n "B") Placeholder False,
-                                                    pexp (PRef bi (n "x")),
-                                                    pexp (PRef bi (n "x"))])), bi, [])]
-    where n a = sMN 0 a
-eqOpts = []
-
-elimName       = sUN "__Elim"
-elimMethElimTy = sUN "__elimTy"
-elimMethElim   = sUN "elim"
-elimDecl = PClass "Type class for eliminators" defaultSyntax bi [] elimName [(sUN "scrutineeType", PType)] 
-                     [PTy "" defaultSyntax bi [TotalFn] elimMethElimTy PType,
-                      PTy "" defaultSyntax bi [TotalFn] elimMethElim (PRef bi elimMethElimTy)]
-
--- Defined in builtins.idr
-sigmaTy   = sUN "Exists"
-existsCon = sUN "Ex_intro"
-
-piBind :: [(Name, PTerm)] -> PTerm -> PTerm
-piBind = piBindp expl
-
-piBindp :: Plicity -> [(Name, PTerm)] -> PTerm -> PTerm
-piBindp p [] t = t
-piBindp p ((n, ty):ns) t = PPi p n ty (piBindp p ns t)
 
 -- Dealing with parameters
 
@@ -1472,7 +1438,7 @@ mkPApp fc a f as = let rest = drop a as in
 -- FIXME: It's possible that this really has to happen after elaboration
 
 findStatics :: IState -> PTerm -> (PTerm, [Bool])
-findStatics ist tm = trace (showImp Nothing True False tm) $
+findStatics ist tm = trace (show tm) $
                       let (ns, ss) = fs tm in
                          runState (pos ns ss tm) []
   where fs (PPi p n t sc)
@@ -1755,4 +1721,5 @@ mkUniqueNames env tm = evalState (mkUniq tm) env where
   mkUniq (PProof ts) = liftM PProof (mapM mkUniqT ts)
   mkUniq (PTactics ts) = liftM PTactics (mapM mkUniqT ts)
   mkUniq t = return t
+
 
