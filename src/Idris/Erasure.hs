@@ -4,7 +4,6 @@ module Idris.Erasure
     ( findUnusedArgs
     , buildDepMap
     , minimalUsage
-    , usedToUnused
     ) where
 
 import Idris.AbsSyntax
@@ -49,21 +48,6 @@ type Cond = Set Node
 -- Every variable draws in certain dependencies.
 type Var = Set Node
 type Vars = Map Name Var
-
--- Change the map of used args to a map of unused args.
-usedToUnused :: Context -> UseMap -> UseMap
-usedToUnused ctx = M.mapWithKey invert
-  where
-    invert :: Name -> IntSet -> IntSet
-    invert n used = IS.fromList [0 .. arity n - 1] IS.\\ used
-
-    arity :: Name -> Int
-    arity n = case lookupDef n ctx of
-        [TyDecl (DCon tag n) t] -> n
-        [CaseOp ci ty tys def tot cdefs] -> length tys
-        [def] -> error $ "unsupported definition of " ++ show n ++ ": " ++ show def
-        [] -> error $ "unknown name in conversion to unused: " ++ show n
-        _ -> error $ "ambiguous name in conversion to unused: " ++ show n
 
 -- Find the minimal consistent usage by forward chaining.
 minimalUsage :: Deps -> UseMap
@@ -262,14 +246,14 @@ findUnusedArgs names = do
     process :: Ctxt CGInfo -> Name -> Idris ()
     process cg n = case lookupCtxt n cg of
         [x] -> do
-            let unused = traceUnused cg n x 
-            logLvl 1 $ show n ++ " unused: " ++ show unused
-            addToCG n $ x{ unusedpos = unused }
+            let used = traceUsed cg n x 
+            logLvl 1 $ show n ++ " used: " ++ show used
+            addToCG n $ x{ usedpos = used }
         _ -> return ()
 
-    traceUnused :: Ctxt CGInfo -> Name -> CGInfo -> [Int]
-    traceUnused cg n (CGInfo args calls _ usedns _)
-        = findIndices (not . (`elem` fused)) args
+    traceUsed :: Ctxt CGInfo -> Name -> CGInfo -> [Int]
+    traceUsed cg n (CGInfo args calls _ usedns _)
+        = findIndices (`elem` fused) args
       where
         fargs   = concatMap (getFargpos calls) (zip args [0..])
         recused = [n | (n, i, (g,j)) <- fargs, used cg [(n,i)] g j]

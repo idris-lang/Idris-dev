@@ -60,9 +60,6 @@ compile codegen f tm
         let fmtDepMap = unlines . map (\(n,is) -> show n ++ " -> " ++ show (IS.toList is)) . M.toList
         let minUse = minimalUsage depMap
         iLOG $ "MINIMAL USAGE:\n" ++ fmtDepMap minUse
-
-        let unusedMap = usedToUnused ctx minUse
-        iLOG $ "UNUSED:\n" ++ fmtDepMap unusedMap
         -- END TODO
         
         maindef <- irMain tm
@@ -258,23 +255,23 @@ instance ToIR (TT Name) where
                                                    (idris_optimisation i) of
                                                Just oi -> collapsible oi
                                                _ -> False
-                                 let unused
+                                 let used
                                         = case lookupCtxtExact n
                                                       (idris_callgraph i) of
-                                               Just (CGInfo _ _ _ _ unusedpos) ->
-                                                         unusedpos
-                                               _ -> []
+                                               Just (CGInfo _ _ _ _ usedpos) ->
+                                                      usedpos
+                                               _ -> [] -- TODO: is this correct?
                                  if collapse
                                      then return LNothing
                                      else return (LApp False (LV (Glob n))
-                                                 (mkUnused unused 0 args'))
+                                                 (mkUsed used 0 args'))
           | (f, args) <- unApply tm
               = do f' <- ir' env f
                    args' <- mapM (ir' env) args
                    return (LApp False f' args')
-        where mkUnused u i [] = []
-              mkUnused u i (x : xs) | i `elem` u = LNothing : mkUnused u (i + 1) xs
-                                    | otherwise = x : mkUnused u (i + 1) xs
+        where mkUsed u i [] = []
+              mkUsed u i (x : xs) | i `notElem` u = LNothing : mkUsed u (i + 1) xs
+                                  | otherwise     = x        : mkUsed u (i + 1) xs
 --       ir' env (P _ (NS (UN "Z") ["Nat", "Prelude"]) _)
 --                         = return $ LConst (BI 0)
       ir' env (P _ n _) = return $ LV (Glob n)

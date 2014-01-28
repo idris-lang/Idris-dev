@@ -181,7 +181,7 @@ data CGInfo = CGInfo { argsdef :: [Name],
                        calls :: [(Name, [[Name]])],
                        scg :: [SCGEntry],
                        argsused :: [Name],
-                       unusedpos :: [Int] }
+                       usedpos :: [Int] }
     deriving Show
 {-!
 deriving instance Binary CGInfo
