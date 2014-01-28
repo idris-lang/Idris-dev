@@ -397,17 +397,41 @@ ihPrintResult h s = do i <- getIState
                              let good = SexpList [SymbolAtom "ok", toSExp s] in
                              runIO $ hPutStrLn h $ convSExp "return" good n
 
+-- | Write a pretty-printed term to the console with semantic coloring
+consoleDisplayAnnotated :: Handle -> Doc OutputAnnotation -> Idris ()
+consoleDisplayAnnotated h output = do ist <- getIState
+                                      runIO . hPutStrLn h .
+                                        displayDecorated (consoleDecorate ist) .
+                                        renderCompact $ output
+
+-- | Write pretty-printed output to IDESlave with semantic annotations
+ideSlaveReturnAnnotated :: Integer -> Handle -> Doc OutputAnnotation -> Idris ()
+ideSlaveReturnAnnotated n h out = do ist <- getIState
+                                     let (str, spans) = displaySpans .
+                                                        renderCompact .
+                                                        fmap (fancifyAnnots ist) $
+                                                        out
+                                         good = [SymbolAtom "ok", toSExp str, toSExp spans]
+                                     runIO . hPutStrLn h $ convSExp "return" good n
+
 ihPrintTermWithType :: Handle -> Doc OutputAnnotation -> Doc OutputAnnotation -> Idris ()
 ihPrintTermWithType h tm ty = do ist <- getIState
                                  let output = tm <+> colon <+> ty
                                  case idris_outputmode ist of
-                                   RawOutput -> runIO .
-                                                hPutStrLn h .
-                                                displayDecorated (consoleDecorate ist) .
-                                                renderCompact $ output
-                                   IdeSlave n -> let (str, spans) = displaySpans (fmap (fancifyAnnots ist) (renderCompact output))
-                                                     good = [SymbolAtom "ok", toSExp str, toSExp spans]
-                                                 in runIO . hPutStrLn h $ convSExp "return" good n
+                                   RawOutput -> consoleDisplayAnnotated h output
+                                   IdeSlave n -> ideSlaveReturnAnnotated n h output
+
+-- | Pretty-print a collection of overloadings to REPL or IDESlave - corresponds to :t name
+ihPrintFunTypes :: Handle -> Name -> [(Name, PTerm)] -> Idris ()
+ihPrintFunTypes h n []        = ihPrintError h $ "No such variable " ++ show n
+ihPrintFunTypes h n overloads = do imp <- impShow
+                                   ist <- getIState
+                                   let output = vsep (map (uncurry (ppOverload imp)) overloads)
+                                   case idris_outputmode ist of
+                                     RawOutput -> consoleDisplayAnnotated h output
+                                     IdeSlave n -> ideSlaveReturnAnnotated n h output
+  where fullName n = annotate (AnnName n Nothing Nothing) $ text (show n)
+        ppOverload imp n tm = fullName n <+> colon <+> prettyImp imp tm
 
 fancifyAnnots :: IState -> OutputAnnotation -> OutputAnnotation
 fancifyAnnots ist annot@(AnnName n _ _) =
