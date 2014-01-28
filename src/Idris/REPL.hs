@@ -655,7 +655,7 @@ process h fn (DebugInfo n)
         let d = lookupDef n (tt_ctxt i)
         when (not (null d)) $ iputStrLn $ "Definition: " ++ (show (head d))
         let cg = lookupCtxtName n (idris_callgraph i)
-        findUnusedArgs (map fst cg)
+        -- findUnusedArgs (map fst cg) -- TODO: fix this here, do we need this info?
         i <- getIState
         let cg' = lookupCtxtName n (idris_callgraph i)
         sc <- checkSizeChange n

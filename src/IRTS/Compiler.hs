@@ -48,7 +48,6 @@ compile codegen f tm
         usedIn <- mapM (allNames []) tmnames
         let used = sUN "prim__subBigInt" : sUN "prim__addBigInt" : concat usedIn
         defsIn <- mkDecls tm used
-        findUnusedArgs used
 
         -- TODO: traverse all names correctly
 
@@ -134,7 +133,6 @@ mkDecls :: Term -> [Name] -> Idris [(Name, LDecl)]
 mkDecls t used
     = do i <- getIState
          let ds = filter (\ (n, d) -> n `elem` used || isCon d) $ ctxtAlist (tt_ctxt i)
-         findUnusedArgs used
          decls <- mapM build ds
          return decls
 
