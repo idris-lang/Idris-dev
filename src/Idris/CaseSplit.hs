@@ -62,11 +62,11 @@ split n t'
              Just ty ->
                 do let splits = findPats ist ty
                    iLOG ("New patterns " ++ showSep ", "  
-                         (map (showImp Nothing True False) splits))
+                         (map showTmImpls splits))
                    let newPats_in = zipWith (replaceVar ctxt n) splits (repeat t)
                    logLvl 4 ("Working from " ++ show t)
                    logLvl 4 ("Trying " ++ showSep "\n" 
-                               (map (showImp Nothing True False) newPats_in))
+                               (map (showTmImpls) newPats_in))
                    newPats <- mapM elabNewPat newPats_in
                    logLvl 3 ("Original:\n" ++ show t)
                    logLvl 3 ("Split:\n" ++
@@ -237,7 +237,7 @@ splitOnLine l n fn = do
 --     let (before, later) = splitAt (l-1) (lines inp)
 --     i <- getIState
     cl <- getInternalApp fn l
-    logLvl 3 ("Working with " ++ showImp Nothing True False cl)
+    logLvl 3 ("Working with " ++ showTmImpls cl)
     tms <- split n cl
 --     iputStrLn (showSep "\n" (map show tms))
     return tms -- "" -- not yet done...

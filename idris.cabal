@@ -434,6 +434,7 @@ Library
 
   Build-depends:  base >=4 && <5
                 , Cabal
+                , annotated-wl-pprint >= 0.5.3
                 , ansi-terminal
                 , ansi-wl-pprint
                 , binary
@@ -463,6 +464,7 @@ Library
                 , zlib
   Extensions:     MultiParamTypeClasses
                 , FunctionalDependencies
+                , FlexibleContexts
                 , FlexibleInstances
                 , TemplateHaskell
 

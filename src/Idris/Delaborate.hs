@@ -1,9 +1,11 @@
 {-# LANGUAGE PatternGuards #-}
 
-module Idris.Delaborate where
+module Idris.Delaborate (bugaddr, delab, delab', delabMV, delabTy, delabTy', pshow, pprintErr) where
 
 -- Convert core TT back into high level syntax, primarily for display
 -- purposes.
+
+import Util.Pretty
 
 import Idris.AbsSyntax
 import Idris.Core.TT
@@ -33,7 +35,7 @@ delab' :: IState -> Term -> Bool -> Bool -> PTerm
 delab' i t f mvs = delabTy' i [] t f mvs
 
 delabTy' :: IState -> [PArg] -- ^ implicit arguments to type, if any
-          -> Term 
+          -> Term
           -> Bool -- ^ use full names
           -> Bool -- ^ Don't treat metavariables specially
           -> PTerm
@@ -50,8 +52,8 @@ delabTy' ist imps tm fullname mvs = de [] imps tm
                        | Just n' <- lookup n env = PRef un n'
                        | otherwise
                             = case lookup n (idris_metavars ist) of
-                                  Just (Just _, mi, _) -> mkMVApp (dens n) []
-                                  _ -> PRef un (dens n)
+                                  Just (Just _, mi, _) -> mkMVApp n []
+                                  _ -> PRef un n
     de env _ (Bind n (Lam ty) sc)
           = PLam n (de env [] ty) (de ((n,n):env) [] sc)
     de env (PImp _ _ _ _ _ _:is) (Bind n (Pi ty) sc)
@@ -96,9 +98,9 @@ delabTy' ist imps tm fullname mvs = de [] imps tm
     deFn env (P _ n _) args | not mvs
          = case lookup n (idris_metavars ist) of
                 Just (Just _, mi, _) ->
-                     mkMVApp (dens n) (drop mi (map (de env []) args))
-                _ -> mkPApp (dens n) (map (de env []) args)
-         | otherwise = mkPApp (dens n) (map (de env []) args)
+                     mkMVApp n (drop mi (map (de env []) args))
+                _ -> mkPApp n (map (de env []) args)
+         | otherwise = mkPApp n (map (de env []) args)
     deFn env f args = PApp un (de env [] f) (map pexp (map (de env []) args))
 
     mkMVApp n []
@@ -115,105 +117,109 @@ delabTy' ist imps tm fullname mvs = de [] imps tm
     imp (PConstraint p l _ d) arg = PConstraint p l arg d
     imp (PTacImplicit p l n sc _ d) arg = PTacImplicit p l n sc arg d
 
+-- | How far to indent sub-errors
+errorIndent :: Int
+errorIndent = 8
 
-indented text = boxIt '\n' $ unlines $ map ('\t':) $ lines text where
-    boxIt c text = (c:text) ++ if last text == c
-                                  then ""
-                                  else [c]
+-- | Actually indent a sub-error - no line at end because a newline can end
+-- multiple layers of indent
+indented :: Doc a -> Doc a
+indented = nest errorIndent . (line <>)
+
+pprintTerm :: IState -> PTerm -> Doc OutputAnnotation
+pprintTerm ist = prettyImp (opt_showimp (idris_options ist))
 
 pshow :: IState -> Err -> String
-pshow i err = pshow' i (fmap (errReverse i) err)
+pshow ist err = displayDecorated (consoleDecorate ist) .
+                renderPretty 1.0 80 .
+                fmap (fancifyAnnots ist) $ pprintErr ist err
 
-pshow' i (Msg s) = s
-pshow' i (InternalMsg s) = "INTERNAL ERROR: " ++ show s ++
-   "\nThis is probably a bug, or a missing error message.\n" ++
-   "Please consider reporting at " ++ bugaddr
-pshow' i (CantUnify _ x y e sc s)
-    = let imps = opt_showimp (idris_options i) in
-      let colour = idris_colourRepl i in
-        "Can't unify" ++ indented (showImp (Just i) imps colour (delab i x))
-          ++ "with" ++ indented (showImp (Just i) imps colour (delab i y)) ++
---         " (" ++ show x ++ " and " ++ show y ++ ") " ++
-        case e of
-            Msg "" -> ""
-            _ -> "\nSpecifically:" ++
-                indented (pshow' i e) ++
-                if (opt_errContext (idris_options i)) then showSc i sc else ""
-pshow' i (CantConvert x y env)
-    = let imps = opt_showimp (idris_options i) in
-      let colour = idris_colourRepl i in
-          "Can't convert" ++ indented (showImp (Just i) imps colour (delab i x)) ++ "with"
-                 ++ indented (showImp (Just i) imps colour (delab i y)) ++
-                 if (opt_errContext (idris_options i)) then showSc i env else ""
-pshow' i (CantSolveGoal x env)
-    = let imps = opt_showimp (idris_options i) in
-      let colour = idris_colourRepl i in
-          "Can't solve goal " ++ indented (showImp (Just i) imps colour (delab i x)) ++
-                 if (opt_errContext (idris_options i)) then showSc i env else ""
-pshow' i (UnifyScope n out tm env)
-    = let imps = opt_showimp (idris_options i) in
-      let colour = idris_colourRepl i in
-          "Can't unify" ++ indented (show n) ++ "with"
-                 ++ indented (showImp (Just i) imps colour (delab i tm)) ++ "as" ++
-                 indented (show out) ++ "is not in scope" ++
-                 if (opt_errContext (idris_options i)) then showSc i env else ""
-pshow' i (CantInferType t)
-    = "Can't infer type for " ++ t
-pshow' i (NonFunctionType f ty)
-    = let imps = opt_showimp (idris_options i) in
-      let colour = idris_colourRepl i in
-          showImp (Just i) imps colour (delab i f) ++ " does not have a function type ("
-            ++ showImp (Just i) imps colour (delab i ty) ++ ")"
-pshow' i (NotEquality tm ty)
-    = let imps = opt_showimp (idris_options i) in
-      let colour = idris_colourRepl i in
-          showImp (Just i) imps colour (delab i tm) ++ " does not have an equality type ("
-            ++ showImp (Just i) imps colour (delab i ty) ++ ")"
-pshow' i (TooManyArguments f)
-    = "Too many arguments for " ++ show f
-pshow' i (CantIntroduce ty)
-    = let imps = opt_showimp (idris_options i) in
-      let colour = idris_colourRepl i in
-          "Can't use lambda here: type is " ++ showImp (Just i) imps colour (delab i ty)
-pshow' i (InfiniteUnify x tm env)
-    = "Unifying " ++ showbasic x ++ " and " ++ show (delab i tm) ++
-      " would lead to infinite value" ++
-                 if (opt_errContext (idris_options i)) then showSc i env else ""
-pshow' i (NotInjective p x y) = "Can't verify injectivity of " ++ show (delab i p) ++
-                                " when unifying " ++ show (delab i x) ++ " and " ++
-                                                     show (delab i y)
-pshow' i (CantResolve c) = "Can't resolve type class " ++ show (delab i c)
-pshow' i (CantResolveAlts as) = "Can't disambiguate name: " ++ showSep ", " as
-pshow' i (NoTypeDecl n) = "No type declaration for " ++ show n
-pshow' i (NoSuchVariable n) = "No such variable " ++ show n
-pshow' i (IncompleteTerm t) = "Incomplete term " ++ showImp Nothing True False (delab i t)
-pshow' i UniverseError = "Universe inconsistency"
-pshow' i ProgramLineComment = "Program line next to comment"
-pshow' i (Inaccessible n) = show n ++ " is not an accessible pattern variable"
-pshow' i (NonCollapsiblePostulate n)
-    = "The return type of postulate " ++ show n ++ " is not collapsible"
-pshow' i (AlreadyDefined n) = show n ++ " is already defined"
-pshow' i (ProofSearchFail e) = pshow' i e
-pshow' i (NoRewriting tm) = "rewrite did not change type " ++ show (delab i tm)
-pshow' i (At f e) = show f ++ ":" ++ pshow' i e
-pshow' i (Elaborating s n e) = "When elaborating " ++ s ++
-                               showqual i n ++ ":\n" ++ pshow' i e
-pshow' i (ProviderError msg) = "Type provider error: " ++ msg
-pshow' i (LoadingFailed fn e) = "Loading " ++ fn ++ " failed: " ++ pshow' i e
-pshow' i (ReflectionError parts orig) = let parts' = map (concat . intersperse " " . map showPart) parts in
-                                       concat (intersperse "\n" parts') ++
-                                       "\nOriginal error:\n" ++ indented (pshow' i orig)
-      where showPart :: ErrorReportPart -> String
-            showPart (TextPart str) = str
-            showPart (NamePart n)   = let colour = idris_colourRepl i in
-                                      showName (Just i) [] False colour n
-            showPart (TermPart tm)  = let colour = idris_colourRepl i
-                                      in showImp (Just i) False colour (delab i tm)
-            showPart (SubReport rs) = indented . concat . intersperse " " . map showPart $ rs
-pshow' i (ReflectionFailed msg err) = "When attempting to perform error reflection, the following internal error occurred:\n" ++
-                                     indented (pshow' i err) ++
-                                     "\nThis is probably a bug. Please consider reporting it at " ++ bugaddr
+pprintErr :: IState -> Err -> Doc OutputAnnotation
+pprintErr i err = pprintErr' i (fmap (errReverse i) err)
 
+pprintErr' i (Msg s) = text s
+pprintErr' i (InternalMsg s) =
+  vsep [ text "INTERNAL ERROR:" <+> text s,
+         text "This is probably a bug, or a missing error message.",
+         text ("Please consider reporting at " ++ bugaddr)
+       ]
+pprintErr' i (CantUnify _ x y e sc s) =
+  text "Can't unify" <> indented (pprintTerm i (delab i x)) <$>
+  text "with" <> indented (pprintTerm i (delab i y)) <>
+  case e of
+    Msg "" -> empty
+    _ -> line <> line <> text "Specifically:" <>
+         indented (pprintErr' i e) <>
+         if (opt_errContext (idris_options i)) then text $ showSc i sc else empty
+pprintErr' i (CantConvert x y env) =
+  text "Can't convert" <> indented (pprintTerm i (delab i x)) <>
+  text "with" <> indented (pprintTerm i (delab i y)) <>
+  if (opt_errContext (idris_options i)) then text (showSc i env) else empty
+pprintErr' i (UnifyScope n out tm env) =
+  text "Can't unify" <> indented (annName n) <+>
+  text "with" <> indented (pprintTerm i (delab i tm)) <+>
+  text "as" <> indented (annName out) <> text "is not in scope" <>
+  if (opt_errContext (idris_options i)) then text (showSc i env) else empty
+pprintErr' i (CantInferType t) = text "Can't infer type for" <+> text t
+pprintErr' i (NonFunctionType f ty) =
+  pprintTerm i (delab i f) <+>
+  text "does not have a function type" <+>
+  parens (pprintTerm i (delab i ty))
+pprintErr' i (NotEquality tm ty) =
+  pprintTerm i (delab i tm) <+>
+  text "does not have an equality type" <+>
+  parens (pprintTerm i (delab i ty))
+pprintErr' i (TooManyArguments f) = text "Too many arguments for" <+> annName f
+pprintErr' i (CantIntroduce ty) =
+  text "Can't use lambda here: type is" <+> pprintTerm i (delab i ty)
+pprintErr' i (InfiniteUnify x tm env) =
+  text "Unifying" <+> annName' x (showbasic x) <+> text "and" <+> pprintTerm i (delab i tm) <+>
+  text "would lead to infinite value" <>
+  if (opt_errContext (idris_options i)) then text (showSc i env) else empty
+pprintErr' i (NotInjective p x y) =
+  text "Can't verify injectivity of" <+> pprintTerm i (delab i p) <+>
+  text " when unifying" <+> pprintTerm i (delab i x) <+> text "and" <+>
+  pprintTerm i (delab i y)
+pprintErr' i (CantResolve c) = text "Can't resolve type class" <+> pprintTerm i (delab i c)
+pprintErr' i (CantResolveAlts as) = text "Can't disambiguate name:" <+>
+                                    cat (punctuate comma (map text as))
+pprintErr' i (NoTypeDecl n) = text "No type declaration for" <+> annName n
+pprintErr' i (NoSuchVariable n) = text "No such variable" <+> annName n
+pprintErr' i (IncompleteTerm t) = text "Incomplete term" <+> pprintTerm i (delab i t)
+pprintErr' i UniverseError = text "Universe inconsistency"
+pprintErr' i ProgramLineComment = text "Program line next to comment"
+pprintErr' i (Inaccessible n) = annName n <+> text "is not an accessible pattern variable"
+pprintErr' i (NonCollapsiblePostulate n) = text "The return type of postulate" <+>
+                                           annName n <+> text "is not collapsible"
+pprintErr' i (AlreadyDefined n) = annName n<+>
+                                  text "is already defined"
+pprintErr' i (ProofSearchFail e) = pprintErr' i e
+pprintErr' i (NoRewriting tm) = text "rewrite did not change type" <+> pprintTerm i (delab i tm)
+pprintErr' i (At f e) = annotate (AnnFC f) (text (show f)) <> colon <> pprintErr' i e
+pprintErr' i (Elaborating s n e) = text "When elaborating" <+> text s <>
+                                   annName' n (showqual i n) <> colon <$>
+                                   pprintErr' i e
+pprintErr' i (ProviderError msg) = text ("Type provider error: " ++ msg)
+pprintErr' i (LoadingFailed fn e) = text "Loading" <+> text fn <+> text "failed:" <+>  pprintErr' i e
+pprintErr' i (ReflectionError parts orig) =
+  let parts' = map (hsep . map showPart) parts in
+  vsep parts' <> line <> line <>
+  text "Original error:" <$> indented (pprintErr' i orig)
+  where showPart :: ErrorReportPart -> Doc OutputAnnotation
+        showPart (TextPart str) = text str
+        showPart (NamePart n)   = annName n
+        showPart (TermPart tm)  = pprintTerm i (delab i tm)
+        showPart (SubReport rs) = indented . hsep . map showPart $ rs
+pprintErr' i (ReflectionFailed msg err) =
+  text "When attempting to perform error reflection, the following internal error occurred:" <>
+  indented (pprintErr' i err) <>
+  text ("This is probably a bug. Please consider reporting it at " ++ bugaddr)
+
+annName :: Name -> Doc OutputAnnotation
+annName n = annName' n (show n)
+
+annName' :: Name -> String -> Doc OutputAnnotation
+annName' n str = annotate (AnnName n Nothing Nothing) (text str)
 
 showSc i [] = ""
 showSc i xs = "\n\nIn context:\n" ++ showSep "\n" (map showVar (reverse xs))
