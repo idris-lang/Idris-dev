@@ -49,7 +49,8 @@ data IOption = IOption { opt_logLevel   :: Int,
                          opt_triple     :: String,
                          opt_cpu        :: String,
                          opt_optLevel   :: Word,
-                         opt_cmdline    :: [Opt] -- remember whole command line
+                         opt_cmdline    :: [Opt], -- remember whole command line
+                         opt_origerr    :: Bool
                        }
     deriving (Show, Eq)
 
@@ -71,6 +72,7 @@ defaultOpts = IOption { opt_logLevel   = 0
                       , opt_cpu        = ""
                       , opt_optLevel   = 2
                       , opt_cmdline    = []
+                      , opt_origerr    = False
                       }
 
 data LanguageExt = TypeProviders | ErrorReflection deriving (Show, Eq, Read, Ord)
@@ -316,6 +318,7 @@ data Opt = Filename String
          | TargetCPU String
          | OptLevel Word
          | Client String
+         | ShowOrigErr
     deriving (Show, Eq)
 
 -- Parsed declarations

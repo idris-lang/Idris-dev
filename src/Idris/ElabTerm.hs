@@ -1186,7 +1186,7 @@ reifyRawApp t [c]
 reifyRawApp t args = fail ("Unknown reflection raw term: " ++ show (t, args))
 
 reifyTTName :: Term -> ElabD Name
-reifyTTName t@(App _ _)
+reifyTTName t
             | (P _ f _, args) <- unApply t = reifyTTNameApp f args
 reifyTTName t = fail ("Unknown reflection term name: " ++ show t)
 
@@ -1575,7 +1575,7 @@ reifyReportPart (App (P (DCon _ _) n _) ttn)
       Error e -> Left . InternalMsg $
        "could not reify name term " ++
        show ttn ++
-       " when reflecting an error"
+       " when reflecting an error:" ++ show e
       OK (n', _)-> Right $ NamePart n'
 reifyReportPart (App (P (DCon _ _) n _) tm)
   | n == reflErrName "TermPart" =
@@ -1583,7 +1583,7 @@ reifyReportPart (App (P (DCon _ _) n _) tm)
     Error e -> Left . InternalMsg $
       "could not reify reflected term " ++
       show tm ++
-      " when reflecting an error"
+      " when reflecting an error:" ++ show e
     OK (tm', _) -> Right $ TermPart tm'
 reifyReportPart (App (P (DCon _ _) n _) tm)
   | n == reflErrName "SubReport" =

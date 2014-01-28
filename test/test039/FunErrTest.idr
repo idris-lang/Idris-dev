@@ -31,3 +31,11 @@ has2elts e = Just [TextPart (show e)]
 %error_handlers cadr cons1 has2elts
 %error_handlers cadr cons2 has2elts
 
+badCadr1 : Int
+badCadr1 = cadr []
+
+badCadr2 : Int
+badCadr2 = cadr [1]
+
+goodCadr : Int
+goodCadr = cadr [1, 2]
