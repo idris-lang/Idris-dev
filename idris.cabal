@@ -439,7 +439,7 @@ Library
                 , ansi-wl-pprint
                 , binary
                 , bytestring
-                , containers
+                , containers >= 0.5
                 , directory
                 , directory >= 1.2
                 , filepath
