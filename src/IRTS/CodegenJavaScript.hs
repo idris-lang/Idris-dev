@@ -848,6 +848,58 @@ elimDuplicateEvals (JSAlloc fun (Just (JSFunction args (JSSeq seq)))) =
 
 elimDuplicateEvals js = js
 
+optimizeEvalTailcalls :: JS -> JS
+optimizeEvalTailcalls (JSApp (JSIdent "__IDRRT__tailcall") [
+    JSFunction [] (JSReturn (JSApp (JSIdent "__IDR__mEVAL0") args))
+  ]) = JSApp (JSIdent "__IDRRT__EVALTC") $ map optimizeEvalTailcalls args
+
+optimizeEvalTailcalls (JSFunction args body) =
+  JSFunction args $ optimizeEvalTailcalls body
+
+optimizeEvalTailcalls (JSSeq seq) =
+  JSSeq $ map optimizeEvalTailcalls seq
+
+optimizeEvalTailcalls (JSReturn ret) =
+  JSReturn $ optimizeEvalTailcalls ret
+
+optimizeEvalTailcalls (JSApp lhs rhs) =
+  JSApp (optimizeEvalTailcalls lhs) (map optimizeEvalTailcalls rhs)
+
+optimizeEvalTailcalls (JSNew con args) =
+  JSNew con $ map optimizeEvalTailcalls args
+
+optimizeEvalTailcalls (JSOp op lhs rhs) =
+  JSOp op (optimizeEvalTailcalls lhs) (optimizeEvalTailcalls rhs)
+
+optimizeEvalTailcalls (JSProj obj field) =
+  JSProj (optimizeEvalTailcalls obj) field
+
+optimizeEvalTailcalls (JSArray vals) =
+  JSArray $ map optimizeEvalTailcalls vals
+
+optimizeEvalTailcalls (JSAssign lhs rhs) =
+  JSAssign (optimizeEvalTailcalls lhs) (optimizeEvalTailcalls rhs)
+
+optimizeEvalTailcalls (JSAlloc var (Just val)) =
+  JSAlloc var (Just $ optimizeEvalTailcalls val)
+
+optimizeEvalTailcalls (JSIndex lhs rhs) =
+  JSIndex (optimizeEvalTailcalls lhs) (optimizeEvalTailcalls rhs)
+
+optimizeEvalTailcalls (JSCond conds) =
+  JSCond $ map (optimizeEvalTailcalls *** optimizeEvalTailcalls) conds
+
+optimizeEvalTailcalls (JSTernary c t f) =
+  JSTernary (
+    optimizeEvalTailcalls c
+  ) (
+    optimizeEvalTailcalls t
+  ) (
+    optimizeEvalTailcalls f
+  )
+
+optimizeEvalTailcalls js = js
+
 reduceLoop :: [String] -> ([JS], [JS]) -> [JS]
 reduceLoop reduced (cons, program) =
   case partition findConstructors program of
@@ -976,7 +1028,9 @@ codegenJavaScript target definitions filename outputType = do
           removeAlloc  = map removeAllocations constrInit
           deadElim     = elimDeadLoop removeAlloc
           inlined      = inlineFunctions deadElim
-          js           = map elimDuplicateEvals inlined in
+          elimDup      = map elimDuplicateEvals inlined
+          evalTC       = map optimizeEvalTailcalls elimDup
+          js           = evalTC in
           map compileJS js
 
     mainLoop :: JS
