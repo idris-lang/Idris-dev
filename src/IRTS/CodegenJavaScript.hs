@@ -480,6 +480,11 @@ reduceJS js = reduceLoop [] ([], js)
 funName :: JS -> String
 funName (JSAlloc fun _) = fun
 
+elimDeadLoop :: [JS] -> [JS]
+elimDeadLoop js
+  | ret <- deadEvalApplyCases js
+  , ret /= js = elimDeadLoop ret
+  | otherwise = js
 
 deadEvalApplyCases :: [JS] -> [JS]
 deadEvalApplyCases js =
@@ -942,7 +947,7 @@ codegenJavaScript target definitions filename outputType = do
           constRemoved = map reduceConstants reduced
           constrInit   = initConstructors constRemoved
           removeAlloc  = map removeAllocations constrInit
-          deadElim     = deadEvalApplyCases removeAlloc
+          deadElim     = elimDeadLoop removeAlloc
           js           = inlineFunctions deadElim in
           map compileJS js
 
