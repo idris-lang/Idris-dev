@@ -834,6 +834,20 @@ reduceConstants js
   , ret /= js = reduceConstants ret
   | otherwise = js
 
+
+elimDuplicateEvals :: JS -> JS
+elimDuplicateEvals (JSAlloc fun (Just (JSFunction args (JSSeq seq)))) =
+  JSAlloc fun $ Just (JSFunction args $ JSSeq (elimHelper seq))
+  where
+    elimHelper :: [JS] -> [JS]
+    elimHelper (j@(JSAlloc var (Just val)):js) =
+      j : map (jsSubst val (JSIdent var)) (elimHelper js)
+    elimHelper (j:js) =
+      j : elimHelper js
+    elimHelper [] = []
+
+elimDuplicateEvals js = js
+
 reduceLoop :: [String] -> ([JS], [JS]) -> [JS]
 reduceLoop reduced (cons, program) =
   case partition findConstructors program of
@@ -961,7 +975,8 @@ codegenJavaScript target definitions filename outputType = do
           constrInit   = initConstructors constRemoved
           removeAlloc  = map removeAllocations constrInit
           deadElim     = elimDeadLoop removeAlloc
-          js           = inlineFunctions deadElim in
+          inlined      = inlineFunctions deadElim
+          js           = map elimDuplicateEvals inlined in
           map compileJS js
 
     mainLoop :: JS
