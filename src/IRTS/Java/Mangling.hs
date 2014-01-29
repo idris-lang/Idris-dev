@@ -88,7 +88,8 @@ mangleWithPrefix prefix (UN name) =
       | x == ' ' = "_Space" ++ cleanNonLetter xs
       | x == ',' = "_Comma" ++ cleanNonLetter xs
       | x == '_' = "__" ++ cleanNonLetter xs
-      | not (isAlphaNum x) = "_" ++ (show $ ord x) ++ xs
+      -- 10 digits is the most possible to represent 2^32 (ie all of unicode)
+      | not (isAlphaNum x) = "_" ++ (padToWith 10 '0' . show $ ord x) ++ cleanNonLetter xs
       | otherwise = x:cleanNonLetter xs
     cleanNonLetter [] = []
     cleanWs capitalize (x:xs)
@@ -96,6 +97,8 @@ mangleWithPrefix prefix (UN name) =
       | capitalize = (toUpper x) : (cleanWs False xs)
       | otherwise  = x : (cleanWs False xs)
     cleanWs _ [] = []
+    padToWith :: Int -> a -> [a] -> [a]
+    padToWith n p xs = replicate (length xs - n) p ++ xs
 mangleWithPrefix prefix s@(SN _) = mangleWithPrefix prefix (sUN (showCG s))
 
 mangle :: (Applicative m, MonadError String m) => Name -> m Ident
