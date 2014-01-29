@@ -47,9 +47,6 @@ compile codegen f tm
         let tmnames = namesUsed (STerm tm)
         usedIn <- mapM (allNames []) tmnames
         let used = sUN "prim__subBigInt" : sUN "prim__addBigInt" : concat usedIn
-        defsIn <- mkDecls tm used
-
-        -- TODO: traverse all names correctly
 
         -- TODO: DEBUG-ONLY, remove
         ctx <- tt_ctxt <$> getIState
@@ -65,11 +62,14 @@ compile codegen f tm
         -- END TODO
         
         maindef <- irMain tm
+        iLOG $ "MAIN: " ++ show maindef
+        iLOG $ "USED: " ++ show used
         objs <- getObjectFiles codegen
         libs <- getLibs codegen
         flags <- getFlags codegen
         hdrs <- getHdrs codegen
         impdirs <- allImportDirs
+        defsIn <- mkDecls tm used
         let defs = defsIn ++ [(sMN 0 "runMain", maindef)]
         -- iputStrLn $ showSep "\n" (map show defs)
         let (nexttag, tagged) = addTags 65536 (liftAll defs)
@@ -278,8 +278,8 @@ instance ToIR (TT Name) where
                    args' <- mapM (ir' env) args
                    return (LApp False f' args')
         where mkUsed u i [] = []
-              mkUsed u i (x : xs) | i `notElem` u = LNothing : mkUsed u (i + 1) xs
-                                  | otherwise     = x        : mkUsed u (i + 1) xs
+              mkUsed u i (x : xs) | i `elem` u = x        : mkUsed u (i + 1) xs
+                                  | otherwise  = LNothing : mkUsed u (i + 1) xs
 --       ir' env (P _ (NS (UN "Z") ["Nat", "Prelude"]) _)
 --                         = return $ LConst (BI 0)
       ir' env (P _ n _) = return $ LV (Glob n)

@@ -143,7 +143,7 @@ buildDepMap ctx ns = addPostulates $ dfs S.empty M.empty ns
 
         -- the variables that arose as function arguments only depend on (n, i)
         varMap = M.fromList [(v, S.singleton (fn, Arg i)) | (v,i) <- zip vars [0..]]
-        (vars, sc) = cases_compiletime cdefs  -- TODO: or cases_runtime?
+        (vars, sc) = cases_runtime cdefs  -- TODO: or cases_runtime?
 
     etaExpand :: [Name] -> Term -> Term
     etaExpand []       t = t
@@ -214,6 +214,8 @@ buildDepMap ctx ns = addPostulates $ dfs S.empty M.empty ns
             -- and we interpret applied lets as lambdas
             Bind n ( Let ty t') t -> getDepsTerm vs bs cd (App (Bind n (Lam ty) t) t')
             Bind n (NLet ty t') t -> getDepsTerm vs bs cd (App (Bind n (Lam ty) t) t')
+
+            Proj t i -> error $ "cannot analyse applied projection: " ++ show t ++ " !! " ++ show i
 
             _ -> error $ "cannot analyse application of: " ++ show fun
       where
