@@ -5,6 +5,8 @@ import           Idris.Core.TT
 import           Data.List
 import           Debug.Trace
 
+data Endianness = Native | BE | LE deriving (Show, Eq)
+
 data LVar = Loc Int | Glob Name
   deriving (Show, Eq)
 
@@ -49,6 +51,14 @@ data PrimFn = LPlus ArithTy | LMinus ArithTy | LTimes ArithTy
 
             | LStrHead | LStrTail | LStrCons | LStrIndex | LStrRev
             | LStdIn | LStdOut | LStdErr
+
+            -- Buffers
+            | LAllocate
+            | LCopy
+            | LAppendBufferNative
+            | LPeekBufferNative
+            | LAppend IntTy Endianness
+            | LPeek IntTy Endianness
 
             | LFork
             | LPar -- evaluate argument anywhere, possibly on another

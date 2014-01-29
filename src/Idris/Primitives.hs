@@ -171,9 +171,20 @@ primitives =
    Prim (sUN "prim__stdin") (ty [] PtrType) 0 (p_cantreduce)
     (0, LStdIn) partial,
    Prim (sUN "prim__null") (ty [] PtrType) 0 (p_cantreduce)
-    (0, LNullPtr) total
+    (0, LNullPtr) total,
+
+   -- Buffers
+   Prim (sUN "prim__allocate") (ty [AType (ATInt (ITFixed IT64))] BufferType) 1 (p_cantreduce)
+    (1, LAllocate) total,
+   Prim (sUN "prim__copy") (ty [AType (ATInt (ITFixed IT64)), BufferType] BufferType) 2 (p_cantreduce)
+    (2, LCopy) partial,
+   Prim (sUN "prim__peekBufferNative") (ty [BufferType, AType (ATInt (ITFixed IT64))] BufferType) 2 (p_cantreduce)
+    (2, LPeekBufferNative) partial,
+   Prim (sUN "prim__appendBufferNative") (ty [BufferType, AType (ATInt (ITFixed IT64)), AType (ATInt (ITFixed IT64)), AType (ATInt (ITFixed IT64)), BufferType] BufferType) 5 (p_cantreduce)
+    (5, LAppendBufferNative) partial
   ] ++ concatMap intOps [ITFixed IT8, ITFixed IT16, ITFixed IT32, ITFixed IT64, ITBig, ITNative, ITChar]
     ++ concatMap vecOps vecTypes
+    ++ concatMap fixedOps [ITFixed IT8, ITFixed IT16, ITFixed IT32, ITFixed IT64] -- ITNative, ITChar, ATFloat ] ++ vecTypes
     ++ vecBitcasts vecTypes
 
 vecTypes :: [IntTy]
@@ -266,6 +277,25 @@ bitcastPrim from to impl prim =
 vecBitcasts :: [IntTy] -> [Prim]
 vecBitcasts tys = [bitcastPrim from to bitcastVec (LBitCast from to)
                        | from <- map ATInt vecTypes, to <- map ATInt vecTypes, from /= to]
+
+fixedOps :: IntTy -> [Prim]
+fixedOps ity@(ITFixed _) =
+    map appendFun endiannesses ++
+    map peekFun endiannesses
+    where
+      endiannesses = [ Native, LE, BE ]
+      enName LE = "LE"
+      enName BE = "BE"
+      enName Native = "Native"
+      tyName = intTyName ity
+      b64 = AType (ATInt (ITFixed IT64))
+      thisTy = AType $ ATInt ity
+      appendFun en = Prim (sUN $ "prim__append" ++ tyName ++ enName en)
+                         (ty [BufferType, b64, b64, thisTy] BufferType)
+                         4 (p_cantreduce) (4, LAppend ity en) partial
+      peekFun en = Prim (sUN $ "prim__peek" ++ tyName ++ enName en)
+                         (ty [BufferType, b64] thisTy)
+                         2 (p_cantreduce) (2, LPeek ity en) partial
 
 mapHalf :: (V.Unbox a, V.Unbox b) => ((a, a) -> b) -> Vector a -> Vector b
 mapHalf f xs = V.generate (V.length xs `div` 2) (\i -> f (xs V.! (i*2), xs V.! (i*2+1)))
@@ -677,5 +707,4 @@ p_strRev _ = Nothing
 
 p_cantreduce :: a -> Maybe b
 p_cantreduce _ = Nothing
-
 

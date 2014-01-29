@@ -468,7 +468,7 @@ data Const = I Int | BI Integer | Fl Double | Ch Char | Str String
            | B8V (Vector Word8) | B16V (Vector Word16)
            | B32V (Vector Word32) | B64V (Vector Word64)
            | AType ArithTy | StrType
-           | PtrType | VoidType | Forgot
+           | PtrType | BufferType | VoidType | Forgot
   deriving (Eq, Ord)
 {-!
 deriving instance Binary Const
@@ -486,6 +486,7 @@ instance Pretty Const OutputAnnotation where
   pretty (Str s) = text s
   pretty (AType a) = pretty a
   pretty StrType = text "String"
+  pretty BufferType = text "prim__UnsafeBuffer"
   pretty PtrType = text "Ptr"
   pretty VoidType = text "Void"
   pretty Forgot = text "Forgot"
@@ -1031,6 +1032,7 @@ instance Show Const where
     show (AType (ATInt (ITFixed it))) = itBitsName it
     show (AType (ATInt (ITVec it c))) = itBitsName it ++ "x" ++ show c
     show StrType = "String"
+    show BufferType = "prim__UnsafeBuffer"
     show PtrType = "Ptr"
     show VoidType = "Void"
 

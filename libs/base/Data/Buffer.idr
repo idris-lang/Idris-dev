@@ -5,7 +5,7 @@ module Data.Buffer
 -- !!! TODO: Open issues:
 -- 1. It may be theoretically nice to represent Buffer size as
 --    Fin (2 ^ WORD_BITS) instead of Nat
--- 2. Primitives take Integers when really they should take the
+-- 2. Primitives take Bits64 when really they should take the
 --    equivalent of C's size_t (ideally unboxed)
 -- 3. If we had access to host system information, we could reduce
 --    the needed primitives by implementing the LE/BE variants on
@@ -16,55 +16,80 @@ module Data.Buffer
 -- 5. Would be nice to be able to peek/append the vector types, but
 --    for now I'm only touching the C backend which AFAICT doesn't
 --    support them.
--- 6. Conversion from Fin to Integer (which, re 2, should eventually
+-- 6. Conversion from Fin to Bits64 (which, re 2, should eventually
 --    be a fixed-width implementation-dependent type) is likely
---    inefficient relative to conversion from Nat to Integer
+--    inefficient relative to conversion from Nat to Bits64
 
 -- A contiguous chunk of n bytes
 abstract
 record Buffer : Nat -> Type where
   MkBuffer : ( realBuffer : prim__UnsafeBuffer ) -> Buffer n
 
+bitsFromNat : Nat -> Bits64
+bitsFromNat Z     = 0
+bitsFromNat (S k) = 1 + bitsFromNat k
+
+bitsFromFin : Fin n -> Bits64
+bitsFromFin fZ     = 0
+bitsFromFin (fS k) = 1 + bitsFromFin k
+
 -- Allocate an empty Buffer. The size hint can be used to avoid
 -- unnecessary reallocations and copies under the hood if the
--- approximate ultimate size of the Buffer is known
+-- approximate ultimate size of the Buffer is known. Users can assume
+-- the new Buffer is word-aligned.
 public
 allocate : ( hint : Nat ) -> Buffer 0
-allocate = MkBuffer . prim__allocate . toIntegerNat
+allocate = MkBuffer . prim__allocate . bitsFromNat
 
 -- Copy a buffer. Since multiple buffers can reference the same
 -- underlying chunk of memory, it may happen that a reference to
 -- a relatively small bit of data might be preventing the runtime
 -- from freeing a much larger chunk. copy allows giving up references
 -- to the larger chunk without losing the smaller one.
+%assert_total
 public
 copy : Buffer n -> Buffer n
-copy = MkBuffer . prim__copy ( toIntegerNat n ) . realBuffer
+copy { n } = MkBuffer . prim__copy ( bitsFromNat n ) . realBuffer
 
 -- Read a Buffer from another Buffer starting at offset
 -- (i.e. create a view of a subset of the Buffer)
+%assert_total
 public
-peekBufferNative : Buffer ( n + m ) -> ( offset : Fin n ) -> Buffer m
+peekBufferNative : Buffer ( m + n )           ->
+                   ( offset : Fin ( n + 1 ) ) ->
+                   Buffer m
 peekBufferNative ( MkBuffer real ) =
-  MkBuffer . prim__peekBufferNative real . finToInteger
+  MkBuffer . prim__peekBufferNative real . bitsFromFin
 
 public
-peekBufferLE : Buffer ( n + m ) -> ( offset : Fin n ) -> Buffer m
+peekBufferLE : Buffer ( m + n )           ->
+               ( offset : Fin ( n + 1 ) ) ->
+               Buffer m
 peekBufferLE = peekBufferNative
 
 public
-peekBufferBE : Buffer ( n + m ) -> ( offset : Fin n ) -> Buffer m
+peekBufferBE : Buffer ( m + n )            ->
+               ( offset : Fin  ( n + 1 ) ) ->
+               Buffer m
 peekBufferBE = peekBufferNative
 
 -- Append count repetitions of a Buffer to another Buffer
+%assert_total
 public
 appendBufferNative : Buffer n        ->
                      ( count : Nat ) ->
                      Buffer m        ->
                      Buffer ( n + m * count )
-appendBufferNative ( MkBuffer input ) count = MkBuffer .
-  prim__appendBufferNative input ( toIntegerNat count ) . realBuffer
-
+appendBufferNative { n } { m } ( MkBuffer input ) count =
+  MkBuffer . app . realBuffer
+  where
+    nBits : Bits64
+    nBits = bitsFromNat n
+    mBits : Bits64
+    mBits = bitsFromNat m
+    cBits : Bits64
+    cBits = bitsFromNat count
+    app = prim__appendBufferNative input nBits cBits mBits
 
 public
 appendBufferLE : Buffer n        ->
@@ -80,173 +105,207 @@ appendBufferBE : Buffer n        ->
                  Buffer ( n + m * count )
 appendBufferBE = appendBufferNative
 
-peekBits : ( prim__UnsafeBuffer -> Integer -> a ) ->
-           Buffer ( n + m )   ->
-           ( offset : Fin n ) ->
+
+peekBits : ( prim__UnsafeBuffer -> Bits64 -> a ) ->
+           Buffer ( m + n )   ->
+           ( offset : Fin ( n + 1 ) ) ->
            a
-peekBits prim ( MkBuffer real ) = prim real . finToInteger
+peekBits prim ( MkBuffer real ) = prim real . bitsFromFin
 
 appendBits : ( prim__UnsafeBuffer ->
-               Integer            ->
+               Bits64             ->
+               Bits64             ->
                a                  ->
                prim__UnsafeBuffer ) ->
              Buffer n               ->
              ( count : Nat)         ->
              a                      ->
              Buffer ( n + count * size )
-appendBits prim ( MkBuffer real ) count =
-  MkBuffer . prim real ( toIntegerNat count )
+appendBits { n } prim ( MkBuffer real ) count =
+  MkBuffer . prim real ( bitsFromNat n ) ( bitsFromNat count )
 
 
 -- Read a Bits8 from a Buffer starting at offset
+%assert_total
 public
-peekBits8Native : Buffer ( n + 1 ) -> ( offset : Fin n ) -> Bits8
-peekBits8Native = peekBits prim__peekBits8Native
+peekBits8Native : Buffer ( 1 + n )           ->
+                  ( offset : Fin ( n + 1 ) ) ->
+                  Bits8
+peekBits8Native = peekBits { m = 1 } prim__peekB8Native
 
+%assert_total
 public
-peekBits8LE : Buffer ( n + 1 ) -> ( offset : Fin n ) -> Bits8
-peekBits8LE = peekBits8Native
+peekBits8LE : Buffer ( 1 + n ) -> ( offset : Fin ( n + 1 ) ) -> Bits8
+peekBits8LE = peekBits { m = 1 } prim__peekB8LE
 
+%assert_total
 public
-peekBits8BE : Buffer ( n + 1 ) -> ( offset : Fin n ) -> Bits8
-peekBits8BE = peekBits8Native
+peekBits8BE : Buffer ( 1 + n ) -> ( offset : Fin ( n + 1 ) ) -> Bits8
+peekBits8BE = peekBits { m = 1 } prim__peekB8BE
 
 -- Append count repetitions of a Bits8 to a Buffer
+%assert_total
 public
 appendBits8Native : Buffer n        ->
                     ( count : Nat ) ->
                     Bits8           ->
-                    Buffer ( n + count )
-appendBits8Native = appendBits prim__appendBits8Native
+                    Buffer ( n + count * 1 )
+appendBits8Native = appendBits prim__appendB8Native
 
+%assert_total
 public
 appendBits8LE : Buffer n        ->
                 ( count : Nat ) ->
                 Bits8           ->
-                Buffer ( n + count )
-appendBits8LE = appendBits8Native
+                Buffer ( n + count * 1 )
+appendBits8LE = appendBits prim__appendB8LE
 
+%assert_total
 public
 appendBits8BE : Buffer n        ->
                 ( count : Nat ) ->
                 Bits8           ->
-                Buffer ( n + count )
-appendBits8BE = appendBits8Native
+                Buffer ( n + count * 1 )
+appendBits8BE = appendBits prim__appendB8BE
 
 
 -- Read a Bits16 in native byte order from a Buffer starting at offset
+%assert_total
 public
-peekBits16Native : Buffer ( n + 2 ) -> ( offset : Fin n ) -> Bits8
-peekBits16Native = peekBits prim__peekBits16Native
+peekBits16Native : Buffer ( 2 + n )           ->
+                   ( offset : Fin ( n + 1 ) ) ->
+                   Bits16
+peekBits16Native = peekBits { m = 2 } prim__peekB16Native
 
 -- Read a little-endian Bits16 from a Buffer starting at offset
+%assert_total
 public
-peekBits16LE : Buffer ( n + 2 ) -> ( offset : Fin n ) -> Bits8
-peekBits16LE = peekBits prim__peekBits16LE
+peekBits16LE : Buffer ( 2 + n ) -> ( offset : Fin ( n + 1 ) ) -> Bits16
+peekBits16LE = peekBits { m = 2 } prim__peekB16LE
 
 -- Read a big-endian Bits16 from a Buffer starting at offset
+%assert_total
 public
-peekBits16BE : Buffer ( n + 2 ) -> ( offset : Fin n ) -> Bits8
-peekBits16BE = peekBits prim__peekBits16LE
+peekBits16BE : Buffer ( 2 + n ) -> ( offset : Fin ( n + 1 ) ) -> Bits16
+peekBits16BE = peekBits { m = 2 } prim__peekB16BE
 
 -- Append count repetitions of a Bits16 in native byte order to a Buffer
+%assert_total
 public
 appendBits16Native : Buffer n        ->
                      ( count : Nat ) ->
                      Bits16          ->
-                     Buffer ( n + 2 * count )
-appendBits16Native = appendBits prim__appendBits16Native
+                     Buffer ( n + count * 2 )
+appendBits16Native = appendBits prim__appendB16Native
 
 -- Append count repetitions of a little-endian Bits16 to a Buffer
+%assert_total
 public
 appendBits16LE : Buffer n        ->
                  ( count : Nat ) ->
                  Bits16          ->
-                 Buffer ( n + 2 * count )
-appendBits16LE = appendBits prim__appendBits16LE
+                 Buffer ( n + count * 2 )
+appendBits16LE = appendBits prim__appendB16LE
 
 -- Append count repetitions of a big-endian Bits16 to a Buffer
+%assert_total
 public
 appendBits16BE : Buffer n        ->
                  ( count : Nat ) ->
                  Bits16          ->
-                 Buffer ( n + 2 * count )
-appendBits16BE = appendBits prim__appendBits16BE
+                 Buffer ( n + count * 2 )
+appendBits16BE = appendBits prim__appendB16BE
 
 -- Read a Bits32 in native byte order from a Buffer starting at offset
+%assert_total
 public
-peekBits32Native : Buffer ( n + 4 ) -> ( offset : Fin n ) -> Bits8
-peekBits32Native = peekBits prim__peekBits32Native
+peekBits32Native : Buffer ( 4 + n )           ->
+                   ( offset : Fin ( n + 1 ) ) ->
+                   Bits32
+peekBits32Native = peekBits { m = 4 } prim__peekB32Native
 
 -- Read a little-endian Bits32 from a Buffer starting at offset
+%assert_total
 public
-peekBits32LE : Buffer ( n + 4 ) -> ( offset : Fin n ) -> Bits8
-peekBits32LE = peekBits prim__peekBits32LE
+peekBits32LE : Buffer ( 4 + n ) -> ( offset : Fin ( n + 1 ) ) -> Bits32
+peekBits32LE = peekBits { m = 4 } prim__peekB32LE
 
 -- Read a big-endian Bits32 from a Buffer starting at offset
+%assert_total
 public
-peekBits32BE : Buffer ( n + 4 ) -> ( offset : Fin n ) -> Bits8
-peekBits32BE = peekBits prim__peekBits32LE
+peekBits32BE : Buffer ( 4 + n ) -> ( offset : Fin ( n + 1 ) ) -> Bits32
+peekBits32BE = peekBits { m = 4 } prim__peekB32BE
 
 -- Append count repetitions of a Bits32 in native byte order to a Buffer
+%assert_total
 public
 appendBits32Native : Buffer n        ->
                      ( count : Nat ) ->
                      Bits32          ->
-                     Buffer ( n + 4 * count )
-appendBits32Native = appendBits prim__appendBits32Native
+                     Buffer ( n + count * 4 )
+appendBits32Native = appendBits prim__appendB32Native
 
 -- Append count repetitions of a little-endian Bits32 to a Buffer
+%assert_total
 public
 appendBits32LE : Buffer n        ->
                  ( count : Nat ) ->
                  Bits32          ->
-                 Buffer ( n + 4 * count )
-appendBits32LE = appendBits prim__appendBits32LE
+                 Buffer ( n + count * 4 )
+appendBits32LE = appendBits prim__appendB32LE
 
 -- Append count repetitions of a big-endian Bits32 to a Buffer
+%assert_total
 public
 appendBits32BE : Buffer n        ->
                  ( count : Nat ) ->
                  Bits32          ->
-                 Buffer ( n + 4 * count )
-appendBits32BE = appendBits prim__appendBits32BE
+                 Buffer ( n + count * 4 )
+appendBits32BE = appendBits prim__appendB32BE
 
 -- Read a Bits64 in native byte order from a Buffer starting at offset
+%assert_total
 public
-peekBits64Native : Buffer ( n + 8 ) -> ( offset : Fin n ) -> Bits8
-peekBits64Native = peekBits prim__peekBits64Native
+peekBits64Native : Buffer ( 8 + n )           ->
+                   ( offset : Fin ( n + 1 ) ) ->
+                   Bits64
+peekBits64Native = peekBits { m = 8 } prim__peekB64Native
 
 -- Read a little-endian Bits64 from a Buffer starting at offset
+%assert_total
 public
-peekBits64LE : Buffer ( n + 8 ) -> ( offset : Fin n ) -> Bits8
-peekBits64LE = peekBits prim__peekBits64LE
+peekBits64LE : Buffer ( 8 + n ) -> ( offset : Fin ( n + 1 ) ) -> Bits64
+peekBits64LE = peekBits { m = 8 } prim__peekB64LE
 
 -- Read a big-endian Bits64 from a Buffer starting at offset
+%assert_total
 public
-peekBits64BE : Buffer ( n + 8 ) -> ( offset : Fin n ) -> Bits8
-peekBits64BE = peekBits prim__peekBits64LE
+peekBits64BE : Buffer ( 8 + n ) -> ( offset : Fin ( n + 1 ) ) -> Bits64
+peekBits64BE = peekBits { m = 8 } prim__peekB64BE
 
 -- Append count repetitions of a Bits64 in native byte order to a Buffer
+%assert_total
 public
 appendBits64Native : Buffer n        ->
                      ( count : Nat ) ->
                      Bits64          ->
-                     Buffer ( n + 8 * count )
-appendBits64Native = appendBits prim__appendBits64Native
+                     Buffer ( n + count * 8 )
+appendBits64Native = appendBits prim__appendB64Native
 
 -- Append count repetitions of a little-endian Bits64 to a Buffer
+%assert_total
 public
 appendBits64LE : Buffer n        ->
                  ( count : Nat ) ->
                  Bits64          ->
-                 Buffer ( n + 8 * count )
-appendBits64LE = appendBits prim__appendBits64LE
+                 Buffer ( n + count * 8 )
+appendBits64LE = appendBits prim__appendB64LE
 
 -- Append count repetitions of a big-endian Bits64 to a Buffer
+%assert_total
 public
 appendBits64BE : Buffer n        ->
                  ( count : Nat ) ->
                  Bits64          ->
-                 Buffer ( n + 8 * count )
-appendBits64BE = appendBits prim__appendBits64BE
+                 Buffer ( n + count * 8 )
+appendBits64BE = appendBits prim__appendB64BE
