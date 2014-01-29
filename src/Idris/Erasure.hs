@@ -93,8 +93,10 @@ buildDepMap ctx ns = addPostulates $ dfs S.empty M.empty ns
                 , (name "prim__strCons", Arg 1)
                 , (name "prim__strHead", Arg 0)
                 , (name "prim__strTail", Arg 0)
+                , (name "prim__lenString", Arg 0)
                 , (name "prim__concat", Arg 0)
                 , (name "prim__concat", Arg 1)
+                , (name "prim__zextInt_BigInt", Arg 0)
                 , (name "mkForeignPrim", Arg 2)
                 , (name "mkForeign", Arg 1)
                 ]  
@@ -143,7 +145,7 @@ buildDepMap ctx ns = addPostulates $ dfs S.empty M.empty ns
 
         -- the variables that arose as function arguments only depend on (n, i)
         varMap = M.fromList [(v, S.singleton (fn, Arg i)) | (v,i) <- zip vars [0..]]
-        (vars, sc) = cases_runtime cdefs  -- TODO: or cases_runtime?
+        (vars, sc) = cases_compiletime cdefs  -- TODO: or cases_runtime?
 
     etaExpand :: [Name] -> Term -> Term
     etaExpand []       t = t
@@ -217,8 +219,7 @@ buildDepMap ctx ns = addPostulates $ dfs S.empty M.empty ns
 
             -- TODO: figure out what to do with methods
             -- the following code marks them as completely used
-            Proj (P Ref inst _) i -> unconditionalDeps args  -- named instances
-            Proj _ i -> unconditionalDeps args               -- dictionary reference in a variable
+            Proj t i -> getDepsTerm vs bs cd t `M.union` unconditionalDeps args
 
             _ -> error $ "cannot analyse application of " ++ show fun ++ " to " ++ show args
       where
