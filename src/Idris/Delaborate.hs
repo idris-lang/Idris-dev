@@ -155,6 +155,9 @@ pprintErr' i (CantConvert x y env) =
   text "Can't convert" <> indented (pprintTerm i (delab i x)) <>
   text "with" <> indented (pprintTerm i (delab i y)) <>
   if (opt_errContext (idris_options i)) then text (showSc i env) else empty
+pprintErr' i (CantSolveGoal x env) =
+  text "Can't solve goal " <> indented (pprintTerm i (delab i x)) <>
+  if (opt_errContext (idris_options i)) then text (showSc i env) else empty
 pprintErr' i (UnifyScope n out tm env) =
   text "Can't unify" <> indented (annName n) <+>
   text "with" <> indented (pprintTerm i (delab i tm)) <+>
