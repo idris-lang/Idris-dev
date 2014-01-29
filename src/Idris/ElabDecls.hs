@@ -1090,7 +1090,7 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
                                      let used = findUsedArgs sc' scargs'
                                      -- let scg = buildSCG i sc scargs
                                      -- add SCG later, when checking totality
-                                     let cg = CGInfo scargs' calls [] used []
+                                     let cg = CGInfo scargs' calls [] used []  -- TODO: remove this, not needed anymore
                                      logLvl 2 $ "Called names: " ++ show cg
                                      addToCG n cg
                                      addToCalledG n (nub (map fst calls)) -- plus names in type!
@@ -2088,7 +2088,7 @@ elabInstance info syn what fc cs n ps t expn ds = do
                 _ -> return ps'
     getWParams (_ : ps) = getWParams ps
 
-    decorate ns iname (UN n) = NS (SN (MethodN (UN n))) ns
+    decorate ns iname (UN n)        = NS (SN (MethodN (UN n))) ns
     decorate ns iname (NS (UN n) s) = NS (SN (MethodN (UN n))) ns
 
     mkTyDecl (n, op, t, _) = PTy emptyDocstring [] syn fc op n t

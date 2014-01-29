@@ -202,11 +202,11 @@ buildDepMap ctx ns = addPostulates $ dfs S.empty M.empty ns
             P (DCon _ _) n _ -> node n args
 
             -- this does not
-            P (TCon _ _) n _ -> unionMap (getDepsTerm vs bs cd) args
+            P (TCon _ _) n _ -> unconditionalDeps args
 
             -- a bound variable might draw in additional dependencies,
             -- think: f x = x 0  <-- here, `x' _is_ used
-            P Bound n _ -> var n `ins` unionMap (getDepsTerm vs bs cd) args
+            P Bound n _ -> var n `ins` unconditionalDeps args
 
             -- we interpret applied lambdas as lets in order to reuse code here
             Bind n (Lam ty) t -> getDepsTerm vs bs cd (lamToLet [] app)
@@ -215,20 +215,27 @@ buildDepMap ctx ns = addPostulates $ dfs S.empty M.empty ns
             Bind n ( Let ty t') t -> getDepsTerm vs bs cd (App (Bind n (Lam ty) t) t')
             Bind n (NLet ty t') t -> getDepsTerm vs bs cd (App (Bind n (Lam ty) t) t')
 
-            Proj t i -> error $ "cannot analyse applied projection: " ++ show t ++ " !! " ++ show i
+            -- TODO: figure out what to do with methods
+            -- the following code marks them as completely used
+            Proj (P Ref inst _) i -> unconditionalDeps args  -- named instances
+            Proj _ i -> unconditionalDeps args               -- dictionary reference in a variable
 
-            _ -> error $ "cannot analyse application of: " ++ show fun
+            _ -> error $ "cannot analyse application of " ++ show fun ++ " to " ++ show args
       where
         ins = M.insertWith S.union cd
         var n = fromMaybe (error $ "non-existent bound variable: " ++ show n) (M.lookup n vs)
         node n = ins (S.singleton (n, Result)) . unionMap (getDepsArgs n) . zip [0..]
         getDepsArgs n (i, t) = getDepsTerm vs bs (S.insert (n, Arg i) cd) t
+        unconditionalDeps args = unionMap (getDepsTerm vs bs cd) args
 
     -- the easy cases
+    getDepsTerm vs bs cd (Proj  t  i) = getDepsTerm vs bs cd t
     getDepsTerm vs bs cd (Constant _) = M.empty
     getDepsTerm vs bs cd (TType    _) = M.empty
     getDepsTerm vs bs cd  Erased      = M.empty
     getDepsTerm vs bs cd  Impossible  = M.empty
+
+    getDepsTerm vs bs cd t = error $ "cannot get deps of: " ++ show t
 
     -- convert applications of lambdas to lets
     -- Note that this transformation preserves de bruijn numbering
