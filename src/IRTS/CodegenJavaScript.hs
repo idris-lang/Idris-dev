@@ -848,57 +848,62 @@ elimDuplicateEvals (JSAlloc fun (Just (JSFunction args (JSSeq seq)))) =
 
 elimDuplicateEvals js = js
 
-optimizeEvalTailcalls :: JS -> JS
-optimizeEvalTailcalls (JSApp (JSIdent "__IDRRT__tailcall") [
-    JSFunction [] (JSReturn (JSApp (JSIdent "__IDR__mEVAL0") args))
-  ]) = JSApp (JSIdent "__IDRRT__EVALTC") $ map optimizeEvalTailcalls args
+optimizeEvalTailcalls :: (String, String) -> JS -> JS
+optimizeEvalTailcalls (fun, tc) js =
+  optHelper js
+  where
+    optHelper :: JS -> JS
+    optHelper (JSApp (JSIdent "__IDRRT__tailcall") [
+        JSFunction [] (JSReturn (JSApp (JSIdent n) args))
+      ])
+      | n == fun = JSApp (JSIdent tc) $ map optHelper args
 
-optimizeEvalTailcalls (JSFunction args body) =
-  JSFunction args $ optimizeEvalTailcalls body
+    optHelper (JSFunction args body) =
+      JSFunction args $ optHelper body
 
-optimizeEvalTailcalls (JSSeq seq) =
-  JSSeq $ map optimizeEvalTailcalls seq
+    optHelper (JSSeq seq) =
+      JSSeq $ map optHelper seq
 
-optimizeEvalTailcalls (JSReturn ret) =
-  JSReturn $ optimizeEvalTailcalls ret
+    optHelper (JSReturn ret) =
+      JSReturn $ optHelper ret
 
-optimizeEvalTailcalls (JSApp lhs rhs) =
-  JSApp (optimizeEvalTailcalls lhs) (map optimizeEvalTailcalls rhs)
+    optHelper (JSApp lhs rhs) =
+      JSApp (optHelper lhs) (map optHelper rhs)
 
-optimizeEvalTailcalls (JSNew con args) =
-  JSNew con $ map optimizeEvalTailcalls args
+    optHelper (JSNew con args) =
+      JSNew con $ map optHelper args
 
-optimizeEvalTailcalls (JSOp op lhs rhs) =
-  JSOp op (optimizeEvalTailcalls lhs) (optimizeEvalTailcalls rhs)
+    optHelper (JSOp op lhs rhs) =
+      JSOp op (optHelper lhs) (optHelper rhs)
 
-optimizeEvalTailcalls (JSProj obj field) =
-  JSProj (optimizeEvalTailcalls obj) field
+    optHelper (JSProj obj field) =
+      JSProj (optHelper obj) field
 
-optimizeEvalTailcalls (JSArray vals) =
-  JSArray $ map optimizeEvalTailcalls vals
+    optHelper (JSArray vals) =
+      JSArray $ map optHelper vals
 
-optimizeEvalTailcalls (JSAssign lhs rhs) =
-  JSAssign (optimizeEvalTailcalls lhs) (optimizeEvalTailcalls rhs)
+    optHelper (JSAssign lhs rhs) =
+      JSAssign (optHelper lhs) (optHelper rhs)
 
-optimizeEvalTailcalls (JSAlloc var (Just val)) =
-  JSAlloc var (Just $ optimizeEvalTailcalls val)
+    optHelper (JSAlloc var (Just val)) =
+      JSAlloc var (Just $ optHelper val)
 
-optimizeEvalTailcalls (JSIndex lhs rhs) =
-  JSIndex (optimizeEvalTailcalls lhs) (optimizeEvalTailcalls rhs)
+    optHelper (JSIndex lhs rhs) =
+      JSIndex (optHelper lhs) (optHelper rhs)
 
-optimizeEvalTailcalls (JSCond conds) =
-  JSCond $ map (optimizeEvalTailcalls *** optimizeEvalTailcalls) conds
+    optHelper (JSCond conds) =
+      JSCond $ map (optHelper *** optHelper) conds
 
-optimizeEvalTailcalls (JSTernary c t f) =
-  JSTernary (
-    optimizeEvalTailcalls c
-  ) (
-    optimizeEvalTailcalls t
-  ) (
-    optimizeEvalTailcalls f
-  )
+    optHelper (JSTernary c t f) =
+      JSTernary (
+        optHelper c
+      ) (
+        optHelper t
+      ) (
+        optHelper f
+      )
 
-optimizeEvalTailcalls js = js
+    optHelper js = js
 
 reduceLoop :: [String] -> ([JS], [JS]) -> [JS]
 reduceLoop reduced (cons, program) =
@@ -1029,8 +1034,9 @@ codegenJavaScript target definitions filename outputType = do
           deadElim     = elimDeadLoop removeAlloc
           inlined      = inlineFunctions deadElim
           elimDup      = map elimDuplicateEvals inlined
-          evalTC       = map optimizeEvalTailcalls elimDup
-          js           = evalTC in
+          evalTC       = map (optimizeEvalTailcalls ("__IDR__mEVAL0", "__IDRRT__EVALTC")) elimDup
+          applyTC       = map (optimizeEvalTailcalls ("__IDR__mAPPLY0", "__IDRRT__APPLYTC")) evalTC
+          js           = applyTC in
           map compileJS js
 
     mainLoop :: JS

@@ -57,3 +57,12 @@ var __IDRRT__EVALTC = function(arg0) {
 
   return ret;
 };
+
+var __IDRRT__APPLYTC = function(fn0, arg0) {
+  var ev  = __IDRRT__EVALTC(fn0);
+  var ret = (ev instanceof __IDRRT__Con && __IDRLT__mAPPLY0[ev.tag])?(__IDRLT__mAPPLY0[ev.tag](fn0,arg0,ev)):(null)
+  while (ret instanceof __IDRRT__Cont)
+    ret = ret.k();
+
+  return ret;
+}
