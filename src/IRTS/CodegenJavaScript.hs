@@ -905,6 +905,60 @@ optimizeEvalTailcalls (fun, tc) js =
 
     optHelper js = js
 
+
+removeInstanceChecks :: JS -> JS
+removeInstanceChecks (JSCond conds) =
+  JSCond $ map (removeHelper *** removeInstanceChecks) conds
+  where
+    removeHelper (
+        JSOp "&&" (JSOp "instanceof" _ (JSIdent "__IDRRT__Con")) check
+      ) = removeHelper check
+    removeHelper js = js
+
+removeInstanceChecks (JSFunction args body) =
+  JSFunction args $ removeInstanceChecks body
+
+removeInstanceChecks (JSSeq seq) =
+  JSSeq $ map removeInstanceChecks seq
+
+removeInstanceChecks (JSReturn ret) =
+  JSReturn $ removeInstanceChecks ret
+
+removeInstanceChecks (JSApp lhs rhs) =
+  JSApp (removeInstanceChecks lhs) $ map removeInstanceChecks rhs
+
+removeInstanceChecks (JSNew con args) =
+  JSNew con $ map removeInstanceChecks args
+
+removeInstanceChecks (JSOp op lhs rhs) =
+  JSOp op (removeInstanceChecks lhs) (removeInstanceChecks rhs)
+
+removeInstanceChecks (JSProj obj field) =
+  JSProj (removeInstanceChecks obj) field
+
+removeInstanceChecks (JSArray vals) =
+  JSArray $ map removeInstanceChecks vals
+
+removeInstanceChecks (JSAssign lhs rhs) =
+  JSAssign (removeInstanceChecks lhs) (removeInstanceChecks rhs)
+
+removeInstanceChecks (JSAlloc var (Just val)) =
+  JSAlloc var (Just $ removeInstanceChecks val)
+
+removeInstanceChecks (JSIndex lhs rhs) =
+  JSIndex (removeInstanceChecks lhs) (removeInstanceChecks rhs)
+
+removeInstanceChecks (JSTernary c t f) =
+  JSTernary (
+    removeInstanceChecks c
+  ) (
+    removeInstanceChecks t
+  ) (
+    removeInstanceChecks f
+  )
+
+removeInstanceChecks js = js
+
 reduceLoop :: [String] -> ([JS], [JS]) -> [JS]
 reduceLoop reduced (cons, program) =
   case partition findConstructors program of
@@ -1035,8 +1089,9 @@ codegenJavaScript target definitions filename outputType = do
           inlined      = inlineFunctions deadElim
           elimDup      = map elimDuplicateEvals inlined
           evalTC       = map (optimizeEvalTailcalls ("__IDR__mEVAL0", "__IDRRT__EVALTC")) elimDup
-          applyTC       = map (optimizeEvalTailcalls ("__IDR__mAPPLY0", "__IDRRT__APPLYTC")) evalTC
-          js           = applyTC in
+          applyTC      = map (optimizeEvalTailcalls ("__IDR__mAPPLY0", "__IDRRT__APPLYTC")) evalTC
+          remChecks    = map removeInstanceChecks applyTC
+          js           = remChecks in
           map compileJS js
 
     mainLoop :: JS
