@@ -41,6 +41,7 @@ pPkg = do reserved "package"; p <- identifier
           put (st { pkgname = p })
           some pClause
           st <- get
+          eof
           return st
 
 pClause :: PParser ()
