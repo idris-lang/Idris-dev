@@ -329,6 +329,7 @@ Extra-source-files:
                        test/test040/run
                        test/test040/expected
                        test/test040/*.idr
+                       test/test040/B/*.idr
 
 source-repository head
   type:     git
