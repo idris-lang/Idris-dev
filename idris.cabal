@@ -247,6 +247,7 @@ Extra-source-files:
                        test/effects001/run
                        test/effects001/*.idr
                        test/effects001/expected
+                       test/effects001/testFile
                        test/effects002/run
                        test/effects002/*.idr
                        test/effects002/expected
@@ -273,6 +274,8 @@ Extra-source-files:
                        test/ffi003/run
                        test/ffi003/*.idr
                        test/ffi003/expected
+                       test/ffi003/input
+                       test/ffi003/output
                        test/ffi004/run
                        test/ffi004/*.idr
                        test/ffi004/input
