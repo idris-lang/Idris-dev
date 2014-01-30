@@ -173,12 +173,8 @@ compileJS (JSIndex lhs rhs) =
   compileJS lhs ++ "[" ++ compileJS rhs ++ "]"
 
 compileJS (JSCond branches) =
-  intercalate " else " $ map createIfBlock (eliminateDeadBranches branches)
+  intercalate " else " $ map createIfBlock branches
   where
-    eliminateDeadBranches (e@(JSTrue, _):_) = [e]
-    eliminateDeadBranches (x:xs)            = x : eliminateDeadBranches xs
-    eliminateDeadBranches []                = []
-
     createIfBlock (JSTrue, e) =
          "{\n"
       ++ compileJS e
@@ -938,12 +934,21 @@ optimizeEvalTailcalls (fun, tc) js =
 
 removeInstanceChecks :: JS -> JS
 removeInstanceChecks (JSCond conds) =
-  JSCond $ map (removeHelper *** removeInstanceChecks) conds
+  JSCond $ eliminateDeadBranches $ map (
+    removeHelper *** removeInstanceChecks
+  ) conds
   where
     removeHelper (
         JSOp "&&" (JSOp "instanceof" _ (JSIdent "__IDRRT__Con")) check
       ) = removeHelper check
     removeHelper js = js
+
+
+    eliminateDeadBranches (e@(JSTrue, _):_) = [e]
+    eliminateDeadBranches [(_, js)]         = [(JSTrue, js)]
+    eliminateDeadBranches (x:xs)            = x : eliminateDeadBranches xs
+    eliminateDeadBranches []                = []
+
 
 removeInstanceChecks (JSFunction args body) =
   JSFunction args $ removeInstanceChecks body
