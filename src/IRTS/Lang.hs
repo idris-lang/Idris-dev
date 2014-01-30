@@ -60,8 +60,8 @@ data PrimFn = LPlus ArithTy | LMinus ArithTy | LTimes ArithTy
             -- Buffers
             | LAllocate
             | LCopy
-            | LAppendBufferNative
-            | LPeekBufferNative
+            | LAppendBuffer
+            | LPeekBuffer
             | LAppend IntTy Endianness
             | LPeek IntTy Endianness
 

@@ -459,8 +459,8 @@ doOp v LStrRev [x] = v ++ "idris_strRev(vm, " ++ creg x ++ ")"
 
 doOp v LAllocate [x] = v ++ "idris_allocate(vm, " ++ creg x ++ ")"
 doOp v LCopy [x, y]  = v ++ "idris_copy(vm, " ++ creg x ++ "," ++ creg y ++ ")"
-doOp v LAppendBufferNative [a, b, c, d, e] = v ++ "idris_appendBuffer(vm, " ++ creg a ++ "," ++ creg b ++ "," ++ creg c ++ "," ++ creg d ++ "," ++ creg e ++ ")"
-doOp v LPeekBufferNative [x, y] = v ++ "idris_peekBuffer(vm, " ++ creg x ++ "," ++ creg y ++ ")"
+doOp v LAppendBuffer [a, b, c, d, e] = v ++ "idris_appendBuffer(vm, " ++ creg a ++ "," ++ creg b ++ "," ++ creg c ++ "," ++ creg d ++ "," ++ creg e ++ ")"
+doOp v LPeekBuffer [x, y] = v ++ "idris_peekBuffer(vm, " ++ creg x ++ "," ++ creg y ++ ")"
 doOp v (LAppend ity en) [a, b, c, d] = v ++ "idris_append" ++ intTyName ity ++ enName en ++ "(vm, " ++ creg a ++ "," ++ creg b ++ "," ++ creg c ++ "," ++ creg d ++ ")"
 doOp v (LPeek ity en) [x, y] = v ++ "idris_peek" ++ intTyName ity ++ enName en ++ "(vm, " ++ creg x ++ "," ++ creg y ++ ")"
 

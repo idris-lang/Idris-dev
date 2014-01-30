@@ -178,10 +178,10 @@ primitives =
     (1, LAllocate) total,
    Prim (sUN "prim__copy") (ty [AType (ATInt (ITFixed IT64)), BufferType] BufferType) 2 (p_cantreduce)
     (2, LCopy) partial,
-   Prim (sUN "prim__peekBufferNative") (ty [BufferType, AType (ATInt (ITFixed IT64))] BufferType) 2 (p_cantreduce)
-    (2, LPeekBufferNative) partial,
-   Prim (sUN "prim__appendBufferNative") (ty [BufferType, AType (ATInt (ITFixed IT64)), AType (ATInt (ITFixed IT64)), AType (ATInt (ITFixed IT64)), BufferType] BufferType) 5 (p_cantreduce)
-    (5, LAppendBufferNative) partial
+   Prim (sUN "prim__peekBuffer") (ty [BufferType, AType (ATInt (ITFixed IT64))] BufferType) 2 (p_cantreduce)
+    (2, LPeekBuffer) partial,
+   Prim (sUN "prim__appendBuffer") (ty [BufferType, AType (ATInt (ITFixed IT64)), AType (ATInt (ITFixed IT64)), AType (ATInt (ITFixed IT64)), BufferType] BufferType) 5 (p_cantreduce)
+    (5, LAppendBuffer) partial
   ] ++ concatMap intOps [ITFixed IT8, ITFixed IT16, ITFixed IT32, ITFixed IT64, ITBig, ITNative, ITChar]
     ++ concatMap vecOps vecTypes
     ++ concatMap fixedOps [ITFixed IT8, ITFixed IT16, ITFixed IT32, ITFixed IT64] -- ITNative, ITChar, ATFloat ] ++ vecTypes

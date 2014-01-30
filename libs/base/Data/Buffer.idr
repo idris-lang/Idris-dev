@@ -55,32 +55,20 @@ copy { n } = MkBuffer . prim__copy ( bitsFromNat n ) . realBuffer
 -- (i.e. create a view of a subset of the Buffer)
 %assert_total
 public
-peekBufferNative : Buffer ( m + n )           ->
-                   ( offset : Fin ( S n ) ) ->
-                   Buffer m
-peekBufferNative ( MkBuffer real ) =
-  MkBuffer . prim__peekBufferNative real . bitsFromFin
-
-public
-peekBufferLE : Buffer ( m + n )           ->
-               ( offset : Fin ( S n  ) ) ->
-               Buffer m
-peekBufferLE = peekBufferNative
-
-public
-peekBufferBE : Buffer ( m + n )            ->
-               ( offset : Fin  ( S n ) ) ->
-               Buffer m
-peekBufferBE = peekBufferNative
+peekBuffer : Buffer ( m + n )           ->
+             ( offset : Fin ( S n ) ) ->
+             Buffer m
+peekBuffer ( MkBuffer real ) =
+  MkBuffer . prim__peekBuffer real . bitsFromFin
 
 -- Append count repetitions of a Buffer to another Buffer
 %assert_total
 public
-appendBufferNative : Buffer n        ->
-                     ( count : Nat ) ->
-                     Buffer m        ->
-                     Buffer ( n + m * count )
-appendBufferNative { n } { m } ( MkBuffer input ) count =
+appendBuffer : Buffer n        ->
+               ( count : Nat ) ->
+               Buffer m        ->
+               Buffer ( n + m * count )
+appendBuffer { n } { m } ( MkBuffer input ) count =
   MkBuffer . app . realBuffer
   where
     nBits : Bits64
@@ -89,21 +77,7 @@ appendBufferNative { n } { m } ( MkBuffer input ) count =
     mBits = bitsFromNat m
     cBits : Bits64
     cBits = bitsFromNat count
-    app = prim__appendBufferNative input nBits cBits mBits
-
-public
-appendBufferLE : Buffer n        ->
-                 ( count : Nat ) ->
-                 Buffer m        ->
-                 Buffer ( n + m * count )
-appendBufferLE = appendBufferNative
-
-public
-appendBufferBE : Buffer n        ->
-                 ( count : Nat ) ->
-                 Buffer m        ->
-                 Buffer ( n + m * count )
-appendBufferBE = appendBufferNative
+    app = prim__appendBuffer input nBits cBits mBits
 
 
 peekBits : ( prim__UnsafeBuffer -> Bits64 -> a ) ->

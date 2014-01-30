@@ -21,7 +21,7 @@ firstByte : Bits8
 firstByte = peekBits8LE full 0
 
 firstHalfView : Buffer 4
-firstHalfView = peekBufferLE full 0
+firstHalfView = peekBuffer full 0
 
 firstHalfCopy : Buffer 4
 firstHalfCopy = copy firstHalfView
