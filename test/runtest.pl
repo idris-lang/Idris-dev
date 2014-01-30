@@ -40,6 +40,7 @@ sub runtest {
         if ($update == 0) {
             $exitstatus = 1;
             print "Ran $test...FAILURE\n";
+            system "diff output expected";
         } else {
             system("cp output expected");
             print "Ran $test...UPDATED\n";
