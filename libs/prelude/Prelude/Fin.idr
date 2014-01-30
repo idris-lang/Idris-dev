@@ -77,7 +77,7 @@ data IsJust : Maybe a -> Type where
      ItIsJust : IsJust {a} (Just x)
 
 fromInteger : (x : Integer) ->
-        {default (ItIsJust _ _)
+        {default ItIsJust
              prf : (IsJust (integerToFin x n))} -> Fin n
 fromInteger {n} x {prf} with (integerToFin x n)
   fromInteger {n} x {prf = ItIsJust} | Just y = y
