@@ -2,4 +2,4 @@
 idris $@ Main.idr --nocolour --check && echo MAIN-PASS
 idris $@ Faulty.idr --nocolour --check && echo FAULTY-PASS
 idris $@ Multiple.idr --nocolour --check && echo MULTIPLE-PASS
-find -name \*.ibc -delete
+rm -f *.ibc B/*.ibc 
