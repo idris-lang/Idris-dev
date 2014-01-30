@@ -10,11 +10,16 @@ New in 0.9.11:
 * General improvements in error messages, especially %error_reverse
   annotation, which allows a hint as to how to display a term in error
   messages
+* --ideslave mode now transmits semantic information about many of the
+  strings that it emits, which can be used by clients to implement
+  semantic highlighting like that of the REPL. This has been implemented
+  in the Emacs mode and the IRC bot, which can serve as examples.
 
 Internal changes
 
 * Faster elaboration
 * Smaller .ibc files
+* Pretty-printer now used for all term output
 
 
 New in 0.9.10:
