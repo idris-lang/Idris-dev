@@ -36,7 +36,7 @@ viewsAndCopiesPreserveEquality : Bool
 viewsAndCopiesPreserveEquality = ( oneFromFirstHalf == one ) && ( oneFromFirstHalfCopy == one )
 
 secondHalfWord : Bits32
-secondHalfWord = peekBits32LE full 1
+secondHalfWord = peekBits32LE full 4
 
 main : IO ()
 main = do

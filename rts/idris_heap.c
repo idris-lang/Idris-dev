@@ -106,6 +106,15 @@ void heap_check_pointers(Heap * heap) {
              }
              break;
            }
+       case BUFOFFSET:
+           if (!ref_in_heap(heap, heap_item->info.buf_offset->buf)) {
+               fprintf(stderr,
+                       "RTS ERROR: heap closure broken. "\
+                       "<HEAP %p %p %p> <REF %p>\n",
+                       heap->heap, heap->next, heap->end, heap_item->info.buf_offset->buf);
+               exit(EXIT_FAILURE);
+           }
+           break;
        case FWD:
            // Check for artifacts after cheney gc.
            fprintf(stderr, "RTS ERROR: FWD in working heap.\n");

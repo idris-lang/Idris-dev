@@ -434,6 +434,13 @@ data IntTy = ITFixed NativeTy | ITNative | ITBig | ITChar
            | ITVec NativeTy Int
     deriving (Show, Eq, Ord)
 
+intTyName :: IntTy -> String
+intTyName ITNative = "Int"
+intTyName ITBig = "BigInt"
+intTyName (ITFixed sized) = "B" ++ show (nativeTyWidth sized)
+intTyName (ITChar) = "Char"
+intTyName (ITVec ity count) = "B" ++ show (nativeTyWidth ity) ++ "x" ++ show count
+
 data ArithTy = ATInt IntTy | ATFloat -- TODO: Float vectors
     deriving (Show, Eq, Ord)
 {-!

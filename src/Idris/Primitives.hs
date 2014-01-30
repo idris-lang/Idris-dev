@@ -284,9 +284,6 @@ fixedOps ity@(ITFixed _) =
     map peekFun endiannesses
     where
       endiannesses = [ Native, LE, BE ]
-      enName LE = "LE"
-      enName BE = "BE"
-      enName Native = "Native"
       tyName = intTyName ity
       b64 = AType (ATInt (ITFixed IT64))
       thisTy = AType $ ATInt ity
@@ -397,13 +394,6 @@ mkVecUpdate _ _ _ = Nothing
 aTyName :: ArithTy -> String
 aTyName (ATInt t) = intTyName t
 aTyName ATFloat = "Float"
-
-intTyName :: IntTy -> String
-intTyName ITNative = "Int"
-intTyName ITBig = "BigInt"
-intTyName (ITFixed sized) = "B" ++ show (nativeTyWidth sized)
-intTyName (ITChar) = "Char"
-intTyName (ITVec ity count) = "B" ++ show (nativeTyWidth ity) ++ "x" ++ show count
 
 iCmp  :: IntTy -> String -> Bool -> ([Const] -> Maybe Const) -> (IntTy -> PrimFn) -> Totality -> Prim
 iCmp ity op self impl irop totality

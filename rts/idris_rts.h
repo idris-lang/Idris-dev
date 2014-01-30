@@ -16,7 +16,8 @@
 
 typedef enum {
     CON, INT, BIGINT, FLOAT, STRING, STROFFSET,
-    BITS8, BITS16, BITS32, BITS64, UNIT, PTR, FWD
+    BITS8, BITS16, BITS32, BITS64, UNIT, PTR, FWD,
+    BUFFER, BUFOFFSET
 } ClosureType;
 
 typedef struct Closure *VAL;
@@ -30,6 +31,20 @@ typedef struct {
     VAL str;
     int offset;
 } StrOffset;
+
+typedef struct {
+    // If we ever have multithreaded access to the same heap,
+    // fill is mutable so needs synchronization!
+    size_t fill;
+    size_t cap;
+    unsigned char store[];
+} Buffer;
+
+typedef struct {
+    VAL buf;
+    size_t offset;
+} BufOffset;
+
 
 typedef struct Closure {
 // Use top 16 bits of ty for saying which heap value is in
@@ -46,6 +61,8 @@ typedef struct Closure {
         uint16_t bits16;
         uint32_t bits32;
         uint64_t bits64;
+        Buffer* buf;
+        BufOffset* buf_offset;
     } info;
 } Closure;
 
@@ -162,6 +179,8 @@ VAL MKFLOATc(VM* vm, double val);
 VAL MKSTROFFc(VM* vm, StrOffset* off);
 VAL MKSTRc(VM* vm, char* str);
 VAL MKPTRc(VM* vm, void* ptr);
+VAL MKBUFFERc(VM* vm, Buffer* buf);
+VAL MKBUFOFFSETc(VM* vm, BufOffset* off);
 
 char* GETSTROFF(VAL stroff);
 
@@ -233,6 +252,36 @@ VAL idris_strTail(VM* vm, VAL str);
 VAL idris_strCons(VM* vm, VAL x, VAL xs);
 VAL idris_strIndex(VM* vm, VAL str, VAL i);
 VAL idris_strRev(VM* vm, VAL str);
+
+// Buffer primitives
+VAL idris_allocate(VM* vm, VAL hint);
+VAL idris_copy(VM* vm, VAL len, VAL src);
+VAL idris_appendBuffer(VM* vm, VAL fst, VAL fstLen, VAL count, VAL sndLen, VAL snd);
+VAL idris_peekBuffer(VM* vm, VAL src, VAL off);
+VAL idris_appendB8Native(VM* vm, VAL buf, VAL len, VAL cnt, VAL val);
+VAL idris_appendB8LE(VM* vm, VAL buf, VAL len, VAL cnt, VAL val);
+VAL idris_appendB8BE(VM* vm, VAL buf, VAL len, VAL cnt, VAL val);
+VAL idris_appendB16Native(VM* vm, VAL buf, VAL len, VAL cnt, VAL val);
+VAL idris_appendB16LE(VM* vm, VAL buf, VAL len, VAL cnt, VAL val);
+VAL idris_appendB16BE(VM* vm, VAL buf, VAL len, VAL cnt, VAL val);
+VAL idris_appendB32Native(VM* vm, VAL buf, VAL len, VAL cnt, VAL val);
+VAL idris_appendB32LE(VM* vm, VAL buf, VAL len, VAL cnt, VAL val);
+VAL idris_appendB32BE(VM* vm, VAL buf, VAL len, VAL cnt, VAL val);
+VAL idris_appendB64Native(VM* vm, VAL buf, VAL len, VAL cnt, VAL val);
+VAL idris_appendB64LE(VM* vm, VAL buf, VAL len, VAL cnt, VAL val);
+VAL idris_appendB64BE(VM* vm, VAL buf, VAL len, VAL cnt, VAL val);
+VAL idris_peekB8Native(VM* vm, VAL buf, VAL off);
+VAL idris_peekB8LE(VM* vm, VAL buf, VAL off);
+VAL idris_peekB8BE(VM* vm, VAL buf, VAL off);
+VAL idris_peekB16Native(VM* vm, VAL buf, VAL off);
+VAL idris_peekB16LE(VM* vm, VAL buf, VAL off);
+VAL idris_peekB16BE(VM* vm, VAL buf, VAL off);
+VAL idris_peekB32Native(VM* vm, VAL buf, VAL off);
+VAL idris_peekB32LE(VM* vm, VAL buf, VAL off);
+VAL idris_peekB32BE(VM* vm, VAL buf, VAL off);
+VAL idris_peekB64Native(VM* vm, VAL buf, VAL off);
+VAL idris_peekB64LE(VM* vm, VAL buf, VAL off);
+VAL idris_peekB64BE(VM* vm, VAL buf, VAL off);
 
 // Command line args
 

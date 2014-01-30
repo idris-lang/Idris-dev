@@ -457,6 +457,13 @@ doOp v LStrCons [x, y] = v ++ "idris_strCons(vm, " ++ creg x ++ "," ++ creg y ++
 doOp v LStrIndex [x, y] = v ++ "idris_strIndex(vm, " ++ creg x ++ "," ++ creg y ++ ")"
 doOp v LStrRev [x] = v ++ "idris_strRev(vm, " ++ creg x ++ ")"
 
+doOp v LAllocate [x] = v ++ "idris_allocate(vm, " ++ creg x ++ ")"
+doOp v LCopy [x, y]  = v ++ "idris_copy(vm, " ++ creg x ++ "," ++ creg y ++ ")"
+doOp v LAppendBufferNative [a, b, c, d, e] = v ++ "idris_appendBuffer(vm, " ++ creg a ++ "," ++ creg b ++ "," ++ creg c ++ "," ++ creg d ++ "," ++ creg e ++ ")"
+doOp v LPeekBufferNative [x, y] = v ++ "idris_peekBuffer(vm, " ++ creg x ++ "," ++ creg y ++ ")"
+doOp v (LAppend ity en) [a, b, c, d] = v ++ "idris_append" ++ intTyName ity ++ enName en ++ "(vm, " ++ creg a ++ "," ++ creg b ++ "," ++ creg c ++ "," ++ creg d ++ ")"
+doOp v (LPeek ity en) [x, y] = v ++ "idris_peek" ++ intTyName ity ++ enName en ++ "(vm, " ++ creg x ++ "," ++ creg y ++ ")"
+
 doOp v LStdIn [] = v ++ "MKPTR(vm, stdin)"
 doOp v LStdOut [] = v ++ "MKPTR(vm, stdout)"
 doOp v LStdErr [] = v ++ "MKPTR(vm, stderr)"

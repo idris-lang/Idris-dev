@@ -7,6 +7,11 @@ import           Debug.Trace
 
 data Endianness = Native | BE | LE deriving (Show, Eq)
 
+enName :: Endianness -> String
+enName Native = "Native"
+enName BE = "BE"
+enName LE = "LE"
+
 data LVar = Loc Int | Glob Name
   deriving (Show, Eq)
 
