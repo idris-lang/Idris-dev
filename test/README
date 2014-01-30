@@ -1,41 +1,16 @@
-Tests:
+Tests are categorised as follows:
 
-001: Well-typed interpreter
-002: Universe checking
-003: Literate source and string processing
-004: File operations
-005: Num class resolution [regression]; span & break; ad-hoc overloading
-006: Provisional definitions; class resolution in patterns
-007: Applicative and idiom brackets
-008: case and pattern matching let
-009: ranges and list monad
-010: total
-011: record projection and update
-012: various error regressions
-013: binding syntax
-014: resource DSL
-015: verified binary adder
-016: codata
-017: mutually recursive totality checking
-018: Message passing concurrency (raw form)
-019: magic with
-020: implicit conversions
-021: effects
-022: dynamic C library loading and interpreter IO
-023: trivial (non-I/O) type providers
-024: interpreter I/O
-025: memory effects
-026: simple file-I/O-based type provider
-027: class constraints in using block
-028: hello world with comment and block comment syntax in idr file
-029: match_refine and apply by type
-030: %reflection for functions running on syntax
-031: error reflection 
-032: control idris via stdin
-033: null pointer creation and check
-034: presence of floating point primitives in backends
+basic:       Basic language features, some complete programs
+dsl:         Embedded DSLs and features to support DSL development
+effects:     Effects package
+error:       Error messages and error reflection
+ffi:         FFI calls, including type providers
+interactive: Interactive editing, proof search
+io:          IO monad
+literate:    .lidr files; literate programming
+primitives:  Primitive types
+proof:       Theorem proving, tactics
+sugar:       Syntactic sugar, syntax extensions
+totality:    Totality checking
 
-regxxx: various regression tests
-reg020: working strlen
-reg029: executor doesn’t crash receiving a NULL String from C
-
+reg:         Regression tests, covering previous bug fixes

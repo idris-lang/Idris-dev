@@ -11,10 +11,10 @@ test_java:
 	perl ./runtest.pl all --codegen Java
 
 test_js:
-	@perl ./runtest.pl without reg029 reg031 test004 test014 test018 test021 test025 test033 --codegen node
+	@perl ./runtest.pl without reg029 reg031 io001 dsl002 io003 effects001 effects002 basic007 --codegen node
 
 test_llvm:
-	@perl ./runtest.pl without test018 test033 --codegen llvm
+	@perl ./runtest.pl without io003 basic007 --codegen llvm
 
 update:
 	/usr/bin/env perl ./runtest.pl all -u

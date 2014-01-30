@@ -1,2 +1,0 @@
-#!/usr/bin/env bash
-idris $@ test012a.idr -o test012a
