@@ -24,14 +24,14 @@ import Pkg.PParser
 
 import Paths_idris (getDataDir)
 
--- | Run the package through the idris compiler.
--- 
 -- To build a package:
 -- * read the package description
 -- * check all the library dependencies exist
 -- * invoke the makefile if there is one
 -- * invoke idris on each module, with idris_opts
 -- * install everything into datadir/pname, if install flag is set
+
+-- | Run the package through the idris compiler.
 buildPkg :: Bool -> (Bool, FilePath) -> IO ()
 buildPkg warnonly (install, fp)
      = do pkgdesc <- parseDesc fp
