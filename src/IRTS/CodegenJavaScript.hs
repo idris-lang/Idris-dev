@@ -182,11 +182,11 @@ compileJS (JSCond branches) =
 
     createIfBlock (JSTrue, e) =
          "{\n"
-      ++ "return " ++ compileJS e
+      ++ compileJS e
       ++ ";\n}"
     createIfBlock (cond, e) =
          "if (" ++ compileJS cond ++") {\n"
-      ++ "return " ++ compileJS e
+      ++ compileJS e
       ++ ";\n}"
 
 compileJS (JSTernary cond true false) =
@@ -383,16 +383,17 @@ inlineJS :: JS -> JS
 inlineJS (JSReturn (JSApp (JSFunction ["cse"] body) [val@(JSVar _)])) =
   inlineJS $ jsSubst (JSIdent "cse") val body
 
+
 inlineJS (JSReturn (JSApp (JSFunction [arg] cond@(JSCond _)) [val])) =
-  JSSeq [ JSAlloc arg (Just (inlineJS val))
-        , inlineJS cond
-        ]
+  inlineJS $ JSSeq [ JSAlloc arg (Just val)
+                   , cond
+                   ]
 
 inlineJS (JSApp (JSProj (JSFunction args (JSReturn body)) "apply") [
     JSThis,JSProj var "vars"
   ])
   | var /= JSIdent "cse" =
-      inlineApply args body 0
+      inlineJS $ inlineApply args body 0
   where
     inlineApply []     body _ = inlineJS body
     inlineApply (a:as) body n =
@@ -477,7 +478,7 @@ inlineJS (JSAlloc name (Just js)) =
   JSAlloc name (Just $ inlineJS js)
 
 inlineJS (JSCond cases) =
-  JSCond (map (second inlineJS) cases)
+  JSCond $ map (inlineJS *** inlineJS) cases
 
 inlineJS (JSObject fields) =
   JSObject (map (second inlineJS) fields)
@@ -1269,7 +1270,8 @@ translateDeclaration (path, SFun name params stackSize body)
 
     caseFun :: [(LVar, String)] -> LVar -> SAlt -> JS
     caseFun aux var cse =
-      jsFunAux aux (translateCase (Just (translateVariableName var)) cse)
+      let (JSReturn c) = translateCase (Just (translateVariableName var)) cse in
+          jsFunAux aux c
 
     getTag :: SAlt -> Maybe Int
     getTag (SConCase _ tag _ _ _) = Just tag
@@ -1631,10 +1633,10 @@ translateCaseCond var cse@(SConCase _ tag _ _ _) =
   (CaseCond $ ConCase tag, translateCase (Just var) cse)
 
 translateCase :: Maybe String -> SAlt -> JS
-translateCase _          (SDefaultCase e) = translateExpression e
-translateCase _          (SConstCase _ e) = translateExpression e
+translateCase _          (SDefaultCase e) = JSReturn $ translateExpression e
+translateCase _          (SConstCase _ e) = JSReturn $ translateExpression e
 translateCase (Just var) (SConCase a _ _ vars e) =
   let params = map jsVar [a .. (a + length vars)] in
-      jsMeth (JSFunction params (JSReturn $ translateExpression e)) "apply" [
+      JSReturn $ jsMeth (JSFunction params (JSReturn $ translateExpression e)) "apply" [
         JSThis, JSProj (JSIdent var) "vars"
       ]
