@@ -25,7 +25,9 @@ import Data.List
 import Data.Char
 import qualified Data.Text as T
 import Data.Either
+import qualified Data.Map as M
 import Data.Maybe
+import qualified Data.Set as S
 import Data.Word (Word)
 
 import Debug.Trace
@@ -152,6 +154,24 @@ addToCG n cg
    = do i <- getIState
         putIState $ i { idris_callgraph = addDef n cg (idris_callgraph i) }
 
+-- | Adds error handlers for a particular function and argument. If names are is ambiguous, all matching handlers are updated.
+addFunctionErrorHandlers :: Name -> Name -> [Name] -> Idris ()
+addFunctionErrorHandlers f arg hs =
+ do i <- getIState
+    let oldHandlers = idris_function_errorhandlers i
+    let newHandlers = flip (addDef f) oldHandlers $
+                      case lookupCtxtExact f oldHandlers of
+                        Nothing            -> M.singleton arg (S.fromList hs)
+                        Just (oldHandlers) -> M.insertWith S.union arg (S.fromList hs) oldHandlers
+                        -- will always be one of those two, thus no extra case
+    putIState $ i { idris_function_errorhandlers = newHandlers }
+
+getFunctionErrorHandlers :: Name -> Name -> Idris [Name]
+getFunctionErrorHandlers f arg = do i <- getIState
+                                    return . maybe [] S.toList $
+                                     undefined --lookup arg =<< lookupCtxtExact f (idris_function_errorhandlers i)
+
+
 -- Trace all the names in a call graph starting at the given name
 getAllNames :: Name -> Idris [Name]
 getAllNames n = allNames [] n
@@ -160,8 +180,8 @@ allNames :: [Name] -> Name -> Idris [Name]
 allNames ns n | n `elem` ns = return []
 allNames ns n = do i <- getIState
                    case lookupCtxtExact n (idris_callgraph i) of
-                      [ns'] -> do more <- mapM (allNames (n:ns)) (map fst (calls ns'))
-                                  return (nub (n : concat more))
+                      Just ns' -> do more <- mapM (allNames (n:ns)) (map fst (calls ns'))
+                                     return (nub (n : concat more))
                       _ -> return [n]
 
 addCoercion :: Name -> Idris ()
@@ -545,10 +565,20 @@ setREPL t = do i <- getIState
                let opt' = opts { opt_repl = t }
                putIState $ i { idris_options = opt' }
 
+showOrigErr :: Idris Bool
+showOrigErr = do i <- getIState
+                 return (opt_origerr (idris_options i))
+
+setShowOrigErr :: Bool -> Idris ()
+setShowOrigErr b = do i <- getIState
+                      let opts = idris_options i
+                      let opt' = opts { opt_origerr = b }
+                      putIState $ i { idris_options = opt' }
+
 setNoBanner :: Bool -> Idris ()
 setNoBanner n = do i <- getIState
                    let opts = idris_options i
-                   let opt' = opts {opt_nobanner = n}
+                   let opt' = opts { opt_nobanner = n }
                    putIState $ i { idris_options = opt' }
 
 getNoBanner :: Idris Bool

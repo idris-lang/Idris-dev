@@ -23,7 +23,7 @@ data TTUExp = UVar Int
 %name TTUExp uexp
 
 -- | Primitive constants
-data Const = I Int | BI Nat | Fl Float | Ch Char | Str String
+data Const = I Int | BI Integer | Fl Float | Ch Char | Str String
            | IType | BIType | FlType   | ChType  | StrType
            | B8 Bits8 | B16 Bits16 | B32 Bits32 | B64 Bits64
            | B8Type   | B16Type    | B32Type    | B64Type
@@ -37,7 +37,7 @@ abstract class ReflConst (a : Type) where
 instance ReflConst Int where
    toConst x = I x
 
-instance ReflConst Nat where
+instance ReflConst Integer where
    toConst = BI
 
 instance ReflConst Float where

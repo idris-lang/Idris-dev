@@ -1035,6 +1035,7 @@ constant =  do reserved "Integer";return (AType (ATInt ITBig))
 @
 VerbatimString_t ::=
   '\"\"\"' ~'\"\"\"' '\"\"\"'
+;
 @
  -}
 verbatimStringLiteral :: MonadicParsing m => m String

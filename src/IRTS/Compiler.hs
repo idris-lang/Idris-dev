@@ -218,13 +218,13 @@ instance ToIR (TT Name) where
                                  let collapse
                                         = case lookupCtxtExact n
                                                    (idris_optimisation i) of
-                                               [oi] -> collapsible oi
+                                               Just oi -> collapsible oi
                                                _ -> False
                                  let unused
                                         = case lookupCtxtExact n
                                                       (idris_callgraph i) of
-                                               [CGInfo _ _ _ _ unusedpos] ->
-                                                      unusedpos
+                                               Just (CGInfo _ _ _ _ unusedpos) ->
+                                                         unusedpos
                                                _ -> []
                                  if collapse
                                      then return LNothing

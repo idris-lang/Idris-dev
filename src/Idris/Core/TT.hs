@@ -29,6 +29,7 @@ import qualified Data.Map.Strict as Map
 import Data.Char
 import qualified Data.Text as T
 import Data.List
+import Data.Maybe (listToMaybe)
 import Data.Vector.Unboxed (Vector)
 import qualified Data.Vector.Unboxed as V
 import qualified Data.Binary as B
@@ -412,8 +413,8 @@ lookupCtxtName n ctxt = case Map.lookup (nsroot n) ctxt of
 lookupCtxt :: Name -> Ctxt a -> [a]
 lookupCtxt n ctxt = map snd (lookupCtxtName n ctxt)
 
-lookupCtxtExact :: Name -> Ctxt a -> [a]
-lookupCtxtExact n ctxt = [ v | (nm, v) <- lookupCtxtName n ctxt, nm == n]
+lookupCtxtExact :: Name -> Ctxt a -> Maybe a
+lookupCtxtExact n ctxt = listToMaybe [ v | (nm, v) <- lookupCtxtName n ctxt, nm == n]
 
 updateDef :: Name -> (a -> a) -> Ctxt a -> Ctxt a
 updateDef n f ctxt

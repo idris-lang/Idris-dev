@@ -48,7 +48,7 @@ simplify tl (DV (Loc i)) = return (SV (Loc i))
 simplify tl (DV (Glob x))
     = do ctxt <- ldefs
          case lookupCtxtExact x ctxt of
-              [DConstructor _ t 0] -> return $ SCon t x []
+              Just (DConstructor _ t 0) -> return $ SCon t x []
               _ -> return $ SV (Glob x)
 simplify tl (DApp tc n args) = do args' <- mapM sVar args
                                   mkapp (SApp (tl || tc) n) args'
@@ -90,7 +90,7 @@ simplify tl (DError str) = return $ SError str
 sVar (DV (Glob x))
     = do ctxt <- ldefs
          case lookupCtxtExact x ctxt of
-              [DConstructor _ t 0] -> sVar (DC t x [])
+              Just (DConstructor _ t 0) -> sVar (DC t x [])
               _ -> return (Glob x, Nothing)
 sVar (DV x) = return (x, Nothing)
 sVar e = do e' <- simplify False e
@@ -138,23 +138,23 @@ scopecheck ctxt envTop tm = sc envTop tm where
        case lookup n (reverse env) of -- most recent first
               Just i -> do lvar i; return (SV (Loc i))
               Nothing -> case lookupCtxtExact n ctxt of
-                              [DConstructor _ i ar] ->
+                              Just (DConstructor _ i ar) ->
                                   if True -- ar == 0
                                      then return (SCon i n [])
                                      else fail $ "Codegen error: Constructor " ++ show n ++
                                                  " has arity " ++ show ar
-                              [_] -> return (SV (Glob n))
-                              [] -> fail $ "Codegen error: No such variable " ++ show n
+                              Just _ -> return (SV (Glob n))
+                              Nothing -> fail $ "Codegen error: No such variable " ++ show n
     sc env (SApp tc f args)
        = do args' <- mapM (scVar env) args
             case lookupCtxtExact f ctxt of
-                [DConstructor n tag ar] ->
+                Just (DConstructor n tag ar) ->
                     if True -- (ar == length args)
                        then return $ SCon tag n args'
                        else fail $ "Codegen error: Constructor " ++ show f ++
                                    " has arity " ++ show ar
-                [_] -> return $ SApp tc f args'
-                [] -> fail $ "Codegen error: No such variable " ++ show f
+                Just _ -> return $ SApp tc f args'
+                Nothing -> fail $ "Codegen error: No such variable " ++ show f
     sc env (SForeign l ty f args)
        = do args' <- mapM (\ (t, a) -> do a' <- scVar env a
                                           return (t, a')) args
@@ -162,7 +162,7 @@ scopecheck ctxt envTop tm = sc envTop tm where
     sc env (SCon tag f args)
        = do args' <- mapM (scVar env) args
             case lookupCtxtExact f ctxt of
-                [DConstructor n tag ar] ->
+                Just (DConstructor n tag ar) ->
                     if True -- (ar == length args)
                        then return $ SCon tag n args'
                        else fail $ "Codegen error: Constructor " ++ show f ++
@@ -199,17 +199,17 @@ scopecheck ctxt envTop tm = sc envTop tm where
        case lookup n (reverse env) of -- most recent first
               Just i -> do lvar i; return (Loc i)
               Nothing -> case lookupCtxtExact n ctxt of
-                              [DConstructor _ i ar] ->
+                              Just (DConstructor _ i ar) ->
                                   fail $ "Codegen error : can't pass constructor here"
-                              [_] -> return (Glob n)
-                              [] -> fail $ "Codegen error: No such variable " ++ show n ++
-                                           " in " ++ show tm ++ " " ++ show envTop
+                              Just _ -> return (Glob n)
+                              Nothing -> fail $ "Codegen error: No such variable " ++ show n ++
+                                               " in " ++ show tm ++ " " ++ show envTop
     scVar _ x = return x
 
     scalt env (SConCase _ i n args e)
        = do let env' = env ++ zip args [length env..]
             tag <- case lookupCtxtExact n ctxt of
-                        [DConstructor _ i ar] ->
+                        Just (DConstructor _ i ar) ->
                              if True -- (length args == ar)
                                 then return i
                                 else fail $ "Codegen error: Constructor " ++ show n ++

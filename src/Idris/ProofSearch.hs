@@ -10,6 +10,7 @@ import Idris.AbsSyntax
 import Idris.Delaborate
 import Idris.Error
 
+import Control.Applicative ((<$>))
 import Control.Monad
 import Debug.Trace
 
@@ -86,7 +87,7 @@ proofSearch elab fn nroot hints ist = psRec maxDepth
                             [args] -> map isImp (snd args)
                             _ -> fail "Ambiguous name"
             ps <- get_probs
-            args <- apply (Var n) imps
+            args <- map snd <$> apply (Var n) imps
             ps' <- get_probs
             when (length ps < length ps') $ fail "Can't apply constructor"
             mapM_ (\ (_, h) -> do focus h

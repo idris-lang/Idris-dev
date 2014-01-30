@@ -312,6 +312,10 @@ ideslaveProcess fn (SetOpt ShowImpl) = do process stdout fn (SetOpt ShowImpl)
                                           iPrintResult ""
 ideslaveProcess fn (UnsetOpt ShowImpl) = do process stdout fn (UnsetOpt ShowImpl)
                                             iPrintResult ""
+ideslaveProcess fn (SetOpt ShowOrigErr) = do process stdout fn (SetOpt ShowOrigErr)
+                                             iPrintResult ""
+ideslaveProcess fn (UnsetOpt ShowOrigErr) = do process stdout fn (UnsetOpt ShowOrigErr)
+                                               iPrintResult ""
 ideslaveProcess fn (SetOpt x) = process stdout fn (SetOpt x)
 ideslaveProcess fn (UnsetOpt x) = process stdout fn (UnsetOpt x)
 ideslaveProcess fn (CaseSplitAt False pos str) = process stdout fn (CaseSplitAt False pos str)
@@ -905,10 +909,12 @@ process h fn Metavars
                         _ -> iPrintResult $ "Global metavariables:\n\t" ++ show mvs
 process h fn NOP      = return ()
 
-process h fn (SetOpt   ErrContext) = setErrContext True
-process h fn (UnsetOpt ErrContext) = setErrContext False
-process h fn (SetOpt ShowImpl)     = setImpShow True
-process h fn (UnsetOpt ShowImpl)   = setImpShow False
+process h fn (SetOpt   ErrContext)  = setErrContext True
+process h fn (UnsetOpt ErrContext)  = setErrContext False
+process h fn (SetOpt ShowImpl)      = setImpShow True
+process h fn (UnsetOpt ShowImpl)    = setImpShow False
+process h fn (SetOpt ShowOrigErr)   = setShowOrigErr True
+process h fn (UnsetOpt ShowOrigErr) = setShowOrigErr False
 
 process h fn (SetOpt _) = iPrintError "Not a valid option"
 process h fn (UnsetOpt _) = iPrintError "Not a valid option"

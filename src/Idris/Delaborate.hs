@@ -206,8 +206,10 @@ pprintErr' i (ProviderError msg) = text ("Type provider error: " ++ msg)
 pprintErr' i (LoadingFailed fn e) = text "Loading" <+> text fn <+> text "failed:" <+>  pprintErr' i e
 pprintErr' i (ReflectionError parts orig) =
   let parts' = map (hsep . map showPart) parts in
-  vsep parts' <> line <> line <>
-  text "Original error:" <$> indented (pprintErr' i orig)
+  vsep parts' <>
+  if (opt_origerr (idris_options i))
+    then line <> line <> text "Original error:" <$> indented (pprintErr' i orig)
+    else empty
   where showPart :: ErrorReportPart -> Doc OutputAnnotation
         showPart (TextPart str) = text str
         showPart (NamePart n)   = annName n

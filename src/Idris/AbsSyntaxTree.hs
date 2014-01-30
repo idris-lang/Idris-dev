@@ -24,9 +24,11 @@ import Control.Monad.Trans.Error
 
 import Data.List
 import Data.Char
+import qualified Data.Map as M
 import qualified Data.Text as T
 import qualified Data.Map as M
 import Data.Either
+import qualified Data.Set as S
 import Data.Word (Word)
 
 import Debug.Trace
@@ -50,7 +52,8 @@ data IOption = IOption { opt_logLevel   :: Int,
                          opt_triple     :: String,
                          opt_cpu        :: String,
                          opt_optLevel   :: Word,
-                         opt_cmdline    :: [Opt] -- remember whole command line
+                         opt_cmdline    :: [Opt], -- remember whole command line
+                         opt_origerr    :: Bool
                        }
     deriving (Show, Eq)
 
@@ -72,6 +75,7 @@ defaultOpts = IOption { opt_logLevel   = 0
                       , opt_cpu        = ""
                       , opt_optLevel   = 2
                       , opt_cmdline    = []
+                      , opt_origerr    = False
                       }
 
 data LanguageExt = TypeProviders | ErrorReflection deriving (Show, Eq, Read, Ord)
@@ -137,9 +141,11 @@ data IState = IState {
     idris_colourRepl :: Bool,
     idris_colourTheme :: ColourTheme,
     idris_outh :: Handle,
-    idris_errorhandlers :: [Name],
+    idris_errorhandlers :: [Name], -- ^ Global error handlers
     idris_nameIdx :: (Int, Ctxt (Int, Name)),
+    idris_function_errorhandlers :: Ctxt (M.Map Name (S.Set Name)), -- ^ Specific error handlers
     module_aliases :: M.Map [T.Text] [T.Text]
+
    }
 
 data SizeChange = Smaller | Same | Bigger | Unknown
@@ -196,6 +202,8 @@ data IBCWrite = IBCFix FixDecl
               | IBCDef Name -- i.e. main context
               | IBCNameHint (Name, Name)
               | IBCLineApp FilePath Int PTerm
+              | IBCErrorHandler Name
+              | IBCFunctionErrorHandler Name Name Name
   deriving Show
 
 -- | The initial state for the compiler
@@ -206,7 +214,7 @@ idrisInit = IState initContext [] [] emptyContext emptyContext emptyContext
                    emptyContext
                    [] [] defaultOpts 6 [] [] [] [] [] [] [] [] [] [] [] [] []
                    [] Nothing Nothing [] [] [] Hidden False [] Nothing [] [] RawOutput
-                   True defaultTheme stdout [] (0, emptyContext) M.empty
+                   True defaultTheme stdout [] (0, emptyContext) emptyContext M.empty
 
 -- | The monad for the main REPL - reading and processing files and updating
 -- global state (hence the IO inner monad).
@@ -315,6 +323,7 @@ data Opt = Filename String
          | TargetCPU String
          | OptLevel Word
          | Client String
+         | ShowOrigErr
     deriving (Show, Eq)
 
 -- Parsed declarations
