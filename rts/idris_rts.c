@@ -558,7 +558,7 @@ static void internal_prepare_append(VM* vm, VAL buf, size_t bufLen, size_t appLe
             *storePtr = (*valPtr)->info.buf->store + bufLen;
         } else {
             // Hooray, can just bump the fill
-            *valPtr = MKBUFOFFSET(vm, buf->info.buf_offset);
+            *valPtr = buf;
             buf->info.buf_offset->buf->info.buf->fill += appLen;
             *storePtr = buf->info.buf_offset->buf->info.buf->store + buf->info.buf_offset->offset + bufLen;
         }
@@ -575,8 +575,7 @@ static void internal_prepare_append(VM* vm, VAL buf, size_t bufLen, size_t appLe
             newBuf->fill = totalLen;
         } else {
             // Hooray, can just bump the fill
-            BufOffset off = { buf, 0 };
-            *valPtr = MKBUFOFFSET(vm, &off);
+            *valPtr = buf;
             newBuf = buf->info.buf;
             newBuf->fill += appLen;
         }
@@ -600,6 +599,8 @@ VAL idris_appendBuffer(VM* vm, VAL fst, VAL fstLen, VAL cnt, VAL sndLen, VAL snd
 
 VAL idris_peekBuffer(VM* vm, VAL src, VAL off) {
     size_t offset = off->info.bits64;
+    if (offset == 0)
+        return src;
     BufOffset b;
     if (GETTY(src) == BUFOFFSET) {
       b.buf = src->info.buf_offset->buf;
