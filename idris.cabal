@@ -240,6 +240,7 @@ Extra-source-files:
                        test/dsl001/*.idr
                        test/dsl001/expected
                        test/dsl002/run
+                       test/dsl002/test
                        test/dsl002/*.idr
                        test/dsl002/expected
 
