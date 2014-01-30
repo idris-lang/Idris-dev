@@ -1,4 +1,29 @@
-FunErrTest.idr:35:10:When elaborating right hand side of badCadr1:
-Could not prove that [] has at least two elements.
-FunErrTest.idr:38:10:When elaborating right hand side of badCadr2:
-Could not prove that tail [(fromInteger 1)] refl has at least two elements.
+True
+False
+True
+False
+True
+False
+True
+False
+True
+False
+False
+True
+False
+True
+True
+False
+True
+False
+True
+False
+False
+True
+False
+False
+False
+True
+False
+True
+False

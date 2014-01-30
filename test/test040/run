@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+idris $@ Main.idr --nocolour --check && echo MAIN-PASS
+idris $@ Faulty.idr --nocolour --check && echo FAULTY-PASS
+idris $@ Multiple.idr --nocolour --check && echo MULTIPLE-PASS
+rm -f *.ibc B/*.ibc 

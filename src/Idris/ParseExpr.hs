@@ -757,6 +757,7 @@ quoteGoal syn = do reserved "quoteGoal"; n <- name;
                 <?> "quote goal expression"
 
 {- | Parses a dependent type signature
+
 @
 Pi ::=
     '|'? Static? '('           TypeDeclList ')' DocComment '->' Expr

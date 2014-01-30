@@ -25,13 +25,14 @@ import qualified Data.List.Split as Spl
 import Data.List
 import Data.Monoid
 import Data.Char
+import qualified Data.Map as M
 import qualified Data.HashSet as HS
 import qualified Data.Text as T
 import qualified Data.ByteString.UTF8 as UTF8
 
 import System.FilePath
 
--- | Idris parser with state used during parsing
+-- | Idris parser with state used during parsing
 type IdrisParser = StateT IState IdrisInnerParser
 
 newtype IdrisInnerParser a = IdrisInnerParser { runInnerParser :: Parser a }
@@ -40,7 +41,7 @@ newtype IdrisInnerParser a = IdrisInnerParser { runInnerParser :: Parser a }
 instance TokenParsing IdrisInnerParser where
   someSpace = many (simpleWhiteSpace <|> singleLineComment <|> multiLineComment) *> pure ()
 
--- | Generalized monadic parsing constraint type
+-- | Generalized monadic parsing constraint type
 type MonadicParsing m = (DeltaParsing m, LookAheadParsing m, TokenParsing m, Monad m)
 
 -- | Helper to run Idris inner parser based stateT parsers
@@ -49,7 +50,7 @@ runparser p i inputname = parseString (runInnerParser (evalStateT p i)) (Directe
 
 {- * Space, comments and literals (token/lexing like parsers) -}
 
--- | Consumes any simple whitespace (any character which satisfies Char.isSpace)
+-- | Consumes any simple whitespace (any character which satisfies Char.isSpace)
 simpleWhiteSpace :: MonadicParsing m => m ()
 simpleWhiteSpace = satisfy isSpace *> pure ()
 
@@ -68,9 +69,12 @@ isDocCommentMarker '^' = True
 isDocCommentMarker   _  = False
 
 {- | Consumes a single-line comment
+
+@
      SingleLineComment_t ::= '--' EOL_t
                         |     '--' ~DocCommentMarker_t ~EOL_t* EOL_t
                         ;
+@
  -}
 singleLineComment :: MonadicParsing m => m ()
 singleLineComment =     try (string "--" *> eol *> pure ())
@@ -78,18 +82,22 @@ singleLineComment =     try (string "--" *> eol *> pure ())
                     <?> ""
 
 {- | Consumes a multi-line comment
+
+@
   MultiLineComment_t ::=
      '{ -- }'
    | '{ -' ~DocCommentMarker_t InCommentChars_t
   ;
+@
 
+@
   InCommentChars_t ::=
    '- }'
    | MultiLineComment_t InCommentChars_t
    | ~'- }'+ InCommentChars_t
   ;
- -}
-
+@
+-}
 multiLineComment :: MonadicParsing m => m ()
 multiLineComment =     try (string "{-" *> (string "-}") *> pure ())
                    <|> string "{-" *> satisfy (not . isDocCommentMarker) *> inCommentChars
@@ -106,9 +114,12 @@ multiLineComment =     try (string "{-" *> (string "-}") *> pure ())
         startEnd = "{}-"
 
 {-| Parses a documentation comment (similar to haddoc) given a marker character
+
+@
   DocComment_t ::=   '--' DocCommentMarker_t ~EOL_t* EOL_t
                   | '{ -' DocCommentMarket_t ~'- }'* '- }'
                  ;
+@
  -}
 docComment :: MonadicParsing m => Char -> m String
 docComment marker | isDocCommentMarker marker = do dc <- docComment' marker; return (T.unpack $ T.strip $ T.pack dc)
@@ -138,14 +149,14 @@ natural = Tok.natural
 integer :: MonadicParsing m => m Integer
 integer = Tok.integer
 
--- | Parses a floating point number
+-- | Parses a floating point number
 float :: MonadicParsing m => m Double
 float = Tok.double
 
 {- * Symbols, identifiers, names and operators -}
 
 
--- | Idris Style for parsing identifiers/reserved keywords
+-- | Idris Style for parsing identifiers/reserved keywords
 idrisStyle :: MonadicParsing m => IdentifierStyle m
 idrisStyle = IdentifierStyle _styleName _styleStart _styleLetter _styleReserved Hi.Identifier Hi.ReservedIdentifier
   where _styleName = "Idris"
@@ -210,14 +221,18 @@ maybeWithNS parser ascend bad = do
 
 -- | Parses a name
 name :: IdrisParser Name
-name = do i <- get
-          iName (syntax_keywords i)
-       <?> "name"
+name = (<?> "name") $ do
+    keywords <- syntax_keywords <$> get
+    aliases  <- module_aliases  <$> get
+    unalias aliases <$> iName keywords
+  where
+    unalias :: M.Map [T.Text] [T.Text] -> Name -> Name
+    unalias aliases (NS n ns) | Just ns' <- M.lookup ns aliases = NS n ns'
+    unalias aliases name = name
 
-
-{- | List of all initial segments in ascending order of a list.  Every such
- initial segment ends right before an element satisfying the given
- condition.
+{- | List of all initial segments in ascending order of a list.  Every
+such initial segment ends right before an element satisfying the given
+condition.
 -}
 initsEndAt :: (a -> Bool) -> [a] -> [[a]]
 initsEndAt p [] = []
@@ -226,7 +241,7 @@ initsEndAt p (x:xs) | p x = [] : x_inits_xs
   where x_inits_xs = [x : cs | cs <- initsEndAt p xs]
 
 
-{- | Create a `Name' from a pair of strings representing a base name and its
+{- | Create a `Name' from a pair of strings representing a base name and its
  namespace.
 -}
 mkName :: (String, String) -> Name
@@ -304,7 +319,7 @@ lastIndent = do ist <- get
                   (x : xs) -> return x
                   _        -> return 1
 
--- | Applies parser in an indented position
+-- | Applies parser in an indented position
 indented :: IdrisParser a -> IdrisParser a
 indented p = notEndBlock *> p <* keepTerminator
 
@@ -326,7 +341,7 @@ indentedBlock1 p = do openBlock
                       closeBlock
                       return res
 
--- | Applies parser to get a block with exactly one (possibly indented) statement
+-- | Applies parser to get a block with exactly one (possibly indented) statement
 indentedBlockS :: IdrisParser a -> IdrisParser a
 indentedBlockS p = do openBlock
                       pushIndent
@@ -452,7 +467,7 @@ accessibility = do reserved "public";   return Public
             <|> do reserved "private";  return Hidden
             <?> "accessibility modifier"
 
--- | Adds accessibility option for function
+-- | Adds accessibility option for function
 addAcc :: Name -> Maybe Accessibility -> IdrisParser ()
 addAcc n a = do i <- get
                 put (i { hide_list = (n, a) : hide_list i })

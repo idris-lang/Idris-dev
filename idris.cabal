@@ -323,6 +323,12 @@ Extra-source-files:
                        test/test038/run
                        test/test038/expected
                        test/test038/*.idr
+                       test/test039/run
+                       test/test039/expected
+                       test/test039/*.idr
+                       test/test040/run
+                       test/test040/expected
+                       test/test040/*.idr
 
 source-repository head
   type:     git
@@ -442,7 +448,7 @@ Library
                 , ansi-wl-pprint
                 , binary
                 , bytestring
-                , containers
+                , containers >= 0.5
                 , directory
                 , directory >= 1.2
                 , filepath

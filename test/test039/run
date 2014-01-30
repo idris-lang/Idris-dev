@@ -1,3 +1,5 @@
 #!/usr/bin/env bash
-idris $@ FunErrTest.idr --nocolour --check
-rm -f *.ibc
+idris $@ -o test038 test038.idr --nocolour
+./test038
+rm -f test038 *.ibc
+

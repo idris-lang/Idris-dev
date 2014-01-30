@@ -26,6 +26,7 @@ import Data.List
 import Data.Char
 import qualified Data.Map as M
 import qualified Data.Text as T
+import qualified Data.Map as M
 import Data.Either
 import qualified Data.Set as S
 import Data.Word (Word)
@@ -142,7 +143,9 @@ data IState = IState {
     idris_outh :: Handle,
     idris_errorhandlers :: [Name], -- ^ Global error handlers
     idris_nameIdx :: (Int, Ctxt (Int, Name)),
-    idris_function_errorhandlers :: Ctxt (M.Map Name (S.Set Name)) -- ^ Specific error handlers
+    idris_function_errorhandlers :: Ctxt (M.Map Name (S.Set Name)), -- ^ Specific error handlers
+    module_aliases :: M.Map [T.Text] [T.Text]
+
    }
 
 data SizeChange = Smaller | Same | Bigger | Unknown
@@ -211,7 +214,7 @@ idrisInit = IState initContext [] [] emptyContext emptyContext emptyContext
                    emptyContext
                    [] [] defaultOpts 6 [] [] [] [] [] [] [] [] [] [] [] [] []
                    [] Nothing Nothing [] [] [] Hidden False [] Nothing [] [] RawOutput
-                   True defaultTheme stdout [] (0, emptyContext) emptyContext
+                   True defaultTheme stdout [] (0, emptyContext) emptyContext M.empty
 
 -- | The monad for the main REPL - reading and processing files and updating
 -- global state (hence the IO inner monad).
