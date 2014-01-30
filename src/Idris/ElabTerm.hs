@@ -223,7 +223,9 @@ elab ist info pattern opts fn tm
              let (tc, _) = unApply ty
              let as' = pruneByType tc ctxt as
              tryAll (zip (map (elab' ina) as') (map showHd as'))
-        where showHd (PApp _ h _) = show h
+        where showHd (PApp _ (PRef _ n) _) = show n
+              showHd (PRef _ n) = show n
+              showHd (PApp _ h _) = show h
               showHd x = show x
     elab' ina (PAlternative False as)
         = trySeq as

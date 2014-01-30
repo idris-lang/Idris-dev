@@ -185,7 +185,7 @@ pprintErr' i (NotInjective p x y) =
   pprintTerm i (delab i y)
 pprintErr' i (CantResolve c) = text "Can't resolve type class" <+> pprintTerm i (delab i c)
 pprintErr' i (CantResolveAlts as) = text "Can't disambiguate name:" <+>
-                                    cat (punctuate comma (map text as))
+                                    cat (punctuate (comma <> space) (map text as))
 pprintErr' i (NoTypeDecl n) = text "No type declaration for" <+> annName n
 pprintErr' i (NoSuchVariable n) = text "No such variable" <+> annName n
 pprintErr' i (IncompleteTerm t) = text "Incomplete term" <+> pprintTerm i (delab i t)
