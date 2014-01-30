@@ -113,7 +113,7 @@ compileJS (JSNew name args) =
   "new " ++ name ++ "(" ++ intercalate "," (map compileJS args) ++ ")"
 
 compileJS (JSError exc) =
-  "(function(){throw '" ++ exc ++ "';})()"
+  "throw new Error(\"" ++ exc ++ "\")"
 
 compileJS (JSOp op lhs rhs) =
   compileJS lhs ++ " " ++ op ++ " " ++ compileJS rhs
@@ -238,6 +238,8 @@ jsLet name value body =
     )
   ) [value]
 
+jsError :: String -> JS
+jsError err = JSApp (JSFunction [] (JSError err)) []
 
 jsSubst :: JS -> JS -> JS -> JS
 jsSubst var new old
@@ -373,6 +375,7 @@ isJSConstant js
   | otherwise = False
 
 inlineJS :: JS -> JS
+inlineJS (JSReturn (JSApp (JSFunction [] err@(JSError _)) [])) = err
 inlineJS (JSReturn (JSApp (JSFunction ["cse"] body) [val@(JSVar _)])) =
   inlineJS $ jsSubst (JSIdent "cse") val body
 
@@ -1208,7 +1211,7 @@ translateConstant PtrType                  = JSType JSPtrTy
 translateConstant Forgot                   = JSType JSForgotTy
 translateConstant (BI i)                   = jsBigInt $ JSString (show i)
 translateConstant c =
-  JSError $ "Unimplemented Constant: " ++ show c
+  jsError $ "Unimplemented Constant: " ++ show c
 
 translateDeclaration :: (String, SDecl) -> [JS]
 translateDeclaration (path, SFun name params stackSize body)
@@ -1500,7 +1503,7 @@ translateExpression (SOp op vars)
     invokeMeth obj meth args = jsMeth (JSVar obj) meth (map JSVar args)
 
 translateExpression (SError msg) =
-  JSError msg
+  jsError msg
 
 translateExpression (SForeign _ _ "putStr" [(FString, var)]) =
   jsCall (idrRTNamespace ++ "print") [JSVar var]
@@ -1554,14 +1557,14 @@ translateExpression (SProj var i) =
 translateExpression SNothing = JSNull
 
 translateExpression e =
-  JSError $ "Not yet implemented: " ++ filter (/= '\'') (show e)
+  jsError $ "Not yet implemented: " ++ filter (/= '\'') (show e)
 
 data FFI = FFICode Char | FFIArg Int | FFIError String
 
 ffi :: String -> [String] -> JS
 ffi code args = let parsed = ffiParse code in
                     case ffiError parsed of
-                         Just err -> JSError err
+                         Just err -> jsError err
                          Nothing  -> JSRaw $ renderFFI parsed args
   where
     ffiParse :: String -> [FFI]
