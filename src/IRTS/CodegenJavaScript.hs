@@ -412,11 +412,11 @@ inlineJS (JSApp (JSIdent "__IDRRT__tailcall") [
 inlineJS (JSApp (JSFunction [arg] (JSReturn ret)) [val])
   | JSNew con [tag, vals] <- ret
   , opt <- inlineJS val =
-      JSNew con [tag, jsSubst (JSIdent arg) opt vals]
+      inlineJS $ JSNew con [tag, jsSubst (JSIdent arg) opt vals]
 
   | JSNew con [JSFunction [] (JSReturn (JSApp fun vars))] <- ret
   , opt <- inlineJS val =
-      JSNew con [JSFunction [] (
+      inlineJS $ JSNew con [JSFunction [] (
         JSReturn (
           JSApp (
             jsSubst (JSIdent arg) opt fun
@@ -428,7 +428,7 @@ inlineJS (JSApp (JSFunction [arg] (JSReturn ret)) [val])
 
   | JSApp (JSProj obj field) args <- ret
   , opt <- inlineJS val =
-      JSApp (
+      inlineJS $ JSApp (
         JSProj (jsSubst (JSIdent arg) opt obj) field
       ) (
         map (jsSubst (JSIdent arg) opt) args
@@ -436,19 +436,19 @@ inlineJS (JSApp (JSFunction [arg] (JSReturn ret)) [val])
 
   | JSIndex (JSProj obj field) idx <- ret
   , opt <- inlineJS val =
-      JSIndex (JSProj (
+      inlineJS $ JSIndex (JSProj (
           jsSubst (JSIdent arg) opt obj
         ) field
       ) (jsSubst (JSIdent arg) opt idx)
 
   | JSOp op lhs rhs <- ret
   , opt <- inlineJS val =
-      JSOp op (jsSubst (JSIdent arg) opt lhs) $
+      inlineJS $ JSOp op (jsSubst (JSIdent arg) opt lhs) $
         (jsSubst (JSIdent arg) opt rhs)
 
   | JSApp (JSIdent fun) args <- ret
   , opt <- inlineJS val =
-      JSApp (JSIdent fun) $ map (jsSubst (JSIdent arg) opt) args
+      inlineJS $ JSApp (JSIdent fun) $ map (jsSubst (JSIdent arg) opt) args
 
 inlineJS (JSApp fun args) =
   JSApp (inlineJS fun) (map inlineJS args)
