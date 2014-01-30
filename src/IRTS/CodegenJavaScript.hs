@@ -62,7 +62,6 @@ data JS = JSRaw String
         | JSTrue
         | JSFalse
         | JSArray [JS]
-        | JSObject [(String, JS)]
         | JSString String
         | JSChar String
         | JSNum JSNum
@@ -144,12 +143,6 @@ compileJS JSFalse =
 
 compileJS (JSArray elems) =
   "[" ++ intercalate "," (map compileJS elems) ++ "]"
-
-compileJS (JSObject fields) =
-  "{" ++ intercalate ",\n" (map compileField fields) ++ "}"
-  where
-    compileField :: (String, JS) -> String
-    compileField (name, val) = '\'' : name ++ "' : "  ++ compileJS val
 
 compileJS (JSString str) =
   show str
@@ -479,9 +472,6 @@ inlineJS (JSAlloc name (Just js)) =
 
 inlineJS (JSCond cases) =
   JSCond $ map (inlineJS *** inlineJS) cases
-
-inlineJS (JSObject fields) =
-  JSObject (map (second inlineJS) fields)
 
 inlineJS (JSOp op lhs rhs) =
   JSOp op (inlineJS lhs) (inlineJS rhs)
