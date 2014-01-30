@@ -8,13 +8,13 @@ test: $(TESTS)
 	@perl ./runtest.pl $(patsubst %.test,%,$@)
 
 test_java:
-	perl ./runtest.pl all --codegen Java
+	perl ./runtest.pl without buffer001 --codegen Java
 
 test_js:
-	@perl ./runtest.pl without reg029 reg031 io001 dsl002 io003 effects001 effects002 basic007 --codegen node
+	@perl ./runtest.pl without reg029 reg031 io001 dsl002 io003 effects001 effects002 basic007 buffer001 --codegen node
 
 test_llvm:
-	@perl ./runtest.pl without io003 basic007 --codegen llvm
+	@perl ./runtest.pl without io003 basic007 buffer001 --codegen llvm
 
 update:
 	/usr/bin/env perl ./runtest.pl all -u
