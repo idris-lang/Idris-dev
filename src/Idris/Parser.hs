@@ -561,7 +561,7 @@ class_ syn = do (doc, acc) <- try (do
                   doc <- option "" (docComment '|')
                   acc <- optional accessibility
                   return (doc, acc))
-                reserved "class"; fc <- getFC; cons <- constraintList syn; n_in <- name
+                reserved "class"; fc <- getFC; cons <- constraintList syn; n_in <- fnName
                 let n = expandNS syn n_in
                 cs <- many carg
                 ds <- option [] (classBlock syn)
@@ -591,7 +591,7 @@ instance_ :: SyntaxInfo -> IdrisParser [PDecl]
 instance_ syn = do reserved "instance"; fc <- getFC
                    en <- optional instanceName
                    cs <- constraintList syn
-                   cn <- name
+                   cn <- fnName
                    args <- many (simpleExpr syn)
                    let sc = PApp fc (PRef fc cn) (map pexp args)
                    let t = bindList (PPi constraint) (map (\x -> (sMN 0 "constraint", x)) cs) sc
