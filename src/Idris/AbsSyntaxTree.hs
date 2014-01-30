@@ -25,6 +25,7 @@ import Control.Monad.Trans.Error
 import Data.List
 import Data.Char
 import qualified Data.Text as T
+import qualified Data.Map as M
 import Data.Either
 import Data.Word (Word)
 
@@ -137,7 +138,8 @@ data IState = IState {
     idris_colourTheme :: ColourTheme,
     idris_outh :: Handle,
     idris_errorhandlers :: [Name],
-    idris_nameIdx :: (Int, Ctxt (Int, Name))
+    idris_nameIdx :: (Int, Ctxt (Int, Name)),
+    module_aliases :: M.Map [T.Text] [T.Text]
    }
 
 data SizeChange = Smaller | Same | Bigger | Unknown
@@ -204,7 +206,7 @@ idrisInit = IState initContext [] [] emptyContext emptyContext emptyContext
                    emptyContext
                    [] [] defaultOpts 6 [] [] [] [] [] [] [] [] [] [] [] [] []
                    [] Nothing Nothing [] [] [] Hidden False [] Nothing [] [] RawOutput
-                   True defaultTheme stdout [] (0, emptyContext)
+                   True defaultTheme stdout [] (0, emptyContext) M.empty
 
 -- | The monad for the main REPL - reading and processing files and updating
 -- global state (hence the IO inner monad).

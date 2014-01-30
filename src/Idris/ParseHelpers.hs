@@ -25,6 +25,7 @@ import qualified Data.List.Split as Spl
 import Data.List
 import Data.Monoid
 import Data.Char
+import qualified Data.Map as M
 import qualified Data.HashSet as HS
 import qualified Data.Text as T
 import qualified Data.ByteString.UTF8 as UTF8
@@ -210,10 +211,14 @@ maybeWithNS parser ascend bad = do
 
 -- | Parses a name
 name :: IdrisParser Name
-name = do i <- get
-          iName (syntax_keywords i)
-       <?> "name"
-
+name = (<?> "name") $ do
+    keywords <- syntax_keywords <$> get
+    aliases  <- module_aliases  <$> get
+    unalias aliases <$> iName keywords
+  where
+    unalias :: M.Map [T.Text] [T.Text] -> Name -> Name
+    unalias aliases (NS n ns) | Just ns' <- M.lookup ns aliases = NS n ns'
+    unalias aliases name = name
 
 {- | List of all initial segments in ascending order of a list.  Every such
  initial segment ends right before an element satisfying the given
