@@ -623,14 +623,6 @@ VAL idris_appendB8Native(VM* vm, VAL buf, VAL len, VAL cnt, VAL val) {
     return cl;
 }
 
-VAL idris_appendB8LE(VM* vm, VAL buf, VAL len, VAL cnt, VAL val) {
-    return idris_appendB8Native(vm, buf, len, cnt, val);
-}
-
-VAL idris_appendB8BE(VM* vm, VAL buf, VAL len, VAL cnt, VAL val) {
-    return idris_appendB8Native(vm, buf, len, cnt, val);
-}
-
 static VAL internal_append_bits(VM* vm, VAL buf, VAL bufLen, VAL cnt, const void* val, size_t val_len) {
     size_t len = bufLen->info.bits64;
     size_t count = cnt->info.bits64;
@@ -720,14 +712,6 @@ VAL idris_peekB8Native(VM* vm, VAL buf, VAL off) {
         buf->info.buf_offset->buf->info.buf->store + buf->info.buf_offset->offset + offset :
         buf->info.buf->store + offset;
     return MKB8(vm, *val);
-}
-
-VAL idris_peekB8LE(VM* vm, VAL buf, VAL off) {
-    return idris_peekB8Native(vm, buf, off);
-}
-
-VAL idris_peekB8BE(VM* vm, VAL buf, VAL off) {
-    return idris_peekB8Native(vm, buf, off);
 }
 
 VAL idris_peekB16Native(VM* vm, VAL buf, VAL off) {

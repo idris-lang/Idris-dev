@@ -15,10 +15,10 @@ firstHalf : Buffer 4
 firstHalf = appendBits32LE em 1 one
 
 full : Buffer 8
-full = appendBits8LE firstHalf 4 two
+full = appendBits8 firstHalf 4 two
 
 firstByte : Bits8
-firstByte = peekBits8LE full 0
+firstByte = peekBits8 full 0
 
 firstHalfView : Buffer 4
 firstHalfView = peekBuffer full 0

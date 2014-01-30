@@ -102,46 +102,19 @@ appendBits { n } prim ( MkBuffer real ) count =
 -- Read a Bits8 from a Buffer starting at offset
 %assert_total
 public
-peekBits8Native : Buffer ( 1 + n )           ->
-                  ( offset : Fin ( S n ) ) ->
-                  Bits8
-peekBits8Native = peekBits { m = 1 } prim__peekB8Native
-
-%assert_total
-public
-peekBits8LE : Buffer ( 1 + n ) -> ( offset : Fin ( S n ) ) -> Bits8
-peekBits8LE = peekBits { m = 1 } prim__peekB8LE
-
-%assert_total
-public
-peekBits8BE : Buffer ( 1 + n ) -> ( offset : Fin ( S n ) ) -> Bits8
-peekBits8BE = peekBits { m = 1 } prim__peekB8BE
+peekBits8 : Buffer ( 1 + n )           ->
+            ( offset : Fin ( S n ) ) ->
+            Bits8
+peekBits8 = peekBits { m = 1 } prim__peekB8Native
 
 -- Append count repetitions of a Bits8 to a Buffer
 %assert_total
 public
-appendBits8Native : Buffer n        ->
-                    ( count : Nat ) ->
-                    Bits8           ->
-                    Buffer ( n + count * 1 )
-appendBits8Native = appendBits prim__appendB8Native
-
-%assert_total
-public
-appendBits8LE : Buffer n        ->
-                ( count : Nat ) ->
-                Bits8           ->
-                Buffer ( n + count * 1 )
-appendBits8LE = appendBits prim__appendB8LE
-
-%assert_total
-public
-appendBits8BE : Buffer n        ->
-                ( count : Nat ) ->
-                Bits8           ->
-                Buffer ( n + count * 1 )
-appendBits8BE = appendBits prim__appendB8BE
-
+appendBits8 : Buffer n        ->
+              ( count : Nat ) ->
+              Bits8           ->
+              Buffer ( n + count * 1 )
+appendBits8 = appendBits prim__appendB8Native
 
 -- Read a Bits16 in native byte order from a Buffer starting at offset
 %assert_total
