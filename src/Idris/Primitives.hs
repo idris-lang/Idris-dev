@@ -287,10 +287,10 @@ fixedOps ity@(ITFixed _) =
       tyName = intTyName ity
       b64 = AType (ATInt (ITFixed IT64))
       thisTy = AType $ ATInt ity
-      appendFun en = Prim (sUN $ "prim__append" ++ tyName ++ enName en)
+      appendFun en = Prim (sUN $ "prim__append" ++ tyName ++ show en)
                          (ty [BufferType, b64, b64, thisTy] BufferType)
                          4 (p_cantreduce) (4, LAppend ity en) partial
-      peekFun en = Prim (sUN $ "prim__peek" ++ tyName ++ enName en)
+      peekFun en = Prim (sUN $ "prim__peek" ++ tyName ++ show en)
                          (ty [BufferType, b64] thisTy)
                          2 (p_cantreduce) (2, LPeek ity en) partial
 
