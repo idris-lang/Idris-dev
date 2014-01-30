@@ -48,7 +48,7 @@ sub runtest {
     chdir "..";
 }
 
-my ( @tests, @opts );
+my ( @without, @args, @tests, @opts );
 
 if ($#ARGV>=0) {
     my $test = shift @ARGV;
@@ -58,6 +58,26 @@ if ($#ARGV>=0) {
         foreach my $file (@list) {
             if ($file =~ /[0-9][0-9][0-9]/) {
                 push @tests, $file;
+            }
+        }
+        @tests = sort @tests;
+    } elsif ($test eq "without") {
+        @args = @ARGV;
+        foreach my $file (@args) {
+            last if ($file =~ /--/);
+            push @without, shift @ARGV;
+        }
+
+        opendir my $dir, ".";
+        my @list = readdir $dir;
+        foreach my $file (@list) {
+            if ($file =~ /[0-9][0-9][0-9]/) {
+                if (!(grep ($_ eq $file, @without))) {
+                   push @tests, $file;
+                }
+                else {
+                   print "Omitting $file\n";
+                }
             }
         }
         @tests = sort @tests;

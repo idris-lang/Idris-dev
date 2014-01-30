@@ -24,6 +24,9 @@ test_java:
 test_llvm:
 	$(MAKE) -C test IDRIS=../dist/build/idris test_llvm
 
+test_js:
+	$(MAKE) -C test IDRIS=../dist/build/idris test_js
+
 test_all:
 	$(MAKE) test
 	$(MAKE) test_llvm
