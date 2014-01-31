@@ -75,6 +75,7 @@ data JS = JSRaw String
         | JSIndex JS JS
         | JSCond [(JS, JS)]
         | JSTernary JS JS JS
+        | JSParens JS
         deriving Eq
 
 
@@ -189,6 +190,9 @@ compileJS (JSTernary cond true false) =
       t = compileJS true
       f = compileJS false in
       "(" ++ c ++ ")?(" ++ t ++ "):(" ++ f ++ ")"
+
+compileJS (JSParens js) =
+  "(" ++ compileJS js ++ ")"
 
 
 jsTailcall :: JS -> JS
@@ -326,6 +330,9 @@ jsSubst var new (JSAssign lhs rhs) =
 jsSubst var new (JSAlloc val (Just js)) =
   JSAlloc val (Just (jsSubst var new js))
 
+jsSubst var new (JSParens js) =
+  JSParens $ jsSubst var new js
+
 jsSubst _ _ js = js
 
 
@@ -377,6 +384,9 @@ removeAllocations (JSCond conds) =
 
 removeAllocations (JSTernary c t f) =
   JSTernary (removeAllocations c) (removeAllocations t) (removeAllocations f)
+
+removeAllocations (JSParens js) =
+  JSParens $ removeAllocations js
 
 removeAllocations js = js
 
@@ -497,6 +507,9 @@ inlineJS (JSCond cases) =
 inlineJS (JSOp op lhs rhs) =
   JSOp op (inlineJS lhs) (inlineJS rhs)
 
+inlineJS (JSParens js) =
+  JSParens $ inlineJS js
+
 inlineJS js = js
 
 
@@ -548,6 +561,8 @@ deadEvalApplyCases js =
           concatMap (uncurry (++)) $ map (getTags *** getTags) conds
 
         getTags (JSTernary c t f) = getTags c ++ getTags t ++ getTags f
+
+        getTags (JSParens js) = getTags js
 
         getTags js = []
 
@@ -606,6 +621,8 @@ initConstructors js =
 
         getTags (JSTernary c t f) = getTags c ++ getTags t ++ getTags f
 
+        getTags (JSParens js) = getTags js
+
         getTags js = []
 
 
@@ -655,6 +672,9 @@ initConstructors js =
               ) (
                 replaceHelper tags f
               )
+
+            replaceHelper tags (JSParens js) =
+              JSParens $ replaceHelper tags js
 
             replaceHelper tags js = js
 
@@ -729,6 +749,9 @@ removeIDs js =
 
         removeIDCall ids (JSArray fields) =
           JSArray $ map (removeIDCall ids) fields
+
+        removeIDCall ids (JSParens js) =
+          JSParens $ removeIDCall ids js
 
         removeIDCall _ js = js
 
@@ -816,13 +839,39 @@ inlineFunctions js =
                 , countInvokations name f
                 ]
 
+        countInvokations name (JSParens js) =
+          countInvokations name js
+
         countInvokations _ _ = 0
 
 
 reduceConstant :: JS -> JS
-reduceConstant (JSApp (JSIdent "__IDRRT__tailcall") [JSFunction [] (
-                 JSReturn (JSApp (JSIdent "__IDR__mEVAL0") [JSNum num])
-               )]) = JSNum num
+reduceConstant
+  (JSApp (JSIdent "__IDRRT__tailcall") [JSFunction [] (
+    JSReturn (JSApp (JSIdent "__IDR__mEVAL0") [val])
+  )])
+  | JSNum num       <- val = val
+  | JSOp op lhs rhs <- val =
+      JSParens $ JSOp op (reduceConstant lhs) (reduceConstant rhs)
+
+  | JSApp (JSProj lhs op) [rhs] <- val
+  , op `elem` [ "subtract"
+              , "add"
+              , "multiply"
+              , "divide"
+              , "mod"
+              , "equals"
+              , "lesser"
+              , "lesserOrEquals"
+              , "greater"
+              , "greaterOrEquals"
+              ] = val
+
+reduceConstant (JSApp ident [(JSParens js)]) =
+  JSApp ident [reduceConstant js]
+
+reduceConstant (JSOp op lhs rhs) =
+  JSOp op (reduceConstant lhs) (reduceConstant rhs)
 
 reduceConstant (JSReturn ret) =
   JSReturn (reduceConstant ret)
@@ -851,7 +900,11 @@ reduceConstant (JSSeq seq) =
 reduceConstant (JSFunction args body) =
   JSFunction args (reduceConstant body)
 
+reduceConstant (JSParens js) =
+  JSParens $ reduceConstant js
+
 reduceConstant js = js
+
 
 reduceConstants :: JS -> JS
 reduceConstants js
@@ -929,6 +982,9 @@ optimizeEvalTailcalls (fun, tc) js =
         optHelper f
       )
 
+    optHelper (JSParens js) =
+      JSParens $ optHelper js
+
     optHelper js = js
 
 
@@ -991,6 +1047,9 @@ removeInstanceChecks (JSTernary c t f) =
   ) (
     removeInstanceChecks f
   )
+
+removeInstanceChecks (JSParens js) =
+  JSParens $ removeInstanceChecks js
 
 removeInstanceChecks js = js
 
@@ -1070,6 +1129,9 @@ reduceLoop reduced (cons, program) =
 
         reduceCall funs (JSArray fields) =
           JSArray $ map (reduceCall funs) fields
+
+        reduceCall funs (JSParens js) =
+          JSParens $ reduceCall funs js
 
         reduceCall _ js = js
 
