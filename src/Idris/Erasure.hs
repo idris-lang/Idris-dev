@@ -145,7 +145,9 @@ buildDepMap ctx ns = addPostulates $ dfs S.empty M.empty ns
 
         -- the variables that arose as function arguments only depend on (n, i)
         varMap = M.fromList [(v, S.singleton (fn, Arg i)) | (v,i) <- zip vars [0..]]
-        (vars, sc) = cases_compiletime cdefs  -- TODO: or cases_runtime?
+        (vars, sc) = cases_runtime cdefs
+            -- we use cases_runtime in order to have case-blocks
+            -- resolved to top-level functions before our analysis
 
     etaExpand :: [Name] -> Term -> Term
     etaExpand []       t = t
@@ -163,8 +165,9 @@ buildDepMap ctx ns = addPostulates $ dfs S.empty M.empty ns
     getDepsAlt :: Name -> [Name] -> Vars -> Var -> CaseAlt -> Deps
     getDepsAlt fn es vs var (FnCase n ns sc) = error "an FnCase encountered"  -- TODO: what's this?
     getDepsAlt fn es vs var (ConstCase c sc) = getDepsSC fn es vs sc
-    getDepsAlt fn es vs var (SucCase   n sc) = getDepsSC fn es vs sc  -- deps for S can be hardcoded if needed
     getDepsAlt fn es vs var (DefaultCase sc) = getDepsSC fn es vs sc
+    getDepsAlt fn es vs var (SucCase   n sc)
+        = getDepsSC fn es (M.insert n var vs) sc -- we're not inserting the S-dependency here because it's special-cased
     getDepsAlt fn es vs var (ConCase n cnt ns sc)
         = getDepsSC fn es (vs' `M.union` vs) sc  -- left-biased union
       where
@@ -178,6 +181,7 @@ buildDepMap ctx ns = addPostulates $ dfs S.empty M.empty ns
     -- named variables introduce dependencies as described in `vs'
     getDepsTerm vs bs cd (P _ n _)
         | Just var <- M.lookup n vs = M.singleton cd var        -- found among local variables
+        | MN _ _   <- n = error $ "variable " ++ show n ++ " unbound in " ++ show cd
         | otherwise = M.singleton cd (S.singleton (n, Result))  -- assumed to be a global reference
     
     -- dependencies of de bruijn variables are described in `bs'
