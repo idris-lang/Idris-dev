@@ -49,15 +49,15 @@ type Var = Set Node
 type Vars = Map Name Var
 
 -- Find the minimal consistent usage by forward chaining.
-minimalUsage :: Deps -> UseMap
+minimalUsage :: Deps -> (Set Name, UseMap)
 minimalUsage = gather . forwardChain
   where
-    gather :: Set (Name, Arg) -> UseMap
-    gather = foldr ins M.empty . S.toList 
+    gather :: Set (Name, Arg) -> (Set Name, UseMap)
+    gather = foldr ins (S.empty, M.empty) . S.toList 
        where
-        ins :: Node -> UseMap -> UseMap
-        ins (n, Result) = id
-        ins (n, Arg i ) = M.insertWith IS.union n (IS.singleton i)
+        ins :: Node -> (Set Name, UseMap) -> (Set Name, UseMap)
+        ins (n, Result) (ns, umap) = (S.insert n ns, umap)
+        ins (n, Arg i ) (ns, umap) = (ns, M.insertWith IS.union n (IS.singleton i) umap)
 
 forwardChain :: Deps -> Set Node
 forwardChain deps
@@ -82,23 +82,23 @@ buildDepMap ctx ns = addPostulates $ dfs S.empty M.empty ns
         -- mini-DSL for postulates
         (==>) ds rs = (S.fromList ds, S.fromList rs)
         (.:) ms n = NS (UN $ pack n) (map pack ms)
-        name = UN . pack
+        it n is = [(UN $ pack n, Arg i) | i <- is]
 
         postulates = 
-            [ [] ==>
-                [ (["Main"] .: "main", Result) -- These two, Main.main and run__IO, are always evaluated
-                , (name "run__IO", Result)     -- but evade analysis since they come from the seed term.
-                , (name "prim__believe_me", Arg 2)
-                , (name "prim__strCons", Arg 0)
-                , (name "prim__strCons", Arg 1)
-                , (name "prim__strHead", Arg 0)
-                , (name "prim__strTail", Arg 0)
-                , (name "prim__lenString", Arg 0)
-                , (name "prim__concat", Arg 0)
-                , (name "prim__concat", Arg 1)
-                , (name "prim__zextInt_BigInt", Arg 0)
-                , (name "mkForeignPrim", Arg 2)
-                , (name "mkForeign", Arg 1)
+            [ [] ==> concat
+                [ [(["Main"] .: "main",  Result)] -- These two, Main.main and run__IO, are always evaluated
+                , [(UN (pack "run__IO"), Result)] -- but evade analysis since they come from the seed term.
+                , it "prim__believe_me" [2]
+                , it "prim__strCons"    [0,1]
+                , it "prim__strHead"    [0]
+                , it "prim__strTail"    [0]
+                , it "prim_lenString"   [0]    -- not a typo, just a single underscore
+                , it "prim__concat"     [0,1]
+                , it "mkForeignPrim"    [2]
+                , it "mkForeign"        [1]
+                , it "prim__toStrBigInt"    [0]
+                , it "prim__addBigInt"      [0,1]
+                , it "prim__zextInt_BigInt" [0]
                 ]  
             ]
 
@@ -126,8 +126,8 @@ buildDepMap ctx ns = addPostulates $ dfs S.empty M.empty ns
     getDeps :: Name -> Deps
     getDeps n = case lookupDef n ctx of
         [def] -> getDepsDef n def
-        []    -> error $ "erasure checker: unknown name: " ++ show n
-        _     -> error $ "erasure checker: ambiguous name: " ++ show n
+        []    -> error $ "erasure checker: unknown reference: " ++ show n
+        _     -> error $ "erasure checker: ambiguous reference: " ++ show n
 
     getDepsDef :: Name -> Def -> Deps
     getDepsDef fn (Function ty t) = error "a function encountered"  -- TODO
@@ -149,7 +149,7 @@ buildDepMap ctx ns = addPostulates $ dfs S.empty M.empty ns
 
     etaExpand :: [Name] -> Term -> Term
     etaExpand []       t = t
-    etaExpand (n : ns) t = App (etaExpand ns t) (P Bound n Erased)
+    etaExpand (n : ns) t = etaExpand ns (App t (P Bound n Erased))
 
     getDepsSC :: Name -> [Name] -> Vars -> SC -> Deps
     getDepsSC fn es vs  ImpossibleCase     = M.empty
@@ -177,9 +177,9 @@ buildDepMap ctx ns = addPostulates $ dfs S.empty M.empty ns
 
     -- named variables introduce dependencies as described in `vs'
     getDepsTerm vs bs cd (P _ n _)
-        | Just var <- M.lookup n vs = M.singleton cd var  -- this condition gives rise to these dependencies
-        | otherwise = M.empty
-
+        | Just var <- M.lookup n vs = M.singleton cd var        -- found among local variables
+        | otherwise = M.singleton cd (S.singleton (n, Result))  -- assumed to be a global reference
+    
     -- dependencies of de bruijn variables are described in `bs'
     getDepsTerm vs bs cd (V i) = (bs !! i) cd
 
@@ -208,6 +208,8 @@ buildDepMap ctx ns = addPostulates $ dfs S.empty M.empty ns
 
             -- a bound variable might draw in additional dependencies,
             -- think: f x = x 0  <-- here, `x' _is_ used
+            -- also, the arguments must be considered used
+            -- since we don't know what's in the variable
             P Bound n _ -> var n `ins` unconditionalDeps args
 
             -- we interpret applied lambdas as lets in order to reuse code here

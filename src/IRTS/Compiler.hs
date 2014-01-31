@@ -55,7 +55,8 @@ compile codegen f tm
         iLOG $ "USAGE ANALYSIS:\n" ++ unlines (map printItem . M.toList $ depMap)
 
         let fmtDepMap = unlines . map (\(n,is) -> show n ++ " -> " ++ show (IS.toList is)) . M.toList
-        let minUse = minimalUsage depMap
+        let (reachableNames, minUse) = minimalUsage depMap
+        iLOG $ "REACHABLE NAMES: " ++ show (S.toList reachableNames)
         iLOG $ "MINIMAL USAGE:\n" ++ fmtDepMap minUse
 
         mapM_ (uncurry storeUsage) (M.toList minUse)
