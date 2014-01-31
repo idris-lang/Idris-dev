@@ -283,6 +283,7 @@ Extra-source-files:
                        test/ffi004/expected
 
                        test/interactive001/run
+                       test/interactive001/input
                        test/interactive001/*.idr
                        test/interactive001/expected
 
