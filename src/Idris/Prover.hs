@@ -99,8 +99,9 @@ dumpState ist ps@(PS nm (h:hs) _ _ tm _ _ _ _ _ _ problems i _ _ ctxy _ _ _) = d
     prettyAssumptions env <> line <>
     prettyGoal (zip (assumptionNames env) (repeat False)) ty
   where
-    -- XXX
-    tPretty bnd t = pprintPTerm True bnd $ delab ist t
+    showImplicits = opt_showimp (idris_options ist)
+
+    tPretty bnd t = pprintPTerm showImplicits bnd $ delab ist t
 
     assumptionNames :: Env -> [Name]
     assumptionNames = map fst
