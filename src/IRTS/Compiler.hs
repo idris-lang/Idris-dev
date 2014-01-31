@@ -52,10 +52,11 @@ compile codegen f tm
         ctx <- tt_ctxt <$> getIState
         let depMap = buildDepMap ctx used
         let printItem (cond, deps) = show (S.toList cond) ++ " -> " ++ show (S.toList deps)
-        iLOG $ "USAGE ANALYSIS:\n" ++ unlines (map printItem . M.toList $ depMap)
+        -- iLOG $ "USAGE ANALYSIS:\n" ++ unlines (map printItem . M.toList $ depMap)
 
-        let (reachableNames', minUse) = minimalUsage depMap
+        let (residDeps, (reachableNames', minUse)) = minimalUsage depMap
             reachableNames = sUN "prim__subBigInt" : sUN "prim__addBigInt" : S.toList reachableNames'
+        iLOG $ "RESIDUAL DEPS:\n" ++ unlines (map printItem . M.toList $ residDeps)
         iLOG $ "REACHABLE NAMES: " ++ show reachableNames
 
         let fmtDepMap = unlines . map (\(n,is) -> show n ++ " -> " ++ show (IS.toList is)) . M.toList
@@ -274,7 +275,9 @@ instance ToIR (TT Name) where
                                                _ -> [] -- TODO: is this correct?
                                  if collapse
                                      then return LNothing
-                                     else return (LApp False (LV (Glob n))
+                                     else do
+                                        iLOG $ "ERASE:\n  " ++ show tm ++ "\n ==>\n  " ++ show (LApp False (LV (Glob n)) (mkUsed used 0 args'))
+                                        return (LApp False (LV (Glob n))
                                                  (mkUsed used 0 args'))
           | (f, args) <- unApply tm
               = do f' <- ir' env f

@@ -49,8 +49,8 @@ type Var = Set Node
 type Vars = Map Name Var
 
 -- Find the minimal consistent usage by forward chaining.
-minimalUsage :: Deps -> (Set Name, UseMap)
-minimalUsage = gather . forwardChain
+minimalUsage :: Deps -> (Deps, (Set Name, UseMap))
+minimalUsage = second gather . forwardChain
   where
     gather :: Set (Name, Arg) -> (Set Name, UseMap)
     gather = foldr ins (S.empty, M.empty) . S.toList 
@@ -59,11 +59,11 @@ minimalUsage = gather . forwardChain
         ins (n, Result) (ns, umap) = (S.insert n ns, umap)
         ins (n, Arg i ) (ns, umap) = (ns, M.insertWith IS.union n (IS.singleton i) umap)
 
-forwardChain :: Deps -> Set Node
+forwardChain :: Deps -> (Deps, Set Node)
 forwardChain deps
     | Just trivials <- M.lookup S.empty deps 
-        = trivials `S.union` forwardChain (remove trivials . M.delete S.empty $ deps)
-    | otherwise = S.empty
+        = (trivials `S.union`) `second` forwardChain (remove trivials . M.delete S.empty $ deps)
+    | otherwise = (deps, S.empty)
   where
     -- Remove the given nodes from the Deps entirely,
     -- possibly creating new empty Conds.
@@ -81,8 +81,9 @@ buildDepMap ctx ns = addPostulates $ dfs S.empty M.empty ns
       where
         -- mini-DSL for postulates
         (==>) ds rs = (S.fromList ds, S.fromList rs)
-        (.:) ms n = NS (UN $ pack n) (map pack ms)
+        (.:) ms n = NS (UN $ pack n) (map pack $ reverse ms)
         it n is = [(UN $ pack n, Arg i) | i <- is]
+        mn n is = [(MN 0 $ pack n, Arg i) | i <- is]
 
         postulates = 
             [ [] ==> concat
@@ -98,7 +99,12 @@ buildDepMap ctx ns = addPostulates $ dfs S.empty M.empty ns
                 , it "mkForeign"        [1]
                 , it "prim__toStrBigInt"    [0]
                 , it "prim__addBigInt"      [0,1]
+                , it "prim__sextInt_BigInt" [0]
                 , it "prim__zextInt_BigInt" [0]
+                , it "prim__eqString"       [0,1]
+                , it "prim__eqChar"         [0,1]
+                , it "prim__eqBigInt"       [0,1]
+                , mn "__MkPair" [0,1]
                 ]  
             ]
 
@@ -180,9 +186,19 @@ buildDepMap ctx ns = addPostulates $ dfs S.empty M.empty ns
 
     -- named variables introduce dependencies as described in `vs'
     getDepsTerm vs bs cd (P _ n _)
-        | Just var <- M.lookup n vs = M.singleton cd var        -- found among local variables
-        | MN _ _   <- n = error $ "variable " ++ show n ++ " unbound in " ++ show cd
-        | otherwise = M.singleton cd (S.singleton (n, Result))  -- assumed to be a global reference
+        -- local variables
+        | Just var <- M.lookup n vs
+        = M.singleton cd var
+
+        -- sanity check: machine-generated names shouldn't occur at top-level
+        | MN _ _ <- n
+        , show n `notElem` specialMNs
+        = error $ "erasure analysis: variable " ++ show n ++ " unbound in " ++ show (S.toList cd)
+
+        -- assumed to be a global reference
+        | otherwise = M.singleton cd (S.singleton (n, Result))
+      where
+        specialMNs = words "{__Unit0}"
     
     -- dependencies of de bruijn variables are described in `bs'
     getDepsTerm vs bs cd (V i) = (bs !! i) cd
