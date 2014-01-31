@@ -417,9 +417,9 @@ setWidth w = do ist <- getIState
 iRender :: Doc a -> Idris (SimpleDoc a)
 iRender d = do w <- getWidth
                return $ case w of
-                          InfinitelyWide -> renderCompact d
+                          InfinitelyWide -> renderPretty 1.0 1000000000 d
                           ColsWide n -> if n < 1
-                                          then renderCompact d
+                                          then renderPretty 1.0 1000000000 d
                                           else renderPretty 0.5 n d
 
 ihPrintResult :: Handle -> String -> Idris ()
@@ -445,7 +445,7 @@ consoleDisplayAnnotated h output = do ist <- getIState
 ideSlaveReturnAnnotated :: Integer -> Handle -> Doc OutputAnnotation -> Idris ()
 ideSlaveReturnAnnotated n h out = do ist <- getIState
                                      let (str, spans) = displaySpans .
-                                                        renderCompact .
+                                                        renderPretty 0.8 80 .
                                                         fmap (fancifyAnnots ist) $
                                                         out
                                          good = [SymbolAtom "ok", toSExp str, toSExp spans]
@@ -469,6 +469,12 @@ ihPrintFunTypes h n overloads = do imp <- impShow
                                      IdeSlave n -> ideSlaveReturnAnnotated n h output
   where fullName n = annotate (AnnName n Nothing Nothing) $ text (show n)
         ppOverload imp n tm = fullName n <+> colon <+> align (prettyImp imp tm)
+
+ihRenderResult :: Handle -> Doc OutputAnnotation -> Idris ()
+ihRenderResult h d = do ist <- getIState
+                        case idris_outputmode ist of
+                          RawOutput -> consoleDisplayAnnotated h d
+                          IdeSlave n -> ideSlaveReturnAnnotated n h d
 
 fancifyAnnots :: IState -> OutputAnnotation -> OutputAnnotation
 fancifyAnnots ist annot@(AnnName n _ _) =
