@@ -22,7 +22,7 @@ import System.IO
 import Control.Monad.Trans.State.Strict
 import Control.Monad.Trans.Error
 
-import Data.List
+import Data.List hiding (group)
 import Data.Char
 import qualified Data.Map as M
 import qualified Data.Text as T
@@ -696,7 +696,6 @@ data PTactic' t = Intro [Name] | Intros | Focus Name
 deriving instance Binary PTactic'
 deriving instance NFData PTactic'
 !-}
-
 instance Sized a => Sized (PTactic' a) where
   size (Intro nms) = 1 + size nms
   size Intros = 1
@@ -1015,17 +1014,20 @@ piBindp p ((n, ty):ns) t = PPi p n ty (piBindp p ns t)
 
 -- Pretty-printing declarations and terms
 
+-- These "show" instances render to an absurdly wide screen because inserted line breaks
+-- could interfere with interactive editing, which calls "show".
+
 instance Show PTerm where
-  showsPrec _ tm = (displayS . renderCompact . prettyImp False) tm
+  showsPrec _ tm = (displayS . renderPretty 1.0 10000000 . prettyImp False) tm
 
 instance Show PDecl where
-  showsPrec _ d = (displayS . renderCompact . showDeclImp False) d
+  showsPrec _ d = (displayS . renderPretty 1.0 10000000 . showDeclImp False) d
 
 instance Show PClause where
-  showsPrec _ c = (displayS . renderCompact . showCImp True) c
+  showsPrec _ c = (displayS . renderPretty 1.0 10000000 . showCImp True) c
 
 instance Show PData where
-  showsPrec _ d = (displayS . renderCompact . showDImp False) d
+  showsPrec _ d = (displayS . renderPretty 1.0 10000000 . showDImp False) d
 
 instance Pretty PTerm OutputAnnotation where
   pretty = prettyImp False
@@ -1065,9 +1067,6 @@ pprintPTerm impl bnd = prettySe 10 bnd
   where
     prettySe :: Int -> [(Name, Bool)] -> PTerm -> Doc OutputAnnotation
     prettySe p bnd (PQuote r) =
-      if size r > breakingSize then
-        text "![" <> line <> pretty r <> text "]"
-      else
         text "![" <> pretty r <> text "]"
     prettySe p bnd (PPatvar fc n) = pretty n
     prettySe p bnd e
@@ -1075,35 +1074,23 @@ pprintPTerm impl bnd = prettySe 10 bnd
       | Just n <- snat p e = annotate AnnConstData (text (show n))
     prettySe p bnd (PRef fc n) = prettyName impl bnd n
     prettySe p bnd (PLam n ty sc) =
-      bracket p 2 $
-        if size sc > breakingSize then
-          text "\\" <> bindingOf n False <+> text "=>" <> line <> prettySe 10 ((n, False):bnd) sc
-        else
-          text "\\" <> bindingOf n False <+> text "=>" <+> prettySe 10 ((n, False):bnd) sc
+      bracket p 2 . group . hang 2 $
+      text "\\" <> bindingOf n False <+> text "=>" <$>
+      prettySe 10 ((n, False):bnd) sc
     prettySe p bnd (PLet n ty v sc) =
       bracket p 2 $
-        if size sc > breakingSize then
-          text "let" <+> bindingOf n False <+> text "=" <+> prettySe 10 bnd v <+> text "in" <>
-            nest nestingSize (prettySe 10 ((n, False):bnd) sc)
-        else
-          text "let" <+> bindingOf n False <+> text "=" <+> prettySe 10 bnd v <+> text "in" <+>
-            prettySe 10 ((n, False):bnd) sc
+      text "let" <+> bindingOf n False <+> text "=" </>
+      prettySe 10 bnd v <+> text "in" </>
+      prettySe 10 ((n, False):bnd) sc
     prettySe p bnd (PPi (Exp l s _ _) n ty sc)
       | n `elem` allNamesIn sc || impl =
           let open = if Lazy `elem` l then text "|" <> lparen else lparen in
-            bracket p 2 $
-              if size sc > breakingSize then
-                enclose open rparen (bindingOf n False <+> colon <+> prettySe 10 bnd ty) <+>
-                  st <> text "->" <> line <> prettySe 10 ((n, False):bnd) sc
-              else
-                enclose open rparen (bindingOf n False <+> colon <+> prettySe 10 bnd ty) <+>
-                 st <> text "->" <+> prettySe 10 ((n, False):bnd) sc
+            bracket p 2 . group $
+            enclose open rparen (group . align $ bindingOf n False <+> colon <+> prettySe 10 bnd ty) <+>
+            st <> text "->" <$> prettySe 10 ((n, False):bnd) sc
       | otherwise                      =
-          bracket p 2 $
-            if size sc > breakingSize then
-              prettySe 0 bnd ty <+> st <> text "->" <> line <> prettySe 10 ((n, False):bnd) sc
-            else
-              prettySe 0 bnd ty <+> st <> text "->" <+> prettySe 10 ((n, False):bnd) sc
+          bracket p 2 . group $
+          group (prettySe 0 bnd ty <+> st) <> text "->" <$> group (prettySe 10 ((n, False):bnd) sc)
       where
         st =
           case s of
@@ -1113,12 +1100,8 @@ pprintPTerm impl bnd = prettySe 10 bnd
       | impl =
           let open = if Lazy `elem` l then text "|" <> lbrace else lbrace in
             bracket p 2 $
-              if size sc > breakingSize then
-                open <> bindingOf n True <+> colon <+> prettySe 10 bnd ty <> rbrace <+>
-                  st <> text "->" <+> prettySe 10 ((n, True):bnd) sc
-              else
-                open <> bindingOf n True <+> colon <+> prettySe 10 bnd ty <> rbrace <+>
-                  st <> text "->" <+> prettySe 10 ((n, True):bnd) sc
+            open <> bindingOf n True <+> colon <+> prettySe 10 bnd ty <> rbrace <+>
+            st <> text "->" </> prettySe 10 ((n, True):bnd) sc
       | otherwise = prettySe 10 ((n, True):bnd) sc
       where
         st =
@@ -1127,18 +1110,11 @@ pprintPTerm impl bnd = prettySe 10 bnd
             _      -> empty
     prettySe p bnd (PPi (Constraint _ _ _) n ty sc) =
       bracket p 2 $
-        if size sc > breakingSize then
-          prettySe 10 bnd ty <+> text "=>" <+> prettySe 10 ((n, True):bnd) sc
-        else
-          prettySe 10 bnd ty <+> text "=>" <> line <> prettySe 10 ((n, True):bnd) sc
+      prettySe 10 bnd ty <+> text "=>" </> prettySe 10 ((n, True):bnd) sc
     prettySe p bnd (PPi (TacImp _ _ s _) n ty sc) =
       bracket p 2 $
-        if size sc > breakingSize then
-          lbrace <> text "tacimp" <+> bindingOf n True <+> colon <+> prettySe 10 bnd ty <>
-            rbrace <+> text "->" <> line <> prettySe 10 ((n, True):bnd) sc
-        else
-          lbrace <> text "tacimp" <+> pretty n <+> colon <+> prettySe 10 bnd ty <>
-            rbrace <+> text "->" <+> prettySe 10 ((n, True):bnd) sc
+      lbrace <> text "tacimp" <+> pretty n <+> colon <+> prettySe 10 bnd ty <>
+      rbrace <+> text "->" </> prettySe 10 ((n, True):bnd) sc
     prettySe p bnd (PApp _ (PRef _ f) [])
       | not impl = prettyName impl bnd f
     prettySe p bnd (PAppBind _ (PRef _ f) [])
@@ -1148,11 +1124,8 @@ pprintPTerm impl bnd = prettySe 10 bnd
       , not (tnull nm) &&
         length (getExps args) == 2 && (not impl) && (not $ isAlpha (thead nm)) =
           let [l, r] = getExps args in
-            bracket p 1 $
-              if size r > breakingSize then
-                prettySe 1 bnd l <+> prettyName impl bnd op <> line <> prettySe 0 bnd r
-              else
-                prettySe 1 bnd l <+> prettyName impl bnd op <+> prettySe 0 bnd r
+            bracket p 1 . align . group $
+            (prettySe 1 bnd l <+> prettyName impl bnd op) <$> group (prettySe 0 bnd r)
     prettySe p bnd (PApp _ hd@(PRef fc f) [tm])
       | PConstant (Idris.Core.TT.Str str) <- getTm tm,
         f == sUN "Symbol_" = char '\'' <> prettySe 10 bnd (PRef fc (sUN str))
@@ -1160,10 +1133,14 @@ pprintPTerm impl bnd = prettySe 10 bnd
       let args = getExps as
           fp   = prettySe 1 bnd f
       in
-        bracket p 1 $
-          hsep (if impl
-                  then fp : map (prettyArgS bnd) as
-                  else fp : map (prettyArgSe bnd) args)
+        bracket p 1 . group $
+          if impl
+            then if null as
+                   then fp
+                   else fp <+> align (vsep (map (prettyArgS bnd) as))
+            else if null args
+                   then fp
+                   else fp <+> align (vsep (map (prettyArgSe bnd) args))
     prettySe p bnd (PCase _ scr opts) =
       text "case" <+> prettySe 10 bnd scr <+> text "of" <> prettyBody
       where
@@ -1176,32 +1153,18 @@ pprintPTerm impl bnd = prettySe 10 bnd
     prettySe p bnd (PTrue _) = annotate (AnnName unitTy Nothing Nothing) $ text "()"
     prettySe p bnd (PFalse _) = annotate (AnnName falseTy Nothing Nothing) $ text "_|_"
     prettySe p bnd (PEq _ l r) =
-      bracket p 2 $
-        if size r > breakingSize then
-          prettySe 10 bnd l <+> eq <$> nest nestingSize (prettySe 10 bnd r)
-        else
-          prettySe 10 bnd l <+> eq <+> prettySe 10 bnd r
+      bracket p 2 . align . group $
+      prettySe 10 bnd l <+> eq <$> group (prettySe 10 bnd r)
       where eq = annotate (AnnName eqTy Nothing Nothing) (text "=")
     prettySe p bnd (PRewrite _ l r _) =
       bracket p 2 $
-        if size r > breakingSize then
-          text "rewrite" <+> prettySe 10 bnd l <+> text "in" <> nest nestingSize (prettySe 10 bnd r)
-        else
-          text "rewrite" <+> prettySe 10 bnd l <+> text "in" <+> prettySe 10 bnd r
+      text "rewrite" <+> prettySe 10 bnd l <+> text "in" <+> prettySe 10 bnd r
     prettySe p bnd (PTyped l r) =
       lparen <> prettySe 10 bnd l <+> colon <+> prettySe 10 bnd r <> rparen
     prettySe p bnd (PPair _ l r) =
-      if size r > breakingSize then
-        lparen <> prettySe 10 bnd l <> text "," <>
-          line <> prettySe 10 bnd r <> rparen
-      else
-        lparen <> prettySe 10 bnd l <> text "," <+> prettySe 10 bnd r <> rparen
+      lparen <> prettySe 10 bnd l <> text "," <+> prettySe 10 bnd r <> rparen
     prettySe p bnd (PDPair _ l t r) =
-      if size r > breakingSize then
-        lparen <> prettySe 10 bnd l <+> text "**" <>
-          line <> prettySe 10 bnd r <> rparen
-      else
-        lparen <> prettySe 10 bnd l <+> text "**" <+> prettySe 10 bnd r <> rparen
+      lparen <> prettySe 10 bnd l <+> text "**" <+> prettySe 10 bnd r <> rparen
     prettySe p bnd (PAlternative a as) =
       lparen <> text "|" <> prettyAs <> text "|" <> rparen
         where

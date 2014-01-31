@@ -1,6 +1,6 @@
 module Util.Pretty (
   module Text.PrettyPrint.Annotated.Leijen,
-  Sized(..), breakingSize, nestingSize,
+  Sized(..), nestingSize,
   Pretty(..)
 ) where
 
@@ -16,10 +16,6 @@ instance (Sized a, Sized b) => Sized (a, b) where
 
 instance Sized a => Sized [a] where
   size = sum . map size
-
--- The maximum size before we break on to another line.
-breakingSize :: Int
-breakingSize = 15
 
 nestingSize :: Int
 nestingSize = 1
