@@ -164,9 +164,12 @@ buildDepMap ctx ns = addPostulates $ dfs S.empty M.empty ns
     getDepsSC fn es vs (UnmatchedCase msg) = M.empty
     getDepsSC fn es vs (ProjCase t alt)    = error "ProjCase not supported"
     getDepsSC fn es vs (STerm    t)        = getDepsTerm vs [] (S.singleton (fn, Result)) (etaExpand es t)
-    getDepsSC fn es vs (Case     n alts)   = unionMap (getDepsAlt fn es vs var) alts
+    getDepsSC fn es vs (Case     n alts)
+        -- we case-split on this variable, which necessarily marks it as used
+        = M.map (S.union casedVar)  -- add the usage to all effects
+            $ unionMap (getDepsAlt fn es vs casedVar) alts  -- in the whole subtree
       where
-        var  = fromMaybe (error $ "nonpatvar in case: " ++ show n) (M.lookup n vs)
+        casedVar  = fromMaybe (error $ "nonpatvar in case: " ++ show n) (M.lookup n vs)
 
     getDepsAlt :: Name -> [Name] -> Vars -> Var -> CaseAlt -> Deps
     getDepsAlt fn es vs var (FnCase n ns sc) = error "an FnCase encountered"  -- TODO: what's this?
