@@ -236,6 +236,10 @@ Extra-source-files:
                        test/basic009/expected
                        test/basic009/B/*.idr
 
+                       test/buffer001/*.idr
+                       test/buffer001/run
+                       test/buffer001/expected
+
                        test/dsl001/run
                        test/dsl001/*.idr
                        test/dsl001/expected
