@@ -89,15 +89,17 @@ elabStep st e = do case runStateT e st of
 
 dumpState :: IState -> ProofState -> Idris ()
 dumpState ist (PS nm [] _ _ tm _ _ _ _ _ _ _ _ _ _ _ _ _ _) =
-  iputGoal . renderPretty 0.7 breakingSize $
-    prettyName False [] nm <> colon <+> text "No more goals."
+  do rendered <- iRender $ prettyName False [] nm <> colon <+> text "No more goals."
+     iputGoal rendered
 dumpState ist ps@(PS nm (h:hs) _ _ tm _ _ _ _ _ _ problems i _ _ ctxy _ _ _) = do
   let OK ty  = goalAtFocus ps
   let OK env = envAtFocus ps
-  iputGoal . renderPretty 0.7 breakingSize $
-    prettyOtherGoals hs <> line <>
-    prettyAssumptions env <> line <>
-    prettyGoal (zip (assumptionNames env) (repeat False)) ty
+  let state = prettyOtherGoals hs <> line <>
+              prettyAssumptions env <> line <>
+              prettyGoal (zip (assumptionNames env) (repeat False)) ty
+  rendered <- iRender state
+  iputGoal rendered
+
   where
     showImplicits = opt_showimp (idris_options ist)
 
@@ -114,14 +116,14 @@ dumpState ist ps@(PS nm (h:hs) _ _ tm _ _ _ _ _ _ problems i _ _ ctxy _ _ _) = d
       nest nestingSize (bindingOf n False <+> text "=" <+> tPretty bnd v <> colon <+>
         tPretty ((n, False):bnd) t <> line <> prettyPs ((n, False):bnd) bs)
     prettyPs bnd ((n, b) : bs) =
-      line <> bindingOf n False <+> colon <+> tPretty bnd (binderTy b) <> prettyPs ((n, False):bnd) bs
+      line <> bindingOf n False <+> colon <+> align (tPretty bnd (binderTy b)) <> prettyPs ((n, False):bnd) bs
 
     prettyG bnd (Guess t v) = tPretty bnd t <+> text "=?=" <+> tPretty bnd v
     prettyG bnd b = tPretty bnd $ binderTy b
 
     prettyGoal bnd ty =
       text "----------                 Goal:                  ----------" <$$>
-      bindingOf h False <+> colon <+> nest nestingSize (prettyG bnd ty)
+      bindingOf h False <+> colon <+> align (prettyG bnd ty)
 
     prettyAssumptions env =
       if length env == 0 then

@@ -407,6 +407,21 @@ getUndefined :: Idris [Name]
 getUndefined = do i <- getIState
                   return (map fst (idris_metavars i) \\ primDefs)
 
+getWidth :: Idris ConsoleWidth
+getWidth = fmap idris_consolewidth getIState
+
+setWidth :: ConsoleWidth -> Idris ()
+setWidth w = do ist <- getIState
+                put ist { idris_consolewidth = w }
+
+iRender :: Doc a -> Idris (SimpleDoc a)
+iRender d = do w <- getWidth
+               return $ case w of
+                          InfinitelyWide -> renderCompact d
+                          ColsWide n -> if n < 1
+                                          then renderCompact d
+                                          else renderPretty 0.5 n d
+
 ihPrintResult :: Handle -> String -> Idris ()
 ihPrintResult h s = do i <- getIState
                        case idris_outputmode i of
@@ -420,9 +435,11 @@ ihPrintResult h s = do i <- getIState
 -- | Write a pretty-printed term to the console with semantic coloring
 consoleDisplayAnnotated :: Handle -> Doc OutputAnnotation -> Idris ()
 consoleDisplayAnnotated h output = do ist <- getIState
+                                      rendered <- iRender $ output
                                       runIO . hPutStrLn h .
-                                        displayDecorated (consoleDecorate ist) .
-                                        renderCompact $ output
+                                        displayDecorated (consoleDecorate ist) $
+                                        rendered
+
 
 -- | Write pretty-printed output to IDESlave with semantic annotations
 ideSlaveReturnAnnotated :: Integer -> Handle -> Doc OutputAnnotation -> Idris ()
@@ -451,7 +468,7 @@ ihPrintFunTypes h n overloads = do imp <- impShow
                                      RawOutput -> consoleDisplayAnnotated h output
                                      IdeSlave n -> ideSlaveReturnAnnotated n h output
   where fullName n = annotate (AnnName n Nothing Nothing) $ text (show n)
-        ppOverload imp n tm = fullName n <+> colon <+> prettyImp imp tm
+        ppOverload imp n tm = fullName n <+> colon <+> align (prettyImp imp tm)
 
 fancifyAnnots :: IState -> OutputAnnotation -> OutputAnnotation
 fancifyAnnots ist annot@(AnnName n _ _) =

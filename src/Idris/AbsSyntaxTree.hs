@@ -83,6 +83,10 @@ data LanguageExt = TypeProviders | ErrorReflection deriving (Show, Eq, Read, Ord
 -- | The output mode in use
 data OutputMode = RawOutput | IdeSlave Integer deriving Show
 
+-- | How wide is the console?
+data ConsoleWidth = InfinitelyWide -- ^ Have pretty-printer assume that lines should not be broken
+                  | ColsWide Int -- ^ Must be positive
+
 -- TODO: Add 'module data' to IState, which can be saved out and reloaded quickly (i.e
 -- without typechecking).
 -- This will include all the functions and data declarations, plus fixity declarations
@@ -144,8 +148,8 @@ data IState = IState {
     idris_errorhandlers :: [Name], -- ^ Global error handlers
     idris_nameIdx :: (Int, Ctxt (Int, Name)),
     idris_function_errorhandlers :: Ctxt (M.Map Name (S.Set Name)), -- ^ Specific error handlers
-    module_aliases :: M.Map [T.Text] [T.Text]
-
+    module_aliases :: M.Map [T.Text] [T.Text],
+    idris_consolewidth :: ConsoleWidth -- ^ How many chars wide is the console?
    }
 
 data SizeChange = Smaller | Same | Bigger | Unknown
@@ -215,6 +219,7 @@ idrisInit = IState initContext [] [] emptyContext emptyContext emptyContext
                    [] [] defaultOpts 6 [] [] [] [] [] [] [] [] [] [] [] [] []
                    [] Nothing Nothing [] [] [] Hidden False [] Nothing [] [] RawOutput
                    True defaultTheme stdout [] (0, emptyContext) emptyContext M.empty
+                   (ColsWide 80)
 
 -- | The monad for the main REPL - reading and processing files and updating
 -- global state (hence the IO inner monad).
