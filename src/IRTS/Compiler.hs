@@ -54,9 +54,11 @@ compile codegen f tm
         let printItem (cond, deps) = show (S.toList cond) ++ " -> " ++ show (S.toList deps)
         iLOG $ "USAGE ANALYSIS:\n" ++ unlines (map printItem . M.toList $ depMap)
 
+        let (reachableNames', minUse) = minimalUsage depMap
+            reachableNames = sUN "prim__subBigInt" : sUN "prim__addBigInt" : S.toList reachableNames'
+        iLOG $ "REACHABLE NAMES: " ++ show reachableNames
+
         let fmtDepMap = unlines . map (\(n,is) -> show n ++ " -> " ++ show (IS.toList is)) . M.toList
-        let (reachableNames, minUse) = minimalUsage depMap
-        iLOG $ "REACHABLE NAMES: " ++ show (S.toList reachableNames)
         iLOG $ "MINIMAL USAGE:\n" ++ fmtDepMap minUse
 
         mapM_ (uncurry storeUsage) (M.toList minUse)
@@ -70,7 +72,7 @@ compile codegen f tm
         flags <- getFlags codegen
         hdrs <- getHdrs codegen
         impdirs <- allImportDirs
-        defsIn <- mkDecls tm used
+        defsIn <- mkDecls tm reachableNames
         let defs = defsIn ++ [(sMN 0 "runMain", maindef)]
         -- iputStrLn $ showSep "\n" (map show defs)
         let (nexttag, tagged) = addTags 65536 (liftAll defs)
