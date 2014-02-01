@@ -781,13 +781,14 @@ reduceLoop reduced (cons, program) =
               reducable $ last body
           | otherwise = False
           where reducable :: JS -> Bool
-                reducable (JSReturn js) = reducable js
-                reducable (JSNew _ args) = and $ map reducable args
-                reducable (JSArray fields) = and $ map reducable fields
-                reducable (JSNum _) = True
-                reducable JSNull = True
-                reducable (JSIdent _) = True
-                reducable _ = False
+                reducable js
+                  | JSReturn ret   <- js = reducable ret
+                  | JSNew _ args   <- js = and $ map reducable args
+                  | JSArray fields <- js = and $ map reducable fields
+                  | JSNum _        <- js = True
+                  | JSNull         <- js = True
+                  | JSIdent _      <- js = True
+                  | otherwise            = False
 
 
         reduce :: JS -> JS
@@ -851,24 +852,26 @@ codegenJavaScript target definitions filename outputType = do
 
 
     functions :: [String]
-    functions =
-      let translated  =
-            concatMap translateDeclaration def ++ [mainLoop, invokeLoop]
+    functions = translate >>> optimize >>> compile $ def
+      where
+        translate p = concatMap translateDeclaration p ++ [mainLoop, invokeLoop]
+        optimize p  = foldl' (flip ($)) p opt
+        compile     = map compileJS
 
-          optimized    = map optimizeJS translated
-          idsRemoved   = removeIDs optimized
-          reduced      = reduceJS idsRemoved
-          constRemoved = map reduceConstants reduced
-          constrInit   = initConstructors constRemoved
-          removeAlloc  = map removeAllocations constrInit
-          deadElim     = elimDeadLoop removeAlloc
-          inlined      = inlineFunctions deadElim
-          elimDup      = map elimDuplicateEvals inlined
-          evalTC       = map (optimizeEvalTailcalls ("__IDR__mEVAL0", "__IDRRT__EVALTC")) elimDup
-          applyTC      = map (optimizeEvalTailcalls ("__IDR__mAPPLY0", "__IDRRT__APPLYTC")) evalTC
-          remChecks    = map removeInstanceChecks applyTC
-          js           = remChecks in
-          map compileJS js
+        opt =
+          [ map optimizeJS
+          , removeIDs
+          , reduceJS
+          , map reduceConstants
+          , initConstructors
+          , map removeAllocations
+          , elimDeadLoop
+          , inlineFunctions
+          , map elimDuplicateEvals
+          , map (optimizeEvalTailcalls ("__IDR__mEVAL0", "__IDRRT__EVALTC"))
+          , map (optimizeEvalTailcalls ("__IDR__mAPPLY0", "__IDRRT__APPLYTC"))
+          , map removeInstanceChecks
+          ]
 
 
     mainLoop :: JS
