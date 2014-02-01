@@ -179,10 +179,10 @@ ploop d prompt prf e h
                   i <- receiveInput e
                   return (i, h)
          (cmd, step) <- case x of
-            Nothing -> do iPrintError ""; fail "Abandoned"
+            Nothing -> do iPrintError ""; ifail "Abandoned"
             Just input -> do return (parseTactic i input, input)
          case cmd of
-            Success Abandon -> do iPrintError ""; fail "Abandoned"
+            Success Abandon -> do iPrintError ""; ifail "Abandoned"
             _ -> return ()
          (d, st, done, prf') <- idrisCatch
            (case cmd of
