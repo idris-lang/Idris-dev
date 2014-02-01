@@ -407,6 +407,21 @@ getUndefined :: Idris [Name]
 getUndefined = do i <- getIState
                   return (map fst (idris_metavars i) \\ primDefs)
 
+getWidth :: Idris ConsoleWidth
+getWidth = fmap idris_consolewidth getIState
+
+setWidth :: ConsoleWidth -> Idris ()
+setWidth w = do ist <- getIState
+                put ist { idris_consolewidth = w }
+
+iRender :: Doc a -> Idris (SimpleDoc a)
+iRender d = do w <- getWidth
+               return $ case w of
+                          InfinitelyWide -> renderPretty 1.0 1000000000 d
+                          ColsWide n -> if n < 1
+                                          then renderPretty 1.0 1000000000 d
+                                          else renderPretty 0.5 n d
+
 ihPrintResult :: Handle -> String -> Idris ()
 ihPrintResult h s = do i <- getIState
                        case idris_outputmode i of
@@ -420,15 +435,17 @@ ihPrintResult h s = do i <- getIState
 -- | Write a pretty-printed term to the console with semantic coloring
 consoleDisplayAnnotated :: Handle -> Doc OutputAnnotation -> Idris ()
 consoleDisplayAnnotated h output = do ist <- getIState
+                                      rendered <- iRender $ output
                                       runIO . hPutStrLn h .
-                                        displayDecorated (consoleDecorate ist) .
-                                        renderCompact $ output
+                                        displayDecorated (consoleDecorate ist) $
+                                        rendered
+
 
 -- | Write pretty-printed output to IDESlave with semantic annotations
 ideSlaveReturnAnnotated :: Integer -> Handle -> Doc OutputAnnotation -> Idris ()
 ideSlaveReturnAnnotated n h out = do ist <- getIState
                                      let (str, spans) = displaySpans .
-                                                        renderCompact .
+                                                        renderPretty 0.8 80 .
                                                         fmap (fancifyAnnots ist) $
                                                         out
                                          good = [SymbolAtom "ok", toSExp str, toSExp spans]
@@ -451,7 +468,13 @@ ihPrintFunTypes h n overloads = do imp <- impShow
                                      RawOutput -> consoleDisplayAnnotated h output
                                      IdeSlave n -> ideSlaveReturnAnnotated n h output
   where fullName n = annotate (AnnName n Nothing Nothing) $ text (show n)
-        ppOverload imp n tm = fullName n <+> colon <+> prettyImp imp tm
+        ppOverload imp n tm = fullName n <+> colon <+> align (prettyImp imp tm)
+
+ihRenderResult :: Handle -> Doc OutputAnnotation -> Idris ()
+ihRenderResult h d = do ist <- getIState
+                        case idris_outputmode ist of
+                          RawOutput -> consoleDisplayAnnotated h d
+                          IdeSlave n -> ideSlaveReturnAnnotated n h d
 
 fancifyAnnots :: IState -> OutputAnnotation -> OutputAnnotation
 fancifyAnnots ist annot@(AnnName n _ _) =

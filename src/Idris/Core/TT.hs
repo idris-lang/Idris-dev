@@ -191,13 +191,8 @@ instance Show Err where
 instance Pretty Err OutputAnnotation where
   pretty (Msg m) = text m
   pretty (CantUnify _ l r e _ i) =
-    if size l + size r > breakingSize then
-      text "Cannot unify" <+> colon <+>
-        nest nestingSize (pretty l <+> text "and" <+> pretty r) <+>
-        nest nestingSize (text "where" <+> pretty e <+> text "with" <+> (text . show $ i))
-    else
       text "Cannot unify" <+> colon <+> pretty l <+> text "and" <+> pretty r <+>
-        nest nestingSize (text "where" <+> pretty e <+> text "with" <+> (text . show $ i))
+      nest nestingSize (text "where" <+> pretty e <+> text "with" <+> (text . show $ i))
   pretty (ProviderError msg) = text msg
   pretty err@(LoadingFailed _ _) = text (show err)
   pretty _ = text "Error"
@@ -210,10 +205,7 @@ type TC = TC' Err
 instance (Pretty a OutputAnnotation) => Pretty (TC a) OutputAnnotation where
   pretty (OK ok) = pretty ok
   pretty (Error err) =
-    if size err > breakingSize then
-      text "Error" <+> colon <+> (nest nestingSize $ pretty err)
-    else
-      text "Error" <+> colon <+> pretty err
+    text "Error" <+> colon <+> pretty err
 
 instance Show a => Show (TC a) where
     show (OK x) = show x

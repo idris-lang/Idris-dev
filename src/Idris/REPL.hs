@@ -14,7 +14,7 @@ import Idris.Parser
 import Idris.Primitives
 import Idris.Coverage
 import Idris.UnusedArgs
-import Idris.Docs
+import Idris.Docs hiding (Doc)
 import Idris.Help
 import Idris.Completion
 import qualified Idris.IdeSlave as IdeSlave
@@ -30,6 +30,7 @@ import Version_idris (gitHash)
 import Util.System
 import Util.DynamicLinker
 import Util.Net (listenOnLocalhost)
+import Util.Pretty hiding ((</>))
 
 import Idris.Core.Evaluate
 import Idris.Core.Execute (execute)
@@ -470,32 +471,35 @@ process h fn (Check (PRef _ n))
    = do ctxt <- getContext
         ist <- getIState
         imp <- impShow
-        c <- colourise
         case lookupNames n ctxt of
           ts@(t:_) ->
             case lookup t (idris_metavars ist) of
-                Just (_, i, _) -> ihPrintResult h (showMetavarInfo c imp ist n i)
+                Just (_, i, _) -> ihRenderResult h . fmap (fancifyAnnots ist) $
+                                  showMetavarInfo imp ist n i
                 Nothing -> ihPrintFunTypes h n (map (\n -> (n, delabTy ist n)) ts)
           [] -> ihPrintError h $ "No such variable " ++ show n
   where
-    showMetavarInfo c imp ist n i
+    showMetavarInfo imp ist n i
          = case lookupTy n (tt_ctxt ist) of
-                (ty:_) -> putTy c imp ist i (delab ist ty)
-    putTy c imp ist 0 sc = putGoal c imp ist sc
-    putTy c imp ist i (PPi _ n t sc)
-               = let current = "  " ++
+                (ty:_) -> putTy imp ist i [] (delab ist ty)
+    putTy :: Bool -> IState -> Int -> [(Name, Bool)] -> PTerm -> Doc OutputAnnotation
+    putTy imp ist 0 bnd sc = putGoal imp ist bnd sc
+    putTy imp ist i bnd (PPi _ n t sc)
+               = let current = text "  " <>
                                (case n of
-                                   MN _ _ -> "_"
-                                   UN nm | ('_':'_':_) <- str nm -> "_"
-                                   _ -> showName (Just ist) [] False c n) ++
-                               " : " ++ showTm ist t ++ "\n"
+                                   MN _ _ -> text "_"
+                                   UN nm | ('_':'_':_) <- str nm -> text "_"
+                                   _ -> bindingOf n False) <+>
+                               colon <+> align (tPretty bnd ist t) <> line
                  in
-                    current ++ putTy c imp ist (i-1) sc
-    putTy c imp ist _ sc = putGoal c imp ist sc
-    putGoal c imp ist g
-               = "--------------------------------------\n" ++
-                 showName (Just ist) [] False c n ++ " : " ++
-                 showTm ist g
+                    current <> putTy imp ist (i-1) ((n,False):bnd) sc
+    putTy imp ist _ bnd sc = putGoal imp ist ((n,False):bnd) sc
+    putGoal imp ist bnd g
+               = text "--------------------------------------" <$>
+                 annotate (AnnName n Nothing Nothing) (text $ show n) <+> colon <+>
+                 align (tPretty bnd ist g)
+
+    tPretty bnd ist t = pprintPTerm (opt_showimp (idris_options ist)) bnd t
 
 
 process h fn (Check t)
