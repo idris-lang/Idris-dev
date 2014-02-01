@@ -18,6 +18,10 @@ New in 0.9.11:
   when disambiguating overloaded names. For example, it is possible to
   write "with Vect [1,2,3]" at the REPL instead of "the (Vect _ _) [1,2,3]",
   because the Vect constructors are defined in a namespace called Vect.
+* assert_smaller internal function, which marks an expression as smaller than
+  a pattern for use in totality checking. 
+  e.g. "assert_smaller (x :: xs) (f xs)" asserts that "f xs" will always be
+  structurally smaller than "(x :: xs)"
 
 Internal changes
 
