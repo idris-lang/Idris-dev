@@ -14,6 +14,9 @@ New in 0.9.11:
   strings that it emits, which can be used by clients to implement
   semantic highlighting like that of the REPL. This has been implemented
   in the Emacs mode and the IRC bot, which can serve as examples.
+* New expression form: with NAME EXPR privileges the family called NAME
+  when disambiguating overloaded names. For example, it is possible to
+  write "with Vect [1,2,3]" at the REPL instead of "the (Vect _ _) [1,2,3]".
 
 Internal changes
 
