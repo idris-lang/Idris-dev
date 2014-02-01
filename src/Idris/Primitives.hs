@@ -171,9 +171,16 @@ primitives =
    Prim (sUN "prim__stdin") (ty [] PtrType) 0 (p_cantreduce)
     (0, LStdIn) partial,
    Prim (sUN "prim__null") (ty [] PtrType) 0 (p_cantreduce)
-    (0, LNullPtr) total
+    (0, LNullPtr) total,
+
+   -- Buffers
+   Prim (sUN "prim__allocate") (ty [AType (ATInt (ITFixed IT64))] BufferType) 1 (p_cantreduce)
+    (1, LAllocate) total,
+   Prim (sUN "prim__appendBuffer") (ty [BufferType, AType (ATInt (ITFixed IT64)), AType (ATInt (ITFixed IT64)), AType (ATInt (ITFixed IT64)), AType (ATInt (ITFixed IT64)), BufferType] BufferType) 6 (p_cantreduce)
+    (6, LAppendBuffer) partial
   ] ++ concatMap intOps [ITFixed IT8, ITFixed IT16, ITFixed IT32, ITFixed IT64, ITBig, ITNative, ITChar]
     ++ concatMap vecOps vecTypes
+    ++ concatMap fixedOps [ITFixed IT8, ITFixed IT16, ITFixed IT32, ITFixed IT64] -- ITNative, ITChar, ATFloat ] ++ vecTypes
     ++ vecBitcasts vecTypes
 
 vecTypes :: [IntTy]
@@ -266,6 +273,22 @@ bitcastPrim from to impl prim =
 vecBitcasts :: [IntTy] -> [Prim]
 vecBitcasts tys = [bitcastPrim from to bitcastVec (LBitCast from to)
                        | from <- map ATInt vecTypes, to <- map ATInt vecTypes, from /= to]
+
+fixedOps :: IntTy -> [Prim]
+fixedOps ity@(ITFixed _) =
+    map appendFun endiannesses ++
+    map peekFun endiannesses
+    where
+      endiannesses = [ Native, LE, BE ]
+      tyName = intTyName ity
+      b64 = AType (ATInt (ITFixed IT64))
+      thisTy = AType $ ATInt ity
+      appendFun en = Prim (sUN $ "prim__append" ++ tyName ++ show en)
+                         (ty [BufferType, b64, b64, thisTy] BufferType)
+                         4 (p_cantreduce) (4, LAppend ity en) partial
+      peekFun en = Prim (sUN $ "prim__peek" ++ tyName ++ show en)
+                         (ty [BufferType, b64] thisTy)
+                         2 (p_cantreduce) (2, LPeek ity en) partial
 
 mapHalf :: (V.Unbox a, V.Unbox b) => ((a, a) -> b) -> Vector a -> Vector b
 mapHalf f xs = V.generate (V.length xs `div` 2) (\i -> f (xs V.! (i*2), xs V.! (i*2+1)))
@@ -367,13 +390,6 @@ mkVecUpdate _ _ _ = Nothing
 aTyName :: ArithTy -> String
 aTyName (ATInt t) = intTyName t
 aTyName ATFloat = "Float"
-
-intTyName :: IntTy -> String
-intTyName ITNative = "Int"
-intTyName ITBig = "BigInt"
-intTyName (ITFixed sized) = "B" ++ show (nativeTyWidth sized)
-intTyName (ITChar) = "Char"
-intTyName (ITVec ity count) = "B" ++ show (nativeTyWidth ity) ++ "x" ++ show count
 
 iCmp  :: IntTy -> String -> Bool -> ([Const] -> Maybe Const) -> (IntTy -> PrimFn) -> Totality -> Prim
 iCmp ity op self impl irop totality
@@ -677,5 +693,4 @@ p_strRev _ = Nothing
 
 p_cantreduce :: a -> Maybe b
 p_cantreduce _ = Nothing
-
 

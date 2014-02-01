@@ -27,6 +27,9 @@ VAL copy(VM* vm, VAL x) {
     case STROFFSET:
         cl = MKSTROFFc(vm, x->info.str_offset);
         break;
+    case BUFFER:
+        cl = MKBUFFERc(vm, x->info.buf);
+        break;
     case BIGINT:
         cl = MKBIGMc(vm, x->info.ptr);
         break;
