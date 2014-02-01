@@ -1,0 +1,4 @@
+[1m./Main.idr[0m:[1m4[0m:[1m7[0m: [91merror[0m: expected: "&",
+    escape code, space
+s = "\u" 
+      [92m^[0m  
