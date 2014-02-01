@@ -19,11 +19,14 @@ module Data.Buffer
 -- 6. Conversion from Fin to Bits64 (which, re 2, should eventually
 --    be a fixed-width implementation-dependent type) is likely
 --    inefficient relative to conversion from Nat to Bits64
+-- 7. We may want to have a separate type that is a product of Buffer
+--    and offset rather than storing the offset in Buffer itself, which
+--    would require exposing the offset argument of prim__appendBuffer
 
 -- A contiguous chunk of n bytes
 abstract
 record Buffer : Nat -> Type where
-  MkBuffer : ( realBuffer : prim__UnsafeBuffer ) -> Buffer n
+  MkBuffer : ( offset : Nat ) -> ( realBuffer : prim__UnsafeBuffer ) -> Buffer n
 
 bitsFromNat : Nat -> Bits64
 bitsFromNat Z     = 0
@@ -38,28 +41,8 @@ bitsFromFin (fS k) = 1 + bitsFromFin k
 -- approximate ultimate size of the Buffer is known. Users can assume
 -- the new Buffer is word-aligned.
 public
-allocate : ( hint : Nat ) -> Buffer 0
-allocate = MkBuffer . prim__allocate . bitsFromNat
-
--- Copy a buffer. Since multiple buffers can reference the same
--- underlying chunk of memory, it may happen that a reference to
--- a relatively small bit of data might be preventing the runtime
--- from freeing a much larger chunk. copy allows giving up references
--- to the larger chunk without losing the smaller one.
-%assert_total
-public
-copy : Buffer n -> Buffer n
-copy { n } = MkBuffer . prim__copy ( bitsFromNat n ) . realBuffer
-
--- Read a Buffer from another Buffer starting at offset
--- (i.e. create a view of a subset of the Buffer)
-%assert_total
-public
-peekBuffer : Buffer ( m + n )           ->
-             ( offset : Fin ( S n ) ) ->
-             Buffer m
-peekBuffer ( MkBuffer real ) =
-  MkBuffer . prim__peekBuffer real . bitsFromFin
+allocate : ( hint : Nat ) -> Buffer Z
+allocate = MkBuffer Z . prim__allocate . bitsFromNat
 
 -- Append count repetitions of a Buffer to another Buffer
 %assert_total
@@ -67,24 +50,35 @@ public
 appendBuffer : Buffer n        ->
                ( count : Nat ) ->
                Buffer m        ->
-               Buffer ( n + m * count )
-appendBuffer { n } { m } ( MkBuffer input ) count =
-  MkBuffer . app . realBuffer
+               Buffer ( n + count * m )
+appendBuffer { n } { m } ( MkBuffer o1 r1 ) c ( MkBuffer o2 r2 ) =
+  MkBuffer o1 $ prim__appendBuffer r1 size1 count size2 off r2
   where
-    nBits : Bits64
-    nBits = bitsFromNat n
-    mBits : Bits64
-    mBits = bitsFromNat m
-    cBits : Bits64
-    cBits = bitsFromNat count
-    app = prim__appendBuffer input nBits cBits mBits
+    size1 : Bits64
+    size1 = bitsFromNat ( n + o1 )
+    size2 : Bits64
+    size2 = bitsFromNat m
+    count : Bits64
+    count = bitsFromNat c
+    off : Bits64
+    off = bitsFromNat o2
 
+-- Copy a buffer, potentially allowing the (potentially large) space it
+-- pointed to to be freed
+public
+copy : Buffer n -> Buffer n
+copy { n } = replace ( plusZeroRightNeutral n ) . appendBuffer ( allocate n ) 1
+
+-- Create a view over a buffer
+public
+peekBuffer : { n : Nat } -> { offset : Nat } -> Buffer ( n + offset ) -> ( offset : Nat ) -> Buffer n
+peekBuffer ( MkBuffer o r ) off = MkBuffer ( o + off ) r
 
 peekBits : ( prim__UnsafeBuffer -> Bits64 -> a ) ->
            Buffer ( m + n )   ->
            ( offset : Fin ( S n ) ) ->
            a
-peekBits prim ( MkBuffer real ) = prim real . bitsFromFin
+peekBits prim ( MkBuffer o r ) = prim r . bitsFromNat . plus o . finToNat
 
 appendBits : ( prim__UnsafeBuffer ->
                Bits64             ->
@@ -95,8 +89,8 @@ appendBits : ( prim__UnsafeBuffer ->
              ( count : Nat)         ->
              a                      ->
              Buffer ( n + count * size )
-appendBits { n } prim ( MkBuffer real ) count =
-  MkBuffer . prim real ( bitsFromNat n ) ( bitsFromNat count )
+appendBits { n } prim ( MkBuffer o r ) count =
+  MkBuffer o . prim r ( bitsFromNat $ n + o ) ( bitsFromNat count )
 
 
 -- Read a Bits8 from a Buffer starting at offset

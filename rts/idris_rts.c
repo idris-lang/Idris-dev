@@ -483,22 +483,6 @@ VAL MKBUFFERc(VM* vm, Buffer* buf) {
     return cl;
 }
 
-static VAL make_buf_offset(VM* vm, BufOffset* off, int outerlock) {
-    Closure* cl = allocate(vm, sizeof(Closure) + sizeof *off, outerlock);
-    SETTY(cl, BUFOFFSET);
-    cl->info.buf_offset = (BufOffset*)((void*)cl + sizeof(Closure));
-    memmove(cl->info.buf_offset, off, sizeof *off);
-    return cl;
-}
-
-static VAL MKBUFOFFSET(VM* vm, BufOffset* off) {
-    return make_buf_offset(vm, off, 0);
-}
-
-VAL MKBUFOFFSETc(VM* vm, BufOffset* off) {
-    return make_buf_offset(vm, off, 1);
-}
-
 static VAL internal_allocate(VM *vm, size_t hint) {
     size_t size = hint + sizeof(Closure) + sizeof(Buffer);
 
@@ -523,17 +507,6 @@ VAL idris_allocate(VM* vm, VAL hint) {
     return cl;
 }
 
-VAL idris_copy(VM* vm, VAL len, VAL src) {
-    size_t length = len->info.bits64;
-    Closure* cl = internal_allocate(vm, length);
-    memmove(cl->info.buf->store, (GETTY(src) == BUFOFFSET ?
-                src->info.buf_offset->buf->info.buf->store + src->info.buf_offset->offset :
-                src->info.buf->store
-            ), length);
-    cl->info.buf->fill = length;
-    return cl;
-}
-
 static void internal_memset(void *dest, const void *src, size_t size, size_t num) {
     while (num--) {
         memmove(dest, src, size);
@@ -541,95 +514,49 @@ static void internal_memset(void *dest, const void *src, size_t size, size_t num
     }
 }
 
-static void internal_prepare_append(VM* vm, VAL buf, size_t bufLen, size_t appLen, void** storePtr, Closure** valPtr) {
+static VAL internal_prepare_append(VM* vm, VAL buf, size_t bufLen, size_t appLen) {
     size_t totalLen = bufLen + appLen;
-    // Might be able to get rid of some duplication here...
-    if (GETTY(buf) == BUFOFFSET) {
-        if (buf->info.buf_offset->offset + bufLen !=
-                buf->info.buf_offset->buf->info.buf->fill ||
-                buf->info.buf_offset->offset + totalLen >
-                buf->info.buf_offset->buf->info.buf->cap) {
-            // We're not at the fill or are over cap, so need a new buffer
-            *valPtr = internal_allocate(vm, totalLen);
-            memmove((*valPtr)->info.buf->store,
-                    buf->info.buf_offset->buf->info.buf->store + buf->info.buf_offset->offset,
-                    bufLen);
-            (*valPtr)->info.buf->fill = totalLen;
-            *storePtr = (*valPtr)->info.buf->store + bufLen;
-        } else {
-            // Hooray, can just bump the fill
-            *valPtr = buf;
-            buf->info.buf_offset->buf->info.buf->fill += appLen;
-            *storePtr = buf->info.buf_offset->buf->info.buf->store + buf->info.buf_offset->offset + bufLen;
-        }
+    Closure* cl;
+    if (bufLen != buf->info.buf->fill ||
+            totalLen > buf->info.buf->cap) {
+        // We're not at the fill or are over cap, so need a new buffer
+        cl = internal_allocate(vm, totalLen);
+        memmove(cl->info.buf->store,
+                buf->info.buf->store,
+                bufLen);
+        cl->info.buf->fill = totalLen;
     } else {
-        Buffer* newBuf;
-        if (bufLen != buf->info.buf->fill ||
-                totalLen > buf->info.buf->cap) {
-            // We're not at the fill or are over cap, so need a new buffer
-            *valPtr = internal_allocate(vm, totalLen);
-            newBuf = (*valPtr)->info.buf;
-            memmove(newBuf->store,
-                    buf->info.buf->store,
-                    bufLen);
-            newBuf->fill = totalLen;
-        } else {
-            // Hooray, can just bump the fill
-            *valPtr = buf;
-            newBuf = buf->info.buf;
-            newBuf->fill += appLen;
-        }
-        *storePtr = newBuf->store + bufLen;
+        // Hooray, can just bump the fill
+        cl = buf;
+        cl->info.buf->fill += appLen;
     }
-}
-
-VAL idris_appendBuffer(VM* vm, VAL fst, VAL fstLen, VAL cnt, VAL sndLen, VAL snd) {
-    size_t firstLength = fstLen->info.bits64;
-    size_t secondLength = sndLen->info.bits64;
-    size_t count = cnt->info.bits64;
-    void* store;
-    Closure *cl;
-    internal_prepare_append(vm, fst, firstLength, count * secondLength, &store, &cl);
-    internal_memset(store, GETTY(snd) == BUFOFFSET ?
-                        snd->info.buf_offset->buf->info.buf->store + snd->info.buf_offset->offset :
-                        snd->info.buf->store
-                    , secondLength, count);
     return cl;
 }
 
-VAL idris_peekBuffer(VM* vm, VAL src, VAL off) {
-    size_t offset = off->info.bits64;
-    if (offset == 0)
-        return src;
-    BufOffset b;
-    if (GETTY(src) == BUFOFFSET) {
-      b.buf = src->info.buf_offset->buf;
-      b.offset = src->info.buf_offset->offset + offset;
-    } else {
-      b.buf = src;
-      b.offset = offset;
-    }
-    return MKBUFOFFSET(vm, &b);
+VAL idris_appendBuffer(VM* vm, VAL fst, VAL fstLen, VAL cnt, VAL sndLen, VAL sndOff, VAL snd) {
+    size_t firstLength = fstLen->info.bits64;
+    size_t secondLength = sndLen->info.bits64;
+    size_t count = cnt->info.bits64;
+    size_t offset = sndOff->info.bits64;
+    Closure* cl = internal_prepare_append(vm, fst, firstLength, count * secondLength);
+    internal_memset(cl->info.buf->store + firstLength, snd->info.buf->store + offset, secondLength, count);
+    return cl;
 }
 
 // Special cased because we can use memset
 VAL idris_appendB8Native(VM* vm, VAL buf, VAL len, VAL cnt, VAL val) {
     size_t bufLen = len->info.bits64;
     size_t count = cnt->info.bits64;
-    void* store;
-    Closure* cl;
-    internal_prepare_append(vm, buf, bufLen, count, &store, &cl);
-    memset(store, val->info.bits8, count);
+    Closure* cl = internal_prepare_append(vm, buf, bufLen, count);
+    memset(cl->info.buf->store + bufLen, val->info.bits8, count);
     return cl;
 }
 
 static VAL internal_append_bits(VM* vm, VAL buf, VAL bufLen, VAL cnt, const void* val, size_t val_len) {
     size_t len = bufLen->info.bits64;
     size_t count = cnt->info.bits64;
-    void* store;
-    Closure* cl;
-    internal_prepare_append(vm, buf, len, count * val_len, &store, &cl);
-    internal_memset(store, val, val_len, count);
+    Closure* cl = internal_prepare_append(vm, buf, len, count * val_len);
+    internal_memset(cl->info.buf->store + len, val, val_len, count);
     return cl;
 }
 
@@ -708,104 +635,78 @@ VAL idris_appendB64BE(VM* vm, VAL buf, VAL len, VAL cnt, VAL val) {
 
 VAL idris_peekB8Native(VM* vm, VAL buf, VAL off) {
     size_t offset = off->info.bits64;
-    uint8_t* val = GETTY(buf) == BUFOFFSET ?
-        buf->info.buf_offset->buf->info.buf->store + buf->info.buf_offset->offset + offset :
-        buf->info.buf->store + offset;
+    uint8_t *val = buf->info.buf->store + offset;
     return MKB8(vm, *val);
 }
 
 VAL idris_peekB16Native(VM* vm, VAL buf, VAL off) {
     size_t offset = off->info.bits64;
-    uint16_t* val = (uint16_t *) ((GETTY(buf) == BUFOFFSET) ?
-        buf->info.buf_offset->buf->info.buf->store + buf->info.buf_offset->offset + offset :
-        buf->info.buf->store + offset);
+    uint16_t *val = (uint16_t *) (buf->info.buf->store + offset);
     return MKB16(vm, *val);
 }
 
 VAL idris_peekB16LE(VM* vm, VAL buf, VAL off) {
     size_t offset = off->info.bits64;
-    unsigned char* val = (GETTY(buf) == BUFOFFSET) ?
-        buf->info.buf_offset->buf->info.buf->store + buf->info.buf_offset->offset + offset :
-        buf->info.buf->store + offset;
-    return MKB16(vm, ((uint16_t) val[0]) +
-                     (((uint16_t) val[1]) << 8));
+    return MKB16(vm, ((uint16_t) buf->info.buf->store[offset]) +
+                     (((uint16_t) buf->info.buf->store[offset + 1]) << 8));
 }
 
 VAL idris_peekB16BE(VM* vm, VAL buf, VAL off) {
     size_t offset = off->info.bits64;
-    unsigned char* val = (GETTY(buf) == BUFOFFSET) ?
-        buf->info.buf_offset->buf->info.buf->store + buf->info.buf_offset->offset + offset :
-        buf->info.buf->store + offset;
-    return MKB16(vm, ((uint16_t) val[1]) +
-                     (((uint16_t) val[0]) << 8));
+    return MKB16(vm, ((uint16_t) buf->info.buf->store[offset + 1]) +
+                     (((uint16_t) buf->info.buf->store[offset]) << 8));
 }
 
 VAL idris_peekB32Native(VM* vm, VAL buf, VAL off) {
     size_t offset = off->info.bits64;
-    uint32_t* val = (uint32_t *) ((GETTY(buf) == BUFOFFSET) ?
-        buf->info.buf_offset->buf->info.buf->store + buf->info.buf_offset->offset + offset :
-        buf->info.buf->store + offset);
+    uint32_t *val = (uint32_t *) (buf->info.buf->store + offset);
     return MKB32(vm, *val);
 }
 
 VAL idris_peekB32LE(VM* vm, VAL buf, VAL off) {
     size_t offset = off->info.bits64;
-    unsigned char* val = (GETTY(buf) == BUFOFFSET) ?
-        buf->info.buf_offset->buf->info.buf->store + buf->info.buf_offset->offset + offset :
-        buf->info.buf->store + offset;
-    return MKB32(vm, ((uint32_t) val[0]) +
-                     (((uint32_t) val[1]) << 8) +
-                     (((uint32_t) val[2]) << 16) +
-                     (((uint32_t) val[3]) << 24));
+    return MKB32(vm, ((uint32_t) buf->info.buf->store[offset]) +
+                     (((uint32_t) buf->info.buf->store[offset + 1]) << 8) +
+                     (((uint32_t) buf->info.buf->store[offset + 2]) << 16) +
+                     (((uint32_t) buf->info.buf->store[offset + 3]) << 24));
 }
 
 VAL idris_peekB32BE(VM* vm, VAL buf, VAL off) {
     size_t offset = off->info.bits64;
-    unsigned char* val = (GETTY(buf) == BUFOFFSET) ?
-        buf->info.buf_offset->buf->info.buf->store + buf->info.buf_offset->offset + offset :
-        buf->info.buf->store + offset;
-    return MKB32(vm, ((uint32_t) val[3]) +
-                     (((uint32_t) val[2]) << 8) +
-                     (((uint32_t) val[1]) << 16) +
-                     (((uint32_t) val[0]) << 24));
+    return MKB32(vm, ((uint32_t) buf->info.buf->store[offset + 3]) +
+                     (((uint32_t) buf->info.buf->store[offset + 2]) << 8) +
+                     (((uint32_t) buf->info.buf->store[offset + 1]) << 16) +
+                     (((uint32_t) buf->info.buf->store[offset]) << 24));
 }
 
 VAL idris_peekB64Native(VM* vm, VAL buf, VAL off) {
     size_t offset = off->info.bits64;
-    uint64_t* val = (uint64_t *) ((GETTY(buf) == BUFOFFSET) ?
-        buf->info.buf_offset->buf->info.buf->store + buf->info.buf_offset->offset + offset :
-        buf->info.buf->store + offset);
+    uint64_t *val = (uint64_t *) (buf->info.buf->store + offset);
     return MKB64(vm, *val);
 }
 
 VAL idris_peekB64LE(VM* vm, VAL buf, VAL off) {
     size_t offset = off->info.bits64;
-    unsigned char* val = (GETTY(buf) == BUFOFFSET) ?
-        buf->info.buf_offset->buf->info.buf->store + buf->info.buf_offset->offset + offset :
-        buf->info.buf->store + offset;
-    return MKB64(vm, ((uint64_t) val[0]) +
-                     (((uint64_t) val[1]) << 8) +
-                     (((uint64_t) val[2]) << 16) +
-                     (((uint64_t) val[3]) << 24) +
-                     (((uint64_t) val[4]) << 32) +
-                     (((uint64_t) val[5]) << 40) +
-                     (((uint64_t) val[6]) << 48) +
-                     (((uint64_t) val[7]) << 56));
+    return MKB64(vm, ((uint64_t) buf->info.buf->store[offset]) +
+                     (((uint64_t) buf->info.buf->store[offset + 1]) << 8) +
+                     (((uint64_t) buf->info.buf->store[offset + 2]) << 16) +
+                     (((uint64_t) buf->info.buf->store[offset + 3]) << 24) +
+                     (((uint64_t) buf->info.buf->store[offset + 4]) << 32) +
+                     (((uint64_t) buf->info.buf->store[offset + 5]) << 40) +
+                     (((uint64_t) buf->info.buf->store[offset + 6]) << 48) +
+                     (((uint64_t) buf->info.buf->store[offset + 7]) << 56));
 }
 
 VAL idris_peekB64BE(VM* vm, VAL buf, VAL off) {
     size_t offset = off->info.bits64;
-    unsigned char* val = (GETTY(buf) == BUFOFFSET) ?
-        buf->info.buf_offset->buf->info.buf->store + buf->info.buf_offset->offset + offset :
-        buf->info.buf->store + offset;
-    return MKB64(vm, ((uint64_t) val[7]) +
-                     (((uint64_t) val[6]) << 8) +
-                     (((uint64_t) val[5]) << 16) +
-                     (((uint64_t) val[4]) << 24) +
-                     (((uint64_t) val[3]) << 32) +
-                     (((uint64_t) val[2]) << 40) +
-                     (((uint64_t) val[1]) << 48) +
-                     (((uint64_t) val[0]) << 56));
+    return MKB64(vm, ((uint64_t) buf->info.buf->store[offset + 7]) +
+                     (((uint64_t) buf->info.buf->store[offset + 6]) << 8) +
+                     (((uint64_t) buf->info.buf->store[offset + 5]) << 16) +
+                     (((uint64_t) buf->info.buf->store[offset + 4]) << 24) +
+                     (((uint64_t) buf->info.buf->store[offset + 3]) << 32) +
+                     (((uint64_t) buf->info.buf->store[offset + 2]) << 40) +
+                     (((uint64_t) buf->info.buf->store[offset + 1]) << 48) +
+                     (((uint64_t) buf->info.buf->store[offset]) << 56));
 }
 
 typedef struct {
@@ -887,18 +788,6 @@ VAL copyTo(VM* vm, VAL x) {
         break;
     case BUFFER:
         cl = MKBUFFERc(vm, x->info.buf);
-        break;
-    case BUFOFFSET:
-        // The underlying Buffer might already exist in the new heap
-        // but we can't do anything reasonable about it
-        if (x->info.buf_offset->offset == 0)
-            cl = MKBUFFERc(vm, x->info.buf_offset->buf->info.buf);
-        else {
-            // Could theoretically make this a bit more efficient
-            // by allocating the BufOffset and Buffer together
-            cl = MKBUFOFFSETc(vm, x->info.buf_offset);
-            cl->info.buf_offset->buf = MKBUFFERc(vm, x->info.buf_offset->buf->info.buf);
-        }
         break;
     case BIGINT:
         cl = MKBIGMc(vm, x->info.ptr);

@@ -17,7 +17,7 @@
 typedef enum {
     CON, INT, BIGINT, FLOAT, STRING, STROFFSET,
     BITS8, BITS16, BITS32, BITS64, UNIT, PTR, FWD,
-    BUFFER, BUFOFFSET
+    BUFFER
 } ClosureType;
 
 typedef struct Closure *VAL;
@@ -40,11 +40,6 @@ typedef struct {
     unsigned char store[];
 } Buffer;
 
-typedef struct {
-    VAL buf;
-    size_t offset;
-} BufOffset;
-
 
 typedef struct Closure {
 // Use top 16 bits of ty for saying which heap value is in
@@ -62,7 +57,6 @@ typedef struct Closure {
         uint32_t bits32;
         uint64_t bits64;
         Buffer* buf;
-        BufOffset* buf_offset;
     } info;
 } Closure;
 
@@ -180,7 +174,6 @@ VAL MKSTROFFc(VM* vm, StrOffset* off);
 VAL MKSTRc(VM* vm, char* str);
 VAL MKPTRc(VM* vm, void* ptr);
 VAL MKBUFFERc(VM* vm, Buffer* buf);
-VAL MKBUFOFFSETc(VM* vm, BufOffset* off);
 
 char* GETSTROFF(VAL stroff);
 
@@ -255,9 +248,7 @@ VAL idris_strRev(VM* vm, VAL str);
 
 // Buffer primitives
 VAL idris_allocate(VM* vm, VAL hint);
-VAL idris_copy(VM* vm, VAL len, VAL src);
-VAL idris_appendBuffer(VM* vm, VAL fst, VAL fstLen, VAL count, VAL sndLen, VAL snd);
-VAL idris_peekBuffer(VM* vm, VAL src, VAL off);
+VAL idris_appendBuffer(VM* vm, VAL fst, VAL fstLen, VAL cnt, VAL sndLen, VAL sndOff, VAL snd);
 VAL idris_appendB8Native(VM* vm, VAL buf, VAL len, VAL cnt, VAL val);
 VAL idris_appendB16Native(VM* vm, VAL buf, VAL len, VAL cnt, VAL val);
 VAL idris_appendB16LE(VM* vm, VAL buf, VAL len, VAL cnt, VAL val);
