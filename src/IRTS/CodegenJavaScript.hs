@@ -262,6 +262,29 @@ jsError :: String -> JS
 jsError err = JSApp (JSFunction [] (JSError err)) []
 
 
+transformJS :: (JS -> JS) -> JS -> JS
+transformJS tr js =
+  transformHelper js
+  where
+    transformHelper :: JS -> JS
+    transformHelper js
+      | JSFunction args body <- js = JSFunction args $ tr body
+      | JSSeq seq            <- js = JSSeq $ map tr seq
+      | JSReturn ret         <- js = JSReturn $ tr ret
+      | JSApp lhs rhs        <- js = JSApp (tr lhs) $ map tr rhs
+      | JSNew con args       <- js = JSNew con $ map tr args
+      | JSOp op lhs rhs      <- js = JSOp op (tr lhs) (tr rhs)
+      | JSProj obj field     <- js = JSProj (tr obj) field
+      | JSArray vals         <- js = JSArray $ map tr vals
+      | JSAssign lhs rhs     <- js = JSAssign (tr lhs) (tr rhs)
+      | JSAlloc var val      <- js = JSAlloc var $ fmap tr val
+      | JSIndex lhs rhs      <- js = JSIndex (tr lhs) (tr rhs)
+      | JSCond conds         <- js = JSCond $ map (tr *** tr) conds
+      | JSTernary c t f      <- js = JSTernary (tr c) (tr t) (tr f)
+      | JSParens val         <- js = JSParens $ tr val
+      | otherwise                  = js
+
+
 jsSubst :: JS -> JS -> JS -> JS
 jsSubst var new old
   | var == old = new
@@ -300,40 +323,7 @@ jsSubst (JSIdent var) new (JSApp (JSFunction [arg] body) vals)
         body
       )) $ map (jsSubst (JSIdent var) new) vals
 
-jsSubst var new (JSApp lhs rhs) =
-  JSApp (jsSubst var new lhs) (map (jsSubst var new) rhs)
-
-jsSubst var new (JSFunction [] body) =
-  JSFunction [] (jsSubst var new body)
-
-jsSubst var new (JSReturn ret) =
-  JSReturn $ jsSubst var new ret
-
-jsSubst var new (JSProj obj field) =
-  JSProj (jsSubst var new obj) field
-
-jsSubst var new (JSSeq body) =
-  JSSeq $ map (jsSubst var new) body
-
-jsSubst var new (JSOp op lhs rhs) =
-  JSOp op (jsSubst var new lhs) (jsSubst var new rhs)
-
-jsSubst var new (JSIndex obj field) =
-  JSIndex (jsSubst var new obj) (jsSubst var new field)
-
-jsSubst var new (JSCond conds) =
-  JSCond (map ((jsSubst var new) *** (jsSubst var new)) conds)
-
-jsSubst var new (JSAssign lhs rhs) =
-  JSAssign (jsSubst var new lhs) (jsSubst var new rhs)
-
-jsSubst var new (JSAlloc val (Just js)) =
-  JSAlloc val (Just (jsSubst var new js))
-
-jsSubst var new (JSParens js) =
-  JSParens $ jsSubst var new js
-
-jsSubst _ _ js = js
+jsSubst var new js = transformJS (jsSubst var new) js
 
 
 removeAllocations :: JS -> JS
@@ -349,46 +339,7 @@ removeAllocations (JSSeq body) =
       map (jsSubst (JSIdent name) val) (removeHelper js)
     removeHelper (j:js) = j : removeHelper js
 
-removeAllocations (JSFunction args body) =
-  JSFunction args $ removeAllocations body
-
-removeAllocations (JSReturn ret) =
-  JSReturn $ removeAllocations ret
-
-removeAllocations (JSApp fun args) =
-  JSApp (removeAllocations fun) (map removeAllocations args)
-
-removeAllocations (JSNew con args) =
-  JSNew con $ map removeAllocations args
-
-removeAllocations (JSOp op lhs rhs) =
-  JSOp op (removeAllocations lhs) (removeAllocations rhs)
-
-removeAllocations (JSProj obj field) =
-  JSProj (removeAllocations obj) field
-
-removeAllocations (JSArray vals) =
-  JSArray $ map removeAllocations vals
-
-removeAllocations (JSAssign lhs rhs) =
-  JSAssign (removeAllocations lhs) (removeAllocations rhs)
-
-removeAllocations (JSAlloc name (Just val)) =
-  JSAlloc name $ Just (removeAllocations val)
-
-removeAllocations (JSIndex val idx) =
-  JSIndex (removeAllocations val) (removeAllocations idx)
-
-removeAllocations (JSCond conds) =
-  JSCond $ map (removeAllocations *** removeAllocations) conds
-
-removeAllocations (JSTernary c t f) =
-  JSTernary (removeAllocations c) (removeAllocations t) (removeAllocations f)
-
-removeAllocations (JSParens js) =
-  JSParens $ removeAllocations js
-
-removeAllocations js = js
+removeAllocations js = transformJS removeAllocations js
 
 
 isJSConstant :: JS -> Bool
@@ -474,43 +425,7 @@ inlineJS (JSApp (JSFunction [arg] (JSReturn ret)) [val])
   , opt <- inlineJS val =
       inlineJS $ JSApp (JSIdent fun) $ map (inlineJS . jsSubst (JSIdent arg) opt) args
 
-inlineJS (JSApp fun args) =
-  JSApp (inlineJS fun) (map inlineJS args)
-
-inlineJS (JSNew con args) =
-  JSNew con $ map inlineJS args
-
-inlineJS (JSArray fields) =
-  JSArray (map inlineJS fields)
-
-inlineJS (JSAssign lhs rhs) =
-  JSAssign (inlineJS lhs) (inlineJS rhs)
-
-inlineJS (JSSeq seq) =
-  JSSeq (map inlineJS seq)
-
-inlineJS (JSFunction args body) =
-  JSFunction args (inlineJS body)
-
-inlineJS (JSProj (JSFunction args body) field) =
-  JSProj (JSFunction args (inlineJS body)) field
-
-inlineJS (JSReturn js) =
-  JSReturn $ inlineJS js
-
-inlineJS (JSAlloc name (Just js)) =
-  JSAlloc name (Just $ inlineJS js)
-
-inlineJS (JSCond cases) =
-  JSCond $ map (inlineJS *** inlineJS) cases
-
-inlineJS (JSOp op lhs rhs) =
-  JSOp op (inlineJS lhs) (inlineJS rhs)
-
-inlineJS (JSParens js) =
-  JSParens $ inlineJS js
-
-inlineJS js = js
+inlineJS js = transformJS inlineJS js
 
 
 reduceJS :: [JS] -> [JS]
@@ -633,50 +548,7 @@ initConstructors js =
             replaceHelper tags (JSNew "__IDRRT__Con" [JSNum (JSInt tag), JSArray []])
               | tag `elem` tags = JSIdent ("__IDRCTR__" ++ show tag)
 
-            replaceHelper tags (JSNew con args) =
-              JSNew con $ map (replaceHelper tags) args
-
-            replaceHelper tags (JSFunction fun body) =
-              JSFunction fun (replaceHelper tags body)
-
-            replaceHelper tags (JSReturn ret) =
-              JSReturn (replaceHelper tags ret)
-
-            replaceHelper tags (JSApp lhs rhs) =
-              JSApp (replaceHelper tags lhs) (map (replaceHelper tags) rhs)
-
-            replaceHelper tags (JSSeq seq) =
-              JSSeq $ map (replaceHelper tags) seq
-
-            replaceHelper tags (JSOp op lhs rhs) =
-              JSOp op (replaceHelper tags lhs) (replaceHelper tags rhs)
-
-            replaceHelper tags (JSProj obj field) =
-              JSProj (replaceHelper tags obj) field
-
-            replaceHelper tags (JSArray vals) =
-              JSArray $ map (replaceHelper tags) vals
-
-            replaceHelper tags (JSAssign lhs rhs) =
-              JSAssign (replaceHelper tags lhs) (replaceHelper tags rhs)
-
-            replaceHelper tags (JSAlloc var (Just val)) =
-              JSAlloc var $ Just (replaceHelper tags val)
-
-            replaceHelper tags (JSCond conds) =
-              JSCond (map ((replaceHelper tags) *** (replaceHelper tags)) conds)
-
-            replaceHelper tags (JSTernary c t f) =
-              JSTernary (replaceHelper tags c) (
-                replaceHelper tags t
-              ) (
-                replaceHelper tags f
-              )
-
-            replaceHelper tags (JSParens js) =
-              JSParens $ replaceHelper tags js
-
-            replaceHelper tags js = js
+            replaceHelper tags js = transformJS (replaceHelper tags) js
 
 
         createConstant :: Int -> JS
@@ -720,40 +592,7 @@ removeIDs js =
           | Just pos <- lookup fun ids
           , pos < length args  = args !! pos
 
-        removeIDCall ids (JSAlloc fun (Just body)) =
-          JSAlloc fun (Just $ removeIDCall ids body)
-
-        removeIDCall ids (JSReturn js) =
-          JSReturn $ removeIDCall ids js
-
-        removeIDCall ids (JSSeq js) =
-          JSSeq $ map (removeIDCall ids) js
-
-        removeIDCall ids (JSNew con args) =
-          JSNew con $ map (removeIDCall ids) args
-
-        removeIDCall ids (JSFunction args body) =
-          JSFunction args $ removeIDCall ids body
-
-        removeIDCall ids (JSApp fun args) =
-          JSApp (removeIDCall ids fun) $ map (removeIDCall ids) args
-
-        removeIDCall ids (JSProj obj field) =
-          JSProj (removeIDCall ids obj) field
-
-        removeIDCall ids (JSCond conds) =
-          JSCond $ map (removeIDCall ids *** removeIDCall ids) conds
-
-        removeIDCall ids (JSAssign lhs rhs) =
-          JSAssign (removeIDCall ids lhs) (removeIDCall ids rhs)
-
-        removeIDCall ids (JSArray fields) =
-          JSArray $ map (removeIDCall ids) fields
-
-        removeIDCall ids (JSParens js) =
-          JSParens $ removeIDCall ids js
-
-        removeIDCall _ js = js
+        removeIDCall ids js = transformJS (removeIDCall ids) js
 
 
 inlineFunctions :: [JS] -> [JS]
@@ -870,40 +709,7 @@ reduceConstant
 reduceConstant (JSApp ident [(JSParens js)]) =
   JSApp ident [reduceConstant js]
 
-reduceConstant (JSOp op lhs rhs) =
-  JSOp op (reduceConstant lhs) (reduceConstant rhs)
-
-reduceConstant (JSReturn ret) =
-  JSReturn (reduceConstant ret)
-
-reduceConstant (JSApp fun args) =
-  JSApp (reduceConstant fun) (map reduceConstant args)
-
-reduceConstant (JSArray fields) =
-  JSArray (map reduceConstant fields)
-
-reduceConstant (JSAlloc name (Just val)) =
-  JSAlloc name $ Just (reduceConstant val)
-
-reduceConstant (JSNew con args) =
-  JSNew con (map reduceConstant args)
-
-reduceConstant (JSProj obj field) =
-  JSProj (reduceConstant obj) field
-
-reduceConstant (JSCond conds) =
-  JSCond $ map (reduceConstant *** reduceConstant) conds
-
-reduceConstant (JSSeq seq) =
-  JSSeq $ map reduceConstant seq
-
-reduceConstant (JSFunction args body) =
-  JSFunction args (reduceConstant body)
-
-reduceConstant (JSParens js) =
-  JSParens $ reduceConstant js
-
-reduceConstant js = js
+reduceConstant js = transformJS reduceConstant js
 
 
 reduceConstants :: JS -> JS
@@ -937,55 +743,7 @@ optimizeEvalTailcalls (fun, tc) js =
       ])
       | n == fun = JSApp (JSIdent tc) $ map optHelper args
 
-    optHelper (JSFunction args body) =
-      JSFunction args $ optHelper body
-
-    optHelper (JSSeq seq) =
-      JSSeq $ map optHelper seq
-
-    optHelper (JSReturn ret) =
-      JSReturn $ optHelper ret
-
-    optHelper (JSApp lhs rhs) =
-      JSApp (optHelper lhs) (map optHelper rhs)
-
-    optHelper (JSNew con args) =
-      JSNew con $ map optHelper args
-
-    optHelper (JSOp op lhs rhs) =
-      JSOp op (optHelper lhs) (optHelper rhs)
-
-    optHelper (JSProj obj field) =
-      JSProj (optHelper obj) field
-
-    optHelper (JSArray vals) =
-      JSArray $ map optHelper vals
-
-    optHelper (JSAssign lhs rhs) =
-      JSAssign (optHelper lhs) (optHelper rhs)
-
-    optHelper (JSAlloc var (Just val)) =
-      JSAlloc var (Just $ optHelper val)
-
-    optHelper (JSIndex lhs rhs) =
-      JSIndex (optHelper lhs) (optHelper rhs)
-
-    optHelper (JSCond conds) =
-      JSCond $ map (optHelper *** optHelper) conds
-
-    optHelper (JSTernary c t f) =
-      JSTernary (
-        optHelper c
-      ) (
-        optHelper t
-      ) (
-        optHelper f
-      )
-
-    optHelper (JSParens js) =
-      JSParens $ optHelper js
-
-    optHelper js = js
+    optHelper js = transformJS optHelper js
 
 
 removeInstanceChecks :: JS -> JS
@@ -1005,53 +763,7 @@ removeInstanceChecks (JSCond conds) =
     eliminateDeadBranches (x:xs)            = x : eliminateDeadBranches xs
     eliminateDeadBranches []                = []
 
-
-removeInstanceChecks (JSFunction args body) =
-  JSFunction args $ removeInstanceChecks body
-
-removeInstanceChecks (JSSeq seq) =
-  JSSeq $ map removeInstanceChecks seq
-
-removeInstanceChecks (JSReturn ret) =
-  JSReturn $ removeInstanceChecks ret
-
-removeInstanceChecks (JSApp lhs rhs) =
-  JSApp (removeInstanceChecks lhs) $ map removeInstanceChecks rhs
-
-removeInstanceChecks (JSNew con args) =
-  JSNew con $ map removeInstanceChecks args
-
-removeInstanceChecks (JSOp op lhs rhs) =
-  JSOp op (removeInstanceChecks lhs) (removeInstanceChecks rhs)
-
-removeInstanceChecks (JSProj obj field) =
-  JSProj (removeInstanceChecks obj) field
-
-removeInstanceChecks (JSArray vals) =
-  JSArray $ map removeInstanceChecks vals
-
-removeInstanceChecks (JSAssign lhs rhs) =
-  JSAssign (removeInstanceChecks lhs) (removeInstanceChecks rhs)
-
-removeInstanceChecks (JSAlloc var (Just val)) =
-  JSAlloc var (Just $ removeInstanceChecks val)
-
-removeInstanceChecks (JSIndex lhs rhs) =
-  JSIndex (removeInstanceChecks lhs) (removeInstanceChecks rhs)
-
-removeInstanceChecks (JSTernary c t f) =
-  JSTernary (
-    removeInstanceChecks c
-  ) (
-    removeInstanceChecks t
-  ) (
-    removeInstanceChecks f
-  )
-
-removeInstanceChecks (JSParens js) =
-  JSParens $ removeInstanceChecks js
-
-removeInstanceChecks js = js
+removeInstanceChecks js = transformJS removeInstanceChecks js
 
 
 reduceLoop :: [String] -> ([JS], [JS]) -> [JS]
@@ -1094,46 +806,7 @@ reduceLoop reduced (cons, program) =
         reduceCall funs js@(JSApp id@(JSIdent fun) _)
           | fun `elem` funs = id
 
-        reduceCall funs (JSAlloc fun (Just body)) =
-          JSAlloc fun (Just $ reduceCall funs body)
-
-        reduceCall funs (JSReturn js) =
-          JSReturn $ reduceCall funs js
-
-        reduceCall funs (JSSeq js) =
-          JSSeq $ map (reduceCall funs) js
-
-        reduceCall funs (JSNew con args) =
-          JSNew con $ map (reduceCall funs) args
-
-        reduceCall funs (JSFunction args body) =
-          JSFunction args $ reduceCall funs body
-
-        reduceCall funs (JSApp fun args) =
-          JSApp (reduceCall funs fun) $ map (reduceCall funs) args
-
-        reduceCall funs (JSProj obj field) =
-          JSProj (reduceCall funs obj) field
-
-        reduceCall funs (JSIndex obj idx) =
-          JSIndex (reduceCall funs obj) (reduceCall funs idx)
-
-        reduceCall funs (JSOp op rhs lhs) =
-          JSOp op (reduceCall funs rhs) (reduceCall funs lhs)
-
-        reduceCall funs (JSCond conds) =
-          JSCond $ map (reduceCall funs *** reduceCall funs) conds
-
-        reduceCall funs (JSAssign lhs rhs) =
-          JSAssign (reduceCall funs lhs) (reduceCall funs rhs)
-
-        reduceCall funs (JSArray fields) =
-          JSArray $ map (reduceCall funs) fields
-
-        reduceCall funs (JSParens js) =
-          JSParens $ reduceCall funs js
-
-        reduceCall _ js = js
+        reduceCall funs js = transformJS (reduceCall funs) js
 
 
 optimizeJS :: JS -> JS
