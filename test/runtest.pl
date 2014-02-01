@@ -57,7 +57,7 @@ if ($#ARGV>=0) {
         opendir my $dir, ".";
         my @list = readdir $dir;
         foreach my $file (@list) {
-            if ($file =~ /[0-9][0-9][0-9]/) {
+            if ($file =~ /[0-9][0-9][0-9]$/) {
                 push @tests, $file;
             }
         }
@@ -72,7 +72,7 @@ if ($#ARGV>=0) {
         opendir my $dir, ".";
         my @list = readdir $dir;
         foreach my $file (@list) {
-            if ($file =~ /[0-9][0-9][0-9]/) {
+            if ($file =~ /[0-9][0-9][0-9]$/) {
                 if (!(grep ($_ eq $file, @without))) {
                    push @tests, $file;
                 }
@@ -84,7 +84,9 @@ if ($#ARGV>=0) {
         @tests = sort @tests;
     }
     else {
-	    push @tests, $test;
+            if ($test =~ /[0-9][0-9][0-9]$/) {
+	        push @tests, $test;
+            }
     }
     @opts = @ARGV;
 }

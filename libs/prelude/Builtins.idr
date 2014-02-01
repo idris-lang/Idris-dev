@@ -39,6 +39,9 @@ malloc size x = x -- compiled specially
 trace_malloc : a -> a
 trace_malloc x = x -- compiled specially
 
+assert_smaller : a -> a -> a
+assert_smaller x y = y
+
 abstract %assert_total -- need to pretend
 believe_me : a -> b -- compiled specially as id, use with care!
 believe_me x = prim__believe_me _ _ x

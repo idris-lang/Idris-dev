@@ -382,13 +382,12 @@ span p (x::xs) =
 break : (a -> Bool) -> List a -> (List a, List a)
 break p = span (not . p)
 
-%assert_total
 split : (a -> Bool) -> List a -> List (List a)
 split p [] = []
 split p xs =
   case break p xs of
     (chunk, [])          => [chunk]
-    (chunk, (c :: rest)) => chunk :: split p rest
+    (chunk, (c :: rest)) => chunk :: split p (assert_smaller xs rest)
 
 partition : (a -> Bool) -> List a -> (List a, List a)
 partition p []      = ([], [])
@@ -432,26 +431,23 @@ sorted (x::xs) =
     Nil     => True
     (y::ys) => x <= y && sorted (y::ys)
 
-%assert_total -- can't work this out, because in the case which is lifted out
-              -- y::ys and x::xs are bigger than the inputs...
 mergeBy : (a -> a -> Ordering) -> List a -> List a -> List a
 mergeBy order []      right   = right
 mergeBy order left    []      = left
 mergeBy order (x::xs) (y::ys) =
-  case order x y of
-    LT => x :: mergeBy order xs (y::ys)
-    _  => y :: mergeBy order (x::xs) ys
+  if order x y == LT 
+     then x :: mergeBy order xs (y::ys)
+     else y :: mergeBy order (x::xs) ys
 
 merge : Ord a => List a -> List a -> List a
 merge = mergeBy compare
 
-%assert_total
 sort : Ord a => List a -> List a
 sort []  = []
 sort [x] = [x]
-sort xs  =
-  let (x, y) = split xs in
-    merge (sort x) (sort y) -- not structurally smaller, hence assert
+sort xs  = let (x, y) = split xs in
+    merge (sort (assert_smaller xs x)) 
+          (sort (assert_smaller xs y)) -- not structurally smaller, hence assert
   where
     splitRec : List a -> List a -> (List a -> List a) -> (List a, List a)
     splitRec (_::_::xs) (y::ys) zs = splitRec xs ys (zs . ((::) y))

@@ -347,6 +347,9 @@ Extra-source-files:
                        test/totality002/run
                        test/totality002/*.idr
                        test/totality002/expected
+                       test/totality003/run
+                       test/totality003/*.idr
+                       test/totality003/expected
 
 source-repository head
   type:     git
