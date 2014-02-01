@@ -337,45 +337,49 @@ bracketed syn =
             do lchar ')'
                fc <- getFC
                return $ PTrue fc
-        <|>
-        try (do l <- expr syn
-                lchar ')'
-                return l)
-        <|>  do (l, fc) <- try (do
-                     l <- expr syn
-                     fc <- getFC
-                     lchar ','
-                     return (l, fc))
-                rs <- sepBy1 (do fc' <- getFC; r <- expr syn; return (r, fc')) (lchar ',')
-                lchar ')'
-                return $ PPair fc l (mergePairs rs)
-        <|>  do (l, fc) <- try (do
-                   l <- expr syn
-                   fc <- getFC
-                   reservedOp "**"
-                   return (l, fc))
-                r <- expr syn
-                lchar ')'
-                return (PDPair fc l Placeholder r)
-        <|> try(do fc0 <- getFC
-                   l <- expr' syn
-                   o <- operator
-                   lchar ')'
-                   return $ PLam (sMN 1000 "ARG") Placeholder
-                                    (PApp fc0 (PRef fc0 (sUN o)) [pexp l,
-                                                                 pexp (PRef fc0 (sMN 1000 "ARG"))]))
-        <|> try(do fc <- getFC; o <- operator; e <- expr syn; lchar ')'
-                   return $ PLam (sMN 1000 "ARG") Placeholder
-                             (PApp fc (PRef fc (sUN o)) [pexp (PRef fc (sMN 1000 "ARG")),
-                                                             pexp e]))
-        <|> try (do ln <- name; lchar ':'
+        <|> try (do ln <- name; lchar ':';
                     lty <- expr syn
                     reservedOp "**"
                     fc <- getFC
                     r <- expr syn
                     lchar ')'
                     return (PDPair fc (PRef fc ln) lty r))
-        <?> "end of braced expression"
+        <|> try (do fc <- getFC; o <- operator; e <- expr syn; lchar ')'
+                    -- No prefix operators! (bit of a hack here...)
+                    if (o == "-" || o == "!") 
+                      then fail "minus not allowed in section"
+                      else return $ PLam (sMN 1000 "ARG") Placeholder
+                         (PApp fc (PRef fc (sUN o)) [pexp (PRef fc (sMN 1000 "ARG")),
+                                                     pexp e]))
+        <|> try (do l <- simpleExpr syn
+                    op <- option Nothing (do o <- operator
+                                             lchar ')'
+                                             return (Just o)) 
+                    fc0 <- getFC
+                    case op of
+                         Nothing -> bracketedExpr syn l
+                         Just o -> return $ PLam (sMN 1000 "ARG") Placeholder
+                             (PApp fc0 (PRef fc0 (sUN o)) [pexp l,
+                                                           pexp (PRef fc0 (sMN 1000 "ARG"))]))
+        <|> do l <- expr syn
+               bracketedExpr syn l
+            
+bracketedExpr :: SyntaxInfo -> PTerm -> IdrisParser PTerm
+bracketedExpr syn e =
+             do lchar ')'; return e
+        <|>  do fc <- do fc <- getFC
+                         lchar ','
+                         return fc
+                rs <- sepBy1 (do fc' <- getFC; r <- expr syn; return (r, fc')) (lchar ',')
+                lchar ')'
+                return $ PPair fc e (mergePairs rs)
+        <|>  do fc <- do fc <- getFC
+                         reservedOp "**"
+                         return fc
+                r <- expr syn
+                lchar ')'
+                return (PDPair fc e Placeholder r)
+        <?> "end of bracketed expression"
   where mergePairs :: [(PTerm, FC)] -> PTerm
         mergePairs [(t, fc)]    = t
         mergePairs ((t, fc):rs) = PPair fc t (mergePairs rs)

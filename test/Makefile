@@ -5,7 +5,7 @@ TESTS = $(sort $(patsubst %/,%.test,$(wildcard */)))
 test: $(TESTS)
 
 %.test:
-	@perl ./runtest.pl $(patsubst %.test,%,$@)
+	@perl ./runtest.pl without buffer001 $(patsubst %.test,%,$@)
 
 test_java:
 	perl ./runtest.pl without buffer001 --codegen Java

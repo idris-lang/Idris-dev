@@ -67,7 +67,7 @@ multZ (Pos n) (NegS m) = negNat $ n * (S m)
 
 fromInt : Integer -> ZZ
 fromInt n = if n < 0
-            then NegS $ fromInteger {a=Nat} (-n - 1)
+            then NegS $ fromInteger {a=Nat} ((-n) - 1)
             else Pos $ fromInteger {a=Nat} n
 
 instance Cast Nat ZZ where
