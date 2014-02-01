@@ -1173,6 +1173,8 @@ cgOp LStdErr  [] = do
   ptr <- inst $ loadInv stdErr
   box FPtr ptr
 
+cgOp LNullPtr [] = box FPtr (ConstantOperand $ C.Null (PointerType (IntegerType 8) (AddrSpace 0)))
+
 cgOp prim args = ierror $ "Unimplemented primitive: <" ++ show prim ++ ">("
                   ++ intersperse ',' (take (length args) ['a'..]) ++ ")"
 
