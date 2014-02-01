@@ -41,7 +41,7 @@ namespace Env
   data Env  : (m : Type -> Type) -> List EFFECT -> Type where
        Nil  : Env m Nil
        (::) : Handler eff m => a -> Env m xs -> Env m (MkEff a eff :: xs)
-
+       
 data EffElem : Effect -> Type ->
                List EFFECT -> Type where
      Here : EffElem x a (MkEff a x :: xs)
@@ -97,11 +97,27 @@ reflectSubList (x ++ y) = Refine "subListId" `Seq` Solve
 reflectSubList _ = Refine "subListId" `Seq` Solve
 
 %reflection
+reflectDefaultList : List a -> Tactic
+reflectDefaultList [] = Refine "enil" `Seq` Solve
+reflectDefaultList (x :: xs)
+     = Refine "econs" `Seq` 
+         (Solve `Seq`
+           (Instance `Seq` 
+         (Refine "default" `Seq`
+           (Solve `Seq`
+             (Instance `Seq`
+              (reflectDefaultList xs))))))
+reflectDefaultList (x ++ y) = Refine "Nil" `Seq` Solve
+reflectDefaultList _ = Refine "Nil" `Seq` Solve
+
+%reflection
 reflectEff : (P : Type) -> Tactic
 reflectEff (EffElem m a xs)
      = reflectListEffElem xs `Seq` Solve
 reflectEff (SubList xs ys)
      = reflectSubList ys `Seq` Solve
+reflectEff (Env m xs)
+     = reflectDefaultList xs `Seq` Solve
 
 updateResTy : (val : t) ->
               (xs : List EFFECT) -> EffElem e a xs -> e t a b ->
@@ -232,10 +248,8 @@ eff {xs = [l ::: x]} env (l :- prog) k
    = let env' = unlabel env in
          eff env' prog (\p', envk => k p' (relabel l envk))
 
-run : Applicative m => Env m xs -> Eff m a xs xs' -> m a
-run env prog = eff env prog (\r, env => pure r)
-
--- yuck :)
+-- yuck :) Haven't got type class instances working nicely in tactic
+-- proofs yet, so just brute force it.
 syntax MkDefaultEnv = (| [], [default], [default, default],
                          [default, default, default],
                          [default, default, default, default],
@@ -244,18 +258,24 @@ syntax MkDefaultEnv = (| [], [default], [default, default],
                          [default, default, default, default, default, default, default],
                          [default, default, default, default, default, default, default, default] |)
 
-run' : Applicative m => {default MkDefaultEnv env : Env m xs} -> Eff m a xs xs' -> m a
-run' {env} prog = eff env prog (\r, env => pure r)
+run : Applicative m => {default MkDefaultEnv env : Env m xs} -> Eff m a xs xs' -> m a
+run {env} prog = eff env prog (\r, env => pure r)
+
+runPure : {default MkDefaultEnv env : Env id xs} -> Eff id a xs xs' -> a
+runPure {env} prog = eff env prog (\r, env => r)
+
+runInit : Applicative m => Env m xs -> Eff m a xs xs' -> m a
+runInit env prog = eff env prog (\r, env => pure r)
+
+runPureInit : Env id xs -> Eff id a xs xs' -> a
+runPureInit env prog = eff env prog (\r, env => r)
+
+runWith : (a -> m a) -> Env m xs -> Eff m a xs xs' -> m a
+runWith inj env prog = eff env prog (\r, env => inj r)
 
 runEnv : Applicative m => Env m xs -> Eff m a xs xs' -> 
          m (x : a ** Env m (xs' x))
 runEnv env prog = eff env prog (\r, env => pure (r ** env))
-
-runPure : Env id xs -> Eff id a xs xs' -> a
-runPure env prog = eff env prog (\r, env => r)
-
-runWith : (a -> m a) -> Env m xs -> Eff m a xs xs' -> m a
-runWith inj env prog = eff env prog (\r, env => inj r)
 
 -- some higher order things
 

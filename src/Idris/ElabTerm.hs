@@ -969,6 +969,7 @@ runTac autoSolve ist tac
                    when autoSolve solveAll
     runT Compute = compute
     runT Trivial = do trivial' ist; when autoSolve solveAll
+    runT TCInstance = runT (Exact (PResolveTC emptyFC))
     runT (ProofSearch top n hints)
          = do proofSearch' ist top n hints; when autoSolve solveAll
     runT (Focus n) = focus n
@@ -1088,6 +1089,7 @@ reflm n = sNS (sUN n) ["Reflection", "Language"]
 reify :: IState -> Term -> ElabD PTactic
 reify _ (P _ n _) | n == reflm "Intros" = return Intros
 reify _ (P _ n _) | n == reflm "Trivial" = return Trivial
+reify _ (P _ n _) | n == reflm "Instance" = return TCInstance
 reify _ (P _ n _) | n == reflm "Solve" = return Solve
 reify _ (P _ n _) | n == reflm "Compute" = return Compute
 reify ist t@(App _ _)

@@ -673,7 +673,7 @@ data PTactic' t = Intro [Name] | Intros | Focus Name
                 | Equiv t
                 | MatchRefine Name
                 | LetTac Name t | LetTacTy Name t t
-                | Exact t | Compute | Trivial
+                | Exact t | Compute | Trivial | TCInstance
                 | ProofSearch (Maybe Name) Name [Name]
                 | Solve
                 | Attack
