@@ -9,6 +9,7 @@ data CmdArg = ExprArg -- ^ The command takes an expression
             | ColourArg  -- ^ The command is the colour-setting command
             | NoArg -- ^ No completion (yet!?)
             | SpecialHeaderArg -- ^ do not use
+            | ConsoleWidthArg -- ^ The width of the console
 
 instance Show CmdArg where
     show ExprArg          = "<expr>"
@@ -20,6 +21,7 @@ instance Show CmdArg where
     show ColourArg        = "<option>"
     show NoArg            = ""
     show SpecialHeaderArg = "Arguments"
+    show ConsoleWidthArg  = "auto|infinite|<number>"
 
 help :: [([String], CmdArg, String)]
 help =
@@ -50,6 +52,7 @@ help =
     ([":set"], OptionArg, "Set an option (errorcontext, showimplicits)"),
     ([":unset"], OptionArg, "Unset an option"),
     ([":colour", ":color"], ColourArg, "Turn REPL colours on or off; set a specific colour"),
+    ([":consolewidth"], ConsoleWidthArg, "Set the width of the console"),
     ([":q",":quit"], NoArg, "Exit the Idris system")
   ]
 

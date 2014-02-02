@@ -935,6 +935,8 @@ process h fn ListErrorHandlers =
        [] -> iPrintResult "No registered error handlers"
        handlers ->
            iPrintResult $ "Registered error handlers: " ++ (concat . intersperse ", " . map show) handlers
+process h fn (SetConsoleWidth w) = setWidth w
+
 
 classInfo :: ClassInfo -> Idris ()
 classInfo ci = do iputStrLn "Methods:\n"

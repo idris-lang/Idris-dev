@@ -24,6 +24,8 @@ New in 0.9.11:
   structurally smaller than "(x :: xs)"
 * assert_total internal function, which marks a subexpression as assumed to
   be total, e.g "assert_total (tail (x :: xs))".
+* Terminal width is automatically detected if Idris is compiled with curses
+  support. If curses is not available, automatic mode assumes 80 columns.
 
 Internal changes
 

@@ -54,7 +54,7 @@ tactics = map fst tacticArgs
 -- | Convert a name into a string usable for completion. Filters out names
 -- that users probably don't want to see.
 nameString :: Name -> Maybe String
-nameString (UN nm) 
+nameString (UN nm)
    | not (tnull nm) && (thead nm == '@' || thead nm == '#') = Nothing
 nameString (UN n)       = Just (str n)
 nameString (NS n _)     = nameString n
@@ -106,6 +106,10 @@ completeOption :: CompletionFunc Idris
 completeOption = completeWord Nothing " \t" completeOpt
     where completeOpt = return . completeWith ["errorcontext", "showimplicits", "originalerrors"]
 
+completeConsoleWidth :: CompletionFunc Idris
+completeConsoleWidth = completeWord Nothing " \t" completeW
+    where completeW = return . completeWith ["auto", "infinite", "80", "120"]
+
 isWhitespace :: Char -> Bool
 isWhitespace = (flip elem) " \t\n"
 
@@ -152,6 +156,7 @@ completeCmd cmd (prev, next) = fromMaybe completeCmdName $ fmap completeArg $ lo
           completeArg MetaVarArg = completeMetaVar (prev, next) -- FIXME only complete one name
           completeArg ColourArg = completeColour (prev, next)
           completeArg NoArg = noCompletion (prev, next)
+          completeArg ConsoleWidthArg = completeConsoleWidth (prev, next)
           completeCmdName = return $ ("", completeWith commands cmd)
 
 -- | Complete REPL commands and defined identifiers

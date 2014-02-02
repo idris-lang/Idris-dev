@@ -36,6 +36,7 @@ import Control.Monad.Error (throwError, catchError)
 import System.IO.Error(isUserError, ioeGetErrorString, tryIOError)
 
 import Util.Pretty
+import Util.ScreenSize
 import Util.System
 
 getContext :: Idris Context
@@ -414,13 +415,24 @@ setWidth :: ConsoleWidth -> Idris ()
 setWidth w = do ist <- getIState
                 put ist { idris_consolewidth = w }
 
+renderWidth :: Idris Int
+renderWidth = do iw <- getWidth
+                 case iw of
+                   InfinitelyWide -> return 100000000
+                   ColsWide n -> return (max n 1)
+                   AutomaticWidth -> runIO getScreenWidth
+
+
 iRender :: Doc a -> Idris (SimpleDoc a)
 iRender d = do w <- getWidth
-               return $ case w of
-                          InfinitelyWide -> renderPretty 1.0 1000000000 d
-                          ColsWide n -> if n < 1
-                                          then renderPretty 1.0 1000000000 d
-                                          else renderPretty 0.5 n d
+               case w of
+                 InfinitelyWide -> return $ renderPretty 1.0 1000000000 d
+                 ColsWide n -> return $
+                               if n < 1
+                                 then renderPretty 1.0 1000000000 d
+                                 else renderPretty 0.8 n d
+                 AutomaticWidth -> do width <- runIO getScreenWidth
+                                      return $ renderPretty 0.8 width d
 
 ihPrintResult :: Handle -> String -> Idris ()
 ihPrintResult h s = do i <- getIState

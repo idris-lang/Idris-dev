@@ -85,7 +85,8 @@ data OutputMode = RawOutput | IdeSlave Integer deriving Show
 
 -- | How wide is the console?
 data ConsoleWidth = InfinitelyWide -- ^ Have pretty-printer assume that lines should not be broken
-                  | ColsWide Int -- ^ Must be positive
+                  | ColsWide Int -- ^ Manually specified - must be positive
+                  | AutomaticWidth -- ^ Attempt to determine width, or 80 otherwise
 
 -- TODO: Add 'module data' to IState, which can be saved out and reloaded quickly (i.e
 -- without typechecking).
@@ -219,7 +220,7 @@ idrisInit = IState initContext [] [] emptyContext emptyContext emptyContext
                    [] [] defaultOpts 6 [] [] [] [] [] [] [] [] [] [] [] [] []
                    [] Nothing Nothing [] [] [] Hidden False [] Nothing [] [] RawOutput
                    True defaultTheme stdout [] (0, emptyContext) emptyContext M.empty
-                   (ColsWide 80)
+                   AutomaticWidth
 
 -- | The monad for the main REPL - reading and processing files and updating
 -- global state (hence the IO inner monad).
@@ -283,6 +284,7 @@ data Command = Quit
              | ColourOn
              | ColourOff
              | ListErrorHandlers
+             | SetConsoleWidth ConsoleWidth
 
 data Opt = Filename String
          | Ver
@@ -329,6 +331,7 @@ data Opt = Filename String
          | OptLevel Word
          | Client String
          | ShowOrigErr
+         | AutoWidth -- ^ Automatically adjust terminal width
     deriving (Show, Eq)
 
 -- Parsed declarations

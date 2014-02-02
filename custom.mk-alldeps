@@ -1,2 +1,2 @@
-CABALFLAGS += -f LLVM -f FFI
+CABALFLAGS += -f LLVM -f FFI -f curses
 
