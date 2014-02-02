@@ -583,46 +583,48 @@ removeIDs js =
 
 inlineFunctions :: [JS] -> [JS]
 inlineFunctions js =
-  let funs       = collectFunctions js
-      occurences = map ((id . fst) &&& countAll js) funs in
-      removeDeadFunctions occurences js
+  inlineHelper ([], js)
+  where
+    inlineHelper :: ([JS], [JS]) -> [JS]
+    inlineHelper (front , (JSAlloc fun (Just (JSFunction  args body))):back)
+      | countAll fun front + countAll fun back == 0 =
+         inlineHelper (front, back)
+      | inlineAble (countAll fun front + countAll fun back) fun args body =
+          let f = map (inline fun args body) in
+              inlineHelper (f front, f back)
+
+    inlineHelper (front, next:back) = inlineHelper (front ++ [next], back)
+    inlineHelper (front, [])        = front
+
+
+    inlineAble :: Int -> String -> [String] -> JS -> Bool
+    inlineAble 1 fun args body
+      | nonRecur fun body = False
+      | otherwise         = False
+
+    inlineAble _ _ _ _ = False
+
+
+    inline :: String -> [String] -> JS -> JS -> JS
+    inline fun args body js = js
+
+
+    nonRecur :: String -> JS -> Bool
+    nonRecur name body = countInvokations name body == 0
+
+
+    countAll :: String -> [JS] -> Int
+    countAll name js = sum $ map (countInvokations name) js
+
+
+    countInvokations :: String -> JS -> Int
+    countInvokations name = foldJS match (+) 0
       where
-        removeDeadFunctions :: [(String, (Int, JS))] -> [JS] -> [JS]
-        removeDeadFunctions _ [] = []
-        removeDeadFunctions funOccur ((JSAlloc fun (Just (JSFunction  _ _))):js)
-          | Just (o, _) <- lookup fun funOccur
-          , o == 0 = removeDeadFunctions funOccur js
-
-        removeDeadFunctions funOccur (j:js) = j : removeDeadFunctions funOccur js
-
-
-        collectFunctions :: [JS] -> [(String, JS)]
-        collectFunctions js =
-          catMaybes $ map collectHelper js
-
-
-        collectHelper :: JS -> Maybe (String, JS)
-        collectHelper (JSAlloc fun (Just js@(JSFunction _ body)))
-          | fun /= "main" && nonRecur fun body = Just (fun, js)
-        collectHelper _                        = Nothing
-
-
-        nonRecur :: String -> JS -> Bool
-        nonRecur name body = countInvokations name body == 0
-
-
-        countAll :: [JS] -> (String, JS) -> (Int, JS)
-        countAll js (name, fun) = (sum $ map (countInvokations name) js, fun)
-
-
-        countInvokations :: String -> JS -> Int
-        countInvokations name = foldJS match (+) 0
-          where
-            match :: JS -> Int
-            match js
-              | JSApp (JSIdent ident) _ <- js
-              , name == ident = 1
-              | otherwise     = 0
+        match :: JS -> Int
+        match js
+          | JSApp (JSIdent ident) _ <- js
+          , name == ident = 1
+          | otherwise     = 0
 
 
 reduceConstant :: JS -> JS
