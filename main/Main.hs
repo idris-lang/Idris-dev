@@ -55,14 +55,17 @@ runIdris opts = do
        when (ShowLibdir `elem` opts) $ runIO showLibdir
        case opt getPkgCheck opts of
            [] -> return ()
-           fs -> do runIO $ mapM_ (checkPkg (WarnOnly `elem` opts)) fs
+           fs -> do runIO $ mapM_ (checkPkg (WarnOnly `elem` opts) True) fs
                     runIO $ exitWith ExitSuccess
        case opt getPkgClean opts of
            [] -> return ()
            fs -> do runIO $ mapM_ cleanPkg fs
                     runIO $ exitWith ExitSuccess
        case opt getPkg opts of
-           [] -> idrisMain opts -- in Idris.REPL
+           [] -> case opt getPkgREPL opts of
+                      [] -> idrisMain opts
+                      [f] -> replPkg f
+                      _ -> ifail "Too many packages"
            fs -> runIO $ mapM_ (buildPkg (WarnOnly `elem` opts)) fs
 
 usage = do putStrLn usagemsg

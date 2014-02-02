@@ -69,9 +69,10 @@ buildPkg warnonly (install, fp)
 -- This differs from build in that executables are not built, if the
 -- package contains an executable.
 checkPkg :: Bool         -- ^ Show Warnings
+            -> Bool      -- ^ quit on failure
             -> FilePath  -- ^ Path to ipkg file.
             -> IO ()
-checkPkg warnonly fpath
+checkPkg warnonly quit fpath
   = do pkgdesc <-parseDesc fpath
        ok <- mapM (testLib warnonly (pkgname pkgdesc)) (libdeps pkgdesc)
        when (and ok) $
@@ -81,12 +82,31 @@ checkPkg warnonly fpath
             res <- buildMods (NoREPL : Verbose : idris_opts pkgdesc)
                              (modules pkgdesc)
             setCurrentDirectory dir
-            case res of
-              Nothing -> exitWith (ExitFailure 1)
-              Just res' -> do
-                case errLine res' of
-                  Just _ -> exitWith (ExitFailure 1)
-                  _ -> return ()
+            when quit $ case res of
+                          Nothing -> exitWith (ExitFailure 1)
+                          Just res' -> do
+                            case errLine res' of
+                              Just _ -> exitWith (ExitFailure 1)
+                              _ -> return ()
+
+-- | Check a package and start a REPL
+replPkg :: FilePath -> Idris ()
+replPkg fp = do orig <- getIState
+                runIO $ checkPkg False False fp
+                pkgdesc <- runIO $ parseDesc fp -- bzzt, repetition!
+                let opts = idris_opts pkgdesc
+                let mod = idris_main pkgdesc
+                let f = toPath (showCG mod)
+                putIState orig
+                dir <- runIO $ getCurrentDirectory
+                runIO $ setCurrentDirectory $ dir </> sourcedir pkgdesc
+
+                if (f /= "")
+                   then idrisMain ((Filename f) : opts) 
+                   else iputStrLn "Can't start REPL: no main module given"
+                runIO $ setCurrentDirectory dir
+
+    where toPath n = foldl1' (</>) $ splitOn "." n
 
 -- | Clean Package build files
 cleanPkg :: FilePath -- ^ Path to ipkg file.

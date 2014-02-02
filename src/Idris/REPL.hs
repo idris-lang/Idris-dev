@@ -1019,6 +1019,7 @@ parseArgs ("--package":n:ns)     = Pkg n : (parseArgs ns)
 parseArgs ("-p":n:ns)            = Pkg n : (parseArgs ns)
 parseArgs ("--build":n:ns)       = PkgBuild n : (parseArgs ns)
 parseArgs ("--install":n:ns)     = PkgInstall n : (parseArgs ns)
+parseArgs ("--repl":n:ns)        = PkgREPL n : (parseArgs ns)
 parseArgs ("--clean":n:ns)       = PkgClean n : (parseArgs ns)
 parseArgs ("--checkpkg":n:ns)    = PkgCheck n : (parseArgs ns)
 -- Misc Options
@@ -1335,6 +1336,10 @@ getPkg _ = Nothing
 getPkgClean :: Opt -> Maybe String
 getPkgClean (PkgClean str) = Just str
 getPkgClean _ = Nothing
+
+getPkgREPL :: Opt -> Maybe String
+getPkgREPL (PkgREPL str) = Just str
+getPkgREPL _ = Nothing
 
 getPkgCheck :: Opt -> Maybe String
 getPkgCheck (PkgCheck str) = Just str
