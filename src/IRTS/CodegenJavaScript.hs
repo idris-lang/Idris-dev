@@ -666,6 +666,17 @@ inlineFunctions js =
           | otherwise     = 0
 
 
+reduceContinuations :: JS -> JS
+reduceContinuations = transformJS reduceHelper
+  where
+    reduceHelper :: JS -> JS
+    reduceHelper (JSNew "__IDRRT__Cont" [JSFunction [] (
+        JSReturn js@(JSNew "__IDRRT__Cont" [JSFunction [] body])
+      )]) = js
+
+    reduceHelper js = transformJS reduceHelper js
+
+
 reduceConstant :: JS -> JS
 reduceConstant
   (JSApp (JSIdent "__IDRRT__tailcall") [JSFunction [] (
@@ -853,6 +864,7 @@ codegenJavaScript target definitions filename outputType = do
           , map (optimizeEvalTailcalls ("__IDR__mAPPLY0", "__IDRRT__APPLYTC"))
           , map removeInstanceChecks
           , inlineFunctions
+          , map reduceContinuations
           ]
 
 
