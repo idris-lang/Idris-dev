@@ -589,24 +589,52 @@ inlineFunctions js =
     inlineHelper (front , (JSAlloc fun (Just (JSFunction  args body))):back)
       | countAll fun front + countAll fun back == 0 =
          inlineHelper (front, back)
-      | inlineAble (countAll fun front + countAll fun back) fun args body =
-          let f = map (inline fun args body) in
-              inlineHelper (f front, f back)
+      | Just new <- inlineAble (
+            countAll fun front + countAll fun back
+          ) fun args body =
+              let f = map (inline fun args new) in
+                  inlineHelper (f front, f back)
 
     inlineHelper (front, next:back) = inlineHelper (front ++ [next], back)
     inlineHelper (front, [])        = front
 
 
-    inlineAble :: Int -> String -> [String] -> JS -> Bool
+    inlineAble :: Int -> String -> [String] -> JS -> Maybe JS
     inlineAble 1 fun args body
-      | nonRecur fun body = False
-      | otherwise         = False
+      | nonRecur fun body =
+          inlineAble' body
+            where
+              inlineAble' :: JS -> Maybe JS
+              inlineAble' (
+                  JSReturn js@(JSNew "__IDRRT__Con" [JSNum _, JSArray [JSIdent _]])
+                ) = Just js
 
-    inlineAble _ _ _ _ = False
+              inlineAble' _ = Nothing
+
+    inlineAble _ _ _ _ = Nothing
 
 
     inline :: String -> [String] -> JS -> JS -> JS
-    inline fun args body js = js
+    inline fun args body js = inline' js
+      where
+        inline' :: JS -> JS
+        inline' (JSApp (JSIdent name) vals)
+          | name == fun =
+              let (js, phs) = insertPlaceHolders args body in
+                  inline' $ foldr (uncurry jsSubst) js (zip phs vals)
+
+        inline' js = transformJS inline' js
+
+        insertPlaceHolders :: [String] -> JS -> (JS, [JS])
+        insertPlaceHolders args body = insertPlaceHolders' args body []
+          where
+            insertPlaceHolders' :: [String] -> JS -> [JS] -> (JS, [JS])
+            insertPlaceHolders' (a:as) body ph
+              | (body', ph') <- insertPlaceHolders' as body ph =
+                  let phvar = JSIdent $ "__PH_" ++ show (length ph') in
+                      (jsSubst (JSIdent a) phvar body', phvar : ph')
+
+            insertPlaceHolders' [] body ph = (body, ph)
 
 
     nonRecur :: String -> JS -> Bool
@@ -809,11 +837,11 @@ codegenJavaScript target definitions filename outputType = do
           , initConstructors
           , map removeAllocations
           , elimDeadLoop
-          , inlineFunctions
           , map elimDuplicateEvals
           , map (optimizeEvalTailcalls ("__IDR__mEVAL0", "__IDRRT__EVALTC"))
           , map (optimizeEvalTailcalls ("__IDR__mAPPLY0", "__IDRRT__APPLYTC"))
           , map removeInstanceChecks
+          , inlineFunctions
           ]
 
 
