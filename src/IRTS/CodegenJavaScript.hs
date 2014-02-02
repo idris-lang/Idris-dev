@@ -610,10 +610,16 @@ inlineFunctions js =
                   JSReturn js@(JSNew "__IDRRT__Con" [JSNum _, JSArray vals])
                 )
                 | and $ map (\x -> isJSIdent x || isJSConstant x) vals = Just js
+
               inlineAble' (
                   JSReturn js@(JSNew "__IDRRT__Cont" [JSFunction [] (
                     JSReturn (JSApp (JSIdent _) args)
                   )])
+                )
+                | and $ map (\x -> isJSIdent x || isJSConstant x) args = Just js
+
+              inlineAble' (
+                  JSReturn js@(JSIndex (JSProj (JSApp (JSIdent _) args) "vars") _)
                 )
                 | and $ map (\x -> isJSIdent x || isJSConstant x) args = Just js
 
