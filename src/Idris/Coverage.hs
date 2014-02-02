@@ -333,16 +333,17 @@ checkTotality path fc n
                                         else calcTotality path fc n pats
                                setTotality n t'
                                addIBC (IBCTotal n t')
+                               return t'
                             -- if it's not total, it can't reduce, to keep
                             -- typechecking decidable
-                               case t' of
-                                 p@(Partial _) ->
-                                     do setAccessibility n Frozen
-                                        addIBC (IBCAccess n Frozen)
-                                        logLvl 5 $ "HIDDEN: "
-                                              ++ show n ++ show p
-                                 _ -> return ()
-                               return t'
+--                                case t' of
+--                                  p@(Partial _) ->
+--                                      do setAccessibility n Frozen
+--                                         addIBC (IBCAccess n Frozen)
+--                                         logLvl 5 $ "HIDDEN: "
+--                                               ++ show n ++ show p
+--                                  _ -> return ()
+--                                return t'
                         _ -> return $ Total []
                 x -> return x
         case t' of
@@ -373,7 +374,17 @@ checkDeclTotality (fc, n)
 --          buildSCG (fc, n)
 --          logLvl 2 $ "Built SCG"
          i <- getIState 
-         checkTotality [] fc n
+         t <- checkTotality [] fc n
+         case t of
+              -- if it's not total, it can't reduce, to keep
+              -- typechecking decidable
+              p@(Partial _) -> do setAccessibility n Frozen
+                                  addIBC (IBCAccess n Frozen)
+                                  logLvl 5 $ "HIDDEN: "
+                                               ++ show n ++ show p
+              _ -> return ()
+         return t
+
 
 -- Calculate the size change graph for this definition
 
@@ -410,6 +421,10 @@ buildSCG' ist pats args = nub $ concatMap scgPat pats where
      | (P _ (UN l) _, [_, arg]) <- unApply ap,
        l == txt "lazy"
         = findCalls arg pvs pargs
+     -- under a call to "assert_total", don't do any checking, just believe
+     -- that it is total.
+     | (P _ (UN at) _, [_, _]) <- unApply ap,
+       at == txt "assert_total" = []
      | (P _ n _, args) <- unApply ap
         = mkChange n args pargs ++
               concatMap (\x -> findCalls x pvs pargs) args

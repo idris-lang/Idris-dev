@@ -101,6 +101,7 @@ simplify :: Context -> Env -> TT Name -> TT Name
 simplify ctxt env t
    = evalState (do val <- eval False ctxt [(sUN "lazy", 0),
                                            (sUN "assert_smaller", 0),
+                                           (sUN "assert_total", 0),
                                            (sUN "par", 0),
                                            (sUN "prim__syntactic_eq", 0),
                                            (sUN "fork", 0)]
@@ -112,7 +113,6 @@ simplify ctxt env t
 rt_simplify :: Context -> Env -> TT Name -> TT Name
 rt_simplify ctxt env t
    = evalState (do val <- eval False ctxt [(sUN "lazy", 0),
-                                           (sUN "assert_smaller", 0),
                                            (sUN "par", 0),
                                            (sUN "prim__syntactic_eq", 0),
                                            (sUN "prim_fork", 0)]
@@ -206,6 +206,8 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
               if u then
                do let val = lookupDefAcc n (spec || atRepl) ctxt
                   case val of
+                    [(Function _ tm, _)] | sUN "assert_total" `elem` stk ->
+                           ev ntimes (n:stk) True env tm
                     [(Function _ tm, Public)] ->
                            ev ntimes (n:stk) True env tm
                     [(Function _ tm, Hidden)] ->
@@ -213,7 +215,7 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
                     [(TyDecl nt ty, _)] -> do vty <- ev ntimes stk True env ty
                                               return $ VP nt n vty
                     [(CaseOp ci _ _ _ _ cd, acc)]
-                         | (acc /= Frozen) &&
+                         | (acc /= Frozen || sUN "assert_total" `elem` stk) &&
                              null (fst (cases_totcheck cd)) -> -- unoptimised version
                        let (ns, tree) = getCases cd in
                          if blockSimplify ci n stk
@@ -260,6 +262,9 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
 --                                          stk top env (finalise tm)) t
 --                  | otherwise
                      = fmapMB (\tm -> ev ntimes stk top env (finalise tm)) t
+    ev ntimes stk top env (App (App (P _ (UN at) _) _) arg)
+       | at == txt "assert_total" && not simpl
+            = ev ntimes (UN at : stk) top env arg
     ev ntimes stk top env (App f a)
            = do f' <- ev ntimes stk False env f
                 a' <- ev ntimes stk False env a
@@ -313,7 +318,8 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
                  do let val = lookupDefAcc n (spec || atRepl) ctxt
                     case val of
                       [(CaseOp ci _ _ _ _ cd, acc)]
-                           | acc /= Frozen -> -- unoptimised version
+                           | acc /= Frozen || sUN "assert_total" `elem` stk -> 
+                           -- unoptimised version
                        let (ns, tree) = getCases cd in
                          if blockSimplify ci n stk
                            then return $ unload env (VP Ref n ty) args

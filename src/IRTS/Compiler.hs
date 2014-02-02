@@ -185,6 +185,9 @@ instance ToIR (TT Name) where
           | (P _ (UN a) _, [_, _, arg]) <- unApply tm,
             a == txt "assert_smaller"
               = ir' env arg
+          | (P _ (UN a) _, [_, arg]) <- unApply tm,
+            a == txt "assert_total"
+              = ir' env arg
           | (P _ (UN p) _, [_, arg]) <- unApply tm,
             p == txt "par"
               = do arg' <- ir' env arg

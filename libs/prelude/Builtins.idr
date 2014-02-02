@@ -39,8 +39,15 @@ malloc size x = x -- compiled specially
 trace_malloc : a -> a
 trace_malloc x = x -- compiled specially
 
+-- Assert to the totality checker than y is always structureally smaller than
+-- x (which is typically a pattern argument)
 assert_smaller : a -> a -> a
 assert_smaller x y = y
+
+-- Assert to the totality checker than the given expression will always
+-- terminate.
+assert_total : a -> a
+assert_total x = x
 
 abstract %assert_total -- need to pretend
 believe_me : a -> b -- compiled specially as id, use with care!
