@@ -41,12 +41,11 @@ total mult : Nat -> Nat -> Nat
 mult Z right        = Z
 mult (S left) right = plus right $ mult left right
 
-%assert_total
 fromIntegerNat : Integer -> Nat
 fromIntegerNat 0 = Z
 fromIntegerNat n =
   if (n > 0) then
-    S (fromIntegerNat (n - 1))
+    S (fromIntegerNat (assert_smaller n (n - 1)))
   else
     Z
 
@@ -259,19 +258,17 @@ instance Integral Nat where
   div = divNat
   mod = modNat
 
-%assert_total
 log2 : Nat -> Nat
 log2 Z = Z
 log2 (S Z) = Z
-log2 n = S (log2 (n `divNat` 2))
+log2 n = S (log2 (assert_smaller n (n `divNat` 2)))
 
 --------------------------------------------------------------------------------
 -- GCD and LCM
 --------------------------------------------------------------------------------
-%assert_total
 gcd : Nat -> Nat -> Nat
 gcd a Z = a
-gcd a b = gcd b (a `modNat` b)
+gcd a b = assert_total (gcd b (a `modNat` b))
 
 total lcm : Nat -> Nat -> Nat
 lcm _ Z = Z

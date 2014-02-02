@@ -43,31 +43,28 @@ data StrM : String -> Type where
     StrNil : StrM ""
     StrCons : (x : Char) -> (xs : String) -> StrM (strCons x xs)
 
-%assert_total
 strHead' : (x : String) -> so (not (x == "")) -> Char
-strHead' x p = prim__strHead x
+strHead' x p = assert_total $ prim__strHead x
 
-%assert_total
 strTail' : (x : String) -> so (not (x == "")) -> String
-strTail' x p = prim__strTail x
+strTail' x p = assert_total $ prim__strTail x
 
 -- we need the 'believe_me' because the operations are primitives
-
-%assert_total
 strM : (x : String) -> StrM x
 strM x with (choose (not (x == "")))
-  strM x | (Left p)  = really_believe_me $ StrCons (strHead' x p) (strTail' x p)
+  strM x | (Left p)  = really_believe_me $ 
+                           StrCons (assert_total (strHead' x p))
+                                   (assert_total (strTail' x p))
   strM x | (Right p) = really_believe_me StrNil
 
 -- annoyingly, we need these assert_totals because StrCons doesn't have
 -- a recursive argument, therefore the termination checker doesn't believe
 -- the string is guaranteed smaller. It makes a good point.
 
-%assert_total
 unpack : String -> List Char
 unpack s with (strM s)
   unpack ""             | StrNil = []
-  unpack (strCons x xs) | (StrCons x xs) = x :: unpack xs
+  unpack (strCons x xs) | (StrCons x xs) = x :: assert_total (unpack xs)
 
 pack : (Foldable t) => t Char -> String
 pack = foldr strCons ""
@@ -90,12 +87,11 @@ instance Semigroup String where
 instance Monoid String where
   neutral = ""
 
-%assert_total
 span : (Char -> Bool) -> String -> (String, String)
 span p xs with (strM xs)
   span p ""             | StrNil        = ("", "")
   span p (strCons x xs) | (StrCons _ _) with (p x)
-    | True with (span p xs)
+    | True with (assert_total (span p xs))
       | (ys, zs) = (strCons x ys, zs)
     | False = ("", strCons x xs)
 
@@ -105,32 +101,29 @@ break p = span (not . p)
 split : (Char -> Bool) -> String -> List String
 split p xs = map pack (split p (unpack xs))
 
-%assert_total
 ltrim : String -> String
 ltrim xs with (strM xs)
     ltrim "" | StrNil = ""
     ltrim (strCons x xs) | StrCons _ _
-        = if (isSpace x) then (ltrim xs) else (strCons x xs)
+        = if (isSpace x) then assert_total (ltrim xs) else (strCons x xs)
 
 trim : String -> String
 trim xs = ltrim (reverse (ltrim (reverse xs)))
 
-%assert_total
 words' : List Char -> List (List Char)
 words' s = case dropWhile isSpace s of
             [] => []
             s' => let (w, s'') = break isSpace s'
-                  in w :: words' s''
+                  in w :: words' (assert_smaller s s'')
 
 words : String -> List String
 words s = map pack $ words' $ unpack s
 
-%assert_total
 lines' : List Char -> List (List Char)
 lines' s = case dropWhile isNL s of
             [] => []
             s' => let (w, s'') = break isNL s'
-                  in w :: lines' s''
+                  in w :: lines' (assert_smaller s s'')
 
 lines : String -> List String
 lines s = map pack $ lines' $ unpack s
@@ -140,10 +133,9 @@ foldr1 : (a -> a -> a) -> List a -> a
 foldr1 f [x] = x
 foldr1 f (x::xs) = f x (foldr1 f xs)
 
-%assert_total -- due to foldr1, but used safely
 unwords' : List (List Char) -> List Char
 unwords' [] = []
-unwords' ws = (foldr1 addSpace ws)
+unwords' ws = assert_total (foldr1 addSpace ws)
         where
             addSpace : List Char -> List Char -> List Char
             addSpace w s = w ++ (' ' :: s)
