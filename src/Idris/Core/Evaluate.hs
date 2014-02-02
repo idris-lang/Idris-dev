@@ -257,14 +257,12 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
                 return $ VBind True -- (vinstances 0 sc < 2)
                                n' b' (\x -> ev ntimes stk False ((n, x):env) sc)
        where vbind env t
---                  | simpl
---                      = fmapMB (\tm -> ev ((MN 0 "STOP", 0) : ntimes)
---                                          stk top env (finalise tm)) t
---                  | otherwise
                      = fmapMB (\tm -> ev ntimes stk top env (finalise tm)) t
-    ev ntimes stk top env (App (App (P _ (UN at) _) _) arg)
-       | at == txt "assert_total" && not simpl
-            = ev ntimes (UN at : stk) top env arg
+    -- Treat "assert_total" specially, as long as it's defined!
+    ev ntimes stk top env (App (App (P _ n@(UN at) _) _) arg)
+       | [(CaseOp _ _ _ _ _ _, _)] <- lookupDefAcc n (spec || atRepl) ctxt,
+         at == txt "assert_total" && not simpl
+            = ev ntimes (n : stk) top env arg
     ev ntimes stk top env (App f a)
            = do f' <- ev ntimes stk False env f
                 a' <- ev ntimes stk False env a
