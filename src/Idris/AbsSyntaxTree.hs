@@ -85,7 +85,8 @@ data OutputMode = RawOutput | IdeSlave Integer deriving Show
 
 -- | How wide is the console?
 data ConsoleWidth = InfinitelyWide -- ^ Have pretty-printer assume that lines should not be broken
-                  | ColsWide Int -- ^ Must be positive
+                  | ColsWide Int -- ^ Manually specified - must be positive
+                  | AutomaticWidth -- ^ Attempt to determine width, or 80 otherwise
 
 -- TODO: Add 'module data' to IState, which can be saved out and reloaded quickly (i.e
 -- without typechecking).
@@ -219,7 +220,7 @@ idrisInit = IState initContext [] [] emptyContext emptyContext emptyContext
                    [] [] defaultOpts 6 [] [] [] [] [] [] [] [] [] [] [] [] []
                    [] Nothing Nothing [] [] [] Hidden False [] Nothing [] [] RawOutput
                    True defaultTheme stdout [] (0, emptyContext) emptyContext M.empty
-                   (ColsWide 80)
+                   AutomaticWidth
 
 -- | The monad for the main REPL - reading and processing files and updating
 -- global state (hence the IO inner monad).
@@ -283,6 +284,7 @@ data Command = Quit
              | ColourOn
              | ColourOff
              | ListErrorHandlers
+             | SetConsoleWidth ConsoleWidth
 
 data Opt = Filename String
          | Ver
@@ -330,6 +332,7 @@ data Opt = Filename String
          | OptLevel Word
          | Client String
          | ShowOrigErr
+         | AutoWidth -- ^ Automatically adjust terminal width
     deriving (Show, Eq)
 
 -- Parsed declarations
@@ -1208,6 +1211,8 @@ pprintPTerm impl bnd = prettySe 10 bnd
 
     slist' p bnd (PApp _ (PRef _ nil) _)
       | not impl && nsroot nil == sUN "Nil" = Just []
+    slist' p bnd (PRef _ nil)
+      | not impl && nsroot nil == sUN "Nil" = Just []
     slist' p bnd (PApp _ (PRef _ cons) args)
       | nsroot cons == sUN "::",
         (PExp {getTm=tl}):(PExp {getTm=hd}):imps <- reverse args,
@@ -1217,14 +1222,16 @@ pprintPTerm impl bnd = prettySe 10 bnd
       where
         isImp (PImp {}) = True
         isImp _ = False
-    slist' _ _ _ = Nothing
+    slist' _ _ tm = Nothing
 
     slist p bnd e | Just es <- slist' p bnd e = Just $
       case es of [] -> annotate AnnConstData $ text "[]"
-                 [x] -> enclose left
-                                right
-                                (prettySe p bnd x)
-                 xs -> (enclose left right . hsep . punctuate comma . map (prettySe p bnd)) xs
+                 [x] -> enclose left right . group $
+                        prettySe p bnd x
+                 xs -> (enclose left right .
+                        align . group . vsep .
+                        punctuate comma .
+                        map (prettySe p bnd)) xs
       where left  = (annotate AnnConstData (text "["))
             right = (annotate AnnConstData (text "]"))
             comma = (annotate AnnConstData (text ","))
