@@ -606,10 +606,15 @@ inlineFunctions js =
             where
               inlineAble' :: JS -> Maybe JS
               inlineAble' (
-                  JSReturn js@(JSNew "__IDRRT__Con" [JSNum _, JSArray [JSIdent _]])
-                ) = Just js
+                  JSReturn js@(JSNew "__IDRRT__Con" [JSNum _, JSArray vals])
+                )
+                | and $ map isJSIdent vals = Just js
 
               inlineAble' _ = Nothing
+
+              isJSIdent js
+                | JSIdent _ <- js = True
+                | otherwise       = False
 
     inlineAble _ _ _ _ = Nothing
 
