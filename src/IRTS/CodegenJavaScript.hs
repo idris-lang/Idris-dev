@@ -385,6 +385,7 @@ isJSConstant js
   | JSChar _   <- js = True
   | JSNum _    <- js = True
   | JSType _   <- js = True
+  | JSNull     <- js = True
 
   | JSApp (JSIdent "__IDRRT__bigInt") _ <- js = True
   | otherwise = False
