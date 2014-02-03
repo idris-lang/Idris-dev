@@ -171,9 +171,9 @@ elab ist info pattern opts fn tm
           -> ElabD ()
     elab' ina (PNoImplicits t) = elab' ina t -- skip elabE step
     elab' ina PType           = do apply RType []; solve
-    elab' (_,_,inty) (PConstant c) 
-       | constType c && pattern && not reflect && not inty
-         = lift $ tfail (Msg "Typecase is not allowed") 
+--  elab' (_,_,inty) (PConstant c) 
+--     | constType c && pattern && not reflect && not inty
+--       = lift $ tfail (Msg "Typecase is not allowed") 
     elab' ina (PConstant c)  = do apply (RConstant c) []; solve
     elab' ina (PQuote r)     = do fill r; solve
     elab' ina (PTrue fc)     = try (elab' ina (PRef fc unitCon))
@@ -245,9 +245,9 @@ elab ist info pattern opts fn tm
               trySeq' deferr (x : xs)
                   = try' (elab' ina x) (trySeq' deferr xs) True
     elab' ina (PPatvar fc n) | pattern = patvar n
-    elab' (_, _, inty) (PRef fc f)
-       | isTConName f (tt_ctxt ist) && pattern && not reflect && not inty
-          = lift $ tfail (Msg "Typecase is not allowed") 
+--    elab' (_, _, inty) (PRef fc f)
+--       | isTConName f (tt_ctxt ist) && pattern && not reflect && not inty
+--          = lift $ tfail (Msg "Typecase is not allowed") 
     elab' (ina, guarded, inty) (PRef fc n) | pattern && not (inparamBlock n)
         = do ctxt <- get_context
              let defined = case lookupTy n ctxt of
