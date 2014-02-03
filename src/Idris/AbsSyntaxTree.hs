@@ -1078,7 +1078,7 @@ pprintPTerm impl bnd = prettySe 10 bnd
       | Just n <- snat p e = annotate AnnConstData (text (show n))
     prettySe p bnd (PRef fc n) = prettyName impl bnd n
     prettySe p bnd (PLam n ty sc) =
-      bracket p 2 . group . hang 2 $
+      bracket p 2 . group . align . hang 2 $
       text "\\" <> bindingOf n False <+> text "=>" <$>
       prettySe 10 ((n, False):bnd) sc
     prettySe p bnd (PLet n ty v sc) =
