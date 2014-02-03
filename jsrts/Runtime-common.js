@@ -14,12 +14,6 @@ var __IDRRT__Float = new __IDRRT__Type('Float');
 var __IDRRT__Ptr = new __IDRRT__Type('Pointer');
 var __IDRRT__Forgot = new __IDRRT__Type('Forgot');
 
-
-/** @constructor */
-var __IDRRT__Cont = function(k) {
-  this.k = k;
-};
-
 var __IDRRT__ffiWrap = function(fid) {
   return function(){
     var res = fid;
@@ -34,12 +28,6 @@ var __IDRRT__ffiWrap = function(fid) {
     }
     return res;
   }
-};
-
-/** @constructor */
-var __IDRRT__Con = function(tag,vars) {
-  this.tag = tag;
-  this.vars =  vars;
 };
 
 var __IDRRT__tailcall = function(k) {

@@ -322,6 +322,17 @@ transformJS tr js =
       | otherwise                  = js
 
 
+moveJSDeclToTop :: String -> [JS] -> [JS]
+moveJSDeclToTop decl js = move ([], js)
+  where
+    move :: ([JS], [JS]) -> [JS]
+    move (front, js@(JSAlloc name _):back)
+      | name == decl = js : front ++ back
+
+    move (front, js:back) =
+      move (front ++ [js], back)
+
+
 jsSubst :: JS -> JS -> JS -> JS
 jsSubst var new old
   | var == old = new
@@ -518,8 +529,12 @@ deadEvalApplyCases js =
 initConstructors :: [JS] -> [JS]
 initConstructors js =
     let tags = nub $ sort $ concat (map getTags js) in
-      map createConstant tags ++ replaceConstructors tags js
+        rearrangePrelude $ map createConstant tags ++ replaceConstructors tags js
       where
+        rearrangePrelude :: [JS] -> [JS]
+        rearrangePrelude = moveJSDeclToTop $ idrRTNamespace ++ "Con"
+
+
         getTags :: JS -> [Int]
         getTags = foldJS match (++) []
           where
@@ -670,6 +685,8 @@ inlineFunctions js =
         match js
           | JSApp (JSIdent ident) _ <- js
           , name == ident = 1
+          | JSNew con _             <- js
+          , name == con   = 1
           | otherwise     = 0
 
 
@@ -854,9 +871,12 @@ codegenJavaScript target definitions filename outputType = do
     functions :: [String]
     functions = translate >>> optimize >>> compile $ def
       where
-        translate p = concatMap translateDeclaration p ++ [mainLoop, invokeLoop]
-        optimize p  = foldl' (flip ($)) p opt
-        compile     = map compileJS
+        translate p =
+          prelude ++ concatMap translateDeclaration p ++ [mainLoop, invokeLoop]
+        optimize p  =
+          foldl' (flip ($)) p opt
+        compile     =
+           map compileJS
 
         opt =
           [ map optimizeJS
@@ -874,6 +894,17 @@ codegenJavaScript target definitions filename outputType = do
           , map reduceContinuations
           ]
 
+    prelude :: [JS]
+    prelude =
+      [ JSAlloc (idrRTNamespace ++ "Cont") (Just $ JSFunction ["k"] (
+          JSAssign (JSProj JSThis "k") (JSIdent "k")
+        ))
+      , JSAlloc (idrRTNamespace ++ "Con") (Just $ JSFunction ["tag", "vars"] (
+          JSSeq [ JSAssign (JSProj JSThis "tag") (JSIdent "tag")
+                , JSAssign (JSProj JSThis "vars") (JSIdent "vars")
+                ]
+        ))
+      ]
 
     mainLoop :: JS
     mainLoop =
