@@ -17,6 +17,7 @@ import Util.DynamicLinker
 import Util.System
 
 import Control.Applicative hiding (Const)
+import Control.Exception
 import Control.Monad.Trans
 import Control.Monad.Trans.State.Strict
 import Control.Monad.Trans.Error
@@ -247,7 +248,7 @@ execApp' env ctxt (EP _ fp _) args@(_:_:v:k:rest)
     do v'' <- tryForce v'
        res <- execApp' env ctxt k [v''] >>= tryForce
        execApp' env ctxt res rest
-execApp' env ctxt con@(EP _ fp _) args@(tp:v:rest) 
+execApp' env ctxt con@(EP _ fp _) args@(tp:v:rest)
   | fp == pioret =
     do v' <- tryForce v
        execApp' env ctxt (mkEApp con [tp, v']) rest
@@ -266,16 +267,23 @@ execApp' env ctxt (EP _ fp _) (_:fn:_:EHandle h:_:rest)
 execApp' env ctxt (EP _ fp _) (_:fn:EConstant (Str f):EConstant (Str mode):rest)
     | fp == mkfprim,
       Just (FFun "fileOpen" _ _) <- foreignFromTT fn
-           = do m <- case mode of
-                         "r" -> return ReadMode
-                         "w" -> return WriteMode
-                         "a" -> return AppendMode
-                         "rw" -> return ReadWriteMode
-                         "wr" -> return ReadWriteMode
-                         "r+" -> return ReadWriteMode
-                         _ -> execFail ("Invalid mode for " ++ f ++ ": " ++ mode)
-                h <- execIO $ openFile f m
-                execApp' env ctxt (ioWrap (EHandle h)) (tail rest)
+           = do f <- execIO $
+                     catch (do let m = case mode of
+                                         "r"  -> Right ReadMode
+                                         "w"  -> Right WriteMode
+                                         "a"  -> Right AppendMode
+                                         "rw" -> Right ReadWriteMode
+                                         "wr" -> Right ReadWriteMode
+                                         "r+" -> Right ReadWriteMode
+                                         _    -> Left ("Invalid mode for " ++ f ++ ": " ++ mode)
+                               case fmap (openFile f) m of
+                                 Right h -> do h' <- h; return $ Right (ioWrap (EHandle h'), tail rest)
+                                 Left err -> return $ Left err)
+                           (\e -> let _ = ( e::SomeException)
+                                  in return $ Right (ioWrap (EPtr nullPtr), tail rest))
+                case f of
+                  Left err -> execFail err
+                  Right (res, rest) -> execApp' env ctxt res rest
 
 execApp' env ctxt (EP _ fp _) (_:fn:(EHandle h):rest)
     | fp == mkfprim,
@@ -295,7 +303,15 @@ execApp' env ctxt (EP _ fp _) (_:fn:(EPtr p):rest)
       Just (FFun "isNull" _ _) <- foreignFromTT fn
            = let res = ioWrap . EConstant . I $
                        if p == nullPtr then 1 else 0
-                  in execApp' env ctxt res (tail rest)
+             in execApp' env ctxt res (tail rest)
+
+-- Handles will be checked as null pointers sometimes - but if we got a
+-- real Handle, then it's valid, so just return 1.
+execApp' env ctxt (EP _ fp _) (_:fn:(EHandle h):rest)
+    | fp == mkfprim,
+      Just (FFun "isNull" _ _) <- foreignFromTT fn
+           = let res = ioWrap . EConstant . I $ 0
+             in execApp' env ctxt res (tail rest)
 
 -- A foreign-returned char* has to be tested for NULL sometimes
 execApp' env ctxt (EP _ fp _) (_:fn:EConstant (Str s):rest)
