@@ -461,12 +461,15 @@ process h fn (Eval t)
 process h fn (ExecVal t)
                   = do ctxt <- getContext
                        ist <- getIState
+                       let imp = opt_showimp (idris_options ist)
                        (tm, ty) <- elabVal toplevel False t
 --                       let tm' = normaliseAll ctxt [] tm
                        let ty' = normaliseAll ctxt [] ty
                        res <- execute tm
-                       ihPrintResult h (showTm ist (delab ist res) ++ " : " ++
-                                        showTm ist (delab ist ty'))
+                       let (resOut, tyOut) = (prettyImp imp (delab ist res),
+                                              prettyImp imp (delab ist ty'))
+                       ihPrintTermWithType h resOut tyOut
+
 process h fn (Check (PRef _ n))
    = do ctxt <- getContext
         ist <- getIState
