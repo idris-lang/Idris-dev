@@ -29,9 +29,9 @@ choose : (b : Bool) -> Either (so b) (so (not b))
 choose True  = Left oh
 choose False = Right oh
 
-either : Either a b -> (a -> c) -> (b -> c) -> c
-either (Left x)  l r = l x
-either (Right x) l r = r x
+either : (a -> c) -> (b -> c) -> Either a b -> c
+either l r (Left x)  = l x
+either l r (Right x) = r x
 
 lefts : List (Either a b) -> List a
 lefts []      = []
