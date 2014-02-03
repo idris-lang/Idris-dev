@@ -60,6 +60,8 @@ data JS = JSRaw String
         | JSNew String [JS]
         | JSError String
         | JSBinOp String JS JS
+        | JSPreOp String JS
+        | JSPostOp String JS
         | JSProj JS String
         | JSVar LVar
         | JSNull
@@ -279,6 +281,10 @@ foldJS tr add acc js =
           add (tr js) $ foldl' add acc $ map fold args
       | JSBinOp _ lhs rhs    <- js =
           add (tr js) $ add (fold lhs) (fold rhs)
+      | JSPreOp _ val        <- js =
+          add (tr js) $ fold val
+      | JSPostOp _ val       <- js =
+          add (tr js) $ fold val
       | JSProj obj _         <- js =
           add (tr js) (fold obj)
       | JSArray vals         <- js =
@@ -311,6 +317,8 @@ transformJS tr js =
       | JSApp lhs rhs        <- js = JSApp (tr lhs) $ map tr rhs
       | JSNew con args       <- js = JSNew con $ map tr args
       | JSBinOp op lhs rhs   <- js = JSBinOp op (tr lhs) (tr rhs)
+      | JSPreOp op val       <- js = JSPreOp op (tr val)
+      | JSPostOp op val      <- js = JSPostOp op (tr val)
       | JSProj obj field     <- js = JSProj (tr obj) field
       | JSArray vals         <- js = JSArray $ map tr vals
       | JSAssign lhs rhs     <- js = JSAssign (tr lhs) (tr rhs)
