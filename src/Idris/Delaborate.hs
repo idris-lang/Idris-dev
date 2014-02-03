@@ -152,17 +152,17 @@ pprintErr' i (CantUnify _ x y e sc s) =
          indented (pprintErr' i e) <>
          if (opt_errContext (idris_options i)) then text $ showSc i sc else empty
 pprintErr' i (CantConvert x y env) =
-  text "Can't convert" <> indented (pprintTerm i (delab i x)) <>
+  text "Can't convert" <> indented (pprintTerm i (delab i x)) <$>
   text "with" <> indented (pprintTerm i (delab i y)) <>
-  if (opt_errContext (idris_options i)) then text (showSc i env) else empty
+  if (opt_errContext (idris_options i)) then line <> text (showSc i env) else empty
 pprintErr' i (CantSolveGoal x env) =
   text "Can't solve goal " <> indented (pprintTerm i (delab i x)) <>
-  if (opt_errContext (idris_options i)) then text (showSc i env) else empty
+  if (opt_errContext (idris_options i)) then line <> text (showSc i env) else empty
 pprintErr' i (UnifyScope n out tm env) =
   text "Can't unify" <> indented (annName n) <+>
   text "with" <> indented (pprintTerm i (delab i tm)) <+>
   text "as" <> indented (annName out) <> text "is not in scope" <>
-  if (opt_errContext (idris_options i)) then text (showSc i env) else empty
+  if (opt_errContext (idris_options i)) then line <> text (showSc i env) else empty
 pprintErr' i (CantInferType t) = text "Can't infer type for" <+> text t
 pprintErr' i (NonFunctionType f ty) =
   pprintTerm i (delab i f) <+>
@@ -178,7 +178,7 @@ pprintErr' i (CantIntroduce ty) =
 pprintErr' i (InfiniteUnify x tm env) =
   text "Unifying" <+> annName' x (showbasic x) <+> text "and" <+> pprintTerm i (delab i tm) <+>
   text "would lead to infinite value" <>
-  if (opt_errContext (idris_options i)) then text (showSc i env) else empty
+  if (opt_errContext (idris_options i)) then line <> text (showSc i env) else empty
 pprintErr' i (NotInjective p x y) =
   text "Can't verify injectivity of" <+> pprintTerm i (delab i p) <+>
   text " when unifying" <+> pprintTerm i (delab i x) <+> text "and" <+>
