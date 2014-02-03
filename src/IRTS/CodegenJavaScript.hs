@@ -771,6 +771,70 @@ optimizeEvalTailcalls (fun, tc) js =
     optHelper js = transformJS optHelper js
 
 
+unfoldLookupTable :: [JS] -> [JS]
+unfoldLookupTable input =
+  let (evals, evalunfold)   = unfoldLT "__IDRLT__mEVAL0" input
+      (applys, applyunfold) = unfoldLT "__IDRLT__mAPPLY0" evalunfold
+      js                    = applyunfold in expandCons evals applys js
+  where
+    unfoldLT :: String -> [JS] -> ([Int], [JS])
+    unfoldLT lt js =
+      let (table, code) = extractLT lt js
+          expanded      = expandLT lt table in
+          (map fst expanded, map snd expanded ++ code)
+
+
+    expandCons :: [Int] -> [Int] -> [JS] -> [JS]
+    expandCons evals applys js =
+      map expandCons' js
+      where
+        expandCons' :: JS -> JS
+        expandCons' (JSNew "__IDRRT__Con" [JSNum (JSInt tag), JSArray args])
+          | evalid  <- getId "__IDRLT__mEVAL0"  tag evals
+          , applyid <- getId "__IDRLT__mAPPLY0" tag applys =
+              JSNew "__IDRRT__Con" [ JSNum (JSInt tag)
+                                   , maybe JSNull JSIdent evalid
+                                   , maybe JSNull JSIdent applyid
+                                   , JSArray (map expandCons' args)
+                                   ]
+
+        expandCons' js = transformJS expandCons' js
+
+
+        getId :: String -> Int -> [Int] -> Maybe String
+        getId lt tag entries
+          | tag `elem` entries = Just $ ltIdentifier lt tag
+          | otherwise          = Nothing
+
+
+    ltIdentifier :: String -> Int -> String
+    ltIdentifier "__IDRLT__mEVAL0"  id = idrLTNamespace ++ "EVAL" ++ show id
+    ltIdentifier "__IDRLT__mAPPLY0" id = idrLTNamespace ++ "APPLY" ++ show id
+
+
+    extractLT :: String -> [JS] -> (JS, [JS])
+    extractLT lt js =
+      extractLT' ([], js)
+        where
+          extractLT' :: ([JS], [JS]) -> (JS, [JS])
+          extractLT' (front, js@(JSAlloc fun _):back)
+            | fun == lt = (js, front ++ back)
+
+          extractLT' (front, js:back) = extractLT' (front ++ [js], back)
+
+
+    expandLT :: String -> JS -> [(Int, JS)]
+    expandLT lt (
+        JSAlloc _ (Just (JSApp (JSFunction [] (JSSeq seq)) []))
+      ) = catMaybes (map expandEntry seq)
+          where
+            expandEntry :: JS -> Maybe (Int, JS)
+            expandEntry (JSAssign (JSIndex _ (JSNum (JSInt id))) body) =
+              Just $ (id, JSAlloc (ltIdentifier lt id) (Just body))
+
+            expandEntry js = Nothing
+
+
 removeInstanceChecks :: JS -> JS
 removeInstanceChecks (JSCond conds) =
   JSCond $ eliminateDeadBranches $ map (
@@ -900,6 +964,7 @@ codegenJavaScript target definitions filename outputType = do
           , map removeInstanceChecks
           , inlineFunctions
           , map reduceContinuations
+          , unfoldLookupTable
           ]
 
     prelude :: [JS]
