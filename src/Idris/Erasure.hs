@@ -157,7 +157,7 @@ buildDepMap ctx ns = addPostulates $ dfs S.empty M.empty ns
 
     etaExpand :: [Name] -> Term -> Term
     etaExpand []       t = t
-    etaExpand (n : ns) t = etaExpand ns (App t (P Bound n Erased))
+    etaExpand (n : ns) t = etaExpand ns (App t (P Ref n Erased))
 
     getDepsSC :: Name -> [Name] -> Vars -> SC -> Deps
     getDepsSC fn es vs  ImpossibleCase     = M.empty
@@ -166,8 +166,10 @@ buildDepMap ctx ns = addPostulates $ dfs S.empty M.empty ns
     getDepsSC fn es vs (STerm    t)        = getDepsTerm vs [] (S.singleton (fn, Result)) (etaExpand es t)
     getDepsSC fn es vs (Case     n alts)
         -- we case-split on this variable, which necessarily marks it as used
-        = M.map (S.union casedVar)  -- add the usage to all effects
-            $ unionMap (getDepsAlt fn es vs casedVar) alts  -- in the whole subtree
+        -- hence we add a new dependency whose only preconditions are that the result
+        -- of this function is used at all
+        = M.insertWith S.union (S.singleton (fn, Result)) casedVar -- add this dep to all deps
+            $ unionMap (getDepsAlt fn es vs casedVar) alts  -- coming from the whole subtree
       where
         casedVar  = fromMaybe (error $ "nonpatvar in case: " ++ show n) (M.lookup n vs)
 
@@ -222,18 +224,17 @@ buildDepMap ctx ns = addPostulates $ dfs S.empty M.empty ns
     -- applications may add items to Cond
     getDepsTerm vs bs cd app@(App _ _)
         | (fun, args) <- unApply app = case fun of
-            -- these depend on whether the referred thing uses the argument
-            P  Ref       n _ -> node n args
-            P (DCon _ _) n _ -> node n args
-
-            -- this does not
-            P (TCon _ _) n _ -> unconditionalDeps args
+            -- constructors
+            P (TCon _ _) n _ -> unconditionalDeps args  -- does not depend on anything
+            P (DCon _ _) n _ -> node n args             -- depends on whether (n,#) is used
 
             -- a bound variable might draw in additional dependencies,
             -- think: f x = x 0  <-- here, `x' _is_ used
-            -- also, the arguments must be considered used
-            -- since we don't know what's in the variable
-            P Bound n _ -> var n `ins` unconditionalDeps args
+            P _ n _
+                | Just var <- M.lookup n vs
+                    -> var `ins` unconditionalDeps args
+                | otherwise
+                    -> node n args  -- depends on whether the referred thing uses its argument
 
             -- we interpret applied lambdas as lets in order to reuse code here
             Bind n (Lam ty) t -> getDepsTerm vs bs cd (lamToLet [] app)
@@ -249,13 +250,15 @@ buildDepMap ctx ns = addPostulates $ dfs S.empty M.empty ns
             _ -> error $ "cannot analyse application of " ++ show fun ++ " to " ++ show args
       where
         ins = M.insertWith S.union cd
-        var n = fromMaybe (error $ "non-existent bound variable: " ++ show n) (M.lookup n vs)
         node n = ins (S.singleton (n, Result)) . unionMap (getDepsArgs n) . zip [0..]
         getDepsArgs n (i, t) = getDepsTerm vs bs (S.insert (n, Arg i) cd) t
         unconditionalDeps args = unionMap (getDepsTerm vs bs cd) args
 
+    -- projections (= methods)
+    getDepsTerm vs bs cd (Proj t i) | ("PROJ", t, S.toList cd) `traceShow` False = undefined
+    getDepsTerm vs bs cd (Proj t i) = getDepsTerm vs bs cd t
+
     -- the easy cases
-    getDepsTerm vs bs cd (Proj  t  i) = getDepsTerm vs bs cd t
     getDepsTerm vs bs cd (Constant _) = M.empty
     getDepsTerm vs bs cd (TType    _) = M.empty
     getDepsTerm vs bs cd  Erased      = M.empty
