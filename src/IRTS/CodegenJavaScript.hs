@@ -839,8 +839,47 @@ unfoldLookupTable :: [JS] -> [JS]
 unfoldLookupTable input =
   let (evals, evalunfold)   = unfoldLT "__IDRLT__mEVAL0" input
       (applys, applyunfold) = unfoldLT "__IDRLT__mAPPLY0" evalunfold
-      js                    = applyunfold in expandCons evals applys js
+      js                    = applyunfold in
+      adaptRuntime $ expandCons evals applys js
   where
+    adaptRuntime :: [JS] -> [JS]
+    adaptRuntime =
+      adaptCon . adaptApply "__var_2" . adaptApply "ev" . adaptEval
+
+
+    adaptApply var = map (jsSubst (
+        JSIndex (JSIdent "__IDRLT__mAPPLY0") (JSProj (JSIdent var) "tag")
+      ) (JSProj (JSIdent var) "app"))
+
+
+    adaptEval = map (jsSubst (
+        JSIndex (JSIdent "__IDRLT__mEVAL0") (JSProj (JSIdent "arg0") "tag")
+      ) (JSProj (JSIdent "arg0") "eval"))
+
+
+    adaptCon js =
+      adaptCon' [] js
+      where
+        adaptCon' front ((JSAlloc "__IDRRT__Con" (Just body)):back) =
+          front ++ (new:back)
+
+        adaptCon' front (next:back) =
+          adaptCon' (front ++ [next]) back
+
+        adaptCon' front [] = front
+
+
+        new =
+          JSAlloc "__IDRRT__Con" (Just $
+            JSFunction newArgs (
+              JSSeq (map newVar newArgs)
+            )
+          )
+          where
+            newVar var = JSAssign (JSProj JSThis var) (JSIdent var)
+            newArgs = ["tag", "eval", "app", "vars"]
+
+
     unfoldLT :: String -> [JS] -> ([Int], [JS])
     unfoldLT lt js =
       let (table, code) = extractLT lt js
@@ -1184,8 +1223,10 @@ translateDeclaration (path, SFun name params stackSize body)
   , (SLet var val next)   <- body
   , (SChkCase cvar cases) <- next
   , ap == txt "APPLY" =
-    let lvar   = translateVariableName var
-        lookup = "[" ++ lvar ++ ".tag](fn0,arg0," ++ lvar ++ ")" in
+    let lvar     = translateVariableName var
+        lookup t = (JSApp
+            (JSIndex (JSIdent t) (JSProj (JSIdent lvar) "tag"))
+            [JSIdent "fn0", JSIdent "arg0", JSIdent lvar]) in
         [ lookupTable [(var, "chk")] var cases
         , jsDecl $ JSFunction ["fn0", "arg0"] (
             JSSeq [ JSAlloc "__var_0" (Just $ JSIdent "fn0")
@@ -1195,10 +1236,7 @@ translateDeclaration (path, SFun name params stackSize body)
                   , JSReturn $ (JSTernary (
                        (JSVar var `jsInstanceOf` jsCon) `jsAnd`
                        (hasProp lookupTableName (translateVariableName var))
-                    ) (JSIdent $
-                         lookupTableName ++ lookup
-                      ) JSNull
-                    )
+                    ) (lookup lookupTableName) JSNull)
                   ]
           )
         ]
