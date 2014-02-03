@@ -766,9 +766,9 @@ elimDuplicateEvals (JSAlloc fun (Just (JSFunction args (JSSeq seq)))) =
 elimDuplicateEvals js = js
 
 
-optimizeEvalTailcalls :: (String, String) -> JS -> JS
-optimizeEvalTailcalls (fun, tc) js =
-  optHelper js
+optimizeRuntimeCalls :: String -> String -> [JS] -> [JS]
+optimizeRuntimeCalls fun tc js =
+  optTC tc : map optHelper js
   where
     optHelper :: JS -> JS
     optHelper (JSApp (JSIdent "__IDRRT__tailcall") [
@@ -777,6 +777,62 @@ optimizeEvalTailcalls (fun, tc) js =
       | n == fun = JSApp (JSIdent tc) $ map optHelper args
 
     optHelper js = transformJS optHelper js
+
+
+    optTC :: String -> JS
+    optTC tc@"__IDRRT__EVALTC" =
+      JSAlloc tc (Just $ JSFunction ["arg0"] (
+        JSSeq [ JSAlloc "ret" $ Just (
+                  JSTernary (
+                    (JSIdent "arg0" `jsInstanceOf` jsCon) `jsAnd`
+                    (hasProp "__IDRLT__mEVAL0" "arg0")
+                  ) (JSApp
+                      (JSIndex
+                        (JSIdent "__IDRLT__mEVAL0")
+                        (JSProj (JSIdent "arg0") "tag")
+                      )
+                      [JSIdent "arg0"]
+                  ) (JSIdent "arg0")
+                )
+              , JSWhile (JSIdent "ret" `jsInstanceOf` (JSIdent "__IDRRT__Cont")) (
+                  JSAssign (JSIdent "ret") (
+                    JSApp (JSProj (JSIdent "ret") "k") []
+                  )
+                )
+              , JSReturn $ JSIdent "ret"
+              ]
+      ))
+
+    optTC tc@"__IDRRT__APPLYTC" =
+      JSAlloc tc (Just $ JSFunction ["fn0", "arg0"] (
+        JSSeq [ JSAlloc "ev" $ Just (JSApp
+                  (JSIdent "__IDRRT__EVALTC") [JSIdent "fn0"]
+                )
+              , JSAlloc "ret" $ Just (
+                  JSTernary (
+                    (JSIdent "ev" `jsInstanceOf` jsCon) `jsAnd`
+                    (hasProp "__IDRLT__mAPPLY0" "ev")
+                  ) (JSApp
+                      (JSIndex
+                        (JSIdent "__IDRLT__mAPPLY0")
+                        (JSProj (JSIdent "ev") "tag")
+                      )
+                      [JSIdent "fn0", JSIdent "arg0", JSIdent "ev"]
+                  ) JSNull
+                )
+              , JSWhile (JSIdent "ret" `jsInstanceOf` (JSIdent "__IDRRT__Cont")) (
+                  JSAssign (JSIdent "ret") (
+                    JSApp (JSProj (JSIdent "ret") "k") []
+                  )
+                )
+              , JSReturn $ JSIdent "ret"
+              ]
+      ))
+
+
+    hasProp :: String -> String -> JS
+    hasProp table var =
+      JSIndex (JSIdent table) (JSProj (JSIdent var) "tag")
 
 
 unfoldLookupTable :: [JS] -> [JS]
@@ -967,8 +1023,8 @@ codegenJavaScript target definitions filename outputType = do
           , map removeAllocations
           , elimDeadLoop
           , map elimDuplicateEvals
-          , map (optimizeEvalTailcalls ("__IDR__mEVAL0", "__IDRRT__EVALTC"))
-          , map (optimizeEvalTailcalls ("__IDR__mAPPLY0", "__IDRRT__APPLYTC"))
+          , optimizeRuntimeCalls "__IDR__mEVAL0" "__IDRRT__EVALTC"
+          , optimizeRuntimeCalls "__IDR__mAPPLY0" "__IDRRT__APPLYTC"
           , map removeInstanceChecks
           , inlineFunctions
           , map reduceContinuations
