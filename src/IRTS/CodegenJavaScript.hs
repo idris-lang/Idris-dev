@@ -78,6 +78,7 @@ data JS = JSRaw String
         | JSCond [(JS, JS)]
         | JSTernary JS JS JS
         | JSParens JS
+        | JSWhile JS JS
         deriving Eq
 
 
@@ -196,6 +197,10 @@ compileJS (JSTernary cond true false) =
 compileJS (JSParens js) =
   "(" ++ compileJS js ++ ")"
 
+compileJS (JSWhile cond body) =
+     "while (" ++ compileJS cond ++ ") {\n"
+  ++ compileJS body
+  ++ "\n}"
 
 jsTailcall :: JS -> JS
 jsTailcall call =
@@ -301,6 +306,8 @@ foldJS tr add acc js =
           add (tr js) $ fold val
       | JSCond conds         <- js =
           add (tr js) $ foldl' add acc $ map (uncurry add . (fold *** fold)) conds
+      | JSWhile cond body    <- js =
+          add (tr js) $ add (fold cond) (fold body)
       | otherwise                  =
           tr js
 
@@ -327,6 +334,7 @@ transformJS tr js =
       | JSCond conds         <- js = JSCond $ map (tr *** tr) conds
       | JSTernary c t f      <- js = JSTernary (tr c) (tr t) (tr f)
       | JSParens val         <- js = JSParens $ tr val
+      | JSWhile cond body    <- js = JSWhile(tr cond) (tr body)
       | otherwise                  = js
 
 
