@@ -59,7 +59,7 @@ data JS = JSRaw String
         | JSApp JS [JS]
         | JSNew String [JS]
         | JSError String
-        | JSOp String JS JS
+        | JSBinOp String JS JS
         | JSProj JS String
         | JSVar LVar
         | JSNull
@@ -122,7 +122,7 @@ compileJS (JSNew name args) =
 compileJS (JSError exc) =
   "throw new Error(\"" ++ exc ++ "\")"
 
-compileJS (JSOp op lhs rhs) =
+compileJS (JSBinOp op lhs rhs) =
   compileJS lhs ++ " " ++ op ++ " " ++ compileJS rhs
 
 compileJS (JSProj obj field)
@@ -212,15 +212,15 @@ jsMeth obj meth =
 
 
 jsInstanceOf :: JS -> JS -> JS
-jsInstanceOf = JSOp "instanceof"
+jsInstanceOf = JSBinOp "instanceof"
 
 
 jsEq :: JS -> JS -> JS
-jsEq = JSOp "=="
+jsEq = JSBinOp "=="
 
 
 jsAnd :: JS -> JS -> JS
-jsAnd = JSOp "&&"
+jsAnd = JSBinOp "&&"
 
 
 jsType :: JS
@@ -277,7 +277,7 @@ foldJS tr add acc js =
           add (tr js) $ add (fold lhs) (foldl' add acc $ map fold rhs)
       | JSNew _ args         <- js =
           add (tr js) $ foldl' add acc $ map fold args
-      | JSOp _ lhs rhs       <- js =
+      | JSBinOp _ lhs rhs    <- js =
           add (tr js) $ add (fold lhs) (fold rhs)
       | JSProj obj _         <- js =
           add (tr js) (fold obj)
@@ -310,7 +310,7 @@ transformJS tr js =
       | JSReturn ret         <- js = JSReturn $ tr ret
       | JSApp lhs rhs        <- js = JSApp (tr lhs) $ map tr rhs
       | JSNew con args       <- js = JSNew con $ map tr args
-      | JSOp op lhs rhs      <- js = JSOp op (tr lhs) (tr rhs)
+      | JSBinOp op lhs rhs   <- js = JSBinOp op (tr lhs) (tr rhs)
       | JSProj obj field     <- js = JSProj (tr obj) field
       | JSArray vals         <- js = JSArray $ map tr vals
       | JSAssign lhs rhs     <- js = JSAssign (tr lhs) (tr rhs)
@@ -465,9 +465,9 @@ inlineJS (JSApp (JSFunction [arg] (JSReturn ret)) [val])
         ) field
       ) (inlineJS $ jsSubst (JSIdent arg) opt idx)
 
-  | JSOp op lhs rhs <- ret
+  | JSBinOp op lhs rhs <- ret
   , opt <- inlineJS val =
-      inlineJS $ JSOp op (inlineJS $ jsSubst (JSIdent arg) opt lhs) $
+      inlineJS $ JSBinOp op (inlineJS $ jsSubst (JSIdent arg) opt lhs) $
         (inlineJS $ jsSubst (JSIdent arg) opt rhs)
 
   | JSApp (JSIdent fun) args <- ret
@@ -706,9 +706,9 @@ reduceConstant
   (JSApp (JSIdent "__IDRRT__tailcall") [JSFunction [] (
     JSReturn (JSApp (JSIdent "__IDR__mEVAL0") [val])
   )])
-  | JSNum num       <- val = val
-  | JSOp op lhs rhs <- val =
-      JSParens $ JSOp op (reduceConstant lhs) (reduceConstant rhs)
+  | JSNum num          <- val = val
+  | JSBinOp op lhs rhs <- val =
+      JSParens $ JSBinOp op (reduceConstant lhs) (reduceConstant rhs)
 
   | JSApp (JSProj lhs op) [rhs] <- val
   , op `elem` [ "subtract"
@@ -770,7 +770,7 @@ removeInstanceChecks (JSCond conds) =
   ) conds
   where
     removeHelper (
-        JSOp "&&" (JSOp "instanceof" _ (JSIdent "__IDRRT__Con")) check
+        JSBinOp "&&" (JSBinOp "instanceof" _ (JSIdent "__IDRRT__Con")) check
       ) = removeHelper check
     removeHelper js = js
 
@@ -1337,7 +1337,7 @@ translateExpression (SOp op vars)
 
   where
     translateBinaryOp :: String -> LVar -> LVar -> JS
-    translateBinaryOp f lhs rhs = JSOp f (JSVar lhs) (JSVar rhs)
+    translateBinaryOp f lhs rhs = JSBinOp f (JSVar lhs) (JSVar rhs)
 
 
     invokeMeth :: LVar -> String -> [LVar] -> JS
