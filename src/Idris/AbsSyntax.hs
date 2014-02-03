@@ -456,11 +456,11 @@ consoleDisplayAnnotated h output = do ist <- getIState
 -- | Write pretty-printed output to IDESlave with semantic annotations
 ideSlaveReturnAnnotated :: Integer -> Handle -> Doc OutputAnnotation -> Idris ()
 ideSlaveReturnAnnotated n h out = do ist <- getIState
-                                     let (str, spans) = displaySpans .
-                                                        renderPretty 0.8 80 .
-                                                        fmap (fancifyAnnots ist) $
-                                                        out
-                                         good = [SymbolAtom "ok", toSExp str, toSExp spans]
+                                     (str, spans) <- fmap displaySpans .
+                                                     iRender .
+                                                     fmap (fancifyAnnots ist) $
+                                                     out
+                                     let good = [SymbolAtom "ok", toSExp str, toSExp spans]
                                      runIO . hPutStrLn h $ convSExp "return" good n
 
 ihPrintTermWithType :: Handle -> Doc OutputAnnotation -> Doc OutputAnnotation -> Idris ()
