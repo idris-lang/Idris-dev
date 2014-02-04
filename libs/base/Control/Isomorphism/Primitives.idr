@@ -25,3 +25,11 @@ integerIsoZZ = MkIso toZZ fromZZ fromToZZ toFromZZ
         fromToZZ : (n : ZZ) -> toZZ (fromZZ n) = n
         fromToZZ n = really_believe_me {a = n=n} {b = toZZ (fromZZ n) = n} refl
 
+
+packUnpackIso : Iso (List Char) String
+packUnpackIso = MkIso pack
+                      unpack
+                      (\str => really_believe_me {a = str=str} {b = pack (unpack str) = str} refl)
+                      (\cs  => really_believe_me {a = cs=cs}   {b = unpack (pack cs) = cs}   refl)
+
+
