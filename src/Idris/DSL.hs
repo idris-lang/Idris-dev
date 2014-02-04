@@ -37,7 +37,7 @@ expandDo dsl (PAppBind fc t args) = PAppBind fc (expandDo dsl t)
 expandDo dsl (PCase fc s opts) = PCase fc (expandDo dsl s)
                                         (map (pmap (expandDo dsl)) opts)
 expandDo dsl (PEq fc l r) = PEq fc (expandDo dsl l) (expandDo dsl r)
-expandDo dsl (PPair fc l r) = PPair fc (expandDo dsl l) (expandDo dsl r)
+expandDo dsl (PPair fc p l r) = PPair fc p (expandDo dsl l) (expandDo dsl r)
 expandDo dsl (PDPair fc l t r) = PDPair fc (expandDo dsl l) (expandDo dsl t)
                                            (expandDo dsl r)
 expandDo dsl (PAlternative a as) = PAlternative a (map (expandDo dsl) as)
@@ -93,7 +93,7 @@ var dsl n t i = v' i t where
     v' i (PApp f x as)   = PApp f (v' i x) (fmap (fmap (v' i)) as)
     v' i (PCase f t as)  = PCase f (v' i t) (fmap (pmap (v' i)) as)
     v' i (PEq f l r)     = PEq f (v' i l) (v' i r)
-    v' i (PPair f l r)   = PPair f (v' i l) (v' i r)
+    v' i (PPair f p l r) = PPair f p (v' i l) (v' i r)
     v' i (PDPair f l t r) = PDPair f (v' i l) (v' i t) (v' i r)
     v' i (PAlternative a as) = PAlternative a $ map (v' i) as
     v' i (PHidden t)     = PHidden (v' i t)
@@ -144,9 +144,9 @@ debind b tm = let (tm', (bs, _)) = runState (db' tm) ([], 0) in
                               return (PLet n ty v' (debind b sc))
     db' (PCase fc s opts) = do s' <- db' s
                                return (PCase fc s' (map (pmap (debind b)) opts))
-    db' (PPair fc l r) = do l' <- db' l
-                            r' <- db' r
-                            return (PPair fc l' r')
+    db' (PPair fc p l r) = do l' <- db' l
+                              r' <- db' r
+                              return (PPair fc p l' r')
     db' (PDPair fc l t r) = do l' <- db' l
                                r' <- db' r
                                return (PDPair fc l' t r')

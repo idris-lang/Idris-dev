@@ -151,7 +151,7 @@ extension syn (Rule ssym ptm _)
     update ns (PApp fc t args) = PApp fc (update ns t) (map (fmap (update ns)) args)
     update ns (PAppBind fc t args) = PAppBind fc (update ns t) (map (fmap (update ns)) args)
     update ns (PCase fc c opts) = PCase fc (update ns c) (map (pmap (update ns)) opts)
-    update ns (PPair fc l r) = PPair fc (update ns l) (update ns r)
+    update ns (PPair fc p l r) = PPair fc p (update ns l) (update ns r)
     update ns (PDPair fc l t r) = PDPair fc (update ns l) (update ns t) (update ns r)
     update ns (PAlternative a as) = PAlternative a (map (update ns) as)
     update ns (PHidden t) = PHidden (update ns t)
@@ -336,7 +336,7 @@ bracketed :: SyntaxInfo -> IdrisParser PTerm
 bracketed syn =
             do lchar ')'
                fc <- getFC
-               return $ PTrue fc
+               return $ PTrue fc TypeOrTerm
         <|> try (do ln <- name; lchar ':';
                     lty <- expr syn
                     reservedOp "**"
@@ -372,7 +372,7 @@ bracketedExpr syn e =
                          return fc
                 rs <- sepBy1 (do fc' <- getFC; r <- expr syn; return (r, fc')) (lchar ',')
                 lchar ')'
-                return $ PPair fc e (mergePairs rs)
+                return $ PPair fc TypeOrTerm e (mergePairs rs)
         <|>  do fc <- do fc <- getFC
                          reservedOp "**"
                          return fc
@@ -382,7 +382,7 @@ bracketedExpr syn e =
         <?> "end of bracketed expression"
   where mergePairs :: [(PTerm, FC)] -> PTerm
         mergePairs [(t, fc)]    = t
-        mergePairs ((t, fc):rs) = PPair fc t (mergePairs rs)
+        mergePairs ((t, fc):rs) = PPair fc TypeOrTerm t (mergePairs rs)
 
 -- bit of a hack here. If the integer doesn't fit in an Int, treat it as a
 -- big integer, otherwise try fromInteger and the constants as alternatives.
