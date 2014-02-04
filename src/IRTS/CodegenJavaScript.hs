@@ -633,33 +633,11 @@ inlineFunctions js =
 
 
     inlineAble :: Int -> String -> [String] -> JS -> Maybe JS
-    inlineAble 1 fun args body
+    inlineAble 1 fun args (JSReturn body)
       | nonRecur fun body =
-          inlineAble' body
-            where
-              inlineAble' :: JS -> Maybe JS
-              inlineAble' (
-                  JSReturn js@(JSNew "__IDRRT__Con" [JSNum _, JSArray vals])
-                )
-                | and $ map (\x -> isJSIdent x || isJSConstant x) vals = Just js
-
-              inlineAble' (
-                  JSReturn js@(JSNew "__IDRRT__Cont" [JSFunction [] (
-                    JSReturn (JSApp (JSIdent _) args)
-                  )])
-                )
-                | and $ map (\x -> isJSIdent x || isJSConstant x) args = Just js
-
-              inlineAble' (
-                  JSReturn js@(JSIndex (JSProj (JSApp (JSIdent _) args) "vars") _)
-                )
-                | and $ map (\x -> isJSIdent x || isJSConstant x) args = Just js
-
-              inlineAble' _ = Nothing
-
-              isJSIdent js
-                | JSIdent _ <- js = True
-                | otherwise       = False
+          if all (<= 1) (map ($ body) (map countIDOccurences args))
+             then Just body
+             else Nothing
 
     inlineAble _ _ _ _ = Nothing
 
@@ -693,6 +671,16 @@ inlineFunctions js =
 
     countAll :: String -> [JS] -> Int
     countAll name js = sum $ map (countInvokations name) js
+
+
+    countIDOccurences :: String -> JS -> Int
+    countIDOccurences name = foldJS match (+) 0
+      where
+        match :: JS -> Int
+        match js
+          | JSIdent ident <- js
+          , name == ident = 1
+          | otherwise     = 0
 
 
     countInvokations :: String -> JS -> Int
