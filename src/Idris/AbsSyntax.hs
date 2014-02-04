@@ -1744,6 +1744,17 @@ mkUniqueNames env tm = evalState (mkUniq tm) env where
   mkUniq (PPair fc p l r)
          = do l' <- mkUniq l; r' <- mkUniq r
               return $! PPair fc p l' r'
+  mkUniq (PDPair fc (PRef fc' n) t sc)
+      | t /= Placeholder
+         = do env <- get
+              (n', sc') <- if n `elem` env
+                              then do let n' = uniqueName n (env ++ inScope)
+                                      return (n', shadow n n' sc)
+                              else return (n, sc)
+              put (n' : env)
+              t' <- mkUniq t
+              sc'' <- mkUniq sc'
+              return $! PDPair fc (PRef fc' n') t' sc''
   mkUniq (PDPair fc l t r)
          = do l' <- mkUniq l; t' <- mkUniq t; r' <- mkUniq r
               return $! PDPair fc l' t' r'
