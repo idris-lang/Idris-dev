@@ -425,14 +425,18 @@ renderWidth = do iw <- getWidth
 
 iRender :: Doc a -> Idris (SimpleDoc a)
 iRender d = do w <- getWidth
-               case w of
-                 InfinitelyWide -> return $ renderPretty 1.0 1000000000 d
-                 ColsWide n -> return $
-                               if n < 1
-                                 then renderPretty 1.0 1000000000 d
-                                 else renderPretty 0.8 n d
-                 AutomaticWidth -> do width <- runIO getScreenWidth
-                                      return $ renderPretty 0.8 width d
+               ist <- getIState
+               case idris_outputmode ist of
+                 IdeSlave _ -> return $ renderPretty 1.0 100 d
+                 RawOutput ->
+                   case w of
+                     InfinitelyWide -> return $ renderPretty 1.0 1000000000 d
+                     ColsWide n -> return $
+                                   if n < 1
+                                     then renderPretty 1.0 1000000000 d
+                                     else renderPretty 0.8 n d
+                     AutomaticWidth -> do width <- runIO getScreenWidth
+                                          return $ renderPretty 0.8 width d
 
 ihPrintResult :: Handle -> String -> Idris ()
 ihPrintResult h s = do i <- getIState
