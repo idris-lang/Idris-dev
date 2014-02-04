@@ -12,7 +12,7 @@ openOK m False = ()
 
 data FileIO : Effect where
      Open  : String -> (m : Mode) -> 
-             {() ==> if result then OpenFile m else ()} FileIO Bool
+             {() ==> {res} if res then OpenFile m else ()} FileIO Bool
      Close : {OpenFile m ==> ()}               FileIO () 
 
      ReadLine  :           {OpenFile Read}  FileIO String 

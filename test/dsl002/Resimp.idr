@@ -135,9 +135,9 @@ using (i: Fin n, gam : Vect n Ty, gam' : Vect n Ty, gam'' : Vect n Ty)
   interp env (Lift io) k
      = k env io
   interp env (Check x left right) k =
-     either (envLookup x env)
-            (\a => interp (envUpdate x a env) left k)
+     either (\a => interp (envUpdate x a env) left k)
             (\b => interp (envUpdate x b env) right k)
+            (envLookup x env)
   interp env (While test body) k
      = interp env test
           (\env', result =>

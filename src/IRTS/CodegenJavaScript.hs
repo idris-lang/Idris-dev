@@ -262,6 +262,43 @@ jsError :: String -> JS
 jsError err = JSApp (JSFunction [] (JSError err)) []
 
 
+foldJS :: (JS -> a) -> (a -> a -> a) -> a -> JS -> a
+foldJS tr add acc js =
+  fold js
+  where
+    fold js
+      | JSFunction args body <- js =
+          add (tr js) (fold body)
+      | JSSeq seq            <- js =
+          add (tr js) $ foldl' add acc (map fold seq)
+      | JSReturn ret         <- js =
+          add (tr js) (fold ret)
+      | JSApp lhs rhs        <- js =
+          add (tr js) $ add (fold lhs) (foldl' add acc $ map fold rhs)
+      | JSNew _ args         <- js =
+          add (tr js) $ foldl' add acc $ map fold args
+      | JSOp _ lhs rhs       <- js =
+          add (tr js) $ add (fold lhs) (fold rhs)
+      | JSProj obj _         <- js =
+          add (tr js) (fold obj)
+      | JSArray vals         <- js =
+          add (tr js) $ foldl' add acc $ map fold vals
+      | JSAssign lhs rhs     <- js =
+          add (tr js) $ add (fold lhs) (fold rhs)
+      | JSIndex lhs rhs      <- js =
+          add (tr js) $ add (fold lhs) (fold rhs)
+      | JSAlloc _ val        <- js =
+          add (tr js) $ fromMaybe acc $ fmap fold val
+      | JSTernary c t f      <- js =
+          add (tr js) $ add (fold c) (add (fold t) (fold f))
+      | JSParens val         <- js =
+          add (tr js) $ fold val
+      | JSCond conds         <- js =
+          add (tr js) $ foldl' add acc $ map (uncurry add . (fold *** fold)) conds
+      | otherwise                  =
+          tr js
+
+
 transformJS :: (JS -> JS) -> JS -> JS
 transformJS tr js =
   transformHelper js
@@ -348,6 +385,7 @@ isJSConstant js
   | JSChar _   <- js = True
   | JSNum _    <- js = True
   | JSType _   <- js = True
+  | JSNull     <- js = True
 
   | JSApp (JSIdent "__IDRRT__bigInt") _ <- js = True
   | otherwise = False
@@ -449,37 +487,11 @@ deadEvalApplyCases js =
       map (removeHelper tags) js
       where
         getTags :: JS -> [Int]
-        getTags (JSNew "__IDRRT__Con" [JSNum (JSInt tag), args]) =
-          tag : getTags args
-
-        getTags (JSNew _ args) = concatMap getTags args
-
-        getTags (JSFunction _ body) = getTags body
-
-        getTags (JSReturn ret) = getTags ret
-
-        getTags (JSApp lhs rhs) = getTags lhs ++ concatMap getTags rhs
-
-        getTags (JSSeq seq) = concatMap getTags seq
-
-        getTags (JSOp _ lhs rhs) = getTags lhs ++ getTags rhs
-
-        getTags (JSProj obj _) = getTags obj
-
-        getTags (JSArray vals) = concatMap getTags vals
-
-        getTags (JSAssign lhs rhs) = getTags lhs ++ getTags rhs
-
-        getTags (JSAlloc _ (Just val)) = getTags val
-
-        getTags (JSCond conds) =
-          concatMap (uncurry (++)) $ map (getTags *** getTags) conds
-
-        getTags (JSTernary c t f) = getTags c ++ getTags t ++ getTags f
-
-        getTags (JSParens js) = getTags js
-
-        getTags js = []
+        getTags = foldJS match (++) []
+          where
+            match js
+              | JSNew "__IDRRT__Con" [JSNum (JSInt tag), _] <- js = [tag]
+              | otherwise                                         = []
 
 
         removeHelper :: [Int] -> JS -> JS
@@ -509,36 +521,11 @@ initConstructors js =
       map createConstant tags ++ replaceConstructors tags js
       where
         getTags :: JS -> [Int]
-        getTags (JSNew "__IDRRT__Con" [JSNum (JSInt tag), JSArray []]) = [tag]
-
-        getTags (JSNew _ args) = concatMap getTags args
-
-        getTags (JSFunction _ body) = getTags body
-
-        getTags (JSReturn ret) = getTags ret
-
-        getTags (JSApp lhs rhs) = getTags lhs ++ concatMap getTags rhs
-
-        getTags (JSSeq seq) = concatMap getTags seq
-
-        getTags (JSOp _ lhs rhs) = getTags lhs ++ getTags rhs
-
-        getTags (JSProj obj _) = getTags obj
-
-        getTags (JSArray vals) = concatMap getTags vals
-
-        getTags (JSAssign lhs rhs) = getTags lhs ++ getTags rhs
-
-        getTags (JSAlloc _ (Just val)) = getTags val
-
-        getTags (JSCond conds) =
-          concatMap (uncurry (++)) $ map (getTags *** getTags) conds
-
-        getTags (JSTernary c t f) = getTags c ++ getTags t ++ getTags f
-
-        getTags (JSParens js) = getTags js
-
-        getTags js = []
+        getTags = foldJS match (++) []
+          where
+            match js
+              | JSNew "__IDRRT__Con" [JSNum (JSInt tag), JSArray []] <- js = [tag]
+              | otherwise                                                  = []
 
 
         replaceConstructors :: [Int] -> [JS] -> [JS]
@@ -597,91 +584,104 @@ removeIDs js =
 
 inlineFunctions :: [JS] -> [JS]
 inlineFunctions js =
-  let funs       = collectFunctions js
-      occurences = map ((id . fst) &&& countAll js) funs in
-      removeDeadFunctions occurences js
+  inlineHelper ([], js)
+  where
+    inlineHelper :: ([JS], [JS]) -> [JS]
+    inlineHelper (front , (JSAlloc fun (Just (JSFunction  args body))):back)
+      | countAll fun front + countAll fun back == 0 =
+         inlineHelper (front, back)
+      | Just new <- inlineAble (
+            countAll fun front + countAll fun back
+          ) fun args body =
+              let f = map (inline fun args new) in
+                  inlineHelper (f front, f back)
+
+    inlineHelper (front, next:back) = inlineHelper (front ++ [next], back)
+    inlineHelper (front, [])        = front
+
+
+    inlineAble :: Int -> String -> [String] -> JS -> Maybe JS
+    inlineAble 1 fun args body
+      | nonRecur fun body =
+          inlineAble' body
+            where
+              inlineAble' :: JS -> Maybe JS
+              inlineAble' (
+                  JSReturn js@(JSNew "__IDRRT__Con" [JSNum _, JSArray vals])
+                )
+                | and $ map (\x -> isJSIdent x || isJSConstant x) vals = Just js
+
+              inlineAble' (
+                  JSReturn js@(JSNew "__IDRRT__Cont" [JSFunction [] (
+                    JSReturn (JSApp (JSIdent _) args)
+                  )])
+                )
+                | and $ map (\x -> isJSIdent x || isJSConstant x) args = Just js
+
+              inlineAble' (
+                  JSReturn js@(JSIndex (JSProj (JSApp (JSIdent _) args) "vars") _)
+                )
+                | and $ map (\x -> isJSIdent x || isJSConstant x) args = Just js
+
+              inlineAble' _ = Nothing
+
+              isJSIdent js
+                | JSIdent _ <- js = True
+                | otherwise       = False
+
+    inlineAble _ _ _ _ = Nothing
+
+
+    inline :: String -> [String] -> JS -> JS -> JS
+    inline fun args body js = inline' js
       where
-        removeDeadFunctions :: [(String, (Int, JS))] -> [JS] -> [JS]
-        removeDeadFunctions _ [] = []
-        removeDeadFunctions funOccur ((JSAlloc fun (Just (JSFunction  _ _))):js)
-          | Just (o, _) <- lookup fun funOccur
-          , o == 0 = removeDeadFunctions funOccur js
+        inline' :: JS -> JS
+        inline' (JSApp (JSIdent name) vals)
+          | name == fun =
+              let (js, phs) = insertPlaceHolders args body in
+                  inline' $ foldr (uncurry jsSubst) js (zip phs vals)
 
-        removeDeadFunctions funOccur (j:js) = j : removeDeadFunctions funOccur js
+        inline' js = transformJS inline' js
 
+        insertPlaceHolders :: [String] -> JS -> (JS, [JS])
+        insertPlaceHolders args body = insertPlaceHolders' args body []
+          where
+            insertPlaceHolders' :: [String] -> JS -> [JS] -> (JS, [JS])
+            insertPlaceHolders' (a:as) body ph
+              | (body', ph') <- insertPlaceHolders' as body ph =
+                  let phvar = JSIdent $ "__PH_" ++ show (length ph') in
+                      (jsSubst (JSIdent a) phvar body', phvar : ph')
 
-        collectFunctions :: [JS] -> [(String, JS)]
-        collectFunctions js =
-          catMaybes $ map collectHelper js
-
-
-        collectHelper :: JS -> Maybe (String, JS)
-        collectHelper (JSAlloc fun (Just js@(JSFunction _ body)))
-          | fun /= "main" && nonRecur fun body = Just (fun, js)
-        collectHelper _                        = Nothing
-
-
-        nonRecur :: String -> JS -> Bool
-        nonRecur name body = countInvokations name body == 0
+            insertPlaceHolders' [] body ph = (body, ph)
 
 
-        countAll :: [JS] -> (String, JS) -> (Int, JS)
-        countAll js (name, fun) = (sum $ map (countInvokations name) js, fun)
+    nonRecur :: String -> JS -> Bool
+    nonRecur name body = countInvokations name body == 0
 
 
-        countInvokations :: String -> JS -> Int
-        countInvokations name (JSApp (JSIdent ident) args)
-          | name == ident = 1 + (sum $ map (countInvokations name) args)
-          | otherwise     = sum $ map (countInvokations name) args
+    countAll :: String -> [JS] -> Int
+    countAll name js = sum $ map (countInvokations name) js
 
-        countInvokations name (JSApp lhs rhs) =
-          countInvokations name lhs + (sum $ map (countInvokations name) rhs)
 
-        countInvokations name (JSFunction _ body) =
-          countInvokations name body
+    countInvokations :: String -> JS -> Int
+    countInvokations name = foldJS match (+) 0
+      where
+        match :: JS -> Int
+        match js
+          | JSApp (JSIdent ident) _ <- js
+          , name == ident = 1
+          | otherwise     = 0
 
-        countInvokations name (JSSeq seq) =
-          sum $ map (countInvokations name) seq
 
-        countInvokations name (JSReturn ret) =
-          countInvokations name ret
+reduceContinuations :: JS -> JS
+reduceContinuations = transformJS reduceHelper
+  where
+    reduceHelper :: JS -> JS
+    reduceHelper (JSNew "__IDRRT__Cont" [JSFunction [] (
+        JSReturn js@(JSNew "__IDRRT__Cont" [JSFunction [] body])
+      )]) = js
 
-        countInvokations name (JSNew _ args) =
-          sum $ map (countInvokations name) args
-
-        countInvokations name (JSOp _ lhs rhs) =
-          countInvokations name lhs + countInvokations name rhs
-
-        countInvokations name (JSProj obj _) =
-          countInvokations name obj
-
-        countInvokations name (JSArray vals) =
-          sum $ map (countInvokations name) vals
-
-        countInvokations name (JSAssign _ rhs) =
-          countInvokations name rhs
-
-        countInvokations name (JSAlloc _ (Just js)) =
-          countInvokations name js
-
-        countInvokations name (JSIndex lhs rhs) =
-          countInvokations name lhs + countInvokations name rhs
-
-        countInvokations name (JSCond conds) =
-          sum $ map (uncurry (+)) (
-            map (countInvokations name *** countInvokations name) conds
-          )
-
-        countInvokations name (JSTernary c t f) =
-          sum $ [ countInvokations name c
-                , countInvokations name t
-                , countInvokations name f
-                ]
-
-        countInvokations name (JSParens js) =
-          countInvokations name js
-
-        countInvokations _ _ = 0
+    reduceHelper js = transformJS reduceHelper js
 
 
 reduceConstant :: JS -> JS
@@ -866,11 +866,12 @@ codegenJavaScript target definitions filename outputType = do
           , initConstructors
           , map removeAllocations
           , elimDeadLoop
-          , inlineFunctions
           , map elimDuplicateEvals
           , map (optimizeEvalTailcalls ("__IDR__mEVAL0", "__IDRRT__EVALTC"))
           , map (optimizeEvalTailcalls ("__IDR__mAPPLY0", "__IDRRT__APPLYTC"))
           , map removeInstanceChecks
+          , inlineFunctions
+          , map reduceContinuations
           ]
 
 

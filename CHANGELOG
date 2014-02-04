@@ -26,6 +26,9 @@ New in 0.9.11:
   be total, e.g "assert_total (tail (x :: xs))".
 * Terminal width is automatically detected if Idris is compiled with curses
   support. If curses is not available, automatic mode assumes 80 columns.
+* Changed argument order for Prelude.Either.either.
+* Experimental 'neweffects' library, intended to replace 'effects' in the
+  next release.
 
 Internal changes
 
