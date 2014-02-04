@@ -24,3 +24,9 @@ foo = 2
 bar : T2
 bar = 2
 
+testFoo : Int
+testFoo = foo
+
+testBar : Nat
+testBar = bar
+

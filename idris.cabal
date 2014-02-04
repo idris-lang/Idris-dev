@@ -281,7 +281,6 @@ Extra-source-files:
                        test/ffi003/input
                        test/ffi004/run
                        test/ffi004/*.idr
-                       test/ffi004/input
                        test/ffi004/theType
                        test/ffi004/theOtherType
                        test/ffi004/expected
