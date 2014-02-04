@@ -1,3 +1,2 @@
 Type checking ./test024.idr
 testtest
-() : ()

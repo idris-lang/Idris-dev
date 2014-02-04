@@ -176,8 +176,8 @@ elab ist info pattern opts fn tm
 --       = lift $ tfail (Msg "Typecase is not allowed") 
     elab' ina (PConstant c)  = do apply (RConstant c) []; solve
     elab' ina (PQuote r)     = do fill r; solve
-    elab' ina (PTrue fc)     = try (elab' ina (PRef fc unitCon))
-                                   (elab' ina (PRef fc unitTy))
+    elab' ina (PTrue fc _)   = try (elab' ina (PRef fc unitCon))
+                                    (elab' ina (PRef fc unitTy))
     elab' ina (PFalse fc)    = elab' ina (PRef fc falseTy)
     elab' ina (PResolveTC (FC "HACK" _ _)) -- for chasing parent classes
        = do g <- goal; resolveTC 5 g fn ist
@@ -195,7 +195,7 @@ elab ist info pattern opts fn tm
                                     [pimp (sMN 0 "A") Placeholder True,
                                      pimp (sMN 0 "B") Placeholder False,
                                      pexp l, pexp r])
-    elab' ina@(_, a, inty) (PPair fc l r)
+    elab' ina@(_, a, inty) (PPair fc _ l r)
         = do hnf_compute
              g <- goal
              case g of

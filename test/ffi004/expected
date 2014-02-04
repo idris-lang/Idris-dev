@@ -1,3 +1,0 @@
-Type checking ./test026.idr
-2 : Int
-2 : Nat

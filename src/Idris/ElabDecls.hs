@@ -646,7 +646,7 @@ elabProvider info syn fc n ty tm
          logLvl 1 $ "Normalised " ++ show n ++ "'s RHS to " ++ show rhs
 
          -- Extract the provided term from the type provider
-         tm <- getProvided rhs'
+         tm <- getProvided fc rhs'
 
          -- Finally add a top-level definition of the provided term
          elabClauses info fc [] n [PClause fc n (PRef fc n) [] (delab i tm) []]

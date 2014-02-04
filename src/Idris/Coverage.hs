@@ -164,7 +164,7 @@ genAll i args
     otherPats :: PTerm -> [PTerm]
     otherPats o@(PRef fc n) = ops fc n [] o
     otherPats o@(PApp _ (PRef fc n) xs) = ops fc n xs o
-    otherPats o@(PPair fc l r)
+    otherPats o@(PPair fc _ l r)
         = ops fc pairCon
                 ([pimp (sUN "A") Placeholder True,
                   pimp (sUN "B") Placeholder True] ++
@@ -196,7 +196,7 @@ genAll i args
         = PDPair fc (getTm t) Placeholder (getTm v)
     resugar (PApp _ (PRef fc n) [_,_,l,r])
       | n == pairCon
-        = PPair fc (getTm l) (getTm r)
+        = PPair fc IsTerm (getTm l) (getTm r)
     resugar t = t
 
     dropForce force (x : xs) i | i `elem` force

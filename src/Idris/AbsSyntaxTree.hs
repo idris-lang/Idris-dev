@@ -603,6 +603,8 @@ updateNs ns t = mapPT updateRef t
 --                                      (map (updateDNs ns) ds)
 -- updateDNs ns c = c
 
+data PunInfo = IsType | IsTerm | TypeOrTerm deriving (Eq, Show)
+
 -- | High level language terms
 data PTerm = PQuote Raw
            | PRef FC Name
@@ -616,13 +618,13 @@ data PTerm = PQuote Raw
            | PAppBind FC PTerm [PArg] -- ^ implicitly bound application
            | PMatchApp FC Name -- ^ Make an application by type matching
            | PCase FC PTerm [(PTerm, PTerm)]
-           | PTrue FC
+           | PTrue FC PunInfo
            | PFalse FC
            | PRefl FC PTerm
            | PResolveTC FC
            | PEq FC PTerm PTerm
            | PRewrite FC PTerm PTerm (Maybe PTerm)
-           | PPair FC PTerm PTerm
+           | PPair FC PunInfo PTerm PTerm
            | PDPair FC PTerm PTerm PTerm
            | PAlternative Bool [PTerm] -- True if only one may work
            | PHidden PTerm -- ^ Irrelevant or hidden pattern
@@ -662,7 +664,7 @@ mapPT f t = f (mpt t) where
   mpt (PCase fc c os) = PCase fc (mapPT f c) (map (pmap (mapPT f)) os)
   mpt (PEq fc l r) = PEq fc (mapPT f l) (mapPT f r)
   mpt (PTyped l r) = PTyped (mapPT f l) (mapPT f r)
-  mpt (PPair fc l r) = PPair fc (mapPT f l) (mapPT f r)
+  mpt (PPair fc p l r) = PPair fc p (mapPT f l) (mapPT f r)
   mpt (PDPair fc l t r) = PDPair fc (mapPT f l) (mapPT f t) (mapPT f r)
   mpt (PAlternative a as) = PAlternative a (map (mapPT f) as)
   mpt (PHidden t) = PHidden (mapPT f t)
@@ -1078,7 +1080,7 @@ pprintPTerm impl bnd = prettySe 10 bnd
       | Just n <- snat p e = annotate AnnConstData (text (show n))
     prettySe p bnd (PRef fc n) = prettyName impl bnd n
     prettySe p bnd (PLam n ty sc) =
-      bracket p 2 . group . hang 2 $
+      bracket p 2 . group . align . hang 2 $
       text "\\" <> bindingOf n False <+> text "=>" <$>
       prettySe 10 ((n, False):bnd) sc
     prettySe p bnd (PLet n ty v sc) =
@@ -1154,7 +1156,9 @@ pprintPTerm impl bnd = prettySe 10 bnd
     prettySe p bnd (PHidden tm) = text "." <> prettySe 0 bnd tm
     prettySe p bnd (PRefl _ _) = annotate (AnnName eqCon Nothing Nothing) $ text "refl"
     prettySe p bnd (PResolveTC _) = text "resolvetc"
-    prettySe p bnd (PTrue _) = annotate (AnnName unitTy Nothing Nothing) $ text "()"
+    prettySe p bnd (PTrue _ IsType) = annotate (AnnName unitTy Nothing Nothing) $ text "()"
+    prettySe p bnd (PTrue _ IsTerm) = annotate (AnnName unitCon Nothing Nothing) $ text "()"
+    prettySe p bnd (PTrue _ TypeOrTerm) = text "()"
     prettySe p bnd (PFalse _) = annotate (AnnName falseTy Nothing Nothing) $ text "_|_"
     prettySe p bnd (PEq _ l r) =
       bracket p 2 . align . group $
@@ -1165,8 +1169,20 @@ pprintPTerm impl bnd = prettySe 10 bnd
       text "rewrite" <+> prettySe 10 bnd l <+> text "in" <+> prettySe 10 bnd r
     prettySe p bnd (PTyped l r) =
       lparen <> prettySe 10 bnd l <+> colon <+> prettySe 10 bnd r <> rparen
-    prettySe p bnd (PPair _ l r) =
+    prettySe p bnd (PPair _ TypeOrTerm l r) =
       lparen <> prettySe 10 bnd l <> text "," <+> prettySe 10 bnd r <> rparen
+    prettySe p bnd (PPair _ IsType l r) =
+      annotate (AnnName pairTy Nothing Nothing) lparen <>
+      prettySe 10 bnd l <>
+      annotate (AnnName pairTy Nothing Nothing) comma <+>
+      prettySe 10 bnd r <>
+      annotate (AnnName pairTy Nothing Nothing) rparen
+    prettySe p bnd (PPair _ IsTerm l r) =
+      annotate (AnnName pairCon Nothing Nothing) lparen <>
+      prettySe 10 bnd l <>
+      annotate (AnnName pairCon Nothing Nothing) comma <+>
+      prettySe 10 bnd r <>
+      annotate (AnnName pairCon Nothing Nothing) rparen
     prettySe p bnd (PDPair _ l t r) =
       lparen <> prettySe 10 bnd l <+> text "**" <+> prettySe 10 bnd r <> rparen
     prettySe p bnd (PAlternative a as) =
@@ -1380,13 +1396,13 @@ instance Sized PTerm where
   size (PApp fc name args) = 1 + size args
   size (PAppBind fc name args) = 1 + size args
   size (PCase fc trm bdy) = 1 + size trm + size bdy
-  size (PTrue fc) = 1
+  size (PTrue fc _) = 1
   size (PFalse fc) = 1
   size (PRefl fc _) = 1
   size (PResolveTC fc) = 1
   size (PEq fc left right) = 1 + size left + size right
   size (PRewrite fc left right _) = 1 + size left + size right
-  size (PPair fc left right) = 1 + size left + size right
+  size (PPair fc _ left right) = 1 + size left + size right
   size (PDPair fs left ty right) = 1 + size left + size ty + size right
   size (PAlternative a alts) = 1 + size alts
   size (PHidden hidden) = size hidden
@@ -1425,7 +1441,7 @@ allNamesIn tm = nub $ ni [] tm
     ni env (PEq _ l r)     = ni env l ++ ni env r
     ni env (PRewrite _ l r _) = ni env l ++ ni env r
     ni env (PTyped l r)    = ni env l ++ ni env r
-    ni env (PPair _ l r)   = ni env l ++ ni env r
+    ni env (PPair _ _ l r)   = ni env l ++ ni env r
     ni env (PDPair _ (PRef _ n) t r)  = ni env t ++ ni (n:env) r
     ni env (PDPair _ l t r)  = ni env l ++ ni env t ++ ni env r
     ni env (PAlternative a ls) = concatMap (ni env) ls
@@ -1447,7 +1463,7 @@ boundNamesIn tm = nub $ ni tm
     ni (PEq _ l r)     = ni l ++ ni r
     ni (PRewrite _ l r _) = ni l ++ ni r
     ni (PTyped l r)    = ni l ++ ni r
-    ni (PPair _ l r)   = ni l ++ ni r
+    ni (PPair _ _ l r)   = ni l ++ ni r
     ni (PDPair _ (PRef _ n) t r) = ni t ++ ni r
     ni (PDPair _ l t r) = ni l ++ ni t ++ ni r
     ni (PAlternative a as) = concatMap (ni) as
@@ -1474,7 +1490,7 @@ namesIn uvars ist tm = nub $ ni [] tm
     ni env (PEq _ l r)     = ni env l ++ ni env r
     ni env (PRewrite _ l r _) = ni env l ++ ni env r
     ni env (PTyped l r)    = ni env l ++ ni env r
-    ni env (PPair _ l r)   = ni env l ++ ni env r
+    ni env (PPair _ _ l r)   = ni env l ++ ni env r
     ni env (PDPair _ (PRef _ n) t r) = ni env t ++ ni (n:env) r
     ni env (PDPair _ l t r) = ni env l ++ ni env t ++ ni env r
     ni env (PAlternative a as) = concatMap (ni env) as
@@ -1502,7 +1518,7 @@ usedNamesIn vars ist tm = nub $ ni [] tm
     ni env (PEq _ l r)     = ni env l ++ ni env r
     ni env (PRewrite _ l r _) = ni env l ++ ni env r
     ni env (PTyped l r)    = ni env l ++ ni env r
-    ni env (PPair _ l r)   = ni env l ++ ni env r
+    ni env (PPair _ _ l r)   = ni env l ++ ni env r
     ni env (PDPair _ (PRef _ n) t r) = ni env t ++ ni (n:env) r
     ni env (PDPair _ l t r) = ni env l ++ ni env t ++ ni env r
     ni env (PAlternative a as) = concatMap (ni env) as
