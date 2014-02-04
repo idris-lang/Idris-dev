@@ -260,7 +260,8 @@ operatorLetter = oneOf opChars
 -- | Parses an operator
 operator :: MonadicParsing m => m String
 operator = do op <- token . some $ operatorLetter
-              when (op == ":") $ fail "(:) is not a valid operator"
+              when (op `elem` [":", "=>", "->", "<-", "=", "?="]) $ 
+                   fail $ op ++ " is not a valid operator"
               return op
 
 {- * Position helpers -}

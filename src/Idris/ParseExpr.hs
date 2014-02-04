@@ -181,6 +181,7 @@ InternalExpr ::=
   | Let
   | RewriteTerm
   | Pi
+  | CaseExpr
   | DoBlock
   ;
 @
@@ -199,6 +200,7 @@ internalExpr syn =
      <|> rewriteTerm syn
      <|> try(pi syn)
      <|> doBlock syn
+     <|> caseExpr syn
      <|> simpleExpr syn
      <?> "expression"
 
@@ -263,7 +265,6 @@ SimpleExpr ::=
   | 'refl' ('{' Expr '}')?
   | ProofExpr
   | TacticsExpr
-  | CaseExpr
   | FnName
   | List
   | Comprehension
@@ -290,7 +291,6 @@ simpleExpr syn =
         <|> do reserved "elim_for"; fc <- getFC; t <- fnName; return (PRef fc (SN $ ElimN t))
         <|> proofExpr syn
         <|> tacticsExpr syn
-        <|> caseExpr syn
         <|> do reserved "Type"; return PType
         <|> try (do c <- constant
                     fc <- getFC
