@@ -23,3 +23,4 @@ env:
   - TESTS=test_c
   - TESTS=test_java
   - TESTS=test_llvm
+  - TESTS=test_js
