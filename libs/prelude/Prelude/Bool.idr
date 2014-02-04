@@ -13,7 +13,6 @@ data so : Bool -> Type where oh : so True
 
 -- Syntaxtic sugar for boolean elimination.
 syntax if [test] then [t] else [e] = boolElim test t e
-syntax [test] "?" [t] ":" [e] = if test then t else e
 
 -- Boolean Operator Precedence
 infixl 4 &&, ||
