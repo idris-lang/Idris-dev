@@ -20,9 +20,10 @@ import System.IO
 import System.Directory
 
 idrNamespace :: String
-idrNamespace   = "__IDR__"
-idrRTNamespace = "__IDRRT__"
-idrLTNamespace = "__IDRLT__"
+idrNamespace    = "__IDR__"
+idrRTNamespace  = "__IDRRT__"
+idrLTNamespace  = "__IDRLT__"
+idrCTRNamespace = "__IDRCTR__"
 
 
 data JSTarget = Node | JavaScript deriving Eq
@@ -564,14 +565,14 @@ initConstructors js =
           where
             replaceHelper :: [Int] -> JS -> JS
             replaceHelper tags (JSNew "__IDRRT__Con" [JSNum (JSInt tag), JSArray []])
-              | tag `elem` tags = JSIdent ("__IDRCTR__" ++ show tag)
+              | tag `elem` tags = JSIdent (idrCTRNamespace ++ show tag)
 
             replaceHelper tags js = transformJS (replaceHelper tags) js
 
 
         createConstant :: Int -> JS
         createConstant tag =
-          JSAlloc ("__IDRCTR__" ++ show tag) (Just (
+          JSAlloc (idrCTRNamespace ++ show tag) (Just (
             JSNew (idrRTNamespace ++ "Con") [JSNum (JSInt tag), JSArray []]
           ))
 
