@@ -325,6 +325,8 @@ ideslaveProcess fn (AddClauseFrom False pos str) = process stdout fn (AddClauseF
 ideslaveProcess fn (AddMissing False pos str) = process stdout fn (AddMissing False pos str)
 ideslaveProcess fn (MakeWith False pos str) = process stdout fn (MakeWith False pos str)
 ideslaveProcess fn (DoProofSearch False pos str xs) = process stdout fn (DoProofSearch False pos str xs)
+ideslaveProcess fn (SetConsoleWidth w) = do process stdout fn (SetConsoleWidth w)
+                                            iPrintResult ""
 ideslaveProcess fn _ = iPrintError "command not recognized or not supported"
 
 
